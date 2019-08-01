@@ -2,7 +2,7 @@
 
 This directory contains an attempt to use the [Kami](https://github.com/mit-plv/kami) system to specify a simple circuit and drive it through the point where we can generate a Verilog netlist which can be implemented and a Xilinx FPGA board and run.
 
-The example we start with is a simple 4-bit counter [Counter.v](counter.v):
+The example we start with is a simple 4-bit counter [Counter.v](Counter.v):
 ```
 Require Import Kami.
 Require Import Kami.Syntax.
