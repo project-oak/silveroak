@@ -154,4 +154,22 @@ it up appropriately. Along with a file that specifies the location of the pins t
 [counter4.xdc]9counter4.xdc) we can use the Xilinx tools to convert this source (partly generated from
 Kami/Coq and partly written by us) into a programming bitstream for the FPGA board.
 
-The extracted `Counter4.ml` program can be used with some other code to generate Bluespec, from which we can generate Verilog and then produce a circuit module for implementation on an FPGA (with a suitable wrapper for writing up the chip pins, dealing with the input clock etc.)
+The Xilinx synthesis tools generate this schemantic for the top-level block which instantiates
+the Kami counter with the slowed-down clock and the wiring for the LEDs and reset:
+
+![Top level schmatic](counter4_top_sch.png)
+
+Drilling down in the Kami counter block in this schematic we can see the hardware that was elaborated
+from the description that started off in Kami/Coq:
+
+![Kami counter schematic](kami_counter_sch.png)
+
+The Xilinx design tools synthesize this elaborated design into a netlist which at the level of
+the gates available of the specific Xilinx Zync UltraScale+ FPGA that we are mapping to:
+
+![Kami counter in terms of FPGA elements](kami_counter_fpga.png)
+
+The counter circut is implemented in the top right hand corner of the Xilinx XCZU7ev-ffvc1156-2-e FPGA:
+
+![counter floorplan](counter_floorplan.png)
+
