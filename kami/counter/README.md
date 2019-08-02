@@ -173,3 +173,7 @@ The counter circut is implemented in the top right hand corner of the Xilinx XCZ
 
 ![counter floorplan](counter_floorplan.png)
 
+When the  ZCU104 FPGA board is programmed the flights can be observed flashing in the correct
+sequence in the top left hand part of the board.
+
+![ZCU104 FPGA board](zcu104.jpg)
