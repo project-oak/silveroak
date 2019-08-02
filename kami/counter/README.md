@@ -21,7 +21,6 @@ Definition counter4 := MODULE {
     with Rule "incrementAndOutput" :=
        Read val <- "counterReg";
        Write "counterReg" <- #val + ($1 :: Bit 4);
-       (* Call count (#val); *)
        Retv
 
     with Method "count_value" () : (Bit 4) :=
@@ -173,7 +172,7 @@ The counter circuit is implemented in the top right hand corner of the Xilinx XC
 
 ![counter floorplan](counter_floorplan.png)
 
-When the  ZCU104 FPGA board is programmed the lights can be observed flashing in the correct
+When the  ZCU104 FPGA board is programmed the LEDs can be observed flashing in the correct
 sequence in the top left hand part of the board.
 
 ![ZCU104 FPGA board](zcu104.jpg)
