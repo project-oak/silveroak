@@ -25,7 +25,7 @@ Counter.ml:	Makefile.coq
 Makefile.coq:	Counter.v
 		coq_makefile -f _CoqProject -o Makefile.coq
 
-clean:
+clean:		clean_vivado
 		-$(MAKE) -f Makefile.coq clean
 		rm -rf Makefile.coq Counter.ml Counter.mli Counter4.bsv *.bo \
 		       mkModule1.v counter4_tb.vcd obj_dir Makefile.coq.bak \
@@ -59,5 +59,16 @@ counter4_tb.vcd:	mkModule1.v
 			make -C obj_dir -f VmkModule1.mk VmkModule1
 			obj_dir/VmkModule1
 
-.PHONY: all clean
+counter4.bit:	mkModule1.v counter4_top.vhdl counter4.xdc
+		vivado -mode tcl -source counter4.tcl
+
+configure:
+		vivado -mode tcl -source configure.tcl
+
+clean_vivado:
+		rm -rf vivado_genfiles counter4.bit .Xil \
+		counter4.hw counter4.runs counter4.xpr counter4.cache vivado*
+
+
+.PHONY: all clean configure
 

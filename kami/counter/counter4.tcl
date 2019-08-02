@@ -15,16 +15,16 @@
 #
 
 # Vivado tcl script to synthesize, implement and generate write_bitstream
-# for led counter example for the ZCU104 board.
-# Usage: "vivado -mode tcl -source leds.tcl"
+# for Kami counter example for the ZCU104 board."
 #
-set outputDir ./Leds_Created_Data/leds_output
+set outputDir ./vivado_genfiles/output
 file mkdir $outputDir
 #
-read_vhdl leds.vhdl
-read_xdc leds.xdc
+read_verilog mkModule1.v
+read_vhdl counter4_top.vhdl
+read_xdc counter4.xdc
 #
-synth_design -top leds -part xczu7ev-ffvc1156-2-e
+synth_design -top counter4 -part xczu7ev-ffvc1156-2-e
 write_checkpoint -force $outputDir/post_synth
 report_timing_summary -file $outputDir/post_synth_timing_summary.rpt
 report_power -file $outputDir/post_synth_power.rpt
@@ -43,8 +43,8 @@ report_clock_utilization -file $outputDir/clock_util.rpt
 report_utilization -file $outputDir/post_route_util.rpt
 report_power -file $outputDir/post_route_power.rpt
 report_drc -file $outputDir/post_imp_drc.rpt
-write_verilog -force $outputDir/leds_impl_netlist.v
-write_xdc -no_fixed_only -force $outputDir/leds_impl.xdc
+write_verilog -force $outputDir/counter4_impl_netlist.v
+write_xdc -no_fixed_only -force $outputDir/counter4_impl.xdc
 #
-write_bitstream -force leds.bit
+write_bitstream -force counter4.bit
 exit
