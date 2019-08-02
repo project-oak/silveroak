@@ -6,9 +6,9 @@ The example we start with is a simple 4-bit counter [Counter.v](Counter.v):
 ```
 Require Import Kami.
 Require Import Kami.Syntax.
-
 Require Import Kami.Synthesize.
 Require Import Ext.BSyntax.
+Require Import ExtrOcamlNatInt ExtrOcamlString.
 
 Definition count := MethodSig ("counter" -- "count_value") (Bit 4) : Void.
 
@@ -38,7 +38,7 @@ Unset Extraction AutoInline.
 
 Definition targetCounter4 := ModulesSToBModules (getModuleS counter4).
 
-Extraction "Counter4.ml" targetCounter4.
+Extraction "Counter.ml" targetCounter4.
 ```
 
 The extracted `Counter4.ml` program can be used with some other code to generate Bluespec, from which we can generate Verilog and then produce a circuit module for implementation on an FPGA (with a suitable wrapper for writing up the chip pins, dealing with the input clock etc.)
