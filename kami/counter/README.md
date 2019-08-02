@@ -135,7 +135,7 @@ module mkModule1(CLK,
 ```
 
 We can create a top level simulation test bench [counter4_tb.cpp](counter4_tb.cpp) for use with the
-open source [Verilator](https://www.veripool.org/wiki/verilator) Verilog smulator and simulate the generated Verilog to make sure it does actually behave like a counter. Running the simulation produces a waveform
+open source [Verilator](https://www.veripool.org/wiki/verilator) Verilog simulator and simulate the generated Verilog to make sure it does actually behave like a counter. Running the simulation produces a waveform
 trace file `counter4_tb.vcd` which we can view with a VCD waveform visulaization program like
 [GTKWave](http://gtkwave.sourceforge.net/):
 
@@ -169,7 +169,7 @@ the gates available of the specific Xilinx Zync UltraScale+ FPGA that we are map
 
 ![Kami counter in terms of FPGA elements](kami_counter_fpga.png)
 
-The counter circut is implemented in the top right hand corner of the Xilinx XCZU7ev-ffvc1156-2-e FPGA:
+The counter circuit is implemented in the top right hand corner of the Xilinx XCZU7ev-ffvc1156-2-e FPGA:
 
 ![counter floorplan](counter_floorplan.png)
 
