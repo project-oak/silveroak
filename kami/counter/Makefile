@@ -17,7 +17,7 @@
 OCB = ocamlbuild -use-ocamlfind
 KAMI = ../../../kami
 
-all: counter4_tb.vcd
+all: counter4_tb.vcd counter4.bit
 
 Counter.ml:	Makefile.coq
 		$(MAKE) -f Makefile.coq
