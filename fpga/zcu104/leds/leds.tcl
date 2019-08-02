@@ -5,7 +5,7 @@
 set outputDir ./Leds_Created_Data/leds_output
 file mkdir $outputDir
 #
-read_vhdl leds.vhd
+read_vhdl leds.vhdl
 read_xdc leds.xdc
 #
 synth_design -top leds -part xczu7ev-ffvc1156-2-e
