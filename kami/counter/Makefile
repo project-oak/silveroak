@@ -15,7 +15,7 @@
 #
 
 OCB = ocamlbuild -use-ocamlfind
-KAMI = ../../kami
+KAMI = ../../../kami
 
 all: counter4_tb.vcd
 
@@ -28,7 +28,7 @@ Makefile.coq:	Counter.v
 clean:
 		-$(MAKE) -f Makefile.coq clean
 		rm -rf Makefile.coq Counter.ml Counter.mli Counter4.bsv *.bo \
-		       mkModule1.v counter4_tb.vcd obj_dir \
+		       mkModule1.v counter4_tb.vcd obj_dir Makefile.coq.bak \
 		       PP.ml RegFileZero.bsv MulDiv.bsv .Counter*
 		$(OCB) -clean
 
