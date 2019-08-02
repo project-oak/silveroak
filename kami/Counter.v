@@ -1,8 +1,8 @@
 Require Import Kami.
 Require Import Kami.Syntax.
-
 Require Import Kami.Synthesize.
 Require Import Ext.BSyntax.
+Require Import ExtrOcamlNatInt ExtrOcamlString.
 
 Definition count := MethodSig ("counter" -- "count_value") (Bit 4) : Void.
 
