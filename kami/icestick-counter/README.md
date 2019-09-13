@@ -4,7 +4,7 @@ This directory contains an example that uses th [Kami](https://github.com/mit-pl
 The counter controls four LEDs on the board which are made
 to flash in the binary sequence 0..7 and a push-button switch on the board is used to reset the counter back to 0. The entire flow from circuit extraction from Coq to FPGA bitstream generation can be run by
 just typing `make` in this directory. Typing `make configure` will actually configure a connected
-ZCU104 FPGA board and start to make the LEDs flash in the 0..7 sequence.
+iCEstick board and make the LEDs flash in the 0..7 sequence.
 
 The example we start with is a simple 4-bit counter [Counter.v](Counter.v):
 ```coq
