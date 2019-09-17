@@ -13,18 +13,18 @@ module counter4_top (
     );
 
     reg [3:0] count;
-    wire reset = 1'b0;
+    wire reset = 1'b1;
     wire en = 1'b1;
     wire rdy;
 
-    reg [8:0] slowdown = 9'b0;
+    reg [20:0] slowdown = 9'b0;
 
     always @(posedge clk) begin
         slowdown++;
     end
 
     mkModule1 COUNTER (
-        .CLK(slowdown[8]),
+        .CLK(slowdown[20]),
         .RST_N(reset),
         .EN_count_value(en),
         .count_value(count),
