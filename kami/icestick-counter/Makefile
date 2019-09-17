@@ -17,7 +17,7 @@
 OCB = ocamlbuild -use-ocamlfind
 KAMI = ../../../kami
 
-all: counter4_tb.vcd counter4.bit
+all: counter4_tb.vcd counter4_top.bin
 
 Counter.ml:	Makefile.coq
 		$(MAKE) -f Makefile.coq
@@ -64,11 +64,11 @@ counter4_top.json:	mkModule1.v counter4_top.v
 				yosys -p 'synth_ice40 -top counter4_top -json counter4_top.json' mkModule1.v counter4_top.v 
 
 counter4_top.asc:	counter4_top.json
-					nextpnr-ice40 --hx1k --json counter4_top.json --pcf counter4_top.pcf --asc counter4_top.asc 
+			nextpnr-ice40 --hx1k --json counter4_top.json --pcf counter4_top.pcf --asc counter4_top.asc 
 
 
 counter4_top.bin:	counter4_top.asc
-					icepack counter4_top.asc counter4_top.bin
+			icepack counter4_top.asc counter4_top.bin
 
 .PHONY: all clean configure
 
