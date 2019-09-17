@@ -29,7 +29,8 @@ clean:		clean_vivado
 		-$(MAKE) -f Makefile.coq clean
 		rm -rf Makefile.coq Counter.ml Counter.mli Counter4.bsv *.bo \
 		       mkModule1.v counter4_tb.vcd obj_dir Makefile.coq.bak \
-		       PP.ml RegFileZero.bsv MulDiv.bsv .Counter*
+		       PP.ml RegFileZero.bsv MulDiv.bsv .Counter* \
+			   counter4_top.json counter4_top.asc counter4_top.bin
 		$(OCB) -clean
 
 PP.ml:		$(KAMI)/Kami/Ext/Ocaml/PP.ml
@@ -58,6 +59,16 @@ counter4_tb.vcd:	mkModule1.v
 			verilator --cc --trace mkModule1.v --exe counter4_tb.cpp
 			make -C obj_dir -f VmkModule1.mk VmkModule1
 			obj_dir/VmkModule1
+
+counter4_top.json:	mkModule1.v counter4_top.v
+				yosys -p 'synth_ice40 -top counter4_top -json counter4_top.json' mkModule1.v counter4_top.v 
+
+counter4_top.asc:	counter4_top.json
+					nextpnr-ice40 --hx1k --json counter4_top.json --pcf counter4_top.pcf --asc counter4_top.asc 
+
+
+counter4_top.bin:	counter4_top.asc
+					icepack counter4_top.asc counter4_top.bin
 
 .PHONY: all clean configure
 
