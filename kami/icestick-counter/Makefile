@@ -57,5 +57,8 @@ counter4_top.asc:	counter4_top.json
 counter4_top.bin:	counter4_top.asc
 			icepack counter4_top.asc counter4_top.bin
 
+configure:		counter4_top.bin
+			iceprog $<
+
 .PHONY: all clean configure
 
