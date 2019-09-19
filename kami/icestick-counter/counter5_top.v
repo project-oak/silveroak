@@ -1,4 +1,4 @@
-module counter4_top (
+module counter5_top (
     input  clki,
     output led1,
     output led2,
@@ -12,7 +12,7 @@ module counter4_top (
         .GLOBAL_BUFFER_OUTPUT(clk)
     );
 
-    reg [3:0] count;
+    reg [4:0] count;
     wire reset = 1'b1;
     wire en = 1'b1;
     wire rdy;
@@ -31,10 +31,10 @@ module counter4_top (
         .count_value(count)
     );
 
-    assign led5 = 1'b1;
     assign led1 = count[0];
     assign led2 = count[1];
     assign led3 = count[2];
     assign led4 = count[3];
+    assign led5 = count[4];
 
 endmodule

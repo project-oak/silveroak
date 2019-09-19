@@ -17,7 +17,7 @@
 OCB = ocamlbuild -use-ocamlfind
 KAMI = ../../../kami
 
-all: counter4_top.bin
+all: counter5_top.bin
 
 Counter.ml:	Makefile.coq
 		$(MAKE) -f Makefile.coq
@@ -25,12 +25,13 @@ Counter.ml:	Makefile.coq
 Makefile.coq:	Counter.v
 		coq_makefile -f _CoqProject -o Makefile.coq
 
-clean:	
+clean:
 		-$(MAKE) -f Makefile.coq clean
-		rm -rf Makefile.coq Counter.ml Counter.mli Counter4.bsv *.bo \
-		       mkModule1.v counter4_tb.vcd obj_dir Makefile.coq.bak \
-		       PP.ml RegFileZero.bsv MulDiv.bsv .Counter* \
-			   counter4_top.json counter4_top.asc counter4_top.bin
+		rm -rf Makefile.coq Counter.ml Counter.mli Counter5.bsv *.bo \
+		       mkModule1.v counter5_tb.vcd obj_dir Makefile.coq.bak \
+		       PP.ml .Counter* \
+		       counter5_top.json counter5_top.asc counter5_top.bin \
+		       obj counter5_top.json  counter5_top.asc counter5_top.json
 		$(OCB) -clean
 
 PP.ml:		$(KAMI)/Kami/Ext/Ocaml/PP.ml
@@ -40,24 +41,24 @@ PP.ml:		$(KAMI)/Kami/Ext/Ocaml/PP.ml
 Main.native:	Counter.ml PP.ml
 		$(OCB) Main.native Counter.v 
 
-Counter4.bsv:	Main.native
+Counter5.bsv:	Main.native
 		./$< $@
 		sed -i -e '/RegFileZero/d' -e '/MulDiv/d' $@
 
-mkModule1.v:	Counter4.bsv
-		$(HPRLS)/bsvc/priv_distro/bin/bsvc -incdir=$(HPRLS)/bsvc/priv_distro/libs/camlib Counter4.bsv -g mkModule1 -vnl=mkModule1.v -conerefine=disable
+mkModule1.v:	Counter5.bsv
+		$(HPRLS)/bsvc/priv_distro/bin/bsvc -incdir=$(HPRLS)/bsvc/priv_distro/libs/camlib Counter5.bsv -g mkModule1 -vnl=mkModule1.v -conerefine=disable
 
-counter4_top.json:	mkModule1.v counter4_top.v
-			yosys -p 'synth_ice40 -top counter4_top -json counter4_top.json' mkModule1.v counter4_top.v 
+counter5_top.json:	mkModule1.v counter5_top.v
+			yosys -p 'synth_ice40 -top counter5_top -json counter5_top.json' mkModule1.v counter5_top.v 
 
-counter4_top.asc:	counter4_top.json
-			nextpnr-ice40 --hx1k --json counter4_top.json --pcf counter4_top.pcf --asc counter4_top.asc 
+counter5_top.asc:	counter5_top.json
+			nextpnr-ice40 --hx1k --json counter5_top.json --pcf counter5_top.pcf --asc counter5_top.asc 
 
 
-counter4_top.bin:	counter4_top.asc
-			icepack counter4_top.asc counter4_top.bin
+counter5_top.bin:	counter5_top.asc
+			icepack counter5_top.asc counter5_top.bin
 
-configure:		counter4_top.bin
+configure:		counter5_top.bin
 			iceprog $<
 
 .PHONY: all clean configure

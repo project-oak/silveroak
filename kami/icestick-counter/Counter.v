@@ -22,23 +22,23 @@ Require Import ExtrOcamlNatInt ExtrOcamlString.
 
 Definition count := MethodSig ("counter" -- "count_value") (Bit 4) : Void.
 
-Definition counter4 := MODULE {
-    Register "counterReg" : Bit 4 <- $0
+Definition counter5 := MODULE {
+    Register "counterReg" : Bit 5 <- $0
 
     with Rule "incrementAndOutput" :=
        Read val <- "counterReg";
-       Write "counterReg" <- #val + ($1 :: Bit 4);
+       Write "counterReg" <- #val + ($1 :: Bit 5);
        (* Call count (#val); *)
        Retv
 
-    with Method "count_value" () : (Bit 4) :=
+    with Method "count_value" () : (Bit 5) :=
        Read counterValue <- "counterReg";
        Ret #counterValue
 
   }.
 
 Hint Unfold count : MethDefs.
-Hint Unfold counter4 : ModuleDefs.
+Hint Unfold counter5 : ModuleDefs.
 
 Extraction Language Ocaml.
 
@@ -46,6 +46,6 @@ Set Extraction Optimize.
 Set Extraction KeepSingleton.
 Unset Extraction AutoInline.
 
-Definition targetCounter4 := ModulesSToBModules (getModuleS counter4).
+Definition targetCounter5 := ModulesSToBModules (getModuleS counter5).
 
-Extraction "Counter.ml" targetCounter4.
+Extraction "Counter.ml" targetCounter5.
