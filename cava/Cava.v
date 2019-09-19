@@ -1,6 +1,26 @@
 From Coq Require Bool.Bool.
+From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 From Coq Require Import Program.Basics.
+
+(*** Various experiments for representing synchronous gate-level
+     circuits in Coq in a Lava-style.
+***)
+
+(* A deep embeding with a data structure that represents Cava circuit
+     expressions.
+*)
+
+Inductive cava : Set :=
+  | Inv : cava -> cava
+  | And2 : cava * cava -> cava
+  | Or2 : cava * cava -> cava
+  | Delay : cava -> cava
+  | Signal : string -> cava.
+
+(* A list-based semantics for gate level elements. We could also
+   use streams.
+*)
 
 Definition inv_comb (x : bool) : bool :=
   match x with
@@ -24,3 +44,11 @@ Definition nand2 := compose inv and2.
 
 Extraction Language Haskell.
 Extraction "Nand2.hs" nand2.
+
+Definition nand2Alt i0 i1 := Inv (And2 (i0, u1)).
+
+Definition and2Alt_top := and2Alt (Signal "i0", Signal "i1").
+
+
+
+
