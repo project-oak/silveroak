@@ -16,7 +16,8 @@ Inductive cava : Set :=
   | And2 : cava * cava -> cava
   | Or2 : cava * cava -> cava
   | Delay : cava -> cava
-  | Signal : string -> cava.
+  | Signal : string -> cava
+  | Output : string -> cava -> cava.
 
 (* A list-based semantics for gate level elements. We could also
    use streams.
@@ -47,7 +48,7 @@ Extraction "Nand2.hs" nand2.
 
 Definition nand2Alt i01 := Inv (And2 i01).
 
-Definition and2Alt_top := nand2Alt (Signal "i0", Signal "i1").
+Definition and2Alt_top := Output "o" (nand2Alt (Signal "i0", Signal "i1")).
 Extraction "Nand2Alt.hs" and2Alt_top.
 
 
