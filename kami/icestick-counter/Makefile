@@ -31,7 +31,8 @@ clean:
 		       mkModule1.v counter5_tb.vcd obj_dir Makefile.coq.bak \
 		       PP.ml .Counter* \
 		       counter5_top.json counter5_top.asc counter5_top.bin \
-		       obj counter5_top.json  counter5_top.asc counter5_top.json
+		       obj counter5_top.json  counter5_top.asc counter5_top.json \
+		       mkModule1 mkModule1.xml non-layout.eps tables.txt
 		$(OCB) -clean
 
 PP.ml:		$(KAMI)/Kami/Ext/Ocaml/PP.ml
