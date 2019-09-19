@@ -17,18 +17,18 @@ module counter4_top (
     wire en = 1'b1;
     wire rdy;
 
-    reg [20:0] slowdown = 9'b0;
+    reg [22:0] slowdown = 23'b0;
 
     always @(posedge clk) begin
         slowdown++;
     end
 
     mkModule1 COUNTER (
-        .CLK(slowdown[20]),
+        .CLK(slowdown[22]),
         .RST_N(reset),
         .EN_count_value(en),
-        .RDY_count_value(count),
-        .count_value(rdy)
+        .RDY_count_value(rdy),
+        .count_value(count)
     );
 
     assign led5 = 1'b1;
