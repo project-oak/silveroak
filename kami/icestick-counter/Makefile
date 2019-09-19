@@ -52,7 +52,7 @@ MulDiv.bo:	$(KAMI)/Kami/Ext/BluespecFrontEnd/sim/MulDiv.bsv
 		bsc MulDiv.bsv
 
 mkModule1.v:	Counter4.bsv
-		$(HPRLS)/bsvc/priv_distro/bin/bsvc -incdir=$(HPRLS)/bsvc/priv_distro/libs/camlib Counter4.bsv -vnl=mkModule1.v -conerefine=disable
+		$(HPRLS)/bsvc/priv_distro/bin/bsvc -incdir=$(HPRLS)/bsvc/priv_distro/libs/camlib Counter4.bsv -g mkModule1 -vnl=mkModule1.v -conerefine=disable
 
 counter4_tb.vcd:	mkModule1.v
 			verilator --cc --trace mkModule1.v --exe counter4_tb.cpp
@@ -60,7 +60,7 @@ counter4_tb.vcd:	mkModule1.v
 			obj_dir/VmkModule1
 
 counter4_top.json:	mkModule1.v counter4_top.v
-				yosys -p 'synth_ice40 -top counter4_top -json counter4_top.json' mkModule1.v counter4_top.v 
+			yosys -p 'synth_ice40 -top counter4_top -json counter4_top.json' mkModule1.v counter4_top.v 
 
 counter4_top.asc:	counter4_top.json
 			nextpnr-ice40 --hx1k --json counter4_top.json --pcf counter4_top.pcf --asc counter4_top.asc 
