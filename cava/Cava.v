@@ -45,10 +45,10 @@ Definition nand2 := compose inv and2.
 Extraction Language Haskell.
 Extraction "Nand2.hs" nand2.
 
-Definition nand2Alt i0 i1 := Inv (And2 (i0, u1)).
+Definition nand2Alt i01 := Inv (And2 i01).
 
-Definition and2Alt_top := and2Alt (Signal "i0", Signal "i1").
-
+Definition and2Alt_top := nand2Alt (Signal "i0", Signal "i1").
+Extraction "Nand2Alt.hs" and2Alt_top.
 
 
 
