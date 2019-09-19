@@ -26,9 +26,9 @@ module counter4_top (
     mkModule1 COUNTER (
         .CLK(slowdown[20]),
         .RST_N(reset),
-        .EN_count_value(en),
-        .count_value(count),
-        .RDY_count_value(rdy)
+        .mkModule1_count_value_EN(en),
+        .mkModule1_count_value_RV(count),
+        .mkModule1_count_value_RDY(rdy)
     );
 
     assign led5 = 1'b1;
