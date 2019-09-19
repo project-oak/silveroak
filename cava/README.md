@@ -37,7 +37,7 @@ Extraction "Nand2.hs" nand2.
 
 ```
 
-The extracted Haskell for the and2 gate is:
+The extracted Haskell for the nand2 gate is:
 
 ```haskell
 module Nand2 where
@@ -102,7 +102,5 @@ and2 x =
 nand2 :: (List (Prod Bool Bool)) -> List Bool
 nand2 =
   compose inv and2
-
-
-
 ```
+
