@@ -25,8 +25,7 @@ Counter.ml:	Makefile.coq
 Makefile.coq:	Counter.v
 		coq_makefile -f _CoqProject -o Makefile.coq
 
-clean:		clean_vivado
-		-$(MAKE) -f Makefile.coq clean
+clean:		-$(MAKE) -f Makefile.coq clean
 		rm -rf Makefile.coq Counter.ml Counter.mli Counter4.bsv *.bo \
 		       mkModule1.v counter4_tb.vcd obj_dir Makefile.coq.bak \
 		       PP.ml RegFileZero.bsv MulDiv.bsv .Counter* \
@@ -52,8 +51,8 @@ MulDiv.bo:	$(KAMI)/Kami/Ext/BluespecFrontEnd/sim/MulDiv.bsv
 		cp $< .
 		bsc MulDiv.bsv
 
-mkModule1.v:	Counter4.bsv RegFileZero.bo MulDiv.bo
-		bsc -verilog -g mkModule1 $<
+mkModule1.v:	Counter4.bsv
+		$(HPRLS)/bsvc/priv_distro/bin/bsvc -incdir=$(HPRLS)/bsvc/priv_distro/libs/camlib Counter4.bsv -vnl=mkModule1.v -conerefine=disable
 
 counter4_tb.vcd:	mkModule1.v
 			verilator --cc --trace mkModule1.v --exe counter4_tb.cpp
