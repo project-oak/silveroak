@@ -192,7 +192,7 @@ endmodule
 ```
 
 We can use this counter to control the flashing of the five LEDs on the iCEstick board. We need to
-produce a top-level circuit that wires up the pins for the LEDs and the reset button to the core counter
+produce a top-level circuit that wires up the pins for the LEDs and the clock input to the core counter
 circuit generated from Kami. So we can see the LEDs flash at a frequency suitable for human consumption
 we take one of the clock inputs to the FPGA and divide it down to approximately 1Hz to
 control the sequencing of the LED flashes. The code for this top level circuit is in the VHDL file
