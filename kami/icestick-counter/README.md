@@ -1,4 +1,4 @@
-# An Open Source Flow from Circuits in Coq to a running FPGA circuit on a Lattice iCEstick
+3311# An Open Source Flow from Circuits in Coq to a running FPGA circuit on a Lattice iCEstick
 
 This directory contains an example flow which uses only open source tools to map a simple
 circuit design in Coq (an interactive theorem prover) all the way to a working circuit on
@@ -26,10 +26,10 @@ and drive it through the point where we can generate a Verilog netlist which can
   to configure the iCE40HX-1k FPGA and is open source.
 
 The counter design controls five LEDs on the board which are made
-to flash in the binary sequence 0..15.
+to flash in the binary sequence 0...31
 The entire flow from circuit extraction from Coq to FPGA bitstream generation can be run by
 just typing `make` in this directory. Typing `make configure` will actually configure a connected
-iCEstick board and make the LEDs flash in the 0..15 sequence.
+iCEstick board and make the LEDs flash in the 0..31 sequence.
 
 The example we start with is a simple 5-bit counter [Counter.v](Counter.v):
 ```coq
