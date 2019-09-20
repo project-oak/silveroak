@@ -200,7 +200,10 @@ it up appropriately. Along with a file that specifies the location of the pins t
 [counter5_top.pcf](counter5_top.pcf) we can use the icestorm tools to convert this source (partly generated from
 Kami/Coq and partly written by us) into a programming bitstream for the FPGA on the iCEstick.
 
-The entire flow from the Coq extraction to the programming of the iCEstick can be done by typing `make configure` once all the necessary tools have been installed:
+The entire flow from the Coq extraction to the programming of the iCEstick can be done by typing `make configure` once all the necessary tools have been installed. The LSB bit-5 LED is in the center and is green.
+
+![iCEstick](icestick.gif)
+
 ```
 $ make configure
 coq_makefile -f _CoqProject -o Makefile.coq
