@@ -95,9 +95,9 @@ endmodule: mkCounter5
 ```
 The Kami code shown above is a representation of this Bluespec in Coq with a DSL.
 
-When the Kami code for the counter is evaluated an OCaml program `Counter4.ml` is extracted from Coq.
+When the Kami code for the counter is evaluated an OCaml program `Counter5.ml` is extracted from Coq.
 This program is linked with a suitable pretty-printing module for Bluespec code
-generation and when executed generates the corresponding Bluespec module `Counter4.bsv`:
+generation and when executed generates the corresponding Bluespec module `Counter5.bsv`:
 
 ```
 import Vector::*;
