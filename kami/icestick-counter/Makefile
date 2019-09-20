@@ -37,14 +37,15 @@ clean:
 
 PP.ml:		$(KAMI)/Kami/Ext/Ocaml/PP.ml
 		cp $< .
-		sed -i '' 's/Target/Counter/' $@
+		ex -sc '%s/Target/Counter/|x' $@
 
 Main.native:	Counter.ml PP.ml
 		$(OCB) Main.native Counter.v 
 
 Counter5.bsv:	Main.native
 		./$< $@
-		sed -i '' -e '/RegFileZero/d' -e '/MulDiv/d' $@
+		ex -sc '/RegFileZero/d|x' $@
+		ex -sc '/MulDiv/d|x' $@
 
 mkModule1.v:	Counter5.bsv
 		$(HPRLS)/bsvc/priv_distro/bin/bsvc -incdir=$(HPRLS)/bsvc/priv_distro/libs/camlib Counter5.bsv -g mkModule1 -vnl=mkModule1.v -conerefine=disable
