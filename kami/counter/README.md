@@ -64,7 +64,7 @@ module mkCounter4(Counter);
     return value;
    endmethod
 
-endmodule: mkIntCounter
+endmodule: mkCounter4
 ```
 The Kami code shown above is a representation of this Bluespec in Coq with a DSL.
 
@@ -143,7 +143,7 @@ trace file `counter4_tb.vcd` which we can view with a VCD waveform visulaization
 The simulation shows the counter correctly being intialized to 0 when the active low reset is applied, and
 then counting up by 1 every clock cycle afterwards and the active low reset is de-asserted.
 
-We can use this counter to conctrol the flashing of the LEDs on the ZCU104 development board. We needs to
+We can use this counter to control the flashing of the LEDs on the ZCU104 development board. We need to
 produce a top-level circuit that wires up the pins for the LEDs and the reset button to the core counter
 circuit generated from Kami. So we can see the LEDs flash at a frequency suitable for human consumption
 we take one of the clock inputs to the FPGA (a 125MHz differential pair) and divide it down to 1Hz to
