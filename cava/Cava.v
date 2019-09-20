@@ -1,7 +1,8 @@
-From Coq Require Bool.Bool.
+From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 From Coq Require Import Program.Basics.
+From Coq Require Import Extraction.
 
 (*** Various experiments for representing synchronous gate-level
      circuits in Coq in a Lava-style.
