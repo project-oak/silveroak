@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-OCB = ocamlbuild -use-ocamlfind
+OCB = ocamlbuild
 KAMI = ../../../kami
 
 all: counter5_top.bin
@@ -37,14 +37,14 @@ clean:
 
 PP.ml:		$(KAMI)/Kami/Ext/Ocaml/PP.ml
 		cp $< .
-		sed -i 's/Target/Counter/' $@
+		sed -i '' 's/Target/Counter/' $@
 
 Main.native:	Counter.ml PP.ml
 		$(OCB) Main.native Counter.v 
 
 Counter5.bsv:	Main.native
 		./$< $@
-		sed -i -e '/RegFileZero/d' -e '/MulDiv/d' $@
+		sed -i '' -e '/RegFileZero/d' -e '/MulDiv/d' $@
 
 mkModule1.v:	Counter5.bsv
 		$(HPRLS)/bsvc/priv_distro/bin/bsvc -incdir=$(HPRLS)/bsvc/priv_distro/libs/camlib Counter5.bsv -g mkModule1 -vnl=mkModule1.v -conerefine=disable
