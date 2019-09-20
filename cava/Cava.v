@@ -8,7 +8,7 @@ From Coq Require Import Program.Basics.
 ***)
 
 (* A deep embeding with a data structure that represents Cava circuit
-     expressions.
+   expressions.
 *)
 
 Inductive cava : Set :=
