@@ -10,7 +10,7 @@ Another directory in this repository contains a
 that uses a commercial Bluspec compiler and the commercial Xilinx tools as part of another Coq to FPGA flow that targets a Xilinx FPGA board.
 
 We make use of the [Kami](https://github.com/mit-plv/kami) system to specify a simple counter circuit in Coq
-and drive it through the point where we can generate a Verilog netlist which can be implemented and a Lattice Semiconductor [iCEstick](https://www.latticesemi.com/icestick) is used to run the design using only open source tools:
+and drive it through the point where we can generate a Verilog netlist which can be implemented on a Lattice Semiconductor [iCEstick](https://www.latticesemi.com/icestick) using only open source tools:
 * The [Coq](https://coq.inria.fr/) interactive theorem prover is open source.
 * The [Kami](https://github.com/mit-plv/kami) DSL for a Bluespec subset is open source.
 * The [Ocaml](https://ocaml.org/) compiler used as part of the Coq to Bluespec extraction process is open source.
@@ -39,7 +39,7 @@ Require Import Kami.Synthesize.
 Require Import Ext.BSyntax.
 Require Import ExtrOcamlNatInt ExtrOcamlString.
 
-Definition count := MethodSig ("counter" -- "count_value") (Bit 4) : Void.
+Definition count := MethodSig ("counter" -- "count_value") (Bit 5) : Void.
 
 Definition counter5 := MODULE {
     Register "counterReg" : Bit 5 <- $0
