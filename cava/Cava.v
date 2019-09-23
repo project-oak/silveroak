@@ -45,12 +45,5 @@ Fixpoint delay (x : list bool) : list bool := false :: x.
 Definition nand2 := compose inv and2.
 
 Extraction Language Haskell.
-Extraction "Nand2.hs" nand2.
-
-Definition nand2Alt i01 := Inv (And2 i01).
-
-Definition and2Alt_top := Output "o" (nand2Alt (Signal "i0", Signal "i1")).
-Extraction "Nand2Alt.hs" and2Alt_top.
-
-
-
+(* Extraction Library Cava. *)
+(* Extraction "Nand2.hs" nand2. *)
