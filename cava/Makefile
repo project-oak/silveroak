@@ -12,6 +12,8 @@ Cava2VHDL.hi:	Cava2VHDL.hs Cava.hs
 				ghc --make Cava2VHDL.hs
 
 clean:	
-				rm -rf Cava.hs Nand2.hs Makefile.coq *.v.d *.vo *.o *.hi Makefile.coq.conf *.glob
+				rm -rf Ascii.hs Cava.hs Nand2.hs Makefile.coq *.v.d *.vo *.o *.hi Makefile.coq.conf *.glob \
+				       Basics.* BinNat.* BinNums.* BinPos.* Bool.* Datatypes.* Decimal.* \
+					   List.* Logic.* Nat.* Specif.* String.*
 
 .PHONY: clean
