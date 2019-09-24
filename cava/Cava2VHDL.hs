@@ -4,6 +4,7 @@ import Data.List(nub)
 
 import Cava
 import qualified Datatypes
+import ExtractionUtils
 
 findInputs :: Coq_cava -> [String]
 findInputs = nub . findInputs' 
@@ -15,7 +16,7 @@ findInputs' c =
     And2 (Datatypes.Coq_pair i0 i1) -> findInputs i0 ++ findInputs' i1
     Or2  (Datatypes.Coq_pair i0 i1) -> findInputs i0 ++ findInputs' i1
     Delay x -> findInputs' x
-    Signal name -> [name]
-    Output _ name -> [name]
+    Signal name -> [decodeCoqString name]
+    Output _ expr -> findInputs' expr
 
   
