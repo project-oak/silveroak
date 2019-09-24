@@ -31,3 +31,24 @@ findOutputs' c =
     Delay x -> findInputs' x
     Signal _ -> []
     Output name _ -> [decodeCoqString name]
+
+vhdlEntity :: String -> [String] -> [String] -> [String]
+vhdlEntity name inputs outputs
+  = ["entity " ++ name ++ " is",
+      "  port("] ++
+    insertSemicolons (map vhdlInput inputs ++ map vhdlOutput outputs) ++
+    [
+      "  );",
+      "end entity " ++ name ++ ";"
+    ]
+
+vhdlInput :: String -> String
+vhdlInput name = "    signal " ++ name ++ " : in bit"
+
+vhdlOutput :: String -> String
+vhdlOutput name = "    signal " ++ name ++ " : out bit"
+
+insertSemicolons :: [String] -> [String]
+insertSemicolons [] = []
+insertSemicolons [x] = [x]
+insertSemicolons (x:xs) = (x ++ ";") : insertSemicolons xs   

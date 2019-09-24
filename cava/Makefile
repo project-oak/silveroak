@@ -3,7 +3,7 @@ all:		Nand2VHDL
 Makefile.coq:	Cava.v Nand2.v Extract.v
 		coq_makefile Cava.v Nand2.v Extract.v -o Makefile.coq
 
-Nand2VHDL:	Makefile.coq
+Nand2VHDL:	Makefile.coq Nand2VHDL.hs
 		$(MAKE) -f Makefile.coq
 		ghc --make Nand2VHDL.hs
 
