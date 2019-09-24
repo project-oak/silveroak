@@ -14,9 +14,10 @@ decodeCoqString (String coqChar rest)
 
 decodeCoqChar :: Ascii.Coq_ascii -> Char
 decodeCoqChar (Ascii.Ascii b7 b6 b5 b4 b3 b2 b1 b0)
-  = chr (sum (zipWith (*) (map bool2Int [b7, b6, b5, b4, b3, b2, b1, b0])
-                          powersOf2))
+  = chr (sum (zipWith (*) charBits powersOf2))
     where
+    charBits :: [Int]
+    charBits = map bool2Int (reverse [b7, b6, b5, b4, b3, b2, b1, b0])
     bool2Int :: Datatypes.Coq_bool -> Int
     bool2Int Datatypes.Coq_false = 0
     bool2Int Datatypes.Coq_true = 1
