@@ -5,7 +5,6 @@ import Data.List(nub)
 import Cava
 import qualified Datatypes
 
-
 findInputs :: Coq_cava -> [String]
 findInputs = nub . findInputs' 
 
@@ -18,3 +17,5 @@ findInputs' c =
     Delay x -> findInputs' x
     Signal name -> [name]
     Output _ name -> [name]
+
+  

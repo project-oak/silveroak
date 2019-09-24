@@ -1,19 +1,19 @@
 all:		Nand2.hs Cava2VHDL.hi
 
-Nand2.hs:		Makefile.coq
-				$(MAKE) -f Makefile.coq
+Nand2.hs:	Makefile.coq
+		$(MAKE) -f Makefile.coq
 
 Makefile.coq:	Cava.v
-				coq_makefile Cava.v Nand2.v Extract.v -o Makefile.coq
+		oq_makefile Cava.v Nand2.v Extract.v -o Makefile.coq
 
-Cava.hs:		Nand2.hs
+Cava.hs:	Nand2.hs
 
 Cava2VHDL.hi:	Cava2VHDL.hs Cava.hs
-				ghc --make Cava2VHDL.hs
+		ghc --make Cava2VHDL.hs
 
 clean:	
-				rm -rf Ascii.hs Cava.hs Nand2.hs Makefile.coq *.v.d *.vo *.o *.hi Makefile.coq.conf *.glob \
-				       Basics.* BinNat.* BinNums.* BinPos.* Bool.* Datatypes.* Decimal.* \
-					   List.* Logic.* Nat.* Specif.* String.*
+		rm -rf  Ascii.hs Cava.hs Nand2.hs Makefile.coq *.v.d *.vo *.o *.hi Makefile.coq.conf *.glob \
+			Basics.* BinNat.* BinNums.* BinPos.* Bool.* Datatypes.* Decimal.* \
+			List.* Logic.* Nat.* Specif.* String.*
 
 .PHONY: clean
