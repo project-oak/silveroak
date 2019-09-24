@@ -7,6 +7,10 @@ import qualified Ascii
 import qualified Datatypes
 import String
 
+decodeList :: Datatypes.Coq_list a -> [a]
+decodeList Datatypes.Coq_nil = []
+decodeList (Datatypes.Coq_cons x xs) = x : decodeList xs
+
 decodeCoqString :: Coq_string -> String
 decodeCoqString String.EmptyString = []
 decodeCoqString (String coqChar rest)
