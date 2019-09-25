@@ -58,12 +58,13 @@ vhdlArchitecture :: String -> Cava.Coq_cava -> [String]
 vhdlArchitecture name expr
   = ["use work.cava.all;",
      "architecture cava of " ++ name ++ " is",
+     "  signal net : bit_vector(0 to " ++ show (n-1) ++ ");",
      "begin"] ++
      snd instances ++
     ["end architecture cava ;"
     ]
     where
-    (_, instances) = runState (vhdlInstantiation expr) (0, [])
+    (n, instances) = runState (vhdlInstantiation expr) (0, [])
 
 vhdlInput :: String -> String
 vhdlInput name = "    signal " ++ name ++ " : in bit"
