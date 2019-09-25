@@ -1,6 +1,7 @@
 module Cava2VHDL where
 
 import Data.List(nub)
+import Control.Monad.State
 
 import Cava
 import qualified Datatypes
@@ -51,4 +52,15 @@ vhdlOutput name = "    signal " ++ name ++ " : out bit"
 insertSemicolons :: [String] -> [String]
 insertSemicolons [] = []
 insertSemicolons [x] = [x]
-insertSemicolons (x:xs) = (x ++ ";") : insertSemicolons xs   
+insertSemicolons (x:xs) = (x ++ ";") : insertSemicolons xs
+
+type NetlistState = (Int, [String])
+
+vhdlArchitecture :: Coq_cava -> State NetlistState Int
+vhdlArchitecture (Inv x)
+  = do xi <- vhdlArchitecture x
+       (o, netlist) <- get
+       let inv_inst = "  inv_" ++ show o ++ " : port map (i => net(" ++
+                       show xi ++ "), o => net(" ++ show o ++ ");" 
+       put (o+1, inv_inst:netlist)
+       return o
