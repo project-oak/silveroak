@@ -13,8 +13,9 @@ circuitOutputs = findOutputs and2Alt_top
 entity :: [String]
 entity = vhdlEntity "nand2" circuitInputs circuitOutputs
 
+architecture :: [String]
+architecture = vhdlArchitecture "nand2_gate" and2Alt_top
+
 main ::IO ()
 main
-  = do putStrLn ("Inputs:  " ++ show circuitInputs)
-       putStrLn ("Outputs: " ++ show circuitOutputs)
-       putStrLn (unlines entity)
+  = writeVHDL "nand2_gate" and2Alt_top
