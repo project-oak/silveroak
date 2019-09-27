@@ -16,6 +16,7 @@ Inductive cava : Set :=
   | Inv : cava -> cava
   | And2 : cava * cava -> cava
   | Or2 : cava * cava -> cava
+  | Xor2 : cava * cava -> cava
   | Delay : cava -> cava
   | Signal : string -> cava
   | Output : string -> cava -> cava.

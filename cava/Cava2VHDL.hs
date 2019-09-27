@@ -9,7 +9,8 @@ import ExtractionUtils
 
 genVHDL :: String -> Coq_cava -> [String]
 genVHDL name expr
-  =  vhdlEntity name circuitInputs circuitOutputs ++
+  =  vhdlPackage name circuitInputs circuitOutputs ++ [] ++
+     vhdlEntity name circuitInputs circuitOutputs ++ [] ++
      vhdlArchitecture name expr
      where
      circuitInputs = findInputs expr
@@ -44,21 +45,39 @@ findOutputs' c =
     Signal _ -> []
     Output name _ -> [decodeCoqString name]
 
+vhdlPackage :: String -> [String] -> [String] -> [String]
+vhdlPackage name inputs outputs
+  = ["library ieee;",
+    "use ieee.std_logic_1164.all;",
+    "package " ++ name ++ "_package is",
+    "  component " ++ name ++ " is",
+    "    port("] ++
+      insertSemicolons (map vhdlInput inputs ++ map vhdlOutput outputs) ++
+    [
+    "  );",
+    "  end component " ++ name ++ ";",
+    "end package " ++ name ++ "_package;"
+    ]
+
+
 vhdlEntity :: String -> [String] -> [String] -> [String]
 vhdlEntity name inputs outputs
-  = ["entity " ++ name ++ " is",
-      "  port("] ++
+  = ["library ieee;",
+    "use ieee.std_logic_1164.all;",
+    "entity " ++ name ++ " is",
+    "  port("] ++
     insertSemicolons (map vhdlInput inputs ++ map vhdlOutput outputs) ++
     [
-      "  );",
-      "end entity " ++ name ++ ";"
+    "  );",
+    "end entity " ++ name ++ ";"
     ]
 
 vhdlArchitecture :: String -> Cava.Coq_cava -> [String]
 vhdlArchitecture name expr
-  = ["use work.cava.all;",
+  = ["library unisim;",
+     "use unisim.vcomponents.all;",
      "architecture cava of " ++ name ++ " is",
-     "  signal net : bit_vector(0 to " ++ show (n-1) ++ ");",
+     "  signal net : std_logic_vector(0 to " ++ show (n-1) ++ ");",
      "begin"] ++
      snd instances ++
     ["end architecture cava ;"
@@ -67,10 +86,10 @@ vhdlArchitecture name expr
     (n, instances) = runState (vhdlInstantiation expr) (0, [])
 
 vhdlInput :: String -> String
-vhdlInput name = "    signal " ++ name ++ " : in bit"
+vhdlInput name = "    signal " ++ name ++ " : in std_ulogic"
 
 vhdlOutput :: String -> String
-vhdlOutput name = "    signal " ++ name ++ " : out bit"
+vhdlOutput name = "    signal " ++ name ++ " : out std_ulogic"
 
 insertSemicolons :: [String] -> [String]
 insertSemicolons [] = []
@@ -115,6 +134,7 @@ vhdlInstantiation :: Coq_cava -> State NetlistState Int
 vhdlInstantiation (Inv x) = vhdlUnaryOp "inv" x
 vhdlInstantiation (And2 inputs) = vhdlBinaryOp "and2" inputs
 vhdlInstantiation (Or2 inputs)  = vhdlBinaryOp "or2" inputs
+vhdlInstantiation (Xor2 inputs)  = vhdlBinaryOp "xor2" inputs
 vhdlInstantiation (Signal name)
   = do (o, netlist) <- get
        let assignment = "  net(" ++ show o ++ ") <= " ++ (decodeCoqString name)
