@@ -13,13 +13,9 @@ nand2_gate.vhd:	Nand2VHDL
 		./Nand2VHDL
 
 vhdl_compile:	
-		ghdl -a nand2_gate.vhdl
+		xvhdl nand2_gate.vhdl
+		xvhdl nand2_gate_tb.vhdl
 
-unisim_VPKG.vhd:	$(UNISIM)/unisim_VPKG.vhd
-			cp $< .
-
-unisim:		
-		/usr/local/google/home/satnam/ghdl/libraries/vendors/compile-xilinx-vivado.sh --src /usr/local/google/home/satnam/sdaccel/Vivado/2019.1/data/vhdl/src --halt-on-error --vhdl2008 --unisim
 
 clean:	
 		rm -rf  Ascii.hs Cava.hs Nand2.hs Makefile.coq *.v.d *.vo *.o *.hi Makefile.coq.conf *.glob \
@@ -29,4 +25,4 @@ clean:
 
 
 unisim:		
-.PHONY: clean compile_unisim vhdl_compile
+.PHONY: clean vhdl_compile
