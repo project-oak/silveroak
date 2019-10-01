@@ -79,11 +79,11 @@ vhdlArchitecture name expr
      "architecture cava of " ++ name ++ " is",
      "  signal net : std_logic_vector(0 to " ++ show (n-1) ++ ");",
      "begin"] ++
-     snd instances ++
+     vhdlCode instances ++
     ["end architecture cava ;"
     ]
     where
-    (n, instances) = runState (vhdlInstantiation expr) (0, [])
+    (n, instances) = runState (vhdlInstantiation expr) (NetlistState 0 [])
 
 vhdlInput :: String -> String
 vhdlInput name = "    signal " ++ name ++ " : in std_ulogic"
@@ -101,23 +101,25 @@ insertCommas [] = []
 insertCommas [x] = [x]
 insertCommas (x:xs) = (x ++ ",") : insertCommas xs
 
-type NetlistState = (Int, [String])
-
+data NetlistState
+  = NetlistState {netIndex :: Int,
+                  vhdlCode :: [String]}
+    deriving (Eq, Show)
 
 vhdlOpWithPortNames :: String -> [Cava.Coq_cava] -> [String] ->
                        State NetlistState Int
 vhdlOpWithPortNames name inputs portNames
   = do instantiatedInputs <- mapM vhdlInstantiation inputs
-       (o, netlist) <- get
+       NetlistState o netlist <- get
        let inputPorts = zipWith wireUpPort (init portNames) instantiatedInputs
            allPorts = inputPorts ++ [wireUpPort (last portNames) o]
            inst = "  " ++ name ++ "_" ++ show o ++
                   " : " ++ name ++ " port map (\n" ++
                   unlines (insertCommas allPorts) ++ "  );"
-       put (o+1, inst:netlist)
+       put (NetlistState (o+1) (inst:netlist))
        return o
     where
-    wireUpPort name i = "    " ++ name ++ " => net(" ++ show i ++ ")"
+    wireUpPort n i = "    " ++ n ++ " => net(" ++ show i ++ ")"
 
 
 vhdlUnaryOp :: String -> Cava.Coq_cava ->
@@ -136,15 +138,15 @@ vhdlInstantiation (And2 inputs) = vhdlBinaryOp "and2" inputs
 vhdlInstantiation (Or2 inputs)  = vhdlBinaryOp "or2" inputs
 vhdlInstantiation (Xor2 inputs)  = vhdlBinaryOp "xor2" inputs
 vhdlInstantiation (Signal name)
-  = do (o, netlist) <- get
+  = do NetlistState o netlist <- get
        let assignment = "  net(" ++ show o ++ ") <= " ++ (decodeCoqString name)
                         ++ ";"
-       put (o+1, assignment:netlist)
+       put (NetlistState (o+1) (assignment:netlist))
        return o
 vhdlInstantiation (Output name expr)
        = do expri <- vhdlInstantiation expr
-            (o, netlist) <- get
+            NetlistState o netlist <- get
             let assignment = "  " ++ decodeCoqString name ++ " <= net(" ++
                              show expri ++ ");";
-            put (o, assignment:netlist)
+            put (NetlistState o (assignment:netlist))
             return o      
