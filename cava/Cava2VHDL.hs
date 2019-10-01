@@ -9,12 +9,15 @@ import ExtractionUtils
 
 genVHDL :: String -> Coq_cava -> [String]
 genVHDL name expr
-  =  vhdlPackage name circuitInputs circuitOutputs ++ [] ++
-     vhdlEntity name circuitInputs circuitOutputs ++ [] ++
-     vhdlArchitecture name expr
+  =  vhdlPackage seqCir name circuitInputs circuitOutputs ++ [] ++
+     vhdlEntity seqCir name circuitInputs circuitOutputs ++ [] ++
+     vhdlArchitecture name n (vhdlCode instances)
      where
+     (n, instances)
+       = runState (vhdlInstantiation expr) (NetlistState 0 [] False)
      circuitInputs = findInputs expr
      circuitOutputs = findOutputs expr
+     seqCir = isSequential instances
 
 writeVHDL :: String -> Coq_cava -> IO ()
 writeVHDL name expr = writeFile (name ++ ".vhdl") (unlines (genVHDL name expr))
@@ -45,46 +48,53 @@ findOutputs' c =
     Signal _ -> []
     Output name _ -> [decodeCoqString name]
 
-vhdlPackage :: String -> [String] -> [String] -> [String]
-vhdlPackage name inputs outputs
+vhdlPackage :: Bool -> String -> [String] -> [String] -> [String]
+vhdlPackage isSeq name inputs outputs
   = ["library ieee;",
     "use ieee.std_logic_1164.all;",
     "package " ++ name ++ "_package is",
     "  component " ++ name ++ " is",
     "    port("] ++
-      insertSemicolons (map vhdlInput inputs ++ map vhdlOutput outputs) ++
+      insertSemicolons (map vhdlInput inputs' ++ map vhdlOutput outputs) ++
     [
     "  );",
     "  end component " ++ name ++ ";",
     "end package " ++ name ++ "_package;"
     ]
+    where
+    inputs' = if isSeq then
+                ["clk", "rst"] ++ inputs
+              else
+                inputs
 
-
-vhdlEntity :: String -> [String] -> [String] -> [String]
-vhdlEntity name inputs outputs
+vhdlEntity :: Bool -> String -> [String] -> [String] -> [String]
+vhdlEntity isSeq name inputs outputs
   = ["library ieee;",
     "use ieee.std_logic_1164.all;",
     "entity " ++ name ++ " is",
     "  port("] ++
-    insertSemicolons (map vhdlInput inputs ++ map vhdlOutput outputs) ++
+    insertSemicolons (map vhdlInput inputs' ++ map vhdlOutput outputs) ++
     [
     "  );",
     "end entity " ++ name ++ ";"
     ]
+    where
+    inputs' = if isSeq then
+                ["clk", "rst"] ++ inputs
+              else
+                inputs
 
-vhdlArchitecture :: String -> Cava.Coq_cava -> [String]
-vhdlArchitecture name expr
+vhdlArchitecture :: String -> Int -> [String]-> [String]
+vhdlArchitecture name n instances
   = ["library unisim;",
      "use unisim.vcomponents.all;",
      "architecture cava of " ++ name ++ " is",
      "  signal net : std_logic_vector(0 to " ++ show (n-1) ++ ");",
      "begin"] ++
-     vhdlCode instances ++
+     instances ++
     ["end architecture cava ;"
     ]
-    where
-    (n, instances) = runState (vhdlInstantiation expr) (NetlistState 0 [])
-
+ 
 vhdlInput :: String -> String
 vhdlInput name = "    signal " ++ name ++ " : in std_ulogic"
 
@@ -103,7 +113,8 @@ insertCommas (x:xs) = (x ++ ",") : insertCommas xs
 
 data NetlistState
   = NetlistState {netIndex :: Int,
-                  vhdlCode :: [String]}
+                  vhdlCode :: [String],
+                  isSequential :: Bool}
     deriving (Eq, Show)
 
 vhdlOpWithPortNames :: String -> [Cava.Coq_cava] -> [String] ->
