@@ -11,10 +11,9 @@ genVHDL :: String -> Coq_cava -> [String]
 genVHDL name expr
   =  vhdlPackage seqCir name circuitInputs circuitOutputs ++ [] ++
      vhdlEntity seqCir name circuitInputs circuitOutputs ++ [] ++
-     vhdlArchitecture name n (vhdlCode instances)
+     vhdlArchitecture seqCir name n (vhdlCode instances)
      where
-     (n, instances)
-       = runState (vhdlInstantiation expr) (NetlistState 0 [] False)
+     (n, instances) = runState (vhdlInstantiation expr) (initState seqCir)
      circuitInputs = findInputs expr
      circuitOutputs = findOutputs expr
      seqCir = isSequential instances
@@ -84,16 +83,29 @@ vhdlEntity isSeq name inputs outputs
               else
                 inputs
 
-vhdlArchitecture :: String -> Int -> [String]-> [String]
-vhdlArchitecture name n instances
+vhdlArchitecture :: Bool -> String -> Int -> [String]-> [String]
+vhdlArchitecture seqCir name n instances
   = ["library unisim;",
      "use unisim.vcomponents.all;",
      "architecture cava of " ++ name ++ " is",
-     "  signal net : std_logic_vector(0 to " ++ show (n-1) ++ ");",
-     "begin"] ++
+     "  signal net : std_logic_vector(" ++ show low ++ " to " ++ show (n-1) ++
+        ");",
+     "begin",
+     "  net(0) <= '0';",
+     "  net(1) <= '1';"] ++
+     (if seqCir then
+        ["  net(2) <= clk;",
+         "  net(3) <= rst;"]
+      else
+        []) ++
      instances ++
     ["end architecture cava ;"
     ]
+    where
+    low = if seqCir then
+            4
+          else
+            2
  
 vhdlInput :: String -> String
 vhdlInput name = "    signal " ++ name ++ " : in std_ulogic"
@@ -111,17 +123,26 @@ insertCommas [] = []
 insertCommas [x] = [x]
 insertCommas (x:xs) = (x ++ ",") : insertCommas xs
 
+clk :: Int
+clk = 2
+
+rst :: Int
+rst = 3
+
 data NetlistState
   = NetlistState {netIndex :: Int,
                   vhdlCode :: [String],
                   isSequential :: Bool}
     deriving (Eq, Show)
 
-vhdlOpWithPortNames :: String -> [Cava.Coq_cava] -> [String] ->
+initState :: Bool -> NetlistState
+initState isSeq
+  = NetlistState (if isSeq then 4 else 2) [] False
+
+vhdlOpWithPortNames :: String -> [Int] -> [String] ->
                        State NetlistState Int
-vhdlOpWithPortNames name inputs portNames
-  = do instantiatedInputs <- mapM vhdlInstantiation inputs
-       state <- get
+vhdlOpWithPortNames name instantiatedInputs portNames
+  = do state <- get
        let o = netIndex state
            vhdl = vhdlCode state
            inputPorts = zipWith wireUpPort (init portNames) instantiatedInputs
@@ -134,16 +155,17 @@ vhdlOpWithPortNames name inputs portNames
     where
     wireUpPort n i = "    " ++ n ++ " => net(" ++ show i ++ ")"
 
-
-vhdlUnaryOp :: String -> Cava.Coq_cava ->
-               State NetlistState Int
-vhdlUnaryOp name i = vhdlOpWithPortNames name [i] ["i", "o"]
+vhdlUnaryOp :: String -> Cava.Coq_cava -> State NetlistState Int
+vhdlUnaryOp name i =
+  do instantiatedInput <- vhdlInstantiation i
+     vhdlOpWithPortNames name [instantiatedInput] ["i", "o"]
 
 vhdlBinaryOp :: String ->
                 Datatypes.Coq_prod Cava.Coq_cava Cava.Coq_cava ->
                 State NetlistState Int
 vhdlBinaryOp name (Datatypes.Coq_pair i0 i1)
-  = vhdlOpWithPortNames name [i0, i1] ["i0", "i1", "o"]
+  = do instantiatedInputs <- mapM vhdlInstantiation [i0, i1]
+       vhdlOpWithPortNames name instantiatedInputs ["i0", "i1", "o"]
 
 vhdlInstantiation :: Coq_cava -> State NetlistState Int
 vhdlInstantiation (Inv x) = vhdlUnaryOp "inv" x
@@ -166,4 +188,13 @@ vhdlInstantiation (Output name expr)
                 assignment = "  " ++ decodeCoqString name ++ " <= net(" ++
                              show expri ++ ");";
             put (state{vhdlCode = assignment:vhdl})
-            return o      
+            return o
+vhdlInstantiation (Delay d)
+  = do instantiatedInput <- vhdlInstantiation d
+       o <- vhdlOpWithPortNames "fdre"
+                                 [instantiatedInput, clk, rst]
+                                 ["d", "c", "r", "q"]
+       state <- get
+       put (state{isSequential = True})
+       return o
+                         
