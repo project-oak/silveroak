@@ -9,8 +9,8 @@ import ExtractionUtils
 
 genVHDL :: String -> Coq_cava -> [String]
 genVHDL name expr
-  =  vhdlPackage seqCir name circuitInputs circuitOutputs ++ [] ++
-     vhdlEntity seqCir name circuitInputs circuitOutputs ++ [] ++
+  =  vhdlPackage seqCir name circuitInputs circuitOutputs ++ [""] ++
+     vhdlEntity seqCir name circuitInputs circuitOutputs ++ [""] ++
      vhdlArchitecture seqCir name n (vhdlCode instances)
      where
      (n, instances) = runState (vhdlInstantiation expr) (initState seqCir)
@@ -88,7 +88,7 @@ vhdlArchitecture seqCir name n instances
   = ["library unisim;",
      "use unisim.vcomponents.all;",
      "architecture cava of " ++ name ++ " is",
-     "  signal net : std_logic_vector(" ++ show low ++ " to " ++ show (n-1) ++
+     "  signal net : std_logic_vector(0 to " ++ show (n-1) ++
         ");",
      "begin",
      "  net(0) <= '0';",
@@ -101,11 +101,6 @@ vhdlArchitecture seqCir name n instances
      instances ++
     ["end architecture cava ;"
     ]
-    where
-    low = if seqCir then
-            4
-          else
-            2
  
 vhdlInput :: String -> String
 vhdlInput name = "    signal " ++ name ++ " : in std_ulogic"
@@ -191,7 +186,7 @@ vhdlInstantiation (Output name expr)
             return o
 vhdlInstantiation (Delay d)
   = do instantiatedInput <- vhdlInstantiation d
-       o <- vhdlOpWithPortNames "fdre"
+       o <- vhdlOpWithPortNames "fdr"
                                  [instantiatedInput, clk, rst]
                                  ["d", "c", "r", "q"]
        state <- get
