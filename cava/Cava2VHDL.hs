@@ -110,13 +110,15 @@ vhdlOpWithPortNames :: String -> [Cava.Coq_cava] -> [String] ->
                        State NetlistState Int
 vhdlOpWithPortNames name inputs portNames
   = do instantiatedInputs <- mapM vhdlInstantiation inputs
-       NetlistState o netlist <- get
-       let inputPorts = zipWith wireUpPort (init portNames) instantiatedInputs
+       state <- get
+       let o = netIndex state
+           vhdl = vhdlCode state
+           inputPorts = zipWith wireUpPort (init portNames) instantiatedInputs
            allPorts = inputPorts ++ [wireUpPort (last portNames) o]
            inst = "  " ++ name ++ "_" ++ show o ++
                   " : " ++ name ++ " port map (\n" ++
                   unlines (insertCommas allPorts) ++ "  );"
-       put (NetlistState (o+1) (inst:netlist))
+       put (state{netIndex = o+1, vhdlCode = inst:vhdl})
        return o
     where
     wireUpPort n i = "    " ++ n ++ " => net(" ++ show i ++ ")"
@@ -138,15 +140,19 @@ vhdlInstantiation (And2 inputs) = vhdlBinaryOp "and2" inputs
 vhdlInstantiation (Or2 inputs)  = vhdlBinaryOp "or2" inputs
 vhdlInstantiation (Xor2 inputs)  = vhdlBinaryOp "xor2" inputs
 vhdlInstantiation (Signal name)
-  = do NetlistState o netlist <- get
-       let assignment = "  net(" ++ show o ++ ") <= " ++ (decodeCoqString name)
+  = do state <- get
+       let o = netIndex state
+           vhdl = vhdlCode state
+           assignment = "  net(" ++ show o ++ ") <= " ++ (decodeCoqString name)
                         ++ ";"
-       put (NetlistState (o+1) (assignment:netlist))
+       put (state{netIndex = o+1, vhdlCode = assignment:vhdl})
        return o
 vhdlInstantiation (Output name expr)
        = do expri <- vhdlInstantiation expr
-            NetlistState o netlist <- get
-            let assignment = "  " ++ decodeCoqString name ++ " <= net(" ++
+            state <- get
+            let o = netIndex state
+                vhdl = vhdlCode state
+                assignment = "  " ++ decodeCoqString name ++ " <= net(" ++
                              show expri ++ ");";
-            put (NetlistState o (assignment:netlist))
+            put (state{vhdlCode = assignment:vhdl})
             return o      
