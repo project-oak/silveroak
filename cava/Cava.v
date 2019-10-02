@@ -1,7 +1,7 @@
 From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
-From Coq Require Import Program.Basics.
+Require Import Program.Basics.
 Local Open Scope program_scope.
 From Coq Require Import Extraction.
 
@@ -58,5 +58,5 @@ Fixpoint muxcy (ci di s : list bool) : list bool
 
 Fixpoint delay (x : list bool) : list bool := false :: x.
 
-
-
+Definition delayInit1
+  := compose Inv Delay.
