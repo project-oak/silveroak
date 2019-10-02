@@ -1,4 +1,4 @@
-3311# An Open Source Flow from Circuits in Coq to a running FPGA circuit on a Lattice iCEstick
+# An Open Source Flow from Circuits in Coq to a running FPGA circuit on a Lattice iCEstick
 
 This directory contains an example flow which uses only open source tools to map a simple
 circuit design in Coq (an interactive theorem prover) all the way to a working circuit on
