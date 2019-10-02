@@ -85,7 +85,7 @@ end architecture cava ;
 
 ```
 
-A testbench in the file [nand2_gate_tb.vhd](nand2_gate_tb.vhd) can be
+A testbench in the file [nand2_gate_tb.vhdl](nand2_gate_tb.vhd) can be
 used to simulate this circuit:
 
 ![Simulation](nand2_sim.png)
