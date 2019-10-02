@@ -166,7 +166,10 @@ vhdlInstantiation :: Coq_cava -> State NetlistState Int
 vhdlInstantiation (Inv x) = vhdlUnaryOp "inv" x
 vhdlInstantiation (And2 inputs) = vhdlBinaryOp "and2" inputs
 vhdlInstantiation (Or2 inputs)  = vhdlBinaryOp "or2" inputs
-vhdlInstantiation (Xor2 inputs)  = vhdlBinaryOp "xor2" inputs
+vhdlInstantiation (Xor2 inputs) = vhdlBinaryOp "xor2" inputs
+vhdlInstantiation (Xorcy (Datatypes.Coq_pair ci li))
+  = do instantiatedInputs <- mapM vhdlInstantiation [ci, li]
+       vhdlOpWithPortNames "xorcy" instantiatedInputs ["ci", "li", "o"]
 vhdlInstantiation (Signal name)
   = do state <- get
        let o = netIndex state
