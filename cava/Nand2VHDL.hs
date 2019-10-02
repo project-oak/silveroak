@@ -6,4 +6,4 @@ import Cava2VHDL
 
 main ::IO ()
 main
-  = writeVHDL "nand2_gate" and2Alt_top
+  = writeVHDL "nand2_gate" and2_pipelined_top

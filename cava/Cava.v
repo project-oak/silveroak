@@ -2,6 +2,7 @@ From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 From Coq Require Import Program.Basics.
+Local Open Scope program_scope.
 From Coq Require Extraction.
 
 (*** Various experiments for representing synchronous gate-level
@@ -43,5 +44,5 @@ Fixpoint or2 (x : list (bool*bool)) : list bool := map or2_comb x.
 
 Fixpoint delay (x : list bool) : list bool := false :: x.
 
-Definition nand2 := compose inv and2.
+Definition nand2 := inv ∘ and2.
 
