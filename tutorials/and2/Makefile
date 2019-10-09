@@ -21,4 +21,4 @@ all:
 	ghdl -a and2_tb.vhdl
 	ghdl -e and2_tb
 	ghdl -r and2_tb
-	./and2 --vcd=and2.vcd 
+	./and2_tb --vcd=and2.vcd 

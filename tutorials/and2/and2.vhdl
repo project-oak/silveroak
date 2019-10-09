@@ -33,7 +33,7 @@ end entity and2;
 architecture behavioural of and2 is
 begin
 
- and2_behaviour : process (a) is
+ and2_behaviour : process (a, b) is
    begin
      c <= a and b;
    end process and2_behaviour;
