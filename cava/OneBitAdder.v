@@ -21,7 +21,7 @@ Import ListNotations.
 Require Import Coq.Program.Basics.
 Local Open Scope program_scope.
 
-Definition oneBitAdder (a b cin : cava) : cava * cava
+Definition oneBitAdder (a b cin : cava Bit) : cava Bit * cava Bit
   := let partSum := Xor2 (a, b) in
      let sum := Xorcy (partSum, cin) in
      let cout := Muxcy (partSum, a, cin) in

@@ -19,7 +19,6 @@ From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 Require Import Program.Basics.
 Local Open Scope program_scope.
-From Coq Require Import Extraction.
 
 (*** Various experiments for representing synchronous gate-level
      circuits in Coq in a Lava-style.
@@ -29,16 +28,20 @@ From Coq Require Import Extraction.
    expressions.
 *)
 
-Inductive cava : Set :=
-  | Inv : cava -> cava
-  | And2 : cava * cava -> cava
-  | Or2 : cava * cava -> cava
-  | Xor2 : cava * cava -> cava
-  | Xorcy : cava * cava -> cava
-  | Muxcy : cava * cava * cava -> cava
-  | Delay : cava -> cava
-  | Signal : string -> cava
-  | Output : string -> cava -> cava.
+Inductive signal : Set :=
+| Bit : signal
+| Pair : signal.
+
+Inductive cava : signal -> Set :=
+  | Inv : cava Bit -> cava Bit
+  | And2 : cava Bit * cava Bit -> cava Bit
+  | Or2 : cava Bit * cava Bit -> cava Bit
+  | Xor2 : cava Bit * cava Bit -> cava Bit
+  | Xorcy : cava Bit * cava Bit -> cava Bit
+  | Muxcy : cava Bit * cava Bit * cava Bit -> cava Bit
+  | Delay : cava Bit -> cava Bit
+  | Signal : string -> cava Bit
+  | Output : string -> cava Bit -> cava Bit.
 
 (* A list-based semantics for gate level elements. We could also
    use streams.
