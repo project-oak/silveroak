@@ -1,8 +1,8 @@
 # Cava: Lava-style circuits in Coq
 
 This is a work in progress attempt to encode Lava-style gate-level circuit descriptions
-in Coq for circuit specification, formal verification and extraction into VHDL or
-Verilog for implementation on FPGAs.
+in Coq for circuit specification, formal verification and extraction into VHDL
+or Verilog for implementation on FPGAs.
 
 Cava provides a deep embedding for Lava-like circuits in Coq with
 combinators to compose circuits. For example, a toy pipelined NAND gate
@@ -14,7 +14,7 @@ Definition nand2_pipelined := Delay ∘ Inv ∘ Delay ∘ And2.
 ```
 This describes a circuit which performs an AND of its two inputs,
 then perform a one time unit delay, then performs an INV operation,
-and finally performs another unit delay (reading the operaitons from
+and finally performs another unit delay (reading the operations from
 right to left).
 
 This definition can be extracted from Coq into a Haskell program and
