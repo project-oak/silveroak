@@ -16,7 +16,7 @@
 
 all:		nand2_gate.vhd vhdl_compile
 
-Makefile.coq:	_CoqProject
+Makefile.coq:
 		coq_makefile -f _CoqProject -o Makefile.coq
 
 Nand2VHDL:	Makefile.coq Cava2VHDL.hs Nand2VHDL.hs

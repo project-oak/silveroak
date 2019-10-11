@@ -77,5 +77,4 @@ Fixpoint muxcy (ci di s : list bool) : list bool
 
 Fixpoint delay (x : list bool) : list bool := false :: x.
 
-Definition delayInit1
-  := compose Inv Delay.
+Definition delayInit1 := Delay ∘ Inv.
