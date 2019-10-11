@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Top Require Import Cava.
+Require Import Cava.
 Require Import Nand2.
 Require Import OneBitAdder.
 From Coq Require Import Extraction.
