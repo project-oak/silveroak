@@ -16,8 +16,8 @@
 
 all:		nand2_gate.vhd vhdl_compile
 
-Makefile.coq:	Cava.v Nand2.v OneBitAdder.v Extract.v
-		coq_makefile $^ -o Makefile.coq
+Makefile.coq:	_CoqProject
+		coq_makefile -f _CoqProject -o Makefile.coq
 
 Nand2VHDL:	Makefile.coq Cava2VHDL.hs Nand2VHDL.hs
 		$(MAKE) -f Makefile.coq
