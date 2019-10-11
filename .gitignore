@@ -1,0 +1,13 @@
+*.o
+*.vo
+*.hi
+*.glob
+*.pb
+*.log
+.*.aux
+.vscode/*
+.coqdeps.d
+Makefile.coq
+Makefile.coq.conf
+work-obj93.cf
+*/xsim.dir/*
