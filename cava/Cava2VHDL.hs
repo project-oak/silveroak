@@ -7,19 +7,30 @@ import Cava
 import qualified Datatypes
 import ExtractionUtils
 
-genVHDL :: String -> Coq_cava -> [String]
-genVHDL name expr
+genVHDL :: String -> [Coq_cava] -> [String]
+genVHDL name exprs
   =  vhdlPackage seqCir name circuitInputs circuitOutputs ++ [""] ++
      vhdlEntity seqCir name circuitInputs circuitOutputs ++ [""] ++
-     vhdlArchitecture seqCir name n (vhdlCode instances)
+     vhdlArchitecture seqCir name (netIndex netState) (vhdlCode netState)
      where
-     (n, instances) = runState (vhdlInstantiation expr) (initState seqCir)
-     circuitInputs = findInputs expr
-     circuitOutputs = findOutputs expr
-     seqCir = isSequential instances
+     exprs' = nubBy sameOutputs exprs -- Remove duplicate and forked values.
+     (_, netState)
+        = runState (sequence (map vhdlInstantiation exprs')) (initState seqCir)
+     circuitInputs = nub (concat (map findInputs exprs'))
+     circuitOutputs = nub (concat (map findOutputs exprs'))
+     seqCir = isSequential netState
 
-writeVHDL :: String -> Coq_cava -> IO ()
-writeVHDL name expr = writeFile (name ++ ".vhdl") (unlines (genVHDL name expr))
+sameOutputs :: Coq_cava -> Coq_cava -> Bool
+sameOutputs (Output a _) (Output b _)
+  = a' == b'
+    where
+    a' = decodeCoqString a
+    b' = decodeCoqString b
+sameOutputs _ _ = False
+
+writeVHDL :: String -> Datatypes.Coq_list Coq_cava -> IO ()
+writeVHDL name exprs
+  = writeFile (name ++ ".vhdl") (unlines (genVHDL name (decodeList exprs)))
 
 findInputs :: Coq_cava -> [String]
 findInputs = nub . findInputs'
@@ -30,6 +41,10 @@ findInputs' c =
     Inv x -> findInputs' x
     And2 (Datatypes.Coq_pair i0 i1) -> findInputs' i0 ++ findInputs' i1
     Or2  (Datatypes.Coq_pair i0 i1) -> findInputs' i0 ++ findInputs' i1
+    Xor2 (Datatypes.Coq_pair i0 i1) -> findInputs' i0 ++ findInputs' i1
+    Xorcy (Datatypes.Coq_pair ci li) -> findInputs' ci ++ findInputs' li
+    Muxcy (Datatypes.Coq_pair s (Datatypes.Coq_pair di ci))
+      -> findInputs' s ++ findInputs' di ++ findInputs' ci
     Delay x -> findInputs' x
     Signal name -> [decodeCoqString name]
     Output _ expr -> findInputs' expr
@@ -43,6 +58,10 @@ findOutputs' c =
     Inv x -> findOutputs' x
     And2 (Datatypes.Coq_pair i0 i1) -> findOutputs' i0 ++ findOutputs' i1
     Or2  (Datatypes.Coq_pair i0 i1) -> findOutputs' i0 ++ findOutputs' i1
+    Xor2 (Datatypes.Coq_pair i0 i1) -> findOutputs' i0 ++ findOutputs' i1
+    Xorcy (Datatypes.Coq_pair ci li) -> findOutputs' ci ++ findOutputs' li
+    Muxcy (Datatypes.Coq_pair s (Datatypes.Coq_pair di ci))
+      -> findOutputs' s ++ findOutputs' di ++ findOutputs' ci
     Delay x -> findInputs' x
     Signal _ -> []
     Output name _ -> [decodeCoqString name]
@@ -137,15 +156,15 @@ initState isSeq
 vhdlOpWithPortNames :: String -> [Int] -> [String] ->
                        State NetlistState Int
 vhdlOpWithPortNames name instantiatedInputs portNames
-  = do state <- get
-       let o = netIndex state
-           vhdl = vhdlCode state
+  = do netState <- get
+       let o = netIndex netState
+           vhdl = vhdlCode netState
            inputPorts = zipWith wireUpPort (init portNames) instantiatedInputs
            allPorts = inputPorts ++ [wireUpPort (last portNames) o]
            inst = "  " ++ name ++ "_" ++ show o ++
                   " : " ++ name ++ " port map (\n" ++
                   unlines (insertCommas allPorts) ++ "  );"
-       put (state{netIndex = o+1, vhdlCode = inst:vhdl})
+       put (netState{netIndex = o+1, vhdlCode = inst:vhdl})
        return o
     where
     wireUpPort n i = "    " ++ n ++ " => net(" ++ show i ++ ")"
@@ -169,30 +188,33 @@ vhdlInstantiation (Or2 inputs)  = vhdlBinaryOp "or2" inputs
 vhdlInstantiation (Xor2 inputs) = vhdlBinaryOp "xor2" inputs
 vhdlInstantiation (Xorcy (Datatypes.Coq_pair ci li))
   = do instantiatedInputs <- mapM vhdlInstantiation [ci, li]
-       vhdlOpWithPortNames "xorcy" instantiatedInputs ["ci", "li", "o"]
+       vhdlOpWithPortNames "xorcy" instantiatedInputs ["ci", "li", "o"]   
+vhdlInstantiation (Muxcy (Datatypes.Coq_pair s (Datatypes.Coq_pair di ci)))
+  = do instantiatedInputs <- mapM vhdlInstantiation [s, di, ci]
+       vhdlOpWithPortNames "muxcy" instantiatedInputs ["s", "di", "ci", "o"]     
 vhdlInstantiation (Signal name)
-  = do state <- get
-       let o = netIndex state
-           vhdl = vhdlCode state
+  = do netState <- get
+       let o = netIndex netState
+           vhdl = vhdlCode netState
            assignment = "  net(" ++ show o ++ ") <= " ++ (decodeCoqString name)
                         ++ ";"
-       put (state{netIndex = o+1, vhdlCode = assignment:vhdl})
+       put (netState{netIndex = o+1, vhdlCode = assignment:vhdl})
        return o
 vhdlInstantiation (Output name expr)
        = do expri <- vhdlInstantiation expr
-            state <- get
-            let o = netIndex state
-                vhdl = vhdlCode state
+            netState <- get
+            let o = netIndex netState
+                vhdl = vhdlCode netState
                 assignment = "  " ++ decodeCoqString name ++ " <= net(" ++
                              show expri ++ ");";
-            put (state{vhdlCode = assignment:vhdl})
+            put (netState{vhdlCode = assignment:vhdl})
             return o
 vhdlInstantiation (Delay d)
   = do instantiatedInput <- vhdlInstantiation d
        o <- vhdlOpWithPortNames "fdr"
                                  [instantiatedInput, clk, rst]
                                  ["d", "c", "r", "q"]
-       state <- get
-       put (state{isSequential = True})
+       netState <- get
+       put (netState{isSequential = True})
        return o
-                         
+                       

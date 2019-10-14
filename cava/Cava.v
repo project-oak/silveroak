@@ -28,9 +28,10 @@ Local Open Scope program_scope.
    expressions.
 *)
 
-Inductive signal : Set :=
-| Bit : signal
-| Pair : signal.
+Inductive signal : Type :=
+  | Bit : signal
+  | Tuple2 : forall A B, A -> B -> signal.
+
 
 Inductive cava : signal -> Set :=
   | Inv : cava Bit -> cava Bit
@@ -38,8 +39,12 @@ Inductive cava : signal -> Set :=
   | Or2 : cava Bit * cava Bit -> cava Bit
   | Xor2 : cava Bit * cava Bit -> cava Bit
   | Xorcy : cava Bit * cava Bit -> cava Bit
-  | Muxcy : cava Bit * cava Bit * cava Bit -> cava Bit
+  | Muxcy : (cava Bit * (cava Bit * cava Bit)) -> cava Bit
   | Delay : cava Bit -> cava Bit
+  (*
+  | Fork2 : forall (A : signal), cava A -> cava (Tuple2 A A)
+  | Par2 : forall (A : signal) (B : signal), cava A -> cava B -> cava (Tuple2 A 
+  *)
   | Signal : string -> cava Bit
   | Output : string -> cava Bit -> cava Bit.
 

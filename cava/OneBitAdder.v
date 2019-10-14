@@ -24,5 +24,12 @@ Local Open Scope program_scope.
 Definition oneBitAdder (a b cin : cava Bit) : cava Bit * cava Bit
   := let partSum := Xor2 (a, b) in
      let sum := Xorcy (partSum, cin) in
-     let cout := Muxcy (partSum, a, cin) in
+     let cout := Muxcy (partSum, (a, cin)) in
        (sum, cout).
+
+Definition oneBitAdder_top
+  := let a := Signal "a" in
+     let b := Signal "b" in
+     let cin := Signal "cin" in
+     let (sum, cout) := oneBitAdder a b cin in
+       [Output "sum" sum; Output "cout" cout].

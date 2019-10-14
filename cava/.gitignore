@@ -16,3 +16,6 @@ OneBitAdder.hs
 Specif.hs
 String.hs
 nand2_gate.vhdl
+OneBitAdder2VHDL
+onebitadder.vhdl
+
