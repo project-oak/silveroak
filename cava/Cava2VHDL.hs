@@ -45,6 +45,9 @@ findInputs' c =
     Xorcy (Datatypes.Coq_pair ci li) -> findInputs' ci ++ findInputs' li
     Muxcy (Datatypes.Coq_pair s (Datatypes.Coq_pair di ci))
       -> findInputs' s ++ findInputs' di ++ findInputs' ci
+    Fork2 a  -> findInputs' a
+    Fst a -> findInputs' a
+    Snd a -> findInputs' a
     Delay x -> findInputs' x
     Signal name -> [decodeCoqString name]
     Output _ expr -> findInputs' expr
@@ -62,6 +65,9 @@ findOutputs' c =
     Xorcy (Datatypes.Coq_pair ci li) -> findOutputs' ci ++ findOutputs' li
     Muxcy (Datatypes.Coq_pair s (Datatypes.Coq_pair di ci))
       -> findOutputs' s ++ findOutputs' di ++ findOutputs' ci
+    Fork2 a -> findInputs' a
+    Fst a -> findOutputs' a
+    Snd a -> findOutputs' a
     Delay x -> findInputs' x
     Signal _ -> []
     Output name _ -> [decodeCoqString name]
@@ -137,11 +143,11 @@ insertCommas [] = []
 insertCommas [x] = [x]
 insertCommas (x:xs) = (x ++ ",") : insertCommas xs
 
-clk :: Int
-clk = 2
+clk :: NetExpr
+clk = Net 2
 
-rst :: Int
-rst = 3
+rst :: NetExpr
+rst = Net 3
 
 data NetlistState
   = NetlistState {netIndex :: Int,
@@ -153,35 +159,46 @@ initState :: Bool -> NetlistState
 initState isSeq
   = NetlistState (if isSeq then 4 else 2) [] False
 
-vhdlOpWithPortNames :: String -> [Int] -> [String] ->
-                       State NetlistState Int
+
+data NetExpr
+  = Net Int
+  | NetPair NetExpr NetExpr
+  deriving (Eq, Show)
+
+showNet :: NetExpr -> String
+showNet (Net n) = show n
+showNet other = error ("Can't emit " ++ show other)
+
+vhdlOpWithPortNames :: String -> [NetExpr] -> [String] ->
+                       State NetlistState NetExpr
 vhdlOpWithPortNames name instantiatedInputs portNames
   = do netState <- get
        let o = netIndex netState
            vhdl = vhdlCode netState
-           inputPorts = zipWith wireUpPort (init portNames) instantiatedInputs
+           inputPorts = zipWith wireUpPort (init portNames) inputNumbers
            allPorts = inputPorts ++ [wireUpPort (last portNames) o]
            inst = "  " ++ name ++ "_" ++ show o ++
                   " : " ++ name ++ " port map (\n" ++
                   unlines (insertCommas allPorts) ++ "  );"
        put (netState{netIndex = o+1, vhdlCode = inst:vhdl})
-       return o
+       return (Net o)
     where
     wireUpPort n i = "    " ++ n ++ " => net(" ++ show i ++ ")"
+    inputNumbers = map (\(Net n) -> n) instantiatedInputs
 
-vhdlUnaryOp :: String -> Cava.Coq_cava -> State NetlistState Int
+vhdlUnaryOp :: String -> Cava.Coq_cava -> State NetlistState NetExpr
 vhdlUnaryOp name i =
   do instantiatedInput <- vhdlInstantiation i
      vhdlOpWithPortNames name [instantiatedInput] ["i", "o"]
 
 vhdlBinaryOp :: String ->
                 Datatypes.Coq_prod Cava.Coq_cava Cava.Coq_cava ->
-                State NetlistState Int
+                State NetlistState NetExpr
 vhdlBinaryOp name (Datatypes.Coq_pair i0 i1)
   = do instantiatedInputs <- mapM vhdlInstantiation [i0, i1]
        vhdlOpWithPortNames name instantiatedInputs ["i0", "i1", "o"]
 
-vhdlInstantiation :: Coq_cava -> State NetlistState Int
+vhdlInstantiation :: Coq_cava -> State NetlistState NetExpr
 vhdlInstantiation (Inv x) = vhdlUnaryOp "inv" x
 vhdlInstantiation (And2 inputs) = vhdlBinaryOp "and2" inputs
 vhdlInstantiation (Or2 inputs)  = vhdlBinaryOp "or2" inputs
@@ -191,7 +208,18 @@ vhdlInstantiation (Xorcy (Datatypes.Coq_pair ci li))
        vhdlOpWithPortNames "xorcy" instantiatedInputs ["ci", "li", "o"]   
 vhdlInstantiation (Muxcy (Datatypes.Coq_pair s (Datatypes.Coq_pair di ci)))
   = do instantiatedInputs <- mapM vhdlInstantiation [s, di, ci]
-       vhdlOpWithPortNames "muxcy" instantiatedInputs ["s", "di", "ci", "o"]     
+       vhdlOpWithPortNames "muxcy" instantiatedInputs ["s", "di", "ci", "o"]
+vhdlInstantiation (Fork2 input)
+  = do r <- vhdlInstantiation input
+       return (NetPair r r) 
+vhdlInstantiation (Fst input)
+  = do ab <- vhdlInstantiation input
+       let NetPair a _ = ab
+       return a
+vhdlInstantiation (Snd input)
+  = do ab <- vhdlInstantiation input
+       let NetPair _ b = ab
+       return b                              
 vhdlInstantiation (Signal name)
   = do netState <- get
        let o = netIndex netState
@@ -199,16 +227,16 @@ vhdlInstantiation (Signal name)
            assignment = "  net(" ++ show o ++ ") <= " ++ (decodeCoqString name)
                         ++ ";"
        put (netState{netIndex = o+1, vhdlCode = assignment:vhdl})
-       return o
+       return (Net o)
 vhdlInstantiation (Output name expr)
        = do expri <- vhdlInstantiation expr
             netState <- get
             let o = netIndex netState
                 vhdl = vhdlCode netState
                 assignment = "  " ++ decodeCoqString name ++ " <= net(" ++
-                             show expri ++ ");";
+                             showNet expri ++ ");";
             put (netState{vhdlCode = assignment:vhdl})
-            return o
+            return (Net o)
 vhdlInstantiation (Delay d)
   = do instantiatedInput <- vhdlInstantiation d
        o <- vhdlOpWithPortNames "fdr"

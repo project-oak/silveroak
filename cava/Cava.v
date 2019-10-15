@@ -30,7 +30,7 @@ Local Open Scope program_scope.
 
 Inductive signal : Type :=
   | Bit : signal
-  | Tuple2 : forall A B, A -> B -> signal.
+  | Tuple2 : signal -> signal -> signal.
 
 
 Inductive cava : signal -> Set :=
@@ -41,8 +41,10 @@ Inductive cava : signal -> Set :=
   | Xorcy : cava Bit * cava Bit -> cava Bit
   | Muxcy : (cava Bit * (cava Bit * cava Bit)) -> cava Bit
   | Delay : cava Bit -> cava Bit
+  | Fork2 : cava Bit -> cava (Tuple2 Bit Bit)
+  | Fst : cava (Tuple2 Bit Bit) -> cava Bit
+  | Snd : cava (Tuple2 Bit Bit) -> cava Bit
   (*
-  | Fork2 : forall (A : signal), cava A -> cava (Tuple2 A A)
   | Par2 : forall (A : signal) (B : signal), cava A -> cava B -> cava (Tuple2 A 
   *)
   | Signal : string -> cava Bit
@@ -51,6 +53,28 @@ Inductive cava : signal -> Set :=
 (* A list-based semantics for gate level elements. We could also
    use streams.
 *)
+
+Definition first (A B C : Type) (f : A -> C) (ab : A * B) : C * B
+  := let (a, b) := ab in
+         (f a, b).
+
+Definition second (A B C : Type) (f : B -> C) (ab : A * B) : A * C
+  := let (a, b) := ab in
+         (a, f b).
+
+Definition tupleLeft (A B C : Type) (abc : A * (B * C)) : ((A * B) * C)
+  := let (a, bc) := abc in
+     let (b, c) := bc in
+     ((a, b), c).
+
+Definition tupleRight (A B C : Type) (abc : (A * B) * C) : (A * (B * C))
+  := let (ab, c) := abc in
+     let (a, b) := ab in
+     (a, (b, c)).
+
+Definition par2 (A B C D : Type) (f : A -> B) (g : C -> D) (ac : A * C) : B * D
+  := let (a, c) := ac in
+     (f a, g c).
 
 Definition inv_comb (x : bool) : bool :=
   match x with
