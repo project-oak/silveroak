@@ -14,18 +14,32 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Cava.
-Require Import AltCava.
-Require Import Nand2.
-Require Import AltNand.
-Require Import OneBitAdder.
-From Coq Require Import Extraction.
+From Coq Require Import Bool.Bool.
+From Coq Require Import Ascii String.
+From Coq Require Import Lists.List.
+Require Import Program.Basics.
+Local Open Scope program_scope.
 
-Extraction Language Haskell.
 
-Recursive Extraction Library Cava.
-Recursive Extraction Library AltCava.
-Extraction Library Nand2.
-Extraction Library AltNand.
-Extraction Library OneBitAdder.
-(* Separate Extraction Nand2. *)
+Inductive signal : Type :=
+  | Bit : signal
+  | Tuple2 : signal -> signal -> signal.
+
+Inductive cava : Set :=
+  | Input : string -> cava
+  | Output : string -> cava
+  | Inv : cava
+  | And2 : cava
+  | Xor2 : cava
+  | Xorcy : cava
+  | Muxcy : cava
+  | Delay : cava
+  | Compose : cava -> cava -> cava
+  | Par2 : cava -> cava -> cava.
+ 
+Notation " f ⟼ g " := (Compose f g)
+  (at level 39, right associativity) : program_scope.
+
+Notation " a ‖ b " := (Par2 a b)
+  (at level 45, right associativity) : program_scope.
+

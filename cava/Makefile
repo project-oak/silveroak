@@ -26,9 +26,18 @@ Nand2VHDL:	Makefile.coq Cava2VHDL.hs Nand2VHDL.hs
 nand2_gate.vhd:	Nand2VHDL
 		./Nand2VHDL
 
+AltNand2VHDL:	Makefile.coq AltCava2VHDL.hs AltNand2VHDL.hs
+		$(MAKE) -f Makefile.coq
+		ghc -W --make AltNand2VHDL.hs
+
+altnand.vhd:		AltNand2VHDL
+			./AltNand2VHDL
+
+
 OneBitAdder2VHDL:	Makefile.coq Cava2VHDL.hs OneBitAdder.hs
 			$(MAKE) -f Makefile.coq
 			ghc --make OneBitAdder2VHDL.hs
+
 
 onebitadder.vhdl:	OneBitAdder2VHDL
 			./OneBitAdder2VHDL
