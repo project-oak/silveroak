@@ -19,24 +19,30 @@ From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 Require Import Program.Basics.
 Local Open Scope program_scope.
+Set Printing All.
+Set Implicit Arguments.
 
-
-Inductive signal : Type :=
+Inductive signal : Set :=
   | Bit : signal
   | Tuple2 : signal -> signal -> signal.
 
-Inductive cava : Set :=
-  | Input : string -> cava
-  | Output : string -> cava
-  | Inv : cava
-  | And2 : cava
-  | Xor2 : cava
-  | Xorcy : cava
-  | Muxcy : cava
-  | Delay : cava
-  | Compose : cava -> cava -> cava
-  | Par2 : cava -> cava -> cava.
- 
+Inductive cava : signal -> signal -> Set :=
+  | Input : string -> cava Bit Bit
+  | Output : string -> cava Bit Bit
+  | Inv : cava Bit Bit
+  | And2 : cava (Tuple2 Bit Bit) Bit
+  | Xor2 : cava (Tuple2 Bit Bit) Bit
+  | Xorcy : cava (Tuple2 Bit Bit) Bit
+  | Muxcy : cava (Tuple2 Bit (Tuple2 Bit Bit)) Bit
+  | Delay : forall A : signal, cava A A
+  | Compose : forall A B C : signal, cava A B -> cava B C -> cava A C
+  | Par2 : forall A B C D : signal, cava A C -> cava B D ->
+                                  cava (Tuple2 A C) (Tuple2 B D).
+
+Check Compose Inv Inv : cava Bit Bit.
+Check Compose And2 Inv : cava (Tuple2 Bit Bit) Bit.
+Check Compose Inv (Delay Bit) : cava Bit Bit.
+
 Notation " f ⟼ g " := (Compose f g)
   (at level 39, right associativity) : program_scope.
 

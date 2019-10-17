@@ -18,4 +18,6 @@ String.hs
 nand2_gate.vhdl
 OneBitAdder2VHDL
 onebitadder.vhdl
-
+AltCava.hs
+AltNand.hs
+Makefile.coq
