@@ -19,12 +19,20 @@ From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 Require Import Program.Basics.
 Local Open Scope program_scope.
-Set Printing All.
-Set Implicit Arguments.
 
 Inductive signal : Set :=
   | Bit : signal
   | Tuple2 : signal -> signal -> signal.
+
+Inductive NetExpr : signal -> Set :=
+  | Net : nat -> NetExpr Bit
+  | NetPair : forall {a b : signal}, NetExpr a -> NetExpr b -> NetExpr (Tuple2 a b)
+  | NoNet : NetExpr Bit.
+
+
+Check Net 72 : NetExpr Bit.
+Check NetPair (Net 22) (Net 8) : NetExpr (Tuple2 Bit Bit).
+Check NetPair (NetPair (Net 22) (Net 8)) (Net 72) : NetExpr (Tuple2 (Tuple2 Bit Bit) Bit).
 
 Inductive cava : signal -> signal -> Set :=
   | Input : string -> cava Bit Bit
@@ -34,14 +42,15 @@ Inductive cava : signal -> signal -> Set :=
   | Xor2 : cava (Tuple2 Bit Bit) Bit
   | Xorcy : cava (Tuple2 Bit Bit) Bit
   | Muxcy : cava (Tuple2 Bit (Tuple2 Bit Bit)) Bit
-  | Delay : forall A : signal, cava A A
-  | Compose : forall A B C : signal, cava A B -> cava B C -> cava A C
-  | Par2 : forall A B C D : signal, cava A C -> cava B D ->
-                                  cava (Tuple2 A C) (Tuple2 B D).
+  | Delay : forall {A : signal}, cava A A
+  | Compose : forall {A B C : signal}, cava A B -> cava B C -> cava A C
+  | Par2 : forall {A B C D : signal}, cava A C -> cava B D ->
+                                      cava (Tuple2 A C) (Tuple2 B D)
+  | Rewire : forall {A B : signal}, (NetExpr A -> NetExpr B) -> cava A B.
 
 Check Compose Inv Inv : cava Bit Bit.
 Check Compose And2 Inv : cava (Tuple2 Bit Bit) Bit.
-Check Compose Inv (Delay Bit) : cava Bit Bit.
+Check Compose Inv Delay : cava Bit Bit.
 
 Notation " f ⟼ g " := (Compose f g)
   (at level 39, right associativity) : program_scope.
@@ -49,3 +58,14 @@ Notation " f ⟼ g " := (Compose f g)
 Notation " a ‖ b " := (Par2 a b)
   (at level 45, right associativity) : program_scope.
 
+Definition fork2Fn {a:signal} (x:NetExpr a) : NetExpr (Tuple2 a a)
+  := NetPair x x.
+
+Definition swapFn {a:signal} {b:signal} (x:NetExpr (Tuple2 a b)) : NetExpr (Tuple2 b a)
+  := match x with
+     | NetPair p q => NetPair q p
+     end.
+
+Check swapFn (NetPair (Net 3) (Net 4)) : NetExpr (Tuple2 Bit Bit).
+
+(* Definition fork2 := forall t : signal, Rewire (fun (x : NetExpr t) => NetPair x x). *)
