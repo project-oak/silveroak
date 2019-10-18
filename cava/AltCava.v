@@ -68,4 +68,6 @@ Definition swapFn {a:signal} {b:signal} (x:NetExpr (Tuple2 a b)) : NetExpr (Tupl
 
 Check swapFn (NetPair (Net 3) (Net 4)) : NetExpr (Tuple2 Bit Bit).
 
-(* Definition fork2 := forall t : signal, Rewire (fun (x : NetExpr t) => NetPair x x). *)
+Definition fork2 := fun {t : signal} => Rewire (fun (x : NetExpr t) => NetPair x x).
+
+Check Input "a" ⟼ Inv ⟼ fork2 ⟼ And2 : cava Bit Bit.
