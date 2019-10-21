@@ -48,7 +48,7 @@ Inductive cava : signal -> signal -> Set :=
   | Delay : forall {A : signal}, cava A A
   | Compose : forall {A B C : signal}, cava A B -> cava B C -> cava A C
   | Par2 : forall {A B C D : signal}, cava A C -> cava B D ->
-                                      cava (Tuple2 A C) (Tuple2 B D)
+                                      cava (Tuple2 A B) (Tuple2 C D)
   | Rewire : forall {A B : signal}, (NetExpr A -> NetExpr B) -> cava A B.
 
 Check Compose Inv Inv : cava Bit Bit.
@@ -77,4 +77,9 @@ Definition fork2 := fun {t : signal} =>
 
 Check Input "a" ⟼ Inv ⟼ fork2 ⟼ And2 : cava Bit Bit.
 
-(* Definition id := fun {t : signal} => Rewire (fun (x) => x). *)
+Definition id := fun {t : signal} =>
+                Rewire (fun (x : NetExpr t) => x).
+
+Definition first {A B X : signal} (a : cava A B) :
+           cava (Tuple2 A X) (Tuple2 B X)
+  := Par2 a id.
