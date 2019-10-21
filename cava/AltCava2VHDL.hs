@@ -1,3 +1,5 @@
+{-# LANGUAGE StandaloneDeriving #-}
+
 module AltCava2VHDL where
 
 import Control.Monad.State
@@ -40,8 +42,11 @@ genVHDL name expr
 -- graph and its inputs and outputs.
 --------------------------------------------------------------------------------
 
+instance Eq NetExpr
+instance Show NetExpr
+
 data NetlistState
-  = NetlistState {netIndex :: Int,
+  = NetlistState {netIndex :: Integer,
                   inputs, outputs :: [(String, NetExpr)],
                   vhdlCode :: [String],
                   isSequential :: Bool}
@@ -51,12 +56,6 @@ data NetlistState
 -- for Cava:
 --    | Rewire (NetExpr -> NetExpr)
 -- to express arbitrary rewirings.
-
-data NetExpr
-  = Net Int
-  | NetPair NetExpr NetExpr
-  | NoNet
-  deriving (Eq, Show)
 
 clk :: NetExpr
 clk = Net 2
@@ -85,21 +84,21 @@ vhdlInstantiation (Input name) _
                      vhdlCode = assignInput:vhdl})
        return (Net o)
 vhdlInstantiation Inv i = vhdlUnaryOp "inv" i
-vhdlInstantiation And2 (NetPair i0 i1) = vhdlBinaryOp "and2" i0 i1
-vhdlInstantiation Xor2 (NetPair i0 i1) = vhdlBinaryOp "xor2" i0 i1
-vhdlInstantiation Xorcy (NetPair ci li)
+vhdlInstantiation And2 (NetPair _ _ i0 i1) = vhdlBinaryOp "and2" i0 i1
+vhdlInstantiation Xor2 (NetPair _ _ i0 i1) = vhdlBinaryOp "xor2" i0 i1
+vhdlInstantiation Xorcy (NetPair _ _ ci li)
   = vhdlOpWithPortNames "xorcy" [ci, li] ["ci", "li", "o"]
-vhdlInstantiation Delay i
+vhdlInstantiation (Delay _) i
   = do o <- vhdlOpWithPortNames "fdr" [i, clk, rst] ["d", "c", "r", "q"]
        netState <- get
        put (netState{isSequential = True})
        return o
-vhdlInstantiation (Compose f g) i
+vhdlInstantiation (Compose _ _ _ f g) i
   = do x <- vhdlInstantiation f i
        vhdlInstantiation g x
-vhdlInstantiation (Par2 f g) NoNet
-  = vhdlInstantiation (Par2 f g) (NetPair NoNet NoNet)
-vhdlInstantiation (Par2 f g) (NetPair a b)
+vhdlInstantiation (Par2 a b c d f g) NoNet
+  = vhdlInstantiation (Par2 a b c d f g) (NetPair _ _ NoNet NoNet)
+vhdlInstantiation (Par2 _ _ _ _ f g) (NetPair _ _ a b)
   = do ax <- vhdlInstantiation f a
        bx <- vhdlInstantiation g b
        return (NetPair ax bx)          
@@ -109,6 +108,7 @@ vhdlInstantiation (Output name) o
            name' = decodeCoqString name
        put (netState{outputs=(name', o):outs})
        return o
+vhdlInstantiation (Rewire _ _ f) i = return (f i)
 
 --------------------------------------------------------------------------------
 -- showNet displays a net in VHDL syntax.

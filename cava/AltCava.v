@@ -17,6 +17,8 @@
 From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
+From Coq Require Import ZArith.
+From Coq Require Import extraction.ExtrHaskellZInteger.
 Require Import Program.Basics.
 Local Open Scope program_scope.
 
@@ -25,14 +27,15 @@ Inductive signal : Set :=
   | Tuple2 : signal -> signal -> signal.
 
 Inductive NetExpr : signal -> Set :=
-  | Net : nat -> NetExpr Bit
-  | NetPair : forall {a b : signal}, NetExpr a -> NetExpr b -> NetExpr (Tuple2 a b)
+  | Net : Z -> NetExpr Bit
+  | NetPair : forall {a b : signal},
+              NetExpr a -> NetExpr b -> NetExpr (Tuple2 a b)
   | NoNet : NetExpr Bit.
-
 
 Check Net 72 : NetExpr Bit.
 Check NetPair (Net 22) (Net 8) : NetExpr (Tuple2 Bit Bit).
-Check NetPair (NetPair (Net 22) (Net 8)) (Net 72) : NetExpr (Tuple2 (Tuple2 Bit Bit) Bit).
+Check NetPair (NetPair (Net 22) (Net 8)) (Net 72) :
+      NetExpr (Tuple2 (Tuple2 Bit Bit) Bit).
 
 Inductive cava : signal -> signal -> Set :=
   | Input : string -> cava Bit Bit
@@ -61,13 +64,17 @@ Notation " a ‖ b " := (Par2 a b)
 Definition fork2Fn {a:signal} (x:NetExpr a) : NetExpr (Tuple2 a a)
   := NetPair x x.
 
-Definition swapFn {a:signal} {b:signal} (x:NetExpr (Tuple2 a b)) : NetExpr (Tuple2 b a)
+Definition swapFn {a:signal} {b:signal} (x:NetExpr (Tuple2 a b)) :
+            NetExpr (Tuple2 b a)
   := match x with
      | NetPair p q => NetPair q p
      end.
 
 Check swapFn (NetPair (Net 3) (Net 4)) : NetExpr (Tuple2 Bit Bit).
 
-Definition fork2 := fun {t : signal} => Rewire (fun (x : NetExpr t) => NetPair x x).
+Definition fork2 := fun {t : signal} =>
+                    Rewire (fun (x : NetExpr t) => NetPair x x).
 
 Check Input "a" ⟼ Inv ⟼ fork2 ⟼ And2 : cava Bit Bit.
+
+(* Definition id := fun {t : signal} => Rewire (fun (x) => x). *)
