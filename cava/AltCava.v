@@ -81,5 +81,7 @@ Definition id := fun {t : signal} =>
                 Rewire (fun (x : NetExpr t) => x).
 
 Definition first {A B X : signal} (a : cava A B) :
-           cava (Tuple2 A X) (Tuple2 B X)
-  := Par2 a id.
+           cava (Tuple2 A X) (Tuple2 B X) := a ‖ id.
+
+Definition second {A B X : signal} (a : cava A B) :
+           cava (Tuple2 X A) (Tuple2 X B) := id ‖ a.           
