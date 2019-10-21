@@ -19,6 +19,7 @@ Require Import AltCava.
 Require Import Nand2.
 Require Import AltNand.
 Require Import OneBitAdder.
+Require Import AltOneBitAdder.
 From Coq Require Import Extraction.
 
 Extraction Language Haskell.
@@ -28,4 +29,4 @@ Recursive Extraction Library AltCava.
 Extraction Library Nand2.
 Extraction Library AltNand.
 Extraction Library OneBitAdder.
-(* Separate Extraction Nand2. *)
+Extraction Library AltOneBitAdder.

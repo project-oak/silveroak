@@ -1,6 +1,7 @@
 Cava.v
 Nand2.v
 OneBitAdder.v
+AltOneBitAdder.v
 Extract.v
 AltCava.v
 AltNand.v

@@ -24,13 +24,14 @@ Local Open Scope program_scope.
 
 Inductive signal : Set :=
   | Bit : signal
+  | NoSignal
   | Tuple2 : signal -> signal -> signal.
 
 Inductive NetExpr : signal -> Set :=
   | Net : Z -> NetExpr Bit
   | NetPair : forall {a b : signal},
               NetExpr a -> NetExpr b -> NetExpr (Tuple2 a b)
-  | NoNet : NetExpr Bit.
+  | NoNet : NetExpr NoSignal.
 
 Check Net 72 : NetExpr Bit.
 Check NetPair (Net 22) (Net 8) : NetExpr (Tuple2 Bit Bit).
