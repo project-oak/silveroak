@@ -49,23 +49,3 @@ Definition oneBitAdder_top
   := (Input "cin" ‖ (Input "a" ‖ Input "b")) ⟼
      oneBitAdder ⟼
      ((Output "sum") ‖ (Output "cout")).
-
-Definition forkBit (x : NetExpr Bit) : NetExpr (Tuple2 Bit Bit)
-  := match x with
-     | Net n => NetPair (Net n) (Net n)
-     end.
-
-Definition swapBit (x : NetExpr (Tuple2 Bit Bit)) : NetExpr (Tuple2 Bit Bit)
-  := match x with
-     | @NetPair Bit Bit x y => NetPair y x
-     end.
-
-
-Definition tupleLeft {a b c : signal} (x:NetExpr (Tuple2 a (Tuple2 b c))) :
-                                      NetExpr (Tuple2 (Tuple2 a b) c)
-   := match x with
-      | NetPair p qr => match qr with
-                          NetPair q r => NetPair (NetPair p q) r
-                        end
-      end.
-

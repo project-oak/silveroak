@@ -85,4 +85,23 @@ Definition first {A B X : signal} (a : cava A B) :
            cava (Tuple2 A X) (Tuple2 B X) := a ‖ id.
 
 Definition second {A B X : signal} (a : cava A B) :
-           cava (Tuple2 X A) (Tuple2 X B) := id ‖ a.           
+           cava (Tuple2 X A) (Tuple2 X B) := id ‖ a.
+
+Definition forkBit (x : NetExpr Bit) : NetExpr (Tuple2 Bit Bit)
+  := match x with
+     | Net n => NetPair (Net n) (Net n)
+     end.
+
+Definition swapBit (x : NetExpr (Tuple2 Bit Bit)) : NetExpr (Tuple2 Bit Bit)
+  := match x with
+     | @NetPair Bit Bit x y => NetPair y x
+     end.
+
+
+Definition tupleLeft {a b c : signal} (x:NetExpr (Tuple2 a (Tuple2 b c))) :
+                                      NetExpr (Tuple2 (Tuple2 a b) c)
+   := match x with
+      | NetPair p qr => match qr with
+                          NetPair q r => NetPair (NetPair p q) r
+                        end
+      end.           

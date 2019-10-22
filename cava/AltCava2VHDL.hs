@@ -45,6 +45,8 @@ genVHDL name expr
 instance Eq NetExpr
 instance Show NetExpr
 
+instance Show Coq_cava
+
 data NetlistState
   = NetlistState {netIndex :: Integer,
                   inputs, outputs :: [(String, NetExpr)],
@@ -88,6 +90,8 @@ vhdlInstantiation And2 (NetPair _ _ i0 i1) = vhdlBinaryOp "and2" i0 i1
 vhdlInstantiation Xor2 (NetPair _ _ i0 i1) = vhdlBinaryOp "xor2" i0 i1
 vhdlInstantiation Xorcy (NetPair _ _ ci li)
   = vhdlOpWithPortNames "xorcy" [ci, li] ["ci", "li", "o"]
+vhdlInstantiation Muxcy (NetPair _ _ s (NetPair _ _ di ci))
+  = vhdlOpWithPortNames "muxcy" [s, di, ci] ["s", "di", "ci", "o"]
 vhdlInstantiation (Delay _) i
   = do o <- vhdlOpWithPortNames "fdr" [i, clk, rst] ["d", "c", "r", "q"]
        netState <- get
@@ -97,11 +101,11 @@ vhdlInstantiation (Compose _ _ _ f g) i
   = do x <- vhdlInstantiation f i
        vhdlInstantiation g x
 vhdlInstantiation (Par2 a b c d f g) NoNet
-  = vhdlInstantiation (Par2 a b c d f g) (NetPair _ _ NoNet NoNet)
-vhdlInstantiation (Par2 _ _ _ _ f g) (NetPair _ _ a b)
+  = vhdlInstantiation (Par2 a b c d f g) (NetPair NoSignal NoSignal NoNet NoNet)
+vhdlInstantiation (Par2 _ _ p q f g) (NetPair _ _ a b)
   = do ax <- vhdlInstantiation f a
        bx <- vhdlInstantiation g b
-       return (NetPair ax bx)          
+       return (NetPair p q ax bx)          
 vhdlInstantiation (Output name) o      
   = do netState <- get
        let outs = outputs netState
@@ -193,7 +197,7 @@ vhdlEntity isSeq name inputs outputs
               else
                 inputs
 
-vhdlArchitecture :: Bool -> String -> Int -> [String]-> [String]
+vhdlArchitecture :: Bool -> String -> Integer -> [String]-> [String]
 vhdlArchitecture seqCir name n instances
   = ["library unisim;",
      "use unisim.vcomponents.all;",

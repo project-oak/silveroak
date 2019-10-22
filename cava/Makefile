@@ -14,7 +14,8 @@
 # limitations under the License.
 #
 
-all:		nand2_gate.vhd onebitadder.vhdl vhdl_compile
+all:		nand2_gate.vhd onebitadder.vhdl altonebitadder.vhdl \
+		vhdl_compile
 
 Makefile.coq:
 		coq_makefile -f _CoqProject -o Makefile.coq
@@ -38,9 +39,15 @@ OneBitAdder2VHDL:	Makefile.coq Cava2VHDL.hs OneBitAdder.hs
 			$(MAKE) -f Makefile.coq
 			ghc --make OneBitAdder2VHDL.hs
 
-
 onebitadder.vhdl:	OneBitAdder2VHDL
 			./OneBitAdder2VHDL
+
+AltOneBitAdder2VHDL:	Makefile.coq AltCava2VHDL.hs AltOneBitAdder.hs
+			$(MAKE) -f Makefile.coq
+			ghc --make AltOneBitAdder2VHDL.hs
+
+altonebitadder.vhdl:	AltOneBitAdder2VHDL
+			./AltOneBitAdder2VHDL
 
 vhdl_compile:	
 		xvhdl nand2_gate.vhdl
