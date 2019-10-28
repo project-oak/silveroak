@@ -42,7 +42,7 @@ Definition reorg2 (cinaps : NetExpr (Tuple2 (Tuple2 Bit Bit) Bit)) :
      end.
 
 Definition oneBitAdder : cava (Tuple2 Bit (Tuple2 Bit Bit)) (Tuple2 Bit Bit)
-  := Rewire reorg1 ⟼ second Xor2 ⟼ Rewire reorg2 ⟼ (Xor2 ‖ Muxcy).
+  := Rewire reorg1 ⟼ second Xor2 ⟼ Rewire reorg2 ⟼ (Xorcy ‖ Muxcy).
 
 
 Definition oneBitAdder_top
