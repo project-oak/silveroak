@@ -21,3 +21,7 @@ onebitadder.vhdl
 AltCava.hs
 AltNand.hs
 Makefile.coq
+altnand_pipelined.vhd
+altnand.vhd
+altonebitadder.vhd
+
