@@ -106,12 +106,15 @@ vhdlInstantiation (Par2 _ _ p q f g) (NetPair _ _ a b)
   = do ax <- vhdlInstantiation f a
        bx <- vhdlInstantiation g b
        return (NetPair p q ax bx)          
-vhdlInstantiation (Output name) o      
+vhdlInstantiation (Output name) (Net o)      
   = do netState <- get
        let outs = outputs netState
+           vhdl = vhdlCode netState
            name' = decodeCoqString name
-       put (netState{outputs=(name', o):outs})
-       return o
+           assignOutput = "  " ++ name' ++ " <= net(" ++ show o ++ ");"
+       put (netState{outputs=(name', Net o):outs,
+                     vhdlCode=assignOutput:vhdl})
+       return (Net o)
 vhdlInstantiation (Rewire _ _ f) i = return (f i)
 
 --------------------------------------------------------------------------------

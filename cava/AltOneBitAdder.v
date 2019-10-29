@@ -22,18 +22,19 @@ Require Import Coq.Program.Basics.
 Local Open Scope program_scope.
 
 
-Definition reorg1 {cin a b : signal}
-                  (cinab : NetExpr (Tuple2 cin (Tuple2 a b))) :
-                  NetExpr (Tuple2 (Tuple2 cin a) (Tuple2 a b))
+Definition reorg1Fn {cin a b : signal}
+                    (cinab : NetExpr ⟨cin, ⟨a, b〉〉) : NetExpr ⟨⟨cin, a〉, ⟨a, b〉〉
   := match cinab with
        NetPair cin ab => match ab with
                            NetPair a b => NetPair (NetPair cin a) (NetPair a b)
                          end
      end.
 
+Definition reorg1 : cava ⟨Bit, ⟨Bit, Bit〉〉 ⟨⟨Bit, Bit〉, ⟨Bit, Bit〉〉
+           := Rewire reorg1Fn.
 
-Definition reorg2 (cinaps : NetExpr (Tuple2 (Tuple2 Bit Bit) Bit)) :
-                  NetExpr (Tuple2 (Tuple2 Bit Bit) (Tuple2 Bit (Tuple2 Bit Bit)))
+Definition reorg2Fn (cinaps : NetExpr ⟨⟨Bit, Bit〉, Bit〉) :
+                    NetExpr⟨⟨Bit, Bit〉, ⟨Bit, ⟨Bit, Bit〉〉〉
   := match cinaps with
        @NetPair (Tuple2 Bit Bit) Bit cina ps
           => match cina with
@@ -41,9 +42,10 @@ Definition reorg2 (cinaps : NetExpr (Tuple2 (Tuple2 Bit Bit) Bit)) :
              end
      end.
 
-Definition oneBitAdder : cava (Tuple2 Bit (Tuple2 Bit Bit)) (Tuple2 Bit Bit)
-  := Rewire reorg1 ⟼ second Xor2 ⟼ Rewire reorg2 ⟼ (Xorcy ‖ Muxcy).
+Definition reorg2 := Rewire reorg2Fn.
 
+Definition oneBitAdder : cava ⟨Bit, ⟨Bit, Bit〉〉 ⟨Bit, Bit〉
+  := reorg1 ⟼ second Xor2 ⟼ reorg2 ⟼ (Xorcy ‖ Muxcy).
 
 Definition oneBitAdder_top
   := (Input "cin" ‖ (Input "a" ‖ Input "b")) ⟼
