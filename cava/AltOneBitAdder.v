@@ -23,18 +23,18 @@ Local Open Scope program_scope.
 
 
 Definition reorg1Fn {cin a b : signal}
-                    (cinab : NetExpr ⟨cin, ⟨a, b〉〉) : NetExpr ⟨⟨cin, a〉, ⟨a, b〉〉
+                    (cinab : NetExpr \u27e8cin, \u27e8a, b\u3009\u3009) : NetExpr \u27e8\u27e8cin, a\u3009, \u27e8a, b\u3009\u3009
   := match cinab with
        NetPair cin ab => match ab with
                            NetPair a b => NetPair (NetPair cin a) (NetPair a b)
                          end
      end.
 
-Definition reorg1 : cava ⟨Bit, ⟨Bit, Bit〉〉 ⟨⟨Bit, Bit〉, ⟨Bit, Bit〉〉
+Definition reorg1 : cava \u27e8Bit, \u27e8Bit, Bit\u3009\u3009 \u27e8\u27e8Bit, Bit\u3009, \u27e8Bit, Bit\u3009\u3009
            := Rewire reorg1Fn.
 
-Definition reorg2Fn (cinaps : NetExpr ⟨⟨Bit, Bit〉, Bit〉) :
-                    NetExpr⟨⟨Bit, Bit〉, ⟨Bit, ⟨Bit, Bit〉〉〉
+Definition reorg2Fn (cinaps : NetExpr \u27e8\u27e8Bit, Bit\u3009, Bit\u3009) :
+                    NetExpr\u27e8\u27e8Bit, Bit\u3009, \u27e8Bit, \u27e8Bit, Bit\u3009\u3009\u3009
   := match cinaps with
        @NetPair (Tuple2 Bit Bit) Bit cina ps
           => match cina with
@@ -44,10 +44,10 @@ Definition reorg2Fn (cinaps : NetExpr ⟨⟨Bit, Bit〉, Bit〉) :
 
 Definition reorg2 := Rewire reorg2Fn.
 
-Definition oneBitAdder : cava ⟨Bit, ⟨Bit, Bit〉〉 ⟨Bit, Bit〉
-  := reorg1 ⟼ second Xor2 ⟼ reorg2 ⟼ (Xorcy ‖ Muxcy).
+Definition oneBitAdder : cava \u27e8Bit, \u27e8Bit, Bit\u3009\u3009 \u27e8Bit, Bit\u3009
+  := reorg1 \u27fc second Xor2 \u27fc reorg2 \u27fc (Xorcy \u2016 Muxcy).
 
 Definition oneBitAdder_top
-  := (Input "cin" ‖ (Input "a" ‖ Input "b")) ⟼
-     oneBitAdder ⟼
-     ((Output "sum") ‖ (Output "cout")).
+  := (Input "cin" \u2016 (Input "a" \u2016 Input "b")) \u27fc
+     oneBitAdder \u27fc
+     ((Output "sum") \u2016 (Output "cout")).
