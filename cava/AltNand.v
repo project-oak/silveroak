@@ -23,9 +23,9 @@ Local Open Scope program_scope.
 Local Open Scope string_scope.
 Set Implicit Arguments.
 
-Definition nandGate := And2 \u27fc Inv.
+Definition nandGate := And2 ⟼ Inv.
 
 Definition nandGateTop : cava (Tuple2 Bit Bit) Bit
-  := ((Input "a") \u2016 Input "b") \u27fc nandGate \u27fc Output "c".
+  := (Input "a" ‖ Input "b") ⟼ nandGate ⟼ Output "c".
 Definition nandGatePipelined : cava (Tuple2 Bit Bit) Bit
-  := (Input "a" \u2016 Input "b") \u27fc And2 \u27fc Delay \u27fc Inv \u27fc Delay \u27fc Output "c".
+  := (Input "a" ‖ Input "b") ⟼ And2 ⟼ Delay ⟼ Inv ⟼ Delay ⟼ Output "c".
