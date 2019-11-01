@@ -272,7 +272,11 @@ Proof.
       lia. } }
 Qed.
 
-Definition g_inc16(a : list bool) : list bool := g_bitn_adder 16 a (false::false::false::false::false::false::false::false::false::false::false::false::false::false::false::false::nil) true.
+Definition g_add16(a b : list bool) (c : bool) := g_bitn_adder 16 a b c.
+
+(* TODO: define and prove general incrementer *)
+
+Definition g_inc16(a : list bool) : list bool := g_add16 a (false::false::false::false::false::false::false::false::false::false::false::false::false::false::false::false::nil) true.
 
 (* Note that this proof should not work! Presumably that will later come back to bite us so leave it for now *)
 
@@ -283,6 +287,7 @@ Proof.
   intros a.
   intros la.
   unfold g_inc16.
+  unfold g_add16.
   rewrite bitn_adder_is_adder.
   simpl.
   unfold p_adder.
@@ -292,3 +297,48 @@ Proof.
   simpl.
   reflexivity.
 Qed.
+
+Fixpoint g_bitn_inverter (n : nat) (a : list bool) : list bool :=
+  match n with
+  | 0 => nil
+  | S n => g_invert (hd false a) :: g_bitn_inverter n (tl a)
+  end.
+
+Definition p_inverter (a : list bool) : list bool := map negb a.
+
+Lemma invert_negb (a : bool) : g_invert a = negb a.
+Proof. destruct a; reflexivity. Qed.
+
+Lemma bitn_inverter_is_inverter :
+  forall (n: nat) (a : list bool),
+    length a = n -> g_bitn_inverter (length a) a = p_inverter a.
+Proof.
+  induction n.
+  all: intros a.
+  intros la.
+  rewrite la.
+  unfold g_bitn_inverter.
+  unfold p_inverter.
+  rewrite length_zero_iff_nil in la.
+  rewrite la.
+  reflexivity.
+
+  (* Proof of second case by Jade *)
+  intros la.
+  destruct a as [|b a']. (* Just "destruct a." will work -- the rest lets me name the new variables *)
+  { (* first case : a = nil, which is impossible since length nil <> S n *) (* also note that the goal can be proved with reflexivity instead *)
+    cbn [length] in la.
+    congruence. (* 0 = S n is not possible *) }
+  { (* second case : a = b :: a' *)
+    (* now run one step of the inverters *)
+    cbn [length hd tl g_bitn_inverter p_inverter map].
+    (* use inductive hypothesis *)
+    rewrite <-IHn.
+    (* prove side condition: length a' = n *)
+    2 : { cbn [length] in la. inversion la. reflexivity. }
+    (* now we have to prove g_invert b = negb b -- use helper lemma *)
+    rewrite invert_negb.
+    reflexivity. }
+Qed.
+
+Definition g_inv16(a : list bool) := g_bitn_inverter 16 a.
