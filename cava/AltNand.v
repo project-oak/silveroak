@@ -26,6 +26,6 @@ Set Implicit Arguments.
 Definition nandGate := And2 ⟼ Inv.
 
 Definition nandGateTop : cava (Tuple2 Bit Bit) Bit
-  := ((Input "a") ‖ Input "b") ⟼ nandGate ⟼ Output "c".
+  := (Input "a" ‖ Input "b") ⟼ nandGate ⟼ Output "c".
 Definition nandGatePipelined : cava (Tuple2 Bit Bit) Bit
   := (Input "a" ‖ Input "b") ⟼ And2 ⟼ Delay ⟼ Inv ⟼ Delay ⟼ Output "c".
