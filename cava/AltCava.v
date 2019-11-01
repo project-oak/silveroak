@@ -29,6 +29,13 @@ Inductive signal : Set :=
 
 Notation "‹ x , y ›" := (Tuple2 x y).
 
+Fixpoint typeDenote (t : signal) : Set :=
+  match t with
+  | Bit => list bool
+  | NoSignal => list bool
+  | Tuple2 a b => (typeDenote a) * (typeDenote b)
+  end.
+
 Inductive NetExpr : signal -> Set :=
   | Net : Z -> NetExpr Bit
   | NetPair : forall {a b : signal},
@@ -40,19 +47,55 @@ Check NetPair (Net 22) (Net 8) : NetExpr ‹Bit, Bit›.
 Check NetPair (NetPair (Net 22) (Net 8)) (Net 72) :
       NetExpr ‹‹Bit, Bit›, Bit›.
 
+Inductive unaryop : Set :=
+  | Inv.
+
+Inductive binop : Set :=
+  | And2
+  | Xor2
+  | Xorcy.
+
 Inductive cava : signal -> signal -> Set :=
-  | Input : string -> cava Bit Bit
-  | Output : string -> cava Bit Bit
-  | Inv : cava Bit Bit
-  | And2 : cava ‹Bit, Bit› Bit
-  | Xor2 : cava ‹Bit, Bit› Bit
-  | Xorcy : cava ‹Bit, Bit› Bit
+  | Unaryop : unaryop -> cava Bit Bit
+  | Binop : binop -> cava ‹Bit, Bit› Bit
   | Muxcy : cava ‹Bit, ‹Bit, Bit›› Bit
   | Delay : forall {A : signal}, cava A A
   | Compose : forall {A B C : signal}, cava A B -> cava B C -> cava A C
   | Par2 : forall {A B C D : signal}, cava A C -> cava B D ->
                                       cava ‹A, B› ‹C, D›
   | Rewire : forall {A B : signal}, (NetExpr A -> NetExpr B) -> cava A B.
+
+Definition inv : cava Bit Bit := Unaryop Inv.
+
+Definition unaryopDenote (u : unaryop) (x : list bool) : list bool :=
+  match u with
+  | Inv => map negb x
+  end.
+
+Definition and2 : cava ‹Bit, Bit› Bit  := Binop And2.
+Definition xor2 : cava ‹Bit, Bit› Bit  := Binop Xor2.
+Definition xorcy : cava ‹Bit, Bit› Bit  := Binop Xorcy.
+
+Definition and2_comb (xy : bool*bool) : bool := fst xy && snd xy.
+Definition xor2_comb (xy : bool*bool) : bool := xorb (fst xy) (snd xy).
+
+Definition binopDenote (b : binop) (x y : list bool) : list bool :=
+  match b with
+  | And2 => map and2_comb (combine x y)
+  | Xor2 => map xor2_comb (combine x y)
+  | Xorcy => map xor2_comb (combine x y)
+  end.
+
+Fixpoint cavaDenote {i o : signal} (e : cava i o) : typeDenote i -> typeDenote o :=
+  match e with
+  | Unaryop uop => unaryopDenote uop
+  | Binop bop => binopDenote bop
+  end.
+
+Inductive cavaTop : signal -> signal -> Set :=
+  | Input : string -> cavaTop Bit Bit
+  | Output : string -> cavaTop Bit Bit
+  | Circuit : forall {A B : signal}, cava A B.
 
 Check Compose Inv Inv : cava Bit Bit.
 Check Compose And2 Inv : cava ‹Bit, Bit› Bit.

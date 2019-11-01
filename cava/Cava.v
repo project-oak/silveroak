@@ -91,7 +91,7 @@ Definition or2_comb (xy : bool*bool) : bool := fst xy || snd xy.
 Fixpoint or2 (x y : list bool) : list bool := map or2_comb (combine x y).
 
 Definition xor2_comb (xy : bool*bool) : bool := xorb (fst xy) (snd xy).
-Fixpoint xor2 (x y : list bool) : list bool := map or2_comb (combine x y).
+Fixpoint xor2 (x y : list bool) : list bool := map xor2_comb (combine x y).
 
 Definition xorcy := xor2.
 
