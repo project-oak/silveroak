@@ -133,21 +133,25 @@ Fixpoint cavaDenote {i o : signal} (e : cava i o) :=
 
 
 
-
-Inductive cavaTop : signal -> signal -> Set :=
+Inductive cavaTop : signal -> signal -> Type :=
   | Input : string -> cavaTop Bit Bit
   | Output : string -> cavaTop Bit Bit
-  | Circuit : forall {A B : signal}, cava A B.
+  | Circuit : forall {A B : signal}, cavaTop A B.
 
-Check Compose Inv Inv : cava Bit Bit.
-Check Compose And2 Inv : cava \u2039Bit, Bit\u203a Bit.
-Check Compose Inv Delay : cava Bit Bit.
+Check Compose inv inv : cava Bit Bit.
+Check Compose and2 inv : cava \u2039Bit, Bit\u203a Bit.
+(* Check Compose inv Delay : cava Bit Bit. *)
 
 Notation " f \u27fc g " := (Compose f g)
   (at level 39, right associativity) : program_scope.
 
 Notation " a \u2016 b " := (Par2 a b)
   (at level 45, right associativity) : program_scope.
+
+
+Definition nandGate := and2 \u27fc inv.
+
+
 
 Definition fork2Fn {a:signal} (x:NetExpr a) : NetExpr \u2039a, a\u203a
   := NetPair x x.
