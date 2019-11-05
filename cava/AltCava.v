@@ -87,18 +87,6 @@ Definition binopDenote (b : binop) (xy : Expr \u2039Bit, Bit\u203a) : Expr Bit :
   end.
 
 
-Definition swapFn {A:signal} {B:signal} {T:Type} (x: @Expr T \u2039A, B\u203a) : @Expr T \u2039B, A\u203a
-  := match x with
-     | NetPair p q => NetPair q p
-     end.
-
-Check swapFn (NetPair (Net 22%Z) (Net 8%Z))   : @Expr Z    \u2039Bit, Bit\u203a.
-Check swapFn (NetPair (Net false) (Net true)) : @Expr bool \u2039Bit, Bit\u203a.
-
-
-Definition swap A B : cava \u2039A, B\u203a \u2039B, A\u203a := Rewire (@swapFn A B).
-
-
 Definition applyRewire {A B : signal} (f : forall {T:Type}, @Expr T A -> @Expr T B) (inp : @Expr bool A) :
                        @Expr bool B :=
   f inp.
@@ -140,13 +128,14 @@ Check Compose inv inv : cava Bit Bit.
 Check Compose and2 inv : cava \u2039Bit, Bit\u203a Bit.
 (* Check Compose inv Delay : cava Bit Bit. *)
 
-Notation " f ⟼ g " := (Compose f g)
+Notation " f \u27fc g " := (Compose f g)
   (at level 39, right associativity) : program_scope.
 
-Notation " a ‖ " := (Par2 a b)
+Notation " a \u2016 b " := (Par2 a b)
   (at level 45, right associativity) : program_scope.
 
-Definition nandGate := and2 ⟼ inv.
+
+Definition nandGate := and2 \u27fc inv.
 
 Lemma nandGate_proof :
   forall (a b : bool), cavaDenote nandGate (NetPair (Net a) (Net b)) = Net (negb (a && b)).
@@ -157,24 +146,27 @@ Proof.
   reflexivity.
 Qed.
 
-Definition fork2Fn {a:signal} (x:NetExpr a) : NetExpr \u2039a, a\u203a
-  := NetPair x x.
 
-Definition swapFn {a:signal} {b:signal} (x:NetExpr \u2039a, b\u203a) :
-            NetExpr \u2039b, a\u203a
+Definition swapFn {A:signal} {B:signal} {T:Type} (x: @Expr T \u2039A, B\u203a) : @Expr T \u2039B, A\u203a
   := match x with
      | NetPair p q => NetPair q p
      end.
 
-Check swapFn (NetPair (Net 3) (Net 4)) : NetExpr \u2039Bit, Bit\u203a.
+Check swapFn (NetPair (Net 22%Z) (Net 8%Z))   : @Expr Z    \u2039Bit, Bit\u203a.
+Check swapFn (NetPair (Net false) (Net true)) : @Expr bool \u2039Bit, Bit\u203a.
 
-Definition fork2 := fun {t : signal} =>
-                    Rewire (fun (x : NetExpr t) => NetPair x x).
 
-Check Input "a" ⟼ Inv ⟼ fork2 ⟼ And2 : cava Bit Bit.
+Definition swap A B : cava \u2039A, B\u203a \u2039B, A\u203a := Rewire (@swapFn A B).
+
+Definition fork2Fn {A:signal} {T:Type} (x:@Expr T A) : @Expr T \u2039A, A\u203a
+  := NetPair x x.
+
+Definition fork2 {A} : cava A \u2039A, A\u203a := Rewire (@fork2Fn A).
+
+Check inv \u27fc fork2 \u27fc and2 : cava Bit Bit.
 
 Definition id := fun {t : signal} =>
-                Rewire (fun (x : NetExpr t) => x).
+                 Rewire (fun (x : Expr t) => x).
 
 Definition first {A B X : signal} (a : cava A B) :
            cava \u2039A, X\u203a \u2039B, X\u203a := a \u2016 id.
@@ -228,5 +220,5 @@ Definition belowReorg3 {c f g : signal}
 Definition below {A B C D E F G : signal} (f : cava  \u2039A, B\u203a \u2039C, D\u203a) (g: cava \u2039D, E\u203a \u2039F, G\u203a) 
                                           (input : NetExpr \u2039A,  \u2039B, E\u203a\u203a) :
                                           cava  \u2039A,  \u2039B, E\u203a\u203a  \u2039\u2039C, F\u203a, G\u203a
-  := Rewire belowReorg1 ⟼ first f ⟼ Rewire belowReorg2 ⟼ second g ⟼ Rewire belowReorg3.
+  := Rewire belowReorg1 \u27fc first f \u27fc Rewire belowReorg2 \u27fc second g \u27fc Rewire belowReorg3.
            
