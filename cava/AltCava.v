@@ -22,40 +22,23 @@ From Coq Require Import extraction.ExtrHaskellZInteger.
 Require Import Program.Basics.
 Local Open Scope program_scope.
 
-Inductive signal : Set :=
+Inductive signal : Type :=
   | Bit : signal
   | NoSignal
   | Tuple2 : signal -> signal -> signal.
-
 Notation "\u2039 x , y \u203a" := (Tuple2 x y).
 
-Fixpoint typeDenote (t : signal) : Set :=
-  match t with
-  | Bit => list bool
-  | NoSignal => list bool
-  | Tuple2 a b => (typeDenote a) * (typeDenote b)
-  end.
 
-Inductive NetExpr : signal -> Set :=
-  | Net : Z -> NetExpr Bit
+Inductive Expr {T:Type} : signal -> Type :=
+  | Net : T -> Expr Bit
   | NetPair : forall {a b : signal},
-              NetExpr a -> NetExpr b -> NetExpr (Tuple2 a b)
-  | NoNet : NetExpr NoSignal.
+              Expr a -> Expr b -> Expr (Tuple2 a b)
+  | NoNet : Expr NoSignal.
 
 
-Inductive BoolExpr : signal -> Set :=
-  | BoolVal : bool -> BoolExpr Bit
-  | BoolPair : forall {a b : signal},
-               BoolExpr a -> BoolExpr b -> BoolExpr (Tuple2 a b)
-  | NoBool : BoolExpr NoSignal.
-
-Check Net 72 : NetExpr Bit.
-Check NetPair (Net 22) (Net 8) : NetExpr \u2039Bit, Bit\u203a.
-Check NetPair (NetPair (Net 22) (Net 8)) (Net 72) :
-      NetExpr \u2039\u2039Bit, Bit\u203a, Bit\u203a.
-
-
-Check BoolVal false.
+Check Net 42%Z : @Expr Z Bit.
+Check NetPair (Net 22%Z) (Net 8%Z) : Expr \u2039Bit, Bit\u203a.
+Check NetPair (NetPair (Net 22%Z) (Net 8%Z)) (Net 42%Z) :  Expr \u2039\u2039Bit, Bit\u203a, Bit\u203a.
 
 
 Inductive unaryop : Set :=
@@ -66,7 +49,7 @@ Inductive binop : Set :=
   | Xor2
   | Xorcy.
 
-Inductive cava : signal -> signal -> Set :=
+Inductive cava : signal -> signal -> Type :=
   | Unaryop : unaryop -> cava Bit Bit
   | Binop : binop -> cava \u2039Bit, Bit\u203a Bit
   | Muxcy : cava \u2039Bit, \u2039Bit, Bit\u203a\u203a Bit
@@ -74,65 +57,81 @@ Inductive cava : signal -> signal -> Set :=
   | Compose : forall {A B C : signal}, cava A B -> cava B C -> cava A C
   | Par2 : forall {A B C D : signal}, cava A C -> cava B D ->
                                       cava \u2039A, B\u203a \u2039C, D\u203a
-  | Rewire : forall {A B : signal}, (NetExpr A -> NetExpr B) -> cava A B.
+  | Rewire : forall {A B : signal}, (forall {T:Type}, @Expr T A -> @Expr T B) -> cava A B.
 
 Definition inv : cava Bit Bit := Unaryop Inv.
 
-Definition unaryopDenote (u : unaryop) (x : BoolExpr Bit) : BoolExpr Bit :=
+Definition unaryopDenote (u : unaryop) (x : Expr Bit) : Expr Bit :=
   match u, x with
-  | Inv, BoolVal x => BoolVal (negb x)
+  | Inv, Net xv => Net (negb xv)
   end.
 
 Definition and2 : cava \u2039Bit, Bit\u203a Bit  := Binop And2.
 Definition xor2 : cava \u2039Bit, Bit\u203a Bit  := Binop Xor2.
-Definition xorcy : cava \u2039Bit, Bit\u203a Bit  := Binop Xorcy.
+Definition xorcy : cava \u2039Bit, Bit\u203a Bit := Binop Xorcy.
 
 Definition and2_comb (xy : bool*bool) : bool := fst xy && snd xy.
 Definition xor2_comb (xy : bool*bool) : bool := xorb (fst xy) (snd xy).
 
-Definition binopDenote (b : binop) (xy : BoolExpr (Tuple2 Bit Bit)) :
-                                   BoolExpr Bit :=
-  match xy in BoolExpr (Tuple2 Bit Bit) return BoolExpr Bit with
-    BoolPair xb yb
+Definition binopDenote (b : binop) (xy : Expr \u2039Bit, Bit\u203a) : Expr Bit :=
+  match xy in Expr (Tuple2 Bit Bit) return Expr Bit with
+    NetPair xb yb
       => match xb, yb with
-           BoolVal xv, BoolVal yv
+           Net xv, Net yv
            => match b with
-              | And2  => BoolVal (xv && yv)
-              | Xor2  => BoolVal (xorb xv yv)
-              | Xorcy => BoolVal (xorb xv yv)
+              | And2  => Net (xv && yv)
+              | Xor2  => Net (xorb xv yv)
+              | Xorcy => Net (xorb xv yv)
               end
          end
   end.
 
 
+Definition swapFn {A:signal} {B:signal} {T:Type} (x: @Expr T \u2039A, B\u203a) : @Expr T \u2039B, A\u203a
+  := match x with
+     | NetPair p q => NetPair q p
+     end.
+
+Check swapFn (NetPair (Net 22%Z) (Net 8%Z))   : @Expr Z    \u2039Bit, Bit\u203a.
+Check swapFn (NetPair (Net false) (Net true)) : @Expr bool \u2039Bit, Bit\u203a.
+
+
+Definition swap A B : cava \u2039A, B\u203a \u2039B, A\u203a := Rewire (@swapFn A B).
+
+
+Definition applyRewire {A B : signal} (f : forall {T:Type}, @Expr T A -> @Expr T B) (inp : @Expr bool A) :
+                       @Expr bool B :=
+  f inp.
+
 Fixpoint cavaDenote {i o : signal} (e : cava i o) :=
   match e with
   | Unaryop uop => unaryopDenote uop
   | Binop bop => binopDenote bop
-  | Muxcy => fun {sab : BoolExpr (Tuple2 Bit (Tuple2 Bit Bit))} =>
+  | Muxcy => fun {sab : Expr (Tuple2 Bit (Tuple2 Bit Bit))} =>
                match sab with
-                 BoolPair sB abB =>
+                 NetPair sB abB =>
                    match sB with
-                     BoolVal s =>
+                     Net s =>
                        match abB with
-                         BoolPair aB bB =>
+                         NetPair aB bB =>
                            match aB, bB with
-                             BoolVal a, BoolVal b => BoolVal (if s then a else b)
+                             Net a, Net b => Net (if s then a else b)
                            end
                        end
                    end
                end
   | Delay => fun a => a    
   | Compose f g => fun i => cavaDenote g (cavaDenote f i)
-  | @Par2 A B C D f g =>
-      fun {inp : BoolExpr (Tuple2 A B)} =>
-        match inp in BoolExpr (Tuple2 A B) return BoolExpr (Tuple2 C D) with
-          BoolPair p q => 
-            let w : BoolExpr C := cavaDenote f p in
-            let r : BoolExpr D := cavaDenote g q in
-            @BoolPair C D w r
-        end 
+  | Par2 f g =>
+      fun inp =>
+        (match inp with
+           NetPair p q =>
+           fun w r => NetPair (w p) (r q)
+         end) (cavaDenote f) (cavaDenote g)
+  | Rewire f => applyRewire f
   end.
+
+
 
 
 Inductive cavaTop : signal -> signal -> Set :=
