@@ -26,7 +26,7 @@ Inductive signal : Type :=
   | Bit : signal
   | NoSignal
   | Tuple2 : signal -> signal -> signal.
-Notation "\u2039 x , y \u203a" := (Tuple2 x y).
+Notation "‹ x , y ›" := (Tuple2 x y).
 
 
 Inductive Expr {T:Type} : signal -> Type :=
@@ -37,8 +37,8 @@ Inductive Expr {T:Type} : signal -> Type :=
 
 
 Check Net 42%Z : @Expr Z Bit.
-Check NetPair (Net 22%Z) (Net 8%Z) : Expr \u2039Bit, Bit\u203a.
-Check NetPair (NetPair (Net 22%Z) (Net 8%Z)) (Net 42%Z) :  Expr \u2039\u2039Bit, Bit\u203a, Bit\u203a.
+Check NetPair (Net 22%Z) (Net 8%Z) : Expr ‹Bit, Bit›.
+Check NetPair (NetPair (Net 22%Z) (Net 8%Z)) (Net 42%Z) :  Expr ‹‹Bit, Bit›, Bit›.
 
 
 Inductive unaryop : Set :=
@@ -51,12 +51,12 @@ Inductive binop : Set :=
 
 Inductive cava : signal -> signal -> Type :=
   | Unaryop : unaryop -> cava Bit Bit
-  | Binop : binop -> cava \u2039Bit, Bit\u203a Bit
-  | Muxcy : cava \u2039Bit, \u2039Bit, Bit\u203a\u203a Bit
+  | Binop : binop -> cava ‹Bit, Bit› Bit
+  | Muxcy : cava ‹Bit, ‹Bit, Bit›› Bit
   | Delay : forall {A : signal}, cava A A
   | Compose : forall {A B C : signal}, cava A B -> cava B C -> cava A C
   | Par2 : forall {A B C D : signal}, cava A C -> cava B D ->
-                                      cava \u2039A, B\u203a \u2039C, D\u203a
+                                      cava ‹A, B› ‹C, D›
   | Rewire : forall {A B : signal}, (forall {T:Type}, @Expr T A -> @Expr T B) -> cava A B.
 
 Definition inv : cava Bit Bit := Unaryop Inv.
@@ -66,14 +66,14 @@ Definition unaryopDenote (u : unaryop) (x : Expr Bit) : Expr Bit :=
   | Inv, Net xv => Net (negb xv)
   end.
 
-Definition and2 : cava \u2039Bit, Bit\u203a Bit  := Binop And2.
-Definition xor2 : cava \u2039Bit, Bit\u203a Bit  := Binop Xor2.
-Definition xorcy : cava \u2039Bit, Bit\u203a Bit := Binop Xorcy.
+Definition and2 : cava ‹Bit, Bit› Bit  := Binop And2.
+Definition xor2 : cava ‹Bit, Bit› Bit  := Binop Xor2.
+Definition xorcy : cava ‹Bit, Bit› Bit := Binop Xorcy.
 
 Definition and2_comb (xy : bool*bool) : bool := fst xy && snd xy.
 Definition xor2_comb (xy : bool*bool) : bool := xorb (fst xy) (snd xy).
 
-Definition binopDenote (b : binop) (xy : Expr \u2039Bit, Bit\u203a) : Expr Bit :=
+Definition binopDenote (b : binop) (xy : Expr ‹Bit, Bit›) : Expr Bit :=
   match xy in Expr (Tuple2 Bit Bit) return Expr Bit with
     NetPair xb yb
       => match xb, yb with
@@ -125,17 +125,17 @@ Inductive cavaTop : signal -> signal -> Type :=
   | Circuit : forall {A B : signal}, cavaTop A B.
 
 Check Compose inv inv : cava Bit Bit.
-Check Compose and2 inv : cava \u2039Bit, Bit\u203a Bit.
+Check Compose and2 inv : cava ‹Bit, Bit› Bit.
 (* Check Compose inv Delay : cava Bit Bit. *)
 
-Notation " f \u27fc g " := (Compose f g)
+Notation " f ⟼ g " := (Compose f g)
   (at level 39, right associativity) : program_scope.
 
-Notation " a \u2016 b " := (Par2 a b)
+Notation " a ‖ b " := (Par2 a b)
   (at level 45, right associativity) : program_scope.
 
 
-Definition nandGate := and2 \u27fc inv.
+Definition nandGate := and2 ⟼ inv.
 
 Lemma nandGate_proof :
   forall (a b : bool), cavaDenote nandGate (NetPair (Net a) (Net b)) = Net (negb (a && b)).
@@ -147,45 +147,45 @@ Proof.
 Qed.
 
 
-Definition swapFn {A:signal} {B:signal} {T:Type} (x: @Expr T \u2039A, B\u203a) : @Expr T \u2039B, A\u203a
+Definition swapFn {A:signal} {B:signal} {T:Type} (x: @Expr T ‹A, B›) : @Expr T ‹B, A›
   := match x with
      | NetPair p q => NetPair q p
      end.
 
-Check swapFn (NetPair (Net 22%Z) (Net 8%Z))   : @Expr Z    \u2039Bit, Bit\u203a.
-Check swapFn (NetPair (Net false) (Net true)) : @Expr bool \u2039Bit, Bit\u203a.
+Check swapFn (NetPair (Net 22%Z) (Net 8%Z))   : @Expr Z    ‹Bit, Bit›.
+Check swapFn (NetPair (Net false) (Net true)) : @Expr bool ‹Bit, Bit›.
 
 
-Definition swap A B : cava \u2039A, B\u203a \u2039B, A\u203a := Rewire (@swapFn A B).
+Definition swap A B : cava ‹A, B› ‹B, A› := Rewire (@swapFn A B).
 
-Definition fork2Fn {A:signal} {T:Type} (x:@Expr T A) : @Expr T \u2039A, A\u203a
+Definition fork2Fn {A:signal} {T:Type} (x:@Expr T A) : @Expr T ‹A, A›
   := NetPair x x.
 
-Definition fork2 {A} : cava A \u2039A, A\u203a := Rewire (@fork2Fn A).
+Definition fork2 {A} : cava A ‹A, A› := Rewire (@fork2Fn A).
 
-Check inv \u27fc fork2 \u27fc and2 : cava Bit Bit.
+Check inv ⟼ fork2 ⟼ and2 : cava Bit Bit.
 
 Definition id := fun {t : signal} =>
                  Rewire (fun (x : Expr t) => x).
 
 Definition first {A B X : signal} (a : cava A B) :
-           cava \u2039A, X\u203a \u2039B, X\u203a := a \u2016 id.
+           cava ‹A, X› ‹B, X› := a ‖ id.
 
 Definition second {A B X : signal} (a : cava A B) :
-           cava \u2039X, A\u203a \u2039X, B\u203a:= id \u2016 a.
+           cava ‹X, A› ‹X, B›:= id ‖ a.
 
-Definition forkBit (x : NetExpr Bit) : NetExpr \u2039Bit, Bit\u203a
+Definition forkBit (x : NetExpr Bit) : NetExpr ‹Bit, Bit›
   := match x with
      | Net n => NetPair (Net n) (Net n)
      end.
 
-Definition swapBit (x : NetExpr \u2039Bit, Bit\u203a) : NetExpr \u2039Bit, Bit\u203a
+Definition swapBit (x : NetExpr ‹Bit, Bit›) : NetExpr ‹Bit, Bit›
   := match x with
      | @NetPair Bit Bit x y => NetPair y x
      end.
 
-Definition tupleLeft {a b c : signal} (x:NetExpr \u2039a, \u2039b, c\u203a\u203a) :
-                                      NetExpr \u2039\u2039a, b\u203a, c\u203a
+Definition tupleLeft {a b c : signal} (x:NetExpr ‹a, ‹b, c››) :
+                                      NetExpr ‹‹a, b›, c›
    := match x with
       | NetPair p qr => match qr with
                           NetPair q r => NetPair (NetPair p q) r
@@ -193,7 +193,7 @@ Definition tupleLeft {a b c : signal} (x:NetExpr \u2039a, \u2039b, c\u203a\u203a
       end.
 
 Definition belowReorg1 {a b e : signal}
-                       (abe : NetExpr \u2039a, \u2039b, e\u203a\u203a) : NetExpr  \u2039\u2039a, b\u203a, e\u203a
+                       (abe : NetExpr ‹a, ‹b, e››) : NetExpr  ‹‹a, b›, e›
   := match abe with
        NetPair a be => match be with
                          NetPair b e => NetPair (NetPair a b) e
@@ -202,7 +202,7 @@ Definition belowReorg1 {a b e : signal}
 
 
 Definition belowReorg2 {c d e : signal}
-                       (cde : NetExpr \u2039\u2039c, d\u203a, e\u203a) : NetExpr  \u2039c, \u2039d, e\u203a\u203a
+                       (cde : NetExpr ‹‹c, d›, e›) : NetExpr  ‹c, ‹d, e››
   := match cde with
        NetPair cd e => match cd with
                          NetPair c d => NetPair c (NetPair d e)
@@ -210,15 +210,15 @@ Definition belowReorg2 {c d e : signal}
      end.
 
 Definition belowReorg3 {c f g : signal}
-                       (cfg : NetExpr \u2039c, \u2039f, g\u203a\u203a) : NetExpr  \u2039\u2039c, f\u203a, g\u203a
+                       (cfg : NetExpr ‹c, ‹f, g››) : NetExpr  ‹‹c, f›, g›
   := match cfg with
        NetPair c fg => match fg with
                          NetPair f g => NetPair (NetPair c f) g
                        end
      end.
 
-Definition below {A B C D E F G : signal} (f : cava  \u2039A, B\u203a \u2039C, D\u203a) (g: cava \u2039D, E\u203a \u2039F, G\u203a) 
-                                          (input : NetExpr \u2039A,  \u2039B, E\u203a\u203a) :
-                                          cava  \u2039A,  \u2039B, E\u203a\u203a  \u2039\u2039C, F\u203a, G\u203a
-  := Rewire belowReorg1 \u27fc first f \u27fc Rewire belowReorg2 \u27fc second g \u27fc Rewire belowReorg3.
+Definition below {A B C D E F G : signal} (f : cava  ‹A, B› ‹C, D›) (g: cava ‹D, E› ‹F, G›) 
+                                          (input : NetExpr ‹A,  ‹B, E››) :
+                                          cava  ‹A,  ‹B, E››  ‹‹C, F›, G›
+  := Rewire belowReorg1 ⟼ first f ⟼ Rewire belowReorg2 ⟼ second g ⟼ Rewire belowReorg3.
            
