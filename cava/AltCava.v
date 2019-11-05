@@ -131,8 +131,6 @@ Fixpoint cavaDenote {i o : signal} (e : cava i o) :=
   | Rewire f => applyRewire f
   end.
 
-
-
 Inductive cavaTop : signal -> signal -> Type :=
   | Input : string -> cavaTop Bit Bit
   | Output : string -> cavaTop Bit Bit
@@ -142,16 +140,22 @@ Check Compose inv inv : cava Bit Bit.
 Check Compose and2 inv : cava \u2039Bit, Bit\u203a Bit.
 (* Check Compose inv Delay : cava Bit Bit. *)
 
-Notation " f \u27fc g " := (Compose f g)
+Notation " f ⟼ g " := (Compose f g)
   (at level 39, right associativity) : program_scope.
 
-Notation " a \u2016 b " := (Par2 a b)
+Notation " a ‖ " := (Par2 a b)
   (at level 45, right associativity) : program_scope.
 
+Definition nandGate := and2 ⟼ inv.
 
-Definition nandGate := and2 \u27fc inv.
-
-
+Lemma nandGate_proof :
+  forall (a b : bool), cavaDenote nandGate (NetPair (Net a) (Net b)) = Net (negb (a && b)).
+Proof.
+  intros a b.
+  unfold cavaDenote.
+  simpl.
+  reflexivity.
+Qed.
 
 Definition fork2Fn {a:signal} (x:NetExpr a) : NetExpr \u2039a, a\u203a
   := NetPair x x.
@@ -167,7 +171,7 @@ Check swapFn (NetPair (Net 3) (Net 4)) : NetExpr \u2039Bit, Bit\u203a.
 Definition fork2 := fun {t : signal} =>
                     Rewire (fun (x : NetExpr t) => NetPair x x).
 
-Check Input "a" \u27fc Inv \u27fc fork2 \u27fc And2 : cava Bit Bit.
+Check Input "a" ⟼ Inv ⟼ fork2 ⟼ And2 : cava Bit Bit.
 
 Definition id := fun {t : signal} =>
                 Rewire (fun (x : NetExpr t) => x).
@@ -224,5 +228,5 @@ Definition belowReorg3 {c f g : signal}
 Definition below {A B C D E F G : signal} (f : cava  \u2039A, B\u203a \u2039C, D\u203a) (g: cava \u2039D, E\u203a \u2039F, G\u203a) 
                                           (input : NetExpr \u2039A,  \u2039B, E\u203a\u203a) :
                                           cava  \u2039A,  \u2039B, E\u203a\u203a  \u2039\u2039C, F\u203a, G\u203a
-  := Rewire belowReorg1 \u27fc first f \u27fc Rewire belowReorg2 \u27fc second g \u27fc Rewire belowReorg3.
+  := Rewire belowReorg1 ⟼ first f ⟼ Rewire belowReorg2 ⟼ second g ⟼ Rewire belowReorg3.
            
