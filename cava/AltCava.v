@@ -28,18 +28,12 @@ Inductive signal : Type :=
   | Tuple2 : signal -> signal -> signal.
 Notation "‹ x , y ›" := (Tuple2 x y).
 
-
-Inductive Expr {T:Type} : signal -> Type :=
-  | Net : T -> Expr Bit
-  | NetPair : forall {a b : signal},
-              Expr a -> Expr b -> Expr (Tuple2 a b)
-  | NoNet : Expr NoSignal.
-
-
-Check Net 42%Z : @Expr Z Bit.
-Check NetPair (Net 22%Z) (Net 8%Z) : Expr ‹Bit, Bit›.
-Check NetPair (NetPair (Net 22%Z) (Net 8%Z)) (Net 42%Z) :  Expr ‹‹Bit, Bit›, Bit›.
-
+Fixpoint signalDenote (s : signal) (T : Type) : Type := 
+  match s with
+  | Bit => T
+  | NoSignal => unit
+  | Tuple2 s1 s2 => signalDenote s1 T * signalDenote s2 T
+  end.
 
 Inductive unaryop : Set :=
   | Inv.
@@ -57,13 +51,14 @@ Inductive cava : signal -> signal -> Type :=
   | Compose : forall {A B C : signal}, cava A B -> cava B C -> cava A C
   | Par2 : forall {A B C D : signal}, cava A C -> cava B D ->
                                       cava ‹A, B› ‹C, D›
-  | Rewire : forall {A B : signal}, (forall {T:Type}, @Expr T A -> @Expr T B) -> cava A B.
+  | Rewire : forall {A B : signal}, forall (f : forall t, signalDenote A t -> signalDenote B t), cava A B.
+
 
 Definition inv : cava Bit Bit := Unaryop Inv.
 
-Definition unaryopDenote (u : unaryop) (x : Expr Bit) : Expr Bit :=
+Definition unaryopDenote (u : unaryop) (x : signalDenote Bit bool) : signalDenote Bit bool :=
   match u, x with
-  | Inv, Net xv => Net (negb xv)
+  | Inv, b => (negb b)
   end.
 
 Definition and2 : cava ‹Bit, Bit› Bit  := Binop And2.
@@ -73,51 +68,32 @@ Definition xorcy : cava ‹Bit, Bit› Bit := Binop Xorcy.
 Definition and2_comb (xy : bool*bool) : bool := fst xy && snd xy.
 Definition xor2_comb (xy : bool*bool) : bool := xorb (fst xy) (snd xy).
 
-Definition binopDenote (b : binop) (xy : Expr ‹Bit, Bit›) : Expr Bit :=
-  match xy in Expr (Tuple2 Bit Bit) return Expr Bit with
-    NetPair xb yb
-      => match xb, yb with
-           Net xv, Net yv
-           => match b with
-              | And2  => Net (xv && yv)
-              | Xor2  => Net (xorb xv yv)
-              | Xorcy => Net (xorb xv yv)
+Definition binopDenote (b : binop) (xy : signalDenote ‹Bit, Bit› bool) : signalDenote Bit bool :=
+  match xy with
+   (xv, yv) => match b with
+              | And2  => (xv && yv)
+              | Xor2  => (xorb xv yv)
+              | Xorcy => (xorb xv yv)
               end
-         end
+         
   end.
 
-
-Definition applyRewire {A B : signal} (f : forall {T:Type}, @Expr T A -> @Expr T B) (inp : @Expr bool A) :
-                       @Expr bool B :=
+Definition applyRewire {A B : signal} (f : forall {T:Type}, signalDenote A T -> signalDenote B T) (inp : signalDenote A bool) :
+                       signalDenote B bool :=
   f inp.
 
-Fixpoint cavaDenote {i o : signal} (e : cava i o) :=
+Fixpoint cavaDenote {i o : signal} (e : cava i o) : (signalDenote i bool -> signalDenote o bool) :=
   match e with
-  | Unaryop uop => unaryopDenote uop
+  | Unaryop uop => unaryopDenote uop 
   | Binop bop => binopDenote bop
-  | Muxcy => fun {sab : Expr (Tuple2 Bit (Tuple2 Bit Bit))} =>
-               match sab with
-                 NetPair sB abB =>
-                   match sB with
-                     Net s =>
-                       match abB with
-                         NetPair aB bB =>
-                           match aB, bB with
-                             Net a, Net b => Net (if s then a else b)
-                           end
-                       end
-                   end
-               end
+  | Muxcy => fun '(s, (a, b)) => if s then a else b 
   | Delay => fun a => a    
   | Compose f g => fun i => cavaDenote g (cavaDenote f i)
-  | Par2 f g =>
-      fun inp =>
-        (match inp with
-           NetPair p q =>
-           fun w r => NetPair (w p) (r q)
-         end) (cavaDenote f) (cavaDenote g)
+  | Par2 f g => 
+      fun '(p, q) => ((cavaDenote f p), (cavaDenote g q))
   | Rewire f => applyRewire f
   end.
+
 
 Inductive cavaTop : signal -> signal -> Type :=
   | Input : string -> cavaTop Bit Bit
@@ -138,35 +114,29 @@ Notation " a ‖ b " := (Par2 a b)
 Definition nandGate := and2 ⟼ inv.
 
 Lemma nandGate_proof :
-  forall (a b : bool), cavaDenote nandGate (NetPair (Net a) (Net b)) = Net (negb (a && b)).
-Proof.
-  intros a b.
-  unfold cavaDenote.
-  simpl.
-  reflexivity.
+  forall (a b : bool), cavaDenote nandGate (a, b) = negb (a && b).
+auto.
 Qed.
 
-
-Definition swapFn {A:signal} {B:signal} {T:Type} (x: @Expr T ‹A, B›) : @Expr T ‹B, A›
+Definition swapFn {A B : signal} {T : Type} (x: signalDenote ‹A, B› T) : signalDenote ‹B, A› T
   := match x with
-     | NetPair p q => NetPair q p
+     | (p, q) => (q, p)
      end.
 
-Check swapFn (NetPair (Net 22%Z) (Net 8%Z))   : @Expr Z    ‹Bit, Bit›.
-Check swapFn (NetPair (Net false) (Net true)) : @Expr bool ‹Bit, Bit›.
 
+Check (@swapFn Bit Bit Z) (22%Z, 8%Z).
+Check (@swapFn Bit Bit bool) (false, true).
 
 Definition swap A B : cava ‹A, B› ‹B, A› := Rewire (@swapFn A B).
 
-Definition fork2Fn {A:signal} {T:Type} (x:@Expr T A) : @Expr T ‹A, A›
-  := NetPair x x.
+Definition fork2Fn {A:signal} {T:Type} (x: signalDenote A T) : signalDenote ‹A, A› T
+  := (x, x).
 
 Definition fork2 {A} : cava A ‹A, A› := Rewire (@fork2Fn A).
 
 Check inv ⟼ fork2 ⟼ and2 : cava Bit Bit.
 
-Definition idFn {A : signal} {T : Type} (x: @Expr T A) : @Expr T A
-  := x.
+Definition idFn {A : signal} {T : Type} (x: signalDenote A T) : signalDenote A T := x.
 
 Definition id {A} := Rewire (@idFn A).
 
@@ -176,25 +146,22 @@ Definition first {A B X : signal} (a : cava A B) :
 Definition second {A B X : signal} (a : cava A B) :
            cava ‹X, A› ‹X, B›:= id ‖ a.
 
-Definition forkBit {T : Type} (x : @Expr T  Bit) : @Expr T ‹Bit, Bit›
-  := match x with
-     | Net n => NetPair (Net n) (Net n)
-     end.
+Definition forkBit {T : Type} (x : signalDenote Bit T) : signalDenote ‹Bit, Bit› T := (x, x).
+
+Require Import Program.Equality.
+
+
+Definition swapBit (T : Type) (inp : signalDenote ‹Bit, Bit› T) : signalDenote ‹Bit, Bit› T := 
+  match inp with (x, y) => (y, x)
+  end.
+
+
+
+Definition tupleLeft {A B C : signal} {T : Type} (x : @signalDenote ‹A, ‹B, C›› T) :
+                                                  signalDenote ‹‹A, B›, C› T
+   := match x with (p, (q, r)) => ((p, q), r) end.
 
 (*
-Definition swapBit {T : Type} (inp : @Expr T ‹Bit, Bit›) : @Expr T ‹Bit, Bit›
-  := match inp in Expr ‹Bit, Bit› return Expr ‹Bit, Bit› with
-     | NetPair x y => NetPair y x
-     end.
-*)
-
-Definition tupleLeft {A B C : signal} {T : Type} (x : @Expr T ‹A, ‹B, C››) :
-                                                  @Expr T ‹‹A, B›, C›
-   := match x with
-      | NetPair p qr => match qr with
-                          NetPair q r => NetPair (NetPair p q) r
-                        end
-      end.
 
 Definition belowReorg1 {a b e : signal} {T : Type}
                        (abe : @Expr T ‹a, ‹b, e››) : @Expr T  ‹‹a, b›, e›
@@ -226,4 +193,4 @@ Definition below {A B C D E F G : signal} {T : Type}
                  (input : @Expr T ‹A,  ‹B, E››) :
                  cava  ‹A,  ‹B, E››  ‹‹C, F›, G›
   := Rewire (@belowReorg1 A B E) ⟼ first f ⟼ Rewire (@belowReorg2 C D E) ⟼ second g ⟼ Rewire (@belowReorg3 C F G).
-           
+*)           
