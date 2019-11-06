@@ -22,8 +22,8 @@ Require Import Coq.Program.Basics.
 Local Open Scope program_scope.
 
 
-Definition reorg1Fn {cin a b : signal}
-                    (cinab : NetExpr ‹cin, ‹a, b››) : NetExpr ‹‹cin, a›, ‹a, b››
+Definition reorg1Fn {T : Type} {cin a b : signal}
+                    (cinab : @Expr T ‹cin, ‹a, b››) : @Expr T ‹‹cin, a›, ‹a, b››
   := match cinab with
        NetPair cin ab => match ab with
                            NetPair a b => NetPair (NetPair cin a) (NetPair a b)
@@ -33,8 +33,8 @@ Definition reorg1Fn {cin a b : signal}
 Definition reorg1 : cava ‹Bit, ‹Bit, Bit›› ‹‹Bit, Bit›, ‹Bit, Bit››
            := Rewire reorg1Fn.
 
-Definition reorg2Fn (cinaps : NetExpr ‹‹Bit, Bit›, Bit›) :
-                    NetExpr‹‹Bit, Bit›, ‹Bit, ‹Bit, Bit›››
+Definition reorg2Fn (cinaps : Expr ‹‹Bit, Bit›, Bit›) :
+                     Expr‹‹Bit, Bit›, ‹Bit, ‹Bit, Bit›››
   := match cinaps with
        @NetPair (Tuple2 Bit Bit) Bit cina ps
           => match cina with
