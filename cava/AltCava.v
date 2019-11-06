@@ -165,8 +165,10 @@ Definition fork2 {A} : cava A ‹A, A› := Rewire (@fork2Fn A).
 
 Check inv ⟼ fork2 ⟼ and2 : cava Bit Bit.
 
-Definition id := fun {t : signal} =>
-                 Rewire (fun (x : Expr t) => x).
+Definition idFn {A : signal} {T : Type} (x: @Expr T A) : @Expr T A
+  := x.
+
+Definition id {A} := Rewire (@idFn A).
 
 Definition first {A B X : signal} (a : cava A B) :
            cava ‹A, X› ‹B, X› := a ‖ id.
@@ -174,26 +176,28 @@ Definition first {A B X : signal} (a : cava A B) :
 Definition second {A B X : signal} (a : cava A B) :
            cava ‹X, A› ‹X, B›:= id ‖ a.
 
-Definition forkBit (x : NetExpr Bit) : NetExpr ‹Bit, Bit›
+Definition forkBit {T : Type} (x : @Expr T  Bit) : @Expr T ‹Bit, Bit›
   := match x with
      | Net n => NetPair (Net n) (Net n)
      end.
 
-Definition swapBit (x : NetExpr ‹Bit, Bit›) : NetExpr ‹Bit, Bit›
-  := match x with
-     | @NetPair Bit Bit x y => NetPair y x
+(*
+Definition swapBit {T : Type} (inp : @Expr T ‹Bit, Bit›) : @Expr T ‹Bit, Bit›
+  := match inp in Expr ‹Bit, Bit› return Expr ‹Bit, Bit› with
+     | NetPair x y => NetPair y x
      end.
+*)
 
-Definition tupleLeft {a b c : signal} (x:NetExpr ‹a, ‹b, c››) :
-                                      NetExpr ‹‹a, b›, c›
+Definition tupleLeft {A B C : signal} {T : Type} (x : @Expr T ‹A, ‹B, C››) :
+                                                  @Expr T ‹‹A, B›, C›
    := match x with
       | NetPair p qr => match qr with
                           NetPair q r => NetPair (NetPair p q) r
                         end
       end.
 
-Definition belowReorg1 {a b e : signal}
-                       (abe : NetExpr ‹a, ‹b, e››) : NetExpr  ‹‹a, b›, e›
+Definition belowReorg1 {a b e : signal} {T : Type}
+                       (abe : @Expr T ‹a, ‹b, e››) : @Expr T  ‹‹a, b›, e›
   := match abe with
        NetPair a be => match be with
                          NetPair b e => NetPair (NetPair a b) e
@@ -201,24 +205,25 @@ Definition belowReorg1 {a b e : signal}
      end.
 
 
-Definition belowReorg2 {c d e : signal}
-                       (cde : NetExpr ‹‹c, d›, e›) : NetExpr  ‹c, ‹d, e››
+Definition belowReorg2 {c d e : signal} {T : Type}
+                       (cde : @Expr T ‹‹c, d›, e›) : @Expr T  ‹c, ‹d, e››
   := match cde with
        NetPair cd e => match cd with
                          NetPair c d => NetPair c (NetPair d e)
                        end
      end.
 
-Definition belowReorg3 {c f g : signal}
-                       (cfg : NetExpr ‹c, ‹f, g››) : NetExpr  ‹‹c, f›, g›
+Definition belowReorg3 {c f g : signal} {T : Type}
+                       (cfg : @Expr T ‹c, ‹f, g››) : @Expr T  ‹‹c, f›, g›
   := match cfg with
        NetPair c fg => match fg with
                          NetPair f g => NetPair (NetPair c f) g
                        end
      end.
 
-Definition below {A B C D E F G : signal} (f : cava  ‹A, B› ‹C, D›) (g: cava ‹D, E› ‹F, G›) 
-                                          (input : NetExpr ‹A,  ‹B, E››) :
-                                          cava  ‹A,  ‹B, E››  ‹‹C, F›, G›
-  := Rewire belowReorg1 ⟼ first f ⟼ Rewire belowReorg2 ⟼ second g ⟼ Rewire belowReorg3.
+Definition below {A B C D E F G : signal} {T : Type}
+                 (f : cava  ‹A, B› ‹C, D›) (g: cava ‹D, E› ‹F, G›) 
+                 (input : @Expr T ‹A,  ‹B, E››) :
+                 cava  ‹A,  ‹B, E››  ‹‹C, F›, G›
+  := Rewire (@belowReorg1 A B E) ⟼ first f ⟼ Rewire (@belowReorg2 C D E) ⟼ second g ⟼ Rewire (@belowReorg3 C F G).
            
