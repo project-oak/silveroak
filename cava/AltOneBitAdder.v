@@ -22,30 +22,26 @@ Require Import Coq.Program.Basics.
 Local Open Scope program_scope.
 
 
-Definition reorg1Fn {T : Type} {cin a b : signal}
-                    (cinab : @Expr T ‹cin, ‹a, b››) : @Expr T ‹‹cin, a›, ‹a, b››
+Definition reorg1Fn (T : Type) 
+                    (cinab : @signal T ‹Bit, ‹Bit, Bit››) : @signal T ‹‹Bit, Bit›, ‹Bit, Bit››
   := match cinab with
-       NetPair cin ab => match ab with
-                           NetPair a b => NetPair (NetPair cin a) (NetPair a b)
-                         end
+       (cin, (a, b)) =>  ((cin, a), (a, b))
      end.
 
 Definition reorg1 : cava ‹Bit, ‹Bit, Bit›› ‹‹Bit, Bit›, ‹Bit, Bit››
-           := Rewire reorg1Fn.
+           := Reshape reorg1Fn.
 
-Definition reorg2Fn (cinaps : Expr ‹‹Bit, Bit›, Bit›) :
-                     Expr‹‹Bit, Bit›, ‹Bit, ‹Bit, Bit›››
+Definition reorg2Fn (T : Type)
+                    (cinaps : @signal T ‹‹Bit, Bit›, Bit›) :
+                     @signal T ‹‹Bit, Bit›, ‹Bit, ‹Bit, Bit›››
   := match cinaps with
-       @NetPair (Tuple2 Bit Bit) Bit cina ps
-          => match cina with
-                @NetPair Bit Bit cin a => NetPair (NetPair cin ps) (NetPair ps (NetPair a cin))
-             end
+       ((cin, a), ps) => ((cin, ps), (ps, (a, cin)))
      end.
 
-Definition reorg2 := Rewire reorg2Fn.
+Definition reorg2 := Reshape reorg2Fn.
 
 Definition oneBitAdder : cava ‹Bit, ‹Bit, Bit›› ‹Bit, Bit›
-  := reorg1  ⟼ second Xor2  ⟼ reorg2  ⟼ (Xorcy ‖ Muxcy).
+  := reorg1  ⟼ second xor2  ⟼ reorg2  ⟼ (xorcy ‖ Muxcy).
 
 Definition oneBitAdder_top
   := (Input "cin" ‖ (Input "a" ‖ Input "b"))  ⟼

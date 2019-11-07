@@ -22,87 +22,105 @@ From Coq Require Import extraction.ExtrHaskellZInteger.
 Require Import Program.Basics.
 Local Open Scope program_scope.
 
-Inductive signal : Type :=
-  | Bit : signal
-  | NoSignal
-  | Tuple2 : signal -> signal -> signal.
+(* shape describes the shape of the wires coming into our out of a circuit
+   block.
+*)
+Inductive shape : Type :=
+  | Bit : shape                        (* A single wire *)
+  | Tuple2 : shape -> shape -> shape.  (* A pair of bundles of wires *)
 Notation "‹ x , y ›" := (Tuple2 x y).
 
-Fixpoint signalDenote (s : signal) (T : Type) : Type := 
+
+(* A signal represents the values that 'flow' along wires. Different types
+   for the wire values correspond to different interpretations of circuit
+   descriptions. T set to bool is used for combinational logic semantics,
+   T set to list bool is used for sequential circuit semantics, and
+   T set to Z is used for generating circuit netlists for VHDL generation.
+*)
+Fixpoint signal {T : Type} (s : shape): Type := 
   match s with
   | Bit => T
-  | NoSignal => unit
-  | Tuple2 s1 s2 => signalDenote s1 T * signalDenote s2 T
+  | ‹s1, s2› => @signal T s1 * @signal T s2
   end.
 
+
+(* Primitive unary circuit elements. *)
 Inductive unaryop : Set :=
   | Inv.
 
+(* Primitive binary circuit elements. *)
 Inductive binop : Set :=
   | And2
   | Xor2
-  | Xorcy.
+  | Xorcy. (* Xorcy is an XOR in the fast carry chain on Xilinx FPGAs *)
 
-Inductive cava : signal -> signal -> Type :=
+(* The type cava describes a circuit block where the first parameter describes
+   the shape of the circuit input and the second parameter describes the shape
+   of the circuit output.
+*)
+Inductive cava : shape -> shape -> Type :=
   | Unaryop : unaryop -> cava Bit Bit
   | Binop : binop -> cava ‹Bit, Bit› Bit
   | Muxcy : cava ‹Bit, ‹Bit, Bit›› Bit
-  | Delay : forall {A : signal}, cava A A
-  | Compose : forall {A B C : signal}, cava A B -> cava B C -> cava A C
-  | Par2 : forall {A B C D : signal}, cava A C -> cava B D ->
-                                      cava ‹A, B› ‹C, D›
-  | Rewire : forall {A B : signal}, forall (f : forall t, signalDenote A t -> signalDenote B t), cava A B.
+  | Delay : forall {A : shape}, cava A A
+  | Compose : forall {A B C : shape}, cava A B -> cava B C -> cava A C
+  | Par2 : forall {A B C D : shape}, cava A C -> cava B D ->
+                                     cava ‹A, B› ‹C, D›
+  | Reshape : forall {A B : shape}, forall (f : forall T, @signal T A -> @signal T B), cava A B
+  | Input : forall {A : shape}, string -> cava A A
+  | Output : forall {A : shape}, string -> cava A A.
 
-
+(* An invertor circuit description, and its combinational logic semantics. *)
 Definition inv : cava Bit Bit := Unaryop Inv.
 
-Definition unaryopDenote (u : unaryop) (x : signalDenote Bit bool) : signalDenote Bit bool :=
+Definition unaryopDenote (u : unaryop) (x : signal Bit) : signal Bit :=
   match u, x with
-  | Inv, b => (negb b)
+  | Inv, b => negb b
   end.
 
+(* Some binary input circuit blocks, and their combinational logic semantics. *)
 Definition and2 : cava ‹Bit, Bit› Bit  := Binop And2.
 Definition xor2 : cava ‹Bit, Bit› Bit  := Binop Xor2.
 Definition xorcy : cava ‹Bit, Bit› Bit := Binop Xorcy.
 
+Definition binopDenote (b : binop) (xy : signal ‹Bit, Bit›) : signal Bit :=
+  match xy with
+    (x, y) => match b with
+              | And2  => x && y
+              | Xor2  => xorb x y
+              | Xorcy => xorb x y
+              end
+  end.
+
 Definition and2_comb (xy : bool*bool) : bool := fst xy && snd xy.
 Definition xor2_comb (xy : bool*bool) : bool := xorb (fst xy) (snd xy).
 
-Definition binopDenote (b : binop) (xy : signalDenote ‹Bit, Bit› bool) : signalDenote Bit bool :=
-  match xy with
-   (xv, yv) => match b with
-              | And2  => (xv && yv)
-              | Xor2  => (xorb xv yv)
-              | Xorcy => (xorb xv yv)
-              end
-         
-  end.
-
-Definition applyRewire {A B : signal} (f : forall {T:Type}, signalDenote A T -> signalDenote B T) (inp : signalDenote A bool) :
-                       signalDenote B bool :=
+(* applyReshape allows us apply a generic reshaping function to the input to
+   produce a reshaped output to give a semantic interpretation for combinational
+   circuits.
+*)
+Definition applyReshape {A B : shape} (f : forall {T:Type}, @signal T A -> @signal T B) (inp : @signal bool A) :
+                        @signal bool B :=
   f inp.
 
-Fixpoint cavaDenote {i o : signal} (e : cava i o) : (signalDenote i bool -> signalDenote o bool) :=
+(* A semantics for combinational circuits. For now consider delay to just be an identity function. *)
+Fixpoint cavaCombinational {i o : shape} (e : cava i o) : (@signal bool i -> @signal bool o) :=
   match e with
   | Unaryop uop => unaryopDenote uop 
   | Binop bop => binopDenote bop
   | Muxcy => fun '(s, (a, b)) => if s then a else b 
   | Delay => fun a => a    
-  | Compose f g => fun i => cavaDenote g (cavaDenote f i)
+  | Compose f g => fun i => cavaCombinational g (cavaCombinational f i)
   | Par2 f g => 
-      fun '(p, q) => ((cavaDenote f p), (cavaDenote g q))
-  | Rewire f => applyRewire f
+      fun '(p, q) => (cavaCombinational f p, cavaCombinational g q)
+  | Reshape f => applyReshape f
+  | Input _ => fun x => x
+  | Output _ => fun x => x
   end.
-
-
-Inductive cavaTop : signal -> signal -> Type :=
-  | Input : string -> cavaTop Bit Bit
-  | Output : string -> cavaTop Bit Bit
-  | Circuit : forall {A B : signal}, cavaTop A B.
 
 Check Compose inv inv : cava Bit Bit.
 Check Compose and2 inv : cava ‹Bit, Bit› Bit.
-(* Check Compose inv Delay : cava Bit Bit. *)
+Check Compose inv Delay : cava Bit Bit.
 
 Notation " f ⟼ g " := (Compose f g)
   (at level 39, right associativity) : program_scope.
@@ -110,87 +128,69 @@ Notation " f ⟼ g " := (Compose f g)
 Notation " a ‖ b " := (Par2 a b)
   (at level 45, right associativity) : program_scope.
 
-
-Definition nandGate := and2 ⟼ inv.
-
-Lemma nandGate_proof :
-  forall (a b : bool), cavaDenote nandGate (a, b) = negb (a && b).
-auto.
-Qed.
-
-Definition swapFn {A B : signal} {T : Type} (x: signalDenote ‹A, B› T) : signalDenote ‹B, A› T
-  := match x with
-     | (p, q) => (q, p)
-     end.
-
+Definition swapFn {A B : shape} {T : Type} (x: @signal T ‹A, B›) : @signal T ‹B, A›
+  := match x with (p, q) => (q, p) end.
 
 Check (@swapFn Bit Bit Z) (22%Z, 8%Z).
 Check (@swapFn Bit Bit bool) (false, true).
 
-Definition swap A B : cava ‹A, B› ‹B, A› := Rewire (@swapFn A B).
+Definition swap A B : cava ‹A, B› ‹B, A› := Reshape (@swapFn A B).
 
-Definition fork2Fn {A:signal} {T:Type} (x: signalDenote A T) : signalDenote ‹A, A› T
+Definition fork2Fn {A :shape} {T : Type} (x: @signal T A) : @signal T ‹A, A›
   := (x, x).
 
-Definition fork2 {A} : cava A ‹A, A› := Rewire (@fork2Fn A).
+Definition fork2 {A : shape} : cava A ‹A, A› := Reshape (@fork2Fn A).
 
 Check inv ⟼ fork2 ⟼ and2 : cava Bit Bit.
 
-Definition idFn {A : signal} {T : Type} (x: signalDenote A T) : signalDenote A T := x.
+Definition idFn {A : shape} {T : Type} (x: @signal T A) : @signal T A := x.
 
-Definition id {A} := Rewire (@idFn A).
+Definition id {A} := Reshape (@idFn A).
 
-Definition first {A B X : signal} (a : cava A B) :
+Definition first {A B X : shape} (a : cava A B) :
            cava ‹A, X› ‹B, X› := a ‖ id.
 
-Definition second {A B X : signal} (a : cava A B) :
+Definition second {A B X : shape} (a : cava A B) :
            cava ‹X, A› ‹X, B›:= id ‖ a.
 
-Definition forkBit {T : Type} (x : signalDenote Bit T) : signalDenote ‹Bit, Bit› T := (x, x).
-
-Require Import Program.Equality.
+Definition forkBit {T : Type} (x : @signal T Bit) : @signal T ‹Bit, Bit› := (x, x).
 
 
-Definition swapBit (T : Type) (inp : signalDenote ‹Bit, Bit› T) : signalDenote ‹Bit, Bit› T := 
+(* A version of swap specialized to a tuple of bits. *)
+Definition swapBitFn (T : Type) (inp : @signal T ‹Bit, Bit›) : @signal T ‹Bit, Bit› := 
   match inp with (x, y) => (y, x)
-  end.
+end.
 
+Definition swapBit := Reshape swapBitFn.
 
+Definition tupleLeftFn {A B C : shape} {T : Type} (x : @signal T ‹A, ‹B, C››) :
+                                                   @signal T ‹‹A, B›, C›
+   := match x with (p, (q, r)) => ((p, q), r)
+      end.
 
-Definition tupleLeft {A B C : signal} {T : Type} (x : @signalDenote ‹A, ‹B, C›› T) :
-                                                  signalDenote ‹‹A, B›, C› T
-   := match x with (p, (q, r)) => ((p, q), r) end.
+Definition tupleLeft {A B C : shape} := Reshape (@tupleLeftFn A B C).
 
-(*
-
-Definition belowReorg1 {a b e : signal} {T : Type}
-                       (abe : @Expr T ‹a, ‹b, e››) : @Expr T  ‹‹a, b›, e›
+Definition belowReorg1 {A B E : shape} {T : Type}
+                       (abe : @signal T ‹A, ‹B, E››) : @signal T  ‹‹A, B›, E›
   := match abe with
-       NetPair a be => match be with
-                         NetPair b e => NetPair (NetPair a b) e
-                       end
+       (a, (b, e)) =>  ((a, b), e)
      end.
 
-
-Definition belowReorg2 {c d e : signal} {T : Type}
-                       (cde : @Expr T ‹‹c, d›, e›) : @Expr T  ‹c, ‹d, e››
+Definition belowReorg2 {C D E : shape} {T : Type}
+                       (cde : @signal T ‹‹C, D›, E›) : @signal T  ‹C, ‹D, E››
   := match cde with
-       NetPair cd e => match cd with
-                         NetPair c d => NetPair c (NetPair d e)
-                       end
+       ((c, d), e) => (c, (d, e))
      end.
 
-Definition belowReorg3 {c f g : signal} {T : Type}
-                       (cfg : @Expr T ‹c, ‹f, g››) : @Expr T  ‹‹c, f›, g›
+Definition belowReorg3 {C F G : shape} {T : Type}
+                       (cfg : @signal T ‹C, ‹F, G››) : @signal T  ‹‹C, F›, G›
   := match cfg with
-       NetPair c fg => match fg with
-                         NetPair f g => NetPair (NetPair c f) g
-                       end
+       (c, (f, g)) => ((c, f), g)
      end.
 
-Definition below {A B C D E F G : signal} {T : Type}
+Definition below {A B C D E F G : shape} {T : Type}
                  (f : cava  ‹A, B› ‹C, D›) (g: cava ‹D, E› ‹F, G›) 
-                 (input : @Expr T ‹A,  ‹B, E››) :
+                 (input : @signal T ‹A,  ‹B, E››) :
                  cava  ‹A,  ‹B, E››  ‹‹C, F›, G›
-  := Rewire (@belowReorg1 A B E) ⟼ first f ⟼ Rewire (@belowReorg2 C D E) ⟼ second g ⟼ Rewire (@belowReorg3 C F G).
-*)           
+  := Reshape (@belowReorg1 A B E) ⟼ first f ⟼ Reshape (@belowReorg2 C D E) ⟼ second g ⟼ Reshape (@belowReorg3 C F G).
+           

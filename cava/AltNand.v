@@ -23,9 +23,18 @@ Local Open Scope program_scope.
 Local Open Scope string_scope.
 Set Implicit Arguments.
 
-Definition nandGate := And2 ⟼ Inv.
+
+(* A sample simple circuit: a NAND gate built from an AND2 gate and an INV gate *)
+Definition nandGate := and2 ⟼ inv.
+
+(* A trivial proof that nandGate has the behaviour of a NAND gate. *)
+Lemma nandGate_combinational :
+  forall (a b : bool), cavaCombinational nandGate (a, b) = negb (a && b).
+auto.
+Qed.
 
 Definition nandGateTop : cava (Tuple2 Bit Bit) Bit
   := (Input "a" ‖ Input "b") ⟼ nandGate ⟼ Output "c".
+
 Definition nandGatePipelined : cava (Tuple2 Bit Bit) Bit
-  := (Input "a" ‖ Input "b") ⟼ And2 ⟼ Delay ⟼ Inv ⟼ Delay ⟼ Output "c".
+  := (Input "a" ‖ Input "b") ⟼ and2 ⟼ Delay ⟼ inv ⟼ Delay ⟼ Output "c".
