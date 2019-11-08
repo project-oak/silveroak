@@ -45,11 +45,24 @@ Definition oneBitAdder : cava ‹Bit, ‹Bit, Bit›› ‹Bit, Bit›
 
 Lemma oneBitAdder_combinational :
   forall (cin a b : bool), cavaCombinational oneBitAdder (cin, (a, b))
-    = (xorb cin (xorb a b), orb a (cin && (xorb a b))).
+    = (xorb cin (xorb a b), orb (a && b) (cin && (xorb a b))).
   intros.
   unfold oneBitAdder.
   simpl.
-
+  destruct a; simpl in *.
+  destruct b; simpl in *.
+  reflexivity.
+  destruct cin; simpl in *.
+  reflexivity.
+  reflexivity.
+  destruct b; simpl in *.
+  destruct cin; simpl in *.
+  reflexivity.
+  reflexivity.
+  destruct cin; simpl in *.
+  reflexivity.
+  reflexivity.
+Qed.
 
 Definition oneBitAdder_top
   := (Input "cin" ‖ (Input "a" ‖ Input "b"))  ⟼
