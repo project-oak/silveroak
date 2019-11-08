@@ -1,8 +1,12 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module AltCava2VHDL where
 
 import Control.Monad.State
+
+import qualified Datatypes
 
 import AltCava
 import ExtractionUtils
@@ -29,7 +33,7 @@ genVHDL name expr
      vhdlArchitecture isSeqCir name (netIndex netState) (vhdlCode netState)
      where
      netState :: NetlistState
-     (_, netState) = runState (vhdlInstantiation expr NoNet) (initState False)
+     (_, netState) = runState (vhdlInstantiation expr undefined) (initState False)
      circuitInputs = map fst (inputs netState)
      circuitOutputs = map fst (outputs netState)
      isSeqCir = isSequential netState
@@ -42,14 +46,9 @@ genVHDL name expr
 -- graph and its inputs and outputs.
 --------------------------------------------------------------------------------
 
-instance Eq NetExpr
-instance Show NetExpr
-
-instance Show Coq_cava
-
 data NetlistState
   = NetlistState {netIndex :: Integer,
-                  inputs, outputs :: [(String, NetExpr)],
+                  inputs, outputs :: [(String, Integer)],
                   vhdlCode :: [String],
                   isSequential :: Bool}
     deriving (Eq, Show)
@@ -59,11 +58,11 @@ data NetlistState
 --    | Rewire (NetExpr -> NetExpr)
 -- to express arbitrary rewirings.
 
-clk :: NetExpr
-clk = Net 2
+clk :: Coq_intSignal
+clk = unsafeCoerce 2
 
-rst :: NetExpr
-rst = Net 3
+rst :: Coq_intSignal
+rst = unsafeCoerce 3
 
 initState :: Bool -> NetlistState
 initState isSeq
@@ -73,8 +72,8 @@ initState isSeq
 -- vhdlInstantiation walks the Cava circuit expression and elaborates it.
 --------------------------------------------------------------------------------
 
-vhdlInstantiation :: Coq_cava -> NetExpr -> State NetlistState NetExpr
-vhdlInstantiation (Input name) _
+vhdlInstantiation :: Coq_cava -> Coq_intSignal -> State NetlistState Coq_intSignal
+vhdlInstantiation (Input _ name) _
   = do netState <- get
        let o = netIndex netState
            vhdl = vhdlCode netState
@@ -82,16 +81,20 @@ vhdlInstantiation (Input name) _
            name' = decodeCoqString name
            assignInput = "  net(" ++ show o ++ ") <= " ++ name' ++ ";"
        put (netState{netIndex = o+1,
-                     inputs=(name', Net o):inps,
+                     inputs=(name', o):inps,
                      vhdlCode = assignInput:vhdl})
-       return (Net o)
-vhdlInstantiation Inv i = vhdlUnaryOp "inv" i
-vhdlInstantiation And2 (NetPair _ _ i0 i1) = vhdlBinaryOp "and2" i0 i1
-vhdlInstantiation Xor2 (NetPair _ _ i0 i1) = vhdlBinaryOp "xor2" i0 i1
-vhdlInstantiation Xorcy (NetPair _ _ ci li)
-  = vhdlOpWithPortNames "xorcy" [ci, li] ["ci", "li", "o"]
-vhdlInstantiation Muxcy (NetPair _ _ s (NetPair _ _ di ci))
-  = vhdlOpWithPortNames "muxcy" [s, di, ci] ["s", "di", "ci", "o"]
+       return (unsafeCoerce o)
+vhdlInstantiation (Unaryop Inv) i = vhdlUnaryOp "inv" i
+vhdlInstantiation (Binop And2) i0i1 = vhdlBinaryOp "and2" i0i1
+vhdlInstantiation (Binop Xor2) i0i1 = vhdlBinaryOp "xor2" i0i1
+vhdlInstantiation (Binop Xorcy) cili
+  = case unsafeCoerce cili of
+      Datatypes.Coq_pair ci li -> 
+        vhdlOpWithPortNames "xorcy" [ci, li] ["ci", "li", "o"]
+vhdlInstantiation Muxcy scidi
+  = case unsafeCoerce scidi of
+      Datatypes.Coq_pair s (Datatypes.Coq_pair ci di) ->
+        vhdlOpWithPortNames "muxcy" [s, di, ci] ["s", "di", "ci", "o"]
 vhdlInstantiation (Delay _) i
   = do o <- vhdlOpWithPortNames "fdr" [i, clk, rst] ["d", "c", "r", "q"]
        netState <- get
@@ -100,55 +103,54 @@ vhdlInstantiation (Delay _) i
 vhdlInstantiation (Compose _ _ _ f g) i
   = do x <- vhdlInstantiation f i
        vhdlInstantiation g x
-vhdlInstantiation (Par2 a b c d f g) NoNet
-  = vhdlInstantiation (Par2 a b c d f g) (NetPair NoSignal NoSignal NoNet NoNet)
-vhdlInstantiation (Par2 _ _ p q f g) (NetPair _ _ a b)
+vhdlInstantiation (Par2 _ _ p q f g) ab
   = do ax <- vhdlInstantiation f a
        bx <- vhdlInstantiation g b
-       return (NetPair p q ax bx)          
-vhdlInstantiation (Output name) (Net o)      
+       return (unsafeCoerce (Datatypes.Coq_pair ax bx))
+    where
+    Datatypes.Coq_pair a b = unsafeCoerce ab        
+vhdlInstantiation (Output _ name) o      
   = do netState <- get
        let outs = outputs netState
            vhdl = vhdlCode netState
            name' = decodeCoqString name
-           assignOutput = "  " ++ name' ++ " <= net(" ++ show o ++ ");"
-       put (netState{outputs=(name', Net o):outs,
+           ov :: Integer = unsafeCoerce o
+           assignOutput = "  " ++ name' ++ " <= net(" ++ show ov ++ ");"
+       put (netState{outputs=(name', ov):outs,
                      vhdlCode=assignOutput:vhdl})
-       return (Net o)
-vhdlInstantiation (Rewire _ _ f) i = return (f i)
+       return (unsafeCoerce o)
+vhdlInstantiation (Reshape _ _ f) i = return (f () i)
 
 --------------------------------------------------------------------------------
 -- showNet displays a net in VHDL syntax.
 --------------------------------------------------------------------------------
 
-showNet :: NetExpr -> String
-showNet (Net n) = show n
-showNet other = error ("Can't emit " ++ show other)
-
-vhdlOpWithPortNames :: String -> [NetExpr] -> [String] ->
-                       State NetlistState NetExpr
+vhdlOpWithPortNames :: String -> [Coq_intSignal] -> [String] ->
+                       State NetlistState Coq_intSignal
 vhdlOpWithPortNames name instantiatedInputs portNames
   = do netState <- get
        let o = netIndex netState
            vhdl = vhdlCode netState
-           inputPorts = zipWith wireUpPort (init portNames) inputNumbers
+           ii :: [Integer] = map unsafeCoerce instantiatedInputs
+           inputPorts = zipWith wireUpPort (init portNames) ii
            allPorts = inputPorts ++ [wireUpPort (last portNames) o]
            inst = "  " ++ name ++ "_" ++ show o ++
                   " : " ++ name ++ " port map (\n" ++
                   unlines (insertCommas allPorts) ++ "  );"
        put (netState{netIndex = o+1, vhdlCode = inst:vhdl})
-       return (Net o)
+       return (unsafeCoerce o)
     where
     wireUpPort n i = "    " ++ n ++ " => net(" ++ show i ++ ")"
-    inputNumbers = map (\(Net n) -> n) instantiatedInputs
 
-vhdlUnaryOp :: String -> NetExpr -> State NetlistState NetExpr
+vhdlUnaryOp :: String -> Coq_intSignal -> State NetlistState Coq_intSignal
 vhdlUnaryOp name i =
-  vhdlOpWithPortNames name [i] ["i", "o"]
+  vhdlOpWithPortNames name [unsafeCoerce i] ["i", "o"]
 
-vhdlBinaryOp :: String -> NetExpr -> NetExpr -> State NetlistState NetExpr
-vhdlBinaryOp name i0 i1
-  = vhdlOpWithPortNames name [i0, i1] ["i0", "i1", "o"]
+vhdlBinaryOp :: String -> Coq_intSignal ->
+                State NetlistState Coq_intSignal
+vhdlBinaryOp name i0i1
+  = case unsafeCoerce i0i1 of
+      Datatypes.Coq_pair i0 i1 -> vhdlOpWithPortNames name [i0, i1] ["i0", "i1", "o"]
 
 insertSemicolons :: [String] -> [String]
 insertSemicolons [] = []

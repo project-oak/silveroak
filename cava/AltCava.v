@@ -37,12 +37,17 @@ Notation "‹ x , y ›" := (Tuple2 x y).
    T set to list bool is used for sequential circuit semantics, and
    T set to Z is used for generating circuit netlists for VHDL generation.
 *)
-Fixpoint signal {T : Type} (s : shape): Type := 
+Fixpoint signal {T : Type} (s : shape) : Type := 
   match s with
   | Bit => T
   | ‹s1, s2› => @signal T s1 * @signal T s2
   end.
 
+
+Definition boolSignal := @signal bool.
+Definition intSignal := @signal Z.
+Definition boolPair := @signal bool ‹Bit, Bit› .
+Definition intPair := @signal Z ‹Bit, Bit› .
 
 (* Primitive unary circuit elements. *)
 Inductive unaryop : Set :=
