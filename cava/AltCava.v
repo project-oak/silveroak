@@ -66,7 +66,7 @@ Inductive binop : Set :=
 Inductive cava : shape -> shape -> Type :=
   | Unaryop : unaryop -> cava Bit Bit
   | Binop : binop -> cava ‹Bit, Bit› Bit
-  | Muxcy : cava ‹Bit, ‹Bit, Bit›› Bit
+  | Muxcy : cava ‹Bit, ‹Bit, Bit›› Bit  (* (s, (di, ci)) output is di if s false, ci otherwise *)
   | Delay : forall {A : shape}, cava A A
   | Compose : forall {A B C : shape}, cava A B -> cava B C -> cava A C
   | Par2 : forall {A B C D : shape}, cava A C -> cava B D ->
@@ -113,7 +113,7 @@ Fixpoint cavaCombinational {i o : shape} (e : cava i o) : (@signal bool i -> @si
   match e with
   | Unaryop uop => unaryopDenote uop 
   | Binop bop => binopDenote bop
-  | Muxcy => fun '(s, (a, b)) => if s then a else b 
+  | Muxcy => fun '(s, (di, ci)) => if s then ci else di 
   | Delay => fun a => a    
   | Compose f g => fun i => cavaCombinational g (cavaCombinational f i)
   | Par2 f g => 

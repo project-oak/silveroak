@@ -43,6 +43,14 @@ Definition reorg2 := Reshape reorg2Fn.
 Definition oneBitAdder : cava ‹Bit, ‹Bit, Bit›› ‹Bit, Bit›
   := reorg1  ⟼ second xor2  ⟼ reorg2  ⟼ (xorcy ‖ Muxcy).
 
+Lemma oneBitAdder_combinational :
+  forall (cin a b : bool), cavaCombinational oneBitAdder (cin, (a, b))
+    = (xorb cin (xorb a b), orb a (cin && (xorb a b))).
+  intros.
+  unfold oneBitAdder.
+  simpl.
+
+
 Definition oneBitAdder_top
   := (Input "cin" ‖ (Input "a" ‖ Input "b"))  ⟼
      oneBitAdder  ⟼
