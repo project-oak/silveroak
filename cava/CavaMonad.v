@@ -1,6 +1,3 @@
-Require Import Coq.ZArith.ZArith_base Coq.Strings.String.
-
-
 Class Monad (m : Type -> Type) : Type := { 
     ret : forall {t}, t -> m t ;
     bind : forall {t u}, m t -> (t -> m u) -> m u
