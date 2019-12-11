@@ -104,22 +104,36 @@ Proof.
   all: reflexivity.
 Qed.
 
-Definition g_half_adder(a b : bool) : bool * bool := (g_and a b, g_xor a b).
+(* All bit lists are little endian, so a function returning a carry returns that last for consistency *)
+
+Require Import List.
+
+Definition p_bit_to_nat(a : bool) : nat := if a then 1 else 0.
+
+Fixpoint p_bits_to_nat(b : list bool) : nat :=
+  match b with
+    | nil => 0
+    | b0::t => (p_bit_to_nat b0) + 2 * p_bits_to_nat t
+  end.
+
+(* conveniences for dealing with carries *)
+Definition p_bitsc_to_nat (b : list bool) (c : bool) : nat := p_bits_to_nat (b ++ c::nil).
+Definition p_bitc_to_nat (b c : bool) : nat := p_bits_to_nat (b::c::nil).
+
+Definition g_half_adder(a b : bool) : bool * bool := (g_xor a b, g_and a b).
 
 Definition p_half_adder(a b : nat) : nat := a + b.
 
-Definition p_bits(a : bool * bool) : nat :=
+(* Definition p_bits(a : bool * bool) : nat :=
   match a with
   | (true, true) => 3
   | (true, false) => 2
   | (false, true) => 1
   | (false, false) => 0
-  end.
-
-Definition p_bit(a : bool) : nat := if a then 1 else 0.
+  end. *)
 
 Lemma half_adder_equiv :
-  forall (a b : bool), p_bits (g_half_adder a b) = p_half_adder (p_bit a) (p_bit b).
+  forall (a b : bool), let (r, c) := g_half_adder a b in p_bitc_to_nat r c = p_half_adder (p_bit_to_nat a) (p_bit_to_nat b).
 Proof.
   intros a b.
   case a, b.
@@ -127,47 +141,53 @@ Proof.
 Qed.
 
 Definition g_full_adder(a b c : bool) : bool * bool :=
-  let (abh, abl) := g_half_adder a b in
-  let (abch, abcl) := g_half_adder abl c in
-  let (h, l) := g_half_adder abh abch in
-  (l, abcl).
+  let (abl, abh) := g_half_adder a b in
+  let (abcl, abch) := g_half_adder abl c in
+(*  let (l, h) := g_half_adder abh abch in
+  (abcl, l). or.. *)
+  (abcl, g_or abh abch).  (* should be g_xor, but the true, true case is impossible and g_or is cheaper *)
+
+Compute g_full_adder true true true.
 
 Definition p_adder(a b c : nat) : nat := a + b + c.
 
 Lemma full_adder_equiv :
-  forall (a b c : bool), p_bits (g_full_adder a b c) = p_adder (p_bit a) (p_bit b) (p_bit c).
+  forall (a b c : bool), let r := g_full_adder a b c in p_bits_to_nat (fst r::snd r::nil) = p_adder (p_bit_to_nat a) (p_bit_to_nat b) (p_bit_to_nat c).
 Proof.
   intros a b c.
   case a, b, c.
+  all: simpl.  (* not needed, goes faster *)
   all: reflexivity.
 Qed.
 
-Definition g_bit2_adder(a1 a0 b1 b0 c : bool) : bool * bool * bool :=
-  let (h0, l0) := g_full_adder a0 b0 c in
-  let (h1, l1) := g_full_adder a1 b1 h0 in
-  (h1, l1, l0).
+Definition g_bit2_adder(a0 a1 b0 b1 c : bool) : bool * bool * bool :=
+  let (l0, h0) := g_full_adder a0 b0 c in
+  let (l1, h1) := g_full_adder a1 b1 h0 in
+  (l0, l1, h1).
 
-Definition p_bits3(a : bool*bool*bool) : nat :=
+(* Definition p_bits3(a : bool*bool*bool) : nat :=
   match a with
   | (b, c, d) => p_bits (b, c) * 2 + p_bit d
-  end.
+  end. *)
+
+Compute g_bit2_adder true true true true true.
 
 Lemma bit2_adder_equiv :
-  forall (a1 a0 b1 b0 c : bool), p_bits3 (g_bit2_adder a1 a0 b1 b0 c) = p_adder (p_bits (a1, a0)) (p_bits (b1, b0)) (p_bit c).
+  forall (a1 a0 b1 b0 c : bool),
+    let '(r0, r1, c') := g_bit2_adder a0 a1 b0 b1 c in
+    p_bits_to_nat (r0::r1::c'::nil) = p_adder (p_bits_to_nat (a0::a1::nil)) (p_bits_to_nat (b0::b1::nil)) (p_bit_to_nat c).
 Proof.
   intros a1 a0 b1 b0 c.
   case a1, a0, b1, b0, c.
   all: reflexivity.
 Qed.
 
-Require Import List.
-
 Fixpoint g_bitn_adder(n : nat) (a b : list bool) (c : bool) : list bool :=
   match n with
     | 0 => nil
-    | 1 => let (h, l) := g_full_adder (hd false a) (hd false b) c in
+    | 1 => let (l, h) := g_full_adder (hd false a) (hd false b) c in
            l::h::nil
-    | S n' => let (h, l) := g_full_adder (hd false a) (hd false b) c in
+    | S n' => let (l, h) := g_full_adder (hd false a) (hd false b) c in
               let r := g_bitn_adder n' (tl a) (tl b) h in
               l::r
       (* let (h, l) := g_full_adder (last a false) (last b false) c in
@@ -175,14 +195,9 @@ Fixpoint g_bitn_adder(n : nat) (a b : list bool) (c : bool) : list bool :=
               r ++ l::nil *)
   end.
 
-Fixpoint p_lbits(b : list bool) : nat :=
-  match b with
-    | nil => 0
-    | b0::t => (p_bit b0) + 2 * p_lbits t
-  end.
-
 Lemma bitn2_adder_equiv :
-  forall (a1 a0 b1 b0 c : bool), p_lbits (g_bitn_adder 2 (a0::a1::nil) (b0::b1::nil) c) =  p_adder (p_bits (a1, a0)) (p_bits (b1, b0)) (p_bit c).
+  forall (a1 a0 b1 b0 c : bool),
+    p_bits_to_nat (g_bitn_adder 2 (a0::a1::nil) (b0::b1::nil) c) =  p_adder (p_bits_to_nat (a0::a1::nil)) (p_bits_to_nat (b0::b1::nil)) (p_bit_to_nat c).
 Proof.
   intros a1 a0 b1 b0 c.
   case a1, a0, b1, b0, c.
@@ -192,16 +207,18 @@ Qed.
 (* proof due to Jade *)
 Require Import Coq.micromega.Lia.
 
-Lemma p_bit_to_bits a :
-  p_bit (snd a) = p_bits a - 2 * p_bit (fst a).
+
+Lemma p_bit_to_bits a:
+  p_bit_to_nat (fst a) = p_bits_to_nat ((fst a)::(snd a)::nil) - 2 * p_bit_to_nat (snd a).
 Proof.
   destruct a as [b1 b2].
   destruct b1, b2.
   all: reflexivity.
 Qed.
 
-Lemma fst_bit_le_bits a :
- 2 * p_bit (fst a) <= p_bits a.
+
+Lemma snd_bit_le_bits a :
+  2 * p_bit_to_nat (snd a) <= p_bits_to_nat ((fst a)::(snd a)::nil).
 Proof.
   destruct a as [b1 b2].
   case b1, b2.  (* can also use destruct *)
@@ -212,7 +229,7 @@ Qed.
 Lemma bitn_adder_is_adder :
   forall (n : nat) (a b : list bool) (c : bool),
     length a = (S n) -> length b = (S n) ->
-    p_lbits (g_bitn_adder (S n) a b c) = p_adder (p_lbits a) (p_lbits b) (p_bit c).
+    p_bits_to_nat (g_bitn_adder (S n) a b c) = p_adder (p_bits_to_nat a) (p_bits_to_nat b) (p_bit_to_nat c).
 Proof.
   induction n.
   all: intros a b c.
@@ -233,12 +250,14 @@ Proof.
            | H : S (length ?x) = 1 |- _ =>
              destruct x; [clear H|cbn [length] in H; congruence]
            end.
-    cbn [p_lbits g_bitn_adder] in *.
+    (* note that the rest of this proof can be replaced by 'case b0, b, c; reflexivity.', however, that is less elegant and in any
+       case doesn't work for the n > 1 case below *)
+    cbn [p_bits_to_nat g_bitn_adder] in *.
     cbn [hd tl].
     rewrite (p_bit_to_bits (g_full_adder _ _ _)).
     (* need to show subtraction doesn't underflow for [lia]*)
-    match goal with |- context [ p_bits ?x - ?y ] =>
-                    assert (y <= p_bits x) by apply fst_bit_le_bits end.
+    match goal with |- context [ p_bits_to_nat ?x - ?y ] =>
+                    assert (y <= p_bits_to_nat x) by apply snd_bit_le_bits end.
     rewrite full_adder_equiv in *.
     cbv [p_adder] in *.
     lia. }
@@ -249,24 +268,24 @@ Proof.
     end.
     destruct n.
     { (* n = 1 case *)
-      cbn [p_lbits g_bitn_adder] in *.
+      cbn [p_bits_to_nat g_bitn_adder] in *.
       rewrite IHn by (cbn [length tl]; lia).
       cbn [hd tl].
       rewrite (p_bit_to_bits (g_full_adder _ _ _)).
       (* need to show subtraction doesn't underflow for [lia]*)
-      match goal with |- context [ p_bits ?x - ?y ] =>
-                      assert (y <= p_bits x) by apply fst_bit_le_bits end.
+      match goal with |- context [ p_bits_to_nat ?x - ?y ] =>
+                      assert (y <= p_bits_to_nat x) by apply snd_bit_le_bits end.
       rewrite full_adder_equiv in *.
       cbv [p_adder] in *.
       lia. }
     { (* n > 1 case -- proof is exactly the same *)
-      cbn [p_lbits g_bitn_adder] in *.
+      cbn [p_bits_to_nat g_bitn_adder] in *.
       rewrite IHn by (cbn [length tl]; lia).
       cbn [hd tl].
       rewrite (p_bit_to_bits (g_full_adder _ _ _)).
       (* need to show subtraction doesn't underflow for [lia] *)
-      match goal with |- context [ p_bits ?x - ?y ] =>
-                      assert (y <= p_bits x) by apply fst_bit_le_bits end.
+      match goal with |- context [ p_bits_to_nat ?x - ?y ] =>
+                      assert (y <= p_bits_to_nat x) by apply snd_bit_le_bits end.
       rewrite full_adder_equiv in *.
       cbv [p_adder] in *.
       lia. } }
@@ -282,7 +301,7 @@ Definition g_inc16(a : list bool) : list bool := g_add16 a (false::false::false:
 
 Lemma inc16_is_incrementer :
   forall (a : list bool),
-    length a = 16 -> p_lbits (g_inc16 a) = p_lbits a + 1.
+    length a = 16 -> p_bits_to_nat (g_inc16 a) = p_bits_to_nat a + 1.
 Proof.
   intros a.
   intros la.
