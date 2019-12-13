@@ -22,30 +22,47 @@ Require Import Coq.Program.Basics.
 Local Open Scope program_scope.
 
 
-Definition reorg1Fn {cin a b : signal}
-                    (cinab : NetExpr ‹cin, ‹a, b››) : NetExpr ‹‹cin, a›, ‹a, b››
+Definition reorg1Fn (T : Type) 
+                    (cinab : @signal T ‹Bit, ‹Bit, Bit››) : @signal T ‹‹Bit, Bit›, ‹Bit, Bit››
   := match cinab with
-       NetPair cin ab => match ab with
-                           NetPair a b => NetPair (NetPair cin a) (NetPair a b)
-                         end
+       (cin, (a, b)) =>  ((cin, a), (a, b))
      end.
 
 Definition reorg1 : cava ‹Bit, ‹Bit, Bit›› ‹‹Bit, Bit›, ‹Bit, Bit››
-           := Rewire reorg1Fn.
+           := Reshape reorg1Fn.
 
-Definition reorg2Fn (cinaps : NetExpr ‹‹Bit, Bit›, Bit›) :
-                    NetExpr‹‹Bit, Bit›, ‹Bit, ‹Bit, Bit›››
+Definition reorg2Fn (T : Type)
+                    (cinaps : @signal T ‹‹Bit, Bit›, Bit›) :
+                     @signal T ‹‹Bit, Bit›, ‹Bit, ‹Bit, Bit›››
   := match cinaps with
-       @NetPair (Tuple2 Bit Bit) Bit cina ps
-          => match cina with
-                @NetPair Bit Bit cin a => NetPair (NetPair cin ps) (NetPair ps (NetPair a cin))
-             end
+       ((cin, a), ps) => ((cin, ps), (ps, (a, cin)))
      end.
 
-Definition reorg2 := Rewire reorg2Fn.
+Definition reorg2 := Reshape reorg2Fn.
 
 Definition oneBitAdder : cava ‹Bit, ‹Bit, Bit›› ‹Bit, Bit›
-  := reorg1  ⟼ second Xor2  ⟼ reorg2  ⟼ (Xorcy ‖ Muxcy).
+  := reorg1  ⟼ second xor2  ⟼ reorg2  ⟼ (xorcy ‖ Muxcy).
+
+Lemma oneBitAdder_combinational :
+  forall (cin a b : bool), cavaCombinational oneBitAdder (cin, (a, b))
+    = (xorb cin (xorb a b), orb (a && b) (cin && (xorb a b))).
+  intros.
+  unfold oneBitAdder.
+  simpl.
+  destruct a; simpl in *.
+  destruct b; simpl in *.
+  reflexivity.
+  destruct cin; simpl in *.
+  reflexivity.
+  reflexivity.
+  destruct b; simpl in *.
+  destruct cin; simpl in *.
+  reflexivity.
+  reflexivity.
+  destruct cin; simpl in *.
+  reflexivity.
+  reflexivity.
+Qed.
 
 Definition oneBitAdder_top
   := (Input "cin" ‖ (Input "a" ‖ Input "b"))  ⟼

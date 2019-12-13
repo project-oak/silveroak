@@ -1,3 +1,4 @@
+-R ../../coq-haskell/src Hask
 Cava.v
 Nand2.v
 OneBitAdder.v
