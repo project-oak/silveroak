@@ -182,13 +182,13 @@ Proof.
   all: reflexivity.
 Qed.
 
-Fixpoint g_bitn_adder(n : nat) (a b : list bool) (c : bool) : list bool :=
-  match n with
-    | 0 => nil
-    | 1 => let (l, h) := g_full_adder (hd false a) (hd false b) c in
+Fixpoint g_bitn_adder (a b : list bool) (c : bool) : list bool :=
+  match a with
+    | nil => nil
+    | a0::nil => let (l, h) := g_full_adder (hd false a) (hd false b) c in
            l::h::nil
-    | S n' => let (l, h) := g_full_adder (hd false a) (hd false b) c in
-              let r := g_bitn_adder n' (tl a) (tl b) h in
+    | a0::t => let (l, h) := g_full_adder (hd false a) (hd false b) c in
+              let r := g_bitn_adder t (tl b) h in
               l::r
       (* let (h, l) := g_full_adder (last a false) (last b false) c in
               let r := g_bitn_adder n' (removelast a) (removelast b) h in
@@ -197,16 +197,15 @@ Fixpoint g_bitn_adder(n : nat) (a b : list bool) (c : bool) : list bool :=
 
 Lemma bitn2_adder_equiv :
   forall (a1 a0 b1 b0 c : bool),
-    p_bits_to_nat (g_bitn_adder 2 (a0::a1::nil) (b0::b1::nil) c) =  p_adder (p_bits_to_nat (a0::a1::nil)) (p_bits_to_nat (b0::b1::nil)) (p_bit_to_nat c).
+    p_bits_to_nat (g_bitn_adder (a0::a1::nil) (b0::b1::nil) c) =  p_adder (p_bits_to_nat (a0::a1::nil)) (p_bits_to_nat (b0::b1::nil)) (p_bit_to_nat c).
 Proof.
   intros a1 a0 b1 b0 c.
   case a1, a0, b1, b0, c.
   all: reflexivity.
 Qed.
 
-(* proof due to Jade *)
+(* original proof due to Jade, now heavily mangled *)
 Require Import Coq.micromega.Lia.
-
 
 Lemma p_bit_to_bits a:
   p_bit_to_nat (fst a) = p_bits_to_nat ((fst a)::(snd a)::nil) - 2 * p_bit_to_nat (snd a).
@@ -226,72 +225,93 @@ Proof.
   all: lia.
 Qed.
 
-Lemma bitn_adder_is_adder :
-  forall (n : nat) (a b : list bool) (c : bool),
-    length a = (S n) -> length b = (S n) ->
-    p_bits_to_nat (g_bitn_adder (S n) a b c) = p_adder (p_bits_to_nat a) (p_bits_to_nat b) (p_bit_to_nat c).
+Lemma SS_ne_1 :
+  forall (n : nat),
+    1 <> S (S n).
 Proof.
-  induction n.
-  all: intros a b c.
-  all: destruct a.
+  intros.
+  lia.
+Qed.
+
+Lemma snd_adder_le_sum:
+  forall (a b c : bool),
+    2 * p_bit_to_nat (snd (g_full_adder a b c)) <= p_bit_to_nat a + p_bit_to_nat b + p_bit_to_nat c.
+Proof.
+  case a, b, c.
+  all: simpl.
+  all: lia.
+Qed.
+
+Lemma len_helper:
+  forall (a b : list bool),
+    S (length (true :: a)) = S (length b) -> S (length a) = length b.
+Proof.
+  intros a b.
+  cbn [length].
+  lia.
+Qed.
+
+Lemma bitn_adder_is_adder :
+  forall (a b : list bool) (c : bool),
+    0 < length a -> length a = length b ->
+    p_bits_to_nat (g_bitn_adder a b c) = p_adder (p_bits_to_nat a) (p_bits_to_nat b) (p_bit_to_nat c).
+Proof.
+  induction a.
+  all: intros b c.
   all: destruct b.
   all: cbn [length].
   all: try congruence. (* gets rid of length mismatches *)
   all: cbn [g_bitn_adder].
   all: intros.
-  { (* n = 0 case *)
-    (* gets rid of let '(h, l) := g_full_adder ... in *)
-    match goal with
-    | |- context [let '(_, _) := ?x in _] =>
-      rewrite (surjective_pairing x)
-    end.
-    (* prove that lists with length 0 are nil *)
-    repeat match goal with
-           | H : S (length ?x) = 1 |- _ =>
-             destruct x; [clear H|cbn [length] in H; congruence]
-           end.
-    (* note that the rest of this proof can be replaced by 'case b0, b, c; reflexivity.', however, that is less elegant and in any
-       case doesn't work for the n > 1 case below *)
-    cbn [p_bits_to_nat g_bitn_adder] in *.
-    cbn [hd tl].
-    rewrite (p_bit_to_bits (g_full_adder _ _ _)).
-    (* need to show subtraction doesn't underflow for [lia]*)
-    match goal with |- context [ p_bits_to_nat ?x - ?y ] =>
-                    assert (y <= p_bits_to_nat x) by apply snd_bit_le_bits end.
-    rewrite full_adder_equiv in *.
-    cbv [p_adder] in *.
-    lia. }
+
+  { (* a = nil case *)
+    apply Lt.lt_0_neq in H.
+    contradiction. }
+
   { (* gets rid of let '(h, l) := g_full_adder ... in *)
     match goal with
     | |- context [let '(_, _) := ?x in _] =>
       rewrite (surjective_pairing x)
     end.
-    destruct n.
-    { (* n = 1 case *)
+    destruct a0.
+    { (* length a0 = 1 case *)
       cbn [p_bits_to_nat g_bitn_adder] in *.
-      rewrite IHn by (cbn [length tl]; lia).
       cbn [hd tl].
       rewrite (p_bit_to_bits (g_full_adder _ _ _)).
-      (* need to show subtraction doesn't underflow for [lia]*)
-      match goal with |- context [ p_bits_to_nat ?x - ?y ] =>
-                      assert (y <= p_bits_to_nat x) by apply snd_bit_le_bits end.
       rewrite full_adder_equiv in *.
       cbv [p_adder] in *.
-      lia. }
-    { (* n > 1 case -- proof is exactly the same *)
-      cbn [p_bits_to_nat g_bitn_adder] in *.
-      rewrite IHn by (cbn [length tl]; lia).
+      rewrite <- mult_n_O with (n := 2).
+      rewrite <- plus_n_O with (n := p_bit_to_nat a).
+      rewrite <- plus_n_O with (n := p_bit_to_nat (snd (g_full_adder a b c))).
+      rewrite <- PeanoNat.Nat.add_sub_swap.
+      rewrite <- PeanoNat.Nat.add_sub_assoc.
+      rewrite PeanoNat.Nat.sub_diag with (n := 2 * p_bit_to_nat (snd (g_full_adder a b c))).
+      destruct b0.
+      - simpl.
+        rewrite <- plus_n_O.
+        rewrite <- plus_n_O.
+        reflexivity.
+      - simpl in H0.
+        apply SS_ne_1 in H0.
+        contradiction.
+      - reflexivity.
+      - apply snd_adder_le_sum. }
+    { (* length a0 > 1 case *)
       cbn [hd tl].
-      rewrite (p_bit_to_bits (g_full_adder _ _ _)).
-      (* need to show subtraction doesn't underflow for [lia] *)
-      match goal with |- context [ p_bits_to_nat ?x - ?y ] =>
-                      assert (y <= p_bits_to_nat x) by apply snd_bit_le_bits end.
-      rewrite full_adder_equiv in *.
-      cbv [p_adder] in *.
-      lia. } }
+      all: case a, b1, b, c.
+      all: cbv [g_full_adder g_half_adder g_xor g_nand g_or g_invert g_and fst snd].
+      all: cbn [p_bits_to_nat p_bit_to_nat].
+      all: unfold p_adder.
+      all: rewrite IHa.
+      all: unfold p_adder.
+      all: simpl.
+      all: try lia.
+      all: apply len_helper.
+      all: apply H0. }
+    }
 Qed.
 
-Definition g_add16(a b : list bool) (c : bool) := g_bitn_adder 16 a b c.
+Definition g_add16(a b : list bool) (c : bool) := g_bitn_adder a b c.
 
 (* TODO: define and prove general incrementer *)
 
@@ -314,6 +334,7 @@ Proof.
   reflexivity.
   lia.
   simpl.
+  rewrite la.
   reflexivity.
 Qed.
 
