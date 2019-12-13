@@ -311,31 +311,114 @@ Proof.
     }
 Qed.
 
-Definition g_add16(a b : list bool) (c : bool) := g_bitn_adder a b c.
+(* a one as a list of bools *)
+Fixpoint g_one (l : nat) : list bool :=
+  match l with
+  | 0 => nil
+  | 1 => true::nil
+  | S l' => g_one l' ++ false::nil
+  end.
 
-(* TODO: define and prove general incrementer *)
+(* Naive incrementer - just use an adder to add one *)
+Definition g_inc (a : list bool) : list bool :=
+  g_bitn_adder a (g_one (length a)) false.
 
-Definition g_inc16(a : list bool) : list bool := g_add16 a (false::false::false::false::false::false::false::false::false::false::false::false::false::false::false::false::nil) true.
+Definition p_inc (a : nat) : nat :=
+  a + 1.
 
-(* Note that this proof should not work! Presumably that will later come back to bite us so leave it for now *)
-
-Lemma inc16_is_incrementer :
-  forall (a : list bool),
-    length a = 16 -> p_bits_to_nat (g_inc16 a) = p_bits_to_nat a + 1.
+Lemma one_is_one_longer :
+  forall (l : nat),
+    0 < l -> g_one(S l) = g_one(l) ++ false::nil.
 Proof.
-  intros a.
-  intros la.
-  unfold g_inc16.
-  unfold g_add16.
+  intros.
+  simpl.
+  apply Lt.lt_0_neq in H.
+  destruct l.
+  - contradiction.
+  - reflexivity.
+Qed.
+
+Lemma adding_false_is_the_same :
+  forall (l: list bool),
+    p_bits_to_nat (l ++ false::nil) = p_bits_to_nat l.
+Proof.
+  intros.
+  induction l.
+  - reflexivity.
+  - case a.
+    all: simpl.
+    all: rewrite <- IHl.
+    all: reflexivity.
+Qed.
+
+Lemma one_is_one :
+  forall (l : nat),
+    p_bits_to_nat (g_one (S l)) = 1.
+Proof.
+  intros l.
+  induction l.
+  reflexivity.
+  rewrite one_is_one_longer with (l := S l).
+  rewrite adding_false_is_the_same.
+  rewrite IHl.
+  trivial.
+  apply PeanoNat.Nat.lt_0_succ.
+Qed.
+
+Lemma length_of_appended :
+  forall (l : list bool),
+    length (l ++ false :: nil) = length l + 1.
+Proof.
+  intros.
+  rewrite app_length.
+  reflexivity.
+Qed.
+
+Lemma length_of_one :
+  forall (n : nat),
+   length (g_one (S n)) = S n.
+Proof.
+  intros.
+  induction n.
+  - simpl.
+    reflexivity.
+  - rewrite one_is_one_longer.
+    rewrite length_of_appended.
+    rewrite IHn.
+    rewrite PeanoNat.Nat.add_1_r.
+    reflexivity.
+    apply PeanoNat.Nat.lt_0_succ.
+Qed.
+
+Lemma inc_is_inc :
+  forall (a : list bool),
+    0 < length a -> p_bits_to_nat (g_inc a) = p_inc (p_bits_to_nat a).
+Proof.
+  intros.
+  unfold g_inc.
   rewrite bitn_adder_is_adder.
-  simpl.
-  unfold p_adder.
-  rewrite <- plus_n_O.
-  reflexivity.
-  lia.
-  simpl.
-  rewrite la.
-  reflexivity.
+  { assert (exists n, length a = S n).
+    { pose (witness := length a - 1).
+      refine (ex_intro _ witness _).
+      lia. }
+    { simpl.
+      unfold p_inc.
+      unfold p_adder.
+      destruct H0.
+      rewrite H0.
+      rewrite one_is_one.
+      lia. }
+  }
+  { apply H. }
+  { assert (exists n, length a = S n).
+    { pose (witness := length a - 1).
+      refine (ex_intro _ witness _).
+      lia. }
+    { destruct H0.
+      rewrite H0.
+      rewrite length_of_one.
+      reflexivity. }
+  }
 Qed.
 
 Fixpoint g_bitn_inverter (n : nat) (a : list bool) : list bool :=
