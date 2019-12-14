@@ -357,21 +357,14 @@ Lemma one_is_one :
 Proof.
   intros l.
   induction l.
-  reflexivity.
-  rewrite one_is_one_longer with (l := S l).
-  rewrite adding_false_is_the_same.
-  rewrite IHl.
-  trivial.
-  apply PeanoNat.Nat.lt_0_succ.
-Qed.
-
-Lemma length_of_appended :
-  forall (l : list bool),
-    length (l ++ false :: nil) = length l + 1.
-Proof.
-  intros.
-  rewrite app_length.
-  reflexivity.
+  { (* l = 1 *)
+    reflexivity. }
+  { (* l > 1 *)
+    rewrite one_is_one_longer with (l := S l).
+    (* prove side condition *)
+    2: apply PeanoNat.Nat.lt_0_succ.
+    rewrite adding_false_is_the_same.
+    apply IHl. }
 Qed.
 
 Lemma length_of_one :
@@ -383,11 +376,12 @@ Proof.
   - simpl.
     reflexivity.
   - rewrite one_is_one_longer.
-    rewrite length_of_appended.
+    (* side condition *)
+    2: apply PeanoNat.Nat.lt_0_succ.
+    rewrite app_length.
     rewrite IHn.
     rewrite PeanoNat.Nat.add_1_r.
     reflexivity.
-    apply PeanoNat.Nat.lt_0_succ.
 Qed.
 
 Lemma inc_is_inc :
