@@ -24,4 +24,6 @@ Makefile.coq
 altnand_pipelined.vhd
 altnand.vhd
 altonebitadder.vhd
+AltNand2VHDL
+AltOneBitAdder2VHDL
 

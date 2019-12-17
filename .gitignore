@@ -10,5 +10,6 @@
 Makefile.coq
 Makefile.coq.conf
 work-obj93.cf
+*/vivado.jou
 */xsim.dir/*
 *~
