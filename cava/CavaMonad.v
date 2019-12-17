@@ -10,22 +10,14 @@ Require Import Hask.Control.Monad.State.
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
-Definition increment : State nat nat
-  := v <- get ;
-     put (v+1) ;;
-     return_ (v+1).
-
-Definition comp1 : nat * nat := increment 0.
-Definition run1 : nat := snd comp1.
-
-Check run1.
-Eval cbv in run1.
-
-
 Class Cava m t  := {
   inv : t -> m t;
   and2 : t * t -> m t;
 }.
+
+(*
+Definition nand2 : `{Monad m} t * t -> m t := and2 >=> inv.
+*)
 
 Record Instance : Type := mkInstance {
   inst_name : string;
@@ -57,8 +49,6 @@ Instance CavaNet : Cava (State CavaState) nat :=
     and2 := and2Net;
 }.
 
-Definition nand2 := and2 >=> inv.
-
 Definition invBool (i : bool) : State unit bool :=
   return_ (negb i).
 
@@ -83,4 +73,6 @@ Eval simpl in fst ((nand2 (true, true)) tt).
 *)
 
 Eval cbv in ((inv 0) (mkCavaState 1 [])).
+(*
 Eval cbv in ((nand2 0) (mkCavaState 1 [])).
+*)
