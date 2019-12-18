@@ -41,7 +41,7 @@ vhdl_compile:
 
 clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \
-		        xsim.dir xvhdl.pb xvhdl.log
+		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq.conf
 		xargs rm -rf < .gitignore
 
 .PHONY: clean vhdl_compile
