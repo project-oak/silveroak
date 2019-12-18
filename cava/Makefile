@@ -14,50 +14,18 @@
 # limitations under the License.
 #
 
-all:		nand2_gate.vhd onebitadder.vhdl altonebitadder.vhd \
-		vhdl_compile
+.PHONY: all compile clean
+
+all:		compile
 
 Makefile.coq:
 		coq_makefile -f _CoqProject -o Makefile.coq
 
-Nand2VHDL:	Makefile.coq Cava2VHDL.hs Nand2VHDL.hs
+compile:	Makefile.coq
 		$(MAKE) -f Makefile.coq
-		ghc -W --make Nand2VHDL.hs
-
-nand2_gate.vhd:	Nand2VHDL
-		./Nand2VHDL
-
-AltNand2VHDL:	Makefile.coq AltCava2VHDL.hs AltNand2VHDL.hs
-		$(MAKE) -f Makefile.coq
-		ghc -W --make AltNand2VHDL.hs
-
-altnand.vhd:		AltNand2VHDL
-			./AltNand2VHDL
-
-
-OneBitAdder2VHDL:	Makefile.coq Cava2VHDL.hs OneBitAdder.hs
-			$(MAKE) -f Makefile.coq
-			ghc --make OneBitAdder2VHDL.hs
-
-onebitadder.vhdl:	OneBitAdder2VHDL
-			./OneBitAdder2VHDL
-
-AltOneBitAdder2VHDL:	Makefile.coq AltCava2VHDL.hs AltOneBitAdder.hs
-			$(MAKE) -f Makefile.coq
-			ghc --make AltOneBitAdder2VHDL.hs
-
-altonebitadder.vhd:	AltOneBitAdder2VHDL
-			./AltOneBitAdder2VHDL
-
-vhdl_compile:
-		xvhdl nand2_gate.vhdl
-		xvhdl nand2_gate_tb.vhdl
-		xvhdl onebitadder.vhdl
-		xvhdl altonebitadder.vhd
 
 clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \
-		        xsim.dir xvhdl.pb xvhdl.log
+		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq.conf
 		xargs rm -rf < .gitignore
 
-.PHONY: clean vhdl_compile
