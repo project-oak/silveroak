@@ -15,9 +15,6 @@ Class Cava m t  := {
   and2 : t * t -> m t;
 }.
 
-(*
-Definition nand2 : `{Monad m} t * t -> m t := and2 >=> inv.
-*)
 
 Record Instance : Type := mkInstance {
   inst_name : string;
@@ -49,6 +46,10 @@ Instance CavaNet : Cava (State CavaState) nat :=
     and2 := and2Net;
 }.
 
+Definition nand2 := and2 >=> inv.
+
+Eval cbv in ((nand2 (0, 1)) (mkCavaState 2 [])).
+
 Definition invBool (i : bool) : State unit bool :=
   return_ (negb i).
 
@@ -60,6 +61,7 @@ Instance CavaBool : Cava (State unit) bool :=
   { inv := invBool;
     and2 := and2Bool;
 }.
+
 
 Eval simpl in fst ((inv false) tt). 
 Eval simpl in fst ((inv true) tt).
