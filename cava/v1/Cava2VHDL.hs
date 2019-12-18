@@ -3,7 +3,7 @@ module Cava2VHDL where
 import Data.List
 import Control.Monad.State
 
-import Cava
+import Cava1 as Cava
 import qualified Datatypes
 import ExtractionUtils
 
