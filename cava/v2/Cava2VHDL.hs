@@ -8,7 +8,7 @@ import Control.Monad.State
 
 import qualified Datatypes
 
-import Cava
+import Cava2 as Cava
 import ExtractionUtils
 
 --------------------------------------------------------------------------------

@@ -14,13 +14,13 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Cava.
+Require Import Cava2.
 Require Import Nand2.
 Require Import OneBitAdder.
 From Coq Require Import Extraction.
 
 Extraction Language Haskell.
 
-Recursive Extraction Library Cava.
+Recursive Extraction Library Cava2.
 Extraction Library Nand2.
 Extraction Library OneBitAdder.

@@ -1,5 +1,5 @@
 -R ../../../coq-haskell/src Hask
-Cava.v
+Cava2.v
 Nand2.v
 OneBitAdder.v
 Extract.v
