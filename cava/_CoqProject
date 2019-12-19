@@ -1,2 +1,4 @@
 -R ../../coq-haskell/src Hask
+-R . Cava
 Cava.v
+Examples.v
