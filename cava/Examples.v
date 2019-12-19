@@ -71,3 +71,4 @@ Lemma nand2_behaviour : forall (a : bool) (b : bool),
                         (fst (nand2 (a, b) tt)) = negb (a && b).
 Proof.
   auto.
+Qed.
