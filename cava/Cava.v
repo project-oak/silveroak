@@ -34,7 +34,12 @@ Local Open Scope monad_scope.
 Set Printing Implicit.
 Set Printing All.
 
+(* The Cava class represents circuit graphs with Coq-level inputs and
+   outputs, but does not represent the IO ports of circuits. This allows
+   us to define both circuit netlist interpretations for the Cava class
+   as well as behavioural interpretations for attributing semantics. *)
 Class Cava m t `{Monad m} := {
+  (* Basic gates *)
   inv : t -> m t;
   and2 : t * t -> m t;
 }.
@@ -47,26 +52,59 @@ Record Instance : Type := mkInstance {
 Record CavaState : Type := mkCavaState {
   netNumber : nat;
   instances : list Instance;
+  inputs : list (string * nat);
+  outputs : list (string * nat);
 }.
 
 
 Definition invNet (i:nat) : State CavaState nat :=
   cs <- get;
   match cs with
-  | mkCavaState o insts => put (mkCavaState (o+1) (cons (mkInstance "inv" [i; o]) insts)) ;;
-                           return_ o
+  | mkCavaState o insts inputs outputs
+      => put (mkCavaState (o+1) (cons (mkInstance "inv" [i; o]) insts) inputs outputs) ;;
+         return_ o
   end. 
 
 Definition and2Net (i0i1 : nat * nat) : State CavaState nat :=
   cs <- get;
   match cs with
-  | mkCavaState o insts => put (mkCavaState (o+1) (cons (mkInstance "and2" [fst i0i1; snd i0i1; o]) insts)) ;;
-                           return_ o
+  | mkCavaState o insts inputs outputs
+      => put (mkCavaState (o+1) (cons (mkInstance "and2" [fst i0i1; snd i0i1; o]) insts) inputs outputs) ;;
+         return_ o
   end.
+
 
 Instance CavaNet : Cava (State CavaState) nat :=
   { inv := invNet;
     and2 := and2Net;
+}.
+
+
+Definition inputNet (name : string) : State CavaState nat := 
+  cs <- get;
+  match cs with
+  | mkCavaState o insts inputs outputs
+     => put (mkCavaState (o+1) insts (cons (name, o) inputs) outputs) ;;
+        return_ o
+  end.
+
+Definition outputNet (name : string) (i : nat) : State CavaState nat :=
+  cs <- get;
+  match cs with
+  | mkCavaState o insts inputs outputs
+     => put (mkCavaState o insts inputs (cons (name, i) outputs)) ;;
+        return_ i
+  end.
+
+Class CavaTop m t `{Cava m t} := {
+  (* Input and output ports. *)
+  input : string -> m t;
+  output : string -> t -> m t;
+}.
+
+Instance CavaTopNet : CavaTop (State CavaState) nat :=
+  { input := inputNet;
+    output := outputNet;
 }.
 
 Definition invBool (i : bool) : State unit bool :=
@@ -75,6 +113,13 @@ Definition invBool (i : bool) : State unit bool :=
 Definition and2Bool (i0i1 : bool * bool) : State unit bool :=
   let (i0, i1) := i0i1 in
   return_ (i0 && i1).
+
+
+Definition inputBool (name : string) : State unit bool :=
+  return_ false.
+
+Definition outputBool (name : string) (i : bool) : State unit bool :=
+  return_ i.
 
 Instance CavaBool : Cava (State unit) bool :=
   { inv := invBool;

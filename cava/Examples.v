@@ -15,8 +15,8 @@
 (****************************************************************************)
 
 (* A codification of the Lava embedded DSL develope for Haskell into
-   Coq for the specification, implementaiton and formal verification of circuits.
-   Experimental work, very much in flux, as Satnam learns Coq!
+   Coq for the specification, implementaiton and formal verification of
+   circuits. Experimental work, very much in flux, as Satnam learns Coq!
 *)
 
 Require Import Program.Basics.
@@ -41,13 +41,27 @@ Eval simpl in fst ((inv true) tt).
 Eval simpl in fst ((and2 (false, false)) tt).
 Eval simpl in fst ((and2 (true, true)) tt).
 
-Eval cbv in ((inv 0) (mkCavaState 1 [])).
+Eval cbv in ((inv 0) (mkCavaState 1 [] [] [])).
 
-(* NAND gate examples. *)
+(* NAND gate example. Fist, let's define an overloaded NAND gate
+   description. *)
 
 Definition nand2 {m t} `{Monad m} `{Cava m t} := and2 >=> inv.
 
-Eval cbv in ((nand2 (0, 1)) (mkCavaState 2 [])).
-
+(* Simulate the NAND gate circuit using the Bool interpretation. *)
 Eval simpl in fst ((nand2 (false, false)) tt).
 Eval simpl in fst ((nand2 (true, true)) tt).
+
+(* Generate a circuit graph representation for the NAND gate using the
+   netlist interpretatin. *)
+Eval cbv in ((nand2 (0, 1)) (mkCavaState 2 [] [] [])).
+
+Definition nand2Top {m t} `{Monad m} `{CavaTop m t} :=
+  a <- input "a" ;
+  b <- input "b" ;
+  c <- nand2 (a, b) ;
+  output "c" c ;;
+  return_ c.
+
+(* Generate a netlist containing the port definitions. *)
+Eval cbv in (nand2Top (mkCavaState 0 [] [] [])).
