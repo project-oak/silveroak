@@ -60,8 +60,7 @@ Definition nand2Top {m t} `{Monad m} `{CavaTop m t} :=
   a <- input "a" ;
   b <- input "b" ;
   c <- nand2 (a, b) ;
-  output "c" c ;;
-  return_ c.
+  output "c" c.
 
 (* Generate a netlist containing the port definitions. *)
 Eval cbv in (nand2Top (mkCavaState 0 [] [] [])).
