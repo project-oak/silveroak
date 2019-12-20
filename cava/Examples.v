@@ -56,14 +56,14 @@ Eval simpl in fst ((nand2 (true, true)) tt).
    netlist interpretatin. *)
 Eval cbv in ((nand2 (0, 1)) (mkCavaState 2 [] [] [])).
 
-Definition nand2Top {m t} `{Monad m} `{CavaTop m t} :=
+Definition nand2Top {m t} `{CavaTop m t} :=
   a <- input "a" ;
   b <- input "b" ;
   c <- nand2 (a, b) ;
   output "c" c.
 
 (* Generate a netlist containing the port definitions. *)
-Eval cbv in (nand2Top (mkCavaState 0 [] [] [])).
+Eval cbv in (nand2Top initState).
 
 (* A proof that the NAND gate implementation is correct. *)
 Lemma nand2_behaviour : forall (a : bool) (b : bool),

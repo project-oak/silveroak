@@ -56,6 +56,8 @@ Record CavaState : Type := mkCavaState {
   outputs : list (string * nat);
 }.
 
+Definition initState : CavaState
+  := mkCavaState 0 [] [] [].
 
 Definition invNet (i:nat) : State CavaState nat :=
   cs <- get;

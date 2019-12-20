@@ -33,3 +33,5 @@ Definition entity (name : string) (netlist : CavaState) : list string :=
       [("entity " ++ name ++ " is ")%string;
        ("end entity " ++ name ++ ";")%string]
   end.
+
+Eval cbv in (entity "wombat" initState).
