@@ -46,7 +46,7 @@ Eval cbv in ((inv 0) (mkCavaState 1 [] [] [])).
 (* NAND gate example. Fist, let's define an overloaded NAND gate
    description. *)
 
-Definition nand2 {m t} `{Monad m} `{Cava m t} := and2 >=> inv.
+Definition nand2 {m t} `{Cava m t} := and2 >=> inv.
 
 (* Simulate the NAND gate circuit using the Bool interpretation. *)
 Eval simpl in fst ((nand2 (false, false)) tt).
