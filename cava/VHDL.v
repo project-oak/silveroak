@@ -30,17 +30,6 @@ Definition a : list string := [append ("alpha") ("beta")].
 Definition entity (name : string) (netlist : CavaState) : list string :=
   match netlist with
   | mkCavaState o insts inputs outputs =>
-      [append "entity " (append name " is ");
-       append "end entity " (append name ";")]
+      [("entity " ++ name ++ " is ")%string;
+       ("end entity " ++ name ++ ";")%string]
   end.
-
-(* But why can't I say this?
-
-Definition entity2 (name : string) (netlist : CavaState) : list string :=
-  match netlist with
-  | mkCavaState o insts inputs outputs =>
-      ["entity "%string ++ name " is "%string;
-       "end entity "%string ++ name ++ ";"%string]
-  end.
-
-*)
