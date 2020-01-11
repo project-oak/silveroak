@@ -14,29 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Program.Basics.
-From Coq Require Import Bool.Bool.
-From Coq Require Import Ascii String.
-From Coq Require Import Strings.String.
-From Coq Require Import Lists.List.
-Import ListNotations.
+Require Import Cava.
+Require Import Examples.
 From Coq Require Import Extraction.
 
 Extraction Language Haskell.
 
-
-Require Import Cava.
-
-Local Open Scope list_scope.
-
-Definition a : list string := [append ("alpha") ("beta")].
-
-Definition entity (name : string) (netlist : CavaState) : list string :=
-  match netlist with
-  | mkCavaState o insts inputs outputs =>
-     [("entity " ++ name ++ " is")%string;
-      ("end entity " ++ name ++ ";")%string
-     ]
-  end.
-
-Definition wombat := entity "wombat" initState.
+Recursive Extraction Library Cava.
+Extraction Library Examples.

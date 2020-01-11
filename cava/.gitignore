@@ -26,4 +26,10 @@ altnand.vhd
 altonebitadder.vhd
 AltNand2VHDL
 AltOneBitAdder2VHDL
+Applicative.hs
+Examples.hs
+Functor.hs
+Ltac.hs
+Monad.hs
+State.hs
 

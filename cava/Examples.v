@@ -65,6 +65,8 @@ Definition nand2Top {m t} `{CavaTop m t} :=
 (* Generate a netlist containing the port definitions. *)
 Eval cbv in (nand2Top initState).
 
+Definition nand2Netlist := snd (nand2Top initState).
+
 (* A proof that the NAND gate implementation is correct. *)
 Lemma nand2_behaviour : forall (a : bool) (b : bool),
                         (fst (nand2 (a, b) tt)) = negb (a && b).
