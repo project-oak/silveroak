@@ -16,7 +16,7 @@
 
 .PHONY: all compile clean
 
-all:		compile
+all:		compile nand2.sv
 
 Makefile.coq:
 		coq_makefile -f _CoqProject -o Makefile.coq
@@ -25,8 +25,16 @@ compile:	Makefile.coq
 		$(MAKE) -f Makefile.coq
 		sed -i  '2 a import qualified Data.Bits\nimport qualified Data.Char' Ascii.hs
 
+ExamplesSV:	ExamplesSV.hs
+		ghc --make ExamplesSV.hs
+
+nand2.sv:	compile ExamplesSV
+		./ExamplesSV
+
 clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \
-		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq.conf
+		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq.conf \
+			ExamplesSV \
+			nand2.sv
 		xargs rm -rf < .gitignore
 

@@ -13,15 +13,12 @@
    limitations under the License.
 -}
 
-{-# LANGUAGE StandaloneDeriving #-}
 
 module Main where
 
 import qualified Cava
+import Cava2SystemVerilog
 import Examples
 
-deriving instance Show Cava.Instance
-deriving instance Show Cava.CavaState
-
 main :: IO ()
-main = putStrLn "Hello"
+main = writeSystemVerilog nand2Netlist

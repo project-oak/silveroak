@@ -28,4 +28,6 @@ Functor.hs
 Ltac.hs
 Monad.hs
 State.hs
+ExamplesSV
+nand2.sv
 

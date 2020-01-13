@@ -18,7 +18,31 @@ where
 
 import qualified Cava
 
+writeSystemVerilog :: Cava.CavaState -> IO ()
+writeSystemVerilog netlist
+  = writeFile (Cava.moduleName netlist ++ ".sv")
+              (unlines (cava2SystemVerilog netlist))
 
+cava2SystemVerilog :: Cava.CavaState -> [String]
+cava2SystemVerilog (Cava.Coq_mkCavaState moduleName netNumber instances
+                    inputs outputs)
+  = ["module " ++ moduleName ++ "("] ++
+    insertCommas (inputPorts inputs ++ outputPorts outputs) ++
+    ["  );"]
 
+inputPorts :: [(String, Integer)] -> [String]
+inputPorts = map inputPort
 
-    
+inputPort :: (String, Integer) -> String
+inputPort (name, _) = "  input " ++ name
+
+outputPorts :: [(String, Integer)] -> [String]
+outputPorts = map outputPort
+
+outputPort :: (String, Integer) -> String
+outputPort (name, _) = "  output " ++ name
+
+insertCommas :: [String] -> [String]
+insertCommas [] = []
+insertCommas [x] = [x]
+insertCommas (x:y:xs) = (x ++ ",") : insertCommas (y:xs)
