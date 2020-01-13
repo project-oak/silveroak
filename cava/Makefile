@@ -23,6 +23,7 @@ Makefile.coq:
 
 compile:	Makefile.coq
 		$(MAKE) -f Makefile.coq
+		sed -i  '2 a import qualified Data.Bits\nimport qualified Data.Char' Ascii.hs
 
 clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \

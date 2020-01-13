@@ -24,8 +24,6 @@ From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 From Coq Require Import ZArith.
-From Coq Require Import extraction.ExtrHaskellZInteger.
-From Coq Require Import extraction.ExtrHaskellString.
 Import ListNotations.
 
 Require Import Hask.Control.Monad.
@@ -44,7 +42,7 @@ Eval simpl in fst ((inv true) tt).
 Eval simpl in fst ((and2 (false, false)) tt).
 Eval simpl in fst ((and2 (true, true)) tt).
 
-Eval cbv in ((inv (0%Z)) (mkCavaState (1%Z) [] [] [])).
+Eval cbv in ((inv (0%Z)) (mkCavaState "" (1%Z) [] [] [])).
 
 (* NAND gate example. Fist, let's define an overloaded NAND gate
    description. *)
@@ -57,9 +55,10 @@ Eval simpl in fst ((nand2 (true, true)) tt).
 
 (* Generate a circuit graph representation for the NAND gate using the
    netlist interpretatin. *)
-Eval cbv in ((nand2 (0%Z, 1%Z)) (mkCavaState (2%Z) [] [] [])).
+Eval cbv in ((nand2 (0%Z, 1%Z)) (mkCavaState "" (2%Z) [] [] [])).
 
 Definition nand2Top {m t} `{CavaTop m t} :=
+  setModuleName "nand2" ;;
   a <- input "a" ;
   b <- input "b" ;
   c <- nand2 (a, b) ;

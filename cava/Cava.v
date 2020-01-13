@@ -51,6 +51,7 @@ Record Instance : Type := mkInstance {
 }.
 
 Record CavaState : Type := mkCavaState {
+  moduleName : string;
   netNumber : Z;
   instances : list Instance;
   inputs : list (string * Z);
@@ -58,21 +59,21 @@ Record CavaState : Type := mkCavaState {
 }.
 
 Definition initState : CavaState
-  := mkCavaState 0 [] [] [].
+  := mkCavaState "" 0 [] [] [].
 
 Definition invNet (i : Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState o insts inputs outputs
-      => put (mkCavaState (o+1) (cons (mkInstance "inv" [i; o]) insts) inputs outputs) ;;
+  | mkCavaState name o insts inputs outputs
+      => put (mkCavaState name (o+1) (cons (mkInstance "inv" [i; o]) insts) inputs outputs) ;;
          return_ o
   end. 
 
 Definition and2Net (i0i1 : Z * Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState o insts inputs outputs
-      => put (mkCavaState (o+1) (cons (mkInstance "and2" [fst i0i1; snd i0i1; o]) insts) inputs outputs) ;;
+  | mkCavaState name o insts inputs outputs
+      => put (mkCavaState name (o+1) (cons (mkInstance "and2" [fst i0i1; snd i0i1; o]) insts) inputs outputs) ;;
          return_ o
   end.
 
@@ -82,31 +83,40 @@ Instance CavaNet : Cava (State CavaState) Z :=
     and2 := and2Net;
 }.
 
+Definition setModuleNameNet (name : string) : State CavaState unit :=
+  cs <- get;
+  match cs with
+  | mkCavaState _ o insts inputs outputs
+     => put (mkCavaState name o insts inputs outputs)
+  end.
 
 Definition inputNet (name : string) : State CavaState Z := 
   cs <- get;
   match cs with
-  | mkCavaState o insts inputs outputs
-     => put (mkCavaState (o+1) insts (cons (name, o) inputs) outputs) ;;
+  | mkCavaState n o insts inputs outputs
+     => put (mkCavaState n (o+1) insts (cons (name, o) inputs) outputs) ;;
         return_ o
   end.
 
 Definition outputNet (name : string) (i : Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState o insts inputs outputs
-     => put (mkCavaState o insts inputs (cons (name, i) outputs)) ;;
+  | mkCavaState n o insts inputs outputs
+     => put (mkCavaState n o insts inputs (cons (name, i) outputs)) ;;
         return_ i
   end.
 
 Class CavaTop m t `{Cava m t} := {
+  (* Name to be used for the extracted VHDL/Verilog/SystemVerilog module *)
+  setModuleName : string -> m unit;
   (* Input and output ports. *)
   input : string -> m t;
   output : string -> t -> m t;
 }.
 
 Instance CavaTopNet : CavaTop (State CavaState) Z :=
-  { input := inputNet;
+  { setModuleName := setModuleNameNet;
+    input := inputNet;
     output := outputNet;
 }.
 

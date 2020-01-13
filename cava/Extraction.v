@@ -17,6 +17,9 @@
 Require Import Cava.
 Require Import Examples.
 From Coq Require Import Extraction.
+From Coq Require Import extraction.ExtrHaskellZInteger.
+From Coq Require Import extraction.ExtrHaskellString.
+From Coq Require Import ExtrHaskellBasic.
 
 Extraction Language Haskell.
 
