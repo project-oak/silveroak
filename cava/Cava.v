@@ -22,6 +22,7 @@
 Require Import Program.Basics.
 From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
+From Coq Require Import ZArith.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
@@ -46,20 +47,20 @@ Class Cava m t `{Monad m} := {
 
 Record Instance : Type := mkInstance {
   inst_name : string;
-  inst_args : list nat;
+  inst_args : list Z;
 }.
 
 Record CavaState : Type := mkCavaState {
-  netNumber : nat;
+  netNumber : Z;
   instances : list Instance;
-  inputs : list (string * nat);
-  outputs : list (string * nat);
+  inputs : list (string * Z);
+  outputs : list (string * Z);
 }.
 
 Definition initState : CavaState
   := mkCavaState 0 [] [] [].
 
-Definition invNet (i:nat) : State CavaState nat :=
+Definition invNet (i : Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState o insts inputs outputs
@@ -67,7 +68,7 @@ Definition invNet (i:nat) : State CavaState nat :=
          return_ o
   end. 
 
-Definition and2Net (i0i1 : nat * nat) : State CavaState nat :=
+Definition and2Net (i0i1 : Z * Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState o insts inputs outputs
@@ -76,13 +77,13 @@ Definition and2Net (i0i1 : nat * nat) : State CavaState nat :=
   end.
 
 
-Instance CavaNet : Cava (State CavaState) nat :=
+Instance CavaNet : Cava (State CavaState) Z :=
   { inv := invNet;
     and2 := and2Net;
 }.
 
 
-Definition inputNet (name : string) : State CavaState nat := 
+Definition inputNet (name : string) : State CavaState Z := 
   cs <- get;
   match cs with
   | mkCavaState o insts inputs outputs
@@ -90,7 +91,7 @@ Definition inputNet (name : string) : State CavaState nat :=
         return_ o
   end.
 
-Definition outputNet (name : string) (i : nat) : State CavaState nat :=
+Definition outputNet (name : string) (i : Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState o insts inputs outputs
@@ -104,7 +105,7 @@ Class CavaTop m t `{Cava m t} := {
   output : string -> t -> m t;
 }.
 
-Instance CavaTopNet : CavaTop (State CavaState) nat :=
+Instance CavaTopNet : CavaTop (State CavaState) Z :=
   { input := inputNet;
     output := outputNet;
 }.

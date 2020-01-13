@@ -21,12 +21,8 @@ onebitadder.vhdl
 AltCava.hs
 AltNand.hs
 Makefile.coq
-altnand_pipelined.vhd
-altnand.vhd
-altonebitadder.vhd
-AltNand2VHDL
-AltOneBitAdder2VHDL
 Applicative.hs
+BinInt.hs
 Examples.hs
 Functor.hs
 Ltac.hs
