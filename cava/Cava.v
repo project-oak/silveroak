@@ -48,6 +48,7 @@ Class Cava m t `{Monad m} := {
   nor_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'nor' *)
   xor_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'xor' *)
   xnor_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'xnor' *)
+  buf_gate : t -> m t; (* Corresponds to the SystemVerilog primitive gate 'buf' *)
 }.
 
 Record Instance : Type := mkInstance {
@@ -123,6 +124,14 @@ Definition xnorNet (i : list Z) : State CavaState Z :=
          return_ o
   end.
 
+Definition bufNet (i : Z) : State CavaState Z :=
+  cs <- get;
+  match cs with
+  | mkCavaState name o insts inputs outputs
+      => put (mkCavaState name (o+1) (cons (mkInstance "buf" o [o; i]) insts) inputs outputs) ;;
+         return_ o
+  end. 
+
 Instance CavaNet : Cava (State CavaState) Z :=
   { not_gate := notNet;
     and_gate := andNet;
@@ -131,6 +140,7 @@ Instance CavaNet : Cava (State CavaState) Z :=
     nor_gate := norNet;
     xor_gate := xorNet;
     xnor_gate := xnorNet;
+    buf_gate := bufNet;
 }.
 
 Definition setModuleNameNet (name : string) : State CavaState unit :=
@@ -191,6 +201,9 @@ Definition xorBool (i : list bool) : State unit bool :=
 Definition xnorBool (i : list bool) : State unit bool :=
   return_ (fold_left (fun a b => negb (xorb a b)) i true).
 
+Definition bufBool (i : bool) : State unit bool :=
+  return_ i.
+
 Definition inputBool (name : string) : State unit bool :=
   return_ false.
 
@@ -205,6 +218,7 @@ Instance CavaBool : Cava (State unit) bool :=
     nor_gate := norBool;
     xor_gate := xorBool;
     xnor_gate := xnorBool;
+    buf_gate := bufBool;
 }.
 
 
