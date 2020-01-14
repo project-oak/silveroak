@@ -43,6 +43,7 @@ Class Cava m t `{Monad m} := {
   (* Primitive SystemVerilog gates *)
   not_gate : t -> m t; (* Corresponds to the SystemVerilog primitive gate 'not' *)
   and_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'and' *)
+  or_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'or' *)
 }.
 
 Record Instance : Type := mkInstance {
@@ -78,10 +79,18 @@ Definition andNet (i : list Z) : State CavaState Z :=
          return_ o
   end.
 
+Definition orNet (i : list Z) : State CavaState Z :=
+  cs <- get;
+  match cs with
+  | mkCavaState name o insts inputs outputs
+      => put (mkCavaState name (o+1) (cons (mkInstance "or" o (cons o i)) insts) inputs outputs) ;;
+         return_ o
+  end.
 
 Instance CavaNet : Cava (State CavaState) Z :=
   { not_gate := notNet;
     and_gate := andNet;
+    or_gate := orNet;
 }.
 
 Definition setModuleNameNet (name : string) : State CavaState unit :=
@@ -127,6 +136,8 @@ Definition notBool (i : bool) : State unit bool :=
 Definition andBool (i : list bool) : State unit bool :=
   return_ (fold_left (fun a b => a && b) i true).
 
+Definition orBool (i : list bool) : State unit bool :=
+  return_ (fold_left (fun a b => a || b) i true).
 
 Definition inputBool (name : string) : State unit bool :=
   return_ false.
@@ -137,6 +148,7 @@ Definition outputBool (name : string) (i : bool) : State unit bool :=
 Instance CavaBool : Cava (State unit) bool :=
   { not_gate := notBool;
     and_gate := andBool;
+    or_gate := orBool;
 }.
 
 

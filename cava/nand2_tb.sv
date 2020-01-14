@@ -58,6 +58,6 @@ module nand2_test;
   begin
     $dumpfile("nand2.vcd");
     $dumpvars;
-   end
+  end
 
 endmodule
