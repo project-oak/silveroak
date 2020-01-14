@@ -43,6 +43,7 @@ Class Cava m t `{Monad m} := {
   (* Primitive SystemVerilog gates *)
   not_gate : t -> m t; (* Corresponds to the SystemVerilog primitive gate 'not' *)
   and_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'and' *)
+  nand_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'nand' *)
   or_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'or' *)
 }.
 
@@ -79,6 +80,14 @@ Definition andNet (i : list Z) : State CavaState Z :=
          return_ o
   end.
 
+Definition nandNet (i : list Z) : State CavaState Z :=
+  cs <- get;
+  match cs with
+  | mkCavaState name o insts inputs outputs
+      => put (mkCavaState name (o+1) (cons (mkInstance "nand" o (cons o i)) insts) inputs outputs) ;;
+         return_ o
+  end.
+
 Definition orNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
@@ -90,6 +99,7 @@ Definition orNet (i : list Z) : State CavaState Z :=
 Instance CavaNet : Cava (State CavaState) Z :=
   { not_gate := notNet;
     and_gate := andNet;
+    nand_gate := nandNet;
     or_gate := orNet;
 }.
 
@@ -136,6 +146,9 @@ Definition notBool (i : bool) : State unit bool :=
 Definition andBool (i : list bool) : State unit bool :=
   return_ (fold_left (fun a b => a && b) i true).
 
+Definition nandBool (i : list bool) : State unit bool :=
+  return_ (fold_left (fun a b => negb (a && b)) i true).
+
 Definition orBool (i : list bool) : State unit bool :=
   return_ (fold_left (fun a b => a || b) i true).
 
@@ -148,6 +161,7 @@ Definition outputBool (name : string) (i : bool) : State unit bool :=
 Instance CavaBool : Cava (State unit) bool :=
   { not_gate := notBool;
     and_gate := andBool;
+    nand_gate := nandBool;
     or_gate := orBool;
 }.
 
