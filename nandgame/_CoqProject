@@ -1,0 +1,4 @@
+-R ../../coq-haskell/src Hask
+-R ../cava Cava
+NandGame.v
+NandGameExtraction.v
