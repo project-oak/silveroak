@@ -1,0 +1,27 @@
+name:            Cava2HDL
+version:         0.1
+synopsis:        Library for emitting SystemVerilog from Haskell extracted from Cava
+Copyright:	 Copyright 2020 The Project Oak Authors
+license:         Apache-2.0
+author:          Satnam Singh
+Maintainer:      Satnam Singh <satnam6502@gmail.com>
+Bug-reports:	 Satnam Singh <satnam6502@gmail.com>
+build-type:      Simple
+Category:        Hardware
+Package-URL:     https://github.com/project-oak/oak-hardware/tree/master/cava
+Stability:       Experimental
+cabal-version:   >= 1.8
+
+Library
+  Build-Depends:  base >= 4
+  Exposed-Modules: Cava2SystemVerilog
+  other-Modules:   Applicative
+                   Cava
+                   Datatypes
+                   Functor
+                   List
+                   Logic
+                   Ltac
+                   Monad
+                   Specif
+                   State

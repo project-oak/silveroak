@@ -34,3 +34,4 @@ nand2.vcd
 nand2.vvp
 Byte.hs
 FixupAscii
+dist/*
