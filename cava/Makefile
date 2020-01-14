@@ -21,9 +21,13 @@ all:		compile nand2.sv nand2.vcd
 Makefile.coq:
 		coq_makefile -f _CoqProject -o Makefile.coq
 
-compile:	Makefile.coq
+compile:	Makefile.coq FixupAscii
 		$(MAKE) -f Makefile.coq
-		sed -i  '2 a import qualified Data.Bits\nimport qualified Data.Char' Ascii.hs
+		./FixupAscii
+		mv Ascii2.hs Ascii.hs
+
+FixupAscii:	FixupAscii.hs
+		ghc --make FixupAscii.hs
 
 ExamplesSV:	ExamplesSV.hs
 		ghc --make ExamplesSV.hs
@@ -38,7 +42,7 @@ nand2.vcd:	nand2.sv nand2_tb.sv
 clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \
 		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq.conf \
-			ExamplesSV \
+			FixupAscii ExamplesSV \
 			nand2.sv nand2.vcd
 		xargs rm -rf < .gitignore
 
