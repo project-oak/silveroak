@@ -15,13 +15,13 @@ cabal-version:   >= 1.8
 Library
   Build-Depends:  base >= 4
   Exposed-Modules: Cava2SystemVerilog
-  other-Modules:   Applicative
                    Cava
                    Datatypes
+                   Monad
+                   State
+  other-Modules:   Applicative
                    Functor
                    List
                    Logic
                    Ltac
-                   Monad
                    Specif
-                   State
