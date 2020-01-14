@@ -33,7 +33,7 @@ nand2.sv:	compile ExamplesSV
 
 nand2.vcd:	nand2.sv nand2_tb.sv
 		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv
-		/nand2.vvp 
+		./nand2.vvp 
 
 clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \

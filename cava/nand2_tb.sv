@@ -29,7 +29,7 @@ module nand2_test;
     forever #5 clk = ~clk;
   end
  
-  initial $monitor($time, "a = %b, b = %b, c = %b", a, b, c);
+  initial $monitor($time, " a = %b, b = %b, c = %b", a, b, c);
 
   initial begin
     assign a = 1'b0;
