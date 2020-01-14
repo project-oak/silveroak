@@ -36,32 +36,32 @@ Local Open Scope monad_scope.
 
 (* Experiments with the pre-defined gates. *)
 
-Eval simpl in fst ((inv false) tt). 
-Eval simpl in fst ((inv true) tt).
+Eval simpl in fst ((not_gate false) tt). 
+Eval simpl in fst ((not_gate true) tt).
 
-Eval simpl in fst ((and2 (false, false)) tt).
-Eval simpl in fst ((and2 (true, true)) tt).
+Eval simpl in fst ((and_gate [false; false]) tt).
+Eval simpl in fst ((and_gate [true; true]) tt).
 
-Eval cbv in ((inv (0%Z)) (mkCavaState "" (1%Z) [] [] [])).
+Eval cbv in ((not_gate (0%Z)) (mkCavaState "" (1%Z) [] [] [])).
 
 (* NAND gate example. Fist, let's define an overloaded NAND gate
    description. *)
 
-Definition nand2 {m t} `{Cava m t} := and2 >=> inv.
+Definition nand2 {m t} `{Cava m t} := and_gate >=> not_gate.
 
 (* Simulate the NAND gate circuit using the Bool interpretation. *)
-Eval simpl in fst ((nand2 (false, false)) tt).
-Eval simpl in fst ((nand2 (true, true)) tt).
+Eval simpl in fst ((nand2 [false; false]) tt).
+Eval simpl in fst ((nand2 [true; true]) tt).
 
 (* Generate a circuit graph representation for the NAND gate using the
    netlist interpretatin. *)
-Eval cbv in ((nand2 (0%Z, 1%Z)) (mkCavaState "" (2%Z) [] [] [])).
+Eval cbv in ((nand2 [0%Z; 1%Z]) (mkCavaState "" (2%Z) [] [] [])).
 
 Definition nand2Top {m t} `{CavaTop m t} :=
   setModuleName "nand2" ;;
   a <- input "a" ;
   b <- input "b" ;
-  c <- nand2 (a, b) ;
+  c <- nand2 [a; b] ;
   output "c" c.
 
 (* Generate a netlist containing the port definitions. *)
@@ -71,7 +71,7 @@ Definition nand2Netlist := snd (nand2Top initState).
 
 (* A proof that the NAND gate implementation is correct. *)
 Lemma nand2_behaviour : forall (a : bool) (b : bool),
-                        (fst (nand2 (a, b) tt)) = negb (a && b).
+                        (fst (nand2 [a; b] tt)) = negb (a && b).
 Proof.
   auto.
 Qed.

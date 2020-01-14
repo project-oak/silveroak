@@ -30,4 +30,6 @@ Monad.hs
 State.hs
 ExamplesSV
 nand2.sv
+nand2.vcd
+nand2.vvp
 

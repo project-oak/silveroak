@@ -40,13 +40,14 @@ Set Printing All.
    us to define both circuit netlist interpretations for the Cava class
    as well as behavioural interpretations for attributing semantics. *)
 Class Cava m t `{Monad m} := {
-  (* Basic gates *)
-  inv : t -> m t;
-  and2 : t * t -> m t;
+  (* Primitive SystemVerilog gates *)
+  not_gate : t -> m t; (* Corresponds to the SystemVerilog primitive gate 'not' *)
+  and_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'and' *)
 }.
 
 Record Instance : Type := mkInstance {
   inst_name : string;
+  inst_number : Z;
   inst_args : list Z;
 }.
 
@@ -61,26 +62,26 @@ Record CavaState : Type := mkCavaState {
 Definition initState : CavaState
   := mkCavaState "" 0 [] [] [].
 
-Definition invNet (i : Z) : State CavaState Z :=
+Definition notNet (i : Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "inv" [i; o]) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance "not" o [o; i]) insts) inputs outputs) ;;
          return_ o
   end. 
 
-Definition and2Net (i0i1 : Z * Z) : State CavaState Z :=
+Definition andNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "and2" [fst i0i1; snd i0i1; o]) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance "and" o (cons o i)) insts) inputs outputs) ;;
          return_ o
   end.
 
 
 Instance CavaNet : Cava (State CavaState) Z :=
-  { inv := invNet;
-    and2 := and2Net;
+  { not_gate := notNet;
+    and_gate := andNet;
 }.
 
 Definition setModuleNameNet (name : string) : State CavaState unit :=
@@ -120,12 +121,11 @@ Instance CavaTopNet : CavaTop (State CavaState) Z :=
     output := outputNet;
 }.
 
-Definition invBool (i : bool) : State unit bool :=
+Definition notBool (i : bool) : State unit bool :=
   return_ (negb i).
 
-Definition and2Bool (i0i1 : bool * bool) : State unit bool :=
-  let (i0, i1) := i0i1 in
-  return_ (i0 && i1).
+Definition andBool (i : list bool) : State unit bool :=
+  return_ (fold_left (fun a b => a && b) i true).
 
 
 Definition inputBool (name : string) : State unit bool :=
@@ -135,8 +135,8 @@ Definition outputBool (name : string) (i : bool) : State unit bool :=
   return_ i.
 
 Instance CavaBool : Cava (State unit) bool :=
-  { inv := invBool;
-    and2 := and2Bool;
+  { not_gate := notBool;
+    and_gate := andBool;
 }.
 
 

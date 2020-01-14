@@ -16,7 +16,7 @@
 
 .PHONY: all compile clean
 
-all:		compile nand2.sv
+all:		compile nand2.sv nand2.vcd
 
 Makefile.coq:
 		coq_makefile -f _CoqProject -o Makefile.coq
@@ -31,10 +31,14 @@ ExamplesSV:	ExamplesSV.hs
 nand2.sv:	compile ExamplesSV
 		./ExamplesSV
 
+nand2.vcd:	nand2.sv nand2_tb.sv
+		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv
+		/nand2.vvp 
+
 clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \
 		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq.conf \
 			ExamplesSV \
-			nand2.sv
+			nand2.sv nand2.vcd
 		xargs rm -rf < .gitignore
 
