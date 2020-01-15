@@ -1,5 +1,7 @@
 -R ../../coq-haskell/src Hask
 -R ../cava Cava
+-R . Lib
 NandGate.v
 FullAdder.v
+UnsignedAdder.v
 NandGateExtraction.v
