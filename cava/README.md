@@ -11,8 +11,9 @@ requests.
 ## Pre-requisites
 Please install the following components:
 
-* The [GHC Haskell compiler](https://www.haskell.org/ghc/).
-* The [Icarus Verilog](https://www.haskell.org/ghc/) circuit simulator.
+* The [Coq proof assistant](https://coq.inria.fr/)
+* The [GHC Haskell compiler](https://www.haskell.org/ghc/)
+* The [Icarus Verilog](https://www.haskell.org/ghc/) circuit simulator
 
 Cava uses an open-source Coq library that provides some useful Haskell
 inspired idioms. This should be installed as a sibling directory to
@@ -23,7 +24,7 @@ $ git clone https://github.com/jwiegley/coq-haskell.git
 $ git clone https://github.com/project-oak/oak-hardware.git
 ```
 
-Do a make in these directories:
+Do a `make` in these directories:
 
 ```bash
 $ cd coq-haskell
@@ -35,7 +36,7 @@ $ make
 ```
 
 If all worked well you should find an automatically generated
-SystemVerilog file called fulladder.sv which should have
+SystemVerilog file called `fulladder.sv` which should have
 contents like:
 
 ```verilog
@@ -67,3 +68,13 @@ endmodule
 ```
 
 A few other SystemVerilog files will also be generated.
+
+## Cava Examples
+See [Cava Examples](https://github.com/project-oak/oak-hardware/tree/master/cava-examples/README.md) for a
+few examples of circuits described in Cava, proofs about their behavioiur and
+extraction to SystemVerilog circuis for simulation and FPGA implementation.
+
+## Nand Game Examples
+Some of the circuits described on the [Nand Game]((http://nandgame.com/)) web page have
+been implemented in Cava, along with proofs about correct operation, which
+are availavle at the [Cava Nand Game Examples](https://github.com/project-oak/oak-hardware/tree/master/nandgame/README.md) page.
