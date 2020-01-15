@@ -211,7 +211,7 @@ Qed.
 
 This generates the following SystemVerilog code:
 
-```coq
+```verilog
   input logic cin,
   input logic b,
   input logic a,
