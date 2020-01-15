@@ -34,7 +34,9 @@ Require Import Cava.
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
-(* Build an invertor using only NAND gates. *)
+(******************************************************************************)
+(* Build an inverter using only NAND gates.                                   *)
+(******************************************************************************)
 
 Definition inverter {m t} `{Cava m t} a := nand_gate [a; a].
 
@@ -55,5 +57,68 @@ Proof.
   unfold fst.
   simpl.
   rewrite andb_diag.
+  reflexivity.
+Qed.
+
+(******************************************************************************)
+(* Build an AND-gate using only NAND gates.                                   *)
+(******************************************************************************)
+
+Definition andgate {m t} `{Cava m t} := nand_gate >=> not_gate.
+
+Definition andgateTop {m t} `{CavaTop m t} :=
+  setModuleName "andgate" ;;
+  a <- input "a" ;
+  b <- input "b" ;
+  c <- andgate [a; b] ;
+  output "c" c.
+
+Definition andgateNetlist := makeNetlist andgateTop.
+
+(* A proof that the NAND-gate based implementation of the AND-gate is correct. *)
+Lemma andgate_behaviour : forall (a : bool) (b : bool),
+                          combinational (andgate [a; b]) = a && b.
+Proof.
+  intros.
+  unfold combinational.
+  unfold fst.
+  simpl.
+  rewrite negb_involutive.
+  reflexivity.
+Qed.
+
+(******************************************************************************)
+(* Build an OR-gate using only NAND gates.                                    *)
+(******************************************************************************)
+
+Definition orgate {m t} `{Cava m t} a b :=
+  nota <- inverter a;
+  notb <- inverter b;
+  c <- nand_gate [nota; notb];
+  return_ c.
+
+Definition orgateTop {m t} `{CavaTop m t} :=
+  setModuleName "orgate" ;;
+  a <- input "a" ;
+  b <- input "b" ;
+  c <- orgate a b ;
+  output "c" c.
+
+Definition orgateNetlist := makeNetlist orgateTop.
+
+(* A proof that the NAND-gate based implementation of the AND-gate is correct. *)
+Lemma orgate_behaviour : forall (a : bool) (b : bool),
+                         combinational (orgate a b) = a || b.
+Proof.
+  auto.
+  intros.
+  unfold combinational.
+  unfold fst. 
+  simpl.
+  rewrite andb_diag.
+  rewrite andb_diag.
+  rewrite negb_andb.
+  rewrite negb_involutive.
+  rewrite negb_involutive.
   reflexivity.
 Qed.

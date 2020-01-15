@@ -23,4 +23,7 @@ import Cava2SystemVerilog
 import NandGame
 
 main :: IO ()
-main = writeSystemVerilog inverterNetlist
+main 
+  = do writeSystemVerilog inverterNetlist
+       writeSystemVerilog andgateNetlist
+       writeSystemVerilog orgateNetlist
