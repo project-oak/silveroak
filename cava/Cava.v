@@ -49,6 +49,9 @@ Class Cava m t `{Monad m} := {
   xor_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'xor' *)
   xnor_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'xnor' *)
   buf_gate : t -> m t; (* Corresponds to the SystemVerilog primitive gate 'buf' *)
+  (* Xilinx UNISIM FPGA gates *)
+  xorcy : t -> t -> m t; (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
+  muxcy : t -> t -> t -> m t; (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
 }.
 
 Record Instance : Type := mkInstance {
@@ -119,6 +122,15 @@ Definition xorNet (i : list Z) : State CavaState Z :=
          return_ o
   end.
 
+
+Definition xorcyNet (ci : Z) (li : Z) : State CavaState Z :=
+  cs <- get;
+  match cs with
+  | mkCavaState name o insts inputs outputs
+      => put (mkCavaState name (o+1) (cons (mkInstance "xorcy" o [o; ci; li]) insts) inputs outputs) ;;
+         return_ o
+  end.
+
 Definition xnorNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
@@ -135,6 +147,14 @@ Definition bufNet (i : Z) : State CavaState Z :=
          return_ o
   end. 
 
+Definition muxcyNet (ci : Z) (di : Z) (s : Z) : State CavaState Z :=
+  cs <- get;
+  match cs with
+  | mkCavaState name o insts inputs outputs
+      => put (mkCavaState name (o+1) (cons (mkInstance "muxcy" o [o; ci; di; s]) insts) inputs outputs) ;;
+         return_ o
+  end.
+
 Instance CavaNet : Cava (State CavaState) Z :=
   { not_gate := notNet;
     and_gate := andNet;
@@ -142,7 +162,9 @@ Instance CavaNet : Cava (State CavaState) Z :=
     or_gate := orNet;
     nor_gate := norNet;
     xor_gate := xorNet;
+    xorcy := xorcyNet;
     xnor_gate := xnorNet;
+    muxcy := muxcyNet;
     buf_gate := bufNet;
 }.
 
@@ -201,8 +223,18 @@ Definition norBool (i : list bool) : State unit bool :=
 Definition xorBool (i : list bool) : State unit bool :=
   return_ (fold_left (fun a b => xorb a b) i false).
 
+Definition xorcyBool (ci : bool) (li : bool) : State unit bool :=
+  return_ (xorb ci li).
+
 Definition xnorBool (i : list bool) : State unit bool :=
   return_ (negb (fold_left (fun a b => xorb a b) i false)).
+
+
+Definition muxcyBool (ci : bool) (di : bool) (s : bool) : State unit bool :=
+  return_ (match s with
+           | false => di
+           | true => ci
+           end).
 
 Definition bufBool (i : bool) : State unit bool :=
   return_ i.
@@ -220,7 +252,9 @@ Instance CavaBool : Cava (State unit) bool :=
     or_gate := orBool;
     nor_gate := norBool;
     xor_gate := xorBool;
+    xorcy := xorcyBool;
     xnor_gate := xnorBool;
+    muxcy := muxcyBool;
     buf_gate := bufBool;
 }.
 

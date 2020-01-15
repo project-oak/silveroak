@@ -33,47 +33,14 @@ Local Open Scope monad_scope.
 
 
 (******************************************************************************)
-(* Build a half-adder                                                         *)
-(******************************************************************************)
-
-Definition halfAdder {m t} `{Cava m t} a b :=
-  partial_sum <- xor_gate [a; b] ;
-  carry <- and_gate [a; b] ;
-  return_ (partial_sum, carry).
-
-Definition halfAdderTop {m t} `{CavaTop m t} :=
-  setModuleName "halfadder" ;;
-  a <- input "a" ;
-  b <- input "b" ;
-  ps_c <- halfAdder a b ;
-  output "partial_sum" (fst ps_c) ;;
-  output "carry" (snd ps_c).
-
-Definition halfAdderNetlist := makeNetlist halfAdderTop.
-
-(* A proof that the the half-adder is correct. *)
-Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
-                            combinational (halfAdder a b) = (xorb a b, a && b).
-
-Proof.
-  intros.
-  unfold combinational.
-  unfold fst.
-  simpl.
-  case a, b.
-  all : reflexivity.
-Qed.
-
-   
-(******************************************************************************)
 (* Build a full-adder                                                         *)
 (******************************************************************************)
 
 Definition fullAdder {m t} `{Cava m t} a b cin :=
-  abl_abh <- halfAdder a b ;
-  abcl_abch <- halfAdder (fst abl_abh) cin ;
-  cout <- or_gate [snd abl_abh; snd abcl_abch] ;
-  return_ (fst abcl_abch, cout).
+  part_sum <- xor_gate [a; b] ;
+  sum <- xorcy cin part_sum ;
+  cout <- muxcy cin a part_sum ;
+  return_ (sum, cout).
 
 Definition fullAdderTop {m t} `{CavaTop m t} :=
   setModuleName "fulladder" ;;
