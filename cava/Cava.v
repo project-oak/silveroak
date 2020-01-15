@@ -261,7 +261,6 @@ Definition xorcyBool (ci : bool) (li : bool) : State unit bool :=
 Definition xnorBool (i : list bool) : State unit bool :=
   return_ (negb (fold_left (fun a b => xorb a b) i false)).
 
-
 Definition muxcyBool (ci : bool) (di : bool) (s : bool) : State unit bool :=
   return_ (match s with
            | false => di
@@ -294,7 +293,6 @@ Instance CavaBool : Cava (State unit) bool :=
     muxcy := muxcyBool;
     buf_gate := bufBool;
 }.
-
 
 (******************************************************************************)
 (* A function to run a monadic circuit description and return the boolean     *)
