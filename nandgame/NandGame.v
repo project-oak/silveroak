@@ -140,8 +140,8 @@ Definition xorgateTop {m t} `{CavaTop m t} :=
   b <- input "b" ;
   c <- xorgate a b ;
   output "c" c.
-
 Definition xorgateNetlist := makeNetlist xorgateTop.
+
 
 (* A proof that the NAND-gate based implementation of the XOR-gate is correct. *)
 Lemma xorgate_behaviour : forall (a : bool) (b : bool),
@@ -188,4 +188,38 @@ Proof.
 Qed.
 
    
+(******************************************************************************)
+(* Build a full-adder                                                         *)
+(******************************************************************************)
 
+Definition fullAdder {m t} `{Cava m t} a b cin :=
+  abl_abh <- halfAdder a b ;
+  abcl_abch <- halfAdder (fst abl_abh) cin ;
+  cout <- orgate (snd abl_abh) (snd abcl_abch) ;
+  return_ (fst abcl_abch, cout).
+
+Definition fullAdderTop {m t} `{CavaTop m t} :=
+  setModuleName "fulladder" ;;
+  a <- input "a" ;
+  b <- input "b" ;
+  cin <- input "cin" ;
+  sum_cout <- fullAdder a b cin ;
+  output "sum" (fst sum_cout) ;;
+  output "carry" (snd sum_cout).
+
+
+Definition fullAdderNetlist := makeNetlist fullAdderTop.
+
+(* A proof that the NAND-gate based implementation of the full-adder is correct. *)
+Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
+                            combinational (fullAdder a b cin)
+                              = (xorb cin (xorb a b),
+                                 (a && b) || (b && cin) || (a && cin)).
+Proof.
+  intros.
+  unfold combinational.
+  unfold fst.
+  simpl.
+  case a, b, cin.
+  all : reflexivity.
+Qed.

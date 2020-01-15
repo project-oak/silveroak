@@ -29,3 +29,4 @@ main
        writeSystemVerilog orgateNetlist
        writeSystemVerilog xorgateNetlist
        writeSystemVerilog halfAdderNetlist
+       writeSystemVerilog fullAdderNetlist
