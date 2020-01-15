@@ -224,7 +224,7 @@ Instance CavaBool : Cava (State unit) bool :=
     buf_gate := bufBool;
 }.
 
-Definition combinational (circuit : State unit bool) := fst (circuit tt).
+Definition combinational {a} (circuit : State unit a) := fst (circuit tt).
 
 
 

@@ -61,25 +61,29 @@ Qed.
 (* Build an AND-gate using only NAND gates.                                   *)
 (******************************************************************************)
 
-Definition andgate {m t} `{Cava m t} := nand_gate >=> not_gate.
+Definition andgate {m t} `{Cava m t}  a b :=
+  x <- nand_gate [a; b] ;
+  c <- inverter x ;
+  return_ c.
 
 Definition andgateTop {m t} `{CavaTop m t} :=
   setModuleName "andgate" ;;
   a <- input "a" ;
   b <- input "b" ;
-  c <- andgate [a; b] ;
+  c <- andgate a b ;
   output "c" c.
 
 Definition andgateNetlist := makeNetlist andgateTop.
 
 (* A proof that the NAND-gate based implementation of the AND-gate is correct. *)
 Lemma andgate_behaviour : forall (a : bool) (b : bool),
-                          combinational (andgate [a; b]) = a && b.
+                          combinational (andgate a b) = a && b.
 Proof.
   intros.
   unfold combinational.
   unfold fst.
   simpl.
+  rewrite andb_diag.
   rewrite negb_involutive.
   reflexivity.
 Qed.
@@ -150,3 +154,38 @@ Proof.
   case a, b.
   all : reflexivity.
 Qed.
+
+(******************************************************************************)
+(* Build a half-adder                                                         *)
+(******************************************************************************)
+
+Definition halfAdder {m t} `{Cava m t} a b :=
+  partial_sum <- xorgate a b ;
+  carry <- andgate a b ;
+  return_ (partial_sum, carry).
+
+Definition halfAdderTop {m t} `{CavaTop m t} :=
+  setModuleName "halfadder" ;;
+  a <- input "a" ;
+  b <- input "b" ;
+  ps_c <- halfAdder a b ;
+  output "partial_sum" (fst ps_c) ;;
+  output "carry" (snd ps_c).
+
+Definition halfAdderNetlist := makeNetlist halfAdderTop.
+
+(* A proof that the NAND-gate based implementation of the half-adder is correct. *)
+Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
+                            combinational (halfAdder a b) = (xorb a b, a && b).
+
+Proof.
+  intros.
+  unfold combinational.
+  unfold fst.
+  simpl.
+  case a, b.
+  all : reflexivity.
+Qed.
+
+   
+
