@@ -127,7 +127,7 @@ Definition xorcyNet (ci : Z) (li : Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "xorcy" o [o; ci; li]) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance "XORCY" o [o; ci; li]) insts) inputs outputs) ;;
          return_ o
   end.
 
@@ -151,7 +151,7 @@ Definition muxcyNet (ci : Z) (di : Z) (s : Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "muxcy" o [o; ci; di; s]) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance "MUXCY" o [o; ci; di; s]) insts) inputs outputs) ;;
          return_ o
   end.
 

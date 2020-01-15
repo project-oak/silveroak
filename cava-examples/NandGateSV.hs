@@ -24,3 +24,4 @@ import FullAdder
 main :: IO ()
 main = do writeSystemVerilog nand2Netlist
           writeSystemVerilog fullAdderNetlist
+          writeSystemVerilog fullAdderFCNetlist
