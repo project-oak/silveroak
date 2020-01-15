@@ -54,6 +54,10 @@ Class Cava m t `{Monad m} := {
   muxcy : t -> t -> t -> m t; (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
 }.
 
+(******************************************************************************)
+(* Data structures to represent circuit graph/netlist state                   *)
+(******************************************************************************)
+
 Record Instance : Type := mkInstance {
   inst_name : string;
   inst_number : Z;
@@ -68,11 +72,22 @@ Record CavaState : Type := mkCavaState {
   outputs : list (string * Z);
 }.
 
+(******************************************************************************)
+(* The initial empty netlist                                                  *)
+(******************************************************************************)
+
 Definition initState : CavaState
   := mkCavaState "" 0 [] [] [].
 
+(******************************************************************************)
+(* Execute a monadic circuit description and return the generated netlist.    *)
+(******************************************************************************)
 
 Definition makeNetlist (circuit : State CavaState Z) := snd (circuit initState).
+
+(******************************************************************************)
+(* Netlist implementations for the Cava class.                                *)
+(******************************************************************************)
 
 Definition notNet (i : Z) : State CavaState Z :=
   cs <- get;
@@ -155,6 +170,11 @@ Definition muxcyNet (ci : Z) (di : Z) (s : Z) : State CavaState Z :=
          return_ o
   end.
 
+(******************************************************************************)
+(* Instantiate the Cava class for CavaNet which describes circuits without    *)
+(* any top-level pins or other module-level data                              *)
+(******************************************************************************)
+
 Instance CavaNet : Cava (State CavaState) Z :=
   { not_gate := notNet;
     and_gate := andNet;
@@ -167,6 +187,10 @@ Instance CavaNet : Cava (State CavaState) Z :=
     muxcy := muxcyNet;
     buf_gate := bufNet;
 }.
+
+(******************************************************************************)
+(* Define netlist functions used to specify top-level module behaviour.       *)
+(******************************************************************************)
 
 Definition setModuleNameNet (name : string) : State CavaState unit :=
   cs <- get;
@@ -191,6 +215,10 @@ Definition outputNet (name : string) (i : Z) : State CavaState Z :=
         return_ i
   end.
 
+(******************************************************************************)
+(* Instantiate the top-level Cava class for netlist behaviour.                *)
+(******************************************************************************)
+
 Class CavaTop m t `{Cava m t} := {
   (* Name to be used for the extracted VHDL/Verilog/SystemVerilog module *)
   setModuleName : string -> m unit;
@@ -204,6 +232,10 @@ Instance CavaTopNet : CavaTop (State CavaState) Z :=
     input := inputNet;
     output := outputNet;
 }.
+
+(******************************************************************************)
+(* A second boolean combinational logic interpretaiob for the Cava class      *)
+(******************************************************************************)
 
 Definition notBool (i : bool) : State unit bool :=
   return_ (negb i).
@@ -245,6 +277,11 @@ Definition inputBool (name : string) : State unit bool :=
 Definition outputBool (name : string) (i : bool) : State unit bool :=
   return_ i.
 
+(******************************************************************************)
+(* Instantiate the Cava class for a boolean combinational logic               *)
+(* interpretation.                                                            *)
+(******************************************************************************)
+
 Instance CavaBool : Cava (State unit) bool :=
   { not_gate := notBool;
     and_gate := andBool;
@@ -258,8 +295,10 @@ Instance CavaBool : Cava (State unit) bool :=
     buf_gate := bufBool;
 }.
 
+
+(******************************************************************************)
+(* A function to run a monadic circuit description and return the boolean     *)
+(* behavioural simulation result.                                             *)
+(******************************************************************************)
+
 Definition combinational {a} (circuit : State unit a) := fst (circuit tt).
-
-
-
-
