@@ -14,20 +14,17 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* A codification of the Lava embedded DSL develope for Haskell into
-   Coq for the specification, implementaiton and formal verification of
-   circuits. Experimental work, very much in flux, as Satnam learns Coq!
+(* Cava implementations of the gates described in the Nand Game website
+   which describes how to build circuit components using only NAND gates
+   and registers. http://nandgame.com/
 *)
 
-Require Import Program.Basics.
 From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
-From Coq Require Import ZArith.
 Import ListNotations.
 
 Require Import Hask.Control.Monad.
-Require Import Hask.Control.Monad.State.
 
 Require Import Cava.
 
@@ -110,7 +107,6 @@ Definition orgateNetlist := makeNetlist orgateTop.
 Lemma orgate_behaviour : forall (a : bool) (b : bool),
                          combinational (orgate a b) = a || b.
 Proof.
-  auto.
   intros.
   unfold combinational.
   unfold fst. 
@@ -121,4 +117,36 @@ Proof.
   rewrite negb_involutive.
   rewrite negb_involutive.
   reflexivity.
+Qed.
+
+(******************************************************************************)
+(* Build an XOR-gate using only NAND gates.                                   *)
+(******************************************************************************)
+
+Definition xorgate {m t} `{Cava m t} a b :=
+  nab <- nand_gate [a; b] ;
+  x <- nand_gate [a; nab] ;
+  y <- nand_gate [nab; b] ;
+  c <- nand_gate [x; y] ;
+  return_ c.
+
+Definition xorgateTop {m t} `{CavaTop m t} :=
+  setModuleName "xorgate" ;;
+  a <- input "a" ;
+  b <- input "b" ;
+  c <- xorgate a b ;
+  output "c" c.
+
+Definition xorgateNetlist := makeNetlist xorgateTop.
+
+(* A proof that the NAND-gate based implementation of the XOR-gate is correct. *)
+Lemma xorgate_behaviour : forall (a : bool) (b : bool),
+                          combinational (xorgate a b) = xorb a b.
+Proof.
+  intros.
+  unfold combinational.
+  unfold fst. 
+  simpl.
+  case a, b.
+  all : reflexivity.
 Qed.

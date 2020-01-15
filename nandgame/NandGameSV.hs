@@ -27,3 +27,4 @@ main
   = do writeSystemVerilog inverterNetlist
        writeSystemVerilog andgateNetlist
        writeSystemVerilog orgateNetlist
+       writeSystemVerilog xorgateNetlist
