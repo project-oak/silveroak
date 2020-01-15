@@ -57,6 +57,13 @@ module nand2(
 endmodule
 ```
 
+The Makefile compiles the generated SystemVerilog and runs it with
+a checked in testnench [nand2_tb.vs](https://github.com/project-oak/oak-hardware/blob/master/cava-examples/nand2_tb.sv)
+which produces a VCD waveform file which can be viewed with a VCD viewer like
+[gtkwave](http://gtkwave.sourceforge.net/):
+
+![Nand2 VCD waveform](nand2_waves.png)
+
 # A half adder
 A straight-forward implementation of a half adder using only SystemVerilog
 primitive gates, along with a proof about correct operation:
