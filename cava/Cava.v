@@ -68,6 +68,9 @@ Record CavaState : Type := mkCavaState {
 Definition initState : CavaState
   := mkCavaState "" 0 [] [] [].
 
+
+Definition makeNetlist (circuit : State CavaState Z) := snd (circuit initState).
+
 Definition notNet (i : Z) : State CavaState Z :=
   cs <- get;
   match cs with
@@ -221,7 +224,7 @@ Instance CavaBool : Cava (State unit) bool :=
     buf_gate := bufBool;
 }.
 
-
+Definition combinational (circuit : State unit bool) := fst (circuit tt).
 
 
 

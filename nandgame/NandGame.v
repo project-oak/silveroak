@@ -44,13 +44,15 @@ Definition inverterTop {m t} `{CavaTop m t} :=
   b <- inverter a ;
   output "b" b.
 
-Definition inverterNetlist := snd (inverterTop initState).
+Definition inverterNetlist := makeNetlist inverterTop.
 
 (* A proof that the NAND-gate based implementation of the inverter is correct. *)
 Lemma inverter_behaviour : forall (a : bool),
-                           (fst (inverter a tt)) = negb a.
+                           combinational (inverter a) = negb a.
 Proof.
   intros.
+  unfold combinational.
+  unfold fst.
   simpl.
   rewrite andb_diag.
   reflexivity.
