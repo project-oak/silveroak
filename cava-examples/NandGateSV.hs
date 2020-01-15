@@ -19,6 +19,8 @@ module Main where
 import qualified Cava
 import Cava2SystemVerilog
 import NandGate
+import FullAdder
 
 main :: IO ()
-main = writeSystemVerilog nand2Netlist
+main = do writeSystemVerilog nand2Netlist
+          writeSystemVerilog fullAdderNetlist

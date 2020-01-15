@@ -193,16 +193,16 @@ Definition nandBool (i : list bool) : State unit bool :=
   return_ (negb (fold_left (fun a b => a && b) i true)).
 
 Definition orBool (i : list bool) : State unit bool :=
-  return_ (fold_left (fun a b => a || b) i true).
+  return_ (fold_left (fun a b => a || b) i false).
 
 Definition norBool (i : list bool) : State unit bool :=
   return_ (negb (fold_left (fun a b =>  a || b) i true)).
 
 Definition xorBool (i : list bool) : State unit bool :=
-  return_ (fold_left (fun a b => xorb a b) i true).
+  return_ (fold_left (fun a b => xorb a b) i false).
 
 Definition xnorBool (i : list bool) : State unit bool :=
-  return_ (negb (fold_left (fun a b => xorb a b) i true)).
+  return_ (negb (fold_left (fun a b => xorb a b) i false)).
 
 Definition bufBool (i : bool) : State unit bool :=
   return_ i.
