@@ -10,7 +10,7 @@ build-type:      Simple
 Category:        Hardware
 Package-URL:     https://github.com/project-oak/oak-hardware/tree/master/cava
 Stability:       Experimental
-cabal-version:   >= 1.8
+cabal-version:   >= 2.0
 
 Library
   Build-Depends:  base >= 4
