@@ -13,7 +13,7 @@ Please install the following components:
 
 * The [Coq proof assistant](https://coq.inria.fr/)
 * The [GHC Haskell compiler](https://www.haskell.org/ghc/)
-* The [Icarus Verilog](http://iverilog.icarus.com/ circuit simulator
+* The [Icarus Verilog](http://iverilog.icarus.com/) circuit simulator
 
 Cava uses an open-source Coq library that provides some useful Haskell
 inspired idioms. This should be installed as a sibling directory to
