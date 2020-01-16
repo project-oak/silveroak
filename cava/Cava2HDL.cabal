@@ -1,27 +1,37 @@
 name:            Cava2HDL
-version:         0.1
-synopsis:        Library for emitting SystemVerilog from Haskell extracted from Cava
-Copyright:	 Copyright 2020 The Project Oak Authors
-license:         Apache-2.0
-author:          Satnam Singh
-Maintainer:      Satnam Singh <satnam6502@gmail.com>
-Bug-reports:	 Satnam Singh <satnam6502@gmail.com>
-build-type:      Simple
-Category:        Hardware
-Package-URL:     https://github.com/project-oak/oak-hardware/tree/master/cava
-Stability:       Experimental
-cabal-version:   >= 2.0
 
-Library
-  Build-Depends:  base >= 4
-  Exposed-Modules: Cava2SystemVerilog
-                   Cava
-                   Datatypes
-                   Monad
-                   State
-  other-Modules:   Applicative
-                   Functor
-                   List
-                   Logic
-                   Ltac
-                   Specif
+-- The package version.  See the Haskell package versioning policy (PVP) 
+-- for standards guiding when and how versions should be incremented.
+-- https://wiki.haskell.org/Package_versioning_policy
+-- PVP summary:      +-+------- breaking API changes
+--                   | | +----- non-breaking API additions
+--                   | | | +--- code changes with no API change
+
+version:             0.1.0.0
+
+synopsis:            Library for emitting SystemVerilog from Haskell extracted from Cava
+copyright:	     Copyright 2020 The Project Oak Authors
+license:             Apache-2.0
+author:              Satnam Singh
+maintainer:          Satnam Singh <satnam6502@gmail.com>
+bug-reports:	     Satnam Singh <satnam6502@gmail.com>
+build-type:          Simple
+category:            Hardware
+package-URL:         https://github.com/project-oak/oak-hardware/tree/master/cava
+Stability:           Experimental
+cabal-version:       >= 1.10
+
+library
+  build-Depends:     base >= 4
+  exposed-Modules:   Cava2SystemVerilog
+                     Cava
+                     Datatypes
+                     Monad
+                     State
+  other-Modules:     Applicative
+                     Functor
+                     List
+                     Logic
+                     Ltac
+                     Specif
+  default-language:  Haskell2010
