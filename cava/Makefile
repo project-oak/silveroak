@@ -25,7 +25,7 @@ compile:	Makefile.coq FixupAscii
 		$(MAKE) -f Makefile.coq
 		./FixupAscii
 		mv Ascii2.hs Ascii.hs
-		cabal install
+		cabal install --lib
 
 FixupAscii:	FixupAscii.hs
 		ghc --make FixupAscii.hs
