@@ -34,7 +34,7 @@ Local Open Scope monad_scope.
 *)
 
 Fixpoint unsignedAdder {m bit} `{Cava m bit}
-                          (n : nat) (a : list bit) (b : list bit) (cin : bit)
+                       (n : nat) (a : list bit) (b : list bit) (cin : bit)
   : m (list bit)
   :=
   match n with
@@ -73,3 +73,8 @@ Definition v3 := toVec [1;1;1;1;1;1;1;1].
 Definition v4 := toVec [1;0;0;0;0;0;0;0].
 
 Compute (fromVec (combinational (adder8 v3 v4 false))).
+
+Definition v5 := toVec [1;1;1;1;1;1;1;1].
+Definition v6 := toVec [1;1;1;1;1;1;1;1].
+
+Compute (fromVec (combinational (adder8 v5 v6 true))).
