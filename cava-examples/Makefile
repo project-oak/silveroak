@@ -38,6 +38,6 @@ clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \
 		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq Makefile.coq.conf \
 			FixupAscii NandGateSV \
-			nand2.sv nand2.vcd
+			nand2.sv fulladder.sv nand2.vcd
 		xargs rm -rf < .gitignore
 
