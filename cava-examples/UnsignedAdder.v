@@ -28,9 +28,13 @@ Require Import FullAdder.
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
+(* An unsigned addder which takes two size N bit-vectors and a carry in
+   and returns a sized N+1 result which is the addition of the two
+   input vectors and carry in.
+*)
 
 Fixpoint unsignedAdder {m bit} `{Cava m bit}
-                       (n : nat) (a : list bit) (b : list bit) (cin : bit)
+                          (n : nat) (a : list bit) (b : list bit) (cin : bit)
   : m (list bit)
   :=
   match n with
