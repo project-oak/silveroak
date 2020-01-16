@@ -36,8 +36,7 @@ $ make
 ```
 
 If all worked well you should find an automatically generated
-SystemVerilog file called `fulladder.sv` which should have
-contents like:
+SystemVerilog file called `fulladder.sv` in the `cava-examples` directory which should have contents like:
 
 ```verilog
 module fulladder(
