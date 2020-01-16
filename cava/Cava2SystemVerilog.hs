@@ -41,17 +41,17 @@ cava2SystemVerilog (Cava.Coq_mkCavaState moduleName netNumber instances
     [""] ++
     ["endmodule"]
 
-inputPorts :: [(String, Integer)] -> [String]
+inputPorts :: [Cava.PortDeclaration] -> [String]
 inputPorts = map inputPort
 
-inputPort :: (String, Integer) -> String
-inputPort (name, _) = "  input logic " ++ name
+inputPort :: Cava.PortDeclaration -> String
+inputPort (Cava.Coq_mkPort name (Cava.BitPort _)) = "  input logic " ++ name
 
-outputPorts :: [(String, Integer)] -> [String]
+outputPorts :: [Cava.PortDeclaration] -> [String]
 outputPorts = map outputPort
 
-outputPort :: (String, Integer) -> String
-outputPort (name, _) = "  output logic " ++ name
+outputPort :: Cava.PortDeclaration -> String
+outputPort (Cava.Coq_mkPort name (Cava.BitPort _)) = "  output logic " ++ name
 
 insertCommas :: [String] -> [String]
 insertCommas [] = []
@@ -68,8 +68,10 @@ showArgs args = "(" ++ concat (insertCommas (map showArg args)) ++ ")";
 showArg :: Integer -> String
 showArg n = "net[" ++ show n ++ "]"
 
-wireInput :: (String, Integer) -> String
-wireInput (name, n) = "  assign net[" ++ show n ++ "] = " ++ name ++ ";"
+wireInput :: Cava.PortDeclaration -> String
+wireInput (Cava.Coq_mkPort name (Cava.BitPort n))
+  = "  assign net[" ++ show n ++ "] = " ++ name ++ ";"
 
-wireOutput :: (String, Integer) -> String
-wireOutput (name, n) = "  assign " ++ name ++ " = net[" ++ show n ++ "] ;"
+wireOutput :: Cava.PortDeclaration -> String
+wireOutput (Cava.Coq_mkPort name (Cava.BitPort n))
+  = "  assign " ++ name ++ " = net[" ++ show n ++ "] ;"

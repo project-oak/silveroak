@@ -22,6 +22,7 @@
 Require Import Program.Basics.
 From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
+From Coq Require Numbers.BinNums.
 From Coq Require Import ZArith.
 From Coq Require Import Lists.List.
 Import ListNotations.
@@ -64,12 +65,22 @@ Record Instance : Type := mkInstance {
   inst_args : list Z;
 }.
 
+Inductive PortType :=
+  | BitPort : Z -> PortType
+  | VectorTo0Port : positive -> list Z -> PortType
+  | VectorFrom0Port : positive -> list Z -> PortType.
+
+Record PortDeclaration : Type := mkPort {
+  port_name : string;
+  port_type : PortType;
+}.
+
 Record CavaState : Type := mkCavaState {
   moduleName : string;
   netNumber : Z;
   instances : list Instance;
-  inputs : list (string * Z);
-  outputs : list (string * Z);
+  inputs : list PortDeclaration;
+  outputs : list PortDeclaration;
 }.
 
 (******************************************************************************)
@@ -199,19 +210,21 @@ Definition setModuleNameNet (name : string) : State CavaState unit :=
      => put (mkCavaState name o insts inputs outputs)
   end.
 
-Definition inputNet (name : string) : State CavaState Z := 
+Definition inputBitNet (name : string) : State CavaState Z := 
   cs <- get;
   match cs with
   | mkCavaState n o insts inputs outputs
-     => put (mkCavaState n (o+1) insts (cons (name, o) inputs) outputs) ;;
+     => let newPort := mkPort name (BitPort o) in
+        put (mkCavaState n (o+1) insts (cons newPort inputs) outputs) ;;
         return_ o
   end.
 
-Definition outputNet (name : string) (i : Z) : State CavaState Z :=
+Definition outputBitNet (name : string) (i : Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState n o insts inputs outputs
-     => put (mkCavaState n o insts inputs (cons (name, i) outputs)) ;;
+     => let newPort := mkPort name (BitPort i) in
+        put (mkCavaState n o insts inputs (cons newPort outputs)) ;;
         return_ i
   end.
 
@@ -219,18 +232,20 @@ Definition outputNet (name : string) (i : Z) : State CavaState Z :=
 (* Instantiate the top-level Cava class for netlist behaviour.                *)
 (******************************************************************************)
 
-Class CavaTop m t `{Cava m t} := {
+Class CavaTop m bit `{Cava m bit} := {
   (* Name to be used for the extracted VHDL/Verilog/SystemVerilog module *)
   setModuleName : string -> m unit;
   (* Input and output ports. *)
-  input : string -> m t;
-  output : string -> t -> m t;
+  inputBit : string -> m bit;            (* A one bit input. *)
+  outputBit : string -> bit -> m bit;    (* A one bit output. *)
+  (* inputVectorTo0 : string -> positive ->  m (list bit); *)
+  (* outputVectorTo0 : string -> list bit -> m (list bit); *)
 }.
 
 Instance CavaTopNet : CavaTop (State CavaState) Z :=
   { setModuleName := setModuleNameNet;
-    input := inputNet;
-    output := outputNet;
+    inputBit := inputBitNet;
+    outputBit := outputBitNet;
 }.
 
 (******************************************************************************)

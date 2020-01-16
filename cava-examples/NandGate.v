@@ -41,10 +41,10 @@ Definition nand2 {m t} `{Cava m t} := and_gate >=> not_gate.
 
 Definition nand2Top {m t} `{CavaTop m t} :=
   setModuleName "nand2" ;;
-  a <- input "a" ;
-  b <- input "b" ;
+  a <- inputBit "a" ;
+  b <- inputBit "b" ;
   c <- nand2 [a; b] ;
-  output "c" c.
+  outputBit "c" c.
 
 Definition nand2Netlist := makeNetlist nand2Top.
 

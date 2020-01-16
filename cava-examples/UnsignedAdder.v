@@ -48,6 +48,16 @@ Fixpoint unsignedAdder {m bit} `{Cava m bit}
 
 Definition adder8 := unsignedAdder 8.
 
+(*
+Definition adder8Top {m t} `{CavaTop m t} :=
+  setModuleName "adder8" ;;
+  a <- inputVectorTo0 8 "a" ;
+  b <- inputVectorTo0 8 "b" ;
+  cin <- input "cin" ;
+  sum <- adder8 a b cin ;
+  outputVectorTo0 "sum" sum .
+*)
+
 Definition nat2bool (n : nat) : bool :=
   match n with
   | 0 => false
