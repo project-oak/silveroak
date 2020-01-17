@@ -30,6 +30,8 @@ Import ListNotations.
 Require Import Hask.Control.Monad.
 Require Import Hask.Control.Monad.State.
 
+Generalizable All Variables.
+
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
@@ -337,3 +339,65 @@ Instance CavaBool : Cava (State unit) bool :=
 (******************************************************************************)
 
 Definition combinational {a} (circuit : State unit a) := fst (circuit tt).
+
+(******************************************************************************)
+(* Lava-style circuit combinators.                                            *)
+(******************************************************************************)
+
+
+(* The col combinator takes a 4-sided circuit element and replicates it by
+   composing each element in a chain.
+
+-------------------------------------------------------------------------------
+-- 4-Sided Tile Combinators
+-------------------------------------------------------------------------------
+-- COL r
+--            a
+--            ^
+--            |
+--          -----
+--         |     |
+--     b ->|  r  |-> c
+--         |     |
+--          -----
+--            ^
+--            |
+--            a
+--            ^
+--            |
+--          -----
+--         |     |
+--     b ->|  r  |-> c
+--         |     |
+--          -----
+--            ^ 
+--            |
+--            a
+--            ^
+--            |
+--          -----
+--         |     |
+--     b ->|  r  |-> c
+--         |     |
+--          -----
+--            ^ 
+--            |
+--            a
+-------------------------------------------------------------------------------
+
+*)
+
+Fixpoint col `{Monad m} {A B C}
+             (circuit : A * B -> m (C * A)%type)
+             (a : A) (b : list B) : m (list C * A)%type :=
+  match b with
+  | [] => return_ ([], a)
+  | p::ps => cd <- circuit (a, p) ;
+             let c := fst cd in
+             let d := snd cd in 
+             xy <- col circuit d ps ;
+             let x := fst xy in
+             let y := snd xy in
+             return_ (c::x, y)
+  end.
+
