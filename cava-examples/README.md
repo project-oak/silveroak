@@ -278,7 +278,8 @@ module adder8(
   input logic cin,
   input logic[8:0] b,
   input logic[8:0] a,
-  output logic[9:0] sum
+  output logic cout,
+  output logic[8:0] sum
   );
 
   logic[0:40] net;
@@ -302,6 +303,7 @@ module adder8(
   assign net[6] = a[6];
   assign net[7] = a[7];
   // Wire up outputs.
+  assign cout = net[40] ;
   assign sum[0] = net[18];
   assign sum[1] = net[21];
   assign sum[2] = net[24];
@@ -310,7 +312,6 @@ module adder8(
   assign sum[5] = net[33];
   assign sum[6] = net[36];
   assign sum[7] = net[39];
-  assign sum[8] = net[40];
 
   MUXCY inst40 (net[40],net[37],net[7],net[38]);
   XORCY inst39 (net[39],net[37],net[38]);
@@ -338,7 +339,6 @@ module adder8(
   xor inst17 (net[17],net[0],net[8]);
 
 endmodule
-
 ```
 
 After implementing this design using the Xilinx Vivado FPGA design
