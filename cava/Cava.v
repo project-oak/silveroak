@@ -94,7 +94,7 @@ Definition initState : CavaState
 (* Execute a monadic circuit description and return the generated netlist.    *)
 (******************************************************************************)
 
-Definition makeNetlist (circuit : State CavaState Z) := snd (circuit initState).
+Definition makeNetlist {t} (circuit : State CavaState t) := snd (circuit initState).
 
 (******************************************************************************)
 (* Netlist implementations for the Cava class.                                *)
@@ -214,7 +214,7 @@ Definition inputVectorTo0Net (size : Z) (name : string)  : State CavaState (list
   cs <- get;
   match cs with
   | mkCavaState n o insts inputs outputs
-     => let netNumbers := map Z.of_nat (seq (Z.abs_nat (o + size)) (Z.abs_nat o)) in
+     => let netNumbers := map Z.of_nat (seq (Z.abs_nat o) (Z.abs_nat size)) in
         let newPort := mkPort name (VectorTo0Port netNumbers) in
         put (mkCavaState n (o + size) insts (cons newPort inputs) outputs) ;;
         return_ netNumbers

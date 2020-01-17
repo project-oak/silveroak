@@ -13,10 +13,15 @@
    limitations under the License.
 -}
 
+{-# LANGUAGE StandaloneDeriving #-}
+
 module Cava2SystemVerilog
 where
 
 import qualified Cava
+
+deriving instance Show Cava.PortType
+deriving instance Show Cava.PortDeclaration
 
 writeSystemVerilog :: Cava.CavaState -> IO ()
 writeSystemVerilog netlist
@@ -33,9 +38,9 @@ cava2SystemVerilog (Cava.Coq_mkCavaState moduleName netNumber instances
     ["  logic[0:" ++ show (netNumber-1) ++ "] net;"] ++
     [""] ++
     ["  // Wire up inputs."] ++
-    map wireInput inputs ++
+    concat (map wireInput inputs) ++
     ["  // Wire up outputs."] ++
-    map wireOutput outputs ++
+    concat (map wireOutput outputs) ++
     [""] ++
     map generateInstance instances ++
     [""] ++
@@ -46,12 +51,21 @@ inputPorts = map inputPort
 
 inputPort :: Cava.PortDeclaration -> String
 inputPort (Cava.Coq_mkPort name (Cava.BitPort _)) = "  input logic " ++ name
+inputPort (Cava.Coq_mkPort name (Cava.VectorTo0Port v)) 
+  = "  input logic[" ++ show ((length v)) ++ ":0] " ++ name
+inputPort (Cava.Coq_mkPort name (Cava.VectorFrom0Port v)) 
+  = "  input logic[0:" ++ show (length v - 1) ++ "] " ++ name
+inputPort other = error (show other)
 
 outputPorts :: [Cava.PortDeclaration] -> [String]
 outputPorts = map outputPort
 
 outputPort :: Cava.PortDeclaration -> String
 outputPort (Cava.Coq_mkPort name (Cava.BitPort _)) = "  output logic " ++ name
+outputPort (Cava.Coq_mkPort name (Cava.VectorTo0Port v)) 
+  = "  output logic[" ++ show ((length v)) ++ ":0] " ++ name
+outputPort (Cava.Coq_mkPort name (Cava.VectorFrom0Port v)) 
+  = "  output logic[0:" ++ show (length v - 1) ++ "] " ++ name
 
 insertCommas :: [String] -> [String]
 insertCommas [] = []
@@ -68,10 +82,16 @@ showArgs args = "(" ++ concat (insertCommas (map showArg args)) ++ ")";
 showArg :: Integer -> String
 showArg n = "net[" ++ show n ++ "]"
 
-wireInput :: Cava.PortDeclaration -> String
+wireInput :: Cava.PortDeclaration -> [String]
 wireInput (Cava.Coq_mkPort name (Cava.BitPort n))
-  = "  assign net[" ++ show n ++ "] = " ++ name ++ ";"
+  = ["  assign net[" ++ show n ++ "] = " ++ name ++ ";"]
+wireInput (Cava.Coq_mkPort name (Cava.VectorTo0Port v)) 
+  = ["  assign net[" ++ show n ++ "] = " ++ name ++ "[" ++ show i ++ "];" |
+     (n, i) <- zip v [0..length v - 1]]
 
-wireOutput :: Cava.PortDeclaration -> String
+wireOutput :: Cava.PortDeclaration -> [String]
 wireOutput (Cava.Coq_mkPort name (Cava.BitPort n))
-  = "  assign " ++ name ++ " = net[" ++ show n ++ "] ;"
+  = ["  assign " ++ name ++ " = net[" ++ show n ++ "] ;"]
+wireOutput (Cava.Coq_mkPort name (Cava.VectorTo0Port v)) 
+  = ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show n ++ "];" |
+     (n, i) <- zip v [0..length v - 1]]

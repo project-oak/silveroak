@@ -20,8 +20,10 @@ import qualified Cava
 import Cava2SystemVerilog
 import NandGate
 import FullAdder
+import UnsignedAdder
 
 main :: IO ()
 main = do writeSystemVerilog nand2Netlist
           writeSystemVerilog fullAdderNetlist
           writeSystemVerilog fullAdderFCNetlist
+          writeSystemVerilog adder8Netlist

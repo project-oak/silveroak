@@ -56,6 +56,8 @@ Definition adder8Top {m t} `{CavaTop m t} :=
   sum <- adder8 a b cin ;
   outputVectorTo0 sum "sum".
 
+Definition adder8Netlist := makeNetlist adder8Top.
+
 Definition nat2bool (n : nat) : bool :=
   match n with
   | 0 => false
