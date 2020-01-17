@@ -18,7 +18,8 @@ bug-reports:	     Satnam Singh <satnam6502@gmail.com>
 build-type:          Simple
 category:            Hardware
 package-URL:         https://github.com/project-oak/oak-hardware/tree/master/cava
-Stability:           Experimental
+stability:           Experimental
+cabal-version:        >= 1.10
 
 library
   build-Depends:     base >= 4
@@ -28,9 +29,16 @@ library
                      Monad
                      State
   other-Modules:     Applicative
+                     BinInt
+                     BinNat
+                     BinNums
+                     BinPos
+                     Bool
+                     Decimal
                      Functor
                      List
                      Logic
                      Ltac
+                     Nat
                      Specif
   default-language:  Haskell2010

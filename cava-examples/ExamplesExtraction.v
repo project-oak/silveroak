@@ -16,6 +16,7 @@
 
 Require Import NandGate.
 Require Import FullAdder.
+Require Import UnsignedAdder.
 From Coq Require Import Extraction.
 From Coq Require Import extraction.ExtrHaskellZInteger.
 From Coq Require Import extraction.ExtrHaskellString.
@@ -25,3 +26,4 @@ Extraction Language Haskell.
 
 Extraction Library NandGate.
 Extraction Library FullAdder.
+Extraction Library UnsignedAdder.

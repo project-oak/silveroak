@@ -46,17 +46,15 @@ Fixpoint unsignedAdder {m bit} `{Cava m bit}
             return_ (cons sum r)
   end.
 
-Definition adder8 := unsignedAdder 8.
+Definition adder8 {m bit} `{Cava m bit} := unsignedAdder 8.
 
-(*
 Definition adder8Top {m t} `{CavaTop m t} :=
   setModuleName "adder8" ;;
   a <- inputVectorTo0 8 "a" ;
   b <- inputVectorTo0 8 "b" ;
-  cin <- input "cin" ;
+  cin <- inputBit "cin" ;
   sum <- adder8 a b cin ;
-  outputVectorTo0 "sum" sum .
-*)
+  outputVectorTo0 sum "sum".
 
 Definition nat2bool (n : nat) : bool :=
   match n with

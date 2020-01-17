@@ -67,8 +67,8 @@ Record Instance : Type := mkInstance {
 
 Inductive PortType :=
   | BitPort : Z -> PortType
-  | VectorTo0Port : positive -> list Z -> PortType
-  | VectorFrom0Port : positive -> list Z -> PortType.
+  | VectorTo0Port : list Z -> PortType
+  | VectorFrom0Port : list Z -> PortType.
 
 Record PortDeclaration : Type := mkPort {
   port_name : string;
@@ -210,6 +210,16 @@ Definition setModuleNameNet (name : string) : State CavaState unit :=
      => put (mkCavaState name o insts inputs outputs)
   end.
 
+Definition inputVectorTo0Net (size : Z) (name : string)  : State CavaState (list Z) := 
+  cs <- get;
+  match cs with
+  | mkCavaState n o insts inputs outputs
+     => let netNumbers := map Z.of_nat (seq (Z.abs_nat (o + size)) (Z.abs_nat o)) in
+        let newPort := mkPort name (VectorTo0Port netNumbers) in
+        put (mkCavaState n (o + size) insts (cons newPort inputs) outputs) ;;
+        return_ netNumbers
+  end.
+
 Definition inputBitNet (name : string) : State CavaState Z := 
   cs <- get;
   match cs with
@@ -228,6 +238,16 @@ Definition outputBitNet (name : string) (i : Z) : State CavaState Z :=
         return_ i
   end.
 
+Definition outputVectorTo0Net (v : list Z) (name : string) : State CavaState (list Z) := 
+  cs <- get;
+  match cs with
+  | mkCavaState n o insts inputs outputs
+     => let newPort := mkPort name (VectorTo0Port v) in
+        put (mkCavaState n o insts inputs (cons newPort outputs) ) ;;
+        return_ v
+  end.
+
+
 (******************************************************************************)
 (* Instantiate the top-level Cava class for netlist behaviour.                *)
 (******************************************************************************)
@@ -238,14 +258,16 @@ Class CavaTop m bit `{Cava m bit} := {
   (* Input and output ports. *)
   inputBit : string -> m bit;            (* A one bit input. *)
   outputBit : string -> bit -> m bit;    (* A one bit output. *)
-  (* inputVectorTo0 : string -> positive ->  m (list bit); *)
-  (* outputVectorTo0 : string -> list bit -> m (list bit); *)
+  inputVectorTo0 : Z -> string -> m (list bit);
+  outputVectorTo0 : list bit -> string -> m (list bit);
 }.
 
 Instance CavaTopNet : CavaTop (State CavaState) Z :=
   { setModuleName := setModuleNameNet;
     inputBit := inputBitNet;
     outputBit := outputBitNet;
+    inputVectorTo0 := inputVectorTo0Net;
+    outputVectorTo0 := outputVectorTo0Net;
 }.
 
 (******************************************************************************)

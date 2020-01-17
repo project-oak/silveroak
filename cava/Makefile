@@ -25,7 +25,9 @@ compile:	Makefile.coq FixupAscii
 		$(MAKE) -f Makefile.coq
 		./FixupAscii
 		mv Ascii2.hs Ascii.hs
-		cabal install --lib
+		runhaskell Setup.hs configure --user
+		runhaskell Setup.hs build
+		runhaskell Setup.hs install
 
 FixupAscii:	FixupAscii.hs
 		ghc --make FixupAscii.hs

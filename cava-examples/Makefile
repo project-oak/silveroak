@@ -24,11 +24,11 @@ Makefile.coq:
 compile:	Makefile.coq
 		$(MAKE) -f Makefile.coq
 
-NandGateSV:	NandGateSV.hs
-		ghc --make NandGateSV.hs
+ExamplesSV:	ExamplesSV.hs
+		ghc --make ExamplesSV.hs
 
-nand2.sv:	compile NandGateSV
-		./NandGateSV
+nand2.sv:	compile ExamplesSV
+		./ExamplesSV
 
 nand2.vcd:	nand2.sv nand2_tb.sv
 		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv
