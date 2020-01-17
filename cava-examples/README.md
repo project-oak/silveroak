@@ -242,32 +242,30 @@ Which does map efficiently onto the fast-carry chain:
 
 # An 8-bit adder mapped to the fast carry chain
 
-This is a Cava description of a generic n-bit unsigned adder and
-an 8-bit instantiation of it.
+This is a Cava description of a generic n-bit unsigned adder.
+The `unsignedAdder` definition is a generic n-bit adder where the
+size of the adder is determined by the length of the input vectors
+provided. The definition makes use of the `col` Lava style circuit
+combinator for composing replicated blocks in a chain.
 
 ```coq
-Fixpoint unsignedAdder {m bit} `{Cava m bit}
-                       (n : nat) (a : list bit) (b : list bit) (cin : bit)
-  : m (list bit)
-  :=
-  match n with
-  | 0 => return_ [cin]
-  | S n  => sum_cout <- fullAdderFC (hd cin a) (hd cin b) cin ;
-            let sum := fst sum_cout in
-            let cout := snd sum_cout in 
-            r <- unsignedAdder n (tl a) (tl b) cout ;
-            return_ (cons sum r)
-  end.
+Definition unsignedAdder {m bit} `{Cava m bit} := col fullAdderFC.
+```
 
-Definition adder8 {m bit} `{Cava m bit} := unsignedAdder 8.
+We can create a module definition for an 8-bit adder by instantiating
+the `unsignedAdder` with 8-bit input vectors.
 
+```coq
 Definition adder8Top {m t} `{CavaTop m t} :=
   setModuleName "adder8" ;;
   a <- inputVectorTo0 8 "a" ;
   b <- inputVectorTo0 8 "b" ;
   cin <- inputBit "cin" ;
-  sum <- adder8 a b cin ;
-  outputVectorTo0 sum "sum".
+  sum_cout <- unsignedAdder cin (combine a b) ;
+  let sum := fst sum_cout in
+  let cout := snd sum_cout in
+  outputVectorTo0 sum "sum" ;;
+  outputBit "cout" cout.
 
 Definition adder8Netlist := makeNetlist adder8Top.
 

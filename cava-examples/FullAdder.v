@@ -105,7 +105,12 @@ Qed.
 (* Build a full-adder with explicit use of fast carry                                                        *)
 (******************************************************************************)
 
-Definition fullAdderFC {m t} `{Cava m t} a b cin :=
+Definition fullAdderFC {m bit} `{Cava m bit} (cin_ab : bit * (bit * bit))
+  : m (bit * bit)%type :=
+  let cin := fst cin_ab in
+  let ab := snd cin_ab in
+  let a := fst ab in
+  let b := snd ab in
   part_sum <- xor_gate [a; b] ;
   sum <- xorcy cin part_sum ;
   cout <- muxcy cin a part_sum ;
@@ -116,16 +121,15 @@ Definition fullAdderFCTop {m t} `{CavaTop m t} :=
   a <- inputBit "a" ;
   b <- inputBit "b" ;
   cin <- inputBit "cin" ;
-  sum_cout <- fullAdderFC a b cin ;
+  sum_cout <- fullAdderFC (cin, (a, b)) ;
   outputBit "sum" (fst sum_cout) ;;
   outputBit "carry" (snd sum_cout).
-
 
 Definition fullAdderFCNetlist := makeNetlist fullAdderFCTop.
 
 (* A proof that the the full-adder is correct. *)
 Lemma fullAdderFC_behaviour : forall (a : bool) (b : bool) (cin : bool),
-                              combinational (fullAdderFC a b cin)
+                              combinational (fullAdderFC (cin, (a, b)))
                                = (xorb cin (xorb a b),
                                    (a && b) || (b && cin) || (a && cin)).
 Proof.

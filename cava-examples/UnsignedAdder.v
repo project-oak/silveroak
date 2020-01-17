@@ -33,28 +33,22 @@ Local Open Scope monad_scope.
    input vectors and carry in.
 *)
 
-Fixpoint unsignedAdder {m bit} `{Cava m bit}
-                       (n : nat) (a : list bit) (b : list bit) (cin : bit)
-  : m (list bit)
-  :=
-  match n with
-  | 0 => return_ [cin]
-  | S n  => sum_cout <- fullAdderFC (hd cin a) (hd cin b) cin ;
-            let sum := fst sum_cout in
-            let cout := snd sum_cout in 
-            r <- unsignedAdder n (tl a) (tl b) cout ;
-            return_ (cons sum r)
-  end.
+Definition unsignedAdder {m bit} `{Cava m bit} := col fullAdderFC.
 
-Definition adder8 {m bit} `{Cava m bit} := unsignedAdder 8.
+(* A module definition for an 8-bit adder for SystemVerilog netlist
+   generation.
+*)
 
 Definition adder8Top {m t} `{CavaTop m t} :=
   setModuleName "adder8" ;;
   a <- inputVectorTo0 8 "a" ;
   b <- inputVectorTo0 8 "b" ;
   cin <- inputBit "cin" ;
-  sum <- adder8 a b cin ;
-  outputVectorTo0 sum "sum".
+  sum_cout <- unsignedAdder cin (combine a b) ;
+  let sum := fst sum_cout in
+  let cout := snd sum_cout in
+  outputVectorTo0 sum "sum" ;;
+  outputBit "cout" cout.
 
 Definition adder8Netlist := makeNetlist adder8Top.
 
@@ -74,17 +68,24 @@ Definition bool2nat (b : bool) : nat :=
 
 Definition fromVec := map bool2nat.
 
-Definition v1 := toVec [0;1;0;0;0;0;0;0].
-Definition v2 := toVec [1;0;0;0;0;0;0;0].
+Definition v1 := [0;1;0;0;0;0;0;0].
+Definition v2 := [1;0;0;0;0;0;0;0].
 
-Compute (fromVec (combinational (adder8 v1 v2 false))).
 
-Definition v3 := toVec [1;1;1;1;1;1;1;1].
-Definition v4 := toVec [1;0;0;0;0;0;0;0].
+Definition eval_unsignedAdder a b :=
+  let sum_carry := combinational (unsignedAdder false (combine (toVec a) (toVec b))) in
+  let sum := fst sum_carry in
+  let carry := snd sum_carry in
+  (fromVec sum, bool2nat carry).
 
-Compute (fromVec (combinational (adder8 v3 v4 false))).
+Compute (eval_unsignedAdder v1 v2).
 
-Definition v5 := toVec [1;1;1;1;1;1;1;1].
-Definition v6 := toVec [1;1;1;1;1;1;1;1].
+Definition v3 := [1;1;1;1;1;1;1;1].
+Definition v4 := [1;0;0;0;0;0;0;0].
 
-Compute (fromVec (combinational (adder8 v5 v6 true))).
+Compute (eval_unsignedAdder v3 v4).
+
+Definition v5 := [1;1;1;1;1;1;1;1].
+Definition v6 := [1;1;1;1;1;1;1;1].
+
+Compute (eval_unsignedAdder v5 v6).
