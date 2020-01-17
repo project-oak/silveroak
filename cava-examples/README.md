@@ -239,3 +239,112 @@ endmodule
 Which does map efficiently onto the fast-carry chain:
 
 ![Fast carry chain full adder](fulladderFC.png)
+
+# An 8-bit adder mapped to the fast carry chain
+
+This is a Cava description of a generic n-bit unsigned adder and
+an 8-bit instantiation of it.
+
+```coq
+Fixpoint unsignedAdder {m bit} `{Cava m bit}
+                       (n : nat) (a : list bit) (b : list bit) (cin : bit)
+  : m (list bit)
+  :=
+  match n with
+  | 0 => return_ [cin]
+  | S n  => sum_cout <- fullAdderFC (hd cin a) (hd cin b) cin ;
+            let sum := fst sum_cout in
+            let cout := snd sum_cout in 
+            r <- unsignedAdder n (tl a) (tl b) cout ;
+            return_ (cons sum r)
+  end.
+
+Definition adder8 {m bit} `{Cava m bit} := unsignedAdder 8.
+
+Definition adder8Top {m t} `{CavaTop m t} :=
+  setModuleName "adder8" ;;
+  a <- inputVectorTo0 8 "a" ;
+  b <- inputVectorTo0 8 "b" ;
+  cin <- inputBit "cin" ;
+  sum <- adder8 a b cin ;
+  outputVectorTo0 sum "sum".
+
+Definition adder8Netlist := makeNetlist adder8Top.
+
+```
+
+The generated SystemVerilog for the 8-bit adder is:
+
+```verilog
+module adder8(
+  input logic cin,
+  input logic[8:0] b,
+  input logic[8:0] a,
+  output logic[9:0] sum
+  );
+
+  logic[0:40] net;
+
+  // Wire up inputs.
+  assign net[16] = cin;
+  assign net[8] = b[0];
+  assign net[9] = b[1];
+  assign net[10] = b[2];
+  assign net[11] = b[3];
+  assign net[12] = b[4];
+  assign net[13] = b[5];
+  assign net[14] = b[6];
+  assign net[15] = b[7];
+  assign net[0] = a[0];
+  assign net[1] = a[1];
+  assign net[2] = a[2];
+  assign net[3] = a[3];
+  assign net[4] = a[4];
+  assign net[5] = a[5];
+  assign net[6] = a[6];
+  assign net[7] = a[7];
+  // Wire up outputs.
+  assign sum[0] = net[18];
+  assign sum[1] = net[21];
+  assign sum[2] = net[24];
+  assign sum[3] = net[27];
+  assign sum[4] = net[30];
+  assign sum[5] = net[33];
+  assign sum[6] = net[36];
+  assign sum[7] = net[39];
+  assign sum[8] = net[40];
+
+  MUXCY inst40 (net[40],net[37],net[7],net[38]);
+  XORCY inst39 (net[39],net[37],net[38]);
+  xor inst38 (net[38],net[7],net[15]);
+  MUXCY inst37 (net[37],net[34],net[6],net[35]);
+  XORCY inst36 (net[36],net[34],net[35]);
+  xor inst35 (net[35],net[6],net[14]);
+  MUXCY inst34 (net[34],net[31],net[5],net[32]);
+  XORCY inst33 (net[33],net[31],net[32]);
+  xor inst32 (net[32],net[5],net[13]);
+  MUXCY inst31 (net[31],net[28],net[4],net[29]);
+  XORCY inst30 (net[30],net[28],net[29]);
+  xor inst29 (net[29],net[4],net[12]);
+  MUXCY inst28 (net[28],net[25],net[3],net[26]);
+  XORCY inst27 (net[27],net[25],net[26]);
+  xor inst26 (net[26],net[3],net[11]);
+  MUXCY inst25 (net[25],net[22],net[2],net[23]);
+  XORCY inst24 (net[24],net[22],net[23]);
+  xor inst23 (net[23],net[2],net[10]);
+  MUXCY inst22 (net[22],net[19],net[1],net[20]);
+  XORCY inst21 (net[21],net[19],net[20]);
+  xor inst20 (net[20],net[1],net[9]);
+  MUXCY inst19 (net[19],net[16],net[0],net[17]);
+  XORCY inst18 (net[18],net[16],net[17]);
+  xor inst17 (net[17],net[0],net[8]);
+
+endmodule
+
+```
+
+After implementing this design using the Xilinx Vivado FPGA design
+tools we can view a schematic that confirms this design is mapped to
+the fast carry chain.
+
+![adder8 on fast carry chain](adder8_cava.png)
