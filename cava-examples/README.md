@@ -346,3 +346,14 @@ tools we can view a schematic that confirms this design is mapped to
 the fast carry chain.
 
 ![adder8 on fast carry chain](adder8_cava.png)
+
+The 8-bit adder is mapped to once slice of a Zyna UltraScale+ XCZU7EV FPGA using 8 LUTs (for the
+XOR partial sums) and all of an 8-bit fast-carry block.
+
+![adder8 implementation](adder8_impl.png)
+
+The location of the adder is shown here in the top right hand corner
+of the FPGA i.e. the small blue dot in section X3Y5, with the IOs for
+the adder mapped to the purple column just to the left of the adder.
+
+![adder8 location](adder8_location.png)
