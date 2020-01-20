@@ -63,7 +63,29 @@ Proof.
   all : reflexivity.
 Qed.
 
-   
+(* From the original nand *)
+
+Definition p_bit_to_nat(a : bool) : nat := if a then 1 else 0.
+
+Fixpoint p_bits_to_nat(b : list bool) : nat :=
+  match b with
+    | nil => 0
+    | b0::t => (p_bit_to_nat b0) + 2 * p_bits_to_nat t
+  end.
+
+(* end from *)
+
+(* A proof that the half adder does arithmetic *)
+Lemma halfAdder_nat :
+  forall (a b : bool),
+    let (l, h) := combinational (halfAdder a b) in p_bits_to_nat (l::h::nil) = p_bit_to_nat a + p_bit_to_nat b.
+Proof.
+  intros.
+  case a, b.
+  all: reflexivity.
+Qed.
+
+
 (******************************************************************************)
 (* Build a full-adder                                                         *)
 (******************************************************************************)
@@ -100,6 +122,15 @@ Proof.
   all : reflexivity.
 Qed.
 
+(* Prove the full adder does arithmetic *)
+Lemma fullAdder_nat :
+  forall (a b c : bool),
+    let (l, h) := combinational (fullAdder a b c) in p_bits_to_nat (l::h::nil) = p_bit_to_nat a + p_bit_to_nat b + p_bit_to_nat c.
+Proof.
+  intros.
+  case a, b, c.
+  all: reflexivity.
+Qed.
 
 (******************************************************************************)
 (* Build a full-adder with explicit use of fast carry                                                        *)
@@ -139,6 +170,17 @@ Proof.
   simpl.
   case a, b, cin.
   all : reflexivity.
+Qed.
+
+
+(* Prove the full adder does arithmetic *)
+Lemma fullAdderFC_nat :
+  forall (a b c : bool),
+    let (l, h) := combinational (fullAdderFC a b c) in p_bits_to_nat (l::h::nil) = p_bit_to_nat a + p_bit_to_nat b + p_bit_to_nat c.
+Proof.
+  intros.
+  case a, b, c.
+  all: reflexivity.
 Qed.
 
 Definition nat2bool (n : nat) : bool :=
@@ -226,5 +268,3 @@ Proof.
 
 Qed.
 *)
-
-
