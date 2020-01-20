@@ -4,6 +4,7 @@
 *.glob
 *.pb
 *.log
+*.sv
 .*.aux
 .vscode/*
 .coqdeps.d
@@ -15,3 +16,6 @@ work-obj93.cf
 *~
 *.lia.cache
 *\#*
+cava-examples/FullAdder.hs
+cava-examples/UnsignedAdder.hs
+dist-newstyle/
