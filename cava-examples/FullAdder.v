@@ -19,7 +19,7 @@
    and registers. http://nandgame.com/
 *)
 
-From Coq Require Import Bool.Bool.
+From Coq Require Import Bool.Bool. 
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 Import ListNotations.
@@ -140,3 +140,51 @@ Proof.
   case a, b, cin.
   all : reflexivity.
 Qed.
+
+(*
+Definition bool2nat (b : bool) : nat :=
+  match b with
+  | false => 0
+  | true => 1
+  end.
+
+Definition nat2bool (n : nat) : bool :=
+  match n with
+  | 0 => false
+  | _ => true
+  end.
+
+Definition fullAdderNat (a : nat) (b : nat) (cin : nat)
+  := cin + a + b.
+
+
+Definition natPairToBool (sc : nat) (p : sc < 4) : bool * bool :=
+  match p with
+  | (S (S (S (S n)))) => fun _ => match False with end
+  | s => fun _ => match s with
+                  | 0 => (false, false)
+                  | 1 => (true, false)
+                  | 2 => (false, true)
+                  | 3 => (true, true)
+                  end
+  end.
+
+Lemma fullAdderNat_behaviour : forall (a : nat) (b : nat) (cin : nat),
+                               a < 2 -> b < 2 -> cin < 2 ->
+                               combinational (fullAdderFC (nat2bool cin, (nat2bool a, nat2bool b)))
+                               = fullAdderNat a b cin.
+Proof.
+  intros.
+  unfold fullAdderNat.
+  unfold fullAdderFC.
+  unfold combinational.
+  simpl.
+  unfold boolPairToNat.
+  simpl.
+  unfold bool2nat.
+  unfold nat2bool.
+
+Qed.
+*)
+
+

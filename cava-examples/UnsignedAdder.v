@@ -19,8 +19,8 @@ From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 Require Import Coq.Lists.List Coq.Bool.Bool.
 From Coq Require Import ZArith.
-From Coq Require Import Numbers.BinNums.
-From Coq Require Import ZArith.Zdigits.
+(* From Coq Require Import Numbers.BinNums. *)
+(* From Coq Require Import ZArith.Zdigits. *)
 Require Import Lia.
 Import ListNotations.
 
@@ -64,7 +64,6 @@ Definition nat2bool (n : nat) : bool :=
   | _ => true
   end.
 
-(*
 Definition toVec := map nat2bool.
 
 Definition bool2nat (b : bool) : nat :=
@@ -72,6 +71,13 @@ Definition bool2nat (b : bool) : nat :=
   | false => 0
   | true => 1
   end.
+
+
+
+Definition adder {m bit} `{Cava m bit} cin ab :=
+  sum_carry <- unsignedAdder cin ab ;
+  return_ (fst sum_carry ++ [snd sum_carry]).
+
 
 Definition fromVec := map bool2nat.
 
@@ -97,25 +103,26 @@ Definition v6 := [1;1;1;1;1;1;1;1].
 
 Compute (eval_unsignedAdder v5 v6).
 
-Definition bool_to_z (b : bool) : nat :=
+
+Definition bool_to_n (b : bool) : nat :=
   match b with
   | false => 0
   | true => 1
   end.
 
-Fixpoint vec_to_z (l : list bool) : nat :=
+Fixpoint vec_to_n (l : list bool) : nat :=
   match l with
   | [] => 0
-  | x::xs => bool_to_z x + 2 * vec_to_z xs
+  | x::xs => bool_to_n x + 2 * vec_to_n xs
   end.
 
-Compute (vec_to_z (toVec v1)).
-Compute (vec_to_z (toVec v2)).
-Compute (vec_to_z (toVec v3)).
-Compute (vec_to_z (toVec v4)).
-Compute (vec_to_z (toVec v5)).
-Compute (vec_to_z (toVec v6)).
-*)
+Compute (vec_to_n (toVec v1)).
+Compute (vec_to_n (toVec v2)).
+Compute (vec_to_n (toVec v3)).
+Compute (vec_to_n (toVec v4)).
+Compute (vec_to_n (toVec v5)).
+Compute (vec_to_n (toVec v6)).
+
 
 Definition add (a : nat) (b : nat) : nat
   := a + b.
@@ -134,6 +141,8 @@ Lemma addz_proof : forall a b,
 Proof.
   auto.
 Qed.
+
+(*
 
 Definition x6 : N := Npos (xO (xI xH)).
 Compute x6.
@@ -177,6 +186,8 @@ Definition v3b := [false;false;false;false; false;false;false].
 Definition v3bn := bv_to_n v3b.
 Compute v3bn.
 
+*)
+
 Definition add8 {m t} `{CavaTop m t} ab :=
   sum_carry <- unsignedAdder false ab;
   let sum := fst sum_carry in
@@ -193,21 +204,35 @@ Definition add8bv {m t} `{CavaTop m t} abbv  :=
   return_ (of_list (sum ++ [carry])).
 *)
 
-(* 
+(*
+Theorem test : forall n:nat, n + 1 > n.
+Proof.
+  induction n. 
+  auto.
+Qed.
+*)
+
+(*
 
 Lemma add8_bheaviour : forall (ab : list (bool * bool)),
-                       bv_to_n (combinational (add8 ab)) =
-                       ((bv_to_n (map fst ab)) + (bv_to_n (map snd ab)))%N.
+                       vec_to_n (combinational (add8 ab)) =
+                       (vec_to_n (map fst ab)) + (vec_to_n (map snd ab)).
 Proof.
   induction ab.
   auto.
-  unfold combinational.
-  unfold add8.
+  induction ab.
+  
+  unfold combinational. 
   unfold fst.
+  unfold add8.
   unfold unsignedAdder.
-  unfold fullAdderFC.
-  destruct x.
- 
+  unfold fullAdderFC. 
+  unfold map.
+  unfold snd. 
+  unfold vec_to_n. 
+  unfold bool_to_n.
+
+
   
 
 
