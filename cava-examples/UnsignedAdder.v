@@ -86,10 +86,7 @@ Definition v2 := [1;0;0;0;0;0;0;0].
 
 
 Definition eval_unsignedAdder a b :=
-  let sum_carry := combinational (unsignedAdder false (combine (toVec a) (toVec b))) in
-  let sum := fst sum_carry in
-  let carry := snd sum_carry in
-  (fromVec sum, bool2nat carry).
+  fromVec (combinational (adder false (combine (toVec a) (toVec b)))).
 
 Compute (eval_unsignedAdder v1 v2).
 
