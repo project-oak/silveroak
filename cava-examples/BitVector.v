@@ -14,34 +14,22 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* Definitions used for nat level proofs about the full adder which are kept
-   separate because they are not used for extraction to SystemVerilog.
+(* Bit-vector operations for Cava.
 *)
 
 From Coq Require Import Bool.Bool. 
-From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
-Require Import Nat Arith Lia.
+Require Import Nat Arith.
 Import ListNotations.
 
-Require Import Hask.Control.Monad.
-
-Require Import Cava.
-
 Local Open Scope list_scope.
-Local Open Scope monad_scope.
 
-Require Import Cava.
-Require Import FullAdder.
-Require Import BitVector.
+(* Convert a bit-vector (LSB at first element) to a natural number. *)
 
-Lemma halfAdderNat :
-  forall (a : bool) (b : bool),
-  let (part_sum, carry_out) := combinational (halfAdder a b) in
-  bits_to_nat [part_sum; carry_out] = Nat.b2n a + Nat.b2n b.
-Proof.
-  intros a b.
-  case a, b.
-  all: reflexivity.
-Qed.
-  
+Fixpoint bits_to_nat (bits : list bool) : nat :=
+  match bits with
+  | [] =>  0
+  | b::bs => Nat.b2n b + 2 * bits_to_nat bs
+  end.
+
+Compute bits_to_nat [false; true; true].
