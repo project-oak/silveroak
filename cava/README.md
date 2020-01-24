@@ -11,7 +11,7 @@ requests.
 ## Pre-requisites
 Please install the following components:
 
-* The [Coq proof assistant](https://coq.inria.fr/) version 8.9.1 or later
+* The [Coq proof assistant](https://coq.inria.fr/) version 8.9.2 or later
 * The [GHC Haskell compiler](https://www.haskell.org/ghc/) version 8.6.5 or later
 * The [Icarus Verilog](http://iverilog.icarus.com/) circuit simulator version 10.3 or later
 
