@@ -45,3 +45,12 @@ Proof.
   all: reflexivity.
 Qed.
   
+Lemma fullAdderNat :
+  forall (a : bool) (b : bool) (cin : bool),
+  let (sum, carry_out) := combinational (fullAdder a b cin) in
+  bits_to_nat [sum; carry_out] = Nat.b2n a + Nat.b2n b + Nat.b2n cin.
+Proof.
+  intros.
+  case a, b, cin.
+  all: reflexivity.
+Qed.
