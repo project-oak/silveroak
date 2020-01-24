@@ -50,7 +50,7 @@ Definition halfAdderTop {m t} `{CavaTop m t} :=
 
 Definition halfAdderNetlist := makeNetlist halfAdderTop.
 
-(* A proof that the the half-adder is correct. *)
+(* A proof that the half-adder is correct. *)
 Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
                             combinational (halfAdder a b) = (xorb a b, a && b).
 
@@ -141,7 +141,47 @@ Proof.
   all : reflexivity.
 Qed.
 
+Definition nat2bool (n : nat) : bool :=
+  match n with
+  | 0 => false
+  | _ => true
+  end.
+
 (*
+    [ b3 ; b2 ; b1 ] ==  000 b3 b2 b1
+ 
+Fixpoint bits_to_nat (bits : list bool) : nat :=
+  match bits with
+  | [] =>  0
+  | b::bs => (shiftl (Nat.b2n b) (length bs)) + (bits_to_nat bs) 
+  end.
+
+
+
+Lemma fullAdderNat_correct : forall (cin : nat) (a : nat) (b : nat), cin < 2 -> a < 2 -> b < 2 ->
+                             let (sum, carry) := combinational (fullAdderFC (testbit 0 cin, (testbit 0 a, testbit 0 b))) in
+                             l := cin + a + b
+                              
+Proof.
+  intros.   
+  rewrite fullAdderFC_behaviour.
+  simpl.
+  unfold double.
+  unfold Nat.b2n.
+
+  rewrite 
+  unfold combinational.
+  unfold combinational.
+  unfold fst.
+  unfold nat2bool in *.
+  simpl.
+  unfold Nat.b2n.
+  unfold double.
+
+  all : simpl.
+  auto.
+
+
 Definition bool2nat (b : bool) : nat :=
   match b with
   | false => 0

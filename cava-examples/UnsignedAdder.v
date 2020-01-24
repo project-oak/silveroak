@@ -185,7 +185,7 @@ Compute v3bn.
 
 *)
 
-Definition add8 {m t} `{CavaTop m t} ab :=
+Definition addN {m t} `{CavaTop m t} ab :=
   sum_carry <- unsignedAdder false ab;
   let sum := fst sum_carry in
   let carry := snd sum_carry in
@@ -207,16 +207,62 @@ Proof.
   induction n. 
   auto.
 Qed.
-*)
 
-(*
 
-Lemma add8_bheaviour : forall (ab : list (bool * bool)),
+Lemma add1_bheaviour : forall (ab : list (bool * bool)), length ab = 1 ->
+                       vec_to_n (combinational (addN ab)) =
+                       (vec_to_n (map fst ab)) + (vec_to_n (map snd ab)).
+Proof.
+  intros.
+  unfold combinational. 
+  unfold fst.
+  unfold addN.
+  unfold unsignedAdder.
+  destruct ab.
+  simpl.
+  auto.
+  unfold col.
+  unfold below.
+  unfold fullAdderFC.
+  unfold fst in *.
+
+  destruct ab.
+  simpl.
+  auto.
+
+Lemma add8_bheaviour : forall (ab : list (bool * bool)), length ab > 1 ->
                        vec_to_n (combinational (add8 ab)) =
                        (vec_to_n (map fst ab)) + (vec_to_n (map snd ab)).
 Proof.
+  intros.
   induction ab.
   auto.
+  
+ 
+  induction ab. 
+  auto.
+  induction ab.
+  simpl.
+  unfold bool_to_n.
+  simpl.
+  unfold fst in *.
+  unfold snd in *.
+  simpl.
+  destruct a.
+  destruct b.
+  destruct b0.
+  simpl.
+  auto.
+  simpl.
+  auto.
+  destruct b0.
+  simpl.
+  auto.
+  simpl.
+  auto.
+  
+
+  rewrite -> IHab.
   induction ab.
   
   unfold combinational. 
