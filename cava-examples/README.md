@@ -242,32 +242,30 @@ Which does map efficiently onto the fast-carry chain:
 
 # An 8-bit adder mapped to the fast carry chain
 
-This is a Cava description of a generic n-bit unsigned adder and
-an 8-bit instantiation of it.
+This is a Cava description of a generic n-bit unsigned adder.
+The `unsignedAdder` definition is a generic n-bit adder where the
+size of the adder is determined by the length of the input vectors
+provided. The definition makes use of the `col` Lava style circuit
+combinator for composing replicated blocks in a chain.
 
 ```coq
-Fixpoint unsignedAdder {m bit} `{Cava m bit}
-                       (n : nat) (a : list bit) (b : list bit) (cin : bit)
-  : m (list bit)
-  :=
-  match n with
-  | 0 => return_ [cin]
-  | S n  => sum_cout <- fullAdderFC (hd cin a) (hd cin b) cin ;
-            let sum := fst sum_cout in
-            let cout := snd sum_cout in 
-            r <- unsignedAdder n (tl a) (tl b) cout ;
-            return_ (cons sum r)
-  end.
+Definition unsignedAdder {m bit} `{Cava m bit} := col fullAdderFC.
+```
 
-Definition adder8 {m bit} `{Cava m bit} := unsignedAdder 8.
+We can create a module definition for an 8-bit adder by instantiating
+the `unsignedAdder` with 8-bit input vectors.
 
+```coq
 Definition adder8Top {m t} `{CavaTop m t} :=
   setModuleName "adder8" ;;
   a <- inputVectorTo0 8 "a" ;
   b <- inputVectorTo0 8 "b" ;
   cin <- inputBit "cin" ;
-  sum <- adder8 a b cin ;
-  outputVectorTo0 sum "sum".
+  sum_cout <- unsignedAdder cin (combine a b) ;
+  let sum := fst sum_cout in
+  let cout := snd sum_cout in
+  outputVectorTo0 sum "sum" ;;
+  outputBit "cout" cout.
 
 Definition adder8Netlist := makeNetlist adder8Top.
 
@@ -280,7 +278,8 @@ module adder8(
   input logic cin,
   input logic[8:0] b,
   input logic[8:0] a,
-  output logic[9:0] sum
+  output logic cout,
+  output logic[8:0] sum
   );
 
   logic[0:40] net;
@@ -304,6 +303,7 @@ module adder8(
   assign net[6] = a[6];
   assign net[7] = a[7];
   // Wire up outputs.
+  assign cout = net[40] ;
   assign sum[0] = net[18];
   assign sum[1] = net[21];
   assign sum[2] = net[24];
@@ -312,7 +312,6 @@ module adder8(
   assign sum[5] = net[33];
   assign sum[6] = net[36];
   assign sum[7] = net[39];
-  assign sum[8] = net[40];
 
   MUXCY inst40 (net[40],net[37],net[7],net[38]);
   XORCY inst39 (net[39],net[37],net[38]);
@@ -340,7 +339,6 @@ module adder8(
   xor inst17 (net[17],net[0],net[8]);
 
 endmodule
-
 ```
 
 After implementing this design using the Xilinx Vivado FPGA design
@@ -348,3 +346,14 @@ tools we can view a schematic that confirms this design is mapped to
 the fast carry chain.
 
 ![adder8 on fast carry chain](adder8_cava.png)
+
+The 8-bit adder is mapped to once slice of a Zyna UltraScale+ XCZU7EV FPGA using 8 LUTs (for the
+XOR partial sums) and all of an 8-bit fast-carry block.
+
+![adder8 implementation](adder8_impl.png)
+
+The location of the adder is shown here in the top right hand corner
+of the FPGA i.e. the small blue dot in section X3Y5, with the IOs for
+the adder mapped to the purple column just to the left of the adder.
+
+![adder8 location](adder8_location.png)

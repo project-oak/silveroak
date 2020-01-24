@@ -44,6 +44,7 @@ library
                      Datatypes
                      List
                      Monad
+                     Nat
                      State
   other-Modules:     Applicative
                      BinInt
@@ -55,6 +56,5 @@ library
                      Functor
                      Logic
                      Ltac
-                     Nat
                      Specif
   default-language:  Haskell2010

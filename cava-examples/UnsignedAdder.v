@@ -17,8 +17,14 @@
 From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
+Require Import Coq.Lists.List Coq.Bool.Bool.
 From Coq Require Import ZArith.
+(* From Coq Require Import Numbers.BinNums. *)
+(* From Coq Require Import ZArith.Zdigits. *)
+Require Import Lia.
 Import ListNotations.
+
+Scheme Equality for list.
 
 Require Import Hask.Control.Monad.
 
@@ -33,28 +39,22 @@ Local Open Scope monad_scope.
    input vectors and carry in.
 *)
 
-Fixpoint unsignedAdder {m bit} `{Cava m bit}
-                       (n : nat) (a : list bit) (b : list bit) (cin : bit)
-  : m (list bit)
-  :=
-  match n with
-  | 0 => return_ [cin]
-  | S n  => sum_cout <- fullAdderFC (hd cin a) (hd cin b) cin ;
-            let sum := fst sum_cout in
-            let cout := snd sum_cout in 
-            r <- unsignedAdder n (tl a) (tl b) cout ;
-            return_ (cons sum r)
-  end.
+Definition unsignedAdder {m bit} `{Cava m bit} := col fullAdderFC.
 
-Definition adder8 {m bit} `{Cava m bit} := unsignedAdder 8.
+(* A module definition for an 8-bit adder for SystemVerilog netlist
+   generation.
+*)
 
 Definition adder8Top {m t} `{CavaTop m t} :=
   setModuleName "adder8" ;;
   a <- inputVectorTo0 8 "a" ;
   b <- inputVectorTo0 8 "b" ;
   cin <- inputBit "cin" ;
-  sum <- adder8 a b cin ;
-  outputVectorTo0 sum "sum".
+  sum_cout <- unsignedAdder cin (combine a b) ;
+  let sum := fst sum_cout in
+  let cout := snd sum_cout in
+  outputVectorTo0 sum "sum" ;;
+  outputBit "cout" cout.
 
 Definition adder8Netlist := makeNetlist adder8Top.
 
@@ -72,19 +72,221 @@ Definition bool2nat (b : bool) : nat :=
   | true => 1
   end.
 
+
+
+Definition adder {m bit} `{Cava m bit} cin ab :=
+  sum_carry <- unsignedAdder cin ab ;
+  return_ (fst sum_carry ++ [snd sum_carry]).
+
+
 Definition fromVec := map bool2nat.
 
-Definition v1 := toVec [0;1;0;0;0;0;0;0].
-Definition v2 := toVec [1;0;0;0;0;0;0;0].
+Definition v1 := [0;1;0;0;0;0;0;0].
+Definition v2 := [1;0;0;0;0;0;0;0].
 
-Compute (fromVec (combinational (adder8 v1 v2 false))).
 
-Definition v3 := toVec [1;1;1;1;1;1;1;1].
-Definition v4 := toVec [1;0;0;0;0;0;0;0].
+Definition eval_unsignedAdder a b :=
+  fromVec (combinational (adder false (combine (toVec a) (toVec b)))).
 
-Compute (fromVec (combinational (adder8 v3 v4 false))).
+Compute (eval_unsignedAdder v1 v2).
 
-Definition v5 := toVec [1;1;1;1;1;1;1;1].
-Definition v6 := toVec [1;1;1;1;1;1;1;1].
+Definition v3 := [1;1;1;1;1;1;1;1].
+Definition v4 := [1;0;0;0;0;0;0;0].
 
-Compute (fromVec (combinational (adder8 v5 v6 true))).
+Compute (eval_unsignedAdder v3 v4).
+
+Definition v5 := [1;1;1;1;1;1;1;1].
+Definition v6 := [1;1;1;1;1;1;1;1].
+
+Compute (eval_unsignedAdder v5 v6).
+
+
+Definition bool_to_n (b : bool) : nat :=
+  match b with
+  | false => 0
+  | true => 1
+  end.
+
+Fixpoint vec_to_n (l : list bool) : nat :=
+  match l with
+  | [] => 0
+  | x::xs => bool_to_n x + 2 * vec_to_n xs
+  end.
+
+Compute (vec_to_n (toVec v1)).
+Compute (vec_to_n (toVec v2)).
+Compute (vec_to_n (toVec v3)).
+Compute (vec_to_n (toVec v4)).
+Compute (vec_to_n (toVec v5)).
+Compute (vec_to_n (toVec v6)).
+
+
+Definition add (a : nat) (b : nat) : nat
+  := a + b.
+
+Lemma add_proof : forall a b,
+                  add a b = a + b.
+Proof.
+  auto.
+Qed.
+
+Definition addz (a : Z) (b : Z) : Z
+  := a + b.
+
+Lemma addz_proof : forall a b,
+                   addz a b = (a + b)%Z.
+Proof.
+  auto.
+Qed.
+
+(*
+
+Definition x6 : N := Npos (xO (xI xH)).
+Compute x6.
+
+Definition x0 : N := N0.
+Compute x0.
+
+Definition x5 : N := Npos (xI (xO xH)).
+Compute x5.
+
+Fixpoint strip_false (l : list bool) : list bool :=
+  match l with
+  | false::xs => strip_false xs
+  | _ => l
+  end.
+
+Fixpoint bv_to_n_pos (l : list bool) (n : positive) : positive :=
+  match l with
+  | [] => n
+  | x::xs => match x with
+             | false => bv_to_n_pos xs (xO n)
+             | true => bv_to_n_pos xs (xI n)
+             end
+  end.
+
+Definition bv_to_n (l : list bool) : N :=
+  match strip_false (rev l) with
+  | [] => N0
+  | x::xs => Npos (bv_to_n_pos xs xH)
+  end.
+
+Definition v1b := [false;true;true;false; false;false;false].
+Definition v1bn := bv_to_n v1b.
+Compute v1bn.
+
+Definition v2b := [false;true;true;false; false;true;false].
+Definition v2bn := bv_to_n v2b.
+Compute v2bn.
+
+Definition v3b := [false;false;false;false; false;false;false].
+Definition v3bn := bv_to_n v3b.
+Compute v3bn.
+
+*)
+
+Definition addN {m t} `{CavaTop m t} ab :=
+  sum_carry <- unsignedAdder false ab;
+  let sum := fst sum_carry in
+  let carry := snd sum_carry in
+  return_ (sum ++ [carry]).
+
+(*
+Definition add8bv {m t} `{CavaTop m t} abbv  :=
+  let a := to_list (fst abbv) in
+  let b := to_list (snd abbv) in
+  sum_carry <- unsignedAdder false (combine a b);
+  let sum := fst sum_carry in
+  let carry := snd sum_carry in
+  return_ (of_list (sum ++ [carry])).
+*)
+
+(*
+Theorem test : forall n:nat, n + 1 > n.
+Proof.
+  induction n. 
+  auto.
+Qed.
+
+
+Lemma add1_bheaviour : forall (ab : list (bool * bool)), length ab = 1 ->
+                       vec_to_n (combinational (addN ab)) =
+                       (vec_to_n (map fst ab)) + (vec_to_n (map snd ab)).
+Proof.
+  intros.
+  unfold combinational. 
+  unfold fst.
+  unfold addN.
+  unfold unsignedAdder.
+  destruct ab.
+  simpl.
+  auto.
+  unfold col.
+  unfold below.
+  unfold fullAdderFC.
+  unfold fst in *.
+
+  destruct ab.
+  simpl.
+  auto.
+
+Lemma add8_bheaviour : forall (ab : list (bool * bool)), length ab > 1 ->
+                       vec_to_n (combinational (add8 ab)) =
+                       (vec_to_n (map fst ab)) + (vec_to_n (map snd ab)).
+Proof.
+  intros.
+  induction ab.
+  auto.
+  
+ 
+  induction ab. 
+  auto.
+  induction ab.
+  simpl.
+  unfold bool_to_n.
+  simpl.
+  unfold fst in *.
+  unfold snd in *.
+  simpl.
+  destruct a.
+  destruct b.
+  destruct b0.
+  simpl.
+  auto.
+  simpl.
+  auto.
+  destruct b0.
+  simpl.
+  auto.
+  simpl.
+  auto.
+  
+
+  rewrite -> IHab.
+  induction ab.
+  
+  unfold combinational. 
+  unfold fst.
+  unfold add8.
+  unfold unsignedAdder.
+  unfold fullAdderFC. 
+  unfold map.
+  unfold snd. 
+  unfold vec_to_n. 
+  unfold bool_to_n.
+
+
+  
+
+
+  unfold vec_to_z.
+  simpl.
+  unfold combinational.
+  unfold fst.
+  destruct ab.
+  simpl.
+  unfold bool_to_z.
+  reflexivity.
+  
+ *)
+
