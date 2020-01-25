@@ -33,3 +33,9 @@ Fixpoint bits_to_nat (bits : list bool) : nat :=
   end.
 
 Compute bits_to_nat [false; true; true].
+
+Definition nat2bool (n : nat) : bool :=
+  match n with
+  | 0 => false
+  | _ => true
+  end.
