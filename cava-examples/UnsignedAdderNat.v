@@ -79,15 +79,8 @@ Proof. reflexivity. Qed.
 
 (****************************************************************************)
 
-Definition addN {m t} `{CavaTop m t} ab :=
-  sum_carry <- unsignedAdder false ab;
-  let sum := fst sum_carry in
-  let carry := snd sum_carry in
-  return_ (sum ++ [carry]).
-
-
 Lemma addN_bheaviour : forall (ab : list (bool * bool)), 
-                       bits_to_nat (combinational (addN ab)) =
+                       bits_to_nat (combinational (adder false ab)) =
                        (bits_to_nat (map fst ab)) + (bits_to_nat (map snd ab)).
 Proof.
 Abort.
