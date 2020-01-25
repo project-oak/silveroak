@@ -15,48 +15,80 @@
 (****************************************************************************)
 
 From Coq Require Import Bool.Bool.
-From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
+Require Import Coq.Lists.List Coq.Bool.Bool.
 From Coq Require Import ZArith.
+Require Import Lia.
 Import ListNotations.
+
+Scheme Equality for list.
 
 Require Import Hask.Control.Monad.
 
 Require Import Cava.
 Require Import FullAdder.
+Require Import FullAdderNat.
+Require Import UnsignedAdder.
+Require Import BitVector.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
-(* An unsigned addder which takes two size N bit-vectors and a carry in
-   and returns a sized N+1 result which is the addition of the two
-   input vectors and carry in.
+(* This module is designed for use for verification and testing and not
+   SystemVerilog extraction.
 *)
 
-Definition unsignedAdder {m bit} `{Cava m bit} := col fullAdderFC.
+Definition fromVec := map Nat.b2n.
 
-(****************************************************************************)
-(* A module definition for an 8-bit adder for SystemVerilog netlist
-   generation.
-*)
+Definition toVec := map nat2bool.
 
-Definition adder8Top {m t} `{CavaTop m t} :=
-  setModuleName "adder8" ;;
-  a <- inputVectorTo0 8 "a" ;
-  b <- inputVectorTo0 8 "b" ;
-  cin <- inputBit "cin" ;
-  sum_cout <- unsignedAdder cin (combine a b) ;
-  let sum := fst sum_cout in
-  let cout := snd sum_cout in
-  outputVectorTo0 sum "sum" ;;
-  outputBit "cout" cout.
-
-Definition adder8Netlist := makeNetlist adder8Top.
 
 (****************************************************************************)
 
-Definition adder {m bit} `{Cava m bit} cin ab :=
-  sum_carry <- unsignedAdder cin ab ;
-  return_ (fst sum_carry ++ [snd sum_carry]).
+Definition v1 := [0;1;0;0;0;0;0;0].
+Definition v2 := [1;0;0;0;0;0;0;0].
+
+Definition eval_unsignedAdder a b :=
+  fromVec (combinational (adder false (combine (toVec a) (toVec b)))).
+
+Example v1_plus_v2 : eval_unsignedAdder v1 v2 = [1; 1; 0; 0; 0; 0; 0; 0; 0].
+Proof. reflexivity. Qed.
 
 (****************************************************************************)
+
+Definition v0 : list nat := [].
+
+Example v0_plus_v0 : eval_unsignedAdder v0 v0 = [0].
+Proof. reflexivity. Qed.
+
+(****************************************************************************)
+
+Definition v3 := [1;1;1;1;1;1;1;1].
+Definition v4 := [1;0;0;0;0;0;0;0].
+
+Example v3_plus_v4 : eval_unsignedAdder v3 v4 = [0; 0; 0; 0; 0; 0; 0; 0; 1].
+Proof. reflexivity. Qed.
+
+(****************************************************************************)
+
+Definition v5 := [1;1;1;1;1;1;1;1].
+Definition v6 := [1;1;1;1;1;1;1;1].
+
+Example v5_plus_v6 : eval_unsignedAdder v5 v6 = [0; 1; 1; 1; 1; 1; 1; 1; 1].
+Proof. reflexivity. Qed.
+
+(****************************************************************************)
+
+Definition addN {m t} `{CavaTop m t} ab :=
+  sum_carry <- unsignedAdder false ab;
+  let sum := fst sum_carry in
+  let carry := snd sum_carry in
+  return_ (sum ++ [carry]).
+
+
+Lemma addN_bheaviour : forall (ab : list (bool * bool)), 
+                       bits_to_nat (combinational (addN ab)) =
+                       (bits_to_nat (map fst ab)) + (bits_to_nat (map snd ab)).
+Proof.
+Abort.
+

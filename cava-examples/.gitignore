@@ -3,4 +3,8 @@ NandGateSV
 nand2.sv
 nand2.vcd
 nand2.vvp
+FullAdder.hs
+UnsignedAdder.hs
+adder8.sv
+fulladderFC.sv
 

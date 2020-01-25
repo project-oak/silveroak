@@ -35,9 +35,6 @@ Generalizable All Variables.
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
-Set Printing Implicit.
-Set Printing All.
-
 (* The Cava class represents circuit graphs with Coq-level inputs and
    outputs, but does not represent the IO ports of circuits. This allows
    us to define both circuit netlist interpretations for the Cava class
