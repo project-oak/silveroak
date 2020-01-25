@@ -68,19 +68,12 @@ Definition nat2bool (n : nat) : bool :=
 
 Definition toVec := map nat2bool.
 
-Definition bool2nat (b : bool) : nat :=
-  match b with
-  | false => 0
-  | true => 1
-  end.
-
-
 Definition adder {m bit} `{Cava m bit} cin ab :=
   sum_carry <- unsignedAdder cin ab ;
   return_ (fst sum_carry ++ [snd sum_carry]).
 
 
-Definition fromVec := map bool2nat.
+Definition fromVec := map Nat.b2n.
 
 (****************************************************************************)
 
