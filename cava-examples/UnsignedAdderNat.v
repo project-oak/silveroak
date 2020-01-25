@@ -83,5 +83,7 @@ Lemma addN_bheaviour : forall (ab : list (bool * bool)),
                        bits_to_nat (combinational (adder false ab)) =
                        (bits_to_nat (map fst ab)) + (bits_to_nat (map snd ab)).
 Proof.
+  induction ab.
+  auto.
 Abort.
 

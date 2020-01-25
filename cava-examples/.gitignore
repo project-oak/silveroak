@@ -7,4 +7,5 @@ FullAdder.hs
 UnsignedAdder.hs
 adder8.sv
 fulladderFC.sv
-
+ExamplesSV
+fulladder.sv
