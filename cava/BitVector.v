@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2019 The Project Oak Authors                                   *)
+(* Copyright 2020 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,16 +14,28 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import NandGate.
-Require Import FullAdder.
-Require Import UnsignedAdder.
-From Coq Require Import Extraction.
-From Coq Require Import extraction.ExtrHaskellZInteger.
-From Coq Require Import extraction.ExtrHaskellString.
-From Coq Require Import ExtrHaskellBasic.
+(* Bit-vector operations for Cava.
+*)
 
-Extraction Language Haskell.
+From Coq Require Import Bool.Bool. 
+From Coq Require Import Lists.List.
+Require Import Nat Arith.
+Import ListNotations.
 
-Extraction Library NandGate.
-Extraction Library FullAdder.
-Extraction Library UnsignedAdder.
+Local Open Scope list_scope.
+
+(* Convert a bit-vector (LSB at first element) to a natural number. *)
+
+Fixpoint bits_to_nat (bits : list bool) : nat :=
+  match bits with
+  | [] =>  0
+  | b::bs => Nat.b2n b + 2 * bits_to_nat bs
+  end.
+
+Compute bits_to_nat [false; true; true].
+
+Definition nat2bool (n : nat) : bool :=
+  match n with
+  | 0 => false
+  | _ => true
+  end.

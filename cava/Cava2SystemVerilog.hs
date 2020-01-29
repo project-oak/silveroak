@@ -55,7 +55,6 @@ inputPort (Cava.Coq_mkPort name (Cava.VectorTo0Port v))
   = "  input logic[" ++ show ((length v)) ++ ":0] " ++ name
 inputPort (Cava.Coq_mkPort name (Cava.VectorFrom0Port v)) 
   = "  input logic[0:" ++ show (length v - 1) ++ "] " ++ name
-inputPort other = error (show other)
 
 outputPorts :: [Cava.PortDeclaration] -> [String]
 outputPorts = map outputPort

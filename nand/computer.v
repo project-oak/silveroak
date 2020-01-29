@@ -458,4 +458,6 @@ Proof.
     reflexivity. }
 Qed.
 
-Definition g_inv16(a : list bool) := g_bitn_inverter 16 a.
+Definition g_inv16 := g_bitn_inverter 16.
+
+Print g_inv16.

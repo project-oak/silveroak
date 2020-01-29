@@ -35,9 +35,6 @@ Generalizable All Variables.
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
-Set Printing Implicit.
-Set Printing All.
-
 (* The Cava class represents circuit graphs with Coq-level inputs and
    outputs, but does not represent the IO ports of circuits. This allows
    us to define both circuit netlist interpretations for the Cava class
@@ -345,11 +342,55 @@ Definition combinational {a} (circuit : State unit a) := fst (circuit tt).
 (******************************************************************************)
 
 
+(* Below combinator
+
+-------------------------------------------------------------------------------
+-- Below
+-------------------------------------------------------------------------------
+-- below r s
+--            ^
+--            |
+--            f
+--            ^
+--            |
+--          -----
+--         |     |
+--     c ->|  s  |-> e
+--         |     |
+--          -----
+--            ^ 
+--            |
+--            g
+--            ^
+--            |
+--          -----
+--         |     |
+--     b ->|  r  |-> d
+--         |     |
+--          -----
+--            ^ 
+--            |
+--            a
+-------------------------------------------------------------------------------
+*)
+
+Fixpoint below `{Monad m} {A B C D E F G}
+             (r : A * B -> m (D * G)%type)
+             (s : G * C -> m (E * F)%type)
+             (abc : A * (B * C)) : m ((D * E) * F)%type :=
+  let (a, bc) := abc in
+  let (b, c) := bc in
+  dg <- r (a, b) ;
+  let (d, g) := dg : D * G in
+  ef <- s (g, c) ;
+  let (e, f) := ef : E * F in
+  return_ ((d, e), f).
+
 (* The col combinator takes a 4-sided circuit element and replicates it by
    composing each element in a chain.
 
 -------------------------------------------------------------------------------
--- 4-Sided Tile Combinators
+-- 4-Sided Tile Combinators 
 -------------------------------------------------------------------------------
 -- COL r
 --            a
@@ -385,19 +426,20 @@ Definition combinational {a} (circuit : State unit a) := fst (circuit tt).
 --            a
 -------------------------------------------------------------------------------
 
+
 *)
 
 Fixpoint col `{Monad m} {A B C}
-             (circuit : A * B -> m (C * A)%type)
-             (a : A) (b : list B) : m (list C * A)%type :=
+             (circuit : A * B -> m (C * A)%type) (a : A) (b : list B) :
+             m (list C * A)%type :=
   match b with
   | [] => return_ ([], a)
-  | p::ps => cd <- circuit (a, p) ;
-             let c := fst cd in
-             let d := snd cd in 
-             xy <- col circuit d ps ;
-             let x := fst xy in
-             let y := snd xy in
-             return_ (c::x, y)
+  | b0::br => c_cs_e <- below circuit (fun ab => col circuit (fst ab) (snd ab)) (a, (b0, br)) ;
+                   let (c_cs, e) := c_cs_e : (C * list C) * A in
+                   let (c, cs) := c_cs : C * list C in
+                   return_ (c::cs, e)
   end.
+
+
+
 

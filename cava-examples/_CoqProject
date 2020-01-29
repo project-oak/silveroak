@@ -3,5 +3,6 @@
 -R . Lib
 NandGate.v
 FullAdder.v
+FullAdderNat.v
 UnsignedAdder.v
 ExamplesExtraction.v

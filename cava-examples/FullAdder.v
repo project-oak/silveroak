@@ -19,7 +19,7 @@
    and registers. http://nandgame.com/
 *)
 
-From Coq Require Import Bool.Bool.
+From Coq Require Import Bool.Bool. 
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 Import ListNotations.
@@ -50,7 +50,7 @@ Definition halfAdderTop {m t} `{CavaTop m t} :=
 
 Definition halfAdderNetlist := makeNetlist halfAdderTop.
 
-(* A proof that the the half-adder is correct. *)
+(* A proof that the half-adder is correct. *)
 Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
                             combinational (halfAdder a b) = (xorb a b, a && b).
 
@@ -140,3 +140,4 @@ Proof.
   case a, b, cin.
   all : reflexivity.
 Qed.
+
