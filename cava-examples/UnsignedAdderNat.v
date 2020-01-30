@@ -54,7 +54,7 @@ Definition v255 := [1;1;1;1;1;1;1;1].
 Definition eval_unsignedAdder cin a b :=
   let (sum, carry)
     := combinational
-       (unsignedAdder (nat2bool cin, combine (toVec a) (toVec b))) in
+       (unsignedAdder (nat2bool cin) (combine (toVec a) (toVec b))) in
   (fromVec sum, Nat.b2n carry).
 
 Example v1_plus_v2 : eval_unsignedAdder 0 v1 v2 = ([1; 1; 0; 0; 0; 0; 0; 0], 0).
