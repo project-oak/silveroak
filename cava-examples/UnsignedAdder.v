@@ -30,7 +30,7 @@ Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
 (* An unsigned addder which takes two size N bit-vectors and a carry in
-   and returns a sized N+1 result which is the addition of the two
+   and returns a size N sum and a carry out which is the addition of the two
    input vectors and carry in.
 *)
 
