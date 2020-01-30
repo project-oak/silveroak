@@ -37,7 +37,10 @@ cava2SystemVerilog (Cava.Coq_mkCavaState moduleName netNumber instances
     [""] ++
     ["  logic[0:" ++ show (netNumber-1) ++ "] net;"] ++
     [""] ++
-    ["  // Wire up inputs."] ++
+    ["  // Constant nets",
+     "  assign net[0] = 1'b0;",
+     "  assign net[1] = 1'b1;",
+     "  // Wire up inputs."] ++
     concat (map wireInput inputs) ++
     ["  // Wire up outputs."] ++
     concat (map wireOutput outputs) ++

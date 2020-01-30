@@ -63,6 +63,9 @@ Inductive Primitive :=
    us to define both circuit netlist interpretations for the Cava class
    as well as behavioural interpretations for attributing semantics. *)
 Class Cava m t `{Monad m} := {
+  (* Constant values. *)
+  zero : m t; (* This component always returns the value 0. *)
+  one : m t; (* This component always returns the value 1. *)
   (* Primitive SystemVerilog gates *)
   not_gate : t -> m t; (* Corresponds to the SystemVerilog primitive gate 'not' *)
   and_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'and' *)
@@ -108,8 +111,12 @@ Record CavaState : Type := mkCavaState {
 (* The initial empty netlist                                                  *)
 (******************************************************************************)
 
+(* Net number 0 carries the constant signal zero. Net number 1 carries the
+   constant signal 1. We start numbering from 2 for the user nets.
+*) 
+
 Definition initState : CavaState
-  := mkCavaState "" 0 [] [] [].
+  := mkCavaState "" 2 [] [] [].
 
 (******************************************************************************)
 (* Execute a monadic circuit description and return the generated netlist.    *)
@@ -209,7 +216,9 @@ Definition muxcyNet (s : Z)  (di : Z) (ci : Z) : State CavaState Z :=
 (******************************************************************************)
 
 Instance CavaNet : Cava (State CavaState) Z :=
-  { not_gate := notNet;
+  { zero := return_ 0%Z;
+    one := return_ 1%Z;
+    not_gate := notNet;
     and_gate := andNet;
     nand_gate := nandNet;
     or_gate := orNet;
@@ -341,7 +350,9 @@ Definition outputBool (name : string) (i : bool) : State unit bool :=
 (******************************************************************************)
 
 Instance CavaBool : Cava (State unit) bool :=
-  { not_gate := notBool;
+  { zero := return_ false;
+    one := return_ true;
+    not_gate := notBool;
     and_gate := andBool;
     nand_gate := nandBool;
     or_gate := orBool;
