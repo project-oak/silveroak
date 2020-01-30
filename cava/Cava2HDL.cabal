@@ -40,11 +40,13 @@ cabal-version:        >= 1.10
 library
   build-Depends:     base >= 4
   exposed-Modules:   Cava2SystemVerilog
+                     BitVector
                      Cava
                      Datatypes
                      List
                      Monad
                      Nat
+                     PeanoNat
                      State
   other-Modules:     Applicative
                      BinInt

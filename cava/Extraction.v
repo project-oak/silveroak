@@ -15,6 +15,7 @@
 (****************************************************************************)
 
 Require Import Cava.
+Require Import BitVector.
 Require Import Examples.
 From Coq Require Import Extraction.
 From Coq Require Import extraction.ExtrHaskellZInteger.
@@ -24,4 +25,5 @@ From Coq Require Import ExtrHaskellBasic.
 Extraction Language Haskell.
 
 Recursive Extraction Library Cava.
+Recursive Extraction Library BitVector.
 Extraction Library Examples.

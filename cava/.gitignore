@@ -28,6 +28,8 @@ Functor.hs
 Ltac.hs
 Monad.hs
 State.hs
+BitVector.hs
+PeanoNat.hs
 ExamplesSV
 nand2.sv
 nand2.vcd
