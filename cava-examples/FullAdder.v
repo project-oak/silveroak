@@ -27,6 +27,7 @@ Import ListNotations.
 Require Import Hask.Control.Monad.
 
 Require Import Cava.
+Require Import BitVector.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
@@ -112,8 +113,8 @@ Definition fullAdderFC {m bit} `{Cava m bit} (cin_ab : bit * (bit * bit))
   let a := fst ab in
   let b := snd ab in
   part_sum <- xor_gate [a; b] ;
-  sum <- xorcy cin part_sum ;
-  cout <- muxcy cin a part_sum ;
+  sum <- xorcy part_sum cin ;
+  cout <- muxcy part_sum a cin  ;
   return_ (sum, cout).
 
 Definition fullAdderFCTop {m t} `{CavaTop m t} :=
@@ -140,4 +141,6 @@ Proof.
   case a, b, cin.
   all : reflexivity.
 Qed.
+
+
 

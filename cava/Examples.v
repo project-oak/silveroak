@@ -34,13 +34,19 @@ Require Import Cava.
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
-(* Experiments with the pre-defined gates. *)
+(* Experiments with the primitive Cava gates. *)
 
-Eval simpl in fst ((not_gate false) tt). 
-Eval simpl in fst ((not_gate true) tt).
+Example inv_false : combinational (not_gate false) = true.
+Proof. reflexivity. Qed.
 
-Eval simpl in fst ((and_gate [false; false]) tt).
-Eval simpl in fst ((and_gate [true; true]) tt).
+Example inv_true  : combinational (not_gate true) = false.
+Proof. reflexivity. Qed.
+
+Example and_00 : combinational (and_gate [false; false]) = false.
+Proof. reflexivity. Qed.
+
+Example and_11 : combinational (and_gate [true; true]) = true.
+Proof. reflexivity. Qed.
 
 Eval cbv in ((not_gate (0%Z)) (mkCavaState "" (1%Z) [] [] [])).
 
@@ -50,8 +56,11 @@ Eval cbv in ((not_gate (0%Z)) (mkCavaState "" (1%Z) [] [] [])).
 Definition nand2 {m t} `{Cava m t} := and_gate >=> not_gate.
 
 (* Simulate the NAND gate circuit using the Bool interpretation. *)
-Eval simpl in fst ((nand2 [false; false]) tt).
-Eval simpl in fst ((nand2 [true; true]) tt).
+Example nand_00 : combinational (nand2 [false; false]) = true.
+Proof. reflexivity. Qed.
+
+Example nand_11 : combinational (nand2 [true; true]) = false.
+Proof. reflexivity. Qed.
 
 (* Generate a circuit graph representation for the NAND gate using the
    netlist interpretatin. *)

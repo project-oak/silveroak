@@ -71,9 +71,40 @@ insertCommas [] = []
 insertCommas [x] = [x]
 insertCommas (x:y:xs) = (x ++ ",") : insertCommas (y:xs)
 
+nameOfInstance :: Cava.Primitive -> String
+nameOfInstance inst
+  = case inst of
+      Cava.Not _ _ -> "not"
+      Cava.And _ _ -> "and"
+      Cava.Nand _ _ -> "nand"
+      Cava.Or _ _ -> "or"
+      Cava.Nor _ _ -> "nor"
+      Cava.Xor _ _-> "xor"
+      Cava.Xnor _ _ -> "xnor"
+      Cava.Buf _ _ -> "buf"
+      Cava.Xorcy _ _ _ -> "XORCY"
+      Cava.Muxcy _ _ _ _ -> "MUXCY"
+
+instanceArgs :: Cava.Primitive -> [Integer]
+instanceArgs inst
+  = case inst of
+      Cava.Not i o -> [o, i]
+      Cava.And i o -> o:i
+      Cava.Nand i o -> o:i
+      Cava.Or i o -> o:i
+      Cava.Nor i o -> o:i
+      Cava.Xor i o -> o:i
+      Cava.Xnor i o -> o:i
+      Cava.Buf i o -> [o, i]
+      Cava.Xorcy li ci o -> [o, ci, li]
+      Cava.Muxcy s di ci o -> [o, ci, di, s]
+
 generateInstance :: Cava.Instance -> String
-generateInstance (Cava.Coq_mkInstance name number args)
-  = "  " ++ name ++ " inst" ++ show number ++ " " ++  showArgs args ++ ";"
+generateInstance (Cava.Coq_mkInstance number inst)      
+  = "  " ++ instName ++ " inst" ++ show number ++ " " ++  showArgs args ++ ";"
+   where
+   instName = nameOfInstance inst
+   args = instanceArgs inst
 
 showArgs :: [Integer] -> String
 showArgs args = "(" ++ concat (insertCommas (map showArg args)) ++ ")";

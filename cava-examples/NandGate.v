@@ -54,3 +54,16 @@ Lemma nand2_behaviour : forall (a : bool) (b : bool),
 Proof.
   auto.
 Qed.
+
+(* An exhuastive proof by analyzing all four cases. *)
+Example nand_00 : combinational (nand2 [false; false]) = true.
+Proof. reflexivity. Qed.
+
+Example nand_01 : combinational (nand2 [false; true]) = true.
+Proof. reflexivity. Qed.
+
+Example nand_10 : combinational (nand2 [true; false]) = true.
+Proof. reflexivity. Qed.
+
+Example nand_11 : combinational (nand2 [true; true]) = false.
+Proof. reflexivity. Qed.

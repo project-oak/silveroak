@@ -39,3 +39,10 @@ Definition nat2bool (n : nat) : bool :=
   | 0 => false
   | _ => true
   end.
+
+(******************************************************************************)
+(* Functions useful for examples and tests                                    *)
+(******************************************************************************)
+
+Definition fromVec := map Nat.b2n.
+Definition toVec := map nat2bool.

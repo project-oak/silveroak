@@ -38,43 +38,44 @@ Local Open Scope monad_scope.
    SystemVerilog extraction.
 *)
 
-Definition fromVec := map Nat.b2n.
-
-Definition toVec := map nat2bool.
-
 
 (****************************************************************************)
+(* A few tests to check the unsigned adder. *)
 
-Definition v1 := [0;1;0;0;0;0;0;0].
-Definition v2 := [1;0;0;0;0;0;0;0].
+Definition v0   := [0;0;0;0;0;0;0;0].
+Definition v1   := [1;0;0;0;0;0;0;0].
+Definition v2   := [0;1;0;0;0;0;0;0].
+Definition v3   := [1;1;1;1;1;1;1;1].
+Definition v4   := [1;0;0;0;0;0;0;0].
+Definition v5   := [1;1;1;1;1;1;1;1].
+Definition v6   := [1;1;1;1;1;1;1;1].
+Definition v255 := [1;1;1;1;1;1;1;1].
 
-Definition eval_unsignedAdder a b :=
-  fromVec (combinational (adder false (combine (toVec a) (toVec b)))).
+Definition eval_unsignedAdder cin a b :=
+  let (sum, carry)
+    := combinational
+       (unsignedAdder (nat2bool cin, combine (toVec a) (toVec b))) in
+  (fromVec sum, Nat.b2n carry).
 
-Example v1_plus_v2 : eval_unsignedAdder v1 v2 = [1; 1; 0; 0; 0; 0; 0; 0; 0].
+Example v1_plus_v2 : eval_unsignedAdder 0 v1 v2 = ([1; 1; 0; 0; 0; 0; 0; 0], 0).
 Proof. reflexivity. Qed.
 
-(****************************************************************************)
-
-Definition v0 : list nat := [].
-
-Example v0_plus_v0 : eval_unsignedAdder v0 v0 = [0].
+Example v0_plus_v1 : eval_unsignedAdder 0 v0 v1 = ([1; 0; 0; 0; 0; 0; 0; 0], 0).
 Proof. reflexivity. Qed.
 
-(****************************************************************************)
-
-Definition v3 := [1;1;1;1;1;1;1;1].
-Definition v4 := [1;0;0;0;0;0;0;0].
-
-Example v3_plus_v4 : eval_unsignedAdder v3 v4 = [0; 0; 0; 0; 0; 0; 0; 0; 1].
+Example v255_plus_v1 : eval_unsignedAdder 0 v255 v1 = ([0; 0; 0; 0; 0; 0; 0; 0], 1).
 Proof. reflexivity. Qed.
 
-(****************************************************************************)
+Example v255_plus_v0_cin1 : eval_unsignedAdder 1 v255 v0 = ([0; 0; 0; 0; 0; 0; 0; 0], 1).
+Proof. reflexivity. Qed.
 
-Definition v5 := [1;1;1;1;1;1;1;1].
-Definition v6 := [1;1;1;1;1;1;1;1].
+Example v255_plus_255_cin1 : eval_unsignedAdder 1 v255 v255 = ([1; 1; 1; 1; 1; 1; 1; 1], 1).
+Proof. reflexivity. Qed.
 
-Example v5_plus_v6 : eval_unsignedAdder v5 v6 = [0; 1; 1; 1; 1; 1; 1; 1; 1].
+Example v3_plus_v4 : eval_unsignedAdder 0 v3 v4 = ([0; 0; 0; 0; 0; 0; 0; 0], 1).
+Proof. reflexivity. Qed.
+
+Example v5_plus_v6 : eval_unsignedAdder 0 v5 v6 = ([0; 1; 1; 1; 1; 1; 1; 1], 1).
 Proof. reflexivity. Qed.
 
 (****************************************************************************)

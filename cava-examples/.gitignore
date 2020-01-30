@@ -8,3 +8,13 @@ UnsignedAdder.hs
 adder8.sv
 fulladderFC.sv
 ExamplesSV
+BitVector.hs
+Bool.hs
+Datatypes.hs
+Decimal.hs
+List.hs
+Logic.hs
+Nat.hs
+PeanoNat.hs
+Specif.hs
+

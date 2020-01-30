@@ -35,6 +35,29 @@ Generalizable All Variables.
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
+(******************************************************************************)
+(* Primitive elements                                                         *)
+(******************************************************************************)
+
+(* The primitive elements that can be instantiated in Cava. Some are generic
+   SystemVerilog gates that can be used with synthesis and back-end tools to
+   map to any architecture, while others are specific to Xilinx FPGAs.
+*)
+
+Inductive Primitive :=
+  (* SystemVerilog primitive gates. *)
+  | Not  : Z -> Z -> Primitive
+  | And  : list Z -> Z -> Primitive
+  | Nand : list Z -> Z -> Primitive
+  | Or   : list Z -> Z -> Primitive
+  | Nor  : list Z -> Z -> Primitive
+  | Xor  : list Z -> Z -> Primitive
+  | Xnor : list Z -> Z -> Primitive
+  | Buf  : Z -> Z -> Primitive
+  (* Xilinx FPGA architecture specific gates. *)
+  | Xorcy : Z -> Z -> Z -> Primitive
+  | Muxcy : Z -> Z -> Z -> Z -> Primitive.
+
 (* The Cava class represents circuit graphs with Coq-level inputs and
    outputs, but does not represent the IO ports of circuits. This allows
    us to define both circuit netlist interpretations for the Cava class
@@ -59,9 +82,8 @@ Class Cava m t `{Monad m} := {
 (******************************************************************************)
 
 Record Instance : Type := mkInstance {
-  inst_name : string;
   inst_number : Z;
-  inst_args : list Z;
+  instance : Primitive ;
 }.
 
 Inductive PortType :=
@@ -93,7 +115,8 @@ Definition initState : CavaState
 (* Execute a monadic circuit description and return the generated netlist.    *)
 (******************************************************************************)
 
-Definition makeNetlist {t} (circuit : State CavaState t) := snd (circuit initState).
+Definition makeNetlist {t} (circuit : State CavaState t)
+  := snd (circuit initState).
 
 (******************************************************************************)
 (* Netlist implementations for the Cava class.                                *)
@@ -103,7 +126,7 @@ Definition notNet (i : Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "not" o [o; i]) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Not i o)) insts) inputs outputs) ;;
          return_ o
   end. 
 
@@ -111,7 +134,7 @@ Definition andNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "and" o (cons o i)) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (And i o)) insts) inputs outputs) ;;
          return_ o
   end.
 
@@ -119,7 +142,7 @@ Definition nandNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "nand" o (cons o i)) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Nand i o)) insts) inputs outputs) ;;
          return_ o
   end.
 
@@ -127,7 +150,7 @@ Definition orNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "or" o (cons o i)) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Or i o)) insts) inputs outputs) ;;
          return_ o
   end.
 
@@ -135,7 +158,7 @@ Definition norNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "nor" o (cons o i)) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Nor i o)) insts) inputs outputs) ;;
          return_ o
   end.
 
@@ -143,7 +166,7 @@ Definition xorNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "xor" o (cons o i)) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Xor i o)) insts) inputs outputs) ;;
          return_ o
   end.
 
@@ -152,7 +175,7 @@ Definition xorcyNet (ci : Z) (li : Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "XORCY" o [o; ci; li]) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Xorcy ci li o)) insts) inputs outputs) ;;
          return_ o
   end.
 
@@ -160,7 +183,7 @@ Definition xnorNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "nxor" o (cons o i)) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Xnor i o)) insts) inputs outputs) ;;
          return_ o
   end.
 
@@ -168,15 +191,15 @@ Definition bufNet (i : Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "buf" o [o; i]) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Buf i o)) insts) inputs outputs) ;;
          return_ o
   end. 
 
-Definition muxcyNet (ci : Z) (di : Z) (s : Z) : State CavaState Z :=
+Definition muxcyNet (s : Z)  (di : Z) (ci : Z) : State CavaState Z :=
   cs <- get;
   match cs with
   | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance "MUXCY" o [o; ci; di; s]) insts) inputs outputs) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Muxcy s di ci o)) insts) inputs outputs) ;;
          return_ o
   end.
 
@@ -291,13 +314,13 @@ Definition norBool (i : list bool) : State unit bool :=
 Definition xorBool (i : list bool) : State unit bool :=
   return_ (fold_left (fun a b => xorb a b) i false).
 
-Definition xorcyBool (ci : bool) (li : bool) : State unit bool :=
+Definition xorcyBool (li : bool) (ci : bool) : State unit bool :=
   return_ (xorb ci li).
 
 Definition xnorBool (i : list bool) : State unit bool :=
   return_ (negb (fold_left (fun a b => xorb a b) i false)).
 
-Definition muxcyBool (ci : bool) (di : bool) (s : bool) : State unit bool :=
+Definition muxcyBool (s : bool) (di : bool) (ci : bool)  : State unit bool :=
   return_ (match s with
            | false => di
            | true => ci
@@ -439,7 +462,4 @@ Fixpoint col `{Monad m} {A B C}
                    let (c, cs) := c_cs : C * list C in
                    return_ (c::cs, e)
   end.
-
-
-
 

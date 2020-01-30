@@ -54,6 +54,8 @@ Definition adder8Top {m t} `{CavaTop m t} :=
 Definition adder8Netlist := makeNetlist adder8Top.
 
 (****************************************************************************)
+(* Adder with bit-growth at output sum (so no carry out                     *)
+(****************************************************************************)
 
 Definition adder {m bit} `{Cava m bit} cin ab :=
   sum_carry <- unsignedAdder cin ab ;
