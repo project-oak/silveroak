@@ -35,7 +35,7 @@ cava2SystemVerilog (Cava.Coq_mkCavaState moduleName netNumber instances
     insertCommas (inputPorts inputs ++ outputPorts outputs) ++
     ["  );"] ++
     [""] ++
-    ["  logic[0:" ++ show (netNumber-1) ++ "] net;"] ++
+    ["  logic[" ++ show (netNumber-1) ++ ":0] net;"] ++
     [""] ++
     ["  // Constant nets",
      "  assign net[0] = 1'b0;",
@@ -55,7 +55,7 @@ inputPorts = map inputPort
 inputPort :: Cava.PortDeclaration -> String
 inputPort (Cava.Coq_mkPort name (Cava.BitPort _)) = "  input logic " ++ name
 inputPort (Cava.Coq_mkPort name (Cava.VectorTo0Port v)) 
-  = "  input logic[" ++ show ((length v)) ++ ":0] " ++ name
+  = "  input logic[" ++ show ((length v) - 1) ++ ":0] " ++ name
 inputPort (Cava.Coq_mkPort name (Cava.VectorFrom0Port v)) 
   = "  input logic[0:" ++ show (length v - 1) ++ "] " ++ name
 
@@ -65,7 +65,7 @@ outputPorts = map outputPort
 outputPort :: Cava.PortDeclaration -> String
 outputPort (Cava.Coq_mkPort name (Cava.BitPort _)) = "  output logic " ++ name
 outputPort (Cava.Coq_mkPort name (Cava.VectorTo0Port v)) 
-  = "  output logic[" ++ show ((length v)) ++ ":0] " ++ name
+  = "  output logic[" ++ show ((length v) - 1) ++ ":0] " ++ name
 outputPort (Cava.Coq_mkPort name (Cava.VectorFrom0Port v)) 
   = "  output logic[0:" ++ show (length v - 1) ++ "] " ++ name
 
