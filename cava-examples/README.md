@@ -276,67 +276,70 @@ The generated SystemVerilog for the 8-bit adder is:
 ```verilog
 module adder8(
   input logic cin,
-  input logic[8:0] b,
-  input logic[8:0] a,
+  input logic[7:0] b,
+  input logic[7:0] a,
   output logic cout,
-  output logic[8:0] sum
+  output logic[7:0] sum
   );
 
-  logic[0:40] net;
+  logic[42:0] net;
 
+  // Constant nets
+  assign net[0] = 1'b0;
+  assign net[1] = 1'b1;
   // Wire up inputs.
-  assign net[16] = cin;
-  assign net[8] = b[0];
-  assign net[9] = b[1];
-  assign net[10] = b[2];
-  assign net[11] = b[3];
-  assign net[12] = b[4];
-  assign net[13] = b[5];
-  assign net[14] = b[6];
-  assign net[15] = b[7];
-  assign net[0] = a[0];
-  assign net[1] = a[1];
-  assign net[2] = a[2];
-  assign net[3] = a[3];
-  assign net[4] = a[4];
-  assign net[5] = a[5];
-  assign net[6] = a[6];
-  assign net[7] = a[7];
+  assign net[18] = cin;
+  assign net[10] = b[0];
+  assign net[11] = b[1];
+  assign net[12] = b[2];
+  assign net[13] = b[3];
+  assign net[14] = b[4];
+  assign net[15] = b[5];
+  assign net[16] = b[6];
+  assign net[17] = b[7];
+  assign net[2] = a[0];
+  assign net[3] = a[1];
+  assign net[4] = a[2];
+  assign net[5] = a[3];
+  assign net[6] = a[4];
+  assign net[7] = a[5];
+  assign net[8] = a[6];
+  assign net[9] = a[7];
   // Wire up outputs.
-  assign cout = net[40] ;
-  assign sum[0] = net[18];
-  assign sum[1] = net[21];
-  assign sum[2] = net[24];
-  assign sum[3] = net[27];
-  assign sum[4] = net[30];
-  assign sum[5] = net[33];
-  assign sum[6] = net[36];
-  assign sum[7] = net[39];
+  assign cout = net[42] ;
+  assign sum[0] = net[20];
+  assign sum[1] = net[23];
+  assign sum[2] = net[26];
+  assign sum[3] = net[29];
+  assign sum[4] = net[32];
+  assign sum[5] = net[35];
+  assign sum[6] = net[38];
+  assign sum[7] = net[41];
 
-  MUXCY inst40 (net[40],net[37],net[7],net[38]);
-  XORCY inst39 (net[39],net[37],net[38]);
-  xor inst38 (net[38],net[7],net[15]);
-  MUXCY inst37 (net[37],net[34],net[6],net[35]);
-  XORCY inst36 (net[36],net[34],net[35]);
-  xor inst35 (net[35],net[6],net[14]);
-  MUXCY inst34 (net[34],net[31],net[5],net[32]);
-  XORCY inst33 (net[33],net[31],net[32]);
-  xor inst32 (net[32],net[5],net[13]);
-  MUXCY inst31 (net[31],net[28],net[4],net[29]);
-  XORCY inst30 (net[30],net[28],net[29]);
-  xor inst29 (net[29],net[4],net[12]);
-  MUXCY inst28 (net[28],net[25],net[3],net[26]);
-  XORCY inst27 (net[27],net[25],net[26]);
-  xor inst26 (net[26],net[3],net[11]);
-  MUXCY inst25 (net[25],net[22],net[2],net[23]);
-  XORCY inst24 (net[24],net[22],net[23]);
-  xor inst23 (net[23],net[2],net[10]);
-  MUXCY inst22 (net[22],net[19],net[1],net[20]);
-  XORCY inst21 (net[21],net[19],net[20]);
-  xor inst20 (net[20],net[1],net[9]);
-  MUXCY inst19 (net[19],net[16],net[0],net[17]);
-  XORCY inst18 (net[18],net[16],net[17]);
-  xor inst17 (net[17],net[0],net[8]);
+  MUXCY inst42 (net[42],net[39],net[9],net[40]);
+  XORCY inst41 (net[41],net[39],net[40]);
+  xor inst40 (net[40],net[9],net[17]);
+  MUXCY inst39 (net[39],net[36],net[8],net[37]);
+  XORCY inst38 (net[38],net[36],net[37]);
+  xor inst37 (net[37],net[8],net[16]);
+  MUXCY inst36 (net[36],net[33],net[7],net[34]);
+  XORCY inst35 (net[35],net[33],net[34]);
+  xor inst34 (net[34],net[7],net[15]);
+  MUXCY inst33 (net[33],net[30],net[6],net[31]);
+  XORCY inst32 (net[32],net[30],net[31]);
+  xor inst31 (net[31],net[6],net[14]);
+  MUXCY inst30 (net[30],net[27],net[5],net[28]);
+  XORCY inst29 (net[29],net[27],net[28]);
+  xor inst28 (net[28],net[5],net[13]);
+  MUXCY inst27 (net[27],net[24],net[4],net[25]);
+  XORCY inst26 (net[26],net[24],net[25]);
+  xor inst25 (net[25],net[4],net[12]);
+  MUXCY inst24 (net[24],net[21],net[3],net[22]);
+  XORCY inst23 (net[23],net[21],net[22]);
+  xor inst22 (net[22],net[3],net[11]);
+  MUXCY inst21 (net[21],net[18],net[2],net[19]);
+  XORCY inst20 (net[20],net[18],net[19]);
+  xor inst19 (net[19],net[2],net[10]);
 
 endmodule
 ```
