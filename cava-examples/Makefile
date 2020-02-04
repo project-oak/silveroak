@@ -39,15 +39,24 @@ nand2.vcd:	nand2.sv nand2_tb.sv
 		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv
 		./nand2.vvp 
 
+fulladderFC.sv:	nand2.sv
+
 fulladderFC.vcd:	fulladderFC.sv fulladderFC_tb.sv
 			iverilog -y $(XILINX)/data/verilog/src/unisims -g2012 -o \
 			  fulladderFC.vvp fulladderFC.sv fulladderFC_tb.sv
 			./fulladderFC.vvp
 
+adder8.sv:	nand2.sv
+
+adder8.vcd:	adder8.sv adder8_tb.sv
+			iverilog -y $(XILINX)/data/verilog/src/unisims -g2012 -o \
+			  adder8.vvp adder8.sv adder8_tb.sv
+			./adder8.vvp
+
 clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \
 		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq Makefile.coq.conf \
 			FixupAscii ExamplesSV \
-			nand2.sv fulladder.sv nand2.vcd fulladderFC.vcd *.vvp
+			nand2.sv fulladder.sv nand2.vcd fulladderFC.vcd adder8.vcd *.vvp
 		xargs rm -rf < .gitignore
 
