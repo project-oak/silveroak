@@ -10,7 +10,8 @@
 Makefile.coq
 Makefile.coq.conf
 work-obj93.cf
-*/vivado.jou
+*/*.jou
+*/*.wdb
 */xsim.dir/*
 *~
 *.lia.cache

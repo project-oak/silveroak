@@ -31,10 +31,14 @@ module adder_test;
     assign b   = 8'd17;
     assign cin = 1'b0;
     #10
+    assert (sum == 8'd21) else $fatal;
+    assert (cout == 1'd0) else $fatal;
     assign a   = 8'd7;
     assign b   = 8'd20;
     assign cin = 1'b0;
     #10
+    assert (sum == 8'd27) else $fatal;
+    assert (cout == 1'd0) else $fatal;
     assign a   = 8'd51;
     assign b   = 8'd62;
     assign cin = 1'b0;
@@ -42,6 +46,9 @@ module adder_test;
     assign a   = 8'd200;
     assign b   = 8'd55;
     assign cin = 1'b1;
+    #10
+    assert (sum == 8'd0) else $fatal;
+    assert (cout == 1'd1) else $fatal;
     $finish;
   end
   

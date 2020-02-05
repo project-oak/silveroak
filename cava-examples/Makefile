@@ -22,6 +22,7 @@
 .PHONY: all compile clean
 
 all:		compile nand2.sv nand2.vcd
+xilinx:		adder8.vcd
 
 Makefile.coq:
 		coq_makefile -f _CoqProject -o Makefile.coq
@@ -49,14 +50,15 @@ fulladderFC.vcd:	fulladderFC.sv fulladderFC_tb.sv
 adder8.sv:	nand2.sv
 
 adder8.vcd:	adder8.sv adder8_tb.sv
-			iverilog -y $(XILINX)/data/verilog/src/unisims -g2012 -o \
-			  adder8.vvp adder8.sv adder8_tb.sv
-			./adder8.vvp
+		xvlog -sv adder8.sv adder8_tb.sv
+		xelab --debug typical -L unisims_ver work.adder_test -s adder8_sim
+		xsim --R adder8_sim
 
 clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \
 		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq Makefile.coq.conf \
 			FixupAscii ExamplesSV \
-			nand2.sv fulladder.sv nand2.vcd fulladderFC.vcd adder8.vcd *.vvp
+			nand2.sv fulladder.sv nand2.vcd fulladderFC.vcd adder8.vcd *.vvp \
+			*.jou *.wdb *.log *.pb
 		xargs rm -rf < .gitignore
 
