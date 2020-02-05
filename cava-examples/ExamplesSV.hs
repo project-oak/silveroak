@@ -27,3 +27,4 @@ main = do writeSystemVerilog nand2Netlist
           writeSystemVerilog fullAdderNetlist
           writeSystemVerilog fullAdderFCNetlist
           writeSystemVerilog adder8Netlist
+          writeSystemVerilog pipelinedNANDNetlist

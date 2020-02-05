@@ -35,6 +35,11 @@ ExamplesSV:	ExamplesSV.hs
 
 nand2.sv:	compile ExamplesSV
 		./ExamplesSV
+		iverilog -g2012 nand2.sv
+		iverilog -g2012 fulladder.sv
+		iverilog -y $(XILINX)/data/verilog/src/unisims -g2012 fulladderFC.sv
+		iverilog -y $(XILINX)/data/verilog/src/unisims -g2012 adder8.sv
+
 
 nand2.vcd:	nand2.sv nand2_tb.sv
 		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv
@@ -53,6 +58,9 @@ adder8.vcd:	adder8.sv adder8_tb.sv
 		xvlog -sv adder8.sv adder8_tb.sv
 		xelab --debug typical -L unisims_ver work.adder_test -s adder8_sim
 		xsim --R adder8_sim
+
+pipelinedNAND.vcd:	pipelinedNAND.sv
+			xvlog -sv pipelinedNAND.sv
 
 clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \

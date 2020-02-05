@@ -67,3 +67,17 @@ Proof. reflexivity. Qed.
 
 Example nand_11 : combinational (nand2 [true; true]) = false.
 Proof. reflexivity. Qed.
+
+(* A nand-gate with registers after the AND gate and the INV gate. *)
+
+Definition pipelinedNAND {m t} `{Cava m t}
+  := and_gate >=> delayBit >=> not_gate >=> delayBit.
+
+Definition pipelinedNANDTop {m t} `{CavaTop m t} :=
+  setModuleName "pipelinedNAND" ;;
+  a <- inputBit "a" ;
+  b <- inputBit "b" ;
+  c <- pipelinedNAND [a; b] ;
+  outputBit "c" c.
+
+Definition pipelinedNANDNetlist := makeNetlist pipelinedNANDTop.

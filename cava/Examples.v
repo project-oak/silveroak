@@ -48,7 +48,7 @@ Proof. reflexivity. Qed.
 Example and_11 : combinational (and_gate [true; true]) = true.
 Proof. reflexivity. Qed.
 
-Eval cbv in ((not_gate (0%Z)) (mkCavaState "" (1%Z) [] [] [])).
+Eval cbv in ((not_gate (0%Z)) initState).
 
 (* NAND gate example. Fist, let's define an overloaded NAND gate
    description. *)
@@ -64,7 +64,7 @@ Proof. reflexivity. Qed.
 
 (* Generate a circuit graph representation for the NAND gate using the
    netlist interpretatin. *)
-Eval cbv in ((nand2 [0%Z; 1%Z]) (mkCavaState "" (2%Z) [] [] [])).
+Eval cbv in ((nand2 [0%Z; 1%Z]) initState).
 
 Definition nand2Top {m t} `{CavaTop m t} :=
   setModuleName "nand2" ;;

@@ -30,9 +30,10 @@ writeSystemVerilog netlist
 
 cava2SystemVerilog :: Cava.CavaState -> [String]
 cava2SystemVerilog (Cava.Coq_mkCavaState moduleName netNumber instances
-                    inputs outputs)
+                    inputs outputs isSeq)
   = ["module " ++ moduleName ++ "("] ++
-    insertCommas (inputPorts inputs ++ outputPorts outputs) ++
+    
+    insertCommas (clockPorts ++ inputPorts inputs ++ outputPorts outputs) ++
     ["  );"] ++
     ["",
      "  timeunit 1ns; timeprecision 1ns;",
@@ -50,6 +51,12 @@ cava2SystemVerilog (Cava.Coq_mkCavaState moduleName netNumber instances
     map generateInstance instances ++
     [""] ++
     ["endmodule"]
+    where
+    clockPorts = if isSeq then
+                   ["  input logic clk",
+                    "  input logic rst"]
+                 else
+                   []
 
 inputPorts :: [Cava.PortDeclaration] -> [String]
 inputPorts = map inputPort
@@ -105,6 +112,10 @@ instanceArgs inst
       Cava.Muxcy s di ci o -> [o, ci, di, s]
 
 generateInstance :: Cava.Instance -> String
+generateInstance (Cava.Coq_mkInstance number (Cava.DelayBit i o))
+   = "  always_ff @(posedge clk) if (rst) net[" ++ 
+        show o ++ "] <= 1'b0; else net[" ++ show o ++ "] <= net[" ++ show i ++
+     "];"
 generateInstance (Cava.Coq_mkInstance number inst)      
   = "  " ++ instName ++ " inst" ++ show number ++ " " ++  showArgs args ++ ";"
    where

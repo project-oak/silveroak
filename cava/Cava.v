@@ -54,6 +54,8 @@ Inductive Primitive :=
   | Xor  : list Z -> Z -> Primitive
   | Xnor : list Z -> Z -> Primitive
   | Buf  : Z -> Z -> Primitive
+  (* A Cava unit delay bit component. *)
+  | DelayBit : Z -> Z -> Primitive
   (* Xilinx FPGA architecture specific gates. *)
   | Xorcy : Z -> Z -> Z -> Primitive
   | Muxcy : Z -> Z -> Z -> Z -> Primitive.
@@ -62,22 +64,23 @@ Inductive Primitive :=
    outputs, but does not represent the IO ports of circuits. This allows
    us to define both circuit netlist interpretations for the Cava class
    as well as behavioural interpretations for attributing semantics. *)
-Class Cava m t `{Monad m} := {
+Class Cava m bit `{Monad m} := {
   (* Constant values. *)
-  zero : m t; (* This component always returns the value 0. *)
-  one : m t; (* This component always returns the value 1. *)
+  zero : m bit; (* This component always returns the value 0. *)
+  one : m bit; (* This component always returns the value 1. *)
+  delayBit : bit -> m bit; (* Cava bit-level unit delay. *)
   (* Primitive SystemVerilog gates *)
-  not_gate : t -> m t; (* Corresponds to the SystemVerilog primitive gate 'not' *)
-  and_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'and' *)
-  nand_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'nand' *)
-  or_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'or' *)
-  nor_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'nor' *)
-  xor_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'xor' *)
-  xnor_gate : list t -> m t; (* Corresponds to the SystemVerilog primitive gate 'xnor' *)
-  buf_gate : t -> m t; (* Corresponds to the SystemVerilog primitive gate 'buf' *)
+  not_gate : bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'not' *)
+  and_gate : list bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'and' *)
+  nand_gate : list bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'nand' *)
+  or_gate : list bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'or' *)
+  nor_gate : list bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'nor' *)
+  xor_gate : list bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'xor' *)
+  xnor_gate : list bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'xnor' *)
+  buf_gate : bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'buf' *)
   (* Xilinx UNISIM FPGA gates *)
-  xorcy : t -> t -> m t; (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
-  muxcy : t -> t -> t -> m t; (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
+  xorcy : bit -> bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
+  muxcy : bit -> bit -> bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
 }.
 
 (******************************************************************************)
@@ -105,6 +108,7 @@ Record CavaState : Type := mkCavaState {
   instances : list Instance;
   inputs : list PortDeclaration;
   outputs : list PortDeclaration;
+  isSequential : bool;
 }.
 
 (******************************************************************************)
@@ -116,7 +120,7 @@ Record CavaState : Type := mkCavaState {
 *) 
 
 Definition initState : CavaState
-  := mkCavaState "" 2 [] [] [].
+  := mkCavaState "" 2 [] [] [] false.
 
 (******************************************************************************)
 (* Execute a monadic circuit description and return the generated netlist.    *)
@@ -132,48 +136,48 @@ Definition makeNetlist {t} (circuit : State CavaState t)
 Definition notNet (i : Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Not i o)) insts) inputs outputs) ;;
+  | mkCavaState name o insts inputs outputs isSeq
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Not i o)) insts) inputs outputs isSeq) ;;
          return_ o
   end. 
 
 Definition andNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance o (And i o)) insts) inputs outputs) ;;
+  | mkCavaState name o insts inputs outputs isSeq
+      => put (mkCavaState name (o+1) (cons (mkInstance o (And i o)) insts) inputs outputs isSeq) ;;
          return_ o
   end.
 
 Definition nandNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Nand i o)) insts) inputs outputs) ;;
+  | mkCavaState name o insts inputs outputs isSeq
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Nand i o)) insts) inputs outputs isSeq) ;;
          return_ o
   end.
 
 Definition orNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Or i o)) insts) inputs outputs) ;;
+  | mkCavaState name o insts inputs outputs isSeq
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Or i o)) insts) inputs outputs isSeq) ;;
          return_ o
   end.
 
 Definition norNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Nor i o)) insts) inputs outputs) ;;
+  | mkCavaState name o insts inputs outputs isSeq
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Nor i o)) insts) inputs outputs isSeq) ;;
          return_ o
   end.
 
 Definition xorNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Xor i o)) insts) inputs outputs) ;;
+  | mkCavaState name o insts inputs outputs isSeq
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Xor i o)) insts) inputs outputs isSeq) ;;
          return_ o
   end.
 
@@ -181,34 +185,42 @@ Definition xorNet (i : list Z) : State CavaState Z :=
 Definition xorcyNet (ci : Z) (li : Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Xorcy ci li o)) insts) inputs outputs) ;;
+  | mkCavaState name o insts inputs outputs isSeq
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Xorcy ci li o)) insts) inputs outputs isSeq) ;;
          return_ o
   end.
 
 Definition xnorNet (i : list Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Xnor i o)) insts) inputs outputs) ;;
+  | mkCavaState name o insts inputs outputs isSeq
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Xnor i o)) insts) inputs outputs isSeq) ;;
          return_ o
   end.
 
 Definition bufNet (i : Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Buf i o)) insts) inputs outputs) ;;
+  | mkCavaState name o insts inputs outputs isSeq
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Buf i o)) insts) inputs outputs isSeq) ;;
          return_ o
   end. 
 
 Definition muxcyNet (s : Z)  (di : Z) (ci : Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState name o insts inputs outputs
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Muxcy s di ci o)) insts) inputs outputs) ;;
+  | mkCavaState name o insts inputs outputs isSeq
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Muxcy s di ci o)) insts) inputs outputs isSeq) ;;
          return_ o
   end.
+
+Definition delayBitNet (i : Z) : State CavaState Z :=
+  cs <- get;
+  match cs with
+  | mkCavaState name o insts inputs outputs _
+      => put (mkCavaState name (o+1) (cons (mkInstance o (DelayBit i o)) insts) inputs outputs true) ;;
+         return_ o
+  end. 
 
 (******************************************************************************)
 (* Instantiate the Cava class for CavaNet which describes circuits without    *)
@@ -218,6 +230,7 @@ Definition muxcyNet (s : Z)  (di : Z) (ci : Z) : State CavaState Z :=
 Instance CavaNet : Cava (State CavaState) Z :=
   { zero := return_ 0%Z;
     one := return_ 1%Z;
+    delayBit := delayBitNet;
     not_gate := notNet;
     and_gate := andNet;
     nand_gate := nandNet;
@@ -237,44 +250,44 @@ Instance CavaNet : Cava (State CavaState) Z :=
 Definition setModuleNameNet (name : string) : State CavaState unit :=
   cs <- get;
   match cs with
-  | mkCavaState _ o insts inputs outputs
-     => put (mkCavaState name o insts inputs outputs)
+  | mkCavaState _ o insts inputs outputs isSeq
+     => put (mkCavaState name o insts inputs outputs isSeq)
   end.
 
 Definition inputVectorTo0Net (size : Z) (name : string)  : State CavaState (list Z) := 
   cs <- get;
   match cs with
-  | mkCavaState n o insts inputs outputs
+  | mkCavaState n o insts inputs outputs isSeq
      => let netNumbers := map Z.of_nat (seq (Z.abs_nat o) (Z.abs_nat size)) in
         let newPort := mkPort name (VectorTo0Port netNumbers) in
-        put (mkCavaState n (o + size) insts (cons newPort inputs) outputs) ;;
+        put (mkCavaState n (o + size) insts (cons newPort inputs) outputs isSeq) ;;
         return_ netNumbers
   end.
 
 Definition inputBitNet (name : string) : State CavaState Z := 
   cs <- get;
   match cs with
-  | mkCavaState n o insts inputs outputs
+  | mkCavaState n o insts inputs outputs isSeq
      => let newPort := mkPort name (BitPort o) in
-        put (mkCavaState n (o+1) insts (cons newPort inputs) outputs) ;;
+        put (mkCavaState n (o+1) insts (cons newPort inputs) outputs isSeq) ;;
         return_ o
   end.
 
 Definition outputBitNet (name : string) (i : Z) : State CavaState Z :=
   cs <- get;
   match cs with
-  | mkCavaState n o insts inputs outputs
+  | mkCavaState n o insts inputs outputs isSeq
      => let newPort := mkPort name (BitPort i) in
-        put (mkCavaState n o insts inputs (cons newPort outputs)) ;;
+        put (mkCavaState n o insts inputs (cons newPort outputs) isSeq) ;;
         return_ i
   end.
 
 Definition outputVectorTo0Net (v : list Z) (name : string) : State CavaState (list Z) := 
   cs <- get;
   match cs with
-  | mkCavaState n o insts inputs outputs
+  | mkCavaState n o insts inputs outputs isSeq
      => let newPort := mkPort name (VectorTo0Port v) in
-        put (mkCavaState n o insts inputs (cons newPort outputs) ) ;;
+        put (mkCavaState n o insts inputs (cons newPort outputs) isSeq) ;;
         return_ v
   end.
 
@@ -352,6 +365,7 @@ Definition outputBool (name : string) (i : bool) : State unit bool :=
 Instance CavaBool : Cava (State unit) bool :=
   { zero := return_ false;
     one := return_ true;
+    delayBit i := return_ i; (* Dummy definition for delayBit for now. *)
     not_gate := notBool;
     and_gate := andBool;
     nand_gate := nandBool;
