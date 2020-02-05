@@ -34,7 +34,9 @@ cava2SystemVerilog (Cava.Coq_mkCavaState moduleName netNumber instances
   = ["module " ++ moduleName ++ "("] ++
     insertCommas (inputPorts inputs ++ outputPorts outputs) ++
     ["  );"] ++
-    [""] ++
+    ["",
+     "  timeunit 1ns; timeprecision 1ns;",
+     ""] ++
     ["  logic[" ++ show (netNumber-1) ++ ":0] net;"] ++
     [""] ++
     ["  // Constant nets",
