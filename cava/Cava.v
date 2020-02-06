@@ -488,10 +488,10 @@ Fixpoint col `{Monad m} {A B C}
                    return_ (c::cs, e)
   end.
 
-
 (******************************************************************************)
 (* Loop combinator                                                            *)
 (******************************************************************************)
+
 
 (*
 
@@ -502,9 +502,13 @@ Fixpoint col `{Monad m} {A B C}
   A ->|    | -> B
        ----
 
-
-*)
+It seems like I need a recursive-do style definition here to allow me to
+use c in the result and as an argument to circuit.
 
 Definition loop `{Monad m} {A B C}
-                (circuit : A * C -> m (B * C)%type) : A -> m B.
+                (circuit : A * C -> m (B * C)%type) : A -> m B :=
+  fun (a : A) =>
+    bc <- circuit (a, c) ;
+    return_ (fst bc).
 
+*)
