@@ -506,5 +506,5 @@ Fixpoint col `{Monad m} {A B C}
 *)
 
 Definition loop `{Monad m} {A B C}
-                (circuit : A * C -> m (B * A)%type) : A -> m B.
+                (circuit : A * C -> m (B * C)%type) : A -> m B.
 
