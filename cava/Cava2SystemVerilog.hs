@@ -113,9 +113,8 @@ instanceArgs inst
 
 generateInstance :: Cava.Instance -> String
 generateInstance (Cava.Coq_mkInstance number (Cava.DelayBit i o))
-   = "  always_ff @(posedge clk) if (rst) net[" ++ 
-        show o ++ "] <= 1'b0; else net[" ++ show o ++ "] <= net[" ++ show i ++
-     "];"
+   = "  always_ff @(posedge clk) net[" ++ show o ++ "] <= rst ? 1'b0 : net["
+        ++ show i ++ "];";
 generateInstance (Cava.Coq_mkInstance number inst)      
   = "  " ++ instName ++ " inst" ++ show number ++ " " ++  showArgs args ++ ";"
    where
