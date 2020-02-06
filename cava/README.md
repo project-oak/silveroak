@@ -15,7 +15,7 @@ Please install the following components:
 * The [GHC Haskell compiler](https://www.haskell.org/ghc/) version 8.6.5 or later
 * The [Icarus Verilog](http://iverilog.icarus.com/) circuit simulator version 11
   or later. GitHub link:
-  [https://github.com/steveicarus/iverilog](https://github.com/steveicarus/iverilog]
+  [https://github.com/steveicarus/iverilog](https://github.com/steveicarus/iverilog)
 
 Cava uses an open-source Coq library that provides some useful Haskell
 inspired idioms. This should be installed as a sibling directory to
