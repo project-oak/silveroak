@@ -54,6 +54,8 @@ adder8.vcd:	adder8.sv adder8_tb.sv
 		xelab --debug typical -L unisims_ver work.adder_test -s adder8_sim
 		xsim --R adder8_sim
 
+pipelinedNAND.sv:	nand2.sv
+
 pipelinedNAND.vcd:	pipelinedNAND.sv pipelinedNAND_tb.sv
 			iverilog -g2012 -o pipelinedNAND.vvp pipelinedNAND.sv pipelinedNAND_tb.sv
 			./pipelinedNAND.vvp
