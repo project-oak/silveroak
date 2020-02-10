@@ -124,7 +124,7 @@ instance Lava (State NetlistState) Int where
   and2 = and2Gate
   delay = delayGate               
 
--- An exmple of a nandGate composed with a left-to-right composition of
+-- An example of a nandGate composed with a left-to-right composition of
 -- Kleisli arrows.
 
 nandGate :: Lava m bit => (bit, bit) -> m bit
@@ -179,7 +179,7 @@ fork :: Monad m => a -> m (a, a)
 fork a = return (a, a)
 
 
--- A silly sequnetial circuit with feedback: a NAND gate with its
+-- A silly sequential circuit with feedback: a NAND gate with its
 -- output forked, one fork is feed back by the loop, the other fork
 -- forms the output of the circuit.
 
