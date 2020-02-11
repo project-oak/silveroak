@@ -39,23 +39,29 @@ module fulladder(
   output logic sum
   );
 
-  logic[0:7] net;
+  timeunit 1ns; timeprecision 1ns;
 
+  logic[9:0] net;
+
+  // Constant nets
+  assign net[0] = 1'b0;
+  assign net[1] = 1'b1;
   // Wire up inputs.
-  assign net[2] = cin;
-  assign net[1] = b;
-  assign net[0] = a;
+  assign net[4] = cin;
+  assign net[3] = b;
+  assign net[2] = a;
   // Wire up outputs.
-  assign carry = net[7] ;
-  assign sum = net[5] ;
+  assign carry = net[9] ;
+  assign sum = net[7] ;
 
-  or inst7 (net[7],net[4],net[6]);
-  and inst6 (net[6],net[3],net[2]);
-  xor inst5 (net[5],net[3],net[2]);
-  and inst4 (net[4],net[0],net[1]);
-  xor inst3 (net[3],net[0],net[1]);
+  or inst9 (net[9],net[6],net[8]);
+  and inst8 (net[8],net[5],net[4]);
+  xor inst7 (net[7],net[5],net[4]);
+  and inst6 (net[6],net[2],net[3]);
+  xor inst5 (net[5],net[2],net[3]);
 
 endmodule
+
 ```
 
 A few other SystemVerilog files will also be generated.
@@ -68,4 +74,4 @@ extraction to SystemVerilog circuis for simulation and FPGA implementation.
 ## Nand Game Examples
 Some of the circuits described on the [Nand Game]((http://nandgame.com/)) web page have
 been implemented in Cava, along with proofs about correct operation, which
-are availavle at the [Cava Nand Game Examples](https://github.com/project-oak/oak-hardware/tree/master/nandgame/README.md) page.
+are available at the [Cava Nand Game Examples](https://github.com/project-oak/oak-hardware/tree/master/nandgame/README.md) page.

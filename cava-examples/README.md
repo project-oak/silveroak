@@ -19,9 +19,9 @@ Definition nand2 {m t} `{Cava m t} := and_gate >=> not_gate.
 
 Definition nand2Top {m t} `{CavaTop m t} :=
   setModuleName "nand2" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  c <- nand2 [a; b] ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  c <- nand2 [a; b] ;;
   outputBit "c" c.
 
 Definition nand2Netlist := makeNetlist nand2Top.
@@ -38,21 +38,27 @@ This generates the following SysteVerilog code:
 
 ```verilog
 module nand2(
+module nand2(
   input logic b,
   input logic a,
   output logic c
   );
 
-  logic[0:3] net;
+  timeunit 1ns; timeprecision 1ns;
 
+  logic[5:0] net;
+
+  // Constant nets
+  assign net[0] = 1'b0;
+  assign net[1] = 1'b1;
   // Wire up inputs.
-  assign net[1] = b;
-  assign net[0] = a;
+  assign net[3] = b;
+  assign net[2] = a;
   // Wire up outputs.
-  assign c = net[3] ;
+  assign c = net[5] ;
 
-  not inst3 (net[3],net[2]);
-  and inst2 (net[2],net[0],net[1]);
+  not inst5 (net[5],net[4]);
+  and inst4 (net[4],net[2],net[3]);
 
 endmodule
 ```
@@ -70,21 +76,21 @@ primitive gates, along with a proof about correct operation:
 
 ```coq
 Definition halfAdder {m t} `{Cava m t} a b :=
-  partial_sum <- xor_gate [a; b] ;
-  carry <- and_gate [a; b] ;
-  return_ (partial_sum, carry).
+  partial_sum <- xor_gate [a; b] ;;
+  carry <- and_gate [a; b] ;;
+  ret (partial_sum, carry).
 
 Definition halfAdderTop {m t} `{CavaTop m t} :=
   setModuleName "halfadder" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  ps_c <- halfAdder a b ;
-  outputBit "partial_sum" (fst ps_c) ;;
-  outputBit "carry" (snd ps_c).
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  '(ps, c) <- halfAdder a b ;;
+  outputBit "partial_sum" ps ;;
+  outputBit "carry" c.
 
 Definition halfAdderNetlist := makeNetlist halfAdderTop.
 
-(* A proof that the the half-adder is correct. *)
+(* A proof that the half-adder is correct. *)
 Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
                             combinational (halfAdder a b) = (xorb a b, a && b).
 
@@ -104,20 +110,19 @@ with a proof about correct operation:
 
 ```coq
 Definition fullAdder {m t} `{Cava m t} a b cin :=
-  abl_abh <- halfAdder a b ;
-  abcl_abch <- halfAdder (fst abl_abh) cin ;
-  cout <- or_gate [snd abl_abh; snd abcl_abch] ;
-  return_ (fst abcl_abch, cout).
+  '(abl, abh) <- halfAdder a b ;;
+  '(abcl, abch) <- halfAdder abl cin ;;
+  cout <- or_gate [abh; abch] ;;
+  ret (abcl, cout).
 
 Definition fullAdderTop {m t} `{CavaTop m t} :=
   setModuleName "fulladder" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  cin <- inputBit "cin" ;
-  sum_cout <- fullAdder a b cin ;
-  outputBit "sum" (fst sum_cout) ;;
-  outputBit "carry" (snd sum_cout).
-
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  cin <- inputBit "cin" ;;
+  '(sum, cout) <- fullAdder a b cin ;;
+  outputBit "sum" sum ;;
+  outputBit "carry" cout.
 
 Definition fullAdderNetlist := makeNetlist fullAdderTop.
 
@@ -147,23 +152,29 @@ module fulladder(
   output logic sum
   );
 
-  logic[0:7] net;
+  timeunit 1ns; timeprecision 1ns;
 
+  logic[9:0] net;
+
+  // Constant nets
+  assign net[0] = 1'b0;
+  assign net[1] = 1'b1;
   // Wire up inputs.
-  assign net[2] = cin;
-  assign net[1] = b;
-  assign net[0] = a;
+  assign net[4] = cin;
+  assign net[3] = b;
+  assign net[2] = a;
   // Wire up outputs.
-  assign carry = net[7] ;
-  assign sum = net[5] ;
+  assign carry = net[9] ;
+  assign sum = net[7] ;
 
-  or inst7 (net[7],net[4],net[6]);
-  and inst6 (net[6],net[3],net[2]);
-  xor inst5 (net[5],net[3],net[2]);
-  and inst4 (net[4],net[0],net[1]);
-  xor inst3 (net[3],net[0],net[1]);
+  or inst9 (net[9],net[6],net[8]);
+  and inst8 (net[8],net[5],net[4]);
+  xor inst7 (net[7],net[5],net[4]);
+  and inst6 (net[6],net[2],net[3]);
+  xor inst5 (net[5],net[2],net[3]);
 
 endmodule
+
 ```
 
 However, the Xilinx Vivado FPGA implementation tools will fail to map
@@ -175,28 +186,31 @@ sub-optimal.
 This is another version of a full adder which explicitly uses the
 XORCY and MUXCY components to ensure a mapping to the fast carry chain:
 
-```coq
-Definition fullAdderFC {m t} `{Cava m t} a b cin :=
-  part_sum <- xor_gate [a; b] ;
-  sum <- xorcy cin part_sum ;
-  cout <- muxcy cin a part_sum ;
-  return_ (sum, cout).
+Definition fullAdderFC {m bit} `{Cava m bit} (cin_ab : bit * (bit * bit))
+  : m (bit * bit)%type :=
+  let cin := fst cin_ab in
+  let ab := snd cin_ab in
+  let a := fst ab in
+  let b := snd ab in
+  part_sum <- xor_gate [a; b] ;;
+  sum <- xorcy part_sum cin ;;
+  cout <- muxcy part_sum a cin  ;;
+  ret (sum, cout).
 
 Definition fullAdderFCTop {m t} `{CavaTop m t} :=
   setModuleName "fulladderFC" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  cin <- inputBit "cin" ;
-  sum_cout <- fullAdderFC a b cin ;
-  outputBit "sum" (fst sum_cout) ;;
-  outputBit "carry" (snd sum_cout).
-
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  cin <- inputBit "cin" ;;
+  '(sum, cout) <- fullAdderFC (cin, (a, b)) ;;
+  outputBit "sum" sum ;;
+  outputBit "carry" cout.
 
 Definition fullAdderFCNetlist := makeNetlist fullAdderFCTop.
 
 (* A proof that the the full-adder is correct. *)
 Lemma fullAdderFC_behaviour : forall (a : bool) (b : bool) (cin : bool),
-                              combinational (fullAdderFC a b cin)
+                              combinational (fullAdderFC (cin, (a, b)))
                                = (xorb cin (xorb a b),
                                    (a && b) || (b && cin) || (a && cin)).
 Proof.
@@ -212,6 +226,7 @@ Qed.
 This generates the following SystemVerilog code:
 
 ```verilog
+module fulladderFC(
   input logic cin,
   input logic b,
   input logic a,
@@ -219,19 +234,24 @@ This generates the following SystemVerilog code:
   output logic sum
   );
 
-  logic[0:5] net;
+  timeunit 1ns; timeprecision 1ns;
 
+  logic[7:0] net;
+
+  // Constant nets
+  assign net[0] = 1'b0;
+  assign net[1] = 1'b1;
   // Wire up inputs.
-  assign net[2] = cin;
-  assign net[1] = b;
-  assign net[0] = a;
+  assign net[4] = cin;
+  assign net[3] = b;
+  assign net[2] = a;
   // Wire up outputs.
-  assign carry = net[5] ;
-  assign sum = net[4] ;
+  assign carry = net[7] ;
+  assign sum = net[6] ;
 
-  muxcy inst5 (net[5],net[2],net[0],net[3]);
-  xorcy inst4 (net[4],net[2],net[3]);
-  xor inst3 (net[3],net[0],net[1]);
+  MUXCY inst7 (net[7],net[4],net[2],net[5]);
+  XORCY inst6 (net[6],net[4],net[5]);
+  xor inst5 (net[5],net[2],net[3]);
 
 endmodule
 ```
@@ -258,12 +278,10 @@ the `unsignedAdder` with 8-bit input vectors.
 ```coq
 Definition adder8Top {m t} `{CavaTop m t} :=
   setModuleName "adder8" ;;
-  a <- inputVectorTo0 8 "a" ;
-  b <- inputVectorTo0 8 "b" ;
-  cin <- inputBit "cin" ;
-  sum_cout <- unsignedAdder cin (combine a b) ;
-  let sum := fst sum_cout in
-  let cout := snd sum_cout in
+  a <- inputVectorTo0 8 "a" ;;
+  b <- inputVectorTo0 8 "b" ;;
+  cin <- inputBit "cin" ;;
+  '(sum, cout) <- unsignedAdder cin (combine a b) ;;
   outputVectorTo0 sum "sum" ;;
   outputBit "cout" cout.
 
@@ -281,6 +299,8 @@ module adder8(
   output logic cout,
   output logic[7:0] sum
   );
+
+  timeunit 1ns; timeprecision 1ns;
 
   logic[42:0] net;
 
@@ -342,6 +362,7 @@ module adder8(
   xor inst19 (net[19],net[2],net[10]);
 
 endmodule
+
 ```
 
 After implementing this design using the Xilinx Vivado FPGA design
