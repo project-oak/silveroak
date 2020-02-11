@@ -21,8 +21,8 @@ Definition inverter {m t} `{Cava m t} a := nand_gate [a; a].
 
 Definition inverterTop {m t} `{CavaTop m t} :=
   setModuleName "invertor" ;;
-  a <- inputBit "a" ;
-  b <- inverter a ;
+  a <- inputBit "a" ;;
+  b <- inverter a ;;
   outputBit "b" b.
 
 Definition inverterNetlist := makeNetlist inverterTop.
@@ -49,14 +49,19 @@ module invertor(
   output logic b
   );
 
-  logic[0:1] net;
+  timeunit 1ns; timeprecision 1ns;
 
+  logic[3:0] net;
+
+  // Constant nets
+  assign net[0] = 1'b0;
+  assign net[1] = 1'b1;
   // Wire up inputs.
-  assign net[0] = a;
+  assign net[2] = a;
   // Wire up outputs.
-  assign b = net[1] ;
+  assign b = net[3] ;
 
-  nand inst1 (net[1],net[0],net[0]);
+  nand inst3 (net[3],net[2],net[2]);
 
 endmodule
 ```
@@ -67,15 +72,15 @@ about correct operation.
 
 ```coq
 Definition andgate {m t} `{Cava m t}  a b :=
-  x <- nand_gate [a; b] ;
-  c <- inverter x ;
-  return_ c.
+  x <- nand_gate [a; b] ;;
+  c <- inverter x ;;
+  ret c.
 
 Definition andgateTop {m t} `{CavaTop m t} :=
   setModuleName "andgate" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  c <- andgate a b ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  c <- andgate a b ;;
   outputBit "c" c.
 
 Definition andgateNetlist := makeNetlist andgateTop.
@@ -122,17 +127,17 @@ An OR gate and associated proof.
 
 ```coq
 Definition orgate {m t} `{Cava m t} a b :=
-  nota <- inverter a;
-  notb <- inverter b;
-  c <- nand_gate [nota; notb];
-  return_ c.
+  nota <- inverter a ;;
+  notb <- inverter b ;;
+  c <- nand_gate [nota; notb] ;;
+  ret c.
 
 Definition orgateTop {m t} `{CavaTop m t} :=
   setModuleName "orgate" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  c <- orgate a b ;
-  outputBit "c" c.
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  c <- orgate a b ;;
+  outputBit "c" c
 
 Definition orgateNetlist := makeNetlist orgateTop.
 
@@ -182,18 +187,19 @@ And XOR-gate and proof of correct implementation:
 
 ```coq
 Definition xorgate {m t} `{Cava m t} a b :=
-  nab <- nand_gate [a; b] ;
-  x <- nand_gate [a; nab] ;
-  y <- nand_gate [nab; b] ;
-  c <- nand_gate [x; y] ;
-  return_ c.
+  nab <- nand_gate [a; b] ;;
+  x <- nand_gate [a; nab] ;;
+  y <- nand_gate [nab; b] ;;
+  c <- nand_gate [x; y] ;;
+  ret c.
 
 Definition xorgateTop {m t} `{CavaTop m t} :=
   setModuleName "xorgate" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  c <- xorgate a b ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  c <- xorgate a b ;;
   outputBit "c" c.
+
 Definition xorgateNetlist := makeNetlist xorgateTop.
 
 
@@ -240,17 +246,17 @@ A half-adder and proof of correct operation.
 
 ```coq
 Definition halfAdder {m t} `{Cava m t} a b :=
-  partial_sum <- xorgate a b ;
-  carry <- andgate a b ;
-  return_ (partial_sum, carry).
+  partial_sum <- xorgate a b ;;
+  carry <- andgate a b ;;
+  ret (partial_sum, carry).
 
 Definition halfAdderTop {m t} `{CavaTop m t} :=
   setModuleName "halfadder" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  ps_c <- halfAdder a b ;
-  outputBit "partial_sum" (fst ps_c) ;;
-  outputBit "carry" (snd ps_c).
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  '(ps, c) <- halfAdder a b ;;
+  outputBit "partial_sum" ps ;;
+  outputBit "carry" c.
 
 Definition halfAdderNetlist := makeNetlist halfAdderTop.
 
@@ -302,20 +308,19 @@ A full adder and its proof.
 
 ```coq
 Definition fullAdder {m t} `{Cava m t} a b cin :=
-  abl_abh <- halfAdder a b ;
-  abcl_abch <- halfAdder (fst abl_abh) cin ;
-  cout <- orgate (snd abl_abh) (snd abcl_abch) ;
-  return_ (fst abcl_abch, cout).
+  '(abl, abh) <- halfAdder a b ;;
+  '(abcl, abch) <- halfAdder abl cin ;;
+  cout <- orgate abh abch ;;
+  ret (abcl, cout).
 
 Definition fullAdderTop {m t} `{CavaTop m t} :=
   setModuleName "fulladder" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  cin <- inputBit "cin" ;
-  sum_cout <- fullAdder a b cin ;
-  outputBit "sum" (fst sum_cout) ;;
-  outputBit "carry" (snd sum_cout).
-
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  cin <- inputBit "cin" ;;
+  '(sum, cout) <- fullAdder a b cin ;;
+  outputBit "sum" sum ;;
+  outputBit "carry" cout.
 
 Definition fullAdderNetlist := makeNetlist fullAdderTop.
 
