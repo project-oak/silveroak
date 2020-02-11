@@ -23,7 +23,7 @@ Import ListNotations.
 
 Scheme Equality for list.
 
-Require Import Hask.Control.Monad.
+Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.
 Require Import FullAdder.

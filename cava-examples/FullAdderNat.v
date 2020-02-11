@@ -24,7 +24,7 @@ From Coq Require Import Lists.List.
 Require Import Nat Arith Lia.
 Import ListNotations.
 
-Require Import Hask.Control.Monad.
+Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.
 
@@ -37,7 +37,7 @@ Require Import BitVector.
 
 Lemma halfAdderNat_correct :
   forall (a : nat) (b : nat), a < 2 -> b < 2 ->
-  let (part_sum, carry_out) := combinational (halfAdder (nat2bool a) (nat2bool b)) in
+  let '(part_sum, carry_out) := combinational (halfAdder (nat2bool a) (nat2bool b)) in
   bits_to_nat [part_sum; carry_out] = a + b.
 Proof.
   intro.
@@ -49,7 +49,7 @@ Qed.
   
 Lemma fullAdderNat_correct :
   forall (a : nat) (b : nat) (cin : nat), a < 2 -> b < 2 -> cin < 2 ->
-  let (sum, carry_out) := combinational (fullAdder (nat2bool a) (nat2bool b) (nat2bool cin)) in
+  let '(sum, carry_out) := combinational (fullAdder (nat2bool a) (nat2bool b) (nat2bool cin)) in
   bits_to_nat [sum; carry_out] = a + b + cin.
 Proof.
   intros.

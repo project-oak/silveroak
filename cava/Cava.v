@@ -27,8 +27,11 @@ From Coq Require Import ZArith.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
-Require Import Hask.Control.Monad.
-Require Import Hask.Control.Monad.State.
+Require Import ExtLib.Structures.Monads.
+Require Export ExtLib.Data.Monads.IdentityMonad.
+Require Export ExtLib.Data.Monads.StateMonad.
+Export MonadNotation.
+Open Scope monad_scope.
 
 Generalizable All Variables.
 
@@ -126,100 +129,100 @@ Definition initState : CavaState
 (* Execute a monadic circuit description and return the generated netlist.    *)
 (******************************************************************************)
 
-Definition makeNetlist {t} (circuit : State CavaState t)
-  := snd (circuit initState).
+Definition makeNetlist {t} (circuit : state CavaState t) : CavaState
+  := execState circuit initState.
 
 (******************************************************************************)
 (* Netlist implementations for the Cava class.                                *)
 (******************************************************************************)
 
-Definition notNet (i : Z) : State CavaState Z :=
-  cs <- get;
+Definition notNet (i : Z) : state CavaState Z :=
+  cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
       => put (mkCavaState name (o+1) (cons (mkInstance o (Not i o)) insts) inputs outputs isSeq) ;;
-         return_ o
+         ret o
   end. 
 
-Definition andNet (i : list Z) : State CavaState Z :=
-  cs <- get;
+Definition andNet (i : list Z) : state CavaState Z :=
+  cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
       => put (mkCavaState name (o+1) (cons (mkInstance o (And i o)) insts) inputs outputs isSeq) ;;
-         return_ o
+         ret o
   end.
 
-Definition nandNet (i : list Z) : State CavaState Z :=
-  cs <- get;
+Definition nandNet (i : list Z) : state CavaState Z :=
+  cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
       => put (mkCavaState name (o+1) (cons (mkInstance o (Nand i o)) insts) inputs outputs isSeq) ;;
-         return_ o
+         ret o
   end.
 
-Definition orNet (i : list Z) : State CavaState Z :=
-  cs <- get;
+Definition orNet (i : list Z) : state CavaState Z :=
+  cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
       => put (mkCavaState name (o+1) (cons (mkInstance o (Or i o)) insts) inputs outputs isSeq) ;;
-         return_ o
+         ret o
   end.
 
-Definition norNet (i : list Z) : State CavaState Z :=
-  cs <- get;
+Definition norNet (i : list Z) : state CavaState Z :=
+  cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
       => put (mkCavaState name (o+1) (cons (mkInstance o (Nor i o)) insts) inputs outputs isSeq) ;;
-         return_ o
+         ret o
   end.
 
-Definition xorNet (i : list Z) : State CavaState Z :=
-  cs <- get;
+Definition xorNet (i : list Z) : state CavaState Z :=
+  cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
       => put (mkCavaState name (o+1) (cons (mkInstance o (Xor i o)) insts) inputs outputs isSeq) ;;
-         return_ o
+         ret o
   end.
 
 
-Definition xorcyNet (ci : Z) (li : Z) : State CavaState Z :=
-  cs <- get;
+Definition xorcyNet (ci : Z) (li : Z) : state CavaState Z :=
+  cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
       => put (mkCavaState name (o+1) (cons (mkInstance o (Xorcy ci li o)) insts) inputs outputs isSeq) ;;
-         return_ o
+         ret o
   end.
 
-Definition xnorNet (i : list Z) : State CavaState Z :=
-  cs <- get;
+Definition xnorNet (i : list Z) : state CavaState Z :=
+  cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
       => put (mkCavaState name (o+1) (cons (mkInstance o (Xnor i o)) insts) inputs outputs isSeq) ;;
-         return_ o
+         ret o
   end.
 
-Definition bufNet (i : Z) : State CavaState Z :=
-  cs <- get;
+Definition bufNet (i : Z) : state CavaState Z :=
+  cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
       => put (mkCavaState name (o+1) (cons (mkInstance o (Buf i o)) insts) inputs outputs isSeq) ;;
-         return_ o
+         ret o
   end. 
 
-Definition muxcyNet (s : Z)  (di : Z) (ci : Z) : State CavaState Z :=
-  cs <- get;
+Definition muxcyNet (s : Z)  (di : Z) (ci : Z) : state CavaState Z :=
+  cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
       => put (mkCavaState name (o+1) (cons (mkInstance o (Muxcy s di ci o)) insts) inputs outputs isSeq) ;;
-         return_ o
+         ret o
   end.
 
-Definition delayBitNet (i : Z) : State CavaState Z :=
-  cs <- get;
+Definition delayBitNet (i : Z) : state CavaState Z :=
+  cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs _
       => put (mkCavaState name (o+1) (cons (mkInstance o (DelayBit i o)) insts) inputs outputs true) ;;
-         return_ o
+         ret o
   end. 
 
 (******************************************************************************)
@@ -227,9 +230,9 @@ Definition delayBitNet (i : Z) : State CavaState Z :=
 (* any top-level pins or other module-level data                              *)
 (******************************************************************************)
 
-Instance CavaNet : Cava (State CavaState) Z :=
-  { zero := return_ 0%Z;
-    one := return_ 1%Z;
+Instance CavaNet : Cava (state CavaState) Z :=
+  { zero := ret 0%Z;
+    one := ret 1%Z;
     delayBit := delayBitNet;
     not_gate := notNet;
     and_gate := andNet;
@@ -247,48 +250,48 @@ Instance CavaNet : Cava (State CavaState) Z :=
 (* Define netlist functions used to specify top-level module behaviour.       *)
 (******************************************************************************)
 
-Definition setModuleNameNet (name : string) : State CavaState unit :=
-  cs <- get;
+Definition setModuleNameNet (name : string) : state CavaState unit :=
+  cs <- get ;;
   match cs with
   | mkCavaState _ o insts inputs outputs isSeq
      => put (mkCavaState name o insts inputs outputs isSeq)
   end.
 
-Definition inputVectorTo0Net (size : Z) (name : string)  : State CavaState (list Z) := 
-  cs <- get;
+Definition inputVectorTo0Net (size : Z) (name : string)  : state CavaState (list Z) := 
+  cs <- get ;;
   match cs with
   | mkCavaState n o insts inputs outputs isSeq
      => let netNumbers := map Z.of_nat (seq (Z.abs_nat o) (Z.abs_nat size)) in
         let newPort := mkPort name (VectorTo0Port netNumbers) in
         put (mkCavaState n (o + size) insts (cons newPort inputs) outputs isSeq) ;;
-        return_ netNumbers
+        ret netNumbers
   end.
 
-Definition inputBitNet (name : string) : State CavaState Z := 
-  cs <- get;
+Definition inputBitNet (name : string) : state CavaState Z := 
+  cs <- get ;;
   match cs with
   | mkCavaState n o insts inputs outputs isSeq
      => let newPort := mkPort name (BitPort o) in
         put (mkCavaState n (o+1) insts (cons newPort inputs) outputs isSeq) ;;
-        return_ o
+        ret o
   end.
 
-Definition outputBitNet (name : string) (i : Z) : State CavaState Z :=
-  cs <- get;
+Definition outputBitNet (name : string) (i : Z) : state CavaState Z :=
+  cs <- get ;;
   match cs with
   | mkCavaState n o insts inputs outputs isSeq
      => let newPort := mkPort name (BitPort i) in
         put (mkCavaState n o insts inputs (cons newPort outputs) isSeq) ;;
-        return_ i
+        ret i
   end.
 
-Definition outputVectorTo0Net (v : list Z) (name : string) : State CavaState (list Z) := 
-  cs <- get;
+Definition outputVectorTo0Net (v : list Z) (name : string) : state CavaState (list Z) := 
+  cs <- get ;;
   match cs with
   | mkCavaState n o insts inputs outputs isSeq
      => let newPort := mkPort name (VectorTo0Port v) in
         put (mkCavaState n o insts inputs (cons newPort outputs) isSeq) ;;
-        return_ v
+        ret v
   end.
 
 
@@ -306,7 +309,7 @@ Class CavaTop m bit `{Cava m bit} := {
   outputVectorTo0 : list bit -> string -> m (list bit);
 }.
 
-Instance CavaTopNet : CavaTop (State CavaState) Z :=
+Instance CavaTopNet : CavaTop (state CavaState) Z :=
   { setModuleName := setModuleNameNet;
     inputBit := inputBitNet;
     outputBit := outputBitNet;
@@ -318,54 +321,54 @@ Instance CavaTopNet : CavaTop (State CavaState) Z :=
 (* A second boolean combinational logic interpretaiob for the Cava class      *)
 (******************************************************************************)
 
-Definition notBool (i : bool) : State unit bool :=
-  return_ (negb i).
+Definition notBool (i : bool) : ident bool :=
+  ret (negb i).
 
-Definition andBool (i : list bool) : State unit bool :=
-  return_ (fold_left (fun a b => a && b) i true).
+Definition andBool (i : list bool) : ident bool :=
+  ret (fold_left (fun a b => a && b) i true).
 
-Definition nandBool (i : list bool) : State unit bool :=
-  return_ (negb (fold_left (fun a b => a && b) i true)).
+Definition nandBool (i : list bool) : ident bool :=
+  ret (negb (fold_left (fun a b => a && b) i true)).
 
-Definition orBool (i : list bool) : State unit bool :=
-  return_ (fold_left (fun a b => a || b) i false).
+Definition orBool (i : list bool) : ident bool :=
+  ret (fold_left (fun a b => a || b) i false).
 
-Definition norBool (i : list bool) : State unit bool :=
-  return_ (negb (fold_left (fun a b =>  a || b) i true)).
+Definition norBool (i : list bool) : ident bool :=
+  ret (negb (fold_left (fun a b =>  a || b) i true)).
 
-Definition xorBool (i : list bool) : State unit bool :=
-  return_ (fold_left (fun a b => xorb a b) i false).
+Definition xorBool (i : list bool) : ident bool :=
+  ret (fold_left (fun a b => xorb a b) i false).
 
-Definition xorcyBool (li : bool) (ci : bool) : State unit bool :=
-  return_ (xorb ci li).
+Definition xorcyBool (li : bool) (ci : bool) : ident bool :=
+  ret (xorb ci li).
 
-Definition xnorBool (i : list bool) : State unit bool :=
-  return_ (negb (fold_left (fun a b => xorb a b) i false)).
+Definition xnorBool (i : list bool) : ident bool :=
+  ret (negb (fold_left (fun a b => xorb a b) i false)).
 
-Definition muxcyBool (s : bool) (di : bool) (ci : bool)  : State unit bool :=
-  return_ (match s with
-           | false => di
-           | true => ci
-           end).
+Definition muxcyBool (s : bool) (di : bool) (ci : bool) : ident bool :=
+  ret (match s with
+       | false => di
+       | true => ci
+       end).
 
-Definition bufBool (i : bool) : State unit bool :=
-  return_ i.
+Definition bufBool (i : bool) : ident bool :=
+  ret i.
 
-Definition inputBool (name : string) : State unit bool :=
-  return_ false.
+Definition inputBool (name : string) : ident bool :=
+  ret false.
 
-Definition outputBool (name : string) (i : bool) : State unit bool :=
-  return_ i.
+Definition outputBool (name : string) (i : bool) : ident bool :=
+  ret i.
 
 (******************************************************************************)
 (* Instantiate the Cava class for a boolean combinational logic               *)
 (* interpretation.                                                            *)
 (******************************************************************************)
 
-Instance CavaBool : Cava (State unit) bool :=
-  { zero := return_ false;
-    one := return_ true;
-    delayBit i := return_ i; (* Dummy definition for delayBit for now. *)
+Instance CavaBool : Cava ident bool :=
+  { zero := ret false;
+    one := ret true;
+    delayBit i := ret i; (* Dummy definition for delayBit for now. *)
     not_gate := notBool;
     and_gate := andBool;
     nand_gate := nandBool;
@@ -383,7 +386,7 @@ Instance CavaBool : Cava (State unit) bool :=
 (* behavioural simulation result.                                             *)
 (******************************************************************************)
 
-Definition combinational {a} (circuit : State unit a) := fst (circuit tt).
+Definition combinational {a} (circuit : ident a) : a := unIdent circuit.
 
 (******************************************************************************)
 (* Lava-style circuit combinators.                                            *)
@@ -428,11 +431,11 @@ Fixpoint below `{Monad m} {A B C D E F G}
              (abc : A * (B * C)) : m ((D * E) * F)%type :=
   let (a, bc) := abc in
   let (b, c) := bc in
-  dg <- r (a, b) ;
+  dg <- r (a, b) ;;
   let (d, g) := dg : D * G in
-  ef <- s (g, c) ;
+  ef <- s (g, c) ;;
   let (e, f) := ef : E * F in
-  return_ ((d, e), f).
+  ret ((d, e), f).
 
 (* The col combinator takes a 4-sided circuit element and replicates it by
    composing each element in a chain.
@@ -481,11 +484,11 @@ Fixpoint col `{Monad m} {A B C}
              (circuit : A * B -> m (C * A)%type) (a : A) (b : list B) :
              m (list C * A)%type :=
   match b with
-  | [] => return_ ([], a)
-  | b0::br => c_cs_e <- below circuit (fun ab => col circuit (fst ab) (snd ab)) (a, (b0, br)) ;
+  | [] => ret ([], a)
+  | b0::br => c_cs_e <- below circuit (fun ab => col circuit (fst ab) (snd ab)) (a, (b0, br)) ;;
                    let (c_cs, e) := c_cs_e : (C * list C) * A in
                    let (c, cs) := c_cs : C * list C in
-                   return_ (c::cs, e)
+                   ret (c::cs, e)
   end.
 
 (******************************************************************************)

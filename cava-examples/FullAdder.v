@@ -24,7 +24,7 @@ From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
-Require Import Hask.Control.Monad.
+Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.
 Require Import BitVector.
@@ -37,15 +37,15 @@ Local Open Scope monad_scope.
 (******************************************************************************)
 
 Definition halfAdder {m t} `{Cava m t} a b :=
-  partial_sum <- xor_gate [a; b] ;
-  carry <- and_gate [a; b] ;
-  return_ (partial_sum, carry).
+  partial_sum <- xor_gate [a; b] ;;
+  carry <- and_gate [a; b] ;;
+  ret (partial_sum, carry).
 
 Definition halfAdderTop {m t} `{CavaTop m t} :=
   setModuleName "halfadder" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  ps_c <- halfAdder a b ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  ps_c <- halfAdder a b ;;
   outputBit "partial_sum" (fst ps_c) ;;
   outputBit "carry" (snd ps_c).
 
@@ -70,20 +70,19 @@ Qed.
 (******************************************************************************)
 
 Definition fullAdder {m t} `{Cava m t} a b cin :=
-  abl_abh <- halfAdder a b ;
-  abcl_abch <- halfAdder (fst abl_abh) cin ;
-  cout <- or_gate [snd abl_abh; snd abcl_abch] ;
-  return_ (fst abcl_abch, cout).
+  '(abl, abh) <- halfAdder a b ;;
+  '(abcl, abch) <- halfAdder abl cin ;;
+  cout <- or_gate [abh; abch] ;;
+  ret (abcl, cout).
 
 Definition fullAdderTop {m t} `{CavaTop m t} :=
   setModuleName "fulladder" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  cin <- inputBit "cin" ;
-  sum_cout <- fullAdder a b cin ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  cin <- inputBit "cin" ;;
+  sum_cout <- fullAdder a b cin ;;
   outputBit "sum" (fst sum_cout) ;;
   outputBit "carry" (snd sum_cout).
-
 
 Definition fullAdderNetlist := makeNetlist fullAdderTop.
 
@@ -101,7 +100,6 @@ Proof.
   all : reflexivity.
 Qed.
 
-
 (******************************************************************************)
 (* Build a full-adder with explicit use of fast carry                                                        *)
 (******************************************************************************)
@@ -112,17 +110,17 @@ Definition fullAdderFC {m bit} `{Cava m bit} (cin_ab : bit * (bit * bit))
   let ab := snd cin_ab in
   let a := fst ab in
   let b := snd ab in
-  part_sum <- xor_gate [a; b] ;
-  sum <- xorcy part_sum cin ;
-  cout <- muxcy part_sum a cin  ;
-  return_ (sum, cout).
+  part_sum <- xor_gate [a; b] ;;
+  sum <- xorcy part_sum cin ;;
+  cout <- muxcy part_sum a cin  ;;
+  ret (sum, cout).
 
 Definition fullAdderFCTop {m t} `{CavaTop m t} :=
   setModuleName "fulladderFC" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  cin <- inputBit "cin" ;
-  sum_cout <- fullAdderFC (cin, (a, b)) ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  cin <- inputBit "cin" ;;
+  sum_cout <- fullAdderFC (cin, (a, b)) ;;
   outputBit "sum" (fst sum_cout) ;;
   outputBit "carry" (snd sum_cout).
 

@@ -43,11 +43,12 @@ library
                      BitVector
                      Cava
                      Datatypes
+	             IdentityMonad
                      List
                      Monad
                      Nat
                      PeanoNat
-                     State
+                     StateMonad
   other-Modules:     Applicative
                      BinInt
                      BinNat
@@ -57,6 +58,15 @@ library
                      Decimal
                      Functor
                      Logic
-                     Ltac
                      Specif
+        	     MonadExc
+                     MonadFix
+                     MonadPlus
+                     MonadReader
+                     MonadState
+                     MonadTrans
+                     MonadWriter
+                     MonadZero
+                     Monoid
+
   default-language:  Haskell2010

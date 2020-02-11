@@ -26,8 +26,9 @@ From Coq Require Import Lists.List.
 From Coq Require Import ZArith.
 Import ListNotations.
 
-Require Import Hask.Control.Monad.
-Require Import Hask.Control.Monad.State.
+Require Import ExtLib.Structures.Monads.
+Export MonadNotation.
+Open Scope monad_scope.
 
 Require Import Cava.
 
@@ -41,9 +42,9 @@ Definition nand2 {m t} `{Cava m t} := and_gate >=> not_gate.
 
 Definition nand2Top {m t} `{CavaTop m t} :=
   setModuleName "nand2" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  c <- nand2 [a; b] ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  c <- nand2 [a; b] ;;
   outputBit "c" c.
 
 Definition nand2Netlist := makeNetlist nand2Top.
@@ -75,9 +76,9 @@ Definition pipelinedNAND {m t} `{Cava m t}
 
 Definition pipelinedNANDTop {m t} `{CavaTop m t} :=
   setModuleName "pipelinedNAND" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  c <- pipelinedNAND [a; b] ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  c <- pipelinedNAND [a; b] ;;
   outputBit "c" c.
 
 Definition pipelinedNANDNetlist := makeNetlist pipelinedNANDTop.

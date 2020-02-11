@@ -26,8 +26,9 @@ From Coq Require Import Lists.List.
 From Coq Require Import ZArith.
 Import ListNotations.
 
-Require Import Hask.Control.Monad.
-Require Import Hask.Control.Monad.State.
+Require Import ExtLib.Structures.Monads.
+Export MonadNotation.
+Open Scope monad_scope.
 
 Require Import Cava.
 
@@ -48,7 +49,7 @@ Proof. reflexivity. Qed.
 Example and_11 : combinational (and_gate [true; true]) = true.
 Proof. reflexivity. Qed.
 
-Eval cbv in ((not_gate (0%Z)) initState).
+Eval cbv in (execState (not_gate (0%Z)) initState).
 
 (* NAND gate example. Fist, let's define an overloaded NAND gate
    description. *)
@@ -64,17 +65,17 @@ Proof. reflexivity. Qed.
 
 (* Generate a circuit graph representation for the NAND gate using the
    netlist interpretatin. *)
-Eval cbv in ((nand2 [0%Z; 1%Z]) initState).
+Eval cbv in (execState (nand2 [0%Z; 1%Z]) initState).
 
 Definition nand2Top {m t} `{CavaTop m t} :=
   setModuleName "nand2" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  c <- nand2 [a; b] ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  c <- nand2 [a; b] ;;
   outputBit "c" c.
 
 (* Generate a netlist containing the port definitions. *)
-Eval cbv in (nand2Top initState).
+Eval cbv in (execState nand2Top initState).
 
 Definition nand2Netlist := makeNetlist nand2Top.
 

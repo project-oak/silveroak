@@ -20,7 +20,7 @@ From Coq Require Import Lists.List.
 From Coq Require Import ZArith.
 Import ListNotations.
 
-Require Import Hask.Control.Monad.
+Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.
 Require Import BitVector.
@@ -49,7 +49,7 @@ Definition v6   := [1;1;1;1;1;1;1;1].
 Definition v255 := [1;1;1;1;1;1;1;1].
 
 Definition eval_unsignedAdder cin a b :=
-  let (sum, carry)
+  let '(sum, carry)
     := combinational
        (unsignedAdder (nat2bool cin) (combine (toVec a) (toVec b))) in
   (fromVec sum, Nat.b2n carry).
@@ -82,12 +82,10 @@ Proof. reflexivity. Qed.
 
 Definition adder8Top {m t} `{CavaTop m t} :=
   setModuleName "adder8" ;;
-  a <- inputVectorTo0 8 "a" ;
-  b <- inputVectorTo0 8 "b" ;
-  cin <- inputBit "cin" ;
-  sum_cout <- unsignedAdder cin (combine a b) ;
-  let sum := fst sum_cout in
-  let cout := snd sum_cout in
+  a <- inputVectorTo0 8 "a" ;;
+  b <- inputVectorTo0 8 "b" ;;
+  cin <- inputBit "cin" ;;
+  '(sum, cout) <- unsignedAdder cin (combine a b) ;;
   outputVectorTo0 sum "sum" ;;
   outputBit "cout" cout.
 
@@ -98,7 +96,7 @@ Definition adder8Netlist := makeNetlist adder8Top.
 (****************************************************************************)
 
 Definition adder {m bit} `{Cava m bit} cin ab :=
-  sum_carry <- unsignedAdder cin ab ;
-  return_ (fst sum_carry ++ [snd sum_carry]).
+  '(sum, carry) <- unsignedAdder cin ab ;;
+  ret (sum ++ [carry]).
 
 (****************************************************************************)

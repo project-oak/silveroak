@@ -37,3 +37,15 @@ nand2.vvp
 Byte.hs
 FixupAscii
 dist/*
+IdentityMonad.hs
+MonadExc.hs
+MonadFix.hs
+MonadPlus.hs
+MonadReader.hs
+MonadState.hs
+MonadTrans.hs
+MonadWriter.hs
+MonadZero.hs
+Monoid.hs
+StateMonad.hs
+

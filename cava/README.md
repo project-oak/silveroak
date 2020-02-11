@@ -12,26 +12,16 @@ requests.
 Please install the following components:
 
 * The [Coq proof assistant](https://coq.inria.fr/) version 8.9.2 or later
+* The [coq-ext-lib](https://github.com/coq-community/coq-ext-lib) library for Coq.
 * The [GHC Haskell compiler](https://www.haskell.org/ghc/) version 8.6.5 or later
 * The [Icarus Verilog](http://iverilog.icarus.com/) circuit simulator version
   11.0 or later. GitHub link:
   [https://github.com/steveicarus/iverilog](https://github.com/steveicarus/iverilog)
 
-Cava uses an open-source Coq library that provides some useful Haskell
-inspired idioms. This should be installed as a sibling directory to
-the oak-hardware directory.
-
-```bash
-$ git clone https://github.com/jwiegley/coq-haskell.git
-$ git clone https://github.com/project-oak/oak-hardware.git
-```
-
 Do a `make` in these directories:
 
 ```bash
-$ cd coq-haskell
-$ make
-$ cd ../oak-hardware/cava
+$ cd oak-hardware/cava
 $ make
 $ cd ../cava-examples
 $ make
