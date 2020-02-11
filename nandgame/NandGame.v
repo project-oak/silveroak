@@ -24,7 +24,7 @@ From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
-Require Import Hask.Control.Monad.
+Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.
 
@@ -39,8 +39,8 @@ Definition inverter {m t} `{Cava m t} a := nand_gate [a; a].
 
 Definition inverterTop {m t} `{CavaTop m t} :=
   setModuleName "invertor" ;;
-  a <- inputBit "a" ;
-  b <- inverter a ;
+  a <- inputBit "a" ;;
+  b <- inverter a ;;
   outputBit "b" b.
 
 Definition inverterNetlist := makeNetlist inverterTop.
@@ -62,15 +62,15 @@ Qed.
 (******************************************************************************)
 
 Definition andgate {m t} `{Cava m t}  a b :=
-  x <- nand_gate [a; b] ;
-  c <- inverter x ;
-  return_ c.
+  x <- nand_gate [a; b] ;;
+  c <- inverter x ;;
+  ret c.
 
 Definition andgateTop {m t} `{CavaTop m t} :=
   setModuleName "andgate" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  c <- andgate a b ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  c <- andgate a b ;;
   outputBit "c" c.
 
 Definition andgateNetlist := makeNetlist andgateTop.
@@ -93,16 +93,16 @@ Qed.
 (******************************************************************************)
 
 Definition orgate {m t} `{Cava m t} a b :=
-  nota <- inverter a;
-  notb <- inverter b;
-  c <- nand_gate [nota; notb];
-  return_ c.
+  nota <- inverter a ;;
+  notb <- inverter b ;;
+  c <- nand_gate [nota; notb] ;;
+  ret c.
 
 Definition orgateTop {m t} `{CavaTop m t} :=
   setModuleName "orgate" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  c <- orgate a b ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  c <- orgate a b ;;
   outputBit "c" c.
 
 Definition orgateNetlist := makeNetlist orgateTop.
@@ -128,20 +128,20 @@ Qed.
 (******************************************************************************)
 
 Definition xorgate {m t} `{Cava m t} a b :=
-  nab <- nand_gate [a; b] ;
-  x <- nand_gate [a; nab] ;
-  y <- nand_gate [nab; b] ;
-  c <- nand_gate [x; y] ;
-  return_ c.
+  nab <- nand_gate [a; b] ;;
+  x <- nand_gate [a; nab] ;;
+  y <- nand_gate [nab; b] ;;
+  c <- nand_gate [x; y] ;;
+  ret c.
 
 Definition xorgateTop {m t} `{CavaTop m t} :=
   setModuleName "xorgate" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  c <- xorgate a b ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  c <- xorgate a b ;;
   outputBit "c" c.
-Definition xorgateNetlist := makeNetlist xorgateTop.
 
+Definition xorgateNetlist := makeNetlist xorgateTop.
 
 (* A proof that the NAND-gate based implementation of the XOR-gate is correct. *)
 Lemma xorgate_behaviour : forall (a : bool) (b : bool),
@@ -160,15 +160,15 @@ Qed.
 (******************************************************************************)
 
 Definition halfAdder {m t} `{Cava m t} a b :=
-  partial_sum <- xorgate a b ;
-  carry <- andgate a b ;
-  return_ (partial_sum, carry).
+  partial_sum <- xorgate a b ;;
+  carry <- andgate a b ;;
+  ret (partial_sum, carry).
 
 Definition halfAdderTop {m t} `{CavaTop m t} :=
   setModuleName "halfadder" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  ps_c <- halfAdder a b ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  ps_c <- halfAdder a b ;;
   outputBit "partial_sum" (fst ps_c) ;;
   outputBit "carry" (snd ps_c).
 
@@ -193,20 +193,19 @@ Qed.
 (******************************************************************************)
 
 Definition fullAdder {m t} `{Cava m t} a b cin :=
-  abl_abh <- halfAdder a b ;
-  abcl_abch <- halfAdder (fst abl_abh) cin ;
-  cout <- orgate (snd abl_abh) (snd abcl_abch) ;
-  return_ (fst abcl_abch, cout).
+  '(abl, abh) <- halfAdder a b ;;
+  '(abcl, abch) <- halfAdder abl cin ;;
+  cout <- orgate abh abch ;;
+  ret (abcl, cout).
 
 Definition fullAdderTop {m t} `{CavaTop m t} :=
   setModuleName "fulladder" ;;
-  a <- inputBit "a" ;
-  b <- inputBit "b" ;
-  cin <- inputBit "cin" ;
-  sum_cout <- fullAdder a b cin ;
+  a <- inputBit "a" ;;
+  b <- inputBit "b" ;;
+  cin <- inputBit "cin" ;;
+  sum_cout <- fullAdder a b cin ;;
   outputBit "sum" (fst sum_cout) ;;
   outputBit "carry" (snd sum_cout).
-
 
 Definition fullAdderNetlist := makeNetlist fullAdderTop.
 
