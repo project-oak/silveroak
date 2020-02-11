@@ -45,9 +45,9 @@ Definition halfAdderTop {m t} `{CavaTop m t} :=
   setModuleName "halfadder" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
-  ps_c <- halfAdder a b ;;
-  outputBit "partial_sum" (fst ps_c) ;;
-  outputBit "carry" (snd ps_c).
+  '(ps, c) <- halfAdder a b ;;
+  outputBit "partial_sum" ps ;;
+  outputBit "carry" c.
 
 Definition halfAdderNetlist := makeNetlist halfAdderTop.
 
@@ -80,9 +80,9 @@ Definition fullAdderTop {m t} `{CavaTop m t} :=
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
   cin <- inputBit "cin" ;;
-  sum_cout <- fullAdder a b cin ;;
-  outputBit "sum" (fst sum_cout) ;;
-  outputBit "carry" (snd sum_cout).
+  '(sum, cout) <- fullAdder a b cin ;;
+  outputBit "sum" sum ;;
+  outputBit "carry" cout.
 
 Definition fullAdderNetlist := makeNetlist fullAdderTop.
 
@@ -120,9 +120,9 @@ Definition fullAdderFCTop {m t} `{CavaTop m t} :=
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
   cin <- inputBit "cin" ;;
-  sum_cout <- fullAdderFC (cin, (a, b)) ;;
-  outputBit "sum" (fst sum_cout) ;;
-  outputBit "carry" (snd sum_cout).
+  '(sum, cout) <- fullAdderFC (cin, (a, b)) ;;
+  outputBit "sum" sum ;;
+  outputBit "carry" cout.
 
 Definition fullAdderFCNetlist := makeNetlist fullAdderFCTop.
 
