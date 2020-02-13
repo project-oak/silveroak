@@ -234,3 +234,18 @@ loopedMFNANDNetlist = execState (loopedMFNAND (0::Int)) (NetlistState 1 [])
 *Lava> loopedMFNANDNetlist
 NetlistState 4 [DELAY 2 3,INV 1 2,AND2 0 3 1]
 -}
+
+loopRec :: MonadFix m => ((a, c) -> m (b, c)) -> a -> m b
+loopRec circuit a
+  = do rec (b, c) <- circuit (a, c)
+       return b
+
+loopedRecNAND :: Lava m bit => bit -> m bit
+loopedRecNAND = loopRec (nandGate >=> delay >=> fork)
+
+loopedRecNANDNetlist :: NetlistState
+loopedRecNANDNetlist = execState (loopedRecNAND (0::Int)) (NetlistState 1 [])  
+{-
+*Lava> loopedRecNANDNetlist
+NetlistState 4 [DELAY 2 3,INV 1 2,AND2 0 3 1]
+-}     
