@@ -218,7 +218,7 @@ sim5 = take 6 $ runIdentity $ loopedNAND (repeat True)
 loopMF' :: MonadFix m => ((a, c) -> m (b, c)) -> a -> m (b, c)
 loopMF' circuit a
   = mfix (\bc -> do (b, c') <- circuit (a, snd bc)
-                    return (undefined, c'))
+                    return (b, c'))
 
 loopMF :: MonadFix m => ((a, c) -> m (b, c)) -> a -> m b
 loopMF circuit a
