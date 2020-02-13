@@ -214,3 +214,23 @@ sim5 = take 6 $ runIdentity $ loopedNAND (repeat True)
 *Lava> sim5
 [False,True,False,True,False,True]
 -}
+
+loopMF' :: MonadFix m => ((a, c) -> m (b, c)) -> a -> m (b, c)
+loopMF' circuit a
+  = mfix (\bc -> do (b, c') <- circuit (a, snd bc)
+                    return (undefined, c'))
+
+loopMF :: MonadFix m => ((a, c) -> m (b, c)) -> a -> m b
+loopMF circuit a
+  = do (b, _) <- loopMF' circuit a 
+       return b
+
+loopedMFNAND :: Lava m bit => bit -> m bit
+loopedMFNAND = loopMF (nandGate >=> delay >=> fork)
+
+loopedMFNANDNetlist :: NetlistState
+loopedMFNANDNetlist = execState (loopedMFNAND (0::Int)) (NetlistState 1 [])
+{-
+*Lava> loopedMFNANDNetlist
+NetlistState 4 [DELAY 2 3,INV 1 2,AND2 0 3 1]
+-}
