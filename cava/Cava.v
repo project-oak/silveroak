@@ -28,6 +28,7 @@ From Coq Require Import Lists.List.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
+Require Import ExtLib.Structures.MonadFix.
 Require Export ExtLib.Data.Monads.IdentityMonad.
 Require Export ExtLib.Data.Monads.StateMonad.
 Export MonadNotation.
@@ -508,10 +509,33 @@ Fixpoint col `{Monad m} {A B C}
 It seems like I need a recursive-do style definition here to allow me to
 use c in the result and as an argument to circuit.
 
-Definition loop `{Monad m} {A B C}
-                (circuit : A * C -> m (B * C)%type) : A -> m B :=
-  fun (a : A) =>
-    bc <- circuit (a, c) ;
-    return_ (fst bc).
+loop :: MonadFix m => ((a, c) -> m (b, c)) -> a -> m b
+loop circuit a
+  = mdo (b, c) <- circuit (a, c)
+        return b
+
+
+Definition loopS 
+           (circuit : (Z * Z) -> state CavaState Z) (a:Z) : state CavaState Z :=
+  '(b, _) <- mfix (fun f bc => '(b, c') <- circuit (a, snd bc) ;;
+                               ret (b, c')
+                  ) (a, 0) ;;
+  ret b.
+
+
+Definition loop `{Monad m} `{MonadFix m} {A B}
+           (circuit : (A * nat)%type -> m (B * nat)%type) (a:A) : m B :=
+  '(b, _) <- mfix (fun f bc => '(b, c') <- circuit (a, snd bc) ;;
+                               ret (b, c')
+                  ) (a, 0) ;;
+  ret b.
+
+Definition nand2 `{Cava m bit} := and_gate >=> not_gate.
+
+Definition fork2 `{Mondad_m : Monad m} {A} (a:A) := ret (a, a).
+
+
+Definition loopedNAND {Cava m bit} (ab : bit * bit) : m bit := 
+  loop (nand2 >=> delayBit >=> fork2).
 
 *)
