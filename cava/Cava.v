@@ -487,9 +487,9 @@ Fixpoint col `{Monad m} {A B C}
   match b with
   | [] => ret ([], a)
   | b0::br => c_cs_e <- below circuit (fun ab => col circuit (fst ab) (snd ab)) (a, (b0, br)) ;;
-                   let (c_cs, e) := c_cs_e : (C * list C) * A in
-                   let (c, cs) := c_cs : C * list C in
-                   ret (c::cs, e)
+              let (c_cs, e) := c_cs_e : (C * list C) * A in
+              let (c, cs) := c_cs : C * list C in
+              ret (c::cs, e)
   end.
 
 (******************************************************************************)
@@ -514,6 +514,21 @@ loop circuit a
   = mdo (b, c) <- circuit (a, c)
         return b
 
+or explicitly in terms of mfix:
+
+loopMF' :: MonadFix m => ((a, c) -> m (b, c)) -> a -> m (b, c)
+loopMF' circuit a
+  = mfix (\bc -> do (b, c') <- circuit (a, snd bc)
+                    return (b, c'))
+
+loopMF :: MonadFix m => ((a, c) -> m (b, c)) -> a -> m b
+loopMF circuit a
+  = do (b, _) <- loopMF' circuit a 
+       return b
+
+Now... how to do the same thing in Coq?
+
+loopS does causes Coq to go into an infinite looop.
 
 Definition loopS 
            (circuit : (Z * Z) -> state CavaState Z) (a:Z) : state CavaState Z :=
@@ -534,6 +549,7 @@ Definition nand2 `{Cava m bit} := and_gate >=> not_gate.
 
 Definition fork2 `{Mondad_m : Monad m} {A} (a:A) := ret (a, a).
 
+loopedNAND also causes Coq to go into an infinite loop.
 
 Definition loopedNAND {Cava m bit} (ab : bit * bit) : m bit := 
   loop (nand2 >=> delayBit >=> fork2).
