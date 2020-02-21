@@ -1,23 +1,31 @@
 (* Require Coq.Program.Tactics. *)
 
+Require Import Coq.Program.Tactics.
+Require Import Coq.Bool.Bool.
+Require Import Coq.Lists.List.
+Require Import Coq.Setoids.Setoid.
+
 Set Implicit Arguments.
 Set Strict Implicit.
 
-(* Generalizable All Variables.
+Generalizable All Variables.
 Set Primitive Projections.
 Set Universe Polymorphism.
-Unset Transparent Obligations. *)
+Unset Transparent Obligations.
 
+Set Typeclasses Debug.
+Set Typeclasses Debug Verbosity 2.
 
 Reserved Infix "~>" (at level 90, right associativity).
 Reserved Infix "**" (at level 40, left associativity).
 Reserved Infix ">>>" (at level 90, right associativity).
 
-Section Theory.
-
-(** haskell style category *)
+(** haskell style category with representable objects
+*)
 Class Category := {
-  morphism : Type -> Type -> Type
+  object := Type;
+
+  morphism : object -> object -> Type
     where "a ~> b" := (morphism a b);
 
   id {x} : x ~> x;
@@ -37,10 +45,9 @@ Notation "g >>> f" := (compose f g)
 
 Open Scope category_scope.
 Print Category.
-Context `{C : Category}.
 
-Class Cartesian := {
-  product : Type -> Type -> Type
+Class Cartesian (C: Category) := {
+  product : object -> object -> object
     where "x ** y" := (product x y);
 
   fork {x y z} (f : x ~> y) (g : x ~> z) : x ~> y ** z;
@@ -55,18 +62,16 @@ Notation "x ** y" := (product x y)
   (at level 40, left associativity) : cartesian_scope.
   
 Open Scope cartesian_scope.
-Context `{CC : Cartesian}.
 
-Definition first {x y z} (f : x ~> y) : x ** z ~> y ** z :=
+Definition first `{Cartesian} {x y z} (f : x ~> y) : x ** z ~> y ** z :=
   fork (exl >>> f) exr.
 
-Definition second {x y z} (f : x ~> y) : z ** x ~> z ** y :=
+Definition second `{Cartesian} {x y z} (f : x ~> y) : z ** x ~> z ** y :=
   fork exl (exr >>> f).
 
-(** adam megacz style arrow 
-*)
-Class Arrow := {
-  unit : Type;
+(** adam megacz style arrow *)
+Class Arrow {C: Category} (CC: Cartesian C) := {
+  unit : object;
 
   uncancell {x} : x ~> (unit**x);
   uncancelr {x} : x ~> (x**unit);
@@ -75,85 +80,130 @@ Class Arrow := {
   copy {x} : x ~> (x**x);
   drop {x} : x ~> unit;
   swap {x y} : (x**y) ~> (y**x);
+}.
 
-  (** *)
-  (* loopr {x y z} : ((x**z) ~> (y**z)) -> (x ~> y);
-  loopl {x y z} : ((z**x) ~> (z**y)) -> (x ~> y); *)
+(** different type class for implementation to select features*)
+Class ArrowLoop {C: Category} {CC: Cartesian C} (A: Arrow CC) := {
+  loopr {x y z} : ((x**z) ~> (y**z)) -> (x ~> y);
+  loopl {x y z} : ((z**x) ~> (z**y)) -> (x ~> y);
 }.
 
 Print Arrow.
-Context `{A : Arrow}.
 
-Notation Bit := bool.
 (** Cava *)
-Class Cava := {
-  delay_gate : Bit ~> Bit;
-  not_gate : Bit ~> Bit;
+Class Cava (C: Category)  (CC: Cartesian C) (A: Arrow CC) := {
+  bit : (Type: object);
+  high : unit ~> bit;
+  low : unit ~> bit;
+  not_gate : bit ~> bit;
+  and_gate : (bit ** bit) ~> bit;
+}.
 
-  (** *)
-  and_gate : (Bit ** Bit) ~> Bit;
+(** different type class for implementation to select features*)
+Class CavaDelay `{Cava} := {
+  delay_gate : bit ~> bit;
 }.
 
 Print Cava.
-Context `{@Cava}.
 
-Definition nand := and_gate >>> not_gate.
-Definition xor : (Bit**Bit) ~> Bit := 
-  copy 
-  >>> first (nand >>> copy)      (* ((nand,nand),(x,y)) *)
-  >>> assoc                      (* (nand,(nand,(x,y))) *)
-  >>> second (unassoc >>> first nand >>> swap) (* (nand,(y, x_nand)) *)
-  >>> unassoc >>> first nand          (* (y_nand,x_nand) *)
-  >>> nand.
-
-(*nand previous output and current input, output delayed 1 cycle*)
-(* Definition loopedNand : Bit ~> Bit := 
-  loopl (nand >>> delay_gate >>> copy). *)
-
-End Theory.
-
-Section NaiveEval.
-
-Section Example.
-  Instance Coq : Category := {
-    morphism := fun x y => x -> y;
-    id  := fun _ x => x;
-    compose := fun _ _ _ f g => (fun x => f (g x))
+(** Evaluation as function, no delay elements or loops *)
+Section CoqEval.
+  Instance CoqCat : Category := {
+    morphism X Y := X -> Y; 
+    compose _ _ _ := fun f g x => f (g x);
+    id X := fun x => x;
   }.
 
-  Print Coq.
-
-  Instance CoqC : @Cartesian Coq := {
-    product x y := prod x y;
-    fork := fun _ _ _ f g => (fun x => (f x, g x));
-    exl := fun _ _ x => fst x;
-    exr := fun _ _ x => snd x;
+  Instance CoqCC : @Cartesian CoqCat := {
+    product := prod;
+    fork _ _ _ f g := fun x => (f x, g x);
+    exl X Y := fst;
+    exr X Y := snd;
   }.
 
-  (* Coercion prod_is_tuple () : prod x y := (product @CoqC x y).  *)
+  Instance CoqArr : @Arrow CoqCat CoqCC := {
+    unit := Datatypes.unit : Type;
 
-  Print CoqC.
+    drop _ := fun x => tt; 
+    copy _ := fun x => pair x x; 
 
-  Print Arrow.
+    swap _ _ := fun x => (snd x, fst x); 
 
+    uncancell _ := fun x => (tt, x); 
+    uncancelr _ := fun x => (x, tt); 
 
-  Instance CoqA : @Arrow Coq CoqC := {
-    unit := Datatypes.unit;
-
-    drop := fun _ => fun _ => tt; 
-    copy := fun _ => fun x => (x,x); 
-    swap := fun _ _ => fun xy => (snd xy, fst xy);
-
-    uncancelr := fun _ => fun x => (x,tt);
-    uncancell := fun _ => fun x => (tt,x);
-
-    assoc := fun _ _ _ => fun xyz => (fst (fst xyz), (snd (fst xyz), snd xyz));
-    unassoc := fun _ _ _ => fun xyz => ((fst xyz, fst (snd xyz)), snd (snd xyz));
-
-    (** *)
-    (* loopr {x y z} : ((x**z) ~> (y**z)) -> (x ~> y);
-    loopl {x y z} : ((z**x) ~> (z**y)) -> (x ~> y); *) 
+    assoc _ _ _   := fun xyz => (fst (fst xyz), (snd (fst xyz), snd xyz));
+    unassoc _ _ _ := fun xyz => ((fst xyz, fst (snd xyz)), snd (snd xyz));
   }.
 
+  Instance CoqCava : @Cava CoqCat CoqCC CoqArr := {
+    bit := bool;
 
-End NaiveEval.
+    low := fun _ => false;
+    high := fun _ => true;
+    
+    not_gate := fun b => negb b;
+    and_gate := fun xy => andb (fst xy) (snd xy);
+  }.
+
+  Definition eval {A B} (f: A~>B) (a:A): B := f a.
+  Definition eval' {B} (f: unit~>B) : B := f tt.
+
+  Eval cbv in eval not_gate true.
+  Eval cbv in eval not_gate false.
+End CoqEval.
+
+
+Section Example1.
+  (* Context `{Cava }. *) (** not general enough?*)
+
+  Definition nand 
+    {C: Category} {CC: Cartesian C}
+    {A: Arrow CC} {AL: ArrowLoop A} 
+    {Cava: @Cava C CC A}
+    := and_gate >>> not_gate.
+
+  Definition xor 
+    {C: Category} {CC: Cartesian C}
+    {A: Arrow CC} {AL: ArrowLoop A} 
+    {Cava: @Cava C CC A}
+    : (bit**bit) ~> bit := 
+    copy 
+    >>> first (nand >>> copy)      (* ((nand,nand),(x,y)) *)
+    >>> assoc                      (* (nand,(nand,(x,y))) *)
+    >>> second (unassoc >>> first nand >>> swap) (* (nand,(y, x_nand)) *)
+    >>> unassoc >>> first nand          (* (y_nand,x_nand) *)
+    >>> nand.
+
+  Definition twoBits 
+    {C: Category} {CC: Cartesian C}
+    {A: Arrow CC} {AL: ArrowLoop A} 
+    {Cava: @Cava C CC A}
+    : unit ~> (bit**bit) := 
+    copy 
+    >>> first high
+    >>> second low.
+
+  Existing Instance CoqCC.
+  Existing Instance CoqArr.
+  Existing Instance CoqCava.
+
+  Print xor.
+  Eval simpl in eval' (twoBits >>> and_gate).
+  Eval cbv in eval' (twoBits >>> and_gate).
+  Eval simpl in eval' (twoBits >>> nand).
+  Eval cbv in eval' (twoBits >>> nand).
+  Eval simpl in eval' (twoBits >>> xor).
+  Eval cbv in eval' (twoBits >>> xor).
+End Example1.
+
+Section Example2.
+  (*nand previous output and current input, output delayed 1 cycle*)
+  Definition loopedNand
+    {C: Category} {CC: Cartesian C}
+    {A: Arrow CC} {AL: ArrowLoop A} 
+    {Cava: @Cava C CC A}
+    `{@CavaDelay C CC A Cava}
+    : bit ~> bit := 
+    loopl (nand >>> delay_gate >>> copy).
+End Example2.
