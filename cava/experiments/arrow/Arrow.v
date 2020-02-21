@@ -5,6 +5,8 @@ Require Import Coq.Bool.Bool.
 Require Import Coq.Lists.List.
 Require Import Coq.Setoids.Setoid.
 
+From Coq Require Import btauto.Btauto.
+
 Set Implicit Arguments.
 Set Strict Implicit.
 
@@ -93,11 +95,17 @@ Print Arrow.
 (** Cava *)
 Class Cava (C: Category)  (CC: Cartesian C) (A: Arrow CC) := {
   bit : (Type: object);
-  high : unit ~> bit;
-  low : unit ~> bit;
+  fromBool : bool -> (unit ~> bit);
+  
   not_gate : bit ~> bit;
   and_gate : (bit ** bit) ~> bit;
 }.
+
+Section highlow.
+  Context `{Cava}.
+  Definition high : unit ~> bit := fromBool true.
+  Definition low : unit ~> bit := fromBool false.
+End highlow.
 
 (** different type class for implementation to select features*)
 Class CavaDelay `{Cava} := {
@@ -139,8 +147,7 @@ Section CoqEval.
   Instance CoqCava : @Cava CoqCat CoqCC CoqArr := {
     bit := bool;
 
-    low := fun _ => false;
-    high := fun _ => true;
+    fromBool b := fun _ => b;
     
     not_gate := fun b => negb b;
     and_gate := fun xy => andb (fst xy) (snd xy);
@@ -159,13 +166,13 @@ Section Example1.
 
   Definition nand 
     {C: Category} {CC: Cartesian C}
-    {A: Arrow CC} {AL: ArrowLoop A} 
+    {A: Arrow CC} 
     {Cava: @Cava C CC A}
     := and_gate >>> not_gate.
 
   Definition xor 
     {C: Category} {CC: Cartesian C}
-    {A: Arrow CC} {AL: ArrowLoop A} 
+    {A: Arrow CC} 
     {Cava: @Cava C CC A}
     : (bit**bit) ~> bit := 
     copy 
@@ -177,12 +184,12 @@ Section Example1.
 
   Definition twoBits 
     {C: Category} {CC: Cartesian C}
-    {A: Arrow CC} {AL: ArrowLoop A} 
+    {A: Arrow CC}
     {Cava: @Cava C CC A}
     : unit ~> (bit**bit) := 
     copy 
-    >>> first high
-    >>> second low.
+    >>> first (fromBool true)
+    >>> second (fromBool false).
 
   Existing Instance CoqCC.
   Existing Instance CoqArr.
@@ -195,6 +202,24 @@ Section Example1.
   Eval cbv in eval' (twoBits >>> nand).
   Eval simpl in eval' (twoBits >>> xor).
   Eval cbv in eval' (twoBits >>> xor).
+
+  Definition twoBools
+    {C: Category} {CC: Cartesian C}
+    {A: Arrow CC}
+    {Cava: @Cava C CC A}
+    (x y: bool): unit ~> (bit**bit) := 
+    copy 
+    >>> first (fromBool x)
+    >>> second (fromBool y).
+
+  Lemma xor_is_xorb : forall a b:bool, eval' (twoBools a b >>> xor) = xorb a b.
+  Proof.
+    intros.
+    unfold eval'.
+    simpl.
+    btauto.
+  Qed.
+
 End Example1.
 
 Section Example2.
