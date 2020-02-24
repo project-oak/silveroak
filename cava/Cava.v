@@ -538,6 +538,7 @@ Definition loopS
   ret b.
 
 
+
 Definition loop `{Monad m} `{MonadFix m} {A B}
            (circuit : (A * nat)%type -> m (B * nat)%type) (a:A) : m B :=
   '(b, _) <- mfix (fun f bc => '(b, c') <- circuit (a, snd bc) ;;
@@ -552,7 +553,10 @@ Definition fork2 `{Mondad_m : Monad m} {A} (a:A) := ret (a, a).
 
 (* loopedNAND also causes Coq to go into an infinite loop. *)
 
-Definition loopedNAND {Cava m bit} (ab : list bit) : m bit := 
+Set Typeclasses Debug.
+
+Definition loopedNAND {Cava m bit} `{MonadFix m} (ab : list bit) : m bit := 
   loop (nand2 >=> delayBit >=> fork2) ab.
 
 *)
+
