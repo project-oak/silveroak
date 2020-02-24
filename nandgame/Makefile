@@ -34,6 +34,7 @@ clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \
 		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq Makefile.coq.conf \
 			FixupAscii NandGateSV \
-			inverter.sv
+			inverter.sv andgate.sv fulladder.sv halfadder.sv orgate.sv xorgate.sv
+
 		xargs rm -rf < .gitignore
 
