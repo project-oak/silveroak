@@ -545,13 +545,14 @@ Definition loop `{Monad m} `{MonadFix m} {A B}
                   ) (a, 0) ;;
   ret b.
 
-Definition nand2 `{Cava m bit} := and_gate >=> not_gate.
+Definition nand2 `{Cava m bit} (ab : bit * bit) : m bit :=
+  (and_gate >=> not_gate) [fst ab; snd ab].
 
 Definition fork2 `{Mondad_m : Monad m} {A} (a:A) := ret (a, a).
 
-loopedNAND also causes Coq to go into an infinite loop.
+(* loopedNAND also causes Coq to go into an infinite loop. *)
 
-Definition loopedNAND {Cava m bit} (ab : bit * bit) : m bit := 
-  loop (nand2 >=> delayBit >=> fork2).
+Definition loopedNAND {Cava m bit} (ab : list bit) : m bit := 
+  loop (nand2 >=> delayBit >=> fork2) ab.
 
 *)
