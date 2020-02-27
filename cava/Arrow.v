@@ -3,7 +3,8 @@
 Require Import Coq.Program.Tactics.
 Require Import Coq.Bool.Bool.
 Require Import Coq.Lists.List.
-Require Import Coq.Setoids.Setoid.
+(* Require Import Coq.Setoids.Setoid. *)
+Require Import Coq.Strings.String.
 
 From Coq Require Import btauto.Btauto.
 
@@ -224,3 +225,71 @@ Section Example2.
     : bit ~> bit :=
     loopl (nand >>> delay_gate >>> copy).
 End Example2.
+
+Section Syntax.
+  Context `{C: Category}.
+
+  Inductive type : Type :=
+  | obj (o: object) : type
+  | fn: type -> type -> type
+  .
+
+  Variable var: type -> Type.
+
+  Inductive term : type -> Type :=
+  | Var : forall t, var t -> term t
+  | Abs : forall x y, (var x -> term y) -> term (fn x y)
+  | App : forall x y, term (fn x y) -> term x -> term y
+  | Arr x y (_: morphism x y) : term (fn (obj x) (obj y))
+  (* TODO: | Let ... *)
+  (* TODO: | LetRec ... *)
+  .
+
+  Inductive typeK : Type :=
+  | objK (o: object) 
+  | prodK (o1: object) (o2: object) 
+  | unitK
+  .
+
+  Inductive kappa : type -> Type :=
+  | VarK : forall t, var t -> kappa t
+  | AbsK : forall x y, (var x -> kappa y) -> kappa (fn x y)
+  | AppK : forall x y, kappa (fn x y) -> kappa x -> kappa y
+  .
+End Syntax.
+
+Section SanityCheck.
+
+  Context {C: Category}.
+
+  Arguments Var _ [var t] _.
+  Arguments Abs _ [var x y] _.
+
+  Definition Term t := forall var, term var t.
+
+  Check Term.
+
+  Definition Foo {x} : Term (fn x x) := fun _ => Abs _ (fun x => Var _ x).
+  Definition Bar {x y} : Term (fn (fn y x) (fn y x))
+  := fun _ =>
+  Abs _ (fun x => 
+      Abs _ (fun y =>
+        App (Var _ x) (Var _ y)
+      )
+    ).
+  Definition Baz {a b} (arr: a~>b): Term (fn (obj a) (obj b))
+  := fun _ => Abs _ (fun x => App (Arr _ _ _ arr) (Var _ x)).
+
+
+  Fixpoint squash var t (e : term (term var) t) : term var t :=
+  match e with
+  | Var _ x => x
+  | Abs _ e1 => Abs _ (fun v => squash(e1 (Var _ v)))
+  | App e1 e2 => App (squash e1) (squash e2) 
+  | Arr _ x y m => Arr _ x y m
+  end.
+
+  Definition Term1 (t1 t2 : type) := forall var, var t1 -> term var t2.
+  Definition Subst (t1 t2 : type) (E : Term1 t1 t2 ) (E' : Term t1 ) : Term t2 :=
+  fun var => squash (E (term var) (E' var)).
+End SanityCheck.
