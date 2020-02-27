@@ -1,9 +1,6 @@
-(* Require Coq.Program.Tactics. *)
-
 Require Import Coq.Program.Tactics.
 Require Import Coq.Bool.Bool.
 Require Import Coq.Lists.List.
-(* Require Import Coq.Setoids.Setoid. *)
 Require Import Coq.Strings.String.
 
 From Coq Require Import btauto.Btauto.
@@ -246,16 +243,18 @@ Section Syntax.
   .
 
   Inductive typeK : Type :=
-  | objK (o: object) 
-  | prodK (o1: object) (o2: object) 
-  | unitK
-  .
+  | objK (o: object)
+  | prodK (o1: typeK) (o2: typeK)
+  | unitK.
 
-  Inductive kappa : type -> Type :=
-  | VarK : forall t, var t -> kappa t
-  | AbsK : forall x y, (var x -> kappa y) -> kappa (fn x y)
-  | AppK : forall x y, kappa (fn x y) -> kappa x -> kappa y
-  .
+  Variable varK: typeK -> typeK -> Type.
+
+  Inductive kappa : typeK -> typeK -> Type :=
+  | VarK : forall x y, varK x y -> kappa x y
+  | IdK : forall x, kappa x x
+  | FirstK : forall x y z, kappa x y -> kappa (prodK x z) (prodK y z)
+  | CompK : forall x y z, kappa y z -> kappa x y -> kappa x z
+  | AbsK : forall x y z, (varK unitK x -> kappa (prodK x z) y) -> kappa (prodK x z) y.
 End Syntax.
 
 Section SanityCheck.
