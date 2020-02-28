@@ -37,7 +37,7 @@ Local Open Scope monad_scope.
 
 Definition inverter {m t} `{Cava m t} a := nand_gate [a; a].
 
-Definition inverterTop {m t} `{CavaTop m t} :=
+Definition inverterTop :=
   setModuleName "invertor" ;;
   a <- inputBit "a" ;;
   b <- inverter a ;;
@@ -66,7 +66,7 @@ Definition andgate {m t} `{Cava m t}  a b :=
   c <- inverter x ;;
   ret c.
 
-Definition andgateTop {m t} `{CavaTop m t} :=
+Definition andgateTop :=
   setModuleName "andgate" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
@@ -98,7 +98,7 @@ Definition orgate {m t} `{Cava m t} a b :=
   c <- nand_gate [nota; notb] ;;
   ret c.
 
-Definition orgateTop {m t} `{CavaTop m t} :=
+Definition orgateTop :=
   setModuleName "orgate" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
@@ -134,7 +134,7 @@ Definition xorgate {m t} `{Cava m t} a b :=
   c <- nand_gate [x; y] ;;
   ret c.
 
-Definition xorgateTop {m t} `{CavaTop m t} :=
+Definition xorgateTop :=
   setModuleName "xorgate" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
@@ -164,7 +164,7 @@ Definition halfAdder {m t} `{Cava m t} a b :=
   carry <- andgate a b ;;
   ret (partial_sum, carry).
 
-Definition halfAdderTop {m t} `{CavaTop m t} :=
+Definition halfAdderTop :=
   setModuleName "halfadder" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
@@ -198,7 +198,7 @@ Definition fullAdder {m t} `{Cava m t} a b cin :=
   cout <- orgate abh abch ;;
   ret (abcl, cout).
 
-Definition fullAdderTop {m t} `{CavaTop m t} :=
+Definition fullAdderTop :=
   setModuleName "fulladder" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;

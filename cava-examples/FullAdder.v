@@ -41,7 +41,7 @@ Definition halfAdder {m t} `{Cava m t} a b :=
   carry <- and_gate [a; b] ;;
   ret (partial_sum, carry).
 
-Definition halfAdderTop {m t} `{CavaTop m t} :=
+Definition halfAdderTop :=
   setModuleName "halfadder" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
@@ -75,7 +75,7 @@ Definition fullAdder {m t} `{Cava m t} a b cin :=
   cout <- or_gate [abh; abch] ;;
   ret (abcl, cout).
 
-Definition fullAdderTop {m t} `{CavaTop m t} :=
+Definition fullAdderTop :=
   setModuleName "fulladder" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
@@ -115,7 +115,7 @@ Definition fullAdderFC {m bit} `{Cava m bit} (cin_ab : bit * (bit * bit))
   cout <- muxcy part_sum a cin  ;;
   ret (sum, cout).
 
-Definition fullAdderFCTop {m t} `{CavaTop m t} :=
+Definition fullAdderFCTop :=
   setModuleName "fulladderFC" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;

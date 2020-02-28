@@ -21,4 +21,5 @@ import Cava2SystemVerilog
 import Examples
 
 main :: IO ()
-main = writeSystemVerilog nand2Netlist
+main = do writeSystemVerilog nand2Netlist
+          writeSystemVerilog loopedNANDNetlist

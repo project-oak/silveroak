@@ -40,7 +40,7 @@ Local Open Scope monad_scope.
 
 Definition nand2 {m t} `{Cava m t} := and_gate >=> not_gate.
 
-Definition nand2Top {m t} `{CavaTop m t} :=
+Definition nand2Top :=
   setModuleName "nand2" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
@@ -74,7 +74,7 @@ Proof. reflexivity. Qed.
 Definition pipelinedNAND {m t} `{Cava m t}
   := and_gate >=> delayBit >=> not_gate >=> delayBit.
 
-Definition pipelinedNANDTop {m t} `{CavaTop m t} :=
+Definition pipelinedNANDTop :=
   setModuleName "pipelinedNAND" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;

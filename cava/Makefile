@@ -16,7 +16,7 @@
 
 .PHONY: all compile clean
 
-all:		compile nand2.sv nand2.vcd
+all:		compile nand2.sv nand2.vcd loopedNAND.vcd
 
 Makefile.coq:
 		coq_makefile -f _CoqProject -o Makefile.coq
@@ -38,14 +38,20 @@ ExamplesSV:	ExamplesSV.hs
 nand2.sv:	compile ExamplesSV
 		./ExamplesSV
 
+loopedNAND.sv:	nand2.sv
+
 nand2.vcd:	nand2.sv nand2_tb.sv
 		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv
 		./nand2.vvp 
 
+loopedNAND.vcd:	loopedNAND.sv loopedNAND_tb.sv
+		iverilog -g2012 -o loopedNAND.vvp loopedNAND.sv loopedNAND_tb.sv
+		./loopedNAND.vvp
+
 clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \
 		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq.conf \
-			FixupAscii ExamplesSV \
-			nand2.sv nand2.vcd
+			FixupAscii ExamplesSV a.out \
+			nand2.sv nand2.vcd loopedNAND.sv loopedNAND.vcd loopedNAND.vvp
 		xargs rm -rf < .gitignore
 

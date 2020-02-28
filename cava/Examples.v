@@ -49,12 +49,12 @@ Proof. reflexivity. Qed.
 Example and_11 : combinational (and_gate [true; true]) = true.
 Proof. reflexivity. Qed.
 
-Eval cbv in (execState (not_gate (0%Z)) initState).
+Eval cbv in (execState (not_gate (2%Z)) (initStateFrom 3)).
 
 (* NAND gate example. Fist, let's define an overloaded NAND gate
    description. *)
 
-Definition nand2 {m t} `{Cava m t} := and_gate >=> not_gate.
+Definition nand2 {m bit} `{Cava m bit} := and_gate >=> not_gate.
 
 (* Simulate the NAND gate circuit using the Bool interpretation. *)
 Example nand_00 : combinational (nand2 [false; false]) = true.
@@ -65,9 +65,9 @@ Proof. reflexivity. Qed.
 
 (* Generate a circuit graph representation for the NAND gate using the
    netlist interpretatin. *)
-Eval cbv in (execState (nand2 [0%Z; 1%Z]) initState).
+Eval cbv in (execState (nand2 [2%Z; 3%Z]) (initStateFrom 4)).
 
-Definition nand2Top {m t} `{CavaTop m t} :=
+Definition nand2Top : state CavaState Z :=
   setModuleName "nand2" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
@@ -85,3 +85,18 @@ Lemma nand2_behaviour : forall (a : bool) (b : bool),
 Proof.
   auto.
 Qed.
+
+(* An contrived example of loopBit *)
+
+Definition nand2Gate {m bit} `{Cava m bit} (ab : bit * bit) : m bit :=
+  nand2 [fst ab; snd ab].
+
+Definition loopedNAND := loopBit (second delayBit >=> nand2Gate >=> fork2).
+
+Definition loopedNANDTop : state CavaState Z :=
+  setModuleName "loopedNAND" ;;
+  a <- inputBit "a" ;;
+  b <- loopedNAND a ;;
+  outputBit "b" b.
+
+Definition loopedNANDNetlist := makeNetlist loopedNANDTop.

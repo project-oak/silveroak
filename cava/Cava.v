@@ -60,6 +60,8 @@ Inductive Primitive :=
   | Buf  : Z -> Z -> Primitive
   (* A Cava unit delay bit component. *)
   | DelayBit : Z -> Z -> Primitive
+  (* Assignment of bit wire *)
+  | AssignBit : Z -> Z -> Primitive
   (* Xilinx FPGA architecture specific gates. *)
   | Xorcy : Z -> Z -> Z -> Primitive
   | Muxcy : Z -> Z -> Z -> Z -> Primitive.
@@ -73,6 +75,7 @@ Class Cava m bit `{Monad m} := {
   zero : m bit; (* This component always returns the value 0. *)
   one : m bit; (* This component always returns the value 1. *)
   delayBit : bit -> m bit; (* Cava bit-level unit delay. *)
+  loopBit : forall {A B : Type}, ((A * bit)%type -> m (B * bit)%type) -> A -> m B;
   (* Primitive SystemVerilog gates *)
   not_gate : bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'not' *)
   and_gate : list bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'and' *)
@@ -123,8 +126,11 @@ Record CavaState : Type := mkCavaState {
    constant signal 1. We start numbering from 2 for the user nets.
 *) 
 
+Definition initStateFrom (startAt : Z) : CavaState
+  := mkCavaState "" startAt [] [] [] false.
+
 Definition initState : CavaState
-  := mkCavaState "" 2 [] [] [] false.
+  := initStateFrom 2.
 
 (******************************************************************************)
 (* Execute a monadic circuit description and return the generated netlist.    *)
@@ -224,7 +230,21 @@ Definition delayBitNet (i : Z) : state CavaState Z :=
   | mkCavaState name o insts inputs outputs _
       => put (mkCavaState name (o+1) (cons (mkInstance o (DelayBit i o)) insts) inputs outputs true) ;;
          ret o
-  end. 
+  end.
+
+Definition loopBitNet (A B : Type) (f : (A * Z)%type -> state CavaState (B * Z)%type) (a : A) : state CavaState B :=
+  cs <- get ;;
+  match cs with
+  | mkCavaState name o insts inputs outputs isSeq
+      => put (mkCavaState name (o+1) insts inputs outputs isSeq) ;;
+         '(b, cOut) <- f (a, o) ;;
+          cs2 <- get ;;
+          match cs2 with
+          | mkCavaState name o2 insts inputs outputs isSeq
+              => put (mkCavaState name (o2+1) (cons (mkInstance o2 (AssignBit o cOut)) insts) inputs outputs isSeq) ;;
+                 ret b
+          end
+  end.
 
 (******************************************************************************)
 (* Instantiate the Cava class for CavaNet which describes circuits without    *)
@@ -235,6 +255,7 @@ Instance CavaNet : Cava (state CavaState) Z :=
   { zero := ret 0%Z;
     one := ret 1%Z;
     delayBit := delayBitNet;
+    loopBit a b := loopBitNet a b;
     not_gate := notNet;
     and_gate := andNet;
     nand_gate := nandNet;
@@ -251,14 +272,14 @@ Instance CavaNet : Cava (state CavaState) Z :=
 (* Define netlist functions used to specify top-level module behaviour.       *)
 (******************************************************************************)
 
-Definition setModuleNameNet (name : string) : state CavaState unit :=
+Definition setModuleName (name : string) : state CavaState unit :=
   cs <- get ;;
   match cs with
   | mkCavaState _ o insts inputs outputs isSeq
      => put (mkCavaState name o insts inputs outputs isSeq)
   end.
 
-Definition inputVectorTo0Net (size : Z) (name : string)  : state CavaState (list Z) := 
+Definition inputVectorTo0 (size : Z) (name : string)  : state CavaState (list Z) := 
   cs <- get ;;
   match cs with
   | mkCavaState n o insts inputs outputs isSeq
@@ -268,7 +289,7 @@ Definition inputVectorTo0Net (size : Z) (name : string)  : state CavaState (list
         ret netNumbers
   end.
 
-Definition inputBitNet (name : string) : state CavaState Z := 
+Definition inputBit (name : string) : state CavaState Z := 
   cs <- get ;;
   match cs with
   | mkCavaState n o insts inputs outputs isSeq
@@ -277,7 +298,7 @@ Definition inputBitNet (name : string) : state CavaState Z :=
         ret o
   end.
 
-Definition outputBitNet (name : string) (i : Z) : state CavaState Z :=
+Definition outputBit (name : string) (i : Z) : state CavaState Z :=
   cs <- get ;;
   match cs with
   | mkCavaState n o insts inputs outputs isSeq
@@ -286,7 +307,7 @@ Definition outputBitNet (name : string) (i : Z) : state CavaState Z :=
         ret i
   end.
 
-Definition outputVectorTo0Net (v : list Z) (name : string) : state CavaState (list Z) := 
+Definition outputVectorTo0 (v : list Z) (name : string) : state CavaState (list Z) := 
   cs <- get ;;
   match cs with
   | mkCavaState n o insts inputs outputs isSeq
@@ -296,27 +317,6 @@ Definition outputVectorTo0Net (v : list Z) (name : string) : state CavaState (li
   end.
 
 
-(******************************************************************************)
-(* Instantiate the top-level Cava class for netlist behaviour.                *)
-(******************************************************************************)
-
-Class CavaTop m bit `{Cava m bit} := {
-  (* Name to be used for the extracted VHDL/Verilog/SystemVerilog module *)
-  setModuleName : string -> m unit;
-  (* Input and output ports. *)
-  inputBit : string -> m bit;            (* A one bit input. *)
-  outputBit : string -> bit -> m bit;    (* A one bit output. *)
-  inputVectorTo0 : Z -> string -> m (list bit);
-  outputVectorTo0 : list bit -> string -> m (list bit);
-}.
-
-Instance CavaTopNet : CavaTop (state CavaState) Z :=
-  { setModuleName := setModuleNameNet;
-    inputBit := inputBitNet;
-    outputBit := outputBitNet;
-    inputVectorTo0 := inputVectorTo0Net;
-    outputVectorTo0 := outputVectorTo0Net;
-}.
 
 (******************************************************************************)
 (* A second boolean combinational logic interpretaiob for the Cava class      *)
@@ -361,6 +361,10 @@ Definition inputBool (name : string) : ident bool :=
 Definition outputBool (name : string) (i : bool) : ident bool :=
   ret i.
 
+Definition loopBitBool (A B : Type) (f : A * bool -> ident (B * bool)) (a : A) : ident B := 
+  '(b, _) <- f (a, false) ;;
+  ret b.
+
 (******************************************************************************)
 (* Instantiate the Cava class for a boolean combinational logic               *)
 (* interpretation.                                                            *)
@@ -370,6 +374,7 @@ Instance CavaBool : Cava ident bool :=
   { zero := ret false;
     one := ret true;
     delayBit i := ret i; (* Dummy definition for delayBit for now. *)
+    loopBit a b := loopBitBool a b;
     not_gate := notBool;
     and_gate := andBool;
     nand_gate := nandBool;
@@ -492,10 +497,21 @@ Fixpoint col `{Monad m} {A B C}
               ret (c::cs, e)
   end.
 
+Definition fork2 `{Mondad_m : Monad m} {A} (a:A) := ret (a, a).
+
+Definition first `{Mondad_m : Monad m} {A B C} (f : A -> m C) (ab : A * B) : m (C * B)%type :=
+  let '(a, b) := ab in
+  c <- f a ;;
+  ret (c, b).
+
+Definition second `{Mondad_m : Monad m} {A B C} (f : B -> m C) (ab : A * B) : m (A * C)%type :=
+  let '(a, b) := ab in
+  c <- f b ;;
+  ret (a, c).
+
 (******************************************************************************)
 (* Loop combinator                                                            *)
 (******************************************************************************)
-
 
 (*
 
@@ -548,8 +564,6 @@ Definition loop `{Monad m} `{MonadFix m} {A B}
 
 Definition nand2 `{Cava m bit} (ab : bit * bit) : m bit :=
   (and_gate >=> not_gate) [fst ab; snd ab].
-
-Definition fork2 `{Mondad_m : Monad m} {A} (a:A) := ret (a, a).
 
 (* loopedNAND also causes Coq to go into an infinite loop. *)
 

@@ -115,6 +115,8 @@ generateInstance :: Cava.Instance -> String
 generateInstance (Cava.Coq_mkInstance number (Cava.DelayBit i o))
    = "  always_ff @(posedge clk) net[" ++ show o ++ "] <= rst ? 1'b0 : net["
         ++ show i ++ "];";
+generateInstance (Cava.Coq_mkInstance number (Cava.AssignBit a b))
+   = "  assign net[" ++ show a ++ "] = net[" ++ show b ++ "];"
 generateInstance (Cava.Coq_mkInstance number inst)      
   = "  " ++ instName ++ " inst" ++ show number ++ " " ++  showArgs args ++ ";"
    where

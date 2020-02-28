@@ -80,7 +80,7 @@ Proof. reflexivity. Qed.
    generation.
 *)
 
-Definition adder8Top {m t} `{CavaTop m t} :=
+Definition adder8Top :=
   setModuleName "adder8" ;;
   a <- inputVectorTo0 8 "a" ;;
   b <- inputVectorTo0 8 "b" ;;
