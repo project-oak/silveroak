@@ -218,10 +218,10 @@ Section Example1.
     {_: Cava}
     : (bit**bit) ~> bit :=
     copy
-    >>> first (nand >>> copy)      (* ((nand,nand),(x,y)) *)
-    >>> assoc                      (* (nand,(nand,(x,y))) *)
+    >>> first (nand >>> copy)                    (* ((nand,nand),(x,y)) *)
+    >>> assoc                                    (* (nand,(nand,(x,y))) *)
     >>> second (unassoc >>> first nand >>> swap) (* (nand,(y, x_nand)) *)
-    >>> unassoc >>> first nand          (* (y_nand,x_nand) *)
+    >>> unassoc >>> first nand                   (* (y_nand,x_nand) *)
     >>> nand.
 
   (* Definition twoBits
@@ -277,16 +277,22 @@ Section Example1.
     constructor.
   Qed.
 
-  Lemma single_cycle_xor_comb: forall a:(bool*bool), evalList (@xor CoqListCava) (a::nil) = map (uncurry xorb) (a::nil).
+  Lemma xor_comb: forall a:list (bool*bool), evalList (@xor CoqListCava) a = map (uncurry xorb) a.
   Proof.
     intros.
-    unfold xor.
-    unfold evalList.
-    unfold uncurry.
-    unfold nand.
+    induction a.
+    simpl.
+    reflexivity.
+
+    cbv [evalList xor uncurry nand].
     simpl.
     f_equal.
     btauto.
+
+    cbv [evalList xor uncurry nand] in IHa.
+    simpl in IHa.
+    rewrite IHa.
+    reflexivity.
   Qed.
 
 End Example1.
