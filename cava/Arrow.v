@@ -295,6 +295,15 @@ Section Example1.
     reflexivity.
   Qed.
 
+  Lemma nand_seq_is_nand_comb: forall a:list (bool*bool), evalList (@nand CoqListCava) a = map (eval (@nand CoqCava)) a.
+  Proof.
+    intros.
+    rewrite nand_is_comb.
+    unfold eval.
+    unfold uncurry.
+    simpl.
+    f_equal.
+  Qed.
 End Example1.
 
 Section Example2.
