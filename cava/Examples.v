@@ -63,6 +63,12 @@ Proof. reflexivity. Qed.
 Example nand_11 : combinational (nand2_gate (true, true)) = false.
 Proof. reflexivity. Qed.
 
+(* Simulate the NAND gate circuit using the sequential interpretation. *)
+Example nand_seqA : sequential (nand2_gate ([false; true;  false; true],
+                                            [false; false; true;  true]))
+                                          = [true;  true;  true;  false].
+Proof. reflexivity. Qed.
+
 (* Generate a circuit graph representation for the NAND gate using the
    netlist interpretatin. *)
 Eval cbv in (execState (nand2_gate (2%Z, 3%Z)) (initStateFrom 4)).

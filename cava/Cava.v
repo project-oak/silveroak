@@ -353,12 +353,6 @@ Definition muxcyBool (s : bool) (di : bool) (ci : bool) : ident bool :=
 Definition bufBool (i : bool) : ident bool :=
   ret i.
 
-Definition inputBool (name : string) : ident bool :=
-  ret false.
-
-Definition outputBool (name : string) (i : bool) : ident bool :=
-  ret i.
-
 Definition loopBitBool (A B : Type) (f : A * bool -> ident (B * bool)) (a : A) : ident B := 
   '(b, _) <- f (a, false) ;;
   ret b.
@@ -392,6 +386,71 @@ Instance CavaBool : Cava ident bool :=
 
 Definition combinational {a} (circuit : ident a) : a := unIdent circuit.
 
+(******************************************************************************)
+(* A list-based sequential logic interpretaion for the Cava class      *)
+(******************************************************************************)
+
+Definition notBoolList (i : list bool) : ident (list bool) :=
+  ret (map negb i).
+
+Definition andBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
+  ret (map (fun (i : bool * bool) => let (a, b) := i in a && b) (combine (fst i) (snd i))).
+
+Definition nandBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
+  ret (map (fun (i : bool * bool) => let (a, b) := i in negb (a && b)) (combine (fst i) (snd i))).
+
+Definition orBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
+  ret (map (fun (i : bool * bool) => let (a, b) := i in a || b) (combine (fst i) (snd i))).
+
+Definition norBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
+  ret (map (fun (i : bool * bool) => let (a, b) := i in negb (a || b)) (combine (fst i) (snd i))).
+
+Definition xorBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
+  ret (map (fun (i : bool * bool) => let (a, b) := i in xorb a b) (combine (fst i) (snd i))).
+
+Definition xorcyBoolList := xorBoolList.
+
+Definition xnorBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
+  ret (map (fun (i : bool * bool) => let (a, b) := i in negb (xorb a b)) (combine (fst i) (snd i))).
+
+Definition muxcyBoolList (s : list bool) (di : list bool) (ci : list bool) : ident (list bool) :=
+  let dici := combine di ci in 
+  let s_dici := combine s dici in
+  ret (map (fun (i : bool * (bool * bool)) =>
+     let '(s, (ci, di)) := i in
+     match s with
+       | false => di
+       | true => ci
+     end) s_dici).
+
+Definition bufBoolList (i : list bool) : ident (list bool) :=
+  ret i.
+
+Definition loopBitBoolList (A B : Type) (f : A * list bool -> ident (B * list bool)) (a : A) : ident B := 
+  '(b, _) <- f (a, [false]) ;;
+  ret b.
+
+Definition delayBitBoolList (i : list bool) : ident (list bool) :=
+  ret (false :: i).
+
+Instance CavaBoolList : Cava ident (list bool) :=
+  { zero := ret [false];
+    one := ret [true];
+    delayBit := delayBitBoolList;
+    loopBit := loopBitBoolList;
+    inv := notBoolList;
+    and2 := andBoolList;
+    nand2 := nandBoolList;
+    or2 := orBoolList;
+    nor2 := norBoolList;
+    xor2 := xorBoolList;
+    xorcy := xorcyBoolList;
+    xnor2 := xnorBoolList;
+    muxcy := muxcyBoolList;
+    buf_gate := bufBoolList;
+}.
+
+Definition sequential {a} (circuit : ident (list a)) : list a := unIdent circuit.
 
 (******************************************************************************)
 (* Lava-style circuit combinators.                                            *)
