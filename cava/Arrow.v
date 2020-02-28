@@ -43,11 +43,13 @@ Notation "g >>> f" := (compose f g)
   (at level 90, right associativity) : category_scope.
 
 
+
 Open Scope category_scope.
 Print Category.
 
 (** adam megacz style arrow *)
-Class Arrow (C: Category) := {
+Class Arrow := {
+  cat :> Category; 
   unit : object;
   product : object -> object -> object
     where "x ** y" := (product x y);
@@ -81,7 +83,9 @@ Definition second `{Arrow} {x y z} (f : x ~> y) : z ** x ~> z ** y :=
   fork exl (exr >>> f).
 
 (** different type class for implementation to select features*)
-Class ArrowLoop {C: Category} (A: Arrow C) := {
+(* Class ArrowLoop {C: Category} (A: Arrow C) := { *)
+Class ArrowLoop := {
+  arr :> Arrow;
   loopr {x y z} : ((x**z) ~> (y**z)) -> (x ~> y);
   loopl {x y z} : ((z**x) ~> (z**y)) -> (x ~> y);
 }.
@@ -89,19 +93,24 @@ Class ArrowLoop {C: Category} (A: Arrow C) := {
 Print Arrow.
 
 (** Cava *)
-Class Cava (C: Category) (A: Arrow C) := {
+Class Cava  := {
+  cava_arrow :> Arrow;
   bit : object;
-  fromBool : bool -> (unit ~> bit);
+
+  (* fromBool : bool -> (unit ~> bit); *)
 
   not_gate : bit ~> bit;
   and_gate : (bit ** bit) ~> bit;
 }.
 
-Section highlow.
+Definition cava_cat (cava: Cava): Category := @cat (@cava_arrow cava).
+Definition cava_obj (cava: Cava): Type := @object (@cava_cat cava).
+
+(* Section highlow.
   Context `{Cava}.
   Definition high : unit ~> bit := fromBool true.
   Definition low : unit ~> bit := fromBool false.
-End highlow.
+End highlow. *)
 
 (** different type class for implementation to select features*)
 Class CavaDelay `{Cava} := {
@@ -118,7 +127,7 @@ Section CoqEval.
     id X := fun x => x;
   }.
 
-  Instance CoqArr : @Arrow CoqCat := {
+  Instance CoqArr : Arrow := {
     unit := Datatypes.unit : Type;
     product := prod;
 
@@ -138,10 +147,10 @@ Section CoqEval.
     unassoc _ _ _ := fun xyz => ((fst xyz, fst (snd xyz)), snd (snd xyz));
   }.
 
-  Instance CoqCava : @Cava CoqCat CoqArr := {
+  Instance CoqCava : Cava := {
     bit := bool;
 
-    fromBool b := fun _ => b;
+    (* fromBool b := fun _ => b; *)
 
     not_gate := fun b => negb b;
     and_gate := fun xy => andb (fst xy) (snd xy);
@@ -150,22 +159,63 @@ Section CoqEval.
   Definition eval {A B} (f: A~>B) (a:A): B := f a.
   Definition eval' {B} (f: unit~>B) : B := f tt.
 
+  Context `{CavaCoq}.
   Eval cbv in eval not_gate true.
   Eval cbv in eval not_gate false.
 End CoqEval.
 
+(** Evaluation as function on lists, no loops *)
+Section CoqListEval.
+  Instance CoqListCat : Category := {
+    morphism X Y := list X -> list Y;
+    compose _ _ _ := fun f g x => f (g x);
+    id X := fun x => x;
+  }.
+
+  Instance CoqListArr : Arrow := {
+    unit := Datatypes.unit : Type;
+
+    fork _ _ _ f g := fun xs => combine (f xs) (g xs);
+    exl X Y := map fst;
+    exr X Y := map snd;
+
+    drop _ := map (fun _ => tt);
+    copy _ := map (fun x => pair x x);
+
+    swap _ _ := map (fun x => (snd x, fst x));
+
+    uncancell _ := map (fun x => (tt, x));
+    uncancelr _ := map (fun x => (x, tt));
+
+    assoc _ _ _   := map (fun xyz => (fst (fst xyz), (snd (fst xyz), snd xyz)));
+    unassoc _ _ _ := map (fun xyz => ((fst xyz, fst (snd xyz)), snd (snd xyz)));
+  }.
+
+  Instance CoqListCava : Cava := {
+    bit := bool;
+
+    (* fromBool b := fun _ => b; *)
+
+    not_gate := map (fun b => negb b);
+    and_gate := map (fun xy => andb (fst xy) (snd xy));
+  }.
+   
+  Definition evalList (A: @object CoqListCat) (B: @object CoqListCat) (f: @morphism CoqListCat A B) (a:list A): list B := f a.
+
+  Import ListNotations.
+
+  Eval cbv in evalList not_gate [true;true;true].
+  Eval cbv in evalList not_gate [false;false;false].
+End CoqListEval.
+
 
 Section Example1.
-  (* Context `{Cava }. *) (** not general enough?*)
-
   Definition nand
-    {C: Category} {A: Arrow C}
-    {Cava: @Cava C A}
+    {Cava: Cava}
     := and_gate >>> not_gate.
 
   Definition xor
-    {C: Category} {A: Arrow C}
-    {Cava: @Cava C A}
+    {_: Cava}
     : (bit**bit) ~> bit :=
     copy
     >>> first (nand >>> copy)      (* ((nand,nand),(x,y)) *)
@@ -174,7 +224,7 @@ Section Example1.
     >>> unassoc >>> first nand          (* (y_nand,x_nand) *)
     >>> nand.
 
-  Definition twoBits
+  (* Definition twoBits
     {C: Category} {A: Arrow C}
     {Cava: @Cava C A}
     : unit ~> (bit**bit) :=
@@ -199,14 +249,43 @@ Section Example1.
     (x y: bool): unit ~> (bit**bit) :=
     copy
     >>> first (fromBool x)
-    >>> second (fromBool y).
+    >>> second (fromBool y). *) 
 
   (** *)
-  Lemma xor_is_xorb : forall a b:bool, eval' (twoBools a b >>> xor) = xorb a b.
+  Print eval.
+
+  Lemma xor_is_xorb: forall a b:bool, eval (@xor CoqCava) (pair a b) = xorb a b.
   Proof.
     intros.
-    unfold eval'.
+    unfold eval.
+    unfold xor.
+    unfold nand.
     simpl.
+    btauto.
+  Qed.
+
+  Definition nandb : bool -> bool -> bool := fun a b => negb (a && b).
+  Definition uncurry {a b c} (f: a -> b -> c) : (a*b) -> c := fun xy => f (fst xy) (snd xy).
+
+  Lemma nand_is_comb: forall a:list (bool*bool), evalList (@nand CoqListCava) a = map (uncurry nandb) a.
+  Proof.
+    intros.
+    unfold nand.
+    unfold evalList.
+    simpl.
+    rewrite map_map.
+    constructor.
+  Qed.
+
+  Lemma single_cycle_xor_comb: forall a:(bool*bool), evalList (@xor CoqListCava) (a::nil) = map (uncurry xorb) (a::nil).
+  Proof.
+    intros.
+    unfold xor.
+    unfold evalList.
+    unfold uncurry.
+    unfold nand.
+    simpl.
+    f_equal.
     btauto.
   Qed.
 
@@ -228,16 +307,15 @@ Section Syntax.
 
   Inductive type : Type :=
   | obj (o: object) : type
-  | fn: type -> type -> type
-  .
+  | fn: type -> type -> type.
 
   Variable var: type -> Type.
 
-  Inductive term : type -> Type :=
-  | Var : forall t, var t -> term t
-  | Abs : forall x y, (var x -> term y) -> term (fn x y)
-  | App : forall x y, term (fn x y) -> term x -> term y
-  | Arr x y (_: morphism x y) : term (fn (obj x) (obj y))
+  Inductive lambda : type -> Type :=
+  | Var : forall t, var t -> lambda t
+  | Abs : forall x y, (var x -> lambda y) -> lambda (fn x y)
+  | App : forall x y, lambda (fn x y) -> lambda x -> lambda y
+  | Arr x y (_: morphism x y) : lambda (fn (obj x) (obj y))
   (* TODO: | Let ... *)
   (* TODO: | LetRec ... *)
   .
@@ -264,7 +342,7 @@ Section SanityCheck.
   Arguments Var _ [var t] _.
   Arguments Abs _ [var x y] _.
 
-  Definition Term t := forall var, term var t.
+  Definition Term t := forall var, lambda var t.
 
   Check Term.
 
@@ -280,7 +358,7 @@ Section SanityCheck.
   := fun _ => Abs _ (fun x => App (Arr _ _ _ arr) (Var _ x)).
 
 
-  Fixpoint squash var t (e : term (term var) t) : term var t :=
+  Fixpoint squash var t (e : lambda (lambda var) t) : lambda var t :=
   match e with
   | Var _ x => x
   | Abs _ e1 => Abs _ (fun v => squash(e1 (Var _ v)))
@@ -288,7 +366,11 @@ Section SanityCheck.
   | Arr _ x y m => Arr _ x y m
   end.
 
-  Definition Term1 (t1 t2 : type) := forall var, var t1 -> term var t2.
+  Definition Term1 (t1 t2 : type) := forall var, var t1 -> lambda var t2.
   Definition Subst (t1 t2 : type) (E : Term1 t1 t2 ) (E' : Term t1 ) : Term t2 :=
-  fun var => squash (E (term var) (E' var)).
+  fun var => squash (E (lambda var) (E' var)).
+
+
+
+
 End SanityCheck.
