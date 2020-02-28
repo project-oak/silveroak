@@ -85,11 +85,26 @@ Eval cbv in (execState nand2Top initState).
 
 Definition nand2Netlist := makeNetlist nand2Top.
 
-(* A proof that the NAND gate implementation is correct. *)
-Lemma nand2_behaviour : forall (a : bool) (b : bool),
-                        combinational (nand2 (a, b)) = negb (a && b).
+(* A proof that the combination NAND gate implementation is correct. *)
+Lemma nand2_comb_behaviour : forall (a : bool) (b : bool),
+                             combinational (nand2_gate (a, b)) = negb (a && b).
 Proof.
   auto.
+Qed.
+
+(* A proof that the sequential NAND gate implementation is correct. *)
+Lemma nand2_seq_behaviour : forall (a : list bool) (b : list bool),
+                            sequential (nand2_gate (a, b)) = map (fun (i : bool * bool) => let (a, b) := i in
+                                                             negb (a && b)) (combine a b).
+Proof.
+  intros.
+  unfold sequential.
+  unfold unIdent.
+  simpl.
+  rewrite map_map.
+  rewrite map_ext_in_iff.
+  intros.
+  now destruct a0.  
 Qed.
 
 (* An contrived example of loopBit *)
