@@ -52,6 +52,7 @@ clean:
 		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \
 		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq.conf \
 			FixupAscii ExamplesSV a.out \
-			nand2.sv nand2.vcd loopedNAND.sv loopedNAND.vcd loopedNAND.vvp
+			nand2.sv nand2.vcd loopedNAND.sv loopedNAND.vcd loopedNAND.vvp \
+			.Makefile.coq.d *.vok *.vos
 		xargs rm -rf < .gitignore
 

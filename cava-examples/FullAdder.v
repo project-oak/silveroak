@@ -37,8 +37,8 @@ Local Open Scope monad_scope.
 (******************************************************************************)
 
 Definition halfAdder {m t} `{Cava m t} a b :=
-  partial_sum <- xor_gate [a; b] ;;
-  carry <- and_gate [a; b] ;;
+  partial_sum <- xor2 (a, b) ;;
+  carry <- and2 (a, b) ;;
   ret (partial_sum, carry).
 
 Definition halfAdderTop :=
@@ -72,7 +72,7 @@ Qed.
 Definition fullAdder {m t} `{Cava m t} a b cin :=
   '(abl, abh) <- halfAdder a b ;;
   '(abcl, abch) <- halfAdder abl cin ;;
-  cout <- or_gate [abh; abch] ;;
+  cout <- or2 (abh, abch) ;;
   ret (abcl, cout).
 
 Definition fullAdderTop :=
@@ -110,8 +110,8 @@ Definition fullAdderFC {m bit} `{Cava m bit} (cin_ab : bit * (bit * bit))
   let ab := snd cin_ab in
   let a := fst ab in
   let b := snd ab in
-  part_sum <- xor_gate [a; b] ;;
-  sum <- xorcy part_sum cin ;;
+  part_sum <- xor2 (a, b) ;;
+  sum <- xorcy (part_sum, cin) ;;
   cout <- muxcy part_sum a cin  ;;
   ret (sum, cout).
 

@@ -35,7 +35,7 @@ Local Open Scope monad_scope.
 (* Build an inverter using only NAND gates.                                   *)
 (******************************************************************************)
 
-Definition inverter {m t} `{Cava m t} a := nand_gate [a; a].
+Definition inverter {m t} `{Cava m t} a := nand2 (a, a).
 
 Definition inverterTop :=
   setModuleName "invertor" ;;
@@ -61,8 +61,8 @@ Qed.
 (* Build an AND-gate using only NAND gates.                                   *)
 (******************************************************************************)
 
-Definition andgate {m t} `{Cava m t}  a b :=
-  x <- nand_gate [a; b] ;;
+Definition andgate {m t} `{Cava m t} a b :=
+  x <- nand2 (a, b) ;;
   c <- inverter x ;;
   ret c.
 
@@ -95,7 +95,7 @@ Qed.
 Definition orgate {m t} `{Cava m t} a b :=
   nota <- inverter a ;;
   notb <- inverter b ;;
-  c <- nand_gate [nota; notb] ;;
+  c <- nand2 (nota, notb) ;;
   ret c.
 
 Definition orgateTop :=
@@ -128,10 +128,10 @@ Qed.
 (******************************************************************************)
 
 Definition xorgate {m t} `{Cava m t} a b :=
-  nab <- nand_gate [a; b] ;;
-  x <- nand_gate [a; nab] ;;
-  y <- nand_gate [nab; b] ;;
-  c <- nand_gate [x; y] ;;
+  nab <- nand2 (a, b) ;;
+  x <- nand2 (a, nab) ;;
+  y <- nand2 (nab, b) ;;
+  c <- nand2 (x, y) ;;
   ret c.
 
 Definition xorgateTop :=

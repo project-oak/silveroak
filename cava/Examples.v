@@ -37,41 +37,41 @@ Local Open Scope monad_scope.
 
 (* Experiments with the primitive Cava gates. *)
 
-Example inv_false : combinational (not_gate false) = true.
+Example inv_false : combinational (inv false) = true.
 Proof. reflexivity. Qed.
 
-Example inv_true  : combinational (not_gate true) = false.
+Example inv_true  : combinational (inv true) = false.
 Proof. reflexivity. Qed.
 
-Example and_00 : combinational (and_gate [false; false]) = false.
+Example and_00 : combinational (and2 (false, false)) = false.
 Proof. reflexivity. Qed.
 
-Example and_11 : combinational (and_gate [true; true]) = true.
+Example and_11 : combinational (and2 (true, true)) = true.
 Proof. reflexivity. Qed.
 
-Eval cbv in (execState (not_gate (2%Z)) (initStateFrom 3)).
+Eval cbv in (execState (inv (2%Z)) (initStateFrom 3)).
 
 (* NAND gate example. Fist, let's define an overloaded NAND gate
    description. *)
 
-Definition nand2 {m bit} `{Cava m bit} := and_gate >=> not_gate.
+Definition nand2_gate {m bit} `{Cava m bit} := and2 >=> inv.
 
 (* Simulate the NAND gate circuit using the Bool interpretation. *)
-Example nand_00 : combinational (nand2 [false; false]) = true.
+Example nand_00 : combinational (nand2_gate (false, false)) = true.
 Proof. reflexivity. Qed.
 
-Example nand_11 : combinational (nand2 [true; true]) = false.
+Example nand_11 : combinational (nand2_gate (true, true)) = false.
 Proof. reflexivity. Qed.
 
 (* Generate a circuit graph representation for the NAND gate using the
    netlist interpretatin. *)
-Eval cbv in (execState (nand2 [2%Z; 3%Z]) (initStateFrom 4)).
+Eval cbv in (execState (nand2_gate (2%Z, 3%Z)) (initStateFrom 4)).
 
 Definition nand2Top : state CavaState Z :=
   setModuleName "nand2" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
-  c <- nand2 [a; b] ;;
+  c <- nand2 (a, b) ;;
   outputBit "c" c.
 
 (* Generate a netlist containing the port definitions. *)
@@ -81,17 +81,14 @@ Definition nand2Netlist := makeNetlist nand2Top.
 
 (* A proof that the NAND gate implementation is correct. *)
 Lemma nand2_behaviour : forall (a : bool) (b : bool),
-                        combinational (nand2 [a; b]) = negb (a && b).
+                        combinational (nand2 (a, b)) = negb (a && b).
 Proof.
   auto.
 Qed.
 
 (* An contrived example of loopBit *)
 
-Definition nand2Gate {m bit} `{Cava m bit} (ab : bit * bit) : m bit :=
-  nand2 [fst ab; snd ab].
-
-Definition loopedNAND := loopBit (second delayBit >=> nand2Gate >=> fork2).
+Definition loopedNAND := loopBit (second delayBit >=> nand2 >=> fork2).
 
 Definition loopedNANDTop : state CavaState Z :=
   setModuleName "loopedNAND" ;;

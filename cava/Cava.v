@@ -76,17 +76,17 @@ Class Cava m bit `{Monad m} := {
   one : m bit; (* This component always returns the value 1. *)
   delayBit : bit -> m bit; (* Cava bit-level unit delay. *)
   loopBit : forall {A B : Type}, ((A * bit)%type -> m (B * bit)%type) -> A -> m B;
-  (* Primitive SystemVerilog gates *)
-  not_gate : bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'not' *)
-  and_gate : list bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'and' *)
-  nand_gate : list bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'nand' *)
-  or_gate : list bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'or' *)
-  nor_gate : list bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'nor' *)
-  xor_gate : list bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'xor' *)
-  xnor_gate : list bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'xnor' *)
+  (* Primitive gates *)
+  inv : bit -> m bit; 
+  and2 : bit * bit -> m bit;
+  nand2 : bit * bit -> m bit; 
+  or2 : bit * bit -> m bit;
+  nor2 : bit * bit -> m bit;
+  xor2 : bit * bit -> m bit;
+  xnor2 : bit * bit -> m bit;
   buf_gate : bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'buf' *)
   (* Xilinx UNISIM FPGA gates *)
-  xorcy : bit -> bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
+  xorcy : bit * bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
   muxcy : bit -> bit -> bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
 }.
 
@@ -143,7 +143,7 @@ Definition makeNetlist {t} (circuit : state CavaState t) : CavaState
 (* Netlist implementations for the Cava class.                                *)
 (******************************************************************************)
 
-Definition notNet (i : Z) : state CavaState Z :=
+Definition invNet (i : Z) : state CavaState Z :=
   cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
@@ -151,60 +151,60 @@ Definition notNet (i : Z) : state CavaState Z :=
          ret o
   end. 
 
-Definition andNet (i : list Z) : state CavaState Z :=
+Definition andNet (i : Z * Z) : state CavaState Z :=
   cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
-      => put (mkCavaState name (o+1) (cons (mkInstance o (And i o)) insts) inputs outputs isSeq) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (And [fst i; snd i] o)) insts) inputs outputs isSeq) ;;
          ret o
   end.
 
-Definition nandNet (i : list Z) : state CavaState Z :=
+Definition nandNet (i : Z * Z) : state CavaState Z :=
   cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Nand i o)) insts) inputs outputs isSeq) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Nand [fst i; snd i] o)) insts) inputs outputs isSeq) ;;
          ret o
   end.
 
-Definition orNet (i : list Z) : state CavaState Z :=
+Definition orNet (i : Z * Z) : state CavaState Z :=
   cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Or i o)) insts) inputs outputs isSeq) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Or [fst i; snd i] o)) insts) inputs outputs isSeq) ;;
          ret o
   end.
 
-Definition norNet (i : list Z) : state CavaState Z :=
+Definition norNet (i : Z * Z) : state CavaState Z :=
   cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Nor i o)) insts) inputs outputs isSeq) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Nor [fst i; snd i] o)) insts) inputs outputs isSeq) ;;
          ret o
   end.
 
-Definition xorNet (i : list Z) : state CavaState Z :=
+Definition xorNet (i : Z * Z) : state CavaState Z :=
   cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Xor i o)) insts) inputs outputs isSeq) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Xor [fst i; snd i] o)) insts) inputs outputs isSeq) ;;
          ret o
   end.
 
 
-Definition xorcyNet (ci : Z) (li : Z) : state CavaState Z :=
+Definition xorcyNet (i : Z * Z) : state CavaState Z :=
   cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Xorcy ci li o)) insts) inputs outputs isSeq) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Xorcy (fst i) (snd i) o)) insts) inputs outputs isSeq) ;;
          ret o
   end.
 
-Definition xnorNet (i : list Z) : state CavaState Z :=
+Definition xnorNet (i : Z * Z) : state CavaState Z :=
   cs <- get ;;
   match cs with
   | mkCavaState name o insts inputs outputs isSeq
-      => put (mkCavaState name (o+1) (cons (mkInstance o (Xnor i o)) insts) inputs outputs isSeq) ;;
+      => put (mkCavaState name (o+1) (cons (mkInstance o (Xnor [fst i; snd i] o)) insts) inputs outputs isSeq) ;;
          ret o
   end.
 
@@ -256,16 +256,16 @@ Instance CavaNet : Cava (state CavaState) Z :=
     one := ret 1%Z;
     delayBit := delayBitNet;
     loopBit a b := loopBitNet a b;
-    not_gate := notNet;
-    and_gate := andNet;
-    nand_gate := nandNet;
-    or_gate := orNet;
-    nor_gate := norNet;
-    xor_gate := xorNet;
-    xorcy := xorcyNet;
-    xnor_gate := xnorNet;
-    muxcy := muxcyNet;
+    inv := invNet;
+    and2 := andNet;
+    nand2 := nandNet;
+    or2 := orNet;
+    nor2 := norNet;
+    xor2 := xorNet;
+    xnor2 := xorNet;
     buf_gate := bufNet;
+    xorcy := xorcyNet;
+    muxcy := muxcyNet;
 }.
 
 (******************************************************************************)
@@ -316,8 +316,6 @@ Definition outputVectorTo0 (v : list Z) (name : string) : state CavaState (list 
         ret v
   end.
 
-
-
 (******************************************************************************)
 (* A second boolean combinational logic interpretaiob for the Cava class      *)
 (******************************************************************************)
@@ -325,26 +323,26 @@ Definition outputVectorTo0 (v : list Z) (name : string) : state CavaState (list 
 Definition notBool (i : bool) : ident bool :=
   ret (negb i).
 
-Definition andBool (i : list bool) : ident bool :=
-  ret (fold_left (fun a b => a && b) i true).
+Definition andBool (i : bool * bool) : ident bool :=
+  let (a, b) := i in ret (a && b).
 
-Definition nandBool (i : list bool) : ident bool :=
-  ret (negb (fold_left (fun a b => a && b) i true)).
+Definition nandBool (i : bool * bool) : ident bool :=
+  let (a, b) := i in ret (negb (a && b)).
 
-Definition orBool (i : list bool) : ident bool :=
-  ret (fold_left (fun a b => a || b) i false).
+Definition orBool (i : bool * bool) : ident bool :=
+  let (a, b) := i in ret (a || b).
 
-Definition norBool (i : list bool) : ident bool :=
-  ret (negb (fold_left (fun a b =>  a || b) i true)).
+Definition norBool (i : bool * bool) : ident bool :=
+  let (a, b) := i in ret (negb (a || b)).
 
-Definition xorBool (i : list bool) : ident bool :=
-  ret (fold_left (fun a b => xorb a b) i false).
+Definition xorBool (i : bool * bool) : ident bool :=
+  let (a, b) := i in ret (xorb a b).
 
-Definition xorcyBool (li : bool) (ci : bool) : ident bool :=
-  ret (xorb ci li).
+Definition xorcyBool (i : bool * bool) : ident bool :=
+  let (ci, li) := i in ret (xorb ci li).
 
-Definition xnorBool (i : list bool) : ident bool :=
-  ret (negb (fold_left (fun a b => xorb a b) i false)).
+Definition xnorBool (i : bool * bool) : ident bool :=
+  let (a, b) := i in ret (negb (xorb a b)).
 
 Definition muxcyBool (s : bool) (di : bool) (ci : bool) : ident bool :=
   ret (match s with
@@ -375,14 +373,14 @@ Instance CavaBool : Cava ident bool :=
     one := ret true;
     delayBit i := ret i; (* Dummy definition for delayBit for now. *)
     loopBit a b := loopBitBool a b;
-    not_gate := notBool;
-    and_gate := andBool;
-    nand_gate := nandBool;
-    or_gate := orBool;
-    nor_gate := norBool;
-    xor_gate := xorBool;
+    inv := notBool;
+    and2 := andBool;
+    nand2 := nandBool;
+    or2 := orBool;
+    nor2 := norBool;
+    xor2 := xorBool;
     xorcy := xorcyBool;
-    xnor_gate := xnorBool;
+    xnor2 := xnorBool;
     muxcy := muxcyBool;
     buf_gate := bufBool;
 }.
@@ -393,6 +391,7 @@ Instance CavaBool : Cava ident bool :=
 (******************************************************************************)
 
 Definition combinational {a} (circuit : ident a) : a := unIdent circuit.
+
 
 (******************************************************************************)
 (* Lava-style circuit combinators.                                            *)

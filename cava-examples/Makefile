@@ -66,6 +66,6 @@ clean:
 			FixupAscii ExamplesSV \
 			nand2.sv fulladder.sv nand2.vcd fulladderFC.vcd adder8.vcd *.vvp \
 			pipelinedNAND.sv pipelinedNAND.vcd \
-			*.jou *.wdb *.log *.pb
+			*.jou *.wdb *.log *.pb .Makefile.coq.d *.vok *.vos
 		xargs rm -rf < .gitignore
 

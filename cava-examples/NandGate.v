@@ -38,47 +38,47 @@ Local Open Scope monad_scope.
 (* NAND gate example. Fist, let's define an overloaded NAND gate
    description. *)
 
-Definition nand2 {m t} `{Cava m t} := and_gate >=> not_gate.
+Definition nand2_gate {m t} `{Cava m t} := and2 >=> inv.
 
 Definition nand2Top :=
   setModuleName "nand2" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
-  c <- nand2 [a; b] ;;
+  c <- nand2_gate (a, b) ;;
   outputBit "c" c.
 
 Definition nand2Netlist := makeNetlist nand2Top.
 
 (* A proof that the NAND gate implementation is correct. *)
 Lemma nand2_behaviour : forall (a : bool) (b : bool),
-                        combinational (nand2 [a; b]) = negb (a && b).
+                        combinational (nand2_gate (a, b)) = negb (a && b).
 Proof.
   auto.
 Qed.
 
 (* An exhuastive proof by analyzing all four cases. *)
-Example nand_00 : combinational (nand2 [false; false]) = true.
+Example nand_00 : combinational (nand2_gate (false, false)) = true.
 Proof. reflexivity. Qed.
 
-Example nand_01 : combinational (nand2 [false; true]) = true.
+Example nand_01 : combinational (nand2_gate (false, true)) = true.
 Proof. reflexivity. Qed.
 
-Example nand_10 : combinational (nand2 [true; false]) = true.
+Example nand_10 : combinational (nand2_gate (true, false)) = true.
 Proof. reflexivity. Qed.
 
-Example nand_11 : combinational (nand2 [true; true]) = false.
+Example nand_11 : combinational (nand2_gate (true, true)) = false.
 Proof. reflexivity. Qed.
 
 (* A nand-gate with registers after the AND gate and the INV gate. *)
 
 Definition pipelinedNAND {m t} `{Cava m t}
-  := and_gate >=> delayBit >=> not_gate >=> delayBit.
+  := nand2_gate >=> delayBit >=> inv >=> delayBit.
 
 Definition pipelinedNANDTop :=
   setModuleName "pipelinedNAND" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
-  c <- pipelinedNAND [a; b] ;;
+  c <- pipelinedNAND (a, b) ;;
   outputBit "c" c.
 
 Definition pipelinedNANDNetlist := makeNetlist pipelinedNANDTop.
