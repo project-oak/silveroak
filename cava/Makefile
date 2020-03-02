@@ -14,9 +14,11 @@
 # limitations under the License.
 #
 
-.PHONY: all clean
+.PHONY: cava all clean
 
-all:		Makefile.coq FixupAscii
+all:		cava nand2.vcd loopedNAND.vcd
+
+cava:		Makefile.coq FixupAscii
 		$(MAKE) -f Makefile.coq
 		./FixupAscii
 		mv Ascii2.hs Ascii.hs
@@ -30,8 +32,26 @@ Makefile.coq:
 FixupAscii:	FixupAscii.hs
 		ghc --make FixupAscii.hs
 
+ExamplesSV:	ExamplesSV.hs
+		ghc --make ExamplesSV.hs
+
+nand2.sv:	cava ExamplesSV
+		./ExamplesSV
+
+loopedNAND.sv:	nand2.sv
+
+nand2.vcd:	nand2.sv nand2_tb.sv
+		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv
+		./nand2.vvp 
+
+loopedNAND.vcd:	loopedNAND.sv loopedNAND_tb.sv
+		iverilog -g2012 -o loopedNAND.vvp loopedNAND.sv loopedNAND_tb.sv
+		./loopedNAND.vvp
+
 clean:
 		-$(MAKE) -f Makefile.coq clean
-		rm -rf Makefile.coq .Makefile.coq.conf
+		rm -rf Makefile.coq .Makefile.coq.conf \
+                       *.hi *.o ExamplesSV FixupAscii dist work-obj93.cf \
+	               loopedNAND.sv loopedNAND.vcd loopedNAND.vvp
 		xargs rm -rf < .gitignore
 

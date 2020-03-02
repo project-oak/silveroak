@@ -24,6 +24,7 @@ From Coq Require Import ExtrHaskellBasic.
 
 Extraction Language Haskell.
 
-Recursive Extraction Library Cava.
 Recursive Extraction Library BitVector.
+Recursive Extraction Library Combinators.
+Recursive Extraction Library Cava.
 Extraction Library Examples.
