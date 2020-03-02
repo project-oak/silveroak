@@ -26,9 +26,6 @@ cava:		Makefile.coq FixupAscii
 		runhaskell Setup.hs build
 		runhaskell Setup.hs install
 
-Makefile.coq:
-		coq_makefile -f _CoqProject -o Makefile.coq
-
 FixupAscii:	FixupAscii.hs
 		ghc --make FixupAscii.hs
 
@@ -42,7 +39,7 @@ loopedNAND.sv:	nand2.sv
 
 nand2.vcd:	nand2.sv nand2_tb.sv
 		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv
-		./nand2.vvp 
+		./nand2.vvp
 
 loopedNAND.vcd:	loopedNAND.sv loopedNAND_tb.sv
 		iverilog -g2012 -o loopedNAND.vvp loopedNAND.sv loopedNAND_tb.sv
