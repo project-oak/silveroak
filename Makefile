@@ -27,3 +27,4 @@ clean:
 	cd ../cava-examples && $(MAKE) clean && \
 	cd ../nandgame && $(MAKE) clean && \
 	cd ..
+	rm -rf .DS_Store

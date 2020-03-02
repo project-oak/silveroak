@@ -27,6 +27,7 @@ Examples.hs
 Functor.hs
 Ltac.hs
 Monad.hs
+Netlist.hs
 State.hs
 BitVector.hs
 PeanoNat.hs

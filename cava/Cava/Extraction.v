@@ -16,7 +16,7 @@
 
 Require Import Cava.
 Require Import BitVector.
-Require Import Examples.
+Require Import Cava.Examples.
 From Coq Require Import Extraction.
 From Coq Require Import extraction.ExtrHaskellZInteger.
 From Coq Require Import extraction.ExtrHaskellString.

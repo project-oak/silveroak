@@ -1,5 +1,5 @@
 #
-# Copyright 2019 The Project Oak Authors
+# Copyright 2020 The Project Oak Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,14 +14,9 @@
 # limitations under the License.
 #
 
-.PHONY: all compile clean
+.PHONY: all clean
 
-all:		compile nand2.sv nand2.vcd loopedNAND.vcd
-
-Makefile.coq:
-		coq_makefile -f _CoqProject -o Makefile.coq
-
-compile:	Makefile.coq FixupAscii
+all:		Makefile.coq FixupAscii
 		$(MAKE) -f Makefile.coq
 		./FixupAscii
 		mv Ascii2.hs Ascii.hs
@@ -29,30 +24,14 @@ compile:	Makefile.coq FixupAscii
 		runhaskell Setup.hs build
 		runhaskell Setup.hs install
 
+Makefile.coq:
+		coq_makefile -f _CoqProject -o Makefile.coq
+
 FixupAscii:	FixupAscii.hs
 		ghc --make FixupAscii.hs
 
-ExamplesSV:	ExamplesSV.hs
-		ghc --make ExamplesSV.hs
-
-nand2.sv:	compile ExamplesSV
-		./ExamplesSV
-
-loopedNAND.sv:	nand2.sv
-
-nand2.vcd:	nand2.sv nand2_tb.sv
-		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv
-		./nand2.vvp 
-
-loopedNAND.vcd:	loopedNAND.sv loopedNAND_tb.sv
-		iverilog -g2012 -o loopedNAND.vvp loopedNAND.sv loopedNAND_tb.sv
-		./loopedNAND.vvp
-
 clean:
-		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \
-		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq.conf \
-			FixupAscii ExamplesSV a.out \
-			nand2.sv nand2.vcd loopedNAND.sv loopedNAND.vcd loopedNAND.vvp \
-			.Makefile.coq.d *.vok *.vos
+		-$(MAKE) -f Makefile.coq clean
+		rm -rf Makefile.coq .Makefile.coq.conf
 		xargs rm -rf < .gitignore
 

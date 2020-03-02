@@ -22,8 +22,8 @@ Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 
-Require Import Cava.
-Require Import BitVector.
+Require Import Cava.Cava.
+Require Import Cava.BitVector.
 Require Import FullAdder.
 
 Local Open Scope list_scope.

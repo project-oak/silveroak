@@ -46,6 +46,7 @@ library
 	             IdentityMonad
                      List
                      Monad
+		     Netlist
                      Nat
                      PeanoNat
                      StateMonad

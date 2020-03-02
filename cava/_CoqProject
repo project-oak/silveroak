@@ -1,6 +1,7 @@
--R ../../coq-haskell/src Hask
--R . Cava
-Cava.v
-BitVector.v
-Examples.v
-Extraction.v
+-R Cava Cava
+Cava/BitVector.v
+Cava/Netlist.v
+Cava/Cava.v
+Cava/Combinators.v
+Cava/Examples.v
+Cava/Extraction.v

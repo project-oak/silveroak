@@ -13,23 +13,18 @@
    limitations under the License.
 -}
 
-{-# LANGUAGE StandaloneDeriving #-}
-
 module Cava2SystemVerilog
 where
 
-import qualified Cava
+import qualified Netlist
 
-deriving instance Show Cava.PortType
-deriving instance Show Cava.PortDeclaration
-
-writeSystemVerilog :: Cava.CavaState -> IO ()
+writeSystemVerilog :: Netlist.CavaState -> IO ()
 writeSystemVerilog netlist
-  = writeFile (Cava.moduleName netlist ++ ".sv")
+  = writeFile (Netlist.moduleName netlist ++ ".sv")
               (unlines (cava2SystemVerilog netlist))
 
-cava2SystemVerilog :: Cava.CavaState -> [String]
-cava2SystemVerilog (Cava.Coq_mkCavaState moduleName netNumber instances
+cava2SystemVerilog :: Netlist.CavaState -> [String]
+cava2SystemVerilog (Netlist.Coq_mkCavaState moduleName netNumber instances
                     inputs outputs isSeq)
   = ["module " ++ moduleName ++ "("] ++
     
@@ -58,24 +53,24 @@ cava2SystemVerilog (Cava.Coq_mkCavaState moduleName netNumber instances
                  else
                    []
 
-inputPorts :: [Cava.PortDeclaration] -> [String]
+inputPorts :: [Netlist.PortDeclaration] -> [String]
 inputPorts = map inputPort
 
-inputPort :: Cava.PortDeclaration -> String
-inputPort (Cava.Coq_mkPort name (Cava.BitPort _)) = "  input logic " ++ name
-inputPort (Cava.Coq_mkPort name (Cava.VectorTo0Port v)) 
+inputPort :: Netlist.PortDeclaration -> String
+inputPort (Netlist.Coq_mkPort name (Netlist.BitPort _)) = "  input logic " ++ name
+inputPort (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v)) 
   = "  input logic[" ++ show ((length v) - 1) ++ ":0] " ++ name
-inputPort (Cava.Coq_mkPort name (Cava.VectorFrom0Port v)) 
+inputPort (Netlist.Coq_mkPort name (Netlist.VectorFrom0Port v)) 
   = "  input logic[0:" ++ show (length v - 1) ++ "] " ++ name
 
-outputPorts :: [Cava.PortDeclaration] -> [String]
+outputPorts :: [Netlist.PortDeclaration] -> [String]
 outputPorts = map outputPort
 
-outputPort :: Cava.PortDeclaration -> String
-outputPort (Cava.Coq_mkPort name (Cava.BitPort _)) = "  output logic " ++ name
-outputPort (Cava.Coq_mkPort name (Cava.VectorTo0Port v)) 
+outputPort :: Netlist.PortDeclaration -> String
+outputPort (Netlist.Coq_mkPort name (Netlist.BitPort _)) = "  output logic " ++ name
+outputPort (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v)) 
   = "  output logic[" ++ show ((length v) - 1) ++ ":0] " ++ name
-outputPort (Cava.Coq_mkPort name (Cava.VectorFrom0Port v)) 
+outputPort (Netlist.Coq_mkPort name (Netlist.VectorFrom0Port v)) 
   = "  output logic[0:" ++ show (length v - 1) ++ "] " ++ name
 
 insertCommas :: [String] -> [String]
@@ -83,41 +78,41 @@ insertCommas [] = []
 insertCommas [x] = [x]
 insertCommas (x:y:xs) = (x ++ ",") : insertCommas (y:xs)
 
-nameOfInstance :: Cava.Primitive -> String
+nameOfInstance :: Netlist.Primitive -> String
 nameOfInstance inst
   = case inst of
-      Cava.Not _ _ -> "not"
-      Cava.And _ _ -> "and"
-      Cava.Nand _ _ -> "nand"
-      Cava.Or _ _ -> "or"
-      Cava.Nor _ _ -> "nor"
-      Cava.Xor _ _-> "xor"
-      Cava.Xnor _ _ -> "xnor"
-      Cava.Buf _ _ -> "buf"
-      Cava.Xorcy _ _ _ -> "XORCY"
-      Cava.Muxcy _ _ _ _ -> "MUXCY"
+      Netlist.Not _ _ -> "not"
+      Netlist.And _ _ -> "and"
+      Netlist.Nand _ _ -> "nand"
+      Netlist.Or _ _ -> "or"
+      Netlist.Nor _ _ -> "nor"
+      Netlist.Xor _ _-> "xor"
+      Netlist.Xnor _ _ -> "xnor"
+      Netlist.Buf _ _ -> "buf"
+      Netlist.Xorcy _ _ _ -> "XORCY"
+      Netlist.Muxcy _ _ _ _ -> "MUXCY"
 
-instanceArgs :: Cava.Primitive -> [Integer]
+instanceArgs :: Netlist.Primitive -> [Integer]
 instanceArgs inst
   = case inst of
-      Cava.Not i o -> [o, i]
-      Cava.And i o -> o:i
-      Cava.Nand i o -> o:i
-      Cava.Or i o -> o:i
-      Cava.Nor i o -> o:i
-      Cava.Xor i o -> o:i
-      Cava.Xnor i o -> o:i
-      Cava.Buf i o -> [o, i]
-      Cava.Xorcy li ci o -> [o, ci, li]
-      Cava.Muxcy s di ci o -> [o, ci, di, s]
+      Netlist.Not i o -> [o, i]
+      Netlist.And i o -> o:i
+      Netlist.Nand i o -> o:i
+      Netlist.Or i o -> o:i
+      Netlist.Nor i o -> o:i
+      Netlist.Xor i o -> o:i
+      Netlist.Xnor i o -> o:i
+      Netlist.Buf i o -> [o, i]
+      Netlist.Xorcy li ci o -> [o, ci, li]
+      Netlist.Muxcy s di ci o -> [o, ci, di, s]
 
-generateInstance :: Cava.Instance -> String
-generateInstance (Cava.Coq_mkInstance number (Cava.DelayBit i o))
+generateInstance :: Netlist.Instance -> String
+generateInstance (Netlist.Coq_mkInstance number (Netlist.DelayBit i o))
    = "  always_ff @(posedge clk) net[" ++ show o ++ "] <= rst ? 1'b0 : net["
         ++ show i ++ "];";
-generateInstance (Cava.Coq_mkInstance number (Cava.AssignBit a b))
+generateInstance (Netlist.Coq_mkInstance number (Netlist.AssignBit a b))
    = "  assign net[" ++ show a ++ "] = net[" ++ show b ++ "];"
-generateInstance (Cava.Coq_mkInstance number inst)      
+generateInstance (Netlist.Coq_mkInstance number inst)      
   = "  " ++ instName ++ " inst" ++ show number ++ " " ++  showArgs args ++ ";"
    where
    instName = nameOfInstance inst
@@ -129,16 +124,16 @@ showArgs args = "(" ++ concat (insertCommas (map showArg args)) ++ ")";
 showArg :: Integer -> String
 showArg n = "net[" ++ show n ++ "]"
 
-wireInput :: Cava.PortDeclaration -> [String]
-wireInput (Cava.Coq_mkPort name (Cava.BitPort n))
+wireInput :: Netlist.PortDeclaration -> [String]
+wireInput (Netlist.Coq_mkPort name (Netlist.BitPort n))
   = ["  assign net[" ++ show n ++ "] = " ++ name ++ ";"]
-wireInput (Cava.Coq_mkPort name (Cava.VectorTo0Port v)) 
+wireInput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v)) 
   = ["  assign net[" ++ show n ++ "] = " ++ name ++ "[" ++ show i ++ "];" |
      (n, i) <- zip v [0..length v - 1]]
 
-wireOutput :: Cava.PortDeclaration -> [String]
-wireOutput (Cava.Coq_mkPort name (Cava.BitPort n))
+wireOutput :: Netlist.PortDeclaration -> [String]
+wireOutput (Netlist.Coq_mkPort name (Netlist.BitPort n))
   = ["  assign " ++ name ++ " = net[" ++ show n ++ "] ;"]
-wireOutput (Cava.Coq_mkPort name (Cava.VectorTo0Port v)) 
+wireOutput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v)) 
   = ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show n ++ "];" |
      (n, i) <- zip v [0..length v - 1]]

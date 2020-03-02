@@ -31,7 +31,7 @@ Require Import Cava.
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
-Require Import Cava.
+Require Import Cava.Cava.
 Require Import FullAdder.
 Require Import BitVector.
 
