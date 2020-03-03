@@ -26,6 +26,9 @@ cava:		Makefile.coq FixupAscii
 		runhaskell Setup.hs build
 		runhaskell Setup.hs install
 
+Makefile.coq:
+		coq_makefile -f _CoqProject -o Makefile.coq
+
 FixupAscii:	FixupAscii.hs
 		ghc --make FixupAscii.hs
 
