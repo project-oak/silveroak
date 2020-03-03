@@ -5,7 +5,7 @@ Require Import Coq.Strings.String.
 
 From Coq Require Import btauto.Btauto.
 
-Require Import Arrow.
+Require Import Cava.Arrow.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -15,7 +15,31 @@ Set Primitive Projections.
 Set Universe Polymorphism.
 Unset Transparent Obligations. 
 
-(* Section Lambda.
+Section Kappa.
+  Context {A: Arrow}.
+
+  Variable var: object -> object -> Type.
+
+  Inductive kappa : object -> object -> Type :=
+  | Var : forall x y, var x y -> kappa x y
+  | Abs : forall x y z, (var unit x -> kappa y z) -> kappa (product x y) z
+  | Compose : forall x y z, kappa y z -> kappa x y -> kappa x z
+  | Id : forall x, kappa x x
+  | First : forall x y z, kappa x y -> kappa (product x z) (product y z).
+
+End Kappa.
+
+(* Context {A: Arrow}.
+Definition Term i o := forall var, kappa var i o.
+Definition Foo {i} : Term _ i := fun _ => Abs _ (fun x => Var _ _ _ x).
+Definition Bar 
+  {i o} : Term i o
+  := fun _ =>
+  Abs _ (fun x => 
+      Abs _ (fun y =>
+        Compose (Var _ _ _ x) (Var _ _ _ y))). *)
+
+(* Section LambdaExperimentation.
   Context `{C: Category}.
 
   Inductive type : Type :=
@@ -33,33 +57,6 @@ Unset Transparent Obligations.
   (* TODO: | Let ... *)
   (* TODO: | LetRec ... *)
   .
-End Lambda. *)
-
-Section Kappa.
-  Context {A: Arrow}.
-
-  Variable var: object -> object -> Type.
-
-  Inductive kappa : object -> object -> Type :=
-  | Var : forall x y, var x y -> kappa x y
-  | Abs : forall x y z, (var unit x -> kappa y z) -> kappa (product x y) z
-  | Compose : forall x y z, kappa y z -> kappa x y -> kappa x z
-  | Id : forall x, kappa x x
-  | First : forall x y z, kappa x y -> kappa (product x z) (product y z).
-
-End Kappa.
-Context {A: Arrow}.
-Definition Term i o := forall var, kappa var i o.
-Definition Foo {i} : Term _ i := fun _ => Abs _ (fun x => Var _ _ _ x).
-Definition Bar 
-  {i o} : Term i o
-  := fun _ =>
-  Abs _ (fun x => 
-      Abs _ (fun y =>
-        Compose (Var _ _ _ x) (Var _ _ _ y))).
-
-Section Experimentation.
-  Context {C: Category}.
 
   Arguments Var _ [var t] _.
   Arguments Abs _ [var x y] _.
@@ -114,4 +111,4 @@ Section Experimentation.
       App y (id x)
     )%lambda).
 
-End Experimentation.
+End LambdaExperimentation. *)

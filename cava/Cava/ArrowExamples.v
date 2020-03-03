@@ -5,7 +5,7 @@ Require Import Coq.Strings.String.
 
 From Coq Require Import btauto.Btauto.
 
-Require Import Arrow.
+Require Import Cava.Arrow.
 
 Set Implicit Arguments.
 Set Strict Implicit.

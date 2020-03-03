@@ -6,8 +6,8 @@ Require Import Coq.Lists.Streams.
 
 From Coq Require Import btauto.Btauto.
 
-Require Import Arrow.
-Require Import ArrowExamples.
+Require Import Cava.Arrow.
+Require Import Cava.ArrowExamples.
 
 Set Implicit Arguments.
 
