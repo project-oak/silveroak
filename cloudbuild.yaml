@@ -1,0 +1,24 @@
+# Reference: https://cloud.google.com/cloud-build/docs/build-config
+
+steps:
+  # Pull pre-existing latest Docker image.
+  - name: 'gcr.io/cloud-builders/docker'
+    id: pull_image
+    waitFor: ['-']
+    timeout: 10m
+    args: ['pull', 'gcr.io/oak-ci/oak-hardware:latest']
+
+  - name: 'gcr.io/oak-ci/oak-hardware:latest'
+    id: run_cava_make
+    waitFor: ['pull_image']
+    timeout: 30m
+    entrypoint: 'bash'
+    args: ['-c', 'cd cava; make']
+
+timeout: 1h
+
+options:
+  # See: https://cloud.google.com/cloud-build/docs/api/reference/rest/Shared.Types/MachineType
+  machineType: 'N1_HIGHCPU_32'
+  requestedVerifyOption: 'VERIFIED'
+  sourceProvenanceHash: ['SHA256']
