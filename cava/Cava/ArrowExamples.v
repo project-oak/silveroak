@@ -3,17 +3,13 @@ Require Import Coq.Bool.Bool.
 Require Import Coq.Lists.List.
 Require Import Coq.Strings.String.
 
+Import ListNotations.
+
+From Coq Require Import ZArith.
 From Coq Require Import btauto.Btauto.
 
 Require Import Cava.Arrow.
-
-Set Implicit Arguments.
-Set Strict Implicit.
-
-Generalizable All Variables.
-Set Primitive Projections.
-Set Universe Polymorphism.
-Unset Transparent Obligations.
+Require Import Cava.Netlist.
 
 Section Example1.
   Definition nand
@@ -63,22 +59,34 @@ Section Example1.
   Proof. auto. Qed.
 
   Lemma xor_is_xorb: forall a:(bool*bool), (@xor CoqCava) a = (uncurry xorb) a.
-  Proof. 
+  Proof.
     intros.
-    unfold xor. 
+    unfold xor.
     unfold nand.
     unfold uncurry.
     simpl.
     btauto.
   Qed.
+
+  Definition xorArrowNetlist := arrowToHDLModule
+    "xorArrow"
+    (@xor NetlistCava)
+    (fun '(l,r) =>
+      [ mkPort "input1" (BitPort l)
+      ; mkPort "input2" (BitPort r)
+      ])
+    (fun o => [mkPort "output1" (BitPort o)]).
+  Eval compute in xorArrowNetlist.
+  (* For extraction *)
+  Definition xorArrow := mkCavaState 0 false xorArrowNetlist.
+
 End Example1.
 
 Section Example2.
   (*nand previous output and current input, output delayed 1 cycle*)
   Definition loopedNand
-    {Cava: Cava}
-    {ArrowLoop: @ArrowLoop (@cava_arrow Cava)}
-    `{@CavaDelay Cava}
+    {Cava: CavaDelay}
+    {ArrowLoop: @ArrowLoop (@cava_delay_arr Cava)}
     : bit ~> bit :=
     loopl (nand >>> delay_gate >>> copy).
 End Example2.
