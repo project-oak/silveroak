@@ -57,11 +57,6 @@ Inductive Primitive :=
 (* Data structures to represent circuit graph/netlist state                   *)
 (******************************************************************************)
 
-Record Instance : Type := mkInstance {
-  inst_number : Z;
-  instance : Primitive ;
-}.
-
 Inductive PortType :=
   | BitPort : Z -> PortType
   | VectorTo0Port : list Z -> PortType
@@ -72,13 +67,19 @@ Record PortDeclaration : Type := mkPort {
   port_type : PortType;
 }.
 
-Record CavaState : Type := mkCavaState {
+Notation Netlist := (list Primitive).
+
+Record Module : Type := mkModule {
   moduleName : string;
-  netNumber : Z;
-  instances : list Instance;
+  netlist : Netlist;
   inputs : list PortDeclaration;
   outputs : list PortDeclaration;
+}.
+
+Record CavaState : Type := mkCavaState {
+  netNumber : Z;
   isSequential : bool;
+  module : Module;
 }.
 
 (******************************************************************************)
@@ -87,11 +88,10 @@ Record CavaState : Type := mkCavaState {
 
 (* Net number 0 carries the constant signal zero. Net number 1 carries the
    constant signal 1. We start numbering from 2 for the user nets.
-*) 
+*)
 
 Definition initStateFrom (startAt : Z) : CavaState
-  := mkCavaState "" startAt [] [] [] false.
+  := mkCavaState startAt false (mkModule "" [] [] []).
 
 Definition initState : CavaState
   := initStateFrom 2.
-

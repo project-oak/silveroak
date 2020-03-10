@@ -1,11 +1,11 @@
 {- Copyright 2020 The Project Oak Authors
-  
+
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
-  
+
        http://www.apache.org/licenses/LICENSE-2.0
-  
+
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,15 +19,15 @@ where
 import qualified Netlist
 
 writeSystemVerilog :: Netlist.CavaState -> IO ()
-writeSystemVerilog netlist
-  = writeFile (Netlist.moduleName netlist ++ ".sv")
-              (unlines (cava2SystemVerilog netlist))
+writeSystemVerilog cavastate
+  = writeFile (Netlist.moduleName (Netlist.coq_module cavastate) ++ ".sv")
+              (unlines (cava2SystemVerilog cavastate))
 
 cava2SystemVerilog :: Netlist.CavaState -> [String]
-cava2SystemVerilog (Netlist.Coq_mkCavaState moduleName netNumber instances
-                    inputs outputs isSeq)
+cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber isSeq (Netlist.Coq_mkModule moduleName instances
+                    inputs outputs))
   = ["module " ++ moduleName ++ "("] ++
-    
+
     insertCommas (clockPorts ++ inputPorts inputs ++ outputPorts outputs) ++
     ["  );"] ++
     ["",
@@ -58,9 +58,9 @@ inputPorts = map inputPort
 
 inputPort :: Netlist.PortDeclaration -> String
 inputPort (Netlist.Coq_mkPort name (Netlist.BitPort _)) = "  input logic " ++ name
-inputPort (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v)) 
+inputPort (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v))
   = "  input logic[" ++ show ((length v) - 1) ++ ":0] " ++ name
-inputPort (Netlist.Coq_mkPort name (Netlist.VectorFrom0Port v)) 
+inputPort (Netlist.Coq_mkPort name (Netlist.VectorFrom0Port v))
   = "  input logic[0:" ++ show (length v - 1) ++ "] " ++ name
 
 outputPorts :: [Netlist.PortDeclaration] -> [String]
@@ -68,9 +68,9 @@ outputPorts = map outputPort
 
 outputPort :: Netlist.PortDeclaration -> String
 outputPort (Netlist.Coq_mkPort name (Netlist.BitPort _)) = "  output logic " ++ name
-outputPort (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v)) 
+outputPort (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v))
   = "  output logic[" ++ show ((length v) - 1) ++ ":0] " ++ name
-outputPort (Netlist.Coq_mkPort name (Netlist.VectorFrom0Port v)) 
+outputPort (Netlist.Coq_mkPort name (Netlist.VectorFrom0Port v))
   = "  output logic[0:" ++ show (length v - 1) ++ "] " ++ name
 
 insertCommas :: [String] -> [String]
@@ -106,17 +106,32 @@ instanceArgs inst
       Netlist.Xorcy li ci o -> [o, ci, li]
       Netlist.Muxcy s di ci o -> [o, ci, di, s]
 
-generateInstance :: Netlist.Instance -> String
-generateInstance (Netlist.Coq_mkInstance number (Netlist.DelayBit i o))
+instanceNumber :: Netlist.Primitive -> Integer
+instanceNumber inst
+  = case inst of
+      Netlist.Not _ o -> o
+      Netlist.And _ o -> o
+      Netlist.Nand _ o -> o
+      Netlist.Or _ o -> o
+      Netlist.Nor _ o -> o
+      Netlist.Xor _ o -> o
+      Netlist.Xnor _ o -> o
+      Netlist.Buf _ o -> o
+      Netlist.Xorcy _ _ o -> o
+      Netlist.Muxcy _ _ _ o -> o
+
+generateInstance :: Netlist.Primitive -> String
+generateInstance (Netlist.DelayBit i o)
    = "  always_ff @(posedge clk) net[" ++ show o ++ "] <= rst ? 1'b0 : net["
         ++ show i ++ "];";
-generateInstance (Netlist.Coq_mkInstance number (Netlist.AssignBit a b))
+generateInstance (Netlist.AssignBit a b)
    = "  assign net[" ++ show a ++ "] = net[" ++ show b ++ "];"
-generateInstance (Netlist.Coq_mkInstance number inst)      
-  = "  " ++ instName ++ " inst" ++ show number ++ " " ++  showArgs args ++ ";"
+generateInstance inst
+  = "  " ++ instName ++ " inst" ++ show numb ++ " " ++  showArgs args ++ ";"
    where
    instName = nameOfInstance inst
    args = instanceArgs inst
+   numb = instanceNumber inst
 
 showArgs :: [Integer] -> String
 showArgs args = "(" ++ concat (insertCommas (map showArg args)) ++ ")";
@@ -127,13 +142,13 @@ showArg n = "net[" ++ show n ++ "]"
 wireInput :: Netlist.PortDeclaration -> [String]
 wireInput (Netlist.Coq_mkPort name (Netlist.BitPort n))
   = ["  assign net[" ++ show n ++ "] = " ++ name ++ ";"]
-wireInput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v)) 
+wireInput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v))
   = ["  assign net[" ++ show n ++ "] = " ++ name ++ "[" ++ show i ++ "];" |
      (n, i) <- zip v [0..length v - 1]]
 
 wireOutput :: Netlist.PortDeclaration -> [String]
 wireOutput (Netlist.Coq_mkPort name (Netlist.BitPort n))
   = ["  assign " ++ name ++ " = net[" ++ show n ++ "] ;"]
-wireOutput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v)) 
+wireOutput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v))
   = ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show n ++ "];" |
      (n, i) <- zip v [0..length v - 1]]
