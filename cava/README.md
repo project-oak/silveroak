@@ -9,6 +9,15 @@ Please see the [contributing guide](CONTRIBUTING.md) for how to submit push
 requests.
 
 ## Pre-requisites
+
+### Nix
+
+If you have the [Nix package manager](https://nixos.org/nix/) installed, you can
+simply run `nix-shell` from the `oak-hardware/cava` directory. Coq, Haskell, and
+Icarus Verilog will then be available in your `$PATH`.
+
+### Non-Nix
+
 Please install the following components:
 
 * The [Coq proof assistant](https://coq.inria.fr/) version 8.9.2 or later
@@ -17,6 +26,8 @@ Please install the following components:
 * The [Icarus Verilog](http://iverilog.icarus.com/) circuit simulator version
   11.0 or later. GitHub link:
   [https://github.com/steveicarus/iverilog](https://github.com/steveicarus/iverilog)
+
+## Building
 
 Do a `make` in these directories:
 
