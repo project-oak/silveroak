@@ -81,6 +81,7 @@ Section Example1.
       ; mkPort "input2" (BitPort r)
       ])
     (fun o => [mkPort "output1" (BitPort o)]).
+  (* Compute the circuit netlist for the XOR made up of NANDs made up of ANDs and INVs *)
   Eval compute in xorArrowNetlist.
   (* For extraction *)
   Definition xorArrow := mkCavaState 0 false xorArrowNetlist.
