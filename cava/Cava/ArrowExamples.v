@@ -12,10 +12,15 @@ Require Import Cava.Arrow.
 Require Import Cava.Netlist.
 
 Section Example1.
+
+
+  (* Implement a NAND circuit by composing an AND gate and INV gate. *)
   Definition nand
     {Cava: Cava}
     := and_gate >>> not_gate.
 
+  (* An implementation of an XOR gate made out of the NAND circuit
+     defined above. *)
   Definition xor
     {_: Cava}
     : (bit**bit) ~> bit :=
@@ -76,6 +81,7 @@ Section Example1.
       ; mkPort "input2" (BitPort r)
       ])
     (fun o => [mkPort "output1" (BitPort o)]).
+  (* Compute the circuit netlist for the XOR made up of NANDs made up of ANDs and INVs *)
   Eval compute in xorArrowNetlist.
   (* For extraction *)
   Definition xorArrow := mkCavaState 0 false xorArrowNetlist.
