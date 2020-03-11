@@ -16,7 +16,7 @@
 
 name:                Cava2HDL
 
--- The package version.  See the Haskell package versioning policy (PVP) 
+-- The package version.  See the Haskell package versioning policy (PVP)
 -- for standards guiding when and how versions should be incremented.
 -- https://wiki.haskell.org/Package_versioning_policy
 -- PVP summary:      +-+------- breaking API changes
@@ -44,10 +44,10 @@ library
                      Cava
                      Combinators
                      Datatypes
-	             IdentityMonad
+                     IdentityMonad
                      List
                      Monad
-		     Netlist
+                     Netlist
                      Nat
                      PeanoNat
                      StateMonad
@@ -61,7 +61,7 @@ library
                      Functor
                      Logic
                      Specif
-        	     MonadExc
+                     MonadExc
                      MonadFix
                      MonadPlus
                      MonadReader

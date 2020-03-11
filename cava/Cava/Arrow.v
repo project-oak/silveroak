@@ -3,7 +3,18 @@ Require Import Coq.Bool.Bool.
 Require Import Coq.Lists.List.
 Require Import Coq.Strings.String.
 
+Import ListNotations.
+
+From Coq Require Import ZArith.
 From Coq Require Import btauto.Btauto.
+
+Require Import ExtLib.Structures.Monads.
+Require Import ExtLib.Structures.MonadFix.
+Require Export ExtLib.Data.Monads.IdentityMonad.
+Require Export ExtLib.Data.Monads.StateMonad.
+Import MonadNotation.
+
+Require Import Cava.Netlist.
 
 Generalizable All Variables.
 
@@ -11,7 +22,9 @@ Reserved Infix "~>" (at level 90, right associativity).
 Reserved Infix "**" (at level 40, left associativity).
 Reserved Infix ">>>" (at level 90, right associativity).
 
-(** haskell-ish style category
+(* more flexible than a haskell style category,
+  which has morphisms between objects of type Hask.
+  Here we have morphisms between objects of type object.
 *)
 Class Category := {
   object : Type;
@@ -31,15 +44,20 @@ Delimit Scope category_scope with category.
 
 Notation "x ~> y" := (morphism x y)
   (at level 90, right associativity) : category_scope.
+Notation "x ~[ C ]~> y" := (@morphism C x y)
+  (at level 90) : category_scope.
 Notation "g >>> f" := (compose f g)
   (at level 90, right associativity) : category_scope.
 
 Open Scope category_scope.
 Print Category.
 
-(** adam megacz style arrow *)
+(* adam megacz style arrow;
+  There is no method to provide lifting a Coq function in general,
+  although a particular arrow implementation may allow it.
+*)
 Class Arrow := {
-  cat :> Category; 
+  cat :> Category;
   unit : object;
   product : object -> object -> object
     where "x ** y" := (product x y);
@@ -67,23 +85,23 @@ Notation "x ** y" := (product x y)
 
 Open Scope arrow_scope.
 
-Definition first `{Arrow} {x y z} (f : x ~> y) : x ** z ~> y ** z :=
+Definition first {_: Arrow} {x y z} (f : x ~> y) : x ** z ~> y ** z :=
   fork (exl >>> f) exr.
 
-Definition second `{Arrow} {x y z} (f : x ~> y) : z ** x ~> z ** y :=
+Definition second {_: Arrow} {x y z} (f : x ~> y) : z ** x ~> z ** y :=
   fork exl (exr >>> f).
 
-(** different type class for implementation to select features*)
-Class ArrowLoop `{Arrow} := {
+(* Loop as a different type class to allow implementating a subset of features *)
+Class ArrowLoop (A: Arrow) := {
   loopr {x y z} : ((x**z) ~> (y**z)) -> (x ~> y);
   loopl {x y z} : ((z**x) ~> (z**y)) -> (x ~> y);
 }.
 
 Print Arrow.
 
-(** Cava *)
+(* Cava *)
 Class Cava  := {
-  cava_arrow :> Arrow;
+  cava_arr :> Arrow;
   bit : object;
 
   fromBool : bool -> (unit ~> bit);
@@ -92,21 +110,21 @@ Class Cava  := {
   and_gate : (bit ** bit) ~> bit;
 }.
 
-Definition cava_cat (cava: Cava): Category := @cat (@cava_arrow cava).
+Definition cava_cat (_: Cava): Category := _.
 Definition cava_obj (cava: Cava): Type := @object (@cava_cat cava).
 
-Section highlow.
-  Context `{Cava}.
-  Definition high : unit ~> bit := fromBool true.
-  Definition low : unit ~> bit := fromBool false.
-End highlow.
+Definition high {_: Cava}: unit ~> bit := fromBool true.
+Definition low {_: Cava}: unit ~> bit := fromBool false.
 
-(** different type class for implementation to select features*)
-Class CavaDelay `{Cava} := {
+(* Delay as a different type class to allow implementing subset of primitives *)
+Class CavaDelay := {
+  delay_cava :> Cava;
   delay_gate {x} : x ~> x;
 }.
 
-(** Evaluation as function, no delay elements or loops *)
+Definition cava_delay_arr (_: CavaDelay): Arrow := _.
+
+(* Arrow as function evaluation, no delay elements or loops *)
 Section CoqEval.
   Instance CoqCat : Category := {
     morphism X Y := X -> Y;
@@ -143,51 +161,106 @@ Section CoqEval.
     and_gate := fun xy => andb (fst xy) (snd xy);
   }.
 
-  Context `{CavaCoq}.
   Eval cbv in not_gate true.
   Eval cbv in not_gate false.
 End CoqEval.
 
-(** Evaluation as function on lists, no loops, can't represent fromBool *)
-(* Section CoqListEval.
-  Instance CoqListCat : Category := {
-    morphism X Y := list X -> list Y;
-    compose _ _ _ := fun f g x => f (g x);
-    id X := fun x => x;
+(* Evaluation as a netlist *)
+Section ArrowNetlist.
+  Inductive Shape :=
+  | ShapeUnit: Shape
+  | ShapeOne: Shape
+  | ShapeProd: Shape -> Shape -> Shape.
+
+  Fixpoint PortsOfShape (s: Shape): Type :=
+  match s with
+  | ShapeUnit => Datatypes.unit
+  | ShapeOne => Z
+  | ShapeProd t1 t2 => (PortsOfShape t1 * PortsOfShape t2)
+  end.
+
+  Fixpoint FillShape (s: Shape) (i:Z) : (PortsOfShape s * Z) :=
+  match s in Shape return (PortsOfShape s * Z) with
+  | ShapeUnit => (tt, i)
+  | ShapeOne => (i, (i+1)%Z)
+  | ShapeProd t1 t2 =>
+    let (x,i') := FillShape t1 i in
+    let (y,i'') := FillShape t2 i' in
+    ((x, y), i'')
+  end.
+
+  Local Open Scope monad_scope.
+
+  Instance NetlistCat : Category := {
+    object := Shape;
+    morphism X Y := PortsOfShape X -> state (Netlist * Z) (PortsOfShape Y);
+    id X := fun x => ret x;
+    compose X Y Z f g := fun x => g x >>= f;
   }.
 
-  Instance CoqListArr : Arrow := {
-    unit := Datatypes.unit : Type;
+  Instance NetlistArr : Arrow := {
+    cat := NetlistCat;
+    unit := ShapeUnit;
+    product := ShapeProd;
 
-    fork _ _ _ f g := fun xs => combine (f xs) (g xs);
-    exl X Y := map fst;
-    exr X Y := map snd;
+    fork X Y Z f g := fun z =>
+      x <- f z ;;
+      y <- g z ;;
+      ret (x, y);
 
-    drop _ := map (fun _ => tt);
-    copy _ := map (fun x => pair x x);
+    exl X Y := fun z => let (x,y) := z in ret x;
+    exr X Y := fun z => let (x,y) := z in ret y;
 
-    swap _ _ := map (fun x => (snd x, fst x));
 
-    uncancell _ := map (fun x => (tt, x));
-    uncancelr _ := map (fun x => (x, tt));
+    drop _ := fun _ => ret Datatypes.tt;
+    copy _ := fun x => ret (x,x);
+    swap _ _ := fun z => let (x,y) := z in ret (y, x);
 
-    assoc _ _ _   := map (fun xyz => (fst (fst xyz), (snd (fst xyz), snd xyz)));
-    unassoc _ _ _ := map (fun xyz => ((fst xyz, fst (snd xyz)), snd (snd xyz)));
+
+    uncancell _ := fun x => ret (tt, x);
+    uncancelr _ := fun x => ret (x, tt);
+
+    assoc _ _ _   := fun xyz => ret (fst (fst xyz), (snd (fst xyz), snd xyz));
+    unassoc _ _ _ := fun xyz => ret ((fst xyz, fst (snd xyz)), snd (snd xyz));
   }.
 
-  Instance CoqListCava : Cava := {
-    bit := bool;
+  Instance NetlistCava : Cava := {
+    cava_arr := NetlistArr;
 
-    (* fromBool b := fun _ => b; *)
+    bit := ShapeOne;
 
-    not_gate := map (fun b => negb b);
-    and_gate := map (fun xy => andb (fst xy) (snd xy));
+    fromBool b := match b with
+      | true => fun _ => ret 1%Z
+      | false => fun _ => ret 0%Z
+      end;
+
+    not_gate := fun x =>
+      '(nl, i) <- get ;;
+      put (Not x i :: nl, (i+1)%Z) ;;
+      ret i;
+
+    and_gate := fun xy => let (x,y) := xy in
+      '(nl, i) <- get ;;
+      put (And [x;y] i :: nl, (i+1)%Z) ;;
+      ret i;
   }.
-   
-  Definition evalList (A: @object CoqListCat) (B: @object CoqListCat) (f: @morphism CoqListCat A B) (a:list A): list B := f a.
 
-  Import ListNotations.
+  Definition arrowToHDLModule {X Y}
+    (name: string)
+    (f: X ~[NetlistCat]~> Y)
+    (mkInputs: PortsOfShape X -> list PortDeclaration)
+    (mkOutputs: PortsOfShape Y -> list PortDeclaration)
+    : Netlist.Module :=
+      let (i, n) := @FillShape X 2 in
+      let '(o, (nl,_)) := runState (f i) ([], n) in
+      mkModule name nl (mkInputs i) (mkOutputs o).
 
-  Eval cbv in evalList not_gate [true;true;true].
-  Eval cbv in evalList not_gate [false;false;false].
-End CoqListEval. *)
+  (* Check ArrowExamples.v for xor example *)
+  Eval cbv in arrowToHDLModule
+    "not"
+    not_gate
+    (fun i => [mkPort "input1" (BitPort i)])
+    (fun o => [mkPort "output1" (BitPort o)])
+    .
+
+End ArrowNetlist.
