@@ -16,7 +16,7 @@
 
 .PHONY: cava all clean
 
-all:		cava nand2.vcd loopedNAND.vcd xorArrow.vcd
+all:		cava nand2.vcd loopedNAND.vcd xorArrow.vcd loopedNandArrow.vcd
 
 cava:		Makefile.coq FixupAscii
 		$(MAKE) -f Makefile.coq
@@ -54,6 +54,12 @@ loopedNAND.sv:	nand2.sv
 loopedNAND.vcd:	loopedNAND.sv loopedNAND_tb.sv
 		iverilog -g2012 -o loopedNAND.vvp loopedNAND.sv loopedNAND_tb.sv
 		./loopedNAND.vvp
+
+loopedNandArrow.sv:	nand2.sv
+
+loopedNandArrow.vcd:	loopedNandArrow.sv loopedNandArrow_tb.sv
+			iverilog -g2012 -o loopedNandArrow.vvp loopedNandArrow.sv loopedNandArrow_tb.sv
+			./loopedNandArrow.vvp
 
 clean:
 		-$(MAKE) -f Makefile.coq clean

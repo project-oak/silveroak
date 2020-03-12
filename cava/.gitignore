@@ -58,3 +58,6 @@ xorArrow.vvp
 loopedNAND.sv
 loopedNAND.vcd
 loopedNAND.vvp
+loopedNandArrow.sv
+loopedNandArrow.vcd
+loopedNandArrow.vvp
