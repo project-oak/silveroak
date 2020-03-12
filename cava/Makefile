@@ -70,4 +70,5 @@ clean:
 		rm -rf Makefile.coq .Makefile.coq.conf \
                        *.hi *.o ExamplesSV FixupAscii dist work-obj93.cf
 		xargs rm -rf < .gitignore
+		rm -rf Cava/.*.aux
 
