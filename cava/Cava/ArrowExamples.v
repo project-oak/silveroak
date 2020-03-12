@@ -96,7 +96,7 @@ Section Example1.
   (* For extraction *)
   Definition xorArrow := 
     let '(nl, count) := xorArrowNetlist
-    in mkCavaState count false nl.
+    in mkCavaState count [] false nl.
 
 End Example1.
 
@@ -116,5 +116,5 @@ Section Example2.
   Eval compute in loopedNandArrowNetlist.
   Definition loopedNandArrow := 
     let '(nl, count) := loopedNandArrowNetlist
-    in mkCavaState count true nl.
+    in mkCavaState count [] true nl.
 End Example2.

@@ -111,7 +111,7 @@ Qed.
 
 (* An contrived example of loopBit *)
 
-Definition loopedNAND := loopBit (second delayBit >=> nand2 >=> fork2).
+Definition loopedNAND {m bit} `{Cava m bit}  := loopBit (second delayBit >=> nand2 >=> fork2).
 
 Definition loopedNANDTop : state CavaState Z :=
   setModuleName "loopedNAND" ;;
@@ -120,3 +120,36 @@ Definition loopedNANDTop : state CavaState Z :=
   outputBit "b" b.
 
 Definition loopedNANDNetlist := makeNetlist loopedNANDTop.
+
+Fixpoint loopedNAND_spec' (i : list bool) (state : bool) : list bool :=
+  match i with
+  | [] => []
+  | x::xs => let newOutput := negb (x && state) in
+             newOutput :: loopedNAND_spec' xs newOutput
+  end.
+
+(*
+Definition loopedNAND_spec (i : list bool) : list bool := loopedNAND_spec' i false.
+
+Lemma peel_list : forall (a : bool) (x y : list bool),
+                  a::x = a::y <-> x = y.
+Proof.
+  intros.
+  destruct x.
+
+
+Lemma noopedNAND_behaviour : forall (a : list bool),
+                             sequential (loopedNAND a) = loopedNAND_spec a.
+Proof.
+  intros.
+  unfold sequential.
+  unfold unIdent.
+  simpl.
+  unfold loopedNAND_spec.
+  induction a.
+  auto.
+  simpl.
+  rewrite peel_list.
+*)
+
+  

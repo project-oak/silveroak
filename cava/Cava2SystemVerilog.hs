@@ -24,7 +24,7 @@ writeSystemVerilog cavastate
               (unlines (cava2SystemVerilog cavastate))
 
 cava2SystemVerilog :: Netlist.CavaState -> [String]
-cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber isSeq (Netlist.Coq_mkModule moduleName instances
+cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vecs isSeq (Netlist.Coq_mkModule moduleName instances
                     inputs outputs))
   = ["module " ++ moduleName ++ "("] ++
 
