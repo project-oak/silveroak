@@ -15,5 +15,6 @@ buildEnv {
     coreutils
     bash
     binutils.bintools
+    verilator
   ];
 }
