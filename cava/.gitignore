@@ -50,4 +50,9 @@ MonadWriter.hs
 MonadZero.hs
 Monoid.hs
 StateMonad.hs
-
+Arrow.hs
+ArrowExamples.hs
+xorArrow.sv
+loopedNAND.sv
+loopedNAND.vcd
+loopedNAND.vvp

@@ -51,7 +51,6 @@ loopedNAND.vcd:	loopedNAND.sv loopedNAND_tb.sv
 clean:
 		-$(MAKE) -f Makefile.coq clean
 		rm -rf Makefile.coq .Makefile.coq.conf \
-                       *.hi *.o ExamplesSV FixupAscii dist work-obj93.cf \
-	               loopedNAND.sv loopedNAND.vcd loopedNAND.vvp
+                       *.hi *.o ExamplesSV FixupAscii dist work-obj93.cf
 		xargs rm -rf < .gitignore
 
