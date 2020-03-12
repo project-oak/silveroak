@@ -61,7 +61,15 @@ Section Example1.
 
   (*proofs for CoqCava e.g. direct function eval, no lists*)
   Lemma nand_is_nandb: forall a:(bool*bool), (@nand CoqCava) a = (uncurry nandb) a.
-  Proof. auto. Qed.
+  Proof. 
+    intros.
+    destruct a.
+    unfold uncurry.
+    unfold nandb.
+    unfold nand.
+    simpl.
+    f_equal.
+  Qed.
 
   Lemma xor_is_xorb: forall a:(bool*bool), (@xor CoqCava) a = (uncurry xorb) a.
   Proof.
@@ -69,6 +77,8 @@ Section Example1.
     unfold xor.
     unfold nand.
     unfold uncurry.
+    simpl.
+    destruct a.
     simpl.
     btauto.
   Qed.
@@ -84,7 +94,9 @@ Section Example1.
   (* Compute the circuit netlist for the XOR made up of NANDs made up of ANDs and INVs *)
   Eval compute in xorArrowNetlist.
   (* For extraction *)
-  Definition xorArrow := mkCavaState 0 false xorArrowNetlist.
+  Definition xorArrow := 
+    let '(nl, count) := xorArrowNetlist
+    in mkCavaState count false nl.
 
 End Example1.
 
@@ -95,4 +107,14 @@ Section Example2.
     {ArrowLoop: @ArrowLoop (@cava_delay_arr Cava)}
     : bit ~> bit :=
     loopl (nand >>> delay_gate >>> copy).
+
+  Definition loopedNandArrowNetlist := arrowToHDLModule
+    "loopedNandArrow"
+    (@loopedNand NetlistCavaDelay NetlistLoop)
+    (fun i => [ mkPort "input1" (BitPort i)])
+    (fun o => [mkPort "output1" (BitPort o)]).
+  Eval compute in loopedNandArrowNetlist.
+  Definition loopedNandArrow := 
+    let '(nl, count) := loopedNandArrowNetlist
+    in mkCavaState count true nl.
 End Example2.

@@ -128,37 +128,37 @@ Definition cava_delay_arr (_: CavaDelay): Arrow := _.
 Section CoqEval.
   Instance CoqCat : Category := {
     morphism X Y := X -> Y;
-    compose _ _ _ := fun f g x => f (g x);
-    id X := fun x => x;
+    compose _ _ _ f g x := f (g x);
+    id X x := x;
   }.
 
   Instance CoqArr : Arrow := {
     unit := Datatypes.unit : Type;
     product := prod;
 
-    fork _ _ _ f g := fun x => (f x, g x);
+    fork _ _ _ f g x := (f x, g x);
     exl X Y := fst;
     exr X Y := snd;
 
-    drop _ := fun x => tt;
-    copy _ := fun x => pair x x;
+    drop _ x := tt;
+    copy _ x := pair x x;
 
-    swap _ _ := fun x => (snd x, fst x);
+    swap _ _ x := (snd x, fst x);
 
-    uncancell _ := fun x => (tt, x);
-    uncancelr _ := fun x => (x, tt);
+    uncancell _ x := (tt, x);
+    uncancelr _ x := (x, tt);
 
-    assoc _ _ _   := fun xyz => (fst (fst xyz), (snd (fst xyz), snd xyz));
-    unassoc _ _ _ := fun xyz => ((fst xyz, fst (snd xyz)), snd (snd xyz));
+    assoc _ _ _ '((x,y),z) := (x,(y,z));
+    unassoc _ _ _ '(x,(y,z)) := ((x,y),z);
   }.
 
   Instance CoqCava : Cava := {
     bit := bool;
 
-    fromBool b := fun _ => b;
+    fromBool b _ := b;
 
-    not_gate := fun b => negb b;
-    and_gate := fun xy => andb (fst xy) (snd xy);
+    not_gate b := negb b;
+    and_gate '(x,y) := andb x y;
   }.
 
   Eval cbv in not_gate true.
@@ -194,8 +194,8 @@ Section ArrowNetlist.
   Instance NetlistCat : Category := {
     object := Shape;
     morphism X Y := PortsOfShape X -> state (Netlist * Z) (PortsOfShape Y);
-    id X := fun x => ret x;
-    compose X Y Z f g := fun x => g x >>= f;
+    id X x := ret x;
+    compose X Y Z f g := g >=> f;
   }.
 
   Instance NetlistArr : Arrow := {
@@ -203,25 +203,25 @@ Section ArrowNetlist.
     unit := ShapeUnit;
     product := ShapeProd;
 
-    fork X Y Z f g := fun z =>
+    fork X Y Z f g z := 
       x <- f z ;;
       y <- g z ;;
       ret (x, y);
 
-    exl X Y := fun z => let (x,y) := z in ret x;
-    exr X Y := fun z => let (x,y) := z in ret y;
+    exl X Y '(x,y) := ret x;
+    exr X Y '(x,y) := ret y;
 
 
-    drop _ := fun _ => ret Datatypes.tt;
-    copy _ := fun x => ret (x,x);
-    swap _ _ := fun z => let (x,y) := z in ret (y, x);
+    drop _ _ := ret Datatypes.tt;
+    copy _ x := ret (x,x);
+    swap _ _ '(x,y) := ret (y,x);
 
 
-    uncancell _ := fun x => ret (tt, x);
-    uncancelr _ := fun x => ret (x, tt);
+    uncancell _ x := ret (tt, x);
+    uncancelr _ x := ret (x, tt);
 
-    assoc _ _ _   := fun xyz => ret (fst (fst xyz), (snd (fst xyz), snd xyz));
-    unassoc _ _ _ := fun xyz => ret ((fst xyz, fst (snd xyz)), snd (snd xyz));
+    assoc _ _ _ '((x,y),z) := ret (x,(y,z));
+    unassoc _ _ _ '(x,(y,z)) := ret ((x,y),z);
   }.
 
   Instance NetlistCava : Cava := {
@@ -234,15 +234,74 @@ Section ArrowNetlist.
       | false => fun _ => ret 0%Z
       end;
 
-    not_gate := fun x =>
+    not_gate x := 
       '(nl, i) <- get ;;
       put (Not x i :: nl, (i+1)%Z) ;;
       ret i;
 
-    and_gate := fun xy => let (x,y) := xy in
+    and_gate '(x,y) :=
       '(nl, i) <- get ;;
       put (And [x;y] i :: nl, (i+1)%Z) ;;
       ret i;
+  }.
+
+  (* The key here is that the dependent match needs to be over 
+    Shape and ports p1 p2, at the same time for Coq to recogonise their types
+    in the respective branches *)
+  Fixpoint linkWith (link: Z -> Z -> Primitive) (s: Shape) (p1 p2: PortsOfShape s) : Netlist :=
+  match s in Shape, p1, p2 return Netlist with 
+  | ShapeUnit, _, _ => []
+  | ShapeOne, _, _ => [link p1 p2]
+  | ShapeProd s1 s2, (p11,p12), (p21,p22) => linkWith link s1 p11 p21 ++ linkWith link s2 p12 p22
+  end.
+
+  Instance NetlistLoop : ArrowLoop NetlistArr := {
+    (* 1. reserve (@FillShape Z _) items
+       2. Run f with reserved items
+       3. link the items and add the netlist *)
+    loopr _ _ Z f x :=
+      (* 1 *)
+      '(nl, i) <- get ;;
+      let '(z, i') := @FillShape Z i in
+      put (nl, i') ;;
+
+      (* 2 *)
+      '(y,z') <- f (x,z) ;;
+
+      (* 3 *)
+      let links := linkWith AssignBit Z z z' in
+      '(nl, i) <- get ;;
+      put (links ++ nl, i) ;;
+
+      ret y;
+
+    loopl _ _ Z f x :=
+      (* 1 *)
+      '(nl, i) <- get ;;
+      let '(z, i') := @FillShape Z i in
+      put (nl, i') ;;
+
+      (* 2 *)
+      '(z', y) <- f (z, x) ;;
+
+      (* 3 *)
+      let links := linkWith AssignBit Z z z' in
+      '(nl, i) <- get ;;
+      put (links ++ nl, i) ;;
+
+      ret y;
+
+  }.
+
+  Instance NetlistCavaDelay : CavaDelay := {
+    delay_cava := NetlistCava;
+    (* delay_gate {x} : x ~> x; *)
+    delay_gate X x :=
+      '(nl, i) <- get ;;
+      let '(x', i') := @FillShape X i in
+      let links := linkWith DelayBit X x x' in
+      put (links ++ nl, i) ;;
+      ret x'
   }.
 
   Definition arrowToHDLModule {X Y}
@@ -250,10 +309,10 @@ Section ArrowNetlist.
     (f: X ~[NetlistCat]~> Y)
     (mkInputs: PortsOfShape X -> list PortDeclaration)
     (mkOutputs: PortsOfShape Y -> list PortDeclaration)
-    : Netlist.Module :=
+    : (Netlist.Module * Z) :=
       let (i, n) := @FillShape X 2 in
-      let '(o, (nl,_)) := runState (f i) ([], n) in
-      mkModule name nl (mkInputs i) (mkOutputs o).
+      let '(o, (nl, count)) := runState (f i) ([], n) in
+      (mkModule name nl (mkInputs i) (mkOutputs o), count).
 
   (* Check ArrowExamples.v for xor example *)
   Eval cbv in arrowToHDLModule
