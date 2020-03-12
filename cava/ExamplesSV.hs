@@ -25,3 +25,4 @@ main :: IO ()
 main = do writeSystemVerilog nand2Netlist
           writeSystemVerilog loopedNANDNetlist
           writeSystemVerilog xorArrow
+          writeSystemVerilog loopedNandArrow

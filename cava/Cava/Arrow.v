@@ -300,7 +300,7 @@ Section ArrowNetlist.
       '(nl, i) <- get ;;
       let '(x', i') := @FillShape X i in
       let links := linkWith DelayBit X x x' in
-      put (links ++ nl, i) ;;
+      put (links ++ nl, i') ;;
       ret x'
   }.
 
