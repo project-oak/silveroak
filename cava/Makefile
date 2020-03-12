@@ -37,7 +37,11 @@ ExamplesSV:	ExamplesSV.hs
 
 nand2.sv:	cava ExamplesSV
 		./ExamplesSV
-
+		verilator --lint-only verilator.vlt nand2.sv
+		verilator --lint-only verilator.vlt loopedNAND.sv
+		verilator --lint-only verilator.vlt xorArrow.sv
+		verilator --lint-only verilator.vlt loopedNAND.sv
+		verilator --lint-only verilator.vlt loopedNandArrow.sv
 
 nand2.vcd:	nand2.sv nand2_tb.sv
 		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv
