@@ -1,17 +1,17 @@
 # Reference: https://cloud.google.com/cloud-build/docs/build-config
 
 steps:
-  # Pull pre-existing latest Docker image.
-  - name: 'gcr.io/cloud-builders/docker'
-    id: pull_image
+  - name: 'nixos/nix'
+    id: build_docker_image
     waitFor: ['-']
-    timeout: 10m
-    args: ['pull', 'gcr.io/oak-ci/oak-hardware:latest']
+    timeout: 20m
+    entrypoint: 'sh'
+    args: ['.ci/build_docker_image.sh']
 
   - name: 'gcr.io/oak-ci/oak-hardware:latest'
     id: run_cava_make
-    waitFor: ['pull_image']
-    timeout: 30m
+    waitFor: ['build_docker_image']
+    timeout: 20m
     entrypoint: 'bash'
     args: ['-c', 'cd cava; make']
 
