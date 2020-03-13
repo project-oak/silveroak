@@ -26,7 +26,7 @@ Please install the following components:
 * The [Icarus Verilog](http://iverilog.icarus.com/) circuit simulator version
   11.0 or later. GitHub link:
   [https://github.com/steveicarus/iverilog](https://github.com/steveicarus/iverilog)
-* [Verilator](https://www.veripool.org/wiki/verilator) version 3.911 or later.
+* [Verilator](https://www.veripool.org/wiki/verilator) version 4.030 or later.
 
 ## Building
 
