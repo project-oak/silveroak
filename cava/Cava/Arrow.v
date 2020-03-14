@@ -203,7 +203,7 @@ Section ArrowNetlist.
     unit := ShapeUnit;
     product := ShapeProd;
 
-    fork X Y Z f g z := 
+    fork X Y Z f g z :=
       x <- f z ;;
       y <- g z ;;
       ret (x, y);
@@ -234,7 +234,7 @@ Section ArrowNetlist.
       | false => fun _ => ret 0%Z
       end;
 
-    not_gate x := 
+    not_gate x :=
       '(nl, i) <- get ;;
       put (Not x i :: nl, (i+1)%Z) ;;
       ret i;
@@ -245,11 +245,11 @@ Section ArrowNetlist.
       ret i;
   }.
 
-  (* The key here is that the dependent match needs to be over 
+  (* The key here is that the dependent match needs to be over
     Shape and ports p1 p2, at the same time for Coq to recogonise their types
     in the respective branches *)
   Fixpoint linkWith (link: Z -> Z -> Primitive) (s: Shape) (p1 p2: PortsOfShape s) : Netlist :=
-  match s in Shape, p1, p2 return Netlist with 
+  match s in Shape, p1, p2 return Netlist with
   | ShapeUnit, _, _ => []
   | ShapeOne, _, _ => [link p1 p2]
   | ShapeProd s1 s2, (p11,p12), (p21,p22) => linkWith link s1 p11 p21 ++ linkWith link s2 p12 p22
@@ -295,7 +295,7 @@ Section ArrowNetlist.
 
   Instance NetlistCavaDelay : CavaDelay := {
     delay_cava := NetlistCava;
-    (* delay_gate {x} : x ~> x; *)
+
     delay_gate X x :=
       '(nl, i) <- get ;;
       let '(x', i') := @FillShape X i in
