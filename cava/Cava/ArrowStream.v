@@ -51,41 +51,58 @@ Section CoqStreamEval.
 End CoqStreamEval.
 
 Section StreamProofs.
-  Lemma nand_is_combinational:
+  (* 1. explicit proof - manual method *)
+  Lemma nand_is_combinational_1:
+    forall a:Stream (bool*bool),
+    EqSt ((@nand CoqStreamCava) a) (map (uncurry nandb) a).
+  Proof.
+    cofix proof. (* make a coinduction hypothesis called "proof" *)
+    intros.
+    constructor. (* case analysis 1 & 2*)
+    - constructor. (* 1) _don't_ use proof for head *)
+    - apply proof. (* 2) use proof on tail *)
+    (*using proof on both 1 & 2 would causes a recursive proof definition
+    which would fail when trying to QED *)
+  Qed.
+
+  (* chaining inbult tactics - automatic *)
+  Lemma nand_is_combinational_2:
     forall a:Stream (bool*bool),
     EqSt ((@nand CoqStreamCava) a) (map (uncurry nandb) a).
   Proof.
     cofix proof; intros; constructor;
       [ clear proof | try (apply proof; clear proof) ].
     auto.
+    (* in the commented method, the square brackets causes
+      - clear proof; auto
+      - apply proof; clear proof; auto. *)
   Qed.
 
-  Lemma hd_map:
-    forall (A B:Type) (x:A) (xs:Stream A) (f:A -> B),
-    hd (map f (Cons x xs)) = f x.
-  Proof.
-    intros.
-    auto.
-  Qed.
+  Ltac simple_boolean_stream_circuit cofix_proof stream :=
+    cofix cofix_proof;
+    intro stream;
+    destruct stream;
+    constructor;
+      [ clear cofix_proof; revert stream;
+        repeat match goal with
+          | H: _ |- _ => destruct H
+        end
+      | try (apply cofix_proof; clear cofix_proof ) ];
+      auto.
 
-  Lemma xor_is_combinational':
+  (* 3. using custom built tactic - automatic *)
+  Lemma nand_is_combinational_3:
     forall a:Stream (bool*bool),
-    hd ((@xor CoqStreamCava) a) = hd (map (uncurry xorb) a).
+    EqSt ((@nand CoqStreamCava) a) (map (uncurry nandb) a).
   Proof.
-    intros.
-    destruct a.
-    unfold uncurry.
-    simpl.
-    btauto.
+    simple_boolean_stream_circuit proof stream.
   Qed.
 
   Lemma xor_is_combinational:
     forall a:Stream (bool*bool),
     EqSt ((@xor CoqStreamCava) a) (map (uncurry xorb) a).
   Proof.
-    cofix proof; intros; constructor;
-      [ clear proof | try (apply proof; clear proof) ].
-
-    apply xor_is_combinational'.
+    simple_boolean_stream_circuit proofs stream.
   Qed.
+
 End StreamProofs.

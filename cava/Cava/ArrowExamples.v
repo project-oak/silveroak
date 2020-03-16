@@ -12,8 +12,6 @@ Require Import Cava.Arrow.
 Require Import Cava.Netlist.
 
 Section Example1.
-
-
   (* Implement a NAND circuit by composing an AND gate and INV gate. *)
   Definition nand
     {Cava: Cava}
@@ -59,29 +57,23 @@ Section Example1.
   Definition nandb : bool -> bool -> bool := fun a b => negb (a && b).
   Definition uncurry {a b c} (f: a -> b -> c) : (a*b) -> c := fun xy => f (fst xy) (snd xy).
 
+  (* Destructure context as much as possible then try to solve.
+  This works for CoqCava with simple boolean circuits as the cases 
+  generated from destructuring tuples of booleans fully are quite simple. 
+  *)
+  Ltac simple_boolean_circuit := 
+    intros;
+      repeat match goal with
+        | [ H: _ |- _ ] => destruct H
+      end;
+    auto.
+
   (*proofs for CoqCava e.g. direct function eval, no lists*)
   Lemma nand_is_nandb: forall a:(bool*bool), (@nand CoqCava) a = (uncurry nandb) a.
-  Proof. 
-    intros.
-    destruct a.
-    unfold uncurry.
-    unfold nandb.
-    unfold nand.
-    simpl.
-    f_equal.
-  Qed.
+  Proof. simple_boolean_circuit. Qed.
 
   Lemma xor_is_xorb: forall a:(bool*bool), (@xor CoqCava) a = (uncurry xorb) a.
-  Proof.
-    intros.
-    unfold xor.
-    unfold nand.
-    unfold uncurry.
-    simpl.
-    destruct a.
-    simpl.
-    btauto.
-  Qed.
+  Proof. simple_boolean_circuit. Qed.
 
   Definition xorArrowNetlist := arrowToHDLModule
     "xorArrow"
