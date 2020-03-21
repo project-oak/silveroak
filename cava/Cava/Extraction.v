@@ -14,11 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Cava.
-Require Import BitVector.
-Require Import Cava.Examples.
-Require Import Cava.Arrow.
-Require Import Cava.ArrowExamples.
 From Coq Require Import Extraction.
 From Coq Require Import extraction.ExtrHaskellZInteger.
 From Coq Require Import extraction.ExtrHaskellString.
@@ -26,9 +21,15 @@ From Coq Require Import ExtrHaskellBasic.
 
 Extraction Language Haskell.
 
+Require Import BitVector.
+Require Import Cava.
+Require Import Cava.Examples.
+
 Recursive Extraction Library BitVector.
 Recursive Extraction Library Combinators.
 Recursive Extraction Library Cava.
 Extraction Library Examples.
-Extraction Library Arrow.
-Extraction Library ArrowExamples.
+
+Require Import Cava.Arrow.ArrowExamples.
+
+Recursive Extraction Library ArrowExamples.
