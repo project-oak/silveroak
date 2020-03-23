@@ -160,7 +160,7 @@ Section NetlistExamples.
   (* For extraction *)
   Definition xorArrow :=
     let '(nl, count) := xorArrowNetlist
-    in mkCavaState count [] false nl.
+    in mkCavaState count 0 false nl.
 
   Definition loopedNandArrowNetlist := arrowToHDLModule
     "loopedNandArrow"
@@ -170,5 +170,5 @@ Section NetlistExamples.
   Eval compute in loopedNandArrowNetlist.
   Definition loopedNandArrow :=
     let '(nl, count) := loopedNandArrowNetlist
-    in mkCavaState count [] true nl.
+    in mkCavaState count 0 true nl.
 End NetlistExamples.
