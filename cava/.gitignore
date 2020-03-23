@@ -29,6 +29,7 @@ Functor.hs
 Ltac.hs
 Monad.hs
 Netlist.hs
+Netlist0.hs
 State.hs
 BitVector.hs
 PeanoNat.hs

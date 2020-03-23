@@ -1,8 +1,12 @@
 -R Cava Cava
+
 Cava/Arrow.v
-Cava/ArrowExamples.v
-Cava/ArrowStream.v
-Cava/ArrowPHOAS.v
+Cava/Arrow/Arrow.v
+Cava/Arrow/ArrowExamples.v
+Cava/Arrow/Instances/Coq.v
+Cava/Arrow/Instances/Stream.v
+Cava/Arrow/Instances/Netlist.v
+
 Cava/BitVector.v
 Cava/Netlist.v
 Cava/Cava.v
