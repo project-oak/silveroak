@@ -33,6 +33,7 @@ Open Scope monad_scope.
 Require Import Cava.Cava.
 Require Import Cava.Combinators.
 Require Import Cava.Netlist.
+Require Import BitVector.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
@@ -83,7 +84,7 @@ Definition nand2Top : state CavaState Z :=
   outputBit "c" c.
 
 (* Generate a netlist containing the port definitions. *)
-Eval cbv in (execState nand2Top initState).
+Compute (execState nand2Top initState).
 
 Definition nand2Netlist := makeNetlist nand2Top.
 
@@ -108,6 +109,49 @@ Proof.
   intros.
   now destruct a0.  
 Qed.
+
+(* Unsigned addition examples. *)
+
+Definition bv4_0  := nat_to_bits 4  0.
+Definition bv4_1  := nat_to_bits 4  1.
+Definition bv4_2  := nat_to_bits 4  2.
+Definition bv4_3  := nat_to_bits 4  3.
+Definition bv4_15 := nat_to_bits 4 15.
+
+Definition bv5_0  := nat_to_bits 5  0.
+Definition bv5_3  := nat_to_bits 5  3.
+Definition bv5_16 := nat_to_bits 5 16.
+Definition bv5_30 := nat_to_bits 5 30.
+
+(* Check 0 + 0 = 0 *)
+Example add_0_0 : combinational (unsignedAdd bv4_0 bv4_0) = bv5_0.
+Proof. reflexivity. Qed.
+
+(* Check 1 + 2 = 3 *)
+Example add_1_2 : combinational (unsignedAdd bv4_1 bv4_2) = bv5_3.
+Proof. reflexivity. Qed.
+
+(* Check 15 + 1 = 16 *)
+Example add_15_1 : combinational (unsignedAdd bv4_15 bv4_1) = bv5_16.
+Proof. reflexivity. Qed.
+
+(* Check 15 + 15 = 30 *)
+Example add_15_15 : combinational (unsignedAdd bv4_15 bv4_15) = bv5_30.
+Proof. reflexivity. Qed.
+
+
+(* An adder example. *)
+
+Definition adder4Top : state CavaState (list Z) :=
+  setModuleName "adder4" ;;
+  a <- inputVectorTo0 4 "a" ;;
+  b <- inputVectorTo0 4 "b" ;;
+  sum <- unsignedAdd a b ;;
+  outputVectorTo0 sum "sum".
+
+Definition adder4Netlist := makeNetlist adder4Top.
+Compute (execState nand2Top initState).
+
 
 (* An contrived example of loopBit *)
 

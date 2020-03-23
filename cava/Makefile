@@ -16,7 +16,7 @@
 
 .PHONY: cava all clean
 
-all:		cava nand2.vcd loopedNAND.vcd xorArrow.vcd loopedNandArrow.vcd
+all:		cava nand2.vcd adder4.vcd loopedNAND.vcd xorArrow.vcd loopedNandArrow.vcd
 
 cava:		Makefile.coq FixupAscii
 		$(MAKE) -f Makefile.coq
@@ -38,6 +38,7 @@ ExamplesSV:	ExamplesSV.hs
 nand2.sv:	cava ExamplesSV
 		./ExamplesSV
 		verilator --lint-only verilator.vlt nand2.sv
+		verilator --lint-only verilator.vlt adder4.sv
 		verilator --lint-only verilator.vlt loopedNAND.sv
 		verilator --lint-only verilator.vlt xorArrow.sv
 		verilator --lint-only verilator.vlt loopedNAND.sv
@@ -46,6 +47,12 @@ nand2.sv:	cava ExamplesSV
 nand2.vcd:	nand2.sv nand2_tb.sv
 		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv
 		./nand2.vvp
+
+adder4.sv:	nand2.sv
+
+adder4.vcd:	adder4.sv adder4_tb.sv
+		iverilog -g2012 -o adder4.vvp adder4.sv adder4_tb.sv
+		./adder4.vvp
 
 xorArrow.sv:	nand2.sv
 

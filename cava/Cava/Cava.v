@@ -34,6 +34,7 @@ Require Export ExtLib.Data.Monads.StateMonad.
 Export MonadNotation.
 
 Require Import Cava.Netlist.
+Require Import BitVector.
 
 Generalizable All Variables.
 
@@ -62,6 +63,8 @@ Class Cava m bit `{Monad m} := {
   (* Xilinx UNISIM FPGA gates *)
   xorcy : bit * bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
   muxcy : bit -> bit -> bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
+  (* Synthesizable arithmetic operations. *)
+  unsignedAdd : list bit -> list bit -> m (list bit);
 }.
 
 (******************************************************************************)
@@ -156,6 +159,17 @@ Definition muxcyNet (s : Z)  (di : Z) (ci : Z) : state CavaState Z :=
          ret o
   end.
 
+Definition unsignedAddNet (a : list Z) (b : list Z) : state CavaState (list Z) :=
+  cs <- get ;;
+  match cs with
+  | mkCavaState o v isSeq (mkModule name insts inputs outputs)
+      => let l := max (length a) (length b) + 1 in
+         let outs := map Z.of_nat (seq (Z.to_nat o) l) in
+         let adder := [ToVec a v; ToVec b (v + 1); UnsignedAdd v (v + 1) (v + 2); FromVec (v + 2) outs] in
+         put (mkCavaState (o + (Z.of_nat l)) (v + 3) isSeq (mkModule name (adder ++ insts) inputs outputs )) ;;
+         ret outs
+  end.
+
 Definition delayBitNet (i : Z) : state CavaState Z :=
   cs <- get ;;
   match cs with
@@ -198,6 +212,7 @@ Instance CavaNet : Cava (state CavaState) Z :=
     buf_gate := bufNet;
     xorcy := xorcyNet;
     muxcy := muxcyNet;
+    unsignedAdd := unsignedAddNet;
 }.
 
 (******************************************************************************)
@@ -211,7 +226,7 @@ Definition setModuleName (name : string) : state CavaState unit :=
      => put (mkCavaState o v isSeq (mkModule name insts inputs outputs))
   end.
 
-Definition inputVectorTo0 (size : Z) (name : string)  : state CavaState (list Z) :=
+Definition inputVectorTo0 (size : Z) (name : string) : state CavaState (list Z) :=
   cs <- get ;;
   match cs with
   | mkCavaState o v isSeq (mkModule n insts inputs outputs)
@@ -282,6 +297,12 @@ Definition muxcyBool (s : bool) (di : bool) (ci : bool) : ident bool :=
        | true => ci
        end).
 
+Definition unsignedAddBool (a : list bool) (b : list bool) : ident (list bool) :=
+  let av := bits_to_nat a in
+  let bv := bits_to_nat b in
+  let vc := av + bv in
+  ret (nat_to_bits (max (length a) (length b) + 1) vc).
+
 Definition bufBool (i : bool) : ident bool :=
   ret i.
 
@@ -308,6 +329,7 @@ Instance CavaBool : Cava ident bool :=
     xorcy := xorcyBool;
     xnor2 := xnorBool;
     muxcy := muxcyBool;
+    unsignedAdd := unsignedAddBool;
     buf_gate := bufBool;
 }.
 
@@ -355,6 +377,9 @@ Definition muxcyBoolList (s : list bool) (di : list bool) (ci : list bool) : ide
        | true => ci
      end) s_dici).
 
+Definition unsignedAddBoolList (a : list (list bool)) (b : list (list bool)) : ident (list (list bool)) :=
+  ret (map (fun (ab : list bool * list bool) => unIdent (unsignedAddBool (fst ab) (snd ab))) (combine a b)).
+
 Definition bufBoolList (i : list bool) : ident (list bool) :=
   ret i.
 
@@ -379,6 +404,7 @@ Instance CavaBoolList : Cava ident (list bool) :=
     xorcy := xorcyBoolList;
     xnor2 := xnorBoolList;
     muxcy := muxcyBoolList;
+    unsignedAdd := unsignedAddBoolList;
     buf_gate := bufBoolList;
 }.
 

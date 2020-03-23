@@ -53,7 +53,7 @@ Inductive Primitive :=
   | ToVec : list Z -> Z -> Primitive
   | FromVec : Z -> list Z -> Primitive
   (* Arithmetic operations *)
-  | UnsignedAdd : Z -> Z -> Z -> Primitive
+  | UnsignedAdd : Z -> Z -> Z -> Primitive (* Z are names of vectors *)
   (* Xilinx FPGA architecture specific gates. *)
   | Xorcy : Z -> Z -> Z -> Primitive
   | Muxcy : Z -> Z -> Z -> Z -> Primitive.
@@ -83,7 +83,7 @@ Record Module : Type := mkModule {
 
 Record CavaState : Type := mkCavaState {
   netNumber : Z;
-  vecNumber : list Z; (* size of vector *)
+  vecNumber : Z;
   isSequential : bool;
   module : Module;
 }.
@@ -97,7 +97,7 @@ Record CavaState : Type := mkCavaState {
 *)
 
 Definition initStateFrom (startAt : Z) : CavaState
-  := mkCavaState startAt [] false (mkModule "" [] [] []).
+  := mkCavaState startAt 0 false (mkModule "" [] [] []).
 
 Definition initState : CavaState
   := initStateFrom 2.

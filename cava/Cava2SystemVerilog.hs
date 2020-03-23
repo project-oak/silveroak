@@ -34,6 +34,7 @@ cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vecs isSeq (Netlist.Coq_mk
      "  timeunit 1ns; timeprecision 1ns;",
      ""] ++
     ["  logic[" ++ show (netNumber-1) ++ ":0] net;"] ++
+    declareVectors instances ++
     [""] ++
     ["  // Constant nets",
      "  assign net[0] = 1'b0;",
@@ -78,6 +79,16 @@ insertCommas [] = []
 insertCommas [x] = [x]
 insertCommas (x:y:xs) = (x ++ ",") : insertCommas (y:xs)
 
+declareVectors :: [Netlist.Primitive] -> [String]
+declareVectors [] = []
+declareVectors ((Netlist.ToVec l v):insts)
+  = ("  logic[" ++ show (length l - 1) ++ ":0] v" ++ show v ++ ";") :
+    declareVectors insts
+declareVectors ((Netlist.FromVec v l):insts)
+  = ("  logic[" ++ show (length l - 1) ++ ":0] v" ++ show v ++ ";") :
+    declareVectors insts
+declareVectors (_:insts) = declareVectors insts
+
 nameOfInstance :: Netlist.Primitive -> String
 nameOfInstance inst
   = case inst of
@@ -91,6 +102,7 @@ nameOfInstance inst
       Netlist.Buf _ _ -> "buf"
       Netlist.Xorcy _ _ _ -> "XORCY"
       Netlist.Muxcy _ _ _ _ -> "MUXCY"
+      _ -> error "Request for un-namable instance"
 
 instanceArgs :: Netlist.Primitive -> [Integer]
 instanceArgs inst
@@ -105,6 +117,7 @@ instanceArgs inst
       Netlist.Buf i o -> [o, i]
       Netlist.Xorcy li ci o -> [o, ci, li]
       Netlist.Muxcy s di ci o -> [o, ci, di, s]
+      _ -> error "Request for bad instance arguments"
 
 instanceNumber :: Netlist.Primitive -> Integer
 instanceNumber inst
@@ -119,13 +132,22 @@ instanceNumber inst
       Netlist.Buf _ o -> o
       Netlist.Xorcy _ _ o -> o
       Netlist.Muxcy _ _ _ o -> o
+      _ -> error "Request for bad instance number"
 
 generateInstance :: Netlist.Primitive -> String
+generateInstance (Netlist.ToVec l v)
+  = unlines ["  assign v" ++ show v ++ "[" ++ show i ++ "] = net[" ++ show li ++ "];"
+               | (i, li) <- zip [0..] l]
+generateInstance (Netlist.FromVec v l)
+  = unlines ["  assign net[" ++ show li ++ "] = v" ++ show v ++ "[" ++ show i ++ "];"
+               | (i, li) <- zip [0..] l]
 generateInstance (Netlist.DelayBit i o)
    = "  always_ff @(posedge clk) net[" ++ show o ++ "] <= rst ? 1'b0 : net["
         ++ show i ++ "];";
 generateInstance (Netlist.AssignBit a b)
    = "  assign net[" ++ show a ++ "] = net[" ++ show b ++ "];"
+generateInstance (Netlist.UnsignedAdd a b s)
+   = "  assign v" ++ show s ++ " = v" ++ show a ++ " + v" ++ show b ++ ";"
 generateInstance inst
   = "  " ++ instName ++ " inst" ++ show numb ++ " " ++  showArgs args ++ ";"
    where
