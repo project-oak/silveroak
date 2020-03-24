@@ -6,8 +6,8 @@ with pkgs;
 buildEnv {
   name = "cava-tools";
   paths = [
-    coq_8_10
-    coqPackages_8_10.coq-ext-lib
+    coq_8_11
+    coqPackages_8_11.coq-ext-lib
     (haskell.packages.ghc881.ghcWithPackages (pkgs: with pkgs; [Cabal]))
     verilog
     gnumake

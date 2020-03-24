@@ -12,6 +12,6 @@ mkShell {
 
   shellHook =
   ''
-  export COQPATH=${coqPackages_8_10.coq-ext-lib}/lib/coq/8.10/user-contrib
+  export COQPATH=${coqPackages_8_11.coq-ext-lib}/lib/coq/8.11/user-contrib
   '';
 }

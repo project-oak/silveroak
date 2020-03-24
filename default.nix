@@ -13,7 +13,7 @@ in pkgs.dockerTools.buildLayeredImage {
       "/tmp" = {};
     };
     Env = [
-      "COQPATH=${pkgs.coqPackages_8_10.coq-ext-lib}/lib/coq/8.10/user-contrib"
+      "COQPATH=${pkgs.coqPackages_8_11.coq-ext-lib}/lib/coq/8.11/user-contrib"
     ];
   };
   maxLayers = 120;
