@@ -20,7 +20,7 @@ Icarus Verilog will then be available in your `$PATH`.
 
 Please install the following components:
 
-* The [Coq proof assistant](https://coq.inria.fr/) version 8.9.2 or later
+* The [Coq proof assistant](https://coq.inria.fr/) version 8.11.0.
 * The [coq-ext-lib](https://github.com/coq-community/coq-ext-lib) library for Coq.
 * The [GHC Haskell compiler](https://www.haskell.org/ghc/) version 8.6.5 or later
 * The [Icarus Verilog](http://iverilog.icarus.com/) circuit simulator version
