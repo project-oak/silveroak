@@ -25,11 +25,12 @@ Scheme Equality for list.
 
 Require Import ExtLib.Structures.Monads.
 
-Require Import Cava.
+Require Import Cava.Cava.
+Require Import Cava.BitArithmetic.
 Require Import FullAdder.
 Require Import FullAdderNat.
 Require Import UnsignedAdder.
-Require Import BitVector.
+
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.

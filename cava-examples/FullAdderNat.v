@@ -32,8 +32,9 @@ Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
 Require Import Cava.Cava.
+Require Import Cava.BitArithmetic.
 Require Import FullAdder.
-Require Import BitVector.
+
 
 Lemma halfAdderNat_correct :
   forall (a : nat) (b : nat), a < 2 -> b < 2 ->

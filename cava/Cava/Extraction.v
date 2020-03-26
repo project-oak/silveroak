@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2019 The Project Oak Authors                                   *)
+(* Copyright 2020 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -18,14 +18,15 @@ From Coq Require Import Extraction.
 From Coq Require Import extraction.ExtrHaskellZInteger.
 From Coq Require Import extraction.ExtrHaskellString.
 From Coq Require Import ExtrHaskellBasic.
+From Coq Require Import extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.
 
-Require Import BitVector.
+Require Import BitArithmetic.
 Require Import Cava.
 Require Import Cava.Examples.
 
-Recursive Extraction Library BitVector.
+Recursive Extraction Library BitArithmetic.
 Recursive Extraction Library Combinators.
 Recursive Extraction Library Cava.
 Extraction Library Examples.

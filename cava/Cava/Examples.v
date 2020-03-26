@@ -33,7 +33,7 @@ Open Scope monad_scope.
 Require Import Cava.Cava.
 Require Import Cava.Combinators.
 Require Import Cava.Netlist.
-Require Import BitVector.
+Require Import Cava.BitArithmetic.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
@@ -112,16 +112,16 @@ Qed.
 
 (* Unsigned addition examples. *)
 
-Definition bv4_0  := nat_to_bits 4  0.
-Definition bv4_1  := nat_to_bits 4  1.
-Definition bv4_2  := nat_to_bits 4  2.
-Definition bv4_3  := nat_to_bits 4  3.
-Definition bv4_15 := nat_to_bits 4 15.
+Definition bv4_0  := nat_to_bitvec 4  0.
+Definition bv4_1  := nat_to_bitvec 4  1.
+Definition bv4_2  := nat_to_bitvec 4  2.
+Definition bv4_3  := nat_to_bitvec 4  3.
+Definition bv4_15 := nat_to_bitvec 4 15.
 
-Definition bv5_0  := nat_to_bits 5  0.
-Definition bv5_3  := nat_to_bits 5  3.
-Definition bv5_16 := nat_to_bits 5 16.
-Definition bv5_30 := nat_to_bits 5 30.
+Definition bv5_0  := nat_to_bitvec 5  0.
+Definition bv5_3  := nat_to_bitvec 5  3.
+Definition bv5_16 := nat_to_bitvec 5 16.
+Definition bv5_30 := nat_to_bitvec 5 30.
 
 (* Check 0 + 0 = 0 *)
 Example add_0_0 : combinational (unsignedAdd bv4_0 bv4_0) = bv5_0.
@@ -142,12 +142,12 @@ Proof. reflexivity. Qed.
 
 (* An adder example. *)
 
-Definition adder4Top : state CavaState (list Z) :=
+Definition adder4Top : state CavaState (Vector.t Z 5) :=
   setModuleName "adder4" ;;
   a <- inputVectorTo0 4 "a" ;;
   b <- inputVectorTo0 4 "b" ;;
   sum <- unsignedAdd a b ;;
-  outputVectorTo0 sum "sum".
+  outputVectorTo0 5 sum "sum".
 
 Definition adder4Netlist := makeNetlist adder4Top.
 Compute (execState nand2Top initState).
