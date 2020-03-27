@@ -16,6 +16,7 @@
 module Cava2SystemVerilog
 where
 
+import qualified BinNums
 import qualified Netlist
 import qualified Vector
 
@@ -23,6 +24,12 @@ writeSystemVerilog :: Netlist.CavaState -> IO ()
 writeSystemVerilog cavastate
   = writeFile (Netlist.moduleName (Netlist.coq_module cavastate) ++ ".sv")
               (unlines (cava2SystemVerilog cavastate))
+
+fromN :: BinNums.N -> Integer
+fromN bn
+  = case bn of
+      BinNums.N0 -> 0
+      BinNums.Npos n -> n
 
 cava2SystemVerilog :: Netlist.CavaState -> [String]
 cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vecs isSeq (Netlist.Coq_mkModule moduleName instances
@@ -34,7 +41,7 @@ cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vecs isSeq (Netlist.Coq_mk
     ["",
      "  timeunit 1ns; timeprecision 1ns;",
      ""] ++
-    ["  logic[" ++ show (netNumber-1) ++ ":0] net;"] ++
+    ["  logic[" ++ show (fromN netNumber-1) ++ ":0] net;"] ++
     declareVectors instances ++
     [""] ++
     ["  // Constant nets",
@@ -83,10 +90,10 @@ insertCommas (x:y:xs) = (x ++ ",") : insertCommas (y:xs)
 declareVectors :: [Netlist.Primitive] -> [String]
 declareVectors [] = []
 declareVectors ((Netlist.ToVec s l v):insts)
-  = ("  logic[" ++ show (s - 1) ++ ":0] v" ++ show v ++ ";") :
+  = ("  logic[" ++ show (s - 1) ++ ":0] v" ++ show (fromN v) ++ ";") :
     declareVectors insts
 declareVectors ((Netlist.FromVec s v l):insts)
-  = ("  logic[" ++ show (s - 1) ++ ":0] v" ++ show v ++ ";") :
+  = ("  logic[" ++ show (s - 1) ++ ":0] v" ++ show (fromN v) ++ ";") :
     declareVectors insts
 declareVectors (_:insts) = declareVectors insts
 
@@ -105,7 +112,7 @@ nameOfInstance inst
       Netlist.Muxcy _ _ _ _ -> "MUXCY"
       _ -> error "Request for un-namable instance"
 
-instanceArgs :: Netlist.Primitive -> [Integer]
+instanceArgs :: Netlist.Primitive -> [BinNums.N]
 instanceArgs inst
   = case inst of
       Netlist.Not i o -> [o, i]
@@ -120,7 +127,7 @@ instanceArgs inst
       Netlist.Muxcy s di ci o -> [o, ci, di, s]
       _ -> error "Request for bad instance arguments"
 
-instanceNumber :: Netlist.Primitive -> Integer
+instanceNumber :: Netlist.Primitive -> BinNums.N
 instanceNumber inst
   = case inst of
       Netlist.Not _ o -> o
@@ -137,41 +144,48 @@ instanceNumber inst
 
 generateInstance :: Netlist.Primitive -> String
 generateInstance (Netlist.ToVec s l v)
-  = unlines ["  assign v" ++ show v ++ "[" ++ show i ++ "] = net[" ++ show li ++ "];"
-               | (i, li) <- zip [0..] (Vector.to_list s l)]
+  = unlines ["  assign v" ++ show (fromN v) ++ "[" ++ show i ++
+             "] = net[" ++ show (fromN li) ++ "];"
+              | (i, li) <- zip [0..] (Vector.to_list s l)]
 generateInstance (Netlist.FromVec s v l)
-  = unlines ["  assign net[" ++ show li ++ "] = v" ++ show v ++ "[" ++ show i ++ "];"
-               | (i, li) <- zip [0..] (Vector.to_list s l)]
+  = unlines ["  assign net[" ++ show (fromN li) ++ "] = v" ++ show (fromN v) ++
+             "[" ++ show i ++ "];"
+             | (i, li) <- zip [0..] (Vector.to_list s l)]
 generateInstance (Netlist.DelayBit i o)
-   = "  always_ff @(posedge clk) net[" ++ show o ++ "] <= rst ? 1'b0 : net["
-        ++ show i ++ "];";
+   = "  always_ff @(posedge clk) net[" ++ show (fromN o) ++
+     "] <= rst ? 1'b0 : net["
+        ++ show (fromN i) ++ "];";
 generateInstance (Netlist.AssignBit a b)
-   = "  assign net[" ++ show a ++ "] = net[" ++ show b ++ "];"
+   = "  assign net[" ++ show (fromN a) ++ "] = net[" ++ show (fromN b) ++ "];"
 generateInstance (Netlist.UnsignedAdd a b s)
-   = "  assign v" ++ show s ++ " = v" ++ show a ++ " + v" ++ show b ++ ";"
+   = "  assign v" ++ show (fromN s) ++ " = v" ++ show (fromN a) ++ " + v" ++
+     show (fromN b) ++ ";"
 generateInstance inst
-  = "  " ++ instName ++ " inst" ++ show numb ++ " " ++  showArgs args ++ ";"
+  = "  " ++ instName ++ " inst" ++ show (fromN numb) ++ " " ++
+    showArgs args ++ ";"
    where
    instName = nameOfInstance inst
    args = instanceArgs inst
    numb = instanceNumber inst
 
-showArgs :: [Integer] -> String
+showArgs :: [BinNums.N] -> String
 showArgs args = "(" ++ concat (insertCommas (map showArg args)) ++ ")";
 
-showArg :: Integer -> String
-showArg n = "net[" ++ show n ++ "]"
+showArg :: BinNums.N -> String
+showArg n = "net[" ++ show (fromN n) ++ "]"
 
 wireInput :: Netlist.PortDeclaration -> [String]
 wireInput (Netlist.Coq_mkPort name (Netlist.BitPort n))
-  = ["  assign net[" ++ show n ++ "] = " ++ name ++ ";"]
+  = ["  assign net[" ++ show (fromN n) ++ "] = " ++ name ++ ";"]
 wireInput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port s v))
-  = ["  assign net[" ++ show n ++ "] = " ++ name ++ "[" ++ show i ++ "];" |
+  = ["  assign net[" ++ show (fromN n) ++ "] = " ++ name ++ "[" ++ show i ++
+     "];" |
      (n, i) <- zip (Vector.to_list s v) [0..s - 1]]
 
 wireOutput :: Netlist.PortDeclaration -> [String]
 wireOutput (Netlist.Coq_mkPort name (Netlist.BitPort n))
-  = ["  assign " ++ name ++ " = net[" ++ show n ++ "] ;"]
+  = ["  assign " ++ name ++ " = net[" ++ show (fromN n) ++ "] ;"]
 wireOutput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port s v))
-  = ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show n ++ "];" |
+  = ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show (fromN n) ++
+     "];" |
      (n, i) <- zip (Vector.to_list s v) [0.. s - 1]]

@@ -40,6 +40,7 @@ cabal-version:        >= 1.10
 library
   build-Depends:     base >= 4
   exposed-Modules:   Cava2SystemVerilog
+                     BinNums
                      BitArithmetic
                      Cava
                      Combinators
@@ -54,9 +55,7 @@ library
                      VectorDef
                      Vector
   other-Modules:     Applicative
-                     BinInt
                      BinNat
-                     BinNums
                      BinPos
                      Bool
                      Decimal

@@ -23,7 +23,7 @@ Require Import Program.Basics.
 From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
-From Coq Require Import ZArith.
+From Coq Require Import NArith.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
@@ -52,7 +52,7 @@ Proof. reflexivity. Qed.
 Example and_11 : combinational (and2 (true, true)) = true.
 Proof. reflexivity. Qed.
 
-Eval cbv in (execState (inv (2%Z)) (initStateFrom 3)).
+Eval cbv in (execState (inv (2%N)) (initStateFrom 3)).
 
 (* NAND gate example. Fist, let's define an overloaded NAND gate
    description. *)
@@ -74,9 +74,9 @@ Proof. reflexivity. Qed.
 
 (* Generate a circuit graph representation for the NAND gate using the
    netlist interpretatin. *)
-Eval cbv in (execState (nand2_gate (2%Z, 3%Z)) (initStateFrom 4)).
+Eval cbv in (execState (nand2_gate (2%N, 3%N)) (initStateFrom 4)).
 
-Definition nand2Top : state CavaState Z :=
+Definition nand2Top : state CavaState N :=
   setModuleName "nand2" ;;
   a <- inputBit "a" ;;
   b <- inputBit "b" ;;
@@ -142,7 +142,7 @@ Proof. reflexivity. Qed.
 
 (* An adder example. *)
 
-Definition adder4Top : state CavaState (Vector.t Z 5) :=
+Definition adder4Top : state CavaState (Vector.t N 5) :=
   setModuleName "adder4" ;;
   a <- inputVectorTo0 4 "a" ;;
   b <- inputVectorTo0 4 "b" ;;
@@ -157,7 +157,7 @@ Compute (execState nand2Top initState).
 
 Definition loopedNAND {m bit} `{Cava m bit}  := loopBit (second delayBit >=> nand2 >=> fork2).
 
-Definition loopedNANDTop : state CavaState Z :=
+Definition loopedNANDTop : state CavaState N :=
   setModuleName "loopedNAND" ;;
   a <- inputBit "a" ;;
   b <- loopedNAND a ;;
