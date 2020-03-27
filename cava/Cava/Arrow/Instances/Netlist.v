@@ -26,14 +26,14 @@ Section ArrowNetlist.
   Fixpoint PortsOfShape (s: Shape): Type :=
   match s with
   | ShapeUnit => Datatypes.unit
-  | ShapeOne => Z
+  | ShapeOne => N
   | ShapeProd t1 t2 => (PortsOfShape t1 * PortsOfShape t2)
   end.
 
-  Fixpoint FillShape (s: Shape) (i:Z) : (PortsOfShape s * Z) :=
-  match s in Shape return (PortsOfShape s * Z) with
+  Fixpoint FillShape (s: Shape) (i:N) : (PortsOfShape s * N) :=
+  match s in Shape return (PortsOfShape s * N) with
   | ShapeUnit => (tt, i)
-  | ShapeOne => (i, (i+1)%Z)
+  | ShapeOne => (i, (i+1)%N)
   | ShapeProd t1 t2 =>
     let (x,i') := FillShape t1 i in
     let (y,i'') := FillShape t2 i' in
@@ -44,7 +44,7 @@ Section ArrowNetlist.
 
   Instance NetlistCat : Category := {
     object := Shape;
-    morphism X Y := PortsOfShape X -> state (Netlist * Z) (PortsOfShape Y);
+    morphism X Y := PortsOfShape X -> state (Netlist * N) (PortsOfShape Y);
     id X x := ret x;
     compose X Y Z f g := g >=> f;
   }.
@@ -81,25 +81,25 @@ Section ArrowNetlist.
     bit := ShapeOne;
 
     fromBool b := match b with
-      | true => fun _ => ret 1%Z
-      | false => fun _ => ret 0%Z
+      | true => fun _ => ret 1%N
+      | false => fun _ => ret 0%N
       end;
 
     not_gate x :=
       '(nl, i) <- get ;;
-      put (Not x i :: nl, (i+1)%Z) ;;
+      put (Not x i :: nl, (i+1)%N) ;;
       ret i;
 
     and_gate '(x,y) :=
       '(nl, i) <- get ;;
-      put (And [x;y] i :: nl, (i+1)%Z) ;;
+      put (And [x;y] i :: nl, (i+1)%N) ;;
       ret i;
   }.
 
   (* The key here is that the dependent match needs to be over
     Shape and ports p1 p2, at the same time for Coq to recogonise their types
     in the respective branches *)
-  Fixpoint linkWith (link: Z -> Z -> Primitive) (s: Shape) (p1 p2: PortsOfShape s) : Netlist :=
+  Fixpoint linkWith (link: N -> N -> Primitive) (s: Shape) (p1 p2: PortsOfShape s) : Netlist :=
   match s in Shape, p1, p2 return Netlist with
   | ShapeUnit, _, _ => []
   | ShapeOne, _, _ => [link p1 p2]
@@ -107,36 +107,36 @@ Section ArrowNetlist.
   end.
 
   Instance NetlistLoop : ArrowLoop NetlistArr := {
-    (* 1. reserve (@FillShape Z _) items
+    (* 1. reserve (@FillShape N _) items
        2. Run f with reserved items
        3. link the items and add the netlist *)
-    loopr _ _ Z f x :=
+    loopr _ _ N f x :=
       (* 1 *)
       '(nl, i) <- get ;;
-      let '(z, i') := @FillShape Z i in
+      let '(n, i') := @FillShape N i in
       put (nl, i') ;;
 
       (* 2 *)
-      '(y,z') <- f (x,z) ;;
+      '(y,n') <- f (x,n) ;;
 
       (* 3 *)
-      let links := linkWith AssignBit Z z z' in
+      let links := linkWith AssignBit N n n' in
       '(nl, i) <- get ;;
       put (links ++ nl, i) ;;
 
       ret y;
 
-    loopl _ _ Z f x :=
+    loopl _ _ N f x :=
       (* 1 *)
       '(nl, i) <- get ;;
-      let '(z, i') := @FillShape Z i in
+      let '(n, i') := @FillShape N i in
       put (nl, i') ;;
 
       (* 2 *)
-      '(z', y) <- f (z, x) ;;
+      '(n', y) <- f (n, x) ;;
 
       (* 3 *)
-      let links := linkWith AssignBit Z z z' in
+      let links := linkWith AssignBit N n n' in
       '(nl, i) <- get ;;
       put (links ++ nl, i) ;;
 
@@ -160,7 +160,7 @@ Section ArrowNetlist.
     (f: X ~[NetlistCat]~> Y)
     (mkInputs: PortsOfShape X -> list PortDeclaration)
     (mkOutputs: PortsOfShape Y -> list PortDeclaration)
-    : (Netlist.Module * Z) :=
+    : (Netlist.Module * N) :=
       let (i, n) := @FillShape X 2 in
       let '(o, (nl, count)) := runState (f i) ([], n) in
       (mkModule name nl (mkInputs i) (mkOutputs o), count).

@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2019 The Project Oak Authors                                   *)
+(* Copyright 2020 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -38,35 +38,35 @@ Import ListNotations.
 
 Inductive Primitive :=
   (* SystemVerilog primitive gates. *)
-  | Not  : Z -> Z -> Primitive
-  | And  : list Z -> Z -> Primitive
-  | Nand : list Z -> Z -> Primitive
-  | Or   : list Z -> Z -> Primitive
-  | Nor  : list Z -> Z -> Primitive
-  | Xor  : list Z -> Z -> Primitive
-  | Xnor : list Z -> Z -> Primitive
-  | Buf  : Z -> Z -> Primitive
+  | Not  : N -> N -> Primitive
+  | And  : list N -> N -> Primitive
+  | Nand : list N -> N -> Primitive
+  | Or   : list N -> N -> Primitive
+  | Nor  : list N -> N -> Primitive
+  | Xor  : list N -> N -> Primitive
+  | Xnor : list N -> N -> Primitive
+  | Buf  : N -> N -> Primitive
   (* A Cava unit delay bit component. *)
-  | DelayBit : Z -> Z -> Primitive
+  | DelayBit : N -> N -> Primitive
   (* Assignment of bit wire *)
-  | AssignBit : Z -> Z -> Primitive
+  | AssignBit : N -> N -> Primitive
   (* Mapping to SystemVerilog vectors *)
-  | ToVec : forall n, Vector.t Z n -> Z -> Primitive (* Maps bitvec to SV vec *)
-  | FromVec : forall n, Z -> Vector.t Z n -> Primitive (* Maps SV vec to bitvec *)
+  | ToVec : forall n, Vector.t N n -> N -> Primitive (* Maps bitvec to SV vec *)
+  | FromVec : forall n, N -> Vector.t N n -> Primitive (* Maps SV vec to bitvec *)
   (* Arithmetic operations *)
-  | UnsignedAdd : Z -> Z -> Z -> Primitive
+  | UnsignedAdd : N -> N -> N -> Primitive
   (* Xilinx FPGA architecture specific gates. *)
-  | Xorcy : Z -> Z -> Z -> Primitive
-  | Muxcy : Z -> Z -> Z -> Z -> Primitive.
+  | Xorcy : N -> N -> N -> Primitive
+  | Muxcy : N -> N -> N -> N -> Primitive.
 
 (******************************************************************************)
 (* Data structures to represent circuit graph/netlist state                   *)
 (******************************************************************************)
 
 Inductive PortType :=
-  | BitPort : Z -> PortType
-  | VectorTo0Port : forall n, Vector.t Z n -> PortType
-  | VectorFrom0Port : forall n, Vector.t Z n  -> PortType.
+  | BitPort : N -> PortType
+  | VectorTo0Port : forall n, Vector.t N n -> PortType
+  | VectorFrom0Port : forall n, Vector.t N n  -> PortType.
 
 Record PortDeclaration : Type := mkPort {
   port_name : string;
@@ -83,8 +83,8 @@ Record Module : Type := mkModule {
 }.
 
 Record CavaState : Type := mkCavaState {
-  netNumber : Z;
-  vecNumber : Z;
+  netNumber : N;
+  vecNumber : N;
   isSequential : bool;
   module : Module;
 }.
@@ -97,7 +97,7 @@ Record CavaState : Type := mkCavaState {
    constant signal 1. We start numbering from 2 for the user nets.
 *)
 
-Definition initStateFrom (startAt : Z) : CavaState
+Definition initStateFrom (startAt : N) : CavaState
   := mkCavaState startAt 0 false (mkModule "" [] [] []).
 
 Definition initState : CavaState
