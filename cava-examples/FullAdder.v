@@ -27,7 +27,7 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
-Require Import Cava.BitVector.
+Require Import Cava.BitArithmetic.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.

@@ -24,6 +24,7 @@ From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import ZArith.
 From Coq Require Import Lists.List.
+From Coq Require Import Vector.
 Import ListNotations.
 
 (******************************************************************************)
@@ -49,11 +50,11 @@ Inductive Primitive :=
   | DelayBit : Z -> Z -> Primitive
   (* Assignment of bit wire *)
   | AssignBit : Z -> Z -> Primitive
-  (* Conversion to/from vectors *)
-  | ToVec : list Z -> Z -> Primitive
-  | FromVec : Z -> list Z -> Primitive
+  (* Mapping to SystemVerilog vectors *)
+  | ToVec : forall n, Vector.t Z n -> Z -> Primitive (* Maps bitvec to SV vec *)
+  | FromVec : forall n, Z -> Vector.t Z n -> Primitive (* Maps SV vec to bitvec *)
   (* Arithmetic operations *)
-  | UnsignedAdd : Z -> Z -> Z -> Primitive (* Z are names of vectors *)
+  | UnsignedAdd : Z -> Z -> Z -> Primitive
   (* Xilinx FPGA architecture specific gates. *)
   | Xorcy : Z -> Z -> Z -> Primitive
   | Muxcy : Z -> Z -> Z -> Z -> Primitive.
@@ -64,8 +65,8 @@ Inductive Primitive :=
 
 Inductive PortType :=
   | BitPort : Z -> PortType
-  | VectorTo0Port : list Z -> PortType
-  | VectorFrom0Port : list Z -> PortType.
+  | VectorTo0Port : forall n, Vector.t Z n -> PortType
+  | VectorFrom0Port : forall n, Vector.t Z n  -> PortType.
 
 Record PortDeclaration : Type := mkPort {
   port_name : string;

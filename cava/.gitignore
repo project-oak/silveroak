@@ -31,8 +31,9 @@ Monad.hs
 Netlist.hs
 Netlist0.hs
 State.hs
-BitVector.hs
 PeanoNat.hs
+BitArithmetic.hs
+Bvector.hs
 ExamplesSV
 nand2.sv
 nand2.vcd
@@ -62,3 +63,10 @@ loopedNAND.vvp
 loopedNandArrow.sv
 loopedNandArrow.vcd
 loopedNandArrow.vvp
+Fin.hs
+Plus.hs
+Vector.hs
+VectorDef.hs
+adder4.sv
+adder4.vcd
+adder4.vvp

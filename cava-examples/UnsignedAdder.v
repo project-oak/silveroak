@@ -17,13 +17,14 @@
 From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
+From Coq Require Import Vector.
 From Coq Require Import ZArith.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
-Require Import Cava.BitVector.
+Require Import Cava.BitArithmetic.
 Require Import FullAdder.
 
 Local Open Scope list_scope.
@@ -82,11 +83,13 @@ Proof. reflexivity. Qed.
 
 Definition adder8Top :=
   setModuleName "adder8" ;;
-  a <- inputVectorTo0 8 "a" ;;
-  b <- inputVectorTo0 8 "b" ;;
+  av <- inputVectorTo0 8 "a" ;;
+  bv <- inputVectorTo0 8 "b" ;;
+  let a := Vector.to_list av in
+  let b := Vector.to_list bv in
   cin <- inputBit "cin" ;;
   '(sum, cout) <- unsignedAdder cin (combine a b) ;;
-  outputVectorTo0 sum "sum" ;;
+  outputVectorTo0 (length sum) (Vector.of_list sum) "sum" ;;
   outputBit "cout" cout.
 
 Definition adder8Netlist := makeNetlist adder8Top.

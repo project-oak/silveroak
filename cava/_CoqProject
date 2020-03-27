@@ -7,7 +7,7 @@ Cava/Arrow/Instances/Coq.v
 Cava/Arrow/Instances/Stream.v
 Cava/Arrow/Instances/Netlist.v
 
-Cava/BitVector.v
+Cava/BitArithmetic.v
 Cava/Netlist.v
 Cava/Cava.v
 Cava/Combinators.v

@@ -24,6 +24,8 @@ From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Numbers.BinNums.
 From Coq Require Import ZArith.
+From Coq Require Import Vector.
+From Coq Require Import Bool.Bvector.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
@@ -34,7 +36,7 @@ Require Export ExtLib.Data.Monads.StateMonad.
 Export MonadNotation.
 
 Require Import Cava.Netlist.
-Require Import BitVector.
+Require Import Cava.BitArithmetic.
 
 Generalizable All Variables.
 
@@ -64,7 +66,7 @@ Class Cava m bit `{Monad m} := {
   xorcy : bit * bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
   muxcy : bit -> bit -> bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
   (* Synthesizable arithmetic operations. *)
-  unsignedAdd : list bit -> list bit -> m (list bit);
+  unsignedAdd : forall {a b}, Vector.t bit a -> Vector.t bit b -> m (Vector.t bit (max a b + 1));
 }.
 
 (******************************************************************************)
@@ -157,17 +159,17 @@ Definition muxcyNet (s : Z)  (di : Z) (ci : Z) : state CavaState Z :=
   | mkCavaState o v isSeq (mkModule name insts inputs outputs)
       => put (mkCavaState (o+1) v isSeq (mkModule name (cons (Muxcy s di ci o) insts) inputs outputs )) ;;
          ret o
-  end.
+  end.  
 
-Definition unsignedAddNet (a : list Z) (b : list Z) : state CavaState (list Z) :=
+Definition unsignedAddNet {m n : nat} (av : Vector.t Z m) (bv : Vector.t Z n) : state CavaState (Vector.t Z (max m n + 1)) :=
   cs <- get ;;
   match cs with
   | mkCavaState o v isSeq (mkModule name insts inputs outputs)
-      => let l := max (length a) (length b) + 1 in
-         let outs := map Z.of_nat (seq (Z.to_nat o) l) in
-         let adder := [ToVec a v; ToVec b (v + 1); UnsignedAdd v (v + 1) (v + 2); FromVec (v + 2) outs] in
-         put (mkCavaState (o + (Z.of_nat l)) (v + 3) isSeq (mkModule name (adder ++ insts) inputs outputs )) ;;
-         ret outs
+      => let l := max m n + 1 in
+         let outv := Vector.map Z.of_nat (vec_seq (Z.to_nat o) (max m n + 1)) in
+         let adder := [ToVec m av v; ToVec n bv (v + 1); UnsignedAdd v (v + 1) (v + 2); FromVec l (v + 2) outv] in
+         put (mkCavaState (o + (Z.of_nat l)) v isSeq (mkModule name (adder ++ insts) inputs outputs )) ;;
+         ret outv
   end.
 
 Definition delayBitNet (i : Z) : state CavaState Z :=
@@ -212,7 +214,7 @@ Instance CavaNet : Cava (state CavaState) Z :=
     buf_gate := bufNet;
     xorcy := xorcyNet;
     muxcy := muxcyNet;
-    unsignedAdd := unsignedAddNet;
+    unsignedAdd m n := @unsignedAddNet m n;
 }.
 
 (******************************************************************************)
@@ -226,13 +228,13 @@ Definition setModuleName (name : string) : state CavaState unit :=
      => put (mkCavaState o v isSeq (mkModule name insts inputs outputs))
   end.
 
-Definition inputVectorTo0 (size : Z) (name : string) : state CavaState (list Z) :=
+Definition inputVectorTo0 (size : nat) (name : string) : state CavaState (Vector.t Z size) :=
   cs <- get ;;
   match cs with
   | mkCavaState o v isSeq (mkModule n insts inputs outputs)
-     => let netNumbers := map Z.of_nat (seq (Z.abs_nat o) (Z.abs_nat size)) in
-        let newPort := mkPort name (VectorTo0Port netNumbers) in
-        put (mkCavaState (o + size) v isSeq (mkModule n insts (cons newPort inputs) outputs)) ;;
+     => let netNumbers := Vector.map Z.of_nat (vec_seq (Z.abs_nat o) size) in
+        let newPort := mkPort name (VectorTo0Port size netNumbers) in
+        put (mkCavaState (o + (Z.of_nat size)) v isSeq (mkModule n insts (cons newPort inputs) outputs)) ;;
         ret netNumbers
   end.
 
@@ -254,11 +256,11 @@ Definition outputBit (name : string) (i : Z) : state CavaState Z :=
         ret i
   end.
 
-Definition outputVectorTo0 (v : list Z) (name : string) : state CavaState (list Z) :=
+Definition outputVectorTo0 (size : nat) (v : Vector.t Z size) (name : string) : state CavaState (Vector.t Z size) :=
   cs <- get ;;
   match cs with
   | mkCavaState o vecs isSeq (mkModule n insts inputs outputs)
-     => let newPort := mkPort name (VectorTo0Port v) in
+     => let newPort := mkPort name (VectorTo0Port size v) in
         put (mkCavaState o vecs isSeq (mkModule n insts inputs (cons newPort outputs))) ;;
         ret v
   end.
@@ -297,11 +299,11 @@ Definition muxcyBool (s : bool) (di : bool) (ci : bool) : ident bool :=
        | true => ci
        end).
 
-Definition unsignedAddBool (a : list bool) (b : list bool) : ident (list bool) :=
-  let av := bits_to_nat a in
-  let bv := bits_to_nat b in
-  let vc := av + bv in
-  ret (nat_to_bits (max (length a) (length b) + 1) vc).
+Definition unsignedAddBool {m n : nat} (av : Bvector m) (bv : Bvector n) : ident (Bvector (max m n + 1)) :=
+  let a := bitvec_to_nat av in
+  let b := bitvec_to_nat bv in
+  let c := a + b in
+  ret (nat_to_bitvec (max m n + 1) c).
 
 Definition bufBool (i : bool) : ident bool :=
   ret i.
@@ -329,7 +331,7 @@ Instance CavaBool : Cava ident bool :=
     xorcy := xorcyBool;
     xnor2 := xnorBool;
     muxcy := muxcyBool;
-    unsignedAdd := unsignedAddBool;
+    unsignedAdd m n := @unsignedAddBool m n;
     buf_gate := bufBool;
 }.
 
@@ -377,8 +379,13 @@ Definition muxcyBoolList (s : list bool) (di : list bool) (ci : list bool) : ide
        | true => ci
      end) s_dici).
 
-Definition unsignedAddBoolList (a : list (list bool)) (b : list (list bool)) : ident (list (list bool)) :=
-  ret (map (fun (ab : list bool * list bool) => unIdent (unsignedAddBool (fst ab) (snd ab))) (combine a b)).
+(* A dummy definition for unsignedAdd because I expect us to totally overhaul how
+   we model sequential circuits.
+   TODO(satnam): Replace with actual definition when sequential circuit semantics are clearer.
+*)
+Definition unsignedAddBoolList {m n : nat} (a : Vector.t (list bool) m) (b : Vector.t (list bool) n) :
+                                           ident (Vector.t (list bool) (max m n + 1)) :=
+  ret (replicate_vec (max m n + 1) []).
 
 Definition bufBoolList (i : list bool) : ident (list bool) :=
   ret i.
@@ -404,7 +411,7 @@ Instance CavaBoolList : Cava ident (list bool) :=
     xorcy := xorcyBoolList;
     xnor2 := xnorBoolList;
     muxcy := muxcyBoolList;
-    unsignedAdd := unsignedAddBoolList;
+    unsignedAdd m n := @unsignedAddBoolList m n;
     buf_gate := bufBoolList;
 }.
 

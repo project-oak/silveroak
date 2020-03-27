@@ -17,6 +17,7 @@ module Cava2SystemVerilog
 where
 
 import qualified Netlist
+import qualified Vector
 
 writeSystemVerilog :: Netlist.CavaState -> IO ()
 writeSystemVerilog cavastate
@@ -59,20 +60,20 @@ inputPorts = map inputPort
 
 inputPort :: Netlist.PortDeclaration -> String
 inputPort (Netlist.Coq_mkPort name (Netlist.BitPort _)) = "  input logic " ++ name
-inputPort (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v))
-  = "  input logic[" ++ show ((length v) - 1) ++ ":0] " ++ name
-inputPort (Netlist.Coq_mkPort name (Netlist.VectorFrom0Port v))
-  = "  input logic[0:" ++ show (length v - 1) ++ "] " ++ name
+inputPort (Netlist.Coq_mkPort name (Netlist.VectorTo0Port s v))
+  = "  input logic[" ++ show (s - 1) ++ ":0] " ++ name
+inputPort (Netlist.Coq_mkPort name (Netlist.VectorFrom0Port s v))
+  = "  input logic[0:" ++ show (s - 1) ++ "] " ++ name
 
 outputPorts :: [Netlist.PortDeclaration] -> [String]
 outputPorts = map outputPort
 
 outputPort :: Netlist.PortDeclaration -> String
 outputPort (Netlist.Coq_mkPort name (Netlist.BitPort _)) = "  output logic " ++ name
-outputPort (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v))
-  = "  output logic[" ++ show ((length v) - 1) ++ ":0] " ++ name
-outputPort (Netlist.Coq_mkPort name (Netlist.VectorFrom0Port v))
-  = "  output logic[0:" ++ show (length v - 1) ++ "] " ++ name
+outputPort (Netlist.Coq_mkPort name (Netlist.VectorTo0Port s v))
+  = "  output logic[" ++ show (s - 1) ++ ":0] " ++ name
+outputPort (Netlist.Coq_mkPort name (Netlist.VectorFrom0Port s v))
+  = "  output logic[0:" ++ show (s - 1) ++ "] " ++ name
 
 insertCommas :: [String] -> [String]
 insertCommas [] = []
@@ -81,11 +82,11 @@ insertCommas (x:y:xs) = (x ++ ",") : insertCommas (y:xs)
 
 declareVectors :: [Netlist.Primitive] -> [String]
 declareVectors [] = []
-declareVectors ((Netlist.ToVec l v):insts)
-  = ("  logic[" ++ show (length l - 1) ++ ":0] v" ++ show v ++ ";") :
+declareVectors ((Netlist.ToVec s l v):insts)
+  = ("  logic[" ++ show (s - 1) ++ ":0] v" ++ show v ++ ";") :
     declareVectors insts
-declareVectors ((Netlist.FromVec v l):insts)
-  = ("  logic[" ++ show (length l - 1) ++ ":0] v" ++ show v ++ ";") :
+declareVectors ((Netlist.FromVec s v l):insts)
+  = ("  logic[" ++ show (s - 1) ++ ":0] v" ++ show v ++ ";") :
     declareVectors insts
 declareVectors (_:insts) = declareVectors insts
 
@@ -135,12 +136,12 @@ instanceNumber inst
       _ -> error "Request for bad instance number"
 
 generateInstance :: Netlist.Primitive -> String
-generateInstance (Netlist.ToVec l v)
+generateInstance (Netlist.ToVec s l v)
   = unlines ["  assign v" ++ show v ++ "[" ++ show i ++ "] = net[" ++ show li ++ "];"
-               | (i, li) <- zip [0..] l]
-generateInstance (Netlist.FromVec v l)
+               | (i, li) <- zip [0..] (Vector.to_list s l)]
+generateInstance (Netlist.FromVec s v l)
   = unlines ["  assign net[" ++ show li ++ "] = v" ++ show v ++ "[" ++ show i ++ "];"
-               | (i, li) <- zip [0..] l]
+               | (i, li) <- zip [0..] (Vector.to_list s l)]
 generateInstance (Netlist.DelayBit i o)
    = "  always_ff @(posedge clk) net[" ++ show o ++ "] <= rst ? 1'b0 : net["
         ++ show i ++ "];";
@@ -164,13 +165,13 @@ showArg n = "net[" ++ show n ++ "]"
 wireInput :: Netlist.PortDeclaration -> [String]
 wireInput (Netlist.Coq_mkPort name (Netlist.BitPort n))
   = ["  assign net[" ++ show n ++ "] = " ++ name ++ ";"]
-wireInput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v))
+wireInput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port s v))
   = ["  assign net[" ++ show n ++ "] = " ++ name ++ "[" ++ show i ++ "];" |
-     (n, i) <- zip v [0..length v - 1]]
+     (n, i) <- zip (Vector.to_list s v) [0..s - 1]]
 
 wireOutput :: Netlist.PortDeclaration -> [String]
 wireOutput (Netlist.Coq_mkPort name (Netlist.BitPort n))
   = ["  assign " ++ name ++ " = net[" ++ show n ++ "] ;"]
-wireOutput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port v))
+wireOutput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port s v))
   = ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show n ++ "];" |
-     (n, i) <- zip v [0..length v - 1]]
+     (n, i) <- zip (Vector.to_list s v) [0.. s - 1]]
