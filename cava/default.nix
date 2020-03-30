@@ -8,7 +8,7 @@ buildEnv {
   paths = [
     coq_8_11
     coqPackages_8_11.coq-ext-lib
-    (haskell.packages.ghc881.ghcWithPackages (pkgs: with pkgs; [Cabal]))
+    (haskell.packages.ghc865.ghcWithPackages (pkgs: with pkgs; [Cabal]))
     verilog
     gnumake
     stdenv
