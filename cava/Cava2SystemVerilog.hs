@@ -16,6 +16,8 @@
 module Cava2SystemVerilog
 where
 
+import Control.Monad.State.Lazy
+
 import qualified BinNums
 import qualified Netlist
 import qualified Vector
@@ -32,7 +34,7 @@ fromN bn
       BinNums.Npos n -> n
 
 cava2SystemVerilog :: Netlist.CavaState -> [String]
-cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vecs isSeq (Netlist.Coq_mkModule moduleName instances
+cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber isSeq (Netlist.Coq_mkModule moduleName instances
                     inputs outputs))
   = ["module " ++ moduleName ++ "("] ++
 
@@ -42,7 +44,7 @@ cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vecs isSeq (Netlist.Coq_mk
      "  timeunit 1ns; timeprecision 1ns;",
      ""] ++
     ["  logic[" ++ show (fromN netNumber-1) ++ ":0] net;"] ++
-    declareVectors instances ++
+    declareVectors vDefs ++
     [""] ++
     ["  // Constant nets",
      "  assign net[0] = 1'b0;",
@@ -51,8 +53,10 @@ cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vecs isSeq (Netlist.Coq_mk
     concat (map wireInput inputs) ++
     ["  // Wire up outputs."] ++
     concat (map wireOutput outputs) ++
+    ["  // Populate vectors."] ++
+    populateVectors vDefs ++
     [""] ++
-    map generateInstance instances ++
+    instText ++
     [""] ++
     ["endmodule"]
     where
@@ -61,6 +65,8 @@ cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vecs isSeq (Netlist.Coq_mk
                     "  input logic rst"]
                  else
                    []
+    (instText, NetlistGenerationState v vDefs)
+      = runState (computeVectors instances) (NetlistGenerationState 0 [])
 
 inputPorts :: [Netlist.PortDeclaration] -> [String]
 inputPorts = map inputPort
@@ -87,15 +93,72 @@ insertCommas [] = []
 insertCommas [x] = [x]
 insertCommas (x:y:xs) = (x ++ ",") : insertCommas (y:xs)
 
-declareVectors :: [Netlist.Primitive] -> [String]
-declareVectors [] = []
-declareVectors ((Netlist.ToVec s l v):insts)
-  = ("  logic[" ++ show (s - 1) ++ ":0] v" ++ show (fromN v) ++ ";") :
-    declareVectors insts
-declareVectors ((Netlist.FromVec s v l):insts)
-  = ("  logic[" ++ show (s - 1) ++ ":0] v" ++ show (fromN v) ++ ";") :
-    declareVectors insts
-declareVectors (_:insts) = declareVectors insts
+data VectorDirection = HighToLow | LowToHigh
+                       deriving (Eq, Show)
+
+data VectorAssignment = AssignTo | AssignFrom                      
+
+data VectorDeclaration
+  = VectorDeclaration VectorAssignment Int VectorDirection
+                      (Vector.Coq_t BinNums.N)
+
+data NetlistGenerationState
+  = NetlistGenerationState Int [VectorDeclaration] 
+
+computeVectors :: [Netlist.Primitive] -> State NetlistGenerationState
+                                         [String]
+
+computeVectors instances
+  = do instText <- mapM computeVectors' instances
+       return instText
+
+computeVectors' :: Netlist.Primitive -> State NetlistGenerationState
+                                        String
+computeVectors' (Netlist.UnsignedAdd m n a b s)
+  = do NetlistGenerationState v vDecs <- get
+       let vA = VectorDeclaration AssignTo   v       HighToLow a
+           vB = VectorDeclaration AssignTo   (v + 1) HighToLow b
+           vC = VectorDeclaration AssignFrom (v + 2) HighToLow s
+       put (NetlistGenerationState (v + 3) (vA:vB:vC:vDecs))
+       return ("  assign v" ++ show (v + 2) ++ " = v" ++ show v ++
+               " + v" ++ show (v + 1) ++ ";")                                       
+computeVectors' otherInst = return (generateInstance otherInst)
+
+declareVectors :: [VectorDeclaration] -> [String]
+declareVectors = map declareVector
+
+vecLength :: Vector.Coq_t a -> Integer
+vecLength v
+  = case v of
+      Vector.Coq_nil -> 0
+      Vector.Coq_cons _ n _ -> n
+
+
+vecToList :: Vector.Coq_t a -> [a]
+vecToList v = Vector.to_list (vecLength v) v
+
+declareVector :: VectorDeclaration -> String
+declareVector (VectorDeclaration _ i dir bvec)
+  = "  logic[" ++ range ++ "] v" ++ show i ++ ";"
+    where
+    s = length (vecToList bvec)
+    range = case dir of
+              HighToLow -> show (s - 1) ++ ":0"
+              LowToHigh -> "0:" ++ show (s - 1)
+
+
+populateVectors :: [VectorDeclaration] -> [String]
+populateVectors = concat . map populateVector
+
+populateVector :: VectorDeclaration -> [String]
+populateVector (VectorDeclaration AssignTo v _ nets)
+  = ["  assign v" ++ show v ++ "[" ++ show i ++
+             "] = net[" ++ show (fromN li) ++ "];"
+              | (i, li) <- zip [0..] (vecToList nets)]
+populateVector (VectorDeclaration AssignFrom v _ nets)
+  = ["  assign net[" ++ show (fromN li) ++ "] = v" ++ show v ++
+             "[" ++ show i ++ "];"
+             | (i, li) <- zip [0..] (vecToList nets)]
 
 nameOfInstance :: Netlist.Primitive -> String
 nameOfInstance inst
@@ -143,23 +206,14 @@ instanceNumber inst
       _ -> error "Request for bad instance number"
 
 generateInstance :: Netlist.Primitive -> String
-generateInstance (Netlist.ToVec s l v)
-  = unlines ["  assign v" ++ show (fromN v) ++ "[" ++ show i ++
-             "] = net[" ++ show (fromN li) ++ "];"
-              | (i, li) <- zip [0..] (Vector.to_list s l)]
-generateInstance (Netlist.FromVec s v l)
-  = unlines ["  assign net[" ++ show (fromN li) ++ "] = v" ++ show (fromN v) ++
-             "[" ++ show i ++ "];"
-             | (i, li) <- zip [0..] (Vector.to_list s l)]
 generateInstance (Netlist.DelayBit i o)
    = "  always_ff @(posedge clk) net[" ++ show (fromN o) ++
      "] <= rst ? 1'b0 : net["
         ++ show (fromN i) ++ "];";
 generateInstance (Netlist.AssignBit a b)
    = "  assign net[" ++ show (fromN a) ++ "] = net[" ++ show (fromN b) ++ "];"
-generateInstance (Netlist.UnsignedAdd a b s)
-   = "  assign v" ++ show (fromN s) ++ " = v" ++ show (fromN a) ++ " + v" ++
-     show (fromN b) ++ ";"
+generateInstance (Netlist.UnsignedAdd m n a b s)
+   = "" -- Generated instead during vector generation
 generateInstance inst
   = "  " ++ instName ++ " inst" ++ show (fromN numb) ++ " " ++
     showArgs args ++ ";"

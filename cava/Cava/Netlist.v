@@ -50,11 +50,9 @@ Inductive Primitive :=
   | DelayBit : N -> N -> Primitive
   (* Assignment of bit wire *)
   | AssignBit : N -> N -> Primitive
-  (* Mapping to SystemVerilog vectors *)
-  | ToVec : forall n, Vector.t N n -> N -> Primitive (* Maps bitvec to SV vec *)
-  | FromVec : forall n, N -> Vector.t N n -> Primitive (* Maps SV vec to bitvec *)
   (* Arithmetic operations *)
-  | UnsignedAdd : N -> N -> N -> Primitive
+  | UnsignedAdd : forall m n, Vector.t N m -> Vector.t N n ->
+                              Vector.t N (max m n + 1) -> Primitive
   (* Xilinx FPGA architecture specific gates. *)
   | Xorcy : N -> N -> N -> Primitive
   | Muxcy : N -> N -> N -> N -> Primitive.
@@ -84,7 +82,6 @@ Record Module : Type := mkModule {
 
 Record CavaState : Type := mkCavaState {
   netNumber : N;
-  vecNumber : N;
   isSequential : bool;
   module : Module;
 }.
@@ -98,7 +95,7 @@ Record CavaState : Type := mkCavaState {
 *)
 
 Definition initStateFrom (startAt : N) : CavaState
-  := mkCavaState startAt 0 false (mkModule "" [] [] []).
+  := mkCavaState startAt false (mkModule "" [] [] []).
 
 Definition initState : CavaState
   := initStateFrom 2.
