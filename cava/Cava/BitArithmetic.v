@@ -88,6 +88,7 @@ Proof. reflexivity. Qed.
 
 Example n2b_2_3 : nat_to_bits 2 3 = [true; true].
 Proof. reflexivity. Qed.
+
     
 (******************************************************************************)
 (* Functions useful for Vector operations                                     *)
@@ -126,6 +127,9 @@ Proof. reflexivity. Qed.
 
 Example bv3_2_exrev : nat_to_bitvec 3 2 = bv3_2.
 Proof. reflexivity. Qed.
+
+Lemma bvnat: forall n v, bitvec_to_nat (nat_to_bitvec n v) = v.
+Admitted. (* For now. *)
 
 (* Vector version of list seq *)
 Fixpoint vec_seq (a b : nat) : Vector.t nat b :=
