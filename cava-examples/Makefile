@@ -35,6 +35,10 @@ ExamplesSV:	ExamplesSV.hs
 
 nand2.sv:	compile ExamplesSV
 		./ExamplesSV
+		verilator --lint-only verilator.vlt nand2.sv
+		verilator --lint-only verilator.vlt fulladder.sv
+		verilator --lint-only verilator.vlt pipelinedNAND.sv
+		verilator --lint-only verilator.vlt adder8_3in.sv
 
 nand2.vcd:	nand2.sv nand2_tb.sv
 		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv
@@ -53,6 +57,12 @@ adder8.vcd:	adder8.sv adder8_tb.sv
 		xvlog -sv adder8.sv adder8_tb.sv
 		xelab --debug typical -L unisims_ver work.adder_test -s adder8_sim
 		xsim --R adder8_sim
+
+adder8_3in.sv:	nand2.sv
+
+adder8_3in.vcd:	adder8_3in.sv adder8_3in_tb.sv
+		iverilog -g2012 -o adder8_3in.vvp adder8_3in.sv adder8_3in_tb.sv
+		./adder8_3in.vvp
 
 pipelinedNAND.sv:	nand2.sv
 

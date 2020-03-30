@@ -5,4 +5,5 @@ FullAdder.v
 FullAdderNat.v
 UnsignedAdder.v
 UnsignedAdderNat.v
+AdderTree.v
 ExamplesExtraction.v

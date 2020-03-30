@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2019 The Project Oak Authors                                   *)
+(* Copyright 2020 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -17,6 +17,7 @@
 Require Import NandGate.
 Require Import FullAdder.
 Require Import UnsignedAdder.
+Require Import AdderTree.
 From Coq Require Import Extraction.
 From Coq Require Import extraction.ExtrHaskellZInteger.
 From Coq Require Import extraction.ExtrHaskellString.
@@ -28,3 +29,4 @@ Extraction Language Haskell.
 Extraction Library NandGate.
 Extraction Library FullAdder.
 Extraction Library UnsignedAdder.
+Extraction Library AdderTree.
