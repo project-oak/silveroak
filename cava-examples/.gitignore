@@ -18,3 +18,6 @@ Nat.hs
 PeanoNat.hs
 Specif.hs
 fulladder.sv
+AdderTree.hs
+adder8_3in.sv
+adder8_3in.vcd
