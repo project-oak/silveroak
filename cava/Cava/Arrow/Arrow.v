@@ -1,6 +1,7 @@
-Require Import Coq.Bool.Bool.
+From Coq Require Import Bool.Bvector.
+From Coq Require Import Bool.Bool.
 
-Require Import Cava.Netlist.
+From Cava Require Import Netlist.
 
 Reserved Infix "~>" (at level 90, right associativity).
 Reserved Infix "**" (at level 40, left associativity).
@@ -46,16 +47,16 @@ Class Arrow := {
   product : object -> object -> object
     where "x ** y" := (product x y);
 
-  copy {x} : x ~> (x**x);
+  copy {x} : x ~> x**x;
   drop {x} : x ~> unit;
-  swap {x y} : (x**y) ~> (y**x);
+  swap {x y} : x**y ~> y**x;
 
   fork {x y z} (f : x ~> y) (g : x ~> z) : x ~> y ** z;
   exl  {x y} : x ** y ~> x;
   exr  {x y} : x ** y ~> y;
 
-  uncancell {x} : x ~> (unit**x);
-  uncancelr {x} : x ~> (x**unit);
+  uncancell {x} : x ~> unit**x;
+  uncancelr {x} : x ~> x**unit;
   assoc {x y z} : ((x**y)**z) ~> (x**(y**z));
   unassoc {x y z} : (x**(y**z)) ~> ((x**y)**z);
 }.
@@ -77,8 +78,8 @@ Definition second {_: Arrow} {x y z} (f : x ~> y) : z ** x ~> z ** y :=
 
 (* Loop as a different type class to allow implementating a subset of features *)
 Class ArrowLoop (A: Arrow) := {
-  loopr {x y z} : ((x**z) ~> (y**z)) -> (x ~> y);
-  loopl {x y z} : ((z**x) ~> (z**y)) -> (x ~> y);
+  loopr {x y z} : (x**z ~> y**z) -> (x ~> y);
+  loopl {x y z} : (z**x ~> z**y) -> (x ~> y);
 }.
 
 Print Arrow.
@@ -87,21 +88,32 @@ Print Arrow.
 Class Cava  := {
   cava_arr :> Arrow;
 
-  (* representable : object -> Type;
-  constant {x} : representable x -> (unit ~> x); *)
-
   bit : object;
-  fromBool : bool -> (unit ~> bit);
+  bitvec : nat -> object;
 
-  not_gate : bit ~> bit;
-  and_gate : (bit ** bit) ~> bit;
+  constant : bool -> (unit ~> bit);
+  constant_vec (n:nat) : Bvector n -> (unit ~> bitvec n);
+
+  not_gate:  bit        ~> bit;
+  and_gate:  bit ** bit ~> bit;
+  nand_gate: bit ** bit ~> bit;
+  or_gate:   bit ** bit ~> bit;
+  nor_gate:  bit ** bit ~> bit;
+  xor_gate:  bit ** bit ~> bit;
+  xnor_gate: bit ** bit ~> bit;
+  buf_gate:  bit        ~> bit;
+
+  xorcy:     bit ** bit ~> bit;
+  muxcy:     bit ** bit ** bit ~> bit;
+
+  unsigned_add a b: bitvec a ** bitvec b ~> bitvec (max a b + 1);
 }.
 
 Definition cava_cat (_: Cava): Category := _.
 Definition cava_obj (cava: Cava): Type := @object (@cava_cat cava).
 
-Definition high {_: Cava}: unit ~> bit := fromBool true.
-Definition low {_: Cava}: unit ~> bit := fromBool false.
+Definition high {_: Cava}: unit ~> bit := constant true.
+Definition low {_: Cava}: unit ~> bit := constant false.
 
 (* Delay as a different type class to allow implementing subset of primitives *)
 Class CavaDelay := {
@@ -110,44 +122,3 @@ Class CavaDelay := {
 }.
 
 Definition cava_delay_arr (_: CavaDelay): Arrow := _.
-
-(* Arrow as function evaluation, no delay elements or loops *)
-Section CoqEval.
-  Instance CoqCat : Category := {
-    morphism X Y := X -> Y;
-    compose _ _ _ f g x := f (g x);
-    id X x := x;
-  }.
-
-  Instance CoqArr : Arrow := {
-    unit := Datatypes.unit : Type;
-    product := prod;
-
-    fork _ _ _ f g x := (f x, g x);
-    exl X Y := fst;
-    exr X Y := snd;
-
-    drop _ x := tt;
-    copy _ x := pair x x;
-
-    swap _ _ x := (snd x, fst x);
-
-    uncancell _ x := (tt, x);
-    uncancelr _ x := (x, tt);
-
-    assoc _ _ _ '((x,y),z) := (x,(y,z));
-    unassoc _ _ _ '(x,(y,z)) := ((x,y),z);
-  }.
-
-  Instance CoqCava : Cava := {
-    bit := bool;
-
-    fromBool b _ := b;
-
-    not_gate b := negb b;
-    and_gate '(x,y) := andb x y;
-  }.
-
-  Eval cbv in not_gate true.
-  Eval cbv in not_gate false.
-End CoqEval.

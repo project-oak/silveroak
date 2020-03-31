@@ -1,17 +1,20 @@
-Require Import Coq.Program.Tactics.
-Require Import Coq.Bool.Bool.
-Require Import Coq.Lists.List.
-Require Import Coq.Strings.String.
+From Coq Require Import Program.Tactics.
+From Coq Require Import Lists.List.
+From Coq Require Import Strings.String.
+From Coq Require Import Bool.Bool.
+From Coq Require Import Bool.Bvector.
 
 Import ListNotations.
 
 From Coq Require Import ZArith.
 
+Require Import Cava.BitArithmetic.
 Require Import Cava.Arrow.Arrow.
 
 (* Arrow as function evaluation, no delay elements or loops *)
 Section CoqEval.
   Instance CoqCat : Category := {
+    object := Type;
     morphism X Y := X -> Y;
     compose _ _ _ f g x := f (g x);
     id X x := x;
@@ -39,13 +42,32 @@ Section CoqEval.
 
   Instance CoqCava : Cava := {
     bit := bool;
+    bitvec n := Bvector n;
 
-    fromBool b _ := b;
+    constant b _ := b;
+    constant_vec n v _ := v;
 
     not_gate b := negb b;
     and_gate '(x,y) := andb x y;
+    nand_gate '(x,y) := negb (andb x y);
+    or_gate '(x,y) := orb x y;
+    nor_gate '(x,y) := negb (orb x y);
+    xor_gate '(x,y) := xorb x y;
+    xnor_gate '(x,y) := negb (xorb x y);
+    buf_gate x := x;
+
+    xorcy '(x,y) := xorb x y;
+    muxcy '(x,y,z) := if x then y else z;
+
+    unsigned_add m n '(av, bv) :=
+      let a := bitvec_to_nat av in
+      let b := bitvec_to_nat bv in
+      let c := a + b in
+      nat_to_bitvec (max m n + 1) c;
   }.
 
-  Eval cbv in not_gate true.
-  Eval cbv in not_gate false.
+  Example not_true: not_gate true = false.
+  Proof. reflexivity. Qed.
+  Example not_false: not_gate false = true.
+  Proof. reflexivity. Qed.
 End CoqEval.
