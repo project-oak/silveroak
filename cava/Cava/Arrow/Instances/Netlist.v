@@ -1,58 +1,67 @@
-Require Import Coq.Program.Tactics.
-Require Import Coq.Bool.Bool.
-Require Import Coq.Lists.List.
-Require Import Coq.Strings.String.
+From Coq Require Import Program.Tactics.
+From Coq Require Import Bool.Bool.
+From Coq Require Import Bool.Bvector.
+From Coq Require Import Vector.
+From Coq Require Import Lists.List.
+From Coq Require Import Strings.String.
+From Coq Require Import ZArith.
 
 Import ListNotations.
 
-From Coq Require Import ZArith.
+From ExtLib Require Import Structures.Monads.
+From ExtLib Require Import Structures.MonadFix.
+From ExtLib Require Export Data.Monads.IdentityMonad.
+From ExtLib Require Export Data.Monads.StateMonad.
 
-Require Import ExtLib.Structures.Monads.
-Require Import ExtLib.Structures.MonadFix.
-Require Export ExtLib.Data.Monads.IdentityMonad.
-Require Export ExtLib.Data.Monads.StateMonad.
 Import MonadNotation.
 
-Require Import Cava.Netlist.
-Require Import Cava.Arrow.Arrow.
+From Cava Require Import Netlist.
+From Cava Require Import BitArithmetic.
+From Cava Require Import Arrow.Arrow.
 
 (* Evaluation as a netlist *)
 Section ArrowNetlist.
-  Inductive Shape :=
-  | ShapeUnit: Shape
-  | ShapeOne: Shape
-  | ShapeProd: Shape -> Shape -> Shape.
+  Inductive ArrowShape :=
+  | AZero: ArrowShape
+  | AOne: ArrowShape
+  | AVec: nat -> ArrowShape
+  | AProd: ArrowShape -> ArrowShape -> ArrowShape.
 
-  Fixpoint PortsOfShape (s: Shape): Type :=
+  (* convert an ArrowShape to a Coq Type *)
+  Fixpoint shapeToCoq (s: ArrowShape): Type :=
   match s with
-  | ShapeUnit => Datatypes.unit
-  | ShapeOne => N
-  | ShapeProd t1 t2 => (PortsOfShape t1 * PortsOfShape t2)
+  | AZero => Datatypes.unit
+  | AOne => N
+  | AVec n => Vector.t N n
+  | AProd t1 t2 => (shapeToCoq t1 * shapeToCoq t2)
   end.
 
-  Fixpoint FillShape (s: Shape) (i:N) : (PortsOfShape s * N) :=
-  match s in Shape return (PortsOfShape s * N) with
-  | ShapeUnit => (tt, i)
-  | ShapeOne => (i, (i+1)%N)
-  | ShapeProd t1 t2 =>
-    let (x,i') := FillShape t1 i in
-    let (y,i'') := FillShape t2 i' in
+  (* fill an ArrowShape with a incremental numbering corresponding to new ports *)
+  Fixpoint numberShape (s: ArrowShape) (i:N) : (shapeToCoq s * N) :=
+  match s in ArrowShape return (shapeToCoq s * N) with
+  | AZero => (tt, i)
+  | AOne => (i, (i+1)%N)
+  | AVec n =>
+      (Vector.map N.of_nat (vec_seq (N.to_nat i) n), (i + N.of_nat n)%N)
+  | AProd t1 t2 =>
+    let (x,i') := numberShape t1 i in
+    let (y,i'') := numberShape t2 i' in
     ((x, y), i'')
   end.
 
   Local Open Scope monad_scope.
 
   Instance NetlistCat : Category := {
-    object := Shape;
-    morphism X Y := PortsOfShape X -> state (Netlist * N) (PortsOfShape Y);
+    object := ArrowShape;
+    morphism X Y := shapeToCoq X -> state (Netlist * N) (shapeToCoq Y);
     id X x := ret x;
     compose X Y Z f g := g >=> f;
   }.
 
   Instance NetlistArr : Arrow := {
     cat := NetlistCat;
-    unit := ShapeUnit;
-    product := ShapeProd;
+    unit := AZero;
+    product := AProd;
 
     fork X Y Z f g z :=
       x <- f z ;;
@@ -78,12 +87,18 @@ Section ArrowNetlist.
   Instance NetlistCava : Cava := {
     cava_arr := NetlistArr;
 
-    bit := ShapeOne;
+    bit := AOne;
+    bitvec := AVec;
 
-    fromBool b := match b with
-      | true => fun _ => ret 1%N
-      | false => fun _ => ret 0%N
+    constant b _ := match b with
+      | true => ret 1%N
+      | false => ret 0%N
       end;
+
+    constant_vec n v _ := ret (Vector.map (fun b => match b with
+      | true => 1%N
+      | false => 0%N
+    end) v);
 
     not_gate x :=
       '(nl, i) <- get ;;
@@ -94,33 +109,80 @@ Section ArrowNetlist.
       '(nl, i) <- get ;;
       put (And [x;y] i :: nl, (i+1)%N) ;;
       ret i;
+
+    nand_gate '(x,y) :=
+      '(nl, i) <- get ;;
+      put (Nand [x;y] i :: nl, (i+1)%N) ;;
+      ret i;
+
+    or_gate '(x,y) :=
+      '(nl, i) <- get ;;
+      put (Or [x;y] i :: nl, (i+1)%N) ;;
+      ret i;
+
+    nor_gate '(x,y) :=
+      '(nl, i) <- get ;;
+      put (Nor [x;y] i :: nl, (i+1)%N) ;;
+      ret i;
+
+    xor_gate '(x,y) :=
+      '(nl, i) <- get ;;
+      put (Xor [x;y] i :: nl, (i+1)%N) ;;
+      ret i;
+
+    xnor_gate '(x,y) :=
+      '(nl, i) <- get ;;
+      put (Xnor [x;y] i :: nl, (i+1)%N) ;;
+      ret i;
+
+    buf_gate x :=
+      '(nl, i) <- get ;;
+      put (Buf x i :: nl, (i+1)%N) ;;
+      ret i;
+
+    xorcy '(x,y) :=
+      '(nl, i) <- get ;;
+      put (Xorcy x y i :: nl, (i+1)%N) ;;
+      ret i;
+
+    muxcy '(ii,t,e) :=
+      '(nl, i) <- get ;;
+      put (Muxcy ii t e i :: nl, (i+1)%N) ;;
+      ret i;
+
+    unsigned_add m n '(a,b) :=
+      '(nl, i) <- get ;;
+      let o := Vector.map N.of_nat (vec_seq (N.to_nat i) (max m n + 1)) in
+      put (UnsignedAdd m n a b o :: nl, (i + N.of_nat (max m n + 1))%N) ;;
+      ret o;
   }.
 
   (* The key here is that the dependent match needs to be over
-    Shape and ports p1 p2, at the same time for Coq to recogonise their types
+    ArrowShape and ports p1 p2, at the same time for Coq to recogonise their types
     in the respective branches *)
-  Fixpoint linkWith (link: N -> N -> Primitive) (s: Shape) (p1 p2: PortsOfShape s) : Netlist :=
-  match s in Shape, p1, p2 return Netlist with
-  | ShapeUnit, _, _ => []
-  | ShapeOne, _, _ => [link p1 p2]
-  | ShapeProd s1 s2, (p11,p12), (p21,p22) => linkWith link s1 p11 p21 ++ linkWith link s2 p12 p22
+  Fixpoint zipThenFlatten (link: N -> N -> Primitive) (s: ArrowShape) (p1 p2: shapeToCoq s) : Netlist :=
+  match s in ArrowShape, p1, p2 return Netlist with
+  | AZero, _, _ => []
+  | AOne, _, _ => [link p1 p2]
+  | AVec n, _, _ => Vector.to_list (Vector.map2 link p1 p2)
+  | AProd s1 s2, (p11,p12), (p21,p22) => zipThenFlatten link s1 p11 p21 ++ zipThenFlatten link s2 p12 p22
   end.
 
   Instance NetlistLoop : ArrowLoop NetlistArr := {
-    (* 1. reserve (@FillShape N _) items
+    (* 1. reserve (@numberShape N _) items
        2. Run f with reserved items
        3. link the items and add the netlist *)
     loopr _ _ N f x :=
       (* 1 *)
       '(nl, i) <- get ;;
-      let '(n, i') := @FillShape N i in
+      let '(n, i') := @numberShape N i in
       put (nl, i') ;;
 
       (* 2 *)
       '(y,n') <- f (x,n) ;;
 
       (* 3 *)
-      let links := linkWith AssignBit N n n' in
+      let links := zipThenFlatten AssignBit N n n' in
       '(nl, i) <- get ;;
       put (links ++ nl, i) ;;
 
@@ -129,14 +191,14 @@ Section ArrowNetlist.
     loopl _ _ N f x :=
       (* 1 *)
       '(nl, i) <- get ;;
-      let '(n, i') := @FillShape N i in
+      let '(n, i') := @numberShape N i in
       put (nl, i') ;;
 
       (* 2 *)
       '(n', y) <- f (n, x) ;;
 
       (* 3 *)
-      let links := linkWith AssignBit N n n' in
+      let links := zipThenFlatten AssignBit N n n' in
       '(nl, i) <- get ;;
       put (links ++ nl, i) ;;
 
@@ -149,8 +211,8 @@ Section ArrowNetlist.
 
     delay_gate X x :=
       '(nl, i) <- get ;;
-      let '(x', i') := @FillShape X i in
-      let links := linkWith DelayBit X x x' in
+      let '(x', i') := @numberShape X i in
+      let links := zipThenFlatten DelayBit X x x' in
       put (links ++ nl, i') ;;
       ret x'
   }.
@@ -158,10 +220,10 @@ Section ArrowNetlist.
   Definition arrowToHDLModule {X Y}
     (name: string)
     (f: X ~[NetlistCat]~> Y)
-    (mkInputs: PortsOfShape X -> list PortDeclaration)
-    (mkOutputs: PortsOfShape Y -> list PortDeclaration)
+    (mkInputs: shapeToCoq X -> list PortDeclaration)
+    (mkOutputs: shapeToCoq Y -> list PortDeclaration)
     : (Netlist.Module * N) :=
-      let (i, n) := @FillShape X 2 in
+      let (i, n) := @numberShape X 2 in
       let '(o, (nl, count)) := runState (f i) ([], n) in
       (mkModule name nl (mkInputs i) (mkOutputs o), count).
 

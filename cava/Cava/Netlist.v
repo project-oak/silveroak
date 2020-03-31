@@ -19,13 +19,13 @@
    Experimental work, very much in flux, as Satnam learns Coq!
 *)
 
-Require Import Program.Basics.
-From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import ZArith.
 From Coq Require Import Lists.List.
 From Coq Require Import Vector.
+From Coq Require Import Bool.Bool.
 From Coq Require Import Numbers.NaryFunctions.
+
 Import ListNotations.
 
 (******************************************************************************)
@@ -195,7 +195,7 @@ fun var => substitute' _ _ (e1 (term var) (e2 var)).
 
 (*
 Takes an `NaryFunction` `N ^^ n --> B`, that has n arguments of type N returning type B.
-Automatically applies incrementing values of N starting at a. 
+Automatically applies incrementing values of N starting at a.
 e.g. if f :  A ^^ n --> B
 then autoNumber' _ 0 5 f == f 0 1 2 3 4
 *)
@@ -231,6 +231,6 @@ LiftList
 
 Example netlist_denote_then_apply := denoteTerm _ (example_netlist _) 2%N 3%N 4%N 5%N.
 Example netlist_autonumber := autoNumber 4 _ (denoteTerm _ (example_netlist _)).
-Example netlist_countholes_autonumber := 
+Example netlist_countholes_autonumber :=
   let ex := (example_netlist _)
   in autoNumber (CountHoles _ _ ex) _ (denoteTerm _ ex).
