@@ -39,6 +39,8 @@ nand2.sv:	compile ExamplesSV
 		verilator --lint-only verilator.vlt fulladder.sv
 		verilator --lint-only verilator.vlt pipelinedNAND.sv
 		verilator --lint-only verilator.vlt adder8_3in.sv
+		verilator --lint-only verilator.vlt adder_fixed.sv
+		verilator --lint-only verilator.vlt adder_tree_4_8.sv
 
 nand2.vcd:	nand2.sv nand2_tb.sv
 		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv

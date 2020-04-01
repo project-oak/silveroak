@@ -21,3 +21,5 @@ fulladder.sv
 AdderTree.hs
 adder8_3in.sv
 adder8_3in.vcd
+adder_fixed.sv
+adder_tree_4_8.sv

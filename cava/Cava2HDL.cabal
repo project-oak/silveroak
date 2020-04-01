@@ -42,12 +42,15 @@ library
   exposed-Modules:   Cava2SystemVerilog
                      BinNums
                      BitArithmetic
+                     Bvector
                      Cava
                      Combinators
                      Datatypes
                      IdentityMonad
                      List
+                     Logic
                      Monad
+                     NaryFunctions
                      Netlist
                      Nat
                      PeanoNat
@@ -60,7 +63,6 @@ library
                      Bool
                      Decimal
                      Functor
-                     Logic
                      Specif
                      MonadExc
                      MonadFix
@@ -71,7 +73,6 @@ library
                      MonadWriter
                      MonadZero
                      Monoid
-                     Bvector
                      Fin
                      Plus
 
