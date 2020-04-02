@@ -1,4 +1,4 @@
-{- Copyright 2019 The Project Oak Authors
+{- Copyright 2020 The Project Oak Authors
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 module Main where
 
-import qualified Cava
 import Cava2SystemVerilog
 import Examples
 import ArrowExamples

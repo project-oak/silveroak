@@ -23,7 +23,7 @@ Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 
-Require Import Cava.Cava.
+Require Import Cava.Monad.Cava.
 Require Import Cava.BitArithmetic.
 Require Import FullAdder.
 

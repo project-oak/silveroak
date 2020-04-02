@@ -1,4 +1,3 @@
-(****************************************************************************)
 (* Copyright 2020 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
@@ -14,11 +13,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* Cava implementations of the gates described in the Nand Game website
-   which describes how to build circuit components using only NAND gates
-   and registers. http://nandgame.com/
-*)
-
 From Coq Require Import Bool.Bool. 
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
@@ -26,7 +20,7 @@ Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 
-Require Import Cava.Cava.
+Require Import Cava.Monad.Cava.
 Require Import Cava.BitArithmetic.
 
 Local Open Scope list_scope.

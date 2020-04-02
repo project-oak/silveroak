@@ -30,7 +30,7 @@ Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 Open Scope monad_scope.
 
-Require Import Cava.Cava.
+Require Import Cava.Monad.Cava.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
