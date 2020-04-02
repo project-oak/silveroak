@@ -18,13 +18,11 @@
 
 all:
 	cd cava && $(MAKE) clean all && \
-	cd ../cava-examples && $(MAKE) clean all && \
-	cd ../nandgame && $(MAKE) clean all && \
+	cd monad-examples && $(MAKE) clean all && \
 	cd ..
 
 clean:
 	cd cava && $(MAKE) clean && \
-	cd ../cava-examples && $(MAKE) clean && \
-	cd ../nandgame && $(MAKE) clean && \
+	cd monad-examples && $(MAKE) clean && \
 	cd ..
 	rm -rf .DS_Store
