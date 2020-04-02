@@ -33,7 +33,7 @@ Require Export ExtLib.Data.Monads.IdentityMonad.
 Require Export ExtLib.Data.Monads.StateMonad.
 Export MonadNotation.
 
-Require Import Cava.Cava. 
+Require Import Cava.Monad.Cava.
 
 Generalizable All Variables.
 

@@ -22,13 +22,14 @@ From Coq Require Import extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.
 
-Require Import BitArithmetic.
-Require Import Cava.
-Require Import Cava.Examples.
+Require Import Cava.BitArithmetic.
+Require Import Cava.Monad.Cava.
+Require Import Cava.Monad.Combinators.
+Require Import Cava.Monad.Examples.
 
 Recursive Extraction Library BitArithmetic.
-Recursive Extraction Library Combinators.
 Recursive Extraction Library Cava.
+Recursive Extraction Library Combinators.
 Extraction Library Examples.
 
 Require Import Cava.Arrow.ArrowExamples.

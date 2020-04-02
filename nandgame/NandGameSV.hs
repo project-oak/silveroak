@@ -18,7 +18,6 @@
 
 module Main where
 
-import qualified Cava
 import Cava2SystemVerilog
 import NandGame
 

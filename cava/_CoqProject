@@ -9,7 +9,8 @@ Cava/Arrow/Instances/Netlist.v
 
 Cava/BitArithmetic.v
 Cava/Netlist.v
-Cava/Cava.v
-Cava/Combinators.v
-Cava/Examples.v
+Cava/Monad/Cava.v
+Cava/Monad/Combinators.v
+Cava/Monad/Examples.v
+
 Cava/Extraction.v
