@@ -2,12 +2,17 @@
 
 set -e
 
-nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs
+nix-channel --add https://nixos.org/channels/nixos-20.03
 nix-channel --update
+
+
+# TODO: remove makefile dependence on git so this can be removed
+nix-env -iA nixpkgs.git
+git init
+git add .
+
+nix-build --max-jobs 16 --cores 16 -A docker-image-build
 
 nix-env -iA nixpkgs.docker
 
-nix-build default.nix --argstr imageName gcr.io/oak-ci/oak-hardware
-
 docker load < result
-docker push gcr.io/oak-ci/oak-hardware:latest
