@@ -186,6 +186,7 @@ sub-optimal.
 This is another version of a full adder which explicitly uses the
 XORCY and MUXCY components to ensure a mapping to the fast carry chain:
 
+```coq
 Definition fullAdderFC {m bit} `{Cava m bit} (cin_ab : bit * (bit * bit))
   : m (bit * bit)%type :=
   let cin := fst cin_ab in
