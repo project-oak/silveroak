@@ -1,5 +1,5 @@
 #
-# Copyright 2019 The Project Oak Authors
+# Copyright 2020 The Project Oak Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,12 +17,7 @@
 .PHONY: all clean
 
 all:
-	cd cava && $(MAKE) clean all && \
-	cd monad-examples && $(MAKE) clean all && \
-	cd ..
+	cd cava && $(MAKE) clean all
 
 clean:
-	cd cava && $(MAKE) clean && \
-	cd monad-examples && $(MAKE) clean && \
-	cd ..
-	rm -rf .DS_Store
+	cd cava && $(MAKE) clean
