@@ -14,6 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Examples.
 Require Import NandGate.
 Require Import FullAdder.
 Require Import UnsignedAdder.
@@ -26,6 +27,7 @@ From Coq Require Import extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.
 
+Extraction Library Examples.
 Extraction Library NandGate.
 Extraction Library FullAdder.
 Extraction Library UnsignedAdder.

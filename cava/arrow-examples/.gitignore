@@ -1,0 +1,6 @@
+# Generated SystemVerilog files, but not files in testbench/
+*.sv
+
+# Binaries
+ *.hs
+!ArrowExamplesSV.hs

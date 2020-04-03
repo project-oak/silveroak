@@ -40,6 +40,7 @@ cabal-version:        >= 1.10
 library
   build-Depends:     base >= 4, mtl >= 2
   exposed-Modules:   Cava2SystemVerilog
+                     Arrow
                      BinNums
                      BitArithmetic
                      Bvector
@@ -52,6 +53,7 @@ library
                      Monad
                      NaryFunctions
                      Netlist
+                     Netlist0
                      Nat
                      PeanoNat
                      StateMonad

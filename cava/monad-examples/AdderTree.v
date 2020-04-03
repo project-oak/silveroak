@@ -142,7 +142,7 @@ Definition halve' {n a} (v : Vector.t a (n+n)) : Vector.t a n * Vector.t a n :=
   splitat n v.
 
 Definition v0_3 : Vector.t (Bvector 8) (2+2) := [v0; v1; v2; v3]%vector.
-Compute halve' v0_3.
+(* Compute halve' v0_3. *)
 
 Definition halve {n a} (v : Vector.t a (2*n)) : Vector.t a n * Vector.t a n :=
   halve' (to_n_plus_n v).
@@ -164,7 +164,7 @@ Definition adderTree2_8 {m bit} `{Cava m bit} (v : Vector.t (Vector.t bit 8) 2) 
 
 Definition v2_8 : Vector.t (Bvector 8) 2 := [v0; v1]%vector.
 Definition v0_plus_v1 : Bvector 8 := combinational (adderTree2_8 v2_8).
-Compute v0_plus_v1.
+(* Compute v0_plus_v1. *)
 
 Example v0_plus_v1_ex : bitvec_to_nat v0_plus_v1 = 21.
 Proof. reflexivity. Qed.

@@ -19,65 +19,56 @@
 # tools installation directory e.g.
 #    ...../vivado/2018.3 
 
-.PHONY: all compile clean
+.PHONY: all coq auto_vcds clean
 
-all:		compile nand2.sv nand2.vcd pipelinedNAND.vcd
+all:		coq auto_vcds
 xilinx:		adder8.vcd
 
-Makefile.coq:
+Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
 
-compile:	Makefile.coq
+coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
 ExamplesSV:	ExamplesSV.hs
-		ghc --make ExamplesSV.hs
+		ghc --make $^
 
-nand2.sv:	compile ExamplesSV
+nand2.sv:	coq ExamplesSV
 		./ExamplesSV
 		verilator --lint-only verilator.vlt nand2.sv
+		verilator --lint-only verilator.vlt adder4.sv
 		verilator --lint-only verilator.vlt fulladder.sv
+		verilator --lint-only verilator.vlt loopedNAND.sv
+		verilator --lint-only verilator.vlt loopedNAND.sv
 		verilator --lint-only verilator.vlt pipelinedNAND.sv
 		verilator --lint-only verilator.vlt adder8_3in.sv
 		verilator --lint-only verilator.vlt adder_fixed.sv
 		verilator --lint-only verilator.vlt adder_tree_4_8.sv
 
-nand2.vcd:	nand2.sv nand2_tb.sv
-		iverilog -g2012 -o nand2.vvp nand2.sv nand2_tb.sv
-		./nand2.vvp 
+%.vcd:		%.sv testbench/%_tb.sv
+		iverilog -g2012 -o $*.vvp $^
+		./$*.vvp
+
+.PRECIOUS:	nand2.sv adder4.sv adder8_3in.sv pipelinedNAND.sv \
+		loopedNAND.sv
+
+auto_vcds:	nand2.vcd adder4.vcd adder8_3in.vcd pipelinedNAND.vcd \
+		loopedNAND.vcd
 
 fulladderFC.sv:	nand2.sv
 
-fulladderFC.vcd:	fulladderFC.sv fulladderFC_tb.sv
+fulladderFC.vcd:	fulladderFC.sv testbench/fulladderFC_tb.sv
 			iverilog -y $(XILINX)/data/verilog/src/unisims -g2012 -o \
-			  fulladderFC.vvp fulladderFC.sv fulladderFC_tb.sv
+			  fulladderFC.vvp $^
 			./fulladderFC.vvp
 
 adder8.sv:	nand2.sv
 
-adder8.vcd:	adder8.sv adder8_tb.sv
-		xvlog -sv adder8.sv adder8_tb.sv
+adder8.vcd:	adder8.sv testbench/adder8_tb.sv
+		xvlog -sv $^
 		xelab --debug typical -L unisims_ver work.adder_test -s adder8_sim
 		xsim --R adder8_sim
 
-adder8_3in.sv:	nand2.sv
-
-adder8_3in.vcd:	adder8_3in.sv adder8_3in_tb.sv
-		iverilog -g2012 -o adder8_3in.vvp adder8_3in.sv adder8_3in_tb.sv
-		./adder8_3in.vvp
-
-pipelinedNAND.sv:	nand2.sv
-
-pipelinedNAND.vcd:	pipelinedNAND.sv pipelinedNAND_tb.sv
-			iverilog -g2012 -o pipelinedNAND.vvp pipelinedNAND.sv pipelinedNAND_tb.sv
-			./pipelinedNAND.vvp
-
 clean:
-		rm -rf  *.v.d *.vo *.o *.hi .*.aux *.glob \
-		        xsim.dir xvhdl.pb xvhdl.log Makefile.coq Makefile.coq.conf \
-			FixupAscii ExamplesSV \
-			nand2.sv fulladder.sv nand2.vcd fulladderFC.vcd adder8.vcd *.vvp \
-			pipelinedNAND.sv pipelinedNAND.vcd \
-			*.jou *.wdb *.log *.pb .Makefile.coq.d *.vok *.vos
-		xargs rm -rf < .gitignore
-
+	-@$(MAKE) -f Makefile.coq clean
+	git clean -xfd
