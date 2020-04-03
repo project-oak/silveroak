@@ -51,7 +51,6 @@ library
                      List
                      Logic
                      Monad
-                     NaryFunctions
                      Netlist
                      Netlist0
                      Nat

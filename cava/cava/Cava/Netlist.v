@@ -28,8 +28,27 @@ From Coq Require Import Numbers.NaryFunctions.
 
 Import ListNotations.
 
+(* shape describes the shape of the wires coming into our out of a circuit
+   block.
+*)
+Inductive shape : Type :=
+  | Empty : shape
+  | Bit : shape                      (* A single wire *)
+  | BitVec : nat -> shape
+  | Tuple2 : shape -> shape -> shape  (* A pair of bundles of wires *)
+  .
+Notation "‹ x , y ›" := (Tuple2 x y).
+
+Fixpoint signalTy (T : Type) (s : shape) : Type :=
+  match s with
+  | Empty => unit
+  | Bit => T
+  | ‹s1, s2› => signalTy T s1 * signalTy T s2
+  | BitVec n => Vector.t T n
+  end.
+
 (******************************************************************************)
-(* Primitive elements                                                         *)
+(* PrimitiveInstance elements                                                         *)
 (******************************************************************************)
 
 (* The primitive elements that can be instantiated in Cava. Some are generic
@@ -37,43 +56,64 @@ Import ListNotations.
    map to any architecture, while others are specific to Xilinx FPGAs.
 *)
 
-Inductive Primitive :=
+Inductive Primitive: shape -> shape -> Type :=
   (* SystemVerilog primitive gates. *)
-  | Not  : N -> N -> Primitive
-  | And  : list N -> N -> Primitive
-  | Nand : list N -> N -> Primitive
-  | Or   : list N -> N -> Primitive
-  | Nor  : list N -> N -> Primitive
-  | Xor  : list N -> N -> Primitive
-  | Xnor : list N -> N -> Primitive
-  | Buf  : N -> N -> Primitive
+  | Not:       Primitive Bit Bit
+  | And:       forall n, Primitive (BitVec n) Bit
+  | Nand:      forall n, Primitive (BitVec n) Bit
+  | Or:        forall n, Primitive (BitVec n) Bit
+  | Nor:       forall n, Primitive (BitVec n) Bit
+  | Xor:       forall n, Primitive (BitVec n) Bit
+  | Xnor:      forall n, Primitive (BitVec n) Bit
+  | Buf:       Primitive Bit Bit
   (* A Cava unit delay bit component. *)
-  | DelayBit : N -> N -> Primitive
+  | DelayBit:  Primitive Bit Bit
   (* Assignment of bit wire *)
-  | AssignBit : N -> N -> Primitive
+  | AssignBit: Primitive Bit Bit
   (* Arithmetic operations *)
   | UnsignedAdd : forall aSize bSize sumSize,
-                  Vector.t N aSize -> Vector.t N bSize ->
-                  Vector.t N sumSize -> Primitive
+                  Primitive ‹BitVec aSize, BitVec bSize› (BitVec sumSize)
   (* Xilinx FPGA architecture specific gates. *)
-  | Xorcy : N -> N -> N -> Primitive
-  | Muxcy : N -> N -> N -> N -> Primitive.
+  | Xorcy:     Primitive (Tuple2 Bit Bit) Bit
+  | Muxcy:     Primitive (Tuple2 Bit (Tuple2 Bit Bit)) Bit.
+
+(* PrimitiveInstance bound to ports of type N *)
+Inductive PrimitiveInstance :=
+  | BindPrimitive : forall i o, Primitive i o -> signalTy N i -> signalTy N o
+      -> PrimitiveInstance.
+
+Arguments BindPrimitive [i o].
+
+(* Helper constructors *)
+Definition BindNot i o: PrimitiveInstance := BindPrimitive Not i o.
+
+Definition BindAnd  {n: nat} (is: Vector.t N n) o: PrimitiveInstance := BindPrimitive (And n) is o.
+Definition BindNand {n: nat} (is: Vector.t N n) o: PrimitiveInstance := BindPrimitive (Nand n) is o.
+Definition BindOr   {n: nat} (is: Vector.t N n) o: PrimitiveInstance := BindPrimitive (Or n) is o.
+Definition BindNor  {n: nat} (is: Vector.t N n) o: PrimitiveInstance := BindPrimitive (Nor n) is o.
+Definition BindXor  {n: nat} (is: Vector.t N n) o: PrimitiveInstance := BindPrimitive (Xor n) is o.
+Definition BindXnor {n: nat} (is: Vector.t N n) o: PrimitiveInstance := BindPrimitive (Xnor n) is o.
+
+Definition BindBuf       i o: PrimitiveInstance := BindPrimitive Buf i o.
+Definition BindDelayBit  i o: PrimitiveInstance := BindPrimitive DelayBit i o.
+Definition BindAssignBit i o: PrimitiveInstance := BindPrimitive AssignBit i o.
+
+Definition BindXorcy i o: PrimitiveInstance := BindPrimitive Xorcy i o.
+Definition BindMuxcy i o: PrimitiveInstance := BindPrimitive Muxcy i o.
+
+Definition BindUnsignedAdd {aSize bSize sumSize: nat} (is: (Vector.t N aSize * Vector.t N bSize)) o: PrimitiveInstance := BindPrimitive (UnsignedAdd aSize bSize sumSize) is o.
 
 (******************************************************************************)
 (* Data structures to represent circuit graph/netlist state                   *)
 (******************************************************************************)
 
-Inductive PortType :=
-  | BitPort : N -> PortType
-  | VectorTo0Port : forall n, Vector.t N n -> PortType
-  | VectorFrom0Port : forall n, Vector.t N n  -> PortType.
-
 Record PortDeclaration : Type := mkPort {
   port_name : string;
-  port_type : PortType;
+  port_shape : shape;
+  port_type : signalTy N port_shape;
 }.
 
-Notation Netlist := (list Primitive).
+Notation Netlist := (list PrimitiveInstance).
 
 Record Module : Type := mkModule {
   moduleName : string;
@@ -102,136 +142,80 @@ Definition initStateFrom (startAt : N) : CavaState
 Definition initState : CavaState
   := initStateFrom 2.
 
+(******************************************************************************)
+(* Extraction utilities                                                       *)
+(******************************************************************************)
 
+Definition primitiveName {i o} (prim: Primitive i o) : option string :=
+match prim with
+| Not    => Some "not"
+| And _  => Some "and"
+| Nand _ => Some "nand"
+| Or _   => Some "or"
+| Nor _  => Some "nor"
+| Xor _  => Some "xor"
+| Xnor _ => Some "xnor"
+| Buf    => Some "buf"
+| Xorcy  => Some "XORCY"
+| Muxcy  => Some "MUXCY"
+| _      => None (* unnameable primitive *)
+end%string.
 
-Section Netlang.
-  Inductive type :=
-  | Hole : type
-  | Prim : type
-  | Mod  : type
-  | PortDecl: type
-  | List : type -> type
-  | Func : type -> type -> type.
-
-  Variable var: type ->  Type.
-
-  Inductive term : type -> Type :=
-  | Const : N -> term Hole
-  | Var : forall x, var x -> term x
-  | Abs : forall x y, (var x -> term y) -> term (Func x y)
-  | App : forall x y, term (Func x y) -> term x -> term y
-
-  | Prim2 : (N -> N -> Primitive) -> term Hole -> term Hole -> term Prim
-  | Prim3 : (N -> N -> N -> Primitive) -> term Hole -> term Hole -> term Hole -> term Prim
-  | Prim4 : (N -> N -> N -> N -> Primitive) -> term Hole -> term Hole -> term Hole -> term Hole -> term Prim
-  | Prim': (list N -> Primitive) -> term (List Hole) -> term Prim
-
-  | LiftList : forall x, list (term x) -> term (List x)
-  | Module' : string -> term (List Prim) -> term (List PortDecl) -> term (List PortDecl) -> term Mod
-  | Port' : string -> term Hole -> term PortDecl.
-End Netlang.
-
-Arguments Var _ [x] _.
-Arguments Abs _ [x y] _.
-Arguments App _ [x y] _.
-
-Arguments Const [var].
-
-Arguments Prim2 [var].
-Arguments Prim3 [var].
-Arguments Prim4 [var].
-Arguments Prim' [var].
-
-Arguments LiftList [var x].
-Arguments Module' [var].
-Arguments Port' [var].
-
-Fixpoint denoteType t :=
-match t with
-| Hole => N
-| Prim => Primitive
-| Mod => Module
-| PortDecl => PortDeclaration
-| List t => list (denoteType t)
-| Func t1 t2 => denoteType t1 -> denoteType t2
+Definition instanceInputs (prim: PrimitiveInstance) : list N :=
+match prim with
+| BindPrimitive Not i _                     => [i]
+| BindPrimitive (And _) i _                 => to_list i
+| BindPrimitive (Nand _) i _                => to_list i
+| BindPrimitive (Or _) i _                  => to_list i
+| BindPrimitive (Nor _) i _                 => to_list i
+| BindPrimitive (Xor _) i _                 => to_list i
+| BindPrimitive (Xnor _) i _                => to_list i
+| BindPrimitive Buf i _                     => [i]
+| BindPrimitive Xorcy (x,y) _               => [x; y]
+| BindPrimitive Muxcy (i,(t,e)) _           => [i; t; e]
+| BindPrimitive DelayBit i _                => [i]
+| BindPrimitive AssignBit i _               => [i]
+| BindPrimitive (UnsignedAdd _ _ _) (x,y) _ => to_list x ++ to_list y
 end.
 
-Fixpoint denoteTerm t (e: term denoteType t) : denoteType t :=
-let dt := denoteTerm in
-match e in term _ t return denoteType t with
-| Var _ x => x
-| Abs _ f => fun x => dt _ (f x)
-| App _ f x => (dt _ f) (dt _ x)
-| Const x => x
-| Prim2 p x y => p (dt _ x) (dt _ y)
-| Prim3 p x y z => p (dt _ x) (dt _ y) (dt _ z)
-| Prim4 p x y z w => p (dt _ x) (dt _ y) (dt _ z) (dt _ w)
-| Prim' p xs => p (dt _ xs)
-| LiftList xs => (List.map (dt _) xs)
-| Module' name nl is os => mkModule name (dt _ nl) (dt _ is) (dt _ os)
-| Port' name x => mkPort name (BitPort (dt _ x))
+Definition instanceNumber (prim: PrimitiveInstance) : option N :=
+match prim with
+| BindPrimitive (UnsignedAdd _ _ _) _ _ => None
+| BindPrimitive _ _ o                   => Some o
 end.
 
-Fixpoint substitute' var t (e: term (term var) t): term var t :=
-let r := substitute' in
-match e with
-| Var _ x => x
-| Abs _ f => Abs _ (fun x => r _ _ (f (Var _ x)))
-| App _ f x => App _ (r _ _ f) (r _ _ x)
-| Const x => Const x
-| Prim2 p x y => Prim2 p (r _ _ x)(r _ _ y)
-| Prim3 p x y z => Prim3 p (r _ _ x) (r _ _ y) (r _ _ z)
-| Prim4 p x y z w => Prim4 p (r _ _ x) (r _ _ y) (r _ _ z) (r _ _ w)
-| Prim' p xs => Prim' p (r _ _ xs)
-| LiftList xs => LiftList (List.map (r _ _) xs)
-| Module' name nl is os => Module' name (r _ _ nl) (r _ _ is) (r _ _ os)
-| Port' name x => Port' name (r _ _ x)
+Definition unsignedAddercomponents (prim: PrimitiveInstance) : option
+  (list N * list N * list N)
+  :=
+match prim with
+| BindPrimitive (UnsignedAdd _ _ _) (x,y) z => Some (to_list x,to_list y,to_list z)
+| BindPrimitive _ _ _                       => None
 end.
 
-Definition Term t := forall var, term var t.
-Definition Term1 t1 t2 := forall var, var t1 -> term var t2.
-
-Definition substitute t1 t2 (e1: Term1 t1 t2) (e2: Term t1) : Term t2 :=
-fun var => substitute' _ _ (e1 (term var) (e2 var)).
-
-(*
-Takes an `NaryFunction` `N ^^ n --> B`, that has n arguments of type N returning type B.
-Automatically applies incrementing values of N starting at a.
-e.g. if f :  A ^^ n --> B
-then autoNumber' _ 0 5 f == f 0 1 2 3 4
-*)
-Fixpoint autoNumber' (B:Type) (a:N) n : (N^^n-->B) -> B :=
- match n return (N^^n-->B) -> B with
-  | O => fun x => x
-  | S n => fun x => autoNumber' B (a+1) n (x a)
- end.
-
-Fixpoint autoNumber n t (f: nfun N n t) : t :=
-autoNumber' t (2%N) n f.
-
-Fixpoint countHoles t :=
-match t with
-| Func Hole t2 => 1 + countHoles t2
-| _ => 0
+Definition instanceArgs (prim: PrimitiveInstance) : option (list N) :=
+match prim with
+| BindPrimitive Not i o           => Some [o; i]
+| BindPrimitive (And _) i o       => Some (o :: to_list i)
+| BindPrimitive (Nand _) i o      => Some (o :: to_list i)
+| BindPrimitive (Or _) i o        => Some (o :: to_list i)
+| BindPrimitive (Nor _) i o       => Some (o :: to_list i)
+| BindPrimitive (Xor _) i o       => Some (o :: to_list i)
+| BindPrimitive (Xnor _) i o      => Some (o :: to_list i)
+| BindPrimitive Buf i o           => Some [o; i]
+| BindPrimitive Xorcy (x,y) o     => Some [o; x; y]
+| BindPrimitive Muxcy (i,(t,e)) o => Some [o; i; t; e]
+| _ => None
 end.
 
-Fixpoint CountHoles var t (_: term var t) := countHoles t.
+Fixpoint netNumbersInShape (s: shape) (v: signalTy N s) : list N :=
+match s, v with
+| Bit, n => [n]
+| (BitVec _), n => to_list n
+| Empty, _ => []
+| (Tuple2 s1 s2), (x,y) => netNumbersInShape s1 x ++ netNumbersInShape s2 y
+end.
 
-(* a netlist only to demonstrate arbitrary connections, the circuit itself is meaningless *)
-Example example_netlist var
-:= Abs var (fun x => Abs _ (fun y => Abs _ (fun w => Abs _ (fun z =>
-LiftList
-[ Prim2 Buf (Var _ x) (Var _ x)
-; Prim2 Buf (Var _ x) (Var _ y)
-; Prim2 Buf (Var _ y) (Var _ x)
-; Prim2 Buf (Var _ y) (Var _ y)
-; Prim2 Not (Var _ z) (Var _ w)
-; Prim2 Not (Var _ y) (Var _ z)
-]
-)))).
-
-Example netlist_denote_then_apply := denoteTerm _ (example_netlist _) 2%N 3%N 4%N 5%N.
-Example netlist_autonumber := autoNumber 4 _ (denoteTerm _ (example_netlist _)).
-Example netlist_countholes_autonumber :=
-  let ex := (example_netlist _)
-  in autoNumber (CountHoles _ _ ex) _ (denoteTerm _ ex).
+Definition netNumbersInPort (port: PortDeclaration) : list N :=
+match port with
+| mkPort _ s v => netNumbersInShape s v
+end.

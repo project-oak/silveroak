@@ -13,6 +13,8 @@
    limitations under the License.
 -}
 
+{-# LANGUAGE ViewPatterns #-}
+
 module Cava2SystemVerilog
 where
 
@@ -72,21 +74,17 @@ inputPorts :: [Netlist.PortDeclaration] -> [String]
 inputPorts = map inputPort
 
 inputPort :: Netlist.PortDeclaration -> String
-inputPort (Netlist.Coq_mkPort name (Netlist.BitPort _)) = "  input logic " ++ name
-inputPort (Netlist.Coq_mkPort name (Netlist.VectorTo0Port s v))
+inputPort (Netlist.Coq_mkPort name Netlist.Bit _) = "  input logic " ++ name
+inputPort (Netlist.Coq_mkPort name (Netlist.BitVec s) _)
   = "  input logic[" ++ show (s - 1) ++ ":0] " ++ name
-inputPort (Netlist.Coq_mkPort name (Netlist.VectorFrom0Port s v))
-  = "  input logic[0:" ++ show (s - 1) ++ "] " ++ name
 
 outputPorts :: [Netlist.PortDeclaration] -> [String]
 outputPorts = map outputPort
 
 outputPort :: Netlist.PortDeclaration -> String
-outputPort (Netlist.Coq_mkPort name (Netlist.BitPort _)) = "  output logic " ++ name
-outputPort (Netlist.Coq_mkPort name (Netlist.VectorTo0Port s v))
+outputPort (Netlist.Coq_mkPort name Netlist.Bit _) = "  output logic " ++ name
+outputPort (Netlist.Coq_mkPort name (Netlist.BitVec s) _)
   = "  output logic[" ++ show (s - 1) ++ ":0] " ++ name
-outputPort (Netlist.Coq_mkPort name (Netlist.VectorFrom0Port s v))
-  = "  output logic[0:" ++ show (s - 1) ++ "] " ++ name
 
 insertCommas :: [String] -> [String]
 insertCommas [] = []
@@ -96,32 +94,32 @@ insertCommas (x:y:xs) = (x ++ ",") : insertCommas (y:xs)
 data VectorDirection = HighToLow | LowToHigh
                        deriving (Eq, Show)
 
-data VectorAssignment = AssignTo | AssignFrom                      
+data VectorAssignment = AssignTo | AssignFrom
 
 data VectorDeclaration
-  = VectorDeclaration VectorAssignment Int VectorDirection
-                      (Vector.Coq_t BinNums.N)
+  = VectorDeclaration VectorAssignment Int VectorDirection [BinNums.N]
 
 data NetlistGenerationState
-  = NetlistGenerationState Int [VectorDeclaration] 
+  = NetlistGenerationState Int [VectorDeclaration]
 
-computeVectors :: [Netlist.Primitive] -> State NetlistGenerationState
+computeVectors :: [Netlist.PrimitiveInstance] -> State NetlistGenerationState
                                          [String]
 
 computeVectors instances
   = do instText <- mapM computeVectors' instances
        return instText
 
-computeVectors' :: Netlist.Primitive -> State NetlistGenerationState
+computeVectors' :: Netlist.PrimitiveInstance -> State NetlistGenerationState
                                         String
-computeVectors' (Netlist.UnsignedAdd aSize bSize sumSize a b s)
+computeVectors' inst@(Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd aSize bSize sumSize) _ _)
+  | Just ((a,b),s) <- Netlist.unsignedAddercomponents inst
   = do NetlistGenerationState v vDecs <- get
        let vA = VectorDeclaration AssignTo   v       HighToLow a
            vB = VectorDeclaration AssignTo   (v + 1) HighToLow b
            vC = VectorDeclaration AssignFrom (v + 2) HighToLow s
        put (NetlistGenerationState (v + 3) (vA:vB:vC:vDecs))
        return ("  assign v" ++ show (v + 2) ++ " = v" ++ show v ++
-               " + v" ++ show (v + 1) ++ ";")                                       
+               " + v" ++ show (v + 1) ++ ";")
 computeVectors' otherInst = return (generateInstance otherInst)
 
 declareVectors :: [VectorDeclaration] -> [String]
@@ -141,7 +139,7 @@ declareVector :: VectorDeclaration -> String
 declareVector (VectorDeclaration _ i dir bvec)
   = "  logic[" ++ range ++ "] v" ++ show i ++ ";"
     where
-    s = length (vecToList bvec)
+    s = length bvec
     range = case dir of
               HighToLow -> show (s - 1) ++ ":0"
               LowToHigh -> "0:" ++ show (s - 1)
@@ -154,73 +152,32 @@ populateVector :: VectorDeclaration -> [String]
 populateVector (VectorDeclaration AssignTo v _ nets)
   = ["  assign v" ++ show v ++ "[" ++ show i ++
              "] = net[" ++ show (fromN li) ++ "];"
-              | (i, li) <- zip [0..] (vecToList nets)]
+              | (i, li) <- zip [0..] nets]
 populateVector (VectorDeclaration AssignFrom v _ nets)
   = ["  assign net[" ++ show (fromN li) ++ "] = v" ++ show v ++
              "[" ++ show i ++ "];"
-             | (i, li) <- zip [0..] (vecToList nets)]
+             | (i, li) <- zip [0..] nets]
 
-nameOfInstance :: Netlist.Primitive -> String
-nameOfInstance inst
-  = case inst of
-      Netlist.Not _ _ -> "not"
-      Netlist.And _ _ -> "and"
-      Netlist.Nand _ _ -> "nand"
-      Netlist.Or _ _ -> "or"
-      Netlist.Nor _ _ -> "nor"
-      Netlist.Xor _ _-> "xor"
-      Netlist.Xnor _ _ -> "xnor"
-      Netlist.Buf _ _ -> "buf"
-      Netlist.Xorcy _ _ _ -> "XORCY"
-      Netlist.Muxcy _ _ _ _ -> "MUXCY"
-      _ -> error "Request for un-namable instance"
-
-instanceArgs :: Netlist.Primitive -> [BinNums.N]
-instanceArgs inst
-  = case inst of
-      Netlist.Not i o -> [o, i]
-      Netlist.And i o -> o:i
-      Netlist.Nand i o -> o:i
-      Netlist.Or i o -> o:i
-      Netlist.Nor i o -> o:i
-      Netlist.Xor i o -> o:i
-      Netlist.Xnor i o -> o:i
-      Netlist.Buf i o -> [o, i]
-      Netlist.Xorcy li ci o -> [o, ci, li]
-      Netlist.Muxcy s di ci o -> [o, ci, di, s]
-      _ -> error "Request for bad instance arguments"
-
-instanceNumber :: Netlist.Primitive -> BinNums.N
-instanceNumber inst
-  = case inst of
-      Netlist.Not _ o -> o
-      Netlist.And _ o -> o
-      Netlist.Nand _ o -> o
-      Netlist.Or _ o -> o
-      Netlist.Nor _ o -> o
-      Netlist.Xor _ o -> o
-      Netlist.Xnor _ o -> o
-      Netlist.Buf _ o -> o
-      Netlist.Xorcy _ _ o -> o
-      Netlist.Muxcy _ _ _ o -> o
-      _ -> error "Request for bad instance number"
-
-generateInstance :: Netlist.Primitive -> String
-generateInstance (Netlist.DelayBit i o)
-   = "  always_ff @(posedge clk) net[" ++ show (fromN o) ++
-     "] <= rst ? 1'b0 : net["
-        ++ show (fromN i) ++ "];";
-generateInstance (Netlist.AssignBit a b)
+generateInstance :: Netlist.PrimitiveInstance -> String
+generateInstance inst@(Netlist.BindPrimitive _ _ Netlist.DelayBit _ o)
+  | [i] <- Netlist.instanceInputs inst
+  , Just o <- Netlist.instanceNumber inst
+  = "  always_ff @(posedge clk) net[" ++ show (fromN o) ++
+    "] <= rst ? 1'b0 : net["
+       ++ show (fromN i) ++ "];";
+generateInstance inst@(Netlist.BindPrimitive _ _ Netlist.AssignBit _ _)
+  | [a] <- Netlist.instanceInputs inst
+  , Just b <- Netlist.instanceNumber inst
    = "  assign net[" ++ show (fromN a) ++ "] = net[" ++ show (fromN b) ++ "];"
-generateInstance (Netlist.UnsignedAdd _ _ _ _ _ _)
+generateInstance (Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd _ _ _) ab s)
    = "" -- Generated instead during vector generation
-generateInstance inst
+generateInstance inst@(Netlist.BindPrimitive i o prim _ _)
   = "  " ++ instName ++ " inst" ++ show (fromN numb) ++ " " ++
     showArgs args ++ ";"
    where
-   instName = nameOfInstance inst
-   args = instanceArgs inst
-   numb = instanceNumber inst
+   instName = maybe (error "Request for un-namable instance") id $ Netlist.primitiveName i o prim
+   args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
+   numb = maybe (error "Primitive did not have an extractable instance number!") id $ Netlist.instanceNumber inst
 
 showArgs :: [BinNums.N] -> String
 showArgs args = "(" ++ concat (insertCommas (map showArg args)) ++ ")";
@@ -229,17 +186,22 @@ showArg :: BinNums.N -> String
 showArg n = "net[" ++ show (fromN n) ++ "]"
 
 wireInput :: Netlist.PortDeclaration -> [String]
-wireInput (Netlist.Coq_mkPort name (Netlist.BitPort n))
+wireInput port@(Netlist.Coq_mkPort name Netlist.Bit _)
+  | [n] <- Netlist.netNumbersInPort port
   = ["  assign net[" ++ show (fromN n) ++ "] = " ++ name ++ ";"]
-wireInput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port s v))
+wireInput port@(Netlist.Coq_mkPort name (Netlist.BitVec s) _)
+  | ns <- Netlist.netNumbersInPort port
   = ["  assign net[" ++ show (fromN n) ++ "] = " ++ name ++ "[" ++ show i ++
      "];" |
-     (n, i) <- zip (Vector.to_list s v) [0..s - 1]]
+     (n, i) <- zip ns [0..s - 1]]
+wireInput (Netlist.Coq_mkPort name _ _) = error $ "Error wiring port: " ++ name
 
 wireOutput :: Netlist.PortDeclaration -> [String]
-wireOutput (Netlist.Coq_mkPort name (Netlist.BitPort n))
+wireOutput port@(Netlist.Coq_mkPort name Netlist.Bit _)
+  | [n] <- Netlist.netNumbersInPort port
   = ["  assign " ++ name ++ " = net[" ++ show (fromN n) ++ "] ;"]
-wireOutput (Netlist.Coq_mkPort name (Netlist.VectorTo0Port s v))
+wireOutput port@(Netlist.Coq_mkPort name (Netlist.BitVec s) _)
+  | ns <- Netlist.netNumbersInPort port
   = ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show (fromN n) ++
      "];" |
-     (n, i) <- zip (Vector.to_list s v) [0.. s - 1]]
+     (n, i) <- zip ns [0.. s - 1]]

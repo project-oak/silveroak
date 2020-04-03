@@ -61,8 +61,8 @@ Section CoqStreamEval.
     buf_gate := map (fun x => x);
 
     xorcy := map (fun '(x,y) => xorb x y);
-    muxcy := map (fun xyz : bool * bool * bool =>
-      let '(x,y,z) := xyz in if x then y else z
+    muxcy := map (fun xyz : bool * (bool * bool) =>
+      let '(x,(y,z)) := xyz in if x then y else z
     );
 
     unsigned_add m n s := map (fun '(av, bv) =>

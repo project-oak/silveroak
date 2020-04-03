@@ -57,7 +57,7 @@ Section CoqEval.
     buf_gate x := x;
 
     xorcy '(x,y) := xorb x y;
-    muxcy '(x,y,z) := if x then y else z;
+    muxcy '(i,(t,e)) := if i then t else e;
 
     unsigned_add m n s '(av, bv) :=
       let a := bitvec_to_nat av in
