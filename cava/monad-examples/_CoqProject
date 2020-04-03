@@ -1,4 +1,4 @@
--R ../cava/Cava Cava
+-R ../cava Cava
 -R . Lib
 NandGate.v
 FullAdder.v
