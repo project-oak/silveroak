@@ -31,60 +31,18 @@ Please install the following components:
 
 ## Building
 
-Do a `make` in these directories:
+Type `make` in the directory `cava`:
 
-```bash
+```console
 $ cd oak-hardware/cava
 $ make
-$ cd ../cava-examples
-$ make
 ```
 
-If all worked well you should find an automatically generated
-SystemVerilog file called `fulladder.sv` in the `cava-examples` directory which should have contents like:
-
-```verilog
-module fulladder(
-  input logic cin,
-  input logic b,
-  input logic a,
-  output logic carry,
-  output logic sum
-  );
-
-  timeunit 1ns; timeprecision 1ns;
-
-  logic[9:0] net;
-
-  // Constant nets
-  assign net[0] = 1'b0;
-  assign net[1] = 1'b1;
-  // Wire up inputs.
-  assign net[4] = cin;
-  assign net[3] = b;
-  assign net[2] = a;
-  // Wire up outputs.
-  assign carry = net[9] ;
-  assign sum = net[7] ;
-
-  or inst9 (net[9],net[6],net[8]);
-  and inst8 (net[8],net[5],net[4]);
-  xor inst7 (net[7],net[5],net[4]);
-  and inst6 (net[6],net[2],net[3]);
-  xor inst5 (net[5],net[2],net[3]);
-
-endmodule
-
+To remove all automatically generated files:
+```console
+$ make clean
 ```
 
-A few other SystemVerilog files will also be generated.
+## Cava Examples (monadic versions)
+See [Cava Examples](https://github.com/project-oak/oak-hardware/tree/master/cava/monad-examples/README.md) for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.
 
-## Cava Examples
-See [Cava Examples](https://github.com/project-oak/oak-hardware/tree/master/cava-examples/README.md) for a
-few examples of circuits described in Cava, proofs about their behavioiur and
-extraction to SystemVerilog circuis for simulation and FPGA implementation.
-
-## Nand Game Examples
-Some of the circuits described on the [Nand Game]((http://nandgame.com/)) web page have
-been implemented in Cava, along with proofs about correct operation, which
-are available at the [Cava Nand Game Examples](https://github.com/project-oak/oak-hardware/tree/master/nandgame/README.md) page.
