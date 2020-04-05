@@ -59,6 +59,7 @@ library
                      StateMonad
                      VectorDef
                      Vector
+                     ByteVector
   other-Modules:     Applicative
                      BinNat
                      BinPos
@@ -77,5 +78,10 @@ library
                      Monoid
                      Fin
                      Plus
+                     Ascii
+                     Basics
+                     Ndigits
+                     String
+                     Wf
 
   default-language:  Haskell2010

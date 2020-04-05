@@ -43,8 +43,8 @@ Local Open Scope monad_scope.
 
 
 Lemma addN_bheaviour : forall (ab : list (bool * bool)), 
-                       bits_to_nat (combinational (adder false ab)) =
-                       (bits_to_nat (map fst ab)) + (bits_to_nat (map snd ab)).
+                       list_bits_to_nat (combinational (adder false ab)) =
+                       (list_bits_to_nat (map fst ab)) + (list_bits_to_nat (map snd ab)).
 Proof.
   unfold combinational.
   unfold fst.
