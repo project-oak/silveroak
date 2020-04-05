@@ -52,64 +52,6 @@ Proof. reflexivity. Qed.
 Example and_11 : combinational (and2 (true, true)) = true.
 Proof. reflexivity. Qed.
 
-Eval cbv in (execState (inv (2%N)) (initStateFrom 3)).
-
-(* NAND gate example. Fist, let's define an overloaded NAND gate
-   description. *)
-
-Definition nand2_gate {m bit} `{Cava m bit} := and2 >=> inv.
-
-(* Simulate the NAND gate circuit using the Bool interpretation. *)
-Example nand_00 : combinational (nand2_gate (false, false)) = true.
-Proof. reflexivity. Qed.
-
-Example nand_11 : combinational (nand2_gate (true, true)) = false.
-Proof. reflexivity. Qed.
-
-(* Simulate the NAND gate circuit using the sequential interpretation. *)
-Example nand_seqA : sequential (nand2_gate ([false; true;  false; true],
-                                            [false; false; true;  true]))
-                                          = [true;  true;  true;  false].
-Proof. reflexivity. Qed.
-
-(* Generate a circuit graph representation for the NAND gate using the
-   netlist interpretatin. *)
-Eval cbv in (execState (nand2_gate (2%N, 3%N)) (initStateFrom 4)).
-
-Definition nand2Top : state CavaState N :=
-  setModuleName "nand2" ;;
-  a <- inputBit "a" ;;
-  b <- inputBit "b" ;;
-  c <- nand2 (a, b) ;;
-  outputBit "c" c.
-
-(* Generate a netlist containing the port definitions. *)
-Compute (execState nand2Top initState).
-
-Definition nand2Netlist := makeNetlist nand2Top.
-
-(* A proof that the combination NAND gate implementation is correct. *)
-Lemma nand2_comb_behaviour : forall (a : bool) (b : bool),
-                             combinational (nand2_gate (a, b)) = negb (a && b).
-Proof.
-  auto.
-Qed.
-
-(* A proof that the sequential NAND gate implementation is correct. *)
-Lemma nand2_seq_behaviour : forall (a : list bool) (b : list bool),
-                            sequential (nand2_gate (a, b)) = map (fun (i : bool * bool) => let (a, b) := i in
-                                                             negb (a && b)) (combine a b).
-Proof.
-  intros.
-  unfold sequential.
-  unfold unIdent.
-  simpl.
-  rewrite map_map.
-  rewrite map_ext_in_iff.
-  intros.
-  now destruct a0.  
-Qed.
-
 (* Unsigned addition examples. *)
 
 Definition bv4_0  := nat_to_bitvec 4  0.
@@ -139,7 +81,6 @@ Proof. reflexivity. Qed.
 Example add_15_15 : combinational (unsignedAdd bv4_15 bv4_15) = bv5_30.
 Proof. reflexivity. Qed.
 
-
 (* An adder example. *)
 
 Definition adder4Top : state CavaState (Vector.t N 5) :=
@@ -150,8 +91,6 @@ Definition adder4Top : state CavaState (Vector.t N 5) :=
   outputVectorTo0 5 sum "sum".
 
 Definition adder4Netlist := makeNetlist adder4Top.
-Compute (execState nand2Top initState).
-
 
 (* An contrived example of loopBit *)
 

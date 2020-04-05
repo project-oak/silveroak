@@ -1,5 +1,5 @@
 #
-# Copyright 2019 The Project Oak Authors
+# Copyright 2020 The Project Oak Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,17 +14,27 @@
 # limitations under the License.
 #
 
-.PHONY: all clean
+.PHONY: all compile clean
 
-all:
-	cd cava && $(MAKE) clean all && \
-	cd ../monad-examples && $(MAKE) clean all && \
-	cd ../arrow-examples && $(MAKE) clean all && \
-	cd ..
+all:		compile xorArrow.sv loopedNandArrow.sv
+
+Makefile.coq:
+		coq_makefile -f _CoqProject -o Makefile.coq
+
+compile:	Makefile.coq
+		$(MAKE) -f Makefile.coq
+
+ArrowExamplesSV:	ArrowExamplesSV.hs
+			ghc --make $^
+
+xorArrow.sv:	compile ArrowExamplesSV
+		./ArrowExamplesSV
+		verilator --lint-only verilator.vlt xorArrow.sv
+		verilator --lint-only verilator.vlt loopedNandArrow.sv
+
+
+loopedNandArrow.sv:	xorArrow.sv
 
 clean:
-	cd cava && $(MAKE) clean && \
-	cd ../monad-examples && $(MAKE) clean && \
-	cd ../arrow-examples && $(MAKE) clean && \
-	cd ..
-	rm -rf .DS_Store
+		-@$(MAKE) -f Makefile.coq clean
+		git clean -xfd

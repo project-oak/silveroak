@@ -1,25 +1,24 @@
-NandGate.hs
-NandGateSV
-nand2.sv
-nand2.vcd
-nand2.vvp
-FullAdder.hs
-UnsignedAdder.hs
-adder8.sv
-fulladderFC.sv
+# Coq generated files
+*.vok
+*.vos
+
+Makefile.coq
+.Makefile.coq.d
+
+# Generated SystemVerilog files, but not files in testbench/
+*.sv
+!testbench/*
+
+# Coq generated files
+*.vcd
+*.vvp
+
+# Haskell files except the manually created ones
+*.hs
+!ExamplesSV.hs
+
+# Binaries
 ExamplesSV
-BitVector.hs
-Bool.hs
-Datatypes.hs
-Decimal.hs
-List.hs
-Logic.hs
-Nat.hs
-PeanoNat.hs
-Specif.hs
-fulladder.sv
-AdderTree.hs
-adder8_3in.sv
-adder8_3in.vcd
-adder_fixed.sv
-adder_tree_4_8.sv
+
+# Haskell build chain files
+dist/*

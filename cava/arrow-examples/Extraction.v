@@ -14,6 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import ArrowExamples.
 From Coq Require Import Extraction.
 From Coq Require Import extraction.ExtrHaskellZInteger.
 From Coq Require Import extraction.ExtrHaskellString.
@@ -22,15 +23,4 @@ From Coq Require Import extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.
 
-Require Import Cava.BitArithmetic.
-Require Import Cava.Monad.Cava.
-Require Import Cava.Monad.Combinators.
-
-Recursive Extraction Library BitArithmetic.
-Recursive Extraction Library Cava.
-Recursive Extraction Library Combinators.
-
-Require Import Cava.Arrow.Arrow.
-Require Import Cava.Arrow.Instances.Netlist.
-Recursive Extraction Library Arrow.
-Recursive Extraction Library Netlist.
+Extraction Library ArrowExamples.
