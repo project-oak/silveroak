@@ -20,6 +20,8 @@ From Coq Require Import Bool.Bool.
 From Coq Require Import Lists.List.
 From Coq Require Import Vector.
 From Coq Require Import Bool.Bvector.
+From Coq Require Import NArith.Ndigits.
+From Coq Require Import NArith.Nnat.
 Require Import Nat Arith.
 Require Import Omega.
 From Coq Require Import btauto.Btauto.
@@ -30,94 +32,137 @@ Import ListNotations.
 
 Local Open Scope list_scope.
 
-(* Convert a bit-vector (LSB at first element) to a natural number. *)
+(* List and vector functions for conversion between nats and bit-vectors *)
 
-Fixpoint bits_to_nat (bits : list bool) : nat :=
+Lemma lt_wf : well_founded lt.
+Proof.
+  apply well_founded_lt_compat with (f := id).
+  tauto.
+Defined.
+
+Definition low_bit (n:nat) : bool := testbit n 0.
+
+Definition fold_shift_nat {A} (base: A) (combine: nat -> bool -> A -> A) : nat -> A.
+  refine (Fix lt_wf (fun _ => A)
+              (fun (n:nat) f =>
+                 if le_lt_dec n 0
+                 then base
+                 else combine (div2 n) (low_bit n) (f (div2 n) (PeanoNat.Nat.lt_div2 _ _)))).
+  exact l.
+Defined.
+
+Definition nat_to_list_bits' (n : nat) : list bool :=
+  fold_shift_nat [] (fun x b l => l++[b]) n.
+
+
+Definition nat_to_list_bits (n : nat) : list bool :=
+  List.rev (nat_to_list_bits' n).
+
+Fixpoint list_bits_to_nat' (bits : list bool) : nat :=
   match bits with
-  | [] => 0
-  | b::bs => Nat.b2n b + 2 * (bits_to_nat bs)
+  | [] =>  0
+  | b::bs => (shiftl (Nat.b2n b) (length bs)) + (list_bits_to_nat' bs)
   end.
 
-Example b2n_empty : bits_to_nat [] = 0.
+Fixpoint list_bits_to_nat (bits : list bool) : nat :=
+  list_bits_to_nat' (List.rev bits).
+
+Example b2n_empty : list_bits_to_nat [] = 0.
 Proof. reflexivity. Qed.
 
-Example b2n_0 : bits_to_nat [false] = 0.
+Example b2n_0 : list_bits_to_nat [false] = 0.
 Proof. reflexivity. Qed.
 
-Example b2n_1 : bits_to_nat [true] = 1.
+Example b2n_1 : list_bits_to_nat [true] = 1.
 Proof. reflexivity. Qed.
 
-Example b2n_10 : bits_to_nat [true; false] = 1.
+Example b2n_10 : list_bits_to_nat [false; true] = 2.
 Proof. reflexivity. Qed.
 
-Example b2n_01 : bits_to_nat [false; true] = 2.
+Example b2n_01 : list_bits_to_nat [true; false] = 1.
 Proof. reflexivity. Qed.
 
-Example b2n_11 : bits_to_nat [true; true] = 3.
+Example b2n_11 : list_bits_to_nat [true; true] = 3.
 Proof. reflexivity. Qed.
 
-Definition nat2bool (n : nat) : bool :=
-  match n with
-  | 0 => false
-  | _ => true
-  end.
-
-Fixpoint nat_to_bits (n : nat) (v : nat) : list bool :=
-  match n with
-  | 0 => []
-  | S n' => testbit v 0 :: nat_to_bits n' (div2 v)
-  end.
-
-Example n2b_0_1 : nat_to_bits 1 0 = [false].
+Example n2b_0_1 : nat_to_list_bits 0 = [].
 Proof. reflexivity. Qed.
 
-Example n2b_0_2 : nat_to_bits 2 0 = [false; false].
+Example n2b_1_1 : nat_to_list_bits 1 = [true].
 Proof. reflexivity. Qed.
 
-Example n2b_0_3 : nat_to_bits 3 0 = [false; false; false].
+Example n2b_2_2 : nat_to_list_bits 2 = [false; true].
 Proof. reflexivity. Qed.
 
-Example n2b_1_1 : nat_to_bits 1 1 = [true].
+Example n2b_2_3 : nat_to_list_bits 3 = [true; true].
 Proof. reflexivity. Qed.
 
-Example n2b_2_1: nat_to_bits 2 1 = [true; false].
-Proof. reflexivity. Qed.
+(* The following proof is from Steve Zdancewic. *)
+Lemma bits_to_nat_app : forall u l, list_bits_to_nat' (u ++ l) = (list_bits_to_nat' u) * (shiftl 1 (length l)) + (list_bits_to_nat' l).
+Proof.
+  induction u; intros; simpl.
+  - reflexivity.
+  - rewrite IHu.
+    rewrite Nat.mul_add_distr_r.
+    destruct a.
+    rewrite app_length.
+    rewrite <- Nat.shiftl_shiftl.
+    repeat rewrite Nat.shiftl_1_l.
+    rewrite Nat.shiftl_mul_pow2.
+    rewrite plus_assoc.
+    reflexivity.
+    repeat rewrite Nat.shiftl_0_l.
+    simpl. reflexivity.
+Qed.   
 
-Example n2b_2_2 : nat_to_bits 2 2 = [false; true].
-Proof. reflexivity. Qed.
-
-Example n2b_2_3 : nat_to_bits 2 3 = [true; true].
-Proof. reflexivity. Qed.
-
-    
+Lemma nat_to_bits'_list_correct : forall n, list_bits_to_nat' (nat_to_list_bits' n) = n.
+Proof.
+  induction n using lt_wf_ind.
+  unfold nat_to_list_bits'.
+  unfold fold_shift_nat. rewrite Fix_eq.
+  - destruct (le_lt_dec n 0).
+    + assert (n = 0). lia. subst. simpl. reflexivity.
+    + rewrite bits_to_nat_app.
+      unfold nat_to_list_bits' in H.
+      unfold fold_shift_nat in H.
+      rewrite (H (div2 n)).
+      unfold low_bit.
+      simpl. replace (double 1) with 2 by auto.
+      replace (Nat.b2n (odd n) + 0) with (Nat.b2n (odd n)) by lia.
+      replace (div2 n * 2) with (2 * div2 n) by lia.
+      rewrite Nat.div2_odd. reflexivity.
+      apply Nat.lt_div2. assumption.
+  - intros.
+    destruct (le_lt_dec x 0).
+    + reflexivity.
+    + rewrite H0. reflexivity.
+Qed.         
+     
 (******************************************************************************)
 (* Functions useful for Vector operations                                     *)
 (******************************************************************************)
 
-Fixpoint bitvec_to_nat {n : nat} (bits : Bvector n) : nat :=
-  match n, bits with
-  | 0, _ => 0
-  | S n', bv => Nat.b2n (Blow n' bv) + 2 * (bitvec_to_nat (Bhigh n' bv))
-  end.
+Definition bitvec_to_nat {n : nat} (bits : Bvector n) : nat :=
+  N.to_nat (Bv2N n bits).
 
-Definition bv3_0 : Bvector 3 := of_list [false; false; false].
+Definition bv3_0 : Bvector 3 := [false; false; false]%vector.
 Example bv3_0_ex : bitvec_to_nat bv3_0 = 0.
 Proof. reflexivity. Qed.
 
-Definition bv3_1 : Bvector 3 := of_list [true; false; false].
+Definition bv1 : Bvector 1 := [true]%vector.
+Example bv1_ex : bitvec_to_nat bv1 = 1.
+Proof. reflexivity. Qed.
+
+Definition bv3_1 : Bvector 3 := [true; false; false]%vector.
 Example bv3_1_ex : bitvec_to_nat bv3_1 = 1.
 Proof. reflexivity. Qed.
 
-Definition bv3_2 : Bvector 3 := of_list [false; true; false].
+Definition bv3_2 : Bvector 3 := [false; true; false]%vector.
 Example bv3_2_ex : bitvec_to_nat bv3_2 = 2.
 Proof. reflexivity. Qed.
-
-
-Fixpoint nat_to_bitvec (n : nat) (v : nat) : Bvector n :=
-  match n with
-  | 0    => Bnil
-  | S n' => Bcons (testbit v 0) n' (nat_to_bitvec n' (div2 v))
-  end.
+        
+Definition nat_to_bitvec (n : nat) (v : nat) : Bvector n :=
+  N2Bv_sized n (N.of_nat v).
 
 Example bv3_0_exrev : nat_to_bitvec 3 0 = bv3_0.
 Proof. reflexivity. Qed.
@@ -126,10 +171,7 @@ Example bv3_1_exrev : nat_to_bitvec 3 1 = bv3_1.
 Proof. reflexivity. Qed.
 
 Example bv3_2_exrev : nat_to_bitvec 3 2 = bv3_2.
-Proof. reflexivity. Qed.
-
-Lemma bvnat: forall n v, bitvec_to_nat (nat_to_bitvec n v) = v.
-Admitted. (* For now. *)
+Proof. reflexivity. Qed.    
 
 (* Vector version of list seq *)
 Fixpoint vec_seq (a b : nat) : Vector.t nat b :=
@@ -145,9 +187,18 @@ Fixpoint replicate_vec {A : Type} (n : nat) (v : A) : Vector.t A n :=
   | S n' => Vector.cons A v n' (replicate_vec n' v)
   end.
 
+Lemma bvnat: forall n v, bitvec_to_nat (nat_to_bitvec n v) = v.
+Admitted. (* For now. *)
+
 (******************************************************************************)
 (* Functions useful for examples and tests                                    *)
 (******************************************************************************)
+
+Definition nat2bool (n : nat) : bool :=
+  match n with
+  | 0 => false
+  | _ => true
+  end.
 
 Definition fromVec := List.map Nat.b2n.
 Definition toVec := List.map nat2bool.

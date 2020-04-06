@@ -27,6 +27,7 @@ FixupAscii:	FixupAscii.hs
 haskell:	coq FixupAscii
 		./FixupAscii
 		mv Ascii2.hs Ascii.hs
+		mv ByteVector2.hs ByteVector.hs
 		runhaskell Setup.hs configure --user
 		runhaskell Setup.hs build
 		runhaskell Setup.hs install

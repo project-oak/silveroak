@@ -1,4 +1,4 @@
-{- Copyright 2019 The Project Oak Authors
+{- Copyright 2020 The Project Oak Authors
   
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -16,14 +16,20 @@
 module Main
 where
 
-main :: IO ()
-main
-  = do content <- readFile "Ascii.hs"
-       let contentLines = lines content
-           updatedLines = take 2 contentLines ++
-                          extraImports ++
-                          drop 2 contentLines
-       writeFile "Ascii2.hs" (unlines updatedLines)
+fixup :: String -> String
+fixup content
+  = unlines updatedLines
     where
+    contentLines = lines content
+    updatedLines = take 2 contentLines ++
+                   extraImports ++
+                   drop 2 contentLines
     extraImports = ["import qualified Data.Bits",
                     "import qualified Data.Char"]
+
+main :: IO ()
+main
+  = do asciiContent <- readFile "Ascii.hs"
+       writeFile "Ascii2.hs" (fixup asciiContent)
+       bytevectorContent <- readFile "ByteVector.hs"
+       writeFile "ByteVector2.hs" (fixup bytevectorContent)
