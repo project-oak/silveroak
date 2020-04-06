@@ -95,7 +95,9 @@ Example n2b_2_2 : nat_to_list_bits 2 = [false; true].
 Proof. reflexivity. Qed.
 
 Example n2b_2_3 : nat_to_list_bits 3 = [true; true].
-Proof. reflexivity. Qed.
+Proof. reflexivity. Qed.  
+
+
 
 (* The following proof is from Steve Zdancewic. *)
 Lemma bits_to_nat_app : forall u l, list_bits_to_nat' (u ++ l) = (list_bits_to_nat' u) * (shiftl 1 (length l)) + (list_bits_to_nat' l).
@@ -160,17 +162,20 @@ Proof. reflexivity. Qed.
 Definition bv3_2 : Bvector 3 := [false; true; false]%vector.
 Example bv3_2_ex : bitvec_to_nat bv3_2 = 2.
 Proof. reflexivity. Qed.
-        
-Definition nat_to_bitvec (n : nat) (v : nat) : Bvector n :=
+
+Definition nat_to_bitvec (v : nat) : Bvector (N.size_nat (N.of_nat v)) :=
+  N2Bv (N.of_nat v).
+       
+Definition nat_to_bitvec_sized (n : nat) (v : nat) : Bvector n :=
   N2Bv_sized n (N.of_nat v).
 
-Example bv3_0_exrev : nat_to_bitvec 3 0 = bv3_0.
+Example bv3_0_exrev : nat_to_bitvec_sized 3 0 = bv3_0.
 Proof. reflexivity. Qed.
 
-Example bv3_1_exrev : nat_to_bitvec 3 1 = bv3_1.
+Example bv3_1_exrev : nat_to_bitvec_sized 3 1 = bv3_1.
 Proof. reflexivity. Qed.
 
-Example bv3_2_exrev : nat_to_bitvec 3 2 = bv3_2.
+Example bv3_2_exrev : nat_to_bitvec_sized 3 2 = bv3_2.
 Proof. reflexivity. Qed.    
 
 (* Vector version of list seq *)
@@ -187,8 +192,42 @@ Fixpoint replicate_vec {A : Type} (n : nat) (v : A) : Vector.t A n :=
   | S n' => Vector.cons A v n' (replicate_vec n' v)
   end.
 
-Lemma bvnat: forall n v, bitvec_to_nat (nat_to_bitvec n v) = v.
-Admitted. (* For now. *)
+Lemma bits_of_nat_sized: forall n bv, nat_to_bitvec_sized n (bitvec_to_nat bv) = bv.
+Proof.
+  intros.
+  unfold nat_to_bitvec_sized.
+  unfold bitvec_to_nat.
+  rewrite N2Nat.id.
+  rewrite N2Bv_sized_Bv2N. 
+  reflexivity.
+Qed.
+
+Lemma nat_of_bits: forall v, bitvec_to_nat (nat_to_bitvec v) = v.
+Proof.
+  intros.
+  unfold nat_to_bitvec.
+  unfold bitvec_to_nat.
+  rewrite Bv2N_N2Bv. 
+  rewrite Nat2N.id.
+  reflexivity.
+Qed.
+
+Lemma nat_of_bits_sized: forall (v : nat),
+      bitvec_to_nat (nat_to_bitvec_sized (N.size_nat (N.of_nat v)) v) = v.
+Proof.
+  intros.
+  unfold nat_to_bitvec_sized.
+  unfold bitvec_to_nat.
+  rewrite N2Bv_sized_Nsize.
+  rewrite Bv2N_N2Bv.
+  rewrite Nat2N.id.
+  reflexivity.
+Qed.
+
+
+Lemma nat_of_bits_sized_n: forall n (v : nat),
+      bitvec_to_nat (nat_to_bitvec_sized n v) = v.
+Admitted.
 
 (******************************************************************************)
 (* Functions useful for examples and tests                                    *)

@@ -298,11 +298,13 @@ Definition muxcyBool (s : bool) (di : bool) (ci : bool) : ident bool :=
        | true => ci
        end).
 
-Definition unsignedAddBool {m n : nat} (av : Bvector m) (bv : Bvector n) : ident (Bvector (max m n + 1)) :=
+Definition unsignedAddBool {m n : nat} (av : Bvector m) (bv : Bvector n) :
+           ident (Bvector (max m n + 1)) :=
   let a := bitvec_to_nat av in
   let b := bitvec_to_nat bv in
   let c := a + b in
-  ret (nat_to_bitvec (max m n + 1) c).
+  let cv := nat_to_bitvec_sized (max m n + 1) c in
+  ret cv.
 
 Definition bufBool (i : bool) : ident bool :=
   ret i.

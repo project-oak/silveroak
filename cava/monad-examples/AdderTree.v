@@ -71,7 +71,8 @@ Lemma add3_behaviour : forall aL bL cL (av : Bvector aL) (bv : Bvector bL) (cv :
                        let c := bitvec_to_nat cv in
                        bitvec_to_nat (combinational (adder_3in av bv cv)) = a + b + c.
 Proof.
-  intros. unfold combinational. unfold adder_3in. simpl. rewrite bvnat. rewrite bvnat.
+  intros. unfold combinational. unfold adder_3in. simpl.
+  rewrite nat_of_bits_sized_n. rewrite nat_of_bits_sized_n.
   reflexivity.
 Qed.
 
@@ -101,10 +102,10 @@ Definition adder_fixed_top : state CavaState (Vector.t N 9) :=
 
 Definition adder_fixedNetlist := makeNetlist adder_fixed_top.
 
-Definition v0 := nat_to_bitvec 8  4.
-Definition v1 := nat_to_bitvec 8 17.
-Definition v2 := nat_to_bitvec 8  6.
-Definition v3 := nat_to_bitvec 8  3.
+Definition v0 := nat_to_bitvec_sized 8  4.
+Definition v1 := nat_to_bitvec_sized 8 17.
+Definition v2 := nat_to_bitvec_sized 8  6.
+Definition v3 := nat_to_bitvec_sized 8  3.
 
 Example check_fixed: bitvec_to_nat (combinational (adderFixed v0 v1)) = 21.
 Proof. reflexivity. Qed.
