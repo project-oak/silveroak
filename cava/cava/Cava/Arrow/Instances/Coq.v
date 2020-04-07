@@ -59,11 +59,11 @@ Section CoqEval.
     xorcy '(x,y) := xorb x y;
     muxcy '(x,y,z) := if x then y else z;
 
-    unsigned_add m n '(av, bv) :=
+    unsigned_add m n s '(av, bv) :=
       let a := bitvec_to_nat av in
       let b := bitvec_to_nat bv in
       let c := a + b in
-      nat_to_bitvec_sized (max m n + 1) c;
+      nat_to_bitvec_sized s c;
   }.
 
   Example not_true: not_gate true = false.

@@ -150,10 +150,10 @@ Section ArrowNetlist.
       put (Muxcy ii t e i :: nl, (i+1)%N) ;;
       ret i;
 
-    unsigned_add m n '(a,b) :=
+    unsigned_add m n s '(a,b) :=
       '(nl, i) <- get ;;
-      let o := Vector.map N.of_nat (vec_seq (N.to_nat i) (max m n + 1)) in
-      put (UnsignedAdd m n a b o :: nl, (i + N.of_nat (max m n + 1))%N) ;;
+      let o := Vector.map N.of_nat (vec_seq (N.to_nat i) s) in
+      put (UnsignedAdd m n s a b o :: nl, (i + N.of_nat s)%N) ;;
       ret o;
   }.
 

@@ -52,8 +52,9 @@ Inductive Primitive :=
   (* Assignment of bit wire *)
   | AssignBit : N -> N -> Primitive
   (* Arithmetic operations *)
-  | UnsignedAdd : forall m n, Vector.t N m -> Vector.t N n ->
-                              Vector.t N (max m n + 1) -> Primitive
+  | UnsignedAdd : forall aSize bSize sumSize,
+                  Vector.t N aSize -> Vector.t N bSize ->
+                  Vector.t N sumSize -> Primitive
   (* Xilinx FPGA architecture specific gates. *)
   | Xorcy : N -> N -> N -> Primitive
   | Muxcy : N -> N -> N -> N -> Primitive.

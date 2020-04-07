@@ -114,7 +114,7 @@ computeVectors instances
 
 computeVectors' :: Netlist.Primitive -> State NetlistGenerationState
                                         String
-computeVectors' (Netlist.UnsignedAdd m n a b s)
+computeVectors' (Netlist.UnsignedAdd aSize bSize sumSize a b s)
   = do NetlistGenerationState v vDecs <- get
        let vA = VectorDeclaration AssignTo   v       HighToLow a
            vB = VectorDeclaration AssignTo   (v + 1) HighToLow b
@@ -212,7 +212,7 @@ generateInstance (Netlist.DelayBit i o)
         ++ show (fromN i) ++ "];";
 generateInstance (Netlist.AssignBit a b)
    = "  assign net[" ++ show (fromN a) ++ "] = net[" ++ show (fromN b) ++ "];"
-generateInstance (Netlist.UnsignedAdd m n a b s)
+generateInstance (Netlist.UnsignedAdd _ _ _ _ _ _)
    = "" -- Generated instead during vector generation
 generateInstance inst
   = "  " ++ instName ++ " inst" ++ show (fromN numb) ++ " " ++
