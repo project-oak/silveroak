@@ -69,7 +69,7 @@ Section CoqStreamEval.
       let a := bitvec_to_nat av in
       let b := bitvec_to_nat bv in
       let c := a + b in
-      nat_to_bitvec (max m n + 1) c
+      nat_to_bitvec_sized (max m n + 1) c
     );
   }.
 End CoqStreamEval.

@@ -54,16 +54,16 @@ Proof. reflexivity. Qed.
 
 (* Unsigned addition examples. *)
 
-Definition bv4_0  := nat_to_bitvec 4  0.
-Definition bv4_1  := nat_to_bitvec 4  1.
-Definition bv4_2  := nat_to_bitvec 4  2.
-Definition bv4_3  := nat_to_bitvec 4  3.
-Definition bv4_15 := nat_to_bitvec 4 15.
+Definition bv4_0  := nat_to_bitvec_sized 4  0.
+Definition bv4_1  := nat_to_bitvec_sized 4  1.
+Definition bv4_2  := nat_to_bitvec_sized 4  2.
+Definition bv4_3  := nat_to_bitvec_sized 4  3.
+Definition bv4_15 := nat_to_bitvec_sized 4 15.
 
-Definition bv5_0  := nat_to_bitvec 5  0.
-Definition bv5_3  := nat_to_bitvec 5  3.
-Definition bv5_16 := nat_to_bitvec 5 16.
-Definition bv5_30 := nat_to_bitvec 5 30.
+Definition bv5_0  := nat_to_bitvec_sized 5  0.
+Definition bv5_3  := nat_to_bitvec_sized 5  3.
+Definition bv5_16 := nat_to_bitvec_sized 5 16.
+Definition bv5_30 := nat_to_bitvec_sized 5 30.
 
 (* Check 0 + 0 = 0 *)
 Example add_0_0 : combinational (unsignedAdd bv4_0 bv4_0) = bv5_0.
