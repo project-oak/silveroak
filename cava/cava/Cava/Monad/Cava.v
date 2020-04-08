@@ -66,7 +66,9 @@ Class Cava m bit `{Monad m} := {
   xorcy : bit * bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
   muxcy : bit -> bit -> bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
   (* Synthesizable arithmetic operations. *)
-  unsignedAdd : forall {a b}, Vector.t bit a -> Vector.t bit b -> m (Vector.t bit (max a b + 1));
+  unsignedAdd : forall {aSize bSize} sumSize,
+                Vector.t bit aSize -> Vector.t bit bSize ->
+                m (Vector.t bit sumSize);
 }.
 
 (******************************************************************************)
@@ -161,13 +163,14 @@ Definition muxcyNet (s : N)  (di : N) (ci : N) : state CavaState N :=
          ret o
   end.  
 
-Definition unsignedAddNet {m n : nat} (av : Vector.t N m) (bv : Vector.t N n) : state CavaState (Vector.t N (max m n + 1)) :=
+Definition unsignedAddNet {aSize bSize : nat} (sumSize : nat)
+                          (av : Vector.t N aSize) (bv : Vector.t N bSize) :
+                          state CavaState (Vector.t N sumSize) :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => let l := max m n + 1 in
-         let outv := Vector.map N.of_nat (vec_seq (N.to_nat o) (max m n + 1)) in
-         put (mkCavaState (o + (N.of_nat l)) isSeq (mkModule name (cons (UnsignedAdd m n av bv outv) insts) inputs outputs )) ;;
+      => let outv := Vector.map N.of_nat (vec_seq (N.to_nat o) sumSize) in
+         put (mkCavaState (o + (N.of_nat sumSize)) isSeq (mkModule name (cons (UnsignedAdd aSize bSize sumSize av bv outv) insts) inputs outputs )) ;;
          ret outv
   end.
 
@@ -213,7 +216,7 @@ Instance CavaNet : Cava (state CavaState) N :=
     buf_gate := bufNet;
     xorcy := xorcyNet;
     muxcy := muxcyNet;
-    unsignedAdd m n := @unsignedAddNet m n;
+    unsignedAdd aSize bSize := @unsignedAddNet aSize bSize;
 }.
 
 (******************************************************************************)
@@ -298,13 +301,17 @@ Definition muxcyBool (s : bool) (di : bool) (ci : bool) : ident bool :=
        | true => ci
        end).
 
-Definition unsignedAddBool {m n : nat} (av : Bvector m) (bv : Bvector n) :
-           ident (Bvector (max m n + 1)) :=
+(* Unsigned addition is defined to be the addition of the two unsigned
+   input vectors followed by a modulus determinted by the size of the
+   result vector.
+*)
+Definition unsignedAddBool {aSize bSize : nat} (sumSize : nat)
+                           (av : Bvector aSize) (bv : Bvector bSize) :
+                           ident (Bvector sumSize) :=
   let a := bitvec_to_nat av in
   let b := bitvec_to_nat bv in
-  let c := a + b in
-  let cv := nat_to_bitvec_sized (max m n + 1) c in
-  ret cv.
+  let sum := (a + b) mod 2^sumSize in
+  ret (nat_to_bitvec_sized sumSize sum).
 
 Definition bufBool (i : bool) : ident bool :=
   ret i.
@@ -384,9 +391,10 @@ Definition muxcyBoolList (s : list bool) (di : list bool) (ci : list bool) : ide
    we model sequential circuits.
    TODO(satnam): Replace with actual definition when sequential circuit semantics are clearer.
 *)
-Definition unsignedAddBoolList {m n : nat} (a : Vector.t (list bool) m) (b : Vector.t (list bool) n) :
-                                           ident (Vector.t (list bool) (max m n + 1)) :=
-  ret (replicate_vec (max m n + 1) []).
+Definition unsignedAddBoolList {aSize bSize : nat} (sumSize : nat)
+                               (a : Vector.t (list bool) aSize) (b : Vector.t (list bool) bSize) :
+                               ident (Vector.t (list bool) sumSize) :=
+  ret (replicate_vec sumSize []).
 
 Definition bufBoolList (i : list bool) : ident (list bool) :=
   ret i.
@@ -412,7 +420,7 @@ Instance CavaBoolList : Cava ident (list bool) :=
     xorcy := xorcyBoolList;
     xnor2 := xnorBoolList;
     muxcy := muxcyBoolList;
-    unsignedAdd m n := @unsignedAddBoolList m n;
+    unsignedAdd aSize bSize := @unsignedAddBoolList aSize bSize;
     buf_gate := bufBoolList;
 }.
 

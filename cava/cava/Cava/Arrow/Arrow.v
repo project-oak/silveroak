@@ -106,7 +106,7 @@ Class Cava  := {
   xorcy:     bit ** bit ~> bit;
   muxcy:     bit ** bit ** bit ~> bit;
 
-  unsigned_add a b: bitvec a ** bitvec b ~> bitvec (max a b + 1);
+  unsigned_add a b s: bitvec a ** bitvec b ~> bitvec s;
 }.
 
 Definition cava_cat (_: Cava): Category := _.

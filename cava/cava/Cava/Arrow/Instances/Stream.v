@@ -65,11 +65,11 @@ Section CoqStreamEval.
       let '(x,y,z) := xyz in if x then y else z
     );
 
-    unsigned_add m n := map (fun '(av, bv) =>
+    unsigned_add m n s := map (fun '(av, bv) =>
       let a := bitvec_to_nat av in
       let b := bitvec_to_nat bv in
       let c := a + b in
-      nat_to_bitvec_sized (max m n + 1) c
+      nat_to_bitvec_sized s c
     );
   }.
 End CoqStreamEval.

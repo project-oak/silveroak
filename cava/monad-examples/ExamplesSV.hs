@@ -17,10 +17,10 @@
 module Main where
 
 import Cava2SystemVerilog
-import Examples
 import NandGate
 import FullAdder
 import UnsignedAdder
+import UnsignedAdderExamples
 import AdderTree
 
 main :: IO ()
@@ -29,8 +29,7 @@ main = do writeSystemVerilog nand2Netlist
           writeSystemVerilog fullAdderNetlist
           writeSystemVerilog fullAdderFCNetlist
           writeSystemVerilog adder8Netlist
-          writeSystemVerilog adder8_3inNetlist
-          writeSystemVerilog adder_fixedNetlist
+          writeSystemVerilog adder8_3inputNetlist
           writeSystemVerilog adder_tree_4_8Netlist
           writeSystemVerilog pipelinedNANDNetlist
           writeSystemVerilog loopedNANDNetlist

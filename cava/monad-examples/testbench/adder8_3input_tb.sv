@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 
-module adder8_3in_test;
+module adder8_3input_test;
   
   timeunit 1ns; timeprecision 1ns;
 
@@ -22,7 +22,7 @@ module adder8_3in_test;
   logic [7:0] a, b, c;
   logic [9:0] sum;
   
-  adder8_3in adder8__3in_inst  (.*);
+  adder8_3input adder8_3input_inst  (.*);
  
   initial $monitor($time, " a = %0d, b = %0d, c = %0d, sum = %0d", a, b, c, sum);
 

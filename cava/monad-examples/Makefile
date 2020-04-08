@@ -41,18 +41,17 @@ nand2.sv:	coq ExamplesSV
 		verilator --lint-only verilator.vlt loopedNAND.sv
 		verilator --lint-only verilator.vlt loopedNAND.sv
 		verilator --lint-only verilator.vlt pipelinedNAND.sv
-		verilator --lint-only verilator.vlt adder8_3in.sv
-		verilator --lint-only verilator.vlt adder_fixed.sv
+		verilator --lint-only verilator.vlt adder8_3input.sv
 		verilator --lint-only verilator.vlt adder_tree_4_8.sv
 
 %.vcd:		%.sv testbench/%_tb.sv
 		iverilog -g2012 -o $*.vvp $^
 		./$*.vvp
 
-.PRECIOUS:	nand2.sv adder4.sv adder8_3in.sv pipelinedNAND.sv \
+.PRECIOUS:	nand2.sv adder4.sv adder8_3input.sv pipelinedNAND.sv \
 		loopedNAND.sv
 
-auto_vcds:	nand2.vcd adder4.vcd adder8_3in.vcd pipelinedNAND.vcd \
+auto_vcds:	nand2.vcd adder4.vcd adder8_3input.vcd pipelinedNAND.vcd \
 		loopedNAND.vcd
 
 fulladderFC.sv:	nand2.sv

@@ -25,6 +25,7 @@ Extraction Language Haskell.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Monad.Cava.
 Require Import Cava.Monad.Combinators.
+Require Import Cava.Monad.UnsignedAdders.
 
 Recursive Extraction Library BitArithmetic.
 Recursive Extraction Library Cava.
@@ -34,3 +35,4 @@ Require Import Cava.Arrow.Arrow.
 Require Import Cava.Arrow.Instances.Netlist.
 Recursive Extraction Library Arrow.
 Recursive Extraction Library Netlist.
+Recursive Extraction Library UnsignedAdders.
