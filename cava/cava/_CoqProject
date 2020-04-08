@@ -11,5 +11,6 @@ Cava/Arrow/Arrow.v
 Cava/Arrow/Instances/Coq.v
 Cava/Arrow/Instances/Stream.v
 Cava/Arrow/Instances/Netlist.v
+Cava/Arrow/Syntax.v
 
 Cava/Extraction.v

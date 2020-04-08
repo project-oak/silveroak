@@ -4,7 +4,7 @@ From Coq Require Import Bool.Bool.
 From Cava Require Import Netlist.
 
 Reserved Infix "~>" (at level 90, right associativity).
-Reserved Infix "**" (at level 40, left associativity).
+Reserved Infix "**" (at level 30, right associativity).
 Reserved Infix ">>>" (at level 90, right associativity).
 
 (* more flexible than a haskell style category,
@@ -66,7 +66,7 @@ Bind Scope arrow_scope with Arrow.
 Delimit Scope arrow_scope with Arrow.
 
 Notation "x ** y" := (product x y)
-  (at level 40, left associativity) : arrow_scope.
+  (at level 30, right associativity) : arrow_scope.
 
 Open Scope arrow_scope.
 
