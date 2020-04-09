@@ -104,7 +104,7 @@ Class Cava  := {
   buf_gate:  bit        ~> bit;
 
   xorcy:     bit ** bit ~> bit;
-  muxcy:     bit ** bit ** bit ~> bit;
+  muxcy:     bit ** (bit ** bit) ~> bit;
 
   unsigned_add a b s: bitvec a ** bitvec b ~> bitvec s;
 }.

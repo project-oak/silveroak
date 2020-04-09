@@ -82,11 +82,13 @@ Definition makeNetlist {t} (circuit : state CavaState t) : CavaState
 (* Netlist implementations for the Cava class.                                *)
 (******************************************************************************)
 
+Open Scope vector_scope.
+
 Definition invNet (i : N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Not i o) insts) inputs outputs )) ;;
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindNot i o) insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -94,7 +96,7 @@ Definition andNet (i : N * N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (And [fst i; snd i] o) insts) inputs outputs )) ;;
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindAnd [fst i; snd i] o) insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -102,7 +104,7 @@ Definition nandNet (i : N * N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Nand [fst i; snd i] o) insts) inputs outputs )) ;;
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindNand [fst i; snd i] o) insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -110,7 +112,7 @@ Definition orNet (i : N * N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Or [fst i; snd i] o) insts) inputs outputs )) ;;
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindOr [fst i; snd i] o) insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -118,7 +120,7 @@ Definition norNet (i : N * N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Nor [fst i; snd i] o) insts) inputs outputs )) ;;
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindNor [fst i; snd i] o) insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -126,7 +128,7 @@ Definition xorNet (i : N * N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Xor [fst i; snd i] o) insts) inputs outputs )) ;;
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindXor [fst i; snd i] o) insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -135,7 +137,7 @@ Definition xorcyNet (i : N * N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Xorcy (fst i) (snd i) o) insts) inputs outputs )) ;;
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindXorcy i o) insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -143,7 +145,7 @@ Definition xnorNet (i : N * N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Xnor [fst i; snd i] o) insts) inputs outputs )) ;;
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindXnor [fst i; snd i] o) insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -151,7 +153,7 @@ Definition bufNet (i : N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Buf i o) insts) inputs outputs )) ;;
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindBuf i o) insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -159,9 +161,9 @@ Definition muxcyNet (s : N)  (di : N) (ci : N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Muxcy s di ci o) insts) inputs outputs )) ;;
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindMuxcy (s,(di,ci)) o) insts) inputs outputs )) ;;
          ret o
-  end.  
+  end.
 
 Definition unsignedAddNet {aSize bSize : nat} (sumSize : nat)
                           (av : Vector.t N aSize) (bv : Vector.t N bSize) :
@@ -170,7 +172,7 @@ Definition unsignedAddNet {aSize bSize : nat} (sumSize : nat)
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
       => let outv := Vector.map N.of_nat (vec_seq (N.to_nat o) sumSize) in
-         put (mkCavaState (o + (N.of_nat sumSize)) isSeq (mkModule name (cons (UnsignedAdd aSize bSize sumSize av bv outv) insts) inputs outputs )) ;;
+         put (mkCavaState (o + (N.of_nat sumSize)) isSeq (mkModule name (cons (BindUnsignedAdd (av,bv) outv) insts) inputs outputs )) ;;
          ret outv
   end.
 
@@ -178,7 +180,7 @@ Definition delayBitNet (i : N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) true (mkModule name (cons (DelayBit i o) insts) inputs outputs )) ;;
+      => put (mkCavaState (o+1) true (mkModule name (cons (BindDelayBit i o) insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -191,7 +193,7 @@ Definition loopBitNet (A B : Type) (f : (A * N)%type -> state CavaState (B * N)%
           cs2 <- get ;;
           match cs2 with
           | mkCavaState o2 isSeq (mkModule name insts inputs outputs)
-              => put (mkCavaState (o2+1) isSeq (mkModule name (cons (AssignBit o cOut) insts) inputs outputs)) ;;
+              => put (mkCavaState (o2+1) isSeq (mkModule name (cons (BindAssignBit o cOut) insts) inputs outputs)) ;;
                  ret b
           end
   end.
@@ -235,7 +237,7 @@ Definition inputVectorTo0 (size : nat) (name : string) : state CavaState (Vector
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
      => let netNumbers := Vector.map N.of_nat (vec_seq (N.to_nat o) size) in
-        let newPort := mkPort name (VectorTo0Port size netNumbers) in
+        let newPort := mkPort name (BitVec size) netNumbers in
         put (mkCavaState (o + (N.of_nat size)) isSeq (mkModule n insts (cons newPort inputs) outputs)) ;;
         ret netNumbers
   end.
@@ -244,7 +246,7 @@ Definition inputBit (name : string) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
-     => let newPort := mkPort name (BitPort o) in
+     => let newPort := mkPort name Bit o in
         put (mkCavaState (o+1) isSeq (mkModule n insts (cons newPort inputs) outputs)) ;;
         ret o
   end.
@@ -253,7 +255,7 @@ Definition outputBit (name : string) (i : N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
-     => let newPort := mkPort name (BitPort i) in
+     => let newPort := mkPort name Bit i in
         put (mkCavaState o isSeq (mkModule n insts inputs (cons newPort outputs))) ;;
         ret i
   end.
@@ -262,10 +264,12 @@ Definition outputVectorTo0 (size : nat) (v : Vector.t N size) (name : string) : 
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
-     => let newPort := mkPort name (VectorTo0Port size v) in
+     => let newPort := mkPort name (BitVec size) v in
         put (mkCavaState o isSeq (mkModule n insts inputs (cons newPort outputs))) ;;
         ret v
   end.
+
+Close Scope vector_scope.
 
 (******************************************************************************)
 (* A second boolean combinational logic interpretaiob for the Cava class      *)
