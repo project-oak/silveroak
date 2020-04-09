@@ -14,12 +14,12 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Program.Basics.
-From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
-From Coq Require Import Lists.List.
+From Coq Require Import Bool.Bool.
 From Coq Require Import NArith.
+From Coq Require Import Lists.List.
 Import ListNotations.
+Open Scope list_scope.
 
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
@@ -28,10 +28,8 @@ Open Scope monad_scope.
 Require Import Cava.Netlist.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Monad.Cava.
+Require Import Cava.Monad.Combinators.
 Require Import Cava.Monad.UnsignedAdders.
-
-Local Open Scope list_scope.
-Local Open Scope monad_scope.
 
 (******************************************************************************)
 (* Unsigned addition examples.                                                *)
