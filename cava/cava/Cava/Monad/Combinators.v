@@ -14,30 +14,18 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* A codification of the Lava embedded DSL develope for Haskell into
-   Coq for the specification, implementaiton and formal verification of circuits.
-   Experimental work, very much in flux, as Satnam learns Coq!
-*)
-
-Require Import Program.Basics.
-From Coq Require Import Bool.Bool.
-From Coq Require Import Ascii String.
-From Coq Require Numbers.BinNums.
-From Coq Require Import ZArith.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.MonadFix.
-Require Export ExtLib.Data.Monads.IdentityMonad.
-Require Export ExtLib.Data.Monads.StateMonad.
+
 Export MonadNotation.
 
 Require Import Cava.Monad.Cava.
 
 Generalizable All Variables.
 
-Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
 
