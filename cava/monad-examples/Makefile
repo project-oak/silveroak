@@ -24,6 +24,9 @@
 all:		coq auto_vcds
 xilinx:		adder8.vcd
 
+VERILATOR = verilator +1800-2012ext+sv verilator.vlt
+VLINT = $(VERILATOR) --lint-only
+
 Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
 
@@ -35,23 +38,26 @@ ExamplesSV:	ExamplesSV.hs
 
 nand2.sv:	coq ExamplesSV
 		./ExamplesSV
-		verilator --lint-only verilator.vlt nand2.sv
-		verilator --lint-only verilator.vlt adder4.sv
-		verilator --lint-only verilator.vlt fulladder.sv
-		verilator --lint-only verilator.vlt loopedNAND.sv
-		verilator --lint-only verilator.vlt loopedNAND.sv
-		verilator --lint-only verilator.vlt pipelinedNAND.sv
-		verilator --lint-only verilator.vlt adder8_3input.sv
-		verilator --lint-only verilator.vlt adder_tree4_8.sv
+		$(VLINT) nand2.sv
+		$(VLINT) adder4.sv
+		$(VLINT) fulladder.sv
+		$(VLINT) loopedNAND.sv
+		$(VLINT) loopedNAND.sv
+		$(VLINT) pipelinedNAND.sv
+		$(VLINT) adder8_3input.sv
+		$(VLINT) adder_tree4_8.sv testbench/adder_tree4_8_tb.sv
+		$(VERILATOR) --trace --cc --top-module adder_tree4_8_tb testbench/adder_tree4_8_tb.sv adder_tree4_8.sv --exe testbench/adder_tree4_8_tb.cpp
+		make -C obj_dir -f Vadder_tree4_8_tb.mk Vadder_tree4_8_tb
+		obj_dir/Vadder_tree4_8_tb
 
 %.vcd:		%.sv testbench/%_tb.sv
 		iverilog -g2012 -o $*.vvp $^
 		./$*.vvp
 
-.PRECIOUS:	nand2.sv adder4.sv adder8_3input.sv adder_tree4_8.sv \
+.PRECIOUS:	nand2.sv adder4.sv adder8_3input.sv \
 		pipelinedNAND.sv loopedNAND.sv
 
-auto_vcds:	nand2.vcd adder4.vcd adder8_3input.vcd adder_tree4_8.vcd \
+auto_vcds:	nand2.vcd adder4.vcd adder8_3input.vcd \
 		pipelinedNAND.vcd loopedNAND.vcd
 
 fulladderFC.sv:	nand2.sv
@@ -71,3 +77,4 @@ adder8.vcd:	adder8.sv testbench/adder8_tb.sv
 clean:
 	-@$(MAKE) -f Makefile.coq clean
 	git clean -xfd
+	rm -rf obj_dir

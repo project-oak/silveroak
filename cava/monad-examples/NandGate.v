@@ -84,6 +84,17 @@ Proof. reflexivity. Qed.
 Example nand_11 : combinational (nand2_gate (true, true)) = false.
 Proof. reflexivity. Qed.
 
+(* Test bench tables for generated SystemVerilog simulation test bench *)
+Definition nand_tb_inputs : list (bool * bool) :=
+ [(false, false); (false, true); (true, false); (true, true)]. 
+
+(* Compute expected outputs. *)
+Definition nand_tb_expected_outputs : list bool :=
+  map (fun i => combinational (nand2_gate i)) nand_tb_inputs.
+
+Definition nand_tb : list ((bool * bool) * bool) :=
+  combine nand_tb_inputs nand_tb_expected_outputs. 
+
 (* A nand-gate with registers after the AND gate and the INV gate. *)
 
 Definition pipelinedNAND {m t} `{Cava m t}
