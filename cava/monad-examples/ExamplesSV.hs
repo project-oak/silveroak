@@ -30,6 +30,6 @@ main = do writeSystemVerilog nand2Netlist
           writeSystemVerilog fullAdderFCNetlist
           writeSystemVerilog adder8Netlist
           writeSystemVerilog adder8_3inputNetlist
-          writeSystemVerilog adder_tree_4_8Netlist
+          writeSystemVerilog adder_tree4_8Netlist
           writeSystemVerilog pipelinedNANDNetlist
           writeSystemVerilog loopedNANDNetlist

@@ -83,16 +83,16 @@ Proof. reflexivity. Qed.
 Definition adderTree4_8 {m bit} `{Cava m bit} (v : Vector.t (Vector.t bit 8) 4) : m (Vector.t bit 8)
   := adderTree 1 v.
 
-Definition adder_tree_4_8_top : state CavaState (Vector.t N 8) :=
-  setModuleName "adder_tree_4_8" ;;
+Definition adder_tree4_8_top : state CavaState (Vector.t N 8) :=
+  setModuleName "adder_tree4_8" ;;
   a <- inputVectorTo0 8 "a" ;;
   b <- inputVectorTo0 8 "b" ;;
   c <- inputVectorTo0 8 "c" ;;
   d <- inputVectorTo0 8 "d" ;;
-  sum <- adderTree4_8 [a; b; c; d]%vector ;;
+  sum <- adderTree4_8 [a; b; c; d] ;;
   outputVectorTo0 8 sum "sum".
 
-Definition adder_tree_4_8Netlist := makeNetlist adder_tree_4_8_top.
+Definition adder_tree4_8Netlist := makeNetlist adder_tree4_8_top.
 
 Definition v4_8 : Vector.t (Bvector 8) (2^(1+1)) := [v0; v1; v2; v3].
 
