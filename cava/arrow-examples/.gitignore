@@ -2,5 +2,5 @@
 *.sv
 
 # Binaries
- *.hs
+*.hs
 !ArrowExamplesSV.hs
