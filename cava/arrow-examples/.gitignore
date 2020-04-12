@@ -1,6 +1,24 @@
+# Coq generated files
+*.vok
+*.vos
+
+Makefile.coq
+.Makefile.coq.d
+
 # Generated SystemVerilog files, but not files in testbench/
 *.sv
+!testbench/*
 
-# Binaries
+# Coq generated files
+*.vcd
+*.vvp
+
+# Haskell files except the manually created ones
 *.hs
 !ArrowExamplesSV.hs
+
+# Binaries
+ArrowExamplesSV
+
+# Haskell build chain files
+dist/*

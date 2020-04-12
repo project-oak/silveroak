@@ -42,10 +42,8 @@ nand2.sv:	coq ExamplesSV
 		$(VLINT) adder4.sv
 		$(VLINT) fulladder.sv
 		$(VLINT) loopedNAND.sv
-		$(VLINT) loopedNAND.sv
 		$(VLINT) pipelinedNAND.sv
 		$(VLINT) adder8_3input.sv
-		$(VLINT) adder_tree4_8.sv testbench/adder_tree4_8_tb.sv
 		$(VERILATOR) --trace --cc --top-module adder_tree4_8_tb testbench/adder_tree4_8_tb.sv adder_tree4_8.sv --exe testbench/adder_tree4_8_tb.cpp
 		make -C obj_dir -f Vadder_tree4_8_tb.mk Vadder_tree4_8_tb
 		obj_dir/Vadder_tree4_8_tb
