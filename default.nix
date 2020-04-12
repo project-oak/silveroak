@@ -14,6 +14,7 @@ let
     verilator
 
     # Common tools
+    gcc
     git
     gnumake
     stdenv
