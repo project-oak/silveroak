@@ -42,7 +42,6 @@ nand2.sv:	coq ExamplesSV
 		$(VLINT) adder4.sv
 		$(VLINT) fulladder.sv
 		$(VLINT) loopedNAND.sv
-		$(VLINT) loopedNAND.sv
 		$(VLINT) pipelinedNAND.sv
 		$(VLINT) adder8_3input.sv
 		$(VLINT) adder_tree4_8.sv testbench/adder_tree4_8_tb.sv

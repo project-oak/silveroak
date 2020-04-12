@@ -14,26 +14,37 @@
 # limitations under the License.
 #
 
-.PHONY: all compile clean
+.PHONY: all coq auto_vcds clean
 
-all:		compile xorArrow.sv loopedNandArrow.sv
+all:		coq xorArrow.vcd loopedNandArrow.vcd
+
+VERILATOR = verilator +1800-2012ext+sv verilator.vlt
+VLINT = $(VERILATOR) --lint-only
 
 Makefile.coq:
 		coq_makefile -f _CoqProject -o Makefile.coq
 
-compile:	Makefile.coq
+coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
 ArrowExamplesSV:	ArrowExamplesSV.hs
 			ghc --make $^
 
-xorArrow.sv:	compile ArrowExamplesSV
+xorArrow.sv:	coq ArrowExamplesSV
 		./ArrowExamplesSV
-		verilator --lint-only verilator.vlt xorArrow.sv
-		verilator --lint-only verilator.vlt loopedNandArrow.sv
+		$(VLINT) xorArrow.sv
+		$(VLINT) loopedNandArrow.sv
 
 
 loopedNandArrow.sv:	xorArrow.sv
+
+xorArrow.vcd:	xorArrow.sv testbench/xorArrow_tb.sv
+		iverilog -g2012 -o xorArrow.vvp $^
+		./xorArrow.vvp
+
+loopedNandArrow.vcd:	loopedNandArrow.sv testbench/loopedNandArrow_tb.sv
+		iverilog -g2012 -o loopedNandArrow.vvp $^
+		./loopedNandArrow.vvp
 
 clean:
 		-@$(MAKE) -f Makefile.coq clean
