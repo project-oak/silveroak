@@ -26,29 +26,51 @@ From Coq Require Import Vector.
 From Coq Require Import Bool.Bool.
 From Coq Require Import Numbers.NaryFunctions.
 
+Require Import Omega.
+
 Import ListNotations.
 
 (* shape describes the shape of the wires coming into our out of a circuit
    block.
 *)
-Inductive shape : Type :=
+
+Inductive shape {A: Type} : Type :=
   | Empty : shape
-  | Bit : shape                      (* A single wire *)
-  | BitVec : nat -> shape
-  | Tuple2 : shape -> shape -> shape  (* A pair of bundles of wires *)
-  .
-Notation "‹ x , y ›" := (Tuple2 x y).
+  | One : A -> shape
+  | Tuple2 : shape -> shape -> shape (* A pair of bundles of wires *).
+
+Notation "\u2039 x , y \u203a" := (Tuple2 x y).
+
+Inductive type : Type :=
+  | Bit : type                (* A single wire *)
+  | BitVec : list nat -> type (* Multi-dimensional bit-vectors *).
+
+
+Fixpoint bitVecTy {A : Type} (T : Type) (n : list A) : Type :=
+  match n with
+  | [] => list T
+  | [x] => list T
+  | x::xs => list (bitVecTy T xs)
+  end.
+
+Compute bitVecTy N [3].
+Compute bitVecTy N [3; 2].
+
+Definition typeTy (T : Type) (t : type) : Type :=
+  match t with
+  | Bit => T
+  | BitVec v => bitVecTy T v
+  end.
 
 Fixpoint signalTy (T : Type) (s : shape) : Type :=
   match s with
-  | Empty => unit
-  | Bit => T
-  | ‹s1, s2› => signalTy T s1 * signalTy T s2
-  | BitVec n => Vector.t T n
+  | Empty  => unit
+  | One t => typeTy T t
+  | Tuple2 s1 s2  => signalTy T s1 * signalTy T s2
   end.
 
 (******************************************************************************)
-(* PrimitiveInstance elements                                                         *)
+(* PrimitiveInstance elements                                                 *)
 (******************************************************************************)
 
 (* The primitive elements that can be instantiated in Cava. Some are generic
@@ -58,28 +80,29 @@ Fixpoint signalTy (T : Type) (s : shape) : Type :=
 
 Inductive Primitive: shape -> shape -> Type :=
   (* SystemVerilog primitive gates. *)
-  | Not:       Primitive Bit Bit
-  | And:       forall n, Primitive (BitVec n) Bit
-  | Nand:      forall n, Primitive (BitVec n) Bit
-  | Or:        forall n, Primitive (BitVec n) Bit
-  | Nor:       forall n, Primitive (BitVec n) Bit
-  | Xor:       forall n, Primitive (BitVec n) Bit
-  | Xnor:      forall n, Primitive (BitVec n) Bit
-  | Buf:       Primitive Bit Bit
+  | Not:       Primitive (One Bit) (One Bit)
+  | And:       forall n, Primitive (One (BitVec [n])) (One Bit)
+  | Nand:      forall n, Primitive (One (BitVec [n])) (One Bit)
+  | Or:        forall n, Primitive (One (BitVec [n])) (One Bit)
+  | Nor:       forall n, Primitive (One (BitVec [n])) (One Bit)
+  | Xor:       forall n, Primitive (One (BitVec [n])) (One Bit)
+  | Xnor:      forall n, Primitive (One (BitVec [n])) (One Bit)
+  | Buf:       Primitive (One Bit) (One Bit)
   (* A Cava unit delay bit component. *)
-  | DelayBit:  Primitive Bit Bit
+  | DelayBit:  Primitive (One Bit) (One Bit)
   (* Assignment of bit wire *)
-  | AssignBit: Primitive Bit Bit
+  | AssignBit: Primitive (One Bit) (One Bit)
   (* Arithmetic operations *)
   | UnsignedAdd : forall aSize bSize sumSize,
-                  Primitive ‹BitVec aSize, BitVec bSize› (BitVec sumSize)
+                  Primitive (Tuple2 (One (BitVec [aSize])) (One (BitVec [bSize])))
+                            (One (BitVec [sumSize]))
   (* Xilinx FPGA architecture specific gates. *)
-  | Xorcy:     Primitive (Tuple2 Bit Bit) Bit
-  | Muxcy:     Primitive (Tuple2 Bit (Tuple2 Bit Bit)) Bit.
+  | Xorcy:     Primitive (Tuple2 (One Bit) (One Bit)) (One Bit)
+  | Muxcy:     Primitive (Tuple2 (One Bit) (Tuple2 (One Bit) (One Bit))) (One Bit).
 
 (* PrimitiveInstance bound to ports of type N *)
 Inductive PrimitiveInstance :=
-  | BindPrimitive : forall i o, Primitive i o -> signalTy N i -> signalTy N o
+  | BindPrimitive : forall (i o : shape), Primitive i o -> signalTy N i -> signalTy N o
       -> PrimitiveInstance.
 
 Arguments BindPrimitive [i o].
@@ -87,12 +110,12 @@ Arguments BindPrimitive [i o].
 (* Helper constructors *)
 Definition BindNot i o: PrimitiveInstance := BindPrimitive Not i o.
 
-Definition BindAnd  {n: nat} (is: Vector.t N n) o: PrimitiveInstance := BindPrimitive (And n) is o.
-Definition BindNand {n: nat} (is: Vector.t N n) o: PrimitiveInstance := BindPrimitive (Nand n) is o.
-Definition BindOr   {n: nat} (is: Vector.t N n) o: PrimitiveInstance := BindPrimitive (Or n) is o.
-Definition BindNor  {n: nat} (is: Vector.t N n) o: PrimitiveInstance := BindPrimitive (Nor n) is o.
-Definition BindXor  {n: nat} (is: Vector.t N n) o: PrimitiveInstance := BindPrimitive (Xor n) is o.
-Definition BindXnor {n: nat} (is: Vector.t N n) o: PrimitiveInstance := BindPrimitive (Xnor n) is o.
+Definition BindAnd  is o: PrimitiveInstance := BindPrimitive (And (length is)) is o.
+Definition BindNand is o: PrimitiveInstance := BindPrimitive (Nand (length is)) is o.
+Definition BindOr   is o: PrimitiveInstance := BindPrimitive (Or (length is)) is o.
+Definition BindNor  is o: PrimitiveInstance := BindPrimitive (Nor (length is)) is o.
+Definition BindXor  is o: PrimitiveInstance := BindPrimitive (Xor (length is)) is o.
+Definition BindXnor is o: PrimitiveInstance := BindPrimitive (Xnor (length is)) is o.
 
 Definition BindBuf       i o: PrimitiveInstance := BindPrimitive Buf i o.
 Definition BindDelayBit  i o: PrimitiveInstance := BindPrimitive DelayBit i o.
@@ -101,7 +124,8 @@ Definition BindAssignBit i o: PrimitiveInstance := BindPrimitive AssignBit i o.
 Definition BindXorcy i o: PrimitiveInstance := BindPrimitive Xorcy i o.
 Definition BindMuxcy i o: PrimitiveInstance := BindPrimitive Muxcy i o.
 
-Definition BindUnsignedAdd {aSize bSize sumSize: nat} (is: (Vector.t N aSize * Vector.t N bSize)) o: PrimitiveInstance := BindPrimitive (UnsignedAdd aSize bSize sumSize) is o.
+Definition BindUnsignedAdd (sumSize: nat) is o: PrimitiveInstance :=
+                           BindPrimitive (UnsignedAdd (length (fst is)) (length (snd is)) sumSize) is o.
 
 (******************************************************************************)
 (* Data structures to represent circuit graph/netlist state                   *)
@@ -164,18 +188,18 @@ end%string.
 Definition instanceInputs (prim: PrimitiveInstance) : list N :=
 match prim with
 | BindPrimitive Not i _                     => [i]
-| BindPrimitive (And _) i _                 => to_list i
-| BindPrimitive (Nand _) i _                => to_list i
-| BindPrimitive (Or _) i _                  => to_list i
-| BindPrimitive (Nor _) i _                 => to_list i
-| BindPrimitive (Xor _) i _                 => to_list i
-| BindPrimitive (Xnor _) i _                => to_list i
+| BindPrimitive (And _) i _                 => i
+| BindPrimitive (Nand _) i _                => i
+| BindPrimitive (Or _) i _                  => i
+| BindPrimitive (Nor _) i _                 => i
+| BindPrimitive (Xor _) i _                 => i
+| BindPrimitive (Xnor _) i _                => i
 | BindPrimitive Buf i _                     => [i]
 | BindPrimitive Xorcy (x,y) _               => [x; y]
 | BindPrimitive Muxcy (i,(t,e)) _           => [i; t; e]
 | BindPrimitive DelayBit i _                => [i]
 | BindPrimitive AssignBit i _               => [i]
-| BindPrimitive (UnsignedAdd _ _ _) (x,y) _ => to_list x ++ to_list y
+| BindPrimitive (UnsignedAdd _ _ _) (x,y) _ => x ++ y
 end.
 
 Definition instanceNumber (prim: PrimitiveInstance) : option N :=
@@ -188,34 +212,21 @@ Definition unsignedAddercomponents (prim: PrimitiveInstance) : option
   (list N * list N * list N)
   :=
 match prim with
-| BindPrimitive (UnsignedAdd _ _ _) (x,y) z => Some (to_list x,to_list y,to_list z)
+| BindPrimitive (UnsignedAdd _ _ _) (x,y) z => Some (x, y, z)
 | BindPrimitive _ _ _                       => None
 end.
 
 Definition instanceArgs (prim: PrimitiveInstance) : option (list N) :=
 match prim with
 | BindPrimitive Not i o           => Some [o; i]
-| BindPrimitive (And _) i o       => Some (o :: to_list i)
-| BindPrimitive (Nand _) i o      => Some (o :: to_list i)
-| BindPrimitive (Or _) i o        => Some (o :: to_list i)
-| BindPrimitive (Nor _) i o       => Some (o :: to_list i)
-| BindPrimitive (Xor _) i o       => Some (o :: to_list i)
-| BindPrimitive (Xnor _) i o      => Some (o :: to_list i)
+| BindPrimitive (And _) i o       => Some (o :: i)
+| BindPrimitive (Nand _) i o      => Some (o :: i)
+| BindPrimitive (Or _) i o        => Some (o :: i)
+| BindPrimitive (Nor _) i o       => Some (o :: i)
+| BindPrimitive (Xor _) i o       => Some (o :: i)
+| BindPrimitive (Xnor _) i o      => Some (o :: i)
 | BindPrimitive Buf i o           => Some [o; i]
 | BindPrimitive Xorcy (x,y) o     => Some [o; x; y]
 | BindPrimitive Muxcy (i,(t,e)) o => Some [o; i; t; e]
 | _ => None
-end.
-
-Fixpoint netNumbersInShape (s: shape) (v: signalTy N s) : list N :=
-match s, v with
-| Bit, n => [n]
-| (BitVec _), n => to_list n
-| Empty, _ => []
-| (Tuple2 s1 s2), (x,y) => netNumbersInShape s1 x ++ netNumbersInShape s2 y
-end.
-
-Definition netNumbersInPort (port: PortDeclaration) : list N :=
-match port with
-| mkPort _ s v => netNumbersInShape s v
 end.

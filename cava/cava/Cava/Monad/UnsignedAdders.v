@@ -14,15 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* A codification of the Lava embedded DSL develope for Haskell into
-   Coq for the specification, implementaiton and formal verification of
-   circuits. Experimental work, very much in flux, as Satnam learns Coq!
-*)
-
-From Coq Require Import Vector.
-From Coq Require Import Bool.Bvector.
-
-
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 Open Scope monad_scope.
@@ -34,29 +25,17 @@ Require Import Cava.BitArithmetic.
 
 Require Import Nat Arith Lia.
 
-
-(******************************************************************************)
-(* An adder with two inputs that must be the same length.                     *)
-(******************************************************************************)
-
-Definition adderFixed {m bit} `{Cava m bit} {inputSize : nat}
-                      (sumSize : nat)
-                      (a : (Vector.t bit inputSize))
-                      (b : (Vector.t bit inputSize))
-                      : m (Vector.t bit sumSize) :=
-  a_plus_b <- unsignedAdd sumSize a b ;;
-  ret a_plus_b.
+From Coq Require Import Lists.List.
+Import ListNotations.
+Local Open Scope list_scope.
 
 (******************************************************************************)
 (* A three input adder.                                                       *)
 (******************************************************************************)
 
-Definition adder_3input {m bit} `{Cava m bit} {inputSize : nat}
-                        (sumSize : nat)
-                        (a : (Vector.t bit inputSize))
-                        (b : (Vector.t bit inputSize))
-                        (c : (Vector.t bit inputSize))
-                        : m (Vector.t bit sumSize) :=
+Definition adder_3input {m bit} `{Cava m bit} (sumSize : nat)
+                        (a : list bit) (b : list bit) (c : list bit)
+                        : m (list bit) :=
   a_plus_b <- unsignedAdd sumSize a b ;;
   sum <- unsignedAdd sumSize a_plus_b c ;;
   ret sum.
@@ -80,18 +59,18 @@ Proof.
     + lia.
 Qed.
 
-Lemma add3_behaviour : forall {inputSize : nat} (sumSize : nat)
-                       (av : Bvector inputSize)
-                       (bv : Bvector inputSize)
-                       (cv : Bvector inputSize),
-                       let a := bitvec_to_nat av in
-                       let b := bitvec_to_nat bv in
-                       let c := bitvec_to_nat cv in
-                       bitvec_to_nat (combinational (adder_3input sumSize av bv cv))
+Lemma add3_behaviour : forall (sumSize : nat)
+                       (av : list bool)
+                       (bv : list bool)
+                       (cv : list bool),
+                       let a := list_bits_to_nat av in
+                       let b := list_bits_to_nat bv in
+                       let c := list_bits_to_nat cv in
+                       list_bits_to_nat (combinational (adder_3input sumSize av bv cv))
                          = (a + b + c) mod 2^sumSize.
 Proof.
   intros. unfold combinational. unfold adder_3input. simpl.
-  do 2 rewrite nat_of_bits_sized_n.
+  do 2 rewrite nat_of_list_bits_sized.
   fold a b c.
   rewrite mod_plus_mod.
   - reflexivity.

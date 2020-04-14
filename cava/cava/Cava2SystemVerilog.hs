@@ -21,7 +21,7 @@ where
 import Control.Monad.State.Lazy
 
 import qualified BinNums
-import qualified Netlist
+import Netlist
 import qualified Vector
 
 writeSystemVerilog :: Netlist.CavaState -> IO ()
@@ -74,16 +74,16 @@ inputPorts :: [Netlist.PortDeclaration] -> [String]
 inputPorts = map inputPort
 
 inputPort :: Netlist.PortDeclaration -> String
-inputPort (Netlist.Coq_mkPort name Netlist.Bit _) = "  input logic " ++ name
-inputPort (Netlist.Coq_mkPort name (Netlist.BitVec s) _)
+inputPort (Netlist.Coq_mkPort name (One Bit) _) = "  input logic " ++ name
+inputPort (Netlist.Coq_mkPort name (One (BitVec [s])) _)
   = "  input logic[" ++ show (s - 1) ++ ":0] " ++ name
 
 outputPorts :: [Netlist.PortDeclaration] -> [String]
 outputPorts = map outputPort
 
 outputPort :: Netlist.PortDeclaration -> String
-outputPort (Netlist.Coq_mkPort name Netlist.Bit _) = "  output logic " ++ name
-outputPort (Netlist.Coq_mkPort name (Netlist.BitVec s) _)
+outputPort (Netlist.Coq_mkPort name (One Bit) _) = "  output logic " ++ name
+outputPort (Netlist.Coq_mkPort name (One (BitVec [s])) _)
   = "  output logic[" ++ show (s - 1) ++ ":0] " ++ name
 
 insertCommas :: [String] -> [String]
@@ -186,22 +186,29 @@ showArg :: BinNums.N -> String
 showArg n = "net[" ++ show (fromN n) ++ "]"
 
 wireInput :: Netlist.PortDeclaration -> [String]
-wireInput port@(Netlist.Coq_mkPort name Netlist.Bit _)
-  | [n] <- Netlist.netNumbersInPort port
+wireInput port@(Netlist.Coq_mkPort name shape@(One Bit) portNets)
+  | [n] <- netNumbersInPort shape portNets
   = ["  assign net[" ++ show (fromN n) ++ "] = " ++ name ++ ";"]
-wireInput port@(Netlist.Coq_mkPort name (Netlist.BitVec s) _)
-  | ns <- Netlist.netNumbersInPort port
+wireInput port@(Netlist.Coq_mkPort name shape@(One (BitVec [s])) portNets)
+  | ns <- netNumbersInPort shape portNets
   = ["  assign net[" ++ show (fromN n) ++ "] = " ++ name ++ "[" ++ show i ++
      "];" |
      (n, i) <- zip ns [0..s - 1]]
 wireInput (Netlist.Coq_mkPort name _ _) = error $ "Error wiring port: " ++ name
 
 wireOutput :: Netlist.PortDeclaration -> [String]
-wireOutput port@(Netlist.Coq_mkPort name Netlist.Bit _)
-  | [n] <- Netlist.netNumbersInPort port
+wireOutput port@(Netlist.Coq_mkPort name shape@(One Bit) portNets)
+  | [n] <- netNumbersInPort shape portNets
   = ["  assign " ++ name ++ " = net[" ++ show (fromN n) ++ "] ;"]
-wireOutput port@(Netlist.Coq_mkPort name (Netlist.BitVec s) _)
-  | ns <- Netlist.netNumbersInPort port
+wireOutput port@(Netlist.Coq_mkPort name shape@(One (BitVec [s])) portNets)
+  | ns <- netNumbersInPort shape portNets
   = ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show (fromN n) ++
      "];" |
      (n, i) <- zip ns [0.. s - 1]]
+
+netNumbersInPort :: Netlist.Coq_shape Coq_type -> Netlist.Coq_signalTy BinNums.N -> [BinNums.N]
+netNumbersInPort shape portNets
+  = case shape of
+      One Bit -> [unsafeCoerce portNets :: BinNums.N]
+      One (BitVec [s]) -> unsafeCoerce portNets :: [BinNums.N]
+      

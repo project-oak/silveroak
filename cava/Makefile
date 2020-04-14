@@ -18,9 +18,9 @@
 
 all:
 	cd cava && $(MAKE) clean all && \
-	cd ../monad-examples && $(MAKE) clean all && \
-	cd ../arrow-examples && $(MAKE) clean all && \
-	cd ..
+	cd ../monad-examples && $(MAKE) clean all 
+#	cd ../arrow-examples && $(MAKE) clean all && \
+#	cd ..
 
 clean:
 	cd cava && $(MAKE) clean && \
