@@ -1,6 +1,6 @@
 From Coq Require Import Program.Tactics.
 From Coq Require Import Bool.Bool.
-From Coq Require Import Bool.Bvector.
+(* From Coq Require Import Bool.Bvector. *)
 From Coq Require Import Vector.
 From Coq Require Import Lists.List.
 From Coq Require Import Strings.String.
@@ -19,15 +19,40 @@ From Cava Require Import Netlist.
 From Cava Require Import BitArithmetic.
 From Cava Require Import Arrow.Arrow.
 
-(* Evaluation as a netlist *)
-Section ArrowNetlist.
+(******************************************************************************)
+(* Evaluation as a netlist                                                    *)
+(******************************************************************************)
+
+Section NetlistEval.
+  (*TODO: temporary structures, in the future only use the Netlist structures *)
+  Inductive wireTy : Type :=
+  | Bit1 : wireTy
+  | BitVec1 : nat -> wireTy.
+
+  Definition wireToNetlistTy (n: wireTy) : Type :=
+  match n with
+  | Bit1 => N
+  | BitVec1 _ => list N
+  end.
+
+  Fixpoint shapeToNumbered (s : shape) : Type :=
+  match s with
+  | Empty  => Datatypes.unit
+  | One t => wireToNetlistTy t
+  | Tuple2 s1 s2  => shapeToNumbered s1 * shapeToNumbered s2
+  end.
+
+  Definition numberItem (a: wireTy) (i:N): (wireToNetlistTy a * N) :=
+  match a with
+  | Bit1 => (i, (i+1)%N)
+  | BitVec1 n => (map N.of_nat (seq (N.to_nat i) n), (i + N.of_nat n)%N)
+  end.
 
   (* fill an shape with a incremental numbering corresponding to new ports *)
-  Fixpoint numberShape (s: shape) (i:N) : (signalTy N s * N) :=
-  match s in shape return (signalTy N s * N) with
+  Fixpoint numberShape (s: shape) (i:N) : (shapeToNumbered s * N) :=
+  match s in shape return (shapeToNumbered s * N) with
   | Empty => (tt, i)
-  | Bit => (i, (i+1)%N)
-  | BitVec n => (Vector.map N.of_nat (vec_seq (N.to_nat i) n), (i + N.of_nat n)%N)
+  | One a => numberItem a i
   | Tuple2 t1 t2 =>
     let (x,i') := numberShape t1 i in
     let (y,i'') := numberShape t2 i' in
@@ -35,11 +60,10 @@ Section ArrowNetlist.
   end.
 
   Local Open Scope monad_scope.
-  Local Open Scope vector_scope.
 
   Instance NetlistCat : Category := {
-    object := shape;
-    morphism X Y := signalTy N X -> state (Netlist * N) (signalTy N Y);
+    object := @shape wireTy;
+    morphism X Y := shapeToNumbered X -> state (Netlist * N) (shapeToNumbered Y);
     id X x := ret x;
     compose X Y Z f g := g >=> f;
   }.
@@ -73,18 +97,18 @@ Section ArrowNetlist.
   Instance NetlistCava : Cava := {
     cava_arr := NetlistArr;
 
-    bit := Bit;
-    bitvec := BitVec;
+    bit := One Bit1;
+    bitvec n := One (BitVec1 n);
 
     constant b _ := match b with
       | true => ret 1%N
       | false => ret 0%N
       end;
 
-    constant_vec n v _ := ret (Vector.map (fun b => match b with
+    constant_vec n v _ := ret (Vector.to_list (Vector.map (fun b => match b with
       | true => 1%N
       | false => 0%N
-    end) v);
+    end) v));
 
     not_gate x :=
       '(nl, i) <- get ;;
@@ -138,23 +162,21 @@ Section ArrowNetlist.
 
     unsigned_add m n s x :=
       '(nl, i) <- get ;;
-      let o := Vector.map N.of_nat (vec_seq (N.to_nat i) s) in
-      put (cons (BindUnsignedAdd x o) nl, (i + N.of_nat s)%N) ;;
+      let o := map N.of_nat (seq (N.to_nat i) s) in
+      put (cons (BindUnsignedAdd s x o) nl, (i + N.of_nat s)%N) ;;
       ret o;
   }.
-
-  Local Close Scope vector_scope.
 
   (* The key here is that the dependent match needs to be over
     shape and ports p1 p2, at the same time for Coq to recogonise their types
     in the respective branches *)
   Fixpoint zipThenFlatten
-    (link: N -> N -> PrimitiveInstance) (s: shape) (p1 p2: signalTy N s)
+    (link: N -> N -> PrimitiveInstance) (s: shape) (p1 p2: shapeToNumbered s)
     : Netlist :=
   match s in shape, p1, p2 return Netlist with
   | Empty, _, _ => []
-  | Bit, _, _ => [link p1 p2]
-  | BitVec n, _, _ => Vector.to_list (Vector.map2 link p1 p2)
+  | One Bit1, _, _ => [link p1 p2]
+  | One (BitVec1 n), _, _ => map (fun '(x,y) => link x y) (combine p1 p2)
   | Tuple2 s1 s2, (p11,p12), (p21,p22) =>
       zipThenFlatten link s1 p11 p21 ++ zipThenFlatten link s2 p12 p22
   end.
@@ -210,8 +232,8 @@ Section ArrowNetlist.
   Definition arrowToHDLModule {X Y}
     (name: string)
     (f: X ~[NetlistCat]~> Y)
-    (mkInputs: signalTy N X -> list PortDeclaration)
-    (mkOutputs: signalTy N Y -> list PortDeclaration)
+    (mkInputs: shapeToNumbered X -> list PortDeclaration)
+    (mkOutputs: shapeToNumbered Y -> list PortDeclaration)
     : (Netlist.Module * N) :=
       let (i, n) := @numberShape X 2 in
       let '(o, (nl, count)) := runState (f i) ([], n) in
@@ -221,7 +243,6 @@ Section ArrowNetlist.
   Eval cbv in arrowToHDLModule
     "not"
     not_gate
-    (fun i => [mkPort "input1" Bit i])
-    (fun o => [mkPort "output1" Bit o]).
-
-End ArrowNetlist.
+    (fun i => [mkPort "input1" (One Bit) i])
+    (fun o => [mkPort "output1" (One Bit) o]).
+End NetlistEval.

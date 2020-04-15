@@ -11,7 +11,10 @@ From Coq Require Import ZArith.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Arrow.Arrow.
 
-(* Arrow as function evaluation, no delay elements or loops *)
+(******************************************************************************)
+(* Evaluation as function evaluation, no delay elements or loops              *)
+(******************************************************************************)
+
 Section CoqEval.
   Instance CoqCat : Category := {
     object := Type;

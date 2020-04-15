@@ -6,10 +6,10 @@ Cava/Monad/Cava.v
 Cava/Monad/Combinators.v
 Cava/Monad/UnsignedAdders.v
 
-# Cava/Arrow.v
-# Cava/Arrow/Arrow.v
-# Cava/Arrow/Instances/Coq.v
-# Cava/Arrow/Instances/Stream.v
-# Cava/Arrow/Instances/Netlist.v
+Cava/Arrow.v
+Cava/Arrow/Arrow.v
+Cava/Arrow/Instances/Coq.v
+Cava/Arrow/Instances/Stream.v
+Cava/Arrow/Instances/Netlist.v
 
 Cava/Extraction.v
