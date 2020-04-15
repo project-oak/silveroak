@@ -155,10 +155,10 @@ Section NetlistExamples.
     "xorArrow"
     (@xor NetlistCava)
     (fun '(l,r) =>
-      [ mkPort "input1" Bit l
-      ; mkPort "input2" Bit r
+      [ mkPort "input1" (One Bit) l
+      ; mkPort "input2" (One Bit) r
       ])
-    (fun o => [mkPort "output1" Bit o]).
+    (fun o => [mkPort "output1" (One Bit) o]).
   (* Compute the circuit netlist for the XOR made up of NANDs made up of ANDs and INVs *)
   Eval compute in xorArrowNetlist.
   (* For extraction *)
@@ -169,8 +169,8 @@ Section NetlistExamples.
   Definition loopedNandArrowNetlist := arrowToHDLModule
     "loopedNandArrow"
     (@loopedNand NetlistCavaDelay NetlistLoop)
-    (fun i => [ mkPort "input1" Bit i])
-    (fun o => [mkPort "output1" Bit o]).
+    (fun i => [ mkPort "input1" (One Bit) i])
+    (fun o => [mkPort "output1" (One Bit) o]).
   Eval compute in loopedNandArrowNetlist.
   Definition loopedNandArrow :=
     let '(nl, count) := loopedNandArrowNetlist

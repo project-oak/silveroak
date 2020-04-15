@@ -31,9 +31,9 @@ Recursive Extraction Library BitArithmetic.
 Recursive Extraction Library Cava.
 Recursive Extraction Library Combinators.
 
-(* Require Import Cava.Arrow.Arrow. *)
-(* Require Import Cava.Arrow.Instances.Netlist. *)
-(* Recursive Extraction Library Arrow. *)
+Require Import Cava.Arrow.Arrow.
+Require Import Cava.Arrow.Instances.Netlist.
+Recursive Extraction Library Arrow.
 
 Recursive Extraction Library Netlist.
 Recursive Extraction Library UnsignedAdders.
