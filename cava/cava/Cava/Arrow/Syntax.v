@@ -3,112 +3,119 @@ Require Import Coq.Bool.Bool.
 Require Import Coq.Lists.List.
 Require Import Coq.Strings.String.
 
-From Coq Require Import btauto.Btauto.
+Require Import Cava.Arrow.Arrow.
+Require Import Cava.BitArithmetic.
 
-Require Import Cava.Arrow.
-
-Set Implicit Arguments.
-Set Strict Implicit.
-
-Generalizable All Variables.
-Set Primitive Projections.
-Set Universe Polymorphism.
-Unset Transparent Obligations. 
-
-Section Kappa.
-  Context {A: Arrow}.
+Section KappaVars.
+  Variable arr: Arrow.
 
   Variable var: object -> object -> Type.
 
   Inductive kappa : object -> object -> Type :=
   | Var : forall x y, var x y -> kappa x y
-  | Abs : forall x y z, (var unit x -> kappa y z) -> kappa (product x y) z
-  | Compose : forall x y z, kappa y z -> kappa x y -> kappa x z
-  | Id : forall x, kappa x x
-  | First : forall x y z, kappa x y -> kappa (product x z) (product y z).
-
-End Kappa.
-
-(* Context {A: Arrow}.
-Definition Term i o := forall var, kappa var i o.
-Definition Foo {i} : Term _ i := fun _ => Abs _ (fun x => Var _ _ _ x).
-Definition Bar 
-  {i o} : Term i o
-  := fun _ =>
-  Abs _ (fun x => 
-      Abs _ (fun y =>
-        Compose (Var _ _ _ x) (Var _ _ _ y))). *)
-
-(* Section LambdaExperimentation.
-  Context `{C: Category}.
-
-  Inductive type : Type :=
-  | obj (o: object) : type
-  | morph (o: object) : type
-  | fn : type -> type -> type.
-
-  Variable var: type -> Type.
-
-  Inductive lambda : type -> Type :=
-  | Var : forall t, var t -> lambda t
-  | Abs : forall x y, (var x -> lambda y) -> lambda (fn x y)
-  | App : forall x y, lambda (fn x y) -> lambda x -> lambda y
-  | Arr x y (_: morphism x y) : lambda (fn (obj x) (obj y))
-  (* TODO: | Let ... *)
-  (* TODO: | LetRec ... *)
+  | Abs : forall x y z, (var unit x -> kappa y z) -> kappa (x**y) z
+  | App : forall x y z, kappa (x**y) z -> kappa unit x -> kappa y z
+  | Arr : forall x y, morphism x y -> kappa x y
+  | Comp : forall x y z, kappa y z -> kappa x y -> kappa x z
+  | Let : forall x y z, kappa unit x -> (var unit x -> kappa y z) -> kappa y z
   .
+End KappaVars.
 
-  Arguments Var _ [var t] _.
-  Arguments Abs _ [var x y] _.
+Arguments Var [arr var x y].
+Arguments Abs [arr var x y z].
+Arguments App [arr var x y z].
+Arguments Arr [arr var x y].
+Arguments Comp [arr var x y z].
+Arguments Let [arr var x y z].
 
-  Definition Var' {t:type} {var} (x:_) := @Var _ var t x.
+(* custom notation *)
 
-  Definition Term t := forall var, lambda var t.
+Declare Scope source_scope.
+Declare Custom Entry expr.
 
-  Check Term.
+Delimit Scope source_scope with source.
 
-  Definition Foo {x} : Term (fn x x) := fun _ => Abs _ (fun x => Var' x).
-  Definition Bar {x y} : Term (fn (fn y x) (fn y x))
-  := fun _ =>
-  Abs _ (fun x => 
-      Abs _ (fun y =>
-        App (Var' x) (Var' y))).
-  Definition Baz {a b} (arr: a~>b): Term (fn (obj a) (obj b))
-  := fun _ => Abs _ (fun x => App (Arr _ _ _ arr) (Var' x)).
+Notation "<[ \ x => e ]>" := (Abs (fun x => e)) (at level 5, e custom expr at level 1): source_scope.
 
-  Declare Scope lambda_notation.
-  Delimit Scope lambda_notation with lambda.
-  Declare Scope lambda_expr_notation.
-  Delimit Scope lambda_expr_notation with lambda_expr.
+Notation "x y" := (App x y) (in custom expr at level 3, left associativity).
+Notation "~~( x )" := (Arr x) (in custom expr, x constr).
+Notation "~!( x )" := x (in custom expr, x constr).
 
-  Notation "'rebind_variable' x e" := (let x := @Var _ _ _ x in (e) )
-    % lambda_expr
-    (at level 61, x at level 0, e at next level, no associativity) : lambda_notation.
+Notation "'let' x = e1 'in' e2" := (Let e1 (fun x => e2)) (in custom expr at level 1, x constr at level 4, e2 at level 5, e1 at level 1).
 
-  Notation "\ x => e " := (Abs _ (fun x => (rebind_variable x e))) % lambda
-    (at level 61, e at next level, right associativity) : lambda_notation.
+Notation "# x" := (Arr (constant x)) (in custom expr at level 2, x constr at level 4).
+Notation "#v x" := (Arr (constant_vec _ (nat_to_bitvec_sized _ x))) (in custom expr at level 2, x constr at level 4).
 
-  Notation "'id' x" := (App (@Arr _ _ _ _ id) x)
-    %lambda_expr
-    (at level 61, no associativity) : lambda_expr_notation.
+Notation "x" := (Var x) (in custom expr, x ident).
 
-  Eval simpl in Foo.
-  Eval simpl in ( \x => x )%lambda.
-  Eval simpl in ( \y => y )%lambda.
-  Eval simpl in ( \y => \x => App y x )%lambda.
 
-  Fixpoint countVars t (e : lambda (fun _ => Datatypes.unit) t) : nat :=
-  match e with
-  | Var _ _ => 1
-  | Arr _ _ _ _ => 0
-  | Abs _ e1 => countVars (e1 tt)
-  | App e1 e2 => countVars e1 + countVars e2
-  end.
-  Definition CountVars t (E : Term t) := countVars (E (fun _ => Datatypes.unit)).
+Notation "( x )" := x (in custom expr, x at level 4).
 
-  Eval compute in CountVars (fun _ => (
-    \x => \y => 
-      App y (id x)
-    )%lambda).
+(* misc items for testing *)
 
-End LambdaExperimentation. *)
+Definition not' `{Cava}
+  : (bit**unit) ~> bit := exl >>> not_gate.
+
+Definition unsigned_add' `{Cava}
+  {bitsize: nat}
+  : (bitvec bitsize ** bitvec bitsize ** unit) ~> bitvec bitsize :=
+  second exl >>> unsigned_add bitsize bitsize bitsize.
+
+(* test notation *)
+
+Open Scope source_scope.
+
+(* 1. simple constant *)
+
+Definition ex1_plain {cava: Cava} {var}: kappa _ var (bit**unit) bit :=
+Abs (fun x => Arr (constant true)).
+
+Definition ex1_notation {cava: Cava} {var}: kappa _ var (bit**unit) bit :=
+<[ \ x => #true ]> .
+
+(* 2. matching types *)
+Definition ex2_plain {cava: Cava} {var} (n:nat) : kappa _ var (bit**unit) bit :=
+match n with
+| O => Abs (fun x => Arr (constant true))
+| S n => Abs (fun x => App (Arr not') (Var x))
+end.
+
+Definition ex2_notation {cava: Cava} {var} (n:nat) : kappa _ var (bit**unit) bit :=
+match n with
+| O => <[ \ x => #true ]>
+| S n => <[ \ x => ~~(not') x ]>
+end.
+
+(* 3. fixed multiplier, performs addition n times, recursion outside arrow is ciruit duplication *)
+Fixpoint ex3_plain {cava: Cava} {var} {bitsize: nat}
+  (adder: kappa _ var (bitvec bitsize ** bitvec bitsize ** unit) (bitvec bitsize))
+  (n: nat)
+  : kappa _ var (bitvec bitsize**unit) (bitvec bitsize) :=
+match n with
+| O => Abs (fun x => Arr (constant_vec bitsize (nat_to_bitvec_sized bitsize 0) ))
+| S n => Abs (fun x : var unit (bitvec bitsize) =>
+    Let (App (ex3_plain adder n) (Var x)) (fun unrolled_circuit =>
+      App (App adder (Var x)) (Var unrolled_circuit)
+    )
+  )
+end.
+
+(*
+Fixpoint ex3_notation {cava: Cava} {var} {bitsize: nat}
+  (adder: (bitvec bitsize ** bitvec bitsize ** unit) ~> bitvec bitsize)
+  (n: nat)
+  : (bitvec bitsize**unit) ~> (bitvec bitsize) :=
+*)
+Fixpoint ex3_notation {cava: Cava} {var} {bitsize: nat}
+  (adder: kappa _ var (bitvec bitsize ** bitvec bitsize ** unit) (bitvec bitsize))
+  (n: nat)
+  : kappa _ var (bitvec bitsize**unit) (bitvec bitsize) :=
+match n with
+| O => <[ \ x => #v 0 ]>
+| S n => <[ \ x =>
+    let unrolled_circuit = ~!( ex3_plain adder n ) x in
+    ~!( adder ) x unrolled_circuit
+    ]>
+(* alternatively: *)
+(* | S n => <[ \ x => ~!( adder ) x ( ~!( ex3_plain adder n ) x ) ]> *)
+end.
