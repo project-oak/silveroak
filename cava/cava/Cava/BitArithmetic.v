@@ -51,21 +51,23 @@ Definition fold_shift_nat {A} (base: A) (combine: nat -> bool -> A -> A) : nat -
   exact l.
 Defined.
 
-Definition nat_to_list_bits' (n : nat) : list bool :=
-  fold_shift_nat [] (fun x b l => l++[b]) n.
-
-
-Definition nat_to_list_bits (n : nat) : list bool :=
-  List.rev (nat_to_list_bits' n).
-
 Fixpoint list_bits_to_nat' (bits : list bool) : nat :=
   match bits with
   | [] =>  0
   | b::bs => (shiftl (Nat.b2n b) (length bs)) + (list_bits_to_nat' bs)
   end.
 
-Fixpoint list_bits_to_nat (bits : list bool) : nat :=
-  list_bits_to_nat' (List.rev bits).
+Definition nat_to_list_bits' (n : nat) : list bool :=
+  fold_shift_nat [] (fun x b l => l++[b]) n.
+
+Definition nat_to_list_bits (n : nat) : list bool :=
+  to_list (N2Bv (N.of_nat n)).
+
+Definition nat_to_list_bits_sized (size : nat) (n : nat) : list bool :=
+  to_list (N2Bv_sized size (N.of_nat n)).
+
+Definition list_bits_to_nat (bv : list bool) : nat :=
+  N.to_nat (Bv2N (of_list bv)).
 
 Example b2n_empty : list_bits_to_nat [] = 0.
 Proof. reflexivity. Qed.
@@ -98,6 +100,9 @@ Example n2b_2_3 : nat_to_list_bits 3 = [true; true].
 Proof. reflexivity. Qed.  
 
 
+Lemma nat_of_list_bits_sized: forall (size v : nat),
+      list_bits_to_nat (nat_to_list_bits_sized size v) = v.
+Admitted.
 
 (* The following proof is from Steve Zdancewic. *)
 Lemma bits_to_nat_app : forall u l, list_bits_to_nat' (u ++ l) = (list_bits_to_nat' u) * (shiftl 1 (length l)) + (list_bits_to_nat' l).
@@ -223,7 +228,6 @@ Proof.
   rewrite Nat2N.id.
   reflexivity.
 Qed.
-
 
 Lemma nat_of_bits_sized_n: forall n (v : nat),
       bitvec_to_nat (nat_to_bitvec_sized n v) = v.

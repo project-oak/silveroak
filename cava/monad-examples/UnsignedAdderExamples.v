@@ -35,16 +35,16 @@ Require Import Cava.Monad.UnsignedAdders.
 (* Unsigned addition examples.                                                *)
 (******************************************************************************)
 
-Definition bv4_0  := nat_to_bitvec_sized 4  0.
-Definition bv4_1  := nat_to_bitvec_sized 4  1.
-Definition bv4_2  := nat_to_bitvec_sized 4  2.
-Definition bv4_3  := nat_to_bitvec_sized 4  3.
-Definition bv4_15 := nat_to_bitvec_sized 4 15.
+Definition bv4_0  := nat_to_list_bits_sized 4  0.
+Definition bv4_1  := nat_to_list_bits_sized 4  1.
+Definition bv4_2  := nat_to_list_bits_sized 4  2.
+Definition bv4_3  := nat_to_list_bits_sized 4  3.
+Definition bv4_15 := nat_to_list_bits_sized 4 15.
 
-Definition bv5_0  := nat_to_bitvec_sized 5  0.
-Definition bv5_3  := nat_to_bitvec_sized 5  3.
-Definition bv5_16 := nat_to_bitvec_sized 5 16.
-Definition bv5_30 := nat_to_bitvec_sized 5 30.
+Definition bv5_0  := nat_to_list_bits_sized 5  0.
+Definition bv5_3  := nat_to_list_bits_sized 5  3.
+Definition bv5_16 := nat_to_list_bits_sized 5 16.
+Definition bv5_30 := nat_to_list_bits_sized 5 30.
 
 (* Check 0 + 0 = 0 *)
 Example add5_0_0 : combinational (unsignedAdd 5 bv4_0 bv4_0) = bv5_0.
@@ -60,7 +60,7 @@ Proof. reflexivity. Qed.
 
 (* Check 15 + 1 = 16 for 4-bit result *)
 Example add4_15_1 : combinational (unsignedAdd 4 bv4_15 bv4_1)
-                  = nat_to_bitvec_sized 4 0.
+                  = nat_to_list_bits_sized 4 0.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 15 = 30 *)
@@ -69,22 +69,22 @@ Proof. reflexivity. Qed.
 
 (* Check 15 + 15 = 14 for 4-bit result *)
 Example add4_15_15 : combinational (unsignedAdd 4 bv4_15 bv4_15)
-                   = nat_to_bitvec_sized 4 14.
+                   = nat_to_list_bits_sized 4 14.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 15 = 6 for 3-bit result *)
 Example add3_15_15 : combinational (unsignedAdd 3 bv4_15 bv4_15)
-                   = nat_to_bitvec_sized 3 6.
+                   = nat_to_list_bits_sized 3 6.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 15 = 2 for 2-bit result *)
 Example add2_15_15 : combinational (unsignedAdd 2 bv4_15 bv4_15)
-                   = nat_to_bitvec_sized 2 2.
+                   = nat_to_list_bits_sized 2 2.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 15 = 0 for 1-bit result *)
 Example add1_15_15 : combinational (unsignedAdd 1 bv4_15 bv4_15)
-                   = nat_to_bitvec_sized 1 0.
+                   = nat_to_list_bits_sized 1 0.
 Proof. reflexivity. Qed.
 
 (* An adder example. *)
@@ -93,7 +93,7 @@ Proof. reflexivity. Qed.
 (* Generate a 4-bit unsigned adder with 5-bit output.                         *)
 (******************************************************************************)
 
-Definition adder4Top : state CavaState (Vector.t N 5) :=
+Definition adder4Top : state CavaState (list N) :=
   setModuleName "adder4" ;;
   a <- inputVectorTo0 4 "a" ;;
   b <- inputVectorTo0 4 "b" ;;
@@ -106,7 +106,7 @@ Definition adder4Netlist := makeNetlist adder4Top.
 (* Generate a three input 8-bit unsigned adder with 10-bit output.            *)
 (******************************************************************************)
 
-Definition adder8_3inputTop : state CavaState (Vector.t N 10) :=
+Definition adder8_3inputTop : state CavaState (list N) :=
   setModuleName "adder8_3input" ;;
   a <- inputVectorTo0 8 "a" ;;
   b <- inputVectorTo0 8 "b" ;;
