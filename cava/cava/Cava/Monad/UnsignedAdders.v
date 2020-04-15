@@ -14,6 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+From Coq Require Import ZArith.
+From Coq Require Import ZArith.BinInt.
+From Coq Require Import PArith.BinPos.
+From Coq Require Import Numbers.NatInt.NZPow.
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 Open Scope monad_scope.
@@ -27,7 +31,6 @@ Require Import Nat Arith Lia.
 
 From Coq Require Import Lists.List.
 Import ListNotations.
-Local Open Scope list_scope.
 
 (******************************************************************************)
 (* A three input adder.                                                       *)
@@ -40,11 +43,13 @@ Definition adder_3input {m bit} `{Cava m bit} (sumSize : nat)
   sum <- unsignedAdd sumSize a_plus_b c ;;
   ret sum.
 
+Open Scope N_scope.
+
 Lemma mod_plus_mod: forall a b c n, n > 0 ->
                     ((a + b) mod n + c) mod n = (a + b + c) mod n.
 Proof.
   intros.
-  rewrite Nat.add_mod_idemp_l.
+  rewrite N.add_mod_idemp_l.
   - reflexivity.
   - lia.
 Qed.
@@ -53,11 +58,9 @@ Lemma two_p_gt_0: forall n, 2^n > 0.
 Proof.
   intros.
   induction n.
-  - simpl. lia.
-  - rewrite Nat.pow_succ_r.
-    + lia.
-    + lia.
-Qed.
+  - reflexivity.
+(* Ugh, what is the N equivalent of Nat.pow_succ_r ? *)
+Admitted.
 
 Lemma add3_behaviour : forall (sumSize : nat)
                        (av : list bool)
@@ -67,7 +70,7 @@ Lemma add3_behaviour : forall (sumSize : nat)
                        let b := list_bits_to_nat bv in
                        let c := list_bits_to_nat cv in
                        list_bits_to_nat (combinational (adder_3input sumSize av bv cv))
-                         = (a + b + c) mod 2^sumSize.
+                         = (a + b + c) mod 2^(N.of_nat sumSize).
 Proof.
   intros. unfold combinational. unfold adder_3input. simpl.
   do 2 rewrite nat_of_list_bits_sized.

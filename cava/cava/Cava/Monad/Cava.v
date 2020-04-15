@@ -299,17 +299,17 @@ Definition muxcyBool (s : bool) (di : bool) (ci : bool) : ident bool :=
        | true => ci
        end).
 
-(* Unsigned addition is defined to be the addition of the two unsigned
-   input vectors followed by a modulus determinted by the size of the
-   result vector.
-*)
+Local Open Scope N_scope.
+
 Definition unsignedAddBool (sumSize : nat)
                            (a : list bool) (b : list bool) :
                            ident (list bool) :=
   let a := list_bits_to_nat a in
-  let b := list_bits_to_nat b in
-  let sum := (a + b) mod 2^sumSize in
+  let b : N := list_bits_to_nat b in
+  let sum := (a + b) mod 2^(N.of_nat sumSize) in
   ret (nat_to_list_bits_sized sumSize sum).
+
+Local Open Scope N_scope.
 
 Definition bufBool (i : bool) : ident bool :=
   ret i.

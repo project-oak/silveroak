@@ -42,9 +42,13 @@ Definition v1 := nat_to_list_bits_sized 8 17.
 Definition v2 := nat_to_list_bits_sized 8  6.
 Definition v3 := nat_to_list_bits_sized 8  3.
 
+Local Open Scope nat_scope.
+
 Definition halve {A} (l : list A) : list A * list A :=
   let mid := (length l) / 2 in
   (firstn mid l, skipn mid l).
+
+Local Close Scope nat_scope.
 
 Fixpoint adderTree {m bit} `{Cava m bit} (n s : nat) (v: list (list bit)) : m (list bit) :=
   match n with

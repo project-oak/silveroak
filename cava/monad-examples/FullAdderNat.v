@@ -18,6 +18,8 @@
    separate because they are not used for extraction to SystemVerilog.
 *)
 
+From Coq Require Import ZArith.
+From Coq Require Import ZArith.BinInt.
 From Coq Require Import Bool.Bool. 
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
@@ -35,10 +37,11 @@ Require Import Cava.Monad.Cava.
 Require Import Cava.BitArithmetic.
 Require Import FullAdder.
 
+Open Scope N_scope.
 
 Lemma halfAdderNat_correct :
-  forall (a : nat) (b : nat), a < 2 -> b < 2 ->
-  let '(part_sum, carry_out) := combinational (halfAdder (nat2bool a) (nat2bool b)) in
+  forall (a : N) (b : N), a < 2 -> b < 2 ->
+  let '(part_sum, carry_out) := combinational (halfAdder (n2bool a) (n2bool b)) in
   list_bits_to_nat [part_sum; carry_out] = a + b.
 Proof.
   intros.
@@ -49,8 +52,8 @@ Admitted.
 
   
 Lemma fullAdderNat_correct :
-  forall (a : nat) (b : nat) (cin : nat), a < 2 -> b < 2 -> cin < 2 ->
-  let '(sum, carry_out) := combinational (fullAdder (nat2bool a) (nat2bool b) (nat2bool cin)) in
+  forall (a : N) (b : N) (cin : N), a < 2 -> b < 2 -> cin < 2 ->
+  let '(sum, carry_out) := combinational (fullAdder (n2bool a) (n2bool b) (n2bool cin)) in
   list_bits_to_nat [sum; carry_out] = a + b + cin.
 Proof.
   intros.

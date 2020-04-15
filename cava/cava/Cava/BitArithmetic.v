@@ -60,31 +60,31 @@ Fixpoint list_bits_to_nat' (bits : list bool) : nat :=
 Definition nat_to_list_bits' (n : nat) : list bool :=
   fold_shift_nat [] (fun x b l => l++[b]) n.
 
-Definition nat_to_list_bits (n : nat) : list bool :=
-  to_list (N2Bv (N.of_nat n)).
+Definition nat_to_list_bits (n : N) : list bool :=
+  to_list (N2Bv n).
 
-Definition nat_to_list_bits_sized (size : nat) (n : nat) : list bool :=
-  to_list (N2Bv_sized size (N.of_nat n)).
+Definition nat_to_list_bits_sized (size : nat) (n : N) : list bool :=
+  to_list (N2Bv_sized size n).
 
-Definition list_bits_to_nat (bv : list bool) : nat :=
-  N.to_nat (Bv2N (of_list bv)).
+Definition list_bits_to_nat (bv : list bool) : N :=
+  Bv2N (of_list bv).
 
-Example b2n_empty : list_bits_to_nat [] = 0.
+Example b2n_empty : list_bits_to_nat [] = 0%N.
 Proof. reflexivity. Qed.
 
-Example b2n_0 : list_bits_to_nat [false] = 0.
+Example b2n_0 : list_bits_to_nat [false] = 0%N.
 Proof. reflexivity. Qed.
 
-Example b2n_1 : list_bits_to_nat [true] = 1.
+Example b2n_1 : list_bits_to_nat [true] = 1%N.
 Proof. reflexivity. Qed.
 
-Example b2n_10 : list_bits_to_nat [false; true] = 2.
+Example b2n_10 : list_bits_to_nat [false; true] = 2%N.
 Proof. reflexivity. Qed.
 
-Example b2n_01 : list_bits_to_nat [true; false] = 1.
+Example b2n_01 : list_bits_to_nat [true; false] = 1%N.
 Proof. reflexivity. Qed.
 
-Example b2n_11 : list_bits_to_nat [true; true] = 3.
+Example b2n_11 : list_bits_to_nat [true; true] = 3%N.
 Proof. reflexivity. Qed.
 
 Example n2b_0_1 : nat_to_list_bits 0 = [].
@@ -99,8 +99,7 @@ Proof. reflexivity. Qed.
 Example n2b_2_3 : nat_to_list_bits 3 = [true; true].
 Proof. reflexivity. Qed.  
 
-
-Lemma nat_of_list_bits_sized: forall (size v : nat),
+Lemma nat_of_list_bits_sized: forall (size :  nat) (v : N),
       list_bits_to_nat (nat_to_list_bits_sized size v) = v.
 Admitted.
 
@@ -241,6 +240,12 @@ Definition nat2bool (n : nat) : bool :=
   match n with
   | 0 => false
   | _ => true
+  end.
+
+Definition n2bool (n : N) : bool :=
+  match n with
+  | 0%N => false
+  | _   => true
   end.
 
 Definition fromVec := List.map Nat.b2n.
