@@ -36,31 +36,18 @@ Import ListNotations.
 (* A three input adder.                                                       *)
 (******************************************************************************)
 
-Definition adder_3input {m bit} `{Cava m bit} (sumSize : nat)
+Definition adder_3input {m bit} `{Cava m bit}
                         (a : list bit) (b : list bit) (c : list bit)
                         : m (list bit) :=
-  a_plus_b <- unsignedAdd sumSize a b ;;
-  sum <- unsignedAdd sumSize a_plus_b c ;;
+  a_plus_b <- unsignedAdd a b ;;
+  sum <- unsignedAdd a_plus_b c ;;
   ret sum.
 
 Open Scope N_scope.
 
-Lemma mod_plus_mod: forall a b c n, n > 0 ->
-                    ((a + b) mod n + c) mod n = (a + b + c) mod n.
-Proof.
-  intros.
-  rewrite N.add_mod_idemp_l.
-  - reflexivity.
-  - lia.
-Qed.
-
-Lemma two_p_gt_0: forall n, 2^n > 0.
-Proof.
-  intros.
-  induction n.
-  - reflexivity.
-(* Ugh, what is the N equivalent of Nat.pow_succ_r ? *)
-Admitted.
+(******************************************************************************)
+(* A proof that the three-input adder does indeed add three numbers correctly *)
+(******************************************************************************)
 
 Lemma add3_behaviour : forall (sumSize : nat)
                        (av : list bool)
@@ -69,14 +56,12 @@ Lemma add3_behaviour : forall (sumSize : nat)
                        let a := list_bits_to_nat av in
                        let b := list_bits_to_nat bv in
                        let c := list_bits_to_nat cv in
-                       list_bits_to_nat (combinational (adder_3input sumSize av bv cv))
-                         = (a + b + c) mod 2^(N.of_nat sumSize).
+                       list_bits_to_nat (combinational (adder_3input av bv cv))
+                         = a + b + c.
 Proof.
   intros. unfold combinational. unfold adder_3input. simpl.
   do 2 rewrite nat_of_list_bits_sized.
   fold a b c.
-  rewrite mod_plus_mod.
-  - reflexivity.
-  - apply two_p_gt_0.
+  reflexivity.
 Qed.
 
