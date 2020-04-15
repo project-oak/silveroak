@@ -66,7 +66,7 @@ Class Cava m bit `{Monad m} := {
   xorcy : bit * bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
   muxcy : bit -> bit -> bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
   (* Synthesizable arithmetic operations. *)
-  unsignedAdd : nat -> list bit -> list bit -> m (list bit);
+  unsignedAdd : list bit -> list bit -> m (list bit);
 }.
 
 (******************************************************************************)
@@ -161,9 +161,9 @@ Definition muxcyNet (s : N)  (di : N) (ci : N) : state CavaState N :=
          ret o
   end.
 
-Definition unsignedAddNet (sumSize : nat)
-                          (a : list N) (b : list N) :
+Definition unsignedAddNet (a : list N) (b : list N) :
                           state CavaState (list N) :=
+  let sumSize := max (length a) (length b) + 1 in
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
@@ -299,17 +299,13 @@ Definition muxcyBool (s : bool) (di : bool) (ci : bool) : ident bool :=
        | true => ci
        end).
 
-Local Open Scope N_scope.
-
-Definition unsignedAddBool (sumSize : nat)
-                           (a : list bool) (b : list bool) :
+Definition unsignedAddBool (av : list bool) (bv : list bool) :
                            ident (list bool) :=
-  let a := list_bits_to_nat a in
-  let b : N := list_bits_to_nat b in
-  let sum := (a + b) mod 2^(N.of_nat sumSize) in
+  let a := list_bits_to_nat av in
+  let b := list_bits_to_nat bv in
+  let sumSize := max (length av) (length bv) + 1 in
+  let sum := (a + b)%N in
   ret (nat_to_list_bits_sized sumSize sum).
-
-Local Open Scope N_scope.
 
 Definition bufBool (i : bool) : ident bool :=
   ret i.
@@ -389,8 +385,7 @@ Definition muxcyBoolList (s : list bool) (di : list bool) (ci : list bool) : ide
    we model sequential circuits.
    TODO(satnam): Replace with actual definition when sequential circuit semantics are clearer.
 *)
-Definition unsignedAddBoolList (sumSize : nat)
-                               (a : list (list bool)) (b : list (list bool)) :
+Definition unsignedAddBoolList (a : list (list bool)) (b : list (list bool)) :
                                ident (list (list bool)) :=
   ret ([]).
 

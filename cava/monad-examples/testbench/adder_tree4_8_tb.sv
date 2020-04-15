@@ -30,7 +30,7 @@ module adder_tree4_8_tb(
          '{ 8'd15, 8'd3, 8'd200, 8'd7 }
        };
 
-  logic[7:0] expected_output[2] = '{ 8'd29, 8'd225 };     
+  logic[9:0] expected_output[2] = '{ 8'd29, 8'd225 };     
 
   int unsigned i = 0;
 

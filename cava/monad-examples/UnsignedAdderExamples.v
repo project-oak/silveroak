@@ -47,47 +47,20 @@ Definition bv5_16 := nat_to_list_bits_sized 5 16.
 Definition bv5_30 := nat_to_list_bits_sized 5 30.
 
 (* Check 0 + 0 = 0 *)
-Example add5_0_0 : combinational (unsignedAdd 5 bv4_0 bv4_0) = bv5_0.
+Example add5_0_0 : combinational (unsignedAdd bv4_0 bv4_0) = bv5_0.
 Proof. reflexivity. Qed.
 
 (* Check 1 + 2 = 3 *)
-Example add5_1_2 : combinational (unsignedAdd 5 bv4_1 bv4_2) = bv5_3.
+Example add5_1_2 : combinational (unsignedAdd bv4_1 bv4_2) = bv5_3.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 1 = 16 *)
-Example add5_15_1 : combinational (unsignedAdd 5 bv4_15 bv4_1) = bv5_16.
-Proof. reflexivity. Qed.
-
-(* Check 15 + 1 = 16 for 4-bit result *)
-Example add4_15_1 : combinational (unsignedAdd 4 bv4_15 bv4_1)
-                  = nat_to_list_bits_sized 4 0.
+Example add5_15_1 : combinational (unsignedAdd bv4_15 bv4_1) = bv5_16.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 15 = 30 *)
-Example add5_15_15 : combinational (unsignedAdd 5 bv4_15 bv4_15) = bv5_30.
+Example add5_15_15 : combinational (unsignedAdd bv4_15 bv4_15) = bv5_30.
 Proof. reflexivity. Qed.
-
-(* Check 15 + 15 = 14 for 4-bit result *)
-Example add4_15_15 : combinational (unsignedAdd 4 bv4_15 bv4_15)
-                   = nat_to_list_bits_sized 4 14.
-Proof. reflexivity. Qed.
-
-(* Check 15 + 15 = 6 for 3-bit result *)
-Example add3_15_15 : combinational (unsignedAdd 3 bv4_15 bv4_15)
-                   = nat_to_list_bits_sized 3 6.
-Proof. reflexivity. Qed.
-
-(* Check 15 + 15 = 2 for 2-bit result *)
-Example add2_15_15 : combinational (unsignedAdd 2 bv4_15 bv4_15)
-                   = nat_to_list_bits_sized 2 2.
-Proof. reflexivity. Qed.
-
-(* Check 15 + 15 = 0 for 1-bit result *)
-Example add1_15_15 : combinational (unsignedAdd 1 bv4_15 bv4_15)
-                   = nat_to_list_bits_sized 1 0.
-Proof. reflexivity. Qed.
-
-(* An adder example. *)
 
 (******************************************************************************)
 (* Generate a 4-bit unsigned adder with 5-bit output.                         *)
@@ -97,7 +70,7 @@ Definition adder4Top : state CavaState (list N) :=
   setModuleName "adder4" ;;
   a <- inputVectorTo0 4 "a" ;;
   b <- inputVectorTo0 4 "b" ;;
-  sum <- unsignedAdd 5 a b ;;
+  sum <- unsignedAdd a b ;;
   outputVectorTo0 5 sum "sum".
 
 Definition adder4Netlist := makeNetlist adder4Top.
@@ -111,7 +84,7 @@ Definition adder8_3inputTop : state CavaState (list N) :=
   a <- inputVectorTo0 8 "a" ;;
   b <- inputVectorTo0 8 "b" ;;
   c <- inputVectorTo0 8 "c" ;;
-  sum <- adder_3input 10 a b c ;;
+  sum <- adder_3input a b c ;;
   outputVectorTo0 10 sum "sum".
 
 Definition adder8_3inputNetlist := makeNetlist adder8_3inputTop.

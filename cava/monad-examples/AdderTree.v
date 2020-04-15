@@ -50,33 +50,33 @@ Definition halve {A} (l : list A) : list A * list A :=
 
 Local Close Scope nat_scope.
 
-Fixpoint adderTree {m bit} `{Cava m bit} (n s : nat) (v: list (list bit)) : m (list bit) :=
+Fixpoint adderTree {m bit} `{Cava m bit} (n : nat) (v: list (list bit)) : m (list bit) :=
   match n with
   | O => match v with
-         | [a; b] => unsignedAdd s a b
+         | [a; b] => unsignedAdd a b
          | _ => ret [] (* Error case *)
          end
   | S n' => let '(vL, vH) := halve v in
-            aS <- adderTree n' s vL ;;
-            bS <- adderTree n' s vH ;;
-            sum <- unsignedAdd s aS bS ;;
+            aS <- adderTree n' vL ;;
+            bS <- adderTree n' vH ;;
+            sum <- unsignedAdd aS bS ;;
             ret sum
   end.
  
-(* An adder tree with 2 inputs each of 8 bits in size. *)
+(* An adder tree with 2 inputs. *)
 
 Definition adderTree2_8 {m bit} `{Cava m bit} (v : list (list bit)) : m (list bit)
-  := adderTree 0 8 v.
+  := adderTree 0 v.
 
 Definition v0_v1 := [v0; v1].
 Definition v0_plus_v1 : list bool := combinational (adderTree2_8 v0_v1).
 Example sum_vo_v1 : list_bits_to_nat v0_plus_v1 = 21.
 Proof. reflexivity. Qed.
 
-(* An adder tree with 4 inputs each of 8 bits in size. *)
+(* An adder tree with 4 inputs. *)
 
 Definition adderTree4_8 {m bit} `{Cava m bit} (v : list (list bit)) : m (list bit)
-  := adderTree 1 8 v.
+  := adderTree 1 v.
 
 Definition v0_v1_v2_v3 := [v0; v1; v2; v3].
 Definition adderTree4_8_v0_v1_v2_v3 : list bool := combinational (adderTree4_8 v0_v1_v2_v3).
@@ -90,7 +90,7 @@ Definition adder_tree4_8_top : state CavaState (list N) :=
   c <- inputVectorTo0 8 "c" ;;
   d <- inputVectorTo0 8 "d" ;;
   sum <- adderTree4_8 [a; b; c; d] ;;
-  outputVectorTo0 8 sum "sum".
+  outputVectorTo0 (length sum) sum "sum".
 
 Definition adder_tree4_8Netlist := makeNetlist adder_tree4_8_top.
 
