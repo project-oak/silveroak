@@ -21,33 +21,33 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Monad.Cava.
+Require Import Cava.Netlist.
 Require Import Cava.BitArithmetic.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
+Local Open Scope string_scope.
 
 (******************************************************************************)
 (* Build a half-adder                                                         *)
 (******************************************************************************)
 
-Definition halfAdder {m t} `{Cava m t} a b :=
+Definition halfAdder {m t} `{Cava m t} '(a, b) :=
   partial_sum <- xor2 (a, b) ;;
   carry <- and2 (a, b) ;;
   ret (partial_sum, carry).
 
-Definition halfAdderTop :=
-  setModuleName "halfadder" ;;
-  a <- inputBit "a" ;;
-  b <- inputBit "b" ;;
-  '(ps, c) <- halfAdder a b ;;
-  outputBit "partial_sum" ps ;;
-  outputBit "carry" c.
+Definition halfAdderInterface
+  := mkCircuitInterface "halfadder"
+     (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
+     (Tuple2 (One ("partial_sum", Bit)) (One ("carry", Bit)))
+     [].
 
-Definition halfAdderNetlist := makeNetlist halfAdderTop.
+Definition halfAdderNetlist := makeNetlist halfAdderInterface halfAdder.
 
 (* A proof that the half-adder is correct. *)
 Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
-                            combinational (halfAdder a b) = (xorb a b, a && b).
+                            combinational (halfAdder (a, b)) = (xorb a b, a && b).
 
 Proof.
   intros.
@@ -63,26 +63,23 @@ Qed.
 (* Build a full-adder                                                         *)
 (******************************************************************************)
 
-Definition fullAdder {m t} `{Cava m t} a b cin :=
-  '(abl, abh) <- halfAdder a b ;;
-  '(abcl, abch) <- halfAdder abl cin ;;
+Definition fullAdder {m t} `{Cava m t} '((a, b), cin) :=
+  '(abl, abh) <- halfAdder (a, b) ;;
+  '(abcl, abch) <- halfAdder (abl, cin) ;;
   cout <- or2 (abh, abch) ;;
   ret (abcl, cout).
 
-Definition fullAdderTop :=
-  setModuleName "fulladder" ;;
-  a <- inputBit "a" ;;
-  b <- inputBit "b" ;;
-  cin <- inputBit "cin" ;;
-  '(sum, cout) <- fullAdder a b cin ;;
-  outputBit "sum" sum ;;
-  outputBit "carry" cout.
+Definition fullAdderInterface
+  := mkCircuitInterface "fulladder"
+     (Tuple2 (Tuple2 (One ("a", Bit)) (One ("b", Bit))) (One ("cin", Bit)))
+     (Tuple2 (One ("sum", Bit)) (One ("carry", Bit)))
+     [].
 
-Definition fullAdderNetlist := makeNetlist fullAdderTop.
+Definition fullAdderNetlist := makeNetlist fullAdderInterface fullAdder.
 
 (* A proof that the the full-adder is correct. *)
 Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
-                            combinational (fullAdder a b cin)
+                            combinational (fullAdder (a, b, cin))
                               = (xorb cin (xorb a b),
                                  (a && b) || (b && cin) || (a && cin)).
 Proof.
@@ -98,27 +95,20 @@ Qed.
 (* Build a full-adder with explicit use of fast carry                                                        *)
 (******************************************************************************)
 
-Definition fullAdderFC {m bit} `{Cava m bit} (cin_ab : bit * (bit * bit))
+Definition fullAdderFC {m bit} `{Cava m bit} '(cin, (a, b))
   : m (bit * bit)%type :=
-  let cin := fst cin_ab in
-  let ab := snd cin_ab in
-  let a := fst ab in
-  let b := snd ab in
   part_sum <- xor2 (a, b) ;;
   sum <- xorcy (part_sum, cin) ;;
   cout <- muxcy part_sum a cin  ;;
   ret (sum, cout).
 
-Definition fullAdderFCTop :=
-  setModuleName "fulladderFC" ;;
-  a <- inputBit "a" ;;
-  b <- inputBit "b" ;;
-  cin <- inputBit "cin" ;;
-  '(sum, cout) <- fullAdderFC (cin, (a, b)) ;;
-  outputBit "sum" sum ;;
-  outputBit "carry" cout.
+Definition fullAdderFCInterface
+  := mkCircuitInterface "fulladderFC"
+     (Tuple2 (One ("cin", Bit)) (Tuple2 (One ("a", Bit)) (One ("b", Bit))))
+     (Tuple2 (One ("sum", Bit)) (One ("carry", Bit)))
+     [].
 
-Definition fullAdderFCNetlist := makeNetlist fullAdderFCTop.
+Definition fullAdderFCNetlist := makeNetlist fullAdderFCInterface fullAdderFC.
 
 (* A proof that the the full-adder is correct. *)
 Lemma fullAdderFC_behaviour : forall (a : bool) (b : bool) (cin : bool),

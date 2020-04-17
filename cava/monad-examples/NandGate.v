@@ -14,11 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* A codification of the Lava embedded DSL develope for Haskell into
-   Coq for the specification, implementaiton and formal verification of
-   circuits. Experimental work, very much in flux, as Satnam learns Coq!
-*)
-
 Require Import Program.Basics.
 From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
@@ -31,23 +26,24 @@ Export MonadNotation.
 Open Scope monad_scope.
 
 Require Import Cava.Monad.Cava.
+Require Import Cava.Netlist.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
+Local Open Scope string_scope.
 
 (* NAND gate example. Fist, let's define an overloaded NAND gate
    description. *)
 
+Definition nand2Interface
+  := mkCircuitInterface "nand2"
+     (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
+     (One ("c", Bit))
+     [].
+
 Definition nand2_gate {m t} `{Cava m t} := and2 >=> inv.
 
-Definition nand2Top :=
-  setModuleName "nand2" ;;
-  a <- inputBit "a" ;;
-  b <- inputBit "b" ;;
-  c <- nand2_gate (a, b) ;;
-  outputBit "c" c.
-
-Definition nand2Netlist := makeNetlist nand2Top.
+Definition nand2Netlist := makeNetlist nand2Interface nand2.
 
 (* A proof that the NAND gate implementation is correct. *)
 Lemma nand2_behaviour : forall (a : bool) (b : bool),
@@ -100,11 +96,10 @@ Definition nand_tb : list ((bool * bool) * bool) :=
 Definition pipelinedNAND {m t} `{Cava m t}
   := nand2_gate >=> delayBit >=> inv >=> delayBit.
 
-Definition pipelinedNANDTop :=
-  setModuleName "pipelinedNAND" ;;
-  a <- inputBit "a" ;;
-  b <- inputBit "b" ;;
-  c <- pipelinedNAND (a, b) ;;
-  outputBit "c" c.
+Definition pipelinedNANDInterface
+  := mkCircuitInterface "pipelinedNAND"
+     (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
+     (One ("c", Bit))
+     [].
 
-Definition pipelinedNANDNetlist := makeNetlist pipelinedNANDTop.
+Definition pipelinedNANDNetlist := makeNetlist pipelinedNANDInterface pipelinedNAND.

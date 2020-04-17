@@ -22,28 +22,59 @@
 From Coq Require Import Ascii String.
 From Coq Require Import ZArith.
 From Coq Require Import Lists.List.
-From Coq Require Import Vector.
 From Coq Require Import Bool.Bool.
 From Coq Require Import Numbers.NaryFunctions.
+From Coq Require Import Init.Datatypes.
 
 Require Import Omega.
 
 Import ListNotations.
+Open Scope list_scope.
 
-(* shape describes the shape of the wires coming into our out of a circuit
-   block.
-*)
+(******************************************************************************)
+(* shape describes the types of wires going into or out of a Cava circuit,    *)
+(* but not all shapes can be bound to a SystemVerilog port name. Those that   *)
+(* can are identified by the One constructor.                                 *)
+(******************************************************************************)
 
 Inductive shape {A: Type} : Type :=
   | Empty : shape
   | One : A -> shape
-  | Tuple2 : shape -> shape -> shape (* A pair of bundles of wires *).
+  | Tuple2 : shape -> shape -> shape. (* A pair of bundles of wires *)
 
-Notation "\u2039 x , y \u203a" := (Tuple2 x y).
+(* General tuples can be mapped to Tuple2 *)
 
-Inductive type : Type :=
-  | Bit : type                (* A single wire *)
-  | BitVec : list nat -> type (* Multi-dimensional bit-vectors *).
+Fixpoint tuple {A: Type} (t : list shape) : shape :=
+  match t with
+  | [] => Empty
+  | [x] => x
+  | x::xs => @Tuple2 A x (tuple xs)
+  end.
+
+(* Supporting mapping over a shape. *)
+
+Fixpoint mapShape {A B : Type} (f : A -> B) (s : @shape A) : @shape B :=
+  match s with
+  | Empty => Empty
+  | One thing => One (f thing)
+  | Tuple2 t1 t2 => Tuple2 (mapShape f t1) (mapShape f t2)
+  end.
+
+Fixpoint zipShapes {A B : Type} (sA : @shape A) (sB : @shape B) : @shape (A * B) :=
+  match sA, sB with
+  | Empty, Empty => Empty
+  | One a, One b => One (a, b)
+  | Tuple2 t1 t2, Tuple2 t3 t4 => Tuple2 (zipShapes t1 t3) (zipShapes t2 t4)
+  | _, _ => Empty
+  end.
+ 
+(******************************************************************************)
+(* Values of portType can occur as the type of signals on a circuit interface *)
+(******************************************************************************)
+
+Inductive portType : Type :=
+  | Bit : portType                (* A single wire *)
+  | BitVec : list nat -> portType (* Multi-dimensional bit-vectors *).
 
 
 Fixpoint bitVecTy {A : Type} (T : Type) (n : list A) : Type :=
@@ -53,21 +84,59 @@ Fixpoint bitVecTy {A : Type} (T : Type) (n : list A) : Type :=
   | x::xs => list (bitVecTy T xs)
   end.
 
-Compute bitVecTy N [3].
-Compute bitVecTy N [3; 2].
-
-Definition typeTy (T : Type) (t : type) : Type :=
+Definition portTypeTy (T : Type) (t : portType) : Type :=
   match t with
   | Bit => T
   | BitVec v => bitVecTy T v
   end.
 
+Fixpoint bitsInPort (s : @shape portType) : nat :=
+  match s with
+  | Empty => 0
+  | One typ =>
+      match typ with
+      | Bit => 1
+      | BitVec xs => fold_left (fun x y => x * y) xs 1
+      end
+  | Tuple2 t1 t2 => bitsInPort t1 + bitsInPort t2
+  end.
+
+
+(******************************************************************************)
+(* signalTy maps a shape to a type based on T                                 *)
+(******************************************************************************)
+
 Fixpoint signalTy (T : Type) (s : shape) : Type :=
   match s with
   | Empty  => unit
-  | One t => typeTy T t
-  | Tuple2 s1 s2  => signalTy T s1 * signalTy T s2
+  | One t => portTypeTy T t
+  | Tuple2 s1 s2  => prod (signalTy T s1) (signalTy T s2)
   end.
+
+
+(******************************************************************************)
+(* Flatten allows us to extract values from a result produced from a toplebel *)
+(* Cava circuit, which must produce a result that is an instance of the       *)
+(* the Flatten class.                                                         *)
+(******************************************************************************)
+
+Class Flatten t := {
+  flatten : t -> list N;
+}.
+
+Instance FlattenN : Flatten N := {
+  flatten n := [n];
+}.
+
+Instance FlattenTuple2 {a b} `{Flatten a} `{Flatten b}  : Flatten (a * b) := {
+  flatten ab := match ab with
+                | (a, b) => flatten a ++ flatten b
+                end;
+}.
+
+Instance FlattenList {a} `{Flatten a} : Flatten (list a) := {
+  flatten l := concat (map flatten l);
+}.
 
 (******************************************************************************)
 (* PrimitiveInstance elements                                                 *)
@@ -79,6 +148,11 @@ Fixpoint signalTy (T : Type) (s : shape) : Type :=
 *)
 
 Inductive Primitive: shape -> shape -> Type :=
+  (* I/O port wiring *)
+  | WireInputBit:     string -> Primitive Empty (One Bit)
+  | WireInputBitVec:  string -> forall n, Primitive Empty (One (BitVec [n]))
+  | WireOutputBit:    string -> Primitive (One Bit) Empty
+  | WireOutputBitVec: string -> forall n, Primitive (One (BitVec [n])) Empty
   (* SystemVerilog primitive gates. *)
   | Not:       Primitive (One Bit) (One Bit)
   | And:       forall n, Primitive (One (BitVec [n])) (One Bit)
@@ -133,8 +207,7 @@ Definition BindUnsignedAdd (sumSize: nat) is o: PrimitiveInstance :=
 
 Record PortDeclaration : Type := mkPort {
   port_name : string;
-  port_shape : shape;
-  port_type : signalTy N port_shape;
+  port_shape : @shape portType;
 }.
 
 Notation Netlist := (list PrimitiveInstance).
@@ -142,9 +215,35 @@ Notation Netlist := (list PrimitiveInstance).
 Record Module : Type := mkModule {
   moduleName : string;
   netlist : Netlist;
-  inputs : list PortDeclaration;
+  inputs :  list PortDeclaration;
   outputs : list PortDeclaration;
 }.
+
+Inductive CircuitAttribute :=
+  | ClockName : string -> CircuitAttribute
+  | ResetName : string -> CircuitAttribute.
+
+Record CircuitInterface : Type := mkCircuitInterface {
+  circuitName    : string;
+  circuitInputs  : @shape (string * portType);
+  circuitOutputs : @shape (string * portType);
+  attributes : list CircuitAttribute;
+}.
+
+Fixpoint shapeToPortDeclaration (s : @shape (string * portType)) : list PortDeclaration :=
+  match s with
+  | Empty => []
+  | One thing => match thing with
+                 | (name, Bit) => [mkPort name (One Bit)]
+                 | (name, BitVec ns) => [mkPort name (One (BitVec ns))]
+                 end
+  | Tuple2 t1 t2 => shapeToPortDeclaration t1 ++ shapeToPortDeclaration t2
+  end.
+
+Definition circuitInterfaceToModule (ci : CircuitInterface)
+                                    (nl : Netlist) : Module :=
+  mkModule (circuitName  ci) nl (shapeToPortDeclaration (circuitInputs ci))
+                                (shapeToPortDeclaration (circuitOutputs ci)).
 
 Record CavaState : Type := mkCavaState {
   netNumber : N;
@@ -187,6 +286,10 @@ end%string.
 
 Definition instanceInputs (prim: PrimitiveInstance) : list N :=
 match prim with
+| BindPrimitive (WireInputBit _) _ _        => []
+| BindPrimitive (WireInputBitVec _ _) _ _   => []
+| BindPrimitive (WireOutputBit _) i _       => [i]
+| BindPrimitive (WireOutputBitVec _ _) i _  => i
 | BindPrimitive Not i _                     => [i]
 | BindPrimitive (And _) i _                 => i
 | BindPrimitive (Nand _) i _                => i
@@ -202,12 +305,6 @@ match prim with
 | BindPrimitive (UnsignedAdd _ _ _) (x,y) _ => x ++ y
 end.
 
-Definition instanceNumber (prim: PrimitiveInstance) : option N :=
-match prim with
-| BindPrimitive (UnsignedAdd _ _ _) _ _ => None
-| BindPrimitive _ _ o                   => Some o
-end.
-
 Definition unsignedAddercomponents (prim: PrimitiveInstance) : option
   (list N * list N * list N)
   :=
@@ -218,6 +315,10 @@ end.
 
 Definition instanceArgs (prim: PrimitiveInstance) : option (list N) :=
 match prim with
+| BindPrimitive (WireInputBit _) _ o        => Some [o]
+| BindPrimitive (WireInputBitVec _ _) _ o   => Some o
+| BindPrimitive (WireOutputBit _) i _       => Some [i]
+| BindPrimitive (WireOutputBitVec _ _) i _  => Some i
 | BindPrimitive Not i o           => Some [o; i]
 | BindPrimitive (And _) i o       => Some (o :: i)
 | BindPrimitive (Nand _) i o      => Some (o :: i)

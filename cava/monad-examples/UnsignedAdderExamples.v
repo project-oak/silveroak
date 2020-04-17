@@ -20,6 +20,7 @@ From Coq Require Import NArith.
 From Coq Require Import Lists.List.
 Import ListNotations.
 Open Scope list_scope.
+Open Scope string_scope.
 
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
@@ -73,21 +74,30 @@ Definition adder4Top : state CavaState (list N) :=
   sum <- unsignedAdd a b ;;
   outputVectorTo0 5 sum "sum".
 
-Definition adder4Netlist := makeNetlist adder4Top.
+Local Open Scope nat_scope.
+
+Definition adder4Interface
+  := mkCircuitInterface "adder4"
+     (Tuple2 (One ("a", BitVec [4])) (One ("b", BitVec [4])))
+     (One ("sum", BitVec [5]))
+     [].
+
+Definition adder4Netlist
+  := makeNetlist adder4Interface (fun '(a, b) => unsignedAdd a b).
 
 (******************************************************************************)
 (* Generate a three input 8-bit unsigned adder with 10-bit output.            *)
 (******************************************************************************)
 
-Definition adder8_3inputTop : state CavaState (list N) :=
-  setModuleName "adder8_3input" ;;
-  a <- inputVectorTo0 8 "a" ;;
-  b <- inputVectorTo0 8 "b" ;;
-  c <- inputVectorTo0 8 "c" ;;
-  sum <- adder_3input a b c ;;
-  outputVectorTo0 10 sum "sum".
+Definition adder8_3inputInterface
+  := mkCircuitInterface "adder8_3input"
+     (Tuple2 (One ("a", BitVec [8])) (Tuple2 (One ("b", BitVec [8])) (One ("c", BitVec [8]))))
+     (One ("sum", BitVec [10]))
+     [].
 
-Definition adder8_3inputNetlist := makeNetlist adder8_3inputTop.
+Definition adder8_3inputNetlist
+  := makeNetlist adder8_3inputInterface
+     (fun '(a, (b, c)) => adder_3input a b c).
 
 (******************************************************************************)
 (* An contrived example of loopBit                                            *)
@@ -95,13 +105,13 @@ Definition adder8_3inputNetlist := makeNetlist adder8_3inputTop.
 
 Definition loopedNAND {m bit} `{Cava m bit}  := loopBit (second delayBit >=> nand2 >=> fork2).
 
-Definition loopedNANDTop : state CavaState N :=
-  setModuleName "loopedNAND" ;;
-  a <- inputBit "a" ;;
-  b <- loopedNAND a ;;
-  outputBit "b" b.
+Definition loopedNANDInterface
+  := mkCircuitInterface "loopedNAND"
+     (One ("a", Bit))
+     (One ("b", Bit))
+     [].
 
-Definition loopedNANDNetlist := makeNetlist loopedNANDTop.
+Definition loopedNANDNetlist := makeNetlist loopedNANDInterface loopedNAND.
 
 Fixpoint loopedNAND_spec' (i : list bool) (state : bool) : list bool :=
   match i with
@@ -109,5 +119,3 @@ Fixpoint loopedNAND_spec' (i : list bool) (state : bool) : list bool :=
   | x::xs => let newOutput := negb (x && state) in
              newOutput :: loopedNAND_spec' xs newOutput
   end.
-
-  
