@@ -17,8 +17,6 @@
 module adder_tree4_8_tb(
    input logic clk
 );
-  
-  timeunit 1ns; timeprecision 1ns;
 
   logic [7:0] a, b, c, d;
   logic [7:0] sum;
@@ -30,7 +28,7 @@ module adder_tree4_8_tb(
          '{ 8'd15, 8'd3, 8'd200, 8'd7 }
        };
 
-  logic[9:0] expected_output[2] = '{ 8'd29, 8'd225 };     
+  logic[10:0] expected_output[2] = '{ 8'd29, 8'd225 };     
 
   int unsigned i = 0;
 

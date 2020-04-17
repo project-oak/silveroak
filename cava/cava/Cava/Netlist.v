@@ -68,6 +68,13 @@ Fixpoint zipShapes {A B : Type} (sA : @shape A) (sB : @shape B) : @shape (A * B)
   | _, _ => Empty
   end.
  
+Fixpoint flattenShape {A} (s : @shape A) : list A :=
+  match s with
+  | Empty => []
+  | One thing => [thing]
+  | Tuple2 t1 t2 =>  flattenShape t1 ++ flattenShape t2
+  end.
+
 (******************************************************************************)
 (* Values of portType can occur as the type of signals on a circuit interface *)
 (******************************************************************************)
@@ -90,17 +97,18 @@ Definition portTypeTy (T : Type) (t : portType) : Type :=
   | BitVec v => bitVecTy T v
   end.
 
-Fixpoint bitsInPort (s : @shape portType) : nat :=
-  match s with
-  | Empty => 0
-  | One typ =>
-      match typ with
-      | Bit => 1
-      | BitVec xs => fold_left (fun x y => x * y) xs 1
-      end
-  | Tuple2 t1 t2 => bitsInPort t1 + bitsInPort t2
+Fixpoint bitsInPort (p : portType) : nat :=
+  match p with
+  | Bit => 1
+  | BitVec xs => fold_left (fun x y => x * y) xs 1
   end.
 
+Fixpoint bitsInPortShape (s : @shape portType) : nat :=
+  match s with
+  | Empty => 0
+  | One typ => bitsInPort typ
+  | Tuple2 t1 t2 => bitsInPortShape t1 + bitsInPortShape t2
+  end.
 
 (******************************************************************************)
 (* signalTy maps a shape to a type based on T                                 *)
@@ -207,7 +215,7 @@ Definition BindUnsignedAdd (sumSize: nat) is o: PrimitiveInstance :=
 
 Record PortDeclaration : Type := mkPort {
   port_name : string;
-  port_shape : @shape portType;
+  port_shape : portType;
 }.
 
 Notation Netlist := (list PrimitiveInstance).
@@ -234,8 +242,8 @@ Fixpoint shapeToPortDeclaration (s : @shape (string * portType)) : list PortDecl
   match s with
   | Empty => []
   | One thing => match thing with
-                 | (name, Bit) => [mkPort name (One Bit)]
-                 | (name, BitVec ns) => [mkPort name (One (BitVec ns))]
+                 | (name, Bit) => [mkPort name Bit]
+                 | (name, BitVec ns) => [mkPort name (BitVec ns)]
                  end
   | Tuple2 t1 t2 => shapeToPortDeclaration t1 ++ shapeToPortDeclaration t2
   end.
@@ -260,7 +268,7 @@ Record CavaState : Type := mkCavaState {
 *)
 
 Definition initStateFrom (startAt : N) : CavaState
-  := mkCavaState startAt false (mkModule "" [] [] []).
+  := mkCavaState startAt false (mkModule "noname" [] [] []).
 
 Definition initState : CavaState
   := initStateFrom 2.

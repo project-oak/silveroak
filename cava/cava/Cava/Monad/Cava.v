@@ -225,7 +225,7 @@ Definition inputBit (name : string) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
-     => let newPort := mkPort name (One Bit) in
+     => let newPort := mkPort name Bit in
         let insts' := BindPrimitive (WireInputBit name) tt o :: insts in
         put (mkCavaState (o+1) isSeq (mkModule n insts' (cons newPort inputs) outputs)) ;;
         ret o
@@ -236,7 +236,7 @@ Definition inputVectorTo0 (size : nat) (name : string) : state CavaState (list N
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
      => let netNumbers := map N.of_nat (seq (N.to_nat o) size) in
-        let newPort := mkPort name (One (BitVec [size])) in
+        let newPort := mkPort name (BitVec [size]) in
         let insts':= BindPrimitive (WireInputBitVec name size) tt netNumbers :: insts in
         put (mkCavaState (o + (N.of_nat size)) isSeq (mkModule n insts' (newPort :: inputs) outputs)) ;;
         ret netNumbers
@@ -246,7 +246,7 @@ Definition outputBit (name : string) (i : N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
-     => let newPort := mkPort name (One Bit) in
+     => let newPort := mkPort name Bit in
         let insts' := BindPrimitive (WireOutputBit name) i tt :: insts in
         put (mkCavaState o isSeq (mkModule n insts' inputs (newPort :: outputs))) ;;
         ret i
@@ -256,7 +256,7 @@ Definition outputVectorTo0 (size : nat) (v : list N) (name : string) : state Cav
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
-     => let newPort := mkPort name (One (BitVec [size])) in
+     => let newPort := mkPort name (BitVec [size]) in
         let insts' := BindPrimitive (WireOutputBitVec name size) v tt :: insts in
         put (mkCavaState o isSeq (mkModule n insts' inputs (newPort :: outputs))) ;;
         ret v
@@ -275,15 +275,15 @@ Fixpoint numberPort (i : N) (inputs : @shape portType) : signalTy N inputs :=
       | BitVec [n] => map N.of_nat (seq (N.to_nat i) n)
       | BitVec xs => [] (* TODO(satnam): Add support for mult-dimensional bit-vectors *)
       end
-  | Tuple2 t1 t2 => let t1Size := bitsInPort t1 in
+  | Tuple2 t1 t2 => let t1Size := bitsInPortShape t1 in
                     (numberPort i t1,  numberPort (i + N.of_nat t1Size) t2)
   end.
 
 Definition instantiateInputPort (pd : PortDeclaration) : state CavaState unit :=
   cs <- get ;;
   match pd with
-  | mkPort name (One Bit) => _ <- inputBit name ;; ret tt
-  | mkPort name (One (BitVec [n])) => _ <- inputVectorTo0 n name ;; ret tt
+  | mkPort name Bit => _ <- inputBit name ;; ret tt
+  | mkPort name (BitVec [n]) => _ <- inputVectorTo0 n name ;; ret tt
   | _ => ret tt
   end.
 
@@ -298,8 +298,8 @@ Definition instantiateOutputPort (pd : PortDeclaration) (outputNetNumbers : list
                                  : state CavaState unit :=
   cs <- get ;;
   match pd with
-  | mkPort name (One Bit) => _ <- outputBit name (hd 0%N outputNetNumbers) ;; ret tt
-  | mkPort name (One (BitVec [n])) => _ <- outputVectorTo0 n (firstn n outputNetNumbers) name ;; ret tt
+  | mkPort name Bit => _ <- outputBit name (hd 0%N outputNetNumbers) ;; ret tt
+  | mkPort name (BitVec [n]) => _ <- outputVectorTo0 n (firstn n outputNetNumbers) name ;; ret tt
   | _ => ret tt
   end.
 

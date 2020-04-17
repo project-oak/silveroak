@@ -21,7 +21,7 @@
 
 .PHONY: all coq auto_vcds clean
 
-all:		coq auto_vcds
+all:		coq auto_vcds adder_tree4_8_tb.vcd
 xilinx:		adder8.vcd
 
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt
@@ -44,6 +44,10 @@ nand2.sv:	coq ExamplesSV
 		$(VLINT) loopedNAND.sv
 		$(VLINT) pipelinedNAND.sv
 		$(VLINT) adder8_3input.sv
+
+testbench/adder_tree4_8_tb.sv:	nand2.sv
+
+adder_tree4_8_tb.vcd: adder_tree4_8.sv testbench/adder_tree4_8_tb.sv
 		$(VERILATOR) --trace --cc --top-module adder_tree4_8_tb testbench/adder_tree4_8_tb.sv adder_tree4_8.sv --exe testbench/adder_tree4_8_tb.cpp
 		make -C obj_dir -f Vadder_tree4_8_tb.mk Vadder_tree4_8_tb
 		obj_dir/Vadder_tree4_8_tb
