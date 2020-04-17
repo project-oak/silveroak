@@ -9,9 +9,12 @@ Cava/Monad/XilinxAdder.v
 
 Cava/Arrow.v
 Cava/Arrow/Arrow.v
+Cava/Arrow/Syntax.v
 Cava/Arrow/Instances/Coq.v
 Cava/Arrow/Instances/Stream.v
 Cava/Arrow/Instances/Netlist.v
-Cava/Arrow/Syntax.v
+Cava/Arrow/Syntax/Kappa.v
+Cava/Arrow/Syntax/Desugared.v
+Cava/Arrow/Syntax/CC.v
 
 Cava/Extraction.v
