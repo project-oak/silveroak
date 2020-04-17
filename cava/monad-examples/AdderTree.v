@@ -95,7 +95,7 @@ Definition adder_tree4_8Interface
 
 Definition adder_tree4_8Netlist
   := makeNetlist adder_tree4_8Interface
-    (fun '(a, b, (c, d)) => adderTree4 [a; b; c; d]).
+    (fun '((a, b), (c, d)) => adderTree4 [a; b; c; d]).
 
 
 
