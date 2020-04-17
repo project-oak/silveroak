@@ -43,6 +43,7 @@ Definition v2 := nat_to_list_bits_sized 8  6.
 Definition v3 := nat_to_list_bits_sized 8  3.
 
 Local Open Scope nat_scope.
+Local Open Scope string_scope.
 
 Definition halve {A} (l : list A) : list A * list A :=
   let mid := (length l) / 2 in
@@ -65,33 +66,36 @@ Fixpoint adderTree {m bit} `{Cava m bit} (n : nat) (v: list (list bit)) : m (lis
  
 (* An adder tree with 2 inputs. *)
 
-Definition adderTree2_8 {m bit} `{Cava m bit} (v : list (list bit)) : m (list bit)
+Definition adderTree2 {m bit} `{Cava m bit} (v : list (list bit)) : m (list bit)
   := adderTree 0 v.
 
 Definition v0_v1 := [v0; v1].
-Definition v0_plus_v1 : list bool := combinational (adderTree2_8 v0_v1).
+Definition v0_plus_v1 : list bool := combinational (adderTree2 v0_v1).
 Example sum_vo_v1 : list_bits_to_nat v0_plus_v1 = 21.
 Proof. reflexivity. Qed.
 
 (* An adder tree with 4 inputs. *)
 
-Definition adderTree4_8 {m bit} `{Cava m bit} (v : list (list bit)) : m (list bit)
+Definition adderTree4 {m bit} `{Cava m bit} (v : list (list bit)) : m (list bit)
   := adderTree 1 v.
 
 Definition v0_v1_v2_v3 := [v0; v1; v2; v3].
-Definition adderTree4_8_v0_v1_v2_v3 : list bool := combinational (adderTree4_8 v0_v1_v2_v3).
-Example sum_v0_v1_v2_v3 : list_bits_to_nat (combinational (adderTree4_8 v0_v1_v2_v3)) = 30.
+Definition adderTree4_v0_v1_v2_v3 : list bool := combinational (adderTree4 v0_v1_v2_v3).
+Example sum_v0_v1_v2_v3 : list_bits_to_nat (combinational (adderTree4 v0_v1_v2_v3)) = 30.
 Proof. reflexivity. Qed.
 
-Definition adder_tree4_8_top : state CavaState (list N) :=
-  setModuleName "adder_tree4_8" ;;
-  a <- inputVectorTo0 8 "a" ;;
-  b <- inputVectorTo0 8 "b" ;;
-  c <- inputVectorTo0 8 "c" ;;
-  d <- inputVectorTo0 8 "d" ;;
-  sum <- adderTree4_8 [a; b; c; d] ;;
-  outputVectorTo0 (length sum) sum "sum".
+Local Open Scope nat_scope.
 
-Definition adder_tree4_8Netlist := makeNetlist adder_tree4_8_top.
+Definition adder_tree4_8Interface
+  := mkCircuitInterface "adder_tree4_8"
+     (Tuple2 (Tuple2 (One ("a", BitVec [8])) (One ("b", BitVec [8])))
+             (Tuple2 (One ("c", BitVec [8])) (One ("d", BitVec [8]))))
+     (One ("sum", BitVec [11]))
+     [].
+
+Definition adder_tree4_8Netlist
+  := makeNetlist adder_tree4_8Interface
+    (fun '(a, b, (c, d)) => adderTree4 [a; b; c; d]).
+
 
 

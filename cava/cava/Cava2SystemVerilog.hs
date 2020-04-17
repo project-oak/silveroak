@@ -26,8 +26,11 @@ import qualified Vector
 
 writeSystemVerilog :: Netlist.CavaState -> IO ()
 writeSystemVerilog cavastate
-  = writeFile (Netlist.moduleName (Netlist.coq_module cavastate) ++ ".sv")
-              (unlines (cava2SystemVerilog cavastate))
+  = do putStr ("Generating " ++ filename ++ "...")
+       writeFile filename (unlines (cava2SystemVerilog cavastate))
+       putStrLn (" [done]")
+    where
+    filename = Netlist.moduleName (Netlist.coq_module cavastate) ++ ".sv"
 
 fromN :: BinNums.N -> Integer
 fromN bn
@@ -50,11 +53,7 @@ cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber isSeq (Netlist.Coq_mkModul
     [""] ++
     ["  // Constant nets",
      "  assign net[0] = 1'b0;",
-     "  assign net[1] = 1'b1;",
-     "  // Wire up inputs."] ++
-    concat (map wireInput inputs) ++
-    ["  // Wire up outputs."] ++
-    concat (map wireOutput outputs) ++
+     "  assign net[1] = 1'b1;"] ++
     ["  // Populate vectors."] ++
     populateVectors vDefs ++
     [""] ++
@@ -74,16 +73,16 @@ inputPorts :: [Netlist.PortDeclaration] -> [String]
 inputPorts = map inputPort
 
 inputPort :: Netlist.PortDeclaration -> String
-inputPort (Netlist.Coq_mkPort name (One Bit) _) = "  input logic " ++ name
-inputPort (Netlist.Coq_mkPort name (One (BitVec [s])) _)
+inputPort (Netlist.Coq_mkPort name (One Bit)) = "  input logic " ++ name
+inputPort (Netlist.Coq_mkPort name (One (BitVec [s])))
   = "  input logic[" ++ show (s - 1) ++ ":0] " ++ name
 
 outputPorts :: [Netlist.PortDeclaration] -> [String]
 outputPorts = map outputPort
 
 outputPort :: Netlist.PortDeclaration -> String
-outputPort (Netlist.Coq_mkPort name (One Bit) _) = "  output logic " ++ name
-outputPort (Netlist.Coq_mkPort name (One (BitVec [s])) _)
+outputPort (Netlist.Coq_mkPort name (One Bit)) = "  output logic " ++ name
+outputPort (Netlist.Coq_mkPort name (One (BitVec [s])))
   = "  output logic[" ++ show (s - 1) ++ ":0] " ++ name
 
 insertCommas :: [String] -> [String]
@@ -102,16 +101,16 @@ data VectorDeclaration
 data NetlistGenerationState
   = NetlistGenerationState Int [VectorDeclaration]
 
-computeVectors :: [Netlist.PrimitiveInstance] -> State NetlistGenerationState
-                                         [String]
+computeVectors :: [Netlist.PrimitiveInstance] ->
+                   State NetlistGenerationState [String]
 
 computeVectors instances
-  = do instText <- mapM computeVectors' instances
+  = do instText <- mapM computeVectors' (zip instances [1..])
        return instText
 
-computeVectors' :: Netlist.PrimitiveInstance -> State NetlistGenerationState
-                                        String
-computeVectors' inst@(Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd aSize bSize sumSize) _ _)
+computeVectors' :: (Netlist.PrimitiveInstance, Int) ->
+                   State NetlistGenerationState String
+computeVectors' (inst@(Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd aSize bSize sumSize) _ _), _)
   | Just ((a,b),s) <- Netlist.unsignedAddercomponents inst
   = do NetlistGenerationState v vDecs <- get
        let vA = VectorDeclaration AssignTo   v       HighToLow a
@@ -120,7 +119,7 @@ computeVectors' inst@(Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd aSize bSize
        put (NetlistGenerationState (v + 3) (vA:vB:vC:vDecs))
        return ("  assign v" ++ show (v + 2) ++ " = v" ++ show v ++
                " + v" ++ show (v + 1) ++ ";")
-computeVectors' otherInst = return (generateInstance otherInst)
+computeVectors' (otherInst, instNr) = return (generateInstance otherInst instNr)
 
 declareVectors :: [VectorDeclaration] -> [String]
 declareVectors = map declareVector
@@ -158,57 +157,49 @@ populateVector (VectorDeclaration AssignFrom v _ nets)
              "[" ++ show i ++ "];"
              | (i, li) <- zip [0..] nets]
 
-generateInstance :: Netlist.PrimitiveInstance -> String
-generateInstance inst@(Netlist.BindPrimitive _ _ Netlist.DelayBit _ o)
-  | [i] <- Netlist.instanceInputs inst
-  , Just o <- Netlist.instanceNumber inst
+generateInstance :: Netlist.PrimitiveInstance -> Int -> String
+generateInstance inst@(Netlist.BindPrimitive _ _ Netlist.DelayBit iAny oAny) _
   = "  always_ff @(posedge clk) net[" ++ show (fromN o) ++
-    "] <= rst ? 1'b0 : net["
-       ++ show (fromN i) ++ "];";
-generateInstance inst@(Netlist.BindPrimitive _ _ Netlist.AssignBit _ _)
-  | [a] <- Netlist.instanceInputs inst
-  , Just b <- Netlist.instanceNumber inst
+    "] <= rst ? 1'b0 : net[" ++ show (fromN i) ++ "];"
+    where
+    i = unsafeCoerce iAny :: BinNums.N
+    o = unsafeCoerce oAny :: BinNums.N
+generateInstance inst@(Netlist.BindPrimitive _ _ Netlist.AssignBit aAny bAny) _
    = "  assign net[" ++ show (fromN a) ++ "] = net[" ++ show (fromN b) ++ "];"
-generateInstance (Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd _ _ _) ab s)
+     where
+     a = unsafeCoerce aAny :: BinNums.N
+     b = unsafeCoerce bAny :: BinNums.N
+generateInstance inst@(Netlist.BindPrimitive _ _ (Netlist.WireInputBit name) _ oAny) _
+   = "  assign net[" ++ show (fromN o) ++ "] = " ++ name ++ ";"
+     where
+     o = unsafeCoerce oAny :: BinNums.N
+generateInstance inst@(Netlist.BindPrimitive _ _ (Netlist.WireInputBitVec name s) _ oAny) _
+   = unlines
+     ["  assign net[" ++ show (fromN n) ++ "] = " ++ name ++ "[" ++ show i ++
+     "];" | (n, i) <- zip o [0..s - 1]]
+     where
+     o = unsafeCoerce oAny :: [BinNums.N]
+generateInstance inst@(Netlist.BindPrimitive _ _ (Netlist.WireOutputBit name) oAny o) _ 
+   = "  assign " ++ name ++ " = net[" ++ show (fromN o) ++ "] ;"
+     where
+     o = unsafeCoerce oAny :: BinNums.N
+generateInstance inst@(Netlist.BindPrimitive _ _ (Netlist.WireOutputBitVec name s) oAny _) _
+   = unlines
+     ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show (fromN n) ++ 
+     "];" | (n, i) <- zip o [0.. s - 1]]    
+     where
+     o = unsafeCoerce oAny :: [BinNums.N]        
+generateInstance (Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd _ _ _) ab s) _
    = "" -- Generated instead during vector generation
-generateInstance inst@(Netlist.BindPrimitive i o prim _ _)
-  = "  " ++ instName ++ " inst" ++ show (fromN numb) ++ " " ++
+generateInstance inst@(Netlist.BindPrimitive i o prim _ _) instNr
+  = "  " ++ instName ++ " inst" ++ "_" ++ show instNr ++ " " ++
     showArgs args ++ ";"
-   where
-   instName = maybe (error "Request for un-namable instance") id $ Netlist.primitiveName i o prim
-   args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
-   numb = maybe (error "Primitive did not have an extractable instance number!") id $ Netlist.instanceNumber inst
-
+    where
+    instName = maybe (error "Request for un-namable instance") id $ Netlist.primitiveName i o prim
+    args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
+  
 showArgs :: [BinNums.N] -> String
 showArgs args = "(" ++ concat (insertCommas (map showArg args)) ++ ")";
 
 showArg :: BinNums.N -> String
 showArg n = "net[" ++ show (fromN n) ++ "]"
-
-wireInput :: Netlist.PortDeclaration -> [String]
-wireInput port@(Netlist.Coq_mkPort name shape@(One Bit) portNets)
-  | [n] <- netNumbersInPort shape portNets
-  = ["  assign net[" ++ show (fromN n) ++ "] = " ++ name ++ ";"]
-wireInput port@(Netlist.Coq_mkPort name shape@(One (BitVec [s])) portNets)
-  | ns <- netNumbersInPort shape portNets
-  = ["  assign net[" ++ show (fromN n) ++ "] = " ++ name ++ "[" ++ show i ++
-     "];" |
-     (n, i) <- zip ns [0..s - 1]]
-wireInput (Netlist.Coq_mkPort name _ _) = error $ "Error wiring port: " ++ name
-
-wireOutput :: Netlist.PortDeclaration -> [String]
-wireOutput port@(Netlist.Coq_mkPort name shape@(One Bit) portNets)
-  | [n] <- netNumbersInPort shape portNets
-  = ["  assign " ++ name ++ " = net[" ++ show (fromN n) ++ "] ;"]
-wireOutput port@(Netlist.Coq_mkPort name shape@(One (BitVec [s])) portNets)
-  | ns <- netNumbersInPort shape portNets
-  = ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show (fromN n) ++
-     "];" |
-     (n, i) <- zip ns [0.. s - 1]]
-
-netNumbersInPort :: Netlist.Coq_shape Coq_type -> Netlist.Coq_signalTy BinNums.N -> [BinNums.N]
-netNumbersInPort shape portNets
-  = case shape of
-      One Bit -> [unsafeCoerce portNets :: BinNums.N]
-      One (BitVec [s]) -> unsafeCoerce portNets :: [BinNums.N]
-      

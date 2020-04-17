@@ -121,16 +121,21 @@ Fixpoint below `{Monad m} {A B C D E F G}
 
 *)
 
-Fixpoint col `{Monad m} {A B C}
-             (circuit : A * B -> m (C * A)%type) (a : A) (b : list B) :
-             m (list C * A)%type :=
+Fixpoint col' `{Monad m} {A B C}
+              (circuit : A * B -> m (C * A)%type) (a : A) (b : list B) :
+              m (list C * A)%type :=
   match b with
   | [] => ret ([], a)
-  | b0::br => c_cs_e <- below circuit (fun ab => col circuit (fst ab) (snd ab)) (a, (b0, br)) ;;
+  | b0::br => c_cs_e <- below circuit (fun ab => col' circuit (fst ab) (snd ab)) (a, (b0, br)) ;;
               let (c_cs, e) := c_cs_e : (C * list C) * A in
               let (c, cs) := c_cs : C * list C in
               ret (c::cs, e)
   end.
+
+Definition col `{Monad m} {A B C}
+                (circuit : A * B -> m (C * A)%type) (ab : A * list B) :
+                m (list C * A)%type :=
+  col' circuit (fst ab) (snd ab).
 
 Definition fork2 `{Mondad_m : Monad m} {A} (a:A) := ret (a, a).
 

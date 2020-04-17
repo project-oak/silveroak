@@ -25,17 +25,20 @@ Require Import ExtLib.Structures.Monads.
 Require Import Cava.Monad.Cava.
 Require Import Cava.Monad.Combinators.
 Require Import Cava.BitArithmetic.
+Require Import Cava.Netlist.
 Require Import FullAdder.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
+Local Open Scope string_scope.
 
 (* An unsigned addder which takes two size N bit-vectors and a carry in
    and returns a size N sum and a carry out which is the addition of the two
    input vectors and carry in.
 *)
 
-Definition unsignedAdder {m bit} `{Cava m bit} := col fullAdderFC.
+Definition unsignedAdder {m bit} `{Cava m bit} '(cin, (a, b))
+  := col fullAdderFC (cin, combine a b).
 
 (****************************************************************************)
 (* A few tests to check the unsigned adder. *)
@@ -52,7 +55,7 @@ Definition v255 := [1;1;1;1;1;1;1;1].
 Definition eval_unsignedAdder cin a b :=
   let '(sum, carry)
     := combinational
-       (unsignedAdder (nat2bool cin) (combine (toVec a) (toVec b))) in
+       (unsignedAdder (nat2bool cin, (toVec a, toVec b))) in
   (fromVec sum, Nat.b2n carry).
 
 Example v1_plus_v2 : eval_unsignedAdder 0 v1 v2 = ([1; 1; 0; 0; 0; 0; 0; 0], 0).
@@ -81,23 +84,22 @@ Proof. reflexivity. Qed.
    generation.
 *)
 
-Definition adder8Top :=
-  setModuleName "adder8" ;;
-  av <- inputVectorTo0 8 "a" ;;
-  bv <- inputVectorTo0 8 "b" ;;
-  cin <- inputBit "cin" ;;
-  '(sum, cout) <- unsignedAdder cin (combine av bv) ;;
-  outputVectorTo0 (length sum) sum "sum" ;;
-  outputBit "cout" cout.
+Definition adder8Interface
+  := mkCircuitInterface "adder8"
+     (Tuple2 (One ("cin", Bit)) (Tuple2 (One ("a", BitVec [8])) (One ("b", BitVec [8]))))
+     (Tuple2 (One ("a", BitVec [8])) (One ("cout", Bit)))
+     [].
 
-Definition adder8Netlist := makeNetlist adder8Top.
+Definition adder8Netlist := makeNetlist adder8Interface unsignedAdder.
 
 (****************************************************************************)
 (* Adder with bit-growth at output sum (so no carry out                     *)
 (****************************************************************************)
 
-Definition adder {m bit} `{Cava m bit} cin ab :=
-  '(sum, carry) <- unsignedAdder cin ab ;;
+Local Open Scope list_scope.
+
+Definition adder {m bit} `{Cava m bit} '(cin, (a, b)) : m (list bit) :=
+  '(sum, carry) <- unsignedAdder (cin, (a, b)) ;;
   ret (sum ++ [carry]).
 
 (****************************************************************************)

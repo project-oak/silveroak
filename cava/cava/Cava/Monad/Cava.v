@@ -70,13 +70,6 @@ Class Cava m bit `{Monad m} := {
 }.
 
 (******************************************************************************)
-(* Execute a monadic circuit description and return the generated netlist.    *)
-(******************************************************************************)
-
-Definition makeNetlist {t} (circuit : state CavaState t) : CavaState
-  := execState circuit initState.
-
-(******************************************************************************)
 (* Netlist implementations for the Cava class.                                *)
 (******************************************************************************)
 
@@ -228,31 +221,34 @@ Definition setModuleName (name : string) : state CavaState unit :=
      => put (mkCavaState o isSeq (mkModule name insts inputs outputs))
   end.
 
+Definition inputBit (name : string) : state CavaState N :=
+  cs <- get ;;
+  match cs with
+  | mkCavaState o isSeq (mkModule n insts inputs outputs)
+     => let newPort := mkPort name (One Bit) in
+        let insts' := BindPrimitive (WireInputBit name) tt o :: insts in
+        put (mkCavaState (o+1) isSeq (mkModule n insts' (cons newPort inputs) outputs)) ;;
+        ret o
+  end.
+
 Definition inputVectorTo0 (size : nat) (name : string) : state CavaState (list N) :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
      => let netNumbers := map N.of_nat (seq (N.to_nat o) size) in
-        let newPort := mkPort name (One (BitVec [size])) netNumbers in
-        put (mkCavaState (o + (N.of_nat size)) isSeq (mkModule n insts (cons newPort inputs) outputs)) ;;
+        let newPort := mkPort name (One (BitVec [size])) in
+        let insts':= BindPrimitive (WireInputBitVec name size) tt netNumbers :: insts in
+        put (mkCavaState (o + (N.of_nat size)) isSeq (mkModule n insts' (newPort :: inputs) outputs)) ;;
         ret netNumbers
-  end.
-
-Definition inputBit (name : string) : state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule n insts inputs outputs)
-     => let newPort := mkPort name (One Bit) o in
-        put (mkCavaState (o+1) isSeq (mkModule n insts (cons newPort inputs) outputs)) ;;
-        ret o
   end.
 
 Definition outputBit (name : string) (i : N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
-     => let newPort := mkPort name (One Bit) i in
-        put (mkCavaState o isSeq (mkModule n insts inputs (cons newPort outputs))) ;;
+     => let newPort := mkPort name (One Bit) in
+        let insts' := BindPrimitive (WireOutputBit name) i tt :: insts in
+        put (mkCavaState o isSeq (mkModule n insts' inputs (newPort :: outputs))) ;;
         ret i
   end.
 
@@ -260,10 +256,105 @@ Definition outputVectorTo0 (size : nat) (v : list N) (name : string) : state Cav
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
-     => let newPort := mkPort name (One (BitVec [size])) v in
-        put (mkCavaState o isSeq (mkModule n insts inputs (cons newPort outputs))) ;;
+     => let newPort := mkPort name (One (BitVec [size])) in
+        let insts' := BindPrimitive (WireOutputBitVec name size) v tt :: insts in
+        put (mkCavaState o isSeq (mkModule n insts' inputs (newPort :: outputs))) ;;
         ret v
   end.
+
+(******************************************************************************)
+(* Execute a monadic circuit description and return the generated netlist.    *)
+(******************************************************************************)
+
+Fixpoint numberPort (i : N) (inputs : @shape portType) : signalTy N inputs :=
+  match inputs return signalTy N inputs with
+  | Empty => tt
+  | One typ =>
+      match typ return portTypeTy N typ with
+      | Bit => i
+      | BitVec [n] => map N.of_nat (seq (N.to_nat i) n)
+      | BitVec xs => [] (* TODO(satnam): Add support for mult-dimensional bit-vectors *)
+      end
+  | Tuple2 t1 t2 => let t1Size := bitsInPort t1 in
+                    (numberPort i t1,  numberPort (i + N.of_nat t1Size) t2)
+  end.
+
+Local Open Scope string_scope.
+
+(* Something is wrong with how tuples of tuples are translated. *)
+(* For example: *)
+
+Definition tupleOfTuples :=
+             Tuple2
+             (Tuple2 (One ("a", BitVec [8])) (One ("b", BitVec [8])))
+             (Tuple2 (One ("c", BitVec [8])) (One ("d", BitVec [8]))).
+
+Compute numberPort 0 (mapShape snd tupleOfTuples).
+
+(* This gives:
+
+     = ([0%N; 1%N; 2%N; 3%N; 4%N; 5%N; 6%N; 7%N], [8%N; 9%N; 10%N; 11%N; 12%N; 13%N; 14%N; 15%N],
+       ([16%N; 17%N; 18%N; 19%N; 20%N; 21%N; 22%N; 23%N], [24%N; 25%N; 26%N; 27%N; 28%N; 29%N; 30%N; 31%N]))
+     : signalTy N (mapShape snd tupleOfTuples)
+
+Which is wrong because it has the structure (a, b, (c, d)) instead of ((a,b), (c, d)).
+TODO(satnam): Fix.
+
+*)
+
+Definition instantiateInputPort (pd : PortDeclaration) : state CavaState unit :=
+  cs <- get ;;
+  match pd with
+  | mkPort name (One Bit) => _ <- inputBit name ;; ret tt
+  | mkPort name (One (BitVec [n])) => _ <- inputVectorTo0 n name ;; ret tt
+  | _ => ret tt
+  end.
+
+Fixpoint instantiateInputPorts (ports : list PortDeclaration) : state CavaState unit :=
+  match ports with
+  | [] => ret tt
+  | p::ps => instantiateInputPort p ;;
+             instantiateInputPorts ps
+  end.
+
+Definition instantiateOutputPort (pd : PortDeclaration) (outputNetNumbers : list N)
+                                 : state CavaState unit :=
+  cs <- get ;;
+  match pd with
+  | mkPort name (One Bit) => _ <- outputBit name (hd 0%N outputNetNumbers) ;; ret tt
+  | mkPort name (One (BitVec [n])) => _ <- outputVectorTo0 n (firstn n outputNetNumbers) name ;; ret tt
+  | _ => ret tt
+  end.
+
+Fixpoint instantiateOutputPorts (ports : list PortDeclaration) (outputNetNumbers : list N)
+                                : state CavaState unit :=
+  match ports with
+  | [] => ret tt
+  | p::ps => instantiateOutputPort p outputNetNumbers ;;
+             instantiateOutputPorts ps (skipn (bitsInPort (port_shape p)) outputNetNumbers)
+  end.
+
+Definition wireUpCircuit (intf : CircuitInterface)
+                         `{Flatten (signalTy N (mapShape snd (circuitOutputs intf)))}
+                         (circuit : (signalTy N (mapShape snd (circuitInputs intf))) ->
+                                    state CavaState (signalTy N (mapShape snd (circuitOutputs intf))))
+                         : state CavaState unit  :=
+  setModuleName (circuitName intf) ;;
+  cs <- get ;;
+  let countInputsFrom := netNumber cs in
+  let inputPort : @shape (string * portType) := circuitInputs intf in
+  let typeShape : @shape portType := mapShape snd inputPort in
+  let numberedInputs : signalTy N typeShape := numberPort countInputsFrom typeShape in
+  instantiateInputPorts (shapeToPortDeclaration inputPort) ;;
+  o <- circuit numberedInputs ;;
+  let outputNetNumbers := flatten o in
+  instantiateOutputPorts (shapeToPortDeclaration (circuitOutputs intf)) outputNetNumbers.
+
+Definition makeNetlist (intf : CircuitInterface)
+                       `{Flatten (signalTy N (mapShape snd (circuitOutputs intf)))}
+                       (circuit : signalTy N (mapShape snd (circuitInputs intf)) ->
+                                  state CavaState (signalTy N (mapShape snd (circuitOutputs intf)))) : CavaState
+  := execState (wireUpCircuit intf circuit) initState.
 
 (******************************************************************************)
 (* A second boolean combinational logic interpretaiob for the Cava class      *)
