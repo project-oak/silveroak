@@ -23,7 +23,6 @@ import Control.Monad.State.Lazy
 
 import qualified BinNums
 import Netlist
-import qualified Vector
 
 writeSystemVerilog :: Netlist.CavaState -> IO ()
 writeSystemVerilog cavastate
@@ -125,16 +124,6 @@ computeVectors' (otherInst, instNr) = return (generateInstance otherInst instNr)
 declareVectors :: [VectorDeclaration] -> [String]
 declareVectors = map declareVector
 
-vecLength :: Vector.Coq_t a -> Integer
-vecLength v
-  = case v of
-      Vector.Coq_nil -> 0
-      Vector.Coq_cons _ n _ -> n
-
-
-vecToList :: Vector.Coq_t a -> [a]
-vecToList v = Vector.to_list (vecLength v) v
-
 declareVector :: VectorDeclaration -> String
 declareVector (VectorDeclaration _ i dir bvec)
   = "  logic[" ++ range ++ "] v" ++ show i ++ ";"
@@ -209,22 +198,67 @@ showArg n = "net[" ++ show (fromN n) ++ "]"
 -- Generate test bench
 --------------------------------------------------------------------------------
 
-generateTestBench :: CircuitInterface -> [String]
-generateTestBench (Coq_mkCircuitInterface  name inputShape outputShape attrs)
+writeTestBench :: TestBench -> IO ()
+writeTestBench testBench
+  = do putStr ("Generating test bench " ++ filename ++ " " ++ driver ++ "...")
+       writeFile filename (unlines (generateTestBench testBench))
+       writeFile driver (unlines (cppDriver name ticks))
+       putStrLn (" [done]")
+    where
+    name = testBenchName testBench
+    filename = name ++ ".sv"
+    driver = name ++ ".cpp"
+    ticks = length (testBenchInputs testBench) 
+
+generateTestBench :: TestBench -> [String]
+generateTestBench testBench
   = ["// Automatically generated SystemVerilog 2012 code from Cava",
      "// Please do not hand edit.",
      "",
-     "module " ++ name ++ "_tb(",
-     "  input logic clk",
+     "module " ++ (testBenchName testBench) ++ "(",
+     "  input logic clk,",
+     "  input logic rst",
      ");",
      "",
      "  " ++ name ++ " " ++ name ++ "_inst (.*);",
-     ""] ++
-     declareLocalPorts inputShape ++
-     declareLocalPorts outputShape ++
+     "",
+     "  // Circuit inputs"] ++
+     declareLocalPorts (circuitInputs intf) ++
+     ["  // Circuit outputs"] ++
+     declareLocalPorts (circuitOutputs intf) ++
+     ["",
+      "  // Input test vectors"] ++
+     initTestVectors inputPortList (testBenchInputs testBench) ++
+     ["",
+      "  // Expected output test vectors"] ++
+     initTestVectors outputPortList (testBenchExpectedOutputs testBench) ++
     ["",
+     "  int unsigned i_cava = 0;"] ++
+     assignInputs inputPortList ++
+    ["",
+     "  always @(posedge clk) begin",
+     "    if (!rst) begin",
+     addDisplay (inputPortList ++ outputPortList)] ++
+     checkOutputs outputPortList ++
+    ["      if (i_cava == " ++ show (nrTests - 1) ++ ") begin",
+     "        $display (\"PASSED\");",
+     "        $finish;",
+     "      end else begin",
+     "        i_cava <= i_cava + 1 ;",
+     "      end;",
+     "    end else begin",
+     "      i_cava <= 0 ;",
+     "    end;",
+     "  end",
+     "",
      "endmodule"
     ]
+    where
+    intf = testBenchInterface testBench
+    name = circuitName intf
+    inputPortList = shapeToPortDeclaration (circuitInputs intf)
+    outputPortList = shapeToPortDeclaration (circuitOutputs intf)
+    nrTests = length (testBenchInputs testBench)
 
 declareLocalPorts :: Coq_shape (String, Coq_portType) -> [String]
 declareLocalPorts shape
@@ -233,9 +267,120 @@ declareLocalPorts shape
     portList :: [PortDeclaration]  = shapeToPortDeclaration shape
 
 declareLocalPort :: PortDeclaration -> String
-declareLocalPort (Coq_mkPort name portType) =
-  case portType of
-    Bit -> "logic " ++ name ++ ";"
-    BitVec xs -> "logic " ++ concat ["[" ++ show (i - 1) ++ ":0]" | i <- xs] ++
-                 " " ++ name ++ ";"
+declareLocalPort port
+  = declarePort port ++ ";"
  
+declarePort :: PortDeclaration -> String
+declarePort (Coq_mkPort name portType) =
+  case portType of
+    Bit -> "  logic " ++ name 
+    BitVec xs -> "  logic " ++ concat ["[" ++ show (i - 1) ++ ":0]" | i <- xs]
+                 ++ " " ++ name 
+
+initTestVectors :: [PortDeclaration] -> [[Signal]] -> [String]
+initTestVectors [] _ = []
+initTestVectors (p:ps) s
+  = initTestVector p (map head s) ++
+    initTestVectors ps (map tail s)
+  
+initTestVector :: PortDeclaration -> [Signal] -> [String]
+initTestVector pd@(Coq_mkPort name typ) s
+  = [declarePort (Coq_mkPort (name ++ "_vectors") typ) ++
+     "[" ++ show (length s) ++ "] = '{"] ++
+    insertCommas (map showSignal s) ++
+    ["    };"]
+
+showSignal :: Signal -> String
+showSignal (BitVal v)   = "    1'b" ++ showBit v
+showSignal (VecVal xs) | isAllBits xs
+  = "    " ++ show (length xs) ++ "'d" ++ show (signalToInt xs)
+     
+isAllBits :: [Signal] -> Bool
+isAllBits = and . map isBitVal
+
+isBitVal :: Signal -> Bool
+isBitVal (BitVal _) = True
+isBitVal _ = False
+
+signalToInt :: [Signal] -> Int
+signalToInt [] = 0
+signalToInt ((BitVal b):xs)
+  = case b of
+      False -> 2 * signalToInt xs
+      True -> 1 + 2 * signalToInt xs
+signalToBit _ = error "Not a bit-vector"      
+
+showBit :: Bool -> String
+showBit False = "0"
+showBit True = "1"
+
+assignInputs :: [PortDeclaration] -> [String]
+assignInputs = map assignInput
+
+assignInput :: PortDeclaration -> String
+assignInput port
+  = "  assign " ++ port_name port ++ " = " ++ port_name port ++ "_vectors[i_cava];"
+
+addDisplay ::  [PortDeclaration] -> String
+addDisplay ports
+  = "      $display(\"" ++ formatArgs ++ "\", $time, " ++ formatPars ++ ");"
+    where
+    formatArgs = concat (insertCommas
+                         ("%t: tick = %0d": map formatPortWithName ports))
+    formatPars = concat (insertCommas ("i_cava": map port_name ports))
+
+formatPortWithName :: PortDeclaration -> String
+formatPortWithName (Coq_mkPort name Bit) = " " ++ name ++ " = %0b"
+formatPortWithName (Coq_mkPort name (BitVec _)) = " " ++ name ++ " = %0d"
+
+checkOutputs :: [PortDeclaration] -> [String]
+checkOutputs ports = concat (map checkOutput ports)
+
+checkOutput :: PortDeclaration -> [String]
+checkOutput port
+  = ["      if(" ++ name ++ " != " ++ name ++ "_vectors[i_cava]) begin",
+     "        $error (\"For " ++ name ++ " expected " ++ fmt ++ " but got " ++
+     fmt ++ "\", " ++ name ++ "_vectors[i_cava], " ++ name ++ ");",
+     "      end;"
+    ]
+    where
+    fmt = formatPortType (port_shape port)
+    name = port_name port
+
+formatPortType :: Coq_portType -> String
+formatPortType Bit = "%0b"
+formatPortType (BitVec _) = "%0d"
+
+cppDriver :: String -> Int -> [String]
+cppDriver name ticks =
+  ["#include <stdlib.h>",
+    "#include \"V" ++ name ++ ".h\"",
+    "#include \"verilated.h\"",
+    "#include \"verilated_vpi.h\"",
+    "#include \"verilated_vcd_c.h\"",
+    "",
+    "double main_time = 0;",
+    "double sc_time_stamp() { return main_time; }",
+    "",
+    "int main(int argc, char **argv) {",
+    "  Verilated::commandArgs(argc, argv);",
+    "  V" ++ name ++ " *top = new V" ++ name ++ ";",
+    "  VerilatedVcdC* vcd_trace = new VerilatedVcdC;",
+    "  Verilated::traceEverOn(true);",
+    "  top->trace(vcd_trace, 99);",
+    "  top->clk = 0; top->rst = 1; main_time += 5;",
+    "  top->eval(); vcd_trace->dump(main_time);",
+    "  top->clk = 1; top->rst = 0; main_time += 5;",
+    "  top->eval(); vcd_trace->dump(main_time);",
+    "  vcd_trace->open(\"" ++ name ++ ".vcd\");",
+    "  for (unsigned int i = 0; i < " ++ show (ticks - 1) ++ "; i++) {",
+    "    top->clk = 0; main_time += 5;",
+    "    top->eval(); vcd_trace->dump(main_time);",
+    "    top->clk = 1;  main_time += 5;",
+    "    top->eval(); vcd_trace->dump(main_time);",
+    "  }",
+    "  vcd_trace->close();",
+    "  delete top;",
+    "  exit(EXIT_SUCCESS);",
+    "}"
+  ]

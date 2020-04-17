@@ -29,7 +29,6 @@ Open Scope monad_scope.
 Require Import Cava.Netlist.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Monad.Cava.
-Require Import Cava.Monad.Combinators.
 Require Import Cava.Monad.UnsignedAdders.
 
 (******************************************************************************)
@@ -67,13 +66,6 @@ Proof. reflexivity. Qed.
 (* Generate a 4-bit unsigned adder with 5-bit output.                         *)
 (******************************************************************************)
 
-Definition adder4Top : state CavaState (list N) :=
-  setModuleName "adder4" ;;
-  a <- inputVectorTo0 4 "a" ;;
-  b <- inputVectorTo0 4 "b" ;;
-  sum <- unsignedAdd a b ;;
-  outputVectorTo0 5 sum "sum".
-
 Local Open Scope nat_scope.
 
 Definition adder4Interface
@@ -84,6 +76,16 @@ Definition adder4Interface
 
 Definition adder4Netlist
   := makeNetlist adder4Interface (fun '(a, b) => unsignedAdd a b).
+
+Definition adder4_tb_inputs
+  := [(bv4_0, bv4_0); (bv4_1, bv4_2); (bv4_15, bv4_1); (bv4_15, bv4_15)].
+
+Definition adder4_tb_expected_outputs
+  := map (fun '(a, b) => combinational (unsignedAdd a b)) adder4_tb_inputs.
+
+Definition adder4_tb
+  := testBench "adder4_tb" adder4Interface
+     adder4_tb_inputs adder4_tb_expected_outputs.
 
 (******************************************************************************)
 (* Generate a three input 8-bit unsigned adder with 10-bit output.            *)
@@ -99,23 +101,17 @@ Definition adder8_3inputNetlist
   := makeNetlist adder8_3inputInterface
      (fun '(a, (b, c)) => adder_3input a b c).
 
-(******************************************************************************)
-(* An contrived example of loopBit                                            *)
-(******************************************************************************)
+Local Open Scope N_scope.
 
-Definition loopedNAND {m bit} `{Cava m bit}  := loopBit (second delayBit >=> nand2 >=> fork2).
+Definition adder8_3input_tb_inputs :=
+  map (fun '(x, (y, z)) => (nat_to_list_bits_sized 8 x,
+                            (nat_to_list_bits_sized 8 y, nat_to_list_bits_sized 8 z)))
+  [(17, (23, 95)); (4, (200, 30)); (255, (255, 200))].
 
-Definition loopedNANDInterface
-  := mkCircuitInterface "loopedNAND"
-     (One ("a", Bit))
-     (One ("b", Bit))
-     [].
+Definition adder8_3input_tb_expected_outputs :=
+  map (fun '(a, (b, c)) => combinational (adder_3input a b c)) adder8_3input_tb_inputs.
 
-Definition loopedNANDNetlist := makeNetlist loopedNANDInterface loopedNAND.
-
-Fixpoint loopedNAND_spec' (i : list bool) (state : bool) : list bool :=
-  match i with
-  | [] => []
-  | x::xs => let newOutput := negb (x && state) in
-             newOutput :: loopedNAND_spec' xs newOutput
-  end.
+Definition adder8_3input_tb :=
+  testBench "adder8_3input_tb" adder8_3inputInterface
+  adder8_3input_tb_inputs adder8_3input_tb_expected_outputs.
+ 

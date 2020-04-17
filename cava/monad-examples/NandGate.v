@@ -26,6 +26,7 @@ Export MonadNotation.
 Open Scope monad_scope.
 
 Require Import Cava.Monad.Cava.
+Require Import Cava.Monad.Combinators.
 Require Import Cava.Netlist.
 
 Local Open Scope list_scope.
@@ -88,10 +89,12 @@ Definition nand_tb_inputs : list (bool * bool) :=
 Definition nand_tb_expected_outputs : list bool :=
   map (fun i => combinational (nand2_gate i)) nand_tb_inputs.
 
-Definition nand_tb : list ((bool * bool) * bool) :=
-  combine nand_tb_inputs nand_tb_expected_outputs. 
+Definition nand2_tb :=
+  testBench "nand2_tb" nand2Interface nand_tb_inputs nand_tb_expected_outputs.
 
-(* A nand-gate with registers after the AND gate and the INV gate. *)
+(******************************************************************************)
+(* A nand-gate with registers after the AND gate and the INV gate.            *)
+(******************************************************************************)
 
 Definition pipelinedNAND {m t} `{Cava m t}
   := nand2_gate >=> delayBit >=> inv >=> delayBit.
@@ -103,3 +106,92 @@ Definition pipelinedNANDInterface
      [].
 
 Definition pipelinedNANDNetlist := makeNetlist pipelinedNANDInterface pipelinedNAND.
+
+Definition pipelinedNAND_tb_inputs
+  := [(false, false);
+      (true, false);
+      (false, true);
+      (true, true);
+      (false, false);
+      (true, false);
+      (true, false)].
+
+Definition pipelinedNAND_tb_expected_outputs
+  := [false; true; false; false; false; true; false].
+
+
+Definition pipelinedNAND_tb
+  := testBench "pipelinedNAND_tb" pipelinedNANDInterface
+     pipelinedNAND_tb_inputs pipelinedNAND_tb_expected_outputs.
+
+(******************************************************************************)
+(* An contrived example of loopBit                                            *)
+(******************************************************************************)
+
+Definition loopedNAND {m bit} `{Cava m bit}
+  := loopBit (second delayBit >=> nand2 >=> fork2).
+
+Definition loopedNANDInterface
+  := mkCircuitInterface "loopedNAND"
+     (One ("a", Bit))
+     (One ("b", Bit))
+     [].
+
+Definition loopedNANDNetlist := makeNetlist loopedNANDInterface loopedNAND.
+
+Fixpoint loopedNAND_spec' (i : list bool) (state : bool) : list bool :=
+  match i with
+  | [] => []
+  | x::xs => let newOutput := negb (x && state) in
+             newOutput :: loopedNAND_spec' xs newOutput
+  end.
+
+Definition loopedNAND_tb_inputs :=
+  [false; (* 10 *)
+   false; (* 20 *)
+   true;  (* 30 *)
+   true;  (* 40 *)
+   true;  (* 50 *)
+   true;  (* 60 *)
+   false; (* 70 *)
+   false; (* 80 *)
+   true;  (* 90 *)
+   true;  (* 100 *)
+   true;  (* 110 *)
+   true   (* 120 *)
+  ] .
+
+
+Definition loopedNAND_tb_expected_outputs :=
+  [true;  (* 10 *)
+   true;  (* 20 *)
+   false; (* 30 *)
+   true;  (* 40 *)
+   false; (* 50 *)
+   true;  (* 60 *)
+   true;  (* 70 *)
+   true;  (* 80 *)
+   false; (* 90 *)
+   true;  (* 100 *)
+   false; (* 110 *)
+   true   (* 120 *)
+  ].
+
+Definition loopedNAND_tb
+  := testBench "loopedNAND_tb" loopedNANDInterface
+     loopedNAND_tb_inputs loopedNAND_tb_expected_outputs.
+
+(*
+                  10 a = 0, b = 1
+                  20 a = 0, b = 1
+                  30 a = 1, b = 0
+                  40 a = 1, b = 1
+                  50 a = 1, b = 0
+                  60 a = 1, b = 1
+                  70 a = 0, b = 1
+                  80 a = 0, b = 1
+                  90 a = 1, b = 1
+                 100 a = 1, b = 0
+                 110 a = 1, b = 1
+                 120 a = 1, b = 0
+*)

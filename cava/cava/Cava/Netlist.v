@@ -19,6 +19,7 @@
    Experimental work, very much in flux, as Satnam learns Coq!
 *)
 
+Require Import Program.Basics.
 From Coq Require Import Ascii String.
 From Coq Require Import ZArith.
 From Coq Require Import Lists.List.
@@ -121,6 +122,37 @@ Fixpoint signalTy (T : Type) (s : shape) : Type :=
   | Tuple2 s1 s2  => prod (signalTy T s1) (signalTy T s2)
   end.
 
+(******************************************************************************)
+(* Make it possible to convert ceratain types to bool shape values            *)
+(******************************************************************************)
+
+Inductive Signal :=
+| NoSignal : Signal
+| BitVal : bool -> Signal
+| VecVal : list Signal -> Signal.
+
+Class ToShape t := {
+  shapeIt : t -> @shape Signal;
+}.
+
+Instance SignalBool : ToShape bool := {
+  shapeIt b := One (BitVal b);
+}.
+
+Fixpoint shapeToSignal (s : shape) : Signal :=
+  match s with
+  | One v => v
+  | _ => NoSignal
+  end.
+
+Instance ShapeVec {A : Type} `{ToShape A} : ToShape (list A) := {
+  shapeIt v := One (VecVal (map (compose shapeToSignal shapeIt) v)) ;
+}.
+
+Instance ToShapePair {A B : Type} `{ToShape A} `{ToShape B}  :
+                     ToShape (A * B) := {
+  shapeIt '(a, b) := Tuple2 (shapeIt a) (shapeIt b);
+}.
 
 (******************************************************************************)
 (* Flatten allows us to extract values from a result produced from a toplebel *)
@@ -258,6 +290,22 @@ Record CavaState : Type := mkCavaState {
   isSequential : bool;
   module : Module;
 }.
+
+Record TestBench : Type := mkTestBench {
+  testBenchName            : string;
+  testBenchInterface       : CircuitInterface;
+  testBenchInputs          : list (list Signal);
+  testBenchExpectedOutputs : list (list Signal);
+}.
+
+Definition testBench (name : string)
+                     (intf : CircuitInterface)
+                     `{ToShape (signalTy bool (mapShape snd (circuitInputs intf)))}
+                     `{ToShape (signalTy bool (mapShape snd (circuitOutputs intf)))}
+                     (testInputs : list (signalTy bool (mapShape snd (circuitInputs intf))))
+                     (testExpectedOutputs : list (signalTy bool (mapShape snd (circuitOutputs intf))))  
+  := mkTestBench name intf (map (compose flattenShape shapeIt) testInputs)
+                           (map (compose flattenShape shapeIt) testExpectedOutputs).
 
 (******************************************************************************)
 (* The initial empty netlist                                                  *)
