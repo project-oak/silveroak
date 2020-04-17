@@ -243,6 +243,6 @@ Section NetlistEval.
   Eval cbv in arrowToHDLModule
     "not"
     not_gate
-    (fun i => [mkPort "input1" (One Bit)])
-    (fun o => [mkPort "output1" (One Bit)]).
+    (fun i => [mkPort "input1" Bit])
+    (fun o => [mkPort "output1" Bit]).
 End NetlistEval.

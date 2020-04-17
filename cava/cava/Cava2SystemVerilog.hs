@@ -13,6 +13,7 @@
    limitations under the License.
 -}
 
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Cava2SystemVerilog
@@ -73,16 +74,16 @@ inputPorts :: [Netlist.PortDeclaration] -> [String]
 inputPorts = map inputPort
 
 inputPort :: Netlist.PortDeclaration -> String
-inputPort (Netlist.Coq_mkPort name (One Bit)) = "  input logic " ++ name
-inputPort (Netlist.Coq_mkPort name (One (BitVec [s])))
+inputPort (Netlist.Coq_mkPort name Bit) = "  input logic " ++ name
+inputPort (Netlist.Coq_mkPort name (BitVec [s]))
   = "  input logic[" ++ show (s - 1) ++ ":0] " ++ name
 
 outputPorts :: [Netlist.PortDeclaration] -> [String]
 outputPorts = map outputPort
 
 outputPort :: Netlist.PortDeclaration -> String
-outputPort (Netlist.Coq_mkPort name (One Bit)) = "  output logic " ++ name
-outputPort (Netlist.Coq_mkPort name (One (BitVec [s])))
+outputPort (Netlist.Coq_mkPort name Bit) = "  output logic " ++ name
+outputPort (Netlist.Coq_mkPort name (BitVec [s]))
   = "  output logic[" ++ show (s - 1) ++ ":0] " ++ name
 
 insertCommas :: [String] -> [String]
@@ -203,3 +204,38 @@ showArgs args = "(" ++ concat (insertCommas (map showArg args)) ++ ")";
 
 showArg :: BinNums.N -> String
 showArg n = "net[" ++ show (fromN n) ++ "]"
+
+--------------------------------------------------------------------------------
+-- Generate test bench
+--------------------------------------------------------------------------------
+
+generateTestBench :: CircuitInterface -> [String]
+generateTestBench (Coq_mkCircuitInterface  name inputShape outputShape attrs)
+  = ["// Automatically generated SystemVerilog 2012 code from Cava",
+     "// Please do not hand edit.",
+     "",
+     "module " ++ name ++ "_tb(",
+     "  input logic clk",
+     ");",
+     "",
+     "  " ++ name ++ " " ++ name ++ "_inst (.*);",
+     ""] ++
+     declareLocalPorts inputShape ++
+     declareLocalPorts outputShape ++
+    ["",
+     "endmodule"
+    ]
+
+declareLocalPorts :: Coq_shape (String, Coq_portType) -> [String]
+declareLocalPorts shape
+  = map declareLocalPort portList
+    where
+    portList :: [PortDeclaration]  = shapeToPortDeclaration shape
+
+declareLocalPort :: PortDeclaration -> String
+declareLocalPort (Coq_mkPort name portType) =
+  case portType of
+    Bit -> "logic " ++ name ++ ";"
+    BitVec xs -> "logic " ++ concat ["[" ++ show (i - 1) ++ ":0]" | i <- xs] ++
+                 " " ++ name ++ ";"
+ 
