@@ -17,9 +17,9 @@
 .PHONY: all clean
 
 all:
-	cd cava && $(MAKE) clean all && \
-	cd ../monad-examples && $(MAKE) clean all && \
-	cd ../arrow-examples && $(MAKE) clean all && \
+	cd cava && $(MAKE) && \
+	cd ../monad-examples && $(MAKE) && \
+	cd ../arrow-examples && $(MAKE) && \
 	cd ..
 
 clean:
