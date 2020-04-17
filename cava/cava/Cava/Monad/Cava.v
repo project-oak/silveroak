@@ -279,29 +279,6 @@ Fixpoint numberPort (i : N) (inputs : @shape portType) : signalTy N inputs :=
                     (numberPort i t1,  numberPort (i + N.of_nat t1Size) t2)
   end.
 
-Local Open Scope string_scope.
-
-(* Something is wrong with how tuples of tuples are translated. *)
-(* For example: *)
-
-Definition tupleOfTuples :=
-             Tuple2
-             (Tuple2 (One ("a", BitVec [8])) (One ("b", BitVec [8])))
-             (Tuple2 (One ("c", BitVec [8])) (One ("d", BitVec [8]))).
-
-Compute numberPort 0 (mapShape snd tupleOfTuples).
-
-(* This gives:
-
-     = ([0%N; 1%N; 2%N; 3%N; 4%N; 5%N; 6%N; 7%N], [8%N; 9%N; 10%N; 11%N; 12%N; 13%N; 14%N; 15%N],
-       ([16%N; 17%N; 18%N; 19%N; 20%N; 21%N; 22%N; 23%N], [24%N; 25%N; 26%N; 27%N; 28%N; 29%N; 30%N; 31%N]))
-     : signalTy N (mapShape snd tupleOfTuples)
-
-Which is wrong because it has the structure (a, b, (c, d)) instead of ((a,b), (c, d)).
-TODO(satnam): Fix.
-
-*)
-
 Definition instantiateInputPort (pd : PortDeclaration) : state CavaState unit :=
   cs <- get ;;
   match pd with
