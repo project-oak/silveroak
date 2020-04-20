@@ -70,12 +70,30 @@ Definition fullAdder {m t} `{Cava m t} '((a, b), cin) :=
   ret (abcl, cout).
 
 Definition fullAdderInterface
-  := mkCircuitInterface "fulladder"
+  := mkCircuitInterface "fullAdder"
      (Tuple2 (Tuple2 (One ("a", Bit)) (One ("b", Bit))) (One ("cin", Bit)))
      (Tuple2 (One ("sum", Bit)) (One ("carry", Bit)))
      [].
 
 Definition fullAdderNetlist := makeNetlist fullAdderInterface fullAdder.
+
+Definition fullAdder_tb_inputs :=
+  [((false, false), false);
+   ((true, false),  false);
+   ((false, true),  false);
+   ((true, true),   false);
+   ((false, false), true);
+   ((true, false),  true);
+   ((false, true),  true);
+   ((true, true),   true)
+].
+
+Definition fullAdder_tb_expected_outputs
+   := map (fun i => combinational (fullAdder i)) fullAdder_tb_inputs.
+
+Definition fullAdder_tb
+  := testBench "fullAdder_tb" fullAdderInterface
+     fullAdder_tb_inputs fullAdder_tb_expected_outputs.
 
 (* A proof that the the full-adder is correct. *)
 Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),

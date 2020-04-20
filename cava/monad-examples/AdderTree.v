@@ -97,5 +97,21 @@ Definition adder_tree4_8Netlist
   := makeNetlist adder_tree4_8Interface
     (fun '((a, b), (c, d)) => adderTree4 [a; b; c; d]).
 
+Local Open Scope N_scope.
+
+Definition adder_tree4_8_tb_inputs
+  := map (fun '((a, b), (c, d)) =>
+      ((nat_to_list_bits_sized 8 a, nat_to_list_bits_sized 8 b),
+       (nat_to_list_bits_sized 8 c, nat_to_list_bits_sized 8 d)))
+     [((17, 42), (23, 95)); ((4, 13), (200, 30)); ((255, 74), (255, 200))].
+
+Definition adder_tree4_8_tb_expected_outputs
+  := map (fun '((a, b), (c, d)) => combinational (adderTree4 [a; b; c; d]))
+     adder_tree4_8_tb_inputs.
+
+Definition adder_tree4_8_tb :=
+  testBench "adder_tree4_8_tb" adder_tree4_8Interface
+  adder_tree4_8_tb_inputs adder_tree4_8_tb_expected_outputs.
+
 
 

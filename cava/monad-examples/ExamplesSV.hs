@@ -25,11 +25,18 @@ import AdderTree
 
 main :: IO ()
 main = do writeSystemVerilog nand2Netlist
+          writeTestBench nand2_tb
+          writeSystemVerilog pipelinedNANDNetlist
+          writeTestBench pipelinedNAND_tb
+          writeSystemVerilog loopedNANDNetlist
+          writeTestBench loopedNAND_tb
           writeSystemVerilog adder4Netlist
+          writeTestBench adder4_tb
+          writeSystemVerilog adder8_3inputNetlist
+          writeTestBench adder8_3input_tb
+          writeSystemVerilog adder_tree4_8Netlist
+          writeTestBench adder_tree4_8_tb
           writeSystemVerilog fullAdderNetlist
+          writeTestBench fullAdder_tb
           writeSystemVerilog fullAdderFCNetlist
           writeSystemVerilog adder8Netlist
-          writeSystemVerilog adder8_3inputNetlist
-          writeSystemVerilog adder_tree4_8Netlist
-          writeSystemVerilog pipelinedNANDNetlist
-          writeSystemVerilog loopedNANDNetlist
