@@ -109,38 +109,3 @@ Proof.
   all : reflexivity.
 Qed.
 
-(******************************************************************************)
-(* Build a full-adder with explicit use of fast carry                                                        *)
-(******************************************************************************)
-
-Definition fullAdderFC {m bit} `{Cava m bit} '(cin, (a, b))
-  : m (bit * bit)%type :=
-  part_sum <- xor2 (a, b) ;;
-  sum <- xorcy (part_sum, cin) ;;
-  cout <- muxcy part_sum a cin  ;;
-  ret (sum, cout).
-
-Definition fullAdderFCInterface
-  := mkCircuitInterface "fulladderFC"
-     (Tuple2 (One ("cin", Bit)) (Tuple2 (One ("a", Bit)) (One ("b", Bit))))
-     (Tuple2 (One ("sum", Bit)) (One ("carry", Bit)))
-     [].
-
-Definition fullAdderFCNetlist := makeNetlist fullAdderFCInterface fullAdderFC.
-
-(* A proof that the the full-adder is correct. *)
-Lemma fullAdderFC_behaviour : forall (a : bool) (b : bool) (cin : bool),
-                              combinational (fullAdderFC (cin, (a, b)))
-                               = (xorb cin (xorb a b),
-                                   (a && b) || (b && cin) || (a && cin)).
-Proof.
-  intros.
-  unfold combinational.
-  unfold fst.
-  simpl.
-  case a, b, cin.
-  all : reflexivity.
-Qed.
-
-
-

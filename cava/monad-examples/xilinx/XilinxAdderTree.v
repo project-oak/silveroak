@@ -33,16 +33,16 @@ Require Import Cava.Netlist.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Monad.Cava.
 Require Import Cava.Monad.Combinators.
-Require Import Cava.Monad.UnsignedAdders.
+Require Import Cava.Monad.XilinxAdder.
 
 Set Implicit Arguments.
 
 (******************************************************************************)
-(* A generic description of all adder trees made from a syntheszable adder    *)
+(* A generic description of all adder trees made from a Xilinx adder          *)
 (* by using the tree combinator.                                              *)
 (******************************************************************************)
 
-Definition adderTree {m bit} `{Cava m bit} := tree unsignedAdd.
+Definition adderTree {m bit} `{Cava m bit} := tree xilinxAdder.
 
 (******************************************************************************)
 (* Some tests.                                                                *)
@@ -86,7 +86,7 @@ Definition adder_tree_Interface name nrInputs bitSize
 
 (* Create netlist and test-bench for a 4-input adder tree. *)
 
-Definition adder_tree4_8Interface := adder_tree_Interface "adder_tree4_8" 4 8.
+Definition adder_tree4_8Interface := adder_tree_Interface "xadder_tree4_8" 4 8.
 
 Definition adder_tree4_8Netlist
   := makeNetlist adder_tree4_8Interface adderTree4.
@@ -101,19 +101,19 @@ Definition adder_tree4_8_tb_expected_outputs
   := map (fun i => combinational (adderTree4 i)) adder_tree4_8_tb_inputs.
 
 Definition adder_tree4_8_tb :=
-  testBench "adder_tree4_8_tb" adder_tree4_8Interface
+  testBench "xadder_tree4_8_tb" adder_tree4_8Interface
   adder_tree4_8_tb_inputs adder_tree4_8_tb_expected_outputs.
 
 (* Create netlist for a 32-input adder tree. *)
 
-Definition adder_tree32_8Interface := adder_tree_Interface "adder_tree32_8" 32 8.
+Definition adder_tree32_8Interface := adder_tree_Interface "xadder_tree32_8" 32 8.
 
 Definition adder_tree32_8Netlist
   := makeNetlist adder_tree32_8Interface (adderTree 4).
 
 (* Create netlist and test-bench for a 64-input adder tree. *)
 
-Definition adder_tree64_8Interface := adder_tree_Interface "adder_tree64_8" 64 8.
+Definition adder_tree64_8Interface := adder_tree_Interface "xadder_tree64_8" 64 8.
 
 Definition adder_tree64_8Netlist
   := makeNetlist adder_tree64_8Interface (adderTree 5).
@@ -126,6 +126,23 @@ Definition adder_tree64_8_tb_expected_outputs
   := map (fun i => combinational (adderTree 5 i)) adder_tree64_8_tb_inputs.
 
 Definition adder_tree64_8_tb :=
-  testBench "adder_tree64_8_tb" adder_tree64_8Interface
+  testBench "xadder_tree64_8_tb" adder_tree64_8Interface
   adder_tree64_8_tb_inputs adder_tree64_8_tb_expected_outputs.
 
+(* Create netlist and test-bench for a 64-input adder tree adding 128-bit words. *)
+
+Definition adder_tree64_128Interface := adder_tree_Interface "xadder_tree64_128" 64 128.
+
+Definition adder_tree64_128Netlist
+  := makeNetlist adder_tree64_128Interface (adderTree 5).
+
+Definition adder_tree64_128_tb_inputs
+  := map (fun i => map (nat_to_list_bits_sized 128) (map N.of_nat i))
+     [seq 0 64; seq 64 64; seq 128 64].
+
+Definition adder_tree64_128_tb_expected_outputs
+  := map (fun i => combinational (adderTree 5 i)) adder_tree64_128_tb_inputs.
+
+Definition adder_tree64_128_tb :=
+  testBench "xadder_tree64_128_tb" adder_tree64_128Interface
+  adder_tree64_128_tb_inputs adder_tree64_128_tb_expected_outputs.

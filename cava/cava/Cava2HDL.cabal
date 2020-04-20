@@ -41,6 +41,7 @@ library
   build-Depends:     base >= 4, mtl >= 2
   exposed-Modules:   Cava2SystemVerilog
                      Arrow
+                     BinNat
                      BinNums
                      BitArithmetic
                      Bvector
@@ -59,9 +60,9 @@ library
                      UnsignedAdders
                      VectorDef
                      Vector
+                     XilinxAdder
                      ByteVector
   other-Modules:     Applicative
-                     BinNat
                      BinPos
                      Bool
                      Decimal

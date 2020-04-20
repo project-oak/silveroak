@@ -397,6 +397,6 @@ match prim with
 | BindPrimitive (Xnor _) i o      => Some (o :: i)
 | BindPrimitive Buf i o           => Some [o; i]
 | BindPrimitive Xorcy (x,y) o     => Some [o; x; y]
-| BindPrimitive Muxcy (i,(t,e)) o => Some [o; i; t; e]
+| BindPrimitive Muxcy (i,(t,e)) o => Some [o; t; e; i]
 | _ => None
 end.

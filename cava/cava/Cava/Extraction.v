@@ -26,6 +26,7 @@ Require Import Cava.BitArithmetic.
 Require Import Cava.Monad.Cava.
 Require Import Cava.Monad.Combinators.
 Require Import Cava.Monad.UnsignedAdders.
+Require Import Cava.Monad.XilinxAdder.
 
 Recursive Extraction Library BitArithmetic.
 Recursive Extraction Library Cava.
@@ -37,3 +38,4 @@ Recursive Extraction Library Arrow.
 
 Recursive Extraction Library Netlist.
 Recursive Extraction Library UnsignedAdders.
+Recursive Extraction Library XilinxAdder.
