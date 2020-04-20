@@ -26,11 +26,14 @@ From Coq Require Import Lists.List.
 From Coq Require Import Bool.Bool.
 From Coq Require Import Numbers.NaryFunctions.
 From Coq Require Import Init.Datatypes.
+Require Import ExtLib.Structures.Monads.
 
 Require Import Omega.
 
 Import ListNotations.
+Import MonadNotation.
 Open Scope list_scope.
+Open Scope monad_scope.
 
 (******************************************************************************)
 (* shape describes the types of wires going into or out of a Cava circuit,    *)
@@ -61,6 +64,16 @@ Fixpoint mapShape {A B : Type} (f : A -> B) (s : @shape A) : @shape B :=
   | Tuple2 t1 t2 => Tuple2 (mapShape f t1) (mapShape f t2)
   end.
 
+Fixpoint mapShapeM {A B : Type} {m} `{Monad m} (f : A -> m B) (s : @shape A) : m shape :=
+  match s with
+  | Empty => ret Empty
+  | One thing => fv <- f thing ;;
+                 ret (One fv)
+  | @Tuple2 _ t1 t2 => fv1 <- @mapShapeM A B m _ f t1 ;;
+                       fv2 <- @mapShapeM A B m _ f t2 ;; 
+                       ret (Tuple2 fv1 fv2)
+  end.
+
 Fixpoint zipShapes {A B : Type} (sA : @shape A) (sB : @shape B) : @shape (A * B) :=
   match sA, sB with
   | Empty, Empty => Empty
@@ -87,7 +100,7 @@ Inductive portType : Type :=
 
 Fixpoint bitVecTy {A : Type} (T : Type) (n : list A) : Type :=
   match n with
-  | [] => list T
+  | [] => T
   | [x] => list T
   | x::xs => list (bitVecTy T xs)
   end.
@@ -124,7 +137,7 @@ Fixpoint signalTy (T : Type) (s : shape) : Type :=
 
 (******************************************************************************)
 (* Make it possible to convert ceratain types to bool shape values            *)
-(******************************************************************************)
+(******************************************************************************) 
 
 Inductive Signal :=
 | NoSignal : Signal
@@ -155,7 +168,7 @@ Instance ToShapePair {A B : Type} `{ToShape A} `{ToShape B}  :
 }.
 
 (******************************************************************************)
-(* Flatten allows us to extract values from a result produced from a toplebel *)
+(* Flatten allows us to extract values from a result produced from a toplevel *)
 (* Cava circuit, which must produce a result that is an instance of the       *)
 (* the Flatten class.                                                         *)
 (******************************************************************************)
@@ -190,9 +203,9 @@ Instance FlattenList {a} `{Flatten a} : Flatten (list a) := {
 Inductive Primitive: shape -> shape -> Type :=
   (* I/O port wiring *)
   | WireInputBit:     string -> Primitive Empty (One Bit)
-  | WireInputBitVec:  string -> forall n, Primitive Empty (One (BitVec [n]))
+  | WireInputBitVec:  string -> forall {sizes}, Primitive Empty (One (BitVec sizes))
   | WireOutputBit:    string -> Primitive (One Bit) Empty
-  | WireOutputBitVec: string -> forall n, Primitive (One (BitVec [n])) Empty
+  | WireOutputBitVec: string -> forall {sizes}, Primitive (One (BitVec sizes)) Empty
   (* SystemVerilog primitive gates. *)
   | Not:       Primitive (One Bit) (One Bit)
   | And:       forall n, Primitive (One (BitVec [n])) (One Bit)
@@ -343,9 +356,9 @@ end%string.
 Definition instanceInputs (prim: PrimitiveInstance) : list N :=
 match prim with
 | BindPrimitive (WireInputBit _) _ _        => []
-| BindPrimitive (WireInputBitVec _ _) _ _   => []
+| BindPrimitive (WireInputBitVec _ ) _ _    => []
 | BindPrimitive (WireOutputBit _) i _       => [i]
-| BindPrimitive (WireOutputBitVec _ _) i _  => i
+| BindPrimitive (WireOutputBitVec _) i _    => [] (* Don't use. *)
 | BindPrimitive Not i _                     => [i]
 | BindPrimitive (And _) i _                 => i
 | BindPrimitive (Nand _) i _                => i
@@ -372,9 +385,9 @@ end.
 Definition instanceArgs (prim: PrimitiveInstance) : option (list N) :=
 match prim with
 | BindPrimitive (WireInputBit _) _ o        => Some [o]
-| BindPrimitive (WireInputBitVec _ _) _ o   => Some o
+(*| BindPrimitive (WireInputBitVec _ _) _ o   => Some [o] *)
 | BindPrimitive (WireOutputBit _) i _       => Some [i]
-| BindPrimitive (WireOutputBitVec _ _) i _  => Some i
+(*| BindPrimitive (WireOutputBitVec _) i _  => Some i *)
 | BindPrimitive Not i o           => Some [o; i]
 | BindPrimitive (And _) i o       => Some (o :: i)
 | BindPrimitive (Nand _) i o      => Some (o :: i)

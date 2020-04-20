@@ -231,14 +231,40 @@ Definition inputBit (name : string) : state CavaState N :=
         ret o
   end.
 
-Definition inputVectorTo0 (size : nat) (name : string) : state CavaState (list N) :=
+(* The duplicated i and l parametere are a temporary work-around to allow
+   well-founded recursion to be recoginized.
+   TODO(satnam): Rewrite with an appropriate well-foundedness proof.
+*)
+Fixpoint numberBitVec (offset : N) (i : list nat) (l : list nat) : @bitVecTy nat N l :=
+  match l, i return @bitVecTy nat N l with 
+  | [], _         => 0%N
+  | [x], [_]      => map N.of_nat (seq (N.to_nat offset) x)
+  | x::xs, p::ps  => let z := N.of_nat (fold_left (fun x y => x * y) xs 1) in
+                     map (fun w => numberBitVec (offset+w*z) ps xs) (map N.of_nat (seq 0 x))
+  | _, _          => []
+  end.
+
+ Fixpoint numberPort (i : N) (inputs : @shape portType) : signalTy N inputs :=
+  match inputs return signalTy N inputs with
+  | Empty => tt
+  | One typ =>
+      match typ return portTypeTy N typ with
+      | Bit => i
+      | BitVec xs => numberBitVec i xs xs
+      end
+  | Tuple2 t1 t2 => let t1Size := bitsInPortShape t1 in
+                    (numberPort i t1,  numberPort (i + N.of_nat t1Size) t2)
+  end.
+
+Definition inputVectorTo0 (sizes : list nat) (name : string) : state CavaState (@bitVecTy nat N sizes) :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
-     => let netNumbers := map N.of_nat (seq (N.to_nat o) size) in
-        let newPort := mkPort name (BitVec [size]) in
-        let insts':= BindPrimitive (WireInputBitVec name size) tt netNumbers :: insts in
-        put (mkCavaState (o + (N.of_nat size)) isSeq (mkModule n insts' (newPort :: inputs) outputs)) ;;
+     => let netNumbers := numberBitVec o sizes sizes in
+        let newPort := mkPort name (BitVec sizes) in
+        let portInst := BindPrimitive (WireInputBitVec name) tt netNumbers in
+        let netsUsed := fold_left (fun x y => x * y) sizes 1 in
+        put (mkCavaState (o + (N.of_nat netsUsed)) isSeq (mkModule n (portInst :: insts) (newPort :: inputs) outputs)) ;;
         ret netNumbers
   end.
 
@@ -252,39 +278,25 @@ Definition outputBit (name : string) (i : N) : state CavaState N :=
         ret i
   end.
 
-Definition outputVectorTo0 (size : nat) (v : list N) (name : string) : state CavaState (list N) :=
+Definition outputVectorTo0 (sizes : list nat) (v : @bitVecTy nat N sizes) (name : string) : state CavaState unit :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
-     => let newPort := mkPort name (BitVec [size]) in
-        let insts' := BindPrimitive (WireOutputBitVec name size) v tt :: insts in
+     => let newPort := mkPort name (BitVec sizes) in
+        let insts' := BindPrimitive (WireOutputBitVec name) v tt :: insts in
         put (mkCavaState o isSeq (mkModule n insts' inputs (newPort :: outputs))) ;;
-        ret v
+        ret tt
   end.
 
 (******************************************************************************)
 (* Execute a monadic circuit description and return the generated netlist.    *)
 (******************************************************************************)
 
-Fixpoint numberPort (i : N) (inputs : @shape portType) : signalTy N inputs :=
-  match inputs return signalTy N inputs with
-  | Empty => tt
-  | One typ =>
-      match typ return portTypeTy N typ with
-      | Bit => i
-      | BitVec [n] => map N.of_nat (seq (N.to_nat i) n)
-      | BitVec xs => [] (* TODO(satnam): Add support for mult-dimensional bit-vectors *)
-      end
-  | Tuple2 t1 t2 => let t1Size := bitsInPortShape t1 in
-                    (numberPort i t1,  numberPort (i + N.of_nat t1Size) t2)
-  end.
-
 Definition instantiateInputPort (pd : PortDeclaration) : state CavaState unit :=
   cs <- get ;;
   match pd with
   | mkPort name Bit => _ <- inputBit name ;; ret tt
-  | mkPort name (BitVec [n]) => _ <- inputVectorTo0 n name ;; ret tt
-  | _ => ret tt
+  | mkPort name (BitVec xs) => _ <- inputVectorTo0 xs name ;; ret tt
   end.
 
 Fixpoint instantiateInputPorts (ports : list PortDeclaration) : state CavaState unit :=
@@ -299,7 +311,7 @@ Definition instantiateOutputPort (pd : PortDeclaration) (outputNetNumbers : list
   cs <- get ;;
   match pd with
   | mkPort name Bit => _ <- outputBit name (hd 0%N outputNetNumbers) ;; ret tt
-  | mkPort name (BitVec [n]) => _ <- outputVectorTo0 n (firstn n outputNetNumbers) name ;; ret tt
+  | mkPort name (BitVec [n]) => _ <- outputVectorTo0 [n] (firstn n outputNetNumbers) name ;; ret tt
   | _ => ret tt
   end.
 
