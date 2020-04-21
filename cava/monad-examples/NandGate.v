@@ -44,7 +44,7 @@ Definition nand2Interface
 
 Definition nand2_gate {m t} `{Cava m t} := and2 >=> inv.
 
-Definition nand2Netlist := makeNetlist nand2Interface nand2.
+Definition nand2Netlist := makeNetlist nand2Interface nand2_gate.
 
 (* A proof that the NAND gate implementation is correct. *)
 Lemma nand2_behaviour : forall (a : bool) (b : bool),

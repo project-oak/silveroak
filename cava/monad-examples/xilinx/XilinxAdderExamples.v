@@ -95,11 +95,15 @@ Definition adder8_tb_inputs :=
        => (n2bool cin, (nat_to_list_bits_sized 8 a, nat_to_list_bits_sized 8 b)))
   [(0, (7, 3));
    (1, (115, 67));
+   (0, (92, 18));
+   (0, (50, 200));
    (0, (255, 255));
    (1, (255, 255))].
 
 Definition adder8_tb_expected_outputs :=
   map (fun i => combinational (xilinxAdderWithCarry i)) adder8_tb_inputs.
+
+Compute map (fun '(sum, co) => (list_bits_to_nat sum, N.b2n co)) adder8_tb_expected_outputs.
 
 Definition adder8_tb :=
   testBench "adder8_tb" adder8Interface

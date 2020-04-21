@@ -26,6 +26,7 @@
 ################################################################################
 
 SV = adder8.sv xadder_tree4_8.sv xadder_tree64_8.sv xadder_tree64_128.sv
+#    xadder_tree64_128.sv
 
 BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)
@@ -51,7 +52,7 @@ adder8.sv:	coq ExamplesSV
 		./ExamplesSV
 		$(VLINT) adder8.sv
 
-%_tb.vcd:	%.sv %_tb.sv %_tb.cpp
+%_tb.vcd:	adder8.sv %.sv %_tb.sv %_tb.cpp
 		$(VERILATOR) --trace --cc --top-module $*_tb $*_tb.sv $*.sv --exe $*_tb.cpp
 		make -C obj_dir -f V$*_tb.mk V$*_tb
 		obj_dir/V$*_tb

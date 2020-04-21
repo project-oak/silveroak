@@ -277,15 +277,17 @@ generateTestBench testBench
      "// Please do not hand edit.",
      "",
      "module " ++ (testBenchName testBench) ++ "(",
-     "  input logic clk,",
-     "  input logic rst,"] ++
-    declareCircuitPorts (circuitOutputs intf) ++
-    [");",
+     "  input logic clk",
+     ");",
+     "",
+     "  logic rst;",
      "",
      "  " ++ name ++ " " ++ name ++ "_inst (.*);",
      "",
      "  // Circuit inputs"] ++
      declareLocalPorts (circuitInputs intf) ++
+    ["  // Circuit outputs"] ++
+     declareLocalPorts (circuitOutputs intf) ++
      ["",
       "  // Input test vectors"] ++
      initTestVectors inputPortList (testBenchInputs testBench) ++
@@ -296,18 +298,15 @@ generateTestBench testBench
      "  int unsigned i_cava = 0;"] ++
      assignInputs inputPortList ++
     ["",
-     "  always @(posedge clk) begin",
-     "    if (!rst) begin",
-     addDisplay (inputPortList ++ outputPortList)] ++
+     "  always @(posedge clk) begin"
+     ] ++
+     [addDisplay (inputPortList ++ outputPortList)] ++
      checkOutputs outputPortList ++
-    ["      if (i_cava == " ++ show (nrTests - 1) ++ ") begin",
-     "        $display (\"PASSED\");",
-     "        $finish;",
-     "      end else begin",
-     "        i_cava <= i_cava + 1 ;",
-     "      end;",
+    ["    if (i_cava == " ++ show (nrTests - 1) ++ ") begin",
+     "      $display (\"PASSED\");",
+     "      i_cava <= 0;",
      "    end else begin",
-     "      i_cava <= 0 ;",
+     "      i_cava <= i_cava + 1 ;",
      "    end;",
      "  end",
      "",
@@ -343,8 +342,8 @@ declareLocalPort port
 declarePort :: PortDeclaration -> String
 declarePort (Coq_mkPort name portType) =
   case portType of
-    Bit -> "  logic " ++ name 
-    BitVec xs -> "  " ++ vectorDeclaration name xs 
+    Bit -> "  (* mark_debug = \"true\" *) logic " ++ name 
+    BitVec xs -> "  (* mark_debug = \"true\" *) " ++ vectorDeclaration name xs 
 
 initTestVectors :: [PortDeclaration] -> [[Signal]] -> [String]
 initTestVectors [] _ = []
@@ -456,12 +455,9 @@ cppDriver name ticks =
     "  VerilatedVcdC* vcd_trace = new VerilatedVcdC;",
     "  Verilated::traceEverOn(true);",
     "  top->trace(vcd_trace, 99);",
-    "  top->clk = 0; top->rst = 1; main_time += 5;",
-    "  top->eval(); vcd_trace->dump(main_time);",
-    "  top->clk = 1; top->rst = 0; main_time += 5;",
     "  top->eval(); vcd_trace->dump(main_time);",
     "  vcd_trace->open(\"" ++ name ++ ".vcd\");",
-    "  for (unsigned int i = 0; i < " ++ show (ticks - 1) ++ "; i++) {",
+    "  for (unsigned int i = 0; i < " ++ show ticks ++ "; i++) {",
     "    top->clk = 0; main_time += 5;",
     "    top->eval(); vcd_trace->dump(main_time);",
     "    top->clk = 1;  main_time += 5;",

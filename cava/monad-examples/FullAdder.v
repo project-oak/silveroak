@@ -15,14 +15,21 @@
 
 From Coq Require Import Bool.Bool. 
 From Coq Require Import Ascii String.
+From Coq Require Import Vector.
+From Coq Require Import Bool.Bvector.
 From Coq Require Import Lists.List.
+Require Import Omega.
 Import ListNotations.
+
+Require Import Nat Arith Lia.
 
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Monad.Cava.
 Require Import Cava.Netlist.
+Require Import Cava.Monad.Combinators.
 Require Import Cava.BitArithmetic.
+Require Import Cava.Monad.XilinxAdder.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
@@ -50,12 +57,7 @@ Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
                             combinational (halfAdder (a, b)) = (xorb a b, a && b).
 
 Proof.
-  intros.
-  unfold combinational.
-  unfold fst.
-  simpl.
-  case a, b.
-  all : reflexivity.
+  auto.
 Qed.
 
    
@@ -63,7 +65,7 @@ Qed.
 (* Build a full-adder                                                         *)
 (******************************************************************************)
 
-Definition fullAdder {m t} `{Cava m t} '((a, b), cin) :=
+Definition fullAdder {m t} `{Cava m t} '(cin, (a, b)) :=
   '(abl, abh) <- halfAdder (a, b) ;;
   '(abcl, abch) <- halfAdder (abl, cin) ;;
   cout <- or2 (abh, abch) ;;
@@ -71,21 +73,21 @@ Definition fullAdder {m t} `{Cava m t} '((a, b), cin) :=
 
 Definition fullAdderInterface
   := mkCircuitInterface "fullAdder"
-     (Tuple2 (Tuple2 (One ("a", Bit)) (One ("b", Bit))) (One ("cin", Bit)))
+     (Tuple2 (One ("cin", Bit)) (Tuple2 (One ("a", Bit)) (One ("b", Bit))))
      (Tuple2 (One ("sum", Bit)) (One ("carry", Bit)))
      [].
 
 Definition fullAdderNetlist := makeNetlist fullAdderInterface fullAdder.
 
 Definition fullAdder_tb_inputs :=
-  [((false, false), false);
-   ((true, false),  false);
-   ((false, true),  false);
-   ((true, true),   false);
-   ((false, false), true);
-   ((true, false),  true);
-   ((false, true),  true);
-   ((true, true),   true)
+  [(false, (false, false));
+   (false, (true, false));
+   (false, (false, true));
+   (false, (true, true));
+   (true, (false, false));
+   (true, (true, false));
+   (true, (false, true));
+   (true, (true, true))
 ].
 
 Definition fullAdder_tb_expected_outputs
@@ -97,7 +99,7 @@ Definition fullAdder_tb
 
 (* A proof that the the full-adder is correct. *)
 Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
-                            combinational (fullAdder (a, b, cin))
+                            combinational (fullAdder (cin, (a, b)))
                               = (xorb cin (xorb a b),
                                  (a && b) || (b && cin) || (a && cin)).
 Proof.
@@ -108,4 +110,32 @@ Proof.
   case a, b, cin.
   all : reflexivity.
 Qed.
+
+(* Prove the generic full adder is equivalent to Xilinx fast adder. *)
+Lemma generic_vs_xilinx_adder : forall (a : bool) (b : bool) (cin : bool),
+                                combinational (fullAdder (cin, (a, b))) =
+                                combinational (xilinxFullAdder (cin, (a, b))).
+Proof.
+  intros. 
+  unfold combinational. simpl.
+  case a, b, cin.
+  all : reflexivity.
+Qed.
+
+(******************************************************************************)
+(* Now build an n-bit adder out of full-adders                                *)
+(******************************************************************************)
+
+Definition adder' {m bit} `{Cava m bit} := col fullAdder.
+
+Definition adder {m bit} `{Cava m bit} '(cin, (a, b)) :=
+  adder' (cin, combine a b).
+
+Local Open Scope list_scope.
+
+Definition adderWithGrowth {m bit} `{Cava m bit} '(cin, (a, b)):=
+  '(sum, carryOut) <- adder (cin, (a, b)) ;;
+  ret (sum ++ [carryOut]).
+
+  
 

@@ -42,26 +42,3 @@ Definition adder_3input {m bit} `{Cava m bit}
   a_plus_b <- unsignedAdd a b ;;
   sum <- unsignedAdd a_plus_b c ;;
   ret sum.
-
-Open Scope N_scope.
-
-(******************************************************************************)
-(* A proof that the three-input adder does indeed add three numbers correctly *)
-(******************************************************************************)
-
-Lemma add3_behaviour : forall (sumSize : nat)
-                       (av : list bool)
-                       (bv : list bool)
-                       (cv : list bool),
-                       let a := list_bits_to_nat av in
-                       let b := list_bits_to_nat bv in
-                       let c := list_bits_to_nat cv in
-                       list_bits_to_nat (combinational (adder_3input av bv cv))
-                         = a + b + c.
-Proof.
-  intros. unfold combinational. unfold adder_3input. simpl.
-  do 2 rewrite nat_of_list_bits_sized.
-  fold a b c.
-  reflexivity.
-Qed.
-

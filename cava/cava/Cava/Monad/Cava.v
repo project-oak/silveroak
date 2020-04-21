@@ -352,8 +352,8 @@ Definition makeNetlist (intf : CircuitInterface)
 Definition notBool (i : bool) : ident bool :=
   ret (negb i).
 
-Definition andBool (i : bool * bool) : ident bool :=
-  let (a, b) := i in ret (a && b).
+Definition andBool '(a, b) : ident bool :=
+  ret (a && b).
 
 Definition nandBool (i : bool * bool) : ident bool :=
   let (a, b) := i in ret (negb (a && b)).

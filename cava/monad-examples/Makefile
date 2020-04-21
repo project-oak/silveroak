@@ -21,7 +21,7 @@
 ################################################################################
 
 SV = nand2.sv adder4.sv fullAdder.sv pipelinedNAND.sv loopedNAND.sv \
-     adder_tree4_8.sv adder_tree64_8.sv adder_tree64_128.sv
+     adder_tree4_8.sv
 
 BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)
@@ -46,7 +46,6 @@ ExamplesSV:	ExamplesSV.hs
 
 nand2.sv:	coq ExamplesSV
 		./ExamplesSV
-		$(VLINT) adder_tree32_8.sv
 
 %_tb.vcd:	%.sv %_tb.sv %_tb.cpp
 		$(VERILATOR) --trace --cc --top-module $*_tb $*_tb.sv $*.sv --exe $*_tb.cpp
