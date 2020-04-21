@@ -146,11 +146,11 @@ Definition bufNet (i : N) : state CavaState N :=
          ret o
   end.
 
-Definition muxcyNet (s : N)  (di : N) (ci : N) : state CavaState N :=
+Definition muxcyNet (s : N) (ci : N) (di : N)  : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindMuxcy (s,(di,ci)) o) insts) inputs outputs )) ;;
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindMuxcy (s,(ci,di)) o) insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -373,7 +373,7 @@ Definition xorcyBool (i : bool * bool) : ident bool :=
 Definition xnorBool (i : bool * bool) : ident bool :=
   let (a, b) := i in ret (negb (xorb a b)).
 
-Definition muxcyBool (s : bool) (di : bool) (ci : bool) : ident bool :=
+Definition muxcyBool (s : bool) (ci : bool) (di : bool) : ident bool :=
   ret (match s with
        | false => di
        | true => ci
@@ -451,7 +451,7 @@ Definition xorcyBoolList := xorBoolList.
 Definition xnorBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
   ret (map (fun (i : bool * bool) => let (a, b) := i in negb (xorb a b)) (combine (fst i) (snd i))).
 
-Definition muxcyBoolList (s : list bool) (di : list bool) (ci : list bool) : ident (list bool) :=
+Definition muxcyBoolList (s : list bool) (ci : list bool) (di : list bool)  : ident (list bool) :=
   let dici := combine di ci in
   let s_dici := combine s dici in
   ret (map (fun (i : bool * (bool * bool)) =>

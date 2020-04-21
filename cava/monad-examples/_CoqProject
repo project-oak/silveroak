@@ -4,8 +4,6 @@ Examples.v
 NandGate.v
 FullAdder.v
 FullAdderNat.v
-UnsignedAdder.v
-UnsignedAdderNat.v
 UnsignedAdderExamples.v
 AdderTree.v
 Extraction.v

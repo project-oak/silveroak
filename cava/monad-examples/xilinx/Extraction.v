@@ -14,44 +14,15 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool.Bool.
-From Coq Require Import Lists.List.
-Require Import Coq.Lists.List Coq.Bool.Bool.
-From Coq Require Import ZArith.
-Require Import Lia.
-Import ListNotations.
+Require Import XilinxAdderExamples.
+Require Import XilinxAdderTree.
+From Coq Require Import Extraction.
+From Coq Require Import extraction.ExtrHaskellZInteger.
+From Coq Require Import extraction.ExtrHaskellString.
+From Coq Require Import ExtrHaskellBasic.
+From Coq Require Import extraction.ExtrHaskellNatInteger.
 
-Scheme Equality for list.
+Extraction Language Haskell.
 
-Require Import ExtLib.Structures.Monads.
-
-Require Import Cava.BitArithmetic.
-Require Import Cava.Monad.Cava.
-Require Import Cava.Monad.Combinators.
-
-Require Import FullAdder.
-Require Import FullAdderNat.
-Require Import UnsignedAdder.
-
-
-Local Open Scope list_scope.
-Local Open Scope monad_scope.
-
-(* This module is designed for use for verification and testing and not
-   SystemVerilog extraction.
-*)
-
-(****************************************************************************)
-
-
-Lemma addN_bheaviour : forall (a b : list bool),
-                       list_bits_to_nat (combinational (adder (false, (a, b)))) =
-                       (list_bits_to_nat a) + (list_bits_to_nat b).
-Proof.
-  unfold combinational.
-  unfold fst.
-  unfold adder.
-  unfold unsignedAdder.
-  unfold col.
-Abort.
-
+Extraction Library XilinxAdderExamples.
+Extraction Library XilinxAdderTree.

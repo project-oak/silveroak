@@ -103,7 +103,7 @@ data VectorDirection = HighToLow | LowToHigh
 data VectorAssignment = AssignTo | AssignFrom
 
 data VectorDeclaration
-  = VectorDeclaration VectorAssignment Int VectorDirection [BinNums.N]
+  = VectorDeclaration VectorAssignment Int [BinNums.N]
 
 data NetlistGenerationState
   = NetlistGenerationState Int [VectorDeclaration]
@@ -120,9 +120,9 @@ computeVectors' :: (Netlist.PrimitiveInstance, Int) ->
 computeVectors' (inst@(Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd aSize bSize sumSize) _ _), _)
   | Just ((a,b),s) <- Netlist.unsignedAddercomponents inst
   = do NetlistGenerationState v vDecs <- get
-       let vA = VectorDeclaration AssignTo   v       HighToLow a
-           vB = VectorDeclaration AssignTo   (v + 1) HighToLow b
-           vC = VectorDeclaration AssignFrom (v + 2) HighToLow s
+       let vA = VectorDeclaration AssignTo   v       a
+           vB = VectorDeclaration AssignTo   (v + 1) b
+           vC = VectorDeclaration AssignFrom (v + 2) s
        put (NetlistGenerationState (v + 3) (vA:vB:vC:vDecs))
        return ("  assign v" ++ show (v + 2) ++ " = v" ++ show v ++
                " + v" ++ show (v + 1) ++ ";")
@@ -132,27 +132,42 @@ declareVectors :: [VectorDeclaration] -> [String]
 declareVectors = map declareVector
 
 declareVector :: VectorDeclaration -> String
-declareVector (VectorDeclaration _ i dir bvec)
+declareVector (VectorDeclaration _ i bvec)
   = "  logic[" ++ range ++ "] v" ++ show i ++ ";"
     where
     s = length bvec
-    range = case dir of
-              HighToLow -> show (s - 1) ++ ":0"
-              LowToHigh -> "0:" ++ show (s - 1)
-
+    range = show (s - 1) ++ ":0"
 
 populateVectors :: [VectorDeclaration] -> [String]
 populateVectors = concat . map populateVector
 
 populateVector :: VectorDeclaration -> [String]
-populateVector (VectorDeclaration AssignTo v _ nets)
-  = ["  assign v" ++ show v ++ "[" ++ show i ++
-             "] = net[" ++ show (fromN li) ++ "];"
-              | (i, li) <- zip [0..] nets]
-populateVector (VectorDeclaration AssignFrom v _ nets)
-  = ["  assign net[" ++ show (fromN li) ++ "] = v" ++ show v ++
-             "[" ++ show i ++ "];"
-             | (i, li) <- zip [0..] nets]
+populateVector (VectorDeclaration AssignTo v nets)
+  = if sequentialUp nets' then
+      ["  assign v" ++ show v ++ " = net[" ++
+         show (last nets') ++ ":" ++ show (head nets') ++ "];"]
+    else
+      ["  assign v" ++ show v ++ "[" ++ show i ++
+       "] = net[" ++ show li ++ "];" | (i, li) <- zip [0..] nets']
+    where
+    nets' = map fromN nets
+populateVector (VectorDeclaration AssignFrom v nets)
+  = if sequentialUp nets' then
+      ["  assign net[" ++ show (last nets') ++ ":" ++ show (head nets') ++
+        "] = v" ++ show v ++ ";"]
+    else
+      ["  assign net[" ++ show li ++ "] = v" ++ show v ++
+       "[" ++ show i ++ "];" | (i, li) <- zip [0..] nets']
+    where
+    nets' = map fromN nets
+
+sequentialUp :: [Integer] -> Bool
+sequentialUp [x] = True
+sequentialUp (x:y:z)
+  = if y == x + 1 then
+      sequentialUp (y:z)
+    else
+       False
 
 --------------------------------------------------------------------------------
 -- Mappings to/from multi-dimensional bit-vectors.
@@ -162,10 +177,15 @@ assignMultiDimensionalInput :: String -> String -> [Integer] ->
                                Coq_signalTy BinNums.N -> [String]
 assignMultiDimensionalInput _ _ [] _ = []
 assignMultiDimensionalInput name prefix [s] oAny
-  = ["  assign net" ++ "[" ++ show (fromN n) ++ "] = " ++ name ++ prefix ++ "[" ++ show i ++
-     "];" | (n, i) <- zip o [0..s - 1]]
+  = if sequentialUp oN then
+      ["  assign net" ++ "[" ++ show (last oN) ++ ":" ++ show (head oN) ++
+       "] = " ++ name ++ prefix ++ ";"]
+    else
+      ["  assign net" ++ "[" ++ show n ++ "] = " ++ name ++ prefix ++ "[" ++ show i ++
+       "];" | (n, i) <- zip oN [0..s - 1]]
      where
      o = unsafeCoerce oAny :: [BinNums.N]
+     oN = map fromN o
 assignMultiDimensionalInput name prefix (x:xs) oAny
   = concat [assignMultiDimensionalInput name (prefix ++ "[" ++ show p ++ "]") xs o
            | (p, o) <- zip [0..x-1] os]
@@ -176,10 +196,14 @@ assignMultiDimensionalOutput :: String -> String -> [Integer] ->
                                 Coq_signalTy BinNums.N -> [String]
 assignMultiDimensionalOutput _ _ [] _ = []
 assignMultiDimensionalOutput name prefix [s] oAny
-  = ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show (fromN n) ++ 
-     "];" | (n, i) <- zip o [0.. s - 1]]  
+  = if sequentialUp oN then
+      ["  assign " ++ name ++ " = net[" ++ show (last oN) ++ ":" ++ show (head oN) ++ "];"]
+    else
+      ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show n ++ 
+       "];" | (n, i) <- zip oN [0.. s - 1]]  
      where
      o = unsafeCoerce oAny :: [BinNums.N]
+     oN = map fromN o
 assignMultiDimensionalOutput name prefix (x:xs) oAny
   = concat [assignMultiDimensionalOutput name (prefix ++ "[" ++ show p ++ "]") xs o
            | (p, o) <- zip [0..x-1] os]
@@ -254,15 +278,14 @@ generateTestBench testBench
      "",
      "module " ++ (testBenchName testBench) ++ "(",
      "  input logic clk,",
-     "  input logic rst",
-     ");",
+     "  input logic rst,"] ++
+    declareCircuitPorts (circuitOutputs intf) ++
+    [");",
      "",
      "  " ++ name ++ " " ++ name ++ "_inst (.*);",
      "",
      "  // Circuit inputs"] ++
      declareLocalPorts (circuitInputs intf) ++
-     ["  // Circuit outputs"] ++
-     declareLocalPorts (circuitOutputs intf) ++
      ["",
       "  // Input test vectors"] ++
      initTestVectors inputPortList (testBenchInputs testBench) ++
@@ -297,6 +320,16 @@ generateTestBench testBench
     outputPortList = shapeToPortDeclaration (circuitOutputs intf)
     nrTests = length (testBenchInputs testBench)
 
+declareCircuitPorts :: Coq_shape (String, Coq_portType) -> [String]
+declareCircuitPorts shape
+  = insertCommas (map declareCircuitPort portList)
+    where
+    portList :: [PortDeclaration]  = shapeToPortDeclaration shape
+
+declareCircuitPort :: PortDeclaration -> String
+declareCircuitPort port
+  = "  output " ++ declarePort port
+
 declareLocalPorts :: Coq_shape (String, Coq_portType) -> [String]
 declareLocalPorts shape
   = map declareLocalPort portList
@@ -306,7 +339,7 @@ declareLocalPorts shape
 declareLocalPort :: PortDeclaration -> String
 declareLocalPort port
   = declarePort port ++ ";"
- 
+
 declarePort :: PortDeclaration -> String
 declarePort (Coq_mkPort name portType) =
   case portType of

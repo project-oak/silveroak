@@ -19,6 +19,8 @@ Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.MonadFix.
+From Coq Require Arith.PeanoNat.
+Require Import Omega.
 
 Export MonadNotation.
 
@@ -148,6 +150,32 @@ Definition second `{Mondad_m : Monad m} {A B C} (f : B -> m C) (ab : A * B) : m 
   let '(a, b) := ab in
   c <- f b ;;
   ret (a, c).
+
+(******************************************************************************)
+(* Split a bus into two halves.                                               *)
+(******************************************************************************)
+
+Definition halve {A} (l : list A) : list A * list A :=
+  let mid := (length l) / 2 in
+  (firstn mid l, skipn mid l).
+
+(******************************************************************************)
+(* A binary tree combinator.                                                  *)
+(******************************************************************************)
+
+Fixpoint tree {m bit} `{Cava m bit} circuit
+              (n : nat) (v: list (list bit)) : m (list bit) :=
+  match n with
+  | O => match v with
+         | [a; b] => circuit a b
+         | _ => ret [] (* Error case *)
+         end
+  | S n' => let '(vL, vH) := halve v in
+            aS <- tree circuit n' vL ;;
+            bS <- tree circuit n' vH ;;
+            sum <- circuit aS bS ;;
+            ret sum
+  end.
 
 (******************************************************************************)
 (* Loop combinator                                                            *)

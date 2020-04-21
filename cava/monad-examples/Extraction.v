@@ -17,7 +17,6 @@
 Require Import Examples.
 Require Import NandGate.
 Require Import FullAdder.
-Require Import UnsignedAdder.
 Require Import UnsignedAdderExamples.
 Require Import AdderTree.
 From Coq Require Import Extraction.
@@ -31,6 +30,5 @@ Extraction Language Haskell.
 Extraction Library Examples.
 Extraction Library NandGate.
 Extraction Library FullAdder.
-Extraction Library UnsignedAdder.
 Extraction Library UnsignedAdderExamples.
 Extraction Library AdderTree.

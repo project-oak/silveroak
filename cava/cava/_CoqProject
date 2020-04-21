@@ -5,6 +5,7 @@ Cava/Netlist.v
 Cava/Monad/Cava.v
 Cava/Monad/Combinators.v
 Cava/Monad/UnsignedAdders.v
+Cava/Monad/XilinxAdder.v
 
 Cava/Arrow.v
 Cava/Arrow/Arrow.v

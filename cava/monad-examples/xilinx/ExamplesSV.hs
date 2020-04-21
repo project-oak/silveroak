@@ -17,26 +17,18 @@
 module Main where
 
 import Cava2SystemVerilog
-import NandGate
-import FullAdder
-import UnsignedAdderExamples
-import AdderTree
+import XilinxAdder
+import XilinxAdderExamples
+import XilinxAdderTree
 
 main :: IO ()
-main = do writeSystemVerilog nand2Netlist
-          writeTestBench nand2_tb
-          writeSystemVerilog pipelinedNANDNetlist
-          writeTestBench pipelinedNAND_tb
-          writeSystemVerilog loopedNANDNetlist
-          writeTestBench loopedNAND_tb
-          writeSystemVerilog adder4Netlist
-          writeTestBench adder4_tb
-          writeSystemVerilog adder8_3inputNetlist
-          writeTestBench adder8_3input_tb
+main = do writeSystemVerilog adder8Netlist
+          writeTestBench adder8_tb
           writeSystemVerilog adder_tree4_8Netlist
           writeTestBench adder_tree4_8_tb
           writeSystemVerilog adder_tree32_8Netlist
           writeSystemVerilog adder_tree64_8Netlist
           writeTestBench adder_tree64_8_tb
-          writeSystemVerilog fullAdderNetlist
-          writeTestBench fullAdder_tb
+          writeSystemVerilog adder_tree64_128Netlist
+          writeTestBench adder_tree64_128_tb
+
