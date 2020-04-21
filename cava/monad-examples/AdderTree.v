@@ -119,8 +119,9 @@ Definition adder_tree64_8Netlist
   := makeNetlist adder_tree64_8Interface (adderTree 5).
 
 Definition adder_tree64_8_tb_inputs
-  := map (fun i => map (nat_to_list_bits_sized 8) (map N.of_nat i))
-     [seq 0 64; seq 64 64; seq 128 64].
+  := map (fun i => map (nat_to_list_bits_sized 8) i)
+     (repeat 255 64 :: map (map N.of_nat)
+     [seq 0 64; seq 64 64; seq 128 64]).
 
 Definition adder_tree64_8_tb_expected_outputs
   := map (fun i => combinational (adderTree 5 i)) adder_tree64_8_tb_inputs.
@@ -128,4 +129,23 @@ Definition adder_tree64_8_tb_expected_outputs
 Definition adder_tree64_8_tb :=
   testBench "adder_tree64_8_tb" adder_tree64_8Interface
   adder_tree64_8_tb_inputs adder_tree64_8_tb_expected_outputs.
+
+(* Create netlist and test-bench for a 64-input adder tree adding 128-bit words. *)
+
+Definition adder_tree64_128Interface := adder_tree_Interface "adder_tree64_128" 64 128.
+
+Definition adder_tree64_128Netlist
+  := makeNetlist adder_tree64_128Interface (adderTree 5).
+
+Definition adder_tree64_128_tb_inputs
+  := map (fun i => map (nat_to_list_bits_sized 128) i)
+     (repeat (2^128-1) 64 :: map (map N.of_nat)
+     [seq 0 64; seq 64 64; seq 128 64]).
+
+Definition adder_tree64_128_tb_expected_outputs
+  := map (fun i => combinational (adderTree 5 i)) adder_tree64_128_tb_inputs.
+
+Definition adder_tree64_128_tb :=
+  testBench "adder_tree64_128_tb" adder_tree64_128Interface
+  adder_tree64_128_tb_inputs adder_tree64_128_tb_expected_outputs.
 

@@ -38,5 +38,7 @@ main = do writeSystemVerilog nand2Netlist
           writeSystemVerilog adder_tree32_8Netlist
           writeSystemVerilog adder_tree64_8Netlist
           writeTestBench adder_tree64_8_tb
+          writeSystemVerilog adder_tree64_128Netlist
+          writeTestBench adder_tree64_128_tb
           writeSystemVerilog fullAdderNetlist
           writeTestBench fullAdder_tb

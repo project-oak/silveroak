@@ -374,7 +374,7 @@ isBitVal :: Signal -> Bool
 isBitVal (BitVal _) = True
 isBitVal _ = False
 
-signalToInt :: [Signal] -> Int
+signalToInt :: [Signal] -> Integer
 signalToInt [] = 0
 signalToInt ((BitVal b):xs)
   = case b of
@@ -427,7 +427,7 @@ checkOutputs ports = concat (map checkOutput ports)
 checkOutput :: PortDeclaration -> [String]
 checkOutput port
   = ["      if(" ++ name ++ " != " ++ name ++ "_vectors[i_cava]) begin",
-     "        $error (\"For " ++ name ++ " expected " ++ fmt ++ " but got " ++
+     "        $fatal (\"For " ++ name ++ " expected " ++ fmt ++ " but got " ++
      fmt ++ "\", " ++ name ++ "_vectors[i_cava], " ++ name ++ ");",
      "      end;"
     ]
