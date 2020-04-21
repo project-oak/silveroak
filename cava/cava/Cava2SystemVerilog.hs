@@ -74,16 +74,23 @@ inputPorts = map inputPort
 
 inputPort :: Netlist.PortDeclaration -> String
 inputPort (Netlist.Coq_mkPort name Bit) = "  input logic " ++ name
-inputPort (Netlist.Coq_mkPort name (BitVec [s]))
-  = "  input logic[" ++ show (s - 1) ++ ":0] " ++ name
+inputPort (Netlist.Coq_mkPort name (BitVec sizes))
+  = "  input " ++ vectorDeclaration name sizes
+
+vectorDeclaration :: String -> [Integer] -> String
+vectorDeclaration name sizes
+  = "logic["++ show (base - 1) ++ ":0] " ++ name ++ multi
+    where
+    base = last sizes
+    multi = concat ["[" ++ show i ++ "]" | i <- reverse (init sizes)]
 
 outputPorts :: [Netlist.PortDeclaration] -> [String]
 outputPorts = map outputPort
 
 outputPort :: Netlist.PortDeclaration -> String
 outputPort (Netlist.Coq_mkPort name Bit) = "  output logic " ++ name
-outputPort (Netlist.Coq_mkPort name (BitVec [s]))
-  = "  output logic[" ++ show (s - 1) ++ ":0] " ++ name
+outputPort (Netlist.Coq_mkPort name (BitVec sizes))
+  = "  output " ++ vectorDeclaration name sizes
 
 insertCommas :: [String] -> [String]
 insertCommas [] = []
@@ -147,6 +154,42 @@ populateVector (VectorDeclaration AssignFrom v _ nets)
              "[" ++ show i ++ "];"
              | (i, li) <- zip [0..] nets]
 
+--------------------------------------------------------------------------------
+-- Mappings to/from multi-dimensional bit-vectors.
+--------------------------------------------------------------------------------
+
+assignMultiDimensionalInput :: String -> String -> [Integer] ->
+                               Coq_signalTy BinNums.N -> [String]
+assignMultiDimensionalInput _ _ [] _ = []
+assignMultiDimensionalInput name prefix [s] oAny
+  = ["  assign net" ++ "[" ++ show (fromN n) ++ "] = " ++ name ++ prefix ++ "[" ++ show i ++
+     "];" | (n, i) <- zip o [0..s - 1]]
+     where
+     o = unsafeCoerce oAny :: [BinNums.N]
+assignMultiDimensionalInput name prefix (x:xs) oAny
+  = concat [assignMultiDimensionalInput name (prefix ++ "[" ++ show p ++ "]") xs o
+           | (p, o) <- zip [0..x-1] os]
+     where
+     os = unsafeCoerce oAny :: [Coq_signalTy BinNums.N]
+
+assignMultiDimensionalOutput :: String -> String -> [Integer] ->
+                                Coq_signalTy BinNums.N -> [String]
+assignMultiDimensionalOutput _ _ [] _ = []
+assignMultiDimensionalOutput name prefix [s] oAny
+  = ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show (fromN n) ++ 
+     "];" | (n, i) <- zip o [0.. s - 1]]  
+     where
+     o = unsafeCoerce oAny :: [BinNums.N]
+assignMultiDimensionalOutput name prefix (x:xs) oAny
+  = concat [assignMultiDimensionalOutput name (prefix ++ "[" ++ show p ++ "]") xs o
+           | (p, o) <- zip [0..x-1] os]
+     where
+     os = unsafeCoerce oAny :: [Coq_signalTy BinNums.N]
+
+--------------------------------------------------------------------------------
+-- Generate SystemVerilog for a specific instance.
+--------------------------------------------------------------------------------
+
 generateInstance :: Netlist.PrimitiveInstance -> Int -> String
 generateInstance inst@(Netlist.BindPrimitive _ _ Netlist.DelayBit iAny oAny) _
   = "  always_ff @(posedge clk) net[" ++ show (fromN o) ++
@@ -163,22 +206,16 @@ generateInstance inst@(Netlist.BindPrimitive _ _ (Netlist.WireInputBit name) _ o
    = "  assign net[" ++ show (fromN o) ++ "] = " ++ name ++ ";"
      where
      o = unsafeCoerce oAny :: BinNums.N
-generateInstance inst@(Netlist.BindPrimitive _ _ (Netlist.WireInputBitVec name s) _ oAny) _
-   = unlines
-     ["  assign net[" ++ show (fromN n) ++ "] = " ++ name ++ "[" ++ show i ++
-     "];" | (n, i) <- zip o [0..s - 1]]
-     where
-     o = unsafeCoerce oAny :: [BinNums.N]
+generateInstance inst@(Netlist.BindPrimitive _ _
+                   (Netlist.WireInputBitVec name sizes) _ oAny) _
+   = unlines (assignMultiDimensionalInput name "" sizes oAny)
 generateInstance inst@(Netlist.BindPrimitive _ _ (Netlist.WireOutputBit name) oAny o) _ 
    = "  assign " ++ name ++ " = net[" ++ show (fromN o) ++ "] ;"
      where
      o = unsafeCoerce oAny :: BinNums.N
-generateInstance inst@(Netlist.BindPrimitive _ _ (Netlist.WireOutputBitVec name s) oAny _) _
-   = unlines
-     ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show (fromN n) ++ 
-     "];" | (n, i) <- zip o [0.. s - 1]]    
-     where
-     o = unsafeCoerce oAny :: [BinNums.N]        
+generateInstance inst@(Netlist.BindPrimitive _ _
+                 (Netlist.WireOutputBitVec name sizes) oAny _) _
+   = unlines (assignMultiDimensionalOutput name "" sizes oAny)      
 generateInstance (Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd _ _ _) ab s) _
    = "" -- Generated instead during vector generation
 generateInstance inst@(Netlist.BindPrimitive i o prim _ _) instNr
@@ -274,8 +311,7 @@ declarePort :: PortDeclaration -> String
 declarePort (Coq_mkPort name portType) =
   case portType of
     Bit -> "  logic " ++ name 
-    BitVec xs -> "  logic " ++ concat ["[" ++ show (i - 1) ++ ":0]" | i <- xs]
-                 ++ " " ++ name 
+    BitVec xs -> "  " ++ vectorDeclaration name xs 
 
 initTestVectors :: [PortDeclaration] -> [[Signal]] -> [String]
 initTestVectors [] _ = []
@@ -285,15 +321,18 @@ initTestVectors (p:ps) s
   
 initTestVector :: PortDeclaration -> [Signal] -> [String]
 initTestVector pd@(Coq_mkPort name typ) s
-  = [declarePort (Coq_mkPort (name ++ "_vectors") typ) ++
-     "[" ++ show (length s) ++ "] = '{"] ++
+  = [declarePort (Coq_mkPort name' typ) ++ " = '{"] ++
     insertCommas (map showSignal s) ++
     ["    };"]
+    where
+    name' = name ++ "_vectors[" ++ show (length s) ++ "]"
 
 showSignal :: Signal -> String
 showSignal (BitVal v)   = "    1'b" ++ showBit v
 showSignal (VecVal xs) | isAllBits xs
   = "    " ++ show (length xs) ++ "'d" ++ show (signalToInt xs)
+showSignal (VecVal xs)
+  = "    '{ " ++ concat (insertCommas (map showSignal xs )) ++ " }"  
      
 isAllBits :: [Signal] -> Bool
 isAllBits = and . map isBitVal
@@ -327,11 +366,27 @@ addDisplay ports
     where
     formatArgs = concat (insertCommas
                          ("%t: tick = %0d": map formatPortWithName ports))
-    formatPars = concat (insertCommas ("i_cava": map port_name ports))
+    formatPars = concat (insertCommas ("i_cava": map smashPorts ports))
 
 formatPortWithName :: PortDeclaration -> String
 formatPortWithName (Coq_mkPort name Bit) = " " ++ name ++ " = %0b"
-formatPortWithName (Coq_mkPort name (BitVec _)) = " " ++ name ++ " = %0d"
+formatPortWithName (Coq_mkPort name (BitVec [x])) = " " ++ name ++ " = %0d"
+formatPortWithName (Coq_mkPort name (BitVec xs))
+  = concat (insertCommas [" " ++ name ++ i ++ " = %0d" | i  <- formIndices (init xs)])
+
+formIndices ::  [Integer] -> [String]
+formIndices [] = []
+formIndices (x:xs)
+  = ["[" ++ show i ++ "]" ++ concat (formIndices xs) | i <- [0..x-1]]
+
+smashPorts :: PortDeclaration -> String
+smashPorts portDec
+  = case port_shape portDec of
+      Bit -> name
+      BitVec [x] -> name
+      BitVec xs -> concat (insertCommas [name ++ i | i <- formIndices (init xs)])
+    where
+    name = port_name portDec
 
 checkOutputs :: [PortDeclaration] -> [String]
 checkOutputs ports = concat (map checkOutput ports)
