@@ -32,16 +32,17 @@ ArrowExamplesSV:	ArrowExamplesSV.hs
 
 xorArrow.sv:	coq ArrowExamplesSV
 		./ArrowExamplesSV
+		$(VLINT) nandArrow.sv
 		$(VLINT) xorArrow.sv
-		$(VLINT) loopedNandArrow.sv
+		$(VLINT) feedbackNandArrow.sv
 
 %.vcd:		%.sv testbench/%_tb.sv
 		iverilog -g2012 -o $*.vvp $^
 		./$*.vvp
 
-.PRECIOUS:	xorArrow.sv loopedNandArrow.sv
+.PRECIOUS:	xorArrow.sv feedbackNandArrow.sv
 
-auto_vcds:	xorArrow.vcd loopedNandArrow.vcd
+auto_vcds:	xorArrow.vcd feedbackNandArrow.vcd
 
 clean:
 		-@$(MAKE) -f Makefile.coq clean

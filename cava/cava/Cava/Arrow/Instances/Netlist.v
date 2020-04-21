@@ -24,46 +24,11 @@ From Cava Require Import Arrow.Arrow.
 (******************************************************************************)
 
 Section NetlistEval.
-  (*TODO: temporary structures, in the future only use the Netlist structures *)
-  Inductive wireTy : Type :=
-  | Bit1 : wireTy
-  | BitVec1 : nat -> wireTy.
-
-  Definition wireToNetlistTy (n: wireTy) : Type :=
-  match n with
-  | Bit1 => N
-  | BitVec1 _ => list N
-  end.
-
-  Fixpoint shapeToNumbered (s : shape) : Type :=
-  match s with
-  | Empty  => Datatypes.unit
-  | One t => wireToNetlistTy t
-  | Tuple2 s1 s2  => shapeToNumbered s1 * shapeToNumbered s2
-  end.
-
-  Definition numberItem (a: wireTy) (i:N): (wireToNetlistTy a * N) :=
-  match a with
-  | Bit1 => (i, (i+1)%N)
-  | BitVec1 n => (map N.of_nat (seq (N.to_nat i) n), (i + N.of_nat n)%N)
-  end.
-
-  (* fill an shape with a incremental numbering corresponding to new ports *)
-  Fixpoint numberShape (s: shape) (i:N) : (shapeToNumbered s * N) :=
-  match s in shape return (shapeToNumbered s * N) with
-  | Empty => (tt, i)
-  | One a => numberItem a i
-  | Tuple2 t1 t2 =>
-    let (x,i') := numberShape t1 i in
-    let (y,i'') := numberShape t2 i' in
-    ((x, y), i'')
-  end.
-
   Local Open Scope monad_scope.
 
   Instance NetlistCat : Category := {
-    object := @shape wireTy;
-    morphism X Y := shapeToNumbered X -> state (Netlist * N) (shapeToNumbered Y);
+    object := @shape portType;
+    morphism X Y := signalTy N X -> state (Netlist * N) (signalTy N Y);
     id X x := ret x;
     compose X Y Z f g := g >=> f;
   }.
@@ -97,8 +62,8 @@ Section NetlistEval.
   Instance NetlistCava : Cava := {
     cava_arr := NetlistArr;
 
-    bit := One Bit1;
-    bitvec n := One (BitVec1 n);
+    bit := One Bit;
+    bitvec n := One (BitVec [n]);
 
     constant b _ := match b with
       | true => ret 1%N
@@ -167,19 +132,26 @@ Section NetlistEval.
       ret o;
   }.
 
-  (* The key here is that the dependent match needs to be over
-    shape and ports p1 p2, at the same time for Coq to recogonise their types
-    in the respective branches *)
-  Fixpoint zipThenFlatten
-    (link: N -> N -> PrimitiveInstance) (s: shape) (p1 p2: shapeToNumbered s)
-    : Netlist :=
-  match s in shape, p1, p2 return Netlist with
-  | Empty, _, _ => []
-  | One Bit1, _, _ => [link p1 p2]
-  | One (BitVec1 n), _, _ => map (fun '(x,y) => link x y) (combine p1 p2)
-  | Tuple2 s1 s2, (p11,p12), (p21,p22) =>
-      zipThenFlatten link s1 p11 p21 ++ zipThenFlatten link s2 p12 p22
-  end.
+  Fixpoint map2WithPortShape {A B C} (f: A -> B -> C) (port: portType)
+    (x: portTypeTy A port) (y: portTypeTy B port): portTypeTy C port :=
+    match port in portType, x, y return  portTypeTy C port with
+    | Bit, x, y => f x y
+    | BitVec sz, xs, ys => mapBitVec (fun '(x,y) => f x y) sz sz (zipBitVecs sz sz xs ys)
+    end .
+
+  Fixpoint linkShapes {A B}
+     (link: A -> B -> PrimitiveInstance) (s: shape)
+     (p1: signalTy A s)
+     (p2: signalTy B s)
+     : Netlist :=
+    match s in shape, p1, p2 with
+    | Empty, _, _ => []
+    | One a, _, _ => flattenPort a (map2WithPortShape link a p1 p2)
+    | Tuple2 s1 s2, (p11,p12), (p21,p22) => (linkShapes link s1 p11 p21) ++
+        (linkShapes link s2 p12 p22)
+    end.
+
+  Definition bitsInPortShape' i s := (i + N.of_nat (bitsInPortShape s))%N.
 
   Instance NetlistLoop : ArrowLoop NetlistArr := {
     (* 1. reserve (@numberShape N _) items
@@ -188,14 +160,15 @@ Section NetlistEval.
     loopr _ _ N f x :=
       (* 1 *)
       '(nl, i) <- get ;;
-      let '(n, i') := @numberShape N i in
+      let n := numberPort i N in
+      let i' := bitsInPortShape' i N in
       put (nl, i') ;;
 
       (* 2 *)
       '(y,n') <- f (x,n) ;;
 
       (* 3 *)
-      let links := zipThenFlatten BindAssignBit N n n' in
+      let links := linkShapes BindAssignBit N n n' in
       '(nl, i) <- get ;;
       put (links ++ nl, i) ;;
 
@@ -204,14 +177,15 @@ Section NetlistEval.
     loopl _ _ N f x :=
       (* 1 *)
       '(nl, i) <- get ;;
-      let '(n, i') := @numberShape N i in
+      let n := numberPort i N in
+      let i' := bitsInPortShape' i N in
       put (nl, i') ;;
 
       (* 2 *)
       '(n', y) <- f (n, x) ;;
 
       (* 3 *)
-      let links := zipThenFlatten BindAssignBit N n n' in
+      let links := linkShapes BindAssignBit N n n' in
       '(nl, i) <- get ;;
       put (links ++ nl, i) ;;
 
@@ -223,26 +197,94 @@ Section NetlistEval.
 
     delay_gate X x :=
       '(nl, i) <- get ;;
-      let '(x', i') := @numberShape X i in
-      let links := zipThenFlatten BindDelayBit X x x' in
+      let x' := numberPort i X in
+      let i' := bitsInPortShape' i X in
+      let links := linkShapes BindDelayBit X x x' in
       put (links ++ nl, i') ;;
       ret x'
   }.
 
+  Definition wireInput (port_shape: portType) (name: string) (port: portTypeTy N port_shape)
+    : PrimitiveInstance :=
+    match port_shape, port with
+    | Bit,_ => BindPrimitive (WireInputBit name) tt port
+    | BitVec sz,_ => BindPrimitive (WireInputBitVec name) tt port
+    end.
+
+  Definition wireOutput (port_shape: portType) (name: string) (port: portTypeTy N port_shape)
+    : PrimitiveInstance :=
+    match port_shape, port with
+    | Bit,_ => BindPrimitive (WireOutputBit name) port tt
+    | BitVec sz,_ => BindPrimitive (WireOutputBitVec name) port tt
+    end.
+
+  Fixpoint nameTy {A} (s : @shape A) : Type :=
+    match s with
+    | Empty  => Datatypes.unit
+    | One t => string
+    | Tuple2 s1 s2  => prod (nameTy s1) (nameTy s2)
+    end.
+
+  Fixpoint linkLables {A}
+     (link: forall port_shape, string -> portTypeTy N port_shape -> A)
+     (s: shape)
+     (labels: nameTy s)
+     (ports: signalTy N s)
+     : list A :=
+    match s in shape, labels, ports with
+    | Empty, _, _ => []
+    | One port_shape, name, port => [link port_shape name port]
+    | Tuple2 s1 s2, (l1,l2), (p1,p2) => (linkLables link s1 l1 p1) ++ (linkLables link s2 l2 p2)
+    end.
+
+  Fixpoint namePorts
+     (s: @shape portType)
+     (labels: nameTy s)
+     : list PortDeclaration :=
+    match s in shape, labels with
+    | Empty, _ => []
+    | One port_shape, name => [mkPort name port_shape]
+    | Tuple2 s1 s2, (l1,l2) => (namePorts s1 l1) ++ (namePorts s2 l2)
+    end.
+
+  Definition nameInputs {X}
+    (input_names: nameTy X)
+    : X ~[NetlistCat]~> X :=
+      fun x =>
+        '(nl, i) <- get ;;
+        let links := linkLables wireInput X input_names x in
+        put (links ++ nl, i) ;;
+        ret x.
+
+  Definition nameOutputs {X}
+    (output_names: nameTy X)
+    : X ~[NetlistCat]~> X :=
+      fun x =>
+        '(nl, i) <- get ;;
+        let links := linkLables wireOutput X output_names x in
+        put (links ++ nl, i) ;;
+        ret x.
+
   Definition arrowToHDLModule {X Y}
     (name: string)
     (f: X ~[NetlistCat]~> Y)
-    (mkInputs: shapeToNumbered X -> list PortDeclaration)
-    (mkOutputs: shapeToNumbered Y -> list PortDeclaration)
-    : (Netlist.Module * N) :=
-      let (i, n) := @numberShape X 2 in
-      let '(o, (nl, count)) := runState (f i) ([], n) in
-      (mkModule name nl (mkInputs i) (mkOutputs o), count).
+    (input_names: nameTy X)
+    (output_names: nameTy Y)
+    : Netlist.CavaState :=
+      let i := numberPort 2 X in
+      let n := bitsInPortShape' 2 X in
+      let '(o, (netlist, count)) := runState ((nameInputs input_names >=> f >=> nameOutputs output_names) i) ([], n) in
+      let module_inputs := namePorts X input_names in
+      let module_ouputs := namePorts Y output_names in
+      let module := mkModule name netlist module_inputs module_ouputs in
+      mkCavaState count true module.
 
   (* Check ArrowExamples.v for xor example *)
+  Local Open Scope string_scope.
   Eval cbv in arrowToHDLModule
     "not"
     not_gate
-    (fun i => [mkPort "input1" Bit])
-    (fun o => [mkPort "output1" Bit]).
+    ("input1")
+    ("output1").
+
 End NetlistEval.

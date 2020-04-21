@@ -1,4 +1,7 @@
 -R ../cava/Cava Cava
 -R . Lib
 ArrowExamples.v
+Nand.v
+Xor.v
+FeedbackNand.v
 Extraction.v

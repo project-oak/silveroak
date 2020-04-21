@@ -231,31 +231,6 @@ Definition inputBit (name : string) : state CavaState N :=
         ret o
   end.
 
-(* The duplicated i and l parametere are a temporary work-around to allow
-   well-founded recursion to be recoginized.
-   TODO(satnam): Rewrite with an appropriate well-foundedness proof.
-*)
-Fixpoint numberBitVec (offset : N) (i : list nat) (l : list nat) : @bitVecTy nat N l :=
-  match l, i return @bitVecTy nat N l with 
-  | [], _         => 0%N
-  | [x], [_]      => map N.of_nat (seq (N.to_nat offset) x)
-  | x::xs, p::ps  => let z := N.of_nat (fold_left (fun x y => x * y) xs 1) in
-                     map (fun w => numberBitVec (offset+w*z) ps xs) (map N.of_nat (seq 0 x))
-  | _, _          => []
-  end.
-
- Fixpoint numberPort (i : N) (inputs : @shape portType) : signalTy N inputs :=
-  match inputs return signalTy N inputs with
-  | Empty => tt
-  | One typ =>
-      match typ return portTypeTy N typ with
-      | Bit => i
-      | BitVec xs => numberBitVec i xs xs
-      end
-  | Tuple2 t1 t2 => let t1Size := bitsInPortShape t1 in
-                    (numberPort i t1,  numberPort (i + N.of_nat t1Size) t2)
-  end.
-
 Definition inputVectorTo0 (sizes : list nat) (name : string) : state CavaState (@bitVecTy nat N sizes) :=
   cs <- get ;;
   match cs with
