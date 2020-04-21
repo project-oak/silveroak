@@ -43,7 +43,7 @@ coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
 ExamplesSV:	ExamplesSV.hs
-		ghc -O --make $^
+		ghc -O2 --make $^
 
 .PRECIOUS:	$(SV) $(BENCHES) $(CPPS)
 

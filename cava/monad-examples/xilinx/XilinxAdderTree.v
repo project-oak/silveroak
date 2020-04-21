@@ -136,9 +136,12 @@ Definition adder_tree64_128Interface := adder_tree_Interface "xadder_tree64_128"
 Definition adder_tree64_128Netlist
   := makeNetlist adder_tree64_128Interface (adderTree 5).
 
+Local Open Scope N_scope.
+
 Definition adder_tree64_128_tb_inputs
-  := map (fun i => map (nat_to_list_bits_sized 128) (map N.of_nat i))
-     [seq 0 64; seq 64 64; seq 128 64].
+  := map (fun i => map (nat_to_list_bits_sized 128) i)
+     (repeat (2^128-1) 64 :: map (map N.of_nat)
+     [seq 0 64; seq 64 64; seq 128 64]).
 
 Definition adder_tree64_128_tb_expected_outputs
   := map (fun i => combinational (adderTree 5 i)) adder_tree64_128_tb_inputs.
