@@ -99,9 +99,20 @@ Proof. reflexivity. Qed.
 Example n2b_2_3 : nat_to_list_bits 3 = [true; true].
 Proof. reflexivity. Qed.  
 
-Lemma nat_of_list_bits_sized: forall (size :  nat) (v : N),
-      list_bits_to_nat (nat_to_list_bits_sized size v) = v.
-Admitted.
+Lemma nat_of_list_bits_sized: forall (size :  nat) (v : N), size = N.size_nat v ->
+      nat_to_list_bits_sized size v = nat_to_list_bits v.
+Proof.
+  intros.
+  induction v.
+  - unfold nat_to_list_bits. unfold nat_to_list_bits_sized.
+    cbn [N2Bv_sized].
+    rewrite H.  simpl. reflexivity.
+  - rewrite H.
+    unfold nat_to_list_bits_sized.
+    rewrite N2Bv_sized_Nsize.
+    unfold nat_to_list_bits.
+    reflexivity.
+Qed.
 
 (* The following proof is from Steve Zdancewic. *)
 Lemma bits_to_nat_app : forall u l, list_bits_to_nat' (u ++ l) = (list_bits_to_nat' u) * (shiftl 1 (length l)) + (list_bits_to_nat' l).

@@ -31,4 +31,6 @@ main = do writeSystemVerilog adder8Netlist
           writeTestBench adder_tree64_8_tb
           writeTestBench adder_tree64_128_tb
           writeSystemVerilog adder_tree64_128Netlist
+          -- writeSystemVerilog adder_tree128_256Netlist
+          -- writeTestBench adder_tree128_256_tb
 
