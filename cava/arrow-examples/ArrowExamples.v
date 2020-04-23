@@ -16,32 +16,21 @@ Require Import Cava.Arrow.Instances.Coq.
 Require Import Cava.Arrow.Instances.Netlist.
 Require Import Cava.Arrow.Instances.Stream.
 
-(* Implement a NAND circuit by composing an AND gate and INV gate. *)
-Definition nand
-  {Cava: Cava}
-  := and_gate >>> not_gate.
+Require Import Nand.
+Require Import Xor.
+Require Import FeedbackNand.
 
-(* An implementation of an XOR gate made out of the NAND circuit
-   defined above. *)
-Definition xor
-  {_: Cava}
-  : (bit**bit) ~> bit :=
-  copy
-  >>> first (nand >>> copy)                    (* ((nand,nand),(x,y)) *)
-  >>> assoc                                    (* (nand,(nand,(x,y))) *)
-  >>> second (unassoc >>> first nand >>> swap) (* (nand,(y, x_nand)) *)
-  >>> unassoc >>> first nand                   (* (y_nand,x_nand) *)
-  >>> nand.
+Local Open Scope string_scope.
 
 Definition twoBits
-  {Cava: Cava}
+  `{Cava}
   : unit ~> (bit**bit) :=
   copy
   >>> first (constant true)
   >>> second (constant false).
 
 Definition twoBools
-  {Cava: Cava}
+  `{Cava}
   (x y: bool): unit ~> (bit**bit) :=
   copy
   >>> first (constant x)
@@ -49,13 +38,6 @@ Definition twoBools
 
 Definition nandb : bool -> bool -> bool := fun a b => negb (a && b).
 Definition uncurry {a b c} (f: a -> b -> c) : (a*b) -> c := fun xy => f (fst xy) (snd xy).
-
-(*nand previous output and current input, output delayed 1 cycle*)
-Definition loopedNand
-  {Cava: CavaDelay}
-  {ArrowLoop: @ArrowLoop (@cava_delay_arr Cava)}
-  : bit ~> bit :=
-  loopl (nand >>> delay_gate >>> copy).
 
 Existing Instance CoqArr.
 Existing Instance CoqCava.
@@ -151,28 +133,27 @@ Section StreamProofs.
 End StreamProofs.
 
 Section NetlistExamples.
-  Definition xorArrowNetlist := arrowToHDLModule
+
+  Definition nandArrow := arrowToHDLModule
+    "nandArrow"
+    (@nand NetlistCava)
+    ("input1","input2")
+    ("output1").
+  Eval compute in nandArrow.
+
+  Definition xorArrow := arrowToHDLModule
+
     "xorArrow"
     (@xor NetlistCava)
-    (fun '(l,r) =>
-      [ mkPort "input1" Bit
-      ; mkPort "input2" Bit
-      ])
-    (fun o => [mkPort "output1" Bit]).
+    ("input1","input2")
+    ("output1").
   (* Compute the circuit netlist for the XOR made up of NANDs made up of ANDs and INVs *)
-  Eval compute in xorArrowNetlist.
-  (* For extraction *)
-  Definition xorArrow :=
-    let '(nl, count) := xorArrowNetlist
-    in mkCavaState count false nl.
+  Eval compute in xorArrow.
 
-  Definition loopedNandArrowNetlist := arrowToHDLModule
-    "loopedNandArrow"
-    (@loopedNand NetlistCavaDelay NetlistLoop)
-    (fun i => [ mkPort "input1" Bit])
-    (fun o => [mkPort "output1" Bit]).
-  Eval compute in loopedNandArrowNetlist.
-  Definition loopedNandArrow :=
-    let '(nl, count) := loopedNandArrowNetlist
-    in mkCavaState count true nl.
+  Definition feedbackNandArrow := arrowToHDLModule
+    "feedbackNandArrow"
+    (@feedbackNand NetlistCavaDelay NetlistLoop)
+    ("input1")
+    ("output1").
+  Eval compute in feedbackNandArrow.
 End NetlistExamples.

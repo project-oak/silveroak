@@ -70,7 +70,7 @@ Fixpoint mapShapeM {A B : Type} {m} `{Monad m} (f : A -> m B) (s : @shape A) : m
   | One thing => fv <- f thing ;;
                  ret (One fv)
   | @Tuple2 _ t1 t2 => fv1 <- @mapShapeM A B m _ f t1 ;;
-                       fv2 <- @mapShapeM A B m _ f t2 ;; 
+                       fv2 <- @mapShapeM A B m _ f t2 ;;
                        ret (Tuple2 fv1 fv2)
   end.
 
@@ -81,7 +81,7 @@ Fixpoint zipShapes {A B : Type} (sA : @shape A) (sB : @shape B) : @shape (A * B)
   | Tuple2 t1 t2, Tuple2 t3 t4 => Tuple2 (zipShapes t1 t3) (zipShapes t2 t4)
   | _, _ => Empty
   end.
- 
+
 Fixpoint flattenShape {A} (s : @shape A) : list A :=
   match s with
   | Empty => []
@@ -96,7 +96,6 @@ Fixpoint flattenShape {A} (s : @shape A) : list A :=
 Inductive portType : Type :=
   | Bit : portType                (* A single wire *)
   | BitVec : list nat -> portType (* Multi-dimensional bit-vectors *).
-
 
 Fixpoint bitVecTy {A : Type} (T : Type) (n : list A) : Type :=
   match n with
@@ -124,6 +123,51 @@ Fixpoint bitsInPortShape (s : @shape portType) : nat :=
   | Tuple2 t1 t2 => bitsInPortShape t1 + bitsInPortShape t2
   end.
 
+(* The duplicated i and l parametere are a temporary work-around to allow
+   well-founded recursion to be recoginized.
+   TODO(satnam): Rewrite with an appropriate well-foundedness proof.
+*)
+Fixpoint numberBitVec (offset : N) (i : list nat) (l : list nat) : @bitVecTy nat N l :=
+  match l, i return @bitVecTy nat N l with
+  | [], _         => 0%N
+  | [x], [_]      => map N.of_nat (seq (N.to_nat offset) x)
+  | x::xs, p::ps  => let z := N.of_nat (fold_left (fun x y => x * y) xs 1) in
+                     map (fun w => numberBitVec (offset+w*z) ps xs) (map N.of_nat (seq 0 x))
+  | _, _          => []
+  end.
+
+Fixpoint mapBitVec {A B} (f: A -> B) (i : list nat) (l : list nat) : @bitVecTy nat A l -> @bitVecTy nat B l :=
+  match l, i  return @bitVecTy nat A l -> @bitVecTy nat B l with
+  | [], _         => f
+  | [x], [_]      => map f
+  | x::xs, p::ps  => map (mapBitVec f ps xs)
+  | _, _          => fun _ => []
+  end.
+
+Fixpoint zipBitVecs {A B} (i : list nat) (l : list nat)
+  : @bitVecTy nat A l -> @bitVecTy nat B l -> @bitVecTy nat (A*B) l :=
+  match l, i  return @bitVecTy nat A l -> @bitVecTy nat B l -> @bitVecTy nat (A*B) l with
+  | [], _         => pair
+  | [x], [_]      => fun ms ns => combine ms ns
+  | x::xs, p::ps  => fun ms ns => map (fun '(m,n) => zipBitVecs ps xs m n) (combine ms ns)
+  | _, _          => fun _ _ => []
+  end.
+
+Fixpoint flattenBitVec {A} (i : list nat) (l : list nat)
+  : @bitVecTy nat A l -> list A :=
+  match l, i  return @bitVecTy nat A l -> list A with
+  | [], _         => fun z => [z]
+  | [x], [_]      => fun zs => zs
+  | x::xs, p::ps  => fun zs => concat (map (flattenBitVec ps xs) zs)
+  | _, _          => fun _ => []
+  end.
+
+Definition flattenPort {A} (port: portType) (x: portTypeTy A port) : list A :=
+  match port, x with
+  | Bit, _ => [x]
+  | BitVec sz, _ => flattenBitVec sz sz x
+  end.
+
 (******************************************************************************)
 (* signalTy maps a shape to a type based on T                                 *)
 (******************************************************************************)
@@ -135,9 +179,21 @@ Fixpoint signalTy (T : Type) (s : shape) : Type :=
   | Tuple2 s1 s2  => prod (signalTy T s1) (signalTy T s2)
   end.
 
+Fixpoint numberPort (i : N) (inputs : @shape portType) : signalTy N inputs :=
+  match inputs return signalTy N inputs with
+  | Empty => tt
+  | One typ =>
+      match typ return portTypeTy N typ with
+      | Bit => i
+      | BitVec xs => numberBitVec i xs xs
+      end
+  | Tuple2 t1 t2 => let t1Size := bitsInPortShape t1 in
+                    (numberPort i t1,  numberPort (i + N.of_nat t1Size) t2)
+  end.
+
 (******************************************************************************)
 (* Make it possible to convert ceratain types to bool shape values            *)
-(******************************************************************************) 
+(******************************************************************************)
 
 Inductive Signal :=
 | NoSignal : Signal
@@ -316,7 +372,7 @@ Definition testBench (name : string)
                      `{ToShape (signalTy bool (mapShape snd (circuitInputs intf)))}
                      `{ToShape (signalTy bool (mapShape snd (circuitOutputs intf)))}
                      (testInputs : list (signalTy bool (mapShape snd (circuitInputs intf))))
-                     (testExpectedOutputs : list (signalTy bool (mapShape snd (circuitOutputs intf))))  
+                     (testExpectedOutputs : list (signalTy bool (mapShape snd (circuitOutputs intf))))
   := mkTestBench name intf (map (compose flattenShape shapeIt) testInputs)
                            (map (compose flattenShape shapeIt) testExpectedOutputs).
 

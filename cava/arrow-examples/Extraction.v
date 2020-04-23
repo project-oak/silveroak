@@ -23,4 +23,7 @@ From Coq Require Import extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.
 
+Extraction Library Nand.
+Extraction Library Xor.
+Extraction Library FeedbackNand.
 Extraction Library ArrowExamples.

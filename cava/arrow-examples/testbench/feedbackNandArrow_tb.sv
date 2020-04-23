@@ -13,21 +13,21 @@
 // limitations under the License.
 //
 
-module loopedNandArrow_test;
-  
+module feedbackNandArrow_test;
+
   timeunit 1ns; timeprecision 1ns;
 
   logic clk, rst, a, b;
-  
-  loopedNandArrow lloopedNandArrow_inst  (.clk(clk),
+
+  feedbackNandArrow lfeedbackNandArrow_inst  (.clk(clk),
                                           .rst(rst),
                                           .input1(a),
                                           .output1(b)
   );
 
-  initial begin 
-    clk = 1'b1; 
-  end 
+  initial begin
+    clk = 1'b1;
+  end
 
   // Clock generation.
   always #5 clk = ~clk;
@@ -67,10 +67,10 @@ module loopedNandArrow_test;
     @(posedge clk);
     $finish;
   end
-  
+
   initial
   begin
-    $dumpfile("loopedNandArrow.vcd");
+    $dumpfile("feedbackNandArrow.vcd");
     $dumpvars;
   end
 
