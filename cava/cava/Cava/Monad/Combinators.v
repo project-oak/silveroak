@@ -35,7 +35,6 @@ Local Open Scope monad_scope.
 (* Lava-style circuit combinators.                                            *)
 (******************************************************************************)
 
-
 (* Below combinator
 
 -------------------------------------------------------------------------------
@@ -123,21 +122,87 @@ Fixpoint below `{Monad m} {A B C D E F G}
 
 *)
 
-Fixpoint col' `{Monad m} {A B C}
-              (circuit : A * B -> m (C * A)%type) (a : A) (b : list B) :
-              m (list C * A)%type :=
-  match b with
-  | [] => ret ([], a)
-  | b0::br => c_cs_e <- below circuit (fun ab => col' circuit (fst ab) (snd ab)) (a, (b0, br)) ;;
-              let (c_cs, e) := c_cs_e : (C * list C) * A in
-              let (c, cs) := c_cs : C * list C in
-              ret (c::cs, e)
+(* The below_cons' is a convenient combinator for composing
+   homogenous tiles that are expressed with curried inputs.
+*)
+Definition below_cons' `{Monad m} {A B C}
+             (r : C -> A -> m (B * C)%type)
+             (s : C -> list A -> m (list B * C)%type)
+             (c: C) (a : list A) : m (list B * C)%type :=
+  match a with
+  | [] => ret ([], c)
+  | a0::ax => '(b0, c1) <- r c a0  ;;
+              '(bx, cOut) <- s c1 ax ;;
+              ret (b0::bx, cOut)
   end.
 
+(* col' is a curried version of col which ca be defined
+   recursively because Coq can figure out the decreasing
+   argument i.e. a
+*)
+Fixpoint col' `{Monad m} {A B C}
+              (circuit : C -> A -> m (B * C)%type) (c: C) (a: list A) :
+              m (list B * C)%type :=
+  below_cons' circuit (col' circuit) c a.
+
+(* A useful fact about how a col' of a circuit can be made using one
+   instance of a circuit below a col' that is one smaller.
+*)
+Lemma col_cons': forall `{Monad m} {A B C} (r : C -> A -> m (B * C)%type) (c: C) (a: list A),
+                col' r c a = below_cons' r (col' r) c a.
+Proof.
+  intros.
+  destruct a.
+  - simpl. reflexivity.
+  - simpl. reflexivity.
+Qed.
+
+(* To define the pair to pair tile variants of col and below_cons
+   it is useful to have some functions for currying and uncurrying,
+   with we borrow from Logical Foundations. *)
+
+Definition prod_curry {X Y Z : Type}
+  (f : X * Y -> Z) (x : X) (y : Y) : Z := f (x, y).
+
+Definition prod_uncurry {X Y Z : Type}
+  (f : X -> Y -> Z) (p : X * Y) : Z
+  := f (fst p) (snd p).
+
+(* Thank you Benjamin. *)
+
+(* Now we can define the col combinator that works with tiles that
+   map pairs to pairs by using col'.
+*)
 Definition col `{Monad m} {A B C}
-                (circuit : A * B -> m (C * A)%type) (ab : A * list B) :
-                m (list C * A)%type :=
-  col' circuit (fst ab) (snd ab).
+              (circuit : C * A -> m (B * C)%type) :
+              C * list A -> m (list B * C)%type :=
+  prod_uncurry (col' (prod_curry circuit)).
+
+(* Define a version of below_cons' that works on pair to pair tiles *)
+
+Definition below_cons `{Monad m} {A B C}
+             (r : C * A -> m (B * C)%type)
+             (s : C * list A -> m (list B * C)%type) :
+             C * list A -> m (list B * C)%type :=
+  prod_uncurry (below_cons' (prod_curry r) (prod_curry s)).
+
+(* A useful fact about how a col of a circuit can be made using one
+   instance of a circuit below a col that is one smaller.
+*)
+Lemma col_cons: forall `{Monad m} {A B C} (r : C * A -> m (B * C)%type)
+                (ca: C * list A),
+                col r ca = below_cons r (col r) ca.
+Proof.
+  intros.
+  destruct ca.
+  destruct l. 
+  - simpl. reflexivity.
+  - simpl. reflexivity.
+Qed.
+
+(******************************************************************************)
+(* Forks in wires                                                             *)
+(******************************************************************************)
 
 Definition fork2 `{Mondad_m : Monad m} {A} (a:A) := ret (a, a).
 
@@ -176,69 +241,3 @@ Fixpoint tree {m bit} `{Cava m bit} circuit
             sum <- circuit aS bS ;;
             ret sum
   end.
-
-(******************************************************************************)
-(* Loop combinator                                                            *)
-(******************************************************************************)
-
-(*
-
-   ------------
-  |    ----    |
-  |-->|    |---  C (looped back)
-      |    |
-  A ->|    | -> B
-       ----
-
-It seems like I need a recursive-do style definition here to allow me to
-use c in the result and as an argument to circuit.
-
-loop :: MonadFix m => ((a, c) -> m (b, c)) -> a -> m b
-loop circuit a
-  = mdo (b, c) <- circuit (a, c)
-        return b
-
-or explicitly in terms of mfix:
-
-loopMF' :: MonadFix m => ((a, c) -> m (b, c)) -> a -> m (b, c)
-loopMF' circuit a
-  = mfix (\bc -> do (b, c') <- circuit (a, snd bc)
-                    return (b, c'))
-
-loopMF :: MonadFix m => ((a, c) -> m (b, c)) -> a -> m b
-loopMF circuit a
-  = do (b, _) <- loopMF' circuit a 
-       return b
-
-Now... how to do the same thing in Coq?
-
-loopS does causes Coq to go into an infinite looop.
-
-Definition loopS 
-           (circuit : (Z * Z) -> state CavaState Z) (a:Z) : state CavaState Z :=
-  '(b, _) <- mfix (fun f bc => '(b, c') <- circuit (a, snd bc) ;;
-                               ret (b, c')
-                  ) (a, 0) ;;
-  ret b.
-
-
-
-Definition loop `{Monad m} `{MonadFix m} {A B}
-           (circuit : (A * nat)%type -> m (B * nat)%type) (a:A) : m B :=
-  '(b, _) <- mfix (fun f bc => '(b, c') <- circuit (a, snd bc) ;;
-                               ret (b, c')
-                  ) (a, 0) ;;
-  ret b.
-
-Definition nand2 `{Cava m bit} (ab : bit * bit) : m bit :=
-  (and_gate >=> not_gate) [fst ab; snd ab].
-
-(* loopedNAND also causes Coq to go into an infinite loop. *)
-
-Set Typeclasses Debug.
-
-Definition loopedNAND {Cava m bit} `{MonadFix m} (ab : list bit) : m bit := 
-  loop (nand2 >=> delayBit >=> fork2) ab.
-
-*)
-
