@@ -14,6 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import XilinxAdderExamples.
+Require Import XilinxAdderTree.
 From Coq Require Import Extraction.
 From Coq Require Import extraction.ExtrHaskellZInteger.
 From Coq Require Import extraction.ExtrHaskellString.
@@ -22,12 +24,5 @@ From Coq Require Import extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.
 
-Require Import Nand.
-Require Import Xor.
-Require Import FeedbackNand.
-Require Import ArrowExamples.
-
-Extraction Library Nand.
-Extraction Library Xor.
-Extraction Library FeedbackNand.
-Extraction Library ArrowExamples.
+Extraction Library XilinxAdderExamples.
+Extraction Library XilinxAdderTree.

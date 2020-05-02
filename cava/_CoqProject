@@ -1,0 +1,6 @@
+# This top-level _CoqProject exists to make it easier to navigate
+# the Cava source and examples using the vscoq plug-in for vscode.
+-R cava/Cava Cava
+-Q monad-examples MonadExamples
+-Q monad-examples/xilinx XilinxExamples
+-Q arrow-examples ArrowExamples

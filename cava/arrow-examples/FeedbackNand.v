@@ -1,6 +1,6 @@
 Require Import Cava.Arrow.Arrow.
 
-Require Import Nand.
+Require Import ArrowExamples.Nand.
 
 (* nand previous output and current input, output delayed 1 cycle *)
 Definition feedbackNand
