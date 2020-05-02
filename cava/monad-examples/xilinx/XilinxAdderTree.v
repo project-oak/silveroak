@@ -106,11 +106,16 @@ Definition adder_tree4_8_tb_inputs
 Definition adder_tree4_8_tb_expected_outputs
   := map (fun i => combinational (adderTree4 i)) adder_tree4_8_tb_inputs.
 
-Compute map list_bits_to_nat adder_tree4_8_tb_expected_outputs.
-
 Definition adder_tree4_8_tb :=
   testBench "xadder_tree4_8_tb" adder_tree4_8Interface
   adder_tree4_8_tb_inputs adder_tree4_8_tb_expected_outputs.
+
+(* Test to make sure this instance of the adder tree produces
+   the expected output for the test bench case. *)
+Example adder_tree_4_8_test:
+   map list_bits_to_nat adder_tree4_8_tb_expected_outputs
+   = [1020; 177; 247; 784; 160; 154; 187; 181; 419].
+Proof. reflexivity. Qed.
 
 (******************************************************************************)
 (* Create netlist for a 32-input adder tree.                                  *)
