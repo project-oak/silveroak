@@ -1,6 +1,6 @@
 Require Import Cava.Arrow.Arrow.
 
-Require Import Nand.
+Require Import ArrowExamples.Nand.
 
 (* An implementation of an XOR gate made out of the NAND circuit
    defined above. *)

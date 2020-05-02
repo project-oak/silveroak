@@ -16,9 +16,9 @@ Require Import Cava.Arrow.Instances.Coq.
 Require Import Cava.Arrow.Instances.Netlist.
 Require Import Cava.Arrow.Instances.Stream.
 
-Require Import Nand.
-Require Import Xor.
-Require Import FeedbackNand.
+Require Import ArrowExamples.Nand.
+Require Import ArrowExamples.Xor.
+Require Import ArrowExamples.FeedbackNand.
 
 Local Open Scope string_scope.
 

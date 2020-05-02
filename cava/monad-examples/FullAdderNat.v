@@ -35,7 +35,7 @@ Local Open Scope monad_scope.
 
 Require Import Cava.Monad.Cava.
 Require Import Cava.BitArithmetic.
-Require Import FullAdder.
+Require Import MonadExamples.FullAdder.
 
 Open Scope N_scope.
 
