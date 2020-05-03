@@ -103,8 +103,6 @@ Definition adder8_tb_inputs :=
 Definition adder8_tb_expected_outputs :=
   map (fun i => combinational (xilinxAdderWithCarry i)) adder8_tb_inputs.
 
-Compute map (fun '(sum, co) => (list_bits_to_nat sum, N.b2n co)) adder8_tb_expected_outputs.
-
 Definition adder8_tb :=
   testBench "adder8_tb" adder8Interface
   adder8_tb_inputs adder8_tb_expected_outputs.
