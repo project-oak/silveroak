@@ -33,8 +33,10 @@ Recursive Extraction Library Cava.
 Recursive Extraction Library Combinators.
 
 Require Import Cava.Arrow.Arrow.
+Require Import Cava.Arrow.Syntax.
 Require Import Cava.Arrow.Instances.Netlist.
 Recursive Extraction Library Arrow.
+Recursive Extraction Library Syntax.
 
 Recursive Extraction Library Netlist.
 Recursive Extraction Library UnsignedAdders.
