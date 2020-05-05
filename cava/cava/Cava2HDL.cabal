@@ -47,6 +47,7 @@ library
                      Bvector
                      Cava
                      Combinators
+                     Coq
                      Datatypes
                      IdentityMonad
                      List

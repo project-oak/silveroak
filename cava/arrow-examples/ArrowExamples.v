@@ -141,6 +141,24 @@ Section NetlistExamples.
     ("output1").
   Eval compute in nandArrow.
 
+  (* Test bench tables for generated SystemVerilog simulation test bench *)
+  Definition arrow_nand_tb_inputs : list (bool * bool) :=
+  [(false, false); (false, true); (true, false); (true, true)]. 
+
+  (* Compute expected outputs. *)
+  Definition arrow_nand_tb_expected_outputs : list bool :=
+  List.map (@nand CoqCava) arrow_nand_tb_inputs.
+
+  Definition nand2Interface
+    := mkCircuitInterface "nandArrow"
+       (Tuple2 (One ("input1", Bit)) (One ("input2", Bit)))
+       (One ("output1", Bit))
+       [].
+
+  Definition arrow_nand2_tb :=
+  testBench "nandArrow_tb" nand2Interface
+            arrow_nand_tb_inputs arrow_nand_tb_expected_outputs.
+
   Definition xorArrow := arrowToHDLModule
 
     "xorArrow"
@@ -150,10 +168,70 @@ Section NetlistExamples.
   (* Compute the circuit netlist for the XOR made up of NANDs made up of ANDs and INVs *)
   Eval compute in xorArrow.
 
+  (* Test bench tables for generated SystemVerilog simulation test bench *)
+  Definition arrow_xor_tb_inputs : list (bool * bool) :=
+  [(false, false); (false, true); (true, false); (true, true)]. 
+
+  (* Compute expected outputs for xorArrow. *)
+  Definition arrow_xor_tb_expected_outputs : list bool :=
+  List.map (@xor CoqCava) arrow_xor_tb_inputs.
+
+  Definition xorInterface
+    := mkCircuitInterface "xorArrow"
+       (Tuple2 (One ("input1", Bit)) (One ("input2", Bit)))
+       (One ("output1", Bit))
+       [].
+
+  Definition arrow_xor_tb :=
+  testBench "xorArrow_tb" xorInterface
+            arrow_xor_tb_inputs arrow_xor_tb_expected_outputs.
+
   Definition feedbackNandArrow := arrowToHDLModule
     "feedbackNandArrow"
     (@feedbackNand NetlistCavaDelay NetlistLoop)
     ("input1")
     ("output1").
   Eval compute in feedbackNandArrow.
+
+  Definition feedbackNandArrow_tb_inputs :=
+  [false; (* 10 *)
+   false; (* 20 *)
+   true;  (* 30 *)
+   true;  (* 40 *)
+   true;  (* 50 *)
+   true;  (* 60 *)
+   false; (* 70 *)
+   false; (* 80 *)
+   true;  (* 90 *)
+   true;  (* 100 *)
+   true;  (* 110 *)
+   true   (* 120 *)
+  ] .
+
+  (* TODO: Replace with Cava computed results. *)
+  Definition feedbackNandArrow_tb_expected_outputs :=
+  [false; (* 10 *)
+   true;  (* 20 *)
+   true;  (* 30 *)
+   false; (* 40 *)
+   true;  (* 50 *)
+   false; (* 60 *)
+   true;  (* 70 *)
+   true;  (* 80 *)
+   true;  (* 90 *)
+   false; (* 100 *)
+   true;  (* 110 *)
+   false  (* 120 *)
+  ].
+
+  Definition feedbackNandInterface
+    := mkCircuitInterface "feedbackNandArrow"
+       (One ("input1", Bit))
+       (One ("output1", Bit))
+       [].
+
+  Definition feedbackNandArrow_tb :=
+  testBench "feedbackNandArrow_tb" feedbackNandInterface
+            feedbackNandArrow_tb_inputs feedbackNandArrow_tb_expected_outputs.
+
 End NetlistExamples.

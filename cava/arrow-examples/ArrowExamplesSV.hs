@@ -21,5 +21,8 @@ import ArrowExamples
 
 main :: IO ()
 main = do writeSystemVerilog nandArrow
+          writeTestBench arrow_nand2_tb
           writeSystemVerilog xorArrow
+          writeTestBench arrow_xor_tb
           writeSystemVerilog feedbackNandArrow
+          writeTestBench feedbackNandArrow_tb
