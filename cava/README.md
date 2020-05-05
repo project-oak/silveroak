@@ -23,9 +23,6 @@ Please install the following components:
 * The [Coq proof assistant](https://coq.inria.fr/) version 8.11.0.
 * The [coq-ext-lib](https://github.com/coq-community/coq-ext-lib) library for Coq.
 * The [GHC Haskell compiler](https://www.haskell.org/ghc/) version 8.6.5 or later
-* The [Icarus Verilog](http://iverilog.icarus.com/) circuit simulator version
-  11.0 or later. GitHub link:
-  [https://github.com/steveicarus/iverilog](https://github.com/steveicarus/iverilog)
 * [Verilator](https://www.veripool.org/wiki/verilator) version 4.028 (as specified by the
   [OpenTitan](https://docs.opentitan.org/doc/ug/install_instructions/#verilator) documentation).
 
