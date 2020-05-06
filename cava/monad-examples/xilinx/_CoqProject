@@ -1,5 +1,6 @@
 -R ../../cava/Cava Cava
 -R . XilinxExamples
+NandLUT.v
 XilinxAdderExamples.v
 XilinxAdderTree.v
 XilinxExtraction.v

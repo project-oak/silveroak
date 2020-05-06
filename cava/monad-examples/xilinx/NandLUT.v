@@ -14,15 +14,43 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import XilinxAdderExamples.
-Require Import XilinxAdderTree.
-From Coq Require Import Extraction.
-From Coq Require Import extraction.ExtrHaskellZInteger.
-From Coq Require Import extraction.ExtrHaskellString.
-From Coq Require Import ExtrHaskellBasic.
-From Coq Require Import extraction.ExtrHaskellNatInteger.
+From Coq Require Import Bool.Bool.
+From Coq Require Import Ascii String.
+From Coq Require Import Lists.List.
+From Coq Require Import ZArith.
+Import ListNotations.
 
-Extraction Language Haskell.
+Require Import ExtLib.Structures.Monads.
 
-Extraction Library XilinxAdderExamples.
-Extraction Library XilinxAdderTree.
+Require Import Cava.Monad.Cava.
+Require Import Cava.Monad.Combinators.
+Require Import Cava.BitArithmetic.
+Require Import Cava.Netlist.
+Require Import Cava.Monad.XilinxAdder.
+
+Local Open Scope list_scope.
+Local Open Scope monad_scope.
+Local Open Scope string_scope.
+
+Definition lutNAND {m bit} `{Cava m bit} (i0i1 : bit * bit) : m bit :=
+  x <- lut2 (andb) i0i1 ;;
+  z <- lut1 (negb) x ;;
+  ret z.
+
+Definition lutNANDInterface
+  := mkCircuitInterface "lutNAND"
+     (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
+     (One ("c", Bit))
+     [].
+
+Definition lutNANDNetlist := makeNetlist lutNANDInterface lutNAND.
+
+ Definition lutNAND_tb_inputs : list (bool * bool) :=
+ [(false, false); (false, true); (true, false); (true, true)].       
+
+ Definition lutNAND_tb_expected_outputs : list bool :=
+  map (fun i => combinational (lutNAND i)) lutNAND_tb_inputs.
+
+Definition lutNAND_tb :=
+  testBench "lutNAND_tb" lutNANDInterface
+  lutNAND_tb_inputs lutNAND_tb_expected_outputs.
