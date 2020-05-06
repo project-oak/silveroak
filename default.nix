@@ -10,7 +10,6 @@ let
     (haskell.packages.ghc865.ghcWithPackages (pkgs: with pkgs; [Cabal]))
 
     # Simulation
-    verilog #iverilog
     verilator
 
     # Common tools
