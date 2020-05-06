@@ -1,0 +1,4 @@
+*.jou
+
+!adder8_snapshot.edn
+
