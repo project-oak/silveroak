@@ -22,4 +22,5 @@ file mkdir $outputDir
 read_verilog adder8.sv
 synth_design -mode out_of_context  -top adder8 -part xc7a200tsbg484-1
 write_edif -force adder8.edn
+write_verilog -force adder8_post_synth.v
 exit
