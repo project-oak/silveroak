@@ -20,6 +20,7 @@ module Cava2SystemVerilog
 where
 
 import Control.Monad.State.Lazy
+import Numeric
 
 import qualified BinNums
 import Netlist
@@ -44,11 +45,9 @@ cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber isSeq (Netlist.Coq_mkModul
   = ["module " ++ moduleName ++ "("] ++
 
     insertCommas (clockPorts ++ inputPorts inputs ++ outputPorts outputs) ++
-    ["  );"] ++
-    ["",
-     "  timeunit 1ns; timeprecision 1ns;",
-     ""] ++
-    ["  logic[" ++ show (fromN netNumber-1) ++ ":0] net;"] ++
+    ["  );",
+     "",
+     "  logic[" ++ show (fromN netNumber-1) ++ ":0] net;"] ++
     declareVectors vDefs ++
     [""] ++
     ["  // Constant nets",
@@ -239,7 +238,22 @@ generateInstance inst@(Netlist.BindPrimitive _ _ (Netlist.WireOutputBit name) oA
      o = unsafeCoerce oAny :: BinNums.N
 generateInstance inst@(Netlist.BindPrimitive _ _
                  (Netlist.WireOutputBitVec name sizes) oAny _) _
-   = unlines (assignMultiDimensionalOutput name "" sizes oAny)      
+   = unlines (assignMultiDimensionalOutput name "" sizes oAny)   
+generateInstance inst@(Netlist.BindPrimitive _ _
+                 (Netlist.Lut1 config) iAny oAny) instNr
+   = "  LUT1 #(.INIT(2'h" ++
+     showHex (fromN config) "" ++ ")) lut1_" ++ show instNr ++ " "
+     ++ showArgs [o, i] ++ ";"
+     where
+     i = unsafeCoerce iAny :: BinNums.N
+     o = unsafeCoerce oAny :: BinNums.N
+generateInstance inst@(Netlist.BindPrimitive _ _
+                 (Netlist.Lut2 config) i0i1Any oAny) instNr
+   = "  LUT2 #(.INIT(4'h" ++
+     showHex (fromN config) "" ++ ")) lut2_" ++ show instNr ++ " "
+     ++ showArgs args ++ ";"
+     where
+     args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
 generateInstance (Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd _ _ _) ab s) _
    = "" -- Generated instead during vector generation
 generateInstance inst@(Netlist.BindPrimitive i o prim _ _) instNr

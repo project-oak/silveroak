@@ -63,6 +63,8 @@ Class Cava m bit `{Monad m} := {
   xnor2 : bit * bit -> m bit;
   buf_gate : bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'buf' *)
   (* Xilinx UNISIM FPGA gates *)
+  lut1 : (bool -> bool) -> bit -> m bit; (* 1-input LUT *)
+  lut2 : (bool -> bool -> bool) -> (bit * bit) -> m bit; (* 2-input LUT *)
   xorcy : bit * bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
   muxcy : bit -> bit -> bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
   (* Synthesizable arithmetic operations. *)
@@ -121,6 +123,34 @@ Definition xorNet (i : N * N) : state CavaState N :=
          ret o
   end.
 
+(******************************************************************************)
+(* Xilinx specific FPGA gates                                                 *)
+(******************************************************************************)
+
+Local Open Scope N_scope.
+
+Definition lut1Net (f : bool -> bool) (i : N) : state CavaState N :=
+  let config := N.b2n (f false) + N.b2n (f true) in
+  cs <- get ;;
+  match cs with
+  | mkCavaState o isSeq (mkModule name insts inputs outputs)
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindLut1 config i o) insts) inputs outputs )) ;;
+         ret o
+  end.
+
+Definition lut2Net (f : bool -> bool -> bool) (i : N * N) : state CavaState N :=
+  let config := N.b2n (f false false) +
+                N.b2n (f true false) +
+                N.b2n (f false true) + 
+                N.b2n (f true true) in
+  cs <- get ;;
+  match cs with
+  | mkCavaState o isSeq (mkModule name insts inputs outputs)
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindLut2 config i o) insts) inputs outputs )) ;;
+         ret o
+  end.
+
+Local Close Scope N_scope.
 
 Definition xorcyNet (i : N * N) : state CavaState N :=
   cs <- get ;;
@@ -205,6 +235,8 @@ Instance CavaNet : Cava (state CavaState) N :=
     xor2 := xorNet;
     xnor2 := xorNet;
     buf_gate := bufNet;
+    lut1 := lut1Net;
+    lut2 := lut2Net;
     xorcy := xorcyNet;
     muxcy := muxcyNet;
     unsignedAdd := unsignedAddNet;
@@ -324,26 +356,31 @@ Definition makeNetlist (intf : CircuitInterface)
 (* A second boolean combinational logic interpretaiob for the Cava class      *)
 (******************************************************************************)
 
-Definition notBool (i : bool) : ident bool :=
+Definition notBool (i: bool) : ident bool :=
   ret (negb i).
 
 Definition andBool '(a, b) : ident bool :=
   ret (a && b).
 
-Definition nandBool (i : bool * bool) : ident bool :=
+Definition nandBool (i: bool * bool) : ident bool :=
   let (a, b) := i in ret (negb (a && b)).
 
-Definition orBool (i : bool * bool) : ident bool :=
+Definition orBool (i: bool * bool) : ident bool :=
   let (a, b) := i in ret (a || b).
 
-Definition norBool (i : bool * bool) : ident bool :=
+Definition norBool (i: bool * bool) : ident bool :=
   let (a, b) := i in ret (negb (a || b)).
 
-Definition xorBool (i : bool * bool) : ident bool :=
+Definition xorBool (i: bool * bool) : ident bool :=
   let (a, b) := i in ret (xorb a b).
 
-Definition xorcyBool (i : bool * bool) : ident bool :=
+Definition xorcyBool (i: bool * bool) : ident bool :=
   let (ci, li) := i in ret (xorb ci li).
+
+Definition lut1Bool (f: bool -> bool) (i: bool) : ident bool := ret (f i).
+
+Definition lut2Bool (f: bool -> bool -> bool) (i: bool * bool) : ident bool :=
+  ret (f (fst i) (snd i)).
 
 Definition xnorBool (i : bool * bool) : ident bool :=
   let (a, b) := i in ret (negb (xorb a b)).
@@ -385,6 +422,8 @@ Instance CavaBool : Cava ident bool :=
     or2 := orBool;
     nor2 := norBool;
     xor2 := xorBool;
+    lut1 := lut1Bool;
+    lut2 := lut2Bool;
     xorcy := xorcyBool;
     xnor2 := xnorBool;
     muxcy := muxcyBool;
@@ -420,6 +459,14 @@ Definition norBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
 
 Definition xorBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
   ret (map (fun (i : bool * bool) => let (a, b) := i in xorb a b) (combine (fst i) (snd i))).
+
+Definition lut1BoolList (f: bool -> bool) (i : list bool) : ident (list bool) :=
+  ret (map f i).
+
+Definition lut2BoolList (f: bool -> bool -> bool)
+                        (i : (list bool) * (list bool)) : ident (list bool) :=
+  ret (map (fun (i : bool * bool) => let (a, b) := i in f a b)
+           (combine (fst i) (snd i))).
 
 Definition xorcyBoolList := xorBoolList.
 
@@ -465,6 +512,8 @@ Instance CavaBoolList : Cava ident (list bool) :=
     or2 := orBoolList;
     nor2 := norBoolList;
     xor2 := xorBoolList;
+    lut1 := lut1BoolList;
+    lut2 := lut2BoolList;
     xorcy := xorcyBoolList;
     xnor2 := xnorBoolList;
     muxcy := muxcyBoolList;

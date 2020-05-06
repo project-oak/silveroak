@@ -17,12 +17,15 @@
 module Main where
 
 import Cava2SystemVerilog
+import NandLUT
 import XilinxAdder
 import XilinxAdderExamples
 import XilinxAdderTree
 
 main :: IO ()
-main = do writeSystemVerilog adder8Netlist
+main = do writeSystemVerilog lutNANDNetlist
+          writeTestBench lutNAND_tb
+          writeSystemVerilog adder8Netlist
           writeTestBench adder8_tb
           writeSystemVerilog adder_tree4_8Netlist
           writeTestBench adder_tree4_8_tb
