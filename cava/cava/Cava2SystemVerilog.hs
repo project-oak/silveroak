@@ -250,9 +250,16 @@ generateInstance inst@(Netlist.BindPrimitive _ _
      i = unsafeCoerce iAny :: BinNums.N
      o = unsafeCoerce oAny :: BinNums.N
 generateInstance inst@(Netlist.BindPrimitive _ _
-                 (Netlist.Lut2 config) i0i1Any oAny) instNr
+                 (Netlist.Lut2 config) _ _) instNr
    = "  LUT2 #(.INIT(4'h" ++
      showHex (fromN config) "" ++ ")) lut2_" ++ show instNr ++ " "
+     ++ showArgs args ++ ";"
+     where
+     args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
+generateInstance inst@(Netlist.BindPrimitive _ _
+                 (Netlist.Lut3 config) _ _) instNr
+   = "  LUT3 #(.INIT(8'h" ++
+     showHex (fromN config) "" ++ ")) lut3_" ++ show instNr ++ " "
      ++ showArgs args ++ ";"
      where
      args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
@@ -280,6 +287,7 @@ writeTestBench testBench
   = do putStr ("Generating test bench " ++ filename ++ " " ++ driver ++ "...")
        writeFile filename (unlines (generateTestBench testBench))
        writeFile driver (unlines (cppDriver name ticks))
+       writeFile (name ++ ".tcl") (unlines (tclScript name ticks))
        putStrLn (" [done]")
     where
     name = testBenchName testBench
@@ -486,3 +494,19 @@ cppDriver name ticks =
     "  exit(EXIT_SUCCESS);",
     "}"
   ]
+
+-- This function generates a TCL script for driving the top-level
+-- testbench generated from Cava for use with the Vivado xsim
+-- simulator. The test is run for number of cycles that correspond to
+-- the required number of ticks and a VCD wavefile file is generated.
+tclScript :: String -> Int -> [String]
+tclScript name ticks
+  = ["open_vcd " ++ name ++ ".vcd",
+     "log_vcd *",
+     "log_vcd [ get_objects * ]",
+     "add_force {/" ++ name ++ "/clk} {0 0ns} {1 50ns} -repeat_every 100ns",
+     "run " ++ show ticks ++ "00ns",
+     "flush_vcd",
+     "close_vcd",
+     "exit"
+    ]

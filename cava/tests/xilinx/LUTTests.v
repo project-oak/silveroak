@@ -74,3 +74,37 @@ Definition lut2_and_tb_inputs : list (bool * bool) :=
 Definition lut2_and_tb :=
   testBench "lut2_and_tb" lut2_and_Interface
   lut2_and_tb_inputs lut2_and_tb_expected_outputs.
+
+(****************************************************************************)
+(* LUT3 config test                                                         *)
+(****************************************************************************)
+
+Definition lut3_mux {m bit} `{Cava m bit}
+           (si0i1 : bit * (bit * bit)) : m bit :=
+  let '(s, (i0, i1)) := si0i1 in
+  o <- lut3 (fun s i0 i1 => if s then i1 else i0) (s, i0, i1) ;;
+  ret o.
+
+Definition lut3_mux_Interface
+  := mkCircuitInterface "lut3_mux"
+     (Tuple2 (One ("s", Bit))
+             (Tuple2 (One ("i0", Bit)) (One ("i1", Bit))))
+     (One ("o", Bit))
+     [].
+
+Definition lut3_mux_nelist := makeNetlist lut3_mux_Interface lut3_mux.
+
+Definition lut3_mux_tb_inputs : list (bool * (bool * bool)) :=
+ [(false, (false, true));
+  (false, (true, false));
+  (false, (false, false));
+  (true, (false, true));
+  (true, (true, false));
+  (true, (true, true))].
+
+ Definition lut3_mux_tb_expected_outputs : list bool :=
+  map (fun i => combinational (lut3_mux i)) lut3_mux_tb_inputs.
+
+Definition lut3_mux_tb :=
+  testBench "lut3_mux_tb" lut3_mux_Interface
+  lut3_mux_tb_inputs lut3_mux_tb_expected_outputs.  
