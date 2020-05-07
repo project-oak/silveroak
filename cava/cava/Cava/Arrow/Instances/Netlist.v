@@ -19,6 +19,9 @@ From Cava Require Import Netlist.
 From Cava Require Import BitArithmetic.
 From Cava Require Import Arrow.Arrow.
 
+From Coq Require Import Setoid.
+From Coq Require Import Classes.Morphisms.
+
 (******************************************************************************)
 (* Evaluation as a netlist                                                    *)
 (******************************************************************************)
@@ -26,22 +29,43 @@ From Cava Require Import Arrow.Arrow.
 Section NetlistEval.
   Local Open Scope monad_scope.
 
-  Instance NetlistCat : Category := {
+  #[refine] Instance NetlistCat : Category := {
     object := @shape portType;
     morphism X Y := signalTy N X -> state (Netlist * N) (signalTy N Y);
     id X x := ret x;
     compose X Y Z f g := g >=> f;
-  }.
 
-  Instance NetlistArr : Arrow := {
+    (* todo: add proper equivalence, netlist is equal modulo renumbering and intermediate state *)
+    morphism_equivalence x y f g := True;
+  }.
+  Proof.
+    intros.
+    apply Build_Equivalence.
+    unfold Reflexive. auto. 
+    unfold Symmetric. auto. 
+    unfold Transitive. auto. 
+    intros.
+    unfold Proper. 
+    refine (fun f => _). intros.
+    refine (fun g => _). intros.
+    auto.
+    auto.
+    auto.
+    auto.
+  Defined.
+
+  #[refine] Instance NetlistArr : Arrow := {
     cat := NetlistCat;
     unit := Empty;
     product := Tuple2;
 
-    fork X Y Z f g z :=
+    first X Y Z f '(z,y) := 
       x <- f z ;;
-      y <- g z ;;
-      ret (x, y);
+      ret (x,y);
+
+    second X Y Z f '(y,z) := 
+      x <- f z ;;
+      ret (y,x);
 
     exl X Y '(x,y) := ret x;
     exr X Y '(x,y) := ret y;
@@ -58,9 +82,33 @@ Section NetlistEval.
     assoc _ _ _ '((x,y),z) := ret (x,(y,z));
     unassoc _ _ _ '(x,(y,z)) := ret ((x,y),z);
   }.
+  Proof.
+    intros.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
+
+    intros;simpl. 
+    refine (exist_pair (Tuple2 x Empty ~> x) (x ~> Tuple2 x Empty) _ _ _ _).
+    exact (fun '(x,y) => ret x).
+    exact (fun x => ret (x, tt)).
+    auto.
+
+    intros; simpl.
+    inversion X.
+    refine (exist_pair (Tuple2 a x ~> Tuple2 a y) (Tuple2 a y ~> Tuple2 a x) _ _ _ _).
+    exact (fun '(x,y) => y' <- x0 y;; ret (x, y')).
+    exact (fun '(x,y) => y' <- y0 y;; ret (x, y')).
+
+    simpl; auto.
+  Defined.
 
   Instance NetlistCava : Cava := {
-    cava_arr := NetlistArr;
+    cava_arrow := NetlistArr;
 
     bit := One Bit;
     bitvec n := One (BitVec [n]);
