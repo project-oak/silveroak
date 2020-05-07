@@ -21,7 +21,12 @@
 
 .PHONY: all coq clean
 
-all:		coq lut1_inv_tb.vcd lut2_and_tb.vcd
+SV = lut1_inv.sv lut2_and.sv lut3_mux.sv
+
+BENCHES = $(SV:.sv=_tb.sv)
+VCDS = $(SV:.sv=_tb.vcd)
+
+all:		coq $(VCDS)
 
 Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
@@ -32,12 +37,15 @@ coq:		Makefile.coq
 VivadoTestsSV:	VivadoTestsSV.hs
 		ghc -O2 --make $^
 
-lut1_inv_tb.sv:	coq VivadoTestsSV
+.PRECIOUS:	$(SV) $(BENCHES)
+
+lut1_inv.sv:	coq VivadoTestsSV
 		./VivadoTestsSV
 
-lut1_inv_tb.vcd:	lut1_inv.sv lut1_inv_tb.sv lut1_inv_tb.tcl
-			vivado -mode tcl -source lut1_inv_tb.tcl
-			mv lut1_inv/lut1_inv.sim/sim_1/behav/xsim/lut1_inv_tb.vcd .
+%_tb.vcd:	%.sv
+		xvlog -sv $*.sv $*_tb.sv
+		xelab --debug typical -L unisims_ver work.$*_tb -s $*_tb_sim
+		xsim --tclbatch $*_tb.tcl $*_tb_sim
 
 clean:
 	-@$(MAKE) -f Makefile.coq clean

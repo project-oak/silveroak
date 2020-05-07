@@ -24,5 +24,7 @@ main = do writeSystemVerilog lut1_inv_netlist
           writeTestBench lut1_inv_tb
           writeSystemVerilog lut2_and_nelist
           writeTestBench lut2_and_tb
+          writeSystemVerilog lut3_mux_nelist
+          writeTestBench lut3_mux_tb
 
 

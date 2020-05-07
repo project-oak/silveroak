@@ -65,6 +65,7 @@ Class Cava m bit `{Monad m} := {
   (* Xilinx UNISIM FPGA gates *)
   lut1 : (bool -> bool) -> bit -> m bit; (* 1-input LUT *)
   lut2 : (bool -> bool -> bool) -> (bit * bit) -> m bit; (* 2-input LUT *)
+  lut3 : (bool -> bool -> bool -> bool) -> (bit * bit * bit) -> m bit; (* 3-input LUT *)
   xorcy : bit * bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
   muxcy : bit -> bit -> bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
   (* Synthesizable arithmetic operations. *)
@@ -147,6 +148,24 @@ Definition lut2Net (f : bool -> bool -> bool) (i : N * N) : state CavaState N :=
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
       => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindLut2 config i o) insts) inputs outputs )) ;;
+         ret o
+  end.
+
+Definition f3List (f: bool -> bool -> bool -> bool) (l: list bool) : bool :=
+  match l with
+  | [a; b; c] => f a b c
+  | _ => false
+  end.
+
+Definition lut3Net (f : bool -> bool -> bool -> bool) (i : N * N * N) :
+                   state CavaState N :=
+  let powers := map (fun p => let bv := nat_to_list_bits_sized 3 (N.of_nat p) in
+                     2^(N.of_nat p) * N.b2n (f3List f bv)) (seq 0 8)  in
+  let config := fold_left N.add powers 0 in 
+  cs <- get ;;
+  match cs with
+  | mkCavaState o isSeq (mkModule name insts inputs outputs)
+      => put (mkCavaState (o+1) isSeq (mkModule name (cons (BindLut3 config i o) insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -237,6 +256,7 @@ Instance CavaNet : Cava (state CavaState) N :=
     buf_gate := bufNet;
     lut1 := lut1Net;
     lut2 := lut2Net;
+    lut3 := lut3Net;
     xorcy := xorcyNet;
     muxcy := muxcyNet;
     unsignedAdd := unsignedAddNet;
@@ -382,6 +402,11 @@ Definition lut1Bool (f: bool -> bool) (i: bool) : ident bool := ret (f i).
 Definition lut2Bool (f: bool -> bool -> bool) (i: bool * bool) : ident bool :=
   ret (f (fst i) (snd i)).
 
+Definition lut3Bool (f: bool -> bool -> bool -> bool) (i: bool * bool * bool) :
+                    ident bool :=
+  let '(i0, i1, i2) := i in
+  ret (f i0 i1 i2).
+
 Definition xnorBool (i : bool * bool) : ident bool :=
   let (a, b) := i in ret (negb (xorb a b)).
 
@@ -424,6 +449,7 @@ Instance CavaBool : Cava ident bool :=
     xor2 := xorBool;
     lut1 := lut1Bool;
     lut2 := lut2Bool;
+    lut3 := lut3Bool;
     xorcy := xorcyBool;
     xnor2 := xnorBool;
     muxcy := muxcyBool;
@@ -467,6 +493,12 @@ Definition lut2BoolList (f: bool -> bool -> bool)
                         (i : (list bool) * (list bool)) : ident (list bool) :=
   ret (map (fun (i : bool * bool) => let (a, b) := i in f a b)
            (combine (fst i) (snd i))).
+
+Definition lut3BoolList (f: bool -> bool -> bool -> bool)
+                        (i : (list bool) * (list bool) * (list bool)) : ident (list bool) :=
+  let '(aL, bL, cL) := i in
+  ret (map (fun (i : bool * bool * bool) => let '(a, b, c) := i in f a b c)
+           (combine (combine aL bL) cL)).
 
 Definition xorcyBoolList := xorBoolList.
 
@@ -514,6 +546,7 @@ Instance CavaBoolList : Cava ident (list bool) :=
     xor2 := xorBoolList;
     lut1 := lut1BoolList;
     lut2 := lut2BoolList;
+    lut3 := lut3BoolList;
     xorcy := xorcyBoolList;
     xnor2 := xnorBoolList;
     muxcy := muxcyBoolList;

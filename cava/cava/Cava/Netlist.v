@@ -48,6 +48,9 @@ Inductive shape {A: Type} : Type :=
 
 (* General tuples can be mapped to Tuple2 *)
 
+(* TODO(satnam): It would be more useful to build a left-associative
+   tuple.
+*)
 Fixpoint tuple {A: Type} (t : list shape) : shape :=
   match t with
   | [] => Empty
@@ -282,6 +285,7 @@ Inductive Primitive: shape -> shape -> Type :=
   (* Xilinx FPGA architecture specific gates. *)
   | Lut1:      N -> Primitive (One Bit) (One Bit)
   | Lut2:      N -> Primitive (Tuple2 (One Bit) (One Bit)) (One Bit)
+  | Lut3:      N -> Primitive (Tuple2 (Tuple2 (One Bit) (One Bit)) (One Bit)) (One Bit)
   | Xorcy:     Primitive (Tuple2 (One Bit) (One Bit)) (One Bit)
   | Muxcy:     Primitive (Tuple2 (One Bit) (Tuple2 (One Bit) (One Bit))) (One Bit).
 
@@ -308,11 +312,13 @@ Definition BindAssignBit i o: PrimitiveInstance := BindPrimitive AssignBit i o.
 
 Definition BindLut1 config i o : PrimitiveInstance := BindPrimitive (Lut1 config) i o.
 Definition BindLut2 config i o : PrimitiveInstance := BindPrimitive (Lut2 config) i o.
+Definition BindLut3 config i o : PrimitiveInstance := BindPrimitive (Lut3 config) i o.
 Definition BindXorcy i o: PrimitiveInstance := BindPrimitive Xorcy i o.
 Definition BindMuxcy i o: PrimitiveInstance := BindPrimitive Muxcy i o.
 
 Definition BindUnsignedAdd (sumSize: nat) is o: PrimitiveInstance :=
-                           BindPrimitive (UnsignedAdd (length (fst is)) (length (snd is)) sumSize) is o.
+                           BindPrimitive (UnsignedAdd (length (fst is))
+                                          (length (snd is)) sumSize) is o.
 
 (******************************************************************************)
 (* Data structures to represent circuit graph/netlist state                   *)
@@ -428,7 +434,8 @@ match prim with
 | BindPrimitive (Xnor _) i _                => i
 | BindPrimitive Buf i _                     => [i]
 | BindPrimitive (Lut1 _) i _                => [i]
-| BindPrimitive (Lut2 _) (x,y) _            => [x; y]
+| BindPrimitive (Lut2 _) (i0, i1) _         => [i0; i1]
+| BindPrimitive (Lut3 _) (i0, i1, i2)   _   => [i0; i1; i2]
 | BindPrimitive Xorcy (x,y) _               => [x; y]
 | BindPrimitive Muxcy (i,(t,e)) _           => [i; t; e]
 | BindPrimitive DelayBit i _                => [i]
@@ -450,17 +457,18 @@ match prim with
 (*| BindPrimitive (WireInputBitVec _ _) _ o   => Some [o] *)
 | BindPrimitive (WireOutputBit _) i _       => Some [i]
 (*| BindPrimitive (WireOutputBitVec _) i _  => Some i *)
-| BindPrimitive Not i o             => Some [o; i]
-| BindPrimitive (And _) i o         => Some (o :: i)
-| BindPrimitive (Nand _) i o        => Some (o :: i)
-| BindPrimitive (Or _) i o          => Some (o :: i)
-| BindPrimitive (Nor _) i o         => Some (o :: i)
-| BindPrimitive (Xor _) i o         => Some (o :: i)
-| BindPrimitive (Xnor _) i o        => Some (o :: i)
-| BindPrimitive Buf i o             => Some [o; i]
-| BindPrimitive (Lut1 _) i o        => Some [o; i]
-| BindPrimitive (Lut2 _) (i0, i1) o => Some [o; i0; i1]
-| BindPrimitive Xorcy (x,y) o       => Some [o; x; y]
-| BindPrimitive Muxcy (i,(t,e)) o   => Some [o; t; e; i]
+| BindPrimitive Not i o                   => Some [o; i]
+| BindPrimitive (And _) i o               => Some (o :: i)
+| BindPrimitive (Nand _) i o              => Some (o :: i)
+| BindPrimitive (Or _) i o                => Some (o :: i)
+| BindPrimitive (Nor _) i o               => Some (o :: i)
+| BindPrimitive (Xor _) i o               => Some (o :: i)
+| BindPrimitive (Xnor _) i o              => Some (o :: i)
+| BindPrimitive Buf i o                   => Some [o; i]
+| BindPrimitive (Lut1 _) i o              => Some [o; i]
+| BindPrimitive (Lut2 _) (i0, i1) o       => Some [o; i0; i1]
+| BindPrimitive (Lut3 _) (i0, i1, i2) o   => Some [o; i0; i1; i2]
+| BindPrimitive Xorcy (x,y) o             => Some [o; x; y]
+| BindPrimitive Muxcy (i,(t,e)) o         => Some [o; t; e; i]
 | _ => None
 end.
