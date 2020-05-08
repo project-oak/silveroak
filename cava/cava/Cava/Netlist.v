@@ -67,7 +67,8 @@ Fixpoint mapShape {A B : Type} (f : A -> B) (s : @shape A) : @shape B :=
   | Tuple2 t1 t2 => Tuple2 (mapShape f t1) (mapShape f t2)
   end.
 
-Fixpoint mapShapeM {A B : Type} {m} `{Monad m} (f : A -> m B) (s : @shape A) : m shape :=
+Fixpoint mapShapeM {A B : Type} {m} `{Monad m} (f : A -> m B) (s : @shape A) :
+                  m shape :=
   match s with
   | Empty => ret Empty
   | One thing => fv <- f thing ;;
@@ -77,7 +78,8 @@ Fixpoint mapShapeM {A B : Type} {m} `{Monad m} (f : A -> m B) (s : @shape A) : m
                        ret (Tuple2 fv1 fv2)
   end.
 
-Fixpoint zipShapes {A B : Type} (sA : @shape A) (sB : @shape B) : @shape (A * B) :=
+Fixpoint zipShapes {A B : Type} (sA : @shape A) (sB : @shape B) :
+                   @shape (A * B) :=
   match sA, sB with
   | Empty, Empty => Empty
   | One a, One b => One (a, b)
@@ -295,7 +297,10 @@ Inductive Primitive: shape -> shape -> Type :=
                                       (One Bit)
   | Lut5:      N -> Primitive (Tuple2 (Tuple2 (Tuple2 (Tuple2 (One Bit) (One Bit)) (One Bit))
                                               (One Bit)) (One Bit))
-                                      (One Bit)                        
+                                      (One Bit) 
+  | Lut6:      N -> Primitive (Tuple2 (Tuple2 (Tuple2 (Tuple2 (Tuple2 (One Bit) (One Bit)) (One Bit))
+                                              (One Bit)) (One Bit)) (One Bit))
+                                      (One Bit)                         
   | Xorcy:     Primitive (Tuple2 (One Bit) (One Bit)) (One Bit)
   | Muxcy:     Primitive (Tuple2 (One Bit) (Tuple2 (One Bit) (One Bit)))
                                                    (One Bit).
@@ -337,6 +342,8 @@ Definition BindLut4 config i o : PrimitiveInstance :=
   BindPrimitive (Lut4 config) i o.
 Definition BindLut5 config i o : PrimitiveInstance :=
   BindPrimitive (Lut5 config) i o.
+Definition BindLut6 config i o : PrimitiveInstance :=
+  BindPrimitive (Lut6 config) i o.
 Definition BindXorcy i o: PrimitiveInstance :=
   BindPrimitive Xorcy i o.
 Definition BindMuxcy i o: PrimitiveInstance :=
@@ -445,6 +452,8 @@ match prim with
 | Lut2 _  => Some "LUT2"
 | Lut3 _  => Some "LUT3"
 | Lut4 _  => Some "LUT4"
+| Lut5 _  => Some "LUT5"
+| Lut6 _  => Some "LUT6"
 | Xorcy   => Some "XORCY"
 | Muxcy   => Some "MUXCY"
 | _       => None (* unnameable primitive *)
@@ -469,6 +478,7 @@ match prim with
 | BindPrimitive (Lut3 _) (i0, i1, i2)   _   => [i0; i1; i2]
 | BindPrimitive (Lut4 _) (i0, i1, i2, i3) _ => [i0; i1; i2; i3]
 | BindPrimitive (Lut5 _) (i0, i1, i2, i3, i4) _ => [i0; i1; i2; i3; i4]
+| BindPrimitive (Lut6 _) (i0, i1, i2, i3, i4, i5) _ => [i0; i1; i2; i3; i4; i5]
 | BindPrimitive Xorcy (x,y) _               => [x; y]
 | BindPrimitive Muxcy (i,(t,e)) _           => [i; t; e]
 | BindPrimitive DelayBit i _                => [i]
@@ -503,6 +513,7 @@ match prim with
 | BindPrimitive (Lut3 _) (i0, i1, i2) o     => Some [o; i0; i1; i2]
 | BindPrimitive (Lut4 _) (i0, i1, i2, i3) o => Some [o; i0; i1; i2; i3]
 | BindPrimitive (Lut5 _) (i0, i1, i2, i3, i4) o => Some [o; i0; i1; i2; i3; i4]
+| BindPrimitive (Lut6 _) (i0, i1, i2, i3, i4, i5) o => Some [o; i0; i1; i2; i3; i4; i5]
 | BindPrimitive Xorcy (x,y) o               => Some [o; x; y]
 | BindPrimitive Muxcy (i,(t,e)) o           => Some [o; t; e; i]
 | _ => None
