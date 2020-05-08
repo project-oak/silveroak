@@ -144,3 +144,39 @@ Definition lut4_and_tb_expected_outputs : list bool :=
 Definition lut4_and_tb :=
   testBench "lut4_and_tb" lut4_and_Interface
   lut4_and_tb_inputs lut4_and_tb_expected_outputs.
+
+(****************************************************************************)
+(* LUT5 config test                                                         *)
+(****************************************************************************)
+
+Definition lut5_and {m bit} `{Cava m bit}
+           (i : bit * bit * bit * bit * bit) : m bit :=
+  let '(i0, i1, i2, i3, i4) := i in
+  o <- lut5 (fun i0 i1 i2 i3 i4 =>
+            andb (andb (andb i0 i1) (andb i2 i3)) i4) i ;;
+  ret o.
+
+(* The left-associative nesting we need to use here is mad. We need to
+   find a better way. Satnam.
+*)
+Definition lut5_and_Interface
+  := mkCircuitInterface "lut5_and"
+     (Tuple2 (Tuple2 (Tuple2 (Tuple2 (One ("i0", Bit)) (One ("i1", Bit))) 
+                     (One ("i2", Bit)))
+             (One ("i3", Bit))) (One ("i4", Bit))
+     )
+     (One ("o", Bit))
+     [].
+
+Definition lut5_and_nelist := makeNetlist lut5_and_Interface lut5_and.
+
+Definition lut5_and_tb_inputs : list (bool * bool * bool * bool * bool) :=
+ [(false, false, false, false, false);
+  (true, true, true, true, true)].
+
+Definition lut5_and_tb_expected_outputs : list bool :=
+  map (fun i => combinational (lut5_and i)) lut5_and_tb_inputs.
+
+Definition lut5_and_tb :=
+  testBench "lut5_and_tb" lut5_and_Interface
+  lut5_and_tb_inputs lut5_and_tb_expected_outputs. 

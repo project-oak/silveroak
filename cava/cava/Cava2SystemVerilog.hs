@@ -270,6 +270,13 @@ generateInstance inst@(Netlist.BindPrimitive _ _
      ++ showArgs args ++ ";"
      where
      args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
+generateInstance inst@(Netlist.BindPrimitive _ _
+                 (Netlist.Lut5 config) _ _) instNr
+   = "  LUT5 #(.INIT(32'h" ++
+     showHex (fromN config) "" ++ ")) lut5_" ++ show instNr ++ " "
+     ++ showArgs args ++ ";"
+     where
+     args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
 
 generateInstance (Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd _ _ _) ab s) _
    = "" -- Generated instead during vector generation
