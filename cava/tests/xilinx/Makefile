@@ -21,7 +21,7 @@
 
 .PHONY: all coq clean
 
-SV = lut1_inv.sv lut2_and.sv lut3_mux.sv
+SV = lut1_inv.sv lut2_and.sv lut3_mux.sv lut4_and.sv
 
 BENCHES = $(SV:.sv=_tb.sv)
 VCDS = $(SV:.sv=_tb.vcd)

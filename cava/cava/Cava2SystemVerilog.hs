@@ -263,6 +263,14 @@ generateInstance inst@(Netlist.BindPrimitive _ _
      ++ showArgs args ++ ";"
      where
      args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
+generateInstance inst@(Netlist.BindPrimitive _ _
+                 (Netlist.Lut4 config) _ _) instNr
+   = "  LUT4 #(.INIT(16'h" ++
+     showHex (fromN config) "" ++ ")) lut4_" ++ show instNr ++ " "
+     ++ showArgs args ++ ";"
+     where
+     args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
+
 generateInstance (Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd _ _ _) ab s) _
    = "" -- Generated instead during vector generation
 generateInstance inst@(Netlist.BindPrimitive i o prim _ _) instNr
