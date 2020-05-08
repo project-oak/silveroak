@@ -293,6 +293,9 @@ Inductive Primitive: shape -> shape -> Type :=
   | Lut4:      N -> Primitive (Tuple2 (Tuple2 (Tuple2 (One Bit) (One Bit)) (One Bit))
                                               (One Bit))
                                       (One Bit)
+  | Lut5:      N -> Primitive (Tuple2 (Tuple2 (Tuple2 (Tuple2 (One Bit) (One Bit)) (One Bit))
+                                              (One Bit)) (One Bit))
+                                      (One Bit)                        
   | Xorcy:     Primitive (Tuple2 (One Bit) (One Bit)) (One Bit)
   | Muxcy:     Primitive (Tuple2 (One Bit) (Tuple2 (One Bit) (One Bit)))
                                                    (One Bit).
@@ -332,6 +335,8 @@ Definition BindLut3 config i o : PrimitiveInstance :=
   BindPrimitive (Lut3 config) i o.
 Definition BindLut4 config i o : PrimitiveInstance :=
   BindPrimitive (Lut4 config) i o.
+Definition BindLut5 config i o : PrimitiveInstance :=
+  BindPrimitive (Lut5 config) i o.
 Definition BindXorcy i o: PrimitiveInstance :=
   BindPrimitive Xorcy i o.
 Definition BindMuxcy i o: PrimitiveInstance :=
@@ -463,6 +468,7 @@ match prim with
 | BindPrimitive (Lut2 _) (i0, i1) _         => [i0; i1]
 | BindPrimitive (Lut3 _) (i0, i1, i2)   _   => [i0; i1; i2]
 | BindPrimitive (Lut4 _) (i0, i1, i2, i3) _ => [i0; i1; i2; i3]
+| BindPrimitive (Lut5 _) (i0, i1, i2, i3, i4) _ => [i0; i1; i2; i3; i4]
 | BindPrimitive Xorcy (x,y) _               => [x; y]
 | BindPrimitive Muxcy (i,(t,e)) _           => [i; t; e]
 | BindPrimitive DelayBit i _                => [i]
@@ -496,6 +502,7 @@ match prim with
 | BindPrimitive (Lut2 _) (i0, i1) o         => Some [o; i0; i1]
 | BindPrimitive (Lut3 _) (i0, i1, i2) o     => Some [o; i0; i1; i2]
 | BindPrimitive (Lut4 _) (i0, i1, i2, i3) o => Some [o; i0; i1; i2; i3]
+| BindPrimitive (Lut5 _) (i0, i1, i2, i3, i4) o => Some [o; i0; i1; i2; i3; i4]
 | BindPrimitive Xorcy (x,y) o               => Some [o; x; y]
 | BindPrimitive Muxcy (i,(t,e)) o           => Some [o; t; e; i]
 | _ => None
