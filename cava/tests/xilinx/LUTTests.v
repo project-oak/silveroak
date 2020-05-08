@@ -107,4 +107,40 @@ Definition lut3_mux_tb_inputs : list (bool * (bool * bool)) :=
 
 Definition lut3_mux_tb :=
   testBench "lut3_mux_tb" lut3_mux_Interface
-  lut3_mux_tb_inputs lut3_mux_tb_expected_outputs.  
+  lut3_mux_tb_inputs lut3_mux_tb_expected_outputs.
+
+(****************************************************************************)
+(* LUT4 config test                                                         *)
+(****************************************************************************)
+
+Definition lut4_and {m bit} `{Cava m bit}
+           (i : bit * bit * bit * bit) : m bit :=
+  let '(i0, i1, i2, i3) := i in
+  o <- lut4 (fun i0 i1 i2 i3 =>
+            andb (andb i0 i1) (andb i2 i3)) i ;;
+  ret o.
+
+(* The left-associative nesting we need to use here is mad. We need to
+   find a better way. Satnam.
+*)
+Definition lut4_and_Interface
+  := mkCircuitInterface "lut4_and"
+     (Tuple2 (Tuple2 (Tuple2 (One ("i0", Bit)) (One ("i1", Bit))) 
+                     (One ("i2", Bit)))
+             (One ("i3", Bit))
+     )
+     (One ("o", Bit))
+     [].
+
+Definition lut4_and_nelist := makeNetlist lut4_and_Interface lut4_and.
+
+Definition lut4_and_tb_inputs : list (bool * bool * bool * bool) :=
+ [(false, false, false, false);
+  (true, true, true, true)].
+
+Definition lut4_and_tb_expected_outputs : list bool :=
+  map (fun i => combinational (lut4_and i)) lut4_and_tb_inputs.
+
+Definition lut4_and_tb :=
+  testBench "lut4_and_tb" lut4_and_Interface
+  lut4_and_tb_inputs lut4_and_tb_expected_outputs.

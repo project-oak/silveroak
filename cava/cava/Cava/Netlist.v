@@ -262,9 +262,11 @@ Instance FlattenList {a} `{Flatten a} : Flatten (list a) := {
 Inductive Primitive: shape -> shape -> Type :=
   (* I/O port wiring *)
   | WireInputBit:     string -> Primitive Empty (One Bit)
-  | WireInputBitVec:  string -> forall {sizes}, Primitive Empty (One (BitVec sizes))
+  | WireInputBitVec:  string -> forall {sizes},
+                      Primitive Empty (One (BitVec sizes))
   | WireOutputBit:    string -> Primitive (One Bit) Empty
-  | WireOutputBitVec: string -> forall {sizes}, Primitive (One (BitVec sizes)) Empty
+  | WireOutputBitVec: string -> forall {sizes},
+                      Primitive (One (BitVec sizes)) Empty
   (* SystemVerilog primitive gates. *)
   | Not:       Primitive (One Bit) (One Bit)
   | And:       forall n, Primitive (One (BitVec [n])) (One Bit)
@@ -280,14 +282,20 @@ Inductive Primitive: shape -> shape -> Type :=
   | AssignBit: Primitive (One Bit) (One Bit)
   (* Arithmetic operations *)
   | UnsignedAdd : forall aSize bSize sumSize,
-                  Primitive (Tuple2 (One (BitVec [aSize])) (One (BitVec [bSize])))
+                  Primitive (Tuple2 (One (BitVec [aSize]))
+                                    (One (BitVec [bSize])))
                             (One (BitVec [sumSize]))
   (* Xilinx FPGA architecture specific gates. *)
   | Lut1:      N -> Primitive (One Bit) (One Bit)
   | Lut2:      N -> Primitive (Tuple2 (One Bit) (One Bit)) (One Bit)
-  | Lut3:      N -> Primitive (Tuple2 (Tuple2 (One Bit) (One Bit)) (One Bit)) (One Bit)
+  | Lut3:      N -> Primitive (Tuple2 (Tuple2 (One Bit) (One Bit)) (One Bit))
+                                      (One Bit)
+  | Lut4:      N -> Primitive (Tuple2 (Tuple2 (Tuple2 (One Bit) (One Bit)) (One Bit))
+                                              (One Bit))
+                                      (One Bit)
   | Xorcy:     Primitive (Tuple2 (One Bit) (One Bit)) (One Bit)
-  | Muxcy:     Primitive (Tuple2 (One Bit) (Tuple2 (One Bit) (One Bit))) (One Bit).
+  | Muxcy:     Primitive (Tuple2 (One Bit) (Tuple2 (One Bit) (One Bit)))
+                                                   (One Bit).
 
 (* PrimitiveInstance bound to ports of type N *)
 Inductive PrimitiveInstance :=
@@ -299,22 +307,35 @@ Arguments BindPrimitive [i o].
 (* Helper constructors *)
 Definition BindNot i o: PrimitiveInstance := BindPrimitive Not i o.
 
-Definition BindAnd  is o: PrimitiveInstance := BindPrimitive (And (length is)) is o.
-Definition BindNand is o: PrimitiveInstance := BindPrimitive (Nand (length is)) is o.
-Definition BindOr   is o: PrimitiveInstance := BindPrimitive (Or (length is)) is o.
-Definition BindNor  is o: PrimitiveInstance := BindPrimitive (Nor (length is)) is o.
-Definition BindXor  is o: PrimitiveInstance := BindPrimitive (Xor (length is)) is o.
-Definition BindXnor is o: PrimitiveInstance := BindPrimitive (Xnor (length is)) is o.
+Definition BindAnd  is o: PrimitiveInstance
+  := BindPrimitive (And (length is)) is o.
+Definition BindNand is o: PrimitiveInstance :=
+  BindPrimitive (Nand (length is)) is o.
+Definition BindOr   is o: PrimitiveInstance :=
+  BindPrimitive (Or (length is)) is o.
+Definition BindNor  is o: PrimitiveInstance :=
+  BindPrimitive (Nor (length is)) is o.
+Definition BindXor  is o: PrimitiveInstance :=
+  BindPrimitive (Xor (length is)) is o.
+Definition BindXnor is o: PrimitiveInstance :=
+  BindPrimitive (Xnor (length is)) is o.
 
 Definition BindBuf       i o: PrimitiveInstance := BindPrimitive Buf i o.
 Definition BindDelayBit  i o: PrimitiveInstance := BindPrimitive DelayBit i o.
 Definition BindAssignBit i o: PrimitiveInstance := BindPrimitive AssignBit i o.
 
-Definition BindLut1 config i o : PrimitiveInstance := BindPrimitive (Lut1 config) i o.
-Definition BindLut2 config i o : PrimitiveInstance := BindPrimitive (Lut2 config) i o.
-Definition BindLut3 config i o : PrimitiveInstance := BindPrimitive (Lut3 config) i o.
-Definition BindXorcy i o: PrimitiveInstance := BindPrimitive Xorcy i o.
-Definition BindMuxcy i o: PrimitiveInstance := BindPrimitive Muxcy i o.
+Definition BindLut1 config i o : PrimitiveInstance :=
+  BindPrimitive (Lut1 config) i o.
+Definition BindLut2 config i o : PrimitiveInstance :=
+  BindPrimitive (Lut2 config) i o.
+Definition BindLut3 config i o : PrimitiveInstance :=
+  BindPrimitive (Lut3 config) i o.
+Definition BindLut4 config i o : PrimitiveInstance :=
+  BindPrimitive (Lut4 config) i o.
+Definition BindXorcy i o: PrimitiveInstance :=
+  BindPrimitive Xorcy i o.
+Definition BindMuxcy i o: PrimitiveInstance :=
+  BindPrimitive Muxcy i o.
 
 Definition BindUnsignedAdd (sumSize: nat) is o: PrimitiveInstance :=
                            BindPrimitive (UnsignedAdd (length (fst is))
@@ -349,7 +370,8 @@ Record CircuitInterface : Type := mkCircuitInterface {
   attributes : list CircuitAttribute;
 }.
 
-Fixpoint shapeToPortDeclaration (s : @shape (string * portType)) : list PortDeclaration :=
+Fixpoint shapeToPortDeclaration (s : @shape (string * portType)) :
+                                list PortDeclaration :=
   match s with
   | Empty => []
   | One thing => match thing with
@@ -406,17 +428,21 @@ Definition initState : CavaState
 
 Definition primitiveName {i o} (prim: Primitive i o) : option string :=
 match prim with
-| Not    => Some "not"
-| And _  => Some "and"
-| Nand _ => Some "nand"
-| Or _   => Some "or"
-| Nor _  => Some "nor"
-| Xor _  => Some "xor"
-| Xnor _ => Some "xnor"
-| Buf    => Some "buf"
-| Xorcy  => Some "XORCY"
-| Muxcy  => Some "MUXCY"
-| _      => None (* unnameable primitive *)
+| Not     => Some "not"
+| And _   => Some "and"
+| Nand _  => Some "nand"
+| Or _    => Some "or"
+| Nor _   => Some "nor"
+| Xor _   => Some "xor"
+| Xnor _  => Some "xnor"
+| Buf     => Some "buf"
+| Lut1 _  => Some "LUT1"
+| Lut2 _  => Some "LUT2"
+| Lut3 _  => Some "LUT3"
+| Lut4 _  => Some "LUT4"
+| Xorcy   => Some "XORCY"
+| Muxcy   => Some "MUXCY"
+| _       => None (* unnameable primitive *)
 end%string.
 
 Definition instanceInputs (prim: PrimitiveInstance) : list N :=
@@ -436,6 +462,7 @@ match prim with
 | BindPrimitive (Lut1 _) i _                => [i]
 | BindPrimitive (Lut2 _) (i0, i1) _         => [i0; i1]
 | BindPrimitive (Lut3 _) (i0, i1, i2)   _   => [i0; i1; i2]
+| BindPrimitive (Lut4 _) (i0, i1, i2, i3) _ => [i0; i1; i2; i3]
 | BindPrimitive Xorcy (x,y) _               => [x; y]
 | BindPrimitive Muxcy (i,(t,e)) _           => [i; t; e]
 | BindPrimitive DelayBit i _                => [i]
@@ -457,18 +484,19 @@ match prim with
 (*| BindPrimitive (WireInputBitVec _ _) _ o   => Some [o] *)
 | BindPrimitive (WireOutputBit _) i _       => Some [i]
 (*| BindPrimitive (WireOutputBitVec _) i _  => Some i *)
-| BindPrimitive Not i o                   => Some [o; i]
-| BindPrimitive (And _) i o               => Some (o :: i)
-| BindPrimitive (Nand _) i o              => Some (o :: i)
-| BindPrimitive (Or _) i o                => Some (o :: i)
-| BindPrimitive (Nor _) i o               => Some (o :: i)
-| BindPrimitive (Xor _) i o               => Some (o :: i)
-| BindPrimitive (Xnor _) i o              => Some (o :: i)
-| BindPrimitive Buf i o                   => Some [o; i]
-| BindPrimitive (Lut1 _) i o              => Some [o; i]
-| BindPrimitive (Lut2 _) (i0, i1) o       => Some [o; i0; i1]
-| BindPrimitive (Lut3 _) (i0, i1, i2) o   => Some [o; i0; i1; i2]
-| BindPrimitive Xorcy (x,y) o             => Some [o; x; y]
-| BindPrimitive Muxcy (i,(t,e)) o         => Some [o; t; e; i]
+| BindPrimitive Not i o                     => Some [o; i]
+| BindPrimitive (And _) i o                 => Some (o :: i)
+| BindPrimitive (Nand _) i o                => Some (o :: i)
+| BindPrimitive (Or _) i o                  => Some (o :: i)
+| BindPrimitive (Nor _) i o                 => Some (o :: i)
+| BindPrimitive (Xor _) i o                 => Some (o :: i)
+| BindPrimitive (Xnor _) i o                => Some (o :: i)
+| BindPrimitive Buf i o                     => Some [o; i]
+| BindPrimitive (Lut1 _) i o                => Some [o; i]
+| BindPrimitive (Lut2 _) (i0, i1) o         => Some [o; i0; i1]
+| BindPrimitive (Lut3 _) (i0, i1, i2) o     => Some [o; i0; i1; i2]
+| BindPrimitive (Lut4 _) (i0, i1, i2, i3) o => Some [o; i0; i1; i2; i3]
+| BindPrimitive Xorcy (x,y) o               => Some [o; x; y]
+| BindPrimitive Muxcy (i,(t,e)) o           => Some [o; t; e; i]
 | _ => None
 end.
