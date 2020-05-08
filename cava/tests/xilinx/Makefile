@@ -24,9 +24,13 @@
 SV = lut1_inv.sv lut2_and.sv lut3_mux.sv lut4_and.sv
 
 BENCHES = $(SV:.sv=_tb.sv)
+CPPS = $(SV:.sv=_tb.cpp)
 VCDS = $(SV:.sv=_tb.vcd)
 
 all:		coq $(VCDS)
+
+VERILATOR = verilator +1800-2012ext+sv verilator.vlt -y $(XILINX)/data/verilog/src/xeclib
+VLINT = $(VERILATOR) --lint-only
 
 Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
@@ -42,10 +46,16 @@ VivadoTestsSV:	VivadoTestsSV.hs
 lut1_inv.sv:	coq VivadoTestsSV
 		./VivadoTestsSV
 
-%_tb.vcd:	%.sv
+%_tb.vcd:	%.sv %_tb.sv %_tb.cpp
+		$(VERILATOR) --trace --cc --top-module $*_tb $*_tb.sv $*.sv --exe $*_tb.cpp
+		make -C obj_dir -f V$*_tb.mk V$*_tb
+		obj_dir/V$*_tb
+
+%_tb_xsim.vcd:	%.sv
 		xvlog -sv $*.sv $*_tb.sv
 		xelab --debug typical -L unisims_ver work.$*_tb -s $*_tb_sim
 		xsim --tclbatch $*_tb.tcl $*_tb_sim
+		mv $*_tb.vcd $@
 
 clean:
 	-@$(MAKE) -f Makefile.coq clean
