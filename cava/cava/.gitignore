@@ -17,7 +17,7 @@ Makefile.coq
 *.hs
 !Cava2SystemVerilog.hs
 !ExamplesSV.hs
-!FixupAscii.hs
+!FixupHaskell.hs
 !Setup.hs
 
 # Binaries

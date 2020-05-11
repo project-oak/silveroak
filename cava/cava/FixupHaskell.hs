@@ -21,9 +21,9 @@ fixup content
   = unlines updatedLines
     where
     contentLines = lines content
-    updatedLines = take 2 contentLines ++
+    updatedLines = take 3 contentLines ++
                    extraImports ++
-                   drop 2 contentLines
+                   drop 3 contentLines
     extraImports = ["import qualified Data.Bits",
                     "import qualified Data.Char"]
 

@@ -21,6 +21,8 @@ From Coq Require Import ExtrHaskellBasic.
 From Coq Require Import extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.
+Set Extraction KeepSingleton.
+Set Extraction File Comment "Auto-generated from Cava/Coq. Please do not hand edit.".
 
 Require Import Cava.BitArithmetic.
 Require Import Cava.Monad.Cava.
