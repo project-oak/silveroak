@@ -5,3 +5,4 @@ Nand.v
 Xor.v
 FeedbackNand.v
 ArrowExtraction.v
+Mux2_1.v 
