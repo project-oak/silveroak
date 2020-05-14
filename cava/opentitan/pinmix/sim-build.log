@@ -1,0 +1,1478 @@
+$ fusesoc --cores-root . run --target=sim --setup --build lowrisc:systems:top_earlgrey_verilator
+WARNING: Unknown item formal in section Target
+WARNING: Unknown item formal in section Target
+INFO: Preparing lowrisc:constants:top_pkg:0
+INFO: Preparing lowrisc:dv_dpi:gpiodpi:0.1
+INFO: Preparing lowrisc:dv_dpi:spidpi:0.1
+INFO: Preparing lowrisc:dv_dpi:tcp_server:0.1
+INFO: Preparing lowrisc:dv_dpi:uartdpi:0.1
+INFO: Preparing lowrisc:dv_dpi:usbdpi:0.1
+INFO: Preparing lowrisc:dv:pins_if:0
+INFO: Preparing lowrisc:dv_verilator:simutil_verilator:0
+INFO: Preparing lowrisc:ibex:check_tool_requirements:0.1
+INFO: Preparing lowrisc:ibex:ibex_pkg:0.1
+INFO: Preparing lowrisc:lint:comportable:0.1
+INFO: Preparing lowrisc:prim:assert:0.1
+INFO: Preparing lowrisc:prim:primgen:0.1
+INFO: Preparing lowrisc:prim:secded:0.1
+INFO: Preparing lowrisc:tool:check_tool_requirements:0.1
+INFO: Preparing lowrisc:dv_dpi:dmidpi:0.1
+INFO: Preparing lowrisc:dv_dpi:jtagdpi:0.1
+INFO: Preparing lowrisc:dv_verilator:memutil_verilator:0
+INFO: Preparing lowrisc:ibex:ibex_tracer:0.1
+INFO: Preparing lowrisc:ip:flash_ctrl_pkg:0.1
+INFO: Preparing lowrisc:ip:pwrmgr_pkg:0.1
+INFO: Preparing lowrisc:ip:rstmgr_pkg:0.1
+INFO: Preparing lowrisc:lint:common:0.1
+INFO: Preparing lowrisc:prim:diff_decode:0
+INFO: Preparing lowrisc:prim:prim_pkg:0.1
+INFO: Preparing lowrisc:tlul:headers:0.1
+INFO: Preparing lowrisc:prim:clock_gating:0
+INFO: Preparing lowrisc:prim:clock_mux2:0
+INFO: Preparing lowrisc:prim:flash:0
+INFO: Preparing lowrisc:prim:pad_wrapper:0
+INFO: Preparing lowrisc:prim:ram_1p:0
+INFO: Preparing lowrisc:prim:ram_2p:0
+INFO: Preparing lowrisc:prim:rom:0
+INFO: Preparing lowrisc:top_earlgrey:alert_handler_reg:0.1
+INFO: Preparing lowrisc:top_earlgrey:padctrl_reg:0.1
+INFO: Preparing lowrisc:top_earlgrey:pinmux_reg:0.1
+INFO: Preparing lowrisc:ibex:ibex_icache:0.1
+INFO: Preparing lowrisc:prim:all:0.1
+INFO: Preparing lowrisc:ibex:ibex_core:0.1
+INFO: Preparing lowrisc:ip:usb_fs_nb_pe:0.1
+INFO: Preparing lowrisc:tlul:common:0.1
+INFO: Preparing pulp-platform:riscv-dbg:0.1:0
+INFO: Preparing lowrisc:tlul:adapter_host:0.1
+INFO: Preparing lowrisc:tlul:adapter_reg:0.1
+INFO: Preparing lowrisc:tlul:adapter_sram:0.1
+INFO: Preparing lowrisc:tlul:socket_1n:0.1
+INFO: Preparing lowrisc:tlul:socket_m1:0.1
+INFO: Preparing lowrisc:tlul:sram2tlul:0.1
+INFO: Preparing lowrisc:ip:tlul:0.1
+INFO: Preparing lowrisc:ip:aes:0.6
+INFO: Preparing lowrisc:ip:alert_handler_component:0.1
+INFO: Preparing lowrisc:ip:flash_ctrl:0.1
+INFO: Preparing lowrisc:ip:gpio:0.1
+INFO: Preparing lowrisc:ip:hmac:0.1
+INFO: Preparing lowrisc:ip:nmi_gen:0.1
+INFO: Preparing lowrisc:ip:padctrl_component:0.1
+INFO: Preparing lowrisc:ip:pinmux_component:0.1
+INFO: Preparing lowrisc:ip:pwrmgr:0.1
+INFO: Preparing lowrisc:ip:rstmgr:0.1
+INFO: Preparing lowrisc:ip:rv_core_ibex:0.1
+INFO: Preparing lowrisc:ip:rv_dm:0.1
+INFO: Preparing lowrisc:ip:rv_plic_component:0.1
+INFO: Preparing lowrisc:ip:rv_timer:0.1
+INFO: Preparing lowrisc:ip:spi_device:0.1
+INFO: Preparing lowrisc:ip:uart:0.1
+INFO: Preparing lowrisc:ip:usbdev:0.1
+INFO: Preparing lowrisc:ip:xbar_main:0.1
+INFO: Preparing lowrisc:ip:xbar_peri:0.1
+INFO: Preparing lowrisc:top_earlgrey:clkmgr:0.1
+INFO: Preparing lowrisc:top_earlgrey:rv_plic:0.1
+INFO: Preparing lowrisc:systems:top_earlgrey:0.1
+INFO: Preparing lowrisc:systems:top_earlgrey_verilator:0.1
+INFO: Generating lowrisc:prim:prim_pkg-impl:0.1
+Creating prim_pkg.sv
+Core file written to prim_pkg.core.
+INFO: Generating lowrisc:prim:clock_gating-impl:0
+Implementations for primitive clock_gating: xilinx, generic
+Inspecting generic module /usr/local/google/home/satnam/opentitan/hw/ip/prim_generic/rtl/prim_generic_clock_gating.sv
+Creating SystemVerilog module for abstract primitive
+Abstract primitive written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_clock_gating-impl_0/prim_clock_gating.sv
+Creating core file for primitive clock_gating.
+Core file written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_clock_gating-impl_0/prim_clock_gating.core
+INFO: Generating lowrisc:prim:clock_mux2-impl:0
+Implementations for primitive clock_mux2: xilinx, generic
+Inspecting generic module /usr/local/google/home/satnam/opentitan/hw/ip/prim_generic/rtl/prim_generic_clock_mux2.sv
+Creating SystemVerilog module for abstract primitive
+Abstract primitive written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_clock_mux2-impl_0/prim_clock_mux2.sv
+Creating core file for primitive clock_mux2.
+Core file written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_clock_mux2-impl_0/prim_clock_mux2.core
+INFO: Generating lowrisc:prim:flash-impl:0
+Implementations for primitive flash: generic
+Inspecting generic module /usr/local/google/home/satnam/opentitan/hw/ip/prim_generic/rtl/prim_generic_flash.sv
+Creating SystemVerilog module for abstract primitive
+Abstract primitive written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_flash-impl_0/prim_flash.sv
+Creating core file for primitive flash.
+Core file written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_flash-impl_0/prim_flash.core
+INFO: Generating lowrisc:prim:pad_wrapper-impl:0
+Implementations for primitive pad_wrapper: generic, xilinx
+Inspecting generic module /usr/local/google/home/satnam/opentitan/hw/ip/prim_generic/rtl/prim_generic_pad_wrapper.sv
+Creating SystemVerilog module for abstract primitive
+Abstract primitive written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_pad_wrapper-impl_0/prim_pad_wrapper.sv
+Creating core file for primitive pad_wrapper.
+Core file written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_pad_wrapper-impl_0/prim_pad_wrapper.core
+INFO: Generating lowrisc:prim:ram_1p-impl:0
+Implementations for primitive ram_1p: generic
+Inspecting generic module /usr/local/google/home/satnam/opentitan/hw/ip/prim_generic/rtl/prim_generic_ram_1p.sv
+Creating SystemVerilog module for abstract primitive
+Abstract primitive written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_ram_1p-impl_0/prim_ram_1p.sv
+Creating core file for primitive ram_1p.
+Core file written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_ram_1p-impl_0/prim_ram_1p.core
+INFO: Generating lowrisc:prim:ram_2p-impl:0
+Implementations for primitive ram_2p: generic
+Inspecting generic module /usr/local/google/home/satnam/opentitan/hw/ip/prim_generic/rtl/prim_generic_ram_2p.sv
+Creating SystemVerilog module for abstract primitive
+Abstract primitive written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_ram_2p-impl_0/prim_ram_2p.sv
+Creating core file for primitive ram_2p.
+Core file written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_ram_2p-impl_0/prim_ram_2p.core
+INFO: Generating lowrisc:prim:rom-impl:0
+Implementations for primitive rom: generic, xilinx
+Inspecting generic module /usr/local/google/home/satnam/opentitan/hw/ip/prim_generic/rtl/prim_generic_rom.sv
+Creating SystemVerilog module for abstract primitive
+Abstract primitive written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_rom-impl_0/prim_rom.sv
+Creating core file for primitive rom.
+Core file written to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/generated/lowrisc_prim_rom-impl_0/prim_rom.core
+INFO: Wrote dependency graph to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/lowrisc_systems_top_earlgrey_verilator_0.1.deps-after-generators.dot
+INFO: Wrote Makefile fragment to /usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator/core-deps.mk
+INFO: Setting up project
+
+INFO: Running pre_build script check_tool_requirements
+INFO: Found sufficiently recent version of verilator (found 4.028, need 4.028)
+INFO: Running pre_build script check_tool_requirements
+INFO: Found sufficiently recent version of verilator (found 4.028, need 4.028)
+INFO: Building simulation model
+verilator -f lowrisc_systems_top_earlgrey_verilator_0.1.vc --trace --trace-fst --trace-structs --trace-params --trace-max-array 1024 -CFLAGS "-std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g" -LDFLAGS "-pthread -lutil -lelf" -Wall -Wno-PINCONNECTEMPTY -Wno-fatal
+%Warning-DECLFILENAME: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_pkg.sv:19: Filename 'dm_pkg' does not match PACKAGE name: 'dm'
+package dm;
+        ^~
+                       ... Use "/* verilator lint_off DECLFILENAME */" and lint_on around source to disable this message.
+%Warning-PINMISSING: ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:129: Cell has missing pin: 'rvfi_rs3_addr'
+  ) u_core (
+    ^~~~~~
+%Warning-PINMISSING: ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:129: Cell has missing pin: 'rvfi_rs3_rdata'
+  ) u_core (
+    ^~~~~~
+%Warning-PINMISSING: ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:266: Cell has missing pin: 'rvfi_rs3_addr'
+  ibex_tracer ibex_tracer_i (
+              ^~~~~~~~~~~~~
+%Warning-PINMISSING: ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:266: Cell has missing pin: 'rvfi_rs3_rdata'
+  ibex_tracer ibex_tracer_i (
+              ^~~~~~~~~~~~~
+%Warning-DECLFILENAME: ../src/lowrisc_prim_xilinx_clock_gating_0/rtl/prim_xilinx_clock_gating.sv:12: Filename 'prim_xilinx_clock_gating' does not match NOTFOUNDMODULE name: 'BUFGCE'
+  BUFGCE u_bufgce (
+         ^~~~~~~~
+%Warning-DECLFILENAME: ../src/lowrisc_prim_xilinx_clock_mux2_0/rtl/prim_xilinx_clock_mux2.sv:17: Filename 'prim_xilinx_clock_mux2' does not match NOTFOUNDMODULE name: 'BUFGMUX'
+  BUFGMUX bufgmux_i (
+          ^~~~~~~~~
+%Warning-DECLFILENAME: ../src/lowrisc_prim_xilinx_pad_wrapper_0/rtl/prim_xilinx_pad_wrapper.sv:36: Filename 'prim_xilinx_pad_wrapper' does not match NOTFOUNDMODULE name: 'IOBUF'
+  IOBUF i_iobuf (
+        ^~~~~~~
+%Warning-DECLFILENAME: ../src/lowrisc_prim_all_0.1/rtl/prim_sram_arbiter.sv:82: Filename 'prim_sram_arbiter' does not match NOTFOUNDMODULE name: 'prim_arbiter_arb'
+    ) u_reqarb (
+      ^~~~~~~~
+%Warning-VARHIDDEN: ../src/lowrisc_ip_rstmgr_0.1/rtl/rstmgr_ctrl.sv:11: Declaration of signal hides declaration in upper scope: 'PowerDomains'
+  parameter int PowerDomains = 2,
+                ^~~~~~~~~~~~
+                    ../src/lowrisc_ip_rstmgr_pkg_0.1/rtl/rstmgr_pkg.sv:7: ... Location of original declaration
+  localparam int PowerDomains    = pwrmgr_pkg::PowerDomains;
+                 ^~~~~~~~~~~~
+%Warning-VARHIDDEN: ../src/lowrisc_ip_rstmgr_0.1/rtl/rstmgr_ctrl.sv:12: Declaration of signal hides declaration in upper scope: 'OffDomains'
+  localparam int OffDomains = PowerDomains - 1
+                 ^~~~~~~~~~
+                    ../src/lowrisc_ip_rstmgr_pkg_0.1/rtl/rstmgr_pkg.sv:11: ... Location of original declaration
+  localparam int OffDomains = PowerDomains-1;
+                 ^~~~~~~~~~
+%Warning-VARHIDDEN: ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev.sv:91: Declaration of signal hides declaration in upper scope: 'NEndpoints'
+  localparam int NEndpoints = usbdev_reg_pkg::NEndpoints;
+                 ^~~~~~~~~~
+                    ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_reg_pkg.sv:10: ... Location of original declaration
+  parameter int NEndpoints = 12;
+                ^~~~~~~~~~
+%Warning-WIDTH: ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:281: Operator ADD expects 64 bits on the LHS, but LHS's VARREF 'ADDR_SPACE_DEBUG_MEM' generates 32 bits.
+                                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey
+    .DmHaltAddr               (ADDR_SPACE_DEBUG_MEM + dm::HaltAddress),
+                                                    ^
+%Warning-WIDTH: ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:282: Operator ADD expects 64 bits on the LHS, but LHS's VARREF 'ADDR_SPACE_DEBUG_MEM' generates 32 bits.
+                                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey
+    .DmExceptionAddr          (ADDR_SPACE_DEBUG_MEM + dm::ExceptionAddress),
+                                                    ^
+%Warning-WIDTH: ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:23: Operator VAR 'DmHaltAddr' expects 32 bits on the Initial value, but Initial value's CONST '64'h1a110800' generates 64 bits.
+                                                                         : ... In instance top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex
+  parameter int unsigned DmHaltAddr               = 32'h1A110800,
+                         ^~~~~~~~~~
+%Warning-WIDTH: ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:24: Operator VAR 'DmExceptionAddr' expects 32 bits on the Initial value, but Initial value's CONST '64'h1a110808' generates 64 bits.
+                                                                         : ... In instance top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex
+  parameter int unsigned DmExceptionAddr          = 32'h1A110808,
+                         ^~~~~~~~~~~~~~~
+%Warning-WIDTH: ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:64: Operator COND expects 32 bits on the Conditional True, but Conditional True's CONST '1'h0' generates 1 bits.
+                                                                         : ... In instance top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex
+  localparam int FifoPass = PipeLine ? 1'b0 : 1'b1;
+                                     ^
+%Warning-WIDTH: ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:64: Operator COND expects 32 bits on the Conditional False, but Conditional False's CONST '1'h1' generates 1 bits.
+                                                                         : ... In instance top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex
+  localparam int FifoPass = PipeLine ? 1'b0 : 1'b1;
+                                     ^
+%Warning-WIDTH: ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:65: Operator COND expects 32 bits on the Conditional True, but Conditional True's CONST '4'h2' generates 4 bits.
+                                                                         : ... In instance top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex
+  localparam int FifoDepth = PipeLine ? 4'h2 : 4'h0;
+                                      ^
+%Warning-WIDTH: ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:65: Operator COND expects 32 bits on the Conditional False, but Conditional False's CONST '4'h0' generates 4 bits.
+                                                                         : ... In instance top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex
+  localparam int FifoDepth = PipeLine ? 4'h2 : 4'h0;
+                                      ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_ram_2p_adv.sv:86: Operator EQ expects 64 bits on the LHS, but LHS's VARREF 'MemT' generates 32 bits.
+                                                                     : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_memory_2p
+  if (MemT == "REGISTER") begin : gen_regmem
+           ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_ram_2p_async_adv.sv:88: Operator EQ expects 64 bits on the LHS, but LHS's VARREF 'MemT' generates 32 bits.
+                                                                           : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.u_memory_2p
+  if (MemT == "REGISTER") begin : gen_regmem
+           ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_flop_2sync.sv:9: Operator VAR 'ResetValue' expects 1 bits on the Initial value, but Initial value's CONST '7'h2c' generates 7 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_pwrmgr.i_cdc.i_ast_sync
+  parameter bit ResetValue = 0
+                ^~~~~~~~~~
+%Warning-WIDTH: ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:10: Operator VAR 'ReqPass' expects 32 bits on the Initial value, but Initial value's CONST '1'h1' generates 1 bits.
+                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_host_fifo[0].u_hostfifo
+  parameter int unsigned ReqPass  = 1'b1,
+                         ^~~~~~~
+%Warning-WIDTH: ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:11: Operator VAR 'RspPass' expects 32 bits on the Initial value, but Initial value's CONST '1'h1' generates 1 bits.
+                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_host_fifo[0].u_hostfifo
+  parameter int unsigned RspPass  = 1'b1,
+                         ^~~~~~~
+%Warning-WIDTH: ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:12: Operator VAR 'ReqDepth' expects 32 bits on the Initial value, but Initial value's CONST '4'h0' generates 4 bits.
+                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_host_fifo[0].u_hostfifo
+  parameter int unsigned ReqDepth = 2,
+                         ^~~~~~~~
+%Warning-WIDTH: ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:13: Operator VAR 'RspDepth' expects 32 bits on the Initial value, but Initial value's CONST '4'h0' generates 4 bits.
+                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_host_fifo[0].u_hostfifo
+  parameter int unsigned RspDepth = 2,
+                         ^~~~~~~~
+%Warning-WIDTH: ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:10: Operator VAR 'ReqPass' expects 32 bits on the Initial value, but Initial value's CONST '1'h0' generates 1 bits.
+                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_18.gen_host_fifo[0].u_hostfifo
+  parameter int unsigned ReqPass  = 1'b1,
+                         ^~~~~~~
+%Warning-WIDTH: ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:11: Operator VAR 'RspPass' expects 32 bits on the Initial value, but Initial value's CONST '1'h0' generates 1 bits.
+                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_18.gen_host_fifo[0].u_hostfifo
+  parameter int unsigned RspPass  = 1'b1,
+                         ^~~~~~~
+%Warning-WIDTH: ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:12: Operator VAR 'ReqDepth' expects 32 bits on the Initial value, but Initial value's CONST '4'h2' generates 4 bits.
+                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_18.gen_host_fifo[0].u_hostfifo
+  parameter int unsigned ReqDepth = 2,
+                         ^~~~~~~~
+%Warning-WIDTH: ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:13: Operator VAR 'RspDepth' expects 32 bits on the Initial value, but Initial value's CONST '4'h2' generates 4 bits.
+                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_18.gen_host_fifo[0].u_hostfifo
+  parameter int unsigned RspDepth = 2,
+                         ^~~~~~~~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_sync.sv:54: Operator ADD expects 32 bits on the RHS, but RHS's LOGNOT generates 1 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.i_bank_sequence_fifo
+    localparam int unsigned PTRV_W    = $clog2(Depth) + ~|$clog2(Depth);
+                                                      ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_sync.sv:11: Operator VAR 'Pass' expects 1 bits on the Initial value, but Initial value's CONST '32'h1' generates 32 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.fifo_i.reqfifo
+  parameter bit Pass                 = 1'b1,
+                ^~~~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_sync.sv:11: Operator VAR 'Pass' expects 1 bits on the Initial value, but Initial value's CONST '32'h0' generates 32 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_18.gen_host_fifo[0].u_hostfifo.reqfifo
+  parameter bit Pass                 = 1'b1,
+                ^~~~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_sync.sv:87: Operator EQ expects 32 bits on the LHS, but LHS's SEL generates 1 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.i_bank_sequence_fifo
+        if (fifo_wptr[PTR_WIDTH-2:0] == (Depth-1)) begin
+                                     ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_sync.sv:101: Operator EQ expects 32 bits on the LHS, but LHS's SEL generates 1 bits.
+                                                                     : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.i_bank_sequence_fifo
+        if (fifo_rptr[PTR_WIDTH-2:0] == (Depth-1)) begin
+                                     ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_sync.sv:87: Operator EQ expects 32 bits on the LHS, but LHS's SEL generates 4 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_ctrl.u_prog_fifo
+        if (fifo_wptr[PTR_WIDTH-2:0] == (Depth-1)) begin
+                                     ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_sync.sv:101: Operator EQ expects 32 bits on the LHS, but LHS's SEL generates 4 bits.
+                                                                     : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_ctrl.u_prog_fifo
+        if (fifo_rptr[PTR_WIDTH-2:0] == (Depth-1)) begin
+                                     ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_sync.sv:87: Operator EQ expects 32 bits on the LHS, but LHS's SEL generates 5 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_uart.uart_core.u_uart_txfifo
+        if (fifo_wptr[PTR_WIDTH-2:0] == (Depth-1)) begin
+                                     ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_sync.sv:101: Operator EQ expects 32 bits on the LHS, but LHS's SEL generates 5 bits.
+                                                                     : ... In instance top_earlgrey_verilator.top_earlgrey.u_uart.uart_core.u_uart_txfifo
+        if (fifo_rptr[PTR_WIDTH-2:0] == (Depth-1)) begin
+                                     ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_sync.sv:87: Operator EQ expects 32 bits on the LHS, but LHS's SEL generates 2 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_fwmode_arb.u_req_fifo
+        if (fifo_wptr[PTR_WIDTH-2:0] == (Depth-1)) begin
+                                     ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_sync.sv:101: Operator EQ expects 32 bits on the LHS, but LHS's SEL generates 2 bits.
+                                                                     : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_fwmode_arb.u_req_fifo
+        if (fifo_rptr[PTR_WIDTH-2:0] == (Depth-1)) begin
+                                     ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:169: Operator EQ expects 32 bits on the LHS, but LHS's VARREF 'rr_q' generates 2 bits.
+                                                                        : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core.i_rd.i_valid_random
+        if (gnt_tree[0] && (rr_q == N-1)) begin
+                                 ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_async.sv:183: Operator SUB expects 32 bits on the RHS, but RHS's REPLICATE generates 4 bits.
+                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_rx_fifo
+    decval_sub = Depth - {1'b0,decval[PTR_WIDTH-2:0]} - 1'b1;
+                       ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_async.sv:183: Operator ASSIGN expects 4 bits on the Assign RHS, but Assign RHS's SUB generates 32 bits.
+                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_rx_fifo
+    decval_sub = Depth - {1'b0,decval[PTR_WIDTH-2:0]} - 1'b1;
+               ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_async.sv:199: Operator SUB expects 32 bits on the RHS, but RHS's REPLICATE generates 4 bits.
+                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_rx_fifo
+    {unused_decsub_msb, dec_tmp_sub} = Depth - {1'b0,dec_tmp} - 1'b1;
+                                             ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_async.sv:199: Operator ASSIGN expects 4 bits on the Assign RHS, but Assign RHS's SUB generates 32 bits.
+                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_rx_fifo
+    {unused_decsub_msb, dec_tmp_sub} = Depth - {1'b0,dec_tmp} - 1'b1;
+                                     ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_async.sv:183: Operator SUB expects 32 bits on the RHS, but RHS's REPLICATE generates 3 bits.
+                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_avfifo
+    decval_sub = Depth - {1'b0,decval[PTR_WIDTH-2:0]} - 1'b1;
+                       ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_async.sv:183: Operator ASSIGN expects 3 bits on the Assign RHS, but Assign RHS's SUB generates 32 bits.
+                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_avfifo
+    decval_sub = Depth - {1'b0,decval[PTR_WIDTH-2:0]} - 1'b1;
+               ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_async.sv:199: Operator SUB expects 32 bits on the RHS, but RHS's REPLICATE generates 3 bits.
+                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_avfifo
+    {unused_decsub_msb, dec_tmp_sub} = Depth - {1'b0,dec_tmp} - 1'b1;
+                                             ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_async.sv:199: Operator ASSIGN expects 3 bits on the Assign RHS, but Assign RHS's SUB generates 32 bits.
+                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_avfifo
+    {unused_decsub_msb, dec_tmp_sub} = Depth - {1'b0,dec_tmp} - 1'b1;
+                                     ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:114: Operator ASSIGN expects 1 bits on the Assign RHS, but Assign RHS's VARREF 'i' generates 32 bits.
+                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_fwmode_arb.gen_arb_ppc.u_reqarb
+          idx_o  = i;
+                 ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:114: Operator ASSIGN expects 2 bits on the Assign RHS, but Assign RHS's VARREF 'i' generates 32 bits.
+                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_arb_ppc.u_reqarb
+          idx_o  = i;
+                 ^
+%Warning-WIDTH: ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_usbif.sv:112: Operator LT expects 32 bits on the LHS, but LHS's VARREF 'out_ep_current' generates 4 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_impl
+  assign out_endpoint_o = (out_ep_current < NEndpoints) ? out_ep_current : '0;
+                                          ^
+%Warning-WIDTH: ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_usbif.sv:126: Operator ASSIGN expects 7 bits on the Assign RHS, but Assign RHS's VARREF 'out_ep_put_addr' generates 6 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_impl
+        out_max_used_d = out_ep_put_addr;
+                       ^
+%Warning-WIDTH: ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_usbif.sv:127: Operator LT expects 32 bits on the LHS, but LHS's VARREF 'out_max_used_q' generates 7 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_impl
+      end else if (out_max_used_q < MaxPktSizeByte + 1) begin
+                                  ^
+%Warning-WIDTH: ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_usbif.sv:125: Operator LT expects 32 bits on the LHS, but LHS's VARREF 'out_max_used_q' generates 7 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_impl
+      if (out_max_used_q < MaxPktSizeByte - 1) begin
+                         ^
+%Warning-WIDTH: ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_usbif.sv:140: Operator LT expects 32 bits on the LHS, but LHS's VARREF 'out_max_used_q' generates 7 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_impl
+  assign std_write_d = out_ep_data_put & ((out_max_used_q < MaxPktSizeByte - 1) &
+                                                          ^
+%Warning-WIDTH: ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_usbif.sv:224: Operator LT expects 32 bits on the LHS, but LHS's VARREF 'in_ep_current' generates 4 bits.
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_impl
+  assign in_endpoint_o = (in_ep_current < NEndpoints) ? in_ep_current : '0;
+                                        ^
+%Warning-WIDTH: ../src/lowrisc_ip_uart_0.1/rtl/uart_core.sv:360: Operator EQ expects 6 bits on the RHS, but RHS's CONST '5'h0' generates 5 bits.
+                                                               : ... In instance top_earlgrey_verilator.top_earlgrey.u_uart.uart_core
+              (rx_fifo_depth == 5'd0)             ? 24'd0 :
+                             ^~
+%Warning-WIDTH: ../src/lowrisc_ip_spi_device_0.1/rtl/spi_fwm_txf_ctrl.sv:231: Operator EQ expects 32 bits on the LHS, but LHS's VARREF 'pos' generates 2 bits.
+                                                                            : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_txf_ctrl
+      if (pos == i) fifo_wdata = fifo_wdata_d[8*i+:8];
+              ^~
+%Warning-WIDTH: ../src/lowrisc_ip_rstmgr_0.1/rtl/rstmgr_por.sv:63: Operator EQ expects 32 bits on the LHS, but LHS's VARREF 'cnt' generates 6 bits.
+                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_rstmgr.i_por
+    end else if (cnt_en && cnt == StretchCount) begin
+                               ^~
+%Warning-WIDTH: ../src/lowrisc_ip_hmac_0.1/rtl/hmac_core.sv:122: Operator ADD expects 64 bits on the RHS, but RHS's VARREF 'BlockSize' generates 32 bits.
+                                                               : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_hmac
+                              (sel_msglen == SelIPadMsg) ? message_length + BlockSize :
+                                                                          ^
+%Warning-WIDTH: ../src/lowrisc_ip_hmac_0.1/rtl/hmac_core.sv:123: Operator ADD expects 64 bits on the LHS, but LHS's VARREF 'BlockSize' generates 32 bits.
+                                                               : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_hmac
+                              (sel_msglen == SelOPadMsg) ? BlockSize + 256            :
+                                                                     ^
+%Warning-WIDTH: ../src/lowrisc_ip_hmac_0.1/rtl/hmac_core.sv:126: Operator EQ expects 32 bits on the LHS, but LHS's SEL generates 10 bits.
+                                                               : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_hmac
+  assign txcnt_eq_blksz = (txcount[BlockSizeBits:0] == BlockSize);
+                                                    ^~
+%Warning-WIDTHCONCAT: ../src/lowrisc_ip_hmac_0.1/rtl/sha2.sv:82: Unsized numbers/parameters not allowed in concatenations.
+                                                               : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_sha2
+      w <= {sha_word_t'(0), w[15:1]};
+            ^~~~~~~~~~
+%Warning-WIDTHCONCAT: ../src/lowrisc_ip_hmac_0.1/rtl/sha2.sv:82: Unsized numbers/parameters not allowed in replications.
+                                                               : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_sha2
+      w <= {sha_word_t'(0), w[15:1]};
+                          ^
+%Warning-WIDTH: ../src/lowrisc_ip_hmac_0.1/rtl/sha2.sv:129: Operator EQ expects 32 bits on the LHS, but LHS's VARREF 'round' generates 6 bits.
+                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_sha2
+      if (round == (NumRound-1)) begin
+                ^~
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:96: Bit extraction of var[3:0] requires 2 bit index, not 3 bits.
+                                                                         : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core
+          reqs[PhyRead] = 1'b1;
+              ^
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:101: Bit extraction of var[3:0] requires 2 bit index, not 3 bits.
+                                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core
+          reqs[PhyRead] = 1'b1;
+              ^
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:104: Bit extraction of var[3:0] requires 2 bit index, not 3 bits.
+                                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core
+          reqs[PhyProg] = prog_i;
+              ^
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:105: Bit extraction of var[3:0] requires 2 bit index, not 3 bits.
+                                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core
+          reqs[PhyPgErase] = pg_erase_i;
+              ^
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:106: Bit extraction of var[3:0] requires 2 bit index, not 3 bits.
+                                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core
+          reqs[PhyBkErase] = bk_erase_i;
+              ^
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:116: Bit extraction of var[3:0] requires 2 bit index, not 3 bits.
+                                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core
+          reqs[PhyRead] = 1'b1;
+              ^
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:165: Bit extraction of var[3:0] requires 2 bit index, not 3 bits.
+                                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core
+    .req_i(reqs[PhyRead]),
+               ^
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:166: Bit extraction of var[3:0] requires 2 bit index, not 3 bits.
+                                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core
+    .prog_i(reqs[PhyProg]),
+                ^
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:167: Bit extraction of var[3:0] requires 2 bit index, not 3 bits.
+                                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core
+    .pg_erase_i(reqs[PhyPgErase]),
+                    ^
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:168: Bit extraction of var[3:0] requires 2 bit index, not 3 bits.
+                                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core
+    .bk_erase_i(reqs[PhyBkErase]),
+                    ^
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:204: Bit extraction of var[3:0] requires 2 bit index, not 3 bits.
+                                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core
+    .prog_i(reqs[PhyProg]),
+                ^
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:205: Bit extraction of var[3:0] requires 2 bit index, not 3 bits.
+                                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core
+    .pg_erase_i(reqs[PhyPgErase]),
+                    ^
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:206: Bit extraction of var[3:0] requires 2 bit index, not 3 bits.
+                                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core
+    .bk_erase_i(reqs[PhyBkErase]),
+                    ^
+%Warning-WIDTH: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_mp.sv:89: Operator EQ expects 32 bits on the LHS, but LHS's VARREF 'req_bk_i' generates 1 bits.
+                                                                   : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_ctrl.u_flash_mp
+      bk_erase_en[i] = (req_bk_i == i) & bank_cfgs_i[i].q;
+                                 ^~
+%Warning-WIDTH: ../src/lowrisc_ip_alert_handler_component_0.1/rtl/alert_handler_ping_timer.sv:197: Operator LT expects 32 bits on the LHS, but LHS's VARREF 'id_to_ping' generates 3 bits.
+                                                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_alert_handler.i_ping_timer
+            if (id_to_ping < NAlerts) begin
+                           ^
+%Warning-WIDTH: ../src/lowrisc_tlul_adapter_host_0.1/rtl/tlul_adapter_host.sv:69: Operator EQ expects 32 bits on the LHS, but LHS's VARREF 'source_q' generates 1 bits.
+                                                                                : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.tl_adapter_host_sba
+        if (source_q == MAX_REQS - 1) begin
+                     ^~
+%Warning-WIDTH: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_csrs.sv:293: Bit extraction of var[11:0] requires 4 bit index, not 5 bits.
+                                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_csrs
+              cmd_valid_d = abstractauto_q.autoexecdata[autoexecdata_idx];
+                                                       ^
+%Warning-WIDTH: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_csrs.sv:292: Operator LT expects 32 bits on the LHS, but LHS's VARREF 'autoexecdata_idx' generates 5 bits.
+                                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_csrs
+            if (autoexecdata_idx < $bits(abstractauto_q.autoexecdata)) begin
+                                 ^
+%Warning-WIDTH: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_csrs.sv:365: Bit extraction of var[11:0] requires 4 bit index, not 5 bits.
+                                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_csrs
+              cmd_valid_d = abstractauto_q.autoexecdata[autoexecdata_idx];
+                                                       ^
+%Warning-WIDTH: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_csrs.sv:364: Operator LT expects 32 bits on the LHS, but LHS's VARREF 'autoexecdata_idx' generates 5 bits.
+                                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_csrs
+            if (autoexecdata_idx < $bits(abstractauto_q.autoexecdata)) begin
+                                 ^
+%Warning-WIDTH: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_csrs.sv:535: Operator LT expects 2 bits on the LHS, but LHS's VARREF 'selected_hart' generates 1 bits.
+                                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_csrs
+    if (selected_hart < (HartSelLen+1)'(NrHarts)) begin
+                      ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_packer.sv:52: Operator ADD expects 6 bits on the RHS, but RHS's SEL generates 1 bits.
+                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_packer
+      inmask_ones = inmask_ones + mask_i[i];
+                                ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_packer.sv:65: Operator SUB expects 32 bits on the LHS, but LHS's VARREF 'pos_next' generates 7 bits.
+                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_packer
+      pos <= pos_next - OutW;
+                      ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_packer.sv:65: Operator ASSIGNDLY expects 7 bits on the Assign RHS, but Assign RHS's SUB generates 32 bits.
+                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_packer
+      pos <= pos_next - OutW;
+          ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_packer.sv:76: Operator ASSIGN expects 5 bits on the Assign RHS, but Assign RHS's VARREF 'i' generates 32 bits.
+                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_packer
+        lod_idx = i;
+                ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_packer.sv:85: Operator SHIFTR expects 64 bits on the LHS, but LHS's VARREF 'data_i' generates 32 bits.
+                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_packer
+  assign shiftl_data = (valid_i) ? Width'(data_i >> lod_idx) << pos : '0;
+                                                 ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_packer.sv:86: Operator SHIFTR expects 64 bits on the LHS, but LHS's VARREF 'mask_i' generates 32 bits.
+                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_packer
+  assign shiftl_mask = (valid_i) ? Width'(mask_i >> lod_idx) << pos : '0;
+                                                 ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_packer.sv:182: Operator GTE expects 32 bits on the LHS, but LHS's VARREF 'pos_next' generates 7 bits.
+                                                                  : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_packer
+  assign valid_next = (pos_next >= OutW) ? 1'b 1 : flush_ready & (pos != '0);
+                                ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_packer.sv:183: Operator LTE expects 32 bits on the LHS, but LHS's VARREF 'pos_next' generates 7 bits.
+                                                                  : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_packer
+  assign ready_next = ack_out ? 1'b1 : pos_next <= MaxW;
+                                                ^~
+%Warning-WIDTH: ../src/lowrisc_ip_pinmux_component_0.1/rtl/pinmux.sv:222: Bit extraction of var[63:0] requires 6 bit index, not 5 bits.
+                                                                        : ... In instance top_earlgrey_verilator.top_earlgrey.u_pinmux
+                       dio_data_mux[reg2hw.wkup_detector_padsel[k]] :
+                                   ^
+%Warning-WIDTH: ../src/lowrisc_ip_pinmux_component_0.1/rtl/pinmux.sv:223: Bit extraction of var[63:0] requires 6 bit index, not 5 bits.
+                                                                        : ... In instance top_earlgrey_verilator.top_earlgrey.u_pinmux
+                       mio_data_mux[reg2hw.wkup_detector_padsel[k]];
+                                   ^
+%Warning-WIDTH: ../src/lowrisc_ip_hmac_0.1/rtl/hmac.sv:314: Operator ADD expects 6 bits on the RHS, but RHS's SEL generates 1 bits.
+                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac
+      wmask_ones = wmask_ones + msg_fifo_wmask[i];
+                              ^
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_cipher_pkg.sv:251: Operator XOR expects 32 or 6 bits on the LHS, but LHS's SEL generates 5 bits.
+                                                                      : ... In instance top_earlgrey_verilator.u_usbdpi
+    key_out[19:15] ^= 6'(round_cnt) + 1 - round_idx;
+                   ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_cipher_pkg.sv:251: Operator ASSIGN expects 5 bits on the Assign RHS, but Assign RHS's XOR generates 32 or 6 bits.
+                                                                      : ... In instance top_earlgrey_verilator.u_usbdpi
+    key_out[19:15] ^= 6'(round_cnt) + 1 - round_idx;
+                   ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_cipher_pkg.sv:265: Operator XOR expects 32 or 6 bits on the LHS, but LHS's SEL generates 5 bits.
+                                                                      : ... In instance top_earlgrey_verilator.u_usbdpi
+    key_out[19:15] ^= 6'(round_cnt) + 1 - round_idx;
+                   ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_cipher_pkg.sv:265: Operator ASSIGN expects 5 bits on the Assign RHS, but Assign RHS's XOR generates 32 or 6 bits.
+                                                                      : ... In instance top_earlgrey_verilator.u_usbdpi
+    key_out[19:15] ^= 6'(round_cnt) + 1 - round_idx;
+                   ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_cipher_pkg.sv:279: Operator XOR expects 32 or 6 bits on the LHS, but LHS's SEL generates 5 bits.
+                                                                      : ... In instance top_earlgrey_verilator.u_usbdpi
+    key_out[19:15] ^= 6'(round_cnt) + 1 - round_idx;
+                   ^~
+%Warning-WIDTH: ../src/lowrisc_prim_all_0.1/rtl/prim_cipher_pkg.sv:279: Operator ASSIGN expects 5 bits on the Assign RHS, but Assign RHS's XOR generates 32 or 6 bits.
+                                                                      : ... In instance top_earlgrey_verilator.u_usbdpi
+    key_out[19:15] ^= 6'(round_cnt) + 1 - round_idx;
+                   ^~
+%Warning-WIDTH: ../src/lowrisc_dv_dpi_uartdpi_0.1/uartdpi.sv:55: Operator ASSIGN expects 32 bits on the Assign RHS, but Assign RHS's FUNCREF 'uartdpi_read' generates 8 bits.
+                                                               : ... In instance top_earlgrey_verilator.u_uart
+          automatic int c = uartdpi_read(ctx);
+                            ^~~~~~~~~~~~
+%Warning-WIDTH: ../src/lowrisc_dv_dpi_uartdpi_0.1/uartdpi.sv:54: Logical Operator IF expects 1 bit on the If, but If's FUNCREF 'uartdpi_can_read' generates 32 bits.
+                                                               : ... In instance top_earlgrey_verilator.u_uart
+        if (uartdpi_can_read(ctx)) begin
+        ^~
+%Warning-WIDTH: ../src/lowrisc_dv_dpi_uartdpi_0.1/uartdpi.sv:113: Operator TASKREF 'uartdpi_write' expects 32 bits on the Function Argument, but Function Argument's VARREF 'rxsymbol' generates 8 bits.
+                                                                : ... In instance top_earlgrey_verilator.u_uart
+              uartdpi_write(ctx, rxsymbol);
+              ^~~~~~~~~~~~~
+%Warning-WIDTH: ../src/lowrisc_dv_dpi_gpiodpi_0.1/gpiodpi.sv:65: Operator EQ expects 32 or 12 bits on the LHS, but LHS's VARREF 'counter' generates 11 bits.
+                                                               : ... In instance top_earlgrey_verilator.u_gpiodpi
+   assign gpio_write_pulse = counter == MAX_COUNT -1;
+                                     ^~
+%Warning-WIDTH: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:217: Operator ADD expects 32 bits on the RHS, but RHS's REPLICATE generates 16 bits.
+                                                                                                   : ... In instance top_earlgrey_verilator
+  assign addr = 268435456 + {top_earlgrey.u_ram1p_ram_main.addr_i, 2'h0};
+                          ^
+%Warning-ALWCOMBORDER: ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:73: Always_comb variable driven after use: 'ppc_out'
+                                                                             : ... In instance top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_18.gen_arb_ppc.u_reqarb
+        ppc_out[i] = ppc_out[i-1] | arb_req[i];
+        ^~~~~~~
+%Warning-UNDRIVEN: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:11: Signal is not driven: 'cio_jtag_tck'
+                                                                                                     : ... In instance top_earlgrey_verilator
+  logic cio_jtag_tck, cio_jtag_tms, cio_jtag_tdi, cio_jtag_tdo;
+        ^~~~~~~~~~~~
+%Warning-UNDRIVEN: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:11: Signal is not driven: 'cio_jtag_tms'
+                                                                                                     : ... In instance top_earlgrey_verilator
+  logic cio_jtag_tck, cio_jtag_tms, cio_jtag_tdi, cio_jtag_tdo;
+                      ^~~~~~~~~~~~
+%Warning-UNDRIVEN: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:11: Signal is not driven: 'cio_jtag_tdi'
+                                                                                                     : ... In instance top_earlgrey_verilator
+  logic cio_jtag_tck, cio_jtag_tms, cio_jtag_tdi, cio_jtag_tdo;
+                                    ^~~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:11: Signal is not used: 'cio_jtag_tdo'
+                                                                                                   : ... In instance top_earlgrey_verilator
+  logic cio_jtag_tck, cio_jtag_tms, cio_jtag_tdi, cio_jtag_tdo;
+                                                  ^~~~~~~~~~~~
+%Warning-UNDRIVEN: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:12: Signal is not driven: 'cio_jtag_trst_n'
+                                                                                                     : ... In instance top_earlgrey_verilator
+  logic cio_jtag_trst_n, cio_jtag_srst_n;
+        ^~~~~~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:12: Signal is not driven, nor used: 'cio_jtag_srst_n'
+                                                                                                   : ... In instance top_earlgrey_verilator
+  logic cio_jtag_trst_n, cio_jtag_srst_n;
+                         ^~~~~~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:15: Signal is not used: 'cio_uart_tx_en_d2p'
+                                                                                                   : ... In instance top_earlgrey_verilator
+  logic cio_uart_rx_p2d, cio_uart_tx_d2p, cio_uart_tx_en_d2p;
+                                          ^~~~~~~~~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:31: Signal is not driven, nor used: 'IO_JTCK'
+                                                                                                   : ... In instance top_earlgrey_verilator
+  logic IO_JTCK, IO_JTMS, IO_JTRST_N, IO_JTDI, IO_JTDO;
+        ^~~~~~~
+%Warning-UNUSED: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:31: Signal is not driven, nor used: 'IO_JTMS'
+                                                                                                   : ... In instance top_earlgrey_verilator
+  logic IO_JTCK, IO_JTMS, IO_JTRST_N, IO_JTDI, IO_JTDO;
+                 ^~~~~~~
+%Warning-UNUSED: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:31: Signal is not driven, nor used: 'IO_JTRST_N'
+                                                                                                   : ... In instance top_earlgrey_verilator
+  logic IO_JTCK, IO_JTMS, IO_JTRST_N, IO_JTDI, IO_JTDO;
+                          ^~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:31: Signal is not driven, nor used: 'IO_JTDI'
+                                                                                                   : ... In instance top_earlgrey_verilator
+  logic IO_JTCK, IO_JTMS, IO_JTRST_N, IO_JTDI, IO_JTDO;
+                                      ^~~~~~~
+%Warning-UNUSED: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:31: Signal is not driven, nor used: 'IO_JTDO'
+                                                                                                   : ... In instance top_earlgrey_verilator
+  logic IO_JTCK, IO_JTMS, IO_JTRST_N, IO_JTDI, IO_JTDO;
+                                               ^~~~~~~
+%Warning-UNUSED: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:35: Bits of signal are not used: 'dio_out'[14:12,10,8]
+                                                                                                   : ... In instance top_earlgrey_verilator
+  logic [14:0] dio_out;
+               ^~~~~~~
+%Warning-UNUSED: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:36: Bits of signal are not used: 'dio_oe'[14:12,10,8]
+                                                                                                   : ... In instance top_earlgrey_verilator
+  logic [14:0] dio_oe;
+               ^~~~~~
+%Warning-UNUSED: ../src/lowrisc_dv_dpi_uartdpi_0.1/uartdpi.sv:55: Bits of signal are not used: 'c'[31:8]
+                                                                : ... In instance top_earlgrey_verilator.u_uart
+          automatic int c = uartdpi_read(ctx);
+                        ^
+%Warning-UNUSED: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_pkg.sv:306: Bits of signal are not used: 'imm'[0]
+                                                                                      : ... In instance top_earlgrey_verilator.u_usbdpi
+                                       logic [20:0] imm);
+                                                    ^~~
+%Warning-UNUSED: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_pkg.sv:348: Bits of signal are not used: 'imm'[0]
+                                                                                      : ... In instance top_earlgrey_verilator.u_usbdpi
+                                         logic [20:0] imm);
+                                                      ^~~
+%Warning-UNUSED: ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:127: Bits of signal are not used: 'dio_p2d'[11,9,7:3]
+                                                                                        : ... In instance top_earlgrey_verilator.top_earlgrey
+  logic [14:0] dio_p2d;
+               ^~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_hmac_0.1/rtl/hmac.sv:57: Signal is not used: 'msg_fifo_addr'
+                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac
+  logic [8:0]  msg_fifo_addr;
+               ^~~~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_hmac_0.1/rtl/hmac.sv:71: Bits of signal are not used: 'reg_fifo_wmask'[31:25,23:17,15:9,7:1]
+                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac
+  sha_word_t   reg_fifo_wmask;
+               ^~~~~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_pwrmgr_0.1/rtl/pwrmgr.sv:32: Signal is not used: 'pwr_clk_i'
+                                                              : ... In instance top_earlgrey_verilator.top_earlgrey.u_pwrmgr
+  input  pwr_clk_rsp_t pwr_clk_i,
+                       ^~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_rv_dm_0.1/rtl/rv_dm.sv:37: Signal is not used: 'tck_i'
+                                                            : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top
+  input  logic               tck_i,
+                             ^~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_rv_dm_0.1/rtl/rv_dm.sv:38: Signal is not used: 'tms_i'
+                                                            : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top
+  input  logic               tms_i,
+                             ^~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_rv_dm_0.1/rtl/rv_dm.sv:39: Signal is not used: 'trst_ni'
+                                                            : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top
+  input  logic               trst_ni,
+                             ^~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_rv_dm_0.1/rtl/rv_dm.sv:40: Signal is not used: 'td_i'
+                                                            : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top
+  input  logic               td_i,
+                             ^~~~
+%Warning-UNDRIVEN: ../src/lowrisc_ip_rv_dm_0.1/rtl/rv_dm.sv:41: Signal is not driven: 'td_o'
+                                                              : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top
+  output logic               td_o,
+                             ^~~~
+%Warning-UNDRIVEN: ../src/lowrisc_ip_rv_dm_0.1/rtl/rv_dm.sv:42: Signal is not driven: 'tdo_oe_o'
+                                                              : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top
+  output logic               tdo_oe_o
+                             ^~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_rv_dm_0.1/rtl/rv_dm.sv:166: Signal is not used: 'master_r_err'
+                                                             : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top
+  logic                   master_r_err;
+                          ^~~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_top_earlgrey_clkmgr_0.1/rtl/autogen/clkmgr.sv:31: Signal is not used: 'clk_aon_i'
+                                                                                : ... In instance top_earlgrey_verilator.top_earlgrey.u_clkmgr
+  input clk_aon_i,
+        ^~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_top_earlgrey_clkmgr_0.1/rtl/autogen/clkmgr.sv:84: Signal is not used: 'clk_usb_root'
+                                                                                : ... In instance top_earlgrey_verilator.top_earlgrey.u_clkmgr
+  logic clk_usb_root;
+        ^~~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_prim_all_0.1/rtl/prim_ram_2p_adv.sv:55: Signal is not used: 'cfg_i'
+                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_memory_2p
+  input [CfgW-1:0] cfg_i
+                   ^~~~~
+%Warning-UNUSED: ../src/lowrisc_prim_all_0.1/rtl/prim_ram_2p_async_adv.sv:57: Signal is not used: 'cfg_i'
+                                                                            : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.u_memory_2p
+  input [CfgW-1:0] cfg_i
+                   ^~~~~
+%Warning-UNUSED: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_sba.sv:23: Signal is not used: 'dmactive_i'
+                                                                                     : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_sba
+  input  logic                   dmactive_i,
+                                 ^~~~~~~~~~
+%Warning-UNUSED: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_csrs.sv:191: Bits of signal are not used: 'havereset_d_aligned'[1]
+                                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_csrs
+  logic [NrHartsAligned-1:0] havereset_d_aligned, havereset_q_aligned,
+                             ^~~~~~~~~~~~~~~~~~~
+%Warning-UNUSED: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_csrs.sv:209: Bits of signal are not used: 'dmcontrol'[31:29,27:0]
+                                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_csrs
+  dm::dmcontrol_t dmcontrol;
+                  ^~~~~~~~~
+%Warning-UNUSED: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_csrs.sv:210: Bits of signal are not used: 'a_abstractcs'[31:11,7:0]
+                                                                                       : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_csrs
+  dm::abstractcs_t a_abstractcs;
+                   ^~~~~~~~~~~~
+%Warning-UNUSED: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_mem.sv:28: Bits of signal are not used: 'hartsel_i'[19:1]
+                                                                                     : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_mem
+  input  logic [19:0]                      hartsel_i,
+                                           ^~~~~~~~~
+%Warning-UNUSED: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_mem.sv:101: Bits of signal are not used: 'halted_d_aligned'[1]
+                                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_mem
+                             halted_d_aligned, halted_q_aligned,
+                             ^~~~~~~~~~~~~~~~
+%Warning-UNUSED: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_mem.sv:103: Bits of signal are not used: 'resuming_d_aligned'[1]
+                                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_mem
+                             resuming_d_aligned, resuming_q_aligned;
+                             ^~~~~~~~~~~~~~~~~~
+%Warning-UNUSED: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/src/dm_mem.sv:117: Bits of signal are not used: 'ac_ar'[23]
+                                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_mem
+  dm::ac_ar_cmd_t ac_ar;
+                  ^~~~~
+%Warning-UNUSED: ../src/lowrisc_tlul_adapter_host_0.1/rtl/tlul_adapter_host.sv:32: Bits of signal are not used: 'addr_i'[1:0]
+                                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.tl_adapter_host_sba
+  input  logic [top_pkg::TL_AW-1:0]  addr_i,
+                                     ^~~~~~
+%Warning-UNUSED: ../src/lowrisc_tlul_adapter_host_0.1/rtl/tlul_adapter_host.sv:42: Bits of signal are not used: 'tl_i'[66:50,17:2]
+                                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.tl_adapter_host_sba
+  input  tlul_pkg::tl_d2h_t          tl_i
+                                     ^~~~
+%Warning-UNUSED: ../src/lowrisc_tlul_adapter_host_0.1/rtl/tlul_adapter_host.sv:27: Signal is not used: 'clk_i'
+                                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.tl_adapter_host_sba
+  input clk_i,
+        ^~~~~
+%Warning-UNUSED: ../src/lowrisc_tlul_adapter_host_0.1/rtl/tlul_adapter_host.sv:28: Signal is not used: 'rst_ni'
+                                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.tl_adapter_host_sba
+  input rst_ni,
+        ^~~~~~
+%Warning-UNUSED: ../src/lowrisc_tlul_adapter_sram_0.1/rtl/tlul_adapter_sram.sv:39: Bits of signal are not used: 'rerror_i'[0]
+                                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.u_tlul2sram
+  input        [1:0]        rerror_i
+                            ^~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_tlul_adapter_sram_0.1/rtl/tlul_adapter_sram.sv:78: Signal is not used: 'maskfifo_rvalid'
+                                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.u_tlul2sram
+  logic maskfifo_rvalid, maskfifo_rready;
+        ^~~~~~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_tlul_adapter_sram_0.1/rtl/tlul_adapter_sram.sv:80: Signal is not used: 'rspfifo_wready'
+                                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.u_tlul2sram
+  logic rspfifo_wvalid, rspfifo_wready;
+                        ^~~~~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:86: Bits of signal are not used: 'arb_data'[101,0]
+                                                                           : ... In instance top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_23
+  tlul_pkg::tl_h2d_t arb_data;
+                     ^~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_hmac_0.1/rtl/hmac_core.sv:13: Signal is not used: 'wipe_secret'
+                                                               : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_hmac
+  input        wipe_secret,
+               ^~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_hmac_0.1/rtl/hmac_core.sv:14: Signal is not used: 'wipe_v'
+                                                               : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_hmac
+  input [31:0] wipe_v,
+               ^~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_nmi_gen_0.1/rtl/nmi_gen_reg_top.sv:34: Bits of signal are not used: 'reg_wdata'[31:4]
+                                                                        : ... In instance top_earlgrey_verilator.top_earlgrey.u_nmi_gen.i_reg
+  logic [DW-1:0]  reg_wdata;
+                  ^~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_pwrmgr_0.1/rtl/pwrmgr_reg_top.sv:34: Bits of signal are not used: 'reg_wdata'[31:18]
+                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_pwrmgr.i_reg
+  logic [DW-1:0]  reg_wdata;
+                  ^~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_rstmgr_0.1/rtl/rstmgr_reg_top.sv:34: Bits of signal are not used: 'reg_wdata'[31:5]
+                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_rstmgr.i_reg
+  logic [DW-1:0]  reg_wdata;
+                  ^~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_spi_device_0.1/rtl/spi_fwm_rxf_ctrl.sv:42: Signal is not used: 'sram_error'
+                                                                            : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_rxf_ctrl
+  input               [1:0] sram_error
+                            ^~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_spi_device_0.1/rtl/spi_fwm_txf_ctrl.sv:40: Signal is not used: 'sram_error'
+                                                                            : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_txf_ctrl
+  input               [1:0] sram_error
+                            ^~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_spi_device_0.1/rtl/spi_fwmode.sv:22: Signal is not used: 'mode_i'
+                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_fwmode
+  input  spi_device_pkg::spi_mode_e mode_i,
+                                    ^~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_uart_0.1/rtl/uart_core.sv:12: Bits of signal are not used: 'reg2hw'[67:56]
+                                                               : ... In instance top_earlgrey_verilator.top_earlgrey.u_uart.uart_core
+  input  uart_reg_pkg::uart_reg2hw_t reg2hw,
+                                     ^~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_reg_top.sv:39: Bits of signal are not used: 'reg_wdata'[29:23]
+                                                                      : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.u_reg
+  logic [DW-1:0]  reg_wdata;
+                  ^~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_iomux.sv:26: Bits of signal are not used: 'sys_reg2hw_config_i'[5:3,0]
+                                                                    : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.i_usbdev_iomux
+  input  usbdev_reg2hw_phy_config_reg_t sys_reg2hw_config_i,
+                                        ^~~~~~~~~~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_top_earlgrey_clkmgr_0.1/rtl/autogen/clkmgr_reg_top.sv:34: Bits of signal are not used: 'reg_wdata'[31:2]
+                                                                                        : ... In instance top_earlgrey_verilator.top_earlgrey.u_clkmgr.i_reg
+  logic [DW-1:0]  reg_wdata;
+                  ^~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:158: Signal is not driven, nor used: 'k'
+                                                                        : ... In instance top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_18.gen_arb_ppc.u_reqarb
+  int unsigned k;
+               ^
+%Warning-UNUSED: ../src/pulp-platform_riscv-dbg_0.1_0/pulp_riscv_dbg/debug_rom/debug_rom.sv:20: Bits of signal are not used: 'addr_i'[63:8,2:0]
+                                                                                              : ... In instance top_earlgrey_verilator.top_earlgrey.u_dm_top.i_dm_mem.i_debug_rom
+  input  logic [63:0]  addr_i,
+                       ^~~~~~
+%Warning-UNUSED: ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:143: Bits of signal are not used: 'tl_t_p'[0]
+                                                                            : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_ctrl.u_reg.u_socket
+  tlul_pkg::tl_d2h_t tl_t_p ;
+                     ^~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_hmac_0.1/rtl/sha2_pad.sv:14: Signal is not used: 'wipe_secret'
+                                                              : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_sha2.u_pad
+  input            wipe_secret,
+                   ^~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_ip_hmac_0.1/rtl/sha2_pad.sv:15: Signal is not used: 'wipe_v'
+                                                              : ... In instance top_earlgrey_verilator.top_earlgrey.u_hmac.u_sha2.u_pad
+  input sha_word_t wipe_v,
+                   ^~~~~~
+%Warning-UNUSED: ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:209: Signal is not driven, nor used: 'k'
+                                                                         : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[1].i_core.i_rd.i_valid_random
+  int unsigned k;
+               ^
+%Warning-UNUSED: ../src/lowrisc_prim_all_0.1/rtl/prim_filter.sv:21: Bits of signal are not used: 'stored_vector_q'[3]
+                                                                  : ... In instance top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_impl.u_usbdev_linkstate.filter_pwr_sense
+  logic [Cycles-1:0] stored_vector_q, stored_vector_d;
+                     ^~~~~~~~~~~~~~~
+%Warning-UNUSED: ../src/lowrisc_prim_all_0.1/rtl/prim_subreg.sv:18: Signal is not used: 'wd'
+                                                                  : ... In instance top_earlgrey_verilator.top_earlgrey.u_aes.aes_reg_top.u_status_stall
+  input [DW-1:0] wd,
+                 ^~
+%Warning-UNUSED: ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_err_resp.sv:12: Bits of signal are not used: 'tl_h_i'[97:95,84:1]
+                                                                          : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_ctrl.u_reg.u_socket.err_resp
+  input  tlul_pkg::tl_h2d_t tl_h_i,
+                            ^~~~~~
+%Warning-UNUSED: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_sync.sv:17: Signal is not used: 'clk_i'
+                                                                     : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_reg.u_socket.fifo_h.reqfifo
+  input                   clk_i,
+                          ^~~~~
+%Warning-UNUSED: ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_sync.sv:18: Signal is not used: 'rst_ni'
+                                                                     : ... In instance top_earlgrey_verilator.top_earlgrey.u_spi_device.u_reg.u_socket.fifo_h.reqfifo
+  input                   rst_ni,
+                          ^~~~~~
+%Warning-UNUSED: ../src/lowrisc_tlul_common_0.1/rtl/tlul_err.sv:9: Signal is not used: 'clk_i'
+                                                                 : ... In instance top_earlgrey_verilator.top_earlgrey.u_alert_handler.i_reg_wrap.i_reg.u_reg_if.u_err
+  input clk_i,
+        ^~~~~
+%Warning-UNUSED: ../src/lowrisc_tlul_common_0.1/rtl/tlul_err.sv:10: Signal is not used: 'rst_ni'
+                                                                  : ... In instance top_earlgrey_verilator.top_earlgrey.u_alert_handler.i_reg_wrap.i_reg.u_reg_if.u_err
+  input rst_ni,
+        ^~~~~~
+%Warning-UNUSED: ../src/lowrisc_tlul_common_0.1/rtl/tlul_err.sv:12: Bits of signal are not used: 'tl_i'[97:95,92:85,48:0]
+                                                                  : ... In instance top_earlgrey_verilator.top_earlgrey.u_alert_handler.i_reg_wrap.i_reg.u_reg_if.u_err
+  input tl_h2d_t tl_i,
+                 ^~~~
+%Warning-UNUSED: ../src/lowrisc_tlul_common_0.1/rtl/tlul_err.sv:25: Signal is not used: 'op_full'
+                                                                  : ... In instance top_earlgrey_verilator.top_earlgrey.u_alert_handler.i_reg_wrap.i_reg.u_reg_if.u_err
+  logic op_full, op_partial, op_get;
+        ^~~~~~~
+%Warning-SYMRSVDWORD: ../src/lowrisc_ip_spi_device_0.1/rtl/spi_device_reg_pkg.sv:84: Symbol matches C++ common word: 'abort'
+    } abort;
+      ^~~~~
+%Warning-SYMRSVDWORD: ../src/lowrisc_ip_pwrmgr_0.1/rtl/pwrmgr_reg_pkg.sv:69: Symbol matches C++ common word: 'abort'
+    } abort;
+      ^~~~~
+%Warning-SYMRSVDWORD: ../src/lowrisc_ip_pwrmgr_0.1/rtl/pwrmgr_reg_pkg.sv:103: Symbol matches C++ common word: 'abort'
+    } abort;
+      ^~~~~
+%Warning-MULTIDRIVEN: ../src/lowrisc_prim_generic_ram_2p_0/rtl/prim_generic_ram_2p.sv:32: Signal has multiple driving blocks with different clocking: 'top_earlgrey_verilator.top_earlgrey.u_usbdev.u_memory_2p.genblk1.gen_srammem.u_mem.gen_generic.u_impl_generic.mem'
+                      ../src/lowrisc_prim_generic_ram_2p_0/rtl/prim_generic_ram_2p.sv:49: ... Location of first driving block
+        mem[b_addr_i] <= b_wdata_i;
+        ^~~
+                      ../src/lowrisc_prim_generic_ram_2p_0/rtl/prim_generic_ram_2p.sv:40: ... Location of other driving block
+        mem[a_addr_i] <= a_wdata_i;
+        ^~~
+%Warning-UNOPTFLAT: ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_linkstate.sv:72: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_impl.u_usbdev_linkstate.ev_bus_inactive'
+  logic ev_bus_inactive, ev_reset;
+        ^~~~~~~~~~~~~~~
+                    ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_linkstate.sv:72:      Example path: top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_impl.u_usbdev_linkstate.ev_bus_inactive
+                    ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_linkstate.sv:115:      Example path: ALWAYS
+                    ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_linkstate.sv:63:      Example path: top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_impl.u_usbdev_linkstate.monitor_inac
+                    ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_linkstate.sv:245:      Example path: ALWAYS
+                    ../src/lowrisc_ip_usbdev_0.1/rtl/usbdev_linkstate.sv:72:      Example path: top_earlgrey_verilator.top_earlgrey.u_usbdev.usbdev_impl.u_usbdev_linkstate.ev_bus_inactive
+%Warning-UNOPTFLAT: ../src/lowrisc_ip_alert_handler_component_0.1/rtl/alert_handler.sv:141: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_alert_handler.class_accum_trig'
+  logic [N_CLASSES-1:0] class_accum_trig;
+                        ^~~~~~~~~~~~~~~~
+                    ../src/lowrisc_ip_alert_handler_component_0.1/rtl/alert_handler.sv:141:      Example path: top_earlgrey_verilator.top_earlgrey.u_alert_handler.class_accum_trig
+                    ../src/lowrisc_ip_alert_handler_component_0.1/rtl/alert_handler_esc_timer.sv:69:      Example path: ALWAYS
+                    ../src/lowrisc_ip_alert_handler_component_0.1/rtl/alert_handler_esc_timer.sv:34:      Example path: top_earlgrey_verilator.top_earlgrey.u_alert_handler.__Vcellout__gen_classes[0].i_esc_timer__esc_trig_o
+                    ../src/lowrisc_ip_alert_handler_component_0.1/rtl/alert_handler.sv:169:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_alert_handler_component_0.1/rtl/alert_handler.sv:45:      Example path: top_earlgrey_verilator.top_earlgrey.u_alert_handler.hw2reg_wrap
+                    ../src/lowrisc_ip_alert_handler_component_0.1/rtl/alert_handler_accu.sv:29:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_alert_handler_component_0.1/rtl/alert_handler_accu.sv:26:      Example path: top_earlgrey_verilator.top_earlgrey.u_alert_handler.gen_classes[0].i_accu.trig_gated
+                    ../src/lowrisc_ip_alert_handler_component_0.1/rtl/alert_handler.sv:153:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_alert_handler_component_0.1/rtl/alert_handler.sv:141:      Example path: top_earlgrey_verilator.top_earlgrey.u_alert_handler.class_accum_trig
+%Warning-UNOPTFLAT: ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:34: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.dio_in'
+  logic [14:0] dio_in;
+               ^~~~~~
+                    ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:34:      Example path: top_earlgrey_verilator.dio_in
+                    ../src/lowrisc_ip_spi_device_0.1/rtl/spi_device.sv:319:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_spi_device_0.1/rtl/spi_device.sv:50:      Example path: top_earlgrey_verilator.top_earlgrey.u_spi_device.clk_spi_out
+                    ../src/lowrisc_ip_spi_device_0.1/rtl/spi_fwmode.sv:128:      Example path: ACTIVE
+                    ../src/lowrisc_ip_spi_device_0.1/rtl/spi_fwmode.sv:128:      Example path: ALWAYS
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_async.sv:27:      Example path: top_earlgrey_verilator.top_earlgrey.u_spi_device.__Vcellout__u_tx_fifo__rdata
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_async.sv:173:      Example path: ASSIGNW
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_fifo_async.sv:27:      Example path: top_earlgrey_verilator.top_earlgrey.u_spi_device.__Vcellout__u_tx_fifo__rdata
+                    ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:959:      Example path: ASSIGNW
+                    ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:128:      Example path: top_earlgrey_verilator.top_earlgrey.dio_d2p
+                    ../src/lowrisc_ip_pinmux_component_0.1/rtl/pinmux.sv:192:      Example path: ASSIGNW
+                    ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:35:      Example path: top_earlgrey_verilator.dio_out
+                    ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:38:      Example path: ASSIGNW
+                    ../src/lowrisc_systems_top_earlgrey_verilator_0.1/rtl/top_earlgrey_verilator.sv:34:      Example path: top_earlgrey_verilator.dio_in
+%Warning-UNOPTFLAT: ../src/lowrisc_prim_all_0.1/rtl/prim_esc_sender.sv:40: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_alert_handler.__Vcellout__gen_esc_sev[0].i_esc_sender__esc_tx_o'
+  output esc_tx_t esc_tx_o
+                  ^~~~~~~~
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_esc_sender.sv:40:      Example path: top_earlgrey_verilator.top_earlgrey.u_alert_handler.__Vcellout__gen_esc_sev[0].i_esc_sender__esc_tx_o
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_esc_sender.sv:75:      Example path: ASSIGNW
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_esc_sender.sv:40:      Example path: top_earlgrey_verilator.top_earlgrey.u_alert_handler.__Vcellout__gen_esc_sev[0].i_esc_sender__esc_tx_o
+%Warning-UNOPTFLAT: ../src/lowrisc_ip_spi_device_0.1/rtl/spi_device.sv:52: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_spi_device.reg2hw'
+  spi_device_reg2hw_t reg2hw;
+                      ^~~~~~
+                    ../src/lowrisc_ip_spi_device_0.1/rtl/spi_device.sv:52:      Example path: top_earlgrey_verilator.top_earlgrey.u_spi_device.reg2hw
+                    ../src/lowrisc_ip_spi_device_0.1/rtl/spi_device.sv:319:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_spi_device_0.1/rtl/spi_device.sv:50:      Example path: top_earlgrey_verilator.top_earlgrey.u_spi_device.clk_spi_out
+                    ../src/lowrisc_ip_spi_device_0.1/rtl/spi_fwmode.sv:105:      Example path: ACTIVE
+                    ../src/lowrisc_ip_spi_device_0.1/rtl/spi_fwmode.sv:105:      Example path: ALWAYS
+                    ../src/lowrisc_ip_spi_device_0.1/rtl/spi_device.sv:52:      Example path: top_earlgrey_verilator.top_earlgrey.u_spi_device.reg2hw
+                    ../src/lowrisc_ip_spi_device_0.1/rtl/spi_device_reg_top.sv:260:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_spi_device_0.1/rtl/spi_device.sv:52:      Example path: top_earlgrey_verilator.top_earlgrey.u_spi_device.reg2hw
+%Warning-UNOPTFLAT: ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:203: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.dfifo_rspready'
+  logic [  M-1:0] dfifo_rspready;
+                  ^~~~~~~~~~~~~~
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:203:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.dfifo_rspready
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:211:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:81:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.dreq_fifo_i
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:50:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:164:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.tl_sm1_20_ds_h2d
+                    ../src/lowrisc_tlul_adapter_sram_0.1/rtl/tlul_adapter_sram.sv:153:      Example path: ASSIGNW
+                    ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:438:      Example path: top_earlgrey_verilator.top_earlgrey.flash_host_addr
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy.sv:65:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy.sv:42:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.host_bank_sel
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy.sv:127:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:17:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.__Vcellinp__gen_flash_banks[0].i_core__host_req_i
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:84:      Example path: ALWAYS
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:47:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.reqs
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_rd.sv:111:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_rd.sv:56:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.buf_match
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_rd.sv:221:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:68:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.rd_stage_rdy
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:84:      Example path: ALWAYS
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:26:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.host_req_rdy_o
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy.sv:135:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy.sv:44:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.host_req_rdy
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy.sv:69:      Example path: ASSIGNW
+                    ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:435:      Example path: top_earlgrey_verilator.top_earlgrey.flash_host_req_rdy
+                    ../src/lowrisc_tlul_adapter_sram_0.1/rtl/tlul_adapter_sram.sv:129:      Example path: ASSIGNW
+                    ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:113:      Example path: top_earlgrey_verilator.top_earlgrey.tl_eflash_d_d2h
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:37:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:82:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.drsp_fifo_o
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:236:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:203:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.dfifo_rspready
+%Warning-UNOPTFLAT: ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:76: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.hrsp_fifo_i'
+  tlul_pkg::tl_d2h_t hrsp_fifo_i [M];
+                     ^~~~~~~~~~~
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:76:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.hrsp_fifo_i
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:37:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:20:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.gen_host_fifo[0].u_hostfifo.tl_h_o
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:131:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:40:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.__Vcellout__u_sm1_20__tl_h_o
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:584:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:162:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.tl_sm1_20_us_d2h
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:279:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:172:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.tl_s1n_21_ds_d2h
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:600:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:56:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.__Vcellinp__u_s1n_21__tl_d_i
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:37:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:20:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.gen_dfifo[0].fifo_d.tl_h_o
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:192:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:127:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.tl_u_i
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:147:      Example path: ALWAYS
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:146:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.hfifo_reqready
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:157:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:71:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.tl_t_i
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:37:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:168:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.tl_s1n_21_us_d2h
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:37:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:90:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.tl_d_fifo2ibex
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_load_store_unit.sv:477:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_load_store_unit.sv:102:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.load_store_unit_i.data_or_pmp_err
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_load_store_unit.sv:497:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_core.sv:139:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.lsu_load_err
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:843:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:812:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.id_stage_i.gen_stall_mem.instr_kill
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:855:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:200:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.id_stage_i.instr_executing
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:689:      Example path: ALWAYS
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:197:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.id_stage_i.jump_set
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:279:      Example path: ALWAYS
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_core.sv:134:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.pc_set
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_prefetch_buffer.sv:174:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_prefetch_buffer.sv:57:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.if_stage_i.gen_prefetch_buffer.prefetch_buffer_i.instr_addr
+                    ../src/lowrisc_tlul_adapter_host_0.1/rtl/tlul_adapter_host.sv:84:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:87:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.tl_i_ibex2fifo
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:50:      Example path: ASSIGNW
+                    ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:63:      Example path: top_earlgrey_verilator.top_earlgrey.tl_corei_h_h2d
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:48:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:70:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_16.tl_t_o
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:130:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:126:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_16.tl_u_o
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:50:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:21:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_16.gen_dfifo[0].fifo_d.tl_d_o
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:193:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:55:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.__Vcellout__u_s1n_16__tl_d_o
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:528:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:133:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.tl_s1n_16_ds_h2d
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:266:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:161:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.tl_sm1_20_us_h2d
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:583:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:39:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.__Vcellinp__u_sm1_20__tl_h_i
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:108:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:90:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.gen_host_fifo[0].hreq_fifo_i
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:50:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:21:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.gen_host_fifo[0].u_hostfifo.tl_d_o
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:132:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:75:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.hreq_fifo_o
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:176:      Example path: ASSIGNW
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:37:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.__Vcellinp__gen_arb_ppc.u_reqarb__data_i
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:97:      Example path: ALWAYS
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:42:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.__Vcellout__gen_arb_ppc.u_reqarb__data_o
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:211:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:81:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.dreq_fifo_i
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:50:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:164:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.tl_sm1_20_ds_h2d
+                    ../src/lowrisc_tlul_adapter_sram_0.1/rtl/tlul_adapter_sram.sv:153:      Example path: ASSIGNW
+                    ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:438:      Example path: top_earlgrey_verilator.top_earlgrey.flash_host_addr
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy.sv:65:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy.sv:42:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.host_bank_sel
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy.sv:127:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:17:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.__Vcellinp__gen_flash_banks[0].i_core__host_req_i
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:84:      Example path: ALWAYS
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:47:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.reqs
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_rd.sv:111:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_rd.sv:56:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.buf_match
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_rd.sv:221:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:68:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.rd_stage_rdy
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:84:      Example path: ALWAYS
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_core.sv:26:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.host_req_rdy_o
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy.sv:135:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy.sv:44:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.host_req_rdy
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy.sv:69:      Example path: ASSIGNW
+                    ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:435:      Example path: top_earlgrey_verilator.top_earlgrey.flash_host_req_rdy
+                    ../src/lowrisc_tlul_adapter_sram_0.1/rtl/tlul_adapter_sram.sv:129:      Example path: ASSIGNW
+                    ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:113:      Example path: top_earlgrey_verilator.top_earlgrey.tl_eflash_d_d2h
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:37:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:82:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.drsp_fifo_o
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:79:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:79:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.hgrant
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:240:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:76:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_20.hrsp_fifo_i
+%Warning-UNOPTFLAT: ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:60: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_arb_ppc.u_reqarb.gen_normal_case.arb_req'
+    logic [N-1:0] arb_req;
+                  ^~~~~~~
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:60:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_arb_ppc.u_reqarb.gen_normal_case.arb_req
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:70:      Example path: ALWAYS
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:59:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_arb_ppc.u_reqarb.gen_normal_case.ppc_out
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:78:      Example path: ASSIGNW
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:62:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_arb_ppc.u_reqarb.gen_normal_case.winner
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:79:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:79:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.hgrant
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:240:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:76:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.hrsp_fifo_i
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:37:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:20:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_host_fifo[0].u_hostfifo.tl_h_o
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:131:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:40:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.__Vcellout__u_sm1_17__tl_h_o
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:542:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:141:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.tl_sm1_17_us_d2h
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:270:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:172:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.tl_s1n_21_ds_d2h
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:600:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:56:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.__Vcellinp__u_s1n_21__tl_d_i
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:37:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:20:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.gen_dfifo[0].fifo_d.tl_h_o
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:192:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:127:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.tl_u_i
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:147:      Example path: ALWAYS
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:146:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.hfifo_reqready
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:157:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:71:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.tl_t_i
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:37:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:168:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.tl_s1n_21_us_d2h
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:37:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:90:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.tl_d_fifo2ibex
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_load_store_unit.sv:477:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_load_store_unit.sv:102:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.load_store_unit_i.data_or_pmp_err
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_load_store_unit.sv:497:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_core.sv:139:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.lsu_load_err
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:843:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:812:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.id_stage_i.gen_stall_mem.instr_kill
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:855:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:200:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.id_stage_i.instr_executing
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:689:      Example path: ALWAYS
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:197:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.id_stage_i.jump_set
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_controller.sv:279:      Example path: ALWAYS
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_core.sv:134:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.pc_set
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_prefetch_buffer.sv:174:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_prefetch_buffer.sv:57:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.if_stage_i.gen_prefetch_buffer.prefetch_buffer_i.instr_addr
+                    ../src/lowrisc_tlul_adapter_host_0.1/rtl/tlul_adapter_host.sv:84:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:87:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.tl_i_ibex2fifo
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:50:      Example path: ASSIGNW
+                    ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:63:      Example path: top_earlgrey_verilator.top_earlgrey.tl_corei_h_h2d
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:48:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:70:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_16.tl_t_o
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:130:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:126:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_16.tl_u_o
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:50:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:21:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_16.gen_dfifo[0].fifo_d.tl_d_o
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:193:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:55:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.__Vcellout__u_s1n_16__tl_d_o
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:528:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:133:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.tl_s1n_16_ds_h2d
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:257:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:140:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.tl_sm1_17_us_h2d
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:541:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:39:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.__Vcellinp__u_sm1_17__tl_h_i
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:108:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:90:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_host_fifo[0].hreq_fifo_i
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:50:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:21:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_host_fifo[0].u_hostfifo.tl_d_o
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:132:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:75:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.hreq_fifo_o
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:163:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_m1_0.1/rtl/tlul_socket_m1.sv:78:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.hrequest
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:64:      Example path: ASSIGNW
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:58:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_arb_ppc.u_reqarb.gen_normal_case.masked_req
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:65:      Example path: ASSIGNW
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_ppc.sv:60:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_sm1_17.gen_arb_ppc.u_reqarb.gen_normal_case.arb_req
+%Warning-UNOPTFLAT: ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:259: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.id_stage_i.lsu_req'
+  logic        lsu_req, lsu_req_dec;
+               ^~~~~~~
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:259:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.id_stage_i.lsu_req
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_load_store_unit.sv:336:      Example path: ALWAYS
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_core.sv:245:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.data_req_out
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_core.sv:637:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:76:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.data_req
+                    ../src/lowrisc_tlul_adapter_host_0.1/rtl/tlul_adapter_host.sv:84:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:89:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.tl_d_ibex2fifo
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:50:      Example path: ASSIGNW
+                    ../src/lowrisc_systems_top_earlgrey_0.1/rtl/autogen/top_earlgrey.sv:66:      Example path: top_earlgrey_verilator.top_earlgrey.tl_cored_h_h2d
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:48:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:70:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.tl_t_o
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:130:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:126:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.tl_u_o
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_err_resp.sv:38:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_err_resp.sv:13:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.__Vcellout__err_resp__tl_h_o
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:216:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:127:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.tl_u_i
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:147:      Example path: ALWAYS
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:146:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.hfifo_reqready
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:157:      Example path: ASSIGNW
+                    ../src/lowrisc_tlul_socket_1n_0.1/rtl/tlul_socket_1n.sv:71:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.u_s1n_21.tl_t_i
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:37:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_xbar_main_0.1/xbar_main.sv:168:      Example path: top_earlgrey_verilator.top_earlgrey.u_xbar_main.tl_s1n_21_us_d2h
+                    ../src/lowrisc_tlul_common_0.1/rtl/tlul_fifo_sync.sv:37:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_rv_core_ibex_0.1/rtl/rv_core_ibex.sv:90:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.tl_d_fifo2ibex
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_load_store_unit.sv:477:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_load_store_unit.sv:102:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.load_store_unit_i.data_or_pmp_err
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_load_store_unit.sv:497:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_core.sv:139:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.lsu_load_err
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:843:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:812:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.id_stage_i.gen_stall_mem.instr_kill
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:855:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:200:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.id_stage_i.instr_executing
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:587:      Example path: ASSIGNW
+                    ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_id_stage.sv:259:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.id_stage_i.lsu_req
+%Warning-UNOPTFLAT: ../src/lowrisc_ibex_ibex_core_0.1/rtl/ibex_cs_registers.sv:174: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_rv_core_ibex.u_core.cs_registers_i.mie_q'
+  irqs_t       mie_q, mie_d;
+               ^~~~~
+%Warning-UNOPTFLAT: ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:65: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.i_valid_random.gen_normal_case.idx_tree'
+                                                                           : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core
+    logic [2**(NumLevels+1)-2:0][NumLevels-1:0] idx_tree;
+                                                ^~~~~~~~
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:65:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.i_valid_random.gen_normal_case.idx_tree
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:146:      Example path: ASSIGNW
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:65:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.i_valid_random.gen_normal_case.idx_tree
+%Warning-UNOPTFLAT: ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:66: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.i_valid_random.gen_normal_case.data_tree'
+                                                                           : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core
+    logic [2**(NumLevels+1)-2:0][DW-1:0]       data_tree;
+                                               ^~~~~~~~~
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:66:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.i_valid_random.gen_normal_case.data_tree
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:148:      Example path: ASSIGNW
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:66:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.i_valid_random.gen_normal_case.data_tree
+%Warning-UNOPTFLAT: ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:45: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_rv_plic.gen_target[0].u_target.id_tree'
+  logic [2**(NumLevels+1)-2:0][SrcWidth-1:0]  id_tree;
+                                              ^~~~~~~
+                    ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:45:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_plic.gen_target[0].u_target.id_tree
+                    ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:102:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:45:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_plic.gen_target[0].u_target.id_tree
+%Warning-UNOPTFLAT: ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_rd.sv:67: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.buf_invalid_alloc'
+                                                                           : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core
+  logic [NumBuf-1:0] buf_invalid_alloc;
+                     ^~~~~~~~~~~~~~~~~
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_rd.sv:67:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.buf_invalid_alloc
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_rd.sv:79:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_flash_ctrl_0.1/rtl/flash_phy_rd.sv:67:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.buf_invalid_alloc
+%Warning-UNOPTFLAT: ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:63: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.i_valid_random.gen_normal_case.req_tree'
+                                                                           : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core
+    logic [2**(NumLevels+1)-2:0]               req_tree;
+                                               ^~~~~~~~
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:63:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.i_valid_random.gen_normal_case.req_tree
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:144:      Example path: ASSIGNW
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:63:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.i_valid_random.gen_normal_case.req_tree
+%Warning-UNOPTFLAT: ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:44: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_rv_plic.gen_target[0].u_target.is_tree'
+  logic [2**(NumLevels+1)-2:0]            is_tree;
+                                          ^~~~~~~
+                    ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:44:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_plic.gen_target[0].u_target.is_tree
+                    ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:98:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:95:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_plic.gen_target[0].u_target.gen_tree[0].gen_level[0].gen_nodes.sel
+                    ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:101:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:44:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_plic.gen_target[0].u_target.is_tree
+%Warning-UNOPTFLAT: ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:46: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_rv_plic.gen_target[0].u_target.max_tree'
+  logic [2**(NumLevels+1)-2:0][PrioWidth-1:0] max_tree;
+                                              ^~~~~~~~
+                    ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:46:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_plic.gen_target[0].u_target.max_tree
+                    ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:98:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:95:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_plic.gen_target[0].u_target.gen_tree[0].gen_level[0].gen_nodes.sel
+                    ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:103:      Example path: ASSIGNW
+                    ../src/lowrisc_ip_rv_plic_component_0.1/rtl/rv_plic_target.sv:46:      Example path: top_earlgrey_verilator.top_earlgrey.u_rv_plic.gen_target[0].u_target.max_tree
+%Warning-UNOPTFLAT: ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:64: Signal unoptimizable: Feedback to clock or circular logic: 'top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.i_valid_random.gen_normal_case.gnt_tree'
+                                                                           : ... In instance top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core
+    logic [2**(NumLevels+1)-2:0]               gnt_tree;
+                                               ^~~~~~~~
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:64:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.i_valid_random.gen_normal_case.gnt_tree
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:151:      Example path: ASSIGNW
+                    ../src/lowrisc_prim_all_0.1/rtl/prim_arbiter_tree.sv:64:      Example path: top_earlgrey_verilator.top_earlgrey.u_flash_eflash.gen_flash_banks[0].i_core.i_rd.i_valid_random.gen_normal_case.gnt_tree
+make OPT_FAST="-O2" -f Vtop_earlgrey_verilator.mk
+make[1]: Entering directory '/usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator'
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o dmidpi.o ../src/lowrisc_dv_dpi_dmidpi_0.1/dmidpi.c
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o gpiodpi.o ../src/lowrisc_dv_dpi_gpiodpi_0.1/gpiodpi.c
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o jtagdpi.o ../src/lowrisc_dv_dpi_jtagdpi_0.1/jtagdpi.c
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o monitor_spi.o ../src/lowrisc_dv_dpi_spidpi_0.1/monitor_spi.c
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o spidpi.o ../src/lowrisc_dv_dpi_spidpi_0.1/spidpi.c
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o tcp_server.o ../src/lowrisc_dv_dpi_tcp_server_0.1/tcp_server.c
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o uartdpi.o ../src/lowrisc_dv_dpi_uartdpi_0.1/uartdpi.c
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o monitor_usb.o ../src/lowrisc_dv_dpi_usbdpi_0.1/monitor_usb.c
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o usb_crc.o ../src/lowrisc_dv_dpi_usbdpi_0.1/usb_crc.c
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o usbdpi.o ../src/lowrisc_dv_dpi_usbdpi_0.1/usbdpi.c
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o verilator_memutil.o ../src/lowrisc_dv_verilator_memutil_verilator_0/cpp/verilator_memutil.cc
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o verilated_toplevel.o ../src/lowrisc_dv_verilator_simutil_verilator_0/cpp/verilated_toplevel.cc
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o verilator_sim_ctrl.o ../src/lowrisc_dv_verilator_simutil_verilator_0/cpp/verilator_sim_ctrl.cc
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o top_earlgrey_verilator.o ../src/lowrisc_systems_top_earlgrey_verilator_0.1/top_earlgrey_verilator.cc
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o verilated.o /tools/verilator/4.028/share/verilator/include/verilated.cpp
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o verilated_dpi.o /tools/verilator/4.028/share/verilator/include/verilated_dpi.cpp
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o verilated_fst_c.o /tools/verilator/4.028/share/verilator/include/verilated_fst_c.cpp
+/usr/bin/perl /tools/verilator/4.028/share/verilator/bin/verilator_includer -DVL_INCLUDE_OPT=include Vtop_earlgrey_verilator.cpp Vtop_earlgrey_verilator_tlul_socket_m1__pi12.cpp Vtop_earlgrey_verilator_flash_phy_core.cpp Vtop_earlgrey_verilator_pinmux_wkup.cpp Vtop_earlgrey_verilator_padctrl_reg_pkg.cpp Vtop_earlgrey_verilator_pinmux_reg_pkg.cpp Vtop_earlgrey_verilator_aes_reg_pkg.cpp Vtop_earlgrey_verilator_flash_ctrl_reg_pkg.cpp Vtop_earlgrey_verilator_gpio_reg_pkg.cpp Vtop_earlgrey_verilator_hmac_reg_pkg.cpp Vtop_earlgrey_verilator_nmi_gen_reg_pkg.cpp Vtop_earlgrey_verilator_pinmux_pkg.cpp Vtop_earlgrey_verilator_pwrmgr_reg_pkg.cpp Vtop_earlgrey_verilator_rstmgr_reg_pkg.cpp Vtop_earlgrey_verilator_rv_timer_reg_pkg.cpp Vtop_earlgrey_verilator_spi_device_reg_pkg.cpp Vtop_earlgrey_verilator_uart_reg_pkg.cpp Vtop_earlgrey_verilator_usbdev_reg_pkg.cpp Vtop_earlgrey_verilator_clkmgr_reg_pkg.cpp Vtop_earlgrey_verilator_rv_plic_reg_pkg.cpp Vtop_earlgrey_verilator_alert_handler_reg_pkg.cpp Vtop_earlgrey_verilator_tlul_fifo_sync__R0_RB0_RC2_RD2.cpp Vtop_earlgrey_verilator_tlul_fifo_sync__RC0_RD0.cpp Vtop_earlgrey_verilator_hmac_pkg.cpp Vtop_earlgrey_verilator_aes_sbox.cpp > Vtop_earlgrey_verilator__ALLcls.cpp
+/usr/bin/perl /tools/verilator/4.028/share/verilator/bin/verilator_includer -DVL_INCLUDE_OPT=include Vtop_earlgrey_verilator__Dpi.cpp Vtop_earlgrey_verilator__Trace.cpp Vtop_earlgrey_verilator__Syms.cpp Vtop_earlgrey_verilator__Trace__Slow.cpp > Vtop_earlgrey_verilator__ALLsup.cpp
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g  -O2 -c -o Vtop_earlgrey_verilator__ALLcls.o Vtop_earlgrey_verilator__ALLcls.cpp
+g++  -I.  -MMD -I/tools/verilator/4.028/share/verilator/include -I/tools/verilator/4.028/share/verilator/include/vltstd -DVM_COVERAGE=0 -DVM_SC=0 -DVM_TRACE=1 -faligned-new -fcf-protection=none -Wno-bool-operation -Wno-sign-compare -Wno-uninitialized -Wno-unused-but-set-variable -Wno-unused-parameter -Wno-unused-variable -Wno-shadow     -I../src/lowrisc_dv_dpi_gpiodpi_0.1 -I../src/lowrisc_dv_dpi_spidpi_0.1 -I../src/lowrisc_dv_dpi_tcp_server_0.1 -I../src/lowrisc_dv_dpi_uartdpi_0.1 -I../src/lowrisc_dv_dpi_usbdpi_0.1 -I../src/lowrisc_dv_verilator_simutil_verilator_0/cpp -I../src/lowrisc_prim_assert_0.1/rtl -I../src/lowrisc_prim_util_memload_0/rtl -I../src/lowrisc_dv_dpi_dmidpi_0.1 -I../src/lowrisc_dv_dpi_jtagdpi_0.1 -I../src/lowrisc_dv_verilator_memutil_verilator_0/cpp -std=c++11 -Wall -DVM_TRACE_FMT_FST -DTOPLEVEL_NAME=top_earlgrey_verilator -g   -c -o Vtop_earlgrey_verilator__ALLsup.o Vtop_earlgrey_verilator__ALLsup.cpp
+In file included from Vtop_earlgrey_verilator__ALLcls.cpp:3:
+Vtop_earlgrey_verilator.cpp: In static member function ‘static void Vtop_earlgrey_verilator::_sequent__TOP__155(Vtop_earlgrey_verilator__Syms*)’:
+Vtop_earlgrey_verilator.cpp:217613:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_order__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217612 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_order[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217613 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_order__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217606:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_order__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217605 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_order[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217606 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_order__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217585:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_rdata__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217584 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_rdata[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217585 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_rdata__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217731:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_pc_rdata__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217730 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_pc_rdata[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217731 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_pc_rdata__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217689:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_pc_wdata__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217688 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_pc_wdata[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217689 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_pc_wdata__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217759:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_insn__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217758 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_insn[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217759 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_insn__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217599:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rd_wdata__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217598 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rd_wdata[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217599 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rd_wdata__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217557:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs1_rdata__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217556 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs1_rdata[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217557 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs1_rdata__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217571:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs2_rdata__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217570 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs2_rdata[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217571 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs2_rdata__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217745:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs3_rdata__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217744 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs3_rdata[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217745 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs3_rdata__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217543:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_wdata__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217542 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_wdata[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217543 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_wdata__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217529:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_addr__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217528 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_addr[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217529 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_addr__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217522:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_addr__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217521 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_addr[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217522 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_addr__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217536:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_wdata__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217535 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_wdata[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217536 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_wdata__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217752:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_insn__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217751 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_insn[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217752 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_insn__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217682:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_pc_wdata__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217681 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_pc_wdata[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217682 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_pc_wdata__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217578:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_rdata__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217577 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_rdata[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217578 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_rdata__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217724:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_pc_rdata__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217723 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_pc_rdata[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217724 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_pc_rdata__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217550:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs1_rdata__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217549 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs1_rdata[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217550 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs1_rdata__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217564:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs2_rdata__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217563 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs2_rdata[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217564 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs2_rdata__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217738:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs3_rdata__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217737 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs3_rdata[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217738 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs3_rdata__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217592:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rd_wdata__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217591 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rd_wdata[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217592 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rd_wdata__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217631:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs2_addr__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217630 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs2_addr[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217631 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs2_addr__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217645:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs1_addr__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217644 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs1_addr[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217645 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs1_addr__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217703:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mode__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217702 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mode[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217703 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mode__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217515:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_intr__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217514 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_intr[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217515 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_intr__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217675:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_trap__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217674 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_trap[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217675 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_trap__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217773:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs3_addr__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217772 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs3_addr[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217773 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs3_addr__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217717:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_wmask__v2’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217716 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_wmask[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217717 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_wmask__v2;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217661:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rd_addr__v3’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217660 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rd_addr[1U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217661 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rd_addr__v3;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217624:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs2_addr__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217623 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs2_addr[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217624 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs2_addr__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217638:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs1_addr__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217637 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs1_addr[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217638 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs1_addr__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217508:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_intr__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217507 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_intr[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217508 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_intr__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217696:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mode__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217695 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mode[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217696 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mode__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217668:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_trap__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217667 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_trap[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217668 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_trap__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217710:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_wmask__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217709 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_wmask[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217710 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_mem_wmask__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217652:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rd_addr__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217651 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rd_addr[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217652 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rd_addr__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Vtop_earlgrey_verilator.cpp:217766:13: warning: ‘__Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs3_addr__v0’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+217765 |         vlTOPp->top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs3_addr[0U]
+       |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+217766 |             = __Vdlyvval__top_earlgrey_verilator__DOT__top_earlgrey__DOT__u_rv_core_ibex__DOT__u_core__DOT__rvfi_stage_rs3_addr__v0;
+       |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ar -cr Vtop_earlgrey_verilator__ALL.a Vtop_earlgrey_verilator__ALLcls.o Vtop_earlgrey_verilator__ALLsup.o
+ranlib Vtop_earlgrey_verilator__ALL.a
+g++    dmidpi.o gpiodpi.o jtagdpi.o monitor_spi.o spidpi.o tcp_server.o uartdpi.o monitor_usb.o usb_crc.o usbdpi.o verilator_memutil.o verilated_toplevel.o verilator_sim_ctrl.o top_earlgrey_verilator.o verilated.o verilated_dpi.o verilated_fst_c.o Vtop_earlgrey_verilator__ALL.a   -lz -pthread -lutil -lelf  -o Vtop_earlgrey_verilator -lm -lstdc++
+make[1]: Leaving directory '/usr/local/google/home/satnam/opentitan/build/lowrisc_systems_top_earlgrey_verilator_0.1/sim-verilator'
