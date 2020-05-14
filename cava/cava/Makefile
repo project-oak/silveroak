@@ -37,5 +37,4 @@ Makefile.coq:	_CoqProject
 
 clean:
 		-@$(MAKE) -f Makefile.coq clean
-		git clean -xfd
-
+		git clean -Xfd

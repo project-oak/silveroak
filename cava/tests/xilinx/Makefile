@@ -17,7 +17,7 @@
 # To simulate Xilinx specific SystemVerilog netlists the environment
 # variable XILINX should point to the root of the Xilinx software
 # tools installation directory e.g.
-#    ...../vivado/2018.3 
+#    ...../vivado/2018.3
 
 .PHONY: all coq clean
 
@@ -60,5 +60,5 @@ lut1_inv.sv:	coq VivadoTestsSV
 
 clean:
 	-@$(MAKE) -f Makefile.coq clean
-	git clean -xfd
+	git clean -Xfd
 	rm -rf obj_dir

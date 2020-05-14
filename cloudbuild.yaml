@@ -1,22 +1,27 @@
 # Reference: https://cloud.google.com/cloud-build/docs/build-config
 
 steps:
-  - name: 'nixos/nix:2.2.1'
-    id: build_docker_image
+  - name: 'nixos/nix:2.3.4'
+    id: cache_dependencies
     waitFor: ['-']
     timeout: 20m
-    entrypoint: 'sh'
-    args: ['.ci/build_docker_image.sh']
+    entrypoint: 'nix-shell'
+    args: ['--run', 'echo "Done."']
+    volumes:
+    - name: nix-store
+      path: /nix/
 
-  - name: 'gcr.io/oak-ci/oak-hardware'
+  - name: 'nixos/nix:2.3.4'
     id: run_makefile
-    waitFor: ['build_docker_image']
+    waitFor: ['cache_dependencies']
     timeout: 20m
-    entrypoint: 'make'
+    entrypoint: 'nix-shell'
+    args: ['--run', 'git init; make']
+    volumes:
+    - name: nix-store
+      path: /nix/
 
-  # # TODO: Push docker image on merge to master
-
-timeout: 1h
+timeout: 30m
 
 options:
   # See: https://cloud.google.com/cloud-build/docs/api/reference/rest/Shared.Types/MachineType

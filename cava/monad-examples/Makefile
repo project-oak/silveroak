@@ -54,5 +54,4 @@ nand2.sv:	coq ExamplesSV
 
 clean:
 	-@$(MAKE) -f Makefile.coq clean
-	git clean -xfd
-	rm -rf obj_dir
+	git clean -Xfd
