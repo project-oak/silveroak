@@ -22,3 +22,7 @@ ExamplesSV
 
 # Haskell build chain files
 dist/*
+
+*.cpp
+*.tcl
+obj_dir/

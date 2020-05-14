@@ -21,12 +21,12 @@ all:		vlint adder8.edn
 VERILATOR = verilator +1800-2012ext+sv
 VLINT = $(VERILATOR) --lint-only
 
-vlint:		
+vlint:
 		$(VLINT) adder8.sv
 
 adder8.edn:	adder8.sv
 		vivado -mode tcl -source adder8.tcl
 
 
-clean:		
-		git clean -xfd
+clean:
+		git clean -Xfd
