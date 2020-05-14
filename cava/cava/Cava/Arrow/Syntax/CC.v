@@ -146,7 +146,7 @@ Section WithArrow.
     length (as_object_list env) = n.
   Proof.
     induction env; auto.
-  Qed.
+  Defined.
 
   Hint Extern 4 => 
     match goal with
@@ -154,8 +154,16 @@ Section WithArrow.
     end : core.
 
   Lemma split_lookup : forall n env v1 y o,
-    (n = v1 /\ y = o) \/ lookup_object v1 (as_object_list env) = Some o
+    ((n = v1 /\ y = o) \/ lookup_object v1 (as_object_list env) = Some o)
     -> lookup_object v1 (as_object_list (@ECons n y env)) = Some o.
+  Proof.
+    auto 6.
+  Qed.
+
+  Lemma unsplit_lookup : forall n env v1 y o,
+    lookup_object v1 (as_object_list (@ECons n y env)) = Some o
+    ->
+    ((n = v1 /\ y = o) \/ lookup_object v1 (as_object_list env) = Some o).
   Proof.
     auto 6.
   Qed.
@@ -166,7 +174,17 @@ Section WithArrow.
     -> morphism (o**x) o'.
   Proof.
     Hint Extern 1 => exact exl : core.
-    auto.
+    intros.
+    rewrite H in H0.
+    unfold lookup_object in H0.  
+    simpl in H0.
+    rewrite environment_objects_length_is_n in H0.
+    simpl in H0.
+    destruct (Nat.eq_dec n n).
+    inversion H0.
+    exact exl.
+    destruct n0.
+    reflexivity.
   Defined.
 
   Lemma push_lookup : forall n env o o' x ,
@@ -220,7 +238,7 @@ Section WithArrow.
     @wf_debrujin (ix**iy) o n env expr -> @wf_debrujin iy o (S n) (ECons ix env) (f n).
   Proof.
     auto.
-  Qed.
+  Defined.
 
   (* Perform closure conversion by passing an explicit environment. The higher
   order PHOAS representation is converted to first order form with de Brujin
@@ -241,7 +259,6 @@ Section WithArrow.
     (* Instantiating a variable is done by 'exr' to select the environment, and
     then indexing using lookup_morphism. 'morphisms_coerce' and 'wf' are used to
     align the types and to prove to Coq that the lookup is well formed. *)
-  (* | DVar v => fun wf => exr >>> @extract_variable v n env (as_object env) _ (as_object_list env) (build_morphisms env) eq_refl eq_refl wf *)
   | DVar v => fun wf => exr >>> extract_nth env v wf
     (* Kappa abstraction requires extending the environment which includes
     modifying all the variable morphisms in scope (and their types!).

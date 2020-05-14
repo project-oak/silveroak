@@ -11,7 +11,6 @@ Section WithArrow.
   Section Vars.
     Variable var: object -> object -> Type.
 
-    (* desugared, currently only let removal *)
     Inductive kappa : object -> object -> Type :=
     | DVar : forall x y,   var x y -> kappa x y
     | DAbs : forall x y z, (var unit x -> kappa y z) -> kappa (x**y) z
@@ -28,25 +27,29 @@ Section WithArrow.
 
   Definition Kappa i o := forall var, @kappa var i o.
 
-  (* currently only desugars let bindings *)
+  (* desugars 
+  - let 
+  - object equivalence (iso)
+  *)
   Fixpoint desugar {var i o} (e: kappa_sugared var i o) : kappa var i o :=
   match e with
   | Var x => DVar x
   | Abs f => DAbs (fun x => desugar (f x))
   | App e1 e2 => DApp (desugar e1) (desugar e2)
-  | Compose f g => DCompose (desugar f) (desugar g)
+  | Com f g => DCompose (desugar f) (desugar g)
   | Arr m => DArr m
   | Let x f => DApp (DAbs (fun x => desugar (f x))) (desugar x)
+  | Iso f iso => DCompose (desugar f) (DArr (apply_object_equivalence_left arr _ _ iso)) 
   end.
 
   Definition Desugar {i o} (e: Kappa_sugared i o) : Kappa i o := fun var => desugar (e var).
 
-  Fixpoint kappa_reinject {var i o} (e: kappa var i o) : kappa_sugared var i o :=
+  Fixpoint kappa_project {var i o} (e: kappa var i o) : kappa_sugared var i o :=
   match e with
   | DVar x => Var x
-  | DAbs f => Abs (fun x => kappa_reinject (f x))
-  | DApp e1 e2 => App (kappa_reinject e1) (kappa_reinject e2)
-  | DCompose f g => Compose (kappa_reinject f) (kappa_reinject g)
+  | DAbs f => Abs (fun x => kappa_project (f x))
+  | DApp e1 e2 => App (kappa_project e1) (kappa_project e2)
+  | DCompose f g => Com (kappa_project f) (kappa_project g)
   | DArr m => Arr m
   end.
 End WithArrow.

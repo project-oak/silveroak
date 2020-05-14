@@ -46,10 +46,13 @@ library
                      BitArithmetic
                      Bvector
                      Cava
+                     CC
                      Combinators
-                     Coq
+                     Combinational
                      Datatypes
+                     Desugared
                      IdentityMonad
+                     Kappa
                      List
                      Logic
                      Monad
@@ -58,6 +61,7 @@ library
                      Nat
                      PeanoNat
                      StateMonad
+                     Syntax
                      UnsignedAdders
                      VectorDef
                      Vector
