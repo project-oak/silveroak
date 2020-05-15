@@ -288,7 +288,12 @@ Inductive Primitive: shape -> shape -> Type :=
                                     (One (BitVec [bSize])))
                             (One (BitVec [sumSize]))
   (* Multiplexors *)    
-  | IndexBitArray: forall m n, Primitive (Tuple2 (One (BitVec [n])) (One (BitVec [m]))) (One Bit)
+  | IndexBitArray: forall selWidth nrInputs,
+                   Primitive (Tuple2 (One (BitVec [nrInputs]))
+                             (One (BitVec [selWidth]))) (One Bit)
+  | IndexArray:    forall selWidth nrInputs busWidth,
+                   Primitive (Tuple2 (One (BitVec [busWidth; nrInputs]))
+                             (One (BitVec [selWidth]))) (One (BitVec [busWidth]))
   (* Xilinx FPGA architecture specific gates. *)
   | Lut1:      N -> Primitive (One Bit) (One Bit)
   | Lut2:      N -> Primitive (Tuple2 (One Bit) (One Bit)) (One Bit)
@@ -336,6 +341,9 @@ Definition BindAssignBit i o: PrimitiveInstance := BindPrimitive AssignBit i o.
 
 Definition BindIndexBitArray m n i o: PrimitiveInstance :=
   BindPrimitive (IndexBitArray m n) i o.
+
+Definition BindIndexArray m n w i o: PrimitiveInstance :=
+  BindPrimitive (IndexArray m n w) i o.
 
 Definition BindLut1 config i o : PrimitiveInstance :=
   BindPrimitive (Lut1 config) i o.
@@ -489,6 +497,7 @@ match prim with
 | BindPrimitive DelayBit i _                => [i]
 | BindPrimitive AssignBit i _               => [i]
 | BindPrimitive (IndexBitArray _ _) _ _     => [] (* Do not use *)
+| BindPrimitive (IndexArray _ _ _) _ _      => [] (* Do not use *)
 | BindPrimitive (UnsignedAdd _ _ _) (x,y) _ => x ++ y
 end.
 
@@ -506,6 +515,14 @@ Definition indexBitArraycomponents (prim: PrimitiveInstance) : option
 match prim with
 | BindPrimitive (IndexBitArray _ _) (i, s) o => Some (i, s, o)
 | BindPrimitive _ _ _                        => None
+end.
+
+Definition indexArraycomponents (prim: PrimitiveInstance) : option
+  (list (list N) * list N * list N)
+  :=
+match prim with
+| BindPrimitive (IndexArray _ _ _) (i, s) o => Some (i, s, o)
+| BindPrimitive _ _ _                       => None
 end.
 
 Definition instanceArgs (prim: PrimitiveInstance) : option (list N) :=

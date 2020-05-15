@@ -19,10 +19,14 @@ From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
+From Coq Require Arith.PeanoNat.
+Require Import Omega.
+
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Monad.Cava.
 Require Import Cava.Netlist.
+Require Import Cava.BitArithmetic.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
@@ -64,3 +68,47 @@ Definition mux2_1_tb_xpected_outputs
 Definition mux2_1_tb
   := testBench "mux2_1_tb" mux2_1_Interface
      mux2_1_tb_inputs mux2_1_tb_xpected_outputs.  
+
+Definition muxBus {m bit} `{Cava m bit} '(sel, i) : m (list bit) :=
+  o <- indexArray i sel ;;
+  ret o.
+
+Definition v0 := nat_to_list_bits_sized 8   5.
+Definition v1 := nat_to_list_bits_sized 8 157.
+Definition v2 := nat_to_list_bits_sized 8 255.
+Definition v3 := nat_to_list_bits_sized 8  63.
+Definition v := [v0; v1; v2; v3].
+
+Example m5: combinational (muxBus ([false; false], v)) = v0.
+Proof. reflexivity. Qed.
+
+Example m6: combinational (muxBus ([true; false], v)) = v1.
+Proof. reflexivity. Qed.
+
+Example m7: combinational (muxBus ([false; true], v)) = v2.
+Proof. reflexivity. Qed.
+
+Example m8: combinational (muxBus ([true; true], v)) = v3.
+Proof. reflexivity. Qed.
+
+Definition muxBus4_8Interface
+  := mkCircuitInterface "muxBus4_8"
+     (Tuple2 (One ("sel", BitVec [2])) (One ("i", BitVec [4; 8])))
+     (One ("o", BitVec [8]))
+     [].
+
+Definition muxBus4_8Netlist := makeNetlist muxBus4_8Interface muxBus.
+
+Definition muxBus4_8_tb_inputs :=
+  [([false; false], v);
+   ([true;  false], v);
+   ([false; true],  v);
+   ([true; true],   v)
+  ].
+
+Definition muxBus4_8_tb_expected_outputs
+  := map (fun i => combinational (muxBus i)) muxBus4_8_tb_inputs.
+
+Definition muxBus4_8_tb
+  := testBench "muxBus4_8_tb" muxBus4_8Interface
+     muxBus4_8_tb_inputs muxBus4_8_tb_expected_outputs.    
