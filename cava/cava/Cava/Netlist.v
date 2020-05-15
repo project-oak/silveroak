@@ -287,6 +287,8 @@ Inductive Primitive: shape -> shape -> Type :=
                   Primitive (Tuple2 (One (BitVec [aSize]))
                                     (One (BitVec [bSize])))
                             (One (BitVec [sumSize]))
+  (* Multiplexors *)    
+  | IndexBitArray: forall m n, Primitive (Tuple2 (One (BitVec [n])) (One (BitVec [m]))) (One Bit)
   (* Xilinx FPGA architecture specific gates. *)
   | Lut1:      N -> Primitive (One Bit) (One Bit)
   | Lut2:      N -> Primitive (Tuple2 (One Bit) (One Bit)) (One Bit)
@@ -331,6 +333,9 @@ Definition BindXnor is o: PrimitiveInstance :=
 Definition BindBuf       i o: PrimitiveInstance := BindPrimitive Buf i o.
 Definition BindDelayBit  i o: PrimitiveInstance := BindPrimitive DelayBit i o.
 Definition BindAssignBit i o: PrimitiveInstance := BindPrimitive AssignBit i o.
+
+Definition BindIndexBitArray m n i o: PrimitiveInstance :=
+  BindPrimitive (IndexBitArray m n) i o.
 
 Definition BindLut1 config i o : PrimitiveInstance :=
   BindPrimitive (Lut1 config) i o.
@@ -483,6 +488,7 @@ match prim with
 | BindPrimitive Muxcy (i,(t,e)) _           => [i; t; e]
 | BindPrimitive DelayBit i _                => [i]
 | BindPrimitive AssignBit i _               => [i]
+| BindPrimitive (IndexBitArray _ _) _ _     => [] (* Do not use *)
 | BindPrimitive (UnsignedAdd _ _ _) (x,y) _ => x ++ y
 end.
 
@@ -492,6 +498,14 @@ Definition unsignedAddercomponents (prim: PrimitiveInstance) : option
 match prim with
 | BindPrimitive (UnsignedAdd _ _ _) (x,y) z => Some (x, y, z)
 | BindPrimitive _ _ _                       => None
+end.
+
+Definition indexBitArraycomponents (prim: PrimitiveInstance) : option
+  (list N * list N * N)
+  :=
+match prim with
+| BindPrimitive (IndexBitArray _ _) (i, s) o => Some (i, s, o)
+| BindPrimitive _ _ _                        => None
 end.
 
 Definition instanceArgs (prim: PrimitiveInstance) : option (list N) :=
