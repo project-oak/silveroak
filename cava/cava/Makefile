@@ -21,11 +21,11 @@ all:		coq haskell
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
-FixupAscii:	FixupAscii.hs
-		ghc --make FixupAscii.hs
+FixupHaskell:	FixupHaskell.hs
+		ghc --make $^
 
-haskell:	coq FixupAscii
-		./FixupAscii
+haskell:	coq FixupHaskell
+		./FixupHaskell
 		mv Ascii2.hs Ascii.hs
 		mv ByteVector2.hs ByteVector.hs
 		runhaskell Setup.hs configure --user

@@ -66,10 +66,10 @@ library
                      VectorDef
                      Vector
                      XilinxAdder
-                     ByteVector
   other-Modules:     Applicative
                      BinPos
                      Bool
+                     ByteVector
                      Decimal
                      Functor
                      Specif
