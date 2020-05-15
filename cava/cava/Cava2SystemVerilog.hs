@@ -98,13 +98,11 @@ insertCommas [] = []
 insertCommas [x] = [x]
 insertCommas (x:y:xs) = (x ++ ",") : insertCommas (y:xs)
 
-data VectorDirection = HighToLow | LowToHigh
-                       deriving (Eq, Show)
-
 data VectorAssignment = AssignTo | AssignFrom
 
 data VectorDeclaration
-  = VectorDeclaration VectorAssignment Int [BinNums.N]
+  = VectorDeclaration  VectorAssignment Int [BinNums.N]
+  | Vector2Declaration VectorAssignment Int [[BinNums.N]]
 
 data NetlistGenerationState
   = NetlistGenerationState Int [VectorDeclaration]
@@ -127,14 +125,23 @@ computeVectors' (inst@(Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd aSize bSiz
        put (NetlistGenerationState (v + 3) (vA:vB:vC:vDecs))
        return ("  assign v" ++ show (v + 2) ++ " = v" ++ show v ++
                " + v" ++ show (v + 1) ++ ";")
-computeVectors' (inst@(Netlist.BindPrimitive _ _ (Netlist.IndexBitArray iSize selSize) _ _), _)
+computeVectors' (inst@(Netlist.BindPrimitive _ _ (Netlist.IndexBitArray _ _) _ _), _)
   | Just ((i, s), o) <- Netlist.indexBitArraycomponents inst
   = do NetlistGenerationState v vDecs <- get
        let vI = VectorDeclaration AssignTo   v       i
            vS = VectorDeclaration AssignTo   (v + 1) s
        put (NetlistGenerationState (v + 2) (vI:vS:vDecs))
        return ("  assign net[" ++ show (fromN o) ++ "] = v" ++ show v ++ "[v" ++ show (v + 1) ++
-               "];")             
+               "];")
+computeVectors' (inst@(Netlist.BindPrimitive _ _ (Netlist.IndexArray _ _ _) _ _), _)
+  | Just ((i, s), o) <- Netlist.indexArraycomponents inst
+  = do NetlistGenerationState v vDecs <- get
+       let vI = Vector2Declaration AssignTo   v       i
+           vS = VectorDeclaration  AssignTo   (v + 1) s
+           vO = VectorDeclaration  AssignFrom (v + 2) o
+       put (NetlistGenerationState (v + 3) (vI:vS:vO:vDecs))
+       return ("  assign v" ++ show (v + 2) ++ " = v" ++ show v ++ "[v" ++ show (v + 1) ++
+               "];")              
 computeVectors' (otherInst, instNr) = return (generateInstance otherInst instNr)
 
 declareVectors :: [VectorDeclaration] -> [String]
@@ -146,11 +153,19 @@ declareVector (VectorDeclaration _ i bvec)
     where
     s = length bvec
     range = show (s - 1) ++ ":0"
+declareVector (Vector2Declaration _ i bvec)
+  = "  logic[" ++ range2 ++ "] v" ++ show i ++ "[" ++ range1 ++ "];"
+    where
+    d1 = length bvec
+    d2 = length (head bvec)
+    range1 = show (d1 - 1) ++ ":0"
+    range2 = show (d2 - 1) ++ ":0"
 
 populateVectors :: [VectorDeclaration] -> [String]
 populateVectors = concat . map populateVector
 
 populateVector :: VectorDeclaration -> [String]
+-- 1D Vectors
 populateVector (VectorDeclaration AssignTo v nets)
   = if sequentialUp nets' then
       ["  assign v" ++ show v ++ " = net[" ++
@@ -169,6 +184,29 @@ populateVector (VectorDeclaration AssignFrom v nets)
        "[" ++ show i ++ "];" | (i, li) <- zip [0..] nets']
     where
     nets' = map fromN nets
+-- 2D Vectors
+populateVector (Vector2Declaration AssignTo v nets)
+  = if sequentialUp2D nets' then
+      ["  assign v" ++ show v ++ "[" ++ show i ++ "] = net[" ++
+         show (fromN (last n)) ++ ":" ++ show (fromN (head n)) ++ "];" 
+      | (n, i) <- zip nets [0..]]
+    else
+      ["  assign v" ++ show v ++ "[" ++ show ni ++ "][" ++ show i ++
+       "] = net[" ++ show (fromN li) ++ "];"
+       | (ni, n) <- zip [0..] nets, (i, li) <- zip [0..] n]
+    where
+    nets' = map (map fromN) nets
+populateVector (Vector2Declaration AssignFrom v nets)
+  = if sequentialUp2D nets' then
+      ["  assign net[" ++ show (fromN (last n)) ++ ":" ++ show (fromN (head n)) ++
+        "] = v" ++ show v ++ ";"
+       | (n, i) <- zip nets [0..]]
+    else
+      ["  assign net[" ++ show (fromN li) ++ "] = v" ++ show v ++
+       "[" ++ show ni ++ "][" ++ show i ++ "];"
+       | (ni, n) <- zip [0..] nets, (i, li) <- zip [0..] n]
+    where
+    nets' = map (map fromN) nets
 
 sequentialUp :: [Integer] -> Bool
 sequentialUp [x] = True
@@ -177,6 +215,9 @@ sequentialUp (x:y:z)
       sequentialUp (y:z)
     else
        False
+
+sequentialUp2D :: [[Integer]] -> Bool
+sequentialUp2D = sequentialUp . concat
 
 --------------------------------------------------------------------------------
 -- Mappings to/from multi-dimensional bit-vectors.
@@ -296,6 +337,8 @@ generateInstance (Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd _ _ _) ab s) _
    = "" -- Generated instead during vector generation
 generateInstance (Netlist.BindPrimitive _ _ (Netlist.IndexBitArray _ _) i s) _
    = "" -- Generated instead during vector generation   
+generateInstance (Netlist.BindPrimitive _ _ (Netlist.IndexArray _ _ _) i s) _
+   = "" -- Generated instead during vector generation  
 generateInstance inst@(Netlist.BindPrimitive i o prim _ _) instNr
   = "  " ++ instName ++ " inst" ++ "_" ++ show instNr ++ " " ++
     showArgs args ++ ";"

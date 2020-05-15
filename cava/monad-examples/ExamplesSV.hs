@@ -18,7 +18,7 @@ module Main where
 
 import Cava2SystemVerilog
 import NandGate
-import Mux2_1
+import Multiplexers
 import FullAdder
 import UnsignedAdderExamples
 import AdderTree
@@ -32,6 +32,8 @@ main = do writeSystemVerilog nand2Netlist
           writeTestBench loopedNAND_tb
           writeSystemVerilog mux2_1Netlist
           writeTestBench mux2_1_tb
+          writeSystemVerilog muxBus4_8Netlist
+          writeTestBench muxBus4_8_tb
           writeSystemVerilog adder4Netlist
           writeTestBench adder4_tb
           writeSystemVerilog adder8_3inputNetlist

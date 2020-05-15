@@ -2,7 +2,7 @@
 -R . MonadExamples
 Examples.v
 NandGate.v
-Mux2_1.v
+Multiplexers.v
 FullAdder.v
 FullAdderNat.v
 UnsignedAdderExamples.v

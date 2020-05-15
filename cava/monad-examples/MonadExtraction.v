@@ -16,7 +16,7 @@
 
 Require Import Examples.
 Require Import NandGate.
-Require Import Mux2_1.
+Require Import Multiplexers.
 Require Import FullAdder.
 Require Import UnsignedAdderExamples.
 Require Import AdderTree.
@@ -30,7 +30,7 @@ Extraction Language Haskell.
 
 Extraction Library Examples.
 Extraction Library NandGate.
-Extraction Library Mux2_1.
+Extraction Library Multiplexers.
 Extraction Library FullAdder.
 Extraction Library UnsignedAdderExamples.
 Extraction Library AdderTree.
