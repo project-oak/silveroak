@@ -74,6 +74,8 @@ Class Cava m bit `{Monad m} := {
          (bit * bit * bit * bit * bit * bit) -> m bit; (* 6-input LUT *)
   xorcy : bit * bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
   muxcy : bit -> bit -> bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
+  (* Synthesizable multiplexors *)
+  indexBitArray : list bit -> list bit -> m bit;
   (* Synthesizable arithmetic operations. *)
   unsignedAdd : list bit -> list bit -> m (list bit);
 }.
@@ -266,6 +268,15 @@ Definition muxcyNet (s : N) (ci : N) (di : N)  : state CavaState N :=
          ret o
   end.
 
+Definition indexBitArrayNet (i : list N) (sel : list N) :
+                            state CavaState N :=
+  cs <- get ;;
+  match cs with
+  | mkCavaState o isSeq (mkModule name insts inputs outputs)
+      => put (mkCavaState (o + 1) isSeq (mkModule name (cons (BindIndexBitArray (length i) (length sel) (i, sel) o) insts) inputs outputs )) ;;
+         ret o
+  end.
+
 Definition unsignedAddNet (a : list N) (b : list N) :
                           state CavaState (list N) :=
   let sumSize := max (length a) (length b) + 1 in
@@ -325,6 +336,7 @@ Instance CavaNet : Cava (state CavaState) N :=
     lut6 := lut6Net;
     xorcy := xorcyNet;
     muxcy := muxcyNet;
+    indexBitArray := indexBitArrayNet;
     unsignedAdd := unsignedAddNet;
 }.
 
@@ -497,6 +509,11 @@ Definition muxcyBool (s : bool) (ci : bool) (di : bool) : ident bool :=
        | true => ci
        end).
 
+Definition indexBitArrayBool (i : list bool) (sel : list bool) :
+                             ident bool :=
+  let selNat := list_bits_to_nat sel in
+  ret (nth (N.to_nat selNat) i false).
+
 Definition unsignedAddBool (av : list bool) (bv : list bool) :
                            ident (list bool) :=
   let a := list_bits_to_nat av in
@@ -537,6 +554,7 @@ Instance CavaBool : Cava ident bool :=
     xorcy := xorcyBool;
     xnor2 := xnorBool;
     muxcy := muxcyBool;
+    indexBitArray := indexBitArrayBool;
     unsignedAdd m n := @unsignedAddBool m n;
     buf_gate := bufBool;
 }.
@@ -632,6 +650,12 @@ Definition unsignedAddBoolList (a : list (list bool)) (b : list (list bool)) :
                                ident (list (list bool)) :=
   ret ([]).
 
+
+Definition indexBitArrayBoolList (iL: list (list bool)) (selL: list (list bool)) :
+                                 ident (list bool) :=
+  ret (map (fun '(i, sel) => combinational (indexBitArray i sel))
+       (combine iL selL)).
+
 Definition bufBoolList (i : list bool) : ident (list bool) :=
   ret i.
 
@@ -662,6 +686,7 @@ Instance CavaBoolList : Cava ident (list bool) :=
     xorcy := xorcyBoolList;
     xnor2 := xnorBoolList;
     muxcy := muxcyBoolList;
+    indexBitArray := indexBitArrayBoolList;
     unsignedAdd := unsignedAddBoolList;
     buf_gate := bufBoolList;
 }.

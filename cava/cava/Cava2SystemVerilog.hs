@@ -127,6 +127,14 @@ computeVectors' (inst@(Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd aSize bSiz
        put (NetlistGenerationState (v + 3) (vA:vB:vC:vDecs))
        return ("  assign v" ++ show (v + 2) ++ " = v" ++ show v ++
                " + v" ++ show (v + 1) ++ ";")
+computeVectors' (inst@(Netlist.BindPrimitive _ _ (Netlist.IndexBitArray iSize selSize) _ _), _)
+  | Just ((i, s), o) <- Netlist.indexBitArraycomponents inst
+  = do NetlistGenerationState v vDecs <- get
+       let vI = VectorDeclaration AssignTo   v       i
+           vS = VectorDeclaration AssignTo   (v + 1) s
+       put (NetlistGenerationState (v + 2) (vI:vS:vDecs))
+       return ("  assign net[" ++ show (fromN o) ++ "] = v" ++ show v ++ "[v" ++ show (v + 1) ++
+               "];")             
 computeVectors' (otherInst, instNr) = return (generateInstance otherInst instNr)
 
 declareVectors :: [VectorDeclaration] -> [String]
@@ -286,6 +294,8 @@ generateInstance inst@(Netlist.BindPrimitive _ _
      args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
 generateInstance (Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd _ _ _) ab s) _
    = "" -- Generated instead during vector generation
+generateInstance (Netlist.BindPrimitive _ _ (Netlist.IndexBitArray _ _) i s) _
+   = "" -- Generated instead during vector generation   
 generateInstance inst@(Netlist.BindPrimitive i o prim _ _) instNr
   = "  " ++ instName ++ " inst" ++ "_" ++ show instNr ++ " " ++
     showArgs args ++ ";"
