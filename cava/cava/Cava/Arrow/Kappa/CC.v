@@ -5,6 +5,7 @@ Import ListNotations.
 Require Import Cava.BitArithmetic.
 
 Require Import Cava.Arrow.Arrow.
+Require Import Cava.Arrow.Instances.Constructive.
 Require Import Cava.Arrow.Kappa.Kappa.
 
 Set Implicit Arguments.
@@ -35,8 +36,17 @@ Hint Extern 2 => solver : core.
 
 Hint Extern 4 (_ < length (_ :: _)) => simpl : core.
 
-Section WithArrow.
-  Variable arr: Arrow.
+
+Notation "f ~ p" := 
+  (eq_rect _ (fun x : Set => x) f _ p) (at level 70).
+
+  Lemma trans_cast : forall (T1 T2 : Set) H (x z : T1) (y : T2),
+  x = (y ~ H)
+  -> (y ~ H) = z
+  -> x = z.
+  intros; congruence.
+Qed.
+
 
   (****************************************************************************)
   (* Environment manipulation                                                 *)
@@ -46,22 +56,22 @@ Section WithArrow.
   Variables are then instantiated as a morphism from the environment to the
   associated object. *)
   Inductive environment : nat -> Type :=
-  | ECons : forall n (o: object), environment n -> environment (S n)
+  | ECons : forall n, tree -> environment n -> environment (S n)
   | ENil : environment 0.
 
-  Fixpoint as_object {n} (env: environment n): object :=
+  Fixpoint as_object {n} (env: environment n): tree :=
   match env with
-  | ENil => unit
-  | ECons o env' => o ** as_object env'
+  | ENil => Empty
+  | ECons o env' => Branch o (as_object env')
   end.
 
-  Fixpoint as_object_list {n} (env: environment n): list object :=
+  Fixpoint as_object_list {n} (env: environment n): list tree :=
   match env with
   | ENil => []
   | ECons o env' => o :: as_object_list env'
   end.
 
-  Fixpoint lookup_object (n: nat) (env: list object): option object :=
+  Fixpoint lookup_object (n: nat) (env: list tree): option tree :=
   match env with
   | [] => None
   | o :: os =>
@@ -73,18 +83,43 @@ Section WithArrow.
   (* The type of an arrow morphism from our environment to a variable is
   `as_object env ~> o`
   where lookup_object n env = Some o *)
-  Fixpoint lookup_morphism_ty (n: nat) (env_obj: object) (objs: list object): Type :=
+  Fixpoint lookup_morphism_ty (n: nat) (env_obj: tree) (objs: list tree): Type :=
   match objs with
   | [] => Datatypes.unit
   | o::os =>
     if eq_nat_dec n (length os)
-    then morphism env_obj o
+    then structure env_obj o
     else lookup_morphism_ty n env_obj os
+  end.
+
+  Fixpoint list_as_object (l: list tree): tree :=
+  match l with
+  | [] => Empty
+  | o :: os => Branch o (list_as_object os)
   end.
 
   (****************************************************************************)
   (* Environment lemmas                                                       *)
   (****************************************************************************)
+
+  Lemma as_object_is_as_list_as_object: 
+    forall n (env: environment n), list_as_object (as_object_list env) = as_object env.
+  Proof.
+    intros.
+    induction env.
+    simpl.
+    f_equal.
+    apply IHenv.
+    simpl.
+    reflexivity.
+  Qed.
+
+  Definition object_to_list_object_id: forall n (env: environment n), structure (as_object env) (list_as_object (as_object_list env)).
+  Proof.
+    intros.
+    rewrite as_object_is_as_list_as_object.
+    exact Id.
+  Defined.
 
   Lemma lookup_bound:
     forall n o objs,
@@ -119,7 +154,7 @@ Section WithArrow.
 
   (* Shorthand for passing evidence that a lookup is well formed *)
   Notation ok_lookup := (
-    fun (n: nat) (env: list object) (o: object) => lookup_object n env = Some o
+    fun (n: nat) (env: list tree) (o: tree) => lookup_object n env = Some o
   ).
 
   (* Proof that looking up a morphism is the morphism from the environment to
@@ -127,17 +162,17 @@ Section WithArrow.
     *)
   Lemma ok_lookup_sets_lookup_morphism_ty : forall n o objs env_obj,
     lookup_object n objs = Some o
-    -> lookup_morphism_ty n env_obj objs = morphism env_obj o.
+    -> lookup_morphism_ty n env_obj objs = structure env_obj o.
   Proof.
     induction objs; auto.
-  Defined.
+  Qed.
 
   Hint Immediate ok_lookup_sets_lookup_morphism_ty : core.
 
   Lemma morphism_coerce:
-    forall (n:nat) env_obj o (objs: list object),
+    forall (n:nat) env_obj o (objs: list tree),
     ok_lookup n objs o ->
-    lookup_morphism_ty n env_obj objs = morphism env_obj o.
+    lookup_morphism_ty n env_obj objs = structure env_obj o.
   Proof.
     auto.
   Qed.
@@ -146,7 +181,7 @@ Section WithArrow.
     length (as_object_list env) = n.
   Proof.
     induction env; auto.
-  Defined.
+  Qed.
 
   Hint Extern 4 =>
     match goal with
@@ -174,7 +209,7 @@ Section WithArrow.
     -> o = o'.
   Proof.
     auto.
-  Defined.
+  Qed.
 
   Lemma push_lookup : forall n env o o' x ,
     x <> n ->
@@ -186,27 +221,58 @@ Section WithArrow.
   Qed.
 
   Fixpoint extract_nth n (env: environment n) o x
-    : (lookup_object x (as_object_list env) = Some o) -> morphism (as_object env) o :=
+    : (lookup_object x (as_object_list env) = Some o) -> structure (as_object env) o :=
   match env return
-    (lookup_object x (as_object_list env) = Some o) -> morphism (as_object env) o
+    (lookup_object x (as_object_list env) = Some o) -> structure (as_object env) o
     with
   | ENil => fun H => match lookup_lower_contra H with end
   | @ECons n' o' env' => fun H =>
     match eq_nat_dec x n' with
     | left Heq =>
       match lookup_top_is_top_object _ _ Heq H with
-      | eq_refl => exl
+      | eq_refl => Exl _ _
       end
-    | right Hneq =>  exr >>> extract_nth env' x (push_lookup _ _ Hneq H)
+    | right Hneq =>  Exr _ _ >>> extract_nth env' x (push_lookup _ _ Hneq H)
     end
   end.
+
+  Notation "i ?? x" := (
+      match x with
+      | None => Datatypes.unit
+      | Some o => structure i o
+      end) (no associativity, at level 70).
+
+  Fixpoint extract_nth' (env: list tree) x : forall i (prefix: structure i (list_as_object env)), i ?? lookup_object x env :=
+  match env return
+    forall i (prefix: structure i (list_as_object env)), i ?? lookup_object x env
+    with
+  | [] => fun _ _ => tt
+  | o :: os => 
+    match eq_nat_dec x (length os) as Heq return forall i (prefix: structure i (list_as_object (o::os))), i ?? (if Heq
+      then Some o
+      else lookup_object x os
+    ) 
+    with
+    | left Heq => fun _ p => p >>> exl
+    | right Hneq => fun _ p => extract_nth' os x (p >>> exr)
+    end
+  end.
+
+  Lemma extractable : forall n env o,
+    lookup_object n env = Some o
+    -> forall i (prefix: structure i (list_as_object env)), i ?? lookup_object n env = structure i o.
+  Proof.
+    intros.
+    rewrite H.
+    reflexivity.
+  Defined.
 
   (****************************************************************************)
   (* Closure conversion via de Brujin indices form                            *)
   (****************************************************************************)
   (* In de Brujin indexing variables are nats *)
 
-  Definition natvar : object -> object -> Type := fun _ _ => nat.
+  Definition natvar `{Category} : object -> object -> Type := fun _ _ => nat.
 
   (* Reverse de Brujin indexing is well formed *)
   Fixpoint wf_debrujin {i o}
@@ -215,7 +281,7 @@ Section WithArrow.
     : Prop :=
   match expr with
   | DVar x            => ok_lookup x (as_object_list env) o
-  | @DAbs _ _ x y z f => wf_debrujin (@ECons n x env) (f n)
+  | @DAbs _ x y z f => wf_debrujin (@ECons n x env) (f n)
   | DApp e1 e2        => wf_debrujin env e1 /\ wf_debrujin env e2
   | DCompose e1 e2    => wf_debrujin env e1 /\ wf_debrujin env e2
   | DArr _            => True
@@ -224,13 +290,14 @@ Section WithArrow.
   Lemma wf_debrujin_succ:
     forall ix iy o
     (n: nat) (env: environment n)
-    (expr: kappa natvar (ix**iy) o)
+    (expr: kappa natvar (Branch ix iy) o)
     f,
     expr = DAbs f ->
-    @wf_debrujin (ix**iy) o n env expr -> @wf_debrujin iy o (S n) (ECons ix env) (f n).
+    @wf_debrujin (Branch ix iy) o n env expr -> @wf_debrujin iy o (S n) (ECons ix env) (f n).
   Proof.
     auto.
   Defined.
+
 
   (* Perform closure conversion by passing an explicit environment. The higher
   order PHOAS representation is converted to first order form with de Brujin
@@ -242,22 +309,23 @@ Section WithArrow.
   This implementation is also currently missing logic to remove free variables
   from the environment.
   *)
-  Fixpoint closure_conversion {i o}
+  Fixpoint closure_conversion' {i o}
     (n: nat) (env: environment n)
     (* (morphs: env_morphisms (as_object env) (as_object_list env)) *)
     (expr: kappa natvar i o) {struct expr}
-    : wf_debrujin env expr -> morphism (i ** as_object env) o :=
-  match expr with
-    (* Instantiating a variable is done by 'exr' to select the environment, and
-    then indexing using lookup_morphism. 'morphisms_coerce' and 'wf' are used to
-    align the types and to prove to Coq that the lookup is well formed. *)
-  | DVar v => fun wf => exr >>> extract_nth env v wf
-    (* Kappa abstraction requires extending the environment which includes
-    modifying all the variable morphisms in scope (and their types!).
-    *)
-  | @DAbs _ _ x y _ f => fun wf =>
+    : wf_debrujin env expr -> structure (Branch i (as_object env)) o.
+     refine (
+  match expr as expr in kappa _ i' o' return i = i' -> o = o' -> 
+  wf_debrujin env expr -> structure (Branch i (as_object env)) o 
+  with
+  | DVar v => fun _ _ wf => _
+  (* Instantiating a variable is done by 'exr' to select the environment, and
+  then indexing using lookup_morphism. *)
+  | @DAbs _ x y z f => fun _ _ wf =>
+  (* Kappa abstraction requires extending the environment then moving the 
+  new environment variable in to place*)
     let env' := ECons x env in
-    let f' := closure_conversion env'  (f n) (wf_debrujin_succ _ eq_refl wf) in
+    let f' := closure_conversion' _ _ _ env' (f n) (wf_debrujin_succ _ eq_refl wf) in
     (* This line moves the first arrow argument into the right hand position,
     which allows 'assoc' to move the argument to the front of the environment
     f: x*y ~> o
@@ -267,35 +335,61 @@ Section WithArrow.
     assoc:      y*(x*environment_variables) ~> o
     f':         y*new_environment_variables ~> o
     *)
-    first swap >>> assoc >>> f'
+    _ (* first swap >>> assoc >>> f' *)
 
-  (* for application the object environment needs to be piped to the abstraction
-  'f' and applicant 'e'. since running 'closure_conversion' on each binder
-  removes the environment, we first need to copy the environment.
-  *)
-  | DApp f e => fun wf =>
-    second (copy >>> first (uncancell
-    >>> closure_conversion env e (proj2 wf)))
+    | DApp f e => fun _ _ wf =>
+    (* for application the object environment needs to be piped to the abstraction
+    'f' and applicant 'e'. since running 'closure_conversion' on each binder
+    removes the environment, we first need to copy the environment. *)
+    _
+    (* second (copy >>> first (uncancell
+    >>> closure_conversion' _ _ _ env e (proj2 _)))
     >>> unassoc >>> first swap
-    >>> closure_conversion env f (proj1 wf)
+    >>> closure_conversion' _ _ _ env f (proj1 _) *)
 
-    (* Alternatively *)
-    (* copy *)
-    (* >>> first (first drop >>> closure_conversion env morphs e (proj2 wf)) *)
-    (* >>> unassoc                                     *)
-    (* >>> closure_conversion env morphs f (proj1 wf) *)
+  | DCompose e1 e2 => fun _ _ wf => _
+    (* second copy
+    >>> unassoc
+    >>> first (closure_conversion' env e2 (proj2 wf))
+    >>> closure_conversion' env e1 (proj1 wf) *)
 
-  (* Similarly for composing two arrows f & g, the object environment needs to be
-  * piped to both f and g. So we first need to copy the environment.
-  *)
-  | DCompose e1 e2 => fun wf =>
+  | DArr m => fun _ _ _ => _ (* exl >>> m *)
+  end (eq_refl i) (eq_refl o)
+  ).
+  - 
+    inversion wf.
+    assert (as_object env ?? lookup_object v (as_object_list env) = structure (as_object env) o).
+
+    rewrite H0.
+    rewrite e0.
+    reflexivity.
+
+    refine (Compose _ exr).
+
+    rewrite <- H.
+    apply (extract_nth' (as_object_list env) v (object_to_list_object_id env)).
+
+  - rewrite e, e0.
+    exact (first swap >>> assoc >>> f').
+
+  - rewrite e0, e1.
+    destruct wf.
+    exact (
+      second (copy >>> first (uncancell
+      >>> closure_conversion' _ _ _ env e H0))
+      >>> unassoc >>> first swap
+      >>> closure_conversion' _ _ _ env f H
+    ).
+  - rewrite e, e0.
+    exact (
     second copy
     >>> unassoc
-    >>> first (closure_conversion env e2 (proj2 wf))
-    >>> closure_conversion env e1 (proj1 wf)
-
-  | DArr m => fun _ => exl >>> m
-  end.
+    >>> first (closure_conversion' _ _ _ env e2 (proj2 wf))
+    >>> closure_conversion' _ _ _ env e1 (proj1 wf)
+  ).
+  - rewrite e, e0.
+    exact (exl >>> m).
+  Defined.
 
   (****************************************************************************)
   (* Kappa term equivalence                                                   *)
@@ -373,7 +467,7 @@ Section WithArrow.
       | [H1: In _ ?X, H2: ok_variable_lookup _ ?X |- _] => apply H2 in H1
       end : core.
     auto.
-  Defined.
+  Qed.
 
   Lemma apply_extended_lookup: forall n env v1 v2 y i o E,
     match_pairs y n i o v1 v2 \/ In (vars natvar natvar (obj_pair i o) (v1, v2)) E
@@ -383,7 +477,7 @@ Section WithArrow.
     Hint Extern 3 => eapply recover_dependent_val : core.
     Hint Resolve split_lookup : core.
     eauto 7.
-  Defined.
+  Qed.
 
   Hint Immediate apply_lookup : core.
   Hint Immediate apply_extended_lookup : core.
@@ -402,18 +496,8 @@ Section WithArrow.
       forall n (env: environment n),
         ok_variable_lookup env E
         -> wf_debrujin env expr1)
-        );intros.
-
-    - unfold wf_debrujin.
-      eapply H0.
-      apply H.
-
-    - info_eauto.
-    - info_eauto.
-    - info_eauto.
-    - info_eauto.
-
-  Defined.
+        );eauto.
+  Qed.
 
   Hint Resolve kappa_wf : core.
   Hint Resolve Kappa_equivalence : core.
@@ -421,9 +505,14 @@ Section WithArrow.
   Theorem Kappa_wf: forall {i o} (expr: forall var, kappa var i o), @wf_debrujin _ _ 0 ENil (expr _).
   Proof.
     eauto.
-  Defined.
+  Qed.
 
-End WithArrow.
+  Definition closure_conversion {i o} (expr: @Kappa i o) (wf: wf_debrujin ENil (expr _)): i ~> o
+    := uncancelr >>> closure_conversion' ENil (expr _) wf.
 
-Definition Closure_conversion {arr i o} (expr: @Kappa arr i o): i ~> o
-  := uncancelr >>> closure_conversion (ENil arr) (expr _) (Kappa_wf expr).
+Definition Closure_conversion {i o} (expr: @Kappa i o): i ~> o
+  := closure_conversion expr (Kappa_wf expr).
+
+Hint Resolve closure_conversion' : core.
+Hint Resolve closure_conversion : core.
+Hint Resolve Closure_conversion : core.

@@ -40,11 +40,13 @@ Require Import Cava.Arrow.Kappa.CC.
 Require Import Cava.Arrow.Kappa.Syntax.
 Require Import Cava.Arrow.Instances.Combinational.
 Require Import Cava.Arrow.Instances.Netlist.
+Require Import Cava.Arrow.Instances.Constructive.
 Recursive Extraction Library Arrow.
 Recursive Extraction Library Kappa.
 Recursive Extraction Library Syntax.
 
 Recursive Extraction Library Combinational.
+Recursive Extraction Library Constructive.
 Recursive Extraction Library Netlist.
 Recursive Extraction Library UnsignedAdders.
 Recursive Extraction Library XilinxAdder.

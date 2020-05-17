@@ -25,7 +25,7 @@ Section CoqEval.
   }.
   Proof.
     intros.
-    unfold Proper. 
+    unfold Proper.
     refine (fun f => _). intros.
     refine (fun g => _). intros.
     rewrite H.
@@ -44,7 +44,7 @@ Section CoqEval.
   | [H: Datatypes.unit |- _] => destruct H
   end.
   Ltac simple_solve :=
-    intros; simpl; extensionality z; repeat simple_destruct; auto.
+    intros; simpl; extensionality xxx; repeat simple_destruct; auto.
 
   #[refine] Instance CoqArr : Arrow := {
     cat := CoqCat;
@@ -73,6 +73,20 @@ Section CoqEval.
     simple_solve.
     simple_solve.
     simple_solve.
+    simple_solve.
+    simple_solve.
+    simple_solve.
+    simple_solve.
+    simple_solve.
+    simple_solve.
+    simple_solve.
+
+    simple_solve; f_equal; inversion H; auto.
+    simple_solve; f_equal; inversion H; auto.
+
+    simple_solve.
+    simple_solve.
+
     simple_solve.
     simple_solve.
   Defined.

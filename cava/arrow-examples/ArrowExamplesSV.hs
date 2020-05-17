@@ -18,6 +18,7 @@ module Main where
 
 import Cava2SystemVerilog
 import ArrowExamples
+import Mux2_1
 
 main :: IO ()
 main = do writeSystemVerilog nandArrow
@@ -26,3 +27,4 @@ main = do writeSystemVerilog nandArrow
           writeTestBench arrow_xor_tb
           writeSystemVerilog feedbackNandArrow
           writeTestBench feedbackNandArrow_tb
+          writeSystemVerilog mux2_1_netlist

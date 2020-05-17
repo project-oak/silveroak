@@ -31,3 +31,4 @@ Extraction Library Nand.
 Extraction Library Xor.
 Extraction Library FeedbackNand.
 Extraction Library ArrowExamples.
+Extraction Library Mux2_1.

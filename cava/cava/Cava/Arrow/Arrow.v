@@ -9,7 +9,6 @@ Reserved Infix "~>" (at level 90, no associativity).
 Reserved Infix "~[ C ]~>" (at level 90, no associativity).
 Reserved Infix ">>>" (at level 53, right associativity).
 Reserved Infix "=M=" (at level 54, no associativity).
-Reserved Infix "~O~" (at level 54, no associativity).
 
 Reserved Infix "**" (at level 30, right associativity).
 
@@ -65,7 +64,7 @@ Hint Extern 1 => apply id_left: core.
 Hint Extern 1 => apply id_right: core.
 
 Add Parametric Morphism (C: Category) (x y z: object) : (@compose C x y z)
-  with signature (morphism_equivalence _ _ ==> morphism_equivalence _ _ ==> morphism_equivalence _ _) 
+  with signature (morphism_equivalence _ _ ==> morphism_equivalence _ _ ==> morphism_equivalence _ _)
   as parametric_morphism_comp.
 Proof. auto. Defined.
 
@@ -83,7 +82,7 @@ Class Arrow := {
   drop {x} : x ~> unit;
   swap {x y} : x**y ~> y**x;
 
-  first {x y z} (f : x ~> y) : x ** z ~> y ** z;
+  first  {x y z} (f : x ~> y) : x ** z ~> y ** z;
   second {x y z} (f : x ~> y) : z ** x ~> z ** y;
 
   exl  {x y} : x ** y ~> x;
@@ -91,19 +90,37 @@ Class Arrow := {
 
   uncancell {x} : x ~> unit**x;
   uncancelr {x} : x ~> x**unit;
-  assoc {x y z} : ((x**y)**z) ~> (x**(y**z));
+  assoc   {x y z} : ((x**y)**z) ~> (x**(y**z));
   unassoc {x y z} : (x**(y**z)) ~> ((x**y)**z);
 
   (* laws, currently somewhat ad-hoc*)
-  
-  exl_unit_uncancelr x : @exl x unit >>> uncancelr =M= id;
-  exr_unit_uncancell x : @exr unit x >>> uncancell =M= id;
-  uncancelr_exl x : uncancelr >>> @exl x unit =M= id;
-  uncancell_exr x : uncancell >>> @exr unit x =M= id;
-  
-  drop_annhilates : forall x y (f: x~>y), f >>> drop =M= drop;
-  exl_unit_is_drop : forall x, @exl unit x =M= drop;
-  exr_unit_is_drop : forall x, @exr x unit =M= drop;
+
+  exl_unit_uncancelr x: @exl x unit >>> uncancelr =M= id;
+  exr_unit_uncancell x: @exr unit x >>> uncancell =M= id;
+  uncancelr_exl x:      uncancelr >>> @exl x unit =M= id;
+  uncancell_exr x:      uncancell >>> @exr unit x =M= id;
+
+  drop_annhilates {x y} (f: x~>y): f >>> drop =M= drop;
+
+  exl_unit_is_drop {x}: @exl unit x =M= drop;
+  exr_unit_is_drop {x}: @exr x unit =M= drop;
+
+  first_first   {x y z w} (f: x~>y) (g:y~>z): @first x y w f >>> first g  =M= first (f >>> g);
+  second_second {x y z w} (f: x~>y) (g:y~>z): @second x y w f >>> second g  =M= second (f >>> g);
+
+  swap_swap {x y}: @swap x y >>> swap =M= id;
+
+  first_id  {x w}: @first x x w id  =M= id;
+  second_id {x w}: @second x x w id  =M= id;
+
+  first_f  {x y w} (f: x~>y) (g:x~>y): f =M= g -> @first x y w f =M= first g;
+  second_f {x y w} (f: x~>y) (g:x~>y): f =M= g -> @second x y w f =M= second g;
+
+  assoc_unassoc {x y z}: @assoc x y z >>> unassoc =M= id;
+  unassoc_assoc {x y z}: @unassoc x y z >>> assoc =M= id;
+
+  first_exl  {x y w} f: @first x y w f >>> exl =M= exl >>> f;
+  second_exr {x y w} f: @second x y w f >>> exr =M= exr >>> f;
 }.
 
 Coercion cat: Arrow >-> Category.
@@ -165,3 +182,34 @@ Class CavaDelay := {
 Coercion delay_cava: CavaDelay >-> Cava.
 
 Definition cava_delay_arr (_: CavaDelay): Arrow := _.
+
+Lemma simpl_firsts
+  {A: Arrow} {x y z w o}
+  (f:x~>y) (g:y~>z) (h:z**w~>o): @first _ x y w f >>> (first g >>> h) =M= first (f >>> g) >>> h.
+Proof.
+  intros.
+  setoid_rewrite <- associativity.
+  setoid_rewrite first_first.
+  reflexivity.
+Qed.
+
+Lemma simpl_seconds
+  {A: Arrow} {x y z w o}
+  (f:x~>y) (g:y~>z) (h:w**z~>o): @second _ x y w f >>> (second g >>> h) =M= second (f >>> g) >>> h.
+Proof.
+  intros.
+  setoid_rewrite <- associativity.
+  setoid_rewrite second_second.
+  reflexivity.
+Qed.
+
+Lemma trans_apply
+  {A: Arrow} {x y z w}
+  (f:x~>y) (g:y~>z) (h:x~>z) (i: z~>w):
+  f >>> g =M= h -> f >>> (g >>> i) =M= h >>> i.
+Proof.
+  intros.
+  setoid_rewrite <- associativity.
+  setoid_rewrite H.
+  reflexivity.
+Qed.

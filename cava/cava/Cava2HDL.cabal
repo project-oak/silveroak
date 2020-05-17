@@ -49,6 +49,7 @@ library
                      CC
                      Combinators
                      Combinational
+                     Constructive
                      Datatypes
                      IdentityMonad
                      Kappa
