@@ -9,10 +9,9 @@ Cava/Monad/XilinxAdder.v
 
 Cava/Arrow.v
 Cava/Arrow/Arrow.v
-Cava/Arrow/Syntax.v
 Cava/Arrow/Instances/Combinational.v
-Cava/Arrow/Syntax/Kappa.v
-Cava/Arrow/Syntax/Desugared.v
-Cava/Arrow/Syntax/CC.v
+Cava/Arrow/Kappa/Kappa.v
+Cava/Arrow/Kappa/CC.v
+Cava/Arrow/Kappa/Syntax.v
 
 Cava/Extraction.v

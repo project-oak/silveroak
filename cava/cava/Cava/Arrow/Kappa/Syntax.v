@@ -1,12 +1,12 @@
-Require Export Cava.Arrow.Syntax.Kappa.
-Require Export Cava.Arrow.Syntax.Desugared.
-Require Export Cava.Arrow.Syntax.CC.
+Require Export Cava.Arrow.Kappa.Kappa.
+Require Export Cava.Arrow.Kappa.CC.
 Require Export Cava.Arrow.Instances.Combinational.
 
 Require Import Cava.Arrow.Arrow.
 Require Import Cava.BitArithmetic.
 
 Require Import Arith Eqdep List Lia.
+Require Import Program.Equality.
 
 (* Notations *)
 
@@ -18,8 +18,8 @@ Declare Custom Entry expr.
 Delimit Scope expression_scope with source.
 
 Notation "<[ e ]>" := (
-  Desugar _ (fun var => 
-    e%source 
+  Desugar _ (fun var =>
+    e%source
   )
   ) (at level 1, e custom expr at level 1).
 
@@ -30,18 +30,17 @@ Notation "\ x .. y => e" := (Abs (fun x => .. (Abs (fun y => e)) ..))
 
 Notation "x y" := (App x y) (in custom expr at level 3, left associativity) : expression_scope.
 Notation "~~( x )" := (Arr x) (in custom expr, x constr) : expression_scope.
-Notation "! x" := (Iso (Arr x) (ltac:( resolve_object_equivalence ))
-  ) (in custom expr at level 2, x global) : expression_scope.
+
+Notation "! x" := ( (Arr x)) (in custom expr at level 2, x global) : expression_scope.
+
 Notation "~!( x )" := (Arr (Closure_conversion x)) (in custom expr, x constr) : expression_scope.
-(* alternatively *)
-(* Notation "~!( x )" := (kappa_reinject _ (x _)) (in custom expr, x constr). *)
 
 Notation "'let' x = e1 'in' e2" := (Let e1 (fun x => e2)) (in custom expr at level 1, x constr at level 4, e2 at level 5, e1 at level 1) : expression_scope.
 Notation "x" := (Var x) (in custom expr, x ident) : expression_scope.
 Notation "( x )" := x (in custom expr, x at level 4) : expression_scope.
 
 Notation "( x , y )" := (
-    Com (Arr (unassoc >>> exl)) (App (App (Arr id) x) y) 
+    Com (Arr (unassoc >>> exl)) (App (App (Arr id) x) y)
     )
    (in custom expr, x at level 4, y at level 4) : expression_scope.
 
@@ -62,7 +61,7 @@ Definition ex1_notation {cava: Cava}: Kappa (bit**unit) bit := <[ \ x => #true ]
 Definition ex2_notation {cava: Cava} (n:nat) : Kappa (bit**unit) bit :=
 match n with
 | O => <[ \ x => #true ]>
-| S n => <[ \ x => !xor_gate x x ]> 
+| S n => <[ \ x => !xor_gate x x ]>
 end.
 
 (* 3. adder tree *)
@@ -74,7 +73,7 @@ end.
 
 Fixpoint tree `{Cava} (A: object)
   (n: nat)
-  (f: A**A ~> A)
+  (f: A**A**unit ~> A)
   {struct n}
   : Kappa (make_obj A n ** unit) A :=
 match n with
@@ -98,8 +97,7 @@ Definition xilinxFullAdder `{Cava}
      (sum, cout)
   ]>.
 
-Definition xilinxFullAdder' := @Closure_conversion Combinational _ _ xilinxFullAdder .
-Definition xilinxFullAdder'' : bool := fst ((@Closure_conversion Combinational _ _ xilinxFullAdder) (true, ((true,true), tt))).
+(* Definition xilinxFullAdder' := @Closure_conversion Combinational _ _ xilinxFullAdder . *)
 
 Definition adder_tree `{Cava}
   (bitsize: nat)
@@ -117,6 +115,13 @@ Ltac unfold_notation :=
   unfold closure_conversion
   ).
 
+Ltac unfold_notation_in x :=
+  (unfold Desugar in x ;
+  unfold desugar in x;
+  unfold Closure_conversion in x;
+  unfold closure_conversion in x
+  ).
+
 Lemma kappa_arrow_lemma_example:
   forall (Cava: Cava),
   Closure_conversion ex1_notation = (uncancelr >>> first swap >>> assoc >>> exl >>> constant true).
@@ -124,6 +129,10 @@ Proof.
   intros.
   auto.
 Qed.
+
+Ltac simplify_arrow :=
+  try setoid_rewrite exl_unit_is_drop;
+  try setoid_rewrite drop_annhilates.
 
 Lemma kappa_arrow_lemma_example2:
   forall (Cava: Cava),
@@ -133,11 +142,61 @@ Proof.
   unfold_notation.
   simpl.
   setoid_rewrite exl_unit_is_drop.
-  setoid_rewrite <- associativity at 3.
-  setoid_rewrite drop_annhilates.
-  setoid_rewrite <- associativity at 2.
-  setoid_rewrite drop_annhilates.
+  setoid_rewrite <- associativity at 1.
+  setoid_rewrite <- associativity at 1.
   setoid_rewrite <- associativity at 1.
   setoid_rewrite drop_annhilates.
   reflexivity.
 Qed.
+
+(* experimental reduce arrow and evaluate simplified form *)
+
+From Coq Require Import ssreflect ssrfun ssrbool.
+Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
+
+Lemma reduce_equality: forall (Cava:Cava) x (H: x = x) g f,
+  match H in (_ = o) return ((g x) ~[ Cava ]~> o)
+  with | erefl => f end
+  = f.
+Proof.
+  intros.
+  rewrite (UIP_refl _ _ H).
+  reflexivity.
+Qed.
+
+Lemma reduce_nat_eq_dec:
+  forall (Cava:Cava) n (env: environment Cava n) (H: n = (length (as_object_list (env)))),
+  (Nat.eq_dec n (length (as_object_list env))) = left H.
+Proof.
+  intros.
+  destruct (Nat.eq_dec n (length (as_object_list env))).
+  f_equal.
+  apply UIP.
+  contradiction.
+Qed.
+
+Lemma simplified_xilinx_adder':
+  forall (Cava: Cava),
+  {f | Closure_conversion xilinxFullAdder = f }.
+Proof.
+  intros.
+  unfold_notation.
+  simpl.
+  (* these are obvious when looking at the goal *)
+  rewrite (@reduce_equality _ (bit**bit) _ (fun x => x ** bit ** unit) _).
+  rewrite (@reduce_equality _ (bit**bit) _ (fun x => x ** bit ** unit) _).
+  rewrite (@reduce_equality _ bit _ (fun x => bit ** bit ** (bit ** bit) ** bit ** unit) _).
+  rewrite (@reduce_equality _ bit _ (fun x => bit ** (bit ** bit) ** bit ** unit) _).
+  rewrite (@reduce_equality _ bit _ (fun x => bit ** (bit ** bit) ** bit ** unit) _).
+  rewrite (@reduce_equality _ bit _ (fun x => bit ** unit) _).
+  rewrite (@reduce_equality _ bit _ (fun x => bit ** unit) _).
+  rewrite (@reduce_equality _ bit _ (fun x => bit ** bit ** bit ** (bit ** bit) ** bit ** unit) _).
+  rewrite (@reduce_equality _ bit _ (fun x => bit ** bit ** bit ** (bit ** bit) ** bit ** unit) _).
+  rewrite (@reduce_equality _ bit _ (fun x => bit ** bit ** bit ** bit ** (bit ** bit) ** bit ** unit) _).
+  rewrite (@reduce_equality _ bit _ (fun x =>  x**bit ** bit ** bit ** bit ** (bit ** bit) ** bit ** unit) _).
+  simpl.
+  eexists.
+  auto.
+Defined.

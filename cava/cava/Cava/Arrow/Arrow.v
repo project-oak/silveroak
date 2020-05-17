@@ -51,7 +51,6 @@ Notation "x ~> y" := (morphism x y) : category_scope.
 Notation "x ~[ C ]~> y" := (@morphism C x y) (at level 90): category_scope.
 Notation "g >>> f" := (compose f g) : category_scope.
 Notation "f =M= g" := (morphism_equivalence _ _ f g) : category_scope.
-(* Notation "x ~O~ y" := (object_equivalence x y) : category_scope. *)
 
 Open Scope category_scope.
 
@@ -69,10 +68,6 @@ Add Parametric Morphism (C: Category) (x y z: object) : (@compose C x y z)
   with signature (morphism_equivalence _ _ ==> morphism_equivalence _ _ ==> morphism_equivalence _ _) 
   as parametric_morphism_comp.
 Proof. auto. Defined.
-
-(* This is the same as passing a pair type to 'sig', but is more convinent to use. *)
-Inductive sig_pair (A B:Type) (P:A -> B -> Prop) : Type :=
-  exist_pair : forall (x:A) (y:B), P x y -> sig_pair A B P.
 
 (* adam megacz style arrow;
   There is no method to provide lifting a Coq function in general,
@@ -100,24 +95,15 @@ Class Arrow := {
   unassoc {x y z} : (x**(y**z)) ~> ((x**y)**z);
 
   (* laws, currently somewhat ad-hoc*)
-
-  obj_equiv x y := 
-    (sig_pair (x~>y) (y~>x) (fun f g => 
-    f >>> g =M= id /\
-    g >>> f =M= id
-    ));
-
+  
   exl_unit_uncancelr x : @exl x unit >>> uncancelr =M= id;
   exr_unit_uncancell x : @exr unit x >>> uncancell =M= id;
   uncancelr_exl x : uncancelr >>> @exl x unit =M= id;
   uncancell_exr x : uncancell >>> @exr unit x =M= id;
-
+  
   drop_annhilates : forall x y (f: x~>y), f >>> drop =M= drop;
   exl_unit_is_drop : forall x, @exl unit x =M= drop;
   exr_unit_is_drop : forall x, @exr x unit =M= drop;
-
-  exl_unit x : obj_equiv (x**unit) x;
-  prefix_equiv x y : obj_equiv x y -> forall a, obj_equiv (a**x) (a**y);
 }.
 
 Coercion cat: Arrow >-> Category.
@@ -130,24 +116,6 @@ Notation "x ** y" := (product x y)
   (at level 30, right associativity) : arrow_scope.
 
 Open Scope arrow_scope.
-
-Definition apply_object_equivalence_left: forall (arr:Arrow) x y (H: obj_equiv x y), x~>y.
-Proof.
-  intros.
-  inversion H.
-  exact x0.
-Defined.
-
-Definition apply_object_equivalence_right: forall (arr:Arrow) x y (H: obj_equiv x y), y~>x.
-Proof.
-  intros.
-  inversion H.
-  exact y0.
-Defined.
-
-Ltac resolve_object_equivalence :=
-  try repeat refine (prefix_equiv _ _ _ _);
-  exact (exl_unit _).
 
 (* Loop as a different type class to allow implementating a subset of features *)
 Class ArrowLoop (A: Arrow) := {
@@ -165,19 +133,19 @@ Class Cava  := {
   constant : bool -> (unit ~> bit);
   constant_vec (n:nat) : Bvector n -> (unit ~> bitvec n);
 
-  not_gate:  bit        ~> bit;
-  and_gate:  bit ** bit ~> bit;
-  nand_gate: bit ** bit ~> bit;
-  or_gate:   bit ** bit ~> bit;
-  nor_gate:  bit ** bit ~> bit;
-  xor_gate:  bit ** bit ~> bit;
-  xnor_gate: bit ** bit ~> bit;
-  buf_gate:  bit        ~> bit;
+  not_gate:  bit        ** unit ~> bit;
+  and_gate:  bit ** bit ** unit ~> bit;
+  nand_gate: bit ** bit ** unit ~> bit;
+  or_gate:   bit ** bit ** unit ~> bit;
+  nor_gate:  bit ** bit ** unit ~> bit;
+  xor_gate:  bit ** bit ** unit ~> bit;
+  xnor_gate: bit ** bit ** unit ~> bit;
+  buf_gate:  bit        ** unit ~> bit;
 
-  xorcy:     bit ** bit ~> bit;
-  muxcy:     bit ** (bit ** bit) ~> bit;
+  xorcy:     bit ** bit ** unit ~> bit;
+  muxcy:     bit ** bit ** bit ** unit ~> bit;
 
-  unsigned_add a b s: bitvec a ** bitvec b ~> bitvec s;
+  unsigned_add a b s: bitvec a ** bitvec b ** unit ~> bitvec s;
 }.
 
 Coercion cava_arrow: Cava >-> Arrow.
@@ -191,7 +159,7 @@ Definition low {_: Cava}: unit ~> bit := constant false.
 (* Delay as a different type class to allow implementing subset of primitives *)
 Class CavaDelay := {
   delay_cava :> Cava;
-  delay_gate {x} : x ~> x;
+  delay_gate {x} : x ** unit ~> x;
 }.
 
 Coercion delay_cava: CavaDelay >-> Cava.

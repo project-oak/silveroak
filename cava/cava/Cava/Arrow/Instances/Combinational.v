@@ -75,38 +75,6 @@ Section CoqEval.
     simple_solve.
     simple_solve.
     simple_solve.
-
-    intros.
-    refine (exist_pair (prod x Datatypes.unit~>x) (x~> prod x Datatypes.unit) _ fst (fun x => pair x tt)  _).
-    simpl.
-    split.
-    simple_solve.
-    auto.
-
-    intros.
-    inversion X.
-    inversion H.
-    inversion H0.
-    inversion H1.
-    refine (exist_pair (prod a x ~> prod a y) (prod a y ~> prod a x) _
-      (fun '(a,b) => (a, x0 b))
-      (fun '(a,b) => (a, y0 b))
-      _).
-    
-    simpl.
-    split.
-
-    - extensionality z.
-      destruct z.
-      f_equal.
-      apply (f_equal (fun f => f x1)) in H3.
-      auto.
-
-    - extensionality z.
-      destruct z.
-      f_equal.
-      apply (f_equal (fun f => f y1)) in H4.
-      auto.
   Defined.
 
   Instance Combinational : Cava := {
@@ -116,28 +84,28 @@ Section CoqEval.
     constant b _ := b;
     constant_vec n v _ := v;
 
-    not_gate b := negb b;
-    and_gate '(x,y) := andb x y;
-    nand_gate '(x,y) := negb (andb x y);
-    or_gate '(x,y) := orb x y;
-    nor_gate '(x,y) := negb (orb x y);
-    xor_gate '(x,y) := xorb x y;
-    xnor_gate '(x,y) := negb (xorb x y);
-    buf_gate x := x;
+    not_gate '(b, tt) := negb b;
+    and_gate '(x, (y, tt)) := andb x y;
+    nand_gate '(x, (y, tt)) := negb (andb x y);
+    or_gate '(x, (y, tt)) := orb x y;
+    nor_gate '(x, (y, tt)) := negb (orb x y);
+    xor_gate '(x, (y, tt)) := xorb x y;
+    xnor_gate '(x, (y, tt)) := negb (xorb x y);
+    buf_gate '(x, tt) := x;
 
-    xorcy '(x,y) := xorb x y;
-    muxcy '(i,(t,e)) := if i then t else e;
+    xorcy '(x, (y, tt)) := xorb x y;
+    muxcy '(i,(t,(e,tt))) := if i then t else e;
 
-    unsigned_add m n s '(av, bv) :=
+    unsigned_add m n s '(av, (bv, tt)) :=
       let a := bitvec_to_nat av in
       let b := bitvec_to_nat bv in
       let c := a + b in
       nat_to_bitvec_sized s c;
   }.
 
-  Example not_true: not_gate true = false.
+  Example not_true: not_gate (true, tt) = false.
   Proof. reflexivity. Qed.
-  Example not_false: not_gate false = true.
+  Example not_false: not_gate (false, tt) = true.
   Proof. reflexivity. Qed.
 
 End CoqEval.
