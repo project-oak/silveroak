@@ -39,7 +39,7 @@ Require Import Cava.Arrow.Syntax.
 Require Import Cava.Arrow.Syntax.Desugared.
 Require Import Cava.Arrow.Syntax.CC.
 Require Import Cava.Arrow.Instances.Combinational.
-Require Import Cava.Arrow.Instances.Netlist.
+(* Require Import Cava.Arrow.Instances.Netlist. *)
 Recursive Extraction Library Arrow.
 Recursive Extraction Library Syntax.
 
