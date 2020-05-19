@@ -256,10 +256,14 @@ Instance FlattenList {a} `{Flatten a} : Flatten (list a) := {
 (* PrimitiveInstance elements                                                 *)
 (******************************************************************************)
 
-(* The primitive elements that can be instantiated in Cava. Some are generic
+(* The primitive elements that can be instantiated in Cava. These are generic
    SystemVerilog gates that can be used with synthesis and back-end tools to
-   map to any architecture, while others are specific to Xilinx FPGAs.
+   map to any architecture.
 *)
+
+Inductive ConstExpr : Type :=
+| HexLiteral: nat -> N -> ConstExpr
+| StringLiteral: string -> ConstExpr.
 
 Inductive Instance : Type :=
   (* I/O port wiring *)
@@ -287,15 +291,8 @@ Inductive Instance : Type :=
   (* Multiplexors *)    
   | IndexBitArray: list N -> list N -> N -> Instance
   | IndexArray: list (list N) -> list N -> list N -> Instance
-  (* Xilinx FPGA architecture specific gates. *)
-  | Lut1:      N -> N -> N -> Instance
-  | Lut2:      N -> N -> N -> N -> Instance
-  | Lut3:      N -> N -> N -> N -> N -> Instance
-  | Lut4:      N -> N -> N -> N -> N -> N -> Instance
-  | Lut5:      N -> N -> N -> N -> N -> N -> N -> Instance
-  | Lut6:      N -> N -> N -> N -> N -> N -> N -> N -> Instance                
-  | Xorcy:     N -> N -> N -> Instance
-  | Muxcy:     N -> N -> N -> N -> Instance.
+  | Component: string -> list (string * ConstExpr) -> list (string * N) ->
+               Instance.
 
 (******************************************************************************)
 (* Data structures to represent circuit graph/netlist state                   *)

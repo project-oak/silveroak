@@ -274,30 +274,6 @@ generateInstance (WireOutputBit name o) _
    = "  assign " ++ name ++ " = net[" ++ show (fromN o) ++ "] ;"
 generateInstance (WireOutputBitVec sizes name oAny) _
    = unlines (assignMultiDimensionalOutput name "" sizes oAny)   
-generateInstance (Lut1 config i o) instNr
-   = "  LUT1 #(.INIT(2'h" ++
-     showHex (fromN config) "" ++ ")) lut1_" ++ show instNr ++ " "
-     ++ showArgs [o, i] ++ ";"
-generateInstance (Lut2 config i0 i1 o) instNr
-   = "  LUT2 #(.INIT(4'h" ++
-     showHex (fromN config) "" ++ ")) lut2_" ++ show instNr ++ " "
-     ++ showArgs [o, i0, i1] ++ ";"
-generateInstance (Lut3 config i0 i1 i2 o) instNr
-   = "  LUT3 #(.INIT(8'h" ++
-     showHex (fromN config) "" ++ ")) lut3_" ++ show instNr ++ " "
-     ++ showArgs [o, i0, i1, i2] ++ ";"
-generateInstance (Lut4 config i0 i1 i2 i3 o) instNr
-   = "  LUT4 #(.INIT(16'h" ++
-     showHex (fromN config) "" ++ ")) lut4_" ++ show instNr ++ " "
-     ++ showArgs [o, i0, i1, i2, i3] ++ ";"
-generateInstance (Lut5 config i0 i1 i2 i3 i4 o) instNr
-   = "  LUT5 #(.INIT(32'h" ++
-     showHex (fromN config) "" ++ ")) lut5_" ++ show instNr ++ " "
-     ++ showArgs [o, i0, i1, i2, i3, i4] ++ ";"
-generateInstance (Lut6 config i0 i1 i2 i3 i4 i5 o) instNr
-   = "  LUT6 #(.INIT(64'h" ++
-     showHex (fromN config) "" ++ ")) lut6_" ++ show instNr ++ " "
-     ++ showArgs [o, i0, i1, i2, i3, i4, i5] ++ ";"
 generateInstance (Not i o) instrNr = primitiveInstance "not" [o, i] instrNr
 generateInstance (And i0 i1 o) instrNr = primitiveInstance "and" [o, i0, i1] instrNr
 generateInstance (Nand i0 i1 o) instrNr = primitiveInstance "nand" [o, i0, i1] instrNr
@@ -306,8 +282,8 @@ generateInstance (Nor i0 i1 o) instrNr = primitiveInstance "nor" [o, i0, i1] ins
 generateInstance (Xor i0 i1 o) instrNr = primitiveInstance "xor" [o, i0, i1] instrNr
 generateInstance (Xnor i0 i1 o) instrNr = primitiveInstance "xnor" [o, i0, i1] instrNr
 generateInstance (Buf i o) instrNr = primitiveInstance "buf" [o, i] instrNr
-generateInstance (Xorcy ci li o) instrNr = mkInstance "XORCY" [o, ci, li] instrNr
-generateInstance (Muxcy s ci di o) instrNr = mkInstance "MUXCY" [o, ci, di, s] instrNr
+generateInstance (Component name parameters connections) instNr =
+  mkInstance name parameters connections instNr
 generateInstance (UnsignedAdd _ _ _) _
    = "" -- Generated instead during vector generation
 generateInstance (IndexBitArray _ _ _) _
@@ -326,10 +302,35 @@ showArgs args = "(" ++ concat (insertCommas (map showArg args)) ++ ")";
 showArg :: BinNums.N -> String
 showArg n = "net[" ++ show (fromN n) ++ "]"
 
-mkInstance :: String -> [BinNums.N] -> Int -> String
-mkInstance instName args instNr
+mkInstance :: String -> [(String, ConstExpr)] -> [(String, BinNums.N)] ->
+              Int -> String
+mkInstance instName [] args instNr
   = "  " ++ instName ++ " inst" ++ "_" ++ show instNr ++ " " ++
-    showArgs args ++ ";"
+    showPortArgs args ++ ";"              
+mkInstance instName parameters args instNr
+  = "  " ++ instName ++ showParameters parameters ++ " inst" ++ "_" ++
+    show instNr ++ " " ++
+    showPortArgs args ++ ";"
+
+showPortArgs :: [(String, BinNums.N)] -> String
+showPortArgs args = "(" ++ concat (insertCommas (map showPortArg args)) ++ ")";
+
+showPortArg :: (String, BinNums.N) -> String
+showPortArg (p, n) = "." ++ p ++ "(net[" ++ show (fromN n) ++ "])"
+
+showParameters :: [(String, ConstExpr)] -> String
+showParameters parameters
+  = " #(" ++ concat (insertCommas (map showParameter parameters)) ++ ")";
+
+showParameter :: (String, ConstExpr) -> String
+showParameter (name, constExpr)
+  = "." ++ name ++ "(" ++ showConstExpr constExpr ++ ")"
+
+showConstExpr :: ConstExpr -> String
+showConstExpr constExpr =
+  case constExpr of
+    HexLiteral w v -> show w ++ "'h" ++ showHex (fromN v) ""
+    StringLiteral s -> "\"" ++ s ++ "\""
 
 --------------------------------------------------------------------------------
 -- Generate test bench
