@@ -24,7 +24,7 @@ Makefile.coq
 Nand2VHDL
 OneBitAdder2VHDL
 ExamplesSV
-FixupAscii
+FixupHaskell
 
 # Haskell build chain files
 dist/*

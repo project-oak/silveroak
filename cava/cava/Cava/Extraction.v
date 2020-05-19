@@ -39,7 +39,7 @@ Require Import Cava.Arrow.Kappa.Kappa.
 Require Import Cava.Arrow.Kappa.CC.
 Require Import Cava.Arrow.Kappa.Syntax.
 Require Import Cava.Arrow.Instances.Combinational.
-(* Require Import Cava.Arrow.Instances.Netlist. *)
+Require Import Cava.Arrow.Instances.Netlist.
 Recursive Extraction Library Arrow.
 Recursive Extraction Library Kappa.
 Recursive Extraction Library Syntax.
