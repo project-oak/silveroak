@@ -107,17 +107,15 @@ data VectorDeclaration
 data NetlistGenerationState
   = NetlistGenerationState Int [VectorDeclaration]
 
-computeVectors :: [Netlist.PrimitiveInstance] ->
-                   State NetlistGenerationState [String]
+computeVectors :: [Instance] -> State NetlistGenerationState [String]
 
 computeVectors instances
   = do instText <- mapM computeVectors' (zip instances [1..])
        return instText
 
-computeVectors' :: (Netlist.PrimitiveInstance, Int) ->
+computeVectors' :: (Instance, Int) ->
                    State NetlistGenerationState String
-computeVectors' (inst@(Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd aSize bSize sumSize) _ _), _)
-  | Just ((a,b),s) <- Netlist.unsignedAddercomponents inst
+computeVectors' (UnsignedAdd a b s, _)
   = do NetlistGenerationState v vDecs <- get
        let vA = VectorDeclaration AssignTo   v       a
            vB = VectorDeclaration AssignTo   (v + 1) b
@@ -125,16 +123,14 @@ computeVectors' (inst@(Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd aSize bSiz
        put (NetlistGenerationState (v + 3) (vA:vB:vC:vDecs))
        return ("  assign v" ++ show (v + 2) ++ " = v" ++ show v ++
                " + v" ++ show (v + 1) ++ ";")
-computeVectors' (inst@(Netlist.BindPrimitive _ _ (Netlist.IndexBitArray _ _) _ _), _)
-  | Just ((i, s), o) <- Netlist.indexBitArraycomponents inst
+computeVectors' (IndexBitArray i s o, _)
   = do NetlistGenerationState v vDecs <- get
        let vI = VectorDeclaration AssignTo   v       i
            vS = VectorDeclaration AssignTo   (v + 1) s
        put (NetlistGenerationState (v + 2) (vI:vS:vDecs))
        return ("  assign net[" ++ show (fromN o) ++ "] = v" ++ show v ++ "[v" ++ show (v + 1) ++
                "];")
-computeVectors' (inst@(Netlist.BindPrimitive _ _ (Netlist.IndexArray _ _ _) _ _), _)
-  | Just ((i, s), o) <- Netlist.indexArraycomponents inst
+computeVectors' (IndexArray i s o, _)
   = do NetlistGenerationState v vDecs <- get
        let vI = Vector2Declaration AssignTo   v       i
            vS = VectorDeclaration  AssignTo   (v + 1) s
@@ -264,93 +260,76 @@ assignMultiDimensionalOutput name prefix (x:xs) oAny
 -- Generate SystemVerilog for a specific instance.
 --------------------------------------------------------------------------------
 
-generateInstance :: Netlist.PrimitiveInstance -> Int -> String
-generateInstance inst@(Netlist.BindPrimitive _ _ Netlist.DelayBit iAny oAny) _
+generateInstance :: Instance -> Int -> String
+generateInstance (DelayBit i o) _
   = "  always_ff @(posedge clk) net[" ++ show (fromN o) ++
     "] <= rst ? 1'b0 : net[" ++ show (fromN i) ++ "];"
-    where
-    i = unsafeCoerce iAny :: BinNums.N
-    o = unsafeCoerce oAny :: BinNums.N
-generateInstance inst@(Netlist.BindPrimitive _ _ Netlist.AssignBit aAny bAny) _
+generateInstance (AssignBit a b) _
    = "  assign net[" ++ show (fromN a) ++ "] = net[" ++ show (fromN b) ++ "];"
-     where
-     a = unsafeCoerce aAny :: BinNums.N
-     b = unsafeCoerce bAny :: BinNums.N
-generateInstance inst@(Netlist.BindPrimitive _ _ (Netlist.WireInputBit name) _ oAny) _
+generateInstance (WireInputBit name o) _
    = "  assign net[" ++ show (fromN o) ++ "] = " ++ name ++ ";"
-     where
-     o = unsafeCoerce oAny :: BinNums.N
-generateInstance inst@(Netlist.BindPrimitive _ _
-                   (Netlist.WireInputBitVec name sizes) _ oAny) _
+generateInstance (WireInputBitVec sizes name oAny) _
    = unlines (assignMultiDimensionalInput name "" sizes oAny)
-generateInstance inst@(Netlist.BindPrimitive _ _ (Netlist.WireOutputBit name) oAny o) _ 
+generateInstance (WireOutputBit name o) _ 
    = "  assign " ++ name ++ " = net[" ++ show (fromN o) ++ "] ;"
-     where
-     o = unsafeCoerce oAny :: BinNums.N
-generateInstance inst@(Netlist.BindPrimitive _ _
-                 (Netlist.WireOutputBitVec name sizes) oAny _) _
+generateInstance (WireOutputBitVec sizes name oAny) _
    = unlines (assignMultiDimensionalOutput name "" sizes oAny)   
-generateInstance inst@(Netlist.BindPrimitive _ _
-                 (Netlist.Lut1 config) iAny oAny) instNr
+generateInstance (Lut1 config i o) instNr
    = "  LUT1 #(.INIT(2'h" ++
      showHex (fromN config) "" ++ ")) lut1_" ++ show instNr ++ " "
      ++ showArgs [o, i] ++ ";"
-     where
-     i = unsafeCoerce iAny :: BinNums.N
-     o = unsafeCoerce oAny :: BinNums.N
-generateInstance inst@(Netlist.BindPrimitive _ _
-                 (Netlist.Lut2 config) _ _) instNr
+generateInstance (Lut2 config i0 i1 o) instNr
    = "  LUT2 #(.INIT(4'h" ++
      showHex (fromN config) "" ++ ")) lut2_" ++ show instNr ++ " "
-     ++ showArgs args ++ ";"
-     where
-     args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
-generateInstance inst@(Netlist.BindPrimitive _ _
-                 (Netlist.Lut3 config) _ _) instNr
+     ++ showArgs [o, i0, i1] ++ ";"
+generateInstance (Lut3 config i0 i1 i2 o) instNr
    = "  LUT3 #(.INIT(8'h" ++
      showHex (fromN config) "" ++ ")) lut3_" ++ show instNr ++ " "
-     ++ showArgs args ++ ";"
-     where
-     args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
-generateInstance inst@(Netlist.BindPrimitive _ _
-                 (Netlist.Lut4 config) _ _) instNr
+     ++ showArgs [o, i0, i1, i2] ++ ";"
+generateInstance (Lut4 config i0 i1 i2 i3 o) instNr
    = "  LUT4 #(.INIT(16'h" ++
      showHex (fromN config) "" ++ ")) lut4_" ++ show instNr ++ " "
-     ++ showArgs args ++ ";"
-     where
-     args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
-generateInstance inst@(Netlist.BindPrimitive _ _
-                 (Netlist.Lut5 config) _ _) instNr
+     ++ showArgs [o, i0, i1, i2, i3] ++ ";"
+generateInstance (Lut5 config i0 i1 i2 i3 i4 o) instNr
    = "  LUT5 #(.INIT(32'h" ++
      showHex (fromN config) "" ++ ")) lut5_" ++ show instNr ++ " "
-     ++ showArgs args ++ ";"
-     where
-     args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
-generateInstance inst@(Netlist.BindPrimitive _ _
-                 (Netlist.Lut6 config) _ _) instNr
+     ++ showArgs [o, i0, i1, i2, i3, i4] ++ ";"
+generateInstance (Lut6 config i0 i1 i2 i3 i4 i5 o) instNr
    = "  LUT6 #(.INIT(64'h" ++
      showHex (fromN config) "" ++ ")) lut6_" ++ show instNr ++ " "
-     ++ showArgs args ++ ";"
-     where
-     args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
-generateInstance (Netlist.BindPrimitive _ _ (Netlist.UnsignedAdd _ _ _) ab s) _
+     ++ showArgs [o, i0, i1, i2, i3, i4, i5] ++ ";"
+generateInstance (Not i o) instrNr = primitiveInstance "not" [o, i] instrNr
+generateInstance (And i0 i1 o) instrNr = primitiveInstance "and" [o, i0, i1] instrNr
+generateInstance (Nand i0 i1 o) instrNr = primitiveInstance "nand" [o, i0, i1] instrNr
+generateInstance (Or i0 i1 o) instrNr = primitiveInstance "or" [o, i0, i1] instrNr
+generateInstance (Nor i0 i1 o) instrNr = primitiveInstance "nor" [o, i0, i1] instrNr
+generateInstance (Xor i0 i1 o) instrNr = primitiveInstance "xor" [o, i0, i1] instrNr
+generateInstance (Xnor i0 i1 o) instrNr = primitiveInstance "xnor" [o, i0, i1] instrNr
+generateInstance (Buf i o) instrNr = primitiveInstance "buf" [o, i] instrNr
+generateInstance (Xorcy ci li o) instrNr = mkInstance "XORCY" [o, ci, li] instrNr
+generateInstance (Muxcy s ci di o) instrNr = mkInstance "MUXCY" [o, ci, di, s] instrNr
+generateInstance (UnsignedAdd _ _ _) _
    = "" -- Generated instead during vector generation
-generateInstance (Netlist.BindPrimitive _ _ (Netlist.IndexBitArray _ _) i s) _
+generateInstance (IndexBitArray _ _ _) _
    = "" -- Generated instead during vector generation   
-generateInstance (Netlist.BindPrimitive _ _ (Netlist.IndexArray _ _ _) i s) _
-   = "" -- Generated instead during vector generation  
-generateInstance inst@(Netlist.BindPrimitive i o prim _ _) instNr
+generateInstance (IndexArray _ _ _) _
+   = "" -- Generated instead during vector generation
+
+primitiveInstance :: String -> [BinNums.N] -> Int -> String
+primitiveInstance instName args instNr
   = "  " ++ instName ++ " inst" ++ "_" ++ show instNr ++ " " ++
     showArgs args ++ ";"
-    where
-    instName = maybe (error "Request for un-namable instance") id $ Netlist.primitiveName i o prim
-    args = maybe (error "Primitive did not have extractable arguments!") id $ Netlist.instanceArgs inst
   
 showArgs :: [BinNums.N] -> String
 showArgs args = "(" ++ concat (insertCommas (map showArg args)) ++ ")";
 
 showArg :: BinNums.N -> String
 showArg n = "net[" ++ show (fromN n) ++ "]"
+
+mkInstance :: String -> [BinNums.N] -> Int -> String
+mkInstance instName args instNr
+  = "  " ++ instName ++ " inst" ++ "_" ++ show instNr ++ " " ++
+    showArgs args ++ ";"
 
 --------------------------------------------------------------------------------
 -- Generate test bench

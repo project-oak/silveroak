@@ -57,7 +57,6 @@ library
                      Logic
                      Monad
                      Netlist
-                     Netlist0
                      Nat
                      PeanoNat
                      StateMonad

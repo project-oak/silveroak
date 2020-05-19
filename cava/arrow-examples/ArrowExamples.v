@@ -14,7 +14,7 @@ Require Import Cava.Netlist.
 Require Import Cava.Arrow.Arrow.
 Require Import Cava.Arrow.Syntax.
 Require Import Cava.Arrow.Instances.Combinational.
-Require Import Cava.Arrow.Instances.Netlist.
+(* Require Import Cava.Arrow.Instances.Netlist. *)
 
 Require Import ArrowExamples.Nand.
 Require Import ArrowExamples.Xor.
@@ -127,13 +127,14 @@ End StreamProofs. *)
 
 Section NetlistExamples.
 
+(*
   Definition nandArrow := arrowToHDLModule
     "nandArrow"
     (@nand NetlistCava)
     ("input1","input2")
     ("output1").
   Eval compute in nandArrow.
-
+*)
   (* Test bench tables for generated SystemVerilog simulation test bench *)
   Definition arrow_nand_tb_inputs : list (bool * bool) :=
   [(false, false); (false, true); (true, false); (true, true)]. 
@@ -152,6 +153,7 @@ Section NetlistExamples.
   testBench "nandArrow_tb" nand2Interface
             arrow_nand_tb_inputs arrow_nand_tb_expected_outputs.
 
+(*
   Definition xorArrow := arrowToHDLModule
 
     "xorArrow"
@@ -160,6 +162,7 @@ Section NetlistExamples.
     ("output1").
   (* Compute the circuit netlist for the XOR made up of NANDs made up of ANDs and INVs *)
   Eval compute in xorArrow.
+*)
 
   (* Test bench tables for generated SystemVerilog simulation test bench *)
   Definition arrow_xor_tb_inputs : list (bool * bool) :=
@@ -179,12 +182,14 @@ Section NetlistExamples.
   testBench "xorArrow_tb" xorInterface
             arrow_xor_tb_inputs arrow_xor_tb_expected_outputs.
 
+(*
   Definition feedbackNandArrow := arrowToHDLModule
     "feedbackNandArrow"
     (@feedbackNand NetlistCavaDelay NetlistLoop)
     ("input1")
     ("output1").
   Eval compute in feedbackNandArrow.
+*)
 
   Definition feedbackNandArrow_tb_inputs :=
   [false; (* 10 *)
