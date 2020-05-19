@@ -28,7 +28,7 @@ BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)
 VCDS = $(SV:.sv=_tb.vcd)
 
-all:		coq $(VCDS)
+all:		coq lut1_inv.sv $(VCDS)
 
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt -y $(XILINX)/data/verilog/src/xeclib
 VLINT = $(VERILATOR) --lint-only
@@ -61,4 +61,5 @@ lut1_inv.sv:	coq VivadoTestsSV
 clean:
 	-@$(MAKE) -f Makefile.coq clean
 	git clean -Xfd
+	rm -rf *.sv *.tcl *.cpp *.vcd VivadoTestsSV LUTTests.hs
 	rm -rf obj_dir

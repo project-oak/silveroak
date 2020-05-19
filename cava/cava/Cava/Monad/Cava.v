@@ -42,6 +42,7 @@ Generalizable All Variables.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
+Local Open Scope string_scope.
 
 (* The Cava class represents circuit graphs with Coq-level inputs and
    outputs, but does not represent the IO ports of circuits. This allows
@@ -144,7 +145,9 @@ Definition lut1Net (f : bool -> bool) (i : N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Lut1 config i o) insts) inputs outputs )) ;;
+      => let component := Component "LUT1" [("INIT", HexLiteral 2 config)]
+                          [("O", o); ("I0", i)] in
+         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -157,7 +160,9 @@ Definition lut2Net (f : bool -> bool -> bool) (i : N * N) : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Lut2 config i0 i1 o) insts) inputs outputs )) ;;
+      => let component := Component "LUT2" [("INIT", HexLiteral 4 config)]
+                          [("O", o); ("I0", i0); ("I1", i1)] in
+         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -176,7 +181,9 @@ Definition lut3Net (f : bool -> bool -> bool -> bool) (i : N * N * N) :
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Lut3 config i0 i1 i2 o) insts) inputs outputs )) ;;
+      => let component := Component "LUT3" [("INIT", HexLiteral 8 config)]
+                          [("O", o); ("I0", i0); ("I1", i1); ("I2", i2)] in
+         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -196,7 +203,9 @@ Definition lut4Net (f : bool -> bool -> bool -> bool -> bool)
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Lut4 config i0 i1 i2 i3 o) insts) inputs outputs )) ;;
+      => let component := Component "LUT4" [("INIT", HexLiteral 16 config)]
+                          [("O", o); ("I0", i0); ("I1", i1); ("I2", i2); ("I3", i3)] in
+         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -216,7 +225,9 @@ Definition lut5Net (f : bool -> bool -> bool -> bool -> bool -> bool)
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Lut5 config i0 i1 i2 i3 i4 o) insts) inputs outputs )) ;;
+      => let component := Component "LUT5" [("INIT", HexLiteral 32 config)]
+                          [("O", o); ("I0", i0); ("I1", i1); ("I2", i2); ("I3", i3); ("I4", i4)] in
+         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
          ret o
   end.
 
@@ -236,19 +247,13 @@ Definition lut6Net (f : bool -> bool -> bool -> bool -> bool -> bool -> bool)
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Lut6 config i0 i1 i2 i3 i4 i5 o) insts) inputs outputs )) ;;
+      => let component := Component "LUT6" [("INIT", HexLiteral 64 config)]
+                          [("O", o); ("I0", i0); ("I1", i1); ("I2", i2); ("I3", i3); ("I4", i4); ("I5", i5)] in
+        put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
          ret o
   end.
 
 Local Close Scope N_scope.
-
-Definition xorcyNet (i : N * N) : state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Xorcy (fst i) (snd i) o) insts) inputs outputs )) ;;
-         ret o
-  end.
 
 Definition xnorNet (i : N * N) : state CavaState N :=
   cs <- get ;;
@@ -266,11 +271,21 @@ Definition bufNet (i : N) : state CavaState N :=
          ret o
   end.
 
+Definition xorcyNet (i : N * N) : state CavaState N :=
+  cs <- get ;;
+  match cs with
+  | mkCavaState o isSeq (mkModule name insts inputs outputs)
+      => let component := Component "XORCY" [] [("O", o); ("CI", fst i); ("LI", snd i)] in 
+         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
+         ret o
+  end.
+
 Definition muxcyNet (s : N) (ci : N) (di : N)  : state CavaState N :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Muxcy s ci di o) insts) inputs outputs )) ;;
+      => let component := Component "MUXCY" [] [("O", o); ("S", s); ("CI", ci); ("DI", di)] in
+         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
          ret o
   end.
 
