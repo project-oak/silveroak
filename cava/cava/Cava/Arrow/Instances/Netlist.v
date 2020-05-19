@@ -28,6 +28,7 @@ From Coq Require Import Classes.Morphisms.
 
 Section NetlistEval.
   Local Open Scope monad_scope.
+  Local Open Scope string_scope.
 
   #[refine] Instance NetlistCat : Category := {
     object := @shape portType;
@@ -41,11 +42,11 @@ Section NetlistEval.
   Proof.
     intros.
     apply Build_Equivalence.
-    unfold Reflexive. auto. 
-    unfold Symmetric. auto. 
-    unfold Transitive. auto. 
+    unfold Reflexive. auto.
+    unfold Symmetric. auto.
+    unfold Transitive. auto.
     intros.
-    unfold Proper. 
+    unfold Proper.
     refine (fun f => _). intros.
     refine (fun g => _). intros.
     auto.
@@ -59,11 +60,11 @@ Section NetlistEval.
     unit := Empty;
     product := Tuple2;
 
-    first X Y Z f '(z,y) := 
+    first X Y Z f '(z,y) :=
       x <- f z ;;
       ret (x,y);
 
-    second X Y Z f '(y,z) := 
+    second X Y Z f '(y,z) :=
       x <- f z ;;
       ret (y,x);
 
@@ -111,60 +112,62 @@ Section NetlistEval.
 
     not_gate '(x,tt) :=
       '(nl, i) <- get ;;
-      put (cons (BindNot x i) nl, (i+1)%N) ;;
+      put (cons (Not x i) nl, (i+1)%N) ;;
       ret i;
 
     and_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
-      put (cons (BindAnd [x;y] i) nl, (i+1)%N) ;;
+      put (cons (And x y i) nl, (i+1)%N) ;;
       ret i;
 
     nand_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
-      put (cons (BindNand [x;y] i) nl, (i+1)%N) ;;
+      put (cons (Nand x y i) nl, (i+1)%N) ;;
       ret i;
 
     or_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
-      put (cons (BindOr [x;y] i) nl, (i+1)%N) ;;
+      put (cons (Or x y i) nl, (i+1)%N) ;;
       ret i;
 
     nor_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
-      put (cons (BindNor [x;y] i) nl, (i+1)%N) ;;
+      put (cons (Nor x y i) nl, (i+1)%N) ;;
       ret i;
 
     xor_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
-      put (cons (BindXor [x;y] i) nl, (i+1)%N) ;;
+      put (cons (Xor x y i) nl, (i+1)%N) ;;
       ret i;
 
     xnor_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
-      put (cons (BindXnor [x;y] i) nl, (i+1)%N) ;;
+      put (cons (Xnor x y i) nl, (i+1)%N) ;;
       ret i;
 
     buf_gate '(x,tt) :=
       '(nl, i) <- get ;;
-      put (cons (BindBuf x i) nl, (i+1)%N) ;;
+      put (cons (Buf x i) nl, (i+1)%N) ;;
       ret i;
 
     xorcy '(x, (y, tt)) :=
       '(nl, i) <- get ;;
-      put (cons (BindXorcy (x,y) i) nl, (i+1)%N) ;;
+      put (cons (Component "XORCY" [] [("O", i); ("CI", x); ("LI", y)]) nl, (i+1)%N) ;;
       ret i;
 
-    muxcy '(x,(y, (z, tt))) :=
+    muxcy '(s,(ci,(di, tt))) :=
       '(nl, i) <- get ;;
-      put (cons (BindMuxcy (x,(y,z)) i) nl, (i+1)%N) ;;
+      put (cons (Component "MUXCY" [] [("O", i); ("S", s); ("CI", ci); ("DI", di)]) nl, (i+1)%N) ;;
       ret i;
 
-    unsigned_add m n s '(x,(y,tt)) :=
+    unsigned_add m n s '(x,(y, tt)) :=
       '(nl, i) <- get ;;
       let o := map N.of_nat (seq (N.to_nat i) s) in
-      put (cons (BindUnsignedAdd s (x,y) o) nl, (i + N.of_nat s)%N) ;;
+      put (cons (UnsignedAdd x y o) nl, (i + N.of_nat s)%N) ;;
       ret o;
   }.
+
+  Close Scope string_scope.
 
   Fixpoint map2WithPortShape {A B C} (f: A -> B -> C) (port: portType)
     (x: portTypeTy A port) (y: portTypeTy B port): portTypeTy C port :=
@@ -174,7 +177,7 @@ Section NetlistEval.
     end .
 
   Fixpoint linkShapes {A B}
-     (link: A -> B -> PrimitiveInstance) (s: shape)
+     (link: A -> B -> Instance) (s: shape)
      (p1: signalTy A s)
      (p2: signalTy B s)
      : Netlist :=
@@ -202,7 +205,7 @@ Section NetlistEval.
       '(y,n') <- f (x,n) ;;
 
       (* 3 *)
-      let links := linkShapes BindAssignBit N n n' in
+      let links := linkShapes AssignBit N n n' in
       '(nl, i) <- get ;;
       put (links ++ nl, i) ;;
 
@@ -219,7 +222,7 @@ Section NetlistEval.
       '(n', y) <- f (n, x) ;;
 
       (* 3 *)
-      let links := linkShapes BindAssignBit N n n' in
+      let links := linkShapes AssignBit N n n' in
       '(nl, i) <- get ;;
       put (links ++ nl, i) ;;
 
@@ -233,23 +236,23 @@ Section NetlistEval.
       '(nl, i) <- get ;;
       let x' := numberPort i X in
       let i' := bitsInPortShape' i X in
-      let links := linkShapes BindDelayBit X x x' in
+      let links := linkShapes DelayBit X x x' in
       put (links ++ nl, i') ;;
       ret x'
   }.
 
   Definition wireInput (port_shape: portType) (name: string) (port: portTypeTy N port_shape)
-    : PrimitiveInstance :=
+    : Instance :=
     match port_shape, port with
-    | Bit,_ => BindPrimitive (WireInputBit name) tt port
-    | BitVec sz,_ => BindPrimitive (WireInputBitVec name) tt port
+    | Bit,_ => WireInputBit name port
+    | BitVec sz,_ => WireInputBitVec sz name port
     end.
 
   Definition wireOutput (port_shape: portType) (name: string) (port: portTypeTy N port_shape)
-    : PrimitiveInstance :=
+    : Instance :=
     match port_shape, port with
-    | Bit,_ => BindPrimitive (WireOutputBit name) port tt
-    | BitVec sz,_ => BindPrimitive (WireOutputBitVec name) port tt
+    | Bit,_ => WireOutputBit name port
+    | BitVec sz,_ => WireOutputBitVec sz name port
     end.
 
   Fixpoint nameTy {A} (s : @shape A) : Type :=
