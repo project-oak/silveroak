@@ -91,20 +91,6 @@ Section NetlistEval.
     simpl; auto.
     simpl; auto.
     simpl; auto.
-
-    intros;simpl. 
-    refine (exist_pair (Tuple2 x Empty ~> x) (x ~> Tuple2 x Empty) _ _ _ _).
-    exact (fun '(x,y) => ret x).
-    exact (fun x => ret (x, tt)).
-    auto.
-
-    intros; simpl.
-    inversion X.
-    refine (exist_pair (Tuple2 a x ~> Tuple2 a y) (Tuple2 a y ~> Tuple2 a x) _ _ _ _).
-    exact (fun '(x,y) => y' <- x0 y;; ret (x, y')).
-    exact (fun '(x,y) => y' <- y0 y;; ret (x, y')).
-
-    simpl; auto.
   Defined.
 
   Instance NetlistCava : Cava := {
@@ -123,60 +109,60 @@ Section NetlistEval.
       | false => 0%N
     end) v));
 
-    not_gate x :=
+    not_gate '(x,tt) :=
       '(nl, i) <- get ;;
       put (cons (BindNot x i) nl, (i+1)%N) ;;
       ret i;
 
-    and_gate '(x,y) :=
+    and_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
       put (cons (BindAnd [x;y] i) nl, (i+1)%N) ;;
       ret i;
 
-    nand_gate '(x,y) :=
+    nand_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
       put (cons (BindNand [x;y] i) nl, (i+1)%N) ;;
       ret i;
 
-    or_gate '(x,y) :=
+    or_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
       put (cons (BindOr [x;y] i) nl, (i+1)%N) ;;
       ret i;
 
-    nor_gate '(x,y) :=
+    nor_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
       put (cons (BindNor [x;y] i) nl, (i+1)%N) ;;
       ret i;
 
-    xor_gate '(x,y) :=
+    xor_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
       put (cons (BindXor [x;y] i) nl, (i+1)%N) ;;
       ret i;
 
-    xnor_gate '(x,y) :=
+    xnor_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
       put (cons (BindXnor [x;y] i) nl, (i+1)%N) ;;
       ret i;
 
-    buf_gate x :=
+    buf_gate '(x,tt) :=
       '(nl, i) <- get ;;
       put (cons (BindBuf x i) nl, (i+1)%N) ;;
       ret i;
 
-    xorcy x :=
+    xorcy '(x, (y, tt)) :=
       '(nl, i) <- get ;;
-      put (cons (BindXorcy x i) nl, (i+1)%N) ;;
+      put (cons (BindXorcy (x,y) i) nl, (i+1)%N) ;;
       ret i;
 
-    muxcy x :=
+    muxcy '(x,(y, (z, tt))) :=
       '(nl, i) <- get ;;
-      put (cons (BindMuxcy x i) nl, (i+1)%N) ;;
+      put (cons (BindMuxcy (x,(y,z)) i) nl, (i+1)%N) ;;
       ret i;
 
-    unsigned_add m n s x :=
+    unsigned_add m n s '(x,(y,tt)) :=
       '(nl, i) <- get ;;
       let o := map N.of_nat (seq (N.to_nat i) s) in
-      put (cons (BindUnsignedAdd s x o) nl, (i + N.of_nat s)%N) ;;
+      put (cons (BindUnsignedAdd s (x,y) o) nl, (i + N.of_nat s)%N) ;;
       ret o;
   }.
 
@@ -243,7 +229,7 @@ Section NetlistEval.
   Instance NetlistCavaDelay : CavaDelay := {
     delay_cava := NetlistCava;
 
-    delay_gate X x :=
+    delay_gate X '(x,tt) :=
       '(nl, i) <- get ;;
       let x' := numberPort i X in
       let i' := bitsInPortShape' i X in
@@ -332,7 +318,7 @@ Section NetlistEval.
   Eval cbv in arrowToHDLModule
     "not"
     not_gate
-    ("input1")
+    ("input1", tt)
     ("output1").
 
 End NetlistEval.

@@ -50,7 +50,6 @@ library
                      Combinators
                      Combinational
                      Datatypes
-                     Desugared
                      IdentityMonad
                      Kappa
                      List

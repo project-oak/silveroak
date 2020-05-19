@@ -5,7 +5,7 @@ Import ListNotations.
 Require Import Cava.BitArithmetic.
 
 Require Import Cava.Arrow.Arrow.
-Require Import Cava.Arrow.Syntax.Desugared.
+Require Import Cava.Arrow.Kappa.Kappa.
 
 Set Implicit Arguments.
 
@@ -70,7 +70,7 @@ Section WithArrow.
     else lookup_object n os
   end.
 
-  (* The type of an arrow morphism from our environment to a variable is 
+  (* The type of an arrow morphism from our environment to a variable is
   `as_object env ~> o`
   where lookup_object n env = Some o *)
   Fixpoint lookup_morphism_ty (n: nat) (env_obj: object) (objs: list object): Type :=
@@ -95,7 +95,7 @@ Section WithArrow.
   Qed.
 
   Hint Extern 3 =>
-    match goal with 
+    match goal with
     | [H: lookup_object _ _ = Some _|- _] => apply lookup_bound in H as H1
     end : core.
 
@@ -108,10 +108,10 @@ Section WithArrow.
   Lemma lookup_upper_contra : forall o objs,
     lookup_object (length objs) objs = Some o -> False.
   Proof.
-    auto. 
+    auto.
   Qed.
 
-  Hint Extern 1 => 
+  Hint Extern 1 =>
     match goal with
     | [H: lookup_object (length ?X) (?X) = Some _ |- _] => apply lookup_upper_contra in H; contradiction
     | [H: lookup_object ?X [] = Some _ |- _] => apply lookup_lower_contra in H; contradiction
@@ -148,7 +148,7 @@ Section WithArrow.
     induction env; auto.
   Defined.
 
-  Hint Extern 4 => 
+  Hint Extern 4 =>
     match goal with
     | [H: context[length(as_object_list ?X)] |- _] => rewrite environment_objects_length_is_n in H
     end : core.
@@ -168,23 +168,12 @@ Section WithArrow.
     auto 6.
   Qed.
 
-  Lemma lookup_top_is_extraction: forall n m o o' env x, 
+  Lemma lookup_top_is_top_object: forall n m o o' env,
     m = n
-    -> lookup_object m (as_object_list (@ECons n o env)) = Some o' 
-    -> morphism (o**x) o'.
+    -> lookup_object m (as_object_list (@ECons n o env)) = Some o'
+    -> o = o'.
   Proof.
-    Hint Extern 1 => exact exl : core.
-    intros.
-    rewrite H in H0.
-    unfold lookup_object in H0.  
-    simpl in H0.
-    rewrite environment_objects_length_is_n in H0.
-    simpl in H0.
-    destruct (Nat.eq_dec n n).
-    inversion H0.
-    exact exl.
-    destruct n0.
-    reflexivity.
+    auto.
   Defined.
 
   Lemma push_lookup : forall n env o o' x ,
@@ -204,11 +193,14 @@ Section WithArrow.
   | ENil => fun H => match lookup_lower_contra H with end
   | @ECons n' o' env' => fun H =>
     match eq_nat_dec x n' with
-    | left Heq => (lookup_top_is_extraction  _ env' _ Heq H)
+    | left Heq =>
+      match lookup_top_is_top_object _ _ Heq H with
+      | eq_refl => exl
+      end
     | right Hneq =>  exr >>> extract_nth env' x (push_lookup _ _ Hneq H)
     end
   end.
-  
+
   (****************************************************************************)
   (* Closure conversion via de Brujin indices form                            *)
   (****************************************************************************)
@@ -229,8 +221,8 @@ Section WithArrow.
   | DArr _            => True
   end.
 
-  Lemma wf_debrujin_succ: 
-    forall ix iy o 
+  Lemma wf_debrujin_succ:
+    forall ix iy o
     (n: nat) (env: environment n)
     (expr: kappa natvar (ix**iy) o)
     f,
@@ -347,7 +339,7 @@ Section WithArrow.
   Notation variable_pair i o n1 n2 := (vars natvar natvar (obj_pair i o) (n1, n2)).
 
   (* Evidence of variable pair equality *)
-  Notation match_pairs xo xn yi yo yn1 yn2 := 
+  Notation match_pairs xo xn yi yo yn1 yn2 :=
     (variable_pair unit xo xn xn = variable_pair yi yo yn1 yn2).
 
   (* Evidence that if a given variable is in an environment we can lookup_object the object at the index. *)
@@ -365,7 +357,7 @@ Section WithArrow.
     intros.
     inversion H.
     subst.
-    generalize (inj_pairT2 _ _ _ _ _ H). 
+    generalize (inj_pairT2 _ _ _ _ _ H).
     intro.
     inversion H0.
     auto.
@@ -376,13 +368,13 @@ Section WithArrow.
     -> ok_variable_lookup env E
     -> lookup_object n1 (as_object_list env) = Some o.
   Proof.
-    Hint Extern 1 => 
+    Hint Extern 1 =>
       match goal with
       | [H1: In _ ?X, H2: ok_variable_lookup _ ?X |- _] => apply H2 in H1
       end : core.
     auto.
-  Qed.
-    
+  Defined.
+
   Lemma apply_extended_lookup: forall n env v1 v2 y i o E,
     match_pairs y n i o v1 v2 \/ In (vars natvar natvar (obj_pair i o) (v1, v2)) E
     -> ok_variable_lookup env E
@@ -391,7 +383,7 @@ Section WithArrow.
     Hint Extern 3 => eapply recover_dependent_val : core.
     Hint Resolve split_lookup : core.
     eauto 7.
-  Qed.
+  Defined.
 
   Hint Immediate apply_lookup : core.
   Hint Immediate apply_extended_lookup : core.
@@ -410,8 +402,18 @@ Section WithArrow.
       forall n (env: environment n),
         ok_variable_lookup env E
         -> wf_debrujin env expr1)
-        ); eauto.
-  Qed.
+        );intros.
+
+    - unfold wf_debrujin.
+      eapply H0.
+      apply H.
+
+    - info_eauto.
+    - info_eauto.
+    - info_eauto.
+    - info_eauto.
+
+  Defined.
 
   Hint Resolve kappa_wf : core.
   Hint Resolve Kappa_equivalence : core.
@@ -419,7 +421,7 @@ Section WithArrow.
   Theorem Kappa_wf: forall {i o} (expr: forall var, kappa var i o), @wf_debrujin _ _ 0 ENil (expr _).
   Proof.
     eauto.
-  Qed.
+  Defined.
 
 End WithArrow.
 

@@ -15,11 +15,11 @@
 (****************************************************************************)
 
 Require Import Cava.Arrow.Arrow.
-Require Import Cava.Arrow.Syntax.
+Require Import Cava.Arrow.Kappa.Syntax.
 Require Import Cava.Arrow.Instances.Combinational.
 
-Definition mux2_1' `{Cava} 
-: Kappa (bit ** (bit ** bit) ** unit) bit :=  
+Definition mux2_1' `{Cava}
+: Kappa (bit ** (bit ** bit) ** unit) bit :=
 <[ \ sel ab =>
    let a = fst' ab in
    let b = snd' ab in

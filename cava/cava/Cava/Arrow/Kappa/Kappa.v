@@ -1,15 +1,18 @@
 Require Import Cava.Arrow.Arrow.
-Require Import Cava.Arrow.Syntax.Kappa.
-
-Reserved Infix "<-->" (at level 90, no associativity).
-Reserved Infix "≅" (at level 90, no associativity).
-Reserved Infix "--->" (at level 90, no associativity).
 
 Section WithArrow.
   Variable arr: Arrow.
 
   Section Vars.
     Variable var: object -> object -> Type.
+
+    Inductive kappa_sugared : object -> object -> Type :=
+    | Var: forall x y,    var x y -> kappa_sugared x y
+    | Abs: forall x y z,  (var unit x -> kappa_sugared y z) -> kappa_sugared (x**y) z
+    | App: forall x y z,  kappa_sugared (x**y) z -> kappa_sugared unit x -> kappa_sugared y z
+    | Com: forall x y z,  kappa_sugared y z -> kappa_sugared x y -> kappa_sugared x z
+    | Arr: forall x y,    morphism x y -> kappa_sugared x y
+    | Let: forall x y z,  kappa_sugared unit x -> (var unit x -> kappa_sugared y z) -> kappa_sugared y z.
 
     Inductive kappa : object -> object -> Type :=
     | DVar : forall x y,   var x y -> kappa x y
@@ -19,18 +22,23 @@ Section WithArrow.
     | DArr : forall x y,   morphism x y -> kappa x y.
   End Vars.
 
+  Arguments Var [var x y].
+  Arguments Abs [var x y z].
+  Arguments App [var x y z].
+  Arguments Com [var x y z].
+  Arguments Arr [var x y].
+  Arguments Let [var x y z].
+
   Arguments DVar [var x y].
   Arguments DAbs [var x y z].
   Arguments DApp [var x y z].
   Arguments DCompose [var x y z].
   Arguments DArr [var x y].
 
+  Definition Kappa_sugared i o := forall var, @kappa_sugared var i o.
   Definition Kappa i o := forall var, @kappa var i o.
 
-  (* desugars 
-  - let 
-  - object equivalence (iso)
-  *)
+  (* desugars let bindings *)
   Fixpoint desugar {var i o} (e: kappa_sugared var i o) : kappa var i o :=
   match e with
   | Var x => DVar x
@@ -39,11 +47,11 @@ Section WithArrow.
   | Com f g => DCompose (desugar f) (desugar g)
   | Arr m => DArr m
   | Let x f => DApp (DAbs (fun x => desugar (f x))) (desugar x)
-  | Iso f iso => DCompose (desugar f) (DArr (apply_object_equivalence_left arr _ _ iso)) 
   end.
 
   Definition Desugar {i o} (e: Kappa_sugared i o) : Kappa i o := fun var => desugar (e var).
 
+  (* reproject into unsugared into kappa *)
   Fixpoint kappa_project {var i o} (e: kappa var i o) : kappa_sugared var i o :=
   match e with
   | DVar x => Var x
@@ -52,7 +60,15 @@ Section WithArrow.
   | DCompose f g => Com (kappa_project f) (kappa_project g)
   | DArr m => Arr m
   end.
+
 End WithArrow.
+
+Arguments Var [arr var x y].
+Arguments Abs [arr var x y z].
+Arguments App [arr var x y z].
+Arguments Com [arr var x y z].
+Arguments Arr [arr var x y].
+Arguments Let [arr var x y z].
 
 Arguments DVar [arr var x y].
 Arguments DAbs [arr var x y z].
@@ -62,3 +78,6 @@ Arguments DArr [arr var x y].
 
 Arguments kappa [arr].
 Arguments Kappa [arr].
+
+Arguments kappa_sugared [arr].
+Arguments Kappa_sugared [arr].

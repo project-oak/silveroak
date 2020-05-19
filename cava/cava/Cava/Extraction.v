@@ -35,12 +35,13 @@ Recursive Extraction Library Cava.
 Recursive Extraction Library Combinators.
 
 Require Import Cava.Arrow.Arrow.
-Require Import Cava.Arrow.Syntax.
-Require Import Cava.Arrow.Syntax.Desugared.
-Require Import Cava.Arrow.Syntax.CC.
+Require Import Cava.Arrow.Kappa.Kappa.
+Require Import Cava.Arrow.Kappa.CC.
+Require Import Cava.Arrow.Kappa.Syntax.
 Require Import Cava.Arrow.Instances.Combinational.
 (* Require Import Cava.Arrow.Instances.Netlist. *)
 Recursive Extraction Library Arrow.
+Recursive Extraction Library Kappa.
 Recursive Extraction Library Syntax.
 
 Recursive Extraction Library Combinational.

@@ -7,4 +7,4 @@ Definition feedbackNand
   {Cava: CavaDelay}
   {ArrowLoop: @ArrowLoop (@cava_delay_arr Cava)}
   : bit ~> bit :=
-  loopl (nand >>> delay_gate >>> copy).
+  loopl (nand >>> uncancelr >>> delay_gate >>> copy).
