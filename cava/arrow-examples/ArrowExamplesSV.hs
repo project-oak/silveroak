@@ -28,3 +28,4 @@ main = do writeSystemVerilog nandArrow
           writeSystemVerilog feedbackNandArrow
           writeTestBench feedbackNandArrow_tb
           writeSystemVerilog mux2_1_netlist
+          writeTestBench mux2_1_tb
