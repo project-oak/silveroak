@@ -17,8 +17,11 @@
 Require Import Cava.Arrow.Arrow.
 Require Import Cava.Arrow.Kappa.Syntax.
 Require Import Cava.Arrow.Instances.Combinational.
+Require Import Cava.Arrow.Instances.Netlist.
 
-Definition mux2_1' `{Cava}
+Require Import Coq.Strings.String.
+
+Definition mux2_1'
 : Kappa (bit ** (bit ** bit) ** unit) bit :=
 <[ \ sel ab =>
    let a = fst' ab in
@@ -30,7 +33,10 @@ Definition mux2_1' `{Cava}
    sel_out
 ]>.
 
-Open Scope source.
+Local Open Scope string_scope.
 
-Definition mux2_1 `{Cava} : (bit ** (bit ** bit) ** unit) ~> bit
-  := Closure_conversion mux2_1'.
+Definition mux2_1_netlist := arrowToHDLModule
+  "mux2_1"
+  (toCava NetlistCava (Closure_conversion mux2_1'))
+  ("input1", (("input2", "input3"), tt))
+  ("output1").

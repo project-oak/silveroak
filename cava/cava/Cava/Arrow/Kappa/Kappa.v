@@ -1,15 +1,15 @@
 Require Import Cava.Arrow.Arrow.
+Require Import Cava.Arrow.Instances.Constructive.
 
 Section WithArrow.
-  Variable arr: Arrow.
 
   Section Vars.
     Variable var: object -> object -> Type.
 
     Inductive kappa_sugared : object -> object -> Type :=
     | Var: forall x y,    var x y -> kappa_sugared x y
-    | Abs: forall x y z,  (var unit x -> kappa_sugared y z) -> kappa_sugared (x**y) z
-    | App: forall x y z,  kappa_sugared (x**y) z -> kappa_sugared unit x -> kappa_sugared y z
+    | Abs: forall x y z,  (var unit x -> kappa_sugared y z) -> kappa_sugared (x ** y) z
+    | App: forall x y z,  kappa_sugared (x ** y) z -> kappa_sugared unit x -> kappa_sugared y z
     | Com: forall x y z,  kappa_sugared y z -> kappa_sugared x y -> kappa_sugared x z
     | Arr: forall x y,    morphism x y -> kappa_sugared x y
     | Let: forall x y z,  kappa_sugared unit x -> (var unit x -> kappa_sugared y z) -> kappa_sugared y z.
@@ -61,23 +61,20 @@ Section WithArrow.
   | DArr m => Arr m
   end.
 
+  Hint Resolve Desugar : core.
+  Hint Resolve desugar : core.
+
 End WithArrow.
 
-Arguments Var [arr var x y].
-Arguments Abs [arr var x y z].
-Arguments App [arr var x y z].
-Arguments Com [arr var x y z].
-Arguments Arr [arr var x y].
-Arguments Let [arr var x y z].
+Arguments Var [var x y].
+Arguments Abs [var x y z].
+Arguments App [var x y z].
+Arguments Com [var x y z].
+Arguments Arr [var x y].
+Arguments Let [var x y z].
 
-Arguments DVar [arr var x y].
-Arguments DAbs [arr var x y z].
-Arguments DApp [arr var x y z].
-Arguments DCompose [arr var x y z].
-Arguments DArr [arr var x y].
-
-Arguments kappa [arr].
-Arguments Kappa [arr].
-
-Arguments kappa_sugared [arr].
-Arguments Kappa_sugared [arr].
+Arguments DVar [var x y].
+Arguments DAbs [var x y z].
+Arguments DApp [var x y z].
+Arguments DCompose [var x y z].
+Arguments DArr [var x y].

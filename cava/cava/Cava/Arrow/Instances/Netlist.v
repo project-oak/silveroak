@@ -9,6 +9,7 @@ From Coq Require Import ZArith.
 Import ListNotations.
 
 From ExtLib Require Import Structures.Monads.
+From ExtLib Require Import Structures.MonadLaws.
 From ExtLib Require Import Structures.MonadFix.
 From ExtLib Require Export Data.Monads.IdentityMonad.
 From ExtLib Require Export Data.Monads.StateMonad.
@@ -21,6 +22,7 @@ From Cava Require Import Arrow.Arrow.
 
 From Coq Require Import Setoid.
 From Coq Require Import Classes.Morphisms.
+Require Import FunctionalExtensionality.
 
 (******************************************************************************)
 (* Evaluation as a netlist                                                    *)
@@ -50,9 +52,8 @@ Section NetlistEval.
     refine (fun f => _). intros.
     refine (fun g => _). intros.
     auto.
-    auto.
-    auto.
-    auto.
+
+    auto. auto. auto.
   Defined.
 
   #[refine] Instance NetlistArr : Arrow := {
@@ -85,6 +86,17 @@ Section NetlistEval.
   }.
   Proof.
     intros.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
+    simpl; auto.
     simpl; auto.
     simpl; auto.
     simpl; auto.

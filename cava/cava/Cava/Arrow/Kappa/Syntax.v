@@ -1,12 +1,13 @@
 Require Export Cava.Arrow.Kappa.Kappa.
 Require Export Cava.Arrow.Kappa.CC.
 Require Export Cava.Arrow.Instances.Combinational.
+Require Export Cava.Arrow.Instances.Constructive.
 
 Require Import Cava.Arrow.Arrow.
 Require Import Cava.BitArithmetic.
 
-Require Import Arith Eqdep List Lia.
-Require Import Program.Equality.
+Require Import Arith Eqdep_dec List Lia.
+(* Require Import Program.Equality. *)
 
 (* Notations *)
 
@@ -18,7 +19,7 @@ Declare Custom Entry expr.
 Delimit Scope expression_scope with source.
 
 Notation "<[ e ]>" := (
-  Desugar _ (fun var =>
+  Desugar (fun var =>
     e%source
   )
   ) (at level 1, e custom expr at level 1).
@@ -55,23 +56,23 @@ Notation "#v x" := (Arr (constant_vec _ (nat_to_bitvec_sized _ x))) (in custom e
 Local Open Scope expression_scope.
 
 (* 1. simple constant *)
-Definition ex1_notation {cava: Cava}: Kappa (bit**unit) bit := <[ \ x => #true ]> .
+Definition ex1_notation: Kappa (bit**unit) bit := <[ \ x => #true ]> .
 
 (* 2. branching on Coq value *)
-Definition ex2_notation {cava: Cava} (n:nat) : Kappa (bit**unit) bit :=
+Definition ex2_notation (n:nat) : Kappa (bit**unit) bit :=
 match n with
 | O => <[ \ x => #true ]>
 | S n => <[ \ x => !xor_gate x x ]>
 end.
 
 (* 3. adder tree *)
-Fixpoint make_obj `{Arrow} o (n:nat) :=
+Fixpoint make_obj o (n:nat): tree :=
 match n with
 | O => o
-| S n => make_obj o n ** make_obj o n
+| S n => Branch (make_obj o n ) ( make_obj o n)
 end.
 
-Fixpoint tree `{Cava} (A: object)
+Fixpoint tree (A: object)
   (n: nat)
   (f: A**A**unit ~> A)
   {struct n}
@@ -86,7 +87,7 @@ match n with
             ]>
 end.
 
-Definition xilinxFullAdder `{Cava}
+Definition xilinxFullAdder 
   : Kappa (bit ** (bit ** bit) ** unit) (bit**bit) :=
   <[ \ cin ab =>
      let a = fst' ab in
@@ -97,9 +98,7 @@ Definition xilinxFullAdder `{Cava}
      (sum, cout)
   ]>.
 
-(* Definition xilinxFullAdder' := @Closure_conversion Combinational _ _ xilinxFullAdder . *)
-
-Definition adder_tree `{Cava}
+Definition adder_tree 
   (bitsize: nat)
   (n: nat)
   : Kappa (make_obj (bitvec bitsize) n ** unit) (bitvec bitsize) :=
@@ -108,95 +107,82 @@ Definition adder_tree `{Cava}
 Notation "v : 'u' sz" := (constant_vec sz (nat_to_bitvec_sized sz v))
   (only printing, at level 99, format "'[ ' v : 'u' sz ']'").
 
-Ltac unfold_notation :=
+
+(* WIP structural equivalence testing below *)
+
+(* Ltac unfold_notation :=
   (unfold Desugar;
   unfold desugar;
   unfold Closure_conversion;
-  unfold closure_conversion
+  unfold closure_conversion;
+  unfold closure_conversion'
   ).
 
 Ltac unfold_notation_in x :=
   (unfold Desugar in x ;
   unfold desugar in x;
   unfold Closure_conversion in x;
-  unfold closure_conversion in x
+  unfold closure_conversion in x;
+  unfold closure_conversion'
   ).
+
+Definition tktk `{Cava} := toCava _ (Closure_conversion ex1_notation).
 
 Lemma kappa_arrow_lemma_example:
   forall (Cava: Cava),
-  Closure_conversion ex1_notation = (uncancelr >>> first swap >>> assoc >>> exl >>> constant true).
+  tktk = (uncancelr >>> first swap >>> assoc >>> exl >>> constant true).
 Proof.
   intros.
   auto.
 Qed.
 
-Ltac simplify_arrow :=
-  try setoid_rewrite exl_unit_is_drop;
-  try setoid_rewrite drop_annhilates.
-
 Lemma kappa_arrow_lemma_example2:
-  forall (Cava: Cava),
   Closure_conversion ex1_notation =M= (drop >>> constant true).
 Proof.
   intros.
+  unfold ex1_notation.
   unfold_notation.
-  simpl.
+
+  unfold eq_rec_r, eq_rec, eq_rect, eq_sym.
+
   setoid_rewrite exl_unit_is_drop.
   setoid_rewrite <- associativity at 1.
   setoid_rewrite <- associativity at 1.
   setoid_rewrite <- associativity at 1.
-  setoid_rewrite drop_annhilates.
-  reflexivity.
-Qed.
-
-(* experimental reduce arrow and evaluate simplified form *)
-
-From Coq Require Import ssreflect ssrfun ssrbool.
-Set Implicit Arguments.
-Unset Strict Implicit.
-Unset Printing Implicit Defensive.
-
-Lemma reduce_equality: forall (Cava:Cava) x (H: x = x) g f,
-  match H in (_ = o) return ((g x) ~[ Cava ]~> o)
-  with | erefl => f end
-  = f.
-Proof.
-  intros.
-  rewrite (UIP_refl _ _ H).
-  reflexivity.
-Qed.
-
-Lemma reduce_nat_eq_dec:
-  forall (Cava:Cava) n (env: environment Cava n) (H: n = (length (as_object_list (env)))),
-  (Nat.eq_dec n (length (as_object_list env))) = left H.
-Proof.
-  intros.
-  destruct (Nat.eq_dec n (length (as_object_list env))).
-  f_equal.
-  apply UIP.
-  contradiction.
-Qed.
-
-Lemma simplified_xilinx_adder':
-  forall (Cava: Cava),
-  {f | Closure_conversion xilinxFullAdder = f }.
-Proof.
-  intros.
-  unfold_notation.
-  simpl.
-  (* these are obvious when looking at the goal *)
-  rewrite (@reduce_equality _ (bit**bit) _ (fun x => x ** bit ** unit) _).
-  rewrite (@reduce_equality _ (bit**bit) _ (fun x => x ** bit ** unit) _).
-  rewrite (@reduce_equality _ bit _ (fun x => bit ** bit ** (bit ** bit) ** bit ** unit) _).
-  rewrite (@reduce_equality _ bit _ (fun x => bit ** (bit ** bit) ** bit ** unit) _).
-  rewrite (@reduce_equality _ bit _ (fun x => bit ** (bit ** bit) ** bit ** unit) _).
-  rewrite (@reduce_equality _ bit _ (fun x => bit ** unit) _).
-  rewrite (@reduce_equality _ bit _ (fun x => bit ** unit) _).
-  rewrite (@reduce_equality _ bit _ (fun x => bit ** bit ** bit ** (bit ** bit) ** bit ** unit) _).
-  rewrite (@reduce_equality _ bit _ (fun x => bit ** bit ** bit ** (bit ** bit) ** bit ** unit) _).
-  rewrite (@reduce_equality _ bit _ (fun x => bit ** bit ** bit ** bit ** (bit ** bit) ** bit ** unit) _).
-  rewrite (@reduce_equality _ bit _ (fun x =>  x**bit ** bit ** bit ** bit ** (bit ** bit) ** bit ** unit) _).
-  simpl.
-  eexists.
+  setoid_rewrite st_drop_annhilates.
   auto.
+Qed.
+
+Opaque compose.
+
+Definition xilinxFullAdderWf: (wf_debrujin ENil (xilinxFullAdder _)).
+  simpl. tauto.
 Defined.
+Goal
+  structural_simplification (closure_conversion xilinxFullAdder xilinxFullAdderWf >>> exl) =M= second (first (second uncancelr >>> xor_gate)) >>> xorcy.
+Proof.
+  intros.
+  unfold xilinxFullAdder;
+  unfold_notation;
+  unfold xilinxFullAdderWf, wf_debrujin_succ;
+  unfold eq_rec_r, eq_rec, eq_rect, eq_sym; 
+  simpl.
+
+  match goal with 
+  | [|- context[match H in (_=_) return _ with eq_refl => _ end ]] => idtac
+  end.
+
+  
+  
+  setoid_rewrite st_first_exl.
+
+  refine (st_compose _ _).
+
+  unfold wf_debrujin_succ.
+  UIP.
+  unfold eq_ind_r.
+  unfold eq_ind.
+  UIP.
+  
+  simpl.
+  unfold object_to_list_object_id. *)
