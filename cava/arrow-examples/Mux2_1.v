@@ -19,7 +19,11 @@ Require Import Cava.Arrow.Kappa.Syntax.
 Require Import Cava.Arrow.Instances.Combinational.
 Require Import Cava.Arrow.Instances.Netlist.
 
+Require Import Cava.Netlist.
+
 Require Import Coq.Strings.String.
+From Coq Require Import Lists.List.
+Import ListNotations.
 
 Definition mux2_1'
 : Kappa (bit ** (bit ** bit) ** unit) bit :=
@@ -35,8 +39,36 @@ Definition mux2_1'
 
 Local Open Scope string_scope.
 
+(* TODO: Two different interfaces for now, need to rationalize this down
+         to just one interface mechansim.
+*)
 Definition mux2_1_netlist := arrowToHDLModule
   "mux2_1"
   (toCava NetlistCava (Closure_conversion mux2_1'))
-  ("input1", (("input2", "input3"), tt))
-  ("output1").
+  ("s", (("a", "b"), tt))
+  ("o").
+
+Definition mux2_1_Interface :=
+   mkCircuitInterface "mux2_1"
+     (Tuple2 (One ("s", Bit)) (Tuple2 (One ("a", Bit)) (One ("b", Bit))))
+     (One ("o", Bit))
+     [].
+
+Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
+ [(false, (false, true));
+  (false, (true, false));
+  (false, (false, false));
+  (true, (false, true));
+  (true, (true, false));
+  (true, (true, true))].
+
+Definition mux2_1 `{Cava}: (bit ** (bit ** bit) ** unit) ~> bit
+   := toCava _ (Closure_conversion mux2_1').
+
+Definition mux2_1_tb_expected_outputs : list bool :=
+  map (fun '(s, (a,b)) => (@mux2_1 Combinational) (s, ((a, b), tt)))
+      mux2_1_tb_inputs.       
+
+Definition mux2_1_tb :=
+  testBench "mux2_1_tb" mux2_1_Interface
+            mux2_1_tb_inputs mux2_1_tb_expected_outputs.
