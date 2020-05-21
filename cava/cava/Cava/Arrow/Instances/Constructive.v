@@ -1,14 +1,15 @@
-From Coq Require Import Bool.Bool.
-From Coq Require Import Bool.Bvector.
+From Coq Require Import Bool List.
+Import ListNotations.
 
 Require Import Cava.BitArithmetic.
 Require Import Cava.Arrow.Arrow.
+Require Import Cava.Netlist.
 
 Set Implicit Arguments.
 
 Inductive type :=
 | Bit:    type
-| BitVec: nat -> type.
+| BitVec: list nat -> type.
 
 Inductive tree : Type :=
 | Empty : tree
@@ -35,7 +36,7 @@ Inductive structure: tree -> tree -> Type :=
 | Unassoc:     forall x y z, structure (Branch x (Branch y z)) (Branch (Branch x y) z)
 
 | Constant:    bool -> structure Empty (Leaf Bit)
-| ConstantVec: forall n, Bvector n -> structure Empty ((Leaf (BitVec n)))
+| ConstantVec: forall n,  bitVecTy bool n -> structure Empty ((Leaf (BitVec n)))
 
 | NotGate:     structure (Branch (Leaf Bit) Empty) (Leaf Bit)
 | AndGate:     structure (Branch (Leaf Bit) (Branch (Leaf Bit) Empty)) (Leaf Bit)
@@ -49,7 +50,7 @@ Inductive structure: tree -> tree -> Type :=
 | Xorcy:       structure (Branch (Leaf Bit) (Branch (Leaf Bit) Empty)) (Leaf Bit)
 | Muxcy:       structure (Branch (Leaf Bit) (Branch (Leaf Bit) (Branch (Leaf Bit) Empty))) (Leaf Bit)
 
-| UnsignedAdd: forall a b s, structure (Branch ((Leaf (BitVec a))) (Branch ((Leaf (BitVec b))) Empty)) ((Leaf (BitVec s))).
+| UnsignedAdd: forall a b s, structure (Branch ((Leaf (BitVec [a]))) (Branch ((Leaf (BitVec [b]))) Empty)) ((Leaf (BitVec [s]))).
 
 Arguments Id [x].
 Arguments Compose [x y z].
@@ -247,7 +248,7 @@ Instance ConstructiveCava : Cava := {
   bitvec n := (Leaf (BitVec n));
 
   constant b := Constant b;
-  constant_vec n v := ConstantVec v;
+  constant_vec n v := ConstantVec n v;
 
   not_gate := NotGate;
   and_gate := AndGate;
