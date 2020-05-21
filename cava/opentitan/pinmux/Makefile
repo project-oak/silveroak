@@ -25,11 +25,11 @@ all:	vlint
 
 SOURCES = pinmux.vlt prim_assert.sv top_pkg.sv tlul_pkg.sv tlul_err.sv \
 	  prim_subreg.sv prim_subreg_ext.sv tlul_adapter_reg.sv \
-          pinmux_reg_pkg.sv pinmux_reg_top.sv pinmux_pkg.sv prim_pulse_sync.sv \
-          prim_filter.sv pinmux_wkup.sv prim_flop_2sync.sv pinmux.sv
+          pinmux_reg_pkg.sv pinmux_reg_top.sv prim_pulse_sync.sv \
+          prim_filter.sv prim_flop_2sync.sv pinmux.sv
 
 vlint:	$(SOURCES)
-	verilator +1800-2012ext+sv -Wno-fatal --lint-only $^
+	verilator +1800-2012ext+sv -Wno-fatal --lint-only $^ --top-module pinmux
 
 prim_assert.sv:	$(OPENTITAN)/hw/ip/prim/rtl/prim_assert.sv
 		cp $^ $@
