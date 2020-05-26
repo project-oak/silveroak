@@ -25,6 +25,7 @@ Set Extraction KeepSingleton.
 Set Extraction File Comment "Auto-generated from Cava/Coq. Please do not hand edit.".
 
 Require Import Cava.BitArithmetic.
+Require Import Cava.Signal.
 Require Import Cava.Monad.Cava.
 Require Import Cava.Monad.Combinators.
 Require Import Cava.Monad.UnsignedAdders.
@@ -44,10 +45,11 @@ Require Import Cava.Arrow.Instances.Constructive.
 Recursive Extraction Library Arrow.
 Recursive Extraction Library Kappa.
 Recursive Extraction Library Syntax.
-
 Recursive Extraction Library Combinational.
 Recursive Extraction Library Constructive.
+
 Recursive Extraction Library Netlist.
+Recursive Extraction Library Signal.
 Recursive Extraction Library Types.
 Recursive Extraction Library UnsignedAdders.
 Recursive Extraction Library XilinxAdder.

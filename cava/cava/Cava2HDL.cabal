@@ -60,6 +60,7 @@ library
                      Netlist0
                      Nat
                      PeanoNat
+                     Signal
                      StateMonad
                      Syntax
                      Types
