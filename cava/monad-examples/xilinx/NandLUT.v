@@ -26,6 +26,7 @@ Require Import Cava.Monad.Cava.
 Require Import Cava.Monad.Combinators.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Netlist.
+Require Import Cava.Types.
 Require Import Cava.Monad.XilinxAdder.
 
 Local Open Scope list_scope.
@@ -46,7 +47,7 @@ Definition lutNANDInterface
 Definition lutNANDNetlist := makeNetlist lutNANDInterface lutNAND.
 
  Definition lutNAND_tb_inputs : list (bool * bool) :=
- [(false, false); (false, true); (true, false); (true, true)].       
+ [(false, false); (false, true); (true, false); (true, true)].
 
  Definition lutNAND_tb_expected_outputs : list bool :=
   map (fun i => combinational (lutNAND i)) lutNAND_tb_inputs.

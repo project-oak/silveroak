@@ -3,11 +3,11 @@ Require Export Cava.Arrow.Kappa.CC.
 Require Export Cava.Arrow.Instances.Combinational.
 Require Export Cava.Arrow.Instances.Constructive.
 
+Require Import Cava.Types.
 Require Import Cava.Arrow.Arrow.
 Require Import Cava.BitArithmetic.
 
 Require Import Arith Eqdep_dec List Lia Program.
-(* Require Import Program.Equality. *)
 
 (* Notations *)
 
@@ -56,25 +56,25 @@ Notation "#v x" := (Arr (constant_vec _ x)) (in custom expr at level 2, x constr
 Local Open Scope expression_scope.
 
 (* 1. simple constant *)
-Definition ex1_notation: Kappa (bit**unit) bit := <[ \ x => #true ]> .
+Definition ex1_notation: Kappa << bit >> bit := <[ \ x => #true ]> .
 
 (* 2. branching on Coq value *)
-Definition ex2_notation (n:nat) : Kappa (bit**unit) bit :=
+Definition ex2_notation (n:nat) : Kappa << bit >> bit :=
 match n with
 | O => <[ \ x => #true ]>
 | S n => <[ \ x => !xor_gate x x ]>
 end.
 
 (* 3. adder tree *)
-Fixpoint make_obj o (n:nat): tree :=
+Fixpoint make_obj o (n:nat): bundle :=
 match n with
 | O => o
-| S n => Branch (make_obj o n ) ( make_obj o n)
+| S n => Tuple2 (make_obj o n) (make_obj o n)
 end.
 
 Fixpoint tree (A: object)
   (n: nat)
-  (f: A**A**unit ~> A)
+  (f: << A, A >> ~> A)
   {struct n}
   : Kappa (make_obj A n ** unit) A :=
 match n with
@@ -88,7 +88,7 @@ match n with
 end.
 
 Definition xilinxFullAdder
-  : Kappa (bit ** (bit ** bit) ** unit) (bit**bit) :=
+  : Kappa << bit, bit ** bit >> (bit**bit) :=
   <[ \ cin ab =>
      let a = fst' ab in
      let b = snd' ab in

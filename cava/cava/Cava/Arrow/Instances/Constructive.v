@@ -4,58 +4,50 @@ Import ListNotations.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Arrow.Arrow.
 Require Import Cava.Netlist.
+Require Import Cava.Types.
 
 Set Implicit Arguments.
 
-Inductive type :=
-| Bit:    type
-| BitVec: list nat -> type.
-
-Inductive tree : Type :=
-| Empty : tree
-| Leaf : type -> tree
-| Branch : tree -> tree -> tree. 
-
-Inductive structure: tree -> tree -> Type :=
+Inductive structure: bundle -> bundle -> Type :=
 | Id:          forall x, structure x x
 | Compose:     forall x y z, structure y z -> structure x y -> structure x z
-| Copy:        forall x, structure x (Branch x x)
+| Copy:        forall x, structure x (Tuple2 x x)
 | Drop:        forall x, structure x Empty
-| Swap:        forall x y, structure (Branch x y) (Branch y x)
+| Swap:        forall x y, structure (Tuple2 x y) (Tuple2 y x)
 
-| First:       forall x y z, structure x y -> structure (Branch x z) (Branch y z)
-| Second:      forall x y z, structure x y -> structure (Branch z x) (Branch z y)
+| First:       forall x y z, structure x y -> structure (Tuple2 x z) (Tuple2 y z)
+| Second:      forall x y z, structure x y -> structure (Tuple2 z x) (Tuple2 z y)
 
-| Exl:         forall x y, structure (Branch x y) x
-| Exr:         forall x y, structure (Branch x y) y
+| Exl:         forall x y, structure (Tuple2 x y) x
+| Exr:         forall x y, structure (Tuple2 x y) y
 
-| Uncancell:   forall x, structure x (Branch Empty x)
-| Uncancelr:   forall x, structure x (Branch x Empty)
+| Uncancell:   forall x, structure x (Tuple2 Empty x)
+| Uncancelr:   forall x, structure x (Tuple2 x Empty)
 
-| Assoc:       forall x y z, structure (Branch (Branch x y) z) (Branch x (Branch y z))
-| Unassoc:     forall x y z, structure (Branch x (Branch y z)) (Branch (Branch x y) z)
+| Assoc:       forall x y z, structure (Tuple2 (Tuple2 x y) z) (Tuple2 x (Tuple2 y z))
+| Unassoc:     forall x y z, structure (Tuple2 x (Tuple2 y z)) (Tuple2 (Tuple2 x y) z)
 
-| Constant:    bool -> structure Empty (Leaf Bit)
-| ConstantVec: forall n,  bitVecTy bool n -> structure Empty ((Leaf (BitVec n)))
+| Constant:    bool -> structure Empty (One Bit)
+| ConstantVec: forall n,  denoteBitVecWith bool n -> structure Empty ((One (BitVec n)))
 
-| NotGate:     structure (Branch (Leaf Bit) Empty) (Leaf Bit)
-| AndGate:     structure (Branch (Leaf Bit) (Branch (Leaf Bit) Empty)) (Leaf Bit)
-| NandGate:    structure (Branch (Leaf Bit) (Branch (Leaf Bit) Empty)) (Leaf Bit)
-| OrGate:      structure (Branch (Leaf Bit) (Branch (Leaf Bit) Empty)) (Leaf Bit)
-| NorGate:     structure (Branch (Leaf Bit) (Branch (Leaf Bit) Empty)) (Leaf Bit)
-| XorGate:     structure (Branch (Leaf Bit) (Branch (Leaf Bit) Empty)) (Leaf Bit)
-| XnorGate:    structure (Branch (Leaf Bit) (Branch (Leaf Bit) Empty)) (Leaf Bit)
-| BufGate:     structure (Branch (Leaf Bit) Empty) (Leaf Bit)
+| NotGate:     structure (Tuple2 (One Bit) Empty) (One Bit)
+| AndGate:     structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
+| NandGate:    structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
+| OrGate:      structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
+| NorGate:     structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
+| XorGate:     structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
+| XnorGate:    structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
+| BufGate:     structure (Tuple2 (One Bit) Empty) (One Bit)
 
-| Xorcy:       structure (Branch (Leaf Bit) (Branch (Leaf Bit) Empty)) (Leaf Bit)
-| Muxcy:       structure (Branch (Leaf Bit) (Branch (Leaf Bit) (Branch (Leaf Bit) Empty))) (Leaf Bit)
+| Xorcy:       structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
+| Muxcy:       structure (Tuple2 (One Bit) (Tuple2 (One Bit) (Tuple2 (One Bit) Empty))) (One Bit)
 
-| UnsignedAdd: forall a b s, structure (Branch ((Leaf (BitVec [a]))) (Branch ((Leaf (BitVec [b]))) Empty)) ((Leaf (BitVec [s]))).
+| UnsignedAdd: forall a b s, structure (Tuple2 ((One (BitVec [a]))) (Tuple2 ((One (BitVec [b]))) Empty)) ((One (BitVec [s]))).
 
-Arguments Id [x].
+Arguments Id {x}.
 Arguments Compose [x y z].
 
-Inductive st_equiv : forall (i o: tree), structure i o -> structure i o -> Prop :=
+Inductive st_equiv : forall (i o: bundle), structure i o -> structure i o -> Prop :=
 | st_refl:    forall x y f, @st_equiv x y f f
 | st_sym:     forall x y f g, st_equiv g f -> @st_equiv x y f g
 | st_trans:   forall x y f g h, st_equiv f g -> st_equiv g h -> @st_equiv x y f h
@@ -105,30 +97,30 @@ Proof.
   apply s0.
   apply s0.
   apply b.
-  apply b.
+  apply d.
 Defined.
 
 Hint Immediate st_refl : core.
 Hint Immediate st_sym : core.
 Hint Immediate st_trans : core.
 
-Definition denoteType `{Cava} (t: type)
+Definition denoteKind `{Cava} (k: Kind)
   : object :=
-match t with
+match k with
 | Bit       => bit
 | BitVec n  => bitvec n
 end.
 
-Fixpoint denoteTree `{Cava} (t: tree)
+Fixpoint denoteShape `{Cava} (t: shape)
   : object :=
 match t with
 | Empty => unit
-| Leaf l => denoteType l
-| Branch x y => denoteTree x ** denoteTree y
+| One l => denoteKind l
+| Tuple2 x y => denoteShape x ** denoteShape y
 end.
 
 Fixpoint toCava {i o} (Cava:Cava) (expr: structure i o)
-  : (denoteTree i) ~> (denoteTree o) :=
+  : (denoteShape i) ~> (denoteShape o) :=
 match expr with
 | Id                => id
 | Compose g f       => compose (toCava Cava g) (toCava Cava f)
@@ -167,7 +159,7 @@ match expr with
 end.
 
 #[refine] Instance ConstructiveCat : Category := {
-  object := tree;
+  object := bundle;
   morphism X Y := structure X Y;
   compose X Y Z f g := Compose f g;
   id X := Id;
@@ -195,7 +187,7 @@ Defined.
 Instance ConstructiveArr : Arrow := {
   cat := ConstructiveCat;
   unit := Empty;
-  product := Branch;
+  product := Tuple2;
 
   first _ _ _ f := First _ f;
   second _ _ _ f := Second _ f;
@@ -244,8 +236,8 @@ Instance ConstructiveArr : Arrow := {
 }.
 
 Instance ConstructiveCava : Cava := {
-  bit := Leaf Bit;
-  bitvec n := (Leaf (BitVec n));
+  bit := One Bit;
+  bitvec n := (One (BitVec n));
 
   constant b := Constant b;
   constant_vec n v := ConstantVec n v;

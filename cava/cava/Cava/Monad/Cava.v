@@ -36,6 +36,7 @@ Require Export ExtLib.Data.Monads.StateMonad.
 Export MonadNotation.
 
 Require Import Cava.Netlist.
+Require Import Cava.Types.
 Require Import Cava.BitArithmetic.
 
 Generalizable All Variables.
@@ -396,7 +397,7 @@ Definition inputBit (name : string) : state CavaState N :=
         ret o
   end.
 
-Definition inputVectorTo0 (sizes : list nat) (name : string) : state CavaState (@bitVecTy nat N sizes) :=
+Definition inputVectorTo0 (sizes : list nat) (name : string) : state CavaState (@denoteBitVecWith nat N sizes) :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
@@ -418,7 +419,7 @@ Definition outputBit (name : string) (i : N) : state CavaState N :=
         ret i
   end.
 
-Definition outputVectorTo0 (sizes : list nat) (v : @bitVecTy nat N sizes) (name : string) : state CavaState unit :=
+Definition outputVectorTo0 (sizes : list nat) (v : @denoteBitVecWith nat N sizes) (name : string) : state CavaState unit :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
@@ -471,8 +472,8 @@ Definition wireUpCircuit (intf : CircuitInterface)
   setModuleName (circuitName intf) ;;
   cs <- get ;;
   let countInputsFrom := netNumber cs in
-  let inputPort : @shape (string * portType) := circuitInputs intf in
-  let typeShape : @shape portType := mapShape snd inputPort in
+  let inputPort : @shape (string * Kind) := circuitInputs intf in
+  let typeShape : bundle := mapShape snd inputPort in
   let numberedInputs : signalTy N typeShape := numberPort countInputsFrom typeShape in
   instantiateInputPorts (shapeToPortDeclaration inputPort) ;;
   o <- circuit numberedInputs ;;

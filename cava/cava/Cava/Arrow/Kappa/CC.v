@@ -4,6 +4,8 @@ Import ListNotations.
 
 Require Import Cava.BitArithmetic.
 
+Require Import Cava.Types.
+Require Import Cava.Arrow.Kappa.Kappa.
 Require Import Cava.Arrow.Arrow.
 Require Import Cava.Arrow.Instances.Constructive.
 Require Import Cava.Arrow.Kappa.Kappa.
@@ -56,22 +58,22 @@ Qed.
   Variables are then instantiated as a morphism from the environment to the
   associated object. *)
   Inductive environment : nat -> Type :=
-  | ECons : forall n, tree -> environment n -> environment (S n)
+  | ECons : forall n, bundle -> environment n -> environment (S n)
   | ENil : environment 0.
 
-  Fixpoint as_object {n} (env: environment n): tree :=
+  Fixpoint as_object {n} (env: environment n): bundle :=
   match env with
   | ENil => Empty
-  | ECons o env' => Branch o (as_object env')
+  | ECons o env' => Tuple2 o (as_object env')
   end.
 
-  Fixpoint as_object_list {n} (env: environment n): list tree :=
+  Fixpoint as_object_list {n} (env: environment n): list (bundle) :=
   match env with
   | ENil => []
   | ECons o env' => o :: as_object_list env'
   end.
 
-  Fixpoint lookup_object (n: nat) (env: list tree): option tree :=
+  Fixpoint lookup_object (n: nat) (env: list (bundle)): option (bundle) :=
   match env with
   | [] => None
   | o :: os =>
@@ -83,7 +85,7 @@ Qed.
   (* The type of an arrow morphism from our environment to a variable is
   `as_object env ~> o`
   where lookup_object n env = Some o *)
-  Fixpoint lookup_morphism_ty (n: nat) (env_obj: tree) (objs: list tree): Type :=
+  Fixpoint lookup_morphism_ty (n: nat) (env_obj: bundle) (objs: list (bundle)): Type :=
   match objs with
   | [] => Datatypes.unit
   | o::os =>
@@ -92,10 +94,10 @@ Qed.
     else lookup_morphism_ty n env_obj os
   end.
 
-  Fixpoint list_as_object (l: list tree): tree :=
+  Fixpoint list_as_object (l: list (bundle)): (bundle) :=
   match l with
   | [] => Empty
-  | o :: os => Branch o (list_as_object os)
+  | o :: os => Tuple2 o (list_as_object os)
   end.
 
   (****************************************************************************)
@@ -154,7 +156,7 @@ Qed.
 
   (* Shorthand for passing evidence that a lookup is well formed *)
   Notation ok_lookup := (
-    fun (n: nat) (env: list tree) (o: tree) => lookup_object n env = Some o
+    fun (n: nat) (env: list (bundle)) (o: bundle) => lookup_object n env = Some o
   ).
 
   (* Proof that looking up a morphism is the morphism from the environment to
@@ -170,7 +172,7 @@ Qed.
   Hint Immediate ok_lookup_sets_lookup_morphism_ty : core.
 
   Lemma morphism_coerce:
-    forall (n:nat) env_obj o (objs: list tree),
+    forall (n:nat) env_obj o (objs: list (bundle)),
     ok_lookup n objs o ->
     lookup_morphism_ty n env_obj objs = structure env_obj o.
   Proof.
@@ -242,7 +244,7 @@ Qed.
       | Some o => structure i o
       end) (no associativity, at level 70).
 
-  Fixpoint extract_nth' (env: list tree) x : forall i (prefix: structure i (list_as_object env)), i ?? lookup_object x env :=
+  Fixpoint extract_nth' (env: list (bundle)) x : forall i (prefix: structure i (list_as_object env)), i ?? lookup_object x env :=
   match env return
     forall i (prefix: structure i (list_as_object env)), i ?? lookup_object x env
     with
@@ -290,10 +292,10 @@ Qed.
   Lemma wf_debrujin_succ:
     forall ix iy o
     (n: nat) (env: environment n)
-    (expr: kappa natvar (Branch ix iy) o)
+    (expr: kappa natvar (Tuple2 ix iy) o)
     f,
     expr = DAbs f ->
-    @wf_debrujin (Branch ix iy) o n env expr -> @wf_debrujin iy o (S n) (ECons ix env) (f n).
+    @wf_debrujin (Tuple2 ix iy) o n env expr -> @wf_debrujin iy o (S n) (ECons ix env) (f n).
   Proof.
     auto.
   Defined.
@@ -313,10 +315,10 @@ Qed.
     (n: nat) (env: environment n)
     (* (morphs: env_morphisms (as_object env) (as_object_list env)) *)
     (expr: kappa natvar i o) {struct expr}
-    : wf_debrujin env expr -> structure (Branch i (as_object env)) o.
+    : wf_debrujin env expr -> structure (Tuple2 i (as_object env)) o.
      refine (
   match expr as expr in kappa _ i' o' return i = i' -> o = o' -> 
-  wf_debrujin env expr -> structure (Branch i (as_object env)) o 
+  wf_debrujin env expr -> structure (Tuple2 i (as_object env)) o 
   with
   | DVar v => fun _ _ wf => _
   (* Instantiating a variable is done by 'exr' to select the environment, and

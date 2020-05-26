@@ -27,6 +27,7 @@ Export MonadNotation.
 Open Scope monad_scope.
 
 Require Import Cava.Netlist.
+Require Import Cava.Types.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Monad.Cava.
 Require Import Cava.Monad.UnsignedAdders.
@@ -114,4 +115,4 @@ Definition adder8_3input_tb_expected_outputs :=
 Definition adder8_3input_tb :=
   testBench "adder8_3input_tb" adder8_3inputInterface
   adder8_3input_tb_inputs adder8_3input_tb_expected_outputs.
- 
+

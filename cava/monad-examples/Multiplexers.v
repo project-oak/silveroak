@@ -26,6 +26,7 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Monad.Cava.
 Require Import Cava.Netlist.
+Require Import Cava.Types.
 Require Import Cava.BitArithmetic.
 
 Local Open Scope list_scope.
@@ -67,7 +68,7 @@ Definition mux2_1_tb_xpected_outputs
 
 Definition mux2_1_tb
   := testBench "mux2_1_tb" mux2_1_Interface
-     mux2_1_tb_inputs mux2_1_tb_xpected_outputs.  
+     mux2_1_tb_inputs mux2_1_tb_xpected_outputs.
 
 Definition muxBus {m bit} `{Cava m bit} '(sel, i) : m (list bit) :=
   o <- indexArray i sel ;;
@@ -111,4 +112,4 @@ Definition muxBus4_8_tb_expected_outputs
 
 Definition muxBus4_8_tb
   := testBench "muxBus4_8_tb" muxBus4_8Interface
-     muxBus4_8_tb_inputs muxBus4_8_tb_expected_outputs.    
+     muxBus4_8_tb_inputs muxBus4_8_tb_expected_outputs.

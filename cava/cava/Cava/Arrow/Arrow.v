@@ -1,7 +1,7 @@
 From Coq Require Import Setoid Classes.Morphisms Lists.List.
 Import ListNotations.
 
-From Cava Require Import Netlist.
+From Cava Require Import Types.
 
 
 Reserved Infix "~>" (at level 90, no associativity).
@@ -147,7 +147,7 @@ Class Cava  := {
   bitvec : list nat -> object;
 
   constant : bool -> (unit ~> bit);
-  constant_vec (dimensions: list nat) : bitVecTy bool dimensions -> (unit ~> bitvec dimensions);
+  constant_vec (dimensions: list nat) : denoteBitVecWith bool dimensions -> (unit ~> bitvec dimensions);
 
   not_gate:  bit        ** unit ~> bit;
   and_gate:  bit ** bit ** unit ~> bit;
