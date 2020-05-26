@@ -112,7 +112,7 @@ Qed.
     apply IHenv.
     simpl.
     reflexivity.
-  Qed.
+  Defined.
 
   Definition object_to_list_object_id: forall n (env: environment n), structure (as_object env) (list_as_object (as_object_list env)).
   Proof.
@@ -381,11 +381,12 @@ Qed.
       >>> closure_conversion' _ _ _ env f H
     ).
   - rewrite e, e0.
+    destruct wf.
     exact (
     second copy
     >>> unassoc
-    >>> first (closure_conversion' _ _ _ env e2 (proj2 wf))
-    >>> closure_conversion' _ _ _ env e1 (proj1 wf)
+    >>> first (closure_conversion' _ _ _ env e2 H0)
+    >>> closure_conversion' _ _ _ env e1 H
   ).
   - rewrite e, e0.
     exact (exl >>> m).

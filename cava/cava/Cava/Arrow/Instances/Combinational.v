@@ -1,18 +1,14 @@
-From Coq Require Import Bool.Bool.
-From Coq Require Import Bool.Bvector.
+From Coq Require Import Bool List ZArith Setoid Classes.Morphisms FunctionalExtensionality.
+Import ListNotations.
 
 Require Import Cava.BitArithmetic.
 Require Import Cava.Arrow.Arrow.
 
-From Coq Require Import Setoid.
-From Coq Require Import Classes.Morphisms.
-
-Require Import FunctionalExtensionality.
+Require Import Cava.Netlist.
 
 (******************************************************************************)
 (* Evaluation as function evaluation, no delay elements or loops              *)
 (******************************************************************************)
-
 
 Section CoqEval.
   #[refine] Instance CoqCat : Category := {
@@ -93,7 +89,7 @@ Section CoqEval.
 
   Instance Combinational : Cava := {
     bit := bool;
-    bitvec n := Bvector n;
+    bitvec n := bitVecTy bool n;
 
     constant b _ := b;
     constant_vec n v _ := v;
@@ -111,10 +107,10 @@ Section CoqEval.
     muxcy '(i,(t,(e,tt))) := if i then t else e;
 
     unsigned_add m n s '(av, (bv, tt)) :=
-      let a := bitvec_to_nat av in
-      let b := bitvec_to_nat bv in
-      let c := a + b in
-      nat_to_bitvec_sized s c;
+      let a := list_bits_to_nat av in
+      let b := list_bits_to_nat bv in
+      let c := (a + b)%N in
+      nat_to_list_bits_sized s c;
   }.
 
   Example not_true: not_gate (true, tt) = false.

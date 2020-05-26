@@ -110,17 +110,17 @@ Section NetlistEval.
     cava_arrow := NetlistArr;
 
     bit := One Bit;
-    bitvec n := One (BitVec [n]);
+    bitvec n := One (BitVec n);
 
     constant b _ := match b with
       | true => ret 1%N
       | false => ret 0%N
       end;
 
-    constant_vec n v _ := ret (Vector.to_list (Vector.map (fun b => match b with
+    constant_vec n v _ := ret (mapBitVec (fun b => match b with
       | true => 1%N
       | false => 0%N
-    end) v));
+    end) n n v);
 
     not_gate '(x,tt) :=
       '(nl, i) <- get ;;

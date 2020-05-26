@@ -6,7 +6,7 @@ Require Export Cava.Arrow.Instances.Constructive.
 Require Import Cava.Arrow.Arrow.
 Require Import Cava.BitArithmetic.
 
-Require Import Arith Eqdep_dec List Lia.
+Require Import Arith Eqdep_dec List Lia Program.
 (* Require Import Program.Equality. *)
 
 (* Notations *)
@@ -49,7 +49,7 @@ Notation "'fst'' e" := (Com (Arr exl) e) (in custom expr at level 4, e custom ex
 Notation "'snd'' e" := (Com (Arr exr) e) (in custom expr at level 4, e custom expr at level 4) : expression_scope.
 
 Notation "# x" := (Arr (constant x)) (in custom expr at level 2, x constr at level 4) : expression_scope.
-Notation "#v x" := (Arr (constant_vec _ (nat_to_bitvec_sized _ x))) (in custom expr at level 2, x constr at level 4) : expression_scope.
+Notation "#v x" := (Arr (constant_vec _ x)) (in custom expr at level 2, x constr at level 4) : expression_scope.
 
 (* test notation *)
 
@@ -87,7 +87,7 @@ match n with
             ]>
 end.
 
-Definition xilinxFullAdder 
+Definition xilinxFullAdder
   : Kappa (bit ** (bit ** bit) ** unit) (bit**bit) :=
   <[ \ cin ab =>
      let a = fst' ab in
@@ -98,52 +98,38 @@ Definition xilinxFullAdder
      (sum, cout)
   ]>.
 
-Definition adder_tree 
+Definition adder_tree
   (bitsize: nat)
   (n: nat)
-  : Kappa (make_obj (bitvec bitsize) n ** unit) (bitvec bitsize) :=
-  tree (bitvec bitsize) n (unsigned_add _ _ _).
-
-Notation "v : 'u' sz" := (constant_vec sz (nat_to_bitvec_sized sz v))
-  (only printing, at level 99, format "'[ ' v : 'u' sz ']'").
-
-
-(* WIP structural equivalence testing below *)
-
-(* Ltac unfold_notation :=
-  (unfold Desugar;
-  unfold desugar;
-  unfold Closure_conversion;
-  unfold closure_conversion;
-  unfold closure_conversion'
-  ).
-
-Ltac unfold_notation_in x :=
-  (unfold Desugar in x ;
-  unfold desugar in x;
-  unfold Closure_conversion in x;
-  unfold closure_conversion in x;
-  unfold closure_conversion'
-  ).
-
-Definition tktk `{Cava} := toCava _ (Closure_conversion ex1_notation).
+  : Kappa (make_obj (bitvec [bitsize]) n ** unit) (bitvec [bitsize]) :=
+  tree (bitvec [bitsize]) n (unsigned_add _ _ _).
 
 Lemma kappa_arrow_lemma_example:
   forall (Cava: Cava),
-  tktk = (uncancelr >>> first swap >>> assoc >>> exl >>> constant true).
+  toCava _ (Closure_conversion ex1_notation) = 
+  (uncancelr >>> first swap >>> assoc >>> exl >>> constant true).
 Proof.
   intros.
   auto.
 Qed.
+
+Ltac simpl_conversion :=
+  cbv beta iota zeta delta [
+    Desugar desugar Closure_conversion closure_conversion closure_conversion'
+    as_object_list  object_to_list_object_id  extract_nth'
+    wf_debrujin_succ
+    eq_rec_r eq_rec eq_rect eq_rect_r eq_ind_r eq_ind eq_sym f_equal
+    length
+    as_object_is_as_list_as_object Nat.eq_dec
+    nat_rec nat_rect environment_ind eq_trans
+  ].
 
 Lemma kappa_arrow_lemma_example2:
   Closure_conversion ex1_notation =M= (drop >>> constant true).
 Proof.
   intros.
   unfold ex1_notation.
-  unfold_notation.
-
-  unfold eq_rec_r, eq_rec, eq_rect, eq_sym.
+  simpl_conversion.
 
   setoid_rewrite exl_unit_is_drop.
   setoid_rewrite <- associativity at 1.
@@ -153,36 +139,16 @@ Proof.
   auto.
 Qed.
 
-Opaque compose.
-
 Definition xilinxFullAdderWf: (wf_debrujin ENil (xilinxFullAdder _)).
   simpl. tauto.
 Defined.
+
 Goal
   structural_simplification (closure_conversion xilinxFullAdder xilinxFullAdderWf >>> exl) =M= second (first (second uncancelr >>> xor_gate)) >>> xorcy.
 Proof.
   intros.
-  unfold xilinxFullAdder;
-  unfold_notation;
-  unfold xilinxFullAdderWf, wf_debrujin_succ;
-  unfold eq_rec_r, eq_rec, eq_rect, eq_sym; 
-  simpl.
+  unfold xilinxFullAdder, xilinxFullAdderWf.
+  simpl_conversion.
 
-  match goal with 
-  | [|- context[match H in (_=_) return _ with eq_refl => _ end ]] => idtac
-  end.
-
-  
-  
-  setoid_rewrite st_first_exl.
-
-  refine (st_compose _ _).
-
-  unfold wf_debrujin_succ.
-  UIP.
-  unfold eq_ind_r.
-  unfold eq_ind.
-  UIP.
-  
-  simpl.
-  unfold object_to_list_object_id. *)
+  (*TODO*)
+Abort.

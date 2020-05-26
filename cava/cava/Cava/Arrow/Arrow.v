@@ -1,9 +1,8 @@
-From Coq Require Import Bool.Bvector.
-From Coq Require Import Bool.Bool.
-From Coq Require Import Setoid.
-From Coq Require Import Classes.Morphisms.
+From Coq Require Import Setoid Classes.Morphisms Lists.List.
+Import ListNotations.
 
 From Cava Require Import Netlist.
+
 
 Reserved Infix "~>" (at level 90, no associativity).
 Reserved Infix "~[ C ]~>" (at level 90, no associativity).
@@ -145,10 +144,10 @@ Class Cava  := {
   cava_arrow :> Arrow;
 
   bit : object;
-  bitvec : nat -> object;
+  bitvec : list nat -> object;
 
   constant : bool -> (unit ~> bit);
-  constant_vec (n:nat) : Bvector n -> (unit ~> bitvec n);
+  constant_vec (dimensions: list nat) : bitVecTy bool dimensions -> (unit ~> bitvec dimensions);
 
   not_gate:  bit        ** unit ~> bit;
   and_gate:  bit ** bit ** unit ~> bit;
@@ -162,7 +161,7 @@ Class Cava  := {
   xorcy:     bit ** bit ** unit ~> bit;
   muxcy:     bit ** bit ** bit ** unit ~> bit;
 
-  unsigned_add a b s: bitvec a ** bitvec b ** unit ~> bitvec s;
+  unsigned_add a b s: bitvec [a] ** bitvec [b] ** unit ~> bitvec [s];
 }.
 
 Coercion cava_arrow: Cava >-> Arrow.
@@ -183,6 +182,7 @@ Coercion delay_cava: CavaDelay >-> Cava.
 
 Definition cava_delay_arr (_: CavaDelay): Arrow := _.
 
+(* experimental equivalence rewriting functions *)
 Lemma simpl_firsts
   {A: Arrow} {x y z w o}
   (f:x~>y) (g:y~>z) (h:z**w~>o): @first _ x y w f >>> (first g >>> h) =M= first (f >>> g) >>> h.
