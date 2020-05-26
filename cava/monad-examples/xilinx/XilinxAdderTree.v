@@ -30,6 +30,7 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Netlist.
+Require Import Cava.Types.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Monad.Cava.
 Require Import Cava.Monad.Combinators.
@@ -99,7 +100,7 @@ Local Open Scope N_scope.
 
 Definition adder_tree4_8_tb_inputs
   := map (fun i => map (nat_to_list_bits_sized 8) i)
-     (repeat (2^8-1) 4 :: 
+     (repeat (2^8-1) 4 ::
      [[17; 42; 23; 95]; [4; 13; 200; 30]; [255; 74; 255; 200]; [44; 12; 92; 12];
       [9; 56; 2; 87];   [14; 72; 90; 11]; [64; 12; 92; 13];    [88; 24; 107; 200]]).
 

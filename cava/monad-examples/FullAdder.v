@@ -13,7 +13,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool.Bool. 
+From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import Vector.
 From Coq Require Import Bool.Bvector.
@@ -27,6 +27,7 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Monad.Cava.
 Require Import Cava.Netlist.
+Require Import Cava.Types.
 Require Import Cava.Monad.Combinators.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Monad.XilinxAdder.
@@ -60,7 +61,7 @@ Proof.
   auto.
 Qed.
 
-   
+
 (******************************************************************************)
 (* Build a full-adder                                                         *)
 (******************************************************************************)
@@ -116,7 +117,7 @@ Lemma generic_vs_xilinx_adder : forall (a : bool) (b : bool) (cin : bool),
                                 combinational (fullAdder (cin, (a, b))) =
                                 combinational (xilinxFullAdder (cin, (a, b))).
 Proof.
-  intros. 
+  intros.
   unfold combinational. simpl.
   case a, b, cin.
   all : reflexivity.
@@ -137,5 +138,5 @@ Definition adderWithGrowth {m bit} `{Cava m bit} '(cin, (a, b)):=
   '(sum, carryOut) <- adder (cin, (a, b)) ;;
   ret (sum ++ [carryOut]).
 
-  
+
 

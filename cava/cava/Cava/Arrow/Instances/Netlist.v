@@ -17,6 +17,7 @@ From ExtLib Require Export Data.Monads.StateMonad.
 Import MonadNotation.
 
 From Cava Require Import Netlist.
+From Cava Require Import Types.
 From Cava Require Import BitArithmetic.
 From Cava Require Import Arrow.Arrow.
 
@@ -33,7 +34,7 @@ Section NetlistEval.
   Local Open Scope string_scope.
 
   #[refine] Instance NetlistCat : Category := {
-    object := @shape portType;
+    object := bundle;
     morphism X Y := signalTy N X -> state (Netlist * N) (signalTy N Y);
     id X x := ret x;
     compose X Y Z f g := g >=> f;
@@ -181,9 +182,9 @@ Section NetlistEval.
 
   Close Scope string_scope.
 
-  Fixpoint map2WithPortShape {A B C} (f: A -> B -> C) (port: portType)
-    (x: portTypeTy A port) (y: portTypeTy B port): portTypeTy C port :=
-    match port in portType, x, y return  portTypeTy C port with
+  Fixpoint map2WithPortShape {A B C} (f: A -> B -> C) (port: Kind)
+    (x: denoteKindWith port A) (y: denoteKindWith port B): denoteKindWith port C :=
+    match port in Kind, x, y return  denoteKindWith port C with
     | Bit, x, y => f x y
     | BitVec sz, xs, ys => mapBitVec (fun '(x,y) => f x y) sz sz (zipBitVecs sz sz xs ys)
     end .
@@ -253,14 +254,14 @@ Section NetlistEval.
       ret x'
   }.
 
-  Definition wireInput (port_shape: portType) (name: string) (port: portTypeTy N port_shape)
+  Definition wireInput (port_shape: Kind) (name: string) (port: denoteKindWith port_shape N)
     : Instance :=
     match port_shape, port with
     | Bit,_ => WireInputBit name port
     | BitVec sz,_ => WireInputBitVec sz name port
     end.
 
-  Definition wireOutput (port_shape: portType) (name: string) (port: portTypeTy N port_shape)
+  Definition wireOutput (port_shape: Kind) (name: string) (port: denoteKindWith port_shape N)
     : Instance :=
     match port_shape, port with
     | Bit,_ => WireOutputBit name port
@@ -275,7 +276,7 @@ Section NetlistEval.
     end.
 
   Fixpoint linkLables {A}
-     (link: forall port_shape, string -> portTypeTy N port_shape -> A)
+     (link: forall port_shape, string -> denoteKindWith port_shape N -> A)
      (s: shape)
      (labels: nameTy s)
      (ports: signalTy N s)
@@ -287,7 +288,7 @@ Section NetlistEval.
     end.
 
   Fixpoint namePorts
-     (s: @shape portType)
+     (s: bundle)
      (labels: nameTy s)
      : list PortDeclaration :=
     match s in shape, labels with

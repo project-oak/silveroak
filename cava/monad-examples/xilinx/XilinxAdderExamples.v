@@ -26,6 +26,7 @@ Require Import Cava.Monad.Cava.
 Require Import Cava.Monad.Combinators.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Netlist.
+Require Import Cava.Types.
 Require Import Cava.Monad.XilinxAdder.
 
 Local Open Scope list_scope.

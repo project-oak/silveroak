@@ -5,6 +5,7 @@ Require Import Cava.BitArithmetic.
 Require Import Cava.Arrow.Arrow.
 
 Require Import Cava.Netlist.
+Require Import Cava.Types.
 
 (******************************************************************************)
 (* Evaluation as function evaluation, no delay elements or loops              *)
@@ -89,7 +90,7 @@ Section CoqEval.
 
   Instance Combinational : Cava := {
     bit := bool;
-    bitvec n := bitVecTy bool n;
+    bitvec n := denoteBitVecWith bool n;
 
     constant b _ := b;
     constant_vec n v _ := v;

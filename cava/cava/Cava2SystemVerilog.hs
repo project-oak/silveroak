@@ -24,6 +24,7 @@ import Numeric
 
 import qualified BinNums
 import Netlist
+import Types
 
 writeSystemVerilog :: Netlist.CavaState -> IO ()
 writeSystemVerilog cavastate
@@ -399,7 +400,7 @@ generateTestBench testBench
     outputPortList = shapeToPortDeclaration (circuitOutputs intf)
     nrTests = length (testBenchInputs testBench)
 
-declareCircuitPorts :: Coq_shape (String, Coq_portType) -> [String]
+declareCircuitPorts :: Coq_shape (String, Kind) -> [String]
 declareCircuitPorts shape
   = insertCommas (map declareCircuitPort portList)
     where
@@ -409,7 +410,7 @@ declareCircuitPort :: PortDeclaration -> String
 declareCircuitPort port
   = "  output " ++ declarePort port
 
-declareLocalPorts :: Coq_shape (String, Coq_portType) -> [String]
+declareLocalPorts :: Coq_shape (String, Kind) -> [String]
 declareLocalPorts shape
   = map declareLocalPort portList
     where
@@ -420,8 +421,8 @@ declareLocalPort port
   = declarePort port ++ ";"
 
 declarePort :: PortDeclaration -> String
-declarePort (Coq_mkPort name portType) =
-  case portType of
+declarePort (Coq_mkPort name kind) =
+  case kind of
     Bit -> "  (* mark_debug = \"true\" *) logic " ++ name 
     BitVec xs -> "  (* mark_debug = \"true\" *) " ++ vectorDeclaration name xs 
 
@@ -511,12 +512,12 @@ checkOutput port
      "      end;"
     ]
     where
-    fmt = formatPortType (port_shape port)
+    fmt = formatKind (port_shape port)
     name = port_name port
 
-formatPortType :: Coq_portType -> String
-formatPortType Bit = "%0b"
-formatPortType (BitVec _) = "%0d"
+formatKind :: Kind -> String
+formatKind Bit = "%0b"
+formatKind (BitVec _) = "%0d"
 
 cppDriver :: String -> Int -> [String]
 cppDriver name ticks =

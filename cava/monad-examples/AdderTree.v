@@ -30,6 +30,7 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Netlist.
+Require Import Cava.Types.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Monad.Cava.
 Require Import Cava.Monad.Combinators.

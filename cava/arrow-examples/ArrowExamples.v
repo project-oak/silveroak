@@ -10,6 +10,7 @@ From Coq Require Import ZArith.
 From Coq Require Import btauto.Btauto.
 
 Require Import Cava.Netlist.
+Require Import Cava.Types.
 
 Require Import Cava.Arrow.Arrow.
 Require Import Cava.Arrow.Kappa.Syntax.
@@ -136,8 +137,8 @@ Section NetlistExamples.
 
   Definition nand2Interface
     := mkCircuitInterface "nandArrow"
-       (Tuple2 (One ("input1", Netlist.Bit)) (One ("input2", Netlist.Bit)))
-       (One ("output1", Netlist.Bit))
+       (Tuple2 (One ("input1", Types.Bit)) (One ("input2", Types.Bit)))
+       (One ("output1", Types.Bit))
        [].
 
   Definition arrow_nand2_tb :=
@@ -163,8 +164,8 @@ Section NetlistExamples.
 
   Definition xorInterface
     := mkCircuitInterface "xorArrow"
-       (Tuple2 (One ("input1", Netlist.Bit)) (One ("input2", Netlist.Bit)))
-       (One ("output1", Netlist.Bit))
+       (Tuple2 (One ("input1", Types.Bit)) (One ("input2", Types.Bit)))
+       (One ("output1", Types.Bit))
        [].
 
   Definition arrow_xor_tb :=
@@ -211,8 +212,8 @@ Section NetlistExamples.
 
   Definition feedbackNandInterface
     := mkCircuitInterface "feedbackNandArrow"
-       (One ("input1", Netlist.Bit))
-       (One ("output1", Netlist.Bit))
+       (One ("input1", Types.Bit))
+       (One ("output1", Types.Bit))
        [].
 
   Definition feedbackNandArrow_tb :=

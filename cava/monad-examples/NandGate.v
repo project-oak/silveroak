@@ -28,6 +28,7 @@ Open Scope monad_scope.
 Require Import Cava.Monad.Cava.
 Require Import Cava.Monad.Combinators.
 Require Import Cava.Netlist.
+Require Import Cava.Types.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
@@ -65,7 +66,7 @@ Proof.
   rewrite map_map.
   rewrite map_ext_in_iff.
   intros.
-  now destruct a0.  
+  now destruct a0.
 Qed.
 
 (* An exhuastive proof by analyzing all four cases. *)
@@ -83,7 +84,7 @@ Proof. reflexivity. Qed.
 
 (* Test bench tables for generated SystemVerilog simulation test bench *)
 Definition nand_tb_inputs : list (bool * bool) :=
- [(false, false); (false, true); (true, false); (true, true)]. 
+ [(false, false); (false, true); (true, false); (true, true)].
 
 (* Compute expected outputs. *)
 Definition nand_tb_expected_outputs : list bool :=

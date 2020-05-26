@@ -19,6 +19,7 @@ Require Import Cava.Arrow.Kappa.Syntax.
 Require Import Cava.Arrow.Instances.Combinational.
 Require Import Cava.Arrow.Instances.Netlist.
 
+Require Import Cava.Types.
 Require Import Cava.Netlist.
 
 Require Import Coq.Strings.String.
