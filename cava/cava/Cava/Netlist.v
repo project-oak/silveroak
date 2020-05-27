@@ -135,6 +135,11 @@ Inductive Instance : Type :=
   (* Multiplexors *)
   | IndexBitArray: list Signal -> list Signal -> Signal -> Instance
   | IndexArray: list (list Signal) -> list Signal -> list Signal -> Instance
+  | IndexAlt: forall sz szs,
+      @denoteBitVecWith nat Signal (sz::szs) ->
+      list Signal ->
+      @denoteBitVecWith nat Signal szs
+      -> Instance
   | Component: string -> list (string * ConstExpr) -> list (string * Signal) ->
                Instance.
 

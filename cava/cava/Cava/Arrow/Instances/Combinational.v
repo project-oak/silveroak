@@ -1,4 +1,4 @@
-From Coq Require Import Bool List ZArith Setoid Classes.Morphisms FunctionalExtensionality.
+From Coq Require Import Bool List ZArith Setoid Classes.Morphisms FunctionalExtensionality NaryFunctions.
 Import ListNotations.
 
 Require Import Cava.BitArithmetic.
@@ -88,9 +88,25 @@ Section CoqEval.
     simple_solve.
   Defined.
 
-  Instance Combinational : Cava := {
-    bit := bool;
-    bitvec n := denoteBitVecWith bool n;
+  Lemma replicate_object_is_nprod: forall n T, (replicate_object n T) = (nprod T n).
+  Proof.
+    intros.
+    induction n; simpl; auto.
+    f_equal.
+    apply IHn.
+  Qed.
+
+  Lemma inc_nprod: forall n T, prod T (nprod T n) = (nprod T (S n)).
+  Proof.
+    intros.
+    induction n; simpl; auto.
+  Qed.
+
+  #[refine] Instance Combinational : Cava := {
+    representable t := match t with
+      | Bit => bool
+      | BitVec xs => denoteBitVecWith bool xs
+      end;
 
     constant b _ := b;
     constant_vec n v _ := v;
@@ -112,7 +128,46 @@ Section CoqEval.
       let b := list_bits_to_nat bv in
       let c := (a + b)%N in
       nat_to_list_bits_sized s c;
+
+    lut n f i := 
+      let f' := NaryFunctions.nuncurry bool bool n f in 
+      _;
+
+    index_array n xs '(array, (index, _)) := _; (* nth (N.to_nat (list_bits_to_nat index)) array 0; *)
+    to_vec := _; (* nprod_to_list *)
   }.
+  Proof.
+    - apply f'.
+      simpl in i.
+      rewrite replicate_object_is_nprod in i.
+      apply i.
+
+    - intros.
+      simpl; apply (list_bits_to_nat) in index; apply (N.to_nat) in index.
+      destruct xs; simpl in *.
+      * exact (nth index array false).
+      * refine (nth index array _).
+
+        (* bad index, return default value *)
+        refine (match xs with
+        | [] => _
+        | _ :: _ => _
+        end).
+        exact ([  ]).
+        exact ([  ]).
+
+    - intros.
+      destruct o
+      ; rewrite replicate_object_is_nprod.
+      * cbv [cat CoqArr CoqCat morphism].
+        apply nprod_to_list.
+      * cbv [cat CoqArr CoqCat morphism].
+        destruct l.
+        unfold denoteBitVecWith.
+        apply nprod_to_list.
+        cbv [cat CoqArr CoqCat morphism denoteBitVecWith].
+        apply nprod_to_list.
+  Defined.
 
   Example not_true: not_gate (true, tt) = false.
   Proof. reflexivity. Qed.
