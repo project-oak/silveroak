@@ -1,4 +1,4 @@
-From Coq Require Import Setoid Classes.Morphisms Lists.List.
+From Coq Require Import Setoid Classes.Morphisms Lists.List NaryFunctions.
 Import ListNotations.
 
 From Cava Require Import Types.
@@ -139,12 +139,21 @@ Class ArrowLoop (A: Arrow) := {
   loopl {x y z} : (z**x ~> z**y) -> (x ~> y);
 }.
 
+Fixpoint replicate_object `{Arrow} (n: nat) (o: object) :=
+match n with 
+| O => unit
+| S n' => o ** replicate_object n' o 
+end.
+
+Reserved Notation "'bitvec_index' n" (at level 30, no associativity).
+
 (* Cava *)
 Class Cava  := {
   cava_arrow :> Arrow;
 
   bit : object;
-  bitvec : list nat -> object;
+  bitvec : list nat -> object
+    where "'bitvec_index' n" := (bitvec [PeanoNat.Nat.log2_up n]);
 
   constant : bool -> (unit ~> bit);
   constant_vec (dimensions: list nat) : denoteBitVecWith bool dimensions -> (unit ~> bitvec dimensions);
@@ -160,8 +169,20 @@ Class Cava  := {
 
   xorcy:     bit ** bit ** unit ~> bit;
   muxcy:     bit ** bit ** bit ** unit ~> bit;
+  
+  unsigned_add a b c: bitvec [a] ** bitvec [b] ** unit ~> bitvec [c];
 
-  unsigned_add a b s: bitvec [a] ** bitvec [b] ** unit ~> bitvec [s];
+  lut n : (bool^^n --> bool) -> replicate_object n bit ~> bit;
+
+  index_array n xs: bitvec (n::xs) ** bitvec_index n ** unit ~> bitvec xs;
+
+  convert_degenerate_bitvec: bitvec [] ** unit ~> bit;
+
+  (* TODO: 
+  
+  trucate a b: bitvec [a] ** unit ~> bitvec [b];
+  zero_pad a b: bitvec [a] ** unit ~> bitvec [b]; 
+  *)
 }.
 
 Coercion cava_arrow: Cava >-> Arrow.
@@ -213,5 +234,3 @@ Proof.
   setoid_rewrite H.
   reflexivity.
 Qed.
-
-

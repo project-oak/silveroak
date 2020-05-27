@@ -5,8 +5,13 @@ From Coq Require Import Vector.
 From Coq Require Import Lists.List.
 From Coq Require Import Strings.String.
 From Coq Require Import ZArith.
+From Coq Require Import Numbers.DecimalString.
+From Coq Require Import Bool.Bvector.
+
+Import NilZero.
 
 Import ListNotations.
+(* Import StringNotations. *)
 
 From ExtLib Require Import Structures.Monads.
 From ExtLib Require Import Structures.MonadLaws.
@@ -108,7 +113,31 @@ Section NetlistEval.
     simpl; auto.
   Defined.
 
-  Instance NetlistCava : Cava := {
+
+  Fixpoint object_as_list n: signalTy Signal (replicate_object n (One Bit)) -> list (signalTy Signal (One Bit)).
+  intros.
+
+  induction n.
+  simpl in *.
+  exact ([]).
+
+  simpl in *.
+  refine (fst X :: _).
+  apply (IHn (snd X)).
+  Defined.
+
+  Fixpoint bv_to_nprod n (v: Bvector n): NaryFunctions.nprod bool n.
+  unfold Bvector in *.
+  destruct n.
+  exact tt.
+  refine (pair _ _ ).
+  exact (Vector.hd v).
+  exact (bv_to_nprod n (Vector.tl v)).
+  Defined.
+
+
+
+  #[refine] Instance NetlistCava : Cava := {
     cava_arrow := NetlistArr;
 
     bit := One Bit;
@@ -178,7 +207,46 @@ Section NetlistEval.
       sum <- newWires s ;;
       addInstance (UnsignedAdd x y sum) ;;
       ret sum;
+
+    lut n f is :=
+      let seq := seq 0 (2^n) in
+      let f' := NaryFunctions.nuncurry bool bool n f in 
+      let powers := map
+        (fun p => let bv := Ndigits.N2Bv_sized n (N.of_nat p) in
+                  2^(N.of_nat p) * N.b2n (f' (bv_to_nprod n bv))
+        )%N
+        seq in
+      let config := fold_left N.add powers 0%N in
+      let component_name := ("LUT" ++ string_of_uint (Nat.to_uint n))%string in
+      let is_as_list := object_as_list n is in
+      let inputs := map 
+        (fun '(i, n) => ("I" ++ string_of_uint (Nat.to_uint i), n))%string 
+        (combine seq is_as_list) in
+      o <- newWire ;;
+      let component := 
+        Component
+        component_name [("INIT", HexLiteral (2^n) config)]
+        (("O", o) :: inputs) in
+      addInstance component;;
+      ret o;
+    
+    (* index_array n xs: bitvec (n::xs) ** bitvec [PeanoNat.Nat.log2_up n] ** unit ~> bitvec xs; *)
+    index_array n xs '(array, (index, _)) := ret _; (*todo: fix me*)
+      
+
+    convert_degenerate_bitvec '(x, _) := ret _;
   }.
+  Proof.
+    simpl.
+    destruct xs; simpl.
+    exact (Wire 0%N).
+    destruct xs.
+    exact ( [] ).
+    exact ( [] ).
+
+    simpl in *.
+    exact x.
+  Defined.
 
   Close Scope string_scope.
 

@@ -1,4 +1,4 @@
-From Coq Require Import Bool List ZArith Setoid Classes.Morphisms FunctionalExtensionality.
+From Coq Require Import Bool List ZArith Setoid Classes.Morphisms FunctionalExtensionality NaryFunctions.
 Import ListNotations.
 
 Require Import Cava.BitArithmetic.
@@ -88,7 +88,15 @@ Section CoqEval.
     simple_solve.
   Defined.
 
-  Instance Combinational : Cava := {
+  Lemma replicate_object_is_nprod: forall n T, (replicate_object n T) = (nprod T n).
+  Proof.
+    intros.
+    induction n; simpl; auto.
+    f_equal.
+    apply IHn.
+  Qed.
+
+  #[refine] Instance Combinational : Cava := {
     bit := bool;
     bitvec n := denoteBitVecWith bool n;
 
@@ -112,7 +120,34 @@ Section CoqEval.
       let b := list_bits_to_nat bv in
       let c := (a + b)%N in
       nat_to_list_bits_sized s c;
+
+    
+    lut n f := _; (* nuncurry bool bool n f; *)
+
+    index_array n xs '(array, (index, _)) := _; (* nth (N.to_nat (list_bits_to_nat index)) array 0; *)
+    
+    convert_degenerate_bitvec '(x,_) := x;
+    
   }.
+  Proof.
+    - intros.
+      rewrite replicate_object_is_nprod.
+      exact (nuncurry bool bool n f).
+
+    - intros.
+      simpl; apply (list_bits_to_nat) in index; apply (N.to_nat) in index.
+      destruct xs; simpl in *.
+      * exact (nth index array false).
+      * refine (nth index array _).
+
+        (* bad index, return default value *)
+        refine (match xs with
+        | [] => _
+        | _ :: _ => _
+        end).
+        exact ([  ]).
+        exact ([  ]).
+  Defined.
 
   Example not_true: not_gate (true, tt) = false.
   Proof. reflexivity. Qed.

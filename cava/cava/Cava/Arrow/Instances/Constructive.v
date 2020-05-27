@@ -1,4 +1,4 @@
-From Coq Require Import Bool List.
+From Coq Require Import Bool List NaryFunctions.
 Import ListNotations.
 
 Require Import Cava.BitArithmetic.
@@ -7,6 +7,12 @@ Require Import Cava.Netlist.
 Require Import Cava.Types.
 
 Set Implicit Arguments.
+
+Fixpoint Nobj (n: nat) (o: Kind) :=
+match n with
+| O => Empty
+| S n' => Tuple2 (One o) (Nobj n' o)
+end.
 
 Inductive structure: bundle -> bundle -> Type :=
 | Id:          forall x, structure x x
@@ -42,7 +48,23 @@ Inductive structure: bundle -> bundle -> Type :=
 | Xorcy:       structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
 | Muxcy:       structure (Tuple2 (One Bit) (Tuple2 (One Bit) (Tuple2 (One Bit) Empty))) (One Bit)
 
-| UnsignedAdd: forall a b s, structure (Tuple2 ((One (BitVec [a]))) (Tuple2 ((One (BitVec [b]))) Empty)) ((One (BitVec [s]))).
+| UnsignedAdd: forall a b s, structure (Tuple2 ((One (BitVec [a]))) (Tuple2 ((One (BitVec [b]))) Empty)) ((One (BitVec [s])))
+
+| Lut: forall n (f: bool^^n --> bool), structure (Nobj n Bit) (One Bit)
+
+| IndexArray: forall n xs,
+  structure (
+    Tuple2 (One (BitVec (n::xs)))
+      (Tuple2 (One (BitVec [PeanoNat.Nat.log2_up n]))
+      Empty)
+  )
+  (One (BitVec xs))
+| ConvertDegenerateBitVec:
+  structure (
+    Tuple2 (One (BitVec []))
+      Empty)
+    (One Bit)
+.
 
 Arguments Id {x}.
 Arguments Compose [x y z].
@@ -84,7 +106,7 @@ Inductive st_equiv : forall (i o: bundle), structure i o -> structure i o -> Pro
 | st_unassoc_assoc: forall x y z, st_equiv (Compose (Assoc x y z) (Unassoc x y z)) Id
 
 | st_first_exl: forall x y w f, st_equiv (Compose (Exl _ _) (@First x y w f)) (Compose f (Exl _ _))
-| st_second_exr: forall x y w f, st_equiv (Compose (Exr _ _) (@Second x y w f)) (Compose f (Exr _ _)) 
+| st_second_exr: forall x y w f, st_equiv (Compose (Exr _ _) (@Second x y w f)) (Compose f (Exr _ _))
 .
 
 Fixpoint structural_simplification {i o} (s: structure i o): structure i o.
@@ -98,6 +120,7 @@ Proof.
   apply s0.
   apply b.
   apply d.
+  apply f.
 Defined.
 
 Hint Immediate st_refl : core.
@@ -119,44 +142,62 @@ match t with
 | Tuple2 x y => denoteShape x ** denoteShape y
 end.
 
+Lemma denoteNobj_is_replicate_object `{Cava}: forall n, denoteShape (Nobj n Bit) = replicate_object n bit.
+Proof.
+  intros.
+  induction n.
+  auto.
+  simpl.
+  f_equal.
+  apply IHn.
+Qed.
+
 Fixpoint toCava {i o} (Cava:Cava) (expr: structure i o)
-  : (denoteShape i) ~> (denoteShape o) :=
-match expr with
-| Id                => id
-| Compose g f       => compose (toCava Cava g) (toCava Cava f)
-| Copy x            => copy
-| Drop x            => drop
-| Swap x y          => swap
+  : (denoteShape i) ~> (denoteShape o).
+  refine (match expr with
+  | Id           => id
+  | Compose g f  => compose (toCava _ _ Cava g) (toCava _ _ Cava f)
+  | Copy x       => copy
+  | Drop x       => drop
+  | Swap x y     => swap
 
-| First _ f     => first (toCava Cava f)
-| Second _ f    => second (toCava Cava f)
+  | First _ f    => first (toCava _ _ Cava f)
+  | Second _ f   => second (toCava _ _ Cava f)
 
-| Exl _ _           => exl
-| Exr _ _           => exr
+  | Exl _ _      => exl
+  | Exr _ _      => exr
 
-| Uncancell _       => uncancell
-| Uncancelr _       => uncancelr
+  | Uncancell _  => uncancell
+  | Uncancelr _  => uncancelr
 
-| Assoc _ _ _       => assoc
-| Unassoc _ _ _     => unassoc
+  | Assoc _ _ _   => assoc
+  | Unassoc _ _ _ => unassoc
 
-| Constant b        => constant b
-| @ConstantVec n v   => constant_vec n v
+  | Constant b        => constant b
+  | @ConstantVec n v  => constant_vec n v
 
-| NotGate           => not_gate
-| AndGate           => and_gate
-| NandGate          => nand_gate
-| OrGate            => or_gate
-| NorGate           => nor_gate
-| XorGate           => xor_gate
-| XnorGate          => xnor_gate
-| BufGate           => buf_gate
+  | NotGate   => not_gate
+  | AndGate   => and_gate
+  | NandGate  => nand_gate
+  | OrGate    => or_gate
+  | NorGate   => nor_gate
+  | XorGate   => xor_gate
+  | XnorGate  => xnor_gate
+  | BufGate   => buf_gate
 
-| Xorcy             => xorcy
-| Muxcy             => muxcy
+  | Xorcy     => xorcy
+  | Muxcy     => muxcy
 
-| UnsignedAdd a b s => unsigned_add a b s
-end.
+  | UnsignedAdd a b s => unsigned_add a b s
+
+  | Lut n f => _
+  | IndexArray n xs => index_array n xs
+  | ConvertDegenerateBitVec => convert_degenerate_bitvec
+  end).
+  rewrite denoteNobj_is_replicate_object.
+  simpl denoteShape.
+  exact (lut n f).
+Defined.
 
 #[refine] Instance ConstructiveCat : Category := {
   object := bundle;
@@ -169,7 +210,7 @@ end.
 Proof.
   intros.
   apply RelationClasses.Build_Equivalence.
-  unfold RelationClasses.Reflexive. auto. 
+  unfold RelationClasses.Reflexive. auto.
   unfold RelationClasses.Symmetric. auto.
   unfold RelationClasses.Transitive. intros. apply (st_trans H H0).
 
@@ -205,7 +246,6 @@ Instance ConstructiveArr : Arrow := {
   assoc X Y Z := Assoc X Y Z;
   unassoc X Y Z := Unassoc X Y Z;
 
-
   exl_unit_uncancelr := st_exl_unit_uncancelr;
   exr_unit_uncancell := st_exr_unit_uncancell;
 
@@ -235,7 +275,15 @@ Instance ConstructiveArr : Arrow := {
   second_exr := st_second_exr;
 }.
 
-Instance ConstructiveCava : Cava := {
+Lemma Nobj_bit_is_replicate_object_leaf_bit: forall n, Nobj n Bit = @replicate_object ConstructiveArr n (One Bit).
+Proof.
+  intros.
+  induction n; simpl; auto.
+  rewrite IHn.
+  reflexivity.
+Qed.
+
+#[refine] Instance ConstructiveCava : Cava := {
   bit := One Bit;
   bitvec n := (One (BitVec n));
 
@@ -255,4 +303,14 @@ Instance ConstructiveCava : Cava := {
   muxcy := Muxcy;
 
   unsigned_add m n s := UnsignedAdd m n s;
+
+  index_array n xs := IndexArray n xs;
+  convert_degenerate_bitvec := ConvertDegenerateBitVec;
 }.
+Proof.
+  intros.
+  simpl.
+  pose proof (Lut n X).
+  rewrite Nobj_bit_is_replicate_object_leaf_bit in X0.
+  apply X0.
+Defined.
