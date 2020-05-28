@@ -1,8 +1,12 @@
 -R ../cava/Cava Cava
 -R . ArrowExamples
-ArrowExamples.v
-Nand.v
-Xor.v
-FeedbackNand.v
+
+SyntaxExamples.v
 ArrowExtraction.v
-Mux2_1.v 
+
+Mux2_1.v
+
+Concatenative/Examples.v
+Concatenative/Nand.v
+Concatenative/Xor.v
+Concatenative/FeedbackNand.v

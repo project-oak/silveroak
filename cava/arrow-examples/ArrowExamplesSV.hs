@@ -17,8 +17,9 @@
 module Main where
 
 import Cava2SystemVerilog
-import ArrowExamples
 import Mux2_1
+import Examples
+import SyntaxExamples
 
 main :: IO ()
 main = do writeSystemVerilog nandArrow

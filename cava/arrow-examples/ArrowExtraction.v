@@ -22,13 +22,16 @@ From Coq Require Import extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.
 
-Require Import Nand.
-Require Import Xor.
-Require Import FeedbackNand.
-Require Import ArrowExamples.
+Require Import SyntaxExamples.
+Require Import Mux2_1.
+Require Import Concatenative.Examples.
+Require Import Concatenative.Nand.
+Require Import Concatenative.Xor.
+Require Import Concatenative.FeedbackNand.
 
+Extraction Library Examples.
+Extraction Library SyntaxExamples.
 Extraction Library Nand.
 Extraction Library Xor.
 Extraction Library FeedbackNand.
-Extraction Library ArrowExamples.
 Extraction Library Mux2_1.
