@@ -18,6 +18,7 @@ module Main where
 
 import Cava2SystemVerilog
 import Mux2_1
+import ArrowAdder
 import Examples
 import SyntaxExamples
 
@@ -30,3 +31,5 @@ main = do writeSystemVerilog nandArrow
           writeTestBench feedbackNandArrow_tb
           writeSystemVerilog mux2_1_netlist
           writeTestBench mux2_1_tb
+          writeSystemVerilog fullAdder_netlist
+          writeTestBench fullAdder_tb
