@@ -19,7 +19,7 @@
 # needed for the pinmux of OpenTitan.
 ################################################################################
 
-OPENTITAN = ../../../../opentitan
+OPENTITAN = ../../../../../opentitan
 
 all:	vlint
 
@@ -80,4 +80,4 @@ pinmux_pkg.sv:	$(OPENTITAN)/hw/ip/pinmux/rtl/pinmux_pkg.sv
 		cp $^ $@
 
 clean:		
-		rm -rf pinmux.vlt prim_assert.sv pinmux_reg_pkg.sv pinmux_reg_top.sv pinmux_pkg.sv pinmux.sv
+		rm -rf $(SOURCES)
