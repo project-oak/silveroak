@@ -97,6 +97,15 @@ Fixpoint flattenShape {A} (s : @shape A) : list A :=
   | Tuple2 t1 t2 =>  flattenShape t1 ++ flattenShape t2
   end.
 
+Fixpoint removeTerminal {A} (s: @shape A): shape :=
+  match s with
+  | Empty => Empty
+  | One thing => One thing
+  | Tuple2 t1 Empty => t1
+  | Tuple2 t1 t2 =>  Tuple2 t1 (removeTerminal t2)
+  end.
+
+
 (******************************************************************************)
 (* Values of Kind can occur as the type of signals on a circuit interface *)
 (******************************************************************************)
@@ -211,3 +220,28 @@ Fixpoint numberPort (i : N) (inputs: bundle) : signalTy Signal inputs :=
   | Tuple2 t1 t2 => let t1Size := bitsInPortShape t1 in
                     (numberPort i t1,  numberPort (i + N.of_nat t1Size) t2)
   end.
+
+Lemma reduceSignal: forall a b c, signalTy Signal (Tuple2 a (removeTerminal (Tuple2 b c))) = (signalTy Signal a * signalTy Signal (removeTerminal (Tuple2 b c)))%type.
+Proof.
+  intros.
+  simpl.
+  f_equal.
+Defined.
+
+Fixpoint addTerminal {A} (s: signalTy Signal (removeTerminal A)) {struct A}: signalTy Signal A.
+Proof.
+  induction A; simpl in *.
+  exact tt.
+  exact s.  
+  destruct A2.
+  - exact (s, tt).
+  - exact s.  
+  - rewrite reduceSignal in s.
+    refine ((fst s, _)).
+    apply snd in s.
+    apply IHA2.
+    apply s.
+Defined.
+
+Fixpoint contraRemoveTerminal {A B} (f: signalTy Signal A -> B): signalTy Signal (removeTerminal A) -> B :=
+  fun a => f (addTerminal a).

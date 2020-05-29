@@ -132,7 +132,7 @@ Inductive Instance : Type :=
   | AssignBit: Signal -> Signal -> Instance
   (* Arithmetic operations *)
   | UnsignedAdd : list Signal -> list Signal -> list Signal -> Instance
-  (* Multiplexors *)    
+  (* Multiplexors *)
   | IndexBitArray: list Signal -> list Signal -> Signal -> Instance
   | IndexArray: list (list Signal) -> list Signal -> list Signal -> Instance
   | Component: string -> list (string * ConstExpr) -> list (string * Signal) ->
@@ -201,11 +201,38 @@ Definition newWires (width : nat) : state CavaState (list Signal) :=
       ret (map Wire outv)
   end.
 
+Definition newWiresBitVec (sizes: list nat) : state CavaState (@denoteBitVecWith nat Signal sizes) :=
+  cs <- get ;;
+  let wireCount := (bitsInPortShape (One (BitVec sizes)))%N in
+  let bv := numberBitVec 0 sizes sizes in
+  match cs with
+  | mkCavaState o isSeq m =>
+      put (mkCavaState (o + N.of_nat wireCount) isSeq m) ;;
+      ret bv
+  end.
+
+Fixpoint newWiresFromShape (s: bundle) : state CavaState (signalTy Signal s) :=
+  match s with
+  | Empty => ret tt
+  | One Bit => newWire
+  | One (BitVec s) => newWiresBitVec s
+  | Tuple2 x y =>
+    x <- newWiresFromShape x;;
+    y <- newWiresFromShape y;;
+    ret (x,y)
+  end.
+
 Definition addInstance (newInst: Instance) : state CavaState unit :=
   cs <- get;;
   match cs with
   | mkCavaState o isSeq (mkModule name insts inputs outputs)
     => put (mkCavaState o isSeq (mkModule name (newInst::insts) inputs outputs))
+  end.
+
+Fixpoint addInstances (insts: list Instance) : state CavaState unit :=
+  match insts with
+  | [] => ret tt
+  | x :: xs => addInstance x >>= fun _ => addInstances xs
   end.
 
 Definition addSequentialInstance (newInst: Instance) : state CavaState unit :=
@@ -215,12 +242,121 @@ Definition addSequentialInstance (newInst: Instance) : state CavaState unit :=
     => put (mkCavaState o true (mkModule name (newInst::insts) inputs outputs))
   end.
 
+Fixpoint addSequentialInstances (insts: list Instance) : state CavaState unit :=
+  match insts with
+  | [] => ret tt
+  | x :: xs => addSequentialInstance x >>= fun _ => addSequentialInstances xs
+  end.
+
 Definition addPort (newPort: PortDeclaration) : state CavaState unit :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs) =>
       put (mkCavaState o isSeq (mkModule n insts (cons newPort inputs) outputs))
   end.
+
+(******************************************************************************)
+(* Define netlist functions used to specify top-level module behaviour.       *)
+(******************************************************************************)
+
+Definition setModuleName (name : string) : state CavaState unit :=
+  cs <- get ;;
+  match cs with
+  | mkCavaState o isSeq (mkModule _ insts inputs outputs)
+     => put (mkCavaState o isSeq (mkModule name insts inputs outputs))
+  end.
+
+
+Definition inputBit (name : string) : state CavaState Signal :=
+  addPort (mkPort name Bit) ;;
+  ret (NamedWire name).
+
+Definition inputVectorTo0 (sizes : list nat) (name : string) : state CavaState (@denoteBitVecWith nat Signal sizes) :=
+  cs <- get ;;
+  match cs with
+  | mkCavaState o isSeq (mkModule n insts inputs outputs)
+     => let newPort := mkPort name (BitVec sizes) in
+        addPort newPort ;;
+        ret (smashBitVec name sizes sizes [])
+  end.
+
+Definition outputBit (name : string) (i : Signal) : state CavaState Signal :=
+  cs <- get ;;
+  match cs with
+  | mkCavaState o isSeq (mkModule n insts inputs outputs)
+     => let newPort := mkPort name Bit in
+        let insts' := WireOutputBit name i :: insts in
+        put (mkCavaState o isSeq (mkModule n insts' inputs (newPort :: outputs))) ;;
+        ret i
+  end.
+
+Definition outputVectorTo0 (sizes : list nat) (v : @denoteBitVecWith nat Signal sizes) (name : string) : state CavaState unit :=
+  cs <- get ;;
+  match cs with
+  | mkCavaState o isSeq (mkModule n insts inputs outputs)
+     => let newPort := mkPort name (BitVec sizes) in
+        let insts' := WireOutputBitVec sizes name v :: insts in
+        put (mkCavaState o isSeq (mkModule n insts' inputs (newPort :: outputs))) ;;
+        ret tt
+  end.
+
+(******************************************************************************)
+(* The initial empty netlist                                                  *)
+(******************************************************************************)
+
+(* Net number 0 carries the constant signal zero. Net number 1 carries the
+   constant signal 1. We start numbering from 2 for the user nets.
+*)
+
+Definition initStateFrom (startAt : N) : CavaState
+  := mkCavaState startAt false (mkModule "noname" [] [] []).
+
+Definition initState : CavaState
+  := initStateFrom 0.
+
+(******************************************************************************)
+(* Execute a monadic circuit description and return the generated netlist.    *)
+(******************************************************************************)
+
+Fixpoint instantiateInputPorts (inputs: @shape (string * Kind)) : state CavaState (signalTy Signal (mapShape snd inputs)) :=
+  match inputs return state CavaState (signalTy Signal (mapShape snd inputs)) with
+  | Empty => ret tt
+  | One (name, typ) =>
+      match typ return state CavaState (signalTy Signal (mapShape snd (One (name, typ)))) with
+      | Bit => i <- inputBit name ;;
+               ret i
+      | BitVec xs => i <- inputVectorTo0 xs name ;;
+                     ret i
+      end
+  | Tuple2 t1 t2 => a <- instantiateInputPorts t1 ;;
+                    b <- instantiateInputPorts t2 ;;
+                    ret (a, b)
+  end.
+
+Definition instantiateOutputPort (pd_driver : string * Kind * Signal)
+                                 : state CavaState unit :=
+  match pd_driver with
+  | (name, Bit, s) => _ <- outputBit name s ;; ret tt
+  | (name, BitVec [n], Vec s) => _ <- outputVectorTo0 [n] s name ;; ret tt
+  | _ => ret tt
+  end.
+
+Definition wireUpCircuit (intf : CircuitInterface)
+                         `{ToSignal (signalTy Signal (mapShape snd (circuitOutputs intf)))}
+                         (circuit : (signalTy Signal (mapShape snd (circuitInputs intf))) ->
+                                    state CavaState (signalTy Signal (mapShape snd (circuitOutputs intf))))
+
+                         : state CavaState unit  :=
+  setModuleName (circuitName intf) ;;
+  i <- instantiateInputPorts (circuitInputs intf) ;;
+  o <- circuit i ;;
+  mapShapeM_ instantiateOutputPort (zipShapes (circuitOutputs intf) (toSignal o)).
+
+Definition makeNetlist (intf : CircuitInterface)
+                       `{ToSignal (signalTy Signal (mapShape snd (circuitOutputs intf)))}
+                       (circuit : signalTy Signal (mapShape snd (circuitInputs intf)) ->
+                                  state CavaState (signalTy Signal (mapShape snd (circuitOutputs intf)))) : CavaState
+  := execState (wireUpCircuit intf circuit) initState.
 
 Record TestBench : Type := mkTestBench {
   testBenchName            : string;
@@ -237,17 +373,3 @@ Definition testBench (name : string)
                      (testExpectedOutputs : list (signalTy bool (mapShape snd (circuitOutputs intf))))
   := mkTestBench name intf (map (compose flattenShape toSignalExpr) testInputs)
                            (map (compose flattenShape toSignalExpr) testExpectedOutputs).
-
-(******************************************************************************)
-(* The initial empty netlist                                                  *)
-(******************************************************************************)
-
-(* Net number 0 carries the constant signal zero. Net number 1 carries the
-   constant signal 1. We start numbering from 2 for the user nets.
-*)
-
-Definition initStateFrom (startAt : N) : CavaState
-  := mkCavaState startAt false (mkModule "noname" [] [] []).
-
-Definition initState : CavaState
-  := initStateFrom 0.
