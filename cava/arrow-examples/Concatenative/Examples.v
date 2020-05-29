@@ -52,14 +52,6 @@ Section SimpleExamples.
 End SimpleExamples.
 
 Section NetlistExamples.
-
-  Definition nandArrow := arrowToHDLModule
-    "nandArrow"
-    (@nand NetlistCava)
-    ("input1","input2")
-    ("output1").
-  Eval compute in nandArrow.
-
   (* Test bench tables for generated SystemVerilog simulation test bench *)
   Definition arrow_nand_tb_inputs : list (bool * bool) :=
   [(false, false); (false, true); (true, false); (true, true)].
@@ -74,18 +66,14 @@ Section NetlistExamples.
        (One ("output1", Bit))
        [].
 
+  Definition nandArrow :=
+    makeNetlist nand2Interface
+      (removeRightmostUnit (@nand NetlistCava)).
+
   Definition arrow_nand2_tb :=
   testBench "nandArrow_tb" nand2Interface
             arrow_nand_tb_inputs arrow_nand_tb_expected_outputs.
 
-  Definition xorArrow := arrowToHDLModule
-
-    "xorArrow"
-    (@xor NetlistCava)
-    ("input1","input2")
-    ("output1").
-  (* Compute the circuit netlist for the XOR made up of NANDs made up of ANDs and INVs *)
-  Eval compute in xorArrow.
 
   (* Test bench tables for generated SystemVerilog simulation test bench *)
   Definition arrow_xor_tb_inputs : list (bool * bool) :=
@@ -101,16 +89,13 @@ Section NetlistExamples.
        (One ("output1", Bit))
        [].
 
+  Definition xorArrow :=
+    makeNetlist xorInterface
+      (removeRightmostUnit (@xor NetlistCava)).
+
   Definition arrow_xor_tb :=
   testBench "xorArrow_tb" xorInterface
             arrow_xor_tb_inputs arrow_xor_tb_expected_outputs.
-
-  Definition feedbackNandArrow := arrowToHDLModule
-    "feedbackNandArrow"
-    (@feedbackNand NetlistCavaDelay NetlistLoop)
-    ("input1")
-    ("output1").
-  Eval compute in feedbackNandArrow.
 
   Definition feedbackNandArrow_tb_inputs :=
   [false; (* 10 *)
@@ -148,6 +133,10 @@ Section NetlistExamples.
        (One ("input1", Bit))
        (One ("output1", Bit))
        [].
+
+  Definition feedbackNandArrow :=
+    makeNetlist feedbackNandInterface
+      (removeRightmostUnit (@feedbackNand NetlistCavaDelay NetlistLoop)).
 
   Definition feedbackNandArrow_tb :=
   testBench "feedbackNandArrow_tb" feedbackNandInterface

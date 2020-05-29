@@ -52,11 +52,7 @@ Definition fullAdder'
   (abcl, cout)
 ]>.
 
-Definition fullAdder_netlist := arrowToHDLModule
-  "fullAdder"
-  (toCava NetlistCava (Closure_conversion fullAdder'))
-  ("cin", (("a", "b"), tt))
-  ("sum", "cout").
+Definition fullAdder Cava := toCava Cava (Closure_conversion fullAdder').
 
 Definition fullAdderInterface
   := mkCircuitInterface "fullAdder"
@@ -75,8 +71,9 @@ Definition fullAdder_tb_inputs :=
    (true, (true, true))
 ].
 
-Definition fullAdder `{Cava}: (bit ** (bit ** bit) ** unit) ~> bit ** bit
-   := toCava _ (Closure_conversion fullAdder').
+Definition fullAdder_netlist :=
+  makeNetlist fullAdderInterface
+    (removeRightmostUnit (fullAdder NetlistCava)).
 
 Definition fullAdder_tb_expected_outputs
    := map (fun '(cin, (a,b)) => (@fullAdder Combinational) (cin, ((a, b), tt)))
