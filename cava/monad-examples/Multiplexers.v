@@ -28,6 +28,7 @@ Require Import Cava.Monad.Cava.
 Require Import Cava.Netlist.
 Require Import Cava.Types.
 Require Import Cava.BitArithmetic.
+Require Import Cava.Signal.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.

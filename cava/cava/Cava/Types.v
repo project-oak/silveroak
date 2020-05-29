@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* Require Import Program.Basics. *)
+Require Import Program.Basics.
 From Coq Require Import Ascii String.
 From Coq Require Import ZArith.
 From Coq Require Import Lists.List.
@@ -27,6 +27,8 @@ Import ListNotations.
 Import MonadNotation.
 Open Scope list_scope.
 Open Scope monad_scope.
+
+From Cava Require Import Signal.
 
 (******************************************************************************)
 (* shape describes the types of wires going into or out of a Cava circuit,    *)
@@ -64,7 +66,7 @@ Fixpoint mapShape {A B : Type} (f : A -> B) (s : @shape A) : @shape B :=
   end.
 
 Fixpoint mapShapeM {A B : Type} {m} `{Monad m} (f : A -> m B) (s : @shape A) :
-                  m shape :=
+                  m (@shape B) :=
   match s with
   | Empty => ret Empty
   | One thing => fv <- f thing ;;
@@ -73,6 +75,11 @@ Fixpoint mapShapeM {A B : Type} {m} `{Monad m} (f : A -> m B) (s : @shape A) :
                        fv2 <- @mapShapeM A B m _ f t2 ;;
                        ret (Tuple2 fv1 fv2)
   end.
+
+Definition mapShapeM_ {A : Type} {m} `{Monad m} (f : A -> m unit) (s : @shape A) :
+                      m unit :=
+  _ <- mapShapeM f s ;;
+  ret tt.
 
 Fixpoint zipShapes {A B : Type} (sA : @shape A) (sB : @shape B) :
                    @shape (A * B) :=
@@ -126,18 +133,29 @@ Fixpoint bitsInPortShape (s : bundle) : nat :=
   | Tuple2 t1 t2 => bitsInPortShape t1 + bitsInPortShape t2
   end.
 
-(* The duplicated i and l parametere are a temporary work-around to allow
+(* The duplicated i and l pamrameters are a temporary work-around to allow
    well-founded recursion to be recognized.
    TODO(satnam): Rewrite with an appropriate well-foundedness proof.
 *)
-Fixpoint numberBitVec (offset : N) (i : list nat) (l : list nat) : @denoteBitVecWith nat N l :=
-  match l, i return @denoteBitVecWith nat N l with
-  | [], _         => 0%N
-  | [x], [_]      => map N.of_nat (seq (N.to_nat offset) x)
+Fixpoint numberBitVec (offset : N) (i : list nat) (l : list nat) : @denoteBitVecWith nat Signal l :=
+  match l, i return @denoteBitVecWith nat Signal l with
+  | [], _         => Vcc
+  | [x], [_]      => map (compose Wire N.of_nat) (seq (N.to_nat offset) x)
   | x::xs, p::ps  => let z := N.of_nat (fold_left (fun x y => x * y) xs 1) in
                      map (fun w => numberBitVec (offset+w*z) ps xs) (map N.of_nat (seq 0 x))
   | _, _          => []
   end.
+
+(* smashBitVec is like numberBitVec but returns the symbolic name and index
+   for the vector shape.
+*)
+Fixpoint smashBitVec (name: string) (i: list nat) (l: list nat) (prefix: list nat) : @denoteBitVecWith nat Signal i :=
+  match i, l return @denoteBitVecWith nat Signal i with
+  | [], _        => Vcc
+  | [x], _       => map (fun i => NamedBitVec name (prefix ++ [i])) (seq 0 x)
+  | x::xs, y::ys => map (fun  xv => smashBitVec name xs ys (prefix ++ [xv])) (seq 0 x)
+  | _, _         => []
+  end. 
 
 Fixpoint mapBitVec {A B} (f: A -> B) (i : list nat) (l : list nat) : @denoteBitVecWith nat A l -> @denoteBitVecWith nat B l :=
   match l, i  return @denoteBitVecWith nat A l -> @denoteBitVecWith nat B l with
@@ -182,12 +200,12 @@ Fixpoint signalTy (T : Type) (s : shape) : Type :=
   | Tuple2 s1 s2  => prod (signalTy T s1) (signalTy T s2)
   end.
 
-Fixpoint numberPort (i : N) (inputs: bundle) : signalTy N inputs :=
-  match inputs return signalTy N inputs with
+Fixpoint numberPort (i : N) (inputs: bundle) : signalTy Signal inputs :=
+  match inputs return signalTy Signal inputs with
   | Empty => tt
   | One typ =>
-      match typ return denoteKindWith typ N with
-      | Bit => i
+      match typ return denoteKindWith typ Signal with
+      | Bit => Wire i
       | BitVec xs => numberBitVec i xs xs
       end
   | Tuple2 t1 t2 => let t1Size := bitsInPortShape t1 in

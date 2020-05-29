@@ -24,6 +24,7 @@ import Numeric
 
 import qualified BinNums
 import Netlist
+import Signal
 import Types
 
 writeSystemVerilog :: Netlist.CavaState -> IO ()
@@ -49,13 +50,15 @@ cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber isSeq (Netlist.Coq_mkModul
     ["  );"] ++
     ["",
      "  timeunit 1ns; timeprecision 1ns;",
-     ""] ++
-    ["  logic[" ++ show (fromN netNumber-1) ++ ":0] net;"] ++
+     "",
+     "  logic zero;",
+     "  logic one;",
+     "  logic[" ++ show (fromN netNumber-1) ++ ":0] net;"] ++
     declareVectors vDefs ++
     [""] ++
     ["  // Constant nets",
-     "  assign net[0] = 1'b0;",
-     "  assign net[1] = 1'b1;"] ++
+     "  assign zero = 1'b0;",
+     "  assign one = 1'b1;"] ++
     ["  // Populate vectors."] ++
     populateVectors vDefs ++
     [""] ++
@@ -102,11 +105,24 @@ insertCommas (x:y:xs) = (x ++ ",") : insertCommas (y:xs)
 data VectorAssignment = AssignTo | AssignFrom
 
 data VectorDeclaration
-  = VectorDeclaration  VectorAssignment Int [BinNums.N]
-  | Vector2Declaration VectorAssignment Int [[BinNums.N]]
+  = VectorDeclaration  VectorAssignment Int [Signal]
+  | Vector2Declaration VectorAssignment Int [[Signal]]
 
 data NetlistGenerationState
   = NetlistGenerationState Int [VectorDeclaration]
+
+showSignal :: Signal -> String
+showSignal signal
+  = case signal of
+      Gnd -> "zero"
+      Vcc -> "one"
+      Wire n -> "net[" ++ show (fromN n) ++ "]"
+      NamedWire name -> name
+      NamedBitVec name indices ->
+        case indices of
+          [] -> name
+          _ -> name ++ concat ["[" ++ show i ++ "]" | i <- indices]
+      Vec xs -> "'{" ++ concat (insertCommas (map showSignal xs)) ++ "}"
 
 computeVectors :: [Instance] -> State NetlistGenerationState [String]
 
@@ -129,7 +145,7 @@ computeVectors' (IndexBitArray i s o, _)
        let vI = VectorDeclaration AssignTo   v       i
            vS = VectorDeclaration AssignTo   (v + 1) s
        put (NetlistGenerationState (v + 2) (vI:vS:vDecs))
-       return ("  assign net[" ++ show (fromN o) ++ "] = v" ++ show v ++ "[v" ++ show (v + 1) ++
+       return ("  assign " ++ showSignal o ++ " = v" ++ show v ++ "[v" ++ show (v + 1) ++
                "];")
 computeVectors' (IndexArray i s o, _)
   = do NetlistGenerationState v vDecs <- get
@@ -164,56 +180,57 @@ populateVectors = concat . map populateVector
 populateVector :: VectorDeclaration -> [String]
 -- 1D Vectors
 populateVector (VectorDeclaration AssignTo v nets)
-  = if sequentialUp nets' then
+  = if sequentialUp nets then
       ["  assign v" ++ show v ++ " = net[" ++
          show (last nets') ++ ":" ++ show (head nets') ++ "];"]
     else
       ["  assign v" ++ show v ++ "[" ++ show i ++
-       "] = net[" ++ show li ++ "];" | (i, li) <- zip [0..] nets']
+       "] = " ++ showSignal li ++ ";" | (i, li) <- zip [0..] nets]
     where
-    nets' = map fromN nets
+    nets' = [fromN n | Wire n <- nets]
 populateVector (VectorDeclaration AssignFrom v nets)
-  = if sequentialUp nets' then
+  = if sequentialUp nets then
       ["  assign net[" ++ show (last nets') ++ ":" ++ show (head nets') ++
         "] = v" ++ show v ++ ";"]
     else
-      ["  assign net[" ++ show li ++ "] = v" ++ show v ++
-       "[" ++ show i ++ "];" | (i, li) <- zip [0..] nets']
+      ["  assign " ++ showSignal li ++ " = v" ++ show v ++
+       "[" ++ show i ++ "];" | (i, li) <- zip [0..] nets]
     where
-    nets' = map fromN nets
+    nets' = [fromN n | Wire n <- nets]
 -- 2D Vectors
 populateVector (Vector2Declaration AssignTo v nets)
-  = if sequentialUp2D nets' then
+  = if sequentialUp2D nets then
       ["  assign v" ++ show v ++ "[" ++ show i ++ "] = net[" ++
-         show (fromN (last n)) ++ ":" ++ show (fromN (head n)) ++ "];" 
-      | (n, i) <- zip nets [0..]]
+         show (last n) ++ ":" ++ show (head n) ++ "];" 
+      | (n, i) <- zip nets' [0..]]
     else
       ["  assign v" ++ show v ++ "[" ++ show ni ++ "][" ++ show i ++
-       "] = net[" ++ show (fromN li) ++ "];"
+       "] = " ++ showSignal li ++ ";"
        | (ni, n) <- zip [0..] nets, (i, li) <- zip [0..] n]
     where
-    nets' = map (map fromN) nets
+    nets' = [[fromN n | Wire n <- outer] | outer <- nets]
 populateVector (Vector2Declaration AssignFrom v nets)
-  = if sequentialUp2D nets' then
-      ["  assign net[" ++ show (fromN (last n)) ++ ":" ++ show (fromN (head n)) ++
+  = if sequentialUp2D nets then
+      ["  assign net[" ++ show (last n) ++ ":" ++ show (head n) ++
         "] = v" ++ show v ++ ";"
-       | (n, i) <- zip nets [0..]]
+       | (n, i) <- zip nets' [0..]]
     else
-      ["  assign net[" ++ show (fromN li) ++ "] = v" ++ show v ++
+      ["  assign " ++ showSignal li ++ " = v" ++ show v ++
        "[" ++ show ni ++ "][" ++ show i ++ "];"
        | (ni, n) <- zip [0..] nets, (i, li) <- zip [0..] n]
     where
-    nets' = map (map fromN) nets
+    nets' = [[fromN n | Wire n <- outer] | outer <- nets]
 
-sequentialUp :: [Integer] -> Bool
-sequentialUp [x] = True
-sequentialUp (x:y:z)
-  = if y == x + 1 then
-      sequentialUp (y:z)
+sequentialUp :: [Signal] -> Bool
+sequentialUp [Wire x] = True
+sequentialUp (Wire x : Wire y : z)
+  = if (fromN y) == (fromN x) + 1 then
+      sequentialUp ((Wire y):z)
     else
        False
+sequentialUp _ = False       
 
-sequentialUp2D :: [[Integer]] -> Bool
+sequentialUp2D :: [[Signal]] -> Bool
 sequentialUp2D = sequentialUp . concat
 
 --------------------------------------------------------------------------------
@@ -224,38 +241,38 @@ assignMultiDimensionalInput :: String -> String -> [Integer] ->
                                Coq_signalTy BinNums.N -> [String]
 assignMultiDimensionalInput _ _ [] _ = []
 assignMultiDimensionalInput name prefix [s] oAny
-  = if sequentialUp oN then
+  = if sequentialUp o then
       ["  assign net" ++ "[" ++ show (last oN) ++ ":" ++ show (head oN) ++
        "] = " ++ name ++ prefix ++ ";"]
     else
-      ["  assign net" ++ "[" ++ show n ++ "] = " ++ name ++ prefix ++ "[" ++ show i ++
-       "];" | (n, i) <- zip oN [0..s - 1]]
+      ["  assign " ++ showSignal n ++ " = " ++ name ++ prefix ++ "[" ++ show i ++
+       "];" | (n, i) <- zip o [0..s - 1]]
      where
-     o = unsafeCoerce oAny :: [BinNums.N]
-     oN = map fromN o
+     o = Netlist.unsafeCoerce oAny :: [Signal]
+     oN = [fromN n | Wire n <- o]
 assignMultiDimensionalInput name prefix (x:xs) oAny
   = concat [assignMultiDimensionalInput name (prefix ++ "[" ++ show p ++ "]") xs o
            | (p, o) <- zip [0..x-1] os]
      where
-     os = unsafeCoerce oAny :: [Coq_signalTy BinNums.N]
+     os = Netlist.unsafeCoerce oAny :: [Coq_signalTy BinNums.N]
 
 assignMultiDimensionalOutput :: String -> String -> [Integer] ->
                                 Coq_signalTy BinNums.N -> [String]
 assignMultiDimensionalOutput _ _ [] _ = []
 assignMultiDimensionalOutput name prefix [s] oAny
-  = if sequentialUp oN then
+  = if sequentialUp o then
       ["  assign " ++ name ++ " = net[" ++ show (last oN) ++ ":" ++ show (head oN) ++ "];"]
     else
-      ["  assign " ++ name ++ "[" ++ show i ++ "] = net[" ++ show n ++ 
-       "];" | (n, i) <- zip oN [0.. s - 1]]  
+      ["  assign " ++ name ++ "[" ++ show i ++ "] = " ++ showSignal n ++
+       ";" | (n, i) <- zip o [0.. s - 1]]  
      where
-     o = unsafeCoerce oAny :: [BinNums.N]
-     oN = map fromN o
+     o = Netlist.unsafeCoerce oAny :: [Signal]
+     oN = [fromN n | Wire n <- o]
 assignMultiDimensionalOutput name prefix (x:xs) oAny
   = concat [assignMultiDimensionalOutput name (prefix ++ "[" ++ show p ++ "]") xs o
            | (p, o) <- zip [0..x-1] os]
      where
-     os = unsafeCoerce oAny :: [Coq_signalTy BinNums.N]
+     os = Netlist.unsafeCoerce oAny :: [Coq_signalTy BinNums.N]
 
 --------------------------------------------------------------------------------
 -- Generate SystemVerilog for a specific instance.
@@ -263,16 +280,16 @@ assignMultiDimensionalOutput name prefix (x:xs) oAny
 
 generateInstance :: Instance -> Int -> String
 generateInstance (DelayBit i o) _
-  = "  always_ff @(posedge clk) net[" ++ show (fromN o) ++
-    "] <= rst ? 1'b0 : net[" ++ show (fromN i) ++ "];"
+  = "  always_ff @(posedge clk) " ++ showSignal o ++
+    " <= rst ? 1'b0 : " ++ showSignal i ++ ";"
 generateInstance (AssignBit a b) _
-   = "  assign net[" ++ show (fromN a) ++ "] = net[" ++ show (fromN b) ++ "];"
+   = "  assign " ++ showSignal a ++ " = " ++ showSignal b ++ ";"
 generateInstance (WireInputBit name o) _
-   = "  assign net[" ++ show (fromN o) ++ "] = " ++ name ++ ";"
+   = "  assign " ++ showSignal o ++ " = " ++ name ++ ";"
 generateInstance (WireInputBitVec sizes name oAny) _
    = unlines (assignMultiDimensionalInput name "" sizes oAny)
 generateInstance (WireOutputBit name o) _ 
-   = "  assign " ++ name ++ " = net[" ++ show (fromN o) ++ "] ;"
+   = "  assign " ++ name ++ " = " ++ showSignal o ++ ";"
 generateInstance (WireOutputBitVec sizes name oAny) _
    = unlines (assignMultiDimensionalOutput name "" sizes oAny)   
 generateInstance (Not i o) instrNr = primitiveInstance "not" [o, i] instrNr
@@ -292,18 +309,15 @@ generateInstance (IndexBitArray _ _ _) _
 generateInstance (IndexArray _ _ _) _
    = "" -- Generated instead during vector generation
 
-primitiveInstance :: String -> [BinNums.N] -> Int -> String
+primitiveInstance :: String -> [Signal] -> Int -> String
 primitiveInstance instName args instNr
   = "  " ++ instName ++ " inst" ++ "_" ++ show instNr ++ " " ++
     showArgs args ++ ";"
   
-showArgs :: [BinNums.N] -> String
-showArgs args = "(" ++ concat (insertCommas (map showArg args)) ++ ")";
+showArgs :: [Signal] -> String
+showArgs args = "(" ++ concat (insertCommas (map showSignal args)) ++ ")";
 
-showArg :: BinNums.N -> String
-showArg n = "net[" ++ show (fromN n) ++ "]"
-
-mkInstance :: String -> [(String, ConstExpr)] -> [(String, BinNums.N)] ->
+mkInstance :: String -> [(String, ConstExpr)] -> [(String, Signal)] ->
               Int -> String
 mkInstance instName [] args instNr
   = "  " ++ instName ++ " inst" ++ "_" ++ show instNr ++ " " ++
@@ -313,11 +327,11 @@ mkInstance instName parameters args instNr
     show instNr ++ " " ++
     showPortArgs args ++ ";"
 
-showPortArgs :: [(String, BinNums.N)] -> String
+showPortArgs :: [(String, Signal)] -> String
 showPortArgs args = "(" ++ concat (insertCommas (map showPortArg args)) ++ ")";
 
-showPortArg :: (String, BinNums.N) -> String
-showPortArg (p, n) = "." ++ p ++ "(net[" ++ show (fromN n) ++ "])"
+showPortArg :: (String, Signal) -> String
+showPortArg (p, n) = "." ++ p ++ "(" ++ showSignal n ++ ")"
 
 showParameters :: [(String, ConstExpr)] -> String
 showParameters parameters
@@ -426,35 +440,35 @@ declarePort (Coq_mkPort name kind) =
     Bit -> "  (* mark_debug = \"true\" *) logic " ++ name 
     BitVec xs -> "  (* mark_debug = \"true\" *) " ++ vectorDeclaration name xs 
 
-initTestVectors :: [PortDeclaration] -> [[Signal]] -> [String]
+initTestVectors :: [PortDeclaration] -> [[SignalExpr]] -> [String]
 initTestVectors [] _ = []
 initTestVectors (p:ps) s
   = initTestVector p (map head s) ++
     initTestVectors ps (map tail s)
   
-initTestVector :: PortDeclaration -> [Signal] -> [String]
+initTestVector :: PortDeclaration -> [SignalExpr] -> [String]
 initTestVector pd@(Coq_mkPort name typ) s
   = [declarePort (Coq_mkPort name' typ) ++ " = '{"] ++
-    insertCommas (map showSignal s) ++
+    insertCommas (map showSignalExpr s) ++
     ["    };"]
     where
     name' = name ++ "_vectors[" ++ show (length s) ++ "]"
 
-showSignal :: Signal -> String
-showSignal (BitVal v)   = "    1'b" ++ showBit v
-showSignal (VecVal xs) | isAllBits xs
+showSignalExpr :: SignalExpr -> String
+showSignalExpr (BitVal v)   = "    1'b" ++ showBit v
+showSignalExpr (VecVal xs) | isAllBits xs
   = "    " ++ show (length xs) ++ "'d" ++ show (signalToInt xs)
-showSignal (VecVal xs)
-  = "    '{ " ++ concat (insertCommas (map showSignal xs )) ++ " }"  
+showSignalExpr (VecVal xs)
+  = "    '{ " ++ concat (insertCommas (map showSignalExpr xs )) ++ " }"  
      
-isAllBits :: [Signal] -> Bool
+isAllBits :: [SignalExpr] -> Bool
 isAllBits = and . map isBitVal
 
-isBitVal :: Signal -> Bool
+isBitVal :: SignalExpr -> Bool
 isBitVal (BitVal _) = True
 isBitVal _ = False
 
-signalToInt :: [Signal] -> Integer
+signalToInt :: [SignalExpr] -> Integer
 signalToInt [] = 0
 signalToInt ((BitVal b):xs)
   = case b of

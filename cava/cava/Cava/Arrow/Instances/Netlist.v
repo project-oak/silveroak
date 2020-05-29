@@ -18,6 +18,7 @@ Import MonadNotation.
 
 From Cava Require Import Netlist.
 From Cava Require Import Types.
+From Cava Require Import Signal.
 From Cava Require Import BitArithmetic.
 From Cava Require Import Arrow.Arrow.
 
@@ -35,7 +36,7 @@ Section NetlistEval.
 
   #[refine] Instance NetlistCat : Category := {
     object := bundle;
-    morphism X Y := signalTy N X -> state (Netlist * N) (signalTy N Y);
+    morphism X Y := signalTy Signal X -> state (Netlist * N) (signalTy Signal Y);
     id X x := ret x;
     compose X Y Z f g := g >=> f;
 
@@ -114,70 +115,70 @@ Section NetlistEval.
     bitvec n := One (BitVec n);
 
     constant b _ := match b with
-      | true => ret 1%N
-      | false => ret 0%N
+      | true => ret Vcc
+      | false => ret Gnd
       end;
 
     constant_vec n v _ := ret (mapBitVec (fun b => match b with
-      | true => 1%N
-      | false => 0%N
+      | true => Vcc
+      | false => Gnd
     end) n n v);
 
     not_gate '(x,tt) :=
       '(nl, i) <- get ;;
-      put (cons (Not x i) nl, (i+1)%N) ;;
-      ret i;
+      put (cons (Not x (Wire i)) nl, (i+1)%N) ;;
+      ret (Wire i);
 
     and_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
-      put (cons (And x y i) nl, (i+1)%N) ;;
-      ret i;
+      put (cons (And x y (Wire i)) nl, (i+1)%N) ;;
+      ret (Wire i);
 
     nand_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
-      put (cons (Nand x y i) nl, (i+1)%N) ;;
-      ret i;
+      put (cons (Nand x y (Wire i)) nl, (i+1)%N) ;;
+      ret (Wire  i);
 
     or_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
-      put (cons (Or x y i) nl, (i+1)%N) ;;
-      ret i;
+      put (cons (Or x y (Wire i)) nl, (i+1)%N) ;;
+      ret (Wire i);
 
     nor_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
-      put (cons (Nor x y i) nl, (i+1)%N) ;;
-      ret i;
+      put (cons (Nor x y (Wire i)) nl, (i+1)%N) ;;
+      ret (Wire i);
 
     xor_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
-      put (cons (Xor x y i) nl, (i+1)%N) ;;
-      ret i;
+      put (cons (Xor x y (Wire i)) nl, (i+1)%N) ;;
+      ret (Wire i);
 
     xnor_gate '(x,(y,tt)) :=
       '(nl, i) <- get ;;
-      put (cons (Xnor x y i) nl, (i+1)%N) ;;
-      ret i;
+      put (cons (Xnor x y (Wire i)) nl, (i+1)%N) ;;
+      ret (Wire i);
 
     buf_gate '(x,tt) :=
       '(nl, i) <- get ;;
-      put (cons (Buf x i) nl, (i+1)%N) ;;
-      ret i;
+      put (cons (Buf x (Wire i)) nl, (i+1)%N) ;;
+      ret (Wire i);
 
     xorcy '(x, (y, tt)) :=
       '(nl, i) <- get ;;
-      put (cons (Component "XORCY" [] [("O", i); ("CI", x); ("LI", y)]) nl, (i+1)%N) ;;
-      ret i;
+      put (cons (Component "XORCY" [] [("O", Wire i); ("CI", x); ("LI", y)]) nl, (i+1)%N) ;;
+      ret (Wire i);
 
     muxcy '(s,(ci,(di, tt))) :=
       '(nl, i) <- get ;;
-      put (cons (Component "MUXCY" [] [("O", i); ("S", s); ("CI", ci); ("DI", di)]) nl, (i+1)%N) ;;
-      ret i;
+      put (cons (Component "MUXCY" [] [("O", Wire i); ("S", s); ("CI", ci); ("DI", di)]) nl, (i+1)%N) ;;
+      ret (Wire i);
 
     unsigned_add m n s '(x,(y, tt)) :=
       '(nl, i) <- get ;;
       let o := map N.of_nat (seq (N.to_nat i) s) in
-      put (cons (UnsignedAdd x y o) nl, (i + N.of_nat s)%N) ;;
-      ret o;
+      put (cons (UnsignedAdd x y (map Wire o)) nl, (i + N.of_nat s)%N) ;;
+      ret (map Wire o);
   }.
 
   Close Scope string_scope.
@@ -254,14 +255,14 @@ Section NetlistEval.
       ret x'
   }.
 
-  Definition wireInput (port_shape: Kind) (name: string) (port: denoteKindWith port_shape N)
+  Definition wireInput (port_shape: Kind) (name: string) (port: denoteKindWith port_shape Signal)
     : Instance :=
     match port_shape, port with
     | Bit,_ => WireInputBit name port
     | BitVec sz,_ => WireInputBitVec sz name port
     end.
 
-  Definition wireOutput (port_shape: Kind) (name: string) (port: denoteKindWith port_shape N)
+  Definition wireOutput (port_shape: Kind) (name: string) (port: denoteKindWith port_shape Signal)
     : Instance :=
     match port_shape, port with
     | Bit,_ => WireOutputBit name port
@@ -276,10 +277,10 @@ Section NetlistEval.
     end.
 
   Fixpoint linkLables {A}
-     (link: forall port_shape, string -> denoteKindWith port_shape N -> A)
+     (link: forall port_shape, string -> denoteKindWith port_shape Signal -> A)
      (s: shape)
      (labels: nameTy s)
-     (ports: signalTy N s)
+     (ports: signalTy Signal s)
      : list A :=
     match s in shape, labels, ports with
     | Empty, _, _ => []

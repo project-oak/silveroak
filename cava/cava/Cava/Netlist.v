@@ -27,6 +27,7 @@ From Coq Require Import Bool.Bool.
 From Coq Require Import Numbers.NaryFunctions.
 From Coq Require Import Init.Datatypes.
 Require Import ExtLib.Structures.Monads.
+Require Export ExtLib.Data.Monads.StateMonad.
 
 Require Import Omega.
 
@@ -35,62 +36,64 @@ Import MonadNotation.
 Open Scope list_scope.
 Open Scope monad_scope.
 
+From Cava Require Import Signal.
 From Cava Require Import Types.
 
 (******************************************************************************)
-(* Make it possible to convert ceratain types to bool shape values            *)
+(* Make it possible to convert certain types to bool shape values             *)
 (******************************************************************************)
 
-Inductive Signal :=
-| NoSignal : Signal
-| BitVal : bool -> Signal
-| VecVal : list Signal -> Signal.
+Inductive SignalExpr :=
+| NoSignal : SignalExpr
+| BitVal : bool -> SignalExpr
+| VecVal : list SignalExpr -> SignalExpr.
 
-Class ToShape t := {
-  shapeIt : t -> @shape Signal;
+Class ToSignalExpr t := {
+  toSignalExpr : t -> @shape SignalExpr;
 }.
 
-Instance SignalBool : ToShape bool := {
-  shapeIt b := One (BitVal b);
+Instance SignalBool : ToSignalExpr bool := {
+  toSignalExpr b := One (BitVal b);
 }.
 
-Fixpoint shapeToSignal (s : shape) : Signal :=
+Fixpoint shapeToSignalExpr (s : @shape SignalExpr) : SignalExpr :=
   match s with
   | One v => v
   | _ => NoSignal
   end.
 
-Instance ShapeVec {A : Type} `{ToShape A} : ToShape (list A) := {
-  shapeIt v := One (VecVal (map (compose shapeToSignal shapeIt) v)) ;
+Instance ShapeVec {A : Type} `{ToSignalExpr A} : ToSignalExpr (list A) := {
+   toSignalExpr v := One (VecVal (map (compose shapeToSignalExpr toSignalExpr) v)) ;
 }.
 
-Instance ToShapePair {A B : Type} `{ToShape A} `{ToShape B}  :
-                     ToShape (A * B) := {
-  shapeIt '(a, b) := Tuple2 (shapeIt a) (shapeIt b);
+Instance ToShapePair {A B : Type} `{ToSignalExpr A} `{ToSignalExpr B}  :
+                     ToSignalExpr (A * B) := {
+  toSignalExpr '(a, b) := Tuple2 (toSignalExpr a) (toSignalExpr b);
 }.
 
-(******************************************************************************)
-(* Flatten allows us to extract values from a result produced from a toplevel *)
-(* Cava circuit, which must produce a result that is an instance of the       *)
-(* the Flatten class.                                                         *)
-(******************************************************************************)
+(* Likewise for Signal *)
 
-Class Flatten t := {
-  flatten : t -> list N;
+Class ToSignal t := {
+  toSignal: t -> @shape Signal;
 }.
 
-Instance FlattenN : Flatten N := {
-  flatten n := [n];
+Instance SignalWire : ToSignal Signal := {
+  toSignal s := One s;
 }.
 
-Instance FlattenTuple2 {a b} `{Flatten a} `{Flatten b}  : Flatten (a * b) := {
-  flatten ab := match ab with
-                | (a, b) => flatten a ++ flatten b
-                end;
+Fixpoint shapeToSignalValue (s : @shape Signal) : Signal :=
+  match s with
+  | One v => v
+  | _ => Vcc
+  end.
+
+Instance ShapeSignalVec {A : Type} `{ToSignal A} : ToSignal (list A) := {
+   toSignal v := One (Vec (map (compose shapeToSignalValue toSignal) v)) ;
 }.
 
-Instance FlattenList {a} `{Flatten a} : Flatten (list a) := {
-  flatten l := concat (map flatten l);
+Instance ToShapePairSignal {A B : Type} `{ToSignal A} `{ToSignal B}  :
+                     ToSignal (A * B) := {
+  toSignal '(a, b) := Tuple2 (toSignal a) (toSignal b);
 }.
 
 (******************************************************************************)
@@ -108,31 +111,31 @@ Inductive ConstExpr : Type :=
 
 Inductive Instance : Type :=
   (* I/O port wiring *)
-  | WireInputBit:     string -> N -> Instance
+  | WireInputBit:     string -> Signal -> Instance
   | WireInputBitVec:  forall sizes, string ->
-                      @denoteBitVecWith nat N sizes -> Instance
-  | WireOutputBit:    string -> N -> Instance
+                      @denoteBitVecWith nat Signal sizes -> Instance
+  | WireOutputBit:    string -> Signal -> Instance
   | WireOutputBitVec: forall sizes, string ->
-                      @denoteBitVecWith nat N sizes -> Instance
+                      @denoteBitVecWith nat Signal sizes -> Instance
   (* SystemVerilog primitive gates. *)
-  | Not:       N -> N -> Instance
-  | And:       N -> N -> N -> Instance
-  | Nand:      N -> N -> N -> Instance
-  | Or:        N -> N -> N -> Instance
-  | Nor:       N -> N -> N -> Instance
-  | Xor:       N -> N -> N -> Instance
-  | Xnor:      N -> N -> N -> Instance
-  | Buf:       N -> N -> Instance
+  | Not:       Signal -> Signal -> Instance
+  | And:       Signal -> Signal -> Signal -> Instance
+  | Nand:      Signal -> Signal -> Signal -> Instance
+  | Or:        Signal -> Signal -> Signal -> Instance
+  | Nor:       Signal -> Signal -> Signal -> Instance
+  | Xor:       Signal -> Signal -> Signal -> Instance
+  | Xnor:      Signal -> Signal -> Signal -> Instance
+  | Buf:       Signal -> Signal -> Instance
   (* A Cava unit delay bit component. *)
-  | DelayBit:  N -> N -> Instance
+  | DelayBit:  Signal -> Signal -> Instance
   (* Assignment of bit wire *)
-  | AssignBit: N -> N -> Instance
+  | AssignBit: Signal -> Signal -> Instance
   (* Arithmetic operations *)
-  | UnsignedAdd : list N -> list N -> list N -> Instance
+  | UnsignedAdd : list Signal -> list Signal -> list Signal -> Instance
   (* Multiplexors *)    
-  | IndexBitArray: list N -> list N -> N -> Instance
-  | IndexArray: list (list N) -> list N -> list N -> Instance
-  | Component: string -> list (string * ConstExpr) -> list (string * N) ->
+  | IndexBitArray: list Signal -> list Signal -> Signal -> Instance
+  | IndexArray: list (list Signal) -> list Signal -> list Signal -> Instance
+  | Component: string -> list (string * ConstExpr) -> list (string * Signal) ->
                Instance.
 
 (******************************************************************************)
@@ -175,32 +178,65 @@ Fixpoint shapeToPortDeclaration (s : @shape (string * Kind)) :
   | Tuple2 t1 t2 => shapeToPortDeclaration t1 ++ shapeToPortDeclaration t2
   end.
 
-Definition circuitInterfaceToModule (ci : CircuitInterface)
-                                    (nl : Netlist) : Module :=
-  mkModule (circuitName  ci) nl (shapeToPortDeclaration (circuitInputs ci))
-                                (shapeToPortDeclaration (circuitOutputs ci)).
-
 Record CavaState : Type := mkCavaState {
   netNumber : N;
   isSequential : bool;
   module : Module;
 }.
 
+Definition newWire : state CavaState Signal :=
+  cs <- get;;
+  match cs with
+  | mkCavaState o isSeq m
+      => put (mkCavaState (o+1) isSeq m) ;;
+         ret (Wire o)
+  end.
+
+Definition newWires (width : nat) : state CavaState (list Signal) :=
+  cs <- get ;;
+  match cs with
+  | mkCavaState o isSeq m =>
+      let outv := map N.of_nat (seq (N.to_nat o) width) in
+      put (mkCavaState (o + N.of_nat width) isSeq m) ;;
+      ret (map Wire outv)
+  end.
+
+Definition addInstance (newInst: Instance) : state CavaState unit :=
+  cs <- get;;
+  match cs with
+  | mkCavaState o isSeq (mkModule name insts inputs outputs)
+    => put (mkCavaState o isSeq (mkModule name (newInst::insts) inputs outputs))
+  end.
+
+Definition addSequentialInstance (newInst: Instance) : state CavaState unit :=
+  cs <- get;;
+  match cs with
+  | mkCavaState o _ (mkModule name insts inputs outputs)
+    => put (mkCavaState o true (mkModule name (newInst::insts) inputs outputs))
+  end.
+
+Definition addPort (newPort: PortDeclaration) : state CavaState unit :=
+  cs <- get ;;
+  match cs with
+  | mkCavaState o isSeq (mkModule n insts inputs outputs) =>
+      put (mkCavaState o isSeq (mkModule n insts (cons newPort inputs) outputs))
+  end.
+
 Record TestBench : Type := mkTestBench {
   testBenchName            : string;
   testBenchInterface       : CircuitInterface;
-  testBenchInputs          : list (list Signal);
-  testBenchExpectedOutputs : list (list Signal);
+  testBenchInputs          : list (list SignalExpr);
+  testBenchExpectedOutputs : list (list SignalExpr);
 }.
 
 Definition testBench (name : string)
                      (intf : CircuitInterface)
-                     `{ToShape (signalTy bool (mapShape snd (circuitInputs intf)))}
-                     `{ToShape (signalTy bool (mapShape snd (circuitOutputs intf)))}
+                     `{ToSignalExpr (signalTy bool (mapShape snd (circuitInputs intf)))}
+                     `{ToSignalExpr (signalTy bool (mapShape snd (circuitOutputs intf)))}
                      (testInputs : list (signalTy bool (mapShape snd (circuitInputs intf))))
                      (testExpectedOutputs : list (signalTy bool (mapShape snd (circuitOutputs intf))))
-  := mkTestBench name intf (map (compose flattenShape shapeIt) testInputs)
-                           (map (compose flattenShape shapeIt) testExpectedOutputs).
+  := mkTestBench name intf (map (compose flattenShape toSignalExpr) testInputs)
+                           (map (compose flattenShape toSignalExpr) testExpectedOutputs).
 
 (******************************************************************************)
 (* The initial empty netlist                                                  *)
@@ -214,4 +250,4 @@ Definition initStateFrom (startAt : N) : CavaState
   := mkCavaState startAt false (mkModule "noname" [] [] []).
 
 Definition initState : CavaState
-  := initStateFrom 2.
+  := initStateFrom 0.

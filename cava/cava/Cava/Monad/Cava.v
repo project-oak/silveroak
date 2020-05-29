@@ -38,6 +38,7 @@ Export MonadNotation.
 Require Import Cava.Netlist.
 Require Import Cava.Types.
 Require Import Cava.BitArithmetic.
+Require Import Cava.Signal.
 
 Generalizable All Variables.
 
@@ -87,53 +88,51 @@ Class Cava m bit `{Monad m} := {
 (* Netlist implementations for the Cava class.                                *)
 (******************************************************************************)
 
-Definition invNet (i : N) : state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Not i o) insts) inputs outputs )) ;;
-         ret o
-  end.
+Definition invNet (i : Signal) : state CavaState Signal :=
+  o <- newWire ;;
+  addInstance (Not i o) ;;
+  ret o.
 
-Definition andNet (i : N * N) : state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (And (fst i) (snd i) o) insts) inputs outputs )) ;;
-         ret o
-  end.
+Definition andNet (i : Signal * Signal) : state CavaState Signal :=
+  let (i0, i1) := i in
+  o <- newWire ;;
+  addInstance (And i0 i1 o) ;;
+  ret o.
 
-Definition nandNet (i : N * N) : state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Nand (fst i) (snd i) o) insts) inputs outputs )) ;;
-         ret o
-  end.
+Definition nandNet (i : Signal * Signal) : state CavaState Signal :=
+  let (i0, i1) := i in
+  o <- newWire ;;
+  addInstance (Nand i0 i1 o) ;;
+  ret o.
 
-Definition orNet (i : N * N) : state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Or (fst i) (snd i) o) insts) inputs outputs )) ;;
-         ret o
-  end.
+Definition orNet (i : Signal * Signal) : state CavaState Signal :=
+  let (i0, i1) := i in
+  o <- newWire ;;
+  addInstance (Or i0 i1 o) ;;
+  ret o.
 
-Definition norNet (i : N * N) : state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Nor (fst i) (snd i) o) insts) inputs outputs )) ;;
-         ret o
-  end.
+Definition norNet (i : Signal * Signal) : state CavaState Signal :=
+  let (i0, i1) := i in
+  o <- newWire ;;
+  addInstance (Nor i0 i1 o) ;;
+  ret o.
 
-Definition xorNet (i : N * N) : state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Xor (fst i) (snd i) o) insts) inputs outputs )) ;;
-         ret o
-  end.
+Definition xorNet (i : Signal * Signal) : state CavaState Signal :=
+  let (i0, i1) := i in
+  o <- newWire ;;
+  addInstance (Xor i0 i1 o) ;;
+  ret o.
+
+Definition xnorNet (i : Signal * Signal) : state CavaState Signal :=
+  let (i0, i1) := i in
+  o <- newWire ;;
+  addInstance (Xnor i0 i1 o) ;;
+  ret o.
+
+Definition bufNet (i : Signal) : state CavaState Signal :=
+  o <- newWire ;;
+  addInstance (Buf i o) ;;
+  ret o.
 
 (******************************************************************************)
 (* Xilinx specific FPGA gates                                                 *)
@@ -141,31 +140,24 @@ Definition xorNet (i : N * N) : state CavaState N :=
 
 Local Open Scope N_scope.
 
-Definition lut1Net (f : bool -> bool) (i : N) : state CavaState N :=
+Definition lut1Net (f : bool -> bool) (i : Signal) : state CavaState Signal :=
   let config := N.b2n (f false) + 2 * N.b2n (f true) in
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => let component := Component "LUT1" [("INIT", HexLiteral 2 config)]
-                          [("O", o); ("I0", i)] in
-         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
-         ret o
-  end.
+  o <- newWire ;;
+  addInstance (Component "LUT1" [("INIT", HexLiteral 2 config)]
+                         [("O", o); ("I0", i)]) ;;
+  ret o.
 
-Definition lut2Net (f : bool -> bool -> bool) (i : N * N) : state CavaState N :=
+Definition lut2Net (f : bool -> bool -> bool) (i : Signal * Signal) :
+           state CavaState Signal :=
   let config :=     N.b2n (f false false) +
                 2 * N.b2n (f true false) +
                 4 * N.b2n (f false true) + 
                 8 * N.b2n (f true true) in
   let (i0, i1) := i in
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => let component := Component "LUT2" [("INIT", HexLiteral 4 config)]
-                          [("O", o); ("I0", i0); ("I1", i1)] in
-         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
-         ret o
-  end.
+  o <- newWire ;;
+  addInstance (Component "LUT2" [("INIT", HexLiteral 4 config)]
+                         [("O", o); ("I0", i0); ("I1", i1)]) ;;
+  ret o.                       
 
 Definition f3List (f: bool -> bool -> bool -> bool) (l: list bool) : bool :=
   match l with
@@ -173,20 +165,16 @@ Definition f3List (f: bool -> bool -> bool -> bool) (l: list bool) : bool :=
   | _ => false
   end.
 
-Definition lut3Net (f : bool -> bool -> bool -> bool) (i : N * N * N) :
-                   state CavaState N :=
+Definition lut3Net (f : bool -> bool -> bool -> bool)
+                   (i : Signal * Signal * Signal) : state CavaState Signal :=
   let powers := map (fun p => let bv := nat_to_list_bits_sized 3 (N.of_nat p) in
                      2^(N.of_nat p) * N.b2n (f3List f bv)) (seq 0 8)  in
   let config := fold_left N.add powers 0 in
   let '(i0, i1, i2) := i in
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => let component := Component "LUT3" [("INIT", HexLiteral 8 config)]
-                          [("O", o); ("I0", i0); ("I1", i1); ("I2", i2)] in
-         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
-         ret o
-  end.
+  o <- newWire ;;
+  addInstance (Component "LUT3" [("INIT", HexLiteral 8 config)]
+                         [("O", o); ("I0", i0); ("I1", i1); ("I2", i2)]) ;;
+  ret o.
 
 Definition f4List (f: bool -> bool -> bool -> bool -> bool) (l: list bool) :
   bool :=
@@ -196,19 +184,16 @@ Definition f4List (f: bool -> bool -> bool -> bool -> bool) (l: list bool) :
   end.
 
 Definition lut4Net (f : bool -> bool -> bool -> bool -> bool)
-                  (i : N * N * N * N) : state CavaState N :=
+                   (i : Signal * Signal * Signal * Signal) :
+                  state CavaState Signal :=
   let powers := map (fun p => let bv := nat_to_list_bits_sized 4 (N.of_nat p) in
                      2^(N.of_nat p) * N.b2n (f4List f bv)) (seq 0 16)  in
   let config := fold_left N.add powers 0 in
   let '(i0, i1, i2, i3) := i in
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => let component := Component "LUT4" [("INIT", HexLiteral 16 config)]
-                          [("O", o); ("I0", i0); ("I1", i1); ("I2", i2); ("I3", i3)] in
-         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
-         ret o
-  end.
+  o <- newWire ;;
+  addInstance (Component "LUT4" [("INIT", HexLiteral 16 config)]
+                          [("O", o); ("I0", i0); ("I1", i1); ("I2", i2); ("I3", i3)]) ;;
+  ret o.
 
 Definition f5List (f: bool -> bool -> bool -> bool -> bool -> bool)
                   (l: list bool) : bool :=
@@ -218,19 +203,15 @@ Definition f5List (f: bool -> bool -> bool -> bool -> bool -> bool)
   end.
 
 Definition lut5Net (f : bool -> bool -> bool -> bool -> bool -> bool)
-                  (i : N * N * N * N * N) : state CavaState N :=
+                  (i : Signal * Signal * Signal * Signal * Signal) : state CavaState Signal :=
   let powers := map (fun p => let bv := nat_to_list_bits_sized 5 (N.of_nat p) in
                      2^(N.of_nat p) * N.b2n (f5List f bv)) (seq 0 32)  in
   let config := fold_left N.add powers 0 in
   let '(i0, i1, i2, i3, i4) := i in
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => let component := Component "LUT5" [("INIT", HexLiteral 32 config)]
-                          [("O", o); ("I0", i0); ("I1", i1); ("I2", i2); ("I3", i3); ("I4", i4)] in
-         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
-         ret o
-  end.
+  o <- newWire ;;
+  addInstance (Component "LUT5" [("INIT", HexLiteral 32 config)]
+                          [("O", o); ("I0", i0); ("I1", i1); ("I2", i2); ("I3", i3); ("I4", i4)]) ;;
+  ret o.                        
 
 Definition f6List (fn: bool -> bool -> bool -> bool -> bool -> bool -> bool)
                   (l: list bool) : bool :=
@@ -240,119 +221,70 @@ Definition f6List (fn: bool -> bool -> bool -> bool -> bool -> bool -> bool)
   end.
 
 Definition lut6Net (f : bool -> bool -> bool -> bool -> bool -> bool -> bool)
-                  (i : N * N * N * N * N * N) : state CavaState N :=
+                  (i : Signal * Signal * Signal * Signal * Signal * Signal) : state CavaState Signal :=
   let powers := map (fun p => let bv := nat_to_list_bits_sized 6 (N.of_nat p) in
                      2^(N.of_nat p) * N.b2n (f6List f bv)) (seq 0 64)  in
   let config := fold_left N.add powers 0 in
   let '(i0, i1, i2, i3, i4, i5) := i in 
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => let component := Component "LUT6" [("INIT", HexLiteral 64 config)]
-                          [("O", o); ("I0", i0); ("I1", i1); ("I2", i2); ("I3", i3); ("I4", i4); ("I5", i5)] in
-        put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
-         ret o
-  end.
+  o <- newWire ;;
+  addInstance (Component "LUT6" [("INIT", HexLiteral 64 config)]
+                          [("O", o); ("I0", i0); ("I1", i1); ("I2", i2); ("I3", i3); ("I4", i4); ("I5", i5)] ) ;;
+  ret o.
 
 Local Close Scope N_scope.
 
-Definition xnorNet (i : N * N) : state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Xnor (fst i) (snd i) o) insts) inputs outputs )) ;;
-         ret o
-  end.
+Definition xorcyNet (i : Signal * Signal) : state CavaState Signal :=
+  let (ci, li) := i in
+  o <- newWire ;;
+  addInstance (Component "XORCY" [] [("O", o); ("CI", fst i); ("LI", snd i)]) ;;
+  ret o.
 
-Definition bufNet (i : N) : state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name (cons (Buf i o) insts) inputs outputs )) ;;
-         ret o
-  end.
+Definition muxcyNet (s ci di : Signal) : state CavaState Signal :=
+  o <- newWire ;;
+  addInstance ( Component "MUXCY" [] [("O", o); ("S", s); ("CI", ci); ("DI", di)]) ;;
+  ret o.
 
-Definition xorcyNet (i : N * N) : state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => let component := Component "XORCY" [] [("O", o); ("CI", fst i); ("LI", snd i)] in 
-         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
-         ret o
-  end.
+Definition indexBitArrayNet (i : list Signal) (sel : list Signal) :
+                            state CavaState Signal :=
+  o <- newWire ;;
+  addInstance (IndexBitArray i sel o) ;;
+  ret o.
 
-Definition muxcyNet (s : N) (ci : N) (di : N)  : state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => let component := Component "MUXCY" [] [("O", o); ("S", s); ("CI", ci); ("DI", di)] in
-         put (mkCavaState (o+1) isSeq (mkModule name (cons component insts) inputs outputs )) ;;
-         ret o
-  end.
-
-Definition indexBitArrayNet (i : list N) (sel : list N) :
-                            state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o + 1) isSeq (mkModule name (cons (IndexBitArray i sel o) insts) inputs outputs )) ;;
-         ret o
-  end.
-
-Definition indexArrayNet (i : list (list N)) (sel : list N) :
-                         state CavaState (list N) :=
+Definition indexArrayNet (i : list (list Signal)) (sel : list Signal) :
+                         state CavaState (list Signal) :=
   let w := length (hd [] i) in (* The width of each bus *)
   let m := length sel in       (* Number of bits to represent selector *)
   let n := length i in         (* Number of values to select from *)
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => let outv := map N.of_nat (seq (N.to_nat o) w) in
-         put (mkCavaState (o + N.of_nat w) isSeq (mkModule name (cons (IndexArray i sel outv) insts) inputs outputs )) ;;
-         ret outv
-  end.
+  o <- newWires w ;;
+  addInstance (IndexArray i sel o) ;;
+  ret o.
 
-Definition unsignedAddNet (a : list N) (b : list N) :
-                          state CavaState (list N) :=
+Definition unsignedAddNet (a : list Signal) (b : list Signal) :
+                          state CavaState (list Signal) :=
   let sumSize := max (length a) (length b) + 1 in
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => let outv := map N.of_nat (seq (N.to_nat o) sumSize) in
-         put (mkCavaState (o + (N.of_nat sumSize)) isSeq (mkModule name (cons (UnsignedAdd a b outv) insts) inputs outputs )) ;;
-         ret outv
-  end.
+  sum <- newWires sumSize ;;
+  addInstance (UnsignedAdd a b sum) ;;
+  ret sum.
 
-Definition delayBitNet (i : N) : state CavaState N :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) true (mkModule name (cons (DelayBit i o) insts) inputs outputs )) ;;
-         ret o
-  end.
+Definition delayBitNet (i : Signal) : state CavaState Signal :=
+  o <- newWire ;;
+  addSequentialInstance (DelayBit i o) ;;
+  ret o.
 
-Definition loopBitNet (A B : Type) (f : (A * N)%type -> state CavaState (B * N)%type) (a : A) : state CavaState B :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-      => put (mkCavaState (o+1) isSeq (mkModule name insts inputs outputs)) ;;
-         '(b, cOut) <- f (a, o) ;;
-          cs2 <- get ;;
-          match cs2 with
-          | mkCavaState o2 isSeq (mkModule name insts inputs outputs)
-              => put (mkCavaState (o2+1) isSeq (mkModule name (cons (AssignBit o cOut) insts) inputs outputs)) ;;
-                 ret b
-          end
-  end.
+Definition loopBitNet (A B : Type) (f : (A * Signal)%type -> state CavaState (B * Signal)%type) (a : A) : state CavaState B :=
+  o <- newWire ;;
+  '(b, cOut) <- f (a, o) ;;
+  addInstance (AssignBit o cOut) ;;
+  ret b.
 
 (******************************************************************************)
 (* Instantiate the Cava class for CavaNet which describes circuits without    *)
 (* any top-level pins or other module-level data                              *)
 (******************************************************************************)
 
-Instance CavaNet : Cava (state CavaState) N :=
-  { zero := ret 0%N;
-    one := ret 1%N;
+Instance CavaNet : Cava (state CavaState) Signal :=
+  { zero := ret Gnd;
+    one := ret Vcc;
     delayBit := delayBitNet;
     loopBit a b := loopBitNet a b;
     inv := invNet;
@@ -386,30 +318,22 @@ Definition setModuleName (name : string) : state CavaState unit :=
   | mkCavaState o isSeq (mkModule _ insts inputs outputs)
      => put (mkCavaState o isSeq (mkModule name insts inputs outputs))
   end.
+  
 
-Definition inputBit (name : string) : state CavaState N :=
+Definition inputBit (name : string) : state CavaState Signal :=
+  addPort (mkPort name Bit) ;;
+  ret (NamedWire name).
+
+Definition inputVectorTo0 (sizes : list nat) (name : string) : state CavaState (@denoteBitVecWith nat Signal sizes) :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
-     => let newPort := mkPort name Bit in
-        let insts' := WireInputBit name o :: insts in
-        put (mkCavaState (o+1) isSeq (mkModule n insts' (cons newPort inputs) outputs)) ;;
-        ret o
+     => let newPort := mkPort name (BitVec sizes) in
+        addPort newPort ;;
+        ret (smashBitVec name sizes sizes [])
   end.
 
-Definition inputVectorTo0 (sizes : list nat) (name : string) : state CavaState (@denoteBitVecWith nat N sizes) :=
-  cs <- get ;;
-  match cs with
-  | mkCavaState o isSeq (mkModule n insts inputs outputs)
-     => let netNumbers := numberBitVec o sizes sizes in
-        let newPort := mkPort name (BitVec sizes) in
-        let portInst := WireInputBitVec sizes name netNumbers in
-        let netsUsed := fold_left (fun x y => x * y) sizes 1 in
-        put (mkCavaState (o + (N.of_nat netsUsed)) isSeq (mkModule n (portInst :: insts) (newPort :: inputs) outputs)) ;;
-        ret netNumbers
-  end.
-
-Definition outputBit (name : string) (i : N) : state CavaState N :=
+Definition outputBit (name : string) (i : Signal) : state CavaState Signal :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
@@ -419,7 +343,7 @@ Definition outputBit (name : string) (i : N) : state CavaState N :=
         ret i
   end.
 
-Definition outputVectorTo0 (sizes : list nat) (v : @denoteBitVecWith nat N sizes) (name : string) : state CavaState unit :=
+Definition outputVectorTo0 (sizes : list nat) (v : @denoteBitVecWith nat Signal sizes) (name : string) : state CavaState unit :=
   cs <- get ;;
   match cs with
   | mkCavaState o isSeq (mkModule n insts inputs outputs)
@@ -433,61 +357,48 @@ Definition outputVectorTo0 (sizes : list nat) (v : @denoteBitVecWith nat N sizes
 (* Execute a monadic circuit description and return the generated netlist.    *)
 (******************************************************************************)
 
-Definition instantiateInputPort (pd : PortDeclaration) : state CavaState unit :=
-  cs <- get ;;
-  match pd with
-  | mkPort name Bit => _ <- inputBit name ;; ret tt
-  | mkPort name (BitVec xs) => _ <- inputVectorTo0 xs name ;; ret tt
+Fixpoint instantiateInputPorts (inputs: @shape (string * Kind)) : state CavaState (signalTy Signal (mapShape snd inputs)) :=
+  match inputs return state CavaState (signalTy Signal (mapShape snd inputs)) with
+  | Empty => ret tt
+  | One (name, typ) =>
+      match typ return state CavaState (signalTy Signal (mapShape snd (One (name, typ)))) with
+      | Bit => i <- inputBit name ;;
+               ret i
+      | BitVec xs => i <- inputVectorTo0 xs name ;;
+                     ret i
+      end
+  | Tuple2 t1 t2 => a <- instantiateInputPorts t1 ;;
+                    b <- instantiateInputPorts t2 ;;
+                    ret (a, b)
   end.
 
-Fixpoint instantiateInputPorts (ports : list PortDeclaration) : state CavaState unit :=
-  match ports with
-  | [] => ret tt
-  | p::ps => instantiateInputPort p ;;
-             instantiateInputPorts ps
-  end.
-
-Definition instantiateOutputPort (pd : PortDeclaration) (outputNetNumbers : list N)
+Definition instantiateOutputPort (pd_driver : string * Kind * Signal)
                                  : state CavaState unit :=
-  cs <- get ;;
-  match pd with
-  | mkPort name Bit => _ <- outputBit name (hd 0%N outputNetNumbers) ;; ret tt
-  | mkPort name (BitVec [n]) => _ <- outputVectorTo0 [n] (firstn n outputNetNumbers) name ;; ret tt
+  match pd_driver with
+  | (name, Bit, s) => _ <- outputBit name s ;; ret tt
+  | (name, BitVec [n], Vec s) => _ <- outputVectorTo0 [n] s name ;; ret tt
   | _ => ret tt
   end.
 
-Fixpoint instantiateOutputPorts (ports : list PortDeclaration) (outputNetNumbers : list N)
-                                : state CavaState unit :=
-  match ports with
-  | [] => ret tt
-  | p::ps => instantiateOutputPort p outputNetNumbers ;;
-             instantiateOutputPorts ps (skipn (bitsInPort (port_shape p)) outputNetNumbers)
-  end.
-
 Definition wireUpCircuit (intf : CircuitInterface)
-                         `{Flatten (signalTy N (mapShape snd (circuitOutputs intf)))}
-                         (circuit : (signalTy N (mapShape snd (circuitInputs intf))) ->
-                                    state CavaState (signalTy N (mapShape snd (circuitOutputs intf))))
+                         `{ToSignal (signalTy Signal (mapShape snd (circuitOutputs intf)))}
+                         (circuit : (signalTy Signal (mapShape snd (circuitInputs intf))) ->
+                                    state CavaState (signalTy Signal (mapShape snd (circuitOutputs intf))))
+                         
                          : state CavaState unit  :=
   setModuleName (circuitName intf) ;;
-  cs <- get ;;
-  let countInputsFrom := netNumber cs in
-  let inputPort : @shape (string * Kind) := circuitInputs intf in
-  let typeShape : bundle := mapShape snd inputPort in
-  let numberedInputs : signalTy N typeShape := numberPort countInputsFrom typeShape in
-  instantiateInputPorts (shapeToPortDeclaration inputPort) ;;
-  o <- circuit numberedInputs ;;
-  let outputNetNumbers := flatten o in
-  instantiateOutputPorts (shapeToPortDeclaration (circuitOutputs intf)) outputNetNumbers.
+  i <- instantiateInputPorts (circuitInputs intf) ;;
+  o <- circuit i ;;
+  mapShapeM_ instantiateOutputPort (zipShapes (circuitOutputs intf) (toSignal o)).
 
 Definition makeNetlist (intf : CircuitInterface)
-                       `{Flatten (signalTy N (mapShape snd (circuitOutputs intf)))}
-                       (circuit : signalTy N (mapShape snd (circuitInputs intf)) ->
-                                  state CavaState (signalTy N (mapShape snd (circuitOutputs intf)))) : CavaState
+                       `{ToSignal (signalTy Signal (mapShape snd (circuitOutputs intf)))}
+                       (circuit : signalTy Signal (mapShape snd (circuitInputs intf)) ->
+                                  state CavaState (signalTy Signal (mapShape snd (circuitOutputs intf)))) : CavaState
   := execState (wireUpCircuit intf circuit) initState.
 
 (******************************************************************************)
-(* A second boolean combinational logic interpretation for the Cava class      *)
+(* A second boolean combinational logic interpretation for the Cava class     *)
 (******************************************************************************)
 
 Definition notBool (i: bool) : ident bool :=

@@ -1,6 +1,7 @@
 -R Cava Cava
 
 Cava/BitArithmetic.v
+Cava/Signal.v
 Cava/Netlist.v
 Cava/Types.v
 Cava/Monad/Cava.v
