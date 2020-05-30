@@ -141,6 +141,7 @@ Section NetlistEval.
     representable ty := match ty with
     | Bit => One Bit
     | BitVec xs => One (BitVec xs)
+    | ExternalType t => One (ExternalType t)
     end;
 
     constant b _ := match b with
@@ -250,6 +251,10 @@ Section NetlistEval.
         apply object_as_list in X.
         simpl in *.
         destruct l; exact (ret X).
+      * cbv [cat NetlistArr NetlistCat morphism].
+        intros.
+        apply object_as_list in X.
+        exact (ret X).
   Defined.
 
   Close Scope string_scope.
@@ -259,6 +264,7 @@ Section NetlistEval.
     match port in Kind, x, y return denoteKindWith port C with
     | Bit, x, y => f x y
     | BitVec sz, xs, ys => mapBitVec (fun '(x,y) => f x y) sz sz (zipBitVecs sz sz xs ys)
+    | ExternalType t, x, y => f x y
     end .
 
   Fixpoint linkShapes {A B}

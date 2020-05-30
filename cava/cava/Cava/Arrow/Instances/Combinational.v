@@ -106,6 +106,7 @@ Section CoqEval.
     representable t := match t with
       | Bit => bool
       | BitVec xs => denoteBitVecWith bool xs
+      | ExternalType t => unit
       end;
 
     constant b _ := b;
@@ -166,6 +167,8 @@ Section CoqEval.
         unfold denoteBitVecWith.
         apply nprod_to_list.
         cbv [cat CoqArr CoqCat morphism denoteBitVecWith].
+        apply nprod_to_list.
+      * cbv [cat CoqArr CoqCat morphism].
         apply nprod_to_list.
   Defined.
 

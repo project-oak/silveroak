@@ -152,6 +152,7 @@ end.
 Reserved Notation "'bit'" (at level 1, no associativity).
 Reserved Notation "'bitvec' n" (at level 1, no associativity).
 Reserved Notation "'bitvec_index' n" (at level 1, no associativity).
+Reserved Notation "'extern'" (at level 1, no associativity).
 
 (* Cava *)
 Class Cava  := {
@@ -160,7 +161,8 @@ Class Cava  := {
   representable : Kind -> object
     where "'bit'" := (representable Bit)
     and   "'bitvec' n" := (representable (BitVec n))
-    and   "'bitvec_index' n" := (bitvec [PeanoNat.Nat.log2_up n]);
+    and   "'bitvec_index' n" := (bitvec [PeanoNat.Nat.log2_up n])
+    and   "'extern'" := (representable (ExternalType ""));
 
   constant : bool -> (unit ~> bit);
   constant_vec (dimensions: list nat) : denoteBitVecWith bool dimensions -> (unit ~> bitvec dimensions);
@@ -191,6 +193,7 @@ Class Cava  := {
     match o with
     | Bit => replicate_object (S n) bit ~> bitvec [S n]
     | BitVec xs => replicate_object (S n) (bitvec xs) ~> bitvec (S n::xs)
+    | ExternalType _ => replicate_object (S n) bit ~> bitvec [S n] (* dummy definition *)
     end;
 }.
 
