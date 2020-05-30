@@ -231,10 +231,13 @@ Section NetlistEval.
       ret o;
     
     (* index_array n xs: bitvec (n::xs) ** bitvec [PeanoNat.Nat.log2_up n] ** unit ~> bitvec xs; *)
-    index_array n xs '(array, (index, _)) := ret _; (*todo: fix me*)
+    index_array x xs '(array, (index, _)) := 
+      o <- newWiresBitVec xs;;
+      addInstance (IndexAlt x xs array index o) ;;
+      ret _; (*todo: fix me*)
       
 
-    convert_degenerate_bitvec '(x, _) := ret _;
+    convert_degenerate_bitvec '(x, _) := ret x;
   }.
   Proof.
     simpl.
@@ -243,9 +246,6 @@ Section NetlistEval.
     destruct xs.
     exact ( [] ).
     exact ( [] ).
-
-    simpl in *.
-    exact x.
   Defined.
 
   Close Scope string_scope.
