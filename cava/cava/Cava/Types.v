@@ -97,6 +97,20 @@ Fixpoint flattenShape {A} (s : @shape A) : list A :=
   | Tuple2 t1 t2 =>  flattenShape t1 ++ flattenShape t2
   end.
 
+(* 
+Drop the rightmost element of a tuple structure if it is Empty. e.g.
+
+withoutRightmostUnit ( Tuple2 x (Tuple2 y (Tuple2 z Empty)) )
+                     = Tuple2 x (Tuple2 y z)
+*)
+Fixpoint withoutRightmostUnit {A} (s: @shape A): shape :=
+  match s with
+  | Empty => Empty
+  | One thing => One thing
+  | Tuple2 t1 Empty => t1
+  | Tuple2 t1 t2 =>  Tuple2 t1 (withoutRightmostUnit t2)
+  end.
+
 (******************************************************************************)
 (* Values of Kind can occur as the type of signals on a circuit interface *)
 (******************************************************************************)
@@ -211,3 +225,45 @@ Fixpoint numberPort (i : N) (inputs: bundle) : signalTy Signal inputs :=
   | Tuple2 t1 t2 => let t1Size := bitsInPortShape t1 in
                     (numberPort i t1,  numberPort (i + N.of_nat t1Size) t2)
   end.
+
+Lemma signal_tuple_is_tuple:
+  forall a b,
+  signalTy Signal (Tuple2 a b)
+  = (signalTy Signal a * signalTy Signal b)%type.
+Proof.
+  intros.
+  simpl.
+  f_equal.
+Defined.
+
+(* 
+Given a signal of some shape 'withoutRightmost S', 
+we can extend it with a rightmost value of tt to get a signal of shape 'S'.
+*)
+Fixpoint insertRightmostTt {A}
+  (s: signalTy Signal (withoutRightmostUnit A)) {struct A}
+  : signalTy Signal A.
+Proof.
+  induction A; simpl in *.
+  exact tt.
+  exact s.  
+  destruct A2.
+  - exact (s, tt).
+  - exact s.  
+  - rewrite signal_tuple_is_tuple in s.
+    refine ((fst s, _)).
+    apply snd in s.
+    apply IHA2.
+    apply s.
+Defined.
+
+(*
+Given some function 'f' which takes as input a signal of shape 'A',
+we can return a function performing 'f' that takes an input of 
+shape 'withoutRightmostUnit A' by first applying 'insertRightmostTt'
+and then performing 'f'.
+*)
+Fixpoint removeRightmostUnit {A B} 
+  (f: signalTy Signal A -> B)
+  : signalTy Signal (withoutRightmostUnit A) -> B :=
+  fun a => f (insertRightmostTt a).
