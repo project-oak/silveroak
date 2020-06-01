@@ -82,3 +82,44 @@ Definition fullAdder_tb_expected_outputs
 Definition fullAdder_tb :=
   testBench "fullAdder_tb" fullAdderInterface
             fullAdder_tb_inputs fullAdder_tb_expected_outputs.
+
+Fixpoint nprod A n : object :=
+match n with
+ | O => unit
+ | S O => A
+ | S n => nprod A n ** A
+end.
+
+Lemma nprod_tup_is_nprod: forall A n, nprod A (S n) ** A = nprod A (S (S n)).
+Proof.
+  intros.
+  simpl.
+  destruct n; auto.
+Qed.
+
+Definition below (A B C D E F G: object)
+  (r: << A, B >> ~> ( G ** D ))
+  (s: << G, C >> ~> ( F ** E ))
+  : Kappa  << A, (B ** C) >> (F ** (D ** E)) :=
+<[ \ a bc =>
+  let gd = !r a (fst' bc) in
+  let fe = !s (fst' gd) (snd' bc) in
+  (fst' fe, (snd' gd, snd' fe))
+]>.
+
+Hint Resolve nprod_tup_is_nprod : core.
+
+Fixpoint col (A B C D: object) n
+  (circuit: << A, B >> ~> ( A ** D ))
+  : Kappa << A, nprod B (S n) >> (A ** nprod D (S n)).
+Proof.
+  refine (
+  match n with
+  | O => <[ \a b => !circuit a b ]>
+  | S n' => 
+    let column_above := Closure_conversion (col A B C D n' circuit) in
+    let full_circuit := below _ _ _ _ _ _ _ column_above circuit in
+    _
+  end).
+  auto.
+Defined.

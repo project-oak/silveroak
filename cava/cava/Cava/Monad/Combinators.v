@@ -67,16 +67,13 @@ Local Open Scope monad_scope.
 -------------------------------------------------------------------------------
 *)
 
-Fixpoint below `{Monad m} {A B C D E F G}
+Definition below `{Monad m} {A B C D E F G}
              (r : A * B -> m (D * G)%type)
              (s : G * C -> m (E * F)%type)
              (abc : A * (B * C)) : m ((D * E) * F)%type :=
-  let (a, bc) := abc in
-  let (b, c) := bc in
-  dg <- r (a, b) ;;
-  let (d, g) := dg : D * G in
-  ef <- s (g, c) ;;
-  let (e, f) := ef : E * F in
+  let '(a, (b, c)) := abc in
+  '(d, g) <- r (a, b) ;;
+  '(e, f) <- s (g, c) ;;
   ret ((d, e), f).
 
 (* The col combinator takes a 4-sided circuit element and replicates it by
