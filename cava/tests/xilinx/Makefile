@@ -61,5 +61,6 @@ lut1_inv.sv:	coq VivadoTestsSV
 clean:
 	-@$(MAKE) -f Makefile.coq clean
 	git clean -Xfd
-	rm -rf *.sv *.tcl *.cpp *.vcd VivadoTestsSV LUTTests.hs
+	rm -rf *.sv *.tcl *.cpp *.vcd VivadoTestsSV LUTTests.hs \
+               *.cpp *.sv *.tcl
 	rm -rf obj_dir
