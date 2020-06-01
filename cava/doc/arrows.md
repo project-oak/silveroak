@@ -65,7 +65,7 @@ work with some notable differences:
 - Currently the Arrow sub classes are not broken out into their own classes (e.g
     ArrowDrop)
 - Arrows are used "directly" and we don't represent lanuages as generalized
-    arrows. Adams construction of multilevel languages makes heavy use of the
+    arrows. Adam's construction of multilevel languages makes heavy use of the
     category theory form.
 - Conversion between Kappa Calculus and Arrows does not follow the paper and is
   currently performed via a lambda-closure-conversion-like method. This is as
@@ -83,8 +83,10 @@ work with some notable differences:
       - Netlist equivalence is not implemented but should perhaps be if the hdl is
           equivalent up to reordering.
 
-Kappa Calculus is encoded as an inductive type using the PHOAS method, with an
-extra constructor `Arr` for mixing an existing arrow morphism:
+## PHOAS
+
+Kappa Calculus is encoded as an inductive type as detailed by 
+[Adam Chlipala in Parametric Higher-Order Abstract Syntax (PHOAS) for Mechanized Semantics](http://adam.chlipala.net/papers/PhoasICFP08/).
 
 ```
 Inductive kappa : object -> object -> Type :=
@@ -97,3 +99,25 @@ Inductive kappa : object -> object -> Type :=
 
 Terms can be constructed directly but an experimental notation is also provided.
 
+## Finite binary tree with a rightmost unit 
+
+`Tree a = () | a | (Tree a, Tree a)`
+
+Without a class such as Haskell's `ArrowApply`, curried functions are not available.
+Adam Megacz (or prior work?) shows that we can still have parital application by requiring
+the input representation is a finite binary tree with a rightmost unit. The
+rightmost unit is required for the case of applying the final argument. For
+example (note this is psuedo kappa calculus, so all terms have an input and
+output type):
+
+```
+f: (a, (b, ())) ~> c
+A: () ~> a
+B: () ~> b
+
+f A: (b, ()) ~> c
+f A B: () ~> c
+```
+
+Without the rightmost unit, `f A B` either must be treated as a special case, or
+has no legal representation.
