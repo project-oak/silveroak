@@ -88,18 +88,47 @@ work with some notable differences:
 Kappa Calculus is encoded as an inductive type as detailed by 
 [Adam Chlipala in Parametric Higher-Order Abstract Syntax (PHOAS) for Mechanized Semantics](http://adam.chlipala.net/papers/PhoasICFP08/).
 
-```
+```Coq
+Variable var: object -> object -> Type.
+
+Inductive kappa_sugared : object -> object -> Type :=
+| Var: forall x y,    var x y -> kappa_sugared x y
+| Abs: forall x y z,  (var unit x -> kappa_sugared y z) -> kappa_sugared (x ** y) z
+| App: forall x y z,  kappa_sugared (x ** y) z -> kappa_sugared unit x -> kappa_sugared y z
+| Com: forall x y z,  kappa_sugared y z -> kappa_sugared x y -> kappa_sugared x z
+| Arr: forall x y,    morphism x y -> kappa_sugared x y
+| Let: forall x y z,  kappa_sugared unit x -> (var unit x -> kappa_sugared y z) -> kappa_sugared y z.
+
 Inductive kappa : object -> object -> Type :=
-    | Var : forall x y,   var x y -> kappa x y
-    | Abs : forall x y z, (var unit x -> kappa y z) -> kappa (x**y) z
-    | App : forall x y z, kappa (x**y) z -> kappa unit x -> kappa y z
-    | Compose : forall x y z, kappa y z -> kappa x y -> kappa x z
-    | Arr : forall x y,   morphism x y -> kappa x y.
+| DVar : forall x y,   var x y -> kappa x y
+| DAbs : forall x y z, (var unit x -> kappa y z) -> kappa (x**y) z
+| DApp : forall x y z, kappa (x**y) z -> kappa unit x -> kappa y z
+| DCompose : forall x y z, kappa y z -> kappa x y -> kappa x z
+| DArr : forall x y,   morphism x y -> kappa x y.
+
+Fixpoint desugar {var i o} (e: kappa_sugared var i o) : kappa var i o := ...
 ```
 
-Terms can be constructed directly but an experimental notation is also provided.
+Lambda-like notation is provided, but it is possible to directly construct
+terms:
 
-## Finite binary tree with a rightmost unit 
+```
+Definition delay : kappa (bit**unit) bit := desugar (
+  Abs (fun input_wire =>
+    App (Arr (delay_gate)) (Var input_wire)
+  )).
+
+Definition fork_then_xor_and : kappa (bit ** unit) (bit ** bit ** unit) :=
+desugar (
+  Abs (fun input_wire =>
+    Let (App (Arr xor_gate) (Var input_wire)) (fun x =>
+    Let (App (Arr and_gate) (Var input_wire)) (fun y =>
+    App (App (App (Arr id) (Var x) (Var y)
+    ))))
+  )).
+```
+
+## Finite binary tree with a rightmost unit
 
 `Tree a = () | a | (Tree a, Tree a)`
 
