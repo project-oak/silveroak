@@ -18,6 +18,7 @@ Cava/Arrow/Arrow.v
 Cava/Arrow/Instances/Constructive.v
 Cava/Arrow/Instances/Combinational.v
 Cava/Arrow/Instances/Netlist.v
+Cava/Arrow/Instances/Prop.v
 Cava/Arrow/Kappa/Kappa.v
 Cava/Arrow/Kappa/CC.v
 Cava/Arrow/Kappa/Syntax.v

@@ -280,11 +280,11 @@ Fixpoint wf_debrujin {i o}
   (expr: @kappa natvar i o) {struct expr}
   : Prop :=
 match expr with
-| DVar x            => ok_lookup x (as_kind_list env) o
-| @DAbs _ x y z f => wf_debrujin (@ECons n x env) (f n)
-| DApp e1 e2        => wf_debrujin env e1 /\ wf_debrujin env e2
-| DCompose e1 e2    => wf_debrujin env e1 /\ wf_debrujin env e2
-| DArr _            => True
+| DVar x         => ok_lookup x (as_kind_list env) o
+| @DAbs _ x y z f  => wf_debrujin (@ECons n x env) (f n)
+| DApp e1 e2     => wf_debrujin env e1 /\ wf_debrujin env e2
+| DCompose e1 e2 => wf_debrujin env e1 /\ wf_debrujin env e2
+| DArr _         => True
 end.
 
 Lemma wf_debrujin_succ:
@@ -312,10 +312,10 @@ from the environment.
 Fixpoint closure_conversion' {i o}
   (n: nat) (env: environment n)
   (* (morphs: env_morphisms (as_kind env) (as_kind_list env)) *)
-  (expr: @kappa natvar i o) {struct expr}
+  (expr: kappa natvar i o) {struct expr}
   : wf_debrujin env expr -> structure (Tuple i (as_kind env)) o.
     refine (
-match expr as expr in kappa i' o' return i = i' -> o = o' -> 
+match expr as expr in kappa _ i' o' return i = i' -> o = o' -> 
 wf_debrujin env expr -> structure (Tuple i (as_kind env)) o 
 with
 | DVar v => fun _ _ wf => _
@@ -365,7 +365,7 @@ end (eq_refl i) (eq_refl o)
   reflexivity.
 
   refine (First Drop >>> Cancell >>> _).
-  cbv [ConstructiveCat morphism].
+  cbn.
 
   rewrite <- H.
   apply (extract_nth' (as_kind_list env) v (Kind_to_list_kind_id env)).
@@ -406,22 +406,22 @@ Section Equivalence.
 
   Inductive kappa_equivalence:
     forall i o, ctxt
-    -> @kappa var1 i o -> @kappa var2 i o
+    -> kappa var1 i o -> kappa var2 i o
     -> Prop :=
   | Var_equiv : forall i o n1 n2 E,
     In (vars (obj_pair i o) (pair n1 n2)) E
     -> kappa_equivalence E (DVar n1) (DVar n2)
 
-  | Abs_equiv : forall o (f1: var1 unit o -> @kappa var1 unit o) f2 (E:ctxt),
-    (forall n1 n2, kappa_equivalence (vars (obj_pair unit o) (pair n1 n2) :: E) (f1 n1) (f2 n2))
+  | Abs_equiv : forall o (f1: var1 Unit o -> kappa var1 Unit o) f2 (E:ctxt),
+    (forall n1 n2, kappa_equivalence (vars (obj_pair Unit o) (pair n1 n2) :: E) (f1 n1) (f2 n2))
     -> kappa_equivalence E (DAbs f1) (DAbs f2)
 
-  | App_equiv : forall E x y z (f1 : @kappa var1 (x**y) z) f2 e1 e2,
+  | App_equiv : forall E x y z (f1 : kappa var1 (x**y) z) f2 e1 e2,
     kappa_equivalence E f1 f2
     -> kappa_equivalence E e1 e2
     -> kappa_equivalence E (DApp f1 e1) (DApp f2 e2)
 
-  | Compose_equiv : forall E x y z (f1 : @kappa var1 y z) f2 (g1: @kappa var1 x y) g2,
+  | Compose_equiv : forall E x y z (f1 : kappa var1 y z) f2 (g1: kappa var1 x y) g2,
     kappa_equivalence E f1 f2
     -> kappa_equivalence E g1 g2
     -> kappa_equivalence E (DCompose f1 g1) (DCompose f2 g2)
@@ -436,7 +436,7 @@ Notation variable_pair i o n1 n2 := (vars natvar natvar (obj_pair i o) (pair n1 
 
 (* Evidence of variable pair equality *)
 Notation match_pairs xo xn yi yo yn1 yn2 :=
-  (variable_pair unit xo xn xn = variable_pair yi yo yn1 yn2).
+  (variable_pair Unit xo xn xn = variable_pair yi yo yn1 yn2).
 
 (* Evidence that if a given variable is in an environment we can lookup_kind the Kind at the index. *)
 Notation ok_variable_lookup := (fun env E =>
@@ -488,13 +488,13 @@ Hint Immediate apply_extended_lookup : core.
 calling induction directly as calling induction directly results in too
 specific hypotheses. *)
 Lemma kappa_wf
-  : forall i o E (expr1 expr2: @kappa natvar i o),
+  : forall i o E (expr1 expr2: kappa natvar i o),
   kappa_equivalence E expr1 expr2
   -> forall n (env: environment n), ok_variable_lookup env E
   -> wf_debrujin env expr1.
 Proof.
   apply (kappa_equivalence_ind
-  (fun i o E (expr1 expr2 : @kappa natvar i o) =>
+  (fun i o E (expr1 expr2 : kappa natvar i o) =>
     forall n (env: environment n),
       ok_variable_lookup env E
       -> wf_debrujin env expr1)
@@ -504,15 +504,15 @@ Qed.
 Hint Resolve kappa_wf : core.
 Hint Resolve Kappa_equivalence : core.
 
-Theorem Kappa_wf: forall {i o} (expr: forall var, @kappa var i o), @wf_debrujin _ _ 0 ENil (expr _).
+Theorem Kappa_wf: forall {i o} (expr: forall var, kappa var i o), @wf_debrujin _ _ 0 ENil (expr _).
 Proof.
   eauto.
 Qed.
 
-Definition closure_conversion {i o} (expr: @Kappa i o) (wf: wf_debrujin ENil (expr _)): i ~> o
+Definition closure_conversion {i o} (expr: Kappa i o) (wf: wf_debrujin ENil (expr _)): i ~> o
   := uncancelr >>> closure_conversion' ENil (expr _) wf.
 
-Definition Closure_conversion {i o} (expr: @Kappa i o): i ~> o
+Definition Closure_conversion {i o} (expr: Kappa i o): i ~> o
   := closure_conversion expr (Kappa_wf expr).
 
 Hint Resolve closure_conversion' : core.

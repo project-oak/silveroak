@@ -27,8 +27,10 @@ Local Open Scope string_scope.
 Section definition.
   Import KappaNotation.
 
+  Variable var: Kind -> Kind -> Type.
+
   Definition mux2_1
-  : Kappa_sugared << Bit, << Bit, Bit >>, Unit >> Bit :=
+  : kappa_sugared var << Bit, << Bit, Bit >>, Unit >> Bit :=
   <[ \ sel ab =>
     let '(a,b) = ab in
     let sel_a = and sel a in
@@ -41,7 +43,7 @@ End definition.
 
 Definition mux2_1_structure := to_constructive (Desugar mux2_1) (ltac:(auto_kappa_wf)).
 
-Lemma mux2_1_is_combinational: wf_combinational (toCava _ mux2_1_structure).
+Lemma mux2_1_is_combinational: wf_combinational (toCava mux2_1_structure _).
 Proof. combinational_obvious. Qed.
 
 Require Import Cava.Arrow.Instances.Netlist.
@@ -56,7 +58,7 @@ Definition mux2_1_Interface :=
 
 Definition mux2_1_netlist :=
   makeNetlist mux2_1_Interface 
-    (toCava NetlistCava mux2_1_structure).
+    (toCava mux2_1_structure NetlistCava).
 
 Definition mux2_1_tb_inputs : list (bool * (bool * bool)) := 
  [(false, (false, true));

@@ -5,9 +5,7 @@ Import VectorNotations.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Arrow.Arrow.
 Require Import Cava.Arrow.Instances.Constructive.
-
-Require Import Cava.Netlist.
-Require Import Cava.Types.
+Require Import Cava.Arrow.Instances.Prop.
 
 (******************************************************************************)
 (* Evaluation as function evaluation, no delay elements or loops              *)
@@ -21,12 +19,6 @@ Notation "f >==> g" :=
   | _ => None
   end)(at level 1).
 
-Ltac simple_destruct :=
-  match goal with
-  | [H: ?X * ?Y |- _] => destruct H
-  | [H: Datatypes.unit |- _] => destruct H
-  end.
-
 Ltac solve_optional :=
   cbv [fst snd];
   match goal with
@@ -35,45 +27,39 @@ Ltac solve_optional :=
   end.
 
 Ltac simple_solve :=
-  intros; simpl; try let x := fresh in extensionality x; repeat simple_destruct; repeat solve_optional.
+  intros; simpl;
+  try let x := fresh in extensionality x;
+  repeat solve_optional; auto.
 
-Hint Extern 3 => simple_solve : core.
-Hint Extern 2 => solve_optional : core.
+Fixpoint denote (ty: Kind): Type :=
+  match ty with 
+  | Tuple l r => denote l * denote r
+  | Bit => bool
+  | Vector n ty => Vector.t (denote ty) n
+  | Unit => unit
+  end.
 
-Lemma match_some: forall A B (x: option B) y (z: option A), (match x with | Some _ => z | None => None end = Some y) -> (z = Some y).
-Proof.
-  intros.
-  destruct x.
-  auto.
-  inversion H.
-Qed.
-
-#[refine] Instance CoqCat : Category := {
-  object := Type;
-  morphism X Y := X -> option Y;
+#[refine] Instance CoqKindMaybeCategory : Category Kind := {
+  morphism X Y := denote X -> option (denote Y);
   compose _ _ _ f g := g >==> f;
   id X x := Some x;
 
   morphism_equivalence x y f g := f = g;
 }.
 Proof.
-  intros.
-  unfold Proper.
-  refine (fun f => _). intros.
-  refine (fun g => _). intros.
-  rewrite H0.
-  rewrite H.
-  auto.
-  auto.
-  auto.
-  auto.
+  - intros.
+    unfold Proper.
+    refine (fun f => _). intros.
+    refine (fun g => _). intros.
+    rewrite H0.
+    rewrite H.
+    auto.
+  - auto.
+  - simple_solve.
+  - simple_solve.
 Defined.
 
-#[refine] Instance CoqArr : Arrow := {
-  cat := CoqCat;
-  unit := Datatypes.unit : Type ;
-  product := prod;
-
+#[refine] Instance CoqKindMaybeArrow : Arrow _ CoqKindMaybeCategory Unit Tuple := {
   first _ _ _ f i := match f (fst i) with | Some x => Some (x, snd i) | _ => None end;
   second _ _ _ f i := match f (snd i) with | Some y => Some (fst i, y) | _ => None end;
 
@@ -87,36 +73,21 @@ Defined.
   unassoc _ _ _ i := Some ((fst i, fst (snd i)), snd (snd i));
 }.
 Proof.
-  auto.
-  auto.
-  auto.
-  auto.
-  auto.
-  auto.
+  - simple_solve.
+  - simple_solve.
+  - simple_solve.
+  - simple_solve.
+  - simple_solve.
+  - simple_solve.
 Defined.
 
-Instance CombinationalDrop : ArrowDrop CoqArr := { drop _ x := Some tt }.
-Instance CombinationalCopy : ArrowCopy CoqArr := { copy _ x := Some (pair x x) }.
-Instance CombinationalSwap : ArrowSwap CoqArr := { swap _ _ x := Some (snd x, fst x) }.
-Instance CombinationalLoop : ArrowLoop CoqArr := { loopl _ _ _ _ _ := None; loopr _ _ _ _ _ := None }.
-
-(* Some of the equalities defined in CircuitLaws can't be solved with optional return,
-they either need to be changed/removed or this evaluator needs a different representation
-such as {H:Prop| H -> X -> Y } *)
-(* #[refine] Instance CombinationalCircuitLaws : CircuitLaws CoqArr _ _ _ := {}. *)
-(* Program Instance CombinationalCircuitLaws : CircuitLaws CoqArr _ _ _. *)
-
-Fixpoint vec_to_nprod (A: Type) n (v: Vector.t A n): A^n :=
-match v with
-| [] => tt
-| x::xs => (x, vec_to_nprod A _ xs)
-end%vector.
+Instance CombinationalDrop : ArrowDrop CoqKindMaybeArrow := { drop _ x := Some tt }.
+Instance CombinationalCopy : ArrowCopy CoqKindMaybeArrow := { copy _ x := Some (pair x x) }.
+Instance CombinationalSwap : ArrowSwap CoqKindMaybeArrow := { swap _ _ x := Some (snd x, fst x) }.
+Instance CombinationalLoop : ArrowLoop CoqKindMaybeArrow := { loopl _ _ _ _ _ := None; loopr _ _ _ _ _ := None }.
 
 #[refine] Instance Combinational : Cava := {
-  cava_arrow := CoqArr;
-  bit := bool;
-  vector n o := Vector.t o n;
-
+  cava_arrow := CoqKindMaybeArrow;
   constant b _ := Some b;
   constant_bitvec n v _ := Some (nat_to_bitvec_sized n (N.to_nat v));
 
@@ -141,9 +112,10 @@ end%vector.
 
   lut n f i :=
     let f' := NaryFunctions.nuncurry bool bool n f in
-    Some (_);
+    Some (f' (vec_to_nprod _ _ i));
 
   index_vec n o '(array, index) := _;
+  slice_vec n x y o H v := _;
   to_vec o x := Some [x]%vector;
   append n o '(v, x) :=
     let z := (x :: v)%vector in
@@ -151,28 +123,40 @@ end%vector.
 
   concat n m o '(x, y) := Some (Vector.append x y);
   split n m o H x :=
-    let y := @Vector.splitat o m (n - m) _ in
+    let y := @Vector.splitat (denote o) m (n - m) _ in
     Some y;
 }.
 Proof.
-  - apply f'.
-    simpl in i.
-    apply vec_to_nprod.
-    apply i.
-
-  - cbv [cat CoqArr CoqCat morphism]; intros.
-    apply bitvec_to_nat in index.
+  (* index_vec *)
+  - apply bitvec_to_nat in index.
     destruct (lt_dec index n).
     apply (Some (nth_order array l)).
 
     (* bad index *)
     exact (None).
 
+  (* slice_vec *)
+  - cbn.
+    intros.
+    assert (n = y + (n - y)).
+    omega.
+    rewrite H0 in X.
+    apply (splitat y) in X.
+    apply (snd) in X.
+    assert (n - y = (x - y + 1) + (n - x - 1)).
+    omega.
+    rewrite H1 in X.
+    apply (splitat (x-y+1)) in X.
+    apply (fst) in X.
+    exact (Some X).
+
+  (* append *)
   - assert (n + 1 = S n).
     omega.
     rewrite H.
     auto.
 
+  (* split *)
   - assert ( m + (n - m) = n).
     omega.
     rewrite H0.
@@ -180,20 +164,98 @@ Proof.
 Defined.
 
 Definition wf_combinational {x y} (circuit: x ~> y) := forall i, {o | circuit i = Some o}.
-Definition evaluate {x y} (circuit: x ~> y) (wf: wf_combinational circuit) (i: x): y.
+
+Definition evaluate {x y} (circuit: x ~> y) (wf: wf_combinational circuit) (i: denote x): denote y.
 Proof.
-  cbv [morphism CoqCat wf_combinational] in *.
   specialize (wf i).
   inversion wf.
   apply x0.
 Defined.
 
-Lemma not_gate_wf: wf_combinational not_gate.
+Ltac sub_prop :=
+    match goal with
+    | [H: is_combinational (toCava ?X) |- _] => 
+      unfold is_combinational in H; cbn in H; inversion H; clear H
+    end;
+    repeat match goal with
+    | [ H: ?circuit NoLoops /\ _ |- _] => destruct H
+    | [ H: ?circuit NoDelays /\ _ |- _] => destruct H
+    end;
+    repeat match goal with
+    | [ H1: ?circuit NoLoops 
+      , H2: ?circuit NoDelays
+      |- _] => apply (mkCombinational circuit H1) in H2; clear H1
+    end.
+
+Ltac destruct_tuples :=
+  match goal with
+  | [H: denote (Tuple _ _) |- _] => destruct H; cbn
+  end. 
+
+Lemma combinational_circuit_has_value {i o}
+  (circuit: structure i o)
+  (wf_indexing: forall n o x, {y | toCava (@IndexVec n o) Combinational x = Some y})
+  (combinational: is_combinational (toCava circuit))
+  : forall x, {y | toCava circuit Combinational x = Some y}.
 Proof.
-  cbv [morphism CoqCat wf_combinational not_gate Combinational bit].
+  Hint Extern 3 => 
+    repeat match goal with
+    | [H: False |- _] => inversion H
+    | [H: None = Some _ |- _] => inversion H
+    | [H: exists _, None = Some _ |- _] => inversion H
+    | [H: Some _ = Some _ |- _] => f_equal
+    end : core. 
+  Hint Extern 50 =>
+    match goal with
+    | [ H: ?X
+      , H1: is_combinational (toCava ?circuit) 
+      , H2: is_combinational (toCava ?circuit) -> forall (x:?X), _ |- _ ] => apply H2 with (x:=H) in H1
+    end : core.
+
+  Hint Extern 51 =>
+    match goal with
+    | [ H: sig (fun y => toCava _ Combinational ?X = Some y) |- _] => destruct H
+    end : core.
+  Hint Extern 99 => 
+    match goal with
+    | [|- context[toCava ?circuit Combinational ?x] ] => destruct (toCava circuit Combinational x)
+    end : core.
+
+  intros.
+  induction circuit; cbn; try destruct_tuples; try sub_prop; eauto.
+
+  cbn in wf_indexing.
+
+  - specialize (wf_indexing n o (d,d0)).
+    cbn in wf_indexing.
+    apply wf_indexing.
+Qed.
+
+Definition evaluate2 {i o}
+  (circuit: structure i o)
+  (wf_indexing: forall n o x, {y | toCava (@IndexVec n o) Combinational x = Some y})
+  (combinational: is_combinational (toCava circuit))
+  : denote i -> denote o.
+Proof.
+  refine (fun x => let f := toCava circuit Combinational x in _).
+  pose (combinational_circuit_has_value circuit wf_indexing combinational x).
+  inversion s.
+  apply x0.
+Defined.
+
+Lemma not_gate_is_combinational: is_combinational (@not_gate).
+Proof.
+  unfold is_combinational.
+  cbn.
+  tauto.
+Defined.
+
+Lemma not_gate_wf: wf_combinational (not_gate).
+Proof.
+  cbv [wf_combinational not_gate Combinational].
   intros.
   refine (exist _ _ _).
-  f_equal.
+  auto.
 Defined.
 
 Ltac combinational_obvious :=
@@ -205,7 +267,7 @@ Ltac combinational_obvious :=
 (* Computing the terms is useful for e.g. extracting simple values *)
 Ltac evaluate_to_terms circuit wf inputs :=
   let reduced := eval compute in
-  (List.map (evaluate (toCava _ circuit) wf) inputs) in
+  (List.map (evaluate (toCava circuit _) wf) inputs) in
   exact reduced.
 
 Example not_true: not_gate true = Some false.

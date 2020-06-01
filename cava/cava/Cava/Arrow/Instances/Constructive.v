@@ -6,13 +6,6 @@ Require Import Cava.Arrow.Arrow.
 
 Set Implicit Arguments.
 
-Declare Scope constructive_scope.
-Bind Scope constructive_scope with Kind.
-Delimit Scope constructive_scope with Kind.
-
-Notation "<< x >>" := (x) : constructive_scope.
-Notation "<< x , .. , y , z >>" := (Tuple x .. (Tuple y z )  .. ) : constructive_scope.
-
 Inductive structure: Kind -> Kind -> Type :=
   | Id:          forall {x}, structure x x
   | Compose:     forall {x y z}, structure y z -> structure x y -> structure x z
@@ -56,6 +49,7 @@ Inductive structure: Kind -> Kind -> Type :=
   | Lut: forall n (f: bool^^n --> bool), structure (Vector n Bit) Bit
 
   | IndexVec: forall {n o}, structure << Vector n o, Vector (Nat.log2_up n) Bit >> o
+  | SliceVec: forall {n} x y {o}, x < n -> y <= x -> structure << Vector n o >> (Vector (x - y + 1) o)
   | ToVec: forall {o}, structure o (Vector 1 o)
   | Append: forall {n o}, structure << Vector n o, o >> (Vector (n+1) o)
   | Concat: forall {n m o}, structure << Vector n o, Vector m o >> (Vector (n+m) o)
@@ -129,26 +123,17 @@ Hint Immediate st_refl : core.
 Hint Immediate st_sym : core.
 Hint Immediate st_trans : core.
 
-Fixpoint denoteKind `{Cava} (k: Kind)
-  : object :=
-match k with
-| Tuple l r => denoteKind l ** denoteKind r
-| Unit => unit
-| Bit => bit
-| Vector n o => vector n (denoteKind o)
-end.
-
-Fixpoint toCava {i o} (Cava:Cava) (expr: structure i o)
-  : (denoteKind i) ~> (denoteKind o).
-  refine (match expr with
+Fixpoint toCava {i o} (expr: structure i o) (Cava:Cava) 
+  : i ~> o :=
+  match expr with
   | Id           => id
-  | Compose g f  => compose (toCava _ _ Cava g) (toCava _ _ Cava f)
+  | Compose g f  => compose (toCava g Cava) (toCava f Cava)
   | Copy         => copy
   | Drop         => drop
   | Swap         => swap
 
-  | First f    => first (toCava _ _ Cava f)
-  | Second f   => second (toCava _ _ Cava f)
+  | First f    => first (toCava f Cava)
+  | Second f   => second (toCava f Cava)
 
   | Cancelr    => cancelr
   | Cancell    => cancell
@@ -159,8 +144,8 @@ Fixpoint toCava {i o} (Cava:Cava) (expr: structure i o)
   | Assoc   => assoc
   | Unassoc => unassoc
 
-  | LoopL c => loopl (toCava _ _ Cava c)
-  | LoopR c => loopr (toCava _ _ Cava c)
+  | LoopL c => loopl (toCava c Cava)
+  | LoopR c => loopr (toCava c Cava)
 
   | Constant b        => constant b
   | @ConstantBitVec n v => constant_bitvec n v
@@ -180,27 +165,22 @@ Fixpoint toCava {i o} (Cava:Cava) (expr: structure i o)
 
   | UnsignedAdd a b s => unsigned_add a b s
 
-  | Lut n f => _
-  | IndexVec => index_vec _ (denoteKind _)
-  | ToVec => to_vec (denoteKind _)
-  | Append => append _ (denoteKind _)
-  | Concat => concat _ _ (denoteKind _)
-  | Split H => _
-  end).
-  - apply lut.
-    apply f.
-  - apply split.
-    apply H.
-Defined.
+  | Lut n f => lut n f
+  | IndexVec => index_vec _ _
+  | SliceVec H1 H2 => slice_vec _ _ _ _ H1 H2
+  | ToVec => to_vec _
+  | Append => append _ _
+  | Concat => concat _ _ _
+  | Split H => split _ _ _ H
+  end.
 
 Lemma toCavaIterative: forall i o x (Cava: Cava) (e1: structure i x) (e2: structure x o),
-  toCava Cava (Compose e2 e1) = toCava Cava e1 >>> toCava Cava e2.
+  toCava (Compose e2 e1) Cava = toCava e1 Cava >>> toCava e2 Cava.
 Proof.
   auto.
 Qed.
 
-#[refine] Instance ConstructiveCat : Category := {
-  object := Kind;
+#[refine] Instance StructureCategory : Category Kind := {
   morphism X Y := structure X Y;
   compose X Y Z f g := Compose f g;
   id X := Id;
@@ -225,11 +205,7 @@ Proof.
   intros. exact (st_assoc f g h).
 Defined.
 
-Instance ConstructiveArr : Arrow := {
-  cat := ConstructiveCat;
-  unit := Unit;
-  product := Tuple;
-
+Instance StructureArrow : Arrow Kind StructureCategory Unit Tuple := {
   first _ _ _ f := First f;
   second _ _ _ f := Second f;
   cancelr X := @Cancelr X;
@@ -251,15 +227,15 @@ Instance ConstructiveArr : Arrow := {
   unassoc_iso := st_unassoc_iso;
 }.
 
-Instance ConstructiveDrop : ArrowDrop ConstructiveArr := { drop := @Drop }.
-Instance ConstructiveSwap : ArrowSwap ConstructiveArr := { swap := @Swap }.
-Instance ConstructiveCopy : ArrowCopy ConstructiveArr := { copy := @Copy }.
-Instance ConstructiveLoop : ArrowLoop ConstructiveArr := {
+Instance ConstructiveDrop : ArrowDrop StructureArrow := { drop := @Drop }.
+Instance ConstructiveSwap : ArrowSwap StructureArrow := { swap := @Swap }.
+Instance ConstructiveCopy : ArrowCopy StructureArrow := { copy := @Copy }.
+Instance ConstructiveLoop : ArrowLoop StructureArrow := {
   loopl _ _ _ c := LoopL c;
   loopr _ _ _ c := LoopR c;
 }.
 
-Instance ConstructiveCircuitLaws : CircuitLaws ConstructiveArr _ _ _ := {
+(* Instance ConstructiveCircuitLaws : CircuitLaws ConstructiveArr _ _ _ := {
   cancelr_unit_uncancelr := st_cancelr_unit_uncancelr;
   cancell_unit_uncancell := st_cancell_unit_uncancell;
 
@@ -281,14 +257,11 @@ Instance ConstructiveCircuitLaws : CircuitLaws ConstructiveArr _ _ _ := {
 
   first_f := st_first_f;
   second_f := st_second_f;
-}.
+}. *)
 
-Instance ConstructiveCava : Cava := {
-  bit := Bit;
-  vector n o:= Vector n o;
-
-  constant b := Constant b;
-  constant_bitvec n v := @ConstantBitVec n v;
+Instance StructureCava : Cava := {
+  constant := Constant;
+  constant_bitvec n := ConstantBitVec;
 
   not_gate := NotGate;
   and_gate := AndGate;
@@ -298,19 +271,20 @@ Instance ConstructiveCava : Cava := {
   xor_gate := XorGate;
   xnor_gate := XnorGate;
   buf_gate := BufGate;
-  delay_gate := @DelayGate;
+  delay_gate o := DelayGate;
 
   xorcy := Xorcy;
   muxcy := Muxcy;
 
-  unsigned_add m n s := UnsignedAdd m n s;
+  unsigned_add := UnsignedAdd;
 
   lut n f := Lut n f;
-  index_vec n o := @IndexVec n o;
-  to_vec o := @ToVec o;
-  append n o := @Append n o;
-  concat n m o := @Concat n m o;
-  split n m o H := Split H;
+  index_vec n o := IndexVec;
+  slice_vec n := SliceVec ;
+  to_vec o := ToVec;
+  append n o := Append;
+  concat n m o := Concat;
+  split n m o := Split;
 }.
 
 Close Scope N_scope.
