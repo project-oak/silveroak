@@ -36,19 +36,19 @@ Inductive structure: bundle -> bundle -> Type :=
 | Constant:    bool -> structure Empty (One Bit)
 | ConstantVec: forall n,  denoteBitVecWith bool n -> structure Empty ((One (BitVec n)))
 
-| NotGate:     structure (Tuple2 (One Bit) Empty) (One Bit)
-| AndGate:     structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
-| NandGate:    structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
-| OrGate:      structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
-| NorGate:     structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
-| XorGate:     structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
-| XnorGate:    structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
-| BufGate:     structure (Tuple2 (One Bit) Empty) (One Bit)
+| NotGate:     structure << One Bit>> (One Bit)
+| AndGate:     structure << One Bit, One Bit >> (One Bit)
+| NandGate:    structure << One Bit, One Bit >> (One Bit)
+| OrGate:      structure << One Bit, One Bit >> (One Bit)
+| NorGate:     structure << One Bit, One Bit >> (One Bit)
+| XorGate:     structure << One Bit, One Bit >> (One Bit)
+| XnorGate:    structure << One Bit, One Bit >> (One Bit)
+| BufGate:     structure << One Bit >> (One Bit)
 
-| Xorcy:       structure (Tuple2 (One Bit) (Tuple2 (One Bit) Empty)) (One Bit)
-| Muxcy:       structure (Tuple2 (One Bit) (Tuple2 (One Bit) (Tuple2 (One Bit) Empty))) (One Bit)
+| Xorcy:       structure << One Bit, One Bit >> (One Bit)
+| Muxcy:       structure << One Bit, Tuple2 (One Bit) (One Bit) >> (One Bit)
 
-| UnsignedAdd: forall a b s, structure (Tuple2 ((One (BitVec [a]))) (Tuple2 ((One (BitVec [b]))) Empty)) ((One (BitVec [s])))
+| UnsignedAdd: forall a b s, structure << One (BitVec [a]),  One (BitVec [b]) >> (One (BitVec [s]))
 
 | Lut: forall n (f: bool^^n --> bool), structure (Nobj n Bit) (One Bit)
 

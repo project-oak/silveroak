@@ -121,7 +121,7 @@ Section CoqEval.
     buf_gate '(x, tt) := x;
 
     xorcy '(x, (y, tt)) := xorb x y;
-    muxcy '(i,(t,(e,tt))) := if i then t else e;
+    muxcy '(i,((t,e),tt)) := if i then t else e;
 
     unsigned_add m n s '(av, (bv, tt)) :=
       let a := list_bits_to_nat av in

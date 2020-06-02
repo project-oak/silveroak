@@ -198,7 +198,7 @@ Section NetlistEval.
       addInstance (Component "XORCY" [] [("O", o); ("CI", i0); ("LI", i1)]) ;;
       ret o;
 
-    muxcy '(s,(ci,(di, tt))) :=
+    muxcy '(s,((ci, di), tt)) :=
       o <- newWire ;;
       addInstance ( Component "MUXCY" [] [("O", o); ("S", s); ("CI", ci); ("DI", di)]) ;;
       ret o;

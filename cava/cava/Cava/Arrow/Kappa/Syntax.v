@@ -94,7 +94,7 @@ Definition xilinxFullAdder
      let b = snd' ab in
      let part_sum = !xor_gate a b in
      let sum      = !xorcy part_sum cin in
-     let cout     = !muxcy part_sum cin a in
+     let cout     = !muxcy part_sum (cin, a) in
      (sum, cout)
   ]>.
 
