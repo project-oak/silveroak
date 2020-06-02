@@ -54,21 +54,6 @@ Proof.
   auto.
 Qed.
 
-(* A proof that the sequential NAND gate implementation is correct. *)
-Lemma nand2_seq_behaviour : forall (a : list bool) (b : list bool),
-                            sequential (nand2_gate (a, b)) = map (fun (i : bool * bool) => let (a, b) := i in
-                                                             negb (a && b)) (combine a b).
-Proof.
-  intros.
-  unfold sequential.
-  unfold unIdent.
-  simpl.
-  rewrite map_map.
-  rewrite map_ext_in_iff.
-  intros.
-  now destruct a0.
-Qed.
-
 (* An exhuastive proof by analyzing all four cases. *)
 Example nand_00 : combinational (nand2_gate (false, false)) = true.
 Proof. reflexivity. Qed.
