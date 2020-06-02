@@ -1,8 +1,7 @@
-From Coq Require Import Setoid Classes.Morphisms Lists.List.
+From Coq Require Import Setoid Classes.Morphisms Lists.List NaryFunctions String.
 Import ListNotations.
 
 From Cava Require Import Types.
-
 
 Reserved Infix "~>" (at level 90, no associativity).
 Reserved Infix "~[ C ]~>" (at level 90, no associativity).
@@ -139,12 +138,29 @@ Class ArrowLoop (A: Arrow) := {
   loopl {x y z} : (z**x ~> z**y) -> (x ~> y);
 }.
 
+(*
+replicate_object returns an object in the argument format expect by Kappa Calculus.
+That is, the object is repeated n times, as a right nested tuple, with the rightmost
+tuple element set to the unit type.
+*)
+Fixpoint replicate_object `{Arrow} (n: nat) (o: object) :=
+match n with 
+| O => unit
+| S n' => o ** replicate_object n' o 
+end.
+
+Reserved Notation "'bit'" (at level 1, no associativity).
+Reserved Notation "'bitvec' n" (at level 1, no associativity).
+Reserved Notation "'bitvec_index' n" (at level 1, no associativity).
+
 (* Cava *)
 Class Cava  := {
   cava_arrow :> Arrow;
 
-  bit : object;
-  bitvec : list nat -> object;
+  representable : Kind -> object
+    where "'bit'" := (representable Bit)
+    and   "'bitvec' n" := (representable (BitVec n))
+    and   "'bitvec_index' n" := (bitvec [PeanoNat.Nat.log2_up n]);
 
   constant : bool -> (unit ~> bit);
   constant_vec (dimensions: list nat) : denoteBitVecWith bool dimensions -> (unit ~> bitvec dimensions);
@@ -159,12 +175,36 @@ Class Cava  := {
   buf_gate:  bit        ** unit ~> bit;
 
   xorcy:     bit ** bit ** unit ~> bit;
-  muxcy:     bit ** bit ** bit ** unit ~> bit;
+  muxcy:     bit ** (bit ** bit) ** unit ~> bit;
+  
+  unsigned_add a b c: bitvec [a] ** bitvec [b] ** unit ~> bitvec [c];
 
-  unsigned_add a b s: bitvec [a] ** bitvec [b] ** unit ~> bitvec [s];
+  lut n: (bool^^n --> bool) -> (replicate_object n bit) ~> bit;
+
+  degenerate_bitvec xs := match xs with | [] => bit | _ => bitvec xs end;
+
+  index_array n xs
+    : bitvec (n::xs) ** bitvec_index n ** unit 
+    ~> degenerate_bitvec xs;
+
+  to_vec n o:
+    match o with
+    | Bit => replicate_object (S n) bit ~> bitvec [S n]
+    | BitVec xs => replicate_object (S n) (bitvec xs) ~> bitvec (S n::xs)
+    end;
 }.
 
 Coercion cava_arrow: Cava >-> Arrow.
+
+Declare Scope cava_scope.
+Bind Scope cava_scope with Cava.
+Delimit Scope cava_scope with cava.
+
+Notation "'bit'" := (representable Bit)(at level 1, no associativity) : cava_scope.
+Notation "'bitvec' n" := (representable (BitVec n)) (at level 1, no associativity) : cava_scope.
+Notation "'bitvec_index' n" := (bitvec [PeanoNat.Nat.log2_up n])%cava(at level 1, no associativity) : cava_scope.
+
+Open Scope cava_scope.
 
 Definition cava_cat (_: Cava): Category := _.
 Definition cava_obj (cava: Cava): Type := @object (@cava_cat cava).
@@ -213,5 +253,3 @@ Proof.
   setoid_rewrite H.
   reflexivity.
 Qed.
-
-

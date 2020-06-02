@@ -1,10 +1,13 @@
 From Coq Require Import Program.Tactics.
 From Coq Require Import Bool.Bool.
-(* From Coq Require Import Bool.Bvector. *)
 From Coq Require Import Vector.
 From Coq Require Import Lists.List.
 From Coq Require Import Strings.String.
 From Coq Require Import ZArith.
+From Coq Require Import Numbers.DecimalString.
+From Coq Require Import Bool.Bvector.
+
+Import NilZero.
 
 Import ListNotations.
 
@@ -108,11 +111,37 @@ Section NetlistEval.
     simpl; auto.
   Defined.
 
-  Instance NetlistCava : Cava := {
+  Fixpoint object_as_list n:
+    forall x, signalTy Signal (replicate_object n (One x)) -> list (signalTy Signal (One x)).
+  Proof.
+    intros.
+
+    induction n.
+    simpl in *.
+    exact ([]).
+
+    simpl in *.
+    refine (fst X :: _).
+    apply (IHn (snd X)).
+  Defined.
+
+  Fixpoint bv_to_nprod n (v: Bvector n): NaryFunctions.nprod bool n.
+  Proof.
+    unfold Bvector in *.
+    destruct n.
+    exact tt.
+    refine (pair _ _ ).
+    exact (Vector.hd v).
+    exact (bv_to_nprod n (Vector.tl v)).
+  Defined.
+
+  #[refine] Instance NetlistCava : Cava := {
     cava_arrow := NetlistArr;
 
-    bit := One Bit;
-    bitvec n := One (BitVec n);
+    representable ty := match ty with
+    | Bit => One Bit
+    | BitVec xs => One (BitVec xs)
+    end;
 
     constant b _ := match b with
       | true => ret Vcc
@@ -169,7 +198,7 @@ Section NetlistEval.
       addInstance (Component "XORCY" [] [("O", o); ("CI", i0); ("LI", i1)]) ;;
       ret o;
 
-    muxcy '(s,(ci,(di, tt))) :=
+    muxcy '(s,((ci, di), tt)) :=
       o <- newWire ;;
       addInstance ( Component "MUXCY" [] [("O", o); ("S", s); ("CI", ci); ("DI", di)]) ;;
       ret o;
@@ -178,7 +207,50 @@ Section NetlistEval.
       sum <- newWires s ;;
       addInstance (UnsignedAdd x y sum) ;;
       ret sum;
+
+    lut n f is :=
+      let seq := seq 0 (2^n) in
+      let f' := NaryFunctions.nuncurry bool bool n f in 
+      let powers := map
+        (fun p => let bv := Ndigits.N2Bv_sized n (N.of_nat p) in
+                  2^(N.of_nat p) * N.b2n (f' (bv_to_nprod n bv))
+        )%N
+        seq in
+      let config := fold_left N.add powers 0%N in
+      let component_name := ("LUT" ++ string_of_uint (Nat.to_uint n))%string in
+      let is_as_list := object_as_list n _ is in
+      let inputs := map 
+        (fun '(i, n) => ("I" ++ string_of_uint (Nat.to_uint i), n))%string 
+        (combine seq is_as_list) in
+      o <- newWire ;;
+      let component := 
+        Component
+        component_name [("INIT", HexLiteral (2^n) config)]
+        (("O", o) :: inputs) in
+      addInstance component;;
+      ret o;
+    
+    index_array x xs '(array, (index, _)) := 
+      o <- newWiresBitVec xs;;
+      addInstance (IndexAlt x xs array index o) ;;
+      ret _; 
+      
+    to_vec n o := _;
   }.
+  Proof.
+    - destruct xs; simpl in *; exact (o). 
+    - intros.
+      destruct o. 
+      * cbv [cat NetlistArr NetlistCat morphism].
+        intros.
+        apply object_as_list in X.
+        exact (ret X).
+      * cbv [cat NetlistArr NetlistCat morphism].
+        intros.
+        apply object_as_list in X.
+        simpl in *.
+        destruct l; exact (ret X).
+  Defined.
 
   Close Scope string_scope.
 

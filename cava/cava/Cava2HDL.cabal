@@ -51,11 +51,13 @@ library
                      Combinational
                      Constructive
                      Datatypes
+                     DecimalString
                      IdentityMonad
                      Kappa
                      List
                      Logic
                      Monad
+                     NaryFunctions
                      Netlist
                      Netlist0
                      Nat
