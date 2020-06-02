@@ -138,6 +138,11 @@ Class ArrowLoop (A: Arrow) := {
   loopl {x y z} : (z**x ~> z**y) -> (x ~> y);
 }.
 
+(*
+replicate_object returns an object in the argument format expect by Kappa Calculus.
+That is, the object is repeated n times, as a right nested tuple, with the rightmost
+tuple element set to the unit type.
+*)
 Fixpoint replicate_object `{Arrow} (n: nat) (o: object) :=
 match n with 
 | O => unit
