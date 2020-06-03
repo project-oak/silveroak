@@ -80,7 +80,7 @@ Proof. reflexivity. Qed.
 Local Open Scope nat_scope.
 
 Definition adder_tree_Interface name nrInputs bitSize
-  := mkCircuitInterface name
+  := mkCombinationalInterface name
      (One ("inputs", BitVec [nrInputs; bitSize]))
      (One ("sum", BitVec [bitSize + Nat.log2_up nrInputs]))
      [].

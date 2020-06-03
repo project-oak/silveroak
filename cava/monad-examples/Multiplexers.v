@@ -51,7 +51,7 @@ Example m4: combinational (mux2_1 (true, (true, false))) = false.
 Proof. reflexivity. Qed.
 
 Definition mux2_1_Interface
-  := mkCircuitInterface "mux2_1"
+  := mkCombinationalInterface "mux2_1"
      (Tuple2 (One ("sel", Bit)) (Tuple2 (One ("i0", Bit)) (One ("i1", Bit))))
      (One ("o", Bit))
      [].
@@ -64,12 +64,12 @@ Definition mux2_1_tb_inputs :=
    (true, (false, true));
     (true, (true, false))].
 
-Definition mux2_1_tb_xpected_outputs
+Definition mux2_1_tb_expected_outputs
   := map (fun i => combinational (mux2_1 i)) mux2_1_tb_inputs.
 
 Definition mux2_1_tb
   := testBench "mux2_1_tb" mux2_1_Interface
-     mux2_1_tb_inputs mux2_1_tb_xpected_outputs.
+     mux2_1_tb_inputs mux2_1_tb_expected_outputs.
 
 Definition muxBus {m bit} `{Cava m bit} '(sel, i) : m (list bit) :=
   o <- indexArray i sel ;;
@@ -94,7 +94,7 @@ Example m8: combinational (muxBus ([true; true], v)) = v3.
 Proof. reflexivity. Qed.
 
 Definition muxBus4_8Interface
-  := mkCircuitInterface "muxBus4_8"
+  := mkCombinationalInterface "muxBus4_8"
      (Tuple2 (One ("sel", BitVec [2])) (One ("i", BitVec [4; 8])))
      (One ("o", BitVec [8]))
      [].

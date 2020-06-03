@@ -70,7 +70,7 @@ Proof. reflexivity. Qed.
 Local Open Scope nat_scope.
 
 Definition adder4Interface
-  := mkCircuitInterface "adder4"
+  := mkCombinationalInterface "adder4"
      (Tuple2 (One ("a", BitVec [4])) (One ("b", BitVec [4])))
      (One ("sum", BitVec [5]))
      [].
@@ -93,7 +93,7 @@ Definition adder4_tb
 (******************************************************************************)
 
 Definition adder8_3inputInterface
-  := mkCircuitInterface "adder8_3input"
+  := mkCombinationalInterface "adder8_3input"
      (Tuple2 (One ("a", BitVec [8])) (Tuple2 (One ("b", BitVec [8])) (One ("c", BitVec [8]))))
      (One ("sum", BitVec [10]))
      [].

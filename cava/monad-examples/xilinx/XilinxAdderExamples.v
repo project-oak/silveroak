@@ -37,7 +37,6 @@ Local Open Scope string_scope.
 (* A few tests to check the unsigned adder.        *)
 (****************************************************************************)
 
-
 Definition v0   := [0;0;0;0;0;0;0;0].
 Definition v1   := [1;0;0;0;0;0;0;0].
 Definition v2   := [0;1;0;0;0;0;0;0].
@@ -82,7 +81,7 @@ Proof. reflexivity. Qed.
 (****************************************************************************)
 
 Definition adder8Interface
-  := mkCircuitInterface "adder8"
+  := mkCombinationalInterface "adder8"
      (Tuple2 (One ("cin", Bit)) (Tuple2 (One ("a", BitVec [8])) (One ("b", BitVec [8]))))
      (Tuple2 (One ("sum", BitVec [8])) (One ("cout", Bit)))
      [].

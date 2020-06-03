@@ -39,7 +39,7 @@ Definition lutNAND {m bit} `{Cava m bit} (i0i1 : bit * bit) : m bit :=
   ret z.
 
 Definition lutNANDInterface
-  := mkCircuitInterface "lutNAND"
+  := mkCombinationalInterface "lutNAND"
      (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
      (One ("c", Bit))
      [].
