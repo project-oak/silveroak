@@ -109,6 +109,10 @@ Inductive ConstExpr : Type :=
 | HexLiteral: nat -> N -> ConstExpr
 | StringLiteral: string -> ConstExpr.
 
+Inductive SignalEdge :=
+| PositiveEdge
+| NegativeEdge.
+
 Inductive Instance : Type :=
   (* I/O port wiring *)
   | WireInputBit:     string -> Signal -> Instance
@@ -167,10 +171,20 @@ Inductive CircuitAttribute :=
 
 Record CircuitInterface : Type := mkCircuitInterface {
   circuitName    : string;
+  clkName        : string;
+  clkEdge        : SignalEdge;
+  rstName        : string;
+  rstEdge        : SignalEdge;
   circuitInputs  : @shape (string * Kind);
   circuitOutputs : @shape (string * Kind);
   attributes : list CircuitAttribute;
 }.
+
+Definition mkCombinationalInterface circuitName circuitInputs circuitOutputs
+                                    attributes :=
+  mkCircuitInterface circuitName "" PositiveEdge
+                                 "" PositiveEdge
+                                 circuitInputs circuitOutputs attributes.
 
 Fixpoint shapeToPortDeclaration (s : @shape (string * Kind)) :
                                 list PortDeclaration :=
@@ -185,24 +199,27 @@ Fixpoint shapeToPortDeclaration (s : @shape (string * Kind)) :
 
 Record CavaState : Type := mkCavaState {
   netNumber : N;
-  isSequential : bool;
+  clockNet : Signal;
+  clockEdge: SignalEdge;
+  resetNet : Signal;
+  resetEdge : SignalEdge;
   module : Module;
 }.
 
 Definition newWire : state CavaState Signal :=
   cs <- get;;
   match cs with
-  | mkCavaState o isSeq m
-      => put (mkCavaState (o+1) isSeq m) ;;
+  | mkCavaState o clk clkEdge rst rstEdge m
+      => put (mkCavaState (o+1) clk clkEdge rst rstEdge m) ;;
          ret (Wire o)
   end.
 
 Definition newWires (width : nat) : state CavaState (list Signal) :=
   cs <- get ;;
   match cs with
-  | mkCavaState o isSeq m =>
+  | mkCavaState o clk clkEdge rst rstEdge m =>
       let outv := map N.of_nat (seq (N.to_nat o) width) in
-      put (mkCavaState (o + N.of_nat width) isSeq m) ;;
+      put (mkCavaState (o + N.of_nat width) clk clkEdge rst rstEdge m) ;;
       ret (map Wire outv)
   end.
 
@@ -211,8 +228,8 @@ Definition newWiresBitVec (sizes: list nat) : state CavaState (@denoteBitVecWith
   let wireCount := (bitsInPortShape (One (BitVec sizes)))%N in
   let bv := numberBitVec 0 sizes sizes in
   match cs with
-  | mkCavaState o isSeq m =>
-      put (mkCavaState (o + N.of_nat wireCount) isSeq m) ;;
+  | mkCavaState o clk clkEdge rst rstEdge m =>
+      put (mkCavaState (o + N.of_nat wireCount) clk clkEdge rst rstEdge m) ;;
       ret bv
   end.
 
@@ -230,8 +247,8 @@ Fixpoint newWiresFromShape (s: bundle) : state CavaState (signalTy Signal s) :=
 Definition addInstance (newInst: Instance) : state CavaState unit :=
   cs <- get;;
   match cs with
-  | mkCavaState o isSeq (mkModule name insts inputs outputs)
-    => put (mkCavaState o isSeq (mkModule name (newInst::insts) inputs outputs))
+  | mkCavaState o clk clkEdge rst rstEdge (mkModule name insts inputs outputs)
+    => put (mkCavaState o clk clkEdge rst rstEdge (mkModule name (newInst::insts) inputs outputs))
   end.
 
 Fixpoint addInstances (insts: list Instance) : state CavaState unit :=
@@ -245,8 +262,8 @@ Fixpoint addInstances (insts: list Instance) : state CavaState unit :=
 Definition addSequentialInstance (newInst: Instance) : state CavaState unit :=
   cs <- get;;
   match cs with
-  | mkCavaState o _ (mkModule name insts inputs outputs)
-    => put (mkCavaState o true (mkModule name (newInst::insts) inputs outputs))
+  | mkCavaState o clk clkEdge rst rstEdge (mkModule name insts inputs outputs)
+    => put (mkCavaState o clk clkEdge rst rstEdge (mkModule name (newInst::insts) inputs outputs))
   end.
 
 Fixpoint addSequentialInstances (insts: list Instance) : state CavaState unit :=
@@ -257,11 +274,21 @@ Fixpoint addSequentialInstances (insts: list Instance) : state CavaState unit :=
     addSequentialInstances xs
   end.
 
-Definition addPort (newPort: PortDeclaration) : state CavaState unit :=
+Definition addInputPort (newPort: PortDeclaration) : state CavaState unit :=
+  cs <- get ;;
+  match newPort with
+  | mkPort "" _ => ret tt (* Clock or reset not used *)
+  | _ => match cs with
+         | mkCavaState o clk clkEdge rst rstEdge (mkModule n insts inputs outputs) =>
+           put (mkCavaState o clk clkEdge rst rstEdge (mkModule n insts (cons newPort inputs) outputs))
+         end
+  end.
+
+Definition addOutputPort (newPort: PortDeclaration) : state CavaState unit :=
   cs <- get ;;
   match cs with
-  | mkCavaState o isSeq (mkModule n insts inputs outputs) =>
-      put (mkCavaState o isSeq (mkModule n insts (cons newPort inputs) outputs))
+  | mkCavaState o clk clkEdge rst rstEdge (mkModule n insts inputs outputs) =>
+      put (mkCavaState o clk clkEdge rst rstEdge (mkModule n insts inputs (cons newPort outputs)))
   end.
 
 (******************************************************************************)
@@ -271,40 +298,59 @@ Definition addPort (newPort: PortDeclaration) : state CavaState unit :=
 Definition setModuleName (name : string) : state CavaState unit :=
   cs <- get ;;
   match cs with
-  | mkCavaState o isSeq (mkModule _ insts inputs outputs)
-     => put (mkCavaState o isSeq (mkModule name insts inputs outputs))
+  | mkCavaState o clk clkEdge rst rstEdge (mkModule _ insts inputs outputs)
+     => put (mkCavaState o clk clkEdge rst rstEdge (mkModule name insts inputs outputs))
   end.
 
+Definition setClockAndReset (clk_and_edge: Signal * SignalEdge)
+                            (rst_and_edge: Signal * SignalEdge)
+                            : state CavaState unit :=
+  let (clk, clkEdge) := clk_and_edge in
+  let (rst, rstEdge) := rst_and_edge in
+  cs <- get ;;
+  match cs with
+  | mkCavaState o _ _ _ _ m
+     => put (mkCavaState o clk clkEdge rst rstEdge m)
+  end.
+
+Definition getClockAndReset : state CavaState ((Signal * SignalEdge) *
+                                               (Signal * SignalEdge)) :=
+  cs <- get ;;
+  match cs with
+  | mkCavaState _ clk clkEdge rst rstEdge _ =>
+     ret ((clk, clkEdge), (rst, rstEdge))
+  end.                                       
+
 Definition inputBit (name : string) : state CavaState Signal :=
-  addPort (mkPort name Bit) ;;
+  addInputPort (mkPort name Bit) ;;
   ret (NamedWire name).
 
 Definition inputVectorTo0 (sizes : list nat) (name : string) : state CavaState (@denoteBitVecWith nat Signal sizes) :=
   cs <- get ;;
   match cs with
-  | mkCavaState o isSeq (mkModule n insts inputs outputs)
+  | mkCavaState o clk clkEdge rst rstEdge (mkModule n insts inputs outputs)
      => let newPort := mkPort name (BitVec sizes) in
-        addPort newPort ;;
+        addInputPort newPort ;;
         ret (smashBitVec name sizes sizes [])
   end.
 
 Definition outputBit (name : string) (i : Signal) : state CavaState Signal :=
   cs <- get ;;
   match cs with
-  | mkCavaState o isSeq (mkModule n insts inputs outputs)
+  | mkCavaState o clk clkEdge rst rstEdge (mkModule n insts inputs outputs)
      => let newPort := mkPort name Bit in
         let insts' := WireOutputBit name i :: insts in
-        put (mkCavaState o isSeq (mkModule n insts' inputs (newPort :: outputs))) ;;
+        put (mkCavaState o clk clkEdge rst rstEdge (mkModule n insts' inputs (newPort :: outputs))) ;;
         ret i
   end.
 
 Definition outputVectorTo0 (sizes : list nat) (v : @denoteBitVecWith nat Signal sizes) (name : string) : state CavaState unit :=
   cs <- get ;;
   match cs with
-  | mkCavaState o isSeq (mkModule n insts inputs outputs)
+  | mkCavaState o clk clkEdge rst rstEdge (mkModule n insts inputs outputs)
      => let newPort := mkPort name (BitVec sizes) in
         let insts' := WireOutputBitVec sizes name v :: insts in
-        put (mkCavaState o isSeq (mkModule n insts' inputs (newPort :: outputs))) ;;
+        put (mkCavaState o clk clkEdge rst rstEdge (mkModule n insts' inputs (newPort :: outputs))) ;;
         ret tt
   end.
 
@@ -317,7 +363,8 @@ Definition outputVectorTo0 (sizes : list nat) (v : @denoteBitVecWith nat Signal 
 *)
 
 Definition initStateFrom (startAt : N) : CavaState
-  := mkCavaState startAt false (mkModule "noname" [] [] []).
+  := mkCavaState startAt UndefinedSignal PositiveEdge UndefinedSignal PositiveEdge
+                 (mkModule "noname" [] [] []).
 
 Definition initState : CavaState
   := initStateFrom 0.
@@ -356,6 +403,9 @@ Definition wireUpCircuit (intf : CircuitInterface)
 
                          : state CavaState unit  :=
   setModuleName (circuitName intf) ;;
+  setClockAndReset (NamedWire (clkName intf), clkEdge intf) (NamedWire (rstName intf), rstEdge intf) ;;
+  addInputPort (mkPort (clkName intf) Bit) ;;
+  addInputPort (mkPort (rstName intf) Bit) ;;
   i <- instantiateInputPorts (circuitInputs intf) ;;
   o <- circuit i ;;
   mapShapeM_ instantiateOutputPort (zipShapes (circuitOutputs intf) (toSignal o)).

@@ -42,7 +42,7 @@ Definition mux2_1 Cava := toCava Cava (Closure_conversion mux2_1').
 Local Open Scope string_scope.
 
 Definition mux2_1_Interface :=
-   mkCircuitInterface "mux2_1"
+   mkCombinationalInterface "mux2_1"
      (Tuple2 (One ("s", Bit)) (Tuple2 (One ("a", Bit)) (One ("b", Bit))))
      (One ("o", Bit))
      [].

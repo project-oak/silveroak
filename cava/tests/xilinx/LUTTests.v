@@ -22,6 +22,7 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Monad.Cava.
 Require Import Cava.Netlist.
+Require Import Cava.Types.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
@@ -36,7 +37,7 @@ Definition lut1_inv {m bit} `{Cava m bit} (i: bit) : m bit :=
   ret o.
 
 Definition lut1_inv_Interface
-  := mkCircuitInterface "lut1_inv" (One ("a", Bit)) (One ("b", Bit)) [].
+  := mkCombinationalInterface "lut1_inv" (One ("a", Bit)) (One ("b", Bit)) [].
 
 Definition lut1_inv_netlist := makeNetlist lut1_inv_Interface lut1_inv.
 
@@ -58,7 +59,7 @@ Definition lut2_and {m bit} `{Cava m bit} (i0i1 : bit * bit) : m bit :=
   ret o.
 
 Definition lut2_and_Interface
-  := mkCircuitInterface "lut2_and"
+  := mkCombinationalInterface "lut2_and"
      (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
      (One ("c", Bit))
      [].
@@ -86,7 +87,7 @@ Definition lut3_mux {m bit} `{Cava m bit}
   ret o.
 
 Definition lut3_mux_Interface
-  := mkCircuitInterface "lut3_mux"
+  := mkCombinationalInterface "lut3_mux"
      (Tuple2 (One ("s", Bit))
              (Tuple2 (One ("i0", Bit)) (One ("i1", Bit))))
      (One ("o", Bit))
@@ -124,7 +125,7 @@ Definition lut4_and {m bit} `{Cava m bit}
    find a better way. Satnam.
 *)
 Definition lut4_and_Interface
-  := mkCircuitInterface "lut4_and"
+  := mkCombinationalInterface "lut4_and"
      (Tuple2 (Tuple2 (Tuple2 (One ("i0", Bit)) (One ("i1", Bit))) 
                      (One ("i2", Bit)))
              (One ("i3", Bit))
@@ -160,7 +161,7 @@ Definition lut5_and {m bit} `{Cava m bit}
    find a better way. Satnam.
 *)
 Definition lut5_and_Interface
-  := mkCircuitInterface "lut5_and"
+  := mkCombinationalInterface "lut5_and"
      (Tuple2 (Tuple2 (Tuple2 (Tuple2 (One ("i0", Bit)) (One ("i1", Bit))) 
                      (One ("i2", Bit)))
              (One ("i3", Bit))) (One ("i4", Bit))
@@ -196,7 +197,7 @@ Definition lut6_and {m bit} `{Cava m bit}
    find a better way. Satnam.
 *)
 Definition lut6_and_Interface
-  := mkCircuitInterface "lut6_and"
+  := mkCombinationalInterface "lut6_and"
      (Tuple2 (Tuple2 (Tuple2 (Tuple2 (Tuple2 (One ("i0", Bit)) (One ("i1", Bit))) 
                      (One ("i2", Bit)))
              (One ("i3", Bit))) (One ("i4", Bit))) (One ("i5", Bit))

@@ -46,7 +46,7 @@ Definition halfAdder {m t} `{Cava m t} '(a, b) :=
   ret (partial_sum, carry).
 
 Definition halfAdderInterface
-  := mkCircuitInterface "halfadder"
+  := mkCombinationalInterface "halfadder"
      (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
      (Tuple2 (One ("partial_sum", Bit)) (One ("carry", Bit)))
      [].
@@ -73,7 +73,7 @@ Definition fullAdder {m t} `{Cava m t} '(cin, (a, b)) :=
   ret (abcl, cout).
 
 Definition fullAdderInterface
-  := mkCircuitInterface "fullAdder"
+  := mkCombinationalInterface "fullAdder"
      (Tuple2 (One ("cin", Bit)) (Tuple2 (One ("a", Bit)) (One ("b", Bit))))
      (Tuple2 (One ("sum", Bit)) (One ("carry", Bit)))
      [].

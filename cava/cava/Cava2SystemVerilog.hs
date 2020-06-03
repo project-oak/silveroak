@@ -27,7 +27,7 @@ import Netlist
 import Signal
 import Types
 
-writeSystemVerilog :: Netlist.CavaState -> IO ()
+writeSystemVerilog :: CavaState -> IO ()
 writeSystemVerilog cavastate
   = do putStr ("Generating " ++ filename ++ "...")
        writeFile filename (unlines (cava2SystemVerilog cavastate))
@@ -42,11 +42,11 @@ fromN bn
       BinNums.Npos n -> n
 
 cava2SystemVerilog :: Netlist.CavaState -> [String]
-cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber isSeq (Netlist.Coq_mkModule moduleName instances
+cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber clk clkEdge rst rstEdge (Netlist.Coq_mkModule moduleName instances
                     inputs outputs))
   = ["module " ++ moduleName ++ "("] ++
 
-    insertCommas (clockPorts ++ inputPorts inputs ++ outputPorts outputs) ++
+    insertCommas (inputPorts inputs ++ outputPorts outputs) ++
     ["  );"] ++
     ["",
      "  timeunit 1ns; timeprecision 1ns;",
@@ -66,13 +66,9 @@ cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber isSeq (Netlist.Coq_mkModul
     [""] ++
     ["endmodule"]
     where
-    clockPorts = if isSeq then
-                   ["  input logic clk",
-                    "  input logic rst"]
-                 else
-                   []
-    (instText, NetlistGenerationState v vDefs)
-      = runState (computeVectors instances) (NetlistGenerationState 0 [])
+    (instText, NetlistGenerationState v vDefs _ _ _ _)
+      = runState (computeVectors instances)
+                 (NetlistGenerationState 0 [] clk clkEdge rst rstEdge)
 
 inputPorts :: [Netlist.PortDeclaration] -> [String]
 inputPorts = map inputPort
@@ -110,10 +106,12 @@ data VectorDeclaration
 
 data NetlistGenerationState
   = NetlistGenerationState Int [VectorDeclaration]
+                           Signal SignalEdge Signal SignalEdge
 
 showSignal :: Signal -> String
 showSignal signal
   = case signal of
+      UndefinedSignal -> error "Attempt to use an undefined signal"
       Gnd -> "zero"
       Vcc -> "one"
       Wire n -> "net[" ++ show (fromN n) ++ "]"
@@ -133,29 +131,31 @@ computeVectors instances
 computeVectors' :: (Instance, Int) ->
                    State NetlistGenerationState String
 computeVectors' (UnsignedAdd a b s, _)
-  = do NetlistGenerationState v vDecs <- get
+  = do NetlistGenerationState v vDecs clk clkEdge rst rstEdge <- get
        let vA = VectorDeclaration AssignTo   v       a
            vB = VectorDeclaration AssignTo   (v + 1) b
            vC = VectorDeclaration AssignFrom (v + 2) s
-       put (NetlistGenerationState (v + 3) (vA:vB:vC:vDecs))
+       put (NetlistGenerationState (v + 3) (vA:vB:vC:vDecs) clk clkEdge rst rstEdge)
        return ("  assign v" ++ show (v + 2) ++ " = v" ++ show v ++
                " + v" ++ show (v + 1) ++ ";")
 computeVectors' (IndexBitArray i s o, _)
-  = do NetlistGenerationState v vDecs <- get
+  = do NetlistGenerationState v vDecs clk clkEdge rst rstEdge  <- get
        let vI = VectorDeclaration AssignTo   v       i
            vS = VectorDeclaration AssignTo   (v + 1) s
-       put (NetlistGenerationState (v + 2) (vI:vS:vDecs))
+       put (NetlistGenerationState (v + 2) (vI:vS:vDecs) clk clkEdge rst rstEdge)
        return ("  assign " ++ showSignal o ++ " = v" ++ show v ++ "[v" ++ show (v + 1) ++
                "];")
 computeVectors' (IndexArray i s o, _)
-  = do NetlistGenerationState v vDecs <- get
+  = do NetlistGenerationState v vDecs clk clkEdge rst rstEdge  <- get
        let vI = Vector2Declaration AssignTo   v       i
            vS = VectorDeclaration  AssignTo   (v + 1) s
            vO = VectorDeclaration  AssignFrom (v + 2) o
-       put (NetlistGenerationState (v + 3) (vI:vS:vO:vDecs))
+       put (NetlistGenerationState (v + 3) (vI:vS:vO:vDecs) clk clkEdge rst rstEdge) 
        return ("  assign v" ++ show (v + 2) ++ " = v" ++ show v ++ "[v" ++ show (v + 1) ++
                "];")              
-computeVectors' (otherInst, instNr) = return (generateInstance otherInst instNr)
+computeVectors' (otherInst, instNr)
+  = do s <- get
+       return (generateInstance s otherInst instNr)
 
 declareVectors :: [VectorDeclaration] -> [String]
 declareVectors = map declareVector
@@ -278,35 +278,50 @@ assignMultiDimensionalOutput name prefix (x:xs) oAny
 -- Generate SystemVerilog for a specific instance.
 --------------------------------------------------------------------------------
 
-generateInstance :: Instance -> Int -> String
-generateInstance (DelayBit i o) _
-  = "  always_ff @(posedge clk) " ++ showSignal o ++
-    " <= rst ? 1'b0 : " ++ showSignal i ++ ";"
-generateInstance (AssignBit a b) _
+generateInstance :: NetlistGenerationState -> Instance -> Int -> String
+generateInstance netlistState (DelayBit i o) _
+  = unlines [
+    "  always_ff @(" ++ showEdge clkEdge ++ " " ++ showSignal clk ++ " or "
+                     ++ showEdge rstEdge ++ " " ++ showSignal rst ++ ") begin",
+    "    if (" ++ negReset ++ showSignal rst ++ ") begin",
+    "      " ++ showSignal o ++ " <= 1'b0;",
+    "    end else begin",
+    "      " ++ showSignal o ++ " <= " ++ showSignal i ++ ";",
+         "end",
+    "  end"]
+    where
+    NetlistGenerationState _ _ clk clkEdge rst rstEdge = netlistState
+    showEdge edge = case edge of
+                      PositiveEdge -> "posedge"
+                      NegativeEdge -> "negedge"
+    negReset = case rstEdge of
+                 PositiveEdge -> ""
+                 NegativeEdge -> "!"
+generateInstance _ (AssignBit a b) _
    = "  assign " ++ showSignal a ++ " = " ++ showSignal b ++ ";"
-generateInstance (WireInputBit name o) _
+generateInstance _ (WireInputBit name o) _
    = "  assign " ++ showSignal o ++ " = " ++ name ++ ";"
-generateInstance (WireInputBitVec sizes name oAny) _
+generateInstance _ (WireInputBitVec sizes name oAny) _
    = unlines (assignMultiDimensionalInput name "" sizes oAny)
-generateInstance (WireOutputBit name o) _ 
+generateInstance _ (WireOutputBit name o) _ 
    = "  assign " ++ name ++ " = " ++ showSignal o ++ ";"
-generateInstance (WireOutputBitVec sizes name oAny) _
+generateInstance _ (WireOutputBitVec sizes name oAny) _
    = unlines (assignMultiDimensionalOutput name "" sizes oAny)   
-generateInstance (Not i o) instrNr = primitiveInstance "not" [o, i] instrNr
-generateInstance (And i0 i1 o) instrNr = primitiveInstance "and" [o, i0, i1] instrNr
-generateInstance (Nand i0 i1 o) instrNr = primitiveInstance "nand" [o, i0, i1] instrNr
-generateInstance (Or i0 i1 o) instrNr = primitiveInstance "or" [o, i0, i1] instrNr
-generateInstance (Nor i0 i1 o) instrNr = primitiveInstance "nor" [o, i0, i1] instrNr
-generateInstance (Xor i0 i1 o) instrNr = primitiveInstance "xor" [o, i0, i1] instrNr
-generateInstance (Xnor i0 i1 o) instrNr = primitiveInstance "xnor" [o, i0, i1] instrNr
-generateInstance (Buf i o) instrNr = primitiveInstance "buf" [o, i] instrNr
-generateInstance (Component name parameters connections) instNr =
+generateInstance _ (Not i o) instrNr = primitiveInstance "not" [o, i] instrNr
+generateInstance _ (And i0 i1 o) instrNr = primitiveInstance "and" [o, i0, i1] instrNr
+generateInstance _ (Nand i0 i1 o) instrNr = primitiveInstance "nand" [o, i0, i1] instrNr
+generateInstance _ (Or i0 i1 o) instrNr = primitiveInstance "or" [o, i0, i1] instrNr
+generateInstance _ (Nor i0 i1 o) instrNr = primitiveInstance "nor" [o, i0, i1] instrNr
+generateInstance _ (Xor i0 i1 o) instrNr = primitiveInstance "xor" [o, i0, i1] instrNr
+generateInstance _ (Xnor i0 i1 o) instrNr = primitiveInstance "xnor" [o, i0, i1] instrNr
+generateInstance _ (Buf i o) instrNr = primitiveInstance "buf" [o, i] instrNr
+generateInstance _ (Component name parameters connections) instNr =
   mkInstance name parameters connections instNr
-generateInstance (UnsignedAdd _ _ _) _
+generateInstance _ (UnsignedAdd _ _ _) _
    = "" -- Generated instead during vector generation
-generateInstance (IndexBitArray _ _ _) _
+generateInstance _ (IndexBitArray _ _ _) _
    = "" -- Generated instead during vector generation   
-generateInstance (IndexArray _ _ _) _
+generateInstance _ (IndexArray _ _ _) _
    = "" -- Generated instead during vector generation
 
 primitiveInstance :: String -> [Signal] -> Int -> String

@@ -38,7 +38,7 @@ Local Open Scope string_scope.
    description. *)
 
 Definition nand2Interface
-  := mkCircuitInterface "nand2"
+  := mkCombinationalInterface "nand2"
      (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
      (One ("c", Bit))
      [].
@@ -87,11 +87,13 @@ Definition pipelinedNAND {m t} `{Cava m t}
 
 Definition pipelinedNANDInterface
   := mkCircuitInterface "pipelinedNAND"
+     "clk" PositiveEdge "rst" PositiveEdge
      (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
      (One ("c", Bit))
      [].
 
-Definition pipelinedNANDNetlist := makeNetlist pipelinedNANDInterface pipelinedNAND.
+Definition pipelinedNANDNetlist :=
+  makeNetlist pipelinedNANDInterface pipelinedNAND.
 
 Definition pipelinedNAND_tb_inputs
   := [(false, false);
@@ -104,7 +106,6 @@ Definition pipelinedNAND_tb_inputs
 
 Definition pipelinedNAND_tb_expected_outputs
   := [false; true; false; false; false; true; false].
-
 
 Definition pipelinedNAND_tb
   := testBench "pipelinedNAND_tb" pipelinedNANDInterface
@@ -119,6 +120,7 @@ Definition loopedNAND {m bit} `{Cava m bit}
 
 Definition loopedNANDInterface
   := mkCircuitInterface "loopedNAND"
+     "clk" PositiveEdge "rst" PositiveEdge
      (One ("a", Bit))
      (One ("b", Bit))
      [].

@@ -18,6 +18,7 @@ From Coq Require Import Ascii String.
 From Coq Require Import ZArith.
 
 Inductive Signal : Type :=
+  | UndefinedSignal : Signal
   | Gnd: Signal
   | Vcc: Signal
   | Wire: N -> Signal
