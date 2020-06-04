@@ -97,7 +97,7 @@ Proof.
   destruct n; auto.
 Qed.
 
-Definition below (A B C D E F G: object)
+Definition below {A B C D E F G: object}
   (r: << A, B >> ~> ( G ** D ))
   (s: << G, C >> ~> ( F ** E ))
   : Kappa  << A, (B ** C) >> (F ** (D ** E)) :=
@@ -109,7 +109,7 @@ Definition below (A B C D E F G: object)
 
 Hint Resolve nprod_tup_is_nprod : core.
 
-Fixpoint col (A B C D: object) n
+Fixpoint col {A B C D: object} n
   (circuit: << A, B >> ~> ( A ** D ))
   : Kappa << A, nprod B (S n) >> (A ** nprod D (S n)).
 Proof.
@@ -118,8 +118,13 @@ Proof.
   | O => <[ \a b => !circuit a b ]>
   | S n' => 
     let column_above := Closure_conversion (col A B C D n' circuit) in
-    let full_circuit := below _ _ _ _ _ _ _ column_above circuit in
+    let full_circuit := below column_above circuit in
     _
   end).
   auto.
 Defined.
+
+Definition rippleCarryAdder (width: nat)
+  : Kappa << bit, bitvec[width] >> (bitvec[width] ** bit) :=
+ <[ col width fullAdder 
+ ]>.
