@@ -39,9 +39,9 @@ Definition lutNAND {m bit} `{Cava m bit} (i0i1 : bit * bit) : m bit :=
   ret z.
 
 Definition lutNANDInterface
-  := mkCombinationalInterface "lutNAND"
-     (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
-     (One ("c", Bit))
+  := combinationalInterface "lutNAND"
+     (mkPort "a"  Bit, mkPort "b" Bit)
+     (mkPort "c" Bit)
      [].
 
 Definition lutNANDNetlist := makeNetlist lutNANDInterface lutNAND.

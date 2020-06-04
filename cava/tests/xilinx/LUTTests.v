@@ -37,7 +37,7 @@ Definition lut1_inv {m bit} `{Cava m bit} (i: bit) : m bit :=
   ret o.
 
 Definition lut1_inv_Interface
-  := mkCombinationalInterface "lut1_inv" (One ("a", Bit)) (One ("b", Bit)) [].
+  := combinationalInterface "lut1_inv" (mkPort "a" Bit) (mkPort "b" Bit) [].
 
 Definition lut1_inv_netlist := makeNetlist lut1_inv_Interface lut1_inv.
 
@@ -59,9 +59,9 @@ Definition lut2_and {m bit} `{Cava m bit} (i0i1 : bit * bit) : m bit :=
   ret o.
 
 Definition lut2_and_Interface
-  := mkCombinationalInterface "lut2_and"
-     (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
-     (One ("c", Bit))
+  := combinationalInterface "lut2_and"
+     (mkPort "a" Bit, mkPort "b" Bit)
+     (mkPort "c" Bit)
      [].
 
 Definition lut2_and_nelist := makeNetlist lut2_and_Interface lut2_and.
@@ -87,10 +87,9 @@ Definition lut3_mux {m bit} `{Cava m bit}
   ret o.
 
 Definition lut3_mux_Interface
-  := mkCombinationalInterface "lut3_mux"
-     (Tuple2 (One ("s", Bit))
-             (Tuple2 (One ("i0", Bit)) (One ("i1", Bit))))
-     (One ("o", Bit))
+  := combinationalInterface "lut3_mux"
+     (mkPort "s" Bit, (mkPort "i0" Bit, mkPort "i1" Bit))
+     (mkPort "o" Bit)
      [].
 
 Definition lut3_mux_nelist := makeNetlist lut3_mux_Interface lut3_mux.
@@ -121,16 +120,13 @@ Definition lut4_and {m bit} `{Cava m bit}
             andb (andb i0 i1) (andb i2 i3)) i ;;
   ret o.
 
-(* The left-associative nesting we need to use here is mad. We need to
-   find a better way. Satnam.
-*)
 Definition lut4_and_Interface
-  := mkCombinationalInterface "lut4_and"
-     (Tuple2 (Tuple2 (Tuple2 (One ("i0", Bit)) (One ("i1", Bit))) 
-                     (One ("i2", Bit)))
-             (One ("i3", Bit))
-     )
-     (One ("o", Bit))
+  := combinationalInterface "lut4_and"
+     (mkPort "i0" Bit,
+      mkPort "i1" Bit,
+      mkPort "i2" Bit,
+      mkPort "i3" Bit)
+     (mkPort "o" Bit)
      [].
 
 Definition lut4_and_nelist := makeNetlist lut4_and_Interface lut4_and.
@@ -157,16 +153,14 @@ Definition lut5_and {m bit} `{Cava m bit}
             andb (andb (andb i0 i1) (andb i2 i3)) i4) i ;;
   ret o.
 
-(* The left-associative nesting we need to use here is mad. We need to
-   find a better way. Satnam.
-*)
 Definition lut5_and_Interface
-  := mkCombinationalInterface "lut5_and"
-     (Tuple2 (Tuple2 (Tuple2 (Tuple2 (One ("i0", Bit)) (One ("i1", Bit))) 
-                     (One ("i2", Bit)))
-             (One ("i3", Bit))) (One ("i4", Bit))
-     )
-     (One ("o", Bit))
+  := combinationalInterface "lut5_and"
+     (mkPort "i0" Bit,
+      mkPort "i1" Bit,
+      mkPort "i2" Bit,
+      mkPort "i3" Bit,
+      mkPort "i4" Bit)
+     (mkPort "o" Bit)
      [].
 
 Definition lut5_and_nelist := makeNetlist lut5_and_Interface lut5_and.
@@ -197,12 +191,14 @@ Definition lut6_and {m bit} `{Cava m bit}
    find a better way. Satnam.
 *)
 Definition lut6_and_Interface
-  := mkCombinationalInterface "lut6_and"
-     (Tuple2 (Tuple2 (Tuple2 (Tuple2 (Tuple2 (One ("i0", Bit)) (One ("i1", Bit))) 
-                     (One ("i2", Bit)))
-             (One ("i3", Bit))) (One ("i4", Bit))) (One ("i5", Bit))
-     )
-     (One ("o", Bit))
+  := combinationalInterface "lut6_and"
+     (mkPort "i0" Bit,
+      mkPort "i1" Bit,
+      mkPort "i2" Bit,
+      mkPort "i3" Bit,
+      mkPort "i4" Bit,
+      mkPort "i5" Bit)
+     (mkPort "o" Bit)
      [].
 
 Definition lut6_and_nelist := makeNetlist lut6_and_Interface lut6_and.

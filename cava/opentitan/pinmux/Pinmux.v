@@ -35,16 +35,16 @@ Definition NPeriphOut := 32.
 Definition NMioPads := 32.
 
 Definition pinmuxInterface :=
-  mkCircuitInterface "pinmux"
+  sequentialInterface "pinmux"
      "clk_i" PositiveEdge "rst_ni" NegativeEdge
-     (tuple [One ("tl_i", ExternalType "tlul_pkg::tl_h2d_t");
-             One ("periph_to_mio_i", BitVec [NPeriphOut-1]);
-             One ("periph_to_mio_oe_i", BitVec [NPeriphOut-1]);
-             One ("mio_in_i", BitVec [NMioPads-1])])
-     (tuple [One ("tl_o", ExternalType "tlul_pkg::tl_d2h_t ");
-             One ("mio_to_periph_o", BitVec [NPeriphIn-1]);
-             One ("mio_out_o", BitVec [NMioPads-1]);
-             One ("mio_oe_o", BitVec [NMioPads-1])])
+     (mkPort "tl_i" (ExternalType "tlul_pkg::tl_h2d_t"),
+      mkPort "periph_to_mio_i" (BitVec [NPeriphOut-1]),
+      mkPort "periph_to_mio_oe_i" (BitVec [NPeriphOut-1]),
+      mkPort "mio_in_i" (BitVec [NMioPads-1]))
+     (mkPort "tl_o" (ExternalType "tlul_pkg::tl_d2h_t "),
+      mkPort "mio_to_periph_o" (BitVec [NPeriphIn-1]),
+      mkPort "mio_out_o" (BitVec [NMioPads-1]),
+      mkPort "mio_oe_o" (BitVec [NMioPads-1]))
      [].
 
 Definition pinmux {m bit} `{Cava m bit}

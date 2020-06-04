@@ -81,9 +81,9 @@ Proof. reflexivity. Qed.
 (****************************************************************************)
 
 Definition adder8Interface
-  := mkCombinationalInterface "adder8"
-     (Tuple2 (One ("cin", Bit)) (Tuple2 (One ("a", BitVec [8])) (One ("b", BitVec [8]))))
-     (Tuple2 (One ("sum", BitVec [8])) (One ("cout", Bit)))
+  := combinationalInterface "adder8"
+     (mkPort "cin" Bit, (mkPort "a" (BitVec [8]), mkPort "b" (BitVec [8])))
+     (mkPort "sum" (BitVec [8]), mkPort "cout" Bit)
      [].
 
 Definition adder8Netlist := makeNetlist adder8Interface xilinxAdderWithCarry.

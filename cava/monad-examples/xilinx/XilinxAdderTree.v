@@ -84,9 +84,9 @@ Proof. reflexivity. Qed.
 Local Open Scope nat_scope.
 
 Definition adder_tree_Interface name degree bitSize
-  := mkCombinationalInterface name
-     (One ("inputs", BitVec [2^(degree + 1); bitSize]))
-     (One ("sum", BitVec [bitSize + degree + 1]))
+  := combinationalInterface name
+     (mkPort "inputs" (BitVec [2^(degree + 1); bitSize]))
+     (mkPort "sum" (BitVec [bitSize + degree + 1]))
      [].
 
 (* Create netlist and test-bench for a 4-input adder tree. *)

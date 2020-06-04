@@ -34,13 +34,16 @@ Local Open Scope list_scope.
 Local Open Scope monad_scope.
 Local Open Scope string_scope.
 
+Generalizable All Variables.
+
 (* NAND gate example. Fist, let's define an overloaded NAND gate
    description. *)
 
 Definition nand2Interface
-  := mkCombinationalInterface "nand2"
-     (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
-     (One ("c", Bit))
+  := combinationalInterface
+     "nand2"
+     (mkPort "a" Bit, mkPort "b" Bit)
+     (mkPort "c" Bit)
      [].
 
 Definition nand2_gate {m t} `{Cava m t} := and2 >=> inv.
@@ -86,10 +89,10 @@ Definition pipelinedNAND {m t} `{Cava m t}
   := nand2_gate >=> delayBit >=> inv >=> delayBit.
 
 Definition pipelinedNANDInterface
-  := mkCircuitInterface "pipelinedNAND"
+  := sequentialInterface "pipelinedNAND"
      "clk" PositiveEdge "rst" PositiveEdge
-     (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
-     (One ("c", Bit))
+     (mkPort "a" Bit, mkPort "b" Bit)
+     (mkPort "c"  Bit)
      [].
 
 Definition pipelinedNANDNetlist :=
@@ -119,10 +122,10 @@ Definition loopedNAND {m bit} `{Cava m bit}
   := loopBit (second delayBit >=> nand2 >=> fork2).
 
 Definition loopedNANDInterface
-  := mkCircuitInterface "loopedNAND"
+  := sequentialInterface "loopedNAND"
      "clk" PositiveEdge "rst" PositiveEdge
-     (One ("a", Bit))
-     (One ("b", Bit))
+     (mkPort "a" Bit)
+     (mkPort "b" Bit)
      [].
 
 Definition loopedNANDNetlist := makeNetlist loopedNANDInterface loopedNAND.

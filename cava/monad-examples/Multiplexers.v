@@ -51,9 +51,9 @@ Example m4: combinational (mux2_1 (true, (true, false))) = false.
 Proof. reflexivity. Qed.
 
 Definition mux2_1_Interface
-  := mkCombinationalInterface "mux2_1"
-     (Tuple2 (One ("sel", Bit)) (Tuple2 (One ("i0", Bit)) (One ("i1", Bit))))
-     (One ("o", Bit))
+  := combinationalInterface "mux2_1"
+     (mkPort "sel" Bit, (mkPort "i0" Bit, mkPort "i1" Bit))
+     (mkPort "o" Bit)
      [].
 
 Definition mux2_1Netlist := makeNetlist mux2_1_Interface mux2_1.
@@ -94,9 +94,9 @@ Example m8: combinational (muxBus ([true; true], v)) = v3.
 Proof. reflexivity. Qed.
 
 Definition muxBus4_8Interface
-  := mkCombinationalInterface "muxBus4_8"
-     (Tuple2 (One ("sel", BitVec [2])) (One ("i", BitVec [4; 8])))
-     (One ("o", BitVec [8]))
+  := combinationalInterface "muxBus4_8"
+     (mkPort "sel" (BitVec [2]), mkPort "i" (BitVec [4; 8]))
+     (mkPort "o" (BitVec [8]))
      [].
 
 Definition muxBus4_8Netlist := makeNetlist muxBus4_8Interface muxBus.
