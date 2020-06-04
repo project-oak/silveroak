@@ -136,7 +136,7 @@ Inductive Instance : Type :=
   | AssignBit: Signal -> Signal -> Instance
   (* Arithmetic operations *)
   | UnsignedAdd : list Signal -> list Signal -> list Signal -> Instance
-  (* Multiplexors *)
+  (* Multiplexors *)    
   | IndexBitArray: list Signal -> list Signal -> Signal -> Instance
   | IndexArray: list (list Signal) -> list Signal -> list Signal -> Instance
   | IndexAlt: forall sz szs,
@@ -193,6 +193,7 @@ Fixpoint shapeToPortDeclaration (s : @shape (string * Kind)) :
   | One thing => match thing with
                  | (name, Bit) => [mkPort name Bit]
                  | (name, BitVec ns) => [mkPort name (BitVec ns)]
+                 | (name, ExternalType t) => [mkPort name (ExternalType t)]
                  end
   | Tuple2 t1 t2 => shapeToPortDeclaration t1 ++ shapeToPortDeclaration t2
   end.
@@ -238,6 +239,7 @@ Fixpoint newWiresFromShape (s: bundle) : state CavaState (signalTy Signal s) :=
   | Empty => ret tt
   | One Bit => newWire
   | One (BitVec s) => newWiresBitVec s
+  | One (ExternalType s) => newWire
   | Tuple2 x y =>
     x <- newWiresFromShape x;;
     y <- newWiresFromShape y;;
@@ -358,10 +360,6 @@ Definition outputVectorTo0 (sizes : list nat) (v : @denoteBitVecWith nat Signal 
 (* The initial empty netlist                                                  *)
 (******************************************************************************)
 
-(* Net number 0 carries the constant signal zero. Net number 1 carries the
-   constant signal 1. We start numbering from 2 for the user nets.
-*)
-
 Definition initStateFrom (startAt : N) : CavaState
   := mkCavaState startAt UndefinedSignal PositiveEdge UndefinedSignal PositiveEdge
                  (mkModule "noname" [] [] []).
@@ -382,6 +380,7 @@ Fixpoint instantiateInputPorts (inputs: @shape (string * Kind)) : state CavaStat
                ret i
       | BitVec xs => i <- inputVectorTo0 xs name ;;
                      ret i
+      | ExternalType t => ret UndefinedSignal
       end
   | Tuple2 t1 t2 => a <- instantiateInputPorts t1 ;;
                     b <- instantiateInputPorts t2 ;;

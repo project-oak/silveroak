@@ -117,7 +117,8 @@ Fixpoint withoutRightmostUnit {A} (s: @shape A): shape :=
 
 Inductive Kind : Type :=
   | Bit : Kind                (* A single wire *)
-  | BitVec : list nat -> Kind (* Multi-dimensional bit-vectors *).
+  | BitVec : list nat -> Kind (* Multi-dimensional bit-vectors *)
+  | ExternalType : string -> Kind. (* An uninterpreted type *)
 
 Notation bundle := (@shape Kind).
 
@@ -132,12 +133,14 @@ Definition denoteKindWith (k : Kind) (T : Type) : Type :=
   match k with
   | Bit => T
   | BitVec v => denoteBitVecWith T v
+  | ExternalType t => T
   end.
 
 Fixpoint bitsInPort (p : Kind) : nat :=
   match p with
   | Bit => 1
   | BitVec xs => fold_left (fun x y => x * y) xs 1
+  | ExternalType _ => 0
   end.
 
 Fixpoint bitsInPortShape (s : bundle) : nat :=
@@ -201,6 +204,7 @@ Definition flattenPort {A} (port: Kind) (x: denoteKindWith port A) : list A :=
   match port, x with
   | Bit, _ => [x]
   | BitVec sz, _ => flattenBitVec sz sz x
+  | ExternalType _, _=> [x]
   end.
 
 (******************************************************************************)
@@ -221,6 +225,7 @@ Fixpoint numberPort (i : N) (inputs: bundle) : signalTy Signal inputs :=
       match typ return denoteKindWith typ Signal with
       | Bit => Wire i
       | BitVec xs => numberBitVec i xs xs
+      | ExternalType _ => UndefinedSignal
       end
   | Tuple2 t1 t2 => let t1Size := bitsInPortShape t1 in
                     (numberPort i t1,  numberPort (i + N.of_nat t1Size) t2)

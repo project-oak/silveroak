@@ -129,6 +129,7 @@ Definition denoteKind `{Cava} (k: Kind)
 match k with
 | Bit       => bit
 | BitVec n  => bitvec n
+| ExternalType t => unit
 end.
 
 Fixpoint denoteShape `{Cava} (t: shape)
@@ -313,6 +314,7 @@ Proof.
   rewrite IHn.
   reflexivity.
 Qed.
+
 Lemma Nobj_bit_is_replicate_object_leaf_bitvec: forall n xs, Nobj n (BitVec xs) = @replicate_object ConstructiveArr n (One (BitVec xs)).
 Proof.
   intros.
@@ -325,6 +327,7 @@ Qed.
   representable ty := match ty with
   | Bit => One Bit
   | BitVec xs => One (BitVec xs)
+  | ExternalType t => One (ExternalType t)
   end;
 
   constant b := Constant b;
@@ -359,4 +362,6 @@ Proof.
   exact (BitToVec n).
   rewrite <- Nobj_bit_is_replicate_object_leaf_bitvec.
   exact (BitVecToVec n l).
+  rewrite <- Nobj_bit_is_replicate_object_leaf_bit.
+  exact (BitToVec n).
 Defined.
