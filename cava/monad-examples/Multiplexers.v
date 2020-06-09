@@ -13,26 +13,17 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Program.Basics.
 From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
-From Coq Require Arith.PeanoNat.
 Require Import Omega.
 
 Require Import ExtLib.Structures.Monads.
 
-Require Import Cava.Monad.Cava.
-Require Import Cava.Netlist.
-Require Import Cava.Types.
-Require Import Cava.BitArithmetic.
-Require Import Cava.Signal.
-
-Local Open Scope list_scope.
-Local Open Scope monad_scope.
-Local Open Scope string_scope.
+Require Import Cava.Cava.
+Require Import Cava.Monad.CavaMonad.
 
 Definition mux2_1 {m bit} `{Cava m bit} '(sel, (a, b)) : m bit :=
   o <- indexBitArray [a; b] [sel] ;;

@@ -22,16 +22,9 @@ Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 
-Require Import Cava.Monad.Cava.
-Require Import Cava.Monad.Combinators.
-Require Import Cava.BitArithmetic.
-Require Import Cava.Netlist.
-Require Import Cava.Types.
+Require Import Cava.Cava.
+Require Import Cava.Monad.CavaMonad.
 Require Import Cava.Monad.XilinxAdder.
-
-Local Open Scope list_scope.
-Local Open Scope monad_scope.
-Local Open Scope string_scope.
 
 (****************************************************************************)
 (* A few tests to check the unsigned adder.        *)
@@ -106,4 +99,3 @@ Definition adder8_tb_expected_outputs :=
 Definition adder8_tb :=
   testBench "adder8_tb" adder8Interface
   adder8_tb_inputs adder8_tb_expected_outputs.
-

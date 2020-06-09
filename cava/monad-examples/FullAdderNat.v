@@ -33,8 +33,8 @@ Require Import ExtLib.Structures.Monads.
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
 
-Require Import Cava.Monad.Cava.
-Require Import Cava.BitArithmetic.
+Require Import Cava.Cava.
+Require Import Cava.Monad.CavaMonad.
 Require Import MonadExamples.FullAdder.
 
 Open Scope N_scope.

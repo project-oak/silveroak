@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2019 The Project Oak Authors                                   *)
+(* Copyright 2020 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,21 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* Experiments with the primitives that form the core of Cava. *)
 
-Require Import Cava.Monad.CavaMonad.
-Require Import ExtLib.Structures.Monads.
+(* A codification of the Lava embedded DSL develope for Haskell into
+   Coq for the specification, implementaiton and formal verification of circuits.
+*)
 
-(* Experiments with the primitive Cava gates. *)
-
-Example inv_false : combinational (inv false) = true.
-Proof. reflexivity. Qed.
-
-Example inv_true  : combinational (inv true) = false.
-Proof. reflexivity. Qed.
-
-Example and_00 : combinational (and2 (false, false)) = false.
-Proof. reflexivity. Qed.
-
-Example and_11 : combinational (and2 (true, true)) = true.
-Proof. reflexivity. Qed.
+Require Export Cava.BitArithmetic.
+Require Export Cava.Netlist.
+Require Export Cava.Types.

@@ -20,16 +20,12 @@ Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 
-Require Import Cava.Monad.Cava.
-Require Import Cava.Monad.Combinators.
-Require Import Cava.Netlist.
-Require Import Cava.BitArithmetic.
+Require Import Cava.Cava.
+Require Import Cava.Monad.CavaMonad.
 
-Local Open Scope list_scope.
-Local Open Scope monad_scope.
 Local Open Scope string_scope.
-Local Open Scope type_scope.
 Local Open Scope list_scope.
+Local Open Scope type_scope.
 
 (******************************************************************************)
 (* Build a full-adder with explicit use of Xilinx FPGA fast carry logic       *)
@@ -70,10 +66,7 @@ Definition xilinxAdderWithCarry {m bit} `{Cava m bit} '(cin, (a, b))
 (* for bit-growth at the output.                   *)
 (******************************************************************************)
 
-Local Open Scope list_scope.
-
 Definition xilinxAdder {m bit} `{Cava m bit} a b : m (list bit) :=
   z <- zero ;;
   '(sum, carry) <- xilinxAdderWithCarry (z, (a, b)) ;;
   ret (sum ++ [carry]).
-

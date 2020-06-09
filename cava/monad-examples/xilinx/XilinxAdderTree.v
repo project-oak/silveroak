@@ -21,7 +21,6 @@
 
 From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
-From Coq Require Arith.PeanoNat.
 Require Import Omega.
 
 From Coq Require Import Lists.List.
@@ -29,14 +28,9 @@ Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 
-Require Import Cava.Netlist.
-Require Import Cava.Types.
-Require Import Cava.BitArithmetic.
-Require Import Cava.Monad.Cava.
-Require Import Cava.Monad.Combinators.
+Require Import Cava.Cava.
+Require Import Cava.Monad.CavaMonad.
 Require Import Cava.Monad.XilinxAdder.
-
-Set Implicit Arguments.
 
 (******************************************************************************)
 (* A generic description of all adder trees made from a Xilinx adder          *)
@@ -188,4 +182,3 @@ Definition adder_tree128_256_tb_expected_outputs
 Definition adder_tree128_256_tb :=
   testBench "xadder_tree128_256_tb" adder_tree128_256Interface
   adder_tree128_256_tb_inputs adder_tree128_256_tb_expected_outputs.
-

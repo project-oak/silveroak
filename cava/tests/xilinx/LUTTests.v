@@ -20,13 +20,8 @@ Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 
-Require Import Cava.Monad.Cava.
-Require Import Cava.Netlist.
-Require Import Cava.Types.
-
-Local Open Scope list_scope.
-Local Open Scope monad_scope.
-Local Open Scope string_scope.
+Require Import Cava.Cava.
+Require Import Cava.Monad.CavaMonad.
 
 (****************************************************************************)
 (* LUT1 config test                                                         *)

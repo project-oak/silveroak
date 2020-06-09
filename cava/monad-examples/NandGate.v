@@ -25,16 +25,12 @@ Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 Open Scope monad_scope.
 
-Require Import Cava.Monad.Cava.
-Require Import Cava.Monad.Combinators.
-Require Import Cava.Netlist.
-Require Import Cava.Types.
+Require Import Cava.Cava.
+Require Import Cava.Monad.CavaMonad.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.
 Local Open Scope string_scope.
-
-Generalizable All Variables.
 
 (* NAND gate example. Fist, let's define an overloaded NAND gate
    description. *)
