@@ -70,9 +70,9 @@ Proof. reflexivity. Qed.
 Local Open Scope nat_scope.
 
 Definition adder4Interface
-  := mkCombinationalInterface "adder4"
-     (Tuple2 (One ("a", BitVec [4])) (One ("b", BitVec [4])))
-     (One ("sum", BitVec [5]))
+  := combinationalInterface "adder4"
+     (mkPort "a" (BitVec [4]), mkPort "b" (BitVec [4]))
+     (mkPort "sum" (BitVec [5]))
      [].
 
 Definition adder4Netlist
@@ -93,24 +93,24 @@ Definition adder4_tb
 (******************************************************************************)
 
 Definition adder8_3inputInterface
-  := mkCombinationalInterface "adder8_3input"
-     (Tuple2 (One ("a", BitVec [8])) (Tuple2 (One ("b", BitVec [8])) (One ("c", BitVec [8]))))
-     (One ("sum", BitVec [10]))
+  := combinationalInterface "adder8_3input"
+     (mkPort "a" (BitVec [8]), mkPort "b" (BitVec [8]), mkPort "c" (BitVec [8]))
+     (mkPort "sum" (BitVec [10]))
      [].
 
 Definition adder8_3inputNetlist
   := makeNetlist adder8_3inputInterface
-     (fun '(a, (b, c)) => adder_3input a b c).
+     (fun '(a, b, c) => adder_3input a b c).
 
 Local Open Scope N_scope.
 
 Definition adder8_3input_tb_inputs :=
-  map (fun '(x, (y, z)) => (nat_to_list_bits_sized 8 x,
-                            (nat_to_list_bits_sized 8 y, nat_to_list_bits_sized 8 z)))
-  [(17, (23, 95)); (4, (200, 30)); (255, (255, 200))].
+  map (fun '(x, y, z) => (nat_to_list_bits_sized 8 x,
+                          nat_to_list_bits_sized 8 y, nat_to_list_bits_sized 8 z))
+  [(17, 23, 95); (4, 200, 30); (255, 255, 200)].
 
 Definition adder8_3input_tb_expected_outputs :=
-  map (fun '(a, (b, c)) => combinational (adder_3input a b c)) adder8_3input_tb_inputs.
+  map (fun '(a, b, c) => combinational (adder_3input a b c)) adder8_3input_tb_inputs.
 
 Definition adder8_3input_tb :=
   testBench "adder8_3input_tb" adder8_3inputInterface

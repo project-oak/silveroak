@@ -111,6 +111,21 @@ Fixpoint withoutRightmostUnit {A} (s: @shape A): shape :=
   | Tuple2 t1 t2 =>  Tuple2 t1 (withoutRightmostUnit t2)
   end.
 
+(* Convert values to shape values *)
+
+Class ToShape {a} t := {
+  toShape: t -> @shape a;
+}.
+
+Instance ShapeOne {A: Type}: ToShape A := {
+   toShape t := One t;
+}.
+
+Instance ToShapePair2 {A t1 t2 : Type} `{@ToShape A t1} `{@ToShape A t2}:
+                     @ToShape A (t1 * t2) := {
+  toShape '(a, b) := @Tuple2 A (toShape a) (toShape b);
+}.
+
 (******************************************************************************)
 (* Values of Kind can occur as the type of signals on a circuit interface *)
 (******************************************************************************)

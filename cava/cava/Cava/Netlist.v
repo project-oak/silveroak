@@ -33,6 +33,7 @@ Require Import Omega.
 
 Import ListNotations.
 Import MonadNotation.
+Open Scope string_scope.
 Open Scope list_scope.
 Open Scope monad_scope.
 
@@ -47,54 +48,6 @@ Inductive SignalExpr :=
 | NoSignal : SignalExpr
 | BitVal : bool -> SignalExpr
 | VecVal : list SignalExpr -> SignalExpr.
-
-Class ToSignalExpr t := {
-  toSignalExpr : t -> @shape SignalExpr;
-}.
-
-Instance SignalBool : ToSignalExpr bool := {
-  toSignalExpr b := One (BitVal b);
-}.
-
-Fixpoint shapeToSignalExpr (s : @shape SignalExpr) : SignalExpr :=
-  match s with
-  | One v => v
-  | _ => NoSignal
-  end.
-
-Instance ShapeVec {A : Type} `{ToSignalExpr A} : ToSignalExpr (list A) := {
-   toSignalExpr v := One (VecVal (map (compose shapeToSignalExpr toSignalExpr) v)) ;
-}.
-
-Instance ToShapePair {A B : Type} `{ToSignalExpr A} `{ToSignalExpr B}  :
-                     ToSignalExpr (A * B) := {
-  toSignalExpr '(a, b) := Tuple2 (toSignalExpr a) (toSignalExpr b);
-}.
-
-(* Likewise for Signal *)
-
-Class ToSignal t := {
-  toSignal: t -> @shape Signal;
-}.
-
-Instance SignalWire : ToSignal Signal := {
-  toSignal s := One s;
-}.
-
-Fixpoint shapeToSignalValue (s : @shape Signal) : Signal :=
-  match s with
-  | One v => v
-  | _ => Vcc
-  end.
-
-Instance ShapeSignalVec {A : Type} `{ToSignal A} : ToSignal (list A) := {
-   toSignal v := One (Vec (map (compose shapeToSignalValue toSignal) v)) ;
-}.
-
-Instance ToShapePairSignal {A B : Type} `{ToSignal A} `{ToSignal B}  :
-                     ToSignal (A * B) := {
-  toSignal '(a, b) := Tuple2 (toSignal a) (toSignal b);
-}.
 
 (******************************************************************************)
 (* PrimitiveInstance elements                                                 *)
@@ -175,28 +128,33 @@ Record CircuitInterface : Type := mkCircuitInterface {
   clkEdge        : SignalEdge;
   rstName        : string;
   rstEdge        : SignalEdge;
-  circuitInputs  : @shape (string * Kind);
-  circuitOutputs : @shape (string * Kind);
+  circuitInputs  : @shape PortDeclaration;
+  circuitOutputs : @shape PortDeclaration;
   attributes : list CircuitAttribute;
 }.
 
-Definition mkCombinationalInterface circuitName circuitInputs circuitOutputs
-                                    attributes :=
-  mkCircuitInterface circuitName "" PositiveEdge
-                                 "" PositiveEdge
-                                 circuitInputs circuitOutputs attributes.
+Definition sequentialInterface {ciType coType}
+                              `{@ToShape PortDeclaration ciType}
+                              `{@ToShape PortDeclaration coType}
+                               (circuitName: string)
+                               (clkName: string) (clkEdge: SignalEdge)
+                               (rstName: string) (rstEdge: SignalEdge)
+                               (circuitInputs: ciType) 
+                               (circuitOutputs: coType)
+                               (attributes: list CircuitAttribute) :=
+  mkCircuitInterface circuitName clkName clkEdge rstName rstEdge
+                     (toShape circuitInputs) (toShape circuitOutputs) attributes.                            
 
-Fixpoint shapeToPortDeclaration (s : @shape (string * Kind)) :
-                                list PortDeclaration :=
-  match s with
-  | Empty => []
-  | One thing => match thing with
-                 | (name, Bit) => [mkPort name Bit]
-                 | (name, BitVec ns) => [mkPort name (BitVec ns)]
-                 | (name, ExternalType t) => [mkPort name (ExternalType t)]
-                 end
-  | Tuple2 t1 t2 => shapeToPortDeclaration t1 ++ shapeToPortDeclaration t2
-  end.
+Definition combinationalInterface {ciType coType}
+                                  `{@ToShape PortDeclaration ciType}
+                                  `{@ToShape PortDeclaration coType}
+                                  (circuitName: string)
+                                  (circuitInputs: ciType) 
+                                  (circuitOutputs: coType)
+                                  (attributes: list CircuitAttribute) :=
+  sequentialInterface circuitName "" PositiveEdge
+                                  "" PositiveEdge
+                                  circuitInputs circuitOutputs attributes.
 
 Record CavaState : Type := mkCavaState {
   netNumber : N;
@@ -371,34 +329,35 @@ Definition initState : CavaState
 (* Execute a monadic circuit description and return the generated netlist.    *)
 (******************************************************************************)
 
-Fixpoint instantiateInputPorts (inputs: @shape (string * Kind)) : state CavaState (signalTy Signal (mapShape snd inputs)) :=
-  match inputs return state CavaState (signalTy Signal (mapShape snd inputs)) with
+Fixpoint instantiateInputPorts (inputs: @shape PortDeclaration) : state CavaState (signalTy Signal (mapShape port_shape inputs)) :=
+  match inputs return state CavaState (signalTy Signal (mapShape port_shape inputs)) with
   | Empty => ret tt
-  | One (name, typ) =>
+  | One (mkPort name typ) =>
       match typ return state CavaState (signalTy Signal (mapShape snd (One (name, typ)))) with
       | Bit => i <- inputBit name ;;
                ret i
       | BitVec xs => i <- inputVectorTo0 xs name ;;
                      ret i
-      | ExternalType t => ret UndefinedSignal
+      | ExternalType t => ret (UninterpretedSignal name)
       end
   | Tuple2 t1 t2 => a <- instantiateInputPorts t1 ;;
                     b <- instantiateInputPorts t2 ;;
                     ret (a, b)
   end.
 
-Definition instantiateOutputPort (pd_driver : string * Kind * Signal)
-                                 : state CavaState unit :=
-  match pd_driver with
-  | (name, Bit, s) => _ <- outputBit name s ;; ret tt
-  | (name, BitVec [n], Vec s) => _ <- outputVectorTo0 [n] s name ;; ret tt
-  | _ => ret tt
+Fixpoint instantiateOutputPorts (t: @shape PortDeclaration) (v: signalTy Signal (mapShape port_shape t)) : state CavaState unit :=
+  match t, v with
+  | Empty, _ => ret tt
+  | One (mkPort name Bit), s => _ <- outputBit name s ;; ret tt
+  | One (mkPort name (BitVec xs)), s => _ <- outputVectorTo0 xs s name ;; ret tt
+  | One (mkPort _ (ExternalType _)), _ => ret tt
+  | Tuple2 t1 t2, (a, b) => instantiateOutputPorts t1 a ;;
+                            instantiateOutputPorts t2 b
   end.
 
 Definition wireUpCircuit (intf : CircuitInterface)
-                         `{ToSignal (signalTy Signal (mapShape snd (circuitOutputs intf)))}
-                         (circuit : (signalTy Signal (mapShape snd (circuitInputs intf))) ->
-                                    state CavaState (signalTy Signal (mapShape snd (circuitOutputs intf))))
+                         (circuit : (signalTy Signal (mapShape port_shape (circuitInputs intf))) ->
+                                    state CavaState (signalTy Signal (mapShape port_shape (circuitOutputs intf))))
 
                          : state CavaState unit  :=
   setModuleName (circuitName intf) ;;
@@ -407,12 +366,12 @@ Definition wireUpCircuit (intf : CircuitInterface)
   addInputPort (mkPort (rstName intf) Bit) ;;
   i <- instantiateInputPorts (circuitInputs intf) ;;
   o <- circuit i ;;
-  mapShapeM_ instantiateOutputPort (zipShapes (circuitOutputs intf) (toSignal o)).
+  let outType := circuitOutputs intf in 
+  instantiateOutputPorts outType o.
 
-Definition makeNetlist (intf : CircuitInterface)
-                       `{ToSignal (signalTy Signal (mapShape snd (circuitOutputs intf)))}
-                       (circuit : signalTy Signal (mapShape snd (circuitInputs intf)) ->
-                                  state CavaState (signalTy Signal (mapShape snd (circuitOutputs intf)))) : CavaState
+Definition makeNetlist (intf : CircuitInterface)                      
+                       (circuit : signalTy Signal (mapShape port_shape (circuitInputs intf)) ->
+                                  state CavaState (signalTy Signal (mapShape port_shape (circuitOutputs intf)))) : CavaState
   := execState (wireUpCircuit intf circuit) initState.
 
 Record TestBench : Type := mkTestBench {
@@ -422,11 +381,34 @@ Record TestBench : Type := mkTestBench {
   testBenchExpectedOutputs : list (list SignalExpr);
 }.
 
+Definition convertVec {x xs} (l : signalTy bool (One (BitVec (x :: xs)))) :
+                         list (signalTy bool (One (BitVec xs))).
+Proof.
+  destruct xs.
+  - auto.
+  - auto.
+Defined.                    
+
+Fixpoint vec2expr (i : list nat) (v: signalTy bool (One (BitVec i))) : SignalExpr :=
+  match i, v with
+  | [], zx => BitVal zx
+  | x::xs, y => VecVal (map (vec2expr xs) (convertVec y))
+  end.
+
+Fixpoint denoteValueWithSignalExpr (t: @shape Kind) (v: signalTy bool t) : @shape SignalExpr :=
+  match t, v with
+  | Empty, _ => Empty
+  | One Bit, x => One (BitVal x)
+  | One (BitVec ts), xs => One (vec2expr ts xs)
+  | One (ExternalType _), _ => One NoSignal
+  | Tuple2 t1 t2, (a, b) => Tuple2 (denoteValueWithSignalExpr t1 a) (denoteValueWithSignalExpr t2 b)
+  end.
+
 Definition testBench (name : string)
                      (intf : CircuitInterface)
-                     `{ToSignalExpr (signalTy bool (mapShape snd (circuitInputs intf)))}
-                     `{ToSignalExpr (signalTy bool (mapShape snd (circuitOutputs intf)))}
-                     (testInputs : list (signalTy bool (mapShape snd (circuitInputs intf))))
-                     (testExpectedOutputs : list (signalTy bool (mapShape snd (circuitOutputs intf))))
-  := mkTestBench name intf (map (compose flattenShape toSignalExpr) testInputs)
-                           (map (compose flattenShape toSignalExpr) testExpectedOutputs).
+                     (testInputs : list (signalTy bool (mapShape port_shape (circuitInputs intf))))
+                     (testExpectedOutputs : list (signalTy bool (mapShape port_shape (circuitOutputs intf))))
+  := let inShape  : @shape Kind := mapShape port_shape (circuitInputs intf) in
+     let outShape : @shape Kind := mapShape port_shape (circuitOutputs intf) in
+     mkTestBench name intf (map (compose flattenShape (denoteValueWithSignalExpr inShape)) testInputs)
+                           (map (compose flattenShape (denoteValueWithSignalExpr outShape)) testExpectedOutputs).

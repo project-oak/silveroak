@@ -55,9 +55,9 @@ Definition fullAdder'
 Definition fullAdder Cava := toCava Cava (Closure_conversion fullAdder').
 
 Definition fullAdderInterface
-  := mkCombinationalInterface "fullAdder"
-     (Tuple2 (One ("cin", Bit)) (Tuple2 (One ("a", Bit)) (One ("b", Bit))))
-     (Tuple2 (One ("sum", Bit)) (One ("cout", Bit)))
+  := combinationalInterface "fullAdder"
+     (mkPort "cin" Bit, (mkPort "a" Bit, mkPort "b" Bit))
+     (mkPort "sum" Bit, mkPort "cout" Bit)
      [].
 
 Definition fullAdder_tb_inputs :=

@@ -61,9 +61,9 @@ Section NetlistExamples.
   List.map (@nand Combinational) arrow_nand_tb_inputs.
 
   Definition nand2Interface
-    := mkCombinationalInterface "nandArrow"
-       (Tuple2 (One ("input1", Bit)) (One ("input2", Bit)))
-       (One ("output1", Bit))
+    := combinationalInterface "nandArrow"
+       (mkPort "input1" Bit, mkPort "input2" Bit)
+       (mkPort "output1" Bit)
        [].
 
   Definition nandArrow :=
@@ -84,9 +84,9 @@ Section NetlistExamples.
   List.map (@xor Combinational) arrow_xor_tb_inputs.
 
   Definition xorInterface
-    := mkCombinationalInterface "xorArrow"
-       (Tuple2 (One ("input1", Bit)) (One ("input2", Bit)))
-       (One ("output1", Bit))
+    := combinationalInterface "xorArrow"
+       (mkPort "input1" Bit, mkPort "input2" Bit)
+       (mkPort "output1" Bit)
        [].
 
   Definition xorArrow :=
@@ -129,10 +129,10 @@ Section NetlistExamples.
   ].
 
   Definition feedbackNandInterface
-    := mkCircuitInterface "feedbackNandArrow"
+    := sequentialInterface "feedbackNandArrow"
        "clk" PositiveEdge "rst" PositiveEdge
-       (One ("input1", Bit))
-       (One ("output1", Bit))
+       (mkPort "input1" Bit)
+       (mkPort "output1" Bit)
        [].
 
   Definition feedbackNandArrow :=

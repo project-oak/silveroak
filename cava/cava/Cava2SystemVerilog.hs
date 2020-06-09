@@ -425,25 +425,25 @@ generateTestBench testBench
     where
     intf = testBenchInterface testBench
     name = circuitName intf
-    inputPortList = shapeToPortDeclaration (circuitInputs intf)
-    outputPortList = shapeToPortDeclaration (circuitOutputs intf)
+    inputPortList = flattenShape (circuitInputs intf)
+    outputPortList = flattenShape (circuitOutputs intf)
     nrTests = length (testBenchInputs testBench)
 
-declareCircuitPorts :: Coq_shape (String, Kind) -> [String]
+declareCircuitPorts :: Coq_shape PortDeclaration -> [String]
 declareCircuitPorts shape
   = insertCommas (map declareCircuitPort portList)
     where
-    portList :: [PortDeclaration]  = shapeToPortDeclaration shape
+    portList :: [PortDeclaration]  = flattenShape shape
 
 declareCircuitPort :: PortDeclaration -> String
 declareCircuitPort port
   = "  output " ++ declarePort port
 
-declareLocalPorts :: Coq_shape (String, Kind) -> [String]
+declareLocalPorts :: Coq_shape PortDeclaration -> [String]
 declareLocalPorts shape
   = map declareLocalPort portList
     where
-    portList :: [PortDeclaration]  = shapeToPortDeclaration shape
+    portList :: [PortDeclaration] = flattenShape shape
 
 declareLocalPort :: PortDeclaration -> String
 declareLocalPort port

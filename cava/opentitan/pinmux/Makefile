@@ -27,3 +27,5 @@ Makefile.coq:	_CoqProject
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
+clean:		
+		-@$(MAKE) -f Makefile.coq clean

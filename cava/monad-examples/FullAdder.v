@@ -46,9 +46,9 @@ Definition halfAdder {m t} `{Cava m t} '(a, b) :=
   ret (partial_sum, carry).
 
 Definition halfAdderInterface
-  := mkCombinationalInterface "halfadder"
-     (Tuple2 (One ("a", Bit)) (One ("b", Bit)))
-     (Tuple2 (One ("partial_sum", Bit)) (One ("carry", Bit)))
+  := combinationalInterface "halfadder"
+     (mkPort "a" Bit, mkPort "b" Bit)
+     (mkPort "partial_sum" Bit, mkPort "carry" Bit)
      [].
 
 Definition halfAdderNetlist := makeNetlist halfAdderInterface halfAdder.
@@ -61,7 +61,6 @@ Proof.
   auto.
 Qed.
 
-
 (******************************************************************************)
 (* Build a full-adder                                                         *)
 (******************************************************************************)
@@ -73,9 +72,9 @@ Definition fullAdder {m t} `{Cava m t} '(cin, (a, b)) :=
   ret (abcl, cout).
 
 Definition fullAdderInterface
-  := mkCombinationalInterface "fullAdder"
-     (Tuple2 (One ("cin", Bit)) (Tuple2 (One ("a", Bit)) (One ("b", Bit))))
-     (Tuple2 (One ("sum", Bit)) (One ("carry", Bit)))
+  := combinationalInterface "fullAdder"
+     (mkPort "cin" Bit, (mkPort "a" Bit, mkPort "b" Bit))
+     (mkPort "sum" Bit, mkPort "carry" Bit)
      [].
 
 Definition fullAdderNetlist := makeNetlist fullAdderInterface fullAdder.
