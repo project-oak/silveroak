@@ -24,7 +24,7 @@ Require Import Omega.
 
 Export MonadNotation.
 
-Require Import Cava.Monad.Cava.
+Require Import Cava.Monad.CavaClass.
 
 Generalizable All Variables.
 

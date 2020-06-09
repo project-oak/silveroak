@@ -15,20 +15,17 @@
 (****************************************************************************)
 
 From Coq Require Import Ascii String.
-Local Open Scope string_scope.
 
 From Coq Require Import Lists.List.
 Import ListNotations.
-Local Open Scope list_scope.
 
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
+
 Open Scope monad_scope.
 
-Require Import Cava.Monad.Cava.
-Require Import Cava.Netlist.
-Require Import Cava.Signal.
-Require Import Cava.Types.
+Require Import Cava.Cava.
+Require Import Cava.Monad.CavaMonad.
 
 Definition NPeriphIn := 32.
 Definition NPeriphOut := 32.

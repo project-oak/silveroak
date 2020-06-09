@@ -45,10 +45,11 @@ library
                      BinNums
                      BitArithmetic
                      Bvector
-                     Cava
+                     CavaClass
                      CC
                      Combinators
                      Combinational
+                     CombinationalMonad
                      Constructive
                      Datatypes
                      DecimalString
@@ -59,6 +60,7 @@ library
                      Monad
                      NaryFunctions
                      Netlist
+                     NetlistGeneration
                      Netlist0
                      Nat
                      PeanoNat

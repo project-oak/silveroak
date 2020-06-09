@@ -17,21 +17,13 @@
 From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
-From Coq Require Import ZArith.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 
-Require Import Cava.Monad.Cava.
-Require Import Cava.Monad.Combinators.
-Require Import Cava.BitArithmetic.
-Require Import Cava.Netlist.
-Require Import Cava.Types.
+Require Import Cava.Cava.
+Require Import Cava.Monad.CavaMonad.
 Require Import Cava.Monad.XilinxAdder.
-
-Local Open Scope list_scope.
-Local Open Scope monad_scope.
-Local Open Scope string_scope.
 
 Definition lutNAND {m bit} `{Cava m bit} (i0i1 : bit * bit) : m bit :=
   x <- lut2 (andb) i0i1 ;;

@@ -14,23 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import ZArith.
-From Coq Require Import ZArith.BinInt.
-From Coq Require Import PArith.BinPos.
-From Coq Require Import Numbers.NatInt.NZPow.
 Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-Open Scope monad_scope.
 
-Require Import Cava.Monad.Cava.
-Require Import Cava.Monad.Combinators.
-Require Import Cava.Netlist.
-Require Import Cava.BitArithmetic.
-
-Require Import Nat Arith Lia.
-
-From Coq Require Import Lists.List.
-Import ListNotations.
+Require Import Cava.Cava.
+Require Import Cava.Monad.CavaMonad.
 
 (******************************************************************************)
 (* A three input adder.                                                       *)
