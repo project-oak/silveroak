@@ -26,6 +26,7 @@ From Coq Require Import Lists.List.
 From Coq Require Import Bool.Bool.
 From Coq Require Import Numbers.NaryFunctions.
 From Coq Require Import Init.Datatypes.
+From Coq Require Vector.
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.StateMonad.
 
@@ -39,6 +40,7 @@ Open Scope monad_scope.
 
 From Cava Require Import Signal.
 From Cava Require Import Types.
+From Cava Require Import BitArithmetic.
 
 (******************************************************************************)
 (* Make it possible to convert certain types to bool shape values             *)
@@ -92,11 +94,6 @@ Inductive Instance : Type :=
   (* Multiplexors *)    
   | IndexBitArray: list Signal -> list Signal -> Signal -> Instance
   | IndexArray: list (list Signal) -> list Signal -> list Signal -> Instance
-  | IndexAlt: forall sz szs,
-      @denoteBitVecWith nat Signal (sz::szs) ->
-      list Signal ->
-      @denoteBitVecWith nat Signal szs
-      -> Instance
   | Component: string -> list (string * ConstExpr) -> list (string * Signal) ->
                Instance.
 
@@ -180,6 +177,15 @@ Definition newWires (width : nat) : state CavaState (list Signal) :=
       let outv := map N.of_nat (seq (N.to_nat o) width) in
       put (mkCavaState (o + N.of_nat width) clk clkEdge rst rstEdge m) ;;
       ret (map Wire outv)
+  end.
+
+Definition newWiresVec (width : nat) : state CavaState (Vector.t Signal width) :=
+  cs <- get ;;
+  match cs with
+  | mkCavaState o clk clkEdge rst rstEdge m =>
+      let outv := Vector.map N.of_nat (vec_seq (N.to_nat o) width) in
+      put (mkCavaState (o + N.of_nat width) clk clkEdge rst rstEdge m) ;;
+      ret (Vector.map Wire outv)
   end.
 
 Definition newWiresBitVec (sizes: list nat) : state CavaState (@denoteBitVecWith nat Signal sizes) :=

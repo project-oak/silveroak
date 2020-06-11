@@ -17,10 +17,6 @@
 Require Import Cava.Arrow.Arrow.
 Require Import Cava.Arrow.Kappa.Syntax.
 Require Import Cava.Arrow.Instances.Combinational.
-Require Import Cava.Arrow.Instances.Netlist.
-
-Require Import Cava.Types.
-Require Import Cava.Netlist.
 
 Require Import Coq.Strings.String.
 Local Open Scope string_scope.
@@ -28,31 +24,37 @@ Local Open Scope string_scope.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
+Section definition.
+  Import KappaNotation.
 
-Definition halfAdder'
-: Kappa (bit ** bit ** unit) (bit ** bit) :=
-<[ \ a b =>
-   let part_sum = !xor_gate a b in
-   let carry = !and_gate a b in
-(part_sum, carry)
-]>.
+  Definition halfAdder
+  : Kappa_sugared << Bit, Bit, Unit >> <<Bit, Bit>> :=
+  <[ \ a b =>
+    let part_sum = xor a b in
+    let carry = and a b in
+    (part_sum, carry)
+  ]>.
 
-Definition fullAdder'
-: Kappa (bit ** ((bit ** bit) ** unit)) (bit ** bit) :=
-<[ \ cin ab =>
-  let a = fst' ab in
-  let b = snd' ab in
-  let abl_abh = ~!(halfAdder') a b in
-  let abl = fst' abl_abh in
-  let abh = snd' abl_abh in
-  let abcl_abch = ~!(halfAdder') abl cin in
-  let abcl = fst' abcl_abch in
-  let abch = snd' abcl_abch in
-  let cout = !xor_gate abh abch in
-  (abcl, cout)
-]>.
+  Definition fullAdder
+  : Kappa_sugared << Bit, << Bit, Bit >>, Unit >> <<Bit, Bit>> :=
+  <[ \ cin ab =>
+    let '(a,b) = ab in
+    let '(abl, abh) = !halfAdder a b in
+    let '(abcl, abch) = !halfAdder abl cin in
+    let cout = xor abh abch in
+    (abcl, cout)
+  ]>.
 
-Definition fullAdder Cava := toCava Cava (Closure_conversion fullAdder').
+End definition.
+
+Definition fullAdder_structure := to_constructive (Desugar fullAdder) (ltac:(auto_kappa_wf)).
+
+Lemma fullAdder_is_combinational: wf_combinational (toCava _ fullAdder_structure).
+Proof. combinational_obvious. Qed.
+
+Require Import Cava.Arrow.Instances.Netlist.
+Require Import Cava.Types.
+Require Import Cava.Netlist.
 
 Definition fullAdderInterface
   := combinationalInterface "fullAdder"
@@ -73,11 +75,11 @@ Definition fullAdder_tb_inputs :=
 
 Definition fullAdder_netlist :=
   makeNetlist fullAdderInterface
-    (removeRightmostUnit (fullAdder NetlistCava)).
+    (toCava NetlistCava fullAdder_structure).
 
-Definition fullAdder_tb_expected_outputs
-   := map (fun '(cin, (a,b)) => (@fullAdder Combinational) (cin, ((a, b), tt)))
-      fullAdder_tb_inputs.
+(* Using `evaluate_to_terms` for a nicer extracted value *)
+Definition fullAdder_tb_expected_outputs  : list (bool * bool).
+Proof. evaluate_to_terms fullAdder_structure fullAdder_is_combinational fullAdder_tb_inputs. Defined.
 
 Definition fullAdder_tb :=
   testBench "fullAdder_tb" fullAdderInterface

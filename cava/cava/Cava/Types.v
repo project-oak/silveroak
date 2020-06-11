@@ -41,8 +41,8 @@ Inductive shape {A: Type} : Type :=
   | One : A -> shape
   | Tuple2 : shape -> shape -> shape. (* A pair of bundles of wires *)
 
-Notation "<< x >>" := (Tuple2 x Empty).
-Notation "<< x , y , .. , z >>" := (Tuple2 x (Tuple2 y .. (Tuple2 z Empty) ..) ).
+(* Notation "<< x >>" := (Tuple2 x Empty).
+Notation "<< x , y , .. , z >>" := (Tuple2 x (Tuple2 y .. (Tuple2 z Empty) ..) ). *)
 
 (* General tuples can be mapped to Tuple2 *)
 
