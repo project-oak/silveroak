@@ -1,7 +1,7 @@
 Require Import Cava.Arrow.Arrow.
 Require Import Cava.Arrow.Instances.Constructive.
 
-From Coq Require Import NArith.
+From Coq Require Import Arith NArith.
 
 Section Vars.
   Context {var: Kind -> Kind -> Type}.
@@ -49,9 +49,11 @@ Section Vars.
     | UnsignedAdd: forall a b c, kappa_sugared << Vector a Bit, Vector b Bit, Unit >> (Vector c Bit)
     (* TODO: enable lut *)
     (*| Lut n: (bool^^n --> bool) -> bitvec (N.of_nat n) ~> bit;*)
-    | IndexVec: forall n {o}, kappa_sugared << Vector n o, Vector (N.log2_up n) Bit, Unit >> o
+    | IndexVec: forall n {o}, kappa_sugared << Vector n o, Vector (Nat.log2_up n) Bit, Unit >> o
     | ToVec: forall {o}, kappa_sugared << o, Unit >> (Vector 1 o)
-    | Concat: forall n {o}, kappa_sugared << Vector n o, o, Unit >> (Vector (n+1) o).
+    | Append: forall n {o}, kappa_sugared << Vector n o, o, Unit >> (Vector (n+1) o)
+    | Concat: forall n m {o}, kappa_sugared << Vector n o, Vector m o, Unit >> (Vector (n+m) o)
+    | Split: forall n m {o}, (m < n) -> kappa_sugared << Vector n o, Unit >> <<Vector m o, Vector (n - m) o>>.
 
   Bind Scope constructive_scope with kappa_sugared.
   Delimit Scope constructive_scope with kappa_sugared.
@@ -111,9 +113,11 @@ Fixpoint desugar {var i o} (e: @kappa_sugared var i o) : @kappa var i o :=
   | Constant b => DArr (constant b)
   | ConstantVec v => DArr (constant_bitvec _ v)
 
-  | IndexVec n => kappa_app << Vector n _, Vector (N.log2_up n) Bit, Unit >> (index_vec n _)
+  | IndexVec n => kappa_app << Vector n _, Vector (Nat.log2_up n) Bit, Unit >> (index_vec n _)
   | ToVec => kappa_app << _, Unit >> (to_vec _)
-  | Concat n => kappa_app << Vector n _, _, Unit >> (concat n _)
+  | Append n => kappa_app << Vector n _, _, Unit >> (append n _)
+  | Concat n m => kappa_app << Vector n _, Vector m _, Unit >> (concat n m _)
+  | Split n m H => kappa_app << Vector n _, Unit >> (split n m _ H)
   end.
 
 Definition tupleHelper {var X Y} x y :=  App (App (@MakeTuple var X Y) x) y.

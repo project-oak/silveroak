@@ -32,18 +32,12 @@ Require Import FunctionalExtensionality.
 (* Evaluation as a netlist                                                    *)
 (******************************************************************************)
 
-Inductive Kind : Set := 
-| Tuple: Kind -> Kind -> Kind
-| Unit: Kind
-| Bit: Kind
-| Vector: N -> Kind -> Kind.
-
 Fixpoint denote (ty: Kind): Type :=
-match ty with 
+match ty with
 | Tuple l r => prod (denote l) (denote r)
 | Unit => Datatypes.unit
 | Bit => Signal
-| Vector n t => Vector.t (denote t) (N.to_nat n)
+| Vector n t => Vector.t (denote t) n
 end.
 
 Section traversable.
@@ -57,18 +51,18 @@ Section traversable.
   Proof.
     inversion v.
     exact (@pure F _ _ []%vector).
-    refine ( 
-        let _1 := fun y ys => @Vector.cons B y _ ys in 
-        let _2 := @pure F _ _ _1 in 
-        let _3 := @ap F _ _ _ _2 (f h) in 
+    refine (
+        let _1 := fun y ys => @Vector.cons B y _ ys in
+        let _2 := @pure F _ _ _1 in
+        let _3 := @ap F _ _ _ _2 (f h) in
         let xs' := mapT_vector _ X in
-        let _4 := @ap F _ _ _  _3 in 
+        let _4 := @ap F _ _ _  _3 in
         _
     ).
     apply _4 in xs' .
     exact xs'.
   Defined.
-End traversable. 
+End traversable.
 
 Definition fixup n (F : Type -> Type) (Ap: Applicative F) (A B : Type) (m: A -> F B) := @mapT_vector F Ap A B m n.
 
@@ -76,28 +70,28 @@ Global Instance Traversable_vector@{} {n} : Traversable (fun t => Vector.t t n) 
 { mapT := fixup n }.
 
 Fixpoint build (ty: Kind) : state CavaState (denote ty) :=
-match ty with 
-| Tuple l r => 
+match ty with
+| Tuple l r =>
   l <- build l;;
   r <- build r;;
   ret (l, r)
 | Unit => ret tt
 | Bit => newWire
-| Vector n t => mapT (fun _ => build t) (const tt (N.to_nat n))
+| Vector n t => mapT (fun _ => build t) (const tt n)
 end.
 
 Fixpoint mapMSignals2 (f: Signal -> Signal -> Instance) (ty: Kind)
   (x: denote ty) (y: denote ty): state CavaState Datatypes.unit :=
-match ty, x, y with 
+match ty, x, y with
 | Tuple l r, (x1,x2), (y1, y2) =>
   mapMSignals2 f l x1 y1 ;;
-  mapMSignals2 f r x2 y2 ;; 
+  mapMSignals2 f r x2 y2 ;;
   ret tt
 | Unit, _, _ => ret tt
 | Bit, x1, y1 =>
   addInstance (f x1 y1) ;;
   ret tt
-| Vector n t, v1, v2 => 
+| Vector n t, v1, v2 =>
   mapT (fun '(x, y)  => mapMSignals2 f t x y) (map2 pair v1 v2) ;;
   ret tt
 end.
@@ -165,7 +159,7 @@ Section NetlistEval.
     refine (pair _ _ ).
     exact (Vector.hd v).
     exact (bv_to_nprod n (Vector.tl v)).
-  Defined. 
+  Defined.
 
   Instance NetlistLoop : ArrowLoop NetlistArr := {
     loopr _ _ Z f x :=
@@ -187,18 +181,18 @@ Section NetlistEval.
     cava_arrow := NetlistArr;
 
     bit := Bit;
-    vector (n: N) o := Vector n o;
+    vector n o := Vector n o;
 
     constant b _ := match b with
       | true => ret Vcc
       | false => ret Gnd
       end;
 
-    constant_bitvec n v _ := ret ( Vector.map 
+    constant_bitvec n v _ := ret ( Vector.map
     (fun b => match b with
       | true => Vcc
       | false => Gnd
-    end) (nat_to_bitvec_sized (N.to_nat n) (N.to_nat v)));
+    end) (nat_to_bitvec_sized n (N.to_nat v)));
 
     not_gate i :=
       o <- newWire ;;
@@ -256,13 +250,13 @@ Section NetlistEval.
       ret o;
 
     unsigned_add m n s '(x, y) :=
-      sum <- newWiresVec (N.to_nat s) ;;
+      sum <- newWiresVec s ;;
       addInstance (UnsignedAdd (to_list x) (to_list y) (to_list sum)) ;;
       ret sum;
 
     lut n f is :=
       let seq := seq 0 (2^n) in
-      let f' := NaryFunctions.nuncurry bool bool n f in 
+      let f' := NaryFunctions.nuncurry bool bool n f in
       let powers := map
         (fun p => let bv := Ndigits.N2Bv_sized n (N.of_nat p) in
                   2^(N.of_nat p) * N.b2n (f' (bv_to_nprod n bv))
@@ -270,36 +264,39 @@ Section NetlistEval.
         seq in
       let config := fold_left N.add powers 0%N in
       let component_name := ("LUT" ++ string_of_uint (Nat.to_uint n))%string in
-      let inputs := map 
-        (fun '(i, n) => ("I" ++ string_of_uint (Nat.to_uint i), n))%string 
+      let inputs := map
+        (fun '(i, n) => ("I" ++ string_of_uint (Nat.to_uint i), n))%string
         (combine seq (to_list is)) in
       o <- newWire ;;
-      let component := 
+      let component :=
         Component
         component_name [("INIT", HexLiteral (2^n) config)]
         (("O", o) :: inputs) in
       addInstance component;;
       ret o;
-    
+
   index_vec n o '(array, index) :=
       (* TODO: this can build the wire structure, but doesn't do the actual indexing yet *)
       build o;
 
   to_vec o i := ret [i]%vector;
-  concat n o '(array, e) := 
+  append n o '(array, e) :=
     let result := (e :: array)%vector in
     ret _;
+  concat n m o '(x, y) := ret (Vector.append x y);
+  split n m o H x :=
+    ret (@Vector.splitat (denote o) m (n - m) _);
   }.
   Proof.
-    - assert (forall o, Vector.t o (N.to_nat (n + 1)) = Vector.t o (S (N.to_nat n))).
-      f_equal.
-      rewrite (N.add_comm n 1).
-      rewrite (N.one_succ).
-      rewrite (N.add_succ_l).
-      rewrite Nnat.N2Nat.inj_succ.
-      auto.
+    - assert (n + 1 = S n).
+      omega.
       rewrite <- H in result.
       exact result.
+
+    - assert ( m + (n - m) = n).
+      omega.
+      rewrite H0.
+      apply x.
   Defined.
 
   Close Scope string_scope.

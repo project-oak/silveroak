@@ -1,4 +1,4 @@
-From Coq Require Import Setoid Classes.Morphisms Lists.List NaryFunctions String NArith.
+From Coq Require Import Setoid Classes.Morphisms Lists.List NaryFunctions String Arith NArith.
 Import ListNotations.
 
 From Cava Require Import Types.
@@ -171,6 +171,12 @@ Class CircuitLaws `(A: Arrow, ! ArrowCopy A, ! ArrowSwap A, ! ArrowDrop A) := {
   second_f {x y w} (f: x~>y) (g:x~>y): f =M= g -> @second A x y w f =M= second g;
 }.
 
+Inductive Kind : Set :=
+| Tuple: Kind -> Kind -> Kind
+| Unit: Kind
+| Bit: Kind
+| Vector: nat -> Kind -> Kind.
+
 (* Cava *)
 Class Cava  := {
   cava_arrow :> Arrow;
@@ -183,10 +189,10 @@ Class Cava  := {
   (* cava_circuit_laws :> CircuitLaws cava_arrow _ _ _; *)
 
   bit : object;
-  vector (n: N) o: object;
+  vector (n: nat) o: object;
 
   bitvec n := vector n bit;
-  bitvec_index n := bitvec (N.log2_up n);
+  bitvec_index n := bitvec (Nat.log2_up n);
 
   constant : bool -> (unit ~> bit);
   constant_bitvec n: N -> (unit ~> bitvec n);
@@ -207,13 +213,13 @@ Class Cava  := {
   
   unsigned_add a b c: bitvec a ** bitvec b ~> bitvec c;
 
-  lut n: (bool^^n --> bool) -> bitvec (N.of_nat n) ~> bit;
+  lut n: (bool^^n --> bool) -> bitvec n ~> bit;
 
   index_vec n o: vector n o ** bitvec_index n ~> o;
-
   to_vec o: o ~> vector 1 o;
-
-  concat n o: vector n o ** o ~> vector (n+1) o;
+  append n o: vector n o ** o ~> vector (n+1) o;
+  concat n m o: vector n o ** vector m o ~> vector (n+m) o;
+  split n m o: m < n -> vector n o ~> (vector m o ** vector (n - m) o);
 }.
 
 Coercion cava_arrow: Cava >-> Arrow.

@@ -15,7 +15,7 @@ Require Import Cava.Types.
 
 (* TODO: switch to coq ext lib's option monad*)
 Notation "f >==> g" :=
-  (fun x => 
+  (fun x =>
   match f x with
   | Some y => g y
   | _ => None
@@ -28,8 +28,8 @@ Ltac simple_destruct :=
   end.
 
 Ltac solve_optional :=
-  cbv [fst snd]; 
-  match goal with 
+  cbv [fst snd];
+  match goal with
   | [h1: ?x -> option _, h2: ?x |- _] => destruct (h1 h2); clear h1
   | [|- context[match ?X ?Y with | _ => _  end]] => destruct (X Y)
   end.
@@ -115,10 +115,10 @@ end%vector.
 #[refine] Instance Combinational : Cava := {
   cava_arrow := CoqArr;
   bit := bool;
-  vector n o := Vector.t o (N.to_nat n);
+  vector n o := Vector.t o n;
 
   constant b _ := Some b;
-  constant_bitvec n v _ := Some (nat_to_bitvec_sized (N.to_nat n) (N.to_nat v));
+  constant_bitvec n v _ := Some (nat_to_bitvec_sized n (N.to_nat v));
 
   not_gate b := Some (negb b);
   and_gate '(x, y) := Some (andb x y);
@@ -137,43 +137,46 @@ end%vector.
     let a := Ndigits.Bv2N av in
     let b := Ndigits.Bv2N bv in
     let c := (a + b)%N in
-    Some (Ndigits.N2Bv_sized (N.to_nat s) c);
+    Some (Ndigits.N2Bv_sized s c);
 
-  lut n f i := 
-    let f' := NaryFunctions.nuncurry bool bool n f in 
+  lut n f i :=
+    let f' := NaryFunctions.nuncurry bool bool n f in
     Some (_);
 
   index_vec n o '(array, index) := _;
-  to_vec o x := Some [x]%vector; 
-  concat n o '(v, x) := 
+  to_vec o x := Some [x]%vector;
+  append n o '(v, x) :=
     let z := (x :: v)%vector in
     Some _;
+
+  concat n m o '(x, y) := Some (Vector.append x y);
+  split n m o H x :=
+    let y := @Vector.splitat o m (n - m) _ in
+    Some y;
 }.
 Proof.
   - apply f'.
     simpl in i.
     apply vec_to_nprod.
-    rewrite Nnat.Nat2N.id in i.
     apply i.
 
   - cbv [cat CoqArr CoqCat morphism]; intros.
     apply bitvec_to_nat in index.
-    destruct (lt_dec index (N.to_nat n)).
+    destruct (lt_dec index n).
     apply (Some (nth_order array l)).
 
     (* bad index *)
     exact (None).
 
-  - assert (Vector.t o (N.to_nat (n + 1)) = Vector.t o (S (N.to_nat n))).
-    f_equal.
-    rewrite (N.add_comm n 1).
-    rewrite (N.one_succ).
-    rewrite (N.add_succ_l).
-    rewrite Nnat.N2Nat.inj_succ.
+  - assert (n + 1 = S n).
+    omega.
+    rewrite H.
     auto.
 
-    rewrite H.
-    exact z.
+  - assert ( m + (n - m) = n).
+    omega.
+    rewrite H0.
+    auto.
 Defined.
 
 Definition wf_combinational {x y} (circuit: x ~> y) := forall i, {o | circuit i = Some o}.
@@ -201,15 +204,16 @@ Ltac combinational_obvious :=
 
 (* Computing the terms is useful for e.g. extracting simple values *)
 Ltac evaluate_to_terms circuit wf inputs :=
-  let reduced := eval compute in 
+  let reduced := eval compute in
   (List.map (evaluate (toCava _ circuit) wf) inputs) in
   exact reduced.
 
 Example not_true: not_gate true = Some false.
 Proof. reflexivity. Qed.
-  
+
 Example not_true_with_wf: evaluate not_gate not_gate_wf true = false.
 Proof. compute. reflexivity. Qed.
 
 Example not_false: not_gate false = Some true.
+
 Proof. reflexivity. Qed.
