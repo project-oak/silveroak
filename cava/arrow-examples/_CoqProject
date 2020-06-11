@@ -5,9 +5,3 @@ Mux2_1.v
 ArrowAdder.v
 SyntaxExamples.v
 ArrowExtraction.v
-
-
-Concatenative/Examples.v
-Concatenative/Nand.v
-Concatenative/Xor.v
-Concatenative/FeedbackNand.v

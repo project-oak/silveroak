@@ -25,15 +25,7 @@ Extraction Language Haskell.
 Require Import SyntaxExamples.
 Require Import Mux2_1.
 Require Import ArrowAdder.
-Require Import Concatenative.Examples.
-Require Import Concatenative.Nand.
-Require Import Concatenative.Xor.
-Require Import Concatenative.FeedbackNand.
 
-Extraction Library Examples.
 Extraction Library SyntaxExamples.
-Extraction Library Nand.
-Extraction Library Xor.
-Extraction Library FeedbackNand.
 Extraction Library Mux2_1.
 Extraction Library ArrowAdder.

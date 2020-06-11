@@ -12,9 +12,8 @@ Import NilZero.
 Import ListNotations.
 
 From ExtLib Require Import Structures.Monads.
-From ExtLib Require Import Structures.MonadLaws.
-From ExtLib Require Import Structures.MonadFix.
-From ExtLib Require Export Data.Monads.IdentityMonad.
+From ExtLib Require Import Structures.Applicative.
+From ExtLib Require Import Structures.Traversable.
 From ExtLib Require Export Data.Monads.StateMonad.
 
 Import MonadNotation.
@@ -33,13 +32,83 @@ Require Import FunctionalExtensionality.
 (* Evaluation as a netlist                                                    *)
 (******************************************************************************)
 
+Inductive Kind : Set := 
+| Tuple: Kind -> Kind -> Kind
+| Unit: Kind
+| Bit: Kind
+| Vector: N -> Kind -> Kind.
+
+Fixpoint denote (ty: Kind): Type :=
+match ty with 
+| Tuple l r => prod (denote l) (denote r)
+| Unit => Datatypes.unit
+| Bit => Signal
+| Vector n t => Vector.t (denote t) (N.to_nat n)
+end.
+
+Section traversable.
+  Universe u v vF.
+  Context {F : Type@{v} -> Type@{vF}}.
+  Context {Applicative_F : Applicative F}.
+  Context {A : Type@{u}} {B : Type@{v}}.
+  Variable f : A -> F B.
+
+  Fixpoint mapT_vector@{} {n} (v : Vector.t A n ) : F (Vector.t B n).
+  Proof.
+    inversion v.
+    exact (@pure F _ _ []%vector).
+    refine ( 
+        let _1 := fun y ys => @Vector.cons B y _ ys in 
+        let _2 := @pure F _ _ _1 in 
+        let _3 := @ap F _ _ _ _2 (f h) in 
+        let xs' := mapT_vector _ X in
+        let _4 := @ap F _ _ _  _3 in 
+        _
+    ).
+    apply _4 in xs' .
+    exact xs'.
+  Defined.
+End traversable. 
+
+Definition fixup n (F : Type -> Type) (Ap: Applicative F) (A B : Type) (m: A -> F B) := @mapT_vector F Ap A B m n.
+
+Global Instance Traversable_vector@{} {n} : Traversable (fun t => Vector.t t n) :=
+{ mapT := fixup n }.
+
+Fixpoint build (ty: Kind) : state CavaState (denote ty) :=
+match ty with 
+| Tuple l r => 
+  l <- build l;;
+  r <- build r;;
+  ret (l, r)
+| Unit => ret tt
+| Bit => newWire
+| Vector n t => mapT (fun _ => build t) (const tt (N.to_nat n))
+end.
+
+Fixpoint mapMSignals2 (f: Signal -> Signal -> Instance) (ty: Kind)
+  (x: denote ty) (y: denote ty): state CavaState Datatypes.unit :=
+match ty, x, y with 
+| Tuple l r, (x1,x2), (y1, y2) =>
+  mapMSignals2 f l x1 y1 ;;
+  mapMSignals2 f r x2 y2 ;; 
+  ret tt
+| Unit, _, _ => ret tt
+| Bit, x1, y1 =>
+  addInstance (f x1 y1) ;;
+  ret tt
+| Vector n t, v1, v2 => 
+  mapT (fun '(x, y)  => mapMSignals2 f t x y) (map2 pair v1 v2) ;;
+  ret tt
+end.
+
 Section NetlistEval.
   Local Open Scope monad_scope.
   Local Open Scope string_scope.
 
   #[refine] Instance NetlistCat : Category := {
-    object := bundle;
-    morphism X Y := signalTy Signal X -> state CavaState (signalTy Signal Y);
+    object := Kind;
+    morphism X Y := denote X -> state CavaState (denote Y);
     id X x := ret x;
     compose X Y Z f g := g >=> f;
 
@@ -61,10 +130,10 @@ Section NetlistEval.
     auto. auto. auto.
   Defined.
 
-  #[refine] Instance NetlistArr : Arrow := {
+  Program Instance NetlistArr : Arrow := {
     cat := NetlistCat;
-    unit := Empty;
-    product := Tuple2;
+    unit := Unit;
+    product := Tuple;
 
     first X Y Z f '(z,y) :=
       x <- f z ;;
@@ -74,14 +143,8 @@ Section NetlistEval.
       x <- f z ;;
       ret (y,x);
 
-    exl X Y '(x,y) := ret x;
-    exr X Y '(x,y) := ret y;
-
-
-    drop _ _ := ret Datatypes.tt;
-    copy _ x := ret (x,x);
-    swap _ _ '(x,y) := ret (y,x);
-
+    cancelr X '(x,_) := ret x;
+    cancell X '(_,x) := ret x;
 
     uncancell _ x := ret (tt, x);
     uncancelr _ x := ret (x, tt);
@@ -89,41 +152,10 @@ Section NetlistEval.
     assoc _ _ _ '((x,y),z) := ret (x,(y,z));
     unassoc _ _ _ '(x,(y,z)) := ret ((x,y),z);
   }.
-  Proof.
-    intros.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-    simpl; auto.
-  Defined.
 
-  Fixpoint object_as_list n:
-    forall x, signalTy Signal (replicate_object n (One x)) -> list (signalTy Signal (One x)).
-  Proof.
-    intros.
-
-    induction n.
-    simpl in *.
-    exact ([]).
-
-    simpl in *.
-    refine (fst X :: _).
-    apply (IHn (snd X)).
-  Defined.
+  Instance NetlistDrop : ArrowDrop NetlistArr := { drop _ x := ret Datatypes.tt }.
+  Instance NetlistCopy : ArrowCopy NetlistArr := { copy _ x := ret (x,x) }.
+  Instance NetlistSwap : ArrowSwap NetlistArr := { swap _ _ '(x,y) := ret (y,x) }.
 
   Fixpoint bv_to_nprod n (v: Bvector n): NaryFunctions.nprod bool n.
   Proof.
@@ -133,80 +165,99 @@ Section NetlistEval.
     refine (pair _ _ ).
     exact (Vector.hd v).
     exact (bv_to_nprod n (Vector.tl v)).
-  Defined.
+  Defined. 
+
+  Instance NetlistLoop : ArrowLoop NetlistArr := {
+    loopr _ _ Z f x :=
+      z <- build Z ;;
+      '(y,z') <- f (x,z) ;;
+      mapMSignals2 (fun x y => AssignBit x y) Z z z' ;;
+      ret y;
+
+    loopl _ _ Z f x :=
+      z <- build Z ;;
+      '(z',y) <- f (z,x) ;;
+      mapMSignals2 (fun x y => AssignBit x y) Z z z' ;;
+      ret y;
+  }.
+
+  Program Instance NetlistCircuitLaws : CircuitLaws NetlistArr _ _ _.
 
   #[refine] Instance NetlistCava : Cava := {
     cava_arrow := NetlistArr;
 
-    representable ty := match ty with
-    | Bit => One Bit
-    | BitVec xs => One (BitVec xs)
-    | ExternalType t => One (ExternalType t)
-    end;
+    bit := Bit;
+    vector (n: N) o := Vector n o;
 
     constant b _ := match b with
       | true => ret Vcc
       | false => ret Gnd
       end;
 
-    constant_vec n v _ := ret (mapBitVec (fun b => match b with
+    constant_bitvec n v _ := ret ( Vector.map 
+    (fun b => match b with
       | true => Vcc
       | false => Gnd
-    end) n n v);
+    end) (nat_to_bitvec_sized (N.to_nat n) (N.to_nat v)));
 
-    not_gate '(i,tt) :=
+    not_gate i :=
       o <- newWire ;;
       addInstance (Not i o) ;;
       ret o;
 
-    and_gate '(i0,(i1,tt)) :=
+    and_gate '(i0,i1) :=
       o <- newWire ;;
       addInstance (And i0 i1 o) ;;
       ret o;
 
-    nand_gate '(i0,(i1,tt)) :=
+    nand_gate '(i0,i1) :=
       o <- newWire ;;
       addInstance (Nand i0 i1 o) ;;
       ret o;
 
-    or_gate '(i0,(i1,tt)) :=
+    or_gate '(i0,i1) :=
       o <- newWire ;;
       addInstance (Or i0 i1 o) ;;
       ret o;
 
-    nor_gate '(i0,(i1,tt)) :=
+    nor_gate '(i0,i1) :=
       o <- newWire ;;
       addInstance (Nor i0 i1 o) ;;
       ret o;
 
-    xor_gate '(i0,(i1,tt)) :=
+    xor_gate '(i0,i1) :=
       o <- newWire ;;
       addInstance (Xor i0 i1 o) ;;
       ret o;
 
-    xnor_gate '(i0,(i1,tt)) :=
+    xnor_gate '(i0,i1) :=
       o <- newWire ;;
       addInstance (Xnor i0 i1 o) ;;
       ret o;
 
-    buf_gate '(i,tt) :=
+    buf_gate 'i :=
       o <- newWire ;;
       addInstance (Buf i o) ;;
       ret o;
 
-    xorcy '(i0, (i1, tt)) :=
+    delay_gate X x :=
+      y <- build X ;;
+      mapMSignals2 (fun x y => DelayBit x y) X x y ;;
+      ret y;
+
+    xorcy '(i0, i1) :=
       o <- newWire ;;
       addInstance (Component "XORCY" [] [("O", o); ("CI", i0); ("LI", i1)]) ;;
       ret o;
 
-    muxcy '(s,((ci, di), tt)) :=
+    muxcy '(s,(ci, di)) :=
       o <- newWire ;;
       addInstance ( Component "MUXCY" [] [("O", o); ("S", s); ("CI", ci); ("DI", di)]) ;;
       ret o;
 
-    unsigned_add m n s '(x,(y, tt)) :=
-      sum <- newWires s ;;
-      addInstance (UnsignedAdd x y sum) ;;
+    unsigned_add m n s '(x, y) :=
+      sum <- newWiresVec (N.to_nat s) ;;
+      addInstance (UnsignedAdd (to_list x) (to_list y) (to_list sum)) ;;
       ret sum;
 
     lut n f is :=
@@ -219,10 +270,9 @@ Section NetlistEval.
         seq in
       let config := fold_left N.add powers 0%N in
       let component_name := ("LUT" ++ string_of_uint (Nat.to_uint n))%string in
-      let is_as_list := object_as_list n _ is in
       let inputs := map 
         (fun '(i, n) => ("I" ++ string_of_uint (Nat.to_uint i), n))%string 
-        (combine seq is_as_list) in
+        (combine seq (to_list is)) in
       o <- newWire ;;
       let component := 
         Component
@@ -231,78 +281,27 @@ Section NetlistEval.
       addInstance component;;
       ret o;
     
-    index_array x xs '(array, (index, _)) := 
-      o <- newWiresBitVec xs;;
-      addInstance (IndexAlt x xs array index o) ;;
-      ret _; 
-      
-    to_vec n o := _;
+  index_vec n o '(array, index) :=
+      (* TODO: this can build the wire structure, but doesn't do the actual indexing yet *)
+      build o;
+
+  to_vec o i := ret [i]%vector;
+  concat n o '(array, e) := 
+    let result := (e :: array)%vector in
+    ret _;
   }.
   Proof.
-    - destruct xs; simpl in *; exact (o). 
-    - intros.
-      destruct o. 
-      * cbv [cat NetlistArr NetlistCat morphism].
-        intros.
-        apply object_as_list in X.
-        exact (ret X).
-      * cbv [cat NetlistArr NetlistCat morphism].
-        intros.
-        apply object_as_list in X.
-        simpl in *.
-        destruct l; exact (ret X).
-      * cbv [cat NetlistArr NetlistCat morphism].
-        intros.
-        apply object_as_list in X.
-        exact (ret X).
+    - assert (forall o, Vector.t o (N.to_nat (n + 1)) = Vector.t o (S (N.to_nat n))).
+      f_equal.
+      rewrite (N.add_comm n 1).
+      rewrite (N.one_succ).
+      rewrite (N.add_succ_l).
+      rewrite Nnat.N2Nat.inj_succ.
+      auto.
+      rewrite <- H in result.
+      exact result.
   Defined.
 
   Close Scope string_scope.
-
-  Fixpoint map2WithPortShape {A B C} (f: A -> B -> C) (port: Kind)
-    (x: denoteKindWith port A) (y: denoteKindWith port B): denoteKindWith port C :=
-    match port in Kind, x, y return denoteKindWith port C with
-    | Bit, x, y => f x y
-    | BitVec sz, xs, ys => mapBitVec (fun '(x,y) => f x y) sz sz (zipBitVecs sz sz xs ys)
-    | ExternalType t, x, y => f x y
-    end .
-
-  Fixpoint linkShapes {A B}
-     (link: A -> B -> Instance) (s: shape)
-     (p1: signalTy A s)
-     (p2: signalTy B s)
-     : Netlist :=
-    match s in shape, p1, p2 with
-    | Empty, _, _ => []
-    | One a, _, _ => flattenPort a (map2WithPortShape link a p1 p2)
-    | Tuple2 s1 s2, (p11,p12), (p21,p22) => (linkShapes link s1 p11 p21) ++
-        (linkShapes link s2 p12 p22)
-    end.
-
-  Instance NetlistLoop : ArrowLoop NetlistArr := {
-    loopr _ _ Z f x :=
-      z <- newWiresFromShape Z ;;
-      '(y,z') <- f (x,z) ;;
-      let links := linkShapes AssignBit Z z z' in
-      addSequentialInstances links;;
-      ret y;
-
-    loopl _ _ Z f x :=
-      z <- newWiresFromShape Z ;;
-      '(z',y) <- f (z,x) ;;
-      let links := linkShapes AssignBit Z z z' in
-      addSequentialInstances links;;
-      ret y;
-  }.
-
-  Instance NetlistCavaDelay : CavaDelay := {
-    delay_cava := NetlistCava;
-
-    delay_gate X '(x,tt) :=
-      y <- newWiresFromShape X ;;
-      let links := linkShapes DelayBit X x y in
-      addSequentialInstances links;;
-      ret y;
-  }.
 
 End NetlistEval.

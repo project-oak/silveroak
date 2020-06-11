@@ -1,4 +1,4 @@
-From Coq Require Import Setoid Classes.Morphisms Lists.List NaryFunctions String.
+From Coq Require Import Setoid Classes.Morphisms Lists.List NaryFunctions String NArith.
 Import ListNotations.
 
 From Cava Require Import Types.
@@ -66,59 +66,42 @@ Add Parametric Morphism (C: Category) (x y z: object) : (@compose C x y z)
   as parametric_morphism_comp.
 Proof. auto. Defined.
 
-(* adam megacz style arrow;
-  There is no method to provide lifting a Coq function in general,
-  although a particular arrow implementation may allow it.
-*)
+(* adam megacz style generalized arrow,
+  laws coming from monoidal categories *)
 Class Arrow := {
   cat :> Category;
   unit : object;
   product : object -> object -> object
     where "x ** y" := (product x y);
 
-  copy {x} : x ~> x**x;
-  drop {x} : x ~> unit;
-  swap {x y} : x**y ~> y**x;
+  first  {x y z} (f: x ~> y) : x ** z ~> y ** z;
+  second {x y z} (f: x ~> y) : z ** x ~> z ** y;
 
-  first  {x y z} (f : x ~> y) : x ** z ~> y ** z;
-  second {x y z} (f : x ~> y) : z ** x ~> z ** y;
+  bimap {x y z w} (f: x ~> y) (g: z ~> w) := first f >>> second g;
 
-  exl  {x y} : x ** y ~> x;
-  exr  {x y} : x ** y ~> y;
-
-  uncancell {x} : x ~> unit**x;
-  uncancelr {x} : x ~> x**unit;
   assoc   {x y z} : ((x**y)**z) ~> (x**(y**z));
   unassoc {x y z} : (x**(y**z)) ~> ((x**y)**z);
 
-  (* laws, currently somewhat ad-hoc*)
+  cancelr  {x} : x ** unit ~> x;
+  cancell  {x} : unit ** x ~> x;
 
-  exl_unit_uncancelr x: @exl x unit >>> uncancelr =M= id;
-  exr_unit_uncancell x: @exr unit x >>> uncancell =M= id;
-  uncancelr_exl x:      uncancelr >>> @exl x unit =M= id;
-  uncancell_exr x:      uncancell >>> @exr unit x =M= id;
+  uncancell {x} : x ~> unit**x;
+  uncancelr {x} : x ~> x**unit;
 
-  drop_annhilates {x y} (f: x~>y): f >>> drop =M= drop;
+  (* (un)cance{l,r} and (un)assoc are natural isomorphisms *)
+  first_cancelr   {x y} (f: x ~> y): first f >>> cancelr =M= cancelr >>> f;
+  uncancelr_first {x y} (f: x ~> y): uncancelr >>> first f =M= f >>> uncancelr;
 
-  exl_unit_is_drop {x}: @exl unit x =M= drop;
-  exr_unit_is_drop {x}: @exr x unit =M= drop;
+  second_cancell   {x y} (f: x ~> y): second f >>> cancell =M= cancell >>> f;
+  uncancell_second {x y} (f: x ~> y): uncancell >>> second f =M= f >>> uncancell;
 
-  first_first   {x y z w} (f: x~>y) (g:y~>z): @first x y w f >>> first g  =M= first (f >>> g);
-  second_second {x y z w} (f: x~>y) (g:y~>z): @second x y w f >>> second g  =M= second (f >>> g);
+  assoc_iso {x y z w s t} (f: x ~> y) (g: z ~> w) (h: s ~> t): 
+    assoc >>> bimap _ _ _ _ f (bimap _ _ _ _ g h) =M= bimap _ _ _ _ (bimap _ _ _ _ f g) h >>> assoc;
 
-  swap_swap {x y}: @swap x y >>> swap =M= id;
+  unassoc_iso {x y z w s t} (f: x ~> y) (g: z ~> w) (h: s ~> t): 
+    unassoc >>> bimap _ _ _ _ (bimap _ _ _ _ f g) h =M= bimap _ _ _ _ f (bimap _ _ _ _ g h) >>> unassoc;
 
-  first_id  {x w}: @first x x w id  =M= id;
-  second_id {x w}: @second x x w id  =M= id;
-
-  first_f  {x y w} (f: x~>y) (g:x~>y): f =M= g -> @first x y w f =M= first g;
-  second_f {x y w} (f: x~>y) (g:x~>y): f =M= g -> @second x y w f =M= second g;
-
-  assoc_unassoc {x y z}: @assoc x y z >>> unassoc =M= id;
-  unassoc_assoc {x y z}: @unassoc x y z >>> assoc =M= id;
-
-  first_exl  {x y w} f: @first x y w f >>> exl =M= exl >>> f;
-  second_exr {x y w} f: @second x y w f >>> exr =M= exr >>> f;
+  (* triangle and pentagon identities? *)
 }.
 
 Coercion cat: Arrow >-> Category.
@@ -132,80 +115,116 @@ Notation "x ** y" := (product x y)
 
 Open Scope arrow_scope.
 
-(* Loop as a different type class to allow implementating a subset of features *)
+Class ArrowCopy (A: Arrow) := {
+  copy {x} : x ~> x**x;
+}.
+
+Class ArrowDrop (A: Arrow) := {
+  drop {x} : x ~> unit;
+}.
+
+Class ArrowSwap (A: Arrow) := {
+  swap {x y} : x**y ~> y**x;
+}.
+
 Class ArrowLoop (A: Arrow) := {
   loopr {x y z} : (x**z ~> y**z) -> (x ~> y);
   loopl {x y z} : (z**x ~> z**y) -> (x ~> y);
 }.
 
-(*
-replicate_object returns an object in the argument format expect by Kappa Calculus.
-That is, the object is repeated n times, as a right nested tuple, with the rightmost
-tuple element set to the unit type.
-*)
-Fixpoint replicate_object `{Arrow} (n: nat) (o: object) :=
-match n with 
-| O => unit
-| S n' => o ** replicate_object n' o 
-end.
+(* TODO: uses these?
+Class ArrowConstant (A: Arrow) (r: @object A) t := {
+  constant : t -> unit ~> r;
+}.
 
-Reserved Notation "'bit'" (at level 1, no associativity).
-Reserved Notation "'bitvec' n" (at level 1, no associativity).
-Reserved Notation "'bitvec_index' n" (at level 1, no associativity).
-Reserved Notation "'extern'" (at level 1, no associativity).
+Class ArrowSum (Arrow (**) u, Arrow (<+>) v) := {
+  merge : (x<+>x) ~> x;
+  never : v ~> x;
+}.
+
+Class ArrowProd (Arrow (**) u, Arrow (<*>) v) := {
+  prod_copy : g x (x<*>x)
+  prod_drop : g x v
+}. 
+*)
+
+Class CircuitLaws `(A: Arrow, ! ArrowCopy A, ! ArrowSwap A, ! ArrowDrop A) := {
+  cancelr_unit_uncancelr {x}: @cancelr A x >>> uncancelr =M= id;
+  cancell_unit_uncancell {x}: @cancell A x >>> uncancell =M= id;
+  uncancelr_cancelr {x}:      @uncancelr A x >>> cancelr =M= id;
+  uncancell_cancell {x}:      @uncancell A x >>> cancell =M= id;
+
+  drop_annhilates {x y} (f: x~>y): f >>> drop =M= drop;
+
+  cancelr_unit_is_drop : @cancelr A unit =M= drop;
+  cancell_unit_is_drop : @cancell A unit =M= drop;
+
+  first_first   {x y z w} (f: x~>y) (g:y~>z): @first A x y w f >>> first g  =M= first (f >>> g);
+  second_second {x y z w} (f: x~>y) (g:y~>z): @second A x y w f >>> second g  =M= second (f >>> g);
+
+  swap_swap {x y}: @swap A _ x y >>> swap =M= id;
+
+  first_id  {x w}: @first A x x w id  =M= id;
+  second_id {x w}: @second A x x w id  =M= id;
+
+  first_f  {x y w} (f: x~>y) (g:x~>y): f =M= g -> @first A x y w f =M= first g;
+  second_f {x y w} (f: x~>y) (g:x~>y): f =M= g -> @second A x y w f =M= second g;
+}.
 
 (* Cava *)
 Class Cava  := {
   cava_arrow :> Arrow;
+  cava_arrow_drop :> ArrowDrop _;
+  cava_arrow_swap :> ArrowSwap _;
+  cava_arrow_copy :> ArrowCopy _;
+  cava_arrow_loop :> ArrowLoop _;
+  (* Todo: blocked by combinational evaluator, which should be able to provide CircuitLaws
+  but currently doesn't *)
+  (* cava_circuit_laws :> CircuitLaws cava_arrow _ _ _; *)
 
-  representable : Kind -> object
-    where "'bit'" := (representable Bit)
-    and   "'bitvec' n" := (representable (BitVec n))
-    and   "'bitvec_index' n" := (bitvec [PeanoNat.Nat.log2_up n])
-    and   "'extern'" := (representable (ExternalType ""));
+  bit : object;
+  vector (n: N) o: object;
+
+  bitvec n := vector n bit;
+  bitvec_index n := bitvec (N.log2_up n);
 
   constant : bool -> (unit ~> bit);
-  constant_vec (dimensions: list nat) : denoteBitVecWith bool dimensions -> (unit ~> bitvec dimensions);
+  constant_bitvec n: N -> (unit ~> bitvec n);
 
-  not_gate:  bit        ** unit ~> bit;
-  and_gate:  bit ** bit ** unit ~> bit;
-  nand_gate: bit ** bit ** unit ~> bit;
-  or_gate:   bit ** bit ** unit ~> bit;
-  nor_gate:  bit ** bit ** unit ~> bit;
-  xor_gate:  bit ** bit ** unit ~> bit;
-  xnor_gate: bit ** bit ** unit ~> bit;
-  buf_gate:  bit        ** unit ~> bit;
+  not_gate:  bit        ~> bit;
+  and_gate:  bit ** bit ~> bit;
+  nand_gate: bit ** bit ~> bit;
+  or_gate:   bit ** bit ~> bit;
+  nor_gate:  bit ** bit ~> bit;
+  xor_gate:  bit ** bit ~> bit;
+  xnor_gate: bit ** bit ~> bit;
+  buf_gate:  bit        ~> bit;
 
-  xorcy:     bit ** bit ** unit ~> bit;
-  muxcy:     bit ** (bit ** bit) ** unit ~> bit;
+  delay_gate {o} : o ~> o;
+
+  xorcy:     bit ** bit ~> bit;
+  muxcy:     bit ** (bit ** bit) ~> bit;
   
-  unsigned_add a b c: bitvec [a] ** bitvec [b] ** unit ~> bitvec [c];
+  unsigned_add a b c: bitvec a ** bitvec b ~> bitvec c;
 
-  lut n: (bool^^n --> bool) -> (replicate_object n bit) ~> bit;
+  lut n: (bool^^n --> bool) -> bitvec (N.of_nat n) ~> bit;
 
-  degenerate_bitvec xs := match xs with | [] => bit | _ => bitvec xs end;
+  index_vec n o: vector n o ** bitvec_index n ~> o;
 
-  index_array n xs
-    : bitvec (n::xs) ** bitvec_index n ** unit 
-    ~> degenerate_bitvec xs;
+  to_vec o: o ~> vector 1 o;
 
-  to_vec n o:
-    match o with
-    | Bit => replicate_object (S n) bit ~> bitvec [S n]
-    | BitVec xs => replicate_object (S n) (bitvec xs) ~> bitvec (S n::xs)
-    | ExternalType _ => replicate_object (S n) bit ~> bitvec [S n] (* dummy definition *)
-    end;
+  concat n o: vector n o ** o ~> vector (n+1) o;
 }.
 
 Coercion cava_arrow: Cava >-> Arrow.
+Coercion cava_arrow_swap: Cava >-> ArrowSwap.
+Coercion cava_arrow_drop: Cava >-> ArrowDrop.
+Coercion cava_arrow_copy: Cava >-> ArrowCopy.
+Coercion cava_arrow_loop: Cava >-> ArrowLoop.
 
 Declare Scope cava_scope.
 Bind Scope cava_scope with Cava.
 Delimit Scope cava_scope with cava.
-
-Notation "'bit'" := (representable Bit)(at level 1, no associativity) : cava_scope.
-Notation "'bitvec' n" := (representable (BitVec n)) (at level 1, no associativity) : cava_scope.
-Notation "'bitvec_index' n" := (bitvec [PeanoNat.Nat.log2_up n])%cava(at level 1, no associativity) : cava_scope.
 
 Open Scope cava_scope.
 
@@ -214,45 +233,3 @@ Definition cava_obj (cava: Cava): Type := @object (@cava_cat cava).
 
 Definition high {_: Cava}: unit ~> bit := constant true.
 Definition low {_: Cava}: unit ~> bit := constant false.
-
-(* Delay as a different type class to allow implementing subset of primitives *)
-Class CavaDelay := {
-  delay_cava :> Cava;
-  delay_gate {x} : x ** unit ~> x;
-}.
-
-Coercion delay_cava: CavaDelay >-> Cava.
-
-Definition cava_delay_arr (_: CavaDelay): Arrow := _.
-
-(* experimental equivalence rewriting functions *)
-Lemma simpl_firsts
-  {A: Arrow} {x y z w o}
-  (f:x~>y) (g:y~>z) (h:z**w~>o): @first _ x y w f >>> (first g >>> h) =M= first (f >>> g) >>> h.
-Proof.
-  intros.
-  setoid_rewrite <- associativity.
-  setoid_rewrite first_first.
-  reflexivity.
-Qed.
-
-Lemma simpl_seconds
-  {A: Arrow} {x y z w o}
-  (f:x~>y) (g:y~>z) (h:w**z~>o): @second _ x y w f >>> (second g >>> h) =M= second (f >>> g) >>> h.
-Proof.
-  intros.
-  setoid_rewrite <- associativity.
-  setoid_rewrite second_second.
-  reflexivity.
-Qed.
-
-Lemma trans_apply
-  {A: Arrow} {x y z w}
-  (f:x~>y) (g:y~>z) (h:x~>z) (i: z~>w):
-  f >>> g =M= h -> f >>> (g >>> i) =M= h >>> i.
-Proof.
-  intros.
-  setoid_rewrite <- associativity.
-  setoid_rewrite H.
-  reflexivity.
-Qed.

@@ -17,29 +17,36 @@
 Require Import Cava.Arrow.Arrow.
 Require Import Cava.Arrow.Kappa.Syntax.
 Require Import Cava.Arrow.Instances.Combinational.
-Require Import Cava.Arrow.Instances.Netlist.
-
-Require Import Cava.Types.
-Require Import Cava.Netlist.
 
 Require Import Coq.Strings.String.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
-Definition mux2_1'
-: Kappa (bit ** (bit ** bit) ** unit) bit :=
-<[ \ sel ab =>
-   let a = fst' ab in
-   let b = snd' ab in
-   let sel_a = !and_gate sel a in
-   let inv_sel = !not_gate sel in
-   let sel_b = !and_gate inv_sel b in
-   let sel_out = !or_gate sel_a sel_b in
-   sel_out
-]>.
-Definition mux2_1 Cava := toCava Cava (Closure_conversion mux2_1').
-
 Local Open Scope string_scope.
+
+Section definition.
+  Import KappaNotation.
+
+  Definition mux2_1
+  : Kappa_sugared << Bit, << Bit, Bit >>, Unit >> Bit :=
+  <[ \ sel ab =>
+    let '(a,b) = ab in
+    let sel_a = and sel a in
+    let inv_sel = not sel in
+    let sel_b = and inv_sel b in
+    let sel_out = or sel_a sel_b in
+    sel_out
+  ]>.
+End definition.
+
+Definition mux2_1_structure := to_constructive (Desugar mux2_1) (ltac:(auto_kappa_wf)).
+
+Lemma mux2_1_is_combinational: wf_combinational (toCava _ mux2_1_structure).
+Proof. combinational_obvious. Qed.
+
+Require Import Cava.Arrow.Instances.Netlist.
+Require Import Cava.Types.
+Require Import Cava.Netlist.
 
 Definition mux2_1_Interface :=
    combinationalInterface "mux2_1"
@@ -48,10 +55,10 @@ Definition mux2_1_Interface :=
      [].
 
 Definition mux2_1_netlist :=
-  makeNetlist mux2_1_Interface
-    (removeRightmostUnit (mux2_1 NetlistCava)).
+  makeNetlist mux2_1_Interface 
+    (toCava NetlistCava mux2_1_structure).
 
-Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
+Definition mux2_1_tb_inputs : list (bool * (bool * bool)) := 
  [(false, (false, true));
   (false, (true, false));
   (false, (false, false));
@@ -59,9 +66,9 @@ Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
   (true, (true, false));
   (true, (true, true))].
 
-Definition mux2_1_tb_expected_outputs : list bool :=
-  map (fun '(s, (a,b)) => (@mux2_1 Combinational) (s, ((a, b), tt)))
-      mux2_1_tb_inputs.
+(* Using `evaluate_to_terms` for a nicer extracted value *)
+Definition mux2_1_tb_expected_outputs : list bool.
+Proof. evaluate_to_terms mux2_1_structure mux2_1_is_combinational mux2_1_tb_inputs. Defined.
 
 Definition mux2_1_tb :=
   testBench "mux2_1_tb" mux2_1_Interface

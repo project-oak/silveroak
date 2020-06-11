@@ -1,8 +1,10 @@
-From Coq Require Import Bool List ZArith Setoid Classes.Morphisms FunctionalExtensionality NaryFunctions.
+From Coq Require Import Bool List ZArith Setoid Classes.Morphisms FunctionalExtensionality NaryFunctions VectorDef.
 Import ListNotations.
+Import VectorNotations.
 
 Require Import Cava.BitArithmetic.
 Require Import Cava.Arrow.Arrow.
+Require Import Cava.Arrow.Instances.Constructive.
 
 Require Import Cava.Netlist.
 Require Import Cava.Types.
@@ -11,170 +13,203 @@ Require Import Cava.Types.
 (* Evaluation as function evaluation, no delay elements or loops              *)
 (******************************************************************************)
 
-Section CoqEval.
-  #[refine] Instance CoqCat : Category := {
-    object := Type;
-    morphism X Y := X -> Y;
-    compose _ _ _ f g x := f (g x);
-    id X x := x;
+(* TODO: switch to coq ext lib's option monad*)
+Notation "f >==> g" :=
+  (fun x => 
+  match f x with
+  | Some y => g y
+  | _ => None
+  end)(at level 1).
 
-    morphism_equivalence x y f g := f = g;
-  }.
-  Proof.
-    intros.
-    unfold Proper.
-    refine (fun f => _). intros.
-    refine (fun g => _). intros.
-    rewrite H.
-    rewrite H0.
-    auto.
-
-    auto.
-    auto.
-
-    auto.
-  Defined.
-
-  Ltac simple_destruct :=
+Ltac simple_destruct :=
   match goal with
   | [H: ?X * ?Y |- _] => destruct H
   | [H: Datatypes.unit |- _] => destruct H
   end.
-  Ltac simple_solve :=
-    intros; simpl; extensionality xxx; repeat simple_destruct; auto.
 
-  #[refine] Instance CoqArr : Arrow := {
-    cat := CoqCat;
-    unit := Datatypes.unit : Type ;
-    product := prod;
+Ltac solve_optional :=
+  cbv [fst snd]; 
+  match goal with 
+  | [h1: ?x -> option _, h2: ?x |- _] => destruct (h1 h2); clear h1
+  | [|- context[match ?X ?Y with | _ => _  end]] => destruct (X Y)
+  end.
 
-    first _ _ _ f '(x, y) := (f x, y);
-    second _ _ _ f '(x, y) := (x, f y);
-    exl X Y := fst;
-    exr X Y := snd;
+Ltac simple_solve :=
+  intros; simpl; try let x := fresh in extensionality x; repeat simple_destruct; repeat solve_optional.
 
-    drop _ x := tt;
-    copy _ x := pair x x;
+Hint Extern 3 => simple_solve : core.
+Hint Extern 2 => solve_optional : core.
 
-    swap _ _ x := (snd x, fst x);
+Lemma match_some: forall A B (x: option B) y (z: option A), (match x with | Some _ => z | None => None end = Some y) -> (z = Some y).
+Proof.
+  intros.
+  destruct x.
+  auto.
+  inversion H.
+Qed.
 
-    uncancell _ x := (tt, x);
-    uncancelr _ x := (x, tt);
+#[refine] Instance CoqCat : Category := {
+  object := Type;
+  morphism X Y := X -> option Y;
+  compose _ _ _ f g := g >==> f;
+  id X x := Some x;
 
-    assoc _ _ _ '((x,y),z) := (x,(y,z));
-    unassoc _ _ _ '(x,(y,z)) := ((x,y),z);
-  }.
-  Proof.
-    simple_solve.
-    simple_solve.
-    simple_solve.
-    simple_solve.
-    simple_solve.
-    simple_solve.
-    simple_solve.
-    simple_solve.
-    simple_solve.
-    simple_solve.
-    simple_solve.
-    simple_solve.
+  morphism_equivalence x y f g := f = g;
+}.
+Proof.
+  intros.
+  unfold Proper.
+  refine (fun f => _). intros.
+  refine (fun g => _). intros.
+  rewrite H0.
+  rewrite H.
+  auto.
+  auto.
+  auto.
+  auto.
+Defined.
 
-    simple_solve; f_equal; inversion H; auto.
-    simple_solve; f_equal; inversion H; auto.
+#[refine] Instance CoqArr : Arrow := {
+  cat := CoqCat;
+  unit := Datatypes.unit : Type ;
+  product := prod;
 
-    simple_solve.
-    simple_solve.
+  first _ _ _ f i := match f (fst i) with | Some x => Some (x, snd i) | _ => None end;
+  second _ _ _ f i := match f (snd i) with | Some y => Some (fst i, y) | _ => None end;
 
-    simple_solve.
-    simple_solve.
-  Defined.
+  cancelr X x := Some (fst x);
+  cancell X x := Some (snd x);
 
-  Lemma replicate_object_is_nprod: forall n T, (replicate_object n T) = (nprod T n).
-  Proof.
-    intros.
-    induction n; simpl; auto.
+  uncancell _ x := Some (tt, x);
+  uncancelr _ x := Some (x, tt);
+
+  assoc _ _ _ i := Some (fst (fst i), (snd (fst i), snd i));
+  unassoc _ _ _ i := Some ((fst i, fst (snd i)), snd (snd i));
+}.
+Proof.
+  auto.
+  auto.
+  auto.
+  auto.
+  auto.
+  auto.
+Defined.
+
+Instance CombinationalDrop : ArrowDrop CoqArr := { drop _ x := Some tt }.
+Instance CombinationalCopy : ArrowCopy CoqArr := { copy _ x := Some (pair x x) }.
+Instance CombinationalSwap : ArrowSwap CoqArr := { swap _ _ x := Some (snd x, fst x) }.
+Instance CombinationalLoop : ArrowLoop CoqArr := { loopl _ _ _ _ _ := None; loopr _ _ _ _ _ := None }.
+
+(* Some of the equalities defined in CircuitLaws can't be solved with optional return,
+they either need to be changed/removed or this evaluator needs a different representation
+such as {H:Prop| H -> X -> Y } *)
+(* #[refine] Instance CombinationalCircuitLaws : CircuitLaws CoqArr _ _ _ := {}. *)
+(* Program Instance CombinationalCircuitLaws : CircuitLaws CoqArr _ _ _. *)
+
+Fixpoint vec_to_nprod (A: Type) n (v: Vector.t A n): A^n :=
+match v with
+| [] => tt
+| x::xs => (x, vec_to_nprod A _ xs)
+end%vector.
+
+#[refine] Instance Combinational : Cava := {
+  cava_arrow := CoqArr;
+  bit := bool;
+  vector n o := Vector.t o (N.to_nat n);
+
+  constant b _ := Some b;
+  constant_bitvec n v _ := Some (nat_to_bitvec_sized (N.to_nat n) (N.to_nat v));
+
+  not_gate b := Some (negb b);
+  and_gate '(x, y) := Some (andb x y);
+  nand_gate '(x, y) := Some (negb (andb x y));
+  or_gate '(x, y) := Some (orb x y);
+  nor_gate '(x, y) := Some (negb (orb x y));
+  xor_gate '(x, y) := Some (xorb x y);
+  xnor_gate '(x, y) := Some (negb (xorb x y));
+  buf_gate x := Some x;
+  delay_gate _ _ := None;
+
+  xorcy '(x, y) := Some (xorb x y);
+  muxcy i := Some (if fst i then fst (snd i) else snd (snd i));
+
+  unsigned_add m n s '(av, bv) :=
+    let a := Ndigits.Bv2N av in
+    let b := Ndigits.Bv2N bv in
+    let c := (a + b)%N in
+    Some (Ndigits.N2Bv_sized (N.to_nat s) c);
+
+  lut n f i := 
+    let f' := NaryFunctions.nuncurry bool bool n f in 
+    Some (_);
+
+  index_vec n o '(array, index) := _;
+  to_vec o x := Some [x]%vector; 
+  concat n o '(v, x) := 
+    let z := (x :: v)%vector in
+    Some _;
+}.
+Proof.
+  - apply f'.
+    simpl in i.
+    apply vec_to_nprod.
+    rewrite Nnat.Nat2N.id in i.
+    apply i.
+
+  - cbv [cat CoqArr CoqCat morphism]; intros.
+    apply bitvec_to_nat in index.
+    destruct (lt_dec index (N.to_nat n)).
+    apply (Some (nth_order array l)).
+
+    (* bad index *)
+    exact (None).
+
+  - assert (Vector.t o (N.to_nat (n + 1)) = Vector.t o (S (N.to_nat n))).
     f_equal.
-    apply IHn.
-  Qed.
+    rewrite (N.add_comm n 1).
+    rewrite (N.one_succ).
+    rewrite (N.add_succ_l).
+    rewrite Nnat.N2Nat.inj_succ.
+    auto.
 
-  Lemma inc_nprod: forall n T, prod T (nprod T n) = (nprod T (S n)).
-  Proof.
-    intros.
-    induction n; simpl; auto.
-  Qed.
+    rewrite H.
+    exact z.
+Defined.
 
-  #[refine] Instance Combinational : Cava := {
-    representable t := match t with
-      | Bit => bool
-      | BitVec xs => denoteBitVecWith bool xs
-      | ExternalType t => unit
-      end;
+Definition wf_combinational {x y} (circuit: x ~> y) := forall i, {o | circuit i = Some o}.
+Definition evaluate {x y} (circuit: x ~> y) (wf: wf_combinational circuit) (i: x): y.
+Proof.
+  cbv [morphism CoqCat wf_combinational] in *.
+  specialize (wf i).
+  inversion wf.
+  apply x0.
+Defined.
 
-    constant b _ := b;
-    constant_vec n v _ := v;
+Lemma not_gate_wf: wf_combinational not_gate.
+Proof.
+  cbv [morphism CoqCat wf_combinational not_gate Combinational bit].
+  intros.
+  refine (exist _ _ _).
+  f_equal.
+Defined.
 
-    not_gate '(b, tt) := negb b;
-    and_gate '(x, (y, tt)) := andb x y;
-    nand_gate '(x, (y, tt)) := negb (andb x y);
-    or_gate '(x, (y, tt)) := orb x y;
-    nor_gate '(x, (y, tt)) := negb (orb x y);
-    xor_gate '(x, (y, tt)) := xorb x y;
-    xnor_gate '(x, (y, tt)) := negb (xorb x y);
-    buf_gate '(x, tt) := x;
+Ltac combinational_obvious :=
+  cbv [wf_combinational];
+  compute;
+  eexists;
+  f_equal.
 
-    xorcy '(x, (y, tt)) := xorb x y;
-    muxcy '(i,((t,e),tt)) := if i then t else e;
+(* Computing the terms is useful for e.g. extracting simple values *)
+Ltac evaluate_to_terms circuit wf inputs :=
+  let reduced := eval compute in 
+  (List.map (evaluate (toCava _ circuit) wf) inputs) in
+  exact reduced.
 
-    unsigned_add m n s '(av, (bv, tt)) :=
-      let a := list_bits_to_nat av in
-      let b := list_bits_to_nat bv in
-      let c := (a + b)%N in
-      nat_to_list_bits_sized s c;
+Example not_true: not_gate true = Some false.
+Proof. reflexivity. Qed.
+  
+Example not_true_with_wf: evaluate not_gate not_gate_wf true = false.
+Proof. compute. reflexivity. Qed.
 
-    lut n f i := 
-      let f' := NaryFunctions.nuncurry bool bool n f in 
-      _;
-
-    index_array n xs '(array, (index, _)) := _; (* nth (N.to_nat (list_bits_to_nat index)) array 0; *)
-    to_vec := _; (* nprod_to_list *)
-  }.
-  Proof.
-    - apply f'.
-      simpl in i.
-      rewrite replicate_object_is_nprod in i.
-      apply i.
-
-    - intros.
-      simpl; apply (list_bits_to_nat) in index; apply (N.to_nat) in index.
-      destruct xs; simpl in *.
-      * exact (nth index array false).
-      * refine (nth index array _).
-
-        (* bad index, return default value *)
-        refine (match xs with
-        | [] => _
-        | _ :: _ => _
-        end).
-        exact ([  ]).
-        exact ([  ]).
-
-    - intros.
-      destruct o
-      ; rewrite replicate_object_is_nprod.
-      * cbv [cat CoqArr CoqCat morphism].
-        apply nprod_to_list.
-      * cbv [cat CoqArr CoqCat morphism].
-        destruct l.
-        unfold denoteBitVecWith.
-        apply nprod_to_list.
-        cbv [cat CoqArr CoqCat morphism denoteBitVecWith].
-        apply nprod_to_list.
-      * cbv [cat CoqArr CoqCat morphism].
-        apply nprod_to_list.
-  Defined.
-
-  Example not_true: not_gate (true, tt) = false.
-  Proof. reflexivity. Qed.
-  Example not_false: not_gate (false, tt) = true.
-  Proof. reflexivity. Qed.
-
-End CoqEval.
+Example not_false: not_gate false = Some true.
+Proof. reflexivity. Qed.

@@ -68,6 +68,7 @@ library
                      StateMonad
                      Syntax
                      Types
+                     Traversable
                      UnsignedAdders
                      VectorDef
                      Vector

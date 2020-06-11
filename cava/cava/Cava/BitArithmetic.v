@@ -184,13 +184,13 @@ Definition nat_to_bitvec (v : nat) : Bvector (N.size_nat (N.of_nat v)) :=
 Definition nat_to_bitvec_sized (n : nat) (v : nat) : Bvector n :=
   N2Bv_sized n (N.of_nat v).
 
-Example bv3_0_exrev : nat_to_bitvec_sized 3 0 = bv3_0.
+Example bv3_0_cancellev : nat_to_bitvec_sized 3 0 = bv3_0.
 Proof. reflexivity. Qed.
 
-Example bv3_1_exrev : nat_to_bitvec_sized 3 1 = bv3_1.
+Example bv3_1_cancellev : nat_to_bitvec_sized 3 1 = bv3_1.
 Proof. reflexivity. Qed.
 
-Example bv3_2_exrev : nat_to_bitvec_sized 3 2 = bv3_2.
+Example bv3_2_cancellev : nat_to_bitvec_sized 3 2 = bv3_2.
 Proof. reflexivity. Qed.    
 
 (* Vector version of list seq *)

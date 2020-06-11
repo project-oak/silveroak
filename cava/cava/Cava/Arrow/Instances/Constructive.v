@@ -1,201 +1,173 @@
-From Coq Require Import Bool List NaryFunctions.
+From Coq Require Import Bool List NaryFunctions NArith Omega.
 Import ListNotations.
 
 Require Import Cava.BitArithmetic.
 Require Import Cava.Arrow.Arrow.
-Require Import Cava.Netlist.
-Require Import Cava.Types.
 
 Set Implicit Arguments.
 
-Fixpoint Nobj (n: nat) (o: Kind) :=
-match n with
-| O => Empty
-| S n' => Tuple2 (One o) (Nobj n' o)
-end.
+Inductive Kind := 
+  | Tuple: Kind -> Kind -> Kind
+  | Unit: Kind
+  | Bit: Kind
+  | Vector: N -> Kind -> Kind.
 
-Inductive structure: bundle -> bundle -> Type :=
-| Id:          forall x, structure x x
-| Compose:     forall x y z, structure y z -> structure x y -> structure x z
-| Copy:        forall x, structure x (Tuple2 x x)
-| Drop:        forall x, structure x Empty
-| Swap:        forall x y, structure (Tuple2 x y) (Tuple2 y x)
+Declare Scope constructive_scope.
+Bind Scope constructive_scope with Kind.
+Delimit Scope constructive_scope with Kind.
 
-| First:       forall x y z, structure x y -> structure (Tuple2 x z) (Tuple2 y z)
-| Second:      forall x y z, structure x y -> structure (Tuple2 z x) (Tuple2 z y)
+Notation "<< x >>" := (x) : constructive_scope.
+Notation "<< x , .. , y , z >>" := (Tuple x .. (Tuple y z )  .. ) : constructive_scope.
 
-| Exl:         forall x y, structure (Tuple2 x y) x
-| Exr:         forall x y, structure (Tuple2 x y) y
+Inductive structure: Kind -> Kind -> Type :=
+  | Id:          forall {x}, structure x x
+  | Compose:     forall {x y z}, structure y z -> structure x y -> structure x z
+  | Copy:        forall {x}, structure x <<x, x>>
+  | Drop:        forall {x}, structure x Unit
+  | Swap:        forall {x y}, structure <<x, y>> <<y, x>>
 
-| Uncancell:   forall x, structure x (Tuple2 Empty x)
-| Uncancelr:   forall x, structure x (Tuple2 x Empty)
+  | First:       forall {x y z}, structure x y -> structure <<x, z>> <<y, z>>
+  | Second:      forall {x y z}, structure x y -> structure <<z, x>> <<z, y>>
 
-| Assoc:       forall x y z, structure (Tuple2 (Tuple2 x y) z) (Tuple2 x (Tuple2 y z))
-| Unassoc:     forall x y z, structure (Tuple2 x (Tuple2 y z)) (Tuple2 (Tuple2 x y) z)
+  | Cancelr:     forall {x}, structure <<x, Unit>> x
+  | Cancell:     forall {x}, structure <<Unit, x>> x
 
-| Constant:    bool -> structure Empty (One Bit)
-| ConstantVec: forall n,  denoteBitVecWith bool n -> structure Empty ((One (BitVec n)))
+  | Uncancell:   forall {x}, structure x <<Unit, x>>
+  | Uncancelr:   forall {x}, structure x <<x, Unit>>
 
-| NotGate:     structure << One Bit>> (One Bit)
-| AndGate:     structure << One Bit, One Bit >> (One Bit)
-| NandGate:    structure << One Bit, One Bit >> (One Bit)
-| OrGate:      structure << One Bit, One Bit >> (One Bit)
-| NorGate:     structure << One Bit, One Bit >> (One Bit)
-| XorGate:     structure << One Bit, One Bit >> (One Bit)
-| XnorGate:    structure << One Bit, One Bit >> (One Bit)
-| BufGate:     structure << One Bit >> (One Bit)
+  | Assoc:       forall {x y z}, structure << <<x, y>>, z >> << x, <<y, z>> >>
+  | Unassoc:     forall {x y z}, structure << x, <<y, z>> >> << <<x, y>>, z >>
 
-| Xorcy:       structure << One Bit, One Bit >> (One Bit)
-| Muxcy:       structure << One Bit, Tuple2 (One Bit) (One Bit) >> (One Bit)
+  | LoopL:      forall {x y z}, structure <<z, x>> <<z, y>> -> structure x y
+  | LoopR:      forall {x y z}, structure <<x, z>> <<y, z>> -> structure x y
 
-| UnsignedAdd: forall a b s, structure << One (BitVec [a]),  One (BitVec [b]) >> (One (BitVec [s]))
+  | Constant:    bool -> structure Unit Bit
+  | ConstantBitVec: forall {n}, N -> structure Unit (Vector n Bit)
 
-| Lut: forall n (f: bool^^n --> bool), structure (Nobj n Bit) (One Bit)
+  | NotGate:     structure Bit Bit
+  | AndGate:     structure << Bit, Bit >> Bit
+  | NandGate:    structure << Bit, Bit >> Bit
+  | OrGate:      structure << Bit, Bit >> Bit
+  | NorGate:     structure << Bit, Bit >> Bit
+  | XorGate:     structure << Bit, Bit >> Bit
+  | XnorGate:    structure << Bit, Bit >> Bit
+  | BufGate:     structure Bit Bit
+  | DelayGate:   forall {o}, structure o o
 
-| IndexArray: forall x xs,
-  structure (
-    Tuple2 (One (BitVec (x::xs)))
-      (Tuple2 (One (BitVec [PeanoNat.Nat.log2_up x]))
-      Empty)
-  )
-  (match xs with | [] => One Bit | _ => One (BitVec xs) end)
-| BitToVec: forall x, structure (Nobj (S x) Bit) (One (BitVec [S x]))
-| BitVecToVec: forall x xs, structure (Nobj (S x) (BitVec xs)) (One (BitVec (S x::xs)))
-.
+  | Xorcy:       structure << Bit, Bit >> Bit
+  | Muxcy:       structure << Bit, << Bit, Bit >> >> Bit
 
-Arguments Id {x}.
-Arguments Compose [x y z].
+  | UnsignedAdd: forall a b s, structure << Vector a Bit, Vector b Bit >> (Vector s Bit)
 
-Inductive st_equiv : forall (i o: bundle), structure i o -> structure i o -> Prop :=
-| st_refl:    forall x y f, @st_equiv x y f f
-| st_sym:     forall x y f g, st_equiv g f -> @st_equiv x y f g
-| st_trans:   forall x y f g h, st_equiv f g -> st_equiv g h -> @st_equiv x y f h
-| st_compose: forall x y z f g h i, @st_equiv x y f g -> @st_equiv y z h i -> st_equiv (Compose h f) (Compose i g)
-| st_id_left: forall x y f, @st_equiv x y (Compose f Id) f
-| st_id_right:forall x y f, @st_equiv x y (Compose Id f) f
-| st_assoc:   forall x y z w
-                    (f: structure x y) (g: structure y z) (h: structure z w),
-                    @st_equiv x w (Compose h (Compose g f)) (Compose (Compose h g) f)
+  | Lut: forall n (f: bool^^n --> bool), structure (Vector (N.of_nat n) Bit) Bit
 
-| st_exl_unit_uncancelr: forall x, st_equiv (Compose (Uncancelr x) (Exl x Empty)) Id
-| st_exr_unit_uncancell: forall x, st_equiv (Compose (Uncancell x) (Exr Empty x)) Id
+  | IndexVec: forall {n o}, structure << Vector n o, Vector (N.log2_up n) Bit >> o
+  | ToVec: forall {o}, structure o (Vector 1 o)
+  | Concat: forall {n o}, structure << Vector n o, o >> (Vector (n+1) o).
 
-| st_uncancelr_exl: forall x, st_equiv (Compose (Exl x Empty) (Uncancelr x)) Id
-| st_uncancell_exr: forall x, st_equiv (Compose (Exr Empty x) (Uncancell x)) Id
+Inductive st_equiv : forall (i o: Kind), structure i o -> structure i o -> Prop :=
+  | st_refl:    forall x y f, @st_equiv x y f f
+  | st_sym:     forall x y f g, st_equiv g f -> @st_equiv x y f g
+  | st_trans:   forall x y f g h, st_equiv f g -> st_equiv g h -> @st_equiv x y f h
+  | st_compose: forall x y z f g h i, @st_equiv x y f g -> @st_equiv y z h i -> st_equiv (Compose h f) (Compose i g)
+  | st_id_left: forall x y f, @st_equiv x y (Compose f Id) f 
+  | st_id_right:forall x y f, @st_equiv x y (Compose Id f) f
+  | st_assoc:   forall x y z w
+                      (f: structure x y) (g: structure y z) (h: structure z w),
+                      @st_equiv x w (Compose h (Compose g f)) (Compose (Compose h g) f)
 
-| st_drop_annhilates: forall x y (f: structure x y), st_equiv (Compose (Drop y) f) (Drop x)
+  (* ad-hoc equivalences *)
+  | st_first_cancelr: forall x y f,
+    st_equiv (Compose Cancelr (@First x y Unit f)) (Compose f Cancelr)
+  | st_second_cancell: forall x y f,
+    st_equiv (Compose Cancell (@Second x y Unit f)) (Compose f Cancell)
 
-| st_exl_unit_is_drop: forall x, st_equiv (Exl Empty x) (Drop _)
-| st_exr_unit_is_drop: forall x, st_equiv (Exr x Empty) (Drop _)
+  | st_uncancelr_first: 
+    forall x y f, st_equiv (Compose (@First x y Unit f) Uncancelr) (Compose Uncancelr f)
+  | st_uncancell_second: forall x y f, st_equiv (Compose (@Second x y Unit f) Uncancell) (Compose Uncancell f)
 
-| st_first_first:   forall x y z w (f: structure x y) (g: structure y z), st_equiv (Compose (First w g) (First _ f)) (First _ (Compose g f))
-| st_second_second: forall x y z w (f: structure x y) (g: structure y z), st_equiv (Compose (Second w g) (Second _ f)) (Second _ (Compose g f))
+  | st_assoc_iso: forall x y z w s t (f: structure x y) (g: structure z w) (h: structure s t),
+    st_equiv
+    (Compose (Compose (Second (Compose (Second h) (First g))) (First f)) Assoc)
+    (Compose Assoc (Compose (Second h) (First (Compose (Second g) (First f))) ))
 
-| st_swap_swap: forall x y, st_equiv (Compose (Swap _ _) (Swap x y)) Id
+  | st_unassoc_iso: forall x y z w s t (f: structure x y) (g: structure z w) (h: structure s t),
+    st_equiv
+    (Compose (Compose (Second h) (First (Compose (Second g) (First f)))) Unassoc)
+    (Compose Unassoc (Compose (Second (Compose (Second h) (First g))) (First f) ))
 
-| st_first_id: forall x w, st_equiv (@First x x w Id) Id
-| st_second_id: forall x w, st_equiv (@Second x x w Id) Id
+  (* ad-hoc equivalences *)
+  | st_cancelr_unit_uncancelr: forall x, st_equiv (Compose (@Uncancelr x) (@Cancelr x)) Id
+  | st_cancell_unit_uncancell: forall x, st_equiv (Compose (@Uncancell x) (@Cancell x)) Id
 
-| st_first_f: forall x y w (f: structure x y) (g: structure x y), st_equiv f g -> st_equiv (First w f) (First w g)
-| st_second_f: forall x y w (f: structure x y) (g: structure x y), st_equiv f g -> st_equiv (Second w f) (Second w g)
+  | st_uncancelr_cancelr: forall x, st_equiv (Compose (@Cancelr x) (@Uncancelr x)) Id
+  | st_uncancell_cancell: forall x, st_equiv (Compose (@Cancell x) (@Uncancell x)) Id
 
-| st_assoc_unassoc: forall x y z, st_equiv (Compose (Unassoc x y z) (Assoc x y z)) Id
-| st_unassoc_assoc: forall x y z, st_equiv (Compose (Assoc x y z) (Unassoc x y z)) Id
+  | st_drop_annhilates: forall x y (f: structure x y), st_equiv (Compose Drop f) Drop
 
-| st_first_exl: forall x y w f, st_equiv (Compose (Exl _ _) (@First x y w f)) (Compose f (Exl _ _))
-| st_second_exr: forall x y w f, st_equiv (Compose (Exr _ _) (@Second x y w f)) (Compose f (Exr _ _))
-.
+  | st_cancelr_unit_is_drop: st_equiv (@Cancelr Unit) Drop
+  | st_cancell_unit_is_drop: st_equiv (@Cancell Unit) Drop 
 
-Fixpoint structural_simplification {i o} (s: structure i o): structure i o.
-Proof.
-  destruct s eqn:E; try constructor.
-  destruct s0_1 eqn:E1;
-  try exact (Drop _);
-  try exact s0_2;
-  apply s.
-  apply s0.
-  apply s0.
-  apply b.
-  apply d.
-  apply f.
-Defined.
+  | st_first_first: forall x y z w (f: structure x y) (g: structure y z),
+    st_equiv (Compose (@First _ _ w g) (First f)) (First (Compose g f))
+  | st_second_second: forall x y z w (f: structure x y) (g: structure y z),
+    st_equiv (Compose (@Second _ _ w g) (Second f)) (Second (Compose g f))
+
+  | st_swap_swap: forall x y, st_equiv (Compose Swap (@Swap x y)) Id
+
+  | st_first_id: forall x w, st_equiv (@First x x w Id) Id
+  | st_second_id: forall x w, st_equiv (@Second x x w Id) Id
+
+  | st_first_f: forall x y w (f: structure x y) (g: structure x y),
+    st_equiv f g -> st_equiv (@First _ _ w f) (First g)
+  | st_second_f: forall x y w (f: structure x y) (g: structure x y), 
+    st_equiv f g -> st_equiv (@Second _ _ w f) (Second g)
+
+  | st_assoc_unassoc: forall x y z, st_equiv (Compose (@Unassoc x y z) (@Assoc x y z)) Id
+  | st_unassoc_assoc: forall x y z, st_equiv (Compose (@Assoc x y z) (@Unassoc x y z)) Id.
+
+(*TODO: *)
+Fixpoint structural_simplification {i o} (s: structure i o): structure i o := s.
 
 Hint Immediate st_refl : core.
 Hint Immediate st_sym : core.
 Hint Immediate st_trans : core.
 
-Definition denoteKind `{Cava} (k: Kind)
+Fixpoint denoteKind `{Cava} (k: Kind)
   : object :=
 match k with
-| Bit       => bit
-| BitVec n  => bitvec n
-| ExternalType t => unit
+| Tuple l r => denoteKind l ** denoteKind r 
+| Unit => unit
+| Bit => bit
+| Vector n o => vector n (denoteKind o)
 end.
-
-Fixpoint denoteShape `{Cava} (t: shape)
-  : object :=
-match t with
-| Empty => unit
-| One l => denoteKind l
-| Tuple2 x y => denoteShape x ** denoteShape y
-end.
-
-Lemma denoteNobj_is_replicate_object1 `{Cava}: forall n, denoteShape (Nobj n Bit) = replicate_object n bit.
-Proof.
-  intros.
-  induction n.
-  auto.
-  simpl.
-  f_equal.
-  apply IHn.
-Qed.
-
-Lemma denoteNobj_is_replicate_object2 `{Cava}: forall n xs, denoteShape (Nobj n (BitVec xs)) = replicate_object n (bitvec xs).
-Proof.
-  intros.
-  induction n.
-  auto.
-  simpl.
-  f_equal.
-  apply IHn.
-Qed.
-
-Lemma denote_xs_is_degenerate_bitvec `{Cava}: forall xs, 
-denoteShape match xs with
-                | [] => One Bit
-                | _ :: _ => One (BitVec xs)
-                end
-
-  = degenerate_bitvec xs.
-Proof.
-  intros.
-  cbv [degenerate_bitvec].
-  induction xs; simpl; auto.
-Qed.
 
 Fixpoint toCava {i o} (Cava:Cava) (expr: structure i o)
-  : (denoteShape i) ~> (denoteShape o).
+  : (denoteKind i) ~> (denoteKind o).
   refine (match expr with
   | Id           => id
   | Compose g f  => compose (toCava _ _ Cava g) (toCava _ _ Cava f)
-  | Copy x       => copy
-  | Drop x       => drop
-  | Swap x y     => swap
+  | Copy         => copy
+  | Drop         => drop
+  | Swap         => swap
 
-  | First _ f    => first (toCava _ _ Cava f)
-  | Second _ f   => second (toCava _ _ Cava f)
+  | First f    => first (toCava _ _ Cava f)
+  | Second f   => second (toCava _ _ Cava f)
 
-  | Exl _ _      => exl
-  | Exr _ _      => exr
+  | Cancelr    => cancelr
+  | Cancell    => cancell
 
-  | Uncancell _  => uncancell
-  | Uncancelr _  => uncancelr
+  | Uncancell  => uncancell
+  | Uncancelr  => uncancelr
 
-  | Assoc _ _ _   => assoc
-  | Unassoc _ _ _ => unassoc
+  | Assoc   => assoc
+  | Unassoc => unassoc
+
+  | LoopL c => loopl (toCava _ _ Cava c)
+  | LoopR c => loopr (toCava _ _ Cava c)
 
   | Constant b        => constant b
-  | @ConstantVec n v  => constant_vec n v
+  | @ConstantBitVec n v => constant_bitvec n v
 
   | NotGate   => not_gate
   | AndGate   => and_gate
@@ -205,6 +177,7 @@ Fixpoint toCava {i o} (Cava:Cava) (expr: structure i o)
   | XorGate   => xor_gate
   | XnorGate  => xnor_gate
   | BufGate   => buf_gate
+  | DelayGate => delay_gate
 
   | Xorcy     => xorcy
   | Muxcy     => muxcy
@@ -212,27 +185,22 @@ Fixpoint toCava {i o} (Cava:Cava) (expr: structure i o)
   | UnsignedAdd a b s => unsigned_add a b s
 
   | Lut n f => _
-  | IndexArray x xs => _ (* index_array x xs *)
-  | BitToVec n => _ (* to_vec n Bit  *)
-  | BitVecToVec n xs => _ (* to_vec n (BitVec xs) *)
+  | IndexVec => index_vec _ (denoteKind _)
+  | ToVec => to_vec (denoteKind _)
+  | Concat => concat _ (denoteKind _)
   end).
-  rewrite denoteNobj_is_replicate_object1.
-  simpl denoteShape.
-  exact (lut n f).
-
-  rewrite denote_xs_is_degenerate_bitvec.
-  simpl denoteShape.
-  refine(index_array x xs).
-
-  rewrite denoteNobj_is_replicate_object1.
-  exact (to_vec n Bit).
-
-  rewrite denoteNobj_is_replicate_object2.
-  exact (to_vec n (BitVec xs)).
+  - apply lut.
+    apply f.
 Defined.
 
+Lemma toCavaIterative: forall i o x (Cava: Cava) (e1: structure i x) (e2: structure x o),
+  toCava Cava (Compose e2 e1) = toCava Cava e1 >>> toCava Cava e2.
+Proof.
+  auto.
+Qed.
+
 #[refine] Instance ConstructiveCat : Category := {
-  object := bundle;
+  object := Kind;
   morphism X Y := structure X Y;
   compose X Y Z f g := Compose f g;
   id X := Id;
@@ -259,35 +227,49 @@ Defined.
 
 Instance ConstructiveArr : Arrow := {
   cat := ConstructiveCat;
-  unit := Empty;
-  product := Tuple2;
+  unit := Unit;
+  product := Tuple;
 
-  first _ _ _ f := First _ f;
-  second _ _ _ f := Second _ f;
-  exl X Y := Exl X Y;
-  exr X Y := Exr X Y;
+  first _ _ _ f := First f;
+  second _ _ _ f := Second f;
+  cancelr X := @Cancelr X;
+  cancell X := @Cancell X;
 
-  drop X := Drop X;
-  copy X := Copy X;
+  uncancell X := @Uncancell X;
+  uncancelr X := @Uncancelr X;
 
-  swap X Y := Swap X Y;
+  assoc X Y Z := @Assoc X Y Z;
+  unassoc X Y Z := @Unassoc X Y Z;
 
-  uncancell X := Uncancell X;
-  uncancelr X := Uncancelr X;
+  first_cancelr := st_first_cancelr;
+  second_cancell := st_second_cancell;
 
-  assoc X Y Z := Assoc X Y Z;
-  unassoc X Y Z := Unassoc X Y Z;
+  uncancelr_first := st_uncancelr_first;
+  uncancell_second := st_uncancell_second;
 
-  exl_unit_uncancelr := st_exl_unit_uncancelr;
-  exr_unit_uncancell := st_exr_unit_uncancell;
+  assoc_iso := st_assoc_iso;
+  unassoc_iso := st_unassoc_iso;
+}.
 
-  uncancelr_exl := st_uncancelr_exl;
-  uncancell_exr := st_uncancell_exr;
+Instance ConstructiveDrop : ArrowDrop ConstructiveArr := { drop := @Drop }.
+Instance ConstructiveSwap : ArrowSwap ConstructiveArr := { swap := @Swap }.
+Instance ConstructiveCopy : ArrowCopy ConstructiveArr := { copy := @Copy }.
+Instance ConstructiveLoop : ArrowLoop ConstructiveArr := { 
+  loopl _ _ _ c := LoopL c; 
+  loopr _ _ _ c := LoopR c; 
+}.
+
+Instance ConstructiveCircuitLaws : CircuitLaws ConstructiveArr _ _ _ := {
+  cancelr_unit_uncancelr := st_cancelr_unit_uncancelr;
+  cancell_unit_uncancell := st_cancell_unit_uncancell;
+
+  uncancelr_cancelr := st_uncancelr_cancelr;
+  uncancell_cancell := st_uncancell_cancell;
 
   drop_annhilates := st_drop_annhilates;
 
-  exl_unit_is_drop := st_exl_unit_is_drop;
-  exr_unit_is_drop := st_exr_unit_is_drop;
+  cancelr_unit_is_drop := st_cancelr_unit_is_drop;
+  cancell_unit_is_drop := st_cancell_unit_is_drop;
 
   first_first := st_first_first;
   second_second := st_second_second;
@@ -299,39 +281,14 @@ Instance ConstructiveArr : Arrow := {
 
   first_f := st_first_f;
   second_f := st_second_f;
-
-  assoc_unassoc := st_assoc_unassoc;
-  unassoc_assoc := st_unassoc_assoc;
-
-  first_exl := st_first_exl;
-  second_exr := st_second_exr;
 }.
 
-Lemma Nobj_bit_is_replicate_object_leaf_bit: forall n, Nobj n Bit = @replicate_object ConstructiveArr n (One Bit).
-Proof.
-  intros.
-  induction n; simpl; auto.
-  rewrite IHn.
-  reflexivity.
-Qed.
-
-Lemma Nobj_bit_is_replicate_object_leaf_bitvec: forall n xs, Nobj n (BitVec xs) = @replicate_object ConstructiveArr n (One (BitVec xs)).
-Proof.
-  intros.
-  induction n; simpl; auto.
-  rewrite IHn.
-  reflexivity.
-Qed.
-
-#[refine] Instance ConstructiveCava : Cava := {
-  representable ty := match ty with
-  | Bit => One Bit
-  | BitVec xs => One (BitVec xs)
-  | ExternalType t => One (ExternalType t)
-  end;
+Instance ConstructiveCava : Cava := {
+  bit := Bit;
+  vector n o:= Vector n o;
 
   constant b := Constant b;
-  constant_vec n v := ConstantVec n v;
+  constant_bitvec n v := @ConstantBitVec n v;
 
   not_gate := NotGate;
   and_gate := AndGate;
@@ -341,27 +298,95 @@ Qed.
   xor_gate := XorGate;
   xnor_gate := XnorGate;
   buf_gate := BufGate;
+  delay_gate := @DelayGate;
 
   xorcy := Xorcy;
   muxcy := Muxcy;
 
   unsigned_add m n s := UnsignedAdd m n s;
 
-  index_array n xs := IndexArray n xs;
+  lut n f := Lut n f;
+  index_vec n o := @IndexVec n o;
+  to_vec o := @ToVec o;
+  concat n o := @Concat n o;
 }.
+
+Fixpoint insert_rightmost_unit (ty: Kind): Kind :=
+match ty with
+| Tuple l r => Tuple l (insert_rightmost_unit r)
+| Unit => Unit
+| x => Tuple x Unit
+end.
+
+Fixpoint remove_rightmost_unit (ty: Kind): Kind :=
+match ty with
+| Tuple l Unit => l
+| Tuple l r => Tuple l (remove_rightmost_unit r)
+| x => x
+end.
+
+Fixpoint arg_length (ty: Kind) :=
+match ty with
+| Tuple _ r => 1 + (arg_length r)
+| _ => 0
+end.
+
+Definition arg_length_order (ty1 ty2: Kind) :=
+  arg_length ty1 < arg_length ty2.
+
+Lemma arg_length_order_wf': forall len ty, arg_length ty < len -> Acc arg_length_order ty.
+Proof.
+  unfold arg_length_order; induction len; intros.
+  - inversion H.
+  - refine (Acc_intro _ _); intros.
+    eapply (IHlen y).
+    omega.
+Defined.
+
+Lemma arg_length_order_wf: well_founded arg_length_order.
+Proof.
+  cbv [well_founded]; intros.
+  eapply arg_length_order_wf'.
+  eauto.
+Defined.
+
+Fixpoint insert_rightmost_tt (ty: Kind): structure ty (insert_rightmost_unit ty).
 Proof.
   intros.
-  simpl.
-  pose proof (Lut n X).
-  rewrite Nobj_bit_is_replicate_object_leaf_bit in X0.
-  apply X0.
+  destruct ty.
+  exact (Second (insert_rightmost_tt ty2)).
+  exact Id.
+  exact (@Uncancelr Bit).
+  exact (@Uncancelr (Vector n ty)).
+Defined.
 
-  intros.
-  destruct o.
-  rewrite <- Nobj_bit_is_replicate_object_leaf_bit.
-  exact (BitToVec n).
-  rewrite <- Nobj_bit_is_replicate_object_leaf_bitvec.
-  exact (BitVecToVec n l).
-  rewrite <- Nobj_bit_is_replicate_object_leaf_bit.
-  exact (BitToVec n).
+Fixpoint insert_rightmost_tt1 (ty: Kind): structure (remove_rightmost_unit ty) ty.
+Proof.
+  refine (Fix arg_length_order_wf (fun ty => structure (remove_rightmost_unit ty) ty )
+    (fun (ty:Kind)
+      (insert_rightmost_tt1': forall ty', arg_length_order ty' ty -> structure (remove_rightmost_unit ty') ty') =>
+        match ty as sty return ty=sty -> structure (remove_rightmost_unit sty) sty with
+        | Tuple _ Unit => fun _ => Uncancelr
+        | Tuple _ ty2 => fun H => (Second (insert_rightmost_tt1' ty2 _ ))
+        | _ => fun _ => Id
+        end eq_refl
+        ) ty);
+  rewrite H;
+  cbv [arg_length_order ty2];
+  auto.
+Defined.
+
+Fixpoint remove_rightmost_tt (ty: Kind): structure ty (remove_rightmost_unit ty).
+  refine (Fix arg_length_order_wf (fun ty => structure ty (remove_rightmost_unit ty))
+    (fun (ty:Kind)
+      (remove_rightmost_tt': forall ty', arg_length_order ty' ty -> structure ty' (remove_rightmost_unit ty')) =>
+        match ty as sty return ty=sty -> structure sty (remove_rightmost_unit sty) with
+        | Tuple _ Unit => fun _ => Cancelr
+        | Tuple _ ty2 => fun H => (Second (remove_rightmost_tt' ty2 _ ))
+        | _ => fun _ => Id
+        end eq_refl
+        ) ty);
+  rewrite H;
+  cbv [arg_length_order ty2];
+  auto.
 Defined.

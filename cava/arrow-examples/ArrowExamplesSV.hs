@@ -19,17 +19,10 @@ module Main where
 import Cava2SystemVerilog
 import Mux2_1
 import ArrowAdder
-import Examples
 import SyntaxExamples
 
 main :: IO ()
-main = do writeSystemVerilog nandArrow
-          writeTestBench arrow_nand2_tb
-          writeSystemVerilog xorArrow
-          writeTestBench arrow_xor_tb
-          writeSystemVerilog feedbackNandArrow
-          writeTestBench feedbackNandArrow_tb
-          writeSystemVerilog mux2_1_netlist
+main = do writeSystemVerilog mux2_1_netlist
           writeTestBench mux2_1_tb
           writeSystemVerilog fullAdder_netlist
           writeTestBench fullAdder_tb
