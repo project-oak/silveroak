@@ -29,6 +29,7 @@ CPPS = $(SV:.sv=_tb.cpp)
 VCDS = $(SV:.sv=_tb.vcd)
 
 all:		coq lut1_inv.sv $(VCDS)
+extraction:	$(SV)
 
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt -y $(XILINX)/data/verilog/src/xeclib
 VLINT = $(VERILATOR) --lint-only

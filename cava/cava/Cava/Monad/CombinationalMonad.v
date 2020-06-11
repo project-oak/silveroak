@@ -22,9 +22,16 @@ Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.IdentityMonad.
 Export MonadNotation.
 
+Require Vector.
+From Coq Require Import Bool.Bvector.
+From Coq Require Import Fin.
+From Coq Require Import NArith.Ndigits.
 From Coq Require Import ZArith.
 
+Require Import Nat Arith Lia.
+
 Require Import Cava.Cava.
+From Cava Require Import Kind.
 Require Import Cava.Monad.CavaClass.
 
 (******************************************************************************)
@@ -86,23 +93,96 @@ Definition muxcyBool (s : bool) (ci : bool) (di : bool) : ident bool :=
        | true => ci
        end).
 
-Definition indexBitArrayBool (i : list bool) (sel : list bool) :
-                             ident bool :=
-  let selNat := list_bits_to_nat sel in
-  ret (nth (N.to_nat selNat) i false).
+Fixpoint denoteKindBool (k: Kind) : Type :=
+  match k with
+  | Void => unit
+  | Bit => bool
+  | BitVec k sz => Vector.t (denoteKindBool k) sz
+  | ExternalType _ => string
+  end.
 
-Definition indexArrayBool (i : list (list bool)) (sel : list bool) :
-                             ident (list bool) :=
-  let selNat := list_bits_to_nat sel in
-  ret (nth (N.to_nat selNat) i []).
+Definition vecAsVector (k: Kind) (s: nat) : Type
+  := Vector.t (denoteKindBool k) s.  
 
-Definition unsignedAddBool (av : list bool) (bv : list bool) :
-                           ident (list bool) :=
-  let a := list_bits_to_nat av in
-  let b := list_bits_to_nat bv in
-  let sumSize := max (length av) (length bv) + 1 in
+Fixpoint defaultKindBool (k: Kind) : denoteKindBool k :=
+  match k return denoteKindBool k  with
+  | Void => tt
+  | Bit => false
+  | BitVec k2 sz => Vector.const (defaultKindBool k2) sz
+  | ExternalType _ => ""
+  end.
+
+Definition indexAtBool {k: Kind} {sz isz: nat}
+                       (i : Vector.t (denoteKindBool k) sz)
+                       (sel : Bvector isz) :
+                       denoteKindBool k :=
+  let selN := Bv2N sel in
+  match lt_dec (N.to_nat selN) sz with
+  | left H => @Vector.nth_order _ _ i (N.to_nat selN) H
+  | right _ => defaultKindBool k
+  end.
+
+Definition indexConstBool {k: Kind} {sz: nat}
+                          (i : Vector.t (denoteKindBool k) sz)
+                          (sel : nat) :
+                          denoteKindBool k :=
+  match lt_dec sel sz with
+  | left H => @Vector.nth_order _ _ i sel H
+  | right _ => defaultKindBool k
+  end.
+
+Definition sliceVector {T: Type} 
+                       {sz: nat} (v: Vector.t T sz)
+                       (startAt len: nat)
+                       (H: startAt + len <= sz) :
+                       (Vector.t T len).
+Proof.
+  intros.
+
+  pose (sz - startAt) as x.
+  assert (sz = startAt + x).
+  lia.
+  rewrite H0 in v.
+  refine (let (discard, vR) := Vector.splitat startAt v in _).
+  clear discard.
+  assert(len <= x).
+  lia.
+  pose (x - len) as y.
+  assert (x = len + y).
+  lia.
+
+  rewrite H2 in vR.
+  refine (let (vL, discard) := Vector.splitat len vR in _).
+  exact vL.
+Defined.   
+
+Definition sliceBool {k: Kind} {sz: nat} 
+                     (startAt len : nat)
+                     (v: Vector.t (denoteKindBool k) sz)
+                     (H: startAt + len <= sz) :
+                     Vector.t (denoteKindBool k) len :=
+  sliceVector v startAt len H.                   
+
+Definition unsignedAddBool {m n : nat}
+                           (av : Bvector m) (bv : Bvector n) :
+                           ident (Bvector (1 + max m n)) :=
+  let a := Bv2N av in
+  let b := Bv2N bv in
+  let sumSize := 1 + max m n in
   let sum := (a + b)%N in
-  ret (nat_to_list_bits_sized sumSize sum).
+  ret (N2Bv_sized sumSize sum).
+
+Local Open Scope N_scope.
+
+Definition addNNBool {m : nat}
+                     (av : Bvector m) (bv : Bvector m) :
+                     ident (Bvector m) :=
+  let a := Bv2N av in
+  let b := Bv2N bv in
+  let sum := (a + b) mod 2^(N.of_nat m) in
+  ret (N2Bv_sized m sum).
+
+Local Close Scope N_scope.
 
 Definition bufBool (i : bool) : ident bool :=
   ret i.
@@ -116,8 +196,17 @@ Definition loopBitBool (A B : Type) (f : A * bool -> ident (B * bool)) (a : A) :
 (* interpretation.                                                            *)
 (******************************************************************************)
 
-Instance CavaBool : Cava ident bool :=
-  { zero := ret false;
+Program Instance CavaBool : Cava ident bool vecAsVector :=
+  { denoteKind := denoteKindBool;
+    vecBoolList s l := l;
+    vecList k s l := l;
+    vecToList k s v := Vector.to_list v;
+    vecToVector k s v := v;
+    vecToVector1 s v := v;
+    vecToVector2 s k2 s2 v := v;
+    defaultKind := defaultKindBool;
+    defaultBitVec sz := Vector.const false sz;
+    zero := ret false;
     one := ret true;
     delayBit i := ret i; (* Dummy definition for delayBit for now. *)
     loopBit a b := loopBitBool a b;
@@ -127,6 +216,8 @@ Instance CavaBool : Cava ident bool :=
     or2 := orBool;
     nor2 := norBool;
     xor2 := xorBool;
+    xnor2 := xnorBool;
+    buf_gate := bufBool;
     lut1 := lut1Bool;
     lut2 := lut2Bool;
     lut3 := lut3Bool;
@@ -134,12 +225,14 @@ Instance CavaBool : Cava ident bool :=
     lut5 := lut5Bool;
     lut6 := lut6Bool;
     xorcy := xorcyBool;
-    xnor2 := xnorBool;
     muxcy := muxcyBool;
-    indexBitArray := indexBitArrayBool;
-    indexArray := indexArrayBool;
+    indexBitAt sz isz := @indexAtBool Bit sz isz;
+    indexAt k sz isz := @indexAtBool k sz isz;
+    indexConst k sz := @indexConstBool k sz;
+    indexBitConst sz := @indexConstBool Bit sz;
+    slice k sz l := @sliceBool k sz l;
     unsignedAdd m n := @unsignedAddBool m n;
-    buf_gate := bufBool;
+    addNN m := @addNNBool m;
 }.
 
 (******************************************************************************)

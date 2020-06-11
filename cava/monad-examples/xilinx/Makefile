@@ -35,6 +35,8 @@ VCDS = $(SV:.sv=_tb.vcd)
 all:		coq $(VCDS)
 small:		xadder_tree4_8_tb.vcd
 
+extraction:	$(SV)
+
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt -y $(XILINX)/data/verilog/src/unisims
 VLINT = $(VERILATOR) --lint-only
 

@@ -19,14 +19,15 @@
 all:
 	cd cava && $(MAKE) && \
 	cd ../monad-examples && $(MAKE) && \
-	cd xilinx && $(MAKE) coq && \
-	cd ../../arrow-examples && $(MAKE) && \
-	cd ..
+	cd xilinx && $(MAKE) extraction && \
+	cd ../../tests/xilinx && $(MAKE) extraction && \
+	cd ../..
 
 clean:
 	cd cava && $(MAKE) clean && \
 	cd ../monad-examples && $(MAKE) clean && \
 	cd xilinx && $(MAKE) clean && \
+	cd ../../tests/xilinx && $(MAKE) clean && \
 	cd ../../arrow-examples && $(MAKE) clean && \
 	cd ..
 	rm -rf .DS_Store

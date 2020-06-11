@@ -14,6 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Vector.
+Import VectorNotations.
+
 From Coq Require Import Lists.List.
 Import ListNotations.
 
@@ -24,6 +27,7 @@ Require Import Omega.
 
 Export MonadNotation.
 
+From Cava Require Import Kind.
 Require Import Cava.Monad.CavaClass.
 
 Generalizable All Variables.
@@ -200,6 +204,43 @@ Proof.
   - simpl. reflexivity.
 Qed.
 
+Import EqNotations.
+
+Local Open Scope vector_scope.
+
+Definition below_consV `{Monad m} {A B C} {n: nat}
+              (r : C -> A -> m (B * C)%type)
+              (s : C -> Vector.t A n -> m (Vector.t B n * C)%type)
+              (ca: C * Vector.t A (S n)) : m (Vector.t B (S n) * C)%type :=
+  let '(c, a) := ca in
+  match a in Vector.t _ z return (S n)=z -> m (Vector.t B z * C)%type with
+  | Vector.nil _ => fun H => match Nat.neq_succ_0 n H with end
+  | Vector.cons _ a0 Z ax => 
+              fun H => 
+              (
+              '(b0, c1) <- r c a0 ;;
+              '(bx, cOut) <- s c1 (rew <- [Vector.t A] (eq_add_S _ _ H) in ax) ;;
+              ret (rew [Vector.t B] H in (b0 :: bx), cOut)
+              )
+  end eq_refl.
+
+Fixpoint colV `{Monad m} {A B C} (n: nat)
+              (circuit : C -> A -> m (B * C)%type) 
+              (c: C) (a: Vector.t A (S n)) :
+              m (Vector.t B (S n) * C)%type :=
+  match n as n' return n=n' -> m (Vector.t B (S n') * C)%type with
+  | O => fun _ =>
+    '(b, c) <- circuit c (@nth_order _ _ a 0 (Nat.lt_0_succ _)) ;;
+    ret ([b], c)
+  | S n0 => fun H => 
+    let x := below_consV circuit (
+      rew <- [fun z => C -> Vector.t A (z) -> m (Vector.t B (z)* C)%type] H in 
+      colV n0 circuit) (c, a) in
+    rew [fun z => m (Vector.t B (S z) * C)%type] H in x
+  end eq_refl.
+
+Local Close Scope vector_scope.
+
 (******************************************************************************)
 (* Forks in wires                                                             *)
 (******************************************************************************)
@@ -225,19 +266,47 @@ Definition halve {A} (l : list A) : list A * list A :=
   (firstn mid l, skipn mid l).
 
 (******************************************************************************)
-(* A binary tree combinator.                                                  *)
+(* A binary tree combinator, list version.                                                  *)
 (******************************************************************************)
 
-Fixpoint tree {m bit} `{Cava m bit} circuit
-              (n : nat) (v: list (list bit)) : m (list bit) :=
-  match n with
-  | O => match v with
-         | [a; b] => circuit a b
-         | _ => ret [] (* Error case *)
-         end
-  | S n' => let '(vL, vH) := halve v in
-            aS <- tree circuit n' vL ;;
-            bS <- tree circuit n' vH ;;
-            sum <- circuit aS bS ;;
-            ret sum
+Fixpoint treeList {T: Type} {m bit} `{Cava m bit}
+                  (circuit: T -> T -> m T) (def: T) 
+                  (n : nat) (v: list T) : m T :=
+  match n, v with
+  | O, ab => match ab return m T with
+             | [a; b]=> circuit a b
+             | _ => ret def
+             end
+  | S n', vR => let '(vL, vH) := halve v in
+                aS <- treeList circuit def n' vL ;;
+                bS <- treeList circuit def n' vH ;;
+                circuit aS bS
   end.
+
+Fixpoint tree {T: Type} {m bit} `{Cava m bit}
+              (circuit: T -> T -> m T) (def: T) 
+              (n : nat) (v: Vector.t T (2^(n+1))) : m T :=
+ treeList circuit def n (to_list v).
+
+(******************************************************************************)
+(* A binary tree combinator, Vector version.                                                  *)
+(******************************************************************************)
+
+Program Definition halveV {n a} (v : Vector.t a (2*n)) : Vector.t a n * Vector.t a n :=
+  splitat n v.
+
+Local Open Scope vector_scope.
+
+Fixpoint treeV {T: Type} {m bit} `{Cava m bit} (n: nat)
+                                 (circuit: T -> T -> m T)
+                                 (v : Vector.t T (2^(n+1))) :
+                                 m T :=
+  match n, v return m T with
+  | O, v2 => circuit (Vector.hd v2) (Vector.hd (Vector.tl v2))
+  | S n', vR => let '(vL, vH) := halveV vR in
+                aS <- treeV n' circuit vL ;;
+                bS <- treeV n' circuit vH ;;
+                circuit aS bS
+  end.
+
+Local Close Scope vector_scope.  

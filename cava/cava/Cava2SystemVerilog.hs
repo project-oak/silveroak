@@ -21,9 +21,11 @@ where
 
 import Control.Monad.State.Lazy
 import Numeric
+import qualified Vector
 
 import qualified BinNums
 import Netlist
+import Kind
 import Signal
 import Types
 
@@ -42,7 +44,9 @@ fromN bn
       BinNums.Npos n -> n
 
 cava2SystemVerilog :: Netlist.CavaState -> [String]
-cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber clk clkEdge rst rstEdge (Netlist.Coq_mkModule moduleName instances
+cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vCount vDefs
+                    clk clkEdge rst rstEdge
+                    (Netlist.Coq_mkModule moduleName instances
                     inputs outputs))
   = ["module " ++ moduleName ++ "("] ++
 
@@ -52,227 +56,85 @@ cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber clk clkEdge rst rstEdge (N
      "  timeunit 1ns; timeprecision 1ns;",
      "",
      "  logic zero;",
-     "  logic one;",
-     "  logic[" ++ show (fromN netNumber-1) ++ ":0] net;"] ++
-    declareVectors vDefs ++
+     "  logic one;"] ++
+    declareLocalNets (fromN netNumber) ++
+    [vectorDeclaration ("v" ++ show i) k s ++ ";" | ((k, s), i) <- zip vDefs [0..]] ++
     [""] ++
     ["  // Constant nets",
      "  assign zero = 1'b0;",
      "  assign one = 1'b1;"] ++
-    ["  // Populate vectors."] ++
-    populateVectors vDefs ++
     [""] ++
-    instText ++
+    [generateInstance genState inst i | (inst, i) <- zip instances [0..]] ++
     [""] ++
     ["endmodule"]
     where
-    (instText, NetlistGenerationState v vDefs _ _ _ _)
-      = runState (computeVectors instances)
-                 (NetlistGenerationState 0 [] clk clkEdge rst rstEdge)
+    genState = NetlistGenerationState clk clkEdge rst rstEdge
+
+declareLocalNets :: Integer -> [String]
+declareLocalNets n
+  = if n == 0 then
+      []
+    else
+      ["  logic[" ++ show (n-1) ++ ":0] net;"]
+
+data NetlistGenerationState
+  = NetlistGenerationState (Maybe Signal) SignalEdge (Maybe Signal) SignalEdge
 
 inputPorts :: [Netlist.PortDeclaration] -> [String]
 inputPorts = map inputPort
 
 inputPort :: Netlist.PortDeclaration -> String
 inputPort (Netlist.Coq_mkPort name Bit) = "  input logic " ++ name
-inputPort (Netlist.Coq_mkPort name (BitVec sizes))
-  = "  input " ++ vectorDeclaration name sizes
+inputPort (Netlist.Coq_mkPort name (BitVec k s))
+  = "  input " ++ vectorDeclaration name k s
 
-vectorDeclaration :: String -> [Integer] -> String
-vectorDeclaration name sizes
-  = "logic["++ show (base - 1) ++ ":0] " ++ name ++ multi
-    where
-    base = last sizes
-    multi = concat ["[" ++ show i ++ "]" | i <- reverse (init sizes)]
+vectorDeclaration :: String -> Kind -> Integer -> String
+vectorDeclaration name k s
+  = case k of
+      Bit -> "  logic[" ++ show (s - 1) ++ ":0] " ++ name
+      BitVec k2 s2 -> vectorDeclaration name k2 s2 ++ "[" ++ show s ++ "]"
 
 outputPorts :: [Netlist.PortDeclaration] -> [String]
 outputPorts = map outputPort
 
 outputPort :: Netlist.PortDeclaration -> String
 outputPort (Netlist.Coq_mkPort name Bit) = "  output logic " ++ name
-outputPort (Netlist.Coq_mkPort name (BitVec sizes))
-  = "  output " ++ vectorDeclaration name sizes
+outputPort (Netlist.Coq_mkPort name (BitVec k s))
+  = "  output " ++ vectorDeclaration name k s
 
 insertCommas :: [String] -> [String]
 insertCommas [] = []
 insertCommas [x] = [x]
 insertCommas (x:y:xs) = (x ++ ",") : insertCommas (y:xs)
 
-data VectorAssignment = AssignTo | AssignFrom
+showVectorElements :: [Signal] -> String
+showVectorElements e
+  = concat (insertCommas (map showSignal e))
 
-data VectorDeclaration
-  = VectorDeclaration  VectorAssignment Int [Signal]
-  | Vector2Declaration VectorAssignment Int [[Signal]]
-
-data NetlistGenerationState
-  = NetlistGenerationState Int [VectorDeclaration]
-                           Signal SignalEdge Signal SignalEdge
+showVecLiteral :: Kind -> [Signal] -> String
+showVecLiteral k e
+  = case k of 
+      Bit -> -- Packed vector, downto indexing
+             "{" ++ showVectorElements (reverse e) ++ "}"
+      _   -> -- unpacked vector, upto indexing
+             "'{" ++ showVectorElements e ++ "}"
 
 showSignal :: Signal -> String
 showSignal signal
   = case signal of
       UndefinedSignal -> error "Attempt to use an undefined signal"
+      UninterpretedSignal _ name -> name
       Gnd -> "zero"
       Vcc -> "one"
       Wire n -> "net[" ++ show (fromN n) ++ "]"
       NamedWire name -> name
-      NamedBitVec name indices ->
-        case indices of
-          [] -> name
-          _ -> name ++ concat ["[" ++ show i ++ "]" | i <- indices]
-      Vec xs -> "'{" ++ concat (insertCommas (map showSignal xs)) ++ "}"
-
-computeVectors :: [Instance] -> State NetlistGenerationState [String]
-
-computeVectors instances
-  = do instText <- mapM computeVectors' (zip instances [1..])
-       return instText
-
-computeVectors' :: (Instance, Int) ->
-                   State NetlistGenerationState String
-computeVectors' (UnsignedAdd a b s, _)
-  = do NetlistGenerationState v vDecs clk clkEdge rst rstEdge <- get
-       let vA = VectorDeclaration AssignTo   v       a
-           vB = VectorDeclaration AssignTo   (v + 1) b
-           vC = VectorDeclaration AssignFrom (v + 2) s
-       put (NetlistGenerationState (v + 3) (vA:vB:vC:vDecs) clk clkEdge rst rstEdge)
-       return ("  assign v" ++ show (v + 2) ++ " = v" ++ show v ++
-               " + v" ++ show (v + 1) ++ ";")
-computeVectors' (IndexBitArray i s o, _)
-  = do NetlistGenerationState v vDecs clk clkEdge rst rstEdge  <- get
-       let vI = VectorDeclaration AssignTo   v       i
-           vS = VectorDeclaration AssignTo   (v + 1) s
-       put (NetlistGenerationState (v + 2) (vI:vS:vDecs) clk clkEdge rst rstEdge)
-       return ("  assign " ++ showSignal o ++ " = v" ++ show v ++ "[v" ++ show (v + 1) ++
-               "];")
-computeVectors' (IndexArray i s o, _)
-  = do NetlistGenerationState v vDecs clk clkEdge rst rstEdge  <- get
-       let vI = Vector2Declaration AssignTo   v       i
-           vS = VectorDeclaration  AssignTo   (v + 1) s
-           vO = VectorDeclaration  AssignFrom (v + 2) o
-       put (NetlistGenerationState (v + 3) (vI:vS:vO:vDecs) clk clkEdge rst rstEdge) 
-       return ("  assign v" ++ show (v + 2) ++ " = v" ++ show v ++ "[v" ++ show (v + 1) ++
-               "];")              
-computeVectors' (otherInst, instNr)
-  = do s <- get
-       return (generateInstance s otherInst instNr)
-
-declareVectors :: [VectorDeclaration] -> [String]
-declareVectors = map declareVector
-
-declareVector :: VectorDeclaration -> String
-declareVector (VectorDeclaration _ i bvec)
-  = "  logic[" ++ range ++ "] v" ++ show i ++ ";"
-    where
-    s = length bvec
-    range = show (s - 1) ++ ":0"
-declareVector (Vector2Declaration _ i bvec)
-  = "  logic[" ++ range2 ++ "] v" ++ show i ++ "[" ++ range1 ++ "];"
-    where
-    d1 = length bvec
-    d2 = length (head bvec)
-    range1 = show (d1 - 1) ++ ":0"
-    range2 = show (d2 - 1) ++ ":0"
-
-populateVectors :: [VectorDeclaration] -> [String]
-populateVectors = concat . map populateVector
-
-populateVector :: VectorDeclaration -> [String]
--- 1D Vectors
-populateVector (VectorDeclaration AssignTo v nets)
-  = if sequentialUp nets then
-      ["  assign v" ++ show v ++ " = net[" ++
-         show (last nets') ++ ":" ++ show (head nets') ++ "];"]
-    else
-      ["  assign v" ++ show v ++ "[" ++ show i ++
-       "] = " ++ showSignal li ++ ";" | (i, li) <- zip [0..] nets]
-    where
-    nets' = [fromN n | Wire n <- nets]
-populateVector (VectorDeclaration AssignFrom v nets)
-  = if sequentialUp nets then
-      ["  assign net[" ++ show (last nets') ++ ":" ++ show (head nets') ++
-        "] = v" ++ show v ++ ";"]
-    else
-      ["  assign " ++ showSignal li ++ " = v" ++ show v ++
-       "[" ++ show i ++ "];" | (i, li) <- zip [0..] nets]
-    where
-    nets' = [fromN n | Wire n <- nets]
--- 2D Vectors
-populateVector (Vector2Declaration AssignTo v nets)
-  = if sequentialUp2D nets then
-      ["  assign v" ++ show v ++ "[" ++ show i ++ "] = net[" ++
-         show (last n) ++ ":" ++ show (head n) ++ "];" 
-      | (n, i) <- zip nets' [0..]]
-    else
-      ["  assign v" ++ show v ++ "[" ++ show ni ++ "][" ++ show i ++
-       "] = " ++ showSignal li ++ ";"
-       | (ni, n) <- zip [0..] nets, (i, li) <- zip [0..] n]
-    where
-    nets' = [[fromN n | Wire n <- outer] | outer <- nets]
-populateVector (Vector2Declaration AssignFrom v nets)
-  = if sequentialUp2D nets then
-      ["  assign net[" ++ show (last n) ++ ":" ++ show (head n) ++
-        "] = v" ++ show v ++ ";"
-       | (n, i) <- zip nets' [0..]]
-    else
-      ["  assign " ++ showSignal li ++ " = v" ++ show v ++
-       "[" ++ show ni ++ "][" ++ show i ++ "];"
-       | (ni, n) <- zip [0..] nets, (i, li) <- zip [0..] n]
-    where
-    nets' = [[fromN n | Wire n <- outer] | outer <- nets]
-
-sequentialUp :: [Signal] -> Bool
-sequentialUp [Wire x] = True
-sequentialUp (Wire x : Wire y : z)
-  = if (fromN y) == (fromN x) + 1 then
-      sequentialUp ((Wire y):z)
-    else
-       False
-sequentialUp _ = False       
-
-sequentialUp2D :: [[Signal]] -> Bool
-sequentialUp2D = sequentialUp . concat
-
---------------------------------------------------------------------------------
--- Mappings to/from multi-dimensional bit-vectors.
---------------------------------------------------------------------------------
-
-assignMultiDimensionalInput :: String -> String -> [Integer] ->
-                               Coq_signalTy BinNums.N -> [String]
-assignMultiDimensionalInput _ _ [] _ = []
-assignMultiDimensionalInput name prefix [s] oAny
-  = if sequentialUp o then
-      ["  assign net" ++ "[" ++ show (last oN) ++ ":" ++ show (head oN) ++
-       "] = " ++ name ++ prefix ++ ";"]
-    else
-      ["  assign " ++ showSignal n ++ " = " ++ name ++ prefix ++ "[" ++ show i ++
-       "];" | (n, i) <- zip o [0..s - 1]]
-     where
-     o = Netlist.unsafeCoerce oAny :: [Signal]
-     oN = [fromN n | Wire n <- o]
-assignMultiDimensionalInput name prefix (x:xs) oAny
-  = concat [assignMultiDimensionalInput name (prefix ++ "[" ++ show p ++ "]") xs o
-           | (p, o) <- zip [0..x-1] os]
-     where
-     os = Netlist.unsafeCoerce oAny :: [Coq_signalTy BinNums.N]
-
-assignMultiDimensionalOutput :: String -> String -> [Integer] ->
-                                Coq_signalTy BinNums.N -> [String]
-assignMultiDimensionalOutput _ _ [] _ = []
-assignMultiDimensionalOutput name prefix [s] oAny
-  = if sequentialUp o then
-      ["  assign " ++ name ++ " = net[" ++ show (last oN) ++ ":" ++ show (head oN) ++ "];"]
-    else
-      ["  assign " ++ name ++ "[" ++ show i ++ "] = " ++ showSignal n ++
-       ";" | (n, i) <- zip o [0.. s - 1]]  
-     where
-     o = Netlist.unsafeCoerce oAny :: [Signal]
-     oN = [fromN n | Wire n <- o]
-assignMultiDimensionalOutput name prefix (x:xs) oAny
-  = concat [assignMultiDimensionalOutput name (prefix ++ "[" ++ show p ++ "]") xs o
-           | (p, o) <- zip [0..x-1] os]
-     where
-     os = Netlist.unsafeCoerce oAny :: [Coq_signalTy BinNums.N]
+      NamedVector _ _ name -> name
+      LocalBitVec _ _ v -> "v" ++ show (fromN v)
+      VecLit k s vs -> showVecLiteral k (Vector.to_list s vs)
+      IndexAt _ _ _ v i -> showSignal v ++ "[" ++ showSignal i ++ "]"
+      IndexConst _ _ v i -> showSignal v ++ "[" ++ show i ++ "]"
+      Slice _ _ start len v -> showSignal v ++ "[" ++ show (start + len - 1) ++
+                               ":" ++ show start ++ "]"
 
 --------------------------------------------------------------------------------
 -- Generate SystemVerilog for a specific instance.
@@ -290,23 +152,15 @@ generateInstance netlistState (DelayBit i o) _
          "end",
     "  end"]
     where
-    NetlistGenerationState _ _ clk clkEdge rst rstEdge = netlistState
+    NetlistGenerationState (Just clk) clkEdge (Just rst) rstEdge = netlistState
     showEdge edge = case edge of
                       PositiveEdge -> "posedge"
                       NegativeEdge -> "negedge"
     negReset = case rstEdge of
                  PositiveEdge -> ""
                  NegativeEdge -> "!"
-generateInstance _ (AssignBit a b) _
+generateInstance _ (AssignSignal _ a b) _
    = "  assign " ++ showSignal a ++ " = " ++ showSignal b ++ ";"
-generateInstance _ (WireInputBit name o) _
-   = "  assign " ++ showSignal o ++ " = " ++ name ++ ";"
-generateInstance _ (WireInputBitVec sizes name oAny) _
-   = unlines (assignMultiDimensionalInput name "" sizes oAny)
-generateInstance _ (WireOutputBit name o) _ 
-   = "  assign " ++ name ++ " = " ++ showSignal o ++ ";"
-generateInstance _ (WireOutputBitVec sizes name oAny) _
-   = unlines (assignMultiDimensionalOutput name "" sizes oAny)   
 generateInstance _ (Not i o) instrNr = primitiveInstance "not" [o, i] instrNr
 generateInstance _ (And i0 i1 o) instrNr = primitiveInstance "and" [o, i0, i1] instrNr
 generateInstance _ (Nand i0 i1 o) instrNr = primitiveInstance "nand" [o, i0, i1] instrNr
@@ -315,14 +169,10 @@ generateInstance _ (Nor i0 i1 o) instrNr = primitiveInstance "nor" [o, i0, i1] i
 generateInstance _ (Xor i0 i1 o) instrNr = primitiveInstance "xor" [o, i0, i1] instrNr
 generateInstance _ (Xnor i0 i1 o) instrNr = primitiveInstance "xnor" [o, i0, i1] instrNr
 generateInstance _ (Buf i o) instrNr = primitiveInstance "buf" [o, i] instrNr
-generateInstance _ (Component name parameters connections) instNr =
+generateInstance _ (Component _ name parameters connections) instNr =
   mkInstance name parameters connections instNr
-generateInstance _ (UnsignedAdd _ _ _) _
-   = "" -- Generated instead during vector generation
-generateInstance _ (IndexBitArray _ _ _) _
-   = "" -- Generated instead during vector generation   
-generateInstance _ (IndexArray _ _ _) _
-   = "" -- Generated instead during vector generation
+generateInstance _ (UnsignedAdd _ _ _ a b c) _
+   = "  assign " ++ showSignal c ++ " = " ++ showSignal a ++ " + " ++ showSignal b ++ ";"
 
 primitiveInstance :: String -> [Signal] -> Int -> String
 primitiveInstance instName args instNr
@@ -453,7 +303,7 @@ declarePort :: PortDeclaration -> String
 declarePort (Coq_mkPort name kind) =
   case kind of
     Bit -> "  (* mark_debug = \"true\" *) logic " ++ name 
-    BitVec xs -> "  (* mark_debug = \"true\" *) " ++ vectorDeclaration name xs 
+    BitVec k s -> "  (* mark_debug = \"true\" *) " ++ vectorDeclaration name k s 
 
 initTestVectors :: [PortDeclaration] -> [[SignalExpr]] -> [String]
 initTestVectors [] _ = []
@@ -512,21 +362,18 @@ addDisplay ports
 
 formatPortWithName :: PortDeclaration -> String
 formatPortWithName (Coq_mkPort name Bit) = " " ++ name ++ " = %0b"
-formatPortWithName (Coq_mkPort name (BitVec [x])) = " " ++ name ++ " = %0d"
-formatPortWithName (Coq_mkPort name (BitVec xs))
-  = concat (insertCommas [" " ++ name ++ i ++ " = %0d" | i  <- formIndices (init xs)])
-
-formIndices ::  [Integer] -> [String]
-formIndices [] = []
-formIndices (x:xs)
-  = ["[" ++ show i ++ "]" ++ concat (formIndices xs) | i <- [0..x-1]]
+formatPortWithName (Coq_mkPort name (BitVec Bit _)) = " " ++ name ++ " = %0d"
+formatPortWithName (Coq_mkPort name (BitVec (BitVec _ _) s))
+  = concat (insertCommas [" " ++ name ++ "[" ++ show i ++ "] = %0d" |
+            i  <- [0..s-1]])
 
 smashPorts :: PortDeclaration -> String
 smashPorts portDec
   = case port_shape portDec of
       Bit -> name
-      BitVec [x] -> name
-      BitVec xs -> concat (insertCommas [name ++ i | i <- formIndices (init xs)])
+      BitVec Bit _ -> name
+      BitVec (BitVec _ _) s ->
+        concat (insertCommas [name ++ "[" ++ show i ++ "]" | i <- [0..s-1]])
     where
     name = port_name portDec
 
@@ -546,7 +393,8 @@ checkOutput port
 
 formatKind :: Kind -> String
 formatKind Bit = "%0b"
-formatKind (BitVec _) = "%0d"
+formatKind (BitVec Bit _) = "%0d"
+formatKind other = "error: attempt to format unknown kind"
 
 cppDriver :: String -> Int -> [String]
 cppDriver name ticks =

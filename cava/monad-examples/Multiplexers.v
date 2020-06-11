@@ -15,6 +15,7 @@
 
 From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
+
 From Coq Require Import Lists.List.
 Import ListNotations.
 
@@ -25,9 +26,19 @@ Require Import ExtLib.Structures.Monads.
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
 
-Definition mux2_1 {m bit} `{Cava m bit} '(sel, (a, b)) : m bit :=
-  o <- indexBitArray [a; b] [sel] ;;
-  ret o.
+From Coq Require Vector.
+From Coq Require Import Bool.Bvector.
+Import Vector.VectorNotations.
+
+From Coq Require Import NArith.Ndigits.
+
+Local Open Scope vector_scope.
+
+Definition mux2_1 {m bit} `{Cava m bit} (sab: bit * (bit * bit)) : m bit :=
+  let '(sel, (a, b)) := sab in
+  ret (indexBitAt (vecBoolList [a; b]) (vecBoolList [sel])).
+
+Local Close Scope vector_scope.
 
 Example m1: combinational (mux2_1 (false, (false, true))) = false.
 Proof. reflexivity. Qed.
@@ -62,41 +73,127 @@ Definition mux2_1_tb
   := testBench "mux2_1_tb" mux2_1_Interface
      mux2_1_tb_inputs mux2_1_tb_expected_outputs.
 
-Definition muxBus {m bit} `{Cava m bit} '(sel, i) : m (list bit) :=
-  o <- indexArray i sel ;;
-  ret o.
+ Section index_at_test.
 
-Definition v0 := nat_to_list_bits_sized 8   5.
-Definition v1 := nat_to_list_bits_sized 8 157.
-Definition v2 := nat_to_list_bits_sized 8 255.
-Definition v3 := nat_to_list_bits_sized 8  63.
-Definition v := [v0; v1; v2; v3].
+  (* Check the indexBitAt special case *)
 
-Example m5: combinational (muxBus ([false; false], v)) = v0.
+  Definition mux2_1_bit {m bit} `{Cava m bit} {sz isz: nat}
+                        (vsel: vec Bit sz * vec Bit isz) : m bit :=
+  let (v, sel) := vsel in 
+  ret (indexBitAt v sel).
+
+   Definition v := N2Bv_sized 4  11.
+   (*
+   Bit pattern for 11:
+   -- 3 2 1 0 (bit position)
+   -- 8 4 2 1 (power)
+   -- 1 0 1 1 (bit pattern for 11)
+   *)
+
+   Definition i0 := N2Bv_sized 2 0.
+   Definition i1 := N2Bv_sized 2 1.
+   Definition i2 := N2Bv_sized 2 2.
+   Definition i3 := N2Bv_sized 2 3.
+
+   Example index_bit_0 : combinational (mux2_1_bit (v, i0)) = true.
+   Proof. reflexivity. Qed.
+
+   Example index_bit_1 : combinational (mux2_1_bit (v, i1)) = true.
+   Proof. reflexivity. Qed.
+
+   Example index_bit_2 : combinational (mux2_1_bit (v, i2)) = false.
+   Proof. reflexivity. Qed.
+
+   Example index_bit_3 : combinational (mux2_1_bit (v, i3)) = true.
+   Proof. reflexivity. Qed.
+ 
+  Definition mux2_1_bit_Interface
+    := combinationalInterface "mux2_1_bit"
+       (mkPort "v" (BitVec Bit 4),
+        mkPort "sel" (BitVec Bit 2))
+       (mkPort "o" Bit)
+       [].
+       
+  Definition mux2_1_bit_Netlist := makeNetlist mux2_1_bit_Interface mux2_1_bit.
+
+  Definition mux2_1_bit_tb_inputs :=
+    [(v, i0);
+     (v, i1);
+     (v, i2);
+     (v, i3)].
+
+  Definition mux2_1_bit_tb_expected_outputs
+  := map (fun i => combinational (mux2_1_bit i)) mux2_1_bit_tb_inputs.
+
+ Definition mux2_1_bit_tb
+  := testBench "mux2_1_bit_tb" mux2_1_bit_Interface
+     mux2_1_bit_tb_inputs mux2_1_bit_tb_expected_outputs.
+
+ End index_at_test.
+
+(* Mux between input buses *)
+
+Definition muxBusAlt {m bit vec} `{Cava m bit vec} {t} {sz isz dsz: nat}
+                     (v: vec t sz) (sel: vec Bit isz) :
+                    m (denoteKind t) :=
+  ret (indexAt v sel).
+
+Definition muxBus {m bit vec} `{Cava m bit vec} {sz isz dsz: nat}
+                  (vsel: vec (BitVec Bit dsz) sz * vec Bit isz) :
+                  m (vec Bit dsz).
+  refine (let (v, sel) := vsel in
+          let r := indexAt v sel in
+          ret _).
+  rewrite denoteKindV in r.
+  exact r.
+  Defined.
+
+(*
+Hint Extern 1 => rewrite denoteKindV in *: core.
+
+Program Definition muxBusAlt2 {m bit vec} `{Cava m bit vec} (sz isz: nat) {dsz: nat}
+                     (v: vec (BitVec Bit dsz) sz)
+                     (sel: vec Bit isz) :
+                     m (vec Bit dsz).
+refine (let r := indexAt v sel in
+  ret _).
+Defined.
+*)
+
+Local Open Scope vector_scope.
+
+Definition v0 := N2Bv_sized 8   5.
+Definition v1 := N2Bv_sized 8 157.
+Definition v2 := N2Bv_sized 8 255.
+Definition v3 := N2Bv_sized 8  63.
+Definition v0to3 : Vector.t (Bvector 8) 4 := [v0; v1; v2; v3].
+
+Example m5: combinational (muxBus (v0to3, [false; false])) = v0.
 Proof. reflexivity. Qed.
 
-Example m6: combinational (muxBus ([true; false], v)) = v1.
+Example m6: combinational (muxBus (v0to3, [true; false])) = v1.
 Proof. reflexivity. Qed.
 
-Example m7: combinational (muxBus ([false; true], v)) = v2.
+Example m7: combinational (muxBus (v0to3, [false; true])) = v2.
 Proof. reflexivity. Qed.
 
-Example m8: combinational (muxBus ([true; true], v)) = v3.
+Example m8: combinational (muxBus (v0to3, [true; true])) = v3.
 Proof. reflexivity. Qed.
+
+Local Close Scope vector_scope.
 
 Definition muxBus4_8Interface
   := combinationalInterface "muxBus4_8"
-     (mkPort "sel" (BitVec [2]), mkPort "i" (BitVec [4; 8]))
-     (mkPort "o" (BitVec [8]))
+     (mkPort "i" (BitVec (BitVec Bit 8) 4), mkPort "sel" (BitVec Bit 2))
+     (mkPort "o" (BitVec Bit 8))
      [].
-
 Definition muxBus4_8Netlist := makeNetlist muxBus4_8Interface muxBus.
 
 Definition muxBus4_8_tb_inputs :=
-  [([false; false], v);
-   ([true;  false], v);
-   ([false; true],  v);
-   ([true; true],   v)
+  [(v0to3, [false; false]%vector);
+   (v0to3, [true;  false]%vector);
+   (v0to3, [false; true]%vector);
+   (v0to3, [true; true]%vector)
   ].
 
 Definition muxBus4_8_tb_expected_outputs

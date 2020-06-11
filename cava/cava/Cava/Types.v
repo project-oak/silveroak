@@ -28,7 +28,12 @@ Import MonadNotation.
 Open Scope list_scope.
 Open Scope monad_scope.
 
+From Cava Require Import Kind.
 From Cava Require Import Signal.
+
+Require Import Program.
+Require Import Omega.
+Require Import Nat Arith Lia.
 
 (******************************************************************************)
 (* shape describes the types of wires going into or out of a Cava circuit,    *)
@@ -126,15 +131,6 @@ Instance ToShapePair2 {A t1 t2 : Type} `{@ToShape A t1} `{@ToShape A t2}:
   toShape '(a, b) := @Tuple2 A (toShape a) (toShape b);
 }.
 
-(******************************************************************************)
-(* Values of Kind can occur as the type of signals on a circuit interface *)
-(******************************************************************************)
-
-Inductive Kind : Type :=
-  | Bit : Kind                (* A single wire *)
-  | BitVec : list nat -> Kind (* Multi-dimensional bit-vectors *)
-  | ExternalType : string -> Kind. (* An uninterpreted type *)
-
 Notation bundle := (@shape Kind).
 
 Fixpoint denoteBitVecWith {A : Type} (T : Type) (n : list A) : Type :=
@@ -144,17 +140,19 @@ Fixpoint denoteBitVecWith {A : Type} (T : Type) (n : list A) : Type :=
   | x::xs => list (denoteBitVecWith T xs)
   end.
 
-Definition denoteKindWith (k : Kind) (T : Type) : Type :=
+Fixpoint denoteKindWith (k : Kind) (T : Type) : Type :=
   match k with
+  | Void => unit
   | Bit => T
-  | BitVec v => denoteBitVecWith T v
+  | BitVec k2 s => Vector.t (denoteKindWith k2 T) s
   | ExternalType t => T
   end.
 
 Fixpoint bitsInPort (p : Kind) : nat :=
   match p with
+  | Void => 0
   | Bit => 1
-  | BitVec xs => fold_left (fun x y => x * y) xs 1
+  | BitVec xs sz => sz * bitsInPort xs
   | ExternalType _ => 0
   end.
 
@@ -169,25 +167,14 @@ Fixpoint bitsInPortShape (s : bundle) : nat :=
    well-founded recursion to be recognized.
    TODO(satnam): Rewrite with an appropriate well-foundedness proof.
 *)
-Fixpoint numberBitVec (offset : N) (i : list nat) (l : list nat) : @denoteBitVecWith nat Signal l :=
-  match l, i return @denoteBitVecWith nat Signal l with
+Fixpoint numberBitVec (offset : N) (i : list nat) (l : list nat) : @denoteBitVecWith nat (Signal Bit) l :=
+  match l, i return @denoteBitVecWith nat (Signal Bit) l with
   | [], _         => Vcc
   | [x], [_]      => map (compose Wire N.of_nat) (seq (N.to_nat offset) x)
   | x::xs, p::ps  => let z := N.of_nat (fold_left (fun x y => x * y) xs 1) in
                      map (fun w => numberBitVec (offset+w*z) ps xs) (map N.of_nat (seq 0 x))
   | _, _          => []
   end.
-
-(* smashBitVec is like numberBitVec but returns the symbolic name and index
-   for the vector shape.
-*)
-Fixpoint smashBitVec (name: string) (i: list nat) (l: list nat) (prefix: list nat) : @denoteBitVecWith nat Signal i :=
-  match i, l return @denoteBitVecWith nat Signal i with
-  | [], _        => Vcc
-  | [x], _       => map (fun i => NamedBitVec name (prefix ++ [i])) (seq 0 x)
-  | x::xs, y::ys => map (fun  xv => smashBitVec name xs ys (prefix ++ [xv])) (seq 0 x)
-  | _, _         => []
-  end. 
 
 Fixpoint mapBitVec {A B} (f: A -> B) (i : list nat) (l : list nat) : @denoteBitVecWith nat A l -> @denoteBitVecWith nat B l :=
   match l, i  return @denoteBitVecWith nat A l -> @denoteBitVecWith nat B l with
@@ -206,22 +193,6 @@ Fixpoint zipBitVecs {A B} (i : list nat) (l : list nat)
   | _, _          => fun _ _ => []
   end.
 
-Fixpoint flattenBitVec {A} (i : list nat) (l : list nat)
-  : @denoteBitVecWith nat A l -> list A :=
-  match l, i  return @denoteBitVecWith nat A l -> list A with
-  | [], _         => fun z => [z]
-  | [x], [_]      => fun zs => zs
-  | x::xs, p::ps  => fun zs => concat (map (flattenBitVec ps xs) zs)
-  | _, _          => fun _ => []
-  end.
-
-Definition flattenPort {A} (port: Kind) (x: denoteKindWith port A) : list A :=
-  match port, x with
-  | Bit, _ => [x]
-  | BitVec sz, _ => flattenBitVec sz sz x
-  | ExternalType _, _=> [x]
-  end.
-
 (******************************************************************************)
 (* signalTy maps a shape to a type based on T                                 *)
 (******************************************************************************)
@@ -233,36 +204,30 @@ Fixpoint signalTy (T : Type) (s : shape) : Type :=
   | Tuple2 s1 s2  => prod (signalTy T s1) (signalTy T s2)
   end.
 
-Fixpoint numberPort (i : N) (inputs: bundle) : signalTy Signal inputs :=
-  match inputs return signalTy Signal inputs with
-  | Empty => tt
-  | One typ =>
-      match typ return denoteKindWith typ Signal with
-      | Bit => Wire i
-      | BitVec xs => numberBitVec i xs xs
-      | ExternalType _ => UndefinedSignal
-      end
-  | Tuple2 t1 t2 => let t1Size := bitsInPortShape t1 in
-                    (numberPort i t1,  numberPort (i + N.of_nat t1Size) t2)
-  end.
-
 Lemma signal_tuple_is_tuple:
-  forall a b,
-  signalTy Signal (Tuple2 a b)
-  = (signalTy Signal a * signalTy Signal b)%type.
+  forall a b t,
+  signalTy (Signal t) (Tuple2 a b)
+  = (signalTy (Signal t) a * signalTy (Signal t) b)%type.
 Proof.
   intros.
   simpl.
   f_equal.
 Defined.
 
+Fixpoint signalNetTy (s : shape) : Type :=
+  match s with
+  | Empty  => unit
+  | One t => Signal t
+  | Tuple2 s1 s2  => prod (signalNetTy s1) (signalNetTy s2)
+  end.
+
 (* 
 Given a signal of some shape 'withoutRightmost S', 
 we can extend it with a rightmost value of tt to get a signal of shape 'S'.
 *)
-Fixpoint insertRightmostTt {A}
-  (s: signalTy Signal (withoutRightmostUnit A)) {struct A}
-  : signalTy Signal A.
+Fixpoint insertRightmostTt {A t}
+  (s: signalTy (Signal t) (withoutRightmostUnit A)) {struct A}
+  : signalTy (Signal t) A.
 Proof.
   induction A; simpl in *.
   exact tt.
@@ -283,7 +248,7 @@ we can return a function performing 'f' that takes an input of
 shape 'withoutRightmostUnit A' by first applying 'insertRightmostTt'
 and then performing 'f'.
 *)
-Fixpoint removeRightmostUnit {A B} 
-  (f: signalTy Signal A -> B)
-  : signalTy Signal (withoutRightmostUnit A) -> B :=
+Fixpoint removeRightmostUnit {A B t} 
+  (f: signalTy (Signal t) A -> B)
+  : signalTy (Signal t) (withoutRightmostUnit A) -> B :=
   fun a => f (insertRightmostTt a).

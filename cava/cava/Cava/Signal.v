@@ -16,13 +16,33 @@
 
 From Coq Require Import Ascii String.
 From Coq Require Import ZArith.
+From Coq Require Import Vector.
 
-Inductive Signal : Type :=
-  | UndefinedSignal : Signal
-  | UninterpretedSignal: string -> Signal
-  | Gnd: Signal
-  | Vcc: Signal
-  | Wire: N -> Signal
-  | NamedWire: string -> Signal
-  | NamedBitVec: string -> list nat -> Signal
-  | Vec: list Signal -> Signal.
+From Cava Require Import Kind.
+
+Inductive Signal : Kind -> Type :=
+  | UndefinedSignal : Signal Void
+  | UninterpretedSignal: forall {t}, string -> Signal (ExternalType t)
+  | Gnd: Signal Bit
+  | Vcc: Signal Bit
+  | Wire: N -> Signal Bit
+  | NamedWire: string -> Signal Bit
+  | NamedVector: forall k s, string -> Signal (BitVec k s)
+  | LocalBitVec: forall k s, N -> Signal (BitVec k s)
+  | VecLit: forall {k s}, Vector.t (Signal k) s -> Signal (BitVec k s)
+  (* Dynamic index *)
+  | IndexAt: forall {k sz isz}, Signal (BitVec k sz) ->
+             Signal (BitVec Bit isz) -> Signal k
+  (* Static indexing *)
+  | IndexConst: forall {k sz}, Signal (BitVec k sz) -> nat -> Signal k
+  (* Static slice *)
+  | Slice: forall {k sz} (start len: nat), Signal (BitVec k sz) ->
+                                           Signal (BitVec k len).
+
+Fixpoint defaultKindSignal (k: Kind) : Signal k :=
+  match k with
+  | Void => UndefinedSignal
+  | Bit => Gnd
+  | BitVec k s => VecLit(Vector.const (defaultKindSignal k) s)
+  | ExternalType s => UninterpretedSignal "default-error"
+  end.
