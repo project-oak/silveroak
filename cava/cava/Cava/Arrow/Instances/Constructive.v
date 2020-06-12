@@ -6,12 +6,6 @@ Require Import Cava.Arrow.Arrow.
 
 Set Implicit Arguments.
 
-Inductive Kind := 
-  | Tuple: Kind -> Kind -> Kind
-  | Unit: Kind
-  | Bit: Kind
-  | Vector: N -> Kind -> Kind.
-
 Declare Scope constructive_scope.
 Bind Scope constructive_scope with Kind.
 Delimit Scope constructive_scope with Kind.
@@ -59,18 +53,20 @@ Inductive structure: Kind -> Kind -> Type :=
 
   | UnsignedAdd: forall a b s, structure << Vector a Bit, Vector b Bit >> (Vector s Bit)
 
-  | Lut: forall n (f: bool^^n --> bool), structure (Vector (N.of_nat n) Bit) Bit
+  | Lut: forall n (f: bool^^n --> bool), structure (Vector n Bit) Bit
 
-  | IndexVec: forall {n o}, structure << Vector n o, Vector (N.log2_up n) Bit >> o
+  | IndexVec: forall {n o}, structure << Vector n o, Vector (Nat.log2_up n) Bit >> o
   | ToVec: forall {o}, structure o (Vector 1 o)
-  | Concat: forall {n o}, structure << Vector n o, o >> (Vector (n+1) o).
+  | Append: forall {n o}, structure << Vector n o, o >> (Vector (n+1) o)
+  | Concat: forall {n m o}, structure << Vector n o, Vector m o >> (Vector (n+m) o)
+  | Split: forall {n m o}, m < n -> structure << Vector n o >> <<Vector m o , Vector (n-m) o>>.
 
 Inductive st_equiv : forall (i o: Kind), structure i o -> structure i o -> Prop :=
   | st_refl:    forall x y f, @st_equiv x y f f
   | st_sym:     forall x y f g, st_equiv g f -> @st_equiv x y f g
   | st_trans:   forall x y f g h, st_equiv f g -> st_equiv g h -> @st_equiv x y f h
   | st_compose: forall x y z f g h i, @st_equiv x y f g -> @st_equiv y z h i -> st_equiv (Compose h f) (Compose i g)
-  | st_id_left: forall x y f, @st_equiv x y (Compose f Id) f 
+  | st_id_left: forall x y f, @st_equiv x y (Compose f Id) f
   | st_id_right:forall x y f, @st_equiv x y (Compose Id f) f
   | st_assoc:   forall x y z w
                       (f: structure x y) (g: structure y z) (h: structure z w),
@@ -82,7 +78,7 @@ Inductive st_equiv : forall (i o: Kind), structure i o -> structure i o -> Prop 
   | st_second_cancell: forall x y f,
     st_equiv (Compose Cancell (@Second x y Unit f)) (Compose f Cancell)
 
-  | st_uncancelr_first: 
+  | st_uncancelr_first:
     forall x y f, st_equiv (Compose (@First x y Unit f) Uncancelr) (Compose Uncancelr f)
   | st_uncancell_second: forall x y f, st_equiv (Compose (@Second x y Unit f) Uncancell) (Compose Uncancell f)
 
@@ -106,7 +102,7 @@ Inductive st_equiv : forall (i o: Kind), structure i o -> structure i o -> Prop 
   | st_drop_annhilates: forall x y (f: structure x y), st_equiv (Compose Drop f) Drop
 
   | st_cancelr_unit_is_drop: st_equiv (@Cancelr Unit) Drop
-  | st_cancell_unit_is_drop: st_equiv (@Cancell Unit) Drop 
+  | st_cancell_unit_is_drop: st_equiv (@Cancell Unit) Drop
 
   | st_first_first: forall x y z w (f: structure x y) (g: structure y z),
     st_equiv (Compose (@First _ _ w g) (First f)) (First (Compose g f))
@@ -120,7 +116,7 @@ Inductive st_equiv : forall (i o: Kind), structure i o -> structure i o -> Prop 
 
   | st_first_f: forall x y w (f: structure x y) (g: structure x y),
     st_equiv f g -> st_equiv (@First _ _ w f) (First g)
-  | st_second_f: forall x y w (f: structure x y) (g: structure x y), 
+  | st_second_f: forall x y w (f: structure x y) (g: structure x y),
     st_equiv f g -> st_equiv (@Second _ _ w f) (Second g)
 
   | st_assoc_unassoc: forall x y z, st_equiv (Compose (@Unassoc x y z) (@Assoc x y z)) Id
@@ -136,7 +132,7 @@ Hint Immediate st_trans : core.
 Fixpoint denoteKind `{Cava} (k: Kind)
   : object :=
 match k with
-| Tuple l r => denoteKind l ** denoteKind r 
+| Tuple l r => denoteKind l ** denoteKind r
 | Unit => unit
 | Bit => bit
 | Vector n o => vector n (denoteKind o)
@@ -187,10 +183,14 @@ Fixpoint toCava {i o} (Cava:Cava) (expr: structure i o)
   | Lut n f => _
   | IndexVec => index_vec _ (denoteKind _)
   | ToVec => to_vec (denoteKind _)
-  | Concat => concat _ (denoteKind _)
+  | Append => append _ (denoteKind _)
+  | Concat => concat _ _ (denoteKind _)
+  | Split H => _
   end).
   - apply lut.
     apply f.
+  - apply split.
+    apply H.
 Defined.
 
 Lemma toCavaIterative: forall i o x (Cava: Cava) (e1: structure i x) (e2: structure x o),
@@ -254,9 +254,9 @@ Instance ConstructiveArr : Arrow := {
 Instance ConstructiveDrop : ArrowDrop ConstructiveArr := { drop := @Drop }.
 Instance ConstructiveSwap : ArrowSwap ConstructiveArr := { swap := @Swap }.
 Instance ConstructiveCopy : ArrowCopy ConstructiveArr := { copy := @Copy }.
-Instance ConstructiveLoop : ArrowLoop ConstructiveArr := { 
-  loopl _ _ _ c := LoopL c; 
-  loopr _ _ _ c := LoopR c; 
+Instance ConstructiveLoop : ArrowLoop ConstructiveArr := {
+  loopl _ _ _ c := LoopL c;
+  loopr _ _ _ c := LoopR c;
 }.
 
 Instance ConstructiveCircuitLaws : CircuitLaws ConstructiveArr _ _ _ := {
@@ -308,8 +308,12 @@ Instance ConstructiveCava : Cava := {
   lut n f := Lut n f;
   index_vec n o := @IndexVec n o;
   to_vec o := @ToVec o;
-  concat n o := @Concat n o;
+  append n o := @Append n o;
+  concat n m o := @Concat n m o;
+  split n m o H := Split H;
 }.
+
+Close Scope N_scope.
 
 Fixpoint insert_rightmost_unit (ty: Kind): Kind :=
 match ty with
