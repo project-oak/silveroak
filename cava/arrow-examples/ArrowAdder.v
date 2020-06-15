@@ -27,8 +27,10 @@ Import ListNotations.
 Section definition.
   Import KappaNotation.
 
+  Variable var: Kind -> Kind -> Type.
+
   Definition halfAdder
-  : Kappa_sugared << Bit, Bit, Unit >> <<Bit, Bit>> :=
+  : kappa_sugared var << Bit, Bit, Unit >> <<Bit, Bit>> :=
   <[ \ a b =>
     let part_sum = xor a b in
     let carry = and a b in
@@ -36,7 +38,7 @@ Section definition.
   ]>.
 
   Definition fullAdder
-  : Kappa_sugared << Bit, << Bit, Bit >>, Unit >> <<Bit, Bit>> :=
+  : kappa_sugared var << Bit, << Bit, Bit >>, Unit >> <<Bit, Bit>> :=
   <[ \ cin ab =>
     let '(a,b) = ab in
     let '(abl, abh) = !halfAdder a b in
@@ -49,7 +51,7 @@ End definition.
 
 Definition fullAdder_structure := to_constructive (Desugar fullAdder) (ltac:(auto_kappa_wf)).
 
-Lemma fullAdder_is_combinational: wf_combinational (toCava _ fullAdder_structure).
+Lemma fullAdder_is_combinational: wf_combinational (toCava fullAdder_structure _).
 Proof. combinational_obvious. Qed.
 
 Require Import Cava.Arrow.Instances.Netlist.
@@ -75,7 +77,7 @@ Definition fullAdder_tb_inputs :=
 
 Definition fullAdder_netlist :=
   makeNetlist fullAdderInterface
-    (toCava NetlistCava fullAdder_structure).
+    (toCava fullAdder_structure NetlistCava).
 
 (* Using `evaluate_to_terms` for a nicer extracted value *)
 Definition fullAdder_tb_expected_outputs  : list (bool * bool).

@@ -1,5 +1,6 @@
-From Coq Require Import Setoid Classes.Morphisms Lists.List NaryFunctions String Arith NArith.
+From Coq Require Import Setoid Classes.Morphisms Lists.List NaryFunctions String Arith NArith VectorDef.
 Import ListNotations.
+Import VectorNotations.
 
 From Cava Require Import Types.
 
@@ -10,12 +11,15 @@ Reserved Infix "=M=" (at level 54, no associativity).
 
 Reserved Infix "**" (at level 30, right associativity).
 
+Generalizable Variable object category unit product.
+(* Generalizable Variable category. *)
+
 (* more flexible than a haskell style category,
   which has morphisms between objects of type Hask.
   Here we have morphisms between objects of type object.
 *)
-Class Category := {
-  object : Type;
+Class Category (object: Type) := {
+  (* object := obj; *)
 
   morphism : object -> object -> Type
     where "a ~> b" := (morphism a b);
@@ -40,18 +44,20 @@ Class Category := {
   associativity {x y z w} {f: x~>y} {g: y~>z} {h: z~>w} : (f >>> g) >>> h =M= f >>> (g >>> h);
 }.
 
+(* Coercion object: Category >-> Sortclass. *)
+
 Declare Scope category_scope.
 Bind Scope category_scope with Category.
 Delimit Scope category_scope with category.
 
 Notation "x ~> y" := (morphism x y) : category_scope.
-Notation "x ~[ C ]~> y" := (@morphism C x y) (at level 90): category_scope.
+Notation "x ~[ C ]~> y" := (@morphism _ C x y) (at level 90): category_scope.
 Notation "g >>> f" := (compose f g) : category_scope.
 Notation "f =M= g" := (morphism_equivalence _ _ f g) : category_scope.
 
 Open Scope category_scope.
 
-Add Parametric Relation (C: Category) (x y: object): (morphism x y) (morphism_equivalence x y)
+Add Parametric Relation (object: Type) (C: Category object) (x y: object): (morphism x y) (morphism_equivalence x y)
   reflexivity proved by  (@Equivalence_Reflexive  _ _ (morphism_setoid_equivalence x y))
   symmetry proved by     (@Equivalence_Symmetric  _ _ (morphism_setoid_equivalence x y))
   transitivity proved by (@Equivalence_Transitive _ _ (morphism_setoid_equivalence x y))
@@ -61,17 +67,16 @@ Hint Extern 1 => apply compose_respects_equivalence: core.
 Hint Extern 1 => apply id_left: core.
 Hint Extern 1 => apply id_right: core.
 
-Add Parametric Morphism (C: Category) (x y z: object) : (@compose C x y z)
+Add Parametric Morphism (object: Type) (C: Category object) (x y z: object) : (@compose object C x y z)
   with signature (morphism_equivalence _ _ ==> morphism_equivalence _ _ ==> morphism_equivalence _ _)
   as parametric_morphism_comp.
 Proof. auto. Defined.
 
 (* adam megacz style generalized arrow,
   laws coming from monoidal categories *)
-Class Arrow := {
-  cat :> Category;
-  unit : object;
-  product : object -> object -> object
+Class Arrow (object: Set) `(C: Category object) (unit: object) (product: object -> object -> object) := {
+  u := unit;
+  product := product
     where "x ** y" := (product x y);
 
   first  {x y z} (f: x ~> y) : x ** z ~> y ** z;
@@ -104,8 +109,6 @@ Class Arrow := {
   (* triangle and pentagon identities? *)
 }.
 
-Coercion cat: Arrow >-> Category.
-
 Declare Scope arrow_scope.
 Bind Scope arrow_scope with Arrow.
 Delimit Scope arrow_scope with Arrow.
@@ -115,19 +118,19 @@ Notation "x ** y" := (product x y)
 
 Open Scope arrow_scope.
 
-Class ArrowCopy (A: Arrow) := {
+Class ArrowCopy `(A: Arrow) := {
   copy {x} : x ~> x**x;
 }.
 
-Class ArrowDrop (A: Arrow) := {
-  drop {x} : x ~> unit;
+Class ArrowDrop `(A: Arrow) := {
+  drop {x} : x ~> u;
 }.
 
-Class ArrowSwap (A: Arrow) := {
+Class ArrowSwap `(A: Arrow) := {
   swap {x y} : x**y ~> y**x;
 }.
 
-Class ArrowLoop (A: Arrow) := {
+Class ArrowLoop `(A: Arrow) := {
   loopr {x y z} : (x**z ~> y**z) -> (x ~> y);
   loopl {x y z} : (z**x ~> z**y) -> (x ~> y);
 }.
@@ -148,11 +151,11 @@ Class ArrowProd (Arrow (**) u, Arrow (<*>) v) := {
 }. 
 *)
 
-Class CircuitLaws `(A: Arrow, ! ArrowCopy A, ! ArrowSwap A, ! ArrowDrop A) := {
-  cancelr_unit_uncancelr {x}: @cancelr A x >>> uncancelr =M= id;
-  cancell_unit_uncancell {x}: @cancell A x >>> uncancell =M= id;
-  uncancelr_cancelr {x}:      @uncancelr A x >>> cancelr =M= id;
-  uncancell_cancell {x}:      @uncancell A x >>> cancell =M= id;
+(* Class CircuitLaws `(A: Arrow, ! ArrowCopy A, ! ArrowSwap A, ! ArrowDrop A) := {
+  cancelr_unit_uncancelr {x}: @cancelr x >>> uncancelr =M= id;
+  cancell_unit_uncancell {x}: @cancell _ _ A x >>> uncancell =M= id;
+  uncancelr_cancelr {x}:      @uncancelr _ _ A x >>> cancelr =M= id;
+  uncancell_cancell {x}:      @uncancell _ _ A x >>> cancell =M= id;
 
   drop_annhilates {x y} (f: x~>y): f >>> drop =M= drop;
 
@@ -169,7 +172,7 @@ Class CircuitLaws `(A: Arrow, ! ArrowCopy A, ! ArrowSwap A, ! ArrowDrop A) := {
 
   first_f  {x y w} (f: x~>y) (g:x~>y): f =M= g -> @first A x y w f =M= first g;
   second_f {x y w} (f: x~>y) (g:x~>y): f =M= g -> @second A x y w f =M= second g;
-}.
+}. *)
 
 Inductive Kind : Set :=
 | Tuple: Kind -> Kind -> Kind
@@ -177,51 +180,63 @@ Inductive Kind : Set :=
 | Bit: Kind
 | Vector: nat -> Kind -> Kind.
 
+Declare Scope kind_scope.
+Bind Scope kind_scope with Kind.
+Delimit Scope kind_scope with Kind.
+
+Notation "<< x >>" := (x) : kind_scope.
+Notation "<< x , .. , y , z >>" := (Tuple x .. (Tuple y z )  .. ) : kind_scope.
+
+Fixpoint vec_to_nprod (A: Type) n (v: Vector.t A n): A^n :=
+match v with
+| [] => tt
+| x::xs => (x, vec_to_nprod A _ xs)
+end%vector.
+
 (* Cava *)
-Class Cava  := {
-  cava_arrow :> Arrow;
+Class Cava := {
+  cava_cat :> Category Kind;
+  cava_arrow :> Arrow Kind cava_cat Unit Tuple;
   cava_arrow_drop :> ArrowDrop _;
   cava_arrow_swap :> ArrowSwap _;
   cava_arrow_copy :> ArrowCopy _;
   cava_arrow_loop :> ArrowLoop _;
-  (* Todo: blocked by combinational evaluator, which should be able to provide CircuitLaws
-  but currently doesn't *)
-  (* cava_circuit_laws :> CircuitLaws cava_arrow _ _ _; *)
 
-  bit : object;
-  vector (n: nat) o: object;
+  vec_index n := Vector (Nat.log2_up n) Bit;
 
-  bitvec n := vector n bit;
-  bitvec_index n := bitvec (Nat.log2_up n);
+  constant : bool -> (Unit ~> Bit);
+  constant_bitvec n: N -> (Unit ~> Vector n Bit);
 
-  constant : bool -> (unit ~> bit);
-  constant_bitvec n: N -> (unit ~> bitvec n);
-
-  not_gate:  bit        ~> bit;
-  and_gate:  bit ** bit ~> bit;
-  nand_gate: bit ** bit ~> bit;
-  or_gate:   bit ** bit ~> bit;
-  nor_gate:  bit ** bit ~> bit;
-  xor_gate:  bit ** bit ~> bit;
-  xnor_gate: bit ** bit ~> bit;
-  buf_gate:  bit        ~> bit;
+  not_gate:  Bit        ~> Bit;
+  and_gate:  Bit ** Bit ~> Bit;
+  nand_gate: Bit ** Bit ~> Bit;
+  or_gate:   Bit ** Bit ~> Bit;
+  nor_gate:  Bit ** Bit ~> Bit;
+  xor_gate:  Bit ** Bit ~> Bit;
+  xnor_gate: Bit ** Bit ~> Bit;
+  buf_gate:  Bit        ~> Bit;
 
   delay_gate {o} : o ~> o;
 
-  xorcy:     bit ** bit ~> bit;
-  muxcy:     bit ** (bit ** bit) ~> bit;
+  xorcy:     Bit ** Bit ~> Bit;
+  muxcy:     Bit ** (Bit ** Bit) ~> Bit;
   
-  unsigned_add a b c: bitvec a ** bitvec b ~> bitvec c;
+  unsigned_add a b c: Vector a Bit ** Vector b Bit ~> Vector c Bit;
 
-  lut n: (bool^^n --> bool) -> bitvec n ~> bit;
+  lut n: (bool^^n --> bool) -> Vector n Bit ~> Bit;
 
-  index_vec n o: vector n o ** bitvec_index n ~> o;
-  to_vec o: o ~> vector 1 o;
-  append n o: vector n o ** o ~> vector (n+1) o;
-  concat n m o: vector n o ** vector m o ~> vector (n+m) o;
-  split n m o: m < n -> vector n o ~> (vector m o ** vector (n - m) o);
+  index_vec n o: Vector n o ** vec_index n ~> o;
+  (* slice [x:y] where x >= y, x is inclusive 
+  So, slice_vec vec [1:0] is the bitvector [vec[0],vec[1]] : Vector 2 _ 
+  *)
+  slice_vec n x y o: x < n -> y <= x -> Vector n o ~> Vector (x - y + 1) o;
+  to_vec o: o ~> Vector 1 o;
+  append n o: Vector n o ** o ~> Vector (n+1) o;
+  concat n m o: Vector n o ** Vector m o ~> Vector (n + m) o;
+  split n m o: m < n -> Vector n o ~> (Vector m o ** Vector (n - m) o);
 }.
 
+Coercion cava_cat: Cava >-> Category.
 Coercion cava_arrow: Cava >-> Arrow.
 Coercion cava_arrow_swap: Cava >-> ArrowSwap.
 Coercion cava_arrow_drop: Cava >-> ArrowDrop.
@@ -234,8 +249,5 @@ Delimit Scope cava_scope with cava.
 
 Open Scope cava_scope.
 
-Definition cava_cat (_: Cava): Category := _.
-Definition cava_obj (cava: Cava): Type := @object (@cava_cat cava).
-
-Definition high {_: Cava}: unit ~> bit := constant true.
-Definition low {_: Cava}: unit ~> bit := constant false.
+Definition high {_: Cava}: Unit ~> Bit := constant true.
+Definition low {_: Cava}: Unit ~> Bit := constant false.

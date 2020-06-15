@@ -100,8 +100,7 @@ Section NetlistEval.
   Local Open Scope monad_scope.
   Local Open Scope string_scope.
 
-  #[refine] Instance NetlistCat : Category := {
-    object := Kind;
+  #[refine] Instance NetlistCategory : Category Kind := {
     morphism X Y := denote X -> state CavaState (denote Y);
     id X x := ret x;
     compose X Y Z f g := g >=> f;
@@ -124,11 +123,7 @@ Section NetlistEval.
     auto. auto. auto.
   Defined.
 
-  Program Instance NetlistArr : Arrow := {
-    cat := NetlistCat;
-    unit := Unit;
-    product := Tuple;
-
+  Program Instance NetlistArrow : Arrow Kind NetlistCategory Unit Tuple := {
     first X Y Z f '(z,y) :=
       x <- f z ;;
       ret (x,y);
@@ -147,21 +142,11 @@ Section NetlistEval.
     unassoc _ _ _ '(x,(y,z)) := ret ((x,y),z);
   }.
 
-  Instance NetlistDrop : ArrowDrop NetlistArr := { drop _ x := ret Datatypes.tt }.
-  Instance NetlistCopy : ArrowCopy NetlistArr := { copy _ x := ret (x,x) }.
-  Instance NetlistSwap : ArrowSwap NetlistArr := { swap _ _ '(x,y) := ret (y,x) }.
+  Instance NetlistDrop : ArrowDrop NetlistArrow := { drop _ x := ret Datatypes.tt }.
+  Instance NetlistCopy : ArrowCopy NetlistArrow := { copy _ x := ret (x,x) }.
+  Instance NetlistSwap : ArrowSwap NetlistArrow := { swap _ _ '(x,y) := ret (y,x) }.
 
-  Fixpoint bv_to_nprod n (v: Bvector n): NaryFunctions.nprod bool n.
-  Proof.
-    unfold Bvector in *.
-    destruct n.
-    exact tt.
-    refine (pair _ _ ).
-    exact (Vector.hd v).
-    exact (bv_to_nprod n (Vector.tl v)).
-  Defined.
-
-  Instance NetlistLoop : ArrowLoop NetlistArr := {
+  Instance NetlistLoop : ArrowLoop NetlistArrow := {
     loopr _ _ Z f x :=
       z <- build Z ;;
       '(y,z') <- f (x,z) ;;
@@ -175,13 +160,8 @@ Section NetlistEval.
       ret y;
   }.
 
-  Program Instance NetlistCircuitLaws : CircuitLaws NetlistArr _ _ _.
-
   #[refine] Instance NetlistCava : Cava := {
-    cava_arrow := NetlistArr;
-
-    bit := Bit;
-    vector n o := Vector n o;
+    cava_arrow := NetlistArrow;
 
     constant b _ := match b with
       | true => ret Vcc
@@ -259,7 +239,7 @@ Section NetlistEval.
       let f' := NaryFunctions.nuncurry bool bool n f in
       let powers := map
         (fun p => let bv := Ndigits.N2Bv_sized n (N.of_nat p) in
-                  2^(N.of_nat p) * N.b2n (f' (bv_to_nprod n bv))
+                  2^(N.of_nat p) * N.b2n (f' (vec_to_nprod _ n bv))
         )%N
         seq in
       let config := fold_left N.add powers 0%N in
@@ -278,6 +258,10 @@ Section NetlistEval.
   index_vec n o '(array, index) :=
       (* TODO: this can build the wire structure, but doesn't do the actual indexing yet *)
       build o;
+
+  slice_vec n x y o H1 H2 vec :=
+      (* TODO: this can build the wire structure, but doesn't do the actual indexing yet *)
+      build (Vector (x - y + 1) o);
 
   to_vec o i := ret [i]%vector;
   append n o '(array, e) :=

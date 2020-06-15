@@ -11,8 +11,10 @@ Import ListNotations.
 Section definition.
   Import KappaNotation. 
 
+  Variable var: Kind -> Kind -> Type.
+
   Definition xilinxFullAdder
-    : Kappa_sugared << Bit, << Bit, Bit >>, Unit >> << Bit, Bit >> :=
+    : kappa_sugared var << Bit, << Bit, Bit >>, Unit >> << Bit, Bit >> :=
     <[ \ cin ab =>
       let '(a,b) = ab in
       let part_sum = xor a b in
@@ -20,9 +22,9 @@ Section definition.
       let cout     = muxcy part_sum (cin, a) in
       (sum, cout)
     ]>.
-
-  Definition xilinxFullAdder_structure := (ltac: (build_structure xilinxFullAdder)).
 End definition.
 
-Lemma xilinxFullAdder_is_combinational: wf_combinational (toCava _ xilinxFullAdder_structure).
+Definition xilinxFullAdder_structure := (ltac: (build_structure xilinxFullAdder)).
+
+Lemma xilinxFullAdder_is_combinational: wf_combinational (toCava xilinxFullAdder_structure _).
 Proof. combinational_obvious. Qed.

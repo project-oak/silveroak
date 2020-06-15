@@ -1,4 +1,4 @@
-Require Import Arith Eqdep_dec List Lia NArith.
+Require Import Arith Eqdep_dec List Lia NArith Omega.
 
 Require Import Cava.BitArithmetic.
 
@@ -16,19 +16,10 @@ Declare Scope kappa_scope.
 Declare Custom Entry expr.
 Delimit Scope kappa_scope with kappa.
 
-Definition kappa_to_vec {var o} (e: @kappa_sugared var Unit o): @kappa_sugared var Unit (Vector 1 o) :=
-  App ToVec e.
-Definition kappa_append {var n o}
-  (e1: @kappa_sugared var Unit (Vector n o))
-  (e2: @kappa_sugared var Unit o)
-  : @kappa_sugared var <<Unit>> (Vector (n+1) o) :=
-  let packed := tupleHelper e1 e2 in
-  App (App (Append _) e1) e2.
-
 (* Kappa expression and application *)
 
 Module KappaNotation.
-  Notation "<[ e ]>" := (fun var => e%kappa) (at level 1, e custom expr at level 1).
+  Notation "<[ e ]>" := (e%kappa) (at level 1, e custom expr at level 1).
 
   Notation "\ x .. y => e" := (Abs (fun x => .. (Abs (fun y => e)) ..))
     (in custom expr at level 200, x binder, right associativity,
@@ -53,8 +44,8 @@ Module KappaNotation.
 
   (* Escaping *)
 
-  Notation "! x" := (x _)(in custom expr at level 2, x global) : kappa_scope.
-  Notation "!( x )" := (x _) (in custom expr, x constr) : kappa_scope.
+  Notation "! x" := (x)(in custom expr at level 2, x global) : kappa_scope.
+  Notation "!( x )" := (x) (in custom expr, x constr) : kappa_scope.
 
   Notation "( x , .. , y , z )" := (
     (tupleHelper x .. (tupleHelper y z) .. )
@@ -84,25 +75,35 @@ Module KappaNotation.
   Notation "'to_vec'" := (ToVec) (in custom expr at level 4) : kappa_scope.
   Notation "'append'" := (Append _) (in custom expr at level 4) : kappa_scope.
   Notation "'concat'" := (Concat _ _) (in custom expr at level 4) : kappa_scope.
+  Notation "'split_at' x" := (Split _ x _) (in custom expr at level 4, x constr at level 4) : kappa_scope.
 
   Notation "'true'" := (Constant true) (in custom expr at level 2) : kappa_scope.
   Notation "'false'" := (Constant false) (in custom expr at level 2) : kappa_scope.
 
   Notation "# x" := (ConstantVec x) (in custom expr at level 2, x constr at level 4) : kappa_scope.
 
-  Notation "x [ v ]" := (App (App (IndexVec _) x) v) (in custom expr at level 4) : kappa_scope.
+  Notation "v [ x ]" := (App (App (IndexVec _) v) x) (in custom expr at level 4) : kappa_scope.
 
+  Notation " v [ x : y ] " := 
+        (@kappa_slice_vec _ _ _ v x y _ _)
+    (in custom expr at level 4,
+    v constr,
+    x constr at level 5,
+    y constr at level 5
+    ) : kappa_scope.
+
+  Notation "'mkVec' ( x )" := 
+    ( kappa_to_vec x ) (in custom expr at level 4) : kappa_scope.
   Notation "'mkVec' ( x , y , .. , z )" := 
     (kappa_append .. (kappa_append (kappa_to_vec x) y) .. z) (in custom expr at level 4) : kappa_scope.
 End KappaNotation.
-
 
 Definition to_constructive {i o} (expr: Kappa i o) (wf: wf_debrujin ENil (expr _))
   : structure (remove_rightmost_unit i) o
   := Compose (closure_conversion expr wf) (insert_rightmost_tt1 _) .
 Definition compile_kappa {i o} (Cava: Cava) (expr: Kappa i o) (wf: wf_debrujin ENil (expr _))
-  : denoteKind (remove_rightmost_unit i) ~> denoteKind o 
-  := toCava Cava (to_constructive expr wf).
+  : remove_rightmost_unit i ~[Cava]~> o 
+  := toCava (to_constructive expr wf) Cava.
 
 Ltac auto_kappa_wf := simpl;tauto.
 
@@ -116,30 +117,36 @@ Section regression_examples.
   Import KappaNotation.
   Local Open Scope kappa_scope.
 
-  Definition ex1_constant: Kappa_sugared << Bit, Unit >> Bit := <[ \x => true ]>.
-  Definition ex2_parameterized (n:nat) : Kappa_sugared << Bit, Unit >> Bit :=
+  Context {var: Kind -> Kind -> Type}.
+
+  Definition ex0_constant: kappa_sugared var << Vector 10 Bit, Unit >> (Vector 8 Bit).
+    refine (<[ \x => x [ 7 : 0 ] ]>); lia.
+  Defined.
+
+  Definition ex1_constant: kappa_sugared var << Bit, Unit >> Bit := <[ \x => true ]>.
+  Definition ex2_parameterized (n: nat): kappa_sugared var << Bit, Unit >> Bit :=
   match n with
   | O => <[ \ x => true ]>
   | S n => <[ \ x => xor x x ]>
   end.
 
-  Definition ex3_to_vec: Kappa_sugared << Bit, Unit >>  (Vector 1 Bit) :=
+  Definition ex3_to_vec: kappa_sugared var << Bit, Unit >>  (Vector 1 Bit) :=
   <[ \ x => to_vec x ]>.
-  Definition ex4_index_vec: Kappa_sugared << Vector 10 Bit, Unit >> Bit :=
+  Definition ex4_index_vec: kappa_sugared var << Vector 10 Bit, Unit >> Bit :=
   <[ \ x => index_vec x (# 1) ]>.
-  Definition ex5_index_vec2: Kappa_sugared << Vector 10 Bit, Unit >> Bit :=
+  Definition ex5_index_vec2: kappa_sugared var << Vector 10 Bit, Unit >> Bit :=
   <[ \ x => x [# 1] ]>.
-  Definition ex6_concat: Kappa_sugared << Vector 2 Bit, Bit, Unit >> (Vector 3 Bit) :=
+  Definition ex6_concat: kappa_sugared var << Vector 2 Bit, Bit, Unit >> (Vector 3 Bit) :=
   <[ \ x v => append x v ]>.
-  Definition ex7_xor: Kappa_sugared << Bit, Bit, Unit >> Bit := 
+  Definition ex7_xor: kappa_sugared var << Bit, Bit, Unit >> Bit := 
   <[ \ x y => xor x y ]>.
-  Definition ex7_tupled_destruct: Kappa_sugared << << Bit, Bit>>, Unit>> Bit := 
+  Definition ex7_tupled_destruct: kappa_sugared var << << Bit, Bit>>, Unit>> Bit := 
   <[ \ xy => 
     let '(x,y) = xy in
     y ]>.
-  Definition ex8_multiindex: Kappa_sugared << Vector 10 (Vector 5 Bit), Unit >> Bit :=
+  Definition ex8_multiindex: kappa_sugared var << Vector 10 (Vector 5 Bit), Unit >> Bit :=
   <[ \ x => x[#0][#1] ]>.
-  Definition ex9_mkvec: Kappa_sugared << Bit, Unit >> (Vector 2 Bit) :=
+  Definition ex9_mkvec: kappa_sugared var << Bit, Unit >> (Vector 2 Bit) :=
   <[ \x => mkVec ( true , false ) ]>.
 
   Fixpoint copy_object_pow2 o (n:nat): Kind :=
@@ -148,14 +155,14 @@ Section regression_examples.
   | S n => Tuple (copy_object_pow2 o n) (copy_object_pow2 o n)
   end.
 
-  Fixpoint tree 
+  Fixpoint tree
     (A: Kind)
     (n: nat)
-    (f:  Kappa_sugared << A, A, Unit >> A)
+    (f: kappa_sugared var << A, A, Unit >> A)
     {struct n}
-    : Kappa_sugared << copy_object_pow2 A n, Unit >> A :=
+    : kappa_sugared var << copy_object_pow2 A n, Unit >> A :=
   match n with
-  | O => <[ \x => x ]>
+  | O => <[ \ x => x ]>
   | S n' =>
     <[\ x =>
         let a = !(tree A n' f) (fst x) in
@@ -165,7 +172,7 @@ Section regression_examples.
   end.
 
   Definition xilinxFullAdder
-    : Kappa_sugared << Bit, << Bit, Bit >>, Unit>> (Tuple Bit Bit) :=
+    : kappa_sugared var << Bit, << Bit, Bit >>, Unit>> (Tuple Bit Bit) :=
     <[ \ cin ab =>
       let a = fst ab in
       let b = snd ab in
@@ -177,8 +184,8 @@ Section regression_examples.
 
   Definition adder_tree
     (bitsize n: nat)
-    : Kappa_sugared (copy_object_pow2 (Vector bitsize Bit) n ** unit) (Vector bitsize Bit) :=
-    tree (Vector bitsize Bit) n (fun var => UnsignedAdd _ _ _).
+    : kappa_sugared var <<copy_object_pow2 (Vector bitsize Bit) n, Unit>> (Vector bitsize Bit) :=
+    tree (Vector bitsize Bit) n (UnsignedAdd _ _ _).
 
 End regression_examples.
 
