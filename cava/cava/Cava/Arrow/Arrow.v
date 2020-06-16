@@ -63,18 +63,21 @@ Add Parametric Relation (object: Type) (C: Category object) (x y: object): (morp
   transitivity proved by (@Equivalence_Transitive _ _ (morphism_setoid_equivalence x y))
   as parametric_relation_eqv.
 
-Hint Extern 1 => apply compose_respects_equivalence: core.
-Hint Extern 1 => apply id_left: core.
-Hint Extern 1 => apply id_right: core.
+Hint Extern 1 => apply compose_respects_equivalence : core.
+Hint Extern 1 => apply id_left : core.
+Hint Extern 1 => apply id_right : core.
 
 Add Parametric Morphism (object: Type) (C: Category object) (x y z: object) : (@compose object C x y z)
   with signature (morphism_equivalence _ _ ==> morphism_equivalence _ _ ==> morphism_equivalence _ _)
   as parametric_morphism_comp.
-Proof. auto. Defined.
+Proof. 
+  auto.
+Defined.
 
 (* adam megacz style generalized arrow,
   laws coming from monoidal categories *)
 Class Arrow (object: Set) `(C: Category object) (unit: object) (product: object -> object -> object) := {
+  arrow_cat := C;
   u := unit;
   product := product
     where "x ** y" := (product x y);
@@ -108,6 +111,8 @@ Class Arrow (object: Set) `(C: Category object) (unit: object) (product: object 
 
   (* triangle and pentagon identities? *)
 }.
+
+Coercion arrow_cat: Arrow >-> Category.
 
 Declare Scope arrow_scope.
 Bind Scope arrow_scope with Arrow.
@@ -193,6 +198,16 @@ match v with
 | x::xs => (x, vec_to_nprod A _ xs)
 end%vector.
 
+(* log2_up is used for getting the necessary number of bits required to represent an index.
+Currently some of the Arrow.Cava and Kappa parts take non-zero sized vectors, and so we require a 
+minimum size of 1 for now. *)
+Definition log2_up_min_1 (n: nat): nat :=
+  match n with
+  | 0 => 1 
+  | 1 => 1 
+  | S n => Nat.log2_up (S n)
+  end.
+
 (* Cava *)
 Class Cava := {
   cava_cat :> Category Kind;
@@ -202,7 +217,7 @@ Class Cava := {
   cava_arrow_copy :> ArrowCopy _;
   cava_arrow_loop :> ArrowLoop _;
 
-  vec_index n := Vector (Nat.log2_up n) Bit;
+  vec_index n := Vector (log2_up_min_1 n) Bit;
 
   constant : bool -> (Unit ~> Bit);
   constant_bitvec n: N -> (Unit ~> Vector n Bit);

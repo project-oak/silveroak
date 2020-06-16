@@ -159,6 +159,16 @@ Proof.
   tauto.
 Qed.
 
+Lemma modular_prop: forall (x y z : Kind)
+  (A: Arrow Kind ConjPropKindCategory Unit Tuple)
+  (f: x ~[A]~> y) (g: y ~[A]~> z),
+  (f >>> g) = 
+  (g /\ f).
+Proof.
+  intros.
+  tauto.
+Qed.
+
 Lemma decompose_combinational (x y z : Kind) (f: structure x y) (g: structure y z):
   is_combinational (toCava (Compose g f)) -> 
   is_combinational (toCava g) /\ is_combinational (toCava f).
