@@ -2,4 +2,8 @@
 -R . Aes
 
 Util.v
+
+pkg.v
 canright_pkg.v
+canright.v
+canright_masked_noreuse.v

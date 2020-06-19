@@ -298,6 +298,53 @@ Proof.
   auto.
 Defined.
 
+Lemma wf_lax1:
+  forall x y z
+  (n: nat) (env: environment n)
+  (expr1: @kappa natvar x y)
+  (expr2: @kappa natvar y z)
+  ,
+  @wf_debrujin x z n env (DCompose expr2 expr1) -> 
+  @wf_debrujin x y n env expr1.
+Proof.
+  auto.
+Defined.
+
+Lemma wf_lax2:
+  forall x y z
+  (n: nat) (env: environment n)
+  (expr1: @kappa natvar x y)
+  (expr2: @kappa natvar y z)
+  ,
+  @wf_debrujin x z n env (DCompose expr2 expr1) -> 
+  @wf_debrujin y z n env expr2.
+Proof.
+  auto.
+Defined.
+
+Lemma wf_lax_app1:
+  forall x y z
+  (n: nat) (env: environment n)
+  (f: @kappa natvar <<x,y>> z)
+  (e: @kappa natvar Unit x)
+  f e,
+  @wf_debrujin y z n env (DApp f e) -> 
+  @wf_debrujin <<x, y>> z n env f.
+Proof.
+  auto.
+Defined.
+
+Lemma wf_lax_app2:
+  forall x y z
+  (n: nat) (env: environment n)
+  (f: @kappa natvar <<x,y>> z)
+  (e: @kappa natvar Unit x)
+  f e,
+  @wf_debrujin y z n env (DApp f e) -> 
+  @wf_debrujin Unit x n env e.
+Proof.
+  auto.
+Defined.
 
 (* Perform closure conversion by passing an explicit environment. The higher
 order PHOAS representation is converted to first order form with de Brujin
@@ -356,11 +403,10 @@ new environment variable in to place*)
 | DArr m => fun _ _ _ => _ (* cancelr >>> m *)
 end (eq_refl i) (eq_refl o)
 ).
-- 
-  inversion wf.
+- unfold wf_debrujin in wf.
   assert (as_kind env ?? lookup_kind v (as_kind_list env) = structure (as_kind env) o).
 
-  rewrite H0.
+  rewrite wf.
   rewrite e0.
   reflexivity.
 
@@ -374,20 +420,18 @@ end (eq_refl i) (eq_refl o)
   exact (first swap >>> assoc >>> f').
 
 - rewrite e0, e1.
-  destruct wf.
   exact (
     second (copy >>> first (uncancell
-    >>> closure_conversion' _ _ _ env e H0))
+    >>> closure_conversion' _ _ _ env e (wf_lax_app2 f e wf)))
     >>> unassoc >>> first swap
-    >>> closure_conversion' _ _ _ env f H
+    >>> closure_conversion' _ _ _ env f (wf_lax_app1 f e wf)
   ).
 - rewrite e, e0.
-  destruct wf.
   exact (
   second copy
   >>> unassoc
-  >>> first (closure_conversion' _ _ _ env e2 H0)
-  >>> closure_conversion' _ _ _ env e1 H
+  >>> first (closure_conversion' _ _ _ env e2 (wf_lax1 wf))
+  >>> closure_conversion' _ _ _ env e1 (wf_lax2 wf)
 ).
 - rewrite e, e0.
   exact (Second Drop >>> Cancelr >>> m).
@@ -408,20 +452,28 @@ Section Equivalence.
     forall i o, ctxt
     -> kappa var1 i o -> kappa var2 i o
     -> Prop :=
-  | Var_equiv : forall i o n1 n2 E,
+  | Var_equiv : forall i o (n1: var1 i o) (n2: var2 i o) E,
     In (vars (obj_pair i o) (pair n1 n2)) E
     -> kappa_equivalence E (DVar n1) (DVar n2)
 
-  | Abs_equiv : forall o (f1: var1 Unit o -> kappa var1 Unit o) f2 (E:ctxt),
-    (forall n1 n2, kappa_equivalence (vars (obj_pair Unit o) (pair n1 n2) :: E) (f1 n1) (f2 n2))
+  | Abs_equiv : forall x y z 
+    (f1: var1 Unit x -> kappa var1 y z) 
+    (f2: var2 Unit x -> kappa var2 y z) 
+    (E:ctxt),
+    (forall n1 n2, kappa_equivalence (vars (obj_pair Unit x) (pair n1 n2) :: E) (f1 n1) (f2 n2))
     -> kappa_equivalence E (DAbs f1) (DAbs f2)
 
-  | App_equiv : forall E x y z (f1 : kappa var1 (x**y) z) f2 e1 e2,
+  | App_equiv : forall E x y z 
+    (f1 : kappa var1 (x**y) z) 
+    (f2 : kappa var2 (x**y) z) 
+    e1 e2,
     kappa_equivalence E f1 f2
     -> kappa_equivalence E e1 e2
     -> kappa_equivalence E (DApp f1 e1) (DApp f2 e2)
 
-  | Compose_equiv : forall E x y z (f1 : kappa var1 y z) f2 (g1: kappa var1 x y) g2,
+  | Compose_equiv : forall E x y z 
+    (f1: kappa var1 y z) (f2: kappa var2 y z)
+    (g1: kappa var1 x y) (g2: kappa var2 x y),
     kappa_equivalence E f1 f2
     -> kappa_equivalence E g1 g2
     -> kappa_equivalence E (DCompose f1 g1) (DCompose f2 g2)
@@ -518,3 +570,21 @@ Definition Closure_conversion {i o} (expr: Kappa i o): i ~> o
 Hint Resolve closure_conversion' : core.
 Hint Resolve closure_conversion : core.
 Hint Resolve Closure_conversion : core.
+
+Ltac wf_kappa_via_compute :=
+  intros;
+  unfold wf_debrujin;
+  compute;
+  tauto.
+
+Ltac wf_kappa_via_equiv :=
+  match goal with
+  | [ |- wf_debrujin _ _] => eapply (@kappa_wf _ _ nil%list)
+  end; intros;
+  repeat match goal with 
+  | [ |- kappa_equivalence _ _ _] => constructor;intros
+  end; 
+  repeat match goal with 
+  | [ H: In _ nil |- _] => inversion H
+  | [ |- In _ _ ] => simpl; tauto
+  end.

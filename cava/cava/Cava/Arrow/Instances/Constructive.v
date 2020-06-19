@@ -48,7 +48,7 @@ Inductive structure: Kind -> Kind -> Type :=
 
   | Lut: forall n (f: bool^^n --> bool), structure (Vector n Bit) Bit
 
-  | IndexVec: forall {n o}, structure << Vector n o, Vector (Nat.log2_up n) Bit >> o
+  | IndexVec: forall {n o}, structure << Vector n o, Vector (log2_up_min_1 n) Bit >> o
   | SliceVec: forall {n} x y {o}, x < n -> y <= x -> structure << Vector n o >> (Vector (x - y + 1) o)
   | ToVec: forall {o}, structure o (Vector 1 o)
   | Append: forall {n o}, structure << Vector n o, o >> (Vector (n+1) o)
@@ -123,17 +123,17 @@ Hint Immediate st_refl : core.
 Hint Immediate st_sym : core.
 Hint Immediate st_trans : core.
 
-Fixpoint toCava {i o} (expr: structure i o) (Cava:Cava) 
+Fixpoint toCava {i o} (expr: structure i o) (cava: Cava) 
   : i ~> o :=
   match expr with
   | Id           => id
-  | Compose g f  => compose (toCava g Cava) (toCava f Cava)
+  | Compose g f  => compose (toCava g cava) (toCava f cava)
   | Copy         => copy
   | Drop         => drop
   | Swap         => swap
 
-  | First f    => first (toCava f Cava)
-  | Second f   => second (toCava f Cava)
+  | First f    => first (toCava f cava)
+  | Second f   => second (toCava f cava)
 
   | Cancelr    => cancelr
   | Cancell    => cancell
@@ -144,8 +144,8 @@ Fixpoint toCava {i o} (expr: structure i o) (Cava:Cava)
   | Assoc   => assoc
   | Unassoc => unassoc
 
-  | LoopL c => loopl (toCava c Cava)
-  | LoopR c => loopr (toCava c Cava)
+  | LoopL c => loopl (toCava c cava)
+  | LoopR c => loopr (toCava c cava)
 
   | Constant b        => constant b
   | @ConstantBitVec n v => constant_bitvec n v

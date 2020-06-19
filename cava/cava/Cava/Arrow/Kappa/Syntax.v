@@ -83,6 +83,7 @@ Module KappaNotation.
   Notation "# x" := (ConstantVec x) (in custom expr at level 2, x constr at level 4) : kappa_scope.
 
   Notation "v [ x ]" := (App (App (IndexVec _) v) x) (in custom expr at level 4) : kappa_scope.
+  Notation "x :: y" := (App (App (Concat _ _) (kappa_to_vec x)) y) (in custom expr at level 4) : kappa_scope.
 
   Notation " v [ x : y ] " := 
         (@kappa_slice_vec _ _ _ v x y _ _)
@@ -188,65 +189,3 @@ Section regression_examples.
     tree (Vector bitsize Bit) n (UnsignedAdd _ _ _).
 
 End regression_examples.
-
-(* TODO: remove this or update
-
-Lemma kappa_arrow_lemma_example:
-  forall (Cava: Cava),
-  compile_kappa _ ex1_notation = drop >>> constant true.
-  (* (uncancelr >>> first swap >>> assoc >>> cancelr >>> constant true). *)
-Proof.
-  intros.
-  cbv [compile_kappa toCava to_constructive ex1_notation].
-  simpl.
-
-  auto.
-Abort.
-
-Ltac simpl_conversion :=
-  cbv beta iota zeta delta [
-    Desugar desugar Closure_conversion closure_conversion closure_conversion'
-    extract_nth'
-    wf_debrujin_succ
-    eq_rec_r eq_rec eq_rect eq_rect_r eq_ind_r eq_ind eq_sym f_equal
-    length
-    Nat.eq_dec
-    nat_rec nat_rect environment_ind eq_trans
-    to_constructive
-    ConstructiveCava
-    ConstructiveCat
-    ConstructiveArr
-    morphism
-    compose
-    (* uncancelr *)
-  ].
-
-Lemma kappa_arrow_lemma_example2:
-  to_constructive ex1_notation =M= (drop >>> constant true).
-Proof.
-  intros.
-  unfold ex1_notation.
-  simpl_conversion.
-  fold (@cancelr _ unit).
-
-  setoid_rewrite cancelr_unit_is_drop.
-  setoid_rewrite <- associativity at 1.
-  setoid_rewrite <- associativity at 1.
-  setoid_rewrite <- associativity at 1.
-  setoid_rewrite st_drop_annhilates.
-  auto.
-Qed.
-
-Definition xilinxFullAdderWf: (wf_debrujin ENil (xilinxFullAdder _)).
-  simpl. tauto.
-Defined.
-
-Goal
-  structural_simplification (closure_conversion xilinxFullAdder xilinxFullAdderWf >>> cancelr) =M= second (first (second uncancelr >>> xor_gate)) >>> xorcy.
-Proof.
-  intros.
-  unfold xilinxFullAdder, xilinxFullAdderWf.
-  simpl_conversion.
-
-  (*TODO*)
-Abort. *)
