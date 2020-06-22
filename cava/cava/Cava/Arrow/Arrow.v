@@ -185,6 +185,30 @@ Inductive Kind : Set :=
 | Bit: Kind
 | Vector: nat -> Kind -> Kind.
 
+Fixpoint decKind (k1 k2: Kind) {struct k1} : {k1=k2} + {k1<>k2}. 
+Proof.
+  decide equality.
+  exact (PeanoNat.Nat.eq_dec n n0).
+Defined.
+
+Require Import Eqdep.
+
+Lemma kind_eq: forall ty, decKind ty ty = left eq_refl.
+Proof.
+  intros. 
+  destruct (decKind ty ty); try rewrite (UIP_refl _ _ _); auto.
+  destruct n.
+  reflexivity.
+Qed.
+
+Ltac reduce_kind_eq :=
+  match goal with 
+  | [ |- context[decKind _ _] ] =>
+    rewrite kind_eq; unfold eq_rect_r, eq_rect, eq_sym
+  | [H: context[decKind _ _] |- _] =>
+    rewrite kind_eq in H; unfold eq_rect_r, eq_rect, eq_sym in H
+  end; try subst.
+
 Declare Scope kind_scope.
 Bind Scope kind_scope with Kind.
 Delimit Scope kind_scope with Kind.
