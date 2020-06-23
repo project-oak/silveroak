@@ -119,7 +119,7 @@ Instance CombinationalLoop : ArrowLoop CoqKindMaybeArrow := { loopl _ _ _ _ _ :=
   to_vec o x := Some [x]%vector;
   append n o '(v, x) :=
     let z := (x :: v)%vector in
-    Some _;
+    Some z;
 
   concat n m o '(x, y) := Some (Vector.append x y);
   split n m o H x :=
@@ -149,12 +149,6 @@ Proof.
     apply (splitat (x-y+1)) in X.
     apply (fst) in X.
     exact (Some X).
-
-  (* append *)
-  - assert (n + 1 = S n).
-    omega.
-    rewrite H.
-    auto.
 
   (* split *)
   - assert ( m + (n - m) = n).

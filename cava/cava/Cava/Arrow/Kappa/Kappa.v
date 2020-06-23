@@ -6,6 +6,14 @@ From Coq Require Import Arith NArith Lia NaryFunctions.
 Section Vars.
   Context {var: Kind -> Kind -> Type}.
 
+
+  Definition lift_constant (ty: Kind): Type :=
+    match ty with
+    | Bit => bool
+    | Vector n Bit => N
+    | _ => False
+    end.
+
   (* 
     `kappa_sugared` includes constructors for 
     - Kappa Calculus, 
@@ -25,18 +33,15 @@ Section Vars.
     | App: forall {x y z},  kappa_sugared << x, y >> z -> kappa_sugared Unit x -> kappa_sugared y z
     | Com: forall {x y z},  kappa_sugared y z -> kappa_sugared x y -> kappa_sugared x z
 
-    (* Lift any morphism from ConstructiveCat *)
-    | LiftMorphism: forall {x y},    morphism x y -> kappa_sugared x y
-
     (* Helper syntax *)
     | Let: forall {x y z},  kappa_sugared Unit x -> (var Unit x -> kappa_sugared y z) -> kappa_sugared y z
-    | TupleLeft: forall {x y}, kappa_sugared << << x, y >>, Unit >> x
-    | TupleRight: forall {x y}, kappa_sugared << << x, y >>, Unit >> y
-    | MakeTuple: forall {x y}, kappa_sugared << x, y, Unit >> << x, y >>
+    | Fst: forall {x y}, kappa_sugared << << x, y >>, Unit >> x
+    | Snd: forall {x y}, kappa_sugared << << x, y >>, Unit >> y
+    | Pair: forall {x y}, kappa_sugared << x, y, Unit >> << x, y >>
       
     (* Cava routines *)
-    | Constant: bool -> kappa_sugared Unit Bit
-    | ConstantVec: forall {n}, N -> kappa_sugared Unit (Vector n Bit)
+    | LiftConstant: forall {x}, lift_constant x -> kappa_sugared Unit x
+
     | Not: kappa_sugared << Bit, Unit >> Bit
     | And: kappa_sugared << Bit, Bit, Unit >> Bit
     | Nand: kappa_sugared << Bit, Bit, Unit >> Bit
@@ -49,17 +54,17 @@ Section Vars.
     | Xorcy: kappa_sugared << Bit, Bit, Unit >> Bit
     | Muxcy: kappa_sugared << Bit, Tuple Bit Bit, Unit >> Bit
     | UnsignedAdd: forall a b c, kappa_sugared << Vector a Bit, Vector b Bit, Unit >> (Vector c Bit)
+
     | Lut n: (bool^^n --> bool) -> kappa_sugared << Vector n Bit, Unit >> Bit
     | IndexVec: forall n {o}, kappa_sugared << Vector n o, Vector (log2_up_min_1 n) Bit, Unit >> o
     | SliceVec: forall n x y {o}, x < n -> y <= x -> kappa_sugared << Vector n o, Unit >> (Vector (x - y + 1) o)
     | ToVec: forall {o}, kappa_sugared << o, Unit >> (Vector 1 o)
-    | Append: forall n {o}, kappa_sugared << Vector n o, o, Unit >> (Vector (n+1) o)
+    | Append: forall n {o}, kappa_sugared << Vector n o, o, Unit >> (Vector (S n) o)
     | Concat: forall n m {o}, kappa_sugared << Vector n o, Vector m o, Unit >> (Vector (n + m) o)
     | Split: forall n m {o}, (m < n) -> kappa_sugared << Vector n o, Unit >> <<Vector m o, Vector (n - m) o>>.
 
   Bind Scope kind_scope with kappa_sugared.
   Delimit Scope kind_scope with kappa_sugared.
-
 
   (* Everything not manipulation a variable is mapped to its arrow representation via DArr.
   So after desugaring the type is much simpler *)
@@ -87,12 +92,12 @@ Section Vars.
   Definition tupleHelper {X Y}
     (x: kappa_sugared Unit X)
     (y: kappa_sugared Unit Y) := 
-    App (App MakeTuple x) y.
+    App (App Pair x) y.
 
   Definition kappa_append {n o}
     (e1: kappa_sugared Unit (Vector n o))
     (e2: kappa_sugared Unit o)
-    : kappa_sugared <<Unit>> (Vector (n+1) o) :=
+    : kappa_sugared <<Unit>> (Vector (S n) o) :=
     let packed := tupleHelper e1 e2 in
     App (App (Append _) e1) e2.
 
@@ -114,15 +119,15 @@ Section Vars.
     (array: kappa_sugared Unit (Vector n o))
     (index: N)
     : kappa_sugared Unit o :=
-    kappa_index_vec array (ConstantVec index).
+    kappa_index_vec array (@LiftConstant (Vector _ Bit) index).
 
   Definition kappa_head {n o}
     (array: kappa_sugared Unit (Vector (S (S n)) o))
     : kappa_sugared Unit <<o, Vector (S n)o>>.
     refine (
     let circuit := (App (Split (S (S n)) 1 _) array) in
-    let head_ := Let (App TupleLeft circuit) (fun x => kappa_const_index_vec (Var x) 1) in
-    let tail_ := Let (App TupleRight circuit) (fun x => Var x) in
+    let head_ := Let (App Fst circuit) (fun x => kappa_const_index_vec (Var x) 1) in
+    let tail_ := Let (App Snd circuit) (fun x => Var x) in
     _).
     assert ((S (S n)) - 1 = S n).
     simpl. auto.
@@ -146,12 +151,11 @@ Section Vars.
     | App e1 e2 => DApp (desugar e1) (desugar e2)
     | Com f g => DCompose (desugar f) (desugar g)
     | Let x f => DApp (DAbs (fun x => desugar (f x))) (desugar x)
-    | LiftMorphism m => DArr m
 
-    | TupleLeft  => tuple_left
-    | TupleRight  => tuple_right
+    | Fst  => tuple_left
+    | Snd  => tuple_right
 
-    | MakeTuple => DArr (Second Cancelr)
+    | Pair => DArr (Second Cancelr)
 
     | Not  => kappa_app << Bit, Unit >> not_gate
     | And  => kappa_app << Bit, Bit, Unit >> and_gate
@@ -169,8 +173,12 @@ Section Vars.
     | UnsignedAdd a b c => kappa_app << Vector a Bit, Vector b Bit, Unit >> (unsigned_add a b c)
     | Lut n f => kappa_app << Vector n Bit, Unit >> (lut n f)
 
-    | Constant b => DArr (constant b)
-    | ConstantVec v => DArr (constant_bitvec _ v)
+    | @LiftConstant ty x => 
+      match ty, x with
+      | Bit, b => DArr (constant b)
+      | Vector n Bit, v => DArr (constant_bitvec _ v)
+      | _, H => match H with end
+      end
 
     | IndexVec n => 
       kappa_app << Vector n _, Vector (log2_up_min_1 n) Bit, Unit >> (index_vec n _)
