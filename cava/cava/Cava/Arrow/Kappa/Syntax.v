@@ -99,10 +99,10 @@ Module KappaNotation.
     (kappa_append .. (kappa_append (kappa_to_vec x) y) .. z) (in custom expr at level 4) : kappa_scope.
 End KappaNotation.
 
-Definition to_constructive {i o} (expr: Kappa i o) (wf: wf_debrujin ENil (expr _))
+Definition to_constructive {i o} (expr: Kappa i o) (wf: wf_debrujin [] (expr _))
   : structure (remove_rightmost_unit i) o
   := Compose (closure_conversion expr wf) (insert_rightmost_tt1 _) .
-Definition compile_kappa {i o} (Cava: Cava) (expr: Kappa i o) (wf: wf_debrujin ENil (expr _))
+Definition compile_kappa {i o} (Cava: Cava) (expr: Kappa i o) (wf: wf_debrujin [] (expr _))
   : remove_rightmost_unit i ~[Cava]~> o 
   := toCava (to_constructive expr wf) Cava.
 

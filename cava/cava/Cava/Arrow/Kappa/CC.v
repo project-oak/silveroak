@@ -1,6 +1,7 @@
 Require Import Arith Eqdep List Lia.
 
 Import ListNotations.
+Import EqNotations.
 
 Require Import Cava.BitArithmetic.
 
@@ -12,15 +13,17 @@ Require Import Cava.Arrow.Kappa.Kappa.
 
 Set Implicit Arguments.
 
+(* todo: make some principled ltac's out of this *)
 Ltac solver :=
   simpl in *; try subst; try match goal with
   | [ H : ?X < ?X |- _ ] => apply Nat.lt_irrefl in H; contradiction
   | [ H : ?X = ?Y, H1: ?X < ?Y |- _ ] => rewrite H in H1; apply Nat.lt_irrefl in H; contradiction
+  | [ H : ?X <> ?X |- _ ] => destruct H
+  | [ H : None = Some _|- _ ] => inversion H
 
   | [ |- Some ?X = Some ?X ] => f_equal
   | [ |- context[eq_nat_dec ?X ?Y] ] => destruct (eq_nat_dec X Y)
 
-  | [ H : None = Some _|- _ ] => inversion H
   | [ H : Some ?X = Some ?Y |- _ ] => inversion H
   | [ H : ?X /\ ?Y |- _ ] => inversion H; clear H
   | [ H : ?X \/ ?Y |- _ \/ ?Y ] => inversion H; [ left; progress eauto | right; progress eauto ]
@@ -30,321 +33,159 @@ Ltac solver :=
   | [ H : ?X = ?Y, H2: ?X = ?Y -> ?Z |- _ ] => apply H2 in H
 
   | [ H : ?X = ?Y, H2: context[?X] |- _ ] => rewrite H in H2
-
-  | [ H : ?X <> ?X |- _ ] => destruct H
   end.
 
-Hint Extern 2 => solver : core.
+Hint Extern 2 => solver : environment.
 
-Hint Extern 4 (_ < length (_ :: _)) => simpl : core.
-
-Notation "f ~ p" := 
-  (eq_rect _ (fun x : Set => x) f _ p) (at level 70).
-
-  Lemma trans_cast : forall (T1 T2 : Set) H (x z : T1) (y : T2),
-  x = (y ~ H)
-  -> (y ~ H) = z
-  -> x = z.
-  intros; congruence.
-Qed.
+Ltac env_auto := auto with environment.
 
 (****************************************************************************)
 (* Environment manipulation                                                 *)
 (****************************************************************************)
 
 (* An environment to track the arrow Kinds corresponding to variables.
-Variables are then instantiated as a morphism from the environment to the
-associated Kind. *)
-Inductive environment : nat -> Type :=
-| ECons : forall n, Kind -> environment n -> environment (S n)
-| ENil : environment 0.
+Variables in a Kappa term are then instantiated as a morphism from the environment
+to the Kind found at an index. *)
 
-Fixpoint as_kind {n} (env: environment n): Kind :=
-match env with
-| ENil => Unit
-| ECons o env' => Tuple o (as_kind env')
-end.
+Definition environment := list Kind. 
 
-Fixpoint as_kind_list {n} (env: environment n): list (Kind) :=
-match env with
-| ENil => []
-| ECons o env' => o :: as_kind_list env'
-end.
+Fixpoint as_kind (env: environment): Kind :=
+  match env with
+  | [] => Unit
+  | x :: xs => Tuple x (as_kind xs)
+  end.
 
-Fixpoint lookup_kind (n: nat) (env: list (Kind)): option (Kind) :=
-match env with
-| [] => None
-| o :: os =>
-  if eq_nat_dec n (length os)
-  then Some o
-  else lookup_kind n os
-end.
+Fixpoint lookup_kind (env: environment) (i: nat) : option Kind :=
+  match env with
+  | [] => None
+  | x :: xs =>
+    if eq_nat_dec i (length xs)
+    then Some x
+    else lookup_kind xs i
+  end.
 
-(* The type of an arrow morphism from our environment to a variable is
-`as_kind env ~> o`
-where lookup_kind n env = Some o *)
-Fixpoint lookup_morphism_ty (n: nat) (env_obj: Kind) (objs: list (Kind)): Type :=
-match objs with
-| [] => Datatypes.unit
-| o::os =>
-  if eq_nat_dec n (length os)
-  then structure env_obj o
-  else lookup_morphism_ty n env_obj os
-end.
-
-Fixpoint list_as_kind (l: list (Kind)): (Kind) :=
-match l with
-| [] => Unit
-| o :: os => Tuple o (list_as_kind os)
-end.
-
-(****************************************************************************)
-(* Environment lemmas                                                       *)
-(****************************************************************************)
-
-Lemma as_kind_is_as_list_as_kind: 
-  forall n (env: environment n), list_as_kind (as_kind_list env) = as_kind env.
-Proof.
-  intros.
-  induction env.
-  simpl.
-  f_equal.
-  apply IHenv.
-  simpl.
-  reflexivity.
-Defined.
-
-Definition Kind_to_list_kind_id: forall n (env: environment n), structure (as_kind env) (list_as_kind (as_kind_list env)).
-Proof.
-  intros.
-  rewrite as_kind_is_as_list_as_kind.
-  exact Id.
-Defined.
-
-Lemma lookup_bound:
-  forall n o objs,
-  lookup_kind n objs = Some o
-  -> n < length objs.
-Proof.
-  induction objs; auto.
-Qed.
-
-Hint Extern 3 =>
-  match goal with
-  | [H: lookup_kind _ _ = Some _|- _] => apply lookup_bound in H as H1
-  end : core.
-
-Lemma lookup_lower_contra : forall o n,
-  lookup_kind n [] = Some o -> False.
-Proof.
-  auto.
-Qed.
-
-Lemma lookup_upper_contra : forall o objs,
-  lookup_kind (length objs) objs = Some o -> False.
-Proof.
-  auto.
-Qed.
-
-Hint Extern 1 =>
-  match goal with
-  | [H: lookup_kind (length ?X) (?X) = Some _ |- _] => apply lookup_upper_contra in H; contradiction
-  | [H: lookup_kind ?X [] = Some _ |- _] => apply lookup_lower_contra in H; contradiction
-  end : core.
+Notation "env ? i" := (lookup_kind env i)(no associativity, at level 50).
 
 (* Shorthand for passing evidence that a lookup is well formed *)
 Notation ok_lookup := (
-  fun (n: nat) (env: list (Kind)) (o: Kind) => lookup_kind n env = Some o
+  fun  (env: list Kind) (i: nat) (ty: Kind) => env ? i = Some ty
 ).
 
-(* Proof that looking up a morphism is the morphism from the environment to
-  * the Kind at the same index.
-  *)
-Lemma ok_lookup_sets_lookup_morphism_ty : forall n o objs env_obj,
-  lookup_kind n objs = Some o
-  -> lookup_morphism_ty n env_obj objs = structure env_obj o.
-Proof.
-  induction objs; auto.
-Qed.
+(****************************************************************************)
+(* Environmental variable lookup lemmas                                     *)
+(****************************************************************************)
 
-Hint Immediate ok_lookup_sets_lookup_morphism_ty : core.
+Section env.
+  Variable env: environment.
 
-Lemma morphism_coerce:
-  forall (n:nat) env_obj o (objs: list (Kind)),
-  ok_lookup n objs o ->
-  lookup_morphism_ty n env_obj objs = structure env_obj o.
-Proof.
-  auto.
-Qed.
+  Lemma lookup_bound: forall ty i, 
+    env ? i = Some ty -> i < length env.
+  Proof.
+    intros; induction env; env_auto.
+  Qed.
 
-Lemma environment_kinds_length_is_n  (n: nat) (env: environment n):
-  length (as_kind_list env) = n.
-Proof.
-  induction env; auto.
-Qed.
+  Hint Extern 3 =>
+    match goal with
+    | [H: lookup_kind _ _ = Some _|- _] => apply lookup_bound in H as H1
+    end : environment.
 
-Hint Extern 4 =>
-  match goal with
-  | [H: context[length(as_kind_list ?X)] |- _] => rewrite environment_kinds_length_is_n in H
-  end : core.
+  Lemma lookup_lower_contra : forall i ty,
+    lookup_kind [] i = Some ty -> False.
+  Proof. env_auto. Qed.
 
-Lemma split_lookup : forall n env v1 y o,
-  ((n = v1 /\ y = o) \/ lookup_kind v1 (as_kind_list env) = Some o)
-  -> lookup_kind v1 (as_kind_list (@ECons n y env)) = Some o.
-Proof.
-  auto 6.
-Qed.
+  Lemma lookup_upper_contra : forall ty,
+    lookup_kind env (length env) = Some ty -> False.
+  Proof. env_auto. Qed.
 
-Lemma unsplit_lookup : forall n env v1 y o,
-  lookup_kind v1 (as_kind_list (@ECons n y env)) = Some o
-  ->
-  ((n = v1 /\ y = o) \/ lookup_kind v1 (as_kind_list env) = Some o).
-Proof.
-  auto 6.
-Qed.
+  Hint Extern 1 =>
+    match goal with
+    | [H: lookup_kind (length ?X) (?X) = Some _ |- _] => apply lookup_upper_contra in H; contradiction
+    | [H: lookup_kind ?X [] = Some _ |- _] => apply lookup_lower_contra in H; contradiction
+    end : environment.
 
-Lemma lookup_top_is_top_kind: forall n m o o' env,
-  m = n
-  -> lookup_kind m (as_kind_list (@ECons n o env)) = Some o'
-  -> o = o'.
-Proof.
-  auto.
-Qed.
+  Lemma split_lookup : forall i x ty,
+    ((length env = i /\ x = ty) \/ lookup_kind env i = Some ty)
+    -> lookup_kind (x :: env) i = Some ty.
+  Proof. env_auto. Qed.
 
-Lemma push_lookup : forall n env o o' x ,
-  x <> n ->
-  lookup_kind x (as_kind_list (@ECons n o' env)) = Some o ->
-  lookup_kind x (as_kind_list env) = Some o.
-Proof.
-  Hint Extern 1 => lia : core.
-  auto.
-Qed.
+  Lemma unsplit_lookup : forall i x ty,
+    lookup_kind (x :: env) i = Some ty ->
+    ((length env = i /\ x = ty) \/ lookup_kind env i = Some ty).
+  Proof. env_auto. Qed.
 
-Fixpoint extract_nth n (env: environment n) o x
-  : (lookup_kind x (as_kind_list env) = Some o) -> structure (as_kind env) o :=
-match env return
-  (lookup_kind x (as_kind_list env) = Some o) -> structure (as_kind env) o
-  with
-| ENil => fun H => match lookup_lower_contra H with end
-| @ECons n' o' env' => fun H =>
-  match eq_nat_dec x n' with
-  | left Heq =>
-    match lookup_top_is_top_kind _ _ Heq H with
-    | eq_refl => Second Drop >>> Cancelr
+  Lemma push_lookup : forall i x ty,
+    i <> length env ->
+    lookup_kind (x :: env) i = Some ty ->
+    lookup_kind env i = Some ty.
+  Proof. env_auto. Qed.
+
+  Lemma lookup_top_contra: forall i ty ty',
+    i = length env
+    -> lookup_kind (ty :: env) i = Some ty'
+    -> ty' <> ty
+    -> False.
+  Proof. env_auto. Qed.
+End env.
+
+(* Construct an Arrow morphism that takes a variable environment
+and returns the variable at an index *)
+Fixpoint extract_nth (env: environment) ty x
+  : (lookup_kind env x = Some ty) -> structure (as_kind env) ty :=
+  match env return (lookup_kind env x = Some ty) -> structure (as_kind env) ty with
+  | [] => fun H => match lookup_lower_contra H with end
+  | ty' :: env' => fun H =>
+    match eq_nat_dec x (length env') with
+    | left Heq =>
+      match decKind ty ty' with
+      | left Heq2 => rew <- Heq2 in (Second Drop >>> Cancelr) 
+      | right Hneq => match lookup_top_contra _ Heq H Hneq with end
+      end
+    | right Hneq => First Drop >>> Cancell >>> extract_nth env' x (push_lookup _ _ Hneq H)
     end
-  | right Hneq => First Drop >>> Cancell >>> extract_nth env' x (push_lookup _ _ Hneq H)
-  end
-end.
+  end.
 
-Notation "i ?? x" := (
-    match x with
-    | None => Datatypes.unit
-    | Some o => structure i o
-    end) (no associativity, at level 70).
-
-Fixpoint extract_nth' (env: list (Kind)) x : forall i (prefix: structure i (list_as_kind env)), i ?? lookup_kind x env :=
-match env return
-  forall i (prefix: structure i (list_as_kind env)), i ?? lookup_kind x env
-  with
-| [] => fun _ _ => tt
-| o :: os => 
-  match eq_nat_dec x (length os) as Heq return forall i (prefix: structure i (list_as_kind (o::os))), i ?? (if Heq
-    then Some o
-    else lookup_kind x os
-  ) 
-  with
-  | left Heq => fun _ p => p >>> Second Drop >>> Cancelr
-  | right Hneq => fun _ p => extract_nth' os x (p >>> First Drop >>> Cancell)
-  end
-end.
-
-Lemma extractable : forall n env o,
-  lookup_kind n env = Some o
-  -> forall i (prefix: structure i (list_as_kind env)), i ?? lookup_kind n env = structure i o.
-Proof.
-  intros.
-  rewrite H.
-  reflexivity.
-Defined.
-
-(****************************************************************************)
-(* Closure conversion via de Brujin indices form                            *)
-(****************************************************************************)
-(* In de Brujin indexing variables are nats *)
-
-Definition natvar `{Category} : Kind -> Kind -> Type := fun _ _ => nat.
+Definition natvar : Kind -> Kind -> Type := fun _ _ => nat.
 
 (* Reverse de Brujin indexing is well formed *)
 Fixpoint wf_debrujin {i o}
-  (n: nat) (env: environment n)
+  (env: environment)
   (expr: @kappa natvar i o) {struct expr}
   : Prop :=
-match expr with
-| DVar x         => ok_lookup x (as_kind_list env) o
-| @DAbs _ x y z f  => wf_debrujin (@ECons n x env) (f n)
-| DApp e1 e2     => wf_debrujin env e1 /\ wf_debrujin env e2
-| DCompose e1 e2 => wf_debrujin env e1 /\ wf_debrujin env e2
-| DArr _         => True
-end.
+  match expr with
+  | DVar i         => ok_lookup env i o
+  | @DAbs _ x y z f  => wf_debrujin (x :: env) (f (length env))
+  | DApp e1 e2     => wf_debrujin env e1 /\ wf_debrujin env e2
+  | DCompose e1 e2 => wf_debrujin env e1 /\ wf_debrujin env e2
+  | DArr _         => True
+  end.
 
-Lemma wf_debrujin_succ:
-  forall ix iy o
-  (n: nat) (env: environment n)
-  (expr: @kappa natvar (Tuple ix iy) o)
-  f,
-  expr = DAbs f ->
-  @wf_debrujin (Tuple ix iy) o n env expr -> @wf_debrujin iy o (S n) (ECons ix env) (f n).
-Proof.
-  auto.
-Defined.
+(****************************************************************************)
+(* de Brujin indexing lemmas                                                *)
+(****************************************************************************)
 
-Lemma wf_lax1:
-  forall x y z
-  (n: nat) (env: environment n)
-  (expr1: @kappa natvar x y)
-  (expr2: @kappa natvar y z)
-  ,
-  @wf_debrujin x z n env (DCompose expr2 expr1) -> 
-  @wf_debrujin x y n env expr1.
-Proof.
-  auto.
-Defined.
+Section env.
+  Context {env: environment}.
 
-Lemma wf_lax2:
-  forall x y z
-  (n: nat) (env: environment n)
-  (expr1: @kappa natvar x y)
-  (expr2: @kappa natvar y z)
-  ,
-  @wf_debrujin x z n env (DCompose expr2 expr1) -> 
-  @wf_debrujin y z n env expr2.
-Proof.
-  auto.
-Defined.
+  Lemma wf_debrujin_succ: forall {x y z} f,
+    @wf_debrujin (Tuple x y) z env (DAbs f) -> @wf_debrujin y z (x :: env) (f (length env)).
+  Proof. env_auto. Qed.
 
-Lemma wf_lax_app1:
-  forall x y z
-  (n: nat) (env: environment n)
-  (f: @kappa natvar <<x,y>> z)
-  (e: @kappa natvar Unit x)
-  f e,
-  @wf_debrujin y z n env (DApp f e) -> 
-  @wf_debrujin <<x, y>> z n env f.
-Proof.
-  auto.
-Defined.
+  Lemma wf_debrujin_lax_compose1: forall {x y z} e1 e2,
+    @wf_debrujin x z env (DCompose e2 e1) -> @wf_debrujin x y env e1.
+  Proof. env_auto. Qed.
 
-Lemma wf_lax_app2:
-  forall x y z
-  (n: nat) (env: environment n)
-  (f: @kappa natvar <<x,y>> z)
-  (e: @kappa natvar Unit x)
-  f e,
-  @wf_debrujin y z n env (DApp f e) -> 
-  @wf_debrujin Unit x n env e.
-Proof.
-  auto.
-Defined.
+  Lemma wf_debrujin_lax_compose2: forall {x y z} e1 e2,
+    @wf_debrujin x z env (DCompose e2 e1) -> @wf_debrujin y z env e2.
+  Proof. env_auto. Qed.
+
+  Lemma wf_debrujin_lax_app1: forall {x y z} f e,
+    wf_debrujin env (DApp f e) -> @wf_debrujin <<x, y>> z env f.
+  Proof. env_auto. Qed.
+
+  Lemma wf_debrujin_lax_app2: forall {x y z} f e,
+    @wf_debrujin y z env (DApp f e) -> @wf_debrujin Unit x env e.
+  Proof. env_auto. Qed.
+End env.
 
 (* Perform closure conversion by passing an explicit environment. The higher
 order PHOAS representation is converted to first order form with de Brujin
@@ -357,22 +198,20 @@ This implementation is also currently missing logic to remove free variables
 from the environment.
 *)
 Fixpoint closure_conversion' {i o}
-  (n: nat) (env: environment n)
-  (* (morphs: env_morphisms (as_kind env) (as_kind_list env)) *)
+  (env: environment)
   (expr: kappa natvar i o) {struct expr}
   : wf_debrujin env expr -> structure (Tuple i (as_kind env)) o.
     refine (
 match expr as expr in kappa _ i' o' return i = i' -> o = o' -> 
 wf_debrujin env expr -> structure (Tuple i (as_kind env)) o 
 with
-| DVar v => fun _ _ wf => _
+| DVar v => fun _ _ wf => First Drop >>> Cancell >>> _
 (* Instantiating a variable is done by 'cancell' to select the environment, and
 then indexing using lookup_morphism. *)
 | @DAbs _ x y z f => fun _ _ wf =>
 (* Kappa abstraction requires extending the environment then moving the 
 new environment variable in to place*)
-  let env' := ECons x env in
-  let f' := closure_conversion' _ _ _ env' (f n) (wf_debrujin_succ _ eq_refl wf) in
+  let f' := closure_conversion' _ _ (x :: env) (f (length env)) (wf_debrujin_succ _ wf) in
   (* This line moves the first arrow argument into the right hand position,
   which allows 'assoc' to move the argument to the front of the environment
   f: x*y ~> o
@@ -404,17 +243,8 @@ new environment variable in to place*)
 end (eq_refl i) (eq_refl o)
 ).
 - unfold wf_debrujin in wf.
-  assert (as_kind env ?? lookup_kind v (as_kind_list env) = structure (as_kind env) o).
-
-  rewrite wf.
   rewrite e0.
-  reflexivity.
-
-  refine (First Drop >>> Cancell >>> _).
-  cbn.
-
-  rewrite <- H.
-  apply (extract_nth' (as_kind_list env) v (Kind_to_list_kind_id env)).
+  apply (extract_nth env v wf).
 
 - rewrite e, e0.
   exact (first swap >>> assoc >>> f').
@@ -422,16 +252,16 @@ end (eq_refl i) (eq_refl o)
 - rewrite e0, e1.
   exact (
     second (copy >>> first (uncancell
-    >>> closure_conversion' _ _ _ env e (wf_lax_app2 f e wf)))
+    >>> closure_conversion' _ _ env e (wf_debrujin_lax_app2 wf)))
     >>> unassoc >>> first swap
-    >>> closure_conversion' _ _ _ env f (wf_lax_app1 f e wf)
+    >>> closure_conversion' _ _ env f (wf_debrujin_lax_app1 wf)
   ).
 - rewrite e, e0.
   exact (
   second copy
   >>> unassoc
-  >>> first (closure_conversion' _ _ _ env e2 (wf_lax1 wf))
-  >>> closure_conversion' _ _ _ env e1 (wf_lax2 wf)
+  >>> first (closure_conversion' _ _ env e2 (wf_debrujin_lax_compose1 wf))
+  >>> closure_conversion' _ _ env e1 (wf_debrujin_lax_compose2 wf)
 ).
 - rewrite e, e0.
   exact (Second Drop >>> Cancelr >>> m).
@@ -494,8 +324,13 @@ Notation match_pairs xo xn yi yo yn1 yn2 :=
 Notation ok_variable_lookup := (fun env E =>
   forall (i o : Kind) (n1 n2 : natvar i o),
     In (vars natvar natvar (obj_pair i o) (pair n1 n2)) E
-    -> lookup_kind n1 (as_kind_list env) = Some o
+    -> lookup_kind env n1 = Some o
 ).
+
+Hint Extern 1 =>
+  match goal with
+  | [H1: In _ ?X, H2: ok_variable_lookup _ ?X |- _] => apply H2 in H1
+  end : environment.
 
 (* Recovering a dependent value requires recovering the type equality first to prevent the
 value equality disappearing. *)
@@ -511,26 +346,24 @@ Proof.
   auto.
 Qed.
 
-Lemma apply_lookup : forall n (env: environment n) i o n1 n2 E,
+Hint Extern 3 => eapply recover_dependent_val : environment.
+
+Lemma apply_lookup : forall (env: environment) i o n1 n2 E,
   In (variable_pair i o n1 n2) E
   -> ok_variable_lookup env E
-  -> lookup_kind n1 (as_kind_list env) = Some o.
+  -> lookup_kind env n1 = Some o.
 Proof.
-  Hint Extern 1 =>
-    match goal with
-    | [H1: In _ ?X, H2: ok_variable_lookup _ ?X |- _] => apply H2 in H1
-    end : core.
-  auto.
+  env_auto.
 Qed.
 
-Lemma apply_extended_lookup: forall n env v1 v2 y i o E,
-  match_pairs y n i o v1 v2 \/ In (vars natvar natvar (obj_pair i o) (pair v1 v2)) E
+Hint Resolve split_lookup : environment.
+
+Lemma apply_extended_lookup: forall env v1 v2 y i o E,
+  match_pairs y (length env) i o v1 v2 \/ In (vars natvar natvar (obj_pair i o) (pair v1 v2)) E
   -> ok_variable_lookup env E
-  -> lookup_kind v1 (as_kind_list (@ECons n y env)) = Some o.
+  -> lookup_kind (y :: env) v1 = Some o.
 Proof.
-  Hint Extern 3 => eapply recover_dependent_val : core.
-  Hint Resolve split_lookup : core.
-  eauto 7.
+  eauto 7 with environment.
 Qed.
 
 Hint Immediate apply_lookup : core.
@@ -542,27 +375,31 @@ specific hypotheses. *)
 Lemma kappa_wf
   : forall i o E (expr1 expr2: kappa natvar i o),
   kappa_equivalence E expr1 expr2
-  -> forall n (env: environment n), ok_variable_lookup env E
+  -> forall (env: environment), ok_variable_lookup env E
   -> wf_debrujin env expr1.
 Proof.
   apply (kappa_equivalence_ind
   (fun i o E (expr1 expr2 : kappa natvar i o) =>
-    forall n (env: environment n),
+    forall (env: environment),
       ok_variable_lookup env E
       -> wf_debrujin env expr1)
-      );eauto.
+      ); eauto with environment.
 Qed.
 
 Hint Resolve kappa_wf : core.
 Hint Resolve Kappa_equivalence : core.
 
-Theorem Kappa_wf: forall {i o} (expr: forall var, kappa var i o), @wf_debrujin _ _ 0 ENil (expr _).
+Theorem Kappa_wf: forall {i o} (expr: forall var, kappa var i o), @wf_debrujin _ _ [] (expr _).
 Proof.
-  eauto.
+  intros.
+  eapply kappa_wf.
+  apply Kappa_equivalence.
+  intros.
+  inversion H.
 Qed.
 
-Definition closure_conversion {i o} (expr: Kappa i o) (wf: wf_debrujin ENil (expr _)): i ~> o
-  := uncancelr >>> closure_conversion' ENil (expr _) wf.
+Definition closure_conversion {i o} (expr: Kappa i o) (wf: wf_debrujin [] (expr _)): i ~> o
+  := uncancelr >>> closure_conversion' [] (expr _) wf.
 
 Definition Closure_conversion {i o} (expr: Kappa i o): i ~> o
   := closure_conversion expr (Kappa_wf expr).
@@ -572,8 +409,6 @@ Hint Resolve closure_conversion : core.
 Hint Resolve Closure_conversion : core.
 
 Ltac wf_kappa_via_compute :=
-  intros;
-  unfold wf_debrujin;
   compute;
   tauto.
 
