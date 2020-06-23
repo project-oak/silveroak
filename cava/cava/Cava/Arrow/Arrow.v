@@ -217,10 +217,10 @@ Notation "<< x >>" := (x) : kind_scope.
 Notation "<< x , .. , y , z >>" := (Tuple x .. (Tuple y z )  .. ) : kind_scope.
 
 Fixpoint vec_to_nprod (A: Type) n (v: Vector.t A n): A^n :=
-match v with
-| [] => tt
-| x::xs => (x, vec_to_nprod A _ xs)
-end%vector.
+  match v with
+  | [] => tt
+  | x::xs => (x, vec_to_nprod A _ xs)
+  end%vector.
 
 (* log2_up is used for getting the necessary number of bits required to represent an index.
 Currently some of the Arrow.Cava and Kappa parts take non-zero sized vectors, and so we require a 
@@ -270,7 +270,7 @@ Class Cava := {
   *)
   slice_vec n x y o: x < n -> y <= x -> Vector n o ~> Vector (x - y + 1) o;
   to_vec o: o ~> Vector 1 o;
-  append n o: Vector n o ** o ~> Vector (n+1) o;
+  append n o: Vector n o ** o ~> Vector (S n) o;
   concat n m o: Vector n o ** Vector m o ~> Vector (n + m) o;
   split n m o: m < n -> Vector n o ~> (Vector m o ** Vector (n - m) o);
 }.

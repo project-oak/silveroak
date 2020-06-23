@@ -35,8 +35,8 @@ Module KappaNotation.
   (* todo: turn into a recursive pattern *)
   Notation "'let' '( x , y ) = e1 'in' e2"
     := (
-    Let (App TupleLeft e1) (fun x => 
-      Let (App TupleRight e1) (fun y => e2
+    Let (App Fst e1) (fun x =>
+      Let (App Snd e1) (fun y => e2
       )
     )
     ) 
@@ -54,8 +54,8 @@ Module KappaNotation.
 
   (* Pre defined functions *)
 
-  Notation "'fst'" := (TupleLeft) (in custom expr at level 4) : kappa_scope.
-  Notation "'snd'" := (TupleRight) (in custom expr at level 4) : kappa_scope.
+  Notation "'fst'" := (Fst) (in custom expr at level 4) : kappa_scope.
+  Notation "'snd'" := (Snd) (in custom expr at level 4) : kappa_scope.
 
   Notation "'not'" := (Not) (in custom expr at level 4) : kappa_scope.
   Notation "'and'" := (And) (in custom expr at level 4) : kappa_scope.
@@ -77,10 +77,10 @@ Module KappaNotation.
   Notation "'concat'" := (Concat _ _) (in custom expr at level 4) : kappa_scope.
   Notation "'split_at' x" := (Split _ x _) (in custom expr at level 4, x constr at level 4) : kappa_scope.
 
-  Notation "'true'" := (Constant true) (in custom expr at level 2) : kappa_scope.
-  Notation "'false'" := (Constant false) (in custom expr at level 2) : kappa_scope.
+  Notation "'true'" := (@LiftConstant _ Bit true) (in custom expr at level 2) : kappa_scope.
+  Notation "'false'" := (@LiftConstant _ Bit false) (in custom expr at level 2) : kappa_scope.
 
-  Notation "# x" := (ConstantVec x) (in custom expr at level 2, x constr at level 4) : kappa_scope.
+  Notation "# x" := (@LiftConstant _ (Vector _ Bit) x)%N (in custom expr at level 2, x constr at level 4) : kappa_scope.
 
   Notation "v [ x ]" := (App (App (IndexVec _) v) x) (in custom expr at level 4) : kappa_scope.
   Notation "x :: y" := (App (App (Concat _ _) (kappa_to_vec x)) y) (in custom expr at level 4) : kappa_scope.

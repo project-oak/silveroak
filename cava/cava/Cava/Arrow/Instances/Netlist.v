@@ -266,17 +266,12 @@ Section NetlistEval.
   to_vec o i := ret [i]%vector;
   append n o '(array, e) :=
     let result := (e :: array)%vector in
-    ret _;
+    ret result;
   concat n m o '(x, y) := ret (Vector.append x y);
   split n m o H x :=
     ret (@Vector.splitat (denote o) m (n - m) _);
   }.
   Proof.
-    - assert (n + 1 = S n).
-      omega.
-      rewrite <- H in result.
-      exact result.
-
     - assert ( m + (n - m) = n).
       omega.
       rewrite H0.
