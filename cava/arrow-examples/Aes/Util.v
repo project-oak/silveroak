@@ -16,11 +16,11 @@ Section var.
     : kappa_sugared var << Vector (S n) T, Unit >> <<T>> :=
   match n with
   | 0 => <[ \x => x[#0] ]>
-  | S n' => 
+  | S n' =>
     <[ \xs =>
-        let '(x, xs') = !(kappa_head') xs in
+        let '(x, xs') = uncons xs in
         let y = !(reduce f) xs' in
-        !f x y 
+        !f x y
     ]>
   end.
 
@@ -28,25 +28,25 @@ Section var.
     (f : kappa_sugared var <<T, Unit>> T)
     : kappa_sugared var << Vector (S n) T, Unit >> <<Vector (S n) T>> :=
   match n with
-  | 0 => <[ \x => mkVec (!f (x[#0])) ]> 
+  | 0 => <[ \x => mkVec (!f (x[#0])) ]>
   | S n' =>
     <[ \xs =>
-        let '(x, xs') = !kappa_head' xs in
-        !f x :: (!(@map n' _ f) xs') 
-    ]> 
+        let '(x, xs') = uncons xs in
+        !f x :: (!(@map n' _ f) xs')
+    ]>
   end.
 
   Fixpoint map2 {n T}
     (f : kappa_sugared var <<T, T, Unit>> T)
     : kappa_sugared var << Vector (S n) T, Vector (S n) T, Unit >> <<Vector (S n) T>> :=
   match n with
-  | 0 => <[ \x y => mkVec (!f (x[#0]) (y[#0])) ]> 
+  | 0 => <[ \x y => mkVec (!f (x[#0]) (y[#0])) ]>
   | S n' =>
     <[ \xs ys =>
-        let '(x, xs') = !kappa_head' xs in
-        let '(y, ys') = !kappa_head' ys in
-        !f x y :: (!(@map2 n' _ f) xs' ys') 
-    ]> 
+        let '(x, xs') = uncons xs in
+        let '(y, ys') = uncons ys in
+        !f x y :: (!(@map2 n' _ f) xs' ys')
+    ]>
   end.
 
   Definition map2_xor {n}
@@ -63,7 +63,7 @@ Section var.
     : kappa_sugared var << Vector (S n) Bit, Vector (S n) Bit, Unit >> <<Bit>> :=
     <[\ x y => !(reduce And) (!map2_xnor x y) ]>.
 
-  (* if the enable input is 1 then the vector is return as is, 
+  (* if the enable input is 1 then the vector is return as is,
   otherwise a vector of corresponding size is returned with all elements masked out to 0. *)
   Definition enable_vec {n}
     : kappa_sugared var << Bit, Vector (S n) Bit, Unit >> <<Vector (S n) Bit>> :=
@@ -71,7 +71,7 @@ Section var.
 
   Definition mux_vec {n}
     : kappa_sugared var << Bit, Vector (S n) Bit, Vector (S n) Bit, Unit >> <<Vector (S n) Bit>> :=
-    <[\ switch xs ys => 
+    <[\ switch xs ys =>
       let not_switch = not switch
       in !(map2 Or) (!enable_vec switch xs) (!enable_vec not_switch ys)
       ]>.

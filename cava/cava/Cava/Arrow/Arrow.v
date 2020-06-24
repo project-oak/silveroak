@@ -272,7 +272,7 @@ Class Cava := {
   to_vec o: o ~> Vector 1 o;
   append n o: Vector n o ** o ~> Vector (S n) o;
   concat n m o: Vector n o ** Vector m o ~> Vector (n + m) o;
-  split n m o: m < n -> Vector n o ~> (Vector m o ** Vector (n - m) o);
+  split n m o: m <= n -> Vector n o ~> (Vector m o ** Vector (n - m) o);
 }.
 
 Coercion cava_cat: Cava >-> Category.

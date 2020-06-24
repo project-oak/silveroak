@@ -53,7 +53,7 @@ Inductive structure: Kind -> Kind -> Type :=
   | ToVec: forall {o}, structure o (Vector 1 o)
   | Append: forall {n o}, structure << Vector n o, o >> (Vector (S n) o)
   | Concat: forall {n m o}, structure << Vector n o, Vector m o >> (Vector (n+m) o)
-  | Split: forall {n m o}, m < n -> structure << Vector n o >> <<Vector m o , Vector (n-m) o>>.
+  | Split: forall {n m o}, m <= n -> structure << Vector n o >> <<Vector m o , Vector (n-m) o>>.
 
 Inductive st_equiv : forall (i o: Kind), structure i o -> structure i o -> Prop :=
   | st_refl:    forall x y f, @st_equiv x y f f
