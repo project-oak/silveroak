@@ -11,6 +11,8 @@ Require Import Cava.Arrow.Instances.Prop.
 (* Evaluation as function evaluation, no delay elements or loops              *)
 (******************************************************************************)
 
+
+
 (* TODO: switch to coq ext lib's option monad*)
 Notation "f >==> g" :=
   (fun x =>
@@ -139,12 +141,12 @@ Proof.
   - cbn.
     intros.
     assert (n = y + (n - y)).
-    omega.
+    abstract omega.
     rewrite H0 in X.
     apply (splitat y) in X.
     apply (snd) in X.
     assert (n - y = (x - y + 1) + (n - x - 1)).
-    omega.
+    abstract omega.
     rewrite H1 in X.
     apply (splitat (x-y+1)) in X.
     apply (fst) in X.
@@ -157,13 +159,23 @@ Proof.
     auto.
 Defined.
 
-Definition wf_combinational {x y} (circuit: x ~> y) := forall i, {o | circuit i = Some o}.
+Definition wf_combinational {x y} (circuit: x ~> y) := forall i, exists o, circuit i = Some o.
+
+Lemma unsat_kind_false: forall y, (exists o : denote y, None = Some o) -> False.
+Proof.
+  intros.
+  induction y; inversion H; inversion H0.
+Qed.
 
 Definition evaluate {x y} (circuit: x ~> y) (wf: wf_combinational circuit) (i: denote x): denote y.
 Proof.
   specialize (wf i).
-  inversion wf.
-  apply x0.
+  cbn in circuit.
+  destruct (circuit i).
+  exact d.
+
+  apply unsat_kind_false in wf.
+  contradiction.
 Defined.
 
 Ltac sub_prop :=
@@ -247,16 +259,13 @@ Defined.
 Lemma not_gate_wf: wf_combinational (not_gate).
 Proof.
   cbv [wf_combinational not_gate Combinational].
-  intros.
-  refine (exist _ _ _).
-  auto.
+  eauto.
 Defined.
 
 Ltac combinational_obvious :=
   cbv [wf_combinational];
   compute;
-  eexists;
-  f_equal.
+  eauto.
 
 (* Computing the terms is useful for e.g. extracting simple values *)
 Ltac evaluate_to_terms circuit wf inputs :=
