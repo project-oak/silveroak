@@ -39,7 +39,7 @@ Module KappaNotation.
       Let (App Snd e1) (fun y => e2
       )
     )
-    ) 
+    )
     (in custom expr at level 1, x constr at level 4, y constr at level 4, e2 at level 5, e1 at level 1) : kappa_scope.
 
   (* Escaping *)
@@ -76,6 +76,7 @@ Module KappaNotation.
   Notation "'append'" := (Append _) (in custom expr at level 4) : kappa_scope.
   Notation "'concat'" := (Concat _ _) (in custom expr at level 4) : kappa_scope.
   Notation "'split_at' x" := (Split _ x _) (in custom expr at level 4, x constr at level 4) : kappa_scope.
+  Notation "'uncons'" := (kappa_uncons') (in custom expr at level 4) : kappa_scope.
 
   Notation "'true'" := (@LiftConstant _ Bit true) (in custom expr at level 2) : kappa_scope.
   Notation "'false'" := (@LiftConstant _ Bit false) (in custom expr at level 2) : kappa_scope.
@@ -85,7 +86,7 @@ Module KappaNotation.
   Notation "v [ x ]" := (App (App (IndexVec _) v) x) (in custom expr at level 4) : kappa_scope.
   Notation "x :: y" := (App (App (Concat _ _) (kappa_to_vec x)) y) (in custom expr at level 4) : kappa_scope.
 
-  Notation " v [ x : y ] " := 
+  Notation " v [ x : y ] " :=
         (@kappa_slice_vec _ _ _ v x y _ _)
     (in custom expr at level 4,
     v constr,
@@ -93,9 +94,9 @@ Module KappaNotation.
     y constr at level 5
     ) : kappa_scope.
 
-  Notation "'mkVec' ( x )" := 
+  Notation "'mkVec' ( x )" :=
     ( kappa_to_vec x ) (in custom expr at level 4) : kappa_scope.
-  Notation "'mkVec' ( x , y , .. , z )" := 
+  Notation "'mkVec' ( x , y , .. , z )" :=
     (kappa_append .. (kappa_append (kappa_to_vec x) y) .. z) (in custom expr at level 4) : kappa_scope.
 End KappaNotation.
 
@@ -103,13 +104,13 @@ Definition to_constructive {i o} (expr: Kappa i o) (wf: wf_debrujin [] (expr _))
   : structure (remove_rightmost_unit i) o
   := Compose (closure_conversion expr wf) (insert_rightmost_tt1 _) .
 Definition compile_kappa {i o} (Cava: Cava) (expr: Kappa i o) (wf: wf_debrujin [] (expr _))
-  : remove_rightmost_unit i ~[Cava]~> o 
+  : remove_rightmost_unit i ~[Cava]~> o
   := toCava (to_constructive expr wf) Cava.
 
 Ltac auto_kappa_wf := simpl;tauto.
 
 Ltac build_structure kappa_term :=
-    let reduced := eval compute in (to_constructive (Desugar kappa_term) (ltac:(auto_kappa_wf))) 
+    let reduced := eval compute in (to_constructive (Desugar kappa_term) (ltac:(auto_kappa_wf)))
     in exact reduced.
 
 (* test notation *)
@@ -139,10 +140,10 @@ Section regression_examples.
   <[ \ x => x [# 1] ]>.
   Definition ex6_concat: kappa_sugared var << Vector 2 Bit, Bit, Unit >> (Vector 3 Bit) :=
   <[ \ x v => append x v ]>.
-  Definition ex7_xor: kappa_sugared var << Bit, Bit, Unit >> Bit := 
+  Definition ex7_xor: kappa_sugared var << Bit, Bit, Unit >> Bit :=
   <[ \ x y => xor x y ]>.
-  Definition ex7_tupled_destruct: kappa_sugared var << << Bit, Bit>>, Unit>> Bit := 
-  <[ \ xy => 
+  Definition ex7_tupled_destruct: kappa_sugared var << << Bit, Bit>>, Unit>> Bit :=
+  <[ \ xy =>
     let '(x,y) = xy in
     y ]>.
   Definition ex8_multiindex: kappa_sugared var << Vector 10 (Vector 5 Bit), Unit >> Bit :=

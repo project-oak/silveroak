@@ -3,6 +3,8 @@ Require Import Cava.Arrow.Instances.Constructive.
 
 From Coq Require Import Arith NArith Lia NaryFunctions.
 
+Import EqNotations.
+
 Section Vars.
   Context {var: Kind -> Kind -> Type}.
 
@@ -14,15 +16,15 @@ Section Vars.
     | _ => False
     end.
 
-  (* 
-    `kappa_sugared` includes constructors for 
-    - Kappa Calculus, 
-    - the Cava methods, 
-    - lifting any morphism from the Constructive arrow instance, 
-    - and miscellaneous methods 
+  (*
+    `kappa_sugared` includes constructors for
+    - Kappa Calculus,
+    - the Cava methods,
+    - lifting any morphism from the Constructive arrow instance,
+    - and miscellaneous methods
 
-    The kappa calculus and LiftMorphism constructors are the only 5 
-    "primitive"/required constructors, the rest are a to help syntax 
+    The kappa calculus and LiftMorphism constructors are the only 5
+    "primitive"/required constructors, the rest are a to help syntax
     or type inference and desugar simply to combinations of the others.
     *)
   (* TODO: cleanup / have a more modular EDSL representation *)
@@ -38,7 +40,7 @@ Section Vars.
     | Fst: forall {x y}, kappa_sugared << << x, y >>, Unit >> x
     | Snd: forall {x y}, kappa_sugared << << x, y >>, Unit >> y
     | Pair: forall {x y}, kappa_sugared << x, y, Unit >> << x, y >>
-      
+
     (* Cava routines *)
     | LiftConstant: forall {x}, lift_constant x -> kappa_sugared Unit x
 
@@ -61,7 +63,7 @@ Section Vars.
     | ToVec: forall {o}, kappa_sugared << o, Unit >> (Vector 1 o)
     | Append: forall n {o}, kappa_sugared << Vector n o, o, Unit >> (Vector (S n) o)
     | Concat: forall n m {o}, kappa_sugared << Vector n o, Vector m o, Unit >> (Vector (n + m) o)
-    | Split: forall n m {o}, (m < n) -> kappa_sugared << Vector n o, Unit >> <<Vector m o, Vector (n - m) o>>.
+    | Split: forall n m {o}, (m <= n) -> kappa_sugared << Vector n o, Unit >> <<Vector m o, Vector (n - m) o>>.
 
   Bind Scope kind_scope with kappa_sugared.
   Delimit Scope kind_scope with kappa_sugared.
@@ -91,7 +93,7 @@ Section Vars.
 
   Definition tupleHelper {X Y}
     (x: kappa_sugared Unit X)
-    (y: kappa_sugared Unit Y) := 
+    (y: kappa_sugared Unit Y) :=
     App (App Pair x) y.
 
   Definition kappa_append {n o}
@@ -121,28 +123,34 @@ Section Vars.
     : kappa_sugared Unit o :=
     kappa_index_vec array (@LiftConstant (Vector _ Bit) index).
 
-  Definition kappa_head {n o}
-    (array: kappa_sugared Unit (Vector (S (S n)) o))
-    : kappa_sugared Unit <<o, Vector (S n)o>>.
-    refine (
-    let circuit := (App (Split (S (S n)) 1 _) array) in
-    let head_ := Let (App Fst circuit) (fun x => kappa_const_index_vec (Var x) 1) in
-    let tail_ := Let (App Snd circuit) (fun x => Var x) in
-    _).
-    assert ((S (S n)) - 1 = S n).
-    simpl. auto.
-    rewrite H in tail_.
-    exact ( tupleHelper head_ tail_ ).
-    Grab Existential Variables.
-    compute.
-    auto.
-    apply le_n_S.
-    apply le_n_S.
-    apply le_0_n.
+  Lemma s_n_sub_1: forall n, {(S n - 1) = n} + {(S n - 1) <> n}.
+  Proof.
+    decide equality.
   Defined.
-  Definition kappa_head' {n o}
-    : kappa_sugared << Vector (S (S n)) o, Unit>> <<o, Vector (S n) o>>
-    := Abs (fun x => kappa_head (Var x)).
+
+  Lemma s_n_sub_1_contra: forall n, (S n - 1) <> n -> False.
+  Proof.
+    intros.
+    simpl in H.
+    rewrite Nat.sub_0_r in H.
+    destruct H.
+    reflexivity.
+  Qed.
+
+  Definition kappa_uncons {n o}
+    (array: kappa_sugared Unit (Vector (S n) o))
+    : kappa_sugared Unit <<o, Vector n o>> :=
+    let circuit := (App (Split (S n) 1 (Nat.lt_0_succ n)) array) in
+    let head_ := Let (App Fst circuit) (fun x => kappa_const_index_vec (Var x) 0) in
+    let tail_ := Let (App Snd circuit) (fun x => Var x) in
+    match (s_n_sub_1 n) with
+    | left Heq => rew [ fun X => kappa_sugared Unit << o, Vector X o >> ] Heq in tupleHelper head_ tail_ 
+    | right Hneq => match s_n_sub_1_contra n Hneq with end
+    end.
+
+  Definition kappa_uncons' {n o}
+    : kappa_sugared << Vector (S n) o, Unit>> <<o, Vector n o>>
+    := Abs (fun x => kappa_uncons (Var x)).
 
   Fixpoint desugar {i o} (e: kappa_sugared i o) : kappa i o :=
     match e with
@@ -168,21 +176,21 @@ Section Vars.
 
     | Delay  => DArr (Compose delay_gate Cancelr)
 
-    | Xorcy  => kappa_app << Bit, Bit, Unit >> xorcy 
-    | Muxcy  => kappa_app << Bit, Tuple Bit Bit, Unit >> muxcy 
+    | Xorcy  => kappa_app << Bit, Bit, Unit >> xorcy
+    | Muxcy  => kappa_app << Bit, Tuple Bit Bit, Unit >> muxcy
     | UnsignedAdd a b c => kappa_app << Vector a Bit, Vector b Bit, Unit >> (unsigned_add a b c)
     | Lut n f => kappa_app << Vector n Bit, Unit >> (lut n f)
 
-    | @LiftConstant ty x => 
+    | @LiftConstant ty x =>
       match ty, x with
       | Bit, b => DArr (constant b)
       | Vector n Bit, v => DArr (constant_bitvec _ v)
       | _, H => match H with end
       end
 
-    | IndexVec n => 
+    | IndexVec n =>
       kappa_app << Vector n _, Vector (log2_up_min_1 n) Bit, Unit >> (index_vec n _)
-    | SliceVec n x y H1 H2 => 
+    | SliceVec n x y H1 H2 =>
       kappa_app << Vector n _, Unit >> (slice_vec n x y _ H1 H2)
 
     | ToVec => kappa_app << _, Unit >> (to_vec _)
