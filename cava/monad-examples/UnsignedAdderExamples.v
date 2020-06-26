@@ -23,39 +23,64 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
+From Coq Require Vector.
+From Coq Require Import Bool.Bvector.
+
+Require Import Omega.
+
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
 Require Import Cava.Monad.UnsignedAdders.
 
 (******************************************************************************)
-(* Unsigned addition examples.                                                *)
+(* Some handy test vectors                                                   *)
 (******************************************************************************)
 
-Definition bv4_0  := nat_to_list_bits_sized 4  0.
-Definition bv4_1  := nat_to_list_bits_sized 4  1.
-Definition bv4_2  := nat_to_list_bits_sized 4  2.
-Definition bv4_3  := nat_to_list_bits_sized 4  3.
-Definition bv4_15 := nat_to_list_bits_sized 4 15.
+Definition bv4_0  := N2Bv_sized 4  0.
+Definition bv4_1  := N2Bv_sized 4  1.
+Definition bv4_2  := N2Bv_sized 4  2.
+Definition bv4_3  := N2Bv_sized 4  3.
+Definition bv4_15 := N2Bv_sized 4 15.
 
-Definition bv5_0  := nat_to_list_bits_sized 5  0.
-Definition bv5_3  := nat_to_list_bits_sized 5  3.
-Definition bv5_16 := nat_to_list_bits_sized 5 16.
-Definition bv5_30 := nat_to_list_bits_sized 5 30.
+Definition bv5_0  := N2Bv_sized 5  0.
+Definition bv5_3  := N2Bv_sized 5  3.
+Definition bv5_16 := N2Bv_sized 5 16.
+Definition bv5_30 := N2Bv_sized 5 30.
+
+(******************************************************************************)
+(* Test adders with no bit-growth and equal-sized inputs                      *)
+(******************************************************************************)
+
+Definition addNSim {sz: nat} (a: Bvector sz) (b: Bvector sz) :
+                   ident (Bvector sz)
+  := addNN a b.
+  
+(* Check 0 + 0 = 0 *)
+Example add0_0 : combinational (addNSim bv4_0 bv4_0) = bv4_0.
+Proof. reflexivity. Qed.
+
+(******************************************************************************)
+(* Unsigned addition with growth examples.                                                *)
+(******************************************************************************)
+
+Definition addSim {aSize bSize: nat} (a: Bvector aSize) (b: Bvector bSize) :
+                   ident (Bvector (1 + max aSize bSize))
+  := unsignedAdd a b.
 
 (* Check 0 + 0 = 0 *)
-Example add5_0_0 : combinational (unsignedAdd bv4_0 bv4_0) = bv5_0.
+Example add5_0_0 : combinational (addSim bv4_0 bv4_0) = bv5_0.
 Proof. reflexivity. Qed.
 
 (* Check 1 + 2 = 3 *)
-Example add5_1_2 : combinational (unsignedAdd bv4_1 bv4_2) = bv5_3.
+Example add5_1_2 : combinational (addSim bv4_1 bv4_2) = bv5_3.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 1 = 16 *)
-Example add5_15_1 : combinational (unsignedAdd bv4_15 bv4_1) = bv5_16.
+Example add5_15_1 : combinational (addSim bv4_15 bv4_1) = bv5_16.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 15 = 30 *)
-Example add5_15_15 : combinational (unsignedAdd bv4_15 bv4_15) = bv5_30.
+Example add5_15_15 : combinational (addSim bv4_15 bv4_15) = bv5_30.
 Proof. reflexivity. Qed.
 
 (******************************************************************************)
@@ -66,12 +91,17 @@ Local Open Scope nat_scope.
 
 Definition adder4Interface
   := combinationalInterface "adder4"
-     (mkPort "a" (BitVec [4]), mkPort "b" (BitVec [4]))
-     (mkPort "sum" (BitVec [5]))
+     (mkPort "a" (BitVec Bit 4), mkPort "b" (BitVec Bit 4))
+     (mkPort "sum" (BitVec Bit 5))
      [].
 
+Definition addNet {aSize bSize: nat}
+           (ab: Signal (BitVec Bit aSize) * Signal (BitVec Bit bSize)) :
+           state CavaState (Signal (BitVec Bit (1 + max aSize bSize))) :=
+  let (a, b) := ab in unsignedAdd a b.
+
 Definition adder4Netlist
-  := makeNetlist adder4Interface (fun '(a, b) => unsignedAdd a b).
+  := makeNetlist adder4Interface addNet.
 
 Definition adder4_tb_inputs
   := [(bv4_0, bv4_0); (bv4_1, bv4_2); (bv4_15, bv4_1); (bv4_15, bv4_15)].
@@ -89,23 +119,29 @@ Definition adder4_tb
 
 Definition adder8_3inputInterface
   := combinationalInterface "adder8_3input"
-     (mkPort "a" (BitVec [8]), mkPort "b" (BitVec [8]), mkPort "c" (BitVec [8]))
-     (mkPort "sum" (BitVec [10]))
+     (mkPort "a" (BitVec Bit 8), mkPort "b" (BitVec Bit 8), mkPort "c" (BitVec Bit 8))
+     (mkPort "sum" (BitVec Bit 10))
      [].
 
+Definition add3InputTuple {m bit vec} `{Cava m bit vec}
+                          (aSize bSize cSize: nat)
+                          (abc: vec Bit aSize *
+                                vec Bit bSize *
+                                vec Bit cSize) :
+                          m (vec Bit (1 + max (1 + max aSize bSize) cSize)) :=
+  let '(a, b, c) := abc in adder_3input a b c.
+
 Definition adder8_3inputNetlist
-  := makeNetlist adder8_3inputInterface
-     (fun '(a, b, c) => adder_3input a b c).
+  := makeNetlist adder8_3inputInterface (add3InputTuple 8 8 8).
 
 Local Open Scope N_scope.
 
 Definition adder8_3input_tb_inputs :=
-  map (fun '(x, y, z) => (nat_to_list_bits_sized 8 x,
-                          nat_to_list_bits_sized 8 y, nat_to_list_bits_sized 8 z))
+  map (fun '(x, y, z) => (N2Bv_sized 8 x, N2Bv_sized 8 y, N2Bv_sized 8 z))
   [(17, 23, 95); (4, 200, 30); (255, 255, 200)].
 
 Definition adder8_3input_tb_expected_outputs :=
-  map (fun '(a, b, c) => combinational (adder_3input a b c)) adder8_3input_tb_inputs.
+  map (fun i => combinational (add3InputTuple 8 8 8 i)) adder8_3input_tb_inputs.
 
 Definition adder8_3input_tb :=
   testBench "adder8_3input_tb" adder8_3inputInterface

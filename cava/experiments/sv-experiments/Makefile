@@ -16,6 +16,15 @@
 
 .PHONY: compile xcompile clean
 
+VERILATOR = verilator +1800-2012ext+sv
+VLINT = $(VERILATOR) --lint-only
+
+
+all:	
+	$(VERILATOR) --trace --cc --top-module indexing indexing.sv --exe indexing.cpp indexing.cpp
+	make -C obj_dir -f Vindexing.mk Vindexing
+	obj_dir/Vindexing
+
 xcompile:
 		xvlog -sv uadd1.sv
 		xelab work.uadd1 -s uadd1_sim
@@ -27,3 +36,4 @@ compile:
 
 clean:		
 		rm -rf a.out *.jou *.log *.pb xsim.dir 
+		rm -rf obj_dir

@@ -14,8 +14,23 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Export Cava.Monad.CavaClass.
-Require Export Cava.Signal.
-Require Export Cava.Monad.CombinationalMonad.
-Require Export Cava.Monad.Combinators.
-Require Export Cava.Monad.NetlistGeneration.
+From Coq Require Import String.
+From Coq Require Import Vector.
+
+(******************************************************************************)
+(* Values of Kind can occur as the type of signals on a circuit interface *)
+(******************************************************************************)
+
+Inductive Kind : Type :=
+  | Void : Kind                    (* An empty type *)
+  | Bit : Kind                     (* A single wire *)
+  | BitVec : Kind -> nat -> Kind   (* Vectors, possibly nested *)
+  | ExternalType : string -> Kind. (* An uninterpreted type *)
+
+Fixpoint listOfVecTy (bv: Kind) : Type :=
+  match bv with
+  | Void => list bool
+  | Bit => list bool
+  | BitVec k2 _ => list (listOfVecTy k2)
+  | ExternalType _ => list bool
+  end.

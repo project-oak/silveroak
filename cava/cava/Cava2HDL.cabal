@@ -52,26 +52,28 @@ library
                      CombinationalMonad
                      Constructive
                      Datatypes
-                     DecimalString
+                     -- DecimalString
                      IdentityMonad
                      Kappa
+                     Kind
                      List
                      Logic
                      Monad
                      NaryFunctions
                      Netlist
                      NetlistGeneration
-                     Netlist0
                      Nat
+                     Ndigits
                      PeanoNat
                      Signal
                      StateMonad
                      Syntax
                      Types
-                     Traversable
+                     -- Traversable
                      UnsignedAdders
                      VectorDef
                      Vector
+                     VectorUtils
                      XilinxAdder
   other-Modules:     Applicative
                      BinPos
@@ -93,8 +95,12 @@ library
                      Plus
                      Ascii
                      Basics
-                     Ndigits
                      String
+                     Traversable
                      Wf
+                     EquivDec
+                     Injection
+                     List0
+                     RelDec
 
   default-language:  Haskell2010

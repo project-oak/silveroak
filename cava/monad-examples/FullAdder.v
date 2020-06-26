@@ -103,7 +103,7 @@ Qed.
 (* Prove the generic full adder is equivalent to Xilinx fast adder. *)
 Lemma generic_vs_xilinx_adder : forall (a : bool) (b : bool) (cin : bool),
                                 combinational (fullAdder (cin, (a, b))) =
-                                combinational (xilinxFullAdder (cin, (a, b))).
+                                combinational (xilinxFullAdder cin (a, b)).
 Proof.
   intros.
   unfold combinational. simpl.
