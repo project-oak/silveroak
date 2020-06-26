@@ -5,7 +5,8 @@
 *.pb
 *.log
 .*.aux
-.vscode/*
+*/.vscode/*
+.DS_Store
 .coqdeps.d
 Makefile.coq
 Makefile.coq.conf
