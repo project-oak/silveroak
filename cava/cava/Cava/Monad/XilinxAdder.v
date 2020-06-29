@@ -67,11 +67,11 @@ Qed.
 (******************************************************************************)
 
 Definition xilinxAdderWithCarry {m bit vec} `{Cava m bit vec} {n: nat}
-            (cinab : bit * (vec Bit (S n) * vec Bit (S n)))
-           : m (vec Bit (S n) * bit) 
+            (cinab : bit * (vec Bit n * vec Bit n))
+           : m (vec Bit n * bit) 
   := let '(cin, (a, b)) := cinab in
-     let aV : Vector.t bit (S n) := vecToVector1 a in
-     let bV : Vector.t bit (S n) := vecToVector1 b in
+     let aV : Vector.t bit n := vecToVector1 a in
+     let bV : Vector.t bit n := vecToVector1 b in
      '(sum, cout) <- colV n xilinxFullAdder cin (vcombine aV bV) ;;
      ret (vecBoolList sum, cout).
 
@@ -87,8 +87,8 @@ Proof. reflexivity. Qed.
 (******************************************************************************)
 
 Definition xilinxAdder {m bit vec} `{Cava m bit vec} {n: nat}
-            (a: vec Bit (S n)) (b: vec Bit (S n))
-           : m (vec Bit (S n)) :=
+            (a: vec Bit n) (b: vec Bit n)
+           : m (vec Bit n) :=
   z <- zero ;;
   '(sum, carry) <- xilinxAdderWithCarry (z, (a, b)) ;;
   ret sum.

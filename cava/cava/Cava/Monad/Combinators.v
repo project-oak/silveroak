@@ -17,7 +17,7 @@
 Require Import Vector.
 Import VectorNotations.
 
-From Coq Require Import Lists.List.
+From Coq Require Import Lists.List Lia.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
@@ -208,35 +208,55 @@ Import EqNotations.
 
 Local Open Scope vector_scope.
 
-Definition below_consV `{Monad m} {A B C} {n: nat}
+Lemma add_S_contra: forall x y, x = S y -> x - 1 <> y -> False.
+Proof. lia. Qed.
+
+Lemma S_add_S_contra: forall x y, x = S y -> S (x - 1) <> S y -> False.
+Proof. lia. Qed.
+
+Definition vec_dec_rewrite1 {A x y} (H: x = S y) (v: Vector.t A y): Vector.t A (x - 1) := 
+  match Nat.eq_dec (x - 1) y with
+  | left Heq => rew <- Heq in v
+  | right Hneq => match add_S_contra _ _ H Hneq with end
+  end.
+
+Definition vec_dec_rewrite2 {A x y} (H: x = S y) (v: Vector.t A (S (x - 1))): Vector.t A (S y) := 
+  match Nat.eq_dec (S (x - 1)) (S y) with
+  | left Heq => rew Heq in v
+  | right Hneq => match S_add_S_contra _ _ H Hneq with end
+  end. 
+
+Program Definition below_consV `{Monad m} {A B C} {n: nat}
               (r : C -> A -> m (B * C)%type)
-              (s : C -> Vector.t A n -> m (Vector.t B n * C)%type)
-              (ca: C * Vector.t A (S n)) : m (Vector.t B (S n) * C)%type :=
+              (s : C -> Vector.t A (n-1) -> m (Vector.t B (n-1) * C)%type)
+              (ca: C * Vector.t A n) : m (Vector.t B n * C)%type :=
   let '(c, a) := ca in
-  match a in Vector.t _ z return (S n)=z -> m (Vector.t B z * C)%type with
-  | Vector.nil _ => fun H => match Nat.neq_succ_0 n H with end
-  | Vector.cons _ a0 Z ax => 
-              fun H => 
-              (
-              '(b0, c1) <- r c a0 ;;
-              '(bx, cOut) <- s c1 (rew <- [Vector.t A] (eq_add_S _ _ H) in ax) ;;
-              ret (rew [Vector.t B] H in (b0 :: bx), cOut)
-              )
+  match a in Vector.t _ z return n=z -> m (Vector.t B z * C)%type with
+  | Vector.nil _ => fun _ => ret ([], c)
+  | Vector.cons _ a0 Z ax => fun H => 
+    '(b0, c1) <- r c a0 ;;
+    '(bx, cOut) <- s c1 (vec_dec_rewrite1 H ax) ;;
+    ret (vec_dec_rewrite2 H (b0 :: bx), cOut)
   end eq_refl.
+
+Definition circuit_dec_rewrite `{Monad m} {A B C x y} (H: x = S y)
+  (s: C -> Vector.t A y -> m (Vector.t B y * C)%type)
+  : C -> Vector.t A (x-1) -> m (Vector.t B (x-1) * C)%type :=
+  match Nat.eq_dec (x - 1) y with
+  | left Heq => rew <- [fun z => C -> Vector.t A z -> m (Vector.t B z * C)%type] Heq in s
+  | right Hneq => match add_S_contra _ _ H Hneq with end
+  end.
 
 Fixpoint colV `{Monad m} {A B C} (n: nat)
               (circuit : C -> A -> m (B * C)%type) 
-              (c: C) (a: Vector.t A (S n)) :
-              m (Vector.t B (S n) * C)%type :=
-  match n as n' return n=n' -> m (Vector.t B (S n') * C)%type with
-  | O => fun _ =>
-    '(b, c) <- circuit c (@nth_order _ _ a 0 (Nat.lt_0_succ _)) ;;
-    ret ([b], c)
+              (c: C) (a: Vector.t A n) :
+              m (Vector.t B n * C)%type :=
+  match n as n' return n=n' -> m (Vector.t B n' * C)%type with
+  | O => fun _ => ret ([], c)
   | S n0 => fun H => 
-    let x := below_consV circuit (
-      rew <- [fun z => C -> Vector.t A (z) -> m (Vector.t B (z)* C)%type] H in 
-      colV n0 circuit) (c, a) in
-    rew [fun z => m (Vector.t B (S z) * C)%type] H in x
+    let s :=  circuit_dec_rewrite H (colV n0 circuit) in
+    '(x,c) <- below_consV circuit s (c, a) ;;
+    ret (rew H in x, c)
   end eq_refl.
 
 Local Close Scope vector_scope.

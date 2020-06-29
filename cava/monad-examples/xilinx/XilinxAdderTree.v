@@ -38,9 +38,9 @@ Require Import Cava.Monad.XilinxAdder.
 (******************************************************************************)
 
 Definition adderTree {m bit vec} `{Cava m bit vec} {sz: nat}
-                     (n: nat) (v: vec (BitVec Bit (S sz)) (2^(n+1))) :
-                     m (vec Bit (S sz)) :=
-  let vv : Vector.t (vec Bit (S sz)) (2^(n+1)) := vecToVector2 Bit (S sz) v in 
+                     (n: nat) (v: vec (BitVec Bit sz) (2^(n+1))) :
+                     m (vec Bit sz) :=
+  let vv : Vector.t (vec Bit sz) (2^(n+1)) := vecToVector2 Bit sz v in 
   tree xilinxAdder defaultBitVec n vv.
 
 (******************************************************************************)
@@ -63,7 +63,7 @@ Local Open Scope nat_scope.
 Local Open Scope vector_scope.
 
 Definition adderTree2 {m bit vec} `{Cava m bit vec} {sz}
-                      (v : vec (BitVec Bit (S sz)) 2) : m (vec Bit (S sz))
+                      (v : vec (BitVec Bit sz) 2) : m (vec Bit sz)
   := adderTree 0 v.
 
 Definition v0_v1 : Vector.t (Bvector 8) 2 := [v0; v1].
@@ -76,7 +76,7 @@ Proof. reflexivity. Qed.
 (******************************************************************************)
 
 Definition adderTree4 {m bit} `{Cava m bit} {sz}
-                      (v : vec (BitVec Bit (S sz)) 4) : m (vec Bit (S sz))
+                      (v : vec (BitVec Bit sz) 4) : m (vec Bit sz)
   := adderTree 1 v.
 
 Local Open Scope N_scope.
