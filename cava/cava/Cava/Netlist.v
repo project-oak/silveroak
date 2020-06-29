@@ -72,6 +72,17 @@ Inductive SignalEdge :=
 | PositiveEdge
 | NegativeEdge.
 
+(* The function takes a Kind and returns the smashed default value for
+   that Kind.
+*)
+Fixpoint defaultKind (k: Kind) : smashNetTy k :=
+  match k return smashNetTy k with
+  | Void => UndefinedSignal
+  | Bit => Gnd
+  | BitVec k2 s => Vector.const (defaultKind k2) s
+  | ExternalType _ => UninterpretedSignal "XXX"
+  end.
+
 Inductive Instance : Type :=
   (* SystemVerilog primitive gates. *)
   | Not:       Signal Bit -> Signal Bit -> Instance
@@ -82,6 +93,9 @@ Inductive Instance : Type :=
   | Xor:       Signal Bit -> Signal Bit -> Signal Bit -> Instance
   | Xnor:      Signal Bit -> Signal Bit -> Signal Bit -> Instance
   | Buf:       Signal Bit -> Signal Bit -> Instance
+  (* Dynamic indexing *)
+  | IndexDynamic: forall {T: Type} {n isz: nat}, Vector.t T n ->
+                  Vector.t (Signal Bit) isz -> T -> Instance
   (* A Cava unit delay bit component. *)
   | DelayBit:  Signal Bit -> Signal Bit -> Instance
   (* Assignment of bit wire *)
@@ -219,6 +233,9 @@ cs <- get;;
 Definition assignSignal {k} (s1: Signal k) (s2: Signal k) :=
   addInstance (AssignSignal s1 s2).
 
+Definition assignSmashedSignal {k: Kind} (s1: Signal k) (s2: smashTy (Signal Bit) k) :=
+  addInstance (AssignSignal s1 (vecLitS s2)).
+
 Definition addInputPort (newPort: PortDeclaration) : state CavaState unit :=
   cs <- get ;;
   match newPort with
@@ -270,17 +287,17 @@ Definition inputBit (name : string) : state CavaState (Signal Bit) :=
   addInputPort (mkPort name Bit) ;;
   ret (NamedWire name).
 
-Definition inputVector (k: Kind) (sz: nat) (name : string) : state CavaState (Signal (BitVec k sz)) :=
+Definition inputVector (k: Kind) (sz: nat) (name : string) : state CavaState (smashTy (Signal Bit) (BitVec k sz)) :=
   addInputPort (mkPort name (BitVec k sz)) ;;
-  ret (NamedVector k sz name).
+  ret (smash (NamedVector k sz name)).
 
 Definition outputBit (name : string) (i : Signal Bit) : state CavaState unit :=
   addOutputPort (mkPort name Bit) ;;
   assignSignal (NamedWire name) i.
 
-Definition outputVector (k: Kind) (sz : nat) (name : string) (v : Signal (BitVec k sz)) : state CavaState unit :=
+Definition outputVector (k: Kind) (sz : nat) (name : string) (v : smashTy (Signal Bit) (BitVec k sz)) : state CavaState unit :=
   addOutputPort (mkPort name (BitVec k sz)) ;;
-  assignSignal (NamedVector k sz name) v.
+  assignSmashedSignal (NamedVector k sz name) v.
 
 (******************************************************************************)
 (* The initial empty netlist                                                  *)
@@ -350,6 +367,7 @@ Definition deLitInstance (inst: Instance) : state CavaState Instance :=
   | DelayBit i o => deLitUnaryOp DelayBit i o
   | AssignSignal a b => deLitUnaryOp AssignSignal a b
   | UnsignedAdd a b c => deLitBinaryOp UnsignedAdd a b c
+  | IndexDynamic v i o => ret (IndexDynamic v i o)
   | Component name pars args =>
       let argNames := map fst args in
       let argSignals := map snd args in
@@ -367,12 +385,12 @@ Definition deLitInstances : state CavaState unit :=
 (******************************************************************************)
 (* Execute a monadic circuit description and return the generated netlist.    *)
 (******************************************************************************)
-
-Fixpoint instantiateInputPorts (inputs: @shape PortDeclaration) : state CavaState (signalNetTy (mapShape port_shape inputs)) :=
-  match inputs return state CavaState (signalNetTy (mapShape port_shape inputs)) with
+      
+Fixpoint instantiateInputPorts (inputs: @shape PortDeclaration) : state CavaState (signalSmashTy (mapShape port_shape inputs)) :=
+  match inputs return state CavaState (signalSmashTy (mapShape port_shape inputs)) with
   | Empty => ret tt
   | One (mkPort name typ) =>
-      match typ  with
+      match typ with
       | Void => ret UndefinedSignal
       | Bit => inputBit name
       | BitVec k sz => inputVector k sz name
@@ -384,7 +402,7 @@ Fixpoint instantiateInputPorts (inputs: @shape PortDeclaration) : state CavaStat
                     ret (a, b)
   end.
 
-Fixpoint instantiateOutputPorts (outputs: @shape PortDeclaration) (v: signalNetTy (mapShape port_shape outputs)) : state CavaState unit :=
+Fixpoint instantiateOutputPorts (outputs: @shape PortDeclaration) (v: signalSmashTy (mapShape port_shape outputs)) : state CavaState unit :=
   match outputs, v with
   | Empty, _ => ret tt
   | One (mkPort name typ), _ =>
@@ -400,8 +418,8 @@ Fixpoint instantiateOutputPorts (outputs: @shape PortDeclaration) (v: signalNetT
   end.
 
 Definition wireUpCircuit (intf : CircuitInterface)
-                         (circuit : (signalNetTy (mapShape port_shape (circuitInputs intf))) ->
-                                    state CavaState (signalNetTy (mapShape port_shape (circuitOutputs intf))))
+                         (circuit : (signalSmashTy (mapShape port_shape (circuitInputs intf))) ->
+                                    state CavaState (signalSmashTy (mapShape port_shape (circuitOutputs intf))))
 
                          : state CavaState unit  :=
   setModuleName (circuitName intf) ;;
@@ -415,8 +433,8 @@ Definition wireUpCircuit (intf : CircuitInterface)
   deLitInstances.
 
 Definition makeNetlist (intf : CircuitInterface)                      
-                       (circuit : signalNetTy (mapShape port_shape (circuitInputs intf)) ->
-                                  state CavaState (signalNetTy (mapShape port_shape (circuitOutputs intf)))) : CavaState
+                       (circuit : signalSmashTy (mapShape port_shape (circuitInputs intf)) ->
+                                  state CavaState (signalSmashTy (mapShape port_shape (circuitOutputs intf)))) : CavaState
   := execState (wireUpCircuit intf circuit) initState.
 
 Record TestBench : Type := mkTestBench {

@@ -37,11 +37,10 @@ Require Import Cava.Monad.XilinxAdder.
 (* by using the tree combinator.                                              *)
 (******************************************************************************)
 
-Definition adderTree {m bit vec} `{Cava m bit vec} {sz: nat}
-                     (n: nat) (v: vec (BitVec Bit sz) (2^(n+1))) :
-                     m (vec Bit sz) :=
-  let vv : Vector.t (vec Bit sz) (2^(n+1)) := vecToVector2 Bit sz v in 
-  tree xilinxAdder defaultBitVec n vv.
+Definition adderTree {m bit} `{Cava m bit} {sz: nat}
+                     (n: nat) (v: Vector.t (Vector.t bit sz) (2^(n+1))) :
+                     m (Vector.t bit sz) := 
+  tree n xilinxAdder v.
 
 (******************************************************************************)
 (* Some tests.                                                                *)
@@ -62,8 +61,8 @@ Local Open Scope string_scope.
 Local Open Scope nat_scope.
 Local Open Scope vector_scope.
 
-Definition adderTree2 {m bit vec} `{Cava m bit vec} {sz}
-                      (v : vec (BitVec Bit sz) 2) : m (vec Bit sz)
+Definition adderTree2 {m bit} `{Cava m bit} {sz: nat}
+                      (v : Vector.t (Vector.t bit sz) 2) : m (Vector.t bit sz)
   := adderTree 0 v.
 
 Definition v0_v1 : Vector.t (Bvector 8) 2 := [v0; v1].
@@ -75,8 +74,8 @@ Proof. reflexivity. Qed.
 (* An adder tree with 4 inputs.                                               *)
 (******************************************************************************)
 
-Definition adderTree4 {m bit} `{Cava m bit} {sz}
-                      (v : vec (BitVec Bit sz) 4) : m (vec Bit sz)
+Definition adderTree4 {m bit} `{Cava m bit} {sz: nat}
+                      (v : Vector.t (Vector.t bit sz) 4) : m (Vector.t bit sz)
   := adderTree 1 v.
 
 Local Open Scope N_scope.

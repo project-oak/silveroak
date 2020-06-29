@@ -29,8 +29,11 @@ Export MonadNotation.
 
 From Cava Require Import Kind.
 Require Import Cava.Monad.CavaClass.
+Require Import Cava.VectorUtils.
 
 Generalizable All Variables.
+
+From Coq Require Import Lia.
 
 Local Open Scope monad_scope.
 
@@ -303,30 +306,30 @@ Fixpoint treeList {T: Type} {m bit} `{Cava m bit}
                 circuit aS bS
   end.
 
-Fixpoint tree {T: Type} {m bit} `{Cava m bit}
-              (circuit: T -> T -> m T) (def: T) 
-              (n : nat) (v: Vector.t T (2^(n+1))) : m T :=
+Fixpoint treeWithList {T: Type} {m bit} `{Cava m bit}
+                      (circuit: T -> T -> m T) (def: T) 
+                      (n : nat) (v: Vector.t T (2^(n+1))) : m T :=
  treeList circuit def n (to_list v).
 
 (******************************************************************************)
 (* A binary tree combinator, Vector version.                                                  *)
-(******************************************************************************)
+(******************************************************************************) 
 
-Program Definition halveV {n a} (v : Vector.t a (2*n)) : Vector.t a n * Vector.t a n :=
-  splitat n v.
-
-Local Open Scope vector_scope.
-
-Fixpoint treeV {T: Type} {m bit} `{Cava m bit} (n: nat)
-                                 (circuit: T -> T -> m T)
-                                 (v : Vector.t T (2^(n+1))) :
-                                 m T :=
-  match n, v return m T with
-  | O, v2 => circuit (Vector.hd v2) (Vector.hd (Vector.tl v2))
-  | S n', vR => let '(vL, vH) := halveV vR in
-                aS <- treeV n' circuit vL ;;
-                bS <- treeV n' circuit vH ;;
-                circuit aS bS
+Definition halveV {n a} (v : Vector.t a (2*n)) : Vector.t a n * Vector.t a n :=
+  match Nat.eq_dec (n + 0) n with
+  | left Heq => rew [fun x => (Vector.t a n * Vector.t a x)%type] Heq in Vector.splitat n v
+  | right Hneq => (ltac:(exfalso;lia))
   end.
 
-Local Close Scope vector_scope.  
+Fixpoint tree {T: Type} {m bit} `{Cava m bit} (n: nat)
+                                (circuit: T -> T -> m T)
+                                (v : Vector.t T (2^(n+1))) :
+                                m T :=
+  match n, v return m T with
+  | O, v2 => circuit (@Vector.nth_order _ 2 v2 0 (ltac:(lia)))
+                     (@Vector.nth_order _ 2 v2 1 (ltac:(lia)))
+  | S n', vR => let '(vL, vH) := halveV vR in
+                aS <- tree n' circuit vL ;;
+                bS <- tree n' circuit vH ;;
+                circuit aS bS
+  end.

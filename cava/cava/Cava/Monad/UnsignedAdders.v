@@ -31,10 +31,12 @@ Proof.
   intros. lia.
 Qed.
 
+(*
 Definition addN {m bit} `{Cava m bit} {n}
-                (a: vec Bit n) (b: vec Bit n) : m (vec Bit n) :=
+                (a: Vector.t bit n) (b: Vector.t bit n) : m (Vector.t bit n) :=               
   s <- unsignedAdd a b ;;
-  ret (slice 0 n s (n_le_max_n_n n)).
+  ret (slice 0 n _ (n_le_max_n_n n)).
+*)
 
 (******************************************************************************)
 (* A three input adder.                                                       *)
@@ -42,10 +44,10 @@ Definition addN {m bit} `{Cava m bit} {n}
 
 Definition adder_3input {m bit} `{Cava m bit}
                         {aSize bSize cSize}
-                        (a : vec Bit aSize)
-                        (b : vec Bit bSize)
-                        (c : vec Bit cSize) :
-                        m (vec Bit (1 + max (1 + max aSize bSize) cSize))
+                        (a : Vector.t bit aSize)
+                        (b : Vector.t bit bSize)
+                        (c : Vector.t bit cSize) :
+                        m (Vector.t bit (1 + max (1 + max aSize bSize) cSize))
                         :=
   a_plus_b <- unsignedAdd a b ;;
   sum <- unsignedAdd a_plus_b c ;;
