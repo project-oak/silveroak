@@ -1,4 +1,5 @@
 -R ../cava/Cava Cava
+-R ../arrow-lib Arrow
 -R . ArrowExamples
 
 Mux2_1.v

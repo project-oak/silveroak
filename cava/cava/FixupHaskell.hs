@@ -33,5 +33,5 @@ main
        writeFile "Ascii2.hs" (fixup asciiContent)
        bytevectorContent <- readFile "ByteVector.hs"
        writeFile "ByteVector2.hs" (fixup bytevectorContent)
-       -- decimalStringContent <- readFile "DecimalString.hs"
-       -- writeFile "DecimalString2.hs" (fixup decimalStringContent)
+       decimalStringContent <- readFile "DecimalString.hs"
+       writeFile "DecimalString2.hs" (fixup decimalStringContent)

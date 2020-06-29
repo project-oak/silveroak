@@ -1,0 +1,10 @@
+# Coq generated files
+*.vok
+*.vos
+
+Makefile.coq
+.Makefile.coq.d
+
+# Coq generated files
+*.vcd
+*.vvp

@@ -14,9 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Cava.Arrow.Arrow.
-Require Import Cava.Arrow.Kappa.Syntax.
-Require Import Cava.Arrow.Instances.Combinational.
+From Arrow Require Import Category ClosureConversion.
+From Cava Require Import Arrow.Arrow Arrow.Kappa.Syntax Arrow.Instances.Combinational.
 
 Require Import Coq.Strings.String.
 Local Open Scope string_scope.
@@ -53,11 +52,11 @@ Section definition.
 
   (* Combinators *)
   Definition below {A B C D E F G: Kind}
-    (r: kappa_sugared var << A, B, Unit >> ( G ** D ))
-    (s: kappa_sugared var << G, C, Unit >> ( F ** E ))
+    (r: kappa_sugared var << A, B, Unit >> << G, D >>)
+    (s: kappa_sugared var << G, C, Unit >> << F, E >>)
     : kappa_sugared var 
-      << A, (B ** C), Unit >> 
-      << F, (D ** E) >> :=
+      << A, <<B, C>>, Unit >> 
+      << F, <<D, E>> >> :=
   <[ \ a bc =>
     let '(b, c) = bc in
     let '(g, d) = !r a b in
@@ -77,11 +76,11 @@ Section definition.
     match n with
     | O => Unit
     | S O => A
-    | S n => A ** replicate A n
+    | S n => <<A, replicate A n>>
     end.
 
   Program Fixpoint col {A B C: Kind} n
-    (circuit: kappa_sugared var << A, B, Unit >> ( A ** C ))
+    (circuit: kappa_sugared var << A, B, Unit >> <<A, C>>)
     : kappa_sugared var 
       << A, replicate B (S n), Unit >> 
       << A, replicate C (S n)>> :=
@@ -93,7 +92,7 @@ Section definition.
     end.
 
   Lemma col_cons: forall {A B C}
-    (circuit: kappa_sugared var << A, B, Unit >> ( A ** C )),
+    (circuit: kappa_sugared var << A, B, Unit >> <<A, C>>),
     forall n, col (S n) circuit = below circuit (col n circuit).
   Proof.
     intros.
@@ -153,16 +152,12 @@ Section definition.
 
 End definition.
 
-(* The compilation functions performed by this library rely on that the expressions above are well formed.
-Although it is postulated that exotic terms cannot exist in a PHOAS encoding, we provide per instance proofs 
-that later steps consume. *)
-Lemma fullAdder_wf: wf_debrujin [] (Desugar (@fullAdder) _).
-Proof. wf_kappa_via_compute. Qed.
+Open Scope kind_scope.
+Definition fullAdder_arrow {cava: Cava}
+  : << Bit, << Bit, Bit >> >> ~> <<Bit, Bit>>
+  := to_arrow @fullAdder.
 
-Definition fullAdder_structure := 
-  Eval compute in to_constructive (Desugar (@fullAdder)) (fullAdder_wf).
-
-Lemma fullAdder_is_combinational: wf_combinational (toCava fullAdder_structure _).
+Lemma fullAdder_is_combinational: wf_combinational (fullAdder_arrow).
 Proof. combinational_obvious. Qed.
 
 Require Import Cava.Arrow.Instances.Netlist.
@@ -171,8 +166,8 @@ Require Import Cava.Netlist.
 
 Definition fullAdderInterface
   := combinationalInterface "fullAdder"
-     (mkPort "cin" Bit, (mkPort "a" Bit, mkPort "b" Bit))
-     (mkPort "sum" Bit, mkPort "cout" Bit)
+     (mkPort "cin" Kind.Bit, (mkPort "a" Kind.Bit, mkPort "b" Kind.Bit))
+     (mkPort "sum" Kind.Bit, mkPort "cout" Kind.Bit)
      [].
 
 Definition fullAdder_tb_inputs :=
@@ -187,15 +182,10 @@ Definition fullAdder_tb_inputs :=
 ].
 
 Definition fullAdder_netlist :=
-  makeNetlist fullAdderInterface
-    (toCava fullAdder_structure NetlistCava).
+  makeNetlist fullAdderInterface (@fullAdder_arrow NetlistCava).
 
-(* Using `evaluate_to_terms` for a nicer extracted value *)
-Definition fullAdder_tb_expected_outputs  : list (bool * bool).
-  (* := (List.map (evaluate (toCava circuit _) wf) inputs) . *)
-Proof. 
-   evaluate_to_terms fullAdder_structure fullAdder_is_combinational fullAdder_tb_inputs. 
-Defined.
+Definition fullAdder_tb_expected_outputs  : list (bool * bool)
+  := (List.map (fun i => evaluate fullAdder_arrow fullAdder_is_combinational i) fullAdder_tb_inputs) .
 
 Definition fullAdder_tb :=
   testBench "fullAdder_tb" fullAdderInterface

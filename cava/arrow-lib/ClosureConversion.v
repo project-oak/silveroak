@@ -1,15 +1,19 @@
-Require Import Arith Eqdep List Lia.
+From Coq Require Import Arith Eqdep List Lia.
+From Arrow Require Import Category Arrow Kappa.
 
 Import ListNotations.
 Import EqNotations.
 
-Require Import Cava.BitArithmetic.
+Generalizable All Variables.
 
-Require Import Cava.Types.
-Require Import Cava.Arrow.Kappa.Kappa.
-Require Import Cava.Arrow.Arrow.
-Require Import Cava.Arrow.Instances.Constructive.
-Require Import Cava.Arrow.Kappa.Kappa.
+Section Arrow.
+
+Context `{arrow: Arrow}.
+Context {stkc: ArrowSTKC arrow}.
+Context {arrow_loop: ArrowLoop arrow}.
+Context {object_decidable_equality: forall x y : object, {x = y} + {x <> y}}.
+
+Local Open Scope arrow_scope.
 
 Set Implicit Arguments.
 
@@ -43,19 +47,19 @@ Ltac env_auto := auto with environment.
 (* Environment manipulation                                                 *)
 (****************************************************************************)
 
-(* An environment to track the arrow Kinds corresponding to variables.
+(* An environment to track the arrow objects corresponding to variables.
 Variables in a Kappa term are then instantiated as a morphism from the environment
-to the Kind found at an index. *)
+to the object found at an index. *)
 
-Definition environment := list Kind. 
+Definition environment := list object. 
 
-Fixpoint as_kind (env: environment): Kind :=
+Fixpoint as_kind (env: environment): object :=
   match env with
-  | [] => Unit
-  | x :: xs => Tuple x (as_kind xs)
+  | [] => u
+  | x :: xs => x ** (as_kind xs)
   end.
 
-Fixpoint lookup_kind (env: environment) (i: nat) : option Kind :=
+Fixpoint lookup_kind (env: environment) (i: nat) : option object :=
   match env with
   | [] => None
   | x :: xs =>
@@ -68,7 +72,7 @@ Notation "env ? i" := (lookup_kind env i)(no associativity, at level 50).
 
 (* Shorthand for passing evidence that a lookup is well formed *)
 Notation ok_lookup := (
-  fun  (env: list Kind) (i: nat) (ty: Kind) => env ? i = Some ty
+  fun  (env: list object) (i: nat) (ty: object) => env ? i = Some ty
 ).
 
 (****************************************************************************)
@@ -127,36 +131,41 @@ Section env.
   Proof. env_auto. Qed.
 End env.
 
+Local Open Scope category_scope.
+
 (* Construct an Arrow morphism that takes a variable environment
 and returns the variable at an index *)
 Fixpoint extract_nth (env: environment) ty x
-  : (lookup_kind env x = Some ty) -> structure (as_kind env) ty :=
-  match env return (lookup_kind env x = Some ty) -> structure (as_kind env) ty with
+  : (lookup_kind env x = Some ty) -> (as_kind env) ~> ty :=
+  match env return (lookup_kind env x = Some ty) -> (as_kind env) ~> ty with
   | [] => fun H => match lookup_lower_contra H with end
   | ty' :: env' => fun H =>
     match eq_nat_dec x (length env') with
     | left Heq =>
-      match decKind ty ty' with
-      | left Heq2 => rew <- Heq2 in (Second Drop >>> Cancelr) 
-      | right Hneq => match lookup_top_contra _ Heq H Hneq with end
+      match object_decidable_equality ty ty' with
+      | left Heq2 => rew <- Heq2 in (second drop >>> cancelr) 
+      | right Hneq => match lookup_top_contra env' Heq H Hneq with end
       end
-    | right Hneq => First Drop >>> Cancell >>> extract_nth env' x (push_lookup _ _ Hneq H)
+    | right Hneq => first drop >>> cancell >>> extract_nth env' x (push_lookup _ _ Hneq H)
     end
   end.
 
-Definition natvar : Kind -> Kind -> Type := fun _ _ => nat.
+Definition natvar : object -> object -> Type := fun _ _ => nat.
 
 (* Reverse de Brujin indexing is well formed *)
 Fixpoint wf_debrujin {i o}
   (env: environment)
-  (expr: @kappa natvar i o) {struct expr}
+  (expr: kappa natvar i o) {struct expr}
   : Prop :=
   match expr with
-  | DVar i         => ok_lookup env i o
-  | @DAbs _ x y z f  => wf_debrujin (x :: env) (f (length env))
-  | DApp e1 e2     => wf_debrujin env e1 /\ wf_debrujin env e2
-  | DCompose e1 e2 => wf_debrujin env e1 /\ wf_debrujin env e2
-  | DArr _         => True
+  | Var _ i        => ok_lookup env i o
+  | Abs _ x f      => wf_debrujin (x :: env) (f (length env))
+  | App _ e1 e2    => wf_debrujin env e1 /\ wf_debrujin env e2
+  | Comp _ e1 e2   => wf_debrujin env e1 /\ wf_debrujin env e2
+  | Morph _ _      => True
+  | LetRec _ x v f => 
+    wf_debrujin (x :: env) (v (length env)) /\
+    wf_debrujin (x :: env) (f (length env))
   end.
 
 (****************************************************************************)
@@ -166,29 +175,41 @@ Fixpoint wf_debrujin {i o}
 Section env.
   Context {env: environment}.
 
+  Local Open Scope arrow_scope.
+
   Lemma wf_debrujin_succ: forall {x y z} f,
-    @wf_debrujin (Tuple x y) z env (DAbs f) -> @wf_debrujin y z (x :: env) (f (length env)).
+    @wf_debrujin (x ** y) z env (Abs _ _ f) -> @wf_debrujin y z (x :: env) (f (length env)).
   Proof. env_auto. Qed.
 
   Lemma wf_debrujin_lax_compose1: forall {x y z} e1 e2,
-    @wf_debrujin x z env (DCompose e2 e1) -> @wf_debrujin x y env e1.
+    @wf_debrujin x z env (Comp _ e2 e1) -> @wf_debrujin x y env e1.
   Proof. env_auto. Qed.
 
   Lemma wf_debrujin_lax_compose2: forall {x y z} e1 e2,
-    @wf_debrujin x z env (DCompose e2 e1) -> @wf_debrujin y z env e2.
+    @wf_debrujin x z env (Comp _ e2 e1) -> @wf_debrujin y z env e2.
   Proof. env_auto. Qed.
 
   Lemma wf_debrujin_lax_app1: forall {x y z} f e,
-    wf_debrujin env (DApp f e) -> @wf_debrujin <<x, y>> z env f.
+    wf_debrujin env (App _ f e) -> @wf_debrujin (x ** y) z env f.
   Proof. env_auto. Qed.
 
   Lemma wf_debrujin_lax_app2: forall {x y z} f e,
-    @wf_debrujin y z env (DApp f e) -> @wf_debrujin Unit x env e.
+    @wf_debrujin y z env (App _ f e) -> @wf_debrujin u x env e.
+  Proof. env_auto. Qed.
+
+  Lemma wf_debrujin_lax_letrec1: forall {x y z} v f,
+    @wf_debrujin y z env (LetRec natvar x v f)
+    -> @wf_debrujin u x (x :: env) (v (length env)).
+  Proof. env_auto. Qed.
+
+  Lemma wf_debrujin_lax_letrec2: forall {x y z} v f,
+    @wf_debrujin y z env (LetRec natvar x v f)
+    -> @wf_debrujin y z (x :: env) (f (length env)).
   Proof. env_auto. Qed.
 End env.
 
-(* Perform closure conversion by passing an explicit environment. The higher
-order PHOAS representation is converted to first order form with de Brujin
+(* Perform closure conversion by passing an explicit environment. The PHOAS 
+representation is converted to first order form with de Brujin
 indexing as described by Adam Chlipala's Lambda Tamer project. As our source
 language is a Kappa calculus and our target is a Generalized Arrow representation,
 the environment and arguments are manipulated using Arrow combinators amongst
@@ -200,80 +221,96 @@ from the environment.
 Fixpoint closure_conversion' {i o}
   (env: environment)
   (expr: kappa natvar i o) {struct expr}
-  : wf_debrujin env expr -> structure (Tuple i (as_kind env)) o.
-    refine (
-match expr as expr in kappa _ i' o' return i = i' -> o = o' -> 
-wf_debrujin env expr -> structure (Tuple i (as_kind env)) o 
+  : wf_debrujin env expr -> (i ** (as_kind env)) ~> o
+  :=
+match expr as expr in kappa _ i' o' return 
+  i' ** (as_kind env) = i ** (as_kind env)
+  -> o' = o
+  -> wf_debrujin env expr -> (i ** (as_kind env)) ~> o 
 with
-| DVar v => fun _ _ wf => First Drop >>> Cancell >>> _
-(* Instantiating a variable is done by 'cancell' to select the environment, and
-then indexing using lookup_morphism. *)
-| @DAbs _ x y z f => fun _ _ wf =>
+(* Instantiating a variable is done by 'cancell' to select the environment, 
+and then indexing using lookup_morphism. *)
+| Var _ v => fun _ H wf => rew H in 
+  (first drop >>> cancell >>> (extract_nth env v wf))
+
 (* Kappa abstraction requires extending the environment then moving the 
 new environment variable in to place*)
-  let f' := closure_conversion' _ _ (x :: env) (f (length env)) (wf_debrujin_succ _ wf) in
-  (* This line moves the first arrow argument into the right hand position,
-  which allows 'assoc' to move the argument to the front of the environment
-  f: x*y ~> o
+| Abs _ x f => fun H1 H2 wf =>
+  let f' := closure_conversion' (x :: env) (f (length env)) (wf_debrujin_succ _ wf) in
+  (* 
+      input:      (x*y)*environment_variables 
 
-  f_kappa:    (x*y)*environment_variables ~> o
-  first swap: (y*x)*environment_variables ~> o
-  assoc:      y*(x*environment_variables) ~> o
-  f':         y*new_environment_variables ~> o
+  1. 'first swap': Move the first argument into the right hand position
+      first swap: (y*x)*environment_variables ~> o
+      
+  2. 'assoc': move the argument to the front of the environment via reassociation
+      assoc:      y*(x*environment_variables) ~> o
+
+  3. call f'
+      f':         y*new_environment_variables ~> o
   *)
-  _ (* first swap >>> assoc >>> f' *)
+  let ex := (rew H2 in (first swap >>> assoc >>> f')) in
+  rew [fun ty => ty ~> o] H1 in ex
 
-  | DApp f e => fun _ _ wf =>
-  (* for application the Kind environment needs to be piped to the abstraction
-  'f' and applicant 'e'. since running 'closure_conversion' on each binder
-  removes the environment, we first need to copy the environment. *)
-  _
-  (* second (copy >>> first (uncancell
-  >>> closure_conversion' _ _ _ env e (proj2 _)))
-  >>> unassoc >>> first swap
-  >>> closure_conversion' _ _ _ env f (proj1 _) *)
+(* Application requires the object environment to be piped to the abstraction
+'f' and applicant 'e'. since running 'closure_conversion' on each binder
+removes the environment, we first need to copy the environment. *)
+| App _ f e => fun H1 H2 wf => 
+  rew [fun ty => ty ~> o] H1 in (
+    rew H2 in (
+      second (copy >>> first (uncancell
+      >>> closure_conversion' env e (wf_debrujin_lax_app2 wf)))
+      >>> unassoc >>> first swap
+      >>> closure_conversion' env f (wf_debrujin_lax_app1 wf)
+    ))
 
-| DCompose e1 e2 => fun _ _ wf => _
-  (* second copy
-  >>> unassoc
-  >>> first (closure_conversion' env e2 (proj2 wf))
-  >>> closure_conversion' env e1 (proj1 wf) *)
+| Comp _ e1 e2 => fun H1 H2 wf => 
+  rew [fun ty => ty ~> o] H1 in (
+    rew H2 in (
+      second copy
+      >>> unassoc
+      >>> first (closure_conversion' env e2 (wf_debrujin_lax_compose1 wf))
+      >>> closure_conversion' env e1 (wf_debrujin_lax_compose2 wf)
+    ))
 
-| DArr m => fun _ _ _ => _ (* cancelr >>> m *)
-end (eq_refl i) (eq_refl o)
-).
-- unfold wf_debrujin in wf.
-  rewrite e0.
-  apply (extract_nth env v wf).
+| Morph _ m => fun H1 H2 wf => 
+  rew [fun ty => ty ~> o] H1 in (
+    rew H2 in (
+      second drop >>> cancelr >>> m
+    ))
 
-- rewrite e, e0.
-  exact (first swap >>> assoc >>> f').
+| LetRec _ x v f => fun H1 H2 wf =>
 
-- rewrite e0, e1.
-  exact (
-    second (copy >>> first (uncancell
-    >>> closure_conversion' _ _ env e (wf_debrujin_lax_app2 wf)))
-    >>> unassoc >>> first swap
-    >>> closure_conversion' _ _ env f (wf_debrujin_lax_app1 wf)
-  ).
-- rewrite e, e0.
-  exact (
-  second copy
-  >>> unassoc
-  >>> first (closure_conversion' _ _ env e2 (wf_debrujin_lax_compose1 wf))
-  >>> closure_conversion' _ _ env e1 (wf_debrujin_lax_compose2 wf)
-).
-- rewrite e, e0.
-  exact (Second Drop >>> Cancelr >>> m).
-Defined.
+  let v' := closure_conversion' (x :: env) (v (length env)) (wf_debrujin_lax_letrec1 wf) in
+  let f' := closure_conversion' (x :: env) (f (length env)) (wf_debrujin_lax_letrec2 wf) in
+
+  rew [fun ty => ty ~> o] H1 in (
+    rew H2 in (
+    (* i**env ~> o *)
+    second (
+      (* env ~> o *)
+      copy >>>
+      (* env*env ~> o *)
+      first (
+        (* env ~> o *)
+        uncancell >>> 
+          (* u*env ~> o *)
+          loopr (assoc >>> second swap >>> v' >>> copy)
+      )
+      (* i'**env ~> o *)
+    )
+    (* i**(i'**env) ~> o *)
+    >>> f'
+  ))
+end eq_refl eq_refl.
 
 (****************************************************************************)
 (* Kappa term equivalence                                                   *)
 (****************************************************************************)
 
 Section Equivalence.
-  Inductive obj_tup :  Type := obj_pair : Kind -> Kind -> obj_tup.
-  Variables var1 var2 : Kind -> Kind -> Type.
+  Inductive obj_tup :  Type := obj_pair : object -> object -> obj_tup.
+  Variables var1 var2 : object -> object -> Type.
 
   Definition vars := existT (fun '(obj_pair x y) => (var1 x y * var2 x y)%type).
   Definition ctxt := list { '(obj_pair x y) : obj_tup & (var1 x y * var2 x y)%type }.
@@ -284,14 +321,14 @@ Section Equivalence.
     -> Prop :=
   | Var_equiv : forall i o (n1: var1 i o) (n2: var2 i o) E,
     In (vars (obj_pair i o) (pair n1 n2)) E
-    -> kappa_equivalence E (DVar n1) (DVar n2)
+    -> kappa_equivalence E (Var _ n1) (Var _ n2)
 
   | Abs_equiv : forall x y z 
-    (f1: var1 Unit x -> kappa var1 y z) 
-    (f2: var2 Unit x -> kappa var2 y z) 
+    (f1: var1 u x -> kappa var1 y z) 
+    (f2: var2 u x -> kappa var2 y z) 
     (E:ctxt),
-    (forall n1 n2, kappa_equivalence (vars (obj_pair Unit x) (pair n1 n2) :: E) (f1 n1) (f2 n2))
-    -> kappa_equivalence E (DAbs f1) (DAbs f2)
+    (forall n1 n2, kappa_equivalence (vars (obj_pair u x) (pair n1 n2) :: E) (f1 n1) (f2 n2))
+    -> kappa_equivalence E (Abs _ _ f1) (Abs _ _ f2)
 
   | App_equiv : forall E x y z 
     (f1 : kappa var1 (x**y) z) 
@@ -299,30 +336,42 @@ Section Equivalence.
     e1 e2,
     kappa_equivalence E f1 f2
     -> kappa_equivalence E e1 e2
-    -> kappa_equivalence E (DApp f1 e1) (DApp f2 e2)
+    -> kappa_equivalence E (App _ f1 e1) (App _ f2 e2)
 
   | Compose_equiv : forall E x y z 
     (f1: kappa var1 y z) (f2: kappa var2 y z)
     (g1: kappa var1 x y) (g2: kappa var2 x y),
     kappa_equivalence E f1 f2
     -> kappa_equivalence E g1 g2
-    -> kappa_equivalence E (DCompose f1 g1) (DCompose f2 g2)
+    -> kappa_equivalence E (Comp _ f1 g1) (Comp _ f2 g2)
 
-  | Arr_equiv : forall x y E (m: morphism x y), kappa_equivalence E (DArr m) (DArr m) .
+  | Morph_equiv : forall x y E (m: morphism x y), kappa_equivalence E (Morph _ m) (Morph _ m)
+
+  | Letrec_equiv : forall x y z 
+    (v1: var1 u x -> kappa var1 u x) 
+    (v2: var2 u x -> kappa var2 u x) 
+    (f1: var1 u x -> kappa var1 y z) 
+    (f2: var2 u x -> kappa var2 y z) 
+    (E:ctxt),
+    (forall n1 n2, kappa_equivalence (vars (obj_pair u x) (pair n1 n2) :: E) (v1 n1) (v2 n2))
+    -> 
+    (forall n1 n2, kappa_equivalence (vars (obj_pair u x) (pair n1 n2) :: E) (f1 n1) (f2 n2))
+    -> 
+    kappa_equivalence E (LetRec _ _ v1 f1) (LetRec _ _ v2 f2).
 End Equivalence.
 
-Axiom Kappa_equivalence : forall {i o} (expr: forall var, @kappa var i o) var1 var2,
+Axiom Kappa_equivalence : forall {i o} (expr: forall var, kappa var i o) var1 var2,
   kappa_equivalence nil (expr var1) (expr var2).
 
 Notation variable_pair i o n1 n2 := (vars natvar natvar (obj_pair i o) (pair n1 n2)).
 
 (* Evidence of variable pair equality *)
 Notation match_pairs xo xn yi yo yn1 yn2 :=
-  (variable_pair Unit xo xn xn = variable_pair yi yo yn1 yn2).
+  (variable_pair u xo xn xn = variable_pair yi yo yn1 yn2).
 
-(* Evidence that if a given variable is in an environment we can lookup_kind the Kind at the index. *)
+(* Evidence that if a given variable is in an environment we can lookup_kind the object at the index. *)
 Notation ok_variable_lookup := (fun env E =>
-  forall (i o : Kind) (n1 n2 : natvar i o),
+  forall (i o : object) (n1 n2 : natvar i o),
     In (vars natvar natvar (obj_pair i o) (pair n1 n2)) E
     -> lookup_kind env n1 = Some o
 ).
@@ -407,6 +456,8 @@ Definition Closure_conversion {i o} (expr: Kappa i o): i ~> o
 Hint Resolve closure_conversion' : core.
 Hint Resolve closure_conversion : core.
 Hint Resolve Closure_conversion : core.
+
+End Arrow.
 
 Ltac wf_kappa_via_compute :=
   compute;

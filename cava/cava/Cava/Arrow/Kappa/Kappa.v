@@ -1,13 +1,15 @@
+From Arrow Require Import Category Arrow Kappa ClosureConversion.
 Require Import Cava.Arrow.Arrow.
-Require Import Cava.Arrow.Instances.Constructive.
 
 From Coq Require Import Arith NArith Lia NaryFunctions.
 
 Import EqNotations.
 
+Open Scope category_scope.
+Open Scope arrow_scope.
+
 Section Vars.
   Context {var: Kind -> Kind -> Type}.
-
 
   Definition lift_constant (ty: Kind): Type :=
     match ty with
@@ -68,16 +70,8 @@ Section Vars.
   Bind Scope kind_scope with kappa_sugared.
   Delimit Scope kind_scope with kappa_sugared.
 
-  (* Everything not manipulation a variable is mapped to its arrow representation via DArr.
-  So after desugaring the type is much simpler *)
-  Inductive kappa : Kind -> Kind -> Type :=
-    | DVar : forall {x y},   var x y -> kappa x y
-    | DAbs : forall {x y z}, (var Unit x -> kappa y z) -> kappa << x, y >> z
-    | DApp : forall {x y z}, kappa << x, y >> z -> kappa Unit x -> kappa y z
-    | DCompose : forall {x y z}, kappa y z -> kappa x y -> kappa x z
-    | DArr : forall {x y},   morphism x y -> kappa x y.
-
-  Definition kappa_app {o} i (m: remove_rightmost_unit i ~> o) : kappa i o := DCompose (DArr m) (DArr (remove_rightmost_tt _)).
+(* 
+  Definition kappa_app {o} i (m: i ~> o) : kappa (insert_rightmost_unit i) o := DCompose (DArr m) (DArr (remove_rightmost_tt _)).
 
   Definition remove_second {x y}: structure << x, y >> x := (Compose Cancelr (Second Drop)).
   Definition remove_first {x y}: structure << x, y >> y := (Compose Cancell (First Drop)).
@@ -85,7 +79,7 @@ Section Vars.
   Definition tuple_left {x y}: kappa << <<x, y>> , Unit>> x
     := DArr (Compose remove_second Cancelr).
   Definition tuple_right {x y}: kappa << <<x, y>>, Unit>> y
-    := DArr (Compose remove_first Cancelr).
+    := DArr (Compose remove_first Cancelr). *)
 
   Definition kappa_to_vec {o} (e: kappa_sugared Unit o)
     : kappa_sugared Unit (Vector 1 o) :=
@@ -152,61 +146,70 @@ Section Vars.
     : kappa_sugared << Vector (S n) o, Unit>> <<o, Vector n o>>
     := Abs (fun x => kappa_uncons (Var x)).
 
-  Fixpoint desugar {i o} (e: kappa_sugared i o) : kappa i o :=
+  Arguments Kappa.Var [_ _ _ _ _ var _ _].
+  Arguments Kappa.Abs [_ _ _ _ _ var _ _ _].
+  Arguments Kappa.App [_ _ _ _ _ var _ _ _].
+  Arguments Kappa.Comp [_ _ _ _ _ var _ _ _].
+  Arguments Kappa.Morph [_ _ _ _ _ var _ _].
+  Arguments Kappa.LetRec [_ _ _ _ _ var _ _ _].
+
+  Definition liftCava `{Cava} i {o} (f: remove_rightmost_unit i ~> o) 
+    : kappa var i o :=
+    Kappa.Comp (Kappa.Morph f) (Kappa.Morph (remove_rightmost_tt i)).
+
+  Fixpoint desugar {cava: Cava} {i o} (e: kappa_sugared i o) : kappa var i o :=
     match e with
-    | Var x => DVar x
-    | Abs f => DAbs (fun x => desugar (f x))
-    | App e1 e2 => DApp (desugar e1) (desugar e2)
-    | Com f g => DCompose (desugar f) (desugar g)
-    | Let x f => DApp (DAbs (fun x => desugar (f x))) (desugar x)
+    | Var x => Kappa.Var x
+    | Abs f => Kappa.Abs (fun x => desugar (f x))
+    | App e1 e2 => Kappa.App (desugar e1) (desugar e2)
+    | Com f g => Kappa.Comp (desugar f) (desugar g)
+    | Let x f => Kappa.App (Kappa.Abs (fun x => desugar (f x))) (desugar x)
 
-    | Fst  => tuple_left
-    | Snd  => tuple_right
+    | Fst  => Kappa.Morph (cancelr >>> second drop >>> cancelr)
+    | Snd  => Kappa.Morph (cancelr >>> first drop >>> cancell)
 
-    | Pair => DArr (Second Cancelr)
+    | Pair => Kappa.Morph (second cancelr)
 
-    | Not  => kappa_app << Bit, Unit >> not_gate
-    | And  => kappa_app << Bit, Bit, Unit >> and_gate
-    | Nand => kappa_app << Bit, Bit, Unit >> nand_gate
-    | Or   => kappa_app << Bit, Bit, Unit >> or_gate
-    | Nor  => kappa_app << Bit, Bit, Unit >> nor_gate
-    | Xor  => kappa_app << Bit, Bit, Unit >> xor_gate
-    | Xnor => kappa_app << Bit, Bit, Unit >> xnor_gate
-    | Buf  => kappa_app << Bit, Unit >> buf_gate
+    | Not  => liftCava <<_,u>> not_gate
+    | And  => liftCava <<_,_,u>> and_gate
+    | Nand => liftCava <<_,_,u>> nand_gate
+    | Or   => liftCava <<_,_,u>> or_gate
+    | Nor  => liftCava <<_,_,u>> nor_gate
+    | Xor  => liftCava <<_,_,u>> xor_gate
+    | Xnor => liftCava <<_,_,u>> xnor_gate
+    | Buf  => liftCava <<_,u>> buf_gate
 
-    | Delay  => DArr (Compose delay_gate Cancelr)
+    | Delay  => Kappa.Comp (Kappa.Morph delay_gate) (Kappa.Morph cancelr)
 
-    | Xorcy  => kappa_app << Bit, Bit, Unit >> xorcy
-    | Muxcy  => kappa_app << Bit, Tuple Bit Bit, Unit >> muxcy
-    | UnsignedAdd a b c => kappa_app << Vector a Bit, Vector b Bit, Unit >> (unsigned_add a b c)
-    | Lut n f => kappa_app << Vector n Bit, Unit >> (lut n f)
+    | Xorcy  => liftCava <<_,_,u>> xorcy
+    | Muxcy  => liftCava <<_,_,u>> muxcy
+    | UnsignedAdd a b c => liftCava <<_,_,u>> (unsigned_add a b c)
+    | Lut n f => liftCava <<_,u>> (lut n f)
 
     | @LiftConstant ty x =>
       match ty, x with
-      | Bit, b => DArr (constant b)
-      | Vector n Bit, v => DArr (constant_bitvec _ v)
+      | Bit, b => Kappa.Morph (constant b)
+      | Vector n Bit, v => Kappa.Morph (constant_bitvec _ v)
       | _, H => match H with end
       end
 
     | IndexVec n =>
-      kappa_app << Vector n _, Vector (log2_up_min_1 n) Bit, Unit >> (index_vec n _)
+      liftCava <<_,_,u>> (index_vec n _)
     | SliceVec n x y H1 H2 =>
-      kappa_app << Vector n _, Unit >> (slice_vec n x y _ H1 H2)
+      liftCava <<_,u>> (slice_vec n x y _ H1 H2)
 
-    | ToVec => kappa_app << _, Unit >> (to_vec _)
-    | Append n => kappa_app << Vector n _, _, Unit >> (append n _)
-    | Concat n m => kappa_app << Vector n _, Vector m _, Unit >> (concat n m _)
-    | Split n m H => kappa_app << Vector n _, Unit >> (split n m _ H)
+    | ToVec => liftCava <<_,u>> (to_vec _)
+    | Append n => liftCava <<_,_,u>> (append n _)
+    | Concat n m => liftCava <<_,_,u>> (concat n m _)
+    | Split n m H => liftCava <<_,u>> (split n m _ H)
     end.
 End Vars.
 
 Arguments kappa_sugared : clear implicits.
-Arguments kappa : clear implicits.
 
 Definition Kappa_sugared i o := forall var, kappa_sugared var i o.
-Definition Kappa i o := forall var, kappa var i o.
 
-Definition Desugar {i o} (e: Kappa_sugared i o) : Kappa i o := fun var => desugar (e var).
+Definition Desugar `{Cava} {i o} (e: Kappa_sugared i o) : Kappa i o := fun var => desugar (e var).
 
 Hint Resolve Desugar : core.
 Hint Resolve desugar : core.
