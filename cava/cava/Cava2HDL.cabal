@@ -46,13 +46,12 @@ library
                      BitArithmetic
                      Bvector
                      CavaClass
-                     CC
                      Combinators
                      Combinational
                      CombinationalMonad
-                     Constructive
+                     -- Constructive
                      Datatypes
-                     -- DecimalString
+                     DecimalString
                      IdentityMonad
                      Kappa
                      Kind
@@ -61,6 +60,7 @@ library
                      Monad
                      NaryFunctions
                      Netlist
+                     Netlist0
                      NetlistGeneration
                      Nat
                      Ndigits
@@ -69,12 +69,20 @@ library
                      StateMonad
                      Syntax
                      Types
-                     -- Traversable
+                     --Traversable
                      UnsignedAdders
                      VectorDef
                      Vector
                      VectorUtils
                      XilinxAdder
+
+                     -- Temporary 
+                     Category
+                     Arrow0
+                     Kappa0
+                     ClosureConversion
+                     Coq
+                     Kleisli
   other-Modules:     Applicative
                      BinPos
                      Bool

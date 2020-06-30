@@ -1,17 +1,17 @@
-From Coq Require Import Bool List ZArith Setoid Classes.Morphisms FunctionalExtensionality NaryFunctions VectorDef.
-Import ListNotations.
+From Coq Require Import Bool ZArith NaryFunctions VectorDef.
+From Arrow Require Import Category Arrow.
+From Cava Require Import Arrow.Arrow Arrow.Instances.Prop.
+
+
 Import VectorNotations.
 
 Require Import Cava.BitArithmetic.
-Require Import Cava.Arrow.Arrow.
-Require Import Cava.Arrow.Instances.Constructive.
-Require Import Cava.Arrow.Instances.Prop.
+(* Require Import Cava.Arrow.Instances.Constructive. *)
+(* Require Import Cava.Arrow.Instances.Prop. *)
 
 (******************************************************************************)
 (* Evaluation as function evaluation, no delay elements or loops              *)
 (******************************************************************************)
-
-
 
 (* TODO: switch to coq ext lib's option monad*)
 Notation "f >==> g" :=
@@ -21,17 +21,6 @@ Notation "f >==> g" :=
   | _ => None
   end)(at level 1).
 
-Ltac solve_optional :=
-  cbv [fst snd];
-  match goal with
-  | [h1: ?x -> option _, h2: ?x |- _] => destruct (h1 h2); clear h1
-  | [|- context[match ?X ?Y with | _ => _  end]] => destruct (X Y)
-  end.
-
-Ltac simple_solve :=
-  intros; simpl;
-  try let x := fresh in extensionality x;
-  repeat solve_optional; auto.
 
 Fixpoint denote (ty: Kind): Type :=
   match ty with 
@@ -41,27 +30,15 @@ Fixpoint denote (ty: Kind): Type :=
   | Unit => unit
   end.
 
-#[refine] Instance CoqKindMaybeCategory : Category Kind := {
+Section instance.
+
+Instance CoqKindMaybeCategory : Category Kind := {
   morphism X Y := denote X -> option (denote Y);
   compose _ _ _ f g := g >==> f;
   id X x := Some x;
-
-  morphism_equivalence x y f g := f = g;
 }.
-Proof.
-  - intros.
-    unfold Proper.
-    refine (fun f => _). intros.
-    refine (fun g => _). intros.
-    rewrite H0.
-    rewrite H.
-    auto.
-  - auto.
-  - simple_solve.
-  - simple_solve.
-Defined.
 
-#[refine] Instance CoqKindMaybeArrow : Arrow _ CoqKindMaybeCategory Unit Tuple := {
+Instance CoqKindMaybeArrow : Arrow _ CoqKindMaybeCategory Unit Tuple := {
   first _ _ _ f i := match f (fst i) with | Some x => Some (x, snd i) | _ => None end;
   second _ _ _ f i := match f (snd i) with | Some y => Some (fst i, y) | _ => None end;
 
@@ -74,19 +51,12 @@ Defined.
   assoc _ _ _ i := Some (fst (fst i), (snd (fst i), snd i));
   unassoc _ _ _ i := Some ((fst i, fst (snd i)), snd (snd i));
 }.
-Proof.
-  - simple_solve.
-  - simple_solve.
-  - simple_solve.
-  - simple_solve.
-  - simple_solve.
-  - simple_solve.
-Defined.
 
 Instance CombinationalDrop : ArrowDrop CoqKindMaybeArrow := { drop _ x := Some tt }.
 Instance CombinationalCopy : ArrowCopy CoqKindMaybeArrow := { copy _ x := Some (pair x x) }.
 Instance CombinationalSwap : ArrowSwap CoqKindMaybeArrow := { swap _ _ x := Some (snd x, fst x) }.
 Instance CombinationalLoop : ArrowLoop CoqKindMaybeArrow := { loopl _ _ _ _ _ := None; loopr _ _ _ _ _ := None }.
+Instance CombinationalSTKC : ArrowSTKC CoqKindMaybeArrow := { }.
 
 #[refine] Instance Combinational : Cava := {
   cava_arrow := CoqKindMaybeArrow;
@@ -159,7 +129,11 @@ Proof.
     auto.
 Defined.
 
-Definition wf_combinational {x y} (circuit: x ~> y) := forall i, exists o, circuit i = Some o.
+End instance.
+
+Local Open Scope category_scope.
+
+Definition wf_combinational {x y} (circuit: x ~[Combinational]~> y) := forall i, exists o, circuit i = Some o.
 
 Lemma unsat_kind_false: forall y, (exists o : denote y, None = Some o) -> False.
 Proof.
@@ -178,7 +152,7 @@ Proof.
   contradiction.
 Defined.
 
-Ltac sub_prop :=
+(* Ltac sub_prop :=
     match goal with
     | [H: is_combinational (toCava ?X) |- _] => 
       unfold is_combinational in H; cbn in H; inversion H; clear H
@@ -247,7 +221,7 @@ Proof.
   pose (combinational_circuit_has_value circuit wf_indexing combinational x).
   inversion s.
   apply x0.
-Defined.
+Defined. *)
 
 Lemma not_gate_is_combinational: is_combinational (@not_gate).
 Proof.
@@ -267,18 +241,12 @@ Ltac combinational_obvious :=
   compute;
   eauto.
 
-(* Computing the terms is useful for e.g. extracting simple values *)
-Ltac evaluate_to_terms circuit wf inputs :=
-  let reduced := eval compute in
-  (List.map (evaluate (toCava circuit _) wf) inputs) in
-  exact reduced.
-
-Example not_true: not_gate true = Some false.
+Example not_true: @not_gate Combinational true = Some false.
 Proof. reflexivity. Qed.
 
 Example not_true_with_wf: evaluate not_gate not_gate_wf true = false.
 Proof. compute. reflexivity. Qed.
 
-Example not_false: not_gate false = Some true.
+Example not_false: @not_gate Combinational false = Some true.
 
 Proof. reflexivity. Qed.

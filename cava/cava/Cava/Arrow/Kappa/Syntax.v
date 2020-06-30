@@ -1,11 +1,9 @@
-Require Import Arith Eqdep_dec List Lia NArith Omega.
+From Coq Require Import Arith Eqdep_dec List Lia NArith Omega.
+From Arrow Require Import Category Kappa ClosureConversion.
 
 Require Import Cava.BitArithmetic.
-
 Require Import Cava.Arrow.Arrow.
-Require Export Cava.Arrow.Instances.Constructive.
 Require Export Cava.Arrow.Kappa.Kappa.
-Require Export Cava.Arrow.Kappa.CC.
 
 (* Notations *)
 
@@ -100,18 +98,10 @@ Module KappaNotation.
     (kappa_append .. (kappa_append (kappa_to_vec x) y) .. z) (in custom expr at level 4) : kappa_scope.
 End KappaNotation.
 
-Definition to_constructive {i o} (expr: Kappa i o) (wf: wf_debrujin [] (expr _))
-  : structure (remove_rightmost_unit i) o
-  := Compose (closure_conversion expr wf) (insert_rightmost_tt1 _) .
-Definition compile_kappa {i o} (Cava: Cava) (expr: Kappa i o) (wf: wf_debrujin [] (expr _))
-  : remove_rightmost_unit i ~[Cava]~> o
-  := toCava (to_constructive expr wf) Cava.
-
-Ltac auto_kappa_wf := simpl;tauto.
-
-Ltac build_structure kappa_term :=
-    let reduced := eval compute in (to_constructive (Desugar kappa_term) (ltac:(auto_kappa_wf)))
-    in exact reduced.
+Notation "'to_arrow' circuit" := (
+  insert_rightmost_tt1 _ >>> 
+  closure_conversion (object_decidable_equality:=decKind) (Desugar (circuit)) (ltac:(simpl;tauto))
+)(at level 100).
 
 (* test notation *)
 

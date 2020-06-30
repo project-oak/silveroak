@@ -4,3 +4,4 @@
 -Q monad-examples MonadExamples
 -Q monad-examples/xilinx XilinxExamples
 -Q arrow-examples ArrowExamples
+-Q arrow-lib Arrow

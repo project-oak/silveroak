@@ -1,6 +1,5 @@
-Require Import Cava.Arrow.Arrow.
-Require Import Cava.Arrow.Kappa.Syntax.
-Require Import Cava.Arrow.Instances.Combinational.
+From Arrow Require Import Category ClosureConversion.
+From Cava Require Import Arrow.Arrow Arrow.Kappa.Syntax Arrow.Instances.Combinational.
 
 Require Import Coq.Strings.String.
 Local Open Scope string_scope.
@@ -24,7 +23,10 @@ Section definition.
     ]>.
 End definition.
 
-Definition xilinxFullAdder_structure := (ltac: (build_structure xilinxFullAdder)).
+Open Scope kind_scope.
+Definition xilinxFullAdder_arrow {cava: Cava}
+  : << Bit, << Bit, Bit >> >> ~> <<Bit, Bit>>
+  := to_arrow @xilinxFullAdder.
 
-Lemma xilinxFullAdder_is_combinational: wf_combinational (toCava xilinxFullAdder_structure _).
+Lemma xilinxFullAdder_is_combinational: wf_combinational xilinxFullAdder_arrow.
 Proof. combinational_obvious. Qed.

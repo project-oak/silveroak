@@ -1,5 +1,5 @@
 #
-# Copyright 2019 The Project Oak Authors
+# Copyright 2020 The Project Oak Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,22 +14,16 @@
 # limitations under the License.
 #
 
-.PHONY: all clean
+.PHONY: all coq clean 
 
-all:
-	cd arrow-lib && $(MAKE) && \
-	cd ../cava && $(MAKE) && \
-	cd ../monad-examples && $(MAKE) && \
-	cd xilinx && $(MAKE) extraction && \
-	cd ../../tests/xilinx && $(MAKE) extraction && \
-	cd ../..
+all:		coq $(VCDS)
+
+Makefile.coq:
+		coq_makefile -f _CoqProject -o Makefile.coq
+
+coq:		Makefile.coq
+		$(MAKE) -f Makefile.coq
 
 clean:
-	cd arrow-lib && $(MAKE) && \
-	cd ../cava && $(MAKE) clean && \
-	cd ../monad-examples && $(MAKE) clean && \
-	cd xilinx && $(MAKE) clean && \
-	cd ../../tests/xilinx && $(MAKE) clean && \
-	cd ../../arrow-examples && $(MAKE) clean && \
-	cd ..
-	rm -rf .DS_Store
+		-@$(MAKE) -f Makefile.coq clean
+		git clean -Xfd

@@ -1,26 +1,18 @@
-From Coq Require Import Bool List ZArith Setoid Classes.Morphisms NaryFunctions VectorDef.
-Import ListNotations.
+From Coq Require Import Bool ZArith NaryFunctions VectorDef.
+From Arrow Require Import Category Arrow Kappa ClosureConversion.
+From Cava Require Import Arrow.Arrow.
+
 Import VectorNotations.
 
-Require Import Cava.Arrow.Arrow.
-Require Import Cava.Arrow.Instances.Constructive.
+Section instance.
 
-#[refine] Instance ConjPropKindCategory : Category Kind := {
+Instance ConjPropKindCategory : Category Kind := {
   morphism X Y := Prop;
   compose _ _ _ f g := f /\ g;
   id X := True;
-
-  morphism_equivalence x y f g := f <-> g;
 }.
-Proof.
-  - split. intros. inversion H. auto. intros. split; auto.
-  - split. intros. inversion H. auto. intros. split; auto.
-  - split. 
-    * intros. inversion H. inversion H1. auto.
-    * intros. inversion H. inversion H0. auto.
-Defined.
 
-#[refine] Instance ConjPropKindArrow : Arrow _ ConjPropKindCategory Unit Tuple := {
+Instance ConjPropKindArrow : Arrow _ ConjPropKindCategory Unit Tuple := {
   first _ _ _ p := p;
   second _ _ _ p := p;
 
@@ -33,24 +25,19 @@ Defined.
   assoc _ _ _ := True;
   unassoc _ _ _ := True;
 }.
-Proof.
-  - cbn. tauto.
-  - cbn. tauto.
-  - cbn. tauto.
-  - cbn. tauto.
-  - cbn. tauto.
-  - cbn. tauto.
-Defined.
 
 Instance TrueDrop : ArrowDrop ConjPropKindArrow := { drop _ := True }.
 Instance TrueCopy : ArrowCopy ConjPropKindArrow := { copy _ := True }.
 Instance TrueSwap : ArrowSwap ConjPropKindArrow := { swap _ _ := True }.
+
+Instance TrueSTKC : ArrowSTKC ConjPropKindArrow := { }.
 
 Instance SubLoop : ArrowLoop ConjPropKindArrow := { loopl _ _ _ l := l; loopr _ _ _ l := l }.
 Instance FalseLoop : ArrowLoop ConjPropKindArrow := { loopl _ _ _ _ := False; loopr _ _ _ _ := False }.
 
 Instance NoDelays : Cava := {
   cava_arrow := ConjPropKindArrow;
+  cava_arrow_stkc := TrueSTKC;
   cava_arrow_loop := SubLoop;
 
   constant b := True;
@@ -104,33 +91,10 @@ Instance NoLoops : Cava := {
   delay_gate _ := True;
 }.
 
-(* Instance WfIndexing : Cava := {
-  cava_arrow := ConjPropKindArrow;
-  cava_arrow_loop := SubLoop;
+End instance.
 
-  constant b := True;
-  constant_bitvec n v := True;
-  not_gate := True;
-  and_gate := True;
-  nand_gate := True;
-  or_gate := True;
-  nor_gate := True;
-  xor_gate := True;
-  xnor_gate := True;
-  buf_gate := True;
-  xorcy := True;
-  muxcy := True;
-  unsigned_add _ _ _ := True;
-  lut _ _ := True;
-  slice_vec n x y o _ _ := True;
-  to_vec o := True;
-  append n o := True;
-  concat n m o := True;
-  split n m o H := True;
-  delay_gate _ := True;
-
-  index_vec n o := forall x, x < Nat.log2_up n; (* this is not right; x needs to be related to the actual values it receives *)
-}. *)
+Local Open Scope category_scope.
+Local Open Scope arrow_scope.
 
 Definition is_combinational {i o: Kind} (c: forall (cava: Cava), i ~[cava]~> o) := 
   c NoLoops /\ c NoDelays.
@@ -143,17 +107,17 @@ Proof.
   tauto.
 Qed.
 
-Lemma is_combinational_first: forall x y z circuit,
-  is_combinational (toCava (@First x y z circuit)) =   
-  is_combinational (toCava circuit).
+Lemma is_combinational_first: forall x y z (circuit: forall (cava: Cava), x ~> y),
+  is_combinational (fun cava => first (circuit cava) : x**z ~[cava]~> y**z) =   
+  is_combinational circuit.
 Proof.
   intros.
   tauto.
 Qed.
 
-Lemma is_combinational_second: forall x y z circuit,
-  is_combinational (toCava (@Second x y z circuit)) =   
-  is_combinational (toCava circuit).
+Lemma is_combinational_second: forall x y z (circuit: forall (cava: Cava), x ~> y),
+  is_combinational (fun cava => second (circuit cava) : z**x ~[cava]~> z**y) =   
+  is_combinational circuit.
 Proof.
   intros.
   tauto.
@@ -169,9 +133,11 @@ Proof.
   tauto.
 Qed.
 
-Lemma decompose_combinational (x y z : Kind) (f: structure x y) (g: structure y z):
-  is_combinational (toCava (Compose g f)) -> 
-  is_combinational (toCava g) /\ is_combinational (toCava f).
+Lemma decompose_combinational: forall x y z
+  (f: forall (cava: Cava), x ~> y)
+  (g: forall (cava: Cava), y ~> z),
+  is_combinational (fun cava => (f cava) >>> (g cava) : x ~[cava]~> z ) -> 
+  is_combinational g /\ is_combinational f.
 Proof.
   intros.
   unfold is_combinational in *.
