@@ -23,14 +23,14 @@ Import ListNotations.
 
 Local Open Scope string_scope.
 
-Section definition.
+Section notation.
   Import KappaNotation.
 
   Section var.
     Variable var: Kind -> Kind -> Type.
 
     Definition mux2_1
-    : kappa_sugared var << Bit, << Bit, Bit >>, Unit >> Bit :=
+    : CavaExpr var << Bit, << Bit, Bit >>, Unit >> Bit :=
     <[ \ sel ab =>
       let '(a,b) = ab in
       let sel_a = and sel a in
@@ -40,14 +40,13 @@ Section definition.
       sel_out
     ]>.
   End var.
+End notation.
 
-  Local Open Scope category_scope.
-  Local Open Scope kind_scope.
-  Definition mux2_1' {cava: Cava}: << Bit, << Bit, Bit >> >> ~[cava]~> Bit
-    := to_arrow @mux2_1 .
-End definition.
+Open Scope kind_scope.
+Definition mux2_1_arrow {cava: Cava}: << Bit, << Bit, Bit >> >> ~[cava]~> Bit
+  := to_arrow @mux2_1.
 
-Lemma mux2_1_is_combinational: wf_combinational mux2_1'.
+Lemma mux2_1_is_combinational: wf_combinational mux2_1_arrow.
 Proof. combinational_obvious. Qed.
 
 Require Import Cava.Types.
@@ -60,7 +59,7 @@ Definition mux2_1_Interface :=
      [].
 
 Definition mux2_1_netlist :=
-  makeNetlist mux2_1_Interface (@mux2_1' NetlistCava).
+  makeNetlist mux2_1_Interface (@mux2_1_arrow NetlistCava).
 
 Definition mux2_1_tb_inputs : list (bool * (bool * bool)) := 
  [(false, (false, true));
@@ -73,7 +72,7 @@ Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
 (* Using `evaluate_to_terms` for a nicer extracted value *)
 Definition mux2_1_tb_expected_outputs : list bool :=
 
- map (fun i => evaluate mux2_1' mux2_1_is_combinational i) mux2_1_tb_inputs.
+ map (fun i => evaluate mux2_1_arrow mux2_1_is_combinational i) mux2_1_tb_inputs.
 
 Definition mux2_1_tb :=
   testBench "mux2_1_tb" mux2_1_Interface

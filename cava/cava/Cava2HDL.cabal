@@ -40,7 +40,6 @@ cabal-version:        >= 1.10
 library
   build-Depends:     base >= 4, mtl >= 2
   exposed-Modules:   Cava2SystemVerilog
-                     Arrow
                      BinNat
                      BinNums
                      BitArithmetic
@@ -55,7 +54,6 @@ library
                      Datatypes
                      DecimalString
                      IdentityMonad
-                     Kappa
                      Kind
                      List
                      Logic
@@ -76,13 +74,13 @@ library
                      VectorUtils
                      XilinxAdder
 
-                     -- Temporary 
-                     -- Category
-                     -- Arrow0
-                     -- Kappa0
-                     -- ClosureConversion
-                     -- Coq
-                     -- Kleisli
+                     -- From arrow-lib 
+                     Category
+                     Arrow
+                     Kappa
+                     ClosureConversion
+                     Coq
+                     Kleisli
   other-Modules:     Applicative
                      BinPos
                      Bool

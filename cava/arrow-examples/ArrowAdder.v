@@ -23,13 +23,13 @@ Local Open Scope string_scope.
 From Coq Require Import Lists.List NArith Lia.
 Import ListNotations.
 
-Section definition.
+Section notation.
   Import KappaNotation.
 
   Context {var: Kind -> Kind -> Type}.
 
   Definition halfAdder
-  : kappa_sugared var << Bit, Bit, Unit >> <<Bit, Bit>> :=
+  : CavaExpr var << Bit, Bit, Unit >> <<Bit, Bit>> :=
     (* The bracket pairing `<[` `]>` opens a circuit expression scope, 
     see readme.md for more information *) 
   <[ \ a b =>
@@ -39,7 +39,7 @@ Section definition.
   ]>.
 
   Definition fullAdder
-  : kappa_sugared var << Bit, << Bit, Bit >>, Unit >> <<Bit, Bit>> :=
+  : CavaExpr var << Bit, << Bit, Bit >>, Unit >> <<Bit, Bit>> :=
   <[ \ cin ab =>
     let '(a,b) = ab in
     (* Since 'halfAdder' is in the larger Coq scope, and is not a local variable,
@@ -52,9 +52,9 @@ Section definition.
 
   (* Combinators *)
   Definition below {A B C D E F G: Kind}
-    (r: kappa_sugared var << A, B, Unit >> << G, D >>)
-    (s: kappa_sugared var << G, C, Unit >> << F, E >>)
-    : kappa_sugared var 
+    (r: CavaExpr var << A, B, Unit >> << G, D >>)
+    (s: CavaExpr var << G, C, Unit >> << F, E >>)
+    : CavaExpr var 
       << A, <<B, C>>, Unit >> 
       << F, <<D, E>> >> :=
   <[ \ a bc =>
@@ -80,8 +80,8 @@ Section definition.
     end.
 
   Program Fixpoint col {A B C: Kind} n
-    (circuit: kappa_sugared var << A, B, Unit >> <<A, C>>)
-    : kappa_sugared var 
+    (circuit: CavaExpr var << A, B, Unit >> <<A, C>>)
+    : CavaExpr var 
       << A, replicate B (S n), Unit >> 
       << A, replicate C (S n)>> :=
     match n with
@@ -92,7 +92,7 @@ Section definition.
     end.
 
   Lemma col_cons: forall {A B C}
-    (circuit: kappa_sugared var << A, B, Unit >> <<A, C>>),
+    (circuit: CavaExpr var << A, B, Unit >> <<A, C>>),
     forall n, col (S n) circuit = below circuit (col n circuit).
   Proof.
     intros.
@@ -100,7 +100,7 @@ Section definition.
   Qed.
 
   Fixpoint interleave n
-    : kappa_sugared var 
+    : CavaExpr var 
       << Vector Bit (S n), Vector Bit (S n), Unit >> 
       << replicate <<Bit, Bit>> (S n) >> :=
   match n with
@@ -121,7 +121,7 @@ Section definition.
   It would be convenient to interact with this variable as a vector, and so we can write a conversion
   function : *)
   Fixpoint productToVec n
-    : kappa_sugared var 
+    : CavaExpr var 
       << replicate Bit (S n), Unit >> 
       << Vector Bit (S n) >> :=
   match n with
@@ -134,13 +134,13 @@ Section definition.
   end.
 
   Definition rippleCarryAdder' (width: nat)
-    : kappa_sugared var
+    : CavaExpr var
       << Bit, replicate <<Bit, Bit>> (S width), Unit >> 
       << Bit, replicate Bit (S width) >> :=
   <[ !(col width fullAdder) ]>.
 
   Definition rippleCarryAdder (width: nat)
-    : kappa_sugared var 
+    : CavaExpr var 
       << Bit, <<Vector Bit (S width), Vector Bit (S width)>>, Unit >> 
       << Bit, Vector Bit (S width) >> :=
   <[ \b xy =>
@@ -150,7 +150,7 @@ Section definition.
     (carry, !(productToVec _) result)
     ]>.
 
-End definition.
+End notation.
 
 Open Scope kind_scope.
 Definition fullAdder_arrow {cava: Cava}
