@@ -124,34 +124,34 @@ Section regression_examples.
 
   Context {var: Kind -> Kind -> Type}.
 
-  Definition ex0_constant: kappa_sugared var << Vector Bit 10, Unit >> (Vector Bit 8).
+  Definition ex0_constant: CavaExpr var << Vector Bit 10, Unit >> (Vector Bit 8).
     refine (<[ \x => x [ 7 : 0 ] ]>); lia.
   Defined.
 
-  Definition ex1_constant: kappa_sugared var << Bit, Unit >> Bit := <[ \x => true ]>.
-  Definition ex2_parameterized (n: nat): kappa_sugared var << Bit, Unit >> Bit :=
+  Definition ex1_constant: CavaExpr var << Bit, Unit >> Bit := <[ \x => true ]>.
+  Definition ex2_parameterized (n: nat): CavaExpr var << Bit, Unit >> Bit :=
   match n with
   | O => <[ \ x => true ]>
   | S n => <[ \ x => xor x x ]>
   end.
 
-  Definition ex3_to_vec: kappa_sugared var << Bit, Unit >> (Vector Bit 1) :=
+  Definition ex3_to_vec: CavaExpr var << Bit, Unit >> (Vector Bit 1) :=
   <[ \ x => vector { x } ]>.
-  Definition ex4_index_vec: kappa_sugared var << Vector Bit 10, Unit >> Bit :=
+  Definition ex4_index_vec: CavaExpr var << Vector Bit 10, Unit >> Bit :=
   <[ \ x => index x (# 1) ]>.
-  Definition ex5_index_vec2: kappa_sugared var << Vector Bit 10, Unit >> Bit :=
+  Definition ex5_index_vec2: CavaExpr var << Vector Bit 10, Unit >> Bit :=
   <[ \ x => x [# 1] ]>.
-  Definition ex6_concat: kappa_sugared var << Vector Bit 2, Bit, Unit >> (Vector Bit 3) :=
+  Definition ex6_concat: CavaExpr var << Vector Bit 2, Bit, Unit >> (Vector Bit 3) :=
   <[ \ x v => snoc x v ]>.
-  Definition ex7_xor: kappa_sugared var << Bit, Bit, Unit >> Bit :=
+  Definition ex7_xor: CavaExpr var << Bit, Bit, Unit >> Bit :=
   <[ \ x y => xor x y ]>.
-  Definition ex7_tupled_destruct: kappa_sugared var << << Bit, Bit>>, Unit>> Bit :=
+  Definition ex7_tupled_destruct: CavaExpr var << << Bit, Bit>>, Unit>> Bit :=
   <[ \ xy =>
     let '(x,y) = xy in
     y ]>.
-  Definition ex8_multiindex: kappa_sugared var << Vector (Vector Bit 5) 10, Unit >> Bit :=
+  Definition ex8_multiindex: CavaExpr var << Vector (Vector Bit 5) 10, Unit >> Bit :=
   <[ \ x => x[#0][#1] ]>.
-  Definition ex9_mkvec: kappa_sugared var << Bit, Unit >> (Vector Bit 2) :=
+  Definition ex9_mkvec: CavaExpr var << Bit, Unit >> (Vector Bit 2) :=
   <[ \x => vector { true, false } ]>.
 
   Fixpoint copy_object_pow2 o (n:nat): Kind :=
@@ -163,9 +163,9 @@ Section regression_examples.
   Fixpoint tree
     (A: Kind)
     (n: nat)
-    (f: kappa_sugared var << A, A, Unit >> A)
+    (f: CavaExpr var << A, A, Unit >> A)
     {struct n}
-    : kappa_sugared var << copy_object_pow2 A n, Unit >> A :=
+    : CavaExpr var << copy_object_pow2 A n, Unit >> A :=
   match n with
   | O => <[ \ x => x ]>
   | S n' =>
@@ -177,7 +177,7 @@ Section regression_examples.
   end.
 
   Definition xilinxFullAdder
-    : kappa_sugared var << Bit, << Bit, Bit >>, Unit>> (Tuple Bit Bit) :=
+    : CavaExpr var << Bit, << Bit, Bit >>, Unit>> (Tuple Bit Bit) :=
     <[ \ cin ab =>
       let a = fst ab in
       let b = snd ab in
@@ -189,7 +189,7 @@ Section regression_examples.
 
   Definition adder_tree
     (bitsize n: nat)
-    : kappa_sugared var <<copy_object_pow2 (Vector Bit bitsize) n, Unit>> (Vector Bit bitsize) :=
+    : CavaExpr var <<copy_object_pow2 (Vector Bit bitsize) n, Unit>> (Vector Bit bitsize) :=
     tree (Vector Bit bitsize) n (UnsignedAdd _ _ _).
 
 End regression_examples.

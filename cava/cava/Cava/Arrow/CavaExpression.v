@@ -35,7 +35,7 @@ Section Vars.
     end.
 
   (*
-    `kappa_sugared` includes constructors for
+    `CavaExpr` includes constructors for
     - Kappa Calculus,
     - the Cava methods,
     - lifting any morphism from the Constructive arrow instance,
@@ -46,53 +46,53 @@ Section Vars.
     or type inference and desugar simply to combinations of the others.
     *)
   (* TODO: cleanup / have a more modular EDSL representation *)
-  Inductive kappa_sugared : Kind -> Kind -> Type :=
+  Inductive CavaExpr : Kind -> Kind -> Type :=
     (* Kappa Calculus *)
-    | Var: forall {x y},    var x y -> kappa_sugared x y
-    | Abs: forall {x y z},  (var Unit x -> kappa_sugared y z) -> kappa_sugared << x, y >> z
-    | App: forall {x y z},  kappa_sugared << x, y >> z -> kappa_sugared Unit x -> kappa_sugared y z
-    | Com: forall {x y z},  kappa_sugared y z -> kappa_sugared x y -> kappa_sugared x z
+    | Var: forall {x y},    var x y -> CavaExpr x y
+    | Abs: forall {x y z},  (var Unit x -> CavaExpr y z) -> CavaExpr << x, y >> z
+    | App: forall {x y z},  CavaExpr << x, y >> z -> CavaExpr Unit x -> CavaExpr y z
+    | Com: forall {x y z},  CavaExpr y z -> CavaExpr x y -> CavaExpr x z
 
     (* Helper syntax *)
-    | Let: forall {x y z},  kappa_sugared Unit x -> (var Unit x -> kappa_sugared y z) -> kappa_sugared y z
-    | Fst: forall {x y}, kappa_sugared << << x, y >>, Unit >> x
-    | Snd: forall {x y}, kappa_sugared << << x, y >>, Unit >> y
-    | Pair: forall {x y}, kappa_sugared << x, y, Unit >> << x, y >>
+    | Let: forall {x y z},  CavaExpr Unit x -> (var Unit x -> CavaExpr y z) -> CavaExpr y z
+    | Fst: forall {x y}, CavaExpr << << x, y >>, Unit >> x
+    | Snd: forall {x y}, CavaExpr << << x, y >>, Unit >> y
+    | Pair: forall {x y}, CavaExpr << x, y, Unit >> << x, y >>
 
     (* Cava routines *)
-    | LiftConstant: forall {x}, lift_constant x -> kappa_sugared Unit x
+    | LiftConstant: forall {x}, lift_constant x -> CavaExpr Unit x
 
-    | Not: kappa_sugared << Bit, Unit >> Bit
-    | And: kappa_sugared << Bit, Bit, Unit >> Bit
-    | Nand: kappa_sugared << Bit, Bit, Unit >> Bit
-    | Or:   kappa_sugared << Bit, Bit, Unit >> Bit
-    | Nor:  kappa_sugared << Bit, Bit, Unit >> Bit
-    | Xor:  kappa_sugared << Bit, Bit, Unit >> Bit
-    | Xnor: kappa_sugared << Bit, Bit, Unit >> Bit
-    | Buf:  kappa_sugared << Bit, Unit >>      Bit
-    | Delay: forall {o}, kappa_sugared << o, Unit >> o
-    | Xorcy: kappa_sugared << Bit, Bit, Unit >> Bit
-    | Muxcy: kappa_sugared << Bit, Tuple Bit Bit, Unit >> Bit
-    | UnsignedAdd: forall a b c, kappa_sugared << Vector Bit a, Vector Bit b, Unit >> (Vector Bit c)
+    | Not: CavaExpr << Bit, Unit >> Bit
+    | And: CavaExpr << Bit, Bit, Unit >> Bit
+    | Nand: CavaExpr << Bit, Bit, Unit >> Bit
+    | Or:   CavaExpr << Bit, Bit, Unit >> Bit
+    | Nor:  CavaExpr << Bit, Bit, Unit >> Bit
+    | Xor:  CavaExpr << Bit, Bit, Unit >> Bit
+    | Xnor: CavaExpr << Bit, Bit, Unit >> Bit
+    | Buf:  CavaExpr << Bit, Unit >>      Bit
+    | Delay: forall {o}, CavaExpr << o, Unit >> o
+    | Xorcy: CavaExpr << Bit, Bit, Unit >> Bit
+    | Muxcy: CavaExpr << Bit, Tuple Bit Bit, Unit >> Bit
+    | UnsignedAdd: forall a b c, CavaExpr << Vector Bit a, Vector Bit b, Unit >> (Vector Bit c)
 
-    | Lut n: (bool^^n --> bool) -> kappa_sugared << Vector Bit n, Unit >> Bit
+    | Lut n: (bool^^n --> bool) -> CavaExpr << Vector Bit n, Unit >> Bit
 
-    | EmptyVec: forall {o}, kappa_sugared Unit (Vector o 0)
-    | Index: forall n {o}, kappa_sugared << Vector o n, Vector Bit (Nat.log2_up n), Unit >> o
-    | Cons: forall n {o}, kappa_sugared << o, Vector o n, Unit >> (Vector o (S n))
-    | Snoc: forall n {o}, kappa_sugared << Vector o n, o, Unit >> (Vector o (S n))
-    | Uncons: forall n {o}, kappa_sugared << Vector o (S n), Unit >> << o, Vector o n >>
-    | Unsnoc: forall n {o}, kappa_sugared << Vector o (S n), Unit >> << Vector o n, o >>
-    | Concat: forall n m {o}, kappa_sugared << Vector o n, Vector o m, Unit >> (Vector o (n + m))
-    | Split: forall n m {o}, (m <= n) -> kappa_sugared << Vector o n, Unit >> <<Vector o m, Vector o (n - m)>>
-    | Slice: forall n x y {o}, x < n -> y <= x -> kappa_sugared << Vector o n, Unit >> (Vector o (x - y + 1)) .
+    | EmptyVec: forall {o}, CavaExpr Unit (Vector o 0)
+    | Index: forall n {o}, CavaExpr << Vector o n, Vector Bit (Nat.log2_up n), Unit >> o
+    | Cons: forall n {o}, CavaExpr << o, Vector o n, Unit >> (Vector o (S n))
+    | Snoc: forall n {o}, CavaExpr << Vector o n, o, Unit >> (Vector o (S n))
+    | Uncons: forall n {o}, CavaExpr << Vector o (S n), Unit >> << o, Vector o n >>
+    | Unsnoc: forall n {o}, CavaExpr << Vector o (S n), Unit >> << Vector o n, o >>
+    | Concat: forall n m {o}, CavaExpr << Vector o n, Vector o m, Unit >> (Vector o (n + m))
+    | Split: forall n m {o}, (m <= n) -> CavaExpr << Vector o n, Unit >> <<Vector o m, Vector o (n - m)>>
+    | Slice: forall n x y {o}, x < n -> y <= x -> CavaExpr << Vector o n, Unit >> (Vector o (x - y + 1)) .
 
-  Bind Scope kind_scope with kappa_sugared.
-  Delimit Scope kind_scope with kappa_sugared.
+  Bind Scope kind_scope with CavaExpr.
+  Delimit Scope kind_scope with CavaExpr.
 
   Definition tupleHelper {X Y}
-    (x: kappa_sugared Unit X)
-    (y: kappa_sugared Unit Y) :=
+    (x: CavaExpr Unit X)
+    (y: CavaExpr Unit Y) :=
     App (App Pair x) y.
 
   Arguments Kappa.Var [_ _ _ _ _ var _ _].
@@ -106,7 +106,7 @@ Section Vars.
     : kappa var i o :=
     Kappa.Comp (Kappa.Morph f) (Kappa.Morph (remove_rightmost_tt i)).
 
-  Fixpoint desugar {cava: Cava} {i o} (e: kappa_sugared i o) : kappa var i o :=
+  Fixpoint desugar {cava: Cava} {i o} (e: CavaExpr i o) : kappa var i o :=
     match e with
     | Var x => Kappa.Var x
     | Abs f => Kappa.Abs (fun x => desugar (f x))
@@ -154,11 +154,13 @@ Section Vars.
     end.
 End Vars.
 
-Arguments kappa_sugared : clear implicits.
+Arguments CavaExpr : clear implicits.
 
-Definition Kappa_sugared i o := forall var, kappa_sugared var i o.
+Definition Kappa_sugared i o := forall var, CavaExpr var i o.
 
 Definition Desugar `{Cava} {i o} (e: Kappa_sugared i o) : Kappa i o := fun var => desugar (e var).
 
 Hint Resolve Desugar : core.
 Hint Resolve desugar : core.
+Hint Unfold Desugar : core.
+Hint Unfold desugar : core.

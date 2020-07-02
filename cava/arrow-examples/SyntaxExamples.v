@@ -23,13 +23,13 @@ Local Open Scope string_scope.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
-Section definition.
+Section notation.
   Import KappaNotation. 
 
   Variable var: Kind -> Kind -> Type.
 
   Definition xilinxFullAdder
-    : kappa_sugared var << Bit, << Bit, Bit >>, Unit >> << Bit, Bit >> :=
+    : CavaExpr var << Bit, << Bit, Bit >>, Unit >> << Bit, Bit >> :=
     <[ \ cin ab =>
       let '(a,b) = ab in
       let part_sum = xor a b in
@@ -37,7 +37,7 @@ Section definition.
       let cout     = muxcy part_sum (cin, a) in
       (sum, cout)
     ]>.
-End definition.
+End notation.
 
 Open Scope kind_scope.
 Definition xilinxFullAdder_arrow {cava: Cava}
