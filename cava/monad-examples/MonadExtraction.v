@@ -20,6 +20,7 @@ Require Import Multiplexers.
 Require Import FullAdder.
 Require Import UnsignedAdderExamples.
 Require Import AdderTree.
+Require Import Sorter.
 From Coq Require Import Extraction.
 From Coq Require Import extraction.ExtrHaskellZInteger.
 From Coq Require Import extraction.ExtrHaskellString.
@@ -34,3 +35,4 @@ Extraction Library Multiplexers.
 Extraction Library FullAdder.
 Extraction Library UnsignedAdderExamples.
 Extraction Library AdderTree.
+Extraction Library Sorter.

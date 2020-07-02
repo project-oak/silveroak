@@ -173,6 +173,8 @@ generateInstance _ (Component _ name parameters connections) instNr =
   mkInstance name parameters connections instNr
 generateInstance _ (UnsignedAdd _ _ _ a b c) _
    = "  assign " ++ showSignal c ++ " = " ++ showSignal a ++ " + " ++ showSignal b ++ ";"
+generateInstance _ (GreaterThanOrEqual _ _ a b g) _
+   = "  assign " ++ showSignal g ++ " = " ++ showSignal a ++ " >= " ++ showSignal b ++ ";"
 
 primitiveInstance :: String -> [Signal] -> Int -> String
 primitiveInstance instName args instNr

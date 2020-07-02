@@ -239,6 +239,14 @@ Definition sliceNet {k: Kind} {sz: nat}
                     smashTy (Signal Bit) (BitVec k len) :=
   sliceVector v startAt len H.              
 
+Definition greaterThanOrEqualNet {m n : nat} 
+                                 (a : Vector.t (Signal Bit) m) (b : Vector.t (Signal Bit) n) :
+                                 state CavaState (Signal Bit) :=
+  comparison <- newWire ;;
+  addInstance (GreaterThanOrEqual (VecLit a) (VecLit b) comparison) ;;
+  ret comparison.
+
+
 (******************************************************************************)
 (* Instantiate the Cava class for CavaNet which describes circuits without    *)
 (* any top-level pins or other module-level data                              *)
@@ -272,4 +280,5 @@ Instance CavaNet : Cava (state CavaState) (Signal _) :=
     slice k sz start len v h := @sliceNet k sz start len v h;
     unsignedAdd m n := @unsignedAddNet m n;
     addNN m := @addNNNet m;
+    greaterThanOrEqual m n := @greaterThanOrEqualNet m n;
 }.

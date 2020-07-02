@@ -79,7 +79,6 @@ Definition adderTree4 {m bit} `{Cava m bit} {sz: nat}
 
 Definition v0_3 := [v0; v1; v2; v3].
 Definition sum_v0_3 : Bvector 8 := combinational (adderTree4 v0_3).
-Compute sum_v0_3.
 
 Example sum_v0_v1_v2_v3 : combinational (adderTree4 v0_3) = N2Bv_sized 8 30.
 Proof. reflexivity. Qed.

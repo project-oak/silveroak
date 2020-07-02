@@ -21,7 +21,7 @@
 ################################################################################
 
 SV = nand2.sv mux2_1.sv muxBus4_8.sv adder4.sv fullAdder.sv pipelinedNAND.sv \
-     loopedNAND.sv adder_tree4_8.sv
+     loopedNAND.sv adder_tree4_8.sv two_sorter.sv
 
 BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)
