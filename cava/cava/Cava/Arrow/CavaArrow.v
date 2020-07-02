@@ -1,3 +1,19 @@
+(****************************************************************************)
+(* Copyright 2020 The Project Oak Authors                                   *)
+(*                                                                          *)
+(* Licensed under the Apache License, Version 2.0 (the "License")           *)
+(* you may not use this file except in compliance with the License.         *)
+(* You may obtain a copy of the License at                                  *)
+(*                                                                          *)
+(*     http://www.apache.org/licenses/LICENSE-2.0                           *)
+(*                                                                          *)
+(* Unless required by applicable law or agreed to in writing, software      *)
+(* distributed under the License is distributed on an "AS IS" BASIS,        *)
+(* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *)
+(* See the License for the specific language governing permissions and      *)
+(* limitations under the License.                                           *)
+(****************************************************************************)
+
 From Arrow Require Import Category Arrow.
 From Coq Require Import Lists.List NaryFunctions String Arith NArith VectorDef Lia.
 
@@ -36,7 +52,7 @@ Inductive Kind : Set :=
 | Tuple: Kind -> Kind -> Kind
 | Unit: Kind
 | Bit: Kind
-| Vector: nat -> Kind -> Kind.
+| Vector: Kind -> nat -> Kind.
 
 Fixpoint decKind (k1 k2: Kind) {struct k1} : {k1=k2} + {k1<>k2}. 
 Proof.
@@ -75,7 +91,6 @@ Fixpoint vec_to_nprod (A: Type) n (v: Vector.t A n): A^n :=
   | x::xs => (x, vec_to_nprod A _ xs)
   end%vector.
 
-
 Fixpoint insert_rightmost_unit (ty: Kind): Kind :=
 match ty with
 | Tuple l r => Tuple l (insert_rightmost_unit r)
@@ -106,7 +121,6 @@ Proof.
   - refine (Acc_intro _ _); intros.
     eapply (IHlen y).
     lia.
-
 Defined.
 
 Lemma arg_length_order_wf: well_founded arg_length_order.
@@ -116,17 +130,6 @@ Proof.
   eauto.
 Defined.
 
-
-(* log2_up is used for getting the necessary number of bits required to represent an index.
-Currently some of the Arrow.Cava and Kappa parts take non-zero sized vectors, and so we require a 
-minimum size of 1 for now. *)
-Definition log2_up_min_1 (n: nat): nat :=
-  match n with
-  | 0 => 1 
-  | 1 => 1 
-  | S n => Nat.log2_up (S n)
-  end.
-
 (* Cava *)
 Class Cava := {
   cava_cat :> Category Kind;
@@ -134,10 +137,10 @@ Class Cava := {
   cava_arrow_stkc :> ArrowSTKC cava_arrow;
   cava_arrow_loop :> ArrowLoop cava_arrow;
 
-  vec_index n := Vector (log2_up_min_1 n) Bit;
+  vec_index n := Vector Bit (Nat.log2_up n);
 
   constant : bool -> (Unit ~> Bit);
-  constant_bitvec n: N -> (Unit ~> Vector n Bit);
+  constant_bitvec n: N -> (Unit ~> Vector Bit n);
 
   not_gate:  Bit        ~> Bit;
   and_gate:  Bit ** Bit ~> Bit;
@@ -153,19 +156,21 @@ Class Cava := {
   xorcy:     Bit ** Bit ~> Bit;
   muxcy:     Bit ** (Bit ** Bit) ~> Bit;
   
-  unsigned_add a b c: Vector a Bit ** Vector b Bit ~> Vector c Bit;
+  unsigned_add a b c: Vector Bit a ** Vector Bit b ~> Vector Bit c;
 
-  lut n: (bool^^n --> bool) -> Vector n Bit ~> Bit;
+  lut n: (bool^^n --> bool) -> Vector Bit n ~> Bit;
 
-  index_vec n o: Vector n o ** vec_index n ~> o;
-  (* slice [x:y] where x >= y, x is inclusive 
-  So, slice_vec vec [1:0] is the bitvector [vec[0],vec[1]] : Vector 2 _ 
-  *)
-  slice_vec n x y o: x < n -> y <= x -> Vector n o ~> Vector (x - y + 1) o;
-  to_vec o: o ~> Vector 1 o;
-  append n o: Vector n o ** o ~> Vector (S n) o;
-  concat n m o: Vector n o ** Vector m o ~> Vector (n + m) o;
-  split n m o: m <= n -> Vector n o ~> (Vector m o ** Vector (n - m) o);
+  empty_vec o: u ~> Vector o 0;
+  index n o: Vector o n ** vec_index n ~> o;
+  cons n o: o ** Vector o n ~> Vector o (S n);
+  snoc n o: Vector o n ** o ~> Vector o (S n);
+  uncons n o: Vector o (S n) ~> o ** Vector o n;
+  unsnoc n o: Vector o (S n) ~> Vector o n ** o;
+  concat n m o: Vector o n ** Vector o m ~> Vector o (n + m);
+  split n m o: m <= n -> Vector o n ~> (Vector o m ** Vector o (n - m));
+  (* slice n x y where x >= y, x is inclusive 
+  So, somevec[1:0] is the vector [vec[0],vec[1]] : Vector 2 _ *)
+  slice n x y o: x < n -> y <= x -> Vector o n ~> Vector o (x - y + 1);
 }.
 
 Coercion cava_cat: Cava >-> Category.
@@ -181,7 +186,6 @@ Open Scope cava_scope.
 
 Definition high {_: Cava}: Unit ~> Bit := constant true.
 Definition low {_: Cava}: Unit ~> Bit := constant false.
-
 
 Fixpoint insert_rightmost_tt `{Cava} (ty: Kind): ty ~> (insert_rightmost_unit ty).
 Proof.

@@ -1,13 +1,27 @@
-From Coq Require Import Bool ZArith NaryFunctions VectorDef.
-From Arrow Require Import Category Arrow.
-From Cava Require Import Arrow.Arrow Arrow.Instances.Prop.
+(****************************************************************************)
+(* Copyright 2020 The Project Oak Authors                                   *)
+(*                                                                          *)
+(* Licensed under the Apache License, Version 2.0 (the "License")           *)
+(* you may not use this file except in compliance with the License.         *)
+(* You may obtain a copy of the License at                                  *)
+(*                                                                          *)
+(*     http://www.apache.org/licenses/LICENSE-2.0                           *)
+(*                                                                          *)
+(* Unless required by applicable law or agreed to in writing, software      *)
+(* distributed under the License is distributed on an "AS IS" BASIS,        *)
+(* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *)
+(* See the License for the specific language governing permissions and      *)
+(* limitations under the License.                                           *)
+(****************************************************************************)
 
+From Coq Require Import Bool ZArith NaryFunctions VectorDef Lia.
+From Arrow Require Import Category Arrow.
+From Cava.Arrow Require Import CavaArrow PropArrow.
 
 Import VectorNotations.
+Import EqNotations.
 
 Require Import Cava.BitArithmetic.
-(* Require Import Cava.Arrow.Instances.Constructive. *)
-(* Require Import Cava.Arrow.Instances.Prop. *)
 
 (******************************************************************************)
 (* Evaluation as function evaluation, no delay elements or loops              *)
@@ -21,12 +35,11 @@ Notation "f >==> g" :=
   | _ => None
   end)(at level 1).
 
-
 Fixpoint denote (ty: Kind): Type :=
   match ty with 
   | Tuple l r => denote l * denote r
   | Bit => bool
-  | Vector n ty => Vector.t (denote ty) n
+  | Vector ty n => Vector.t (denote ty) n
   | Unit => unit
   end.
 
@@ -86,17 +99,20 @@ Instance CombinationalSTKC : ArrowSTKC CoqKindMaybeArrow := { }.
     let f' := NaryFunctions.nuncurry bool bool n f in
     Some (f' (vec_to_nprod _ _ i));
 
-  index_vec n o '(array, index) := _;
-  slice_vec n x y o H v := _;
-  to_vec o x := Some [x]%vector;
-  append n o '(v, x) :=
-    let z := (x :: v)%vector in
-    Some z;
+  empty_vec o _ := Some (Vector.nil (denote o));
+  index n o '(array, index) := _;
 
+  cons n o '(x, v) := Some (x :: v);
+  snoc n o '(v, x) := let v' := Some (v ++ [x]) in _;
+  uncons n o v := Some (hd v, tl v);
+  unsnoc n o v := Some (take n _ v, last v);
   concat n m o '(x, y) := Some (Vector.append x y);
+
   split n m o H x :=
     let y := @Vector.splitat (denote o) m (n - m) _ in
     Some y;
+
+  slice n x y o H v := _;
 }.
 Proof.
   (* index_vec *)
@@ -107,7 +123,21 @@ Proof.
     (* bad index *)
     exact (None).
 
-  (* slice_vec *)
+  - intros.
+    simpl in *.
+    assert (n+1 = S n ).
+    lia.
+    rewrite H in v'.
+    exact v'.
+  - lia.
+
+  (* split *)
+  - assert ( m + (n - m) = n).
+    omega.
+    rewrite H0.
+    auto.
+
+  (* slice *)
   - cbn.
     intros.
     assert (n = y + (n - y)).
@@ -121,12 +151,6 @@ Proof.
     apply (splitat (x-y+1)) in X.
     apply (fst) in X.
     exact (Some X).
-
-  (* split *)
-  - assert ( m + (n - m) = n).
-    omega.
-    rewrite H0.
-    auto.
 Defined.
 
 End instance.
