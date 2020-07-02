@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 From Arrow Require Import Category ClosureConversion.
-From Cava Require Import Arrow.Arrow Arrow.Kappa.Syntax Arrow.Instances.Combinational.
+From Cava Require Import Arrow.ArrowExport.
 
 Require Import Coq.Strings.String.
 Local Open Scope string_scope.
@@ -101,7 +101,7 @@ Section definition.
 
   Fixpoint interleave n
     : kappa_sugared var 
-      << Vector (S n) Bit, Vector (S n) Bit, Unit >> 
+      << Vector Bit (S n), Vector Bit (S n), Unit >> 
       << replicate <<Bit, Bit>> (S n) >> :=
   match n with
   (* Since for n = 0 -> Vector 1 Bit, we have to index into the variables to retrieve their values.
@@ -123,9 +123,9 @@ Section definition.
   Fixpoint productToVec n
     : kappa_sugared var 
       << replicate Bit (S n), Unit >> 
-      << Vector (S n) Bit >> :=
+      << Vector Bit (S n) >> :=
   match n with
-  | 0 => <[\ x => mkVec (x) ]> 
+  | 0 => <[\ x => vector {x} ]> 
   | S n => 
       <[\ xs => 
       let '(x, xs') = xs in 
@@ -141,8 +141,8 @@ Section definition.
 
   Definition rippleCarryAdder (width: nat)
     : kappa_sugared var 
-      << Bit, <<Vector (S width) Bit, Vector (S width) Bit>>, Unit >> 
-      << Bit, Vector (S width) Bit >> :=
+      << Bit, <<Vector Bit (S width), Vector Bit (S width)>>, Unit >> 
+      << Bit, Vector Bit (S width) >> :=
   <[ \b xy =>
     let '(x,y) = xy in
     let merged = !(interleave _) x y in
@@ -160,7 +160,6 @@ Definition fullAdder_arrow {cava: Cava}
 Lemma fullAdder_is_combinational: wf_combinational (fullAdder_arrow).
 Proof. combinational_obvious. Qed.
 
-Require Import Cava.Arrow.Instances.Netlist.
 Require Import Cava.Types.
 Require Import Cava.Netlist.
 

@@ -1,16 +1,22 @@
-(* From Coq Require Import Program.Tactics.
-From Coq Require Import Bool.Bool.
-From Coq Require Import Vector.
-From Coq Require Import Lists.List.
-From Coq Require Import Strings.String.
-From Coq Require Import ZArith.
-From Coq Require Import Numbers.DecimalString.
-From Coq Require Import Bool.Bvector. *)
+(****************************************************************************)
+(* Copyright 2020 The Project Oak Authors                                   *)
+(*                                                                          *)
+(* Licensed under the Apache License, Version 2.0 (the "License")           *)
+(* you may not use this file except in compliance with the License.         *)
+(* You may obtain a copy of the License at                                  *)
+(*                                                                          *)
+(*     http://www.apache.org/licenses/LICENSE-2.0                           *)
+(*                                                                          *)
+(* Unless required by applicable law or agreed to in writing, software      *)
+(* distributed under the License is distributed on an "AS IS" BASIS,        *)
+(* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *)
+(* See the License for the specific language governing permissions and      *)
+(* limitations under the License.                                           *)
+(****************************************************************************)
 
-
-From Coq Require Import Bool ZArith NaryFunctions VectorDef String List DecimalString.
+From Coq Require Import Bool ZArith NaryFunctions VectorDef String List DecimalString Lia.
 From Arrow Require Import Category Arrow Kleisli.
-From Cava Require Import Arrow.Arrow VectorUtils.
+From Cava Require Import Arrow.CavaArrow VectorUtils BitArithmetic Types Signal Netlist.
 
 Import NilZero.
 
@@ -24,13 +30,6 @@ From ExtLib Require Export Data.Monads.StateMonad.
 
 Import MonadNotation.
 
-From Cava Require Import Netlist.
-From Cava Require Import Types.
-From Cava Require Import Signal.
-From Cava Require Import BitArithmetic.
-From Cava Require Import Arrow.Arrow.
-
-
 (******************************************************************************)
 (* Evaluation as a netlist                                                    *)
 (******************************************************************************)
@@ -40,7 +39,7 @@ match ty with
 | Tuple l r => prod (denote l) (denote r)
 | Unit => Datatypes.unit
 | Bit => Signal Kind.Bit
-| Vector n t => Vector.t (denote t) n
+| Vector t n => Vector.t (denote t) n
 end.
 
 Fixpoint build (ty: Kind) : state CavaState (denote ty) :=
@@ -51,7 +50,7 @@ match ty with
   ret (l, r)
 | Unit => ret tt
 | Bit => newWire
-| Vector n t => mapT (fun _ => build t) (const tt n)
+| Vector t n => mapT (fun _ => build t) (const tt n)
 end.
 
 Fixpoint mapMSignals2 (f: Signal Kind.Bit -> Signal Kind.Bit -> Instance) (ty: Kind)
@@ -65,7 +64,7 @@ match ty, x, y with
 | Bit, x1, y1 =>
   addInstance (f x1 y1) ;;
   ret tt
-| Vector n t, v1, v2 =>
+| Vector t n, v1, v2 =>
   mapT (fun '(x, y)  => mapMSignals2 f t x y) (map2 pair v1 v2) ;;
   ret tt
 end.
@@ -207,38 +206,74 @@ Section NetlistEval.
       addInstance component;;
       ret o;
 
-  index_vec n o '(array, index) := _;
-  slice_vec n x y o H1 H2 vec := _;
+  empty_vec o _ := ret []%vector;
+  index n o '(array, index) := _;
 
-  to_vec o i := ret [i]%vector;
-  append n o '(array, e) :=
-    let result := (e :: array)%vector in
-    ret result;
+  cons n o '(x, v) := _; (* Some (x :: v); *)
+  snoc n o '(v, x) := _; (* let v' := Some (v ++ [x])%vector in _; *)
+  uncons n o v := _; (* Some (hd v, tl v); *)
+  unsnoc n o v := _; (* Some (take n _ v, last v); *)
   concat n m o '(x, y) := ret (Vector.append x y);
+
   split n m o H x :=
     ret (@Vector.splitat (denote o) m (n - m) _);
+
+  slice n x y o H1 H2 v := _;
   }.
   Proof.
-    (* todo: fix for non Vector Bit *)
+    (* TODO: fix for non Vector Bit 
+      currently vector operations on Vector T where T != Bit return dummy wiring.
+    *)
+    (*index*)
     - destruct o.
       exact (build _).
       exact (build _).
       exact (ret (IndexAt (VecLit array) (VecLit index))). 
       exact (build _).
+    (*cons*)
+    - destruct o.
+      exact (build _).
+      exact (build _).
+      exact (ret ((x :: v)%vector) ).
+      exact (build _).
+    (*snoc*)
+    - destruct o.
+      exact (build _).
+      exact (build _).
+      refine (let v := ((v ++ [x])%vector) in ret _).
+      assert (n + 1 = S n). lia.
+      rewrite H in v.
+      exact v.
+      exact (build _).
+    (*uncons*)
+    - destruct o.
+      exact (build _).
+      exact (build _).
+      exact (ret ((Vector.hd v, Vector.tl v)) ).
+      exact (build _).
+    (*unsnoc*)
+    - destruct o.
+      exact (build _).
+      exact (build _).
+      refine (ret ((Vector.take n _ v, Vector.last v)) ).
+      auto.
+      exact (build _).
+    
+    (*split*)
+    - assert ( m + (n - m) = n).
+      lia.
+      rewrite H0.
+      apply x.
+    (*slice*)
     - destruct o.
       exact (build _).
       exact (build _).
       refine (
         let length := (x - y + 1) in 
-        let sliced := (Slice x length (VecLit vec)) in
+        let sliced := (Slice x length (VecLit v)) in
         let smashed := (Vector.map (IndexConst sliced) (vseq 0 length)) in
         ret smashed).
       exact (build _).
-
-    - assert ( m + (n - m) = n).
-      omega.
-      rewrite H0.
-      apply x.
   Defined.
 
   Close Scope string_scope.

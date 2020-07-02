@@ -1,6 +1,22 @@
+(****************************************************************************)
+(* Copyright 2020 The Project Oak Authors                                   *)
+(*                                                                          *)
+(* Licensed under the Apache License, Version 2.0 (the "License")           *)
+(* you may not use this file except in compliance with the License.         *)
+(* You may obtain a copy of the License at                                  *)
+(*                                                                          *)
+(*     http://www.apache.org/licenses/LICENSE-2.0                           *)
+(*                                                                          *)
+(* Unless required by applicable law or agreed to in writing, software      *)
+(* distributed under the License is distributed on an "AS IS" BASIS,        *)
+(* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *)
+(* See the License for the specific language governing permissions and      *)
+(* limitations under the License.                                           *)
+(****************************************************************************)
+
 From Coq Require Import Bool ZArith NaryFunctions VectorDef.
 From Arrow Require Import Category Arrow Kappa ClosureConversion.
-From Cava Require Import Arrow.Arrow.
+From Cava Require Import Arrow.CavaArrow.
 
 Import VectorNotations.
 
@@ -54,18 +70,23 @@ Instance NoDelays : Cava := {
   muxcy := True;
   unsigned_add _ _ _ := True;
   lut _ _ := True;
-  index_vec n o := True;
-  slice_vec n x y o _ _ := True;
-  to_vec o := True;
-  append n o := True;
+
+  empty_vec o := True;
+  index n o := True;
+  cons n o := True;
+  snoc n o:= True;
+  uncons n o:= True;
+  unsnoc n o:= True;
   concat n m o := True;
-  split n m o H := True;
+  split n m o _ := True;
+  slice n x y o _ _ := True;
 
   delay_gate _ := False;
 }.
 
 Instance NoLoops : Cava := {
   cava_arrow := ConjPropKindArrow;
+  cava_arrow_stkc := TrueSTKC;
   cava_arrow_loop := FalseLoop;
 
   constant b := True;
@@ -82,12 +103,17 @@ Instance NoLoops : Cava := {
   muxcy := True;
   unsigned_add _ _ _ := True;
   lut _ _ := True;
-  index_vec n o := True;
-  slice_vec n x y o _ _ := True;
-  to_vec o := True;
-  append n o := True;
+
+  empty_vec o := True;
+  index n o := True;
+  cons n o := True;
+  snoc n o:= True;
+  uncons n o:= True;
+  unsnoc n o:= True;
   concat n m o := True;
-  split n m o H := True;
+  split n m o _ := True;
+  slice n x y o _ _ := True;
+
   delay_gate _ := True;
 }.
 

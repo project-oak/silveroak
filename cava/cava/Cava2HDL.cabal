@@ -46,10 +46,12 @@ library
                      BitArithmetic
                      Bvector
                      CavaClass
+                     CavaArrow
+                     CavaExpression
+                     CavaNotation
                      Combinators
-                     Combinational
+                     CombinationalArrow
                      CombinationalMonad
-                     -- Constructive
                      Datatypes
                      DecimalString
                      IdentityMonad
@@ -60,16 +62,14 @@ library
                      Monad
                      NaryFunctions
                      Netlist
-                     Netlist0
+                     NetlistArrow
                      NetlistGeneration
                      Nat
                      Ndigits
                      PeanoNat
                      Signal
                      StateMonad
-                     Syntax
                      Types
-                     --Traversable
                      UnsignedAdders
                      VectorDef
                      Vector
@@ -77,12 +77,12 @@ library
                      XilinxAdder
 
                      -- Temporary 
-                     Category
-                     Arrow0
-                     Kappa0
-                     ClosureConversion
-                     Coq
-                     Kleisli
+                     -- Category
+                     -- Arrow0
+                     -- Kappa0
+                     -- ClosureConversion
+                     -- Coq
+                     -- Kleisli
   other-Modules:     Applicative
                      BinPos
                      Bool

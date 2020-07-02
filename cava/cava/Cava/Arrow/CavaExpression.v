@@ -1,5 +1,21 @@
+(****************************************************************************)
+(* Copyright 2020 The Project Oak Authors                                   *)
+(*                                                                          *)
+(* Licensed under the Apache License, Version 2.0 (the "License")           *)
+(* you may not use this file except in compliance with the License.         *)
+(* You may obtain a copy of the License at                                  *)
+(*                                                                          *)
+(*     http://www.apache.org/licenses/LICENSE-2.0                           *)
+(*                                                                          *)
+(* Unless required by applicable law or agreed to in writing, software      *)
+(* distributed under the License is distributed on an "AS IS" BASIS,        *)
+(* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *)
+(* See the License for the specific language governing permissions and      *)
+(* limitations under the License.                                           *)
+(****************************************************************************)
+
 From Arrow Require Import Category Arrow Kappa ClosureConversion.
-Require Import Cava.Arrow.Arrow.
+From Cava Require Import Arrow.CavaArrow.
 
 From Coq Require Import Arith NArith Lia NaryFunctions.
 
@@ -14,7 +30,7 @@ Section Vars.
   Definition lift_constant (ty: Kind): Type :=
     match ty with
     | Bit => bool
-    | Vector n Bit => N
+    | Vector Bit n => N
     | _ => False
     end.
 
@@ -57,94 +73,27 @@ Section Vars.
     | Delay: forall {o}, kappa_sugared << o, Unit >> o
     | Xorcy: kappa_sugared << Bit, Bit, Unit >> Bit
     | Muxcy: kappa_sugared << Bit, Tuple Bit Bit, Unit >> Bit
-    | UnsignedAdd: forall a b c, kappa_sugared << Vector a Bit, Vector b Bit, Unit >> (Vector c Bit)
+    | UnsignedAdd: forall a b c, kappa_sugared << Vector Bit a, Vector Bit b, Unit >> (Vector Bit c)
 
-    | Lut n: (bool^^n --> bool) -> kappa_sugared << Vector n Bit, Unit >> Bit
-    | IndexVec: forall n {o}, kappa_sugared << Vector n o, Vector (log2_up_min_1 n) Bit, Unit >> o
-    | SliceVec: forall n x y {o}, x < n -> y <= x -> kappa_sugared << Vector n o, Unit >> (Vector (x - y + 1) o)
-    | ToVec: forall {o}, kappa_sugared << o, Unit >> (Vector 1 o)
-    | Append: forall n {o}, kappa_sugared << Vector n o, o, Unit >> (Vector (S n) o)
-    | Concat: forall n m {o}, kappa_sugared << Vector n o, Vector m o, Unit >> (Vector (n + m) o)
-    | Split: forall n m {o}, (m <= n) -> kappa_sugared << Vector n o, Unit >> <<Vector m o, Vector (n - m) o>>.
+    | Lut n: (bool^^n --> bool) -> kappa_sugared << Vector Bit n, Unit >> Bit
+
+    | EmptyVec: forall {o}, kappa_sugared Unit (Vector o 0)
+    | Index: forall n {o}, kappa_sugared << Vector o n, Vector Bit (Nat.log2_up n), Unit >> o
+    | Cons: forall n {o}, kappa_sugared << o, Vector o n, Unit >> (Vector o (S n))
+    | Snoc: forall n {o}, kappa_sugared << Vector o n, o, Unit >> (Vector o (S n))
+    | Uncons: forall n {o}, kappa_sugared << Vector o (S n), Unit >> << o, Vector o n >>
+    | Unsnoc: forall n {o}, kappa_sugared << Vector o (S n), Unit >> << Vector o n, o >>
+    | Concat: forall n m {o}, kappa_sugared << Vector o n, Vector o m, Unit >> (Vector o (n + m))
+    | Split: forall n m {o}, (m <= n) -> kappa_sugared << Vector o n, Unit >> <<Vector o m, Vector o (n - m)>>
+    | Slice: forall n x y {o}, x < n -> y <= x -> kappa_sugared << Vector o n, Unit >> (Vector o (x - y + 1)) .
 
   Bind Scope kind_scope with kappa_sugared.
   Delimit Scope kind_scope with kappa_sugared.
-
-(* 
-  Definition kappa_app {o} i (m: i ~> o) : kappa (insert_rightmost_unit i) o := DCompose (DArr m) (DArr (remove_rightmost_tt _)).
-
-  Definition remove_second {x y}: structure << x, y >> x := (Compose Cancelr (Second Drop)).
-  Definition remove_first {x y}: structure << x, y >> y := (Compose Cancell (First Drop)).
-
-  Definition tuple_left {x y}: kappa << <<x, y>> , Unit>> x
-    := DArr (Compose remove_second Cancelr).
-  Definition tuple_right {x y}: kappa << <<x, y>>, Unit>> y
-    := DArr (Compose remove_first Cancelr). *)
-
-  Definition kappa_to_vec {o} (e: kappa_sugared Unit o)
-    : kappa_sugared Unit (Vector 1 o) :=
-    App ToVec e.
 
   Definition tupleHelper {X Y}
     (x: kappa_sugared Unit X)
     (y: kappa_sugared Unit Y) :=
     App (App Pair x) y.
-
-  Definition kappa_append {n o}
-    (e1: kappa_sugared Unit (Vector n o))
-    (e2: kappa_sugared Unit o)
-    : kappa_sugared <<Unit>> (Vector (S n) o) :=
-    let packed := tupleHelper e1 e2 in
-    App (App (Append _) e1) e2.
-
-  Definition kappa_index_vec {n o}
-    (array: kappa_sugared Unit (Vector n o))
-    (index: kappa_sugared Unit (Vector (log2_up_min_1 n) Bit))
-    : kappa_sugared Unit o :=
-    (App (App (IndexVec n) array) index).
-
-  Definition kappa_slice_vec {n o}
-    (array: kappa_sugared Unit (Vector n o))
-    (x y: nat)
-    (H1: x < n)
-    (H2: y <= x)
-    : kappa_sugared Unit (Vector (x - y + 1) o) :=
-    (App (SliceVec n x y H1 H2) array).
-
-  Definition kappa_const_index_vec {n o}
-    (array: kappa_sugared Unit (Vector n o))
-    (index: N)
-    : kappa_sugared Unit o :=
-    kappa_index_vec array (@LiftConstant (Vector _ Bit) index).
-
-  Lemma s_n_sub_1: forall n, {(S n - 1) = n} + {(S n - 1) <> n}.
-  Proof.
-    decide equality.
-  Defined.
-
-  Lemma s_n_sub_1_contra: forall n, (S n - 1) <> n -> False.
-  Proof.
-    intros.
-    simpl in H.
-    rewrite Nat.sub_0_r in H.
-    destruct H.
-    reflexivity.
-  Qed.
-
-  Definition kappa_uncons {n o}
-    (array: kappa_sugared Unit (Vector (S n) o))
-    : kappa_sugared Unit <<o, Vector n o>> :=
-    let circuit := (App (Split (S n) 1 (Nat.lt_0_succ n)) array) in
-    let head_ := Let (App Fst circuit) (fun x => kappa_const_index_vec (Var x) 0) in
-    let tail_ := Let (App Snd circuit) (fun x => Var x) in
-    match (s_n_sub_1 n) with
-    | left Heq => rew [ fun X => kappa_sugared Unit << o, Vector X o >> ] Heq in tupleHelper head_ tail_ 
-    | right Hneq => match s_n_sub_1_contra n Hneq with end
-    end.
-
-  Definition kappa_uncons' {n o}
-    : kappa_sugared << Vector (S n) o, Unit>> <<o, Vector n o>>
-    := Abs (fun x => kappa_uncons (Var x)).
 
   Arguments Kappa.Var [_ _ _ _ _ var _ _].
   Arguments Kappa.Abs [_ _ _ _ _ var _ _ _].
@@ -189,18 +138,18 @@ Section Vars.
     | @LiftConstant ty x =>
       match ty, x with
       | Bit, b => Kappa.Morph (constant b)
-      | Vector n Bit, v => Kappa.Morph (constant_bitvec _ v)
+      | Vector Bit n, v => Kappa.Morph (constant_bitvec _ v)
       | _, H => match H with end
       end
 
-    | IndexVec n =>
-      liftCava <<_,_,u>> (index_vec n _)
-    | SliceVec n x y H1 H2 =>
-      liftCava <<_,u>> (slice_vec n x y _ H1 H2)
-
-    | ToVec => liftCava <<_,u>> (to_vec _)
-    | Append n => liftCava <<_,_,u>> (append n _)
+    | EmptyVec => liftCava <<u>> (empty_vec _)
+    | Index n => liftCava <<_,_,u>> (index n _)
+    | Cons n => liftCava <<_,_,u>> (cons n _)
+    | Snoc n => liftCava <<_,_,u>> (snoc n _)
+    | Uncons n => liftCava <<_,u>> (uncons n _)
+    | Unsnoc n => liftCava <<_,u>> (unsnoc n _)
     | Concat n m => liftCava <<_,_,u>> (concat n m _)
+    | Slice n x y H1 H2 => liftCava <<_,u>> (slice n x y _ H1 H2)
     | Split n m H => liftCava <<_,u>> (split n m _ H)
     end.
 End Vars.

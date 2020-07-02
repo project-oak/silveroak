@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 From Arrow Require Import Category ClosureConversion.
-From Cava Require Import Arrow.Arrow Arrow.Kappa.Syntax Arrow.Instances.Combinational.
+From Cava Require Import Arrow.ArrowExport.
 
 Require Import Coq.Strings.String.
 From Coq Require Import Lists.List.
@@ -50,7 +50,6 @@ End definition.
 Lemma mux2_1_is_combinational: wf_combinational mux2_1'.
 Proof. combinational_obvious. Qed.
 
-Require Import Cava.Arrow.Instances.Netlist.
 Require Import Cava.Types.
 Require Import Cava.Netlist.
 

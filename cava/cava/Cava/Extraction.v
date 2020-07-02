@@ -52,17 +52,14 @@ Recursive Extraction Library Kleisli.
 Recursive Extraction Library Kappa.
 Recursive Extraction Library ClosureConversion.
 
-Require Import Cava.Arrow.Arrow.
-Require Import Cava.Arrow.Kappa.Kappa.
-Require Import Cava.Arrow.Kappa.Syntax.
-Require Import Cava.Arrow.Instances.Combinational.
-Require Import Cava.Arrow.Instances.Netlist.
-(* Require Import Cava.Arrow.Instances.Constructive. *)
-Recursive Extraction Library Arrow.
-Recursive Extraction Library Kappa.
-Recursive Extraction Library Syntax.
-Recursive Extraction Library Combinational.
-(* Recursive Extraction Library Constructive. *)
+From Cava.Arrow Require Import ArrowExport.
+Recursive Extraction Library CavaArrow.
+Recursive Extraction Library CavaExpression.
+Recursive Extraction Library CavaNotation.
+Recursive Extraction Library CombinationalArrow.
+Recursive Extraction Library NetlistArrow.
+Recursive Extraction Library PropArrow.
+
 
 Recursive Extraction Library Netlist.
 Recursive Extraction Library Signal.
