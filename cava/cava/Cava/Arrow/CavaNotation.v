@@ -77,7 +77,15 @@ Module KappaNotation.
 
   Notation "'xorcy'" := (Xorcy) (in custom expr at level 4) : kappa_scope.
   Notation "'muxcy'" := (Muxcy) (in custom expr at level 4) : kappa_scope.
-  Notation "'unsigned_add'" := (UnsignedAdd _ _ _) (in custom expr at level 4) : kappa_scope.
+
+  Notation "'unsigned_add' a b c" := (UnsignedAdd a b c)
+    (in custom expr at level 4,
+    a constr at level 4,
+    b constr at level 4,
+    c constr at level 4
+    ) : kappa_scope.
+  Notation "x + y" := (App (App (UnsignedAdd2 _ _) x) y) (in custom expr at level 4) : kappa_scope.
+  Notation "x +% y" := (App (App (UnsignedAdd1 _ _) x) y) (in custom expr at level 4) : kappa_scope.
 
   Notation "'index'" := (Index _) (in custom expr at level 4) : kappa_scope.
   Notation "'empty'" := (EmptyVec) (in custom expr at level 4) : kappa_scope.
@@ -153,6 +161,10 @@ Section regression_examples.
   <[ \ x => x[#0][#1] ]>.
   Definition ex9_mkvec: CavaExpr var << Bit, Unit >> (Vector Bit 2) :=
   <[ \x => vector { true, false } ]>.
+  Definition ex10: CavaExpr var << Vector Bit 10, Vector Bit 10, Unit >> (Vector Bit 11) :=
+  <[ \ x y => x + y ]>.
+  Definition ex11: CavaExpr var << Vector Bit 10, Vector Bit 10, Unit >> (Vector Bit 10) :=
+  <[ \ x y => x +% y ]>.
 
   Fixpoint copy_object_pow2 o (n:nat): Kind :=
   match n with

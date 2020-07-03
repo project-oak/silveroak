@@ -58,6 +58,7 @@ Section Vars.
     | Fst: forall {x y}, CavaExpr << << x, y >>, Unit >> x
     | Snd: forall {x y}, CavaExpr << << x, y >>, Unit >> y
     | Pair: forall {x y}, CavaExpr << x, y, Unit >> << x, y >>
+    | Id: forall {x}, CavaExpr <<x, Unit>> x
 
     (* Cava routines *)
     | LiftConstant: forall {x}, lift_constant x -> CavaExpr Unit x
@@ -74,6 +75,9 @@ Section Vars.
     | Xorcy: CavaExpr << Bit, Bit, Unit >> Bit
     | Muxcy: CavaExpr << Bit, Tuple Bit Bit, Unit >> Bit
     | UnsignedAdd: forall a b c, CavaExpr << Vector Bit a, Vector Bit b, Unit >> (Vector Bit c)
+    (* specialized adds *)
+    | UnsignedAdd1: forall a b, CavaExpr << Vector Bit a, Vector Bit b, Unit >> (Vector Bit (max a b))
+    | UnsignedAdd2: forall a b, CavaExpr << Vector Bit a, Vector Bit b, Unit >> (Vector Bit (1+max a b))
 
     | Lut n: (bool^^n --> bool) -> CavaExpr << Vector Bit n, Unit >> Bit
 
@@ -102,7 +106,7 @@ Section Vars.
   Arguments Kappa.Morph [_ _ _ _ _ var _ _].
   Arguments Kappa.LetRec [_ _ _ _ _ var _ _ _].
 
-  Definition liftCava `{Cava} i {o} (f: remove_rightmost_unit i ~> o) 
+  Definition liftCava `{Cava} i {o} (f: remove_rightmost_unit i ~> o)
     : kappa var i o :=
     Kappa.Comp (Kappa.Morph f) (Kappa.Morph (remove_rightmost_tt i)).
 
@@ -119,6 +123,8 @@ Section Vars.
 
     | Pair => Kappa.Morph (second cancelr)
 
+    | Id => liftCava <<_,u>> id
+
     | Not  => liftCava <<_,u>> not_gate
     | And  => liftCava <<_,_,u>> and_gate
     | Nand => liftCava <<_,_,u>> nand_gate
@@ -133,6 +139,8 @@ Section Vars.
     | Xorcy  => liftCava <<_,_,u>> xorcy
     | Muxcy  => liftCava <<_,_,u>> muxcy
     | UnsignedAdd a b c => liftCava <<_,_,u>> (unsigned_add a b c)
+    | UnsignedAdd1 a b => liftCava <<_,_,u>> (unsigned_add a b _)
+    | UnsignedAdd2 a b => liftCava <<_,_,u>> (unsigned_add a b _)
     | Lut n f => liftCava <<_,u>> (lut n f)
 
     | @LiftConstant ty x =>

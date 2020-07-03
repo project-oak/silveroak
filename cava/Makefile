@@ -22,6 +22,7 @@ all:
 	cd ../monad-examples && $(MAKE) && \
 	cd xilinx && $(MAKE) extraction && \
 	cd ../../tests/xilinx && $(MAKE) extraction && \
+	cd ../../arrow-examples && $(MAKE) && \
 	cd ../..
 
 clean:

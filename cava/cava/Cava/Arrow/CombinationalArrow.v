@@ -100,43 +100,37 @@ Instance CombinationalSTKC : ArrowSTKC CoqKindMaybeArrow := { }.
     Some (f' (vec_to_nprod _ _ i));
 
   empty_vec o _ := Some (Vector.nil (denote o));
-  index n o '(array, index) := _;
+  index n o '(array, index) := 
+    match Arith.Compare_dec.lt_dec (bitvec_to_nat index) n with
+    | left Hlt => Some (nth_order array Hlt)
+    | right Hnlt => None
+    end;
 
   cons n o '(x, v) := Some (x :: v);
-  snoc n o '(v, x) := let v' := Some (v ++ [x]) in _;
+  snoc n o '(v, x) := 
+    let v' := Some (v ++ [x]) 
+    in match Nat.eq_dec (n + 1) (S n)  with 
+      | left Heq => rew [fun x => option (denote (Vector o x))] Heq in v'
+      | right Hneq => (ltac:(exfalso;lia))
+      end;
   uncons n o v := Some (hd v, tl v);
-  unsnoc n o v := Some (take n _ v, last v);
+  unsnoc n o v :=
+    let v' := match Arith.Compare_dec.le_dec n (S n)  with 
+      | left Hlt => take n Hlt v
+      | right Hnlt => (ltac:(exfalso;lia))
+      end in
+    Some (v', last v);
   concat n m o '(x, y) := Some (Vector.append x y);
 
   split n m o H x :=
-    let y := @Vector.splitat (denote o) m (n - m) _ in
-    Some y;
+    match Nat.eq_dec n (m + (n - m)) with 
+      | left Heq => Some (@Vector.splitat (denote o) m (n - m) (rew [Vector.t _]Heq in x))
+      | right Hneq => (ltac:(exfalso;lia))
+      end;
 
   slice n x y o H v := _;
 }.
 Proof.
-  (* index_vec *)
-  - apply bitvec_to_nat in index.
-    destruct (lt_dec index n).
-    apply (Some (nth_order array l)).
-
-    (* bad index *)
-    exact (None).
-
-  - intros.
-    simpl in *.
-    assert (n+1 = S n ).
-    lia.
-    rewrite H in v'.
-    exact v'.
-  - lia.
-
-  (* split *)
-  - assert ( m + (n - m) = n).
-    omega.
-    rewrite H0.
-    auto.
-
   (* slice *)
   - cbn.
     intros.

@@ -14,13 +14,14 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool ZArith NaryFunctions VectorDef String List DecimalString Lia.
+From Coq Require Import Bool ZArith NaryFunctions Vector String List DecimalString Lia.
 From Arrow Require Import Category Arrow Kleisli.
 From Cava Require Import Arrow.CavaArrow VectorUtils BitArithmetic Types Signal Netlist.
 
 Import NilZero.
 
 Import VectorNotations.
+Import EqNotations.
 Import ListNotations.
 
 From ExtLib Require Import Structures.Monads.
@@ -41,6 +42,190 @@ match ty with
 | Bit => Signal Kind.Bit
 | Vector t n => Vector.t (denote t) n
 end.
+
+(* number of bits when packing a NetlistArrow.Kind as a vector of bits *)
+Fixpoint packed_width (ty: Kind): nat :=
+match ty with
+| Tuple l r => (packed_width l) + (packed_width r)
+| Unit => 0
+| Bit => 1
+| Vector t n => n * packed_width t
+end.
+
+Lemma pack_tuple_size: forall l r, packed_width l + packed_width r = packed_width <<l, r>>.
+Proof. auto. Qed.
+
+Fixpoint flatten_vector {T n m} (v: Vector.t (Vector.t T m) n): Vector.t T (n * m) :=
+match v with
+| [] => []
+| x :: xs => x ++ flatten_vector xs
+end.
+
+Definition unflatten_vector {T n m} (v: Vector.t T (n*m)): Vector.t (Vector.t T m) n.
+Proof.
+  induction n.
+  exact [].
+  rewrite Nat.mul_succ_l in v.
+  rewrite Nat.add_comm in v.
+  apply (splitat m) in v.
+  inversion v.
+  apply IHn in X0.
+  exact (X :: X0).
+Defined.
+
+(* pack any NetlistArrow.Kind as a Vector.t of netlist bits *)
+Fixpoint pack (ty: Kind) (s: denote ty) {struct ty}: Vector.t (Signal Kind.Bit) (packed_width ty).
+Proof.
+  destruct ty; simpl in *.
+  - inversion s as [s1 s2].
+    exact (pack ty1 s1 ++ pack ty2 s2).
+  - exact [].
+  - exact [s].
+  - pose (Vector.map (pack ty) s) as x.
+    exact (flatten_vector x).
+Defined.
+
+Fixpoint unpack (ty: Kind) (v: Vector.t (Signal Kind.Bit) (packed_width ty)): denote ty.
+Proof.
+  destruct ty; simpl in *.
+  - apply (splitat (packed_width ty1)) in v.
+    inversion v as [v1 v2].
+    exact (unpack ty1 v1, unpack ty2 v2).
+  - exact tt.
+  - exact (Vector.nth v Fin.F1).
+  - apply (unflatten_vector) in v.
+    exact (Vector.map (unpack ty) v).
+Defined.
+
+
+(******************************************************************************)
+(* The following lemmas and definitions connect the types representable by
+  Arrow.Kind and the netlist Kind.Kind, and the Signal _ representations used
+  by the underlying netlist.
+*)
+
+Fixpoint netlist_compatible_in_vec (ty: Kind): bool :=
+match ty with
+| Bit => true
+| Vector ty' _ => netlist_compatible_in_vec ty'
+| _ => false
+end.
+
+Fixpoint netlist_compatible (ty: Kind): bool :=
+match ty with
+| Bit => true
+| Tuple l r => netlist_compatible l && netlist_compatible r
+| Unit => true
+| Vector ty' _ => netlist_compatible_in_vec ty'
+end.
+
+Fixpoint only_bits (ty: Kind) := 
+match ty with
+| Bit => True
+| Tuple l r => False
+| Unit => False
+| Vector ty' _ => only_bits ty'
+end.
+
+Hint Unfold only_bits : core.
+
+Lemma only_bits_contra: forall l r, only_bits (Tuple l r) -> False.
+Proof. auto. Qed.
+
+Fixpoint denote_as_kind_kind (ty: Kind): only_bits ty -> Kind.Kind :=
+match ty with
+| Tuple _ _ => fun H => match only_bits_contra _ _ H with end
+| Unit => fun H => Kind.Void
+| Bit => fun H => Kind.Bit
+| Vector t n => fun H => Kind.BitVec (denote_as_kind_kind t H) n
+end.
+
+Fixpoint only_bits_in_vec (ty: Kind) := 
+match ty with
+| Bit => True
+| Tuple l r => only_bits_in_vec l /\ only_bits_in_vec r
+| Unit => True
+| Vector ty' _ => only_bits ty'
+end.
+
+Hint Unfold only_bits_in_vec : core.
+
+Lemma only_bits_in_vec_inr: forall l r, only_bits_in_vec (Tuple l r) -> only_bits_in_vec r.
+Proof. intros. inversion H. auto. Qed.
+
+Lemma only_bits_in_vec_inl: forall l r, only_bits_in_vec (Tuple l r) -> only_bits_in_vec l.
+Proof. intros. inversion H. auto. Qed.
+
+Lemma only_bits_in_vec': forall x, only_bits x -> only_bits_in_vec x.
+Proof. 
+  intros. 
+  destruct x; auto.
+  contradiction.
+Defined.
+
+Fixpoint denote_as_netlist_signal (ty: Kind): only_bits_in_vec ty -> Type :=
+match ty with
+| Tuple l r => fun H =>
+  prod
+    (denote_as_netlist_signal l (only_bits_in_vec_inl _ _ H))
+    (denote_as_netlist_signal r (only_bits_in_vec_inr _ _ H))
+| Unit => fun H => Datatypes.unit
+| Bit => fun H => Signal Kind.Bit
+| Vector t n => fun H => Signal (Kind.BitVec (denote_as_kind_kind t H) n)
+end.
+
+Definition rewrite_denotation: forall ty H,
+  denote_as_netlist_signal ty (only_bits_in_vec' _ H) ->
+  Signal (denote_as_kind_kind ty H).
+Proof.
+  intros.
+  induction ty; simpl in *; auto.
+  - contradiction.
+  - contradiction.
+Defined.
+
+Fixpoint denote_convert (ty: Kind) (H: only_bits_in_vec ty) {struct ty}: denote ty -> denote_as_netlist_signal ty H.
+Proof.
+  intros; destruct ty.
+  - inversion X.
+    apply (denote_convert ty1 (only_bits_in_vec_inl _ _ H)) in X0.
+    apply (denote_convert ty2 (only_bits_in_vec_inr _ _ H)) in X1.
+    simpl in *.
+    exact ((X0, X1)).
+  - exact tt. 
+  - simpl in *; exact X.
+  - simpl in *.
+    apply (Vector.map (denote_convert ty (only_bits_in_vec' _ H))) in X.
+    apply (Vector.map (rewrite_denotation _ _) ) in X.
+    exact (VecLit X).
+Defined.
+
+Definition unrewrite_denotation: forall ty H,
+  Signal (denote_as_kind_kind ty H) -> 
+  denote_as_netlist_signal ty (only_bits_in_vec' _ H).
+Proof.
+  intros.
+  induction ty; simpl in *; auto.
+  - contradiction.
+  - contradiction.
+Defined.
+
+Fixpoint denote_unconvert (ty: Kind) (H: only_bits_in_vec ty) {struct ty}: 
+  denote_as_netlist_signal ty H -> denote ty.
+Proof.
+  intros; destruct ty.
+  - inversion X.
+    apply (denote_unconvert ty1 (only_bits_in_vec_inl _ _ H)) in X0.
+    apply (denote_unconvert ty2 (only_bits_in_vec_inr _ _ H)) in X1.
+    simpl in *.
+    exact ((X0, X1)).
+  - exact tt. 
+  - simpl in *; exact X.
+  - simpl in *.
+    pose (Vector.map (IndexConst X) (vseq 0 n)).
+    apply (Vector.map (unrewrite_denotation _ _) ) in t.
+    exact (Vector.map (denote_unconvert ty (only_bits_in_vec' _ H)) t).
+Defined.
 
 Fixpoint build (ty: Kind) : state CavaState (denote ty) :=
 match ty with
@@ -231,41 +416,25 @@ Section NetlistEval.
       exact (ret (IndexAt (VecLit array) (VecLit index))). 
       exact (build _).
     (*cons*)
-    - destruct o.
-      exact (build _).
-      exact (build _).
-      exact (ret ((x :: v)%vector) ).
-      exact (build _).
+    - exact (ret ((x :: v)%vector) ).
     (*snoc*)
-    - destruct o.
-      exact (build _).
-      exact (build _).
-      refine (let v := ((v ++ [x])%vector) in ret _).
+    - refine (let v := ((v ++ [x])%vector) in ret _).
       assert (n + 1 = S n). lia.
       rewrite H in v.
       exact v.
-      exact (build _).
     (*uncons*)
-    - destruct o.
-      exact (build _).
-      exact (build _).
-      exact (ret ((Vector.hd v, Vector.tl v)) ).
-      exact (build _).
+    - exact (ret ((Vector.hd v, Vector.tl v)) ).
     (*unsnoc*)
-    - destruct o.
-      exact (build _).
-      exact (build _).
-      refine (ret ((Vector.take n _ v, Vector.last v)) ).
+    - refine (ret ((Vector.take n _ v, Vector.last v)) ).
       auto.
-      exact (build _).
-    
     (*split*)
     - assert ( m + (n - m) = n).
       lia.
       rewrite H0.
       apply x.
     (*slice*)
-    - destruct o.
+    - 
+      destruct o.
       exact (build _).
       exact (build _).
       refine (
@@ -277,5 +446,40 @@ Section NetlistEval.
   Defined.
 
   Close Scope string_scope.
+  Local Open Scope category_scope.
+
+  Definition netlist_friendly {X Y}
+    (circuit: denote X -> state CavaState (denote Y))
+    (H1: only_bits_in_vec X)
+    (H2: only_bits_in_vec Y)
+    : denote_as_netlist_signal X H1 -> state CavaState (denote_as_netlist_signal Y H2).
+  Proof.
+    intros.
+    apply (denote_unconvert) in X0.
+    apply circuit in X0.
+    exact (
+      v <- X0;;
+      ret (denote_convert Y H2 v)
+    ).
+  Defined.
+
+  Definition wf_netlist_io {X Y} (circuit: X ~> Y) :=
+    only_bits_in_vec X /\
+    only_bits_in_vec Y.
+
+  Lemma wf_netlist_io_left: 
+    forall {X Y} {circuit: X ~> Y},
+    wf_netlist_io circuit -> only_bits_in_vec X.
+  Proof. intros. inversion H. auto. Qed.
+
+  Lemma wf_netlist_io_right: 
+    forall {X Y} {circuit: X ~> Y},
+    wf_netlist_io circuit -> only_bits_in_vec Y.
+  Proof. intros. inversion H. auto. Qed.
+
+  Definition arrow_netlist {X Y} (circuit: X ~[NetlistCava]~> Y)
+    (H: wf_netlist_io circuit): 
+    denote_as_netlist_signal X (wf_netlist_io_left H) -> state CavaState (denote_as_netlist_signal Y (wf_netlist_io_right H)) :=
+    netlist_friendly circuit _ _.
 
 End NetlistEval.
