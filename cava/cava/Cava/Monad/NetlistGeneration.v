@@ -29,7 +29,7 @@ Require Import Cava.VectorUtils.
 Require Import Cava.Monad.CavaClass.
 
 From Cava Require Import Kind.
-Require Import Cava.Signal.
+From Cava Require Import Signal.
 
 (******************************************************************************)
 (* Netlist implementations for the Cava class.                                *)
@@ -192,18 +192,22 @@ Definition muxcyNet (s ci di : Signal Bit) : state CavaState (Signal Bit) :=
   ret o.
 
 Definition unsignedAddNet {m n : nat} 
-                          (a : Signal (BitVec Bit m)) (b : Signal (BitVec Bit n)) :
-                          state CavaState (Signal (BitVec Bit (1 + max m n))) :=
+                          (a : Vector.t (Signal Bit) m)
+                          (b : Vector.t (Signal Bit) n) :
+                          state CavaState (Vector.t (Signal Bit) (1 + max m n)) :=
   sum <- newVector Bit (1 + max m n) ;;
-  addInstance (UnsignedAdd a b sum) ;;
-  ret sum.
+  addInstance (UnsignedAdd (VecLit a) (VecLit b) sum) ;;
+  let smashedSum := Vector.map (fun i => IndexConst sum i) (vseq 0 (1 + (max m n))) in
+  ret smashedSum.
 
 Definition addNNNet {m : nat} 
-                    (a : Signal (BitVec Bit m)) (b : Signal (BitVec Bit m)) :
-                    state CavaState (Signal (BitVec Bit m)) :=
+                    (a : Vector.t (Signal Bit) m)
+                    (b : Vector.t (Signal Bit) m) :
+                    state CavaState (Vector.t (Signal Bit) m) :=
   sum <- newVector Bit m ;;
-  addInstance (UnsignedAdd a b sum) ;;
-  ret sum.
+  addInstance (UnsignedAdd (VecLit a) (VecLit b) sum) ;;
+  let smashedSum := Vector.map (fun i => IndexConst sum i) (vseq 0 m) in
+  ret smashedSum.
 
 Definition delayBitNet (i : Signal Bit) : state CavaState (Signal Bit) :=
   o <- newWire ;;
@@ -217,41 +221,31 @@ Definition loopBitNet (A B : Type) (f : (A * Signal Bit)%type -> state CavaState
   ret b.
 
 Definition indexAtNet {k: Kind} {sz isz: nat}
-                      (v: Signal (BitVec k sz))
-                      (i: Signal (BitVec Bit isz)) :
-                      Signal k :=
-  IndexAt v i.                       
+                      (v: smashTy (Signal Bit) (BitVec k sz))
+                      (i: Vector.t (Signal Bit) isz) :
+                      smashTy (Signal Bit) k :=
+  smash (IndexAt (vecLitS v) (VecLit i)).            
 
 Definition indexConstNet {k: Kind} {sz: nat}
-                         (v: Signal (BitVec k sz))
+                         (v: smashTy (Signal Bit) (BitVec k sz))
                          (i: nat) :
-                         Signal k :=
-  IndexConst v i. 
+                         smashTy (Signal Bit) k :=
+  smash (IndexConst (vecLitS v) i). 
 
 Definition sliceNet {k: Kind} {sz: nat}
                     (startAt len: nat)
-                    (v: Signal (BitVec k sz)) :
-                    Signal (BitVec k len) :=
-  Slice startAt len v.                    
-
-Definition vecAsSignal (k: Kind) (s: nat) : Type := Signal (BitVec k s).
+                    (v: smashTy (Signal Bit) (BitVec k sz))
+                    (H: startAt + len <= sz) :
+                    smashTy (Signal Bit) (BitVec k len) :=
+  sliceVector v startAt len H.              
 
 (******************************************************************************)
 (* Instantiate the Cava class for CavaNet which describes circuits without    *)
 (* any top-level pins or other module-level data                              *)
 (******************************************************************************)
 
-Program Instance CavaNet : Cava (state CavaState) (Signal _) vecAsSignal :=
-  { denoteKind k := Signal k;
-    vecBoolList s l := VecLit l;
-    vecList k s l := VecLit l;
-    vecToList k s v := map (IndexConst v) (seq 0 s);
-    vecToVector k s v := Vector.map (IndexConst v) (vseq 0 s);
-    vecToVector1 s v := Vector.map (IndexConst v) (vseq 0 s);
-    vecToVector2 s k2 s2 v := Vector.map (IndexConst v) (vseq 0 s);
-    defaultKind := defaultKindSignal;
-    defaultBitVec sz := VecLit (Vector.const Gnd sz);
-    zero := ret Gnd;
+Instance CavaNet : Cava (state CavaState) (Signal _) :=
+  { zero := ret Gnd;
     one := ret Vcc;
     delayBit := delayBitNet;
     loopBit a b := loopBitNet a b;
@@ -272,11 +266,10 @@ Program Instance CavaNet : Cava (state CavaState) (Signal _) vecAsSignal :=
     xorcy := xorcyNet;
     muxcy := muxcyNet;
     indexBitAt sz isz := @indexAtNet Bit sz isz;
-    indexAt k sz isz v sel := indexAtNet v sel;
+    indexAt k sz isz := @indexAtNet k sz isz;
     indexConst k sz := indexConstNet;
     indexBitConst sz := @indexConstNet Bit sz;
-    slice k sz start len v _ := @sliceNet k sz start len v;
+    slice k sz start len v h := @sliceNet k sz start len v h;
     unsignedAdd m n := @unsignedAddNet m n;
     addNN m := @addNNNet m;
 }.
-

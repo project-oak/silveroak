@@ -28,10 +28,9 @@ From Coq Require Import Fin.
 From Coq Require Import NArith.Ndigits.
 From Coq Require Import ZArith.
 
-Require Import Nat Arith Lia.
-
 Require Import Cava.Cava.
 From Cava Require Import Kind.
+From Cava Require Import Signal.
 Require Import Cava.Monad.CavaClass.
 
 (******************************************************************************)
@@ -93,29 +92,18 @@ Definition muxcyBool (s : bool) (ci : bool) (di : bool) : ident bool :=
        | true => ci
        end).
 
-Fixpoint denoteKindBool (k: Kind) : Type :=
-  match k with
-  | Void => unit
-  | Bit => bool
-  | BitVec k sz => Vector.t (denoteKindBool k) sz
-  | ExternalType _ => string
-  end.
-
-Definition vecAsVector (k: Kind) (s: nat) : Type
-  := Vector.t (denoteKindBool k) s.  
-
-Fixpoint defaultKindBool (k: Kind) : denoteKindBool k :=
-  match k return denoteKindBool k  with
-  | Void => tt
+Fixpoint defaultKindBool (k: Kind) : smashTy bool k :=
+  match k return smashTy bool k  with
+  | Void => UndefinedSignal
   | Bit => false
   | BitVec k2 sz => Vector.const (defaultKindBool k2) sz
-  | ExternalType _ => ""
+  | ExternalType _ => UninterpretedSignal "XXX"
   end.
 
-Definition indexAtBool {k: Kind} {sz isz: nat}
-                       (i : Vector.t (denoteKindBool k) sz)
-                       (sel : Bvector isz) :
-                       denoteKindBool k :=
+Definition indexAtBool {k: Kind}
+                       {sz isz: nat}
+                       (i : smashTy bool (BitVec k sz))
+                       (sel : Bvector isz) : smashTy bool k :=
   let selN := Bv2N sel in
   match lt_dec (N.to_nat selN) sz with
   | left H => @Vector.nth_order _ _ i (N.to_nat selN) H
@@ -123,44 +111,19 @@ Definition indexAtBool {k: Kind} {sz isz: nat}
   end.
 
 Definition indexConstBool {k: Kind} {sz: nat}
-                          (i : Vector.t (denoteKindBool k) sz)
-                          (sel : nat) :
-                          denoteKindBool k :=
+                          (i : smashTy bool (BitVec k sz))
+                          (sel : nat) : smashTy bool k :=
   match lt_dec sel sz with
   | left H => @Vector.nth_order _ _ i sel H
   | right _ => defaultKindBool k
-  end.
+  end.   
 
-Definition sliceVector {T: Type} 
-                       {sz: nat} (v: Vector.t T sz)
-                       (startAt len: nat)
-                       (H: startAt + len <= sz) :
-                       (Vector.t T len).
-Proof.
-  intros.
-
-  pose (sz - startAt) as x.
-  assert (sz = startAt + x).
-  lia.
-  rewrite H0 in v.
-  refine (let (discard, vR) := Vector.splitat startAt v in _).
-  clear discard.
-  assert(len <= x).
-  lia.
-  pose (x - len) as y.
-  assert (x = len + y).
-  lia.
-
-  rewrite H2 in vR.
-  refine (let (vL, discard) := Vector.splitat len vR in _).
-  exact vL.
-Defined.   
-
-Definition sliceBool {k: Kind} {sz: nat} 
+Definition sliceBool {k: Kind}
+                     {sz: nat} 
                      (startAt len : nat)
-                     (v: Vector.t (denoteKindBool k) sz)
+                     (v: smashTy bool (BitVec k sz))
                      (H: startAt + len <= sz) :
-                     Vector.t (denoteKindBool k) len :=
+                     smashTy bool (BitVec k len) :=
   sliceVector v startAt len H.                   
 
 Definition unsignedAddBool {m n : nat}
@@ -196,17 +159,8 @@ Definition loopBitBool (A B : Type) (f : A * bool -> ident (B * bool)) (a : A) :
 (* interpretation.                                                            *)
 (******************************************************************************)
 
-Program Instance CavaBool : Cava ident bool vecAsVector :=
-  { denoteKind := denoteKindBool;
-    vecBoolList s l := l;
-    vecList k s l := l;
-    vecToList k s v := Vector.to_list v;
-    vecToVector k s v := v;
-    vecToVector1 s v := v;
-    vecToVector2 s k2 s2 v := v;
-    defaultKind := defaultKindBool;
-    defaultBitVec sz := Vector.const false sz;
-    zero := ret false;
+Program Instance CavaBool : Cava ident bool :=
+  { zero := ret false;
     one := ret true;
     delayBit i := ret i; (* Dummy definition for delayBit for now. *)
     loopBit a b := loopBitBool a b;
@@ -226,11 +180,11 @@ Program Instance CavaBool : Cava ident bool vecAsVector :=
     lut6 := lut6Bool;
     xorcy := xorcyBool;
     muxcy := muxcyBool;
-    indexBitAt sz isz := @indexAtBool Bit sz isz;
     indexAt k sz isz := @indexAtBool k sz isz;
+    indexBitAt sz isz := @indexAtBool Bit sz isz;
     indexConst k sz := @indexConstBool k sz;
     indexBitConst sz := @indexConstBool Bit sz;
-    slice k sz l := @sliceBool k sz l;
+    slice k sz := @sliceBool k sz;
     unsignedAdd m n := @unsignedAddBool m n;
     addNN m := @addNNBool m;
 }.

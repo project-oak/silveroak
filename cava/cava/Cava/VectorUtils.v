@@ -20,7 +20,8 @@ Import ListNotations.
 From Coq Require Import Vector.
 Import VectorNotations.
 
-Require Import Arith.
+From Coq Require Import ZArith.
+Require Import Nat Arith Lia.
 
 From ExtLib Require Import Structures.Applicative.
 From ExtLib Require Import Structures.Traversable.
@@ -80,6 +81,35 @@ Program Definition vseq (start len: nat) : Vector.t nat len :=
   Vector.of_list (List.seq start len).
 Next Obligation.
   rewrite List.seq_length. reflexivity.
+Defined.
+
+(******************************************************************************)
+(* Slicing a Vector.t                                                         *)
+(******************************************************************************)
+
+Definition sliceVector {T: Type} {sz: nat}
+                       (v: Vector.t T sz)
+                       (startAt len: nat)
+                       (H: startAt + len <= sz) :
+                       (Vector.t T len).
+Proof.
+  intros.
+
+  pose (sz - startAt) as x.
+  assert (sz = startAt + x).
+  lia.
+  rewrite H0 in v.
+  refine (let (discard, vR) := Vector.splitat startAt v in _).
+  clear discard.
+  assert(len <= x).
+  lia.
+  pose (x - len) as y.
+  assert (x = len + y).
+  lia.
+
+  rewrite H2 in vR.
+  refine (let (vL, discard) := Vector.splitat len vR in _).
+  exact vL.
 Defined.
 
 (* An experimental alternative vector representation *)

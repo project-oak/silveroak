@@ -19,6 +19,7 @@ From Coq Require Import ZArith.
 From Coq Require Import Vector.
 
 From Cava Require Import Kind.
+From Cava Require Import VectorUtils.
 
 Inductive Signal : Kind -> Type :=
   | UndefinedSignal : Signal Void
@@ -35,14 +36,17 @@ Inductive Signal : Kind -> Type :=
              Signal (BitVec Bit isz) -> Signal k
   (* Static indexing *)
   | IndexConst: forall {k sz}, Signal (BitVec k sz) -> nat -> Signal k
+  (* Static indexing of smashed vectors *)
+  | IndexConstS: forall {k sz}, Vector.t (Signal k) sz -> nat -> Signal k
   (* Static slice *)
   | Slice: forall {k sz} (start len: nat), Signal (BitVec k sz) ->
                                            Signal (BitVec k len).
 
+(* A default unsmashed value for a given Kind. *)
 Fixpoint defaultKindSignal (k: Kind) : Signal k :=
   match k with
   | Void => UndefinedSignal
   | Bit => Gnd
-  | BitVec k s => VecLit(Vector.const (defaultKindSignal k) s)
+  | BitVec k s => VecLit (Vector.const (defaultKindSignal k) s)
   | ExternalType s => UninterpretedSignal "default-error"
   end.

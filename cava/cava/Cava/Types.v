@@ -30,6 +30,7 @@ Open Scope monad_scope.
 
 From Cava Require Import Kind.
 From Cava Require Import Signal.
+From Cava Require Import VectorUtils.
 
 Require Import Program.
 Require Import Omega.
@@ -163,36 +164,6 @@ Fixpoint bitsInPortShape (s : bundle) : nat :=
   | Tuple2 t1 t2 => bitsInPortShape t1 + bitsInPortShape t2
   end.
 
-(* The duplicated i and l pamrameters are a temporary work-around to allow
-   well-founded recursion to be recognized.
-   TODO(satnam): Rewrite with an appropriate well-foundedness proof.
-*)
-Fixpoint numberBitVec (offset : N) (i : list nat) (l : list nat) : @denoteBitVecWith nat (Signal Bit) l :=
-  match l, i return @denoteBitVecWith nat (Signal Bit) l with
-  | [], _         => Vcc
-  | [x], [_]      => map (compose Wire N.of_nat) (seq (N.to_nat offset) x)
-  | x::xs, p::ps  => let z := N.of_nat (fold_left (fun x y => x * y) xs 1) in
-                     map (fun w => numberBitVec (offset+w*z) ps xs) (map N.of_nat (seq 0 x))
-  | _, _          => []
-  end.
-
-Fixpoint mapBitVec {A B} (f: A -> B) (i : list nat) (l : list nat) : @denoteBitVecWith nat A l -> @denoteBitVecWith nat B l :=
-  match l, i  return @denoteBitVecWith nat A l -> @denoteBitVecWith nat B l with
-  | [], _         => f
-  | [x], [_]      => map f
-  | x::xs, p::ps  => map (mapBitVec f ps xs)
-  | _, _          => fun _ => []
-  end.
-
-Fixpoint zipBitVecs {A B} (i : list nat) (l : list nat)
-  : @denoteBitVecWith nat A l -> @denoteBitVecWith nat B l -> @denoteBitVecWith nat (A*B) l :=
-  match l, i  return @denoteBitVecWith nat A l -> @denoteBitVecWith nat B l -> @denoteBitVecWith nat (A*B) l with
-  | [], _         => pair
-  | [x], [_]      => fun ms ns => combine ms ns
-  | x::xs, p::ps  => fun ms ns => map (fun '(m,n) => zipBitVecs ps xs m n) (combine ms ns)
-  | _, _          => fun _ _ => []
-  end.
-
 (******************************************************************************)
 (* signalTy maps a shape to a type based on T                                 *)
 (******************************************************************************)
@@ -213,13 +184,6 @@ Proof.
   simpl.
   f_equal.
 Defined.
-
-Fixpoint signalNetTy (s : shape) : Type :=
-  match s with
-  | Empty  => unit
-  | One t => Signal t
-  | Tuple2 s1 s2  => prod (signalNetTy s1) (signalNetTy s2)
-  end.
 
 (* 
 Given a signal of some shape 'withoutRightmost S', 
@@ -252,3 +216,50 @@ Fixpoint removeRightmostUnit {A B t}
   (f: signalTy (Signal t) A -> B)
   : signalTy (Signal t) (withoutRightmostUnit A) -> B :=
   fun a => f (insertRightmostTt a).
+
+(******************************************************************************)
+(* Smashing of vectors                                                        *)
+(******************************************************************************)
+
+(* The function smashTy relates a Kind to its corresponding vector
+   smashed type.
+ *)
+Fixpoint smashTy (T: Type) (k: Kind) : Type :=
+  match k with
+  | Void => Signal Void
+  | Bit => T
+  | BitVec k2 s => Vector.t (smashTy T k2) s
+  | ExternalType t => Signal (ExternalType t)
+  end.
+
+(* The function smashNetTy relates a Kind to its vector-smashed equivalent.
+   This is a version of smashTy specialized to the Signal type.
+*)
+Definition smashNetTy (k: Kind) : Type := smashTy (Signal Bit) k.
+
+(* The function signalSmashTy takes a Signal shape and smashes its elements. *)
+Fixpoint signalSmashTy (s : shape) : Type :=
+  match s with
+  | Empty  => unit
+  | One t => smashTy (Signal Bit) t
+  | Tuple2 s1 s2  => prod (signalSmashTy s1) (signalSmashTy s2)
+  end.
+
+(* The function takes a signal and smashes the vectors in it. *)
+Fixpoint smash {k: Kind} (v: Signal k) : smashTy (Signal Bit) k :=
+  match k, v return smashTy (Signal Bit) k with
+  | Void, vv => UndefinedSignal
+  | Bit, vv => vv
+  | BitVec k2 s, vv => Vector.map (fun i => smash (IndexConst vv i)) (vseq 0 s)
+  | ExternalType t, vv => UninterpretedSignal "smash-error"
+  end.
+
+(* The function vecLitS represents a smashed vector as a Signal *)
+Fixpoint vecLitS {k: Kind} (v: smashTy (Signal Bit) k) : Signal k :=
+  match k, v return Signal k with
+  | Bit, vv => vv
+  | BitVec k2 s2, vv => VecLit (Vector.map vecLitS vv)
+  | Void, _ => UndefinedSignal
+  | ExternalType s, _ => UninterpretedSignal "vecLitS-error"
+  end.
+  

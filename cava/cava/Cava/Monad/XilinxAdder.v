@@ -66,14 +66,12 @@ Qed.
 (* An unsigned adder built using the fast carry full-adder.                   *)
 (******************************************************************************)
 
-Definition xilinxAdderWithCarry {m bit vec} `{Cava m bit vec} {n: nat}
-            (cinab : bit * (vec Bit n * vec Bit n))
-           : m (vec Bit n * bit) 
+Definition xilinxAdderWithCarry {m bit} `{Cava m bit} {n: nat}
+            (cinab : bit * (Vector.t bit n * Vector.t bit n))
+           : m (Vector.t bit n * bit) 
   := let '(cin, (a, b)) := cinab in
-     let aV : Vector.t bit n := vecToVector1 a in
-     let bV : Vector.t bit n := vecToVector1 b in
-     '(sum, cout) <- colV n xilinxFullAdder cin (vcombine aV bV) ;;
-     ret (vecBoolList sum, cout).
+     '(sum, cout) <- colV n xilinxFullAdder cin (vcombine a b) ;;
+     ret (sum, cout).
 
 (* A quick sanity check of the Xilinx adder with carry in and out *)
 Example xilinx_add_17_52:
@@ -86,9 +84,9 @@ Proof. reflexivity. Qed.
 (* An unsigned adder with no bit-growth and no carry in                       *)
 (******************************************************************************)
 
-Definition xilinxAdder {m bit vec} `{Cava m bit vec} {n: nat}
-            (a: vec Bit n) (b: vec Bit n)
-           : m (vec Bit n) :=
+Definition xilinxAdder {m bit} `{Cava m bit} {n: nat}
+            (a: Vector.t bit n) (b: Vector.t bit n)
+           : m (Vector.t bit n) :=
   z <- zero ;;
   '(sum, carry) <- xilinxAdderWithCarry (z, (a, b)) ;;
   ret sum.

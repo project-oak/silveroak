@@ -18,31 +18,13 @@ From Coq Require Vector.
 Require Import ExtLib.Structures.Monads.
 
 From Cava Require Import Kind.
-
-Fixpoint denoteVecKind (bit: Type) (vec: Type -> nat -> Type) (k: Kind) : Type :=
-  match k with
-  | Bit => bit
-  | BitVec k2 s => vec (denoteVecKind bit vec k2) s
-  | _ => unit
-  end.
+From Cava Require Import Types.
 
 (* The Cava class represents circuit graphs with Coq-level inputs and
    outputs, but does not represent the IO ports of circuits. This allows
    us to define both circuit netlist interpretations for the Cava class
    as well as behavioural interpretations for attributing semantics. *)
-Class Cava m `{Monad m} bit (vec: Kind -> nat -> Type) := {
-  denoteKind: Kind -> Type;
-  denoteKindV: forall {k s}, denoteKind (BitVec k s) = vec k s;
-  vecBoolList: forall {s: nat}, Vector.t bit s -> vec Bit s;
-  vecList : forall {k: Kind} {s: nat}, Vector.t (denoteKind k) s ->
-            vec k s;
-  (* Convert a dynamic vector to a "static" list *)
-  vecToList: forall {k: Kind} {s: nat}, vec k s -> list (denoteKind k);
-  vecToVector: forall {k: Kind} {s: nat}, vec k s -> Vector.t (denoteKind k) s;
-  vecToVector1: forall {s: nat}, vec Bit s -> Vector.t bit s;
-  vecToVector2: forall {s: nat} (k2: Kind) (s2: nat), vec (BitVec k2 s2) s -> Vector.t (vec k2 s2) s;
-  defaultKind: forall {k: Kind}, @denoteKind k;
-  defaultBitVec : forall {sz}, vec Bit sz;          
+Class Cava m `{Monad m} bit := {
   (* Constant values. *)
   zero : m bit; (* This component always returns the value 0. *)
   one : m bit; (* This component always returns the value 1. *)
@@ -74,15 +56,20 @@ Class Cava m `{Monad m} bit (vec: Kind -> nat -> Type) := {
      functions rather than values in the monad type `m`.
   *)
   (* Dynamic indexing *)                                   
-  indexAt : forall {k: Kind} {sz isz: nat}, vec k sz -> vec Bit isz -> denoteKind k;
-  indexBitAt : forall {sz isz: nat}, vec Bit sz ->
-                                     vec Bit isz -> bit;
+  indexAt : forall {k: Kind} {sz isz: nat},
+            smashTy bit (BitVec k sz) -> Vector.t bit isz -> smashTy bit k;
+  indexBitAt : forall {sz isz: nat}, Vector.t bit sz ->
+                                     Vector.t bit isz -> bit;
   (* Static indexing *)
-  indexConst : forall {k: Kind} {sz: nat}, vec k sz -> nat -> denoteKind k;
-  indexBitConst : forall {sz: nat}, vec Bit sz -> nat -> bit;
-  slice : forall {k: Kind} {sz: nat} (startAt len: nat), vec k sz ->
-                 (startAt + len <= sz) -> vec k len;
+  indexConst : forall {k: Kind} {sz: nat},
+               Vector.t (smashTy bit k) sz -> nat -> smashTy bit k;
+  indexBitConst : forall {sz: nat}, Vector.t bit sz -> nat -> bit;
+  slice : forall {k: Kind}  {sz: nat} (startAt len: nat),
+                 smashTy bit (BitVec k sz) ->
+                 (startAt + len <= sz) -> smashTy bit (BitVec k len) ;
   (* Synthesizable arithmetic operations. *)
-  unsignedAdd : forall {a b : nat}, vec Bit a -> vec Bit b -> m (vec Bit (1 + max a b));
-  addNN : forall {a : nat}, vec Bit a -> vec Bit a -> m (vec Bit a);
+  unsignedAdd : forall {a b : nat}, Vector.t bit a -> Vector.t bit b ->
+                m (Vector.t bit (1 + max a b));
+  addNN : forall {a : nat}, Vector.t bit a -> Vector.t bit a ->
+                m (Vector.t bit a);
 }.

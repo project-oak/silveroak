@@ -36,7 +36,7 @@ Local Open Scope vector_scope.
 
 Definition mux2_1 {m bit} `{Cava m bit} (sab: bit * (bit * bit)) : m bit :=
   let '(sel, (a, b)) := sab in
-  ret (indexBitAt (vecBoolList [a; b]) (vecBoolList [sel])).
+  ret (indexBitAt ([a; b]) [sel]).
 
 Local Close Scope vector_scope.
 
@@ -78,7 +78,7 @@ Definition mux2_1_tb
   (* Check the indexBitAt special case *)
 
   Definition mux2_1_bit {m bit} `{Cava m bit} {sz isz: nat}
-                        (vsel: vec Bit sz * vec Bit isz) : m bit :=
+                        (vsel: Vector.t bit sz * Vector.t bit isz) : m bit :=
   let (v, sel) := vsel in 
   ret (indexBitAt v sel).
 
@@ -133,35 +133,28 @@ Definition mux2_1_tb
 
 (* Mux between input buses *)
 
-Definition muxBusAlt {m bit vec} `{Cava m bit vec} {t} {sz isz dsz: nat}
-                     (v: vec t sz) (sel: vec Bit isz) :
-                    m (denoteKind t) :=
+Definition muxBusAlt {m bit} `{Cava m bit} {k} {sz isz: nat}
+                     (vsel: smashTy bit (BitVec k sz) *
+                            Vector.t bit isz) :
+                     m (smashTy bit k) :=
+  let (v, sel) := vsel in
   ret (indexAt v sel).
 
-Definition muxBus {m bit vec} `{Cava m bit vec} {sz isz dsz: nat}
-                  (vsel: vec (BitVec Bit dsz) sz * vec Bit isz) :
-                  m (vec Bit dsz).
-  refine (let (v, sel) := vsel in
-          let r := indexAt v sel in
-          ret _).
-  rewrite denoteKindV in r.
-  exact r.
-  Defined.
+Definition muxBus {m bit} `{Cava m bit} {sz isz dsz: nat}
+                     (vsel: smashTy bit (BitVec (BitVec Bit dsz) sz) *
+                            Vector.t bit isz) :
+                     m (smashTy bit (BitVec Bit dsz)) :=
+  let (v, sel) := vsel in
+  ret (indexAt v sel).
 
-(*
-Hint Extern 1 => rewrite denoteKindV in *: core.
-
-Program Definition muxBusAlt2 {m bit vec} `{Cava m bit vec} (sz isz: nat) {dsz: nat}
-                     (v: vec (BitVec Bit dsz) sz)
-                     (sel: vec Bit isz) :
-                     m (vec Bit dsz).
-refine (let r := indexAt v sel in
-  ret _).
-Defined.
-*)
+Definition muxBus4_8 {m bit} `{Cava m bit} 
+                     (vsel: smashTy bit (BitVec (BitVec Bit 8) 4) *
+                            Vector.t bit 2) :
+                     m (smashTy bit (BitVec Bit 8)) :=
+  let (v, sel) := vsel in
+  ret (indexAt v sel).
 
 Local Open Scope vector_scope.
-
 Definition v0 := N2Bv_sized 8   5.
 Definition v1 := N2Bv_sized 8 157.
 Definition v2 := N2Bv_sized 8 255.
@@ -187,7 +180,8 @@ Definition muxBus4_8Interface
      (mkPort "i" (BitVec (BitVec Bit 8) 4), mkPort "sel" (BitVec Bit 2))
      (mkPort "o" (BitVec Bit 8))
      [].
-Definition muxBus4_8Netlist := makeNetlist muxBus4_8Interface muxBus.
+
+Definition muxBus4_8Netlist := makeNetlist muxBus4_8Interface muxBus4_8.
 
 Definition muxBus4_8_tb_inputs :=
   [(v0to3, [false; false]%vector);
