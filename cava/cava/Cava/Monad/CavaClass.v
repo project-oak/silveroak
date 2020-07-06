@@ -72,4 +72,7 @@ Class Cava m `{Monad m} bit := {
                 m (Vector.t bit (1 + max a b));
   addNN : forall {a : nat}, Vector.t bit a -> Vector.t bit a ->
                 m (Vector.t bit a);
+  (* Synthesizable relational operators *)
+  greaterThanOrEqual : forall {a b : nat}, Vector.t bit a -> Vector.t bit b ->
+                       m bit;
 }.

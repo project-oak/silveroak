@@ -7,4 +7,5 @@ FullAdder.v
 FullAdderNat.v
 UnsignedAdderExamples.v
 AdderTree.v
+Sorter.v
 MonadExtraction.v

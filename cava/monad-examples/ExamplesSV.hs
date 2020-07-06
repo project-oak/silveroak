@@ -22,6 +22,7 @@ import Multiplexers
 import FullAdder
 import UnsignedAdderExamples
 import AdderTree
+import Sorter
 
 main :: IO ()
 main = do writeSystemVerilog nand2Netlist
@@ -42,3 +43,5 @@ main = do writeSystemVerilog nand2Netlist
           writeTestBench adder_tree4_8_tb
           writeSystemVerilog fullAdderNetlist
           writeTestBench fullAdder_tb
+          writeSystemVerilog two_sorter_Netlist
+          writeTestBench two_sorter_tb

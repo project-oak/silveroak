@@ -135,6 +135,13 @@ Definition unsignedAddBool {m n : nat}
   let sum := (a + b)%N in
   ret (N2Bv_sized sumSize sum).
 
+Definition greaterThanOrEqualBool {m n : nat}
+                                  (av : Bvector m) (bv : Bvector n) :
+                                  ident bool :=
+  let a := N.to_nat (Bv2N av) in
+  let b := N.to_nat (Bv2N bv) in
+  ret (b <=? a).
+
 Local Open Scope N_scope.
 
 Definition addNNBool {m : nat}
@@ -186,6 +193,7 @@ Program Instance CavaBool : Cava ident bool :=
     indexBitConst sz := @indexConstBool Bit sz;
     slice k sz := @sliceBool k sz;
     unsignedAdd m n := @unsignedAddBool m n;
+    greaterThanOrEqual m n := @greaterThanOrEqualBool m n;
     addNN m := @addNNBool m;
 }.
 

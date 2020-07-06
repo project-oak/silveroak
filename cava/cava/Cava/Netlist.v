@@ -93,9 +93,6 @@ Inductive Instance : Type :=
   | Xor:       Signal Bit -> Signal Bit -> Signal Bit -> Instance
   | Xnor:      Signal Bit -> Signal Bit -> Signal Bit -> Instance
   | Buf:       Signal Bit -> Signal Bit -> Instance
-  (* Dynamic indexing *)
-  | IndexDynamic: forall {T: Type} {n isz: nat}, Vector.t T n ->
-                  Vector.t (Signal Bit) isz -> T -> Instance
   (* A Cava unit delay bit component. *)
   | DelayBit:  Signal Bit -> Signal Bit -> Instance
   (* Assignment of bit wire *)
@@ -105,6 +102,11 @@ Inductive Instance : Type :=
                                         Signal (BitVec Bit b) ->
                                         Signal (BitVec Bit c) ->
                                         Instance
+  (* Relational operations *)
+  | GreaterThanOrEqual: forall {a b : nat}, Signal (BitVec Bit a) ->
+                                            Signal (BitVec Bit b) ->
+                                            Signal Bit ->
+                                            Instance
   | Component: forall {k}, string -> list (string * ConstExpr) ->
                                      list (string * Signal k) ->
                                      Instance.
@@ -367,7 +369,7 @@ Definition deLitInstance (inst: Instance) : state CavaState Instance :=
   | DelayBit i o => deLitUnaryOp DelayBit i o
   | AssignSignal a b => deLitUnaryOp AssignSignal a b
   | UnsignedAdd a b c => deLitBinaryOp UnsignedAdd a b c
-  | IndexDynamic v i o => ret (IndexDynamic v i o)
+  | GreaterThanOrEqual a b g => deLitBinaryOp GreaterThanOrEqual a b g
   | Component name pars args =>
       let argNames := map fst args in
       let argSignals := map snd args in
