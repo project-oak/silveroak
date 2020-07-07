@@ -97,6 +97,10 @@ Proof.
     exact (Vector.map (unpack ty) v).
 Defined.
 
+Definition pack_vector n ty (vec: denote (Vector ty n))
+  : Vector.t (Vector.t (Signal Kind.Bit) (packed_width ty)) n
+  := Vector.map (pack _) vec.
+
 Fixpoint build (ty: Kind) : state CavaState (denote ty) :=
 match ty with
 | Tuple l r =>
@@ -264,10 +268,10 @@ Section NetlistEval.
   empty_vec o _ := ret []%vector;
   index n o '(array, index) := _;
 
-  cons n o '(x, v) := _; (* Some (x :: v); *)
-  snoc n o '(v, x) := _; (* let v' := Some (v ++ [x])%vector in _; *)
-  uncons n o v := _; (* Some (hd v, tl v); *)
-  unsnoc n o v := _; (* Some (take n _ v, last v); *)
+  cons n o '(x, v) := _;
+  snoc n o '(v, x) := _;
+  uncons n o v := _; 
+  unsnoc n o v := _; 
   concat n m o '(x, y) := ret (Vector.append x y);
 
   split n m o H x :=
@@ -276,43 +280,43 @@ Section NetlistEval.
   slice n x y o H1 H2 v := _;
   }.
   Proof.
-    (* TODO: fix for non Vector Bit 
-      currently vector operations on Vector T where T != Bit return dummy wiring.
-    *)
+    (* TODO: clean up *)
     (*index*)
-    - destruct o.
-      exact (build _).
-      exact (build _).
-      exact (ret (IndexAt (VecLit array) (VecLit index))). 
-      exact (build _).
+    - apply pack_vector in array.
+      apply (Vector.map VecLit) in array.
+      pose (IndexAt (VecLit array) (VecLit index)). 
+      pose (Vector.map (IndexConst s) (vseq 0 (packed_width o))).
+      apply (unpack o) in t.
+      exact (ret t).
     (*cons*)
     - exact (ret ((x :: v)%vector) ).
     (*snoc*)
     - refine (let v := ((v ++ [x])%vector) in ret _).
-      assert (n + 1 = S n). lia.
-      rewrite H in v.
+      destruct (Nat.eq_dec (n+1) (S n)).
+      rewrite e in v.
       exact v.
+      exfalso;lia. 
     (*uncons*)
     - exact (ret ((Vector.hd v, Vector.tl v)) ).
     (*unsnoc*)
     - refine (ret ((Vector.take n _ v, Vector.last v)) ).
       auto.
     (*split*)
-    - assert ( m + (n - m) = n).
-      lia.
-      rewrite H0.
-      apply x.
+    - destruct (Nat.eq_dec (m + (n-m)) n).
+      rewrite <- e in x.
+      exact x.
+      exfalso;lia.
     (*slice*)
-    - 
-      destruct o.
-      exact (build _).
-      exact (build _).
-      refine (
+    - apply pack_vector in v.
+      apply (Vector.map VecLit) in v.
+      refine(
         let length := (x - y + 1) in 
         let sliced := (Slice x length (VecLit v)) in
-        let smashed := (Vector.map (IndexConst sliced) (vseq 0 length)) in
-        ret smashed).
-      exact (build _).
+        let smashed := Vector.map (IndexConst sliced) (vseq 0 length) in
+        let smashier := Vector.map (fun elem => Vector.map (IndexConst elem) (vseq 0 (packed_width o))) smashed in
+        let unpacked := Vector.map (unpack o) smashier in
+        ret unpacked
+      ).
   Defined.
 
   Close Scope string_scope.
