@@ -141,14 +141,14 @@ Definition muxBusAlt {m bit} `{Cava m bit} {k} {sz isz: nat}
   ret (indexAt v sel).
 
 Definition muxBus {m bit} `{Cava m bit} {sz isz dsz: nat}
-                     (vsel: smashTy bit (BitVec (BitVec Bit dsz) sz) *
+                     (vsel: Vector.t (smashTy bit (BitVec Bit dsz)) sz *
                             Vector.t bit isz) :
                      m (smashTy bit (BitVec Bit dsz)) :=
   let (v, sel) := vsel in
   ret (indexAt v sel).
 
 Definition muxBus4_8 {m bit} `{Cava m bit} 
-                     (vsel: smashTy bit (BitVec (BitVec Bit 8) 4) *
+                     (vsel: Vector.t (smashTy bit (BitVec Bit 8)) 4 *
                             Vector.t bit 2) :
                      m (smashTy bit (BitVec Bit 8)) :=
   let (v, sel) := vsel in

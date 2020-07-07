@@ -221,22 +221,22 @@ Definition loopBitNet (A B : Type) (f : (A * Signal Bit)%type -> state CavaState
   ret b.
 
 Definition indexAtNet {k: Kind} {sz isz: nat}
-                      (v: smashTy (Signal Bit) (BitVec k sz))
+                      (v: Vector.t (smashTy (Signal Bit) k) sz)
                       (i: Vector.t (Signal Bit) isz) :
                       smashTy (Signal Bit) k :=
-  smash (IndexAt (vecLitS v) (VecLit i)).            
+  smash (IndexAt (VecLit (Vector.map vecLitS v)) (VecLit i)).            
 
 Definition indexConstNet {k: Kind} {sz: nat}
-                         (v: smashTy (Signal Bit) (BitVec k sz))
+                         (v: Vector.t (smashTy (Signal Bit) k) sz)
                          (i: nat) :
                          smashTy (Signal Bit) k :=
-  smash (IndexConst (vecLitS v) i). 
+  smash (IndexConst (VecLit(Vector.map vecLitS v)) i). 
 
 Definition sliceNet {k: Kind} {sz: nat}
                     (startAt len: nat)
-                    (v: smashTy (Signal Bit) (BitVec k sz))
+                    (v: Vector.t (smashTy (Signal Bit) k) sz)
                     (H: startAt + len <= sz) :
-                    smashTy (Signal Bit) (BitVec k len) :=
+                    Vector.t (smashTy (Signal Bit) k) len :=
   sliceVector v startAt len H.              
 
 Definition greaterThanOrEqualNet {m n : nat} 
@@ -245,7 +245,6 @@ Definition greaterThanOrEqualNet {m n : nat}
   comparison <- newWire ;;
   addInstance (GreaterThanOrEqual (VecLit a) (VecLit b) comparison) ;;
   ret comparison.
-
 
 (******************************************************************************)
 (* Instantiate the Cava class for CavaNet which describes circuits without    *)

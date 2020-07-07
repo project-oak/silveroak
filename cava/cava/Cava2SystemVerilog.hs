@@ -13,7 +13,9 @@
    limitations under the License.
 -}
 
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Cava2SystemVerilog
@@ -27,6 +29,7 @@ import qualified BinNums
 import Netlist
 import Kind
 import Signal
+import qualified StateMonad
 import Types
 
 writeSystemVerilog :: CavaState -> IO ()
@@ -43,10 +46,17 @@ fromN bn
       BinNums.N0 -> 0
       BinNums.Npos n -> n
 
+deriving instance Show BinNums.N
+deriving instance Show Kind
+deriving instance Show (Vector.Coq_t Signal)
+deriving instance Show Signal
+deriving instance Show ConstExpr
+deriving instance Show Instance
+
 cava2SystemVerilog :: Netlist.CavaState -> [String]
-cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vCount vDefs
+cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vCount' vDefs'
                     clk clkEdge rst rstEdge
-                    (Netlist.Coq_mkModule moduleName instances
+                    (Netlist.Coq_mkModule moduleName instances'
                     inputs outputs))
   = ["module " ++ moduleName ++ "("] ++
 
@@ -66,9 +76,29 @@ cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vCount vDefs
     [""] ++
     [generateInstance genState inst i | (inst, i) <- zip instances [0..]] ++
     [""] ++
-    ["endmodule"]
+    ["endmodule"] ++
+    ["",
+     "/* Before unsmashing: " ++ show (length instances')] ++
+    map show instances' ++
+    ["",
+     "After unsmashing:" ++ show (length instances'')] ++
+     map show instances'' ++
+    ["",
+     "After deLit: " ++ show (length instances)] ++
+    map show instances ++
+    ["*/"]
     where
     genState = NetlistGenerationState clk clkEdge rst rstEdge
+    instances'' = map (mapSignalsInInstance unsmash) instances'
+    unsmashedState = Netlist.Coq_mkCavaState netNumber vCount' vDefs'
+                     clk clkEdge rst rstEdge
+                     (Netlist.Coq_mkModule moduleName instances''
+                     inputs outputs)
+    Netlist.Coq_mkCavaState _ vCount vDefs
+                     _ _ _ _
+                     (Netlist.Coq_mkModule _ instances
+                     _ _)
+       = StateMonad.execState deLitInstances unsmashedState                  
 
 declareLocalNets :: Integer -> [String]
 declareLocalNets n
@@ -135,6 +165,26 @@ showSignal signal
       IndexConst _ _ v i -> showSignal v ++ "[" ++ show i ++ "]"
       Slice _ _ start len v -> showSignal v ++ "[" ++ show (start + len - 1) ++
                                ":" ++ show start ++ "]"
+
+--------------------------------------------------------------------------------
+-- Map across signals
+--------------------------------------------------------------------------------
+
+mapSignalsInInstance :: (Signal -> Signal) -> Instance -> Instance
+mapSignalsInInstance f inst
+  = case inst of
+      Not i o -> Not (f i) (f o)
+      And i0 i1 o -> And (f i0) (f i1) (f o)
+      Nand i0 i1 o -> Nand (f i0) (f i1) (f o)
+      Or i0 i1 o -> Or (f i0) (f i1) (f o)
+      Xor i0 i1 o -> Xor (f i0) (f i1) (f o)
+      Xnor i0 i1 o -> Xnor (f i0) (f i1) (f o)
+      Buf i o -> Buf (f i) (f o)
+      DelayBit i o -> DelayBit (f i) (f o)
+      AssignSignal k t v -> AssignSignal k (f t) (f v)
+      UnsignedAdd s1 s2 s3 a b c -> UnsignedAdd s1 s2 s3 (f a) (f b) (f c)
+      GreaterThanOrEqual s1 s2 a b t -> GreaterThanOrEqual s1 s2 (f a) (f b) (f t)
+      Component k name args vals -> Component k name args [(n, f s) | (n, s) <- vals]
 
 --------------------------------------------------------------------------------
 -- Generate SystemVerilog for a specific instance.
@@ -444,3 +494,44 @@ tclScript name ticks
      "close_vcd",
      "exit"
     ]
+
+--------------------------------------------------------------------------------
+-- Unsmashing vector literals.
+--------------------------------------------------------------------------------
+
+deriving instance Eq BinNums.N
+deriving instance Eq Kind
+deriving instance Eq (Vector.Coq_t Signal)
+deriving instance Eq Signal
+
+checkIndexes :: Signal -> [Integer] -> [Signal] -> Maybe Signal
+checkIndexes stem [] [] = Just stem
+checkIndexes stem (x:xs) (s:sx)
+  = case s of
+      IndexConst k sz v2 i -> if x == i && stem == v2 then
+                                checkIndexes stem xs sx
+                              else
+                                Nothing
+      _ -> Nothing
+
+checkStem :: Kind -> Integer -> [Signal] -> Maybe Signal
+checkStem k sz [] = Nothing
+checkStem k sz (v:vs)
+  = case v of
+      IndexConst k2 s2 v2 i ->
+        case k of
+          Bit -> checkIndexes v2 [0..sz-1] (v:vs)        -- packed order
+          BitVec _ _ -> checkIndexes v2 [0..sz-1] (v:vs) -- unpacked order
+      _ -> Nothing
+
+unsmash :: Signal -> Signal
+unsmash signal
+  = case signal of
+      VecLit k s v -> case checkStem k s (map unsmash (Vector.to_list s v))  of
+                        Just stem -> stem
+                        Nothing -> signal
+      IndexAt k sz isz v i -> IndexAt k sz isz (unsmash v) (unsmash i)
+      IndexConst k s v i -> IndexConst k s (unsmash v) i
+      Slice k s startAt len v -> Slice k s startAt len (unsmash v)
+      _ -> signal
+

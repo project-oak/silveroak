@@ -102,7 +102,7 @@ Fixpoint defaultKindBool (k: Kind) : smashTy bool k :=
 
 Definition indexAtBool {k: Kind}
                        {sz isz: nat}
-                       (i : smashTy bool (BitVec k sz))
+                       (i : Vector.t (smashTy bool k) sz)
                        (sel : Bvector isz) : smashTy bool k :=
   let selN := Bv2N sel in
   match lt_dec (N.to_nat selN) sz with
@@ -111,7 +111,7 @@ Definition indexAtBool {k: Kind}
   end.
 
 Definition indexConstBool {k: Kind} {sz: nat}
-                          (i : smashTy bool (BitVec k sz))
+                          (i : Vector.t (smashTy bool k) sz)
                           (sel : nat) : smashTy bool k :=
   match lt_dec sel sz with
   | left H => @Vector.nth_order _ _ i sel H
@@ -121,9 +121,9 @@ Definition indexConstBool {k: Kind} {sz: nat}
 Definition sliceBool {k: Kind}
                      {sz: nat} 
                      (startAt len : nat)
-                     (v: smashTy bool (BitVec k sz))
+                     (v: Vector.t (smashTy bool k) sz)
                      (H: startAt + len <= sz) :
-                     smashTy bool (BitVec k len) :=
+                     Vector.t (smashTy bool k) len :=
   sliceVector v startAt len H.                   
 
 Definition unsignedAddBool {m n : nat}
