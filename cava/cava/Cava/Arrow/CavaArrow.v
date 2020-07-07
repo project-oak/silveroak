@@ -81,6 +81,7 @@ Ltac reduce_kind_eq :=
 Declare Scope kind_scope.
 Bind Scope kind_scope with Kind.
 Delimit Scope kind_scope with Kind.
+Delimit Scope kind_scope with Category.
 
 Notation "<< x >>" := (x) : kind_scope.
 Notation "<< x , .. , y , z >>" := (Tuple x .. (Tuple y z )  .. ) : kind_scope.
@@ -141,6 +142,8 @@ Class Cava := {
 
   constant : bool -> (Unit ~> Bit);
   constant_bitvec n: N -> (Unit ~> Vector Bit n);
+
+  mk_module i o: string -> (i~>o) -> (i~>o);
 
   not_gate:  Bit        ~> Bit;
   and_gate:  Bit ** Bit ~> Bit;

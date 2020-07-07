@@ -184,6 +184,8 @@ Section NetlistEval.
       | false => Gnd
     end) (nat_to_bitvec_sized n (N.to_nat v)));
 
+    mk_module _ _ _name f := f;
+
     not_gate i :=
       o <- newWire ;;
       addInstance (Not i o) ;;
@@ -322,8 +324,8 @@ Section NetlistEval.
   Close Scope string_scope.
   Local Open Scope category_scope.
 
-  Definition arrow_netlist {X Y} (circuit: X ~[NetlistCava]~> Y)
-    : denote X -> state CavaState (denote Y) :=
-    circuit.
+  Definition arrow_netlist {X Y} (circuit: forall cava: Cava, X ~[cava]~> Y)
+    : denote (remove_rightmost_unit X) -> state CavaState (denote Y) :=
+    insert_rightmost_tt1 _ >>> circuit _.
 
 End NetlistEval.

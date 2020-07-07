@@ -25,11 +25,10 @@ Import ListNotations.
 
 Section notation.
   Import KappaNotation.
-
-  Context {var: Kind -> Kind -> Type}.
+  Local Open Scope kind_scope.
 
   Definition halfAdder
-  : CavaExpr var << Bit, Bit, Unit >> <<Bit, Bit>> :=
+  : forall cava: Cava, << Bit, Bit, Unit >> ~> <<Bit, Bit>> :=
     (* The bracket pairing `<[` `]>` opens a circuit expression scope, 
     see readme.md for more information *) 
   <[ \ a b =>
@@ -39,7 +38,7 @@ Section notation.
   ]>.
 
   Definition fullAdder
-  : CavaExpr var << Bit, << Bit, Bit >>, Unit >> <<Bit, Bit>> :=
+  : forall cava: Cava, << Bit, << Bit, Bit >>, Unit >> ~> <<Bit, Bit>> :=
   <[ \ cin ab =>
     let '(a,b) = ab in
     (* Since 'halfAdder' is in the larger Coq scope, and is not a local variable,
@@ -52,11 +51,10 @@ Section notation.
 
   (* Combinators *)
   Definition below {A B C D E F G: Kind}
-    (r: CavaExpr var << A, B, Unit >> << G, D >>)
-    (s: CavaExpr var << G, C, Unit >> << F, E >>)
-    : CavaExpr var 
-      << A, <<B, C>>, Unit >> 
-      << F, <<D, E>> >> :=
+    (r: forall cava: Cava, << A, B, Unit >> ~> << G, D >>)
+    (s: forall cava: Cava, << G, C, Unit >> ~> << F, E >>)
+    : forall cava: Cava,  
+      << A, <<B, C>>, Unit >> ~> << F, <<D, E>> >> :=
   <[ \ a bc =>
     let '(b, c) = bc in
     let '(g, d) = !r a b in
@@ -79,20 +77,20 @@ Section notation.
     | S n => <<A, replicate A n>>
     end.
 
-  Program Fixpoint col {A B C: Kind} n
-    (circuit: CavaExpr var << A, B, Unit >> <<A, C>>)
-    : CavaExpr var 
-      << A, replicate B (S n), Unit >> 
+  Fixpoint col {A B C: Kind} n
+    (circuit: forall cava: Cava, << A, B, Unit >> ~> <<A, C>>)
+    {struct n}: forall cava: Cava,
+      << A, replicate B (S n), Unit >> ~>
       << A, replicate C (S n)>> :=
     match n with
-    | O => <[ \a b => !circuit a b ]>
+    | O => <[ \a b => !circuit a b ]> 
     | S n' =>
       let column_above := (col n' circuit) in
-      below circuit column_above
+      below circuit column_above 
     end.
 
   Lemma col_cons: forall {A B C}
-    (circuit: CavaExpr var << A, B, Unit >> <<A, C>>),
+    (circuit: forall cava, << A, B, Unit >> ~> <<A, C>>),
     forall n, col (S n) circuit = below circuit (col n circuit).
   Proof.
     intros.
@@ -100,8 +98,8 @@ Section notation.
   Qed.
 
   Fixpoint interleave n
-    : CavaExpr var 
-      << Vector Bit (S n), Vector Bit (S n), Unit >> 
+    : forall cava: Cava,
+      << Vector Bit (S n), Vector Bit (S n), Unit >> ~>
       << replicate <<Bit, Bit>> (S n) >> :=
   match n with
   (* Since for n = 0 -> Vector 1 Bit, we have to index into the variables to retrieve their values.
@@ -121,8 +119,8 @@ Section notation.
   It would be convenient to interact with this variable as a vector, and so we can write a conversion
   function : *)
   Fixpoint productToVec n
-    : CavaExpr var 
-      << replicate Bit (S n), Unit >> 
+    : forall cava: Cava,
+      << replicate Bit (S n), Unit >> ~>
       << Vector Bit (S n) >> :=
   match n with
   | 0 => <[\ x => vector {x} ]> 
@@ -134,14 +132,14 @@ Section notation.
   end.
 
   Definition rippleCarryAdder' (width: nat)
-    : CavaExpr var
-      << Bit, replicate <<Bit, Bit>> (S width), Unit >> 
+    : forall cava: Cava, 
+      << Bit, replicate <<Bit, Bit>> (S width), Unit >> ~>
       << Bit, replicate Bit (S width) >> :=
   <[ !(col width fullAdder) ]>.
 
   Definition rippleCarryAdder (width: nat)
-    : CavaExpr var 
-      << Bit, <<Vector Bit (S width), Vector Bit (S width)>>, Unit >> 
+    : forall cava: Cava, 
+      << Bit, <<Vector Bit (S width), Vector Bit (S width)>>, Unit >> ~>
       << Bit, Vector Bit (S width) >> :=
   <[ \b xy =>
     let '(x,y) = xy in
@@ -152,12 +150,7 @@ Section notation.
 
 End notation.
 
-Open Scope kind_scope.
-Definition fullAdder_arrow {cava: Cava}
-  : << Bit, << Bit, Bit >> >> ~> <<Bit, Bit>>
-  := to_arrow @fullAdder.
-
-Lemma fullAdder_is_combinational: wf_combinational (fullAdder_arrow).
+Lemma fullAdder_is_combinational: wf_combinational (fullAdder _).
 Proof. combinational_obvious. Qed.
 
 Require Import Cava.Types.
@@ -181,10 +174,10 @@ Definition fullAdder_tb_inputs :=
 ].
 
 Definition fullAdder_netlist :=
-  makeNetlist fullAdderInterface (@fullAdder_arrow NetlistCava).
+  makeNetlist fullAdderInterface (arrow_netlist fullAdder).
 
 Definition fullAdder_tb_expected_outputs  : list (bool * bool)
-  := (List.map (fun i => evaluate fullAdder_arrow fullAdder_is_combinational i) fullAdder_tb_inputs) .
+  := (List.map (fun i => evaluate fullAdder fullAdder_is_combinational i) fullAdder_tb_inputs) .
 
 Definition fullAdder_tb :=
   testBench "fullAdder_tb" fullAdderInterface

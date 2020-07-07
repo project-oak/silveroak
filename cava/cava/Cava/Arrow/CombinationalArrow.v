@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool ZArith NaryFunctions VectorDef Lia.
+From Coq Require Import Bool ZArith NaryFunctions Vector Lia.
 From Arrow Require Import Category Arrow.
 From Cava.Arrow Require Import CavaArrow PropArrow.
 
@@ -76,6 +76,8 @@ Instance CombinationalSTKC : ArrowSTKC CoqKindMaybeArrow := { }.
   constant b _ := Some b;
   constant_bitvec n v _ := Some (nat_to_bitvec_sized n (N.to_nat v));
 
+  mk_module _ _ _name f := f;
+
   not_gate b := Some (negb b);
   and_gate '(x, y) := Some (andb x y);
   nand_gate '(x, y) := Some (negb (andb x y));
@@ -128,30 +130,125 @@ Instance CombinationalSTKC : ArrowSTKC CoqKindMaybeArrow := { }.
       | right Hneq => (ltac:(exfalso;lia))
       end;
 
-  slice n x y o H v := _;
+  slice n x y o H1 H2 v := 
+    match Nat.eq_dec n (y + (n - y)) with 
+      | left Heq =>
+        let '(_, v) := splitat y (rew [fun x => Vector.t (denote o) x] Heq in v)
+        in 
+          match Nat.eq_dec (n-y) ((x - y + 1) + (n - x - 1)) with 
+          | left Heq => _
+          | right Hneq => (ltac:(exfalso;lia))
+          end
+      | right Hneq => (ltac:(exfalso;lia))
+      end;
 }.
 Proof.
   (* slice *)
   - cbn.
     intros.
-    assert (n = y + (n - y)).
-    abstract omega.
-    rewrite H0 in X.
-    apply (splitat y) in X.
-    apply (snd) in X.
-    assert (n - y = (x - y + 1) + (n - x - 1)).
-    abstract omega.
-    rewrite H1 in X.
-    apply (splitat (x-y+1)) in X.
-    apply (fst) in X.
-    exact (Some X).
+    rewrite Heq in v.
+    apply (splitat (x-y+1)) in v.
+    apply (fst) in v.
+    exact (Some v).
 Defined.
 
 End instance.
 
 Local Open Scope category_scope.
 
-Definition wf_combinational {x y} (circuit: x ~[Combinational]~> y) := forall i, exists o, circuit i = Some o.
+Definition wf_combinational {x y} (circuit: x ~[Combinational]~> y)
+  := forall i, exists o, circuit i = Some o.
+
+Lemma split_combinational {x y z}
+  (circuit1: x ~[Combinational]~> y)
+  (circuit2: y ~[Combinational]~> z)
+  i
+  : (circuit1 >>> circuit2 ) i
+  = match circuit1 i with 
+  | Some i' => circuit2 i'
+  | None => None
+  end.
+Proof. auto. Qed.
+
+Lemma wf_combinational_split {x y z}
+  (circuit1: x ~[Combinational]~> y)
+  (circuit2: y ~[Combinational]~> z)
+  : wf_combinational circuit1 /\ wf_combinational circuit2
+  -> wf_combinational (circuit1 >>> circuit2).
+Proof.
+  unfold wf_combinational in *; intros.
+  - inversion H.
+    specialize (H0 i).
+    destruct H0.
+    specialize (H1 x0).
+    inversion H1.
+    rewrite split_combinational.
+    rewrite H0.
+    eexists.
+    rewrite H2.
+    auto.
+Qed.
+
+Lemma second_is_combinational {x y z}:
+  forall (circuit1: x ~[Combinational]~> y),
+  wf_combinational circuit1 ->
+  wf_combinational (second (z:=z) circuit1).
+Proof.
+  unfold wf_combinational.
+  intros.
+  cbn.
+  specialize (H (snd i)).
+  destruct (circuit1 (snd i)).
+  eauto.
+  inversion H.
+  inversion H0.
+Qed.
+
+Lemma uncancelr_is_combinational {x}:
+  wf_combinational (uncancelr (Arrow:=@cava_arrow Combinational) (x:=x)).
+Proof.
+  unfold wf_combinational.
+  cbn.
+  eauto.
+Qed.
+
+Lemma insert_rightmost_tt1_is_combinational: forall x,
+  wf_combinational (insert_rightmost_tt1 x).
+Proof.
+  apply (well_founded_ind arg_length_order_wf _).
+  intros.
+  destruct x; [| cbn; unfold wf_combinational; eauto ..].
+  unfold insert_rightmost_tt1.
+  rewrite Fix_eq.
+  destruct x2.
+  * apply (second_is_combinational _).
+    fold (@insert_rightmost_tt1 Combinational (Tuple x2_1 x2_2)).
+    apply (H (Tuple x2_1 x2_2)).
+    unfold arg_length_order; auto.
+  * apply uncancelr_is_combinational.
+  * apply (second_is_combinational _).
+    fold (@insert_rightmost_tt1 Combinational Bit).
+    apply (H Bit).
+    unfold arg_length_order; auto.
+  * apply (second_is_combinational _).
+    fold (@insert_rightmost_tt1 Combinational (Vector x2 n)).
+    apply (H (Vector x2 n)).
+    unfold arg_length_order; auto.
+  * intros.
+    cbn.
+    destruct x; auto.
+    destruct x4; try rewrite (H0 _ _); auto.
+Qed.
+
+Lemma remove_right_unit_is_combinational {x y} (circuit: forall cava: Cava, x ~[cava]~> y)
+  : wf_combinational (circuit Combinational) -> wf_combinational (insert_rightmost_tt1 _ >>> (circuit _)).
+Proof.
+  intros.
+  apply (wf_combinational_split (insert_rightmost_tt1 x) (circuit _)).
+  split.
+  apply insert_rightmost_tt1_is_combinational.
+  apply H.
+Qed.
 
 Lemma unsat_kind_false: forall y, (exists o : denote y, None = Some o) -> False.
 Proof.
@@ -159,15 +256,21 @@ Proof.
   induction y; inversion H; inversion H0.
 Qed.
 
-Definition evaluate {x y} (circuit: x ~> y) (wf: wf_combinational circuit) (i: denote x): denote y.
+Definition evaluate {x y}
+  (circuit: forall cava: Cava, x ~> y)
+  (wf: wf_combinational (circuit Combinational)) 
+  (i: denote (remove_rightmost_unit x))
+  : denote y.
 Proof.
+  apply remove_right_unit_is_combinational in wf.
+  pose ((insert_rightmost_tt1 _ >>> circuit Combinational) i) as c'.
   specialize (wf i).
-  cbn in circuit.
-  destruct (circuit i).
+  set (v := (insert_rightmost_tt1 x >>> circuit Combinational) i) in *.
+  destruct v.
   exact d.
 
   apply unsat_kind_false in wf.
-  contradiction.
+  inversion wf.
 Defined.
 
 (* Ltac sub_prop :=
@@ -262,7 +365,7 @@ Ltac combinational_obvious :=
 Example not_true: @not_gate Combinational true = Some false.
 Proof. reflexivity. Qed.
 
-Example not_true_with_wf: evaluate not_gate not_gate_wf true = false.
+Example not_true_with_wf: evaluate (@not_gate) not_gate_wf true = false.
 Proof. compute. reflexivity. Qed.
 
 Example not_false: @not_gate Combinational false = Some true.
