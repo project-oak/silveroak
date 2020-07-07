@@ -155,7 +155,7 @@ Lemma adder_tree_64_wf: forall (cava:Cava), wf_debrujin [] (desugar (tree_adder 
 Proof. compute; tauto. Qed.
 
 Lemma growth_tree_8_wf: forall (cava:Cava), wf_debrujin [] (desugar (growth_tree_adder _ 4 2)).
-Proof. compute; tauto. Qed.
+Proof. compute; tauto. Show Proof. Qed.
 
 Definition adder444_tree_4 {cava: Cava}: 
   << Vector (Vector Bit 4) 4 >> ~[cava]~> (Vector Bit 4) 
@@ -217,21 +217,8 @@ Definition growth_tree_8_interface
      (mkPort "result" (Kind.BitVec Kind.Bit 7))
      [].
 
-Lemma wf_adder445_io: wf_netlist_io (@adder445 NetlistCava).
-Proof. cbv [wf_netlist_io]; compute; tauto. Qed.
-Lemma wf_adder88810_io: wf_netlist_io (@adder88810 NetlistCava).
-Proof. cbv [wf_netlist_io]; compute; tauto. Qed.
-Lemma wf_adder_tree_4_io: wf_netlist_io (@adder444_tree_4 NetlistCava).
-Proof. cbv [wf_netlist_io]; compute; tauto. Qed.
-Lemma wf_adder_tree_8_io: wf_netlist_io (@adder444_tree_8 NetlistCava).
-Proof. cbv [wf_netlist_io]; compute; tauto. Qed.
-Lemma wf_adder_tree_64_io: wf_netlist_io (@adder444_tree_64 NetlistCava).
-Proof. cbv [wf_netlist_io]; compute; tauto. Qed.
-Lemma wf_growth_tree_8_io: wf_netlist_io (@growth_tree_8 NetlistCava).
-Proof. cbv [wf_netlist_io]; compute; tauto. Qed.
-
 Definition adder445_netlist :=
-  makeNetlist adder445_interface (arrow_netlist adder445 wf_adder445_io).
+  makeNetlist adder445_interface (arrow_netlist adder445).
 
 Definition adder445_tb_inputs :=
   map (fun '(x, y) => (N2Bv_sized 4 x, N2Bv_sized 4 y))
@@ -245,7 +232,7 @@ Definition adder445_tb
      adder445_tb_inputs adder445_tb_expected_outputs.
 
 Definition adder88810_netlist :=
-  makeNetlist adder88810_interface (arrow_netlist adder88810 wf_adder88810_io).
+  makeNetlist adder88810_interface (arrow_netlist adder88810).
 
 Definition adder88810_tb_inputs :=
   map (fun '(x, y, z) => (N2Bv_sized 8 x, (N2Bv_sized 8 y, N2Bv_sized 8 z)))
@@ -259,13 +246,13 @@ Definition adder88810_tb
      adder88810_tb_inputs adder88810_tb_expected_outputs.
 
 Definition adder444_tree_4_netlist :=
-  makeNetlist adder444_tree_4_interface (arrow_netlist adder444_tree_4 wf_adder_tree_4_io).
+  makeNetlist adder444_tree_4_interface (arrow_netlist adder444_tree_4).
 
 Definition adder444_tree_8_netlist :=
-  makeNetlist adder444_tree_8_interface (arrow_netlist adder444_tree_8 wf_adder_tree_8_io).
+  makeNetlist adder444_tree_8_interface (arrow_netlist adder444_tree_8).
 
 Definition adder444_tree_64_netlist :=
-  makeNetlist adder444_tree_64_interface (arrow_netlist adder444_tree_64 wf_adder_tree_64_io).
+  makeNetlist adder444_tree_64_interface (arrow_netlist adder444_tree_64).
 
 Definition adder444_tree_4_inputs :=
   map (fun '(x, y, z, w) => [N2Bv_sized 4 x; N2Bv_sized 4 y; N2Bv_sized 4 z; N2Bv_sized 4 w]%vector)
@@ -282,7 +269,7 @@ Definition adder444_tree_4_tb
      adder444_tree_4_inputs adder444_tree_4_tb_expected_outputs.
 
 Definition growth_tree_8_netlist :=
-  makeNetlist growth_tree_8_interface (arrow_netlist growth_tree_8 wf_growth_tree_8_io).
+  makeNetlist growth_tree_8_interface (arrow_netlist growth_tree_8).
 
 Definition growth_tree_8_inputs :=
   map (Vector.map (N2Bv_sized 4))

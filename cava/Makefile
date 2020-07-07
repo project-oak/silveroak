@@ -25,6 +25,13 @@ all:
 	cd ../../arrow-examples && $(MAKE) && \
 	cd ../..
 
+coq:
+	cd arrow-lib && $(MAKE) && \
+	cd ../cava && $(MAKE) coq && \
+	cd ../monad-examples && $(MAKE) coq && \
+	cd ../arrow-examples && $(MAKE) coq && \
+	cd ../..
+
 clean:
 	cd arrow-lib && $(MAKE) && \
 	cd ../cava && $(MAKE) clean && \
