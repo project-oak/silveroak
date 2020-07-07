@@ -25,7 +25,9 @@ Extraction Language Haskell.
 Require Import SyntaxExamples.
 Require Import Mux2_1.
 Require Import ArrowAdder.
+Require Import UnsignedAdder.
 
 Extraction Library SyntaxExamples.
 Extraction Library Mux2_1.
 Extraction Library ArrowAdder.
+Extraction Library UnsignedAdder.

@@ -20,9 +20,20 @@ import Cava2SystemVerilog
 import Mux2_1
 import ArrowAdder
 import SyntaxExamples
+import UnsignedAdder
 
 main :: IO ()
 main = do writeSystemVerilog mux2_1_netlist
           writeTestBench mux2_1_tb
           writeSystemVerilog fullAdder_netlist
           writeTestBench fullAdder_tb
+          writeSystemVerilog adder445_netlist
+          writeTestBench adder445_tb
+          writeSystemVerilog adder88810_netlist
+          writeTestBench adder88810_tb
+          writeSystemVerilog adder444_tree_4_netlist
+          writeSystemVerilog adder444_tree_8_netlist
+          writeSystemVerilog adder444_tree_64_netlist
+          writeTestBench adder444_tree_4_tb
+          writeSystemVerilog growth_tree_8_netlist
+          writeTestBench growth_tree_8_tb
