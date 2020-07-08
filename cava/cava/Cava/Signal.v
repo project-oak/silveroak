@@ -32,12 +32,10 @@ Inductive Signal : Kind -> Type :=
   | LocalBitVec: forall k s, N -> Signal (BitVec k s)
   | VecLit: forall {k s}, Vector.t (Signal k) s -> Signal (BitVec k s)
   (* Dynamic index *)
-  | IndexAt: forall {k sz isz}, Signal (BitVec k sz) ->
-             Signal (BitVec Bit isz) -> Signal k
+  | IndexAt:  forall {k sz isz}, Signal (BitVec k sz) ->
+              Signal (BitVec Bit isz) -> Signal k
   (* Static indexing *)
   | IndexConst: forall {k sz}, Signal (BitVec k sz) -> nat -> Signal k
-  (* Static indexing of smashed vectors *)
-  | IndexConstS: forall {k sz}, Vector.t (Signal k) sz -> nat -> Signal k
   (* Static slice *)
   | Slice: forall {k sz} (start len: nat), Signal (BitVec k sz) ->
                                            Signal (BitVec k len).
@@ -50,3 +48,4 @@ Fixpoint defaultKindSignal (k: Kind) : Signal k :=
   | BitVec k s => VecLit (Vector.const (defaultKindSignal k) s)
   | ExternalType s => UninterpretedSignal "default-error"
   end.
+

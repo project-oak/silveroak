@@ -322,6 +322,8 @@ Import EqNotations.
    that will be illegal in SystemVerilog. It returns the re-written instances.
 *)
 
+(* NOTE: this is not dead code, it is called from the Haskell back-end.       *)
+
 Fixpoint deLitSignal {w: Kind} (s: Signal w) : state CavaState (Signal w) :=
   let f := fun ty => Signal ty in
   match s as s in Signal w' return w'=w -> state CavaState (Signal w) with
@@ -335,7 +337,7 @@ Fixpoint deLitSignal {w: Kind} (s: Signal w) : state CavaState (Signal w) :=
       iD <- @deLitSignal (BitVec Bit isz) i ;;
       ret (rew [f] H in (IndexAt vD iD))
   | @IndexConst k sz v i => fun H => vD <- @deLitSignal (BitVec k sz) v ;;
-                                     ret (rew [f] H in (IndexConst vD i))
+                                     ret (rew [f] H in (IndexConst vD i))                             
   | @Slice k sz start len v => fun H => vD <- @deLitSignal (BitVec k sz) v ;;
                                         ret (rew [f] H in (Slice start len vD))
   | _ => fun _ => ret s
@@ -431,8 +433,8 @@ Definition wireUpCircuit (intf : CircuitInterface)
   i <- instantiateInputPorts (circuitInputs intf) ;;
   o <- circuit i ;;
   let outType := circuitOutputs intf in 
-  instantiateOutputPorts outType o ;;
-  deLitInstances.
+  instantiateOutputPorts outType o.
+  (* deLitInstances. *)
 
 Definition makeNetlist (intf : CircuitInterface)                      
                        (circuit : signalSmashTy (mapShape port_shape (circuitInputs intf)) ->

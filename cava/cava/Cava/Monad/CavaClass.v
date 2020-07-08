@@ -57,7 +57,7 @@ Class Cava m `{Monad m} bit := {
   *)
   (* Dynamic indexing *)                                   
   indexAt : forall {k: Kind} {sz isz: nat},
-            smashTy bit (BitVec k sz) -> Vector.t bit isz -> smashTy bit k;
+            Vector.t (smashTy bit k) sz -> Vector.t bit isz -> smashTy bit k;
   indexBitAt : forall {sz isz: nat}, Vector.t bit sz ->
                                      Vector.t bit isz -> bit;
   (* Static indexing *)
@@ -65,8 +65,8 @@ Class Cava m `{Monad m} bit := {
                Vector.t (smashTy bit k) sz -> nat -> smashTy bit k;
   indexBitConst : forall {sz: nat}, Vector.t bit sz -> nat -> bit;
   slice : forall {k: Kind}  {sz: nat} (startAt len: nat),
-                 smashTy bit (BitVec k sz) ->
-                 (startAt + len <= sz) -> smashTy bit (BitVec k len) ;
+                 Vector.t (smashTy bit k) sz ->
+                 (startAt + len <= sz) -> Vector.t (smashTy bit k) len ;
   (* Synthesizable arithmetic operations. *)
   unsignedAdd : forall {a b : nat}, Vector.t bit a -> Vector.t bit b ->
                 m (Vector.t bit (1 + max a b));

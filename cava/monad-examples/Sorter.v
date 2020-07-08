@@ -35,11 +35,14 @@ From Coq Require Import Lia Omega.
 
 Local Open Scope vector_scope.
 
+Lemma zero_lt_z: 0 < 2. auto. Qed.
+Lemma one_lt_z: 1 < 2. auto. Qed.
+
 Definition twoSorter {m bit} `{Cava m bit} {n}
-                     (ab: smashTy bit (BitVec (BitVec Bit n) 2)) :
+                     (ab: Vector.t (smashTy bit (BitVec Bit n)) 2) :
                      m (Vector.t (Vector.t bit n) 2) :=
-   let a := @Vector.nth_order _ 2 ab 0 (ltac:(lia)) in
-   let b := @Vector.nth_order _ 2 ab 1 (ltac:(lia)) in
+   let a := @Vector.nth_order _ 2 ab 0 zero_lt_z in
+   let b := @Vector.nth_order _ 2 ab 1 one_lt_z in
    comparison <- greaterThanOrEqual a b ;;
    negComparison <- inv comparison ;;
    let sorted : Vector.t (Vector.t bit n) 2 := [indexAt ab [comparison];
