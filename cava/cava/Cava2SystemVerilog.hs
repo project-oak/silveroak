@@ -46,15 +46,8 @@ fromN bn
       BinNums.N0 -> 0
       BinNums.Npos n -> n
 
-deriving instance Show BinNums.N
-deriving instance Show Kind
-deriving instance Show (Vector.Coq_t Signal)
-deriving instance Show Signal
-deriving instance Show ConstExpr
-deriving instance Show Instance
-
 cava2SystemVerilog :: Netlist.CavaState -> [String]
-cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vCount' vDefs'
+cava2SystemVerilog cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs'
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName instances'
                     inputs outputs))
@@ -76,30 +69,20 @@ cava2SystemVerilog (Netlist.Coq_mkCavaState netNumber vCount' vDefs'
     [""] ++
     [generateInstance genState inst i | (inst, i) <- zip instances [0..]] ++
     [""] ++
-    ["endmodule"] ++
-    ["",
-     "/* Before unsmashing: " ++ show (length instances')] ++
-    map show instances' ++
-    ["",
-     "After unsmashing:" ++ show (length instances'')] ++
-     map show instances'' ++
-    ["",
-     "After deLit: " ++ show (length instances)] ++
-    map show instances ++
-    ["*/"]
+    ["endmodule"]
     where
     genState = NetlistGenerationState clk clkEdge rst rstEdge
-    instances'' = map (mapSignalsInInstance unsmash) instances'
-    unsmashedState = Netlist.Coq_mkCavaState netNumber vCount' vDefs'
-                     clk clkEdge rst rstEdge
-                     (Netlist.Coq_mkModule moduleName instances''
-                     inputs outputs)
-    Netlist.Coq_mkCavaState _ vCount vDefs
-                     _ _ _ _
-                     (Netlist.Coq_mkModule _ instances
-                     _ _)
-       = StateMonad.execState deLitInstances unsmashedState                  
-
+    (instances'', Netlist.Coq_mkCavaState _ vCount vDefs
+                  _ _ _ _
+                  (Netlist.Coq_mkModule _ assignInstances
+                  _ _))
+      = runState (unsmashInstances instances')
+          (Netlist.Coq_mkCavaState netNumber vCount' vDefs'
+                    clk clkEdge rst rstEdge
+                    (Netlist.Coq_mkModule moduleName []
+                    inputs outputs))
+    instances = instances'' ++ assignInstances
+                         
 declareLocalNets :: Integer -> [String]
 declareLocalNets n
   = if n == 0 then
@@ -165,26 +148,6 @@ showSignal signal
       IndexConst _ _ v i -> showSignal v ++ "[" ++ show i ++ "]"
       Slice _ _ start len v -> showSignal v ++ "[" ++ show (start + len - 1) ++
                                ":" ++ show start ++ "]"
-
---------------------------------------------------------------------------------
--- Map across signals
---------------------------------------------------------------------------------
-
-mapSignalsInInstance :: (Signal -> Signal) -> Instance -> Instance
-mapSignalsInInstance f inst
-  = case inst of
-      Not i o -> Not (f i) (f o)
-      And i0 i1 o -> And (f i0) (f i1) (f o)
-      Nand i0 i1 o -> Nand (f i0) (f i1) (f o)
-      Or i0 i1 o -> Or (f i0) (f i1) (f o)
-      Xor i0 i1 o -> Xor (f i0) (f i1) (f o)
-      Xnor i0 i1 o -> Xnor (f i0) (f i1) (f o)
-      Buf i o -> Buf (f i) (f o)
-      DelayBit i o -> DelayBit (f i) (f o)
-      AssignSignal k t v -> AssignSignal k (f t) (f v)
-      UnsignedAdd s1 s2 s3 a b c -> UnsignedAdd s1 s2 s3 (f a) (f b) (f c)
-      GreaterThanOrEqual s1 s2 a b t -> GreaterThanOrEqual s1 s2 (f a) (f b) (f t)
-      Component k name args vals -> Component k name args [(n, f s) | (n, s) <- vals]
 
 --------------------------------------------------------------------------------
 -- Generate SystemVerilog for a specific instance.
@@ -504,6 +467,64 @@ deriving instance Eq Kind
 deriving instance Eq (Vector.Coq_t Signal)
 deriving instance Eq Signal
 
+unsmashInstance :: Instance -> State CavaState Instance
+unsmashInstance = mapSignalsInInstanceM unsmash
+
+unsmashInstances :: [Instance] -> State CavaState [Instance]
+unsmashInstances instances =
+  sequence (map unsmashInstance instances)
+
+mapSignalsInInstanceM :: (Signal -> State CavaState Signal) ->
+                          Instance -> State CavaState Instance
+mapSignalsInInstanceM f inst
+  = case inst of
+      Not i o -> do fi <- f i
+                    fo <- f o
+                    return (Not fi fo)
+      And i0 i1 o -> do fi0 <- f i0
+                        fi1 <- f i1
+                        fo  <- f o
+                        return (And fi0 fi1 fo)
+      Nand i0 i1 o -> do fi0 <- f i0
+                         fi1 <- f i1
+                         fo  <- f o
+                         return (Nand fi0 fi1 fo)
+      Or i0 i1 o -> do fi0 <- f i0
+                       fi1 <- f i1
+                       fo  <- f o
+                       return (Or fi0 fi1 fo)
+      Xor i0 i1 o -> do fi0 <- f i0
+                        fi1 <- f i1
+                        fo  <- f o
+                        return (Xor fi0 fi1 fo)
+      Xnor i0 i1 o -> do fi0 <- f i0
+                         fi1 <- f i1
+                         fo  <- f o
+                         return (Xnor fi0 fi1 fo)
+      Buf i o -> do fi <- f i
+                    fo <- f o
+                    return (Buf fi fo)
+      DelayBit i o -> do fi <- f i
+                         fo <- f o
+                         return (DelayBit fi fo)
+      AssignSignal k t v -> do ft <- f t
+                               fv <- f v
+                               return (AssignSignal k ft fv)
+      UnsignedAdd s1 s2 s3 a b c ->
+        do fa <- f a
+           fb <- f b
+           fc <- f c
+           return (UnsignedAdd s1 s2 s3 fa fb fc)
+      GreaterThanOrEqual s1 s2 a b t ->
+        do fa <- f a
+           fb <- f b
+           ft <- f t
+           return (GreaterThanOrEqual s1 s2 fa fb ft)
+      Component k name args vals ->
+        do let sigs = map snd vals
+           sigs' <- sequence (map f sigs)
+           return (Component k name args (zip (map fst vals) sigs'))
+
 checkIndexes :: Signal -> [Integer] -> [Signal] -> Maybe Signal
 checkIndexes stem [] [] = Just stem
 checkIndexes stem (x:xs) (s:sx)
@@ -524,14 +545,52 @@ checkStem k sz (v:vs)
           BitVec _ _ -> checkIndexes v2 [0..sz-1] (v:vs) -- unpacked order
       _ -> Nothing
 
-unsmash :: Signal -> Signal
+unsmash :: Signal -> State CavaState Signal
 unsmash signal
   = case signal of
-      VecLit k s v -> case checkStem k s (map unsmash (Vector.to_list s v))  of
-                        Just stem -> stem
-                        Nothing -> signal
-      IndexAt k sz isz v i -> IndexAt k sz isz (unsmash v) (unsmash i)
-      IndexConst k s v i -> IndexConst k s (unsmash v) i
-      Slice k s startAt len v -> Slice k s startAt len (unsmash v)
-      _ -> signal
+      VecLit k s v -> do uv <- sequence (map unsmash (Vector.to_list s v))
+                         case checkStem k s uv  of
+                           Just stem -> return stem
+                           Nothing -> return (VecLit k s (Vector.of_list uv))
+      IndexAt k sz isz v i -> do uv <- unsmash v
+                                 fv <- freshen uv
+                                 ui <- unsmash i
+                                 return (IndexAt k sz isz fv ui)
+      IndexConst k s v i -> do uv <- unsmash v
+                               fv <- freshen uv
+                               return (IndexConst k s fv i)
+      Slice k s startAt len v -> do uv <- unsmash v
+                                    fv <- freshen uv
+                                    return (Slice k s startAt len fv)
+      _ -> return signal
 
+freshen :: Signal -> State CavaState Signal
+freshen signal
+  = case signal of
+      VecLit k s v -> do freshV <- freshVector k s
+                         addAssignment (BitVec k s) freshV signal
+                         return freshV
+      _ -> return signal
+
+addAssignment :: Kind -> Signal -> Signal -> State CavaState ()
+addAssignment k a b
+  = do Netlist.Coq_mkCavaState netNumber vCount vDefs
+                    clk clkEdge rst rstEdge
+                    (Netlist.Coq_mkModule moduleName instances
+                    inputs outputs) <- get
+       put (Netlist.Coq_mkCavaState netNumber vCount vDefs
+                    clk clkEdge rst rstEdge
+                    (Netlist.Coq_mkModule moduleName ((AssignSignal k a b):instances)
+                    inputs outputs))
+
+freshVector :: Kind -> Integer -> State CavaState Signal
+freshVector k s
+  = do Netlist.Coq_mkCavaState netNumber vCount vDefs
+                    clk clkEdge rst rstEdge
+                    (Netlist.Coq_mkModule moduleName instances
+                    inputs outputs) <- get
+       put (Netlist.Coq_mkCavaState netNumber (incN vCount) (vDefs++[(k, s)])
+                    clk clkEdge rst rstEdge
+                    (Netlist.Coq_mkModule moduleName instances
+                    inputs outputs))
+       return (LocalBitVec k s vCount)                                 
