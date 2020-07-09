@@ -51,11 +51,6 @@ Definition bv5_30 := N2Bv_sized 5 30.
 (* Test adders with no bit-growth and equal-sized inputs                      *)
 (******************************************************************************)
 
-Definition addN {m bit} `{Cava m bit} {sz: nat}
-                (a: Vector.t bit sz) (b: Vector.t bit sz) :
-                m (Vector.t bit sz)
-  := addNN a b.
-  
 (* Check 0 + 0 = 0 *)
 Example add0_0 : combinational (addN bv4_0 bv4_0) = bv4_0.
 Proof. reflexivity. Qed.

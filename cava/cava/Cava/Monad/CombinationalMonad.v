@@ -28,6 +28,8 @@ From Coq Require Import Fin.
 From Coq Require Import NArith.Ndigits.
 From Coq Require Import ZArith.
 
+From Coq Require Import Lia.
+
 Require Import Cava.Cava.
 From Cava Require Import Kind.
 From Cava Require Import Signal.
@@ -124,8 +126,8 @@ Definition sliceBool {k: Kind}
                      (v: Vector.t (smashTy bool k) sz)
                      (H: startAt + len <= sz) :
                      Vector.t (smashTy bool k) len :=
-  sliceVector v startAt len H.                   
-
+  sliceVector v startAt len H.
+                
 Definition unsignedAddBool {m n : nat}
                            (av : Bvector m) (bv : Bvector n) :
                            ident (Bvector (1 + max m n)) :=
@@ -141,18 +143,6 @@ Definition greaterThanOrEqualBool {m n : nat}
   let a := N.to_nat (Bv2N av) in
   let b := N.to_nat (Bv2N bv) in
   ret (b <=? a).
-
-Local Open Scope N_scope.
-
-Definition addNNBool {m : nat}
-                     (av : Bvector m) (bv : Bvector m) :
-                     ident (Bvector m) :=
-  let a := Bv2N av in
-  let b := Bv2N bv in
-  let sum := (a + b) mod 2^(N.of_nat m) in
-  ret (N2Bv_sized m sum).
-
-Local Close Scope N_scope.
 
 Definition bufBool (i : bool) : ident bool :=
   ret i.
@@ -194,7 +184,6 @@ Program Instance CavaBool : Cava ident bool :=
     slice k sz := @sliceBool k sz;
     unsignedAdd m n := @unsignedAddBool m n;
     greaterThanOrEqual m n := @greaterThanOrEqualBool m n;
-    addNN m := @addNNBool m;
 }.
 
 (******************************************************************************)

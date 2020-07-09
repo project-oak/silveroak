@@ -26,17 +26,28 @@ Require Import Cava.Monad.CavaMonad.
 (* An adder with two inputs of the same size and no bit-growth                *)
 (******************************************************************************)
 
-Lemma n_le_max_n_n : forall n, n <= S(max n n).
-Proof.
-  intros. lia.
-Qed.
+Lemma n_le_n_plus_1 : forall n, 0 + n <= 1 + n.
+Proof. auto. Defined.
 
-(*
+Lemma max_n_n : forall n, max n n = n.
+Proof.
+  intros.
+  induction n.
+  - reflexivity.
+  - simpl. rewrite IHn. reflexivity.
+Defined.  
+
+Definition deMax {m bit} `{Cava m bit} {n} (v: Vector.t bit (1 + max n n)) :
+                 Vector.t (smashTy bit Bit) (1+n).
+Proof.
+  rewrite max_n_n in v.
+  unfold smashTy. apply v.
+Defined. 
+   
 Definition addN {m bit} `{Cava m bit} {n}
                 (a: Vector.t bit n) (b: Vector.t bit n) : m (Vector.t bit n) :=               
   s <- unsignedAdd a b ;;
-  ret (slice 0 n _ (n_le_max_n_n n)).
-*)
+  ret (slice 0 n (deMax s) (n_le_n_plus_1 _)).
 
 (******************************************************************************)
 (* A three input adder.                                                       *)

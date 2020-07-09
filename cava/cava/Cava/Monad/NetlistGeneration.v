@@ -200,15 +200,6 @@ Definition unsignedAddNet {m n : nat}
   let smashedSum := Vector.map (fun i => IndexConst sum i) (vseq 0 (1 + (max m n))) in
   ret smashedSum.
 
-Definition addNNNet {m : nat} 
-                    (a : Vector.t (Signal Bit) m)
-                    (b : Vector.t (Signal Bit) m) :
-                    state CavaState (Vector.t (Signal Bit) m) :=
-  sum <- newVector Bit m ;;
-  addInstance (UnsignedAdd (VecLit a) (VecLit b) sum) ;;
-  let smashedSum := Vector.map (fun i => IndexConst sum i) (vseq 0 m) in
-  ret smashedSum.
-
 Definition delayBitNet (i : Signal Bit) : state CavaState (Signal Bit) :=
   o <- newWire ;;
   addInstance (DelayBit i o) ;;
@@ -278,6 +269,5 @@ Instance CavaNet : Cava (state CavaState) (Signal _) :=
     indexBitConst sz := @indexConstNet Bit sz;
     slice k sz start len v h := @sliceNet k sz start len v h;
     unsignedAdd m n := @unsignedAddNet m n;
-    addNN m := @addNNNet m;
     greaterThanOrEqual m n := @greaterThanOrEqualNet m n;
 }.

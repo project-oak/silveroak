@@ -146,8 +146,15 @@ showSignal signal
       VecLit k s vs -> showVecLiteral k (Vector.to_list s vs)
       IndexAt _ _ _ v i -> showSignal v ++ "[" ++ showSignal i ++ "]"
       IndexConst _ _ v i -> showSignal v ++ "[" ++ show i ++ "]"
-      Slice _ _ start len v -> showSignal v ++ "[" ++ show (start + len - 1) ++
-                               ":" ++ show start ++ "]"
+      Slice k _ start len v -> showSignal v ++ showSliceIndex k start len
+
+showSliceIndex :: Kind -> Integer -> Integer -> String
+showSliceIndex k start len
+  = case k of
+      Bit -> "[" ++ show top ++ ":" ++ show start ++ "]"
+      BitVec _ _ -> "[" ++ show start ++ ":" ++ show top ++ "]"
+    where
+    top = start + len - 1
 
 --------------------------------------------------------------------------------
 -- Generate SystemVerilog for a specific instance.
@@ -525,12 +532,17 @@ mapSignalsInInstanceM f inst
            sigs' <- sequence (map f sigs)
            return (Component k name args (zip (map fst vals) sigs'))
 
-checkIndexes :: Signal -> [Integer] -> [Signal] -> Maybe Signal
-checkIndexes stem [] [] = Just stem
-checkIndexes stem (x:xs) (s:sx)
+--------------------------------------------------------------------------------
+-- Check for contiguous static indexing to identify vector slices.
+--------------------------------------------------------------------------------
+
+checkIndexes :: Kind -> Integer -> Integer -> Signal -> Integer -> [Signal] -> Maybe Signal
+checkIndexes k fullSize startingIndex stem currentIndex []
+  = Just (Slice k fullSize startingIndex (currentIndex - startingIndex) stem)
+checkIndexes k fullSize startingIndex stem currentIndex (s:sx)
   = case s of
-      IndexConst k sz v2 i -> if x == i && stem == v2 then
-                                checkIndexes stem xs sx
+      IndexConst k sz v2 i -> if currentIndex == i && stem == v2 then
+                                checkIndexes k sz startingIndex stem (currentIndex+1) sx
                               else
                                 Nothing
       _ -> Nothing
@@ -539,18 +551,30 @@ checkStem :: Kind -> Integer -> [Signal] -> Maybe Signal
 checkStem k sz [] = Nothing
 checkStem k sz (v:vs)
   = case v of
-      IndexConst k2 s2 v2 i ->
-        case k of
-          Bit -> checkIndexes v2 [0..sz-1] (v:vs)        -- packed order
-          BitVec _ _ -> checkIndexes v2 [0..sz-1] (v:vs) -- unpacked order
+      IndexConst k2 s2 v2 startingIndex ->
+       case k of
+          Bit        -> checkIndexes k s2 startingIndex v2 (startingIndex+1) vs  
+          BitVec _ _ -> checkIndexes k s2 startingIndex v2 (startingIndex+1) vs
       _ -> Nothing
 
+-- If a slice contains just one element, just return a static index to that
+-- element. If a slice is indexing the whole vector, just return the vector
+-- stem.
+fullSlice ::  Signal -> Signal
+fullSlice (Slice k s startingIndex 1 stem) = IndexConst k s stem startingIndex
+fullSlice s@(Slice _ fullLen startingIndex len stem)
+  = if fullLen == len then
+      stem
+    else
+      s
+
+-- Recover slices and whole vector stems.
 unsmash :: Signal -> State CavaState Signal
 unsmash signal
   = case signal of
       VecLit k s v -> do uv <- sequence (map unsmash (Vector.to_list s v))
                          case checkStem k s uv  of
-                           Just stem -> return stem
+                           Just stem -> return (fullSlice stem)
                            Nothing -> return (VecLit k s (Vector.of_list uv))
       IndexAt k sz isz v i -> do uv <- unsmash v
                                  fv <- freshen uv
@@ -564,6 +588,8 @@ unsmash signal
                                     return (Slice k s startAt len fv)
       _ -> return signal
 
+-- If a signal is a vector literal, give it a name and return that name.
+-- Used to rewrite vector literals in locations where they are not allowed.
 freshen :: Signal -> State CavaState Signal
 freshen signal
   = case signal of
@@ -572,6 +598,8 @@ freshen signal
                          return freshV
       _ -> return signal
 
+-- Add an assignment to the context to store new vector names induced by
+-- the fresh transformation.
 addAssignment :: Kind -> Signal -> Signal -> State CavaState ()
 addAssignment k a b
   = do Netlist.Coq_mkCavaState netNumber vCount vDefs
@@ -583,6 +611,7 @@ addAssignment k a b
                     (Netlist.Coq_mkModule moduleName ((AssignSignal k a b):instances)
                     inputs outputs))
 
+-- Declare a new local vector and return it as a signal.
 freshVector :: Kind -> Integer -> State CavaState Signal
 freshVector k s
   = do Netlist.Coq_mkCavaState netNumber vCount vDefs
@@ -593,4 +622,4 @@ freshVector k s
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName instances
                     inputs outputs))
-       return (LocalBitVec k s vCount)                                 
+       return (LocalBitVec k s vCount)

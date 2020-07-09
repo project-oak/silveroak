@@ -41,7 +41,7 @@ Require Import Cava.Monad.UnsignedAdders.
 Definition adderTree {m bit} `{Cava m bit} {sz: nat}
                      (n: nat) (v: Vector.t (Vector.t bit sz) (2^(n+1))) :
                      m (Vector.t bit sz) :=              
-  tree n addNN v.
+  tree n addN v.
 
 (******************************************************************************)
 (* Some tests.                                                                *)
