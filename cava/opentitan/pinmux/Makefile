@@ -16,7 +16,7 @@
 
 .PHONY: all coq clean
 
-all:		coq
+all:		coq pinmux.sv
 
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt
 VLINT = $(VERILATOR) --lint-only
@@ -27,5 +27,13 @@ Makefile.coq:	_CoqProject
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
+PinmuxSV:	PinmuxSV.hs
+		ghc --make $^
+
+pinmux.sv:	coq PinmuxSV
+		./PinmuxSV
+
 clean:		
 		-@$(MAKE) -f Makefile.coq clean
+		rm -rf PinmuxSV.hi PinmuxSV.o PinmuxSV Makefile.coq.conf \
+		       Pinmux.vo Pinmux.o Pinmux.hs Pinmux.hi pinmux.sv

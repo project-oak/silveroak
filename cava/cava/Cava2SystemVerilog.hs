@@ -47,7 +47,7 @@ fromN bn
       BinNums.Npos n -> n
 
 cava2SystemVerilog :: Netlist.CavaState -> [String]
-cava2SystemVerilog cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs'
+cava2SystemVerilog cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext'
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName instances'
                     inputs outputs))
@@ -62,6 +62,7 @@ cava2SystemVerilog cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs'
      "  logic one;"] ++
     declareLocalNets (fromN netNumber) ++
     [vectorDeclaration ("v" ++ show i) k s ++ ";" | ((k, s), i) <- zip vDefs [0..]] ++
+    [ "  " ++ t ++ " ext_" ++ show i ++ ";" | (t, i) <- zip ext [0..]] ++
     [""] ++
     ["  // Constant nets",
      "  assign zero = 1'b0;",
@@ -72,12 +73,12 @@ cava2SystemVerilog cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs'
     ["endmodule"]
     where
     genState = NetlistGenerationState clk clkEdge rst rstEdge
-    (instances'', Netlist.Coq_mkCavaState _ vCount vDefs
+    (instances'', Netlist.Coq_mkCavaState _ vCount vDefs ext
                   _ _ _ _
                   (Netlist.Coq_mkModule _ assignInstances
                   _ _))
       = runState (unsmashInstances instances')
-          (Netlist.Coq_mkCavaState netNumber vCount' vDefs'
+          (Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext'
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName []
                     inputs outputs))
@@ -97,9 +98,11 @@ inputPorts :: [Netlist.PortDeclaration] -> [String]
 inputPorts = map inputPort
 
 inputPort :: Netlist.PortDeclaration -> String
-inputPort (Netlist.Coq_mkPort name Bit) = "  input logic " ++ name
-inputPort (Netlist.Coq_mkPort name (BitVec k s))
+inputPort (Coq_mkPort name Bit) = "  input logic " ++ name
+inputPort (Coq_mkPort name (BitVec k s))
   = "  input " ++ vectorDeclaration name k s
+inputPort  (Coq_mkPort name (ExternalType typeName))
+  = "  input " ++ typeName ++ " " ++ name
 
 vectorDeclaration :: String -> Kind -> Integer -> String
 vectorDeclaration name k s
@@ -114,6 +117,8 @@ outputPort :: Netlist.PortDeclaration -> String
 outputPort (Netlist.Coq_mkPort name Bit) = "  output logic " ++ name
 outputPort (Netlist.Coq_mkPort name (BitVec k s))
   = "  output " ++ vectorDeclaration name k s
+outputPort  (Coq_mkPort name (ExternalType typeName))
+  = "  output " ++ typeName ++ " " ++ name
 
 insertCommas :: [String] -> [String]
 insertCommas [] = []
@@ -137,6 +142,7 @@ showSignal signal
   = case signal of
       UndefinedSignal -> error "Attempt to use an undefined signal"
       UninterpretedSignal _ name -> name
+      UninterpretedSignalIndex _ i -> "ext_" ++ show (fromN i)
       Gnd -> "zero"
       Vcc -> "one"
       Wire n -> "net[" ++ show (fromN n) ++ "]"
@@ -615,11 +621,11 @@ freshen signal
 -- the fresh transformation.
 addAssignment :: Kind -> Signal -> Signal -> State CavaState ()
 addAssignment k a b
-  = do Netlist.Coq_mkCavaState netNumber vCount vDefs
+  = do Netlist.Coq_mkCavaState netNumber vCount vDefs ext
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName instances
                     inputs outputs) <- get
-       put (Netlist.Coq_mkCavaState netNumber vCount vDefs
+       put (Netlist.Coq_mkCavaState netNumber vCount vDefs ext
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName ((AssignSignal k a b):instances)
                     inputs outputs))
@@ -627,11 +633,11 @@ addAssignment k a b
 -- Declare a new local vector and return it as a signal.
 freshVector :: Kind -> Integer -> State CavaState Signal
 freshVector k s
-  = do Netlist.Coq_mkCavaState netNumber vCount vDefs
+  = do Netlist.Coq_mkCavaState netNumber vCount vDefs ext
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName instances
                     inputs outputs) <- get
-       put (Netlist.Coq_mkCavaState netNumber (incN vCount) (vDefs++[(k, s)])
+       put (Netlist.Coq_mkCavaState netNumber (incN vCount) (vDefs++[(k, s)]) ext
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName instances
                     inputs outputs))

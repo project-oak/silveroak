@@ -23,7 +23,8 @@ From Cava Require Import VectorUtils.
 
 Inductive Signal : Kind -> Type :=
   | UndefinedSignal : Signal Void
-  | UninterpretedSignal: forall {t}, string -> Signal (ExternalType t)
+  | UninterpretedSignal: forall {t: string}, string -> Signal (ExternalType t)
+  | UninterpretedSignalIndex: forall (t: string), N -> Signal (ExternalType t)
   | Gnd: Signal Bit
   | Vcc: Signal Bit
   | Wire: N -> Signal Bit
