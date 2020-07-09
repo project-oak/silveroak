@@ -87,30 +87,20 @@ Defined.
 (* Slicing a Vector.t                                                         *)
 (******************************************************************************)
 
-Definition sliceVector {T: Type} {sz: nat}
-                       (v: Vector.t T sz)
-                       (startAt len: nat)
-                       (H: startAt + len <= sz) :
-                       (Vector.t T len).
-Proof.
-  intros.
+Import EqNotations.
 
-  pose (sz - startAt) as x.
-  assert (sz = startAt + x).
-  lia.
-  rewrite H0 in v.
-  refine (let (discard, vR) := Vector.splitat startAt v in _).
-  clear discard.
-  assert(len <= x).
-  lia.
-  pose (x - len) as y.
-  assert (x = len + y).
-  lia.
-
-  rewrite H2 in vR.
-  refine (let (vL, discard) := Vector.splitat len vR in _).
-  exact vL.
-Defined.
+Fixpoint sliceVector {T: Type} {s: nat} (v: Vector.t T s) (startAt len : nat)
+                     (H: startAt + len <= s) : Vector.t T len :=
+  match Nat.eq_dec s (startAt + (s - startAt)) with 
+    | left Heq =>
+      let '(_, v) := Vector.splitat startAt (rew [fun x => Vector.t T x] Heq in v)
+      in
+        match Nat.eq_dec (s-startAt) (len + ((s-startAt) - len)) with 
+        | left Heq => fst (Vector.splitat len (rew [fun x => Vector.t T x] Heq in v))
+        | right Hneq => (ltac:(abstract lia))
+        end
+    | right Hneq => (ltac:(abstract lia))
+    end.
 
 (* An experimental alternative vector representation *)
 
