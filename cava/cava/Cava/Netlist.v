@@ -178,6 +178,10 @@ Record CavaState : Type := mkCavaState {
   module : Module;
 }.
 
+
+(* Used in the Haskell back end *)
+Definition incN (n: N) : N := n + 1.
+
 Definition newWire : state CavaState (Signal Bit) :=
   cs <- get;;
   match cs with
@@ -311,81 +315,7 @@ Definition initStateFrom (startAt : N) : CavaState
 
 Definition initState : CavaState
   := initStateFrom 0.
-
-(******************************************************************************)
-(* Rewrite vector literals that need to be used in a named context.           *)
-(******************************************************************************)
-
-Import EqNotations.
-
-(* deLitSignal re-writes instances to remove vector literals fromm contexts
-   that will be illegal in SystemVerilog. It returns the re-written instances.
-*)
-
-(* NOTE: this is not dead code, it is called from the Haskell back-end.       *)
-
-Fixpoint deLitSignal {w: Kind} (s: Signal w) : state CavaState (Signal w) :=
-  let f := fun ty => Signal ty in
-  match s as s in Signal w' return w'=w -> state CavaState (Signal w) with
-  | @VecLit k sz e => fun H => 
-                      eD <- sequence (Vector.map deLitSignal e) ;;
-                      nv <- newVector k sz ;;
-                      assignSignal nv (VecLit eD) ;;
-                      ret (rew H in nv)
-  | @IndexAt k sz isz v i => fun H =>
-      vD <- @deLitSignal (BitVec k sz) v ;;
-      iD <- @deLitSignal (BitVec Bit isz) i ;;
-      ret (rew [f] H in (IndexAt vD iD))
-  | @IndexConst k sz v i => fun H => vD <- @deLitSignal (BitVec k sz) v ;;
-                                     ret (rew [f] H in (IndexConst vD i))                             
-  | @Slice k sz start len v => fun H => vD <- @deLitSignal (BitVec k sz) v ;;
-                                        ret (rew [f] H in (Slice start len vD))
-  | _ => fun _ => ret s
-  end eq_refl.
-
-Definition deLitUnaryOp {k: Kind} (f: (Signal k -> Signal k -> Instance))
-                         (i: Signal k) (o: Signal k) :
-                         state CavaState Instance :=
-  iD <- deLitSignal i ;;
-  oD <- deLitSignal o ;;
-  ret (f iD oD).
-
-Definition deLitBinaryOp {k1 k2 k3: Kind} (f: (Signal k1 -> Signal k2 -> Signal k3 -> Instance))
-                         (i0: Signal k1) (i1: Signal k2) (o: Signal k3) :
-                         state CavaState Instance :=
-  i0D <- deLitSignal i0 ;;
-  i1D <- deLitSignal i1 ;;
-  oD <- deLitSignal o ;;
-  ret (f i0D i1D oD).
-
-Definition deLitInstance (inst: Instance) : state CavaState Instance :=
-  match inst with
-  | Not i o => deLitUnaryOp Not i o
-  | And i0 i1 o => deLitBinaryOp And i0 i1 o
-  | Nand i0 i1 o =>  deLitBinaryOp Nand i0 i1 o
-  | Or i0 i1 o =>  deLitBinaryOp Or i0 i1 o
-  | Nor i0 i1 o =>  deLitBinaryOp Nor i0 i1 o
-  | Xor i0 i1 o =>  deLitBinaryOp Xor i0 i1 o
-  | Xnor i0 i1 o =>  deLitBinaryOp Xnor i0 i1 o
-  | Buf i o => deLitUnaryOp Buf i o
-  | DelayBit i o => deLitUnaryOp DelayBit i o
-  | AssignSignal a b => deLitUnaryOp AssignSignal a b
-  | UnsignedAdd a b c => deLitBinaryOp UnsignedAdd a b c
-  | GreaterThanOrEqual a b g => deLitBinaryOp GreaterThanOrEqual a b g
-  | Component name pars args =>
-      let argNames := map fst args in
-      let argSignals := map snd args in
-      argSignals' <- sequence (map deLitSignal argSignals) ;;
-      ret (Component name pars (combine argNames argSignals'))
-  end.
-
-Definition deLitInstances : state CavaState unit :=
-  insts <- getInstances ;;
-  setInstances [] ;;
-  deLitInstances <- sequence (map deLitInstance insts) ;;
-  assignments <- getInstances ;;
-  setInstances (deLitInstances ++ assignments).
-
+  
 (******************************************************************************)
 (* Execute a monadic circuit description and return the generated netlist.    *)
 (******************************************************************************)
@@ -434,7 +364,6 @@ Definition wireUpCircuit (intf : CircuitInterface)
   o <- circuit i ;;
   let outType := circuitOutputs intf in 
   instantiateOutputPorts outType o.
-  (* deLitInstances. *)
 
 Definition makeNetlist (intf : CircuitInterface)                      
                        (circuit : signalSmashTy (mapShape port_shape (circuitInputs intf)) ->
