@@ -25,11 +25,10 @@ Import ListNotations.
 
 Section notation.
   Import KappaNotation. 
-
-  Variable var: Kind -> Kind -> Type.
+  Local Open Scope kind_scope.
 
   Definition xilinxFullAdder
-    : CavaExpr var << Bit, << Bit, Bit >>, Unit >> << Bit, Bit >> :=
+    : forall cava: Cava, << Bit, << Bit, Bit >>, Unit >> ~> << Bit, Bit >> :=
     <[ \ cin ab =>
       let '(a,b) = ab in
       let part_sum = xor a b in
@@ -40,9 +39,6 @@ Section notation.
 End notation.
 
 Open Scope kind_scope.
-Definition xilinxFullAdder_arrow {cava: Cava}
-  : << Bit, << Bit, Bit >> >> ~> <<Bit, Bit>>
-  := to_arrow @xilinxFullAdder.
 
-Lemma xilinxFullAdder_is_combinational: wf_combinational xilinxFullAdder_arrow.
+Lemma xilinxFullAdder_is_combinational: wf_combinational (xilinxFullAdder _).
 Proof. combinational_obvious. Qed.

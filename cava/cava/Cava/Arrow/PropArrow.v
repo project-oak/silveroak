@@ -58,6 +58,7 @@ Instance NoDelays : Cava := {
 
   constant b := True;
   constant_bitvec n v := True;
+  mk_module _ _ _name f := f;
   not_gate := True;
   and_gate := True;
   nand_gate := True;
@@ -91,6 +92,7 @@ Instance NoLoops : Cava := {
 
   constant b := True;
   constant_bitvec n v := True;
+  mk_module _ _ _name f := f;
   not_gate := True;
   and_gate := True;
   nand_gate := True;

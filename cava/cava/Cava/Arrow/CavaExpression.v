@@ -59,9 +59,10 @@ Section Vars.
     | Snd: forall {x y}, CavaExpr << << x, y >>, Unit >> y
     | Pair: forall {x y}, CavaExpr << x, y, Unit >> << x, y >>
     | Id: forall {x}, CavaExpr <<x, Unit>> x
+    | Morphism: forall {i o}, (forall cava: Cava, i~[cava]~>o) -> CavaExpr i o
 
     (* Cava routines *)
-    | LiftConstant: forall {x}, lift_constant x -> CavaExpr Unit x
+    | LiftConstant: forall x, lift_constant x -> CavaExpr Unit x
 
     | Not: CavaExpr << Bit, Unit >> Bit
     | And: CavaExpr << Bit, Bit, Unit >> Bit
@@ -94,7 +95,7 @@ Section Vars.
   Bind Scope kind_scope with CavaExpr.
   Delimit Scope kind_scope with CavaExpr.
 
-  Definition tupleHelper {X Y}
+  Definition tupleHelper {X Y} 
     (x: CavaExpr Unit X)
     (y: CavaExpr Unit Y) :=
     App (App Pair x) y.
@@ -143,12 +144,14 @@ Section Vars.
     | UnsignedAdd2 a b => liftCava <<_,_,u>> (unsigned_add a b _)
     | Lut n f => liftCava <<_,u>> (lut n f)
 
-    | @LiftConstant ty x =>
+    | LiftConstant ty x =>
       match ty, x with
       | Bit, b => Kappa.Morph (constant b)
       | Vector Bit n, v => Kappa.Morph (constant_bitvec _ v)
       | _, H => match H with end
       end
+
+    | Morphism m => Kappa.Morph (m _)
 
     | EmptyVec => liftCava <<u>> (empty_vec _)
     | Index n => liftCava <<_,_,u>> (index n _)
@@ -164,9 +167,7 @@ End Vars.
 
 Arguments CavaExpr : clear implicits.
 
-Definition Kappa_sugared i o := forall var, CavaExpr var i o.
-
-Definition Desugar `{Cava} {i o} (e: Kappa_sugared i o) : Kappa i o := fun var => desugar (e var).
+Definition Desugar {_ :Cava} {i o} (e: forall var, CavaExpr var i o) : Kappa i o := fun var => desugar (e var).
 
 Hint Resolve Desugar : core.
 Hint Resolve desugar : core.
