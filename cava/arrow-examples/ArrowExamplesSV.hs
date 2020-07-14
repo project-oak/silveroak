@@ -18,9 +18,9 @@ module Main where
 
 import Cava2SystemVerilog
 import Mux2_1
-import ArrowAdder
 import SyntaxExamples
 import UnsignedAdder
+import ArrowAdderTutorial
 
 main :: IO ()
 main = do writeSystemVerilog mux2_1_netlist

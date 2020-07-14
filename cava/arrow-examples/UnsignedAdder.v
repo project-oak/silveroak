@@ -16,6 +16,7 @@
 
 From Arrow Require Import Category ClosureConversion.
 From Cava Require Import Arrow.ArrowExport.
+From ArrowExamples Require Import Library.
 
 From Coq Require Import Strings.String Bvector List NArith Nat Lia Plus.
 Import ListNotations.
@@ -27,24 +28,6 @@ Section notation.
   Import KappaNotation.
   Local Open Scope kind_scope.
 
-  Definition rewrite_vector {A x y} (H: x = y)
-    (cava: Cava): << Vector A x, Unit >> ~> <<Vector A y>>
-    :=
-  match PeanoNat.Nat.eq_dec x y with
-  | left Heq =>
-    rew [fun x => << _, _ >> ~> <<Vector A x>> ] Heq in <[\x=>x]> cava
-  | right Hneq => (ltac:(contradiction))
-  end.
-
-  Definition rewrite_kind {x y} (H: x = y)
-    (cava: Cava): << x, Unit >> ~> y
-    :=
-  match decKind x y with
-  | left Heq =>
-    rew [fun x => << _ >> ~> <<x>> ] Heq in <[\x=>x]> cava
-  | right Hneq => (ltac:(contradiction))
-  end.
-
   Definition unsigned_adder a b c
   : forall cava: Cava, << Vector Bit a, Vector Bit b, Unit >> ~> (Vector Bit c) :=
   <[ \ x y => unsigned_add a b c x y ]>.
@@ -53,68 +36,9 @@ Section notation.
   : forall cava: Cava, << Vector Bit s1, Vector Bit s2, Vector Bit s3, Unit >> ~> (Vector Bit _) :=
   <[ \ a b c => a + b + c ]>.
 
-  Definition split_pow2 A n
-    : forall cava: Cava, << Vector A (2^(S n)), Unit >> ~> <<Vector A (2^n), Vector A (2^n)>>.
-    refine (<[\ x => 
-      let '(l,r) = split_at (2^n) x in
-      (l, !(rewrite_vector _) r)
-        ]>);
-    induction n; simpl; auto; nia.
-  Defined.
-
-  Fixpoint tree (A: Kind) (n: nat)
-    (f: forall cava: Cava, << A, A, Unit >> ~> A) {struct n}
-    : forall cava: Cava, << Vector A (2^(n+1)), Unit >> ~> A :=
-  match n with
-  | O => <[ \ vec =>
-      let '(a,vec') = uncons vec in
-      let '(b,_) = uncons vec' in
-      !f a b
-    ]>
-  | S n' => 
-    <[\ x =>
-        let '(left,right) = !(split_pow2 A (n'+1)) x in
-        let a = !(tree A n' f) left in
-        let b = !(tree A n' f) right in
-        !f a b
-    ]>
-  end.
-
   Definition tree_adder a n
-  : forall cava: Cava, << Vector (Vector Bit a) (2^(n+1)), Unit >> ~> (Vector Bit a) :=
+  : forall cava: Cava, << Vector (Vector Bit a) (2^n), Unit >> ~> (Vector Bit a) :=
   <[ \ v => !(tree (Vector Bit a) n (unsigned_adder a a a)) v  ]>.
-
-  Fixpoint dt_tree_fold'
-    (n k: nat)
-    (T: nat -> Kind)
-    (f: forall n, forall cava: Cava, << T n, T n, Unit >> ~> (T (S n))) {struct n}
-    : forall cava: Cava, << Vector (T k) (2^(n + 1)), Unit >> ~> (T (S (n + k))) :=
-  match n with
-  | O => 
-    <[ \ vec =>
-      let '(a,vec') = uncons vec in
-      let '(b,_) = uncons vec' in
-      !(rewrite_kind (ltac:(auto))) (!(f k) a b)
-    ]>
-  | S n' =>  
-    <[\ x =>
-        let '(left,right) = !(split_pow2 (T k) (n'+1)) x in
-        let a = !(dt_tree_fold' n' k T f) left in
-        let b = !(dt_tree_fold' n' k T f) right in
-        !(f _) a b
-    ]>
-  end.
-
-  Definition dt_tree_fold
-    (n: nat)
-    (T: nat -> Kind)
-    (f: forall n, forall cava: Cava, << T n, T n, Unit >> ~> T (S n)) 
-    (cava: Cava)
-    : << Vector (T 0) (2^(n + 1)), Unit >> ~> T (S n) :=
-    match PeanoNat.Nat.eq_dec (S (n + 0)) (S n) with
-    | left Heq => rew [fun x => <<_>> ~> <<T x>> ] Heq in dt_tree_fold' n 0 T f cava
-    | right Hneq => (ltac:(exfalso; abstract lia))
-    end.
 
   Lemma max_nn_add_1_is_S_n: forall n, 1 + max n n = S n.
   Proof. intros; rewrite PeanoNat.Nat.max_id; auto. Qed.
@@ -124,9 +48,8 @@ Section notation.
   <[ \ a b => !(rewrite_vector (max_nn_add_1_is_S_n _)) (a + b) ]>.
 
   Definition growth_tree_adder a n
-  : forall cava: Cava, << Vector (Vector Bit a) (2^(n+1)), Unit >> ~> Vector Bit (S (n + a)) :=
+  : forall cava: Cava, << Vector (Vector Bit a) (2^n), Unit >> ~> Vector Bit (n + a) :=
   <[ \ v => !(dt_tree_fold' n a (Vector Bit) (growth_adder)) v  ]>.
-
 End notation.
 
 Open Scope kind_scope.
@@ -146,19 +69,19 @@ Proof. combinational_obvious. Qed.
 
 Definition adder444_tree_4: forall cava: Cava, 
   << Vector (Vector Bit 4) 4, Unit >> ~[cava]~> (Vector Bit 4) 
-  := tree_adder 4 1.
+  := tree_adder 4 2.
 
 Definition adder444_tree_8: forall cava: Cava, 
   << Vector (Vector Bit 4) 8, Unit >> ~[cava]~> (Vector Bit 4) 
-  := tree_adder 4 2.
+  := tree_adder 4 3.
 
 Definition adder444_tree_64: forall cava: Cava,
   << Vector (Vector Bit 4) 64, Unit >> ~[cava]~> (Vector Bit 4) 
-  := tree_adder 4 5.
+  := tree_adder 4 6.
 
 Definition growth_tree_8: forall cava: Cava, 
   << Vector (Vector Bit 4) 8, Unit >> ~[cava]~> (Vector Bit 7) 
-  := growth_tree_adder 4 2.
+  := growth_tree_adder 4 3.
 
 Require Import Cava.Types.
 Require Import Cava.Netlist.

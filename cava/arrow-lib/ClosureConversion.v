@@ -126,7 +126,7 @@ Section env.
   Lemma lookup_top_contra: forall i ty ty',
     i = length env
     -> lookup_kind (ty :: env) i = Some ty'
-    -> ty' <> ty
+    -> ty <> ty'
     -> False.
   Proof. env_auto. Qed.
 End env.
@@ -142,8 +142,8 @@ Fixpoint extract_nth (env: environment) ty x
   | ty' :: env' => fun H =>
     match eq_nat_dec x (length env') with
     | left Heq =>
-      match object_decidable_equality ty ty' with
-      | left Heq2 => rew <- Heq2 in (second drop >>> cancelr) 
+      match object_decidable_equality ty' ty with
+      | left Heq2 => rew Heq2 in (second drop >>> cancelr) 
       | right Hneq => match lookup_top_contra env' Heq H Hneq with end
       end
     | right Hneq => first drop >>> cancell >>> extract_nth env' x (push_lookup _ _ Hneq H)
