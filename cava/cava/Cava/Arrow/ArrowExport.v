@@ -16,6 +16,7 @@
 
 Require Export Cava.Arrow.CavaArrow.
 Require Export Cava.Arrow.PropArrow.
+Require Export Cava.Arrow.EvaluationArrow.
 Require Export Cava.Arrow.CombinationalArrow.
 Require Export Cava.Arrow.NetlistArrow.
 
