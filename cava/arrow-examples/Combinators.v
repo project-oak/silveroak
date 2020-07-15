@@ -398,26 +398,15 @@ Section regression_tests.
     let '(carry, result) = !(rippleCarryAdder' _) b merged in
     (carry, result)
     ]>.
-  
+ 
   Lemma interleave_is_stateless : forall n, has_no_state (interleaveVectors n EvalCava).
-  Proof.
-    intros.
-    induction n.
-    * cbv [interleaveVectors Closure_conversion closure_conversion].
-      refine (OnlyUnitsTuple _ _ OnlyUnitsUnit _ ).
-      apply (no_let_rec_and_stateless_morphisms_is_stateless _ _).
-      - cbv [Desugar desugar]; auto.
-        repeat (constructor; intros).
-      - cbv [Desugar desugar]; auto.
-        repeat (constructor; intros).
-    * cbv [interleaveVectors Closure_conversion closure_conversion].
-      refine (OnlyUnitsTuple _ _ OnlyUnitsUnit _ ).
-      apply (no_let_rec_and_stateless_morphisms_is_stateless _ _).
-      - cbv [Desugar desugar]; auto.
-        repeat (constructor; intros).
-      - cbv [Desugar desugar]; auto.
-        repeat (constructor; intros).
-        apply IHn.
-  Qed.
+  Proof. induction n; auto 20 with stateless. Qed.
 
+  Lemma halfAdder_is_stateless : has_no_state (halfAdder EvalCava).
+  Proof. auto 20 with stateless. Qed.
+  Hint Extern 1 (has_no_state (halfAdder EvalCava)) => apply halfAdder_is_stateless : stateless.
+
+  Lemma fullAdder_is_stateless : has_no_state (fullAdder EvalCava).
+  Proof. auto 30 with stateless. Qed.
+  Hint Extern 1 (has_no_state (fullAdder EvalCava)) => apply fullAdder_is_stateless : stateless.
 End regression_tests.

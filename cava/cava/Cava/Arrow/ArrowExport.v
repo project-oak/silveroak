@@ -15,10 +15,11 @@
 (****************************************************************************)
 
 Require Export Cava.Arrow.CavaArrow.
-Require Export Cava.Arrow.PropArrow.
+Require Export Cava.Arrow.CavaExpression.
+Require Export Cava.Arrow.CavaExpressionProp.
+Require Export Cava.Arrow.CavaNotation.
 Require Export Cava.Arrow.EvaluationArrow.
 Require Export Cava.Arrow.CombinationalArrow.
 Require Export Cava.Arrow.NetlistArrow.
+Require Export Cava.Arrow.PropArrow.
 
-Require Export Cava.Arrow.CavaExpression.
-Require Export Cava.Arrow.CavaNotation.

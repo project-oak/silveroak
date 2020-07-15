@@ -61,6 +61,7 @@ Module KappaNotation.
   Notation "! x" := (Morphism x)(in custom expr at level 2, x global) : kappa_scope.
   Notation "!( x )" := (Morphism x) (in custom expr, x constr) : kappa_scope.
 
+  Notation tupleHelper := (fun x y => App (App Pair x) y).
   Notation "( x , .. , y , z )" := (
     (tupleHelper x .. (tupleHelper y z) .. )
     )

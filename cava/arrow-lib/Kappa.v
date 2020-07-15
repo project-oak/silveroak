@@ -41,7 +41,6 @@ Section Arrow.
       | MorphPropComp: forall x y z f g,
         MorphPropKappa y z f -> MorphPropKappa x y g -> MorphPropKappa x z (Comp f g)
       | MorphPropMorph : forall x y m, P x y m -> MorphPropKappa x y (Morph m).
-
     End prop.
 
   End Vars.
@@ -49,3 +48,9 @@ Section Arrow.
   Definition Kappa i o := forall var, kappa var i o.
 
 End Arrow.
+
+Hint Constructors NoLetRecKappa : core.
+Hint Extern 5 (NoLetRecKappa _ _ _ _) => apply NoLetRecAbs : core.
+Hint Constructors MorphPropKappa : core.
+Hint Extern 5 (MorphPropKappa _ _ _ _ _) => apply MorphPropAbs : core.
+Hint Extern 10 (MorphPropKappa _ _ _ _ _) => apply MorphPropComp : core.

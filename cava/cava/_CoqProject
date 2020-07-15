@@ -23,6 +23,7 @@ Cava/Arrow/CombinationalArrow.v
 Cava/Arrow/EvaluationArrow.v
 Cava/Arrow/NetlistArrow.v
 Cava/Arrow/CavaExpression.v
+Cava/Arrow/CavaExpressionProp.v
 Cava/Arrow/CavaNotation.v
 Cava/Arrow/ArrowExport.v
 
