@@ -2,7 +2,7 @@
 -R ../arrow-lib Arrow
 -R . ArrowExamples
 
-Library.v 
+Combinators.v 
 
 Mux2_1.v
 SyntaxExamples.v
