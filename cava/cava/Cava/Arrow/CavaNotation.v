@@ -29,8 +29,7 @@ Delimit Scope kappa_scope with kappa.
 
 Module KappaNotation.
   Notation "<[ e ]>" := (
-    fun (cava: Cava) => 
-    Closure_conversion (object_decidable_equality:=decKind) (Desugar (fun var => e%kappa))
+    fun (cava: Cava) => Closure_conversion (object_decidable_equality:=decKind) (Desugar (fun var => e%kappa))
    ) (at level 1, e custom expr at level 1).
 
   (* Notation "<[ e ]>" := (e%kappa) (at level 1, e custom expr at level 1). *)

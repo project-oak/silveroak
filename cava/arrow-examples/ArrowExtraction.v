@@ -22,14 +22,14 @@ From Coq Require Import extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.
 
-Require Import Library.
+Require Import Combinators.
 Require Import SyntaxExamples.
 Require Import Mux2_1.
 Require Import UnsignedAdder.
 
 Require Import ArrowAdderTutorial.
 
-Extraction Library Library.
+Extraction Library Combinators.
 Extraction Library SyntaxExamples.
 Extraction Library Mux2_1.
 Extraction Library UnsignedAdder.

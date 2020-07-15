@@ -188,16 +188,50 @@ End instance.
 
 Local Open Scope category_scope.
 
-Fixpoint kind_only_units (ty: Kind) := 
-  match ty with
-  | Tuple l r => kind_only_units l /\ kind_only_units r
-  | Bit => False
-  | Vector ty n => kind_only_units ty
-  | Unit => True
-  end.
+Inductive kind_only_units: Kind -> Prop :=
+| OnlyUnitsTuple: forall l r, kind_only_units l -> kind_only_units r -> kind_only_units (Tuple l r)
+| OnlyUnitsUnit: kind_only_units Unit
+| OnlyUnitsVector: forall ty n, kind_only_units ty -> kind_only_units (Vector ty n).
 
 Definition has_no_state {x y} (circuit: x ~[EvalCava]~> y) :=
   kind_only_units (evalProjState circuit).
+
+Lemma cancelr_stateless: forall y, has_no_state (y:=y) (cancelr (Arrow:=EvalCava)).
+Proof.
+  unfold has_no_state.
+  cbn.
+  intros.
+  exact (OnlyUnitsUnit).
+Qed.
+
+(*TODO: Is the sumbool actually computable? If not, is this still useful? *)
+Definition has_no_state_dec {x y} (circuit: x ~[EvalCava]~> y): {has_no_state circuit} + {~has_no_state circuit}.
+Proof.
+  cbv [has_no_state].
+  set (s:=evalProjState circuit).
+  induction s; cbn in *; auto.
+
+  inversion IHs1.
+  inversion IHs2.
+  * left. refine (OnlyUnitsTuple _ _ _ _); auto.
+  * right. 
+    unfold not in *.
+    intros.
+    inversion H1.
+    apply H0 in H5.
+    inversion H5.
+  * right. 
+    unfold not in *.
+    intros.
+    inversion H0.
+    apply H in H3.
+    inversion H3.
+  * left. exact OnlyUnitsUnit.
+  * right. unfold not. intros. inversion H.
+  * inversion IHs.
+    left. exact (OnlyUnitsVector _ _ H).
+    right. unfold not in *. intros. inversion H0. apply H in H2. inversion H2.
+Defined.
 
 Lemma only_units_is_singular: forall ty,
   kind_only_units ty -> 
@@ -205,21 +239,24 @@ Lemma only_units_is_singular: forall ty,
 Proof.
   intros.
   induction ty; simpl in *.
-  - destruct H.
+  - inversion H.
     destruct s.
-    apply IHty1 with (s:= d) in H.
-    apply IHty2 with (s:= d0) in H0.
-    rewrite H.
-    rewrite H0.
+    apply IHty1 with (s:= d) in H2.
+    apply IHty2 with (s:= d0) in H3.
+    rewrite H2.
+    rewrite H3.
     reflexivity.
   - induction s. reflexivity.
-  - induction s; [contradiction | reflexivity].
+  - induction s. inversion H. reflexivity.
   - induction s; auto.
     simpl.
     f_equal.
-    apply IHty with (s:=h) in H.
-    apply H.
+    inversion H.
+    apply IHty with (s:=h) in H1.
+    apply H1.
     apply IHs.
+    inversion H.
+    exact (OnlyUnitsVector _ _ H1).
 Qed.
 
 Lemma state_is_irrelevant_for_stateless_circuit: forall {x y} 
@@ -264,7 +301,14 @@ Ltac stateless_obvious :=
   repeat (try split; trivial).
 
 Example not_gate_is_stateless: has_no_state (not_gate).
-Proof. stateless_obvious. Qed.
+Proof. 
+  pose (has_no_state_dec not_gate). 
+  compute in s.
+  destruct s.
+  apply k.
+  specialize (f OnlyUnitsUnit).
+  inversion f.
+Qed.
 
 Example evaluate_not_true: evaluate not_gate true tt = (false, tt).
 Proof. reflexivity. Qed.
@@ -274,7 +318,7 @@ Proof. reflexivity. Qed.
 
 (* The proof is not 'forall x, ~ has_no_state ...' as a delay_gate of a unit type 
 has no state as unit types are stateless by definition *)
-Example delay_gate_is_statefull: exists x, ~ has_no_state (delay_gate (o:=x)).
+Example delay_gate_is_stateful: exists x, ~ has_no_state (delay_gate (o:=x)).
 Proof. 
   cbv [has_no_state not]. 
   simpl. 

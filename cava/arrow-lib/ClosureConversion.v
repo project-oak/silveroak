@@ -181,6 +181,10 @@ Section env.
     @wf_debrujin (x ** y) z env (Abs _ _ f) -> @wf_debrujin y z (x :: env) (f (length env)).
   Proof. env_auto. Qed.
 
+  Lemma wf_debrujin_var_succ: forall {x y a} v ,
+    wf_debrujin (i:=x) (o:=y) (a :: env) (Var _ v) -> wf_debrujin env (Var _ v) \/ v = length env.
+  Proof. env_auto. Qed.
+
   Lemma wf_debrujin_lax_compose1: forall {x y z} e1 e2,
     @wf_debrujin x z env (Comp _ e2 e1) -> @wf_debrujin x y env e1.
   Proof. env_auto. Qed.
