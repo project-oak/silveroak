@@ -27,10 +27,7 @@ Section notation.
   Import KappaNotation.
   Local Open Scope kind_scope.
 
-  (* Section var.
-    Variable var: Kind -> Kind -> Type. *)
-
-    Definition mux2_1
+  Definition mux2_1
     : forall cava: Cava, << Bit, << Bit, Bit >>, Unit >> ~> Bit :=
     <[ \ sel ab =>
       let '(a,b) = ab in
@@ -40,7 +37,6 @@ Section notation.
       let sel_out = or sel_a sel_b in
       sel_out
     ]>.
-  (* End var. *)
 End notation.
 
 Open Scope kind_scope.

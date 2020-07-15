@@ -2,8 +2,11 @@
 -R ../arrow-lib Arrow
 -R . ArrowExamples
 
+Library.v 
+
 Mux2_1.v
-ArrowAdder.v
 SyntaxExamples.v
 ArrowExtraction.v
 UnsignedAdder.v
+
+ArrowAdderTutorial.v
