@@ -10,3 +10,8 @@ ArrowExtraction.v
 UnsignedAdder.v
 
 ArrowAdderTutorial.v
+
+Aes/pkg.v
+Aes/sbox_canright_pkg.v
+Aes/sbox_canright.v
+Aes/sbox_canright_masked_noreuse.v

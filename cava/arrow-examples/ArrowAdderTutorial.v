@@ -123,7 +123,7 @@ Section notation.
       << replicate Bit (S n), Unit >> ~>
       << Vector Bit (S n) >> :=
   match n with
-  | 0 => <[\ x => vector {x} ]> 
+  | 0 => <[\ x => x :: [] ]> 
   | S n => 
       <[\ xs => 
       let '(x, xs') = xs in 

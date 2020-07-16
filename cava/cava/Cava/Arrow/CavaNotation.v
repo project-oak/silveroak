@@ -44,7 +44,7 @@ Module KappaNotation.
 
   Notation "x" := (Var x) (in custom expr, x ident) : kappa_scope.
   Notation "( x )" := x (in custom expr, x at level 4) : kappa_scope.
-  Notation "'let' x = e1 'in' e2" := (Let e1 (fun x => e2)) (in custom expr at level 1, x constr at level 4, e2 at level 5, e1 at level 1) : kappa_scope.
+  Notation "'let' x = e1 'in' e2" := (Let e1 (fun x => e2)) (in custom expr at level 1, x constr at level 4, e2 at level 7, e1 at level 1) : kappa_scope.
 
   (* todo: turn into a recursive pattern *)
   Notation "'let' '( x , y ) = e1 'in' e2"
@@ -54,7 +54,7 @@ Module KappaNotation.
       )
     )
     )
-    (in custom expr at level 1, x constr at level 4, y constr at level 4, e2 at level 5, e1 at level 1) : kappa_scope.
+    (in custom expr at level 1, x constr at level 4, y constr at level 4, e2 at level 7, e1 at level 1) : kappa_scope.
 
   (* Escaping *)
 
@@ -103,26 +103,25 @@ Module KappaNotation.
   Notation "'unsnoc'" := (Unsnoc _) (in custom expr at level 4) : kappa_scope.
 
   Notation "'[]'" := (EmptyVec) (in custom expr at level 4) : kappa_scope.
-  Notation "v [ x ]" := (App (App (Index _) v) x) (in custom expr at level 4) : kappa_scope.
   Notation "x ++ y" := (App (App (Concat _ _) x) y) (in custom expr at level 4) : kappa_scope.
-  Notation "x :: y" := (App (App (Cons _) x) y) (in custom expr at level 4) : kappa_scope.
+  Notation "x :: y" := (App (App (Cons _) x) y) (in custom expr at level 7, right associativity) : kappa_scope.
 
   Notation "'true'" := (LiftConstant Bit true) (in custom expr at level 2) : kappa_scope.
   Notation "'false'" := (LiftConstant Bit false) (in custom expr at level 2) : kappa_scope.
 
   Notation "# x" := (LiftConstant (Vector Bit _) x)%N (in custom expr at level 2, x constr at level 4) : kappa_scope.
 
-  Notation " v [ x : y ] " :=
-        (App (Slice _ x y _ _) v)
-    (in custom expr at level 4,
-    v constr,
-    x constr at level 5,
-    y constr at level 5
+  Notation "v [ x ]" := (App (App (Index _) v) x)
+    ( in custom expr at level 2
+    , x at level 7
     ) : kappa_scope.
-
-  Notation "'vector' { }" := ( EmptyVec ) (in custom expr at level 4) : kappa_scope.
-  Notation "'vector' { x , .. , y }" :=
-    (App (App (Snoc _) .. (App (App (Snoc _) EmptyVec) x) ..) y) (in custom expr at level 4) : kappa_scope.
+  Notation "v [: x : y ]" :=
+        (App (Slice _ x y _ _) v)
+    (in custom expr at level 2,
+    (* v constr, *)
+    x constr at level 7,
+    y constr at level 7
+    ) : kappa_scope.
 End KappaNotation.
 
 Definition make_module {i o} 
@@ -139,10 +138,8 @@ Section regression_examples.
   Import KappaNotation.
   Local Open Scope kappa_scope.
 
-  Context {var: Kind -> Kind -> Type}.
-
   Program Definition ex0_constant: forall cava: Cava, << Vector Bit 10, Unit >> ~> (Vector Bit 8)
-    := <[ \x => x [ 7 : 0 ] ]>.
+    := <[ \x => x [: 7 : 0 ] ]>.
   Next Obligation. lia. Qed.
 
   Definition ex1_constant: forall cava: Cava, << Bit, Unit >> ~> Bit := <[ \x => true ]>.
@@ -153,7 +150,7 @@ Section regression_examples.
   end.
 
   Definition ex3_to_vec: forall cava: Cava, << Bit, Unit >> ~> (Vector Bit 1) :=
-  <[ \ x => vector { x } ]>.
+  <[ \ x => x :: [] ]>.
   Definition ex4_index_vec: forall cava: Cava, << Vector Bit 10, Unit >> ~> Bit :=
   <[ \ x => index x (# 1) ]>.
   Definition ex5_index_vec2: forall cava: Cava, << Vector Bit 10, Unit >> ~> Bit :=
@@ -169,13 +166,17 @@ Section regression_examples.
   Definition ex8_multiindex: forall cava: Cava, << Vector (Vector Bit 5) 10, Unit >> ~> Bit :=
   <[ \ x => x[#0][#1] ]>.
   Definition ex9_mkvec: forall cava: Cava, << Bit, Unit >> ~> (Vector Bit 2) :=
-  <[ \x => vector { true, false } ]>.
+  <[ \x => true :: false :: [] ]>.
   Definition ex10: forall cava: Cava, << Vector Bit 10, Vector Bit 10, Unit >> ~> (Vector Bit 11) :=
   <[ \ x y => x + y ]>.
   Definition ex11: forall cava: Cava, << Vector Bit 10, Vector Bit 10, Unit >> ~> (Vector Bit 10) :=
   <[ \ x y => x +% y ]>.
   Definition ex12_module: forall cava: Cava, <<Vector Bit 10, Unit>> ~> Vector Bit 10
     := make_module "ex12_module" <[ \x => x +% x ]>.
+  Definition ex13: forall cava: Cava, << Vector Bit 10, Unit >> ~> Bit :=
+  <[ \ x => (xor x[#0] x[#1] :: false :: []) [#0] ]>.
+  Definition ex14: forall cava: Cava, << Vector Bit 10, Vector Bit 4, Unit >> ~> Bit :=
+  <[ \ x i => x [ i ] ]>.
 
   Fixpoint copy_object_pow2 o (n:nat): Kind :=
   match n with
