@@ -170,7 +170,7 @@ Class Cava := {
   uncons n o: Vector o (S n) ~> o ** Vector o n;
   unsnoc n o: Vector o (S n) ~> Vector o n ** o;
   concat n m o: Vector o n ** Vector o m ~> Vector o (n + m);
-  split n m o: m <= n -> Vector o n ~> (Vector o m ** Vector o (n - m));
+  split n m o: Vector o (n+m) ~> (Vector o n ** Vector o m);
   (* slice n x y where x >= y, x is inclusive 
   So, somevec[1:0] is the vector [vec[0],vec[1]] : Vector 2 _ *)
   slice n x y o: x < n -> y <= x -> Vector o n ~> Vector o (x - y + 1);

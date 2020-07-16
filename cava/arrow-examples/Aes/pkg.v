@@ -49,16 +49,15 @@ Notation "x == y" :=
 Definition CIPH_FWD: forall cava: Cava, Unit ~> Bit := <[ false ]>.
 Definition CIPH_INV: forall cava: Cava, Unit ~> Bit := <[ true ]>.
 
-Fixpoint outer {n}
-  : forall cava: Cava, <<Bit, Unit>> ~> (Vector Bit n) :=
-match n with
-| 0 => <[ \_ => [] ]>
-| S n => <[ \x => x :: !outer x ]>
-end.
+Inductive SboxImpl := 
+(* | SboxLut *)
+| SboxCanright
+(* | SboxCanrightMasked *)
+| SboxCanrightMaskedNoReuse.
 
 Definition aes_mvm_acc
   : forall cava: Cava, <<Vector Bit 8, Vector Bit 8, Bit, Unit>> ~> (Vector Bit 8) :=
-  <[\acc mat vec => acc ^ (mat & (!outer vec)) ]>.
+  <[\acc mat vec => acc ^ (mat & (!replicate vec)) ]>.
 
 Definition aes_mvm: forall cava: Cava,
   <<Vector Bit 8, Vector (Vector Bit 8) 8, Unit>> ~> (Vector Bit 8) :=
@@ -73,3 +72,29 @@ Definition aes_mvm: forall cava: Cava,
   let _8 = !aes_mvm_acc (_7) (mat_a[#7]) (vec_b[#0]) in
   _8
   ]>.
+
+
+(* function automatic logic [31:0] aes_circ_byte_shift(logic [31:0] in, logic [1:0] shift);
+  logic [31:0] out;
+  logic [31:0] s;
+  s = {30'b0,shift};
+  out = {in[8*((7-s)%4) +: 8], in[8*((6-s)%4) +: 8],
+         in[8*((5-s)%4) +: 8], in[8*((4-s)%4) +: 8]};
+  return out;
+endfunction *)
+Definition aes_circ_byte_shift: forall cava: Cava,
+  <<Vector Bit 32, Vector Bit 2, Unit>> ~> (Vector Bit 32) :=
+  <[\input shift =>
+    let as_bytes = !(@reshape 4 8 Bit) input in
+    let transformed = 
+      !(map3 <[\in_ shift seq => 
+      (* in_[8*((4-shift)%4) +: 8]
+      in_[8*((5-shift)%4) +: 8] ::
+      in_[8*((6-shift)%4) +: 8] :: 
+      in_[8*((7-shift)%4) +: 8] :: [] *)
+      #0 ]> (* todo *)
+      ) as_bytes (!replicate shift) !(@seq _ 0 4) in
+    !(@flatten 4 8 _) transformed
+  ]>.
+
+

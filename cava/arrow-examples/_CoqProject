@@ -15,3 +15,5 @@ Aes/pkg.v
 Aes/sbox_canright_pkg.v
 Aes/sbox_canright.v
 Aes/sbox_canright_masked_noreuse.v
+Aes/sbox.v
+Aes/sub_bytes.v

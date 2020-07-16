@@ -156,11 +156,7 @@ Instance EvalSTKC : ArrowSTKC EvalArrow := { }.
     (v', last v), tt));
   concat n m o := fun_s Unit (fun '(x, y) _ => (Vector.append x y, tt));
 
-  split n m o H := fun_s Unit (fun x _ => (
-    match Nat.eq_dec n (m + (n - m)) with 
-      | left Heq => @Vector.splitat (denote o) m (n - m) (rew [Vector.t _]Heq in x)
-      | right Hneq => (ltac:(exfalso;lia))
-      end, tt));
+  split n m o := fun_s Unit (fun x _ => (Vector.splitat n x, tt));
 
   slice n x y o H1 H2 := fun_s Unit (fun v _ => (
     match Nat.eq_dec n (y + (n - y)) with 

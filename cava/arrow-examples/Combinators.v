@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category ClosureConversion.
+From Arrow Require Import Category Arrow ClosureConversion.
 From Cava Require Import Arrow.ArrowExport.
 
 From Coq Require Import Strings.String Bvector List NArith Nat Lia Plus.
@@ -44,14 +44,64 @@ Definition rewrite_vector {A x y} (H: x = y) (cava: Cava)
   | right Hneq => (ltac:(contradiction))
   end.
 
-Definition split_pow2 A n
-  : forall cava: Cava, << Vector A (2^(S n)), Unit >> ~> <<Vector A (2^n), Vector A (2^n)>>.
-  refine (<[\ x => 
+Program Definition split_pow2 A n
+  : forall cava: Cava, << Vector A (2^(S n)), Unit >> ~> <<Vector A (2^n), Vector A (2^n)>> :=
+  <[\ x => 
     let '(l,r) = split_at (2^n) x in
     (l, !(rewrite_vector _) r)
-      ]>);
-  induction n; simpl; auto; nia.
-Defined.
+      ]>.
+
+(* *************************** *)
+(* Misc *)
+
+Definition uncurry {A B C args}
+  (f: forall cava: Cava, << <<A, B>>, args >> ~> C) 
+  : forall cava: Cava, <<A, B, args>> ~> C :=
+  <[ \a b => !f (a, b) ]>.
+
+Definition curry {A B C args}
+  (f: forall cava: Cava, << A, B, args >> ~> C) 
+  : forall cava: Cava, << <<A, B>>, args >> ~> C :=
+  <[ \ab => let '(a, b) = ab in !f a b ]>.
+
+Fixpoint reshape {n m A}
+  : forall cava: Cava, << Vector A (n * m), Unit >> ~> << Vector (Vector A m) n >> :=
+match n with
+| 0 => <[\_ => [] ]>
+| S n' =>
+  <[ \vec => 
+    let '(x, xs) = split_at m vec in
+    x :: !(@reshape n' m A) xs 
+    ]>
+end.
+
+Fixpoint flatten {n m A}
+  : forall cava: Cava, << Vector (Vector A m) n, Unit >> ~> << Vector A (n*m) >> :=
+match n with
+| 0 => <[\_ => [] ]>
+| S n' =>
+  <[ \vec => 
+    let '(x, xs) = uncons vec in
+    concat x (!(@flatten n' m A) xs)
+    ]>
+end.
+
+Fixpoint seq {n bitsize}
+  (offset: N)
+  : forall cava: Cava, << Unit >> ~> << Vector (Vector Bit bitsize) n >> :=
+match n with
+| 0 => <[ [] ]>
+| S n' => <[ #offset :: !(seq (offset + 1)) ]>
+end.
+
+Definition drop_all {T}
+  : forall cava: Cava, << T >> ~> Unit
+  := fun cava => drop (A:=cava).
+
+Definition replace {A B}
+  (constant: forall cava: Cava, Unit ~> B)
+  : forall cava: Cava, << A >> ~> B
+  := fun cava => drop_all cava >>> constant cava.
 
 (* *************************** *)
 (* Tree folds, expecting a vector of input size pow2 *)
@@ -148,7 +198,7 @@ Fixpoint map {n A B}
   (f : forall cava: Cava, <<A, Unit>> ~> B)
   : forall cava: Cava, << Vector A n, Unit >> ~> <<Vector B n>> :=
 match n with
-| 0 => <[ \x => [] ]>
+| 0 => <[\_ => [] ]>
 | S n' =>
   <[ \xs =>
       let '(x, xs') = uncons xs in
@@ -168,6 +218,24 @@ match n with
       !f x y :: (!(map2 f) xs' ys')
   ]>
 end.
+
+Fixpoint map3 {n A B C D}
+  (f : forall cava: Cava, <<A, B, C, Unit>> ~> D)
+  : forall cava: Cava, << Vector A n, Vector B n, Vector C n, Unit >> ~> <<Vector D n>> :=
+match n with
+| 0 => <[ \x y z => [] ]>
+| S n' =>
+  <[ \xs ys zs =>
+      let '(x, xs') = uncons xs in
+      let '(y, ys') = uncons ys in
+      let '(z, zs') = uncons zs in
+      !f x y z :: (!(map3 f) xs' ys' zs')
+  ]>
+end.
+
+Definition zipper {n A B}
+  : forall cava: Cava, << Vector A n, Vector B n, Unit >> ~> <<Vector <<A,B>> n>> :=
+  map2 <[\x y => (x,y) ]>.
 
 Fixpoint equality {T}
   : forall cava: Cava, << T, T, Unit >> ~> <<Bit>> :=

@@ -89,7 +89,7 @@ Section Vars.
     | Uncons: forall n {o}, CavaExpr << Vector o (S n), Unit >> << o, Vector o n >>
     | Unsnoc: forall n {o}, CavaExpr << Vector o (S n), Unit >> << Vector o n, o >>
     | Concat: forall n m {o}, CavaExpr << Vector o n, Vector o m, Unit >> (Vector o (n + m))
-    | Split: forall n m {o}, (m <= n) -> CavaExpr << Vector o n, Unit >> <<Vector o m, Vector o (n - m)>>
+    | Split: forall n m {o}, CavaExpr << Vector o (n+m), Unit >> <<Vector o n, Vector o m>>
     | Slice: forall n x y {o}, x < n -> y <= x -> CavaExpr << Vector o n, Unit >> (Vector o (x - y + 1)) .
 
   Bind Scope kind_scope with CavaExpr.
@@ -161,7 +161,7 @@ Section Vars.
     | Unsnoc n => liftCava <<_,u>> (unsnoc n _)
     | Concat n m => liftCava <<_,_,u>> (concat n m _)
     | Slice n x y H1 H2 => liftCava <<_,u>> (slice n x y _ H1 H2)
-    | Split n m H => liftCava <<_,u>> (split n m _ H)
+    | Split n m => liftCava <<_,u>> (split n m _)
     end.
 End Vars.
 

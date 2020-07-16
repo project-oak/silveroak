@@ -124,11 +124,8 @@ Instance CombinationalSTKC : ArrowSTKC CoqKindMaybeArrow := { }.
     Some (v', last v);
   concat n m o '(x, y) := Some (Vector.append x y);
 
-  split n m o H x :=
-    match Nat.eq_dec n (m + (n - m)) with 
-      | left Heq => Some (@Vector.splitat (denote o) m (n - m) (rew [Vector.t _]Heq in x))
-      | right Hneq => (ltac:(exfalso;lia))
-      end;
+  split n m o x :=
+    Some (Vector.splitat n x);
 
   slice n x y o H1 H2 v := 
     match Nat.eq_dec n (y + (n - y)) with 
