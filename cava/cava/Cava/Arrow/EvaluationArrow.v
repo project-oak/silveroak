@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 From Coq Require Import Bool ZArith NaryFunctions Vector Lia.
-From Arrow Require Import Category Arrow.
+From Arrow Require Import Category Arrow Kappa.
 From Cava.Arrow Require Import CavaArrow PropArrow.
 
 Import VectorNotations.
@@ -192,12 +192,15 @@ Inductive kind_only_units: Kind -> Prop :=
 Definition has_no_state {x y} (circuit: x ~[EvalCava]~> y) :=
   kind_only_units (evalProjState circuit).
 
-Lemma cancelr_stateless: forall y, has_no_state (y:=y) (cancelr (Arrow:=EvalCava)).
+Lemma has_no_state_compose: forall x y z (f: x~>y) (g: y~>z), 
+  has_no_state f ->
+  has_no_state g ->
+  has_no_state (f >>> g) .
 Proof.
-  unfold has_no_state.
-  cbn.
   intros.
-  exact (OnlyUnitsUnit).
+  constructor.
+  apply H.
+  apply H0.
 Qed.
 
 (*TODO: Is the sumbool actually computable? If not, is this still useful? *)
@@ -291,25 +294,27 @@ Proof.
   rewrite H.
   reflexivity.
 Qed.
+  
+Hint Extern 5 (has_no_state ?X) =>
+  (match_primitive X; constructor) + (match_compose X; apply has_no_state_compose)
+  : stateless.
 
-Ltac stateless_obvious :=
-  cbv [has_no_state];
-  repeat (try split; trivial).
+Hint Extern 6 (has_no_state _) =>
+  match goal with
+  | [H: has_no_state ?Y |- has_no_state ?Y] => apply H
+  end : stateless.
+
+Hint Extern 5 (has_no_state (remove_rightmost_tt _)) =>
+  constructor : stateless.
 
 Example not_gate_is_stateless: has_no_state (not_gate).
-Proof. 
-  pose (has_no_state_dec not_gate). 
-  compute in s.
-  destruct s.
-  apply k.
-  specialize (f OnlyUnitsUnit).
-  inversion f.
-Qed.
+Proof. auto with stateless. Qed.
 
 Example evaluate_not_true: evaluate not_gate true tt = (false, tt).
 Proof. reflexivity. Qed.
 
-Example evaluate_not_true_with_stateless: stateless_evaluation not_gate not_gate_is_stateless true = false.
+Example evaluate_not_true_with_stateless: 
+  stateless_evaluation not_gate not_gate_is_stateless true = false.
 Proof. reflexivity. Qed.
 
 (* The proof is not 'forall x, ~ has_no_state ...' as a delay_gate of a unit type 

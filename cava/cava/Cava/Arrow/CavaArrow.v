@@ -187,6 +187,60 @@ Delimit Scope cava_scope with cava.
 
 Open Scope cava_scope.
 
+Ltac match_primitive X :=
+  match X with 
+  | (Category.id) => idtac
+
+  | (first _) => idtac
+  | (second _) => idtac
+  | (cancelr) => idtac
+  | (cancell) => idtac
+  | (uncancelr) => idtac
+  | (uncancell) => idtac
+  | (assoc) => idtac
+  | (unassoc) => idtac
+
+  | (CavaArrow.constant _) => idtac
+  | (CavaArrow.constant_bitvec _ _) => idtac
+  | (CavaArrow.mk_module _ _) => idtac
+
+  | (CavaArrow.not_gate) => idtac
+  | (CavaArrow.and_gate) => idtac
+  | (CavaArrow.nand_gate) => idtac
+  | (CavaArrow.or_gate) => idtac
+  | (CavaArrow.nor_gate) => idtac
+  | (CavaArrow.xor_gate) => idtac
+  | (CavaArrow.xnor_gate) => idtac
+  | (CavaArrow.buf_gate) => idtac
+
+  | (CavaArrow.delay_gate _) => idtac
+
+  | (CavaArrow.xorcy) => idtac
+  | (CavaArrow.muxcy) => idtac
+
+  | (CavaArrow.unsigned_add _ _ _) => idtac
+
+  | (CavaArrow.lut _) => idtac
+
+  | (CavaArrow.empty_vec _) => idtac
+  | (CavaArrow.index _ _) => idtac
+
+  | (CavaArrow.cons _ _) => idtac
+  | (CavaArrow.snoc _ _) => idtac
+  | (CavaArrow.uncons _ _) => idtac
+  | (CavaArrow.unsnoc _ _) => idtac
+  | (CavaArrow.concat _ _ _) => idtac
+  | (CavaArrow.split _ _ _ _) => idtac
+  | (CavaArrow.slice _ _ _ _ _ _) => idtac
+  end.
+
+Ltac match_compose X :=
+  match X with 
+  | (Category.compose ?Y ?Z) =>
+    (match_primitive Y + match_compose Y); 
+    (match_primitive Z + match_compose Z)
+  end.
+
 Definition high {_: Cava}: Unit ~> Bit := constant true.
 Definition low {_: Cava}: Unit ~> Bit := constant false.
 
