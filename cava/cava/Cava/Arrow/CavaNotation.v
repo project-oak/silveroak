@@ -98,7 +98,7 @@ Module KappaNotation.
   Notation "'cons'" := (Cons _) (in custom expr at level 4) : kappa_scope.
   Notation "'snoc'" := (Snoc _) (in custom expr at level 4) : kappa_scope.
   Notation "'concat'" := (Concat _ _) (in custom expr at level 4) : kappa_scope.
-  Notation "'split_at' x" := (Split _ x _) (in custom expr at level 4, x constr at level 4) : kappa_scope.
+  Notation "'split_at' x" := (Split x _) (in custom expr at level 4, x constr at level 4) : kappa_scope.
   Notation "'uncons'" := (Uncons _) (in custom expr at level 4) : kappa_scope.
   Notation "'unsnoc'" := (Unsnoc _) (in custom expr at level 4) : kappa_scope.
 
@@ -129,7 +129,6 @@ Definition make_module {i o}
   (expr: forall cava: Cava, i ~[cava]~> o)
   : forall cava: Cava, i ~[cava]~> o
   := fun cava => mk_module _ _ name (expr _).
-  (* (Closure_conversion (object_decidable_equality:=decKind) (Desugar expr)). *)
 
 Import KappaNotation.
 Local Open Scope kind_scope.

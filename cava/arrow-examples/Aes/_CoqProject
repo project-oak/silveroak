@@ -7,3 +7,5 @@ pkg.v
 canright_pkg.v
 canright.v
 canright_masked_noreuse.v
+sub_bytes.v
+shift_rows.v

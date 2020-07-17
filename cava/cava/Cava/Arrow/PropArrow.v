@@ -79,7 +79,7 @@ Instance NoDelays : Cava := {
   uncons n o:= True;
   unsnoc n o:= True;
   concat n m o := True;
-  split n m o _ := True;
+  split n m o := True;
   slice n x y o _ _ := True;
 
   delay_gate _ := False;
@@ -113,7 +113,7 @@ Instance NoLoops : Cava := {
   uncons n o:= True;
   unsnoc n o:= True;
   concat n m o := True;
-  split n m o _ := True;
+  split n m o := True;
   slice n x y o _ _ := True;
 
   delay_gate _ := True;

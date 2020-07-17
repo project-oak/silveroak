@@ -276,8 +276,7 @@ Section NetlistEval.
   unsnoc n o v := _; 
   concat n m o '(x, y) := ret (Vector.append x y);
 
-  split n m o H x :=
-    ret (@Vector.splitat (denote o) m (n - m) _);
+  split n m o x := ret (Vector.splitat n x);
 
   slice n x y o H1 H2 v := _;
   }.
@@ -303,11 +302,6 @@ Section NetlistEval.
     (*unsnoc*)
     - refine (ret ((Vector.take n _ v, Vector.last v)) ).
       auto.
-    (*split*)
-    - destruct (Nat.eq_dec (m + (n-m)) n).
-      rewrite <- e in x.
-      exact x.
-      exfalso;lia.
     (*slice*)
     - apply pack_vector in v.
       apply (Vector.map VecLit) in v.
