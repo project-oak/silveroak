@@ -80,6 +80,8 @@ Section Vars.
     | UnsignedAdd1: forall a b, CavaExpr << Vector Bit a, Vector Bit b, Unit >> (Vector Bit (max a b))
     | UnsignedAdd2: forall a b, CavaExpr << Vector Bit a, Vector Bit b, Unit >> (Vector Bit (1+max a b))
 
+    | UnsignedSub: forall a, CavaExpr << Vector Bit a, Vector Bit a, Unit >> (Vector Bit a)
+
     | Lut n: (bool^^n --> bool) -> CavaExpr << Vector Bit n, Unit >> Bit
 
     | EmptyVec: forall {o}, CavaExpr Unit (Vector o 0)
@@ -137,6 +139,7 @@ Section Vars.
     | UnsignedAdd a b c => liftCava <<_,_,u>> (unsigned_add a b c)
     | UnsignedAdd1 a b => liftCava <<_,_,u>> (unsigned_add a b _)
     | UnsignedAdd2 a b => liftCava <<_,_,u>> (unsigned_add a b _)
+    | UnsignedSub a => liftCava <<_,_,u>> (unsigned_sub a)
     | Lut n f => liftCava <<_,u>> (lut n f)
 
     | LiftConstant ty x =>

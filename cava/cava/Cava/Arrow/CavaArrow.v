@@ -160,6 +160,7 @@ Class Cava := {
   muxcy:     Bit ** (Bit ** Bit) ~> Bit;
   
   unsigned_add a b c: Vector Bit a ** Vector Bit b ~> Vector Bit c;
+  unsigned_sub a: Vector Bit a ** Vector Bit a ~> Vector Bit a;
 
   lut n: (bool^^n --> bool) -> Vector Bit n ~> Bit;
 

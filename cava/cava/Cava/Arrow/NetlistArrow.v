@@ -246,6 +246,12 @@ Section NetlistEval.
       addInstance (UnsignedAdd (VecLit x) (VecLit y) sum) ;;
       ret (Vector.map (IndexConst sum) (vseq 0 s));
 
+    unsigned_sub s '(x, y) :=
+      sum <- newVector _ s ;;
+      (* TODO: add netlist subtraction instance *)
+      addInstance (UnsignedAdd (VecLit x) (VecLit y) sum) ;;
+      ret (Vector.map (IndexConst sum) (vseq 0 s));
+
     lut n f is :=
       let seq := seq 0 (2^n) in
       let f' := NaryFunctions.nuncurry bool bool n f in

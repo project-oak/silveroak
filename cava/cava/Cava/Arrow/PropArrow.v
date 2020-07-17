@@ -70,6 +70,7 @@ Instance NoDelays : Cava := {
   xorcy := True;
   muxcy := True;
   unsigned_add _ _ _ := True;
+  unsigned_sub _ := True;
   lut _ _ := True;
 
   empty_vec o := True;
@@ -104,6 +105,7 @@ Instance NoLoops : Cava := {
   xorcy := True;
   muxcy := True;
   unsigned_add _ _ _ := True;
+  unsigned_sub _ := True;
   lut _ _ := True;
 
   empty_vec o := True;

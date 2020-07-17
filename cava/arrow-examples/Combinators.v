@@ -86,6 +86,17 @@ match n with
     ]>
 end.
 
+Fixpoint reverse {n A}
+  : forall cava: Cava, << Vector A n, Unit >> ~> << Vector A n >> :=
+match n with
+| 0 => <[\_ => [] ]>
+| S n' =>
+  <[ \vec => 
+    let '(x, xs) = uncons vec in
+    snoc xs x 
+    ]>
+end.
+
 Fixpoint seq {n bitsize}
   (offset: N)
   : forall cava: Cava, << Unit >> ~> << Vector (Vector Bit bitsize) n >> :=
@@ -269,12 +280,40 @@ Definition enable_vec {n}
   : forall cava: Cava, << Bit, Vector Bit n, Unit >> ~> <<Vector Bit n>> :=
   <[\ enable xs => !(map2 <[\x y => and x y]>) (!replicate enable) xs ]>.
 
+Fixpoint enable {T}
+  : forall cava: Cava, << Bit, T, Unit >> ~> <<T>> :=
+match T return forall cava: Cava, << Bit, T, Unit >> ~> <<T>> with 
+| Unit => <[ \_ x => x ]>
+| Bit => <[ \en x => and en x ]> 
+| Tuple l r => <[ \en x => let '(a,b) = x in
+                  (!enable en a, !enable en b)
+                ]>
+| Vector ty n => <[\ en x => !(map2 enable) (!replicate en) x ]>
+end.
+
+Fixpoint bitwise_merge {T}
+  : forall cava: Cava, << T, T, Unit >> ~> <<T>> :=
+match T return forall cava: Cava, << T, T, Unit >> ~> <<T>> with 
+| Unit => <[ \x _ => x ]>
+| Bit => <[ \x y => or x y ]> 
+| Tuple l r => <[ \x y => 
+  let '(a,b) = x in
+  let '(c,d) = y in
+  (!bitwise_merge a c, !bitwise_merge b d)
+  ]>
+| Vector ty n => <[\x y => !(map2 bitwise_merge) x y ]>
+end.
+
 Definition mux_bitvec {n}
   : forall cava: Cava, << Bit, Vector Bit n, Vector Bit n, Unit >> ~> <<Vector Bit n>> :=
   <[\ switch xs ys =>
       let not_switch = not switch
       in !(map2 <[\x y => or x y ]>) (!enable_vec switch xs) (!enable_vec not_switch ys)
   ]>.
+
+Definition mux_item {T}
+  : forall cava: Cava, << Bit, T, T, Unit >> ~> <<T>> :=
+  <[\ switch xs ys => !bitwise_merge (!enable switch xs) (!enable (not switch) ys) ]>.
 
 (* *************************** *)
 (* Combinators *)

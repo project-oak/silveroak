@@ -97,6 +97,12 @@ Instance CombinationalSTKC : ArrowSTKC CoqKindMaybeArrow := { }.
     let c := (a + b)%N in
     Some (Ndigits.N2Bv_sized s c);
 
+  unsigned_sub s '(av, bv) :=
+    let a := Ndigits.Bv2N av in
+    let b := Ndigits.Bv2N bv in
+    let c := (a - b)%N in (*todo: This is likely incorrect on underflow *)
+    Some (Ndigits.N2Bv_sized s c);
+
   lut n f i :=
     let f' := NaryFunctions.nuncurry bool bool n f in
     Some (f' (vec_to_nprod _ _ i));
