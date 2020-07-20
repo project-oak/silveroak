@@ -17,3 +17,7 @@ Aes/sbox_canright.v
 Aes/sbox_canright_masked_noreuse.v
 Aes/sbox.v
 Aes/sub_bytes.v
+Aes/shift_rows.v
+Aes/mix_single_column.v
+Aes/mix_columns.v
+Aes/unrolled_cipher.v

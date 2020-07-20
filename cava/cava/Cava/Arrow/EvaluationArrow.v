@@ -128,6 +128,13 @@ Instance EvalSTKC : ArrowSTKC EvalArrow := { }.
     (Ndigits.N2Bv_sized s c, tt)
   );
 
+  unsigned_sub s := fun_s Unit (fun '(x, y) _ => 
+    let a := Ndigits.Bv2N x in
+    let b := Ndigits.Bv2N y in
+    let c := (a - b)%N in(*todo: This is likely incorrect on underflow *)
+    (Ndigits.N2Bv_sized s c, tt)
+  );
+
   lut n f := fun_s Unit (fun i _ => 
     let f' := NaryFunctions.nuncurry bool bool n f in
     (f' (vec_to_nprod _ _ i), tt)

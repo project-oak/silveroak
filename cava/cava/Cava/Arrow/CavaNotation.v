@@ -91,8 +91,13 @@ Module KappaNotation.
     b constr at level 4,
     c constr at level 4
     ) : kappa_scope.
+  Notation "'unsigned_sub' a" := (UnsignedSub a)
+    (in custom expr at level 4,
+    a constr at level 4
+    ) : kappa_scope.
   Notation "x + y" := (App (App (UnsignedAdd2 _ _) x) y) (in custom expr at level 4) : kappa_scope.
   Notation "x +% y" := (App (App (UnsignedAdd1 _ _) x) y) (in custom expr at level 4) : kappa_scope.
+  Notation "x - y" := (App (App (UnsignedSub _) x) y) (in custom expr at level 4) : kappa_scope.
 
   Notation "'index'" := (Index _) (in custom expr at level 4) : kappa_scope.
   Notation "'empty'" := (EmptyVec) (in custom expr at level 4) : kappa_scope.
