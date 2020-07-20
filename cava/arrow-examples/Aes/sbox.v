@@ -18,8 +18,9 @@ From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Arrow Require Import Category Arrow.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From ArrowExamples Require Import Combinators Aes.pkg Aes.sbox_canright_pkg Aes.sbox_canright Aes.sbox_canright_masked_noreuse.
+From ArrowExamples Require Import Combinators Aes.pkg Aes.sbox_lut Aes.sbox_canright_pkg Aes.sbox_canright Aes.sbox_canright_masked_noreuse.
 
+Section notation.
 Import VectorNotations.
 Import KappaNotation.
 Open Scope kind_scope.
@@ -37,7 +38,7 @@ Program Definition aes_sbox
   <[\ op_i data_i =>
       let data_o = !(
         match sbox_type with
-        (* | SboxLut => sbox_lut *)
+        | SboxLut => aes_sbox_lut
         | SboxCanright => aes_sbox_canright
         (* | SboxCanrightMasked => sbox_canright_masked *)
         | SboxCanrightMaskedNoReuse => 
@@ -61,3 +62,33 @@ Program Definition aes_sbox
       ) op_i data_i
       in data_o
   ]>.
+End notation.
+
+Section regression_testing.
+  (* Definition parse_res {n} (o: option (Vector.t bool n) ): nat :=
+    match o with
+    | Some v => bitvec_to_nat v
+    | None => 666
+    end.
+  Compute parse_res (aes_sbox SboxLut Combinational (false, (N2Bv_sized 8 0, tt))).
+  Compute parse_res (aes_sbox SboxCanright Combinational (false, (N2Bv_sized 8 0, tt))).
+  Compute parse_res (aes_sbox SboxLut Combinational (false, (N2Bv_sized 8 1, tt))).
+  Compute parse_res (aes_sbox SboxCanright Combinational (false, (N2Bv_sized 8 1, tt))).
+  Compute parse_res (aes_sbox SboxLut Combinational (false, (N2Bv_sized 8 2, tt))).
+  Compute parse_res (aes_sbox SboxCanright Combinational (false, (N2Bv_sized 8 2, tt))).
+  Compute parse_res (aes_sbox SboxLut Combinational (false, (N2Bv_sized 8 4, tt))).
+  Compute parse_res (aes_sbox SboxCanright Combinational (false, (N2Bv_sized 8 4, tt))). *)
+
+  Notation "# x" := (N2Bv_sized 8 x, tt) (at level 99).
+
+  (* Check equal at some random points *)
+  Goal aes_sbox_lut Combinational (false, #0) = aes_sbox_canright Combinational (false, #0).
+    compute. auto.
+  Qed.
+  Goal aes_sbox_lut Combinational (false, #88) = aes_sbox_canright Combinational (false, #88).
+    compute. auto.
+  Qed.
+  Goal aes_sbox_lut Combinational (false, #127) = aes_sbox_canright Combinational (false, #127).
+    compute. auto.
+  Qed.
+End regression_testing.

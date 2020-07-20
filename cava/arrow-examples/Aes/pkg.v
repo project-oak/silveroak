@@ -30,10 +30,10 @@ Notation "x && y" :=
   (App (App And x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x & y" :=
-  (App (App (Morphism (map2 <[\a b => and a b]>)) x) y)
+  (App (App (Morphism (bitwise <[and]>)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x ^ y" :=
-  (App (App (Morphism (map2 <[\a b => xor a b]>)) x) y)
+  (App (App (Morphism (bitwise <[xor]>)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "'if' i 'then' t 'else' e" :=
   (App (App (App (Morphism mux_item) i) t) e)
@@ -43,7 +43,7 @@ Notation "x == y" :=
   (in custom expr at level 6, left associativity) : kappa_scope.
 
 Inductive SboxImpl := 
-(* | SboxLut *)
+| SboxLut
 | SboxCanright
 (* | SboxCanrightMasked *)
 | SboxCanrightMaskedNoReuse.
