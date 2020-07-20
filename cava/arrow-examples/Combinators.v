@@ -291,17 +291,18 @@ match T return forall cava: Cava, << Bit, T, Unit >> ~> <<T>> with
 | Vector ty n => <[\ en x => !(map2 enable) (!replicate en) x ]>
 end.
 
-Fixpoint bitwise_merge {T}
+Fixpoint bitwise {T}
+  (f: forall cava: Cava, << Bit, Bit, Unit >> ~> <<Bit>>)
   : forall cava: Cava, << T, T, Unit >> ~> <<T>> :=
 match T return forall cava: Cava, << T, T, Unit >> ~> <<T>> with 
 | Unit => <[ \x _ => x ]>
-| Bit => <[ \x y => or x y ]> 
+| Bit => f
 | Tuple l r => <[ \x y => 
   let '(a,b) = x in
   let '(c,d) = y in
-  (!bitwise_merge a c, !bitwise_merge b d)
+  (!(bitwise f) a c, !(bitwise f) b d)
   ]>
-| Vector ty n => <[\x y => !(map2 bitwise_merge) x y ]>
+| Vector ty n => <[\x y => !(map2 (bitwise f)) x y ]>
 end.
 
 Definition mux_bitvec {n}
@@ -313,7 +314,7 @@ Definition mux_bitvec {n}
 
 Definition mux_item {T}
   : forall cava: Cava, << Bit, T, T, Unit >> ~> <<T>> :=
-  <[\ switch xs ys => !bitwise_merge (!enable switch xs) (!enable (not switch) ys) ]>.
+  <[\ switch xs ys => !(bitwise <[or]>) (!enable switch xs) (!enable (not switch) ys) ]>.
 
 (* *************************** *)
 (* Combinators *)

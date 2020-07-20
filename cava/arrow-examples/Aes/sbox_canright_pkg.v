@@ -160,64 +160,26 @@ Program Definition aes_square_scale_gf2p4_gf2p2
 (* // multiplication by S2X performs the inverse affine transformation followed by the *)
 (* // transformation from polynomial basis A to normal basis X. *)
 (* // (see Appendix A of the technical report) *)
-(* parameter logic [7:0] A2X [8] = '{8'h98, 8'hf3, 8'hf2, 8'h48, 8'h09, 8'h81, 8'ha9, 8'hff}; *)
-Definition A2X : forall cava: Cava, Unit ~> (Vector (Vector Bit 8) 8) :=
-  <[ #255 (* = Byte.xff, coq doesn't have hex literals? *)
-  :: #169 (* 0xa9 *)
-  :: #129 (* 0x81 *)
-  :: #  9 (* 0x09 *)
-  :: # 72 (* 0x48 *)
-  :: #242 (* 0xf2 *)
-  :: #243 (* 0xf3 *)
-  :: #152 (* 0x98 *)
-  :: [] ]>.
 
-(* parameter logic [7:0] X2A [8] = '{8'h64, 8'h78, 8'h6e, 8'h8c, 8'h68, 8'h29, 8'hde, 8'h60}; *)
-Definition X2A : forall cava: Cava, Unit ~> (Vector (Vector Bit 8) 8) :=
-  <[ #  6 (* 0x06 *)
-  :: #222 (* 0xde *)
-  :: # 41 (* 0x29 *)
-  :: #104 (* 0x68 *)
-  :: #140 (* 0x8c *)
-  :: #110 (* 0x6e *)
-  :: #120 (* 0x78 *)
-  :: #100 (* 0x64 *)
-  :: [] ]>.
+(* parameter logic [7:0] A2X [8] = '{8'h98, 8'hf3, 8'hf2, 8'h48, 8'h09, 8'h81, 8'ha9, 8'hff};
+parameter logic [7:0] X2A [8] = '{8'h64, 8'h78, 8'h6e, 8'h8c, 8'h68, 8'h29, 8'hde, 8'h60};
+parameter logic [7:0] X2S [8] = '{8'h58, 8'h2d, 8'h9e, 8'h0b, 8'hdc, 8'h04, 8'h03, 8'h24};
+parameter logic [7:0] S2X [8] = '{8'h8c, 8'h79, 8'h05, 8'heb, 8'h12, 8'h04, 8'h51, 8'h53}; *)
 
-(* parameter logic [7:0] X2S [8] = '{8'h58, 8'h2d, 8'h9e, 8'h0b, 8'hdc, 8'h04, 8'h03, 8'h24}; *)
-Definition X2S : forall cava: Cava, Unit ~> (Vector (Vector Bit 8) 8) :=
-  <[ # 36 (* 0x24 *)
-  :: #  3 (* 0x03 *)
-  :: #  4 (* 0x04 *)
-  :: #220 (* 0xdc *)
-  :: # 11 (* 0x0b *)
-  :: #158 (* 0x9e *)
-  :: # 45 (* 0x2d *)
-  :: # 88 (* 0x58 *)
-  :: [] ]>.
-
-(* parameter logic [7:0] S2X [8] = '{8'h8c, 8'h79, 8'h05, 8'heb, 8'h12, 8'h04, 8'h51, 8'h53}; *)
-Definition S2X : forall cava: Cava, Unit ~> (Vector (Vector Bit 8) 8) :=
-  <[ # 83 (* 0x53 *)
-  :: # 81 (* 0x51 *)
-  :: #  4 (* 0x04 *)
-  :: # 18 (* 0x12 *)
-  :: #235 (* 0xeb *)
-  :: #  5 (* 0x05 *)
-  :: #121 (* 0x79 *)
-  :: #140 (* 0x8c *)
-  :: []
-  ]>.
+Definition A2X : forall cava: Cava, Unit ~> Vector (Vector Bit 8) 8 := <[ #152:: #243:: #242:: #72:: #9:: #129:: #169:: #255  :: [] ]>.
+Definition X2A : forall cava: Cava, Unit ~> Vector (Vector Bit 8) 8 := <[ #100:: #120:: #110:: #140:: #104:: #41:: #222:: #96 :: [] ]>.
+Definition X2S : forall cava: Cava, Unit ~> Vector (Vector Bit 8) 8 := <[ #88:: #45:: #158:: #11:: #220:: #4:: #3:: #36       :: [] ]>.
+Definition S2X : forall cava: Cava, Unit ~> Vector (Vector Bit 8) 8 := <[ #140:: #121:: #5:: #235:: #18:: #4:: #81:: #83      :: [] ]>.
 
 Section regression_checks.
   Definition S2X_indexer: forall cava:Cava, <<Vector Bit 3, Unit>> ~> <<Vector Bit 8>> := 
     <[\x => let vec = !S2X in vec[x] ]>.
   Goal
     (forall wf: wf_combinational (S2X_indexer _), 
-      evaluate S2X_indexer wf (N2Bv_sized 3 2) = N2Bv_sized 8 4). 
+      evaluate S2X_indexer wf (N2Bv_sized 3 2) = N2Bv_sized 8 5). 
     auto. Qed.
   Goal
     (forall wf: wf_combinational (S2X_indexer _), 
-      evaluate S2X_indexer wf (N2Bv_sized 3 4) = N2Bv_sized 8 235). 
+      evaluate S2X_indexer wf (N2Bv_sized 3 4) = N2Bv_sized 8 18). 
     auto. Qed.
 End regression_checks.
