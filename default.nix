@@ -1,16 +1,13 @@
 { sources ? import ./nix/sources.nix
 , pkgs ? import ./nix/packages.nix { inherit sources; }
+, buildVerilator ? true
 }:
 
 let
   tools = with pkgs; [
     # Building
     coq_8_11
-    coqPackages_8_11.coq-ext-lib
     (haskell.packages.ghc865.ghcWithPackages (pkgs: with pkgs; [Cabal]))
-
-    # Simulation
-    verilator
 
     # Common tools
     gcc
@@ -21,7 +18,12 @@ let
     findutils
     bash
     binutils.bintools
-  ];
+  ] ++
+    # Verilator optional for parallel building
+    # TODO(blaxill): Perhaps build verilator separately and don't make optional
+    # here
+    (if buildVerilator then [verilator] else [])
+  ;
 in
 rec {
   cava-shell = pkgs.mkShell {
@@ -39,10 +41,6 @@ rec {
         "/workspace" = {};
         "/tmp" = {};
       };
-      # Fix COQPATH for docker image as this isn't propogated.
-      Env = [
-        "COQPATH=${pkgs.coqPackages_8_11.coq-ext-lib}/lib/coq/8.11/user-contrib"
-      ];
     };
     maxLayers = 120;
   };
