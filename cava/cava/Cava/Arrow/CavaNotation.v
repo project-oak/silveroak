@@ -29,7 +29,7 @@ Delimit Scope kappa_scope with kappa.
 
 Module KappaNotation.
   Notation "<[ e ]>" := (
-    fun (cava: Cava) => Closure_conversion (object_decidable_equality:=eq_kind_dec) (Desugar (fun var => e%kappa))
+    fun (cava: Cava) => Closure_conversion (Desugar (fun var => e%kappa))
    ) (at level 1, e custom expr at level 1).
 
   (* Notation "<[ e ]>" := (e%kappa) (at level 1, e custom expr at level 1). *)
@@ -130,7 +130,7 @@ Module KappaNotation.
     ) : kappa_scope.
 End KappaNotation.
 
-Definition make_module {i o} 
+Definition make_module {i o}
   (name: string)
   (expr: forall cava: Cava, i ~[cava]~> o)
   : forall cava: Cava, i ~[cava]~> o
@@ -207,7 +207,7 @@ Section regression_examples.
 
   Definition add' (n: nat)
     : forall cava: Cava, <<Vector Bit n, Vector Bit n, Unit>> ~> (Vector Bit n)
-    := 
+    :=
     match Nat.eq_dec (Init.Nat.max n n) n with
     | left Heq => rew [fun x => forall cava: Cava, _~>Vector Bit x] Heq in <[\x y=> x +% y]>
     | right Hneq => (ltac:(lia))

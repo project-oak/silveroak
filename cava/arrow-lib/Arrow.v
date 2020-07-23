@@ -6,6 +6,10 @@ Reserved Infix "**" (at level 30, right associativity).
 
 Generalizable Variable unit product.
 
+Class DecidableEquality T := {
+  eq_dec: forall x y : T, {x = y} + {x <> y}
+}.
+
 (* generalized arrow *)
 Class Arrow (object: Type) (category: Category object) (unit: object) (product: object -> object -> object) := {
   arrow_category := category;
