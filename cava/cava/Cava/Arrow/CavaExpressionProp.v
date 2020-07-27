@@ -130,7 +130,7 @@ Lemma no_let_rec_and_stateless_morphisms_is_stateless:
   forall i o (expr: kappa natvar i o) env wf, 
     NoLetRecKappa natvar i o expr ->
     MorphPropKappa natvar (fun _ _ m => has_no_state m) i o expr ->
-    has_no_state ((fun (cava: Cava) => closure_conversion' (object_decidable_equality:=decKind) env expr wf) EvalCava).
+    has_no_state ((fun (cava: Cava) => closure_conversion' (object_decidable_equality:=eq_kind_dec) env expr wf) EvalCava).
 Proof.
   intros. 
   simpl.
@@ -163,7 +163,7 @@ Proof.
     * apply IHenv0.
     * simpl.
       destruct (Nat.eq_dec v (length env0)).
-      destruct (decKind a y).
+      destruct (eq_kind_dec a y).
       unfold evalProjState.
       
       unfold evalMorphism.

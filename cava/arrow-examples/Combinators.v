@@ -30,7 +30,7 @@ Local Open Scope kind_scope.
 
 Definition rewrite_kind {x y} (H: x = y) (cava: Cava)
   : << x, Unit >> ~> y :=
-  match decKind x y with
+  match eq_kind_dec x y with
   | left Heq =>
     rew [fun x => << _ >> ~> <<x>> ] Heq in <[\x=>x]> cava
   | right Hneq => (ltac:(contradiction))

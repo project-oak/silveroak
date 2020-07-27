@@ -25,6 +25,7 @@ Open Scope category_scope.
 Open Scope arrow_scope.
 
 Section Vars.
+  Context {cava: Cava}.
   Context {var: Kind -> Kind -> Type}.
 
   Definition lift_constant (ty: Kind): Type :=
@@ -59,7 +60,7 @@ Section Vars.
     | Snd: forall {x y}, CavaExpr << << x, y >>, Unit >> y
     | Pair: forall {x y}, CavaExpr << x, y, Unit >> << x, y >>
     | Id: forall {x}, CavaExpr <<x, Unit>> x
-    | Morphism: forall {i o}, (forall cava: Cava, i~[cava]~>o) -> CavaExpr i o
+    | Morphism: forall {i o}, (i~[cava]~>o) -> CavaExpr i o
 
     (* Cava routines *)
     | LiftConstant: forall x, lift_constant x -> CavaExpr Unit x
@@ -104,11 +105,11 @@ Section Vars.
   Arguments Kappa.Morph [_ _ _ _ _ var _ _].
   Arguments Kappa.LetRec [_ _ _ _ _ var _ _ _].
 
-  Definition liftCava `{Cava} i {o} (f: remove_rightmost_unit i ~> o)
+  Definition liftCava i {o} (f: remove_rightmost_unit i ~> o)
     : kappa var i o :=
     Kappa.Comp (Kappa.Morph f) (Kappa.Morph (remove_rightmost_tt i)).
 
-  Fixpoint desugar {cava: Cava} {i o} (e: CavaExpr i o) : kappa var i o :=
+  Fixpoint desugar {i o} (e: CavaExpr i o) : kappa var i o :=
     match e with
     | Var x => Kappa.Var x
     | Abs f => Kappa.Abs (fun x => desugar (f x))
@@ -149,7 +150,7 @@ Section Vars.
       | _, H => match H with end
       end
 
-    | Morphism m => Kappa.Morph (m _)
+    | Morphism m => Kappa.Morph m
 
     | EmptyVec => liftCava <<u>> (empty_vec _)
     | Index n => liftCava <<_,_,u>> (index n _)
@@ -165,7 +166,7 @@ End Vars.
 
 Arguments CavaExpr : clear implicits.
 
-Definition Desugar {_ :Cava} {i o} (e: forall var, CavaExpr var i o) : Kappa i o := fun var => desugar (e var).
+Definition Desugar {cava: Cava} {i o} (e: forall var, CavaExpr cava var i o) : Kappa i o := fun var => desugar (e var).
 
 Hint Resolve Desugar : core.
 Hint Resolve desugar : core.
