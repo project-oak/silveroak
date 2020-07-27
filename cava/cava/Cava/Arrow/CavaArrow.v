@@ -14,13 +14,14 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category Arrow.
+From Arrow Require Import Category Arrow ClosureConversion.
 From Coq Require Import Lists.List NaryFunctions String Arith NArith VectorDef Lia.
 
 Import ListNotations.
 Import VectorNotations.
 
-From Cava Require Import Types.
+From Cava Require Import Types Arrow.ArrowKind.
+From Cava Require Export Arrow.ArrowKind.
 
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
@@ -47,97 +48,6 @@ Local Open Scope arrow_scope.
   first_f  {x y w} (f: x~>y) (g:x~>y): f =M= g -> @first A x y w f =M= first g;
   second_f {x y w} (f: x~>y) (g:x~>y): f =M= g -> @second A x y w f =M= second g;
 }. *)
-
-Inductive Kind : Set :=
-| Tuple: Kind -> Kind -> Kind
-| Unit: Kind
-| Bit: Kind
-| Vector: Kind -> nat -> Kind.
-
-Fixpoint eq_kind_dec (k1 k2: Kind) {struct k1} : {k1=k2} + {k1<>k2}. 
-Proof.
-  decide equality.
-  exact (PeanoNat.Nat.eq_dec n n0).
-Defined.
-
-Require Import Eqdep.
-
-Lemma kind_eq_refl: forall ty, eq_kind_dec ty ty = left eq_refl.
-Proof.
-  intros. 
-  destruct (eq_kind_dec ty ty); try rewrite (UIP_refl _ _ _); auto.
-  destruct n.
-  reflexivity.
-Qed.
-
-Definition kind_eq_comp {x y}: x = y -> x = y :=
-  match eq_kind_dec x y with
-  | left Heq => fun _ => Heq
-  | _ => fun H => H
-  end.
-
-Ltac reduce_kind_eq_refl :=
-  match goal with 
-  | [ |- context[eq_kind_dec _ _] ] =>
-    rewrite kind_eq_refl; unfold eq_rect_r, eq_rect, eq_sym
-  | [H: context[eq_kind_dec _ _] |- _] =>
-    rewrite kind_eq_refl in H; unfold eq_rect_r, eq_rect, eq_sym in H
-  end; try subst.
-
-Declare Scope kind_scope.
-Bind Scope kind_scope with Kind.
-Delimit Scope kind_scope with Kind.
-Delimit Scope kind_scope with Category.
-
-Notation "<< x >>" := (x) : kind_scope.
-Notation "<< x , .. , y , z >>" := (Tuple x .. (Tuple y z )  .. ) : kind_scope.
-
-Fixpoint vec_to_nprod (A: Type) n (v: Vector.t A n): A^n :=
-  match v with
-  | [] => tt
-  | x::xs => (x, vec_to_nprod A _ xs)
-  end%vector.
-
-Fixpoint insert_rightmost_unit (ty: Kind): Kind :=
-match ty with
-| Tuple l r => Tuple l (insert_rightmost_unit r)
-| Unit => Unit
-| x => Tuple x Unit
-end.
-
-Fixpoint remove_rightmost_unit (ty: Kind): Kind :=
-match ty with
-| Tuple l Unit => l
-| Tuple l r => Tuple l (remove_rightmost_unit r)
-| x => x
-end.
-
-Fixpoint arg_length (ty: Kind) :=
-match ty with
-| Tuple _ r => S (arg_length r)
-| _ => O
-end.
-
-Definition arg_length_order (ty1 ty2: Kind) :=
-  arg_length ty1 < arg_length ty2.
-
-Lemma arg_length_order_wf': forall len ty, arg_length ty < len -> Acc arg_length_order ty.
-Proof.
-  unfold arg_length_order; induction len; intros.
-  - inversion H.
-  - refine (Acc_intro _ _); intros.
-    eapply (IHlen y).
-
-    apply lt_n_Sm_le in H.
-    apply (lt_le_trans _ _ _ H0 H).
-Defined.
-
-Lemma arg_length_order_wf: well_founded arg_length_order.
-Proof.
-  cbv [well_founded]; intros.
-  eapply arg_length_order_wf'.
-  eauto.
-Defined.
 
 (* Cava *)
 Class Cava := {

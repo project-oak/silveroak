@@ -14,6 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Export Cava.Arrow.ArrowKind.
 Require Export Cava.Arrow.CavaArrow.
 Require Export Cava.Arrow.CavaExpression.
 Require Export Cava.Arrow.CavaExpressionProp.
