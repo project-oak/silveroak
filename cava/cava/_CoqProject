@@ -17,6 +17,7 @@ Cava/Monad/UnsignedAdders.v
 Cava/Monad/NetlistGeneration.v
 Cava/Monad/XilinxAdder.v
 
+Cava/Arrow/ArrowKind.v
 Cava/Arrow/CavaArrow.v
 Cava/Arrow/PropArrow.v
 Cava/Arrow/CombinationalArrow.v

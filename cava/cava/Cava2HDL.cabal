@@ -40,6 +40,7 @@ cabal-version:        >= 1.10
 library
   build-Depends:     base >= 4, mtl >= 2
   exposed-Modules:   Cava2SystemVerilog
+                     ArrowKind
                      BinNat
                      BinNums
                      BitArithmetic
@@ -75,7 +76,7 @@ library
                      VectorUtils
                      XilinxAdder
 
-                     -- From arrow-lib 
+                     -- From arrow-lib
                      Category
                      Arrow
                      Kappa
