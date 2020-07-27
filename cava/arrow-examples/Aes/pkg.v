@@ -24,22 +24,22 @@ Import KappaNotation.
 Open Scope kind_scope.
 
 Notation "|^ x" :=
-  (App (Morphism (foldl1 <[\a b => xor a b]>)) x)
+  (App (Morphism (foldl1 <[\a b => xor a b]> _)) x)
   (in custom expr at level 5, no associativity) : kappa_scope.
 Notation "x && y" :=
   (App (App And x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x & y" :=
-  (App (App (Morphism (bitwise <[and]>)) x) y)
+  (App (App (Morphism (bitwise <[and]> _)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x ^ y" :=
-  (App (App (Morphism (bitwise <[xor]>)) x) y)
+  (App (App (Morphism (bitwise <[xor]> _)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "'if' i 'then' t 'else' e" :=
-  (App (App (App (Morphism mux_item) i) t) e)
+  (App (App (App (Morphism (mux_item _)) i) t) e)
   (in custom expr at level 5, left associativity) : kappa_scope.
 Notation "x == y" :=
-  (App (App (Morphism equality) x) y)
+  (App (App (Morphism (equality _)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 
 Inductive SboxImpl := 

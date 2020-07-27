@@ -29,7 +29,7 @@ Delimit Scope kappa_scope with kappa.
 
 Module KappaNotation.
   Notation "<[ e ]>" := (
-    fun (cava: Cava) => Closure_conversion (object_decidable_equality:=decKind) (Desugar (fun var => e%kappa))
+    fun (cava: Cava) => Closure_conversion (object_decidable_equality:=eq_kind_dec) (Desugar (fun var => e%kappa))
    ) (at level 1, e custom expr at level 1).
 
   (* Notation "<[ e ]>" := (e%kappa) (at level 1, e custom expr at level 1). *)
@@ -58,8 +58,8 @@ Module KappaNotation.
 
   (* Escaping *)
 
-  Notation "! x" := (Morphism x)(in custom expr at level 2, x global) : kappa_scope.
-  Notation "!( x )" := (Morphism x) (in custom expr, x constr) : kappa_scope.
+  Notation "! x" := (Morphism (x _))(in custom expr at level 2, x global) : kappa_scope.
+  Notation "!( x )" := (Morphism (x _)) (in custom expr, x constr) : kappa_scope.
 
   Notation tupleHelper := (fun x y => App (App Pair x) y).
   Notation "( x , .. , y , z )" := (
@@ -122,7 +122,7 @@ Module KappaNotation.
     , x at level 7
     ) : kappa_scope.
   Notation "v [: x : y ]" :=
-        (App (Slice _ x y _ _) v)
+        (App (Slice _ (x <: nat) (y <: nat) _ _) v)
     (in custom expr at level 2,
     (* v constr, *)
     x constr at level 7,

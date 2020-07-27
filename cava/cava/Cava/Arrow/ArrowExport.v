@@ -23,3 +23,16 @@ Require Export Cava.Arrow.CombinationalArrow.
 Require Export Cava.Arrow.NetlistArrow.
 Require Export Cava.Arrow.PropArrow.
 
+From Coq Require Import NArith.
+
+Strategy opaque [
+  N2Bv_sized
+  Ndigits.Bv2N
+  Vector.nth_order 
+  Vector.splitat
+  andb 
+  orb 
+  xorb 
+  negb 
+].
+

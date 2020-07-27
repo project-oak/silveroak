@@ -83,12 +83,12 @@ Section regression_testing.
 
   (* Check equal at some random points *)
   Goal aes_sbox_lut Combinational (false, #0) = aes_sbox_canright Combinational (false, #0).
-    compute. auto.
+    vm_compute; auto.
   Qed.
   Goal aes_sbox_lut Combinational (false, #88) = aes_sbox_canright Combinational (false, #88).
-    compute. auto.
+    vm_compute; auto.
   Qed.
   Goal aes_sbox_lut Combinational (false, #127) = aes_sbox_canright Combinational (false, #127).
-    compute. auto.
+    vm_compute; auto.
   Qed.
 End regression_testing.

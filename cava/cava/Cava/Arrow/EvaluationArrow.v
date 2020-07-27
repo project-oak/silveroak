@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool ZArith NaryFunctions Vector Lia.
+From Coq Require Import Bool ZArith NArith NaryFunctions Vector Lia.
 From Arrow Require Import Category Arrow Kappa.
 From Cava.Arrow Require Import CavaArrow PropArrow.
 
@@ -103,7 +103,7 @@ Instance EvalSTKC : ArrowSTKC EvalArrow := { }.
 #[refine] Instance EvalCava : Cava := {
   cava_arrow := EvalArrow;
   constant b := fun_s Unit (fun _ _ => (b, tt));
-  constant_bitvec n v := fun_s Unit (fun _ _ => (nat_to_bitvec_sized n (N.to_nat v), tt));
+  constant_bitvec n v := fun_s Unit (fun _ _ => (N2Bv_sized n v, tt));
 
   mk_module _ _ _name f := f;
 

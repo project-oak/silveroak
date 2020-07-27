@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool ZArith NaryFunctions Vector Lia.
+From Coq Require Import Bool ZArith NArith NaryFunctions Vector Lia.
 From Arrow Require Import Category Arrow.
 From Cava.Arrow Require Import CavaArrow PropArrow.
 
@@ -74,7 +74,7 @@ Instance CombinationalSTKC : ArrowSTKC CoqKindMaybeArrow := { }.
 #[refine] Instance Combinational : Cava := {
   cava_arrow := CoqKindMaybeArrow;
   constant b _ := Some b;
-  constant_bitvec n v _ := Some (nat_to_bitvec_sized n (N.to_nat v));
+  constant_bitvec n v _ := Some (N2Bv_sized n v);
 
   mk_module _ _ _name f := f;
 

@@ -54,7 +54,7 @@ Inductive Kind : Set :=
 | Bit: Kind
 | Vector: Kind -> nat -> Kind.
 
-Fixpoint decKind (k1 k2: Kind) {struct k1} : {k1=k2} + {k1<>k2}. 
+Fixpoint eq_kind_dec (k1 k2: Kind) {struct k1} : {k1=k2} + {k1<>k2}. 
 Proof.
   decide equality.
   exact (PeanoNat.Nat.eq_dec n n0).
@@ -62,20 +62,26 @@ Defined.
 
 Require Import Eqdep.
 
-Lemma kind_eq: forall ty, decKind ty ty = left eq_refl.
+Lemma kind_eq_refl: forall ty, eq_kind_dec ty ty = left eq_refl.
 Proof.
   intros. 
-  destruct (decKind ty ty); try rewrite (UIP_refl _ _ _); auto.
+  destruct (eq_kind_dec ty ty); try rewrite (UIP_refl _ _ _); auto.
   destruct n.
   reflexivity.
 Qed.
 
-Ltac reduce_kind_eq :=
+Definition kind_eq_comp {x y}: x = y -> x = y :=
+  match eq_kind_dec x y with
+  | left Heq => fun _ => Heq
+  | _ => fun H => H
+  end.
+
+Ltac reduce_kind_eq_refl :=
   match goal with 
-  | [ |- context[decKind _ _] ] =>
-    rewrite kind_eq; unfold eq_rect_r, eq_rect, eq_sym
-  | [H: context[decKind _ _] |- _] =>
-    rewrite kind_eq in H; unfold eq_rect_r, eq_rect, eq_sym in H
+  | [ |- context[eq_kind_dec _ _] ] =>
+    rewrite kind_eq_refl; unfold eq_rect_r, eq_rect, eq_sym
+  | [H: context[eq_kind_dec _ _] |- _] =>
+    rewrite kind_eq_refl in H; unfold eq_rect_r, eq_rect, eq_sym in H
   end; try subst.
 
 Declare Scope kind_scope.
@@ -108,8 +114,8 @@ end.
 
 Fixpoint arg_length (ty: Kind) :=
 match ty with
-| Tuple _ r => 1 + (arg_length r)
-| _ => 0
+| Tuple _ r => S (arg_length r)
+| _ => O
 end.
 
 Definition arg_length_order (ty1 ty2: Kind) :=
@@ -121,7 +127,9 @@ Proof.
   - inversion H.
   - refine (Acc_intro _ _); intros.
     eapply (IHlen y).
-    lia.
+
+    apply lt_n_Sm_le in H.
+    apply (lt_le_trans _ _ _ H0 H).
 Defined.
 
 Lemma arg_length_order_wf: well_founded arg_length_order.
