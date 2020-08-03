@@ -233,12 +233,12 @@ Section NetlistEval.
 
     xorcy '(i0, i1) :=
       o <- newWire ;;
-      addInstance (Component "XORCY" [] [("O", o); ("CI", i0); ("LI", i1)]) ;;
+      addInstance (Component "XORCY" [] [("O", USignal o); ("CI", USignal i0); ("LI", USignal i1)]) ;;
       ret o;
 
     muxcy '(s,(ci, di)) :=
       o <- newWire ;;
-      addInstance ( Component "MUXCY" [] [("O", o); ("S", s); ("CI", ci); ("DI", di)]) ;;
+      addInstance ( Component "MUXCY" [] [("O", USignal o); ("S", USignal s); ("CI", USignal ci); ("DI", USignal di)]) ;;
       ret o;
 
     unsigned_add m n s '(x, y) :=
@@ -263,13 +263,13 @@ Section NetlistEval.
       let config := fold_left N.add powers 0%N in
       let component_name := ("LUT" ++ string_of_uint (Nat.to_uint n))%string in
       let inputs := map
-        (fun '(i, n) => ("I" ++ string_of_uint (Nat.to_uint i), n))%string
+        (fun '(i, n) => ("I" ++ string_of_uint (Nat.to_uint i), USignal n))%string
         (combine seq (to_list is)) in
       o <- newWire ;;
       let component :=
         Component
         component_name [("INIT", HexLiteral (2^n) config)]
-        (("O", o) :: inputs) in
+        (("O", USignal o) :: inputs) in
       addInstance component;;
       ret o;
 
