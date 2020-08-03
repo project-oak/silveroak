@@ -189,8 +189,10 @@ generateInstance _ (Nor i0 i1 o) instrNr = primitiveInstance "nor" [o, i0, i1] i
 generateInstance _ (Xor i0 i1 o) instrNr = primitiveInstance "xor" [o, i0, i1] instrNr
 generateInstance _ (Xnor i0 i1 o) instrNr = primitiveInstance "xnor" [o, i0, i1] instrNr
 generateInstance _ (Buf i o) instrNr = primitiveInstance "buf" [o, i] instrNr
-generateInstance _ (Component _ name parameters connections) instNr =
-  mkInstance name parameters connections instNr
+generateInstance _ (Component name parameters connections) instNr =
+  mkInstance name parameters connections' instNr
+  where
+  connections' = [(n, extractSignal us) | (n, us) <- connections]
 generateInstance _ (UnsignedAdd _ _ _ a b c) _
    = "  assign " ++ showSignal c ++ " = " ++ showSignal a ++ " + " ++ showSignal b ++ ";"
 generateInstance _ (GreaterThanOrEqual _ _ a b g) _
@@ -527,10 +529,21 @@ mapSignalsInInstanceM f inst
            fb <- f b
            ft <- f t
            return (GreaterThanOrEqual s1 s2 fa fb ft)
-      Component k name args vals ->
-        do let sigs = map snd vals
+      Component name args vals ->
+        do let sigs = map (extractSignal . snd) vals
            sigs' <- sequence (map f sigs)
-           return (Component k name args (zip (map fst vals) sigs'))
+           return (Component name args (zip (map fst vals) (map untypeSignal sigs')))
+
+--------------------------------------------------------------------------------
+-- Extract Signal from UntypedSignal
+extractSignal :: UntypedSignal -> Signal
+extractSignal (USignal _ s) = s
+
+-- Convert back to UntypedSignal
+untypeSignal :: Signal -> UntypedSignal
+untypeSignal sig = USignal Void sig
+
+--------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
 -- Check for contiguous static indexing to identify vector slices.

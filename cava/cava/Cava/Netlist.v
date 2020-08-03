@@ -107,9 +107,10 @@ Inductive Instance : Type :=
                                             Signal (BitVec Bit b) ->
                                             Signal Bit ->
                                             Instance
-  | Component: forall {k}, string -> list (string * ConstExpr) ->
-                                     list (string * Signal k) ->
-                                     Instance.
+  | Component: string ->
+               list (string * ConstExpr) ->
+               list (string * UntypedSignal) ->
+               Instance.
 
 (******************************************************************************)
 (* Data structures to represent circuit graph/netlist state                   *)

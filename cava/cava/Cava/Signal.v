@@ -49,3 +49,8 @@ Fixpoint defaultKindSignal (k: Kind) : Signal k :=
   | ExternalType s => UninterpretedSignal "default-error"
   end.
 
+(* To allow us to represent a heterogenous list of Signal k values where
+   the Kind k varies we make a wrapper that erase the Kind index type.
+*)
+Inductive UntypedSignal := USignal : forall {Kind}, Signal Kind -> UntypedSignal.
+
