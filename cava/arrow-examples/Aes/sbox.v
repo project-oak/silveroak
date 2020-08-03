@@ -91,4 +91,5 @@ Section regression_testing.
   Goal aes_sbox_lut Combinational (false, #127) = aes_sbox_canright Combinational (false, #127).
     vm_compute; auto.
   Qed.
+
 End regression_testing.

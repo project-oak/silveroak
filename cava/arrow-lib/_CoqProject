@@ -6,4 +6,5 @@ Coq.v
 Kleisli.v
 
 Kappa.v
+Equiv.v
 ClosureConversion.v

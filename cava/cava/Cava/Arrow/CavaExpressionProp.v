@@ -14,7 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category Arrow Kappa ClosureConversion.
+(* temporarily disabled *)
+(* From Arrow Require Import Category Arrow Kappa ClosureConversion.
 From Cava Require Import Arrow.CavaArrow Arrow.EvaluationArrow Arrow.CavaExpression.
 
 From Coq Require Import Arith NArith Lia NaryFunctions.
@@ -227,4 +228,4 @@ Proof.
 Qed.
 
 Hint Extern 15 => apply (no_let_rec_and_stateless_morphisms_is_stateless _ _) : stateless.
-Hint Extern 20 => refine (OnlyUnitsTuple _ _ OnlyUnitsUnit _ ) : stateless.
+Hint Extern 20 => refine (OnlyUnitsTuple _ _ OnlyUnitsUnit _ ) : stateless. *)

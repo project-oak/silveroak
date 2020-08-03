@@ -98,13 +98,6 @@ Section Vars.
   Bind Scope kind_scope with CavaExpr.
   Delimit Scope kind_scope with CavaExpr.
 
-  Arguments Kappa.Var [_ _ _ _ _ var _ _].
-  Arguments Kappa.Abs [_ _ _ _ _ var _ _ _].
-  Arguments Kappa.App [_ _ _ _ _ var _ _ _].
-  Arguments Kappa.Comp [_ _ _ _ _ var _ _ _].
-  Arguments Kappa.Morph [_ _ _ _ _ var _ _].
-  Arguments Kappa.LetRec [_ _ _ _ _ var _ _ _].
-
   Definition liftCava i {o} (f: remove_rightmost_unit i ~> o)
     : kappa var i o :=
     Kappa.Comp (Kappa.Morph f) (Kappa.Morph (remove_rightmost_tt i)).
@@ -172,8 +165,3 @@ Hint Resolve Desugar : core.
 Hint Resolve desugar : core.
 Hint Unfold Desugar : core.
 Hint Unfold desugar : core.
-
-Hint Extern 5 (NoLetRecKappa natvar _ _ (liftCava _ _)) =>
-      apply NoLetRecComp; apply NoLetRecMorph : stateless.
-Hint Extern 5 (MorphPropKappa natvar _ _ (liftCava _ _)) =>
-      apply MorphPropComp : stateless.

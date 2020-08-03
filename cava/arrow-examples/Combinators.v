@@ -439,7 +439,7 @@ Section regression_tests.
     (carry, result)
     ]>.
  
-  Lemma interleave_is_stateless : forall n, has_no_state (interleaveVectors n EvalCava).
+  (* Lemma interleave_is_stateless : forall n, has_no_state (interleaveVectors n EvalCava).
   Proof. induction n; auto 20 with stateless. Qed.
 
   Lemma halfAdder_is_stateless : has_no_state (halfAdder EvalCava).
@@ -448,5 +448,5 @@ Section regression_tests.
 
   Lemma fullAdder_is_stateless : has_no_state (fullAdder EvalCava).
   Proof. auto 30 with stateless. Qed.
-  Hint Extern 1 (has_no_state (fullAdder EvalCava)) => apply fullAdder_is_stateless : stateless.
+  Hint Extern 1 (has_no_state (fullAdder EvalCava)) => apply fullAdder_is_stateless : stateless. *)
 End regression_tests.

@@ -15,6 +15,7 @@
 (****************************************************************************)
 
 From Coq Require Import Lists.List NaryFunctions Arith NArith Vector Eqdep_dec.
+From Arrow Require Import Arrow.
 
 Import ListNotations.
 Import VectorNotations.
@@ -32,6 +33,10 @@ Proof.
   decide equality.
   exact (PeanoNat.Nat.eq_dec n n0).
 Defined.
+
+Instance kind_decidable_equality_inst : DecidableEquality Kind := {
+  eq_dec := eq_kind_dec
+}.
 
 (* TODO: Coq.Init.Logic f_equal2 is opaque, f_equal is not, should transparency here be upstreamed? *)
 Lemma f_equal2 {A B C} {x y:A}  {a b: B} (f: A -> B -> C) : x = y -> a = b -> f x a = f y b.
