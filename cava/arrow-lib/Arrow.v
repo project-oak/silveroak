@@ -37,8 +37,6 @@ Coercion arrow_category: Arrow >-> Category.
 Declare Scope arrow_scope.
 Bind Scope arrow_scope with Arrow.
 Delimit Scope arrow_scope with Arrow.
-Bind Scope arrow_scope with Category.
-Delimit Scope arrow_scope with Category.
 
 Notation "x ** y" := (product x y)
   (at level 30, right associativity) : arrow_scope.

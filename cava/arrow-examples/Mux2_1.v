@@ -67,7 +67,7 @@ Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
 (* Using `evaluate_to_terms` for a nicer extracted value *)
 Definition mux2_1_tb_expected_outputs : list bool :=
 
- map (fun i => evaluate mux2_1 mux2_1_is_combinational i) mux2_1_tb_inputs.
+ map (fun i => combinational_evaluation mux2_1 mux2_1_is_combinational i) mux2_1_tb_inputs.
 
 Definition mux2_1_tb :=
   testBench "mux2_1_tb" mux2_1_Interface

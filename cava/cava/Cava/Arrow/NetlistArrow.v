@@ -188,71 +188,71 @@ Section NetlistEval.
 
     not_gate i :=
       o <- newWire ;;
-      addInstance (Not i o) ;;
+      addInstance (Not (fst i) o) ;;
       ret o;
 
-    and_gate '(i0,i1) :=
+    and_gate '(i0,(i1,_)) :=
       o <- newWire ;;
       addInstance (And i0 i1 o) ;;
       ret o;
 
-    nand_gate '(i0,i1) :=
+    nand_gate '(i0,(i1,_)) :=
       o <- newWire ;;
       addInstance (Nand i0 i1 o) ;;
       ret o;
 
-    or_gate '(i0,i1) :=
+    or_gate '(i0,(i1,_)) :=
       o <- newWire ;;
       addInstance (Or i0 i1 o) ;;
       ret o;
 
-    nor_gate '(i0,i1) :=
+    nor_gate '(i0,(i1,_)) :=
       o <- newWire ;;
       addInstance (Nor i0 i1 o) ;;
       ret o;
 
-    xor_gate '(i0,i1) :=
+    xor_gate '(i0,(i1,_)) :=
       o <- newWire ;;
       addInstance (Xor i0 i1 o) ;;
       ret o;
 
-    xnor_gate '(i0,i1) :=
+    xnor_gate '(i0,(i1,_)) :=
       o <- newWire ;;
       addInstance (Xnor i0 i1 o) ;;
       ret o;
 
     buf_gate 'i :=
       o <- newWire ;;
-      addInstance (Buf i o) ;;
+      addInstance (Buf (fst i) o) ;;
       ret o;
 
     delay_gate X x :=
       y <- build X ;;
-      mapMSignals2 (fun x y => DelayBit x y) X x y ;;
+      mapMSignals2 (fun x y => DelayBit x y) X (fst x) y ;;
       ret y;
 
-    xorcy '(i0, i1) :=
+    xorcy '(i0, (i1, _)) :=
       o <- newWire ;;
       addInstance (Component "XORCY" [] [("O", USignal o); ("CI", USignal i0); ("LI", USignal i1)]) ;;
       ret o;
 
-    muxcy '(s,(ci, di)) :=
+    muxcy '(s,((ci, di), _)) :=
       o <- newWire ;;
       addInstance ( Component "MUXCY" [] [("O", USignal o); ("S", USignal s); ("CI", USignal ci); ("DI", USignal di)]) ;;
       ret o;
 
-    unsigned_add m n s '(x, y) :=
+    unsigned_add m n s '(x, (y,_)) :=
       sum <- newVector _ s ;;
       addInstance (UnsignedAdd (VecLit x) (VecLit y) sum) ;;
       ret (Vector.map (IndexConst sum) (vseq 0 s));
 
-    unsigned_sub s '(x, y) :=
+    unsigned_sub s '(x, (y,_)) :=
       sum <- newVector _ s ;;
       (* TODO: add netlist subtraction instance *)
       addInstance (UnsignedAdd (VecLit x) (VecLit y) sum) ;;
       ret (Vector.map (IndexConst sum) (vseq 0 s));
 
-    lut n f is :=
+    lut n f '(is,_) :=
       let seq := seq 0 (2^n) in
       let f' := NaryFunctions.nuncurry bool bool n f in
       let powers := map
@@ -274,17 +274,17 @@ Section NetlistEval.
       ret o;
 
   empty_vec o _ := ret []%vector;
-  index n o '(array, index) := _;
+  index n o '(array, (index, _)) := _;
 
-  cons n o '(x, v) := _;
-  snoc n o '(v, x) := _;
-  uncons n o v := _; 
-  unsnoc n o v := _; 
-  concat n m o '(x, y) := ret (Vector.append x y);
+  cons n o '(x, (v, _)) := _;
+  snoc n o '(v, (x, _)) := _;
+  uncons n o '(v, _) := _; 
+  unsnoc n o '(v, _) := _; 
+  concat n m o '(x, (y,_) ) := ret (Vector.append x y);
 
-  split n m o x := ret (Vector.splitat n x);
+  split n m o x := ret (Vector.splitat n (fst x));
 
-  slice n x y o H1 H2 v := _;
+  slice n x y o H1 H2 '(v,_) := _;
   }.
   Proof.
     (* TODO: clean up *)

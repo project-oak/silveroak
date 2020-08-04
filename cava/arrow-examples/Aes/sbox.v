@@ -79,7 +79,7 @@ Section regression_testing.
   Compute parse_res (aes_sbox SboxLut Combinational (false, (N2Bv_sized 8 4, tt))).
   Compute parse_res (aes_sbox SboxCanright Combinational (false, (N2Bv_sized 8 4, tt))). *)
 
-  Notation "# x" := (N2Bv_sized 8 x, tt) (at level 99).
+  Notation "# x" := (nat_to_bitvec_sized 8 x, tt) (at level 99).
 
   (* Check equal at some random points *)
   Goal aes_sbox_lut Combinational (false, #0) = aes_sbox_canright Combinational (false, #0).
@@ -90,6 +90,75 @@ Section regression_testing.
   Qed.
   Goal aes_sbox_lut Combinational (false, #127) = aes_sbox_canright Combinational (false, #127).
     vm_compute; auto.
+  Qed.
+
+  Lemma reduce_num': forall n (P: nat -> Prop), (forall x, x < n -> P x) /\ P n -> (forall y, y < S n -> P y).
+  Proof.
+    intros.
+    destruct H.
+    inversion H0.
+    apply H1.
+    specialize (H _ H3).
+    apply H.
+  Qed.
+  Lemma reduce_num: forall n (P: nat -> Prop) Q, (forall x, x < n -> P x) /\ P n /\ Q -> ((forall y, y < S n -> P y) /\ Q).
+  Proof.
+    intros.
+    inversion H.
+    inversion H1.
+    split.
+    apply reduce_num'.
+    split.
+    apply H0.
+    apply H2.
+    apply H3.
+  Qed.
+  Lemma rm_false: forall (P: nat -> Prop) (Q: Prop), Q -> (forall x, x < 0 -> P x) /\ Q.
+  Proof.
+    intros.
+    split.
+    intros.
+    inversion H0.
+    apply H.
+  Qed.
+
+  (* TODO(blaxill): works for x < 256 but is slow ... *)
+  Goal forall x, x < 5 -> aes_sbox_lut Combinational (false, #x) = aes_sbox_canright Combinational (false, #x).
+  Proof.
+    apply (reduce_num' _ (fun x =>
+      aes_sbox_lut Combinational (false, # x) =
+      aes_sbox_canright Combinational (false, # x)
+    )).
+    Ltac t := apply (reduce_num _ (fun x =>
+      aes_sbox_lut Combinational (false, # x) =
+      aes_sbox_canright Combinational (false, # x)
+    ) _).
+    repeat t.
+    apply rm_false.
+
+    time vm_compute; auto 256.
+  Qed.
+
+  Goal forall x, x < 10 -> aes_sbox_lut Combinational (false, #x) = aes_sbox_canright Combinational (false, #x).
+  Proof.
+    apply (reduce_num' _ (fun x =>
+      aes_sbox_lut Combinational (false, # x) =
+      aes_sbox_canright Combinational (false, # x)
+    )).
+    repeat t.
+    apply rm_false.
+    repeat match goal with
+    | |- context[aes_sbox_lut Combinational ?X] =>
+      let x := fresh in set (x:=aes_sbox_lut Combinational X);
+      vm_compute in x;
+      simpl in x
+    end.
+    unfold aes_sbox_canright;
+    repeat rewrite expression_evaluation_is_arrow_evaluation;
+    set (Z:=interp_combinational _);
+    cbv [interp_combinational] in Z;
+    revert Z;
+    time vm_compute; auto 256.
   Qed.
 
 End regression_testing.

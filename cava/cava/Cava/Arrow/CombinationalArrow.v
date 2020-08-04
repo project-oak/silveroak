@@ -35,18 +35,10 @@ Notation "f >==> g" :=
   | _ => None
   end)(at level 1).
 
-Fixpoint denote (ty: Kind): Type :=
-  match ty with 
-  | Tuple l r => denote l * denote r
-  | Bit => bool
-  | Vector ty n => Vector.t (denote ty) n
-  | Unit => unit
-  end.
-
 Section instance.
 
 Instance CoqKindMaybeCategory : Category Kind := {
-  morphism X Y := denote X -> option (denote Y);
+  morphism X Y := denote_kind X -> option (denote_kind Y);
   compose _ _ _ f g := g >==> f;
   id X x := Some x;
 }.
@@ -78,71 +70,71 @@ Instance CombinationalSTKC : ArrowSTKC CoqKindMaybeArrow := { }.
 
   mk_module _ _ _name f := f;
 
-  not_gate b := Some (negb b);
-  and_gate '(x, y) := Some (andb x y);
-  nand_gate '(x, y) := Some (negb (andb x y));
-  or_gate '(x, y) := Some (orb x y);
-  nor_gate '(x, y) := Some (negb (orb x y));
-  xor_gate '(x, y) := Some (xorb x y);
-  xnor_gate '(x, y) := Some (negb (xorb x y));
-  buf_gate x := Some x;
+  not_gate b := Some (negb (fst b));
+  and_gate '(x, y) := Some (andb x (fst y));
+  nand_gate '(x, y) := Some (negb (andb x (fst y)));
+  or_gate '(x, y) := Some (orb x (fst y));
+  nor_gate '(x, y) := Some (negb (orb x (fst y)));
+  xor_gate '(x, y) := Some (xorb x (fst y));
+  xnor_gate '(x, y) := Some (negb (xorb x (fst y)));
+  buf_gate x := Some (fst x);
   delay_gate _ _ := None;
 
-  xorcy '(x, y) := Some (xorb x y);
-  muxcy i := Some (if fst i then fst (snd i) else snd (snd i));
+  xorcy '(x, y) := Some (xorb x (fst y));
+  muxcy i := Some (if fst i then fst (fst (snd i)) else snd (fst (snd i)));
 
-  unsigned_add m n s '(av, bv) :=
+  unsigned_add m n s '(av, (bv, _)) :=
     let a := Ndigits.Bv2N av in
     let b := Ndigits.Bv2N bv in
     let c := (a + b)%N in
     Some (Ndigits.N2Bv_sized s c);
 
-  unsigned_sub s '(av, bv) :=
+  unsigned_sub s '(av, (bv, _)) :=
     let a := Ndigits.Bv2N av in
     let b := Ndigits.Bv2N bv in
     let c := (a - b)%N in (*todo: This is likely incorrect on underflow *)
     Some (Ndigits.N2Bv_sized s c);
 
-  lut n f i :=
+  lut n f '(i,_) :=
     let f' := NaryFunctions.nuncurry bool bool n f in
     Some (f' (vec_to_nprod _ _ i));
 
-  empty_vec o _ := Some (Vector.nil (denote o));
-  index n o '(array, index) := 
+  empty_vec o _ := Some (Vector.nil (denote_kind o));
+  index n o '(array, (index, _)) := 
     match Arith.Compare_dec.lt_dec (bitvec_to_nat index) n with
     | left Hlt => Some (nth_order array Hlt)
     | right Hnlt => None
     end;
 
-  cons n o '(x, v) := Some (x :: v);
-  snoc n o '(v, x) := 
+  cons n o '(x, (v,_)) := Some (x :: v);
+  snoc n o '(v, (x,_)) := 
     let v' := Some (v ++ [x]) 
     in match Nat.eq_dec (n + 1) (S n)  with 
-      | left Heq => rew [fun x => option (denote (Vector o x))] Heq in v'
+      | left Heq => rew [fun x => option (denote_kind (Vector o x))] Heq in v'
       | right Hneq => (ltac:(exfalso;lia))
       end;
-  uncons n o v := Some (hd v, tl v);
+  uncons n o v := Some (hd (fst v), tl (fst v));
   unsnoc n o v :=
     let v' := match Arith.Compare_dec.le_dec n (S n)  with 
-      | left Hlt => take n Hlt v
-      | right Hnlt => (ltac:(exfalso;lia))
+      | left Hlt => take n Hlt (fst v)
+      | right Hnlt => (ltac:(exfalso; abstract lia))
       end in
-    Some (v', last v);
-  concat n m o '(x, y) := Some (Vector.append x y);
+    Some (v', last (fst v));
+  concat n m o '(x, (y, _)) := Some (Vector.append x y);
 
   split n m o x :=
-    Some (Vector.splitat n x);
+    Some (Vector.splitat n (fst x));
 
   slice n x y o H1 H2 v := 
     match Nat.eq_dec n (y + (n - y)) with 
       | left Heq =>
-        let '(_, v) := splitat y (rew [fun x => Vector.t (denote o) x] Heq in v)
+        let '(_, v) := splitat y (rew [fun x => Vector.t (denote_kind o) x] Heq in (fst v))
         in 
           match Nat.eq_dec (n-y) ((x - y + 1) + (n - x - 1)) with 
           | left Heq => _
-          | right Hneq => (ltac:(exfalso;lia))
+          | right Hneq => (ltac:(exfalso; abstract lia))
           end
-      | right Hneq => (ltac:(exfalso;lia))
+      | right Hneq => (ltac:(exfalso; abstract lia))
       end;
 }.
 Proof.
@@ -253,17 +245,17 @@ Proof.
   apply H.
 Qed.
 
-Lemma unsat_kind_false: forall y, (exists o : denote y, None = Some o) -> False.
+Lemma unsat_kind_false: forall y, (exists o : denote_kind y, None = Some o) -> False.
 Proof.
   intros.
   induction y; inversion H; inversion H0.
 Qed.
 
-Definition evaluate {x y}
+Definition combinational_evaluation {x y: Kind}
   (circuit: forall cava: Cava, x ~> y)
   (wf: wf_combinational (circuit Combinational)) 
-  (i: denote (remove_rightmost_unit x))
-  : denote y.
+  (i: denote_kind (remove_rightmost_unit x))
+  : denote_kind y.
 Proof.
   apply remove_right_unit_is_combinational in wf.
   pose ((insert_rightmost_tt1 _ >>> circuit Combinational) i) as c'.
@@ -274,13 +266,6 @@ Proof.
 
   apply unsat_kind_false in wf.
   inversion wf.
-Defined.
-
-Lemma not_gate_is_combinational: is_combinational (@not_gate).
-Proof.
-  unfold is_combinational.
-  cbn.
-  tauto.
 Defined.
 
 Lemma not_gate_wf: wf_combinational (not_gate).
@@ -294,12 +279,11 @@ Ltac combinational_obvious :=
   compute;
   eauto.
 
-Example not_true: @not_gate Combinational true = Some false.
+Example not_true: @not_gate Combinational (true, tt) = Some false.
 Proof. reflexivity. Qed.
 
-Example not_true_with_wf: evaluate (@not_gate) not_gate_wf true = false.
+Example not_true_with_wf: combinational_evaluation (@not_gate) not_gate_wf true = false.
 Proof. compute. reflexivity. Qed.
 
-Example not_false: @not_gate Combinational false = Some true.
-
+Example not_false: @not_gate Combinational (false, tt) = Some true.
 Proof. reflexivity. Qed.

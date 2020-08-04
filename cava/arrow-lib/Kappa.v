@@ -6,6 +6,7 @@ Import ListNotations.
 Set Implicit Arguments.
 Set Asymmetric Patterns.
 
+
 Section Arrow.
   Context `{arrow: Arrow}.
 
@@ -176,14 +177,27 @@ Section Arrow.
     | LetRec _ _ _ f1 f2 => forall p: Prop, (morph_prop P (f1 tt) -> morph_prop P (f2 tt) -> p) -> p
     end.
 
-    Definition Kappa i o := forall var, kappa var i o.
+  Definition Kappa i o := forall var, kappa var i o.
+
+  (* common functions *)
+
+  Open Scope category_scope.
+  Context {arrow_drop: ArrowDrop arrow}.
+
+  Definition kappa_fst {var x y}: kappa var (product (product x y) u) x := 
+    Morph var (cancelr >>> second drop >>> cancelr).
+  Definition kappa_snd {var x y}: kappa var (product (product x y) u) y := 
+    Morph var (cancelr >>> first drop >>> cancell).
+  Definition kappa_pair {var x y}: kappa var (product x (product y u)) (product x y) := 
+    Morph var (second cancelr).
+
 End Arrow.
 
 Ltac dispatch_wf_phoas_context := 
   apply phoas_context_elim;
   lazy -[reverse_nth];
   repeat lazymatch goal with
-  | [ |- True ] => exact I
+  | [ |- True ] => constructor
   | [ |- forall p, (?H1 -> ?H2 -> p) -> p ] => 
     let x := fresh in (let y := fresh in (
       intros x y; apply y; clear x y
