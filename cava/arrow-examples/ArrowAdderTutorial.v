@@ -177,7 +177,7 @@ Definition fullAdder_netlist :=
   makeNetlist fullAdderInterface (arrow_netlist fullAdder).
 
 Definition fullAdder_tb_expected_outputs  : list (bool * bool)
-  := (List.map (fun i => evaluate fullAdder fullAdder_is_combinational i) fullAdder_tb_inputs) .
+  := (List.map (fun i => combinational_evaluation fullAdder fullAdder_is_combinational i) fullAdder_tb_inputs) .
 
 Definition fullAdder_tb :=
   testBench "fullAdder_tb" fullAdderInterface

@@ -125,7 +125,7 @@ Definition adder445_tb_inputs :=
   [(0, 0); (1, 2); (15, 1); (15, 15)]%N.
 
 Definition adder445_tb_expected_outputs
-  := map (fun i => evaluate adder445 adder445_is_combinational i) adder445_tb_inputs.
+  := map (fun i => combinational_evaluation adder445 adder445_is_combinational i) adder445_tb_inputs.
 
 Definition adder445_tb
   := testBench "adder445_tb" adder445_interface
@@ -139,7 +139,7 @@ Definition adder88810_tb_inputs :=
   [(17, 23, 95); (4, 200, 30); (255, 255, 200)]%N.
 
 Definition adder88810_tb_expected_outputs
-  := map (fun i => evaluate adder88810 adder88810_is_combinational i) adder88810_tb_inputs.
+  := map (fun i => combinational_evaluation adder88810 adder88810_is_combinational i) adder88810_tb_inputs.
 
 Definition adder88810_tb
   := testBench "adder88810_tb" adder88810_interface
@@ -162,7 +162,7 @@ Lemma adder444_tree_4_is_combinational: wf_combinational (adder444_tree_4 _).
 Proof. combinational_obvious. Qed.
 
 Definition adder444_tree_4_tb_expected_outputs
-  := map (fun i => evaluate adder444_tree_4 adder444_tree_4_is_combinational i) adder444_tree_4_inputs.
+  := map (fun i => combinational_evaluation adder444_tree_4 adder444_tree_4_is_combinational i) adder444_tree_4_inputs.
 
 Definition adder444_tree_4_tb
   := testBench "adder444_tree_4_tb" adder444_tree_4_interface
@@ -183,7 +183,7 @@ Lemma growth_tree_8_is_combinational: wf_combinational (growth_tree_8 _).
 Proof. combinational_obvious. Qed.
 
 Definition growth_tree_8_tb_expected_outputs
-  := map (fun i => evaluate growth_tree_8 growth_tree_8_is_combinational i) growth_tree_8_inputs.
+  := map (fun i => combinational_evaluation growth_tree_8 growth_tree_8_is_combinational i) growth_tree_8_inputs.
 
 Definition growth_tree_8_tb
   := testBench "growth_tree_8_tb" growth_tree_8_interface

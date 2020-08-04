@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
-From Arrow Require Import Category Arrow.
+From Arrow Require Import Category Arrow Kappa.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
 From ArrowExamples Require Import Combinators.
@@ -24,22 +24,22 @@ Import KappaNotation.
 Open Scope kind_scope.
 
 Notation "|^ x" :=
-  (App (Morphism (foldl1 <[\a b => xor a b]> _)) x)
+  (App (Morph (foldl1 <[\a b => xor a b]> _)) x)
   (in custom expr at level 5, no associativity) : kappa_scope.
 Notation "x && y" :=
-  (App (App And x) y)
+  (App (App (Morph and_gate) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x & y" :=
-  (App (App (Morphism (bitwise <[and]> _)) x) y)
+  (App (App (Morph (bitwise <[and]> _)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x ^ y" :=
-  (App (App (Morphism (bitwise <[xor]> _)) x) y)
+  (App (App (Morph (bitwise <[xor]> _)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "'if' i 'then' t 'else' e" :=
-  (App (App (App (Morphism (mux_item _)) i) t) e)
+  (App (App (App (Morph (mux_item _)) i) t) e)
   (in custom expr at level 5, left associativity) : kappa_scope.
 Notation "x == y" :=
-  (App (App (Morphism (equality _)) x) y)
+  (App (App (Morph (equality _)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 
 Inductive SboxImpl := 

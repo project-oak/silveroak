@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category Arrow ClosureConversion.
+From Arrow Require Import Category Arrow Kappa ClosureConversion.
 From Coq Require Import Lists.List NaryFunctions String Arith NArith VectorDef Lia.
 
 Import ListNotations.
@@ -25,6 +25,7 @@ From Cava Require Export Arrow.ArrowKind.
 
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
+
 
 (* Class CircuitLaws `(A: Arrow, ! ArrowCopy A, ! ArrowSwap A, ! ArrowDrop A) := {
   cancelr_unit_uncancelr {x}: @cancelr x >>> uncancelr =M= id;
@@ -50,6 +51,7 @@ Local Open Scope arrow_scope.
 }. *)
 
 (* Cava *)
+Notation "[ x ~~> .. ~~> y ~~> z ]" := (morphism (Tuple x .. (Tuple y Unit) ..) z) : arrow_scope.
 Class Cava := {
   cava_cat :> Category Kind;
   cava_arrow :> Arrow Kind cava_cat Unit Tuple;
@@ -63,36 +65,36 @@ Class Cava := {
 
   mk_module i o: string -> (i~>o) -> (i~>o);
 
-  not_gate:  Bit        ~> Bit;
-  and_gate:  Bit ** Bit ~> Bit;
-  nand_gate: Bit ** Bit ~> Bit;
-  or_gate:   Bit ** Bit ~> Bit;
-  nor_gate:  Bit ** Bit ~> Bit;
-  xor_gate:  Bit ** Bit ~> Bit;
-  xnor_gate: Bit ** Bit ~> Bit;
-  buf_gate:  Bit        ~> Bit;
+  not_gate:  [ Bit ~~> Bit ];
+  and_gate:  [ Bit ~~> Bit ~~> Bit];
+  nand_gate: [ Bit ~~> Bit ~~> Bit];
+  or_gate:   [ Bit ~~> Bit ~~> Bit];
+  nor_gate:  [ Bit ~~> Bit ~~> Bit];
+  xor_gate:  [ Bit ~~> Bit ~~> Bit];
+  xnor_gate: [ Bit ~~> Bit ~~> Bit];
+  buf_gate:  [ Bit         ~~> Bit];
 
-  delay_gate {o} : o ~> o;
+  delay_gate {o} : [ o ~~> o ];
 
-  xorcy:     Bit ** Bit ~> Bit;
-  muxcy:     Bit ** (Bit ** Bit) ~> Bit;
+  xorcy:     [ Bit ~~> Bit ~~> Bit ];
+  muxcy:     [ Bit ~~> (Bit ** Bit) ~~> Bit ];
   
-  unsigned_add a b c: Vector Bit a ** Vector Bit b ~> Vector Bit c;
-  unsigned_sub a: Vector Bit a ** Vector Bit a ~> Vector Bit a;
+  unsigned_add a b c: [ Vector Bit a ~~> Vector Bit b ~~> Vector Bit c ];
+  unsigned_sub a: [ Vector Bit a ~~> Vector Bit a ~~> Vector Bit a ];
 
-  lut n: (bool^^n --> bool) -> Vector Bit n ~> Bit;
+  lut n: (bool^^n --> bool) -> [Vector Bit n ~~> Bit];
 
   empty_vec o: u ~> Vector o 0;
-  index n o: Vector o n ** vec_index n ~> o;
-  cons n o: o ** Vector o n ~> Vector o (S n);
-  snoc n o: Vector o n ** o ~> Vector o (S n);
-  uncons n o: Vector o (S n) ~> o ** Vector o n;
-  unsnoc n o: Vector o (S n) ~> Vector o n ** o;
-  concat n m o: Vector o n ** Vector o m ~> Vector o (n + m);
-  split n m o: Vector o (n+m) ~> (Vector o n ** Vector o m);
+  index n o: [Vector o n ~~> vec_index n ~~> o];
+  cons n o: [o ~~> Vector o n ~~> Vector o (S n)];
+  snoc n o: [Vector o n ~~> o ~~> Vector o (S n)];
+  uncons n o: [Vector o (S n) ~~> o ** Vector o n];
+  unsnoc n o: [Vector o (S n) ~~> Vector o n ** o];
+  concat n m o: [Vector o n ~~> Vector o m ~~> Vector o (n + m)];
+  split n m o: [Vector o (n+m) ~~> Vector o n ** Vector o m];
   (* slice n x y where x >= y, x is inclusive 
   So, somevec[1:0] is the vector [vec[0],vec[1]] : Vector 2 _ *)
-  slice n x y o: x < n -> y <= x -> Vector o n ~> Vector o (x - y + 1);
+  slice n x y o: x < n -> y <= x -> [Vector o n ~~> Vector o (x - y + 1)];
 }.
 
 Coercion cava_cat: Cava >-> Category.
