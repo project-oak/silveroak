@@ -263,3 +263,16 @@ Fixpoint vecLitS {k: Kind} (v: smashTy (Signal Bit) k) : Signal k :=
   | ExternalType s, _ => UninterpretedSignal "vecLitS-error"
   end.
   
+Fixpoint signalNetSmashTy (s : @shape Kind) : Type :=
+  match s with
+  | Empty  => unit
+  | One t => Signal t
+  | Tuple2 s1 s2  => (signalNetSmashTy s1) * (signalNetSmashTy s2)
+  end.
+
+Fixpoint recoverShape (sh: shape) (v: signalNetSmashTy sh) :=
+  match sh, v with
+  | Empty, _ => Empty
+  | One t, ov => One (USignal ov)
+  | Tuple2 s1 s2, (v1, v2) => Tuple2 (recoverShape s1 v1) (recoverShape s2 v2)
+  end.
