@@ -72,6 +72,10 @@ module indexing(
   assign v1 = {sel1};
   assign v0 = {i1,i0};
 
+  logic[3:0] alpha = '{1'b1, 1'b1, 1'b0, 1'b0};
+  logic[5:0] beta = $bits(beta)'({1'b1, 1'b1, 1'b0, 1'b0});
+  logic[10:0] gamma = $bits(gamma)'({alpha, 1'b1, 1'b1});
+  logic[3:0] delta = {1'b1, 1'b1, 1'b0, 1'b0};
 
   initial begin
     $display("bat1 = %b", bat1);
@@ -86,6 +90,17 @@ module indexing(
     $display("v0 = %x", v0);
     $display("v1 = %x", v1);
     $display("o = %b", o);
+    $display("alpha = %b", alpha);
+    $display("alpha[0] = %b", alpha[0]);
+    $display("alpha[3] = %b", alpha[3]);
+    $display("beta = %b", beta);
+    $display("beta[0] = %b", beta[0]);
+    $display("beta[3] = %b", beta[3]);
+    $display("beta[5] = %b", beta[5]);
+    $display("gamma = %b", gamma);
+    $display("delta = %b", delta);
+    $display("$clog2(32+2) = %d", $clog2(32+2));
+    $display("2**$clog2(32+2) = %d", 2**$clog2(32+2));
   end
 
 endmodule  

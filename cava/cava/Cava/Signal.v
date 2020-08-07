@@ -25,6 +25,7 @@ Inductive Signal : Kind -> Type :=
   | UndefinedSignal : Signal Void
   | UninterpretedSignal: forall {t: string}, string -> Signal (ExternalType t)
   | UninterpretedSignalIndex: forall (t: string), N -> Signal (ExternalType t)
+  | SelectField: forall {k1: Kind} (k2: Kind), Signal k1 -> string -> Signal k2
   | Gnd: Signal Bit
   | Vcc: Signal Bit
   | Wire: N -> Signal Bit
