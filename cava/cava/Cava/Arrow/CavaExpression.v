@@ -14,9 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category Arrow Kappa Equiv ClosureConversion.
+From Arrow Require Import Category Arrow Kappa KappaEquiv ClosureConversion.
 From Cava Require Import Arrow.CavaArrow.
-From Cava Require Arrow.CombinationalArrow.
+From Cava Require Arrow.CombinationalArrow Arrow.EvaluationArrow.
 
 From Coq Require Import Arith NArith Lia NaryFunctions.
 
@@ -52,7 +52,7 @@ Section combinational_semantics.
       end
     | LetRec v f => fun _ => None
     end.
-
+    
     Axiom expression_evaluation_is_arrow_evaluation: forall i o (expr: Kappa i o), forall (x: denote_kind i),
       Closure_conversion (arrow:=Combinational) expr x =
       interp_combinational (expr _) x.

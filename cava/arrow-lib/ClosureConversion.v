@@ -1,5 +1,5 @@
 From Coq Require Import Arith Eqdep List Lia.
-From Arrow Require Import Category Arrow Kappa Equiv.
+From Arrow Require Import Category Arrow Kappa KappaEquiv.
 
 Import ListNotations.
 Import EqNotations.

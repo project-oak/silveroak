@@ -6,7 +6,6 @@ Import ListNotations.
 Set Implicit Arguments.
 Set Asymmetric Patterns.
 
-
 Section Arrow.
   Context `{arrow: Arrow}.
 
@@ -108,7 +107,6 @@ Section Arrow.
       -> @wf_phoas_context y z (x :: ctxt) (f (length ctxt)).
     Proof. auto. Qed.
   End ctxt.
-    
 
   Fixpoint wf_phoas_context_elim {i o}
     (ctxt: list object)
@@ -151,31 +149,6 @@ Section Arrow.
     (f: natvar u x -> kappa natvar i o)
     : forall (ctxt: list object), wf_phoas_context ctxt (Let v f) -> wf_phoas_context ctxt (App (Abs f) v).
   Proof. now cbn. Qed.
-  
-  Fixpoint no_letrec {i o} (e: kappa unitvar i o): bool :=
-    match e with 
-    | Var _ _ _ => true 
-    | Abs _ _ _ f => no_letrec (f tt)
-    | App _ _ _ f e => no_letrec f && no_letrec e 
-    | Comp _ _ _ e1 e2 => no_letrec e1 && no_letrec e2
-    | Morph _ _ _ => true
-    | Let _ _ _ v f => no_letrec v && no_letrec (f tt) 
-    | LetRec _ _ _ f1 f2 => false
-    end.
-
-  Fixpoint morph_prop {i o}
-    (P: forall x y, morphism x y -> Prop)
-    (e: kappa unitvar i o)
-    : Prop :=
-    match e with 
-    | Var _ _ _ => True 
-    | Abs _ _ _ f => morph_prop P (f tt)
-    | App _ _ _ f e => forall p: Prop, (morph_prop P f -> morph_prop P e -> p) -> p
-    | Comp _ _ _ e1 e2 => forall p: Prop, (morph_prop P e1 -> morph_prop P e2 -> p) -> p
-    | Morph _ _ m => P _ _ m
-    | Let _ _ _ v f => forall p: Prop, (morph_prop P v -> morph_prop P (f tt) -> p) -> p
-    | LetRec _ _ _ f1 f2 => forall p: Prop, (morph_prop P (f1 tt) -> morph_prop P (f2 tt) -> p) -> p
-    end.
 
   Definition Kappa i o := forall var, kappa var i o.
 

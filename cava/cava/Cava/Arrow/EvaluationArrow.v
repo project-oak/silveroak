@@ -284,6 +284,8 @@ Proof.
   rewrite H.
   reflexivity.
 Qed.
+
+Create HintDb stateless.
   
 Hint Extern 5 (has_no_state ?X) =>
   (match_primitive X; constructor) + (match_compose X; apply has_no_state_compose)
