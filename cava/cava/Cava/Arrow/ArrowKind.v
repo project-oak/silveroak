@@ -116,7 +116,6 @@ Proof.
     reflexivity.
 Defined.
 
-
 Lemma kind_eq: forall ty, eq_kind_dec ty ty = left eq_refl.
 Proof.
   intros.
@@ -201,3 +200,11 @@ Fixpoint kind_default (ty: Kind): denote_kind ty :=
   | Vector ty n => const (kind_default ty) n
   | Unit => tt
   end.
+
+Lemma blank_rew: forall ty ty' H x, eq_rect ty (fun (_ : Kind) => Kind) x ty' H = x.
+Proof.
+  intros.
+  destruct H.
+  simpl.
+  reflexivity.
+Qed.
