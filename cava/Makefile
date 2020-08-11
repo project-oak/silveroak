@@ -17,27 +17,24 @@
 .PHONY: all clean
 
 all:
-	cd arrow-lib && $(MAKE) && \
-	cd ../cava && $(MAKE) && \
-	cd ../monad-examples && $(MAKE) && \
-	cd xilinx && $(MAKE) extraction && \
-	cd ../../tests/xilinx && $(MAKE) extraction && \
-	cd ../../arrow-examples && $(MAKE) && \
-	cd ../..
+	cd arrow-lib && $(MAKE)
+	cd cava && $(MAKE)
+	cd monad-examples && $(MAKE)
+	cd monad-examples/xilinx && $(MAKE) extraction
+	cd tests/xilinx && $(MAKE) extraction
+	cd arrow-examples && $(MAKE)
 
 coq:
-	cd arrow-lib && $(MAKE) && \
-	cd ../cava && $(MAKE) coq && \
-	cd ../monad-examples && $(MAKE) coq && \
-	cd ../arrow-examples && $(MAKE) coq && \
-	cd ../..
+	cd arrow-lib && $(MAKE) coq
+	cd cava && $(MAKE) coq
+	cd monad-examples && $(MAKE) coq
+	cd arrow-examples && $(MAKE) coq
 
 clean:
-	cd arrow-lib && $(MAKE) && \
-	cd ../cava && $(MAKE) clean && \
-	cd ../monad-examples && $(MAKE) clean && \
-	cd xilinx && $(MAKE) clean && \
-	cd ../../tests/xilinx && $(MAKE) clean && \
-	cd ../../arrow-examples && $(MAKE) clean && \
-	cd ..
+	cd arrow-lib && $(MAKE) clean
+	cd cava && $(MAKE) clean
+	cd monad-examples && $(MAKE) clean
+	cd monad-examples/xilinx && $(MAKE) clean
+	cd tests/xilinx && $(MAKE) clean
+	cd arrow-examples && $(MAKE) clean
 	rm -rf .DS_Store
