@@ -143,6 +143,7 @@ showSignal signal
       UndefinedSignal -> error "Attempt to use an undefined signal"
       UninterpretedSignal _ name -> name
       UninterpretedSignalIndex _ i -> "ext_" ++ show (fromN i)
+      SelectField _ _ sk1 f -> showSignal sk1 ++ "." ++ f
       Gnd -> "zero"
       Vcc -> "one"
       Wire n -> "net[" ++ show (fromN n) ++ "]"
@@ -602,6 +603,8 @@ unsmash signal
       IndexConst k s v i -> do uv <- unsmash v
                                fv <- freshen uv
                                return (IndexConst k s fv i)
+      SelectField k1 k2 sk1 f -> do usk1 <- unsmash sk1
+                                    return (SelectField k1 k2 usk1 f)
       Slice k s startAt len v -> do uv <- unsmash v
                                     fv <- freshen uv
                                     return (Slice k s startAt len fv)
