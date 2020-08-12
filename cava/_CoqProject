@@ -1,7 +1,7 @@
 # This top-level _CoqProject exists to make it easier to navigate
 # the Cava source and examples using the vscoq plug-in for vscode.
 -R cava/Cava Cava
--Q ../third_party/coq-ext-lib/theories coq-ext-lib
+-Q ../third_party/coq-ext-lib/theories ExtLib
 -Q ../third_party/coqutil/src/coqutil coqutil
 -Q monad-examples MonadExamples
 -Q monad-examples/xilinx XilinxExamples
