@@ -40,5 +40,5 @@ End notation.
 
 Open Scope kind_scope.
 
-Lemma xilinxFullAdder_is_combinational: wf_combinational (xilinxFullAdder _).
-Proof. combinational_obvious. Qed.
+Lemma xilinxFullAdder_is_combinational: is_combinational xilinxFullAdder. 
+Proof. simply_combinational. Qed.

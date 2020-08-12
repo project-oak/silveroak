@@ -41,9 +41,9 @@ End notation.
 
 Open Scope kind_scope.
 
-Lemma mux2_1_is_combinational: wf_combinational (mux2_1 _).
-Proof. combinational_obvious. Qed.
-
+Lemma mux2_1_is_combinational: is_combinational mux2_1.
+Proof. simply_combinational. Qed.
+  
 Require Import Cava.Types.
 Require Import Cava.Netlist.
 
