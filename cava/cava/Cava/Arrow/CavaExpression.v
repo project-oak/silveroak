@@ -34,23 +34,17 @@ Section combinational_semantics.
 
   Fixpoint interp_combinational {i o: Kind}
     (expr: kappa (arrow:=Combinational) coq_func i o)
-    : denote_kind i -> option (denote_kind o) :=
+    : denote_kind i -> (denote_kind o) :=
     match expr with
-    | Var x => fun v => Some (x v) 
+    | Var x => fun v => (x v) 
     | Abs f => fun '(x,y) => interp_combinational (f (fun _ => x)) y
     | App f e => fun y => 
-      match (interp_combinational e) tt with
-      | Some x => (interp_combinational f) (x, y)
-      | None => None
-      end
-    | Comp g f => (interp_combinational f) >==> (interp_combinational g)
+      (interp_combinational f) (interp_combinational e tt, y)
+    | Comp g f => fun x => interp_combinational g (interp_combinational f x)
     | Morph m => m
     | Let v f => fun y => 
-      match (interp_combinational v) tt with
-      | Some x => (interp_combinational (f (fun _ => x))) y
-      | None => None
-      end
-    | LetRec v f => fun _ => None
+      interp_combinational (f (fun _ => interp_combinational v tt)) y
+    | LetRec v f => fun _ => kind_default _
     end.
     
     Axiom expression_evaluation_is_arrow_evaluation: forall i o (expr: Kappa i o), forall (x: denote_kind i),

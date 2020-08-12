@@ -150,8 +150,8 @@ Section notation.
 
 End notation.
 
-Lemma fullAdder_is_combinational: wf_combinational (fullAdder _).
-Proof. combinational_obvious. Qed.
+Lemma fullAdder_is_combinational: is_combinational fullAdder.
+Proof. simply_combinational. Qed.
 
 Require Import Cava.Types.
 Require Import Cava.Netlist.

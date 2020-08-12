@@ -24,7 +24,7 @@ Section instance.
 
 Instance ConjPropKindCategory : Category Kind := {
   morphism X Y := Prop;
-  compose _ _ _ f g := f /\ g;
+  compose _ _ _ f g := forall (p: Prop), (f -> g -> p) -> p;
   id X := True;
 }.
 
@@ -137,6 +137,18 @@ Proof.
   tauto.
 Qed.
 
+Ltac simply_combinational := 
+  apply mkCombinational;
+  lazy;
+  repeat lazymatch goal with
+  | [ |- True ] => exact I
+  | [ |- forall p, (?H1 -> ?H2 -> p) -> p ] => 
+    let x := fresh in (let y := fresh in (
+      intros x y; apply y; clear x y
+    ))
+  | [ |- _ ] => fail "Term wasn't simply combinational"
+  end.
+
 Lemma is_combinational_first: forall x y z (circuit: forall (cava: Cava), x ~> y),
   is_combinational (fun cava => first (circuit cava) : x**z ~[cava]~> y**z) =   
   is_combinational circuit.
@@ -153,35 +165,13 @@ Proof.
   tauto.
 Qed.
 
-Lemma modular_prop: forall (x y z : Kind)
-  (A: Arrow Kind ConjPropKindCategory Unit Tuple)
-  (f: x ~[A]~> y) (g: y ~[A]~> z),
-  (f >>> g) = 
-  (g /\ f).
-Proof.
-  intros.
-  tauto.
-Qed.
-
-Lemma decompose_combinational: forall x y z
-  (f: forall (cava: Cava), x ~> y)
-  (g: forall (cava: Cava), y ~> z),
-  is_combinational (fun cava => (f cava) >>> (g cava) : x ~[cava]~> z ) -> 
-  is_combinational g /\ is_combinational f.
-Proof.
-  intros.
-  unfold is_combinational in *.
-  cbn in H.
-  tauto.
-Qed.
-
 Section example.
   Definition ex_loopr {x y z: Kind} (cava: Cava) (c: x**z ~[cava]~> y**z): x ~[cava]~> y
     := loopr c.
   Definition ex_loopl {x y z: Kind} (cava: Cava) (c: z**x ~[cava]~> z**y): x ~[cava]~> y
     := loopl c.
 
-  Lemma loopl_is_not_combinational : forall (x y z: Kind) (c: forall (cava: Cava), z**x ~[cava]~> z**y),
+  Example loopl_is_not_combinational : forall (x y z: Kind) (c: forall (cava: Cava), z**x ~[cava]~> z**y),
     ~ is_combinational (fun cava => ex_loopl cava (c cava)).
   Proof.
     intros.
@@ -189,11 +179,15 @@ Section example.
     tauto.
   Qed.
 
-  Lemma loopr_is_not_combinational : forall (x y z: Kind) (c: forall (cava: Cava), x**z ~[cava]~> y**z),
+  Example loopr_is_not_combinational : forall (x y z: Kind) (c: forall (cava: Cava), x**z ~[cava]~> y**z),
     ~ is_combinational (fun cava => ex_loopr cava (c cava)).
   Proof.
     intros.
     unfold is_combinational.
     tauto.
   Qed.
+
+  Example not_gate_is_combinational : forall (x y z: Kind),
+    is_combinational (fun cava => not_gate).
+  Proof. intros. simply_combinational. Qed.
 End example.

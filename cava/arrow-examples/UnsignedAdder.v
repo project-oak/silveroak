@@ -57,15 +57,15 @@ Definition adder445: forall cava: Cava,
     << Vector Bit 4, Vector Bit 4, Unit >> ~[cava]~> (Vector Bit 5) 
   := unsigned_adder 4 4 5.
 
-Lemma adder445_is_combinational: wf_combinational (adder445 _).
-Proof. combinational_obvious. Qed.
+Lemma adder445_is_combinational: is_combinational adder445.
+Proof. simply_combinational. Qed.
 
 Definition adder88810: forall cava: Cava,
     << Vector Bit 8, Vector Bit 8, Vector Bit 8, Unit >> ~[cava]~> (Vector Bit 10) 
   := adder3 8 8 8.
 
-Lemma adder88810_is_combinational: wf_combinational (adder88810 _).
-Proof. combinational_obvious. Qed.
+Lemma adder88810_is_combinational: is_combinational adder88810.
+Proof. simply_combinational. Qed.
 
 Definition adder444_tree_4: forall cava: Cava, 
   << Vector (Vector Bit 4) 4, Unit >> ~[cava]~> (Vector Bit 4) 
@@ -158,8 +158,8 @@ Definition adder444_tree_4_inputs :=
   map (fun '(x, y, z, w) => [N2Bv_sized 4 x; N2Bv_sized 4 y; N2Bv_sized 4 z; N2Bv_sized 4 w]%vector)
   [(0, 0, 0, 1); (1, 1, 1, 1); (1, 3, 5, 2); (15, 1, 1, 1)]%N.
 
-Lemma adder444_tree_4_is_combinational: wf_combinational (adder444_tree_4 _).
-Proof. combinational_obvious. Qed.
+Lemma adder444_tree_4_is_combinational: is_combinational adder444_tree_4.
+Proof. simply_combinational. Qed.
 
 Definition adder444_tree_4_tb_expected_outputs
   := map (fun i => combinational_evaluation adder444_tree_4 adder444_tree_4_is_combinational i) adder444_tree_4_inputs.
@@ -179,8 +179,8 @@ Definition growth_tree_8_inputs :=
   ;[15; 15; 15; 15; 15; 15; 15; 15]%vector %N
   ].
 
-Lemma growth_tree_8_is_combinational: wf_combinational (growth_tree_8 _).
-Proof. combinational_obvious. Qed.
+Lemma growth_tree_8_is_combinational: is_combinational growth_tree_8.
+Proof. simply_combinational. Qed.
 
 Definition growth_tree_8_tb_expected_outputs
   := map (fun i => combinational_evaluation growth_tree_8 growth_tree_8_is_combinational i) growth_tree_8_inputs.
