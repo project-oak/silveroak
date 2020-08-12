@@ -20,6 +20,8 @@ From Coq Require Import extraction.ExtrHaskellString.
 From Coq Require Import ExtrHaskellBasic.
 From Coq Require Import extraction.ExtrHaskellNatInteger.
 
+Set Extraction Optimize.
+
 Extraction Language Haskell.
 
 Require Import Combinators.
@@ -39,11 +41,28 @@ Extraction Library ArrowAdderTutorial.
 From Cava Require Import Arrow.ArrowExport.
 (* From Cava Require Import Cava.pkg. *)
 Extraction Library CavaNotation.
-Require Import Aes.pkg.
-Extraction Library pkg.
-Require Import Aes.sbox.
+
+Require Import
+  Aes.sbox
+  Aes.mix_single_column
+  Aes.sub_bytes
+  Aes.shift_rows
+  Aes.mix_columns
+  Aes.sbox_canright_masked_noreuse
+  (* Aes.sbox_lut *)
+  Aes.sbox_canright
+  Aes.pkg
+  Aes.unrolled_cipher
+  Aes.sbox_canright_pkg.
+
 Extraction Library sbox.
-Require Import Aes.sbox_canright_pkg.
-Extraction Library sbox_canright_pkg.
-Require Import Aes.sbox_canright.
+Extraction Library mix_single_column.
+Extraction Library sub_bytes.
+Extraction Library shift_rows.
+Extraction Library mix_columns.
+Extraction Library sbox_canright_masked_noreuse.
+(* Extraction Library sbox_lut. *)
 Extraction Library sbox_canright.
+Extraction Library pkg.
+Extraction Library unrolled_cipher.
+Extraction Library sbox_canright_pkg.

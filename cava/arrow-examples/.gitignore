@@ -16,6 +16,7 @@ Makefile.coq
 # Haskell files except the manually created ones
 *.hs
 !ArrowExamplesSV.hs
+!Main.hs
 
 # Binaries
 ArrowExamplesSV
