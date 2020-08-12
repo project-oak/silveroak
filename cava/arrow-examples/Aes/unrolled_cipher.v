@@ -26,33 +26,33 @@ Open Scope kind_scope.
 
 Definition cipher_round
   (sbox_impl: SboxImpl)
-  : forall cava: Cava, 
+  : forall cava: Cava,
     << Bit                               (* cipher mode: CIPH_FWD/CIPH_INV *)
     , Vector (Vector (Vector Bit 8) 4) 4 (* data input *)
     , Vector (Vector (Vector Bit 8) 4) 4 (* round key *)
-    , Unit>> ~> 
+    , Unit>> ~>
       Vector (Vector (Vector Bit 8) 4) 4 :=
   <[\op_i data_i stage_key =>
     let stage1 = !(aes_sub_bytes sbox_impl) op_i data_i in
     let stage2 = !aes_shift_rows op_i stage1 in
     let stage3 = !aes_mix_columns op_i stage2 in
-    !(map2 <[ !(map2 <[\x y => x ^ y]>) ]> ) stage3 stage_key 
+    !(map2 <[ !(map2 <[\x y => x ^ y]>) ]> ) stage3 stage_key
     ]>.
 
 (* Note: aes_key_expand in OpenTitan is stateful, this version is not *)
 Program Definition aes_key_expand
   (sbox_impl: SboxImpl)
-  : forall cava: Cava, 
+  : forall cava: Cava,
     << Bit (* op_i *)
     , Vector Bit 3 (* round id *)
     , Vector Bit 8 (* rcon input *)
     , Vector (Vector (Vector Bit 8) 4) 8 (* input key *)
     , Unit
-    >> ~> 
+    >> ~>
       << Vector Bit 8, Vector (Vector (Vector Bit 8) 4) 8>> :=
   let sbox := curry (aes_sbox sbox_impl) in
   let mapped_sbox := <[ !(map sbox) ]> in
-  <[\op_i round_id rcon key_i => 
+  <[\op_i round_id rcon key_i =>
     (* if (key_len_i == AES_256 && rnd[0] == 1'b0) begin
     use_rcon = 1'b0;
     end *)
@@ -60,13 +60,13 @@ Program Definition aes_key_expand
 
     (* rcon_d = (op_i == CIPH_FWD) ? aes_mul2(rcon_q) :
                 (op_i == CIPH_INV) ? aes_div2(rcon_q) : 8'h01; *)
-    let rcon = 
+    let rcon =
       if round_id == #0
-      then 
+      then
         if op_i == !CIPH_FWD
         then #1
         else #64
-      else 
+      else
         if op_i == !CIPH_FWD
         then !aes_mul2 rcon
         else !aes_div2 rcon in
@@ -76,7 +76,7 @@ Program Definition aes_key_expand
         CIPH_FWD: rot_word_in = key_i[7];
         CIPH_INV: rot_word_in = key_i[3];
         default:  rot_word_in = key_i[7]; *)
-    let rot_word_in = 
+    let rot_word_in =
       if op_i == !CIPH_FWD
       then key_i[#7]
       else key_i[#3] in
@@ -85,7 +85,7 @@ Program Definition aes_key_expand
     let rot_word_out = !aes_circ_byte_shift rot_word_in #3 in
 
     (* assign sub_word_in = use_rot_word ? rot_word_out : rot_word_in; *)
-    let sub_word_in = 
+    let sub_word_in =
       if use_rcon (* for AES_256 use_rcon == use_rot_word *)
       then rot_word_out
       else rot_word_in in
@@ -126,10 +126,10 @@ Program Definition aes_key_expand
       end *)
     let regular =
       if round_id == #0
-      then concat key_i[:7:4] key_i[:3:0] 
-      else 
+      then concat key_i[:7:4] key_i[:3:0]
+      else
         if op_i == !CIPH_FWD
-        then 
+        then
           (* todo: this is a "scan" op *)
           let regular_4 = (!reshape irregular) ^ key_i[#0] in
           let regular_5 = regular_4 ^ key_i[#1] in
@@ -152,7 +152,7 @@ Program Definition aes_key_expand
               end
             end // rnd == 0
           end *)
-        else 
+        else
           let regular_0 = (!reshape irregular) ^ key_i[#4] in
           let regular_1 = key_i[#4] ^ key_i[#5] in
           let regular_2 = key_i[#5] ^ key_i[#6] in
@@ -162,39 +162,109 @@ Program Definition aes_key_expand
     (rcon, regular)
     ]>.
 Next Obligation. lia. Defined.
-Next Obligation. lia. Defined. 
+Next Obligation. lia. Defined.
 Next Obligation. lia. Defined.
 Next Obligation. lia. Defined.
 Next Obligation. lia. Defined.
 
-(* stateless *)
-Program Definition unrolled_foward_cipher
+Program Definition key_expand_and_round
   (sbox_impl: SboxImpl)
-  : forall cava: Cava, 
+  : forall cava: Cava,
+    <<
+      <<
+        Vector Bit 8 (* rcon *)
+      , Vector (Vector (Vector Bit 8) 4) 4 (* data *)
+      , Vector (Vector (Vector Bit 8) 4) 8 (* key *)
+      (* , Unit *)
+      >>,
+      Vector Bit 3, (* round *)
+      Unit
+    >> ~>
     <<
       Vector Bit 8 (* rcon *)
     , Vector (Vector (Vector Bit 8) 4) 4 (* data *)
     , Vector (Vector (Vector Bit 8) 4) 8 (* key *)
-    , Unit
-    >> ~> 
-    << 
-      Vector Bit 8 (* rcon *)
-    , Vector (Vector (Vector Bit 8) 4) 4 (* data *)
-    , Vector (Vector (Vector Bit 8) 4) 8 (* key state *)
-    >>
-      :=
-  let cipher_round := cipher_round sbox_impl in  
-  let aes_key_expand := aes_key_expand sbox_impl in  
-  <[\rcon data_i key => 
-    let round = #0 in
-    let rcon = #1 in
+    (* , Unit *)
+    >> :=
+  <[\state round =>
+    let '(rcon, state') = state in
+    let '(data_i, key) = state' in
 
     let key_words_0 = key[:3:0] in
     let key_bytes_0 = !aes_transpose key_words_0 in
     let round_key = key_bytes_0 in
 
-    let '(rcon, new_key) = !aes_key_expand !CIPH_FWD round rcon key in
+    let '(rcon', new_key) = !(aes_key_expand sbox_impl) !CIPH_FWD round rcon key in
+    let data_o = !(cipher_round sbox_impl) !CIPH_FWD data_i round_key in
+    (rcon', data_o, new_key)
+  ]>.
+Next Obligation. lia. Qed.
 
-    (rcon, !cipher_round !CIPH_FWD data_i round_key, new_key)
+(* stateless *)
+Program Definition unrolled_forward_cipher
+  (sbox_impl: SboxImpl)
+  : forall cava: Cava,
+    <<
+      (* Vector Bit 8 *)
+      Vector (Vector (Vector Bit 8) 4) 4 (* data *)
+    , Vector (Vector (Vector Bit 8) 4) 8 (* key *)
+    , Unit
+    >> ~>
+    <<
+      (* Vector Bit 8 rcon *)
+      Vector (Vector (Vector Bit 8) 4) 4 (* data *)
+    (* , Vector (Vector (Vector Bit 8) 4) 8 *)
+    >>
+      :=
+  let cipher_round := cipher_round sbox_impl in
+  let aes_key_expand := aes_key_expand sbox_impl in
+  <[\data_i key =>
+    let rcon = #1 in
+
+    let '(_, end_state) = !(foldl (n:=13) (key_expand_and_round sbox_impl)) (rcon, data_i, key) !(seq (n:=13) 0) in
+    let '(data_i, key) = end_state in
+
+
+    (* final round has no mix_columns *)
+    let key_words_0 = key[:3:0] in
+    let key_bytes_0 = !aes_transpose key_words_0 in
+    let round_key = key_bytes_0 in
+
+    let stage1 = !(aes_sub_bytes sbox_impl) !CIPH_FWD data_i in
+    let stage2 = !aes_shift_rows !CIPH_FWD stage1 in
+    !(map2 <[ !(map2 <[\x y => x ^ y]>) ]> ) stage2 round_key
     ]>.
-Next Obligation. lia. Defined.
+Next Obligation. lia. Qed.
+
+Definition unrolled_forward_cipher_flat
+  : forall cava: Cava,
+    <<
+      Vector Bit 128 (* data *)
+    , Vector Bit 256 (* key *)
+    , Unit
+    >> ~>
+    <<
+      Vector Bit 128 (* data *)
+    (* , Vector Bit 256 *)
+    >>
+      :=
+  <[\data key =>
+    let data_o = !(unrolled_forward_cipher SboxCanright) (!reshape (!reshape data)) (!reshape (!reshape key)) in
+    !flatten (!flatten data_o)
+    ]>.
+
+Definition test_key := N2Bv_sized 256 0.
+
+(* 0x80000000000000000000000000000000 *)
+Definition test_data := N2Bv_sized 128 170141183460469231731687303715884105728.
+
+(* 0xddc6bf790c15760d8d9aeb6f9a75fd4e *)
+Definition test_encrypted := N2Bv_sized 128 294791345377038030526550647723007540558.
+
+(* Definition unrolled_foward_cipher_extraction' data key :=
+  match unrolled_forward_cipher_flat Combinational (N2Bv_sized 128 data, (N2Bv_sized 256 key, tt)) with
+  | Some v => bitvec_to_nat v
+  | None => 0
+  end. *)
+
+(* Eval native_compute in unrolled_foward_cipher_extraction' 1 1. *)
