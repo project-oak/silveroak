@@ -111,8 +111,8 @@ Module KappaNotation.
   Notation "x ++ y" := (App (App (Morph (Primitive (Concat _ _))) x) y) (in custom expr at level 4) : kappa_scope.
   Notation "x :: y" := (App (App (Morph (Primitive (Cons _ _))) x) y) (in custom expr at level 7, right associativity) : kappa_scope.
 
-  Notation "'true'" := (Morph (Primitive (Constant true))) (in custom expr at level 2) : kappa_scope.
-  Notation "'false'" := (Morph (Primitive (Constant false))) (in custom expr at level 2) : kappa_scope.
+  Notation "'true''" := (Morph (Primitive (Constant true))) (in custom expr at level 2) : kappa_scope.
+  Notation "'false''" := (Morph (Primitive (Constant false))) (in custom expr at level 2) : kappa_scope.
 
   Notation "# x" := (Morph (Primitive (ConstantVec _ x)))%N (in custom expr at level 2, x constr at level 4) : kappa_scope.
 
@@ -157,10 +157,10 @@ Section regression_examples.
   Definition ex0_constant:  << Vector Bit 10, Unit >> ~> (Vector Bit 8)
     := <[ \x => x [: 7 : 0 ] ]>.
 
-  Definition ex1_constant:  << Bit, Unit >> ~> Bit := <[ \x => true ]>.
+  Definition ex1_constant:  << Bit, Unit >> ~> Bit := <[ \x => true' ]>.
   Definition ex2_parameterized (n: nat):  << Bit, Unit >> ~> Bit :=
   match n with
-  | O => <[ \ x => true ]>
+  | O => <[ \ x => true' ]>
   | S n => <[ \ x => xor x x ]>
   end.
 
@@ -181,7 +181,7 @@ Section regression_examples.
   Definition ex8_multiindex:  << Vector (Vector Bit 5) 10, Unit >> ~> Bit :=
   <[ \ x => x[#0][#1] ]>.
   Definition ex9_mkvec:  << Bit, Unit >> ~> (Vector Bit 2) :=
-  <[ \x => true :: false :: [] ]>.
+  <[ \x => true' :: false' :: [] ]>.
   Definition ex10:  << Vector Bit 10, Vector Bit 10, Unit >> ~> (Vector Bit 11) :=
   <[ \ x y => x + y ]>.
   Definition ex11:  << Vector Bit 10, Vector Bit 10, Unit >> ~> (Vector Bit 10) :=
@@ -189,7 +189,7 @@ Section regression_examples.
   Definition ex12_module:  <<Vector Bit 10, Unit>> ~> Vector Bit 10
     := make_module "ex12_module" <[ \x => x +% x ]>.
   Definition ex13:  << Vector Bit 10, Unit >> ~> Bit :=
-  <[ \ x => (xor x[#0] x[#1] :: false :: []) [#0] ]>.
+  <[ \ x => (xor x[#0] x[#1] :: false' :: []) [#0] ]>.
   Definition ex14:  << Vector Bit 10, Vector Bit 4, Unit >> ~> Bit :=
   <[ \ x i => x [ i ] ]>.
 

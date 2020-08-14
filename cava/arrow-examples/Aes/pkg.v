@@ -20,6 +20,7 @@ From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
 From ArrowExamples Require Import Combinators.
 
+Import VectorNotations.
 Import KappaNotation.
 Open Scope kind_scope.
 
@@ -52,8 +53,8 @@ Inductive SboxImpl :=
   CIPH_FWD = 1'b0,
   CIPH_INV = 1'b1
 } ciph_op_e; *)
-Definition CIPH_FWD:  Unit ~> Bit := <[ false ]>.
-Definition CIPH_INV:  Unit ~> Bit := <[ true ]>.
+Definition CIPH_FWD:  Unit ~> Bit := <[ false' ]>.
+Definition CIPH_INV:  Unit ~> Bit := <[ true' ]>.
 
 (* // Multiplication by {02} (i.e. x) on GF(2^8)
 // with field generating polynomial {01}{1b} (9'h11b)
@@ -134,7 +135,10 @@ Definition aes_circ_byte_shift:
         let offset = seq - shift in
         input[offset]
       ]>
-      ) (!replicate input) (!replicate shift) !(seq 4)
+      ) 
+      (!replicate input) 
+      (!replicate shift) 
+      !(seq 4)
   ]>.
 
 (* function automatic logic [3:0][3:0][7:0] aes_transpose(logic [3:0][3:0][7:0] in);
