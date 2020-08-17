@@ -162,30 +162,30 @@ Definition dt_tree_fold
 
 Fixpoint foldl {n A B}
   (f: forall cava: Cava, <<B, A, Unit>> ~> B)
-  (initial: forall cava: Cava, <<Unit>> ~> B)
+  (* (initial: forall cava: Cava, <<Unit>> ~> B) *)
   {struct n}
-  : forall cava: Cava, << Vector A n, Unit >> ~> <<B>> :=
+  : forall cava: Cava, <<B, Vector A n, Unit >> ~> <<B>> :=
 match n with
-| 0 => <[ \_ => !initial ]>
+| 0 => <[ \initial _ => initial ]>
 | S n' =>
-  <[ \xs =>
+  <[ \initial xs =>
       let '(x, xs') = uncons xs in
-      let acc = !(foldl f initial) xs' in
+      let acc = !(foldl f) initial xs' in
       !f acc x
   ]>
 end.
 
 Fixpoint foldr {n A B}
   (f: forall cava: Cava, <<A, B, Unit>> ~> B)
-  (initial: forall cava: Cava, <<Unit>> ~> B)
+  (* (initial: forall cava: Cava, <<Unit>> ~> B) *)
   {struct n}
-  : forall cava: Cava, << Vector A n, Unit >> ~> <<B>> :=
+  : forall cava: Cava, <<B, Vector A n, Unit >> ~> <<B>> :=
 match n with
-| 0 => <[ \_ => !initial ]>
+| 0 => <[ \initial _ => initial ]>
 | S n' =>
-  <[ \xs =>
+  <[ \initial xs =>
       let '(xs', x) = unsnoc xs in
-      let acc = !(foldr f initial) xs' in
+      let acc = !(foldr f) initial xs' in
       !f x acc
   ]>
 end.
@@ -262,7 +262,7 @@ match T return forall cava: Cava, << T, T, Unit >> ~> <<Bit>> with
 | Vector ty n => 
   <[\ x y => 
     let item_equality = !(map2 equality) x y in
-    !(foldl <[\x y => and x y]> <[ true ]>) item_equality
+    !(foldl <[\x y => and x y]>) true item_equality
   ]>
 end.
 

@@ -42,8 +42,8 @@ Notation "x == y" :=
   (App (App (Morph (equality _)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 
-Inductive SboxImpl := 
-| SboxLut
+Inductive SboxImpl :=
+(* | SboxLut *)
 | SboxCanright
 (* | SboxCanrightMasked *)
 | SboxCanrightMaskedNoReuse.
@@ -72,7 +72,7 @@ function automatic logic [7:0] aes_mul2(logic [7:0] in);
 endfunction *)
 Definition aes_mul2: forall cava: Cava,
   <<Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
-  <[\ x => x[#7] 
+  <[\ x => x[#7]
         :: (xor x[#0] x[#7])
         :: x[#1]
         :: (xor x[#2] x[#7])
@@ -109,7 +109,7 @@ endfunction *)
 Definition aes_div2: forall cava: Cava,
   <<Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\ x => (xor x[#1] x[#0])
-        :: x[#2] 
+        :: x[#2]
         :: (xor x[#3] x[#0])
         :: (xor x[#4] x[#0])
         :: x[#5]
@@ -130,7 +130,7 @@ endfunction *)
 Definition aes_circ_byte_shift: forall cava: Cava,
   <<Vector (Vector Bit 8) 4, Vector Bit 2, Unit>> ~> (Vector (Vector Bit 8) 4) :=
   <[\input shift =>
-      !(map3 <[\input shift seq => 
+      !(map3 <[\input shift seq =>
         let offset = seq - shift in
         input[offset]
       ]>
@@ -148,13 +148,13 @@ Definition aes_circ_byte_shift: forall cava: Cava,
   return transpose;
 endfunction *)
 Fixpoint aes_transpose {n m}
-  : forall cava: Cava, 
-    <<Vector (Vector (Vector Bit 8) m) n, Unit>> ~> 
-      Vector (Vector (Vector Bit 8) n) m := 
+  : forall cava: Cava,
+    <<Vector (Vector (Vector Bit 8) m) n, Unit>> ~>
+      Vector (Vector (Vector Bit 8) n) m :=
 match n with
 | O => <[\_ => !replicate ([]) ]>
 | S n' =>
-  <[\mat => 
+  <[\mat =>
     let '(mat', vec) = unsnoc mat in
     !(map2 <[\vec x => snoc vec x ]>) (!aes_transpose mat') vec
     ]>

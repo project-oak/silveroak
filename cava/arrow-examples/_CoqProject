@@ -2,11 +2,10 @@
 -R ../arrow-lib Arrow
 -R . ArrowExamples
 
-Combinators.v 
+Combinators.v
 
 Mux2_1.v
 SyntaxExamples.v
-ArrowExtraction.v
 UnsignedAdder.v
 
 ArrowAdderTutorial.v
@@ -22,3 +21,5 @@ Aes/shift_rows.v
 Aes/mix_single_column.v
 Aes/mix_columns.v
 Aes/unrolled_cipher.v
+
+ArrowExtraction.v
