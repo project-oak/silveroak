@@ -14,13 +14,9 @@
 # limitations under the License.
 #
 
-.PHONY: all third_party clean
+.PHONY:	all
 
-all: third_party
-	cd cava && $(MAKE) all
-
-third_party:
-	cd third_party && $(MAKE) 
-
-clean:
-	cd cava && $(MAKE) clean
+all:
+	git submodule update --init
+	cd coqutil && $(MAKE) all && $(MAKE) install
+	cd coq-ext-lib && $(MAKE) theories && $(MAKE) install
