@@ -102,6 +102,10 @@ Inductive Instance : Type :=
                                         Signal (BitVec Bit b) ->
                                         Signal (BitVec Bit c) ->
                                         Instance
+  | UnsignedSubtract : forall {a b c : nat}, Signal (BitVec Bit a) ->
+                                        Signal (BitVec Bit b) ->
+                                        Signal (BitVec Bit c) ->
+                                        Instance                                      
   (* Relational operations *)
   | GreaterThanOrEqual: forall {a b : nat}, Signal (BitVec Bit a) ->
                                             Signal (BitVec Bit b) ->

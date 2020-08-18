@@ -202,6 +202,8 @@ generateInstance _ (Component name parameters connections) instNr =
   connections' = [(n, extractSignal us) | (n, us) <- connections]
 generateInstance _ (UnsignedAdd _ _ _ a b c) _
    = "  assign " ++ showSignal c ++ " = " ++ showSignal a ++ " + " ++ showSignal b ++ ";"
+generateInstance _ (UnsignedSubtract _ _ _ a b c) _
+   = "  assign " ++ showSignal c ++ " = " ++ showSignal a ++ " - " ++ showSignal b ++ ";"
 generateInstance _ (GreaterThanOrEqual _ _ a b g) _
    = "  assign " ++ showSignal g ++ " = " ++ showSignal a ++ " >= " ++ showSignal b ++ ";"
 
