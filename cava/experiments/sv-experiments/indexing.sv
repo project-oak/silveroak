@@ -77,6 +77,14 @@ module indexing(
   logic[10:0] gamma = $bits(gamma)'({alpha, 1'b1, 1'b1});
   logic[3:0] delta = {1'b1, 1'b1, 1'b0, 1'b0};
 
+  logic[3:0] uA = 4'd12;
+  logic[3:0] uB = 4'd5;
+  logic[3:0] uC = uA - uB;
+  logic[3:0] uD = 4'd0;
+  logic[3:0] uE = 4'd1;
+  logic[3:0] uF = uD - uE;
+  logic[3:0] uG = uD - uA;
+
   initial begin
     $display("bat1 = %b", bat1);
     $display("bat2 = %b", bat2);
@@ -101,6 +109,9 @@ module indexing(
     $display("delta = %b", delta);
     $display("$clog2(32+2) = %d", $clog2(32+2));
     $display("2**$clog2(32+2) = %d", 2**$clog2(32+2));
+    $display("uC = %d %b", uC, uC);
+    $display("uF = %d %b", uF, uF);
+    $display("uG = %d %b", uG, uG);
   end
 
 endmodule  
