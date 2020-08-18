@@ -27,134 +27,108 @@ Require Import Cava.BitArithmetic.
 (* Evaluation as function evaluation, no delay elements or loops              *)
 (******************************************************************************)
 
-Section instance.
+Definition denote_combinational_evaluation {i o} (c: Circuit i o) := denote_kind i -> denote_kind o.
 
-Instance CoqKindMaybeCategory : Category Kind := {
-  morphism X Y := denote_kind X -> denote_kind Y;
-  compose _ _ _ f g x := f (g x);
-  id X x := x;
-}.
+Definition unsnoc' n o (v: denote_kind (Vector o (S n)))
+  : (denote_kind (Vector o n) * denote_kind o) :=
+  rectS (fun n v => (denote_kind (Vector o n) * denote_kind o)%type)
+  (fun o => ([], o))
+  (fun o n v f => 
+    let '(xs, x) := f in
+    (o::xs, x)
+  ) v.
 
-Instance CoqKindMaybeArrow : Arrow _ CoqKindMaybeCategory Unit Tuple := {
-  first _ _ _ f i := (f (fst i), snd i);
-  second _ _ _ f i := (fst i, f (snd i));
+Definition snoc' n o (v: denote_kind (Vector o n)) a
+  : denote_kind (Vector o (S n)) :=
+  t_rect _ (fun n v => denote_kind (Vector o (S n))) [a]
+  (fun x n v f => 
+    x :: f
+  ) _ v.
 
-  cancelr X x := (fst x);
-  cancell X x := (snd x);
-
-  uncancell _ x := (tt, x);
-  uncancelr _ x := (x, tt);
-
-  assoc _ _ _ i := (fst (fst i), (snd (fst i), snd i));
-  unassoc _ _ _ i := ((fst i, fst (snd i)), snd (snd i));
-}.
-
-Instance CombinationalDrop : ArrowDrop CoqKindMaybeArrow := { drop _ x := tt }.
-Instance CombinationalCopy : ArrowCopy CoqKindMaybeArrow := { copy _ x := (pair x x) }.
-Instance CombinationalSwap : ArrowSwap CoqKindMaybeArrow := { swap _ _ x := (snd x, fst x) }.
-Instance CombinationalLoop : ArrowLoop CoqKindMaybeArrow := 
-  { loopl _ _ _ _ _ := kind_default _; loopr _ _ _ _ _ := kind_default _; }.
-Instance CombinationalSTKC : ArrowSTKC CoqKindMaybeArrow := { }.
-
-Definition vec_head {n o} (v: t o (S n)): o := 
-  match v with
-  | x::_ => x
-  end.
-Definition vec_tail {n o} (v: t o (S n)): t o n := 
-  match v with
-  | _::x => x
+Definition slice' n x y (o: Kind) (v: denote_kind (Vector o n)) : denote_kind (Vector o (x - y + 1)) := 
+  match Nat.eq_dec n (y + (n - y)) with 
+  | left Heq =>
+    let '(_, v) := splitat y (rew [fun x => Vector.t (denote_kind o) x] Heq in v)
+    in 
+      match Nat.eq_dec (n-y) ((x - y + 1) + (n - x - 1)) with 
+      | left Heq => fst (Vector.splitat (x-y+1) (rew [fun x => Vector.t (denote_kind o) x] Heq in v))
+      | right Hneq => kind_default _
+      end
+  | right Hneq => kind_default _ 
   end.
 
-#[refine] Instance Combinational : Cava := {
-  cava_arrow := CoqKindMaybeArrow;
-  constant b _ := b;
-  constant_bitvec n v _ := (N2Bv_sized n v);
+Fixpoint combinational_evaluation' {i o}
+  (c: Circuit i o)
+  : denote_kind i ->
+    denote_kind o :=
+  match c with
+  | Composition _ _ _ f g => fun x =>
+    (combinational_evaluation' g) ((combinational_evaluation' f) x)
+  | First x y z f => fun x => ((combinational_evaluation' f) (fst x), snd x)
+  | Second x y z f => fun x => (fst x, (combinational_evaluation' f) (snd x))
+  | Loopr x y z f => fun x => kind_default _ 
+  | Loopl x y z f => fun x => kind_default _ 
 
-  mk_module _ _ _name f := f;
+  | Structural (Id _) => fun x => x
+  | Structural (Cancelr X) => fun x => fst x
+  | Structural (Cancell X) => fun x => snd x
+  | Structural (Uncancell _) => fun x => (tt, x)
+  | Structural (Uncancelr _) => fun x => (x, tt)
+  | Structural (Assoc _ _ _) => fun i => (fst (fst i), (snd (fst i), snd i))
+  | Structural (Unassoc _ _ _) => fun i => ((fst i, fst (snd i)), snd (snd i))
+  | Structural (Drop x) => fun _ => tt
+  | Structural (Swap x y) => fun '(x,y) => (y,x)
+  | Structural (Copy x) => fun x => (x,x)
 
-  not_gate b := (negb (fst b));
-  and_gate '(x, y) := (andb x (fst y));
-  nand_gate '(x, y) := (negb (andb x (fst y)));
-  or_gate '(x, y) := (orb x (fst y));
-  nor_gate '(x, y) := (negb (orb x (fst y)));
-  xor_gate '(x, y) := (xorb x (fst y));
-  xnor_gate '(x, y) := (negb (xorb x (fst y)));
-  buf_gate x := (fst x);
-  delay_gate _ _ := kind_default _;
+  | Primitive (constant b) => fun _ => b
+  | Primitive (constant_bitvec n v) => fun _ => N2Bv_sized n v
+  | Primitive (delay_gate o) => fun _ => kind_default _
+  | Primitive not_gate => fun b => negb (fst b)
+  | Primitive buf_gate => fun b => fst b
+  | Primitive (uncons n o) => fun v => (hd (fst v), tl (fst v))
+  | Primitive (unsnoc n o) => fun v => unsnoc' n o (fst v)
+  | Primitive (split n m o) => fun v => (Vector.splitat n (fst v))
+  | Primitive (slice n x y o) => fun v => slice' n x y o (fst v)
+  | Primitive (empty_vec o) => fun _ => []
+  | Primitive (lut n f) => fun '(i,_) =>
+    let f' := NaryFunctions.nuncurry bool bool n f in
+    (f' (vec_to_nprod _ _ i))
 
-  xorcy '(x, y) := (xorb x (fst y));
-  muxcy i := (if fst i then fst (fst (snd i)) else snd (fst (snd i)));
+  | Primitive and_gate => fun '(x,(y,_)) => x && y
+  | Primitive nand_gate => fun '(x,(y,_)) => negb ( x && y)
+  | Primitive or_gate => fun '(x,(y,_)) => orb x y
+  | Primitive nor_gate => fun '(x,(y,_)) => negb (orb x y)
+  | Primitive xor_gate => fun '(x,(y,_)) => xorb x y
+  | Primitive xnor_gate => fun '(x,(y,_)) => negb (xorb x y)
+  | Primitive xorcy => fun '(x,(y,_)) => xorb x y
 
-  unsigned_add m n s '(av, (bv, _)) :=
+  | Primitive muxcy => fun i => (if fst i then fst (fst (snd i)) else snd (fst (snd i)))
+  | Primitive (unsigned_add m n s) => fun '(av,(bv,_)) =>
     let a := Ndigits.Bv2N av in
     let b := Ndigits.Bv2N bv in
     let c := (a + b)%N in
-    (Ndigits.N2Bv_sized s c);
-
-  unsigned_sub s '(av, (bv, _)) :=
+    (Ndigits.N2Bv_sized s c)
+  | Primitive (unsigned_sub s) => fun '(av, (bv, _)) =>
     let a := Ndigits.Bv2N av in
     let b := Ndigits.Bv2N bv in
     let c := (a - b)%N in (*todo: This is likely incorrect on underflow *)
-    (Ndigits.N2Bv_sized s c);
-
-  lut n f '(i,_) :=
-    let f' := NaryFunctions.nuncurry bool bool n f in
-    (f' (vec_to_nprod _ _ i));
-
-  empty_vec o _ := (Vector.nil (denote_kind o));
-  index n o x := 
+    (Ndigits.N2Bv_sized s c)
+  | Primitive (index n o) => fun x =>
     match Arith.Compare_dec.lt_dec (bitvec_to_nat (fst (snd x))) n with
     | left Hlt => (nth_order (fst x) Hlt)
     | right Hnlt => kind_default _
-    end;
+    end
+  | Primitive (cons n o) => fun '(x, (v,_)) => (x :: v)
+  | Primitive (snoc n o) => fun '(v, (x,_)) => snoc' n o v x
 
-  cons n o '(x, (v,_)) := (x :: v);
-  snoc n o '(v, (x,_)) := 
-    let v' := (v ++ [x]) 
-    in match Nat.eq_dec (n + 1) (S n)  with 
-      | left Heq => rew [fun x => (denote_kind (Vector o x))] Heq in v'
-      | right Hneq => (ltac:(exfalso;lia))
-      end;
-  uncons n o v := (vec_head (fst v), vec_tail (fst v));
-  unsnoc n o v :=
-    let v' := match Arith.Compare_dec.le_dec n (S n)  with 
-      | left Hlt => take n Hlt (fst v)
-      | right Hnlt => (ltac:(exfalso; abstract lia))
-      end in
-    (v', last (fst v));
-  concat n m o '(x, (y, _)) := (Vector.append x y);
-
-  split n m o x :=
-    (Vector.splitat n (fst x));
-
-  slice n x y o H1 H2 v := 
-    match Nat.eq_dec n (y + (n - y)) with 
-      | left Heq =>
-        let '(_, v) := splitat y (rew [fun x => Vector.t (denote_kind o) x] Heq in (fst v))
-        in 
-          match Nat.eq_dec (n-y) ((x - y + 1) + (n - x - 1)) with 
-          | left Heq => _
-          | right Hneq => (ltac:(exfalso; abstract lia))
-          end
-      | right Hneq => (ltac:(exfalso; abstract lia))
-      end;
-}.
-Proof.
-  (* slice *)
-  - cbn.
-    intros.
-    rewrite Heq in v.
-    apply (splitat (x-y+1)) in v.
-    exact (fst v).
-Defined.
-
-End instance.
+  | Primitive (concat n m o) => fun '(x, (y, _)) => Vector.append x y
+  end.
 
 Local Open Scope category_scope.
 
 Definition combinational_evaluation {x y: Kind}
-  (circuit: forall cava: Cava, x ~> y)
+  (circuit: x ~> y)
   (ok: is_combinational circuit)
   (i: denote_kind (remove_rightmost_unit x))
   : denote_kind y :=
-  (insert_rightmost_tt1 x >>> circuit Combinational) i.
+  combinational_evaluation' (insert_rightmost_tt1 x >>> circuit) i.

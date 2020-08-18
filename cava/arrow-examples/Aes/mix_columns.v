@@ -30,7 +30,7 @@ Open Scope kind_scope.
   output logic [3:0][3:0][7:0] data_o
 ); *)
 Definition aes_mix_columns
-  : forall cava: Cava, 
+  :  
     <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~> 
       Vector (Vector (Vector Bit 8) 4) 4 :=
       (* // Transpose to operate on columns

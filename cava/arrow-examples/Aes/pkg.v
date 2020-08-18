@@ -24,22 +24,22 @@ Import KappaNotation.
 Open Scope kind_scope.
 
 Notation "|^ x" :=
-  (App (Morph (foldl1 <[\a b => xor a b]> _)) x)
+  (App (Morph (foldl1 <[\a b => xor a b]> )) x)
   (in custom expr at level 5, no associativity) : kappa_scope.
 Notation "x && y" :=
-  (App (App (Morph and_gate) x) y)
+  (App (App (Morph (Primitive and_gate)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x & y" :=
-  (App (App (Morph (bitwise <[and]> _)) x) y)
+  (App (App (Morph (bitwise <[and]> )) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x ^ y" :=
-  (App (App (Morph (bitwise <[xor]> _)) x) y)
+  (App (App (Morph (bitwise <[xor]> )) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "'if' i 'then' t 'else' e" :=
-  (App (App (App (Morph (mux_item _)) i) t) e)
+  (App (App (App (Morph (mux_item )) i) t) e)
   (in custom expr at level 5, left associativity) : kappa_scope.
 Notation "x == y" :=
-  (App (App (Morph (equality _)) x) y)
+  (App (App (Morph (equality )) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 
 Inductive SboxImpl :=
@@ -52,8 +52,8 @@ Inductive SboxImpl :=
   CIPH_FWD = 1'b0,
   CIPH_INV = 1'b1
 } ciph_op_e; *)
-Definition CIPH_FWD: forall cava: Cava, Unit ~> Bit := <[ false ]>.
-Definition CIPH_INV: forall cava: Cava, Unit ~> Bit := <[ true ]>.
+Definition CIPH_FWD:  Unit ~> Bit := <[ false ]>.
+Definition CIPH_INV:  Unit ~> Bit := <[ true ]>.
 
 (* // Multiplication by {02} (i.e. x) on GF(2^8)
 // with field generating polynomial {01}{1b} (9'h11b)
@@ -70,7 +70,7 @@ function automatic logic [7:0] aes_mul2(logic [7:0] in);
   out[0] = in[7];
   return out;
 endfunction *)
-Definition aes_mul2: forall cava: Cava,
+Definition aes_mul2: 
   <<Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\ x => x[#7]
         :: (xor x[#0] x[#7])
@@ -87,7 +87,7 @@ Definition aes_mul2: forall cava: Cava,
 function automatic logic [7:0] aes_mul4(logic [7:0] in);
   return aes_mul2(aes_mul2(in));
 endfunction *)
-Definition aes_mul4: forall cava: Cava,
+Definition aes_mul4: 
   <<Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\ x => !aes_mul2 (!aes_mul2 x) ]>.
 
@@ -106,7 +106,7 @@ function automatic logic [7:0] aes_div2(logic [7:0] in);
   out[0] = in[1] ^ in[0];
   return out;
 endfunction *)
-Definition aes_div2: forall cava: Cava,
+Definition aes_div2: 
   <<Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\ x => (xor x[#1] x[#0])
         :: x[#2]
@@ -127,7 +127,7 @@ Definition aes_div2: forall cava: Cava,
          in[8*((5-s)%4) +: 8], in[8*((4-s)%4) +: 8]};
   return out;
 endfunction *)
-Definition aes_circ_byte_shift: forall cava: Cava,
+Definition aes_circ_byte_shift: 
   <<Vector (Vector Bit 8) 4, Vector Bit 2, Unit>> ~> (Vector (Vector Bit 8) 4) :=
   <[\input shift =>
       !(map3 <[\input shift seq =>
@@ -148,8 +148,7 @@ Definition aes_circ_byte_shift: forall cava: Cava,
   return transpose;
 endfunction *)
 Fixpoint aes_transpose {n m}
-  : forall cava: Cava,
-    <<Vector (Vector (Vector Bit 8) m) n, Unit>> ~>
+  : <<Vector (Vector (Vector Bit 8) m) n, Unit>> ~>
       Vector (Vector (Vector Bit 8) n) m :=
 match n with
 | O => <[\_ => !replicate ([]) ]>
@@ -161,10 +160,10 @@ match n with
 end.
 
 Definition aes_mvm_acc
-  : forall cava: Cava, <<Vector Bit 8, Vector Bit 8, Bit, Unit>> ~> (Vector Bit 8) :=
+  :  <<Vector Bit 8, Vector Bit 8, Bit, Unit>> ~> (Vector Bit 8) :=
   <[\acc mat vec => acc ^ (mat & (!replicate vec)) ]>.
 
-Definition aes_mvm: forall cava: Cava,
+Definition aes_mvm: 
   <<Vector Bit 8, Vector (Vector Bit 8) 8, Unit>> ~> (Vector Bit 8) :=
   <[\ vec_b mat_a =>
   let _1 = !aes_mvm_acc (#0) (mat_a[#0]) (vec_b[#7]) in

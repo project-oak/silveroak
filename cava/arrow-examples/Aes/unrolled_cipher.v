@@ -26,8 +26,7 @@ Open Scope kind_scope.
 
 Definition cipher_round
   (sbox_impl: SboxImpl)
-  : forall cava: Cava,
-    << Bit                               (* cipher mode: CIPH_FWD/CIPH_INV *)
+  : << Bit                               (* cipher mode: CIPH_FWD/CIPH_INV *)
     , Vector (Vector (Vector Bit 8) 4) 4 (* data input *)
     , Vector (Vector (Vector Bit 8) 4) 4 (* round key *)
     , Unit>> ~>
@@ -42,8 +41,7 @@ Definition cipher_round
 (* Note: aes_key_expand in OpenTitan is stateful, this version is not *)
 Program Definition aes_key_expand
   (sbox_impl: SboxImpl)
-  : forall cava: Cava,
-    << Bit (* op_i *)
+  : << Bit (* op_i *)
     , Vector Bit 3 (* round id *)
     , Vector Bit 8 (* rcon input *)
     , Vector (Vector (Vector Bit 8) 4) 8 (* input key *)
@@ -161,16 +159,10 @@ Program Definition aes_key_expand
       in
     (rcon, regular)
     ]>.
-Next Obligation. lia. Defined.
-Next Obligation. lia. Defined.
-Next Obligation. lia. Defined.
-Next Obligation. lia. Defined.
-Next Obligation. lia. Defined.
 
-Program Definition key_expand_and_round
+Definition key_expand_and_round
   (sbox_impl: SboxImpl)
-  : forall cava: Cava,
-    <<
+  : <<
       <<
         Vector Bit 8 (* rcon *)
       , Vector (Vector (Vector Bit 8) 4) 4 (* data *)
@@ -201,10 +193,9 @@ Program Definition key_expand_and_round
 Next Obligation. lia. Qed.
 
 (* stateless *)
-Program Definition unrolled_forward_cipher
+Definition unrolled_forward_cipher
   (sbox_impl: SboxImpl)
-  : forall cava: Cava,
-    <<
+  : <<
       (* Vector Bit 8 *)
       Vector (Vector (Vector Bit 8) 4) 4 (* data *)
     , Vector (Vector (Vector Bit 8) 4) 8 (* key *)
@@ -236,10 +227,9 @@ Program Definition unrolled_forward_cipher
     let stage2 = !aes_shift_rows !CIPH_FWD stage1 in
     !(map2 <[ !(map2 <[\x y => x ^ y]>) ]> ) stage2 round_key
     ]>.
-Next Obligation. lia. Qed.
 
 Definition unrolled_forward_cipher_flat
-  : forall cava: Cava,
+  : 
     <<
       Vector Bit 128 (* data *)
     , Vector Bit 256 (* key *)

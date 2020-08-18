@@ -20,125 +20,40 @@ From Cava Require Import Arrow.CavaArrow.
 
 Import VectorNotations.
 
-Section instance.
+Fixpoint no_delays {i o} (c: Circuit i o): bool :=
+  match c with
+  | Primitive (delay_gate _) => false
+  | Composition _ _ _ f g => no_delays f && no_delays g
+  | First _ _ _ f => no_delays f
+  | Second _ _ _ f => no_delays f
+  | Loopr _ _ _ f => no_delays f
+  | Loopl _ _ _ f => no_delays f
+  | _ => true
+  end.
 
-Instance ConjPropKindCategory : Category Kind := {
-  morphism X Y := Prop;
-  compose _ _ _ f g := forall (p: Prop), (f -> g -> p) -> p;
-  id X := True;
-}.
-
-Instance ConjPropKindArrow : Arrow _ ConjPropKindCategory Unit Tuple := {
-  first _ _ _ p := p;
-  second _ _ _ p := p;
-
-  cancelr X := True;
-  cancell X := True;
-
-  uncancell _ := True;
-  uncancelr _ := True;
-
-  assoc _ _ _ := True;
-  unassoc _ _ _ := True;
-}.
-
-Instance TrueDrop : ArrowDrop ConjPropKindArrow := { drop _ := True }.
-Instance TrueCopy : ArrowCopy ConjPropKindArrow := { copy _ := True }.
-Instance TrueSwap : ArrowSwap ConjPropKindArrow := { swap _ _ := True }.
-
-Instance TrueSTKC : ArrowSTKC ConjPropKindArrow := { }.
-
-Instance SubLoop : ArrowLoop ConjPropKindArrow := { loopl _ _ _ l := l; loopr _ _ _ l := l }.
-Instance FalseLoop : ArrowLoop ConjPropKindArrow := { loopl _ _ _ _ := False; loopr _ _ _ _ := False }.
-
-Instance NoDelays : Cava := {
-  cava_arrow := ConjPropKindArrow;
-  cava_arrow_stkc := TrueSTKC;
-  cava_arrow_loop := SubLoop;
-
-  constant b := True;
-  constant_bitvec n v := True;
-  mk_module _ _ _name f := f;
-  not_gate := True;
-  and_gate := True;
-  nand_gate := True;
-  or_gate := True;
-  nor_gate := True;
-  xor_gate := True;
-  xnor_gate := True;
-  buf_gate := True;
-  xorcy := True;
-  muxcy := True;
-  unsigned_add _ _ _ := True;
-  unsigned_sub _ := True;
-  lut _ _ := True;
-
-  empty_vec o := True;
-  index n o := True;
-  cons n o := True;
-  snoc n o:= True;
-  uncons n o:= True;
-  unsnoc n o:= True;
-  concat n m o := True;
-  split n m o := True;
-  slice n x y o _ _ := True;
-
-  delay_gate _ := False;
-}.
-
-Instance NoLoops : Cava := {
-  cava_arrow := ConjPropKindArrow;
-  cava_arrow_stkc := TrueSTKC;
-  cava_arrow_loop := FalseLoop;
-
-  constant b := True;
-  constant_bitvec n v := True;
-  mk_module _ _ _name f := f;
-  not_gate := True;
-  and_gate := True;
-  nand_gate := True;
-  or_gate := True;
-  nor_gate := True;
-  xor_gate := True;
-  xnor_gate := True;
-  buf_gate := True;
-  xorcy := True;
-  muxcy := True;
-  unsigned_add _ _ _ := True;
-  unsigned_sub _ := True;
-  lut _ _ := True;
-
-  empty_vec o := True;
-  index n o := True;
-  cons n o := True;
-  snoc n o:= True;
-  uncons n o:= True;
-  unsnoc n o:= True;
-  concat n m o := True;
-  split n m o := True;
-  slice n x y o _ _ := True;
-
-  delay_gate _ := True;
-}.
-
-End instance.
+Fixpoint no_loops {i o} (c: Circuit i o): bool :=
+  match c with
+  | Composition _ _ _ f g => no_loops f && no_loops g
+  | First _ _ _ f => no_loops f
+  | Second _ _ _ f => no_loops f
+  | Loopr _ _ _ f => false
+  | Loopl _ _ _ f => false
+  | _ => true
+  end.
 
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
 
-Definition is_combinational {i o: Kind} (c: forall (cava: Cava), i ~[cava]~> o) := 
-  c NoLoops /\ c NoDelays.
-
-Definition mkCombinational {i o: Kind} (c: forall (cava: Cava), i ~[cava]~> o)
-  : c NoLoops -> c NoDelays -> is_combinational c.
-Proof.
-  intros.
-  unfold is_combinational.
-  tauto.
-Qed.
+Definition is_combinational {i o: Kind} (c: i ~> o) := 
+  no_loops c && no_delays c = true.
 
 Ltac simply_combinational := 
-  apply mkCombinational;
+  vm_compute; reflexivity.
+  (* repeat match goal with
+  | [ H |- True ] => exact I
+  no_loops c && no_delays c.
+  end. *)
+  (* apply mkCombinational;
   lazy;
   repeat lazymatch goal with
   | [ |- True ] => exact I
@@ -147,47 +62,33 @@ Ltac simply_combinational :=
       intros x y; apply y; clear x y
     ))
   | [ |- _ ] => fail "Term wasn't simply combinational"
-  end.
+  end. *)
 
-Lemma is_combinational_first: forall x y z (circuit: forall (cava: Cava), x ~> y),
-  is_combinational (fun cava => first (circuit cava) : x**z ~[cava]~> y**z) =   
+Lemma is_combinational_first: forall x y z (circuit: x ~> y),
+  is_combinational (first circuit : x**z ~> y**z) =   
   is_combinational circuit.
-Proof.
-  intros.
-  tauto.
-Qed.
+Proof. tauto. Qed.
 
-Lemma is_combinational_second: forall x y z (circuit: forall (cava: Cava), x ~> y),
-  is_combinational (fun cava => second (circuit cava) : z**x ~[cava]~> z**y) =   
+Lemma is_combinational_second: forall x y z (circuit: x ~> y),
+  is_combinational (second circuit : z**x ~> z**y) =   
   is_combinational circuit.
-Proof.
-  intros.
-  tauto.
-Qed.
+Proof. tauto. Qed.
 
 Section example.
-  Definition ex_loopr {x y z: Kind} (cava: Cava) (c: x**z ~[cava]~> y**z): x ~[cava]~> y
+  Definition ex_loopr {x y z: Kind} (c: x**z ~> y**z): x ~> y
     := loopr c.
-  Definition ex_loopl {x y z: Kind} (cava: Cava) (c: z**x ~[cava]~> z**y): x ~[cava]~> y
+  Definition ex_loopl {x y z: Kind} (c: z**x ~> z**y): x ~> y
     := loopl c.
 
-  Example loopl_is_not_combinational : forall (x y z: Kind) (c: forall (cava: Cava), z**x ~[cava]~> z**y),
-    ~ is_combinational (fun cava => ex_loopl cava (c cava)).
-  Proof.
-    intros.
-    unfold is_combinational.
-    tauto.
-  Qed.
+  Example loopl_is_not_combinational : forall (x y z: Kind) (c: z**x ~> z**y),
+    ~ is_combinational (ex_loopl c).
+  Proof. vm_compute. intros. inversion x3. Qed.
 
-  Example loopr_is_not_combinational : forall (x y z: Kind) (c: forall (cava: Cava), x**z ~[cava]~> y**z),
-    ~ is_combinational (fun cava => ex_loopr cava (c cava)).
-  Proof.
-    intros.
-    unfold is_combinational.
-    tauto.
-  Qed.
+  Example loopr_is_not_combinational : forall (x y z: Kind) (c: x**z ~> y**z),
+    ~ is_combinational (ex_loopr c).
+  Proof. vm_compute. intros. inversion x3. Qed.
 
-  Example not_gate_is_combinational : forall (x y z: Kind),
-    is_combinational (fun cava => not_gate).
-  Proof. intros. simply_combinational. Qed.
+  Example not_gate_is_combinational : 
+    is_combinational (Primitive not_gate).
+  Proof.  simply_combinational. Qed.
 End example.

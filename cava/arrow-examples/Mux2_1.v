@@ -28,7 +28,7 @@ Section notation.
   Local Open Scope kind_scope.
 
   Definition mux2_1
-    : forall cava: Cava, << Bit, << Bit, Bit >>, Unit >> ~> Bit :=
+    : << Bit, << Bit, Bit >>, Unit >> ~> Bit :=
     <[ \ sel ab =>
       let '(a,b) = ab in
       let sel_a = and sel a in
@@ -54,7 +54,7 @@ Definition mux2_1_Interface :=
      [].
 
 Definition mux2_1_netlist :=
-  makeNetlist mux2_1_Interface (arrow_netlist mux2_1).
+  makeNetlist mux2_1_Interface (build_netlist mux2_1).
 
 Definition mux2_1_tb_inputs : list (bool * (bool * bool)) := 
  [(false, (false, true));

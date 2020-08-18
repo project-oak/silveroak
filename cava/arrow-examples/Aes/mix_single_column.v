@@ -25,7 +25,7 @@ Import KappaNotation.
 Open Scope kind_scope.
 
 Definition aes_mix_single_column
-  : forall cava: Cava, 
+  :  
     <<Bit, Vector (Vector Bit 8) 4, Unit>> ~> 
       Vector (Vector Bit 8) 4 :=
   <[\ op_i data_i =>

@@ -34,7 +34,7 @@ Open Scope kind_scope.
 ); *)
 Program Definition aes_sbox
   (sbox_type: SboxImpl)
-  : forall cava: Cava, <<Bit, Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
+  :  <<Bit, Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\ op_i data_i =>
       let data_o = !(
         match sbox_type with
@@ -63,3 +63,32 @@ Program Definition aes_sbox
       in data_o
   ]>.
 End notation.
+
+Section regression_testing.
+  (* Definition parse_res {n} (o: option (Vector.t bool n) ): nat :=
+    match o with
+    | Some v => bitvec_to_nat v
+    | None => 666
+    end.
+  Compute parse_res (aes_sbox SboxLut Combinational (false, (N2Bv_sized 8 0, tt))).
+  Compute parse_res (aes_sbox SboxCanright Combinational (false, (N2Bv_sized 8 0, tt))).
+  Compute parse_res (aes_sbox SboxLut Combinational (false, (N2Bv_sized 8 1, tt))).
+  Compute parse_res (aes_sbox SboxCanright Combinational (false, (N2Bv_sized 8 1, tt))).
+  Compute parse_res (aes_sbox SboxLut Combinational (false, (N2Bv_sized 8 2, tt))).
+  Compute parse_res (aes_sbox SboxCanright Combinational (false, (N2Bv_sized 8 2, tt))).
+  Compute parse_res (aes_sbox SboxLut Combinational (false, (N2Bv_sized 8 4, tt))).
+  Compute parse_res (aes_sbox SboxCanright Combinational (false, (N2Bv_sized 8 4, tt))). *)
+
+  Notation "# x" := (nat_to_bitvec_sized 8 x, tt) (at level 99).
+
+  (* Check equal at some random points *)
+  Goal combinational_evaluation' aes_sbox_lut (false, #0) = combinational_evaluation' aes_sbox_canright (false, #0).
+    time vm_compute; auto.
+  Qed.
+  Goal combinational_evaluation' aes_sbox_lut (false, #88) = combinational_evaluation' aes_sbox_canright (false, #88).
+    vm_compute; auto.
+  Qed.
+  Goal combinational_evaluation' aes_sbox_lut (false, #127) = combinational_evaluation' aes_sbox_canright (false, #127).
+    vm_compute; auto.
+  Qed.
+End regression_testing.

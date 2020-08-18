@@ -28,7 +28,7 @@ Section notation.
   Local Open Scope kind_scope.
 
   Definition xilinxFullAdder
-    : forall cava: Cava, << Bit, << Bit, Bit >>, Unit >> ~> << Bit, Bit >> :=
+    : << Bit, << Bit, Bit >>, Unit >> ~> << Bit, Bit >> :=
     <[ \ cin ab =>
       let '(a,b) = ab in
       let part_sum = xor a b in

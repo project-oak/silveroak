@@ -25,18 +25,8 @@ Set Extraction Optimize.
 Extraction Language Haskell.
 
 Require Import Combinators.
-Require Import SyntaxExamples.
-Require Import Mux2_1.
-Require Import UnsignedAdder.
-
-Require Import ArrowAdderTutorial.
 
 Extraction Library Combinators.
-Extraction Library SyntaxExamples.
-Extraction Library Mux2_1.
-Extraction Library UnsignedAdder.
-
-Extraction Library ArrowAdderTutorial.
 
 From Cava Require Import Arrow.ArrowExport.
 (* From Cava Require Import Cava.pkg. *)
