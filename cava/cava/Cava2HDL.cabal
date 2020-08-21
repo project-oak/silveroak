@@ -89,6 +89,8 @@ library
                      ByteVector
                      Compare_dec
                      Decimal
+                     Hexadecimal
+                     Numeral
                      Functor
                      Specif
                      MonadExc
