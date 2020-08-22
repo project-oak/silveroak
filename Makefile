@@ -24,3 +24,4 @@ third_party:
 
 clean:
 	cd cava && $(MAKE) clean
+	cd third_party && $(MAKE) clean

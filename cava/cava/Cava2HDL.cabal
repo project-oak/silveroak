@@ -90,6 +90,8 @@ library
                      Compare_dec
                      Decimal
                      Functor
+                     Hexadecimal
+                     Numeral
                      Specif
                      MonadExc
                      MonadFix

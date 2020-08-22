@@ -20,7 +20,7 @@ Icarus Verilog will then be available in your `$PATH`.
 
 Please install the following components:
 
-* The [Coq proof assistant](https://coq.inria.fr/) version 8.11.0.
+* The [Coq proof assistant](https://coq.inria.fr/) version 8.12.0.
 * The [GHC Haskell compiler](https://www.haskell.org/ghc/) version 8.6.5 or later
 * [Verilator](https://www.veripool.org/wiki/verilator) version 4.028 (as specified by the
   [OpenTitan](https://docs.opentitan.org/doc/ug/install_instructions/#verilator) documentation).
