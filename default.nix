@@ -6,7 +6,7 @@
 let
   tools = with pkgs; [
     # Building
-    coq_8_11
+    coq_8_12
     (haskell.packages.ghc865.ghcWithPackages (pkgs: with pkgs; [Cabal]))
 
     # Common tools

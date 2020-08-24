@@ -20,3 +20,7 @@ all:
 	git submodule update --init
 	cd coqutil && $(MAKE) all && $(MAKE) install
 	cd coq-ext-lib && $(MAKE) theories && $(MAKE) install
+
+clean:
+	cd coqutil && $(MAKE) clean
+	cd coq-ext-lib && $(MAKE) clean
