@@ -22,7 +22,7 @@ Import VectorNotations.
 
 Fixpoint no_delays {i o} (c: Circuit i o): bool :=
   match c with
-  | Primitive (delay_gate _) => false
+  | Primitive (Delay _) => false
   | Composition _ _ _ f g => no_delays f && no_delays g
   | First _ _ _ f => no_delays f
   | Second _ _ _ f => no_delays f
@@ -89,6 +89,6 @@ Section example.
   Proof. vm_compute. intros. inversion x3. Qed.
 
   Example not_gate_is_combinational : 
-    is_combinational (Primitive not_gate).
+    is_combinational (Primitive Not).
   Proof.  simply_combinational. Qed.
 End example.

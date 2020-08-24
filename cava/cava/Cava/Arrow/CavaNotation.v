@@ -72,21 +72,21 @@ Module KappaNotation.
   Notation "'fst'" := (kappa_fst) (in custom expr at level 4) : kappa_scope.
   Notation "'snd'" := (kappa_snd) (in custom expr at level 4) : kappa_scope.
 
-  Notation "'not'" := (Morph (Primitive not_gate)) (in custom expr at level 4) : kappa_scope.
-  Notation "'and'" := (Morph (Primitive and_gate)) (in custom expr at level 4) : kappa_scope.
-  Notation "'nand'" := (Morph (Primitive nand_gate)) (in custom expr at level 4) : kappa_scope.
-  Notation "'or'" := (Morph (Primitive or_gate)) (in custom expr at level 4) : kappa_scope.
-  Notation "'nor'" := (Morph (Primitive nor_gate)) (in custom expr at level 4) : kappa_scope.
-  Notation "'xor'" := (Morph (Primitive xor_gate)) (in custom expr at level 4) : kappa_scope.
-  Notation "'xnor'" := (Morph (Primitive xnor_gate)) (in custom expr at level 4) : kappa_scope.
-  Notation "'buf'" := (Morph (Primitive buf_gate)) (in custom expr at level 4) : kappa_scope.
-  Notation "'delay'" := (Morph (Primitive delay_gate)) (in custom expr at level 4) : kappa_scope.
+  Notation "'not'" := (Morph (Primitive Not)) (in custom expr at level 4) : kappa_scope.
+  Notation "'and'" := (Morph (Primitive And)) (in custom expr at level 4) : kappa_scope.
+  Notation "'nand'" := (Morph (Primitive Nand)) (in custom expr at level 4) : kappa_scope.
+  Notation "'or'" := (Morph (Primitive Or)) (in custom expr at level 4) : kappa_scope.
+  Notation "'nor'" := (Morph (Primitive Nor)) (in custom expr at level 4) : kappa_scope.
+  Notation "'xor'" := (Morph (Primitive Xor)) (in custom expr at level 4) : kappa_scope.
+  Notation "'xnor'" := (Morph (Primitive Xnor)) (in custom expr at level 4) : kappa_scope.
+  Notation "'buf'" := (Morph (Primitive BufGate)) (in custom expr at level 4) : kappa_scope.
+  Notation "'delay'" := (Morph (Primitive Delay)) (in custom expr at level 4) : kappa_scope.
 
-  Notation "'xorcy'" := (Morph (Primitive xorcy)) (in custom expr at level 4) : kappa_scope.
-  Notation "'muxcy'" := (Morph (Primitive muxcy)) (in custom expr at level 4) : kappa_scope.
+  Notation "'xorcy'" := (Morph (Primitive Xorcy)) (in custom expr at level 4) : kappa_scope.
+  Notation "'muxcy'" := (Morph (Primitive Muxcy)) (in custom expr at level 4) : kappa_scope.
 
-  Definition unsigned_add2 {a b} := Primitive (unsigned_add a b (S (max a b))).
-  Definition unsigned_add1 {a b} := Primitive (unsigned_add a b (max a b)).
+  Definition unsigned_add2 {a b} := Primitive (UnsignedAdd a b (S (max a b))).
+  Definition unsigned_add1 {a b} := Primitive (UnsignedAdd a b (max a b)).
 
   (* Notation "x + y" := (App (App (Morph (UnsignedAdd2 _ _)) x) y) (in custom expr at level 4) : kappa_scope. *)
   Notation "x + y" := 
@@ -95,47 +95,47 @@ Module KappaNotation.
   Notation "x +% y" := 
       (App (App (Morph unsigned_add1) x) y) 
       (in custom expr at level 4) : kappa_scope.
-  Notation "x - y" := (App (App (Morph (Primitive (unsigned_sub _))) x) y) (in custom expr at level 4) : kappa_scope.
-  Notation "'unsigned_add' a b c" := (Morph (Primitive (unsigned_add a b c)))
+  Notation "x - y" := (App (App (Morph (Primitive (UnsignedSub _))) x) y) (in custom expr at level 4) : kappa_scope.
+  Notation "'unsigned_add' a b c" := (Morph (Primitive (UnsignedAdd a b c)))
     (in custom expr at level 4,
     a constr at level 4,
     b constr at level 4,
     c constr at level 4
     ) : kappa_scope.
-  Notation "'unsigned_sub' a" := (Morph (Primitive (unsigned_sub a)))
+  Notation "'unsigned_sub' a" := (Morph (Primitive (UnsignedSub a)))
     (in custom expr at level 4,
     a constr at level 4
     ) : kappa_scope.
 
-  Notation "'[]'" := (Morph (Primitive (empty_vec _))) (in custom expr at level 4) : kappa_scope.
-  Notation "x ++ y" := (App (App (Morph (Primitive (concat _ _))) x) y) (in custom expr at level 4) : kappa_scope.
-  Notation "x :: y" := (App (App (Morph (Primitive (cons _ _))) x) y) (in custom expr at level 7, right associativity) : kappa_scope.
+  Notation "'[]'" := (Morph (Primitive (EmptyVec _))) (in custom expr at level 4) : kappa_scope.
+  Notation "x ++ y" := (App (App (Morph (Primitive (Concat _ _))) x) y) (in custom expr at level 4) : kappa_scope.
+  Notation "x :: y" := (App (App (Morph (Primitive (Cons _ _))) x) y) (in custom expr at level 7, right associativity) : kappa_scope.
 
-  Notation "'true'" := (Morph (Primitive (constant true))) (in custom expr at level 2) : kappa_scope.
-  Notation "'false'" := (Morph (Primitive (constant false))) (in custom expr at level 2) : kappa_scope.
+  Notation "'true'" := (Morph (Primitive (Constant true))) (in custom expr at level 2) : kappa_scope.
+  Notation "'false'" := (Morph (Primitive (Constant false))) (in custom expr at level 2) : kappa_scope.
 
-  Notation "# x" := (Morph (Primitive (constant_bitvec _ x)))%N (in custom expr at level 2, x constr at level 4) : kappa_scope.
+  Notation "# x" := (Morph (Primitive (ConstantVec _ x)))%N (in custom expr at level 2, x constr at level 4) : kappa_scope.
 
-  Notation "v [ x ]" := (App (App (Morph (Primitive (index _ _))) v) x)
+  Notation "v [ x ]" := (App (App (Morph (Primitive (Index _ _))) v) x)
     ( in custom expr at level 2
     , x at level 7
     ) : kappa_scope.
   Notation "v [: x : y ]" :=
-        (App (Morph (Primitive (slice _ (x <: nat) (y <: nat) _))) v)
+        (App (Morph (Primitive (Slice _ (x <: nat) (y <: nat) _))) v)
     (in custom expr at level 2,
     (* v constr, *)
     x constr at level 7,
     y constr at level 7
     ) : kappa_scope.
 
-  Notation "'index'" := (Morph (Primitive (index _ _))) (in custom expr at level 4) : kappa_scope.
-  Notation "'empty'" := (Morph (Primitive (empty_vec))) (in custom expr at level 4) : kappa_scope.
-  Notation "'cons'" := (Morph (Primitive (cons _ _))) (in custom expr at level 4) : kappa_scope.
-  Notation "'snoc'" := (Morph (Primitive (snoc _ _))) (in custom expr at level 4) : kappa_scope.
-  Notation "'concat'" := (Morph (Primitive (concat _ _ _))) (in custom expr at level 4) : kappa_scope.
-  Notation "'split_at' x" := (Morph (Primitive (split x _ _))) (in custom expr at level 4, x constr at level 4) : kappa_scope.
-  Notation "'uncons'" := (Morph (Primitive (uncons _ _))) (in custom expr at level 4) : kappa_scope.
-  Notation "'unsnoc'" := (Morph (Primitive (unsnoc _ _))) (in custom expr at level 4) : kappa_scope.
+  Notation "'index'" := (Morph (Primitive (Index _ _))) (in custom expr at level 4) : kappa_scope.
+  Notation "'empty'" := (Morph (Primitive EmptyVec)) (in custom expr at level 4) : kappa_scope.
+  Notation "'cons'" := (Morph (Primitive (Cons _ _))) (in custom expr at level 4) : kappa_scope.
+  Notation "'snoc'" := (Morph (Primitive (Snoc _ _))) (in custom expr at level 4) : kappa_scope.
+  Notation "'concat'" := (Morph (Primitive (Concat _ _ _))) (in custom expr at level 4) : kappa_scope.
+  Notation "'split_at' x" := (Morph (Primitive (Split x _ _))) (in custom expr at level 4, x constr at level 4) : kappa_scope.
+  Notation "'uncons'" := (Morph (Primitive (Uncons _ _))) (in custom expr at level 4) : kappa_scope.
+  Notation "'unsnoc'" := (Morph (Primitive (Unsnoc _ _))) (in custom expr at level 4) : kappa_scope.
 
 
 End KappaNotation.

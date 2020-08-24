@@ -80,48 +80,48 @@ Fixpoint combinational_evaluation' {i o}
   | Structural (Swap x y) => fun '(x,y) => (y,x)
   | Structural (Copy x) => fun x => (x,x)
 
-  | Primitive (constant b) => fun _ => b
-  | Primitive (constant_bitvec n v) => fun _ => N2Bv_sized n v
-  | Primitive (delay_gate o) => fun _ => kind_default _
-  | Primitive not_gate => fun b => negb (fst b)
-  | Primitive buf_gate => fun b => fst b
-  | Primitive (uncons n o) => fun v => (hd (fst v), tl (fst v))
-  | Primitive (unsnoc n o) => fun v => unsnoc' n o (fst v)
-  | Primitive (split n m o) => fun v => (Vector.splitat n (fst v))
-  | Primitive (slice n x y o) => fun v => slice' n x y o (fst v)
-  | Primitive (empty_vec o) => fun _ => []
-  | Primitive (lut n f) => fun '(i,_) =>
+  | Primitive (Constant b) => fun _ => b
+  | Primitive (ConstantVec n v) => fun _ => N2Bv_sized n v
+  | Primitive (Delay o) => fun _ => kind_default _
+  | Primitive Not => fun b => negb (fst b)
+  | Primitive BufGate => fun b => fst b
+  | Primitive (Uncons n o) => fun v => (hd (fst v), tl (fst v))
+  | Primitive (Unsnoc n o) => fun v => unsnoc' n o (fst v)
+  | Primitive (Split n m o) => fun v => (Vector.splitat n (fst v))
+  | Primitive (Slice n x y o) => fun v => slice' n x y o (fst v)
+  | Primitive (EmptyVec o) => fun _ => []
+  | Primitive (Lut n f) => fun '(i,_) =>
     let f' := NaryFunctions.nuncurry bool bool n f in
     (f' (vec_to_nprod _ _ i))
 
-  | Primitive and_gate => fun '(x,(y,_)) => x && y
-  | Primitive nand_gate => fun '(x,(y,_)) => negb ( x && y)
-  | Primitive or_gate => fun '(x,(y,_)) => orb x y
-  | Primitive nor_gate => fun '(x,(y,_)) => negb (orb x y)
-  | Primitive xor_gate => fun '(x,(y,_)) => xorb x y
-  | Primitive xnor_gate => fun '(x,(y,_)) => negb (xorb x y)
-  | Primitive xorcy => fun '(x,(y,_)) => xorb x y
+  | Primitive And => fun '(x,(y,_)) => x && y
+  | Primitive Nand => fun '(x,(y,_)) => negb ( x && y)
+  | Primitive Or => fun '(x,(y,_)) => orb x y
+  | Primitive Nor => fun '(x,(y,_)) => negb (orb x y)
+  | Primitive Xor => fun '(x,(y,_)) => xorb x y
+  | Primitive Xnor => fun '(x,(y,_)) => negb (xorb x y)
+  | Primitive Xorcy => fun '(x,(y,_)) => xorb x y
 
-  | Primitive muxcy => fun i => (if fst i then fst (fst (snd i)) else snd (fst (snd i)))
-  | Primitive (unsigned_add m n s) => fun '(av,(bv,_)) =>
+  | Primitive Muxcy => fun i => (if fst i then fst (fst (snd i)) else snd (fst (snd i)))
+  | Primitive (UnsignedAdd m n s) => fun '(av,(bv,_)) =>
     let a := Ndigits.Bv2N av in
     let b := Ndigits.Bv2N bv in
     let c := (a + b)%N in
     (Ndigits.N2Bv_sized s c)
-  | Primitive (unsigned_sub s) => fun '(av, (bv, _)) =>
+  | Primitive (UnsignedSub s) => fun '(av, (bv, _)) =>
     let a := Ndigits.Bv2N av in
     let b := Ndigits.Bv2N bv in
-    let c := (a - b)%N in (*todo: This is likely incorrect on underflow *)
+    let c := (a - b mod 2^(N.of_nat s))%N in 
     (Ndigits.N2Bv_sized s c)
-  | Primitive (index n o) => fun x =>
+  | Primitive (Index n o) => fun x =>
     match Arith.Compare_dec.lt_dec (bitvec_to_nat (fst (snd x))) n with
     | left Hlt => (nth_order (fst x) Hlt)
     | right Hnlt => kind_default _
     end
-  | Primitive (cons n o) => fun '(x, (v,_)) => (x :: v)
-  | Primitive (snoc n o) => fun '(v, (x,_)) => snoc' n o v x
+  | Primitive (Cons n o) => fun '(x, (v,_)) => (x :: v)
+  | Primitive (Snoc n o) => fun '(v, (x,_)) => snoc' n o v x
 
-  | Primitive (concat n m o) => fun '(x, (y, _)) => Vector.append x y
+  | Primitive (Concat n m o) => fun '(x, (y, _)) => Vector.append x y
   end.
 
 Local Open Scope category_scope.

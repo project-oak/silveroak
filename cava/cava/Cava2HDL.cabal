@@ -54,7 +54,7 @@ library
                      CombinationalMonad
                      Datatypes
                      DecimalString
-                     EvaluationArrow
+                     -- EvaluationArrow -- TODO(blaxill): temporarily disabled
                      IdentityMonad
                      Kind
                      List

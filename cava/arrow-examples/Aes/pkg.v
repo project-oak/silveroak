@@ -27,7 +27,7 @@ Notation "|^ x" :=
   (App (Morph (foldl1 <[\a b => xor a b]> )) x)
   (in custom expr at level 5, no associativity) : kappa_scope.
 Notation "x && y" :=
-  (App (App (Morph (Primitive and_gate)) x) y)
+  (App (App (Morph <[and]>) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x & y" :=
   (App (App (Morph (bitwise <[and]> )) x) y)

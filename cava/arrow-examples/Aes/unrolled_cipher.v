@@ -190,7 +190,6 @@ Definition key_expand_and_round
     let data_o = !(cipher_round sbox_impl) !CIPH_FWD data_i round_key in
     (rcon', data_o, new_key)
   ]>.
-Next Obligation. lia. Qed.
 
 (* stateless *)
 Definition unrolled_forward_cipher
@@ -253,4 +252,4 @@ Definition test_data := N2Bv_sized 128 170141183460469231731687303715884105728.
 (* 0xddc6bf790c15760d8d9aeb6f9a75fd4e *)
 Definition test_encrypted := N2Bv_sized 128 294791345377038030526550647723007540558.
 
-Definition eval_unrolled : nat := bitvec_to_nat (unrolled_forward_cipher_flat Combinational (test_data, (test_key, tt))).
+(* Definition eval_unrolled : nat := bitvec_to_nat (combinational_evaluation unrolled_forward_cipher_flat _ (test_data, (test_key, tt))). *)

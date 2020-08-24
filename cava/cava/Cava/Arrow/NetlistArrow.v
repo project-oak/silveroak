@@ -112,19 +112,19 @@ match ty with
 | Vector t n => mapT (fun _ => fresh_wire t) (const tt n)
 end.
 
-Fixpoint mapMSignals2 (f: Signal Kind.Bit -> Signal Kind.Bit -> Instance) (ty: Kind)
+Fixpoint map2M (f: Signal Kind.Bit -> Signal Kind.Bit -> Instance) (ty: Kind)
   (x: denote ty) (y: denote ty): state CavaState Datatypes.unit :=
 match ty, x, y with
 | Tuple l r, (x1,x2), (y1, y2) =>
-  mapMSignals2 f l x1 y1 ;;
-  mapMSignals2 f r x2 y2 ;;
+  map2M f l x1 y1 ;;
+  map2M f r x2 y2 ;;
   ret tt
 | Unit, _, _ => ret tt
 | Bit, x1, y1 =>
   addInstance (f x1 y1) ;;
   ret tt
 | Vector t n, v1, v2 =>
-  mapT (fun '(x, y)  => mapMSignals2 f t x y) (map2 pair v1 v2) ;;
+  mapT (fun '(x, y)  => map2M f t x y) (map2 pair v1 v2) ;;
   ret tt
 end.
 
@@ -176,44 +176,44 @@ Fixpoint build_netlist' {i o}
   | Loopr _ _ Z f => fun x => 
       z <- fresh_wire Z ;;
       '(y,z') <- (build_netlist' f) (x,z) ;;
-      mapMSignals2 (fun x y => AssignSignal x y) Z z z' ;;
+      map2M (fun x y => AssignSignal x y) Z z z' ;;
       ret y
   
   | Loopl _ _ Z f => fun x => 
       z <- fresh_wire Z ;;
       '(z',y) <- (build_netlist' f) (z,x) ;;
-      mapMSignals2 (fun x y => AssignSignal x y) Z z z' ;;
+      map2M (fun x y => AssignSignal x y) Z z z' ;;
       ret y
 
-  | Primitive (constant b) => fun _ =>
+  | Primitive (Constant b) => fun _ =>
     match b with
     | true => ret Vcc
     | false => ret Gnd
     end
-  | Primitive (constant_bitvec n v) => fun _ =>
+  | Primitive (ConstantVec n v) => fun _ =>
     ret (Vector.map
     (fun b => match b with
       | true => Vcc
       | false => Gnd
     end) (nat_to_bitvec_sized n (N.to_nat v)))
-  | Primitive (delay_gate o) => fun x =>
+  | Primitive (Delay o) => fun x =>
       y <- fresh_wire _ ;;
-      mapMSignals2 (fun x y => DelayBit x y) _ (fst x) y ;;
+      map2M (fun x y => DelayBit x y) _ (fst x) y ;;
       ret y
-  | Primitive not_gate => fun i => 
+  | Primitive CavaArrow.Not => fun i => 
       o <- newWire ;;
       addInstance (Not (fst i) o) ;;
       ret o
-  | Primitive buf_gate => fun i => 
+  | Primitive BufGate => fun i => 
       o <- newWire ;;
       addInstance (Buf (fst i) o) ;;
       ret o
-  | Primitive (uncons n o) => fun v => ret ((Vector.hd (fst v), Vector.tl (fst v)))
-  | Primitive (unsnoc n o) => fun v => ret ((Vector.take n (Nat.le_succ_diag_r _) (fst v), Vector.last (fst v)))
-  | Primitive (slice n x y o) => fun v => slice' n x y o (fst v)
-  | Primitive (CavaArrow.split n m o) => fun x => ret (Vector.splitat n (fst x))
-  | Primitive (empty_vec o) => fun _ => ret ([])
-  | Primitive (lut n f) => fun '(is,_) =>
+  | Primitive (Uncons n o) => fun v => ret ((Vector.hd (fst v), Vector.tl (fst v)))
+  | Primitive (Unsnoc n o) => fun v => ret ((Vector.take n (Nat.le_succ_diag_r _) (fst v), Vector.last (fst v)))
+  | Primitive (CavaArrow.Slice n x y o) => fun v => slice' n x y o (fst v)
+  | Primitive (CavaArrow.Split n m o) => fun x => ret (Vector.splitat n (fst x))
+  | Primitive (EmptyVec o) => fun _ => ret ([])
+  | Primitive (Lut n f) => fun '(is,_) =>
       let seq := seq 0 (2^n) in
       let f' := NaryFunctions.nuncurry bool bool n f in
       let powers := map
@@ -234,52 +234,52 @@ Fixpoint build_netlist' {i o}
       addInstance component;;
       ret o
 
-  | Primitive and_gate => fun '(x,(y,_)) => 
+  | Primitive CavaArrow.And => fun '(x,(y,_)) => 
       o <- newWire ;;
       addInstance (And x y o) ;;
       ret o
-  | Primitive nand_gate => fun '(x,(y,_)) => 
+  | Primitive CavaArrow.Nand => fun '(x,(y,_)) => 
       o <- newWire ;;
       addInstance (Nand x y o) ;;
       ret o
-  | Primitive or_gate => fun '(x,(y,_)) =>
+  | Primitive CavaArrow.Or => fun '(x,(y,_)) =>
       o <- newWire ;;
       addInstance (Or x y o) ;;
       ret o
-  | Primitive nor_gate => fun '(x,(y,_)) =>
+  | Primitive CavaArrow.Nor => fun '(x,(y,_)) =>
       o <- newWire ;;
       addInstance (Nor x y o) ;;
       ret o
-  | Primitive xor_gate => fun '(i0,(i1,_)) =>
+  | Primitive CavaArrow.Xor => fun '(i0,(i1,_)) =>
       o <- newWire ;;
       addInstance (Xor i0 i1 o) ;;
       ret o
-  | Primitive xnor_gate => fun '(i0,(i1,_)) =>
+  | Primitive CavaArrow.Xnor => fun '(i0,(i1,_)) =>
       o <- newWire ;;
       addInstance (Xnor i0 i1 o) ;;
       ret o
-  | Primitive xorcy => fun '(i0, (i1, _)) =>
+  | Primitive CavaArrow.Xorcy => fun '(i0, (i1, _)) =>
       o <- newWire ;;
       addInstance (Component "XORCY" [] [("O", USignal o); ("CI", USignal i0); ("LI", USignal i1)]) ;;
       ret o
-  | Primitive muxcy => fun '(s,((ci, di), _)) =>
+  | Primitive Muxcy => fun '(s,((ci, di), _)) =>
       o <- newWire ;;
       addInstance ( Component "MUXCY" [] [("O", USignal o); ("S", USignal s); ("CI", USignal ci); ("DI", USignal di)]) ;;
       ret o
-  | Primitive (unsigned_add m n s) => fun '(x,(y,_)) =>
+  | Primitive (CavaArrow.UnsignedAdd m n s) => fun '(x,(y,_)) =>
       sum <- newVector _ s ;;
       addInstance (UnsignedAdd (VecLit x) (VecLit y) sum) ;;
       ret (Vector.map (IndexConst sum) (vseq 0 s))
-  | Primitive (unsigned_sub s) => fun '(x, (y,_)) =>
+  | Primitive (CavaArrow.UnsignedSub s) => fun '(x, (y,_)) =>
       sum <- newVector _ s ;;
       (* TODO: add netlist subtraction instance *)
       addInstance (UnsignedAdd (VecLit x) (VecLit y) sum) ;;
       ret (Vector.map (IndexConst sum) (vseq 0 s))
-  | Primitive (index n o) => fun '(v,(i,_)) => index' _ _ v i
-  | Primitive (CavaArrow.cons n o) => fun '(x, (v,_)) =>
+  | Primitive (Index n o) => fun '(v,(i,_)) => index' _ _ v i
+  | Primitive (CavaArrow.Cons n o) => fun '(x, (v,_)) =>
     ret ((x :: v)%vector)
-  | Primitive (snoc n o) => fun '(v, (x,_)) => ret (snoc' _ _ v x)
-  | Primitive (CavaArrow.concat n m o) => fun '(x, (y, _)) =>
+  | Primitive (Snoc n o) => fun '(v, (x,_)) => ret (snoc' _ _ v x)
+  | Primitive (CavaArrow.Concat n m o) => fun '(x, (y, _)) =>
     ret ((x ++ y)%vector)
 end.
 

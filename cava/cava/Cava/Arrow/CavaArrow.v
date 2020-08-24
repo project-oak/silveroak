@@ -56,80 +56,80 @@ Local Notation "[ x ~~~> .. ~~~> y ]" := (Tuple x .. (Tuple y Unit) ..).
 Notation vec_index n := (Vector Bit (Nat.log2_up n)).
 
 Inductive CircuitPrimitive :=
-  | constant (b: bool)
-  | constant_bitvec (n: nat) (v: N)
-  | delay_gate (o: Kind)
-  | not_gate 
-  | buf_gate
-  | uncons (n: nat) (o: Kind)
-  | unsnoc (n: nat) (o: Kind)
-  | slice (n: nat) (x y: nat) (o: Kind) 
-  | split (n m: nat) (o: Kind) 
-  | empty_vec (o: Kind)
-  | lut (n: nat) (f: bool^^n --> bool)
+  | Constant (b: bool)
+  | ConstantVec (n: nat) (v: N)
+  | Delay (o: Kind)
+  | Not 
+  | BufGate
+  | Uncons (n: nat) (o: Kind)
+  | Unsnoc (n: nat) (o: Kind)
+  | Slice (n: nat) (x y: nat) (o: Kind) 
+  | Split (n m: nat) (o: Kind) 
+  | EmptyVec (o: Kind)
+  | Lut (n: nat) (f: bool^^n --> bool)
 
-  | and_gate  
-  | nand_gate 
-  | or_gate   
-  | nor_gate
-  | xor_gate
-  | xnor_gate 
-  | xorcy
+  | And  
+  | Nand 
+  | Or   
+  | Nor
+  | Xor
+  | Xnor 
+  | Xorcy
 
-  | muxcy
-  | unsigned_add (a b c: nat)
-  | unsigned_sub (a: nat)
-  | index (n: nat) (o: Kind)
-  | cons (n: nat) (o: Kind)
-  | snoc (n: nat) (o: Kind)
-  | concat (n m: nat) (o: Kind).
+  | Muxcy
+  | UnsignedAdd (a b c: nat)
+  | UnsignedSub (a: nat)
+  | Index (n: nat) (o: Kind)
+  | Cons (n: nat) (o: Kind)
+  | Snoc (n: nat) (o: Kind)
+  | Concat (n m: nat) (o: Kind).
 
 Fixpoint primitive_input (op: CircuitPrimitive): Kind :=
   match op with
-  | constant v => Unit
-  | constant_bitvec n v => Unit
-  | delay_gate o => Tuple o Unit
-  | not_gate => Tuple Bit Unit
-  | buf_gate => Tuple Bit Unit
-  | uncons n o => Tuple (Vector o (S n)) Unit
-  | unsnoc n o => Tuple (Vector o (S n)) Unit
-  | slice n x y o => Tuple (Vector o n) Unit
-  | split n m o => Tuple (Vector o (n+m)) Unit
-  | empty_vec o => Unit
-  | lut n f => Tuple (Vector Bit n) Unit 
+  | Constant v => Unit
+  | ConstantVec n v => Unit
+  | Delay o => Tuple o Unit
+  | Not => Tuple Bit Unit
+  | BufGate => Tuple Bit Unit
+  | Uncons n o => Tuple (Vector o (S n)) Unit
+  | Unsnoc n o => Tuple (Vector o (S n)) Unit
+  | Slice n x y o => Tuple (Vector o n) Unit
+  | Split n m o => Tuple (Vector o (n+m)) Unit
+  | EmptyVec o => Unit
+  | Lut n f => Tuple (Vector Bit n) Unit 
 
-  | muxcy => [ Bit ~~~> Tuple Bit Bit ]
-  | unsigned_add a b c => [ Vector Bit a ~~~> Vector Bit b ]
-  | unsigned_sub a => [ Vector Bit a ~~~> Vector Bit a ]
-  | index n o => [ Vector o n ~~~> vec_index n ]
-  | cons n o => [ o ~~~> Vector o n ]
-  | snoc n o => [ Vector o n ~~~> o ]
-  | concat n m o => [ Vector o n ~~~> Vector o m ]
+  | Muxcy => [ Bit ~~~> Tuple Bit Bit ]
+  | UnsignedAdd a b c => [ Vector Bit a ~~~> Vector Bit b ]
+  | UnsignedSub a => [ Vector Bit a ~~~> Vector Bit a ]
+  | Index n o => [ Vector o n ~~~> vec_index n ]
+  | Cons n o => [ o ~~~> Vector o n ]
+  | Snoc n o => [ Vector o n ~~~> o ]
+  | Concat n m o => [ Vector o n ~~~> Vector o m ]
 
   | _ => [ Bit ~~~> Bit ]
   end.
 
 Fixpoint primitive_output (op: CircuitPrimitive): Kind :=
   match op with
-  | constant v => Bit
-  | constant_bitvec n v => Vector Bit n
-  | delay_gate o => o
-  | not_gate => Bit
-  | buf_gate => Bit
-  | uncons n o => Tuple o (Vector o n)
-  | unsnoc n o => Tuple (Vector o n) o
-  | slice n x y o => Vector o (x - y + 1)
-  | split n m o => Tuple (Vector o n) (Vector o m)
-  | empty_vec o => Vector o 0
-  | lut n f => Bit
+  | Constant v => Bit
+  | ConstantVec n v => Vector Bit n
+  | Delay o => o
+  | Not => Bit
+  | BufGate => Bit
+  | Uncons n o => Tuple o (Vector o n)
+  | Unsnoc n o => Tuple (Vector o n) o
+  | Slice n x y o => Vector o (x - y + 1)
+  | Split n m o => Tuple (Vector o n) (Vector o m)
+  | EmptyVec o => Vector o 0
+  | Lut n f => Bit
 
-  | muxcy => Bit
-  | unsigned_add a b c => Vector Bit c 
-  | unsigned_sub a => Vector Bit a
-  | index n o => o
-  | cons n o => Vector o (S n)
-  | snoc n o => Vector o (S n)
-  | concat n m o => Vector o (n + m)
+  | Muxcy => Bit
+  | UnsignedAdd a b c => Vector Bit c 
+  | UnsignedSub a => Vector Bit a
+  | Index n o => o
+  | Cons n o => Vector o (S n)
+  | Snoc n o => Vector o (S n)
+  | Concat n m o => Vector o (n + m)
 
   | _ => Bit
   end.
@@ -150,7 +150,6 @@ Inductive Circuit: Kind -> Kind -> Type :=
   | Loopl: forall x y z, Circuit (Tuple z x) (Tuple z y) -> Circuit x y
   .
 
-(* Notation "[ x ~~> .. ~~> y ~~> z ]" := (morphism (Tuple x .. (Tuple y Unit) ..) z) : arrow_scope. *)
 Notation "[ x ~~> .. ~~> y ~~> z ]" := (Circuit (Tuple x .. (Tuple y Unit) ..) z) : arrow_scope.
 
 Instance CircuitCat : Category Kind := {
@@ -186,8 +185,8 @@ Ltac match_compose X :=
   | (Composition _ _ ?Y ?Z) => idtac
   end.
 
-Definition high : Unit ~> Bit := Primitive (constant true).
-Definition low : Unit ~> Bit := Primitive (constant false).
+Definition high : Unit ~> Bit := Primitive (Constant true).
+Definition low : Unit ~> Bit := Primitive (Constant false).
 
 Fixpoint insert_rightmost_tt (ty: Kind): ty ~> (insert_rightmost_unit ty).
 Proof.
