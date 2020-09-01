@@ -37,7 +37,7 @@ Open Scope kind_scope.
 (*   return f; *)
 (* endfunction *)
 Definition aes_mul_gf2p2
-  : forall cava: Cava, << Vector Bit 2, Vector Bit 2, Unit >> ~> << Vector Bit 2 >> :=
+  :  << Vector Bit 2, Vector Bit 2, Unit >> ~> << Vector Bit 2 >> :=
 <[ \g d =>
   let a = g[#1] && d[#1] in
   let b = |^g && |^ d in
@@ -70,7 +70,7 @@ End regression_checks.
 (*   return d; *)
 (* endfunction *)
 Definition aes_scale_omega2_gf2p2
-  : forall cava: Cava, << Vector Bit 2, Unit >> ~> << Vector Bit 2 >> :=
+  :  << Vector Bit 2, Unit >> ~> << Vector Bit 2 >> :=
 <[ \g => xor g[#1] g[#0] :: g[#0] :: [] ]>.
 
 Section regression_checks.
@@ -94,7 +94,7 @@ End regression_checks.
 (*   return d; *)
 (* endfunction *)
 Definition aes_scale_omega_gf2p2
-  : forall cava: Cava, << Vector Bit 2, Unit >> ~> << Vector Bit 2 >> :=
+  :  << Vector Bit 2, Unit >> ~> << Vector Bit 2 >> :=
 <[ \g => g[#1] :: xor g[#1] g[#0] :: [] ]>.
 
 (* // Square in GF(2^2), using normal basis [Omega^2, Omega] *)
@@ -106,7 +106,7 @@ Definition aes_scale_omega_gf2p2
 (*   return d; *)
 (* endfunction *)
 Definition aes_square_gf2p2
-  : forall cava: Cava, << Vector Bit 2, Unit >> ~> << Vector Bit 2>> :=
+  :  << Vector Bit 2, Unit >> ~> << Vector Bit 2>> :=
 <[ \g => g[#1] :: g[#0] :: [] ]>.
 
 (* // Multiplication in GF(2^4), using normal basis [alpha^8, alpha^2] *)
@@ -122,7 +122,7 @@ Definition aes_square_gf2p2
 (*   return theta; *)
 (* endfunction *)
 Program Definition aes_mul_gf2p4
-  : forall cava: Cava, << Vector Bit 4, Vector Bit 4, Unit >> ~> << Vector Bit 4>> :=
+  :  << Vector Bit 4, Vector Bit 4, Unit >> ~> << Vector Bit 4>> :=
 <[ \gamma delta =>
   let a = !aes_mul_gf2p2 (gamma[:3:2]) (delta[:3:2]) in
   let b = !aes_mul_gf2p2 (gamma[:3:2] ^ gamma[:1:0]) (delta[:3:2] ^ delta[:1:0]) in
@@ -144,7 +144,7 @@ Program Definition aes_mul_gf2p4
 (*   return delta; *)
 (* endfunction *)
 Program Definition aes_square_scale_gf2p4_gf2p2
-  : forall cava: Cava, << Vector Bit 4, Unit >> ~> << Vector Bit 4>> :=
+  :  << Vector Bit 4, Unit >> ~> << Vector Bit 4>> :=
 <[ \gamma =>
     let a = gamma[:3:2] ^ gamma[:1:0] in
     let b = !aes_square_gf2p2 (gamma[:1:0]) in
@@ -166,13 +166,13 @@ parameter logic [7:0] X2A [8] = '{8'h64, 8'h78, 8'h6e, 8'h8c, 8'h68, 8'h29, 8'hd
 parameter logic [7:0] X2S [8] = '{8'h58, 8'h2d, 8'h9e, 8'h0b, 8'hdc, 8'h04, 8'h03, 8'h24};
 parameter logic [7:0] S2X [8] = '{8'h8c, 8'h79, 8'h05, 8'heb, 8'h12, 8'h04, 8'h51, 8'h53}; *)
 
-Definition A2X : forall cava: Cava, Unit ~> Vector (Vector Bit 8) 8 := <[ #152:: #243:: #242:: #72:: #9:: #129:: #169:: #255  :: [] ]>.
-Definition X2A : forall cava: Cava, Unit ~> Vector (Vector Bit 8) 8 := <[ #100:: #120:: #110:: #140:: #104:: #41:: #222:: #96 :: [] ]>.
-Definition X2S : forall cava: Cava, Unit ~> Vector (Vector Bit 8) 8 := <[ #88:: #45:: #158:: #11:: #220:: #4:: #3:: #36       :: [] ]>.
-Definition S2X : forall cava: Cava, Unit ~> Vector (Vector Bit 8) 8 := <[ #140:: #121:: #5:: #235:: #18:: #4:: #81:: #83      :: [] ]>.
+Definition A2X :  Unit ~> Vector (Vector Bit 8) 8 := <[ #152:: #243:: #242:: #72:: #9:: #129:: #169:: #255  :: [] ]>.
+Definition X2A :  Unit ~> Vector (Vector Bit 8) 8 := <[ #100:: #120:: #110:: #140:: #104:: #41:: #222:: #96 :: [] ]>.
+Definition X2S :  Unit ~> Vector (Vector Bit 8) 8 := <[ #88:: #45:: #158:: #11:: #220:: #4:: #3:: #36       :: [] ]>.
+Definition S2X :  Unit ~> Vector (Vector Bit 8) 8 := <[ #140:: #121:: #5:: #235:: #18:: #4:: #81:: #83      :: [] ]>.
 
 Section regression_checks.
-  Definition S2X_indexer: forall cava:Cava, <<Vector Bit 3, Unit>> ~> <<Vector Bit 8>> := 
+  Definition S2X_indexer: <<Vector Bit 3, Unit>> ~> <<Vector Bit 8>> := 
     <[\x => let vec = !S2X in vec[x] ]>.
   Goal
     (forall wf: is_combinational S2X_indexer, 

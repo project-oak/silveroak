@@ -16,7 +16,8 @@
 
 (* temporarily disabled *)
 From Arrow Require Import Category Arrow Kappa KappaProp KappaEquiv ClosureConversion.
-From Cava Require Import Arrow.CavaArrow Arrow.EvaluationArrow Arrow.CavaExpression.
+From Cava Require Import Arrow.CavaArrow Arrow.CavaExpression.
+(* From Cava Require Import Arrow.CavaArrow Arrow.EvaluationArrow Arrow.CavaExpression. *)
 
 From Coq Require Import Arith NArith Lia NaryFunctions.
 
@@ -40,11 +41,11 @@ Proof.
 Qed.
 
 (* TODO(blaxill): remove axiom *)
-Axiom no_let_rec_and_stateless_morphisms_is_stateless:
+(* Axiom no_let_rec_and_stateless_morphisms_is_stateless:
   forall i o (expr: Kappa i o) env wf, 
     no_letrec (expr _) = true ->
     morph_prop (fun _ _ m => has_no_state m) (expr _) ->
-    has_no_state ((fun (cava: Cava) => closure_conversion' env (expr _) wf) EvalCava).
+    has_no_state ((fun (cava: Cava) => closure_conversion' env (expr _) wf) EvalCava). *)
 
 (* proof broken by changes *)
 (* Lemma no_let_rec_and_stateless_morphisms_is_stateless:
@@ -54,5 +55,5 @@ Axiom no_let_rec_and_stateless_morphisms_is_stateless:
     has_no_state ((fun (cava: Cava) => closure_conversion' env (expr _) wf) EvalCava).
 *)
 
-Hint Extern 15 => apply (no_let_rec_and_stateless_morphisms_is_stateless _ _) : stateless.
-Hint Extern 20 => refine (OnlyUnitsTuple _ _ OnlyUnitsUnit _ ) : stateless.
+(* Hint Extern 15 => apply (no_let_rec_and_stateless_morphisms_is_stateless _ _) : stateless. *)
+(* Hint Extern 20 => refine (OnlyUnitsTuple _ _ OnlyUnitsUnit _ ) : stateless. *)

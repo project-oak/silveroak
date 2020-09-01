@@ -129,3 +129,54 @@ Coercion stkc_arrow: ArrowSTKC >-> Arrow.
 Coercion stkc_arrow_drop: ArrowSTKC >-> ArrowDrop.
 Coercion stkc_arrow_swap: ArrowSTKC >-> ArrowSwap.
 Coercion stkc_arrow_copy: ArrowSTKC >-> ArrowCopy.
+
+Section arrowstkc.
+  Context {object: Type}.
+  Context {unit: object}.
+  Context {product: object -> object -> object}.
+
+  Inductive ArrowStructure := 
+    | Id: object -> ArrowStructure
+    | Assoc: object -> object -> object -> ArrowStructure
+    | Unassoc: object -> object -> object -> ArrowStructure
+    | Cancelr: object -> ArrowStructure
+    | Cancell: object -> ArrowStructure
+    | Uncancell: object -> ArrowStructure
+    | Uncancelr: object -> ArrowStructure
+    | Copy: object -> ArrowStructure
+    | Drop: object -> ArrowStructure
+    | Swap: object -> object -> ArrowStructure.
+
+  Inductive ArrowComposition :=
+    | Compose: object -> object -> object -> ArrowComposition
+    | First: object -> object -> object -> ArrowComposition
+    | Second: object -> object -> object -> ArrowComposition.
+
+  Fixpoint arrow_input (a: ArrowStructure): object :=
+    match a with
+    | Id x => x
+    | Assoc x y z => (product (product x y) z)
+    | Unassoc x y z => (product x (product y z))
+    | Cancelr x => product x unit
+    | Cancell x => product unit x
+    | Uncancell x => x
+    | Uncancelr x => x 
+    | Copy x => x
+    | Drop x => x
+    | Swap x y => product x y
+    end.
+
+  Fixpoint arrow_output (a: ArrowStructure): object :=
+    match a with
+    | Id x => x
+    | Assoc x y z => (product x (product y z))
+    | Unassoc x y z => (product (product x y) z)
+    | Cancelr x => x
+    | Cancell x => x
+    | Uncancell x => product unit x
+    | Uncancelr x => product x unit 
+    | Copy x => product x x
+    | Drop x => unit
+    | Swap x y => product y x
+    end.
+End arrowstkc.

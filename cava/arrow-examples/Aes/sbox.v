@@ -34,7 +34,7 @@ Open Scope kind_scope.
 ); *)
 Program Definition aes_sbox
   (sbox_type: SboxImpl)
-  : forall cava: Cava, <<Bit, Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
+  :  <<Bit, Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\ op_i data_i =>
       let data_o = !(
         match sbox_type with

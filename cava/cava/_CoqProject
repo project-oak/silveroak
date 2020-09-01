@@ -21,7 +21,6 @@ Cava/Arrow/ArrowKind.v
 Cava/Arrow/CavaArrow.v
 Cava/Arrow/PropArrow.v
 Cava/Arrow/CombinationalArrow.v
-Cava/Arrow/EvaluationArrow.v
 Cava/Arrow/NetlistArrow.v
 Cava/Arrow/CavaExpression.v
 Cava/Arrow/CavaExpressionProp.v

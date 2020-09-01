@@ -30,7 +30,7 @@ Open Scope kind_scope.
   output logic [3:0][3:0][7:0] data_o
 ); *)
 Definition aes_shift_rows
-  : forall cava: Cava, 
+  :  
     <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~> 
       Vector (Vector (Vector Bit 8) 4) 4 :=
   (* // Individually substitute bytes

@@ -41,7 +41,7 @@ verilog hex values were converted from OpenTitan verilog with vim:
   output logic [7:0]        data_o
 ); *)
 Definition aes_sbox_lut
-  : forall cava: Cava, <<Bit, Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
+  :  <<Bit, Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\ op_i data_i =>
   let SBOX_FWD = 
     #99:: #124:: #119:: #123:: #242:: #107:: #111:: #197::

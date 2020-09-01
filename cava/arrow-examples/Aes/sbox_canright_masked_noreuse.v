@@ -28,8 +28,8 @@ Open Scope kind_scope.
                                                         logic [3:0] q,
                                                         logic [1:0] r,
                                                         logic [3:0] t);*)
-Program Definition aes_masked_inverse_gf2p4
-  : forall cava: Cava, 
+Definition aes_masked_inverse_gf2p4
+  :  
     << Vector Bit 4 (* b *)
     ,  Vector Bit 4 (* q *)
     ,  Vector Bit 2 (* r *)
@@ -83,8 +83,8 @@ Program Definition aes_masked_inverse_gf2p4
     concat b0_inv b1_inv
 ]>.
 
-Program Definition aes_masked_inverse_gf2p8
-  : forall cava: Cava, 
+Definition aes_masked_inverse_gf2p8
+  :  
     << Vector Bit 8 (* a *)
     ,  Vector Bit 8 (* m *)
     ,  Vector Bit 8 (* n *)
@@ -161,11 +161,9 @@ Program Definition aes_masked_inverse_gf2p8
 
     a_inv'
 ]>.
-Next Obligation. lia. Qed.
-Next Obligation. lia. Qed.
 
 Definition aes_sbox_canright_masked_noreuse
-  : forall cava: Cava, << 
+  :  << 
     Bit, (* TODO: wrapped type?  aes_pkg::ciph_op_e op_i, *)
 
     Vector Bit 8, (* data_i, // masked, the actual input data is data_i ^ in_mask_i *)

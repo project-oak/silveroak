@@ -36,7 +36,7 @@ Open Scope kind_scope.
   return delta;
 endfunction *)
 Program Definition aes_inverse_gf2p4
-  : forall cava: Cava, <<Vector Bit 4, Unit>> ~> (Vector Bit 4) :=
+  :  <<Vector Bit 4, Unit>> ~> (Vector Bit 4) :=
   <[\ gamma =>
       let a = (gamma[:3:2]) ^ (gamma[:1:0]) in
       let b = !aes_mul_gf2p2 (gamma[:3:2]) (gamma[:1:0]) in
@@ -60,8 +60,8 @@ Program Definition aes_inverse_gf2p4
     delta[3:0] = aes_mul_gf2p4(d, gamma[7:4]);
     return delta;
   endfunction *)
-Program Definition aes_inverse_gf2p8
-  : forall cava: Cava, <<Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
+Definition aes_inverse_gf2p8
+  :  <<Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\ gamma =>
       let a = (gamma[:7:4]) ^ (gamma[:3:0]) in
       let b = !aes_mul_gf2p4 (gamma[:7:4]) (gamma[:3:0]) in
@@ -72,9 +72,6 @@ Program Definition aes_inverse_gf2p8
         (!aes_mul_gf2p4 d (gamma[:7:4]))
         (!aes_mul_gf2p4 d (gamma[:3:0]))
   ]>.
-Next Obligation. lia. Qed.
-Next Obligation. lia. Qed.
-Next Obligation. lia. Qed.
 
 (* module aes_sbox_canright (
   input  aes_pkg::ciph_op_e op_i,
@@ -82,7 +79,7 @@ Next Obligation. lia. Qed.
   output logic [7:0]        data_o
 ); *)
 Definition aes_sbox_canright
-  : forall cava: Cava, << Bit, Vector Bit 8, Unit>> ~> (Vector Bit 8) := 
+  :  << Bit, Vector Bit 8, Unit>> ~> (Vector Bit 8) := 
   <[\ op_i data_i =>
       (* // Convert to normal basis X.
       assign data_basis_x = (op_i == CIPH_FWD) ? aes_mvm(data_i, A2X) :

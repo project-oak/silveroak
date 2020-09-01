@@ -14,6 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+(* TODO(blaxill): temporarily disabled *)
+
 From Coq Require Import Bool ZArith NArith NaryFunctions Vector Lia.
 From Arrow Require Import Category Arrow Kappa.
 From Cava.Arrow Require Import CavaArrow PropArrow.

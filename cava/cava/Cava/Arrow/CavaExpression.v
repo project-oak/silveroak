@@ -16,7 +16,8 @@
 
 From Arrow Require Import Category Arrow Kappa KappaEquiv ClosureConversion.
 From Cava Require Import Arrow.CavaArrow.
-From Cava Require Arrow.CombinationalArrow Arrow.EvaluationArrow.
+From Cava Require Arrow.CombinationalArrow .
+(* From Cava Require Arrow.CombinationalArrow Arrow.EvaluationArrow. *)
 
 From Coq Require Import Arith NArith Lia NaryFunctions.
 
@@ -33,7 +34,7 @@ Section combinational_semantics.
   Definition coq_func i o := denote_kind i -> denote_kind o.
 
   Fixpoint interp_combinational {i o: Kind}
-    (expr: kappa (arrow:=Combinational) coq_func i o)
+    (expr: kappa (arrow:=CircuitArrow) coq_func i o)
     : denote_kind i -> (denote_kind o) :=
     match expr with
     | Var x => fun v => (x v) 
@@ -41,14 +42,14 @@ Section combinational_semantics.
     | App f e => fun y => 
       (interp_combinational f) (interp_combinational e tt, y)
     | Comp g f => fun x => interp_combinational g (interp_combinational f x)
-    | Morph m => m
+    | Morph m => combinational_evaluation' m
     | Let v f => fun y => 
       interp_combinational (f (fun _ => interp_combinational v tt)) y
     | LetRec v f => fun _ => kind_default _
     end.
     
     Axiom expression_evaluation_is_arrow_evaluation: forall i o (expr: Kappa i o), forall (x: denote_kind i),
-      Closure_conversion (arrow:=Combinational) expr x =
+      combinational_evaluation' (Closure_conversion (arrow:=CircuitArrow) expr) x =
       interp_combinational (expr _) x.
 
 End combinational_semantics.

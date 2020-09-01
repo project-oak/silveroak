@@ -29,58 +29,52 @@ Section notation.
   Local Open Scope kind_scope.
 
   Definition unsigned_adder a b c
-  : forall cava: Cava, << Vector Bit a, Vector Bit b, Unit >> ~> (Vector Bit c) :=
+  : << Vector Bit a, Vector Bit b, Unit >> ~> (Vector Bit c) :=
   <[ \ x y => unsigned_add a b c x y ]>.
 
   Definition adder3 s1 s2 s3
-  : forall cava: Cava, << Vector Bit s1, Vector Bit s2, Vector Bit s3, Unit >> ~> (Vector Bit _) :=
+  : << Vector Bit s1, Vector Bit s2, Vector Bit s3, Unit >> ~> (Vector Bit _) :=
   <[ \ a b c => a + b + c ]>.
 
   Definition tree_adder a n
-  : forall cava: Cava, << Vector (Vector Bit a) (2^n), Unit >> ~> (Vector Bit a) :=
+  : << Vector (Vector Bit a) (2^n), Unit >> ~> (Vector Bit a) :=
   <[ \ v => !(tree (Vector Bit a) n (unsigned_adder a a a)) v  ]>.
 
   Lemma max_nn_add_1_is_S_n: forall n, 1 + max n n = S n.
   Proof. intros; rewrite PeanoNat.Nat.max_id; auto. Qed.
 
   Definition growth_adder n 
-  : forall cava: Cava, << Vector Bit n, Vector Bit n, Unit >> ~> Vector Bit (S n) :=
+  : << Vector Bit n, Vector Bit n, Unit >> ~> Vector Bit (S n) :=
   <[ \ a b => !(rewrite_vector (max_nn_add_1_is_S_n _)) (a + b) ]>.
 
   Definition growth_tree_adder a n
-  : forall cava: Cava, << Vector (Vector Bit a) (2^n), Unit >> ~> Vector Bit (n + a) :=
+  : << Vector (Vector Bit a) (2^n), Unit >> ~> Vector Bit (n + a) :=
   <[ \ v => !(dt_tree_fold' n a (Vector Bit) (growth_adder)) v  ]>.
 End notation.
 
 Open Scope kind_scope.
-Definition adder445: forall cava: Cava,
-    << Vector Bit 4, Vector Bit 4, Unit >> ~[cava]~> (Vector Bit 5) 
+Definition adder445: << Vector Bit 4, Vector Bit 4, Unit >> ~> (Vector Bit 5) 
   := unsigned_adder 4 4 5.
 
 Lemma adder445_is_combinational: is_combinational adder445.
 Proof. simply_combinational. Qed.
 
-Definition adder88810: forall cava: Cava,
-    << Vector Bit 8, Vector Bit 8, Vector Bit 8, Unit >> ~[cava]~> (Vector Bit 10) 
+Definition adder88810: << Vector Bit 8, Vector Bit 8, Vector Bit 8, Unit >> ~> (Vector Bit 10) 
   := adder3 8 8 8.
 
 Lemma adder88810_is_combinational: is_combinational adder88810.
 Proof. simply_combinational. Qed.
 
-Definition adder444_tree_4: forall cava: Cava, 
-  << Vector (Vector Bit 4) 4, Unit >> ~[cava]~> (Vector Bit 4) 
+Definition adder444_tree_4: << Vector (Vector Bit 4) 4, Unit >> ~> (Vector Bit 4) 
   := tree_adder 4 2.
 
-Definition adder444_tree_8: forall cava: Cava, 
-  << Vector (Vector Bit 4) 8, Unit >> ~[cava]~> (Vector Bit 4) 
+Definition adder444_tree_8: << Vector (Vector Bit 4) 8, Unit >> ~> (Vector Bit 4) 
   := tree_adder 4 3.
 
-Definition adder444_tree_64: forall cava: Cava,
-  << Vector (Vector Bit 4) 64, Unit >> ~[cava]~> (Vector Bit 4) 
+Definition adder444_tree_64: << Vector (Vector Bit 4) 64, Unit >> ~> (Vector Bit 4) 
   := tree_adder 4 6.
 
-Definition growth_tree_8: forall cava: Cava, 
-  << Vector (Vector Bit 4) 8, Unit >> ~[cava]~> (Vector Bit 7) 
+Definition growth_tree_8: << Vector (Vector Bit 4) 8, Unit >> ~> (Vector Bit 7) 
   := growth_tree_adder 4 3.
 
 Require Import Cava.Types.
@@ -118,7 +112,7 @@ Definition growth_tree_8_interface
      [].
 
 Definition adder445_netlist :=
-  makeNetlist adder445_interface (arrow_netlist adder445).
+  makeNetlist adder445_interface (build_netlist adder445).
 
 Definition adder445_tb_inputs :=
   map (fun '(x, y) => (N2Bv_sized 4 x, N2Bv_sized 4 y))
@@ -132,7 +126,7 @@ Definition adder445_tb
      adder445_tb_inputs adder445_tb_expected_outputs.
 
 Definition adder88810_netlist :=
-  makeNetlist adder88810_interface (arrow_netlist adder88810).
+  makeNetlist adder88810_interface (build_netlist adder88810).
 
 Definition adder88810_tb_inputs :=
   map (fun '(x, y, z) => (N2Bv_sized 8 x, (N2Bv_sized 8 y, N2Bv_sized 8 z)))
@@ -146,13 +140,13 @@ Definition adder88810_tb
      adder88810_tb_inputs adder88810_tb_expected_outputs.
 
 Definition adder444_tree_4_netlist :=
-  makeNetlist adder444_tree_4_interface (arrow_netlist adder444_tree_4).
+  makeNetlist adder444_tree_4_interface (build_netlist adder444_tree_4).
 
 Definition adder444_tree_8_netlist :=
-  makeNetlist adder444_tree_8_interface (arrow_netlist adder444_tree_8).
+  makeNetlist adder444_tree_8_interface (build_netlist adder444_tree_8).
 
 Definition adder444_tree_64_netlist :=
-  makeNetlist adder444_tree_64_interface (arrow_netlist adder444_tree_64).
+  makeNetlist adder444_tree_64_interface (build_netlist adder444_tree_64).
 
 Definition adder444_tree_4_inputs :=
   map (fun '(x, y, z, w) => [N2Bv_sized 4 x; N2Bv_sized 4 y; N2Bv_sized 4 z; N2Bv_sized 4 w]%vector)
@@ -169,7 +163,7 @@ Definition adder444_tree_4_tb
      adder444_tree_4_inputs adder444_tree_4_tb_expected_outputs.
 
 Definition growth_tree_8_netlist :=
-  makeNetlist growth_tree_8_interface (arrow_netlist growth_tree_8).
+  makeNetlist growth_tree_8_interface (build_netlist growth_tree_8).
 
 Definition growth_tree_8_inputs :=
   map (Vector.map (N2Bv_sized 4))

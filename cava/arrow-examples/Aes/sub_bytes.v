@@ -33,7 +33,7 @@ Open Scope kind_scope.
 ); *)
 Definition aes_sub_bytes
   (sbox_type: SboxImpl)
-  : forall cava: Cava, 
+  :  
     <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~> 
       Vector (Vector (Vector Bit 8) 4) 4 :=
   (* // Individually substitute bytes

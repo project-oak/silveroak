@@ -57,7 +57,7 @@ Recursive Extraction Library CavaArrow.
 Recursive Extraction Library CavaExpression.
 Recursive Extraction Library CavaNotation.
 Recursive Extraction Library CombinationalArrow.
-Recursive Extraction Library EvaluationArrow.
+(* Recursive Extraction Library EvaluationArrow. *) (* TODO(blaxill): temporarily disabled *)
 Recursive Extraction Library NetlistArrow.
 Recursive Extraction Library PropArrow.
 

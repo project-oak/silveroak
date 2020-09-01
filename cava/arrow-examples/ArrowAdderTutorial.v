@@ -28,7 +28,7 @@ Section notation.
   Local Open Scope kind_scope.
 
   Definition halfAdder
-  : forall cava: Cava, << Bit, Bit, Unit >> ~> <<Bit, Bit>> :=
+  : << Bit, Bit, Unit >> ~> <<Bit, Bit>> :=
     (* The bracket pairing `<[` `]>` opens a circuit expression scope, 
     see readme.md for more information *) 
   <[ \ a b =>
@@ -38,7 +38,7 @@ Section notation.
   ]>.
 
   Definition fullAdder
-  : forall cava: Cava, << Bit, << Bit, Bit >>, Unit >> ~> <<Bit, Bit>> :=
+  : << Bit, << Bit, Bit >>, Unit >> ~> <<Bit, Bit>> :=
   <[ \ cin ab =>
     let '(a,b) = ab in
     (* Since 'halfAdder' is in the larger Coq scope, and is not a local variable,
@@ -51,10 +51,9 @@ Section notation.
 
   (* Combinators *)
   Definition below {A B C D E F G: Kind}
-    (r: forall cava: Cava, << A, B, Unit >> ~> << G, D >>)
-    (s: forall cava: Cava, << G, C, Unit >> ~> << F, E >>)
-    : forall cava: Cava,  
-      << A, <<B, C>>, Unit >> ~> << F, <<D, E>> >> :=
+    (r: << A, B, Unit >> ~> << G, D >>)
+    (s: << G, C, Unit >> ~> << F, E >>)
+    : << A, <<B, C>>, Unit >> ~> << F, <<D, E>> >> :=
   <[ \ a bc =>
     let '(b, c) = bc in
     let '(g, d) = !r a b in
@@ -78,8 +77,8 @@ Section notation.
     end.
 
   Fixpoint col {A B C: Kind} n
-    (circuit: forall cava: Cava, << A, B, Unit >> ~> <<A, C>>)
-    {struct n}: forall cava: Cava,
+    (circuit: << A, B, Unit >> ~> <<A, C>>)
+    {struct n}: 
       << A, replicate B (S n), Unit >> ~>
       << A, replicate C (S n)>> :=
     match n with
@@ -90,7 +89,7 @@ Section notation.
     end.
 
   Lemma col_cons: forall {A B C}
-    (circuit: forall cava, << A, B, Unit >> ~> <<A, C>>),
+    (circuit: << A, B, Unit >> ~> <<A, C>>),
     forall n, col (S n) circuit = below circuit (col n circuit).
   Proof.
     intros.
@@ -98,8 +97,7 @@ Section notation.
   Qed.
 
   Fixpoint interleave n
-    : forall cava: Cava,
-      << Vector Bit (S n), Vector Bit (S n), Unit >> ~>
+    : << Vector Bit (S n), Vector Bit (S n), Unit >> ~>
       << replicate <<Bit, Bit>> (S n) >> :=
   match n with
   (* Since for n = 0 -> Vector 1 Bit, we have to index into the variables to retrieve their values.
@@ -119,8 +117,7 @@ Section notation.
   It would be convenient to interact with this variable as a vector, and so we can write a conversion
   function : *)
   Fixpoint productToVec n
-    : forall cava: Cava,
-      << replicate Bit (S n), Unit >> ~>
+    : << replicate Bit (S n), Unit >> ~>
       << Vector Bit (S n) >> :=
   match n with
   | 0 => <[\ x => x :: [] ]> 
@@ -132,14 +129,12 @@ Section notation.
   end.
 
   Definition rippleCarryAdder' (width: nat)
-    : forall cava: Cava, 
-      << Bit, replicate <<Bit, Bit>> (S width), Unit >> ~>
+    : << Bit, replicate <<Bit, Bit>> (S width), Unit >> ~>
       << Bit, replicate Bit (S width) >> :=
   <[ !(col width fullAdder) ]>.
 
   Definition rippleCarryAdder (width: nat)
-    : forall cava: Cava, 
-      << Bit, <<Vector Bit (S width), Vector Bit (S width)>>, Unit >> ~>
+    : << Bit, <<Vector Bit (S width), Vector Bit (S width)>>, Unit >> ~>
       << Bit, Vector Bit (S width) >> :=
   <[ \b xy =>
     let '(x,y) = xy in
@@ -174,7 +169,7 @@ Definition fullAdder_tb_inputs :=
 ].
 
 Definition fullAdder_netlist :=
-  makeNetlist fullAdderInterface (arrow_netlist fullAdder).
+  makeNetlist fullAdderInterface (build_netlist fullAdder).
 
 Definition fullAdder_tb_expected_outputs  : list (bool * bool)
   := (List.map (fun i => combinational_evaluation fullAdder fullAdder_is_combinational i) fullAdder_tb_inputs) .
