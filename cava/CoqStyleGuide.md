@@ -12,7 +12,6 @@ TODO: intro blurb
 (* <...............................................>                        *)
 (****************************************************************************)
 
-
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 Require Import Coq.ZArith.ZArith.
@@ -82,13 +81,29 @@ End BarNotations.
 
 ## Code organization
 
-- copyright banner
-- require imports all at the top
-- standard library require imports first, same-project last
-- within-project, alphabetical order
-- fully qualified names
-- Local Open Scope
-- notations in separate modules or files
+- Files should begin with a copyright/license banner, as shown in the example
+  above.
+- `Require Import` statements should all go at the top of the file, followed by
+  file-wide `Import` statements.
+  * `Import`s often contain notations or typeclass instances that might
+     override notations or instances from another library, so it's nice to
+     highlight them separately.
+- One `Require Import` statement per line; it's easier to scan that way.
+- `Require Import` statements should use "fully-qualified" names (e.g. `Require Import Coq.ZArith.ZArith` instead of `Require Import ZArith`).
+  * Use the `Locate` command to find the fully-qualified name!
+- `Require Import`s should go in the following order:
+   1. Standard library dependencies (start with `Coq.`)
+   2. External dependencies (anything outside the current project)
+   3. Same-project dependencies
+   `Require Import`s with the same root library (the name before the first `.`)
+should be grouped together. Within each root-library group, they should be in
+alphabetical order (so `Coq.Lists.List` before `Coq.ZArith.ZArith`).
+- Any file-wide `Local Open Scope`s should come immediately after the `Import`s
+  (see example).
+  * Always use `Local Open Scope`; just `Open Scope` will sneakily
+open the scope for those who import your file.
+- Put notations in their own separate modules or files, so that those who import your file can choose whether or not they want the notations.
+  * Conflicting notations can cause a lot of headache, so it comes in very handy to leave this flexibility!
 
 ## Formatting
 
