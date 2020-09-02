@@ -194,7 +194,12 @@ arguments, align the next line with the first argument:
   with `Proof`.
 - Use curly braces `{}` for subgoals, instead of bullets.
 - *Never write tactics with more than one subgoal focused.* This can make the
-  proof very confusing to read!
+  proof very confusing to step through! If you have more than one subgoal, use
+  curly braces.
+- Consider adding a comment after the opening curly brace that explains what
+  case you're in (see example).
+  * This is not necessary for small subgoals but can help show the major lines
+    of reasoning in large proofs.
 - If invoking a tactic that is expected to return multiple subgoals, use `[ |
   ... | ]` before the `.` to explicitly specify how many subgoals you expect.
   * Examples: `split; [ | ].` `induction z; [ | | ].`
