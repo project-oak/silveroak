@@ -117,6 +117,8 @@ arguments, align the next line with the first argument:
 
 - Use the `Proof` command (lined up vertically with `Lemma` or `Theorem` it
   corresponds to) to open a proof, and indent the first line after it 2 spaces.
+- Very small proofs (where `Proof. <tactics> Qed.` is <= 80 characters) can go
+  all in one line.
 - When ending a proof, align the ending statement (`Qed`, `Admitted`, etc.)
   with `Proof`.
 - Use curly braces `{}` for subgoals, instead of bullets.
