@@ -8,7 +8,7 @@ out purely in the name of consistency.
 
 ```coq
 (****************************************************************************)
-(* Copyright 2020 The Project Foo Authors                                   *)
+(* Copyright 2020 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* <License blurb..................................>                        *)
 (* <...............................................>                        *)
@@ -139,25 +139,25 @@ open the scope for those who import your file.
   * `exists <....>,`
 - The style for indenting arguments in function application depends on where
   you make a line break.  If you make the line break immediately after the
-function name, use a 2-space indent:
-```coq
-Z.pow
-  1 2
-```
-However, if you make it after one or more arguments, align the next line with
-the first argument:
-```coq
-Z.pow 1 2 3
-      4 5 6
-```
+function name, use a 2-space indent.  However, if you make it after one or more
+arguments, align the next line with the first argument:
+  ```coq
+  Z.pow
+    1 2
+  ```
+  ```coq
+  Z.pow 1 2 3
+        4 5 6
+  ```
 - `Inductive` cases should not be indented. Example:
-```coq
-Inductive Foo : Type :=
-| FooA : Foo
-| FooB : Foo
-.
-```
-- `match` or `lazymatch` cases should line up with the "m" in `match` or "l" in `lazymatch`, as in the following examples:
+  ```coq
+  Inductive Foo : Type :=
+  | FooA : Foo
+  | FooB : Foo
+  .
+  ```
+- `match` or `lazymatch` cases should line up with the "m" in `match` or "l" in
+  `lazymatch`, as in the following examples:
 ```coq
 match x with
 | 3 => true
