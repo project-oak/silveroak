@@ -179,10 +179,14 @@ do 2 lazymatch goal with
      end.
 ```
 
-## Lemma statements
+## Lemma/theorem statements
 
-- hypotheses usually unnamed
-- arrows share line with previous hypothesis
+- Insert a line break after the colon in the lemma statement.
+- Insert a line break after the comma for `forall` or `exist` quantifiers.
+- Implication arrows (`->`) should share a line with the previous hypothesis,
+  not the following one.
+- There is no need to make a line break after every `->; short preconditions
+  may share a line.
 
 ## Proofs and tactics
 
