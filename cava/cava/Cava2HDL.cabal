@@ -85,6 +85,7 @@ library
                      Kleisli
   other-Modules:     Applicative
                      BinPos
+                     BinInt
                      Bool
                      ByteVector
                      Compare_dec

@@ -109,10 +109,11 @@ Fixpoint combinational_evaluation' {i o}
     let c := (a + b)%N in
     (Ndigits.N2Bv_sized s c)
   | Primitive (UnsignedSub s) => fun '(av, (bv, _)) =>
-    let a := Ndigits.Bv2N av in
-    let b := Ndigits.Bv2N bv in
-    let c := (a - b mod 2^(N.of_nat s))%N in 
-    (Ndigits.N2Bv_sized s c)
+    let a := Z.of_N (Ndigits.Bv2N av) in
+    let b := Z.of_N (Ndigits.Bv2N bv) in
+    let mod_const := (2^(Z.of_nat s))%Z in
+    let c := ((a - b + mod_const) mod mod_const)%Z in 
+    (Ndigits.N2Bv_sized s (Z.to_N c))
   | Primitive (Index n o) => fun x =>
     match Arith.Compare_dec.lt_dec (bitvec_to_nat (fst (snd x))) n with
     | left Hlt => (nth_order (fst x) Hlt)

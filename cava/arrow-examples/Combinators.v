@@ -249,7 +249,7 @@ Definition zipper {n A B}
 Fixpoint equality {T}
   :  << T, T, Unit >> ~> <<Bit>> :=
 match T return  << T, T, Unit >> ~> <<Bit>> with 
-| Unit => <[ \_ _ => true ]>
+| Unit => <[ \_ _ => true' ]>
 | Bit => <[ \x y => xnor x y ]> (* bit equality is the xnor function *)
 | Tuple l r => <[ 
     \x y => 
@@ -260,7 +260,7 @@ match T return  << T, T, Unit >> ~> <<Bit>> with
 | Vector ty n => 
   <[\ x y => 
     let item_equality = !(map2 equality) x y in
-    !(foldl <[\x y => and x y]>) true item_equality
+    !(foldl <[\x y => and x y]>) true' item_equality
   ]>
 end.
 
