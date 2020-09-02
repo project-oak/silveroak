@@ -2,9 +2,8 @@
 
 This guide outlines code style for Coq code in this repository. There are
 certainly other valid strategies and opinions on Coq code style; this is laid
-out purely in the name of consistency.
-
-For a visual example of the style, see the bottom of this file.
+out purely in the name of consistency. For a visual example of the style, see
+the [example](#Example) at the bottom of this file.
 
 ## Code organization
 
