@@ -188,10 +188,21 @@ arguments, align the next line with the first argument:
 
 ## Proofs and tactics
 
-- Proof to open proof-mode
-- curly braces for subgoals
-- no multiple-subgoals-in-context tactics
-- indication of # subgoals if > 1 (or if goals solved)
+- Use the `Proof` command (lined up vertically with `Lemma` or `Theorem` it
+  corresponds to) to open a proof, and indent the first line after it 2 spaces.
+- When ending a proof, align the ending statement (`Qed`, `Admitted`, etc.)
+  with `Proof`.
+- Use curly braces `{}` for subgoals, instead of bullets.
+- *Never write tactics with more than one subgoal focused.* This can make the
+  proof very confusing to read!
+- If invoking a tactic that is expected to return multiple subgoals, use `[ |
+  ... | ]` before the `.` to explicitly specify how many subgoals you expect.
+  * Examples: `split; [ | ].` `induction z; [ | | ].`
+  * This helps make code more maintainable, because it fails immediately if
+    your tactic no longer solves as many subgoals as expected (or unexpectedly
+solves more).
+- If invoking a string of tactics (composed by `;`) that will break the goal into multiple subgoals and then solve all but one, still use `[ ]` to enforce that all but one goal is solved.
+  * Example: `split; try lia; [ ]`.
 - Tactics that consist only of `repeat`ing a procedure (e.g. `repeat match`,
   `repeat first`) should factor out a single step of that procedure a separate
 tactic called `<tactic name>_step`, because the single-step version is much
