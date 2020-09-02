@@ -218,8 +218,10 @@ easier to debug. For instance:
 
 ## Naming
 
-- files: capital-letter names
-- modules:
-  * capital-letter names
-  * proofs about Z should be in a Z module
-- capital-letter names for inductives and their constructors
+- Modules should have capital-letter names.
+- Helper proofs about standard library datatypes should go in a module that is
+  named to match the standard library module (see example).
+  * This makes the helper proofs look like standard-library ones, which is
+    helpful for categorizing them if they're genuinely at the standard-library
+    level of abstraction.
+- Names of inductives and their constructors should start with capital letters.
