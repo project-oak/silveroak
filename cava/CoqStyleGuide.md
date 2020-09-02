@@ -20,7 +20,8 @@ the [example](#Example) at the bottom of this file.
      override notations or instances from another library, so it's nice to
      highlight them separately.
 - One `Require Import` statement per line; it's easier to scan that way.
-- `Require Import` statements should use "fully-qualified" names (e.g. `Require Import Coq.ZArith.ZArith` instead of `Require Import ZArith`).
+- `Require Import` statements should use "fully-qualified" names (e.g. `Require
+  Import Coq.ZArith.ZArith` instead of `Require Import ZArith`).
   * Use the `Locate` command to find the fully-qualified name!
 - `Require Import`s should go in the following order:
    1. Standard library dependencies (start with `Coq.`)
@@ -36,8 +37,10 @@ alphabetical order (so `Coq.Lists.List` before `Coq.ZArith.ZArith`).
   (see example).
   * Always use `Local Open Scope`; just `Open Scope` will sneakily
 open the scope for those who import your file.
-- Put notations in their own separate modules or files, so that those who import your file can choose whether or not they want the notations.
-  * Conflicting notations can cause a lot of headache, so it comes in very handy to leave this flexibility!
+- Put notations in their own separate modules or files, so that those who
+  import your file can choose whether or not they want the notations.
+  * Conflicting notations can cause a lot of headache, so it comes in very
+    handy to leave this flexibility!
 
 ## Formatting
 
@@ -144,7 +147,9 @@ exclusively with operations on `Z`).
   * This helps make code more maintainable, because it fails immediately if
     your tactic no longer solves as many subgoals as expected (or unexpectedly
 solves more).
-- If invoking a string of tactics (composed by `;`) that will break the goal into multiple subgoals and then solve all but one, still use `[ ]` to enforce that all but one goal is solved.
+- If invoking a string of tactics (composed by `;`) that will break the goal
+  into multiple subgoals and then solve all but one, still use `[ ]` to enforce
+that all but one goal is solved.
   * Example: `split; try lia; [ ]`.
 - Tactics that consist only of `repeat`ing a procedure (e.g. `repeat match`,
   `repeat first`) should factor out a single step of that procedure a separate
