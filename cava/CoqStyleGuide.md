@@ -102,6 +102,13 @@ arguments, align the next line with the first argument:
        end.
   ```
 
+## Definitions and Fixpoints
+
+- It's okay to leave the return type of `Definition`s and `Fixpoint`s implicit
+  (e.g. `Definition x := 5` instead of `Definition x : nat := 5`) when the type
+is very simple or obvious (for instance, the definition is in a file which deals
+exclusively with operations on `Z`).
+
 ## Lemma/Theorem statements
 
 - Generally, use `Theorem` for the most important, top-level facts you prove
