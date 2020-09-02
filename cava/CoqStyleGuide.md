@@ -102,8 +102,10 @@ arguments, align the next line with the first argument:
        end.
   ```
 
-## Lemma/theorem statements
+## Lemma/Theorem statements
 
+- Generally, use `Theorem` for the most important, top-level facts you prove
+  and `Lemma` for everything else.
 - Insert a line break after the colon in the lemma statement.
 - Insert a line break after the comma for `forall` or `exist` quantifiers.
 - Implication arrows (`->`) should share a line with the previous hypothesis,
@@ -148,12 +150,12 @@ easier to debug. For instance:
 
 ## Naming
 
-- Modules should have capital-letter names.
 - Helper proofs about standard library datatypes should go in a module that is
   named to match the standard library module (see example).
   * This makes the helper proofs look like standard-library ones, which is
     helpful for categorizing them if they're genuinely at the standard-library
     level of abstraction.
+- Names of modules should start with capital letters.
 - Names of inductives and their constructors should start with capital letters.
 
 ## Example
