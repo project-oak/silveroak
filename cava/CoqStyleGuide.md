@@ -1,6 +1,8 @@
 # Coq Style Guide
 
-TODO: intro blurb
+This guide outlines code style for Coq code in this repository. There are
+certainly other valid strategies and opinions on Coq code style; this is laid
+out purely in the name of consistency.
 
 ## Quick example
 
@@ -17,7 +19,6 @@ Require Import Coq.micromega.Lia.
 Require Import Coq.ZArith.ZArith.
 Import ListNotations.
 Local Open Scope Z_scope.
-
 
 (* Helper proofs about standard library integers (Z) go within [Module Z] so
    that they match standard-library Z lemmas when used. *)
@@ -42,7 +43,7 @@ End Z.
 
 Definition bar (x y : Z) := x ^ (y + 1).
 
-(* example with a very manual proof to show case formatting *)
+(* example with a painfully manual proof to show case formatting *)
 Lemma bar_upper_bound :
   forall x y a,
     0 <= x <= a -> 0 <= y ->
@@ -81,8 +82,13 @@ End BarNotations.
 
 ## Code organization
 
+### Legal banner
+
 - Files should begin with a copyright/license banner, as shown in the example
   above.
+
+### Import statements
+
 - `Require Import` statements should all go at the top of the file, followed by
   file-wide `Import` statements.
   * `Import`s often contain notations or typeclass instances that might
@@ -98,6 +104,9 @@ End BarNotations.
    `Require Import`s with the same root library (the name before the first `.`)
 should be grouped together. Within each root-library group, they should be in
 alphabetical order (so `Coq.Lists.List` before `Coq.ZArith.ZArith`).
+
+### Notations and scopes
+
 - Any file-wide `Local Open Scope`s should come immediately after the `Import`s
   (see example).
   * Always use `Local Open Scope`; just `Open Scope` will sneakily
@@ -107,16 +116,29 @@ open the scope for those who import your file.
 
 ## Formatting
 
-- line length
-- indentation
+### Line length
+
+- Maximum line length 80 characters.
+  * Many Coq IDE setups divide the screen in half vertically and use only half
+    to display source code, so more than 80 characters can be genuinely hard to
+    read on a laptop.
+
+### Whitespace and indentation
+
+- No trailing whitespace.
+- Spaces, not tabs.
+- Files should end with a newline.
+  * Many editors do this automatically on save.
+- Default indentation should be 2 spaces
+  * This prevents complex proofs from being indented ridiculously far, and
+    matches IDE defaults).
+- TODO: show indentation for
   * match
   * function application
   * lemma/theorem statements
   * forall/exists quantifiers
   * fun
   * Inductive
-- no trailing whitespace
-- newline at end of file
 
 ## Proofs
 
