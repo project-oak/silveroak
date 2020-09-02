@@ -142,12 +142,10 @@ open the scope for those who import your file.
 function name, use a 2-space indent.  However, if you make it after one or more
 arguments, align the next line with the first argument:
   ```coq
-  Z.pow
-    1 2
-  ```
-  ```coq
-  Z.pow 1 2 3
-        4 5 6
+  (Z.pow
+     1 2)
+  (Z.pow 1 2 3
+         4 5 6)
   ```
 - `Inductive` cases should not be indented. Example:
   ```coq
@@ -158,26 +156,26 @@ arguments, align the next line with the first argument:
   ```
 - `match` or `lazymatch` cases should line up with the "m" in `match` or "l" in
   `lazymatch`, as in the following examples:
-```coq
-match x with
-| 3 => true
-| _ => false
-end.
+  ```coq
+  match x with
+  | 3 => true
+  | _ => false
+  end.
 
-lazymatch x with
-| 3 => idtac
-| _ => fail "Not equal to 3:" x
-end.
+  lazymatch x with
+  | 3 => idtac
+  | _ => fail "Not equal to 3:" x
+  end.
 
-repeat match goal with
-       | _ => progress subst
-       | _ => reflexivity
+  repeat match goal with
+         | _ => progress subst
+         | _ => reflexivity
+         end.
+
+  do 2 lazymatch goal with
+       | |- context [eq] => idtac
        end.
-
-do 2 lazymatch goal with
-     | |- context [eq] => idtac
-     end.
-```
+  ```
 
 ## Lemma/theorem statements
 
@@ -185,7 +183,7 @@ do 2 lazymatch goal with
 - Insert a line break after the comma for `forall` or `exist` quantifiers.
 - Implication arrows (`->`) should share a line with the previous hypothesis,
   not the following one.
-- There is no need to make a line break after every `->; short preconditions
+- There is no need to make a line break after every `->`; short preconditions
   may share a line.
 
 ## Proofs and tactics
@@ -198,14 +196,14 @@ do 2 lazymatch goal with
   `repeat first`) should factor out a single step of that procedure a separate
 tactic called `<tactic name>_step`, because the single-step version is much
 easier to debug. For instance:
-```coq
-Ltac crush_step :=
-  match goal with
-  | _ => progress subst
-  | _ => reflexivity
-  end.
-Ltac crush := repeat crush_step.
-```
+  ```coq
+  Ltac crush_step :=
+    match goal with
+    | _ => progress subst
+    | _ => reflexivity
+    end.
+  Ltac crush := repeat crush_step.
+  ```
 
 ## Naming
 
