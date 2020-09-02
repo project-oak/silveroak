@@ -101,7 +101,7 @@ End BarNotations.
    1. Standard library dependencies (start with `Coq.`)
    2. External dependencies (anything outside the current project)
    3. Same-project dependencies
-   `Require Import`s with the same root library (the name before the first `.`)
+- `Require Import`s with the same root library (the name before the first `.`)
 should be grouped together. Within each root-library group, they should be in
 alphabetical order (so `Coq.Lists.List` before `Coq.ZArith.ZArith`).
 
@@ -129,26 +129,83 @@ open the scope for those who import your file.
 - Spaces, not tabs.
 - Files should end with a newline.
   * Many editors do this automatically on save.
-- Default indentation should be 2 spaces
-  * This prevents complex proofs from being indented ridiculously far, and
-    matches IDE defaults).
-- TODO: show indentation for
-  * match
-  * function application
-  * lemma/theorem statements
-  * forall/exists quantifiers
-  * fun
-  * Inductive
+- Default indentation is 2 spaces.
+  * Keeping this small prevents complex proofs from being indented ridiculously
+    far, and matches IDE defaults.
+- Use 2-space indents if inserting a line break immediately after:
+  * `Proof.`
+  * `fun <...> =>`
+  * `forall <...>,`
+  * `exists <....>,`
+- The style for indenting arguments in function application depends on where
+  you make a line break.  If you make the line break immediately after the
+function name, use a 2-space indent:
+```coq
+Z.pow
+  1 2
+```
+However, if you make it after one or more arguments, align the next line with
+the first argument:
+```coq
+Z.pow 1 2 3
+      4 5 6
+```
+- `Inductive` cases should not be indented. Example:
+```coq
+Inductive Foo : Type :=
+| FooA : Foo
+| FooB : Foo
+.
+```
+- `match` or `lazymatch` cases should line up with the "m" in `match` or "l" in `lazymatch`, as in the following examples:
+```coq
+match x with
+| 3 => true
+| _ => false
+end.
 
-## Proofs
+lazymatch x with
+| 3 => idtac
+| _ => fail "Not equal to 3:" x
+end.
+
+repeat match goal with
+       | _ => progress subst
+       | _ => reflexivity
+       end.
+
+do 2 lazymatch goal with
+     | |- context [eq] => idtac
+     end.
+```
+
+## Lemma statements
+
+- hypotheses usually unnamed
+- arrows share line with previous hypothesis
+
+## Proofs and tactics
 
 - Proof to open proof-mode
 - curly braces for subgoals
 - no multiple-subgoals-in-context tactics
-- indication of # subgoals if > 1
+- indication of # subgoals if > 1 (or if goals solved)
+- Tactics that consist only of `repeat`ing a procedure (e.g. `repeat match`,
+  `repeat first`) should factor out a single step of that procedure a separate
+tactic called `<tactic name>_step`, because the single-step version is much
+easier to debug. For instance:
+```coq
+Ltac crush_step :=
+  match goal with
+  | _ => progress subst
+  | _ => reflexivity
+  end.
+Ltac crush := repeat crush_step.
+```
 
 ## Naming
 
+- files: capital-letter names
 - modules:
   * capital-letter names
   * proofs about Z should be in a Z module
