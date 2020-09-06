@@ -18,7 +18,7 @@ From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Arrow Require Import Category Arrow.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From ArrowExamples Require Import Combinators Aes.pkg Aes.sbox_canright_pkg Aes.sbox_canright Aes.sbox_canright_masked_noreuse.
+From ArrowExamples Require Import Combinators Aes.pkg Aes.sbox_canright_pkg Aes.sbox_canright Aes.sbox_canright_masked_noreuse Aes.sbox_lut.
 
 Section notation.
 Import VectorNotations.
@@ -63,3 +63,87 @@ Program Definition aes_sbox
       in data_o
   ]>.
 End notation.
+
+Section regression_testing.
+  Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
+
+  Lemma aes_sbox_lut_combinational: is_combinational aes_sbox_lut.
+  Proof. simply_combinational. Qed.
+
+  Lemma aes_sbox_canright_combinational: is_combinational aes_sbox_canright.
+  Proof. simply_combinational. Qed.
+
+  (* Check equal at some random points *)
+  Goal combinational_evaluation aes_sbox_lut aes_sbox_lut_combinational (false, #0) = combinational_evaluation aes_sbox_canright aes_sbox_canright_combinational (false, #0).
+    vm_compute; auto.
+  Qed.
+
+  Lemma reduce_num': forall n (P: nat -> Prop), (forall x, x < n -> P x) /\ P n -> (forall y, y < S n -> P y).
+  Proof.
+    intros.
+    destruct H.
+    inversion H0.
+    apply H1.
+    specialize (H _ H3).
+    apply H.
+  Qed.
+  Lemma reduce_num: forall n (P: nat -> Prop) Q, (forall x, x < n -> P x) /\ P n /\ Q -> ((forall y, y < S n -> P y) /\ Q).
+  Proof.
+    intros.
+    inversion H.
+    inversion H1.
+    split.
+    apply reduce_num'.
+    split.
+    apply H0.
+    apply H2.
+    apply H3.
+  Qed.
+  Lemma rm_false: forall (P: nat -> Prop) (Q: Prop), Q -> (forall x, x < 0 -> P x) /\ Q.
+  Proof.
+    intros.
+    split.
+    intros.
+    inversion H0.
+    apply H.
+  Qed.
+
+  (* TODO(blaxill): works for x < 256 but is slow ... *)
+  Goal forall x, x < 5 -> 
+  combinational_evaluation aes_sbox_lut aes_sbox_lut_combinational (false, x) = combinational_evaluation aes_sbox_canright aes_sbox_canright_combinational (false, x).
+  Proof.
+    apply (reduce_num' _ (fun x =>
+      aes_sbox_lut Combinational (false, # x) =
+      aes_sbox_canright Combinational (false, # x)
+    )).
+    Ltac t := apply (reduce_num _ (fun x =>
+      aes_sbox_lut Combinational (false, # x) =
+      aes_sbox_canright Combinational (false, # x)
+    ) _).
+    repeat t.
+    apply rm_false.
+
+    time vm_compute; auto 256.
+  Qed.
+
+  Goal forall x, x < 10 -> aes_sbox_lut Combinational (false, #x) = aes_sbox_canright Combinational (false, #x).
+  Proof.
+    apply (reduce_num' _ (fun x =>
+      aes_sbox_lut Combinational (false, # x) =
+      aes_sbox_canright Combinational (false, # x)
+    )).
+    repeat t.
+    apply rm_false.
+    repeat match goal with
+    | |- context[aes_sbox_lut Combinational ?X] =>
+      let x := fresh in set (x:=aes_sbox_lut Combinational X);
+      vm_compute in x;
+      simpl in x
+    end.
+    unfold aes_sbox_canright;
+    repeat rewrite expression_evaluation_is_arrow_evaluation;
+    set (Z:=interp_combinational _);
+    cbv [interp_combinational] in Z;
+    revert Z;
+    time vm_compute; auto 256.
+  Qed.

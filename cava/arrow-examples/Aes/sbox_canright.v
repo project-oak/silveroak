@@ -101,3 +101,19 @@ Definition aes_sbox_canright
 
       data_o 
   ]>.
+
+Definition canright_composed :=
+  <[\input => 
+  let encoded = !aes_sbox_canright !CIPH_FWD input in
+  let decoded = !aes_sbox_canright !CIPH_INV encoded in
+  decoded ]>.
+
+Lemma canright_composed_combinational: is_combinational canright_composed.
+Proof. simply_combinational. Qed.
+
+Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
+
+Goal combinational_evaluation canright_composed canright_composed_combinational (# 0) = (# 0).
+Proof.
+    vm_compute; auto.
+  vm_compute.
