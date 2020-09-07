@@ -15,7 +15,10 @@ Context {product: object -> object -> object}.
 Context {arrow: Arrow object category u product}.
 Context {stkc: ArrowSTKC arrow}.
 Context {arrow_loop: ArrowLoop arrow}.
+
 Context {decidable_equality: DecidableEquality object}.
+
+Context {default_object: forall x, morphism u x}.
 
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
@@ -138,19 +141,17 @@ Definition rewrite_object {x y: object} (H: x = y)
 
 (* Construct an Arrow morphism that takes a variable list object
 and returns the variable at an index *)
-Fixpoint extract_nth (ctxt: list object) ty x
-  : (reverse_nth ctxt x = Some ty) -> (as_kind ctxt) ~> ty :=
-  match ctxt return (reverse_nth ctxt x = Some ty) -> (as_kind ctxt) ~> ty with
-  | [] => fun H => match lookup_lower_contra H with end
-  | ty' :: ctxt' => fun H =>
-    match eq_nat_dec x (length ctxt') with
-    | left Heq =>
+Fixpoint extract_nth (ctxt: list object) (ty: object) (x: nat)
+  : (as_kind ctxt) ~> ty :=
+  match ctxt with
+  | [] => drop >>> default_object _
+  | ty' :: ctxt' =>
+    if x =? (length ctxt') then
       match eq_dec ty' ty with
       | left Heq2 => rew Heq2 in (second drop >>> cancelr) 
-      | right Hneq => match lookup_top_contra ctxt' Heq H Hneq with end
+      | right Hneq => drop >>> default_object _
       end
-    | right Hneq => first drop >>> cancell >>> extract_nth ctxt' x (push_lookup _ _ Hneq H)
-    end
+    else first drop >>> cancell >>> extract_nth ctxt' _ x
   end.
 
 (* Perform closure conversion by passing an explicit list object. The PHOAS 
@@ -166,22 +167,18 @@ from the list object.
 Fixpoint closure_conversion' {i o}
   (ctxt: list object)
   (expr: kappa natvar i o) {struct expr}
-  : wf_phoas_context ctxt expr -> (i ** (as_kind ctxt)) ~> o
+  : (i ** (as_kind ctxt)) ~> o
   :=
-match expr as expr in kappa _ i' o' return 
-  i ** (as_kind ctxt) = i' ** (as_kind ctxt)
-  -> o' = o
-  -> wf_phoas_context ctxt expr -> (i ** (as_kind ctxt)) ~> o 
-with
+match expr with
 (* Instantiating a variable is done by 'cancell' to select the list object, 
 and then indexing using lookup_morphism. *)
-| Var v => fun _ H2 wf => 
-  first drop >>> cancell >>> (extract_nth ctxt v wf) >>> rewrite_object H2
+| Var v => 
+  first drop >>> cancell >>> (extract_nth ctxt _ v) 
 
 (* Kappa abstraction requires extending the list object then moving the 
 new list object variable in to place*)
-| Abs f => fun H1 H2 wf =>
-  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) wf in
+| Abs f => 
+  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
   (* 
       input:      (x*y)*list object_variables 
 
@@ -194,48 +191,38 @@ new list object variable in to place*)
   3. call f'
       f':         y*new_list object_variables ~> o
   *)
-  rewrite_object H1 >>> first swap >>> assoc >>> f' >>> rewrite_object H2 
+  first swap >>> assoc >>> f' 
 
 (* Application requires the object list object to be piped to the abstraction
 'f' and applicant 'e'. since running 'closure_conversion' on each binder
 removes the list object, we first need to copy the list object. *)
-| App f e => fun H1 H2 wf => 
-  rewrite_object H1 
-  >>> second (copy >>> first (uncancell
-  >>> closure_conversion' ctxt e (wf_phoas_context_lax_app2 wf)))
+| App f e => 
+  second (copy >>> first (uncancell >>> closure_conversion' ctxt e))
   >>> unassoc >>> first swap
-  >>> closure_conversion' ctxt f (wf_phoas_context_lax_app1 wf)
-  >>> rewrite_object H2
+  >>> closure_conversion' ctxt f
 
-| Comp e1 e2 => fun H1 H2 wf => 
-  rewrite_object H1 
-  >>> second copy
+| Comp e1 e2 => 
+  second copy
   >>> unassoc
-  >>> first (closure_conversion' ctxt e2 (wf_phoas_context_lax_compose1 wf))
-  >>> closure_conversion' ctxt e1 (wf_phoas_context_lax_compose2 wf)
-  >>> rewrite_object H2
+  >>> first (closure_conversion' ctxt e2)
+  >>> closure_conversion' ctxt e1
 
-| Morph m => fun H1 H2 wf => 
-  rewrite_object H1 
-  >>> second drop >>> cancelr >>> m
-  >>> rewrite_object H2
+| Morph m => 
+    second drop >>> cancelr >>> m
 
-| Let v f => fun H1 H2 wf => 
-  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) (wf_phoas_context_lax_let2 wf) in
-  rewrite_object H1 
-  >>> second (copy >>> first (uncancell
-  >>> closure_conversion' ctxt v (wf_phoas_context_lax_let1 wf)))
+| Let v f => 
+  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
+  second (copy >>> first (uncancell
+  >>> closure_conversion' ctxt v))
   >>> unassoc >>> first swap
   >>> first swap >>> assoc >>> f'
-  >>> rewrite_object H2
 
-| LetRec v f => fun H1 H2 wf =>
-  let v' := closure_conversion' (_ :: ctxt) (v (length ctxt)) (wf_phoas_context_lax_letrec1 wf) in
-  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) (wf_phoas_context_lax_letrec2 wf) in
+| LetRec v f => 
+  let v' := closure_conversion' (_ :: ctxt) (v (length ctxt)) in
+  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
 
-  rewrite_object H1
                                   (* i**ctxt ~> o *)
-  >>> second (                       (* ctxt ~> o *)
+  second (                       (* ctxt ~> o *)
         copy >>>                     (* ctxt*ctxt ~> o *)
         first (                         (* ctxt ~> o *)
           uncancell >>>                 (* u*ctxt ~> o *)
@@ -243,9 +230,7 @@ removes the list object, we first need to copy the list object. *)
       )                               
     )                              
     >>> f'
-  >>> rewrite_object H2
-  
-end eq_refl eq_refl.
+end.
 
 Notation variable_pair i o n1 n2 := (vars natvar natvar (obj_pair i o) (pair n1 n2)).
 
@@ -323,14 +308,10 @@ Proof.
   eauto with kappa_cc.
 Qed.
 
-Definition closure_conversion {i o} (expr: Kappa i o) (wf: wf_phoas_context [] (expr _)): i ~> o
-  := uncancelr >>> closure_conversion' [] (expr _) wf.
-
-Definition Closure_conversion {i o} (expr: Kappa i o): i ~> o
-  := closure_conversion expr (Kappa_wf expr).
+Definition closure_conversion {i o} (expr: Kappa i o) : i ~> o
+  := uncancelr >>> closure_conversion' [] (expr _) .
 
 Hint Resolve closure_conversion' : core.
 Hint Resolve closure_conversion : core.
-Hint Resolve Closure_conversion : core.
 
 End Arrow.
