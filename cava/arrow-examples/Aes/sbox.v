@@ -77,41 +77,14 @@ Section regression_testing.
   Goal combinational_evaluation aes_sbox_lut aes_sbox_lut_combinational (false, #0) = combinational_evaluation aes_sbox_canright aes_sbox_canright_combinational (false, #0).
     vm_compute; auto.
   Qed.
-
-  Lemma reduce_num': forall n (P: nat -> Prop), (forall x, x < n -> P x) /\ P n -> (forall y, y < S n -> P y).
-  Proof.
-    intros.
-    destruct H.
-    inversion H0.
-    apply H1.
-    specialize (H _ H3).
-    apply H.
-  Qed.
-  Lemma reduce_num: forall n (P: nat -> Prop) Q, (forall x, x < n -> P x) /\ P n /\ Q -> ((forall y, y < S n -> P y) /\ Q).
-  Proof.
-    intros.
-    inversion H.
-    inversion H1.
-    split.
-    apply reduce_num'.
-    split.
-    apply H0.
-    apply H2.
-    apply H3.
-  Qed.
-  Lemma rm_false: forall (P: nat -> Prop) (Q: Prop), Q -> (forall x, x < 0 -> P x) /\ Q.
-  Proof.
-    intros.
-    split.
-    intros.
-    inversion H0.
-    apply H.
-  Qed.
-
+(* 
   (* TODO(blaxill): works for x < 256 but is slow ... *)
-  Goal forall x, x < 5 -> 
-  combinational_evaluation aes_sbox_lut aes_sbox_lut_combinational (false, x) = combinational_evaluation aes_sbox_canright aes_sbox_canright_combinational (false, x).
+  Goal forall x, x < 1 -> 
+  combinational_evaluation aes_sbox_lut aes_sbox_lut_combinational (false, x) = combinational_evaluation aes_sbox_canright aes_sbox_canright_combinational (false, # x).
   Proof.
+    destruct x.
+
+
     apply (reduce_num' _ (fun x =>
       aes_sbox_lut Combinational (false, # x) =
       aes_sbox_canright Combinational (false, # x)
@@ -146,4 +119,4 @@ Section regression_testing.
     cbv [interp_combinational] in Z;
     revert Z;
     time vm_compute; auto 256.
-  Qed.
+  Qed. *)

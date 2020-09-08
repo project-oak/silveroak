@@ -114,6 +114,5 @@ Proof. simply_combinational. Qed.
 Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
 
 Goal combinational_evaluation canright_composed canright_composed_combinational (# 0) = (# 0).
-Proof.
-    vm_compute; auto.
-  vm_compute.
+Proof. vm_compute; auto. Qed.
+  

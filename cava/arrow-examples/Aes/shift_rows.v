@@ -51,7 +51,7 @@ Definition aes_shift_rows
                                         : aes_circ_byte_shift(data_i[3], 2'h3); *)
   <[\op_i data_i =>
     let data_o_0 = data_i[#0] in
-    let data_o_2 = !aes_circ_byte_shift data_i[#2] #2 in
+    let data_o_2 = !aes_circ_byte_shift data_i[#2] (#2) in
     let data_o_1 = 
       if op_i == !CIPH_FWD 
       then !aes_circ_byte_shift data_i[#1] #3
