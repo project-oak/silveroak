@@ -77,46 +77,10 @@ Section regression_testing.
   Goal combinational_evaluation aes_sbox_lut aes_sbox_lut_combinational (false, #0) = combinational_evaluation aes_sbox_canright aes_sbox_canright_combinational (false, #0).
     vm_compute; auto.
   Qed.
-(* 
-  (* TODO(blaxill): works for x < 256 but is slow ... *)
-  Goal forall x, x < 1 -> 
-  combinational_evaluation aes_sbox_lut aes_sbox_lut_combinational (false, x) = combinational_evaluation aes_sbox_canright aes_sbox_canright_combinational (false, # x).
-  Proof.
-    destruct x.
 
+  (* TODO(blaxill): reduced bound for CI time *)
+  Goal forall x, x < 10 -> 
+  combinational_evaluation aes_sbox_lut aes_sbox_lut_combinational (false, #x) = combinational_evaluation aes_sbox_canright aes_sbox_canright_combinational (false, # x).
+  Proof. repeat (lia || destruct x); now vm_compute. Qed.
 
-    apply (reduce_num' _ (fun x =>
-      aes_sbox_lut Combinational (false, # x) =
-      aes_sbox_canright Combinational (false, # x)
-    )).
-    Ltac t := apply (reduce_num _ (fun x =>
-      aes_sbox_lut Combinational (false, # x) =
-      aes_sbox_canright Combinational (false, # x)
-    ) _).
-    repeat t.
-    apply rm_false.
-
-    time vm_compute; auto 256.
-  Qed.
-
-  Goal forall x, x < 10 -> aes_sbox_lut Combinational (false, #x) = aes_sbox_canright Combinational (false, #x).
-  Proof.
-    apply (reduce_num' _ (fun x =>
-      aes_sbox_lut Combinational (false, # x) =
-      aes_sbox_canright Combinational (false, # x)
-    )).
-    repeat t.
-    apply rm_false.
-    repeat match goal with
-    | |- context[aes_sbox_lut Combinational ?X] =>
-      let x := fresh in set (x:=aes_sbox_lut Combinational X);
-      vm_compute in x;
-      simpl in x
-    end.
-    unfold aes_sbox_canright;
-    repeat rewrite expression_evaluation_is_arrow_evaluation;
-    set (Z:=interp_combinational _);
-    cbv [interp_combinational] in Z;
-    revert Z;
-    time vm_compute; auto 256.
-  Qed. *)
+End regression_testing.

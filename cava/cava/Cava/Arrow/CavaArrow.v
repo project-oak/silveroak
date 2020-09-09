@@ -195,7 +195,7 @@ Proof.
   exact uncancelr.
 Defined.
 
-Fixpoint insert_rightmost_tt1 (ty: Kind): (remove_rightmost_unit ty) ~> ty.
+(* Fixpoint insert_rightmost_tt1 (ty: Kind): (remove_rightmost_unit ty) ~> ty.
 Proof.
   refine (
   Fix arg_length_order_wf (fun ty => (remove_rightmost_unit ty) ~> ty )
@@ -225,4 +225,4 @@ Fixpoint remove_rightmost_tt (ty: Kind): ty ~> (remove_rightmost_unit ty).
   rewrite H;
   cbv [arg_length_order ty2];
   auto.
-Defined.
+Defined. *)

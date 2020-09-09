@@ -126,9 +126,25 @@ Fixpoint combinational_evaluation' {i o}
 
 Local Open Scope category_scope.
 
+Fixpoint apply_rightmost_tt (x: Kind)
+  : denote_kind (remove_rightmost_unit x) -> denote_kind x
+  :=
+  match x as x' return denote_kind (remove_rightmost_unit x') -> denote_kind x' with
+  | Tuple l r => 
+    let rec := apply_rightmost_tt r in
+    match r as r' return 
+      (denote_kind (remove_rightmost_unit r') -> denote_kind r') ->
+        denote_kind (remove_rightmost_unit (Tuple l r')) -> denote_kind (Tuple l r')
+      with
+    | Unit => fun f x => (x, tt)
+    | _ => fun f p => (fst p, f (snd p)) 
+    end rec
+  | _ => fun x => x
+  end.
+
 Definition combinational_evaluation {x y: Kind}
   (circuit: x ~> y)
   (ok: is_combinational circuit)
   (i: denote_kind (remove_rightmost_unit x))
   : denote_kind y :=
-  combinational_evaluation' (insert_rightmost_tt1 x >>> circuit) i.
+  combinational_evaluation' circuit (apply_rightmost_tt x i).

@@ -74,29 +74,21 @@ Definition shift_rows_composed :=
 Lemma shift_rows_composed_combinational: is_combinational shift_rows_composed.
 Proof. simply_combinational. Qed.
 
-(* Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99). *)
-
-Set Printing Depth 0.
-
+(* TODO(blaxill): WIP *)
 Axiom first_first: forall {x y z w w2} (f: x~>y) (g:y~>z) (h:(Tuple z w)~>w2), first (Arrow:=CircuitArrow) f >>> (first g >>> h) = first (z:=w) (f >>> g) >>> h.
 Axiom swap_swap: forall {x y} , swap (A:=CircuitArrow) (x:=x) (y:=y) >>> swap = id.
 Axiom first_id: forall {x z w} (f: _ ~> w), first (Arrow:=CircuitArrow) (x:=x)(z:=z) id >>> f = f.
 Axiom unassoc_assoc: forall {x y z w} (f: _ ~> w), unassoc (Arrow:=CircuitArrow) (x:=x)(y:=y)(z:=z) >>> assoc >>> f = f.
 (* Axiom assoc_unassoc: forall {x z w} , assoc (Arrow:=CircuitArrow) (x:=x)(z:=z) id >>> f = f. *)
 
-Goal exists x, combinational_evaluation shift_rows_composed shift_rows_composed_combinational x = x.
+Goal exists x, combinational_evaluation' shift_rows_composed (x, tt) = x.
 Proof.
   eexists.
-  cbv [combinational_evaluation].
-  cbv [shift_rows_composed].
-  cbv [ClosureConversion.Closure_conversion].
+  cbv [shift_rows_composed aes_shift_rows].
   cbv [ClosureConversion.closure_conversion].
   cbv [ClosureConversion.closure_conversion'].
 
-  (* repeat match goal with
-  | |- context [first swap >>> (first swap >>> _)] => rewrite first_first
-  end. *)
-  repeat rewrite first_first.
+  (* repeat rewrite first_first.
   repeat rewrite swap_swap.
   repeat rewrite first_id.
 
@@ -111,6 +103,5 @@ Proof.
 
   repeat match goal with
   | |- context [first swap >>> (first swap >>> _)] => rewrite first_first
-  end.
-
-  
+  end. *)
+Abort. 
