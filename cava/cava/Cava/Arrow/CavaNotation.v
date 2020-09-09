@@ -114,10 +114,6 @@ Module KappaNotation.
   Notation "'true''" := (Morph (Primitive (Constant Bit true))) (in custom expr at level 2) : kappa_scope.
   Notation "'false''" := (Morph (Primitive (Constant Bit false))) (in custom expr at level 2) : kappa_scope.
 
-  (* Notation "# sz ''b' x" := (Morph (Primitive (Constant (Vector Bit sz) (N2Bv_sized sz x))))%N
-    (in custom expr at level 2, 
-    sz constr at level 4, x constr at level 4, no associativity) : kappa_scope. *)
-
   Notation "# x" := (Morph (Primitive (Constant (Vector Bit _) (N2Bv_sized _ x))))%N
     (in custom expr at level 2, 
     x constr at level 4, no associativity) : kappa_scope.

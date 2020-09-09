@@ -81,7 +81,6 @@ Fixpoint combinational_evaluation' {i o}
   | Structural (Copy x) => fun x => (x,x)
 
   | Primitive (Constant ty val) => fun _ => val
-  (* | Primitive (ConstantVec n v) => fun _ => N2Bv_sized n v *)
   | Primitive (Delay o) => fun _ => kind_default _
   | Primitive Not => fun b => negb (fst b)
   | Primitive BufGate => fun b => fst b
