@@ -27,6 +27,9 @@ Require Import Omega.
 From Coq Require Import btauto.Btauto.
 Require Import Nat Arith Lia.
 From Coq Require Import Arith.PeanoNat.
+From Coq Require Strings.HexString.
+
+From Cava Require Import VectorUtils.
 
 Import ListNotations.
 
@@ -261,3 +264,7 @@ Definition n2bool (n : N) : bool :=
 
 Definition fromVec := List.map Nat.b2n.
 Definition toVec := List.map nat2bool.
+
+Definition Bv2Hex {n} (x: Vector.t bool n) := HexString.of_N (Bv2N x).
+
+Definition byte_reverse {n} (x: Vector.t bool (n*8)) := Vector.flatten (Vector.reverse (Vector.reshape (m:=8) x)).

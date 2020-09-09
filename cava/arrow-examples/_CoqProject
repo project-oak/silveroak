@@ -22,5 +22,6 @@ Aes/mix_single_column.v
 Aes/mix_columns.v
 Aes/unrolled_cipher.v
 Aes/naive_unrolled_cipher.v
+Aes/cipher_round.v
 
 ArrowExtraction.v

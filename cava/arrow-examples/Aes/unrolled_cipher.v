@@ -18,25 +18,11 @@ From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Arrow Require Import Category Arrow.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From ArrowExamples Require Import Combinators Aes.pkg Aes.mix_columns Aes.sbox Aes.sub_bytes Aes.shift_rows.
+From ArrowExamples Require Import Combinators Aes.pkg Aes.mix_columns Aes.sbox Aes.sub_bytes Aes.shift_rows Aes.naive_unrolled_cipher Aes.cipher_round.
 
 Import VectorNotations.
 Import KappaNotation.
 Open Scope kind_scope.
-
-Definition cipher_round
-  (sbox_impl: SboxImpl)
-  : << Bit                               (* cipher mode: CIPH_FWD/CIPH_INV *)
-    , Vector (Vector (Vector Bit 8) 4) 4 (* data input *)
-    , Vector (Vector (Vector Bit 8) 4) 4 (* round key *)
-    , Unit>> ~>
-      Vector (Vector (Vector Bit 8) 4) 4 :=
-  <[\op_i data_i stage_key =>
-    let stage1 = !(aes_sub_bytes sbox_impl) op_i data_i in
-    let stage2 = !aes_shift_rows op_i stage1 in
-    let stage3 = !aes_mix_columns op_i stage2 in
-    !(map2 <[ !(map2 <[\x y => x ^ y]>) ]> ) stage3 stage_key
-    ]>.
 
 (* Note: aes_key_expand in OpenTitan is stateful, this version is not *)
 Program Definition aes_key_expand
@@ -224,8 +210,9 @@ Definition unrolled_forward_cipher
 
     let stage1 = !(aes_sub_bytes sbox_impl) !CIPH_FWD data_i in
     let stage2 = !aes_shift_rows !CIPH_FWD stage1 in
-    !(map2 <[ !(map2 <[\x y => x ^ y]>) ]> ) stage2 round_key
+    stage2 ^ round_key
     ]>.
+  
 
 Definition unrolled_forward_cipher_flat
   : 
