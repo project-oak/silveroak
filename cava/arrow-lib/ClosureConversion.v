@@ -1,4 +1,5 @@
 Require Import Coq.Arith.Arith.
+Require Import Coq.Logic.Eqdep.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 Require Import Arrow.Category.
