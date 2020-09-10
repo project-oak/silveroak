@@ -169,8 +169,7 @@ match n with
 | S n' =>
   <[ \initial xs =>
       let '(x, xs') = uncons xs in
-      let acc = !(foldl f) initial xs' in
-      !f acc x
+      !(foldl f) (!f initial x) xs'
   ]>
 end.
 
@@ -183,13 +182,12 @@ match n with
 | S n' =>
   <[ \initial xs =>
       let '(xs', x) = unsnoc xs in
-      let acc = !(foldr f) initial xs' in
-      !f x acc
+      !f x (!(foldr f) initial xs')
   ]>
 end.
 
 (* non-empty version, doesn't require a default *)
-Fixpoint foldl1 {n T}
+Fixpoint foldr1 {n T}
   (f:  <<T, T, Unit>> ~> T)
   {struct n}
   :  << Vector T (S n), Unit >> ~> <<T>> :=
@@ -198,8 +196,7 @@ match n with
 | S n' =>
   <[ \xs =>
       let '(x, xs') = uncons xs in
-      let acc = !(foldl1 f) xs' in
-      !f acc x
+      !f x (!(foldr1 f) xs')
   ]>
 end.
 

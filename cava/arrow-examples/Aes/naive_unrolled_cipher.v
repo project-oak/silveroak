@@ -16,9 +16,11 @@
 
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Arrow Require Import Category Arrow.
-From Cava Require Import Arrow.ArrowExport BitArithmetic.
+From Cava Require Import Arrow.ArrowExport BitArithmetic VectorUtils.
 
-From ArrowExamples Require Import Combinators Aes.pkg Aes.mix_columns Aes.sbox Aes.sub_bytes Aes.shift_rows.
+From ArrowExamples Require Import Combinators Aes.pkg Aes.mix_columns Aes.sbox Aes.sub_bytes Aes.shift_rows Aes.cipher_round.
+
+Require Import coqutil.Z.HexNotation.
 
 Import VectorNotations.
 Import KappaNotation.
@@ -61,7 +63,7 @@ Definition key_expansion_word
     w0 :: w1 :: w2 :: w3 :: []
   ]>.
 
-Definition aes_256_naive_key_expansion
+Definition aes_256_naive_key_expansion'
   (sbox_impl: SboxImpl)
   : << Vector (Vector (Vector Bit 8) 4) 4
     ,  Vector (Vector (Vector Bit 8) 4) 4
@@ -99,12 +101,79 @@ Definition aes_256_naive_key_expansion
     k14:: []
   ]>.
 
+Definition aes_256_naive_key_expansion
+  (sbox_impl: SboxImpl)
+  : << Vector (Vector (Vector Bit 8) 4) 8
+    ,  Unit>> ~>
+    << Vector (Vector (Vector (Vector Bit 8) 4) 4) 15 >>
+    := <[\ key => 
+    let '(key0, key1) = !(split_pow2 _ 2) key in
+    !(aes_256_naive_key_expansion' sbox_impl) key0 key1
+    ]>.
+
+Definition unrolled_cipher_naive'
+  (sbox_impl: SboxImpl)
+  : <<
+      Bit (* op *)
+    , Vector (Vector (Vector Bit 8) 4) 4 (* data *)
+    , Vector (Vector (Vector Bit 8) 4) 8 (* key *)
+    , Unit
+    >> ~>
+    <<
+      Vector (Vector (Vector Bit 8) 4) 4 (* data *)
+    >>
+  :=
+  let aes_key_expand := aes_256_naive_key_expansion sbox_impl in
+  let cipher_round1 := curry (cipher_round sbox_impl) in
+  <[\op_i data_i key =>
+    let keys = !aes_key_expand key in
+    let '(first_key, eys) = uncons keys in
+    let '(ey, last_key) = unsnoc eys in
+
+    let r0 = data_i ^ !aes_transpose first_key in
+    let r13 = !(foldl
+      <[\ ctxt key => (fst ctxt, !cipher_round1 ctxt (!aes_transpose key)) ]>)
+       (op_i, r0) ey in
+
+    !(final_cipher_round sbox_impl) op_i (snd r13) (!aes_transpose last_key)
+    ]>.
+
+Definition unrolled_cipher_naive
+  : <<
+      Bit
+    , Vector Bit 128 (* data *)
+    , Vector Bit 256 (* key *)
+    , Unit
+    >> ~>
+    <<
+     Vector Bit 128 (* data *)
+    >>
+  :=
+  <[\op_i data key =>
+    let data_o = 
+      !(unrolled_cipher_naive' SboxCanright) op_i
+      (!aes_transpose (!reshape (!reshape data)))
+      (!reshape (!reshape key)) in
+    !flatten (!flatten (!aes_transpose data_o))
+    ]>.
+
 Lemma key_expansion_comb: is_combinational (aes_256_naive_key_expansion SboxCanright).
 Proof. simply_combinational. Qed.
 
-Definition expanded_key := combinational_evaluation (aes_256_naive_key_expansion SboxCanright) key_expansion_comb (kind_default _).
+Lemma unrolled_cipher_naive_comb: is_combinational (unrolled_cipher_naive).
+Proof. simply_combinational. Qed.
 
-Compute (Vector.map (Vector.map (Vector.map Bv2N)) expanded_key).
+Section tests.
+
+  Definition test_key := byte_reverse (n:=32) (N2Bv_sized 256 (Z.to_N (Ox "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"))).
+  Definition test_data := byte_reverse (n:=16) (N2Bv_sized 128 (Z.to_N (Ox "00112233445566778899aabbccddeeff"))).
+        
+  Definition expanded_key := 
+    combinational_evaluation'
+      (<[\data => !(aes_256_naive_key_expansion SboxCanright) (!reshape (!reshape data)) ]>)
+      (N2Bv_sized 256 0, tt).
+
+  Compute (Vector.map (Vector.map (Vector.map Bv2Hex)) expanded_key).
 
 (* AES-256 expanded empty key *)
 (* 
@@ -124,3 +193,10 @@ Compute (Vector.map (Vector.map (Vector.map Bv2N)) expanded_key).
 0x74, 0xed, 0x0b, 0xa1, ~ 0x73, 0x9b, 0x7e, 0x25, ~ 0x22, 0x51, 0xad, 0x14, ~ 0xce, 0x20, 0xd4, 0x3b = k13
 0x10, 0xf8, 0x0a, 0x17, ~ 0x53, 0xbf, 0x72, 0x9c, ~ 0x45, 0xc9, 0x79, 0xe7, ~ 0xcb, 0x70, 0x63, 0x85 = k14
 *)
+
+  Eval vm_compute in (
+  Bv2Hex (byte_reverse (n:=16) (combinational_evaluation unrolled_cipher_naive unrolled_cipher_naive_comb (false, (test_data, test_key))))
+  ).
+  (* = 0x8ea2b7ca516745bfeafc49904b496089 *)
+
+End tests.

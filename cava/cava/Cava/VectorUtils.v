@@ -56,6 +56,43 @@ Definition fixup n (F : Type -> Type) (Ap: Applicative F) (A B : Type) (m: A -> 
 Global Instance Traversable_vector@{} {n} : Traversable (fun t => Vector.t t n) :=
 { mapT := fixup n }.
 
+Module Vector.
+  Local Open Scope vector_scope.
+  Fixpoint reshape {n m A}:
+    Vector.t A (n * m) -> Vector.t (Vector.t A m) n :=
+    match n as n' return 
+      Vector.t A (n' * m) -> Vector.t (Vector.t A m) n' with
+    | 0 => fun _ => []
+    | S n' => fun v =>  
+      let '(x, xs) := Vector.splitat (r:=n' * m) m v in
+      x :: @reshape n' m A xs 
+    end.
+
+  Fixpoint flatten {n m A}:
+    Vector.t (Vector.t A m) n -> Vector.t A (n*m) :=
+    match n as n' return Vector.t (Vector.t A m) n' -> Vector.t A (n'*m) with
+    | 0 => fun _ => []
+    | S n' => fun v => 
+        let '(x, xs) := uncons v in
+        x ++ (@flatten n' m A) xs
+    end.
+
+  Definition snoc n o (v: Vector.t o n) a
+    : Vector.t o (S n) :=
+    t_rect _ (fun n v => Vector.t o (S n)) [a]
+    (fun x n v f => 
+      x :: f
+    ) _ v.
+
+  (* avoids the equality rewrites in Coq.Vector.rev *)
+  Fixpoint reverse {n A}
+    (v: Vector.t A n): Vector.t A n :=
+    match v with
+    | [] => []
+    | x::xs => snoc _ _ (reverse xs) x
+    end.
+End Vector.
+
 (******************************************************************************)
 (* Vector version of combine                                                  *)
 (******************************************************************************)

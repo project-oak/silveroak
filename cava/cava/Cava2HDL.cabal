@@ -86,12 +86,14 @@ library
   other-Modules:     Applicative
                      BinPos
                      BinInt
+                     BinNatDef
                      Bool
                      ByteVector
                      Compare_dec
                      Decimal
                      Functor
                      Hexadecimal
+                     HexString
                      Numeral
                      Specif
                      MonadExc
