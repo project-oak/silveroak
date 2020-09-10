@@ -25,7 +25,7 @@ Import KappaNotation.
 Open Scope kind_scope.
 
 Notation "|^ x" :=
-  (App (Morph (foldl1 <[\a b => xor a b]> )) x)
+  (App (Morph (foldr1 <[\a b => xor a b]> )) x)
   (in custom expr at level 5, no associativity) : kappa_scope.
 Notation "x && y" :=
   (App (App (Morph <[and]>) x) y)

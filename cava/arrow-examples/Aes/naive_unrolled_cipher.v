@@ -22,7 +22,6 @@ From ArrowExamples Require Import Combinators Aes.pkg Aes.mix_columns Aes.sbox A
 
 Require Import coqutil.Z.HexNotation.
 
-
 Import VectorNotations.
 Import KappaNotation.
 Open Scope kind_scope.
@@ -125,23 +124,18 @@ Definition unrolled_cipher_naive'
     >>
   :=
   let aes_key_expand := aes_256_naive_key_expansion sbox_impl in
+  let cipher_round1 := curry (cipher_round sbox_impl) in
   <[\op_i data_i key =>
-    let key_rounds = !aes_key_expand key in
-    let data0 = data_i ^ !aes_transpose key_rounds[#0] in 
-    let data1 = !(cipher_round sbox_impl) op_i data0 (!aes_transpose key_rounds[#1]) in
-    let data2 = !(cipher_round sbox_impl) op_i data1 (!aes_transpose key_rounds[#2]) in
-    let data3 = !(cipher_round sbox_impl) op_i data2 (!aes_transpose key_rounds[#3]) in
-    let data4 = !(cipher_round sbox_impl) op_i data3 (!aes_transpose key_rounds[#4]) in
-    let data5 = !(cipher_round sbox_impl) op_i data4 (!aes_transpose key_rounds[#5]) in
-    let data6 = !(cipher_round sbox_impl) op_i data5 (!aes_transpose key_rounds[#6]) in
-    let data7 = !(cipher_round sbox_impl) op_i data6 (!aes_transpose key_rounds[#7]) in
-    let data8 = !(cipher_round sbox_impl) op_i data7 (!aes_transpose key_rounds[#8]) in
-    let data9 = !(cipher_round sbox_impl) op_i data8 (!aes_transpose key_rounds[#9]) in
-    let data10 = !(cipher_round sbox_impl) op_i data9 (!aes_transpose key_rounds[#10]) in
-    let data11 = !(cipher_round sbox_impl) op_i data10 (!aes_transpose key_rounds[#11]) in
-    let data12 = !(cipher_round sbox_impl) op_i data11 (!aes_transpose key_rounds[#12]) in
-    let data13 = !(cipher_round sbox_impl) op_i data12 (!aes_transpose key_rounds[#13]) in
-    !(final_cipher_round sbox_impl) op_i data13 (!aes_transpose key_rounds[#14])
+    let keys = !aes_key_expand key in
+    let '(first_key, eys) = uncons keys in
+    let '(ey, last_key) = unsnoc eys in
+
+    let r0 = data_i ^ !aes_transpose first_key in
+    let r13 = !(foldl
+      <[\ ctxt key => (fst ctxt, !cipher_round1 ctxt (!aes_transpose key)) ]>)
+       (op_i, r0) ey in
+
+    !(final_cipher_round sbox_impl) op_i (snd r13) (!aes_transpose last_key)
     ]>.
 
 Definition unrolled_cipher_naive
