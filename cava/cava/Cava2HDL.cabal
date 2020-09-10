@@ -86,6 +86,7 @@ library
   other-Modules:     Applicative
                      BinPos
                      BinInt
+                     BinNatDef
                      Bool
                      ByteVector
                      Compare_dec
