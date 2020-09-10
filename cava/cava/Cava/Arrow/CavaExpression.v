@@ -49,7 +49,9 @@ Section combinational_semantics.
     end.
     
     Axiom expression_evaluation_is_arrow_evaluation: forall i o (expr: Kappa i o), forall (x: denote_kind i),
-      combinational_evaluation' (Closure_conversion (arrow:=CircuitArrow) expr) x =
+      combinational_evaluation' (closure_conversion (arrow:=CircuitArrow) 
+        (default_object := fun ty => Primitive (Constant ty (kind_default ty)))
+        expr) x =
       interp_combinational (expr _) x.
 
 End combinational_semantics.

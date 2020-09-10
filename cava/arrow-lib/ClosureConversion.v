@@ -1,5 +1,11 @@
-From Coq Require Import Arith Eqdep List Lia.
-From Arrow Require Import Category Arrow Kappa KappaEquiv.
+Require Import Coq.Arith.Arith.
+Require Import Coq.Logic.Eqdep.
+Require Import Coq.Lists.List.
+Require Import Coq.micromega.Lia.
+Require Import Arrow.Category.
+Require Import Arrow.Arrow.
+Require Import Arrow.Kappa.
+Require Import Arrow.KappaEquiv.
 
 Import ListNotations.
 Import EqNotations.
@@ -9,13 +15,14 @@ Generalizable All Variables.
 Section Arrow.
 
 Context {object: Type}.
-Context {u: object}.
+Context {unit: object}.
 Context {category: Category object}.
 Context {product: object -> object -> object}.
-Context {arrow: Arrow object category u product}.
+Context {arrow: Arrow object category unit product}.
 Context {stkc: ArrowSTKC arrow}.
 Context {arrow_loop: ArrowLoop arrow}.
 Context {decidable_equality: DecidableEquality object}.
+Context {default_object: forall x, morphism unit x}.
 
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
@@ -25,7 +32,7 @@ Set Implicit Arguments.
 Create HintDb kappa_cc.
 
 (* immediate contradictions *)
-Hint Extern 1 => 
+Hint Extern 1 =>
   match goal with
   | [ H : ?X < ?X |- _ ] => apply Nat.lt_irrefl in H; contradiction
   | [ H : ?X = ?Y, H1: ?X < ?Y |- _ ] => rewrite H in H1; apply Nat.lt_irrefl in H; contradiction
@@ -35,13 +42,13 @@ Hint Extern 1 =>
   | [ H : In _ [] |- _ ] => inversion H
   end : kappa_cc.
 
-Hint Extern 5 => 
+Hint Extern 5 =>
   match goal with
   | [ H : Some ?X = Some ?Y |- _ ] => inversion H; clear H
   | [ H : Some ?X = Some ?Y |- _ ] => inversion H; clear H
   end : kappa_cc.
 
-Hint Extern 10 => 
+Hint Extern 10 =>
   match goal with
   | [ H : ?X /\ ?Y |- _ ] => inversion H; clear H
   | [ H : ?X \/ ?Y |- _ ] => inversion H; clear H
@@ -49,9 +56,9 @@ Hint Extern 10 =>
   | [ H : ?Y |- ?Y \/ _ ] => left; exact H
   end : kappa_cc.
 
-Hint Extern 15 => 
+Hint Extern 15 =>
   match goal with
-  | [ H0: length ?Y = ?Z, H1: ?X = ?TY |- reverse_nth (?X :: ?Y) ?Z = Some ?TY ] => 
+  | [ H0: length ?Y = ?Z, H1: ?X = ?TY |- reverse_nth (?X :: ?Y) ?Z = Some ?TY ] =>
     unfold reverse_nth;
     let x := fresh in (
       elim (Nat.eq_dec Z (length Y)); intro x;
@@ -68,7 +75,7 @@ Notation ok_lookup := (fun (l: list _) (n: nat) (ty: _) => reverse_nth l n = Som
 
 Fixpoint as_kind (ctxt: list object): object :=
   match ctxt with
-  | [] => u
+  | [] => unit
   | x :: xs => x ** (as_kind xs)
   end.
 
@@ -79,9 +86,9 @@ Fixpoint as_kind (ctxt: list object): object :=
 Section ctxt.
   Variable ctxt: list object.
 
-  Tactic Notation "ctxt_induction" := intros; induction ctxt; auto with kappa_cc. 
+  Tactic Notation "ctxt_induction" := intros; induction ctxt; auto with kappa_cc.
 
-  Lemma lookup_bound: forall ty i, 
+  Lemma lookup_bound: forall ty i,
     ok_lookup ctxt i ty -> i < length ctxt.
   Proof. ctxt_induction. Qed.
 
@@ -129,7 +136,7 @@ Section ctxt.
   Proof. auto with kappa_cc. Qed.
 End ctxt.
 
-Definition rewrite_object {x y: object} (H: x = y) 
+Definition rewrite_object {x y: object} (H: x = y)
   : x ~> y :=
   match eq_dec x y with
   | left Heq => rew Heq in id
@@ -138,22 +145,20 @@ Definition rewrite_object {x y: object} (H: x = y)
 
 (* Construct an Arrow morphism that takes a variable list object
 and returns the variable at an index *)
-Fixpoint extract_nth (ctxt: list object) ty x
-  : (reverse_nth ctxt x = Some ty) -> (as_kind ctxt) ~> ty :=
-  match ctxt return (reverse_nth ctxt x = Some ty) -> (as_kind ctxt) ~> ty with
-  | [] => fun H => match lookup_lower_contra H with end
-  | ty' :: ctxt' => fun H =>
-    match eq_nat_dec x (length ctxt') with
-    | left Heq =>
+Fixpoint extract_nth (ctxt: list object) (ty: object) (x: nat)
+  : (as_kind ctxt) ~> ty :=
+  match ctxt with
+  | [] => drop >>> default_object _
+  | ty' :: ctxt' =>
+    if x =? (length ctxt') then
       match eq_dec ty' ty with
-      | left Heq2 => rew Heq2 in (second drop >>> cancelr) 
-      | right Hneq => match lookup_top_contra ctxt' Heq H Hneq with end
+      | left Heq2 => rew Heq2 in (second drop >>> cancelr)
+      | right Hneq => drop >>> default_object _
       end
-    | right Hneq => first drop >>> cancell >>> extract_nth ctxt' x (push_lookup _ _ Hneq H)
-    end
+    else first drop >>> cancell >>> extract_nth ctxt' _ x
   end.
 
-(* Perform closure conversion by passing an explicit list object. The PHOAS 
+(* Perform closure conversion by passing an explicit list object. The PHOAS
 representation is converted to first order form with de Brujin
 indexing as described by Adam Chlipala's Lambda Tamer project. As our source
 language is a Kappa calculus and our target is a Generalized Arrow representation,
@@ -166,92 +171,76 @@ from the list object.
 Fixpoint closure_conversion' {i o}
   (ctxt: list object)
   (expr: kappa natvar i o) {struct expr}
-  : wf_phoas_context ctxt expr -> (i ** (as_kind ctxt)) ~> o
+  : (i ** (as_kind ctxt)) ~> o
   :=
-match expr as expr in kappa _ i' o' return 
-  i ** (as_kind ctxt) = i' ** (as_kind ctxt)
-  -> o' = o
-  -> wf_phoas_context ctxt expr -> (i ** (as_kind ctxt)) ~> o 
-with
-(* Instantiating a variable is done by 'cancell' to select the list object, 
+match expr with
+(* Instantiating a variable is done by 'cancell' to select the list object,
 and then indexing using lookup_morphism. *)
-| Var v => fun _ H2 wf => 
-  first drop >>> cancell >>> (extract_nth ctxt v wf) >>> rewrite_object H2
+| Var v =>
+  first drop >>> cancell >>> (extract_nth ctxt _ v)
 
-(* Kappa abstraction requires extending the list object then moving the 
+(* Kappa abstraction requires extending the list object then moving the
 new list object variable in to place*)
-| Abs f => fun H1 H2 wf =>
-  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) wf in
-  (* 
-      input:      (x*y)*list object_variables 
+| Abs f =>
+  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
+  (*
+      input:      (x*y)*list object_variables
 
   1. 'first swap': Move the first argument into the right hand position
       first swap: (y*x)*list object_variables ~> o
-      
+
   2. 'assoc': move the argument to the front of the list object via reassociation
       assoc:      y*(x*list object_variables) ~> o
 
   3. call f'
       f':         y*new_list object_variables ~> o
   *)
-  rewrite_object H1 >>> first swap >>> assoc >>> f' >>> rewrite_object H2 
+  first swap >>> assoc >>> f'
 
 (* Application requires the object list object to be piped to the abstraction
 'f' and applicant 'e'. since running 'closure_conversion' on each binder
 removes the list object, we first need to copy the list object. *)
-| App f e => fun H1 H2 wf => 
-  rewrite_object H1 
-  >>> second (copy >>> first (uncancell
-  >>> closure_conversion' ctxt e (wf_phoas_context_lax_app2 wf)))
+| App f e =>
+  second (copy >>> first (uncancell >>> closure_conversion' ctxt e))
   >>> unassoc >>> first swap
-  >>> closure_conversion' ctxt f (wf_phoas_context_lax_app1 wf)
-  >>> rewrite_object H2
+  >>> closure_conversion' ctxt f
 
-| Comp e1 e2 => fun H1 H2 wf => 
-  rewrite_object H1 
-  >>> second copy
+| Comp e1 e2 =>
+  second copy
   >>> unassoc
-  >>> first (closure_conversion' ctxt e2 (wf_phoas_context_lax_compose1 wf))
-  >>> closure_conversion' ctxt e1 (wf_phoas_context_lax_compose2 wf)
-  >>> rewrite_object H2
+  >>> first (closure_conversion' ctxt e2)
+  >>> closure_conversion' ctxt e1
 
-| Morph m => fun H1 H2 wf => 
-  rewrite_object H1 
-  >>> second drop >>> cancelr >>> m
-  >>> rewrite_object H2
+| Morph m =>
+    second drop >>> cancelr >>> m
 
-| Let v f => fun H1 H2 wf => 
-  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) (wf_phoas_context_lax_let2 wf) in
-  rewrite_object H1 
-  >>> second (copy >>> first (uncancell
-  >>> closure_conversion' ctxt v (wf_phoas_context_lax_let1 wf)))
+| Let v f =>
+  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
+  second (copy >>> first (uncancell
+  >>> closure_conversion' ctxt v))
   >>> unassoc >>> first swap
   >>> first swap >>> assoc >>> f'
-  >>> rewrite_object H2
 
-| LetRec v f => fun H1 H2 wf =>
-  let v' := closure_conversion' (_ :: ctxt) (v (length ctxt)) (wf_phoas_context_lax_letrec1 wf) in
-  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) (wf_phoas_context_lax_letrec2 wf) in
+| LetRec v f =>
+  let v' := closure_conversion' (_ :: ctxt) (v (length ctxt)) in
+  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
 
-  rewrite_object H1
                                   (* i**ctxt ~> o *)
-  >>> second (                       (* ctxt ~> o *)
+  second (                       (* ctxt ~> o *)
         copy >>>                     (* ctxt*ctxt ~> o *)
         first (                         (* ctxt ~> o *)
-          uncancell >>>                 (* u*ctxt ~> o *)
+          uncancell >>>                 (* unit*ctxt ~> o *)
           loopr (assoc >>> second swap >>> v' >>> copy)
-      )                               
-    )                              
+      )
+    )
     >>> f'
-  >>> rewrite_object H2
-  
-end eq_refl eq_refl.
+end.
 
 Notation variable_pair i o n1 n2 := (vars natvar natvar (obj_pair i o) (pair n1 n2)).
 
 (* Evidence of variable pair equality *)
 Notation match_pairs xo xn yi yo yn1 yn2 :=
-  (variable_pair u xo xn xn = variable_pair yi yo yn1 yn2).
+  (variable_pair unit xo xn xn = variable_pair yi yo yn1 yn2).
 
 (* Evidence that if a given variable is in an list object we can reverse_nth the object at the index. *)
 Notation ok_variable_lookup := (fun ctxt E =>
@@ -318,19 +307,15 @@ Qed.
 Hint Resolve kappa_wf : kappa_cc.
 
 Theorem Kappa_wf: forall {i o} (expr: forall var, kappa var i o), wf_phoas_context [] (expr _).
-Proof. 
+Proof.
   Hint Extern 5 (kappa_equivalence _ _ _) => apply Kappa_equivalence : kappa_cc.
   eauto with kappa_cc.
 Qed.
 
-Definition closure_conversion {i o} (expr: Kappa i o) (wf: wf_phoas_context [] (expr _)): i ~> o
-  := uncancelr >>> closure_conversion' [] (expr _) wf.
-
-Definition Closure_conversion {i o} (expr: Kappa i o): i ~> o
-  := closure_conversion expr (Kappa_wf expr).
+Definition closure_conversion {i o} (expr: Kappa i o) : i ~> o
+  := uncancelr >>> closure_conversion' [] (expr _) .
 
 Hint Resolve closure_conversion' : core.
 Hint Resolve closure_conversion : core.
-Hint Resolve Closure_conversion : core.
 
 End Arrow.

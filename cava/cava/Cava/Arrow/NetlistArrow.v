@@ -112,6 +112,14 @@ match ty with
 | Vector t n => mapT (fun _ => fresh_wire t) (const tt n)
 end.
 
+Fixpoint const_wire (ty: Kind) (val: denote_kind ty): denote ty :=
+match ty, val with
+| Tuple l r, (lx,rx) => (const_wire l lx, const_wire r rx)
+| Unit, _=> tt
+| Bit, b => if b then Vcc else Gnd
+| Vector t n, vec => Vector.map (const_wire t) vec
+end.
+
 Fixpoint map2M (f: Signal Kind.Bit -> Signal Kind.Bit -> Instance) (ty: Kind)
   (x: denote ty) (y: denote ty): state CavaState Datatypes.unit :=
 match ty, x, y with
@@ -185,17 +193,7 @@ Fixpoint build_netlist' {i o}
       map2M (fun x y => AssignSignal x y) Z z z' ;;
       ret y
 
-  | Primitive (Constant b) => fun _ =>
-    match b with
-    | true => ret Vcc
-    | false => ret Gnd
-    end
-  | Primitive (ConstantVec n v) => fun _ =>
-    ret (Vector.map
-    (fun b => match b with
-      | true => Vcc
-      | false => Gnd
-    end) (nat_to_bitvec_sized n (N.to_nat v)))
+  | Primitive (Constant ty val) => fun _ => ret (const_wire ty val)
   | Primitive (Delay o) => fun x =>
       y <- fresh_wire _ ;;
       map2M (fun x y => DelayBit x y) _ (fst x) y ;;

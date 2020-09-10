@@ -56,8 +56,7 @@ Local Notation "[ x ~~~> .. ~~~> y ]" := (Tuple x .. (Tuple y Unit) ..).
 Notation vec_index n := (Vector Bit (Nat.log2_up n)).
 
 Inductive CircuitPrimitive :=
-  | Constant (b: bool)
-  | ConstantVec (n: nat) (v: N)
+  | Constant (ty: Kind) (v: denote_kind ty)
   | Delay (o: Kind)
   | Not 
   | BufGate
@@ -86,8 +85,7 @@ Inductive CircuitPrimitive :=
 
 Fixpoint primitive_input (op: CircuitPrimitive): Kind :=
   match op with
-  | Constant v => Unit
-  | ConstantVec n v => Unit
+  | Constant _ _ => Unit
   | Delay o => Tuple o Unit
   | Not => Tuple Bit Unit
   | BufGate => Tuple Bit Unit
@@ -111,8 +109,7 @@ Fixpoint primitive_input (op: CircuitPrimitive): Kind :=
 
 Fixpoint primitive_output (op: CircuitPrimitive): Kind :=
   match op with
-  | Constant v => Bit
-  | ConstantVec n v => Vector Bit n
+  | Constant ty _ => ty
   | Delay o => o
   | Not => Bit
   | BufGate => Bit
@@ -185,8 +182,8 @@ Ltac match_compose X :=
   | (Composition _ _ ?Y ?Z) => idtac
   end.
 
-Definition high : Unit ~> Bit := Primitive (Constant true).
-Definition low : Unit ~> Bit := Primitive (Constant false).
+Definition high : Unit ~> Bit := Primitive (Constant Bit true).
+Definition low : Unit ~> Bit := Primitive (Constant Bit false).
 
 Fixpoint insert_rightmost_tt (ty: Kind): ty ~> (insert_rightmost_unit ty).
 Proof.

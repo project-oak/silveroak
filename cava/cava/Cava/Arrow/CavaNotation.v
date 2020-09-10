@@ -29,7 +29,7 @@ Delimit Scope kappa_scope with kappa.
 
 Module KappaNotation.
   Notation "<[ e ]>" := (
-    Closure_conversion (arrow:=CircuitArrow) (fun var => e%kappa)
+    closure_conversion (arrow:=CircuitArrow) (default_object := fun ty => Primitive (Constant ty (kind_default ty))) (fun var => e%kappa)
    ) (at level 1, e custom expr at level 1).
 
   (* Notation "<[ e ]>" := (e%kappa) (at level 1, e custom expr at level 1). *)
@@ -111,10 +111,12 @@ Module KappaNotation.
   Notation "x ++ y" := (App (App (Morph (Primitive (Concat _ _))) x) y) (in custom expr at level 4) : kappa_scope.
   Notation "x :: y" := (App (App (Morph (Primitive (Cons _ _))) x) y) (in custom expr at level 7, right associativity) : kappa_scope.
 
-  Notation "'true''" := (Morph (Primitive (Constant true))) (in custom expr at level 2) : kappa_scope.
-  Notation "'false''" := (Morph (Primitive (Constant false))) (in custom expr at level 2) : kappa_scope.
+  Notation "'true''" := (Morph (Primitive (Constant Bit true))) (in custom expr at level 2) : kappa_scope.
+  Notation "'false''" := (Morph (Primitive (Constant Bit false))) (in custom expr at level 2) : kappa_scope.
 
-  Notation "# x" := (Morph (Primitive (ConstantVec _ x)))%N (in custom expr at level 2, x constr at level 4) : kappa_scope.
+  Notation "# x" := (Morph (Primitive (Constant (Vector Bit _) (N2Bv_sized _ x))))%N
+    (in custom expr at level 2, 
+    x constr at level 4, no associativity) : kappa_scope.
 
   Notation "v [ x ]" := (App (App (Morph (Primitive (Index _ _))) v) x)
     ( in custom expr at level 2

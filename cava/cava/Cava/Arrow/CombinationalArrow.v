@@ -45,7 +45,7 @@ Definition snoc' n o (v: denote_kind (Vector o n)) a
     x :: f
   ) _ v.
 
-Definition slice' n x y (o: Kind) (v: denote_kind (Vector o n)) : denote_kind (Vector o (x - y + 1)) := 
+Definition slice_by_position n x y (o: Kind) (v: denote_kind (Vector o n)) : denote_kind (Vector o (x - y + 1)) := 
   match Nat.eq_dec n (y + (n - y)) with 
   | left Heq =>
     let '(_, v) := splitat y (rew [fun x => Vector.t (denote_kind o) x] Heq in v)
@@ -80,15 +80,14 @@ Fixpoint combinational_evaluation' {i o}
   | Structural (Swap x y) => fun '(x,y) => (y,x)
   | Structural (Copy x) => fun x => (x,x)
 
-  | Primitive (Constant b) => fun _ => b
-  | Primitive (ConstantVec n v) => fun _ => N2Bv_sized n v
+  | Primitive (Constant ty val) => fun _ => val
   | Primitive (Delay o) => fun _ => kind_default _
   | Primitive Not => fun b => negb (fst b)
   | Primitive BufGate => fun b => fst b
   | Primitive (Uncons n o) => fun v => (hd (fst v), tl (fst v))
   | Primitive (Unsnoc n o) => fun v => unsnoc' n o (fst v)
   | Primitive (Split n m o) => fun v => (Vector.splitat n (fst v))
-  | Primitive (Slice n x y o) => fun v => slice' n x y o (fst v)
+  | Primitive (Slice n x y o) => fun v => slice_by_position n x y o (fst v)
   | Primitive (EmptyVec o) => fun _ => []
   | Primitive (Lut n f) => fun '(i,_) =>
     let f' := NaryFunctions.nuncurry bool bool n f in
