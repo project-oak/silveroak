@@ -32,10 +32,16 @@ Definition cipher_round
     , Unit>> ~>
       Vector (Vector (Vector Bit 8) 4) 4 :=
   <[\op_i data_i key =>
-    let stage1 = !(aes_sub_bytes sbox_impl) op_i data_i in
-    let stage2 = !aes_shift_rows op_i stage1 in
-    let stage3 = !aes_mix_columns op_i stage2 in
-    stage3 ^ key
+    if op_i == !CIPH_FWD then
+      let stage1 = !(aes_sub_bytes sbox_impl) op_i data_i in
+      let stage2 = !aes_shift_rows op_i stage1 in
+      let stage3 = !aes_mix_columns op_i stage2 in
+      stage3 ^ key
+    else
+      let stage1 = !aes_shift_rows op_i data_i in
+      let stage2 = !(aes_sub_bytes sbox_impl) op_i stage1 in
+      let stage3 = stage2 ^ key in
+      !aes_mix_columns op_i stage3
     ]>.
 
 Definition final_cipher_round
@@ -46,7 +52,12 @@ Definition final_cipher_round
     , Unit>> ~>
       Vector (Vector (Vector Bit 8) 4) 4 :=
   <[\op_i data_i key =>
-    let stage1 = !(aes_sub_bytes sbox_impl) op_i data_i in
-    let stage2 = !aes_shift_rows op_i stage1 in
-    stage2 ^ key
+    if op_i == !CIPH_FWD then
+      let stage1 = !(aes_sub_bytes sbox_impl) op_i data_i in
+      let stage2 = !aes_shift_rows op_i stage1 in
+      stage2 ^ key
+    else
+      let stage1 = !aes_shift_rows op_i data_i in
+      let stage2 = !(aes_sub_bytes sbox_impl) op_i stage1 in
+      stage2 ^ key
     ]>.
