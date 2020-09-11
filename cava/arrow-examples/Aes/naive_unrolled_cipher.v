@@ -56,9 +56,9 @@ Definition key_expansion_word
     let sub_rot_word_out = !sbox rot_word_out in
 
     let w0 = k0[#0] ^ !apply_rcon sub_rot_word_out rcon in
-    let w1 = k0[#1] ^ w0 in 
-    let w2 = k0[#2] ^ w1 in 
-    let w3 = k0[#3] ^ w2 in 
+    let w1 = k0[#1] ^ w0 in
+    let w2 = k0[#2] ^ w1 in
+    let w3 = k0[#3] ^ w2 in
 
     w0 :: w1 :: w2 :: w3 :: []
   ]>.
@@ -76,7 +76,7 @@ Definition aes_256_naive_key_expansion'
     (* TODO(blaxill): add scan op *)
     let k2 = !f (!rcon_const #0) k0 k1 in
     (* TODO(blaxill): rcon unnecessary on g *)
-    let k3 = !g (!rcon_const #0) k1 k2 in 
+    let k3 = !g (!rcon_const #0) k1 k2 in
 
     let k4 = !f (!rcon_const #1) k2 k3 in
     let k5 = !g (!rcon_const #1) k3 k4 in
@@ -106,7 +106,7 @@ Definition aes_256_naive_key_expansion
   : << Vector (Vector (Vector Bit 8) 4) 8
     ,  Unit>> ~>
     << Vector (Vector (Vector (Vector Bit 8) 4) 4) 15 >>
-    := <[\ key => 
+    := <[\ key =>
     let '(key0, key1) = !(split_pow2 _ 2) key in
     !(aes_256_naive_key_expansion' sbox_impl) key0 key1
     ]>.
@@ -154,7 +154,7 @@ Definition unrolled_cipher_naive
     >>
   :=
   <[\op_i data key =>
-    let data_o = 
+    let data_o =
       !(unrolled_cipher_naive' sbox_impl) op_i
       (!aes_transpose (!reshape (!reshape data)))
       (!reshape (!reshape key)) in
@@ -163,11 +163,11 @@ Definition unrolled_cipher_naive
 
 Section tests.
   Definition test_key := byte_reverse (n:=32) (N2Bv_sized 256 (Z.to_N (Ox "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"))).
-        
+
   Lemma key_expansion_comb: is_combinational (aes_256_naive_key_expansion SboxCanright).
   Proof. simply_combinational. Qed.
 
-  Definition expanded_key := 
+  Definition expanded_key :=
     combinational_evaluation'
       (<[\data => !(aes_256_naive_key_expansion SboxCanright) (!reshape (!reshape data)) ]>)
       (N2Bv_sized 256 0, tt).
@@ -175,7 +175,7 @@ Section tests.
   (* Compute (Vector.map (Vector.map (Vector.map Bv2Hex)) expanded_key). *)
 
 (* AES-256 expanded empty key *)
-(* 
+(*
 0x00, 0x00, 0x00, 0x00, ~ 0x00, 0x00, 0x00, 0x00, ~ 0x00, 0x00, 0x00, 0x00, ~ 0x00, 0x00, 0x00, 0x00 = k0
 0x00, 0x00, 0x00, 0x00, ~ 0x00, 0x00, 0x00, 0x00, ~ 0x00, 0x00, 0x00, 0x00, ~ 0x00, 0x00, 0x00, 0x00 = k1
 0x62, 0x63, 0x63, 0x63, ~ 0x62, 0x63, 0x63, 0x63, ~ 0x62, 0x63, 0x63, 0x63, ~ 0x62, 0x63, 0x63, 0x63 = k2
@@ -208,3 +208,4 @@ Section tests.
     = test_data.
   Proof. time now vm_compute. Qed.
 End tests.
+
