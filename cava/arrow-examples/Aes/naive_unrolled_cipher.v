@@ -56,9 +56,9 @@ Definition key_expansion_word
     let sub_rot_word_out = !sbox rot_word_out in
 
     let w0 = k0[#0] ^ !apply_rcon sub_rot_word_out rcon in
-    let w1 = k0[#1] ^ w0 in 
-    let w2 = k0[#2] ^ w1 in 
-    let w3 = k0[#3] ^ w2 in 
+    let w1 = k0[#1] ^ w0 in
+    let w2 = k0[#2] ^ w1 in
+    let w3 = k0[#3] ^ w2 in
 
     w0 :: w1 :: w2 :: w3 :: []
   ]>.
@@ -76,7 +76,7 @@ Definition aes_256_naive_key_expansion'
     (* TODO(blaxill): add scan op *)
     let k2 = !f (!rcon_const #0) k0 k1 in
     (* TODO(blaxill): rcon unnecessary on g *)
-    let k3 = !g (!rcon_const #0) k1 k2 in 
+    let k3 = !g (!rcon_const #0) k1 k2 in
 
     let k4 = !f (!rcon_const #1) k2 k3 in
     let k5 = !g (!rcon_const #1) k3 k4 in
@@ -106,7 +106,7 @@ Definition aes_256_naive_key_expansion
   : << Vector (Vector (Vector Bit 8) 4) 8
     ,  Unit>> ~>
     << Vector (Vector (Vector (Vector Bit 8) 4) 4) 15 >>
-    := <[\ key => 
+    := <[\ key =>
     let '(key0, key1) = !(split_pow2 _ 2) key in
     !(aes_256_naive_key_expansion' sbox_impl) key0 key1
     ]>.
@@ -127,18 +127,22 @@ Definition unrolled_cipher_naive'
   let cipher_round1 := curry (cipher_round sbox_impl) in
   <[\op_i data_i key =>
     let keys = !aes_key_expand key in
-    let '(first_key, eys) = uncons keys in
-    let '(ey, last_key) = unsnoc eys in
 
-    let r0 = data_i ^ !aes_transpose first_key in
-    let r13 = !(foldl
-      <[\ ctxt key => (fst ctxt, !cipher_round1 ctxt (!aes_transpose key)) ]>)
-       (op_i, r0) ey in
+    let '(first_key, keys_uncons) = uncons (if op_i == !CIPH_FWD then keys else !reverse keys) in
+    let '(middle_keys, last_key) = unsnoc keys_uncons in
 
-    !(final_cipher_round sbox_impl) op_i (snd r13) (!aes_transpose last_key)
+    let initial_rounds =
+      !(foldl <[\ ctxt key => (fst ctxt, !cipher_round1 ctxt key) ]>)
+        (op_i, data_i ^ !aes_transpose first_key)
+        (if op_i == !CIPH_FWD
+        then !(map aes_transpose) middle_keys
+        else !(map <[\x => !aes_mix_columns !CIPH_INV (!aes_transpose x)]>) middle_keys) in
+
+    !(final_cipher_round sbox_impl) op_i (snd initial_rounds) (!aes_transpose last_key)
     ]>.
 
 Definition unrolled_cipher_naive
+  (sbox_impl: SboxImpl)
   : <<
       Bit
     , Vector Bit 128 (* data *)
@@ -150,33 +154,28 @@ Definition unrolled_cipher_naive
     >>
   :=
   <[\op_i data key =>
-    let data_o = 
-      !(unrolled_cipher_naive' SboxCanright) op_i
+    let data_o =
+      !(unrolled_cipher_naive' sbox_impl) op_i
       (!aes_transpose (!reshape (!reshape data)))
       (!reshape (!reshape key)) in
     !flatten (!flatten (!aes_transpose data_o))
     ]>.
 
-Lemma key_expansion_comb: is_combinational (aes_256_naive_key_expansion SboxCanright).
-Proof. simply_combinational. Qed.
-
-Lemma unrolled_cipher_naive_comb: is_combinational (unrolled_cipher_naive).
-Proof. simply_combinational. Qed.
-
 Section tests.
-
   Definition test_key := byte_reverse (n:=32) (N2Bv_sized 256 (Z.to_N (Ox "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"))).
-  Definition test_data := byte_reverse (n:=16) (N2Bv_sized 128 (Z.to_N (Ox "00112233445566778899aabbccddeeff"))).
-        
-  Definition expanded_key := 
+
+  Lemma key_expansion_comb: is_combinational (aes_256_naive_key_expansion SboxCanright).
+  Proof. simply_combinational. Qed.
+
+  Definition expanded_key :=
     combinational_evaluation'
       (<[\data => !(aes_256_naive_key_expansion SboxCanright) (!reshape (!reshape data)) ]>)
       (N2Bv_sized 256 0, tt).
 
-  Compute (Vector.map (Vector.map (Vector.map Bv2Hex)) expanded_key).
+  (* Compute (Vector.map (Vector.map (Vector.map Bv2Hex)) expanded_key). *)
 
 (* AES-256 expanded empty key *)
-(* 
+(*
 0x00, 0x00, 0x00, 0x00, ~ 0x00, 0x00, 0x00, 0x00, ~ 0x00, 0x00, 0x00, 0x00, ~ 0x00, 0x00, 0x00, 0x00 = k0
 0x00, 0x00, 0x00, 0x00, ~ 0x00, 0x00, 0x00, 0x00, ~ 0x00, 0x00, 0x00, 0x00, ~ 0x00, 0x00, 0x00, 0x00 = k1
 0x62, 0x63, 0x63, 0x63, ~ 0x62, 0x63, 0x63, 0x63, ~ 0x62, 0x63, 0x63, 0x63, ~ 0x62, 0x63, 0x63, 0x63 = k2
@@ -194,9 +193,19 @@ Section tests.
 0x10, 0xf8, 0x0a, 0x17, ~ 0x53, 0xbf, 0x72, 0x9c, ~ 0x45, 0xc9, 0x79, 0xe7, ~ 0xcb, 0x70, 0x63, 0x85 = k14
 *)
 
-  Eval vm_compute in (
-  Bv2Hex (byte_reverse (n:=16) (combinational_evaluation unrolled_cipher_naive unrolled_cipher_naive_comb (false, (test_data, test_key))))
-  ).
-  (* = 0x8ea2b7ca516745bfeafc49904b496089 *)
+  Definition test_data := byte_reverse (n:=16) (N2Bv_sized 128 (Z.to_N (Ox "00112233445566778899aabbccddeeff"))).
+  Definition test_encrypted := byte_reverse (n:=16) (N2Bv_sized 128 (Z.to_N (Ox "8ea2b7ca516745bfeafc49904b496089"))).
 
+  Lemma unrolled_cipher_naive_comb: is_combinational (unrolled_cipher_naive SboxCanright).
+  Proof. simply_combinational. Qed.
+
+  Goal combinational_evaluation (unrolled_cipher_naive SboxCanright) unrolled_cipher_naive_comb
+      (false, (test_data, test_key))
+    = test_encrypted.
+  Proof. time now vm_compute. Qed.
+  Goal combinational_evaluation (unrolled_cipher_naive SboxCanright) unrolled_cipher_naive_comb
+      (true, (test_encrypted, test_key))
+    = test_data.
+  Proof. time now vm_compute. Qed.
 End tests.
+

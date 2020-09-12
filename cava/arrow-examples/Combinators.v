@@ -93,7 +93,7 @@ match n with
 | S n' =>
   <[ \vec => 
     let '(x, xs) = uncons vec in
-    snoc xs x 
+    snoc (!reverse xs) x
     ]>
 end.
 
