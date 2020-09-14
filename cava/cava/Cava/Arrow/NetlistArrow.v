@@ -284,6 +284,23 @@ end.
 Close Scope string_scope.
 Local Open Scope category_scope.
 
+Fixpoint apply_rightmost_tt (x: Kind)
+  : denote (remove_rightmost_unit x) -> denote x
+  :=
+  match x as x' return denote (remove_rightmost_unit x') -> denote x' with
+  | Tuple l r => 
+    let rec := apply_rightmost_tt r in
+    match r as r' return 
+      (denote (remove_rightmost_unit r') -> denote r') ->
+        denote (remove_rightmost_unit (Tuple l r')) -> denote (Tuple l r')
+      with
+    | Unit => fun f x => (x, tt)
+    | _ => fun f p => (fst p, f (snd p)) 
+    end rec
+  | _ => fun x => x
+  end.
+
 Definition build_netlist {X Y} (circuit: X ~> Y)
-  : denote (remove_rightmost_unit X) -> state CavaState (denote Y) :=
-  build_netlist' (insert_rightmost_tt1 _ >>> circuit).
+  (i: denote (remove_rightmost_unit X))
+  : state CavaState (denote Y) :=
+  build_netlist' circuit (apply_rightmost_tt X i).
