@@ -30,8 +30,8 @@ Open Scope kind_scope.
   output logic [3:0][3:0][7:0] data_o
 ); *)
 Definition aes_shift_rows
-  :  
-    <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~> 
+  :
+    <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~>
       Vector (Vector (Vector Bit 8) 4) 4 :=
   (* // Individually substitute bytes
   import aes_pkg::*;
@@ -52,13 +52,13 @@ Definition aes_shift_rows
   <[\op_i data_i =>
     let data_o_0 = data_i[#0] in
     let data_o_2 = !aes_circ_byte_shift data_i[#2] (#2) in
-    let data_o_1 = 
-      if op_i == !CIPH_FWD 
+    let data_o_1 =
+      if op_i == !CIPH_FWD
       then !aes_circ_byte_shift data_i[#1] #3
       else !aes_circ_byte_shift data_i[#1] #1
       in
-    let data_o_3 = 
-      if op_i == !CIPH_FWD 
+    let data_o_3 =
+      if op_i == !CIPH_FWD
       then !aes_circ_byte_shift data_i[#3] #1
       else !aes_circ_byte_shift data_i[#3] #3
       in
@@ -66,7 +66,7 @@ Definition aes_shift_rows
   ]>.
 
 Definition shift_rows_composed :=
-  <[\input => 
+  <[\input =>
   let encoded = !aes_shift_rows !CIPH_FWD input in
   let decoded = !aes_shift_rows !CIPH_INV encoded in
   decoded ]>.
@@ -93,7 +93,7 @@ Proof.
   repeat rewrite first_id.
 
   match goal with
-  | |- context [unassoc >>> assoc >>> ?X ] => 
+  | |- context [unassoc >>> assoc >>> ?X ] =>
     rewrite (unassoc_assoc X)
   end.
 
@@ -104,4 +104,5 @@ Proof.
   repeat match goal with
   | |- context [first swap >>> (first swap >>> _)] => rewrite first_first
   end. *)
-Abort. 
+Abort.
+

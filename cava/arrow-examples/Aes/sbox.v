@@ -79,8 +79,9 @@ Section regression_testing.
   Qed.
 
   (* TODO(blaxill): reduced bound for CI time *)
-  Goal forall x, x < 10 -> 
+  Goal forall x, x < 10 ->
   combinational_evaluation aes_sbox_lut aes_sbox_lut_combinational (false, #x) = combinational_evaluation aes_sbox_canright aes_sbox_canright_combinational (false, # x).
   Proof. repeat (lia || destruct x); now vm_compute. Qed.
 
 End regression_testing.
+

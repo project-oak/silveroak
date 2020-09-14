@@ -42,7 +42,7 @@ Program Definition aes_inverse_gf2p4
       let b = !aes_mul_gf2p2 (gamma[:3:2]) (gamma[:1:0]) in
       let c = !aes_scale_omega2_gf2p2 (!aes_square_gf2p2 a) in
       let d = !aes_square_gf2p2 (c ^ b) in
-      concat 
+      concat
         (!aes_mul_gf2p2 d (gamma[:3:2]))
         (!aes_mul_gf2p2 d (gamma[:1:0]))
   ]>.
@@ -68,7 +68,7 @@ Definition aes_inverse_gf2p8
       let c = !aes_square_scale_gf2p4_gf2p2 a in
       let d = !aes_inverse_gf2p4 (c ^ b) in
 
-      concat 
+      concat
         (!aes_mul_gf2p4 d (gamma[:7:4]))
         (!aes_mul_gf2p4 d (gamma[:3:0]))
   ]>.
@@ -79,7 +79,7 @@ Definition aes_inverse_gf2p8
   output logic [7:0]        data_o
 ); *)
 Definition aes_sbox_canright
-  :  << Bit, Vector Bit 8, Unit>> ~> (Vector Bit 8) := 
+  :  << Bit, Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\ op_i data_i =>
       (* // Convert to normal basis X.
       assign data_basis_x = (op_i == CIPH_FWD) ? aes_mvm(data_i, A2X) :
@@ -99,11 +99,11 @@ Definition aes_sbox_canright
                   then (!aes_mvm data_inverse !X2S) ^ #99
                   else !aes_mvm data_inverse !X2A in
 
-      data_o 
+      data_o
   ]>.
 
 Definition canright_composed :=
-  <[\input => 
+  <[\input =>
   let encoded = !aes_sbox_canright !CIPH_FWD input in
   let decoded = !aes_sbox_canright !CIPH_INV encoded in
   decoded ]>.
@@ -117,7 +117,7 @@ Goal combinational_evaluation canright_composed canright_composed_combinational 
 Proof. vm_compute; auto. Qed.
 
 (* TODO(blaxill): reduced bound for CI time *)
-Goal forall x, x < 10 -> 
+Goal forall x, x < 10 ->
 combinational_evaluation canright_composed canright_composed_combinational (#x) = (#x).
 Proof. time (repeat (lia || destruct x); now vm_compute). Qed.
-  
+
