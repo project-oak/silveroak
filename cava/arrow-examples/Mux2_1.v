@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category ClosureConversion.
+From Arrow Require Import Category.
 From Cava Require Import Arrow.ArrowExport Arrow.CavaArrow.
 
 Require Import Coq.Strings.String.
@@ -25,6 +25,7 @@ Local Open Scope string_scope.
 
 Section notation.
   Import KappaNotation.
+  Local Open Scope category_scope.
   Local Open Scope kind_scope.
 
   Definition mux2_1
@@ -41,7 +42,7 @@ End notation.
 
 Open Scope kind_scope.
 
-Lemma mux2_1_is_combinational: is_combinational mux2_1.
+Lemma mux2_1_is_combinational: is_combinational (closure_conversion mux2_1).
 Proof. simply_combinational. Qed.
   
 Require Import Cava.Types.
@@ -54,7 +55,7 @@ Definition mux2_1_Interface :=
      [].
 
 Definition mux2_1_netlist :=
-  makeNetlist mux2_1_Interface (build_netlist mux2_1).
+  makeNetlist mux2_1_Interface (build_netlist (closure_conversion mux2_1)).
 
 Definition mux2_1_tb_inputs : list (bool * (bool * bool)) := 
  [(false, (false, true));
@@ -67,7 +68,41 @@ Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
 (* Using `evaluate_to_terms` for a nicer extracted value *)
 Definition mux2_1_tb_expected_outputs : list bool :=
 
- map (fun i => combinational_evaluation mux2_1 mux2_1_is_combinational i) mux2_1_tb_inputs.
+ map (fun i => combinational_evaluation (closure_conversion mux2_1) mux2_1_is_combinational i) mux2_1_tb_inputs.
+
+Goal forall x, interp_combinational (mux2_1 _) x = false.
+Proof. intros.
+  cbv [mux2_1].
+  time simpl. (* 0.02 s *)
+  (* 
+    (let
+  '(x0, y) := x in
+    let
+    '(x1, _) := y in
+    (x0 && (let '(x2, _) := x1 in x2) || negb x0 && (let '(_, y0) := x1 in y0))%bool) =
+  false *)
+Abort.
+
+Goal forall x, combinational_evaluation' (closure_conversion mux2_1) x = false.
+Proof. intros.
+  cbv [mux2_1].
+  cbv [closure_conversion].
+  cbv [closure_conversion'].
+  time simpl. (* 2.88 s *)
+    (* snd (let '(x0, y) := x in (y, x0)) &&
+  (let
+    '(x0, _) :=
+    snd (let '(x0, y) := fst (let '(x0, y) := x in (y, x0)) in (y, x0)) in x0)
+  || negb (snd (let '(x0, y) := x in (y, x0))) &&
+      (let
+      '(_, y) :=
+        snd (let '(x0, y) := fst (let '(x0, y) := x in (y, x0)) in (y, x0)) in
+        y))%bool = false *)
+
+  (* cbv [Arrow.first Arrow.arrow_category Arrow.product CircuitArrow ].
+  cbv [Arrow.swap Arrow.arrow_category Arrow.product CircuitArrow CircuitArrowSwap].
+  cbv [Arrow.uncancelr Arrow.arrow_category Arrow.product CircuitArrow CircuitArrowSwap]. *)
+
 
 Definition mux2_1_tb :=
   testBench "mux2_1_tb" mux2_1_Interface
