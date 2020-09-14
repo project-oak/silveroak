@@ -47,17 +47,23 @@ Class ArrowLaws
   (unit: object) (product: object -> object -> object) (A: Arrow object category unit product)
   := {
   (* (un)cance{l,r} and (un)assoc are natural isomorphisms *)
-  first_cancelr   {x y} (f: x ~> y): first f >>> cancelr =M= cancelr >>> f;
-  uncancelr_first {x y} (f: x ~> y): uncancelr >>> first f =M= f >>> uncancelr;
+  first_cancelr   {x y z} (f: x ~> y) (k: _ ~> z):
+    first f >>> cancelr >>> k =M= cancelr >>> f >>> k;
+  uncancelr_first {x y z} (f: x ~> y) (k: _ ~> z):
+    uncancelr >>> first f >>> k =M= f >>> uncancelr >>> k;
 
-  second_cancell   {x y} (f: x ~> y): second f >>> cancell =M= cancell >>> f;
-  uncancell_second {x y} (f: x ~> y): uncancell >>> second f =M= f >>> uncancell;
+  second_cancell   {x y z} (f: x ~> y) (k: _ ~> z):
+    second f >>> cancell >>> k =M= cancell >>> f >>> k;
+  uncancell_second {x y z} (f: x ~> y) (k: _ ~> z):
+    uncancell >>> second f >>> k =M= f >>> uncancell >>> k;
 
-  assoc_iso {x y z w s t} (f: x ~> y) (g: z ~> w) (h: s ~> t): 
-    assoc >>> bimap _ _ _ _ f (bimap _ _ _ _ g h) =M= bimap _ _ _ _ (bimap _ _ _ _ f g) h >>> assoc;
+  assoc_iso {x y z w s t v} (f: x ~> y) (g: z ~> w) (h: s ~> t) (k: _ ~> v):
+    assoc >>> bimap _ _ _ _ f (bimap _ _ _ _ g h) >>> k
+    =M= bimap _ _ _ _ (bimap _ _ _ _ f g) h >>> assoc >>> k;
 
-  unassoc_iso {x y z w s t} (f: x ~> y) (g: z ~> w) (h: s ~> t): 
-    unassoc >>> bimap _ _ _ _ (bimap _ _ _ _ f g) h =M= bimap _ _ _ _ f (bimap _ _ _ _ g h) >>> unassoc;
+  unassoc_iso {x y z w s t v} (f: x ~> y) (g: z ~> w) (h: s ~> t) (k: _ ~> v):
+    unassoc >>> bimap _ _ _ _ (bimap _ _ _ _ f g) h >>> k
+    =M= bimap _ _ _ _ f (bimap _ _ _ _ g h) >>> unassoc >>> k;
 
   (* triangle and pentagon identities? *)
 }.
