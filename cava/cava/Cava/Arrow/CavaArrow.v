@@ -14,14 +14,14 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category Arrow Kappa ClosureConversion.
+From Arrow Require Import Category Arrow .
 From Coq Require Import Lists.List NaryFunctions String Arith NArith VectorDef Lia.
 
 Import ListNotations.
 Import VectorNotations.
 
-From Cava Require Import Types Arrow.ArrowKind.
 From Cava Require Export Arrow.ArrowKind.
+From Cava Require Export Arrow.Primitives.
 
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
@@ -51,7 +51,7 @@ Local Open Scope arrow_scope.
 
 (* Cava *)
 
-Local Notation "[ x ~~~> .. ~~~> y ]" := (Tuple x .. (Tuple y Unit) ..).
+(* Local Notation "[ x ~~~> .. ~~~> y ]" := (Tuple x .. (Tuple y Unit) ..).
 
 Notation vec_index n := (Vector Bit (Nat.log2_up n)).
 
@@ -74,6 +74,10 @@ Inductive CircuitPrimitive :=
   | Xor
   | Xnor 
   | Xorcy
+
+  | Fst (x y: Kind)
+  | Snd (x y: Kind)
+  | Pair (x y: Kind)
 
   | Muxcy
   | UnsignedAdd (a b c: nat)
@@ -104,6 +108,10 @@ Fixpoint primitive_input (op: CircuitPrimitive): Kind :=
   | Snoc n o => [ Vector o n ~~~> o ]
   | Concat n m o => [ Vector o n ~~~> Vector o m ]
 
+  | Fst x y => Tuple (Tuple x y) Unit
+  | Snd x y => Tuple (Tuple x y) Unit
+  | Pair x y => [ x ~~~> y ]
+
   | _ => [ Bit ~~~> Bit ]
   end.
 
@@ -128,8 +136,12 @@ Fixpoint primitive_output (op: CircuitPrimitive): Kind :=
   | Snoc n o => Vector o (S n)
   | Concat n m o => Vector o (n + m)
 
+  | Fst x _ => x
+  | Snd _ y => y
+  | Pair x y => Tuple x y
+
   | _ => Bit
-  end.
+  end. *)
 
 Notation arrow_input x := (arrow_input (object:=Kind) (unit:=Unit) (product:=Tuple) x).
 Notation arrow_output x := (arrow_output (object:=Kind) (unit:=Unit) (product:=Tuple) x).

@@ -101,6 +101,10 @@ Fixpoint combinational_evaluation' {i o}
   | Primitive Xnor => fun '(x,(y,_)) => negb (xorb x y)
   | Primitive Xorcy => fun '(x,(y,_)) => xorb x y
 
+  | Primitive (Fst _ _) => fun '((x,y),_) => x
+  | Primitive (Snd _ _) => fun '((x,y),_) => y
+  | Primitive (Pair _ _) => fun '(x,(y,_)) => (x,y)
+
   | Primitive Muxcy => fun i => (if fst i then fst (fst (snd i)) else snd (fst (snd i)))
   | Primitive (UnsignedAdd m n s) => fun '(av,(bv,_)) =>
     let a := Ndigits.Bv2N av in

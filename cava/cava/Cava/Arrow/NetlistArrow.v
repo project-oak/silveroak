@@ -17,6 +17,7 @@
 From Coq Require Import Bool ZArith NaryFunctions Vector String List DecimalString Lia.
 From Arrow Require Import Category Arrow Kleisli.
 From Cava Require Import Arrow.CavaArrow VectorUtils BitArithmetic Types Signal Netlist.
+From Cava Require Arrow.Primitives.
 
 Import NilZero.
 
@@ -198,7 +199,7 @@ Fixpoint build_netlist' {i o}
       y <- fresh_wire _ ;;
       map2M (fun x y => DelayBit x y) _ (fst x) y ;;
       ret y
-  | Primitive CavaArrow.Not => fun i => 
+  | Primitive Primitives.Not => fun i => 
       o <- newWire ;;
       addInstance (Not (fst i) o) ;;
       ret o
@@ -208,8 +209,8 @@ Fixpoint build_netlist' {i o}
       ret o
   | Primitive (Uncons n o) => fun v => ret ((Vector.hd (fst v), Vector.tl (fst v)))
   | Primitive (Unsnoc n o) => fun v => ret ((Vector.take n (Nat.le_succ_diag_r _) (fst v), Vector.last (fst v)))
-  | Primitive (CavaArrow.Slice n x y o) => fun v => slice' n x y o (fst v)
-  | Primitive (CavaArrow.Split n m o) => fun x => ret (Vector.splitat n (fst x))
+  | Primitive (Primitives.Slice n x y o) => fun v => slice' n x y o (fst v)
+  | Primitive (Primitives.Split n m o) => fun x => ret (Vector.splitat n (fst x))
   | Primitive (EmptyVec o) => fun _ => ret ([])
   | Primitive (Lut n f) => fun '(is,_) =>
       let seq := seq 0 (2^n) in
@@ -232,31 +233,35 @@ Fixpoint build_netlist' {i o}
       addInstance component;;
       ret o
 
-  | Primitive CavaArrow.And => fun '(x,(y,_)) => 
+  | Primitive (Primitives.Fst X Y) => fun '((x,y),_) => ret x
+  | Primitive (Primitives.Snd _ _) => fun '((x,y),_) => ret y
+  | Primitive (Primitives.Pair _ _) => fun '(x,(y,_)) => ret (x,y)
+
+  | Primitive Primitives.And => fun '(x,(y,_)) => 
       o <- newWire ;;
       addInstance (And x y o) ;;
       ret o
-  | Primitive CavaArrow.Nand => fun '(x,(y,_)) => 
+  | Primitive Primitives.Nand => fun '(x,(y,_)) => 
       o <- newWire ;;
       addInstance (Nand x y o) ;;
       ret o
-  | Primitive CavaArrow.Or => fun '(x,(y,_)) =>
+  | Primitive Primitives.Or => fun '(x,(y,_)) =>
       o <- newWire ;;
       addInstance (Or x y o) ;;
       ret o
-  | Primitive CavaArrow.Nor => fun '(x,(y,_)) =>
+  | Primitive Primitives.Nor => fun '(x,(y,_)) =>
       o <- newWire ;;
       addInstance (Nor x y o) ;;
       ret o
-  | Primitive CavaArrow.Xor => fun '(i0,(i1,_)) =>
+  | Primitive Primitives.Xor => fun '(i0,(i1,_)) =>
       o <- newWire ;;
       addInstance (Xor i0 i1 o) ;;
       ret o
-  | Primitive CavaArrow.Xnor => fun '(i0,(i1,_)) =>
+  | Primitive Primitives.Xnor => fun '(i0,(i1,_)) =>
       o <- newWire ;;
       addInstance (Xnor i0 i1 o) ;;
       ret o
-  | Primitive CavaArrow.Xorcy => fun '(i0, (i1, _)) =>
+  | Primitive Primitives.Xorcy => fun '(i0, (i1, _)) =>
       o <- newWire ;;
       addInstance (Component "XORCY" [] [("O", USignal o); ("CI", USignal i0); ("LI", USignal i1)]) ;;
       ret o
@@ -264,20 +269,20 @@ Fixpoint build_netlist' {i o}
       o <- newWire ;;
       addInstance ( Component "MUXCY" [] [("O", USignal o); ("S", USignal s); ("CI", USignal ci); ("DI", USignal di)]) ;;
       ret o
-  | Primitive (CavaArrow.UnsignedAdd m n s) => fun '(x,(y,_)) =>
+  | Primitive (Primitives.UnsignedAdd m n s) => fun '(x,(y,_)) =>
       sum <- newVector _ s ;;
       addInstance (UnsignedAdd (VecLit x) (VecLit y) sum) ;;
       ret (Vector.map (IndexConst sum) (vseq 0 s))
-  | Primitive (CavaArrow.UnsignedSub s) => fun '(x, (y,_)) =>
+  | Primitive (Primitives.UnsignedSub s) => fun '(x, (y,_)) =>
       sum <- newVector _ s ;;
       (* TODO: add netlist subtraction instance *)
       addInstance (UnsignedAdd (VecLit x) (VecLit y) sum) ;;
       ret (Vector.map (IndexConst sum) (vseq 0 s))
   | Primitive (Index n o) => fun '(v,(i,_)) => index' _ _ v i
-  | Primitive (CavaArrow.Cons n o) => fun '(x, (v,_)) =>
+  | Primitive (Primitives.Cons n o) => fun '(x, (v,_)) =>
     ret ((x :: v)%vector)
   | Primitive (Snoc n o) => fun '(v, (x,_)) => ret (snoc' _ _ v x)
-  | Primitive (CavaArrow.Concat n m o) => fun '(x, (y, _)) =>
+  | Primitive (Primitives.Concat n m o) => fun '(x, (y, _)) =>
     ret ((x ++ y)%vector)
 end.
 

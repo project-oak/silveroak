@@ -53,8 +53,13 @@ Recursive Extraction Library Kappa.
 Recursive Extraction Library ClosureConversion.
 
 From Cava.Arrow Require Import ArrowExport.
+Recursive Extraction Library ArrowKind.
+Recursive Extraction Library Primitives.
 Recursive Extraction Library CavaArrow.
-Recursive Extraction Library CavaExpression.
+Recursive Extraction Library ExprSyntax.
+Recursive Extraction Library ExprSemantics.
+Recursive Extraction Library ExprLowering.
+Recursive Extraction Library ExprEquiv.
 Recursive Extraction Library CavaNotation.
 Recursive Extraction Library CombinationalArrow.
 (* Recursive Extraction Library EvaluationArrow. *) (* TODO(blaxill): temporarily disabled *)

@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 From Coq Require Import Bool ZArith NaryFunctions VectorDef.
-From Arrow Require Import Category Arrow Kappa ClosureConversion.
+From Arrow Require Import Category Arrow .
 From Cava Require Import Arrow.CavaArrow.
 
 Import VectorNotations.
