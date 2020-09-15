@@ -83,12 +83,30 @@ Proof. intros.
   false *)
 Abort.
 
-Goal forall x, combinational_evaluation' (closure_conversion mux2_1) x = false.
+Goal 
+  forall x, combinational_evaluation' (closure_conversion mux2_1) x = false.
 Proof. intros.
   cbv [mux2_1].
   cbv [closure_conversion].
   cbv [closure_conversion'].
+  Set Printing Implicit.
+  time cbv [Arrow.first Arrow.arrow_category Arrow.product CircuitArrow].
+  Show.
+
+
+
+
+  Opaque asdfasfdcompose.
+
+  cbv [Arrow.first Arrow.arrow_category Arrow.product CircuitArrow ].
+  Set Ltac Profiling.
+  Time  apply f_equal.
+
+
+
+
   time simpl. (* 2.88 s *)
+  Show Ltac Profile.
     (* snd (let '(x0, y) := x in (y, x0)) &&
   (let
     '(x0, _) :=

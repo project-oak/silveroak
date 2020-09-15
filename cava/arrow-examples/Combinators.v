@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category Arrow ClosureConversion.
+From Arrow Require Import Category Arrow.
 From Cava Require Import Arrow.ArrowExport.
 
 From Coq Require Import Strings.String Bvector List NArith Nat Lia Plus.
