@@ -18,7 +18,7 @@ From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Arrow Require Import Category Arrow.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From ArrowExamples Require Import Combinators Aes.pkg Aes.sbox_canright_pkg Aes.sbox_canright Aes.sbox_canright_masked_noreuse.
+From ArrowExamples Require Import Combinators Aes.pkg Aes.sbox_canright_pkg Aes.sbox_canright Aes.sbox_canright_masked_noreuse Aes.sbox_lut.
 
 Section notation.
 Import VectorNotations.
@@ -63,3 +63,25 @@ Program Definition aes_sbox
       in data_o
   ]>.
 End notation.
+
+Section regression_testing.
+  Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
+
+  Lemma aes_sbox_lut_combinational: is_combinational aes_sbox_lut.
+  Proof. simply_combinational. Qed.
+
+  Lemma aes_sbox_canright_combinational: is_combinational aes_sbox_canright.
+  Proof. simply_combinational. Qed.
+
+  (* Check equal at some random points *)
+  Goal combinational_evaluation aes_sbox_lut aes_sbox_lut_combinational (false, #0) = combinational_evaluation aes_sbox_canright aes_sbox_canright_combinational (false, #0).
+    vm_compute; auto.
+  Qed.
+
+  (* TODO(blaxill): reduced bound for CI time *)
+  Goal forall x, x < 10 ->
+  combinational_evaluation aes_sbox_lut aes_sbox_lut_combinational (false, #x) = combinational_evaluation aes_sbox_canright aes_sbox_canright_combinational (false, # x).
+  Proof. repeat (lia || destruct x); now vm_compute. Qed.
+
+End regression_testing.
+

@@ -33,7 +33,7 @@ Definition unsnoc' n o (v: denote_kind (Vector o (S n)))
   : (denote_kind (Vector o n) * denote_kind o) :=
   rectS (fun n v => (denote_kind (Vector o n) * denote_kind o)%type)
   (fun o => ([], o))
-  (fun o n v f => 
+  (fun o n v f =>
     let '(xs, x) := f in
     (o::xs, x)
   ) v.
@@ -41,20 +41,20 @@ Definition unsnoc' n o (v: denote_kind (Vector o (S n)))
 Definition snoc' n o (v: denote_kind (Vector o n)) a
   : denote_kind (Vector o (S n)) :=
   t_rect _ (fun n v => denote_kind (Vector o (S n))) [a]
-  (fun x n v f => 
+  (fun x n v f =>
     x :: f
   ) _ v.
 
-Definition slice_by_position n x y (o: Kind) (v: denote_kind (Vector o n)) : denote_kind (Vector o (x - y + 1)) := 
-  match Nat.eq_dec n (y + (n - y)) with 
+Definition slice_by_position n x y (o: Kind) (v: denote_kind (Vector o n)) : denote_kind (Vector o (x - y + 1)) :=
+  match Nat.eq_dec n (y + (n - y)) with
   | left Heq =>
     let '(_, v) := splitat y (rew [fun x => Vector.t (denote_kind o) x] Heq in v)
-    in 
-      match Nat.eq_dec (n-y) ((x - y + 1) + (n - x - 1)) with 
+    in
+      match Nat.eq_dec (n-y) ((x - y + 1) + (n - x - 1)) with
       | left Heq => fst (Vector.splitat (x-y+1) (rew [fun x => Vector.t (denote_kind o) x] Heq in v))
       | right Hneq => kind_default _
       end
-  | right Hneq => kind_default _ 
+  | right Hneq => kind_default _
   end.
 
 Fixpoint combinational_evaluation' {i o}
@@ -66,8 +66,8 @@ Fixpoint combinational_evaluation' {i o}
     (combinational_evaluation' g) ((combinational_evaluation' f) x)
   | First x y z f => fun x => ((combinational_evaluation' f) (fst x), snd x)
   | Second x y z f => fun x => (fst x, (combinational_evaluation' f) (snd x))
-  | Loopr x y z f => fun x => kind_default _ 
-  | Loopl x y z f => fun x => kind_default _ 
+  | Loopr x y z f => fun x => kind_default _
+  | Loopl x y z f => fun x => kind_default _
 
   | Structural (Id _) => fun x => x
   | Structural (Cancelr X) => fun x => fst x
@@ -111,7 +111,7 @@ Fixpoint combinational_evaluation' {i o}
     let a := Z.of_N (Ndigits.Bv2N av) in
     let b := Z.of_N (Ndigits.Bv2N bv) in
     let mod_const := (2^(Z.of_nat s))%Z in
-    let c := ((a - b + mod_const) mod mod_const)%Z in 
+    let c := ((a - b + mod_const) mod mod_const)%Z in
     (Ndigits.N2Bv_sized s (Z.to_N c))
   | Primitive (Index n o) => fun x =>
     match Arith.Compare_dec.lt_dec (bitvec_to_nat (fst (snd x))) n with
@@ -126,9 +126,26 @@ Fixpoint combinational_evaluation' {i o}
 
 Local Open Scope category_scope.
 
+Fixpoint apply_rightmost_tt (x: Kind)
+  : denote_kind (remove_rightmost_unit x) -> denote_kind x
+  :=
+  match x as x' return denote_kind (remove_rightmost_unit x') -> denote_kind x' with
+  | Tuple l r =>
+    let rec := apply_rightmost_tt r in
+    match r as r' return
+      (denote_kind (remove_rightmost_unit r') -> denote_kind r') ->
+        denote_kind (remove_rightmost_unit (Tuple l r')) -> denote_kind (Tuple l r')
+      with
+    | Unit => fun f x => (x, tt)
+    | _ => fun f p => (fst p, f (snd p))
+    end rec
+  | _ => fun x => x
+  end.
+
 Definition combinational_evaluation {x y: Kind}
   (circuit: x ~> y)
   (ok: is_combinational circuit)
   (i: denote_kind (remove_rightmost_unit x))
   : denote_kind y :=
-  combinational_evaluation' (insert_rightmost_tt1 x >>> circuit) i.
+  combinational_evaluation' circuit (apply_rightmost_tt x i).
+

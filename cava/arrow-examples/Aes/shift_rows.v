@@ -30,8 +30,8 @@ Open Scope kind_scope.
   output logic [3:0][3:0][7:0] data_o
 ); *)
 Definition aes_shift_rows
-  :  
-    <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~> 
+  :
+    <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~>
       Vector (Vector (Vector Bit 8) 4) 4 :=
   (* // Individually substitute bytes
   import aes_pkg::*;
@@ -51,16 +51,22 @@ Definition aes_shift_rows
                                         : aes_circ_byte_shift(data_i[3], 2'h3); *)
   <[\op_i data_i =>
     let data_o_0 = data_i[#0] in
-    let data_o_2 = !aes_circ_byte_shift data_i[#2] #2 in
-    let data_o_1 = 
-      if op_i == !CIPH_FWD 
+    let data_o_2 = !aes_circ_byte_shift data_i[#2] (#2) in
+    let data_o_1 =
+      if op_i == !CIPH_FWD
       then !aes_circ_byte_shift data_i[#1] #3
       else !aes_circ_byte_shift data_i[#1] #1
       in
-    let data_o_3 = 
-      if op_i == !CIPH_FWD 
+    let data_o_3 =
+      if op_i == !CIPH_FWD
       then !aes_circ_byte_shift data_i[#3] #1
       else !aes_circ_byte_shift data_i[#3] #3
       in
     data_o_0 :: data_o_1 :: data_o_2 :: data_o_3 :: []
   ]>.
+
+Definition shift_rows_composed :=
+  <[\input =>
+  let encoded = !aes_shift_rows !CIPH_FWD input in
+  let decoded = !aes_shift_rows !CIPH_INV encoded in
+  decoded ]>.

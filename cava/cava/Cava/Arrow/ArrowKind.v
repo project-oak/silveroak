@@ -26,7 +26,8 @@ Inductive Kind : Set :=
 | Tuple: Kind -> Kind -> Kind
 | Unit: Kind
 | Bit: Kind
-| Vector: Kind -> nat -> Kind.
+| Vector: Kind -> nat -> Kind
+.
 
 Fixpoint eq_kind_dec (k1 k2: Kind) {struct k1} : {k1=k2} + {k1<>k2}.
 Proof.

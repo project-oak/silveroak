@@ -139,11 +139,11 @@ end.
 Definition snoc' n o (v: denote (Vector o n)) a
   : denote (Vector o (S n)) :=
   t_rect _ (fun n v => denote (Vector o (S n))) [a]
-  (fun x n v f => 
+  (fun x n v f =>
     x :: f
   ) _ v.
 
-Definition slice' n x y (o: Kind) (v: denote (Vector o n)) : state CavaState (denote (Vector o (x - y + 1))) := 
+Definition slice' n x y (o: Kind) (v: denote (Vector o n)) : state CavaState (denote (Vector o (x - y + 1))) :=
   let v := Vector.map VecLit (pack_vector _ _ v) in
   let length := x - y + 1 in
   let sliced := (Slice x length (VecLit v)) in
@@ -153,8 +153,8 @@ Definition slice' n x y (o: Kind) (v: denote (Vector o n)) : state CavaState (de
   ret unpacked.
 
 Definition index' n (o: Kind) (array: denote (Vector o n)) (index: denote (vec_index n))
-  : state CavaState (denote o) := 
-  let array := Vector.map VecLit (pack_vector _ _ array) in 
+  : state CavaState (denote o) :=
+  let array := Vector.map VecLit (pack_vector _ _ array) in
   let index := (IndexAt (VecLit array) (VecLit index)) in
   let packed := Vector.map (IndexConst index) (vseq 0 (packed_width o)) in
   ret (unpack o packed).
@@ -171,7 +171,7 @@ Fixpoint build_netlist' {i o}
   | Second x y z f => second (Arrow:=kleisli) (build_netlist' f)
 
   | Structural (Id _) => ret
-  | Structural (Cancelr X) => cancelr (Arrow:=kleisli)  
+  | Structural (Cancelr X) => cancelr (Arrow:=kleisli)
   | Structural (Cancell X) => cancell (Arrow:=kleisli)
   | Structural (Uncancell _) => uncancell (Arrow:=kleisli)
   | Structural (Uncancelr _) => uncancelr (Arrow:=kleisli)
@@ -181,13 +181,13 @@ Fixpoint build_netlist' {i o}
   | Structural (Swap x y) => fun '(x,y) => ret (y,x)
   | Structural (Copy x) => fun x => ret (x,x)
 
-  | Loopr _ _ Z f => fun x => 
+  | Loopr _ _ Z f => fun x =>
       z <- fresh_wire Z ;;
       '(y,z') <- (build_netlist' f) (x,z) ;;
       map2M (fun x y => AssignSignal x y) Z z z' ;;
       ret y
-  
-  | Loopl _ _ Z f => fun x => 
+
+  | Loopl _ _ Z f => fun x =>
       z <- fresh_wire Z ;;
       '(z',y) <- (build_netlist' f) (z,x) ;;
       map2M (fun x y => AssignSignal x y) Z z z' ;;
@@ -198,11 +198,11 @@ Fixpoint build_netlist' {i o}
       y <- fresh_wire _ ;;
       map2M (fun x y => DelayBit x y) _ (fst x) y ;;
       ret y
-  | Primitive CavaArrow.Not => fun i => 
+  | Primitive CavaArrow.Not => fun i =>
       o <- newWire ;;
       addInstance (Not (fst i) o) ;;
       ret o
-  | Primitive BufGate => fun i => 
+  | Primitive BufGate => fun i =>
       o <- newWire ;;
       addInstance (Buf (fst i) o) ;;
       ret o
@@ -232,11 +232,11 @@ Fixpoint build_netlist' {i o}
       addInstance component;;
       ret o
 
-  | Primitive CavaArrow.And => fun '(x,(y,_)) => 
+  | Primitive CavaArrow.And => fun '(x,(y,_)) =>
       o <- newWire ;;
       addInstance (And x y o) ;;
       ret o
-  | Primitive CavaArrow.Nand => fun '(x,(y,_)) => 
+  | Primitive CavaArrow.Nand => fun '(x,(y,_)) =>
       o <- newWire ;;
       addInstance (Nand x y o) ;;
       ret o
@@ -284,6 +284,24 @@ end.
 Close Scope string_scope.
 Local Open Scope category_scope.
 
+Fixpoint apply_rightmost_tt (x: Kind)
+  : denote (remove_rightmost_unit x) -> denote x
+  :=
+  match x as x' return denote (remove_rightmost_unit x') -> denote x' with
+  | Tuple l r =>
+    let rec := apply_rightmost_tt r in
+    match r as r' return
+      (denote (remove_rightmost_unit r') -> denote r') ->
+        denote (remove_rightmost_unit (Tuple l r')) -> denote (Tuple l r')
+      with
+    | Unit => fun f x => (x, tt)
+    | _ => fun f p => (fst p, f (snd p))
+    end rec
+  | _ => fun x => x
+  end.
+
 Definition build_netlist {X Y} (circuit: X ~> Y)
-  : denote (remove_rightmost_unit X) -> state CavaState (denote Y) :=
-  build_netlist' (insert_rightmost_tt1 _ >>> circuit).
+  (i: denote (remove_rightmost_unit X))
+  : state CavaState (denote Y) :=
+  build_netlist' circuit (apply_rightmost_tt X i).
+
