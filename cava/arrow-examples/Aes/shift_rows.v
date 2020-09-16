@@ -70,39 +70,3 @@ Definition shift_rows_composed :=
   let encoded = !aes_shift_rows !CIPH_FWD input in
   let decoded = !aes_shift_rows !CIPH_INV encoded in
   decoded ]>.
-
-Lemma shift_rows_composed_combinational: is_combinational shift_rows_composed.
-Proof. simply_combinational. Qed.
-
-(* TODO(blaxill): WIP *)
-Axiom first_first: forall {x y z w w2} (f: x~>y) (g:y~>z) (h:(Tuple z w)~>w2), first (Arrow:=CircuitArrow) f >>> (first g >>> h) = first (z:=w) (f >>> g) >>> h.
-Axiom swap_swap: forall {x y} , swap (A:=CircuitArrow) (x:=x) (y:=y) >>> swap = id.
-Axiom first_id: forall {x z w} (f: _ ~> w), first (Arrow:=CircuitArrow) (x:=x)(z:=z) id >>> f = f.
-Axiom unassoc_assoc: forall {x y z w} (f: _ ~> w), unassoc (Arrow:=CircuitArrow) (x:=x)(y:=y)(z:=z) >>> assoc >>> f = f.
-(* Axiom assoc_unassoc: forall {x z w} , assoc (Arrow:=CircuitArrow) (x:=x)(z:=z) id >>> f = f. *)
-
-Goal exists x, combinational_evaluation' shift_rows_composed (x, tt) = x.
-Proof.
-  eexists.
-  cbv [shift_rows_composed aes_shift_rows].
-  cbv [ClosureConversion.closure_conversion].
-  cbv [ClosureConversion.closure_conversion'].
-
-  (* repeat rewrite first_first.
-  repeat rewrite swap_swap.
-  repeat rewrite first_id.
-
-  match goal with
-  | |- context [unassoc >>> assoc >>> ?X ] =>
-    rewrite (unassoc_assoc X)
-  end.
-
-  rewrite (unassoc_assoc _).
-
-  rewrite unassoc_assoc.
-
-  repeat match goal with
-  | |- context [first swap >>> (first swap >>> _)] => rewrite first_first
-  end. *)
-Abort.
-
