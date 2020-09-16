@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 From Arrow Require Import Category.
-From Cava Require Import Arrow.ArrowExport Arrow.CavaArrow.
+From Cava Require Import Arrow.ArrowExport.
 
 Require Import Coq.Strings.String.
 From Coq Require Import Lists.List.
@@ -67,60 +67,7 @@ Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
 
 (* Using `evaluate_to_terms` for a nicer extracted value *)
 Definition mux2_1_tb_expected_outputs : list bool :=
-
  map (fun i => combinational_evaluation (closure_conversion mux2_1) mux2_1_is_combinational i) mux2_1_tb_inputs.
-
-Goal forall x, interp_combinational (mux2_1 _) x = false.
-Proof. intros.
-  cbv [mux2_1].
-  time simpl. (* 0.02 s *)
-  (* 
-    (let
-  '(x0, y) := x in
-    let
-    '(x1, _) := y in
-    (x0 && (let '(x2, _) := x1 in x2) || negb x0 && (let '(_, y0) := x1 in y0))%bool) =
-  false *)
-Abort.
-
-Goal 
-  forall x, combinational_evaluation' (closure_conversion mux2_1) x = false.
-Proof. intros.
-  cbv [mux2_1].
-  cbv [closure_conversion].
-  cbv [closure_conversion'].
-  Set Printing Implicit.
-  time cbv [Arrow.first Arrow.arrow_category Arrow.product CircuitArrow].
-  Show.
-
-
-
-
-  Opaque asdfasfdcompose.
-
-  cbv [Arrow.first Arrow.arrow_category Arrow.product CircuitArrow ].
-  Set Ltac Profiling.
-  Time  apply f_equal.
-
-
-
-
-  time simpl. (* 2.88 s *)
-  Show Ltac Profile.
-    (* snd (let '(x0, y) := x in (y, x0)) &&
-  (let
-    '(x0, _) :=
-    snd (let '(x0, y) := fst (let '(x0, y) := x in (y, x0)) in (y, x0)) in x0)
-  || negb (snd (let '(x0, y) := x in (y, x0))) &&
-      (let
-      '(_, y) :=
-        snd (let '(x0, y) := fst (let '(x0, y) := x in (y, x0)) in (y, x0)) in
-        y))%bool = false *)
-
-  (* cbv [Arrow.first Arrow.arrow_category Arrow.product CircuitArrow ].
-  cbv [Arrow.swap Arrow.arrow_category Arrow.product CircuitArrow CircuitArrowSwap].
-  cbv [Arrow.uncancelr Arrow.arrow_category Arrow.product CircuitArrow CircuitArrowSwap]. *)
-
 
 Definition mux2_1_tb :=
   testBench "mux2_1_tb" mux2_1_Interface

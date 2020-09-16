@@ -47,10 +47,9 @@ Definition aes_mul_gf2p2
 
 Section regression_checks.
   Notation aes_mul_gf2p2_eval x y := 
-    (bitvec_to_nat (combinational_evaluation aes_mul_gf2p2 (ltac:(simply_combinational)) (N2Bv_sized 2 x, N2Bv_sized 2 y))).
+    (bitvec_to_nat (interp_combinational (aes_mul_gf2p2 _) (N2Bv_sized 2 x, (N2Bv_sized 2 y, tt)))).
   Notation aes_mul_gf2p2_test x y o := 
-    (forall (wf: is_combinational aes_mul_gf2p2), 
-    combinational_evaluation aes_mul_gf2p2 wf (N2Bv_sized 2 x, N2Bv_sized 2 y) = N2Bv_sized 2 o).
+    (interp_combinational (aes_mul_gf2p2 _) (N2Bv_sized 2 x, (N2Bv_sized 2 y,tt)) = N2Bv_sized 2 o).
 
   Goal aes_mul_gf2p2_test 0 0 0. auto. Qed.
   Goal aes_mul_gf2p2_test 0 1 0. auto. Qed.
@@ -75,10 +74,10 @@ Definition aes_scale_omega2_gf2p2
 
 Section regression_checks.
   Notation aes_scale_omega2_gf2p2_eval x := 
-    (bitvec_to_nat (combinational_evaluation aes_scale_omega2_gf2p2 (ltac:(simply_combinational)) (N2Bv_sized 2 x))).
+    (bitvec_to_nat (combinational_evaluation (closure_conversion aes_scale_omega2_gf2p2) (ltac:(simply_combinational)) (N2Bv_sized 2 x))).
   Notation aes_scale_omega2_gf2p2_test x o := 
-    (forall (wf: is_combinational aes_scale_omega2_gf2p2), 
-    combinational_evaluation aes_scale_omega2_gf2p2 wf (N2Bv_sized 2 x) = N2Bv_sized 2 o).
+    (forall (wf: is_combinational (closure_conversion aes_scale_omega2_gf2p2)), 
+    combinational_evaluation (closure_conversion aes_scale_omega2_gf2p2) wf (N2Bv_sized 2 x) = N2Bv_sized 2 o).
 
   Goal aes_scale_omega2_gf2p2_test 0 0. auto. Qed.
   Goal aes_scale_omega2_gf2p2_test 1 3. auto. Qed.
@@ -175,11 +174,9 @@ Section regression_checks.
   Definition S2X_indexer: <<Vector Bit 3, Unit>> ~> <<Vector Bit 8>> := 
     <[\x => let vec = !S2X in vec[x] ]>.
   Goal
-    (forall wf: is_combinational S2X_indexer, 
-      combinational_evaluation S2X_indexer wf (N2Bv_sized 3 2) = N2Bv_sized 8 5). 
+    (interp_combinational (S2X_indexer _) (N2Bv_sized 3 2, tt) = N2Bv_sized 8 5). 
     auto. Qed.
   Goal
-    (forall wf: is_combinational S2X_indexer, 
-      combinational_evaluation S2X_indexer wf (N2Bv_sized 3 4) = N2Bv_sized 8 18). 
+    (interp_combinational (S2X_indexer _) (N2Bv_sized 3 4, tt) = N2Bv_sized 8 18). 
     auto. Qed.
 End regression_checks.
