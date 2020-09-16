@@ -165,12 +165,12 @@ Section tests.
   Definition test_key := byte_reverse (n:=32) (N2Bv_sized 256 (Z.to_N (Ox "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"))).
 
   (* Lemma key_expansion_comb: is_combinational (closure_conversion (aes_256_naive_key_expansion SboxCanright)).
-  Proof. simply_combinational. Qed. *)
+  Proof. simply_combinational. Qed.
 
-  (* Definition expanded_key :=
+  Definition expanded_key :=
     combinational_evaluation'
       (<[\data => !(aes_256_naive_key_expansion SboxCanright) (!reshape (!reshape data)) ]>)
-      (N2Bv_sized 256 0, tt). *)
+      (N2Bv_sized 256 0, tt).
 
   (* Compute (Vector.map (Vector.map (Vector.map Bv2Hex)) expanded_key). *)
 
@@ -196,10 +196,13 @@ Section tests.
   Definition test_data := byte_reverse (n:=16) (N2Bv_sized 128 (Z.to_N (Ox "00112233445566778899aabbccddeeff"))).
   Definition test_encrypted := byte_reverse (n:=16) (N2Bv_sized 128 (Z.to_N (Ox "8ea2b7ca516745bfeafc49904b496089"))).
 
-  Goal interp_combinational (unrolled_cipher_naive SboxCanright _) 
+  (* Goal interp_combinational (unrolled_cipher_naive SboxCanright _) 
       (false, (test_data, (test_key, tt)))
     = test_encrypted.
-  Proof. time now vm_compute. Qed.
+  Proof. 
+    intros.
+    cbv [unrolled_cipher_naive].
+    cbv [mult Nat.add]. *)
   Goal interp_combinational (unrolled_cipher_naive SboxCanright _) 
       (true, (test_encrypted, (test_key, tt)))
     = test_data.
@@ -215,6 +218,6 @@ Section tests.
   Goal combinational_evaluation (unrolled_cipher_naive SboxCanright) unrolled_cipher_naive_comb
       (true, (test_encrypted, test_key))
     = test_data.
-  Proof. time now vm_compute. Qed.
+  Proof. time now vm_compute. Qed. *)
 End tests.
 

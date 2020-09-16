@@ -47,7 +47,6 @@ library
                      Bvector
                      CavaClass
                      CavaArrow
-                     CavaExpression
                      CavaNotation
                      Combinators
                      CombinationalArrow
@@ -55,6 +54,9 @@ library
                      Datatypes
                      DecimalString
                      -- EvaluationArrow -- TODO(blaxill): temporarily disabled
+                     ExprSyntax
+                     ExprSemantics
+                     ExprLowering
                      IdentityMonad
                      Kind
                      List
@@ -79,8 +81,6 @@ library
                      -- From arrow-lib
                      Category
                      Arrow
-                     Kappa
-                     ClosureConversion
                      Coq
                      Kleisli
   other-Modules:     Applicative
