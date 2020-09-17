@@ -58,21 +58,21 @@ Notation vec_index n := (Vector Bit (Nat.log2_up n)).
 Inductive CircuitPrimitive :=
   | Constant (ty: Kind) (v: denote_kind ty)
   | Delay (o: Kind)
-  | Not 
+  | Not
   | BufGate
   | Uncons (n: nat) (o: Kind)
   | Unsnoc (n: nat) (o: Kind)
-  | Slice (n: nat) (x y: nat) (o: Kind) 
-  | Split (n m: nat) (o: Kind) 
+  | Slice (n: nat) (x y: nat) (o: Kind)
+  | Split (n m: nat) (o: Kind)
   | EmptyVec (o: Kind)
   | Lut (n: nat) (f: bool^^n --> bool)
 
-  | And  
-  | Nand 
-  | Or   
+  | And
+  | Nand
+  | Or
   | Nor
   | Xor
-  | Xnor 
+  | Xnor
   | Xorcy
 
   | Fst (x y: Kind)
@@ -98,7 +98,7 @@ Fixpoint primitive_input (op: CircuitPrimitive): Kind :=
   | Slice n x y o => Tuple (Vector o n) Unit
   | Split n m o => Tuple (Vector o (n+m)) Unit
   | EmptyVec o => Unit
-  | Lut n f => Tuple (Vector Bit n) Unit 
+  | Lut n f => Tuple (Vector Bit n) Unit
 
   | Muxcy => [ Bit ~~~> Tuple Bit Bit ]
   | UnsignedAdd a b c => [ Vector Bit a ~~~> Vector Bit b ]
@@ -129,7 +129,7 @@ Fixpoint primitive_output (op: CircuitPrimitive): Kind :=
   | Lut n f => Bit
 
   | Muxcy => Bit
-  | UnsignedAdd a b c => Vector Bit c 
+  | UnsignedAdd a b c => Vector Bit c
   | UnsignedSub a => Vector Bit a
   | Index n o => o
   | Cons n o => Vector o (S n)
@@ -147,7 +147,7 @@ Notation arrow_input x := (arrow_input (object:=Kind) (unit:=Unit) (product:=Tup
 Notation arrow_output x := (arrow_output (object:=Kind) (unit:=Unit) (product:=Tuple) x).
 
 (* Single clock circuit *)
-Inductive Circuit: Kind -> Kind -> Type := 
+Inductive Circuit: Kind -> Kind -> Type :=
   | Structural: forall (x: ArrowStructure), Circuit (arrow_input x) (arrow_output x)
   | Primitive: forall (x: CircuitPrimitive), Circuit (primitive_input x) (primitive_output x)
 
@@ -185,12 +185,12 @@ Instance CircuitArrowLoop : ArrowLoop CircuitArrow := { loopl := Loopl; loopr :=
 Instance CircuitArrowSTKC : ArrowSTKC CircuitArrow := { }.
 
 Ltac match_primitive X :=
-  match X with 
+  match X with
   | (Circuit _ _ _) => idtac
   end.
 
 Ltac match_compose X :=
-  match X with 
+  match X with
   | (Composition _ _ ?Y ?Z) => idtac
   end.
 
@@ -207,34 +207,3 @@ Proof.
   exact uncancelr.
 Defined.
 
-Fixpoint insert_rightmost_tt1 (ty: Kind): (remove_rightmost_unit ty) ~> ty.
-Proof.
-  refine (
-  Fix arg_length_order_wf (fun ty => (remove_rightmost_unit ty) ~> ty )
-    (fun (ty:Kind)
-      (insert_rightmost_tt1': forall ty', arg_length_order ty' ty -> (remove_rightmost_unit ty') ~> ty') =>
-        match ty as sty return ty=sty -> (remove_rightmost_unit sty) ~> sty with
-        | Tuple _ Unit => fun _ => uncancelr
-        | Tuple l ty2 => fun H => (@second _ _ _ _ _ _ _ l (insert_rightmost_tt1' ty2 _ ))
-        | _ => fun _ => id
-        end eq_refl
-        ) ty);
-  rewrite H;
-  cbv [arg_length_order ty2];
-  auto.
-Defined.
-
-Fixpoint remove_rightmost_tt (ty: Kind): ty ~> (remove_rightmost_unit ty).
-  refine (Fix arg_length_order_wf (fun ty => ty ~> (remove_rightmost_unit ty))
-    (fun (ty:Kind)
-      (remove_rightmost_tt': forall ty', arg_length_order ty' ty -> ty' ~> (remove_rightmost_unit ty')) =>
-        match ty as sty return ty=sty -> sty ~> (remove_rightmost_unit sty) with
-        | Tuple _ Unit => fun _ => cancelr
-        | Tuple l ty2 => fun H => (@second _ _ _ _ _ _ _ l (remove_rightmost_tt' ty2 _ ))
-        | _ => fun _ => id
-        end eq_refl
-        ) ty);
-  rewrite H;
-  cbv [arg_length_order ty2];
-  auto.
-Defined.

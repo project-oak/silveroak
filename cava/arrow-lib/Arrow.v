@@ -62,6 +62,42 @@ Class ArrowLaws
   (* triangle and pentagon identities? *)
 }.
 
+Section with_continuation.
+  Context `{arrow_laws: ArrowLaws}.
+
+  Local Ltac prove_cont law :=
+    rewrite <-associativity;
+    setoid_rewrite law; apply associativity.
+
+  Lemma first_cancelr_cont {x y z} (f: x ~> y) (k: _ ~> z):
+    first f >>> cancelr >>> k =M= cancelr >>> f >>> k.
+  Proof using arrow_laws. prove_cont (first_cancelr f). Qed.
+
+  Lemma uncancelr_first_cont {x y z} (f: x ~> y) (k: _ ~> z):
+    uncancelr >>> first f >>> k =M= f >>> uncancelr >>> k.
+  Proof using arrow_laws. prove_cont (uncancelr_first f). Qed.
+
+  Lemma second_cancell_cont {x y z} (f: x ~> y) (k: _ ~> z):
+    second f >>> cancell >>> k =M= cancell >>> f >>> k.
+  Proof using arrow_laws. prove_cont (second_cancell f). Qed.
+
+  Lemma uncancell_second_cont {x y z} (f: x ~> y) (k: _ ~> z):
+    uncancell >>> second f >>> k =M= f >>> uncancell >>> k.
+  Proof using arrow_laws. prove_cont (uncancell_second f). Qed.
+
+  Lemma assoc_iso_cont
+        {x y z w s t v} (f: x ~> y) (g: z ~> w) (h: s ~> t) (k: _ ~> v):
+    assoc >>> bimap _ _ _ _ f (bimap _ _ _ _ g h) >>> k
+    =M= bimap _ _ _ _ (bimap _ _ _ _ f g) h >>> assoc >>> k.
+  Proof using arrow_laws. prove_cont (assoc_iso f g h). Qed.
+
+  Lemma unassoc_iso_cont
+        {x y z w s t v} (f: x ~> y) (g: z ~> w) (h: s ~> t) (k: _ ~> v):
+    unassoc >>> bimap _ _ _ _ (bimap _ _ _ _ f g) h >>> k
+    =M= bimap _ _ _ _ f (bimap _ _ _ _ g h) >>> unassoc >>> k.
+  Proof using arrow_laws. prove_cont (unassoc_iso f g h). Qed.
+End with_continuation.
+
 Local Open Scope arrow_scope.
 
 Class ArrowCopy `(A: Arrow) := {
