@@ -36,14 +36,14 @@ Module KappaNotation.
    ) (at level 1, e custom expr at level 1).
 
   Notation "\ x .. y => e" := (Abs (fun x => .. (Abs (fun y => e)) ..))
-    (in custom expr at level 200, x binder, right associativity
-                                    : kappa_scope.
+    (in custom expr at level 200, x binder, right associativity) : kappa_scope.
 
   Notation "x y" := (App x y) (in custom expr at level 3, left associativity) : kappa_scope.
 
   Notation "x" := (Var x) (in custom expr, x ident) : kappa_scope.
   Notation "( x )" := x (in custom expr, x at level 4) : kappa_scope.
-  Notation "'let' x = e1 'in' e2" := (Let e1 (fun x => e2)) (in custom expr at level 1, x constr at level 4, e2 at level 7, e1 at level 1) : kappa_scope.
+  Notation "'let' x = e1 'in' e2" := (Let e1 (fun x => e2))
+    (in custom expr at level 1, x constr at level 4, e2 at level 7, e1 at level 1) : kappa_scope.
 
   (* todo: turn into a recursive pattern *)
   Notation "'let' '( x , y ) = e1 'in' e2"
@@ -51,9 +51,12 @@ Module KappaNotation.
     Let (App (Primitive (Fst _ _ )) e1) (fun x =>
       Let (App (Primitive (Snd _ _ )) e1) (fun y => e2
       )
-    )
-    )
-    (in custom expr at level 1, x constr at level 4, y constr at level 4, e2 at level 7, e1 at level 1) : kappa_scope.
+    ))
+    ( in custom expr at level 1
+    , x constr at level 4
+    , y constr at level 4
+    , e2 at level 7
+    , e1 at level 1) : kappa_scope.
 
   (* Escaping *)
 
