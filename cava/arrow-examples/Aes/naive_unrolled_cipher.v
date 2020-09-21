@@ -164,9 +164,6 @@ Definition unrolled_cipher_naive
 Section tests.
   Definition test_key := byte_reverse (n:=32) (N2Bv_sized 256 (Z.to_N (Ox "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"))).
 
-  (* Lemma key_expansion_comb: is_combinational (closure_conversion (aes_256_naive_key_expansion SboxCanright)).
-  Proof. simply_combinational. Qed. *)
-
   (* Definition expanded_key :=
     interp_combinational
       (<[\data => !(aes_256_naive_key_expansion SboxCanright) (!reshape (!reshape data)) ]>)
@@ -196,7 +193,8 @@ Section tests.
   Definition test_data := byte_reverse (n:=16) (N2Bv_sized 128 (Z.to_N (Ox "00112233445566778899aabbccddeeff"))).
   Definition test_encrypted := byte_reverse (n:=16) (N2Bv_sized 128 (Z.to_N (Ox "8ea2b7ca516745bfeafc49904b496089"))).
 
-  (* Vector.eqb is extracted under a different namespace *)
+  (* Vector.eqb is extracted under a different namespace, so we redefine
+  * boolean vector equality here *)
   Definition vector_equality {n} (v1: Vector.t bool n) (v2: Vector.t bool n) :=
     Vector.fold_left Bool.eqb true (Vector.map2 Bool.eqb v1 v2).
 
