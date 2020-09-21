@@ -69,6 +69,8 @@ Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
 Definition mux2_1_tb_expected_outputs : list bool :=
  map (fun i => combinational_evaluation (closure_conversion mux2_1) mux2_1_is_combinational i) mux2_1_tb_inputs.
 
+Goal is_combinational (closure_conversion mux2_1). Proof. simply_combinational. Qed.
+
 Definition mux2_1_tb :=
   testBench "mux2_1_tb" mux2_1_Interface
             mux2_1_tb_inputs mux2_1_tb_expected_outputs.

@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 From Arrow Require Import Category Arrow .
-From Coq Require Import Lists.List NaryFunctions String Arith NArith VectorDef Lia.
+From Coq Require Import Lists.List NaryFunctions String Arith NArith Vector Lia.
 
 Import ListNotations.
 Import VectorNotations.

@@ -102,22 +102,28 @@ Definition aes_sbox_canright
       data_o
   ]>.
 
-Definition canright_composed :=
+Definition canright_composed
+  :  << Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\input =>
   let encoded = !aes_sbox_canright !CIPH_FWD input in
   let decoded = !aes_sbox_canright !CIPH_INV encoded in
   decoded ]>.
 
-Lemma canright_composed_combinational: is_combinational canright_composed.
-Proof. simply_combinational. Qed.
+(* Lemma canright_composed_combinational: is_combinational (closure_conversion aes_sbox_canright).
+Proof. time simply_combinational. Qed. *)
+
+Lemma canright_composed_combinational: is_combinational (closure_conversion aes_sbox_canright).
+Proof. time simply_combinational. Qed.
 
 Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
 
-Goal combinational_evaluation canright_composed canright_composed_combinational (# 0) = (# 0).
-Proof. vm_compute; auto. Qed.
+Goal interp_combinational (canright_composed _) (# 0, tt) = (# 0).
+Proof. time (vm_compute; auto). Qed.
+(* Goal combinational_evaluation (closure_conversion canright_composed) canright_composed_combinational (# 0) = (# 0).
+Proof. time (vm_compute; auto). Qed. *)
 
 (* TODO(blaxill): reduced bound for CI time *)
-Goal forall x, x < 10 ->
-combinational_evaluation canright_composed canright_composed_combinational (#x) = (#x).
+Goal forall x, x < 100 ->
+interp_combinational (canright_composed _) (#x,tt) = (#x).
 Proof. time (repeat (lia || destruct x); now vm_compute). Qed.
 

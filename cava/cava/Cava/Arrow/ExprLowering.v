@@ -139,23 +139,18 @@ Section ctxt.
   Proof. auto with kappa_cc. Qed.
 End ctxt.
 
-Definition rewrite_Kind {x y: Kind} (H: x = y)
-  : Circuit x y :=
-  match eq_kind_dec x y with
-  | left Heq => rew Heq in id
-  | right Hneq => (ltac:(abstract contradiction))
-  end.
-
 (* Construct an Arrow morphism that takes a variable list Kind
 and returns the variable at an index *)
 Fixpoint extract_nth (ctxt: list Kind) (ty: Kind) (x: nat)
-  : (as_kind ctxt) ~> ty :=
+  : (as_kind ctxt) ~[CircuitArrow]~> ty :=
   match ctxt with
   | [] => drop >>> Primitive (Constant _(kind_default _))
   | ty' :: ctxt' =>
     if x =? (length ctxt') then
-      match eq_dec ty' ty with
-      | left Heq2 => rew Heq2 in (second drop >>> cancelr)
+      (* match eq_dec ty' ty with *)
+      match eq_kind_dec ty' ty with
+      (* | left Heq2 => rew Heq2 in (drop >>> Primitive (Constant _(kind_default _))) *)
+      | left Heq2 => rew Heq2 in (second drop >>> Structural (Cancelr _))
       | right Hneq => drop >>> Primitive (Constant _(kind_default _))
       end
     else first drop >>> cancell >>> extract_nth ctxt' _ x

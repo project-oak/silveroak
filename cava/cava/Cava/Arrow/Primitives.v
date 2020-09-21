@@ -14,17 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* From Arrow Require Import Category Arrow .
-From Coq Require Import Lists.List NaryFunctions String Arith NArith VectorDef Lia. *)
 From Coq Require Import NaryFunctions Arith NArith.
 
-(* Import ListNotations.
-Import VectorNotations. *)
 
 From Cava Require Export Arrow.ArrowKind.
-
-(* Local Open Scope category_scope.
-Local Open Scope arrow_scope. *)
 
 Local Notation "[ x ~~~> .. ~~~> y ]" := (Tuple x .. (Tuple y Unit) ..).
 
@@ -33,21 +26,21 @@ Notation vec_index n := (Vector Bit (Nat.log2_up n)).
 Inductive CircuitPrimitive :=
   | Constant (ty: Kind) (v: denote_kind ty)
   | Delay (o: Kind)
-  | Not 
+  | Not
   | BufGate
   | Uncons (n: nat) (o: Kind)
   | Unsnoc (n: nat) (o: Kind)
-  | Slice (n: nat) (x y: nat) (o: Kind) 
-  | Split (n m: nat) (o: Kind) 
+  | Slice (n: nat) (x y: nat) (o: Kind)
+  | Split (n m: nat) (o: Kind)
   | EmptyVec (o: Kind)
   | Lut (n: nat) (f: bool^^n --> bool)
 
-  | And  
-  | Nand 
-  | Or   
+  | And
+  | Nand
+  | Or
   | Nor
   | Xor
-  | Xnor 
+  | Xnor
   | Xorcy
 
   | Fst (x y: Kind)
@@ -73,7 +66,7 @@ Fixpoint primitive_input (op: CircuitPrimitive): Kind :=
   | Slice n x y o => Tuple (Vector o n) Unit
   | Split n m o => Tuple (Vector o (n+m)) Unit
   | EmptyVec o => Unit
-  | Lut n f => Tuple (Vector Bit n) Unit 
+  | Lut n f => Tuple (Vector Bit n) Unit
 
   | Muxcy => [ Bit ~~~> Tuple Bit Bit ]
   | UnsignedAdd a b c => [ Vector Bit a ~~~> Vector Bit b ]
@@ -104,7 +97,7 @@ Fixpoint primitive_output (op: CircuitPrimitive): Kind :=
   | Lut n f => Bit
 
   | Muxcy => Bit
-  | UnsignedAdd a b c => Vector Bit c 
+  | UnsignedAdd a b c => Vector Bit c
   | UnsignedSub a => Vector Bit a
   | Index n o => o
   | Cons n o => Vector o (S n)
@@ -116,4 +109,4 @@ Fixpoint primitive_output (op: CircuitPrimitive): Kind :=
   | Pair x y => Tuple x y
 
   | _ => Bit
-  end. 
+  end.

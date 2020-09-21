@@ -67,20 +67,20 @@ End notation.
 Section regression_testing.
   Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
 
-  Lemma aes_sbox_lut_combinational: is_combinational aes_sbox_lut.
+  (* Lemma aes_sbox_lut_combinational: is_combinational aes_sbox_lut.
   Proof. simply_combinational. Qed.
 
   Lemma aes_sbox_canright_combinational: is_combinational aes_sbox_canright.
-  Proof. simply_combinational. Qed.
+  Proof. simply_combinational. Qed. *)
 
   (* Check equal at some random points *)
-  Goal combinational_evaluation aes_sbox_lut aes_sbox_lut_combinational (false, #0) = combinational_evaluation aes_sbox_canright aes_sbox_canright_combinational (false, #0).
+  Goal interp_combinational (aes_sbox_lut _) (false, (#0, tt)) = interp_combinational (aes_sbox_canright _) (false, (#0, tt)).
     vm_compute; auto.
   Qed.
 
   (* TODO(blaxill): reduced bound for CI time *)
   Goal forall x, x < 10 ->
-  combinational_evaluation aes_sbox_lut aes_sbox_lut_combinational (false, #x) = combinational_evaluation aes_sbox_canright aes_sbox_canright_combinational (false, # x).
+  interp_combinational (aes_sbox_lut _) (false, (#x, tt)) = interp_combinational (aes_sbox_canright _) (false, (#x, tt)).
   Proof. repeat (lia || destruct x); now vm_compute. Qed.
 
 End regression_testing.

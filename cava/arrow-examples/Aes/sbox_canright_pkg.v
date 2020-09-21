@@ -79,8 +79,8 @@ Section regression_checks.
     (forall (wf: is_combinational (closure_conversion aes_scale_omega2_gf2p2)), 
     combinational_evaluation (closure_conversion aes_scale_omega2_gf2p2) wf (N2Bv_sized 2 x) = N2Bv_sized 2 o).
 
-  Goal aes_scale_omega2_gf2p2_test 0 0. auto. Qed.
-  Goal aes_scale_omega2_gf2p2_test 1 3. auto. Qed.
+  (* Goal aes_scale_omega2_gf2p2_test 0 0. auto. Qed.
+  Goal aes_scale_omega2_gf2p2_test 1 3. auto. Qed. *)
   Compute aes_scale_omega2_gf2p2_eval 0.
 End regression_checks.
 
@@ -173,10 +173,10 @@ Definition S2X :  Unit ~> Vector (Vector Bit 8) 8 := <[ #140:: #121:: #5:: #235:
 Section regression_checks.
   Definition S2X_indexer: <<Vector Bit 3, Unit>> ~> <<Vector Bit 8>> := 
     <[\x => let vec = !S2X in vec[x] ]>.
-  Goal
+  (* Goal
     (interp_combinational (S2X_indexer _) (N2Bv_sized 3 2, tt) = N2Bv_sized 8 5). 
     auto. Qed.
   Goal
     (interp_combinational (S2X_indexer _) (N2Bv_sized 3 4, tt) = N2Bv_sized 8 18). 
-    auto. Qed.
+    auto. Qed. *)
 End regression_checks.

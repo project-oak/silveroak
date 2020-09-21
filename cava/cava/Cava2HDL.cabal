@@ -43,7 +43,9 @@ library
                      ArrowKind
                      BinNat
                      BinNums
+                     BinInt
                      BitArithmetic
+                     Bool
                      Bvector
                      CavaClass
                      CavaArrow
@@ -57,6 +59,7 @@ library
                      ExprSyntax
                      ExprSemantics
                      ExprLowering
+                     HexString
                      IdentityMonad
                      Kind
                      List
@@ -69,6 +72,7 @@ library
                      Nat
                      Ndigits
                      PeanoNat
+                     Primitives
                      Signal
                      StateMonad
                      Types
@@ -85,16 +89,13 @@ library
                      Kleisli
   other-Modules:     Applicative
                      BinPos
-                     BinInt
                      BinNatDef
-                     Bool
                      ByteVector
                      Compare_dec
                      Decimal
                      Functor
-                     Hexadecimal
-                     HexString
-                     Numeral
+                     -- Hexadecimal
+                     -- Numeral
                      Specif
                      MonadExc
                      MonadFix

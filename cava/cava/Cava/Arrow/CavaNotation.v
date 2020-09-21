@@ -61,6 +61,9 @@ Module KappaNotation.
 
   (* Escaping *)
 
+  (* Notation "! x" := ((fun _ : unit => (x _)) tt)(in custom expr at level 2, x global) : kappa_scope.
+  Notation "!( x )" := ((fun _ : unit => (x _)) tt) (in custom expr, x constr) : kappa_scope. *)
+
   Notation "! x" := ((x _))(in custom expr at level 2, x global) : kappa_scope.
   Notation "!( x )" := ((x _)) (in custom expr, x constr) : kappa_scope.
 

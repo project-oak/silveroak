@@ -59,9 +59,8 @@ Recursive Extraction Library ExprSemantics.
 Recursive Extraction Library ExprLowering.
 Recursive Extraction Library ExprEquiv.
 Recursive Extraction Library CavaNotation.
-Recursive Extraction Library CombinationalArrow.
-(* Recursive Extraction Library EvaluationArrow. *) (* TODO(blaxill): temporarily disabled *)
-Recursive Extraction Library NetlistArrow.
+Recursive Extraction Library CircuitSemantics.
+Recursive Extraction Library CircuitLowering.
 Recursive Extraction Library PropArrow.
 
 Recursive Extraction Library Netlist.
