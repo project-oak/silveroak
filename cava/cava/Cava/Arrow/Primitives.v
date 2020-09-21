@@ -23,6 +23,7 @@ Local Notation "[ x ~~~> .. ~~~> y ]" := (Tuple x .. (Tuple y Unit) ..).
 
 Notation vec_index n := (Vector Bit (Nat.log2_up n)).
 
+(* TODO(blaxill): split type into e.g. unary binary etc ops? *)
 Inductive CircuitPrimitive :=
   | Constant (ty: Kind) (v: denote_kind ty)
   | Delay (o: Kind)

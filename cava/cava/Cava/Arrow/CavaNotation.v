@@ -35,12 +35,8 @@ Module KappaNotation.
     (fun var => e%kappa)
    ) (at level 1, e custom expr at level 1).
 
-  (* Notation "<[ e ]>" := (e%kappa) (at level 1, e custom expr at level 1). *)
-
   Notation "\ x .. y => e" := (Abs (fun x => .. (Abs (fun y => e)) ..))
     (in custom expr at level 200, x binder, right associativity
-    (* , format "'[' \  '/  ' x  ..  y =>  '/  ' e ']'" *)
-    )
                                     : kappa_scope.
 
   Notation "x y" := (App x y) (in custom expr at level 3, left associativity) : kappa_scope.
@@ -60,9 +56,6 @@ Module KappaNotation.
     (in custom expr at level 1, x constr at level 4, y constr at level 4, e2 at level 7, e1 at level 1) : kappa_scope.
 
   (* Escaping *)
-
-  (* Notation "! x" := ((fun _ : unit => (x _)) tt)(in custom expr at level 2, x global) : kappa_scope.
-  Notation "!( x )" := ((fun _ : unit => (x _)) tt) (in custom expr, x constr) : kappa_scope. *)
 
   Notation "! x" := ((x _))(in custom expr at level 2, x global) : kappa_scope.
   Notation "!( x )" := ((x _)) (in custom expr, x constr) : kappa_scope.
@@ -94,15 +87,11 @@ Module KappaNotation.
   Definition unsigned_add2 {var a b} := Primitive (var:=var) (UnsignedAdd a b (S (max a b))).
   Definition unsigned_add1 {var a b} := Primitive (var:=var) (UnsignedAdd a b (max a b)).
 
-  (* Notation "x + y" := (App (App (Morph (UnsignedAdd2 _ _)) x) y) (in custom expr at level 4) : kappa_scope. *)
-  Notation "x + y" := 
-      (App (App unsigned_add2 x) y) 
+  Notation "x + y" :=
+      (App (App unsigned_add2 x) y)
       (in custom expr at level 4) : kappa_scope.
-  Notation "x +% y" := 
-      (App (App 
-      unsigned_add1 
-  (* ((fun a b => Primitive (UnsignedAdd a b (max a b))) _ _) *)
-      x) y) 
+  Notation "x +% y" :=
+      (App (App unsigned_add1 x) y)
       (in custom expr at level 4) : kappa_scope.
   Notation "x - y" := (App (App ((Primitive (UnsignedSub _))) x) y) (in custom expr at level 4) : kappa_scope.
   Notation "'unsigned_add' a b c" := ((Primitive (UnsignedAdd a b c)))
@@ -124,7 +113,7 @@ Module KappaNotation.
   Notation "'false''" := ((Primitive (Constant Bit false))) (in custom expr at level 2) : kappa_scope.
 
   Notation "# x" := ((Primitive (Constant (Vector Bit _) (N2Bv_sized _ x))))%N
-    (in custom expr at level 2, 
+    (in custom expr at level 2,
     x constr at level 4, no associativity) : kappa_scope.
 
   Notation "v [ x ]" := (App (App ((Primitive (Index _ _))) v) x)
@@ -149,13 +138,6 @@ Module KappaNotation.
   Notation "'unsnoc'" := ((Primitive (Unsnoc _ _))) (in custom expr at level 4) : kappa_scope.
 
 End KappaNotation.
-
-Definition make_module {i o}
-  (name: string)
-  (expr: i ~> o)
-  : i ~> o
-  := expr.
-  (* mk_module _ _ name (expr _). *)
 
 Import KappaNotation.
 Local Open Scope kind_scope.
@@ -196,8 +178,6 @@ Section regression_examples.
   <[ \ x y => x + y ]>.
   Definition ex11:  << Vector Bit 10, Vector Bit 10, Unit >> ~> (Vector Bit 10) :=
   <[ \ x y => x +% y ]>.
-  Definition ex12_module:  <<Vector Bit 10, Unit>> ~> Vector Bit 10
-    := make_module "ex12_module" <[ \x => x +% x ]>.
   Definition ex13:  << Vector Bit 10, Unit >> ~> Bit :=
   <[ \ x => (xor x[#0] x[#1] :: false' :: []) [#0] ]>.
   Definition ex14:  << Vector Bit 10, Vector Bit 4, Unit >> ~> Bit :=
