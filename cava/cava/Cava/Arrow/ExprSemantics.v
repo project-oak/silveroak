@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 From Arrow Require Import Category Arrow.
-From Cava Require Import Arrow.CavaArrow.
+From Cava Require Import Arrow.CircuitArrow.
 From Cava Require Import Arrow.CircuitSemantics.
 
 From Cava Require Import Arrow.ExprSyntax.
@@ -40,8 +40,8 @@ Section combinational_semantics.
     | App f e => fun y =>
       (interp_combinational' f) (interp_combinational' e tt, y)
     | Comp g f => fun x => interp_combinational' g (interp_combinational' f x)
-    | Primitive p => combinational_evaluation' (CavaArrow.Primitive p)
-    | Id _ => fun x => x
+    | Primitive p => combinational_evaluation' (CircuitArrow.Primitive p)
+    | Id => fun x => x
     | Let v f => fun y =>
       interp_combinational' (f (fun _ => interp_combinational' v tt)) y
     | LetRec v f => fun _ => kind_default _

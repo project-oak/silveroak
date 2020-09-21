@@ -16,7 +16,7 @@
 
 From Coq Require Import Arith Eqdep_dec List Lia NArith Omega String.
 From Arrow Require Import Category.
-From Cava Require Import BitArithmetic Arrow.CavaArrow Arrow.ExprSyntax .
+From Cava Require Import BitArithmetic Arrow.CircuitArrow Arrow.ExprSyntax .
 
 Import ListNotations.
 Import EqNotations.

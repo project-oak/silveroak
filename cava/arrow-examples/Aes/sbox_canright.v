@@ -117,13 +117,11 @@ Proof. time simply_combinational. Qed.
 
 Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
 
-Goal interp_combinational (canright_composed _) (# 0, tt) = (# 0).
+Goal interp_combinational (canright_composed _) (# 0) = (# 0).
 Proof. time (vm_compute; auto). Qed.
-(* Goal combinational_evaluation (closure_conversion canright_composed) canright_composed_combinational (# 0) = (# 0).
-Proof. time (vm_compute; auto). Qed. *)
 
 (* TODO(blaxill): reduced bound for CI time *)
 Goal forall x, x < 100 ->
-interp_combinational (canright_composed _) (#x,tt) = (#x).
+interp_combinational (canright_composed _) (#x) = (#x).
 Proof. time (repeat (lia || destruct x); now vm_compute). Qed.
 

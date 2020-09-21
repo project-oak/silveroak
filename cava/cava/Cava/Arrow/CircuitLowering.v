@@ -16,7 +16,7 @@
 
 From Coq Require Import Bool ZArith NaryFunctions Vector String List DecimalString Lia.
 From Arrow Require Import Category Arrow Kleisli.
-From Cava Require Import Arrow.CavaArrow VectorUtils BitArithmetic Types Signal Netlist.
+From Cava Require Import Arrow.CircuitArrow VectorUtils BitArithmetic Types Signal Netlist.
 From Cava Require Arrow.Primitives.
 
 Import NilZero.
@@ -44,7 +44,7 @@ match ty with
 | Vector t n => Vector.t (denote t) n
 end.
 
-(* number of bits when packing a NetlistArrow.Kind as a vector of bits *)
+(* number of bits when packing a CircuitLowering.Kind as a vector of bits *)
 Fixpoint packed_width (ty: Kind): nat :=
 match ty with
 | Tuple l r => (packed_width l) + (packed_width r)
@@ -74,7 +74,7 @@ Proof.
   exact (X :: X0).
 Defined.
 
-(* pack any NetlistArrow.Kind as a Vector.t of Netlist.Kind bits *)
+(* pack any CircuitLowering.Kind as a Vector.t of Netlist.Kind bits *)
 Fixpoint pack (ty: Kind) (s: denote ty) {struct ty}: Vector.t (Signal Kind.Bit) (packed_width ty).
 Proof.
   destruct ty; simpl in *.

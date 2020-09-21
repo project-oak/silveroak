@@ -59,16 +59,16 @@ Section vars.
 
 End vars.
 
-Print Var.
 Arguments Var {var _ _}.
 Arguments Abs {var _ _ _}.
 Arguments App {var _ _ _}.
 Arguments Comp {var _ _ _}.
 Arguments Primitive {var}.
 Arguments LetRec {var _ _ _}.
+Arguments Id {var _}.
 
 Instance KappaCat : Category Kind := {
   morphism X Y := forall var, kappa var X Y;
-  id X := fun var => Id var;
+  id X := fun var => @Id var X;
   compose X Y Z f g := fun var => Comp (f var) (g var);
 }.

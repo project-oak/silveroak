@@ -57,7 +57,7 @@ Set Asymmetric Patterns.
       ->
       kappa_equivalence E (LetRec v1 f1) (LetRec v2 f2)
 
-    | Id_equiv : forall x E, kappa_equivalence E (@Id var1 x) (Id var2)
+    | Id_equiv : forall x E, kappa_equivalence E (@Id var1 x) Id
     .
 
   End Equivalence.

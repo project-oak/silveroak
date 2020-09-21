@@ -203,7 +203,7 @@ Section tests.
   Definition naive_cipher_test :=
     vector_equality
       (interp_combinational (unrolled_cipher_naive SboxCanright _)
-      (false, (test_data, (test_key, tt))))
+      (false, (test_data, test_key)))
       test_encrypted.
 End tests.
 

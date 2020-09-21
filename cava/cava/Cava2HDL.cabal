@@ -48,14 +48,14 @@ library
                      Bool
                      Bvector
                      CavaClass
-                     CavaArrow
+                     CircuitArrow
+                     CircuitLowering
+                     CircuitSemantics
                      CavaNotation
                      Combinators
-                     CombinationalArrow
                      CombinationalMonad
                      Datatypes
                      DecimalString
-                     -- EvaluationArrow -- TODO(blaxill): temporarily disabled
                      ExprSyntax
                      ExprSemantics
                      ExprLowering
@@ -67,7 +67,6 @@ library
                      Monad
                      NaryFunctions
                      Netlist
-                     NetlistArrow
                      NetlistGeneration
                      Nat
                      Ndigits

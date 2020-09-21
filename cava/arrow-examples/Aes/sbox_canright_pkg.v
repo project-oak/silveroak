@@ -46,18 +46,18 @@ Definition aes_mul_gf2p2
 ]>.
 
 Section regression_checks.
-  Notation aes_mul_gf2p2_eval x y := 
-    (bitvec_to_nat (interp_combinational (aes_mul_gf2p2 _) (N2Bv_sized 2 x, (N2Bv_sized 2 y, tt)))).
-  Notation aes_mul_gf2p2_test x y o := 
-    (interp_combinational (aes_mul_gf2p2 _) (N2Bv_sized 2 x, (N2Bv_sized 2 y,tt)) = N2Bv_sized 2 o).
+  Notation aes_mul_gf2p2_eval x y :=
+    (bitvec_to_nat (interp_combinational (aes_mul_gf2p2 _) (N2Bv_sized 2 x, (N2Bv_sized 2 y)))).
+  Notation aes_mul_gf2p2_test x y o :=
+    (interp_combinational (aes_mul_gf2p2 _) (N2Bv_sized 2 x, (N2Bv_sized 2 y)) = N2Bv_sized 2 o).
 
   Goal aes_mul_gf2p2_test 0 0 0. auto. Qed.
   Goal aes_mul_gf2p2_test 0 1 0. auto. Qed.
   Goal aes_mul_gf2p2_test 2 0 0. auto. Qed.
-  Compute aes_mul_gf2p2_eval 0 0.
-  Compute aes_mul_gf2p2_eval 1 1.
-  Compute aes_mul_gf2p2_eval 2 2.
-  Compute aes_mul_gf2p2_eval 3 3.
+  (* Compute aes_mul_gf2p2_eval 0 0. *)
+  (* Compute aes_mul_gf2p2_eval 1 1. *)
+  (* Compute aes_mul_gf2p2_eval 2 2. *)
+  (* Compute aes_mul_gf2p2_eval 3 3. *)
 End regression_checks.
 
 (* // Scale by Omega^2 = N in GF(2^2), using normal basis [Omega^2, Omega] *)
@@ -73,15 +73,13 @@ Definition aes_scale_omega2_gf2p2
 <[ \g => xor g[#1] g[#0] :: g[#0] :: [] ]>.
 
 Section regression_checks.
-  Notation aes_scale_omega2_gf2p2_eval x := 
-    (bitvec_to_nat (combinational_evaluation (closure_conversion aes_scale_omega2_gf2p2) (ltac:(simply_combinational)) (N2Bv_sized 2 x))).
-  Notation aes_scale_omega2_gf2p2_test x o := 
-    (forall (wf: is_combinational (closure_conversion aes_scale_omega2_gf2p2)), 
-    combinational_evaluation (closure_conversion aes_scale_omega2_gf2p2) wf (N2Bv_sized 2 x) = N2Bv_sized 2 o).
+  Notation aes_scale_omega2_gf2p2_eval x :=
+    (bitvec_to_nat (interp_combinational (aes_scale_omega2_gf2p2 _) (N2Bv_sized 2 x))).
+  Notation aes_scale_omega2_gf2p2_test x o :=
+    (interp_combinational (aes_scale_omega2_gf2p2 _) (N2Bv_sized 2 x) = N2Bv_sized 2 o).
 
-  (* Goal aes_scale_omega2_gf2p2_test 0 0. auto. Qed.
-  Goal aes_scale_omega2_gf2p2_test 1 3. auto. Qed. *)
-  Compute aes_scale_omega2_gf2p2_eval 0.
+  Goal aes_scale_omega2_gf2p2_test 0 0. auto. Qed.
+  Goal aes_scale_omega2_gf2p2_test 1 3. auto. Qed.
 End regression_checks.
 
 (* // Scale by Omega = N^2 in GF(2^2), using normal basis [Omega^2, Omega] *)
@@ -171,12 +169,10 @@ Definition X2S :  Unit ~> Vector (Vector Bit 8) 8 := <[ #88:: #45:: #158:: #11::
 Definition S2X :  Unit ~> Vector (Vector Bit 8) 8 := <[ #140:: #121:: #5:: #235:: #18:: #4:: #81:: #83      :: [] ]>.
 
 Section regression_checks.
-  Definition S2X_indexer: <<Vector Bit 3, Unit>> ~> <<Vector Bit 8>> := 
+  Definition S2X_indexer: <<Vector Bit 3, Unit>> ~> <<Vector Bit 8>> :=
     <[\x => let vec = !S2X in vec[x] ]>.
-  (* Goal
-    (interp_combinational (S2X_indexer _) (N2Bv_sized 3 2, tt) = N2Bv_sized 8 5). 
-    auto. Qed.
-  Goal
-    (interp_combinational (S2X_indexer _) (N2Bv_sized 3 4, tt) = N2Bv_sized 8 18). 
-    auto. Qed. *)
+  Goal (interp_combinational (S2X_indexer _) (N2Bv_sized 3 2) = N2Bv_sized 8 5).
+  Proof. auto. Qed.
+  Goal (interp_combinational (S2X_indexer _) (N2Bv_sized 3 4) = N2Bv_sized 8 18).
+  Proof. auto. Qed.
 End regression_checks.

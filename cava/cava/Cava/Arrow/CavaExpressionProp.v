@@ -16,8 +16,8 @@
 
 (* temporarily disabled *)
 From Arrow Require Import Category Arrow Kappa KappaProp KappaEquiv ClosureConversion.
-From Cava Require Import Arrow.CavaArrow Arrow.CavaExpression.
-(* From Cava Require Import Arrow.CavaArrow Arrow.EvaluationArrow Arrow.CavaExpression. *)
+From Cava Require Import Arrow.CircuitArrow Arrow.CavaExpression.
+(* From Cava Require Import Arrow.CircuitArrow Arrow.EvaluationArrow Arrow.CavaExpression. *)
 
 From Coq Require Import Arith NArith Lia NaryFunctions.
 

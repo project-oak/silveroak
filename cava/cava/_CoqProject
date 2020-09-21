@@ -25,8 +25,8 @@ Cava/Arrow/ExprEquiv.v
 Cava/Arrow/ExprLowering.v
 Cava/Arrow/ExprSemantics.v
 
-Cava/Arrow/CavaArrow.v
-Cava/Arrow/PropArrow.v
+Cava/Arrow/CircuitArrow.v
+Cava/Arrow/CircuitProp.v
 Cava/Arrow/CircuitSemantics.v
 Cava/Arrow/CircuitLowering.v
 Cava/Arrow/CavaNotation.v

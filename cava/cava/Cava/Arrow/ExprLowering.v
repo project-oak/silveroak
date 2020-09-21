@@ -5,7 +5,7 @@ Require Import Coq.micromega.Lia.
 
 Require Import Cava.Arrow.ExprSyntax.
 Require Import Cava.Arrow.ExprEquiv.
-Require Import Cava.Arrow.CavaArrow.
+Require Import Cava.Arrow.CircuitArrow.
 
 Require Import Arrow.Category.
 Require Import Arrow.Arrow.
@@ -210,9 +210,9 @@ removes the list Kind, we first need to copy the list Kind. *)
   >>> closure_conversion' ctxt e1
 
 | ExprSyntax.Primitive p =>
-    second drop >>> cancelr >>> (CavaArrow.Primitive p)
+    second drop >>> cancelr >>> (CircuitArrow.Primitive p)
 
-| ExprSyntax.Id _ =>
+| ExprSyntax.Id =>
     second drop >>> cancelr >>> id
 
 | Let v f =>

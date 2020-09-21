@@ -53,7 +53,7 @@ Recursive Extraction Library Kleisli.
 From Cava.Arrow Require Import ArrowExport.
 Recursive Extraction Library ArrowKind.
 Recursive Extraction Library Primitives.
-Recursive Extraction Library CavaArrow.
+Recursive Extraction Library CircuitArrow.
 Recursive Extraction Library ExprSyntax.
 Recursive Extraction Library ExprSemantics.
 Recursive Extraction Library ExprLowering.
@@ -61,7 +61,7 @@ Recursive Extraction Library ExprEquiv.
 Recursive Extraction Library CavaNotation.
 Recursive Extraction Library CircuitSemantics.
 Recursive Extraction Library CircuitLowering.
-Recursive Extraction Library PropArrow.
+Recursive Extraction Library CircuitProp.
 
 Recursive Extraction Library Netlist.
 Recursive Extraction Library Signal.
