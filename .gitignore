@@ -16,4 +16,5 @@ work-obj93.cf
 */xsim.dir/*
 *~
 *.lia.cache
+*.nia.cache
 *\#*
