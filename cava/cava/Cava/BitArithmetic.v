@@ -16,7 +16,7 @@
 
 (* Bit-vector arithmetic operations for Cava. *)
 
-From Coq Require Import Bool.Bool. 
+From Coq Require Import Bool.Bool.
 From Coq Require Import Lists.List.
 From Coq Require Import Vector.
 From Coq Require Import Bool.Bvector.
@@ -100,7 +100,7 @@ Example n2b_2_2 : nat_to_list_bits 2 = [false; true].
 Proof. reflexivity. Qed.
 
 Example n2b_2_3 : nat_to_list_bits 3 = [true; true].
-Proof. reflexivity. Qed.  
+Proof. reflexivity. Qed.
 
 Lemma nat_of_list_bits_sized: forall (size :  nat) (v : N), size = N.size_nat v ->
       nat_to_list_bits_sized size v = nat_to_list_bits v.
@@ -133,7 +133,7 @@ Proof.
     reflexivity.
     repeat rewrite Nat.shiftl_0_l.
     simpl. reflexivity.
-Qed.   
+Qed.
 
 Lemma nat_to_bits'_list_correct : forall n, list_bits_to_nat' (nat_to_list_bits' n) = n.
 Proof.
@@ -156,8 +156,8 @@ Proof.
     destruct (le_lt_dec x 0).
     + reflexivity.
     + rewrite H0. reflexivity.
-Qed.         
-     
+Qed.
+
 (******************************************************************************)
 (* Functions useful for Vector operations                                     *)
 (******************************************************************************)
@@ -183,7 +183,7 @@ Proof. reflexivity. Qed.
 
 Definition nat_to_bitvec (v : nat) : Bvector (N.size_nat (N.of_nat v)) :=
   N2Bv (N.of_nat v).
-       
+
 Definition nat_to_bitvec_sized (n : nat) (v : nat) : Bvector n :=
   N2Bv_sized n (N.of_nat v).
 
@@ -194,7 +194,7 @@ Example bv3_1_cancellev : nat_to_bitvec_sized 3 1 = bv3_1.
 Proof. reflexivity. Qed.
 
 Example bv3_2_cancellev : nat_to_bitvec_sized 3 2 = bv3_2.
-Proof. reflexivity. Qed.    
+Proof. reflexivity. Qed.
 
 (* Vector version of list seq *)
 Fixpoint vec_seq (a b : nat) : Vector.t nat b :=
@@ -216,7 +216,7 @@ Proof.
   unfold nat_to_bitvec_sized.
   unfold bitvec_to_nat.
   rewrite N2Nat.id.
-  rewrite N2Bv_sized_Bv2N. 
+  rewrite N2Bv_sized_Bv2N.
   reflexivity.
 Qed.
 
@@ -225,7 +225,7 @@ Proof.
   intros.
   unfold nat_to_bitvec.
   unfold bitvec_to_nat.
-  rewrite Bv2N_N2Bv. 
+  rewrite Bv2N_N2Bv.
   rewrite Nat2N.id.
   reflexivity.
 Qed.
@@ -268,3 +268,4 @@ Definition toVec := List.map nat2bool.
 Definition Bv2Hex {n} (x: Vector.t bool n) := HexString.of_N (Bv2N x).
 
 Definition byte_reverse {n} (x: Vector.t bool (n*8)) := Vector.flatten (Vector.reverse (Vector.reshape (m:=8) x)).
+

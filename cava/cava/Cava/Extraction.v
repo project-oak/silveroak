@@ -44,22 +44,24 @@ Recursive Extraction Library CombinationalMonad.
 Recursive Extraction Library Combinators.
 Recursive Extraction Library NetlistGeneration.
 
-From Arrow Require Import Arrow Category Coq Kleisli Kappa ClosureConversion.
+From Arrow Require Import Arrow Category Coq Kleisli .
 Recursive Extraction Library Arrow.
 Recursive Extraction Library Category.
 Recursive Extraction Library Coq.
 Recursive Extraction Library Kleisli.
-Recursive Extraction Library Kappa.
-Recursive Extraction Library ClosureConversion.
 
 From Cava.Arrow Require Import ArrowExport.
-Recursive Extraction Library CavaArrow.
-Recursive Extraction Library CavaExpression.
+Recursive Extraction Library ArrowKind.
+Recursive Extraction Library Primitives.
+Recursive Extraction Library CircuitArrow.
+Recursive Extraction Library ExprSyntax.
+Recursive Extraction Library ExprSemantics.
+Recursive Extraction Library ExprLowering.
+Recursive Extraction Library ExprEquiv.
 Recursive Extraction Library CavaNotation.
-Recursive Extraction Library CombinationalArrow.
-(* Recursive Extraction Library EvaluationArrow. *) (* TODO(blaxill): temporarily disabled *)
-Recursive Extraction Library NetlistArrow.
-Recursive Extraction Library PropArrow.
+Recursive Extraction Library CircuitSemantics.
+Recursive Extraction Library CircuitLowering.
+Recursive Extraction Library CircuitProp.
 
 Recursive Extraction Library Netlist.
 Recursive Extraction Library Signal.

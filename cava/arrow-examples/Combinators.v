@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category Arrow ClosureConversion.
+From Arrow Require Import Category Arrow.
 From Cava Require Import Arrow.ArrowExport.
 
 From Coq Require Import Strings.String Bvector List NArith Nat Lia Plus.
@@ -22,6 +22,7 @@ Import ListNotations.
 Import EqNotations.
 
 Import KappaNotation.
+Local Open Scope category_scope.
 Local Open Scope string_scope.
 Local Open Scope kind_scope.
 
@@ -29,10 +30,10 @@ Local Open Scope kind_scope.
 (* Rewrites *)
 
 Definition rewrite_kind {x y} (H: x = y) 
-  : << x, Unit >> ~> y :=
+  : << x, Unit >> ~[KappaCat]~> y :=
   match eq_kind_dec x y with
   | left Heq =>
-    rew [fun x => << _ >> ~> <<x>> ] Heq in <[\x=>x]> 
+    rew [fun x => << _ >> ~[KappaCat]~> <<x>> ] Heq in <[\x=>x]> 
   | right Hneq => (ltac:(contradiction))
   end.
 
@@ -40,7 +41,7 @@ Definition rewrite_vector {A x y} (H: x = y)
   : << Vector A x, Unit >> ~> <<Vector A y>> :=
   match PeanoNat.Nat.eq_dec x y with
   | left Heq =>
-    rew [fun x => << _, _ >> ~> <<Vector A x>> ] Heq in <[\x=>x]> 
+    rew [fun x => << _, _ >> ~[KappaCat]~> <<Vector A x>> ] Heq in <[\x=>x]> 
   | right Hneq => (ltac:(contradiction))
   end.
 
@@ -105,14 +106,14 @@ match n with
 | S n' => <[ #offset :: !(seq (offset + 1)) ]>
 end.
 
-Definition drop_all {T}
+(* Definition drop_all {T}
   :  << T >> ~> Unit
-  := drop (A:=CircuitArrow).
+  := drop (A:=CircuitArrow). *)
 
-Definition replace {A B}
+(* Definition replace {A B}
   (constant:  Unit ~> B)
   :  << A >> ~> B
-  := drop_all >>> constant.
+  := drop_all >>> constant. *)
 
 (* *************************** *)
 (* Tree folds, expecting a vector of input size pow2 *)
@@ -245,7 +246,7 @@ Definition zipper {n A B}
 
 Fixpoint equality {T}
   :  << T, T, Unit >> ~> <<Bit>> :=
-match T return  << T, T, Unit >> ~> <<Bit>> with 
+match T return  << T, T, Unit >> ~[KappaCat]~> <<Bit>> with 
 | Unit => <[ \_ _ => true' ]>
 | Bit => <[ \x y => xnor x y ]> (* bit equality is the xnor function *)
 | Tuple l r => <[ 
@@ -277,7 +278,7 @@ Definition enable_vec {n}
 
 Fixpoint enable {T}
   :  << Bit, T, Unit >> ~> <<T>> :=
-match T return  << Bit, T, Unit >> ~> <<T>> with 
+match T return  << Bit, T, Unit >> ~[KappaCat]~> <<T>> with 
 | Unit => <[ \_ x => x ]>
 | Bit => <[ \en x => and en x ]> 
 | Tuple l r => <[ \en x => let '(a,b) = x in
@@ -289,7 +290,7 @@ end.
 Fixpoint bitwise {T}
   (f:  << Bit, Bit, Unit >> ~> <<Bit>>)
   :  << T, T, Unit >> ~> <<T>> :=
-match T return  << T, T, Unit >> ~> <<T>> with 
+match T return  << T, T, Unit >> ~[KappaCat]~> <<T>> with 
 | Unit => <[ \x _ => x ]>
 | Bit => f
 | Tuple l r => <[ \x y => 

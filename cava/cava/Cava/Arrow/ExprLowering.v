@@ -2,28 +2,31 @@ Require Import Coq.Arith.Arith.
 Require Import Coq.Logic.Eqdep.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
+
+Require Import Cava.Arrow.ExprSyntax.
+Require Import Cava.Arrow.ExprEquiv.
+Require Import Cava.Arrow.CircuitArrow.
+
 Require Import Arrow.Category.
 Require Import Arrow.Arrow.
-Require Import Arrow.Kappa.
-Require Import Arrow.KappaEquiv.
 
 Import ListNotations.
 Import EqNotations.
 
 Generalizable All Variables.
 
-Section Arrow.
+(* Section Arrow.
 
-Context {object: Type}.
-Context {unit: object}.
-Context {category: Category object}.
-Context {product: object -> object -> object}.
-Context {arrow: Arrow object category unit product}.
+Context {Kind: Type}.
+Context {unit: Kind}.
+Context {category: Category Kind}.
+Context {product: Kind -> Kind -> Kind}.
+Context {arrow: Arrow Kind category unit product}.
 Context {stkc: ArrowSTKC arrow}.
 Context {arrow_loop: ArrowLoop arrow}.
-Context {decidable_equality: DecidableEquality object}.
-Context {default_object: forall x, morphism unit x}.
-
+Context {decidable_equality: DecidableEquality Kind}.
+Context {default_Kind: forall x, morphism unit x}.
+*)
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
 
@@ -73,10 +76,10 @@ Hint Extern 50 => simpl; lia : kappa_cc.
 
 Notation ok_lookup := (fun (l: list _) (n: nat) (ty: _) => reverse_nth l n = Some ty).
 
-Fixpoint as_kind (ctxt: list object): object :=
+Fixpoint as_kind (ctxt: list Kind): Kind :=
   match ctxt with
-  | [] => unit
-  | x :: xs => x ** (as_kind xs)
+  | [] => Unit
+  | x :: xs => Tuple x (as_kind xs)
   end.
 
 (****************************************************************************)
@@ -84,7 +87,7 @@ Fixpoint as_kind (ctxt: list object): object :=
 (****************************************************************************)
 
 Section ctxt.
-  Variable ctxt: list object.
+  Variable ctxt: list Kind.
 
   Tactic Notation "ctxt_induction" := intros; induction ctxt; auto with kappa_cc.
 
@@ -99,7 +102,7 @@ Section ctxt.
     end : kappa_cc.
 
   Lemma lookup_lower_contra : forall i ty,
-    reverse_nth (A:=object) [] i = Some ty -> False.
+    reverse_nth (A:=Kind) [] i = Some ty -> False.
   Proof. auto with kappa_cc. Qed.
 
   Lemma lookup_upper_contra : forall ty,
@@ -136,70 +139,65 @@ Section ctxt.
   Proof. auto with kappa_cc. Qed.
 End ctxt.
 
-Definition rewrite_object {x y: object} (H: x = y)
-  : x ~> y :=
-  match eq_dec x y with
-  | left Heq => rew Heq in id
-  | right Hneq => (ltac:(abstract contradiction))
-  end.
-
-(* Construct an Arrow morphism that takes a variable list object
+(* Construct an Arrow morphism that takes a variable list Kind
 and returns the variable at an index *)
-Fixpoint extract_nth (ctxt: list object) (ty: object) (x: nat)
-  : (as_kind ctxt) ~> ty :=
+Fixpoint extract_nth (ctxt: list Kind) (ty: Kind) (x: nat)
+  : (as_kind ctxt) ~[CircuitArrow]~> ty :=
   match ctxt with
-  | [] => drop >>> default_object _
+  | [] => drop >>> Primitive (Constant _(kind_default _))
   | ty' :: ctxt' =>
     if x =? (length ctxt') then
-      match eq_dec ty' ty with
-      | left Heq2 => rew Heq2 in (second drop >>> cancelr)
-      | right Hneq => drop >>> default_object _
+      (* match eq_dec ty' ty with *)
+      match eq_kind_dec ty' ty with
+      (* | left Heq2 => rew Heq2 in (drop >>> Primitive (Constant _(kind_default _))) *)
+      | left Heq2 => rew Heq2 in (second drop >>> Structural (Cancelr _))
+      | right Hneq => drop >>> Primitive (Constant _(kind_default _))
       end
     else first drop >>> cancell >>> extract_nth ctxt' _ x
   end.
 
-(* Perform closure conversion by passing an explicit list object. The PHOAS
+(* Perform closure conversion by passing an explicit list Kind. The PHOAS
 representation is converted to first order form with de Brujin
 indexing as described by Adam Chlipala's Lambda Tamer project. As our source
 language is a Kappa calculus and our target is a Generalized Arrow representation,
-the list object and arguments are manipulated using Arrow combinators amongst
+the list Kind and arguments are manipulated using Arrow combinators amongst
 other differences.
 
 This implementation is also currently missing logic to remove free variables
-from the list object.
+from the list Kind.
 *)
 Fixpoint closure_conversion' {i o}
-  (ctxt: list object)
+  (ctxt: list Kind)
   (expr: kappa natvar i o) {struct expr}
   : (i ** (as_kind ctxt)) ~> o
   :=
 match expr with
-(* Instantiating a variable is done by 'cancell' to select the list object,
+(* Instantiating a variable is done by 'cancell' to select the list Kind,
 and then indexing using lookup_morphism. *)
 | Var v =>
   first drop >>> cancell >>> (extract_nth ctxt _ v)
 
-(* Kappa abstraction requires extending the list object then moving the
-new list object variable in to place*)
+(* Kappa abstraction requires extending the list Kind then moving the
+new list Kind variable in to place*)
 | Abs f =>
   let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
   (*
-      input:      (x*y)*list object_variables
+      input:      (x*y)*list Kind_variables
 
   1. 'first swap': Move the first argument into the right hand position
-      first swap: (y*x)*list object_variables ~> o
+      first swap: (y*x)*list Kind_variables ~> o
 
-  2. 'assoc': move the argument to the front of the list object via reassociation
-      assoc:      y*(x*list object_variables) ~> o
+  2. 'assoc': move the argument to the front of the list Kind via reassociation
+      assoc:      y*(x*list Kind_variables) ~> o
 
   3. call f'
-      f':         y*new_list object_variables ~> o
+      f':         y*new_list Kind_variables ~> o
   *)
   first swap >>> assoc >>> f'
 
-(* Application requires the object list object to be piped to the abstraction
+(* Application requires the Kind list Kind to be piped to the abstraction
 'f' and applicant 'e'. since running 'closure_conversion' on each binder
-removes the list object, we first need to copy the list object. *)
+removes the list Kind, we first need to copy the list Kind. *)
 | App f e =>
   second (copy >>> first (uncancell >>> closure_conversion' ctxt e))
   >>> unassoc >>> first swap
@@ -211,8 +209,11 @@ removes the list object, we first need to copy the list object. *)
   >>> first (closure_conversion' ctxt e2)
   >>> closure_conversion' ctxt e1
 
-| Morph m =>
-    second drop >>> cancelr >>> m
+| ExprSyntax.Primitive p =>
+    second drop >>> cancelr >>> (CircuitArrow.Primitive p)
+
+| ExprSyntax.Id =>
+    second drop >>> cancelr >>> id
 
 | Let v f =>
   let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
@@ -240,11 +241,11 @@ Notation variable_pair i o n1 n2 := (vars natvar natvar (obj_pair i o) (pair n1 
 
 (* Evidence of variable pair equality *)
 Notation match_pairs xo xn yi yo yn1 yn2 :=
-  (variable_pair unit xo xn xn = variable_pair yi yo yn1 yn2).
+  (variable_pair Unit xo xn xn = variable_pair yi yo yn1 yn2).
 
-(* Evidence that if a given variable is in an list object we can reverse_nth the object at the index. *)
+(* Evidence that if a given variable is in an list Kind we can reverse_nth the Kind at the index. *)
 Notation ok_variable_lookup := (fun ctxt E =>
-  forall (i o : object) (n1 n2 : natvar i o),
+  forall (i o : Kind) (n1 n2 : natvar i o),
     In (vars natvar natvar (obj_pair i o) (pair n1 n2)) E
     -> reverse_nth ctxt n1 = Some o
 ).
@@ -270,7 +271,7 @@ Hint Extern 10 =>
 
 Hint Extern 20 => eapply recover_dependent_val : kappa_cc.
 
-Lemma apply_lookup : forall (ctxt: list object) i o n1 n2 E,
+Lemma apply_lookup : forall (ctxt: list Kind) i o n1 n2 E,
   In (variable_pair i o n1 n2) E
   -> ok_variable_lookup ctxt E
   -> reverse_nth ctxt n1 = Some o.
@@ -293,12 +294,12 @@ specific hypotheses. *)
 Lemma kappa_wf
   : forall i o E (expr1 expr2: kappa natvar i o),
   kappa_equivalence E expr1 expr2
-  -> forall (ctxt: list object), ok_variable_lookup ctxt E
+  -> forall (ctxt: list Kind), ok_variable_lookup ctxt E
   -> wf_phoas_context ctxt expr1.
 Proof.
   apply (kappa_equivalence_ind
     (fun i o E (expr1 expr2 : kappa natvar i o) =>
-      forall (ctxt: list object),
+      forall (ctxt: list Kind),
         ok_variable_lookup ctxt E
         -> wf_phoas_context ctxt expr1)
     ); simpl; eauto with kappa_cc.
@@ -318,4 +319,4 @@ Definition closure_conversion {i o} (expr: Kappa i o) : i ~> o
 Hint Resolve closure_conversion' : core.
 Hint Resolve closure_conversion : core.
 
-End Arrow.
+(* End Arrow. *)

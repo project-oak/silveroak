@@ -60,19 +60,19 @@ Module Vector.
   Local Open Scope vector_scope.
   Fixpoint reshape {n m A}:
     Vector.t A (n * m) -> Vector.t (Vector.t A m) n :=
-    match n as n' return 
+    match n as n' return
       Vector.t A (n' * m) -> Vector.t (Vector.t A m) n' with
     | 0 => fun _ => []
-    | S n' => fun v =>  
+    | S n' => fun v =>
       let '(x, xs) := Vector.splitat (r:=n' * m) m v in
-      x :: @reshape n' m A xs 
+      x :: @reshape n' m A xs
     end.
 
   Fixpoint flatten {n m A}:
     Vector.t (Vector.t A m) n -> Vector.t A (n*m) :=
     match n as n' return Vector.t (Vector.t A m) n' -> Vector.t A (n'*m) with
     | 0 => fun _ => []
-    | S n' => fun v => 
+    | S n' => fun v =>
         let '(x, xs) := uncons v in
         x ++ (@flatten n' m A) xs
     end.
@@ -80,7 +80,7 @@ Module Vector.
   Definition snoc n o (v: Vector.t o n) a
     : Vector.t o (S n) :=
     t_rect _ (fun n v => Vector.t o (S n)) [a]
-    (fun x n v f => 
+    (fun x n v f =>
       x :: f
     ) _ v.
 
@@ -99,7 +99,7 @@ End Vector.
 
 Local Open Scope vector_scope.
 
-Fixpoint vcombine {A B: Type} {s: nat} (a: Vector.t A s) 
+Fixpoint vcombine {A B: Type} {s: nat} (a: Vector.t A s)
                                        (b: Vector.t B s) :
                                        Vector.t (A * B) s :=
 
@@ -128,11 +128,11 @@ Import EqNotations.
 
 Fixpoint sliceVector {T: Type} {s: nat} (v: Vector.t T s) (startAt len : nat)
                      (H: startAt + len <= s) : Vector.t T len :=
-  match Nat.eq_dec s (startAt + (s - startAt)) with 
+  match Nat.eq_dec s (startAt + (s - startAt)) with
     | left Heq =>
       let '(_, v) := Vector.splitat startAt (rew [fun x => Vector.t T x] Heq in v)
       in
-        match Nat.eq_dec (s-startAt) (len + ((s-startAt) - len)) with 
+        match Nat.eq_dec (s-startAt) (len + ((s-startAt) - len)) with
         | left Heq => fst (Vector.splitat len (rew [fun x => Vector.t T x] Heq in v))
         | right Hneq => (ltac:(abstract lia))
         end
@@ -170,7 +170,7 @@ Proof.
   - auto.
   - simpl. rewrite Nat.add_1_r. apply v.
 Qed.
-                                                
+
 Program Definition consAltVector {A: Type} {n: nat} (a: A) (v: AltVector A n) :
                          AltVector A (n+1) :=
    vecConsFact (a, v).
@@ -180,7 +180,7 @@ Proof.
   induction xs.
   - simpl. reflexivity.
   - simpl. rewrite <- IHxs. simpl. reflexivity.
-Qed.  
+Qed.
 
 Definition vec_cons {A} {x: A} {xs: list A} (v: AltVector A (length xs + 1)) :
                     AltVector A (length (x :: xs)).
@@ -194,3 +194,4 @@ Fixpoint listToAltVector {A: Type} (l: list A) : AltVector A (length l) :=
   | [] => tt
   | x::xs => vec_cons (consAltVector x (listToAltVector xs))
   end.
+

@@ -5,7 +5,3 @@ Arrow.v
 Coq.v
 Kleisli.v
 
-Kappa.v
-KappaProp.v
-KappaEquiv.v
-ClosureConversion.v

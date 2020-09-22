@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category ClosureConversion.
+From Arrow Require Import Category.
 From Cava Require Import Arrow.ArrowExport.
 
 Require Import Coq.Strings.String.
@@ -25,6 +25,7 @@ Import ListNotations.
 
 Section notation.
   Import KappaNotation.
+  Local Open Scope category_scope.
   Local Open Scope kind_scope.
 
   Definition halfAdder
@@ -145,7 +146,7 @@ Section notation.
 
 End notation.
 
-Lemma fullAdder_is_combinational: is_combinational fullAdder.
+Lemma fullAdder_is_combinational: is_combinational (closure_conversion fullAdder).
 Proof. simply_combinational. Qed.
 
 Require Import Cava.Types.
@@ -169,10 +170,10 @@ Definition fullAdder_tb_inputs :=
 ].
 
 Definition fullAdder_netlist :=
-  makeNetlist fullAdderInterface (build_netlist fullAdder).
+  makeNetlist fullAdderInterface (build_netlist (closure_conversion fullAdder)).
 
 Definition fullAdder_tb_expected_outputs  : list (bool * bool)
-  := (List.map (fun i => combinational_evaluation fullAdder fullAdder_is_combinational i) fullAdder_tb_inputs) .
+  := (List.map (fun i => combinational_evaluation (closure_conversion fullAdder) fullAdder_is_combinational i) fullAdder_tb_inputs) .
 
 Definition fullAdder_tb :=
   testBench "fullAdder_tb" fullAdderInterface

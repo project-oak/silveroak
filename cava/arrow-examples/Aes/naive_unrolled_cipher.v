@@ -61,7 +61,7 @@ Definition key_expansion_word
     let w3 = k0[#3] ^ w2 in
 
     w0 :: w1 :: w2 :: w3 :: []
-  ]>.
+ ]>.
 
 Definition aes_256_naive_key_expansion'
   (sbox_impl: SboxImpl)
@@ -164,13 +164,10 @@ Definition unrolled_cipher_naive
 Section tests.
   Definition test_key := byte_reverse (n:=32) (N2Bv_sized 256 (Z.to_N (Ox "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"))).
 
-  Lemma key_expansion_comb: is_combinational (aes_256_naive_key_expansion SboxCanright).
-  Proof. simply_combinational. Qed.
-
-  Definition expanded_key :=
-    combinational_evaluation'
+  (* Definition expanded_key :=
+    interp_combinational
       (<[\data => !(aes_256_naive_key_expansion SboxCanright) (!reshape (!reshape data)) ]>)
-      (N2Bv_sized 256 0, tt).
+      (N2Bv_sized 256 0, tt). *)
 
   (* Compute (Vector.map (Vector.map (Vector.map Bv2Hex)) expanded_key). *)
 
@@ -196,16 +193,15 @@ Section tests.
   Definition test_data := byte_reverse (n:=16) (N2Bv_sized 128 (Z.to_N (Ox "00112233445566778899aabbccddeeff"))).
   Definition test_encrypted := byte_reverse (n:=16) (N2Bv_sized 128 (Z.to_N (Ox "8ea2b7ca516745bfeafc49904b496089"))).
 
-  Lemma unrolled_cipher_naive_comb: is_combinational (unrolled_cipher_naive SboxCanright).
-  Proof. simply_combinational. Qed.
+  (* Vector.eqb is extracted under a different namespace, so we redefine
+  * boolean vector equality here *)
+  Definition vector_equality {n} (v1: Vector.t bool n) (v2: Vector.t bool n) :=
+    Vector.fold_left Bool.eqb true (Vector.map2 Bool.eqb v1 v2).
 
-  Goal combinational_evaluation (unrolled_cipher_naive SboxCanright) unrolled_cipher_naive_comb
-      (false, (test_data, test_key))
-    = test_encrypted.
-  Proof. time now vm_compute. Qed.
-  Goal combinational_evaluation (unrolled_cipher_naive SboxCanright) unrolled_cipher_naive_comb
-      (true, (test_encrypted, test_key))
-    = test_data.
-  Proof. time now vm_compute. Qed.
+  Definition naive_cipher_test :=
+    vector_equality
+      (interp_combinational (unrolled_cipher_naive SboxCanright _)
+      (false, (test_data, test_key)))
+      test_encrypted.
 End tests.
 

@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category ClosureConversion.
+From Arrow Require Import Category.
 From Cava Require Import Arrow.ArrowExport.
 
 Require Import Coq.Strings.String.
@@ -25,6 +25,7 @@ Import ListNotations.
 
 Section notation.
   Import KappaNotation. 
+  Local Open Scope category_scope.
   Local Open Scope kind_scope.
 
   Definition xilinxFullAdder
@@ -40,5 +41,5 @@ End notation.
 
 Open Scope kind_scope.
 
-Lemma xilinxFullAdder_is_combinational: is_combinational xilinxFullAdder. 
+Lemma xilinxFullAdder_is_combinational: is_combinational (closure_conversion xilinxFullAdder). 
 Proof. simply_combinational. Qed.

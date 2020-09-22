@@ -14,9 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool ZArith NaryFunctions VectorDef.
-From Arrow Require Import Category Arrow Kappa ClosureConversion.
-From Cava Require Import Arrow.CavaArrow.
+From Coq Require Import Bool ZArith NaryFunctions Vector.
+From Arrow Require Import Category Arrow .
+From Cava Require Import Arrow.CircuitArrow.
 
 Import VectorNotations.
 
@@ -44,10 +44,10 @@ Fixpoint no_loops {i o} (c: Circuit i o): bool :=
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
 
-Definition is_combinational {i o: Kind} (c: i ~> o) := 
+Definition is_combinational {i o: Kind} (c: i ~> o) :=
   no_loops c && no_delays c = true.
 
-Ltac simply_combinational := 
+Ltac simply_combinational :=
   vm_compute; reflexivity.
   (* repeat match goal with
   | [ H |- True ] => exact I
@@ -57,7 +57,7 @@ Ltac simply_combinational :=
   lazy;
   repeat lazymatch goal with
   | [ |- True ] => exact I
-  | [ |- forall p, (?H1 -> ?H2 -> p) -> p ] => 
+  | [ |- forall p, (?H1 -> ?H2 -> p) -> p ] =>
     let x := fresh in (let y := fresh in (
       intros x y; apply y; clear x y
     ))
@@ -65,12 +65,12 @@ Ltac simply_combinational :=
   end. *)
 
 Lemma is_combinational_first: forall x y z (circuit: x ~> y),
-  is_combinational (first circuit : x**z ~> y**z) =   
+  is_combinational (first circuit : x**z ~> y**z) =
   is_combinational circuit.
 Proof. tauto. Qed.
 
 Lemma is_combinational_second: forall x y z (circuit: x ~> y),
-  is_combinational (second circuit : z**x ~> z**y) =   
+  is_combinational (second circuit : z**x ~> z**y) =
   is_combinational circuit.
 Proof. tauto. Qed.
 
@@ -88,7 +88,7 @@ Section example.
     ~ is_combinational (ex_loopr c).
   Proof. vm_compute. intros. inversion x3. Qed.
 
-  Example not_gate_is_combinational : 
+  Example not_gate_is_combinational :
     is_combinational (Primitive Not).
   Proof.  simply_combinational. Qed.
 End example.

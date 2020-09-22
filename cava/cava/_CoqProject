@@ -1,13 +1,13 @@
 -R Cava Cava
 -R ../arrow-lib Arrow
 
+Cava/VectorUtils.v
 Cava/BitArithmetic.v
 Cava/Cava.v
 Cava/Kind.v
 Cava/Signal.v
 Cava/Netlist.v
 Cava/Types.v
-Cava/VectorUtils.v
 
 Cava/Monad/CavaMonad.v
 Cava/Monad/CavaClass.v
@@ -18,12 +18,17 @@ Cava/Monad/NetlistGeneration.v
 Cava/Monad/XilinxAdder.v
 
 Cava/Arrow/ArrowKind.v
-Cava/Arrow/CavaArrow.v
-Cava/Arrow/PropArrow.v
-Cava/Arrow/CombinationalArrow.v
-Cava/Arrow/NetlistArrow.v
-Cava/Arrow/CavaExpression.v
-Cava/Arrow/CavaExpressionProp.v
+Cava/Arrow/Primitives.v
+
+Cava/Arrow/ExprSyntax.v
+Cava/Arrow/ExprEquiv.v
+Cava/Arrow/ExprLowering.v
+Cava/Arrow/ExprSemantics.v
+
+Cava/Arrow/CircuitArrow.v
+Cava/Arrow/CircuitProp.v
+Cava/Arrow/CircuitSemantics.v
+Cava/Arrow/CircuitLowering.v
 Cava/Arrow/CavaNotation.v
 Cava/Arrow/ArrowExport.v
 

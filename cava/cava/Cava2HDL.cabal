@@ -43,18 +43,23 @@ library
                      ArrowKind
                      BinNat
                      BinNums
+                     BinInt
                      BitArithmetic
+                     Bool
                      Bvector
                      CavaClass
-                     CavaArrow
-                     CavaExpression
+                     CircuitArrow
+                     CircuitLowering
+                     CircuitSemantics
                      CavaNotation
                      Combinators
-                     CombinationalArrow
                      CombinationalMonad
                      Datatypes
                      DecimalString
-                     -- EvaluationArrow -- TODO(blaxill): temporarily disabled
+                     ExprSyntax
+                     ExprSemantics
+                     ExprLowering
+                     HexString
                      IdentityMonad
                      Kind
                      List
@@ -62,11 +67,11 @@ library
                      Monad
                      NaryFunctions
                      Netlist
-                     NetlistArrow
                      NetlistGeneration
                      Nat
                      Ndigits
                      PeanoNat
+                     Primitives
                      Signal
                      StateMonad
                      Types
@@ -79,21 +84,16 @@ library
                      -- From arrow-lib
                      Category
                      Arrow
-                     Kappa
-                     ClosureConversion
                      Coq
                      Kleisli
   other-Modules:     Applicative
                      BinPos
-                     BinInt
                      BinNatDef
-                     Bool
                      ByteVector
                      Compare_dec
                      Decimal
                      Functor
                      Hexadecimal
-                     HexString
                      Numeral
                      Specif
                      MonadExc

@@ -14,8 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category ClosureConversion.
-From Cava Require Import Arrow.ArrowExport Arrow.CavaArrow.
+From Arrow Require Import Category.
+From Cava Require Import Arrow.ArrowExport.
 
 Require Import Coq.Strings.String.
 From Coq Require Import Lists.List.
@@ -25,6 +25,7 @@ Local Open Scope string_scope.
 
 Section notation.
   Import KappaNotation.
+  Local Open Scope category_scope.
   Local Open Scope kind_scope.
 
   Definition mux2_1
@@ -41,7 +42,7 @@ End notation.
 
 Open Scope kind_scope.
 
-Lemma mux2_1_is_combinational: is_combinational mux2_1.
+Lemma mux2_1_is_combinational: is_combinational (closure_conversion mux2_1).
 Proof. simply_combinational. Qed.
   
 Require Import Cava.Types.
@@ -54,7 +55,7 @@ Definition mux2_1_Interface :=
      [].
 
 Definition mux2_1_netlist :=
-  makeNetlist mux2_1_Interface (build_netlist mux2_1).
+  makeNetlist mux2_1_Interface (build_netlist (closure_conversion mux2_1)).
 
 Definition mux2_1_tb_inputs : list (bool * (bool * bool)) := 
  [(false, (false, true));
@@ -66,8 +67,9 @@ Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
 
 (* Using `evaluate_to_terms` for a nicer extracted value *)
 Definition mux2_1_tb_expected_outputs : list bool :=
+ map (fun i => combinational_evaluation (closure_conversion mux2_1) mux2_1_is_combinational i) mux2_1_tb_inputs.
 
- map (fun i => combinational_evaluation mux2_1 mux2_1_is_combinational i) mux2_1_tb_inputs.
+Goal is_combinational (closure_conversion mux2_1). Proof. simply_combinational. Qed.
 
 Definition mux2_1_tb :=
   testBench "mux2_1_tb" mux2_1_Interface

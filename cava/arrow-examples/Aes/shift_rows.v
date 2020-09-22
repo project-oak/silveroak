@@ -65,7 +65,8 @@ Definition aes_shift_rows
     data_o_0 :: data_o_1 :: data_o_2 :: data_o_3 :: []
   ]>.
 
-Definition shift_rows_composed :=
+Definition shift_rows_composed 
+:  << Vector _ 4, Unit>> ~> (Vector _ 4) :=
   <[\input =>
   let encoded = !aes_shift_rows !CIPH_FWD input in
   let decoded = !aes_shift_rows !CIPH_INV encoded in
