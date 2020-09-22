@@ -115,7 +115,7 @@ Proof. time simply_combinational. Qed. *)
 Lemma canright_composed_combinational: is_combinational (closure_conversion aes_sbox_canright).
 Proof. time simply_combinational. Qed.
 
-Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
+Local Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
 
 Goal interp_combinational (canright_composed _) (# 0) = (# 0).
 Proof. time (vm_compute; auto). Qed.

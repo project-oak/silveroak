@@ -65,7 +65,7 @@ Program Definition aes_sbox
 End notation.
 
 Section regression_testing.
-  Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
+  Local Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
 
   (* Check equal at some random points *)
   Goal interp_combinational (aes_sbox_lut _) (false, #0)
