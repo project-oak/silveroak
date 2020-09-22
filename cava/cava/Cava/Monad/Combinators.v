@@ -30,10 +30,12 @@ Export MonadNotation.
 From Cava Require Import Kind.
 Require Import Cava.Monad.CavaClass.
 Require Import Cava.VectorUtils.
+Require Import Cava.ListUtils.
 
 Generalizable All Variables.
 
 From Coq Require Import Lia.
+Require Import ExtLib.Structures.MonadLaws.
 
 Local Open Scope monad_scope.
 
@@ -292,162 +294,79 @@ Definition halve {A} (l : list A) : list A * list A :=
 (* A binary tree combinator, list version.                                                  *)
 (******************************************************************************)
 
-Fixpoint treeList {T: Type} {m bit} `{Cava m bit}
+Fixpoint treeList {T: Type} {m} `{Monad m}
                   (circuit: T -> T -> m T) (def: T)
                   (n : nat) (v: list T) : m T :=
-  match n, v with
-  | O, ab => match ab return m T with
-             | [a; b]=> circuit a b
-             | _ => ret def
-             end
-  | S n', vR => let '(vL, vH) := halve v in
-                aS <- treeList circuit def n' vL ;;
-                bS <- treeList circuit def n' vH ;;
-                circuit aS bS
+  match n with
+  | O => match v return m T with
+        | [a; b]=> circuit a b
+        | _ => ret def
+        end
+  | S n' => let '(vL, vH) := halve v in
+           aS <- treeList circuit def n' vL ;;
+           bS <- treeList circuit def n' vH ;;
+           circuit aS bS
   end.
 
 Fixpoint treeWithList {T: Type} {m bit} `{Cava m bit}
                       (circuit: T -> T -> m T) (def: T)
                       (n : nat) (v: Vector.t T (2^(n+1))) : m T :=
- treeList circuit def n (to_list v).
+  treeList circuit def n (to_list v).
+
+Lemma treeList_equiv
+      {T} {m} {monad : Monad m}
+      {monad_laws : MonadLaws monad}
+      (id : T)
+      (op : T -> T -> T)
+      (op_id_left : forall a : T, op id a = a)
+      (op_id_right : forall a : T, op a id = a)
+      (op_assoc :
+         forall a b c : T,
+           op a (op b c) = op (op a b) c)
+      (circuit : T -> T -> m T)
+      (circuit_equiv :
+         forall a b : T, circuit a b = ret (op a b))
+      (def : T) (n : nat) :
+  forall v,
+    length v = 2 ^ (S n) ->
+    treeList circuit def n v = ret (List.fold_left op v id).
+Proof.
+  induction n; intros; [ | ].
+  { (* n = 0 *)
+    change (2 ^ 1) with 2 in *.
+    destruct_lists_by_length. cbn [treeList fold_left].
+    rewrite op_id_left, circuit_equiv.
+    reflexivity. }
+  { (* n = S n' *)
+    cbn [treeList halve]. rewrite !Nat.pow_succ_r in * by lia.
+    erewrite <-Nat.div_unique_exact by eauto.
+    rewrite !IHn by (rewrite ?firstn_length, ?skipn_length; lia).
+    rewrite !bind_of_return, circuit_equiv by typeclasses eauto.
+    rewrite <-fold_left_assoc, <-fold_left_app by eauto.
+    rewrite firstn_skipn. reflexivity. }
+Qed.
 
 (******************************************************************************)
 (* A binary tree combinator, Vector version.                                                  *)
 (******************************************************************************)
 
-Definition resize {A n} m (Hlen : n = m) (v : t A n) : t A m.
-  subst; apply v.
-Defined.
+Definition divide {A n} (default : A) (v : Vector.t A (2 ^ (S n))) :
+  Vector.t A (2 ^ n) * Vector.t A (2 ^ n) :=
+  splitat _ (@resize_default A (2 ^ (S n)) default (2 ^ n + 2 ^ n) v).
 
-Lemma pow2_succ_double n : 2 ^ (S n) = 2 ^ n + 2 ^ n.
-Proof. rewrite Nat.pow_succ_r'; lia. Qed.
-
-Definition divide {A n} (v : Vector.t A (2 ^ (S n))) :
-    Vector.t A (2 ^ n) * Vector.t A (2 ^ n) :=
-    splitat _ (@resize A (2 ^ (S n)) (2 ^ n + 2 ^ n) (pow2_succ_double n) v).
-
-Fixpoint tree {T: Type} {m bit} `{Cava m bit} (n: nat)
+Fixpoint tree {T: Type} {m bit} `{Cava m bit}
+                                (default : T) (n : nat)
                                 (circuit: T -> T -> m T)
                                 (v : Vector.t T (2^(S n))) :
                                 m T :=
   match n, v return m T with
   | O, v2 => circuit (@Vector.nth_order _ 2 v2 0 (ltac:(lia)))
                      (@Vector.nth_order _ 2 v2 1 (ltac:(lia)))
-  | S n', vR => let '(vL, vH) := divide vR in
-                aS <- tree n' circuit vL ;;
-                bS <- tree n' circuit vH ;;
+  | S n', vR => let '(vL, vH) := divide default vR in
+                aS <- tree default n' circuit vL ;;
+                bS <- tree default n' circuit vH ;;
                 circuit aS bS
   end.
-
-(* Lemmas about [resize] *)
-Section resize.
-  Lemma resize_prf_irr {A} n m Hlen1 Hlen2 (v : t A n) :
-    resize m Hlen1 v = resize m Hlen2 v.
-  Proof.
-  subst. rewrite (Eqdep.EqdepTheory.UIP_refl _ _ Hlen2).
-  reflexivity.
-  Qed.
-
-  Lemma resize_id {A} n H (v : t A n) : v = resize n H v.
-  Proof. rewrite resize_prf_irr with (Hlen2:=eq_refl). reflexivity. Qed.
-
-  Lemma resize_cons {A} n m Hlen a (v : t A n) :
-    resize (S m) Hlen (a :: v)%vector = (a :: resize m (eq_add_S _ _ Hlen) v)%vector.
-  Proof.
-    intros. assert (n = m) by lia. subst.
-    rewrite <-!resize_id. reflexivity.
-  Qed.
-
-  Lemma resize_resize {A} n m p Hlen1 Hlen2 (v : t A n) :
-    resize p Hlen2 (resize m Hlen1 v) = resize p (eq_trans Hlen1 Hlen2) v.
-  Proof. subst; reflexivity. Qed.
-
-  Lemma fold_left_resize {A B} (f : B -> A -> B) n m H b (v : t A n) :
-    Vector.fold_left f b (resize m H v) = Vector.fold_left f b v.
-  Proof. subst. rewrite <-resize_id. reflexivity. Qed.
-End resize.
-
-(* Vector facts *)
-Module Vector.
-  Lemma tl_0 {A} (v : t A 1) : Vector.tl v = Vector.nil A.
-  Proof.
-    eapply case0 with (v:=Vector.tl v).
-    reflexivity.
-  Qed.
-
-  Lemma hd_0 {A} (v : t A 1) : Vector.hd v = Vector.last v.
-  Proof.
-    rewrite (eta v).
-    eapply case0 with (v:=Vector.tl v).
-    reflexivity.
-  Qed.
-
-  Lemma last_tl {A} n (v : t A (S (S n))) :
-    Vector.last (Vector.tl v) = Vector.last v.
-  Proof. rewrite (eta v); reflexivity. Qed.
-
-  Lemma fold_left_S {A B : Type} (f : B -> A -> B) b n (v : t A (S n)) :
-      Vector.fold_left f b v = Vector.fold_left
-                                 f (f b (Vector.hd v)) (Vector.tl v).
-  Proof. rewrite (eta v). reflexivity. Qed.
-
-  Lemma fold_left_0 {A B : Type} (f : B -> A -> B) b (v : t A 0) :
-      Vector.fold_left f b v = b.
-  Proof. eapply case0 with (v:=v). reflexivity. Qed.
-
-  Hint Rewrite @Vector.fold_left_S @Vector.fold_left_0
-       using solve [eauto] : push_vector_fold vsimpl.
-
-  Lemma fold_left_append {A B} (f : A -> B -> A) :
-    forall n m start (v1 : t B n) (v2 : t B m),
-      Vector.fold_left f start (v1 ++ v2)%vector
-      = Vector.fold_left f (Vector.fold_left f start v1) v2.
-  Proof.
-    induction n; intros;
-      lazymatch goal with
-      | v' : t _ 0 |- _ =>
-        eapply case0 with (v:=v')
-      | v : t _ (S _) |- _ => rewrite (eta v)
-      end;
-      [ reflexivity | ].
-    rewrite <-append_comm_cons.
-    cbn [Vector.fold_left].
-    rewrite IHn. reflexivity.
-  Qed.
-
-  Lemma fold_left_S_identity {A} (f : A -> A -> A) id
-        (left_identity : forall a, f id a = a) n (v : t A (S n)) :
-    Vector.fold_left f id v = Vector.fold_left f (Vector.hd v) (Vector.tl v).
-  Proof.
-    intros. rewrite (eta v).
-    rewrite !fold_left_S, left_identity.
-    reflexivity.
-  Qed.
-
-  Lemma fold_left_S_assoc {A} (f : A -> A -> A) id
-        (right_identity : forall a, f a id = a)
-        (left_identity : forall a, f id a = a)
-        (associative :
-           forall a b c, f a (f b c) = f (f a b) c) :
-    forall n start (v : t A n),
-      Vector.fold_left f start v = f start (Vector.fold_left f id v).
-  Proof.
-    induction n; intros; autorewrite with push_vector_fold.
-    { rewrite right_identity. reflexivity. }
-    { rewrite left_identity.
-      erewrite <-fold_left_S_identity by eauto.
-      rewrite IHn, <-associative.
-      rewrite fold_left_S with (b:=id).
-      f_equal. rewrite !left_identity, <-IHn.
-      reflexivity. }
-  Qed.
-End Vector.
-Hint Rewrite @Vector.fold_left_S @Vector.fold_left_0
-     using solve [eauto] : push_vector_fold vsimpl.
-Hint Rewrite @Vector.tl_0 @Vector.hd_0 @Vector.last_tl
-     using solve [eauto] : push_vector_tl_hd_last vsimpl.
-Hint Rewrite @Vector.nth_order_hd @Vector.nth_order_last
-     using solve [eauto] : push_vector_nth_order vsimpl.
 
 Local Ltac destruct_pair_let :=
   match goal with
@@ -455,10 +374,8 @@ Local Ltac destruct_pair_let :=
     rewrite (surjective_pairing p)
   end.
 
-Require Import ExtLib.Structures.MonadLaws.
-
-Lemma append_divide {A} n H (v : t A (2 ^ (S n))) :
-  (fst (divide v) ++ snd (divide v))%vector = resize _ H v.
+Lemma append_divide {A} d n H (v : t A (2 ^ (S n))) :
+  (fst (divide d v) ++ snd (divide d v))%vector = resize _ H v.
 Proof.
   cbv [divide].
   let H := fresh in
@@ -468,7 +385,8 @@ Proof.
   end;
     apply append_splitat in H;
     rewrite <-H; clear H.
-  apply resize_prf_irr.
+  rewrite resize_default_eq with (d0:=d).
+  reflexivity.
 Qed.
 
 Lemma tree_equiv
@@ -484,17 +402,21 @@ Lemma tree_equiv
       (circuit : T -> T -> m T)
       (circuit_equiv :
          forall a b : T, circuit a b = ret (op a b))
-      (n : nat) :
+      (default : T) (n : nat) :
   forall v,
-    tree n circuit v = ret (Vector.fold_left op id v).
+    tree default n circuit v = ret (Vector.fold_left op id v).
 Proof.
   induction n; intros.
   { change (2 ^ 1) with 2 in *.
     cbn [tree]. autorewrite with vsimpl.
     rewrite circuit_equiv, op_id_left. reflexivity. }
   { cbn [tree]. destruct_pair_let.
-    rewrite !IHn, !bind_of_return, circuit_equiv by typeclasses eauto.
-    rewrite <-Vector.fold_left_S_assoc, <-Vector.fold_left_append by auto.
-    rewrite append_divide with (H:=pow2_succ_double _).
+    rewrite !IHn by eauto.
+    rewrite !bind_of_return by eauto.
+    rewrite circuit_equiv by eauto.
+    rewrite <-fold_left_S_assoc, <-fold_left_append by auto.
+    assert (2 ^ S (S n) = 2 ^ S n + 2 ^ S n)
+      by (rewrite Nat.pow_succ_r'; lia).
+    rewrite (append_divide _ _ ltac:(eassumption)).
     rewrite fold_left_resize. reflexivity. }
 Qed.
