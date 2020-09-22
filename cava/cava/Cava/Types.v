@@ -103,7 +103,7 @@ Fixpoint flattenShape {A} (s : @shape A) : list A :=
   | Tuple2 t1 t2 =>  flattenShape t1 ++ flattenShape t2
   end.
 
-(* 
+(*
 Drop the rightmost element of a tuple structure if it is Empty. e.g.
 
 withoutRightmostUnit ( Tuple2 x (Tuple2 y (Tuple2 z Empty)) )
@@ -185,8 +185,8 @@ Proof.
   f_equal.
 Defined.
 
-(* 
-Given a signal of some shape 'withoutRightmost S', 
+(*
+Given a signal of some shape 'withoutRightmost S',
 we can extend it with a rightmost value of tt to get a signal of shape 'S'.
 *)
 Fixpoint insertRightmostTt {A t}
@@ -195,10 +195,10 @@ Fixpoint insertRightmostTt {A t}
 Proof.
   induction A; simpl in *.
   exact tt.
-  exact s.  
+  exact s.
   destruct A2.
   - exact (s, tt).
-  - exact s.  
+  - exact s.
   - rewrite signal_tuple_is_tuple in s.
     refine ((fst s, _)).
     apply snd in s.
@@ -208,11 +208,11 @@ Defined.
 
 (*
 Given some function 'f' which takes as input a signal of shape 'A',
-we can return a function performing 'f' that takes an input of 
+we can return a function performing 'f' that takes an input of
 shape 'withoutRightmostUnit A' by first applying 'insertRightmostTt'
 and then performing 'f'.
 *)
-Fixpoint removeRightmostUnit {A B t} 
+Fixpoint removeRightmostUnit {A B t}
   (f: signalTy (Signal t) A -> B)
   : signalTy (Signal t) (withoutRightmostUnit A) -> B :=
   fun a => f (insertRightmostTt a).
@@ -262,7 +262,7 @@ Fixpoint vecLitS {k: Kind} (v: smashTy (Signal Bit) k) : Signal k :=
   | Void, _ => UndefinedSignal
   | ExternalType s, _ => UninterpretedSignal "vecLitS-error"
   end.
-  
+
 Fixpoint signalNetSmashTy (s : @shape Kind) : Type :=
   match s with
   | Empty  => unit

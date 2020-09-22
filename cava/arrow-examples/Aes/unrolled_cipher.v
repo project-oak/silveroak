@@ -212,10 +212,10 @@ Definition unrolled_forward_cipher
     let stage2 = !aes_shift_rows !CIPH_FWD stage1 in
     stage2 ^ round_key
     ]>.
-  
+
 
 Definition unrolled_forward_cipher_flat
-  : 
+  :
     <<
       Vector Bit 128 (* data *)
     , Vector Bit 256 (* key *)

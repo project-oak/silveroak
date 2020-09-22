@@ -13,7 +13,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool.Bool. 
+From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import NArith.
 
@@ -68,7 +68,7 @@ Qed.
 
 Definition xilinxAdderWithCarry {m bit} `{Cava m bit} {n: nat}
             (cinab : bit * (Vector.t bit n * Vector.t bit n))
-           : m (Vector.t bit n * bit) 
+           : m (Vector.t bit n * bit)
   := let '(cin, (a, b)) := cinab in
      '(sum, cout) <- colV n xilinxFullAdder cin (vcombine a b) ;;
      ret (sum, cout).
@@ -78,7 +78,7 @@ Example xilinx_add_17_52:
   combinational (xilinxAdderWithCarry
                 (false, (N2Bv_sized 8 17, N2Bv_sized 8 52))) =
                 (N2Bv_sized 8 69, false).
-Proof. reflexivity. Qed.                
+Proof. reflexivity. Qed.
 
 (******************************************************************************)
 (* An unsigned adder with no bit-growth and no carry in                       *)

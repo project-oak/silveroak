@@ -58,7 +58,7 @@ Local Open Scope monad_scope.
 --     c ->|  s  |-> e
 --         |     |
 --          -----
---            ^ 
+--            ^
 --            |
 --            g
 --            ^
@@ -68,7 +68,7 @@ Local Open Scope monad_scope.
 --     b ->|  r  |-> d
 --         |     |
 --          -----
---            ^ 
+--            ^
 --            |
 --            a
 -------------------------------------------------------------------------------
@@ -90,7 +90,7 @@ Fixpoint below `{Monad m} {A B C D E F G}
    composing each element in a chain.
 
 -------------------------------------------------------------------------------
--- 4-Sided Tile Combinators 
+-- 4-Sided Tile Combinators
 -------------------------------------------------------------------------------
 -- COL r
 --            a
@@ -111,7 +111,7 @@ Fixpoint below `{Monad m} {A B C D E F G}
 --     b ->|  r  |-> c
 --         |     |
 --          -----
---            ^ 
+--            ^
 --            |
 --            a
 --            ^
@@ -121,7 +121,7 @@ Fixpoint below `{Monad m} {A B C D E F G}
 --     b ->|  r  |-> c
 --         |     |
 --          -----
---            ^ 
+--            ^
 --            |
 --            a
 -------------------------------------------------------------------------------
@@ -202,7 +202,7 @@ Lemma col_cons: forall `{Monad m} {A B C} (r : C * A -> m (B * C)%type)
 Proof.
   intros.
   destruct ca.
-  destruct l. 
+  destruct l.
   - simpl. reflexivity.
   - simpl. reflexivity.
 Qed.
@@ -217,17 +217,17 @@ Proof. lia. Qed.
 Lemma S_add_S_contra: forall x y, x = S y -> S (x - 1) <> S y -> False.
 Proof. lia. Qed.
 
-Definition vec_dec_rewrite1 {A x y} (H: x = S y) (v: Vector.t A y): Vector.t A (x - 1) := 
+Definition vec_dec_rewrite1 {A x y} (H: x = S y) (v: Vector.t A y): Vector.t A (x - 1) :=
   match Nat.eq_dec (x - 1) y with
   | left Heq => rew <- Heq in v
   | right Hneq => match add_S_contra _ _ H Hneq with end
   end.
 
-Definition vec_dec_rewrite2 {A x y} (H: x = S y) (v: Vector.t A (S (x - 1))): Vector.t A (S y) := 
+Definition vec_dec_rewrite2 {A x y} (H: x = S y) (v: Vector.t A (S (x - 1))): Vector.t A (S y) :=
   match Nat.eq_dec (S (x - 1)) (S y) with
   | left Heq => rew Heq in v
   | right Hneq => match S_add_S_contra _ _ H Hneq with end
-  end. 
+  end.
 
 Program Definition below_consV `{Monad m} {A B C} {n: nat}
               (r : C -> A -> m (B * C)%type)
@@ -236,7 +236,7 @@ Program Definition below_consV `{Monad m} {A B C} {n: nat}
   let '(c, a) := ca in
   match a in Vector.t _ z return n=z -> m (Vector.t B z * C)%type with
   | Vector.nil _ => fun _ => ret ([], c)
-  | Vector.cons _ a0 Z ax => fun H => 
+  | Vector.cons _ a0 Z ax => fun H =>
     '(b0, c1) <- r c a0 ;;
     '(bx, cOut) <- s c1 (vec_dec_rewrite1 H ax) ;;
     ret (vec_dec_rewrite2 H (b0 :: bx), cOut)
@@ -251,12 +251,12 @@ Definition circuit_dec_rewrite `{Monad m} {A B C x y} (H: x = S y)
   end.
 
 Fixpoint colV `{Monad m} {A B C} (n: nat)
-              (circuit : C -> A -> m (B * C)%type) 
+              (circuit : C -> A -> m (B * C)%type)
               (c: C) (a: Vector.t A n) :
               m (Vector.t B n * C)%type :=
   match n as n' return n=n' -> m (Vector.t B n' * C)%type with
   | O => fun _ => ret ([], c)
-  | S n0 => fun H => 
+  | S n0 => fun H =>
     let s :=  circuit_dec_rewrite H (colV n0 circuit) in
     '(x,c) <- below_consV circuit s (c, a) ;;
     ret (rew H in x, c)
@@ -293,7 +293,7 @@ Definition halve {A} (l : list A) : list A * list A :=
 (******************************************************************************)
 
 Fixpoint treeList {T: Type} {m bit} `{Cava m bit}
-                  (circuit: T -> T -> m T) (def: T) 
+                  (circuit: T -> T -> m T) (def: T)
                   (n : nat) (v: list T) : m T :=
   match n, v with
   | O, ab => match ab return m T with
@@ -307,13 +307,13 @@ Fixpoint treeList {T: Type} {m bit} `{Cava m bit}
   end.
 
 Fixpoint treeWithList {T: Type} {m bit} `{Cava m bit}
-                      (circuit: T -> T -> m T) (def: T) 
+                      (circuit: T -> T -> m T) (def: T)
                       (n : nat) (v: Vector.t T (2^(n+1))) : m T :=
  treeList circuit def n (to_list v).
 
 (******************************************************************************)
 (* A binary tree combinator, Vector version.                                                  *)
-(******************************************************************************) 
+(******************************************************************************)
 
 Definition halveV {n a} (v : Vector.t a (2*n)) : Vector.t a n * Vector.t a n :=
   match Nat.eq_dec (n + 0) n with

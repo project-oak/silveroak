@@ -41,9 +41,9 @@ Delimit Scope arrow_scope with Arrow.
 Notation "x ** y" := (product x y)
   (at level 30, right associativity) : arrow_scope.
 
-Class ArrowLaws 
-  (object: Set) 
-  (category: Category object) (category_laws: CategoryLaws category) 
+Class ArrowLaws
+  (object: Set)
+  (category: Category object) (category_laws: CategoryLaws category)
   (unit: object) (product: object -> object -> object) (A: Arrow object category unit product)
   := {
   (* (un)cance{l,r} and (un)assoc are natural isomorphisms *)
@@ -53,10 +53,10 @@ Class ArrowLaws
   second_cancell   {x y} (f: x ~> y): second f >>> cancell =M= cancell >>> f;
   uncancell_second {x y} (f: x ~> y): uncancell >>> second f =M= f >>> uncancell;
 
-  assoc_iso {x y z w s t} (f: x ~> y) (g: z ~> w) (h: s ~> t): 
+  assoc_iso {x y z w s t} (f: x ~> y) (g: z ~> w) (h: s ~> t):
     assoc >>> bimap _ _ _ _ f (bimap _ _ _ _ g h) =M= bimap _ _ _ _ (bimap _ _ _ _ f g) h >>> assoc;
 
-  unassoc_iso {x y z w s t} (f: x ~> y) (g: z ~> w) (h: s ~> t): 
+  unassoc_iso {x y z w s t} (f: x ~> y) (g: z ~> w) (h: s ~> t):
     unassoc >>> bimap _ _ _ _ (bimap _ _ _ _ f g) h =M= bimap _ _ _ _ f (bimap _ _ _ _ g h) >>> unassoc;
 
   (* triangle and pentagon identities? *)
@@ -118,8 +118,8 @@ Class ArrowLoop `(A: Arrow) := {
 }.
 
 Class ArrowConstant
-  object (category: Category object) 
-  unit prod (A: Arrow object category unit prod) 
+  object (category: Category object)
+  unit prod (A: Arrow object category unit prod)
   (r: object) t
   := {
   constant : t -> (unit ~> r);
@@ -134,8 +134,8 @@ Proof.
 Qed.
 
 Class ArrowSum
-  object (category: Category object) 
-  void either (ASum: Arrow object category void either) 
+  object (category: Category object)
+  void either (ASum: Arrow object category void either)
   := {
   merge {x} : (either x x) ~> x;
   never {x} : void ~> x;
@@ -144,16 +144,16 @@ Class ArrowSum
 (*
 Class ArrowApply := {
   app {x y}: (x~>y)**y ~> x:
-}. 
+}.
 
 Class ArrowProd := {
   prod_copy {x} : x ~> (x<*>x):
   prod_drop {x} : x ~> v;
-}. 
+}.
 *)
 
-Class ArrowSTKC 
-  `(A: Arrow) 
+Class ArrowSTKC
+  `(A: Arrow)
   := {
   stkc_arrow := A;
   stkc_arrow_drop :> ArrowDrop A;
@@ -171,7 +171,7 @@ Section arrowstkc.
   Context {unit: object}.
   Context {product: object -> object -> object}.
 
-  Inductive ArrowStructure := 
+  Inductive ArrowStructure :=
     | Id: object -> ArrowStructure
     | Assoc: object -> object -> object -> ArrowStructure
     | Unassoc: object -> object -> object -> ArrowStructure
@@ -196,7 +196,7 @@ Section arrowstkc.
     | Cancelr x => product x unit
     | Cancell x => product unit x
     | Uncancell x => x
-    | Uncancelr x => x 
+    | Uncancelr x => x
     | Copy x => x
     | Drop x => x
     | Swap x y => product x y
@@ -210,7 +210,7 @@ Section arrowstkc.
     | Cancelr x => x
     | Cancell x => x
     | Uncancell x => product unit x
-    | Uncancelr x => product x unit 
+    | Uncancelr x => product x unit
     | Copy x => product x x
     | Drop x => unit
     | Swap x y => product y x

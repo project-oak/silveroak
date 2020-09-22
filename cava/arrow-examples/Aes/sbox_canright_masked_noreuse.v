@@ -29,7 +29,7 @@ Open Scope kind_scope.
                                                         logic [1:0] r,
                                                         logic [3:0] t);*)
 Definition aes_masked_inverse_gf2p4
-  :  
+  :
     << Vector Bit 4 (* b *)
     ,  Vector Bit 4 (* q *)
     ,  Vector Bit 2 (* r *)
@@ -51,8 +51,8 @@ Definition aes_masked_inverse_gf2p4
           ^ aes_mul_gf2p2(b1, b0)
           ^ aes_mul_gf2p2(b1, q0) ^ aes_mul_gf2p2(b0, q1) ^ aes_mul_gf2p2(q1, q0); *)
     let temp1 = !aes_scale_omega2_gf2p2 (!aes_square_gf2p2 (b1 ^ b0)) in
-    let temp2 = !aes_scale_omega2_gf2p2 (!aes_square_gf2p2 (q1 ^ q0)) in 
-    let temp3 = !aes_mul_gf2p2 b1 b0 in 
+    let temp2 = !aes_scale_omega2_gf2p2 (!aes_square_gf2p2 (q1 ^ q0)) in
+    let temp3 = !aes_mul_gf2p2 b1 b0 in
     let temp4 = !aes_mul_gf2p2 b1 q0 ^ !aes_mul_gf2p2 b0 q1 ^ !aes_mul_gf2p2 q1 q0 in
 
     let c = r ^ temp1 ^ temp2 ^ temp3 ^ temp4 in
@@ -84,7 +84,7 @@ Definition aes_masked_inverse_gf2p4
 ]>.
 
 Definition aes_masked_inverse_gf2p8
-  :  
+  :
     << Vector Bit 8 (* a *)
     ,  Vector Bit 8 (* m *)
     ,  Vector Bit 8 (* n *)
@@ -105,7 +105,7 @@ Definition aes_masked_inverse_gf2p8
           ^ aes_square_scale_gf2p4_gf2p2(m1 ^ m0)
           ^ aes_mul_gf2p4(a1, a0)
           ^ aes_mul_gf2p4(a1, m0) ^ aes_mul_gf2p4(a0, m1) ^ aes_mul_gf2p4(m1, m0); *)
-    
+
     let b = q ^ !aes_square_scale_gf2p4_gf2p2 (a1 ^ a0)
               ^ !aes_square_scale_gf2p4_gf2p2 (m1 ^ m0)
               ^ !aes_mul_gf2p4 a1 a0
@@ -163,7 +163,7 @@ Definition aes_masked_inverse_gf2p8
 ]>.
 
 Definition aes_sbox_canright_masked_noreuse
-  :  << 
+  :  <<
     Bit, (* TODO: wrapped type?  aes_pkg::ciph_op_e op_i, *)
 
     Vector Bit 8, (* data_i, // masked, the actual input data is data_i ^ in_mask_i *)
@@ -183,7 +183,7 @@ Definition aes_sbox_canright_masked_noreuse
     assign in_mask_basis_x  = (op_i == CIPH_FWD) ? aes_mvm(in_mask_i, A2X) :
                                                   aes_mvm(in_mask_i, S2X); *)
     let in_mask_basis_x = if op_i == !CIPH_FWD
-                          then !aes_mvm in_mask_i !A2X 
+                          then !aes_mvm in_mask_i !A2X
                           else !aes_mvm in_mask_i !S2X in
 
     (* // The output mask is converted in the opposite direction.

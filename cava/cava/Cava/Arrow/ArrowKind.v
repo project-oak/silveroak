@@ -187,7 +187,7 @@ match ty with
 end.
 
 Fixpoint denote_kind (ty: Kind): Type :=
-  match ty with 
+  match ty with
   | Tuple l r => denote_kind l * denote_kind r
   | Bit => bool
   | Vector ty n => Vector.t (denote_kind ty) n
@@ -195,7 +195,7 @@ Fixpoint denote_kind (ty: Kind): Type :=
   end.
 
 Fixpoint kind_default (ty: Kind): denote_kind ty :=
-  match ty return denote_kind ty with 
+  match ty return denote_kind ty with
   | Tuple l r => (kind_default l, kind_default r)
   | Bit => false
   | Vector ty n => const (kind_default ty) n

@@ -23,7 +23,7 @@ From ArrowExamples Require Import Combinators Aes.pkg Aes.sbox.
 Import VectorNotations.
 Import KappaNotation.
 Open Scope kind_scope.
-  
+
 (* module aes_sub_bytes #(
   parameter SBoxImpl = "lut"
 ) (
@@ -33,8 +33,8 @@ Open Scope kind_scope.
 ); *)
 Definition aes_sub_bytes
   (sbox_type: SboxImpl)
-  :  
-    <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~> 
+  :
+    <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~>
       Vector (Vector (Vector Bit 8) 4) 4 :=
   (* // Individually substitute bytes
   for (genvar j = 0; j < 4; j++) begin : gen_sbox_j
@@ -50,7 +50,7 @@ Definition aes_sub_bytes
   end *)
   let sbox := curry (aes_sbox sbox_type) in
   let mapped_sbox := <[ !(map sbox) ]> in
-  <[ \op_i data_i => 
+  <[ \op_i data_i =>
     (* duplicate op_i to the same shape of data_i and then zip *)
     let op_i' = !replicate (!replicate op_i) in
     let zipped = !(map2 zipper) op_i' data_i in

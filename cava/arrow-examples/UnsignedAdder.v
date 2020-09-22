@@ -44,7 +44,7 @@ Section notation.
   Lemma max_nn_add_1_is_S_n: forall n, 1 + max n n = S n.
   Proof. intros; rewrite PeanoNat.Nat.max_id; auto. Qed.
 
-  Definition growth_adder n 
+  Definition growth_adder n
   : << Vector Bit n, Vector Bit n, Unit >> ~> Vector Bit (S n) :=
   <[ \ a b => !(rewrite_vector (max_nn_add_1_is_S_n _)) (a + b) ]>.
 
@@ -52,22 +52,22 @@ Section notation.
   : << Vector (Vector Bit a) (2^n), Unit >> ~> Vector Bit (n + a) :=
   <[ \ v => !(dt_tree_fold' n a (Vector Bit) (growth_adder)) v  ]>.
 
-  Definition adder445: << Vector Bit 4, Vector Bit 4, Unit >> ~> (Vector Bit 5) 
+  Definition adder445: << Vector Bit 4, Vector Bit 4, Unit >> ~> (Vector Bit 5)
     := unsigned_adder 4 4 5.
 
-  Definition adder88810: << Vector Bit 8, Vector Bit 8, Vector Bit 8, Unit >> ~> (Vector Bit 10) 
+  Definition adder88810: << Vector Bit 8, Vector Bit 8, Vector Bit 8, Unit >> ~> (Vector Bit 10)
     := adder3 8 8 8.
 
-  Definition adder444_tree_4: << Vector (Vector Bit 4) 4, Unit >> ~> (Vector Bit 4) 
+  Definition adder444_tree_4: << Vector (Vector Bit 4) 4, Unit >> ~> (Vector Bit 4)
     := tree_adder 4 2.
 
-  Definition adder444_tree_8: << Vector (Vector Bit 4) 8, Unit >> ~> (Vector Bit 4) 
+  Definition adder444_tree_8: << Vector (Vector Bit 4) 8, Unit >> ~> (Vector Bit 4)
     := tree_adder 4 3.
 
-  Definition adder444_tree_64: << Vector (Vector Bit 4) 64, Unit >> ~> (Vector Bit 4) 
+  Definition adder444_tree_64: << Vector (Vector Bit 4) 64, Unit >> ~> (Vector Bit 4)
     := tree_adder 4 6.
 
-  Definition growth_tree_8: << Vector (Vector Bit 4) 8, Unit >> ~> (Vector Bit 7) 
+  Definition growth_tree_8: << Vector (Vector Bit 4) 8, Unit >> ~> (Vector Bit 7)
     := growth_tree_adder 4 3.
 End notation.
 
@@ -85,27 +85,27 @@ Definition adder445_interface
      (mkPort "a" (Kind.BitVec Kind.Bit 4), mkPort "b" (Kind.BitVec Kind.Bit 4))
      (mkPort "sum" (Kind.BitVec Kind.Bit 5))
      [].
-Definition adder88810_interface 
+Definition adder88810_interface
   := combinationalInterface "adder88810"
      (mkPort "a" (Kind.BitVec Kind.Bit 8), (mkPort "b" (Kind.BitVec Kind.Bit 8), mkPort "c" (Kind.BitVec Kind.Bit 8)))
      (mkPort "sum" (Kind.BitVec Kind.Bit 10))
      [].
-Definition adder444_tree_4_interface 
+Definition adder444_tree_4_interface
   := combinationalInterface "adder444_tree_4"
      (mkPort "vec" (Kind.BitVec (Kind.BitVec Kind.Bit 4) 4))
      (mkPort "result" (Kind.BitVec Kind.Bit 4))
      [].
-Definition adder444_tree_8_interface 
+Definition adder444_tree_8_interface
   := combinationalInterface "adder444_tree_8"
      (mkPort "vec" (Kind.BitVec (Kind.BitVec Kind.Bit 4) 8))
      (mkPort "result" (Kind.BitVec Kind.Bit 4))
      [].
-Definition adder444_tree_64_interface 
+Definition adder444_tree_64_interface
   := combinationalInterface "adder444_tree_64"
      (mkPort "vec" (Kind.BitVec (Kind.BitVec Kind.Bit 4) 64))
      (mkPort "result" (Kind.BitVec Kind.Bit 4))
      [].
-Definition growth_tree_8_interface 
+Definition growth_tree_8_interface
   := combinationalInterface "growth_tree_8"
      (mkPort "vec" (Kind.BitVec (Kind.BitVec Kind.Bit 4) 8))
      (mkPort "result" (Kind.BitVec Kind.Bit 7))

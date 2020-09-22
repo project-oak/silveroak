@@ -30,15 +30,15 @@ Open Scope kind_scope.
   output logic [3:0][3:0][7:0] data_o
 ); *)
 Definition aes_mix_columns
-  :  
-    <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~> 
+  :
+    <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~>
       Vector (Vector (Vector Bit 8) 4) 4 :=
       (* // Transpose to operate on columns
       logic [3:0][3:0][7:0] data_i_transposed;
       logic [3:0][3:0][7:0] data_o_transposed;
-    
+
       assign data_i_transposed = aes_transpose(data_i);
-    
+
       // Individually mix columns
       for (genvar i = 0; i < 4; i++) begin : gen_mix_column
         aes_mix_single_column aes_mix_column_i (
@@ -47,7 +47,7 @@ Definition aes_mix_columns
           .data_o ( data_o_transposed[i] )
         );
       end
-    
+
       assign data_o = aes_transpose(data_o_transposed); *)
   <[\op_i data_i =>
     let transposed = !aes_transpose data_i in

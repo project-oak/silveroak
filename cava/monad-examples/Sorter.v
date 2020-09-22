@@ -86,7 +86,7 @@ Definition twoSorterSpec {bw: nat} (ab : Vector.t (Bvector bw) 2) :
   if N.to_nat (Bv2N b) <=? N.to_nat (Bv2N a) then
     [b; a]
   else
-    [a; b].                                      
+    [a; b].
 
 Lemma two_sorter_correct: forall (n m: nat) (a b: Bvector m),
       combinational (twoSorter [a; b]) = twoSorterSpec [a; b].

@@ -66,7 +66,7 @@ Proof. reflexivity. Qed.
 Definition adderGrowth {m bit} `{Cava m bit} {aSize bSize: nat}
                        (ab: Vector.t bit aSize * Vector.t bit bSize) :
                        m (Vector.t bit (1 + max aSize bSize)) :=
-  let (a, b) := ab in                     
+  let (a, b) := ab in
   unsignedAdd a b.
 
 (* Check 0 + 0 = 0 *)

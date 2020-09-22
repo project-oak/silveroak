@@ -105,7 +105,7 @@ Inductive Instance : Type :=
   | UnsignedSubtract : forall {a b c : nat}, Signal (BitVec Bit a) ->
                                         Signal (BitVec Bit b) ->
                                         Signal (BitVec Bit c) ->
-                                        Instance                                      
+                                        Instance
   (* Relational operations *)
   | GreaterThanOrEqual: forall {a b : nat}, Signal (BitVec Bit a) ->
                                             Signal (BitVec Bit b) ->
@@ -155,17 +155,17 @@ Definition sequentialInterface {ciType coType}
                                (circuitName: string)
                                (clkName: string) (clkEdge: SignalEdge)
                                (rstName: string) (rstEdge: SignalEdge)
-                               (circuitInputs: ciType) 
+                               (circuitInputs: ciType)
                                (circuitOutputs: coType)
                                (attributes: list CircuitAttribute) :=
   mkCircuitInterface circuitName clkName clkEdge rstName rstEdge
-                     (toShape circuitInputs) (toShape circuitOutputs) attributes.                            
+                     (toShape circuitInputs) (toShape circuitOutputs) attributes.
 
 Definition combinationalInterface {ciType coType}
                                   `{@ToShape PortDeclaration ciType}
                                   `{@ToShape PortDeclaration coType}
                                   (circuitName: string)
-                                  (circuitInputs: ciType) 
+                                  (circuitInputs: ciType)
                                   (circuitOutputs: coType)
                                   (attributes: list CircuitAttribute) :=
   sequentialInterface circuitName "" PositiveEdge
@@ -233,7 +233,7 @@ Fixpoint addInstances (insts: list Instance) : state CavaState unit :=
   match insts with
   | [] => ret tt
   | x :: xs =>
-    addInstance x ;; 
+    addInstance x ;;
     addInstances xs
   end.
 
@@ -302,7 +302,7 @@ Definition getClockAndReset : state CavaState ((option (Signal Bit) * SignalEdge
   match cs with
   | mkCavaState _ vecCount vecDefs ext clk clkEdge rst rstEdge _ =>
      ret ((clk, clkEdge), (rst, rstEdge))
-  end.                                       
+  end.
 
 Definition inputBit (name : string) : state CavaState (Signal Bit) :=
   addInputPort (mkPort name Bit) ;;
@@ -330,11 +330,11 @@ Definition initStateFrom (startAt : N) : CavaState
 
 Definition initState : CavaState
   := initStateFrom 0.
-  
+
 (******************************************************************************)
 (* Execute a monadic circuit description and return the generated netlist.    *)
 (******************************************************************************)
-      
+
 Fixpoint instantiateInputPorts (inputs: @shape PortDeclaration) : state CavaState (signalSmashTy (mapShape port_shape inputs)) :=
   match inputs return state CavaState (signalSmashTy (mapShape port_shape inputs)) with
   | Empty => ret tt
@@ -377,7 +377,7 @@ Definition wireUpCircuit (intf : CircuitInterface)
   addInputPort (mkPort (rstName intf) Bit) ;;
   i <- instantiateInputPorts (circuitInputs intf) ;;
   o <- circuit i ;;
-  let outType := circuitOutputs intf in 
+  let outType := circuitOutputs intf in
   instantiateOutputPorts outType o.
 
 Fixpoint driveArguments (inputs: @shape (PortDeclaration * UntypedSignal)) : list (string * UntypedSignal) :=
@@ -428,7 +428,7 @@ Definition blackBox (intf : CircuitInterface)
   addInstance (Component (circuitName intf) [] (clkPort ++ rstPort ++ inputPorts ++ outputPorts)) ;;
   ret outputSignals.
 
-Definition makeNetlist (intf : CircuitInterface)                      
+Definition makeNetlist (intf : CircuitInterface)
                        (circuit : signalSmashTy (mapShape port_shape (circuitInputs intf)) ->
                                   state CavaState (signalSmashTy (mapShape port_shape (circuitOutputs intf)))) : CavaState
   := execState (wireUpCircuit intf circuit) initState.

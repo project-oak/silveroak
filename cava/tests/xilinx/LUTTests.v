@@ -62,7 +62,7 @@ Definition lut2_and_Interface
 Definition lut2_and_nelist := makeNetlist lut2_and_Interface lut2_and.
 
 Definition lut2_and_tb_inputs : list (bool * bool) :=
- [(false, false); (false, true); (true, false); (true, true)].       
+ [(false, false); (false, true); (true, false); (true, true)].
 
  Definition lut2_and_tb_expected_outputs : list bool :=
   map (fun i => combinational (lut2_and i)) lut2_and_tb_inputs.
@@ -207,4 +207,4 @@ Definition lut6_and_tb_expected_outputs : list bool :=
 
 Definition lut6_and_tb :=
   testBench "lut6_and_tb" lut6_and_Interface
-  lut6_and_tb_inputs lut6_and_tb_expected_outputs.   
+  lut6_and_tb_inputs lut6_and_tb_expected_outputs.

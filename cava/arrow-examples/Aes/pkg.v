@@ -72,7 +72,7 @@ function automatic logic [7:0] aes_mul2(logic [7:0] in);
   out[0] = in[7];
   return out;
 endfunction *)
-Definition aes_mul2: 
+Definition aes_mul2:
   <<Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\ x => x[#7]
         :: (xor x[#0] x[#7])
@@ -89,7 +89,7 @@ Definition aes_mul2:
 function automatic logic [7:0] aes_mul4(logic [7:0] in);
   return aes_mul2(aes_mul2(in));
 endfunction *)
-Definition aes_mul4: 
+Definition aes_mul4:
   <<Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\ x => !aes_mul2 (!aes_mul2 x) ]>.
 
@@ -108,7 +108,7 @@ function automatic logic [7:0] aes_div2(logic [7:0] in);
   out[0] = in[1] ^ in[0];
   return out;
 endfunction *)
-Definition aes_div2: 
+Definition aes_div2:
   <<Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\ x => (xor x[#1] x[#0])
         :: x[#2]
@@ -129,16 +129,16 @@ Definition aes_div2:
          in[8*((5-s)%4) +: 8], in[8*((4-s)%4) +: 8]};
   return out;
 endfunction *)
-Definition aes_circ_byte_shift: 
+Definition aes_circ_byte_shift:
   <<Vector (Vector Bit 8) 4, Vector Bit 2, Unit>> ~> (Vector (Vector Bit 8) 4) :=
   <[\input shift =>
       !(map3 <[\input shift seq =>
         let offset = seq - shift in
         input[offset]
       ]>
-      ) 
-      (!replicate input) 
-      (!replicate shift) 
+      )
+      (!replicate input)
+      (!replicate shift)
       !(seq 4)
   ]>.
 
@@ -168,7 +168,7 @@ Definition aes_mvm_acc
   :  <<Vector Bit 8, Vector Bit 8, Bit, Unit>> ~> (Vector Bit 8) :=
   <[\acc mat vec => acc ^ (mat & (!replicate vec)) ]>.
 
-Definition aes_mvm: 
+Definition aes_mvm:
   <<Vector Bit 8, Vector (Vector Bit 8) 8, Unit>> ~> (Vector Bit 8) :=
   <[\ vec_b mat_a =>
   let _1 = !aes_mvm_acc (#0) (mat_a[#0]) (vec_b[#7]) in
