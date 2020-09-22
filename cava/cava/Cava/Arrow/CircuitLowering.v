@@ -199,7 +199,7 @@ Fixpoint build_netlist' {i o}
       y <- fresh_wire _ ;;
       map2M (fun x y => DelayBit x y) _ (fst x) y ;;
       ret y
-  | Primitive Primitives.Not => fun i => 
+  | Primitive Primitives.Not => fun i =>
       o <- newWire ;;
       addInstance (Not (fst i) o) ;;
       ret o
@@ -237,11 +237,11 @@ Fixpoint build_netlist' {i o}
   | Primitive (Primitives.Snd _ _) => fun '((x,y),_) => ret y
   | Primitive (Primitives.Pair _ _) => fun '(x,(y,_)) => ret (x,y)
 
-  | Primitive Primitives.And => fun '(x,(y,_)) => 
+  | Primitive Primitives.And => fun '(x,(y,_)) =>
       o <- newWire ;;
       addInstance (And x y o) ;;
       ret o
-  | Primitive Primitives.Nand => fun '(x,(y,_)) => 
+  | Primitive Primitives.Nand => fun '(x,(y,_)) =>
       o <- newWire ;;
       addInstance (Nand x y o) ;;
       ret o

@@ -40,7 +40,7 @@ Require Import Cava.Monad.UnsignedAdders.
 
 Definition adderTree {m bit} `{Cava m bit} {sz: nat}
                      (n: nat) (v: Vector.t (Vector.t bit sz) (2^(n+1))) :
-                     m (Vector.t bit sz) :=              
+                     m (Vector.t bit sz) :=
   tree n addN v.
 
 (******************************************************************************)
@@ -101,7 +101,7 @@ Local Open Scope N_scope.
 Definition adder_tree4_8_tb_inputs
   := map (fun i => Vector.map (N2Bv_sized 8) i)
      [[17;  42;  23;  95];
-      [ 4;  13; 200;  30]; 
+      [ 4;  13; 200;  30];
       [255; 74; 255; 200]
      ].
 

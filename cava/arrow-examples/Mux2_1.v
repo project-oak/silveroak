@@ -44,7 +44,7 @@ Open Scope kind_scope.
 
 Lemma mux2_1_is_combinational: is_combinational (closure_conversion mux2_1).
 Proof. simply_combinational. Qed.
-  
+
 Require Import Cava.Types.
 Require Import Cava.Netlist.
 
@@ -57,7 +57,7 @@ Definition mux2_1_Interface :=
 Definition mux2_1_netlist :=
   makeNetlist mux2_1_Interface (build_netlist (closure_conversion mux2_1)).
 
-Definition mux2_1_tb_inputs : list (bool * (bool * bool)) := 
+Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
  [(false, (false, true));
   (false, (true, false));
   (false, (false, false));

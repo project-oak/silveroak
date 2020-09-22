@@ -11,7 +11,7 @@ Definition nat_to_pair (n:nat) : bool * bool :=
   | 3 => (true, true)
   | _ => (false, false)
   end.
-  
+
 Definition pair_to_nat (p:bool * bool) : nat :=
   match p with
   | (false, false) => 0
@@ -25,7 +25,7 @@ Proof.
   intros n H.
   repeat (destruct n; [reflexivity |]).
   lia.
-Qed.  
+Qed.
 
 
 (* Option 2: More general, list representation *)
@@ -63,8 +63,8 @@ Qed.
 
 (*
   The list-of-bits representation is not canonical because leading
-  0's don't contribute to the final value.  Therefore we can 
-  put the list of bits into canonical form by trimming leading 
+  0's don't contribute to the final value.  Therefore we can
+  put the list of bits into canonical form by trimming leading
   0's.
 *)
 Fixpoint canonicalize_bits (bits : list bool) : list bool :=
@@ -84,7 +84,7 @@ Eval compute in (low_bit 7).
 (*
   The recursion structure for converting a nat to bits is based on
   division by two / bit-shifting, which isn't purely structural on the
-  Zero + Successor version of nats.  One way around that is to define 
+  Zero + Successor version of nats.  One way around that is to define
   a slightly different recursion principle that folds by div2.
 
   It may be worth checking out BinNat too.
@@ -134,7 +134,7 @@ Proof.
     reflexivity.
     repeat rewrite Nat.shiftl_0_l.
     simpl. reflexivity.
-Qed.   
+Qed.
 
 
 Lemma nat_to_bits'_correct : forall n, bits_to_nat (nat_to_bits' n) = n.
@@ -158,5 +158,5 @@ Proof.
     destruct (le_lt_dec x 0).
     + reflexivity.
     + rewrite H0. reflexivity.
-Qed.      
-      
+Qed.
+

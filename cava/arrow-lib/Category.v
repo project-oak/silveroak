@@ -12,7 +12,7 @@ Generalizable Variable object category.
   Here we have morphisms between objects of type object.
 *)
 Class Category (object: Type) := {
-  category_object := object; 
+  category_object := object;
   morphism : object -> object -> Type
     where "a ~> b" := (morphism a b);
 

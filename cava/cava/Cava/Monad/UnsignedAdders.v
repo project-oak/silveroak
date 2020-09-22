@@ -35,17 +35,17 @@ Proof.
   induction n.
   - reflexivity.
   - simpl. rewrite IHn. reflexivity.
-Defined.  
+Defined.
 
 Definition deMax {m bit} `{Cava m bit} {n} (v: Vector.t bit (1 + max n n)) :
                  Vector.t (smashTy bit Bit) (1+n).
 Proof.
   rewrite max_n_n in v.
   unfold smashTy. apply v.
-Defined. 
-   
+Defined.
+
 Definition addN {m bit} `{Cava m bit} {n}
-                (a: Vector.t bit n) (b: Vector.t bit n) : m (Vector.t bit n) :=               
+                (a: Vector.t bit n) (b: Vector.t bit n) : m (Vector.t bit n) :=
   s <- unsignedAdd a b ;;
   ret (slice 0 n (deMax s) (n_le_n_plus_1 _)).
 

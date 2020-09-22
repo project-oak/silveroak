@@ -29,25 +29,25 @@ Local Open Scope kind_scope.
 (* *************************** *)
 (* Rewrites *)
 
-Definition rewrite_kind {x y} (H: x = y) 
+Definition rewrite_kind {x y} (H: x = y)
   : << x, Unit >> ~[KappaCat]~> y :=
   match eq_kind_dec x y with
   | left Heq =>
-    rew [fun x => << _ >> ~[KappaCat]~> <<x>> ] Heq in <[\x=>x]> 
+    rew [fun x => << _ >> ~[KappaCat]~> <<x>> ] Heq in <[\x=>x]>
   | right Hneq => (ltac:(contradiction))
   end.
 
-Definition rewrite_vector {A x y} (H: x = y) 
+Definition rewrite_vector {A x y} (H: x = y)
   : << Vector A x, Unit >> ~> <<Vector A y>> :=
   match PeanoNat.Nat.eq_dec x y with
   | left Heq =>
-    rew [fun x => << _, _ >> ~[KappaCat]~> <<Vector A x>> ] Heq in <[\x=>x]> 
+    rew [fun x => << _, _ >> ~[KappaCat]~> <<Vector A x>> ] Heq in <[\x=>x]>
   | right Hneq => (ltac:(contradiction))
   end.
 
 Program Definition split_pow2 A n
   :  << Vector A (2^(S n)), Unit >> ~> <<Vector A (2^n), Vector A (2^n)>> :=
-  <[\ x => 
+  <[\ x =>
     let '(l,r) = split_at (2^n) x in
     (l, !(rewrite_vector _) r)
       ]>.
@@ -56,12 +56,12 @@ Program Definition split_pow2 A n
 (* Misc *)
 
 Definition uncurry {A B C args}
-  (f:  << <<A, B>>, args >> ~> C) 
+  (f:  << <<A, B>>, args >> ~> C)
   :  <<A, B, args>> ~> C :=
   <[ \a b => !f (a, b) ]>.
 
 Definition curry {A B C args}
-  (f:  << A, B, args >> ~> C) 
+  (f:  << A, B, args >> ~> C)
   :  << <<A, B>>, args >> ~> C :=
   <[ \ab => let '(a, b) = ab in !f a b ]>.
 
@@ -70,9 +70,9 @@ Fixpoint reshape {n m A}
 match n with
 | 0 => <[\_ => [] ]>
 | S n' =>
-  <[ \vec => 
+  <[ \vec =>
     let '(x, xs) = split_at m vec in
-    x :: !(@reshape n' m A) xs 
+    x :: !(@reshape n' m A) xs
     ]>
 end.
 
@@ -81,7 +81,7 @@ Fixpoint flatten {n m A}
 match n with
 | 0 => <[\_ => [] ]>
 | S n' =>
-  <[ \vec => 
+  <[ \vec =>
     let '(x, xs) = uncons vec in
     concat x (!(@flatten n' m A) xs)
     ]>
@@ -92,7 +92,7 @@ Fixpoint reverse {n A}
 match n with
 | 0 => <[\_ => [] ]>
 | S n' =>
-  <[ \vec => 
+  <[ \vec =>
     let '(x, xs) = uncons vec in
     snoc (!reverse xs) x
     ]>
@@ -123,7 +123,7 @@ Fixpoint tree (A: Kind) (n: nat)
   :  << Vector A (2^n), Unit >> ~> A :=
 match n with
 | O => <[ \ vec => let '(x,_) = uncons vec in x ]>
-| S n' => 
+| S n' =>
   <[\ x =>
       let '(left,right) = !(split_pow2 A n') x in
       let a = !(tree A n' f) left in
@@ -139,7 +139,7 @@ Fixpoint dt_tree_fold'
   :  << Vector (T k) (2^n), Unit >> ~> (T (n + k)) :=
 match n with
 | O => <[ \ vec => let '(x,_) = uncons vec in x ]>
-| S n' =>  
+| S n' =>
   <[\ x =>
       let '(left,right) = !(split_pow2 (T k) n') x in
       let a = !(dt_tree_fold' n' k T f) left in
@@ -154,7 +154,7 @@ Proof. auto. Qed.
 Definition dt_tree_fold
   (n: nat)
   (T: nat -> Kind)
-  (f: forall n,  << T n, T n, Unit >> ~> T (S n)) 
+  (f: forall n,  << T n, T n, Unit >> ~> T (S n))
   :  << Vector (T 0) (2^n), Unit >> ~> T n :=
   <[ \vec => !(rewrite_kind (inj_succ_in_kind _ _)) (!(dt_tree_fold' n 0 T f) vec) ]>.
 
@@ -246,17 +246,17 @@ Definition zipper {n A B}
 
 Fixpoint equality {T}
   :  << T, T, Unit >> ~> <<Bit>> :=
-match T return  << T, T, Unit >> ~[KappaCat]~> <<Bit>> with 
+match T return  << T, T, Unit >> ~[KappaCat]~> <<Bit>> with
 | Unit => <[ \_ _ => true' ]>
 | Bit => <[ \x y => xnor x y ]> (* bit equality is the xnor function *)
-| Tuple l r => <[ 
-    \x y => 
+| Tuple l r => <[
+    \x y =>
       let '(a,b) = x in
       let '(c,d) = y in
       and (!equality a c) (!equality b d)
   ]>
-| Vector ty n => 
-  <[\ x y => 
+| Vector ty n =>
+  <[\ x y =>
     let item_equality = !(map2 equality) x y in
     !(foldl <[\x y => and x y]>) true' item_equality
   ]>
@@ -278,9 +278,9 @@ Definition enable_vec {n}
 
 Fixpoint enable {T}
   :  << Bit, T, Unit >> ~> <<T>> :=
-match T return  << Bit, T, Unit >> ~[KappaCat]~> <<T>> with 
+match T return  << Bit, T, Unit >> ~[KappaCat]~> <<T>> with
 | Unit => <[ \_ x => x ]>
-| Bit => <[ \en x => and en x ]> 
+| Bit => <[ \en x => and en x ]>
 | Tuple l r => <[ \en x => let '(a,b) = x in
                   (!enable en a, !enable en b)
                 ]>
@@ -290,10 +290,10 @@ end.
 Fixpoint bitwise {T}
   (f:  << Bit, Bit, Unit >> ~> <<Bit>>)
   :  << T, T, Unit >> ~> <<T>> :=
-match T return  << T, T, Unit >> ~[KappaCat]~> <<T>> with 
+match T return  << T, T, Unit >> ~[KappaCat]~> <<T>> with
 | Unit => <[ \x _ => x ]>
 | Bit => f
-| Tuple l r => <[ \x y => 
+| Tuple l r => <[ \x y =>
   let '(a,b) = x in
   let '(c,d) = y in
   (!(bitwise f) a c, !(bitwise f) b d)
@@ -318,7 +318,7 @@ Definition mux_item {T}
 Definition below {A B C D E F G: Kind}
   (r:  << A, B, Unit >> ~> << G, D >>)
   (s:  << G, C, Unit >> ~> << F, E >>)
-  :   
+  :
     << A, <<B, C>>, Unit >> ~> << F, <<D, E>> >> :=
 <[ \ a bc =>
   let '(b, c) = bc in
@@ -337,14 +337,14 @@ Fixpoint replicateKind A n : Kind :=
 
 Fixpoint col' {A B C: Kind} n
   (circuit:  << A, B, Unit >> ~> <<A, C>>)
-  {struct n}: 
+  {struct n}:
     << A, replicateKind B (S n), Unit >> ~>
     << A, replicateKind C (S n)>> :=
   match n with
-  | O => <[ \a b => !circuit a b ]> 
+  | O => <[ \a b => !circuit a b ]>
   | S n' =>
     let column_below := (col' n' circuit) in
-    below circuit column_below 
+    below circuit column_below
   end.
 
 Lemma col_cons: forall {A B C}
@@ -355,10 +355,10 @@ Proof. auto. Qed.
 Fixpoint productToVec {n T}
   :  << replicateKind T (S n), Unit >> ~> << Vector T (S n) >> :=
   match n with
-  | 0 => <[\ x => x :: [] ]> 
-  | S n' => 
-      <[\ xs => 
-        let '(x, xs') = xs in 
+  | 0 => <[\ x => x :: [] ]>
+  | S n' =>
+      <[\ xs =>
+        let '(x, xs') = xs in
         x :: !productToVec xs'
       ]>
   end.
@@ -366,34 +366,34 @@ Fixpoint productToVec {n T}
 Fixpoint vecToProduct {n T}
   :  << Vector T (S n), Unit >> ~> << replicateKind T (S n) >> :=
 match n with
-| 0 => <[\ xs => let '(x,_) = uncons xs in x ]> 
-| S n' => 
-    <[\ xs => 
-      let '(x, xs') = uncons xs in 
+| 0 => <[\ xs => let '(x,_) = uncons xs in x ]>
+| S n' =>
+    <[\ xs =>
+      let '(x, xs') = uncons xs in
       (x, !vecToProduct xs')
     ]>
 end.
 
 Fixpoint interleaveVectors n
-  : 
+  :
     << Vector Bit (S n), Vector Bit (S n), Unit >> ~>
     << Vector <<Bit, Bit>> (S n) >> :=
 match n with
-| 0 => <[\ x y => (x[#0], y[#0]) :: [] ]> 
-| S n => 
-    <[\ xs ys => 
-    let '(x, xs') = uncons xs in 
-    let '(y, ys') = uncons ys in 
+| 0 => <[\ x y => (x[#0], y[#0]) :: [] ]>
+| S n =>
+    <[\ xs ys =>
+    let '(x, xs') = uncons xs in
+    let '(y, ys') = uncons ys in
     (x, y) :: (!(interleaveVectors n) xs' ys')
   ]>
 end.
 
 Definition col {A B C: Kind} n
   (circuit:  << A, B, Unit >> ~> <<A, C>>)
-  : 
+  :
     << A, Vector B (S n), Unit >> ~>
     << A, Vector C (S n)>> :=
-  <[ \a b => 
+  <[ \a b =>
     let prod_b = !vecToProduct b in
     let '(a, c) = !(col' n circuit) a prod_b in
     (a, !productToVec c)
@@ -419,13 +419,13 @@ Section regression_tests.
   ]>.
 
   Definition rippleCarryAdder' (width: nat)
-    :  
+    :
       << Bit, Vector <<Bit, Bit>> (S width), Unit >> ~>
       << Bit, Vector Bit (S width) >> :=
   <[ !(col width fullAdder) ]>.
 
   Definition rippleCarryAdder (width: nat)
-    :  
+    :
       << Bit, <<Vector Bit (S width), Vector Bit (S width)>>, Unit >> ~>
       << Bit, Vector Bit (S width) >> :=
   <[ \b xy =>
@@ -434,7 +434,7 @@ Section regression_tests.
     let '(carry, result) = !(rippleCarryAdder' _) b merged in
     (carry, result)
     ]>.
- 
+
   (* Lemma interleave_is_stateless : forall n, has_no_state (interleaveVectors n EvalCava).
   Proof. induction n; auto 20 with stateless. Qed.
 

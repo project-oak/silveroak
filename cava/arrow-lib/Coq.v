@@ -26,44 +26,44 @@ Instance coq_arrow : Arrow Type coq_category unit prod := {
 }.
 
 Instance coq_sum_arrow : Arrow Type coq_category void sum := {
-  first  x y z (f: x ~> y) a := 
-    match a with 
+  first  x y z (f: x ~> y) a :=
+    match a with
     | inl x => inl (f x)
     | inr x => inr x
     end;
 
-  second x y z (f: x ~> y) a := 
-    match a with 
+  second x y z (f: x ~> y) a :=
+    match a with
     | inl x => inl x
     | inr x => inr (f x)
     end;
 
-  assoc x y z a := 
+  assoc x y z a :=
     match a with
-    | inl x => 
-      match x with 
+    | inl x =>
+      match x with
       | inl y => inl y
       | inr y => inr (inl y)
       end
     | inr x => inr (inr x)
     end;
 
-  unassoc x y z a := 
+  unassoc x y z a :=
     match a with
     | inl x => inl (inl x)
-    | inr x => 
-      match x with 
+    | inr x =>
+      match x with
       | inl y => inl (inr y)
       | inr y => inr y
       end
     end;
 
-  cancelr x a := 
+  cancelr x a :=
     match a with
     | inl x => x
     | inr x => match void_is_false x with end
     end;
-  cancell x a := 
+  cancell x a :=
     match a with
     | inl x => match void_is_false x with end
     | inr x => x
@@ -75,8 +75,8 @@ Instance coq_sum_arrow : Arrow Type coq_category void sum := {
 
 Instance coq_arrow_sum : ArrowSum Type coq_category void sum coq_sum_arrow := {
   merge X x := match x with
-    | inl x => x 
-    | inr x => x 
+    | inl x => x
+    | inr x => x
     end;
 
   never X x := match void_is_false x with end;

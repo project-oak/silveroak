@@ -55,7 +55,7 @@ Class Cava m `{Monad m} bit := {
      to the SystemVerilog netlist generation back-end to allow these to me
      functions rather than values in the monad type `m`.
   *)
-  (* Dynamic indexing *)                                   
+  (* Dynamic indexing *)
   indexAt : forall {k: Kind} {sz isz: nat},
             Vector.t (smashTy bit k) sz -> Vector.t bit isz -> smashTy bit k;
   indexBitAt : forall {sz isz: nat}, Vector.t bit sz ->

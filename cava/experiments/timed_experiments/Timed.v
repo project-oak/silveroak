@@ -50,14 +50,14 @@ Fixpoint runExpr (e: expr) :=
     end.
 
 Definition nand a b := Not (And a b).
-Definition xor a b := 
+Definition xor a b :=
     nand (nand a (nand a b)) (nand b (nand a b)).
 
-(* for combinational expressions, set inputs to singleton lists, 
+(* for combinational expressions, set inputs to singleton lists,
 and take the head of the result trace*)
 Definition combinational2 e a b: _ :=
     hd_error(runExpr (e
-                (Input (a :: nil)) 
+                (Input (a :: nil))
                 (Input (b :: nil))
                 )).
 
@@ -85,7 +85,7 @@ Eval simpl in zipWith xorb
             ( [false;false;true;true])
             ( [false;true;false;true]).
 
-Lemma pipelined_xor_delay_is_2: 
+Lemma pipelined_xor_delay_is_2:
     forall (i : Trace (bool * bool)),
     length (runExpr (pipelined_xor (map fst i) (map snd i))) = length i + 2.
 Proof.
@@ -97,7 +97,7 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma pipelined_xor_is_xorb_delayed2_once: 
+Lemma pipelined_xor_is_xorb_delayed2_once:
     forall x y,
     tl(tl(runExpr (pipelined_xor [x] [y])))  = zipWith xorb [x] [y].
 Proof.
@@ -120,7 +120,7 @@ Lemma pipelined_xor_is_xorb_delayed2:
     forall (x y : Trace bool),
     length x = length y ->
     tl(tl(runExpr (pipelined_xor x y))) = zipWith xorb x y.
-Proof. 
+Proof.
     induction x.
     trivial.
     intros.
@@ -142,16 +142,16 @@ Qed.
 
 
 
-    
-    
 
 
 
 
 
-    
 
-    
+
+
+
+
 
 
 

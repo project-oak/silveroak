@@ -118,16 +118,16 @@ Definition indexConstBool {k: Kind} {sz: nat}
   match lt_dec sel sz with
   | left H => @Vector.nth_order _ _ i sel H
   | right _ => defaultKindBool k
-  end.   
+  end.
 
 Definition sliceBool {k: Kind}
-                     {sz: nat} 
+                     {sz: nat}
                      (startAt len : nat)
                      (v: Vector.t (smashTy bool k) sz)
                      (H: startAt + len <= sz) :
                      Vector.t (smashTy bool k) len :=
   sliceVector v startAt len H.
-                
+
 Definition unsignedAddBool {m n : nat}
                            (av : Bvector m) (bv : Bvector n) :
                            ident (Bvector (1 + max m n)) :=

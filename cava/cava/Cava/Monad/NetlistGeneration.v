@@ -98,13 +98,13 @@ Definition lut2Net (f : bool -> bool -> bool) (i : Signal Bit * Signal Bit) :
            state CavaState (Signal Bit) :=
   let config :=     N.b2n (f false false) +
                 2 * N.b2n (f true false) +
-                4 * N.b2n (f false true) + 
+                4 * N.b2n (f false true) +
                 8 * N.b2n (f true true) in
   let (i0, i1) := i in
   o <- newWire ;;
   addInstance (Component "LUT2" [("INIT", HexLiteral 4 config)]
                          [("O", USignal  o); ("I0", USignal i0); ("I1", USignal i1)]) ;;
-  ret o.                       
+  ret o.
 
 Definition f3List (f: bool -> bool -> bool -> bool) (l: list bool) : bool :=
   match l with
@@ -158,7 +158,7 @@ Definition lut5Net (f : bool -> bool -> bool -> bool -> bool -> bool)
   o <- newWire ;;
   addInstance (Component "LUT5" [("INIT", HexLiteral 32 config)]
                           [("O", USignal o); ("I0", USignal i0); ("I1", USignal i1); ("I2", USignal i2); ("I3", USignal i3); ("I4", USignal i4)]) ;;
-  ret o.                        
+  ret o.
 
 Definition f6List (fn: bool -> bool -> bool -> bool -> bool -> bool -> bool)
                   (l: list bool) : bool :=
@@ -172,7 +172,7 @@ Definition lut6Net (f : bool -> bool -> bool -> bool -> bool -> bool -> bool)
   let powers := map (fun p => let bv := nat_to_list_bits_sized 6 (N.of_nat p) in
                      2^(N.of_nat p) * N.b2n (f6List f bv)) (seq 0 64)  in
   let config := fold_left N.add powers 0 in
-  let '(i0, i1, i2, i3, i4, i5) := i in 
+  let '(i0, i1, i2, i3, i4, i5) := i in
   o <- newWire ;;
   addInstance (Component "LUT6" [("INIT", HexLiteral 64 config)]
                           [("O", USignal o); ("I0", USignal i0); ("I1", USignal i1); ("I2", USignal i2); ("I3", USignal i3); ("I4", USignal i4); ("I5", USignal i5)] ) ;;
@@ -191,7 +191,7 @@ Definition muxcyNet (s ci di : Signal Bit) : state CavaState (Signal Bit) :=
   addInstance (Component "MUXCY" [] [("O", USignal o); ("S", USignal s); ("CI", USignal ci); ("DI", USignal di)]) ;;
   ret o.
 
-Definition unsignedAddNet {m n : nat} 
+Definition unsignedAddNet {m n : nat}
                           (a : Vector.t (Signal Bit) m)
                           (b : Vector.t (Signal Bit) n) :
                           state CavaState (Vector.t (Signal Bit) (1 + max m n)) :=
@@ -215,22 +215,22 @@ Definition indexAtNet {k: Kind} {sz isz: nat}
                       (v: Vector.t (smashTy (Signal Bit) k) sz)
                       (i: Vector.t (Signal Bit) isz) :
                       smashTy (Signal Bit) k :=
-  smash (IndexAt (VecLit (Vector.map vecLitS v)) (VecLit i)).            
+  smash (IndexAt (VecLit (Vector.map vecLitS v)) (VecLit i)).
 
 Definition indexConstNet {k: Kind} {sz: nat}
                          (v: Vector.t (smashTy (Signal Bit) k) sz)
                          (i: nat) :
                          smashTy (Signal Bit) k :=
-  smash (IndexConst (VecLit(Vector.map vecLitS v)) i). 
+  smash (IndexConst (VecLit(Vector.map vecLitS v)) i).
 
 Definition sliceNet {k: Kind} {sz: nat}
                     (startAt len: nat)
                     (v: Vector.t (smashTy (Signal Bit) k) sz)
                     (H: startAt + len <= sz) :
                     Vector.t (smashTy (Signal Bit) k) len :=
-  sliceVector v startAt len H.              
+  sliceVector v startAt len H.
 
-Definition greaterThanOrEqualNet {m n : nat} 
+Definition greaterThanOrEqualNet {m n : nat}
                                  (a : Vector.t (Signal Bit) m) (b : Vector.t (Signal Bit) n) :
                                  state CavaState (Signal Bit) :=
   comparison <- newWire ;;

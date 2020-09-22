@@ -24,7 +24,7 @@ From Coq Require Import Lists.List.
 Import ListNotations.
 
 Section notation.
-  Import KappaNotation. 
+  Import KappaNotation.
   Local Open Scope category_scope.
   Local Open Scope kind_scope.
 
@@ -41,5 +41,5 @@ End notation.
 
 Open Scope kind_scope.
 
-Lemma xilinxFullAdder_is_combinational: is_combinational (closure_conversion xilinxFullAdder). 
+Lemma xilinxFullAdder_is_combinational: is_combinational (closure_conversion xilinxFullAdder).
 Proof. simply_combinational. Qed.

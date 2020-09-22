@@ -43,7 +43,7 @@ verilog hex values were converted from OpenTitan verilog with vim:
 Definition aes_sbox_lut
   :  <<Bit, Vector Bit 8, Unit>> ~> (Vector Bit 8) :=
   <[\ op_i data_i =>
-  let SBOX_FWD = 
+  let SBOX_FWD =
     #99:: #124:: #119:: #123:: #242:: #107:: #111:: #197::
     #48:: #1:: #103:: #43:: #254:: #215:: #171:: #118::
 
@@ -93,7 +93,7 @@ Definition aes_sbox_lut
     #65:: #153:: #45:: #15:: #176:: #84:: #187:: #22
     :: [] in
 
-  let SBOX_INV = 
+  let SBOX_INV =
     #82:: #9:: #106:: #213:: #48:: #54:: #165:: #56::
     #191:: #64:: #163:: #158:: #129:: #243:: #215:: #251::
 

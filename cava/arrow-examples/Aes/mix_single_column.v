@@ -25,8 +25,8 @@ Import KappaNotation.
 Open Scope kind_scope.
 
 Definition aes_mix_single_column
-  :  
-    <<Bit, Vector (Vector Bit 8) 4, Unit>> ~> 
+  :
+    <<Bit, Vector (Vector Bit 8) 4, Unit>> ~>
       Vector (Vector Bit 8) 4 :=
   <[\ op_i data_i =>
   (* logic [3:0][7:0] x;
@@ -60,7 +60,7 @@ Definition aes_mix_single_column
   assign y_pre_mul4[0] = data_i[3] ^ data_i[1];
   assign y_pre_mul4[1] = data_i[2] ^ data_i[0];
   *)
-  let y_pre_mul4 = 
+  let y_pre_mul4 =
     data_i[#3] ^ data_i[#1] ::
     data_i[#2] ^ data_i[#0] :: [] in
 (*
@@ -86,7 +86,7 @@ Definition aes_mix_single_column
   (*// Mux z
   assign z_muxed[0] = (op_i == CIPH_FWD) ? 8'b0 : z[0];
   assign z_muxed[1] = (op_i == CIPH_FWD) ? 8'b0 : z[1];*)
-  let z_muxed = 
+  let z_muxed =
     if op_i == !CIPH_FWD then #0 else z[#0] ::
     if op_i == !CIPH_FWD then #0 else z[#1] ::
     [] in

@@ -79,7 +79,7 @@ Definition mux2_1_tb
 
   Definition mux2_1_bit {m bit} `{Cava m bit} {sz isz: nat}
                         (vsel: Vector.t bit sz * Vector.t bit isz) : m bit :=
-  let (v, sel) := vsel in 
+  let (v, sel) := vsel in
   ret (indexBitAt v sel).
 
    Definition v := N2Bv_sized 4  11.
@@ -106,14 +106,14 @@ Definition mux2_1_tb
 
    Example index_bit_3 : combinational (mux2_1_bit (v, i3)) = true.
    Proof. reflexivity. Qed.
- 
+
   Definition mux2_1_bit_Interface
     := combinationalInterface "mux2_1_bit"
        (mkPort "v" (BitVec Bit 4),
         mkPort "sel" (BitVec Bit 2))
        (mkPort "o" Bit)
        [].
-       
+
   Definition mux2_1_bit_Netlist := makeNetlist mux2_1_bit_Interface mux2_1_bit.
 
   Definition mux2_1_bit_tb_inputs :=
@@ -147,7 +147,7 @@ Definition muxBus {m bit} `{Cava m bit} {sz isz dsz: nat}
   let (v, sel) := vsel in
   ret (indexAt v sel).
 
-Definition muxBus4_8 {m bit} `{Cava m bit} 
+Definition muxBus4_8 {m bit} `{Cava m bit}
                      (vsel: Vector.t (smashTy bit (BitVec Bit 8)) 4 *
                             Vector.t bit 2) :
                      m (smashTy bit (BitVec Bit 8)) :=

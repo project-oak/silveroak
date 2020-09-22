@@ -42,7 +42,7 @@ Definition vectorAddGrowth {width: nat}
   let c : N := aN + bN in
   N2Bv_sized (1 + width) c.
 
-Definition vectorAdd4Growth {width: nat} 
+Definition vectorAdd4Growth {width: nat}
                             (a: Bvector width)
                             (b: Bvector width)
                             (c: Bvector width)
@@ -60,13 +60,13 @@ Definition vectorAddGrowth2 {aWidth bWidth: nat}
   let c : N := aN + bN in
   N2Bv_sized (1 + max aWidth bWidth) c.
 
-Definition vectorAdd3Growth {aWidth bWidth cWidth: nat} 
+Definition vectorAdd3Growth {aWidth bWidth cWidth: nat}
                             (a: Bvector aWidth)
                             (b: Bvector bWidth)
                             (c: Bvector cWidth) :
                             Bvector (1 + max (1 + max aWidth bWidth) cWidth) :=
   let a_plus_b := vectorAddGrowth2 a b in
-  vectorAddGrowth2 a_plus_b c.  
+  vectorAddGrowth2 a_plus_b c.
 
 
 Local Open Scope vector_scope.

@@ -30,8 +30,8 @@ Section notation.
 
   Definition halfAdder
   : << Bit, Bit, Unit >> ~> <<Bit, Bit>> :=
-    (* The bracket pairing `<[` `]>` opens a circuit expression scope, 
-    see readme.md for more information *) 
+    (* The bracket pairing `<[` `]>` opens a circuit expression scope,
+    see readme.md for more information *)
   <[ \ a b =>
     let part_sum = xor a b in
     let carry = and a b in
@@ -62,13 +62,13 @@ Section notation.
     (f, (d, e))
   ]>.
 
-  (* Replicate is a type created by replicating a type n times, 
+  (* Replicate is a type created by replicating a type n times,
   and connecting them by a right imbalanced tuple structure.
 
-  Since the above formulation of 'below' pairs the inputs and outputs 
-  as a tuple (rather requiring the types are equal and appending as a vector), 
+  Since the above formulation of 'below' pairs the inputs and outputs
+  as a tuple (rather requiring the types are equal and appending as a vector),
   'replicate' allows us to refer to type arrising from multiple
-  applications of 'below'. 
+  applications of 'below'.
   *)
   Fixpoint replicate A n : Kind :=
     match n with
@@ -79,14 +79,14 @@ Section notation.
 
   Fixpoint col {A B C: Kind} n
     (circuit: << A, B, Unit >> ~> <<A, C>>)
-    {struct n}: 
+    {struct n}:
       << A, replicate B (S n), Unit >> ~>
       << A, replicate C (S n)>> :=
     match n with
-    | O => <[ \a b => !circuit a b ]> 
+    | O => <[ \a b => !circuit a b ]>
     | S n' =>
       let column_above := (col n' circuit) in
-      below circuit column_above 
+      below circuit column_above
     end.
 
   Lemma col_cons: forall {A B C}
@@ -105,11 +105,11 @@ Section notation.
   This is done with familiar 'x[_]' syntax, although numeric constants require prepending with '#'.
   The index can be any expression. See readme.md for more information.
   *)
-  | 0 => <[\ x y => (x[#0], y[#0]) ]> 
-  | S n => 
-      <[\ xs ys => 
-      let '(x, xs') = uncons xs in 
-      let '(y, ys') = uncons ys in 
+  | 0 => <[\ x y => (x[#0], y[#0]) ]>
+  | S n =>
+      <[\ xs ys =>
+      let '(x, xs') = uncons xs in
+      let '(y, ys') = uncons ys in
       ((x, y), (!(interleave n) xs' ys'))
     ]>
   end.
@@ -121,10 +121,10 @@ Section notation.
     : << replicate Bit (S n), Unit >> ~>
       << Vector Bit (S n) >> :=
   match n with
-  | 0 => <[\ x => x :: [] ]> 
-  | S n => 
-      <[\ xs => 
-      let '(x, xs') = xs in 
+  | 0 => <[\ x => x :: [] ]>
+  | S n =>
+      <[\ xs =>
+      let '(x, xs') = xs in
       x :: !(productToVec n) xs'
     ]>
   end.

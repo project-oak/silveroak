@@ -20,7 +20,7 @@
 
 From Coq Require Import ZArith.
 From Coq Require Import ZArith.BinInt.
-From Coq Require Import Bool.Bool. 
+From Coq Require Import Bool.Bool.
 From Coq Require Import Ascii String.
 From Coq Require Import Lists.List.
 Require Import Nat Arith Lia.
@@ -50,7 +50,7 @@ Proof.
   all : simpl.
 Admitted.
 
-  
+
 Lemma fullAdderNat_correct :
   forall (a : N) (b : N) (cin : N), a < 2 -> b < 2 -> cin < 2 ->
   let '(sum, carry_out) := combinational (fullAdder (n2bool cin, (n2bool a, n2bool b))) in
