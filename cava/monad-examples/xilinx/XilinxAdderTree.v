@@ -38,9 +38,10 @@ Require Import Cava.Monad.XilinxAdder.
 (******************************************************************************)
 
 Definition adderTree {m bit} `{Cava m bit} {sz: nat}
-                     (n: nat) (v: Vector.t (Vector.t bit sz) (2^(n+1))) :
+                     (default : bit)
+                     (n: nat) (v: Vector.t (Vector.t bit sz) (2^(S n))) :
                      m (Vector.t bit sz) :=
-  tree n xilinxAdder v.
+  tree (Vector.const default _) n xilinxAdder v.
 
 (******************************************************************************)
 (* Some tests.                                                                *)
@@ -62,11 +63,12 @@ Local Open Scope nat_scope.
 Local Open Scope vector_scope.
 
 Definition adderTree2 {m bit} `{Cava m bit} {sz: nat}
+                      (default : bit)
                       (v : Vector.t (Vector.t bit sz) 2) : m (Vector.t bit sz)
-  := adderTree 0 v.
+  := adderTree default 0 v.
 
 Definition v0_v1 : Vector.t (Bvector 8) 2 := [v0; v1].
-Definition v0_plus_v1 : Bvector 8 := combinational (adderTree2 v0_v1).
+Definition v0_plus_v1 : Bvector 8 := combinational (adderTree2 false v0_v1).
 Example sum_vo_v1 : v0_plus_v1 = N2Bv_sized 8 21.
 Proof. reflexivity. Qed.
 
@@ -75,14 +77,15 @@ Proof. reflexivity. Qed.
 (******************************************************************************)
 
 Definition adderTree4 {m bit} `{Cava m bit} {sz: nat}
+                      (default : bit)
                       (v : Vector.t (Vector.t bit sz) 4) : m (Vector.t bit sz)
-  := adderTree 1 v.
+  := adderTree default 1 v.
 
 Local Open Scope N_scope.
 
 Definition v0_v1_v2_v3 := [v0; v1; v2; v3].
-Definition adderTree4_v0_v1_v2_v3 := combinational (adderTree4 v0_v1_v2_v3).
-Example sum_v0_v1_v2_v3 : Bv2N (combinational (adderTree4 v0_v1_v2_v3)) = 30.
+Definition adderTree4_v0_v1_v2_v3 := combinational (adderTree4 false v0_v1_v2_v3).
+Example sum_v0_v1_v2_v3 : Bv2N (combinational (adderTree4 false v0_v1_v2_v3)) = 30.
 Proof. reflexivity. Qed.
 
 Local Open Scope nat_scope.
@@ -98,7 +101,7 @@ Definition adder_tree_Interface name nrInputs bitSize
 Definition adder_tree4_8Interface := adder_tree_Interface "xadder_tree4_8" 4 8.
 
 Definition adder_tree4_8Netlist
-  := makeNetlist adder_tree4_8Interface adderTree4.
+  := makeNetlist adder_tree4_8Interface (adderTree4 Gnd).
 
 Local Open Scope N_scope.
 
@@ -109,7 +112,7 @@ Definition adder_tree4_8_tb_inputs
       [9; 56; 2; 87];   [14; 72; 90; 11]; [64; 12; 92; 13];    [88; 24; 107; 200]]).
 
 Definition adder_tree4_8_tb_expected_outputs
-  := map (fun i => combinational (adderTree4 i)) adder_tree4_8_tb_inputs.
+  := map (fun i => combinational (adderTree4 false i)) adder_tree4_8_tb_inputs.
 
 Definition adder_tree4_8_tb :=
   testBench "xadder_tree4_8_tb" adder_tree4_8Interface
@@ -129,21 +132,21 @@ Proof. reflexivity. Qed.
 Definition adder_tree32_8Interface := adder_tree_Interface "xadder_tree32_8" 32 8.
 
 Definition adder_tree32_8Netlist
-  := makeNetlist adder_tree32_8Interface (adderTree 4).
+  := makeNetlist adder_tree32_8Interface (adderTree Gnd 4).
 
 (* Create netlist and test-bench for a 64-input adder tree. *)
 
 Definition adder_tree64_8Interface := adder_tree_Interface "xadder_tree64_8" 64 8.
 
 Definition adder_tree64_8Netlist
-  := makeNetlist adder_tree64_8Interface (adderTree 5).
+  := makeNetlist adder_tree64_8Interface (adderTree Gnd 5).
 
 Definition adder_tree64_8_tb_inputs
   := map (fun i => Vector.map (N2Bv_sized 8) (Vector.map N.of_nat i))
      [vseq 0 64; vseq 64 64; vseq 128 64].
 
 Definition adder_tree64_8_tb_expected_outputs
-  := map (fun i => combinational (adderTree 5 i)) adder_tree64_8_tb_inputs.
+  := map (fun i => combinational (adderTree false 5 i)) adder_tree64_8_tb_inputs.
 
 Definition adder_tree64_8_tb :=
   testBench "xadder_tree64_8_tb" adder_tree64_8Interface
@@ -156,7 +159,7 @@ Definition adder_tree64_8_tb :=
 Definition adder_tree64_128Interface := adder_tree_Interface "xadder_tree64_128" 64 128.
 
 Definition adder_tree64_128Netlist
-  := makeNetlist adder_tree64_128Interface (adderTree 5).
+  := makeNetlist adder_tree64_128Interface (adderTree Gnd 5).
 
 Definition adder_tree64_128_tb_inputs
   := map (fun i => Vector.map (N2Bv_sized 128) i)
@@ -164,7 +167,7 @@ Definition adder_tree64_128_tb_inputs
      [vseq 0 64; vseq 64 64; vseq 128 64]).
 
 Definition adder_tree64_128_tb_expected_outputs
-  := map (fun i => combinational (adderTree 5 i)) adder_tree64_128_tb_inputs.
+  := map (fun i => combinational (adderTree false 5 i)) adder_tree64_128_tb_inputs.
 
 Definition adder_tree64_128_tb :=
   testBench "xadder_tree64_128_tb" adder_tree64_128Interface
@@ -177,7 +180,7 @@ Definition adder_tree64_128_tb :=
 Definition adder_tree128_256Interface := adder_tree_Interface "xadder_tree128_256" 128 256.
 
 Definition adder_tree128_256Netlist
-  := makeNetlist adder_tree128_256Interface (adderTree 6).
+  := makeNetlist adder_tree128_256Interface (adderTree Gnd 6).
 
 Definition adder_tree128_256_tb_inputs : list (Vector.t (Bvector 256) 128)
   := map (fun i => Vector.map (N2Bv_sized 256) i)
@@ -186,7 +189,7 @@ Definition adder_tree128_256_tb_inputs : list (Vector.t (Bvector 256) 128)
 
 Definition adder_tree128_256_tb_expected_outputs
            : list (Bvector 256)
-  := map (fun i => combinational (adderTree 6 i)) adder_tree128_256_tb_inputs.
+  := map (fun i => combinational (adderTree false 6 i)) adder_tree128_256_tb_inputs.
 
 Definition adder_tree128_256_tb :=
   testBench "xadder_tree128_256_tb" adder_tree128_256Interface

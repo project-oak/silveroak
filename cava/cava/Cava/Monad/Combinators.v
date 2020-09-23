@@ -30,10 +30,12 @@ Export MonadNotation.
 From Cava Require Import Kind.
 Require Import Cava.Monad.CavaClass.
 Require Import Cava.VectorUtils.
+Require Import Cava.ListUtils.
 
 Generalizable All Variables.
 
 From Coq Require Import Lia.
+Require Import ExtLib.Structures.MonadLaws.
 
 Local Open Scope monad_scope.
 
@@ -292,44 +294,129 @@ Definition halve {A} (l : list A) : list A * list A :=
 (* A binary tree combinator, list version.                                                  *)
 (******************************************************************************)
 
-Fixpoint treeList {T: Type} {m bit} `{Cava m bit}
+Fixpoint treeList {T: Type} {m} `{Monad m}
                   (circuit: T -> T -> m T) (def: T)
                   (n : nat) (v: list T) : m T :=
-  match n, v with
-  | O, ab => match ab return m T with
-             | [a; b]=> circuit a b
-             | _ => ret def
-             end
-  | S n', vR => let '(vL, vH) := halve v in
-                aS <- treeList circuit def n' vL ;;
-                bS <- treeList circuit def n' vH ;;
-                circuit aS bS
+  match n with
+  | O => match v return m T with
+        | [a; b]=> circuit a b
+        | _ => ret def
+        end
+  | S n' => let '(vL, vH) := halve v in
+           aS <- treeList circuit def n' vL ;;
+           bS <- treeList circuit def n' vH ;;
+           circuit aS bS
   end.
 
 Fixpoint treeWithList {T: Type} {m bit} `{Cava m bit}
                       (circuit: T -> T -> m T) (def: T)
                       (n : nat) (v: Vector.t T (2^(n+1))) : m T :=
- treeList circuit def n (to_list v).
+  treeList circuit def n (to_list v).
+
+Lemma treeList_equiv
+      {T} {m} {monad : Monad m}
+      {monad_laws : MonadLaws monad}
+      (id : T)
+      (op : T -> T -> T)
+      (op_id_left : forall a : T, op id a = a)
+      (op_id_right : forall a : T, op a id = a)
+      (op_assoc :
+         forall a b c : T,
+           op a (op b c) = op (op a b) c)
+      (circuit : T -> T -> m T)
+      (circuit_equiv :
+         forall a b : T, circuit a b = ret (op a b))
+      (def : T) (n : nat) :
+  forall v,
+    length v = 2 ^ (S n) ->
+    treeList circuit def n v = ret (List.fold_left op v id).
+Proof.
+  induction n; intros; [ | ].
+  { (* n = 0 *)
+    change (2 ^ 1) with 2 in *.
+    destruct_lists_by_length. cbn [treeList fold_left].
+    rewrite op_id_left, circuit_equiv.
+    reflexivity. }
+  { (* n = S n' *)
+    cbn [treeList halve]. rewrite !Nat.pow_succ_r in * by lia.
+    erewrite <-Nat.div_unique_exact by eauto.
+    rewrite !IHn by (rewrite ?firstn_length, ?skipn_length; lia).
+    rewrite !bind_of_return, circuit_equiv by typeclasses eauto.
+    rewrite <-fold_left_assoc, <-fold_left_app by eauto.
+    rewrite firstn_skipn. reflexivity. }
+Qed.
 
 (******************************************************************************)
 (* A binary tree combinator, Vector version.                                                  *)
 (******************************************************************************)
 
-Definition halveV {n a} (v : Vector.t a (2*n)) : Vector.t a n * Vector.t a n :=
-  match Nat.eq_dec (n + 0) n with
-  | left Heq => rew [fun x => (Vector.t a n * Vector.t a x)%type] Heq in Vector.splitat n v
-  | right Hneq => (ltac:(exfalso;lia))
-  end.
+Definition divide {A n} (default : A) (v : Vector.t A (2 ^ (S n))) :
+  Vector.t A (2 ^ n) * Vector.t A (2 ^ n) :=
+  splitat _ (@resize_default A (2 ^ (S n)) default (2 ^ n + 2 ^ n) v).
 
-Fixpoint tree {T: Type} {m bit} `{Cava m bit} (n: nat)
+Fixpoint tree {T: Type} {m bit} `{Cava m bit}
+                                (default : T) (n : nat)
                                 (circuit: T -> T -> m T)
-                                (v : Vector.t T (2^(n+1))) :
+                                (v : Vector.t T (2^(S n))) :
                                 m T :=
   match n, v return m T with
   | O, v2 => circuit (@Vector.nth_order _ 2 v2 0 (ltac:(lia)))
                      (@Vector.nth_order _ 2 v2 1 (ltac:(lia)))
-  | S n', vR => let '(vL, vH) := halveV vR in
-                aS <- tree n' circuit vL ;;
-                bS <- tree n' circuit vH ;;
+  | S n', vR => let '(vL, vH) := divide default vR in
+                aS <- tree default n' circuit vL ;;
+                bS <- tree default n' circuit vH ;;
                 circuit aS bS
   end.
+
+Local Ltac destruct_pair_let :=
+  match goal with
+  | |- context [ match ?p with pair _ _ => _ end ] =>
+    rewrite (surjective_pairing p)
+  end.
+
+Lemma append_divide {A} d n H (v : t A (2 ^ (S n))) :
+  (fst (divide d v) ++ snd (divide d v))%vector = resize _ H v.
+Proof.
+  cbv [divide].
+  let H := fresh in
+  match goal with
+  | |- context [splitat ?n ?v] =>
+    pose proof (surjective_pairing (splitat n v)) as H
+  end;
+    apply append_splitat in H;
+    rewrite <-H; clear H.
+  rewrite resize_default_eq with (d0:=d).
+  reflexivity.
+Qed.
+
+Lemma tree_equiv
+      {T} {m bit} {monad : Monad m}
+      {cava : Cava m bit} {monad_laws : MonadLaws monad}
+      (id : T)
+      (op : T -> T -> T)
+      (op_id_left : forall a : T, op id a = a)
+      (op_id_right : forall a : T, op a id = a)
+      (op_assoc :
+         forall a b c : T,
+           op a (op b c) = op (op a b) c)
+      (circuit : T -> T -> m T)
+      (circuit_equiv :
+         forall a b : T, circuit a b = ret (op a b))
+      (default : T) (n : nat) :
+  forall v,
+    tree default n circuit v = ret (Vector.fold_left op id v).
+Proof.
+  induction n; intros.
+  { change (2 ^ 1) with 2 in *.
+    cbn [tree]. autorewrite with vsimpl.
+    rewrite circuit_equiv, op_id_left. reflexivity. }
+  { cbn [tree]. destruct_pair_let.
+    rewrite !IHn by eauto.
+    rewrite !bind_of_return by eauto.
+    rewrite circuit_equiv by eauto.
+    rewrite <-fold_left_S_assoc, <-fold_left_append by auto.
+    assert (2 ^ S (S n) = 2 ^ S n + 2 ^ S n)
+      by (rewrite Nat.pow_succ_r'; lia).
+    rewrite (append_divide _ _ ltac:(eassumption)).
+    rewrite fold_left_resize. reflexivity. }
+Qed.
