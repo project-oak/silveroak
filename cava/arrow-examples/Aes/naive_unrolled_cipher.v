@@ -203,5 +203,11 @@ Section tests.
       (interp_combinational (unrolled_cipher_naive SboxCanright _)
       (false, (test_data, test_key)))
       test_encrypted.
+  Goal (interp_combinational (unrolled_cipher_naive SboxCanright _)
+      (false, (test_data, test_key))) =
+      test_encrypted.
+  Proof.
+    time native_compute.
+  Qed.
 End tests.
 

@@ -139,6 +139,30 @@ Section ctxt.
   Proof. auto with kappa_cc. Qed.
 End ctxt.
 
+Fixpoint rewrite_or_default (x y: Kind): x ~> y :=
+  match x with
+  | Unit =>
+      match y with
+      | Unit => Structural (Id _)
+      | _ => drop >>> Primitive (Constant _ (kind_default _))
+      end
+  | Tuple l r =>
+      match y with
+      | Tuple ll rr => first (rewrite_or_default l ll) >>> second (rewrite_or_default r rr)
+      | _ => drop >>> Primitive (Constant _ (kind_default _))
+      end
+  | Vector t n =>
+      match y with
+      | Vector t2 n2 => CircuitArrow.Map t t2 n (rewrite_or_default t t2) >>> Resize t2 n n2
+      | _ => drop >>> Primitive (Constant _ (kind_default _))
+      end
+  | Bit =>
+      match y with
+      | Bit => Structural (Id _)
+      | _ => drop >>> Primitive (Constant _ (kind_default _))
+      end
+  end.
+
 (* Construct an Arrow morphism that takes a variable list Kind
 and returns the variable at an index *)
 Fixpoint extract_nth (ctxt: list Kind) (ty: Kind) (x: nat)
@@ -146,13 +170,8 @@ Fixpoint extract_nth (ctxt: list Kind) (ty: Kind) (x: nat)
   match ctxt with
   | [] => drop >>> Primitive (Constant _(kind_default _))
   | ty' :: ctxt' =>
-    if x =? (length ctxt') then
-      (* match eq_dec ty' ty with *)
-      match eq_kind_dec ty' ty with
-      (* | left Heq2 => rew Heq2 in (drop >>> Primitive (Constant _(kind_default _))) *)
-      | left Heq2 => rew Heq2 in (second drop >>> Structural (Cancelr _))
-      | right Hneq => drop >>> Primitive (Constant _(kind_default _))
-      end
+    if x =? (length ctxt')
+    then second drop >>> cancelr >>> rewrite_or_default ty' ty
     else first drop >>> cancell >>> extract_nth ctxt' _ x
   end.
 

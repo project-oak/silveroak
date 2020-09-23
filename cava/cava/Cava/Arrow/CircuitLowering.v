@@ -32,6 +32,18 @@ From ExtLib Require Export Data.Monads.StateMonad.
 
 Import MonadNotation.
 
+(* TODO remove this via merging upstream *)
+Fixpoint resize_default {A n} default : forall m, t A n -> t A m :=
+  match n as n0 return forall m, t A n0 -> t A m with
+  | O => fun m _ => Vector.const default m
+  | S n' =>
+    fun m v =>
+      match m with
+      | O => Vector.nil _
+      | S m' => (Vector.hd v :: resize_default default m' (Vector.tl v))%vector
+      end
+  end.
+
 (******************************************************************************)
 (* Evaluation as a netlist                                                    *)
 (******************************************************************************)
@@ -284,6 +296,8 @@ Fixpoint build_netlist' {i o}
   | Primitive (Snoc n o) => fun '(v, (x,_)) => ret (snoc' _ _ v x)
   | Primitive (Primitives.Concat n m o) => fun '(x, (y, _)) =>
     ret ((x ++ y)%vector)
+  | Map x y n f => fun v => mapT (build_netlist' f) v
+  | Resize x n nn => fun v => ret (resize_default (const_wire _ (kind_default _)) nn v)
 end.
 
 Close Scope string_scope.
