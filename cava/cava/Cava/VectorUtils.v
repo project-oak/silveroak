@@ -56,48 +56,53 @@ Definition fixup n (F : Type -> Type) (Ap: Applicative F) (A B : Type) (m: A -> 
 Global Instance Traversable_vector@{} {n} : Traversable (fun t => Vector.t t n) :=
 { mapT := fixup n }.
 
-Module Vector.
-  Local Open Scope vector_scope.
-  Fixpoint reshape {n m A}:
-    Vector.t A (n * m) -> Vector.t (Vector.t A m) n :=
-    match n as n' return
-      Vector.t A (n' * m) -> Vector.t (Vector.t A m) n' with
+Local Open Scope vector_scope.
+
+Section Vector.
+  Context {A:Type}.
+  Local Notation t := (Vector.t).
+
+  Fixpoint vreshape {n m}: t A (n * m) -> t (t A m) n :=
+    match n as n' return t A (n' * m) -> t (t A m) n' with
     | 0 => fun _ => []
     | S n' => fun v =>
       let '(x, xs) := Vector.splitat (r:=n' * m) m v in
-      x :: @reshape n' m A xs
+      x :: vreshape xs
     end.
 
-  Fixpoint flatten {n m A}:
-    Vector.t (Vector.t A m) n -> Vector.t A (n*m) :=
-    match n as n' return Vector.t (Vector.t A m) n' -> Vector.t A (n'*m) with
+  Fixpoint vflatten {n m}: t (t A m) n -> t A (n*m) :=
+    match n as n' return t (t A m) n' -> t A (n'*m) with
     | 0 => fun _ => []
     | S n' => fun v =>
         let '(x, xs) := uncons v in
-        x ++ (@flatten n' m A) xs
+        x ++ vflatten xs
     end.
 
-  Definition snoc n o (v: Vector.t o n) a
-    : Vector.t o (S n) :=
-    t_rect _ (fun n v => Vector.t o (S n)) [a]
+  Definition vunsnoc {n} (v: t A (S n)): (t A n * A) :=
+    rectS (fun n v => (t A n * A)%type)
+    (fun o => ([], o))
+    (fun o n v f =>
+      let '(xs, x) := f in
+      (o::xs, x)
+    ) v.
+
+  Definition vsnoc {n} (v: t A n) a: t A (S n) :=
+    t_rect _ (fun n v => t A (S n)) [a]
     (fun x n v f =>
       x :: f
     ) _ v.
 
   (* avoids the equality rewrites in Coq.Vector.rev *)
-  Fixpoint reverse {n A}
-    (v: Vector.t A n): Vector.t A n :=
+  Fixpoint vreverse {n} (v: t A n): t A n :=
     match v with
     | [] => []
-    | x::xs => snoc _ _ (reverse xs) x
+    | x::xs => vsnoc (vreverse xs) x
     end.
 End Vector.
 
 (******************************************************************************)
 (* Vector version of combine                                                  *)
 (******************************************************************************)
-
-Local Open Scope vector_scope.
 
 Fixpoint vcombine {A B: Type} {s: nat} (a: Vector.t A s)
                                        (b: Vector.t B s) :
@@ -347,3 +352,14 @@ Hint Rewrite @tl_0 @hd_0 @last_tl
      using solve [eauto] : push_vector_tl_hd_last vsimpl.
 Hint Rewrite @nth_order_hd @nth_order_last
      using solve [eauto] : push_vector_nth_order vsimpl.
+
+Section Vector.
+  Context {A:Type}.
+  Local Notation t := (Vector.t).
+
+  Definition slice_by_position n x y (default: A) (v: t A n): (t A (x - y + 1)) :=
+    let v' := resize_default default (y + (n - y)) v in
+    let tail := snd (splitat y v') in
+    let tail' := resize_default default ((x - y + 1) + (n - x - 1)) tail in
+    fst (splitat (x-y+1) tail').
+End Vector.

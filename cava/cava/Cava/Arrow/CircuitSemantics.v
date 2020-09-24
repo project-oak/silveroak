@@ -17,6 +17,7 @@
 From Coq Require Import Bool ZArith NArith NaryFunctions Vector Lia.
 From Arrow Require Import Category Arrow.
 From Cava.Arrow Require Import CircuitArrow CircuitProp.
+Require Import Cava.VectorUtils.
 
 Import VectorNotations.
 Import EqNotations.
@@ -28,40 +29,6 @@ Require Import Cava.BitArithmetic.
 (******************************************************************************)
 
 Definition denote_combinational_evaluation {i o} (c: Circuit i o) := denote_kind i -> denote_kind o.
-
-Definition unsnoc' n o (v: denote_kind (Vector o (S n)))
-  : (denote_kind (Vector o n) * denote_kind o) :=
-  rectS (fun n v => (denote_kind (Vector o n) * denote_kind o)%type)
-  (fun o => ([], o))
-  (fun o n v f =>
-    let '(xs, x) := f in
-    (o::xs, x)
-  ) v.
-
-Definition snoc' n o (v: denote_kind (Vector o n)) a
-  : denote_kind (Vector o (S n)) :=
-  t_rect _ (fun n v => denote_kind (Vector o (S n))) [a]
-  (fun x n v f =>
-    x :: f
-  ) _ v.
-
-(* TODO remove this via merging upstream *)
-Fixpoint resize_default {A n} default : forall m, t A n -> t A m :=
-  match n as n0 return forall m, t A n0 -> t A m with
-  | O => fun m _ => Vector.const default m
-  | S n' =>
-    fun m v =>
-      match m with
-      | O => Vector.nil _
-      | S m' => (Vector.hd v :: resize_default default m' (Vector.tl v))%vector
-      end
-  end.
-
-Definition slice_by_position n x y (o: Kind) (v: denote_kind (Vector o n)) : denote_kind (Vector o (x - y + 1)) :=
-  let v' := resize_default (kind_default _) (y + (n - y)) v in
-  let tail := snd (splitat y v') in
-  let tail' := resize_default (kind_default _) ((x - y + 1) + (n - x - 1)) tail in
-  fst (Vector.splitat (x-y+1) tail').
 
 Fixpoint combinational_evaluation' {i o}
   (c: Circuit i o)
@@ -91,9 +58,9 @@ Fixpoint combinational_evaluation' {i o}
   | Primitive Not => fun b => negb (fst b)
   | Primitive BufGate => fun b => fst b
   | Primitive (Uncons n o) => fun v => (hd (fst v), tl (fst v))
-  | Primitive (Unsnoc n o) => fun v => unsnoc' n o (fst v)
+  | Primitive (Unsnoc n o) => fun v => vunsnoc (fst v)
   | Primitive (Split n m o) => fun v => (Vector.splitat n (fst v))
-  | Primitive (Slice n x y o) => fun v => slice_by_position n x y o (fst v)
+  | Primitive (Slice n x y o) => fun v => slice_by_position n x y (kind_default _) (fst v)
   | Primitive (EmptyVec o) => fun _ => []
   | Primitive (Lut n f) => fun '(i,_) =>
     let f' := NaryFunctions.nuncurry bool bool n f in
@@ -129,7 +96,7 @@ Fixpoint combinational_evaluation' {i o}
     | right Hnlt => kind_default _
     end
   | Primitive (Cons n o) => fun '(x, (v,_)) => (x :: v)
-  | Primitive (Snoc n o) => fun '(v, (x,_)) => snoc' n o v x
+  | Primitive (Snoc n o) => fun '(v, (x,_)) => vsnoc v x
 
   | Primitive (Concat n m o) => fun '(x, (y, _)) => Vector.append x y
 

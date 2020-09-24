@@ -32,18 +32,6 @@ From ExtLib Require Export Data.Monads.StateMonad.
 
 Import MonadNotation.
 
-(* TODO remove this via merging upstream *)
-Fixpoint resize_default {A n} default : forall m, t A n -> t A m :=
-  match n as n0 return forall m, t A n0 -> t A m with
-  | O => fun m _ => Vector.const default m
-  | S n' =>
-    fun m v =>
-      match m with
-      | O => Vector.nil _
-      | S m' => (Vector.hd v :: resize_default default m' (Vector.tl v))%vector
-      end
-  end.
-
 (******************************************************************************)
 (* Evaluation as a netlist                                                    *)
 (******************************************************************************)
@@ -148,13 +136,6 @@ match ty, x, y with
   mapT (fun '(x, y)  => map2M f t x y) (map2 pair v1 v2) ;;
   ret tt
 end.
-
-Definition snoc' n o (v: denote (Vector o n)) a
-  : denote (Vector o (S n)) :=
-  t_rect _ (fun n v => denote (Vector o (S n))) [a]
-  (fun x n v f =>
-    x :: f
-  ) _ v.
 
 Definition slice' n x y (o: Kind) (v: denote (Vector o n)) : state CavaState (denote (Vector o (x - y + 1))) :=
   let v := Vector.map VecLit (pack_vector _ _ v) in
@@ -287,13 +268,12 @@ Fixpoint build_netlist' {i o}
       ret (Vector.map (IndexConst sum) (vseq 0 s))
   | Primitive (Primitives.UnsignedSub s) => fun '(x, (y,_)) =>
       sum <- newVector _ s ;;
-      (* TODO: add netlist subtraction instance *)
-      addInstance (UnsignedAdd (VecLit x) (VecLit y) sum) ;;
+      addInstance (UnsignedSubtract (VecLit x) (VecLit y) sum) ;;
       ret (Vector.map (IndexConst sum) (vseq 0 s))
   | Primitive (Index n o) => fun '(v,(i,_)) => index' _ _ v i
   | Primitive (Primitives.Cons n o) => fun '(x, (v,_)) =>
     ret ((x :: v)%vector)
-  | Primitive (Snoc n o) => fun '(v, (x,_)) => ret (snoc' _ _ v x)
+  | Primitive (Snoc n o) => fun '(v, (x,_)) => ret (vsnoc v x)
   | Primitive (Primitives.Concat n m o) => fun '(x, (y, _)) =>
     ret ((x ++ y)%vector)
   | Map x y n f => fun v => mapT (build_netlist' f) v
