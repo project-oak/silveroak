@@ -1,10 +1,10 @@
 Require Import Coq.Lists.List.
 Require Import Coq.Strings.String.
 Require Import Coq.ZArith.ZArith.
+Require Import bedrock2.Semantics.
 Require Import bedrock2.Syntax.
 Require Import bedrock2.NotationsInConstr.
 Require Import bedrock2.NotationsCustomEntry.
-Require Import bedrock2.BasicC64Semantics.
 Require Import bedrock2.ToCString.
 Require Import coqutil.Word.Interface.
 Import Syntax.Coercions List.ListNotations.
@@ -47,6 +47,7 @@ Class aes_h :=
   }.
 
 Section Impl.
+  Context {semantics : Semantics.parameters}.
   (* aes_cfg_t struct fields *)
   Context {aes_regs : aes_regs_h} {common : common_h} {aes : aes_h}.
 
@@ -63,10 +64,10 @@ Section Impl.
       REG32(AES_CTRL_SHADOWED(0)) = cfg_val;
   };
    ***)
-  Definition aes_init : func :=
+  Definition aes_init_struct : func :=
     let aes_cfg := "aes_cfg" in
     let cfg_val := "cfg_val" in
-    ("b2_aes_init",
+    ("b2_aes_init_struct",
      ([aes_cfg], [], bedrock_func_body:(
       stackalloc 4 as cfg_val {
       cfg_val = ((constr:(aes_cfg.!operation) << AES_CTRL_SHADOWED_OPERATION) |
@@ -78,12 +79,12 @@ Section Impl.
       output! REG32_SET ( AES_CTRL_SHADOWED_0, cfg_val )
     }))).
 
-  Definition aes_init_no_struct : func :=
+  Definition aes_init : func :=
     let aes_cfg_operation := "aes_cfg_operation" in
     let aes_cfg_mode := "aes_cfg_mode" in
     let aes_cfg_key_len := "aes_cfg_key_len" in
     let cfg_val := "cfg_val" in
-    ("b2_aes_init_no_struct",
+    ("b2_aes_init",
      ([aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
       AES_CTRL_SHADOWED_0; AES_CTRL_SHADOWED_OPERATION;
       AES_CTRL_SHADOWED_MODE_MASK; AES_CTRL_SHADOWED_MODE_OFFSET;
@@ -99,15 +100,15 @@ Section Impl.
     ))).
 End Impl.
 
-Instance aes_h_impl : aes_h :=
+Global Instance aes_h_impl : aes_h :=
   { operation := {| offset := 0; size := access_size.one |};
     mode := {| offset := 1; size := access_size.one |};
     key_len := {| offset := 2; size := access_size.one |};
     manual_operation := {| offset := 3; size := access_size.one |}
   }.
-Instance common_h_impl : common_h :=
-  { REG32_SET := "REG32_SET" }.
-Instance aes_regs_h_impl : aes_regs_h :=
+Global Instance common_h_impl : common_h :=
+  { REG32_SET := "MMIOWRITE" }. (* FIXME: this is for compatibility with fe310csemantics *)
+Global Instance aes_regs_h_impl : aes_regs_h :=
   { AES_CTRL_SHADOWED_0 := "AES_CTRL_SHADOWED_0";
     AES_CTRL_SHADOWED_OPERATION := "operation";
     AES_CTRL_SHADOWED_MODE_MASK := "mode_mask";
@@ -117,19 +118,5 @@ Instance aes_regs_h_impl : aes_regs_h :=
   }.
 
 Compute c_module [aes_init].
-Compute c_module [aes_init_no_struct].
-Redirect "aes_init.c" Compute c_module [aes_init; aes_init_no_struct].
-
-Require Import bedrock2.ProgramLogic.
-Require Import bedrock2.WeakestPrecondition.
-
-Section Spec.
-  (* For now, empty spec *)
-  Instance spec_of_aes_init : spec_of aes_init :=
-    fun functions =>
-      forall tr mem aes_cfg,
-        WeakestPrecondition.call
-          (aes_init :: functions)
-          aes_init tr mem [aes_cfg]
-          (fun tr m rets => True).
-End Spec.
+Compute c_module [aes_init_struct].
+Redirect "aes_init.c" Compute c_module [aes_init; aes_init_struct].
