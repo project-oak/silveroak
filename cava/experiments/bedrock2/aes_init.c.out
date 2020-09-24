@@ -1,0 +1,36 @@
+     = "#include <stdint.h>
+#include <memory.h>
+
+// LITTLE-ENDIAN memory access is REQUIRED
+// the following two functions are required to work around -fstrict-aliasing
+static inline uintptr_t _br2_load(uintptr_t a, size_t sz) {
+  uintptr_t r = 0;
+  memcpy(&r, (void*)a, sz);
+  return r;
+}
+
+static inline void _br2_store(uintptr_t a, uintptr_t v, size_t sz) {
+  memcpy((void*)a, &v, sz);
+}
+
+static void b2_aes_init_no_struct(uintptr_t aes_cfg_operation, uintptr_t aes_cfg_mode, uintptr_t aes_cfg_key_len);
+
+void b2_aes_init(uintptr_t aes_cfg) {
+  uintptr_t cfg_val;
+  cfg_val = alloca((uintptr_t)4ULL); // TODO untested
+  cfg_val = (((_br2_load((aes_cfg)+((uintptr_t)0ULL), 1))<<(AES_CTRL_SHADOWED_OPERATION))|(((_br2_load((aes_cfg)+((uintptr_t)1ULL), 1))&(AES_CTRL_SHADOWED_MODE_MASK))<<(AES_CTRL_SHADOWED_MODE_OFFSET)))|(((_br2_load((aes_cfg)+((uintptr_t)2ULL), 1))&(AES_CTRL_SHADOWED_KEY_LEN_MASK))<<(AES_CTRL_SHADOWED_KEY_LEN_OFFSET));
+  REG32_SET(AES_CTRL_SHADOWED(0), cfg_val);
+  REG32_SET(AES_CTRL_SHADOWED(0), cfg_val);
+  return;
+}
+
+static void b2_aes_init_no_struct(uintptr_t aes_cfg_operation, uintptr_t aes_cfg_mode, uintptr_t aes_cfg_key_len) {
+  uintptr_t cfg_val;
+  cfg_val = alloca((uintptr_t)4ULL); // TODO untested
+  cfg_val = (((aes_cfg_operation)<<(AES_CTRL_SHADOWED_OPERATION))|(((aes_cfg_mode)&(AES_CTRL_SHADOWED_MODE_MASK))<<(AES_CTRL_SHADOWED_MODE_OFFSET)))|(((aes_cfg_key_len)&(AES_CTRL_SHADOWED_KEY_LEN_MASK))<<(AES_CTRL_SHADOWED_KEY_LEN_OFFSET));
+  REG32_SET(AES_CTRL_SHADOWED(0), cfg_val);
+  REG32_SET(AES_CTRL_SHADOWED(0), cfg_val);
+  return;
+}
+"
+     : string
