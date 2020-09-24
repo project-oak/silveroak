@@ -27,15 +27,11 @@ Notation vec_index n := (Vector Bit (Nat.log2_up n)).
 Inductive CircuitPrimitive :=
   | Constant (ty: Kind) (v: denote_kind ty)
   | Delay (o: Kind)
-  | Not
   | BufGate
-  | Uncons (n: nat) (o: Kind)
-  | Unsnoc (n: nat) (o: Kind)
-  | Slice (n: nat) (x y: nat) (o: Kind)
-  | Split (n m: nat) (o: Kind)
-  | EmptyVec (o: Kind)
+
   | Lut (n: nat) (f: bool^^n --> bool)
 
+  | Not
   | And
   | Nand
   | Or
@@ -43,18 +39,25 @@ Inductive CircuitPrimitive :=
   | Xor
   | Xnor
   | Xorcy
+  | Muxcy
 
   | Fst (x y: Kind)
   | Snd (x y: Kind)
   | Pair (x y: Kind)
 
-  | Muxcy
   | UnsignedAdd (a b c: nat)
   | UnsignedSub (a: nat)
+
   | Index (n: nat) (o: Kind)
   | Cons (n: nat) (o: Kind)
   | Snoc (n: nat) (o: Kind)
-  | Concat (n m: nat) (o: Kind).
+  | Concat (n m: nat) (o: Kind)
+  | Uncons (n: nat) (o: Kind)
+  | Unsnoc (n: nat) (o: Kind)
+  | Slice (n: nat) (x y: nat) (o: Kind)
+  | Split (n m: nat) (o: Kind)
+  | EmptyVec (o: Kind)
+.
 
 Fixpoint primitive_input (op: CircuitPrimitive): Kind :=
   match op with

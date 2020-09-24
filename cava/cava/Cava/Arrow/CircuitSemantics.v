@@ -45,17 +45,23 @@ Definition snoc' n o (v: denote_kind (Vector o n)) a
     x :: f
   ) _ v.
 
-Definition slice_by_position n x y (o: Kind) (v: denote_kind (Vector o n)) : denote_kind (Vector o (x - y + 1)) :=
-  match Nat.eq_dec n (y + (n - y)) with
-  | left Heq =>
-    let '(_, v) := splitat y (rew [fun x => Vector.t (denote_kind o) x] Heq in v)
-    in
-      match Nat.eq_dec (n-y) ((x - y + 1) + (n - x - 1)) with
-      | left Heq => fst (Vector.splitat (x-y+1) (rew [fun x => Vector.t (denote_kind o) x] Heq in v))
-      | right Hneq => kind_default _
+(* TODO remove this via merging upstream *)
+Fixpoint resize_default {A n} default : forall m, t A n -> t A m :=
+  match n as n0 return forall m, t A n0 -> t A m with
+  | O => fun m _ => Vector.const default m
+  | S n' =>
+    fun m v =>
+      match m with
+      | O => Vector.nil _
+      | S m' => (Vector.hd v :: resize_default default m' (Vector.tl v))%vector
       end
-  | right Hneq => kind_default _
   end.
+
+Definition slice_by_position n x y (o: Kind) (v: denote_kind (Vector o n)) : denote_kind (Vector o (x - y + 1)) :=
+  let v' := resize_default (kind_default _) (y + (n - y)) v in
+  let tail := snd (splitat y v') in
+  let tail' := resize_default (kind_default _) ((x - y + 1) + (n - x - 1)) tail in
+  fst (Vector.splitat (x-y+1) tail').
 
 Fixpoint combinational_evaluation' {i o}
   (c: Circuit i o)
@@ -126,25 +132,12 @@ Fixpoint combinational_evaluation' {i o}
   | Primitive (Snoc n o) => fun '(v, (x,_)) => snoc' n o v x
 
   | Primitive (Concat n m o) => fun '(x, (y, _)) => Vector.append x y
+
+  | Map x y n f => fun v => Vector.map (combinational_evaluation' f) v
+  | Resize x n nn => fun v => resize_default (kind_default _) nn v
   end.
 
 Local Open Scope category_scope.
-
-Fixpoint apply_rightmost_tt (x: Kind)
-  : denote_kind (remove_rightmost_unit x) -> denote_kind x
-  :=
-  match x as x' return denote_kind (remove_rightmost_unit x') -> denote_kind x' with
-  | Tuple l r =>
-    let rec := apply_rightmost_tt r in
-    match r as r' return
-      (denote_kind (remove_rightmost_unit r') -> denote_kind r') ->
-        denote_kind (remove_rightmost_unit (Tuple l r')) -> denote_kind (Tuple l r')
-      with
-    | Unit => fun f x => (x, tt)
-    | _ => fun f p => (fst p, f (snd p))
-    end rec
-  | _ => fun x => x
-  end.
 
 Definition combinational_evaluation {x y: Kind}
   (circuit: x ~> y)
