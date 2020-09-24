@@ -62,7 +62,7 @@ Section Impl.
       REG32(AES_CTRL_SHADOWED(0)) = cfg_val;
       REG32(AES_CTRL_SHADOWED(0)) = cfg_val;
   };
-  ***)
+   ***)
   Definition aes_init : func :=
     let aes_cfg := "aes_cfg" in
     let cfg_val := "cfg_val" in
@@ -73,7 +73,7 @@ Section Impl.
                  ((constr:(aes_cfg.!mode) & AES_CTRL_SHADOWED_MODE_MASK)
                     << AES_CTRL_SHADOWED_MODE_OFFSET) |
                  ((constr:(aes_cfg.!key_len) & AES_CTRL_SHADOWED_KEY_LEN_MASK)
-                   << AES_CTRL_SHADOWED_KEY_LEN_OFFSET)) ;
+                    << AES_CTRL_SHADOWED_KEY_LEN_OFFSET)) ;
       output! REG32_SET ( AES_CTRL_SHADOWED_0, cfg_val ) ;
       output! REG32_SET ( AES_CTRL_SHADOWED_0, cfg_val )
     }))).
@@ -84,8 +84,11 @@ Section Impl.
     let aes_cfg_key_len := "aes_cfg_key_len" in
     let cfg_val := "cfg_val" in
     ("b2_aes_init_no_struct",
-     ([aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len], [], bedrock_func_body:(
-      stackalloc 4 as cfg_val {
+     ([aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
+      AES_CTRL_SHADOWED_0; AES_CTRL_SHADOWED_OPERATION;
+      AES_CTRL_SHADOWED_MODE_MASK; AES_CTRL_SHADOWED_MODE_OFFSET;
+      AES_CTRL_SHADOWED_KEY_LEN_MASK; AES_CTRL_SHADOWED_KEY_LEN_OFFSET],
+      [], bedrock_func_body:(
       cfg_val = ((aes_cfg_operation << AES_CTRL_SHADOWED_OPERATION) |
                  ((aes_cfg_mode & AES_CTRL_SHADOWED_MODE_MASK)
                     << AES_CTRL_SHADOWED_MODE_OFFSET) |
@@ -93,7 +96,7 @@ Section Impl.
                    << AES_CTRL_SHADOWED_KEY_LEN_OFFSET)) ;
       output! REG32_SET ( AES_CTRL_SHADOWED_0, cfg_val ) ;
       output! REG32_SET ( AES_CTRL_SHADOWED_0, cfg_val )
-    }))).
+    ))).
 End Impl.
 
 Instance aes_h_impl : aes_h :=
@@ -105,12 +108,12 @@ Instance aes_h_impl : aes_h :=
 Instance common_h_impl : common_h :=
   { REG32_SET := "REG32_SET" }.
 Instance aes_regs_h_impl : aes_regs_h :=
-  { AES_CTRL_SHADOWED_0 := "AES_CTRL_SHADOWED(0)";
-    AES_CTRL_SHADOWED_OPERATION := "AES_CTRL_SHADOWED_OPERATION";
-    AES_CTRL_SHADOWED_MODE_MASK := "AES_CTRL_SHADOWED_MODE_MASK";
-    AES_CTRL_SHADOWED_MODE_OFFSET := "AES_CTRL_SHADOWED_MODE_OFFSET";
-    AES_CTRL_SHADOWED_KEY_LEN_MASK := "AES_CTRL_SHADOWED_KEY_LEN_MASK";
-    AES_CTRL_SHADOWED_KEY_LEN_OFFSET := "AES_CTRL_SHADOWED_KEY_LEN_OFFSET";
+  { AES_CTRL_SHADOWED_0 := "AES_CTRL_SHADOWED_0";
+    AES_CTRL_SHADOWED_OPERATION := "operation";
+    AES_CTRL_SHADOWED_MODE_MASK := "mode_mask";
+    AES_CTRL_SHADOWED_MODE_OFFSET := "mode_offset";
+    AES_CTRL_SHADOWED_KEY_LEN_MASK := "key_len_mask";
+    AES_CTRL_SHADOWED_KEY_LEN_OFFSET := "key_len_offset";
   }.
 
 Compute c_module [aes_init].

@@ -13,23 +13,22 @@ static inline void _br2_store(uintptr_t a, uintptr_t v, size_t sz) {
   memcpy((void*)a, &v, sz);
 }
 
-static void b2_aes_init_no_struct(uintptr_t aes_cfg_operation, uintptr_t aes_cfg_mode, uintptr_t aes_cfg_key_len);
+static void b2_aes_init_no_struct(uintptr_t aes_cfg_operation, uintptr_t aes_cfg_mode, uintptr_t aes_cfg_key_len, uintptr_t AES_CTRL_SHADOWED_0, uintptr_t operation, uintptr_t mode_mask, uintptr_t mode_offset, uintptr_t key_len_mask, uintptr_t key_len_offset);
 
 void b2_aes_init(uintptr_t aes_cfg) {
   uintptr_t cfg_val;
   cfg_val = alloca((uintptr_t)4ULL); // TODO untested
-  cfg_val = (((_br2_load((aes_cfg)+((uintptr_t)0ULL), 1))<<(AES_CTRL_SHADOWED_OPERATION))|(((_br2_load((aes_cfg)+((uintptr_t)1ULL), 1))&(AES_CTRL_SHADOWED_MODE_MASK))<<(AES_CTRL_SHADOWED_MODE_OFFSET)))|(((_br2_load((aes_cfg)+((uintptr_t)2ULL), 1))&(AES_CTRL_SHADOWED_KEY_LEN_MASK))<<(AES_CTRL_SHADOWED_KEY_LEN_OFFSET));
-  REG32_SET(AES_CTRL_SHADOWED(0), cfg_val);
-  REG32_SET(AES_CTRL_SHADOWED(0), cfg_val);
+  cfg_val = (((_br2_load((aes_cfg)+((uintptr_t)0ULL), 1))<<(operation))|(((_br2_load((aes_cfg)+((uintptr_t)1ULL), 1))&(mode_mask))<<(mode_offset)))|(((_br2_load((aes_cfg)+((uintptr_t)2ULL), 1))&(key_len_mask))<<(key_len_offset));
+  REG32_SET(AES_CTRL_SHADOWED_0, cfg_val);
+  REG32_SET(AES_CTRL_SHADOWED_0, cfg_val);
   return;
 }
 
-static void b2_aes_init_no_struct(uintptr_t aes_cfg_operation, uintptr_t aes_cfg_mode, uintptr_t aes_cfg_key_len) {
+static void b2_aes_init_no_struct(uintptr_t aes_cfg_operation, uintptr_t aes_cfg_mode, uintptr_t aes_cfg_key_len, uintptr_t AES_CTRL_SHADOWED_0, uintptr_t operation, uintptr_t mode_mask, uintptr_t mode_offset, uintptr_t key_len_mask, uintptr_t key_len_offset) {
   uintptr_t cfg_val;
-  cfg_val = alloca((uintptr_t)4ULL); // TODO untested
-  cfg_val = (((aes_cfg_operation)<<(AES_CTRL_SHADOWED_OPERATION))|(((aes_cfg_mode)&(AES_CTRL_SHADOWED_MODE_MASK))<<(AES_CTRL_SHADOWED_MODE_OFFSET)))|(((aes_cfg_key_len)&(AES_CTRL_SHADOWED_KEY_LEN_MASK))<<(AES_CTRL_SHADOWED_KEY_LEN_OFFSET));
-  REG32_SET(AES_CTRL_SHADOWED(0), cfg_val);
-  REG32_SET(AES_CTRL_SHADOWED(0), cfg_val);
+  cfg_val = (((aes_cfg_operation)<<(operation))|(((aes_cfg_mode)&(mode_mask))<<(mode_offset)))|(((aes_cfg_key_len)&(key_len_mask))<<(key_len_offset));
+  REG32_SET(AES_CTRL_SHADOWED_0, cfg_val);
+  REG32_SET(AES_CTRL_SHADOWED_0, cfg_val);
   return;
 }
 "
