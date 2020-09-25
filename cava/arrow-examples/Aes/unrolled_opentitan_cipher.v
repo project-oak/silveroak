@@ -35,8 +35,6 @@ Definition aes_key_expand
     , Unit
     >> ~>
       << Vector Bit 8, Vector (Vector (Vector Bit 8) 4) 8>> :=
-  (* let sbox := curry (aes_sbox sbox_impl) in *)
-  (* let mapped_sbox := <[ !(map sbox) ]> in *)
   <[\op_i round_id rcon key_i =>
     (* if (key_len_i == AES_256 && rnd[0] == 1'b0) begin
     use_rcon = 1'b0;
@@ -77,14 +75,12 @@ Definition aes_key_expand
       then rot_word_out
       else rot_word_in in
 
-    (* let sub_word_out = !(map2 <[\x y => !(aes_sbox sbox_impl) x y]>) (!(replicate (n:=4)) !CIPH_FWD) sub_word_in in *)
     let sub_word_out = !(map <[!(aes_sbox sbox_impl) !CIPH_FWD]>) sub_word_in in
     let sub_word_out_flat = !(flatten (n:=4)) sub_word_out in
 
     (* assign rcon_add_in  = sub_word_out[7:0]; *)
     let rcon_add_in = sub_word_out_flat[:7:0] in
     (* assign rcon_add_out = rcon_add_in ^ rcon_q; *)
-    (* let rcon_add_out = rcon_add_in in *)
     let rcon_add_out = rcon_add_in ^ rcon in
     (* assign rcon_added   = {sub_word_out[31:8], rcon_add_out}; *)
     let rcon_added   = concat rcon_add_out sub_word_out_flat[:31:8] in
