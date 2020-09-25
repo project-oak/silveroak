@@ -234,6 +234,9 @@ removes the list Kind, we first need to copy the list Kind. *)
 | ExprSyntax.Id =>
     second drop >>> cancelr >>> id
 
+| RemoveContext f =>
+  second drop >>> closure_conversion' [] f
+
 | Let v f =>
   let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
   second (copy >>> first (uncancell
