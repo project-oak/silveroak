@@ -39,12 +39,12 @@ Inductive circuit_equiv: forall i o, Circuit i o -> (denote_kind i -> denote_kin
 
   | First_equiv: forall x y z c r r1,
     circuit_equiv x y c r1 ->
-    forall a, r a = (r1 (fst a), snd a) ->
+    (forall a, r a = (r1 (fst a), snd a)) ->
     circuit_equiv (Tuple x z) (Tuple y z) (First x y z c) r
 
   | Second_equiv: forall x y z c r r1,
     circuit_equiv x y c r1 ->
-    forall a, r a = (fst a, r1 (snd a)) ->
+    (forall a, r a = (fst a, r1 (snd a))) ->
     circuit_equiv (Tuple z x) (Tuple z y) (Second x y z c) r
 
   | Swap_equiv: forall x y,
@@ -75,6 +75,9 @@ Inductive circuit_equiv: forall i o, Circuit i o -> (denote_kind i -> denote_kin
 
   | Primtive_equiv: forall p,
     circuit_equiv (primitive_input p) (primitive_output p) (CircuitArrow.Primitive p) (combinational_evaluation' (CircuitArrow.Primitive p))
+
+  (* | Any_equiv: forall i o c, *)
+  (*   circuit_equiv i o c (combinational_evaluation' c) *)
   .
 
 (*   (1* contains subcircuits *1) *)
@@ -175,13 +178,9 @@ Definition canright_composed
   let decoded = !aes_sbox_canright !CIPH_INV encoded in
   decoded ]>.
 
-(* Lemma canright_composed_combinational: is_combinational (closure_conversion aes_sbox_canright).
-Proof. time simply_combinational. Qed. *)
 
-
-
-
-Goal exists r, circuit_equiv _ _ (closure_conversion canright_composed) r.
+Goal exists r, circuit_equiv _ _ (closure_conversion canright_composed) r
+  -> (forall a, r a = Datatypes.fst a).
 Proof.
   intros.
   eexists.
@@ -195,143 +194,65 @@ Proof.
 
     Datatypes.length Nat.eqb extract_nth rewrite_or_default
   ].
-econstructor.
-econstructor.
-econstructor.
-econstructor.
-econstructor.
 
-  cbv beta.
-  Set Printing Implicit.
-  cbn [denote_kind product].
-
-  instantiate (5:= fun (x: (t bool 8 * unit * unit)) => (Datatypes.snd (Datatypes.fst x), Datatypes.fst (Datatypes.fst x), Datatypes.snd x)).
-  reflexivity.
-
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-
-  cbv beta.
-  instantiate (3:= fun x => (tt, Datatypes.snd x)).
-  cbv beta.
-  reflexivity.
-
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-
-  cbv beta.
-  instantiate (3:= fun x => (Datatypes.fst x, tt)).
-  cbv beta.
-  reflexivity.
-
-  econstructor.
-  econstructor.
-  econstructor.
-  econstructor.
-
-
-  econstructor.
-  econstructor.
-  econstructor.
-
-  all:
-    intros;
-    cbv beta;
-    try reflexivity.
-
-
-  intros.
-  cbv beta.
-  cbn [Datatypes.fst Datatypes.snd].
 
   Ltac t :=
     lazymatch goal with
     | |- ?lhs = ?rhs =>
-      lazymatch lhs with
-      | ?g ?x =>
-        lazymatch rhs with
-        | context[combinational_evaluation'] => fail "Contains combinational_evaluation'"rhs
-        | _ =>
-          match (eval pattern x in rhs) with
-          | ?f _ =>
-            let H := fresh in
-            assert (forall y, f y = g y) as H;
-            [ intros; reflexivity | apply H ]
+      cbn [Datatypes.fst Datatypes.snd];
+      lazymatch goal with
+      | |- ?lhs = ?rhs =>
+        lazymatch lhs with
+        | ?g ?x =>
+          lazymatch rhs with
+          | context[combinational_evaluation'] =>
+              lazymatch rhs with
+              | context[combinational_evaluation' (CircuitArrow.Primitive _)] =>
+                idtac "Evaluating primitive" rhs;
+                cbn [Datatypes.fst Datatypes.snd combinational_evaluation']
+              | context[combinational_evaluation'] =>
+                  fail "Contains non-primitive" rhs
+              end
+          | _ =>
+            match (eval pattern x in rhs) with
+            | ?f _ =>
+              let H := fresh in
+              assert (forall y, f y = g y) as H;
+              [ intros; reflexivity | apply H ]
+            end
           end
         end
       end
-    | |- circuit_equiv _ _ _ _ => econstructor; intros
-    | _ => fail "No go!"
+    | |- circuit_equiv _ _ ?c _ =>
+      lazymatch c with
+      | _ _ _ _ (aes_sbox_canright _) =>
+        idtac "Shelving aes_sbox_canright"; shelve
+      | _ => econstructor; intros
+      end
+    | |- ?x => fail "Stuck at" x
     end.
-  t. t. t. t.
-  t. t. t. t.
-  t. t. t. t.
-  t. t. t. t.
-  t. t. t. t.
-  t. t.
-  t.
-
 
   intros.
 
 
-  t.
-  cbn [].
+  repeat t.
 
-  t.
-  t. t.
-  t. t.
+  Unshelve.
+  all: cbv [denote_kind product primitive_input] in *.
 
-
-
-
-
-
-
-
-
-
-
-
-  cbv [
-    closure_conversion' closure_conversion canright_composed
-    cancell cancelr uncancell uncancelr assoc unassoc first second copy drop swap compose
-    CircuitCat CircuitArrow CircuitArrowSwap CircuitArrowDrop CircuitArrowCopy
-    arrow_category
-    denote_destruct proj_i proj_o denote_kind as_kind product
-  ].
-  simpl in * |- .
-  destruct x.
-  eexists.
-
-
+  (* 38: { *)
+  (*   refine (Any_equiv _ _ _ ). *)
+  (* } *)
+  (* 37: { *)
+  (*   refine (Any_equiv _ _ _ ). *)
+  (* } *)
+  (* all: simpl in *. *)
   constructor.
-  eexists.
-  destruct d.
-  intros.
-eexists.
-  eexists.
-destuct
+  constructor.
+  constructor.
+  constructor.
+  constructor.
+
 
 
 
