@@ -16,18 +16,36 @@
 
 module Main where
 
+import Numeric (showHex)
+
 import Cava2SystemVerilog
 import Mux2_1
 import SyntaxExamples
 import UnsignedAdder
 import ArrowAdderTutorial
 
-import Naive_unrolled_cipher
+import Unrolled_naive_cipher
+import Unrolled_opentitan_cipher
+import Aes_test
 
 main :: IO ()
 main = do
   print
-    $ "AES-256: naive_unrolled_ciper test_key test_data = test_encrypted: " ++ show naive_cipher_test
+    $ "AES-256: naive_unrolled_ciper fwd test_key test_data = test_encrypted: " ++ show naive_cipher_test_fwd
+  print
+    $ showHex naive_cipher_value_fwd ""
+  print
+    $ "AES-256: unrolled_ciper fwd test_key test_data = test_encrypted: " ++ show unrolled_cipher_test_fwd
+  print
+    $ showHex unrolled_cipher_value_fwd ""
+  print
+    $ "AES-256: naive_unrolled_ciper rev test_key test_encrypted = test_data: " ++ show naive_cipher_test_rev
+  print
+    $ showHex naive_cipher_value_rev ""
+  print
+    $ "AES-256: unrolled_ciper rev test_key test_encrypted = test_data: " ++ show unrolled_cipher_test_rev
+  print
+    $ showHex unrolled_cipher_value_rev ""
   writeSystemVerilog mux2_1_netlist
   writeTestBench mux2_1_tb
   writeSystemVerilog fullAdder_netlist
