@@ -178,23 +178,31 @@ Definition canright_composed
   let decoded = !aes_sbox_canright !CIPH_INV encoded in
   decoded ]>.
 
+Axiom aes_sbox_canright_spec :
+  denote_kind (<<Bit, Vector Bit 8, Unit >>) -> denote_kind (Vector Bit 8).
+Axiom aes_sbox_canright_correct :
+  circuit_equiv _ _ (closure_conversion aes_sbox_canright) aes_sbox_canright_spec.
+Axiom CircuitLaws : CategoryLaws CircuitCat.
+Existing Instance CircuitLaws.
 
-Goal exists r, circuit_equiv _ _ (closure_conversion canright_composed) r
-  -> (forall a, r a = Datatypes.fst a).
+Require Import Coq.derive.Derive.
+
+Derive canright_composed_spec
+       SuchThat (circuit_equiv _ _ (closure_conversion canright_composed) canright_composed_spec)
+       As canright_composed_correct.
 Proof.
   intros.
-  eexists.
 
+  cbv [closure_conversion canright_composed].
+  cbn [closure_conversion'].
   cbv [
-    closure_conversion' closure_conversion canright_composed
     cancell cancelr uncancell uncancelr assoc unassoc first second copy drop swap compose
     CircuitCat CircuitArrow CircuitArrowSwap CircuitArrowDrop CircuitArrowCopy
     arrow_category
     as_kind
 
     Datatypes.length Nat.eqb extract_nth rewrite_or_default
-  ].
-
+    ].
 
   Ltac t :=
     lazymatch goal with
@@ -223,17 +231,11 @@ Proof.
           end
         end
       end
-    | |- circuit_equiv _ _ ?c _ =>
-      lazymatch c with
-      | _ _ _ _ (aes_sbox_canright _) =>
-        idtac "Shelving aes_sbox_canright"; shelve
-      | _ => econstructor; intros
-      end
+    | |- circuit_equiv _ _ ?c _ => econstructor; intros
     | |- ?x => fail "Stuck at" x
     end.
 
   intros.
-
 
   repeat t.
 
