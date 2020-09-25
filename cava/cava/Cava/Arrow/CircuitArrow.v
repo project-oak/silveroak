@@ -63,6 +63,9 @@ Inductive Circuit: Kind -> Kind -> Type :=
   | Second: forall x y z, Circuit x y -> Circuit (Tuple z x) (Tuple z y)
   | Loopr: forall x y z, Circuit (Tuple x z) (Tuple y z) -> Circuit x y
   | Loopl: forall x y z, Circuit (Tuple z x) (Tuple z y) -> Circuit x y
+
+  | Map: forall x y n, Circuit x y -> Circuit (Vector x n) (Vector y n)
+  | Resize: forall x n nn, Circuit (Vector x n) (Vector x nn)
   .
 
 Instance CircuitCat : Category Kind := {
@@ -100,14 +103,3 @@ Ltac match_compose X :=
 
 Definition high : Unit ~> Bit := Primitive (Constant Bit true).
 Definition low : Unit ~> Bit := Primitive (Constant Bit false).
-
-Fixpoint insert_rightmost_tt (ty: Kind): ty ~> (insert_rightmost_unit ty).
-Proof.
-  intros.
-  destruct ty.
-  exact (second (insert_rightmost_tt ty2)).
-  exact id.
-  exact uncancelr.
-  exact uncancelr.
-Defined.
-

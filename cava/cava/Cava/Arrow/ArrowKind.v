@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 From Coq Require Import Lists.List NaryFunctions Arith NArith Vector Eqdep_dec.
-From Arrow Require Import Arrow.
+From Arrow Require Import Category Arrow.
 
 Import ListNotations.
 Import VectorNotations.
@@ -209,3 +209,30 @@ Proof.
   simpl.
   reflexivity.
 Qed.
+
+Local Open Scope category_scope.
+
+Fixpoint insert_rightmost_tt `{A: Arrow Kind Unit Tuple} (ty: Kind): ty ~> (insert_rightmost_unit ty) :=
+  match ty as ty' return ty' ~> (insert_rightmost_unit ty') with
+  | Tuple l r => second (insert_rightmost_tt r)
+  | Unit => id
+  | Bit => uncancelr
+  | Vector t n => uncancelr
+  end.
+
+Fixpoint apply_rightmost_tt (x: Kind)
+  : denote_kind (remove_rightmost_unit x) -> denote_kind x
+  :=
+  match x as x' return denote_kind (remove_rightmost_unit x') -> denote_kind x' with
+  | Tuple l r =>
+    let rec := apply_rightmost_tt r in
+    match r as r' return
+      (denote_kind (remove_rightmost_unit r') -> denote_kind r') ->
+        denote_kind (remove_rightmost_unit (Tuple l r')) -> denote_kind (Tuple l r')
+      with
+    | Unit => fun f x => (x, tt)
+    | _ => fun f p => (fst p, f (snd p))
+    end rec
+  | _ => fun x => x
+  end.
+

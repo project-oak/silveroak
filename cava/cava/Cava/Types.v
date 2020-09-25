@@ -212,7 +212,7 @@ we can return a function performing 'f' that takes an input of
 shape 'withoutRightmostUnit A' by first applying 'insertRightmostTt'
 and then performing 'f'.
 *)
-Fixpoint removeRightmostUnit {A B t}
+Definition removeRightmostUnit {A B t}
   (f: signalTy (Signal t) A -> B)
   : signalTy (Signal t) (withoutRightmostUnit A) -> B :=
   fun a => f (insertRightmostTt a).
