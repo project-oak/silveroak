@@ -178,87 +178,127 @@ Definition canright_composed
   let decoded = !aes_sbox_canright !CIPH_INV encoded in
   decoded ]>.
 
+Definition obeys_spec {i o}
+           (c : @morphism Kind KappaCat i o)
+           (spec : denote_kind i -> denote_kind o) :=
+  circuit_equiv _ _ (closure_conversion' Datatypes.nil (c natvar))
+                (fun (x : denote_kind (i ** as_kind Datatypes.nil)%Arrow) =>
+                   spec (Datatypes.fst x)).
+
 Axiom aes_sbox_canright_spec :
   denote_kind (<<Bit, Vector Bit 8, Unit >>) -> denote_kind (Vector Bit 8).
 Axiom aes_sbox_canright_correct :
-  circuit_equiv _ _ (closure_conversion aes_sbox_canright) aes_sbox_canright_spec.
+  obeys_spec aes_sbox_canright aes_sbox_canright_spec.
 Axiom CircuitLaws : CategoryLaws CircuitCat.
 Existing Instance CircuitLaws.
 
+(* this lemma helps get a subcircuit goal into the [obeys_spec] form so eauto
+recognizes it *)
+Lemma obeys_spec_to_circuit_equiv i o c spec :
+  @obeys_spec i o c spec ->
+  circuit_equiv _ _ (closure_conversion' Datatypes.nil (c natvar))
+                (fun x => spec (Datatypes.fst x)).
+Proof. intro H; exact H. Qed.
+
 Require Import Coq.derive.Derive.
 
+Ltac instantiate_lhs_app_by_reflexivity :=
+  lazymatch goal with
+  | |- ?g ?x = ?rhs =>
+    is_evar g;
+    lazymatch rhs with
+    | context [x] =>
+      match (eval pattern x in rhs) with
+      | ?f _ =>
+        let H := fresh in
+        assert (forall y, f y = g y) as H;
+        [ intros; reflexivity | solve [apply H] ]
+      end
+    | _ =>
+      (* x does not appear on RHS, so ignore the argument *)
+      assert (g = (fun _ => rhs)); reflexivity
+    end
+  | |- ?G => fail "Expected goal of form [?g ?x = ?rhs] (where g must be an evar), got" G
+  end.
+
+Ltac instantiate_rhs_app_by_reflexivity :=
+  symmetry; instantiate_lhs_app_by_reflexivity.
+
+Ltac instantiate_app_by_reflexivity :=
+  first [instantiate_lhs_app_by_reflexivity
+        | instantiate_rhs_app_by_reflexivity ].
+
+Ltac t :=
+  lazymatch goal with
+  | |- ?lhs = ?rhs =>
+    cbn [Datatypes.fst Datatypes.snd];
+    instantiate_app_by_reflexivity
+  | |- circuit_equiv _ _ ?c _ =>
+    lazymatch c with
+    | closure_conversion' _ _ =>
+      (* subcircuit *)
+      apply obeys_spec_to_circuit_equiv; solve [eauto with correctness]
+    | _ => econstructor; intros
+    end
+  | |- ?x => fail "Stuck at" x
+  end.
+
+Hint Unfold cancell cancelr uncancell uncancelr assoc unassoc first second
+     copy drop swap compose
+     CircuitCat CircuitArrow CircuitArrowSwap CircuitArrowDrop CircuitArrowCopy
+     arrow_category as_kind Datatypes.length Nat.eqb extract_nth
+     rewrite_or_default
+  : arrowunfold.
+
+Derive CIPH_FWD_spec
+       SuchThat (obeys_spec CIPH_FWD CIPH_FWD_spec)
+       As CIPH_FWD_correct.
+Proof.
+  cbv [obeys_spec CIPH_FWD]. cbn [closure_conversion'].
+  autounfold with arrowunfold.
+  repeat t.
+
+  cbn [denote_kind combinational_evaluation'] in *.
+  subst CIPH_FWD_spec.
+  instantiate_lhs_app_by_reflexivity.
+Qed.
+
+(* This lemma could also be proved the same way as CIPH_FWD *)
+Lemma CIPH_INV_correct : obeys_spec CIPH_INV (fun _ => true).
+Proof.
+  cbv [obeys_spec CIPH_INV]. cbn [closure_conversion'].
+  autounfold with arrowunfold.
+  repeat t.
+  reflexivity.
+Qed.
+
+(* TODO: replace with upstream resize_default_id *)
+Axiom resize_default_id :
+  forall A n d (v : t A n), resize_default d n v = v.
+
+Hint Resolve aes_sbox_canright_correct CIPH_FWD_correct CIPH_INV_correct
+  : correctness.
+
 Derive canright_composed_spec
-       SuchThat (circuit_equiv _ _ (closure_conversion canright_composed) canright_composed_spec)
+       SuchThat (obeys_spec canright_composed canright_composed_spec)
        As canright_composed_correct.
 Proof.
   intros.
-
-  cbv [closure_conversion canright_composed].
+  cbv [obeys_spec canright_composed].
   cbn [closure_conversion'].
-  cbv [
-    cancell cancelr uncancell uncancelr assoc unassoc first second copy drop swap compose
-    CircuitCat CircuitArrow CircuitArrowSwap CircuitArrowDrop CircuitArrowCopy
-    arrow_category
-    as_kind
-
-    Datatypes.length Nat.eqb extract_nth rewrite_or_default
-    ].
-
-  Ltac t :=
-    lazymatch goal with
-    | |- ?lhs = ?rhs =>
-      cbn [Datatypes.fst Datatypes.snd];
-      lazymatch goal with
-      | |- ?lhs = ?rhs =>
-        lazymatch lhs with
-        | ?g ?x =>
-          lazymatch rhs with
-          | context[combinational_evaluation'] =>
-              lazymatch rhs with
-              | context[combinational_evaluation' (CircuitArrow.Primitive _)] =>
-                idtac "Evaluating primitive" rhs;
-                cbn [Datatypes.fst Datatypes.snd combinational_evaluation']
-              | context[combinational_evaluation'] =>
-                  fail "Contains non-primitive" rhs
-              end
-          | _ =>
-            match (eval pattern x in rhs) with
-            | ?f _ =>
-              let H := fresh in
-              assert (forall y, f y = g y) as H;
-              [ intros; reflexivity | apply H ]
-            end
-          end
-        end
-      end
-    | |- circuit_equiv _ _ ?c _ => econstructor; intros
-    | |- ?x => fail "Stuck at" x
-    end.
-
-  intros.
+  autounfold with arrowunfold.
 
   repeat t.
-
-  Unshelve.
-  all: cbv [denote_kind product primitive_input] in *.
-
-  (* 38: { *)
-  (*   refine (Any_equiv _ _ _ ). *)
-  (* } *)
-  (* 37: { *)
-  (*   refine (Any_equiv _ _ _ ). *)
-  (* } *)
-  (* all: simpl in *. *)
-  constructor.
-  constructor.
-  constructor.
-  constructor.
-  constructor.
-
-
-
-
-Proof. time (vm_compute; auto). Qed.
+  cbn [denote_kind combinational_evaluation' Datatypes.fst Datatypes.snd].
+  rewrite !resize_default_id, !map_id.
+  (* we need to do this destruct for the instantiation to work; the calls to
+     Datatypes.fst have different types *)
+  match goal with |- _ (Datatypes.fst ?x) = _ =>  destruct x end.
+  cbn [denote_kind combinational_evaluation' Datatypes.fst Datatypes.snd].
+  subst canright_composed_spec.
+  instantiate_app_by_reflexivity.
+Qed.
+Print canright_composed_spec.
 
 Lemma canright_composed_combinational: is_combinational (closure_conversion aes_sbox_canright).
 Proof. time simply_combinational. Qed.
