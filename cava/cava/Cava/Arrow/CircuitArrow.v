@@ -68,8 +68,6 @@ Inductive Circuit: Kind -> Kind -> Type :=
   | Resize: forall x n nn, Circuit (Vector x n) (Vector x nn)
   .
 
-
-
 Instance CircuitCat : Category Kind := {
   morphism X Y := Circuit X Y;
   id X := Structural (Id X);
