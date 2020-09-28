@@ -235,3 +235,4 @@ Fixpoint apply_rightmost_tt (x: Kind)
     end rec
   | _ => fun x => x
   end.
+

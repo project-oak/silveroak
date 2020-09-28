@@ -19,6 +19,7 @@ From Coq Require Import extraction.ExtrHaskellZInteger.
 From Coq Require Import extraction.ExtrHaskellString.
 From Coq Require Import ExtrHaskellBasic.
 From Coq Require Import extraction.ExtrHaskellNatInteger.
+
 Require Import coqutil.Z.HexNotation.
 
 Set Extraction Optimize.
@@ -44,7 +45,6 @@ From Cava Require Import Arrow.ArrowExport.
 Extraction Library CavaNotation.
 Extraction Library HexNotation.
 
-
 Require Import
   Aes.sbox
   Aes.mix_single_column
@@ -52,12 +52,14 @@ Require Import
   Aes.shift_rows
   Aes.mix_columns
   Aes.sbox_canright_masked_noreuse
-  (* Aes.sbox_lut *)
+  Aes.sbox_lut
   Aes.sbox_canright
   Aes.pkg
   Aes.cipher_round
-  Aes.unrolled_cipher
-  Aes.sbox_canright_pkg.
+  Aes.unrolled_opentitan_cipher
+  Aes.unrolled_naive_cipher
+  Aes.sbox_canright_pkg
+  Aes.aes_test.
 
 Extraction Library sbox.
 Extraction Library mix_single_column.
@@ -65,10 +67,11 @@ Extraction Library sub_bytes.
 Extraction Library shift_rows.
 Extraction Library mix_columns.
 Extraction Library sbox_canright_masked_noreuse.
-(* Extraction Library sbox_lut. *)
+Extraction Library sbox_lut.
 Extraction Library sbox_canright.
 Extraction Library pkg.
-Extraction Library unrolled_cipher.
 Extraction Library sbox_canright_pkg.
 Extraction Library cipher_round.
-Extraction Library naive_unrolled_cipher.
+Extraction Library unrolled_naive_cipher.
+Extraction Library unrolled_opentitan_cipher.
+Extraction Library aes_test.

@@ -20,8 +20,9 @@ Aes/sub_bytes.v
 Aes/shift_rows.v
 Aes/mix_single_column.v
 Aes/mix_columns.v
-Aes/unrolled_cipher.v
-Aes/naive_unrolled_cipher.v
+Aes/unrolled_naive_cipher.v
+Aes/unrolled_opentitan_cipher.v
 Aes/cipher_round.v
+Aes/aes_test.v
 
 ArrowExtraction.v

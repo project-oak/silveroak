@@ -267,5 +267,5 @@ Definition toVec := List.map nat2bool.
 
 Definition Bv2Hex {n} (x: Vector.t bool n) := HexString.of_N (Bv2N x).
 
-Definition byte_reverse {n} (x: Vector.t bool (n*8)) := Vector.flatten (Vector.reverse (Vector.reshape (m:=8) x)).
+Definition byte_reverse {n} (x: Vector.t bool (n*8)) := vflatten (vreverse (vreshape (m:=8) x)).
 

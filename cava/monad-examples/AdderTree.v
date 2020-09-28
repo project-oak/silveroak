@@ -39,9 +39,10 @@ Require Import Cava.Monad.UnsignedAdders.
 (******************************************************************************)
 
 Definition adderTree {m bit} `{Cava m bit} {sz: nat}
-                     (n: nat) (v: Vector.t (Vector.t bit sz) (2^(n+1))) :
+                     (default : bit)
+                     (n: nat) (v: Vector.t (Vector.t bit sz) (2^(S n))) :
                      m (Vector.t bit sz) :=
-  tree n addN v.
+  tree (Vector.const default _) n addN v.
 
 (******************************************************************************)
 (* Some tests.                                                                *)
@@ -60,27 +61,29 @@ Local Open Scope string_scope.
 Local Open Scope nat_scope.
 
 Definition adderTree2 {m bit} `{Cava m bit} {sz: nat}
+                      (default : bit)
                       (v : Vector.t (Vector.t bit sz) 2) : m (Vector.t bit sz)
-  := adderTree 0 v.
+  := adderTree default 0 v.
 
 Local Open Scope vector_scope.
 
 Definition v0_v1 := [v0; v1].
-Definition v0_plus_v1 : Bvector 8 := combinational (adderTree 0 v0_v1).
+Definition v0_plus_v1 : Bvector 8 := combinational (adderTree false 0 v0_v1).
 
-Example sum_vo_v1 : combinational (adderTree2 v0_v1) = N2Bv_sized 8 21.
+Example sum_vo_v1 : combinational (adderTree2 false v0_v1) = N2Bv_sized 8 21.
 Proof. reflexivity. Qed.
 
 (* An adder tree with 4 inputs. *)
 
 Definition adderTree4 {m bit} `{Cava m bit} {sz: nat}
+                      (default : bit)
                       (v : Vector.t (Vector.t bit sz) 4) : m (Vector.t bit sz)
-  := adderTree 1 v.
+  := adderTree default 1 v.
 
 Definition v0_3 := [v0; v1; v2; v3].
-Definition sum_v0_3 : Bvector 8 := combinational (adderTree4 v0_3).
+Definition sum_v0_3 : Bvector 8 := combinational (adderTree4 false v0_3).
 
-Example sum_v0_v1_v2_v3 : combinational (adderTree4 v0_3) = N2Bv_sized 8 30.
+Example sum_v0_v1_v2_v3 : combinational (adderTree4 false v0_3) = N2Bv_sized 8 30.
 Proof. reflexivity. Qed.
 
 Definition adder_tree_Interface name nrInputs bitSize
@@ -94,7 +97,7 @@ Definition adder_tree_Interface name nrInputs bitSize
 Definition adder_tree4_8Interface := adder_tree_Interface "adder_tree4_8" 4 8.
 
 Definition adder_tree4_8Netlist
-  := makeNetlist adder_tree4_8Interface adderTree4.
+  := makeNetlist adder_tree4_8Interface (adderTree4 Gnd).
 
 Local Open Scope N_scope.
 
@@ -106,7 +109,7 @@ Definition adder_tree4_8_tb_inputs
      ].
 
 Definition adder_tree4_8_tb_expected_outputs
-  := map (fun i => combinational (adderTree4 i)) adder_tree4_8_tb_inputs.
+  := map (fun i => combinational (adderTree4 false i)) adder_tree4_8_tb_inputs.
 
 Definition adder_tree4_8_tb :=
   testBench "adder_tree4_8_tb" adder_tree4_8Interface
@@ -118,7 +121,7 @@ Definition adder_tree32_8Interface
   := adder_tree_Interface "adder_tree32_8" 32 8.
 
 Definition adder_tree32_8Netlist
-  := makeNetlist adder_tree32_8Interface (adderTree 4).
+  := makeNetlist adder_tree32_8Interface (adderTree Gnd 4).
 
 (* Create netlist and test-bench for a 64-input adder tree. *)
 
@@ -126,7 +129,7 @@ Definition adder_tree64_8Interface
   := adder_tree_Interface "adder_tree64_8" 64 8.
 
 Definition adder_tree64_8Netlist
-  := makeNetlist adder_tree64_8Interface (adderTree 5).
+  := makeNetlist adder_tree64_8Interface (adderTree Gnd 5).
 
 Definition adder_tree64_8_tb_inputs
   := map (Vector.map (N2Bv_sized 8))
@@ -134,7 +137,7 @@ Definition adder_tree64_8_tb_inputs
      [vseq 0 64; vseq 64 64; vseq 128 64]).
 
 Definition adder_tree64_8_tb_expected_outputs
-  := map (fun i => combinational (adderTree 5 i)) adder_tree64_8_tb_inputs.
+  := map (fun i => combinational (adderTree false 5 i)) adder_tree64_8_tb_inputs.
 
 Definition adder_tree64_8_tb :=
   testBench "adder_tree64_8_tb" adder_tree64_8Interface
@@ -145,7 +148,7 @@ Definition adder_tree64_8_tb :=
 Definition adder_tree64_128Interface := adder_tree_Interface "adder_tree64_128" 64 128.
 
 Definition adder_tree64_128Netlist
-  := makeNetlist adder_tree64_128Interface (adderTree 5).
+  := makeNetlist adder_tree64_128Interface (adderTree Gnd 5).
 
 Definition adder_tree64_128_tb_inputs
   := map (Vector.map (N2Bv_sized 128))
@@ -153,7 +156,7 @@ Definition adder_tree64_128_tb_inputs
      [vseq 0 64; vseq 64 64; vseq 128 64]).
 
 Definition adder_tree64_128_tb_expected_outputs
-  := map (fun i => combinational (adderTree 5 i)) adder_tree64_128_tb_inputs.
+  := map (fun i => combinational (adderTree false 5 i)) adder_tree64_128_tb_inputs.
 
 Definition adder_tree64_128_tb :=
   testBench "adder_tree64_128_tb" adder_tree64_128Interface

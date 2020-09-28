@@ -56,48 +56,53 @@ Definition fixup n (F : Type -> Type) (Ap: Applicative F) (A B : Type) (m: A -> 
 Global Instance Traversable_vector@{} {n} : Traversable (fun t => Vector.t t n) :=
 { mapT := fixup n }.
 
-Module Vector.
-  Local Open Scope vector_scope.
-  Fixpoint reshape {n m A}:
-    Vector.t A (n * m) -> Vector.t (Vector.t A m) n :=
-    match n as n' return
-      Vector.t A (n' * m) -> Vector.t (Vector.t A m) n' with
+Local Open Scope vector_scope.
+
+Section Vector.
+  Context {A:Type}.
+  Local Notation t := (Vector.t).
+
+  Fixpoint vreshape {n m}: t A (n * m) -> t (t A m) n :=
+    match n as n' return t A (n' * m) -> t (t A m) n' with
     | 0 => fun _ => []
     | S n' => fun v =>
       let '(x, xs) := Vector.splitat (r:=n' * m) m v in
-      x :: @reshape n' m A xs
+      x :: vreshape xs
     end.
 
-  Fixpoint flatten {n m A}:
-    Vector.t (Vector.t A m) n -> Vector.t A (n*m) :=
-    match n as n' return Vector.t (Vector.t A m) n' -> Vector.t A (n'*m) with
+  Fixpoint vflatten {n m}: t (t A m) n -> t A (n*m) :=
+    match n as n' return t (t A m) n' -> t A (n'*m) with
     | 0 => fun _ => []
     | S n' => fun v =>
         let '(x, xs) := uncons v in
-        x ++ (@flatten n' m A) xs
+        x ++ vflatten xs
     end.
 
-  Definition snoc n o (v: Vector.t o n) a
-    : Vector.t o (S n) :=
-    t_rect _ (fun n v => Vector.t o (S n)) [a]
+  Definition vunsnoc {n} (v: t A (S n)): (t A n * A) :=
+    rectS (fun n v => (t A n * A)%type)
+    (fun o => ([], o))
+    (fun o n v f =>
+      let '(xs, x) := f in
+      (o::xs, x)
+    ) v.
+
+  Definition vsnoc {n} (v: t A n) a: t A (S n) :=
+    t_rect _ (fun n v => t A (S n)) [a]
     (fun x n v f =>
       x :: f
     ) _ v.
 
   (* avoids the equality rewrites in Coq.Vector.rev *)
-  Fixpoint reverse {n A}
-    (v: Vector.t A n): Vector.t A n :=
+  Fixpoint vreverse {n} (v: t A n): t A n :=
     match v with
     | [] => []
-    | x::xs => snoc _ _ (reverse xs) x
+    | x::xs => vsnoc (vreverse xs) x
     end.
 End Vector.
 
 (******************************************************************************)
 (* Vector version of combine                                                  *)
 (******************************************************************************)
-
-Local Open Scope vector_scope.
 
 Fixpoint vcombine {A B: Type} {s: nat} (a: Vector.t A s)
                                        (b: Vector.t B s) :
@@ -195,3 +200,166 @@ Fixpoint listToAltVector {A: Type} (l: list A) : AltVector A (length l) :=
   | x::xs => vec_cons (consAltVector x (listToAltVector xs))
   end.
 
+Section resize.
+  Context {A:Type}.
+  Local Notation t := (Vector.t). (* for more concise type declarations *)
+
+  Definition resize {n} m (Hlen : n = m) (v : t A n) : t A m.
+    subst; apply v.
+  Defined.
+
+  Fixpoint resize_default {n} default : forall m, t A n -> t A m :=
+    match n as n0 return forall m, t A n0 -> t A m with
+    | O => fun m _ => Vector.const default m
+    | S n' =>
+      fun m v =>
+        match m with
+        | O => Vector.nil _
+        | S m' => (Vector.hd v :: resize_default default m' (Vector.tl v))%vector
+        end
+    end.
+
+  Lemma resize_default_id n d (v : t A n) :
+    resize_default d n v = v.
+  Proof.
+    induction n; intros;
+      [ eapply case0 with (v:=v); reflexivity | ].
+    cbn [resize_default]. rewrite IHn.
+    rewrite <-eta; reflexivity.
+  Qed.
+
+  Lemma resize_default_eq n m d H (v : t A n) :
+    resize m H v = resize_default d m v.
+  Proof.
+    subst. rewrite resize_default_id. reflexivity.
+  Qed.
+
+  Lemma resize_prf_irr n m Hlen1 Hlen2 (v : t A n) :
+    resize m Hlen1 v = resize m Hlen2 v.
+  Proof.
+    subst. rewrite (Eqdep_dec.UIP_refl_nat _ Hlen2).
+    reflexivity.
+  Qed.
+
+  Lemma resize_id n H (v : t A n) : v = resize n H v.
+  Proof. rewrite resize_prf_irr with (Hlen2:=eq_refl). reflexivity. Qed.
+
+  Lemma resize_cons n m Hlen a (v : t A n) :
+    resize (S m) Hlen (a :: v)%vector = (a :: resize m (eq_add_S _ _ Hlen) v)%vector.
+  Proof.
+    intros. assert (n = m) by lia. subst.
+    rewrite <-!resize_id. reflexivity.
+  Qed.
+
+  Lemma resize_resize n m p Hlen1 Hlen2 (v : t A n) :
+    resize p Hlen2 (resize m Hlen1 v) = resize p (eq_trans Hlen1 Hlen2) v.
+  Proof. subst; reflexivity. Qed.
+
+  Lemma fold_left_resize {B} (f : B -> A -> B) n m H b (v : t A n) :
+    Vector.fold_left f b (resize m H v) = Vector.fold_left f b v.
+  Proof. subst. rewrite <-resize_id. reflexivity. Qed.
+End resize.
+
+(* Miscellaneous facts about vectors *)
+Section VectorFacts.
+  Local Notation t := Vector.t.
+
+  Lemma tl_0 {A} (v : t A 1) : Vector.tl v = Vector.nil A.
+  Proof.
+    eapply case0 with (v:=Vector.tl v).
+    reflexivity.
+  Qed.
+
+  Lemma hd_0 {A} (v : t A 1) : Vector.hd v = Vector.last v.
+  Proof.
+    rewrite (eta v).
+    eapply case0 with (v:=Vector.tl v).
+    reflexivity.
+  Qed.
+
+  Lemma last_tl {A} n (v : t A (S (S n))) :
+    Vector.last (Vector.tl v) = Vector.last v.
+  Proof. rewrite (eta v); reflexivity. Qed.
+
+  Lemma fold_left_S {A B : Type} (f : B -> A -> B) b n (v : t A (S n)) :
+      Vector.fold_left f b v = Vector.fold_left
+                                 f (f b (Vector.hd v)) (Vector.tl v).
+  Proof. rewrite (eta v). reflexivity. Qed.
+
+  Lemma fold_left_0 {A B : Type} (f : B -> A -> B) b (v : t A 0) :
+      Vector.fold_left f b v = b.
+  Proof. eapply case0 with (v:=v). reflexivity. Qed.
+
+  Lemma fold_left_append {A B} (f : A -> B -> A) :
+    forall n m start (v1 : t B n) (v2 : t B m),
+      Vector.fold_left f start (v1 ++ v2)%vector
+      = Vector.fold_left f (Vector.fold_left f start v1) v2.
+  Proof.
+    induction n; intros;
+      lazymatch goal with
+      | v' : t _ 0 |- _ =>
+        eapply case0 with (v:=v')
+      | v : t _ (S _) |- _ => rewrite (eta v)
+      end;
+      [ reflexivity | ].
+    rewrite <-append_comm_cons.
+    cbn [Vector.fold_left].
+    rewrite IHn. reflexivity.
+  Qed.
+
+  Lemma fold_left_S_identity {A} (f : A -> A -> A) id
+        (left_identity : forall a, f id a = a) n (v : t A (S n)) :
+    Vector.fold_left f id v = Vector.fold_left f (Vector.hd v) (Vector.tl v).
+  Proof.
+    intros. rewrite (eta v).
+    rewrite !fold_left_S, left_identity.
+    reflexivity.
+  Qed.
+
+  Hint Rewrite @fold_left_S @fold_left_0
+       using solve [eauto] : push_vector_fold vsimpl.
+
+  Lemma fold_left_S_assoc {A} (f : A -> A -> A) id
+        (right_identity : forall a, f a id = a)
+        (left_identity : forall a, f id a = a)
+        (associative :
+           forall a b c, f a (f b c) = f (f a b) c) :
+    forall n start (v : t A n),
+      Vector.fold_left f start v = f start (Vector.fold_left f id v).
+  Proof.
+    induction n; intros; autorewrite with push_vector_fold.
+    { rewrite right_identity. reflexivity. }
+    { rewrite left_identity.
+      erewrite <-fold_left_S_identity by eauto.
+      rewrite IHn, <-associative.
+      rewrite fold_left_S with (b:=id).
+      f_equal. rewrite !left_identity, <-IHn.
+      reflexivity. }
+  Qed.
+End VectorFacts.
+(* These hints create and populate the following autorewrite databases:
+ * - push_vector_fold : simplify using properties of Vector.fold_left
+ * - push_vector_tl_hd_last : simplify using properties of Vector.tl, Vector.hd,
+     and Vector.last
+ * - push_vector_nth_order : simplify expressions containing Vector.nth_order
+ * - vsimpl : generic vector simplification, includes all of the above
+ *
+ * No hint added to one of these databases should leave any subgoals unsolved.
+ *)
+Hint Rewrite @fold_left_S @fold_left_0
+     using solve [eauto] : push_vector_fold vsimpl.
+Hint Rewrite @tl_0 @hd_0 @last_tl
+     using solve [eauto] : push_vector_tl_hd_last vsimpl.
+Hint Rewrite @nth_order_hd @nth_order_last
+     using solve [eauto] : push_vector_nth_order vsimpl.
+
+Section Vector.
+  Context {A:Type}.
+  Local Notation t := (Vector.t).
+
+  Definition slice_by_position n x y (default: A) (v: t A n): (t A (x - y + 1)) :=
+    let v' := resize_default default (y + (n - y)) v in
+    let tail := snd (splitat y v') in
+    let tail' := resize_default default ((x - y + 1) + (n - x - 1)) tail in
+    fst (splitat (x-y+1) tail').
+End Vector.

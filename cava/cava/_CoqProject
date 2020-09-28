@@ -1,6 +1,7 @@
 -R Cava Cava
 -R ../arrow-lib Arrow
 
+Cava/ListUtils.v
 Cava/VectorUtils.v
 Cava/BitArithmetic.v
 Cava/Cava.v
