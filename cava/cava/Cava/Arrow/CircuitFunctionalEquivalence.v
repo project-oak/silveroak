@@ -102,6 +102,10 @@ Hint Unfold cancell cancelr uncancell uncancelr assoc unassoc first second
      rewrite_or_default
   : arrowunfold.
 
+(* Add [obeys_spec] proofs to this hint database, and circuit_spec will use
+   them *)
+Create HintDb circuit_spec_correctness discriminated.
+
 Ltac circuit_spec_step :=
   lazymatch goal with
   | |- ?lhs = ?rhs =>
