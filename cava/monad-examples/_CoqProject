@@ -4,6 +4,7 @@ Examples.v
 NandGate.v
 Multiplexers.v
 FullAdder.v
+RippleCarryAdderProof.v
 FullAdderNat.v
 UnsignedAdderExamples.v
 AdderTree.v

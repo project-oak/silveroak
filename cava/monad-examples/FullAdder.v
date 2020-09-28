@@ -60,6 +60,22 @@ Definition fullAdder {m t} `{Cava m t} '(cin, (a, b)) :=
   cout <- or2 (abh, abch) ;;
   ret (abcl, cout).
 
+(******************************************************************************)
+(* Prove the full adder correct.                                              *)
+(******************************************************************************)
+
+Local Open Scope N_scope.
+
+Lemma fullAdder_correct (cin a b : bool) :
+  combinational (fullAdder (cin, (a, b))) =
+  let sum := N.b2n a + N.b2n b + N.b2n cin in
+  (N.testbit sum 0, N.testbit sum 1).
+Proof. destruct cin, a, b; reflexivity. Qed.
+
+(******************************************************************************)
+(* Instantiate a full adder and make tests.                                   *)
+(******************************************************************************)
+
 Definition fullAdderInterface
   := combinationalInterface "fullAdder"
      (mkPort "cin" Bit, (mkPort "a" Bit, mkPort "b" Bit))
@@ -125,3 +141,5 @@ Local Open Scope list_scope.
 Definition adderWithGrowth {m bit} `{Cava m bit} '(cin, (a, b)):=
   '(sum, carryOut) <- adder (cin, (a, b)) ;;
   ret (sum ++ [carryOut]).
+
+
