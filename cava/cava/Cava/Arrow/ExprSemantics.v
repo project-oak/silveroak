@@ -45,7 +45,6 @@ Section combinational_semantics.
     | Let v f => fun y =>
       interp_combinational' (f (fun _ => interp_combinational' v tt)) y
     | LetRec v f => fun _ => kind_default _
-    | RemoveContext f => interp_combinational' f
     end.
 
   Definition interp_combinational {x y: Kind}

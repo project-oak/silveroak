@@ -16,8 +16,7 @@
 
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Arrow Require Import Category Arrow.
-From Cava Require Import Arrow.ArrowExport Arrow.CircuitFunctionalEquivalence
-     BitArithmetic Tactics VectorUtils.
+From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
 From ArrowExamples Require Import Combinators Aes.pkg Aes.sbox_canright_pkg.
 
@@ -110,49 +109,8 @@ Definition canright_composed
   let decoded = !aes_sbox_canright !CIPH_INV encoded in
   decoded ]>.
 
-Require Import Coq.derive.Derive.
-
-Derive CIPH_FWD_spec
-       SuchThat (obeys_spec CIPH_FWD CIPH_FWD_spec)
-       As CIPH_FWD_correct.
-Proof.
-  cbv [CIPH_FWD]. circuit_spec.
-  subst CIPH_FWD_spec.
-  instantiate_app_by_reflexivity.
-Qed.
-
-(* This lemma could also be proved the same way as CIPH_FWD *)
-Lemma CIPH_INV_correct : obeys_spec CIPH_INV (fun _ => true).
-Proof.
-  cbv [obeys_spec CIPH_INV]. circuit_spec. reflexivity.
-Qed.
-
-(* TODO: fill in these axioms *)
-Axiom aes_sbox_canright_spec :
-  denote_kind (<<Bit, Vector Bit 8, Unit >>) -> denote_kind (Vector Bit 8).
-Axiom aes_sbox_canright_correct :
-  obeys_spec aes_sbox_canright aes_sbox_canright_spec.
-Axiom CircuitLaws : CategoryLaws CircuitCat.
-Existing Instance CircuitLaws.
-
-Hint Resolve aes_sbox_canright_correct CIPH_FWD_correct CIPH_INV_correct
-  : circuit_spec_correctness.
-
-Derive canright_composed_spec
-       SuchThat (obeys_spec canright_composed canright_composed_spec)
-       As canright_composed_correct.
-Proof.
-  cbv [canright_composed]. circuit_spec.
-  rewrite !resize_default_id, !map_id.
-  (* we need to do this destruct for the instantiation to work; the calls to
-     Datatypes.fst have different types *)
-  match goal with |- _ (Datatypes.fst ?x) = _ =>  destruct x end.
-  cbn [denote_kind combinational_evaluation' Datatypes.fst Datatypes.snd].
-  subst canright_composed_spec.
-  instantiate_app_by_reflexivity.
-Qed.
-(* Uncomment below to see derived spec for canright_composed *)
-(* Print canright_composed_spec. *)
+(* Lemma canright_composed_combinational: is_combinational (closure_conversion aes_sbox_canright).
+Proof. time simply_combinational. Qed. *)
 
 Lemma canright_composed_combinational: is_combinational (closure_conversion aes_sbox_canright).
 Proof. time simply_combinational. Qed.

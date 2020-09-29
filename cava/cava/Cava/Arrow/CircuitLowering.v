@@ -32,7 +32,6 @@ From ExtLib Require Export Data.Monads.StateMonad.
 
 Import MonadNotation.
 
-
 (******************************************************************************)
 (* Evaluation as a netlist                                                    *)
 (******************************************************************************)

@@ -16,13 +16,13 @@
 
 From Coq Require Import Bool ZArith NArith NaryFunctions Vector Lia.
 From Arrow Require Import Category Arrow.
-From Cava.Arrow Require Import CircuitArrow.
+From Cava.Arrow Require Import CircuitArrow CircuitProp.
+Require Import Cava.VectorUtils.
 
 Import VectorNotations.
 Import EqNotations.
 
 Require Import Cava.BitArithmetic.
-Require Import Cava.VectorUtils.
 
 (******************************************************************************)
 (* Evaluation as function evaluation                                          *)
@@ -220,7 +220,7 @@ Local Open Scope category_scope.
 
 Definition combinational_evaluation {x y: Kind}
   (circuit: x ~> y)
-  (* (ok: is_combinational circuit) *)
+  (ok: is_combinational circuit)
   (i: denote_kind (remove_rightmost_unit x))
   : denote_kind y :=
   combinational_evaluation' circuit (apply_rightmost_tt x i).
