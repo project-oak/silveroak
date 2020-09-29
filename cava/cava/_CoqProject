@@ -8,7 +8,6 @@ Cava/Cava.v
 Cava/Kind.v
 Cava/Signal.v
 Cava/Netlist.v
-Cava/Tactics.v
 Cava/Types.v
 
 Cava/Monad/CavaMonad.v
@@ -28,7 +27,6 @@ Cava/Arrow/ExprLowering.v
 Cava/Arrow/ExprSemantics.v
 
 Cava/Arrow/CircuitArrow.v
-Cava/Arrow/CircuitFunctionalEquivalence.v
 Cava/Arrow/CircuitProp.v
 Cava/Arrow/CircuitSemantics.v
 Cava/Arrow/CircuitLowering.v

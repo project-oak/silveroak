@@ -25,7 +25,6 @@ Section vars.
     | Let: forall {x y z}, kappa Unit x -> (var Unit x -> kappa y z) -> kappa y z
     | LetRec : forall {x y z}, (var Unit x -> kappa Unit x) -> (var Unit x -> kappa y z) -> kappa y z
     | Id : forall {x}, kappa x x
-    | RemoveContext: forall {x y}, kappa x y -> kappa x y
     .
   End Vars.
 
@@ -54,7 +53,6 @@ Section vars.
     | Id _ => True
     | Let x _ _ v f => wf_phoas_context (x :: ctxt) (f (length ctxt)) /\ wf_phoas_context ctxt v
     | LetRec x _ _ v f => wf_phoas_context (x :: ctxt) (v (length ctxt)) /\ wf_phoas_context (x :: ctxt) (f (length ctxt))
-    | RemoveContext _ _ f => wf_phoas_context [] f
     end.
 
   Definition Kappa i o := forall var, kappa var i o.
