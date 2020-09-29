@@ -60,8 +60,8 @@ Module KappaNotation.
 
   (* Escaping *)
 
-  Notation "! x" := ((x _))(in custom expr at level 2, x global) : kappa_scope.
-  Notation "!( x )" := ((x _)) (in custom expr, x constr) : kappa_scope.
+  Notation "! x" := (RemoveContext (x _))(in custom expr at level 2, x global) : kappa_scope.
+  Notation "!( x )" := (RemoveContext (x _)) (in custom expr, x constr) : kappa_scope.
 
   Notation tupleHelper := (fun x y => App (App (Primitive (Pair _ _)) x) y).
   Notation "( x , .. , y , z )" := (

@@ -16,7 +16,7 @@
 
 From Coq Require Import Bool ZArith NaryFunctions Vector.
 From Arrow Require Import Category Arrow .
-From Cava Require Import Arrow.CircuitArrow.
+From Cava Require Import Arrow.CircuitArrow Arrow.CircuitSemantics.
 
 Import VectorNotations.
 
@@ -49,20 +49,6 @@ Definition is_combinational {i o: Kind} (c: i ~> o) :=
 
 Ltac simply_combinational :=
   vm_compute; reflexivity.
-  (* repeat match goal with
-  | [ H |- True ] => exact I
-  no_loops c && no_delays c.
-  end. *)
-  (* apply mkCombinational;
-  lazy;
-  repeat lazymatch goal with
-  | [ |- True ] => exact I
-  | [ |- forall p, (?H1 -> ?H2 -> p) -> p ] =>
-    let x := fresh in (let y := fresh in (
-      intros x y; apply y; clear x y
-    ))
-  | [ |- _ ] => fail "Term wasn't simply combinational"
-  end. *)
 
 Lemma is_combinational_first: forall x y z (circuit: x ~> y),
   is_combinational (first circuit : x**z ~> y**z) =
@@ -92,3 +78,4 @@ Section example.
     is_combinational (Primitive Not).
   Proof.  simply_combinational. Qed.
 End example.
+
