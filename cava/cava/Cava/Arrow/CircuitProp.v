@@ -49,20 +49,6 @@ Definition is_combinational {i o: Kind} (c: i ~> o) :=
 
 Ltac simply_combinational :=
   vm_compute; reflexivity.
-  (* repeat match goal with
-  | [ H |- True ] => exact I
-  no_loops c && no_delays c.
-  end. *)
-  (* apply mkCombinational;
-  lazy;
-  repeat lazymatch goal with
-  | [ |- True ] => exact I
-  | [ |- forall p, (?H1 -> ?H2 -> p) -> p ] =>
-    let x := fresh in (let y := fresh in (
-      intros x y; apply y; clear x y
-    ))
-  | [ |- _ ] => fail "Term wasn't simply combinational"
-  end. *)
 
 Lemma is_combinational_first: forall x y z (circuit: x ~> y),
   is_combinational (first circuit : x**z ~> y**z) =
@@ -93,30 +79,3 @@ Section example.
   Proof.  simply_combinational. Qed.
 End example.
 
-Definition proj_i {i o} (c: Circuit i o) := i.
-Definition proj_o {i o} (c: Circuit i o) := o.
-
-Fixpoint denote_destruct {i o} (c: Circuit i o) {struct c}:
-  denote_kind (proj_i c) * denote_kind (proj_o c) -> Prop
-  :=
-  match c as c' return (denote_kind (proj_i c') * denote_kind (proj_o c')) -> Prop with
-  | Composition X Y Z f g =>
-      fun '(x,z) => exists y, denote_destruct f (x, y) -> denote_destruct g (y, z)
-  | First _ _ _ f =>
-      fun '((x,y),(z,w)) =>
-      y = w -> denote_destruct f (x, z)
-  | Second _ _ _ f =>
-      fun '((x,y),(z,w)) =>
-      x = z -> denote_destruct f (y, w)
-  | Structural (Id _) => fun '(x,y) => x = y
-  | Structural (Cancelr X) => fun '((x,y),z) => x = z
-  | Structural (Cancell X) => fun '((x,y),z) => y = z
-  | Structural (Uncancell _) => fun '(x,(y,z)) => x = z
-  | Structural (Uncancelr _) => fun '(x,(y,z)) => x = y
-  | Structural (Assoc _ _ _) => fun '(((x,y),z), (a,(b,c))) => x = a /\ y = b /\ z = c
-  | Structural (Unassoc _ _ _) => fun '((x,(y,z)), ((a,b),c)) => x = a /\ y = b /\ z = c
-  | Structural (Drop x) => fun _ => True
-  | Structural (Swap x y) => fun '((x,y),(a,b)) => x=b /\ y=a
-  | Structural (Copy x) => fun '(x,(a,b)) => x=a/\x=b
-  | f => fun '(i,o) => combinational_evaluation' f i = o
-  end.

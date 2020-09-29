@@ -108,7 +108,6 @@ Local Open Scope category_scope.
 
 Definition combinational_evaluation {x y: Kind}
   (circuit: x ~> y)
-  (* (ok: is_combinational circuit) *)
   (i: denote_kind (remove_rightmost_unit x))
   : denote_kind y :=
   combinational_evaluation' circuit (apply_rightmost_tt x i).
