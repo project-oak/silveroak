@@ -59,7 +59,7 @@ Inductive CircuitPrimitive :=
   | EmptyVec (o: Kind)
 .
 
-Fixpoint primitive_input (op: CircuitPrimitive): Kind :=
+Definition primitive_input (op: CircuitPrimitive): Kind :=
   match op with
   | Constant _ _ => Unit
   | Delay o => Tuple o Unit
@@ -87,7 +87,7 @@ Fixpoint primitive_input (op: CircuitPrimitive): Kind :=
   | _ => [ Bit ~~~> Bit ]
   end.
 
-Fixpoint primitive_output (op: CircuitPrimitive): Kind :=
+Definition primitive_output (op: CircuitPrimitive): Kind :=
   match op with
   | Constant ty _ => ty
   | Delay o => o
