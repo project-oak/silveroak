@@ -54,8 +54,57 @@ Inductive SboxImpl :=
   CIPH_FWD = 1'b0,
   CIPH_INV = 1'b1
 } ciph_op_e; *)
-Definition CIPH_FWD:  Unit ~> Bit := <[ false' ]>.
-Definition CIPH_INV:  Unit ~> Bit := <[ true' ]>.
+Definition ciph_op_e := Bit.
+Definition CIPH_FWD: Unit ~> ciph_op_e := <[ false' ]>.
+Definition CIPH_INV: Unit ~> ciph_op_e := <[ true' ]>.
+
+(* typedef enum logic [1:0] { *)
+(*   STATE_INIT, *)
+(*   STATE_ROUND, *)
+(*   STATE_CLEAR *)
+(* } state_sel_e; *)
+Definition state_sel_e := Vector Bit 2.
+Definition STATE_INIT: Unit ~> state_sel_e := <[ #0 ]>.
+Definition STATE_ROUND: Unit ~> state_sel_e := <[ #1 ]>.
+Definition STATE_CLEAR: Unit ~> state_sel_e := <[ #2 ]>.
+
+(* typedef enum logic [1:0] { *)
+(*   ADD_RK_INIT, *)
+(*   ADD_RK_ROUND, *)
+(*   ADD_RK_FINAL *)
+(* } add_rk_sel_e; *)
+Definition add_rk_sel_e := Vector Bit 2.
+Definition ADD_RK_INIT: Unit ~> add_rk_sel_e := <[ #0 ]>.
+Definition ADD_RK_ROUND: Unit ~> add_rk_sel_e := <[ #1 ]>.
+Definition ADD_RK_FINAL: Unit ~> add_rk_sel_e := <[ #2 ]>.
+
+(* typedef enum logic { *)
+(*   KEY_DEC_EXPAND, *)
+(*   KEY_DEC_CLEAR *)
+(* } key_dec_sel_e; *)
+Definition key_dec_sel_e := Bit.
+Definition KEY_DEC_EXPAND: Unit ~> key_dec_sel_e := <[ false' ]>.
+Definition KEY_DEC_CLEAR: Unit ~> key_dec_sel_e := <[ true' ]>.
+
+(* typedef enum logic [1:0] { *)
+(*   KEY_WORDS_0123, *)
+(*   KEY_WORDS_2345, *)
+(*   KEY_WORDS_4567, *)
+(*   KEY_WORDS_ZERO *)
+(* } key_words_sel_e; *)
+Definition key_words_sel_e := Vector Bit 2.
+Definition KEY_WORDS_0123: Unit ~> key_words_sel_e := <[ #0 ]>.
+Definition KEY_WORDS_2345: Unit ~> key_words_sel_e := <[ #1 ]>.
+Definition KEY_WORDS_4567: Unit ~> key_words_sel_e := <[ #2 ]>.
+Definition KEY_WORDS_ZERO: Unit ~> key_words_sel_e := <[ #3 ]>.
+
+(* typedef enum logic { *)
+(*   ROUND_KEY_DIRECT, *)
+(*   ROUND_KEY_MIXED *)
+(* } round_key_sel_e; *)
+Definition round_key_sel_e := Bit.
+Definition ROUND_KEY_DIRECT: Unit ~> round_key_sel_e := <[ false' ]>.
+Definition ROUND_KEY_MIXED: Unit ~> round_key_sel_e := <[ true' ]>.
 
 (* // Multiplication by {02} (i.e. x) on GF(2^8)
 // with field generating polynomial {01}{1b} (9'h11b)
