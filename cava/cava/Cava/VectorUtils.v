@@ -131,7 +131,7 @@ Defined.
 
 Import EqNotations.
 
-Fixpoint sliceVector {T: Type} {s: nat} (v: Vector.t T s) (startAt len : nat)
+Definition sliceVector {T: Type} {s: nat} (v: Vector.t T s) (startAt len : nat)
                      (H: startAt + len <= s) : Vector.t T len :=
   match Nat.eq_dec s (startAt + (s - startAt)) with
     | left Heq =>
@@ -356,10 +356,34 @@ Hint Rewrite @nth_order_hd @nth_order_last
 Section Vector.
   Context {A:Type}.
   Local Notation t := (Vector.t).
+  Local Open Scope vector_scope.
 
   Definition slice_by_position n x y (default: A) (v: t A n): (t A (x - y + 1)) :=
     let v' := resize_default default (y + (n - y)) v in
     let tail := snd (splitat y v') in
     let tail' := resize_default default ((x - y + 1) + (n - x - 1)) tail in
     fst (splitat (x-y+1) tail').
+
+  Definition separate {n B} (v: t (A*B) n): t A n * t B n :=
+    t_rect _ (fun n v => t A n * t B n)%type ([],[])
+    (fun '(x,y) n v f =>
+      let '(xs,ys) := f in
+      (x::xs,y::ys)
+    ) _ v.
+
+  Definition tail_default {n} (default: A) (v: t A n): t A (n-1) :=
+    t_rect _ (fun n v => t A (n-1)) ([])
+    (fun x n v f =>
+      resize_default default _ v
+    ) _ v.
+
+  Fixpoint nth_default {n} (default: A) p (v: t A n): A :=
+    match p with
+    | 0 =>
+        match v with
+        | [] => default
+        | x :: _ => x
+        end
+    | S p' => nth_default default p' (tail_default default v)
+    end.
 End Vector.
