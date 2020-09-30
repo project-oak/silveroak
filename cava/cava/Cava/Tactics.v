@@ -14,6 +14,41 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+(* The destruct_pair_let tactic finds "destructuring lets", e.g.
+
+   let '(x, y) := p in ...
+
+   These lets are actually matches under the hood; the above is equivalent to
+
+   match p with | pair x y => ...  end
+
+   This can be a problem because rewriting under matches is not allowed, even
+   when the match has only one case. The destruct_pair_let tactic fixes the
+   issue by changing p into (fst p, snd p), making the match disapper. *)
+Ltac destruct_pair_let :=
+  match goal with
+  | |- context [ match ?p with pair _ _ => _ end ] =>
+    rewrite (surjective_pairing p)
+  end.
+
+Section DestructPairLetTests.
+  (* simple test *)
+  Goal (forall x : nat * nat, let '(n, m) := x in n = fst x).
+    intros.
+    Fail reflexivity. (* reflexivity should not work yet because of match *)
+    destruct_pair_let.
+    reflexivity.
+  Qed.
+
+  (* many nested lets, same product destructed twice *)
+  Goal (forall x : nat * nat * nat * nat,
+           let '(a, b, c, d) := x in
+           (c, a) = let '(n, m, p) := fst x in (p, n)).
+    intros.
+    repeat destruct_pair_let.
+    reflexivity.
+  Qed.
+End DestructPairLetTests.
 
 (* The instantiate_lhs_app_by_reflexivity tactic works on goals of the form:
 

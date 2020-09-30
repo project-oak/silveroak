@@ -31,6 +31,7 @@ From Cava Require Import Kind.
 Require Import Cava.Monad.CavaClass.
 Require Import Cava.VectorUtils.
 Require Import Cava.ListUtils.
+Require Import Cava.Tactics.
 
 Generalizable All Variables.
 
@@ -366,12 +367,6 @@ Fixpoint tree {T: Type} {m bit} `{Cava m bit}
                 aS <- tree default n' circuit vL ;;
                 bS <- tree default n' circuit vH ;;
                 circuit aS bS
-  end.
-
-Local Ltac destruct_pair_let :=
-  match goal with
-  | |- context [ match ?p with pair _ _ => _ end ] =>
-    rewrite (surjective_pairing p)
   end.
 
 Lemma append_divide {A} d n H (v : t A (2 ^ (S n))) :
