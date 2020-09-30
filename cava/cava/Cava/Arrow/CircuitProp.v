@@ -28,6 +28,7 @@ Fixpoint no_delays {i o} (c: Circuit i o): bool :=
   | Second _ _ _ f => no_delays f
   | Loopr _ _ _ f => no_delays f
   | Loopl _ _ _ f => no_delays f
+  | Map _ _ _ f => no_delays f
   | _ => true
   end.
 
@@ -38,6 +39,7 @@ Fixpoint no_loops {i o} (c: Circuit i o): bool :=
   | Second _ _ _ f => no_loops f
   | Loopr _ _ _ f => false
   | Loopl _ _ _ f => false
+  | Map _ _ _ f => no_loops f
   | _ => true
   end.
 

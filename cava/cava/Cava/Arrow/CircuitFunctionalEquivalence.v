@@ -16,8 +16,8 @@
 
 From coqutil Require Import Tactics.Tactics.
 From Arrow Require Import Category Arrow.
-From Cava.Arrow Require Import ArrowKind CircuitArrow CircuitSemantics
-     ExprSyntax ExprLowering.
+From Cava.Arrow Require Import ArrowKind CircuitArrow CircuitProp
+     CircuitSemantics ExprSyntax ExprLowering.
 Require Import Cava.Tactics Cava.VectorUtils.
 
 Inductive circuit_equiv: forall i o, Circuit i o -> (denote_kind i -> denote_kind o) -> Prop :=
@@ -116,6 +116,7 @@ Proof.
 Qed.
 
 Lemma circuit_equiv_combinational_evaluation' {i o} c :
+  is_combinational c ->
   circuit_equiv i o c (combinational_evaluation' c).
 Proof.
   induction c; cbn [combinational_evaluation']; intros.
@@ -125,8 +126,14 @@ Proof.
           end.
   all:try econstructor; eauto.
   all:intros; destruct_products; eauto.
-  (* TODO: loop cases missing *)
-Abort.
+  all:cbv [is_combinational] in *; cbn [no_loops no_delays] in *.
+  all:repeat match goal with
+             | H : (_ && _)%bool = true |- _ =>
+               apply Bool.andb_true_iff in H; destruct H
+             | _ => discriminate
+             end.
+  all: eauto using Bool.andb_true_iff.
+Qed.
 
 (* wrapper for circuit_equiv that keeps goals in standard, recursion-friendly form *)
 Definition obeys_spec {i o}
