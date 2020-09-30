@@ -31,6 +31,9 @@ Notation "|^ x" :=
 Notation "x && y" :=
   (App (App (Primitive And) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
+Notation "x || y" :=
+  (App (App (Primitive And) x) y)
+  (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x & y" :=
   (App (App (bitwise <[and]>  _) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
@@ -43,6 +46,65 @@ Notation "'if' i 'then' t 'else' e" :=
 Notation "x == y" :=
   (App (App (equality _) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
+
+Notation T:=(Bit )(only parsing).
+
+Definition ex11: << <<T,T>>,<<T,T>>, Unit >> ~> <<T,T>> :=
+  (* <[ \ s1 s2 => *)
+  (* let '(a,b) = s1 in *)
+  (* let '(aa,bb) = s2 in *)
+  (* if a then (a,b) else s2 ]>. *)
+
+fun var : Kind -> Kind -> Type =>
+Abs
+  (fun s1 : var Unit << Bit, Bit >> =>
+   Abs
+     (fun
+        s2 : var Unit
+               << primitive_output (Fst Bit Bit),
+               primitive_output (Snd Bit Bit) >> =>
+      Let (Var s1)
+        (fun a_binder : var Unit << Bit, Bit >> =>
+         Let (App (Primitive (Fst Bit Bit)) (Var a_binder))
+           (fun a : var Unit (primitive_output (Fst Bit Bit)) =>
+            Let (App (Primitive (Snd Bit Bit)) (Var a_binder))
+              (fun b : var Unit (primitive_output (Snd Bit Bit)) =>
+               Let (Var s2)
+                 (fun
+                    a_binder0 : var Unit
+                                  << primitive_output (Fst Bit Bit),
+                                  primitive_output (Snd Bit Bit) >> =>
+                  Let
+                    (App
+                       (Primitive
+                          (Fst (primitive_output (Fst Bit Bit))
+                             (primitive_output (Snd Bit Bit))))
+                       (Var a_binder0))
+                    (fun
+                       _ : var Unit
+                             (primitive_output
+                                (Fst (primitive_output (Fst Bit Bit))
+                                   (primitive_output (Snd Bit Bit)))) =>
+                     Let
+                       (App
+                          (Primitive
+                             (Snd (primitive_output (Fst Bit Bit))
+                                (primitive_output (Snd Bit Bit))))
+                          (Var a_binder0))
+                       (fun
+                          _ : var Unit
+                                (primitive_output
+                                   (Snd (primitive_output (Fst Bit Bit))
+                                      (primitive_output (Snd Bit Bit)))) =>
+                        App
+                          (App (App (mux_item var) (Var a))
+                             (tupleHelper (Var a) (Var b)))
+                          (Var s1))))))))).
+
+
+Set Printing Depth 200.
+Set Printing Width 200.
+Print ex11.
 
 Inductive SboxImpl :=
 (* | SboxLut *)
@@ -105,6 +167,18 @@ Definition KEY_WORDS_ZERO: Unit ~> key_words_sel_e := <[ #3 ]>.
 Definition round_key_sel_e := Bit.
 Definition ROUND_KEY_DIRECT: Unit ~> round_key_sel_e := <[ false' ]>.
 Definition ROUND_KEY_MIXED: Unit ~> round_key_sel_e := <[ true' ]>.
+
+(* typedef enum logic [1:0] { *)
+(*   KEY_FULL_ENC_INIT, *)
+(*   KEY_FULL_DEC_INIT, *)
+(*   KEY_FULL_ROUND, *)
+(*   KEY_FULL_CLEAR *)
+(* } key_full_sel_e; *)
+Definition key_full_sel_e := Vector Bit 2.
+Definition KEY_FULL_ENC_INIT: Unit ~> key_full_sel_e := <[ #0 ]>.
+Definition KEY_FULL_DEC_INIT: Unit ~> key_full_sel_e := <[ #1 ]>.
+Definition KEY_FULL_ROUND: Unit ~> key_full_sel_e := <[ #2 ]>.
+Definition KEY_FULL_CLEAR: Unit ~> key_full_sel_e := <[ #3 ]>.
 
 (* // Multiplication by {02} (i.e. x) on GF(2^8)
 // with field generating polynomial {01}{1b} (9'h11b)

@@ -26,6 +26,7 @@ Local Open Scope arrow_scope.
 
 Declare Scope kappa_scope.
 Declare Custom Entry expr.
+(* Declare Custom Entry binder. *)
 Delimit Scope kappa_scope with kappa.
 
 (* Kappa expression and application *)
@@ -42,21 +43,85 @@ Module KappaNotation.
 
   Notation "x" := (Var x) (in custom expr, x ident) : kappa_scope.
   Notation "( x )" := x (in custom expr, x at level 4) : kappa_scope.
-  Notation "'let' x = e1 'in' e2" := (Let e1 (fun x => e2))
-    (in custom expr at level 1, x constr at level 4, e2 at level 7, e1 at level 1) : kappa_scope.
+  Notation "'let' x = a 'in' b" := (Let a (fun x => b))
+    (in custom expr at level 1, x constr at level 4, b at level 7, a at level 1) : kappa_scope.
+  Notation "'letrec' x = a 'in' b" := (LetRec (fun x => a) (fun x => b))
+    (in custom expr at level 1, x constr at level 4, b at level 7, a at level 1) : kappa_scope.
 
-  (* todo: turn into a recursive pattern *)
-  Notation "'let' '( x , y ) = e1 'in' e2"
-    := (
-    Let (App (Primitive (Fst _ _ )) e1) (fun x =>
-      Let (App (Primitive (Snd _ _ )) e1) (fun y => e2
-      )
-    ))
+  (* TODO(blaxill): can this be turned into a recursive pattern?
+  The binders not mentioned on the lhs (e.g. a_binder) prevent me from doing this
+  I think. Moving away from PHOAS would also work *)
+  Notation "'let' '( x , y ) = a 'in' b" := (
+    Let a (fun a_binder =>
+    Let (App (Primitive (Fst _ _ )) (Var a_binder)) (fun x =>
+      Let (App (Primitive (Snd _ _ )) (Var a_binder)) (fun y => b))))
+    ( in custom expr at level 1, x constr, y constr, b at level 7) : kappa_scope.
+  Notation "'let' '( x , y , z ) = a 'in' b" := (
+    Let a (fun a_binder =>
+    Let (App (Primitive (Fst _ _ )) (Var a_binder)) (fun x =>
+      Let (App (Primitive (Snd _ _ )) (Var a_binder)) (fun a_tl_binder =>
+        Let (App (Primitive (Fst _ _ )) (Var a_tl_binder)) (fun y =>
+          Let (App (Primitive (Snd _ _ )) (Var a_tl_binder)) (fun z =>
+          b))))))
+    ( in custom expr at level 1, x constr, y constr, z constr, b at level 7) : kappa_scope.
+  Notation "'let' '( x , y , z , w ) = a 'in' b" := (
+    Let a (fun a_binder =>
+    Let (App (Primitive (Fst _ _ )) (Var a_binder)) (fun x =>
+      Let (App (Primitive (Snd _ _ )) (Var a_binder)) (fun a_tl_binder =>
+        Let (App (Primitive (Fst _ _ )) (Var a_tl_binder)) (fun y =>
+            Let (App (Primitive (Snd _ _ )) (Var a_tl_binder)) (fun a_tl_tl_binder =>
+              Let (App (Primitive (Fst _ _ )) (Var a_tl_tl_binder)) (fun z =>
+                Let (App (Primitive (Snd _ _ )) (Var a_tl_tl_binder)) (fun w =>
+          b))))))))
+    ( in custom expr at level 1, x constr, y constr, z constr, w constr, b at level 7) : kappa_scope.
+  Notation "'let' '( x1 , x2 , x3 , x4 , x5 ) = a 'in' b" := (
+    Let a (fun binder1 =>
+    Let (App (Primitive (Fst _ _ )) (Var binder1)) (fun x1 =>
+      Let (App (Primitive (Snd _ _ )) (Var binder1)) (fun binder2 =>
+        Let (App (Primitive (Fst _ _ )) (Var binder2)) (fun x2 =>
+            Let (App (Primitive (Snd _ _ )) (Var binder2)) (fun binder3 =>
+              Let (App (Primitive (Fst _ _ )) (Var binder3)) (fun x3 =>
+                Let (App (Primitive (Snd _ _ )) (Var binder3)) (fun binder4 =>
+                  Let (App (Primitive (Fst _ _ )) (Var binder4)) (fun x4 =>
+                    Let (App (Primitive (Snd _ _ )) (Var binder4)) (fun x5 =>
+          b))))))))))
     ( in custom expr at level 1
-    , x constr at level 4
-    , y constr at level 4
-    , e2 at level 7
-    , e1 at level 1) : kappa_scope.
+    , x1 constr, x2 constr, x3 constr, x4 constr, x5 constr
+    , b at level 7) : kappa_scope.
+  Notation "'let' '( x1 , x2 , x3 , x4 , x5 , x6 ) = a 'in' b" := (
+    Let a (fun binder1 =>
+    Let (App (Primitive (Fst _ _ )) (Var binder1)) (fun x1 =>
+      Let (App (Primitive (Snd _ _ )) (Var binder1)) (fun binder2 =>
+        Let (App (Primitive (Fst _ _ )) (Var binder2)) (fun x2 =>
+            Let (App (Primitive (Snd _ _ )) (Var binder2)) (fun binder3 =>
+              Let (App (Primitive (Fst _ _ )) (Var binder3)) (fun x3 =>
+                Let (App (Primitive (Snd _ _ )) (Var binder3)) (fun binder4 =>
+                  Let (App (Primitive (Fst _ _ )) (Var binder4)) (fun x4 =>
+                    Let (App (Primitive (Snd _ _ )) (Var binder4)) (fun binder5 =>
+                      Let (App (Primitive (Fst _ _ )) (Var binder5)) (fun x5 =>
+                        Let (App (Primitive (Snd _ _ )) (Var binder5)) (fun x6 =>
+          b))))))))))))
+    ( in custom expr at level 1
+    , x1 constr, x2 constr, x3 constr, x4 constr, x5 constr, x6 constr
+    , b at level 7) : kappa_scope.
+  Notation "'let' '( x1 , x2 , x3 , x4 , x5 , x6 , x7 ) = a 'in' b" := (
+    Let a (fun binder1 =>
+    Let (App (Primitive (Fst _ _ )) (Var binder1)) (fun x1 =>
+      Let (App (Primitive (Snd _ _ )) (Var binder1)) (fun binder2 =>
+        Let (App (Primitive (Fst _ _ )) (Var binder2)) (fun x2 =>
+            Let (App (Primitive (Snd _ _ )) (Var binder2)) (fun binder3 =>
+              Let (App (Primitive (Fst _ _ )) (Var binder3)) (fun x3 =>
+                Let (App (Primitive (Snd _ _ )) (Var binder3)) (fun binder4 =>
+                  Let (App (Primitive (Fst _ _ )) (Var binder4)) (fun x4 =>
+                    Let (App (Primitive (Snd _ _ )) (Var binder4)) (fun binder5 =>
+                      Let (App (Primitive (Fst _ _ )) (Var binder5)) (fun x5 =>
+                        Let (App (Primitive (Snd _ _ )) (Var binder5)) (fun binder6 =>
+                            Let (App (Primitive (Fst _ _ )) (Var binder6)) (fun x6 =>
+                              Let (App (Primitive (Snd _ _ )) (Var binder6)) (fun x7 =>
+          b))))))))))))))
+    ( in custom expr at level 1
+    , x1 constr, x2 constr, x3 constr, x4 constr, x5 constr, x6 constr, x7 constr
+    , b at level 7) : kappa_scope.
 
   (* Escaping *)
 
@@ -82,7 +147,7 @@ Module KappaNotation.
   Notation "'xor'" := (Primitive Xor) (in custom expr at level 4) : kappa_scope.
   Notation "'xnor'" := (Primitive Xnor) (in custom expr at level 4) : kappa_scope.
   Notation "'buf'" := (Primitive BufGate) (in custom expr at level 4) : kappa_scope.
-  Notation "'delay'" := (Primitive Delay) (in custom expr at level 4) : kappa_scope.
+  Notation "'delay'" := (Primitive (Delay _)) (in custom expr at level 4) : kappa_scope.
 
   Notation "'xorcy'" := (Primitive Xorcy) (in custom expr at level 4) : kappa_scope.
   Notation "'muxcy'" := (Primitive Muxcy) (in custom expr at level 4) : kappa_scope.
@@ -185,6 +250,10 @@ Section regression_examples.
   <[ \ x => (xor x[#0] x[#1] :: false' :: []) [#0] ]>.
   Definition ex14:  << Vector Bit 10, Vector Bit 4, Unit >> ~> Bit :=
   <[ \ x i => x [ i ] ]>.
+  Definition ex15_rec_xor:  << Bit, Unit >> ~> Bit :=
+  <[ \ x => letrec s = delay (xor x s) in s ]>.
+  Definition ex16_triple:  << <<Bit, Bit, Bit>>, Unit >> ~> Bit :=
+  <[ \ triple => let '(x, y, z) = triple in x ]>.
 
   Fixpoint copy_object_pow2 o (n:nat): Kind :=
   match n with
@@ -231,5 +300,17 @@ Section regression_examples.
       let cout     = muxcy part_sum (cin, a) in
       (sum, cout)
     ]>.
+
+  Fixpoint reshape {n m A}
+    :  << Vector A (n * m), Unit >> ~> << Vector (Vector A m) n >> :=
+  match n with
+  | 0 => <[\_ => [] ]>
+  | S n' =>
+    <[ \vec =>
+      let '(x, xs) = split_at m vec in
+      x :: !(@reshape n' m A) xs
+      ]>
+  end.
+
 
 End regression_examples.
