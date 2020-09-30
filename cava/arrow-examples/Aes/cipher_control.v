@@ -80,7 +80,7 @@ Definition aes_cipher_control_transition
          , dec_key_gen_q
          , key_clear_q
          , data_out_clear_q
-         ) = state in
+         ) : aes_cipher_control_state = state in
 
     let '( in_valid_i
          , out_ready_i
@@ -89,12 +89,12 @@ Definition aes_cipher_control_transition
          , dec_key_gen_i
          , key_clear_i
          , data_out_clear_i
-         ) = input in
+         ) : aes_cipher_control_input = input in
 
     if aes_cipher_ctrl_cs == !IDLE then
       (* IDLE: begin *)
       (*   dec_key_gen_d = 1'b0; *)
-      let dec_key_gen_d = #0 in
+      let dec_key_gen_d = false' in
       (*   // Signal that we are ready, wait for handshake. *)
       (*   in_ready_o = 1'b1; *)
 
@@ -120,7 +120,7 @@ Definition aes_cipher_control_transition
           , key_clear_d
           , data_out_clear_d
           )
-        else if dec_key_gen_i || crypt_i then
+        else if (dec_key_gen_i || crypt_i) then
           (* // Start encryption/decryption or generation of start key for decryption. *)
           (* crypt_d       = ~dec_key_gen_i; *)
           (* dec_key_gen_d =  dec_key_gen_i; *)
