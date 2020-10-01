@@ -159,6 +159,57 @@ Proof.
 Qed.
 
 (******************************************************************************)
+(* Prove that an unsigned bit-vector b::bs represents the same number         *)
+(* as b + 2 * bs i.e. the low bit represented as a number plus 2 times the    *)
+(* the rest of the bit-vector.                                                *)    
+(******************************************************************************)
+
+Local Open Scope N_scope.
+
+Lemma list_bits_to_nat_cons b bs :
+  list_bits_to_nat (b :: bs) = N.b2n b + 2 * list_bits_to_nat bs.
+Proof.
+  (* Unfold the definition of list_bits_to_nat to get an expression
+     in terms of BvN. *)
+  unfold list_bits_to_nat.
+  (* We now have:
+       Bv2N (of_list (b :: bs)) = N.b2n b + 2 * Bv2N (of_list bs)
+     Bv2N (of_list (b :: bs)) converts the list b::bs to a Bvector (Vector bool)
+     which is converted by Bv2N to the natural type N. Unfold one application
+     of the of_list function which converts a list to a vector. *)
+  cbn [of_list Bv2N].
+  (* We now have:
+       (if b
+         then N.succ_double (Bv2N (of_list bs))
+         else N.double (Bv2N (of_list bs))) = N.b2n b + 2 * Bv2N (of_list bs)
+     Let's take apart the if statement by destructing on its conditional
+     value b. In each branch let's also unfold the N.b2n function that converts
+     a bool value to a value of the natural type N. *)
+  destruct b; unfold N.b2n.
+  (* We now have:
+     1/2
+     N.succ_double (Bv2N (of_list bs)) = 1 + 2 * Bv2N (of_list bs)
+     2/2
+    N.double (Bv2N (of_list bs)) = 0 + 2 * Bv2N (of_list bs) *)
+  - (* 1/2: Let's use the following lemma:
+       Lemma succ_double_spec n : succ_double n = 2 * n + 1.
+       This says that succ_dobule of n is the same as doubling n and adding 1.
+       This gives:
+         2 * Bv2N (of_list bs) + 1 = 1 + 2 * Bv2N (of_list bs)
+       which can be proved bu the lia hammer. *)
+    rewrite N.succ_double_spec. lia.
+  - (* 2/2: Let's use the lemma:
+       Lemma double_spec n : double n = 2 * n.
+       This says the double n is the same as 2 * b.
+       This gives:
+         2 * Bv2N (of_list bs) = 0 + 2 * Bv2N (of_list bs)
+       which can be solved by the lia hammer. *)
+    rewrite N.double_spec. lia.
+Qed.
+
+Local Close Scope N_scope.
+
+(******************************************************************************)
 (* Functions useful for Vector operations                                     *)
 (******************************************************************************)
 
