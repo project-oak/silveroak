@@ -45,8 +45,8 @@ Module KappaNotation.
   Notation "( x )" := x (in custom expr, x at level 4) : kappa_scope.
   Notation "'let' x = a 'in' b" := (Let a (fun x => b))
     (in custom expr at level 1, x constr at level 4, b at level 7, a at level 1) : kappa_scope.
-  Notation "'let' x = a 'in' b" := (Let a (fun x => b))
-    (in custom expr at level 1, x constr at level 4, b at level 7, a at level 1) : kappa_scope.
+  Notation "'let' x : ty = a 'in' b" := (Let a (fun x : _ Unit ty => b))
+    (in custom expr at level 1, x constr at level 4, b at level 7, ty constr at level 7, a at level 1) : kappa_scope.
   Notation "'letrec' x = a 'in' b" := (LetRec (fun x => a) (fun x => b))
     (in custom expr at level 1, x constr at level 4, b at level 7, a at level 1) : kappa_scope.
 
@@ -188,7 +188,7 @@ Module KappaNotation.
   Notation "'muxcy'" := (Primitive Muxcy) (in custom expr at level 4) : kappa_scope.
 
   Definition unsigned_add2 {var a b} := Primitive (var:=var) (UnsignedAdd a b (S (max a b))).
-  Definition unsigned_add1 {var a b} := Primitive (var:=var) (UnsignedAdd a b (max a b)).
+  Definition unsigned_add1 {var a} := Primitive (var:=var) (UnsignedAdd a a a).
 
   Notation "x + y" :=
       (App (App unsigned_add2 x) y)
@@ -312,18 +312,10 @@ Section regression_examples.
     ]>
   end.
 
-  Definition add' (n: nat)
-    :  <<Vector Bit n, Vector Bit n, Unit>> ~[KappaCat]~> (Vector Bit n)
-    :=
-    match Nat.eq_dec (Init.Nat.max n n) n with
-    | left Heq => rew [fun x =>  _~[KappaCat]~>Vector Bit x] Heq in <[\x y=> x +% y]>
-    | right Hneq => (ltac:(lia))
-    end.
-
   Definition adder_tree
     (bitsize n: nat)
     : <<copy_object_pow2 (Vector Bit bitsize) n, Unit>> ~> (Vector Bit bitsize) :=
-    tree (Vector Bit bitsize) n (add' bitsize).
+    tree (Vector Bit bitsize) n <[\x y => x +% y]>.
 
   Definition xilinxFullAdder
     :  << Bit, << Bit, Bit >>, Unit>> ~> (Tuple Bit Bit) :=

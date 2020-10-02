@@ -400,10 +400,19 @@ Definition col {A B C: Kind} n
   ]>.
 
 Definition mealy_machine {s i o}
-  (fs: <<s, i, Unit>> ~> <<s>> )
-  (fo: <<s, Unit>> ~> <<o>> )
+  (f: <<s, i, Unit>> ~> <<s, o>> )
   : <<i, Unit>> ~> << o >>
-  := <[\i => letrec state = !fs state i in !fo state ]>.
+  := <[\i =>
+    letrec state_and_output = !f (delay (fst state_and_output)) i
+    in (snd state_and_output) ]>.
+
+Definition mealy_machine1 {s i o}
+  (fs: <<s, i, Unit>> ~> <<s>> )
+  (fo: <<s, i, Unit>> ~> <<o>> )
+  : <<i, Unit>> ~> << o >>
+  := <[\i =>
+    letrec state = !fs (delay state) i
+    in !fo state i ]>.
 
 Section regression_tests.
   Definition halfAdder
