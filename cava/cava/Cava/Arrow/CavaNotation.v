@@ -26,7 +26,6 @@ Local Open Scope arrow_scope.
 
 Declare Scope kappa_scope.
 Declare Custom Entry expr.
-(* Declare Custom Entry binder. *)
 Delimit Scope kappa_scope with kappa.
 
 (* Kappa expression and application *)
@@ -53,25 +52,14 @@ Module KappaNotation.
   (* TODO(blaxill): can this be turned into a recursive pattern?
   The binders not mentioned on the lhs (e.g. a_binder) prevent me from doing this
   I think. Moving away from PHOAS would also work *)
+
+  (* This function shouldn't be necessary but helps with type unification when
+  using the tuple destructuring notation *)
   Definition proj1_tuple1 ty: CircuitPrimitive :=
     match ty with
     | Tuple l r => Fst l r
     | _ => Fst Unit Unit
     end.
-  Fixpoint proj_fstn_tuple n ty: CircuitPrimitive :=
-    match n with
-    | O =>
-      match ty with
-      | Tuple l r => Fst l r
-      | _ => Fst Unit Unit
-      end
-    | S n' =>
-      match ty with
-      | Tuple l r => proj_fstn_tuple n' r
-      | _=> Fst Unit Unit
-      end
-    end.
-  Definition projo_expr {var i o} (expr: kappa var i o) := o.
 
   Notation "'let' '( x , y ) = a 'in' b" := (
     Let a (fun a_binder =>
@@ -375,7 +363,6 @@ Section regression_examples.
       ]>
   end.
 
-
   Definition dummy {T}
     :  << Bit, T, T, Unit >> ~> <<T>> :=
     <[\_ x _ => x]>.
@@ -390,5 +377,5 @@ Section regression_examples.
     if a then (a,b) else s1
     ]>.
 
-
 End regression_examples.
+

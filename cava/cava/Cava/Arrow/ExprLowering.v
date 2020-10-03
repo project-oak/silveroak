@@ -341,7 +341,6 @@ Definition closure_conversion {i o} (expr: Kappa i o) : i ~> o
 Hint Resolve closure_conversion' : core.
 Hint Resolve closure_conversion : core.
 
-
 (* Provides some idea of term sized caused by context *)
 Fixpoint max_context_size' {i o}
   (size: nat)
@@ -361,3 +360,4 @@ match expr with
 | LetRec v f =>
   max (max_context_size' (size+1) (f tt)) (max_context_size' (size+1) (v tt))
 end.
+
