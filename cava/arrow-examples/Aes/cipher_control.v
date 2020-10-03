@@ -114,7 +114,7 @@ Definition aes_cipher_control_output :=
   , round_key_sel_e
   >>.
 
-Definition aes_cipher_control_transition_state
+Definition aes_cipher_control_transition
   : << aes_cipher_control_state, aes_cipher_control_input, Unit>>
   ~> <<aes_cipher_control_state, aes_cipher_control_output>>
   :=
@@ -675,3 +675,9 @@ Definition aes_cipher_control_transition_state
       , round_key_sel_o)
     )
   ]>.
+
+
+Definition aes_cipher_control
+  : <<aes_cipher_control_input, Unit>> ~> <<aes_cipher_control_output>>
+  := <[\x => !(mealy_machine aes_cipher_control_transition) x]>.
+
