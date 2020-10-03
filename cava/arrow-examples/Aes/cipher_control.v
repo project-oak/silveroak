@@ -141,14 +141,50 @@ Definition aes_cipher_control_transition_state
     (* assign num_rounds_regular = num_rounds_q - 4'd2; *)
     let num_rounds_regular = num_rounds_q - #2 in
 
-    let next_state =
+    (* // Handshake signals *)
+    let in_ready_o         = false' in
+    let out_valid_o        = false' in
+    let default_io_o =
+      ( in_ready_o
+      , out_valid_o) in
+
+    (* // Cipher data path *)
+    let state_sel_o        = !STATE_ROUND in
+    let state_we_o         = false' in
+    let add_rk_sel_o       = !ADD_RK_ROUND in
+    let default_state_o =
+      ( !STATE_ROUND
+      , false'
+      , !ADD_RK_ROUND) in
+
+    (* // Key expand data path *)
+    let key_full_sel_o     = !KEY_FULL_ROUND in
+    let key_full_we_o      = false' in
+    let key_dec_sel_o      = !KEY_DEC_EXPAND in
+    let key_dec_we_o       = false' in
+    let key_expand_step_o  = false' in
+    let key_expand_clear_o = false' in
+    let key_words_sel_o    = !KEY_WORDS_ZERO in
+    let round_key_sel_o    = !ROUND_KEY_DIRECT in
+
+    let default_key_o =
+      ( key_full_sel_o
+      , key_full_we_o
+      , key_dec_sel_o
+      , key_dec_we_o
+      , key_expand_step_o
+      , key_expand_clear_o
+      , key_words_sel_o
+      , round_key_sel_o) in
+
+    let '(next_state, io_o, state_o, key_o) =
       if aes_cipher_ctrl_cs == !IDLE then
         (* IDLE: begin *)
         (*   dec_key_gen_d = 1'b0; *)
         let dec_key_gen_d = false' in
         (*   // Signal that we are ready, wait for handshake. *)
         (*   in_ready_o = 1'b1; *)
-        (* let in_ready_o = true' in *)
+        let in_ready_o = true' in
 
         (*   if (in_valid_i) begin *)
         (*     if (key_clear_i || data_out_clear_i) begin *)
@@ -173,24 +209,36 @@ Definition aes_cipher_control_transition_state
               , key_clear_d
               , data_out_clear_d
               )
+            , default_io_o, default_state_o, default_key_o
             )
           else if (dec_key_gen_i || crypt_i) then
             (* // Start encryption/decryption or generation of start key for decryption. *)
             (* crypt_d       = ~dec_key_gen_i; *)
             (* dec_key_gen_d =  dec_key_gen_i; *)
+            let crypt_d            = not dec_key_gen_i in
+            let dec_key_gen_d      = dec_key_gen_i in
 
             (* // Load input data to state *)
             (* state_sel_o = dec_key_gen_d ? STATE_CLEAR : STATE_INIT; *)
             (* state_we_o  = 1'b1; *)
+            let state_sel_o  = if dec_key_gen_d then !STATE_CLEAR else !STATE_INIT in
+            let state_we_o = true' in
 
             (* // Init key expand *)
             (* key_expand_clear_o = 1'b1; *)
+            let key_expand_clear_o = true' in
 
             (* // Load full key *)
             (* key_full_sel_o = dec_key_gen_d ? KEY_FULL_ENC_INIT : *)
             (*             (op_i == CIPH_FWD) ? KEY_FULL_ENC_INIT : *)
             (*                                  KEY_FULL_DEC_INIT; *)
             (* key_full_we_o  = 1'b1; *)
+            let key_full_sel_o =
+              if dec_key_gen_d then !KEY_FULL_ENC_INIT
+              else
+                if op_i == !CIPH_FWD then !KEY_FULL_ENC_INIT
+                else !KEY_FULL_DEC_INIT in
+            let key_full_we_o = true' in
 
             (* // Load num_rounds, clear round *)
             (* round_d      = '0; *)
@@ -198,47 +246,71 @@ Definition aes_cipher_control_transition_state
             (*                (key_len_i == AES_192) ? 4'd12 : *)
             (*                                         4'd14; *)
             (* aes_cipher_ctrl_ns = INIT; *)
-            let crypt_d            = not dec_key_gen_i in
-            let dec_key_gen_d      = dec_key_gen_i in
             let round_d            = #0 in
             let num_rounds_d       = #14 in
             let aes_cipher_ctrl_ns = !INIT in
-            ( aes_cipher_ctrl_ns
-            , round_d
-            , num_rounds_d
-            , crypt_d
-            , dec_key_gen_d
-            , key_clear_q
-            , data_out_clear_q
-            )
-          else state
-        else state
 
+            ( ( aes_cipher_ctrl_ns
+              , round_d
+              , num_rounds_d
+              , crypt_d
+              , dec_key_gen_d
+              , key_clear_q
+              , data_out_clear_q
+              )
+            , default_io_o
+            , ( state_sel_o
+              , state_we_o
+              , add_rk_sel_o
+              )
+            , ( key_full_sel_o
+              , key_full_we_o
+              , key_dec_sel_o
+              , key_dec_we_o
+              , key_expand_step_o
+              , key_expand_clear_o
+              , key_words_sel_o
+              , round_key_sel_o
+            ) )
+
+          else (state, default_io_o, default_state_o, default_key_o)
+        else (state, default_io_o, default_state_o, default_key_o)
       else if aes_cipher_ctrl_cs == !INIT then
-          (* INIT: begin *)
-          (*   // Initial round: just add key to state *)
-          (*   state_we_o   = ~dec_key_gen_q; *)
-          (*   add_rk_sel_o = ADD_RK_INIT; *)
+        (* INIT: begin *)
+        (*   // Initial round: just add key to state *)
+        (*   state_we_o   = ~dec_key_gen_q; *)
+        let state_we_o = not dec_key_gen_q in
+        (*   add_rk_sel_o = ADD_RK_INIT; *)
+        let add_rk_sel_o = !ADD_RK_INIT in
 
-          (*   // Select key words for initial add_round_key *)
-          (*   key_words_sel_o = dec_key_gen_q                ? KEY_WORDS_ZERO : *)
-          (*       (key_len_i == AES_128)                     ? KEY_WORDS_0123 : *)
-          (*       (key_len_i == AES_192 && op_i == CIPH_FWD) ? KEY_WORDS_0123 : *)
-          (*       (key_len_i == AES_192 && op_i == CIPH_INV) ? KEY_WORDS_2345 : *)
-          (*       (key_len_i == AES_256 && op_i == CIPH_FWD) ? KEY_WORDS_0123 : *)
-          (*       (key_len_i == AES_256 && op_i == CIPH_INV) ? KEY_WORDS_4567 : KEY_WORDS_ZERO; *)
+        (*   // Select key words for initial add_round_key *)
+        (*   key_words_sel_o = dec_key_gen_q                ? KEY_WORDS_ZERO : *)
+        (*       (key_len_i == AES_128)                     ? KEY_WORDS_0123 : *)
+        (*       (key_len_i == AES_192 && op_i == CIPH_FWD) ? KEY_WORDS_0123 : *)
+        (*       (key_len_i == AES_192 && op_i == CIPH_INV) ? KEY_WORDS_2345 : *)
+        (*       (key_len_i == AES_256 && op_i == CIPH_FWD) ? KEY_WORDS_0123 : *)
+        (*       (key_len_i == AES_256 && op_i == CIPH_INV) ? KEY_WORDS_4567 : KEY_WORDS_ZERO; *)
+        let key_words_sel_o =
+          if dec_key_gen_q then !KEY_WORDS_ZERO
+          else
+            (* key_len_i == AES_256 *)
+            if op_i == !CIPH_FWD then !KEY_WORDS_0123
+            else if op_i == !CIPH_INV then !KEY_WORDS_4567
+            else !KEY_WORDS_ZERO in
 
-          (*   // Make key expand advance - AES-256 has two round keys available right from beginning. *)
-          (*   if (key_len_i != AES_256) begin *)
-          (*     key_expand_step_o = 1'b1; *)
-          (*     key_full_we_o     = 1'b1; *)
-          (*   end *)
+        (*   // Make key expand advance - AES-256 has two round keys available right from beginning. *)
+        (*   if (key_len_i != AES_256) begin *)
+        (*     key_expand_step_o = 1'b1; *)
+        (*     key_full_we_o     = 1'b1; *)
+        (*   end *)
+        let key_expand_step_o = true' in
+        let key_full_we_o = true' in
 
-          (*   aes_cipher_ctrl_ns = ROUND; *)
-          (* end *)
-          let aes_cipher_ctrl_ns = !ROUND in
+        (*   aes_cipher_ctrl_ns = ROUND; *)
+        (* end *)
+        let aes_cipher_ctrl_ns = !ROUND in
 
-          ( aes_cipher_ctrl_ns
+        ( ( aes_cipher_ctrl_ns
           , round_q
           , num_rounds_q
           , crypt_q
@@ -246,11 +318,26 @@ Definition aes_cipher_control_transition_state
           , key_clear_q
           , data_out_clear_q
           )
+        , default_io_o
+        , ( state_sel_o
+          , state_we_o
+          , add_rk_sel_o
+          )
+        , ( key_full_sel_o
+          , key_full_we_o
+          , key_dec_sel_o
+          , key_dec_we_o
+          , key_expand_step_o
+          , key_expand_clear_o
+          , key_words_sel_o
+          , round_key_sel_o
+        ) )
 
       else if aes_cipher_ctrl_cs == !ROUND then
           (* ROUND: begin *)
           (*   // Normal rounds *)
           (*   state_we_o = ~dec_key_gen_q; *)
+        let state_we_o = not dec_key_gen_q in
 
           (*   // Select key words for add_round_key *)
           (*   key_words_sel_o = dec_key_gen_q                ? KEY_WORDS_ZERO : *)
@@ -259,27 +346,28 @@ Definition aes_cipher_control_transition_state
           (*       (key_len_i == AES_192 && op_i == CIPH_INV) ? KEY_WORDS_0123 : *)
           (*       (key_len_i == AES_256 && op_i == CIPH_FWD) ? KEY_WORDS_4567 : *)
           (*       (key_len_i == AES_256 && op_i == CIPH_INV) ? KEY_WORDS_0123 : KEY_WORDS_ZERO; *)
+        let key_words_sel_o =
+          if dec_key_gen_q then !KEY_WORDS_ZERO
+          else
+            (* key_len_i == AES_256 *)
+            if op_i == !CIPH_FWD then !KEY_WORDS_4567
+            else if op_i == !CIPH_INV then !KEY_WORDS_0123
+            else !KEY_WORDS_ZERO in
 
           (*   // Make key expand advance *)
           (*   key_expand_step_o = 1'b1; *)
           (*   key_full_we_o     = 1'b1; *)
+        let key_expand_step_o = true' in
+        let key_full_we_o = true' in
 
           (*   // Select round key: direct or mixed (equivalent inverse cipher) *)
           (*   round_key_sel_o = (op_i == CIPH_FWD) ? ROUND_KEY_DIRECT : ROUND_KEY_MIXED; *)
+        let round_key_sel_o = if (op_i == !CIPH_FWD) then !ROUND_KEY_DIRECT else !ROUND_KEY_MIXED in
 
           (*   // Update round *)
           (*   round_d = round_q + 4'b0001; *)
         let round_d = round_q +% #1 in
 
-        (* let state_we_o = not dec_key_gen_q in *)
-        (* let key_words_sel_o = *)
-        (*   if dec_key_gen_q then *)
-        (*     !KEY_WORDS_ZERO *)
-        (*   (1*       (key_len_i == AES_256 && op_i == CIPH_FWD) ? KEY_WORDS_4567 : *1) *)
-        (*     else if (1* key_len_i == AES_256 && *1) op_i == !CIPH_FWD then !KEY_WORDS_4567 *)
-        (*     else if (1* key_len_i == AES_256 && *1) op_i == !CIPH_INV then !KEY_WORDS_0123 *)
-        (*     else !KEY_WORDS_ZERO *)
-        (*   in *)
           (*   // Are we doing the last regular round? *)
           (*   if (round_q == num_rounds_regular) begin *)
           (*     aes_cipher_ctrl_ns = FINISH; *)
@@ -300,6 +388,11 @@ Definition aes_cipher_control_transition_state
           (*     end *)
           (*   end *)
           (* end *)
+        let key_dec_we_o =
+          if (round_q == num_rounds_regular) && dec_key_gen_q
+          then true'
+          else false' in
+        let out_valid_o = key_dec_we_o in
 
         let aes_cipher_ctrl_ns =
           if (round_q == num_rounds_regular)
@@ -313,14 +406,28 @@ Definition aes_cipher_control_transition_state
           then false'
           else dec_key_gen_q in
 
-        ( aes_cipher_ctrl_ns
-        , round_d
-        , num_rounds_q
-        , crypt_q
-        , dec_key_gen_d
-        , key_clear_q
-        , data_out_clear_q
-        )
+        ( ( aes_cipher_ctrl_ns
+          , round_d
+          , num_rounds_q
+          , crypt_q
+          , dec_key_gen_d
+          , key_clear_q
+          , data_out_clear_q
+          )
+        , default_io_o
+        , ( state_sel_o
+          , state_we_o
+          , add_rk_sel_o
+          )
+        , ( key_full_sel_o
+          , key_full_we_o
+          , key_dec_sel_o
+          , key_dec_we_o
+          , key_expand_step_o
+          , key_expand_clear_o
+          , key_words_sel_o
+          , round_key_sel_o
+        ) )
       else if aes_cipher_ctrl_cs == !FINISH then
           (* FINISH: begin *)
           (*   // Final round *)
@@ -332,9 +439,18 @@ Definition aes_cipher_control_transition_state
           (*       (key_len_i == AES_192 && op_i == CIPH_INV) ? KEY_WORDS_0123 : *)
           (*       (key_len_i == AES_256 && op_i == CIPH_FWD) ? KEY_WORDS_4567 : *)
           (*       (key_len_i == AES_256 && op_i == CIPH_INV) ? KEY_WORDS_0123 : KEY_WORDS_ZERO; *)
+        let key_words_sel_o =
+          if dec_key_gen_q then !KEY_WORDS_ZERO
+          else
+            (* key_len_i == AES_256 *)
+            if op_i == !CIPH_FWD then !KEY_WORDS_4567
+            else if op_i == !CIPH_INV then !KEY_WORDS_0123
+            else !KEY_WORDS_ZERO in
 
           (*   // Skip mix_columns *)
           (*   add_rk_sel_o = ADD_RK_FINAL; *)
+        let add_rk_sel_o = !ADD_RK_FINAL in
+        let out_valid_o = true' in
 
           (*   // Indicate that we are done, wait for handshake. *)
           (*   out_valid_o = 1'b1; *)
@@ -351,15 +467,48 @@ Definition aes_cipher_control_transition_state
           (* end *)
         if (out_ready_i)
         then
-          ( !IDLE
-          , round_q
-          , num_rounds_q
-          , crypt_q
-          , false'
-          , key_clear_q
-          , data_out_clear_q
-          )
-        else state
+          ( ( !IDLE
+            , round_q
+            , num_rounds_q
+            , crypt_q
+            , false'
+            , key_clear_q
+            , data_out_clear_q
+            )
+          , ( in_ready_o
+            , out_valid_o
+            )
+          , ( !STATE_CLEAR
+            , true'
+            , add_rk_sel_o
+            )
+          , ( key_full_sel_o
+            , key_full_we_o
+            , key_dec_sel_o
+            , key_dec_we_o
+            , key_expand_step_o
+            , key_expand_clear_o
+            , key_words_sel_o
+            , round_key_sel_o
+          ) )
+        else
+          ( state
+          , ( in_ready_o
+            , out_valid_o
+            )
+          , ( state_sel_o
+            , state_we_o
+            , add_rk_sel_o
+            )
+          , ( key_full_sel_o
+            , key_full_we_o
+            , key_dec_sel_o
+            , key_dec_we_o
+            , key_expand_step_o
+            , key_expand_clear_o
+            , key_words_sel_o
+            , round_key_sel_o
+          ) )
       else if aes_cipher_ctrl_cs == !CLEAR_S then
           (* CLEAR_S: begin *)
           (*   // Clear the state with pseudo-random data. *)
@@ -367,13 +516,20 @@ Definition aes_cipher_control_transition_state
           (*   state_sel_o        = STATE_CLEAR; *)
           (*   aes_cipher_ctrl_ns = CLEAR_KD; *)
           (* end *)
-        ( !CLEAR_KD
-        , round_q
-        , num_rounds_q
-        , crypt_q
-        , dec_key_gen_q
-        , key_clear_q
-        , data_out_clear_q
+        ( ( !CLEAR_KD
+          , round_q
+          , num_rounds_q
+          , crypt_q
+          , dec_key_gen_q
+          , key_clear_q
+          , data_out_clear_q
+          )
+        , default_io_o
+        , ( !STATE_CLEAR
+          , true'
+          , add_rk_sel_o
+          )
+        , default_key_o
         )
       else (* if aes_cipher_ctrl_cs == !CLEAR_KD *)
           (* CLEAR_KD: begin *)
@@ -384,31 +540,70 @@ Definition aes_cipher_control_transition_state
           (*     key_dec_sel_o  = KEY_DEC_CLEAR; *)
           (*     key_dec_we_o   = 1'b1; *)
           (*   end *)
+        let
+          '(key_full_sel_o
+          , key_full_we_o
+          , key_dec_sel_o
+          , key_dec_we_o) =
+            if key_clear_q
+            then (!KEY_FULL_CLEAR, true', !KEY_DEC_CLEAR, true')
+            else (key_full_sel_o, key_full_we_o, key_dec_sel_o, key_dec_we_o)
+            in
           (*   if (data_out_clear_q) begin *)
           (*     // Forward the state (previously cleared with psuedo-random data). *)
           (*     add_rk_sel_o    = ADD_RK_INIT; *)
           (*     key_words_sel_o = KEY_WORDS_ZERO; *)
           (*     round_key_sel_o = ROUND_KEY_DIRECT; *)
           (*   end *)
+        let
+          '(add_rk_sel_o
+          , key_words_sel_o
+          , round_key_sel_o) =
+            if data_out_clear_q
+            then (!ADD_RK_INIT, !KEY_WORDS_ZERO, !ROUND_KEY_DIRECT)
+            else (add_rk_sel_o, key_words_sel_o, round_key_sel_o)
+            in
           (*   // Indicate that we are done, wait for handshake. *)
           (*   out_valid_o = 1'b1; *)
+        let out_valid_o = true' in
           (*   if (out_ready_i) begin *)
           (*     key_clear_d        = 1'b0; *)
           (*     data_out_clear_d   = 1'b0; *)
           (*     aes_cipher_ctrl_ns = IDLE; *)
           (*   end *)
           (* end *)
-        if (out_ready_i)
-        then
-          ( !IDLE
-          , round_q
-          , num_rounds_q
-          , crypt_q
-          , dec_key_gen_q
-          , false'
-          , false'
+
+        let state_n =
+          if (out_ready_i)
+          then
+            ( !IDLE
+            , round_q
+            , num_rounds_q
+            , crypt_q
+            , dec_key_gen_q
+            , false'
+            , false'
+            )
+          else state
+        in
+        ( state_n
+        , ( in_ready_o
+          , out_valid_o
           )
-        else state in
+        , ( state_sel_o
+          , state_we_o
+          , add_rk_sel_o
+          )
+        , ( key_full_sel_o
+          , key_full_we_o
+          , key_dec_sel_o
+          , key_dec_we_o
+          , key_expand_step_o
+          , key_expand_clear_o
+          , key_words_sel_o
+          , round_key_sel_o
+        ) )
+          in
 
     let '( _
          , round_d
@@ -419,27 +614,28 @@ Definition aes_cipher_control_transition_state
          , _
          ) : aes_cipher_control_state = state in
 
-    (* // Handshake signals *)
-    let in_ready_o         = false' in
-    let out_valid_o        = false' in
-
-    (* // Cipher data path *)
-    let state_sel_o        = !STATE_ROUND in
-    let state_we_o         = false' in
-    let add_rk_sel_o       = !ADD_RK_ROUND in
-
-    (* // Key expand data path *)
-    let key_full_sel_o     = !KEY_FULL_ROUND in
-    let key_full_we_o      = false' in
-    let key_dec_sel_o      = !KEY_DEC_EXPAND in
-    let key_dec_we_o       = false' in
-    let key_expand_step_o  = false' in
-    let key_expand_clear_o = false' in
-    let key_words_sel_o    = !KEY_WORDS_ZERO in
-    let round_key_sel_o    = !ROUND_KEY_DIRECT in
-
-    (* // Use separate signal for number of regular rounds. *)
-    (* assign num_rounds_regular = num_rounds_q - 4'd2; *)
+    let '(in_ready_o, out_valid_o) = io_o in
+    let '(state_sel_o, state_we_o, add_rk_sel_o) = state_o in
+    let
+      '( key_full_sel_o
+      , key_full_we_o
+      , key_dec_sel_o
+      , key_dec_we_o
+      , key_expand_step_o
+      , key_expand_clear_o
+      , key_words_sel_o
+      , round_key_sel_o
+      ) :
+      << key_full_sel_e
+      , Bit
+      , key_dec_sel_e
+      , Bit
+      , Bit
+      , Bit
+      , key_words_sel_e
+      , round_key_sel_e
+      >>
+      = key_o in
 
     (* // Use separate signals for key expand operation and round. *)
     (* assign key_expand_op_o    = (dec_key_gen_d || dec_key_gen_q) ? CIPH_FWD : op_i; *)
@@ -457,7 +653,7 @@ Definition aes_cipher_control_transition_state
     let key_clear_o      = key_clear_q in
     let data_out_clear_o = data_out_clear_q in
 
-    let default_output =
+    (state,
       ( in_ready_o
       , out_valid_o
       , crypt_o
@@ -477,7 +673,5 @@ Definition aes_cipher_control_transition_state
       , key_expand_round_o
       , key_words_sel_o
       , round_key_sel_o)
-      in
-
-    (state, default_output)
+    )
   ]>.

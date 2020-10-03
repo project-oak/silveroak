@@ -58,6 +58,20 @@ Module KappaNotation.
     | Tuple l r => Fst l r
     | _ => Fst Unit Unit
     end.
+  Fixpoint proj_fstn_tuple n ty: CircuitPrimitive :=
+    match n with
+    | O =>
+      match ty with
+      | Tuple l r => Fst l r
+      | _ => Fst Unit Unit
+      end
+    | S n' =>
+      match ty with
+      | Tuple l r => proj_fstn_tuple n' r
+      | _=> Fst Unit Unit
+      end
+    end.
+  Definition projo_expr {var i o} (expr: kappa var i o) := o.
 
   Notation "'let' '( x , y ) = a 'in' b" := (
     Let a (fun a_binder =>
@@ -155,6 +169,28 @@ Module KappaNotation.
           b))))))))))))))
     ( in custom expr at level 1
     , x1 constr, x2 constr, x3 constr, x4 constr, x5 constr, x6 constr, x7 constr
+    , ty constr at level 7
+    , b at level 7) : kappa_scope.
+
+  Notation "'let' '( x1 , x2 , x3 , x4 , x5 , x6 , x7 , x8 ) : ty = a 'in' b" := (
+    Let a (fun binder1 =>
+    Let (App (Primitive (proj1_tuple1 ty)) (Var binder1)) (fun x1 =>
+      Let (App (Primitive (Snd _ _ )) (Var binder1)) (fun binder2 =>
+        Let (App (Primitive (Fst _ _ )) (Var binder2)) (fun x2 =>
+            Let (App (Primitive (Snd _ _ )) (Var binder2)) (fun binder3 =>
+              Let (App (Primitive (Fst _ _ )) (Var binder3)) (fun x3 =>
+                Let (App (Primitive (Snd _ _ )) (Var binder3)) (fun binder4 =>
+                  Let (App (Primitive (Fst _ _ )) (Var binder4)) (fun x4 =>
+                    Let (App (Primitive (Snd _ _ )) (Var binder4)) (fun binder5 =>
+                      Let (App (Primitive (Fst _ _ )) (Var binder5)) (fun x5 =>
+                        Let (App (Primitive (Snd _ _ )) (Var binder5)) (fun binder6 =>
+                            Let (App (Primitive (Fst _ _ )) (Var binder6)) (fun x6 =>
+                              Let (App (Primitive (Snd _ _ )) (Var binder6)) (fun binder7 =>
+                                  Let (App (Primitive (Fst _ _ )) (Var binder7)) (fun x7 =>
+                                    Let (App (Primitive (Snd _ _ )) (Var binder7)) (fun x8 =>
+          b))))))))))))))))
+    ( in custom expr at level 1
+    , x1 constr, x2 constr, x3 constr, x4 constr, x5 constr, x6 constr, x7 constr, x8 constr
     , ty constr at level 7
     , b at level 7) : kappa_scope.
 
