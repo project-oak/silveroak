@@ -78,25 +78,25 @@ Section Vector.
         x ++ vflatten xs
     end.
 
-  Definition vunsnoc {n} (v: t A (S n)): (t A n * A) :=
-    rectS (fun n v => (t A n * A)%type)
-    (fun o => ([], o))
-    (fun o n v f =>
-      let '(xs, x) := f in
-      (o::xs, x)
-    ) v.
+  Fixpoint vunsnoc {n} : t A (S n) -> (t A n * A) :=
+    match n with
+    | 0 => fun v => ([], hd v)
+    | S n' => fun v =>
+               let r := vunsnoc (tl v) in
+               (hd v :: fst r, snd r)
+    end.
 
-  Definition vsnoc {n} (v: t A n) a: t A (S n) :=
-    t_rect _ (fun n v => t A (S n)) [a]
-    (fun x n v f =>
-      x :: f
-    ) _ v.
+  Fixpoint vsnoc {n} : t A n -> A -> t A (S n) :=
+    match n with
+    | 0 => fun _ a => (a :: [])
+    | S n' => fun v a => (hd v :: vsnoc (tl v) a)
+    end.
 
   (* avoids the equality rewrites in Coq.Vector.rev *)
-  Fixpoint vreverse {n} (v: t A n): t A n :=
-    match v with
-    | [] => []
-    | x::xs => vsnoc (vreverse xs) x
+  Fixpoint vreverse {n} : t A n -> t A n :=
+    match n with
+    | 0 => fun _ => []
+    | S n' => fun xs => vsnoc (vreverse (tl xs)) (hd xs)
     end.
 End Vector.
 
@@ -336,22 +336,234 @@ Section VectorFacts.
       f_equal. rewrite !left_identity, <-IHn.
       reflexivity. }
   Qed.
+
+  Lemma nil_eq {A} (v1 v2 : t A 0) : v1 = v2.
+  Proof.
+    eapply case0 with (v:=v1).
+    eapply case0 with (v:=v2).
+    reflexivity.
+  Qed.
+
+  Local Ltac vnil :=
+    intros;
+    match goal with
+    | |- @eq (t _ 0) _ _ => apply nil_eq
+    | vec : t _ 0 |- _ =>
+      match goal with
+      | |- context [vec] =>
+        eapply case0 with (v:=vec);
+        clear vec
+      end
+    | vec : t _ 1 |- _ =>
+      match goal with
+      | |- context [tl vec] =>
+        eapply case0 with (v:=tl vec)
+      end
+    end.
+
+  Lemma map_0 A B (f : A -> B) (v : t A 0) :
+    map f v = nil B.
+  Proof. vnil. Qed.
+  Hint Rewrite @map_0 using solve [eauto] : vsimpl.
+
+  Lemma map_cons A B n (f : A -> B) v :
+    map f v = cons _ (f (hd v)) n
+                                 (map f (tl v)).
+  Proof. rewrite (eta v). reflexivity. Qed.
+
+  Lemma map2_0 A B C (f : A -> B -> C) (va : t A 0) (vb : t B 0) :
+    map2 f va vb = nil C.
+  Proof. vnil. Qed.
+  Hint Rewrite @map2_0 using solve [eauto] : vsimpl.
+
+  Lemma map2_cons A B C n (f : A -> B -> C) va vb :
+    map2 f va vb = cons _ (f (hd va) (hd vb)) n
+                                      (map2 f (tl va)
+                                                   (tl vb)).
+  Proof. rewrite (eta va), (eta vb). reflexivity. Qed.
+
+  Lemma map2_vsnoc A B C n (f : A -> B -> C) (va : t _ (S n)) vb :
+    map2 f va vb = vsnoc (map2 f (fst (vunsnoc va)) (fst (vunsnoc vb)))
+                                (f (snd (vunsnoc va)) (snd (vunsnoc vb))).
+  Proof.
+    induction n; cbn [vsnoc]; rewrite map2_cons; [ solve [f_equal; vnil] | ].
+    rewrite IHn at 1. autorewrite with vsimpl. reflexivity.
+  Qed.
+
+  Lemma tl_cons {A} n (v : t A n) x :
+    tl (cons _ x _ v) = v.
+  Proof. reflexivity. Qed.
+
+  Lemma hd_cons {A} n (v : t A n) x :
+    hd (cons _ x _ v) = x.
+  Proof. reflexivity. Qed.
+
+  Hint Rewrite @tl_cons @hd_cons using solve [eauto] : vsimpl.
+
+  Lemma vsnoc_const {A} n (x : A) : vsnoc (const x n) x = const x (S n).
+  Proof.
+    induction n; intros; [ reflexivity | ].
+    cbn [const nat_rect vsnoc].
+    autorewrite with vsimpl. rewrite IHn.
+    reflexivity.
+  Qed.
+
+  Lemma vsnoc_cons_comm {A} n (x y : A) v :
+    vsnoc (cons _ y n v) x = cons _ y _ (vsnoc v x).
+  Proof. reflexivity. Qed.
+
+  Lemma vunsnoc_cons_comm {A} n (x y : A) v :
+    vunsnoc (cons _ y (S n) v) =
+    (cons _ y _ (fst (vunsnoc v)), snd (vunsnoc v)).
+  Proof. reflexivity. Qed.
+
+  Lemma vunsnoc_tl {A} n (v : t A (S (S n))) :
+    vunsnoc (tl v) = (tl (fst (vunsnoc v)), snd (vunsnoc v)).
+  Proof. destruct n; reflexivity. Qed.
+
+  Lemma vreverse_const {A} n (x : A) : vreverse (const x n) = const x n.
+  Proof.
+    induction n; intros; [ reflexivity | ].
+    cbn [const nat_rect vreverse tl caseS].
+    rewrite IHn, vsnoc_const. reflexivity.
+  Qed.
+
+  Lemma vsnoc_vreverse {A} n (v : t A n) x :
+    vsnoc (vreverse v) x = vreverse (cons _ x _ v).
+  Proof. reflexivity. Qed.
+
+  Lemma vreverse_cons {A} n (v : t A (S n)) :
+    vreverse v = vsnoc (vreverse (tl v)) (hd v).
+  Proof. reflexivity. Qed.
+
+  Lemma vreverse_vsnoc {A} n (v : t A n) x :
+    vreverse (vsnoc v x) = cons _ x _ (vreverse v).
+  Proof.
+    induction n; intros; [ vnil; reflexivity | ].
+    rewrite !vreverse_cons with (n0:=S n).
+    cbn [vsnoc tl hd caseS].
+    rewrite IHn. autorewrite with vsimpl.
+    rewrite <-vsnoc_cons_comm.
+    reflexivity.
+  Qed.
+
+  Lemma hd_vreverse_vunsnoc {A} n (v : t A (S n)) :
+    hd (vreverse v) = snd (vunsnoc v).
+  Proof.
+    induction n; [ reflexivity | ].
+    rewrite vreverse_cons.
+    cbn [vsnoc tl hd caseS].
+    rewrite IHn. reflexivity.
+  Qed.
+
+  Lemma tl_vreverse_vunsnoc {A} n (v : t A (S n)) :
+    tl (vreverse v) = vreverse (fst (vunsnoc v)).
+  Proof.
+    induction n; [ reflexivity | ].
+    rewrite vreverse_cons.
+    cbn [vsnoc tl hd caseS].
+    rewrite IHn. reflexivity.
+  Qed.
+
+  Lemma vreverse_map2 {A B C} n (f : A -> B -> C) va vb :
+    vreverse (map2 (n:=n) f va vb) = map2 f (vreverse va) (vreverse vb).
+  Proof.
+    induction n; intros; [ autorewrite with vsimpl; reflexivity | ].
+    rewrite map2_vsnoc. rewrite map2_cons. autorewrite with vsimpl.
+    rewrite vreverse_vsnoc, IHn.
+    rewrite !tl_vreverse_vunsnoc, !hd_vreverse_vunsnoc.
+    reflexivity.
+  Qed.
+
+  Lemma map_map2 {A B C D} n (f : A -> B -> C) (g : C -> D) (va : t A n) vb:
+    map g (map2 f va vb) = map2 (fun a b => g (f a b)) va vb.
+  Proof.
+    induction n; intros; autorewrite with vsimpl; [ reflexivity | ].
+    rewrite !map_cons, !map2_cons; autorewrite with vsimpl.
+    rewrite IHn. reflexivity.
+  Qed.
+
+  Lemma hd_vsnoc {A} n (v : t A (S n)) x :
+    hd (vsnoc v x) = hd v.
+  Proof. rewrite (eta v). reflexivity. Qed.
+
+  Lemma map2_ext {A B C} n (f g : A -> B -> C) (va : t A n) vb :
+    (forall a b, f a b = g a b) ->
+    map2 f va vb = map2 g va vb.
+  Proof.
+    intros; induction n; [ solve [vnil] | ].
+    rewrite !map2_cons. congruence.
+  Qed.
+
+  Lemma map2_swap {A B C} n (f : A -> B -> C) (va : t A n) vb :
+    map2 f va vb = map2 (fun b a => f a b) vb va.
+  Proof.
+    intros; induction n; [ solve [vnil] | ].
+    rewrite !map2_cons; congruence.
+  Qed.
+
+  Lemma map_id_ext {A} (f : A -> A) n (v : t A n) :
+    (forall a, f a = a) -> map f v = v.
+  Proof.
+    intro Hf; induction n; [ solve [vnil] | ].
+    rewrite map_cons, Hf, IHn.
+    rewrite <-(eta v); congruence.
+  Qed.
+  Hint Rewrite @map_id_ext
+       using solve [intros; autorewrite with vsimpl; reflexivity] : vsimpl.
+
+  Lemma map2_const {A B C} (f : A -> B -> C) n a vb :
+    map2 f (const a n) vb = map (f a) vb.
+  Proof.
+    induction n; [ solve [vnil] | ].
+    rewrite map2_cons, map_cons, IHn.
+    reflexivity.
+  Qed.
+
+  Lemma map2_map {A B C D E} n (f : A -> C) (g : B -> D) (h : C -> D -> E) (va : t A n) vb:
+    map2 h (map f va) (map g vb) = map2 (fun a b => h (f a) (g b)) va vb.
+  Proof.
+    induction n; intros; autorewrite with vsimpl; [ reflexivity | ].
+    rewrite !map_cons, !map2_cons; autorewrite with vsimpl.
+    rewrite IHn. reflexivity.
+  Qed.
+
+  Lemma map2_drop {A B C} (f : A -> C) n va (vb : t B n) :
+    map2 (fun a _ => f a) va vb = map f va.
+  Proof.
+    induction n; intros; [ solve [vnil] | ].
+    rewrite map2_cons, map_cons. congruence.
+  Qed.
 End VectorFacts.
 (* These hints create and populate the following autorewrite databases:
  * - push_vector_fold : simplify using properties of Vector.fold_left
  * - push_vector_tl_hd_last : simplify using properties of Vector.tl, Vector.hd,
      and Vector.last
  * - push_vector_nth_order : simplify expressions containing Vector.nth_order
- * - vsimpl : generic vector simplification, includes all of the above
+ * - push_vector_map : simplify expressions containing Vector.map or Vector.map2
+ * - vsimpl : generic vector simplification, includes all of the above and more
  *
  * No hint added to one of these databases should leave any subgoals unsolved.
  *)
-Hint Rewrite @fold_left_S @fold_left_0
+Hint Rewrite @fold_left_0
      using solve [eauto] : push_vector_fold vsimpl.
-Hint Rewrite @tl_0 @hd_0 @last_tl
+(* fold_left_S gets added only to push_vector_fold, not vsimpl, because it can
+   end up making very large terms for constant-length folds *)
+Hint Rewrite @fold_left_S
+     using solve [eauto] : push_vector_fold.
+Hint Rewrite @tl_0 @hd_0 @tl_cons @hd_cons @last_tl
      using solve [eauto] : push_vector_tl_hd_last vsimpl.
 Hint Rewrite @nth_order_hd @nth_order_last
      using solve [eauto] : push_vector_nth_order vsimpl.
+Hint Rewrite @map2_0 @map_0
+     using solve [eauto] : push_vector_map vsimpl.
+Hint Rewrite @resize_default_id @Vector.map_id
+     using solve [eauto] : vsimpl.
+
+(* [eauto] might not solve map_id_ext, so add more power to the strategy *)
+Hint Rewrite @map_id_ext
+     using solve [intros; autorewrite with vsimpl; eauto]
+  : push_vector_map vsimpl.
 
 Section Vector.
   Context {A:Type}.

@@ -403,7 +403,7 @@ Lemma tree_equiv
 Proof.
   induction n; intros.
   { change (2 ^ 1) with 2 in *.
-    cbn [tree]. autorewrite with vsimpl.
+    cbn [tree]. autorewrite with push_vector_fold vsimpl.
     rewrite circuit_equiv, op_id_left. reflexivity. }
   { cbn [tree]. destruct_pair_let.
     rewrite !IHn by eauto.
