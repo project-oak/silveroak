@@ -2,7 +2,8 @@
 # the Cava source and examples using the vscoq plug-in for vscode.
 -R cava/Cava Cava
 -Q ../third_party/coq-ext-lib/theories ExtLib
--Q ../third_party/coqutil/src/coqutil coqutil
+-Q ../third_party/bedrock2/bedrock2/src/bedrock2 bedrock2
+-Q ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
 -Q monad-examples MonadExamples
 -Q monad-examples/xilinx XilinxExamples
 -Q arrow-examples ArrowExamples
