@@ -259,6 +259,114 @@ removes the list Kind, we first need to copy the list Kind. *)
     >>> f'
 end.
 
+Lemma lower_var: forall x (v: _ Unit x) ctxt,
+  closure_conversion' ctxt (Var v)
+  = first drop >>> cancell >>> (extract_nth ctxt _ v).
+Proof. reflexivity. Qed.
+
+Lemma lower_var': forall x (v: _ Unit x) ctxt cv,
+  cv = extract_nth ctxt _ v ->
+  closure_conversion' ctxt (Var v)
+  = first drop >>> cancell >>> cv.
+Proof. intros; subst; reflexivity. Qed.
+
+Lemma lower_abs: forall x y z (f: _ Unit x -> kappa _ y z) ctxt,
+  closure_conversion' ctxt (Abs f)
+  = first swap >>> assoc >>> closure_conversion' (_ :: ctxt) (f (length ctxt)).
+Proof. intros; cbn [closure_conversion']; reflexivity. Qed.
+
+Lemma lower_abs': forall x y z (f: _ Unit x -> kappa _ y z) ctxt c1,
+  c1 = closure_conversion' (_ :: ctxt) (f (length ctxt)) ->
+  closure_conversion' ctxt (Abs f) = first swap >>> assoc >>> c1.
+Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
+
+Lemma lower_app: forall x y z (f: kappa _ (Tuple x y) z) e ctxt,
+  closure_conversion' ctxt (App f e)
+  = second (copy >>> first (uncancell >>> closure_conversion' ctxt e))
+  >>> unassoc >>> first swap
+  >>> closure_conversion' ctxt f.
+Proof. cbn [closure_conversion'];  reflexivity.  Qed.
+
+Lemma lower_app': forall x y z (f: kappa _ (Tuple x y) z) e ctxt c1 c2,
+  c1 = closure_conversion' ctxt e ->
+  c2 = closure_conversion' ctxt f ->
+  closure_conversion' ctxt (App f e)
+  = second (copy >>> first (uncancell >>> c1))
+  >>> unassoc >>> first swap
+  >>> c2.
+Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
+
+Lemma lower_comp: forall x y z (e2: kappa _ x y) (e1: kappa _ y z) ctxt,
+  closure_conversion' ctxt (Comp e1 e2)
+  = second copy
+  >>> unassoc
+  >>> first (closure_conversion' ctxt e2)
+  >>> closure_conversion' ctxt e1.
+Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
+
+Lemma lower_comp': forall x y z (e2: kappa _ x y) (e1: kappa _ y z) ctxt c1 c2,
+  c1 = closure_conversion' ctxt e1 ->
+  c2 = closure_conversion' ctxt e2 ->
+  closure_conversion' ctxt (Comp e1 e2)
+  = second copy
+  >>> unassoc
+  >>> first c2
+  >>> c1.
+Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
+
+Lemma lower_prim: forall p ctxt,
+  closure_conversion' ctxt (ExprSyntax.Primitive p)
+  = second drop >>> cancelr >>> (CircuitArrow.Primitive p).
+Proof. reflexivity. Qed.
+
+Lemma lower_id: forall x ctxt,
+  closure_conversion' (i:=x) ctxt ExprSyntax.Id
+  = second drop >>> cancelr >>> id.
+Proof. reflexivity. Qed.
+
+Lemma lower_remove_context: forall x y (e: kappa _ x y) ctxt,
+  closure_conversion' (i:=x) ctxt (RemoveContext e)
+  = second drop >>> closure_conversion' [] e.
+Proof. reflexivity. Qed.
+
+Lemma lower_remove_context': forall x y (e: kappa _ x y) ctxt c1,
+  c1 = closure_conversion' [] e ->
+  closure_conversion' (i:=x) ctxt (RemoveContext e)
+  = second drop >>> c1.
+Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
+
+Lemma lower_let: forall x y z (f: _ Unit x -> kappa _ y z) v ctxt,
+  closure_conversion' ctxt (Let v f)
+  = second (copy >>> first (uncancell
+    >>> closure_conversion' ctxt v))
+  >>> unassoc >>> first swap
+  >>> first swap >>> assoc >>> (closure_conversion' (_ :: ctxt) (f (length ctxt))).
+Proof. reflexivity. Qed.
+
+Lemma lower_let': forall x y z (f: _ Unit x -> kappa _ y z) v ctxt c1 c2,
+  c1 = closure_conversion' ctxt v ->
+  c2 = closure_conversion' (_::ctxt) (f (length ctxt)) ->
+  closure_conversion' ctxt (Let v f)
+  = second (copy >>> first (uncancell >>> c1))
+  >>> unassoc >>> first swap
+  >>> first swap >>> assoc >>> c2.
+Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
+
+Lemma lower_letrec: forall x y z (f: _ Unit x -> kappa _ y z) v ctxt,
+  closure_conversion' ctxt (LetRec v f) =
+  second (copy >>> first (uncancell >>> loopr (assoc >>> second swap
+          >>> closure_conversion' (_ :: ctxt) (v (length ctxt)) >>> copy)))
+ >>> closure_conversion' (_ :: ctxt) (f (length ctxt)).
+Proof. reflexivity. Qed.
+
+Lemma lower_letrec': forall x y z (f: _ Unit x -> kappa _ y z) v ctxt c1 c2,
+  c1 = closure_conversion' (_ :: ctxt) (v (length ctxt)) ->
+  c2 = closure_conversion' (_ :: ctxt) (f (length ctxt)) ->
+  closure_conversion' ctxt (LetRec v f) =
+  second (copy >>> first (uncancell >>> loopr (assoc >>> second swap >>> c1 >>> copy)))
+    >>> c2.
+Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
+
 Notation variable_pair i o n1 n2 := (vars natvar natvar (obj_pair i o) (pair n1 n2)).
 
 (* Evidence of variable pair equality *)
