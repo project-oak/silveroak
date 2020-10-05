@@ -56,7 +56,7 @@ Fixpoint combinational_evaluation' {i o}
   | Primitive Not => fun b => negb (fst b)
   | Primitive BufGate => fun b => fst b
   | Primitive (Uncons n o) => fun v => (hd (fst v), tl (fst v))
-  | Primitive (Unsnoc n o) => fun v => vunsnoc (fst v)
+  | Primitive (Unsnoc n o) => fun v => unsnoc (fst v)
   | Primitive (Split n m o) => fun v => (Vector.splitat n (fst v))
   | Primitive (Slice n x y o) => fun v => slice_by_position n x y (kind_default _) (fst v)
   | Primitive (EmptyVec o) => fun _ => []
@@ -91,7 +91,7 @@ Fixpoint combinational_evaluation' {i o}
   | Primitive (Index n o) => fun x =>
     nth_default (kind_default _) (bitvec_to_nat (fst (snd x))) (fst x)
   | Primitive (Cons n o) => fun '(x, (v,_)) => (x :: v)
-  | Primitive (Snoc n o) => fun '(v, (x,_)) => vsnoc v x
+  | Primitive (Snoc n o) => fun '(v, (x,_)) => snoc v x
 
   | Primitive (Concat n m o) => fun '(x, (y, _)) => Vector.append x y
 
@@ -171,7 +171,7 @@ Fixpoint circuit_evaluation' {i o} (n: nat) (c: Circuit i o)
   | Primitive Not => fun b _ => (negb (fst b), tt)
   | Primitive BufGate => fun b _ => (fst b, tt)
   | Primitive (Uncons n o) => fun v _ => (hd (fst v), tl (fst v), tt)
-  | Primitive (Unsnoc n o) => fun v _ => (vunsnoc (fst v), tt)
+  | Primitive (Unsnoc n o) => fun v _ => (unsnoc (fst v), tt)
   | Primitive (Split n m o) => fun v _ => (Vector.splitat n (fst v), tt)
   | Primitive (Slice n x y o) => fun v _ => (slice_by_position n x y (kind_default _) (fst v), tt)
   | Primitive (EmptyVec o) => fun _ _ => ([], tt)
@@ -208,7 +208,7 @@ Fixpoint circuit_evaluation' {i o} (n: nat) (c: Circuit i o)
       (bitvec_to_nat (fst (snd x)))
       (fst x), tt)
   | Primitive (Cons n o) => fun '(x, (v,_)) _ => (x :: v, tt)
-  | Primitive (Snoc n o) => fun '(v, (x,_)) _ => (vsnoc v x, tt)
+  | Primitive (Snoc n o) => fun '(v, (x,_)) _ => (snoc v x, tt)
 
   | Primitive (Concat n m o) => fun '(x, (y, _)) _ => (Vector.append x y, tt)
 
