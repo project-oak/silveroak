@@ -1,0 +1,26 @@
+     = "#include <stdint.h>
+#include <memory.h>
+
+// LITTLE-ENDIAN memory access is REQUIRED
+// the following two functions are required to work around -fstrict-aliasing
+static inline uintptr_t _br2_load(uintptr_t a, size_t sz) {
+  uintptr_t r = 0;
+  memcpy(&r, (void*)a, sz);
+  return r;
+}
+
+static inline void _br2_store(uintptr_t a, uintptr_t v, size_t sz) {
+  memcpy((void*)a, &v, sz);
+}
+
+
+void b2_aes_init(uintptr_t aes_cfg_operation, uintptr_t aes_cfg_mode, uintptr_t aes_cfg_key_len, uintptr_t _AES_CTRL_SHADOWED_0, uintptr_t _AES_CTRL_SHADOWED_OPERATION, uintptr_t _AES_CTRL_SHADOWED_MODE_MASK, uintptr_t _AES_CTRL_SHADOWED_MODE_OFFSET, uintptr_t _AES_CTRL_SHADOWED_KEY_LEN_MASK, uintptr_t _AES_CTRL_SHADOWED_KEY_LEN_OFFSET) {
+  uintptr_t cfg_val;
+  cfg_val = (((aes_cfg_operation)<<(_AES_CTRL_SHADOWED_OPERATION))|(((aes_cfg_mode)&(_AES_CTRL_SHADOWED_MODE_MASK))<<(_AES_CTRL_SHADOWED_MODE_OFFSET)))|(((aes_cfg_key_len)&(_AES_CTRL_SHADOWED_KEY_LEN_MASK))<<(_AES_CTRL_SHADOWED_KEY_LEN_OFFSET));
+  MMIOWRITE(_AES_CTRL_SHADOWED_0, cfg_val);
+  MMIOWRITE(_AES_CTRL_SHADOWED_0, cfg_val);
+  return;
+}
+
+"
+     : string

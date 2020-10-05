@@ -1,9 +1,9 @@
-[submodule "third_party/coqutil"]
-	path = third_party/coqutil
-	url = https://github.com/mit-plv/coqutil
 [submodule "third_party/coq-ext-lib"]
 	path = third_party/coq-ext-lib
 	url = https://github.com/coq-community/coq-ext-lib
 [submodule "third_party/opentitan"]
 	path = third_party/opentitan
 	url = https://github.com/lowRISC/opentitan
+[submodule "third_party/bedrock2"]
+	path = third_party/bedrock2
+	url = https://github.com/mit-plv/bedrock2
