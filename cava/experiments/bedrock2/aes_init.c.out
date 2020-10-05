@@ -13,23 +13,14 @@ static inline void _br2_store(uintptr_t a, uintptr_t v, size_t sz) {
   memcpy((void*)a, &v, sz);
 }
 
-static void b2_aes_init_struct(uintptr_t aes_cfg);
 
-void b2_aes_init(uintptr_t aes_cfg_operation, uintptr_t aes_cfg_mode, uintptr_t aes_cfg_key_len, uintptr_t AES_CTRL_SHADOWED_0, uintptr_t operation, uintptr_t mode_mask, uintptr_t mode_offset, uintptr_t key_len_mask, uintptr_t key_len_offset) {
+void b2_aes_init(uintptr_t aes_cfg_operation, uintptr_t aes_cfg_mode, uintptr_t aes_cfg_key_len, uintptr_t _AES_CTRL_SHADOWED_0, uintptr_t _AES_CTRL_SHADOWED_OPERATION, uintptr_t _AES_CTRL_SHADOWED_MODE_MASK, uintptr_t _AES_CTRL_SHADOWED_MODE_OFFSET, uintptr_t _AES_CTRL_SHADOWED_KEY_LEN_MASK, uintptr_t _AES_CTRL_SHADOWED_KEY_LEN_OFFSET) {
   uintptr_t cfg_val;
-  cfg_val = (((aes_cfg_operation)<<(operation))|(((aes_cfg_mode)&(mode_mask))<<(mode_offset)))|(((aes_cfg_key_len)&(key_len_mask))<<(key_len_offset));
-  MMIOWRITE(AES_CTRL_SHADOWED_0, cfg_val);
-  MMIOWRITE(AES_CTRL_SHADOWED_0, cfg_val);
+  cfg_val = (((aes_cfg_operation)<<(_AES_CTRL_SHADOWED_OPERATION))|(((aes_cfg_mode)&(_AES_CTRL_SHADOWED_MODE_MASK))<<(_AES_CTRL_SHADOWED_MODE_OFFSET)))|(((aes_cfg_key_len)&(_AES_CTRL_SHADOWED_KEY_LEN_MASK))<<(_AES_CTRL_SHADOWED_KEY_LEN_OFFSET));
+  MMIOWRITE(_AES_CTRL_SHADOWED_0, cfg_val);
+  MMIOWRITE(_AES_CTRL_SHADOWED_0, cfg_val);
   return;
 }
 
-static void b2_aes_init_struct(uintptr_t aes_cfg) {
-  uintptr_t cfg_val;
-  cfg_val = alloca((uintptr_t)4ULL); // TODO untested
-  cfg_val = (((_br2_load((aes_cfg)+((uintptr_t)0ULL), 1))<<(operation))|(((_br2_load((aes_cfg)+((uintptr_t)1ULL), 1))&(mode_mask))<<(mode_offset)))|(((_br2_load((aes_cfg)+((uintptr_t)2ULL), 1))&(key_len_mask))<<(key_len_offset));
-  MMIOWRITE(AES_CTRL_SHADOWED_0, cfg_val);
-  MMIOWRITE(AES_CTRL_SHADOWED_0, cfg_val);
-  return;
-}
 "
      : string
