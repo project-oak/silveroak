@@ -259,6 +259,28 @@ removes the list Kind, we first need to copy the list Kind. *)
     >>> f'
 end.
 
+Lemma lower_app: forall x y z (f: kappa _ (Tuple x y) z) e ctxt,
+  closure_conversion' ctxt (App f e)
+  = second (copy >>> first (uncancell >>> closure_conversion' ctxt e))
+  >>> unassoc >>> first swap
+  >>> closure_conversion' ctxt f.
+Proof.
+  cbn [closure_conversion'].
+  reflexivity.
+Qed.
+
+Lemma lower_app': forall x y z (f: kappa _ (Tuple x y) z) e ctxt,
+  exists c1, c1 = closure_conversion' ctxt e ->
+  exists c2, c2 = closure_conversion' ctxt f ->
+  closure_conversion' ctxt (App f e)
+  = second (copy >>> first (uncancell >>> c1))
+  >>> unassoc >>> first swap
+  >>> c2.
+Proof.
+  cbn [closure_conversion'].
+  eauto.
+Qed.
+
 Notation variable_pair i o n1 n2 := (vars natvar natvar (obj_pair i o) (pair n1 n2)).
 
 (* Evidence of variable pair equality *)
