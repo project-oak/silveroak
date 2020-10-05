@@ -341,4 +341,23 @@ Definition closure_conversion {i o} (expr: Kappa i o) : i ~> o
 Hint Resolve closure_conversion' : core.
 Hint Resolve closure_conversion : core.
 
-(* End Arrow. *)
+(* Provides some idea of term sized caused by context *)
+Fixpoint max_context_size' {i o}
+  (size: nat)
+  (expr: kappa unitvar i o) {struct expr}
+  : nat
+  :=
+match expr with
+| Var v => size
+| Abs f => max_context_size' (size+1) (f tt)
+| App f e => max (max_context_size' size e) (max_context_size' size f)
+| Comp e1 e2 => max (max_context_size' size e1) (max_context_size' size e2)
+| ExprSyntax.Primitive p => size
+| ExprSyntax.Id => size
+| RemoveContext f => max size (max_context_size' 0 f)
+| Let v f =>
+  max (max_context_size' (size+1) (f tt)) (max_context_size' size v)
+| LetRec v f =>
+  max (max_context_size' (size+1) (f tt)) (max_context_size' (size+1) (v tt))
+end.
+

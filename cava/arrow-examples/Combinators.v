@@ -399,6 +399,21 @@ Definition col {A B C: Kind} n
     (a, !productToVec c)
   ]>.
 
+Definition mealy_machine {s i o}
+  (f: <<s, i, Unit>> ~> <<s, o>> )
+  : <<i, Unit>> ~> << o >>
+  := <[\i =>
+    letrec state_and_output = !f (delay (fst state_and_output)) i
+    in (snd state_and_output) ]>.
+
+Definition mealy_machine1 {s i o}
+  (fs: <<s, i, Unit>> ~> <<s>> )
+  (fo: <<s, i, Unit>> ~> <<o>> )
+  : <<i, Unit>> ~> << o >>
+  := <[\i =>
+    letrec state = !fs (delay state) i
+    in !fo state i ]>.
+
 Section regression_tests.
   Definition halfAdder
   :  << Bit, Bit, Unit >> ~> <<Bit, Bit>> :=
@@ -434,15 +449,4 @@ Section regression_tests.
     let '(carry, result) = !(rippleCarryAdder' _) b merged in
     (carry, result)
     ]>.
-
-  (* Lemma interleave_is_stateless : forall n, has_no_state (interleaveVectors n EvalCava).
-  Proof. induction n; auto 20 with stateless. Qed.
-
-  Lemma halfAdder_is_stateless : has_no_state (halfAdder EvalCava).
-  Proof. auto 20 with stateless. Qed.
-  Hint Extern 1 (has_no_state (halfAdder EvalCava)) => apply halfAdder_is_stateless : stateless.
-
-  Lemma fullAdder_is_stateless : has_no_state (fullAdder EvalCava).
-  Proof. auto 30 with stateless. Qed.
-  Hint Extern 1 (has_no_state (fullAdder EvalCava)) => apply fullAdder_is_stateless : stateless. *)
 End regression_tests.
