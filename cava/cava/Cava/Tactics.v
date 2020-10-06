@@ -14,6 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Lists.List.
+
 (* The destruct_pair_let tactic finds "destructuring lets", e.g.
 
    let '(x, y) := p in ...
@@ -50,6 +52,24 @@ Section DestructPairLetTests.
   Qed.
 End DestructPairLetTests.
 
+(* Helper tactic for instantiate_lhs_app_by_reflexivity *)
+Ltac app_head t :=
+  lazymatch t with
+  | ?f ?x => app_head f
+  | ?f => f
+  end.
+
+(* Helper tactic for instantiate_lhs_app_by_reflexivity *)
+Ltac pattern_out_args term_with_args e :=
+  lazymatch term_with_args with
+  | ?f ?x =>
+    let eF := match (eval pattern x in e) with
+              | ?f _ => f end in
+    let eF := pattern_out_args f eF in
+    constr:(eF)
+  | ?f => constr:(e)
+  end.
+
 (* The instantiate_lhs_app_by_reflexivity tactic works on goals of the form:
 
    f x = g
@@ -59,21 +79,13 @@ End DestructPairLetTests.
    and then instantiating [f] with the resulting function. *)
 Ltac instantiate_lhs_app_by_reflexivity :=
   lazymatch goal with
-  | |- ?g ?x = ?rhs =>
-    is_evar g;
-    lazymatch rhs with
-    | context [x] =>
-      match (eval pattern x in rhs) with
-      | ?f _ =>
-        let H := fresh in
-        assert (forall y, f y = g y) as H;
-        [ intros; reflexivity | solve [apply H] ]
-      end
-    | _ =>
-      (* x does not appear on RHS, so ignore the argument *)
-      assert (g = (fun _ => rhs)); reflexivity
-    end
-  | |- ?G => fail "Expected goal of form [?g ?x = ?rhs] (where g must be an evar), got" G
+  | |- ?lhs = ?rhs =>
+    let f := app_head lhs in
+    is_evar f;
+    let rhsF := pattern_out_args lhs rhs in
+    let H := fresh in
+    assert (rhsF = f) as H by reflexivity;
+    clear H; reflexivity
   end.
 
 (* Like instantiate_lhs_app_by_reflexivity, but expects the instantiatable
@@ -107,6 +119,18 @@ Section InstantiateAppByReflexivityTests.
 
   (* argument has many occurences *)
   Goal (exists f : nat -> nat, forall x, f x = x + (2 * (x - 3) + x * x - x * 5)).
+    eexists; intros.
+    instantiate_app_by_reflexivity.
+  Qed.
+
+  (* two arguments *)
+  Goal (exists f : nat -> nat -> nat, forall x y, f x y = x + (y * (x - 3) + y * x - x * 5)).
+    eexists; intros.
+    instantiate_app_by_reflexivity.
+  Qed.
+
+  (* two arguments, second ignored *)
+  Goal (exists f : nat -> nat -> nat, forall x y, f x y = x + (2 * (x - 3) + x * x - x * 5)).
     eexists; intros.
     instantiate_app_by_reflexivity.
   Qed.

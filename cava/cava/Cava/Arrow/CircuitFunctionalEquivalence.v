@@ -24,7 +24,7 @@ Inductive circuit_equiv: forall i o, Circuit i o -> (denote_kind i -> denote_kin
   | Composition_equiv: forall x y z c1 c2 r1 r2 r,
     circuit_equiv x y c1 r1 ->
     circuit_equiv y z c2 r2 ->
-    (forall a:denote_kind x, r a = r2 (r1 a) ) ->
+    (forall a:denote_kind x, r a = r2 (r1 a)) ->
     circuit_equiv x z (Composition _ _ _ c1 c2) r
 
   | Uncancell_equiv: forall x r,
@@ -85,13 +85,10 @@ Inductive circuit_equiv: forall i o, Circuit i o -> (denote_kind i -> denote_kin
     (forall v, r v = resize_default (kind_default _) nn v) ->
     circuit_equiv (Vector x n) (Vector x nn) (Resize x n nn) r
 
-  | Primtive_equiv: forall p r,
+  | Primitive_equiv: forall p r,
     (forall a, r a = combinational_evaluation' (CircuitArrow.Primitive p) a) ->
-    circuit_equiv (primitive_input p) (primitive_output p)
+    circuit_equiv _ _
                   (CircuitArrow.Primitive p) r
-
-  (* | Any_equiv: forall i o c, *)
-  (*   circuit_equiv i o c (combinational_evaluation' c) *)
 .
 
 Lemma circuit_equiv_ext {i o} c spec1 spec2 :
@@ -140,7 +137,7 @@ Definition obeys_spec {i o}
            (c : @morphism Kind KappaCat i o)
            (spec : denote_kind i -> denote_kind o) :=
   circuit_equiv _ _ (closure_conversion' Datatypes.nil (c natvar))
-                (fun (x : denote_kind (i ** as_kind Datatypes.nil)%Arrow) =>
+                (fun (x : denote_kind i * unit) =>
                    spec (Datatypes.fst x)).
 
 (* this lemma helps get a subcircuit goal into the [obeys_spec] form so eauto
@@ -161,22 +158,79 @@ Ltac arrowsimpl :=
    them *)
 Create HintDb circuit_spec_correctness discriminated.
 
+Ltac circuit_spec_instantiate :=
+  lazymatch goal with
+  | |- _ = _ =>
+    cbn [fst snd denote_kind product primitive_output];
+    lazymatch goal with
+    | |- context [combinational_evaluation' (CircuitArrow.Primitive _)] =>
+      (* simplify combinational_evaluation' if there's a primitive *)
+      cbv [combinational_evaluation']
+    | |- _ = @resize_default _ ?n ?d ?n ?v =>
+      (* change resize_default to identity function if it appears *)
+      transitivity v; [ | rewrite resize_default_id; reflexivity ]
+    | |- _ = Vector.map (fun x => x) ?v =>
+      (* change Vector.map id to identity function if it appears *)
+      transitivity v; [ | rewrite Vector.map_id; reflexivity ]
+    | _ => idtac
+    end; cbn[fst snd denote_kind product primitive_output];
+    instantiate_app_by_reflexivity
+  end.
+
+Ltac lower1 :=
+  lazymatch goal with
+  | |- circuit_equiv _ _ (@closure_conversion' ?t1 ?t2 ?ctxt ?k) _ =>
+    lazymatch k with
+    | @Abs _ ?x ?y ?z ?f =>
+      (* sometimes the types need to be coerced for Abs *)
+      first [ rewrite (@lower_abs x y z f ctxt)
+            | change t1 with (Tuple x y); change t2 with z;
+              rewrite (@lower_abs x y z f ctxt) ]
+    | @App _ ?x ?y ?z ?f ?e => rewrite (@lower_app x y z f e ctxt)
+    | @Let _ ?x ?y ?z ?v ?f => rewrite (@lower_let x y z f v ctxt)
+    | @RemoveContext _ ?x ?y ?e =>
+      first [ rewrite (@lower_remove_context x y e ctxt)
+            | change x with t1; change y with t2;
+              rewrite (@lower_remove_context t1 t2 e ctxt) ]
+    | @Comp _ ?x ?y ?z ?e1 ?e2 =>
+      rewrite (@lower_comp x y z e2 e1 ctxt)
+    | @Primitive _ ?p => cbv [closure_conversion']
+    | @Var _ _ _ _ => cbv [closure_conversion']
+    end; arrowsimpl
+  end.
+
+Ltac primitive_equiv :=
+  lazymatch goal with
+  | |- circuit_equiv ?x ?y (CircuitArrow.Primitive ?p) _ =>
+    change x with (primitive_input p);
+    change y with (primitive_output p);
+    eapply Primitive_equiv; intros
+  end.
+
 Ltac circuit_spec_step :=
   lazymatch goal with
-  | |- ?lhs = ?rhs =>
-    cbn [Datatypes.fst Datatypes.snd];
-    instantiate_app_by_reflexivity
-  | |- circuit_equiv _ _ ?c _ =>
-    lazymatch c with
-    | closure_conversion' _ _ =>
-      apply obeys_spec_to_circuit_equiv;
-      solve [eauto with circuit_spec_correctness]
-    | _ => first [ econstructor; intros
-                | solve [eauto with circuit_spec_correctness] ]
-    end
+  | |- circuit_equiv _ _ (closure_conversion' _ ?c) _ =>
+    first [ lower1
+          | apply obeys_spec_to_circuit_equiv;
+            solve [eauto with circuit_spec_correctness ] ]
+  | |- circuit_equiv _ _ _ _ =>
+    first [ econstructor; intros
+          | solve [ eauto with circuit_spec_correctness ]
+          | primitive_equiv ]
+  | |- ?lhs = ?rhs => circuit_spec_instantiate
   | |- ?x => fail "Stuck at" x
   end.
-Ltac circuit_spec :=
-  cbv [obeys_spec]; cbn [closure_conversion']; arrowsimpl;
-  repeat circuit_spec_step; cbn [denote_kind combinational_evaluation' fst snd].
 
+Ltac circuit_spec :=
+  cbv [obeys_spec]; cbn [primitive_input primitive_output as_kind];
+  repeat circuit_spec_step; cbn [denote_kind product fst snd]; fold denote_kind.
+
+(* Version of [circuit_spec] that expects to solve the goal *)
+Ltac circuit_spec_crush :=
+  circuit_spec; autorewrite with vsimpl; repeat destruct_pair_let;
+  repeat match goal with
+         | u : unit |- _ => destruct u
+         | |- context [@snd _ unit ?x] => destruct (snd x)
+         | |- context [@fst unit _ ?x] => destruct (fst x)
+         end;
+  (reflexivity || instantiate_app_by_reflexivity).
