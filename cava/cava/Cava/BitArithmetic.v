@@ -161,7 +161,7 @@ Qed.
 (******************************************************************************)
 (* Prove that an unsigned bit-vector b::bs represents the same number         *)
 (* as b + 2 * bs i.e. the low bit represented as a number plus 2 times the    *)
-(* the rest of the bit-vector.                                                *)    
+(* the rest of the bit-vector.                                                *)
 (******************************************************************************)
 
 Local Open Scope N_scope.
@@ -318,5 +318,5 @@ Definition toVec := List.map nat2bool.
 
 Definition Bv2Hex {n} (x: Vector.t bool n) := HexString.of_N (Bv2N x).
 
-Definition byte_reverse {n} (x: Vector.t bool (n*8)) := vflatten (vreverse (vreshape (m:=8) x)).
+Definition byte_reverse {n} (x: Vector.t bool (n*8)) := flatten (reverse (reshape (m:=8) x)).
 

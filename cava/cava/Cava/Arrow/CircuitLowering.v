@@ -274,7 +274,7 @@ Fixpoint build_netlist' {i o}
   | Primitive (Index n o) => fun '(v,(i,_)) => index' _ _ v i
   | Primitive (Primitives.Cons n o) => fun '(x, (v,_)) =>
     ret ((x :: v)%vector)
-  | Primitive (Snoc n o) => fun '(v, (x,_)) => ret (vsnoc v x)
+  | Primitive (Snoc n o) => fun '(v, (x,_)) => ret (snoc v x)
   | Primitive (Primitives.Concat n m o) => fun '(x, (y, _)) =>
     ret ((x ++ y)%vector)
   | Map x y n f => fun v => mapT (build_netlist' f) v
