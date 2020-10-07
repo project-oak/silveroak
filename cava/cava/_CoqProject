@@ -15,6 +15,7 @@ Cava/Monad/CavaMonad.v
 Cava/Monad/CavaClass.v
 Cava/Monad/CombinationalMonad.v
 Cava/Monad/Combinators.v
+Cava/Monad/MonadFacts.v
 Cava/Monad/UnsignedAdders.v
 Cava/Monad/NetlistGeneration.v
 Cava/Monad/XilinxAdder.v
