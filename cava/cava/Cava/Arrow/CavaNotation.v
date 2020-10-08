@@ -254,11 +254,7 @@ Module KappaNotation.
         (List.map (N2Bv_sized _) ls)
       )))%list%N
     (in custom expr at level 2,
-    x constr at level 4, y constr at level 4, no associativity) : kappa_scope.
-
-  (* Notation "{ # x , # y }" := ((Primitive (ConstantVec 2 (Vector Bit _) [N2Bv_sized _ x; N2Bv_sized _ y]%list)))%N *)
-  (*   (in custom expr at level 2, *)
-  (*   x constr at level 4, y constr at level 4, no associativity) : kappa_scope. *)
+    x constr at level 4, y constr at level 4, z constr at level 4, no associativity) : kappa_scope.
 
   Notation "v [ x ]" := (App (App ((Primitive (Index _ _))) v) x)
     ( in custom expr at level 2
