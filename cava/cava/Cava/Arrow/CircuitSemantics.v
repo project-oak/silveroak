@@ -52,6 +52,7 @@ Fixpoint combinational_evaluation' {i o}
   | Structural (Copy x) => fun x => (x,x)
 
   | Primitive (Constant ty val) => fun _ => val
+  | Primitive (ConstantVec n ty val) => fun _ => resize_default (kind_default _) n (Vector.of_list val)
   | Primitive (Delay o) => fun _ => kind_default _
   | Primitive Not => fun b => negb (fst b)
   | Primitive BufGate => fun b => fst b
@@ -167,6 +168,7 @@ Fixpoint circuit_evaluation' {i o} (n: nat) (c: Circuit i o)
   | Structural (Copy x) => fun x _ => ((x,x),tt)
 
   | Primitive (Constant ty val) => fun _ _ => (val, tt)
+  | Primitive (ConstantVec n ty val) => fun _ _ => (resize_default (kind_default _) n (Vector.of_list val), tt)
   | Primitive (Delay o) => fun x s => (s, fst x)
   | Primitive Not => fun b _ => (negb (fst b), tt)
   | Primitive BufGate => fun b _ => (fst b, tt)

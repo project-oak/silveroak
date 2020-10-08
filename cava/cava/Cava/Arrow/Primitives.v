@@ -26,6 +26,7 @@ Notation vec_index n := (Vector Bit (Nat.log2_up n)).
 (* TODO(blaxill): split type into e.g. unary binary etc ops? *)
 Inductive CircuitPrimitive :=
   | Constant (ty: Kind) (v: denote_kind ty)
+  | ConstantVec (n:nat) (ty: Kind) (v: list (denote_kind ty))
   | Delay (o: Kind)
   | BufGate
 
@@ -62,6 +63,7 @@ Inductive CircuitPrimitive :=
 Definition primitive_input (op: CircuitPrimitive): Kind :=
   match op with
   | Constant _ _ => Unit
+  | ConstantVec _ _ _ => Unit
   | Delay o => Tuple o Unit
   | Not => Tuple Bit Unit
   | BufGate => Tuple Bit Unit
@@ -90,6 +92,7 @@ Definition primitive_input (op: CircuitPrimitive): Kind :=
 Definition primitive_output (op: CircuitPrimitive): Kind :=
   match op with
   | Constant ty _ => ty
+  | ConstantVec n ty _ => Vector ty n
   | Delay o => o
   | Not => Bit
   | BufGate => Bit

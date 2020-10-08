@@ -243,6 +243,23 @@ Module KappaNotation.
     (in custom expr at level 2,
     x constr at level 4, no associativity) : kappa_scope.
 
+
+  Notation "{ x , y , .. , z }" :=
+    (
+      let ls := (cons x (cons y .. (cons z nil) ..)) in
+      (Primitive
+      (ConstantVec
+        (List.length ls)
+        (Vector Bit _)
+        (List.map (N2Bv_sized _) ls)
+      )))%list%N
+    (in custom expr at level 2,
+    x constr at level 4, y constr at level 4, no associativity) : kappa_scope.
+
+  (* Notation "{ # x , # y }" := ((Primitive (ConstantVec 2 (Vector Bit _) [N2Bv_sized _ x; N2Bv_sized _ y]%list)))%N *)
+  (*   (in custom expr at level 2, *)
+  (*   x constr at level 4, y constr at level 4, no associativity) : kappa_scope. *)
+
   Notation "v [ x ]" := (App (App ((Primitive (Index _ _))) v) x)
     ( in custom expr at level 2
     , x at level 7
@@ -275,6 +292,7 @@ Section regression_examples.
 
   Definition ex0_constant:  << Vector Bit 10, Unit >> ~[KappaCat]~> (Vector Bit 8)
     := <[ \x => x [: 7 : 0 ] ]>.
+
 
   Definition ex1_constant:  << Bit, Unit >> ~> Bit := <[ \x => true' ]>.
   Definition ex2_parameterized (n: nat):  << Bit, Unit >> ~> Bit :=
@@ -313,6 +331,7 @@ Section regression_examples.
   <[ \ x => letrec s = delay (xor x s) in s ]>.
   Definition ex16_triple:  << <<Bit, Bit, Bit>>, Unit >> ~> Bit :=
   <[ \ triple => let '(x, y, z) = triple in x ]>.
+  Definition ex17_constant_via_list:  << Unit >> ~> Vector (Vector Bit 4) 3 := <[  { 1, 2, 3 } ]>.
 
   Fixpoint copy_object_pow2 o (n:nat): Kind :=
   match n with
