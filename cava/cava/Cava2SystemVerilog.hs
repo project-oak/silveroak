@@ -83,7 +83,7 @@ cava2SystemVerilog cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs' e
                     (Netlist.Coq_mkModule moduleName []
                     inputs outputs))
     instances = instances'' ++ assignInstances
-                         
+
 declareLocalNets :: Integer -> [String]
 declareLocalNets n
   = if n == 0 then
@@ -131,7 +131,7 @@ showVectorElements e
 
 showVecLiteral :: Kind -> [Signal] -> String
 showVecLiteral k e
-  = case k of 
+  = case k of
       Bit -> -- Packed vector, downto indexing
              "{" ++ showVectorElements (reverse e) ++ "}"
       _   -> -- unpacked vector, upto indexing
@@ -211,7 +211,7 @@ primitiveInstance :: String -> [Signal] -> Int -> String
 primitiveInstance instName args instNr
   = "  " ++ instName ++ " inst" ++ "_" ++ show instNr ++ " " ++
     showArgs args ++ ";"
-  
+
 showArgs :: [Signal] -> String
 showArgs args = "(" ++ concat (insertCommas (map showSignal args)) ++ ")";
 
@@ -219,7 +219,7 @@ mkInstance :: String -> [(String, ConstExpr)] -> [(String, Signal)] ->
               Int -> String
 mkInstance instName [] args instNr
   = "  " ++ instName ++ " inst" ++ "_" ++ show instNr ++ " " ++
-    showPortArgs args ++ ";"              
+    showPortArgs args ++ ";"
 mkInstance instName parameters args instNr
   = "  " ++ instName ++ showParameters parameters ++ " inst" ++ "_" ++
     show instNr ++ " " ++
@@ -260,7 +260,7 @@ writeTestBench testBench
     name = testBenchName testBench
     filename = name ++ ".sv"
     driver = name ++ ".cpp"
-    ticks = length (testBenchInputs testBench) 
+    ticks = length (testBenchInputs testBench)
 
 generateTestBench :: TestBench -> [String]
 generateTestBench testBench
@@ -335,15 +335,15 @@ declareLocalPort port
 declarePort :: PortDeclaration -> String
 declarePort (Coq_mkPort name kind) =
   case kind of
-    Bit -> "  (* mark_debug = \"true\" *) logic " ++ name 
-    BitVec k s -> "  (* mark_debug = \"true\" *) " ++ vectorDeclaration name k s 
+    Bit -> "  (* mark_debug = \"true\" *) logic " ++ name
+    BitVec k s -> "  (* mark_debug = \"true\" *) " ++ vectorDeclaration name k s
 
 initTestVectors :: [PortDeclaration] -> [[SignalExpr]] -> [String]
 initTestVectors [] _ = []
 initTestVectors (p:ps) s
   = initTestVector p (map head s) ++
     initTestVectors ps (map tail s)
-  
+
 initTestVector :: PortDeclaration -> [SignalExpr] -> [String]
 initTestVector pd@(Coq_mkPort name typ) s
   = [declarePort (Coq_mkPort name' typ) ++ " = '{"] ++
@@ -357,8 +357,8 @@ showSignalExpr (BitVal v)   = "    1'b" ++ showBit v
 showSignalExpr (VecVal xs) | isAllBits xs
   = "    " ++ show (length xs) ++ "'d" ++ show (signalToInt xs)
 showSignalExpr (VecVal xs)
-  = "    '{ " ++ concat (insertCommas (map showSignalExpr xs )) ++ " }"  
-     
+  = "    '{ " ++ concat (insertCommas (map showSignalExpr xs )) ++ " }"
+
 isAllBits :: [SignalExpr] -> Bool
 isAllBits = and . map isBitVal
 
@@ -372,7 +372,7 @@ signalToInt ((BitVal b):xs)
   = case b of
       False -> 2 * signalToInt xs
       True -> 1 + 2 * signalToInt xs
-signalToBit _ = error "Not a bit-vector"      
+signalToBit _ = error "Not a bit-vector"
 
 showBit :: Bool -> String
 showBit False = "0"
@@ -533,6 +533,11 @@ mapSignalsInInstanceM f inst
            fb <- f b
            fc <- f c
            return (UnsignedAdd s1 s2 s3 fa fb fc)
+      UnsignedSubtract s1 s2 s3 a b c ->
+        do fa <- f a
+           fb <- f b
+           fc <- f c
+           return (UnsignedSubtract s1 s2 s3 fa fb fc)
       GreaterThanOrEqual s1 s2 a b t ->
         do fa <- f a
            fb <- f b
@@ -575,7 +580,7 @@ checkStem k sz (v:vs)
   = case v of
       IndexConst k2 s2 v2 startingIndex ->
        case k of
-          Bit        -> checkIndexes k s2 startingIndex v2 (startingIndex+1) vs  
+          Bit        -> checkIndexes k s2 startingIndex v2 (startingIndex+1) vs
           BitVec _ _ -> checkIndexes k s2 startingIndex v2 (startingIndex+1) vs
       _ -> Nothing
 
