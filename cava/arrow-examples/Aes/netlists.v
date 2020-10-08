@@ -1,0 +1,45 @@
+(****************************************************************************)
+(* Copyright 2020 The Project Oak Authors                                   *)
+(*                                                                          *)
+(* Licensed under the Apache License, Version 2.0 (the "License")           *)
+(* you may not use this file except in compliance with the License.         *)
+(* You may obtain a copy of the License at                                  *)
+(*                                                                          *)
+(*     http://www.apache.org/licenses/LICENSE-2.0                           *)
+(*                                                                          *)
+(* Unless required by applicable law or agreed to in writing, software      *)
+(* distributed under the License is distributed on an "AS IS" BASIS,        *)
+(* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *)
+(* See the License for the specific language governing permissions and      *)
+(* limitations under the License.                                           *)
+(****************************************************************************)
+
+From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
+From Arrow Require Import Category Arrow.
+From Cava Require Import Arrow.ArrowExport BitArithmetic.
+
+From ArrowExamples Require Import Combinators Aes.pkg Aes.sbox Aes.unrolled_opentitan_cipher.
+
+Require Import Cava.Types.
+Require Import Cava.Netlist.
+
+Definition sbox_interface
+  := combinationalInterface "sbox_canright"
+     (mkPort "op_i" Kind.Bit, mkPort "data_i" (Kind.BitVec Kind.Bit 8))
+     (mkPort "data_o" (Kind.BitVec Kind.Bit 8))
+     nil.
+
+Definition sbox_netlist :=
+  makeNetlist sbox_interface (build_netlist (closure_conversion (aes_sbox SboxCanright))).
+
+Definition unrolled_cipher_interface
+  := combinationalInterface "unrolled_opentitan_cipher"
+     ( mkPort "op_i" Kind.Bit
+     , (mkPort "data_i" (Kind.BitVec Kind.Bit 128)
+     , mkPort "key_i" (Kind.BitVec Kind.Bit 256)))
+     (mkPort "data_o" (Kind.BitVec Kind.Bit 128))
+     nil.
+
+Definition unrolled_cipher_netlist :=
+  makeNetlist unrolled_cipher_interface (build_netlist (closure_conversion (unrolled_cipher_flat SboxCanright))).
+

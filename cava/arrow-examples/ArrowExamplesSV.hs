@@ -27,6 +27,7 @@ import ArrowAdderTutorial
 import Unrolled_naive_cipher
 import Unrolled_opentitan_cipher
 import Aes_test
+import Netlists
 
 main :: IO ()
 main = do
@@ -60,3 +61,5 @@ main = do
   writeTestBench adder444_tree_4_tb
   writeSystemVerilog growth_tree_8_netlist
   writeTestBench growth_tree_8_tb
+  writeSystemVerilog sbox_netlist
+  writeSystemVerilog unrolled_cipher_netlist

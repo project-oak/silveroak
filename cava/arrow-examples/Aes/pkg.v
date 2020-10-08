@@ -48,7 +48,7 @@ Notation "x == y" :=
   (in custom expr at level 6, left associativity) : kappa_scope.
 
 Inductive SboxImpl :=
-(* | SboxLut *)
+| SboxLut
 | SboxCanright
 (* | SboxCanrightMasked *)
 | SboxCanrightMaskedNoReuse.

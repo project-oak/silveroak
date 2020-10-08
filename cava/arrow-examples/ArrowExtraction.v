@@ -59,7 +59,8 @@ Require Import
   Aes.unrolled_opentitan_cipher
   Aes.unrolled_naive_cipher
   Aes.sbox_canright_pkg
-  Aes.aes_test.
+  Aes.aes_test
+  Aes.netlists.
 
 Extraction Library sbox.
 Extraction Library mix_single_column.
@@ -75,3 +76,4 @@ Extraction Library cipher_round.
 Extraction Library unrolled_naive_cipher.
 Extraction Library unrolled_opentitan_cipher.
 Extraction Library aes_test.
+Extraction Library netlists.
