@@ -207,7 +207,7 @@ Fixpoint build_netlist' {i o}
       addInstance (Buf (fst i) o) ;;
       ret o
   | Primitive (Uncons n o) => fun v => ret ((Vector.hd (fst v), Vector.tl (fst v)))
-  | Primitive (Unsnoc n o) => fun v => ret (vunsnoc (fst v))
+  | Primitive (Unsnoc n o) => fun v => ret (unsnoc (fst v))
   | Primitive (Primitives.Slice n x y o) => fun v => slice' n x y o (fst v)
   | Primitive (Primitives.Split n m o) => fun x => ret (Vector.splitat n (fst x))
   | Primitive (EmptyVec o) => fun _ => ret ([])

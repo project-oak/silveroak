@@ -61,5 +61,5 @@ main = do
   writeTestBench adder444_tree_4_tb
   writeSystemVerilog growth_tree_8_netlist
   writeTestBench growth_tree_8_tb
-  writeSystemVerilog sbox_netlist
-  writeSystemVerilog unrolled_cipher_netlist
+  writeSystemVerilog sbox_lut_netlist
+  writeSystemVerilog sbox_canright_netlist

@@ -38,10 +38,7 @@ Program Definition aes_sbox
   <[\ op_i data_i =>
       let data_o = !(
         match sbox_type with
-        (* | SboxLut => aes_sbox_lut *)
-        (* this is intentionally wrong as sbox_lut extraction currently hangs in haskell *)
-        | SboxLut => aes_sbox_canright
-
+        | SboxLut => aes_sbox_lut
         | SboxCanright => aes_sbox_canright
         (* | SboxCanrightMasked => sbox_canright_masked *)
         | SboxCanrightMaskedNoReuse =>

@@ -23,23 +23,21 @@ From ArrowExamples Require Import Combinators Aes.pkg Aes.sbox Aes.unrolled_open
 Require Import Cava.Types.
 Require Import Cava.Netlist.
 
-Definition sbox_interface
+Definition sbox_canright_interface
   := combinationalInterface "sbox_canright"
      (mkPort "op_i" Kind.Bit, mkPort "data_i" (Kind.BitVec Kind.Bit 8))
      (mkPort "data_o" (Kind.BitVec Kind.Bit 8))
      nil.
 
-Definition sbox_netlist :=
-  makeNetlist sbox_interface (build_netlist (closure_conversion (aes_sbox SboxCanright))).
+Definition sbox_canright_netlist :=
+  makeNetlist sbox_canright_interface (build_netlist (closure_conversion (aes_sbox SboxCanright))).
 
-Definition unrolled_cipher_interface
-  := combinationalInterface "unrolled_opentitan_cipher"
-     ( mkPort "op_i" Kind.Bit
-     , (mkPort "data_i" (Kind.BitVec Kind.Bit 128)
-     , mkPort "key_i" (Kind.BitVec Kind.Bit 256)))
-     (mkPort "data_o" (Kind.BitVec Kind.Bit 128))
+Definition sbox_lut_interface
+  := combinationalInterface "sbox_lut"
+     (mkPort "op_i" Kind.Bit, mkPort "data_i" (Kind.BitVec Kind.Bit 8))
+     (mkPort "data_o" (Kind.BitVec Kind.Bit 8))
      nil.
 
-Definition unrolled_cipher_netlist :=
-  makeNetlist unrolled_cipher_interface (build_netlist (closure_conversion (unrolled_cipher_flat SboxCanright))).
+Definition sbox_lut_netlist :=
+  makeNetlist sbox_lut_interface (build_netlist (closure_conversion (aes_sbox SboxLut))).
 
