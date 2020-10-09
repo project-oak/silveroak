@@ -11,6 +11,8 @@ Cava/Netlist.v
 Cava/Tactics.v
 Cava/Types.v
 
+Cava/Spec/Aes.v
+
 Cava/Monad/CavaMonad.v
 Cava/Monad/CavaClass.v
 Cava/Monad/CombinationalMonad.v
