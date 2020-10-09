@@ -26,7 +26,7 @@ Open Scope kind_scope.
 Open Scope category_scope.
 
 Notation "|^ x" :=
-  (App (foldr1 <[\a b => xor a b]> _) x)
+  (App (RemoveContext (foldr1 <[\a b => xor a b]> _)) x)
   (in custom expr at level 5, no associativity) : kappa_scope.
 Notation "x && y" :=
   (App (App (Primitive And) x) y)
@@ -35,16 +35,16 @@ Notation "x || y" :=
   (App (App (Primitive And) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x & y" :=
-  (App (App (bitwise <[and]>  _) x) y)
+  (App (App (RemoveContext (bitwise <[and]>  _)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x ^ y" :=
-  (App (App (bitwise <[xor]> _) x) y)
-  (in custom expr at level 6, left associativity) : kappa_scope.
+  (App (App (RemoveContext (bitwise <[xor]> _)) x) y)
+    (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "'if' i 'then' t 'else' e" :=
-  (App (App (App (mux_item _) i) t) e)
+  (App (App (App (RemoveContext (mux_item _)) i) t) e)
   (in custom expr at level 5, left associativity) : kappa_scope.
 Notation "x == y" :=
-  (App (App (equality _) x) y)
+  (App (App (RemoveContext (equality _)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 
 Inductive SboxImpl :=

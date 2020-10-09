@@ -192,6 +192,8 @@ Fixpoint build_netlist' {i o}
       ret y
 
   | Primitive (Constant ty val) => fun _ => ret (const_wire ty val)
+  | Primitive (ConstantVec n ty val) => fun _ =>
+    ret (const_wire (Vector ty n) (resize_default (kind_default _) n (Vector.of_list val)))
   | Primitive (Delay o) => fun x =>
       y <- fresh_wire _ ;;
       map2M (fun x y => DelayBit x y) _ (fst x) y ;;
@@ -277,7 +279,7 @@ Fixpoint build_netlist' {i o}
   | Primitive (Index n o) => fun '(v,(i,_)) => index' _ _ v i
   | Primitive (Primitives.Cons n o) => fun '(x, (v,_)) =>
     ret ((x :: v)%vector)
-  | Primitive (Snoc n o) => fun '(v, (x,_)) => ret (vsnoc v x)
+  | Primitive (Snoc n o) => fun '(v, (x,_)) => ret (snoc v x)
   | Primitive (Primitives.Concat n m o) => fun '(x, (y, _)) =>
     ret ((x ++ y)%vector)
   | Map x y n f => fun v => mapT (build_netlist' f) v

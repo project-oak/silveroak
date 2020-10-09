@@ -122,7 +122,7 @@ Proof.
 Qed.
 
 (* This lemma could also be proved the same way as CIPH_FWD *)
-Lemma CIPH_INV_correct : obeys_spec CIPH_INV (fun _ => true).
+Lemma CIPH_INV_correct : obeys_spec CIPH_INV (fun _ : unit => true).
 Proof.
   cbv [obeys_spec CIPH_INV]. circuit_spec. reflexivity.
 Qed.
@@ -143,11 +143,6 @@ Derive canright_composed_spec
        As canright_composed_correct.
 Proof.
   cbv [canright_composed]. circuit_spec.
-  rewrite !resize_default_id, !map_id.
-  (* we need to do this destruct for the instantiation to work; the calls to
-     Datatypes.fst have different types *)
-  match goal with |- _ (Datatypes.fst ?x) = _ =>  destruct x end.
-  cbn [denote_kind combinational_evaluation' Datatypes.fst Datatypes.snd].
   subst canright_composed_spec.
   instantiate_app_by_reflexivity.
 Qed.

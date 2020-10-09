@@ -3,6 +3,7 @@
 -R . ArrowExamples
 
 Combinators.v
+CombinatorProperties.v
 
 Mux2_1.v
 SyntaxExamples.v

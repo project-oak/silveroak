@@ -34,27 +34,17 @@ Section traversable.
   Context {A : Type@{u}} {B : Type@{v}}.
   Variable f : A -> F B.
 
-  Fixpoint mapT_vector@{} {n} (v : Vector.t A n ) : F (Vector.t B n).
-  Proof.
-    inversion v.
-    exact (@pure F _ _ []%vector).
-    refine (
-        let _1 := fun y ys => @Vector.cons B y _ ys in
-        let _2 := @pure F _ _ _1 in
-        let _3 := @ap F _ _ _ _2 (f h) in
-        let xs' := mapT_vector _ X in
-        let _4 := @ap F _ _ _  _3 in
-        _
-    ).
-    apply _4 in xs' .
-    exact xs'.
-  Defined.
+  Fixpoint mapT_vector@{} {n} (v : Vector.t A n) : F (Vector.t B n) :=
+    match v with
+    | nil _ => pure []
+    | cons _ x _ xs =>
+      ap (ap (pure (fun y ys => @Vector.cons B y _ ys)) (f x))
+        (mapT_vector xs)
+    end.
 End traversable.
 
-Definition fixup n (F : Type -> Type) (Ap: Applicative F) (A B : Type) (m: A -> F B) := @mapT_vector F Ap A B m n.
-
 Global Instance Traversable_vector@{} {n} : Traversable (fun t => Vector.t t n) :=
-{ mapT := fixup n }.
+{ mapT F Ap A B m := mapT_vector m }.
 
 Local Open Scope vector_scope.
 
@@ -62,41 +52,41 @@ Section Vector.
   Context {A:Type}.
   Local Notation t := (Vector.t).
 
-  Fixpoint vreshape {n m}: t A (n * m) -> t (t A m) n :=
+  Fixpoint reshape {n m}: t A (n * m) -> t (t A m) n :=
     match n as n' return t A (n' * m) -> t (t A m) n' with
     | 0 => fun _ => []
     | S n' => fun v =>
       let '(x, xs) := Vector.splitat (r:=n' * m) m v in
-      x :: vreshape xs
+      x :: reshape xs
     end.
 
-  Fixpoint vflatten {n m}: t (t A m) n -> t A (n*m) :=
+  Fixpoint flatten {n m}: t (t A m) n -> t A (n*m) :=
     match n as n' return t (t A m) n' -> t A (n'*m) with
     | 0 => fun _ => []
     | S n' => fun v =>
         let '(x, xs) := uncons v in
-        x ++ vflatten xs
+        x ++ flatten xs
     end.
 
-  Fixpoint vunsnoc {n} : t A (S n) -> (t A n * A) :=
+  Fixpoint unsnoc {n} : t A (S n) -> (t A n * A) :=
     match n with
     | 0 => fun v => ([], hd v)
     | S n' => fun v =>
-               let r := vunsnoc (tl v) in
+               let r := unsnoc (tl v) in
                (hd v :: fst r, snd r)
     end.
 
-  Fixpoint vsnoc {n} : t A n -> A -> t A (S n) :=
+  Fixpoint snoc {n} : t A n -> A -> t A (S n) :=
     match n with
     | 0 => fun _ a => (a :: [])
-    | S n' => fun v a => (hd v :: vsnoc (tl v) a)
+    | S n' => fun v a => (hd v :: snoc (tl v) a)
     end.
 
   (* avoids the equality rewrites in Coq.Vector.rev *)
-  Fixpoint vreverse {n} : t A n -> t A n :=
+  Fixpoint reverse {n} : t A n -> t A n :=
     match n with
     | 0 => fun _ => []
-    | S n' => fun xs => vsnoc (vreverse (tl xs)) (hd xs)
+    | S n' => fun xs => snoc (reverse (tl xs)) (hd xs)
     end.
 End Vector.
 
@@ -383,11 +373,12 @@ Section VectorFacts.
                                                    (tl vb)).
   Proof. rewrite (eta va), (eta vb). reflexivity. Qed.
 
-  Lemma map2_vsnoc A B C n (f : A -> B -> C) (va : t _ (S n)) vb :
-    map2 f va vb = vsnoc (map2 f (fst (vunsnoc va)) (fst (vunsnoc vb)))
-                                (f (snd (vunsnoc va)) (snd (vunsnoc vb))).
+
+  Lemma map2_snoc A B C n (f : A -> B -> C) (va : t _ (S n)) vb :
+    map2 f va vb = snoc (map2 f (fst (unsnoc va)) (fst (unsnoc vb)))
+                                (f (snd (unsnoc va)) (snd (unsnoc vb))).
   Proof.
-    induction n; cbn [vsnoc]; rewrite map2_cons; [ solve [f_equal; vnil] | ].
+    induction n; cbn [snoc]; rewrite map2_cons; [ solve [f_equal; vnil] | ].
     rewrite IHn at 1. autorewrite with vsimpl. reflexivity.
   Qed.
 
@@ -401,78 +392,78 @@ Section VectorFacts.
 
   Hint Rewrite @tl_cons @hd_cons using solve [eauto] : vsimpl.
 
-  Lemma vsnoc_const {A} n (x : A) : vsnoc (const x n) x = const x (S n).
+  Lemma snoc_const {A} n (x : A) : snoc (const x n) x = const x (S n).
   Proof.
     induction n; intros; [ reflexivity | ].
-    cbn [const nat_rect vsnoc].
+    cbn [const nat_rect snoc].
     autorewrite with vsimpl. rewrite IHn.
     reflexivity.
   Qed.
 
-  Lemma vsnoc_cons_comm {A} n (x y : A) v :
-    vsnoc (cons _ y n v) x = cons _ y _ (vsnoc v x).
+  Lemma snoc_cons_comm {A} n (x y : A) v :
+    snoc (cons _ y n v) x = cons _ y _ (snoc v x).
   Proof. reflexivity. Qed.
 
-  Lemma vunsnoc_cons_comm {A} n (x y : A) v :
-    vunsnoc (cons _ y (S n) v) =
-    (cons _ y _ (fst (vunsnoc v)), snd (vunsnoc v)).
+  Lemma unsnoc_cons_comm {A} n (x y : A) v :
+    unsnoc (cons _ y (S n) v) =
+    (cons _ y _ (fst (unsnoc v)), snd (unsnoc v)).
   Proof. reflexivity. Qed.
 
-  Lemma vunsnoc_tl {A} n (v : t A (S (S n))) :
-    vunsnoc (tl v) = (tl (fst (vunsnoc v)), snd (vunsnoc v)).
+  Lemma unsnoc_tl {A} n (v : t A (S (S n))) :
+    unsnoc (tl v) = (tl (fst (unsnoc v)), snd (unsnoc v)).
   Proof. destruct n; reflexivity. Qed.
 
-  Lemma vreverse_const {A} n (x : A) : vreverse (const x n) = const x n.
+  Lemma reverse_const {A} n (x : A) : reverse (const x n) = const x n.
   Proof.
     induction n; intros; [ reflexivity | ].
-    cbn [const nat_rect vreverse tl caseS].
-    rewrite IHn, vsnoc_const. reflexivity.
+    cbn [const nat_rect reverse tl caseS].
+    rewrite IHn, snoc_const. reflexivity.
   Qed.
 
-  Lemma vsnoc_vreverse {A} n (v : t A n) x :
-    vsnoc (vreverse v) x = vreverse (cons _ x _ v).
+  Lemma snoc_reverse {A} n (v : t A n) x :
+    snoc (reverse v) x = reverse (cons _ x _ v).
   Proof. reflexivity. Qed.
 
-  Lemma vreverse_cons {A} n (v : t A (S n)) :
-    vreverse v = vsnoc (vreverse (tl v)) (hd v).
+  Lemma reverse_cons {A} n (v : t A (S n)) :
+    reverse v = snoc (reverse (tl v)) (hd v).
   Proof. reflexivity. Qed.
 
-  Lemma vreverse_vsnoc {A} n (v : t A n) x :
-    vreverse (vsnoc v x) = cons _ x _ (vreverse v).
+  Lemma reverse_snoc {A} n (v : t A n) x :
+    reverse (snoc v x) = cons _ x _ (reverse v).
   Proof.
     induction n; intros; [ vnil; reflexivity | ].
-    rewrite !vreverse_cons with (n0:=S n).
-    cbn [vsnoc tl hd caseS].
+    rewrite !reverse_cons with (n0:=S n).
+    cbn [snoc tl hd caseS].
     rewrite IHn. autorewrite with vsimpl.
-    rewrite <-vsnoc_cons_comm.
+    rewrite <-snoc_cons_comm.
     reflexivity.
   Qed.
 
-  Lemma hd_vreverse_vunsnoc {A} n (v : t A (S n)) :
-    hd (vreverse v) = snd (vunsnoc v).
+  Lemma hd_reverse_unsnoc {A} n (v : t A (S n)) :
+    hd (reverse v) = snd (unsnoc v).
   Proof.
     induction n; [ reflexivity | ].
-    rewrite vreverse_cons.
-    cbn [vsnoc tl hd caseS].
+    rewrite reverse_cons.
+    cbn [snoc tl hd caseS].
     rewrite IHn. reflexivity.
   Qed.
 
-  Lemma tl_vreverse_vunsnoc {A} n (v : t A (S n)) :
-    tl (vreverse v) = vreverse (fst (vunsnoc v)).
+  Lemma tl_reverse_unsnoc {A} n (v : t A (S n)) :
+    tl (reverse v) = reverse (fst (unsnoc v)).
   Proof.
     induction n; [ reflexivity | ].
-    rewrite vreverse_cons.
-    cbn [vsnoc tl hd caseS].
+    rewrite reverse_cons.
+    cbn [snoc tl hd caseS].
     rewrite IHn. reflexivity.
   Qed.
 
-  Lemma vreverse_map2 {A B C} n (f : A -> B -> C) va vb :
-    vreverse (map2 (n:=n) f va vb) = map2 f (vreverse va) (vreverse vb).
+  Lemma reverse_map2 {A B C} n (f : A -> B -> C) va vb :
+    reverse (map2 (n:=n) f va vb) = map2 f (reverse va) (reverse vb).
   Proof.
     induction n; intros; [ autorewrite with vsimpl; reflexivity | ].
-    rewrite map2_vsnoc. rewrite map2_cons. autorewrite with vsimpl.
-    rewrite vreverse_vsnoc, IHn.
-    rewrite !tl_vreverse_vunsnoc, !hd_vreverse_vunsnoc.
+    rewrite map2_snoc. rewrite map2_cons. autorewrite with vsimpl.
+    rewrite reverse_snoc, IHn.
+    rewrite !tl_reverse_unsnoc, !hd_reverse_unsnoc.
     reflexivity.
   Qed.
 
@@ -484,8 +475,8 @@ Section VectorFacts.
     rewrite IHn. reflexivity.
   Qed.
 
-  Lemma hd_vsnoc {A} n (v : t A (S n)) x :
-    hd (vsnoc v x) = hd v.
+  Lemma hd_snoc {A} n (v : t A (S n)) x :
+    hd (snoc v x) = hd v.
   Proof. rewrite (eta v). reflexivity. Qed.
 
   Lemma map2_ext {A B C} n (f g : A -> B -> C) (va : t A n) vb :
