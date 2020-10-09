@@ -189,6 +189,8 @@ Fixpoint build_netlist' {i o}
       ret y
 
   | Primitive (Constant ty val) => fun _ => ret (const_wire ty val)
+  | Primitive (ConstantVec n ty val) => fun _ =>
+    ret (const_wire (Vector ty n) (resize_default (kind_default _) n (Vector.of_list val)))
   | Primitive (Delay o) => fun x =>
       y <- fresh_wire _ ;;
       map2M (fun x y => DelayBit x y) _ (fst x) y ;;
