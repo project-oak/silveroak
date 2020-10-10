@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #
 # Copyright 2020 The Project Oak Authors
 #
@@ -14,13 +16,12 @@
 # limitations under the License.
 #
 
-.PHONY:	all
+# This script runs Cadence Conformal LEC in batch mode to compare the
+# Silver Oak generated pinmux against the original pinmux RTL.
 
-all:
-	git submodule update --init --recursive
-	cd bedrock2 && $(MAKE) bedrock2_noex && $(MAKE) install_coqutil && $(MAKE) install_bedrock2
-	cd coq-ext-lib && $(MAKE) theories && $(MAKE) install
+lec -xl -nogui -nobanner \
+  -dofile  rtl_diff.do \
+  -logfile rtl_diff.log \
+  <<< "exit -force"
 
-clean:
-	-cd bedrock2 && $(MAKE) cleanall
-	-cd coq-ext-lib && $(MAKE) clean
+cd -
