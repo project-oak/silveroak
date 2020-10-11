@@ -26,6 +26,7 @@ Aes/unrolled_opentitan_cipher.v
 Aes/cipher_round.v
 Aes/key_expand.v
 Aes/cipher_control.v
+Aes/netlists.v
 Aes/aes_test.v
 
 ArrowExtraction.v

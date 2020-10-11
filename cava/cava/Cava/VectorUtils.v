@@ -109,11 +109,12 @@ Local Close Scope vector_scope.
 
 (* Vector version of seq *)
 
-Program Definition vseq (start len: nat) : Vector.t nat len :=
-  Vector.of_list (List.seq start len).
-Next Obligation.
-  rewrite List.seq_length. reflexivity.
-Defined.
+Fixpoint vseq (start len: nat) : Vector.t nat len :=
+  match len with
+  | 0 => []
+  | S n' => start :: vseq (start + 1) n'
+  end%vector.
+
 
 (******************************************************************************)
 (* Slicing a Vector.t                                                         *)

@@ -191,7 +191,7 @@ Definition key_expand_and_round
   ]>.
 
 (* stateless *)
-Definition unrolled_forward_cipher
+Definition unrolled_cipher
   (sbox_impl: SboxImpl)
   : << Bit
     , Vector (Vector (Vector Bit 8) 4) 4 (* data *)
@@ -230,7 +230,7 @@ Definition unrolled_forward_cipher
     ]>.
 
 
-Definition unrolled_forward_cipher_flat
+Definition unrolled_cipher_flat
   (sbox_impl: SboxImpl)
   : << Bit
     , Vector Bit 128 (* data *)
@@ -242,19 +242,19 @@ Definition unrolled_forward_cipher_flat
     >>
       :=
   <[\op_i data key =>
-    let data_o = !(unrolled_forward_cipher sbox_impl) op_i (!aes_transpose (!reshape (!reshape data))) (!reshape (!reshape key)) in
+    let data_o = !(unrolled_cipher sbox_impl) op_i (!aes_transpose (!reshape (!reshape data))) (!reshape (!reshape key)) in
     !flatten (!flatten (!aes_transpose data_o))
     ]>.
 
 Section tests.
   From ArrowExamples Require Import Combinators Aes.aes_test.
 
-  Definition unrolled_cipher mode key data :=
-    interp_combinational (unrolled_forward_cipher_flat SboxCanright _) (mode,(data,key)).
+  Definition unrolled_cipher' mode key data :=
+    interp_combinational (unrolled_cipher_flat SboxCanright _) (mode,(data,key)).
 
-  Definition unrolled_cipher_test_fwd := test_cipher_fwd unrolled_cipher.
-  Definition unrolled_cipher_value_fwd := print_cipher_fwd unrolled_cipher.
-  Definition unrolled_cipher_test_rev := test_cipher_rev unrolled_cipher.
-  Definition unrolled_cipher_value_rev := print_cipher_rev unrolled_cipher.
+  Definition unrolled_cipher_test_fwd := test_cipher_fwd unrolled_cipher'.
+  Definition unrolled_cipher_value_fwd := print_cipher_fwd unrolled_cipher'.
+  Definition unrolled_cipher_test_rev := test_cipher_rev unrolled_cipher'.
+  Definition unrolled_cipher_value_rev := print_cipher_rev unrolled_cipher'.
 
 End tests.

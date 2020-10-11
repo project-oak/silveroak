@@ -162,3 +162,5 @@ Goal forall x, x < 100 ->
 interp_combinational (canright_composed _) (#x) = (#x).
 Proof. time (repeat (lia || destruct x); now vm_compute). Qed.
 
+
+
