@@ -14,9 +14,9 @@
 # limitations under the License.
 #
 
-.PHONY: all coq clean
+.PHONY: all coq clean compile_pinmux
 
-all:		coq pinmux.sv
+all:		coq pinmux.sv compile_pinmux
 
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt
 VLINT = $(VERILATOR) --lint-only
@@ -32,6 +32,9 @@ PinmuxSV:	PinmuxSV.hs
 
 pinmux.sv:	coq PinmuxSV
 		./PinmuxSV
+
+compile_pinmux:	pinmux.sv
+		cd snapshot && $(MAKE)
 
 clean:		
 		-@$(MAKE) -f Makefile.coq clean
