@@ -63,5 +63,5 @@ clean:
 	-@$(MAKE) -f Makefile.coq clean
 	git clean -Xfd
 	rm -rf *.sv *.tcl *.cpp *.vcd VivadoTestsSV LUTTests.hs \
-               *.cpp *.sv *.tcl
+               *.cpp *.sv *.tcl LUTTests.hs *.cpp
 	rm -rf obj_dir

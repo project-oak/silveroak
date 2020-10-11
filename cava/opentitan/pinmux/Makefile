@@ -37,3 +37,4 @@ clean:
 		-@$(MAKE) -f Makefile.coq clean
 		rm -rf PinmuxSV.hi PinmuxSV.o PinmuxSV Makefile.coq.conf \
 		       Pinmux.vo Pinmux.o Pinmux.hs Pinmux.hi pinmux.sv
+		cd snapshot && $(MAKE) clean
