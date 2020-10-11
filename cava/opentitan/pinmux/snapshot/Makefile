@@ -19,7 +19,9 @@
 # needed for the pinmux of OpenTitan.
 ################################################################################
 
-OPENTITAN = ../../../../../opentitan
+OPENTITAN = ../../../../third_party/opentitan
+
+.PHONY:	all clean check_oldpinmux
 
 all:	vlint
 
