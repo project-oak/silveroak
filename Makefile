@@ -16,7 +16,7 @@
 
 .PHONY: all third_party clean
 
-all: third_party
+all:	third_party
 	cd cava && $(MAKE) all
 
 third_party:

@@ -15,8 +15,10 @@
 #
 
 all:	
-	cd pinmux && $(MAKE) all
+	cd pinmux && $(MAKE)
+	cd aes && $(MAKE)
 
 clean:	
 	cd pinmux && $(MAKE) clean
+	cd aes && $(MAKE) clean
 

@@ -1,30 +1,6 @@
-# Coq generated files
-*.vok
-*.vos
-
-Makefile.coq
-.Makefile.coq.d
-
-# Generated SystemVerilog files, but not files in testbench/
-*.sv
-!testbench/*
-
-# Coq generated files
-*.vcd
-*.vvp
-
 # Haskell files except the manually created ones
 *.hs
 !Cava2SystemVerilog.hs
-!ExamplesSV.hs
 !FixupHaskell.hs
-!Setup.hs
 
-# Binaries
-Nand2VHDL
-OneBitAdder2VHDL
-ExamplesSV
 FixupHaskell
-
-# Haskell build chain files
-dist/*
