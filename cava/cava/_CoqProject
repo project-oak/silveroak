@@ -4,14 +4,12 @@
 Cava/ListUtils.v
 Cava/VectorUtils.v
 Cava/BitArithmetic.v
-Cava/Cava.v
 Cava/Kind.v
 Cava/Signal.v
-Cava/Netlist.v
-Cava/Tactics.v
 Cava/Types.v
-
-Cava/Spec/Aes.v
+Cava/Netlist.v
+Cava/Cava.v
+Cava/Tactics.v
 
 Cava/Monad/CavaMonad.v
 Cava/Monad/CavaClass.v

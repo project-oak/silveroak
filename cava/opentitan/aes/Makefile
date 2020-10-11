@@ -14,23 +14,8 @@
 # limitations under the License.
 #
 
-.PHONY: all clean
-
 all:
-	cd arrow-lib && $(MAKE)
-	cd cava && $(MAKE)
-	cd monad-examples && $(MAKE)
-	cd monad-examples/xilinx && $(MAKE) extraction
-	cd tests/xilinx && $(MAKE) extraction
-	cd arrow-examples && $(MAKE)
-	cd opentitan && $(MAKE) all
+	cd Spec && $(MAKE)
 
 clean:
-	cd arrow-lib && $(MAKE) clean
-	cd cava && $(MAKE) clean
-	cd monad-examples && $(MAKE) clean
-	cd monad-examples/xilinx && $(MAKE) clean
-	cd tests/xilinx && $(MAKE) clean
-	cd arrow-examples && $(MAKE) clean
-	cd opentitan && $(MAKE) clean
-	rm -rf .DS_Store
+	cd Spec && $(MAKE) clean
