@@ -17,5 +17,8 @@
 all:
 	cd Spec && $(MAKE)
 
+coq:
+	cd Spec && $(MAKE) coq
+
 clean:
 	cd Spec && $(MAKE) clean
