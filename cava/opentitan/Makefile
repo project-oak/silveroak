@@ -14,11 +14,15 @@
 # limitations under the License.
 #
 
-all:	
+all:
 	cd pinmux && $(MAKE)
 	cd aes && $(MAKE)
 
-clean:	
+coq:
+	cd pinmux && $(MAKE) coq
+	cd aes && $(MAKE) coq
+
+clean:
 	cd pinmux && $(MAKE) clean
 	cd aes && $(MAKE) clean
 
