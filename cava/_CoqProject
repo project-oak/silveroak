@@ -1,10 +1,39 @@
-# This top-level _CoqProject exists to make it easier to navigate
-# the Cava source and examples using the vscoq plug-in for vscode.
--R cava/Cava Cava
--Q ../third_party/coq-ext-lib/theories ExtLib
--Q ../third_party/bedrock2/bedrock2/src/bedrock2 bedrock2
--Q ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
--Q monad-examples MonadExamples
--Q monad-examples/xilinx XilinxExamples
--Q arrow-examples ArrowExamples
--Q arrow-lib Arrow
+-R Cava Cava
+-R ../arrow-lib Arrow
+
+Cava/ListUtils.v
+Cava/VectorUtils.v
+Cava/BitArithmetic.v
+Cava/Kind.v
+Cava/Signal.v
+Cava/Types.v
+Cava/Netlist.v
+Cava/Cava.v
+Cava/Tactics.v
+
+Cava/Monad/CavaMonad.v
+Cava/Monad/CavaClass.v
+Cava/Monad/CombinationalMonad.v
+Cava/Monad/Combinators.v
+Cava/Monad/MonadFacts.v
+Cava/Monad/UnsignedAdders.v
+Cava/Monad/NetlistGeneration.v
+Cava/Monad/XilinxAdder.v
+
+Cava/Arrow/ArrowKind.v
+Cava/Arrow/Primitives.v
+
+Cava/Arrow/ExprSyntax.v
+Cava/Arrow/ExprEquiv.v
+Cava/Arrow/ExprLowering.v
+Cava/Arrow/ExprSemantics.v
+
+Cava/Arrow/CircuitArrow.v
+Cava/Arrow/CircuitFunctionalEquivalence.v
+Cava/Arrow/CircuitProp.v
+Cava/Arrow/CircuitSemantics.v
+Cava/Arrow/CircuitLowering.v
+Cava/Arrow/CavaNotation.v
+Cava/Arrow/ArrowExport.v
+
+Cava/Extraction.v

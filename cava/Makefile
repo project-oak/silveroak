@@ -14,16 +14,27 @@
 # limitations under the License.
 #
 
-.PHONY: all clean
+.PHONY: all clean coq haskell
 
-all:
-	cd arrow-lib && $(MAKE)
-	cd cava && $(MAKE)
-	cd monad-examples && $(MAKE)
-	cd monad-examples/xilinx && $(MAKE) extraction
-	cd tests/xilinx && $(MAKE) extraction
-	cd arrow-examples && $(MAKE)
-	cd opentitan && $(MAKE) all
+all:		coq haskell
+
+coq:		Makefile.coq
+		$(MAKE) -f Makefile.coq
+
+FixupHaskell:	FixupHaskell.hs
+		ghc --make $^
+
+haskell:	coq FixupHaskell
+		./FixupHaskell
+		mv Ascii2.hs Ascii.hs
+		mv ByteVector2.hs ByteVector.hs
+		mv DecimalString2.hs DecimalString.hs
+		runhaskell Setup.hs configure --user
+		runhaskell Setup.hs build
+		runhaskell Setup.hs install
+
+Makefile.coq:	_CoqProject
+		coq_makefile -f _CoqProject -o Makefile.coq
 
 coq:
 	cd arrow-lib && $(MAKE) coq
@@ -33,11 +44,6 @@ coq:
 	cd opentitan && $(MAKE) coq
 
 clean:
-	cd arrow-lib && $(MAKE) clean
-	cd cava && $(MAKE) clean
-	cd monad-examples && $(MAKE) clean
-	cd monad-examples/xilinx && $(MAKE) clean
-	cd tests/xilinx && $(MAKE) clean
-	cd arrow-examples && $(MAKE) clean
-	cd opentitan && $(MAKE) clean
-	rm -rf .DS_Store
+		-@$(MAKE) -f Makefile.coq clean
+		rm -rf Makefile.coq Makefile.coq.conf
+		git clean -Xfd

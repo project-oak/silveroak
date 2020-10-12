@@ -14,14 +14,58 @@
 # limitations under the License.
 #
 
-.PHONY: all third_party clean
+# This Makefile by default builds all targets that are part of the
+# Silver Oak system except those that require the invocation of the
+# Xilinx tools for simulation or FPGA implementation.
 
-all:	third_party
-	cd cava && $(MAKE) all
+# Build everything (except Xilinx-specific targets):
+# make
 
+# Clean everything:
+# make clean
+
+.PHONY: all third_party arrow-lib cava tests monad-examples \
+	arrow-examples silveroak-opentitan clean
+
+all:	third_party arrow-lib cava tests monad-examples \
+	arrow-examples silveroak-opentitan
+
+# Third party dependencies should be built first.
 third_party:
 	cd third_party && $(MAKE) 
 
+# arrow-lib is currently at the top level but should be folded
+# under the Arrow directory.
+arrow-lib:
+	cd arrow-lib && $(MAKE)
+
+# The cava targert builds the core Cava DSL.
+cava:
+	cd cava && $(MAKE)
+
+# The cava target runs the unit tests for the Cava DSL
+tests:
+	cd tests/xilinx && $(MAKE) extraction
+
+# The monad-example builds and tests the monad examples (except for
+# the Xilinx-specific targets)
+monad-examples:
+	cd monad-examples && $(MAKE)
+
+# The arrow-example builds and tests the monad examples (except for
+# the Xilinx-specific targets)
+arrow-monad-examples:
+	cd arrow-examples && $(MAKE)
+
+# The silveroak-opentitan builds the targets developed for the
+# Silver Oak re-implementation of some OpenTitan blocks.
+silveroak-opentitan:
+	cd silveroak-opentitan && $(MAKE)
 clean:
-	cd cava && $(MAKE) clean
 	cd third_party && $(MAKE) clean
+	cd arrow-lib && $(MAKE) clean
+	cd cava && $(MAKE) clean
+	cd tests/xilinx && $(MAKE) clean
+	cd monad-examples && $(MAKE) clean
+	cd arrow-examples && $(MAKE) clean
+	cd silveroak-opentitan && $(MAKE) clean

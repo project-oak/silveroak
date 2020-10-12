@@ -1,9 +1,44 @@
-# Project Oak Hardware Development
+# Cava: Lava-style circuits in Coq
 
-This repository contains code for circuits and verification related to
-Project Oak.
+This is a work in progress attempt to encode Lava-style gate-level circuit
+descriptions in Coq for circuit specification, formal verification and
+extraction into VHDL or SystemVerilog for implementation on FPGAs. The code
+is currently very experimental and in constant flux.
 
-One of the [experiments](kami/counter) in this repo is an attempt to use the [Kami](https://github.com/mit-plv/kami) system to define a simple counter circuit and drive the implementation process all the way from Kami/Coq via Bluespec to Verilog and then using the Vivado Xilinx FPGA tools to produce a running demo on the Xilinx
-[ZCU104](https://www.xilinx.com/products/boards-and-kits/zcu104.htm) development board.
+Please see the [contributing guide](CONTRIBUTING.md) for how to submit push
+requests.
 
-We will soon add an example thow shows a totally open source flow for mapping to Lattice FPGAs.
+## Pre-requisites
+
+### Nix
+
+If you have the [Nix package manager](https://nixos.org/nix/) installed, you can
+simply run `nix-shell` from the `oak-hardware/cava` directory. Coq, Haskell, and
+Icarus Verilog will then be available in your `$PATH`.
+
+### Non-Nix
+
+Please install the following components:
+
+* The [Coq proof assistant](https://coq.inria.fr/) version 8.12.0.
+* The [GHC Haskell compiler](https://www.haskell.org/ghc/) version 8.6.5 or later
+* [Verilator](https://www.veripool.org/wiki/verilator) version 4.028 (as specified by the
+  [OpenTitan](https://docs.opentitan.org/doc/ug/install_instructions/#verilator) documentation).
+
+## Building
+
+To build the Cava system and its examples and run tests, type `make` in the root directory of the repo.
+
+```console
+$ cd oak-hardware
+$ make
+```
+
+To remove all automatically generated files:
+```console
+$ make clean
+```
+
+## Cava Examples (monadic versions)
+See [Cava Examples](https://github.com/project-oak/oak-hardware/tree/master/monad-examples/README.md) for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.
+
