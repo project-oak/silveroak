@@ -52,10 +52,13 @@ Program Definition aes_key_expand
         if op_i == !CIPH_FWD
         then #1
         else #64
-      else
+      else if use_rcon
+      then
         if op_i == !CIPH_FWD
         then !aes_mul2 rcon
         else !aes_div2 rcon
+      else
+        rcon
         ) in
 
     (* AES_256: begin

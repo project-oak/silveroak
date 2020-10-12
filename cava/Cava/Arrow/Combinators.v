@@ -368,20 +368,22 @@ Definition col {A B C: Kind} n
     (a, !productToVec c)
   ]>.
 
-Definition mealy_machine {s i o}
-  (f: <<s, i, Unit>> ~> <<s, o>> )
-  : <<i, Unit>> ~> << o >>
-  := <[\i =>
-    letrec state_and_output = !f (delay (fst state_and_output)) i
-    in (snd state_and_output) ]>.
-
 Definition mealy_machine1 {s i o}
   (fs: <<s, i, Unit>> ~> <<s>> )
   (fo: <<s, i, Unit>> ~> <<o>> )
   : <<i, Unit>> ~> << o >>
   := <[\i =>
-    letrec state = !fs (delay state) i
-    in !fo state i ]>.
+    letrec state = !fs state i in
+    !fo state i ]>.
+
+Definition mealy_machine {s i o}
+  (f: <<s, i, Unit>> ~> <<s, o>> )
+  : <<i, Unit>> ~> << o >>
+  := <[\i =>
+    (* TODO(blaxill): there is current a duplication of 'f' due to semantics of
+    letrec *)
+    letrec state = fst (!f state i) in
+    snd (!f state i) ]>.
 
 Notation "|^ x" :=
   (App (CallModule (foldr1 <[\a b => xor a b]>)) x)
