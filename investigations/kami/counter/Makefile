@@ -15,7 +15,7 @@
 #
 
 OCB = ocamlbuild -use-ocamlfind
-KAMI = ../../../kami
+KAMI = ../../../../kami
 
 all: counter4_tb.vcd counter4.bit
 

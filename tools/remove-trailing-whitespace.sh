@@ -1,5 +1,6 @@
+#!/bin/bash
 #
-# Copyright 2019 The Project Oak Authors
+# Copyright 2020 The Project Oak Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,11 +15,4 @@
 # limitations under the License.
 #
 
-.PHONY: all
-
-all:	
-	ghdl -a and2.vhdl
-	ghdl -a and2_tb.vhdl
-	ghdl -e and2_tb
-	ghdl -r and2_tb
-	./and2_tb --vcd=and2.vcd 
+git ls-files $(git rev-parse --show-toplevel) | grep "\.v$" | xargs sed -i -E 's/\s+$//g'

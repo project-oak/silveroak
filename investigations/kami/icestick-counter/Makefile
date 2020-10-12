@@ -15,7 +15,7 @@
 #
 
 OCB = ocamlbuild
-KAMI = ../../../kami
+KAMI = ../../../../kami
 
 all: counter5_top.bin
 
