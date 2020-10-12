@@ -25,6 +25,13 @@ all:
 	cd arrow-examples && $(MAKE)
 	cd opentitan && $(MAKE) all
 
+coq:
+	cd arrow-lib && $(MAKE) coq
+	cd cava && $(MAKE) coq
+	cd monad-examples && $(MAKE) coq
+	cd arrow-examples && $(MAKE) coq
+	cd opentitan && $(MAKE) coq
+
 clean:
 	cd arrow-lib && $(MAKE) clean
 	cd cava && $(MAKE) clean
