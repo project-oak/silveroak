@@ -1,5 +1,9 @@
-xilinx/LUTTests.hs
-xilinx/VivadoTestsSV
-xilinx/*.sv
-xilinx/*.cpp
-xilinx/*.tcl
+# Haskell files except the manually created ones
+*.hs
+!TestsSV.hs
+
+TestsSV
+
+*.sv
+*.cpp
+*.tcl

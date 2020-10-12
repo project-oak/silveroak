@@ -184,6 +184,7 @@ Program Instance CavaBool : Cava ident bool :=
     slice k sz := @sliceBool k sz;
     unsignedAdd m n := @unsignedAddBool m n;
     greaterThanOrEqual m n := @greaterThanOrEqualBool m n;
+    instantiate _ circuit := circuit;
 }.
 
 (******************************************************************************)

@@ -103,6 +103,13 @@ Fixpoint flattenShape {A} (s : @shape A) : list A :=
   | Tuple2 t1 t2 =>  flattenShape t1 ++ flattenShape t2
   end.
 
+Fixpoint denote (doSomethingToOne : Kind -> Type) (k : @shape Kind) : Type :=
+  match k with
+  | Empty => unit
+  | One thing => doSomethingToOne thing
+  | Tuple2 a b => (denote doSomethingToOne a) * (denote doSomethingToOne b)
+  end.
+
 (*
 Drop the rightmost element of a tuple structure if it is Empty. e.g.
 
@@ -238,12 +245,7 @@ Fixpoint smashTy (T: Type) (k: Kind) : Type :=
 Definition smashNetTy (k: Kind) : Type := smashTy (Signal Bit) k.
 
 (* The function signalSmashTy takes a Signal shape and smashes its elements. *)
-Fixpoint signalSmashTy (s : shape) : Type :=
-  match s with
-  | Empty  => unit
-  | One t => smashTy (Signal Bit) t
-  | Tuple2 s1 s2  => prod (signalSmashTy s1) (signalSmashTy s2)
-  end.
+Definition signalSmashTy := denote smashNetTy.
 
 (* The function takes a signal and smashes the vectors in it. *)
 Fixpoint smash {k: Kind} (v: Signal k) : smashTy (Signal Bit) k :=
@@ -263,16 +265,21 @@ Fixpoint vecLitS {k: Kind} (v: smashTy (Signal Bit) k) : Signal k :=
   | ExternalType s, _ => UninterpretedSignal "vecLitS-error"
   end.
 
-Fixpoint signalNetSmashTy (s : @shape Kind) : Type :=
-  match s with
-  | Empty  => unit
-  | One t => Signal t
-  | Tuple2 s1 s2  => (signalNetSmashTy s1) * (signalNetSmashTy s2)
+(* Undo a vector smash.*)
+Definition unsmash {k : Kind} (v : smashTy (Signal Bit) k) : Signal k :=
+  match k, v with
+  | Void, vv => UndefinedSignal
+  | Bit, vv => vv
+  | BitVec k2 s, vv => vecLitS vv
+  | ExternalType t, vv => UninterpretedSignal "unsmash-error"
   end.
 
-Fixpoint recoverShape (sh: shape) (v: signalNetSmashTy sh) :=
+(* Recover the shape representation of an expression by un-doing the
+   effect of the signalNetSmashTy translation and then "untype" it. *)
+Fixpoint recoverUntypedShape (sh: @shape Kind) (v: signalSmashTy sh) :=
   match sh, v with
   | Empty, _ => Empty
-  | One t, ov => One (USignal ov)
-  | Tuple2 s1 s2, (v1, v2) => Tuple2 (recoverShape s1 v1) (recoverShape s2 v2)
+  | One t, ov => One (USignal (unsmash ov))
+  | Tuple2 s1 s2, (v1, v2) => Tuple2 (recoverUntypedShape s1 v1)
+                                     (recoverUntypedShape s2 v2)
   end.

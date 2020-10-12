@@ -33,12 +33,22 @@ import qualified StateMonad
 import Types
 
 writeSystemVerilog :: CavaState -> IO ()
-writeSystemVerilog cavastate
+writeSystemVerilog cavastate@(Netlist.Coq_mkCavaState _ _ _ _
+                    _ _ _ _ _ libs)
   = do putStr ("Generating " ++ filename ++ "...")
-       writeFile filename (unlines (cava2SystemVerilog cavastate))
+       writeFile filename ("// Cava auto-generated SystemVerilog. Do not hand edit.\n")
+       sequence_ [appendFile filename (unlines (cava2SystemVerilog (swapIn m cavastate))) | (_, m) <- libs]
+       appendFile filename (unlines (cava2SystemVerilog cavastate))
        putStrLn (" [done]")
     where
     filename = Netlist.moduleName (Netlist.coq_module cavastate) ++ ".sv"
+
+
+swapIn :: Netlist.Module -> CavaState -> CavaState
+swapIn m cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext'
+                    clk clkEdge rst rstEdge _ _)
+  = Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext'
+                    clk clkEdge rst rstEdge m []
 
 fromN :: BinNums.N -> Integer
 fromN bn
@@ -50,7 +60,7 @@ cava2SystemVerilog :: Netlist.CavaState -> [String]
 cava2SystemVerilog cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext'
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName instances'
-                    inputs outputs))
+                    inputs outputs) libs)
   = ["module " ++ moduleName ++ "("] ++
 
     insertCommas (inputPorts inputs ++ outputPorts outputs) ++
@@ -70,18 +80,19 @@ cava2SystemVerilog cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs' e
     [""] ++
     [generateInstance genState inst i | (inst, i) <- zip instances [0..]] ++
     [""] ++
-    ["endmodule"]
+    ["endmodule",
+     ""]
     where
     genState = NetlistGenerationState clk clkEdge rst rstEdge
     (instances'', Netlist.Coq_mkCavaState _ vCount vDefs ext
                   _ _ _ _
                   (Netlist.Coq_mkModule _ assignInstances
-                  _ _))
-      = runState (unsmashInstances instances')
+                  _ _) _)
+      = runState (unsmashSignalInstances instances')
           (Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext'
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName []
-                    inputs outputs))
+                    inputs outputs) libs)
     instances = instances'' ++ assignInstances
 
 declareLocalNets :: Integer -> [String]
@@ -213,7 +224,7 @@ primitiveInstance instName args instNr
     showArgs args ++ ";"
 
 showArgs :: [Signal] -> String
-showArgs args = "(" ++ concat (insertCommas (map showSignal args)) ++ ")";
+showArgs args = "(" ++ concat (insertCommas (map showSignal args)) ++ ")"
 
 mkInstance :: String -> [(String, ConstExpr)] -> [(String, Signal)] ->
               Int -> String
@@ -226,14 +237,14 @@ mkInstance instName parameters args instNr
     showPortArgs args ++ ";"
 
 showPortArgs :: [(String, Signal)] -> String
-showPortArgs args = "(" ++ concat (insertCommas (map showPortArg args)) ++ ")";
+showPortArgs args = "(" ++ concat (insertCommas (map showPortArg args)) ++ ")"
 
 showPortArg :: (String, Signal) -> String
 showPortArg (p, n) = "." ++ p ++ "(" ++ showSignal n ++ ")"
 
 showParameters :: [(String, ConstExpr)] -> String
 showParameters parameters
-  = " #(" ++ concat (insertCommas (map showParameter parameters)) ++ ")";
+  = " #(" ++ concat (insertCommas (map showParameter parameters)) ++ ")"
 
 showParameter :: (String, ConstExpr) -> String
 showParameter (name, constExpr)
@@ -477,7 +488,7 @@ tclScript name ticks
     ]
 
 --------------------------------------------------------------------------------
--- Unsmashing vector literals.
+-- unsmashSignaling vector literals.
 --------------------------------------------------------------------------------
 
 deriving instance Eq BinNums.N
@@ -485,12 +496,12 @@ deriving instance Eq Kind
 deriving instance Eq (Vector.Coq_t Signal)
 deriving instance Eq Signal
 
-unsmashInstance :: Instance -> State CavaState Instance
-unsmashInstance = mapSignalsInInstanceM unsmash
+unsmashSignalInstance :: Instance -> State CavaState Instance
+unsmashSignalInstance = mapSignalsInInstanceM unsmashSignal
 
-unsmashInstances :: [Instance] -> State CavaState [Instance]
-unsmashInstances instances =
-  sequence (map unsmashInstance instances)
+unsmashSignalInstances :: [Instance] -> State CavaState [Instance]
+unsmashSignalInstances instances =
+  sequence (map unsmashSignalInstance instances)
 
 mapSignalsInInstanceM :: (Signal -> State CavaState Signal) ->
                           Instance -> State CavaState Instance
@@ -596,23 +607,23 @@ fullSlice s@(Slice _ fullLen startingIndex len stem)
       s
 
 -- Recover slices and whole vector stems.
-unsmash :: Signal -> State CavaState Signal
-unsmash signal
+unsmashSignal :: Signal -> State CavaState Signal
+unsmashSignal signal
   = case signal of
-      VecLit k s v -> do uv <- sequence (map unsmash (Vector.to_list s v))
+      VecLit k s v -> do uv <- sequence (map unsmashSignal (Vector.to_list s v))
                          case checkStem k s uv  of
                            Just stem -> return (fullSlice stem)
                            Nothing -> return (VecLit k s (Vector.of_list uv))
-      IndexAt k sz isz v i -> do uv <- unsmash v
+      IndexAt k sz isz v i -> do uv <- unsmashSignal v
                                  fv <- freshen uv
-                                 ui <- unsmash i
+                                 ui <- unsmashSignal i
                                  return (IndexAt k sz isz fv ui)
-      IndexConst k s v i -> do uv <- unsmash v
+      IndexConst k s v i -> do uv <- unsmashSignal v
                                fv <- freshen uv
                                return (IndexConst k s fv i)
-      SelectField k1 k2 sk1 f -> do usk1 <- unsmash sk1
+      SelectField k1 k2 sk1 f -> do usk1 <- unsmashSignal sk1
                                     return (SelectField k1 k2 usk1 f)
-      Slice k s startAt len v -> do uv <- unsmash v
+      Slice k s startAt len v -> do uv <- unsmashSignal v
                                     fv <- freshen uv
                                     return (Slice k s startAt len fv)
       _ -> return signal
@@ -634,11 +645,11 @@ addAssignment k a b
   = do Netlist.Coq_mkCavaState netNumber vCount vDefs ext
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName instances
-                    inputs outputs) <- get
+                    inputs outputs) libs <- get
        put (Netlist.Coq_mkCavaState netNumber vCount vDefs ext
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName ((AssignSignal k a b):instances)
-                    inputs outputs))
+                    inputs outputs) libs)
 
 -- Declare a new local vector and return it as a signal.
 freshVector :: Kind -> Integer -> State CavaState Signal
@@ -646,9 +657,9 @@ freshVector k s
   = do Netlist.Coq_mkCavaState netNumber vCount vDefs ext
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName instances
-                    inputs outputs) <- get
+                    inputs outputs) libs <- get
        put (Netlist.Coq_mkCavaState netNumber (incN vCount) (vDefs++[(k, s)]) ext
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName instances
-                    inputs outputs))
+                    inputs outputs) libs)
        return (LocalBitVec k s vCount)
