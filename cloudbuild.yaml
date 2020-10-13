@@ -8,13 +8,6 @@ steps:
   #   entrypoint: 'nix-shell'
   #   args: ['-p', '[bash git coreutils]', '--run',
   #     'git clone -v https://github.com/project-oak/oak-hardware.git --no-checkout oak-hardware-git && mv oak-hardware-git/.git . && git fetch -v origin $COMMIT_SHA && git checkout -f $COMMIT_SHA && git submodule update --init']
-  - name: 'gcr.io/cloud-builders/git'
-    id: pull_submodules
-    args:
-      - submodule
-      - update
-      - --init
-      - --recursive
 
   - name: 'nixos/nix:2.3.4'
     id: cache_dependencies
@@ -37,7 +30,7 @@ steps:
 
   - name: 'nixos/nix:2.3.4'
     id: build_third_party
-    waitFor: ['cache_dependencies', 'pull_submodules']
+    waitFor: ['cache_dependencies']
     timeout: 20m
     entrypoint: 'nix-shell'
     args: ['--arg', 'buildVerilator', 'false', '--run', 'make -j third_party']
@@ -47,7 +40,7 @@ steps:
 
   - name: 'nixos/nix:2.3.4'
     id: build_cava
-    waitFor: ['cache_dependencies', 'build_third_party']
+    waitFor: ['cache_dependencies', 'build_verilator', 'build_third_party']
     timeout: 20m
     entrypoint: 'nix-shell'
     args: ['--run', 'make -j arrow-lib; make -j cava']
@@ -57,7 +50,7 @@ steps:
 
   - name: 'nixos/nix:2.3.4'
     id: build_all
-    waitFor: ['build_cava', 'build_verilator']
+    waitFor: ['build_cava']
     timeout: 20m
     entrypoint: 'nix-shell'
     args: ['--run', 'make -j']
