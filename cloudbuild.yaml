@@ -34,7 +34,7 @@ steps:
     waitFor: ['recover_git_folder', 'cache_dependencies']
     timeout: 20m
     entrypoint: 'nix-shell'
-    args: ['--arg', 'buildVerilator', 'false', '--run', 'make third_party']
+    args: ['--arg', 'buildVerilator', 'false', '--run', 'make -j third_party']
     volumes:
     - name: nix-store
       path: /nix/
@@ -44,7 +44,7 @@ steps:
     waitFor: ['recover_git_folder', 'cache_dependencies', 'build_verilator', 'build_third_party']
     timeout: 20m
     entrypoint: 'nix-shell'
-    args: ['--run', 'git init; ls -la ./third_party/coq-ext-lib; make']
+    args: ['--run', 'git init; ls -la ./third_party/coq-ext-lib; make -j']
     volumes:
     - name: nix-store
       path: /nix/
