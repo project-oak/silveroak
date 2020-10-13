@@ -21,6 +21,9 @@ all:		coq haskell
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
+%.vo:		Makefile.coq
+		$(MAKE) -f Makefile.coq $@
+
 FixupHaskell:	FixupHaskell.hs
 		ghc --make $^
 
