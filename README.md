@@ -40,5 +40,5 @@ $ make clean
 ```
 
 ## Cava Examples (monadic versions)
-See [Cava Examples](https://github.com/project-oak/oak-hardware/tree/master/monad-examples/README.md) for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.
+See [Cava Examples](https://github.com/project-oak/oak-hardware/blob/main/monad-examples/README.md) for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.
 
