@@ -10,14 +10,6 @@ requests.
 
 ## Pre-requisites
 
-### Nix
-
-If you have the [Nix package manager](https://nixos.org/nix/) installed, you can
-simply run `nix-shell` from the `oak-hardware/cava` directory. Coq, Haskell, and
-Icarus Verilog will then be available in your `$PATH`.
-
-### Non-Nix
-
 Please install the following components:
 
 * The [Coq proof assistant](https://coq.inria.fr/) version 8.12.0.
