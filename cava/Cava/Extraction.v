@@ -44,14 +44,12 @@ Recursive Extraction Library CombinationalMonad.
 Recursive Extraction Library Combinators.
 Recursive Extraction Library NetlistGeneration.
 
-From Arrow Require Import Arrow Category Coq Kleisli .
+From Cava.Arrow Require Import ArrowExport.
+
 Recursive Extraction Library Arrow.
 Recursive Extraction Library Category.
 Recursive Extraction Library Coq.
 Recursive Extraction Library Kleisli.
-
-From Cava.Arrow Require Import ArrowExport.
-
 Recursive Extraction Library ArrowKind.
 Recursive Extraction Library Primitives.
 Recursive Extraction Library CircuitArrow.

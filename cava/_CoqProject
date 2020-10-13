@@ -1,5 +1,4 @@
 -R Cava Cava
--R ../arrow-lib Arrow
 -R ../third_party/coq-ext-lib/theories ExtLib
 -R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
 
@@ -21,6 +20,11 @@ Cava/Monad/MonadFacts.v
 Cava/Monad/UnsignedAdders.v
 Cava/Monad/NetlistGeneration.v
 Cava/Monad/XilinxAdder.v
+
+Cava/Arrow/Classes/Category.v
+Cava/Arrow/Classes/Arrow.v
+Cava/Arrow/Classes/Coq.v
+Cava/Arrow/Classes/Kleisli.v
 
 Cava/Arrow/ArrowKind.v
 Cava/Arrow/Primitives.v

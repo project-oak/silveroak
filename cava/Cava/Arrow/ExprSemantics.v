@@ -14,12 +14,14 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category Arrow.
+From Cava Require Import Arrow.Classes.Category.
+From Cava Require Import Arrow.Classes.Arrow.
 From Cava Require Import Arrow.CircuitArrow.
 From Cava Require Import Arrow.CircuitSemantics.
-
 From Cava Require Import Arrow.ExprSyntax.
 From Cava Require Import Arrow.ExprLowering.
+From Cava Require Import Arrow.ArrowKind.
+From Cava Require Import Arrow.Primitives.
 
 From Coq Require Import Arith NArith Lia NaryFunctions.
 

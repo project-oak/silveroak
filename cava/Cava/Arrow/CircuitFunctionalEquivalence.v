@@ -15,7 +15,9 @@
 (****************************************************************************)
 
 From coqutil Require Import Tactics.Tactics.
-From Arrow Require Import Category Arrow.
+From Cava Require Import Arrow.Classes.Category.
+From Cava Require Import Arrow.Classes.Arrow.
+From Cava Require Import Arrow.Primitives.
 From Cava.Arrow Require Import ArrowKind CircuitArrow CircuitProp
      CircuitSemantics ExprSyntax ExprLowering.
 Require Import Cava.Tactics Cava.VectorUtils.

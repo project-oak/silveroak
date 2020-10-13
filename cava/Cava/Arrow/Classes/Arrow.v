@@ -1,4 +1,4 @@
-From Arrow Require Import Category.
+From Cava Require Import Arrow.Classes.Category.
 
 Local Open Scope category_scope.
 

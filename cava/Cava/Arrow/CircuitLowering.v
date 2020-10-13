@@ -15,9 +15,12 @@
 (****************************************************************************)
 
 From Coq Require Import Bool ZArith NaryFunctions Vector String List DecimalString Lia.
-From Arrow Require Import Category Arrow Kleisli.
+From Cava Require Import Arrow.Classes.Arrow.
+From Cava Require Import Arrow.Classes.Category.
+From Cava Require Import Arrow.Classes.Kleisli.
+From Cava Require Import Arrow.Primitives.
 From Cava Require Import Arrow.CircuitArrow VectorUtils BitArithmetic Types Signal Netlist.
-From Cava Require Arrow.Primitives.
+From Cava Require Import Arrow.ArrowKind.
 
 Import NilZero.
 
@@ -31,7 +34,6 @@ From ExtLib Require Import Structures.Traversable.
 From ExtLib Require Export Data.Monads.StateMonad.
 
 Import MonadNotation.
-
 
 (******************************************************************************)
 (* Evaluation as a netlist                                                    *)
