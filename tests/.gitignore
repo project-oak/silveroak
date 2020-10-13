@@ -1,0 +1,5 @@
+xilinx/LUTTests.hs
+xilinx/VivadoTestsSV
+xilinx/*.sv
+xilinx/*.cpp
+xilinx/*.tcl
