@@ -1,4 +1,6 @@
 -R ../../cava/Cava Cava
 -R . VivadoTests
+-R ../../third_party/coq-ext-lib/theories ExtLib
+-R ../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
 LUTTests.v
 VivadoExtraction.v
