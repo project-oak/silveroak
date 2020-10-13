@@ -38,5 +38,5 @@ Makefile.coq:	_CoqProject
 
 clean:
 		-@$(MAKE) -f Makefile.coq clean
-		rm -rf Makefile.coq Makefile.coq.conf
+		rm -rf Makefile.coq Makefile.coq.conf dist
 		git clean -Xfd
