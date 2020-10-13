@@ -3,14 +3,15 @@
 steps:
   # GCB doesn't clone submodules and removes .git directory, so we fetch the
   # current $COMMIT_SHA and clone the submodules manually.
-  # - name: 'nixos/nix:2.3.4'
-  #   id: recover_git_folder
-  #   entrypoint: 'nix-shell'
-  #   args: ['-p', '[bash git coreutils]', '--run',
-  #     'git clone -v https://github.com/project-oak/oak-hardware.git --no-checkout oak-hardware-git && mv oak-hardware-git/.git . && git fetch -v origin $COMMIT_SHA && git checkout -f $COMMIT_SHA && git submodule update --init']
+  - name: 'nixos/nix:2.3.4'
+    id: recover_git_folder
+    entrypoint: 'nix-shell'
+    args: ['-p', '[bash git coreutils]', '--run',
+      'git clone -v https://github.com/project-oak/oak-hardware.git --no-checkout oak-hardware-git && mv oak-hardware-git/.git . && git fetch -v origin $COMMIT_SHA && git checkout -f $COMMIT_SHA && git submodule update --init']
 
   - name: 'nixos/nix:2.3.4'
     id: cache_dependencies
+    waitFor: ['recover_git_folder']
     timeout: 20m
     entrypoint: 'nix-shell'
     args: ['--arg', 'buildVerilator', 'false', '--run', 'echo "Done."']
@@ -30,7 +31,7 @@ steps:
 
   - name: 'nixos/nix:2.3.4'
     id: build_third_party
-    waitFor: ['cache_dependencies']
+    waitFor: ['recover_git_folder', 'cache_dependencies']
     timeout: 20m
     entrypoint: 'nix-shell'
     args: ['--arg', 'buildVerilator', 'false', '--run', 'make -j third_party']
@@ -40,7 +41,7 @@ steps:
 
   - name: 'nixos/nix:2.3.4'
     id: build_cava
-    waitFor: ['cache_dependencies', 'build_verilator', 'build_third_party']
+    waitFor: ['recover_git_folder', 'cache_dependencies', 'build_verilator', 'build_third_party']
     timeout: 20m
     entrypoint: 'nix-shell'
     args: ['--run', 'make -j arrow-lib; make -j cava']
@@ -49,8 +50,8 @@ steps:
       path: /nix/
 
   - name: 'nixos/nix:2.3.4'
-    id: build_all
-    waitFor: ['build_cava']
+    id: run_makefile
+    waitFor: ['recover_git_folder', 'cache_dependencies', 'build_verilator', 'build_third_party']
     timeout: 20m
     entrypoint: 'nix-shell'
     args: ['--run', 'make -j']
