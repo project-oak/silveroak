@@ -18,8 +18,13 @@
 
 all:
 	git submodule update --init --recursive
-	cd bedrock2 && $(MAKE) bedrock2_noex && $(MAKE) install_coqutil && $(MAKE) install_bedrock2
-	cd coq-ext-lib && $(MAKE) theories && $(MAKE) install
+	cd bedrock2/deps/coqutil && $(MAKE) all
+	cd bedrock2 && $(MAKE) bedrock2_noex
+	cd coq-ext-lib && $(MAKE) theories
+
+install:
+	cd bedrock2 && $(MAKE) install_coqutil && $(MAKE) install_bedrock2
+	cd coq-ext-lib && $(MAKE) install
 
 clean:
 	-cd bedrock2 && $(MAKE) cleanall

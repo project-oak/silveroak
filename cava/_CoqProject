@@ -1,5 +1,7 @@
 -R Cava Cava
 -R ../arrow-lib Arrow
+-R ../third_party/coq-ext-lib/theories ExtLib
+-R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
 
 Cava/ListUtils.v
 Cava/VectorUtils.v

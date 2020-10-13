@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Vector.
+From Coq Require Import Vector.
 Import VectorNotations.
 
 From Coq Require Import Lists.List Lia.

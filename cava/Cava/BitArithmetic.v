@@ -22,10 +22,10 @@ From Coq Require Import Vector.
 From Coq Require Import Bool.Bvector.
 From Coq Require Import NArith.Ndigits.
 From Coq Require Import NArith.Nnat.
-Require Import Nat Arith.
-Require Import Omega.
+From Coq Require Import Nat.
+From Coq Require Import Omega.
+From Coq Require Import Lia.
 From Coq Require Import btauto.Btauto.
-Require Import Nat Arith Lia.
 From Coq Require Import Arith.PeanoNat.
 From Coq Require Strings.HexString.
 

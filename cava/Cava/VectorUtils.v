@@ -21,7 +21,7 @@ From Coq Require Import Vector.
 Import VectorNotations.
 
 From Coq Require Import ZArith.
-Require Import Nat Arith Lia.
+From Coq Require Import Nat Arith Lia.
 
 From ExtLib Require Import Structures.Applicative.
 From ExtLib Require Import Structures.Traversable.
