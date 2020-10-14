@@ -7,7 +7,7 @@ steps:
     id: recover_git_folder
     entrypoint: 'nix-shell'
     args: ['-p', '[bash git coreutils]', '--run',
-      'git clone -v https://github.com/project-oak/oak-hardware.git --no-checkout oak-hardware-git && mv oak-hardware-git/.git . && git fetch -v origin $COMMIT_SHA && git checkout -f $COMMIT_SHA && git submodule update --init']
+      '[ ! -d ".git" ] && echo "Recreating .git folder" && git clone -v https://github.com/project-oak/oak-hardware.git --no-checkout oak-hardware-git && mv oak-hardware-git/.git . && git fetch -v origin $COMMIT_SHA && git checkout -f $COMMIT_SHA && git submodule update --init']
 
   - name: 'nixos/nix:2.3.4'
     id: cache_dependencies
