@@ -1,5 +1,5 @@
 From ExtLib Require Import Structures.Monads.
-From Arrow Require Import Category Arrow.
+From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 
 Import MonadNotation.
 Local Open Scope monad_scope.

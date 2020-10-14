@@ -2,7 +2,7 @@ From Coq Require Import Lists.List.
 From Coq Require Import Arith.Peano_dec.
 From Cava Require Import Arrow.ArrowKind.
 From Cava Require Import Arrow.Primitives.
-From Arrow Require Import Category.
+From Cava Require Import Arrow.Classes.Category.
 
 Import ListNotations.
 

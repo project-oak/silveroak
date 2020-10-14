@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 From Coq Require Import Lists.List NaryFunctions Arith NArith Vector Eqdep_dec.
-From Arrow Require Import Category Arrow.
+From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 
 Import ListNotations.
 Import VectorNotations.

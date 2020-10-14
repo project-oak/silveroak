@@ -15,7 +15,6 @@
 (****************************************************************************)
 
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
-From Arrow Require Import Category.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
 From ArrowExamples Require Import Combinators.

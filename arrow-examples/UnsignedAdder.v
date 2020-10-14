@@ -14,7 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category.
 From Cava Require Import Arrow.ArrowExport.
 From ArrowExamples Require Import Combinators.
 

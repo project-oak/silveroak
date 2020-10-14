@@ -15,8 +15,8 @@
 (****************************************************************************)
 
 From Coq Require Import Bool ZArith NArith NaryFunctions Vector Lia.
-From Arrow Require Import Category Arrow.
-From Cava.Arrow Require Import CircuitArrow.
+From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
+From Cava Require Import Arrow.CircuitArrow Arrow.ArrowKind Arrow.Primitives.
 
 Import VectorNotations.
 Import EqNotations.

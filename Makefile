@@ -24,20 +24,15 @@
 # Clean everything:
 # make clean
 
-.PHONY: all third_party arrow-lib cava tests monad-examples \
+.PHONY: all third_party cava tests monad-examples \
 	arrow-examples silveroak-opentitan clean
 
-all:	third_party arrow-lib cava tests monad-examples \
+all:	third_party cava tests monad-examples \
 	arrow-examples silveroak-opentitan
 
 # Third party dependencies should be built first.
 third_party:
-	cd third_party && $(MAKE) 
-
-# arrow-lib is currently at the top level but should be folded
-# under the Arrow directory.
-arrow-lib:
-	cd arrow-lib && $(MAKE)
+	cd third_party && $(MAKE)
 
 # The cava targert builds the core Cava DSL.
 cava:
@@ -52,9 +47,9 @@ tests:
 monad-examples:
 	cd monad-examples && $(MAKE)
 
-# The arrow-example builds and tests the monad examples (except for
+# The arrow-example builds and tests the arrow examples (except for
 # the Xilinx-specific targets)
-arrow-monad-examples:
+arrow-examples:
 	cd arrow-examples && $(MAKE)
 
 # The silveroak-opentitan builds the targets developed for the
@@ -63,7 +58,6 @@ silveroak-opentitan:
 	cd silveroak-opentitan && $(MAKE)
 clean:
 	cd third_party && $(MAKE) clean
-	cd arrow-lib && $(MAKE) clean
 	cd cava && $(MAKE) clean
 	cd tests/xilinx && $(MAKE) clean
 	cd monad-examples && $(MAKE) clean

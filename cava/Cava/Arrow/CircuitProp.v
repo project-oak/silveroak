@@ -15,8 +15,10 @@
 (****************************************************************************)
 
 From Coq Require Import Bool ZArith NaryFunctions Vector.
-From Arrow Require Import Category Arrow .
+From Cava Require Import Arrow.Classes.Category.
+From Cava Require Import Arrow.Classes.Arrow.
 From Cava Require Import Arrow.CircuitArrow Arrow.CircuitSemantics.
+From Cava Require Import Arrow.ArrowKind Arrow.Primitives.
 
 Import VectorNotations.
 

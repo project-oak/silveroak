@@ -5,10 +5,12 @@ Require Import Coq.micromega.Lia.
 
 Require Import Cava.Arrow.ExprSyntax.
 Require Import Cava.Arrow.ExprEquiv.
+Require Import Cava.Arrow.ArrowKind.
+Require Import Cava.Arrow.Primitives.
 Require Import Cava.Arrow.CircuitArrow.
 
-Require Import Arrow.Category.
-Require Import Arrow.Arrow.
+Require Import Cava.Arrow.Classes.Category.
+Require Import Cava.Arrow.Classes.Arrow.
 
 Import ListNotations.
 Import EqNotations.
