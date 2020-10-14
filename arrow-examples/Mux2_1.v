@@ -14,7 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category.
 From Cava Require Import Arrow.ArrowExport.
 
 Require Import Coq.Strings.String.

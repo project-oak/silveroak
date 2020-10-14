@@ -14,7 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Arrow Require Import Category Arrow.
 From Cava Require Import Arrow.ArrowExport Arrow.CircuitFunctionalEquivalence
      BitArithmetic Tactics VectorUtils.
 From ArrowExamples Require Combinators.
