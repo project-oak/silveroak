@@ -87,153 +87,146 @@ Section Misc.
 End Misc.
 Hint Resolve rewrite_or_default_refl : circuit_spec_correctness.
 
+(* TODO: move *)
+Ltac kappa_spec_begin :=
+  intros; cbn [interp_combinational'];
+  repeat match goal with
+         | |- context [combinational_evaluation' (CircuitArrow.Primitive ?p)] =>
+           let x := constr:(combinational_evaluation' (CircuitArrow.Primitive p)) in
+           let y := (eval cbv [combinational_evaluation'] in x) in
+           progress change x with y
+         | _ => progress cbn [denote_kind primitive_input primitive_output]
+         end; fold denote_kind in *.
+
+Create HintDb kappa_interp discriminated.
+Ltac kappa_spec_step :=
+  match goal with
+  | H : context [interp_combinational' (_ coq_func) _ = _] |- _ => rewrite H by eauto
+  | _ => progress autorewrite with kappa_interp
+  | |- context [interp_combinational'] => kappa_spec_begin
+  end.
+Ltac kappa_spec := kappa_spec_begin; repeat kappa_spec_step.
+
+Notation kinterp x := (interp_combinational' (x coq_func)).
+
 (* Proofs of equivalence between circuit combinators and functional
    specifications *)
 Section CombinatorEquivalence.
-  Lemma replicate_correct A n :
-    obeys_spec (@Combinators.replicate n A)
-               (fun x : denote_kind A * unit => Vector.const (fst x) n).
-  Proof.
-    induction n; cbn [Combinators.replicate]; circuit_spec; reflexivity.
-  Qed.
-  Hint Resolve replicate_correct : circuit_spec_correctness.
 
-  Lemma reshape_correct {A} n m :
-    obeys_spec (@Combinators.reshape n m A)
-               (fun x : Vector.t (denote_kind A) _ * unit =>
-                  @reshape (denote_kind A) _ _ (fst x)).
+  Lemma replicate_correct A n (x : denote_kind A) :
+    kinterp (@Combinators.replicate n A) (x, tt) = @Vector.const (denote_kind A) x n.
   Proof.
-    induction n; intros; cbn [Combinators.reshape reshape].
-    { circuit_spec. reflexivity. }
-    { circuit_spec; [ ].  autorewrite with vsimpl.
-      repeat destruct_pair_let. reflexivity. }
+    induction n; cbn [Combinators.replicate]; kappa_spec; reflexivity.
   Qed.
-  Hint Resolve reshape_correct : circuit_spec_correctness.
+  Hint Rewrite @replicate_correct : kappa_interp.
 
-  Lemma map2_correct A B C n c (f : denote_kind A -> denote_kind B -> denote_kind C) :
-    @obeys_spec (Tuple A (Tuple B Unit)) C c
-                (fun abu : denote_kind A * (denote_kind B * unit) =>
-                   f (fst abu) (fst (snd abu))) ->
-    obeys_spec (@Combinators.map2 n A B C c)
-               (fun v1v2u : Vector.t (denote_kind A) n
-                          * (Vector.t (denote_kind B) n * unit) =>
-                  Vector.map2 f (fst v1v2u) (fst (snd v1v2u))).
+  Lemma reshape_correct {A} n m (x : Vector.t (denote_kind A) _) :
+    kinterp (@Combinators.reshape n m A) (x, tt) = reshape x.
   Proof.
-    induction n; cbn [Combinators.map2]; intros; circuit_spec;
+    induction n; intros; cbn [Combinators.reshape reshape]; kappa_spec;
+      repeat destruct_pair_let; reflexivity.
+  Qed.
+  Hint Rewrite @reshape_correct : kappa_interp.
+
+  Lemma map2_correct A B C n
+        (c : (Tuple A << B, Unit >> ~[ KappaCat ]~> C)%CategoryLaws) :
+    forall v1 v2,
+      kinterp (@Combinators.map2 n A B C c) (v1, (v2, tt))
+      = Vector.map2 (fun (a : denote_kind A) (b : denote_kind B) =>
+                       kinterp c (a, (b, tt))) v1 v2.
+  Proof.
+    induction n; cbn [Combinators.map2]; intros; kappa_spec;
       autorewrite with vsimpl; rewrite ?map2_cons; reflexivity.
   Qed.
-  Hint Resolve map2_correct : circuit_spec_correctness.
-  Hint Extern 2 (obeys_spec (Combinators.map2 _) _)
-  => (eapply map2_correct; circuit_spec_crush) : circuit_spec_correctness.
+  Hint Rewrite @map2_correct : kappa_interp.
 
-  Lemma map_correct A B n c (f : denote_kind A -> denote_kind B) :
-    @obeys_spec (Tuple A Unit) B c (fun x : denote_kind A * unit => f (fst x)) ->
-    obeys_spec (@Combinators.map n A B c)
-               (fun x : Vector.t (denote_kind A) _ * unit => Vector.map f (fst x)).
+  Lemma map_correct A B n
+        (c : (Tuple A Unit ~[ KappaCat ]~> B)%CategoryLaws) :
+    forall v,
+      kinterp (@Combinators.map n A B c) (v, tt)
+      = Vector.map (fun a : denote_kind A => kinterp c (a, tt)) v.
   Proof.
-    induction n; cbn [Combinators.map]; intros; circuit_spec;
+    induction n; cbn [Combinators.map]; intros; kappa_spec;
       autorewrite with vsimpl; rewrite ?map_cons; reflexivity.
   Qed.
-  Hint Resolve map_correct : circuit_spec_correctness.
-  Hint Extern 2 (obeys_spec (Combinators.map _) _)
-  => (eapply map_correct; circuit_spec_crush) : circuit_spec_correctness.
+  Hint Rewrite @map_correct : kappa_interp.
 
-  Lemma flatten_correct A n m :
-    obeys_spec (@Combinators.flatten n m A)
-               (fun x : Vector.t (Vector.t (denote_kind A) _) _ * unit =>
-                  @flatten (denote_kind _) _ _ (fst x)).
+  Lemma flatten_correct A n m (x : Vector.t (Vector.t (denote_kind A) _) _) :
+    kinterp (@Combinators.flatten n m A) (x, tt) = flatten x.
   Proof.
-    revert m; induction n; cbn [Combinators.flatten flatten]; intros.
-    { circuit_spec; reflexivity. }
-    { circuit_spec; [ ]. destruct_pair_let.
-      autorewrite with vsimpl. reflexivity. }
+    revert m x; induction n; cbn [Combinators.flatten flatten]; kappa_spec;
+      repeat destruct_pair_let; reflexivity.
   Qed.
-  Hint Resolve flatten_correct : circuit_spec_correctness.
+  Hint Rewrite @flatten_correct : kappa_interp.
 
-  Lemma reverse_correct A n :
-    obeys_spec (@Combinators.reverse n A)
-               (fun x : Vector.t (denote_kind A) _ * unit  =>
-                  @reverse (denote_kind A) _ (fst x)).
+  Lemma reverse_correct A n (x : Vector.t (denote_kind A) _):
+    kinterp (@Combinators.reverse n A) (x, tt) = reverse x.
   Proof.
-    induction n; cbn [Combinators.reverse reverse]; circuit_spec;
+    induction n; cbn [Combinators.reverse reverse]; kappa_spec;
       autorewrite with vsimpl; reflexivity.
   Qed.
-  Hint Resolve reverse_correct : circuit_spec_correctness.
+  Hint Rewrite @reverse_correct : kappa_interp.
 
-  Lemma foldl_correct A B n c (f : denote_kind B -> denote_kind A -> denote_kind B) :
-    @obeys_spec (Tuple B (Tuple A Unit)) _ c
-                (fun x : denote_kind B * (denote_kind A * unit) => f (fst x) (fst (snd x))) ->
-    obeys_spec (Combinators.foldl (n:=n) c)
-               (fun x : denote_kind B * (Vector.t (denote_kind A) _ * unit) =>
-                  Vector.fold_left f (fst x) (fst (snd x))).
+  Lemma foldl_correct A B n
+        (c : (Tuple B << A, Unit >> ~[ KappaCat ]~> B)%CategoryLaws) :
+    forall b v,
+      kinterp (Combinators.foldl (n:=n) c) (b, (v, tt))
+      = Vector.fold_left (fun (b : denote_kind B) (a : denote_kind A) =>
+                            kinterp c (b, (a, tt))) b v.
   Proof.
-    intros; induction n; cbn [Vector.fold_left Combinators.foldl]; circuit_spec.
-    { eapply Vector.case0 with (v:=fst (snd (fst _))). reflexivity. }
-    { autorewrite with push_vector_fold vsimpl. reflexivity. }
+    induction n; cbn [Vector.fold_left Combinators.foldl]; kappa_spec;
+      autorewrite with push_vector_fold; reflexivity.
   Qed.
-  Hint Resolve foldl_correct : circuit_spec_correctness.
-  Hint Extern 2 (obeys_spec (Combinators.foldl _) _)
-  => (eapply foldl_correct; circuit_spec_crush) : circuit_spec_correctness.
+  Hint Rewrite @foldl_correct : kappa_interp.
 
-  Lemma equality_correct A :
-    obeys_spec (@Combinators.equality A)
-               (fun x : denote_kind A * (denote_kind A * unit) =>
-                  denote_kind_eqb (fst x) (fst (snd x))).
+  Lemma equality_correct A (x y : denote_kind A) :
+    kinterp (@Combinators.equality A) (x, (y, tt)) = denote_kind_eqb x y.
   Proof.
     induction A; cbn [Combinators.equality denote_kind_eqb];
-      circuit_spec; auto using eqb_negb_xor.
+      kappa_spec; auto using eqb_negb_xor; [ ].
+    erewrite map2_ext; eauto.
   Qed.
-  Hint Resolve equality_correct : circuit_spec_correctness.
+  Hint Rewrite @equality_correct : kappa_interp.
 
-  Lemma enable_correct A :
-    obeys_spec (@Combinators.enable A)
-               (fun x : bool * (denote_kind A * unit) => enable (fst x) (fst (snd x))).
+  Lemma enable_correct A sel (x : denote_kind A) :
+    kinterp (@Combinators.enable A) (sel, (x, tt)) = enable sel x.
   Proof.
-    induction A; cbn [Combinators.enable enable]; circuit_spec;
+    induction A; cbn [Combinators.enable enable]; kappa_spec;
       try reflexivity; [ ].
-    rewrite map2_const. autorewrite with vsimpl. reflexivity.
+    rewrite map2_const. eauto using Vector.map_ext.
   Qed.
-  Hint Resolve enable_correct : circuit_spec_correctness.
+  Hint Rewrite @enable_correct : kappa_interp.
 
-  Lemma bitwise_correct A c op :
-    @obeys_spec (Tuple Bit (Tuple Bit Unit)) _ c
-                (fun x : bool * (bool * unit) => op (fst x) (fst (snd x))) ->
-    obeys_spec (@Combinators.bitwise A c)
-               (fun x : denote_kind A * (denote_kind A * unit) =>
-                  bitwise op (fst x) (fst (snd x))).
+  Lemma bitwise_correct A
+        (c : (Tuple Bit << Bit, Unit >> ~[ KappaCat ]~> Bit)%CategoryLaws) :
+    forall x y : denote_kind A,
+      kinterp (@Combinators.bitwise A c) (x, (y, tt))
+      = bitwise (fun a b : bool => kinterp c (a, (b, tt))) x y.
   Proof.
-    intros.
-    induction A; cbn [Combinators.bitwise bitwise]; circuit_spec;
+    induction A; cbn [Combinators.bitwise bitwise]; kappa_spec;
       autorewrite with vsimpl; auto.
+    eauto using map2_ext.
   Qed.
-  Hint Resolve bitwise_correct : circuit_spec_correctness.
-  Hint Extern 2 (obeys_spec (Combinators.bitwise _) _)
-  => (eapply bitwise_correct; circuit_spec_crush) : circuit_spec_correctness.
+  Hint Rewrite @bitwise_correct : kappa_interp.
 
-  Lemma mux_item_correct A :
-    obeys_spec (@Combinators.mux_item A)
-               (fun x : bool * (denote_kind A * (denote_kind A * unit)) =>
-                  if (fst x) then (fst (snd x)) else (fst (snd (snd x)))).
+  Definition mux {T} (sel : bool) (x y : T) : T := if sel then x else y.
+  Lemma mux_item_correct A sel (x y : denote_kind A):
+    kinterp (@Combinators.mux_item A) (sel, (x, (y, tt))) = mux sel x y.
   Proof.
-    cbv [Combinators.mux_item]; circuit_spec; [ ].
+    cbv [Combinators.mux_item]; kappa_spec; [ ].
     rewrite bitwise_or_enable. reflexivity.
   Qed.
-  Hint Resolve mux_item_correct : circuit_spec_correctness.
+  Hint Rewrite @mux_item_correct : kappa_interp.
 End CombinatorEquivalence.
 
-(* Restate all hints so they exist outside the section *)
-Hint Resolve mux_item_correct bitwise_correct enable_correct
-     equality_correct replicate_correct reshape_correct map2_correct
-     map_correct flatten_correct reverse_correct foldl_correct
-  : circuit_spec_correctness.
+(* needed to reduce typechecking time *)
+Global Opaque Combinators.mux_item Combinators.bitwise Combinators.enable
+       Combinators.equality Combinators.replicate Combinators.map2
+       Combinators.map Combinators.flatten Combinators.reverse
+       Combinators.foldl.
 
-(* Because the some lemmas produce an [obeys_spec] subgoal, we tell [eauto] it
-   can also try to solve their subgoals using [circuit_spec_crush] *)
-Hint Extern 2 (obeys_spec (Combinators.map _) _)
-=> (eapply map_correct; circuit_spec_crush) : circuit_spec_correctness.
-Hint Extern 2 (obeys_spec (Combinators.map2 _) _)
-=> (eapply map2_correct; circuit_spec_crush) : circuit_spec_correctness.
-  Hint Extern 2 (obeys_spec (Combinators.foldl _) _)
-  => (eapply foldl_correct; circuit_spec_crush) : circuit_spec_correctness.
-Hint Extern 2 (obeys_spec (Combinators.bitwise _) _)
-=> (eapply bitwise_correct; circuit_spec_crush) : circuit_spec_correctness.
+(* Restate all hints so they exist outside the section *)
+Hint Rewrite @mux_item_correct @bitwise_correct @enable_correct
+     @equality_correct @replicate_correct @reshape_correct @map2_correct
+     @map_correct @flatten_correct @reverse_correct @foldl_correct
+  using solve [eauto] : kappa_interp.
