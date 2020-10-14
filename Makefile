@@ -24,10 +24,10 @@
 # Clean everything:
 # make clean
 
-.PHONY: all third_party arrow-lib cava tests monad-examples \
+.PHONY: all third_party cava tests monad-examples \
 	arrow-examples silveroak-opentitan clean
 
-all:	third_party arrow-lib cava tests monad-examples \
+all:	third_party cava tests monad-examples \
 	arrow-examples silveroak-opentitan
 
 # Third party dependencies should be built first.
@@ -58,7 +58,6 @@ silveroak-opentitan:
 	cd silveroak-opentitan && $(MAKE)
 clean:
 	cd third_party && $(MAKE) clean
-	cd arrow-lib && $(MAKE) clean
 	cd cava && $(MAKE) clean
 	cd tests/xilinx && $(MAKE) clean
 	cd monad-examples && $(MAKE) clean
