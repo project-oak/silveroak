@@ -15,6 +15,7 @@
 (****************************************************************************)
 
 Require Import Cava.Tactics.
+Require Import Cava.VectorUtils.
 Require Import Cava.Arrow.ArrowExport.
 
 (* This file contains tactics and notations designed to simplify proofs that
@@ -34,8 +35,8 @@ Create HintDb kappa_interp discriminated.
 
 Ltac kappa_spec_step :=
   match goal with
-  | H : context [interp_combinational' (_ coq_func) _ = _] |- _ => rewrite H by eauto
   | _ => progress autorewrite with kappa_interp
+  | H : context [interp_combinational' (_ coq_func) _ = _] |- _ => rewrite H by eauto
   | |- context [interp_combinational'] => kappa_spec_begin
   end.
 Ltac kappa_spec := kappa_spec_begin; repeat kappa_spec_step.
@@ -49,7 +50,7 @@ Ltac derive_spec_done :=
   repeat match goal with
          | x := _ |- _ => subst x
          end;
-  instantiate_app_by_reflexivity.
+  (instantiate_app_by_reflexivity || reflexivity).
 Ltac derive_spec_simplify :=
   repeat match goal with
          | |- context [let '(x, _) := ?p in x] =>
@@ -63,6 +64,34 @@ Ltac derive_spec :=
   | |- ?x => fail "goal does not include interp_combinational:" x
   end;
   intros; derive_spec_simplify; kappa_spec; derive_spec_done.
+
+Ltac derive_map_spec :=
+  match goal with
+  | |- context [Vector.map ?f] =>
+    match f with
+    | context [interp_combinational'] => idtac
+    end;
+    match type of f with
+    | ?t =>
+      let g := fresh "g" in
+      evar (g:t);
+      erewrite (Vector.map_ext _ _ f g) by derive_spec
+    end
+  end.
+
+Ltac derive_foldl_spec :=
+  match goal with
+  | |- context [Vector.fold_left ?f] =>
+    match f with
+    | context [interp_combinational'] => idtac
+    end;
+    match type of f with
+    | ?t =>
+      let g := fresh "g" in
+      evar (g:t);
+      erewrite (fold_left_ext f g) by derive_spec
+    end
+  end.
 
 (* convenient notation *)
 Notation kinterp x := (interp_combinational' (x coq_func)).
