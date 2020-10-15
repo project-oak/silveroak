@@ -29,6 +29,6 @@ Aes/key_expand.v
 Aes/cipher_control.v
 Aes/netlists.v
 Aes/aes_test.v
-Aes/CipherProperties.v
+Aes/NaiveCipherProperties.v
 
 ArrowExtraction.v
