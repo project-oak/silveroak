@@ -211,6 +211,7 @@ new list Kind variable in to place*)
   2. 'assoc': move the argument to the front of the list Kind via reassociation
       assoc:      y*(x*list Kind_variables) ~> o
 
+
   3. call f'
       f':         y*new_list Kind_variables ~> o
   *)
@@ -261,23 +262,23 @@ removes the list Kind, we first need to copy the list Kind. *)
     >>> f'
 end.
 
-Lemma lower_var: forall x (v: _ Unit x) ctxt,
+Lemma lower_var: forall x (v: _ x) ctxt,
   closure_conversion' ctxt (Var v)
   = first drop >>> cancell >>> (extract_nth ctxt _ v).
 Proof. reflexivity. Qed.
 
-Lemma lower_var': forall x (v: _ Unit x) ctxt cv,
+Lemma lower_var': forall x (v: _ x) ctxt cv,
   cv = extract_nth ctxt _ v ->
   closure_conversion' ctxt (Var v)
   = first drop >>> cancell >>> cv.
 Proof. intros; subst; reflexivity. Qed.
 
-Lemma lower_abs: forall x y z (f: _ Unit x -> kappa _ y z) ctxt,
+Lemma lower_abs: forall x y z (f: _ x -> kappa _ y z) ctxt,
   closure_conversion' ctxt (Abs f)
   = first swap >>> assoc >>> closure_conversion' (_ :: ctxt) (f (length ctxt)).
 Proof. intros; cbn [closure_conversion']; reflexivity. Qed.
 
-Lemma lower_abs': forall x y z (f: _ Unit x -> kappa _ y z) ctxt c1,
+Lemma lower_abs': forall x y z (f: _ x -> kappa _ y z) ctxt c1,
   c1 = closure_conversion' (_ :: ctxt) (f (length ctxt)) ->
   closure_conversion' ctxt (Abs f) = first swap >>> assoc >>> c1.
 Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
@@ -337,7 +338,7 @@ Lemma lower_remove_context': forall x y (e: kappa _ x y) ctxt c1,
   = second drop >>> c1.
 Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
 
-Lemma lower_let: forall x y z (f: _ Unit x -> kappa _ y z) v ctxt,
+Lemma lower_let: forall x y z (f: _ x -> kappa _ y z) v ctxt,
   closure_conversion' ctxt (Let v f)
   = second (copy >>> first (uncancell
     >>> closure_conversion' ctxt v))
@@ -345,7 +346,7 @@ Lemma lower_let: forall x y z (f: _ Unit x -> kappa _ y z) v ctxt,
   >>> first swap >>> assoc >>> (closure_conversion' (_ :: ctxt) (f (length ctxt))).
 Proof. reflexivity. Qed.
 
-Lemma lower_let': forall x y z (f: _ Unit x -> kappa _ y z) v ctxt c1 c2,
+Lemma lower_let': forall x y z (f: natvar x -> kappa _ y z) v ctxt c1 c2,
   c1 = closure_conversion' ctxt v ->
   c2 = closure_conversion' (_::ctxt) (f (length ctxt)) ->
   closure_conversion' ctxt (Let v f)
@@ -354,14 +355,14 @@ Lemma lower_let': forall x y z (f: _ Unit x -> kappa _ y z) v ctxt c1 c2,
   >>> first swap >>> assoc >>> c2.
 Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
 
-Lemma lower_letrec: forall x y z (f: _ Unit x -> kappa _ y z) v ctxt,
+Lemma lower_letrec: forall x y z (f: _ x -> kappa _ y z) v ctxt,
   closure_conversion' ctxt (LetRec v f) =
   second (copy >>> first (uncancell >>> loopr (assoc >>> second swap
           >>> closure_conversion' (_ :: ctxt) (v (length ctxt)) >>> copy)))
  >>> closure_conversion' (_ :: ctxt) (f (length ctxt)).
 Proof. reflexivity. Qed.
 
-Lemma lower_letrec': forall x y z (f: _ Unit x -> kappa _ y z) v ctxt c1 c2,
+Lemma lower_letrec': forall x y z (f: natvar x -> kappa _ y z) v ctxt c1 c2,
   c1 = closure_conversion' (_ :: ctxt) (v (length ctxt)) ->
   c2 = closure_conversion' (_ :: ctxt) (f (length ctxt)) ->
   closure_conversion' ctxt (LetRec v f) =
@@ -369,23 +370,23 @@ Lemma lower_letrec': forall x y z (f: _ Unit x -> kappa _ y z) v ctxt c1 c2,
     >>> c2.
 Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
 
-Notation variable_pair i o n1 n2 := (vars natvar natvar (obj_pair i o) (pair n1 n2)).
+Notation variable_pair t n1 n2 := (@vars natvar natvar t (pair n1 n2)).
 
 (* Evidence of variable pair equality *)
-Notation match_pairs xo xn yi yo yn1 yn2 :=
-  (variable_pair Unit xo xn xn = variable_pair yi yo yn1 yn2).
+Notation match_pairs xt xn yt yn1 yn2 :=
+  (variable_pair xt xn xn = variable_pair yt yn1 yn2).
 
 (* Evidence that if a given variable is in an list Kind we can reverse_nth the Kind at the index. *)
 Notation ok_variable_lookup := (fun ctxt E =>
-  forall (i o : Kind) (n1 n2 : natvar i o),
-    In (vars natvar natvar (obj_pair i o) (pair n1 n2)) E
-    -> reverse_nth ctxt n1 = Some o
+  forall (t : Kind) (n1 n2 : natvar t),
+    In (vars natvar natvar (pair n1 n2)) E
+    -> reverse_nth ctxt n1 = Some t
 ).
 
 (* Recovering a dependent value requires recovering the type equality first to prevent the
 value equality disappearing. *)
-Lemma recover_dependent_val: forall xo xn yi yo yn1 yn2,
-  match_pairs xo xn yi yo yn1 yn2 -> (xn = yn1 /\ xo = yo).
+Lemma recover_dependent_val: forall xt xn yt yn1 yn2,
+  match_pairs xt xn yt yn1 yn2 -> (xn = yn1 /\ xt = yt).
 Proof.
   intros.
   inversion H.
@@ -403,18 +404,18 @@ Hint Extern 10 =>
 
 Hint Extern 20 => eapply recover_dependent_val : kappa_cc.
 
-Lemma apply_lookup : forall (ctxt: list Kind) i o n1 n2 E,
-  In (variable_pair i o n1 n2) E
+Lemma apply_lookup : forall (ctxt: list Kind) t n1 n2 E,
+  In (variable_pair t n1 n2) E
   -> ok_variable_lookup ctxt E
-  -> reverse_nth ctxt n1 = Some o.
+  -> reverse_nth ctxt n1 = Some t.
 Proof. auto with kappa_cc. Qed.
 
 Hint Resolve split_lookup : kappa_cc.
 
-Lemma apply_extended_lookup: forall ctxt v1 v2 y i o E,
-  match_pairs y (length ctxt) i o v1 v2 \/ In (vars natvar natvar (obj_pair i o) (pair v1 v2)) E
+Lemma apply_extended_lookup: forall ctxt v1 v2 y t E,
+  match_pairs y (length ctxt) t v1 v2 \/ In (@vars natvar natvar t (pair v1 v2)) E
   -> ok_variable_lookup ctxt E
-  -> reverse_nth (y :: ctxt) v1 = Some o.
+  -> reverse_nth (y :: ctxt) v1 = Some t.
 Proof. eauto 7 with kappa_cc. Qed.
 
 Hint Immediate apply_lookup : kappa_cc.
