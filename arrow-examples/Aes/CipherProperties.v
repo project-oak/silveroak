@@ -16,7 +16,6 @@
 
 Require Import Coq.Strings.String.
 From Coq Require Import Derive.
-From Arrow Require Import Category Arrow.
 From Cava Require Import Arrow.ArrowExport Arrow.CircuitFunctionalEquivalence
      BitArithmetic Tactics VectorUtils.
 
