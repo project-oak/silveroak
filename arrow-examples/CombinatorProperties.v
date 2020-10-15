@@ -50,6 +50,8 @@ Section Specs.
       fun x y => (bitwise op (fst x) (fst y), bitwise op (snd x) (snd y))
     | Vector T n => fun x y => Vector.map2 (bitwise op) x y
     end.
+
+  Definition mux {T} (sel : bool) (x y : T) : T := if sel then x else y.
 End Specs.
 
 Lemma Wf_equivalence {i o} (expr : Kappa i o) :
@@ -280,7 +282,6 @@ Section CombinatorEquivalence.
   Qed.
   Hint Rewrite @bitwise_correct : kappa_interp.
 
-  Definition mux {T} (sel : bool) (x y : T) : T := if sel then x else y.
   Lemma mux_item_correct A sel (x y : denote_kind A):
     kinterp (@Combinators.mux_item A) (sel, (x, (y, tt))) = mux sel x y.
   Proof.
