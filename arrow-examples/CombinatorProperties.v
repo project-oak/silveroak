@@ -14,8 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Cava Require Import Arrow.ArrowExport Arrow.CircuitFunctionalEquivalence
-     BitArithmetic Tactics VectorUtils.
+From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec BitArithmetic
+     Tactics VectorUtils.
 From ArrowExamples Require Combinators.
 
 (* Functional specifications for circuit combinators *)
@@ -179,28 +179,6 @@ Section Misc.
              end.
   Qed.
 End Misc.
-
-(* TODO: move *)
-Ltac kappa_spec_begin :=
-  intros; cbn [interp_combinational'];
-  repeat match goal with
-         | |- context [combinational_evaluation' (CircuitArrow.Primitive ?p)] =>
-           let x := constr:(combinational_evaluation' (CircuitArrow.Primitive p)) in
-           let y := (eval cbv [combinational_evaluation'] in x) in
-           progress change x with y
-         | _ => progress cbn [denote_kind primitive_input primitive_output]
-         end; fold denote_kind in *.
-
-Create HintDb kappa_interp discriminated.
-Ltac kappa_spec_step :=
-  match goal with
-  | H : context [interp_combinational' (_ coq_func) _ = _] |- _ => rewrite H by eauto
-  | _ => progress autorewrite with kappa_interp
-  | |- context [interp_combinational'] => kappa_spec_begin
-  end.
-Ltac kappa_spec := kappa_spec_begin; repeat kappa_spec_step.
-
-Notation kinterp x := (interp_combinational' (x coq_func)).
 
 (* Proofs of equivalence between circuit combinators and functional
    specifications *)

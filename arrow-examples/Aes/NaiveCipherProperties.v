@@ -16,8 +16,8 @@
 
 Require Import Coq.Strings.String.
 From Coq Require Import Derive.
-From Cava Require Import Arrow.ArrowExport Arrow.CircuitFunctionalEquivalence
-     BitArithmetic Tactics VectorUtils.
+From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec BitArithmetic
+     Tactics VectorUtils.
 
 From ArrowExamples Require Import CombinatorProperties Aes.cipher_round Aes.unrolled_naive_cipher.
 
@@ -77,31 +77,6 @@ Section Wf.
     forall sbox_impl, Wf (unrolled_cipher_naive sbox_impl).
   Proof. cbv [unrolled_cipher_naive]; prove_Wf. Qed.
 End Wf.
-
-Local Ltac derived_spec_done :=
-  lazymatch goal with
-  | |- context [interp_combinational' ?x] =>
-    fail "derived spec still contains disallowed term: interp_combinational'" x
-  | _ => idtac
-  end;
-  repeat match goal with
-         | x := _ |- _ => subst x
-         end;
-  instantiate_app_by_reflexivity.
-
-Local Ltac spec_simplify :=
-  repeat match goal with
-         | |- context [let '(x, _) := ?p in x] =>
-           change (let '(x, _) := p in x) with (fst p)
-         | |- context [let '(_, x) := ?p in x] =>
-           change (let '(_, x) := p in x) with (snd p)
-         end.
-Local Ltac derive_spec :=
-  match goal with
-  | |- context [interp_combinational'] => idtac
-  | |- ?x => fail "goal does not include interp_combinational:" x
-  end;
-  intros; spec_simplify; kappa_spec; derived_spec_done.
 
 Section Equivalence.
   Context {CircuitLaws : CategoryLaws CircuitCat}.
@@ -187,7 +162,7 @@ Section Equivalence.
            | |- context [Vector.fold_left ?f] =>
              erewrite (fold_left_ext f) by derive_spec
            end.
-    derived_spec_done.
+    derive_spec_done.
   Qed.
   Hint Rewrite @unrolled_cipher_naive'_spec_correct : kappa_interp.
   Opaque unrolled_cipher_naive'.
