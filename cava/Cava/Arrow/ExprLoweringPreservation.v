@@ -17,8 +17,8 @@
 Require Import Coq.Init.Nat.
 Require Import Coq.Lists.List.
 Require Import coqutil.Tactics.Tactics.
-Require Import Arrow.Arrow.
-Require Import Arrow.Category.
+Require Import Cava.Arrow.Classes.Arrow.
+Require Import Cava.Arrow.Classes.Category.
 Require Import Arrow.CircuitArrow.
 Require Import Cava.Arrow.ArrowKind.
 Require Import Cava.Arrow.CircuitProp.
@@ -111,7 +111,7 @@ Lemma no_letrec_unitvar_equiv
   no_letrec expr2.
 Proof.
   induction 1; intros; cbn [no_letrec] in *; destruct_products; solve [eauto].
-  Unshelve. apply tt.
+  Unshelve. all: apply tt.
 Qed.
 
 Lemma closure_conversion'_preserves_semantics i o :
@@ -152,8 +152,18 @@ Proof.
     erewrite IHkappa_equivalence1, IHkappa_equivalence2 by eauto.
     reflexivity. }
   { (* Primitive *) reflexivity. }
+  { (* Let *)
+    erewrite IHkappa_equivalence by eauto.
+    match goal with
+    | IH : _ |- _ => erewrite IH with (ctxt_types:=_ :: ctxt_types)
+    end; [ reflexivity | solve [eauto] | ].
+    apply Forall_cons; [ solve [apply extend_context_entry_ok_hd] | ].
+    eapply Forall_impl; [ | eassumption].
+    apply extend_context_entry_ok_tl. }
   { (* LetRec *) tauto. }
   { (* Id *) reflexivity. }
+  { (* RemoveContext *)
+    erewrite IHkappa_equivalence with (ctxt_types:=nil); eauto. }
 Qed.
 
 Theorem closure_conversion_preserves_semantics i o (expr : Kappa i o) x :

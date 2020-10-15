@@ -44,6 +44,18 @@ Set Asymmetric Patterns.
 
     | Prim_equiv : forall E p, kappa_equivalence E (ExprSyntax.Primitive p) (ExprSyntax.Primitive p)
 
+    | Let_equiv : forall x y z
+      (v1: kappa var1 Unit x)
+      (v2: kappa var2 Unit x)
+      (f1: var1 x -> kappa var1 y z)
+      (f2: var2 x -> kappa var2 y z)
+      (E: ctxt),
+      kappa_equivalence E v1 v2
+      ->
+      (forall n1 n2, kappa_equivalence (vars (pair n1 n2) :: E) (f1 n1) (f2 n2))
+      ->
+      kappa_equivalence E (Let v1 f1) (Let v2 f2)
+
     | Letrec_equiv : forall x y z
       (v1: var1 x -> kappa var1 Unit x)
       (v2: var2 x -> kappa var2 Unit x)
@@ -57,6 +69,13 @@ Set Asymmetric Patterns.
       kappa_equivalence E (LetRec v1 f1) (LetRec v2 f2)
 
     | Id_equiv : forall x E, kappa_equivalence E (@Id var1 x) Id
+
+    | RemoveContext_equiv : forall x y E
+      (f1 : kappa var1 x y)
+      (f2 : kappa var2 x y),
+      kappa_equivalence nil f1 f2
+      ->
+      kappa_equivalence E (RemoveContext f1) (RemoveContext f2)
     .
 
   End Equivalence.
