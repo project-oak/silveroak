@@ -19,38 +19,10 @@ From Coq Require Import Derive.
 From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec BitArithmetic
      Tactics VectorUtils.
 
-From ArrowExamples Require Import CombinatorProperties Aes.cipher_round Aes.unrolled_naive_cipher.
-
-Module Vector.
-  (* matches pkg.aes_transpose; uses snoc/unsnoc instead of cons/tl *)
-  Fixpoint transpose_rev {A n m} : Vector.t (Vector.t A m) n -> Vector.t (Vector.t A n) m :=
-    match n with
-    | O => fun _ => Vector.const (Vector.nil _) _
-    | S n' =>
-      fun mat =>
-        let r := unsnoc mat in
-        let mat' := fst r in
-        let vec := snd r in
-        Vector.map2 snoc (transpose_rev mat') vec
-    end.
-
-  (* Alternate version of vtranspose_rev *)
-  Fixpoint transpose {A n m}
-    : Vector.t (Vector.t A n) m -> Vector.t (Vector.t A m) n :=
-    match m with
-    | 0 => fun _ => Vector.const (Vector.nil _) _
-    | S m' =>
-      fun v : Vector.t (Vector.t A n) (S m') =>
-        Vector.map2 (fun x v => Vector.cons _ x m' v)
-                    (Vector.hd v) (transpose (Vector.tl v))
-    end.
-End Vector.
+From ArrowExamples Require Import CombinatorProperties PkgProperties
+     Aes.cipher_round Aes.unrolled_naive_cipher.
 
 Section Wf.
-  Lemma aes_transpose_Wf n m : Wf (@pkg.aes_transpose n m).
-  Proof. induction n; cbn [pkg.aes_transpose]; prove_Wf. Qed.
-  Hint Resolve aes_transpose_Wf : Wf.
-
   Axiom aes_256_naive_key_expansion_Wf :
     forall sbox_impl, Wf (aes_256_naive_key_expansion sbox_impl).
   Axiom cipher_round_Wf :
@@ -60,13 +32,6 @@ Section Wf.
   Axiom aes_mix_columns_Wf : Wf mix_columns.aes_mix_columns.
   Hint Resolve aes_256_naive_key_expansion_Wf
        cipher_round_Wf final_cipher_round_Wf aes_mix_columns_Wf : Wf.
-
-  Lemma CIPH_FWD_Wf : Wf (pkg.CIPH_FWD).
-  Proof. cbv [pkg.CIPH_FWD]; prove_Wf. Qed.
-  Hint Resolve CIPH_FWD_Wf : Wf.
-  Lemma CIPH_INV_Wf : Wf (pkg.CIPH_INV).
-  Proof. cbv [pkg.CIPH_INV]; prove_Wf. Qed.
-  Hint Resolve CIPH_INV_Wf : Wf.
 
   Lemma unrolled_cipher_naive'_Wf :
     forall sbox_impl, Wf (unrolled_cipher_naive' sbox_impl).
@@ -79,19 +44,6 @@ Section Wf.
 End Wf.
 
 Section Equivalence.
-  Context {CircuitLaws : CategoryLaws CircuitCat}.
-
-  Lemma aes_transpose_correct n m (x : Vector.t (Vector.t (Vector.t bool _) _) _) :
-    kinterp (@pkg.aes_transpose n m) (x, tt) = Vector.transpose_rev x.
-  Proof.
-    revert m x; induction n; cbn [pkg.aes_transpose Vector.transpose_rev];
-      kappa_spec; [ reflexivity | ].
-    repeat destruct_pair_let. cbn [fst snd].
-    autorewrite with vsimpl. reflexivity.
-  Qed.
-  Hint Rewrite @aes_transpose_correct : kappa_interp.
-  Opaque pkg.aes_transpose.
-
   Axiom aes_256_naive_key_expansion_spec :
     pkg.SboxImpl ->
     Vector.t (Vector.t (Vector.t bool 8) 4) 8 ->
@@ -137,14 +89,6 @@ Section Equivalence.
   Hint Rewrite @aes_mix_columns_correct : kappa_interp.
   Opaque mix_columns.aes_mix_columns.
 
-  Axiom CIPH_FWD_correct :
-    interp_combinational' (pkg.CIPH_FWD coq_func) tt = false.
-  Axiom CIPH_INV_correct :
-    interp_combinational' (pkg.CIPH_INV coq_func) tt = true.
-  Hint Rewrite @CIPH_FWD_correct @CIPH_INV_correct : kappa_interp.
-  Opaque pkg.CIPH_FWD pkg.CIPH_INV.
-
-
   Derive unrolled_cipher_naive'_spec
          SuchThat (forall (sbox_impl : pkg.SboxImpl) (op_i : bool)
                      (data : Vector.t (Vector.t (Vector.t bool 8) 4) 4)
@@ -152,7 +96,7 @@ Section Equivalence.
                       kinterp (unrolled_cipher_naive' sbox_impl)
                               (op_i, (data, (key, tt)))
                       = unrolled_cipher_naive'_spec sbox_impl op_i data key)
-         As unrolled_cipher_naive'_spec_correct.
+         As unrolled_cipher_naive'_correct.
   Proof.
     cbv [unrolled_cipher_naive']; kappa_spec.
     repeat destruct_pair_let.
@@ -164,7 +108,7 @@ Section Equivalence.
            end.
     derive_spec_done.
   Qed.
-  Hint Rewrite @unrolled_cipher_naive'_spec_correct : kappa_interp.
+  Hint Rewrite @unrolled_cipher_naive'_correct : kappa_interp.
   Opaque unrolled_cipher_naive'.
 
   Derive unrolled_cipher_naive_spec
@@ -174,4 +118,9 @@ Section Equivalence.
             = unrolled_cipher_naive_spec sbox_impl op_i data key)
          As unrolled_cipher_naive_correct.
   Proof. cbv [unrolled_cipher_naive]. derive_spec. Qed.
+  Hint Rewrite @unrolled_cipher_naive_correct : kappa_interp.
+  Opaque unrolled_cipher_naive.
 End Equivalence.
+Hint Rewrite @unrolled_cipher_naive'_correct
+     @unrolled_cipher_naive_correct using solve [eauto] : kappa_interp.
+Global Opaque unrolled_cipher_naive' unrolled_cipher_naive.
