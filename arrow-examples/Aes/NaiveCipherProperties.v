@@ -26,7 +26,7 @@ Section Wf.
   Context (aes_256_naive_key_expansion_Wf :
              forall sbox_impl, Wf (aes_256_naive_key_expansion sbox_impl))
           (cipher_round_Wf :
-             forall sbox_impl, Wf (Combinators.curry (cipher_round sbox_impl)))
+             forall sbox_impl, Wf (cipher_round sbox_impl))
           (final_cipher_round_Wf :
              forall sbox_impl, Wf (final_cipher_round sbox_impl))
           (aes_mix_columns_Wf : Wf mix_columns.aes_mix_columns).
@@ -59,10 +59,10 @@ Section Equivalence.
              Vector.t (Vector.t (Vector.t bool 8) 4) 4 ->
              Vector.t (Vector.t (Vector.t bool 8) 4) 4)
           (cipher_round_correct :
-             forall sbox_impl op_i_state key,
-               kinterp (Combinators.curry (cipher_round sbox_impl))
-                       (op_i_state, (key, tt))
-               = cipher_round_spec sbox_impl (fst op_i_state) (snd op_i_state) key)
+             forall sbox_impl op_i state key,
+               kinterp (cipher_round sbox_impl)
+                       (op_i, (state, (key, tt)))
+               = cipher_round_spec sbox_impl op_i state key)
           (final_cipher_round_spec :
              pkg.SboxImpl -> bool ->
              Vector.t (Vector.t (Vector.t bool 8) 4) 4 ->
