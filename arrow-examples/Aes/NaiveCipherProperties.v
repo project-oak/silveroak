@@ -44,16 +44,6 @@ Module Vector.
         Vector.map2 (fun x v => Vector.cons _ x m' v)
                     (Vector.hd v) (transpose (Vector.tl v))
     end.
-
-  Lemma fold_left_ext {A B} (f g : B -> A -> B) n b v :
-    (forall b a, f b a = g b a) ->
-    @Vector.fold_left A B f b n v = Vector.fold_left g b v.
-  Proof.
-    intro Hfg. revert b.
-    induction n; intros; autorewrite with push_vector_fold;
-      [ reflexivity | ].
-    rewrite IHn, Hfg. reflexivity.
-  Qed.
 End Vector.
 
 Section Wf.
@@ -113,7 +103,7 @@ Local Ltac derive_spec :=
   end;
   intros; spec_simplify; kappa_spec; derived_spec_done.
 
-Section NaiveCipher.
+Section Equivalence.
   Context {CircuitLaws : CategoryLaws CircuitCat}.
 
   Lemma aes_transpose_correct n m (x : Vector.t (Vector.t (Vector.t bool _) _) _) :
@@ -195,7 +185,7 @@ Section NaiveCipher.
            | |- context [Vector.map ?f] =>
              erewrite (Vector.map_ext _ _ f) by derive_spec
            | |- context [Vector.fold_left ?f] =>
-             erewrite (Vector.fold_left_ext f) by derive_spec
+             erewrite (fold_left_ext f) by derive_spec
            end.
     derived_spec_done.
   Qed.
@@ -209,4 +199,4 @@ Section NaiveCipher.
             = unrolled_cipher_naive_spec sbox_impl op_i data key)
          As unrolled_cipher_naive_correct.
   Proof. cbv [unrolled_cipher_naive]. derive_spec. Qed.
-End NaiveCipher.
+End Equivalence.

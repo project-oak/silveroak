@@ -281,6 +281,16 @@ Section VectorFacts.
       Vector.fold_left f b v = b.
   Proof. eapply case0 with (v:=v). reflexivity. Qed.
 
+  Lemma fold_left_ext {A B} (f g : B -> A -> B) n b v :
+    (forall b a, f b a = g b a) ->
+    @Vector.fold_left A B f b n v = Vector.fold_left g b v.
+  Proof.
+    intro Hfg. revert b.
+    induction n; intros; rewrite ?fold_left_0, ?fold_left_S;
+      [ reflexivity | ].
+    rewrite IHn, Hfg. reflexivity.
+  Qed.
+
   Lemma fold_left_append {A B} (f : A -> B -> A) :
     forall n m start (v1 : t B n) (v2 : t B m),
       Vector.fold_left f start (v1 ++ v2)%vector
