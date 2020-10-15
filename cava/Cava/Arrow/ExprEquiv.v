@@ -62,6 +62,3 @@ Set Asymmetric Patterns.
   End Equivalence.
 
   Definition Wf {i o} (e: Kappa i o) := forall var1 var2, kappa_equivalence [] (e var1) (e var2).
-
-  Axiom Kappa_equivalence : forall {i o} (expr: forall var, kappa var i o), Wf expr.
-(* End Arrow. *)

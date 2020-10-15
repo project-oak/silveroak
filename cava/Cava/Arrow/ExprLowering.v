@@ -440,10 +440,10 @@ Qed.
 
 Hint Resolve kappa_wf : kappa_cc.
 
-Theorem Kappa_wf: forall {i o} (expr: forall var, kappa var i o), wf_phoas_context [] (expr _).
+Theorem Kappa_wf: forall {i o} (expr: forall var, kappa var i o),
+    Wf expr -> wf_phoas_context [] (expr _).
 Proof.
-  Hint Extern 5 (kappa_equivalence _ _ _) => apply Kappa_equivalence : kappa_cc.
-  eauto with kappa_cc.
+  cbv [Wf]; eauto with kappa_cc.
 Qed.
 
 Definition closure_conversion {i o} (expr: Kappa i o) : i ~> o
