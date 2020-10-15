@@ -237,11 +237,20 @@ Definition greaterThanOrEqualNet {m n : nat}
   addInstance (GreaterThanOrEqual (VecLit a) (VecLit b) comparison) ;;
   ret comparison.
 
+Definition instantiateNet (intf : CircuitInterface)
+                          (circuit : signalSmashTy (mapShape port_shape (circuitInputs intf)) ->
+                                     state CavaState (signalSmashTy (mapShape port_shape (circuitOutputs intf))))
+                          (a : signalSmashTy (mapShape port_shape (circuitInputs intf)))
+                          : state CavaState (signalSmashTy (mapShape port_shape (circuitOutputs intf))) :=
+  let cs := makeNetlist intf circuit in
+  addModule intf (module cs) ;;
+  x <- blackBox intf a ;;
+  ret x.
+
 (******************************************************************************)
 (* Instantiate the Cava class for CavaNet which describes circuits without    *)
 (* any top-level pins or other module-level data                              *)
 (******************************************************************************)
-
 Instance CavaNet : Cava (state CavaState) (Signal _) :=
   { zero := ret Gnd;
     one := ret Vcc;
@@ -270,4 +279,5 @@ Instance CavaNet : Cava (state CavaState) (Signal _) :=
     slice k sz start len v h := @sliceNet k sz start len v h;
     unsignedAdd m n := @unsignedAddNet m n;
     greaterThanOrEqual m n := @greaterThanOrEqualNet m n;
+    instantiate := instantiateNet;
 }.

@@ -19,6 +19,7 @@ Require Import ExtLib.Structures.Monads.
 
 From Cava Require Import Kind.
 From Cava Require Import Types.
+From Cava Require Import Netlist.
 
 (* The Cava class represents circuit graphs with Coq-level inputs and
    outputs, but does not represent the IO ports of circuits. This allows
@@ -73,4 +74,13 @@ Class Cava m `{Monad m} bit := {
   (* Synthesizable relational operators *)
   greaterThanOrEqual : forall {a b : nat}, Vector.t bit a -> Vector.t bit b ->
                        m bit;
-}.
+  (* Hierarchy *)
+  doSomethingToOne := smashTy bit;
+  instantiate : forall (intf: CircuitInterface),
+                 (denote doSomethingToOne (mapShape port_shape (circuitInputs intf)) ->
+                 m (denote doSomethingToOne (mapShape port_shape (circuitOutputs intf)))) ->
+                 denote doSomethingToOne (mapShape port_shape (circuitInputs intf)) ->
+                 m (denote doSomethingToOne (mapShape port_shape (circuitOutputs intf)));
+}.               
+
+

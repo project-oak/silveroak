@@ -40,6 +40,7 @@ cava:
 
 # The cava target runs the unit tests for the Cava DSL
 tests:
+	cd tests && $(MAKE)
 	cd tests/xilinx && $(MAKE) extraction
 
 # The monad-example builds and tests the monad examples (except for
@@ -59,6 +60,7 @@ silveroak-opentitan:
 clean:
 	cd third_party && $(MAKE) clean
 	cd cava && $(MAKE) clean
+	cd tests && $(MAKE) clean
 	cd tests/xilinx && $(MAKE) clean
 	cd monad-examples && $(MAKE) clean
 	cd arrow-examples && $(MAKE) clean
