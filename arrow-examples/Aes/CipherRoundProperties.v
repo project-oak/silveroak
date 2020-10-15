@@ -40,26 +40,28 @@ Section Wf.
 End Wf.
 Hint Resolve cipher_round_Wf final_cipher_round_Wf : Wf.
 
+(* These need to be axioms instead of context variables for
+   [autorewrite with kappa_interp] to work as intended *)
+Axiom aes_sub_bytes_spec :
+  pkg.SboxImpl -> bool -> Vector.t (Vector.t (Vector.t bool 8) 4) 4
+  -> Vector.t (Vector.t (Vector.t bool 8) 4) 4.
+Axiom aes_shift_rows_spec :
+  bool -> Vector.t (Vector.t (Vector.t bool 8) 4) 4
+  -> Vector.t (Vector.t (Vector.t bool 8) 4) 4.
+Axiom aes_mix_columns_spec :
+  bool ->  Vector.t (Vector.t (Vector.t bool 8) 4) 4
+  -> Vector.t (Vector.t (Vector.t bool 8) 4) 4.
+
 Section Equivalence.
   Local Notation byte := (Vector.t bool 8) (only parsing).
-  Context (aes_sub_bytes_spec :
-             pkg.SboxImpl -> bool ->
-             Vector.t (Vector.t byte 4) 4 ->
-             Vector.t (Vector.t byte 4) 4)
-          (aes_sub_bytes_correct :
+  Context (aes_sub_bytes_correct :
              forall sbox_impl op_i state,
                kinterp (aes_sub_bytes sbox_impl) (op_i, (state, tt))
                = aes_sub_bytes_spec sbox_impl op_i state)
-          (aes_shift_rows_spec :
-             bool -> Vector.t (Vector.t byte 4) 4 ->
-             Vector.t (Vector.t byte 4) 4)
           (aes_shift_rows_correct :
              forall op_i state,
                kinterp aes_shift_rows (op_i, (state, tt))
                = aes_shift_rows_spec op_i state)
-          (aes_mix_columns_spec :
-             bool ->  Vector.t (Vector.t byte 4) 4 ->
-             Vector.t (Vector.t byte 4) 4)
           (aes_mix_columns_correct :
              forall op_i state,
                kinterp mix_columns.aes_mix_columns (op_i, (state, tt))

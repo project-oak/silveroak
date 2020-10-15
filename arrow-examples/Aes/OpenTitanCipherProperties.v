@@ -20,18 +20,17 @@ From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec BitArithmetic
      Tactics VectorUtils.
 
 From ArrowExamples Require Import CombinatorProperties PkgProperties
-     Aes.cipher_round Aes.unrolled_opentitan_cipher.
+     CipherRoundProperties Aes.cipher_round Aes.unrolled_opentitan_cipher.
 
 Section Wf.
   Context (aes_key_expand_Wf :
              forall sbox_impl, Wf (aes_key_expand sbox_impl))
-          (cipher_round_Wf :
-             forall sbox_impl, Wf (cipher_round sbox_impl))
-          (final_cipher_round_Wf :
-             forall sbox_impl, Wf (final_cipher_round sbox_impl))
+          (aes_sub_bytes_Wf :
+             forall sbox_impl, Wf (sub_bytes.aes_sub_bytes sbox_impl))
+          (aes_shift_rows_Wf : Wf shift_rows.aes_shift_rows)
           (aes_mix_columns_Wf : Wf mix_columns.aes_mix_columns).
 
-  Hint Resolve aes_key_expand_Wf cipher_round_Wf final_cipher_round_Wf
+  Hint Resolve aes_key_expand_Wf aes_sub_bytes_Wf aes_shift_rows_Wf
        aes_mix_columns_Wf : Wf.
 
   Lemma key_expand_and_round_Wf :
@@ -64,36 +63,21 @@ Section Equivalence.
                kinterp (aes_key_expand sbox_impl)
                        (op_i, (round_id, (rcon, (key_i, tt))))
                = aes_key_expand_spec sbox_impl op_i round_id rcon key_i)
-          (cipher_round_spec :
-             pkg.SboxImpl -> bool ->
-             Vector.t (Vector.t byte 4) 4 ->
-             Vector.t (Vector.t byte 4) 4 ->
-             Vector.t (Vector.t byte 4) 4)
-          (cipher_round_correct :
-             forall sbox_impl op_i state key,
-               kinterp (cipher_round sbox_impl)
-                       (op_i, (state, (key, tt)))
-               = cipher_round_spec sbox_impl op_i state key)
-          (final_cipher_round_spec :
-             pkg.SboxImpl -> bool ->
-             Vector.t (Vector.t byte 4) 4 ->
-             Vector.t (Vector.t byte 4) 4 ->
-             Vector.t (Vector.t byte 4) 4)
-          (final_cipher_round_correct :
-             forall sbox_impl op_i state key,
-               kinterp (final_cipher_round sbox_impl) (op_i, (state, (key, tt)))
-               = final_cipher_round_spec sbox_impl op_i state key)
-          (aes_mix_columns_spec :
-             bool ->  Vector.t (Vector.t byte 4) 4 ->
-             Vector.t (Vector.t byte 4) 4)
-          (aes_mix_columns_correct :
+          (aes_sub_bytes_correct :
+             forall sbox_impl op_i state,
+               kinterp (sub_bytes.aes_sub_bytes sbox_impl) (op_i, (state, tt))
+               = aes_sub_bytes_spec sbox_impl op_i state)
+          (aes_shift_rows_correct :
+             forall op_i state,
+               kinterp shift_rows.aes_shift_rows (op_i, (state, tt))
+               = aes_shift_rows_spec op_i state)
+           (aes_mix_columns_correct :
              forall op_i state,
                kinterp mix_columns.aes_mix_columns (op_i, (state, tt))
                = aes_mix_columns_spec op_i state).
-  Hint Rewrite @aes_key_expand_correct @cipher_round_correct
-       @final_cipher_round_correct @aes_mix_columns_correct : kappa_interp.
-  Opaque aes_key_expand cipher_round final_cipher_round
-         mix_columns.aes_mix_columns.
+  Hint Rewrite @aes_key_expand_correct @aes_sub_bytes_correct
+       @aes_shift_rows_correct @aes_mix_columns_correct : kappa_interp.
+  Opaque aes_key_expand mix_columns.aes_mix_columns.
 
   Derive key_expand_and_round_spec
          SuchThat (forall (sbox_impl : pkg.SboxImpl)
