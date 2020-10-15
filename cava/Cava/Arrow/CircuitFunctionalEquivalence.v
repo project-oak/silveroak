@@ -197,7 +197,7 @@ Ltac lower1 :=
     | @Comp _ ?x ?y ?z ?e1 ?e2 =>
       rewrite (@lower_comp x y z e2 e1 ctxt)
     | @Primitive _ ?p => cbv [closure_conversion']
-    | @Var _ _ _ _ => cbv [closure_conversion']
+    | @Var _ _ _ => cbv [closure_conversion']
     end; arrowsimpl
   end.
 
