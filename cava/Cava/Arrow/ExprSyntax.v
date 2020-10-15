@@ -10,20 +10,20 @@ Set Implicit Arguments.
 Set Asymmetric Patterns.
 
 Section vars.
-  Definition natvar : Kind -> Kind -> Type := fun _ _ => nat.
-  Definition unitvar : Kind -> Kind -> Type := fun _ _ => unit.
+  Definition natvar : Kind -> Type := fun _ => nat.
+  Definition unitvar : Kind -> Type := fun _ => unit.
 
   Section Vars.
-    Variable (var: Kind -> Kind -> Type).
+    Variable (var: Kind -> Type).
 
     Inductive kappa : Kind -> Kind -> Type :=
-    | Var : forall {x y},   var x y -> kappa x y
-    | Abs : forall {x y z}, (var Unit x -> kappa y z) -> kappa (Tuple x y) z
+    | Var : forall {x},     var x -> kappa Unit x
+    | Abs : forall {x y z}, (var x -> kappa y z) -> kappa (Tuple x y) z
     | App : forall {x y z}, kappa (Tuple x y) z -> kappa Unit x -> kappa y z
     | Comp: forall {x y z}, kappa y z -> kappa x y -> kappa x z
     | Primitive : forall prim, kappa (primitive_input prim) (primitive_output prim)
-    | Let: forall {x y z}, kappa Unit x -> (var Unit x -> kappa y z) -> kappa y z
-    | LetRec : forall {x y z}, (var Unit x -> kappa Unit x) -> (var Unit x -> kappa y z) -> kappa y z
+    | Let: forall {x y z}, kappa Unit x -> (var x -> kappa y z) -> kappa y z
+    | LetRec : forall {x y z}, (var x -> kappa Unit x) -> (var x -> kappa y z) -> kappa y z
     | Id : forall {x}, kappa x x
     | RemoveContext: forall {x y}, kappa x y -> kappa x y
     .
@@ -46,7 +46,7 @@ Section vars.
     (expr: kappa natvar i o) {struct expr}
     : Prop :=
     match expr with
-    | Var _ _ n  => ok_lookup ctxt n o
+    | Var _ n  => ok_lookup ctxt n o
     | Abs x _ _ f => wf_phoas_context (x :: ctxt) (f (length ctxt))
     | App _ _ _ e1 e2 => wf_phoas_context ctxt e1 /\ wf_phoas_context ctxt e2
     | Comp _ _ _ e1 e2 => wf_phoas_context ctxt e1 /\ wf_phoas_context ctxt e2
@@ -61,7 +61,7 @@ Section vars.
 
 End vars.
 
-Arguments Var {var _ _}.
+Arguments Var {var _}.
 Arguments Abs {var _ _ _}.
 Arguments App {var _ _ _}.
 Arguments Comp {var _ _ _}.

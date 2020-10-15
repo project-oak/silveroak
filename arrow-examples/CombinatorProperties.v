@@ -75,16 +75,7 @@ Section Misc.
              | _ => rewrite map2_swap, map2_drop
              end.
   Qed.
-
-  Lemma rewrite_or_default_refl A :
-    circuit_equiv _ _ (rewrite_or_default A A) (fun x => x).
-  Proof.
-    induction A; cbn [rewrite_or_default] in *; arrowsimpl;
-      circuit_spec; autorewrite with vsimpl;
-        try apply surjective_pairing; eauto.
-  Qed.
 End Misc.
-Hint Resolve rewrite_or_default_refl : circuit_spec_correctness.
 
 (* TODO: move *)
 Ltac kappa_spec_begin :=

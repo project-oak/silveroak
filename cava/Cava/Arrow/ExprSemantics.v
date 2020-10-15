@@ -31,21 +31,21 @@ Local Open Scope category_scope.
 Local Open Scope arrow_scope.
 
 Section combinational_semantics.
-  Definition coq_func i o := denote_kind i -> denote_kind o.
+  Definition coq_func t := denote_kind t.
 
   Fixpoint interp_combinational' {i o: Kind}
     (expr: kappa coq_func i o)
     : denote_kind i -> (denote_kind o) :=
-    match expr with
-    | Var x => fun v => (x v)
-    | Abs f => fun '(x,y) => interp_combinational' (f (fun _ => x)) y
+    match expr in kappa _ i0 o0 return denote_kind i0 -> denote_kind o0 with
+    | Var x => fun v : unit => x
+    | Abs f => fun '(x,y) => interp_combinational' (f x) y
     | App f e => fun y =>
       (interp_combinational' f) (interp_combinational' e tt, y)
     | Comp g f => fun x => interp_combinational' g (interp_combinational' f x)
     | Primitive p => combinational_evaluation' (CircuitArrow.Primitive p)
     | Id => fun x => x
     | Let v f => fun y =>
-      interp_combinational' (f (fun _ => interp_combinational' v tt)) y
+      interp_combinational' (f (interp_combinational' v tt)) y
     | LetRec v f => fun _ => kind_default _
     | RemoveContext f => interp_combinational' f
     end.
