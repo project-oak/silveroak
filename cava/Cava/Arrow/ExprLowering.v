@@ -211,7 +211,6 @@ new list Kind variable in to place*)
   2. 'assoc': move the argument to the front of the list Kind via reassociation
       assoc:      y*(x*list Kind_variables) ~> o
 
-
   3. call f'
       f':         y*new_list Kind_variables ~> o
   *)
