@@ -56,6 +56,38 @@ Module Vector.
   Qed.
 End Vector.
 
+Section Wf.
+  Lemma aes_transpose_Wf n m : Wf (@pkg.aes_transpose n m).
+  Proof. induction n; cbn [pkg.aes_transpose]; prove_Wf. Qed.
+  Hint Resolve aes_transpose_Wf : Wf.
+
+  Axiom aes_256_naive_key_expansion_Wf :
+    forall sbox_impl, Wf (aes_256_naive_key_expansion sbox_impl).
+  Axiom cipher_round_Wf :
+    forall sbox_impl, Wf (Combinators.curry (cipher_round sbox_impl)).
+  Axiom final_cipher_round_Wf :
+    forall sbox_impl, Wf (final_cipher_round sbox_impl).
+  Axiom aes_mix_columns_Wf : Wf mix_columns.aes_mix_columns.
+  Hint Resolve aes_256_naive_key_expansion_Wf
+       cipher_round_Wf final_cipher_round_Wf aes_mix_columns_Wf : Wf.
+
+  Lemma CIPH_FWD_Wf : Wf (pkg.CIPH_FWD).
+  Proof. cbv [pkg.CIPH_FWD]; prove_Wf. Qed.
+  Hint Resolve CIPH_FWD_Wf : Wf.
+  Lemma CIPH_INV_Wf : Wf (pkg.CIPH_INV).
+  Proof. cbv [pkg.CIPH_INV]; prove_Wf. Qed.
+  Hint Resolve CIPH_INV_Wf : Wf.
+
+  Lemma unrolled_cipher_naive'_Wf :
+    forall sbox_impl, Wf (unrolled_cipher_naive' sbox_impl).
+  Proof. cbv [unrolled_cipher_naive']; prove_Wf. Qed.
+  Hint Resolve unrolled_cipher_naive'_Wf : Wf.
+
+  Lemma unrolled_cipher_naive_Wf :
+    forall sbox_impl, Wf (unrolled_cipher_naive sbox_impl).
+  Proof. cbv [unrolled_cipher_naive]; prove_Wf. Qed.
+End Wf.
+
 Local Ltac derived_spec_done :=
   lazymatch goal with
   | |- context [interp_combinational' ?x] =>

@@ -145,6 +145,16 @@ End CombinatorWf.
 Hint Resolve replicate_Wf reverse_Wf reshape_Wf flatten_Wf map_Wf map2_Wf
      foldl_Wf enable_Wf bitwise_Wf equality_Wf mux_item_Wf : Wf.
 
+(* Extra power for lemmas that produce Wf preconditions; use prove_Wf *)
+Hint Extern 4 (Wf (Combinators.foldl _)) =>
+(simple eapply foldl_Wf; solve [prove_Wf]) : Wf.
+Hint Extern 4 (Wf (Combinators.bitwise _)) =>
+(simple eapply bitwise_Wf; solve [prove_Wf]) : Wf.
+Hint Extern 4 (Wf (Combinators.map _)) =>
+(simple eapply map_Wf; solve [prove_Wf]) : Wf.
+Hint Extern 4 (Wf (Combinators.map2 _)) =>
+(simple eapply map2_Wf; solve [prove_Wf]) : Wf.
+
 (* Miscellaneous helpful proofs for combinator equivalence *)
 Section Misc.
   Lemma eqb_negb_xor x y : Bool.eqb x y = negb (xorb x y).
