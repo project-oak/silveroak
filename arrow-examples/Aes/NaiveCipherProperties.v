@@ -14,7 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.String.
 From Coq Require Import Derive.
 From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec BitArithmetic
      Tactics VectorUtils.
