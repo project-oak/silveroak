@@ -52,6 +52,99 @@ Section Specs.
     end.
 End Specs.
 
+Lemma Wf_equivalence {i o} (expr : Kappa i o) :
+  Wf expr -> forall var1 var2, kappa_equivalence nil (expr var1) (expr var2).
+Proof. cbv [Wf]; intros; auto. Qed.
+Hint Resolve Wf_equivalence : Wf.
+
+Lemma Wf_Primitive (p : CircuitPrimitive) : Wf (fun _ => Primitive p).
+Proof. cbv [Wf]; intros; apply Prim_equiv. Qed.
+Hint Resolve Wf_Primitive : Wf.
+
+(* Extra hint to force the primitive types to match *)
+Hint Extern 4 (Wf (fun _ => Primitive ?p))
+=> (change (@Wf (primitive_input p)
+               (primitive_output p) (fun _ => Primitive p));
+  eapply Wf_Primitive) : Wf.
+
+Ltac kequiv_step :=
+  lazymatch goal with
+  | |- kappa_equivalence _ (Var _) (Var _) => eapply Var_equiv
+  | |- kappa_equivalence _ (Abs _) (Abs _) => eapply Abs_equiv
+  | |- kappa_equivalence _ (App _ _) (App _ _) => eapply App_equiv
+  | |- kappa_equivalence _ (Comp _ _) (Comp _ _) => eapply Compose_equiv
+  | |- @kappa_equivalence ?var1 ?var2 ?x ?y ?E (Primitive ?p) (Primitive _) =>
+    change (@kappa_equivalence
+              var1 var2 (primitive_input p) (primitive_output p)
+              E (Primitive p) (Primitive p));
+    eapply Prim_equiv
+  | |- kappa_equivalence _ (Let _ _) (Let _ _) => eapply Let_equiv
+  | |- kappa_equivalence _ (LetRec _ _) (LetRec _ _) => eapply Letrec_equiv
+  | |- kappa_equivalence _ Id Id => eapply Id_equiv
+  | |- kappa_equivalence _ (RemoveContext _) (RemoveContext _) =>
+    eapply RemoveContext_equiv
+  end; intros.
+Ltac prove_Wf_step :=
+  lazymatch goal with
+  | |- kappa_equivalence _ _ _ =>
+    first [ kequiv_step
+          | solve [eauto with Wf] ]
+  | |- List.In _ _ => cbn [List.In]; tauto
+  end.
+Ltac prove_Wf := cbv [Wf]; intros; repeat prove_Wf_step.
+
+Section CombinatorWf.
+  Lemma replicate_Wf A n : Wf (@Combinators.replicate n A).
+  Proof. induction n; cbn [Combinators.replicate]; prove_Wf. Qed.
+  Hint Resolve replicate_Wf : Wf.
+
+  Lemma reverse_Wf A n : Wf (@Combinators.reverse n A).
+  Proof. induction n; cbn [Combinators.reverse]; prove_Wf. Qed.
+  Hint Resolve reverse_Wf : Wf.
+
+  Lemma reshape_Wf A n m : Wf (@Combinators.reshape n m A).
+  Proof. induction n; cbn [Combinators.reshape]; prove_Wf. Qed.
+  Hint Resolve reshape_Wf : Wf.
+
+  Lemma flatten_Wf A n m : Wf (@Combinators.flatten n m A).
+  Proof. induction n; cbn [Combinators.flatten]; prove_Wf. Qed.
+  Hint Resolve flatten_Wf : Wf.
+
+  Lemma map_Wf A B n c : Wf c -> Wf (@Combinators.map n A B c).
+  Proof. induction n; cbn [Combinators.map]; prove_Wf. Qed.
+  Hint Resolve map_Wf : Wf.
+
+  Lemma map2_Wf A B C n c : Wf c -> Wf (@Combinators.map2 n A B C c).
+  Proof. induction n; cbn [Combinators.map2]; prove_Wf. Qed.
+  Hint Resolve map2_Wf : Wf.
+
+  Lemma foldl_Wf A B n c : Wf c -> Wf (@Combinators.foldl n A B c).
+  Proof. induction n; cbv [Combinators.foldl]; prove_Wf. Qed.
+  Hint Resolve foldl_Wf : Wf.
+
+  Lemma enable_Wf A : Wf (@Combinators.enable A).
+  Proof. induction A; cbn [Combinators.enable]; prove_Wf. Qed.
+  Hint Resolve enable_Wf : Wf.
+
+  Lemma bitwise_Wf A c : Wf c -> Wf (@Combinators.bitwise A c).
+  Proof. induction A; cbn [Combinators.bitwise]; prove_Wf. Qed.
+  Hint Resolve bitwise_Wf : Wf.
+
+  Lemma equality_Wf A : Wf (@Combinators.equality A).
+  Proof.
+    induction A; cbn [Combinators.equality]; prove_Wf; [ ].
+    eapply foldl_Wf; prove_Wf.
+  Qed.
+  Hint Resolve equality_Wf : Wf.
+
+  Lemma mux_item_Wf A : Wf (@Combinators.mux_item A).
+  Proof. cbv [Combinators.mux_item]; prove_Wf. Qed.
+  Hint Resolve mux_item_Wf : Wf.
+End CombinatorWf.
+(* Restate hints so they last outside the section *)
+Hint Resolve replicate_Wf reverse_Wf reshape_Wf flatten_Wf map_Wf map2_Wf
+     foldl_Wf enable_Wf bitwise_Wf equality_Wf mux_item_Wf : Wf.
+
 (* Miscellaneous helpful proofs for combinator equivalence *)
 Section Misc.
   Lemma eqb_negb_xor x y : Bool.eqb x y = negb (xorb x y).
@@ -213,10 +306,11 @@ End CombinatorEquivalence.
 Global Opaque Combinators.mux_item Combinators.bitwise Combinators.enable
        Combinators.equality Combinators.replicate Combinators.map2
        Combinators.map Combinators.flatten Combinators.reverse
-       Combinators.foldl.
+       Combinators.reshape Combinators.foldl.
 
 (* Restate all hints so they exist outside the section *)
 Hint Rewrite @mux_item_correct @bitwise_correct @enable_correct
      @equality_correct @replicate_correct @reshape_correct @map2_correct
-     @map_correct @flatten_correct @reverse_correct @foldl_correct
+     @map_correct @flatten_correct @reverse_correct @reshape_correct
+     @foldl_correct
   using solve [eauto] : kappa_interp.
