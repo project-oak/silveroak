@@ -141,18 +141,18 @@ Instance ToShapePair2 {A t1 t2 : Type} `{@ToShape A t1} `{@ToShape A t2}:
 
 Notation bundle := (@shape Kind).
 
-Fixpoint denoteBitVecWith {A : Type} (T : Type) (n : list A) : Type :=
+Fixpoint denoteVecWith {A : Type} (T : Type) (n : list A) : Type :=
   match n with
   | [] => T
   | [x] => list T
-  | x::xs => list (denoteBitVecWith T xs)
+  | x::xs => list (denoteVecWith T xs)
   end.
 
 Fixpoint denoteKindWith (k : Kind) (T : Type) : Type :=
   match k with
   | Void => unit
   | Bit => T
-  | BitVec k2 s => Vector.t (denoteKindWith k2 T) s
+  | Vec k2 s => Vector.t (denoteKindWith k2 T) s
   | ExternalType t => T
   end.
 
@@ -160,7 +160,7 @@ Fixpoint bitsInPort (p : Kind) : nat :=
   match p with
   | Void => 0
   | Bit => 1
-  | BitVec xs sz => sz * bitsInPort xs
+  | Vec xs sz => sz * bitsInPort xs
   | ExternalType _ => 0
   end.
 
@@ -235,7 +235,7 @@ Fixpoint smashTy (T: Type) (k: Kind) : Type :=
   match k with
   | Void => Signal Void
   | Bit => T
-  | BitVec k2 s => Vector.t (smashTy T k2) s
+  | Vec k2 s => Vector.t (smashTy T k2) s
   | ExternalType t => Signal (ExternalType t)
   end.
 
@@ -252,7 +252,7 @@ Fixpoint smash {k: Kind} (v: Signal k) : smashTy (Signal Bit) k :=
   match k, v return smashTy (Signal Bit) k with
   | Void, vv => UndefinedSignal
   | Bit, vv => vv
-  | BitVec k2 s, vv => Vector.map (fun i => smash (IndexConst vv i)) (vseq 0 s)
+  | Vec k2 s, vv => Vector.map (fun i => smash (IndexConst vv i)) (vseq 0 s)
   | ExternalType t, vv => UninterpretedSignal "smash-error"
   end.
 
@@ -260,7 +260,7 @@ Fixpoint smash {k: Kind} (v: Signal k) : smashTy (Signal Bit) k :=
 Fixpoint vecLitS {k: Kind} (v: smashTy (Signal Bit) k) : Signal k :=
   match k, v return Signal k with
   | Bit, vv => vv
-  | BitVec k2 s2, vv => VecLit (Vector.map vecLitS vv)
+  | Vec k2 s2, vv => VecLit (Vector.map vecLitS vv)
   | Void, _ => UndefinedSignal
   | ExternalType s, _ => UninterpretedSignal "vecLitS-error"
   end.
@@ -270,7 +270,7 @@ Definition unsmash {k : Kind} (v : smashTy (Signal Bit) k) : Signal k :=
   match k, v with
   | Void, vv => UndefinedSignal
   | Bit, vv => vv
-  | BitVec k2 s, vv => vecLitS vv
+  | Vec k2 s, vv => vecLitS vv
   | ExternalType t, vv => UninterpretedSignal "unsmash-error"
   end.
 

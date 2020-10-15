@@ -88,8 +88,8 @@ Proof. reflexivity. Qed.
 
 Definition adder_tree_Interface name nrInputs bitSize
   := combinationalInterface name
-     (mkPort "inputs" (BitVec (BitVec Bit bitSize) nrInputs))
-     (mkPort "sum" (BitVec Bit bitSize))
+     (mkPort "inputs" (Vec (Vec Bit bitSize) nrInputs))
+     (mkPort "sum" (Vec Bit bitSize))
      [].
 
 (* Create netlist and test-bench for a 4-input adder tree. *)

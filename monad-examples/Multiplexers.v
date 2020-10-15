@@ -109,8 +109,8 @@ Definition mux2_1_tb
 
   Definition mux2_1_bit_Interface
     := combinationalInterface "mux2_1_bit"
-       (mkPort "v" (BitVec Bit 4),
-        mkPort "sel" (BitVec Bit 2))
+       (mkPort "v" (Vec Bit 4),
+        mkPort "sel" (Vec Bit 2))
        (mkPort "o" Bit)
        [].
 
@@ -134,23 +134,23 @@ Definition mux2_1_tb
 (* Mux between input buses *)
 
 Definition muxBusAlt {m bit} `{Cava m bit} {k} {sz isz: nat}
-                     (vsel: smashTy bit (BitVec k sz) *
+                     (vsel: smashTy bit (Vec k sz) *
                             Vector.t bit isz) :
                      m (smashTy bit k) :=
   let (v, sel) := vsel in
   ret (indexAt v sel).
 
 Definition muxBus {m bit} `{Cava m bit} {sz isz dsz: nat}
-                     (vsel: Vector.t (smashTy bit (BitVec Bit dsz)) sz *
+                     (vsel: Vector.t (smashTy bit (Vec Bit dsz)) sz *
                             Vector.t bit isz) :
-                     m (smashTy bit (BitVec Bit dsz)) :=
+                     m (smashTy bit (Vec Bit dsz)) :=
   let (v, sel) := vsel in
   ret (indexAt v sel).
 
 Definition muxBus4_8 {m bit} `{Cava m bit}
-                     (vsel: Vector.t (smashTy bit (BitVec Bit 8)) 4 *
+                     (vsel: Vector.t (smashTy bit (Vec Bit 8)) 4 *
                             Vector.t bit 2) :
-                     m (smashTy bit (BitVec Bit 8)) :=
+                     m (smashTy bit (Vec Bit 8)) :=
   let (v, sel) := vsel in
   ret (indexAt v sel).
 
@@ -177,8 +177,8 @@ Local Close Scope vector_scope.
 
 Definition muxBus4_8Interface
   := combinationalInterface "muxBus4_8"
-     (mkPort "i" (BitVec (BitVec Bit 8) 4), mkPort "sel" (BitVec Bit 2))
-     (mkPort "o" (BitVec Bit 8))
+     (mkPort "i" (Vec (Vec Bit 8) 4), mkPort "sel" (Vec Bit 2))
+     (mkPort "o" (Vec Bit 8))
      [].
 
 Definition muxBus4_8Netlist := makeNetlist muxBus4_8Interface muxBus4_8.

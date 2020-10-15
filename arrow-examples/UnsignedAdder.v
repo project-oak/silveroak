@@ -81,33 +81,33 @@ Require Import Cava.Netlist.
 
 Definition adder445_interface
   := combinationalInterface "adder445"
-     (mkPort "a" (Kind.BitVec Kind.Bit 4), mkPort "b" (Kind.BitVec Kind.Bit 4))
-     (mkPort "sum" (Kind.BitVec Kind.Bit 5))
+     (mkPort "a" (Kind.Vec Kind.Bit 4), mkPort "b" (Kind.Vec Kind.Bit 4))
+     (mkPort "sum" (Kind.Vec Kind.Bit 5))
      [].
 Definition adder88810_interface
   := combinationalInterface "adder88810"
-     (mkPort "a" (Kind.BitVec Kind.Bit 8), (mkPort "b" (Kind.BitVec Kind.Bit 8), mkPort "c" (Kind.BitVec Kind.Bit 8)))
-     (mkPort "sum" (Kind.BitVec Kind.Bit 10))
+     (mkPort "a" (Kind.Vec Kind.Bit 8), (mkPort "b" (Kind.Vec Kind.Bit 8), mkPort "c" (Kind.Vec Kind.Bit 8)))
+     (mkPort "sum" (Kind.Vec Kind.Bit 10))
      [].
 Definition adder444_tree_4_interface
   := combinationalInterface "adder444_tree_4"
-     (mkPort "vec" (Kind.BitVec (Kind.BitVec Kind.Bit 4) 4))
-     (mkPort "result" (Kind.BitVec Kind.Bit 4))
+     (mkPort "vec" (Kind.Vec (Kind.Vec Kind.Bit 4) 4))
+     (mkPort "result" (Kind.Vec Kind.Bit 4))
      [].
 Definition adder444_tree_8_interface
   := combinationalInterface "adder444_tree_8"
-     (mkPort "vec" (Kind.BitVec (Kind.BitVec Kind.Bit 4) 8))
-     (mkPort "result" (Kind.BitVec Kind.Bit 4))
+     (mkPort "vec" (Kind.Vec (Kind.Vec Kind.Bit 4) 8))
+     (mkPort "result" (Kind.Vec Kind.Bit 4))
      [].
 Definition adder444_tree_64_interface
   := combinationalInterface "adder444_tree_64"
-     (mkPort "vec" (Kind.BitVec (Kind.BitVec Kind.Bit 4) 64))
-     (mkPort "result" (Kind.BitVec Kind.Bit 4))
+     (mkPort "vec" (Kind.Vec (Kind.Vec Kind.Bit 4) 64))
+     (mkPort "result" (Kind.Vec Kind.Bit 4))
      [].
 Definition growth_tree_8_interface
   := combinationalInterface "growth_tree_8"
-     (mkPort "vec" (Kind.BitVec (Kind.BitVec Kind.Bit 4) 8))
-     (mkPort "result" (Kind.BitVec Kind.Bit 7))
+     (mkPort "vec" (Kind.Vec (Kind.Vec Kind.Bit 4) 8))
+     (mkPort "result" (Kind.Vec Kind.Bit 7))
      [].
 
 Definition adder445_netlist :=

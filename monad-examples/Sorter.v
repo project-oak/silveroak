@@ -39,7 +39,7 @@ Lemma zero_lt_z: 0 < 2. auto. Qed.
 Lemma one_lt_z: 1 < 2. auto. Qed.
 
 Definition twoSorter {m bit} `{Cava m bit} {n}
-                     (ab: Vector.t (smashTy bit (BitVec Bit n)) 2) :
+                     (ab: Vector.t (smashTy bit (Vec Bit n)) 2) :
                      m (Vector.t (Vector.t bit n) 2) :=
    let a := @Vector.nth_order _ 2 ab 0 zero_lt_z in
    let b := @Vector.nth_order _ 2 ab 1 one_lt_z in
@@ -51,8 +51,8 @@ Definition twoSorter {m bit} `{Cava m bit} {n}
 
 Definition two_sorter_Interface bitSize
   := combinationalInterface "two_sorter"
-     (mkPort "inputs" (BitVec (BitVec Bit bitSize) 2))
-     (mkPort "sorted" (BitVec (BitVec Bit bitSize) 2))
+     (mkPort "inputs" (Vec (Vec Bit bitSize) 2))
+     (mkPort "sorted" (Vec (Vec Bit bitSize) 2))
      [].
 
 Definition two_sorter_Netlist

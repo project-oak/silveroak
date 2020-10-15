@@ -98,7 +98,7 @@ Fixpoint defaultKindBool (k: Kind) : smashTy bool k :=
   match k return smashTy bool k  with
   | Void => UndefinedSignal
   | Bit => false
-  | BitVec k2 sz => Vector.const (defaultKindBool k2) sz
+  | Vec k2 sz => Vector.const (defaultKindBool k2) sz
   | ExternalType _ => UninterpretedSignal "XXX"
   end.
 
