@@ -14,6 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.NArith.NArith.
 From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec BitArithmetic
      Tactics VectorUtils.
 From ArrowExamples Require Combinators.
@@ -146,10 +147,15 @@ Section CombinatorWf.
   Lemma curry_Wf A B C args c : Wf c -> Wf (@Combinators.curry A B C args c).
   Proof. cbv [Combinators.curry]; prove_Wf. Qed.
   Hint Resolve curry_Wf : Wf.
+
+  Lemma seq_Wf n bitsize offset : Wf (@Combinators.seq n bitsize offset).
+  Proof. revert offset; induction n; cbv [Combinators.seq]; prove_Wf. Qed.
+  Hint Resolve seq_Wf : Wf.
 End CombinatorWf.
 (* Restate hints so they last outside the section *)
 Hint Resolve replicate_Wf reverse_Wf reshape_Wf flatten_Wf map_Wf map2_Wf
-     foldl_Wf enable_Wf bitwise_Wf equality_Wf mux_item_Wf curry_Wf : Wf.
+     foldl_Wf enable_Wf bitwise_Wf equality_Wf mux_item_Wf curry_Wf seq_Wf
+  : Wf.
 
 (* Extra power for lemmas that produce Wf preconditions; use prove_Wf *)
 Hint Extern 4 (Wf (Combinators.foldl _)) =>
@@ -302,17 +308,30 @@ Section CombinatorEquivalence.
     = kinterp c (fst ab, (snd ab, args)).
   Proof. cbv [Combinators.curry]; kappa_spec; reflexivity.  Qed.
   Hint Rewrite @curry_correct : kappa_interp.
+
+  Lemma seq_correct n bitsize offset :
+    kinterp (@Combinators.seq n bitsize offset) tt
+    = Vector.map (fun n => Ndigits.N2Bv_sized bitsize (N.of_nat n)) (vseq (N.to_nat offset) n).
+  Proof.
+    revert offset.
+    induction n; cbn [Combinators.seq vseq]; kappa_spec;
+      autorewrite with vsimpl; [ reflexivity | ].
+    rewrite map_cons; autorewrite with vsimpl.
+    rewrite N2Nat.id, N2Nat.inj_add.
+    reflexivity.
+  Qed.
+  Hint Rewrite @seq_correct : kappa_interp.
 End CombinatorEquivalence.
 
 (* needed to reduce typechecking time *)
 Global Opaque Combinators.mux_item Combinators.bitwise Combinators.enable
        Combinators.equality Combinators.replicate Combinators.map2
        Combinators.map Combinators.flatten Combinators.reverse
-       Combinators.reshape Combinators.foldl Combinators.curry.
+       Combinators.reshape Combinators.foldl Combinators.curry Combinators.seq.
 
 (* Restate all hints so they exist outside the section *)
 Hint Rewrite @mux_item_correct @bitwise_correct @enable_correct
      @equality_correct @replicate_correct @reshape_correct @map2_correct
      @map_correct @flatten_correct @reverse_correct @reshape_correct
-     @foldl_correct @curry_correct
+     @foldl_correct @curry_correct @seq_correct
   using solve [eauto] : kappa_interp.
