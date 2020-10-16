@@ -39,11 +39,9 @@ coq:		Makefile.coq
 
 TestsSV:	TestsSV.hs
 		ghc --make $^
-
-.PRECIOUS:	$(SV) $(BENCHES) $(CPPS)
-
-instantiate.sv:	coq TestsSV
 		./TestsSV
+
+$(SV) $(BENCHES) $(VCDS):	coq TestsSV
 
 %_tb.vcd:	%.sv %_tb.sv %_tb.cpp
 		$(VERILATOR) --trace --cc --top-module $*_tb $*_tb.sv $*.sv --exe $*_tb.cpp

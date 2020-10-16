@@ -28,7 +28,7 @@ BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)
 VCDS = $(SV:.sv=_tb.vcd)
 
-all:		coq lut1_inv.sv $(VCDS)
+all:		coq $(VCDS)
 extraction:	$(SV)
 
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt -y $(XILINX)/data/verilog/src/xeclib
@@ -42,11 +42,9 @@ coq:		Makefile.coq
 
 VivadoTestsSV:	VivadoTestsSV.hs
 		ghc -O2 --make $^
-
-.PRECIOUS:	$(SV) $(BENCHES)
-
-lut1_inv.sv:	coq VivadoTestsSV
 		./VivadoTestsSV
+
+$(SV) $(BENCHES) $(VCDS):	coq VivadoTestsSV
 
 %_tb.vcd:	%.sv %_tb.sv %_tb.cpp
 		$(VERILATOR) --trace --cc --top-module $*_tb $*_tb.sv $*.sv --exe $*_tb.cpp
@@ -62,6 +60,4 @@ lut1_inv.sv:	coq VivadoTestsSV
 clean:
 	-@$(MAKE) -f Makefile.coq clean
 	git clean -Xfd
-	rm -rf *.sv *.tcl *.cpp *.vcd VivadoTestsSV LUTTests.hs \
-               *.cpp *.sv *.tcl LUTTests.hs *.cpp
 	rm -rf obj_dir
