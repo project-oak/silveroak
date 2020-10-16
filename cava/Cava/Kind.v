@@ -26,11 +26,3 @@ Inductive Kind : Type :=
   | Bit : Kind                     (* A single wire *)
   | Vec : Kind -> nat -> Kind      (* Vectors, possibly nested *)
   | ExternalType : string -> Kind. (* An uninterpreted type *)
-
-Fixpoint listOfVecTy (bv: Kind) : Type :=
-  match bv with
-  | Void => list bool
-  | Bit => list bool
-  | Vec k2 _ => list (listOfVecTy k2)
-  | ExternalType _ => list bool
-  end.
