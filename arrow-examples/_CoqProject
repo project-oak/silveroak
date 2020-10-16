@@ -30,6 +30,7 @@ Aes/cipher_control.v
 Aes/netlists.v
 Aes/aes_test.v
 Aes/NaiveCipherProperties.v
+Aes/OpenTitanCipherProperties.v
 Aes/PkgProperties.v
 
 ArrowExtraction.v
