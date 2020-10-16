@@ -41,11 +41,10 @@ coq:		Makefile.coq
 
 ExamplesSV:	ExamplesSV.hs
 		ghc --make $^
-
-.PRECIOUS:	$(SV) $(BENCHES) $(CPPS)
-
-nand2.sv:	coq ExamplesSV
 		./ExamplesSV
+
+$(SV) $(BENCHES) $(VCDS):	coq ExamplesSV
+
 
 %_tb.vcd:	%.sv %_tb.sv %_tb.cpp
 		$(VERILATOR) --trace --cc --top-module $*_tb $*_tb.sv $*.sv --exe $*_tb.cpp

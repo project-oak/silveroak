@@ -1,0 +1,9 @@
+# Haskell files except the manually created ones
+*.hs
+!VivadoTestsSV.hs
+
+VivadoTestsSV
+
+*.sv
+*.cpp
+*.tcl
