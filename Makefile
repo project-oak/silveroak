@@ -47,6 +47,7 @@ tests:
 # the Xilinx-specific targets)
 monad-examples:
 	cd monad-examples && $(MAKE)
+	cd monad-examples/xilinx && $(MAKE) extraction
 
 # The arrow-example builds and tests the arrow examples (except for
 # the Xilinx-specific targets)
@@ -63,5 +64,6 @@ clean:
 	cd tests && $(MAKE) clean
 	cd tests/xilinx && $(MAKE) clean
 	cd monad-examples && $(MAKE) clean
+	cd monad-examples/xilinx && $(MAKE) clean
 	cd arrow-examples && $(MAKE) clean
 	cd silveroak-opentitan && $(MAKE) clean

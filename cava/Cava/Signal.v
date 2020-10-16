@@ -30,24 +30,24 @@ Inductive Signal : Kind -> Type :=
   | Vcc: Signal Bit
   | Wire: N -> Signal Bit
   | NamedWire: string -> Signal Bit
-  | NamedVector: forall k s, string -> Signal (BitVec k s)
-  | LocalBitVec: forall k s, N -> Signal (BitVec k s)
-  | VecLit: forall {k s}, Vector.t (Signal k) s -> Signal (BitVec k s)
+  | NamedVector: forall k s, string -> Signal (Vec k s)
+  | LocalVec: forall k s, N -> Signal (Vec k s)
+  | VecLit: forall {k s}, Vector.t (Signal k) s -> Signal (Vec k s)
   (* Dynamic index *)
-  | IndexAt:  forall {k sz isz}, Signal (BitVec k sz) ->
-              Signal (BitVec Bit isz) -> Signal k
+  | IndexAt:  forall {k sz isz}, Signal (Vec k sz) ->
+              Signal (Vec Bit isz) -> Signal k
   (* Static indexing *)
-  | IndexConst: forall {k sz}, Signal (BitVec k sz) -> nat -> Signal k
+  | IndexConst: forall {k sz}, Signal (Vec k sz) -> nat -> Signal k
   (* Static slice *)
-  | Slice: forall {k sz} (start len: nat), Signal (BitVec k sz) ->
-                                           Signal (BitVec k len).
+  | Slice: forall {k sz} (start len: nat), Signal (Vec k sz) ->
+                                           Signal (Vec k len).
 
 (* A default unsmashed value for a given Kind. *)
 Fixpoint defaultKindSignal (k: Kind) : Signal k :=
   match k with
   | Void => UndefinedSignal
   | Bit => Gnd
-  | BitVec k s => VecLit (Vector.const (defaultKindSignal k) s)
+  | Vec k s => VecLit (Vector.const (defaultKindSignal k) s)
   | ExternalType s => UninterpretedSignal "default-error"
   end.
 

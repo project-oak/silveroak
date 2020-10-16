@@ -61,13 +61,13 @@ Definition pinmuxInterface :=
   sequentialInterface "pinmux"
      "clk_i" NegativeEdge "rst_ni" NegativeEdge
      (mkPort "tl_i" (ExternalType "tlul_pkg::tl_h2d_t"),
-      mkPort "periph_to_mio_i" (BitVec Bit NPeriphOut),
-      mkPort "periph_to_mio_oe_i" (BitVec Bit NPeriphOut),
-      mkPort "mio_in_i" (BitVec Bit NMioPads))
+      mkPort "periph_to_mio_i" (Vec Bit NPeriphOut),
+      mkPort "periph_to_mio_oe_i" (Vec Bit NPeriphOut),
+      mkPort "mio_in_i" (Vec Bit NMioPads))
      (mkPort "tl_o" (ExternalType "tlul_pkg::tl_d2h_t"),
-      mkPort "mio_to_periph_o" (BitVec Bit NPeriphIn),
-      mkPort "mio_out_o" (BitVec Bit NMioPads),
-      mkPort "mio_oe_o" (BitVec Bit NMioPads))
+      mkPort "mio_to_periph_o" (Vec Bit NPeriphIn),
+      mkPort "mio_out_o" (Vec Bit NMioPads),
+      mkPort "mio_oe_o" (Vec Bit NMioPads))
      [].
 
 
@@ -99,11 +99,11 @@ Definition pinmux_reg2hw_periph_insel_mreg_t
   := ExternalType "pinmux_reg2hw_periph_insel_mreg_t".
 
 Definition kq (f: string)
-              (reg2hw: Signal pinmux_reg2hw_t) (k: nat) : Signal (BitVec Bit 6) :=
-  let periph_insel : Signal (BitVec (BitVec Bit 6) NPeriphIn) :=
-     SelectField (BitVec (BitVec Bit 6) NPeriphIn)
+              (reg2hw: Signal pinmux_reg2hw_t) (k: nat) : Signal (Vec Bit 6) :=
+  let periph_insel : Signal (Vec (Vec Bit 6) NPeriphIn) :=
+     SelectField (Vec (Vec Bit 6) NPeriphIn)
         reg2hw f in
-  SelectField (BitVec Bit 6) (IndexConst periph_insel k) "q".
+  SelectField (Vec Bit 6) (IndexConst periph_insel k) "q".
 
 Definition pinmux (inputs: Signal (ExternalType "tlul_pkg::tl_h2d_t") *
                            Vector.t (Signal Bit) NPeriphOut  *

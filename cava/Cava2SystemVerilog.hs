@@ -110,7 +110,7 @@ inputPorts = map inputPort
 
 inputPort :: Netlist.PortDeclaration -> String
 inputPort (Coq_mkPort name Bit) = "  input logic " ++ name
-inputPort (Coq_mkPort name (BitVec k s))
+inputPort (Coq_mkPort name (Vec k s))
   = "  input " ++ vectorDeclaration name k s
 inputPort  (Coq_mkPort name (ExternalType typeName))
   = "  input " ++ typeName ++ " " ++ name
@@ -119,14 +119,14 @@ vectorDeclaration :: String -> Kind -> Integer -> String
 vectorDeclaration name k s
   = case k of
       Bit -> "  logic[" ++ show (s - 1) ++ ":0] " ++ name
-      BitVec k2 s2 -> vectorDeclaration name k2 s2 ++ "[" ++ show s ++ "]"
+      Vec k2 s2 -> vectorDeclaration name k2 s2 ++ "[" ++ show s ++ "]"
 
 outputPorts :: [Netlist.PortDeclaration] -> [String]
 outputPorts = map outputPort
 
 outputPort :: Netlist.PortDeclaration -> String
 outputPort (Netlist.Coq_mkPort name Bit) = "  output logic " ++ name
-outputPort (Netlist.Coq_mkPort name (BitVec k s))
+outputPort (Netlist.Coq_mkPort name (Vec k s))
   = "  output " ++ vectorDeclaration name k s
 outputPort  (Coq_mkPort name (ExternalType typeName))
   = "  output " ++ typeName ++ " " ++ name
@@ -160,7 +160,7 @@ showSignal signal
       Wire n -> "net[" ++ show (fromN n) ++ "]"
       NamedWire name -> name
       NamedVector _ _ name -> name
-      LocalBitVec _ _ v -> "v" ++ show (fromN v)
+      LocalVec _ _ v -> "v" ++ show (fromN v)
       VecLit k s vs -> showVecLiteral k (Vector.to_list s vs)
       IndexAt _ _ _ v i -> showSignal v ++ "[" ++ showSignal i ++ "]"
       IndexConst _ _ v i -> showSignal v ++ "[" ++ show i ++ "]"
@@ -170,7 +170,7 @@ showSliceIndex :: Kind -> Integer -> Integer -> String
 showSliceIndex k start len
   = case k of
       Bit -> "[" ++ show top ++ ":" ++ show start ++ "]"
-      BitVec _ _ -> "[" ++ show start ++ ":" ++ show top ++ "]"
+      Vec _ _ -> "[" ++ show start ++ ":" ++ show top ++ "]"
     where
     top = start + len - 1
 
@@ -347,7 +347,7 @@ declarePort :: PortDeclaration -> String
 declarePort (Coq_mkPort name kind) =
   case kind of
     Bit -> "  (* mark_debug = \"true\" *) logic " ++ name
-    BitVec k s -> "  (* mark_debug = \"true\" *) " ++ vectorDeclaration name k s
+    Vec k s -> "  (* mark_debug = \"true\" *) " ++ vectorDeclaration name k s
 
 initTestVectors :: [PortDeclaration] -> [[SignalExpr]] -> [String]
 initTestVectors [] _ = []
@@ -406,8 +406,8 @@ addDisplay ports
 
 formatPortWithName :: PortDeclaration -> String
 formatPortWithName (Coq_mkPort name Bit) = " " ++ name ++ " = %0b"
-formatPortWithName (Coq_mkPort name (BitVec Bit _)) = " " ++ name ++ " = %0d"
-formatPortWithName (Coq_mkPort name (BitVec (BitVec _ _) s))
+formatPortWithName (Coq_mkPort name (Vec Bit _)) = " " ++ name ++ " = %0d"
+formatPortWithName (Coq_mkPort name (Vec (Vec _ _) s))
   = concat (insertCommas [" " ++ name ++ "[" ++ show i ++ "] = %0d" |
             i  <- [0..s-1]])
 
@@ -415,8 +415,8 @@ smashPorts :: PortDeclaration -> String
 smashPorts portDec
   = case port_shape portDec of
       Bit -> name
-      BitVec Bit _ -> name
-      BitVec (BitVec _ _) s ->
+      Vec Bit _ -> name
+      Vec (Vec _ _) s ->
         concat (insertCommas [name ++ "[" ++ show i ++ "]" | i <- [0..s-1]])
     where
     name = port_name portDec
@@ -437,7 +437,7 @@ checkOutput port
 
 formatKind :: Kind -> String
 formatKind Bit = "%0b"
-formatKind (BitVec Bit _) = "%0d"
+formatKind (Vec Bit _) = "%0d"
 formatKind other = "error: attempt to format unknown kind"
 
 cppDriver :: String -> Int -> [String]
@@ -592,7 +592,7 @@ checkStem k sz (v:vs)
       IndexConst k2 s2 v2 startingIndex ->
        case k of
           Bit        -> checkIndexes k s2 startingIndex v2 (startingIndex+1) vs
-          BitVec _ _ -> checkIndexes k s2 startingIndex v2 (startingIndex+1) vs
+          Vec _ _ -> checkIndexes k s2 startingIndex v2 (startingIndex+1) vs
       _ -> Nothing
 
 -- If a slice contains just one element, just return a static index to that
@@ -634,7 +634,7 @@ freshen :: Signal -> State CavaState Signal
 freshen signal
   = case signal of
       VecLit k s v -> do freshV <- freshVector k s
-                         addAssignment (BitVec k s) freshV signal
+                         addAssignment (Vec k s) freshV signal
                          return freshV
       _ -> return signal
 
@@ -662,4 +662,4 @@ freshVector k s
                     clk clkEdge rst rstEdge
                     (Netlist.Coq_mkModule moduleName instances
                     inputs outputs) libs)
-       return (LocalBitVec k s vCount)
+       return (LocalVec k s vCount)

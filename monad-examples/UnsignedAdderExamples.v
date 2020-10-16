@@ -93,8 +93,8 @@ Local Open Scope nat_scope.
 
 Definition adder4Interface
   := combinationalInterface "adder4"
-     (mkPort "a" (BitVec Bit 4), mkPort "b" (BitVec Bit 4))
-     (mkPort "sum" (BitVec Bit 5))
+     (mkPort "a" (Vec Bit 4), mkPort "b" (Vec Bit 4))
+     (mkPort "sum" (Vec Bit 5))
      [].
 
 Definition adder4Netlist
@@ -116,8 +116,8 @@ Definition adder4_tb
 
 Definition adder8_3inputInterface
   := combinationalInterface "adder8_3input"
-     (mkPort "a" (BitVec Bit 8), mkPort "b" (BitVec Bit 8), mkPort "c" (BitVec Bit 8))
-     (mkPort "sum" (BitVec Bit 10))
+     (mkPort "a" (Vec Bit 8), mkPort "b" (Vec Bit 8), mkPort "c" (Vec Bit 8))
+     (mkPort "sum" (Vec Bit 10))
      [].
 
 Definition add3InputTuple {m bit} `{Cava m bit}

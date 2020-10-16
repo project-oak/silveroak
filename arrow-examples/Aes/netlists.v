@@ -24,8 +24,8 @@ Require Import Cava.Netlist.
 
 Definition sbox_canright_interface
   := combinationalInterface "sbox_canright"
-     (mkPort "op_i" Kind.Bit, mkPort "data_i" (Kind.BitVec Kind.Bit 8))
-     (mkPort "data_o" (Kind.BitVec Kind.Bit 8))
+     (mkPort "op_i" Kind.Bit, mkPort "data_i" (Kind.Vec Kind.Bit 8))
+     (mkPort "data_o" (Kind.Vec Kind.Bit 8))
      nil.
 
 Definition sbox_canright_netlist :=
@@ -33,8 +33,8 @@ Definition sbox_canright_netlist :=
 
 Definition sbox_lut_interface
   := combinationalInterface "sbox_lut"
-     (mkPort "op_i" Kind.Bit, mkPort "data_i" (Kind.BitVec Kind.Bit 8))
-     (mkPort "data_o" (Kind.BitVec Kind.Bit 8))
+     (mkPort "op_i" Kind.Bit, mkPort "data_i" (Kind.Vec Kind.Bit 8))
+     (mkPort "data_o" (Kind.Vec Kind.Bit 8))
      nil.
 
 Definition sbox_lut_netlist :=

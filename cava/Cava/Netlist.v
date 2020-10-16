@@ -79,7 +79,7 @@ Fixpoint defaultKind (k: Kind) : smashNetTy k :=
   match k return smashNetTy k with
   | Void => UndefinedSignal
   | Bit => Gnd
-  | BitVec k2 s => Vector.const (defaultKind k2) s
+  | Vec k2 s => Vector.const (defaultKind k2) s
   | ExternalType _ => UninterpretedSignal "XXX"
   end.
 
@@ -98,17 +98,17 @@ Inductive Instance : Type :=
   (* Assignment of bit wire *)
   | AssignSignal: forall {k: Kind}, Signal k -> Signal k -> Instance
   (* Arithmetic operations *)
-  | UnsignedAdd : forall {a b c : nat}, Signal (BitVec Bit a) ->
-                                        Signal (BitVec Bit b) ->
-                                        Signal (BitVec Bit c) ->
+  | UnsignedAdd : forall {a b c : nat}, Signal (Vec Bit a) ->
+                                        Signal (Vec Bit b) ->
+                                        Signal (Vec Bit c) ->
                                         Instance
-  | UnsignedSubtract : forall {a b c : nat}, Signal (BitVec Bit a) ->
-                                        Signal (BitVec Bit b) ->
-                                        Signal (BitVec Bit c) ->
+  | UnsignedSubtract : forall {a b c : nat}, Signal (Vec Bit a) ->
+                                        Signal (Vec Bit b) ->
+                                        Signal (Vec Bit c) ->
                                         Instance
   (* Relational operations *)
-  | GreaterThanOrEqual: forall {a b : nat}, Signal (BitVec Bit a) ->
-                                            Signal (BitVec Bit b) ->
+  | GreaterThanOrEqual: forall {a b : nat}, Signal (Vec Bit a) ->
+                                            Signal (Vec Bit b) ->
                                             Signal Bit ->
                                             Instance
   | Component: string ->
@@ -213,12 +213,12 @@ Definition newWires (width : nat) : state CavaState (list (Signal Bit)) :=
       ret (map Wire outv)
   end.
 
-Definition newVector (k : Kind) (s: nat) : state CavaState (Signal (BitVec k s)) :=
+Definition newVector (k : Kind) (s: nat) : state CavaState (Signal (Vec k s)) :=
   cs <- get ;;
   match cs with
   | mkCavaState o vCount vDefs ext clk clkEdge rst rstEdge m ml =>
       put (mkCavaState o (vCount + 1) (vDefs ++ [(k, s)]) ext clk clkEdge rst rstEdge m ml) ;;
-      ret (LocalBitVec k s vCount)
+      ret (LocalVec k s vCount)
   end.
 
 Definition newExternal (t : string) : state CavaState (Signal (ExternalType t)) :=
@@ -336,16 +336,16 @@ Definition inputBit (name : string) : state CavaState (Signal Bit) :=
   addInputPort (mkPort name Bit) ;;
   ret (NamedWire name).
 
-Definition inputVector (k: Kind) (sz: nat) (name : string) : state CavaState (smashTy (Signal Bit) (BitVec k sz)) :=
-  addInputPort (mkPort name (BitVec k sz)) ;;
+Definition inputVector (k: Kind) (sz: nat) (name : string) : state CavaState (smashTy (Signal Bit) (Vec k sz)) :=
+  addInputPort (mkPort name (Vec k sz)) ;;
   ret (smash (NamedVector k sz name)).
 
 Definition outputBit (name : string) (i : Signal Bit) : state CavaState unit :=
   addOutputPort (mkPort name Bit) ;;
   assignSignal (NamedWire name) i.
 
-Definition outputVector (k: Kind) (sz : nat) (name : string) (v : smashTy (Signal Bit) (BitVec k sz)) : state CavaState unit :=
-  addOutputPort (mkPort name (BitVec k sz)) ;;
+Definition outputVector (k: Kind) (sz : nat) (name : string) (v : smashTy (Signal Bit) (Vec k sz)) : state CavaState unit :=
+  addOutputPort (mkPort name (Vec k sz)) ;;
   assignSmashedSignal (NamedVector k sz name) v.
 
 (******************************************************************************)
@@ -370,7 +370,7 @@ Fixpoint instantiateInputPorts (inputs: @shape PortDeclaration) : state CavaStat
       match typ with
       | Void => ret UndefinedSignal
       | Bit => inputBit name
-      | BitVec k sz => inputVector k sz name
+      | Vec k sz => inputVector k sz name
       | ExternalType t => addInputPort (mkPort name (ExternalType t)) ;;
                           ret (UninterpretedSignal name)
       end
@@ -386,7 +386,7 @@ Fixpoint instantiateOutputPorts (outputs: @shape PortDeclaration) (v: signalSmas
      match typ, v  with
      | Void, _ => ret tt
      | Bit, s => outputBit name s
-     | BitVec k sz, s => outputVector k sz name s
+     | Vec k sz, s => outputVector k sz name s
      | ExternalType t, s => addOutputPort (mkPort name (ExternalType t)) ;;
                             assignSignal (UninterpretedSignal name) s
      end
@@ -426,7 +426,7 @@ Fixpoint declareOutputs (outputs: @shape PortDeclaration) : state CavaState (sig
       match typ with
       | Void => ret UndefinedSignal
       | Bit => newWire
-      | BitVec k sz => nv <- newVector k sz ;;
+      | Vec k sz => nv <- newVector k sz ;;
                        ret (smash nv)
       | ExternalType t => newExternal t
       end
@@ -481,11 +481,11 @@ Record TestBench : Type := mkTestBench {
   testBenchExpectedOutputs : list (list SignalExpr);
 }.
 
-Fixpoint vec2expr {k sz} (v: signalTy bool (One (BitVec k sz))) : SignalExpr :=
+Fixpoint vec2expr {k sz} (v: signalTy bool (One (Vec k sz))) : SignalExpr :=
   match k, v with
   | Void, _ => NoSignal
   | Bit, zx => VecVal (map BitVal (Vector.to_list zx))
-  | BitVec k s2, y => VecVal (map (@vec2expr k s2) (Vector.to_list y))
+  | Vec k s2, y => VecVal (map (@vec2expr k s2) (Vector.to_list y))
   | ExternalType t, zx => NoSignal
   end.
 
@@ -494,7 +494,7 @@ Fixpoint denoteValueWithSignalExpr (t: @shape Kind) (v: signalTy bool t) : @shap
   | Empty, _ => Empty
   | One Void, x => One NoSignal
   | One Bit, x => One (BitVal x)
-  | One (BitVec k sz), xs => One (vec2expr xs)
+  | One (Vec k sz), xs => One (vec2expr xs)
   | One (ExternalType _), _ => One NoSignal
   | Tuple2 t1 t2, (a, b) => Tuple2 (denoteValueWithSignalExpr t1 a) (denoteValueWithSignalExpr t2 b)
   end.
