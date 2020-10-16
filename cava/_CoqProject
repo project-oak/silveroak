@@ -40,6 +40,7 @@ Cava/Arrow/CircuitProp.v
 Cava/Arrow/CircuitSemantics.v
 Cava/Arrow/CircuitLowering.v
 Cava/Arrow/CavaNotation.v
+Cava/Arrow/DeriveSpec.v
 Cava/Arrow/ArrowExport.v
 
 Cava/Extraction.v

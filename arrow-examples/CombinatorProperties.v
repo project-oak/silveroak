@@ -14,8 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Cava Require Import Arrow.ArrowExport Arrow.CircuitFunctionalEquivalence
-     BitArithmetic Tactics VectorUtils.
+From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec BitArithmetic
+     Tactics VectorUtils.
 From ArrowExamples Require Combinators.
 
 (* Functional specifications for circuit combinators *)
@@ -50,6 +50,8 @@ Section Specs.
       fun x y => (bitwise op (fst x) (fst y), bitwise op (snd x) (snd y))
     | Vector T n => fun x y => Vector.map2 (bitwise op) x y
     end.
+
+  Definition mux {T} (sel : bool) (x y : T) : T := if sel then x else y.
 End Specs.
 
 Lemma Wf_equivalence {i o} (expr : Kappa i o) :
@@ -140,10 +142,14 @@ Section CombinatorWf.
   Lemma mux_item_Wf A : Wf (@Combinators.mux_item A).
   Proof. cbv [Combinators.mux_item]; prove_Wf. Qed.
   Hint Resolve mux_item_Wf : Wf.
+
+  Lemma curry_Wf A B C args c : Wf c -> Wf (@Combinators.curry A B C args c).
+  Proof. cbv [Combinators.curry]; prove_Wf. Qed.
+  Hint Resolve curry_Wf : Wf.
 End CombinatorWf.
 (* Restate hints so they last outside the section *)
 Hint Resolve replicate_Wf reverse_Wf reshape_Wf flatten_Wf map_Wf map2_Wf
-     foldl_Wf enable_Wf bitwise_Wf equality_Wf mux_item_Wf : Wf.
+     foldl_Wf enable_Wf bitwise_Wf equality_Wf mux_item_Wf curry_Wf : Wf.
 
 (* Extra power for lemmas that produce Wf preconditions; use prove_Wf *)
 Hint Extern 4 (Wf (Combinators.foldl _)) =>
@@ -154,6 +160,8 @@ Hint Extern 4 (Wf (Combinators.map _)) =>
 (simple eapply map_Wf; solve [prove_Wf]) : Wf.
 Hint Extern 4 (Wf (Combinators.map2 _)) =>
 (simple eapply map2_Wf; solve [prove_Wf]) : Wf.
+Hint Extern 4 (Wf (Combinators.curry _)) =>
+(simple eapply curry_Wf; solve [prove_Wf]) : Wf.
 
 (* Miscellaneous helpful proofs for combinator equivalence *)
 Section Misc.
@@ -179,28 +187,6 @@ Section Misc.
              end.
   Qed.
 End Misc.
-
-(* TODO: move *)
-Ltac kappa_spec_begin :=
-  intros; cbn [interp_combinational'];
-  repeat match goal with
-         | |- context [combinational_evaluation' (CircuitArrow.Primitive ?p)] =>
-           let x := constr:(combinational_evaluation' (CircuitArrow.Primitive p)) in
-           let y := (eval cbv [combinational_evaluation'] in x) in
-           progress change x with y
-         | _ => progress cbn [denote_kind primitive_input primitive_output]
-         end; fold denote_kind in *.
-
-Create HintDb kappa_interp discriminated.
-Ltac kappa_spec_step :=
-  match goal with
-  | H : context [interp_combinational' (_ coq_func) _ = _] |- _ => rewrite H by eauto
-  | _ => progress autorewrite with kappa_interp
-  | |- context [interp_combinational'] => kappa_spec_begin
-  end.
-Ltac kappa_spec := kappa_spec_begin; repeat kappa_spec_step.
-
-Notation kinterp x := (interp_combinational' (x coq_func)).
 
 (* Proofs of equivalence between circuit combinators and functional
    specifications *)
@@ -302,7 +288,6 @@ Section CombinatorEquivalence.
   Qed.
   Hint Rewrite @bitwise_correct : kappa_interp.
 
-  Definition mux {T} (sel : bool) (x y : T) : T := if sel then x else y.
   Lemma mux_item_correct A sel (x y : denote_kind A):
     kinterp (@Combinators.mux_item A) (sel, (x, (y, tt))) = mux sel x y.
   Proof.
@@ -310,17 +295,24 @@ Section CombinatorEquivalence.
     rewrite bitwise_or_enable. reflexivity.
   Qed.
   Hint Rewrite @mux_item_correct : kappa_interp.
+
+  Lemma curry_correct A B C argsT
+        (c: (Tuple A << B, argsT >> ~[ KappaCat ]~> C)%CategoryLaws) ab args :
+    kinterp (@Combinators.curry A B C argsT c) (ab, args)
+    = kinterp c (fst ab, (snd ab, args)).
+  Proof. cbv [Combinators.curry]; kappa_spec; reflexivity.  Qed.
+  Hint Rewrite @curry_correct : kappa_interp.
 End CombinatorEquivalence.
 
 (* needed to reduce typechecking time *)
 Global Opaque Combinators.mux_item Combinators.bitwise Combinators.enable
        Combinators.equality Combinators.replicate Combinators.map2
        Combinators.map Combinators.flatten Combinators.reverse
-       Combinators.reshape Combinators.foldl.
+       Combinators.reshape Combinators.foldl Combinators.curry.
 
 (* Restate all hints so they exist outside the section *)
 Hint Rewrite @mux_item_correct @bitwise_correct @enable_correct
      @equality_correct @replicate_correct @reshape_correct @map2_correct
      @map_correct @flatten_correct @reverse_correct @reshape_correct
-     @foldl_correct
+     @foldl_correct @curry_correct
   using solve [eauto] : kappa_interp.
