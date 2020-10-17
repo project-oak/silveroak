@@ -14,25 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import String.
-From Coq Require Import Vector.
-
-From Cava Require Import VectorUtils.
-
-(******************************************************************************)
-(* Values of Kind can occur as the type of signals on a circuit interface *)
-(******************************************************************************)
-
-Inductive Kind : Type :=
-  | Void : Kind                    (* An empty type *)
-  | Bit : Kind                     (* A single wire *)
-  | Vec : Kind -> nat -> Kind      (* Vectors, possibly nested *)
-  | ExternalType : string -> Kind. (* An uninterpreted type *)
-
-Fixpoint listOfVecTy (bv: Kind) : Type :=
-  match bv with
-  | Void => list bool
-  | Bit => list bool
-  | Vec k2 _ => list (listOfVecTy k2)
-  | ExternalType _ => list bool
-  end.
+Require Export Acorn.AcornSignal.
+Require Export Acorn.AcornCavaClass.
+Require Export Acorn.AcornNetlist.
+Require Export Acorn.AcornState.
+Require Export Acorn.Combinational.
+Require Export Acorn.AcornNetlistGeneration.
+Require Export Acorn.Combinational.
+Require Export Acorn.AcornCombinators.

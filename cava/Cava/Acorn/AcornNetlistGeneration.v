@@ -14,25 +14,38 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import String.
-From Coq Require Import Vector.
+Require Import ExtLib.Structures.Monads.
+Require Export ExtLib.Data.Monads.StateMonad.
 
-From Cava Require Import VectorUtils.
+From Cava Require Import Acorn.AcornSignal.
+From Cava Require Import Acorn.AcornCavaClass.
+From Cava Require Import Acorn.AcornNetlist.
+From Cava Require Import Acorn.AcornState.
 
-(******************************************************************************)
-(* Values of Kind can occur as the type of signals on a circuit interface *)
-(******************************************************************************)
+Import MonadNotation.
+Local Open Scope monad_scope.
 
-Inductive Kind : Type :=
-  | Void : Kind                    (* An empty type *)
-  | Bit : Kind                     (* A single wire *)
-  | Vec : Kind -> nat -> Kind      (* Vectors, possibly nested *)
-  | ExternalType : string -> Kind. (* An uninterpreted type *)
+Definition invNet (i : Signal BitType) : state AcornState (Signal BitType) :=
+  o <- newWire ;;
+  addInstance (Inv i o) ;;
+  ret o.
 
-Fixpoint listOfVecTy (bv: Kind) : Type :=
-  match bv with
-  | Void => list bool
-  | Bit => list bool
-  | Vec k2 _ => list (listOfVecTy k2)
-  | ExternalType _ => list bool
-  end.
+Definition binaryGate (gate : Signal BitType -> Signal BitType -> Signal BitType -> AcornInstance)
+                      (i : Signal BitType * Signal BitType)
+                      : state AcornState (Signal BitType) :=
+  let (i0, i1) := i in
+  o <- newWire ;;
+  addInstance (gate i0 i1 o) ;;
+  ret o.
+
+Instance AcornNetlist : Cava (state AcornState) denoteSignal :=
+{ one := Const1;
+  zero := Const0;
+  inv :=  invNet;
+  and2 := binaryGate And2;
+  or2 := binaryGate Or2;
+  xor2 := binaryGate Xor2;
+  pair _ _ a b := Pair a b;
+  fsT _ _  := Fst;
+  snD _ _ := Snd;
+}.
