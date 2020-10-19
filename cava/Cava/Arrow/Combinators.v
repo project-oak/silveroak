@@ -22,6 +22,7 @@ Import ListNotations.
 Import EqNotations.
 
 Import KappaNotation.
+Import CategoryNotations.
 Local Open Scope category_scope.
 Local Open Scope string_scope.
 Local Open Scope kind_scope.

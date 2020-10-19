@@ -17,7 +17,7 @@
 From Cava Require Import Arrow.Classes.Category.
 From Cava Require Import Arrow.Classes.Arrow.
 From Cava Require Import Arrow.CircuitArrow.
-From Cava Require Import Arrow.CircuitSemantics.
+(* From Cava Require Import Arrow.CircuitSemantics. *)
 From Cava Require Import Arrow.ExprSyntax.
 From Cava Require Import Arrow.ExprLowering.
 From Cava Require Import Arrow.ArrowKind.
@@ -48,6 +48,7 @@ Section combinational_semantics.
       interp_combinational' (f (interp_combinational' v tt)) y
     | LetRec v f => fun _ => kind_default _
     | RemoveContext f => interp_combinational' f
+    | Module _ f => interp_combinational' f
     end.
 
   Definition interp_combinational {x y: Kind}
@@ -55,8 +56,8 @@ Section combinational_semantics.
     (i: denote_kind (remove_rightmost_unit x)): (denote_kind y) :=
     interp_combinational' expr (apply_rightmost_tt x i).
 
-  Axiom expression_evaluation_is_arrow_evaluation: forall i o (expr: Kappa i o), forall (x: denote_kind i),
-    combinational_evaluation' (closure_conversion expr) x =
-    interp_combinational' (expr _) x.
+  (* Axiom expression_evaluation_is_arrow_evaluation: forall i o (expr: Kappa i o), forall (x: denote_kind i), *)
+  (*   combinational_evaluation' (closure_conversion expr) x = *)
+  (*   interp_combinational' (expr _) x. *)
 
 End combinational_semantics.

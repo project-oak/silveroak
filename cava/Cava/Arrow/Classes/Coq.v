@@ -2,8 +2,36 @@ From ExtLib Require Import Structures.Monads.
 From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 
 Import MonadNotation.
+Import CategoryNotations.
 Local Open Scope monad_scope.
-Local Open Scope category_scope.
+(* Local Open Scope category_scope. *)
+
+Definition build_denoted_category T denote : Category T :=
+{|
+  morphism X Y := denote X -> denote Y;
+  id X a := a;
+  compose X Y Z f g a := f (g a);
+|}.
+
+Program Definition build_denoted_arrow T denote unit tuple
+  (tt: denote unit)
+  (pair: forall {x y}, denote x -> denote y -> denote (tuple x y))
+  (fst: forall {x y}, denote (tuple x y) -> denote x)
+  (snd: forall {x y}, denote (tuple x y) -> denote y)
+  : Arrow T (build_denoted_category T denote) unit tuple :=
+{|
+  first  x y z f := fun a : denote _ => pair (f (fst a)) (snd a);
+  second x y z f := fun a => pair (fst a) (f (snd a));
+
+  assoc   x y z := fun a => pair (fst (fst a)) (pair (snd (fst a)) (snd a));
+  unassoc x y z := fun a => pair (pair (fst a) (fst (snd a))) (snd (snd a));
+
+  cancelr x := fun a => fst a;
+  cancell x := fun a => snd a;
+
+  uncancell x := fun a => pair tt a;
+  uncancelr x := fun a => pair a tt;
+|}.
 
 Instance coq_category : Category Type := {
   morphism X Y := X -> Y;
@@ -73,7 +101,7 @@ Instance coq_sum_arrow : Arrow Type coq_category void sum := {
   uncancelr x a := inl a;
 }.
 
-Instance coq_arrow_sum : ArrowSum Type coq_category void sum coq_sum_arrow := {
+Instance coq_arrow_sum : Arrows.Sum Type coq_category void sum coq_sum_arrow := {
   merge X x := match x with
     | inl x => x
     | inr x => x

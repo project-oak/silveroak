@@ -15,134 +15,177 @@
 (****************************************************************************)
 
 From Coq Require Import Bool ZArith NArith NaryFunctions Vector Lia.
-From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
+From Cava Require Import Arrow.Classes.Category.
+From Cava Require Import Arrow.Classes.Arrow.
+From Cava Require Import Arrow.Classes.Coq.
+From Cava Require Import Arrow.Classes.Kleisli.
 From Cava Require Import Arrow.CircuitArrow Arrow.ArrowKind Arrow.Primitives.
+From Cava Require Import Arrow.ExprLowering.
+
+From ExtLib Require Import Structures.Monads.
+From ExtLib Require Import Structures.Applicative.
+From ExtLib Require Import Structures.Traversable.
+From ExtLib Require Export Data.Monads.StateMonad.
+
+Import MonadNotation.
 
 Import VectorNotations.
+Import CategoryNotations.
 Import EqNotations.
 
 Require Import Cava.BitArithmetic.
 Require Import Cava.VectorUtils.
 
+Local Open Scope category_scope.
+
 (******************************************************************************)
 (* Evaluation as function evaluation                                          *)
 (******************************************************************************)
 
-Fixpoint combinational_evaluation' {i o}
-  (c: Circuit i o)
-  : denote_kind i ->
-    denote_kind o :=
-  match c with
-  | Composition _ _ _ f g => fun x =>
-    (combinational_evaluation' g) ((combinational_evaluation' f) x)
-  | First x y z f => fun x => ((combinational_evaluation' f) (fst x), snd x)
-  | Second x y z f => fun x => (fst x, (combinational_evaluation' f) (snd x))
-  | Loopr x y z f => fun x => kind_default _
-  | Loopl x y z f => fun x => kind_default _
+Definition combinational_category : Category Kind
+  := build_denoted_category Kind denote_kind.
+Definition combinational_arrow : Arrow Kind combinational_category Unit Tuple
+  := build_denoted_arrow Kind denote_kind Unit Tuple tt
+    (fun _ _ => pair)
+    (fun _ _ => fst)
+    (fun _ _ => snd).
 
-  | Structural (Id _) => fun x => x
-  | Structural (Cancelr X) => fun x => fst x
-  | Structural (Cancell X) => fun x => snd x
-  | Structural (Uncancell _) => fun x => (tt, x)
-  | Structural (Uncancelr _) => fun x => (x, tt)
-  | Structural (Assoc _ _ _) => fun i => (fst (fst i), (snd (fst i), snd i))
-  | Structural (Unassoc _ _ _) => fun i => ((fst i, fst (snd i)), snd (snd i))
-  | Structural (Drop x) => fun _ => tt
-  | Structural (Swap x y) => fun '(x,y) => (y,x)
-  | Structural (Copy x) => fun x => (x,x)
+Instance combinational_drop : Arrows.Drop combinational_arrow := { drop _ _ := tt; }.
+Instance combinational_copy : Arrows.Copy combinational_arrow := { copy _ x := (x,x); }.
+Instance combinational_swap : Arrows.Swap combinational_arrow := { swap _ _ '(x,y) := (y,x); }.
+Instance combinational_arrow_rewrite_or_default
+  : Arrows.RewriteOrDefault combinational_arrow := {
+  rewrite_or_default := ArrowKind.rewrite_or_default;
+}.
 
-  | Primitive p => primitive_interp p
+Instance combinational_annotation : Arrows.Annotation combinational_arrow String.string := {
+  annotate _ _ _ f := f
+}.
 
-  | Map x y n f => fun v => Vector.map (combinational_evaluation' f) v
-  | Resize x n nn => fun v => resize_default (kind_default _) nn v
-  end.
+Instance combinational_impossible : Arrows.Impossible combinational_arrow := {
+  impossible _ _ _ := kind_default _
+}.
 
-Fixpoint circuit_state {i o} (c: Circuit i o) : Type :=
-  match c with
-  | Composition _ _ _ f g => prod (circuit_state f) (circuit_state g)
-  | First x y z f => circuit_state f
-  | Second x y z f => circuit_state f
-  | Loopr x y z f => prod (circuit_state f) (denote_kind z)
-  | Loopl x y z f => prod (denote_kind z) (circuit_state f)
-  | Primitive (Delay o) => denote_kind o
-  | Map x y n f => Vector.t (circuit_state f) n
-  | _ => Datatypes.unit
-  end.
+Instance combinational_primitive
+  : Arrows.Primitive combinational_arrow CircuitPrimitive primitive_input primitive_output := {
+  primitive p := primitive_interp p;
+}.
 
-Fixpoint default_state {i o} (c: Circuit i o) : circuit_state c :=
-  match c as c' return circuit_state c' with
-  | Composition _ _ _ f g => (default_state f, default_state g)
-  | First x y z f => default_state f
-  | Second x y z f => default_state f
-  | Loopr x y z f => (default_state f, kind_default z)
-  | Loopl x y z f => (kind_default z, default_state f)
-  | Primitive (Delay o) => kind_default o
-  | Map x y n f => const (default_state f) _
-  | _ => tt
-  end.
-
-Fixpoint iterate_looped {i o s} (n: nat)
-  (f: denote_kind i -> s -> denote_kind o * s)
-  (input: denote_kind i)
-  (state: s)
-  : denote_kind o * s :=
-  let '(o,s) := f input state in
-  match n with
-  | 0 => (o,s)
-  | S n' => iterate_looped n' f input s
-  end.
-
-Fixpoint circuit_evaluation' {i o} (n: nat) (c: Circuit i o)
-  : denote_kind i -> circuit_state c -> denote_kind o * circuit_state c :=
-  match c as c' in Circuit i o
-    return denote_kind i -> circuit_state c' -> denote_kind o * circuit_state c'
-  with
-  | Composition _ _ _ f g => fun x s =>
-    let '(y,ls) := circuit_evaluation' n f x (fst s) in
-    let '(z,rs) := circuit_evaluation' n g y (snd s) in
-    (z, (ls,rs))
-  | First x y z f => fun x s =>
-    let '(y, ns) := circuit_evaluation' n f (fst x) s in
-    ((y,snd x), ns)
-  | Second x y z f => fun x s =>
-    let '(y, ns) := circuit_evaluation' n f (snd x) s in
-    ((fst x,y), ns)
-  | Loopr x y z f => fun i s =>
-    let '(o,ns) := iterate_looped n (circuit_evaluation' n f) (i, snd s) (fst s) in
-    (fst o, (ns, snd o))
-  | Loopl x y z f => fun i s =>
-    let '(o,ns) := iterate_looped n (circuit_evaluation' n f) (fst s, i) (snd s) in
-    (snd o, (fst o, ns))
-  | Structural (Id _) => fun x _ => (x, tt)
-  | Structural (Cancelr X) => fun x _ => (fst x, tt)
-  | Structural (Cancell X) => fun x _ => (snd x, tt)
-  | Structural (Uncancell _) => fun x _ => ((tt, x), tt)
-  | Structural (Uncancelr _) => fun x _ => ((x, tt), tt)
-  | Structural (Assoc _ _ _) => fun i _ => ((fst (fst i), (snd (fst i), snd i)), tt)
-  | Structural (Unassoc _ _ _) => fun i _ => (((fst i, fst (snd i)), snd (snd i)), tt)
-  | Structural (Drop x) => fun _ _ => (tt, tt)
-  | Structural (Swap x y) => fun '(x,y) _ => ((y,x), tt)
-  | Structural (Copy x) => fun x _ => ((x,x),tt)
-
-  | Primitive (Delay o) => fun x s => (s, fst x)
-  | Primitive p => fun x _ => (primitive_interp p x, tt)
-
-  | Map x y n f => fun v s => separate (Vector.map2 (circuit_evaluation' n f) v s)
-  | Resize x n nn => fun v _ => (resize_default (kind_default _) nn v, tt)
-  end.
-
-Local Open Scope category_scope.
+Instance combinational_loop : Arrows.Loop combinational_arrow := {
+  loopl _ _ _ _ _ := kind_default _;
+  loopr _ _ _ _ _ := kind_default _;
+}.
 
 Definition combinational_evaluation {x y: Kind}
-  (circuit: x ~> y)
+  (circuit: ExprSyntax.Kappa x y)
   (i: denote_kind (remove_rightmost_unit x))
   : denote_kind y :=
-  combinational_evaluation' circuit (apply_rightmost_tt x i).
+  (closure_conversion (arrow:=combinational_arrow) circuit) (apply_rightmost_tt x i).
 
-Definition circuit_evaluation {x y: Kind} (n: nat)
-  (circuit: x ~> y)
-  (i: denote_kind (remove_rightmost_unit x))
-  (state: circuit_state circuit)
-  : (denote_kind y * circuit_state circuit) :=
-  circuit_evaluation' n circuit (apply_rightmost_tt x i) state.
+Local Notation "'stateless' x => e : k" :=
+  ( existT _ Unit (fun x (_ : denote_kind Unit) => (e : denote_kind k, tt : denote_kind Unit)) )
+  (at level 1, x pattern, e at level 2 , only parsing ).
+
+Instance sequential_category : Category Kind := {|
+  morphism X Y :=
+    { state: Kind & denote_kind X -> denote_kind state -> (denote_kind Y * denote_kind state) };
+  id X := stateless x => x : _ ;
+  compose X Y Z '(existT _ fk f) '(existT _ gk g) :=
+    let state := Tuple gk fk in
+    existT _ state
+      (fun x (s: denote_kind state) =>
+      let '(y, os1) := g x (fst s) in
+      let '(z, os2) := f y (snd s) in
+      (z, (os1,os2) : denote_kind state)
+      );
+|}.
+
+Instance sequential_arrow : Arrow Kind sequential_category Unit Tuple := {|
+  first  X Y Z (f: X ~[sequential_category]~> Y) :=
+    match f with
+    | existT _ fk f => existT _ fk (fun (x: denote_kind (Tuple X Z)) (s : denote_kind fk) =>
+      let '(y, s) := f (fst x) s in
+      ((y,snd x),s : denote_kind fk))
+    end;
+  second X Y Z f :=
+    match f with
+    | existT _ fk f => existT _ fk (fun (x: denote_kind (Tuple Z X)) (s : denote_kind fk) =>
+      let '(y, s) := f (snd x) s in
+      ((fst x, y),s : denote_kind fk))
+    end;
+
+  assoc   x y z := stateless a => (fst (fst a), (snd (fst a), snd a)) : (Tuple _ (Tuple _ _));
+  unassoc x y z := stateless a => ((fst a, fst (snd a)), snd (snd a)) : (Tuple (Tuple _ _) _);
+
+  cancelr x := stateless a => (fst a) : _;
+  cancell x := stateless a => (snd a) : _;
+
+  uncancell x := stateless a => (tt, a) : (Tuple Unit _);
+  uncancelr x := stateless a => (a, tt) : (Tuple _ Unit);
+ |}.
+
+Instance sequential_drop : Arrows.Drop sequential_arrow :=
+  { drop _ := stateless _ => tt : Unit ; }.
+Instance sequential_copy : Arrows.Copy sequential_arrow :=
+  { copy _ := stateless x => (x,x) : (Tuple _ _); }.
+Instance sequential_swap : Arrows.Swap sequential_arrow :=
+  { swap _ _ := stateless (x,y) => (y,x) : (Tuple _ _); }.
+
+Instance sequential_arrow_rewrite_or_default : Arrows.RewriteOrDefault sequential_arrow := {
+  rewrite_or_default x y :=
+    stateless v => (
+    match eq_kind_dec x y with
+    | left Heq => rew Heq in v
+    | right _ => kind_default _
+    end) : _ ;
+}.
+
+Instance sequential_annotation : Arrows.Annotation sequential_arrow String.string := {
+  annotate _ _ _ f := f
+}.
+
+Instance sequential_impossible : Arrows.Impossible sequential_arrow := {
+  impossible _ _ := stateless _ => (kind_default _) : _ ;
+}.
+
+Instance sequential_primitive : Arrows.Primitive sequential_arrow CircuitPrimitive primitive_input primitive_output := {
+  primitive p :=
+    match p as p' return primitive_input p' ~[ sequential_category ]~> primitive_output p' with
+    | Delay o => existT _ o (fun x s => (s, fst x))
+    | p => stateless x => (primitive_interp p x) : _
+    end;
+}.
+
+Instance sequential_loop : Arrows.Loop sequential_arrow := {
+  loopr X Y Z f :=
+    match f with
+    | existT _ fk f =>
+      existT _ (Tuple fk Z) (
+        fun (i: denote_kind X) (s:denote_kind (Tuple fk Z)) =>
+          let '(o, ns) := f (i, snd s) (fst s) in
+          (fst o : denote_kind Y, (ns, snd o) : denote_kind (Tuple _ _)))
+    end;
+
+  loopl X Y Z f :=
+    match f with
+    | existT _ fk f =>
+      existT _ (Tuple Z fk) (
+        fun (i: denote_kind X) (s:denote_kind (Tuple Z fk)) =>
+          let '(o, ns) := f (fst s, i) (snd s) in
+          (snd o : denote_kind Y, (fst o, ns) : denote_kind (Tuple _ _)))
+    end;
+}.
+
+Definition circuit_evaluation {x y: Kind}
+  (circuit: ExprSyntax.Kappa x y)
+  : {state: Kind &
+    denote_kind (remove_rightmost_unit x) ->
+    denote_kind state ->
+    denote_kind y * denote_kind state} :=
+  match closure_conversion (arrow:=sequential_arrow) circuit with
+  | existT _ fk f =>
+    existT _ fk (
+      fun (i: denote_kind (remove_rightmost_unit x)) (s:denote_kind fk) =>
+        f (apply_rightmost_tt x i) s)
+  end.
 

@@ -27,6 +27,7 @@ Import NilZero.
 Import VectorNotations.
 Import EqNotations.
 Import ListNotations.
+Import CategoryNotations.
 
 From ExtLib Require Import Structures.Monads.
 From ExtLib Require Import Structures.Applicative.
@@ -159,61 +160,74 @@ Definition index' n (o: Kind): denote (Vector o n) -> denote (vec_index n) -> st
       ret (unpack o packed)
   end.
 
-Local Notation "'kleisli'" := (kleisli_arrow (state CavaState) _)(at level 100).
+(* Local Notation "'kleisli'" := (kleisli_arrow (state CavaState) _)(at level 100). *)
 
-Fixpoint build_netlist' {i o}
-  (c: Circuit i o)
-  : denote i ->
-    state CavaState (denote o) :=
-  match c with
-  | Composition _ _ _ f g => build_netlist' f >=> build_netlist' g
-  | First x y z f => first (Arrow:=kleisli) (build_netlist' f)
-  | Second x y z f => second (Arrow:=kleisli) (build_netlist' f)
+Definition netlist_category : Category Kind
+  := build_denoted_kleisli_category Kind denote (state CavaState) _.
 
-  | Structural (Id _) => ret
-  | Structural (Cancelr X) => cancelr (Arrow:=kleisli)
-  | Structural (Cancell X) => cancell (Arrow:=kleisli)
-  | Structural (Uncancell _) => uncancell (Arrow:=kleisli)
-  | Structural (Uncancelr _) => uncancelr (Arrow:=kleisli)
-  | Structural (Assoc _ _ _) => assoc (Arrow:=kleisli)
-  | Structural (Unassoc _ _ _) => unassoc (Arrow:=kleisli)
-  | Structural (Drop x) => fun _ => ret tt
-  | Structural (Swap x y) => fun '(x,y) => ret (y,x)
-  | Structural (Copy x) => fun x => ret (x,x)
+Definition netlist_arrow : Arrow Kind netlist_category Unit Tuple
+  := build_denoted_kleisli_arrow Kind denote (state CavaState) _ Unit Tuple tt
+    (fun _ _ => pair)
+    (fun _ _ => fst)
+    (fun _ _ => snd).
 
-  | Loopr _ _ Z f => fun x =>
+Instance netlist_drop : Arrows.Drop netlist_arrow := { drop _ _ := ret tt; }.
+Instance netlist_copy : Arrows.Copy netlist_arrow := { copy _ x := ret (x,x); }.
+Instance netlist_swap : Arrows.Swap netlist_arrow := { swap _ _ '(x,y) := ret (y,x); }.
+Instance netlist_arrow_rewrite_or_default : Arrows.RewriteOrDefault netlist_arrow := {
+  rewrite_or_default x y a :=
+    match eq_kind_dec x y with
+    | left Heq => ret (rew Heq in a)
+    | right _ => ret (const_wire _ (kind_default _))
+    end;
+}.
+
+Instance netlist_annotation : Arrows.Annotation netlist_arrow String.string := {
+  annotate _ _ _ f := f
+}.
+
+Instance netlist_impossible : Arrows.Impossible netlist_arrow := {
+  impossible _ _ _ := ret (const_wire _ (kind_default _))
+}.
+
+Instance netlist_loop : Arrows.Loop netlist_arrow := {
+  loopr _ _ Z f x :=
       z <- fresh_wire Z ;;
-      '(y,z') <- (build_netlist' f) (x,z) ;;
+      '(y,z') <- f (x,z) ;;
       map2M (fun x y => AssignSignal x y) Z z z' ;;
-      ret y
+      ret y;
 
-  | Loopl _ _ Z f => fun x =>
+  loopl _ _ Z f x :=
       z <- fresh_wire Z ;;
-      '(z',y) <- (build_netlist' f) (z,x) ;;
+      '(z',y) <- f (z,x) ;;
       map2M (fun x y => AssignSignal x y) Z z z' ;;
-      ret y
+      ret y;
+}.
 
-  | Primitive (Constant ty val) => fun _ => ret (const_wire ty val)
-  | Primitive (ConstantVec n ty val) => fun _ =>
+Instance netlist_primitive : Arrows.Primitive netlist_arrow CircuitPrimitive primitive_input primitive_output := {
+  primitive p :=
+  match p with
+  | (Constant ty val) => fun _ => ret (const_wire ty val)
+  | (ConstantVec n ty val) => fun _ =>
     ret (const_wire (Vector ty n) (resize_default (kind_default _) n (Vector.of_list val)))
-  | Primitive (Delay o) => fun x =>
+  | (Delay o) => fun x =>
       y <- fresh_wire _ ;;
       map2M (fun x y => DelayBit x y) _ (fst x) y ;;
       ret y
-  | Primitive Primitives.Not => fun i =>
+  | Primitives.Not => fun i =>
       o <- newWire ;;
       addInstance (Not (fst i) o) ;;
       ret o
-  | Primitive BufGate => fun i =>
+  | BufGate => fun i =>
       o <- newWire ;;
       addInstance (Buf (fst i) o) ;;
       ret o
-  | Primitive (Uncons n o) => fun v => ret ((Vector.hd (fst v), Vector.tl (fst v)))
-  | Primitive (Unsnoc n o) => fun v => ret (unsnoc (fst v))
-  | Primitive (Primitives.Slice n x y o) => fun v => slice' n x y o (fst v)
-  | Primitive (Primitives.Split n m o) => fun x => ret (Vector.splitat n (fst x))
-  | Primitive (EmptyVec o) => fun _ => ret ([])
-  | Primitive (Lut n f) => fun '(is,_) =>
+  | (Uncons n o) => fun v => ret ((Vector.hd (fst v), Vector.tl (fst v)))
+  | (Unsnoc n o) => fun v => ret (unsnoc (fst v))
+  | (Primitives.Slice n x y o) => fun v => slice' n x y o (fst v)
+  | (Primitives.Split n m o) => fun x => ret (Vector.splitat n (fst x))
+  | (EmptyVec o) => fun _ => ret ([])
+  | (Lut n f) => fun '(is,_) =>
       let seq := seq 0 (2^n) in
       let f' := NaryFunctions.nuncurry bool bool n f in
       let powers := map
@@ -234,62 +248,58 @@ Fixpoint build_netlist' {i o}
       addInstance component;;
       ret o
 
-  | Primitive (Primitives.Fst X Y) => fun '((x,y),_) => ret x
-  | Primitive (Primitives.Snd _ _) => fun '((x,y),_) => ret y
-  | Primitive (Primitives.Pair _ _) => fun '(x,(y,_)) => ret (x,y)
+  | (Primitives.Fst X Y) => fun '((x,y),_) => ret x
+  | (Primitives.Snd _ _) => fun '((x,y),_) => ret y
+  | (Primitives.Pair _ _) => fun '(x,(y,_)) => ret (x,y)
 
-  | Primitive Primitives.And => fun '(x,(y,_)) =>
+  | Primitives.And => fun '(x,(y,_)) =>
       o <- newWire ;;
       addInstance (And x y o) ;;
       ret o
-  | Primitive Primitives.Nand => fun '(x,(y,_)) =>
+  | Primitives.Nand => fun '(x,(y,_)) =>
       o <- newWire ;;
       addInstance (Nand x y o) ;;
       ret o
-  | Primitive Primitives.Or => fun '(x,(y,_)) =>
+  | Primitives.Or => fun '(x,(y,_)) =>
       o <- newWire ;;
       addInstance (Or x y o) ;;
       ret o
-  | Primitive Primitives.Nor => fun '(x,(y,_)) =>
+  | Primitives.Nor => fun '(x,(y,_)) =>
       o <- newWire ;;
       addInstance (Nor x y o) ;;
       ret o
-  | Primitive Primitives.Xor => fun '(i0,(i1,_)) =>
+  | Primitives.Xor => fun '(i0,(i1,_)) =>
       o <- newWire ;;
       addInstance (Xor i0 i1 o) ;;
       ret o
-  | Primitive Primitives.Xnor => fun '(i0,(i1,_)) =>
+  | Primitives.Xnor => fun '(i0,(i1,_)) =>
       o <- newWire ;;
       addInstance (Xnor i0 i1 o) ;;
       ret o
-  | Primitive Primitives.Xorcy => fun '(i0, (i1, _)) =>
+  | Primitives.Xorcy => fun '(i0, (i1, _)) =>
       o <- newWire ;;
       addInstance (Component "XORCY" [] [("O", USignal o); ("CI", USignal i0); ("LI", USignal i1)]) ;;
       ret o
-  | Primitive Muxcy => fun '(s,((ci, di), _)) =>
+  | Muxcy => fun '(s,((ci, di), _)) =>
       o <- newWire ;;
       addInstance ( Component "MUXCY" [] [("O", USignal o); ("S", USignal s); ("CI", USignal ci); ("DI", USignal di)]) ;;
       ret o
-  | Primitive (Primitives.UnsignedAdd m n s) => fun '(x,(y,_)) =>
+  | (Primitives.UnsignedAdd m n s) => fun '(x,(y,_)) =>
       sum <- newVector _ s ;;
       addInstance (UnsignedAdd (VecLit x) (VecLit y) sum) ;;
       ret (Vector.map (IndexConst sum) (vseq 0 s))
-  | Primitive (Primitives.UnsignedSub s) => fun '(x, (y,_)) =>
+  | (Primitives.UnsignedSub s) => fun '(x, (y,_)) =>
       sum <- newVector _ s ;;
       addInstance (UnsignedSubtract (VecLit x) (VecLit y) sum) ;;
       ret (Vector.map (IndexConst sum) (vseq 0 s))
-  | Primitive (Index n o) => fun '(v,(i,_)) => index' _ _ v i
-  | Primitive (Primitives.Cons n o) => fun '(x, (v,_)) =>
+  | (Index n o) => fun '(v,(i,_)) => index' _ _ v i
+  | (Primitives.Cons n o) => fun '(x, (v,_)) =>
     ret ((x :: v)%vector)
-  | Primitive (Snoc n o) => fun '(v, (x,_)) => ret (snoc v x)
-  | Primitive (Primitives.Concat n m o) => fun '(x, (y, _)) =>
+  | (Snoc n o) => fun '(v, (x,_)) => ret (snoc v x)
+  | (Primitives.Concat n m o) => fun '(x, (y, _)) =>
     ret ((x ++ y)%vector)
-  | Map x y n f => fun v => mapT (build_netlist' f) v
-  | Resize x n nn => fun v => ret (resize_default (const_wire _ (kind_default _)) nn v)
-end.
-
-Close Scope string_scope.
-Local Open Scope category_scope.
+  end;
+}.
 
 Fixpoint apply_rightmost_tt (x: Kind)
   : denote (remove_rightmost_unit x) -> denote x
@@ -307,8 +317,9 @@ Fixpoint apply_rightmost_tt (x: Kind)
   | _ => fun x => x
   end.
 
-Definition build_netlist {X Y} (circuit: X ~> Y)
+From Cava Require Import Arrow.ExprLowering.
+Definition build_netlist {X Y} (circuit: ExprSyntax.Kappa X Y)
   (i: denote (remove_rightmost_unit X))
   : state CavaState (denote Y) :=
-  build_netlist' circuit (apply_rightmost_tt X i).
+  (closure_conversion (arrow:=netlist_arrow) circuit) (apply_rightmost_tt X i).
 

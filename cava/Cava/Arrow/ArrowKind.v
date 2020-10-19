@@ -19,6 +19,7 @@ From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 
 Import ListNotations.
 Import VectorNotations.
+Import CategoryNotations.
 
 From Cava Require Import Types.
 
@@ -200,6 +201,30 @@ Fixpoint kind_default (ty: Kind): denote_kind ty :=
   | Bit => false
   | Vector ty n => const (kind_default ty) n
   | Unit => tt
+  end.
+
+Fixpoint rewrite_or_default (x y: Kind): denote_kind x -> denote_kind y :=
+  match x as x' return denote_kind x' -> denote_kind y with
+  | Unit =>
+      match y with
+      | Unit => fun a => a
+      | _ => fun _ => kind_default _
+      end
+  | Tuple l r =>
+      match y with
+      | Tuple ll rr => fun '(a,b) => (rewrite_or_default l ll a, rewrite_or_default r rr b)
+      | _ => fun _ => kind_default _
+      end
+  | Vector t n =>
+      match y with
+      | Vector t2 n2 => fun a => VectorUtils.resize_default (kind_default _) _ (Vector.map (rewrite_or_default t t2) a)
+      | _ => fun _ => kind_default _
+      end
+  | Bit =>
+      match y with
+      | Bit => fun a => a
+      | _ => fun _ => kind_default _
+      end
   end.
 
 Lemma blank_rew: forall ty ty' H x, eq_rect ty (fun (_ : Kind) => Kind) x ty' H = x.

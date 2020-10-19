@@ -18,6 +18,8 @@ Require Import Coq.NArith.NArith.
 From Cava.Arrow Require Import ArrowExport DeriveSpec.
 From Cava Require Import BitArithmetic Tactics VectorUtils.
 
+Import CategoryNotations.
+
 (* Functional specifications for circuit combinators *)
 Section Specs.
   Fixpoint denote_kind_eqb {A : Kind} : denote_kind A -> denote_kind A -> bool :=

@@ -45,6 +45,10 @@ Recursive Extraction Library Combinators.
 Recursive Extraction Library NetlistGeneration.
 
 From Cava.Arrow Require Import ArrowExport.
+Require Import Cava.Arrow.CircuitArrow.
+Require Import Cava.Arrow.CircuitSemantics.
+Require Import Cava.Arrow.CircuitLowering.
+Require Import Cava.Arrow.CircuitProp.
 
 Recursive Extraction Library Arrow.
 Recursive Extraction Library Category.

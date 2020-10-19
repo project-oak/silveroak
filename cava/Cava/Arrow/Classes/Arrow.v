@@ -4,7 +4,9 @@ Local Open Scope category_scope.
 
 Reserved Infix "**" (at level 30, right associativity).
 
-Generalizable Variable unit product.
+Generalizable All Variables .
+
+Import CategoryNotations.
 
 Class DecidableEquality T := {
   eq_dec: forall x y : T, {x = y} + {x <> y}
@@ -13,8 +15,8 @@ Class DecidableEquality T := {
 (* generalized arrow *)
 Class Arrow (object: Type) (category: Category object) (unit: object) (product: object -> object -> object) := {
   arrow_category := category;
-  u := unit;
-  product := product
+  arrow_unit := unit;
+  arrow_product := product
     where "x ** y" := (product x y);
 
   first  {x y z} (f: x ~> y) : x ** z ~> y ** z;
@@ -38,8 +40,8 @@ Declare Scope arrow_scope.
 Bind Scope arrow_scope with Arrow.
 Delimit Scope arrow_scope with Arrow.
 
-Notation "x ** y" := (product x y)
-  (at level 30, right associativity) : arrow_scope.
+Notation "x ** y" := (arrow_product x y)
+  (at level 30, right associativity) : category_scope.
 
 Class ArrowLaws
   (object: Set)
@@ -98,33 +100,6 @@ Section with_continuation.
   Proof using arrow_laws. prove_cont (unassoc_iso f g h). Qed.
 End with_continuation.
 
-Local Open Scope arrow_scope.
-
-Class ArrowCopy `(A: Arrow) := {
-  copy {x} : x ~> x**x;
-}.
-
-Class ArrowDrop `(A: Arrow) := {
-  drop {x} : x ~> u;
-}.
-
-Class ArrowSwap `(A: Arrow) := {
-  swap {x y} : x**y ~> y**x;
-}.
-
-Class ArrowLoop `(A: Arrow) := {
-  loopr {x y z} : (x**z ~> y**z) -> (x ~> y);
-  loopl {x y z} : (z**x ~> z**y) -> (x ~> y);
-}.
-
-Class ArrowConstant
-  object (category: Category object)
-  unit prod (A: Arrow object category unit prod)
-  (r: object) t
-  := {
-  constant : t -> (unit ~> r);
-}.
-
 Inductive void := .
 
 Lemma void_is_false: void -> False.
@@ -133,13 +108,59 @@ Proof.
   destruct H.
 Qed.
 
-Class ArrowSum
-  object (category: Category object)
-  void either (ASum: Arrow object category void either)
-  := {
-  merge {x} : (either x x) ~> x;
-  never {x} : void ~> x;
-}.
+Module Arrows.
+  Class Copy `(A: Arrow) := {
+    copy {x} : x ~> x**x;
+  }.
+
+  Class Drop `(A: Arrow) := {
+    drop {x} : x ~> arrow_unit;
+  }.
+
+  Class Swap `(A: Arrow) := {
+    swap {x y} : x**y ~> y**x;
+  }.
+
+  Class Loop `(A: Arrow) := {
+    loopr {x y z} : (x**z ~> y**z) -> (x ~> y);
+    loopl {x y z} : (z**x ~> z**y) -> (x ~> y);
+  }.
+
+  Class Constant `(A: Arrow) t v := {
+    constant : v -> (arrow_unit ~> t);
+  }.
+
+  Class RewriteOrDefault `(A: Arrow) := {
+    rewrite_or_default : forall x y, x ~> y;
+  }.
+
+  Class RewriteOrDefaultLaw `(A: Arrow) := {
+    rewrite_or_default_refl :
+      forall x (r: RewriteOrDefault A),
+      rewrite_or_default x x = id;
+  }.
+
+  Class Annotation `(A: Arrow) ann := {
+    annotate : forall {x y}, ann -> (x ~> y) -> (x ~> y);
+  }.
+
+  Class Sum
+    object (category: Category object)
+    void either (ASum: Arrow object category void either)
+    := {
+    merge {x} : (either x x) ~> x;
+    never {x} : void ~> x;
+  }.
+
+  (* A case that can never happen *)
+  Class Impossible `(A: Arrow) := {
+    impossible : forall {x y}, x ~> y;
+  }.
+
+  Class Primitive `(A: Arrow) primitive primitive_proj_i primitive_proj_o := {
+    primitive (p: primitive) : primitive_proj_i p ~> primitive_proj_o p;
+  }.
+End Arrows.
 
 (*
 Class ArrowApply := {
@@ -152,67 +173,67 @@ Class ArrowProd := {
 }.
 *)
 
-Class ArrowSTKC
-  `(A: Arrow)
-  := {
-  stkc_arrow := A;
-  stkc_arrow_drop :> ArrowDrop A;
-  stkc_arrow_swap :> ArrowSwap A;
-  stkc_arrow_copy :> ArrowCopy A;
-}.
+(* Class ArrowSTKC *)
+(*   `(A: Arrow) *)
+(*   := { *)
+(*   stkc_arrow := A; *)
+(*   stkc_arrow_drop :> ArrowDrop A; *)
+(*   stkc_arrow_swap :> ArrowSwap A; *)
+(*   stkc_arrow_copy :> ArrowCopy A; *)
+(* }. *)
 
-Coercion stkc_arrow: ArrowSTKC >-> Arrow.
-Coercion stkc_arrow_drop: ArrowSTKC >-> ArrowDrop.
-Coercion stkc_arrow_swap: ArrowSTKC >-> ArrowSwap.
-Coercion stkc_arrow_copy: ArrowSTKC >-> ArrowCopy.
+(* Coercion stkc_arrow: ArrowSTKC >-> Arrow. *)
+(* Coercion stkc_arrow_drop: ArrowSTKC >-> ArrowDrop. *)
+(* Coercion stkc_arrow_swap: ArrowSTKC >-> ArrowSwap. *)
+(* Coercion stkc_arrow_copy: ArrowSTKC >-> ArrowCopy. *)
 
-Section arrowstkc.
-  Context {object: Type}.
-  Context {unit: object}.
-  Context {product: object -> object -> object}.
+(* Section arrowstkc. *)
+(*   Context {object: Type}. *)
+(*   Context {unit: object}. *)
+(*   Context {product: object -> object -> object}. *)
 
-  Inductive ArrowStructure :=
-    | Id: object -> ArrowStructure
-    | Assoc: object -> object -> object -> ArrowStructure
-    | Unassoc: object -> object -> object -> ArrowStructure
-    | Cancelr: object -> ArrowStructure
-    | Cancell: object -> ArrowStructure
-    | Uncancell: object -> ArrowStructure
-    | Uncancelr: object -> ArrowStructure
-    | Copy: object -> ArrowStructure
-    | Drop: object -> ArrowStructure
-    | Swap: object -> object -> ArrowStructure.
+(*   Inductive ArrowStructure := *)
+(*     | Id: object -> ArrowStructure *)
+(*     | Assoc: object -> object -> object -> ArrowStructure *)
+(*     | Unassoc: object -> object -> object -> ArrowStructure *)
+(*     | Cancelr: object -> ArrowStructure *)
+(*     | Cancell: object -> ArrowStructure *)
+(*     | Uncancell: object -> ArrowStructure *)
+(*     | Uncancelr: object -> ArrowStructure *)
+(*     | Copy: object -> ArrowStructure *)
+(*     | Drop: object -> ArrowStructure *)
+(*     | Swap: object -> object -> ArrowStructure. *)
 
-  Inductive ArrowComposition :=
-    | Compose: object -> object -> object -> ArrowComposition
-    | First: object -> object -> object -> ArrowComposition
-    | Second: object -> object -> object -> ArrowComposition.
+(*   Inductive ArrowComposition := *)
+(*     | Compose: object -> object -> object -> ArrowComposition *)
+(*     | First: object -> object -> object -> ArrowComposition *)
+(*     | Second: object -> object -> object -> ArrowComposition. *)
 
-  Fixpoint arrow_input (a: ArrowStructure): object :=
-    match a with
-    | Id x => x
-    | Assoc x y z => (product (product x y) z)
-    | Unassoc x y z => (product x (product y z))
-    | Cancelr x => product x unit
-    | Cancell x => product unit x
-    | Uncancell x => x
-    | Uncancelr x => x
-    | Copy x => x
-    | Drop x => x
-    | Swap x y => product x y
-    end.
+(*   Fixpoint arrow_input (a: ArrowStructure): object := *)
+(*     match a with *)
+(*     | Id x => x *)
+(*     | Assoc x y z => (product (product x y) z) *)
+(*     | Unassoc x y z => (product x (product y z)) *)
+(*     | Cancelr x => product x unit *)
+(*     | Cancell x => product unit x *)
+(*     | Uncancell x => x *)
+(*     | Uncancelr x => x *)
+(*     | Copy x => x *)
+(*     | Drop x => x *)
+(*     | Swap x y => product x y *)
+(*     end. *)
 
-  Fixpoint arrow_output (a: ArrowStructure): object :=
-    match a with
-    | Id x => x
-    | Assoc x y z => (product x (product y z))
-    | Unassoc x y z => (product (product x y) z)
-    | Cancelr x => x
-    | Cancell x => x
-    | Uncancell x => product unit x
-    | Uncancelr x => product x unit
-    | Copy x => product x x
-    | Drop x => unit
-    | Swap x y => product y x
-    end.
-End arrowstkc.
+(*   Fixpoint arrow_output (a: ArrowStructure): object := *)
+(*     match a with *)
+(*     | Id x => x *)
+(*     | Assoc x y z => (product x (product y z)) *)
+(*     | Unassoc x y z => (product (product x y) z) *)
+(*     | Cancelr x => x *)
+(*     | Cancell x => x *)
+(*     | Uncancell x => product unit x *)
+(*     | Uncancelr x => product x unit *)
+(*     | Copy x => product x x *)
+(*     | Drop x => unit *)
+(*     | Swap x y => product y x *)
+(*     end. *)
+(* End arrowstkc. *)

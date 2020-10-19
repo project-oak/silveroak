@@ -27,12 +27,15 @@ Coercion category_object: Category >-> Sortclass.
 Declare Scope category_scope.
 Bind Scope category_scope with Category.
 Delimit Scope category_scope with Category.
+Open Scope category_scope.
 
-Notation "x ~> y" := (morphism x y) : category_scope.
-Notation "x ~[ C ]~> y" := (@morphism _ C x y) (at level 90): category_scope.
-Notation "g >>> f" := (compose f g) : category_scope.
+Module CategoryNotations.
+  Notation "x ~> y" := (morphism x y) : category_scope.
+  Notation "x ~[ C ]~> y" := (@morphism _ C x y) (at level 90): category_scope.
+  Notation "g >>> f" := (compose f g) : category_scope.
+End CategoryNotations.
 
-Local Open Scope category_scope.
+Import CategoryNotations.
 
 Class CategoryLaws `(category: Category) := {
   (* Setoid equivalence *)

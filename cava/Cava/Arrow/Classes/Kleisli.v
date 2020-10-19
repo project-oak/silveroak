@@ -2,34 +2,72 @@ From ExtLib Require Import Structures.Monads.
 From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 
 Import MonadNotation.
+Import CategoryNotations.
 Local Open Scope monad_scope.
-Local Open Scope category_scope.
 
 Generalizable All Variables.
 
-Instance kleisli_category m (M: Monad m) : Category Type := {
-  morphism X Y := X -> m Y;
-  id := @ret m M;
+Definition build_denoted_kleisli_category T denote m (M: Monad m): Category T :=
+{|
+  morphism X Y := denote X -> m (denote Y);
+  id X := ret;
   compose X Y Z f g := g >=> f;
-}.
+|}.
 
-Instance kleisli_arrow m (M: Monad m) : Arrow Type (kleisli_category m M) unit prod := {
-  first  x y z (f: x ~> y) a :=
+Program Definition build_denoted_kleisli_arrow T denote m (M: Monad m) unit tuple
+  (tt: denote unit)
+  (pair: forall {x y}, denote x -> denote y -> denote (tuple x y))
+  (fst: forall {x y}, denote (tuple x y) -> denote x)
+  (snd: forall {x y}, denote (tuple x y) -> denote y)
+  : Arrow T (build_denoted_kleisli_category T denote m M) unit tuple :=
+{|
+  first  x y z f a :=
     b <- f (fst a) ;;
-    ret (b, snd a);
-  second x y z (f: x ~> y) a :=
+    ret (pair b (snd a));
+  second x y z f a :=
     b <- f (snd a) ;;
-    ret (fst a, b);
+    ret (pair (fst a) b);
 
-  assoc   x y z a := ret (fst (fst a), (snd (fst a), snd a));
-  unassoc x y z a := ret ((fst a, fst (snd a)), snd (snd a));
+  assoc   x y z := fun a => ret (pair (fst (fst a)) (pair (snd (fst a)) (snd a)));
+  unassoc x y z := fun a => ret (pair (pair (fst a) (fst (snd a))) (snd (snd a)));
 
-  cancelr x a := ret (fst a);
-  cancell x a := ret (snd a);
+  cancelr x := fun a => ret (fst a);
+  cancell x := fun a => ret (snd a);
 
-  uncancell x a := ret (tt, a);
-  uncancelr x a := ret (a, tt);
-}.
+  uncancell x := fun a => ret (pair tt a);
+  uncancelr x := fun a => ret (pair a tt);
+|}.
+
+Definition kleisli_category m (M: Monad m) : Category Type
+  := build_denoted_kleisli_category Type (fun x => x) m M.
+
+(* Instance kleisli_category m (M: Monad m) : Category Type := { *)
+(*   morphism X Y := X -> m Y; *)
+(*   id := @ret m M; *)
+(*   compose X Y Z f g := g >=> f; *)
+(* }. *)
+
+Definition kleisli_arrow m (M: Monad m) : Arrow Type (kleisli_category m M) unit prod
+  := build_denoted_kleisli_arrow Type (fun x => x) m M unit prod
+  tt (fun _ _ => pair) (fun _ _ => fst) (fun _ _ => snd).
+
+(* Instance kleisli_arrow m (M: Monad m) : Arrow Type (kleisli_category m M) unit prod := { *)
+(*   first  x y z (f: x ~> y) a := *)
+(*     b <- f (fst a) ;; *)
+(*     ret (b, snd a); *)
+(*   second x y z (f: x ~> y) a := *)
+(*     b <- f (snd a) ;; *)
+(*     ret (fst a, b); *)
+
+(*   assoc   x y z a := ret (fst (fst a), (snd (fst a), snd a)); *)
+(*   unassoc x y z a := ret ((fst a, fst (snd a)), snd (snd a)); *)
+
+(*   cancelr x a := ret (fst a); *)
+(*   cancell x a := ret (snd a); *)
+
+(*   uncancell x a := ret (tt, a); *)
+(*   uncancelr x a := ret (a, tt); *)
+(* }. *)
 
 Instance kleisli_sum_arrow m (M: Monad m): Arrow Type (kleisli_category m M) void sum := {
   first x y z (f: x ~> y) a :=
@@ -84,7 +122,7 @@ Instance kleisli_sum_arrow m (M: Monad m): Arrow Type (kleisli_category m M) voi
 }.
 
 Instance kleisli_arrow_sum m (M: Monad m):
-  ArrowSum Type (kleisli_category m M) void sum (kleisli_sum_arrow m M) := {
+  Arrows.Sum Type (kleisli_category m M) void sum (kleisli_sum_arrow m M) := {
   merge X x := match x with
     | inl x => ret x
     | inr x => ret x

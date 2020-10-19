@@ -1,3 +1,4 @@
+Require Import Coq.Strings.String.
 Require Import Coq.Arith.Arith.
 Require Import Coq.Logic.Eqdep.
 Require Import Coq.Lists.List.
@@ -5,15 +6,16 @@ Require Import Coq.micromega.Lia.
 
 Require Import Cava.Arrow.ExprSyntax.
 Require Import Cava.Arrow.ExprEquiv.
-Require Import Cava.Arrow.ArrowKind.
-Require Import Cava.Arrow.Primitives.
-Require Import Cava.Arrow.CircuitArrow.
+(* Require Import Cava.Arrow.ArrowKind. *)
+(* Require Import Cava.Arrow.Primitives. *)
+(* Require Import Cava.Arrow.CircuitArrow. *)
 
 Require Import Cava.Arrow.Classes.Category.
 Require Import Cava.Arrow.Classes.Arrow.
 
 Import ListNotations.
 Import EqNotations.
+Import CategoryNotations.
 
 Generalizable All Variables.
 
@@ -29,6 +31,33 @@ Context {arrow_loop: ArrowLoop arrow}.
 Context {decidable_equality: DecidableEquality Kind}.
 Context {default_Kind: forall x, morphism unit x}.
 *)
+
+
+(* Context {object: Type}. *)
+Definition object := ArrowKind.Kind.
+
+Import Arrows.
+
+Section Arrow.
+(* Context {unit: object}. *)
+Context {category: Category object}.
+(* Context {product: object -> object -> object}. *)
+Context {arrow: Arrow object category ArrowKind.Unit ArrowKind.Tuple}.
+Context {arrow_rewrite_or_default: RewriteOrDefault arrow}.
+Context {arrow_annotation: Annotation arrow string}.
+Context {arrow_impossible: Impossible arrow}.
+Context {arrow_primitives: Primitive arrow Primitives.CircuitPrimitive Primitives.primitive_input Primitives.primitive_output}.
+Context {arrow_drop: Drop arrow}.
+Context {arrow_copy: Copy arrow}.
+Context {arrow_swap: Swap arrow}.
+
+(* TODO(blaxill): it should be possible to lower combinational expressions without requiring this typeclass *)
+Context {arrow_loop: Loop arrow}.
+
+Notation Kind := category_object.
+Notation Unit := arrow_unit.
+Notation Tuple := arrow_product.
+
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
 
@@ -78,7 +107,7 @@ Hint Extern 50 => simpl; lia : kappa_cc.
 
 Notation ok_lookup := (fun (l: list _) (n: nat) (ty: _) => reverse_nth l n = Some ty).
 
-Fixpoint as_kind (ctxt: list Kind): Kind :=
+Fixpoint as_kind (ctxt: list object): object :=
   match ctxt with
   | [] => Unit
   | x :: xs => Tuple x (as_kind xs)
@@ -141,36 +170,12 @@ Section ctxt.
   Proof. auto with kappa_cc. Qed.
 End ctxt.
 
-Fixpoint rewrite_or_default (x y: Kind): x ~> y :=
-  match x with
-  | Unit =>
-      match y with
-      | Unit => Structural (Id _)
-      | _ => drop >>> Primitive (Constant _ (kind_default _))
-      end
-  | Tuple l r =>
-      match y with
-      | Tuple ll rr => first (rewrite_or_default l ll) >>> second (rewrite_or_default r rr)
-      | _ => drop >>> Primitive (Constant _ (kind_default _))
-      end
-  | Vector t n =>
-      match y with
-      | Vector t2 n2 => CircuitArrow.Map t t2 n (rewrite_or_default t t2) >>> Resize t2 n n2
-      | _ => drop >>> Primitive (Constant _ (kind_default _))
-      end
-  | Bit =>
-      match y with
-      | Bit => Structural (Id _)
-      | _ => drop >>> Primitive (Constant _ (kind_default _))
-      end
-  end.
-
 (* Construct an Arrow morphism that takes a variable list Kind
 and returns the variable at an index *)
 Fixpoint extract_nth (ctxt: list Kind) (ty: Kind) (x: nat)
-  : (as_kind ctxt) ~[CircuitArrow]~> ty :=
+  : (as_kind ctxt) ~> ty :=
   match ctxt with
-  | [] => drop >>> Primitive (Constant _(kind_default _))
+  | [] => impossible
   | ty' :: ctxt' =>
     if x =? (length ctxt')
     then second drop >>> cancelr >>> rewrite_or_default ty' ty
@@ -184,11 +189,12 @@ language is a Kappa calculus and our target is a Generalized Arrow representatio
 the list Kind and arguments are manipulated using Arrow combinators amongst
 other differences.
 
-This implementation is also currently missing logic to remove free variables
-from the list Kind.
+An improved implementation may remove free variables early to prevent them
+being propogated down expressions.
 *)
+
 Fixpoint closure_conversion' {i o}
-  (ctxt: list Kind)
+  (ctxt: list object)
   (expr: kappa natvar i o) {struct expr}
   : (i ** (as_kind ctxt)) ~> o
   :=
@@ -231,13 +237,10 @@ removes the list Kind, we first need to copy the list Kind. *)
   >>> closure_conversion' ctxt e1
 
 | ExprSyntax.Primitive p =>
-    second drop >>> cancelr >>> (CircuitArrow.Primitive p)
+    second drop >>> cancelr >>> primitive p
 
 | ExprSyntax.Id =>
     second drop >>> cancelr >>> id
-
-| RemoveContext f =>
-  second drop >>> closure_conversion' [] f
 
 | Let v f =>
   let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
@@ -259,6 +262,13 @@ removes the list Kind, we first need to copy the list Kind. *)
       )
     )
     >>> f'
+
+| RemoveContext f =>
+  second drop >>> closure_conversion' [] f
+
+| Module name f =>
+  second drop >>> annotate name (closure_conversion' [] f)
+
 end.
 
 Lemma lower_var: forall x (v: _ x) ctxt,
@@ -318,7 +328,7 @@ Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
 
 Lemma lower_prim: forall p ctxt,
   closure_conversion' ctxt (ExprSyntax.Primitive p)
-  = second drop >>> cancelr >>> (CircuitArrow.Primitive p).
+  = second drop >>> cancelr >>> primitive p.
 Proof. reflexivity. Qed.
 
 Lemma lower_id: forall x ctxt,
@@ -464,10 +474,11 @@ match expr with
 | Comp e1 e2 => max (max_context_size' size e1) (max_context_size' size e2)
 | ExprSyntax.Primitive p => size
 | ExprSyntax.Id => size
-| RemoveContext f => max size (max_context_size' 0 f)
 | Let v f =>
   max (max_context_size' (size+1) (f tt)) (max_context_size' size v)
 | LetRec v f =>
   max (max_context_size' (size+1) (f tt)) (max_context_size' (size+1) (v tt))
+| RemoveContext f => max size (max_context_size' 0 f)
+| Module _ f => max size (max_context_size' 0 f)
 end.
-
+End Arrow.

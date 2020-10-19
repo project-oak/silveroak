@@ -1,3 +1,4 @@
+From Coq Require Import Strings.String.
 From Coq Require Import Lists.List.
 From Coq Require Import Arith.Peano_dec.
 From Cava Require Import Arrow.ArrowKind.
@@ -26,6 +27,7 @@ Section vars.
     | LetRec : forall {x y z}, (var x -> kappa Unit x) -> (var x -> kappa y z) -> kappa y z
     | Id : forall {x}, kappa x x
     | RemoveContext: forall {x y}, kappa x y -> kappa x y
+    | Module: forall {x y}, string -> kappa x y -> kappa x y
     .
   End Vars.
 
@@ -55,6 +57,7 @@ Section vars.
     | Let x _ _ v f => wf_phoas_context (x :: ctxt) (f (length ctxt)) /\ wf_phoas_context ctxt v
     | LetRec x _ _ v f => wf_phoas_context (x :: ctxt) (v (length ctxt)) /\ wf_phoas_context (x :: ctxt) (f (length ctxt))
     | RemoveContext _ _ f => wf_phoas_context [] f
+    | Module _ _ _ f => wf_phoas_context [] f
     end.
 
   Definition Kappa i o := forall var, kappa var i o.
@@ -68,9 +71,14 @@ Arguments Comp {var _ _ _}.
 Arguments Primitive {var}.
 Arguments LetRec {var _ _ _}.
 Arguments Id {var _}.
+Arguments RemoveContext {var _ _}.
+Arguments Module {var _ _}.
 
-Instance KappaCat : Category Kind := {
-  morphism X Y := forall var, kappa var X Y;
-  id X := fun var => @Id var X;
-  compose X Y Z f g := fun var => Comp (f var) (g var);
-}.
+Section instance.
+  Instance KappaCat : Category Kind := {
+    morphism X Y := forall var, kappa var X Y;
+    id X := fun var => @Id var X;
+    compose X Y Z f g := fun var => Comp (f var) (g var);
+  }.
+End instance.
+
