@@ -58,6 +58,15 @@ arrow-examples:
 # Silver Oak re-implementation of some OpenTitan blocks.
 silveroak-opentitan:
 	cd silveroak-opentitan && $(MAKE)
+
+# The coq target builds only the Coq proofs.
+coq:
+	cd third_party && $(MAKE)
+	cd cava && $(MAKE) coq
+	cd arrow-examples && $(MAKE) coq
+	cd monad-examples && $(MAKE) coq
+	cd silveroak-opentitan && $(MAKE) coq
+
 clean:
 	cd third_party && $(MAKE) clean
 	cd cava && $(MAKE) clean
