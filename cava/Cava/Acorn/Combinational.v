@@ -14,17 +14,23 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import String.
-From Coq Require Import Vector.
+From Coq Require Import Bool.Bool.
+Require Import ExtLib.Structures.Monads.
+Require Export ExtLib.Data.Monads.IdentityMonad.
 
-From Cava Require Import VectorUtils.
+From Cava Require Import Acorn.AcornSignal.
+From Cava Require Import Acorn.AcornCavaClass.
 
-(******************************************************************************)
-(* Values of Kind can occur as the type of signals on a circuit interface *)
-(******************************************************************************)
+Instance Combinational : Cava ident denoteCombinaional :=
+{ one := true;
+  zero := false;
+  inv i := ret (negb i);
+  and2 '(i0, i1) := ret (i0 && i1);
+  or2 '(i0, i1) := ret (i0 || i1);
+  xor2 '(i0, i1) := ret (xorb i0 i1);
+  pair _ _ a b := (a, b);
+  fsT _ _ '(a, b) := a;
+  snD _ _ '(a, b) := b;
+}.
 
-Inductive Kind : Type :=
-  | Void : Kind                    (* An empty type *)
-  | Bit : Kind                     (* A single wire *)
-  | Vec : Kind -> nat -> Kind      (* Vectors, possibly nested *)
-  | ExternalType : string -> Kind. (* An uninterpreted type *)
+Definition combinational {a} (circuit : ident a) : a := unIdent circuit.

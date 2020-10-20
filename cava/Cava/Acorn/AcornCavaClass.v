@@ -14,17 +14,25 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import String.
-From Coq Require Import Vector.
+Require Import ExtLib.Structures.Monads.
 
-From Cava Require Import VectorUtils.
+From Cava Require Import Acorn.AcornSignal.
 
-(******************************************************************************)
-(* Values of Kind can occur as the type of signals on a circuit interface *)
-(******************************************************************************)
+Open Scope type_scope.
 
-Inductive Kind : Type :=
-  | Void : Kind                    (* An empty type *)
-  | Bit : Kind                     (* A single wire *)
-  | Vec : Kind -> nat -> Kind      (* Vectors, possibly nested *)
-  | ExternalType : string -> Kind. (* An uninterpreted type *)
+Class Cava m `{Monad m} (signal : SignalType -> Type) := {
+  one : signal BitType;
+  zero : signal BitType;
+  inv : signal BitType -> m (signal BitType);
+  and2 : signal BitType * signal BitType -> m (signal BitType);
+  or2 : signal BitType * signal BitType -> m (signal BitType);
+  xor2 : signal BitType * signal BitType -> m (signal BitType);
+  pair : forall {A B : SignalType}, signal A -> signal B -> signal (PairType A B);
+  fsT : forall {A B : SignalType}, signal (PairType A B) -> signal A;
+  snD : forall {A B : SignalType}, signal (PairType A B) -> signal B;
+}.
+
+Definition unpair {m signal} `{Cava m signal}
+          {A B : SignalType}
+          (ab: signal (PairType A B)) : (signal A * signal B) :=
+  (fsT ab, snD ab).

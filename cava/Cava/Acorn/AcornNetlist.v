@@ -14,17 +14,16 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import String.
-From Coq Require Import Vector.
+From Coq Require Import Lists.List.
+Require Import ExtLib.Structures.Monads.
 
-From Cava Require Import VectorUtils.
+From Cava Require Import Acorn.AcornSignal.
 
-(******************************************************************************)
-(* Values of Kind can occur as the type of signals on a circuit interface *)
-(******************************************************************************)
+Inductive AcornInstance : Type :=
+  | Inv : Signal BitType -> Signal BitType -> AcornInstance
+  | And2 : Signal BitType -> Signal BitType -> Signal BitType -> AcornInstance
+  | Or2 : Signal BitType -> Signal BitType -> Signal BitType -> AcornInstance
+  | Xor2 : Signal BitType -> Signal BitType -> Signal BitType -> AcornInstance.
 
-Inductive Kind : Type :=
-  | Void : Kind                    (* An empty type *)
-  | Bit : Kind                     (* A single wire *)
-  | Vec : Kind -> nat -> Kind      (* Vectors, possibly nested *)
-  | ExternalType : string -> Kind. (* An uninterpreted type *)
+Notation AcornNetlist := (list AcornInstance).
+

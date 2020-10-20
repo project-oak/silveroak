@@ -12,6 +12,20 @@ Cava/Netlist.v
 Cava/Cava.v
 Cava/Tactics.v
 
+
+Cava/Acorn/AcornSignal.v
+Cava/Acorn/AcornCavaClass.v
+Cava/Acorn/Combinational.v
+Cava/Acorn/AcornNetlist.v
+Cava/Acorn/AcornState.v
+Cava/Acorn/AcornNetlistGeneration.v
+Cava/Acorn/AcornCombinators.v
+Cava/Acorn/Acorn.v
+Cava/Acorn/Lib/AcornFullAdder.v
+Cava/Acorn/Lib/AcornUnsignedAdders.v
+Cava/Acorn/Lib/AcornUnsignedAdderProofs.v
+Cava/Acorn/Tests/UnsignedAdderTests.v
+
 Cava/Monad/CavaMonad.v
 Cava/Monad/CavaClass.v
 Cava/Monad/CombinationalMonad.v
