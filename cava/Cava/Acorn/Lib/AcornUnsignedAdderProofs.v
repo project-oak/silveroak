@@ -49,16 +49,19 @@ Lemma fullAdder_correct (cin a b : bool) :
   (N.testbit sum 0, N.testbit sum 1).
 Proof. destruct cin, a, b; reflexivity. Qed.
 
-(* Lemma about how to decompose a list of vectors. *)
-Lemma list_bits_to_nat_cons b bs :
-  list_bits_to_nat (b :: bs) = (N.b2n b + 2 * (list_bits_to_nat bs))%N.
+(* Lemma about how to decompose a vector of bits. *)
+Lemma Bv2N_cons n b (bs : t bool n) :
+  Bv2N (b :: bs)%vector = (N.b2n b + 2 * (Bv2N bs))%N.
 Proof.
-  cbv [list_bits_to_nat].
-  cbn [Vector.of_list Ndigits.Bv2N].
-  destruct b; cbn [N.b2n].
+  cbn [Bv2N]. destruct b; cbn [N.b2n].
   all: rewrite ?N.succ_double_spec, ?N.double_spec.
   all:lia.
 Qed.
+
+(* Lemma about how to decompose a list of bits. *)
+Lemma list_bits_to_nat_cons b bs :
+  list_bits_to_nat (b :: bs) = (N.b2n b + 2 * (list_bits_to_nat bs))%N.
+Proof. apply Bv2N_cons. Qed.
 
 Hint Rewrite @bind_of_return @bind_associativity
      using solve [typeclasses eauto] : monadlaws.
@@ -75,7 +78,8 @@ Lemma addLCorrect (cin : bool) (a b : list bool) :
   list_bits_to_nat bitAddition =
   list_bits_to_nat a + list_bits_to_nat b + N.b2n cin.
 Proof.
-  cbv zeta. cbv [addLWithCinL adderWithGrowthL unsignedAdderL].
+  cbv zeta. cbv [addLWithCinL adderWithGrowthL unsignedAdderL colL].
+  cbn [fst snd].
   (* get rid of pair-let because it will cause problems in the inductive case *)
   erewrite ident_bind_Proper_ext with (g := fun x => ret (fst x ++ [snd x]));
     [ | intros; destruct_products; reflexivity ].
@@ -86,8 +90,7 @@ Proof.
     [ destruct cin; reflexivity | ].
 
   (* inductive case only now; simplify *)
-  cbv [colL] in *. cbn [combine fst snd colL'] in *.
-  rewrite !list_bits_to_nat_cons.
+  cbn [combine colL']. rewrite !list_bits_to_nat_cons.
   autorewrite with monadlaws.
 
   (* use fullAdder_correct to replace fullAdder call with addition + testbit *)
@@ -123,11 +126,80 @@ Qed.
 
 (* Correctness of the vector based adder. *)
 
+Lemma Bv2N_resize m n (Hmn : n = m) (v : t bool n) :
+  Bv2N v = Bv2N (VectorUtils.resize_default false m v).
+Proof.
+  subst. rewrite VectorUtils.resize_default_id.
+  reflexivity.
+Qed.
+
 Lemma addVCorrect (cin : bool) (n : nat) (a b : Vector.t bool n) :
   let bitAddition := combinational (addLWithCinV cin a b) in
   Bv2N bitAddition =
   Bv2N a + Bv2N b + (N.b2n cin).
-Abort.
+Proof.
+  cbv zeta. cbv [addLWithCinV adderWithGrowthV unsignedAdderV colV].
+  cbn [fst snd].
+  rewrite Bv2N_resize with (m:=S n) by lia.
+
+  (* get rid of pair-let because it will cause problems in the inductive case *)
+  erewrite ident_bind_Proper_ext with (g := fun x => ret (fst x ++ [snd x])%vector);
+    [ | intros; destruct_products; reflexivity ].
+  (* start induction; eliminate cases where length b <> length a and solve base
+     case immediately *)
+  revert dependent cin. revert dependent b.
+  induction n; intros;
+    repeat match goal with
+           | x : t _ 0 |- _ =>
+             apply case0 with (v:=x)
+           end;
+    [ destruct cin; reflexivity | ].
+
+  (* inductive case only now; simplify *)
+  cbn [VectorUtils.vcombine].
+  repeat match goal with
+         | |- context [uncons ?v] =>
+           is_var v; rewrite (eta v), uncons_cons
+         end.
+  cbn [colV']. autorewrite with monadlaws.
+  rewrite !Bv2N_cons.
+
+  (* use fullAdder_correct to replace fullAdder call with addition + testbit *)
+  rewrite combinational_bind.
+  rewrite fullAdder_correct. cbv zeta.
+  (cbn match beta). autorewrite with monadlaws.
+
+  (* Now, use the _ext lemma to rearrange under the binder and match inductive
+     hypothesis *)
+  erewrite ident_bind_Proper_ext.
+  2:{ intro y. rewrite (surjective_pairing y) at 1.
+      autorewrite with monadlaws. cbn [fst snd].
+      rewrite <-append_comm_cons. reflexivity. }
+
+  (* pull cons out of the ret statement *)
+  rewrite ident_bind_lift_app.
+  rewrite combinational_bind, combinational_ret.
+  cbn [VectorUtils.resize_default Nat.add].
+  autorewrite with vsimpl. rewrite Bv2N_cons.
+
+  (* Finally we have the right expression to use IHa *)
+  rewrite IHn by lia.
+
+  (* Now that the recursive part matches, we can just compute all 8 cases for
+     the first step (a + b + cin) *)
+  destruct cin;
+    repeat match goal with
+           | |- context [Vector.hd ?v] =>
+             destruct (Vector.hd v)
+           end.
+  all:cbv [N.b2n].
+  all:repeat match goal with
+             | |- context [N.testbit ?x ?n] =>
+               let b := eval compute in (N.testbit x n) in
+                   change (N.testbit x n) with b
+             end; (cbn match).
+  all:lia.
+Qed.
 
 Local Close Scope N_scope.
 
