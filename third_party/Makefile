@@ -27,5 +27,5 @@ install:
 	cd coq-ext-lib && $(MAKE) install
 
 clean:
-	-cd bedrock2 && $(MAKE) cleanall
+	-cd bedrock2 && $(MAKE) clean_all
 	-cd coq-ext-lib && $(MAKE) clean
