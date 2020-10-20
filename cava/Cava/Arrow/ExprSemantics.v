@@ -42,7 +42,7 @@ Section combinational_semantics.
     | App f e => fun y =>
       (interp_combinational' f) (interp_combinational' e tt, y)
     | Comp g f => fun x => interp_combinational' g (interp_combinational' f x)
-    | Primitive p => combinational_evaluation' (CircuitArrow.Primitive p)
+    | Primitive p => primitive_interp p
     | Id => fun x => x
     | Let v f => fun y =>
       interp_combinational' (f (interp_combinational' v tt)) y

@@ -15,7 +15,13 @@
 (****************************************************************************)
 
 From Coq Require Import NaryFunctions Arith NArith.
+From Coq Require Import Vectors.Vector.
+From Coq Require Import Bool.Bool.
+From Coq Require Import ZArith.
+From Cava Require Import VectorUtils.
+From Cava Require Import BitArithmetic.
 
+Import VectorNotations.
 
 From Cava Require Export Arrow.ArrowKind.
 
@@ -117,3 +123,51 @@ Definition primitive_output (op: CircuitPrimitive): Kind :=
 
   | _ => Bit
   end.
+
+Definition primitive_interp p: denote_kind (primitive_input p) -> denote_kind (primitive_output p) :=
+    match p as p return denote_kind (primitive_input p) -> denote_kind (primitive_output p) with
+    | Constant ty val => fun _ => val
+    | ConstantVec n ty val => fun _ => resize_default (kind_default _) n (Vector.of_list val)
+    | Delay o => fun _ => kind_default _
+    | Not => fun b => negb (fst b)
+    | BufGate => fun b => fst b
+    | Uncons n o => fun v => (hd (fst v), tl (fst v))
+    | Unsnoc n o => fun v => unsnoc (fst v)
+    | Split n m o => fun v => (Vector.splitat n (fst v))
+    | Slice n x y o => fun v => slice_by_position n x y (kind_default _) (fst v)
+    | EmptyVec o => fun _ => []
+    | Lut n f => fun '(i,_) =>
+      let f' := NaryFunctions.nuncurry bool bool n f in
+      (f' (vec_to_nprod _ _ i))
+
+    | And => fun '(x,(y,_)) => x && y
+    | Nand => fun '(x,(y,_)) => negb ( x && y)
+    | Or => fun '(x,(y,_)) => orb x y
+    | Nor => fun '(x,(y,_)) => negb (orb x y)
+    | Xor => fun '(x,(y,_)) => xorb x y
+    | Xnor => fun '(x,(y,_)) => negb (xorb x y)
+    | Xorcy => fun '(x,(y,_)) => xorb x y
+
+    | Fst _ _ => fun '((x,y),_) => x
+    | Snd _ _ => fun '((x,y),_) => y
+    | Pair _ _ => fun '(x,(y,_)) => (x,y)
+
+    | Muxcy => fun i => (if fst i then fst (fst (snd i)) else snd (fst (snd i)))
+    | UnsignedAdd m n s => fun '(av,(bv,_)) =>
+      let a := Ndigits.Bv2N av in
+      let b := Ndigits.Bv2N bv in
+      let c := (a + b)%N in
+      (Ndigits.N2Bv_sized s c)
+    | UnsignedSub s => fun '(av, (bv, _)) =>
+      let a := Z.of_N (Ndigits.Bv2N av) in
+      let b := Z.of_N (Ndigits.Bv2N bv) in
+      let mod_const := (2^(Z.of_nat s))%Z in
+      let c := ((a - b + mod_const) mod mod_const)%Z in
+      (Ndigits.N2Bv_sized s (Z.to_N c))
+    | Index n o => fun x =>
+      nth_default (kind_default _) (bitvec_to_nat (fst (snd x))) (fst x)
+    | Cons n o => fun '(x, (v,_)) => (x :: v)
+    | Snoc n o => fun '(v, (x,_)) => snoc v x
+
+    | Concat n m o => fun '(x, (y, _)) => Vector.append x y
+    end.

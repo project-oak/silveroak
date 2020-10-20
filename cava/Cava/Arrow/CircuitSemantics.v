@@ -51,50 +51,7 @@ Fixpoint combinational_evaluation' {i o}
   | Structural (Swap x y) => fun '(x,y) => (y,x)
   | Structural (Copy x) => fun x => (x,x)
 
-  | Primitive (Constant ty val) => fun _ => val
-  | Primitive (ConstantVec n ty val) => fun _ => resize_default (kind_default _) n (Vector.of_list val)
-  | Primitive (Delay o) => fun _ => kind_default _
-  | Primitive Not => fun b => negb (fst b)
-  | Primitive BufGate => fun b => fst b
-  | Primitive (Uncons n o) => fun v => (hd (fst v), tl (fst v))
-  | Primitive (Unsnoc n o) => fun v => unsnoc (fst v)
-  | Primitive (Split n m o) => fun v => (Vector.splitat n (fst v))
-  | Primitive (Slice n x y o) => fun v => slice_by_position n x y (kind_default _) (fst v)
-  | Primitive (EmptyVec o) => fun _ => []
-  | Primitive (Lut n f) => fun '(i,_) =>
-    let f' := NaryFunctions.nuncurry bool bool n f in
-    (f' (vec_to_nprod _ _ i))
-
-  | Primitive And => fun '(x,(y,_)) => x && y
-  | Primitive Nand => fun '(x,(y,_)) => negb ( x && y)
-  | Primitive Or => fun '(x,(y,_)) => orb x y
-  | Primitive Nor => fun '(x,(y,_)) => negb (orb x y)
-  | Primitive Xor => fun '(x,(y,_)) => xorb x y
-  | Primitive Xnor => fun '(x,(y,_)) => negb (xorb x y)
-  | Primitive Xorcy => fun '(x,(y,_)) => xorb x y
-
-  | Primitive (Fst _ _) => fun '((x,y),_) => x
-  | Primitive (Snd _ _) => fun '((x,y),_) => y
-  | Primitive (Pair _ _) => fun '(x,(y,_)) => (x,y)
-
-  | Primitive Muxcy => fun i => (if fst i then fst (fst (snd i)) else snd (fst (snd i)))
-  | Primitive (UnsignedAdd m n s) => fun '(av,(bv,_)) =>
-    let a := Ndigits.Bv2N av in
-    let b := Ndigits.Bv2N bv in
-    let c := (a + b)%N in
-    (Ndigits.N2Bv_sized s c)
-  | Primitive (UnsignedSub s) => fun '(av, (bv, _)) =>
-    let a := Z.of_N (Ndigits.Bv2N av) in
-    let b := Z.of_N (Ndigits.Bv2N bv) in
-    let mod_const := (2^(Z.of_nat s))%Z in
-    let c := ((a - b + mod_const) mod mod_const)%Z in
-    (Ndigits.N2Bv_sized s (Z.to_N c))
-  | Primitive (Index n o) => fun x =>
-    nth_default (kind_default _) (bitvec_to_nat (fst (snd x))) (fst x)
-  | Primitive (Cons n o) => fun '(x, (v,_)) => (x :: v)
-  | Primitive (Snoc n o) => fun '(v, (x,_)) => snoc v x
-
-  | Primitive (Concat n m o) => fun '(x, (y, _)) => Vector.append x y
+  | Primitive p => primitive_interp p
 
   | Map x y n f => fun v => Vector.map (combinational_evaluation' f) v
   | Resize x n nn => fun v => resize_default (kind_default _) nn v
@@ -167,52 +124,8 @@ Fixpoint circuit_evaluation' {i o} (n: nat) (c: Circuit i o)
   | Structural (Swap x y) => fun '(x,y) _ => ((y,x), tt)
   | Structural (Copy x) => fun x _ => ((x,x),tt)
 
-  | Primitive (Constant ty val) => fun _ _ => (val, tt)
-  | Primitive (ConstantVec n ty val) => fun _ _ => (resize_default (kind_default _) n (Vector.of_list val), tt)
   | Primitive (Delay o) => fun x s => (s, fst x)
-  | Primitive Not => fun b _ => (negb (fst b), tt)
-  | Primitive BufGate => fun b _ => (fst b, tt)
-  | Primitive (Uncons n o) => fun v _ => (hd (fst v), tl (fst v), tt)
-  | Primitive (Unsnoc n o) => fun v _ => (unsnoc (fst v), tt)
-  | Primitive (Split n m o) => fun v _ => (Vector.splitat n (fst v), tt)
-  | Primitive (Slice n x y o) => fun v _ => (slice_by_position n x y (kind_default _) (fst v), tt)
-  | Primitive (EmptyVec o) => fun _ _ => ([], tt)
-  | Primitive (Lut n f) => fun '(i,_) _ =>
-    let f' := NaryFunctions.nuncurry bool bool n f in
-    (f' (vec_to_nprod _ _ i), tt)
-
-  | Primitive And => fun '(x,(y,_)) _ => (x && y, tt)
-  | Primitive Nand => fun '(x,(y,_)) _ => (negb ( x && y), tt)
-  | Primitive Or => fun '(x,(y,_)) _ => (orb x y, tt)
-  | Primitive Nor => fun '(x,(y,_)) _ => (negb (orb x y), tt)
-  | Primitive Xor => fun '(x,(y,_)) _ => (xorb x y, tt)
-  | Primitive Xnor => fun '(x,(y,_)) _ => (negb (xorb x y), tt)
-  | Primitive Xorcy => fun '(x,(y,_)) _ => (xorb x y, tt)
-
-  | Primitive (Fst _ _) => fun '((x,y),_) _ => (x, tt)
-  | Primitive (Snd _ _) => fun '((x,y),_) _ => (y, tt)
-  | Primitive (Pair _ _) => fun '(x,(y,_)) _ => ((x,y), tt)
-
-  | Primitive Muxcy => fun i _ => (if fst i then fst (fst (snd i)) else snd (fst (snd i)), tt)
-  | Primitive (UnsignedAdd m n s) => fun '(av,(bv,_)) _ =>
-    let a := Ndigits.Bv2N av in
-    let b := Ndigits.Bv2N bv in
-    let c := (a + b)%N in
-    (Ndigits.N2Bv_sized s c, tt)
-  | Primitive (UnsignedSub s) => fun '(av, (bv, _)) _ =>
-    let a := Z.of_N (Ndigits.Bv2N av) in
-    let b := Z.of_N (Ndigits.Bv2N bv) in
-    let mod_const := (2^(Z.of_nat s))%Z in
-    let c := ((a - b + mod_const) mod mod_const)%Z in
-    (Ndigits.N2Bv_sized s (Z.to_N c), tt)
-  | Primitive (Index n o) => fun x _ =>
-    (nth_default (kind_default _)
-      (bitvec_to_nat (fst (snd x)))
-      (fst x), tt)
-  | Primitive (Cons n o) => fun '(x, (v,_)) _ => (x :: v, tt)
-  | Primitive (Snoc n o) => fun '(v, (x,_)) _ => (snoc v x, tt)
-
-  | Primitive (Concat n m o) => fun '(x, (y, _)) _ => (Vector.append x y, tt)
+  | Primitive p => fun x _ => (primitive_interp p x, tt)
 
   | Map x y n f => fun v s => separate (Vector.map2 (circuit_evaluation' n f) v s)
   | Resize x n nn => fun v _ => (resize_default (kind_default _) nn v, tt)
