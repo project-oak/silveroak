@@ -65,6 +65,10 @@ Hint Rewrite @bind_of_return @bind_associativity
 
 (* Correctness of the list based adder. *)
 
+Lemma combinational_bind {A B} (f : ident A) (g : A -> ident B) :
+  combinational (x <- f;; g x) = combinational (g (combinational f)).
+Proof. reflexivity. Qed.
+
 Lemma addLCorrect (cin : bool) (a b : list bool) :
   length a = length b ->
   let bitAddition := combinational (addLWithCinL cin a b) in
@@ -81,17 +85,12 @@ Proof.
   induction a; (destruct b; cbn [length]; try lia; [ ]); intros;
     [ destruct cin; reflexivity | ].
 
-(* Need to define/prove equivalent of col_cons.
   (* inductive case only now; simplify *)
-  rewrite !list_bits_to_nat_cons. col_cons.
-  cbv [prod_curry]. autorewrite with monadlaws.
+  cbv [colL] in *. cbn [combine fst snd colL'] in *.
+  rewrite !list_bits_to_nat_cons.
+  autorewrite with monadlaws.
 
   (* use fullAdder_correct to replace fullAdder call with addition + testbit *)
-  rewrite combinational_bind.
-  rewrite fullAdder_correct. cbv zeta.
-  (cbn match beta). autorewrite with monadlaws.
-
-   (* use fullAdder_correct to replace fullAdder call with addition + testbit *)
   rewrite combinational_bind.
   rewrite fullAdder_correct. cbv zeta.
   (cbn match beta). autorewrite with monadlaws.
@@ -120,8 +119,7 @@ Proof.
                    change (N.testbit x n) with b
              end; (cbn match).
   all:lia.
-*)
-Abort.
+Qed.
 
 (* Correctness of the vector based adder. *)
 
