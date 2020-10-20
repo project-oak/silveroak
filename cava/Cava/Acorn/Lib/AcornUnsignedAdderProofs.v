@@ -253,27 +253,39 @@ Proof.
   rewrite IHbs. reflexivity.
 Qed.
 
+Lemma to_list_nil {A} : to_list (Vector.nil A) = [].
+Proof. reflexivity. Qed.
+
+Hint Rewrite @colL_length @combine_length @to_list_length
+     using solve [eauto] : push_length.
+Ltac simpl_length :=
+  repeat first [ progress autorewrite with push_length
+               | progress cbn [fst snd] ].
+
+Hint Rewrite @to_list_append  @to_list_vcombine
+     @to_list_of_list_opp @to_list_nil @to_list_cons
+     using solve [eauto] : push_to_list.
+Hint Rewrite @to_list_resize_default
+     using solve [simpl_length; lia] : push_to_list.
+
+Ltac simpl_monad :=
+  repeat first [ rewrite combinational_bind
+               | rewrite combinational_ret
+               | destruct_pair_let
+               | progress autorewrite with monadlaws
+               | progress cbn [fst snd] ].
+
 Lemma addVCorrect (cin : bool) (n : nat) (a b : Vector.t bool n) :
   let bitAddition := combinational (addLWithCinV cin a b) in
   Bv2N bitAddition =
   Bv2N a + Bv2N b + (N.b2n cin).
 Proof.
-  cbv zeta.
-  rewrite !Bv2N_list_bits_to_nat.
+  cbv zeta. rewrite !Bv2N_list_bits_to_nat.
   rewrite <-addLCorrect by (rewrite !to_list_length; reflexivity).
-  cbv [addLWithCinV adderWithGrowthV unsignedAdderV].
-  cbv [addLWithCinL adderWithGrowthL unsignedAdderL].
+  cbv [addLWithCinV adderWithGrowthV unsignedAdderV
+       addLWithCinL adderWithGrowthL unsignedAdderL].
   rewrite colV_colL with (d:=false).
-  cbv zeta. cbn [fst snd].
-  autorewrite with monadlaws.
-  repeat first [ rewrite combinational_bind
-               | rewrite combinational_ret
-               | destruct_pair_let ].
-  rewrite to_list_append.
-  rewrite to_list_resize_default
-    by (rewrite colL_length; apply to_list_length).
-  rewrite to_list_of_list_opp. cbn [to_list].
-  rewrite to_list_vcombine.
+  simpl_monad. autorewrite with push_to_list.
   reflexivity.
 Qed.
 
