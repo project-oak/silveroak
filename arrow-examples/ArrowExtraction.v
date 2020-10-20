@@ -26,7 +26,7 @@ Set Extraction Optimize.
 
 Extraction Language Haskell.
 
-Require Import Combinators.
+Require Import Arrow.Combinators.
 Require Import SyntaxExamples.
 Require Import Mux2_1.
 Require Import UnsignedAdder.

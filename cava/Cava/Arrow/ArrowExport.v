@@ -35,3 +35,4 @@ Require Export Cava.Arrow.ExprLowering.
 Require Export Cava.Arrow.ExprEquiv.
 
 Require Export Cava.Arrow.CavaNotation.
+Require Export Cava.Arrow.Combinators.

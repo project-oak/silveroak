@@ -17,8 +17,6 @@
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From ArrowExamples Require Import Combinators.
-
 Import VectorNotations.
 Import KappaNotation.
 Open Scope kind_scope.

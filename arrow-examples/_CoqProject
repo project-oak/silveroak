@@ -3,9 +3,6 @@
 -R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
 -R . ArrowExamples
 
-Combinators.v
-CombinatorProperties.v
-
 Mux2_1.v
 SyntaxExamples.v
 UnsignedAdder.v

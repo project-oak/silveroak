@@ -17,7 +17,7 @@
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From ArrowExamples Require Import Combinators Aes.pkg Aes.sbox Aes.unrolled_opentitan_cipher.
+From ArrowExamples Require Import Aes.pkg Aes.sbox Aes.unrolled_opentitan_cipher.
 
 Require Import Cava.Types.
 Require Import Cava.Netlist.

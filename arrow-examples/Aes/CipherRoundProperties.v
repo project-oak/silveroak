@@ -16,11 +16,11 @@
 
 From Coq Require Import Derive.
 From coqutil Require Import Tactics.Tactics.
-From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec BitArithmetic
-     Tactics VectorUtils.
+From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec
+     Arrow.CombinatorProperties BitArithmetic Tactics VectorUtils.
 
-From ArrowExamples Require Import CombinatorProperties PkgProperties
-     Aes.cipher_round Aes.mix_columns Aes.sbox Aes.sub_bytes Aes.shift_rows.
+From ArrowExamples Require Import PkgProperties Aes.cipher_round
+     Aes.mix_columns Aes.sbox Aes.sub_bytes Aes.shift_rows.
 
 Section Wf.
   Context (aes_sub_bytes_Wf : forall sbox_impl, Wf (aes_sub_bytes sbox_impl))
