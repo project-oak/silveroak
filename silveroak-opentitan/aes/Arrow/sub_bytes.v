@@ -17,35 +17,40 @@
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From ArrowExamples Require Import Aes.pkg Aes.mix_columns Aes.sbox Aes.sub_bytes Aes.shift_rows.
+From Aes Require Import pkg sbox.
 
 Import VectorNotations.
 Import KappaNotation.
 Open Scope kind_scope.
 
-Definition cipher_round
-  (sbox_impl: SboxImpl)
-  : << Bit                               (* cipher mode: CIPH_FWD/CIPH_INV *)
-    , Vector (Vector (Vector Bit 8) 4) 4 (* data input *)
-    , Vector (Vector (Vector Bit 8) 4) 4 (* round key *)
-    , Unit>> ~>
+(* module aes_sub_bytes #(
+  parameter SBoxImpl = "lut"
+) (
+  input  aes_pkg::ciph_op_e    op_i,
+  input  logic [3:0][3:0][7:0] data_i,
+  output logic [3:0][3:0][7:0] data_o
+); *)
+Definition aes_sub_bytes
+  (sbox_type: SboxImpl)
+  :
+    <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~>
       Vector (Vector (Vector Bit 8) 4) 4 :=
-  <[\op_i data_i key =>
-    let stage1 = !(aes_sub_bytes sbox_impl) op_i data_i in
-    let stage2 = !aes_shift_rows op_i stage1 in
-    let stage3 = !aes_mix_columns op_i stage2 in
-    stage3 ^ key
-    ]>.
-
-Definition final_cipher_round
-  (sbox_impl: SboxImpl)
-  : << Bit                               (* cipher mode: CIPH_FWD/CIPH_INV *)
-    , Vector (Vector (Vector Bit 8) 4) 4 (* data input *)
-    , Vector (Vector (Vector Bit 8) 4) 4 (* round key *)
-    , Unit>> ~>
-      Vector (Vector (Vector Bit 8) 4) 4 :=
-  <[\op_i data_i key =>
-    let stage1 = !(aes_sub_bytes sbox_impl) op_i data_i in
-    let stage2 = !aes_shift_rows op_i stage1 in
-    stage2 ^ key
-    ]>.
+  (* // Individually substitute bytes
+  for (genvar j = 0; j < 4; j++) begin : gen_sbox_j
+    for (genvar i = 0; i < 4; i++) begin : gen_sbox_i
+      aes_sbox #(
+        .SBoxImpl ( SBoxImpl )
+      ) aes_sbox_ij (
+        .op_i   ( op_i         ),
+        .data_i ( data_i[i][j] ),
+        .data_o ( data_o[i][j] )
+      );
+    end
+  end *)
+  let sbox := curry (aes_sbox sbox_type) in
+  let mapped_sbox := <[ !(map sbox) ]> in
+  <[ \op_i data_i =>
+    (* duplicate op_i to the same shape of data_i and then zip *)
+    let op_i' = !replicate (!replicate op_i) in
+    let zipped = !(map2 zipper) op_i' data_i in
+    !(map mapped_sbox) zipped ]>.

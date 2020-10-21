@@ -17,26 +17,35 @@
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From ArrowExamples Require Import Aes.pkg Aes.sbox Aes.unrolled_opentitan_cipher.
+From Aes Require Import pkg mix_columns sbox sub_bytes shift_rows.
 
-Require Import Cava.Types.
-Require Import Cava.Netlist.
+Import VectorNotations.
+Import KappaNotation.
+Open Scope kind_scope.
 
-Definition sbox_canright_interface
-  := combinationalInterface "sbox_canright"
-     (mkPort "op_i" Kind.Bit, mkPort "data_i" (Kind.Vec Kind.Bit 8))
-     (mkPort "data_o" (Kind.Vec Kind.Bit 8))
-     nil.
+Definition cipher_round
+  (sbox_impl: SboxImpl)
+  : << Bit                               (* cipher mode: CIPH_FWD/CIPH_INV *)
+    , Vector (Vector (Vector Bit 8) 4) 4 (* data input *)
+    , Vector (Vector (Vector Bit 8) 4) 4 (* round key *)
+    , Unit>> ~>
+      Vector (Vector (Vector Bit 8) 4) 4 :=
+  <[\op_i data_i key =>
+    let stage1 = !(aes_sub_bytes sbox_impl) op_i data_i in
+    let stage2 = !aes_shift_rows op_i stage1 in
+    let stage3 = !aes_mix_columns op_i stage2 in
+    stage3 ^ key
+    ]>.
 
-Definition sbox_canright_netlist :=
-  makeNetlist sbox_canright_interface (build_netlist (closure_conversion (aes_sbox SboxCanright))).
-
-Definition sbox_lut_interface
-  := combinationalInterface "sbox_lut"
-     (mkPort "op_i" Kind.Bit, mkPort "data_i" (Kind.Vec Kind.Bit 8))
-     (mkPort "data_o" (Kind.Vec Kind.Bit 8))
-     nil.
-
-Definition sbox_lut_netlist :=
-  makeNetlist sbox_lut_interface (build_netlist (closure_conversion (aes_sbox SboxLut))).
-
+Definition final_cipher_round
+  (sbox_impl: SboxImpl)
+  : << Bit                               (* cipher mode: CIPH_FWD/CIPH_INV *)
+    , Vector (Vector (Vector Bit 8) 4) 4 (* data input *)
+    , Vector (Vector (Vector Bit 8) 4) 4 (* round key *)
+    , Unit>> ~>
+      Vector (Vector (Vector Bit 8) 4) 4 :=
+  <[\op_i data_i key =>
+    let stage1 = !(aes_sub_bytes sbox_impl) op_i data_i in
+    let stage2 = !aes_shift_rows op_i stage1 in
+    stage2 ^ key
+    ]>.

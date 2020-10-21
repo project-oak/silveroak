@@ -17,7 +17,7 @@
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From ArrowExamples Require Import Aes.pkg Aes.sbox_canright_pkg Aes.sbox_canright Aes.sbox_canright_masked_noreuse Aes.sbox_lut.
+From Aes Require Import pkg sbox_canright_pkg sbox_canright sbox_canright_masked_noreuse sbox_lut.
 
 Section notation.
 Import VectorNotations.

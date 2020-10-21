@@ -17,7 +17,7 @@
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From ArrowExamples Require Import Aes.pkg Aes.sbox Aes.mix_single_column.
+From Aes Require Import pkg sbox mix_single_column.
 
 Import VectorNotations.
 Import KappaNotation.

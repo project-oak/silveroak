@@ -50,9 +50,6 @@ $(SV):	coq ArrowExamplesSV
 		make -C obj_dir -f V$*_tb.mk V$*_tb
 		obj_dir/V$*_tb
 
-aes:
-	cd Aes; make; cd ..
-
 clean:
 		-@$(MAKE) -f Makefile.coq clean
 		git clean -Xfd

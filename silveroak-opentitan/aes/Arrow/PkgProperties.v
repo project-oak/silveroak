@@ -19,7 +19,7 @@ From Coq Require Import Derive.
 From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec
      Arrow.CombinatorProperties BitArithmetic Tactics VectorUtils.
 
-From ArrowExamples Require Import Aes.pkg.
+From Aes Require Import pkg.
 
 Module Vector.
   (* matches pkg.aes_transpose; uses snoc/unsnoc instead of cons/tl *)

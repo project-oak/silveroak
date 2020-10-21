@@ -18,8 +18,8 @@ From Coq Require Import Derive.
 From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec
      Arrow.CombinatorProperties BitArithmetic Tactics VectorUtils.
 
-From ArrowExamples Require Import PkgProperties CipherRoundProperties
-     Aes.cipher_round Aes.unrolled_naive_cipher.
+From Aes Require Import PkgProperties CipherRoundProperties
+     cipher_round unrolled_naive_cipher.
 
 Section Wf.
   Context (aes_256_naive_key_expansion_Wf :
