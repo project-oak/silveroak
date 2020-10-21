@@ -23,7 +23,7 @@
 all:		coq $(VCDS)
 
 Makefile.coq:
-		coq_makefile -f _CoqProject -o Makefile.coq INSTALLDEFAULTROOT=Aes
+		coq_makefile -f _CoqProject -o Makefile.coq
 
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
