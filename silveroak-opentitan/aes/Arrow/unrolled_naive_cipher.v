@@ -15,9 +15,9 @@
 (****************************************************************************)
 
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
-From Cava Require Import Arrow.ArrowExport BitArithmetic VectorUtils.
+From Cava Require Import BitArithmetic VectorUtils Arrow.ArrowExport.
 
-From ArrowExamples Require Import Combinators Aes.pkg Aes.mix_columns Aes.sbox Aes.sub_bytes Aes.shift_rows Aes.cipher_round.
+From Aes Require Import pkg mix_columns sbox sub_bytes shift_rows cipher_round.
 
 Require Import coqutil.Z.HexNotation.
 
@@ -161,7 +161,7 @@ Definition unrolled_cipher_naive
     ]>.
 
 Section tests.
-  From ArrowExamples Require Import Combinators Aes.aes_test.
+  From Aes Require Import aes_test.
 
   Definition unrolled_cipher_naive_ mode key data :=
     interp_combinational (unrolled_cipher_naive SboxCanright _) (mode,(data,key)).

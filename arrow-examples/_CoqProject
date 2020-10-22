@@ -3,35 +3,10 @@
 -R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
 -R . ArrowExamples
 
-Combinators.v
-CombinatorProperties.v
-
 Mux2_1.v
 SyntaxExamples.v
 UnsignedAdder.v
 
 ArrowAdderTutorial.v
-
-Aes/pkg.v
-Aes/sbox_lut.v
-Aes/sbox_canright_pkg.v
-Aes/sbox_canright.v
-Aes/sbox_canright_masked_noreuse.v
-Aes/sbox.v
-Aes/sub_bytes.v
-Aes/shift_rows.v
-Aes/mix_single_column.v
-Aes/mix_columns.v
-Aes/unrolled_naive_cipher.v
-Aes/unrolled_opentitan_cipher.v
-Aes/cipher_round.v
-Aes/key_expand.v
-Aes/cipher_control.v
-Aes/netlists.v
-Aes/aes_test.v
-Aes/CipherRoundProperties.v
-Aes/NaiveCipherProperties.v
-Aes/OpenTitanCipherProperties.v
-Aes/PkgProperties.v
 
 ArrowExtraction.v

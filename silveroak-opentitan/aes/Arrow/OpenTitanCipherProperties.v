@@ -16,11 +16,11 @@
 
 From Coq Require Import Derive.
 From coqutil Require Import Tactics.Tactics.
-From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec BitArithmetic
-     Tactics VectorUtils.
+From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec
+     Arrow.CombinatorProperties BitArithmetic Tactics VectorUtils.
 
-From ArrowExamples Require Import CombinatorProperties PkgProperties
-     CipherRoundProperties Aes.cipher_round Aes.unrolled_opentitan_cipher.
+From Aes Require Import PkgProperties CipherRoundProperties
+     cipher_round unrolled_opentitan_cipher.
 
 Section Wf.
   Context (aes_key_expand_Wf :

@@ -16,9 +16,12 @@
 
 all:
 	cd Spec && $(MAKE)
+	cd Arrow && $(MAKE)
 
 coq:
 	cd Spec && $(MAKE) coq
+	cd Arrow && $(MAKE) coq
 
 clean:
 	cd Spec && $(MAKE) clean
+	cd Arrow && $(MAKE) clean

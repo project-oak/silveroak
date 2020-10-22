@@ -17,39 +17,35 @@
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From ArrowExamples Require Import Combinators Aes.pkg Aes.sbox Aes.mix_single_column.
+From Aes Require Import pkg mix_columns sbox sub_bytes shift_rows.
 
 Import VectorNotations.
 Import KappaNotation.
 Open Scope kind_scope.
 
-(* module aes_mix_columns (
-  input  aes_pkg::ciph_op_e    op_i,
-  input  logic [3:0][3:0][7:0] data_i,
-  output logic [3:0][3:0][7:0] data_o
-); *)
-Definition aes_mix_columns
-  :
-    <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~>
+Definition cipher_round
+  (sbox_impl: SboxImpl)
+  : << Bit                               (* cipher mode: CIPH_FWD/CIPH_INV *)
+    , Vector (Vector (Vector Bit 8) 4) 4 (* data input *)
+    , Vector (Vector (Vector Bit 8) 4) 4 (* round key *)
+    , Unit>> ~>
       Vector (Vector (Vector Bit 8) 4) 4 :=
-      (* // Transpose to operate on columns
-      logic [3:0][3:0][7:0] data_i_transposed;
-      logic [3:0][3:0][7:0] data_o_transposed;
+  <[\op_i data_i key =>
+    let stage1 = !(aes_sub_bytes sbox_impl) op_i data_i in
+    let stage2 = !aes_shift_rows op_i stage1 in
+    let stage3 = !aes_mix_columns op_i stage2 in
+    stage3 ^ key
+    ]>.
 
-      assign data_i_transposed = aes_transpose(data_i);
-
-      // Individually mix columns
-      for (genvar i = 0; i < 4; i++) begin : gen_mix_column
-        aes_mix_single_column aes_mix_column_i (
-          .op_i   ( op_i                 ),
-          .data_i ( data_i_transposed[i] ),
-          .data_o ( data_o_transposed[i] )
-        );
-      end
-
-      assign data_o = aes_transpose(data_o_transposed); *)
-  <[\op_i data_i =>
-    let transposed = !aes_transpose data_i in
-    let ouput_transposed = !(map2 aes_mix_single_column) (!replicate op_i) transposed in
-    !aes_transpose ouput_transposed
-  ]>.
+Definition final_cipher_round
+  (sbox_impl: SboxImpl)
+  : << Bit                               (* cipher mode: CIPH_FWD/CIPH_INV *)
+    , Vector (Vector (Vector Bit 8) 4) 4 (* data input *)
+    , Vector (Vector (Vector Bit 8) 4) 4 (* round key *)
+    , Unit>> ~>
+      Vector (Vector (Vector Bit 8) 4) 4 :=
+  <[\op_i data_i key =>
+    let stage1 = !(aes_sub_bytes sbox_impl) op_i data_i in
+    let stage2 = !aes_shift_rows op_i stage1 in
+    stage2 ^ key
+    ]>.

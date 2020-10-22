@@ -14,7 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Cava Require Import Arrow.ArrowExport.
+From Cava.Arrow Require Import ArrowKind CavaNotation ExprSyntax.
+From Cava.Arrow.Classes Require Import Category.
 
 From Coq Require Import Strings.String Bvector List NArith Nat Lia Plus.
 Import ListNotations.

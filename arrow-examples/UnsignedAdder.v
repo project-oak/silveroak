@@ -15,7 +15,6 @@
 (****************************************************************************)
 
 From Cava Require Import Arrow.ArrowExport.
-From ArrowExamples Require Import Combinators.
 
 From Coq Require Import Strings.String Bvector List NArith Nat Lia Plus.
 Import ListNotations.

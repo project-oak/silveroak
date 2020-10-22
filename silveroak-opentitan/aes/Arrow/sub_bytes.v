@@ -17,26 +17,40 @@
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From ArrowExamples Require Import Combinators Aes.pkg Aes.sbox Aes.unrolled_opentitan_cipher.
+From Aes Require Import pkg sbox.
 
-Require Import Cava.Types.
-Require Import Cava.Netlist.
+Import VectorNotations.
+Import KappaNotation.
+Open Scope kind_scope.
 
-Definition sbox_canright_interface
-  := combinationalInterface "sbox_canright"
-     (mkPort "op_i" Kind.Bit, mkPort "data_i" (Kind.Vec Kind.Bit 8))
-     (mkPort "data_o" (Kind.Vec Kind.Bit 8))
-     nil.
-
-Definition sbox_canright_netlist :=
-  makeNetlist sbox_canright_interface (build_netlist (closure_conversion (aes_sbox SboxCanright))).
-
-Definition sbox_lut_interface
-  := combinationalInterface "sbox_lut"
-     (mkPort "op_i" Kind.Bit, mkPort "data_i" (Kind.Vec Kind.Bit 8))
-     (mkPort "data_o" (Kind.Vec Kind.Bit 8))
-     nil.
-
-Definition sbox_lut_netlist :=
-  makeNetlist sbox_lut_interface (build_netlist (closure_conversion (aes_sbox SboxLut))).
-
+(* module aes_sub_bytes #(
+  parameter SBoxImpl = "lut"
+) (
+  input  aes_pkg::ciph_op_e    op_i,
+  input  logic [3:0][3:0][7:0] data_i,
+  output logic [3:0][3:0][7:0] data_o
+); *)
+Definition aes_sub_bytes
+  (sbox_type: SboxImpl)
+  :
+    <<Bit, Vector (Vector (Vector Bit 8) 4) 4, Unit>> ~>
+      Vector (Vector (Vector Bit 8) 4) 4 :=
+  (* // Individually substitute bytes
+  for (genvar j = 0; j < 4; j++) begin : gen_sbox_j
+    for (genvar i = 0; i < 4; i++) begin : gen_sbox_i
+      aes_sbox #(
+        .SBoxImpl ( SBoxImpl )
+      ) aes_sbox_ij (
+        .op_i   ( op_i         ),
+        .data_i ( data_i[i][j] ),
+        .data_o ( data_o[i][j] )
+      );
+    end
+  end *)
+  let sbox := curry (aes_sbox sbox_type) in
+  let mapped_sbox := <[ !(map sbox) ]> in
+  <[ \op_i data_i =>
+    (* duplicate op_i to the same shape of data_i and then zip *)
+    let op_i' = !replicate (!replicate op_i) in
+    let zipped = !(map2 zipper) op_i' data_i in
+    !(map mapped_sbox) zipped ]>.

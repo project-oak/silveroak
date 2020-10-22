@@ -17,7 +17,7 @@
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From ArrowExamples Require Import Combinators Aes.pkg Aes.mix_columns Aes.sbox Aes.sub_bytes Aes.shift_rows Aes.cipher_round.
+From Aes Require Import pkg mix_columns sbox sub_bytes shift_rows cipher_round.
 
 Import VectorNotations.
 Import KappaNotation.
@@ -246,7 +246,7 @@ Definition unrolled_cipher_flat
     ]>.
 
 Section tests.
-  From ArrowExamples Require Import Combinators Aes.aes_test.
+  From Aes Require Import aes_test.
 
   Definition unrolled_cipher' mode key data :=
     interp_combinational (unrolled_cipher_flat SboxCanright _) (mode,(data,key)).
