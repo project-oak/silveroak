@@ -21,7 +21,6 @@ Require Import Cava.Arrow.Classes.Arrow.
 Require Import Cava.Arrow.Classes.Category.
 Require Import Arrow.CircuitArrow.
 Require Import Cava.Arrow.ArrowKind.
-Require Import Cava.Arrow.CircuitProp.
 Require Import Cava.Arrow.CircuitSemantics.
 Require Import Cava.Arrow.ExprEquiv.
 Require Import Cava.Arrow.ExprLowering.

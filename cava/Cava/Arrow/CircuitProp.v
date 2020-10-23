@@ -15,11 +15,16 @@
 (****************************************************************************)
 
 From Coq Require Import Bool ZArith NaryFunctions Vector.
+Require Import coqutil.Tactics.Tactics.
 From Cava Require Import Arrow.Classes.Category.
 From Cava Require Import Arrow.Classes.Arrow.
 From Cava Require Import Arrow.CircuitArrow Arrow.CircuitSemantics.
 From Cava Require Import Arrow.ArrowKind Arrow.Primitives.
+From Cava Require Import Arrow.ExprSyntax.
 From Cava Require Import Arrow.ExprLowering.
+From Cava Require Import Arrow.ExprLoweringPreservation.
+From Cava Require Import Arrow.ExprEquiv.
+From Cava Require Import Arrow.ExprSemantics.
 
 From ExtLib Require Import Structures.Monoid.
 Import VectorNotations.
@@ -103,42 +108,16 @@ Definition is_combinational {i o: Kind}
     (arrow:=monoid_arrow bool all_monoid)
     (arrow_primitives:=no_delays_primitives)
     (arrow_loop:=no_loops_loop)
+    (arrow_rewrite_or_default:=monoid_rewrite_or_default _ _)
+    (arrow_annotation:=ignore_annotation _ _ _)
+    (arrow_impossible:=monoid_impossible _ _)
+    (arrow_drop:=monoid_drop _ _)
+    (arrow_copy:=monoid_copy _ _)
+    (arrow_swap:=monoid_swap _ _)
     circuit).
 
-(* Ltac simply_combinational := *)
-(*   vm_compute; reflexivity. *)
-
-(* Local Open Scope category_scope. *)
-(* Import CategoryNotations. *)
-
-(* Lemma is_combinational_first: forall x y z (circuit: ExprSyntax.Kappa x y), *)
-(*   is_combinational (first circuit : ExprSyntax.Kappa (x**z) (y**z)) = *)
-(*   is_combinational circuit. *)
-(* Proof. tauto. Qed. *)
-
-(* Lemma is_combinational_second: forall x y z (circuit: x ~> y), *)
-(*   is_combinational (second circuit : z**x ~> z**y) = *)
-(*   is_combinational circuit. *)
-(* Proof. tauto. Qed. *)
-
-(* Section example. *)
-(*   Definition ex_loopr {x y z: Kind} (c: x**z ~> y**z): x ~> y *)
-(*     := loopr c. *)
-(*   Definition ex_loopl {x y z: Kind} (c: z**x ~> z**y): x ~> y *)
-(*     := loopl c. *)
-
-(*   Example loopl_is_not_combinational : forall (x y z: Kind) (c: z**x ~> z**y), *)
-(*     ~ is_combinational (ex_loopl c). *)
-(*   Proof. vm_compute. intros. inversion x3. Qed. *)
-
-(*   Example loopr_is_not_combinational : forall (x y z: Kind) (c: x**z ~> y**z), *)
-(*     ~ is_combinational (ex_loopr c). *)
-(*   Proof. vm_compute. intros. inversion x3. Qed. *)
-
-  (* Example not_gate_is_combinational : *)
-  (*   is_combinational (Primitive Not). *)
-  (* Proof. *)
-
-  (* simply_combinational. Qed. *)
-(* End example. *)
+(* TODO(blaxill): this should be true *)
+Lemma is_combinational_true_no_letrec {i o: Kind}:
+  forall e: Kappa i o, NoLetRec e -> is_combinational e = true.
+Abort.
 
