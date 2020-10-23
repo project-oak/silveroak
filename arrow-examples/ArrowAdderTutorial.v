@@ -145,8 +145,8 @@ Section notation.
 
 End notation.
 
-Lemma fullAdder_is_combinational: is_combinational (closure_conversion fullAdder).
-Proof. simply_combinational. Qed.
+Lemma fullAdder_is_combinational: is_combinational fullAdder = true.
+Proof. tauto. Qed.
 
 Require Import Cava.Types.
 Require Import Cava.Netlist.
@@ -169,10 +169,10 @@ Definition fullAdder_tb_inputs :=
 ].
 
 Definition fullAdder_netlist :=
-  makeNetlist fullAdderInterface (build_netlist (closure_conversion fullAdder)).
+  makeNetlist fullAdderInterface (build_netlist fullAdder).
 
 Definition fullAdder_tb_expected_outputs  : list (bool * bool)
-  := (List.map (fun i => combinational_evaluation (closure_conversion fullAdder) i) fullAdder_tb_inputs) .
+  := (List.map (fun i => combinational_evaluation fullAdder i) fullAdder_tb_inputs) .
 
 Definition fullAdder_tb :=
   testBench "fullAdder_tb" fullAdderInterface

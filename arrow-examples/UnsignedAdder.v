@@ -69,11 +69,11 @@ Section notation.
     := growth_tree_adder 4 3.
 End notation.
 
-Lemma adder445_is_combinational: is_combinational (closure_conversion adder445).
-Proof. simply_combinational. Qed.
+Lemma adder445_is_combinational: is_combinational adder445 = true.
+Proof. tauto. Qed.
 
-Lemma adder88810_is_combinational: is_combinational (closure_conversion adder88810).
-Proof. simply_combinational. Qed.
+Lemma adder88810_is_combinational: is_combinational adder88810 = true.
+Proof. tauto. Qed.
 
 Require Import Cava.Types.
 Require Import Cava.Netlist.
@@ -110,58 +110,58 @@ Definition growth_tree_8_interface
      [].
 
 Definition adder445_netlist :=
-  makeNetlist adder445_interface (build_netlist (closure_conversion adder445)).
+  makeNetlist adder445_interface (build_netlist adder445).
 
 Definition adder445_tb_inputs :=
   map (fun '(x, y) => (N2Bv_sized 4 x, N2Bv_sized 4 y))
   [(0, 0); (1, 2); (15, 1); (15, 15)]%N.
 
 Definition adder445_tb_expected_outputs
-  := map (fun i => combinational_evaluation (closure_conversion adder445) i) adder445_tb_inputs.
+  := map (fun i => combinational_evaluation  adder445 i) adder445_tb_inputs.
 
 Definition adder445_tb
   := testBench "adder445_tb" adder445_interface
      adder445_tb_inputs adder445_tb_expected_outputs.
 
 Definition adder88810_netlist :=
-  makeNetlist adder88810_interface (build_netlist (closure_conversion adder88810)).
+  makeNetlist adder88810_interface (build_netlist  adder88810).
 
 Definition adder88810_tb_inputs :=
   map (fun '(x, y, z) => (N2Bv_sized 8 x, (N2Bv_sized 8 y, N2Bv_sized 8 z)))
   [(17, 23, 95); (4, 200, 30); (255, 255, 200)]%N.
 
 Definition adder88810_tb_expected_outputs
-  := map (fun i => combinational_evaluation (closure_conversion adder88810) i) adder88810_tb_inputs.
+  := map (fun i => combinational_evaluation adder88810 i) adder88810_tb_inputs.
 
 Definition adder88810_tb
   := testBench "adder88810_tb" adder88810_interface
      adder88810_tb_inputs adder88810_tb_expected_outputs.
 
 Definition adder444_tree_4_netlist :=
-  makeNetlist adder444_tree_4_interface (build_netlist (closure_conversion adder444_tree_4)).
+  makeNetlist adder444_tree_4_interface (build_netlist adder444_tree_4).
 
 Definition adder444_tree_8_netlist :=
-  makeNetlist adder444_tree_8_interface (build_netlist (closure_conversion adder444_tree_8)).
+  makeNetlist adder444_tree_8_interface (build_netlist adder444_tree_8).
 
 Definition adder444_tree_64_netlist :=
-  makeNetlist adder444_tree_64_interface (build_netlist (closure_conversion adder444_tree_64)).
+  makeNetlist adder444_tree_64_interface (build_netlist adder444_tree_64).
 
 Definition adder444_tree_4_inputs :=
   map (fun '(x, y, z, w) => [N2Bv_sized 4 x; N2Bv_sized 4 y; N2Bv_sized 4 z; N2Bv_sized 4 w]%vector)
   [(0, 0, 0, 1); (1, 1, 1, 1); (1, 3, 5, 2); (15, 1, 1, 1)]%N.
 
-Lemma adder444_tree_4_is_combinational: is_combinational (closure_conversion adder444_tree_4).
-Proof. simply_combinational. Qed.
+Lemma adder444_tree_4_is_combinational: is_combinational adder444_tree_4 = true.
+Proof. tauto. Qed.
 
 Definition adder444_tree_4_tb_expected_outputs
-  := map (fun i => combinational_evaluation (closure_conversion adder444_tree_4) i) adder444_tree_4_inputs.
+  := map (fun i => combinational_evaluation adder444_tree_4 i) adder444_tree_4_inputs.
 
 Definition adder444_tree_4_tb
   := testBench "adder444_tree_4_tb" adder444_tree_4_interface
      adder444_tree_4_inputs adder444_tree_4_tb_expected_outputs.
 
 Definition growth_tree_8_netlist :=
-  makeNetlist growth_tree_8_interface (build_netlist (closure_conversion growth_tree_8)).
+  makeNetlist growth_tree_8_interface (build_netlist growth_tree_8).
 
 Definition growth_tree_8_inputs :=
   map (Vector.map (N2Bv_sized 4))
@@ -171,11 +171,11 @@ Definition growth_tree_8_inputs :=
   ;[15; 15; 15; 15; 15; 15; 15; 15]%vector %N
   ].
 
-Lemma growth_tree_8_is_combinational: is_combinational (closure_conversion growth_tree_8).
-Proof. simply_combinational. Qed.
+Lemma growth_tree_8_is_combinational: is_combinational growth_tree_8 = true.
+Proof. tauto. Qed.
 
 Definition growth_tree_8_tb_expected_outputs
-  := map (fun i => combinational_evaluation (closure_conversion growth_tree_8) i) growth_tree_8_inputs.
+  := map (fun i => combinational_evaluation growth_tree_8 i) growth_tree_8_inputs.
 
 Definition growth_tree_8_tb
   := testBench "growth_tree_8_tb" growth_tree_8_interface

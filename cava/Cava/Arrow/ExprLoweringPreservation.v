@@ -31,19 +31,24 @@ Require Import Cava.Arrow.ExprSyntax.
 (* TODO: this is copied from CircuitFunctionalEquivalence and extended; it
    should be moved to a more general location *)
 Local Ltac arrowsimpl :=
-  cbn [cancell cancelr uncancell uncancelr assoc unassoc first second copy drop
-               loopr loopl swap compose id
-               CircuitCat CircuitArrow CircuitArrowSwap CircuitArrowLoop
-               CircuitArrowDrop CircuitArrowCopy arrow_category as_kind
-               Datatypes.length Nat.eqb extract_nth ].
+  cbn [cancell cancelr uncancell uncancelr assoc unassoc first second compose
+    Arrows.copy Arrows.drop Arrows.loopr Arrows.loopl Arrows.swap compose id
+    Arrows.rewrite_or_default rewrite_or_default
+    combinational_category combinational_arrow
+    combinational_drop combinational_copy combinational_swap
+    combinational_arrow_rewrite_or_default
+    Coq.build_denoted_category Coq.build_denoted_arrow
+    arrow_category rewrite_or_default as_kind
+    Datatypes.length Nat.eqb extract_nth
+    ].
 
 Lemma rewrite_or_default_refl A x :
-  combinational_evaluation' (rewrite_or_default A A) x = x.
+  rewrite_or_default A A x = x.
 Proof.
   induction A; cbn [rewrite_or_default] in *; arrowsimpl;
-    cbn [combinational_evaluation' fst snd]; autorewrite with vsimpl;
+    cbn [fst snd]; autorewrite with vsimpl;
       try reflexivity; [ ].
-  rewrite IHA1, IHA2; eauto using surjective_pairing.
+  destruct_one_match; rewrite IHA1, IHA2; eauto using surjective_pairing.
 Qed.
 
 Definition context_entry_ok
@@ -54,7 +59,7 @@ Definition context_entry_ok
   let value := fst (projT2 e) in
   let index := snd (projT2 e) in
   reverse_nth ctxt_types index = Some (projT1 e) /\
-  combinational_evaluation' (extract_nth ctxt_types _ index) ctxt_values = value.
+  (extract_nth (arrow:=combinational_arrow) ctxt_types _ index) ctxt_values = value.
 
 Lemma extend_context_entry_ok_tl ctxt_types ctxt t (x : denote_kind t) e :
   context_entry_ok ctxt_types ctxt e ->
@@ -70,8 +75,9 @@ Proof.
   erewrite split_lookup by eauto.
   split; [ reflexivity | ].
   cbn [extract_nth].
-  destruct_one_match; arrowsimpl; cbn [combinational_evaluation' fst snd];
+  destruct_one_match; arrowsimpl; cbn [fst snd];
     subst; [ | tauto ].
+
   match goal with
   | H : reverse_nth _ (length _) = Some _ |- _ =>
     apply lookup_upper_contra in H
@@ -86,7 +92,7 @@ Proof.
   cbn [rev projT1 projT2 fst snd vars].
   erewrite split_lookup by eauto.
   split; [ reflexivity | ]. cbn [extract_nth].
-  destruct_one_match; arrowsimpl; cbn [combinational_evaluation']; [ | tauto ].
+  destruct_one_match; arrowsimpl; [ | tauto ].
   cbn [fst snd]. apply rewrite_or_default_refl.
 Qed.
 
@@ -101,6 +107,7 @@ Fixpoint no_letrec {var i o} (e : kappa var i o) : Prop :=
   | LetRec _ _ => False
   | Id => True
   | RemoveContext e => no_letrec e
+  | Module _ f => no_letrec f
   end.
 Definition NoLetRec {i o} (e : Kappa i o) : Prop := no_letrec (e unitvar).
 
@@ -122,13 +129,12 @@ Lemma closure_conversion'_preserves_semantics i o :
       (x : denote_kind i),
       Forall (context_entry_ok ctxt_types ctxt) G ->
       interp_combinational' expr1 x
-      = combinational_evaluation'
-          (closure_conversion' ctxt_types expr2) (x, ctxt).
+      = (closure_conversion' (arrow:=combinational_arrow) ctxt_types expr2) (x, ctxt).
 Proof.
   induction 1; intros.
   all:cbn [interp_combinational' closure_conversion'].
   all:cbn [denote_kind no_letrec] in *; destruct_products.
-  all:arrowsimpl; cbn [combinational_evaluation' fst snd].
+  all:arrowsimpl; cbn [fst snd].
   { (* Var *)
     match goal with
     | HForall : Forall ?P ?l, HIn : In ?x ?l |- _ =>
@@ -168,11 +174,10 @@ Qed.
 
 Theorem closure_conversion_preserves_semantics i o (expr : Kappa i o) x :
   Wf expr -> NoLetRec expr ->
-  interp_combinational (expr coq_func) x = combinational_evaluation
-                                             (closure_conversion expr) x.
+  interp_combinational (expr coq_func) x = combinational_evaluation expr x.
 Proof.
   cbv [Wf interp_combinational combinational_evaluation closure_conversion].
-  intros; arrowsimpl; cbn [combinational_evaluation'].
+  intros; arrowsimpl;
   eapply closure_conversion'_preserves_semantics with (ctxt_types:=nil) (G:=nil);
     eauto using Forall_nil, no_letrec_unitvar_equiv.
 Qed.

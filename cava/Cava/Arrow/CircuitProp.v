@@ -19,43 +19,100 @@ From Cava Require Import Arrow.Classes.Category.
 From Cava Require Import Arrow.Classes.Arrow.
 From Cava Require Import Arrow.CircuitArrow Arrow.CircuitSemantics.
 From Cava Require Import Arrow.ArrowKind Arrow.Primitives.
+From Cava Require Import Arrow.ExprLowering.
 
+From ExtLib Require Import Structures.Monoid.
 Import VectorNotations.
 
-(* Fixpoint no_delays {i o} (c: Circuit i o): bool := *)
-(*   match c with *)
-(*   | Primitive (Delay _) => false *)
-(*   | Composition _ _ _ f g => no_delays f && no_delays g *)
-(*   | First _ _ _ f => no_delays f *)
-(*   | Second _ _ _ f => no_delays f *)
-(*   | Loopr _ _ _ f => no_delays f *)
-(*   | Loopl _ _ _ f => no_delays f *)
-(*   | Map _ _ _ f => no_delays f *)
-(*   | _ => true *)
-(*   end. *)
 
-(* Fixpoint no_loops {i o} (c: Circuit i o): bool := *)
-(*   match c with *)
-(*   | Composition _ _ _ f g => no_loops f && no_loops g *)
-(*   | First _ _ _ f => no_loops f *)
-(*   | Second _ _ _ f => no_loops f *)
-(*   | Loopr _ _ _ f => false *)
-(*   | Loopl _ _ _ f => false *)
-(*   | Map _ _ _ f => no_loops f *)
-(*   | _ => true *)
-(*   end. *)
+Instance monoid_category m (M: Monoid m): Category Kind := {
+  morphism _ _ := m;
+  id _ := monoid_unit M;
+  compose _ _ _ f g := monoid_plus M g f;
+}.
 
-(* Local Open Scope category_scope. *)
-(* Local Open Scope arrow_scope. *)
+Definition all_monoid : Monoid@{monoid_category.u0} bool := {|
+  monoid_plus a b := a && b; monoid_unit := true
+|}.
 
-(* Definition is_combinational {i o: Kind} (c: i ~> o) := *)
-(*   no_loops c && no_delays c = true. *)
+Instance monoid_arrow m (M: Monoid m) : Arrow Kind (monoid_category m M) Unit Tuple := {
+  first _ _ _ f := f;
+  second _ _ _ f := f;
+
+  assoc   _ _ _ := monoid_unit M;
+  unassoc _ _ _ := monoid_unit M;
+
+  cancelr _ := monoid_unit M;
+  cancell x := monoid_unit M;
+
+  uncancell _ := monoid_unit M;
+  uncancelr _ := monoid_unit M;
+}.
+
+Instance monoid_drop m (M: Monoid m): Arrows.Drop (monoid_arrow m M) :=
+{ drop _ := monoid_unit M; }.
+Instance monoid_copy m (M: Monoid m): Arrows.Copy (monoid_arrow m M) :=
+{ copy _ := monoid_unit M; }.
+Instance monoid_swap m (M: Monoid m): Arrows.Swap (monoid_arrow m M) :=
+{ swap _ _ := monoid_unit M; }.
+
+Instance monoid_rewrite_or_default m (M: Monoid m)
+  : Arrows.RewriteOrDefault (monoid_arrow m M) := {
+  rewrite_or_default _ _ := monoid_unit M;
+}.
+
+Instance ignore_annotation m (M: Monoid m) x: Arrows.Annotation (monoid_arrow m M) x := {
+  annotate _ _ _ f := f
+}.
+
+Instance monoid_impossible m (M: Monoid m) : Arrows.Impossible (monoid_arrow m M) := {
+  impossible _ _ := monoid_unit M;
+}.
+
+Instance monoid_loops m (M: Monoid m) : Arrows.Loop (monoid_arrow m M) := {
+  loopl _ _ _ f := f;
+  loopr _ _ _ f := f;
+}.
+
+Instance no_loops_loop : Arrows.Loop (monoid_arrow bool all_monoid) := {
+  loopl _ _ _ _ := false;
+  loopr _ _ _ _ := false;
+}.
+
+Instance all_primitives
+  : Arrows.Primitive (monoid_arrow bool all_monoid)
+    CircuitPrimitive primitive_input primitive_output := {
+  primitive p := true;
+}.
+
+Instance no_delays_primitives
+  : Arrows.Primitive (monoid_arrow bool all_monoid)
+    CircuitPrimitive primitive_input primitive_output := {
+  primitive p :=
+    match p with
+    | Delay _ => false
+    | _ => true
+    end;
+}.
+
+Set Typeclasses Unique Solutions.
+
+Definition is_combinational {i o: Kind}
+  (circuit: ExprSyntax.Kappa i o) :=
+  (closure_conversion
+    (arrow:=monoid_arrow bool all_monoid)
+    (arrow_primitives:=no_delays_primitives)
+    (arrow_loop:=no_loops_loop)
+    circuit).
 
 (* Ltac simply_combinational := *)
 (*   vm_compute; reflexivity. *)
 
-(* Lemma is_combinational_first: forall x y z (circuit: x ~> y), *)
-(*   is_combinational (first circuit : x**z ~> y**z) = *)
+(* Local Open Scope category_scope. *)
+(* Import CategoryNotations. *)
+
+(* Lemma is_combinational_first: forall x y z (circuit: ExprSyntax.Kappa x y), *)
+(*   is_combinational (first circuit : ExprSyntax.Kappa (x**z) (y**z)) = *)
 (*   is_combinational circuit. *)
 (* Proof. tauto. Qed. *)
 
@@ -78,8 +135,10 @@ Import VectorNotations.
 (*     ~ is_combinational (ex_loopr c). *)
 (*   Proof. vm_compute. intros. inversion x3. Qed. *)
 
-(*   Example not_gate_is_combinational : *)
-(*     is_combinational (Primitive Not). *)
-(*   Proof.  simply_combinational. Qed. *)
+  (* Example not_gate_is_combinational : *)
+  (*   is_combinational (Primitive Not). *)
+  (* Proof. *)
+
+  (* simply_combinational. Qed. *)
 (* End example. *)
 

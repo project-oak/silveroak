@@ -19,21 +19,6 @@ Import CategoryNotations.
 
 Generalizable All Variables.
 
-(* Section Arrow.
-
-Context {Kind: Type}.
-Context {unit: Kind}.
-Context {category: Category Kind}.
-Context {product: Kind -> Kind -> Kind}.
-Context {arrow: Arrow Kind category unit product}.
-Context {stkc: ArrowSTKC arrow}.
-Context {arrow_loop: ArrowLoop arrow}.
-Context {decidable_equality: DecidableEquality Kind}.
-Context {default_Kind: forall x, morphism unit x}.
-*)
-
-
-(* Context {object: Type}. *)
 Definition object := ArrowKind.Kind.
 
 Import Arrows.

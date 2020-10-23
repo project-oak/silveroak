@@ -22,12 +22,12 @@ From Cava Require Import Arrow.Classes.Kleisli.
 From Cava Require Import Arrow.CircuitArrow Arrow.ArrowKind Arrow.Primitives.
 From Cava Require Import Arrow.ExprLowering.
 
-From ExtLib Require Import Structures.Monads.
-From ExtLib Require Import Structures.Applicative.
-From ExtLib Require Import Structures.Traversable.
-From ExtLib Require Export Data.Monads.StateMonad.
+(* From ExtLib Require Import Structures.Monads. *)
+(* From ExtLib Require Import Structures.Applicative. *)
+(* From ExtLib Require Import Structures.Traversable. *)
+(* From ExtLib Require Export Data.Monads.StateMonad. *)
 
-Import MonadNotation.
+(* Import MonadNotation. *)
 
 Import VectorNotations.
 Import CategoryNotations.

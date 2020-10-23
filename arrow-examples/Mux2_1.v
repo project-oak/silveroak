@@ -41,8 +41,8 @@ End notation.
 
 Open Scope kind_scope.
 
-(* Lemma mux2_1_is_combinational: is_combinational (closure_conversion mux2_1). *)
-(* Proof. simply_combinational. Qed. *)
+Lemma mux2_1_is_combinational: is_combinational mux2_1 = true.
+Proof. tauto. Qed.
 
 Require Import Cava.Types.
 Require Import Cava.Netlist.
@@ -53,8 +53,8 @@ Definition mux2_1_Interface :=
      (mkPort "o" Kind.Bit)
      [].
 
-(* Definition mux2_1_netlist := *)
-(*   makeNetlist mux2_1_Interface (build_netlist (closure_conversion mux2_1)). *)
+Definition mux2_1_netlist :=
+  makeNetlist mux2_1_Interface (build_netlist mux2_1).
 
 Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
  [(false, (false, true));
@@ -66,9 +66,8 @@ Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
 
 From Cava Require Import Arrow.CircuitSemantics.
 
-(* Using `evaluate_to_terms` for a nicer extracted value *)
 Definition mux2_1_tb_expected_outputs : list bool :=
- map (fun i => combinational_evaluation  mux2_1 i) mux2_1_tb_inputs.
+ map (fun i => combinational_evaluation mux2_1 i) mux2_1_tb_inputs.
 
 Definition mux2_1_tb :=
   testBench "mux2_1_tb" mux2_1_Interface

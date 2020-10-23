@@ -24,10 +24,10 @@ Require Export Cava.Arrow.Primitives.
 Require Export Cava.Arrow.ArrowKind.
 Require Export Cava.Arrow.Primitives.
 
-(* Require Export Cava.Arrow.CircuitArrow. *)
-(* Require Export Cava.Arrow.CircuitSemantics. *)
-(* Require Export Cava.Arrow.CircuitLowering. *)
-(* Require Export Cava.Arrow.CircuitProp. *)
+Require Export Cava.Arrow.CircuitArrow.
+Require Export Cava.Arrow.CircuitSemantics.
+Require Export Cava.Arrow.CircuitLowering.
+Require Export Cava.Arrow.CircuitProp.
 
 Require Export Cava.Arrow.ExprSyntax.
 Require Export Cava.Arrow.ExprSemantics.
