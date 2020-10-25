@@ -20,9 +20,6 @@ From Cava Require Import BitArithmetic Arrow.CircuitArrow Arrow.ExprSyntax.
 From Cava Require Import Arrow.ArrowKind.
 From Cava Require Import Arrow.Primitives.
 
-(* Local Open Scope category_scope. *)
-(* Local Open Scope arrow_scope. *)
-
 Declare Scope kappa_scope.
 Declare Custom Entry expr.
 Delimit Scope kappa_scope with kappa.
@@ -30,11 +27,6 @@ Delimit Scope kappa_scope with kappa.
 (* Kappa expression and application *)
 
 Module KappaNotation.
-  Notation "( x '=>' z )" := (@morphism Kind KappaCat (Tuple x Unit) z)
-    : type_scope.
-  Notation "( x => .. => y => z )" :=
-    (@morphism Kind KappaCat (Tuple x .. (Tuple y Unit) ..) z)
-    : type_scope.
   Notation "x ~> z" := (@morphism Kind KappaCat x z)
     : type_scope.
 
@@ -294,7 +286,7 @@ Section regression_examples.
   Local Open Scope kappa_scope.
   Local Open Scope type_scope.
 
-  Definition ex0_constant: ( Vector Bit 10 => Vector Bit 8 )
+  Definition ex0_constant: << Vector Bit 10 , Unit >> ~> <<Vector Bit 8>>
     := <[ \x => x [: 7 : 0 ] ]>.
 
 
@@ -335,7 +327,7 @@ Section regression_examples.
   <[ \ x => letrec s = delay (xor x s) in s ]>.
   Definition ex16_triple:  << <<Bit, Bit, Bit>>, Unit >> ~> Bit :=
   <[ \ triple => let '(x, y, z) = triple in x ]>.
-  Definition ex17_constant_via_list:  << Unit >> ~> Vector (Vector Bit 4) 3 := <[  { 1, 2, 3 } ]>.
+  (* Definition ex17_constant_via_list:  << Unit >> ~> Vector (Vector Bit 4) 3 := <[  { 1, 2, 3 } ]>. *)
 
   Fixpoint copy_object_pow2 o (n:nat): Kind :=
   match n with
@@ -346,7 +338,7 @@ Section regression_examples.
   Program Fixpoint tree
     (A: Kind)
     (n: nat)
-    (f: ( A => A => A ) )
+    (f: << A , A , Unit >> ~> A )
     {struct n}
     :  << copy_object_pow2 A n, Unit >> ~> A :=
   match n with
