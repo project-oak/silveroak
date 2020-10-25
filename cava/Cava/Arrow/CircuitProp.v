@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool ZArith NaryFunctions Vector.
+From Coq Require Import Bool ZArith NaryFunctions List.
 Require Import coqutil.Tactics.Tactics.
 From Cava Require Import Arrow.Classes.Category.
 From Cava Require Import Arrow.Classes.Arrow.
@@ -27,7 +27,6 @@ From Cava Require Import Arrow.ExprEquiv.
 From Cava Require Import Arrow.ExprSemantics.
 
 From ExtLib Require Import Structures.Monoid.
-Import VectorNotations.
 
 Section combinational.
   From Cava Require Import Arrow.Classes.Monoid.
@@ -51,11 +50,6 @@ Section combinational.
 End combinational.
 
 Definition is_combinational {i o: Kind}
-  (circuit: ExprSyntax.Kappa i o) :=
+  (circuit: ExprSyntax.Kappa i o): bool :=
   (closure_conversion is_combinational_circuit circuit).
-
-(* TODO(blaxill): the definitions should be equivalent *)
-Lemma is_combinational_true_no_letrec {i o: Kind}:
-  forall e: Kappa i o, NoLetRec e -> is_combinational e = true.
-Abort.
 
