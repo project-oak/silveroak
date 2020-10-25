@@ -39,6 +39,7 @@ Cava/Arrow/Classes/Category.v
 Cava/Arrow/Classes/Arrow.v
 Cava/Arrow/Classes/Coq.v
 Cava/Arrow/Classes/Kleisli.v
+Cava/Arrow/Classes/Monoid.v
 
 Cava/Arrow/ArrowKind.v
 Cava/Arrow/Primitives.v

@@ -1,3 +1,19 @@
+(****************************************************************************)
+(* Copyright 2020 The Project Oak Authors                                   *)
+(*                                                                          *)
+(* Licensed under the Apache License, Version 2.0 (the "License")           *)
+(* you may not use this file except in compliance with the License.         *)
+(* You may obtain a copy of the License at                                  *)
+(*                                                                          *)
+(*     http://www.apache.org/licenses/LICENSE-2.0                           *)
+(*                                                                          *)
+(* Unless required by applicable law or agreed to in writing, software      *)
+(* distributed under the License is distributed on an "AS IS" BASIS,        *)
+(* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *)
+(* See the License for the specific language governing permissions and      *)
+(* limitations under the License.                                           *)
+(****************************************************************************)
+
 From ExtLib Require Import Structures.Monads.
 From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 
@@ -41,33 +57,9 @@ Program Definition build_denoted_kleisli_arrow T denote m (M: Monad m) unit tupl
 Definition kleisli_category m (M: Monad m) : Category Type
   := build_denoted_kleisli_category Type (fun x => x) m M.
 
-(* Instance kleisli_category m (M: Monad m) : Category Type := { *)
-(*   morphism X Y := X -> m Y; *)
-(*   id := @ret m M; *)
-(*   compose X Y Z f g := g >=> f; *)
-(* }. *)
-
 Definition kleisli_arrow m (M: Monad m) : Arrow Type (kleisli_category m M) unit prod
   := build_denoted_kleisli_arrow Type (fun x => x) m M unit prod
   tt (fun _ _ => pair) (fun _ _ => fst) (fun _ _ => snd).
-
-(* Instance kleisli_arrow m (M: Monad m) : Arrow Type (kleisli_category m M) unit prod := { *)
-(*   first  x y z (f: x ~> y) a := *)
-(*     b <- f (fst a) ;; *)
-(*     ret (b, snd a); *)
-(*   second x y z (f: x ~> y) a := *)
-(*     b <- f (snd a) ;; *)
-(*     ret (fst a, b); *)
-
-(*   assoc   x y z a := ret (fst (fst a), (snd (fst a), snd a)); *)
-(*   unassoc x y z a := ret ((fst a, fst (snd a)), snd (snd a)); *)
-
-(*   cancelr x a := ret (fst a); *)
-(*   cancell x a := ret (snd a); *)
-
-(*   uncancell x a := ret (tt, a); *)
-(*   uncancelr x a := ret (a, tt); *)
-(* }. *)
 
 Instance kleisli_sum_arrow m (M: Monad m): Arrow Type (kleisli_category m M) void sum := {
   first x y z (f: x ~> y) a :=

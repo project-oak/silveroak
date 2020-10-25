@@ -33,9 +33,14 @@ Local Ltac arrowsimpl :=
   cbn [cancell cancelr uncancell uncancelr assoc unassoc first second compose
     Arrows.copy Arrows.drop Arrows.loopr Arrows.loopl Arrows.swap compose id
     Arrows.rewrite_or_default rewrite_or_default
+
+    circuit_cat circuit_arr circuit_rew circuit_ann circuit_imp circuit_prim circuit_drop circuit_copy circuit_swap circuit_loop
+
     combinational_category combinational_arrow
     combinational_drop combinational_copy combinational_swap
     combinational_arrow_rewrite_or_default
+    combinational_circuit
+
     Coq.build_denoted_category Coq.build_denoted_arrow
     arrow_category rewrite_or_default as_kind
     Datatypes.length Nat.eqb extract_nth
@@ -58,7 +63,7 @@ Definition context_entry_ok
   let value := fst (projT2 e) in
   let index := snd (projT2 e) in
   reverse_nth ctxt_types index = Some (projT1 e) /\
-  (extract_nth (arrow:=combinational_arrow) ctxt_types _ index) ctxt_values = value.
+  (extract_nth (circuit_arrow:=combinational_circuit) ctxt_types _ index) ctxt_values = value.
 
 Lemma extend_context_entry_ok_tl ctxt_types ctxt t (x : denote_kind t) e :
   context_entry_ok ctxt_types ctxt e ->
@@ -92,7 +97,10 @@ Proof.
   erewrite split_lookup by eauto.
   split; [ reflexivity | ]. cbn [extract_nth].
   destruct_one_match; arrowsimpl; [ | tauto ].
-  cbn [fst snd]. apply rewrite_or_default_refl.
+  cbn [fst snd ].
+
+  cbv [compose Arrows.rewrite_or_default].
+  apply rewrite_or_default_refl.
 Qed.
 
 Fixpoint no_letrec {var i o} (e : kappa var i o) : Prop :=
@@ -128,7 +136,7 @@ Lemma closure_conversion'_preserves_semantics i o :
       (x : denote_kind i),
       Forall (context_entry_ok ctxt_types ctxt) G ->
       interp_combinational' expr1 x
-      = (closure_conversion' (arrow:=combinational_arrow) ctxt_types expr2) (x, ctxt).
+      = (closure_conversion' (circuit_arrow:=combinational_circuit) ctxt_types expr2) (x, ctxt).
 Proof.
   induction 1; intros.
   all:cbn [interp_combinational' closure_conversion'].
@@ -180,3 +188,4 @@ Proof.
   eapply closure_conversion'_preserves_semantics with (ctxt_types:=nil) (G:=nil);
     eauto using Forall_nil, no_letrec_unitvar_equiv.
 Qed.
+

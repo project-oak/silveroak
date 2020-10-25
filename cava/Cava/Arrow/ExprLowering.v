@@ -4,14 +4,13 @@ Require Import Coq.Logic.Eqdep.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 
+Require Import Cava.Arrow.ArrowKind.
 Require Import Cava.Arrow.ExprSyntax.
 Require Import Cava.Arrow.ExprEquiv.
-(* Require Import Cava.Arrow.ArrowKind. *)
-(* Require Import Cava.Arrow.Primitives. *)
-(* Require Import Cava.Arrow.CircuitArrow. *)
 
 Require Import Cava.Arrow.Classes.Category.
 Require Import Cava.Arrow.Classes.Arrow.
+Require Import Cava.Arrow.CircuitArrow.
 
 Import ListNotations.
 Import EqNotations.
@@ -19,29 +18,10 @@ Import CategoryNotations.
 
 Generalizable All Variables.
 
-Definition object := ArrowKind.Kind.
-
 Import Arrows.
 
-Section Arrow.
-(* Context {unit: object}. *)
-Context {category: Category object}.
-(* Context {product: object -> object -> object}. *)
-Context {arrow: Arrow object category ArrowKind.Unit ArrowKind.Tuple}.
-Context {arrow_rewrite_or_default: RewriteOrDefault arrow}.
-Context {arrow_annotation: Annotation arrow string}.
-Context {arrow_impossible: Impossible arrow}.
-Context {arrow_primitives: Primitive arrow Primitives.CircuitPrimitive Primitives.primitive_input Primitives.primitive_output}.
-Context {arrow_drop: Drop arrow}.
-Context {arrow_copy: Copy arrow}.
-Context {arrow_swap: Swap arrow}.
-
-(* TODO(blaxill): it should be possible to lower combinational expressions without requiring this typeclass *)
-Context {arrow_loop: Loop arrow}.
-
-Notation Kind := category_object.
-Notation Unit := arrow_unit.
-Notation Tuple := arrow_product.
+Section CircuitArrow.
+Context {circuit_arrow: CircuitArrow}.
 
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
@@ -92,7 +72,7 @@ Hint Extern 50 => simpl; lia : kappa_cc.
 
 Notation ok_lookup := (fun (l: list _) (n: nat) (ty: _) => reverse_nth l n = Some ty).
 
-Fixpoint as_kind (ctxt: list object): object :=
+Fixpoint as_kind (ctxt: list Kind): Kind :=
   match ctxt with
   | [] => Unit
   | x :: xs => Tuple x (as_kind xs)
@@ -179,7 +159,7 @@ being propogated down expressions.
 *)
 
 Fixpoint closure_conversion' {i o}
-  (ctxt: list object)
+  (ctxt: list Kind)
   (expr: kappa natvar i o) {struct expr}
   : (i ** (as_kind ctxt)) ~> o
   :=
@@ -440,8 +420,10 @@ Proof.
   cbv [Wf]; eauto with kappa_cc.
 Qed.
 
-Definition closure_conversion {i o} (expr: Kappa i o) : i ~> o
-  := uncancelr >>> closure_conversion' [] (expr _) .
+End CircuitArrow.
+
+Definition closure_conversion {i o} (_: CircuitArrow) (expr: Kappa i o) : i ~> o
+  := uncancelr >>> closure_conversion' [] (expr _).
 
 Hint Resolve closure_conversion' : core.
 Hint Resolve closure_conversion : core.
@@ -466,4 +448,4 @@ match expr with
 | RemoveContext f => max size (max_context_size' 0 f)
 | Module _ f => max size (max_context_size' 0 f)
 end.
-End Arrow.
+

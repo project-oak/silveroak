@@ -26,5 +26,28 @@ From Cava Require Import Arrow.Primitives.
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
 
-Definition dummy := tt.
+Class CircuitArrow := {
+  circuit_cat :> Category Kind;
+  circuit_arr :> Arrow Kind circuit_cat Unit Tuple;
+  circuit_rew :> Arrows.RewriteOrDefault circuit_arr;
+  circuit_ann :> Arrows.Annotation circuit_arr string;
+  circuit_imp :> Arrows.Impossible circuit_arr;
+  circuit_prim :> Arrows.Primitive circuit_arr
+    Primitives.CircuitPrimitive Primitives.primitive_input Primitives.primitive_output;
+  circuit_drop :> Arrows.Drop circuit_arr;
+  circuit_copy :> Arrows.Copy circuit_arr;
+  circuit_swap :> Arrows.Swap circuit_arr;
+  circuit_loop :> Arrows.Loop circuit_arr;
+}.
+
+Coercion circuit_cat : CircuitArrow >-> Category.
+Coercion circuit_arr : CircuitArrow >-> Arrow.
+Coercion circuit_rew : CircuitArrow >-> Arrows.RewriteOrDefault.
+Coercion circuit_ann : CircuitArrow >-> Arrows.Annotation.
+Coercion circuit_imp : CircuitArrow >-> Arrows.Impossible.
+Coercion circuit_prim : CircuitArrow >-> Arrows.Primitive.
+Coercion circuit_drop : CircuitArrow >-> Arrows.Drop.
+Coercion circuit_copy : CircuitArrow >-> Arrows.Copy.
+Coercion circuit_swap : CircuitArrow >-> Arrows.Swap.
+Coercion circuit_loop : CircuitArrow >-> Arrows.Loop.
 

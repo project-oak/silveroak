@@ -1,3 +1,19 @@
+(****************************************************************************)
+(* Copyright 2020 The Project Oak Authors                                   *)
+(*                                                                          *)
+(* Licensed under the Apache License, Version 2.0 (the "License")           *)
+(* you may not use this file except in compliance with the License.         *)
+(* You may obtain a copy of the License at                                  *)
+(*                                                                          *)
+(*     http://www.apache.org/licenses/LICENSE-2.0                           *)
+(*                                                                          *)
+(* Unless required by applicable law or agreed to in writing, software      *)
+(* distributed under the License is distributed on an "AS IS" BASIS,        *)
+(* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *)
+(* See the License for the specific language governing permissions and      *)
+(* limitations under the License.                                           *)
+(****************************************************************************)
+
 From Cava Require Import Arrow.Classes.Category.
 
 Local Open Scope category_scope.
@@ -162,78 +178,3 @@ Module Arrows.
   }.
 End Arrows.
 
-(*
-Class ArrowApply := {
-  app {x y}: (x~>y)**y ~> x:
-}.
-
-Class ArrowProd := {
-  prod_copy {x} : x ~> (x<*>x):
-  prod_drop {x} : x ~> v;
-}.
-*)
-
-(* Class ArrowSTKC *)
-(*   `(A: Arrow) *)
-(*   := { *)
-(*   stkc_arrow := A; *)
-(*   stkc_arrow_drop :> ArrowDrop A; *)
-(*   stkc_arrow_swap :> ArrowSwap A; *)
-(*   stkc_arrow_copy :> ArrowCopy A; *)
-(* }. *)
-
-(* Coercion stkc_arrow: ArrowSTKC >-> Arrow. *)
-(* Coercion stkc_arrow_drop: ArrowSTKC >-> ArrowDrop. *)
-(* Coercion stkc_arrow_swap: ArrowSTKC >-> ArrowSwap. *)
-(* Coercion stkc_arrow_copy: ArrowSTKC >-> ArrowCopy. *)
-
-(* Section arrowstkc. *)
-(*   Context {object: Type}. *)
-(*   Context {unit: object}. *)
-(*   Context {product: object -> object -> object}. *)
-
-(*   Inductive ArrowStructure := *)
-(*     | Id: object -> ArrowStructure *)
-(*     | Assoc: object -> object -> object -> ArrowStructure *)
-(*     | Unassoc: object -> object -> object -> ArrowStructure *)
-(*     | Cancelr: object -> ArrowStructure *)
-(*     | Cancell: object -> ArrowStructure *)
-(*     | Uncancell: object -> ArrowStructure *)
-(*     | Uncancelr: object -> ArrowStructure *)
-(*     | Copy: object -> ArrowStructure *)
-(*     | Drop: object -> ArrowStructure *)
-(*     | Swap: object -> object -> ArrowStructure. *)
-
-(*   Inductive ArrowComposition := *)
-(*     | Compose: object -> object -> object -> ArrowComposition *)
-(*     | First: object -> object -> object -> ArrowComposition *)
-(*     | Second: object -> object -> object -> ArrowComposition. *)
-
-(*   Fixpoint arrow_input (a: ArrowStructure): object := *)
-(*     match a with *)
-(*     | Id x => x *)
-(*     | Assoc x y z => (product (product x y) z) *)
-(*     | Unassoc x y z => (product x (product y z)) *)
-(*     | Cancelr x => product x unit *)
-(*     | Cancell x => product unit x *)
-(*     | Uncancell x => x *)
-(*     | Uncancelr x => x *)
-(*     | Copy x => x *)
-(*     | Drop x => x *)
-(*     | Swap x y => product x y *)
-(*     end. *)
-
-(*   Fixpoint arrow_output (a: ArrowStructure): object := *)
-(*     match a with *)
-(*     | Id x => x *)
-(*     | Assoc x y z => (product x (product y z)) *)
-(*     | Unassoc x y z => (product (product x y) z) *)
-(*     | Cancelr x => x *)
-(*     | Cancell x => x *)
-(*     | Uncancell x => product unit x *)
-(*     | Uncancelr x => product x unit *)
-(*     | Copy x => product x x *)
-(*     | Drop x => unit *)
-(*     | Swap x y => product y x *)
-(*     end. *)
-(* End arrowstkc. *)
