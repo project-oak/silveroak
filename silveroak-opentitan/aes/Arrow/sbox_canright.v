@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
-From Cava Require Import Arrow.ArrowExport Arrow.CircuitFunctionalEquivalence
+From Cava Require Import Arrow.ArrowExport
      BitArithmetic Tactics VectorUtils.
 
 From Aes Require Import pkg sbox_canright_pkg.
@@ -110,56 +110,55 @@ Definition canright_composed
   decoded ]>.
 
 Require Import Coq.derive.Derive.
+From Cava Require Import Arrow.DeriveSpec.
 
 Derive CIPH_FWD_spec
-       SuchThat (obeys_spec CIPH_FWD CIPH_FWD_spec)
+  SuchThat ( kinterp CIPH_FWD tt = CIPH_FWD_spec)
        As CIPH_FWD_correct.
 Proof.
-  cbv [CIPH_FWD]. circuit_spec.
-  subst CIPH_FWD_spec.
-  instantiate_app_by_reflexivity.
+  cbv [CIPH_FWD]; kappa_spec.
+  repeat destruct_pair_let.
+  repeat first [derive_foldl_spec | derive_map_spec ].
+  derive_spec_done.
 Qed.
 
 (* This lemma could also be proved the same way as CIPH_FWD *)
-Lemma CIPH_INV_correct : obeys_spec CIPH_INV (fun _ : unit => true).
+Lemma CIPH_INV_correct : kinterp CIPH_INV = (fun _ : unit => true).
 Proof.
-  cbv [obeys_spec CIPH_INV]. circuit_spec. reflexivity.
+  cbv [CIPH_INV]; kappa_spec; reflexivity.
 Qed.
+
 
 (* TODO: fill in these axioms *)
 Axiom aes_sbox_canright_spec :
   denote_kind (<<Bit, Vector Bit 8, Unit >>) -> denote_kind (Vector Bit 8).
 Axiom aes_sbox_canright_correct :
-  obeys_spec aes_sbox_canright aes_sbox_canright_spec.
-Axiom CircuitLaws : CategoryLaws CircuitCat.
-Existing Instance CircuitLaws.
+  forall x y, kinterp aes_sbox_canright (x,(y,tt)) = aes_sbox_canright_spec (x,(y,tt)).
 
-Hint Resolve aes_sbox_canright_correct CIPH_FWD_correct CIPH_INV_correct
-  : circuit_spec_correctness.
+Hint Rewrite aes_sbox_canright_correct CIPH_FWD_correct CIPH_INV_correct
+  : kappa_interp.
 
 Derive canright_composed_spec
-       SuchThat (obeys_spec canright_composed canright_composed_spec)
+  SuchThat (forall x, kinterp canright_composed (x, tt) = canright_composed_spec (x, tt))
        As canright_composed_correct.
 Proof.
-  cbv [canright_composed]. circuit_spec.
-  subst canright_composed_spec.
-  instantiate_app_by_reflexivity.
+  cbn [canright_composed interp_combinational']; kappa_spec.
+  derive_spec_done.
 Qed.
-(* Uncomment below to see derived spec for canright_composed *)
-(* Print canright_composed_spec. *)
 
-Lemma canright_composed_combinational: is_combinational (closure_conversion aes_sbox_canright).
-Proof. time simply_combinational. Qed.
+(* Uncomment below to see derived spec for canright_composed *)
+Print canright_composed_spec.
+
+Lemma canright_composed_combinational: is_combinational aes_sbox_canright = true.
+Proof. tauto. Qed.
 
 Local Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
 
 Goal interp_combinational (canright_composed _) (# 0) = (# 0).
-Proof. time (vm_compute; auto). Qed.
+Proof. tauto. Qed.
 
-(* TODO(blaxill): reduced bound for CI time *)
-Goal forall x, x < 100 ->
-interp_combinational (canright_composed _) (#x) = (#x).
+Lemma canright_composed_is_identity:
+  forall x, x < 256 ->
+  interp_combinational (canright_composed _) (#x) = (#x).
 Proof. time (repeat (lia || destruct x); now vm_compute). Qed.
-
-
 
