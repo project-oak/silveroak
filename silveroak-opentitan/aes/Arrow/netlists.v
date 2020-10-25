@@ -29,7 +29,7 @@ Definition sbox_canright_interface
      nil.
 
 Definition sbox_canright_netlist :=
-  makeNetlist sbox_canright_interface (build_netlist (closure_conversion (aes_sbox SboxCanright))).
+  makeNetlist sbox_canright_interface (build_netlist (aes_sbox SboxCanright)).
 
 Definition sbox_lut_interface
   := combinationalInterface "sbox_lut"
@@ -38,5 +38,5 @@ Definition sbox_lut_interface
      nil.
 
 Definition sbox_lut_netlist :=
-  makeNetlist sbox_lut_interface (build_netlist (closure_conversion (aes_sbox SboxLut))).
+  makeNetlist sbox_lut_interface (build_netlist (aes_sbox SboxLut)).
 
