@@ -24,7 +24,6 @@ From Cava Require Import Arrow.ArrowKind.
 From Cava Require Import Arrow.ExprLowering.
 
 Import NilZero.
-
 Import VectorNotations.
 Import EqNotations.
 Import ListNotations.

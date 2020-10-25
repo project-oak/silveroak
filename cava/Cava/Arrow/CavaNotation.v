@@ -327,7 +327,6 @@ Section regression_examples.
   <[ \ x => letrec s = delay (xor x s) in s ]>.
   Definition ex16_triple:  << <<Bit, Bit, Bit>>, Unit >> ~> Bit :=
   <[ \ triple => let '(x, y, z) = triple in x ]>.
-  (* Definition ex17_constant_via_list:  << Unit >> ~> Vector (Vector Bit 4) 3 := <[  { 1, 2, 3 } ]>. *)
 
   Fixpoint copy_object_pow2 o (n:nat): Kind :=
   match n with
@@ -338,7 +337,7 @@ Section regression_examples.
   Program Fixpoint tree
     (A: Kind)
     (n: nat)
-    (f: << A , A , Unit >> ~> A )
+    (f: << A, A, Unit >> ~> A )
     {struct n}
     :  << copy_object_pow2 A n, Unit >> ~> A :=
   match n with
