@@ -54,6 +54,67 @@ Section Specs.
   Definition mux {T} (sel : bool) (x y : T) : T := if sel then x else y.
 End Specs.
 
+Section SpecProperties.
+  Lemma denote_kind_eqb_refl {A} (x : denote_kind A) : denote_kind_eqb x x = true.
+  Proof.
+    induction A; cbn [denote_kind_eqb];
+      repeat match goal with
+             | H : context [_ = true] |- _ => rewrite H
+             | _ => rewrite Bool.eqb_reflx
+             | _ => reflexivity
+             end; [ ].
+    rewrite map2_drop_same.
+    rewrite Vector.map_ext with (g:=fun _ => true) by auto.
+    rewrite map_to_const, fold_left_andb_true.
+    reflexivity.
+  Qed.
+
+  Lemma denote_kind_eqb_true_iff (n : nat) (x y : Vector.t bool n) :
+    @denote_kind_eqb (Vector Bit n) x y = true <-> x = y.
+  Proof.
+    cbv [denote_kind_eqb].
+    revert x y; induction n; intros.
+    { eapply Vector.case0 with (v:=x).
+      eapply Vector.case0 with (v:=y).
+      autorewrite with vsimpl. tauto. }
+    { rewrite (Vector.eta x), (Vector.eta y).
+      autorewrite with push_vector_fold push_vector_map vsimpl.
+      rewrite Bool.andb_true_l.
+      destruct (Bool.bool_dec (Vector.hd x) (Vector.hd y));
+        [ | rewrite (proj2 (Bool.eqb_false_iff _ _)) by auto;
+            rewrite fold_left_andb_false; split; congruence ].
+      match goal with H : @eq bool _ _ |- _ => rewrite H  end.
+      rewrite Bool.eqb_reflx, IHn; split; [ congruence | ].
+      let H := fresh in
+      intro H; apply Vector.cons_inj in H; destruct H.
+      congruence. }
+  Qed.
+
+  Lemma denote_kind_eqb_false_iff (n : nat) (x y : Vector.t bool n) :
+    @denote_kind_eqb (Vector Bit n) x y = false <-> x <> y.
+  Proof.
+    rewrite <-denote_kind_eqb_true_iff.
+    destruct (@denote_kind_eqb (Vector Bit n) x y);
+      split; congruence.
+  Qed.
+
+  Lemma denote_kind_eqb_N2Bv_sized (n : nat) (x y : N) :
+    (N.size_nat x <= n) ->
+    (N.size_nat y <= n) ->
+    @denote_kind_eqb
+      (Vector Bit n)
+      (Ndigits.N2Bv_sized n x) (Ndigits.N2Bv_sized n y) = N.eqb x y.
+  Proof.
+    intros. destruct (N.eq_dec x y); subst.
+    { rewrite N.eqb_refl.
+      apply denote_kind_eqb_true_iff.
+      apply N2Bv_sized_eq_iff; auto. }
+    { rewrite (proj2 (N.eqb_neq _ _)) by congruence.
+      apply denote_kind_eqb_false_iff.
+      rewrite N2Bv_sized_eq_iff; auto. }
+  Qed.
+End SpecProperties.
+
 Lemma Wf_equivalence {i o} (expr : Kappa i o) :
   Wf expr -> forall var1 var2, kappa_equivalence nil (expr var1) (expr var2).
 Proof. cbv [Wf]; intros; auto. Qed.

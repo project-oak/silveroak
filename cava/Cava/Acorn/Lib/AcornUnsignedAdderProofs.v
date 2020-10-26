@@ -32,7 +32,7 @@ Require Import coqutil.Tactics.Tactics.
 Require Import Coq.micromega.Lia.
 Require Import Coq.Classes.Morphisms.
 
-From Cava Require Import BitArithmetic.
+From Cava Require Import BitArithmetic ListUtils VectorUtils.
 Require Import Cava.Monad.MonadFacts.
 
 From Cava Require Import Acorn.Acorn.
@@ -135,10 +135,6 @@ Qed.
 
 Require Import Cava.Tactics.
 
-Lemma to_list_cons {A n} a (v : t A n) :
-  to_list (a :: v)%vector = a :: to_list v.
-Proof. reflexivity. Qed.
-
 Ltac destruct_pair_let_under_bind' :=
   lazymatch goal with
   | |- context [bind ?x ?f] =>
@@ -201,49 +197,11 @@ Proof.
   lia.
 Qed.
 
-Lemma to_list_resize_default {A} n m (v : t A n) d :
-  n = m ->
-  to_list (VectorUtils.resize_default d m v) = to_list v.
+Lemma colL_length {A B C} circuit a bs :
+  length (fst (combinational (@colL ident _ A B C circuit (a,bs))))
+  = length bs.
 Proof.
-  intros; subst; rewrite VectorUtils.resize_default_id.
-  reflexivity.
-Qed.
-
-Lemma to_list_append {A n m} (v1 : t A n) (v2 : t A m) :
-  to_list (v1 ++ v2)%vector = to_list v1 ++ to_list v2.
-Proof.
-  revert v2; induction v1; [ reflexivity | ].
-  intros. rewrite <-append_comm_cons.
-  cbn [Nat.add]. rewrite !to_list_cons.
-  rewrite <-app_comm_cons, IHv1.
-  reflexivity.
-Qed.
-
-Lemma to_list_vcombine {A B n} (v1 : t A n) (v2 : t B n) :
-  to_list (VectorUtils.vcombine v1 v2) = combine (to_list v1) (to_list v2).
-Proof.
-  induction n; intros.
-  { eapply case0 with (v:=v1). eapply case0 with (v:=v2).
-    reflexivity. }
-  { rewrite (eta v1), (eta v2).
-    cbn [VectorUtils.vcombine].
-    rewrite !uncons_cons, !to_list_cons.
-    cbn [combine]. rewrite IHn; reflexivity. }
-Qed.
-
-Lemma to_list_length {A n} (v : t A n) :
-  length (to_list v) = n.
-Proof.
-  induction v; [ reflexivity | ].
-  rewrite to_list_cons. cbn [length].
-  congruence.
-Qed.
-
-Lemma colL_length {A B C} circuit inputs :
-  length (fst (combinational (@colL ident _ A B C circuit inputs)))
-  = length (snd inputs).
-Proof.
-  destruct inputs as [a bs]. cbv [colL]; cbn [fst snd].
+  cbv [colL]; cbn [fst snd].
   revert a; induction bs; intros; [ reflexivity | ].
   cbn [colL'].
   repeat first [ rewrite combinational_bind
@@ -253,20 +211,7 @@ Proof.
   rewrite IHbs. reflexivity.
 Qed.
 
-Lemma to_list_nil {A} : to_list (Vector.nil A) = [].
-Proof. reflexivity. Qed.
-
-Hint Rewrite @colL_length @combine_length @to_list_length
-     using solve [eauto] : push_length.
-Ltac simpl_length :=
-  repeat first [ progress autorewrite with push_length
-               | progress cbn [fst snd] ].
-
-Hint Rewrite @to_list_append  @to_list_vcombine
-     @to_list_of_list_opp @to_list_nil @to_list_cons
-     using solve [eauto] : push_to_list.
-Hint Rewrite @to_list_resize_default
-     using solve [simpl_length; lia] : push_to_list.
+Hint Rewrite @colL_length using solve [length_hammer] : push_length.
 
 Ltac simpl_monad :=
   repeat first [ rewrite combinational_bind

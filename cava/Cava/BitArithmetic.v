@@ -297,6 +297,99 @@ Lemma nat_of_bits_sized_n: forall n (v : nat),
       bitvec_to_nat (nat_to_bitvec_sized n v) = v.
 Admitted.
 
+Lemma Pos_size_nat_nonzero (p : positive) : 0 < Pos.size_nat p.
+Proof. destruct p; cbn; lia. Qed.
+
+Lemma N_size_nat_le0 (x : N) : N.size_nat x = 0 -> x = 0%N.
+Proof.
+  destruct x as [|p]; [ reflexivity | ].
+  pose proof (Pos_size_nat_nonzero p).
+  cbn [N.size_nat]. lia.
+Qed.
+
+Lemma P2Bv_nonzero (n : nat) (p : positive) :
+  (Pos.size_nat p <= n) ->
+  P2Bv_sized n p <> Bvector.Bvect_false n.
+Proof.
+  pose proof (Pos_size_nat_nonzero p).
+  revert dependent p; induction n; destruct p; intros;
+    cbn in *; try congruence; try lia; [ ].
+  let Heq := fresh in
+  intro Heq; apply cons_inj in Heq; destruct Heq.
+  eapply IHn; eauto using Pos_size_nat_nonzero; [ ].
+  lia.
+Qed.
+
+Lemma P2Bv_sized_eq_iff (n : nat) (x y : positive) :
+  (Pos.size_nat x <= n) ->
+  (Pos.size_nat y <= n) ->
+  (P2Bv_sized n x = P2Bv_sized n y) <-> x = y.
+Proof.
+  revert x y; induction n; intros.
+  { pose proof (Pos_size_nat_nonzero x).
+    pose proof (Pos_size_nat_nonzero y).
+    split; [ intros; lia | reflexivity]. }
+  { split; try congruence; [ ].
+    cbn [P2Bv_sized].
+    destruct x, y; try congruence; [ | | | ].
+    all:cbn [Pos.size_nat] in *.
+    all:let H := fresh in
+        intro H; apply cons_inj in H; destruct H.
+    all:lazymatch goal with
+        | H : P2Bv_sized _ _ = P2Bv_sized _ _ |- _ =>
+          rewrite IHn in H by lia; subst
+        | H : P2Bv_sized _ _ = Bvector.Bvect_false _ |- _ =>
+          apply P2Bv_nonzero in H; [ | lia ]
+        | H : Bvector.Bvect_false _ = P2Bv_sized _ _ |- _ =>
+          symmetry in H; apply P2Bv_nonzero in H; [ | lia ]
+        end.
+    all:tauto. }
+Qed.
+
+Lemma N2Bv_sized_eq_iff (n : nat) (x y : N) :
+  (N.size_nat x <= n) ->
+  (N.size_nat y <= n) ->
+  (N2Bv_sized n x = N2Bv_sized n y) <-> x = y.
+Proof.
+  destruct x, y; cbn [N.size_nat N2Bv_sized]; intros; split; intros.
+  all:try lazymatch goal with
+          | H : P2Bv_sized _ _ = P2Bv_sized _ _ |- _ =>
+            rewrite P2Bv_sized_eq_iff in H by lia; subst
+          | H : P2Bv_sized _ _ = Bvector.Bvect_false _ |- _ =>
+            apply P2Bv_nonzero in H; [ | lia ]
+          | H : Bvector.Bvect_false _ = P2Bv_sized _ _ |- _ =>
+            symmetry in H; apply P2Bv_nonzero in H; [ | lia ]
+          end.
+  all:(tauto || congruence).
+Qed.
+
+Lemma Pos_size_nat_equiv (x : positive) :
+  Pos.size_nat x = Pos.to_nat (Pos.size x).
+Proof.
+  induction x; intros; cbn [Pos.size_nat Pos.size];
+    rewrite ?Pnat.Pos2Nat.inj_succ; (reflexivity || congruence).
+Qed.
+
+Lemma N_size_nat_equiv (x : N) :
+  N.size_nat x = N.to_nat (N.size x).
+Proof.
+  destruct x as [|p]; [ reflexivity | ].
+  apply Pos_size_nat_equiv.
+Qed.
+
+Lemma N_size_nat_le (n : nat) (x : N) :
+  (x < 2 ^ N.of_nat n)%N ->
+  N.size_nat x <= n.
+Proof.
+  destruct (N.eq_dec x 0);
+    [ intros; subst; cbn [N.size_nat]; lia | ].
+  destruct n; [ rewrite N.pow_0_r; lia | ].
+  intros. rewrite N_size_nat_equiv, N.size_log2 by auto.
+  pose proof (proj1 (N.log2_lt_pow2 x (N.of_nat (S n)) ltac:(lia))
+                    ltac:(eassumption)).
+  lia.
+Qed.
+
 (******************************************************************************)
 (* Functions useful for examples and tests                                    *)
 (******************************************************************************)

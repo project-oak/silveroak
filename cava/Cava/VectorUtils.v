@@ -27,6 +27,8 @@ From ExtLib Require Import Structures.Applicative.
 From ExtLib Require Import Structures.Traversable.
 Require Export ExtLib.Data.Monads.IdentityMonad.
 
+From Cava Require Import ListUtils.
+
 Section traversable.
   Universe u v vF.
   Context {F : Type@{v} -> Type@{vF}}.
@@ -249,6 +251,13 @@ Section resize.
   Lemma fold_left_resize {B} (f : B -> A -> B) n m H b (v : t A n) :
     Vector.fold_left f b (resize m H v) = Vector.fold_left f b v.
   Proof. subst. rewrite <-resize_id. reflexivity. Qed.
+
+  Lemma to_list_resize_default n m (v : t A n) d :
+    n = m ->
+    to_list (resize_default d m v) = to_list v.
+  Proof.
+    intros; subst; rewrite resize_default_id. reflexivity.
+  Qed.
 End resize.
 
 (* Miscellaneous facts about vectors *)
@@ -536,6 +545,88 @@ Section VectorFacts.
     induction n; intros; [ solve [vnil] | ].
     rewrite map2_cons, map_cons. congruence.
   Qed.
+
+  Lemma map2_drop_same {A B} (f : A -> A -> B) (n : nat) (v : t A n) :
+    Vector.map2 f v v = Vector.map (fun x => f x x) v.
+  Proof.
+    induction v; [ reflexivity | ].
+    cbn [Vector.map]. rewrite <-IHv.
+    reflexivity.
+  Qed.
+
+  Lemma map_to_const {A B} (n : nat) (v : t A n) (b : B) :
+    Vector.map (fun _ => b) v = Vector.const b n.
+  Proof.
+    induction v; [ reflexivity | ].
+    cbn [Vector.map]. rewrite IHv.
+    reflexivity.
+  Qed.
+
+  Lemma fold_left_andb_true (n : nat) :
+    Vector.fold_left andb true (Vector.const true n) = true.
+  Proof.
+    induction n; [ reflexivity | ].
+    etransitivity; [ | apply IHn ].
+    reflexivity.
+  Qed.
+
+  Lemma fold_left_andb_false (n : nat) (v : t bool n) :
+    Vector.fold_left andb false v = false.
+  Proof. induction v; auto. Qed.
+
+  Lemma fold_left_fst_unchanged {A B C} (f : B * C -> A -> B * C) bc n (v : t A n) :
+    (forall bc a, fst (f bc a) = fst bc) ->
+    Vector.fold_left f bc v = (fst bc, Vector.fold_left
+                                         (fun c a => snd (f (fst bc,c) a)) (snd bc) v).
+  Proof.
+    intro Hfstf. revert bc v.
+    induction n; intros; autorewrite with push_vector_fold;
+      [ destruct bc; reflexivity | ].
+    rewrite IHn, Hfstf, <-surjective_pairing.
+    reflexivity.
+  Qed.
+
+  Lemma to_list_nil {A} : to_list (Vector.nil A) = List.nil.
+  Proof. reflexivity. Qed.
+  Lemma to_list_cons {A n} a (v : t A n) :
+    to_list (a :: v)%vector = a :: to_list v.
+  Proof. reflexivity. Qed.
+  Hint Rewrite @to_list_nil @to_list_cons using solve [eauto] : vsimpl.
+
+  Lemma to_list_append {A n m} (v1 : t A n) (v2 : t A m) :
+    to_list (v1 ++ v2)%vector = to_list v1 ++ to_list v2.
+  Proof.
+    revert v2; induction v1; [ reflexivity | ].
+    intros. rewrite <-append_comm_cons.
+    cbn [Nat.add]. autorewrite with vsimpl.
+    rewrite <-app_comm_cons, IHv1.
+    reflexivity.
+  Qed.
+
+  Lemma to_list_length {A n} (v : t A n) :
+    length (to_list v) = n.
+  Proof.
+    induction v; [ reflexivity | ].
+    autorewrite with vsimpl push_length.
+    congruence.
+  Qed.
+
+  Lemma to_list_map {A B} (f : A -> B) n (v : t A n) :
+    to_list (map f v) = List.map f (to_list v).
+  Proof.
+    induction n; intros; [ vnil; reflexivity | ].
+    rewrite (eta v). rewrite map_cons.
+    autorewrite with vsimpl. cbn [List.map].
+    rewrite IHn; reflexivity.
+  Qed.
+
+  Lemma fold_left_to_list {A B} (f : B -> A -> B) n b (v : t A n) :
+    fold_left f b v = List.fold_left f (to_list v) b.
+  Proof.
+    revert b; induction v; intros; [ reflexivity | ].
+    autorewrite with vsimpl. cbn [List.fold_left].
+    rewrite IHv; reflexivity.
+  Qed.
 End VectorFacts.
 (* These hints create and populate the following autorewrite databases:
  * - push_vector_fold : simplify using properties of Vector.fold_left
@@ -549,23 +640,66 @@ End VectorFacts.
  *)
 Hint Rewrite @fold_left_0
      using solve [eauto] : push_vector_fold vsimpl.
-(* fold_left_S gets added only to push_vector_fold, not vsimpl, because it can
-   end up making very large terms for constant-length folds *)
-Hint Rewrite @fold_left_S
-     using solve [eauto] : push_vector_fold.
 Hint Rewrite @tl_0 @hd_0 @tl_cons @hd_cons @last_tl
      using solve [eauto] : push_vector_tl_hd_last vsimpl.
 Hint Rewrite @nth_order_hd @nth_order_last
      using solve [eauto] : push_vector_nth_order vsimpl.
-Hint Rewrite @map2_0 @map_0
+Hint Rewrite @map2_0 @map_0 @map_to_const
      using solve [eauto] : push_vector_map vsimpl.
 Hint Rewrite @resize_default_id @Vector.map_id
      using solve [eauto] : vsimpl.
+Hint Rewrite @to_list_cons @to_list_nil
+     using solve [eauto] : vsimpl.
+
+(* Lemmas that work on any (S _) length don't get added to vsimpl, because
+   they can end up happening many times for constant-length expressions *)
+Hint Rewrite @fold_left_S
+     using solve [eauto] : push_vector_fold.
+Hint Rewrite @map_cons @map2_cons
+     using solve [eauto] : push_vector_map.
 
 (* [eauto] might not solve map_id_ext, so add more power to the strategy *)
 Hint Rewrite @map_id_ext
      using solve [intros; autorewrite with vsimpl; eauto]
   : push_vector_map vsimpl.
+
+(* Hints to change a goal from vectors to list go in the vec_to_list database *)
+Hint Rewrite @to_list_nil @to_list_cons @to_list_append
+     @fold_left_to_list @to_list_map @to_list_of_list_opp
+     using solve [eauto] : push_to_list.
+Hint Rewrite @to_list_resize_default
+     using solve [length_hammer] : push_to_list.
+Hint Rewrite @to_list_length using solve [eauto] : push_length.
+
+Section VcombineFacts.
+  Lemma to_list_vcombine {A B n} (v1 : Vector.t A n) (v2 : Vector.t B n) :
+    to_list (VectorUtils.vcombine v1 v2) = combine (to_list v1) (to_list v2).
+  Proof.
+    induction n; intros.
+    { eapply case0 with (v:=v1). eapply case0 with (v:=v2).
+      reflexivity. }
+    { rewrite (eta v1), (eta v2).
+      cbn [VectorUtils.vcombine].
+      rewrite !uncons_cons, !to_list_cons.
+      cbn [combine]. rewrite IHn; reflexivity. }
+  Qed.
+End VcombineFacts.
+Hint Rewrite @to_list_vcombine using solve [eauto] : push_to_list.
+
+Section VseqFacts.
+  Lemma vseq_S start len :
+    vseq start (S len) = (start :: vseq (S start) len)%vector.
+  Proof. cbv [vseq]. rewrite Nat.add_1_r. reflexivity. Qed.
+
+  Lemma to_list_vseq start len : to_list (vseq start len) = List.seq start len.
+  Proof.
+    revert start; induction len; [ reflexivity | ].
+    intros; rewrite vseq_S. cbn [seq].
+    autorewrite with push_to_list.
+    rewrite IHlen; reflexivity.
+  Qed.
+End VseqFacts.
+Hint Rewrite @to_list_vseq using solve [eauto] : push_to_list.
 
 Section Vector.
   Context {A:Type}.
