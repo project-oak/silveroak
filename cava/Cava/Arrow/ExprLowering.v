@@ -243,8 +243,7 @@ removes the list Kind, we first need to copy the list Kind. *)
   let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
   second (copy >>> first (uncancell
   >>> closure_conversion' ctxt v))
-  >>> unassoc >>> first swap
-  >>> first swap >>> assoc >>> f'
+  >>> f'
 
 | LetRec v f =>
   let v' := closure_conversion' (_ :: ctxt) (v (length ctxt)) in
@@ -341,8 +340,7 @@ Lemma lower_let: forall x y z (f: _ x -> kappa _ y z) v ctxt,
   closure_conversion' ctxt (Let v f)
   = second (copy >>> first (uncancell
     >>> closure_conversion' ctxt v))
-  >>> unassoc >>> first swap
-  >>> first swap >>> assoc >>> (closure_conversion' (_ :: ctxt) (f (length ctxt))).
+  >>> (closure_conversion' (_ :: ctxt) (f (length ctxt))).
 Proof. reflexivity. Qed.
 
 Lemma lower_let': forall x y z (f: natvar x -> kappa _ y z) v ctxt c1 c2,
@@ -350,8 +348,7 @@ Lemma lower_let': forall x y z (f: natvar x -> kappa _ y z) v ctxt c1 c2,
   c2 = closure_conversion' (_::ctxt) (f (length ctxt)) ->
   closure_conversion' ctxt (Let v f)
   = second (copy >>> first (uncancell >>> c1))
-  >>> unassoc >>> first swap
-  >>> first swap >>> assoc >>> c2.
+  >>> c2.
 Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
 
 Lemma lower_letrec: forall x y z (f: _ x -> kappa _ y z) v ctxt,
