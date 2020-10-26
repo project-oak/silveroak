@@ -1,4 +1,5 @@
 -R . Aes
+-R ./../Spec AesSpec
 -R ../../../cava/Cava Cava
 -R ../../../third_party/coq-ext-lib/theories ExtLib
 -R ../../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
@@ -22,6 +23,7 @@ netlists.v
 aes_test.v
 CipherRoundProperties.v
 NaiveCipherProperties.v
+OpenTitanCipherEquivalence.v
 OpenTitanCipherProperties.v
 PkgProperties.v
 Extraction.v
