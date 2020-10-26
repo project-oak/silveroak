@@ -2,6 +2,7 @@ Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 Import ListNotations.
+Local Open Scope list_scope.
 
 Section Length.
   Lemma nil_length {A} : @length A nil = 0.
@@ -124,33 +125,33 @@ Hint Rewrite @fold_left_cons @fold_left_nil
 Section FoldLeftAccumulate.
   Definition fold_left_accumulate' {A B C}
              (f : B -> A -> B) (g : B -> C) acc0 ls b : list C * B :=
-    fold_left (fun '(acc, b) a => (acc ++ [g (f b a)], f b a)%list)
-              ls ((acc0 ++ [g b])%list, b).
+    fold_left (fun '(acc, b) a => (acc ++ [g (f b a)], f b a))
+              ls (acc0 ++ [g b], b).
   Definition fold_left_accumulate {A B C} (f : B -> A -> B) (g : B -> C) :=
     fold_left_accumulate' f g nil.
 
   Lemma fold_left_accumulate'_nil {A B C}
         (f : B -> A -> B) (g : B -> C) b acc0 :
-    fst (fold_left_accumulate' f g acc0 [] b) = (acc0 ++ [g b])%list.
+    fst (fold_left_accumulate' f g acc0 [] b) = (acc0 ++ [g b]).
   Proof. reflexivity. Qed.
 
   Lemma fold_left_accumulate'_cons {A B C}
         (f : B -> A -> B) (g : B -> C) b a acc0 ls :
     fst (fold_left_accumulate' f g acc0 (a::ls) b)
-    = fst (fold_left_accumulate' f g (acc0 ++ [g b]) ls (f b a))%list.
+    = fst (fold_left_accumulate' f g (acc0 ++ [g b]) ls (f b a)).
   Proof. reflexivity. Qed.
 
   Lemma fold_left_accumulate'_equiv {A B C}
         (f : B -> A -> B) (g : B -> C) b acc0 ls :
     fst (fold_left_accumulate' f g acc0 ls b)
-    = (acc0 ++ fst (fold_left_accumulate' f g [] ls b))%list.
+    = (acc0 ++ fst (fold_left_accumulate' f g [] ls b)).
   Proof.
     revert acc0 b.
     induction ls; intros; [ reflexivity | ].
     rewrite !fold_left_accumulate'_cons.
     cbn [app].
-    rewrite IHls with (acc0:=(_++_)%list).
-    rewrite IHls with (acc0:=(_::_)%list).
+    rewrite IHls with (acc0:=(_++_)).
+    rewrite IHls with (acc0:=(_::_)).
     rewrite app_assoc_reverse.
     reflexivity.
   Qed.
@@ -159,7 +160,7 @@ Section FoldLeftAccumulate.
         (f : B -> A -> B) (g : B -> C) b a acc0 ls :
     fst (fold_left_accumulate' f g acc0 (ls ++ [a]) b)
     = let r := fold_left_accumulate' f g acc0 ls b in
-      (fst r ++ [g (f (snd r) a)])%list.
+      (fst r ++ [g (f (snd r) a)]).
   Proof.
     cbv zeta. revert acc0 b.
     induction ls; intros;
@@ -180,12 +181,12 @@ Section FoldLeftAccumulate.
   Qed.
 
   Lemma fold_left_accumulate_nil {A B C} (f : B -> A -> B) (g : B -> C) b :
-    fst (fold_left_accumulate f g [] b) = [g b]%list.
+    fst (fold_left_accumulate f g [] b) = [g b].
   Proof. reflexivity. Qed.
 
   Lemma fold_left_accumulate_cons {A B C} (f : B -> A -> B) (g : B -> C) b a ls :
     fst (fold_left_accumulate f g (a::ls) b)
-    = (g b :: fst (fold_left_accumulate f g ls (f b a)))%list.
+    = (g b :: fst (fold_left_accumulate f g ls (f b a))).
   Proof.
     cbv [fold_left_accumulate].
     rewrite fold_left_accumulate'_cons.
@@ -196,7 +197,7 @@ Section FoldLeftAccumulate.
   Lemma fold_left_accumulate_snoc {A B C} (f : B -> A -> B) (g : B -> C) b a ls :
     fst (fold_left_accumulate f g (ls ++ [a]) b)
     = let r := fold_left_accumulate f g ls b in
-      (fst r ++ [g (f (snd r) a)])%list.
+      fst r ++ [g (f (snd r) a)].
   Proof.
     cbv [fold_left_accumulate].
     rewrite fold_left_accumulate'_snoc.
