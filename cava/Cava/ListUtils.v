@@ -340,3 +340,40 @@ Section DestructListsByLengthTests.
     reflexivity.
   Qed.
 End DestructListsByLengthTests.
+
+(* tactic that helps insert existentials for hypotheses with [List.map] *)
+Ltac map_inversion H :=
+  lazymatch type of H with
+  | map _ _ = _ :: _ =>
+    let H' := fresh in
+    apply map_eq_cons in H; destruct H as [? [? [? [? H']]]];
+    map_inversion H'
+  | map _ _ = _ ++ _ =>
+    let H' := fresh in
+    let H'' := fresh in
+    apply map_eq_app in H; destruct H as [? [? [? [H' H'']]]];
+    map_inversion H';
+    map_inversion H''
+  | map _ _ = [] => apply map_eq_nil in H
+  | _ => idtac
+  end.
+
+Section MapInversionTests.
+  (* simple application of map_eq_nil *)
+  Goal (forall (f : nat -> nat) (l : list nat), map f l = nil -> l = nil).
+  Proof.
+    intros *. intro H.
+    map_inversion H.
+    assumption.
+  Qed.
+
+  (* cons/snoc, recursive pattern *)
+  Goal (forall (f : nat -> nat) (l1 l2 : list nat) (x y : nat),
+           map f l1 = x :: l2 ++ [y] ->
+           exists a b l3, f a = x /\ f b = y /\ map f l3 = l2).
+  Proof.
+    intros *. intro Hmap.
+    map_inversion Hmap. subst.
+    repeat eexists; eauto.
+  Qed.
+End MapInversionTests.

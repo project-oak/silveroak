@@ -67,26 +67,48 @@ Section Spec.
     st.
 
   Section Equivalence.
-    Context (Nr : nat) (initial_rcon : rconst)
-            (first_key : key) (middle_keys : list key) (last_key : key)
+    Context (key_alt : Type) (* allow cipher to have a different type for keys *)
+            (projkey : key -> key_alt) (* convert to alternative key rep *)
+            (Nr : nat) (initial_rcon : rconst) (initial_key : key)
+            (first_key : key_alt) (middle_keys : list key_alt) (last_key : key_alt)
+            (add_round_key_alt : state -> key_alt -> state)
+            (add_round_key_alt_equiv :
+               forall st k, add_round_key_alt st (projkey k) = add_round_key st k)
             (all_keys_eq :
-               all_keys key_expand Nr first_key initial_rcon
+               List.map projkey
+                        (all_keys key_expand Nr initial_key initial_rcon)
                = first_key :: middle_keys ++ [last_key]).
+
+    Let cipher := cipher state key_alt add_round_key_alt sub_bytes shift_rows mix_columns.
 
     (* Interleaved cipher is equivalent to original cipher *)
     Lemma cipher_interleaved_equiv input :
-      cipher_interleaved Nr first_key initial_rcon input =
-      cipher state key add_round_key sub_bytes shift_rows mix_columns
-             first_key last_key middle_keys input.
+      cipher_interleaved Nr initial_key initial_rcon input =
+      cipher first_key last_key middle_keys input.
     Proof.
-      intros. cbv [cipher_interleaved cipher_round_interleaved cipher].
-      rewrite fold_left_to_seq with (default:=first_key).
-      pose proof (length_all_keys _ _ _ _ _ _ all_keys_eq).
+      intros. subst cipher.
+
+      (* get the key *pairs* *)
+      pose proof all_keys_eq as Hall_keys.
+      map_inversion Hall_keys; subst.
+      match goal with H : @eq (list key) _ (_ :: _ ++ [_]) |- _ =>
+                      rename H into Hall_keys end.
+
+      cbv [cipher_interleaved cipher_round_interleaved Cipher.cipher].
+      (* pick the initial key as the default for nth_default *)
+      let x := lazymatch type of Hall_keys with all_keys _ _ ?k _ = _ => k end in
+      rewrite fold_left_to_seq with (default:=projkey x).
+      pose proof (length_all_keys _ _ _ _ _ _ Hall_keys).
       autorewrite with push_length in *.
 
       (* Nr cannot be 0 *)
       destruct Nr as [|Nr_m1]; [ lia | ].
-      replace (length middle_keys) with Nr_m1 by lia.
+      pose proof (hd_all_keys _ _ _ _ _ _ Hall_keys ltac:(lia)).
+      subst.
+      match goal with
+      | H : length ?x + 1 = S ?n |- context [length ?x] =>
+        replace (length x) with n by lia
+      end.
 
       (* extract first step from cipher_alt so loops are in sync *)
       cbn [List.seq fold_left]. rewrite Nat.eqb_refl.
@@ -117,11 +139,13 @@ Section Spec.
       2:{
         (* prove that if the invariant is satisfied at the end of the loop, the
            postcondition is true *)
-        repeat destruct_pair_let. f_equal; [ ].
+        repeat destruct_pair_let.
+        rewrite <-add_round_key_alt_equiv.
+        f_equal; [ ].
         rewrite nth_all_rcons_and_keys_all_keys.
-        rewrite all_keys_eq, app_comm_cons.
+        rewrite Hall_keys, app_comm_cons.
         rewrite app_nth2 by length_hammer.
-        match goal with |- nth ?i _ _ = _ =>
+        match goal with |- context [nth ?i _ _] =>
                         replace i with 0 by length_hammer end.
         reflexivity. }
 
@@ -129,14 +153,17 @@ Section Spec.
       apply fold_left_preserves_relation_seq with (R0:=R); subst R.
       { (* invariant holds at loop start *)
         cbv beta. rewrite nth_all_rcons_and_keys by lia.
+        rewrite add_round_key_alt_equiv.
         reflexivity. }
       { (* invariant holds through loop step *)
         cbv beta; intros; subst. repeat destruct_pair_let.
         rewrite Nat.eqb_compare; cbn [Nat.compare].
         rewrite !nth_all_rcons_and_keys_succ by lia.
-        f_equal; [ ].
-        match goal with
-        | H : ?ls = (_ :: (?m ++ [_]))%list |- context [nth ?i ?mk ?d] =>
+        rewrite <-add_round_key_alt_equiv.
+        f_equal; [ ]. rewrite map_nth.
+        lazymatch goal with
+        | H : @eq (list key) ?ls (_ :: (?m ++ [_]))%list
+          |- context [@nth key ?i ?mk ?d] =>
           replace (nth i mk d) with (nth (S i) ls d)
             by (rewrite H; apply app_nth1; Lia.lia)
         end.

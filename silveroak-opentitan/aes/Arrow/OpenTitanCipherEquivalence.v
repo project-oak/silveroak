@@ -31,8 +31,7 @@ Require Import AesSpec.ExpandAllKeys.
 Require Import AesSpec.InterleavedCipher.
 From Aes Require Import OpenTitanCipherProperties CipherRoundProperties
      unrolled_opentitan_cipher.
-Import VectorNotations.
-Import ListNotations.
+Import VectorNotations ListNotations.
 
 Section Equivalence.
   Local Notation byte := (Vector.t bool 8) (only parsing).
@@ -65,6 +64,7 @@ Section Equivalence.
   Notation keypair := (Vector.t (Vector.t (Vector.t bool 8) 4) 8) (only parsing).
 
   Notation nat_to_bitvec size n := (Ndigits.N2Bv_sized size (N.of_nat n)).
+  Notation nat_to_byte n := (nat_to_bitvec 8 n).
 
   (* TODO: this transpose seems odd *)
   Definition add_round_key : state -> key -> state :=
@@ -74,6 +74,7 @@ Section Equivalence.
   Definition sub_bytes : state -> state := aes_sub_bytes_spec sbox false.
   Definition shift_rows : state -> state := aes_shift_rows_spec false.
   Definition mix_columns : state -> state := aes_mix_columns_spec false.
+
   Definition key_expand : nat -> rconst -> keypair -> rconst * keypair :=
     fun i => aes_key_expand_spec sbox false (nat_to_bitvec _ i).
 
@@ -84,37 +85,22 @@ Section Equivalence.
     @slice_by_position
       (t (t bool 8) 4) 8 7 4 (kind_default (Vector (Vector Bit 8) 4)).
 
-  Lemma sndkey_of_append (two_keys : keypair) :
-    sndkey (sndkey two_keys ++ fstkey two_keys) = fstkey two_keys.
-  Proof.
-    clear. cbv [fstkey sndkey slice_by_position].
-    rewrite !resize_default_id.
-    change (7-4+1) with 4. change (3-0+1) with 4.
-    cbn [splitat fst snd Vector.append].
-    autorewrite with vsimpl. reflexivity.
-  Qed.
-
-  Definition add_round_key_pair : state -> keypair -> state :=
-    fun st kp => add_round_key st (sndkey kp).
-
   Lemma unrolled_cipher_spec_equiv
         init_keypair first_key last_key middle_keys input :
     let Nr := 14 in
-    let init_rcon : Vector.t bool 8 := nat_to_bitvec _ 1 in
+    let init_rcon := nat_to_byte 1 in
     (* TODO : why is the initial key pair reversed? *)
     let init_keypair_rev := sndkey init_keypair ++ fstkey init_keypair in
-    let keypairs : list keypair := (first_key :: middle_keys ++ [last_key])%list in
-    all_keys key_expand Nr init_keypair_rev init_rcon = keypairs ->
+    let all_keypairs := all_keys key_expand Nr init_keypair_rev init_rcon in
+    let all_keys := List.map sndkey all_keypairs in
+    all_keys = (first_key :: middle_keys ++ [last_key])%list ->
     unrolled_cipher_spec aes_key_expand_spec sbox false input init_keypair
-    = cipher state keypair add_round_key_pair
-             sub_bytes shift_rows mix_columns
+    = cipher state key add_round_key sub_bytes shift_rows mix_columns
              first_key last_key middle_keys input.
   Proof.
-    cbv zeta. cbn [denote_kind] in *.
-    intro Hall_keys.
-    pose proof (hd_all_keys _ _ _ _ _ _ Hall_keys ltac:(lia)).
-    subst first_key.
-    erewrite <-cipher_interleaved_equiv by eassumption.
+    cbv zeta. cbn [denote_kind] in *. intros.
+    erewrite <-cipher_interleaved_equiv
+      by (eassumption || intros; instantiate_app_by_reflexivity).
     cbv [unrolled_cipher_spec final_cipher_round_spec
                               cipher_interleaved cipher_round_interleaved].
     repeat destruct_pair_let.
