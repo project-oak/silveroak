@@ -22,6 +22,8 @@ import Cava2SystemVerilog
 import Mux2_1
 import SyntaxExamples
 import UnsignedAdder
+import Counter
+import Fir
 import ArrowAdderTutorial
 
 main :: IO ()
@@ -40,3 +42,7 @@ main = do
   writeTestBench adder444_tree_4_tb
   writeSystemVerilog growth_tree_8_netlist
   writeTestBench growth_tree_8_tb
+  writeSystemVerilog counter_3_netlist
+  writeTestBench counter_3_tb
+  writeSystemVerilog fir_netlist
+  writeTestBench fir_tb

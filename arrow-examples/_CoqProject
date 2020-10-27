@@ -6,6 +6,8 @@
 Mux2_1.v
 SyntaxExamples.v
 UnsignedAdder.v
+Counter.v
+Fir.v
 
 ArrowAdderTutorial.v
 

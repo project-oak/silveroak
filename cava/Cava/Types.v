@@ -130,6 +130,10 @@ Class ToShape {a} t := {
   toShape: t -> @shape a;
 }.
 
+Instance ShapeNone {A}: @ToShape A unit := {
+   toShape _ := Empty;
+}.
+
 Instance ShapeOne {A: Type}: ToShape A := {
    toShape t := One t;
 }.

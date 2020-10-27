@@ -62,8 +62,8 @@ Fixpoint circuit_state {i o} (c: Circuit i o) : Type :=
   | Composition _ _ _ f g => prod (circuit_state f) (circuit_state g)
   | First x y z f => circuit_state f
   | Second x y z f => circuit_state f
-  | Loopr x y z f => prod (circuit_state f) (denote_kind z)
-  | Loopl x y z f => prod (denote_kind z) (circuit_state f)
+  | Loopr x y z f => circuit_state f
+  | Loopl x y z f => circuit_state f
   | Primitive (Delay o) => denote_kind o
   | Map x y n f => Vector.t (circuit_state f) n
   | _ => Datatypes.unit
@@ -74,45 +74,38 @@ Fixpoint default_state {i o} (c: Circuit i o) : circuit_state c :=
   | Composition _ _ _ f g => (default_state f, default_state g)
   | First x y z f => default_state f
   | Second x y z f => default_state f
-  | Loopr x y z f => (default_state f, kind_default z)
-  | Loopl x y z f => (kind_default z, default_state f)
+  | Loopr x y z f => default_state f
+  | Loopl x y z f => default_state f
   | Primitive (Delay o) => kind_default o
   | Map x y n f => const (default_state f) _
   | _ => tt
   end.
 
-Fixpoint iterate_looped {i o s} (n: nat)
-  (f: denote_kind i -> s -> denote_kind o * s)
-  (input: denote_kind i)
-  (state: s)
-  : denote_kind o * s :=
-  let '(o,s) := f input state in
-  match n with
-  | 0 => (o,s)
-  | S n' => iterate_looped n' f input s
-  end.
-
-Fixpoint circuit_evaluation' {i o} (n: nat) (c: Circuit i o)
+Fixpoint circuit_evaluation' {i o} (c: Circuit i o)
   : denote_kind i -> circuit_state c -> denote_kind o * circuit_state c :=
   match c as c' in Circuit i o
     return denote_kind i -> circuit_state c' -> denote_kind o * circuit_state c'
   with
   | Composition _ _ _ f g => fun x s =>
-    let '(y,ls) := circuit_evaluation' n f x (fst s) in
-    let '(z,rs) := circuit_evaluation' n g y (snd s) in
+    let '(y,ls) := circuit_evaluation' f x (fst s) in
+    let '(z,rs) := circuit_evaluation' g y (snd s) in
     (z, (ls,rs))
   | First x y z f => fun x s =>
-    let '(y, ns) := circuit_evaluation' n f (fst x) s in
+    let '(y, ns) := circuit_evaluation' f (fst x) s in
     ((y,snd x), ns)
   | Second x y z f => fun x s =>
-    let '(y, ns) := circuit_evaluation' n f (snd x) s in
+    let '(y, ns) := circuit_evaluation' f (snd x) s in
     ((fst x,y), ns)
+
   | Loopr x y z f => fun i s =>
-    let '(o,ns) := iterate_looped n (circuit_evaluation' n f) (i, snd s) (fst s) in
-    (fst o, (ns, snd o))
+    (* Run once with default input but correct state to get our input Z values out,
+    this is valid if every path x*z~>z is buffered *)
+    let '((_,zs),_) := circuit_evaluation' f (kind_default _) s in
+    let '((o,_),s) := circuit_evaluation' f (i,zs) s in (o,s)
   | Loopl x y z f => fun i s =>
-    let '(o,ns) := iterate_looped n (circuit_evaluation' n f) (fst s, i) (snd s) in
-    (snd o, (fst o, ns))
+    (* ditto as above *)
+    let '((zs,_),_) := circuit_evaluation' f (kind_default _) s in
+    let '((_,o),s) := circuit_evaluation' f (zs,i) s in (o,s)
   | Structural (Id _) => fun x _ => (x, tt)
   | Structural (Cancelr X) => fun x _ => (fst x, tt)
   | Structural (Cancell X) => fun x _ => (snd x, tt)
@@ -127,7 +120,7 @@ Fixpoint circuit_evaluation' {i o} (n: nat) (c: Circuit i o)
   | Primitive (Delay o) => fun x s => (s, fst x)
   | Primitive p => fun x _ => (primitive_interp p x, tt)
 
-  | Map x y n f => fun v s => separate (Vector.map2 (circuit_evaluation' n f) v s)
+  | Map x y n f => fun v s => separate (Vector.map2 (circuit_evaluation' f) v s)
   | Resize x n nn => fun v _ => (resize_default (kind_default _) nn v, tt)
   end.
 
@@ -144,5 +137,5 @@ Definition circuit_evaluation {x y: Kind} (n: nat)
   (i: denote_kind (remove_rightmost_unit x))
   (state: circuit_state circuit)
   : (denote_kind y * circuit_state circuit) :=
-  circuit_evaluation' n circuit (apply_rightmost_tt x i) state.
+  circuit_evaluation' circuit (apply_rightmost_tt x i) state.
 
