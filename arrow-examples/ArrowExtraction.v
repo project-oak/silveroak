@@ -30,6 +30,8 @@ Require Import Arrow.Combinators.
 Require Import SyntaxExamples.
 Require Import Mux2_1.
 Require Import UnsignedAdder.
+Require Import Counter.
+Require Import Fir.
 
 Require Import ArrowAdderTutorial.
 
@@ -37,5 +39,7 @@ Extraction Library Combinators.
 Extraction Library SyntaxExamples.
 Extraction Library Mux2_1.
 Extraction Library UnsignedAdder.
+Extraction Library Counter.
+Extraction Library Fir.
 
 Extraction Library ArrowAdderTutorial.

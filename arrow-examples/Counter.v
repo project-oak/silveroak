@@ -14,10 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Cava Require Import Arrow.ArrowExport.
 
-Require Import Coq.Strings.String.
-From Coq Require Import Lists.List.
+From Cava Require Import Arrow.ArrowExport.
+From Coq Require Import Lists.List NArith String.
 Import ListNotations.
 
 Local Open Scope string_scope.
@@ -27,48 +26,34 @@ Section notation.
   Local Open Scope category_scope.
   Local Open Scope kind_scope.
 
-  Definition mux2_1
-    : << Bit, << Bit, Bit >>, Unit >> ~> Bit :=
-    <[ \ sel ab =>
-      let '(a,b) = ab in
-      let sel_a = and sel a in
-      let inv_sel = not sel in
-      let sel_b = and inv_sel b in
-      let sel_out = or sel_a sel_b in
-      sel_out
+  Definition counter n
+    : << Unit >> ~> Vector Bit n :=
+    <[
+      letrec counter = counter +% #1 in
+      counter
     ]>.
 End notation.
 
 Open Scope kind_scope.
 
-Lemma mux2_1_is_combinational: is_combinational (closure_conversion mux2_1).
-Proof. simply_combinational. Qed.
-
 Require Import Cava.Types.
 Require Import Cava.Netlist.
 
-Definition mux2_1_Interface :=
-   combinationalInterface "mux2_1"
-     (mkPort "s" Kind.Bit, (mkPort "a" Kind.Bit, mkPort "b" Kind.Bit))
-     (mkPort "o" Kind.Bit)
-     [].
+Definition counter_3_Interface :=
+   sequentialInterface "counter_3" "clk" PositiveEdge "rst" PositiveEdge
+     tt (mkPort "count" (Kind.Vec Kind.Bit 3)) [].
 
-Definition mux2_1_netlist :=
-  makeNetlist mux2_1_Interface (build_netlist (closure_conversion mux2_1)).
+Definition counter_3_netlist :=
+  makeNetlist counter_3_Interface (build_netlist' (closure_conversion (counter 3))).
 
-Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
- [(false, (false, true));
-  (false, (true, false));
-  (false, (false, false));
-  (true, (false, true));
-  (true, (true, false));
-  (true, (true, true))].
+Definition counter_3_tb_inputs : list unit :=
+ [tt; tt; tt; tt; tt; tt; tt; tt; tt].
 
-Definition mux2_1_tb_expected_outputs : list bool :=
- map (fun i => combinational_evaluation (closure_conversion mux2_1) i) mux2_1_tb_inputs.
+Definition counter_3_tb_expected_outputs : list (Bvector.Bvector 3) :=
+  (* TODO(blaxill): replace with 'circuit_evaluation' *)
+  map (N2Bv_sized 3) [0;1;2;3;4;5;6;7;0]%N.
 
-Goal is_combinational (closure_conversion mux2_1). Proof. simply_combinational. Qed.
+Definition counter_3_tb :=
+  testBench "counter_3_tb" counter_3_Interface
+            counter_3_tb_inputs counter_3_tb_expected_outputs.
 
-Definition mux2_1_tb :=
-  testBench "mux2_1_tb" mux2_1_Interface
-            mux2_1_tb_inputs mux2_1_tb_expected_outputs.

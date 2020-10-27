@@ -253,8 +253,21 @@ removes the list Kind, we first need to copy the list Kind. *)
   second (                       (* ctxt ~> o *)
         copy >>>                     (* ctxt*ctxt ~> o *)
         first (                         (* ctxt ~> o *)
-          uncancell >>>                 (* unit*ctxt ~> o *)
-          loopr (assoc >>> second swap >>> v' >>> copy)
+          loopl (
+          (* z * ctx *)
+            first copy >>>
+            (* (z * z) ctx  *)
+            assoc >>>
+            (* z * z * ctx *)
+            second (
+            (*  z * ctx *)
+              uncancell >>>
+            (* u * z * ctx *)
+              v' >>> uncancelr >>> CircuitArrow.Primitive (Delay _)
+            )
+            (* z * z' *)
+            >>> swap
+          )
       )
     )
     >>> f'
@@ -349,21 +362,6 @@ Lemma lower_let': forall x y z (f: natvar x -> kappa _ y z) v ctxt c1 c2,
   closure_conversion' ctxt (Let v f)
   = second (copy >>> first (uncancell >>> c1))
   >>> c2.
-Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
-
-Lemma lower_letrec: forall x y z (f: _ x -> kappa _ y z) v ctxt,
-  closure_conversion' ctxt (LetRec v f) =
-  second (copy >>> first (uncancell >>> loopr (assoc >>> second swap
-          >>> closure_conversion' (_ :: ctxt) (v (length ctxt)) >>> copy)))
- >>> closure_conversion' (_ :: ctxt) (f (length ctxt)).
-Proof. reflexivity. Qed.
-
-Lemma lower_letrec': forall x y z (f: natvar x -> kappa _ y z) v ctxt c1 c2,
-  c1 = closure_conversion' (_ :: ctxt) (v (length ctxt)) ->
-  c2 = closure_conversion' (_ :: ctxt) (f (length ctxt)) ->
-  closure_conversion' ctxt (LetRec v f) =
-  second (copy >>> first (uncancell >>> loopr (assoc >>> second swap >>> c1 >>> copy)))
-    >>> c2.
 Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
 
 Notation variable_pair t n1 n2 := (@vars natvar natvar t (pair n1 n2)).

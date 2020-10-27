@@ -15,9 +15,7 @@
 (****************************************************************************)
 
 From Cava Require Import Arrow.ArrowExport.
-
-Require Import Coq.Strings.String.
-From Coq Require Import Lists.List.
+From Coq Require Import Lists.List NArith String Bvector.
 Import ListNotations.
 
 Local Open Scope string_scope.
@@ -27,48 +25,53 @@ Section notation.
   Local Open Scope category_scope.
   Local Open Scope kind_scope.
 
-  Definition mux2_1
-    : << Bit, << Bit, Bit >>, Unit >> ~> Bit :=
-    <[ \ sel ab =>
-      let '(a,b) = ab in
-      let sel_a = and sel a in
-      let inv_sel = not sel in
-      let sel_b = and inv_sel b in
-      let sel_out = or sel_a sel_b in
-      sel_out
+  Local Notation Byte := (Vector Bit 8).
+
+  Definition drop_last
+    : << Vector Byte 4, Unit >> ~> Vector Byte 3 :=
+    <[\input =>
+      let '(init,_) = unsnoc input in
+      init
+      ]>.
+
+  Definition coefficients
+    : << Unit >> ~> Vector Byte 4 :=
+    <[ {1,2,3,4} ]>.
+
+  Definition adder
+    : << Byte, Byte, Unit >> ~> Byte :=
+    <[ \x y => x +% y ]>.
+
+  Definition fir
+    : << Byte, Unit >> ~> Byte :=
+    <[ \byte =>
+      letrec window = byte :: (!drop_last window) in
+      (* TODO(blaxill): map2 adder should be mult, but we haven't added it yet *)
+      !(foldl adder) #0 (!(map2 adder) window !coefficients)
     ]>.
 End notation.
 
 Open Scope kind_scope.
 
-Lemma mux2_1_is_combinational: is_combinational (closure_conversion mux2_1).
-Proof. simply_combinational. Qed.
-
 Require Import Cava.Types.
 Require Import Cava.Netlist.
 
-Definition mux2_1_Interface :=
-   combinationalInterface "mux2_1"
-     (mkPort "s" Kind.Bit, (mkPort "a" Kind.Bit, mkPort "b" Kind.Bit))
-     (mkPort "o" Kind.Bit)
-     [].
+Local Notation Byte := (Kind.Vec Kind.Bit 8).
+Definition fir_Interface :=
+   sequentialInterface "fir" "clk" PositiveEdge "rst" PositiveEdge
+     (mkPort "in_stream" Byte) (mkPort "out_stream" Byte) [].
 
-Definition mux2_1_netlist :=
-  makeNetlist mux2_1_Interface (build_netlist (closure_conversion mux2_1)).
+Definition fir_netlist :=
+  makeNetlist fir_Interface (build_netlist (closure_conversion fir)).
 
-Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
- [(false, (false, true));
-  (false, (true, false));
-  (false, (false, false));
-  (true, (false, true));
-  (true, (true, false));
-  (true, (true, true))].
+Definition fir_tb_inputs : list (Bvector 8) :=
+ map (N2Bv_sized 8) [1; 2; 3; 4; 5; 6; 7; 8; 9]%N.
 
-Definition mux2_1_tb_expected_outputs : list bool :=
- map (fun i => combinational_evaluation (closure_conversion mux2_1) i) mux2_1_tb_inputs.
+  (* TODO(blaxill): replace with 'circuit_evaluation' *)
+Definition fir_tb_expected_outputs : list (Bvector 8) :=
+  map (N2Bv_sized 8) [10;11;13;16;20;24;28;32;36]%N.
 
-Goal is_combinational (closure_conversion mux2_1). Proof. simply_combinational. Qed.
+Definition fir_tb :=
+  testBench "fir_tb" fir_Interface
+            fir_tb_inputs fir_tb_expected_outputs.
 
-Definition mux2_1_tb :=
-  testBench "mux2_1_tb" mux2_1_Interface
-            mux2_1_tb_inputs mux2_1_tb_expected_outputs.

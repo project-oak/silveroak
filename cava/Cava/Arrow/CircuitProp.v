@@ -45,6 +45,29 @@ Fixpoint no_loops {i o} (c: Circuit i o): bool :=
   | _ => true
   end.
 
+Fixpoint min_buffering {i o} (n: nat) (c: Circuit i o): nat :=
+  match c with
+  | Primitive (Delay _) => S n
+  | Composition _ _ _ f g => min (min_buffering n f) (min_buffering n g)
+  | First _ _ _ f => min_buffering n f
+  | Second _ _ _ f => min_buffering n f
+  | Loopr _ _ _ f => min_buffering n f
+  | Loopl _ _ _ f => min_buffering n f
+  | Map _ _ _ f => min_buffering n f
+  | _ => n
+  end.
+
+Fixpoint valid_loops {i o} (c: Circuit i o): bool :=
+  match c with
+  | Composition _ _ _ f g => valid_loops f && valid_loops g
+  | First _ _ _ f => valid_loops f
+  | Second _ _ _ f => valid_loops f
+  | Loopr _ _ _ f => (0 <? min_buffering 0 f) && valid_loops f
+  | Loopl _ _ _ f => (0 <? min_buffering 0 f) && valid_loops f
+  | Map _ _ _ f => valid_loops f
+  | _ => true
+  end.
+
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
 
