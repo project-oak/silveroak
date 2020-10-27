@@ -46,7 +46,7 @@ Section notation.
     : << Byte, Unit >> ~> Byte :=
     <[ \byte =>
       letrec window = byte :: (!drop_last window) in
-      (* TODO(blaxill): map2 adder should be mult, but we haven't added it yet *)
+      (* TODO(#302): map2 adder should be mult, but we haven't added it yet *)
       !(foldl adder) #0 (!(map2 adder) window !coefficients)
     ]>.
 End notation.
@@ -67,7 +67,7 @@ Definition fir_netlist :=
 Definition fir_tb_inputs : list (Bvector 8) :=
  map (N2Bv_sized 8) [1; 2; 3; 4; 5; 6; 7; 8; 9]%N.
 
-  (* TODO(blaxill): replace with 'circuit_evaluation' *)
+  (* TODO(#301): replace with 'circuit_evaluation' *)
 Definition fir_tb_expected_outputs : list (Bvector 8) :=
   map (N2Bv_sized 8) [10;11;13;16;20;24;28;32;36]%N.
 

@@ -50,7 +50,7 @@ Definition counter_3_tb_inputs : list unit :=
  [tt; tt; tt; tt; tt; tt; tt; tt; tt].
 
 Definition counter_3_tb_expected_outputs : list (Bvector.Bvector 3) :=
-  (* TODO(blaxill): replace with 'circuit_evaluation' *)
+  (* TODO(#301): replace with 'circuit_evaluation' *)
   map (N2Bv_sized 3) [0;1;2;3;4;5;6;7;0]%N.
 
 Definition counter_3_tb :=
