@@ -19,7 +19,7 @@ Hint Rewrite @map_app @fold_left_app : listsimpl.
 Local Ltac listsimpl :=
   repeat progress (cbn [rev map fold_left]; autorewrite with listsimpl).
 
-Module Spec.
+Section Spec.
   Context (state key : Type)
           (add_round_key : state -> key -> state)
           (sub_bytes shift_rows mix_columns : state -> state)
