@@ -48,7 +48,7 @@ Section Spec.
 
   (* AES cipher with interleaved key expansion and conditional split on first round *)
   Definition cipher_interleaved
-             (nrounds_m1 : nat) (* number of rounds - 1 *)
+             (Nr : nat) (* number of rounds *)
              (initial_key : key)
              (initial_rcon : rconst)
              (input : state) : state :=
@@ -58,7 +58,7 @@ Section Spec.
           (fun (loop_state : rconst * key * state) =>
              let '(rcon, round_key, st) := loop_state in
              cipher_round_interleaved rcon round_key st)
-          (List.seq 0 nrounds_m1)
+          (List.seq 0 Nr)
           (initial_rcon, initial_key, st) in
     let '(_, last_key, st) := loop_end_state in
     let st := sub_bytes st in
@@ -67,15 +67,15 @@ Section Spec.
     st.
 
   Section Equivalence.
-    Context (nrounds_m1 : nat) (initial_rcon : rconst)
+    Context (Nr : nat) (initial_rcon : rconst)
             (first_key : key) (middle_keys : list key) (last_key : key)
             (all_keys_eq :
-               all_keys key_expand nrounds_m1 first_key initial_rcon
+               all_keys key_expand Nr first_key initial_rcon
                = first_key :: middle_keys ++ [last_key]).
 
     (* Interleaved cipher is equivalent to original cipher *)
     Lemma cipher_interleaved_equiv input :
-      cipher_interleaved nrounds_m1 first_key initial_rcon input =
+      cipher_interleaved Nr first_key initial_rcon input =
       cipher state key add_round_key sub_bytes shift_rows mix_columns
              first_key last_key middle_keys input.
     Proof.
@@ -84,9 +84,9 @@ Section Spec.
       pose proof (length_all_keys _ _ _ _ _ _ all_keys_eq).
       autorewrite with push_length in *.
 
-      (* nrounds_m1 cannot be 0 *)
-      destruct nrounds_m1 as [|nrounds_m2]; [ lia | ].
-      replace (length middle_keys) with nrounds_m2 by lia.
+      (* Nr cannot be 0 *)
+      destruct Nr as [|Nr_m1]; [ lia | ].
+      replace (length middle_keys) with Nr_m1 by lia.
 
       (* extract first step from cipher_alt so loops are in sync *)
       cbn [List.seq fold_left]. rewrite Nat.eqb_refl.
@@ -111,7 +111,7 @@ Section Spec.
             | context [fold_left ?f ?ls ?b] => constr:(fold_left f ls b) end in
         let H := fresh in
         (* assert that invariant is satisfied at the end of the loop *)
-        assert (H: R nrounds_m2 lfold rfold);
+        assert (H: R Nr_m1 lfold rfold);
           [ | subst R; cbv beta in *; rewrite H ]
       end.
       2:{

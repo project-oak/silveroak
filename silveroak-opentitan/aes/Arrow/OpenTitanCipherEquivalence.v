@@ -99,18 +99,18 @@ Section Equivalence.
 
   Lemma unrolled_cipher_spec_equiv
         init_keypair first_key last_key middle_keys input :
-    let nrounds := 15 in (* TODO: is this the right # rounds? *)
+    let Nr := 14 in
     let init_rcon : Vector.t bool 8 := nat_to_bitvec _ 1 in
     (* TODO : why is the initial key pair reversed? *)
     let init_keypair_rev := sndkey init_keypair ++ fstkey init_keypair in
     let keypairs : list keypair := (first_key :: middle_keys ++ [last_key])%list in
-    all_keys key_expand (nrounds-1) init_keypair_rev init_rcon = keypairs ->
+    all_keys key_expand Nr init_keypair_rev init_rcon = keypairs ->
     unrolled_cipher_spec aes_key_expand_spec sbox false input init_keypair
     = cipher state keypair add_round_key_pair
              sub_bytes shift_rows mix_columns
              first_key last_key middle_keys input.
   Proof.
-    cbv zeta. cbn [denote_kind Nat.add Nat.sub] in *.
+    cbv zeta. cbn [denote_kind] in *.
     intro Hall_keys.
     pose proof (hd_all_keys _ _ _ _ _ _ Hall_keys ltac:(lia)).
     subst first_key.

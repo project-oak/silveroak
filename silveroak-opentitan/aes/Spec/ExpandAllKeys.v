@@ -24,15 +24,15 @@ Section Spec.
           (key_expand : nat -> rconst -> key -> rconst * key).
 
   Definition all_rcons_and_keys
-             (nrounds_m1 : nat) (* number of rounds minus 1 *)
+             (Nr : nat) (* number of rounds *)
              (initial_key : key) (initial_rcon : rconst)
     : list (rconst * key) :=
     fst (fold_left_accumulate
            (fun '(rcon, round_key) i => key_expand i rcon round_key)
-           (fun x => x) (List.seq 0 nrounds_m1) (initial_rcon, initial_key)).
+           (fun x => x) (List.seq 0 Nr) (initial_rcon, initial_key)).
 
-  Definition all_keys nrounds_m1 initial_key initial_rcon : list key :=
-    List.map snd (all_rcons_and_keys nrounds_m1 initial_key initial_rcon).
+  Definition all_keys Nr initial_key initial_rcon : list key :=
+    List.map snd (all_rcons_and_keys Nr initial_key initial_rcon).
 
   Section Properties.
     Lemma length_all_keys n k1 k2 r rem_keys :
