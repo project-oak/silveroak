@@ -39,6 +39,7 @@ Open Scope kind_scope.
 Require Import Cava.Types.
 Require Import Cava.Netlist.
 
+(* this circuit has no inputs, hence tt. *)
 Definition counter_3_Interface :=
    sequentialInterface "counter_3" "clk" PositiveEdge "rst" PositiveEdge
      tt (mkPort "count" (Kind.Vec Kind.Bit 3)) [].
@@ -47,7 +48,7 @@ Definition counter_3_netlist :=
   makeNetlist counter_3_Interface (build_netlist' (closure_conversion (counter 3))).
 
 Definition counter_3_tb_inputs : list unit :=
- [tt; tt; tt; tt; tt; tt; tt; tt; tt].
+ repeat tt 8.
 
 Definition counter_3_tb_expected_outputs : list (Bvector.Bvector 3) :=
   (* TODO(#301): replace with 'circuit_evaluation' *)
