@@ -14,8 +14,12 @@
 # limitations under the License.
 #
 
-all:
+all: pinmux aes
+
+pinmux:
 	cd pinmux && $(MAKE)
+
+aes:
 	cd aes && $(MAKE)
 
 pinmux-coq:

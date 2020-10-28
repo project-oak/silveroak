@@ -35,7 +35,7 @@ third_party:
 	cd third_party && $(MAKE)
 
 # The cava targert builds the core Cava DSL.
-cava:
+cava: third_party
 	cd cava && $(MAKE)
 
 # The cava-coq targert builds the core Cava DSL (Coq proofs only).
@@ -49,7 +49,7 @@ tests:
 
 # The monad-example builds and tests the monad examples (except for
 # the Xilinx-specific targets)
-monad-examples:
+monad-examples: cava
 	cd monad-examples && $(MAKE)
 	cd monad-examples/xilinx && $(MAKE) extraction
 
@@ -59,7 +59,7 @@ monad-examples-coq: cava-coq
 
 # The arrow-example builds and tests the arrow examples (except for
 # the Xilinx-specific targets)
-arrow-examples:
+arrow-examples: cava
 	cd arrow-examples && $(MAKE)
 
 # The arrow-example builds Coq proofs for the arrow examples (except for the
@@ -69,7 +69,7 @@ arrow-examples-coq: cava-coq
 
 # The silveroak-opentitan builds the targets developed for the
 # Silver Oak re-implementation of some OpenTitan blocks.
-silveroak-opentitan:
+silveroak-opentitan: cava
 	cd silveroak-opentitan && $(MAKE)
 
 # The silveroak-opentitan builds the Coq proofs for the Silver Oak

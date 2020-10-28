@@ -27,7 +27,9 @@ BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)
 VCDS = $(SV:.sv=_tb.vcd)
 
-all:		coq $(VCDS)
+all: coq
+	$(VCDS)
+
 xilinx:		adder8.vcd
 
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt

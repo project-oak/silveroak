@@ -54,7 +54,7 @@ steps:
     waitFor: ['recover_git_folder', 'cache_dependencies', 'build_verilator', 'build_third_party', 'make_coq']
     timeout: 20m
     entrypoint: 'nix-shell'
-    args: ['--run', 'git init; make']
+    args: ['--run', 'git init; make -j32']
     volumes:
     - name: nix-store
       path: /nix/
