@@ -16,13 +16,21 @@
 
 .PHONY:	all
 
-all:
-	git submodule update --init --recursive
-	cd bedrock2/deps/coqutil && $(MAKE) all
-	cd bedrock2 && $(MAKE) bedrock2_noex
-	cd coq-ext-lib && $(MAKE) theories
+all: coqutil bedrock2 extlib
 
-install:
+update:
+	git submodule update --init --recursive
+
+coqutil: update
+	$(MAKE) -C bedrock2/deps/coqutil all
+
+bedrock2: update coqutil
+	$(MAKE) -C bedrock2 bedrock2_noex
+
+extlib: update
+	$(MAKE) -C coq-ext-lib theories
+
+install: update
 	cd bedrock2 && $(MAKE) install_coqutil && $(MAKE) install_bedrock2
 	cd coq-ext-lib && $(MAKE) install
 
