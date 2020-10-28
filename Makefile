@@ -43,7 +43,7 @@ cava-coq: third_party
 	cd cava && $(MAKE) coq
 
 # The cava target runs the unit tests for the Cava DSL
-tests:
+tests: cava
 	cd tests && $(MAKE)
 	cd tests/xilinx && $(MAKE) extraction
 
