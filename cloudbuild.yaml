@@ -44,7 +44,7 @@ steps:
     waitFor: ['recover_git_folder', 'cache_dependencies', 'build_third_party']
     timeout: 20m
     entrypoint: 'nix-shell'
-    args: ['--run', 'git init; ls -la ./third_party/coq-ext-lib; make -j32 coq']
+    args: ['--arg', 'buildVerilator', 'false', '--run', 'make -j32 coq']
     volumes:
     - name: nix-store
       path: /nix/
