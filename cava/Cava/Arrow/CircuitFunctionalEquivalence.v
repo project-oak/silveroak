@@ -78,14 +78,9 @@ Inductive circuit_equiv: forall i o, Circuit i o -> (denote_kind i -> denote_kin
     (forall a, r a = a) ->
     circuit_equiv x x (Structural (Arrow.Id x)) r
 
-  | Map_equiv: forall x y n c r r1,
-    circuit_equiv x y c r1 ->
-    (forall v, r v = Vector.map r1 v) ->
-    circuit_equiv (Vector x n) (Vector y n) (Map x y n c) r
-
-  | Resize_equiv: forall x n nn r,
-    (forall v, r v = resize_default (kind_default _) nn v) ->
-    circuit_equiv (Vector x n) (Vector x nn) (Resize x n nn) r
+  | RewriteTy_equiv: forall x y r,
+    (forall v, r v = rewrite_or_default x y v) ->
+    circuit_equiv x y (RewriteTy x y ) r
 
   | Primitive_equiv: forall p r,
     (forall a, r a = combinational_evaluation' (CircuitArrow.Primitive p) a) ->

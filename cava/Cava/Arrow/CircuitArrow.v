@@ -64,8 +64,7 @@ Inductive Circuit: Kind -> Kind -> Type :=
   | Loopr: forall x y z, Circuit (Tuple x z) (Tuple y z) -> Circuit x y
   | Loopl: forall x y z, Circuit (Tuple z x) (Tuple z y) -> Circuit x y
 
-  | Map: forall x y n, Circuit x y -> Circuit (Vector x n) (Vector y n)
-  | Resize: forall x n nn, Circuit (Vector x n) (Vector x nn)
+  | RewriteTy: forall x y, Circuit x y
   .
 
 Instance CircuitCat : Category Kind := {
