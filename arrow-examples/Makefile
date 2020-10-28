@@ -41,7 +41,7 @@ ArrowExamplesSV:	coq ArrowExamplesSV.hs *.hs
 			ghc --make ArrowExamplesSV.hs
 			./ArrowExamplesSV
 
-$(SV) $(BENCHES) $(VCDS):	coq ArrowExamplesSV
+$(SV) $(BENCHES) $(CPPS) $(VCDS):	coq ArrowExamplesSV
 
 .PRECIOUS:      $(SV) $(BENCHES) $(CPPS)
 
