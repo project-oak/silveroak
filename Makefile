@@ -38,6 +38,10 @@ third_party:
 cava:
 	cd cava && $(MAKE)
 
+# The cava-coq targert builds the core Cava DSL (Coq proofs only).
+cava-coq: third_party
+	cd cava && $(MAKE) coq
+
 # The cava target runs the unit tests for the Cava DSL
 tests:
 	cd tests && $(MAKE)
@@ -49,23 +53,32 @@ monad-examples:
 	cd monad-examples && $(MAKE)
 	cd monad-examples/xilinx && $(MAKE) extraction
 
+# The monad-examples-coq target builds the Coq proofs for monad examples
+monad-examples-coq: cava-coq
+	cd monad-examples && $(MAKE) coq
+
 # The arrow-example builds and tests the arrow examples (except for
 # the Xilinx-specific targets)
 arrow-examples:
 	cd arrow-examples && $(MAKE)
+
+# The arrow-example builds Coq proofs for the arrow examples (except for the
+# Xilinx-specific targets)
+arrow-examples-coq: cava-coq
+	cd arrow-examples && $(MAKE) coq
 
 # The silveroak-opentitan builds the targets developed for the
 # Silver Oak re-implementation of some OpenTitan blocks.
 silveroak-opentitan:
 	cd silveroak-opentitan && $(MAKE)
 
-# The coq target builds only the Coq proofs.
-coq:
-	cd third_party && $(MAKE)
-	cd cava && $(MAKE) coq
-	cd arrow-examples && $(MAKE) coq
-	cd monad-examples && $(MAKE) coq
+# The silveroak-opentitan builds the Coq proofs for the Silver Oak
+# re-implementation of some OpenTitan blocks.
+silveroak-opentitan-coq: cava-coq
 	cd silveroak-opentitan && $(MAKE) coq
+
+# The coq target builds only the Coq proofs.
+coq: cava-coq arrow-examples-coq monad-examples-coq silveroak-opentitan-coq
 
 clean:
 	cd third_party && $(MAKE) clean
