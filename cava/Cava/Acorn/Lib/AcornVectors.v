@@ -14,25 +14,29 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool.Bool.
+From Coq Require Import Vector.
+Import VectorNotations.
+Local Open Scope vector_scope.
+
 Require Import ExtLib.Structures.Monads.
-Require Export ExtLib.Data.Monads.IdentityMonad.
+Require Import ExtLib.Structures.Traversable.
+Export MonadNotation.
+Open Scope monad_scope.
 
-From Cava Require Import Acorn.AcornSignal.
-From Cava Require Import Acorn.AcornCavaClass.
+From Cava Require Import VectorUtils.
 
-Instance Combinational : Cava ident denoteCombinaional :=
-{ one := true;
-  zero := false;
-  inv i := ret (negb i);
-  and2 '(i0, i1) := ret (i0 && i1);
-  or2 '(i0, i1) := ret (i0 || i1);
-  xor2 '(i0, i1) := ret (xorb i0 i1);
-  pair _ _ a b := (a, b);
-  fsT _ _ '(a, b) := a;
-  snD _ _ '(a, b) := b;
-  peel _ _ v := v;
-  unpeel _ _ v := v;
-}.
+From Cava Require Import Acorn.Acorn.
 
-Definition combinational {a} (circuit : ident a) : a := unIdent circuit.
+(* xor two bit-vectors *)
+Definition xorV {m signal} `{Cava m signal}
+  {n : nat} (ab: signal (Vec Bit n) * signal (Vec Bit n)) :
+  m (signal (Vec Bit n)) :=
+  let a' := peel (fst ab) in
+  let b' := peel (snd ab) in
+  r <- mapT xor2 (vcombine a' b') ;;
+  ret (unpeel r).
+
+Definition v1 := [false; false; true; true].
+Definition v2 := [false; true;  false; true].
+
+Compute combinational (xorV (v1, v2)).

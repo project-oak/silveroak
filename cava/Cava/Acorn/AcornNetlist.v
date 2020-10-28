@@ -20,10 +20,10 @@ Require Import ExtLib.Structures.Monads.
 From Cava Require Import Acorn.AcornSignal.
 
 Inductive AcornInstance : Type :=
-  | Inv : Signal BitType -> Signal BitType -> AcornInstance
-  | And2 : Signal BitType -> Signal BitType -> Signal BitType -> AcornInstance
-  | Or2 : Signal BitType -> Signal BitType -> Signal BitType -> AcornInstance
-  | Xor2 : Signal BitType -> Signal BitType -> Signal BitType -> AcornInstance.
+  | Inv : Signal Bit -> Signal Bit -> AcornInstance
+  | And2 : Signal Bit -> Signal Bit -> Signal Bit -> AcornInstance
+  | Or2 : Signal Bit -> Signal Bit -> Signal Bit -> AcornInstance
+  | Xor2 : Signal Bit -> Signal Bit -> Signal Bit -> AcornInstance.
 
 Notation AcornNetlist := (list AcornInstance).
 

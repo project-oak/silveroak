@@ -21,6 +21,7 @@ Cava/Acorn/AcornState.v
 Cava/Acorn/AcornNetlistGeneration.v
 Cava/Acorn/AcornCombinators.v
 Cava/Acorn/Acorn.v
+Cava/Acorn/Lib/AcornVectors.v
 Cava/Acorn/Lib/AcornFullAdder.v
 Cava/Acorn/Lib/AcornUnsignedAdders.v
 Cava/Acorn/Lib/AcornUnsignedAdderProofs.v

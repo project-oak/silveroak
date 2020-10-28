@@ -21,101 +21,130 @@ From Coq Require Import Bool.Bvector.
 Import VectorNotations.
 Local Open Scope vector_scope.
 Require Import ExtLib.Structures.Monads.
+Require Import ExtLib.Structures.Traversable.
 Import MonadNotation.
 Open Scope monad_scope.
 
 Require Export Acorn.AcornSignal.
 Require Export Acorn.AcornCavaClass.
+From Cava Require Import VectorUtils.
 
 Open Scope type_scope.
 
-Definition fork2 {m signal} `{Cava m signal} {A : SignalType}
-                 (input : signal A) : m (signal A * signal A) :=
-  ret (input, input).
+Section WithCava.
+  Context {m signal} {monad: Monad m} {cava : Cava m signal}.
+  
+  Definition fork2 {m} `{Monad m}  {A : SignalType}
+                  (input : signal A) : m (signal A * signal A) :=
+    ret (input, input).
 
-(*
--------------------------------------------------------------------------------
--- 4-Sided tile col combinators
--------------------------------------------------------------------------------
--- COL r, where r :: (a, vec b) -> (vec c, a)
---            a
---            ^
---            |
---          -----
---         |     |
---     b ->|  r  |-> c
---         |     |
---          -----
---            ^
---            |
---            a
---            ^
---            |
---          -----
---         |     |
---     b ->|  r  |-> c
---         |     |
---          -----
---            ^
---            |
---            a
---            ^
---            |
---          -----
---         |     |
---     b ->|  r  |-> c
---         |     |
---          -----
---            ^
---            |
---            a
--------------------------------------------------------------------------------
-*)
+  (*
+  -------------------------------------------------------------------------------
+  -- 4-Sided tile col combinators
+  -------------------------------------------------------------------------------
+  -- COL r, where r :: (a, vec b) -> (vec c, a)
+  --            a
+  --            ^
+  --            |
+  --          -----
+  --         |     |
+  --     b ->|  r  |-> c
+  --         |     |
+  --          -----
+  --            ^
+  --            |
+  --            a
+  --            ^
+  --            |
+  --          -----
+  --         |     |
+  --     b ->|  r  |-> c
+  --         |     |
+  --          -----
+  --            ^
+  --            |
+  --            a
+  --            ^
+  --            |
+  --          -----
+  --         |     |
+  --     b ->|  r  |-> c
+  --         |     |
+  --          -----
+  --            ^
+  --            |
+  --            a
+  -------------------------------------------------------------------------------
+  *)
 
-(* colV is a col combinator that works over Vector.t of signals.
-   The input tuple is split into separate arguments so Coq can recognize
-   the decreasing vector element.
-*)
-Fixpoint colV' {m} `{Monad m} {A B C} {n : nat}
-               (circuit : A * B -> m (C * A))
-               (aIn: A) (bIn: Vector.t B n) :
-               m (Vector.t C n * A) :=
-  match bIn with
-  | [] => ret ([], aIn)
-  | x::xs => '(b0, aOut) <- circuit (aIn, x) ;;
-             '(bRest, aFinal) <- colV' circuit aOut xs ;;
-              ret (b0::bRest, aFinal)
-  end.
-
-Definition colV {m} `{Monad m} {A B C} {n : nat}
+  (* colV is a col combinator that works over Vector.t of signals.
+    The input tuple is split into separate arguments so Coq can recognize
+    the decreasing vector element.
+  *)
+  Fixpoint colV' {m} `{Monad m} {A B C} {n : nat}
                 (circuit : A * B -> m (C * A))
-                (inputs: A * Vector.t B n) :
+                (aIn: A) (bIn: Vector.t B n) :
                 m (Vector.t C n * A) :=
- colV' circuit (fst inputs) (snd inputs).
+    match bIn with
+    | [] => ret ([], aIn)
+    | x::xs => '(b0, aOut) <- circuit (aIn, x) ;;
+              '(bRest, aFinal) <- colV' circuit aOut xs ;;
+                ret (b0::bRest, aFinal)
+    end.
 
-Local Close Scope vector_scope.
+  Definition colV {m} `{Monad m} {A B C} {n : nat}
+                  (circuit : A * B -> m (C * A))
+                  (inputs: A * Vector.t B n) :
+                  m (Vector.t C n * A) :=
+  colV' circuit (fst inputs) (snd inputs).
 
-Local Open Scope list_scope.
+  Local Close Scope vector_scope.
 
-(* List Variant *)
+  Local Open Scope list_scope.
 
- Fixpoint colL' {m} `{Monad m} {A B C}
-               (circuit : A * B -> m (C * A))
-               (aIn: A) (bIn: list B) :
-               m (list C * A) :=
-  match bIn with
-  | [] => ret ([], aIn)
-  | x::xs => '(b0, aOut) <- circuit (aIn, x) ;;
-             '(bRest, aFinal) <- colL' circuit aOut xs ;;
-              ret (b0::bRest, aFinal)
-  end.
+  (* List Variant *)
 
-Definition colL {m} `{Monad m} {A B C}
+  Fixpoint colL' {m} `{Monad m} {A B C}
                 (circuit : A * B -> m (C * A))
-                (inputs: A * list B) :
+                (aIn: A) (bIn: list B) :
                 m (list C * A) :=
- colL' circuit (fst inputs) (snd inputs).
+    match bIn with
+    | [] => ret ([], aIn)
+    | x::xs => '(b0, aOut) <- circuit (aIn, x) ;;
+              '(bRest, aFinal) <- colL' circuit aOut xs ;;
+                ret (b0::bRest, aFinal)
+    end.
 
-(* TODO(satnam): Lemma about col_cons *)
+  Definition colL {m} `{Monad m} {A B C}
+                  (circuit : A * B -> m (C * A))
+                  (inputs: A * list B) :
+                  m (list C * A) :=
+  colL' circuit (fst inputs) (snd inputs).
 
-Local Close Scope list_scope.
+  (* TODO(satnam): Lemma about col_cons *)
+
+  Definition zipWith {A B C : SignalType} {n : nat}
+           (f : signal A * signal B -> m (signal C))
+           (a : signal (Vec A n))
+           (b : signal (Vec B n))
+           : m (signal (Vec C n)) :=
+    let a' := peel a in
+    let b' := peel b in
+    v <- mapT f (vcombine a' b') ;;
+    ret (unpeel v).
+
+  Local Open Scope list_scope.
+
+  (* A list-based left monadic-fold. *)
+  Fixpoint foldLM {m} `{Monad m} {A B : Type}
+                  (f : B -> A -> m B)
+                  (input : list A) 
+                  (accum : B) 
+                  : m B :=
+    match input with
+    | [] => ret accum
+    | k::ks => st' <- f accum k  ;;
+               foldLM f ks st'
+    end.
+
+End WithCava.

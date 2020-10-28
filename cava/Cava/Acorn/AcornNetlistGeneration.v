@@ -17,6 +17,8 @@
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.StateMonad.
 
+From Cava Require Import VectorUtils.
+
 From Cava Require Import Acorn.AcornSignal.
 From Cava Require Import Acorn.AcornCavaClass.
 From Cava Require Import Acorn.AcornNetlist.
@@ -25,19 +27,19 @@ From Cava Require Import Acorn.AcornState.
 Import MonadNotation.
 Local Open Scope monad_scope.
 
-Definition invNet (i : Signal BitType) : state AcornState (Signal BitType) :=
+Definition invNet (i : Signal Bit) : state AcornState (Signal Bit) :=
   o <- newWire ;;
   addInstance (Inv i o) ;;
   ret o.
 
-Definition binaryGate (gate : Signal BitType -> Signal BitType -> Signal BitType -> AcornInstance)
-                      (i : Signal BitType * Signal BitType)
-                      : state AcornState (Signal BitType) :=
+Definition binaryGate (gate : Signal Bit -> Signal Bit -> Signal Bit -> AcornInstance)
+                      (i : Signal Bit * Signal Bit)
+                      : state AcornState (Signal Bit) :=
   let (i0, i1) := i in
   o <- newWire ;;
   addInstance (gate i0 i1 o) ;;
   ret o.
-
+                     
 Instance AcornNetlist : Cava (state AcornState) denoteSignal :=
 { one := Const1;
   zero := Const0;
@@ -45,7 +47,9 @@ Instance AcornNetlist : Cava (state AcornState) denoteSignal :=
   and2 := binaryGate And2;
   or2 := binaryGate Or2;
   xor2 := binaryGate Xor2;
-  pair _ _ a b := Pair a b;
+  pair _ _ a b := MkPair a b;
   fsT _ _  := Fst;
   snD _ _ := Snd;
+  peel s l v := Vector.map (IndexSignal v) (vseq 0 s);
+  unpeel _ _ v := VecLit v;
 }.

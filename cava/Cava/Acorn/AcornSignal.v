@@ -21,35 +21,31 @@ From Coq Require Import Vector.
 From Cava Require Import VectorUtils.
 
 Inductive SignalType :=
-  | VoidType : SignalType                      (* An empty type *)
-  | BitType : SignalType                       (* A single wire *)
-  | VecType : SignalType -> nat -> SignalType  (* Vectors, possibly nested *)
-  | ExternalType : string -> SignalType        (* An uninterpreted type *)
-  | PairType : SignalType -> SignalType -> SignalType. (* A tuple *)
+  | Void : SignalType                             (* An empty type *)
+  | Bit : SignalType                              (* A single wire *)
+  | Vec : SignalType -> nat -> SignalType         (* Vectors, possibly nested *)
+  | ExternalType : string -> SignalType           (* An uninterpreted type *)
+  | Pair : SignalType -> SignalType -> SignalType. (* A tuple *)
 
 Inductive Signal : SignalType -> Type :=
-  | Const0 : Signal BitType
-  | Const1 : Signal BitType
-  | Void : Signal VoidType
-  | Wire : N -> Signal BitType
-  | Vec : forall {t : SignalType} {s : nat}, Vector.t (Signal t) s -> Signal (VecType t s)
+  | Const0 : Signal Bit
+  | Const1 : Signal Bit
+  | MkVoid : Signal Void
+  | Wire : N -> Signal Bit
+  | VecLit : forall {t : SignalType} {s : nat}, Vector.t (Signal t) s -> Signal (Vec t s)
   | IndexSignal : forall {t : SignalType} {s : nat},
-                  Signal (VecType t s) -> nat -> Signal t
-  | Pair : forall {A B : SignalType}, Signal A -> Signal B -> Signal (PairType A B)
-  | Fst : forall {A B : SignalType}, Signal (PairType A B) -> Signal A
-  | Snd : forall {A B : SignalType}, Signal (PairType A B) -> Signal B.
-
-Definition peel {k: SignalType} {s: nat} (v: Signal (VecType k s)) :
-                Vector.t (Signal k) s :=
-  Vector.map (IndexSignal v) (vseq 0 s).
+                  Signal (Vec t s) -> nat -> Signal t
+  | MkPair : forall {A B : SignalType}, Signal A -> Signal B -> Signal (Pair A B)
+  | Fst : forall {A B : SignalType}, Signal (Pair A B) -> Signal A
+  | Snd : forall {A B : SignalType}, Signal (Pair A B) -> Signal B.
 
 Fixpoint denoteCombinaional (t : SignalType) : Type :=
   match t with
-  | VoidType => unit
-  | BitType => bool
-  | VecType vt s => Vector.t (denoteCombinaional vt) s
+  | Void => unit
+  | Bit => bool
+  | Vec vt s => Vector.t (denoteCombinaional vt) s
   | ExternalType _ => string
-  | PairType A B => denoteCombinaional A * denoteCombinaional B
+  | Pair A B => denoteCombinaional A * denoteCombinaional B
   end.
 
 Definition denoteSignal (t : SignalType) : Type := Signal t.
