@@ -40,8 +40,8 @@ Makefile.coq:	_CoqProject
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
-VivadoTestsSV:	VivadoTestsSV.hs
-		ghc -O2 --make $^
+VivadoTestsSV:	coq VivadoTestsSV.hs
+		ghc -O2 --make VivadoTestsSV.hs
 		./VivadoTestsSV
 
 $(SV) $(BENCHES) $(VCDS):	coq VivadoTestsSV
