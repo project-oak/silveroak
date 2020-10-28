@@ -86,7 +86,7 @@ Section Equivalence.
         init_keypair first_key last_key middle_keys input :
     let Nr := 14 in
     let init_rcon := nat_to_byte 1 in
-    (* TODO : why is the initial key pair reversed? *)
+    (* initial key pair reversed so key_expand doesn't have to mux *)
     let init_keypair_rev := sndkey init_keypair ++ fstkey init_keypair in
     let all_keypairs := all_keys key_expand Nr init_keypair_rev init_rcon in
     (* project out the forward key from the pair and transpose it *)
