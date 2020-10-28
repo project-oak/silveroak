@@ -40,11 +40,21 @@ steps:
       path: /nix/
 
   - name: 'nixos/nix:2.3.4'
-    id: run_makefile
+    id: make_coq
+    waitFor: ['recover_git_folder', 'cache_dependencies', 'build_third_party']
+    timeout: 20m
+    entrypoint: 'nix-shell'
+    args: ['--run', 'git init; ls -la ./third_party/coq-ext-lib; make -j32 coq']
+    volumes:
+    - name: nix-store
+      path: /nix/
+
+  - name: 'nixos/nix:2.3.4'
+    id: make_all
     waitFor: ['recover_git_folder', 'cache_dependencies', 'build_verilator', 'build_third_party']
     timeout: 20m
     entrypoint: 'nix-shell'
-    args: ['--run', 'git init; ls -la ./third_party/coq-ext-lib; make -j32 coq; make']
+    args: ['--run', 'git init; make']
     volumes:
     - name: nix-store
       path: /nix/
