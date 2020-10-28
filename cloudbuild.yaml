@@ -40,18 +40,18 @@ steps:
       path: /nix/
 
   - name: 'nixos/nix:2.3.4'
-    id: make_coq
+    id: make_cava_coq
     waitFor: ['recover_git_folder', 'cache_dependencies', 'build_third_party']
     timeout: 20m
     entrypoint: 'nix-shell'
-    args: ['--arg', 'buildVerilator', 'false', '--run', 'make -j32 coq']
+    args: ['--arg', 'buildVerilator', 'false', '--run', 'make -j32 -C cava coq']
     volumes:
     - name: nix-store
       path: /nix/
 
   - name: 'nixos/nix:2.3.4'
     id: make_all
-    waitFor: ['recover_git_folder', 'cache_dependencies', 'build_verilator', 'build_third_party', 'make_coq']
+    waitFor: ['recover_git_folder', 'cache_dependencies', 'build_verilator', 'build_third_party', 'make_cava']
     timeout: 20m
     entrypoint: 'nix-shell'
     args: ['--run', 'git init; make -j32']
