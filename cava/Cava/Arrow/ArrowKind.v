@@ -236,6 +236,8 @@ Fixpoint apply_rightmost_tt (x: Kind)
   | _ => fun x => x
   end.
 
+(* Avoid eq_rect type equality rewriting by inductively matching the Kind
+* structure. *)
 Fixpoint rewrite_or_default (x y: Kind): denote_kind x -> denote_kind y :=
   match x as x' return denote_kind x' -> denote_kind y with
   | Unit =>
