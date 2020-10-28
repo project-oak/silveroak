@@ -18,9 +18,13 @@ all:
 	cd pinmux && $(MAKE)
 	cd aes && $(MAKE)
 
-coq:
+pinmux-coq:
 	cd pinmux && $(MAKE) coq
+
+aes-coq:
 	cd aes && $(MAKE) coq
+
+coq: pinmux-coq aes-coq
 
 clean:
 	cd pinmux && $(MAKE) clean
