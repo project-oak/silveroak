@@ -67,9 +67,8 @@ Definition fir_netlist :=
 Definition fir_tb_inputs : list (Bvector 8) :=
  map (N2Bv_sized 8) [1; 2; 3; 4; 5; 6; 7; 8; 9]%N.
 
-  (* TODO(#301): replace with 'circuit_evaluation' *)
 Definition fir_tb_expected_outputs : list (Bvector 8) :=
-  map (N2Bv_sized 8) [10;11;13;16;20;24;28;32;36]%N.
+  unroll_circuit_evaluation (closure_conversion fir) fir_tb_inputs.
 
 Definition fir_tb :=
   testBench "fir_tb" fir_Interface

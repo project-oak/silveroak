@@ -130,6 +130,31 @@ Fixpoint map2M (f: Signal Kind.Bit -> Signal Kind.Bit -> Instance) (ty: Kind)
     ret tt
   end.
 
+Fixpoint rewrite_or_default (x y: Kind): denote x -> denote y :=
+  match x as x' return denote x' -> denote y with
+  | Unit =>
+      match y with
+      | Unit => fun a => a
+      | _ => fun _ => (const_wire _ (kind_default _))
+      end
+  | Tuple l r =>
+      match y with
+      | Tuple ll rr => fun '(a,b) => (rewrite_or_default l ll a, rewrite_or_default r rr b)
+      | _ => fun _ => (const_wire _ (kind_default _))
+      end
+  | Vector t n =>
+      match y with
+      | Vector t2 n2 => fun a => VectorUtils.resize_default (const_wire _ (kind_default _)) _ (Vector.map (rewrite_or_default t t2) a)
+      | _ => fun _ => (const_wire _ (kind_default _))
+      end
+  | Bit =>
+      match y with
+      | Bit => fun a => a
+      | _ => fun _ => (const_wire _ (kind_default _))
+      end
+  end.
+
+
 Definition slice' n x y (o: Kind) (v: denote (Vector o n)) : state CavaState (denote (Vector o (x - y + 1))) :=
   let length := x - y + 1 in
   let packed := VecLit (pack _ v) in
@@ -284,8 +309,7 @@ Fixpoint build_netlist' {i o}
   | Primitive (Snoc n o) => fun '(v, (x,_)) => ret (snoc v x)
   | Primitive (Primitives.Concat n m o) => fun '(x, (y, _)) =>
     ret ((x ++ y)%vector)
-  | Map x y n f => fun v => mapT (build_netlist' f) v
-  | Resize x n nn => fun v => ret (resize_default (const_wire _ (kind_default _)) nn v)
+  | RewriteTy x y => fun v => ret (rewrite_or_default x y v)
 end.
 
 Close Scope string_scope.

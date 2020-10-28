@@ -30,7 +30,6 @@ Fixpoint no_delays {i o} (c: Circuit i o): bool :=
   | Second _ _ _ f => no_delays f
   | Loopr _ _ _ f => no_delays f
   | Loopl _ _ _ f => no_delays f
-  | Map _ _ _ f => no_delays f
   | _ => true
   end.
 
@@ -41,7 +40,6 @@ Fixpoint no_loops {i o} (c: Circuit i o): bool :=
   | Second _ _ _ f => no_loops f
   | Loopr _ _ _ f => false
   | Loopl _ _ _ f => false
-  | Map _ _ _ f => no_loops f
   | _ => true
   end.
 
@@ -53,7 +51,6 @@ Fixpoint min_buffering {i o} (n: nat) (c: Circuit i o): nat :=
   | Second _ _ _ f => min_buffering n f
   | Loopr _ _ _ f => min_buffering n f
   | Loopl _ _ _ f => min_buffering n f
-  | Map _ _ _ f => min_buffering n f
   | _ => n
   end.
 
@@ -64,7 +61,6 @@ Fixpoint valid_loops {i o} (c: Circuit i o): bool :=
   | Second _ _ _ f => valid_loops f
   | Loopr _ _ _ f => (0 <? min_buffering 0 f) && valid_loops f
   | Loopl _ _ _ f => (0 <? min_buffering 0 f) && valid_loops f
-  | Map _ _ _ f => valid_loops f
   | _ => true
   end.
 

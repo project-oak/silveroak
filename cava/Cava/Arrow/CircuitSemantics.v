@@ -14,10 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool ZArith NArith NaryFunctions Vector Lia.
+From Coq Require Import Bool ZArith NArith NaryFunctions Vector Lia List.
 From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 From Cava Require Import Arrow.CircuitArrow Arrow.ArrowKind Arrow.Primitives.
 
+Import ListNotations.
 Import VectorNotations.
 Import EqNotations.
 
@@ -52,9 +53,8 @@ Fixpoint combinational_evaluation' {i o}
   | Structural (Copy x) => fun x => (x,x)
 
   | Primitive p => primitive_interp p
+  | RewriteTy x y => rewrite_or_default x y
 
-  | Map x y n f => fun v => Vector.map (combinational_evaluation' f) v
-  | Resize x n nn => fun v => resize_default (kind_default _) nn v
   end.
 
 Fixpoint circuit_state {i o} (c: Circuit i o) : Type :=
@@ -65,7 +65,6 @@ Fixpoint circuit_state {i o} (c: Circuit i o) : Type :=
   | Loopr x y z f => circuit_state f
   | Loopl x y z f => circuit_state f
   | Primitive (Delay o) => denote_kind o
-  | Map x y n f => Vector.t (circuit_state f) n
   | _ => Datatypes.unit
   end.
 
@@ -77,7 +76,6 @@ Fixpoint default_state {i o} (c: Circuit i o) : circuit_state c :=
   | Loopr x y z f => default_state f
   | Loopl x y z f => default_state f
   | Primitive (Delay o) => kind_default o
-  | Map x y n f => const (default_state f) _
   | _ => tt
   end.
 
@@ -120,8 +118,7 @@ Fixpoint circuit_evaluation' {i o} (c: Circuit i o)
   | Primitive (Delay o) => fun x s => (s, fst x)
   | Primitive p => fun x _ => (primitive_interp p x, tt)
 
-  | Map x y n f => fun v s => separate (Vector.map2 (circuit_evaluation' f) v s)
-  | Resize x n nn => fun v _ => (resize_default (kind_default _) nn v, tt)
+  | RewriteTy x y => fun v _ => (rewrite_or_default x y v, tt)
   end.
 
 Local Open Scope category_scope.
@@ -132,10 +129,28 @@ Definition combinational_evaluation {x y: Kind}
   : denote_kind y :=
   combinational_evaluation' circuit (apply_rightmost_tt x i).
 
-Definition circuit_evaluation {x y: Kind} (n: nat)
+Definition circuit_evaluation {x y: Kind}
   (circuit: x ~> y)
   (i: denote_kind (remove_rightmost_unit x))
   (state: circuit_state circuit)
   : (denote_kind y * circuit_state circuit) :=
   circuit_evaluation' circuit (apply_rightmost_tt x i) state.
+
+Fixpoint unroll_circuit_evaluation' {x y: Kind}
+  (circuit: x ~> y)
+  (state: circuit_state circuit)
+  (i: list (denote_kind (remove_rightmost_unit x)))
+  : list (denote_kind y) :=
+  match i with
+  | [] => []
+  | x :: xs =>
+    let '(o,ns) := circuit_evaluation circuit x state
+    in o :: unroll_circuit_evaluation' circuit ns xs
+  end%list.
+
+Definition unroll_circuit_evaluation {x y: Kind}
+  (circuit: x ~> y)
+  (i: list (denote_kind (remove_rightmost_unit x)))
+  : list (denote_kind y) :=
+  unroll_circuit_evaluation' circuit (default_state _) i.
 
