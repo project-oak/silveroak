@@ -16,8 +16,7 @@
 
 .PHONY: all clean coq haskell
 
-all: coq
-	haskell
+all: coq haskell
 
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
