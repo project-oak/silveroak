@@ -40,7 +40,7 @@ coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
 ExamplesSV:	coq ExamplesSV.hs
-		ghc --make $^
+		ghc --make ExamplesSV.hs
 		./ExamplesSV
 
 $(SV) $(BENCHES) $(VCDS):	coq ExamplesSV
