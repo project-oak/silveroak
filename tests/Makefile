@@ -28,6 +28,7 @@ VCDS = $(SV:.sv=_tb.vcd)
 
 all:		coq $(VCDS)
 
+
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt
 VLINT = $(VERILATOR) --lint-only
 
@@ -37,8 +38,8 @@ Makefile.coq:	_CoqProject
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
-TestsSV:	TestsSV.hs
-		ghc --make $^
+TestsSV:	coq TestsSV.hs
+		ghc --make TestsSV
 		./TestsSV
 
 $(SV) $(BENCHES) $(VCDS):	coq TestsSV

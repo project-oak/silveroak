@@ -27,7 +27,7 @@ Makefile.coq:	_CoqProject
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
-PinmuxSV:	PinmuxSV.hs
+PinmuxSV:	coq PinmuxSV.hs
 		ghc --make $^
 
 pinmux.sv:	coq PinmuxSV
