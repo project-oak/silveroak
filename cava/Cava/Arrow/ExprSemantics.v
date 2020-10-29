@@ -42,12 +42,19 @@ Section combinational_semantics.
     | App f e => fun y =>
       (interp_combinational' f) (interp_combinational' e tt, y)
     | Comp g f => fun x => interp_combinational' g (interp_combinational' f x)
-    | Primitive p => primitive_interp p
+    | Primitive p =>
+      match p with
+      | P0 p => primitive_semantics (P0 p)
+      | P1 p => fun x => primitive_semantics (P1 p) (fst x)
+      | P2 p => fun x => primitive_semantics (P2 p) (fst x, fst (snd x))
+      end
     | Id => fun x => x
     | Let v f => fun y =>
       interp_combinational' (f (interp_combinational' v tt)) y
-    | LetRec v f => fun _ => kind_default _
     | RemoveContext f => interp_combinational' f
+
+    | LetRec v f => fun _ => kind_default _
+    | Delay => fun _ => kind_default _
     end.
 
   Definition interp_combinational {x y: Kind}
