@@ -66,11 +66,8 @@ Section Equivalence.
   Notation nat_to_bitvec size n := (Ndigits.N2Bv_sized size (N.of_nat n)).
   Notation nat_to_byte n := (nat_to_bitvec 8 n).
 
-  (* TODO: this transpose seems odd *)
   Definition add_round_key : state -> key -> state :=
-    fun st k =>
-    @bitwise (Vector (Vector (Vector Bit 8) 4) 4) (fun a b => xorb a b)
-             st (PkgProperties.Vector.transpose_rev k).
+    @bitwise (Vector (Vector (Vector Bit 8) 4) 4) (fun a b => xorb a b).
   Definition sub_bytes : state -> state := aes_sub_bytes_spec sbox false.
   Definition shift_rows : state -> state := aes_shift_rows_spec false.
   Definition mix_columns : state -> state := aes_mix_columns_spec false.
@@ -89,10 +86,12 @@ Section Equivalence.
         init_keypair first_key last_key middle_keys input :
     let Nr := 14 in
     let init_rcon := nat_to_byte 1 in
-    (* TODO : why is the initial key pair reversed? *)
+    (* initial key pair reversed so key_expand doesn't have to mux *)
     let init_keypair_rev := sndkey init_keypair ++ fstkey init_keypair in
     let all_keypairs := all_keys key_expand Nr init_keypair_rev init_rcon in
-    let all_keys := List.map sndkey all_keypairs in
+    (* project out the forward key from the pair and transpose it *)
+    let all_keys := List.map (fun kp => PkgProperties.Vector.transpose_rev (sndkey kp))
+                             all_keypairs in
     all_keys = (first_key :: middle_keys ++ [last_key])%list ->
     unrolled_cipher_spec aes_key_expand_spec sbox false input init_keypair
     = cipher state key add_round_key sub_bytes shift_rows mix_columns
