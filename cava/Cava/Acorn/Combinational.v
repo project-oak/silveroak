@@ -21,8 +21,9 @@ Require Export ExtLib.Data.Monads.IdentityMonad.
 From Cava Require Import Acorn.AcornSignal.
 From Cava Require Import Acorn.AcornCavaClass.
 
-Instance Combinational : Cava ident denoteCombinaional :=
-{ one := true;
+Instance Combinational : Cava denoteCombinaional :=
+{ m := ident;
+  one := true;
   zero := false;
   inv i := ret (negb i);
   and2 '(i0, i1) := ret (i0 && i1);

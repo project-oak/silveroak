@@ -20,7 +20,8 @@ From Cava Require Import Acorn.AcornSignal.
 
 Open Scope type_scope.
 
-Class Cava m `{Monad m} (signal : SignalType -> Type) := {
+Class Cava (signal : SignalType -> Type) := {
+  m : Type -> Type;
   one : signal Bit;
   zero : signal Bit;
   inv : signal Bit -> m (signal Bit);
@@ -34,8 +35,7 @@ Class Cava m `{Monad m} (signal : SignalType -> Type) := {
   unpeel : forall {s : nat} {k : SignalType}, Vector.t (signal k) s -> signal (Vec k s);
 }.
 
-Definition unpair {m signal} `{Cava m signal}
+Definition unpair {signal} `{Cava signal}
           {A B : SignalType}
           (ab: signal (Pair A B)) : (signal A * signal B) :=
   (fsT ab, snD ab).
-  

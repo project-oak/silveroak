@@ -33,7 +33,8 @@ From Cava Require Import Acorn.Lib.AcornFullAdder.
 Local Open Scope vector_scope.
 
 Section WithCava.
-  Context {m signal} {monad: Monad m} {cava : Cava m signal}.
+  Context {signal} {cava : Cava signal}.
+  Context {monad: Monad m}.
 
   (* Vector verison *)
 

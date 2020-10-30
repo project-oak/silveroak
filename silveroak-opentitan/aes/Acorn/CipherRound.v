@@ -31,7 +31,8 @@ From Cava Require Import Acorn.Lib.AcornVectors.
 Local Open Scope vector_scope.
 
 Section WithCava.
-  Context {m signal} {monad: Monad m} {cava : Cava m signal}.
+  Context {signal} {cava : Cava signal}.
+  Context {monad: Monad m}.
 
   Local Notation state := (Vec (Vec (Vec Bit 8) 4) 4)
                           (only parsing).

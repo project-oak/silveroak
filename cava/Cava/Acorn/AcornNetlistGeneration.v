@@ -40,8 +40,9 @@ Definition binaryGate (gate : Signal Bit -> Signal Bit -> Signal Bit -> AcornIns
   addInstance (gate i0 i1 o) ;;
   ret o.
                      
-Instance AcornNetlist : Cava (state AcornState) denoteSignal :=
-{ one := Const1;
+Instance AcornNetlist : Cava denoteSignal :=
+{ m := state AcornState;
+  one := Const1;
   zero := Const0;
   inv :=  invNet;
   and2 := binaryGate And2;

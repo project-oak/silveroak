@@ -24,7 +24,8 @@ Open Scope type_scope.
 From Cava Require Import Acorn.Acorn.
 
 Section WithCava.
-  Context {m signal} {monad: Monad m} {cava : Cava m signal}.
+  Context {signal} {cava : Cava signal}.
+  Context {monad: Monad m}.
 
   Definition halfAdder (ab : signal Bit * signal Bit)
                        : m (signal Bit * signal Bit) :=
@@ -33,8 +34,7 @@ Section WithCava.
     carry <- and2 (a, b) ;;
     ret (partial_sum, carry).
 
-  Definition halfAdderAlt {m signal} `{Cava m signal}
-                          (ab : signal (Pair Bit Bit))
+  Definition halfAdderAlt (ab : signal (Pair Bit Bit))
                           : m (signal (Pair Bit Bit)) :=
     let (a, b) := unpair ab in 
     partial_sum <- xor2 (a, b) ;;
@@ -72,25 +72,29 @@ Section WithCava.
     ret (abcl, cout).
 
  End WithCava.
+ 
+Section Combinational.
 
-(* A proof that the half-adder is correct. *)
-Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
-                            unIdent (halfAdder (a, b)) = (xorb a b, a && b).
+  (* A proof that the half-adder is correct. *)
+  Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
+                              unIdent (halfAdder (a, b)) = (xorb a b, a && b).
 
-Proof.
-  auto.
-Qed.
+  Proof.
+    auto.
+  Qed.
 
-(* A proof that the the full-adder is correct. *)
-Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
-                            combinational (fullAdder (cin, (a, b)))
-                              = (xorb cin (xorb a b),
-                                (a && b) || (b && cin) || (a && cin)).
-Proof.
-  intros.
-  unfold combinational.
-  unfold fst.
-  simpl.
-  case a, b, cin.
-  all : reflexivity.
-Qed.
+  (* A proof that the the full-adder is correct. *)
+  Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
+                              combinational (fullAdder (cin, (a, b)))
+                                = (xorb cin (xorb a b),
+                                  (a && b) || (b && cin) || (a && cin)).
+  Proof.
+    intros.
+    unfold combinational.
+    unfold fst.
+    simpl.
+    case a, b, cin.
+    all : reflexivity.
+  Qed.
+
+End Combinational.
