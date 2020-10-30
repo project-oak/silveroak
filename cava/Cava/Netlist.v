@@ -106,6 +106,10 @@ Inductive Instance : Type :=
                                         Signal (Vec Bit b) ->
                                         Signal (Vec Bit c) ->
                                         Instance
+  | UnsignedMultiply : forall {a b c : nat}, Signal (Vec Bit a) ->
+                                        Signal (Vec Bit b) ->
+                                        Signal (Vec Bit c) ->
+                                        Instance
   (* Relational operations *)
   | GreaterThanOrEqual: forall {a b : nat}, Signal (Vec Bit a) ->
                                             Signal (Vec Bit b) ->

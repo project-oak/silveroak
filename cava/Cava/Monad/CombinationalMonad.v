@@ -137,6 +137,15 @@ Definition unsignedAddBool {m n : nat}
   let sum := (a + b)%N in
   ret (N2Bv_sized sumSize sum).
 
+
+Definition unsignedMultBool {m n : nat}
+                           (av : Bvector m) (bv : Bvector n) :
+                           ident (Bvector (m + n)) :=
+  let a := Bv2N av in
+  let b := Bv2N bv in
+  let product := (a * b)%N in
+  ret (N2Bv_sized (m + n) product).
+
 Definition greaterThanOrEqualBool {m n : nat}
                                   (av : Bvector m) (bv : Bvector n) :
                                   ident bool :=
@@ -183,6 +192,7 @@ Program Instance CavaBool : Cava ident bool :=
     indexBitConst sz := @indexConstBool Bit sz;
     slice k sz := @sliceBool k sz;
     unsignedAdd m n := @unsignedAddBool m n;
+    unsignedMult m n := @unsignedMultBool m n;
     greaterThanOrEqual m n := @greaterThanOrEqualBool m n;
     instantiate _ circuit := circuit;
 }.

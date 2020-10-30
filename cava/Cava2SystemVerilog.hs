@@ -215,6 +215,8 @@ generateInstance _ (UnsignedAdd _ _ _ a b c) _
    = "  assign " ++ showSignal c ++ " = " ++ showSignal a ++ " + " ++ showSignal b ++ ";"
 generateInstance _ (UnsignedSubtract _ _ _ a b c) _
    = "  assign " ++ showSignal c ++ " = " ++ showSignal a ++ " - " ++ showSignal b ++ ";"
+generateInstance _ (UnsignedMultiply _ _ _ a b c) _
+   = "  assign " ++ showSignal c ++ " = " ++ showSignal a ++ " * " ++ showSignal b ++ ";"
 generateInstance _ (GreaterThanOrEqual _ _ a b g) _
    = "  assign " ++ showSignal g ++ " = " ++ showSignal a ++ " >= " ++ showSignal b ++ ";"
 
@@ -549,6 +551,11 @@ mapSignalsInInstanceM f inst
            fb <- f b
            fc <- f c
            return (UnsignedSubtract s1 s2 s3 fa fb fc)
+      UnsignedMultiply s1 s2 s3 a b c ->
+        do fa <- f a
+           fb <- f b
+           fc <- f c
+           return (UnsignedMultiply s1 s2 s3 fa fb fc)     
       GreaterThanOrEqual s1 s2 a b t ->
         do fa <- f a
            fb <- f b

@@ -23,4 +23,6 @@ From Coq Require Import extraction.ExtrHaskellNatInteger.
 Extraction Language Haskell.
 
 Require Import Instantiate.
+Require Import TestMultiply.
 Extraction Library Instantiate.
+Extraction Library TestMultiply.
