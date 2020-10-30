@@ -39,13 +39,13 @@ Inductive Signal : SignalType -> Type :=
   | Fst : forall {A B : SignalType}, Signal (Pair A B) -> Signal A
   | Snd : forall {A B : SignalType}, Signal (Pair A B) -> Signal B.
 
-Fixpoint denoteCombinaional (t : SignalType) : Type :=
+Fixpoint denoteCombinational (t : SignalType) : Type :=
   match t with
   | Void => unit
   | Bit => bool
-  | Vec vt s => Vector.t (denoteCombinaional vt) s
+  | Vec vt s => Vector.t (denoteCombinational vt) s
   | ExternalType _ => string
-  | Pair A B => denoteCombinaional A * denoteCombinaional B
+  | Pair A B => denoteCombinational A * denoteCombinational B
   end.
 
 Definition denoteSignal (t : SignalType) : Type := Signal t.
