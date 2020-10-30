@@ -28,6 +28,7 @@ Open Scope monad_scope.
 Require Export Acorn.AcornSignal.
 Require Export Acorn.AcornCavaClass.
 From Cava Require Import VectorUtils.
+From Cava Require Import Monad.MonadFacts.
 
 Open Scope type_scope.
 
@@ -147,4 +148,27 @@ Section WithCava.
                foldLM f ks st'
     end.
 
+  Lemma foldLM_fold_right {A B}
+        (bind_ext : forall {A B} x (f g : A -> m B),
+            (forall y, f y = g y) -> bind x f = bind x g)
+        (f : B -> A -> m B) (input : list A) (accum : B) :
+    foldLM f input accum =
+    List.fold_right
+      (fun k continuation v => bind (f v k) continuation)
+      ret input accum.
+  Proof.
+    revert accum; induction input; intros; [ reflexivity | ].
+    cbn [foldLM List.fold_right].
+    eapply bind_ext; intros.
+    rewrite IHinput. reflexivity.
+  Qed.
+
+  Lemma foldLM_ident_fold_left {A B} (f : B -> A -> ident B) ls b :
+    unIdent (foldLM f ls b) = List.fold_left (fun b a => unIdent (f b a)) ls b.
+  Proof.
+    revert b; induction ls; [ reflexivity | ].
+    cbn [foldLM List.fold_left]. intros.
+    cbn [bind ret Monad_ident].
+    rewrite IHls. reflexivity.
+  Qed.
 End WithCava.
