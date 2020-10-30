@@ -14,17 +14,16 @@
 # limitations under the License.
 #
 
-all:
-	cd Spec && $(MAKE)
-	cd Arrow && $(MAKE)
-	cd Acorn && $(MAKE)
+.PHONY: all coq clean
 
-coq:
-	cd Spec && $(MAKE) coq
-	cd Arrow && $(MAKE) coq
-	cd Acorn && $(MAKE) coq
+all:		coq 
 
-clean:
-	cd Spec && $(MAKE) clean
-	cd Arrow && $(MAKE) clean
-	cd Acorn && $(MAKE) clean
+Makefile.coq:	_CoqProject
+		coq_makefile -f _CoqProject -o Makefile.coq
+
+coq:		Makefile.coq
+		$(MAKE) -f Makefile.coq
+
+clean:		
+		-@$(MAKE) -f Makefile.coq clean
+		rm -rf Makefile.coq Makefile.coq.conf

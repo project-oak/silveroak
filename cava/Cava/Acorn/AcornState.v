@@ -52,7 +52,7 @@ Definition incrementNetNumber : state AcornState unit :=
      put (mkAcornState (netNr + 1) m)
   end.  
 
-Definition newWire : state AcornState (Signal BitType) :=
+Definition newWire : state AcornState (Signal Bit) :=
   netNr <- getNetNumber ;;
   incrementNetNumber ;;
   ret (Wire netNr).
