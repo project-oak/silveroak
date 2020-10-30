@@ -15,13 +15,23 @@
 (****************************************************************************)
 
 From Coq Require Import Bool.Bool.
+From Coq Require Import String.
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.IdentityMonad.
 
 From Cava Require Import Acorn.AcornSignal.
 From Cava Require Import Acorn.AcornCavaClass.
 
-Instance Combinational : Cava denoteCombinational :=
+Fixpoint denoteCombinaional (t : SignalType) : Type :=
+  match t with
+  | Void => unit
+  | Bit => bool
+  | Vec vt s => Vector.t (denoteCombinaional vt) s
+  | ExternalType _ => string
+  | Pair A B => denoteCombinaional A * denoteCombinaional B
+  end.
+
+Instance Combinational : Cava denoteCombinaional :=
 { m := ident;
   one := true;
   zero := false;

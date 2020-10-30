@@ -153,18 +153,18 @@ Fixpoint denoteVecWith {A : Type} (T : Type) (n : list A) : Type :=
 
 Fixpoint denoteKindWith (k : Kind) (T : Type) : Type :=
   match k with
-  | Void => unit
-  | Bit => T
-  | Vec k2 s => Vector.t (denoteKindWith k2 T) s
-  | ExternalType t => T
+  | Kind.Void => unit
+  | Kind.Bit => T
+  | Kind.Vec k2 s => Vector.t (denoteKindWith k2 T) s
+  | Kind.ExternalType t => T
   end.
 
 Fixpoint bitsInPort (p : Kind) : nat :=
   match p with
-  | Void => 0
-  | Bit => 1
-  | Vec xs sz => sz * bitsInPort xs
-  | ExternalType _ => 0
+  | Kind.Void => 0
+  | Kind.Bit => 1
+  | Kind.Vec xs sz => sz * bitsInPort xs
+  | Kind.ExternalType _ => 0
   end.
 
 Fixpoint bitsInPortShape (s : bundle) : nat :=
@@ -226,63 +226,3 @@ Definition removeRightmostUnit {A B t}
   (f: signalTy (Signal t) A -> B)
   : signalTy (Signal t) (withoutRightmostUnit A) -> B :=
   fun a => f (insertRightmostTt a).
-
-(******************************************************************************)
-(* Smashing of vectors                                                        *)
-(******************************************************************************)
-
-(* The function smashTy relates a Kind to its corresponding vector
-   smashed type.
- *)
-Fixpoint smashTy (T: Type) (k: Kind) : Type :=
-  match k with
-  | Void => Signal Void
-  | Bit => T
-  | Vec k2 s => Vector.t (smashTy T k2) s
-  | ExternalType t => Signal (ExternalType t)
-  end.
-
-(* The function smashNetTy relates a Kind to its vector-smashed equivalent.
-   This is a version of smashTy specialized to the Signal type.
-*)
-Definition smashNetTy (k: Kind) : Type := smashTy (Signal Bit) k.
-
-(* The function signalSmashTy takes a Signal shape and smashes its elements. *)
-Definition signalSmashTy := denote smashNetTy.
-
-(* The function takes a signal and smashes the vectors in it. *)
-Fixpoint smash {k: Kind} (v: Signal k) : smashTy (Signal Bit) k :=
-  match k, v return smashTy (Signal Bit) k with
-  | Void, vv => UndefinedSignal
-  | Bit, vv => vv
-  | Vec k2 s, vv => Vector.map (fun i => smash (IndexConst vv i)) (vseq 0 s)
-  | ExternalType t, vv => UninterpretedSignal "smash-error"
-  end.
-
-(* The function vecLitS represents a smashed vector as a Signal *)
-Fixpoint vecLitS {k: Kind} (v: smashTy (Signal Bit) k) : Signal k :=
-  match k, v return Signal k with
-  | Bit, vv => vv
-  | Vec k2 s2, vv => VecLit (Vector.map vecLitS vv)
-  | Void, _ => UndefinedSignal
-  | ExternalType s, _ => UninterpretedSignal "vecLitS-error"
-  end.
-
-(* Undo a vector smash.*)
-Definition unsmash {k : Kind} (v : smashTy (Signal Bit) k) : Signal k :=
-  match k, v with
-  | Void, vv => UndefinedSignal
-  | Bit, vv => vv
-  | Vec k2 s, vv => vecLitS vv
-  | ExternalType t, vv => UninterpretedSignal "unsmash-error"
-  end.
-
-(* Recover the shape representation of an expression by un-doing the
-   effect of the signalNetSmashTy translation and then "untype" it. *)
-Fixpoint recoverUntypedShape (sh: @shape Kind) (v: signalSmashTy sh) :=
-  match sh, v with
-  | Empty, _ => Empty
-  | One t, ov => One (USignal (unsmash ov))
-  | Tuple2 s1 s2, (v1, v2) => Tuple2 (recoverUntypedShape s1 v1)
-                                     (recoverUntypedShape s2 v2)
-  end.

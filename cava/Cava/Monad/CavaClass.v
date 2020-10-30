@@ -20,26 +20,28 @@ Require Import ExtLib.Structures.Monads.
 From Cava Require Import Kind.
 From Cava Require Import Types.
 From Cava Require Import Netlist.
+From Cava Require Import SignalType.
 
 (* The Cava class represents circuit graphs with Coq-level inputs and
    outputs, but does not represent the IO ports of circuits. This allows
    us to define both circuit netlist interpretations for the Cava class
    as well as behavioural interpretations for attributing semantics. *)
-Class Cava m `{Monad m} bit := {
+Class Cava (signal : SignalType -> Type) := {
+  m : Type -> Type;     
   (* Constant values. *)
-  zero : m bit; (* This component always returns the value 0. *)
-  one : m bit; (* This component always returns the value 1. *)
-  delayBit : bit -> m bit; (* Cava bit-level unit delay. *)
-  loopBit : forall {A B : Type}, ((A * bit)%type -> m (B * bit)%type) -> A -> m B;
+  zero : m (signal bit); (* This component always returns the value 0. *)
+  one : m (signal bit); (* This component always returns the value 1. *)
+  delayBit : signal bit -> m signal bit; (* Cava bit-level unit delay. *)
+  loopBit : forall {A B : Type}, ((A * bit)%type -> m (B * singal bit)%type) -> A -> m B;
   (* Primitive gates *)
-  inv : bit -> m bit;
-  and2 : bit * bit -> m bit;
-  nand2 : bit * bit -> m bit;
-  or2 : bit * bit -> m bit;
-  nor2 : bit * bit -> m bit;
-  xor2 : bit * bit -> m bit;
-  xnor2 : bit * bit -> m bit;
-  buf_gate : bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'buf' *)
+  inv : singal bit -> m signal bit;
+  and2 : signal bit * signal bit -> m (signal bit);
+  nand2 : signal bit * signal bit -> m (signal bit);
+  or2 : signal bit * signal bit -> m (signal bit);
+  nor2 : signal bit * signal bit -> m (signal bit);
+  xor2 : signal bit * signal bit -> m (signal bit);
+  xnor2 : signal bit * signal bit -> m (signal bit);
+  buf_gate : signal bit -> m (signal bit); (* Corresponds to the SystemVerilog primitive gate 'buf' *)
   (* Xilinx UNISIM FPGA gates *)
   lut1 : (bool -> bool) -> bit -> m bit; (* 1-input LUT *)
   lut2 : (bool -> bool -> bool) -> (bit * bit) -> m bit; (* 2-input LUT *)
