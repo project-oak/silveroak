@@ -32,7 +32,7 @@ From Cava Require Import VectorUtils.
 Open Scope type_scope.
 
 Section WithCava.
-  Context {m signal} {monad: Monad m} {cava : Cava m signal}.
+  Context {signal} {cava : Cava signal}.
   
   Definition fork2 {m} `{Monad m}  {A : SignalType}
                   (input : signal A) : m (signal A * signal A) :=
@@ -123,7 +123,7 @@ Section WithCava.
 
   (* TODO(satnam): Lemma about col_cons *)
 
-  Definition zipWith {A B C : SignalType} {n : nat}
+  Definition zipWith `{Monad m} {A B C : SignalType} {n : nat}
            (f : signal A * signal B -> m (signal C))
            (a : signal (Vec A n))
            (b : signal (Vec B n))
