@@ -1,0 +1,4 @@
+# This file contains custom settings and is included by Makefile.coq
+
+# Pass a -w flag to coqc which disables extraction-opaque-accessed warnings
+COQEXTRAFLAGS=-w -extraction-opaque-accessed
