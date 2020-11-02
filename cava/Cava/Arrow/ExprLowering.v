@@ -14,6 +14,7 @@ Require Import Cava.Arrow.Classes.Arrow.
 
 Import ListNotations.
 Import EqNotations.
+Import CategoryNotations.
 
 Generalizable All Variables.
 
@@ -221,9 +222,14 @@ removes the list Kind, we first need to copy the list Kind. *)
 
 | ExprSyntax.Id =>
     second drop >>> cancelr >>> id
+| Typecast x y =>
+    second drop >>> cancelr >>> cancelr >>> CircuitArrow.RewriteTy x y
 
 | RemoveContext f =>
   second drop >>> closure_conversion' [] f
+
+| CallModule (mkModule m) =>
+  second drop >>> closure_conversion' [] m
 
 | Let v f =>
   let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
@@ -411,6 +417,13 @@ Proof.
         ok_variable_lookup ctxt E
         -> wf_phoas_context ctxt expr1)
     ); simpl; eauto with kappa_cc.
+  {
+    destruct f1.
+    intros.
+    apply H0.
+    intros.
+    inversion H2.
+    }
 Qed.
 
 Hint Resolve kappa_wf : kappa_cc.
@@ -441,7 +454,9 @@ match expr with
 | ExprSyntax.Delay => size
 | ExprSyntax.Primitive p => size
 | ExprSyntax.Id => size
+| ExprSyntax.Typecast _ _ => size
 | RemoveContext f => max size (max_context_size' 0 f)
+| CallModule (mkModule m) => max size (max_context_size' 0 m)
 | Let v f =>
   max (max_context_size' (size+1) (f tt)) (max_context_size' size v)
 | LetRec v f =>

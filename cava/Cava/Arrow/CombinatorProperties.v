@@ -124,6 +124,19 @@ Lemma Wf_Primitive (p : CircuitPrimitive) : Wf (fun _ => Primitive p).
 Proof. cbv [Wf]; intros; apply Prim_equiv. Qed.
 Hint Resolve Wf_Primitive : Wf.
 
+Lemma Wf_modulebody {x y} {f: Module (Kappa x y)}:
+  Wf (module_body f) -> forall var1 var2,
+    kappa_equivalence nil
+      (module_body (module_instantiate_var (var:=var1) f))
+      (module_body (module_instantiate_var (var:=var2) f)).
+Proof.
+  intros.
+  destruct f.
+  apply H.
+Qed.
+Hint Resolve Wf_modulebody : Wf.
+
+
 (* Extra hint to force the primitive types to match *)
 Hint Extern 4 (Wf (fun _ => Primitive ?p))
 => (change (@Wf (primitive_input p)
@@ -144,74 +157,79 @@ Ltac kequiv_step :=
   | |- kappa_equivalence _ (Let _ _) (Let _ _) => eapply Let_equiv
   | |- kappa_equivalence _ (LetRec _ _) (LetRec _ _) => eapply Letrec_equiv
   | |- kappa_equivalence _ Id Id => eapply Id_equiv
+  | |- kappa_equivalence _ (Typecast _ _) (Typecast _ _) => eapply Typecast_equiv
   | |- kappa_equivalence _ Delay Delay => eapply Delay_equiv
   | |- kappa_equivalence _ (RemoveContext _) (RemoveContext _) =>
     eapply RemoveContext_equiv
+  | |- kappa_equivalence _ (CallModule _) (CallModule _) =>
+    eapply CallModule_equiv
   end; intros.
 Ltac prove_Wf_step :=
   lazymatch goal with
+  | |- kappa_equivalence _ (instantiate _ _) (instantiate _ _) =>
+    cbn [instantiate instantiatable_module instantiatable_fragment]; eauto with Wf
   | |- kappa_equivalence _ _ _ =>
     first [ kequiv_step
           | solve [eauto with Wf] ]
   | |- List.In _ _ => cbn [List.In]; tauto
   end.
-Ltac prove_Wf := cbv [Wf]; intros; repeat prove_Wf_step.
+Ltac prove_Wf := cbv [Wf module_body]; intros; repeat prove_Wf_step.
 
 Section CombinatorWf.
-  Lemma replicate_Wf A n : Wf (@Combinators.replicate n A).
-  Proof. induction n; cbn [Combinators.replicate]; prove_Wf. Qed.
+  Lemma replicate_Wf A n : Wf (module_body (@Combinators.replicate n A)).
+  Proof. induction n; cbn [Combinators.replicate]; prove_Wf.  Qed.
   Hint Resolve replicate_Wf : Wf.
 
-  Lemma reverse_Wf A n : Wf (@Combinators.reverse n A).
+  Lemma reverse_Wf A n : Wf (module_body (@Combinators.reverse n A)).
   Proof. induction n; cbn [Combinators.reverse]; prove_Wf. Qed.
   Hint Resolve reverse_Wf : Wf.
 
-  Lemma reshape_Wf A n m : Wf (@Combinators.reshape n m A).
+  Lemma reshape_Wf A n m : Wf (module_body (@Combinators.reshape n m A)).
   Proof. induction n; cbn [Combinators.reshape]; prove_Wf. Qed.
   Hint Resolve reshape_Wf : Wf.
 
-  Lemma flatten_Wf A n m : Wf (@Combinators.flatten n m A).
+  Lemma flatten_Wf A n m : Wf (module_body (@Combinators.flatten n m A)).
   Proof. induction n; cbn [Combinators.flatten]; prove_Wf. Qed.
   Hint Resolve flatten_Wf : Wf.
 
-  Lemma map_Wf A B n c : Wf c -> Wf (@Combinators.map n A B c).
+  Lemma map_Wf A B n c : Wf (module_body c) -> Wf (module_body (@Combinators.map n A B c)).
   Proof. induction n; cbn [Combinators.map]; prove_Wf. Qed.
   Hint Resolve map_Wf : Wf.
 
-  Lemma map2_Wf A B C n c : Wf c -> Wf (@Combinators.map2 n A B C c).
+  Lemma map2_Wf A B C n c : Wf (module_body c) -> Wf (module_body (@Combinators.map2 n A B C c)).
   Proof. induction n; cbn [Combinators.map2]; prove_Wf. Qed.
   Hint Resolve map2_Wf : Wf.
 
-  Lemma foldl_Wf A B n c : Wf c -> Wf (@Combinators.foldl n A B c).
+  Lemma foldl_Wf A B n c : Wf (module_body c) -> Wf (module_body (@Combinators.foldl n A B c)).
   Proof. induction n; cbv [Combinators.foldl]; prove_Wf. Qed.
   Hint Resolve foldl_Wf : Wf.
 
-  Lemma enable_Wf A : Wf (@Combinators.enable A).
+  Lemma enable_Wf A : Wf (module_body (@Combinators.enable A)).
   Proof. induction A; cbn [Combinators.enable]; prove_Wf. Qed.
   Hint Resolve enable_Wf : Wf.
 
-  Lemma bitwise_Wf A c : Wf c -> Wf (@Combinators.bitwise A c).
+  Lemma bitwise_Wf A c : Wf (module_body c) -> Wf (module_body (@Combinators.bitwise A c)).
   Proof. induction A; cbn [Combinators.bitwise]; prove_Wf. Qed.
   Hint Resolve bitwise_Wf : Wf.
 
-  Lemma equality_Wf A : Wf (@Combinators.equality A).
+  Lemma equality_Wf A : Wf (module_body (@Combinators.equality A)).
   Proof.
     induction A; cbn [Combinators.equality]; prove_Wf; [ ].
-    eapply foldl_Wf; prove_Wf.
+    apply Wf_modulebody; eapply foldl_Wf; prove_Wf.
   Qed.
   Hint Resolve equality_Wf : Wf.
 
-  Lemma mux_item_Wf A : Wf (@Combinators.mux_item A).
+  Lemma mux_item_Wf A : Wf (module_body (@Combinators.mux_item A)).
   Proof. cbv [Combinators.mux_item]; prove_Wf; [ ].
-    eapply bitwise_Wf; prove_Wf.
+    apply Wf_modulebody; eapply bitwise_Wf; prove_Wf.
   Qed.
   Hint Resolve mux_item_Wf : Wf.
 
-  Lemma curry_Wf A B C args c : Wf c -> Wf (@Combinators.curry A B C args c).
+  Lemma curry_Wf A B C args c : Wf (module_body c) -> Wf (@Combinators.curry A B C args c).
   Proof. cbv [Combinators.curry]; prove_Wf. Qed.
   Hint Resolve curry_Wf : Wf.
 
-  Lemma seq_Wf n bitsize offset : Wf (@Combinators.seq n bitsize offset).
+  Lemma seq_Wf n bitsize offset : Wf (module_body (@Combinators.seq n bitsize offset)).
   Proof. revert offset; induction n; cbv [Combinators.seq]; prove_Wf. Qed.
   Hint Resolve seq_Wf : Wf.
 End CombinatorWf.
@@ -257,22 +275,27 @@ Section Misc.
   Qed.
 End Misc.
 
+
 (* Proofs of equivalence between circuit combinators and functional
    specifications *)
 Section CombinatorEquivalence.
 
   Lemma replicate_correct A n (x : denote_kind A) :
-    kinterp (@Combinators.replicate n A) (x, tt) = @Vector.const (denote_kind A) x n.
+    minterp (@Combinators.replicate n A) (x, tt) = @Vector.const (denote_kind A) x n.
   Proof.
     induction n; cbn [Combinators.replicate]; kappa_spec; reflexivity.
   Qed.
   Hint Rewrite @replicate_correct : kappa_interp.
 
   Lemma reshape_correct {A} n m (x : Vector.t (denote_kind A) _) :
-    kinterp (@Combinators.reshape n m A) (x, tt) = reshape x.
+    minterp (@Combinators.reshape n m A) (x, tt) = reshape x.
   Proof.
-    induction n; intros; cbn [Combinators.reshape reshape]; kappa_spec;
-      repeat destruct_pair_let; reflexivity.
+    induction n; intros; cbn [Combinators.reshape reshape].
+    kappa_spec; reflexivity.
+    kappa_spec.
+      repeat destruct_pair_let.
+
+      reflexivity.
   Qed.
   Hint Rewrite @reshape_correct : kappa_interp.
 

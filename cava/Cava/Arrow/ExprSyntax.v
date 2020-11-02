@@ -20,6 +20,15 @@ Section vars.
     | P2 x y z _ => Tuple x (Tuple y Unit)
     end.
 
+  Record Module ( body_ty : Type ) := mkModule
+    { module_body : body_ty
+    }.
+
+  Definition module_map_body {A B} (m: Module A) (f: A -> B): Module B :=
+    match m with
+    | mkModule body => mkModule (f body)
+    end.
+
   Section Vars.
     Variable (var: Kind -> Type).
 
@@ -33,7 +42,9 @@ Section vars.
     | Let: forall {x y z}, kappa Unit x -> (var x -> kappa y z) -> kappa y z
     | LetRec : forall {x y z}, (var x -> kappa Unit x) -> (var x -> kappa y z) -> kappa y z
     | Id : forall {x}, kappa x x
+    | Typecast : forall x y, kappa (Tuple x Unit) y
     | RemoveContext: forall {x y}, kappa x y -> kappa x y
+    | CallModule: forall {x y}, Module (kappa x y) -> kappa x y
     .
   End Vars.
 
@@ -61,13 +72,17 @@ Section vars.
     | Delay _ => True
     | Primitive _ => True
     | Id _ => True
+    | Typecast x y => True
     | Let x _ _ v f => wf_phoas_context (x :: ctxt) (f (length ctxt)) /\ wf_phoas_context ctxt v
     | LetRec x _ _ v f => wf_phoas_context (x :: ctxt) (v (length ctxt)) /\ wf_phoas_context (x :: ctxt) (f (length ctxt))
     | RemoveContext _ _ f => wf_phoas_context [] f
+    | CallModule _ _ (mkModule m) => wf_phoas_context [] m
     end.
 
   Definition Kappa i o := forall var, kappa var i o.
 
+  Definition module_instantiate_var {var x y} (m: Module (Kappa x y)): Module (kappa var x y) :=
+    module_map_body m (fun e => e var).
 End vars.
 
 Arguments Var {var _}.
@@ -78,6 +93,9 @@ Arguments Delay {var _}.
 Arguments Primitive {var}.
 Arguments LetRec {var _ _ _}.
 Arguments Id {var _}.
+Arguments Typecast {var}.
+Arguments RemoveContext {var _ _}.
+Arguments CallModule {var _ _}.
 
 Instance KappaCat : Category Kind := {
   morphism X Y := forall var, kappa var X Y;

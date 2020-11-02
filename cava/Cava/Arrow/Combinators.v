@@ -17,7 +17,6 @@
 From Coq Require Import Strings.String Bool.Bvector Lists.List NArith.NArith
      Init.Nat micromega.Lia Arith.Plus.
 From Cava.Arrow Require Import ArrowKind CavaNotation ExprSyntax.
-From Cava.Arrow.Classes Require Import Category.
 
 Import ListNotations.
 Import EqNotations.
@@ -27,44 +26,25 @@ Local Open Scope category_scope.
 Local Open Scope string_scope.
 Local Open Scope kind_scope.
 
-(* *************************** *)
-(* Rewrites *)
-
-Definition rewrite_kind {x y} (H: x = y)
-  : << x, Unit >> ~[KappaCat]~> y :=
-  match eq_kind_dec x y with
-  | left Heq =>
-    rew [fun x => << _ >> ~[KappaCat]~> <<x>> ] Heq in <[\x=>x]>
-  | right Hneq => (ltac:(contradiction))
-  end.
-
-Definition rewrite_vector {A x y} (H: x = y)
-  : << Vector A x, Unit >> ~> <<Vector A y>> :=
-  match PeanoNat.Nat.eq_dec x y with
-  | left Heq =>
-    rew [fun x => << _, _ >> ~[KappaCat]~> <<Vector A x>> ] Heq in <[\x=>x]>
-  | right Hneq => (ltac:(contradiction))
-  end.
-
-Program Definition split_pow2 A n
-  :  << Vector A (2^(S n)), Unit >> ~> <<Vector A (2^n), Vector A (2^n)>> :=
-  <[\ x =>
+Definition split_pow2 A n
+  : Fragment << Vector A (2^(S n)), Unit >> <<Vector A (2^n), Vector A (2^n)>> :=
+  <{\ x =>
     let '(l,r) = split_at (2^n) x in
-    (l, !(rewrite_vector _) r)
-      ]>.
+    (l, typecast r)
+  }>.
 
 (* *************************** *)
 (* Misc *)
 
 Definition uncurry {A B C args}
-  (f:  << <<A, B>>, args >> ~> C)
-  :  <<A, B, args>> ~> C :=
-  <[ \a b => !f (a, b) ]>.
+  (f: << <<A, B>>, args >> ~> C)
+  : Fragment <<A, B, args>> C :=
+  <{ \a b => !f (a, b) }>.
 
 Definition curry {A B C args}
   (f:  << A, B, args >> ~> C)
-  :  << <<A, B>>, args >> ~> C :=
-  <[ \ab => let '(a, b) = ab in !f a b ]>.
+  :  Fragment << <<A, B>>, args >> C :=
+  <{ \ab => let '(a, b) = ab in !f a b }>.
 
 Fixpoint reshape {n m A}
   :  << Vector A (n * m), Unit >> ~> << Vector (Vector A m) n >> :=
@@ -107,15 +87,6 @@ match n with
 | S n' => <[ #offset :: !(seq (offset + 1)) ]>
 end.
 
-(* Definition drop_all {T}
-  :  << T >> ~> Unit
-  := drop (A:=CircuitArrow). *)
-
-(* Definition replace {A B}
-  (constant:  Unit ~> B)
-  :  << A >> ~> B
-  := drop_all >>> constant. *)
-
 (* *************************** *)
 (* Tree folds, expecting a vector of input size pow2 *)
 
@@ -157,7 +128,7 @@ Definition dt_tree_fold
   (T: nat -> Kind)
   (f: forall n,  << T n, T n, Unit >> ~> T (S n))
   :  << Vector (T 0) (2^n), Unit >> ~> T n :=
-  <[ \vec => !(rewrite_kind (inj_succ_in_kind _ _)) (!(dt_tree_fold' n 0 T f) vec) ]>.
+  <[ \vec => typecast (!(dt_tree_fold' n 0 T f) vec) ]>.
 
 (* *************************** *)
 (* element mapping *)
@@ -247,7 +218,7 @@ Definition zipper {n A B}
 
 Fixpoint equality {T}
   :  << T, T, Unit >> ~> <<Bit>> :=
-match T return  << T, T, Unit >> ~[KappaCat]~> <<Bit>> with
+match T return  << T, T, Unit >> ~> <<Bit>> with
 | Unit => <[ \_ _ => true' ]>
 | Bit => <[ \x y => xnor x y ]> (* bit equality is the xnor function *)
 | Tuple l r => <[
@@ -279,7 +250,7 @@ Definition enable_vec {n}
 
 Fixpoint enable {T}
   :  << Bit, T, Unit >> ~> <<T>> :=
-match T return  << Bit, T, Unit >> ~[KappaCat]~> <<T>> with
+match T return  << Bit, T, Unit >> ~> <<T>> with
 | Unit => <[ \_ x => x ]>
 | Bit => <[ \en x => and en x ]>
 | Tuple l r => <[ \en x => let '(a,b) = x in
@@ -291,7 +262,7 @@ end.
 Fixpoint bitwise {T}
   (f:  << Bit, Bit, Unit >> ~> <<Bit>>)
   :  << T, T, Unit >> ~> <<T>> :=
-match T return  << T, T, Unit >> ~[KappaCat]~> <<T>> with
+match T return  << T, T, Unit >> ~> <<T>> with
 | Unit => <[ \x _ => x ]>
 | Bit => f
 | Tuple l r => <[ \x y =>

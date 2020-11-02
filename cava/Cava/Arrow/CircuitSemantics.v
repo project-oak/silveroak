@@ -22,6 +22,7 @@ From Cava Require Import Arrow.CircuitArrow Arrow.ArrowKind Arrow.Primitives.
 Import ListNotations.
 Import VectorNotations.
 Import EqNotations.
+Import CategoryNotations.
 
 Require Import Cava.BitArithmetic.
 Require Import Cava.VectorUtils.

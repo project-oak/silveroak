@@ -21,6 +21,7 @@ From Cava Require Import Arrow.CircuitArrow Arrow.CircuitSemantics.
 From Cava Require Import Arrow.ArrowKind Arrow.Primitives.
 
 Import VectorNotations.
+Import CategoryNotations.
 
 Fixpoint no_delays {i o} (c: Circuit i o): bool :=
   match c with

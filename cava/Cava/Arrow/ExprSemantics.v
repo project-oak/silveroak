@@ -50,9 +50,11 @@ Section combinational_semantics.
       | P2 p => fun x => primitive_semantics (P2 p) (fst x, fst (snd x))
       end
     | Id => fun x => x
+    | Typecast _ _ => rewrite_or_default _ _
     | Let v f => fun y =>
       interp_combinational' (f (interp_combinational' v tt)) y
     | RemoveContext f => interp_combinational' f
+    | CallModule (mkModule m) => interp_combinational' m
 
     | LetRec v f => fun _ => kind_default _
     | Delay => fun _ => kind_default _

@@ -1,5 +1,7 @@
 From Cava Require Import Arrow.Classes.Category.
 
+Import CategoryNotations.
+
 Local Open Scope category_scope.
 
 Reserved Infix "**" (at level 30, right associativity).

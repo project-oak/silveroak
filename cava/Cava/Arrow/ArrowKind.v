@@ -20,6 +20,7 @@ From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 
 Import ListNotations.
 Import VectorNotations.
+Import CategoryNotations.
 
 From Cava Require Import Types.
 

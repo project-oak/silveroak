@@ -29,6 +29,7 @@ Import NilZero.
 Import VectorNotations.
 Import EqNotations.
 Import ListNotations.
+Import CategoryNotations.
 
 From ExtLib Require Import Structures.Monads.
 From ExtLib Require Import Structures.Applicative.

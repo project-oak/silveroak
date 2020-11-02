@@ -69,6 +69,7 @@ Set Asymmetric Patterns.
       kappa_equivalence E (LetRec v1 f1) (LetRec v2 f2)
 
     | Id_equiv : forall x E, kappa_equivalence E (@Id var1 x) Id
+    | Typecast_equiv : forall x y E, kappa_equivalence E (@Typecast var1 x y) (Typecast x y)
 
     | Delay_equiv : forall x E, kappa_equivalence E (@Delay var1 x) Delay
 
@@ -78,6 +79,13 @@ Set Asymmetric Patterns.
       kappa_equivalence nil f1 f2
       ->
       kappa_equivalence E (RemoveContext f1) (RemoveContext f2)
+
+    | CallModule_equiv : forall x y E
+      (f1 : Module (kappa var1 x y))
+      (f2 : Module (kappa var2 x y)),
+      kappa_equivalence nil (module_body f1) (module_body f2)
+      ->
+      kappa_equivalence E (CallModule f1) (CallModule f2)
     .
 
   End Equivalence.
