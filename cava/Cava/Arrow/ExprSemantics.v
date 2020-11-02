@@ -56,8 +56,10 @@ Section combinational_semantics.
     (i: denote_kind (remove_rightmost_unit x)): (denote_kind y) :=
     interp_combinational' expr (apply_rightmost_tt x i).
 
+  (*
   Axiom expression_evaluation_is_arrow_evaluation: forall i o (expr: Kappa i o), forall (x: denote_kind i),
     combinational_evaluation' (closure_conversion expr) x =
     interp_combinational' (expr _) x.
+  *)
 
 End combinational_semantics.

@@ -137,7 +137,7 @@ Ltac reduce_kind_eq :=
 Declare Scope kind_scope.
 Bind Scope kind_scope with Kind.
 
-Notation "<< x >>" := (x) : kind_scope.
+Notation "<< x >>" := (x) (only parsing) : kind_scope.
 Notation "<< x , .. , y , z >>" := (Tuple x .. (Tuple y z )  .. ) : kind_scope.
 
 Fixpoint arg_length (ty: Kind) :=
