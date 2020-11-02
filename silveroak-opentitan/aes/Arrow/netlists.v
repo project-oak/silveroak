@@ -41,7 +41,7 @@ Definition sbox_lut_netlist :=
   makeNetlist sbox_lut_interface (build_netlist (closure_conversion (aes_sbox SboxLut))).
 
 Definition unrolled_cipher_flat_interface
-  := combinationalInterface "sbox_lut"
+  := combinationalInterface "flat_cipher"
      ( mkPort "op_i" Kind.Bit
      , (mkPort "data_i" (Kind.Vec Kind.Bit 128)
      , mkPort "key_i" (Kind.Vec Kind.Bit 256)))
