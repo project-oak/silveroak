@@ -24,68 +24,45 @@
 # Clean everything:
 # make clean
 
-.PHONY: all third_party cava tests monad-examples \
-	arrow-examples silveroak-opentitan clean
+SUBDIRS = third_party cava tests monad-examples arrow-examples silveroak-opentitan monad-examples/xilinx tests/xilinx
 
-all:	third_party cava tests monad-examples \
-	arrow-examples silveroak-opentitan
+.PHONY: all coq clean subdirs $(SUBDIRS)
 
-# Third party dependencies should be built first.
-third_party:
-	cd third_party && $(MAKE)
+# if the "make clean" or "make coq" targets were called, pass these to subdirs
+ifeq ($(MAKECMDGOALS), coq)
+SUBDIRTARGET="coq"
+else ifeq ($(MAKECMDGOALS), clean)
+SUBDIRTARGET="clean"
+endif
 
-# The cava targert builds the core Cava DSL.
-cava: third_party
-	cd cava && $(MAKE)
+all: subdirs
 
-# The cava-coq targert builds the core Cava DSL (Coq proofs only).
-cava-coq: third_party
-	cd cava && $(MAKE) coq
+subdirs: $(SUBDIRS)
 
-# The cava target runs the unit tests for the Cava DSL
+$(SUBDIRS):
+	$(MAKE) -C $@ $(SUBDIRTARGET)
+
+coq: $(SUBDIRS)
+
+clean: $(SUBDIRS)
+
+# cava depends on third_party
+cava : third_party
+
+# tests depends on cava
 tests: cava
-	cd tests && $(MAKE)
-	cd tests/xilinx && $(MAKE) extraction
 
-# The monad-example builds and tests the monad examples (except for
-# the Xilinx-specific targets)
-monad-examples: cava
-	cd monad-examples && $(MAKE)
-	cd monad-examples/xilinx && $(MAKE) extraction
+# tests/xilinx depends on tests
+tests/xilinx : cava tests
 
-# The monad-examples-coq target builds the Coq proofs for monad examples
-monad-examples-coq: cava-coq
-	cd monad-examples && $(MAKE) coq
+# monad-examples depends on cava
+monad-examples : cava
 
-# The arrow-example builds and tests the arrow examples (except for
-# the Xilinx-specific targets)
+# monad-examples/xilinx depends on monad-examples
+monad-examples/xilinx : monad-examples
+
+# arrow-examples depends on cava
 arrow-examples: cava
-	cd arrow-examples && $(MAKE)
 
-# The arrow-example builds Coq proofs for the arrow examples (except for the
-# Xilinx-specific targets)
-arrow-examples-coq: cava-coq
-	cd arrow-examples && $(MAKE) coq
-
-# The silveroak-opentitan builds the targets developed for the
-# Silver Oak re-implementation of some OpenTitan blocks.
-silveroak-opentitan: cava
-	cd silveroak-opentitan && $(MAKE)
-
-# The silveroak-opentitan builds the Coq proofs for the Silver Oak
-# re-implementation of some OpenTitan blocks.
-silveroak-opentitan-coq: cava-coq
-	cd silveroak-opentitan && $(MAKE) coq
-
-# The coq target builds only the Coq proofs.
-coq: cava-coq arrow-examples-coq monad-examples-coq silveroak-opentitan-coq
-
-clean:
-	cd third_party && $(MAKE) clean
-	cd cava && $(MAKE) clean
-	cd tests && $(MAKE) clean
-	cd tests/xilinx && $(MAKE) clean
-	cd monad-examples && $(MAKE) clean
-	cd monad-examples/xilinx && $(MAKE) clean
-	cd arrow-examples && $(MAKE) clean
-	cd silveroak-opentitan && $(MAKE) clean
+# silveroak-opentitan depends on cava
+silveroak-opentitan : cava
