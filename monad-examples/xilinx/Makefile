@@ -46,6 +46,9 @@ Makefile.coq:	_CoqProject
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
+%.vo:		Makefile.coq
+		$(MAKE) -f Makefile.coq $@
+
 ExamplesSV:	coq ExamplesSV.hs
 		ghc -O2 --make ExamplesSV.hs
 		./ExamplesSV

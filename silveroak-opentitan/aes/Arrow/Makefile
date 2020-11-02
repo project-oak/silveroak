@@ -24,6 +24,9 @@ Makefile.coq:
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
+%.vo:		Makefile.coq
+		$(MAKE) -f Makefile.coq $@
+
 clean:
 		-@$(MAKE) -f Makefile.coq clean
 		git clean -Xfd
