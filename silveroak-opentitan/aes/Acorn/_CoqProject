@@ -1,3 +1,4 @@
+INSTALLDEFAULTROOT = AcornAes
 -R . AcornAes
 -R ../Spec AesSpec
 -R ../../../cava/Cava Cava

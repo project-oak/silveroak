@@ -1,3 +1,4 @@
+INSTALLDEFAULTROOT = AesSpec
 -R . AesSpec
 -R ../../../cava/Cava Cava
 -R ../../../third_party/coq-ext-lib/theories ExtLib
