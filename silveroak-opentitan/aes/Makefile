@@ -14,17 +14,32 @@
 # limitations under the License.
 #
 
-all:
-	cd Spec && $(MAKE)
-	cd Arrow && $(MAKE)
-	cd Acorn && $(MAKE)
+SUBDIRS = Spec Arrow Acorn
 
-coq:
-	cd Spec && $(MAKE) coq
-	cd Arrow && $(MAKE) coq
-	cd Acorn && $(MAKE) coq
+.PHONY: all coq clean subdirs $(SUBDIRS)
 
-clean:
-	cd Spec && $(MAKE) clean
-	cd Arrow && $(MAKE) clean
-	cd Acorn && $(MAKE) clean
+all: subdirs
+
+subdirs: $(SUBDIRS)
+
+$(SUBDIRS):
+	$(MAKE) -C $@ $(SUBDIRTARGET)
+
+coq: $(SUBDIRS)
+
+clean: $(SUBDIRS)
+
+# pass the 'coq' target down to subdirs
+coq: SUBDIRTARGET=coq
+
+# pass the 'clean' target down to subdirs
+clean: SUBDIRTARGET=clean
+
+# strip off the first subdir name, then call make on that subdir with the specified .vo target
+# for example, "make X/Y/Foo.vo" will call "make -C X Y/Foo.vo"
+%.vo:
+	$(MAKE) -C $(DIR) $(TARGET)
+
+%.vo: DIR=$(firstword $(subst /, , $@))
+
+%.vo: TARGET=$(subst $(DIR)/,,$@)
