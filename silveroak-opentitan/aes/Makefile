@@ -43,3 +43,9 @@ clean: SUBDIRTARGET=clean
 %.vo: DIR=$(firstword $(subst /, , $@))
 
 %.vo: TARGET=$(subst $(DIR)/,,$@)
+
+# Arrow depends on Spec
+Arrow: Spec
+
+# Acorn depends on Spec
+Acorn: Spec
