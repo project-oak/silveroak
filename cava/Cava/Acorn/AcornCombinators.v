@@ -148,7 +148,7 @@ Section WithCava.
                foldLM f ks st'
     end.
 
-  Lemma foldLM_fold_right {A B}
+  Lemma foldLM_fold_right {m} `{Monad m} {A B}
         (bind_ext : forall {A B} x (f g : A -> m B),
             (forall y, f y = g y) -> bind x f = bind x g)
         (f : B -> A -> m B) (input : list A) (accum : B) :
@@ -163,7 +163,8 @@ Section WithCava.
     rewrite IHinput. reflexivity.
   Qed.
 
-  Lemma foldLM_ident_fold_left {A B} (f : B -> A -> ident B) ls b :
+  Lemma foldLM_ident_fold_left {m} `{Monad m}
+        {A B} (f : B -> A -> ident B) ls b :
     unIdent (foldLM f ls b) = List.fold_left (fun b a => unIdent (f b a)) ls b.
   Proof.
     revert b; induction ls; [ reflexivity | ].
