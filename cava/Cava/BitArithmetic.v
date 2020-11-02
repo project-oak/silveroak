@@ -293,10 +293,6 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma nat_of_bits_sized_n: forall n (v : nat),
-      bitvec_to_nat (nat_to_bitvec_sized n v) = v.
-Admitted.
-
 Lemma Pos_size_nat_nonzero (p : positive) : 0 < Pos.size_nat p.
 Proof. destruct p; cbn; lia. Qed.
 
