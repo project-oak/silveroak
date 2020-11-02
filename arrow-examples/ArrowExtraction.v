@@ -14,10 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Extraction.
+From Coq Require Import extraction.Extraction.
 From Coq Require Import extraction.ExtrHaskellZInteger.
 From Coq Require Import extraction.ExtrHaskellString.
-From Coq Require Import ExtrHaskellBasic.
+From Coq Require Import extraction.ExtrHaskellBasic.
 From Coq Require Import extraction.ExtrHaskellNatInteger.
 
 Require Import coqutil.Z.HexNotation.
@@ -26,14 +26,14 @@ Set Extraction Optimize.
 
 Extraction Language Haskell.
 
-Require Import Arrow.Combinators.
-Require Import SyntaxExamples.
-Require Import Mux2_1.
-Require Import UnsignedAdder.
-Require Import Counter.
-Require Import Fir.
+Require Import Cava.Arrow.Combinators.
+Require Import ArrowExamples.SyntaxExamples.
+Require Import ArrowExamples.Mux2_1.
+Require Import ArrowExamples.UnsignedAdder.
+Require Import ArrowExamples.Counter.
+Require Import ArrowExamples.Fir.
 
-Require Import ArrowAdderTutorial.
+Require Import ArrowExamples.ArrowAdderTutorial.
 
 Extraction Library Combinators.
 Extraction Library SyntaxExamples.

@@ -16,7 +16,8 @@
 
 From Cava Require Import Arrow.ArrowExport.
 
-From Coq Require Import Strings.String Bvector List NArith Nat Lia Plus.
+From Coq Require Import Strings.String Bool.Bvector Lists.List NArith.NArith
+     Init.Nat micromega.Lia Arith.Plus.
 Import ListNotations.
 Import EqNotations.
 

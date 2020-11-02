@@ -16,7 +16,7 @@
 
 
 From Cava Require Import Arrow.ArrowExport.
-From Coq Require Import Lists.List NArith String.
+From Coq Require Import Lists.List NArith.NArith Strings.String.
 Import ListNotations.
 
 Local Open Scope string_scope.
