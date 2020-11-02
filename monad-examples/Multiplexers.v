@@ -13,20 +13,18 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool.Bool.
-From Coq Require Import Ascii String.
+From Coq Require Import Bool.Bool NArith.NArith.
+From Coq Require Import Strings.Ascii Strings.String.
 
 From Coq Require Import Lists.List.
 Import ListNotations.
-
-Require Import Omega.
 
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
 
-From Coq Require Vector.
+From Coq Require Vectors.Vector.
 From Coq Require Import Bool.Bvector.
 Import Vector.VectorNotations.
 

@@ -15,12 +15,11 @@
 (****************************************************************************)
 
 From Coq Require Import Program.Basics.
-From Coq Require Import Bool.Bool.
-From Coq Require Import Ascii String.
-From Coq Require Import NArith.
-Require Import Omega.
+From Coq Require Import Bool.Bool Init.Nat.
+From Coq Require Import Strings.Ascii Strings.String.
+From Coq Require Import NArith.NArith.
 
-From Coq Require Import Vector.
+From Coq Require Import Vectors.Vector.
 From Coq Require Import Bool.Bvector.
 Import VectorNotations.
 
