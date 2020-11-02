@@ -46,6 +46,16 @@ coq: SUBDIRTARGET=coq
 # pass the 'clean' target down to subdirs
 clean: SUBDIRTARGET=clean
 
+# strip off the first subdir name, then call make on that subdir with the specified .vo target
+# for example, "make cava/X/Y/Foo.vo" will call "make -C cava X/Y/Foo.vo"
+%.vo:
+	$(MAKE) -C $(DIR) $(TARGET)
+
+%.vo: DIR=$(firstword $(subst /, , $@))
+
+%.vo: TARGET=$(subst $(DIR)/,,$@)
+
+
 # cava depends on third_party
 cava : third_party
 
