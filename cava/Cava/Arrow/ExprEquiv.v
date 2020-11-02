@@ -70,8 +70,6 @@ Set Asymmetric Patterns.
 
     | Id_equiv : forall x E, kappa_equivalence E (@Id var1 x) Id
 
-    | Delay_equiv : forall x E, kappa_equivalence E (@Delay var1 x) Delay
-
     | RemoveContext_equiv : forall x y E
       (f1 : kappa var1 x y)
       (f2 : kappa var2 x y),

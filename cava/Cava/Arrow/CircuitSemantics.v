@@ -52,8 +52,7 @@ Fixpoint combinational_evaluation' {i o}
   | Structural (Swap x y) => fun '(x,y) => (y,x)
   | Structural (Copy x) => fun x => (x,x)
 
-  | Primitive p => primitive_semantics p
-  | Delay _ => fun _ => kind_default _
+  | Primitive p => primitive_interp p
   | RewriteTy x y => rewrite_or_default x y
 
   end.
@@ -65,7 +64,7 @@ Fixpoint circuit_state {i o} (c: Circuit i o) : Type :=
   | Second x y z f => circuit_state f
   | Loopr x y z f => circuit_state f
   | Loopl x y z f => circuit_state f
-  | Delay o => denote_kind o
+  | Primitive (Delay o) => denote_kind o
   | _ => Datatypes.unit
   end.
 
@@ -76,7 +75,7 @@ Fixpoint default_state {i o} (c: Circuit i o) : circuit_state c :=
   | Second x y z f => default_state f
   | Loopr x y z f => default_state f
   | Loopl x y z f => default_state f
-  | Delay o => kind_default o
+  | Primitive (Delay o) => kind_default o
   | _ => tt
   end.
 
@@ -116,8 +115,8 @@ Fixpoint circuit_evaluation' {i o} (c: Circuit i o)
   | Structural (Swap x y) => fun '(x,y) _ => ((y,x), tt)
   | Structural (Copy x) => fun x _ => ((x,x),tt)
 
-  | Delay o => fun x s => (s, x)
-  | Primitive p => fun x _ => (primitive_semantics p x, tt)
+  | Primitive (Delay o) => fun x s => (s, fst x)
+  | Primitive p => fun x _ => (primitive_interp p x, tt)
 
   | RewriteTy x y => fun v _ => (rewrite_or_default x y v, tt)
   end.

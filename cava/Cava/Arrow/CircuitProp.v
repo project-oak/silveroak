@@ -24,7 +24,7 @@ Import VectorNotations.
 
 Fixpoint no_delays {i o} (c: Circuit i o): bool :=
   match c with
-  | Delay _ => false
+  | Primitive (Delay _) => false
   | Composition _ _ _ f g => no_delays f && no_delays g
   | First _ _ _ f => no_delays f
   | Second _ _ _ f => no_delays f
@@ -45,7 +45,7 @@ Fixpoint no_loops {i o} (c: Circuit i o): bool :=
 
 Fixpoint min_buffering {i o} (n: nat) (c: Circuit i o): nat :=
   match c with
-  | Delay _ => S n
+  | Primitive (Delay _) => S n
   | Composition _ _ _ f g => min (min_buffering n f) (min_buffering n g)
   | First _ _ _ f => min_buffering n f
   | Second _ _ _ f => min_buffering n f
@@ -98,7 +98,7 @@ Section example.
   Proof. vm_compute. intros. inversion x3. Qed.
 
   Example not_gate_is_combinational :
-    is_combinational (Primitive (P1 Not)).
+    is_combinational (Primitive Not).
   Proof.  simply_combinational. Qed.
 End example.
 

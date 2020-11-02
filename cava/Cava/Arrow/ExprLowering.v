@@ -146,7 +146,7 @@ and returns the variable at an index *)
 Fixpoint extract_nth (ctxt: list Kind) (ty: Kind) (x: nat)
   : (as_kind ctxt) ~[CircuitArrow]~> ty :=
   match ctxt with
-  | [] => drop >>> Primitive (P0 (Constant _ (kind_default _)))
+  | [] => drop >>> Primitive (Constant _(kind_default _))
   | ty' :: ctxt' =>
     if x =? (length ctxt')
     then second drop >>> cancelr >>> RewriteTy ty' ty
@@ -207,17 +207,7 @@ removes the list Kind, we first need to copy the list Kind. *)
   >>> closure_conversion' ctxt e1
 
 | ExprSyntax.Primitive p =>
-  match p with
-  | P0 p =>
-    second drop >>> cancelr >>> (CircuitArrow.Primitive (P0 p))
-  | P1 p =>
-    second drop >>> cancelr >>> cancelr >>> (CircuitArrow.Primitive (P1 p))
-  | P2 p =>
-    second drop >>> cancelr >>> second cancelr >>> (CircuitArrow.Primitive (P2 p))
-  end
-
-| ExprSyntax.Delay =>
-    second drop >>> cancelr >>> cancelr >>> CircuitArrow.Delay _
+    second drop >>> cancelr >>> (CircuitArrow.Primitive p)
 
 | ExprSyntax.Id =>
     second drop >>> cancelr >>> id
@@ -249,7 +239,7 @@ removes the list Kind, we first need to copy the list Kind. *)
             (*  z * ctx *)
               uncancell >>>
             (* u * z * ctx *)
-              v' >>> Delay _
+              v' >>> uncancelr >>> CircuitArrow.Primitive (Delay _)
             )
             (* z * z' *)
             >>> swap
@@ -313,6 +303,11 @@ Lemma lower_comp': forall x y z (e2: kappa _ x y) (e1: kappa _ y z) ctxt c1 c2,
   >>> first c2
   >>> c1.
 Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
+
+Lemma lower_prim: forall p ctxt,
+  closure_conversion' ctxt (ExprSyntax.Primitive p)
+  = second drop >>> cancelr >>> (CircuitArrow.Primitive p).
+Proof. reflexivity. Qed.
 
 Lemma lower_id: forall x ctxt,
   closure_conversion' (i:=x) ctxt ExprSyntax.Id
@@ -438,7 +433,6 @@ match expr with
 | Abs f => max_context_size' (size+1) (f tt)
 | App f e => max (max_context_size' size e) (max_context_size' size f)
 | Comp e1 e2 => max (max_context_size' size e1) (max_context_size' size e2)
-| ExprSyntax.Delay => size
 | ExprSyntax.Primitive p => size
 | ExprSyntax.Id => size
 | RemoveContext f => max size (max_context_size' 0 f)

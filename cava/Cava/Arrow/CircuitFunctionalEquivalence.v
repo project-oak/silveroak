@@ -162,7 +162,7 @@ Ltac circuit_spec_instantiate :=
     lazymatch goal with
     | |- context [combinational_evaluation' (CircuitArrow.Primitive _)] =>
       (* simplify combinational_evaluation' if there's a primitive *)
-      cbv [combinational_evaluation' primitive_semantics]
+      cbv [combinational_evaluation' primitive_interp]
     | |- _ = @resize_default _ ?n ?d ?n ?v =>
       (* change resize_default to identity function if it appears *)
       transitivity v; [ | rewrite resize_default_id; reflexivity ]
