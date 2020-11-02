@@ -19,6 +19,7 @@ From Coq Require Import Arith.Arith Logic.Eqdep_dec Vectors.Vector micromega.Lia
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
 From Aes Require Import pkg mix_columns sbox sub_bytes shift_rows cipher_round.
+From Aes Require Import aes_test.
 
 Import VectorNotations.
 Import KappaNotation.
@@ -247,7 +248,6 @@ Definition unrolled_cipher_flat
     ]>.
 
 Section tests.
-  From Aes Require Import aes_test.
 
   Definition unrolled_cipher' mode key data :=
     interp_combinational (unrolled_cipher_flat SboxCanright _) (mode,(data,key)).

@@ -19,6 +19,7 @@ From Coq Require Import Arith.Arith Logic.Eqdep_dec Vectors.Vector micromega.Lia
 From Cava Require Import BitArithmetic VectorUtils Arrow.ArrowExport.
 
 From Aes Require Import pkg mix_columns sbox sub_bytes shift_rows cipher_round.
+From Aes Require Import aes_test.
 
 Require Import coqutil.Z.HexNotation.
 
@@ -162,7 +163,6 @@ Definition unrolled_cipher_naive
     ]>.
 
 Section tests.
-  From Aes Require Import aes_test.
 
   Definition unrolled_cipher_naive_ mode key data :=
     interp_combinational (unrolled_cipher_naive SboxCanright _) (mode,(data,key)).
