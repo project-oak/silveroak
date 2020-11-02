@@ -30,6 +30,10 @@ From Cava Require Import Arrow.ArrowExport.
 Extraction Library CavaNotation.
 Extraction Library HexNotation.
 
+Require Import Arrow.Combinators.
+
+Extraction Library Combinators.
+
 Require Import
   Aes.sbox
   Aes.mix_single_column
