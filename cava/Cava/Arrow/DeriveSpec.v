@@ -24,12 +24,11 @@ Require Import Cava.Arrow.ArrowExport.
 Ltac kappa_spec_begin :=
   intros; cbn [interp_combinational'];
   repeat match goal with
-         | |- context [primitive_semantics ?p] =>
-           let x := constr:(primitive_semantics p) in
-           let y := (eval cbv [primitive_semantics] in x) in
+         | |- context [primitive_interp ?p] =>
+           let x := constr:(primitive_interp p) in
+           let y := (eval cbv [primitive_interp] in x) in
            progress change x with y
-         | _ => progress cbn [denote_kind primitive_input primitive_output
-           nullary_semantics unary_semantics binary_semantics]
+         | _ => progress cbn [denote_kind primitive_input primitive_output]
          end; fold denote_kind in *.
 
 Create HintDb kappa_interp discriminated.

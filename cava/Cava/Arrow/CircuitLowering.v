@@ -186,122 +186,11 @@ Definition index' n (o: Kind): denote (Vector o n) -> denote (vec_index n) -> st
 
 Local Notation "'kleisli'" := (kleisli_arrow (state CavaState) _)(at level 100).
 
-Definition nullary_primitive_netlist x (p: NullaryPrimitive x)
-  : state CavaState (denote x) :=
-  match p with
-  | Constant ty val => ret (const_wire ty val)
-  | ConstantVec n ty val =>
-    ret (const_wire (Vector ty n) (resize_default (kind_default _) n (Vector.of_list val)))
-  | EmptyVec o => ret ([])
-  end.
-
-Definition unary_primitive_netlist x y (p: UnaryPrimitive x y)
-  : denote x -> state CavaState (denote y) :=
-  match p with
-  | Primitives.Not => fun i =>
-      o <- newWire ;;
-      addInstance (Not i o) ;;
-      ret o
-  | BufGate => fun i =>
-      o <- newWire ;;
-      addInstance (Buf i o) ;;
-      ret o
-  | Uncons n o => fun v => ret ((Vector.hd v, Vector.tl v))
-  | Unsnoc n o => fun v => ret (unsnoc v)
-  | Primitives.Slice n x y o => fun v => slice' n x y o v
-  | Primitives.Split n m o => fun x => ret (Vector.splitat n x)
-  | Lut n f => fun is =>
-      let seq := seq 0 (2^n) in
-      let f' := NaryFunctions.nuncurry bool bool n f in
-      let powers := map
-        (fun p => let bv := Ndigits.N2Bv_sized n (N.of_nat p) in
-                  2^(N.of_nat p) * N.b2n (f' (vec_to_nprod _ n bv))
-        )%N
-        seq in
-      let config := fold_left N.add powers 0%N in
-      let component_name := ("LUT" ++ string_of_uint (Nat.to_uint n))%string in
-      let inputs := map
-        (fun '(i, n) => ("I" ++ string_of_uint (Nat.to_uint i), USignal n))%string
-        (combine seq (to_list is)) in
-      o <- newWire ;;
-      let component :=
-        Component
-        component_name [("INIT", HexLiteral (2^n) config)]
-        (("O", USignal o) :: inputs) in
-      addInstance component;;
-      ret o
-
-  | Primitives.Fst X Y => fun x => ret (fst x)
-  | Primitives.Snd _ _ => fun y => ret (snd y)
-  end.
-
-Definition binary_primitive_netlist x y z (p: BinaryPrimitive x y z)
-  : denote x -> denote y -> state CavaState (denote z) :=
-  match p with
-  | Primitives.Pair _ _ => fun x y => ret (x,y)
-  | Primitives.And => fun x y =>
-      o <- newWire ;;
-      addInstance (And x y o) ;;
-      ret o
-  | Primitives.Nand => fun x y =>
-      o <- newWire ;;
-      addInstance (Nand x y o) ;;
-      ret o
-  | Primitives.Or => fun x y =>
-      o <- newWire ;;
-      addInstance (Or x y o) ;;
-      ret o
-  | Primitives.Nor => fun x y =>
-      o <- newWire ;;
-      addInstance (Nor x y o) ;;
-      ret o
-  | Primitives.Xor => fun i0 i1 =>
-      o <- newWire ;;
-      addInstance (Xor i0 i1 o) ;;
-      ret o
-  | Primitives.Xnor => fun i0 i1 =>
-      o <- newWire ;;
-      addInstance (Xnor i0 i1 o) ;;
-      ret o
-  | Primitives.Xorcy => fun i0 i1 =>
-      o <- newWire ;;
-      addInstance (Component "XORCY" []
-      [("O", USignal o); ("CI", USignal i0); ("LI", USignal i1)]) ;;
-      ret o
-  | Muxcy => fun s '(ci, di) =>
-      o <- newWire ;;
-      addInstance ( Component "MUXCY" []
-      [("O", USignal o); ("S", USignal s); ("CI", USignal ci); ("DI", USignal di)]) ;;
-      ret o
-  | Primitives.UnsignedAdd m n s => fun x y =>
-      sum <- newVector _ s ;;
-      addInstance (UnsignedAdd (VecLit x) (VecLit y) sum) ;;
-      ret (Vector.map (IndexConst sum) (vseq 0 s))
-  | Primitives.UnsignedSub s => fun x y =>
-      sum <- newVector _ s ;;
-      addInstance (UnsignedSubtract (VecLit x) (VecLit y) sum) ;;
-      ret (Vector.map (IndexConst sum) (vseq 0 s))
-  | Index n o => fun x y => index' _ _ x y
-  | Primitives.Cons n o => fun x y =>
-    ret ((x :: y)%vector)
-  | Snoc n o => fun x y => ret (snoc x y)
-  | Primitives.Concat n m o => fun x y =>
-    ret ((x ++ y)%vector)
-  end.
-
-Definition primitive_netlist (p: CircuitPrimitive)
-  : denote (primitive_input p) -> state CavaState (denote (primitive_output p)) :=
-  match p with
-  | P0 p => fun _ => nullary_primitive_netlist _ p
-  | P1 p => fun x => unary_primitive_netlist _ _ p x
-  | P2 p => fun x => binary_primitive_netlist _ _ _ p (fst x) (snd x)
-  end.
-
 Fixpoint build_netlist' {i o}
   (c: Circuit i o)
   : denote i ->
     state CavaState (denote o) :=
-    match c as c' in Circuit i' o' return denote i' -> state CavaState (denote o') with
+  match c with
   | Composition _ _ _ f g => build_netlist' f >=> build_netlist' g
   | First x y z f => first (Arrow:=kleisli) (build_netlist' f)
   | Second x y z f => second (Arrow:=kleisli) (build_netlist' f)
@@ -329,11 +218,97 @@ Fixpoint build_netlist' {i o}
       map2M (fun x y => AssignSignal x y) Z z z' ;;
       ret y
 
-  | Delay o => fun x =>
+  | Primitive (Constant ty val) => fun _ => ret (const_wire ty val)
+  | Primitive (ConstantVec n ty val) => fun _ =>
+    ret (const_wire (Vector ty n) (resize_default (kind_default _) n (Vector.of_list val)))
+  | Primitive (Delay o) => fun x =>
       y <- fresh_wire _ ;;
-      map2M (fun x y => DelayBit x y) _ x y ;;
+      map2M (fun x y => DelayBit x y) _ (fst x) y ;;
       ret y
-  | Primitive p => primitive_netlist p
+  | Primitive Primitives.Not => fun i =>
+      o <- newWire ;;
+      addInstance (Not (fst i) o) ;;
+      ret o
+  | Primitive BufGate => fun i =>
+      o <- newWire ;;
+      addInstance (Buf (fst i) o) ;;
+      ret o
+  | Primitive (Uncons n o) => fun v => ret ((Vector.hd (fst v), Vector.tl (fst v)))
+  | Primitive (Unsnoc n o) => fun v => ret (unsnoc (fst v))
+  | Primitive (Primitives.Slice n x y o) => fun v => slice' n x y o (fst v)
+  | Primitive (Primitives.Split n m o) => fun x => ret (Vector.splitat n (fst x))
+  | Primitive (EmptyVec o) => fun _ => ret ([])
+  | Primitive (Lut n f) => fun '(is,_) =>
+      let seq := seq 0 (2^n) in
+      let f' := NaryFunctions.nuncurry bool bool n f in
+      let powers := map
+        (fun p => let bv := Ndigits.N2Bv_sized n (N.of_nat p) in
+                  2^(N.of_nat p) * N.b2n (f' (vec_to_nprod _ n bv))
+        )%N
+        seq in
+      let config := fold_left N.add powers 0%N in
+      let component_name := ("LUT" ++ string_of_uint (Nat.to_uint n))%string in
+      let inputs := map
+        (fun '(i, n) => ("I" ++ string_of_uint (Nat.to_uint i), USignal n))%string
+        (combine seq (to_list is)) in
+      o <- newWire ;;
+      let component :=
+        Component
+        component_name [("INIT", HexLiteral (2^n) config)]
+        (("O", USignal o) :: inputs) in
+      addInstance component;;
+      ret o
+
+  | Primitive (Primitives.Fst X Y) => fun '((x,y),_) => ret x
+  | Primitive (Primitives.Snd _ _) => fun '((x,y),_) => ret y
+  | Primitive (Primitives.Pair _ _) => fun '(x,(y,_)) => ret (x,y)
+
+  | Primitive Primitives.And => fun '(x,(y,_)) =>
+      o <- newWire ;;
+      addInstance (And x y o) ;;
+      ret o
+  | Primitive Primitives.Nand => fun '(x,(y,_)) =>
+      o <- newWire ;;
+      addInstance (Nand x y o) ;;
+      ret o
+  | Primitive Primitives.Or => fun '(x,(y,_)) =>
+      o <- newWire ;;
+      addInstance (Or x y o) ;;
+      ret o
+  | Primitive Primitives.Nor => fun '(x,(y,_)) =>
+      o <- newWire ;;
+      addInstance (Nor x y o) ;;
+      ret o
+  | Primitive Primitives.Xor => fun '(i0,(i1,_)) =>
+      o <- newWire ;;
+      addInstance (Xor i0 i1 o) ;;
+      ret o
+  | Primitive Primitives.Xnor => fun '(i0,(i1,_)) =>
+      o <- newWire ;;
+      addInstance (Xnor i0 i1 o) ;;
+      ret o
+  | Primitive Primitives.Xorcy => fun '(i0, (i1, _)) =>
+      o <- newWire ;;
+      addInstance (Component "XORCY" [] [("O", USignal o); ("CI", USignal i0); ("LI", USignal i1)]) ;;
+      ret o
+  | Primitive Muxcy => fun '(s,((ci, di), _)) =>
+      o <- newWire ;;
+      addInstance ( Component "MUXCY" [] [("O", USignal o); ("S", USignal s); ("CI", USignal ci); ("DI", USignal di)]) ;;
+      ret o
+  | Primitive (Primitives.UnsignedAdd m n s) => fun '(x,(y,_)) =>
+      sum <- newVector _ s ;;
+      addInstance (UnsignedAdd (VecLit x) (VecLit y) sum) ;;
+      ret (Vector.map (IndexConst sum) (vseq 0 s))
+  | Primitive (Primitives.UnsignedSub s) => fun '(x, (y,_)) =>
+      sum <- newVector _ s ;;
+      addInstance (UnsignedSubtract (VecLit x) (VecLit y) sum) ;;
+      ret (Vector.map (IndexConst sum) (vseq 0 s))
+  | Primitive (Index n o) => fun '(v,(i,_)) => index' _ _ v i
+  | Primitive (Primitives.Cons n o) => fun '(x, (v,_)) =>
+    ret ((x :: v)%vector)
+  | Primitive (Snoc n o) => fun '(v, (x,_)) => ret (snoc v x)
+  | Primitive (Primitives.Concat n m o) => fun '(x, (y, _)) =>
+    ret ((x ++ y)%vector)
   | RewriteTy x y => fun v => ret (rewrite_or_default x y v)
 end.
 

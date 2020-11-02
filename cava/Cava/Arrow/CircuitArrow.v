@@ -64,8 +64,6 @@ Inductive Circuit: Kind -> Kind -> Type :=
   | Loopr: forall x y z, Circuit (Tuple x z) (Tuple y z) -> Circuit x y
   | Loopl: forall x y z, Circuit (Tuple z x) (Tuple z y) -> Circuit x y
 
-  | Delay: forall x, Circuit x x
-
   | RewriteTy: forall x y, Circuit x y
   .
 
@@ -102,5 +100,5 @@ Ltac match_compose X :=
   | (Composition _ _ ?Y ?Z) => idtac
   end.
 
-Definition high : Unit ~> Bit := Primitive (P0 (Constant Bit true)).
-Definition low : Unit ~> Bit := Primitive (P0 (Constant Bit false)).
+Definition high : Unit ~> Bit := Primitive (Constant Bit true).
+Definition low : Unit ~> Bit := Primitive (Constant Bit false).

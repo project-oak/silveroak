@@ -138,13 +138,12 @@ Ltac kequiv_step :=
   | |- kappa_equivalence _ (Comp _ _) (Comp _ _) => eapply Compose_equiv
   | |- @kappa_equivalence ?var1 ?var2 ?x ?y ?E (Primitive ?p) (Primitive _) =>
     change (@kappa_equivalence
-              var1 var2 (extended_prim_input p) (primitive_output p)
+              var1 var2 (primitive_input p) (primitive_output p)
               E (Primitive p) (Primitive p));
     eapply Prim_equiv
   | |- kappa_equivalence _ (Let _ _) (Let _ _) => eapply Let_equiv
   | |- kappa_equivalence _ (LetRec _ _) (LetRec _ _) => eapply Letrec_equiv
   | |- kappa_equivalence _ Id Id => eapply Id_equiv
-  | |- kappa_equivalence _ Delay Delay => eapply Delay_equiv
   | |- kappa_equivalence _ (RemoveContext _) (RemoveContext _) =>
     eapply RemoveContext_equiv
   end; intros.
@@ -202,9 +201,7 @@ Section CombinatorWf.
   Hint Resolve equality_Wf : Wf.
 
   Lemma mux_item_Wf A : Wf (@Combinators.mux_item A).
-  Proof. cbv [Combinators.mux_item]; prove_Wf; [ ].
-    eapply bitwise_Wf; prove_Wf.
-  Qed.
+  Proof. cbv [Combinators.mux_item]; prove_Wf. Qed.
   Hint Resolve mux_item_Wf : Wf.
 
   Lemma curry_Wf A B C args c : Wf c -> Wf (@Combinators.curry A B C args c).

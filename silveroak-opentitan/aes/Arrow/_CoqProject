@@ -18,6 +18,7 @@ unrolled_naive_cipher.v
 unrolled_opentitan_cipher.v
 cipher_round.v
 key_expand.v
+cipher_control.v
 netlists.v
 aes_test.v
 CipherRoundProperties.v

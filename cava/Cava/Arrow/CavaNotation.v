@@ -59,84 +59,84 @@ Module KappaNotation.
   using the tuple destructuring notation *)
   Definition proj1_tuple1 ty: CircuitPrimitive :=
     match ty with
-    | Tuple l r => P1 (Fst l r)
-    | _ => P1 (Fst Unit Unit)
+    | Tuple l r => Fst l r
+    | _ => Fst Unit Unit
     end.
 
   Notation "'let' '( x , y ) = a 'in' b" := (
     Let a (fun a_binder =>
-    Let (App (Primitive (P1 (Fst _ _))) (Var a_binder)) (fun x =>
-      Let (App (Primitive (P1 (Snd _ _))) (Var a_binder)) (fun y => b))))
+    Let (App (Primitive (Fst _ _)) (Var a_binder)) (fun x =>
+      Let (App (Primitive (Snd _ _)) (Var a_binder)) (fun y => b))))
     ( in custom expr at level 1, x constr, y constr, b at level 7) : kappa_scope.
 
   Notation "'let' '( x , y ) : ty = a 'in' b" := (
     Let a (fun a_binder =>
     Let (App (Primitive (proj1_tuple1 ty)) (Var a_binder)) (fun x =>
-      Let (App (Primitive (P1 (Snd _ _ ))) (Var a_binder)) (fun y => b))))
+      Let (App (Primitive (Snd _ _ )) (Var a_binder)) (fun y => b))))
     ( in custom expr at level 1, x constr, y constr, ty constr at level 7, b at level 7) : kappa_scope.
 
   Notation "'let' '( x , y , z ) = a 'in' b" := (
     Let a (fun a_binder =>
-    Let (App (Primitive (P1 (Fst _ _ ))) (Var a_binder)) (fun x =>
-      Let (App (Primitive (P1 (Snd _ _ ))) (Var a_binder)) (fun a_tl_binder =>
-        Let (App (Primitive (P1 (Fst _ _ ))) (Var a_tl_binder)) (fun y =>
-          Let (App (Primitive (P1 (Snd _ _ ))) (Var a_tl_binder)) (fun z =>
+    Let (App (Primitive (Fst _ _ )) (Var a_binder)) (fun x =>
+      Let (App (Primitive (Snd _ _ )) (Var a_binder)) (fun a_tl_binder =>
+        Let (App (Primitive (Fst _ _ )) (Var a_tl_binder)) (fun y =>
+          Let (App (Primitive (Snd _ _ )) (Var a_tl_binder)) (fun z =>
           b))))))
     ( in custom expr at level 1, x constr, y constr, z constr, b at level 7) : kappa_scope.
   Notation "'let' '( x , y , z , w ) = a 'in' b" := (
     Let a (fun a_binder =>
-    Let (App (Primitive (P1 (Fst _ _ ))) (Var a_binder)) (fun x =>
-      Let (App (Primitive (P1 (Snd _ _ ))) (Var a_binder)) (fun a_tl_binder =>
-        Let (App (Primitive (P1 (Fst _ _ ))) (Var a_tl_binder)) (fun y =>
-            Let (App (Primitive (P1 (Snd _ _ ))) (Var a_tl_binder)) (fun a_tl_tl_binder =>
-              Let (App (Primitive (P1 (Fst _ _ ))) (Var a_tl_tl_binder)) (fun z =>
-                Let (App (Primitive (P1 (Snd _ _ ))) (Var a_tl_tl_binder)) (fun w =>
+    Let (App (Primitive (Fst _ _ )) (Var a_binder)) (fun x =>
+      Let (App (Primitive (Snd _ _ )) (Var a_binder)) (fun a_tl_binder =>
+        Let (App (Primitive (Fst _ _ )) (Var a_tl_binder)) (fun y =>
+            Let (App (Primitive (Snd _ _ )) (Var a_tl_binder)) (fun a_tl_tl_binder =>
+              Let (App (Primitive (Fst _ _ )) (Var a_tl_tl_binder)) (fun z =>
+                Let (App (Primitive (Snd _ _ )) (Var a_tl_tl_binder)) (fun w =>
           b))))))))
     ( in custom expr at level 1, x constr, y constr, z constr, w constr, b at level 7) : kappa_scope.
   Notation "'let' '( x1 , x2 , x3 , x4 , x5 ) = a 'in' b" := (
     Let a (fun binder1 =>
-    Let (App (Primitive (P1 (Fst _ _ ))) (Var binder1)) (fun x1 =>
-      Let (App (Primitive (P1 (Snd _ _ ))) (Var binder1)) (fun binder2 =>
-        Let (App (Primitive (P1 (Fst _ _ ))) (Var binder2)) (fun x2 =>
-            Let (App (Primitive (P1 (Snd _ _ ))) (Var binder2)) (fun binder3 =>
-              Let (App (Primitive (P1 (Fst _ _ ))) (Var binder3)) (fun x3 =>
-                Let (App (Primitive (P1 (Snd _ _ ))) (Var binder3)) (fun binder4 =>
-                  Let (App (Primitive (P1 (Fst _ _ ))) (Var binder4)) (fun x4 =>
-                    Let (App (Primitive (P1 (Snd _ _ ))) (Var binder4)) (fun x5 =>
+    Let (App (Primitive (Fst _ _ )) (Var binder1)) (fun x1 =>
+      Let (App (Primitive (Snd _ _ )) (Var binder1)) (fun binder2 =>
+        Let (App (Primitive (Fst _ _ )) (Var binder2)) (fun x2 =>
+            Let (App (Primitive (Snd _ _ )) (Var binder2)) (fun binder3 =>
+              Let (App (Primitive (Fst _ _ )) (Var binder3)) (fun x3 =>
+                Let (App (Primitive (Snd _ _ )) (Var binder3)) (fun binder4 =>
+                  Let (App (Primitive (Fst _ _ )) (Var binder4)) (fun x4 =>
+                    Let (App (Primitive (Snd _ _ )) (Var binder4)) (fun x5 =>
           b))))))))))
     ( in custom expr at level 1
     , x1 constr, x2 constr, x3 constr, x4 constr, x5 constr
     , b at level 7) : kappa_scope.
   Notation "'let' '( x1 , x2 , x3 , x4 , x5 , x6 ) = a 'in' b" := (
     Let a (fun binder1 =>
-    Let (App (Primitive (P1 (Fst _ _ ))) (Var binder1)) (fun x1 =>
-      Let (App (Primitive (P1 (Snd _ _ ))) (Var binder1)) (fun binder2 =>
-        Let (App (Primitive (P1 (Fst _ _ ))) (Var binder2)) (fun x2 =>
-            Let (App (Primitive (P1 (Snd _ _ ))) (Var binder2)) (fun binder3 =>
-              Let (App (Primitive (P1 (Fst _ _ ))) (Var binder3)) (fun x3 =>
-                Let (App (Primitive (P1 (Snd _ _ ))) (Var binder3)) (fun binder4 =>
-                  Let (App (Primitive (P1 (Fst _ _ ))) (Var binder4)) (fun x4 =>
-                    Let (App (Primitive (P1 (Snd _ _ ))) (Var binder4)) (fun binder5 =>
-                      Let (App (Primitive (P1 (Fst _ _ ))) (Var binder5)) (fun x5 =>
-                        Let (App (Primitive (P1 (Snd _ _ ))) (Var binder5)) (fun x6 =>
+    Let (App (Primitive (Fst _ _ )) (Var binder1)) (fun x1 =>
+      Let (App (Primitive (Snd _ _ )) (Var binder1)) (fun binder2 =>
+        Let (App (Primitive (Fst _ _ )) (Var binder2)) (fun x2 =>
+            Let (App (Primitive (Snd _ _ )) (Var binder2)) (fun binder3 =>
+              Let (App (Primitive (Fst _ _ )) (Var binder3)) (fun x3 =>
+                Let (App (Primitive (Snd _ _ )) (Var binder3)) (fun binder4 =>
+                  Let (App (Primitive (Fst _ _ )) (Var binder4)) (fun x4 =>
+                    Let (App (Primitive (Snd _ _ )) (Var binder4)) (fun binder5 =>
+                      Let (App (Primitive (Fst _ _ )) (Var binder5)) (fun x5 =>
+                        Let (App (Primitive (Snd _ _ )) (Var binder5)) (fun x6 =>
           b))))))))))))
     ( in custom expr at level 1
     , x1 constr, x2 constr, x3 constr, x4 constr, x5 constr, x6 constr
     , b at level 7) : kappa_scope.
   Notation "'let' '( x1 , x2 , x3 , x4 , x5 , x6 , x7 ) = a 'in' b" := (
     Let a (fun binder1 =>
-    Let (App (Primitive (P1 (Fst _ _ ))) (Var binder1)) (fun x1 =>
-      Let (App (Primitive (P1 (Snd _ _ ))) (Var binder1)) (fun binder2 =>
-        Let (App (Primitive (P1 (Fst _ _ ))) (Var binder2)) (fun x2 =>
-            Let (App (Primitive (P1 (Snd _ _ ))) (Var binder2)) (fun binder3 =>
-              Let (App (Primitive (P1 (Fst _ _ ))) (Var binder3)) (fun x3 =>
-                Let (App (Primitive (P1 (Snd _ _ ))) (Var binder3)) (fun binder4 =>
-                  Let (App (Primitive (P1 (Fst _ _ ))) (Var binder4)) (fun x4 =>
-                    Let (App (Primitive (P1 (Snd _ _ ))) (Var binder4)) (fun binder5 =>
-                      Let (App (Primitive (P1 (Fst _ _ ))) (Var binder5)) (fun x5 =>
-                        Let (App (Primitive (P1 (Snd _ _ ))) (Var binder5)) (fun binder6 =>
-                            Let (App (Primitive (P1 (Fst _ _ ))) (Var binder6)) (fun x6 =>
-                              Let (App (Primitive (P1 (Snd _ _ ))) (Var binder6)) (fun x7 =>
+    Let (App (Primitive (Fst _ _ )) (Var binder1)) (fun x1 =>
+      Let (App (Primitive (Snd _ _ )) (Var binder1)) (fun binder2 =>
+        Let (App (Primitive (Fst _ _ )) (Var binder2)) (fun x2 =>
+            Let (App (Primitive (Snd _ _ )) (Var binder2)) (fun binder3 =>
+              Let (App (Primitive (Fst _ _ )) (Var binder3)) (fun x3 =>
+                Let (App (Primitive (Snd _ _ )) (Var binder3)) (fun binder4 =>
+                  Let (App (Primitive (Fst _ _ )) (Var binder4)) (fun x4 =>
+                    Let (App (Primitive (Snd _ _ )) (Var binder4)) (fun binder5 =>
+                      Let (App (Primitive (Fst _ _ )) (Var binder5)) (fun x5 =>
+                        Let (App (Primitive (Snd _ _ )) (Var binder5)) (fun binder6 =>
+                            Let (App (Primitive (Fst _ _ )) (Var binder6)) (fun x6 =>
+                              Let (App (Primitive (Snd _ _ )) (Var binder6)) (fun x7 =>
           b))))))))))))))
     ( in custom expr at level 1
     , x1 constr, x2 constr, x3 constr, x4 constr, x5 constr, x6 constr, x7 constr
@@ -145,17 +145,17 @@ Module KappaNotation.
   Notation "'let' '( x1 , x2 , x3 , x4 , x5 , x6 , x7 ) : ty = a 'in' b" := (
     Let a (fun binder1 =>
     Let (App (Primitive (proj1_tuple1 ty)) (Var binder1)) (fun x1 =>
-      Let (App (Primitive (P1 (Snd _ _ ))) (Var binder1)) (fun binder2 =>
-        Let (App (Primitive (P1 (Fst _ _ ))) (Var binder2)) (fun x2 =>
-            Let (App (Primitive (P1 (Snd _ _ ))) (Var binder2)) (fun binder3 =>
-              Let (App (Primitive (P1 (Fst _ _ ))) (Var binder3)) (fun x3 =>
-                Let (App (Primitive (P1 (Snd _ _ ))) (Var binder3)) (fun binder4 =>
-                  Let (App (Primitive (P1 (Fst _ _ ))) (Var binder4)) (fun x4 =>
-                    Let (App (Primitive (P1 (Snd _ _ ))) (Var binder4)) (fun binder5 =>
-                      Let (App (Primitive (P1 (Fst _ _ ))) (Var binder5)) (fun x5 =>
-                        Let (App (Primitive (P1 (Snd _ _ ))) (Var binder5)) (fun binder6 =>
-                            Let (App (Primitive (P1 (Fst _ _ ))) (Var binder6)) (fun x6 =>
-                              Let (App (Primitive (P1 (Snd _ _ ))) (Var binder6)) (fun x7 =>
+      Let (App (Primitive (Snd _ _ )) (Var binder1)) (fun binder2 =>
+        Let (App (Primitive (Fst _ _ )) (Var binder2)) (fun x2 =>
+            Let (App (Primitive (Snd _ _ )) (Var binder2)) (fun binder3 =>
+              Let (App (Primitive (Fst _ _ )) (Var binder3)) (fun x3 =>
+                Let (App (Primitive (Snd _ _ )) (Var binder3)) (fun binder4 =>
+                  Let (App (Primitive (Fst _ _ )) (Var binder4)) (fun x4 =>
+                    Let (App (Primitive (Snd _ _ )) (Var binder4)) (fun binder5 =>
+                      Let (App (Primitive (Fst _ _ )) (Var binder5)) (fun x5 =>
+                        Let (App (Primitive (Snd _ _ )) (Var binder5)) (fun binder6 =>
+                            Let (App (Primitive (Fst _ _ )) (Var binder6)) (fun x6 =>
+                              Let (App (Primitive (Snd _ _ )) (Var binder6)) (fun x7 =>
           b))))))))))))))
     ( in custom expr at level 1
     , x1 constr, x2 constr, x3 constr, x4 constr, x5 constr, x6 constr, x7 constr
@@ -165,19 +165,19 @@ Module KappaNotation.
   Notation "'let' '( x1 , x2 , x3 , x4 , x5 , x6 , x7 , x8 ) : ty = a 'in' b" := (
     Let a (fun binder1 =>
     Let (App (Primitive (proj1_tuple1 ty)) (Var binder1)) (fun x1 =>
-      Let (App (Primitive (P1 (Snd _ _ ))) (Var binder1)) (fun binder2 =>
-        Let (App (Primitive (P1 (Fst _ _ ))) (Var binder2)) (fun x2 =>
-            Let (App (Primitive (P1 (Snd _ _ ))) (Var binder2)) (fun binder3 =>
-              Let (App (Primitive (P1 (Fst _ _ ))) (Var binder3)) (fun x3 =>
-                Let (App (Primitive (P1 (Snd _ _ ))) (Var binder3)) (fun binder4 =>
-                  Let (App (Primitive (P1 (Fst _ _ ))) (Var binder4)) (fun x4 =>
-                    Let (App (Primitive (P1 (Snd _ _ ))) (Var binder4)) (fun binder5 =>
-                      Let (App (Primitive (P1 (Fst _ _ ))) (Var binder5)) (fun x5 =>
-                        Let (App (Primitive (P1 (Snd _ _ ))) (Var binder5)) (fun binder6 =>
-                            Let (App (Primitive (P1 (Fst _ _ ))) (Var binder6)) (fun x6 =>
-                              Let (App (Primitive (P1 (Snd _ _ ))) (Var binder6)) (fun binder7 =>
-                                  Let (App (Primitive (P1 (Fst _ _ ))) (Var binder7)) (fun x7 =>
-                                    Let (App (Primitive (P1 (Snd _ _ ))) (Var binder7)) (fun x8 =>
+      Let (App (Primitive (Snd _ _ )) (Var binder1)) (fun binder2 =>
+        Let (App (Primitive (Fst _ _ )) (Var binder2)) (fun x2 =>
+            Let (App (Primitive (Snd _ _ )) (Var binder2)) (fun binder3 =>
+              Let (App (Primitive (Fst _ _ )) (Var binder3)) (fun x3 =>
+                Let (App (Primitive (Snd _ _ )) (Var binder3)) (fun binder4 =>
+                  Let (App (Primitive (Fst _ _ )) (Var binder4)) (fun x4 =>
+                    Let (App (Primitive (Snd _ _ )) (Var binder4)) (fun binder5 =>
+                      Let (App (Primitive (Fst _ _ )) (Var binder5)) (fun x5 =>
+                        Let (App (Primitive (Snd _ _ )) (Var binder5)) (fun binder6 =>
+                            Let (App (Primitive (Fst _ _ )) (Var binder6)) (fun x6 =>
+                              Let (App (Primitive (Snd _ _ )) (Var binder6)) (fun binder7 =>
+                                  Let (App (Primitive (Fst _ _ )) (Var binder7)) (fun x7 =>
+                                    Let (App (Primitive (Snd _ _ )) (Var binder7)) (fun x8 =>
           b))))))))))))))))
     ( in custom expr at level 1
     , x1 constr, x2 constr, x3 constr, x4 constr, x5 constr, x6 constr, x7 constr, x8 constr
@@ -189,7 +189,7 @@ Module KappaNotation.
   Notation "! x" := (RemoveContext (x _))(in custom expr at level 2, x global) : kappa_scope.
   Notation "!( x )" := (RemoveContext (x _)) (in custom expr, x constr) : kappa_scope.
 
-  Notation tupleHelper := (fun x y => App (App (Primitive (P2 (Pair _ _))) x) y).
+  Notation tupleHelper := (fun x y => App (App (Primitive (Pair _ _)) x) y).
   Notation "( x , .. , y , z )" := (
     (tupleHelper x .. (tupleHelper y z) .. )
     )
@@ -197,24 +197,24 @@ Module KappaNotation.
 
   (* Pre defined functions *)
 
-  Notation "'fst'" := (Primitive (P1 (Fst _ _ ))) (in custom expr at level 4) : kappa_scope.
-  Notation "'snd'" := (Primitive (P1 (Snd _ _ ))) (in custom expr at level 4) : kappa_scope.
+  Notation "'fst'" := (Primitive (Fst _ _ )) (in custom expr at level 4) : kappa_scope.
+  Notation "'snd'" := (Primitive (Snd _ _ )) (in custom expr at level 4) : kappa_scope.
 
-  Notation "'not'" := (Primitive (P1 Not)) (in custom expr at level 4) : kappa_scope.
-  Notation "'and'" := (Primitive (P2 And)) (in custom expr at level 4) : kappa_scope.
-  Notation "'nand'" := (Primitive (P2 Nand)) (in custom expr at level 4) : kappa_scope.
-  Notation "'or'" := (Primitive (P2 Or)) (in custom expr at level 4) : kappa_scope.
-  Notation "'nor'" := (Primitive (P2 Nor)) (in custom expr at level 4) : kappa_scope.
-  Notation "'xor'" := (Primitive (P2 Xor)) (in custom expr at level 4) : kappa_scope.
-  Notation "'xnor'" := (Primitive (P2 Xnor)) (in custom expr at level 4) : kappa_scope.
-  Notation "'buf'" := (Primitive (P1 BufGate)) (in custom expr at level 4) : kappa_scope.
-  Notation "'delay'" := (ExprSyntax.Delay) (in custom expr at level 4) : kappa_scope.
+  Notation "'not'" := (Primitive Not) (in custom expr at level 4) : kappa_scope.
+  Notation "'and'" := (Primitive And) (in custom expr at level 4) : kappa_scope.
+  Notation "'nand'" := (Primitive Nand) (in custom expr at level 4) : kappa_scope.
+  Notation "'or'" := (Primitive Or) (in custom expr at level 4) : kappa_scope.
+  Notation "'nor'" := (Primitive Nor) (in custom expr at level 4) : kappa_scope.
+  Notation "'xor'" := (Primitive Xor) (in custom expr at level 4) : kappa_scope.
+  Notation "'xnor'" := (Primitive Xnor) (in custom expr at level 4) : kappa_scope.
+  Notation "'buf'" := (Primitive BufGate) (in custom expr at level 4) : kappa_scope.
+  Notation "'delay'" := (Primitive (Delay _)) (in custom expr at level 4) : kappa_scope.
 
-  Notation "'xorcy'" := (Primitive (P2 Xorcy)) (in custom expr at level 4) : kappa_scope.
-  Notation "'muxcy'" := (Primitive (P2 Muxcy)) (in custom expr at level 4) : kappa_scope.
+  Notation "'xorcy'" := (Primitive Xorcy) (in custom expr at level 4) : kappa_scope.
+  Notation "'muxcy'" := (Primitive Muxcy) (in custom expr at level 4) : kappa_scope.
 
-  Definition unsigned_add2 {var a b} := Primitive (var:=var) (P2 (UnsignedAdd a b (S (max a b)))).
-  Definition unsigned_add1 {var a} := Primitive (var:=var) (P2 (UnsignedAdd a a a)).
+  Definition unsigned_add2 {var a b} := Primitive (var:=var) (UnsignedAdd a b (S (max a b))).
+  Definition unsigned_add1 {var a} := Primitive (var:=var) (UnsignedAdd a a a).
 
   Notation "x + y" :=
       (App (App unsigned_add2 x) y)
@@ -222,26 +222,26 @@ Module KappaNotation.
   Notation "x +% y" :=
       (App (App unsigned_add1 x) y)
       (in custom expr at level 4) : kappa_scope.
-  Notation "x - y" := (App (App ((Primitive (P2 (UnsignedSub _)))) x) y) (in custom expr at level 4) : kappa_scope.
-  Notation "'unsigned_add' a b c" := ((Primitive (P2 (UnsignedAdd a b c))))
+  Notation "x - y" := (App (App ((Primitive (UnsignedSub _))) x) y) (in custom expr at level 4) : kappa_scope.
+  Notation "'unsigned_add' a b c" := ((Primitive (UnsignedAdd a b c)))
     (in custom expr at level 4,
     a constr at level 4,
     b constr at level 4,
     c constr at level 4
     ) : kappa_scope.
-  Notation "'unsigned_sub' a" := ((Primitive (P2 (UnsignedSub a))))
+  Notation "'unsigned_sub' a" := ((Primitive (UnsignedSub a)))
     (in custom expr at level 4,
     a constr at level 4
     ) : kappa_scope.
 
-  Notation "'[]'" := (Primitive (P0 (EmptyVec _))) (in custom expr at level 4) : kappa_scope.
-  Notation "x ++ y" := (App (App (Primitive (P2 (Concat _ _))) x) y) (in custom expr at level 4) : kappa_scope.
-  Notation "x :: y" := (App (App (Primitive (P2 (Cons _ _))) x) y) (in custom expr at level 7, right associativity) : kappa_scope.
+  Notation "'[]'" := ((Primitive (EmptyVec _))) (in custom expr at level 4) : kappa_scope.
+  Notation "x ++ y" := (App (App ((Primitive (Concat _ _))) x) y) (in custom expr at level 4) : kappa_scope.
+  Notation "x :: y" := (App (App ((Primitive (Cons _ _))) x) y) (in custom expr at level 7, right associativity) : kappa_scope.
 
-  Notation "'true''" := (Primitive (P0 (Constant Bit true))) (in custom expr at level 2) : kappa_scope.
-  Notation "'false''" := (Primitive (P0 (Constant Bit false))) (in custom expr at level 2) : kappa_scope.
+  Notation "'true''" := ((Primitive (Constant Bit true))) (in custom expr at level 2) : kappa_scope.
+  Notation "'false''" := ((Primitive (Constant Bit false))) (in custom expr at level 2) : kappa_scope.
 
-  Notation "# x" := (Primitive (P0 (Constant (Vector Bit _) (N2Bv_sized _ x))))%N
+  Notation "# x" := ((Primitive (Constant (Vector Bit _) (N2Bv_sized _ x))))%N
     (in custom expr at level 2,
     x constr at level 4, no associativity) : kappa_scope.
 
@@ -249,35 +249,35 @@ Module KappaNotation.
   Notation "{ x , y , .. , z }" :=
     (
       let ls := (cons x (cons y .. (cons z nil) ..)) in
-      (Primitive (P0
+      (Primitive
       (ConstantVec
         (List.length ls)
         (Vector Bit _)
         (List.map (N2Bv_sized _) ls)
-      ))))%list%N
+      )))%list%N
     (in custom expr at level 2,
     x constr at level 4, y constr at level 4, z constr at level 4, no associativity) : kappa_scope.
 
-  Notation "v [ x ]" := (App (App (Primitive (P2 (Index _ _))) v) x)
+  Notation "v [ x ]" := (App (App ((Primitive (Index _ _))) v) x)
     ( in custom expr at level 2
     , x at level 7
     ) : kappa_scope.
   Notation "v [: x : y ]" :=
-        (App (Primitive (P1 (Slice _ (x <: nat) (y <: nat) _))) v)
+        (App ((Primitive (Slice _ (x <: nat) (y <: nat) _))) v)
     (in custom expr at level 2,
     (* v constr, *)
     x constr at level 7,
     y constr at level 7
     ) : kappa_scope.
 
-  Notation "'index'" := (Primitive (P2 (Index _ _))) (in custom expr at level 4) : kappa_scope.
-  Notation "'empty'" := (Primitive (P0 EmptyVec)) (in custom expr at level 4) : kappa_scope.
-  Notation "'cons'" := (Primitive (P2 (Cons _ _))) (in custom expr at level 4) : kappa_scope.
-  Notation "'snoc'" := (Primitive (P2 (Snoc _ _))) (in custom expr at level 4) : kappa_scope.
-  Notation "'concat'" := (Primitive (P2 (Concat _ _ _))) (in custom expr at level 4) : kappa_scope.
-  Notation "'split_at' x" := (Primitive (P1 (Split x _ _))) (in custom expr at level 4, x constr at level 4) : kappa_scope.
-  Notation "'uncons'" := (Primitive (P1 (Uncons _ _))) (in custom expr at level 4) : kappa_scope.
-  Notation "'unsnoc'" := (Primitive (P1 (Unsnoc _ _))) (in custom expr at level 4) : kappa_scope.
+  Notation "'index'" := ((Primitive (Index _ _))) (in custom expr at level 4) : kappa_scope.
+  Notation "'empty'" := ((Primitive EmptyVec)) (in custom expr at level 4) : kappa_scope.
+  Notation "'cons'" := ((Primitive (Cons _ _))) (in custom expr at level 4) : kappa_scope.
+  Notation "'snoc'" := ((Primitive (Snoc _ _))) (in custom expr at level 4) : kappa_scope.
+  Notation "'concat'" := ((Primitive (Concat _ _ _))) (in custom expr at level 4) : kappa_scope.
+  Notation "'split_at' x" := ((Primitive (Split x _ _))) (in custom expr at level 4, x constr at level 4) : kappa_scope.
+  Notation "'uncons'" := ((Primitive (Uncons _ _))) (in custom expr at level 4) : kappa_scope.
+  Notation "'unsnoc'" := ((Primitive (Unsnoc _ _))) (in custom expr at level 4) : kappa_scope.
 
 End KappaNotation.
 

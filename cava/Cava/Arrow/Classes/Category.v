@@ -1,7 +1,6 @@
 From Coq Require Import Setoid Classes.Morphisms.
 
-Reserved Notation "x ~> y" (at level 90).
-
+Reserved Infix "~>" (at level 90, no associativity).
 Reserved Infix "~[ C ]~>" (at level 90, no associativity).
 Reserved Infix ">>>" (at level 53, right associativity).
 Reserved Infix "=M=" (at level 54, no associativity).

@@ -26,10 +26,10 @@ Notation "|^ x" :=
   (App (RemoveContext (foldr1 <[\a b => xor a b]> _)) x)
   (in custom expr at level 5, no associativity) : kappa_scope.
 Notation "x && y" :=
-  (App (App (Primitive (P2 And)) x) y)
+  (App (App (Primitive And) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x || y" :=
-  (App (App (Primitive (P2 And)) x) y)
+  (App (App (Primitive And) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x & y" :=
   (App (App (RemoveContext (bitwise <[and]>  _)) x) y)

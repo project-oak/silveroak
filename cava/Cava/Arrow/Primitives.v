@@ -14,9 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Reserved Notation "x ~> y" (at level 90).
-Reserved Notation "x ~> y ~> z" (at level 90, y at next level).
-
 From Coq Require Import NaryFunctions Arith NArith.
 From Coq Require Import Vectors.Vector.
 From Coq Require Import Bool.Bool.
@@ -28,126 +25,149 @@ Import VectorNotations.
 
 From Cava Require Export Arrow.ArrowKind.
 
+Local Notation "[ x ~~~> .. ~~~> y ]" := (Tuple x .. (Tuple y Unit) ..).
+
 Notation vec_index n := (Vector Bit (Nat.log2_up n)).
 
-Inductive NullaryPrimitive : Kind -> Type :=
-| Constant ty (v: denote_kind ty):             NullaryPrimitive ty
-| ConstantVec n ty (v: list (denote_kind ty)): NullaryPrimitive (Vector ty n)
-| EmptyVec ty:                                 NullaryPrimitive (Vector ty 0).
-
-Inductive UnaryPrimitive : Kind -> Kind -> Type:=
-| BufGate:                              Bit ~> Bit
-| Lut (n: nat) (f: bool^^n --> bool):   Vector Bit n ~> Bit
-| Not:                                  UnaryPrimitive Bit Bit
-| Fst (x y: Kind):                      Tuple x y ~> x
-| Snd (x y: Kind):                      Tuple x y ~> y
-| Uncons (n: nat) (ty: Kind):           Vector ty (S n) ~> Tuple ty (Vector ty n)
-| Unsnoc (n: nat) (ty: Kind):           Vector ty (S n) ~> Tuple (Vector ty n) ty
-| Slice (n: nat) (x y: nat) (ty: Kind): Vector ty n ~> Vector ty (x - y + 1)
-| Split (n m: nat) (ty: Kind):          Vector ty (n+m) ~> Tuple (Vector ty n) (Vector ty m)
-where "x ~> y" := (UnaryPrimitive x y).
-
-Inductive BinaryPrimitive : Kind -> Kind -> Kind -> Type :=
-| And:                          Bit ~> Bit ~> Bit
-| Nand:                         Bit ~> Bit ~> Bit
-| Or:                           Bit ~> Bit ~> Bit
-| Nor:                          Bit ~> Bit ~> Bit
-| Xor:                          Bit ~> Bit ~> Bit
-| Xnor:                         Bit ~> Bit ~> Bit
-| Xorcy:                        Bit ~> Bit ~> Bit
-| Muxcy:                        Bit ~> Tuple Bit Bit ~> Bit
-| Pair (x y: Kind):             x ~> y ~> Tuple x y
-| UnsignedAdd (a b c: nat):     Vector Bit a ~> Vector Bit b ~> Vector Bit c
-| UnsignedSub (a: nat):         Vector Bit a ~> Vector Bit a ~> Vector Bit a
-| Index (n: nat) (ty: Kind):    Vector ty n ~> vec_index n ~> ty
-| Cons (n: nat) (ty: Kind):     ty ~> Vector ty n ~> Vector ty (S n)
-| Snoc (n: nat) (ty: Kind):     Vector ty n ~> ty ~> Vector ty (S n)
-| Concat (n m: nat) (ty: Kind): Vector ty n ~> Vector ty m ~> Vector ty (n + m)
-where "x ~> y ~> z" := (BinaryPrimitive x y z).
-
+(* TODO(blaxill): split type into e.g. unary binary etc ops? *)
 Inductive CircuitPrimitive :=
-| P0 : forall x, NullaryPrimitive x -> CircuitPrimitive
-| P1 : forall x y, UnaryPrimitive x y -> CircuitPrimitive
-| P2 : forall x y z, BinaryPrimitive x y z -> CircuitPrimitive.
+  | Constant (ty: Kind) (v: denote_kind ty)
+  | ConstantVec (n:nat) (ty: Kind) (v: list (denote_kind ty))
+  | Delay (o: Kind)
+  | BufGate
 
-Definition primitive_input (p: CircuitPrimitive): Kind :=
-  match p with
-  | P0 _ _ => Unit
-  | P1 x _ _ => x
-  | P2 x y _ _ => Tuple x y
+  | Lut (n: nat) (f: bool^^n --> bool)
+
+  | Not
+  | And
+  | Nand
+  | Or
+  | Nor
+  | Xor
+  | Xnor
+  | Xorcy
+  | Muxcy
+
+  | Fst (x y: Kind)
+  | Snd (x y: Kind)
+  | Pair (x y: Kind)
+
+  | UnsignedAdd (a b c: nat)
+  | UnsignedSub (a: nat)
+
+  | Index (n: nat) (o: Kind)
+  | Cons (n: nat) (o: Kind)
+  | Snoc (n: nat) (o: Kind)
+  | Concat (n m: nat) (o: Kind)
+  | Uncons (n: nat) (o: Kind)
+  | Unsnoc (n: nat) (o: Kind)
+  | Slice (n: nat) (x y: nat) (o: Kind)
+  | Split (n m: nat) (o: Kind)
+  | EmptyVec (o: Kind)
+.
+
+Definition primitive_input (op: CircuitPrimitive): Kind :=
+  match op with
+  | Constant _ _ => Unit
+  | ConstantVec _ _ _ => Unit
+  | Delay o => Tuple o Unit
+  | Not => Tuple Bit Unit
+  | BufGate => Tuple Bit Unit
+  | Uncons n o => Tuple (Vector o (S n)) Unit
+  | Unsnoc n o => Tuple (Vector o (S n)) Unit
+  | Slice n x y o => Tuple (Vector o n) Unit
+  | Split n m o => Tuple (Vector o (n+m)) Unit
+  | EmptyVec o => Unit
+  | Lut n f => Tuple (Vector Bit n) Unit
+
+  | Muxcy => [ Bit ~~~> Tuple Bit Bit ]
+  | UnsignedAdd a b c => [ Vector Bit a ~~~> Vector Bit b ]
+  | UnsignedSub a => [ Vector Bit a ~~~> Vector Bit a ]
+  | Index n o => [ Vector o n ~~~> vec_index n ]
+  | Cons n o => [ o ~~~> Vector o n ]
+  | Snoc n o => [ Vector o n ~~~> o ]
+  | Concat n m o => [ Vector o n ~~~> Vector o m ]
+
+  | Fst x y => Tuple (Tuple x y) Unit
+  | Snd x y => Tuple (Tuple x y) Unit
+  | Pair x y => [ x ~~~> y ]
+
+  | _ => [ Bit ~~~> Bit ]
   end.
 
-Definition primitive_output (p: CircuitPrimitive): Kind :=
-  match p with
-  | P0 x _ => x
-  | P1 _ x _ => x
-  | P2 _ _ x _ => x
+Definition primitive_output (op: CircuitPrimitive): Kind :=
+  match op with
+  | Constant ty _ => ty
+  | ConstantVec n ty _ => Vector ty n
+  | Delay o => o
+  | Not => Bit
+  | BufGate => Bit
+  | Uncons n o => Tuple o (Vector o n)
+  | Unsnoc n o => Tuple (Vector o n) o
+  | Slice n x y o => Vector o (x - y + 1)
+  | Split n m o => Tuple (Vector o n) (Vector o m)
+  | EmptyVec o => Vector o 0
+  | Lut n f => Bit
+
+  | Muxcy => Bit
+  | UnsignedAdd a b c => Vector Bit c
+  | UnsignedSub a => Vector Bit a
+  | Index n o => o
+  | Cons n o => Vector o (S n)
+  | Snoc n o => Vector o (S n)
+  | Concat n m o => Vector o (n + m)
+
+  | Fst x _ => x
+  | Snd _ y => y
+  | Pair x y => Tuple x y
+
+  | _ => Bit
   end.
 
-Arguments P0 {_}.
-Arguments P1 {_ _}.
-Arguments P2 {_ _ _}.
+Definition primitive_interp p: denote_kind (primitive_input p) -> denote_kind (primitive_output p) :=
+    match p as p return denote_kind (primitive_input p) -> denote_kind (primitive_output p) with
+    | Constant ty val => fun _ => val
+    | ConstantVec n ty val => fun _ => resize_default (kind_default _) n (Vector.of_list val)
+    | Delay o => fun _ => kind_default _
+    | Not => fun b => negb (fst b)
+    | BufGate => fun b => fst b
+    | Uncons n o => fun v => (hd (fst v), tl (fst v))
+    | Unsnoc n o => fun v => unsnoc (fst v)
+    | Split n m o => fun v => (Vector.splitat n (fst v))
+    | Slice n x y o => fun v => slice_by_position n x y (kind_default _) (fst v)
+    | EmptyVec o => fun _ => []
+    | Lut n f => fun '(i,_) =>
+      let f' := NaryFunctions.nuncurry bool bool n f in
+      (f' (vec_to_nprod _ _ i))
 
-Definition nullary_semantics ty (p: NullaryPrimitive ty): denote_kind ty :=
-  match p with
-  | Constant ty val => val
-  | ConstantVec n ty val => resize_default (kind_default _) n (Vector.of_list val)
-  | EmptyVec o => []
-  end.
+    | And => fun '(x,(y,_)) => x && y
+    | Nand => fun '(x,(y,_)) => negb ( x && y)
+    | Or => fun '(x,(y,_)) => orb x y
+    | Nor => fun '(x,(y,_)) => negb (orb x y)
+    | Xor => fun '(x,(y,_)) => xorb x y
+    | Xnor => fun '(x,(y,_)) => negb (xorb x y)
+    | Xorcy => fun '(x,(y,_)) => xorb x y
 
-Definition unary_semantics x y (p: UnaryPrimitive x y)
-  : denote_kind x -> denote_kind y :=
-  match p with
-  | Not => fun b => negb b
-  | BufGate => fun b => b
-  | Uncons n o => fun v => (hd v, tl v)
-  | Unsnoc n o => fun v => unsnoc v
-  | Split n m o => fun v => (Vector.splitat n v)
-  | Slice n x y o => fun v => slice_by_position n x y (kind_default _) v
-  | Lut n f => fun x =>
-    let f' := NaryFunctions.nuncurry bool bool n f in
-    (f' (vec_to_nprod _ _ x))
-  | Fst _ _ => fun x => fst x
-  | Snd _ _ => fun x => snd x
-  end.
+    | Fst _ _ => fun '((x,y),_) => x
+    | Snd _ _ => fun '((x,y),_) => y
+    | Pair _ _ => fun '(x,(y,_)) => (x,y)
 
-Definition binary_semantics x y z (p: BinaryPrimitive x y z)
-  : denote_kind x -> denote_kind y -> denote_kind z :=
-  match p with
-  | And => fun x y => x && y
-  | Nand => fun x y => negb ( x && y)
-  | Or => fun x y => orb x y
-  | Nor => fun x y => negb (orb x y)
-  | Xor => fun x y => xorb x y
-  | Xnor => fun x y => negb (xorb x y)
-  | Xorcy => fun x y => xorb x y
+    | Muxcy => fun i => (if fst i then fst (fst (snd i)) else snd (fst (snd i)))
+    | UnsignedAdd m n s => fun '(av,(bv,_)) =>
+      let a := Ndigits.Bv2N av in
+      let b := Ndigits.Bv2N bv in
+      let c := (a + b)%N in
+      (Ndigits.N2Bv_sized s c)
+    | UnsignedSub s => fun '(av, (bv, _)) =>
+      let a := Z.of_N (Ndigits.Bv2N av) in
+      let b := Z.of_N (Ndigits.Bv2N bv) in
+      let mod_const := (2^(Z.of_nat s))%Z in
+      let c := ((a - b + mod_const) mod mod_const)%Z in
+      (Ndigits.N2Bv_sized s (Z.to_N c))
+    | Index n o => fun x =>
+      nth_default (kind_default _) (bitvec_to_nat (fst (snd x))) (fst x)
+    | Cons n o => fun '(x, (v,_)) => (x :: v)
+    | Snoc n o => fun '(v, (x,_)) => snoc v x
 
-  | Pair _ _ => fun x y => (x,y)
-
-  | Muxcy => fun x y => (if x then fst y else snd y)
-  | UnsignedAdd m n s => fun av bv =>
-    let a := Ndigits.Bv2N av in
-    let b := Ndigits.Bv2N bv in
-    let c := (a + b)%N in
-    (Ndigits.N2Bv_sized s c)
-  | UnsignedSub s => fun av bv =>
-    let a := Z.of_N (Ndigits.Bv2N av) in
-    let b := Z.of_N (Ndigits.Bv2N bv) in
-    let mod_const := (2^(Z.of_nat s))%Z in
-    let c := ((a - b + mod_const) mod mod_const)%Z in
-    (Ndigits.N2Bv_sized s (Z.to_N c))
-  | Index n o => fun x y =>
-    nth_default (kind_default _) (bitvec_to_nat y) x
-  | Cons n o => fun x v => (x :: v)
-  | Snoc n o => fun v x => snoc v x
-  | Concat n m o => fun x y => Vector.append x y
-  end.
-
-Definition primitive_semantics (p: CircuitPrimitive):
-  denote_kind (primitive_input p) -> denote_kind (primitive_output p) :=
-  match p with
-  | P0 p => fun _ => nullary_semantics _ p
-  | P1 p => fun x => unary_semantics _ _ p x
-  | P2 p => fun '(x, y) => binary_semantics _ _ _ p x y
-  end.
-
+    | Concat n m o => fun '(x, (y, _)) => Vector.append x y
+    end.

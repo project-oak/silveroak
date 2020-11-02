@@ -13,13 +13,6 @@ Section vars.
   Definition natvar : Kind -> Type := fun _ => nat.
   Definition unitvar : Kind -> Type := fun _ => unit.
 
-  Definition extended_prim_input p :=
-    match p with
-    | P0 _ _ => Unit
-    | P1 x _ _ => Tuple x Unit
-    | P2 x y z _ => Tuple x (Tuple y Unit)
-    end.
-
   Section Vars.
     Variable (var: Kind -> Type).
 
@@ -28,8 +21,7 @@ Section vars.
     | Abs : forall {x y z}, (var x -> kappa y z) -> kappa (Tuple x y) z
     | App : forall {x y z}, kappa (Tuple x y) z -> kappa Unit x -> kappa y z
     | Comp: forall {x y z}, kappa y z -> kappa x y -> kappa x z
-    | Delay: forall {x}, kappa (Tuple x Unit) x
-    | Primitive : forall prim, kappa (extended_prim_input prim) (primitive_output prim)
+    | Primitive : forall prim, kappa (primitive_input prim) (primitive_output prim)
     | Let: forall {x y z}, kappa Unit x -> (var x -> kappa y z) -> kappa y z
     | LetRec : forall {x y z}, (var x -> kappa Unit x) -> (var x -> kappa y z) -> kappa y z
     | Id : forall {x}, kappa x x
@@ -58,7 +50,6 @@ Section vars.
     | Abs x _ _ f => wf_phoas_context (x :: ctxt) (f (length ctxt))
     | App _ _ _ e1 e2 => wf_phoas_context ctxt e1 /\ wf_phoas_context ctxt e2
     | Comp _ _ _ e1 e2 => wf_phoas_context ctxt e1 /\ wf_phoas_context ctxt e2
-    | Delay _ => True
     | Primitive _ => True
     | Id _ => True
     | Let x _ _ v f => wf_phoas_context (x :: ctxt) (f (length ctxt)) /\ wf_phoas_context ctxt v
@@ -74,7 +65,6 @@ Arguments Var {var _}.
 Arguments Abs {var _ _ _}.
 Arguments App {var _ _ _}.
 Arguments Comp {var _ _ _}.
-Arguments Delay {var _}.
 Arguments Primitive {var}.
 Arguments LetRec {var _ _ _}.
 Arguments Id {var _}.
