@@ -14,7 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Arith Eqdep_dec List Lia NArith Omega String.
+From Coq Require Import Arith.Arith Logic.Eqdep_dec Lists.List micromega.Lia
+     NArith.NArith Strings.String.
 From Cava Require Import Arrow.Classes.Category.
 From Cava Require Import BitArithmetic Arrow.CircuitArrow Arrow.ExprSyntax.
 From Cava Require Import Arrow.ArrowKind.

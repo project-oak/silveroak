@@ -16,7 +16,7 @@
 
 Require Import ExtLib.Structures.Monads.
 
-Require Import Nat Arith Lia.
+Require Import Init.Nat Arith.Arith micromega.Lia.
 
 Require Import Cava.Cava.
 From Cava Require Import Kind.

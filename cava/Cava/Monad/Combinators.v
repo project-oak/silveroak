@@ -14,16 +14,15 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Vector.
+From Coq Require Import Vectors.Vector.
 Import VectorNotations.
 
-From Coq Require Import Lists.List Lia.
+From Coq Require Import Lists.List micromega.Lia.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.MonadFix.
-From Coq Require Arith.PeanoNat.
-Require Import Omega.
+From Coq Require Import Arith.PeanoNat.
 
 Export MonadNotation.
 
@@ -35,7 +34,6 @@ Require Import Cava.Tactics.
 
 Generalizable All Variables.
 
-From Coq Require Import Lia.
 Require Import ExtLib.Structures.MonadLaws.
 
 Local Open Scope monad_scope.

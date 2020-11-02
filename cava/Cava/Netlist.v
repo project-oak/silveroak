@@ -19,9 +19,9 @@
    Experimental work, very much in flux, as Satnam learns Coq!
 *)
 
-Require Import Program.Basics.
-From Coq Require Import Ascii String.
-From Coq Require Import ZArith.
+Require Import Coq.Program.Basics.
+From Coq Require Import Strings.Ascii Strings.String.
+From Coq Require Import ZArith.ZArith.
 From Coq Require Import Lists.List.
 From Coq Require Import Bool.Bool.
 From Coq Require Import Numbers.NaryFunctions.
@@ -31,8 +31,6 @@ Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.StateMonad.
 Require Export ExtLib.Data.List.
 From ExtLib Require Import Structures.Traversable.
-
-Require Import Omega.
 
 Import ListNotations.
 Import MonadNotation.

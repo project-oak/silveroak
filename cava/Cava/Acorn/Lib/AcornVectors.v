@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Vector.
+From Coq Require Import Vectors.Vector.
 Import VectorNotations.
 Local Open Scope vector_scope.
 

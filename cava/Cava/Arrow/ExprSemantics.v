@@ -23,7 +23,8 @@ From Cava Require Import Arrow.ExprLowering.
 From Cava Require Import Arrow.ArrowKind.
 From Cava Require Import Arrow.Primitives.
 
-From Coq Require Import Arith NArith Lia NaryFunctions.
+From Coq Require Import Arith.Arith NArith.NArith micromega.Lia
+     Numbers.NaryFunctions.
 
 Import EqNotations.
 

@@ -15,8 +15,8 @@
 (****************************************************************************)
 
 Require Import Coq.NArith.NArith.
-From Cava.Arrow Require Import ArrowExport DeriveSpec.
-From Cava Require Import BitArithmetic Tactics VectorUtils.
+Require Import Cava.Arrow.ArrowExport Cava.Arrow.DeriveSpec.
+Require Import Cava.BitArithmetic Cava.Tactics Cava.VectorUtils.
 
 (* Functional specifications for circuit combinators *)
 Section Specs.

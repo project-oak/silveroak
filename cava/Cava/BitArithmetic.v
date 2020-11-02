@@ -18,13 +18,13 @@
 
 From Coq Require Import Bool.Bool.
 From Coq Require Import Lists.List.
-From Coq Require Import Vector.
+From Coq Require Import Vectors.Vector.
 From Coq Require Import Bool.Bvector.
 From Coq Require Import NArith.Ndigits.
 From Coq Require Import NArith.Nnat.
-From Coq Require Import Nat.
-From Coq Require Import Omega.
-From Coq Require Import Lia.
+From Coq Require Import Init.Nat.
+From Coq Require Import omega.Omega.
+From Coq Require Import micromega.Lia.
 From Coq Require Import btauto.Btauto.
 From Coq Require Import Arith.PeanoNat.
 From Coq Require Strings.HexString.

@@ -14,10 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Lists.List NaryFunctions String Arith NArith Vector Lia.
-
-Import ListNotations.
-Import VectorNotations.
+From Coq Require Import Lists.List Numbers.NaryFunctions Strings.String
+     Arith.Arith NArith.NArith Vectors.Vector micromega.Lia.
 
 From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 From Cava Require Import Arrow.ArrowKind.

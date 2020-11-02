@@ -14,7 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Lists.List NaryFunctions Arith NArith Vector Eqdep_dec.
+From Coq Require Import Lists.List Numbers.NaryFunctions Arith.Arith
+     NArith.NArith Vectors.Vector Logic.Eqdep_dec.
 From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 
 Import ListNotations.
