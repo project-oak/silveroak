@@ -38,13 +38,20 @@ $(SUBDIRS):
 
 coq: $(SUBDIRS)
 
-clean: $(SUBDIRS)
+# clean everything *except for* third_party
+clean:
+	for dir in $(filter-out third_party,$(SUBDIRS)); do \
+		$(MAKE) -C $$dir clean; \
+	done
+
+# clean everything *including* third_party
+cleanall:
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir clean; \
+	done
 
 # pass the 'coq' target down to subdirs
 coq: SUBDIRTARGET=coq
-
-# pass the 'clean' target down to subdirs
-clean: SUBDIRTARGET=clean
 
 # strip off the first subdir name, then call make on that subdir with the specified .vo target
 # for example, "make cava/X/Y/Foo.vo" will call "make -C cava X/Y/Foo.vo"
