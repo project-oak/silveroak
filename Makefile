@@ -29,13 +29,6 @@ SUBDIRS = third_party cava tests monad-examples arrow-examples silveroak-opentit
 
 .PHONY: all coq clean subdirs $(SUBDIRS)
 
-# if the "make clean" or "make coq" targets were called, pass these to subdirs
-ifeq ($(MAKECMDGOALS), coq)
-SUBDIRTARGET="coq"
-else ifeq ($(MAKECMDGOALS), clean)
-SUBDIRTARGET="clean"
-endif
-
 all: subdirs
 
 subdirs: $(SUBDIRS)
@@ -46,6 +39,12 @@ $(SUBDIRS):
 coq: $(SUBDIRS)
 
 clean: $(SUBDIRS)
+
+# pass the 'coq' target down to subdirs
+coq: SUBDIRTARGET=coq
+
+# pass the 'clean' target down to subdirs
+clean: SUBDIRTARGET=clean
 
 # cava depends on third_party
 cava : third_party
