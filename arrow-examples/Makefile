@@ -37,6 +37,9 @@ Makefile.coq:
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
+%.vo:		Makefile.coq
+		$(MAKE) -f Makefile.coq $@
+
 ArrowExamplesSV:	coq ArrowExamplesSV.hs *.hs
 			ghc --make ArrowExamplesSV.hs
 			./ArrowExamplesSV

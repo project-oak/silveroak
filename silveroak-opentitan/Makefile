@@ -14,23 +14,32 @@
 # limitations under the License.
 #
 
-all: pinmux aes
+SUBDIRS = pinmux aes
 
-pinmux:
-	cd pinmux && $(MAKE)
+.PHONY: all coq clean subdirs $(SUBDIRS)
 
-aes:
-	cd aes && $(MAKE)
+all: subdirs
 
-pinmux-coq:
-	cd pinmux && $(MAKE) coq
+subdirs: $(SUBDIRS)
 
-aes-coq:
-	cd aes && $(MAKE) coq
+$(SUBDIRS):
+	$(MAKE) -C $@ $(SUBDIRTARGET)
 
-coq: pinmux-coq aes-coq
+coq: $(SUBDIRS)
 
-clean:
-	cd pinmux && $(MAKE) clean
-	cd aes && $(MAKE) clean
+clean: $(SUBDIRS)
 
+# pass the 'coq' target down to subdirs
+coq: SUBDIRTARGET=coq
+
+# pass the 'clean' target down to subdirs
+clean: SUBDIRTARGET=clean
+
+# strip off the first subdir name, then call make on that subdir with the specified .vo target
+# for example, "make X/Y/Foo.vo" will call "make -C X Y/Foo.vo"
+%.vo:
+	$(MAKE) -C $(DIR) $(TARGET)
+
+%.vo: DIR=$(firstword $(subst /, , $@))
+
+%.vo: TARGET=$(subst $(DIR)/,,$@)

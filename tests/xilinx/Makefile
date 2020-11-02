@@ -40,6 +40,9 @@ Makefile.coq:	_CoqProject
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
+%.vo:		Makefile.coq
+		$(MAKE) -f Makefile.coq $@
+
 VivadoTestsSV:	coq VivadoTestsSV.hs
 		ghc -O2 --make VivadoTestsSV.hs
 		./VivadoTestsSV

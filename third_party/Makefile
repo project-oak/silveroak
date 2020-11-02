@@ -34,6 +34,8 @@ install: update
 	cd bedrock2 && $(MAKE) install_coqutil && $(MAKE) install_bedrock2
 	cd coq-ext-lib && $(MAKE) install
 
+coq: all
+
 clean:
 	-cd bedrock2 && $(MAKE) clean_all
 	-cd coq-ext-lib && $(MAKE) clean

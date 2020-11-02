@@ -24,6 +24,9 @@ Makefile.coq:	_CoqProject
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
+%.vo:		Makefile.coq
+		$(MAKE) -f Makefile.coq $@
+
 clean:		
 		-@$(MAKE) -f Makefile.coq clean
 		rm -rf Makefile.coq Makefile.coq.conf
