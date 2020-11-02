@@ -55,11 +55,12 @@ Section WithCava.
   Definition xor4x4V (a b : signal state) : m (signal state) :=
     zipWith xor4xV a b.
 
-  Definition cipher_round (key input: signal state) : m (signal state) :=
+  Definition cipher_round (input: signal state) (key : signal key)
+    : m (signal state) :=
     stage1 <- sub_bytes input ;;
     stage2 <- shift_rows stage1 ;;
     stage3 <- mix_columns stage2 ;;
-    xor4x4V stage3 key.
+    xor4x4V key stage3.
 
   Local Open Scope list_scope.
 
