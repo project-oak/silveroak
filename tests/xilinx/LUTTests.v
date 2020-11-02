@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Ascii String.
+From Coq Require Import Strings.Ascii Strings.String.
 From Coq Require Import Lists.List.
 Import ListNotations.
 
