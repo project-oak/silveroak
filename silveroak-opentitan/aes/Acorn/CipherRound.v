@@ -17,7 +17,7 @@
 Require Import Coq.Lists.List.
 Import ListNotations.
 
-From Coq Require Import Vector.
+From Coq Require Import Vectors.Vector.
 Import VectorNotations.
 
 Require Import ExtLib.Structures.Monads.

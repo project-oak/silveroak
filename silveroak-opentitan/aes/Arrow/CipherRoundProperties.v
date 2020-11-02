@@ -14,10 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Derive.
+From Coq Require Import derive.Derive.
 From coqutil Require Import Tactics.Tactics.
 From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec
-     Arrow.CombinatorProperties BitArithmetic Tactics VectorUtils.
+     Arrow.CombinatorProperties BitArithmetic VectorUtils.
+Require Import Cava.Tactics.
 
 From Aes Require Import PkgProperties cipher_round
      mix_columns sbox sub_bytes shift_rows.

@@ -14,9 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
+From Coq Require Import Arith.Arith Logic.Eqdep_dec Vectors.Vector micromega.Lia
+     NArith.NArith Strings.String NArith.Ndigits.
 From Cava Require Import Arrow.ArrowExport Arrow.CircuitFunctionalEquivalence
-     BitArithmetic Tactics VectorUtils.
+     BitArithmetic VectorUtils.
+Require Import Cava.Tactics.
 
 From Aes Require Import pkg sbox_canright_pkg.
 
