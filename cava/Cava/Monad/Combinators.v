@@ -75,7 +75,7 @@ Local Open Scope monad_scope.
 -------------------------------------------------------------------------------
 *)
 
-Fixpoint below `{Monad m} {A B C D E F G}
+Definition below `{Monad m} {A B C D E F G}
              (r : A * B -> m (D * G)%type)
              (s : G * C -> m (E * F)%type)
              (abc : A * (B * C)) : m ((D * E) * F)%type :=
@@ -307,7 +307,7 @@ Fixpoint treeList {T: Type} {m} `{Monad m}
            circuit aS bS
   end.
 
-Fixpoint treeWithList {T: Type} {m bit} `{Cava m bit}
+Definition treeWithList {T: Type} {m bit} `{Cava m bit}
                       (circuit: T -> T -> m T) (def: T)
                       (n : nat) (v: Vector.t T (2^(n+1))) : m T :=
   treeList circuit def n (to_list v).
