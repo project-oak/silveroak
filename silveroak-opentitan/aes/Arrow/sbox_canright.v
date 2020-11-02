@@ -127,24 +127,24 @@ Proof.
 Qed.
 
 (* TODO: fill in these axioms *)
-Axiom aes_sbox_canright_spec :
-  denote_kind (<<Bit, Vector Bit 8, Unit >>) -> denote_kind (Vector Bit 8).
-Axiom aes_sbox_canright_correct :
-  obeys_spec aes_sbox_canright aes_sbox_canright_spec.
-Axiom CircuitLaws : CategoryLaws CircuitCat.
-Existing Instance CircuitLaws.
+Section WithSboxSpec.
+  Context (aes_sbox_canright_spec :
+             denote_kind (<<Bit, Vector Bit 8, Unit >>) -> denote_kind (Vector Bit 8))
+          (aes_sbox_canright_correct :
+             obeys_spec aes_sbox_canright aes_sbox_canright_spec).
 
-Hint Resolve aes_sbox_canright_correct CIPH_FWD_correct CIPH_INV_correct
-  : circuit_spec_correctness.
+  Local Hint Resolve aes_sbox_canright_correct CIPH_FWD_correct CIPH_INV_correct
+    : circuit_spec_correctness.
 
-Derive canright_composed_spec
-       SuchThat (obeys_spec canright_composed canright_composed_spec)
-       As canright_composed_correct.
-Proof.
-  cbv [canright_composed]. circuit_spec.
-  subst canright_composed_spec.
-  instantiate_app_by_reflexivity.
-Qed.
+  Derive canright_composed_spec
+         SuchThat (obeys_spec canright_composed canright_composed_spec)
+         As canright_composed_correct.
+  Proof.
+    cbv [canright_composed]. circuit_spec.
+    subst canright_composed_spec.
+    instantiate_app_by_reflexivity.
+  Qed.
+End WithSboxSpec.
 (* Uncomment below to see derived spec for canright_composed *)
 (* Print canright_composed_spec. *)
 
