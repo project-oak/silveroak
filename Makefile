@@ -24,7 +24,8 @@
 # Clean everything:
 # make clean
 
-SUBDIRS = third_party cava tests monad-examples arrow-examples silveroak-opentitan monad-examples/xilinx tests/xilinx
+SUBDIRS = third_party cava tests monad-examples arrow-examples silveroak-opentitan \
+	  monad-examples/xilinx tests/xilinx
 
 .PHONY: all coq clean subdirs $(SUBDIRS)
 
