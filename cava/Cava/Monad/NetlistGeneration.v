@@ -14,12 +14,12 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Ascii String.
+From Coq Require Import Strings.Ascii Strings.String.
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
-From Coq Require Import Vector.
-From Coq Require Import ZArith.
+From Coq Require Import Vectors.Vector.
+From Coq Require Import ZArith.ZArith.
 
 From Coq Require Import Lists.List.
 Import ListNotations.

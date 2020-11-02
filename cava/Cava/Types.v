@@ -14,9 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Program.Basics.
-From Coq Require Import Ascii String.
-From Coq Require Import ZArith.
+Require Import Coq.Program.Basics.
+From Coq Require Import Strings.Ascii Strings.String.
+From Coq Require Import ZArith.ZArith.
 From Coq Require Import Lists.List.
 From Coq Require Import Bool.Bool.
 (* From Coq Require Import Numbers.NaryFunctions.
@@ -32,9 +32,8 @@ From Cava Require Import Kind.
 From Cava Require Import Signal.
 From Cava Require Import VectorUtils.
 
-Require Import Program.
-Require Import Omega.
-Require Import Nat Arith Lia.
+Require Import Coq.Program.Program.
+Require Import Coq.Init.Nat Coq.Arith.Arith Coq.micromega.Lia.
 
 (******************************************************************************)
 (* shape describes the types of wires going into or out of a Cava circuit,    *)

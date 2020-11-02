@@ -14,10 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+From Coq Require Import Strings.String Bool.Bvector Lists.List NArith.NArith
+     Init.Nat micromega.Lia Arith.Plus.
 From Cava.Arrow Require Import ArrowKind CavaNotation ExprSyntax.
 From Cava.Arrow.Classes Require Import Category.
 
-From Coq Require Import Strings.String Bvector List NArith Nat Lia Plus.
 Import ListNotations.
 Import EqNotations.
 

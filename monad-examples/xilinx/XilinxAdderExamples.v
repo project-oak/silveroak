@@ -15,10 +15,10 @@
 (****************************************************************************)
 
 From Coq Require Import Bool.Bool.
-From Coq Require Import NArith.
-From Coq Require Import Ascii String.
+From Coq Require Import NArith.NArith.
+From Coq Require Import Strings.Ascii Strings.String.
 From Coq Require Import Lists.List.
-From Coq Require Import ZArith.
+From Coq Require Import ZArith.ZArith.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.

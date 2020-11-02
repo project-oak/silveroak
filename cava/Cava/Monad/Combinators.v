@@ -14,16 +14,15 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Vector.
+From Coq Require Import Vectors.Vector.
 Import VectorNotations.
 
-From Coq Require Import Lists.List Lia.
+From Coq Require Import Lists.List micromega.Lia.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.MonadFix.
-From Coq Require Arith.PeanoNat.
-Require Import Omega.
+From Coq Require Import Arith.PeanoNat.
 
 Export MonadNotation.
 
@@ -35,7 +34,6 @@ Require Import Cava.Tactics.
 
 Generalizable All Variables.
 
-From Coq Require Import Lia.
 Require Import ExtLib.Structures.MonadLaws.
 
 Local Open Scope monad_scope.
@@ -77,7 +75,7 @@ Local Open Scope monad_scope.
 -------------------------------------------------------------------------------
 *)
 
-Fixpoint below `{Monad m} {A B C D E F G}
+Definition below `{Monad m} {A B C D E F G}
              (r : A * B -> m (D * G)%type)
              (s : G * C -> m (E * F)%type)
              (abc : A * (B * C)) : m ((D * E) * F)%type :=
@@ -309,7 +307,7 @@ Fixpoint treeList {T: Type} {m} `{Monad m}
            circuit aS bS
   end.
 
-Fixpoint treeWithList {T: Type} {m bit} `{Cava m bit}
+Definition treeWithList {T: Type} {m bit} `{Cava m bit}
                       (circuit: T -> T -> m T) (def: T)
                       (n : nat) (v: Vector.t T (2^(n+1))) : m T :=
   treeList circuit def n (to_list v).

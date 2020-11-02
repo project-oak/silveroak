@@ -14,10 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import NaryFunctions Arith NArith.
+From Coq Require Import Numbers.NaryFunctions Arith.Arith NArith.NArith.
 From Coq Require Import Vectors.Vector.
 From Coq Require Import Bool.Bool.
-From Coq Require Import ZArith.
+From Coq Require Import ZArith.ZArith.
 From Cava Require Import VectorUtils.
 From Cava Require Import BitArithmetic.
 

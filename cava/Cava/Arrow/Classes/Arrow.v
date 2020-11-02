@@ -188,7 +188,7 @@ Section arrowstkc.
     | First: object -> object -> object -> ArrowComposition
     | Second: object -> object -> object -> ArrowComposition.
 
-  Fixpoint arrow_input (a: ArrowStructure): object :=
+  Definition arrow_input (a: ArrowStructure): object :=
     match a with
     | Id x => x
     | Assoc x y z => (product (product x y) z)
@@ -202,7 +202,7 @@ Section arrowstkc.
     | Swap x y => product x y
     end.
 
-  Fixpoint arrow_output (a: ArrowStructure): object :=
+  Definition arrow_output (a: ArrowStructure): object :=
     match a with
     | Id x => x
     | Assoc x y z => (product x (product y z))

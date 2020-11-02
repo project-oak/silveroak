@@ -14,7 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Lists.List NaryFunctions Arith NArith Vector Eqdep_dec.
+From Coq Require Import Lists.List Numbers.NaryFunctions Arith.Arith
+     NArith.NArith Vectors.Vector Logic.Eqdep_dec.
 From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 
 Import ListNotations.
@@ -136,7 +137,7 @@ Ltac reduce_kind_eq :=
 Declare Scope kind_scope.
 Bind Scope kind_scope with Kind.
 
-Notation "<< x >>" := (x) : kind_scope.
+Notation "<< x >>" := (x) (only parsing) : kind_scope.
 Notation "<< x , .. , y , z >>" := (Tuple x .. (Tuple y z )  .. ) : kind_scope.
 
 Fixpoint arg_length (ty: Kind) :=

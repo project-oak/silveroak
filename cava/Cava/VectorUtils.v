@@ -17,11 +17,11 @@
 From Coq Require Import Lists.List.
 Import ListNotations.
 
-From Coq Require Import Vector.
+From Coq Require Import Vectors.Vector.
 Import VectorNotations.
 
-From Coq Require Import ZArith.
-From Coq Require Import Nat Arith Lia.
+From Coq Require Import ZArith.ZArith.
+From Coq Require Import Init.Nat Arith.Arith micromega.Lia.
 
 From ExtLib Require Import Structures.Applicative.
 From ExtLib Require Import Structures.Traversable.

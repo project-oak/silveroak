@@ -14,9 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Ascii String.
-From Coq Require Import ZArith.
-From Coq Require Import Vector.
+From Coq Require Import Strings.Ascii Strings.String.
+From Coq Require Import ZArith.ZArith.
+From Coq Require Import Vectors.Vector.
 
 From Cava Require Import Kind.
 From Cava Require Import VectorUtils.

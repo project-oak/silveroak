@@ -14,12 +14,12 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Pinmux.
+Require Import Pinmux.Pinmux.
 
-From Coq Require Import Extraction.
+From Coq Require Import extraction.Extraction.
 From Coq Require Import extraction.ExtrHaskellZInteger.
 From Coq Require Import extraction.ExtrHaskellString.
-From Coq Require Import ExtrHaskellBasic.
+From Coq Require Import extraction.ExtrHaskellBasic.
 From Coq Require Import extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.

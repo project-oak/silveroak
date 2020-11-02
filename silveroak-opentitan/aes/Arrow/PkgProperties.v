@@ -15,9 +15,10 @@
 (****************************************************************************)
 
 Require Import Coq.Strings.String.
-From Coq Require Import Derive.
+From Coq Require Import derive.Derive.
 From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec
-     Arrow.CombinatorProperties BitArithmetic Tactics VectorUtils.
+     Arrow.CombinatorProperties BitArithmetic VectorUtils.
+Require Import Cava.Tactics.
 
 From Aes Require Import pkg.
 

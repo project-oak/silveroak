@@ -14,17 +14,17 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Examples.
-Require Import NandGate.
-Require Import Multiplexers.
-Require Import FullAdder.
-Require Import UnsignedAdderExamples.
-Require Import AdderTree.
-Require Import Sorter.
-From Coq Require Import Extraction.
+Require Import MonadExamples.Examples.
+Require Import MonadExamples.NandGate.
+Require Import MonadExamples.Multiplexers.
+Require Import MonadExamples.FullAdder.
+Require Import MonadExamples.UnsignedAdderExamples.
+Require Import MonadExamples.AdderTree.
+Require Import MonadExamples.Sorter.
+From Coq Require Import extraction.Extraction.
 From Coq Require Import extraction.ExtrHaskellZInteger.
 From Coq Require Import extraction.ExtrHaskellString.
-From Coq Require Import ExtrHaskellBasic.
+From Coq Require Import extraction.ExtrHaskellBasic.
 From Coq Require Import extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.

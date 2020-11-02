@@ -16,7 +16,7 @@
 
 From Coq Require Import Lists.List.
 Import ListNotations.
-From Coq Require Import Vector.
+From Coq Require Import Vectors.Vector.
 From Coq Require Import Bool.Bvector.
 Import VectorNotations.
 Local Open Scope vector_scope.

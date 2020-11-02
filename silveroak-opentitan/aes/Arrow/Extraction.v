@@ -14,10 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Extraction.
+From Coq Require Import extraction.Extraction.
 From Coq Require Import extraction.ExtrHaskellZInteger.
 From Coq Require Import extraction.ExtrHaskellString.
-From Coq Require Import ExtrHaskellBasic.
+From Coq Require Import extraction.ExtrHaskellBasic.
 From Coq Require Import extraction.ExtrHaskellNatInteger.
 
 Require Import coqutil.Z.HexNotation.

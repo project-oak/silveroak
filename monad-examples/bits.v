@@ -1,6 +1,6 @@
-Require Import List.
+Require Import Lists.List.
 Import ListNotations.
-Require Import Nat Arith Lia.
+Require Import Init.Nat Arith.Arith micromega.Lia.
 
 
 Definition nat_to_pair (n:nat) : bool * bool :=

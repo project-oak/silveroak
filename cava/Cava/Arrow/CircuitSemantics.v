@@ -14,7 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool ZArith NArith NaryFunctions Vector Lia List.
+From Coq Require Import Bool.Bool ZArith.ZArith NArith.NArith
+     Numbers.NaryFunctions Vectors.Vector micromega.Lia Lists.List.
 From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 From Cava Require Import Arrow.CircuitArrow Arrow.ArrowKind Arrow.Primitives.
 

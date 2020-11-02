@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Vector.
+From Coq Require Import Vectors.Vector.
 Import VectorNotations.
 Local Open Scope vector_scope.
 
@@ -39,4 +39,4 @@ Definition xorV {signal} `{Cava signal} `{Monad m}
 Definition v1 := [false; false; true; true].
 Definition v2 := [false; true;  false; true].
 
-Compute combinational (xorV (v1, v2)).
+(* Compute combinational (xorV (v1, v2)). *)

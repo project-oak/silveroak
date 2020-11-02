@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 From Coq Require Import Bool.Bool.
-From Coq Require Import Ascii String.
+From Coq Require Import Strings.Ascii Strings.String.
 From Coq Require Import Lists.List.
 Import ListNotations.
 Require Import ExtLib.Structures.Monads.
@@ -26,9 +26,9 @@ Require Vector.
 From Coq Require Import Bool.Bvector.
 From Coq Require Import Fin.
 From Coq Require Import NArith.Ndigits.
-From Coq Require Import ZArith.
+From Coq Require Import ZArith.ZArith.
 
-From Coq Require Import Lia.
+From Coq Require Import micromega.Lia.
 
 Require Import Cava.Cava.
 From Cava Require Import Kind.

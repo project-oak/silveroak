@@ -18,12 +18,12 @@
    separate because they are not used for extraction to SystemVerilog.
 *)
 
-From Coq Require Import ZArith.
+From Coq Require Import ZArith.ZArith.
 From Coq Require Import ZArith.BinInt.
 From Coq Require Import Bool.Bool.
-From Coq Require Import Ascii String.
+From Coq Require Import Strings.Ascii Strings.String.
 From Coq Require Import Lists.List.
-Require Import Nat Arith Lia.
+Require Import Coq.Init.Nat Coq.Arith.Arith Coq.micromega.Lia.
 Import ListNotations.
 
 From Coq Require Import btauto.Btauto.

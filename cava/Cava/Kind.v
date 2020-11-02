@@ -14,8 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import String.
-From Coq Require Import Vector.
+From Coq Require Import Strings.String.
+From Coq Require Import Vectors.Vector.
 
 From Cava Require Import VectorUtils.
 

@@ -14,7 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool ZArith NaryFunctions Vector String List DecimalString Lia.
+From Coq Require Import Bool.Bool ZArith.ZArith Numbers.NaryFunctions
+     Vectors.Vector Strings.String Lists.List Numbers.DecimalString
+     micromega.Lia.
 From Cava Require Import Arrow.Classes.Arrow.
 From Cava Require Import Arrow.Classes.Category.
 From Cava Require Import Arrow.Classes.Kleisli.

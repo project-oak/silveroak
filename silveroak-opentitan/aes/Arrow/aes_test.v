@@ -14,7 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Arith Eqdep_dec Vector Lia NArith Omega String Ndigits.
+From Coq Require Import Arith.Arith Logic.Eqdep_dec Vectors.Vector micromega.Lia
+     NArith.NArith ZArith.ZArith Strings.String NArith.Ndigits.
 From Cava Require Import Arrow.ArrowExport BitArithmetic VectorUtils.
 
 From Aes Require Import pkg mix_columns sbox sub_bytes shift_rows cipher_round.
