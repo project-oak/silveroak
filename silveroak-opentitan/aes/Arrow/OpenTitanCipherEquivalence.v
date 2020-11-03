@@ -27,6 +27,7 @@ Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
 Require Import AesSpec.Cipher.
+Require Import AesSpec.CipherRepresentationChange.
 Require Import AesSpec.ExpandAllKeys.
 Require Import AesSpec.InterleavedCipher.
 From Aes Require Import OpenTitanCipherProperties CipherRoundProperties
@@ -97,9 +98,18 @@ Section Equivalence.
     = cipher state key add_round_key sub_bytes shift_rows mix_columns
              first_key last_key middle_keys input.
   Proof.
-    cbv zeta. cbn [denote_kind] in *. intros.
-    erewrite <-cipher_interleaved_equiv
-      by (eassumption || intros; instantiate_app_by_reflexivity).
+    cbv zeta. cbn [denote_kind] in *. intro Hall_keys.
+
+    (* Get key pairs *)
+    map_inversion Hall_keys; subst.
+    match goal with H : @eq (list keypair) _ (_ :: _ ++ [_])%list |- _ =>
+                    rename H into Hall_keys end.
+
+    erewrite cipher_change_key_rep with
+        (projkey := fun kp => PkgProperties.Vector.transpose_rev (sndkey kp))
+      by reflexivity.
+
+    erewrite <-cipher_interleaved_equiv by eassumption.
     cbv [unrolled_cipher_spec final_cipher_round_spec
                               cipher_interleaved cipher_round_interleaved].
     repeat destruct_pair_let.
