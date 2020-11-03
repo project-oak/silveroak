@@ -35,6 +35,18 @@ Section Spec.
     List.map snd (all_rcons_and_keys Nr initial_key initial_rcon).
 
   Section Properties.
+    Lemma length_all_rcons_and_keys n r k rk rem :
+      all_rcons_and_keys n k r = (rk :: rem)%list ->
+      length rem = n.
+    Proof.
+      cbv [all_rcons_and_keys]. intros.
+      lazymatch goal with
+      | H : @eq (list _) ?x ?y |- _ =>
+        assert (length x = length y) by (rewrite H; reflexivity)
+      end.
+      autorewrite with push_length in *. lia.
+    Qed.
+
     Lemma length_all_keys n k1 k2 r rem_keys :
       all_keys n k1 r = (k2 :: rem_keys)%list ->
       length rem_keys = n.
@@ -48,16 +60,28 @@ Section Spec.
       autorewrite with push_length in *. lia.
     Qed.
 
-    Lemma hd_all_keys n k1 k2 r rem_keys :
-      all_keys n k1 r = (k2 :: rem_keys)%list -> n <> 0 -> k1 = k2.
+    Lemma hd_all_rcons_and_keys n k r rk rem :
+      all_rcons_and_keys n k r = (rk :: rem)%list -> n <> 0 ->
+      rk = (r, k).
     Proof.
-      cbv [all_keys all_rcons_and_keys]; intros.
+      cbv [all_rcons_and_keys]; intros.
       destruct n; [ congruence | ]. cbn [List.seq] in *.
-      autorewrite with push_fold_acc in *. cbn [List.map] in *.
+      autorewrite with push_fold_acc in *.
       match goal with
       | H : (?x :: _ = ?y :: _)%list |- _ => inversion H
       end.
       congruence.
+    Qed.
+
+    Lemma hd_all_keys n k1 k2 r rem_keys :
+      all_keys n k1 r = (k2 :: rem_keys)%list -> n <> 0 -> k1 = k2.
+    Proof.
+      cbv [all_keys]. intro Hall; intros.
+      map_inversion Hall.
+      match goal with H : all_rcons_and_keys _ _ _ = _ |- _ =>
+                      apply hd_all_rcons_and_keys in H;
+                        [ | assumption ] end.
+      subst. reflexivity.
     Qed.
 
     Lemma nth_all_rcons_and_keys' n k r i :
