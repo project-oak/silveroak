@@ -89,10 +89,13 @@ Section Equivalence.
     let init_rcon := nat_to_byte 1 in
     (* initial key pair reversed so key_expand doesn't have to mux *)
     let init_keypair_rev := sndkey init_keypair ++ fstkey init_keypair in
-    let all_keypairs := all_keys key_expand Nr (init_rcon, init_keypair_rev) in
-    (* project out the forward key from the pair and transpose it *)
-    let all_keys := List.map (fun kp => PkgProperties.Vector.transpose_rev (sndkey kp))
-                             (List.map snd all_keypairs) in
+    (* key_expand state is rconst * keypair *)
+    let init_rk := (init_rcon, init_keypair_rev) in
+    let all_rcons_and_keypairs := all_keys key_expand Nr init_rk in
+    (* representation change: project out the forward key and transpose it *)
+    let all_keys := List.map (fun x : rconst * keypair =>
+                                PkgProperties.Vector.transpose_rev (sndkey (snd x)))
+                             all_rcons_and_keypairs in
     all_keys = (first_key :: middle_keys ++ [last_key])%list ->
     unrolled_cipher_spec aes_key_expand_spec sbox false input init_keypair
     = cipher state key add_round_key sub_bytes shift_rows mix_columns
@@ -100,13 +103,14 @@ Section Equivalence.
   Proof.
     cbv zeta. cbn [denote_kind] in *. intro Hall_keys.
 
-    (* Get key pairs *)
+    (* Get all states from key expansion *)
     map_inversion Hall_keys; subst.
-    match goal with H : @eq (list keypair) _ (_ :: _ ++ [_])%list |- _ =>
+    match goal with H : @eq (list (_ * keypair)) _ (_ :: _ ++ [_])%list |- _ =>
                     rename H into Hall_keys end.
 
+    (* representation change; use full key-expansion state (rconst * keypair) *)
     erewrite cipher_change_key_rep with
-        (projkey := fun kp => PkgProperties.Vector.transpose_rev (sndkey kp))
+        (projkey := fun x => PkgProperties.Vector.transpose_rev (sndkey (snd x)))
       by reflexivity.
 
     erewrite <-cipher_interleaved_equiv by eassumption.

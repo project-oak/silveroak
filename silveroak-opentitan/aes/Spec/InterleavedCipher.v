@@ -25,15 +25,15 @@ Require Import AesSpec.Cipher.
 Require Import AesSpec.ExpandAllKeys.
 
 Section Spec.
-  Context {state key rconst : Type}
+  Context {state key : Type}
           (add_round_key : state -> key -> state)
           (sub_bytes shift_rows mix_columns : state -> state)
-          (key_expand : nat -> rconst * key -> rconst * key).
+          (key_expand : nat -> key -> key).
 
   Definition cipher_round_interleaved
-             (loop_state : rconst* key * state) (i : nat)
-    : rconst * key * state :=
-    let '(rcon, round_key, st) := loop_state in
+             (loop_state : key * state) (i : nat)
+    : key * state :=
+    let '(round_key, st) := loop_state in
     let st := if i =? 0
               then add_round_key st round_key
               else
@@ -42,38 +42,36 @@ Section Spec.
                 let st := mix_columns st in
                 let st := add_round_key st round_key in
                 st in
-    let rcon_key := key_expand i (rcon, round_key) in
-    (rcon_key, st).
+    let round_key := key_expand i round_key in
+    (round_key, st).
 
   (* AES cipher with interleaved key expansion and conditional for first round *)
   Definition cipher_interleaved
              (Nr : nat) (* number of rounds *)
              (initial_key : key)
-             (initial_rcon : rconst)
              (input : state) : state :=
     let st := input in
     let loop_end_state :=
         fold_left cipher_round_interleaved
-          (List.seq 0 Nr) (initial_rcon, initial_key, st) in
-    let '(_, last_key, st) := loop_end_state in
+          (List.seq 0 Nr) (initial_key, st) in
+    let '(last_key, st) := loop_end_state in
     let st := sub_bytes st in
     let st := shift_rows st in
     let st := add_round_key st last_key in
     st.
 
   Section Equivalence.
-    Context (Nr : nat) (initial_rcon : rconst) (initial_key : key)
+    Context (Nr : nat) (initial_key : key)
             (first_key : key) (middle_keys : list key) (last_key : key).
     Context (all_keys_eq :
-               List.map snd
-                        (all_keys key_expand Nr (initial_rcon, initial_key))
+               all_keys key_expand Nr initial_key
                = first_key :: middle_keys ++ [last_key]).
 
     Let cipher := cipher state key add_round_key sub_bytes shift_rows mix_columns.
 
     (* Interleaved cipher is equivalent to original cipher *)
     Lemma cipher_interleaved_equiv input :
-      cipher_interleaved Nr initial_key initial_rcon input =
+      cipher_interleaved Nr initial_key input =
       cipher first_key last_key middle_keys input.
     Proof.
       intros. subst cipher.
@@ -81,14 +79,11 @@ Section Spec.
       (* get the key *pairs* *)
       pose proof all_keys_eq as Hall_keys.
       map_inversion Hall_keys; subst.
-      match goal with H : @eq (list (rconst * key)) _ (_ :: _ ++ [_]) |- _ =>
+      match goal with H : @eq (list key) _ (_ :: _ ++ [_]) |- _ =>
                       rename H into Hall_keys end.
 
       cbv [cipher_interleaved cipher_round_interleaved Cipher.cipher].
-      (* This specific form of the default for nth is designed to make the
-         map_nth rewrites work out *)
-      set (d:=snd (initial_rcon, initial_key)).
-      rewrite fold_left_to_seq with (default:=d).
+      rewrite fold_left_to_seq with (default:=initial_key).
       pose proof (length_all_keys _ _ _ _ _ Hall_keys).
       autorewrite with push_length in *.
 
@@ -107,10 +102,10 @@ Section Spec.
 
       (* state the relationship between the two loop states (invariant) *)
       lazymatch goal with
-      | H : all_keys ?key_expand ?n ?rk = _ |- _ =>
-        pose (R:= fun (i : nat) (x : rconst * key * state) (y : state) =>
+      | H : all_keys ?key_expand ?n ?k = _ |- _ =>
+        pose (R:= fun (i : nat) (x : key * state) (y : state) =>
                     x = (nth (S i)
-                             (all_keys key_expand n rk) rk, y))
+                             (all_keys key_expand n k) k, y))
       end.
 
       (* find loops on each side *)
@@ -146,12 +141,10 @@ Section Spec.
       { (* invariant holds through loop step *)
         cbv beta; intros; subst. repeat destruct_pair_let.
         rewrite Nat.eqb_compare; cbn [Nat.compare].
-        rewrite <-surjective_pairing.
         f_equal;
           [ rewrite !nth_all_keys_succ by lia;
             reflexivity | ].
-        f_equal; [ ]. subst d.
-        rewrite map_nth.
+        f_equal; [ ].
         rewrite Hall_keys. cbn [nth].
         rewrite app_nth1 by length_hammer.
         reflexivity. }
