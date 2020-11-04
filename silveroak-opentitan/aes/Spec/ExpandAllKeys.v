@@ -18,28 +18,42 @@ Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
+Import ListNotations.
 
 Section Spec.
-  Context {key rconst : Type}
-          (key_expand : nat -> rconst -> key -> rconst * key).
+  Context {key : Type}
+          (key_expand : nat -> key -> key).
 
-  Definition all_rcons_and_keys
-             (Nr : nat) (* number of rounds *)
-             (initial_key : key) (initial_rcon : rconst)
-    : list (rconst * key) :=
-    fst (fold_left_accumulate
-           (fun '(rcon, round_key) i => key_expand i rcon round_key)
-           (fun x => x) (List.seq 0 Nr) (initial_rcon, initial_key)).
+  Definition all_keys'
+             (round_idxs : list nat) (initial_key : key)
+    : list key * key :=
+    fold_left_accumulate
+      (fun round_key i => key_expand i round_key)
+      (fun x => x) round_idxs initial_key.
 
-  Definition all_keys Nr initial_key initial_rcon : list key :=
-    List.map snd (all_rcons_and_keys Nr initial_key initial_rcon).
+  Definition all_keys (Nr : nat) (initial_key : key)
+    : list key :=
+    fst (all_keys' (List.seq 0 Nr) initial_key).
 
   Section Properties.
-    Lemma length_all_rcons_and_keys n r k rk rem :
-      all_rcons_and_keys n k r = (rk :: rem)%list ->
+    Hint Unfold all_keys all_keys' : expandall.
+
+    Lemma all_keys_succ n k d :
+      let nlist := all_keys n k in
+      all_keys (S n) k = nlist ++ [key_expand n (last nlist d)].
+    Proof.
+      autounfold with expandall. rewrite seq_S, Nat.add_0_l.
+      rewrite fold_left_accumulate_snoc. cbv zeta.
+      repeat destruct_pair_let.
+      rewrite fold_left_accumulate_last, fold_left_accumulate_snd.
+      reflexivity.
+    Qed.
+
+    Lemma length_all_keys n k k0 rem :
+      all_keys n k = (k0 :: rem)%list ->
       length rem = n.
     Proof.
-      cbv [all_rcons_and_keys]. intros.
+      autounfold with expandall. intros.
       lazymatch goal with
       | H : @eq (list _) ?x ?y |- _ =>
         assert (length x = length y) by (rewrite H; reflexivity)
@@ -47,24 +61,10 @@ Section Spec.
       autorewrite with push_length in *. lia.
     Qed.
 
-    Lemma length_all_keys n k1 k2 r rem_keys :
-      all_keys n k1 r = (k2 :: rem_keys)%list ->
-      length rem_keys = n.
+    Lemma hd_all_keys n k1 k2 rem_keys :
+      all_keys n k1 = (k2 :: rem_keys)%list -> n <> 0 -> k1 = k2.
     Proof.
-      cbv [all_keys all_rcons_and_keys]. intros.
-      rewrite @map_fold_left_accumulate in *.
-      lazymatch goal with
-      | H : @eq (list _) ?x ?y |- _ =>
-        assert (length x = length y) by (rewrite H; reflexivity)
-      end.
-      autorewrite with push_length in *. lia.
-    Qed.
-
-    Lemma hd_all_rcons_and_keys n k r rk rem :
-      all_rcons_and_keys n k r = (rk :: rem)%list -> n <> 0 ->
-      rk = (r, k).
-    Proof.
-      cbv [all_rcons_and_keys]; intros.
+      autounfold with expandall. intros.
       destruct n; [ congruence | ]. cbn [List.seq] in *.
       autorewrite with push_fold_acc in *.
       match goal with
@@ -73,56 +73,36 @@ Section Spec.
       congruence.
     Qed.
 
-    Lemma hd_all_keys n k1 k2 r rem_keys :
-      all_keys n k1 r = (k2 :: rem_keys)%list -> n <> 0 -> k1 = k2.
+    Lemma nth_all_keys_plus n rk i :
+        nth i (all_keys (i+n) rk) rk
+        = nth i (all_keys i rk) rk.
     Proof.
-      cbv [all_keys]. intro Hall; intros.
-      map_inversion Hall.
-      match goal with H : all_rcons_and_keys _ _ _ = _ |- _ =>
-                      apply hd_all_rcons_and_keys in H;
-                        [ | assumption ] end.
-      subst. reflexivity.
-    Qed.
-
-    Lemma nth_all_rcons_and_keys' n k r i :
-        nth i (all_rcons_and_keys (i+n) k r) (r,k)
-        = nth i (all_rcons_and_keys i k r) (r,k).
-    Proof.
-      cbv [all_rcons_and_keys].
+      autounfold with expandall. intros.
       induction n; intros; [ rewrite Nat.add_0_r; reflexivity | ].
       rewrite Nat.add_succ_r, seq_S, fold_left_accumulate_snoc.
       rewrite app_nth1 by length_hammer. eauto.
     Qed.
 
-    Lemma nth_all_rcons_and_keys n k r i :
+    Lemma nth_all_keys n rk i :
       i <= n ->
-      nth i (all_rcons_and_keys n k r) (r,k)
-      = nth i (all_rcons_and_keys i k r) (r,k).
+      nth i (all_keys n rk) rk
+      = nth i (all_keys i rk) rk.
     Proof.
-      intros. replace n with (i+(n-i)) by Lia.lia.
-      apply nth_all_rcons_and_keys'.
+      intros. replace n with (i+(n-i)) by lia.
+      apply nth_all_keys_plus.
     Qed.
 
-    Lemma nth_all_rcons_and_keys_succ n k r i :
+    Lemma nth_all_keys_succ n rk i :
       S i <= n ->
-      nth (S i) (all_rcons_and_keys n k r) (r,k)
-      = key_expand i (fst (nth i (all_rcons_and_keys n k r) (r,k)))
-                   (snd (nth i (all_rcons_and_keys n k r) (r,k))).
+      nth (S i) (all_keys n rk) rk
+      = key_expand i (nth i (all_keys n rk) rk).
     Proof.
-      intros. rewrite !nth_all_rcons_and_keys with (n:=n) by Lia.lia.
-      cbv [all_rcons_and_keys].
-      rewrite !nth_fold_left_accumulate_id by (rewrite seq_length; Lia.lia).
-      rewrite !firstn_all2 by (rewrite seq_length; Lia.lia).
+      intros. rewrite !nth_all_keys with (n:=n) by lia.
+      autounfold with expandall.
+      rewrite !nth_fold_left_accumulate_id by (rewrite seq_length; lia).
+      rewrite !firstn_all2 by (rewrite seq_length; lia).
       rewrite seq_S, Nat.add_0_l, fold_left_app. cbn [fold_left].
       repeat destruct_pair_let. reflexivity.
-    Qed.
-
-    Lemma nth_all_rcons_and_keys_all_keys n k r i :
-      snd (nth i (all_rcons_and_keys n k r) (r,k))
-      = nth i (all_keys n k r) k.
-    Proof.
-      cbv [all_keys]. rewrite <-map_nth with (f:=snd).
-      reflexivity.
     Qed.
   End Properties.
 End Spec.

@@ -73,8 +73,8 @@ Section Equivalence.
   Definition shift_rows : state -> state := aes_shift_rows_spec false.
   Definition mix_columns : state -> state := aes_mix_columns_spec false.
 
-  Definition key_expand : nat -> rconst -> keypair -> rconst * keypair :=
-    fun i => aes_key_expand_spec sbox false (nat_to_bitvec _ i).
+  Definition key_expand : nat -> rconst * keypair -> rconst * keypair :=
+    fun i rk => aes_key_expand_spec sbox false (nat_to_bitvec _ i) (fst rk) (snd rk).
 
   Definition fstkey : keypair -> key :=
     @slice_by_position
@@ -89,10 +89,10 @@ Section Equivalence.
     let init_rcon := nat_to_byte 1 in
     (* initial key pair reversed so key_expand doesn't have to mux *)
     let init_keypair_rev := sndkey init_keypair ++ fstkey init_keypair in
-    let all_keypairs := all_keys key_expand Nr init_keypair_rev init_rcon in
+    let all_keypairs := all_keys key_expand Nr (init_rcon, init_keypair_rev) in
     (* project out the forward key from the pair and transpose it *)
     let all_keys := List.map (fun kp => PkgProperties.Vector.transpose_rev (sndkey kp))
-                             all_keypairs in
+                             (List.map snd all_keypairs) in
     all_keys = (first_key :: middle_keys ++ [last_key])%list ->
     unrolled_cipher_spec aes_key_expand_spec sbox false input init_keypair
     = cipher state key add_round_key sub_bytes shift_rows mix_columns
