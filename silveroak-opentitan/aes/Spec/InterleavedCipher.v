@@ -31,8 +31,9 @@ Section Spec.
           (key_expand : nat -> rconst -> key -> rconst * key).
 
   Definition cipher_round_interleaved
-             (rcon : rconst) (round_key : key) (st : state) (i : nat)
+             (loop_state : rconst* key * state) (i : nat)
     : rconst * key * state :=
+    let '(rcon, round_key, st) := loop_state in
     let st := if i =? 0
               then add_round_key st round_key
               else
@@ -52,12 +53,8 @@ Section Spec.
              (input : state) : state :=
     let st := input in
     let loop_end_state :=
-        fold_left
-          (fun (loop_state : rconst * key * state) =>
-             let '(rcon, round_key, st) := loop_state in
-             cipher_round_interleaved rcon round_key st)
-          (List.seq 0 Nr)
-          (initial_rcon, initial_key, st) in
+        fold_left cipher_round_interleaved
+          (List.seq 0 Nr) (initial_rcon, initial_key, st) in
     let '(_, last_key, st) := loop_end_state in
     let st := sub_bytes st in
     let st := shift_rows st in
