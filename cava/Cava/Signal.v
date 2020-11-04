@@ -25,8 +25,7 @@ Inductive SignalType :=
   | Void : SignalType                              (* An empty type *)
   | Bit : SignalType                               (* A single wire *)
   | Vec : SignalType -> nat -> SignalType          (* Vectors, possibly nested *)
-  | ExternalType : string -> SignalType            (* An uninterpreted type *)
-  | Pair : SignalType -> SignalType -> SignalType. (* A tuple *)
+  | ExternalType : string -> SignalType.           (* An uninterpreted type *)
 
 Inductive Signal : SignalType -> Type :=
   | UndefinedSignal : Signal Void
@@ -40,7 +39,6 @@ Inductive Signal : SignalType -> Type :=
   | NamedVector: forall t s, string -> Signal (Vec t s)
   | LocalVec: forall t s, N -> Signal (Vec t s)
   | VecLit: forall {t s}, Vector.t (Signal t) s -> Signal (Vec t s)
-  | MkPair : forall {A B : SignalType}, Signal A -> Signal B -> Signal (Pair A B)
   (* Dynamic index *)
   | IndexAt:  forall {t sz isz}, Signal (Vec t sz) ->
               Signal (Vec Bit isz) -> Signal t
@@ -59,11 +57,9 @@ Fixpoint defaultSignal (t: SignalType) : Signal t :=
   | Bit => Gnd
   | Vec vt s => VecLit (Vector.const (defaultSignal vt) s)
   | ExternalType s => UninterpretedSignal "default-defaultSignal"
-  | Pair t1 t2 => MkPair (defaultSignal t1) (defaultSignal t2)
   end.
 
 (* To allow us to represent a heterogenous list of Signal t values where
    the Signal t varies we make a wrapper that erase the Kind index type.
 *)
 Inductive UntypedSignal := USignal : forall {Kind}, Signal Kind -> UntypedSignal.
-
