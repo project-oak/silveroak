@@ -80,13 +80,7 @@ Section Spec.
     (* inv_key_expand is the inverse of key_expand *)
     Context (inv_key_expand_key_expand :
                forall i k,
-                 inv_key_expand (Nr-i) (key_expand i k) = k).
-
-    (* TODO: move to key generation *)
-    Lemma all_rcons_and_keys_inv_eq :
-        all_keys inv_key_expand Nr final_key
-        = rev (all_keys key_expand Nr initial_key).
-    Admitted.
+                 inv_key_expand (Nr - S i) (key_expand i k) = k).
 
     Let equivalent_inverse_cipher :=
       equivalent_inverse_cipher state key add_round_key
@@ -100,7 +94,9 @@ Section Spec.
     Proof.
       intros. subst equivalent_inverse_cipher.
 
-      pose proof all_rcons_and_keys_inv_eq as rev_rcons_and_keys.
+      pose proof (all_keys_inv_eq key_expand inv_key_expand Nr initial_key final_key
+                                  final_key_correct inv_key_expand_key_expand)
+        as inv_expand_keys_rev.
 
       (* get the rcons/key pairs *)
       pose proof all_keys_eq as Hall_keys.
@@ -114,7 +110,7 @@ Section Spec.
         rename Hall_keys into H;
           assert (Hall_keys: rev ls1 = rev ls2) by (rewrite H; reflexivity)
       end.
-      rewrite <-rev_rcons_and_keys in Hall_keys.
+      rewrite <-inv_expand_keys_rev in Hall_keys.
       repeat first [ progress cbn [rev app] in Hall_keys
                    | rewrite rev_app_distr in Hall_keys ].
 
