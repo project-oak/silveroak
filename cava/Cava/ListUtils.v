@@ -4,6 +4,9 @@ Require Import Coq.micromega.Lia.
 Import ListNotations.
 Local Open Scope list_scope.
 
+(* Generic rewrite database for common list simplifications *)
+Hint Rewrite @app_nil_l @app_nil_r @last_last @rev_app_distr : listsimpl.
+
 Section Length.
   Lemma nil_length {A} : @length A nil = 0.
   Proof. reflexivity. Qed.
@@ -135,11 +138,15 @@ Section FoldLeftAccumulate.
     fst (fold_left_accumulate' f g acc0 [] b) = (acc0 ++ [g b]).
   Proof. reflexivity. Qed.
 
+  Hint Rewrite @fold_left_accumulate'_nil : push_fold_acc.
+
   Lemma fold_left_accumulate'_cons {A B C}
         (f : B -> A -> B) (g : B -> C) b a acc0 ls :
     fst (fold_left_accumulate' f g acc0 (a::ls) b)
     = fst (fold_left_accumulate' f g (acc0 ++ [g b]) ls (f b a)).
   Proof. reflexivity. Qed.
+
+  Hint Rewrite @fold_left_accumulate'_cons : push_fold_acc.
 
   Lemma fold_left_accumulate'_equiv {A B C}
         (f : B -> A -> B) (g : B -> C) b acc0 ls :
@@ -147,9 +154,8 @@ Section FoldLeftAccumulate.
     = (acc0 ++ fst (fold_left_accumulate' f g [] ls b)).
   Proof.
     revert acc0 b.
-    induction ls; intros; [ reflexivity | ].
-    rewrite !fold_left_accumulate'_cons.
-    cbn [app].
+    induction ls; intros; autorewrite with push_fold_acc listsimpl;
+      [ reflexivity | ].
     rewrite IHls with (acc0:=(_++_)).
     rewrite IHls with (acc0:=(_::_)).
     rewrite app_assoc_reverse.
@@ -163,10 +169,18 @@ Section FoldLeftAccumulate.
       (fst r ++ [g (f (snd r) a)]).
   Proof.
     cbv zeta. revert acc0 b.
-    induction ls; intros;
-      [ cbn; rewrite app_assoc_reverse; reflexivity | ].
-    rewrite <-app_comm_cons, !fold_left_accumulate'_cons.
+    induction ls; intros; rewrite <-?app_comm_cons;
+      autorewrite with push_fold_acc listsimpl;
+      [ reflexivity | ].
     rewrite IHls. reflexivity.
+  Qed.
+
+  Lemma fold_left_accumulate'_last {A B C}
+        (f : B -> A -> B) (g : B -> C) b c acc0 ls :
+    last (fst (fold_left_accumulate' f g acc0 ls b)) c = g (fold_left f ls b).
+  Proof.
+    revert acc0 b; induction ls; intros; cbn [fold_left];
+      autorewrite with push_fold_acc; eauto using last_last.
   Qed.
 
   Lemma fold_left_accumulate'_length {A B C} (f : B -> A -> B) (g : B -> C) :
@@ -174,10 +188,8 @@ Section FoldLeftAccumulate.
       length (fst (fold_left_accumulate'
                      f g acc0 ls b)) = length acc0 + S (length ls).
   Proof.
-    induction ls; intros;
-      rewrite ?fold_left_accumulate'_cons, ?fold_left_accumulate'_nil;
-      [ solve [apply app_length] | ].
-    rewrite IHls. length_hammer.
+    induction ls; intros; autorewrite with push_fold_acc;
+      rewrite ?IHls; length_hammer.
   Qed.
 
   Lemma fold_left_accumulate_nil {A B C} (f : B -> A -> B) (g : B -> C) b :
@@ -189,7 +201,7 @@ Section FoldLeftAccumulate.
     = (g b :: fst (fold_left_accumulate f g ls (f b a))).
   Proof.
     cbv [fold_left_accumulate].
-    rewrite fold_left_accumulate'_cons.
+    autorewrite with push_fold_acc listsimpl.
     rewrite fold_left_accumulate'_equiv.
     reflexivity.
   Qed.
@@ -202,6 +214,12 @@ Section FoldLeftAccumulate.
     cbv [fold_left_accumulate].
     rewrite fold_left_accumulate'_snoc.
     reflexivity.
+  Qed.
+
+  Lemma fold_left_accumulate_last {A B C} (f : B -> A -> B) (g : B -> C) b c ls :
+    last (fst (fold_left_accumulate f g ls b)) c = g (fold_left f ls b).
+  Proof.
+    cbv [fold_left_accumulate]. apply fold_left_accumulate'_last.
   Qed.
 
   Lemma fold_left_accumulate_length {A B C} (f : B -> A -> B) (g : B -> C) ls b :
