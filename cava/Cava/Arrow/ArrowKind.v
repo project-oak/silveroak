@@ -222,6 +222,13 @@ Fixpoint insert_rightmost_tt `{A: Arrow Kind Unit Tuple} (ty: Kind): ty ~> (inse
   | Vector t n => uncancelr
   end.
 
+Fixpoint denote_insert_rightmost_tt (ty: Kind): denote_kind ty -> denote_kind (insert_rightmost_unit ty) :=
+  match ty as ty' return denote_kind ty' -> denote_kind (insert_rightmost_unit ty') with
+  | Tuple l r => fun '(x,y) => (x, denote_insert_rightmost_tt r y)
+  | Unit => fun x => x
+  | ty => fun x => (x,tt)
+  end.
+
 Fixpoint apply_rightmost_tt (x: Kind)
   : denote_kind (remove_rightmost_unit x) -> denote_kind x
   :=
@@ -236,6 +243,21 @@ Fixpoint apply_rightmost_tt (x: Kind)
     | _ => fun f p => (fst p, f (snd p))
     end rec
   | _ => fun x => x
+  end.
+
+Fixpoint apply_rightmost_tt_arrow `{A: Arrow Kind Unit Tuple} (x: Kind)
+  : remove_rightmost_unit x ~> x
+  :=
+  match x as x' return remove_rightmost_unit x' ~> x' with
+  | Tuple l r =>
+    let rec := apply_rightmost_tt_arrow r in
+    match r as r' return
+      (remove_rightmost_unit r' ~> r') -> remove_rightmost_unit (Tuple l r') ~> Tuple l r'
+      with
+    | Unit => fun f => uncancelr
+    | _ => fun f => second f
+    end rec
+  | _ => id
   end.
 
 (* Avoid eq_rect type equality rewriting by inductively matching the Kind

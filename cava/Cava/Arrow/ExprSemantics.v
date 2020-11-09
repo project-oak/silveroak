@@ -43,6 +43,7 @@ Section combinational_semantics.
     | App f e => fun y =>
       (interp_combinational' f) (interp_combinational' e tt, y)
     | Comp g f => fun x => interp_combinational' g (interp_combinational' f x)
+    | Comp1 g f => fun x => interp_combinational' g (apply_rightmost_tt _ (interp_combinational' f x))
     | Primitive p =>
       match p with
       | P0 p => primitive_semantics (P0 p)
@@ -54,7 +55,7 @@ Section combinational_semantics.
     | Let v f => fun y =>
       interp_combinational' (f (interp_combinational' v tt)) y
     | RemoveContext f => interp_combinational' f
-    | CallModule (mkModule m) => interp_combinational' m
+    | CallModule (mkModule _ m) => interp_combinational' m
 
     | LetRec v f => fun _ => kind_default _
     | Delay => fun _ => kind_default _

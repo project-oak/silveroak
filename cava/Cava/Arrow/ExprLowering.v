@@ -207,6 +207,12 @@ removes the list Kind, we first need to copy the list Kind. *)
   >>> first (closure_conversion' ctxt e2)
   >>> closure_conversion' ctxt e1
 
+| Comp1 e1 e2 =>
+  second copy
+  >>> unassoc
+  >>> first (closure_conversion' ctxt e2 >>> apply_rightmost_tt_arrow  _)
+  >>> closure_conversion' ctxt e1
+
 | ExprSyntax.Primitive p =>
   match p with
   | P0 p =>
@@ -228,7 +234,7 @@ removes the list Kind, we first need to copy the list Kind. *)
 | RemoveContext f =>
   second drop >>> closure_conversion' [] f
 
-| CallModule (mkModule m) =>
+| CallModule (mkModule _ m) =>
   second drop >>> closure_conversion' [] m
 
 | Let v f =>
@@ -451,12 +457,13 @@ match expr with
 | Abs f => max_context_size' (size+1) (f tt)
 | App f e => max (max_context_size' size e) (max_context_size' size f)
 | Comp e1 e2 => max (max_context_size' size e1) (max_context_size' size e2)
+| Comp1 e1 e2 => max (max_context_size' size e1) (max_context_size' size e2)
 | ExprSyntax.Delay => size
 | ExprSyntax.Primitive p => size
 | ExprSyntax.Id => size
 | ExprSyntax.Typecast _ _ => size
 | RemoveContext f => max size (max_context_size' 0 f)
-| CallModule (mkModule m) => max size (max_context_size' 0 m)
+| CallModule (mkModule _ m) => max size (max_context_size' 0 m)
 | Let v f =>
   max (max_context_size' (size+1) (f tt)) (max_context_size' size v)
 | LetRec v f =>

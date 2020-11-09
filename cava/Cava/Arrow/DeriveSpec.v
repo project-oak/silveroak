@@ -23,15 +23,12 @@ Require Import Cava.Arrow.ArrowExport.
 
 (* convenient notation *)
 Notation kinterp x := (interp_combinational' (x coq_func)).
-Notation minterp x := (interp_combinational' ((module_body x) coq_func)).
-
-Lemma kinterp_via_minterp {x y} {f: Module (Kappa x y)} {s} {X}:
-  minterp f X = s
-  -> kinterp (instantiate f) X = s.
-Proof. destruct f. intuition. Qed.
 
 Ltac kappa_spec_begin :=
-  intros; cbn [interp_combinational' module_body];
+  intros; cbn [interp_combinational' embed_expr instantiate
+    instantiatable_fragment instantiatable_module instantiatable_embedded
+    ArrowKind.apply_rightmost_tt
+  ];
   repeat match goal with
          | |- context [primitive_semantics ?p] =>
            let x := constr:(primitive_semantics p) in
@@ -47,7 +44,6 @@ Ltac kappa_spec_step :=
   match goal with
   | _ => progress autorewrite with kappa_interp
   | H : context [interp_combinational' (_ coq_func) _ = _] |- _ => rewrite H by eauto
-  | H: minterp ?f _ = _ |- _ => apply kinterp_via_minterp in H
   | |- context [interp_combinational'] => kappa_spec_begin
   end.
 Ltac kappa_spec := kappa_spec_begin; repeat kappa_spec_step.

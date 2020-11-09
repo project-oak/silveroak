@@ -1,3 +1,4 @@
+From Coq Require Import String.
 From Coq Require Import Lists.List.
 From Coq Require Import Arith.Peano_dec.
 From Cava Require Import Arrow.ArrowKind.
@@ -21,12 +22,13 @@ Section vars.
     end.
 
   Record Module ( body_ty : Type ) := mkModule
-    { module_body : body_ty
+    { module_name : string
+    ; module_body : body_ty
     }.
 
   Definition module_map_body {A B} (m: Module A) (f: A -> B): Module B :=
     match m with
-    | mkModule body => mkModule (f body)
+    | mkModule name body => mkModule name (f body)
     end.
 
   Section Vars.
@@ -37,6 +39,7 @@ Section vars.
     | Abs : forall {x y z}, (var x -> kappa y z) -> kappa (Tuple x y) z
     | App : forall {x y z}, kappa (Tuple x y) z -> kappa Unit x -> kappa y z
     | Comp: forall {x y z}, kappa y z -> kappa x y -> kappa x z
+    | Comp1: forall {x y z}, kappa y z -> kappa x (remove_rightmost_unit y) -> kappa x z
     | Delay: forall {x}, kappa (Tuple x Unit) x
     | Primitive : forall prim, kappa (extended_prim_input prim) (primitive_output prim)
     | Let: forall {x y z}, kappa Unit x -> (var x -> kappa y z) -> kappa y z
@@ -69,6 +72,7 @@ Section vars.
     | Abs x _ _ f => wf_phoas_context (x :: ctxt) (f (length ctxt))
     | App _ _ _ e1 e2 => wf_phoas_context ctxt e1 /\ wf_phoas_context ctxt e2
     | Comp _ _ _ e1 e2 => wf_phoas_context ctxt e1 /\ wf_phoas_context ctxt e2
+    | Comp1 _ _ _ e1 e2 => wf_phoas_context ctxt e1 /\ wf_phoas_context ctxt e2
     | Delay _ => True
     | Primitive _ => True
     | Id _ => True
@@ -76,7 +80,7 @@ Section vars.
     | Let x _ _ v f => wf_phoas_context (x :: ctxt) (f (length ctxt)) /\ wf_phoas_context ctxt v
     | LetRec x _ _ v f => wf_phoas_context (x :: ctxt) (v (length ctxt)) /\ wf_phoas_context (x :: ctxt) (f (length ctxt))
     | RemoveContext _ _ f => wf_phoas_context [] f
-    | CallModule _ _ (mkModule m) => wf_phoas_context [] m
+    | CallModule _ _ (mkModule _ m) => wf_phoas_context [] m
     end.
 
   Definition Kappa i o := forall var, kappa var i o.
@@ -89,6 +93,7 @@ Arguments Var {var _}.
 Arguments Abs {var _ _ _}.
 Arguments App {var _ _ _}.
 Arguments Comp {var _ _ _}.
+Arguments Comp1 {var _ _ _}.
 Arguments Delay {var _}.
 Arguments Primitive {var}.
 Arguments LetRec {var _ _ _}.

@@ -42,6 +42,13 @@ Set Asymmetric Patterns.
       -> kappa_equivalence E g1 g2
       -> kappa_equivalence E (Comp f1 g1) (Comp f2 g2)
 
+    | Compose1_equiv : forall E x y z
+      (f1: kappa var1 y z) (f2: kappa var2 y z)
+      (g1: kappa var1 x (remove_rightmost_unit y)) (g2: kappa var2 x (remove_rightmost_unit y)),
+      kappa_equivalence E f1 f2
+      -> kappa_equivalence E g1 g2
+      -> kappa_equivalence E (Comp1 f1 g1) (Comp1 f2 g2)
+
     | Prim_equiv : forall E p, kappa_equivalence E (ExprSyntax.Primitive p) (ExprSyntax.Primitive p)
 
     | Let_equiv : forall x y z
