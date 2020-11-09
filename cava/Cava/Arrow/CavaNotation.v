@@ -36,45 +36,6 @@ Generalizable All Variables.
 
 (* Kappa expression and application *)
 
-Inductive NotationExpr: Kind -> Kind -> Type :=
-| ModuleExpr : forall x y, Module (Kappa x y) -> NotationExpr x y
-| FragmentExpr : forall x y, Kappa x y -> NotationExpr x y.
-
-Definition instantiate {x y var} (e: NotationExpr x y) : kappa var x y :=
-  match e with
-  | ModuleExpr e => CallModule (module_instantiate_var e)
-  | FragmentExpr e => RemoveContext (e var)
-  end.
-
-Definition notation_to_kappa {x y} (e: NotationExpr x y) : Kappa x y :=
-  match e with
-  | ModuleExpr e => module_body e
-  | FragmentExpr e => e
-  end.
-
-Class instantiatable_expr (expr: Type) x y := {
-  embed_expr : expr -> NotationExpr x y
-}.
-
-Instance instantiatable_module x y : instantiatable_expr (Module (Kappa x y)) x y := {
-  embed_expr module := ModuleExpr module;
-}.
-
-Instance instantiatable_fragment x y : instantiatable_expr (Kappa x y) x y := {
-  embed_expr e := FragmentExpr e;
-}.
-
-Instance instantiatable_embedded x y : instantiatable_expr (NotationExpr x y) x y := {
-  embed_expr e := e;
-}.
-
-Definition kappa_to_expr {x y} (e: Module (Kappa x y)) := ModuleExpr e.
-Definition frag_to_expr {x y} (e: Kappa x y) := FragmentExpr e.
-
-Coercion kappa_to_expr: Module >-> NotationExpr.
-Coercion frag_to_expr: Kappa >-> NotationExpr.
-Coercion notation_to_kappa: NotationExpr >-> Kappa.
-
 Module KappaNotation.
 
   Notation "<[ 'fun' name x .. y : ret => e ]>" := (
@@ -102,7 +63,7 @@ Module KappaNotation.
   (* Notation "\ x .. y => e" := (Abs (fun x => .. (Abs (fun y => e)) ..)) *)
   (*   (in custom expr at level 200, x binder, right associativity) : kappa_scope. *)
 
-  Notation "x ~> y" := (NotationExpr x y).
+  Notation "x ~> y" := (Kappa x y).
 
   Notation "x y" := (App x y) (in custom expr at level 3, left associativity) : kappa_scope.
 
@@ -132,8 +93,8 @@ Module KappaNotation.
 
   (* Escaping *)
 
-  Notation "! x" := ((instantiate (embed_expr x)) )(in custom expr at level 2, x global) : kappa_scope.
-  Notation "!( x )" := ((instantiate (embed_expr x)) ) (in custom expr, x constr) : kappa_scope.
+  Notation "! x" := (RemoveContext (x _))(in custom expr at level 2, x global) : kappa_scope.
+  Notation "!( x )" := (RemoveContext (x _)) (in custom expr, x constr) : kappa_scope.
 
   Notation tupleHelper := (fun x y => App (App (Primitive (P2 (Pair _ _))) x) y).
   Notation "( x , .. , y , z )" := (
@@ -336,7 +297,7 @@ Section regression_examples.
     <[\_ x _ => x]>.
   Notation T:=(Bit )(only parsing).
   Notation "'if' i 'then' t 'else' e" :=
-    (App (App (App (instantiate (embed_expr dummy)) i) t) e)
+    (App (App (App (dummy _) i) t) e)
     (in custom expr at level 5, left associativity) : kappa_scope.
 
   Definition exfailed: Kappa << <<T,T>>,<<T,T>>, Unit >> <<T,T>> :=

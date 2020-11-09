@@ -46,7 +46,17 @@ Section Wf.
 
   Lemma unrolled_cipher_flat_Wf :
     forall sbox_impl, Wf (unrolled_cipher_flat sbox_impl).
-  Proof. cbv [unrolled_cipher_flat]; prove_Wf. Qed.
+  Proof.
+    Hint Extern 4 (Wf Combinators.reshape) =>
+      solve
+      [ apply (reshape_Wf _ 4 4)
+      | apply (reshape_Wf _ 8 4)
+      | apply (reshape_Wf _ 16 8)
+      | apply (reshape_Wf _ 32 8)
+      | apply (reshape_Wf _ 32 16)] : Wf.
+    Hint Extern 4 (Wf Combinators.flatten) => (now apply flatten_Wf) : Wf.
+    cbv [unrolled_cipher_flat]; prove_Wf.
+  Qed.
   Hint Resolve unrolled_cipher_flat_Wf : Wf.
 End Wf.
 Hint Resolve key_expand_and_round_Wf unrolled_cipher_Wf unrolled_cipher_flat_Wf
@@ -92,7 +102,6 @@ Section Equivalence.
   Proof.
     cbv [key_expand_and_round]; kappa_spec.
     repeat destruct_pair_let. cbn [fst snd].
-    rewrite <-!surjective_pairing.
     derive_spec_done.
   Qed.
   Hint Rewrite @key_expand_and_round_correct : kappa_interp.
@@ -128,3 +137,4 @@ End Equivalence.
 Hint Rewrite @key_expand_and_round_correct @unrolled_cipher_correct
      @unrolled_cipher_flat_correct using solve [eauto] : kappa_interp.
 Global Opaque key_expand_and_round unrolled_cipher unrolled_cipher_flat.
+

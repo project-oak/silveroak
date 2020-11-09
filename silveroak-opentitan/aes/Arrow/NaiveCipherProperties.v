@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import derive.Derive.
+From Coq Require Import derive.Derive PeanoNat Nat.
 From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec
      Arrow.CombinatorProperties BitArithmetic VectorUtils.
 Require Import Cava.Tactics.
@@ -40,7 +40,17 @@ Section Wf.
 
   Lemma unrolled_cipher_naive_Wf :
     forall sbox_impl, Wf (unrolled_cipher_naive sbox_impl).
-  Proof. cbv [unrolled_cipher_naive]; prove_Wf. Qed.
+  Proof.
+    Hint Extern 4 (Wf Combinators.reshape) =>
+      solve
+      [ apply (reshape_Wf _ 4 4)
+      | apply (reshape_Wf _ 8 4)
+      | apply (reshape_Wf _ 16 8)
+      | apply (reshape_Wf _ 32 8)
+      | apply (reshape_Wf _ 32 16)] : Wf.
+    Hint Extern 4 (Wf Combinators.flatten) => (now apply flatten_Wf) : Wf.
+    cbv [unrolled_cipher_naive]; prove_Wf.
+  Qed.
 End Wf.
 
 Section Equivalence.
@@ -99,3 +109,4 @@ End Equivalence.
 Hint Rewrite @unrolled_cipher_naive'_correct
      @unrolled_cipher_naive_correct using solve [eauto] : kappa_interp.
 Global Opaque unrolled_cipher_naive' unrolled_cipher_naive.
+

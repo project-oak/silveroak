@@ -124,19 +124,6 @@ Lemma Wf_Primitive (p : CircuitPrimitive) : Wf (fun _ => Primitive p).
 Proof. cbv [Wf]; intros; apply Prim_equiv. Qed.
 Hint Resolve Wf_Primitive : Wf.
 
-Lemma Wf_modulebody {x y} {f: Module (Kappa x y)}:
-  Wf (module_body f) -> forall var1 var2,
-    kappa_equivalence nil
-      (module_body (module_instantiate_var (var:=var1) f))
-      (module_body (module_instantiate_var (var:=var2) f)).
-Proof.
-  intros.
-  destruct f.
-  apply H.
-Qed.
-Hint Resolve Wf_modulebody : Wf.
-
-
 (* Extra hint to force the primitive types to match *)
 Hint Extern 4 (Wf (fun _ => Primitive ?p))
 => (change (@Wf (primitive_input p)
@@ -167,8 +154,6 @@ Ltac kequiv_step :=
   end; intros.
 Ltac prove_Wf_step :=
   lazymatch goal with
-  | |- kappa_equivalence _ (instantiate _ _) (instantiate _ _) =>
-    cbn [instantiate instantiatable_module instantiatable_fragment]; eauto with Wf
   | |- kappa_equivalence _ _ _ =>
     first [ kequiv_step
           | solve [eauto with Wf] ]
@@ -176,15 +161,9 @@ Ltac prove_Wf_step :=
   end.
 Ltac prove_Wf := cbv [Wf module_body]; intros; cbn; repeat prove_Wf_step.
 
-Lemma Wf_instantiate i o (f: NotationExpr i o) var1 var2 ctxt: Wf f ->
-  kappa_equivalence (var1:=var1) (var2:=var2) ctxt (instantiate f) (instantiate f).
-Proof. intros; destruct f; prove_Wf. Qed.
-Hint Extern 4 (kappa_equivalence _ (instantiate ?X) (instantiate ?X)) =>
-(simple eapply Wf_instantiate; solve [prove_Wf]) : Wf.
-
 Section CombinatorWf.
   Lemma replicate_Wf A n : Wf (@Combinators.replicate n A).
-  Proof. induction n; cbn [Combinators.replicate]; prove_Wf.  Qed.
+  Proof. induction n; cbn [Combinators.replicate]; prove_Wf. Qed.
   Hint Resolve replicate_Wf : Wf.
 
   Lemma reverse_Wf A n : Wf (@Combinators.reverse n A).
@@ -287,9 +266,6 @@ End Misc.
    specifications *)
 Section CombinatorEquivalence.
 
-  (* Lemma instantiate_simpl i o (e: NotationExpr i o): *)
-  (*   kinterp (e *)
-
   Lemma replicate_correct A n (x : denote_kind A) :
     kinterp (@Combinators.replicate n A) (x, tt) = @Vector.const (denote_kind A) x n.
   Proof.
@@ -306,11 +282,11 @@ Section CombinatorEquivalence.
   Hint Rewrite @reshape_correct : kappa_interp.
 
   Lemma map2_correct A B C n
-        (c : NotationExpr <<A, B, Unit >> C) :
+        (c : Kappa <<A, B, Unit >> C) :
     forall v1 v2,
       kinterp (@Combinators.map2 n A B C c) (v1, (v2, tt))
       = Vector.map2 (fun (a : denote_kind A) (b : denote_kind B) =>
-                       kinterp (fun var => instantiate (var:=var) c) (a, (b, tt))) v1 v2.
+                       kinterp (fun var => RemoveContext (c var)) (a, (b, tt))) v1 v2.
   Proof.
     induction n; cbn [Combinators.map2]; intros; kappa_spec;
       autorewrite with vsimpl; rewrite ?map2_cons; reflexivity.
@@ -318,10 +294,10 @@ Section CombinatorEquivalence.
   Hint Rewrite @map2_correct : kappa_interp.
 
   Lemma map_correct A B n
-        (c : NotationExpr << A, Unit >> B) :
+        (c : Kappa << A, Unit >> B) :
     forall v,
       kinterp (@Combinators.map n A B c) (v, tt)
-      = Vector.map (fun a : denote_kind A => kinterp (fun var => instantiate (var:=var) c) (a, tt)) v.
+      = Vector.map (fun a : denote_kind A => kinterp (fun var => RemoveContext (c var)) (a, tt)) v.
   Proof.
     induction n; cbn [Combinators.map]; intros; kappa_spec;
       autorewrite with vsimpl; rewrite ?map_cons; reflexivity.
@@ -345,11 +321,11 @@ Section CombinatorEquivalence.
   Hint Rewrite @reverse_correct : kappa_interp.
 
   Lemma foldl_correct A B n
-        (c : NotationExpr << B, A, Unit >> B) :
+        (c : Kappa << B, A, Unit >> B) :
     forall b v,
       kinterp (Combinators.foldl (n:=n) c) (b, (v, tt))
       = Vector.fold_left (fun (b : denote_kind B) (a : denote_kind A) =>
-                            kinterp (fun var => instantiate (var:=var) c) (b, (a, tt))) b v.
+                            kinterp (fun var => RemoveContext (c var)) (b, (a, tt))) b v.
   Proof.
     induction n; cbn [Vector.fold_left Combinators.foldl]; kappa_spec;
       autorewrite with push_vector_fold; reflexivity.
@@ -375,10 +351,10 @@ Section CombinatorEquivalence.
   Hint Rewrite @enable_correct : kappa_interp.
 
   Lemma bitwise_correct A
-        (c : NotationExpr <<Bit, Bit, Unit>> Bit) :
+        (c : Kappa <<Bit, Bit, Unit>> Bit) :
     forall x y : denote_kind A,
       kinterp (@Combinators.bitwise A c) (x, (y, tt))
-      = bitwise (fun a b : bool => kinterp (fun var => instantiate (var:=var) c) (a, (b, tt))) x y.
+      = bitwise (fun a b : bool => kinterp (fun var => RemoveContext (c var)) (a, (b, tt))) x y.
   Proof.
     induction A; cbn [Combinators.bitwise bitwise]; kappa_spec;
       autorewrite with vsimpl; auto.
@@ -395,9 +371,9 @@ Section CombinatorEquivalence.
   Hint Rewrite @mux_item_correct : kappa_interp.
 
   Lemma curry_correct A B C
-        (c: NotationExpr <<A, B, Unit >> C) ab :
+        (c: Kappa <<A, B, Unit >> C) ab :
     kinterp (@Combinators.curry A B C c) (ab, tt)
-    = kinterp (fun var => instantiate (var:=var) c) (fst ab, (snd ab, tt)).
+    = kinterp (fun var => RemoveContext (c var)) (fst ab, (snd ab, tt)).
   Proof. cbv [Combinators.curry]; kappa_spec; reflexivity.  Qed.
   Hint Rewrite @curry_correct : kappa_interp.
 

@@ -51,6 +51,7 @@ Section vars.
     .
   End Vars.
 
+
   Fixpoint reverse_nth {A} (l: list A) (n: nat) {struct l}: option A :=
     match l with
     | [] => None
@@ -87,6 +88,10 @@ Section vars.
 
   Definition module_instantiate_var {var x y} (m: Module (Kappa x y)): Module (kappa var x y) :=
     module_map_body m (fun e => e var).
+  Definition module_to_expr {x y} (e: Module (Kappa x y)): Kappa x y :=
+    fun var => CallModule (module_instantiate_var e).
+
+  Coercion module_to_expr: Module >-> Kappa.
 End vars.
 
 Arguments Var {var _}.

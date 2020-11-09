@@ -125,7 +125,6 @@ Definition unrolled_cipher_naive'
     >>
   :=
   let aes_key_expand := aes_256_naive_key_expansion sbox_impl in
-  let cipher_round1 := curry (cipher_round sbox_impl) in
   <[\op_i data_i key =>
     let keys = !aes_key_expand key in
 
@@ -133,7 +132,10 @@ Definition unrolled_cipher_naive'
     let '(middle_keys, last_key) = unsnoc keys_uncons in
 
     let initial_rounds =
-      !(foldl <[\ ctxt key => (fst ctxt, !cipher_round1 ctxt key) ]>)
+      !(foldl <[\ ctxt key =>
+        let '(op_i, data_i) = ctxt in
+          (op_i, !(cipher_round sbox_impl) op_i data_i key)
+          ]>)
         (op_i, data_i ^ !aes_transpose first_key)
         (if op_i == !CIPH_FWD
         then !(map aes_transpose) middle_keys

@@ -25,14 +25,14 @@ Require Import Cava.Arrow.ArrowExport.
 Notation kinterp x := (interp_combinational' (x coq_func)).
 
 Ltac kappa_spec_begin :=
-  intros; cbn [interp_combinational' embed_expr instantiate
-    instantiatable_fragment instantiatable_module instantiatable_embedded
+  intros; cbn [interp_combinational'
     ArrowKind.apply_rightmost_tt
+    fst snd
   ];
   repeat match goal with
          | |- context [primitive_semantics ?p] =>
            let x := constr:(primitive_semantics p) in
-           let y := (eval cbv [primitive_semantics] in x) in
+           let y := (eval cbv [primitive_semantics nullary_semantics unary_semantics binary_semantics] in x) in
            progress change x with y
          | _ => progress cbn [denote_kind primitive_input primitive_output
            nullary_semantics unary_semantics binary_semantics]
