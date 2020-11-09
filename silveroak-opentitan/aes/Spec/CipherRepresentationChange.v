@@ -22,8 +22,7 @@ Section ChangeKeyRepresentation.
           (projkey : key_alt -> key)
           (add_round_key : state -> key -> state)
           (sub_bytes shift_rows mix_columns : state -> state)
-          (inv_sub_bytes inv_shift_rows inv_mix_columns : state -> state)
-          (inv_mix_columns_key : key -> key).
+          (inv_sub_bytes inv_shift_rows inv_mix_columns : state -> state).
 
   Lemma cipher_change_key_rep first_key last_key middle_keys
         first_key_alt last_key_alt middle_keys_alt input :
@@ -37,8 +36,26 @@ Section ChangeKeyRepresentation.
              middle_keys_alt input.
   Proof.
     intros; subst; cbv [cipher].
-    repeat (f_equal; [ ]).
-    rewrite fold_left_map.
+    repeat (f_equal; [ ]). rewrite fold_left_map.
+    reflexivity.
+  Qed.
+
+  Lemma equivalent_inverse_cipher_change_key_rep first_key last_key middle_keys
+        first_key_alt last_key_alt middle_keys_alt input :
+    projkey first_key_alt = first_key ->
+    projkey last_key_alt = last_key ->
+    map projkey middle_keys_alt = middle_keys ->
+    equivalent_inverse_cipher
+      state key add_round_key
+      inv_sub_bytes inv_shift_rows inv_mix_columns
+      first_key last_key middle_keys input
+    = equivalent_inverse_cipher
+        state key_alt (fun st k => add_round_key st (projkey k))
+        inv_sub_bytes inv_shift_rows inv_mix_columns first_key_alt last_key_alt
+        middle_keys_alt input.
+  Proof.
+    intros; subst; cbv [equivalent_inverse_cipher].
+    repeat (f_equal; [ ]). rewrite !fold_left_map.
     reflexivity.
   Qed.
 End ChangeKeyRepresentation.
