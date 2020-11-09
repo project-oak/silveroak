@@ -45,6 +45,10 @@ Recursive Extraction Library Combinators.
 Recursive Extraction Library NetlistGeneration.
 
 From Cava.Arrow Require Import ArrowExport.
+From Cava.Arrow Require Classes.Category.
+From Cava.Arrow Require Classes.Arrow.
+From Cava.Arrow Require Classes.Coq.
+From Cava.Arrow Require Classes.Kleisli.
 
 Recursive Extraction Library Arrow.
 Recursive Extraction Library Category.

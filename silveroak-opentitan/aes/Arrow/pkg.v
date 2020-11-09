@@ -21,7 +21,6 @@ From Cava Require Import Arrow.ArrowExport BitArithmetic.
 Import VectorNotations.
 Import KappaNotation.
 Open Scope kind_scope.
-Open Scope category_scope.
 
 Notation "|^ x" :=
   (App (RemoveContext (foldr1 <[\a b => xor a b]> _)) x)

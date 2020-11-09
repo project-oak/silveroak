@@ -14,9 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Reserved Notation "x ~> y" (at level 90).
-Reserved Notation "x ~> y ~> z" (at level 90, y at next level).
-
 From Coq Require Import NaryFunctions Arith NArith.
 From Coq Require Import Vectors.Vector.
 From Coq Require Import Bool.Bool.
@@ -25,6 +22,8 @@ From Cava Require Import VectorUtils.
 From Cava Require Import BitArithmetic.
 
 Import VectorNotations.
+
+(* Module PrimitiveNotations. *)
 
 From Cava Require Export Arrow.ArrowKind.
 
@@ -36,34 +35,34 @@ Inductive NullaryPrimitive : Kind -> Type :=
 | EmptyVec ty:                                 NullaryPrimitive (Vector ty 0).
 
 Inductive UnaryPrimitive : Kind -> Kind -> Type:=
-| BufGate:                              Bit ~> Bit
-| Lut (n: nat) (f: bool^^n --> bool):   Vector Bit n ~> Bit
-| Not:                                  UnaryPrimitive Bit Bit
-| Fst (x y: Kind):                      Tuple x y ~> x
-| Snd (x y: Kind):                      Tuple x y ~> y
-| Uncons (n: nat) (ty: Kind):           Vector ty (S n) ~> Tuple ty (Vector ty n)
-| Unsnoc (n: nat) (ty: Kind):           Vector ty (S n) ~> Tuple (Vector ty n) ty
-| Slice (n: nat) (x y: nat) (ty: Kind): Vector ty n ~> Vector ty (x - y + 1)
-| Split (n m: nat) (ty: Kind):          Vector ty (n+m) ~> Tuple (Vector ty n) (Vector ty m)
-where "x ~> y" := (UnaryPrimitive x y).
+| BufGate:                              UnaryPrimitive Bit Bit
+| Lut (n: nat) (f: bool^^n --> bool):   UnaryPrimitive <<Vector Bit n>> Bit
+| Not:                                  UnaryPrimitive <<Bit>> Bit
+| Fst (x y: Kind):                      UnaryPrimitive <<x, y>> x
+| Snd (x y: Kind):                      UnaryPrimitive <<x, y>> y
+| Uncons (n: nat) (ty: Kind):           UnaryPrimitive <<Vector ty (S n)>> <<ty, Vector ty n>>
+| Unsnoc (n: nat) (ty: Kind):           UnaryPrimitive <<Vector ty (S n)>> <<Vector ty n, ty>>
+| Slice (n: nat) (x y: nat) (ty: Kind): UnaryPrimitive <<Vector ty n>> <<Vector ty (x - y + 1)>>
+| Split (n m: nat) (ty: Kind):          UnaryPrimitive <<Vector ty (n+m)>> <<Vector ty n, Vector ty m>>
+.
 
 Inductive BinaryPrimitive : Kind -> Kind -> Kind -> Type :=
-| And:                          Bit ~> Bit ~> Bit
-| Nand:                         Bit ~> Bit ~> Bit
-| Or:                           Bit ~> Bit ~> Bit
-| Nor:                          Bit ~> Bit ~> Bit
-| Xor:                          Bit ~> Bit ~> Bit
-| Xnor:                         Bit ~> Bit ~> Bit
-| Xorcy:                        Bit ~> Bit ~> Bit
-| Muxcy:                        Bit ~> Tuple Bit Bit ~> Bit
-| Pair (x y: Kind):             x ~> y ~> Tuple x y
-| UnsignedAdd (a b c: nat):     Vector Bit a ~> Vector Bit b ~> Vector Bit c
-| UnsignedSub (a: nat):         Vector Bit a ~> Vector Bit a ~> Vector Bit a
-| Index (n: nat) (ty: Kind):    Vector ty n ~> vec_index n ~> ty
-| Cons (n: nat) (ty: Kind):     ty ~> Vector ty n ~> Vector ty (S n)
-| Snoc (n: nat) (ty: Kind):     Vector ty n ~> ty ~> Vector ty (S n)
-| Concat (n m: nat) (ty: Kind): Vector ty n ~> Vector ty m ~> Vector ty (n + m)
-where "x ~> y ~> z" := (BinaryPrimitive x y z).
+| And:                          BinaryPrimitive << Bit >> << Bit >> << Bit >>
+| Nand:                         BinaryPrimitive << Bit >> << Bit >> << Bit >>
+| Or:                           BinaryPrimitive << Bit >> << Bit >> << Bit >>
+| Nor:                          BinaryPrimitive << Bit >> << Bit >> << Bit >>
+| Xor:                          BinaryPrimitive << Bit >> << Bit >> << Bit >>
+| Xnor:                         BinaryPrimitive << Bit >> << Bit >> << Bit >>
+| Xorcy:                        BinaryPrimitive << Bit >> << Bit >> << Bit >>
+| Muxcy:                        BinaryPrimitive << Bit >> << Bit, Bit >> << Bit >>
+| Pair (x y: Kind):             BinaryPrimitive << x >> << y >> << x, y >>
+| UnsignedAdd (a b c: nat):     BinaryPrimitive << Vector Bit a >> << Vector Bit b >> << Vector Bit c >>
+| UnsignedSub (a: nat):         BinaryPrimitive << Vector Bit a >> << Vector Bit a >> << Vector Bit a >>
+| Index (n: nat) (ty: Kind):    BinaryPrimitive << Vector ty n >> << vec_index n >> << ty >>
+| Cons (n: nat) (ty: Kind):     BinaryPrimitive << ty >> << Vector ty n >> << Vector ty (S n) >>
+| Snoc (n: nat) (ty: Kind):     BinaryPrimitive << Vector ty n >> << ty >> << Vector ty (S n) >>
+| Concat (n m: nat) (ty: Kind): BinaryPrimitive << Vector ty n >> << Vector ty m >> << Vector ty (n + m) >>
+.
 
 Inductive CircuitPrimitive :=
 | P0 : forall x, NullaryPrimitive x -> CircuitPrimitive

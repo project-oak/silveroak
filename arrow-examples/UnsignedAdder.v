@@ -45,7 +45,7 @@ Section notation.
 
   Definition growth_adder n
   : << Vector Bit n, Vector Bit n, Unit >> ~> Vector Bit (S n) :=
-  <[ \ a b => !(rewrite_vector (max_nn_add_1_is_S_n _)) (a + b) ]>.
+  <[ \ a b => typecast (a + b) ]>.
 
   Definition growth_tree_adder a n
   : << Vector (Vector Bit a) (2^n), Unit >> ~> Vector Bit (n + a) :=

@@ -24,9 +24,6 @@ From Cava Require Import Arrow.Primitives.
 Import ListNotations.
 Import EqNotations.
 
-Local Open Scope category_scope.
-Local Open Scope arrow_scope.
-
 Declare Scope kappa_scope.
 Declare Custom Entry expr.
 Delimit Scope kappa_scope with kappa.
@@ -56,14 +53,7 @@ Module KappaNotation.
     (fun var => (e)%kappa): Kappa _ _
    ) (at level 1, e custom expr at level 99).
 
-  (* Notation "<[ e ]>" := ( *)
-  (*   (fun var => e%kappa) : Kappa _ _ *)
-  (*  ) (at level 1, e custom expr at level 1). *)
-
-  (* Notation "\ x .. y => e" := (Abs (fun x => .. (Abs (fun y => e)) ..)) *)
-  (*   (in custom expr at level 200, x binder, right associativity) : kappa_scope. *)
-
-  Notation "x ~> y" := (Kappa x y).
+  Notation "x ~> y" := (Kappa x y) (at level 90).
 
   Notation "x y" := (App x y) (in custom expr at level 3, left associativity) : kappa_scope.
 
@@ -189,9 +179,6 @@ Module KappaNotation.
   Notation "'unsnoc'" := (Primitive (P1 (Unsnoc _ _))) (in custom expr at level 4) : kappa_scope.
 
 End KappaNotation.
-
-Import KappaNotation.
-Local Open Scope kind_scope.
 
 Section regression_examples.
   Import KappaNotation.
