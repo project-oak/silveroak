@@ -25,5 +25,6 @@ CipherRoundProperties.v
 NaiveCipherProperties.v
 OpenTitanCipherEquivalence.v
 OpenTitanCipherProperties.v
+OpenTitanInverseCipherEquivalence.v
 PkgProperties.v
 Extraction.v
