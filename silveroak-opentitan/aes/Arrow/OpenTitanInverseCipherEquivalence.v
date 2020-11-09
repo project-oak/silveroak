@@ -37,13 +37,28 @@ Import VectorNotations ListNotations.
 Local Notation nat_to_bitvec size n := (Ndigits.N2Bv_sized size (N.of_nat n)).
 Local Notation nat_to_byte n := (nat_to_bitvec 8 n).
 Local Notation byte := (Vector.t bool 8) (only parsing).
+Local Notation state := (Vector.t (Vector.t byte 4) 4) (only parsing).
+Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
+Local Notation rconst := byte (only parsing).
+Local Notation keypair := (Vector.t (Vector.t byte 4) 8) (only parsing).
+
+(* aes_key_expand operates on a pair of keys; this is a sliding window of
+   (previous key ++ current key). The following definitions project out
+   keys from the pair. *)
+Definition fstkey : keypair -> key :=
+  @slice_by_position
+    (t (t bool 8) 4) 8 3 0 (kind_default (Vector (Vector Bit 8) 4)).
+Definition sndkey : keypair -> key :=
+  @slice_by_position
+    (t (t bool 8) 4) 8 7 4 (kind_default (Vector (Vector Bit 8) 4)).
+
+Definition swap_keys (k : keypair) := sndkey k ++ fstkey k.
 
 Section Equivalence.
   Context (sbox : pkg.SboxImpl)
           (aes_key_expand_spec :
-             pkg.SboxImpl -> bool -> Vector.t bool 4 -> byte ->
-             Vector.t (Vector.t byte 4) 8 ->
-             byte * Vector.t (Vector.t byte 4) 8)
+             pkg.SboxImpl -> bool -> Vector.t bool 4 ->
+             rconst -> keypair -> rconst * keypair)
           (aes_key_expand_correct :
              forall sbox_impl op_i round_id rcon key_i,
                kinterp (aes_key_expand sbox_impl)
@@ -62,40 +77,6 @@ Section Equivalence.
                kinterp mix_columns.aes_mix_columns (op_i, (state, tt))
                = aes_mix_columns_spec op_i state).
 
-  (* We need to know that inverse key expansion is in fact the inverse of
-     forward key expansion *)
-  Context (inv_key_expand_key_expand :
-             forall round_i round_i_inv rcon k,
-               let Nr := 14 in
-               let nat_to_bitvec sz n := N2Bv_sized sz (N.of_nat n) in
-               let rk := aes_key_expand_spec
-                           sbox false (nat_to_bitvec _ round_i) rcon k in
-               round_i_inv = Nr - S round_i ->
-               aes_key_expand_spec
-                 sbox true (nat_to_bitvec _ round_i_inv)
-                 (fst rk) (snd rk) = (rcon, k)).
-
-  (* TODO: This precondition seems very annoying to prove and is only necessary
-     because the implementation plugs in a constant 64 for the first round
-     constant of inverse key generation, instead of retrieving the last round
-     constant from forward key generation. I can't find any indication that
-     OpenTitan does the same; can we change our implementation to remove the
-     need for this proof? *)
-  Context (last_rcon_equiv
-           : forall init_keypair keys last_key,
-                 let Nr := 14 in
-                 let init_rcon := nat_to_bitvec _ 1 in
-                 all_keys (fun i rk => aes_key_expand_spec
-                                      sbox false (nat_to_bitvec _ i) (fst rk) (snd rk))
-                          Nr (init_rcon, init_keypair) = (keys ++ [last_key])%list ->
-                 fst last_key = nat_to_bitvec _ 64).
-
-
-  Notation state := (Vector.t (Vector.t (Vector.t bool 8) 4) 4) (only parsing).
-  Notation key := (Vector.t (Vector.t (Vector.t bool 8) 4) 4) (only parsing).
-  Notation rconst := (Vector.t bool 8) (only parsing).
-  Notation keypair := (Vector.t (Vector.t (Vector.t bool 8) 4) 8) (only parsing).
-
   Definition add_round_key : state -> key -> state :=
     @bitwise (Vector (Vector (Vector Bit 8) 4) 4) (fun a b => xorb a b).
   Definition inv_sub_bytes : state -> state := aes_sub_bytes_spec sbox true.
@@ -107,27 +88,18 @@ Section Equivalence.
   Definition inv_key_expand : nat -> rconst * keypair -> rconst * keypair :=
     fun i rk => aes_key_expand_spec sbox true (nat_to_bitvec _ i) (fst rk) (snd rk).
 
-  Definition fstkey : keypair -> key :=
-    @slice_by_position
-      (t (t bool 8) 4) 8 3 0 (kind_default (Vector (Vector Bit 8) 4)).
-  Definition sndkey : keypair -> key :=
-    @slice_by_position
-      (t (t bool 8) 4) 8 7 4 (kind_default (Vector (Vector Bit 8) 4)).
-
-  Definition projkey (x : rconst * keypair) : key :=
+  (* current key *)
+  Definition projkey1 (x : rconst * keypair) : key :=
     transpose_rev (fstkey (snd x)).
+  (* previous key *)
+  Definition projkey2 (x : rconst * keypair) : key :=
+    transpose_rev (sndkey (snd x)).
 
-  (* Adds dummy rconst + second key to a key to create a rconst * keypair *)
-  Definition mock_extra_key_data (k : key) : rconst * keypair :=
+  (* Adds dummy rconst + other key to a key to create a rconst * keypair *)
+  Definition unprojkey1 (k : key) : rconst * keypair :=
     (nat_to_byte 0, transpose_rev k ++ const (const (const false 8) 4) 4).
-
-  Lemma projkey_mock_id k : projkey (mock_extra_key_data k) = k.
-  Proof.
-    cbv [projkey mock_extra_key_data fstkey slice_by_position].
-    cbn [splitat snd]. rewrite !resize_default_id.
-    rewrite splitat_append. cbn [fst].
-    apply transpose_rev_involutive.
-  Qed.
+  Definition unprojkey2 (k : key) : rconst * keypair :=
+    (nat_to_byte 0, const (const (const false 8) 4) 4 ++ transpose_rev k).
 
   Local Ltac constant_vector_simpl vec :=
     lazymatch type of vec with
@@ -152,12 +124,30 @@ Section Equivalence.
   Lemma fstkey_sndkey_append kp : fstkey kp ++ sndkey kp = kp.
   Proof. constant_vector_simpl kp. reflexivity. Qed.
 
+  Lemma swap_keys_involutive kp : swap_keys (swap_keys kp) = kp.
+  Proof. constant_vector_simpl kp. reflexivity. Qed.
+
+  Lemma proj_unproj_key1 k : projkey1 (unprojkey1 k) = k.
+  Proof.
+    cbv [projkey1 unprojkey1]. cbn [fst snd].
+    rewrite fstkey_of_append.
+    apply transpose_rev_involutive.
+  Qed.
+
+  Lemma proj_unproj_key2 k : projkey2 (unprojkey2 k) = k.
+  Proof.
+    cbv [projkey2 unprojkey2]. cbn [fst snd].
+    rewrite sndkey_of_append.
+    apply transpose_rev_involutive.
+  Qed.
+
   Definition loop_states_equivalent
              (impl_loop_state : bool * (rconst * (state * keypair)))
              (spec_loop_state : rconst * keypair * state)
     : Prop :=
     impl_loop_state = (true, (fst (fst spec_loop_state),
-                              (snd spec_loop_state, snd (fst spec_loop_state)))).
+                              (snd spec_loop_state,
+                               snd (fst spec_loop_state)))).
 
   Lemma key_expand_and_round_spec_equiv_inverse impl_loop_state spec_loop_state i :
     N.size_nat (N.of_nat i) <= 4 -> (* i must fit in implementation's bitvector size *)
@@ -167,14 +157,14 @@ Section Equivalence.
          aes_key_expand_spec sbox impl_loop_state (nat_to_bitvec _ i))
       (equivalent_inverse_cipher_round_interleaved
         (state:=state) (key:=rconst * keypair)
-        (fun st k => add_round_key st (projkey k))
+        (fun st k => add_round_key st (projkey1 k))
         inv_sub_bytes inv_shift_rows inv_mix_columns
-        inv_key_expand (fun k => mock_extra_key_data (inv_mix_columns (projkey k)))
+        inv_key_expand (fun k => unprojkey1 (inv_mix_columns (projkey1 k)))
         spec_loop_state i).
   Proof.
     cbv [loop_states_equivalent]; intros; subst.
-    cbv [key_expand_and_round_spec cipher_round_spec
-                                   equivalent_inverse_cipher_round_interleaved].
+    cbv [key_expand_and_round_spec
+           cipher_round_spec equivalent_inverse_cipher_round_interleaved].
     destruct spec_loop_state as [ [ rcon kp ] st]. cbn [fst snd].
     repeat lazymatch goal with
            | |- context [mux (@denote_kind_eqb ?A true false) ?T ?F] =>
@@ -182,12 +172,14 @@ Section Equivalence.
            end.
     repeat progress
            fold fstkey sndkey inv_mix_columns inv_shift_rows inv_sub_bytes.
-    rewrite projkey_mock_id.
-    cbv [inv_key_expand add_round_key projkey]. cbn [fst snd].
+    cbv [inv_key_expand add_round_key projkey1 projkey2]. cbn [fst snd].
     rewrite denote_kind_eqb_N2Bv_sized by (cbn; lia).
     replace (N.of_nat i =? 0)%N with (i =? 0)
       by (rewrite N.eqb_compare, N2Nat.inj_compare, !Nat2N.id, <-Nat.eqb_compare;
           reflexivity).
+    cbv [unprojkey1]. cbn [fst snd].
+    rewrite fstkey_of_append.
+    rewrite transpose_rev_involutive.
     reflexivity.
   Qed.
 
@@ -197,51 +189,103 @@ Section Equivalence.
                      (fun c a =>
                         key_expand_and_round_spec aes_key_expand_spec sbox c
                                                   (nat_to_bitvec 4 a))
-                     (List.seq (N.to_nat 0) Nr)
+                     (List.seq 0 Nr)
                      (false, (init_rcon, (input, init_keypair))))))
-    = sndkey (snd last_key) ++ fstkey (snd last_key).
+    = (snd last_key).
   Proof.
-  Admitted. (* TODO *)
+    intros.
+    lazymatch goal with H : ?ks = (_ ++ [last_key])%list |- _ =>
+                        replace last_key with (List.last ks (init_rcon, init_keypair))
+                          by (rewrite H, last_last; reflexivity)
+    end.
+    rewrite last_all_keys.
+    lazymatch goal with
+    | |- snd (snd (snd (@List.fold_left ?A1 nat ?f1 ?ls ?x1)))
+        = snd (@List.fold_left ?A2 nat ?f2 ?ls ?x2) =>
+      pose (R:=fun (x : A1) (y : A2) =>
+                 fst x = false
+                 /\ fst (snd x) = fst y
+                 /\ snd (snd (snd x)) = snd y);
+        assert (R (List.fold_left f1 ls x1) (List.fold_left f2 ls x2))
+    end.
+    { (* prove that R holds through loop *)
+      eapply fold_left_preserves_relation; subst R; [ cbn; tauto | ].
+      intros. cbv beta in *. cbv [key_expand key_expand_and_round_spec].
+      repeat match goal with H : _ /\ _ |- _ => destruct H end.
+      Tactics.destruct_products. cbn [fst snd] in *. subst.
+      tauto. }
+    { (* prove that R is strong enough to prove postcondition *)
+      subst R. cbv beta in *.
+      repeat match goal with H : _ /\ _ |- _ => destruct H end.
+      auto. }
+  Qed.
+
+  (* TODO: move *)
+  Ltac sset x value :=
+    set (x := value);
+    lazymatch goal with
+    | |- context [x] => idtac
+    | _ => fail "set did not change goal"
+    end.
+
+  (* TODO: move *)
+  Ltac change_compute x :=
+    lazymatch goal with
+    | |- context [x] => idtac
+    | _ => fail "not found in goal:" x
+    end;
+    let y := (eval vm_compute in x) in
+    change x with y.
+
+  About all_keys.
+  (* TODO: move *)
+  Lemma all_keys_shift0 {key} (key_expand : nat -> key -> key) n k :
+    all_keys key_expand (S n) k = (k :: all_keys (fun i => key_expand (S i)) n (key_expand 0 k))%list.
+  Proof.
+    cbv [all_keys all_keys']. cbn [List.seq].
+    rewrite <-seq_shift.
+    rewrite fold_left_accumulate_cons, fold_left_accumulate_map.
+    reflexivity.
+  Qed.
 
   Lemma unrolled_cipher_spec_equiv_inverse
-        init_keypair first_key last_key middle_keys input :
-    let Nr := 14 in
-    let init_rcon := nat_to_byte 1 in
-    (* for forward direction, reverse keypair so key_expand doesn't have to mux *)
-    let init_keypair_rev := sndkey init_keypair ++ fstkey init_keypair in
+        (Nr:=14) (init_rcon := nat_to_byte 1) (final_rcon:=nat_to_bitvec _ 64)
+        init_keypair final_keypair first_key last_key middle_keys input :
     (* key_expand state is rconst * keypair *)
-    let all_rcons_and_keypairs := all_keys key_expand Nr (init_rcon, init_keypair_rev) in
-    (* representation change: project out the forward key and transpose it *)
-    let all_keys := List.map projkey all_rcons_and_keypairs in
-    all_keys = (first_key :: middle_keys ++ [last_key])%list ->
+    let all_rcons_and_keypairs_fwd := all_keys key_expand Nr (init_rcon, swap_keys init_keypair) in
+    let all_rcons_and_keypairs_inv := all_keys inv_key_expand Nr (final_rcon, swap_keys final_keypair) in
+    (* representation change: project out the relevant part of the key and transpose it *)
+    let all_keys_fwd := List.map projkey2 all_rcons_and_keypairs_fwd in
+    let all_keys_inv := List.map projkey1 all_rcons_and_keypairs_inv in
+    all_keys_inv = (first_key :: middle_keys ++ [last_key])%list ->
+    (exists keys, all_rcons_and_keypairs_fwd = (keys ++ [(final_rcon, final_keypair)])%list) ->
     unrolled_cipher_spec aes_key_expand_spec sbox true input init_keypair
     = equivalent_inverse_cipher
         state key add_round_key inv_sub_bytes inv_shift_rows inv_mix_columns
-        last_key first_key (List.map inv_mix_columns (List.rev middle_keys)) input.
+        first_key last_key (List.map inv_mix_columns middle_keys) input.
   Proof.
-    cbv zeta. cbn [denote_kind] in *. intro Hall_keys.
+    cbv zeta. cbn [denote_kind] in *. intro Hall_keys. intro Hlast_keys.
 
     (* Get all states from key expansion *)
     map_inversion Hall_keys; subst.
     match goal with H : @eq (list (_ * keypair)) _ (_ :: _ ++ [_])%list |- _ =>
                     rename H into Hall_keys end.
 
+    destruct Hlast_keys as [? Hlast_keys].
+
     (* representation change; use full key-expansion state (rconst * keypair) *)
     erewrite equivalent_inverse_cipher_change_key_rep with
-        (projkey := projkey)
-        (middle_keys_alt:= List.map (fun x => mock_extra_key_data x) _);
+        (projkey := projkey1)
+        (middle_keys_alt:= List.map (fun x => unprojkey1 x) _);
       [ | reflexivity | reflexivity
         | rewrite List.map_map;
-          rewrite List.map_ext with (g:=fun x => x) by auto using projkey_mock_id;
+          rewrite List.map_ext with (g:=fun x => x) by auto using proj_unproj_key1;
           rewrite List.map_id; reflexivity ].
 
-    rewrite <-List.map_rev, !List.map_map.
+    rewrite !List.map_map.
+
     erewrite <-equivalent_inverse_cipher_interleaved_equiv
-      with (inv_key_expand:=inv_key_expand); try eassumption;
-      [ | intros; rewrite Hall_keys, app_comm_cons, last_last; reflexivity
-        | intros; cbv [key_expand inv_key_expand];
-          rewrite inv_key_expand_key_expand;
-          solve [auto using surjective_pairing] ].
+      with (inv_key_expand:=inv_key_expand) by eassumption.
 
     cbv [unrolled_cipher_spec final_cipher_round_spec
                               equivalent_inverse_cipher_interleaved ].
@@ -254,15 +298,20 @@ Section Equivalence.
       change (F = RHS)
     end.
 
-    (* The implementation inlines the expression for the last key, which is
-       derived from running the entire cipher loop in the forward direction. We
-       can use our helper lemma to replace this large expression with the last
-       key of all_keys. *)
-    erewrite last_key_equiv
-      by (rewrite app_comm_cons in Hall_keys; rewrite <-Hall_keys; reflexivity).
-
-    repeat destruct_pair_let.
     repeat progress fold fstkey sndkey.
+    change (N.to_nat 0) with 0.
+    repeat destruct_pair_let. subst Nr.
+    repeat match goal with
+           | _ => rewrite fstkey_of_append
+           | _ => rewrite sndkey_of_append
+           | _ => rewrite swap_keys_involutive
+           | |- context [sndkey ?k ++ fstkey ?k] =>
+             change (sndkey k ++ fstkey k) with (swap_keys k)
+           end.
+
+    erewrite last_key_equiv by eassumption.
+    cbn [fst snd].
+
     match goal with
     | |- ?LHS = ?RHS =>
       match LHS with
@@ -277,13 +326,9 @@ Section Equivalence.
       end
     end; [ | | ].
     { (* equivalence post-loop *)
-      cbv [add_round_key projkey].
+      cbv [add_round_key projkey1]. cbn [fst snd].
       reflexivity. }
     { (* equivalence at start of loop *)
-      cbv [loop_states_equivalent]. cbn [fst snd].
-      rewrite sndkey_of_append, fstkey_of_append.
-      rewrite fstkey_sndkey_append.
-      erewrite last_rcon_equiv by (rewrite app_comm_cons in Hall_keys; eauto).
       reflexivity. }
     { (* equivalence holds through loop body *)
       intros. eapply key_expand_and_round_spec_equiv_inverse; eauto; [ ].

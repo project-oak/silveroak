@@ -87,12 +87,13 @@ Section Equivalence.
         init_keypair first_key last_key middle_keys input :
     let Nr := 14 in
     let init_rcon := nat_to_byte 1 in
-    (* initial key pair reversed so key_expand doesn't have to mux *)
-    let init_keypair_rev := sndkey init_keypair ++ fstkey init_keypair in
+    (* reverse initial keypair (which is round key 0 ++ round key 1)
+       so that the first round key (0) is in second position *)
+    let init_keypair_rev := swap_keys init_keypair in
     (* key_expand state is rconst * keypair *)
     let init_rk := (init_rcon, init_keypair_rev) in
     let all_rcons_and_keypairs := all_keys key_expand Nr init_rk in
-    (* representation change: project out the forward key and transpose it *)
+    (* representation change: project out the round (second) key and transpose it *)
     let all_keys := List.map (fun x : rconst * keypair =>
                                 transpose_rev (sndkey (snd x)))
                              all_rcons_and_keypairs in
