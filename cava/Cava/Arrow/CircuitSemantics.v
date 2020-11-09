@@ -130,14 +130,14 @@ Definition combinational_evaluation {x y: Kind}
   (circuit: x ~> y)
   (i: denote_kind (remove_rightmost_unit x))
   : denote_kind y :=
-  combinational_evaluation' circuit (apply_rightmost_tt x i).
+  combinational_evaluation' circuit (denote_apply_rightmost_tt x i).
 
 Definition circuit_evaluation {x y: Kind}
   (circuit: x ~> y)
   (i: denote_kind (remove_rightmost_unit x))
   (state: circuit_state circuit)
   : (denote_kind y * circuit_state circuit) :=
-  circuit_evaluation' circuit (apply_rightmost_tt x i) state.
+  circuit_evaluation' circuit (denote_apply_rightmost_tt x i) state.
 
 Fixpoint unroll_circuit_evaluation' {x y: Kind}
   (circuit: x ~> y)

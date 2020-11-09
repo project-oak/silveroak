@@ -26,7 +26,7 @@ Notation kinterp x := (interp_combinational' (x coq_func)).
 
 Ltac kappa_spec_begin :=
   intros; cbn [interp_combinational'
-    ArrowKind.apply_rightmost_tt
+    denote_apply_rightmost_tt
     fst snd
   ];
   repeat match goal with

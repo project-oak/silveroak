@@ -43,7 +43,7 @@ Section combinational_semantics.
     | App f e => fun y =>
       (interp_combinational' f) (interp_combinational' e tt, y)
     | Comp g f => fun x => interp_combinational' g (interp_combinational' f x)
-    | Comp1 g f => fun x => interp_combinational' g (apply_rightmost_tt _ (interp_combinational' f x))
+    | Comp1 g f => fun x => interp_combinational' g (denote_apply_rightmost_tt _ (interp_combinational' f x))
     | Primitive p =>
       match p with
       | P0 p => primitive_semantics (P0 p)
@@ -64,7 +64,7 @@ Section combinational_semantics.
   Definition interp_combinational {x y: Kind}
     (expr: kappa coq_func x y)
     (i: denote_kind (remove_rightmost_unit x)): (denote_kind y) :=
-    interp_combinational' expr (apply_rightmost_tt x i).
+    interp_combinational' expr (denote_apply_rightmost_tt x i).
 
   (*
   Axiom expression_evaluation_is_arrow_evaluation: forall i o (expr: Kappa i o), forall (x: denote_kind i),

@@ -14,11 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* Require Export Cava.Arrow.Classes.Category. *)
-(* Require Export Cava.Arrow.Classes.Arrow. *)
-(* Require Export Cava.Arrow.Classes.Coq. *)
-(* Require Export Cava.Arrow.Classes.Kleisli. *)
-
 Require Export Cava.Arrow.Primitives.
 
 Require Export Cava.Arrow.ArrowKind.

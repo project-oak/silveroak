@@ -210,7 +210,7 @@ removes the list Kind, we first need to copy the list Kind. *)
 | Comp1 e1 e2 =>
   second copy
   >>> unassoc
-  >>> first (closure_conversion' ctxt e2 >>> apply_rightmost_tt_arrow  _)
+  >>> first (closure_conversion' ctxt e2 >>> apply_rightmost_tt _)
   >>> closure_conversion' ctxt e1
 
 | ExprSyntax.Primitive p =>
