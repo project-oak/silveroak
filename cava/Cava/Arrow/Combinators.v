@@ -41,7 +41,7 @@ Definition uncurry {A B C args}
   : Kappa <<A, B, args>> C :=
   <[ \a b => !f (a, b) ]>.
 
-Program Definition curry {A B C}
+Definition curry {A B C}
   (f:  << A, B, Unit >> ~> C)
   : Kappa << <<A, B>>, Unit >> C :=
   <[ \ab => let '(a, b) : <<A,B>> = ab in !f a b ]>.

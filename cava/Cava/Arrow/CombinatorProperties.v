@@ -159,7 +159,7 @@ Ltac prove_Wf_step :=
           | solve [eauto with Wf] ]
   | |- List.In _ _ => cbn [List.In]; tauto
   end.
-Ltac prove_Wf := cbv [Wf module_body]; intros; cbn; repeat prove_Wf_step.
+Ltac prove_Wf := cbv [Wf module_body]; intros; repeat prove_Wf_step.
 
 Section CombinatorWf.
   Lemma replicate_Wf A n : Wf (@Combinators.replicate n A).
@@ -191,7 +191,7 @@ Section CombinatorWf.
   Hint Resolve foldl_Wf : Wf.
 
   Lemma enable_Wf A : Wf (@Combinators.enable A).
-  Proof. induction A; cbn [Combinators.enable]; prove_Wf.  Qed.
+  Proof. induction A; cbn [Combinators.enable]; prove_Wf. Qed.
   Hint Resolve enable_Wf : Wf.
 
   Lemma bitwise_Wf A c : Wf c -> Wf (@Combinators.bitwise A c).

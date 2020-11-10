@@ -46,17 +46,7 @@ Section Wf.
 
   Lemma unrolled_cipher_flat_Wf :
     forall sbox_impl, Wf (unrolled_cipher_flat sbox_impl).
-  Proof.
-    Hint Extern 4 (Wf Combinators.reshape) =>
-      solve
-      [ apply (reshape_Wf _ 4 4)
-      | apply (reshape_Wf _ 8 4)
-      | apply (reshape_Wf _ 16 8)
-      | apply (reshape_Wf _ 32 8)
-      | apply (reshape_Wf _ 32 16)] : Wf.
-    Hint Extern 4 (Wf Combinators.flatten) => (now apply flatten_Wf) : Wf.
-    cbv [unrolled_cipher_flat]; prove_Wf.
-  Qed.
+  Proof. cbv [unrolled_cipher_flat]; prove_Wf. Qed.
   Hint Resolve unrolled_cipher_flat_Wf : Wf.
 End Wf.
 Hint Resolve key_expand_and_round_Wf unrolled_cipher_Wf unrolled_cipher_flat_Wf

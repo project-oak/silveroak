@@ -51,7 +51,6 @@ Section vars.
     .
   End Vars.
 
-
   Fixpoint reverse_nth {A} (l: list A) (n: nat) {struct l}: option A :=
     match l with
     | [] => None
