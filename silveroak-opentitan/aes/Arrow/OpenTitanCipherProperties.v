@@ -127,4 +127,3 @@ End Equivalence.
 Hint Rewrite @key_expand_and_round_correct @unrolled_cipher_correct
      @unrolled_cipher_flat_correct using solve [eauto] : kappa_interp.
 Global Opaque key_expand_and_round unrolled_cipher unrolled_cipher_flat.
-
