@@ -1,4 +1,4 @@
-From Coq Require Import String.
+From Coq Require Import Strings.String.
 From Coq Require Import Lists.List.
 From Coq Require Import Arith.Peano_dec.
 From Cava Require Import Arrow.ArrowKind.

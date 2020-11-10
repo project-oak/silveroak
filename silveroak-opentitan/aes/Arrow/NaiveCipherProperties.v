@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import derive.Derive PeanoNat Nat.
+From Coq Require Import derive.Derive.
 From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec
      Arrow.CombinatorProperties BitArithmetic VectorUtils.
 Require Import Cava.Tactics.
