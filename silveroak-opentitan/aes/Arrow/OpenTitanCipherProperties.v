@@ -92,7 +92,6 @@ Section Equivalence.
   Proof.
     cbv [key_expand_and_round]; kappa_spec.
     repeat destruct_pair_let. cbn [fst snd].
-    rewrite <-!surjective_pairing.
     derive_spec_done.
   Qed.
   Hint Rewrite @key_expand_and_round_correct : kappa_interp.

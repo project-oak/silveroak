@@ -99,3 +99,4 @@ End Equivalence.
 Hint Rewrite @unrolled_cipher_naive'_correct
      @unrolled_cipher_naive_correct using solve [eauto] : kappa_interp.
 Global Opaque unrolled_cipher_naive' unrolled_cipher_naive.
+

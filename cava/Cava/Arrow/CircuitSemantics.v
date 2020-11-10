@@ -22,6 +22,7 @@ From Cava Require Import Arrow.CircuitArrow Arrow.ArrowKind Arrow.Primitives.
 Import ListNotations.
 Import VectorNotations.
 Import EqNotations.
+Import CategoryNotations.
 
 Require Import Cava.BitArithmetic.
 Require Import Cava.VectorUtils.
@@ -53,7 +54,8 @@ Fixpoint combinational_evaluation' {i o}
   | Structural (Swap x y) => fun '(x,y) => (y,x)
   | Structural (Copy x) => fun x => (x,x)
 
-  | Primitive p => primitive_interp p
+  | Primitive p => primitive_semantics p
+  | Delay _ => fun _ => kind_default _
   | RewriteTy x y => rewrite_or_default x y
 
   end.
@@ -65,7 +67,7 @@ Fixpoint circuit_state {i o} (c: Circuit i o) : Type :=
   | Second x y z f => circuit_state f
   | Loopr x y z f => circuit_state f
   | Loopl x y z f => circuit_state f
-  | Primitive (Delay o) => denote_kind o
+  | Delay o => denote_kind o
   | _ => Datatypes.unit
   end.
 
@@ -76,7 +78,7 @@ Fixpoint default_state {i o} (c: Circuit i o) : circuit_state c :=
   | Second x y z f => default_state f
   | Loopr x y z f => default_state f
   | Loopl x y z f => default_state f
-  | Primitive (Delay o) => kind_default o
+  | Delay o => kind_default o
   | _ => tt
   end.
 
@@ -116,8 +118,8 @@ Fixpoint circuit_evaluation' {i o} (c: Circuit i o)
   | Structural (Swap x y) => fun '(x,y) _ => ((y,x), tt)
   | Structural (Copy x) => fun x _ => ((x,x),tt)
 
-  | Primitive (Delay o) => fun x s => (s, fst x)
-  | Primitive p => fun x _ => (primitive_interp p x, tt)
+  | Delay o => fun x s => (s, x)
+  | Primitive p => fun x _ => (primitive_semantics p x, tt)
 
   | RewriteTy x y => fun v _ => (rewrite_or_default x y v, tt)
   end.
@@ -128,14 +130,14 @@ Definition combinational_evaluation {x y: Kind}
   (circuit: x ~> y)
   (i: denote_kind (remove_rightmost_unit x))
   : denote_kind y :=
-  combinational_evaluation' circuit (apply_rightmost_tt x i).
+  combinational_evaluation' circuit (denote_apply_rightmost_tt x i).
 
 Definition circuit_evaluation {x y: Kind}
   (circuit: x ~> y)
   (i: denote_kind (remove_rightmost_unit x))
   (state: circuit_state circuit)
   : (denote_kind y * circuit_state circuit) :=
-  circuit_evaluation' circuit (apply_rightmost_tt x i) state.
+  circuit_evaluation' circuit (denote_apply_rightmost_tt x i) state.
 
 Fixpoint unroll_circuit_evaluation' {x y: Kind}
   (circuit: x ~> y)

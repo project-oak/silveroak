@@ -136,16 +136,21 @@ Ltac kequiv_step :=
   | |- kappa_equivalence _ (Abs _) (Abs _) => eapply Abs_equiv
   | |- kappa_equivalence _ (App _ _) (App _ _) => eapply App_equiv
   | |- kappa_equivalence _ (Comp _ _) (Comp _ _) => eapply Compose_equiv
+  | |- kappa_equivalence _ (Comp1 _ _) (Comp1 _ _) => eapply Compose1_equiv
   | |- @kappa_equivalence ?var1 ?var2 ?x ?y ?E (Primitive ?p) (Primitive _) =>
     change (@kappa_equivalence
-              var1 var2 (primitive_input p) (primitive_output p)
+              var1 var2 (extended_prim_input p) (primitive_output p)
               E (Primitive p) (Primitive p));
     eapply Prim_equiv
   | |- kappa_equivalence _ (Let _ _) (Let _ _) => eapply Let_equiv
   | |- kappa_equivalence _ (LetRec _ _) (LetRec _ _) => eapply Letrec_equiv
   | |- kappa_equivalence _ Id Id => eapply Id_equiv
+  | |- kappa_equivalence _ (Typecast _ _) (Typecast _ _) => eapply Typecast_equiv
+  | |- kappa_equivalence _ Delay Delay => eapply Delay_equiv
   | |- kappa_equivalence _ (RemoveContext _) (RemoveContext _) =>
     eapply RemoveContext_equiv
+  | |- kappa_equivalence _ (CallModule _) (CallModule _) =>
+    eapply CallModule_equiv
   end; intros.
 Ltac prove_Wf_step :=
   lazymatch goal with
@@ -154,7 +159,7 @@ Ltac prove_Wf_step :=
           | solve [eauto with Wf] ]
   | |- List.In _ _ => cbn [List.In]; tauto
   end.
-Ltac prove_Wf := cbv [Wf]; intros; repeat prove_Wf_step.
+Ltac prove_Wf := cbv [Wf module_body]; intros; repeat prove_Wf_step.
 
 Section CombinatorWf.
   Lemma replicate_Wf A n : Wf (@Combinators.replicate n A).
@@ -201,10 +206,12 @@ Section CombinatorWf.
   Hint Resolve equality_Wf : Wf.
 
   Lemma mux_item_Wf A : Wf (@Combinators.mux_item A).
-  Proof. cbv [Combinators.mux_item]; prove_Wf. Qed.
+  Proof. cbv [Combinators.mux_item]; prove_Wf; [ ].
+    eapply bitwise_Wf; prove_Wf.
+  Qed.
   Hint Resolve mux_item_Wf : Wf.
 
-  Lemma curry_Wf A B C args c : Wf c -> Wf (@Combinators.curry A B C args c).
+  Lemma curry_Wf A B C c : Wf c -> Wf (@Combinators.curry A B C c).
   Proof. cbv [Combinators.curry]; prove_Wf. Qed.
   Hint Resolve curry_Wf : Wf.
 
@@ -254,6 +261,7 @@ Section Misc.
   Qed.
 End Misc.
 
+
 (* Proofs of equivalence between circuit combinators and functional
    specifications *)
 Section CombinatorEquivalence.
@@ -274,11 +282,11 @@ Section CombinatorEquivalence.
   Hint Rewrite @reshape_correct : kappa_interp.
 
   Lemma map2_correct A B C n
-        (c : (Tuple A << B, Unit >> ~[ KappaCat ]~> C)%CategoryLaws) :
+        (c : Kappa <<A, B, Unit >> C) :
     forall v1 v2,
       kinterp (@Combinators.map2 n A B C c) (v1, (v2, tt))
       = Vector.map2 (fun (a : denote_kind A) (b : denote_kind B) =>
-                       kinterp c (a, (b, tt))) v1 v2.
+                       kinterp (fun var => RemoveContext (c var)) (a, (b, tt))) v1 v2.
   Proof.
     induction n; cbn [Combinators.map2]; intros; kappa_spec;
       autorewrite with vsimpl; rewrite ?map2_cons; reflexivity.
@@ -286,10 +294,10 @@ Section CombinatorEquivalence.
   Hint Rewrite @map2_correct : kappa_interp.
 
   Lemma map_correct A B n
-        (c : (Tuple A Unit ~[ KappaCat ]~> B)%CategoryLaws) :
+        (c : Kappa << A, Unit >> B) :
     forall v,
       kinterp (@Combinators.map n A B c) (v, tt)
-      = Vector.map (fun a : denote_kind A => kinterp c (a, tt)) v.
+      = Vector.map (fun a : denote_kind A => kinterp (fun var => RemoveContext (c var)) (a, tt)) v.
   Proof.
     induction n; cbn [Combinators.map]; intros; kappa_spec;
       autorewrite with vsimpl; rewrite ?map_cons; reflexivity.
@@ -313,11 +321,11 @@ Section CombinatorEquivalence.
   Hint Rewrite @reverse_correct : kappa_interp.
 
   Lemma foldl_correct A B n
-        (c : (Tuple B << A, Unit >> ~[ KappaCat ]~> B)%CategoryLaws) :
+        (c : Kappa << B, A, Unit >> B) :
     forall b v,
       kinterp (Combinators.foldl (n:=n) c) (b, (v, tt))
       = Vector.fold_left (fun (b : denote_kind B) (a : denote_kind A) =>
-                            kinterp c (b, (a, tt))) b v.
+                            kinterp (fun var => RemoveContext (c var)) (b, (a, tt))) b v.
   Proof.
     induction n; cbn [Vector.fold_left Combinators.foldl]; kappa_spec;
       autorewrite with push_vector_fold; reflexivity.
@@ -343,10 +351,10 @@ Section CombinatorEquivalence.
   Hint Rewrite @enable_correct : kappa_interp.
 
   Lemma bitwise_correct A
-        (c : (Tuple Bit << Bit, Unit >> ~[ KappaCat ]~> Bit)%CategoryLaws) :
+        (c : Kappa <<Bit, Bit, Unit>> Bit) :
     forall x y : denote_kind A,
       kinterp (@Combinators.bitwise A c) (x, (y, tt))
-      = bitwise (fun a b : bool => kinterp c (a, (b, tt))) x y.
+      = bitwise (fun a b : bool => kinterp (fun var => RemoveContext (c var)) (a, (b, tt))) x y.
   Proof.
     induction A; cbn [Combinators.bitwise bitwise]; kappa_spec;
       autorewrite with vsimpl; auto.
@@ -362,10 +370,10 @@ Section CombinatorEquivalence.
   Qed.
   Hint Rewrite @mux_item_correct : kappa_interp.
 
-  Lemma curry_correct A B C argsT
-        (c: (Tuple A << B, argsT >> ~[ KappaCat ]~> C)%CategoryLaws) ab args :
-    kinterp (@Combinators.curry A B C argsT c) (ab, args)
-    = kinterp c (fst ab, (snd ab, args)).
+  Lemma curry_correct A B C
+        (c: Kappa <<A, B, Unit >> C) ab :
+    kinterp (@Combinators.curry A B C c) (ab, tt)
+    = kinterp (fun var => RemoveContext (c var)) (fst ab, (snd ab, tt)).
   Proof. cbv [Combinators.curry]; kappa_spec; reflexivity.  Qed.
   Hint Rewrite @curry_correct : kappa_interp.
 

@@ -38,7 +38,7 @@ Open Scope kind_scope.
   return delta;
 endfunction *)
 Program Definition aes_inverse_gf2p4
-  :  <<Vector Bit 4, Unit>> ~> (Vector Bit 4) :=
+  : Kappa <<Vector Bit 4, Unit>> (Vector Bit 4) :=
   <[\ gamma =>
       let a = (gamma[:3:2]) ^ (gamma[:1:0]) in
       let b = !aes_mul_gf2p2 (gamma[:3:2]) (gamma[:1:0]) in

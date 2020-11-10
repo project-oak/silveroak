@@ -21,14 +21,21 @@ Require Import Cava.Arrow.ArrowExport.
 (* This file contains tactics and notations designed to simplify proofs that
    derive or prove specifications for kappa-level circuits. *)
 
+(* convenient notation *)
+Notation kinterp x := (interp_combinational' (x coq_func)).
+
 Ltac kappa_spec_begin :=
-  intros; cbn [interp_combinational'];
+  intros; cbn [interp_combinational'
+    denote_apply_rightmost_tt
+    fst snd
+  ];
   repeat match goal with
-         | |- context [primitive_interp ?p] =>
-           let x := constr:(primitive_interp p) in
-           let y := (eval cbv [primitive_interp] in x) in
+         | |- context [primitive_semantics ?p] =>
+           let x := constr:(primitive_semantics p) in
+           let y := (eval cbv [primitive_semantics nullary_semantics unary_semantics binary_semantics] in x) in
            progress change x with y
-         | _ => progress cbn [denote_kind primitive_input primitive_output]
+         | _ => progress cbn [denote_kind primitive_input primitive_output
+           nullary_semantics unary_semantics binary_semantics]
          end; fold denote_kind in *.
 
 Create HintDb kappa_interp discriminated.
@@ -92,7 +99,4 @@ Ltac derive_foldl_spec :=
       erewrite (fold_left_ext f g) by derive_spec
     end
   end.
-
-(* convenient notation *)
-Notation kinterp x := (interp_combinational' (x coq_func)).
 

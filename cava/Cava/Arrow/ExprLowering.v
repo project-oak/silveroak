@@ -14,6 +14,7 @@ Require Import Cava.Arrow.Classes.Arrow.
 
 Import ListNotations.
 Import EqNotations.
+Import CategoryNotations.
 
 Generalizable All Variables.
 
@@ -146,7 +147,7 @@ and returns the variable at an index *)
 Fixpoint extract_nth (ctxt: list Kind) (ty: Kind) (x: nat)
   : (as_kind ctxt) ~[CircuitArrow]~> ty :=
   match ctxt with
-  | [] => drop >>> Primitive (Constant _(kind_default _))
+  | [] => drop >>> Primitive (P0 (Constant _ (kind_default _)))
   | ty' :: ctxt' =>
     if x =? (length ctxt')
     then second drop >>> cancelr >>> RewriteTy ty' ty
@@ -206,14 +207,35 @@ removes the list Kind, we first need to copy the list Kind. *)
   >>> first (closure_conversion' ctxt e2)
   >>> closure_conversion' ctxt e1
 
+| Comp1 e1 e2 =>
+  second copy
+  >>> unassoc
+  >>> first (closure_conversion' ctxt e2 >>> apply_rightmost_tt _)
+  >>> closure_conversion' ctxt e1
+
 | ExprSyntax.Primitive p =>
-    second drop >>> cancelr >>> (CircuitArrow.Primitive p)
+  match p with
+  | P0 p =>
+    second drop >>> cancelr >>> (CircuitArrow.Primitive (P0 p))
+  | P1 p =>
+    second drop >>> cancelr >>> cancelr >>> (CircuitArrow.Primitive (P1 p))
+  | P2 p =>
+    second drop >>> cancelr >>> second cancelr >>> (CircuitArrow.Primitive (P2 p))
+  end
+
+| ExprSyntax.Delay =>
+    second drop >>> cancelr >>> cancelr >>> CircuitArrow.Delay _
 
 | ExprSyntax.Id =>
     second drop >>> cancelr >>> id
+| Typecast x y =>
+    second drop >>> cancelr >>> cancelr >>> CircuitArrow.RewriteTy x y
 
 | RemoveContext f =>
   second drop >>> closure_conversion' [] f
+
+| CallModule (mkModule _ m) =>
+  second drop >>> closure_conversion' [] m
 
 | Let v f =>
   let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
@@ -239,7 +261,7 @@ removes the list Kind, we first need to copy the list Kind. *)
             (*  z * ctx *)
               uncancell >>>
             (* u * z * ctx *)
-              v' >>> uncancelr >>> CircuitArrow.Primitive (Delay _)
+              v' >>> Delay _
             )
             (* z * z' *)
             >>> swap
@@ -303,11 +325,6 @@ Lemma lower_comp': forall x y z (e2: kappa _ x y) (e1: kappa _ y z) ctxt c1 c2,
   >>> first c2
   >>> c1.
 Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
-
-Lemma lower_prim: forall p ctxt,
-  closure_conversion' ctxt (ExprSyntax.Primitive p)
-  = second drop >>> cancelr >>> (CircuitArrow.Primitive p).
-Proof. reflexivity. Qed.
 
 Lemma lower_id: forall x ctxt,
   closure_conversion' (i:=x) ctxt ExprSyntax.Id
@@ -406,6 +423,13 @@ Proof.
         ok_variable_lookup ctxt E
         -> wf_phoas_context ctxt expr1)
     ); simpl; eauto with kappa_cc.
+  {
+    destruct f1.
+    intros.
+    apply H0.
+    intros.
+    inversion H2.
+    }
 Qed.
 
 Hint Resolve kappa_wf : kappa_cc.
@@ -433,9 +457,13 @@ match expr with
 | Abs f => max_context_size' (size+1) (f tt)
 | App f e => max (max_context_size' size e) (max_context_size' size f)
 | Comp e1 e2 => max (max_context_size' size e1) (max_context_size' size e2)
+| Comp1 e1 e2 => max (max_context_size' size e1) (max_context_size' size e2)
+| ExprSyntax.Delay => size
 | ExprSyntax.Primitive p => size
 | ExprSyntax.Id => size
+| ExprSyntax.Typecast _ _ => size
 | RemoveContext f => max size (max_context_size' 0 f)
+| CallModule (mkModule _ m) => max size (max_context_size' 0 m)
 | Let v f =>
   max (max_context_size' (size+1) (f tt)) (max_context_size' size v)
 | LetRec v f =>

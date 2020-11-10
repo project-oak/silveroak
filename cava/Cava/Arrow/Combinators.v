@@ -17,7 +17,6 @@
 From Coq Require Import Strings.String Bool.Bvector Lists.List NArith.NArith
      Init.Nat micromega.Lia Arith.Plus.
 From Cava.Arrow Require Import ArrowKind CavaNotation ExprSyntax.
-From Cava.Arrow.Classes Require Import Category.
 
 Import ListNotations.
 Import EqNotations.
@@ -27,47 +26,28 @@ Local Open Scope category_scope.
 Local Open Scope string_scope.
 Local Open Scope kind_scope.
 
-(* *************************** *)
-(* Rewrites *)
-
-Definition rewrite_kind {x y} (H: x = y)
-  : << x, Unit >> ~[KappaCat]~> y :=
-  match eq_kind_dec x y with
-  | left Heq =>
-    rew [fun x => << _ >> ~[KappaCat]~> <<x>> ] Heq in <[\x=>x]>
-  | right Hneq => (ltac:(contradiction))
-  end.
-
-Definition rewrite_vector {A x y} (H: x = y)
-  : << Vector A x, Unit >> ~> <<Vector A y>> :=
-  match PeanoNat.Nat.eq_dec x y with
-  | left Heq =>
-    rew [fun x => << _, _ >> ~[KappaCat]~> <<Vector A x>> ] Heq in <[\x=>x]>
-  | right Hneq => (ltac:(contradiction))
-  end.
-
-Program Definition split_pow2 A n
-  :  << Vector A (2^(S n)), Unit >> ~> <<Vector A (2^n), Vector A (2^n)>> :=
+Definition split_pow2 A n
+  : Kappa << Vector A (2^(S n)), Unit >> <<Vector A (2^n), Vector A (2^n)>> :=
   <[\ x =>
-    let '(l,r) = split_at (2^n) x in
-    (l, !(rewrite_vector _) r)
-      ]>.
+    let '(l,r) : <<Vector A _, Vector A _>> = split_at (2^n) x in
+    (l, typecast r)
+  ]>.
 
 (* *************************** *)
 (* Misc *)
 
 Definition uncurry {A B C args}
-  (f:  << <<A, B>>, args >> ~> C)
-  :  <<A, B, args>> ~> C :=
+  (f: << <<A, B>>, args >> ~> C)
+  : Kappa <<A, B, args>> C :=
   <[ \a b => !f (a, b) ]>.
 
-Definition curry {A B C args}
-  (f:  << A, B, args >> ~> C)
-  :  << <<A, B>>, args >> ~> C :=
-  <[ \ab => let '(a, b) = ab in !f a b ]>.
+Definition curry {A B C}
+  (f:  << A, B, Unit >> ~> C)
+  : Kappa << <<A, B>>, Unit >> C :=
+  <[ \ab => let '(a, b) : <<A,B>> = ab in !f a b ]>.
 
 Fixpoint reshape {n m A}
-  :  << Vector A (n * m), Unit >> ~> << Vector (Vector A m) n >> :=
+  : Kappa << Vector A (n * m), Unit >> << Vector (Vector A m) n >> :=
 match n with
 | 0 => <[\_ => [] ]>
 | S n' =>
@@ -78,7 +58,7 @@ match n with
 end.
 
 Fixpoint flatten {n m A}
-  :  << Vector (Vector A m) n, Unit >> ~> << Vector A (n*m) >> :=
+  : Kappa << Vector (Vector A m) n, Unit >> << Vector A (n*m) >> :=
 match n with
 | 0 => <[\_ => [] ]>
 | S n' =>
@@ -89,7 +69,7 @@ match n with
 end.
 
 Fixpoint reverse {n A}
-  :  << Vector A n, Unit >> ~> << Vector A n >> :=
+  : Kappa << Vector A n, Unit >> << Vector A n >> :=
 match n with
 | 0 => <[\_ => [] ]>
 | S n' =>
@@ -101,32 +81,23 @@ end.
 
 Fixpoint seq {n bitsize}
   (offset: N)
-  :  << Unit >> ~> << Vector (Vector Bit bitsize) n >> :=
+  : Kappa << Unit >> << Vector (Vector Bit bitsize) n >> :=
 match n with
 | 0 => <[ [] ]>
 | S n' => <[ #offset :: !(seq (offset + 1)) ]>
 end.
 
-(* Definition drop_all {T}
-  :  << T >> ~> Unit
-  := drop (A:=CircuitArrow). *)
-
-(* Definition replace {A B}
-  (constant:  Unit ~> B)
-  :  << A >> ~> B
-  := drop_all >>> constant. *)
-
 (* *************************** *)
 (* Tree folds, expecting a vector of input size pow2 *)
 
 Fixpoint tree (A: Kind) (n: nat)
-  (f:  << A, A, Unit >> ~> A) {struct n}
-  :  << Vector A (2^n), Unit >> ~> A :=
+  (f: << A, A, Unit >> ~> A) {struct n}
+  : Kappa << Vector A (2^n), Unit >> A :=
 match n with
 | O => <[ \ vec => let '(x,_) = uncons vec in x ]>
 | S n' =>
   <[\ x =>
-      let '(left,right) = !(split_pow2 A n') x in
+      let '(left,right) : <<Vector A _, Vector A _>> = !(split_pow2 A n') x in
       let a = !(tree A n' f) left in
       let b = !(tree A n' f) right in
       !f a b
@@ -137,12 +108,12 @@ Fixpoint dt_tree_fold'
   (n k: nat)
   (T: nat -> Kind)
   (f: forall n,  << T n, T n, Unit >> ~> (T (S n))) {struct n}
-  :  << Vector (T k) (2^n), Unit >> ~> (T (n + k)) :=
+  : Kappa << Vector (T k) (2^n), Unit >> (T (n + k)) :=
 match n with
 | O => <[ \ vec => let '(x,_) = uncons vec in x ]>
 | S n' =>
   <[\ x =>
-      let '(left,right) = !(split_pow2 (T k) n') x in
+      let '(left,right) : <<Vector _ _, Vector _ _>> = !(split_pow2 (T k) n') x in
       let a = !(dt_tree_fold' n' k T f) left in
       let b = !(dt_tree_fold' n' k T f) right in
       !(f _) a b
@@ -156,8 +127,8 @@ Definition dt_tree_fold
   (n: nat)
   (T: nat -> Kind)
   (f: forall n,  << T n, T n, Unit >> ~> T (S n))
-  :  << Vector (T 0) (2^n), Unit >> ~> T n :=
-  <[ \vec => !(rewrite_kind (inj_succ_in_kind _ _)) (!(dt_tree_fold' n 0 T f) vec) ]>.
+  : Kappa << Vector (T 0) (2^n), Unit >> (T n) :=
+  <[ \vec => typecast (!(dt_tree_fold' n 0 T f) vec) ]>.
 
 (* *************************** *)
 (* element mapping *)
@@ -165,7 +136,7 @@ Definition dt_tree_fold
 Fixpoint foldl {n A B}
   (f: <<B, A, Unit>> ~> B)
   {struct n}
-  : <<B, Vector A n, Unit >> ~> <<B>> :=
+  : Kappa <<B, Vector A n, Unit >> <<B>> :=
 match n with
 | 0 => <[ \initial _ => initial ]>
 | S n' =>
@@ -178,7 +149,7 @@ end.
 Fixpoint foldr {n A B}
   (f: <<A, B, Unit>> ~> B)
   {struct n}
-  : <<B, Vector A n, Unit >> ~> <<B>> :=
+  : Kappa <<B, Vector A n, Unit >> <<B>> :=
 match n with
 | 0 => <[ \initial _ => initial ]>
 | S n' =>
@@ -192,7 +163,7 @@ end.
 Fixpoint foldr1 {n T}
   (f:  <<T, T, Unit>> ~> T)
   {struct n}
-  :  << Vector T (S n), Unit >> ~> <<T>> :=
+  : Kappa << Vector T (S n), Unit >> <<T>> :=
 match n with
 | 0 => <[ \x => x[#0] ]>
 | S n' =>
@@ -204,7 +175,7 @@ end.
 
 Fixpoint map {n A B}
   (f :  <<A, Unit>> ~> B)
-  :  << Vector A n, Unit >> ~> <<Vector B n>> :=
+  : Kappa << Vector A n, Unit >> <<Vector B n>> :=
 match n with
 | 0 => <[\_ => [] ]>
 | S n' =>
@@ -216,7 +187,7 @@ end.
 
 Fixpoint map2 {n A B C}
   (f :  <<A, B, Unit>> ~> C)
-  :  << Vector A n, Vector B n, Unit >> ~> <<Vector C n>> :=
+  : Kappa << Vector A n, Vector B n, Unit >> <<Vector C n>> :=
 match n with
 | 0 => <[ \x y => [] ]>
 | S n' =>
@@ -229,7 +200,7 @@ end.
 
 Fixpoint map3 {n A B C D}
   (f :  <<A, B, C, Unit>> ~> D)
-  :  << Vector A n, Vector B n, Vector C n, Unit >> ~> <<Vector D n>> :=
+  : Kappa << Vector A n, Vector B n, Vector C n, Unit >> <<Vector D n>> :=
 match n with
 | 0 => <[ \x y z => [] ]>
 | S n' =>
@@ -242,12 +213,12 @@ match n with
 end.
 
 Definition zipper {n A B}
-  :  << Vector A n, Vector B n, Unit >> ~> <<Vector <<A,B>> n>> :=
+  : Kappa << Vector A n, Vector B n, Unit >> <<Vector <<A,B>> n>> :=
   map2 <[\x y => (x,y) ]>.
 
 Fixpoint equality {T}
-  :  << T, T, Unit >> ~> <<Bit>> :=
-match T return  << T, T, Unit >> ~[KappaCat]~> <<Bit>> with
+  : Kappa << T, T, Unit >> <<Bit>> :=
+match T return Kappa << T, T, Unit >> <<Bit>> with
 | Unit => <[ \_ _ => true' ]>
 | Bit => <[ \x y => xnor x y ]> (* bit equality is the xnor function *)
 | Tuple l r => <[
@@ -264,7 +235,7 @@ match T return  << T, T, Unit >> ~[KappaCat]~> <<Bit>> with
 end.
 
 Fixpoint replicate {n T}
-  :  <<T, Unit>> ~> Vector T n :=
+  : Kappa <<T, Unit>> (Vector T n) :=
 match n with
 | 0 => <[ \_ => [] ]>
 | S n' =>
@@ -274,12 +245,12 @@ end.
 (* if the enable input is 1 then the vector is return as is,
 otherwise a vector of corresponding size is returned with all elements masked out to 0. *)
 Definition enable_vec {n}
-  :  << Bit, Vector Bit n, Unit >> ~> <<Vector Bit n>> :=
+  : Kappa << Bit, Vector Bit n, Unit >> <<Vector Bit n>> :=
   <[\ enable xs => !(map2 <[\x y => and x y]>) (!replicate enable) xs ]>.
 
 Fixpoint enable {T}
-  :  << Bit, T, Unit >> ~> <<T>> :=
-match T return  << Bit, T, Unit >> ~[KappaCat]~> <<T>> with
+  : Kappa << Bit, T, Unit >> <<T>> :=
+match T return Kappa << Bit, T, Unit >> <<T>> with
 | Unit => <[ \_ x => x ]>
 | Bit => <[ \en x => and en x ]>
 | Tuple l r => <[ \en x => let '(a,b) = x in
@@ -290,10 +261,10 @@ end.
 
 Fixpoint bitwise {T}
   (f:  << Bit, Bit, Unit >> ~> <<Bit>>)
-  :  << T, T, Unit >> ~> <<T>> :=
-match T return  << T, T, Unit >> ~[KappaCat]~> <<T>> with
+  : Kappa << T, T, Unit >> <<T>> :=
+match T return Kappa << T, T, Unit >> <<T>> with
 | Unit => <[ \x _ => x ]>
-| Bit => f
+| Bit => <[\x y => !f x y ]>
 | Tuple l r => <[ \x y =>
   let '(a,b) = x in
   let '(c,d) = y in
@@ -303,14 +274,14 @@ match T return  << T, T, Unit >> ~[KappaCat]~> <<T>> with
 end.
 
 Definition mux_bitvec {n}
-  :  << Bit, Vector Bit n, Vector Bit n, Unit >> ~> <<Vector Bit n>> :=
+  : Kappa << Bit, Vector Bit n, Vector Bit n, Unit >> <<Vector Bit n>> :=
   <[\ switch xs ys =>
       let not_switch = not switch
       in !(map2 <[\x y => or x y ]>) (!enable_vec switch xs) (!enable_vec not_switch ys)
   ]>.
 
 Definition mux_item {T}
-  :  << Bit, T, T, Unit >> ~> <<T>> :=
+  : Kappa << Bit, T, T, Unit >> <<T>> :=
   <[\ switch xs ys => !(bitwise <[or]>) (!enable switch xs) (!enable (not switch) ys) ]>.
 
 (* *************************** *)
@@ -319,8 +290,7 @@ Definition mux_item {T}
 Definition below {A B C D E F G: Kind}
   (r:  << A, B, Unit >> ~> << G, D >>)
   (s:  << G, C, Unit >> ~> << F, E >>)
-  :
-    << A, <<B, C>>, Unit >> ~> << F, <<D, E>> >> :=
+  : Kappa << A, <<B, C>>, Unit >> << F, <<D, E>> >> :=
 <[ \ a bc =>
   let '(b, c) = bc in
   let '(g, d) = !r a b in
@@ -338,8 +308,8 @@ Fixpoint replicateKind A n : Kind :=
 
 Fixpoint col' {A B C: Kind} n
   (circuit:  << A, B, Unit >> ~> <<A, C>>)
-  {struct n}:
-    << A, replicateKind B (S n), Unit >> ~>
+  {struct n}: Kappa
+    << A, replicateKind B (S n), Unit >>
     << A, replicateKind C (S n)>> :=
   match n with
   | O => <[ \a b => !circuit a b ]>
@@ -354,7 +324,7 @@ Lemma col_cons: forall {A B C}
 Proof. auto. Qed.
 
 Fixpoint productToVec {n T}
-  :  << replicateKind T (S n), Unit >> ~> << Vector T (S n) >> :=
+  : Kappa << replicateKind T (S n), Unit >> << Vector T (S n) >> :=
   match n with
   | 0 => <[\ x => x :: [] ]>
   | S n' =>
@@ -365,7 +335,7 @@ Fixpoint productToVec {n T}
   end.
 
 Fixpoint vecToProduct {n T}
-  :  << Vector T (S n), Unit >> ~> << replicateKind T (S n) >> :=
+  : Kappa << Vector T (S n), Unit >> << replicateKind T (S n) >> :=
 match n with
 | 0 => <[\ xs => let '(x,_) = uncons xs in x ]>
 | S n' =>
@@ -376,8 +346,8 @@ match n with
 end.
 
 Fixpoint interleaveVectors n
-  :
-    << Vector Bit (S n), Vector Bit (S n), Unit >> ~>
+  : Kappa
+    << Vector Bit (S n), Vector Bit (S n), Unit >>
     << Vector <<Bit, Bit>> (S n) >> :=
 match n with
 | 0 => <[\ x y => (x[#0], y[#0]) :: [] ]>
@@ -390,9 +360,9 @@ match n with
 end.
 
 Definition col {A B C: Kind} n
-  (circuit:  << A, B, Unit >> ~> <<A, C>>)
-  :
-    << A, Vector B (S n), Unit >> ~>
+  (circuit: << A, B, Unit >> ~> <<A, C>>)
+  : Kappa
+    << A, Vector B (S n), Unit >>
     << A, Vector C (S n)>> :=
   <[ \a b =>
     let prod_b = !vecToProduct b in
@@ -402,7 +372,7 @@ Definition col {A B C: Kind} n
 
 Definition mealy_machine {s i o}
   (f: <<s, i, Unit>> ~> <<s, o>> )
-  : <<i, Unit>> ~> << o >>
+  : Kappa <<i, Unit>> << o >>
   := <[\i =>
     letrec state_and_output = !f (delay (fst state_and_output)) i
     in (snd state_and_output) ]>.
@@ -410,14 +380,14 @@ Definition mealy_machine {s i o}
 Definition mealy_machine1 {s i o}
   (fs: <<s, i, Unit>> ~> <<s>> )
   (fo: <<s, i, Unit>> ~> <<o>> )
-  : <<i, Unit>> ~> << o >>
+  : Kappa <<i, Unit>> << o >>
   := <[\i =>
     letrec state = !fs (delay state) i
     in !fo state i ]>.
 
 Section regression_tests.
   Definition halfAdder
-  :  << Bit, Bit, Unit >> ~> <<Bit, Bit>> :=
+  : Kappa << Bit, Bit, Unit >> <<Bit, Bit>> :=
   <[ \ a b =>
     let part_sum = xor a b in
     let carry = and a b in
@@ -425,7 +395,7 @@ Section regression_tests.
   ]>.
 
   Definition fullAdder
-  :  << Bit, << Bit, Bit >>, Unit >> ~> <<Bit, Bit>> :=
+  : Kappa << Bit, << Bit, Bit >>, Unit >> <<Bit, Bit>> :=
   <[ \ cin ab =>
     let '(a,b) = ab in
     let '(abl, abh) = !halfAdder a b in
@@ -435,14 +405,14 @@ Section regression_tests.
   ]>.
 
   Definition rippleCarryAdder' (width: nat)
-    :
-      << Bit, Vector <<Bit, Bit>> (S width), Unit >> ~>
+    : Kappa
+      << Bit, Vector <<Bit, Bit>> (S width), Unit >>
       << Bit, Vector Bit (S width) >> :=
   <[ !(col width fullAdder) ]>.
 
   Definition rippleCarryAdder (width: nat)
-    :
-      << Bit, <<Vector Bit (S width), Vector Bit (S width)>>, Unit >> ~>
+    : Kappa
+      << Bit, <<Vector Bit (S width), Vector Bit (S width)>>, Unit >>
       << Bit, Vector Bit (S width) >> :=
   <[ \b xy =>
     let '(x,y) = xy in

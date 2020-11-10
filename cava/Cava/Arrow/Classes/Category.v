@@ -1,6 +1,7 @@
 From Coq Require Import Setoid Classes.Morphisms.
 
-Reserved Infix "~>" (at level 90, no associativity).
+(* Reserved Notation "x ~> y" (at level 90). *)
+
 Reserved Infix "~[ C ]~>" (at level 90, no associativity).
 Reserved Infix ">>>" (at level 53, right associativity).
 Reserved Infix "=M=" (at level 54, no associativity).
@@ -13,12 +14,11 @@ Generalizable Variable object category.
 *)
 Class Category (object: Type) := {
   category_object := object;
-  morphism : object -> object -> Type
-    where "a ~> b" := (morphism a b);
+  morphism : object -> object -> Type;
 
-  id {x} : x ~> x;
+  id {x} : morphism x x;
 
-  compose {x y z} (f: y ~> z) (g : x ~> y) : x ~> z
+  compose {x y z} (f: morphism y z) (g : morphism x y) : morphism x z
     where "g >>> f" := (compose f g);
 }.
 
@@ -28,10 +28,13 @@ Declare Scope category_scope.
 Bind Scope category_scope with Category.
 Delimit Scope category_scope with Category.
 
-Notation "x ~> y" := (morphism x y) : category_scope.
-Notation "x ~[ C ]~> y" := (@morphism _ C x y) (at level 90): category_scope.
-Notation "g >>> f" := (compose f g) : category_scope.
+Module CategoryNotations.
+  Notation "x ~> y" := (morphism x y)(at level 90).
+  Notation "x ~[ C ]~> y" := (@morphism _ C x y) (at level 90): category_scope.
+  Notation "g >>> f" := (compose f g) : category_scope.
+End CategoryNotations.
 
+Import CategoryNotations.
 Local Open Scope category_scope.
 
 Class CategoryLaws `(category: Category) := {

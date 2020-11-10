@@ -20,6 +20,7 @@ From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 
 Import ListNotations.
 Import VectorNotations.
+Import CategoryNotations.
 
 From Cava Require Import Types.
 
@@ -221,12 +222,12 @@ Fixpoint insert_rightmost_tt `{A: Arrow Kind Unit Tuple} (ty: Kind): ty ~> (inse
   | Vector t n => uncancelr
   end.
 
-Fixpoint apply_rightmost_tt (x: Kind)
+Fixpoint denote_apply_rightmost_tt (x: Kind)
   : denote_kind (remove_rightmost_unit x) -> denote_kind x
   :=
   match x as x' return denote_kind (remove_rightmost_unit x') -> denote_kind x' with
   | Tuple l r =>
-    let rec := apply_rightmost_tt r in
+    let rec := denote_apply_rightmost_tt r in
     match r as r' return
       (denote_kind (remove_rightmost_unit r') -> denote_kind r') ->
         denote_kind (remove_rightmost_unit (Tuple l r')) -> denote_kind (Tuple l r')
@@ -235,6 +236,21 @@ Fixpoint apply_rightmost_tt (x: Kind)
     | _ => fun f p => (fst p, f (snd p))
     end rec
   | _ => fun x => x
+  end.
+
+Fixpoint apply_rightmost_tt `{A: Arrow Kind Unit Tuple} (x: Kind)
+  : remove_rightmost_unit x ~> x
+  :=
+  match x as x' return remove_rightmost_unit x' ~> x' with
+  | Tuple l r =>
+    let rec := apply_rightmost_tt r in
+    match r as r' return
+      (remove_rightmost_unit r' ~> r') -> remove_rightmost_unit (Tuple l r') ~> Tuple l r'
+      with
+    | Unit => fun f => uncancelr
+    | _ => fun f => second f
+    end rec
+  | _ => id
   end.
 
 (* Avoid eq_rect type equality rewriting by inductively matching the Kind

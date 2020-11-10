@@ -14,12 +14,20 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Lists.List Numbers.NaryFunctions Strings.String
-     Arith.Arith NArith.NArith Vectors.Vector micromega.Lia.
-
+From Coq Require Import Lists.List.
+From Coq Require Import Numbers.NaryFunctions.
+From Coq Require Import Strings.String.
+From Coq Require Import Arith.Arith.
+From Coq Require Import NArith.NArith.
+From Coq Require Import Vectors.Vector.
+From Coq Require Import micromega.Lia.
 From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
 From Cava Require Import Arrow.ArrowKind.
 From Cava Require Import Arrow.Primitives.
+
+Import ListNotations.
+Import VectorNotations.
+Import CategoryNotations.
 
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
@@ -62,6 +70,8 @@ Inductive Circuit: Kind -> Kind -> Type :=
   | Loopr: forall x y z, Circuit (Tuple x z) (Tuple y z) -> Circuit x y
   | Loopl: forall x y z, Circuit (Tuple z x) (Tuple z y) -> Circuit x y
 
+  | Delay: forall x, Circuit x x
+
   | RewriteTy: forall x y, Circuit x y
   .
 
@@ -98,5 +108,5 @@ Ltac match_compose X :=
   | (Composition _ _ ?Y ?Z) => idtac
   end.
 
-Definition high : Unit ~> Bit := Primitive (Constant Bit true).
-Definition low : Unit ~> Bit := Primitive (Constant Bit false).
+Definition high : Unit ~> Bit := Primitive (P0 (Constant Bit true)).
+Definition low : Unit ~> Bit := Primitive (P0 (Constant Bit false)).
