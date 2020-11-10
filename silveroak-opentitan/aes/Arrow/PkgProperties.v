@@ -22,31 +22,6 @@ Require Import Cava.Tactics.
 
 From Aes Require Import pkg.
 
-Module Vector.
-  (* matches pkg.aes_transpose; uses snoc/unsnoc instead of cons/tl *)
-  Fixpoint transpose_rev {A n m} : Vector.t (Vector.t A m) n -> Vector.t (Vector.t A n) m :=
-    match n with
-    | O => fun _ => Vector.const (Vector.nil _) _
-    | S n' =>
-      fun mat =>
-        let r := unsnoc mat in
-        let mat' := fst r in
-        let vec := snd r in
-        Vector.map2 snoc (transpose_rev mat') vec
-    end.
-
-  (* Alternate version of vtranspose_rev *)
-  Fixpoint transpose {A n m}
-    : Vector.t (Vector.t A n) m -> Vector.t (Vector.t A m) n :=
-    match m with
-    | 0 => fun _ => Vector.const (Vector.nil _) _
-    | S m' =>
-      fun v : Vector.t (Vector.t A n) (S m') =>
-        Vector.map2 (fun x v => Vector.cons _ x m' v)
-                    (Vector.hd v) (transpose (Vector.tl v))
-    end.
-End Vector.
-
 Section Wf.
   Lemma aes_transpose_Wf n m : Wf (@aes_transpose n m).
   Proof. induction n; cbn [aes_transpose]; prove_Wf. Qed.
@@ -64,9 +39,9 @@ Hint Resolve aes_transpose_Wf CIPH_FWD_Wf CIPH_INV_Wf : Wf.
 
 Section Equivalence.
   Lemma aes_transpose_correct n m (x : Vector.t (Vector.t (Vector.t bool _) _) _) :
-    kinterp (@aes_transpose n m) (x, tt) = Vector.transpose_rev x.
+    kinterp (@aes_transpose n m) (x, tt) = transpose_rev x.
   Proof.
-    revert m x; induction n; cbn [aes_transpose Vector.transpose_rev];
+    revert m x; induction n; cbn [aes_transpose transpose_rev];
       kappa_spec; [ reflexivity | ].
     repeat destruct_pair_let. cbn [fst snd].
     autorewrite with vsimpl. reflexivity.

@@ -92,6 +92,27 @@ Section Vector.
     end.
 End Vector.
 
+Section Transpose.
+  Local Notation t := (Vector.t).
+  Fixpoint transpose {A n m} : t (t A n) m -> t (t A m) n :=
+    match m with
+    | 0 => fun _ => const (nil _) _
+    | S m' =>
+      fun v : t (t A n) (S m') =>
+        map2 (fun x v => cons _ x m' v) (hd v) (transpose (tl v))
+    end.
+
+  (* Version of transpose that uses snoc/unsnoc instead of cons/tl *)
+  Fixpoint transpose_rev {A n m} : t (t A m) n -> t (t A n) m :=
+    match n with
+    | O => fun _ => const (nil _) _
+    | S n' =>
+      fun mat =>
+        let r := unsnoc mat in
+        map2 snoc (transpose_rev (fst r)) (snd r)
+    end.
+End Transpose.
+
 (******************************************************************************)
 (* Vector version of combine                                                  *)
 (******************************************************************************)
@@ -356,20 +377,77 @@ Section VectorFacts.
 
   Local Ltac vnil :=
     intros;
-    match goal with
-    | |- @eq (t _ 0) _ _ => apply nil_eq
-    | vec : t _ 0 |- _ =>
+    repeat
       match goal with
-      | |- context [vec] =>
-        eapply case0 with (v:=vec);
-        clear vec
-      end
-    | vec : t _ 1 |- _ =>
-      match goal with
-      | |- context [tl vec] =>
-        eapply case0 with (v:=tl vec)
-      end
-    end.
+      | |- @eq (t _ 0) _ _ => apply nil_eq
+      | vec : t _ 0 |- _ =>
+        match goal with
+        | |- context [vec] =>
+          eapply case0 with (v:=vec);
+          clear vec
+        end
+      | vec : t _ 1 |- _ =>
+        match goal with
+        | |- context [tl vec] =>
+          eapply case0 with (v:=tl vec)
+        end
+      end.
+
+  Lemma tl_cons {A} n (v : t A n) x :
+    tl (cons _ x _ v) = v.
+  Proof. reflexivity. Qed.
+
+  Lemma hd_cons {A} n (v : t A n) x :
+    hd (cons _ x _ v) = x.
+  Proof. reflexivity. Qed.
+
+  Hint Rewrite @tl_cons @hd_cons using solve [eauto] : vsimpl.
+
+  Lemma eta_snoc {A n} (v : t A (S n)) :
+    v = snoc (fst (unsnoc v)) (snd (unsnoc v)).
+  Proof.
+    revert v; induction n.
+    { intro v; rewrite (eta v).
+      vnil. reflexivity. }
+    { intros; cbn [snoc unsnoc fst snd].
+      autorewrite with vsimpl. rewrite <-IHn, <-eta.
+      reflexivity. }
+  Qed.
+
+  Lemma unsnoc_snoc {A n} (v : t A n) x : unsnoc (snoc v x) = (v, x).
+  Proof.
+    revert v x; induction n; [ vnil; reflexivity | ].
+    intros; cbn [snoc unsnoc]. rewrite hd_cons, tl_cons.
+    rewrite !IHn. cbn [fst snd]. rewrite <-eta; reflexivity.
+  Qed.
+
+  Lemma snoc_const {A} n (x : A) : snoc (const x n) x = const x (S n).
+  Proof.
+    induction n; intros; [ reflexivity | ].
+    cbn [const nat_rect snoc].
+    autorewrite with vsimpl. rewrite IHn.
+    reflexivity.
+  Qed.
+
+  Lemma unsnoc_const {A} n (x : A) : unsnoc (const x (S n)) = (const x n, x).
+  Proof.
+    induction n; intros; [ reflexivity | ].
+    rewrite <-snoc_const with (n0:=S n).
+    rewrite unsnoc_snoc. reflexivity.
+  Qed.
+
+  Lemma snoc_cons_comm {A} n (x y : A) v :
+    snoc (cons _ y n v) x = cons _ y _ (snoc v x).
+  Proof. reflexivity. Qed.
+
+  Lemma unsnoc_cons_comm {A} n (x : A) v :
+    unsnoc (cons _ x (S n) v) =
+    (cons _ x _ (fst (unsnoc v)), snd (unsnoc v)).
+  Proof. reflexivity. Qed.
+
+  Lemma unsnoc_tl {A} n (v : t A (S (S n))) :
+    unsnoc (tl v) = (tl (fst (unsnoc v)), snd (unsnoc v)).
+  Proof. destruct n; reflexivity. Qed.
 
   Lemma map_0 A B (f : A -> B) (v : t A 0) :
     map f v = nil B.
@@ -392,45 +470,41 @@ Section VectorFacts.
                                                    (tl vb)).
   Proof. rewrite (eta va), (eta vb). reflexivity. Qed.
 
+  Lemma snoc_map2 {A B C n} (f : A -> B -> C) (v1 : t A n) v2 x1 x2 :
+    snoc (map2 f v1 v2) (f x1 x2) =  map2 f (snoc v1 x1) (snoc v2 x2).
+  Proof.
+    revert v1 v2 x1 x2; induction n; [ vnil; reflexivity | ].
+    cbn [snoc]; intros.
+    repeat first [ rewrite map2_cons
+                 | rewrite IHn
+                 | progress autorewrite with vsimpl
+                 | reflexivity ].
+  Qed.
 
-  Lemma map2_snoc A B C n (f : A -> B -> C) (va : t _ (S n)) vb :
+  Lemma unsnoc_map2 {A B C n} (f : A -> B -> C) (v1 : t A (S n)) v2 :
+    unsnoc (map2 f v1 v2) = (map2 f (fst (unsnoc v1)) (fst (unsnoc v2)),
+                             f (snd (unsnoc v1)) (snd (unsnoc v2))).
+  Proof.
+    revert v1 v2; induction n.
+    { intros v1 v2. rewrite (eta v1), (eta v2).
+      vnil. reflexivity. }
+    { cbn [unsnoc fst snd]; intros.
+      repeat first [ progress cbn [fst snd]
+                   | rewrite unsnoc_tl
+                   | rewrite map2_cons with (n:=S _)
+                   | rewrite IHn
+                   | rewrite unsnoc_cons_comm
+                   | progress autorewrite with vsimpl
+                   | reflexivity ]. }
+  Qed.
+
+  Lemma map2_snoc_unsnoc A B C n (f : A -> B -> C) (va : t _ (S n)) vb :
     map2 f va vb = snoc (map2 f (fst (unsnoc va)) (fst (unsnoc vb)))
                                 (f (snd (unsnoc va)) (snd (unsnoc vb))).
   Proof.
     induction n; cbn [snoc]; rewrite map2_cons; [ solve [f_equal; vnil] | ].
     rewrite IHn at 1. autorewrite with vsimpl. reflexivity.
   Qed.
-
-  Lemma tl_cons {A} n (v : t A n) x :
-    tl (cons _ x _ v) = v.
-  Proof. reflexivity. Qed.
-
-  Lemma hd_cons {A} n (v : t A n) x :
-    hd (cons _ x _ v) = x.
-  Proof. reflexivity. Qed.
-
-  Hint Rewrite @tl_cons @hd_cons using solve [eauto] : vsimpl.
-
-  Lemma snoc_const {A} n (x : A) : snoc (const x n) x = const x (S n).
-  Proof.
-    induction n; intros; [ reflexivity | ].
-    cbn [const nat_rect snoc].
-    autorewrite with vsimpl. rewrite IHn.
-    reflexivity.
-  Qed.
-
-  Lemma snoc_cons_comm {A} n (x y : A) v :
-    snoc (cons _ y n v) x = cons _ y _ (snoc v x).
-  Proof. reflexivity. Qed.
-
-  Lemma unsnoc_cons_comm {A} n (x y : A) v :
-    unsnoc (cons _ y (S n) v) =
-    (cons _ y _ (fst (unsnoc v)), snd (unsnoc v)).
-  Proof. reflexivity. Qed.
-
-  Lemma unsnoc_tl {A} n (v : t A (S (S n))) :
-    unsnoc (tl v) = (tl (fst (unsnoc v)), snd (unsnoc v)).
-  Proof. destruct n; reflexivity. Qed.
 
   Lemma reverse_const {A} n (x : A) : reverse (const x n) = const x n.
   Proof.
@@ -480,7 +554,7 @@ Section VectorFacts.
     reverse (map2 (n:=n) f va vb) = map2 f (reverse va) (reverse vb).
   Proof.
     induction n; intros; [ autorewrite with vsimpl; reflexivity | ].
-    rewrite map2_snoc. rewrite map2_cons. autorewrite with vsimpl.
+    rewrite map2_snoc_unsnoc. rewrite map2_cons. autorewrite with vsimpl.
     rewrite reverse_snoc, IHn.
     rewrite !tl_reverse_unsnoc, !hd_reverse_unsnoc.
     reflexivity.
@@ -562,6 +636,42 @@ Section VectorFacts.
     reflexivity.
   Qed.
 
+  Lemma snoc_map {A B n} (f : A -> B) (v : t A n) x :
+    snoc (map f v) (f x) =  map f (snoc v x).
+  Proof.
+    revert v x; induction n; [ vnil; reflexivity | ].
+    cbn [snoc]; intros.
+    repeat first [ rewrite map_cons
+                 | rewrite IHn
+                 | progress autorewrite with vsimpl
+                 | reflexivity ].
+  Qed.
+
+  Lemma unsnoc_map {A B n} (f : A -> B) (v : t A (S n)) :
+    unsnoc (map f v) = (map f (fst (unsnoc v)), f (snd (unsnoc v))).
+  Proof.
+    revert v; induction n.
+    { intros v. rewrite (eta v). vnil; reflexivity. }
+    { cbn [unsnoc fst snd]; intros.
+      repeat first [ progress cbn [fst snd]
+                   | rewrite unsnoc_tl
+                   | rewrite map_cons with (n:=S _)
+                   | rewrite IHn
+                   | rewrite unsnoc_cons_comm
+                   | progress autorewrite with vsimpl
+                   | reflexivity ]. }
+  Qed.
+
+  Lemma map_snoc_unsnoc {A B n} (f : A -> B) (v : t A (S n)) :
+    map f v = snoc (map f (fst (unsnoc v))) (f (snd (unsnoc v))).
+  Proof.
+    induction n; intros; cbn [snoc unsnoc map fst snd];
+      repeat first [ rewrite map_cons
+                   | rewrite <-IHn
+                   | progress autorewrite with vsimpl
+                   | reflexivity ].
+  Qed.
+
   Lemma fold_left_andb_true (n : nat) :
     Vector.fold_left andb true (Vector.const true n) = true.
   Proof.
@@ -627,6 +737,13 @@ Section VectorFacts.
     autorewrite with vsimpl. cbn [List.fold_left].
     rewrite IHv; reflexivity.
   Qed.
+
+  Lemma const_nil {A n} (v : t (t A 0) n) : v = const (nil _) _.
+  Proof.
+    revert v; induction n; [ solve [vnil] | ].
+    intro v; rewrite (eta v). eapply case0 with (v:=hd v).
+    rewrite (IHn (tl v)); reflexivity.
+  Qed.
 End VectorFacts.
 (* These hints create and populate the following autorewrite databases:
  * - push_vector_fold : simplify using properties of Vector.fold_left
@@ -651,11 +768,20 @@ Hint Rewrite @resize_default_id @Vector.map_id
 Hint Rewrite @to_list_cons @to_list_nil
      using solve [eauto] : vsimpl.
 
+
 (* Lemmas that work on any (S _) length don't get added to vsimpl, because
    they can end up happening many times for constant-length expressions *)
 Hint Rewrite @fold_left_S
      using solve [eauto] : push_vector_fold.
 Hint Rewrite @map_cons @map2_cons
+     using solve [eauto] : push_vector_map.
+
+(* Some extra lemmas that don't necessarily make a goal *simpler*, but do push a
+   certain kind of operation deeper into the expression, go into the push_*
+   databases *)
+Hint Rewrite <- @reverse_map2 @snoc_map2 @unsnoc_map2 @snoc_map @unsnoc_map
+     using solve [eauto] : push_vector_map.
+Hint Rewrite  @nth_map @map_to_const
      using solve [eauto] : push_vector_map.
 
 (* [eauto] might not solve map_id_ext, so add more power to the strategy *)
@@ -700,6 +826,47 @@ Section VseqFacts.
   Qed.
 End VseqFacts.
 Hint Rewrite @to_list_vseq using solve [eauto] : push_to_list.
+
+Section TransposeFacts.
+  Local Notation t := Vector.t.
+
+  Lemma snoc_transpose_rev {A n m} (v : t (t A n) m) (x : t A m) :
+    snoc (transpose_rev v) x = transpose_rev (map2 snoc v x).
+  Proof.
+    revert n v x; induction m; intros; cbn [transpose_rev].
+    { rewrite <-snoc_const. f_equal; apply nil_eq. }
+    { let x := match goal with x : t A (S _) |- _ => x end in
+      rewrite (eta_snoc x), snoc_map2, <-(eta_snoc x).
+      rewrite unsnoc_map2. cbn [fst snd].
+      rewrite IHm. reflexivity. }
+  Qed.
+
+  Lemma unsnoc_transpose_rev {A n m} (v : t (t A (S n)) m) :
+    unsnoc (transpose_rev v) = (transpose_rev (map (fun x => fst (unsnoc x)) v),
+                                map (fun x => snd (unsnoc x)) v).
+  Proof.
+    revert n v; induction m; intros; cbn [transpose_rev].
+    { rewrite unsnoc_const. f_equal; apply nil_eq. }
+    { rewrite unsnoc_map2. rewrite IHm. cbn [fst snd].
+      rewrite unsnoc_map, map_snoc_unsnoc. cbn [fst snd].
+      reflexivity. }
+  Qed.
+
+  Lemma transpose_rev_involutive {A n m} (v : t (t A n) m) :
+    transpose_rev (transpose_rev v) = v.
+  Proof.
+    revert n v; induction m; intros; [ solve [apply nil_eq] | ].
+    destruct n; cbn [transpose_rev];
+      [ rewrite (const_nil v); reflexivity | ].
+    rewrite (eta_snoc v).
+    rewrite unsnoc_snoc, unsnoc_map2. cbn [fst snd].
+    rewrite <-snoc_transpose_rev, unsnoc_transpose_rev.
+    cbn [fst snd]. rewrite IHm. rewrite <-snoc_map2, <-eta_snoc.
+    rewrite map2_map, map2_drop_same, map_id_ext
+      by (intros; rewrite <-eta_snoc; reflexivity).
+    reflexivity.
+  Qed.
+End TransposeFacts.
 
 Section Vector.
   Context {A:Type}.

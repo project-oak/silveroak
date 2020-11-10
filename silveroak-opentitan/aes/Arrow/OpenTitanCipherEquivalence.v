@@ -94,7 +94,7 @@ Section Equivalence.
     let all_rcons_and_keypairs := all_keys key_expand Nr init_rk in
     (* representation change: project out the forward key and transpose it *)
     let all_keys := List.map (fun x : rconst * keypair =>
-                                PkgProperties.Vector.transpose_rev (sndkey (snd x)))
+                                transpose_rev (sndkey (snd x)))
                              all_rcons_and_keypairs in
     all_keys = (first_key :: middle_keys ++ [last_key])%list ->
     unrolled_cipher_spec aes_key_expand_spec sbox false input init_keypair
@@ -110,7 +110,7 @@ Section Equivalence.
 
     (* representation change; use full key-expansion state (rconst * keypair) *)
     erewrite cipher_change_key_rep with
-        (projkey := fun x => PkgProperties.Vector.transpose_rev (sndkey (snd x)))
+        (projkey := fun x => transpose_rev (sndkey (snd x)))
       by reflexivity.
 
     erewrite <-cipher_interleaved_equiv by eassumption.
