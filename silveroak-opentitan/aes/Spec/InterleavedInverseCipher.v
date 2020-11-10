@@ -28,63 +28,108 @@ Require Import AesSpec.ExpandAllKeys.
 Section Spec.
   Context {state key : Type}
           (add_round_key : state -> key -> state)
-          (sub_bytes shift_rows mix_columns : state -> state)
-          (key_expand : nat -> key -> key).
+          (inv_sub_bytes inv_shift_rows inv_mix_columns : state -> state)
+          (inv_key_expand : nat -> key -> key)
+          (inv_mix_columns_key : key -> key).
 
-  Definition cipher_round_interleaved
+  Definition equivalent_inverse_cipher_round_interleaved
              (loop_state : key * state) (i : nat)
     : key * state :=
     let '(round_key, st) := loop_state in
     let st := if i =? 0
               then add_round_key st round_key
               else
-                let st := sub_bytes st in
-                let st := shift_rows st in
-                let st := mix_columns st in
+                let round_key := inv_mix_columns_key round_key in
+                let st := inv_sub_bytes st in
+                let st := inv_shift_rows st in
+                let st := inv_mix_columns st in
                 let st := add_round_key st round_key in
                 st in
-    let round_key := key_expand i round_key in
+    let round_key := inv_key_expand i round_key in
     (round_key, st).
 
-  (* AES cipher with interleaved key expansion and conditional for first round *)
-  Definition cipher_interleaved
+  (* AES equivalent inverse cipher with interleaved key expansion and conditional
+     for first round *)
+  Definition equivalent_inverse_cipher_interleaved
              (Nr : nat) (* number of rounds *)
              (initial_key : key)
              (input : state) : state :=
     let st := input in
     let loop_end_state :=
-        fold_left cipher_round_interleaved
-          (List.seq 0 Nr) (initial_key, st) in
+        fold_left equivalent_inverse_cipher_round_interleaved
+                  (List.seq 0 Nr) (initial_key, st) in
     let '(last_key, st) := loop_end_state in
-    let st := sub_bytes st in
-    let st := shift_rows st in
+    let st := inv_sub_bytes st in
+    let st := inv_shift_rows st in
     let st := add_round_key st last_key in
     st.
 
   Section Equivalence.
-    Context (Nr : nat) (initial_key : key)
+    Context (Nr : nat) (initial_key : key) (final_key : key)
             (first_key : key) (middle_keys : list key) (last_key : key).
+    Context (key_expand : nat -> key -> key).
+
+    (* key list matches all_keys *)
     Context (all_keys_eq :
                all_keys key_expand Nr initial_key
                = first_key :: middle_keys ++ [last_key]).
 
-    Let cipher := cipher state key add_round_key sub_bytes shift_rows mix_columns.
+    Context (final_key_correct :
+               forall k,
+                 last (all_keys key_expand Nr initial_key) k = final_key).
 
-    (* Interleaved cipher is equivalent to original cipher *)
-    Lemma cipher_interleaved_equiv input :
-      cipher_interleaved Nr initial_key input =
-      cipher first_key last_key middle_keys input.
+    (* inv_key_expand is the inverse of key_expand *)
+    Context (inv_key_expand_key_expand :
+               forall i k,
+                 inv_key_expand (Nr - S i) (key_expand i k) = k).
+
+    Let equivalent_inverse_cipher :=
+      equivalent_inverse_cipher state key add_round_key
+                                inv_sub_bytes inv_shift_rows inv_mix_columns.
+
+    (* Interleaved inverse cipher is equivalent to original inverse cipher *)
+    Lemma equivalent_inverse_cipher_interleaved_equiv input :
+      equivalent_inverse_cipher_interleaved Nr final_key input =
+      equivalent_inverse_cipher
+        last_key first_key (map inv_mix_columns_key (rev middle_keys)) input.
     Proof.
-      intros. subst cipher.
+      intros. subst equivalent_inverse_cipher.
 
-      (* get the key *pairs* *)
+      pose proof (all_keys_inv_eq key_expand inv_key_expand Nr initial_key final_key
+                                  final_key_correct inv_key_expand_key_expand)
+        as inv_expand_keys_rev.
+
+      (* get the rcons/key pairs *)
       pose proof all_keys_eq as Hall_keys.
       map_inversion Hall_keys; subst.
       match goal with H : @eq (list key) _ (_ :: _ ++ [_]) |- _ =>
                       rename H into Hall_keys end.
 
-      cbv [cipher_interleaved cipher_round_interleaved Cipher.cipher].
-      rewrite fold_left_to_seq with (default:=initial_key).
+      match type of Hall_keys with
+      | ?ls1 = ?ls2 =>
+        let H := fresh in
+        rename Hall_keys into H;
+          assert (Hall_keys: rev ls1 = rev ls2) by (rewrite H; reflexivity)
+      end.
+      rewrite <-inv_expand_keys_rev in Hall_keys.
+      repeat first [ progress cbn [rev app] in Hall_keys
+                   | rewrite rev_app_distr in Hall_keys ].
+
+      cbv [equivalent_inverse_cipher_interleaved
+             Cipher.equivalent_inverse_cipher].
+
+      (* remove the pair-match in the round *)
+      erewrite fold_left_ext with
+          (f:=equivalent_inverse_cipher_round_interleaved)
+        by (cbv [equivalent_inverse_cipher_round_interleaved];
+            intros; repeat destruct_pair_let; cbn [fst snd];
+            rewrite <-!surjective_pairing; reflexivity).
+      cbn [fst snd].
+
+      (* This specific form of the default for nth is designed to make the
+         map_nth rewrites work out *)
+      set (d:=inv_mix_columns_key final_key).
+      rewrite fold_left_to_seq with (default:=d).
       pose proof (length_all_keys _ _ _ _ _ Hall_keys).
       autorewrite with push_length in *.
 
@@ -97,16 +142,16 @@ Section Spec.
         replace (length x) with n by lia
       end.
 
-      (* extract first step from cipher_alt so loops are in sync *)
-      cbn [List.seq fold_left]. rewrite Nat.eqb_refl.
+      (* extract first step from cipher so loops are in sync *)
+      cbn [rev seq fold_left]. rewrite Nat.eqb_refl.
       rewrite <-seq_shift, fold_left_map.
 
       (* state the relationship between the two loop states (invariant) *)
       lazymatch goal with
-      | H : all_keys ?key_expand ?n ?k = _ |- _ =>
+      | H : all_keys inv_key_expand ?n ?k = _ |- _ =>
         pose (R:= fun (i : nat) (x : key * state) (y : state) =>
                     x = (nth (S i)
-                             (all_keys key_expand n k) k, y))
+                             (all_keys inv_key_expand n k) k, y))
       end.
 
       (* find loops on each side *)
@@ -145,7 +190,8 @@ Section Spec.
         f_equal;
           [ rewrite !nth_all_keys_succ by lia;
             reflexivity | ].
-        f_equal; [ ].
+        f_equal; [ ]. subst d.
+        rewrite map_nth.
         rewrite Hall_keys. cbn [nth].
         rewrite app_nth1 by length_hammer.
         reflexivity. }
