@@ -17,9 +17,13 @@ Require Import Coq.Bool.Bvector Coq.Vectors.VectorDef.
 Require Import Cava.VectorUtils.
 
 Section Spec.
-  Context (nc : nat) (nb : nat).
-  Definition state := t (Bvector nb) nc.
-  Definition key := Bvector nb.
+  (* FIPS 197, 2.2: Number of columns (32-bit words) comprising the State. *)
+  Variable (nb : nat).
+  (* FIPS 197, 2.2: Intermediate Cipher result that can be pictured as a
+     rectangular array of bytes, having four rows and Nb columns. *)
+  Variable (bits_per_column : nat).
+  Definition state := t (Bvector bits_per_column) nb.
+  Definition key := Bvector bits_per_column.
 
   (* FIPS 197, 5.1.4 AddRoundKey() Transformation *)
   Definition add_round_key (input : state) (k : key) : state :=
