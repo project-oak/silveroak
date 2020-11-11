@@ -250,7 +250,7 @@ Definition unrolled_cipher_flat
 Section tests.
 
   Definition unrolled_cipher' mode key data :=
-    interp_combinational (unrolled_cipher_flat SboxCanright _) (mode,(data,key)).
+    kinterp (unrolled_cipher_flat SboxCanright) (mode,(data,(key, tt))).
 
   Definition unrolled_cipher_test_fwd := test_cipher_fwd unrolled_cipher'.
   Definition unrolled_cipher_value_fwd := print_cipher_fwd unrolled_cipher'.

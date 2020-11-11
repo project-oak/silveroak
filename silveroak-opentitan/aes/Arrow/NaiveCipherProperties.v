@@ -20,7 +20,7 @@ From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec
 Require Import Cava.Tactics.
 
 From Aes Require Import PkgProperties CipherRoundProperties
-     cipher_round unrolled_naive_cipher.
+     pkg cipher_round unrolled_naive_cipher.
 
 Section Wf.
   Context (aes_256_naive_key_expansion_Wf :
@@ -35,7 +35,11 @@ Section Wf.
 
   Lemma unrolled_cipher_naive'_Wf :
     forall sbox_impl, Wf (unrolled_cipher_naive' sbox_impl).
-  Proof. cbv [unrolled_cipher_naive']; prove_Wf. Qed.
+  Proof. cbv [unrolled_cipher_naive']; prove_Wf.
+    { apply foldl_Wf; prove_Wf. }
+    { apply bitwise_Wf; prove_Wf. }
+    { apply map_Wf; prove_Wf. }
+  Qed.
   Hint Resolve unrolled_cipher_naive'_Wf : Wf.
 
   Lemma unrolled_cipher_naive_Wf :
@@ -69,6 +73,7 @@ Section Equivalence.
        @aes_shift_rows_correct @aes_mix_columns_correct : kappa_interp.
   Opaque aes_256_naive_key_expansion mix_columns.aes_mix_columns.
 
+
   Derive unrolled_cipher_naive'_spec
          SuchThat (forall (sbox_impl : pkg.SboxImpl) (op_i : bool)
                      (data : Vector.t (Vector.t (Vector.t bool 8) 4) 4)
@@ -78,7 +83,8 @@ Section Equivalence.
                       = unrolled_cipher_naive'_spec sbox_impl op_i data key)
          As unrolled_cipher_naive'_correct.
   Proof.
-    cbv [unrolled_cipher_naive']; kappa_spec.
+    cbv [unrolled_cipher_naive']; time kappa_spec.
+
     repeat destruct_pair_let.
     repeat first [derive_foldl_spec | derive_map_spec ].
     derive_spec_done.

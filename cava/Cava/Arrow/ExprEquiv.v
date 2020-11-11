@@ -80,17 +80,10 @@ Set Asymmetric Patterns.
 
     | Delay_equiv : forall x E, kappa_equivalence E (@Delay var1 x) Delay
 
-    | RemoveContext_equiv : forall x y E
-      (f1 : kappa var1 x y)
-      (f2 : kappa var2 x y),
-      kappa_equivalence nil f1 f2
-      ->
-      kappa_equivalence E (RemoveContext f1) (RemoveContext f2)
-
     | CallModule_equiv : forall x y E
-      (f1 : Module (kappa var1 x y))
-      (f2 : Module (kappa var2 x y)),
-      kappa_equivalence nil (module_body f1) (module_body f2)
+      (f1 : Module (Kappa x y))
+      (f2 : Module (Kappa x y)),
+      kappa_equivalence nil (module_body f1 var1) (module_body f2 var2)
       ->
       kappa_equivalence E (CallModule f1) (CallModule f2)
     .

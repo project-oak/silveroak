@@ -36,7 +36,10 @@ Section Wf.
 
   Lemma key_expand_and_round_Wf :
     forall sbox_impl, Wf (key_expand_and_round sbox_impl).
-  Proof. cbv [key_expand_and_round]; prove_Wf. Qed.
+  Proof.
+    cbv [key_expand_and_round]; prove_Wf.
+    { eapply bitwise_Wf; prove_Wf. }
+  Qed.
   Hint Resolve key_expand_and_round_Wf : Wf.
 
   Lemma unrolled_cipher_Wf :

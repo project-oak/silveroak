@@ -16,7 +16,7 @@
 
 From Coq Require Import Arith.Arith Logic.Eqdep_dec Vectors.Vector micromega.Lia
      NArith.NArith Strings.String NArith.Ndigits.
-From Cava Require Import Arrow.ArrowExport Arrow.CircuitFunctionalEquivalence
+From Cava Require Import Arrow.ArrowExport
      BitArithmetic VectorUtils.
 Require Import Cava.Tactics.
 
@@ -38,7 +38,7 @@ Open Scope kind_scope.
   return delta;
 endfunction *)
 Program Definition aes_inverse_gf2p4
-  : Kappa <<Vector Bit 4, Unit>> (Vector Bit 4) :=
+  : <<Vector Bit 4, Unit>> ~> (Vector Bit 4) :=
   <[\ gamma =>
       let a = (gamma[:3:2]) ^ (gamma[:1:0]) in
       let b = !aes_mul_gf2p2 (gamma[:3:2]) (gamma[:1:0]) in
@@ -111,57 +111,15 @@ Definition canright_composed
   let decoded = !aes_sbox_canright !CIPH_INV encoded in
   decoded ]>.
 
-Require Import Coq.derive.Derive.
-
-Derive CIPH_FWD_spec
-       SuchThat (obeys_spec CIPH_FWD CIPH_FWD_spec)
-       As CIPH_FWD_correct.
-Proof.
-  cbv [CIPH_FWD]. circuit_spec.
-  subst CIPH_FWD_spec.
-  instantiate_app_by_reflexivity.
-Qed.
-
-(* This lemma could also be proved the same way as CIPH_FWD *)
-Lemma CIPH_INV_correct : obeys_spec CIPH_INV (fun _ : unit => true).
-Proof.
-  cbv [obeys_spec CIPH_INV]. circuit_spec. reflexivity.
-Qed.
-
-(* TODO: fill in these axioms *)
-Section WithSboxSpec.
-  Context (aes_sbox_canright_spec :
-             denote_kind (<<Bit, Vector Bit 8, Unit >>) -> denote_kind (Vector Bit 8))
-          (aes_sbox_canright_correct :
-             obeys_spec aes_sbox_canright aes_sbox_canright_spec).
-
-  Local Hint Resolve aes_sbox_canright_correct CIPH_FWD_correct CIPH_INV_correct
-    : circuit_spec_correctness.
-
-  Derive canright_composed_spec
-         SuchThat (obeys_spec canright_composed canright_composed_spec)
-         As canright_composed_correct.
-  Proof.
-    cbv [canright_composed]. circuit_spec.
-    subst canright_composed_spec.
-    instantiate_app_by_reflexivity.
-  Qed.
-End WithSboxSpec.
-(* Uncomment below to see derived spec for canright_composed *)
-(* Print canright_composed_spec. *)
-
 Lemma canright_composed_combinational: is_combinational (closure_conversion aes_sbox_canright).
 Proof. time simply_combinational. Qed.
 
 Local Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
 
-Goal interp_combinational (canright_composed _) (# 0) = (# 0).
+Goal kinterp canright_composed (# 0, tt) = (# 0).
 Proof. time (vm_compute; auto). Qed.
 
 (* TODO(blaxill): reduced bound for CI time *)
 Goal forall x, x < 100 ->
-interp_combinational (canright_composed _) (#x) = (#x).
+kinterp canright_composed (#x, tt) = (#x).
 Proof. time (repeat (lia || destruct x); now vm_compute). Qed.
-
-
-

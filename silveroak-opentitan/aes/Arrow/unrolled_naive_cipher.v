@@ -167,11 +167,12 @@ Definition unrolled_cipher_naive
 Section tests.
 
   Definition unrolled_cipher_naive_ mode key data :=
-    interp_combinational (unrolled_cipher_naive SboxCanright _) (mode,(data,key)).
+    kinterp (unrolled_cipher_naive SboxCanright) (mode,(data,(key, tt))).
 
   Definition naive_cipher_test_fwd := test_cipher_fwd unrolled_cipher_naive_.
   Definition naive_cipher_value_fwd := print_cipher_fwd unrolled_cipher_naive_.
   Definition naive_cipher_test_rev := test_cipher_rev unrolled_cipher_naive_.
   Definition naive_cipher_value_rev := print_cipher_rev unrolled_cipher_naive_.
+
 End tests.
 

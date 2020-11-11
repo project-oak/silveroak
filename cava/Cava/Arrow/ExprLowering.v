@@ -231,11 +231,8 @@ removes the list Kind, we first need to copy the list Kind. *)
 | Typecast x y =>
     second drop >>> cancelr >>> cancelr >>> CircuitArrow.RewriteTy x y
 
-| RemoveContext f =>
-  second drop >>> closure_conversion' [] f
-
 | CallModule (mkModule _ m) =>
-  second drop >>> closure_conversion' [] m
+  second drop >>> closure_conversion' [] (m _)
 
 | Let v f =>
   let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
@@ -330,17 +327,6 @@ Lemma lower_id: forall x ctxt,
   closure_conversion' (i:=x) ctxt ExprSyntax.Id
   = second drop >>> cancelr >>> id.
 Proof. reflexivity. Qed.
-
-Lemma lower_remove_context: forall x y (e: kappa _ x y) ctxt,
-  closure_conversion' (i:=x) ctxt (RemoveContext e)
-  = second drop >>> closure_conversion' [] e.
-Proof. reflexivity. Qed.
-
-Lemma lower_remove_context': forall x y (e: kappa _ x y) ctxt c1,
-  c1 = closure_conversion' [] e ->
-  closure_conversion' (i:=x) ctxt (RemoveContext e)
-  = second drop >>> c1.
-Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
 
 Lemma lower_let: forall x y z (f: _ x -> kappa _ y z) v ctxt,
   closure_conversion' ctxt (Let v f)
@@ -462,8 +448,7 @@ match expr with
 | ExprSyntax.Primitive p => size
 | ExprSyntax.Id => size
 | ExprSyntax.Typecast _ _ => size
-| RemoveContext f => max size (max_context_size' 0 f)
-| CallModule (mkModule _ m) => max size (max_context_size' 0 m)
+| CallModule (mkModule _ m) => max size (max_context_size' 0 (m _))
 | Let v f =>
   max (max_context_size' (size+1) (f tt)) (max_context_size' size v)
 | LetRec v f =>

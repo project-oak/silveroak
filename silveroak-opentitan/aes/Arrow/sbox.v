@@ -68,13 +68,13 @@ Section regression_testing.
   Local Notation "# x" := (nat_to_bitvec_sized 8 x) (at level 99).
 
   (* Check equal at some random points *)
-  Goal interp_combinational (aes_sbox_lut _) (false, #0)
-    = interp_combinational (aes_sbox_canright _) (false, #0).
+  Goal kinterp aes_sbox_lut (false, (#0, tt))
+    = kinterp aes_sbox_canright (false, (#0, tt)).
   Proof. vm_compute; auto.  Qed.
 
   (* TODO(blaxill): reduced bound for CI time *)
   Goal forall x, x < 10 ->
-  interp_combinational (aes_sbox_lut _) (false, #x) = interp_combinational (aes_sbox_canright _) (false, #x).
+  kinterp aes_sbox_lut (false, (#x, tt)) = kinterp aes_sbox_canright (false, (#x, tt)).
   Proof. repeat (lia || destruct x); now vm_compute. Qed.
 
 End regression_testing.

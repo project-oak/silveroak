@@ -38,22 +38,26 @@ Module KappaNotation.
   Notation "<[ 'fun' name x .. y : ret => e ]>" := (
     mkModule name (fun var =>
       (Abs (fun x => .. (Abs (fun y => e)) ..)) : kappa var _ ret
-    %kappa)
+    )%kappa : ModuleK _ _
    ) (at level 1, name constr at level 1, x closed binder, e custom expr at level 99).
 
   Notation "<[ \ x .. y => e ]>" := (
-    (fun var => (Abs (fun x => .. (Abs (fun y => e)) ..))%kappa): Kappa _ _
+    mkModule "" (fun var =>
+    (Abs (fun x => .. (Abs (fun y => e)) ..)) : kappa var _ _
+    )%kappa: ModuleK _ _
    ) (at level 1, x closed binder, e custom expr at level 1).
 
   Notation "<[ \ x .. y : ret => e ]>" := (
-    (fun var => (Abs (fun x => .. (Abs (fun y => e)) ..))%kappa): Kappa _ ret
+    mkModule "" (fun var =>
+    (Abs (fun x => .. (Abs (fun y => e)) ..)) : kappa var _ ret
+    )%kappa: ModuleK _ _
    ) (at level 1, x closed binder, e custom expr at level 1).
 
   Notation "<[ e ]>" := (
-    (fun var => (e)%kappa): Kappa _ _
+    mkModule "" (fun var => e%kappa): ModuleK _ _
    ) (at level 1, e custom expr at level 99).
 
-  Notation "x ~> y" := (Kappa x y) (at level 90).
+  Notation "x ~> y" := (ModuleK x y) (at level 90).
 
   Notation "x y" := (App x y) (in custom expr at level 3, left associativity) : kappa_scope.
 
@@ -83,8 +87,8 @@ Module KappaNotation.
 
   (* Escaping *)
 
-  Notation "! x" := (RemoveContext (x _))(in custom expr at level 2, x global) : kappa_scope.
-  Notation "!( x )" := (RemoveContext (x _)) (in custom expr, x constr) : kappa_scope.
+  Notation "! x" := (CallModule x)(in custom expr at level 2, x global) : kappa_scope.
+  Notation "!( x )" := (CallModule x)(in custom expr, x constr) : kappa_scope.
 
   Notation tupleHelper := (fun x y => App (App (Primitive (P2 (Pair _ _))) x) y).
   Notation "( x , .. , y , z )" := (
@@ -187,47 +191,47 @@ Section regression_examples.
   Definition ex0_constant
     := <[ fun "ex0_constant" ( x : _ (Vector Bit 8) ) : Vector Bit 8 => x [: 7 : 0 ] ]>.
 
-  Definition ex1_constant: Kappa << Bit, Unit >> Bit := <[ \ x => true' ]> .
+  Definition ex1_constant: << Bit, Unit >> ~> Bit := <[ \ x => true' ]> .
 
-  Definition ex2_parameterized (n: nat): Kappa << Bit, Unit >> Bit :=
+  Definition ex2_parameterized (n: nat): << Bit, Unit >> ~> Bit :=
   match n with
   | O => <[\x => true' ]>
   | S n => <[\x => xor x x ]>
   end.
 
-  Definition ex3_to_vec: Kappa << Bit, Unit >> (Vector Bit 1) :=
+  Definition ex3_to_vec: << Bit, Unit >> ~> (Vector Bit 1) :=
   <[ \ x => x :: [] ]>.
-  Definition ex4_index_vec:  Kappa << Vector Bit 10, Unit >> Bit :=
+  Definition ex4_index_vec: << Vector Bit 10, Unit >> ~> Bit :=
   <[ \ x => index x (# 1) ]>.
-  Definition ex5_index_vec2:  Kappa << Vector Bit 10, Unit >> Bit :=
+  Definition ex5_index_vec2: << Vector Bit 10, Unit >> ~> Bit :=
   <[ \ x => x [# 1] ]>.
-  Definition ex6_concat:  Kappa << Vector Bit 2, Bit, Unit >> (Vector Bit 3) :=
+  Definition ex6_concat: << Vector Bit 2, Bit, Unit >> ~> (Vector Bit 3) :=
   <[ \ x v => snoc x v ]>.
 
   Definition ex7_xor :=
     <[fun "ex7_xor" (x : _ Bit) (y : _ Bit) : Bit => xor x y ]>.
 
-  Definition ex7_tupled_destruct:  Kappa << << Bit, Bit>>, Unit>> Bit :=
+  Definition ex7_tupled_destruct: << << Bit, Bit>>, Unit>> ~> Bit :=
   <[ \ xy =>
     let '(x,y) : <<Bit,Bit>> = xy in
     y ]>.
-  Definition ex8_multiindex:  Kappa << Vector (Vector Bit 5) 10, Unit >> Bit :=
+  Definition ex8_multiindex: << Vector (Vector Bit 5) 10, Unit >> ~> Bit :=
   <[ \ x => x[#0][#1] ]>.
-  Definition ex9_mkvec:  Kappa << Bit, Unit >> (Vector Bit 2) :=
+  Definition ex9_mkvec: << Bit, Unit >> ~> (Vector Bit 2) :=
   <[ \x => true' :: false' :: [] ]>.
-  Definition ex10:  Kappa << Vector Bit 10, Vector Bit 10, Unit >> (Vector Bit 11) :=
+  Definition ex10: << Vector Bit 10, Vector Bit 10, Unit >> ~> (Vector Bit 11) :=
   <[ \ x y => x + y ]>.
-  Definition ex11:  Kappa << Vector Bit 10, Vector Bit 10, Unit >> (Vector Bit 10) :=
+  Definition ex11: << Vector Bit 10, Vector Bit 10, Unit >> ~> (Vector Bit 10) :=
   <[ \ x y => x +% y ]>.
-  Definition ex13:  Kappa << Vector Bit 10, Unit >> Bit :=
+  Definition ex13: << Vector Bit 10, Unit >> ~> Bit :=
   <[ \ x => (xor x[#0] x[#1] :: false' :: []) [#0] ]>.
-  Definition ex14:  Kappa << Vector Bit 10, Vector Bit 4, Unit >> Bit :=
+  Definition ex14: << Vector Bit 10, Vector Bit 4, Unit >> ~> Bit :=
   <[ \ x i => x [ i ] ]>.
-  Definition ex15_rec_xor:  Kappa << Bit, Unit >> Bit :=
+  Definition ex15_rec_xor: << Bit, Unit >> ~> Bit :=
   <[ \ x => letrec s = delay (xor x s) in s ]>.
-  Definition ex16_triple:  Kappa << <<Bit, Bit, Bit>>, Unit >> Bit :=
+  Definition ex16_triple: << <<Bit, Bit, Bit>>, Unit >> ~> Bit :=
   <[ \ triple => let '(x, y, z) : <<Bit,Bit,Bit>> = triple in x ]>.
-  Definition ex17_constant_via_list: Kappa << Unit >> (Vector (Vector Bit 4) 3) := <[ { 1, 2, 3 } ]>.
+  Definition ex17_constant_via_list: << Unit >> ~> (Vector (Vector Bit 4) 3) := <[ { 1, 2, 3 } ]>.
 
   Fixpoint copy_object_pow2 o (n:nat): Kind :=
   match n with
@@ -240,7 +244,7 @@ Section regression_examples.
     (n: nat)
     (f: << A, A, Unit >> ~> A)
     {struct n}
-    : Kappa << copy_object_pow2 A n, Unit >> A :=
+    : << copy_object_pow2 A n, Unit >> ~> A :=
   match n with
   | O =>
     <[ \ x => x ]>
@@ -254,11 +258,11 @@ Section regression_examples.
 
   Definition adder_tree
     (bitsize n: nat)
-    : Kappa <<copy_object_pow2 (Vector Bit bitsize) n, Unit>> (Vector Bit bitsize) :=
+    : <<copy_object_pow2 (Vector Bit bitsize) n, Unit>> ~> (Vector Bit bitsize) :=
     <[ !(tree n <[\x y => x +% y]> ) ]>.
 
   Definition xilinxFullAdder
-    : Kappa << Bit, << Bit, Bit >>, Unit>> (Tuple Bit Bit) :=
+    : << Bit, << Bit, Bit >>, Unit>> ~> (Tuple Bit Bit) :=
     <[ \ cin ab =>
       let a = fst ab in
       let b = snd ab in
@@ -269,7 +273,7 @@ Section regression_examples.
     ]>.
 
   Fixpoint reshape {n m A}
-    : Kappa << Vector A (n * m), Unit >> << Vector (Vector A m) n >> :=
+    : << Vector A (n * m), Unit >> ~> << Vector (Vector A m) n >> :=
   match n with
   | 0 => <[\_ => [] ]>
   | S n' =>
@@ -280,14 +284,14 @@ Section regression_examples.
   end.
 
   Definition dummy {T}
-    : Kappa << Bit, T, T, Unit >> <<T>> :=
+    : << Bit, T, T, Unit >> ~> <<T>> :=
     <[\_ x _ => x]>.
   Notation T:=(Bit )(only parsing).
   Notation "'if' i 'then' t 'else' e" :=
-    (App (App (App (dummy _) i) t) e)
+    (App (App (App (CallModule dummy) i) t) e)
     (in custom expr at level 5, left associativity) : kappa_scope.
 
-  Definition exfailed: Kappa << <<T,T>>,<<T,T>>, Unit >> <<T,T>> :=
+  Definition exfailed: << <<T,T>>,<<T,T>>, Unit >> ~> <<T,T>> :=
     <[\s1 s2 =>
     let '(a,b) : <<_,T>> =  s1 in
     let '(aa,bb) : <<_,T>> = s2 in
