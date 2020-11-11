@@ -17,9 +17,17 @@ Require Import Coq.Bool.Bvector Coq.Vectors.VectorDef.
 Require Import Cava.VectorUtils.
 
 Section Spec.
-  Context (nc : nat) (nb : nat).
-  Definition state := t (Bvector nb) nc.
-  Definition key := Bvector nb.
+  (* FIPS 197, 2.1: Word A group of 32 bits that is treated either as a single
+     entity or as an array of 4 bytes. *)
+  Variable bits_per_word : nat.
+  Definition word := (Bvector bits_per_word).
+
+  (* FIPS 197, 2.2: Number of columns (32-bit words) comprising the State.
+     For this standard, Nb = 4. *)
+  Variable nb : nat.
+
+  Definition state := t word nb.
+  Definition key := word.
 
   (* FIPS 197, 5.1.4 AddRoundKey() Transformation *)
   Definition add_round_key (input : state) (k : key) : state :=
