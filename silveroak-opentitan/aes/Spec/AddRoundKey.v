@@ -26,7 +26,7 @@ Section Spec.
      For this standard, Nb = 4. *)
   Variable nb : nat.
 
-  Definition state := t word nb.
+  Definition state := Vector.t word nb.
   Definition key := word.
 
   (* FIPS 197, 5.1.4 AddRoundKey() Transformation *)
@@ -39,7 +39,7 @@ Section Spec.
       destruct b1, b2; reflexivity.
     Qed.
 
-    Lemma inverse_bvxor n (a : t bool n) (b : t bool n) :
+    Lemma inverse_bvxor n (a : Vector.t bool n) (b : Vector.t bool n) :
                         BVxor n (BVxor n a b) b = a.
     Proof.
       induction a.
