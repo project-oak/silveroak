@@ -21,12 +21,6 @@ Require Import Cava.Arrow.ArrowExport.
 (* This file contains tactics and notations designed to simplify proofs that
    derive or prove specifications for kappa-level circuits. *)
 
-Lemma module_map_body_reduce i o (f: ModuleK i o):
-  match module_map_body f (fun e => e coq_func) with
-  | {| module_body := m |} => interp_combinational' m
-  end = kinterp f.
-Proof. now destruct f. Qed.
-
 Lemma reduce_module_match i o (f: ModuleK i o):
   interp_combinational' ((f: Kappa _ _) coq_func) =
   match f with

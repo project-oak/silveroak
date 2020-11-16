@@ -187,7 +187,7 @@ Section CombinatorWf.
   Proof. induction n; cbn [Combinators.reshape]; prove_Wf. Qed.
   Hint Resolve reshape_Wf : Wf.
 
-  Program Lemma flatten_Wf A n m : Wf (@Combinators.flatten n m A).
+  Lemma flatten_Wf A n m : Wf (@Combinators.flatten n m A).
   Proof. induction n; cbn [Combinators.flatten]; prove_Wf. Qed.
   Hint Resolve flatten_Wf : Wf.
 
@@ -208,7 +208,7 @@ Section CombinatorWf.
   Hint Resolve enable_Wf : Wf.
 
   Lemma bitwise_Wf A (c: ModuleK _ _) : Wf c -> Wf (@Combinators.bitwise A c).
-  Proof. induction A; cbv [Combinators.bitwise]; prove_Wf. Qed.
+  Proof. induction A; cbn [Combinators.bitwise]; prove_Wf. Qed.
   Hint Resolve bitwise_Wf : Wf.
 
   Lemma equality_Wf A : Wf (@Combinators.equality A).
@@ -277,7 +277,6 @@ End Misc.
 
 (* Proofs of equivalence between circuit combinators and functional
    specifications *)
-
 Section CombinatorEquivalence.
   Lemma replicate_correct A n (x : denote_kind A) :
     kinterp (@Combinators.replicate n A) (x, tt) = @Vector.const (denote_kind A) x n.
@@ -310,7 +309,7 @@ Section CombinatorEquivalence.
         (c : ModuleK << A, Unit >> B) :
     forall v,
       kinterp (@Combinators.map n A B c) (v, tt)
-      = Vector.map (fun a : denote_kind A => kinterp (c) (a, tt)) v.
+      = Vector.map (fun a : denote_kind A => kinterp c (a, tt)) v.
   Proof.
     induction n; cbn [Combinators.map]; intros; kappa_spec;
       autorewrite with vsimpl; rewrite ?map_cons; reflexivity.

@@ -83,7 +83,7 @@ Section Equivalence.
                       = unrolled_cipher_naive'_spec sbox_impl op_i data key)
          As unrolled_cipher_naive'_correct.
   Proof.
-    cbv [unrolled_cipher_naive']; time kappa_spec.
+    cbv [unrolled_cipher_naive']; kappa_spec.
 
     repeat destruct_pair_let.
     repeat first [derive_foldl_spec | derive_map_spec ].
