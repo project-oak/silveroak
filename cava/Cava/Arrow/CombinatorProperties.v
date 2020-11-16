@@ -152,7 +152,7 @@ Ltac kequiv_step :=
       (CallModule ?F) =>
     eapply CallModule_equiv;
     match goal with
-    | H: Wf (?F) |- _ => apply H
+    | H: Wf (mkModule ?F) |- _ => apply H
     | _ => idtac (* "No hypotheses matching" F *)
     end
     ; eauto with Wf

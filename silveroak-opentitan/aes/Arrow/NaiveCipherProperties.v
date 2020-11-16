@@ -73,7 +73,6 @@ Section Equivalence.
        @aes_shift_rows_correct @aes_mix_columns_correct : kappa_interp.
   Opaque aes_256_naive_key_expansion mix_columns.aes_mix_columns.
 
-
   Derive unrolled_cipher_naive'_spec
          SuchThat (forall (sbox_impl : pkg.SboxImpl) (op_i : bool)
                      (data : Vector.t (Vector.t (Vector.t bool 8) 4) 4)
@@ -84,7 +83,6 @@ Section Equivalence.
          As unrolled_cipher_naive'_correct.
   Proof.
     cbv [unrolled_cipher_naive']; kappa_spec.
-
     repeat destruct_pair_let.
     repeat first [derive_foldl_spec | derive_map_spec ].
     derive_spec_done.
