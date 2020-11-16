@@ -23,7 +23,7 @@ Import KappaNotation.
 Open Scope kind_scope.
 
 Notation "|^ x" :=
-  (App (RemoveContext (foldr1 <[\a b => xor a b]> _)) x)
+  (App (CallModule (foldr1 <[\a b => xor a b]>)) x)
   (in custom expr at level 5, no associativity) : kappa_scope.
 Notation "x && y" :=
   (App (App (Primitive (P2 And)) x) y)
@@ -32,16 +32,16 @@ Notation "x || y" :=
   (App (App (Primitive (P2 And)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x & y" :=
-  (App (App (RemoveContext (bitwise <[and]>  _)) x) y)
+  (App (App (CallModule (bitwise <[and]>)) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "x ^ y" :=
-  (App (App (RemoveContext (bitwise <[xor]> _)) x) y)
+  (App (App (CallModule (bitwise <[xor]>)) x) y)
     (in custom expr at level 6, left associativity) : kappa_scope.
 Notation "'if' i 'then' t 'else' e" :=
-  (App (App (App (RemoveContext (mux_item _)) i) t) e)
+  (App (App (App (CallModule mux_item) i) t) e)
   (in custom expr at level 5, left associativity) : kappa_scope.
 Notation "x == y" :=
-  (App (App (RemoveContext (equality _)) x) y)
+  (App (App (CallModule equality) x) y)
   (in custom expr at level 6, left associativity) : kappa_scope.
 
 Inductive SboxImpl :=

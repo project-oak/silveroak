@@ -24,7 +24,10 @@ From Aes Require Import pkg.
 
 Section Wf.
   Lemma aes_transpose_Wf n m : Wf (@aes_transpose n m).
-  Proof. induction n; cbn [aes_transpose]; prove_Wf. Qed.
+  Proof.
+    induction n; cbn [aes_transpose]; prove_Wf.
+    { eapply map2_Wf; prove_Wf. }
+  Qed.
   Hint Resolve aes_transpose_Wf : Wf.
 
   Lemma CIPH_FWD_Wf : Wf (CIPH_FWD).

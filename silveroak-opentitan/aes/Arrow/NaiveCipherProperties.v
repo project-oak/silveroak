@@ -20,7 +20,7 @@ From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec
 Require Import Cava.Tactics.
 
 From Aes Require Import PkgProperties CipherRoundProperties
-     cipher_round unrolled_naive_cipher.
+     pkg cipher_round unrolled_naive_cipher.
 
 Section Wf.
   Context (aes_256_naive_key_expansion_Wf :
@@ -35,7 +35,11 @@ Section Wf.
 
   Lemma unrolled_cipher_naive'_Wf :
     forall sbox_impl, Wf (unrolled_cipher_naive' sbox_impl).
-  Proof. cbv [unrolled_cipher_naive']; prove_Wf. Qed.
+  Proof. cbv [unrolled_cipher_naive']; prove_Wf.
+    { apply foldl_Wf; prove_Wf. }
+    { apply bitwise_Wf; prove_Wf. }
+    { apply map_Wf; prove_Wf. }
+  Qed.
   Hint Resolve unrolled_cipher_naive'_Wf : Wf.
 
   Lemma unrolled_cipher_naive_Wf :

@@ -31,12 +31,19 @@ Section Wf.
   Hint Resolve aes_sub_bytes_Wf aes_shift_rows_Wf aes_mix_columns_Wf : Wf.
 
   Lemma cipher_round_Wf : forall sbox_impl, Wf (cipher_round sbox_impl).
-  Proof. cbv [cipher_round]; prove_Wf. Qed.
+  Proof.
+    cbv [cipher_round]; prove_Wf.
+    eapply bitwise_Wf.
+    prove_Wf.
+  Qed.
   Hint Resolve cipher_round_Wf : Wf.
 
   Lemma final_cipher_round_Wf :
     forall sbox_impl, Wf (final_cipher_round sbox_impl).
-  Proof. cbv [final_cipher_round]; prove_Wf. Qed.
+  Proof. cbv [final_cipher_round]; prove_Wf.
+    eapply bitwise_Wf.
+    prove_Wf.
+  Qed.
   Hint Resolve final_cipher_round_Wf : Wf.
 End Wf.
 Hint Resolve cipher_round_Wf final_cipher_round_Wf : Wf.

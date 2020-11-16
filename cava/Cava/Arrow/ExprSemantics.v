@@ -54,8 +54,7 @@ Section combinational_semantics.
     | Typecast _ _ => rewrite_or_default _ _
     | Let v f => fun y =>
       interp_combinational' (f (interp_combinational' v tt)) y
-    | RemoveContext f => interp_combinational' f
-    | CallModule (mkModule _ m) => interp_combinational' m
+    | CallModule (mkModule _ m) => interp_combinational' (m _)
 
     | LetRec v f => fun _ => kind_default _
     | Delay => fun _ => kind_default _
@@ -73,3 +72,6 @@ Section combinational_semantics.
   *)
 
 End combinational_semantics.
+
+(* convenient notation *)
+Notation kinterp x := (interp_combinational' ((x: Kappa _ _) coq_func)).
