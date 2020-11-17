@@ -46,7 +46,7 @@ Fixpoint denote (ty: Kind): Type :=
 match ty with
 | Tuple l r => prod (denote l) (denote r)
 | Unit => Datatypes.unit
-| Bit => Signal Kind.Bit
+| Bit => Signal Signal.Bit
 | Vector t n => Vector.t (denote t) n
 end.
 
@@ -83,16 +83,16 @@ Fixpoint unflatten_vector {T n m} (v: Vector.t (denote T) (n*m)):
   end.
 
 (* pack any CircuitLowering.Kind as a Vector.t of Netlist.Kind bits *)
-Fixpoint pack (ty: Kind) (s: denote ty) {struct ty}: Vector.t (Signal Kind.Bit) (packed_width ty) :=
-  match ty as k return (denote k -> t (Signal Kind.Bit) (packed_width k)) with
+Fixpoint pack (ty: Kind) (s: denote ty) {struct ty}: Vector.t (Signal Signal.Bit) (packed_width ty) :=
+  match ty as k return (denote k -> t (Signal Signal.Bit) (packed_width k)) with
   | Tuple ty1 ty2 => fun '(x,y) => pack ty1 x ++ pack ty2 y
   | Unit => fun _ => []
   | Bit => fun b => [b]
   | Vector ty0 n => fun x => flatten_vector (Vector.map (pack ty0) x)
   end s.
 
-Fixpoint unpack (ty: Kind) (v: Vector.t (Signal Kind.Bit) (packed_width ty)): denote ty :=
-  match ty as k return (t (Signal Kind.Bit) (packed_width k) -> denote k) with
+Fixpoint unpack (ty: Kind) (v: Vector.t (Signal Signal.Bit) (packed_width ty)): denote ty :=
+  match ty as k return (t (Signal Signal.Bit) (packed_width k) -> denote k) with
   | Tuple ty1 ty2 => fun v =>
     let (l, r) := splitat (packed_width ty1) v in
     (unpack ty1 l, unpack ty2 r)
@@ -103,7 +103,7 @@ Fixpoint unpack (ty: Kind) (v: Vector.t (Signal Kind.Bit) (packed_width ty)): de
   end v.
 
 Definition pack_vector n ty (vec: denote (Vector ty n))
-  : Vector.t (Vector.t (Signal Kind.Bit) (packed_width ty)) n
+  : Vector.t (Vector.t (Signal Signal.Bit) (packed_width ty)) n
   := Vector.map (pack _) vec.
 
 Fixpoint fresh_wire (ty: Kind) : state CavaState (denote ty) :=
@@ -117,7 +117,7 @@ Fixpoint fresh_wire (ty: Kind) : state CavaState (denote ty) :=
   | Vector t n => mapT (fun _ => fresh_wire t) (const tt n)
   end.
 
-Fixpoint map2M (f: Signal Kind.Bit -> Signal Kind.Bit -> Instance) (ty: Kind)
+Fixpoint map2M (f: Signal Signal.Bit -> Signal Signal.Bit -> Instance) (ty: Kind)
   (x: denote ty) (y: denote ty): state CavaState Datatypes.unit :=
   match ty, x, y with
   | Tuple l r, (x1,x2), (y1, y2) =>
@@ -161,11 +161,11 @@ Fixpoint rewrite_or_default (x y: Kind): denote x -> denote y :=
 Definition slice' n x y (o: Kind) (v: denote (Vector o n)) : state CavaState (denote (Vector o (x - y + 1))) :=
   let length := x - y + 1 in
   let packed := VecLit (pack _ v) in
-  wires <- newVector Kind.Bit (packed_width (Vector o n))  ;;
+  wires <- newVector Signal.Bit (packed_width (Vector o n))  ;;
   addInstance (AssignSignal wires packed) ;;
   let sliced := Slice y (length * packed_width o) wires in
 
-  sliced_wires <- newVector Kind.Bit (length * packed_width o)  ;;
+  sliced_wires <- newVector Signal.Bit (length * packed_width o)  ;;
   addInstance (AssignSignal sliced_wires sliced) ;;
 
   let packed := Vector.map (IndexConst sliced_wires) (vseq 0 (length * packed_width o)) in
@@ -181,7 +181,7 @@ Definition index' n (o: Kind): denote (Vector o n) -> denote (vec_index n) -> st
   | S (S _) => fun array index =>
       let array := Vector.map VecLit (pack_vector _ _ array) in
       let indexed := IndexAt (VecLit array) (VecLit index) in
-      wires <- newVector Kind.Bit (packed_width o) ;;
+      wires <- newVector Signal.Bit (packed_width o) ;;
       addInstance (AssignSignal wires indexed) ;;
       let packed := Vector.map (IndexConst wires) (vseq 0 (packed_width o)) in
       ret (unpack o packed)
