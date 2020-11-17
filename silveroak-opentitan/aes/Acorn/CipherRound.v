@@ -45,46 +45,19 @@ Section WithCava.
           (mix_columns:   signal state -> m (signal state))
           (add_round_key: signal key -> signal state -> m (signal state)).
 
-  (* Perform the bitwise XOR of two 4-element vectors of 8-bit values. *)
-  Definition xor4xV
-      (ab : signal (Vec (Vec Bit 8) 4) * signal (Vec (Vec Bit 8) 4))
-      : m (signal (Vec (Vec Bit 8) 4)) :=
-    zipWith xorV (fst ab) (snd ab).
-
-  (* Perform the bitwise XOR of two 4x4 matrices of 8-bit values. *)
-  Definition xor4x4V (a b : signal state) : m (signal state) :=
-    zipWith xor4xV a b.
-
   Definition cipher_round (input: signal state) (key : signal key)
     : m (signal state) :=
-    stage1 <- sub_bytes input ;;
-    stage2 <- shift_rows stage1 ;;
-    stage3 <- mix_columns stage2 ;;
-    xor4x4V key stage3.
-
-  Local Open Scope list_scope.
+    (sub_bytes >=> shift_rows >=> mix_columns >=> add_round_key key) input.
 
   Definition cipher
         (first_key last_key : signal key)
-        (middle_keys : list (signal (key)))
-        (input : signal (Vec (Vec (Vec Bit 8) 4) 4))
-        : m (signal (Vec (Vec (Vec Bit 8) 4) 4)) :=
-    st1 <- add_round_key first_key input ;;
-    st2 <- foldLM cipher_round middle_keys st1 ;;
-    st3 <- sub_bytes st2 ;;
-    st4 <- shift_rows st3 ;;
-    st5 <- add_round_key last_key st4 ;;
-    ret st5.
-
-  Definition cipher_alt
-        (first_key last_key : signal (Vec (Vec (Vec Bit 8) 4) 4))
-        (middle_keys : list (signal (Vec (Vec (Vec Bit 8) 4) 4)))
-        (input : signal (Vec (Vec (Vec Bit 8) 4) 4))
-        : m (signal (Vec (Vec (Vec Bit 8) 4) 4)) :=
-    (add_round_key first_key         >=> 
-     foldLM cipher_round middle_keys >=> 
-     sub_bytes                       >=> 
-     shift_rows                      >=> 
-     add_round_key last_key) input. 
+        (middle_keys : list (signal key))
+        (input : signal state)
+        : m (signal state) :=
+    (add_round_key first_key         >=>
+     foldLM cipher_round middle_keys >=>
+     sub_bytes                       >=>
+     shift_rows                      >=>
+     add_round_key last_key) input.
 
 End WithCava.

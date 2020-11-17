@@ -36,8 +36,8 @@ Section WithSubroutines.
   Local Notation key := (t (t byte 4) 4) (only parsing).
   Context (sub_bytes:     state -> ident state)
           (shift_rows:    state -> ident state)
-          (mix_columns:   state -> ident state).
-  Let add_round_key : key -> state -> ident state := xor4x4V.
+          (mix_columns:   state -> ident state)
+          (add_round_key : key -> state -> ident state).
 
   Let sub_bytes' : state -> state := (fun st => unIdent (sub_bytes st)).
   Let shift_rows' : state -> state := (fun st => unIdent (shift_rows st)).
@@ -54,24 +54,8 @@ Section WithSubroutines.
     unIdent (cipher first_key last_key middle_keys input)
     = cipher_spec first_key last_key middle_keys input.
   Proof.
-    cbv zeta. subst sub_bytes' shift_rows' mix_columns' add_round_key' add_round_key.
-    cbv [cipher cipher_round Cipher.cipher]. cbn [bind ret Monad_ident unIdent].
-    repeat (f_equal; [ ]). rewrite foldLM_ident_fold_left.
-    eapply fold_left_preserves_relation; [ reflexivity | ].
-    intros; subst. reflexivity.
-  Qed.
-
-  Lemma cipher_alt_equiv
-        (first_key last_key : key) (middle_keys : list key) (input : state) :
-    let cipher := (cipher_alt sub_bytes shift_rows mix_columns add_round_key) in
-    let cipher_spec := (Cipher.cipher _ _ add_round_key'
-                                      sub_bytes' shift_rows' mix_columns') in
-    unIdent (cipher first_key last_key middle_keys input)
-    = cipher_spec first_key last_key middle_keys input.
-  Proof.
-    cbv zeta. subst sub_bytes' shift_rows' mix_columns' add_round_key' add_round_key.
-    cbv [cipher_alt cipher_round Cipher.cipher].
-    cbn [bind ret Monad_ident unIdent mcompose].
+    cbv zeta. subst sub_bytes' shift_rows' mix_columns' add_round_key'.
+    cbv [cipher cipher_round Cipher.cipher]. cbn [mcompose bind ret Monad_ident unIdent].
     repeat (f_equal; [ ]). rewrite foldLM_ident_fold_left.
     eapply fold_left_preserves_relation; [ reflexivity | ].
     intros; subst. reflexivity.
