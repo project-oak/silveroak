@@ -21,11 +21,39 @@ From Coq Require Import Vectors.Vector.
 From Cava Require Import Kind.
 From Cava Require Import VectorUtils.
 
+(******************************************************************************)
+(* The types of signals that can flow over wires, used to index signal        *)
+(******************************************************************************)
+
 Inductive SignalType :=
   | Void : SignalType                              (* An empty type *)
   | Bit : SignalType                               (* A single wire *)
   | Vec : SignalType -> nat -> SignalType          (* Vectors, possibly nested *)
   | ExternalType : string -> SignalType.           (* An uninterpreted type *)
+
+(******************************************************************************)
+(* Combinational denotion of the SignalType and default values.               *)
+(******************************************************************************)
+
+Fixpoint combType (t: SignalType) : Type :=
+  match t with
+  | Void => unit
+  | Bit => bool
+  | Vec vt sz => Vector.t (combType vt) sz
+  | ExternalType _ => unit (* No semantics for combinational interpretation. *)
+  end.
+
+Fixpoint defaultCombValue (t: SignalType) : combType t :=
+  match t  with
+  | Void => tt
+  | Bit => false
+  | Vec t2 sz => Vector.const (defaultCombValue t2) sz
+  | ExternalType _ => tt
+  end.
+
+(******************************************************************************)
+(* Netlist AST representation for signal expressions.                         *)
+(******************************************************************************)
 
 Inductive Signal : SignalType -> Type :=
   | UndefinedSignal : Signal Void

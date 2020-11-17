@@ -16,9 +16,10 @@
 
 From Coq Require Import ZArith.ZArith.
 From Coq Require Import Strings.String.
+From Coq Require Import Vectors.Vector.
+
 From Coq Require Import Lists.List.
 Import ListNotations.
-From Coq Require Import Vectors.Vector.
 
 From Cava Require Import VectorUtils.
 
@@ -41,14 +42,35 @@ Inductive Signal : SignalType -> Type :=
   | Fst : forall {A B : SignalType}, Signal (Pair A B) -> Signal A
   | Snd : forall {A B : SignalType}, Signal (Pair A B) -> Signal B.
 
-Local Open Scope list_scope.
+Definition denoteSignal (t : SignalType) : Type := Signal t.
 
-Fixpoint denoteInterface (denotion : SignalType -> Type)
-                         (v : list (string * SignalType)) : Type :=
+Fixpoint denoteCombinational (t : SignalType) : Type :=
+  match t with
+  | Void => unit
+  | Bit => bool
+  | Vec vt s => Vector.t (denoteCombinational vt) s
+  | ExternalType _ => string
+  | Pair A B => denoteCombinational A * denoteCombinational B
+  end.
+
+Local Open Scope list_scope.
+Local Open Scope string_scope.
+
+Definition t1 : ((nat * nat) * nat) := (1, 2, 3).
+Definition t2 : ((nat * nat) * nat) := ((1, 2), 3).
+
+Fixpoint denoteInterface' (denotion : SignalType -> Type)
+                          (accum : Type) 
+                          (v : list (string * SignalType))
+                         : Type :=
+  match v with
+  | [] => accum
+  | (n, t)::pds => denoteInterface' denotion (accum * denotion t) pds
+  end.
+
+Definition denoteInterface (denotion : SignalType -> Type)
+                           (v : list (string * SignalType)) : Type :=
   match v with
   | [] => unit
-  | [(n, t)] => denotion t
-  | [(n1, t1); (n2, t2)] => denotion t1 * denotion t2
-  | (n1, t1)::(n2, t2)::pds => denotion t1 * denotion t2 *
-                               denoteInterface denotion pds
+  | (n, t)::pds => denoteInterface' denotion (denotion t) pds
   end.
