@@ -14,47 +14,37 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Lists.List.
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 Require Import Cava.ListUtils.
+Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
 Require Import Cava.Monad.MonadFacts.
 Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.Lib.AcornVectors.
+Import VectorNotations.
 
-Require Import AesSpec.Cipher.
-Require Import AcornAes.CipherRound.
+Require Import AesSpec.AddRoundKey.
+Require Import AcornAes.AddRoundKey.
 
 Existing Instance Combinational.
 
-Section WithSubroutines.
+Section Equivalence.
   Local Notation byte := (t bool 8).
   Local Notation state := (t (t byte 4) 4) (only parsing).
   Local Notation key := (t (t byte 4) 4) (only parsing).
-  Context (sub_bytes:     state -> ident state)
-          (shift_rows:    state -> ident state)
-          (mix_columns:   state -> ident state)
-          (add_round_key : key -> state -> ident state).
 
-  Let sub_bytes' : state -> state := (fun st => unIdent (sub_bytes st)).
-  Let shift_rows' : state -> state := (fun st => unIdent (shift_rows st)).
-  Let mix_columns' : state -> state := (fun st => unIdent (mix_columns st)).
-  (* Note: argument order is switched for spec *)
-  Let add_round_key' : state -> key -> state :=
-    (fun st k => unIdent (add_round_key k st)).
-
-  Lemma cipher_equiv
-        (first_key last_key : key) (middle_keys : list key) (input : state) :
-    let cipher := (cipher sub_bytes shift_rows mix_columns add_round_key) in
-    let cipher_spec := (Cipher.cipher _ _ add_round_key'
-                                      sub_bytes' shift_rows' mix_columns') in
-    unIdent (cipher first_key last_key middle_keys input)
-    = cipher_spec first_key last_key middle_keys input.
+  Lemma add_round_key_equiv (k : key) (st : state) :
+    let to_words : state -> AddRoundKey.state 32 4 := map flatten in
+    let impl := (AcornAes.AddRoundKey.add_round_key k st) in
+    let spec := (AesSpec.AddRoundKey.add_round_key
+                   32 4 (to_words k) (to_words st)) in
+    to_words (unIdent impl) = spec.
   Proof.
-    cbv zeta. subst sub_bytes' shift_rows' mix_columns' add_round_key'.
-    cbv [cipher cipher_round Cipher.cipher]. cbn [mcompose bind ret Monad_ident unIdent].
-    repeat (f_equal; [ ]). rewrite foldLM_ident_fold_left.
-    eapply fold_left_preserves_relation; [ reflexivity | ].
-    intros; subst. reflexivity.
+    cbv zeta. cbv [AcornAes.AddRoundKey.add_round_key AesSpec.AddRoundKey.add_round_key].
+    cbv [xor4x4V xor4xV]. cbv [Bvector.BVxor]. simpl_ident.
+    rewrite map2_map. rewrite map_map2. cbn [denoteCombinational].
+    apply map2_ext; intros.
+    rewrite <-map2_flatten; reflexivity.
   Qed.
-End WithSubroutines.
+End Equivalence.
