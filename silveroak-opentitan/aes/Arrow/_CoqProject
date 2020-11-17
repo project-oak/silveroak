@@ -21,9 +21,11 @@ cipher_round.v
 key_expand.v
 netlists.v
 aes_test.v
+CipherEquivalenceCommon.v
 CipherRoundProperties.v
 NaiveCipherProperties.v
 OpenTitanCipherEquivalence.v
 OpenTitanCipherProperties.v
+OpenTitanInverseCipherEquivalence.v
 PkgProperties.v
 Extraction.v
