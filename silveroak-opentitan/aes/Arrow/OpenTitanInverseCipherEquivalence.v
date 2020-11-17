@@ -30,29 +30,11 @@ Require Import AesSpec.Cipher.
 Require Import AesSpec.CipherRepresentationChange.
 Require Import AesSpec.ExpandAllKeys.
 Require Import AesSpec.InterleavedInverseCipher.
-From Aes Require Import OpenTitanCipherProperties CipherRoundProperties
+From Aes Require Import CipherEquivalenceCommon
+     OpenTitanCipherProperties CipherRoundProperties
      unrolled_opentitan_cipher.
 Import VectorNotations ListNotations.
-
-Local Notation nat_to_bitvec size n := (Ndigits.N2Bv_sized size (N.of_nat n)).
-Local Notation nat_to_byte n := (nat_to_bitvec 8 n).
-Local Notation byte := (Vector.t bool 8) (only parsing).
-Local Notation state := (Vector.t (Vector.t byte 4) 4) (only parsing).
-Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
-Local Notation rconst := byte (only parsing).
-Local Notation keypair := (Vector.t (Vector.t byte 4) 8) (only parsing).
-
-(* aes_key_expand operates on a pair of keys; this is a sliding window of
-   (previous key ++ current key). The following definitions project out
-   keys from the pair. *)
-Definition fstkey : keypair -> key :=
-  @slice_by_position
-    (t (t bool 8) 4) 8 3 0 (kind_default (Vector (Vector Bit 8) 4)).
-Definition sndkey : keypair -> key :=
-  @slice_by_position
-    (t (t bool 8) 4) 8 7 4 (kind_default (Vector (Vector Bit 8) 4)).
-
-Definition swap_keys (k : keypair) := sndkey k ++ fstkey k.
+Import CipherEquivalenceCommon.Notations.
 
 Section Equivalence.
   Context (sbox : pkg.SboxImpl)
@@ -87,59 +69,6 @@ Section Equivalence.
     fun i rk => aes_key_expand_spec sbox false (nat_to_bitvec _ i) (fst rk) (snd rk).
   Definition inv_key_expand : nat -> rconst * keypair -> rconst * keypair :=
     fun i rk => aes_key_expand_spec sbox true (nat_to_bitvec _ i) (fst rk) (snd rk).
-
-  (* current key *)
-  Definition projkey1 (x : rconst * keypair) : key :=
-    transpose_rev (fstkey (snd x)).
-  (* previous key *)
-  Definition projkey2 (x : rconst * keypair) : key :=
-    transpose_rev (sndkey (snd x)).
-
-  (* Adds dummy rconst + other key to a key to create a rconst * keypair *)
-  Definition unprojkey1 (k : key) : rconst * keypair :=
-    (nat_to_byte 0, transpose_rev k ++ const (const (const false 8) 4) 4).
-  Definition unprojkey2 (k : key) : rconst * keypair :=
-    (nat_to_byte 0, const (const (const false 8) 4) 4 ++ transpose_rev k).
-
-  Local Ltac constant_vector_simpl vec :=
-    lazymatch type of vec with
-    | t _ (S ?n) =>
-      let v' := fresh "v" in
-      rewrite (eta vec); set (v':=tl vec);
-      cbv beta in v'; constant_vector_simpl v'
-    | t _ 0 => eapply case0 with (v:=vec)
-    end.
-
-  (* TODO: refactor into proofs about slice_by_position and append *)
-  Lemma sndkey_of_append (v1 v2 : Vector.t _ 4) : sndkey (v1 ++ v2) = v2.
-  Proof.
-    cbv [sndkey slice_by_position]. rewrite !resize_default_id.
-    rewrite splitat_append. cbn [fst snd].
-    constant_vector_simpl v2. reflexivity.
-  Qed.
-
-  Lemma fstkey_of_append (v1 v2 : Vector.t _ 4) : fstkey (v1 ++ v2) = v1.
-  Proof. constant_vector_simpl v1. reflexivity. Qed.
-
-  Lemma fstkey_sndkey_append kp : fstkey kp ++ sndkey kp = kp.
-  Proof. constant_vector_simpl kp. reflexivity. Qed.
-
-  Lemma swap_keys_involutive kp : swap_keys (swap_keys kp) = kp.
-  Proof. constant_vector_simpl kp. reflexivity. Qed.
-
-  Lemma proj_unproj_key1 k : projkey1 (unprojkey1 k) = k.
-  Proof.
-    cbv [projkey1 unprojkey1]. cbn [fst snd].
-    rewrite fstkey_of_append.
-    apply transpose_rev_involutive.
-  Qed.
-
-  Lemma proj_unproj_key2 k : projkey2 (unprojkey2 k) = k.
-  Proof.
-    cbv [projkey2 unprojkey2]. cbn [fst snd].
-    rewrite sndkey_of_append.
-    apply transpose_rev_involutive.
-  Qed.
 
   Definition loop_states_equivalent
              (impl_loop_state : bool * (rconst * (state * keypair)))
@@ -218,34 +147,6 @@ Section Equivalence.
       subst R. cbv beta in *.
       repeat match goal with H : _ /\ _ |- _ => destruct H end.
       auto. }
-  Qed.
-
-  (* TODO: move *)
-  Ltac sset x value :=
-    set (x := value);
-    lazymatch goal with
-    | |- context [x] => idtac
-    | _ => fail "set did not change goal"
-    end.
-
-  (* TODO: move *)
-  Ltac change_compute x :=
-    lazymatch goal with
-    | |- context [x] => idtac
-    | _ => fail "not found in goal:" x
-    end;
-    let y := (eval vm_compute in x) in
-    change x with y.
-
-  About all_keys.
-  (* TODO: move *)
-  Lemma all_keys_shift0 {key} (key_expand : nat -> key -> key) n k :
-    all_keys key_expand (S n) k = (k :: all_keys (fun i => key_expand (S i)) n (key_expand 0 k))%list.
-  Proof.
-    cbv [all_keys all_keys']. cbn [List.seq].
-    rewrite <-seq_shift.
-    rewrite fold_left_accumulate_cons, fold_left_accumulate_map.
-    reflexivity.
   Qed.
 
   Lemma unrolled_cipher_spec_equiv_inverse

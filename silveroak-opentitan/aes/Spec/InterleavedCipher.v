@@ -148,28 +148,4 @@ Section Spec.
         reflexivity. }
     Qed.
   End Equivalence.
-
-  (* assume key_expand and all subroutines are the *inverse* operations, and
-     prove equivalent to inverse cipher *)
-  Section InverseEquivalence.
-    Context (Nr : nat) (initial_key : key)
-            (first_key : key) (middle_keys : list key) (last_key : key).
-    Context (all_keys_eq :
-               all_keys key_expand Nr initial_key
-               = first_key :: middle_keys ++ [last_key]).
-
-    Let inverse_cipher :=
-      equivalent_inverse_cipher
-        state key add_round_key sub_bytes shift_rows mix_columns.
-
-    (* Interleaved cipher is equivalent to original cipher *)
-    Lemma inverse_cipher_interleaved_equiv input :
-      cipher_interleaved Nr initial_key input =
-      inverse_cipher first_key last_key middle_keys input.
-    Proof.
-      intros. subst inverse_cipher.
-      erewrite cipher_interleaved_equiv by eassumption.
-      reflexivity.
-    Qed.
-  End InverseEquivalence.
 End Spec.

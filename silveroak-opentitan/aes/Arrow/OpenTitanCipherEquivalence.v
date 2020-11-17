@@ -30,17 +30,17 @@ Require Import AesSpec.Cipher.
 Require Import AesSpec.CipherRepresentationChange.
 Require Import AesSpec.ExpandAllKeys.
 Require Import AesSpec.InterleavedCipher.
-From Aes Require Import OpenTitanCipherProperties CipherRoundProperties
+From Aes Require Import CipherEquivalenceCommon
+     OpenTitanCipherProperties CipherRoundProperties
      unrolled_opentitan_cipher.
 Import VectorNotations ListNotations.
+Import CipherEquivalenceCommon.Notations.
 
 Section Equivalence.
-  Local Notation byte := (Vector.t bool 8) (only parsing).
   Context (sbox : pkg.SboxImpl)
           (aes_key_expand_spec :
-             pkg.SboxImpl -> bool -> Vector.t bool 4 -> byte ->
-             Vector.t (Vector.t byte 4) 8 ->
-             byte * Vector.t (Vector.t byte 4) 8)
+             pkg.SboxImpl -> bool -> Vector.t bool 4 ->
+             rconst -> keypair -> rconst * keypair)
           (aes_key_expand_correct :
              forall sbox_impl op_i round_id rcon key_i,
                kinterp (aes_key_expand sbox_impl)
@@ -59,14 +59,6 @@ Section Equivalence.
                kinterp mix_columns.aes_mix_columns (op_i, (state, tt))
                = aes_mix_columns_spec op_i state).
 
-  Notation state := (Vector.t (Vector.t (Vector.t bool 8) 4) 4) (only parsing).
-  Notation key := (Vector.t (Vector.t (Vector.t bool 8) 4) 4) (only parsing).
-  Notation rconst := (Vector.t bool 8) (only parsing).
-  Notation keypair := (Vector.t (Vector.t (Vector.t bool 8) 4) 8) (only parsing).
-
-  Notation nat_to_bitvec size n := (Ndigits.N2Bv_sized size (N.of_nat n)).
-  Notation nat_to_byte n := (nat_to_bitvec 8 n).
-
   Definition add_round_key : state -> key -> state :=
     @bitwise (Vector (Vector (Vector Bit 8) 4) 4) (fun a b => xorb a b).
   Definition sub_bytes : state -> state := aes_sub_bytes_spec sbox false.
@@ -75,13 +67,6 @@ Section Equivalence.
 
   Definition key_expand : nat -> rconst * keypair -> rconst * keypair :=
     fun i rk => aes_key_expand_spec sbox false (nat_to_bitvec _ i) (fst rk) (snd rk).
-
-  Definition fstkey : keypair -> key :=
-    @slice_by_position
-      (t (t bool 8) 4) 8 3 0 (kind_default (Vector (Vector Bit 8) 4)).
-  Definition sndkey : keypair -> key :=
-    @slice_by_position
-      (t (t bool 8) 4) 8 7 4 (kind_default (Vector (Vector Bit 8) 4)).
 
   Lemma unrolled_cipher_spec_equiv
         init_keypair first_key last_key middle_keys input :
