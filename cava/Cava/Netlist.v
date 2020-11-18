@@ -452,7 +452,7 @@ Fixpoint instantiateOutputPortsR (outputPorts: list PortDeclaration) :
               | [] => fun _ => fun ab => instantiateOutputPort x (fst ab) (* Discard unit value in second element. *)
               | y::ys => fun (rec: tupleInterfaceR (y::ys) -> state CavaState unit) =>
                            fun (ab : tupleInterfaceR (x::y::ys)) => instantiateOutputPort x (fst ab);;
-                                                                     rec (snd ab)
+                                                                    rec (snd ab)
               end) (instantiateOutputPortsR xs)
   end.
 
@@ -574,12 +574,72 @@ Definition blackBox (intf : CircuitInterface)
 Record TestBench : Type := mkTestBench {
   testBenchName            : string;
   testBenchInterface       : CircuitInterface;
-  testBenchInputs          : list (tupleInterface (circuitInputs testBenchInterface));
-  testBenchExpectedOutputs : list (tupleInterface (circuitOutputs testBenchInterface));
+  testBenchInputs          : list (list SignalExpr);
+  testBenchExpectedOutputs : list (list SignalExpr);
 }.
+
+Fixpoint toSignalExpr (t: SignalType) (v: combType t) : SignalExpr :=
+  match t, v with
+  | Void, _ => NoSignal
+  | Bit, v => BitVal v
+  | Vec vt _, y => VecVal (map (toSignalExpr vt) (Vector.to_list y))
+  | ExternalType t, zx => NoSignal
+  end.
+
+Fixpoint tupleValueR (v : list PortDeclaration) : Type :=
+  match v with
+  | [] => unit
+  | x :: pds => combType (port_type x) * tupleValueR pds
+  end.
+
+Fixpoint tupleValue' accum (l : list PortDeclaration) : Type :=
+  match l with
+  | [] => accum
+  | x::xs => tupleValue' (accum * combType (port_type x))%type xs
+  end.
+
+Definition tupleValue (l : list PortDeclaration) : Type :=
+  match l with
+  | [] => unit
+  | x::xs => tupleValue' (combType (port_type x)) xs
+  end.
+
+Fixpoint unbalanceTupleValue' (ts : list PortDeclaration) {accumT : Type}
+  : tupleValue' accumT ts -> accumT * tupleValueR ts :=
+  match ts with
+  | [] => fun (acc : accumT) => (acc, tt)
+  | x::xs =>
+    fun ab =>
+      let '(acc, vx, vxs) := unbalanceTupleValue' xs ab in
+      (acc, (vx, vxs))
+  end.
+
+Definition unbalanceTupleValue (ts : list PortDeclaration) : tupleValue ts -> tupleValueR ts :=
+  match ts as ts0 return tupleValue ts0 -> tupleValueR ts0 with
+  | [] => fun _ => tt
+  | x::xs => unbalanceTupleValue' xs
+  end.
+
+Fixpoint tupleToSignalExprR (pd: list PortDeclaration) :
+                            tupleValueR pd ->
+                            list SignalExpr :=
+  match pd with
+  | [] => fun _ => []
+  | x::xs => (match xs as xs0 return ((tupleValueR xs0 -> list SignalExpr) -> tupleValueR (x::xs0) ->  list SignalExpr) with
+              | [] => fun _ => fun (ab : combType (port_type x) * unit) => [toSignalExpr (port_type x) (fst ab)]
+              | y::ys => fun (rec: tupleValueR (y::ys) -> list SignalExpr) =>
+                  fun (ab : tupleValueR (x::y::ys)) => toSignalExpr (port_type x) (fst ab) :: rec (snd ab)
+              end) (tupleToSignalExprR xs)
+  end.
+  
+Definition tupleToSignalExpr (pd: list PortDeclaration)
+                            (v: tupleValue pd) :
+                            list SignalExpr :=
+  tupleToSignalExprR pd (unbalanceTupleValue pd v).
 
 Definition testBench (name : string)
                      (intf : CircuitInterface)
-                     (testInputs : list (tupleInterface (circuitInputs intf)))
-                     (testExpectedOutputs : list (tupleInterface (circuitOutputs intf)))
-  := mkTestBench name intf testInputs testExpectedOutputs.
+                     (testInputs : list ((tupleValue (circuitInputs intf))))
+                     (testExpectedOutputs : list (tupleValue (circuitOutputs intf)))
+  := mkTestBench name intf (map (tupleToSignalExpr (circuitInputs intf)) testInputs)
+                           (map (tupleToSignalExpr (circuitOutputs intf)) testExpectedOutputs).
