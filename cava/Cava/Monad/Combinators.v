@@ -41,7 +41,7 @@ Local Open Scope monad_scope.
 Local Open Scope type_scope.
 
 Section WithCava.
-  Context {signal} {m : Cava signal}.
+  Context {signal} `{m: Cava signal}.
   Context {monad: Monad cava}.
 
   (****************************************************************************)

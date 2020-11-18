@@ -23,8 +23,7 @@ From Cava Require Import Kind.
 Require Import Cava.Monad.CavaMonad.
 
 Section WithCava.
-  Context {signal} {m : Cava signal}.
-  Context {monad: Monad cava}.
+  Context {signal} `{Cava signal} `{Monad cava}.
 
   (****************************************************************************)
   (* An adder with two inputs of the same size and no bit-growth              *)
