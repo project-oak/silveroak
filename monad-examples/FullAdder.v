@@ -101,7 +101,7 @@ Definition fullAdder_tb_inputs :=
 ].
 
 Definition fullAdder_tb_expected_outputs
-   := map (fun (i : bool * bool * bool) => combinational (fullAdderTop i)) fullAdder_tb_inputs.
+   := map (fun i => combinational (fullAdderTop i)) fullAdder_tb_inputs.
 
 Definition fullAdder_tb
   := testBench "fullAdder_tb" fullAdderInterface

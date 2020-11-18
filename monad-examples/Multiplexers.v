@@ -83,7 +83,7 @@ Definition mux2_1_tb_inputs :=
    (true,  true,  false)].
 
 Definition mux2_1_tb_expected_outputs
-  := map (fun (i : bool * bool * bool) => combinational (mux2_1 i)) mux2_1_tb_inputs.
+  := map (fun i => combinational (mux2_1 i)) mux2_1_tb_inputs.
 
 Definition mux2_1_tb
   := testBench "mux2_1_tb" mux2_1_Interface
@@ -130,8 +130,7 @@ Definition muxBus4_8_tb_inputs : list (Vector.t (Bvector 8) 4 * Vector.t bool 2)
   ].
 
 Definition muxBus4_8_tb_expected_outputs : list (Bvector 8)
-  := map (fun (i : Vector.t (Bvector 8) 4 * Vector.t bool 2) =>
-          combinational (muxBus i)) muxBus4_8_tb_inputs.
+  := map (fun i => combinational (muxBus i)) muxBus4_8_tb_inputs.
 
 Definition muxBus4_8_tb
   := testBench "muxBus4_8_tb" muxBus4_8Interface

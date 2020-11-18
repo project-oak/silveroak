@@ -89,7 +89,7 @@ Definition nand_tb_inputs : list (bool * bool) :=
 
 (* Compute expected outputs. *)
 Definition nand_tb_expected_outputs : list bool :=
-  map (fun (i : bool * bool) => combinational (nand2_gate i)) nand_tb_inputs.
+  map (fun i => combinational (nand2_gate i)) nand_tb_inputs.
 
 Definition nand2_tb :=
   testBench "nand2_tb" nand2Interface nand_tb_inputs nand_tb_expected_outputs.
