@@ -30,9 +30,9 @@ Require Import AcornAes.AddRoundKey.
 Existing Instance Combinational.
 
 Section Equivalence.
-  Local Notation byte := (t bool 8).
-  Local Notation state := (t (t byte 4) 4) (only parsing).
-  Local Notation key := (t (t byte 4) 4) (only parsing).
+  Local Notation byte := (Vector.t bool 8).
+  Local Notation state := (Vector.t (Vector.t byte 4) 4) (only parsing).
+  Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
 
   Lemma add_round_key_equiv (k : key) (st : state) :
     let to_words : state -> AddRoundKey.state 32 4 := map flatten in
