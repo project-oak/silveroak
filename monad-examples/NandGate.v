@@ -35,7 +35,7 @@ Local Open Scope string_scope.
 Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.
 
-  (* NAND gate example. Fist, let's define an overloaded NAND gate
+  (* NAND gate example. First, let's define an overloaded NAND gate
      description. *)
   Definition nand2_gate : signal Bit * signal Bit -> cava (signal Bit) :=
      and2 >=> inv.
