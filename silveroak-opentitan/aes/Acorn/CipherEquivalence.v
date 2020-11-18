@@ -57,4 +57,22 @@ Section WithSubroutines.
     eapply fold_left_preserves_relation; [ reflexivity | ].
     intros; subst. reflexivity.
   Qed.
+
+  (* If we assume all the subroutines are the inverse operations, we get the
+     equivalent inverse cipher *)
+  Lemma inverse_cipher_equiv
+        (first_key last_key : key) (middle_keys : list key) (input : state) :
+    let cipher := (cipher sub_bytes shift_rows mix_columns add_round_key) in
+    let cipher_spec := (Cipher.equivalent_inverse_cipher
+                          _ _ add_round_key' sub_bytes' shift_rows' mix_columns') in
+    unIdent (cipher first_key last_key middle_keys input)
+    = cipher_spec first_key last_key middle_keys input.
+  Proof.
+    cbv zeta. subst sub_bytes' shift_rows' mix_columns' add_round_key'.
+    cbv [cipher cipher_round Cipher.equivalent_inverse_cipher].
+    cbn [mcompose bind ret Monad_ident unIdent].
+    repeat (f_equal; [ ]). rewrite foldLM_ident_fold_left.
+    eapply fold_left_preserves_relation; [ reflexivity | ].
+    intros; subst. reflexivity.
+  Qed.
 End WithSubroutines.
