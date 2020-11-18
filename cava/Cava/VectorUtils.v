@@ -568,6 +568,32 @@ Section VectorFacts.
     rewrite IHn. reflexivity.
   Qed.
 
+  Lemma map2_append {A B C} (f : A -> B -> C) n m
+        (va1 : t A n) (va2 : t A m) vb1 vb2 :
+    (map2 f (va1 ++ va2) (vb1 ++ vb2) = map2 f va1 vb1 ++ map2 f va2 vb2)%vector.
+  Proof.
+    revert m va1 va2 vb1 vb2. induction n; intros.
+    { eapply case0 with (v:=va1).
+      eapply case0 with (v:=vb1).
+      reflexivity. }
+    { cbn [Nat.add]. rewrite (eta va1), (eta vb1).
+      rewrite <-!append_comm_cons.
+      rewrite !map2_cons, ?hd_cons, ?tl_cons.
+      rewrite IHn. reflexivity. }
+  Qed.
+
+  Lemma map2_flatten {A B C} (f : A -> B -> C) n m
+        (va : t (t A n) m) (vb : t (t B n) m) :
+    map2 f (flatten va) (flatten vb) = flatten (map2 (map2 f) va vb).
+  Proof.
+    revert va vb; induction m; intros; [ apply nil_eq | ].
+    cbn [flatten Nat.mul]. rewrite (eta va), (eta vb).
+    rewrite !uncons_cons.
+    rewrite !map2_cons, ?hd_cons, ?tl_cons.
+    rewrite map2_append.
+    rewrite IHm. reflexivity.
+  Qed.
+
   Lemma hd_snoc {A} n (v : t A (S n)) x :
     hd (snoc v x) = hd v.
   Proof. rewrite (eta v). reflexivity. Qed.
@@ -761,11 +787,11 @@ Hint Rewrite @tl_0 @hd_0 @tl_cons @hd_cons @last_tl
      using solve [eauto] : push_vector_tl_hd_last vsimpl.
 Hint Rewrite @nth_order_hd @nth_order_last
      using solve [eauto] : push_vector_nth_order vsimpl.
-Hint Rewrite @map2_0 @map_0 @map_to_const
+Hint Rewrite @map2_0 @map_0 @map_to_const @map2_append
      using solve [eauto] : push_vector_map vsimpl.
 Hint Rewrite @resize_default_id @Vector.map_id
      using solve [eauto] : vsimpl.
-Hint Rewrite @to_list_cons @to_list_nil
+Hint Rewrite @to_list_cons @to_list_nil @uncons_cons
      using solve [eauto] : vsimpl.
 
 
@@ -781,7 +807,7 @@ Hint Rewrite @map_cons @map2_cons
    databases *)
 Hint Rewrite <- @reverse_map2 @snoc_map2 @unsnoc_map2 @snoc_map @unsnoc_map
      using solve [eauto] : push_vector_map.
-Hint Rewrite  @nth_map @map_to_const
+Hint Rewrite  @nth_map @map_to_const @map2_flatten
      using solve [eauto] : push_vector_map.
 
 (* [eauto] might not solve map_id_ext, so add more power to the strategy *)

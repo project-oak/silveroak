@@ -6,3 +6,5 @@ INSTALLDEFAULTROOT = AcornAes
 -R ../../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
 CipherRound.v
 CipherEquivalence.v
+AddRoundKey.v
+Common.v
