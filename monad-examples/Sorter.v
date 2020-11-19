@@ -34,24 +34,27 @@ From Coq Require Import micromega.Lia.
 
 Local Open Scope vector_scope.
 
-Lemma zero_lt_z: 0 < 2. auto. Qed.
-Lemma one_lt_z: 1 < 2. auto. Qed.
+Section WithCava.
+  Context {signal} `{Cava signal} `{Monad cava}.
 
-Definition twoSorter {m bit} `{Cava m bit} {n}
-                     (ab: Vector.t (smashTy bit (Vec Bit n)) 2) :
-                     m (Vector.t (Vector.t bit n) 2) :=
-   let a := @Vector.nth_order _ 2 ab 0 zero_lt_z in
-   let b := @Vector.nth_order _ 2 ab 1 one_lt_z in
+Definition twoSorter {signal} `{Cava signal} `{Monad cava} {n}
+                     (ab:  signal (Vec (Vec Bit n) 2)) :
+                     cava (signal (Vec (Vec Bit n) 2)) :=
+   let a := indexConst ab 0 in
+   let b := indexConst ab 1 in
    comparison <- greaterThanOrEqual a b ;;
    negComparison <- inv comparison ;;
-   let sorted : Vector.t (Vector.t bit n) 2 := [indexAt ab [comparison];
-                                                indexAt ab [negComparison]] in
-   ret sorted.
+   let sorted : Vector.t (signal (Vec Bit n)) 2 :=
+     [indexAt ab (unpeel [comparison]);
+      indexAt ab (unpeel [negComparison])] in
+   ret (unpeel sorted).
+
+End WithCava.
 
 Definition two_sorter_Interface bitSize
   := combinationalInterface "two_sorter"
-     (mkPort "inputs" (Vec (Vec Bit bitSize) 2))
-     (mkPort "sorted" (Vec (Vec Bit bitSize) 2))
+     [mkPort "inputs" (Vec (Vec Bit bitSize) 2)]
+     [mkPort "sorted" (Vec (Vec Bit bitSize) 2)]
      [].
 
 Definition two_sorter_Netlist
@@ -87,39 +90,3 @@ Definition twoSorterSpec {bw: nat} (ab : Vector.t (Bvector bw) 2) :
   else
     [a; b].
 
-Lemma two_sorter_correct: forall (n m: nat) (a b: Bvector m),
-      combinational (twoSorter [a; b]) = twoSorterSpec [a; b].
-Proof.
-Abort. (* Proof unfolds in a complicated way. *)
-
-(*
-
-TODO: Fix type error:
-Error:
-In environment
-unpair : forall n : nat, t (nat * nat) n -> t nat (2 * n)
-n : nat
-v : t (nat * nat) n
-n' : nat
-v0 : t (nat * nat) (S n')
-x : nat * nat
-xs : t (nat * nat) n'
-a : nat
-b : nat
-The term "a :: b :: unpair n' xs" has type "t nat (S (S (2 * n')))"
-while it is expected to have type "t nat (2 * S n')".
-
-Fixpoint unpair {n} (v: Vector.t (nat * nat) n) : Vector.t nat (2*n) :=
-  match n, v return Vector.t nat (2*n) with
-  | O, vv => []
-  | S n', vv => let (x, xs) := Vector.uncons v in
-                let (a, b) := x in
-                a :: b :: unpair xs
-  end.
-
-Definition riffle {n} (v: Vector.t nat (2*n)) : Vector.t nat (2*n) :=
-  let '(a, b) := halveV v in
-  let abz := vcombine a b in
-  unpair abz.
-
-*)
