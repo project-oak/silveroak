@@ -282,5 +282,5 @@ Instance CavaNet : Cava denoteSignal :=
     unsignedAdd m n := @unsignedAddNet m n;
     unsignedMult m n := @unsignedMultNet m n;
     greaterThanOrEqual m n := @greaterThanOrEqualNet m n;
-    (* instantiate := instantiateNet; *)
+    instantiate := instantiateNet;
 }.

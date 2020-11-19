@@ -206,7 +206,7 @@ Definition loopBitBool (A B : SignalType) (f : combType A * bool -> ident (combT
     unsignedAdd m n := @unsignedAddBool m n;
     unsignedMult m n := @unsignedMultBool m n;
     greaterThanOrEqual m n := @greaterThanOrEqualBool m n;
-    (* instantiate _ circuit := circuit; *)
+    instantiate _ circuit := circuit;
 }.
 
 (******************************************************************************)
