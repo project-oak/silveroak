@@ -81,12 +81,12 @@ Class Cava (signal : SignalType -> Type) := {
   (* Synthesizable relational operators *)
   greaterThanOrEqual : forall {a b : nat}, signal (Vec Bit a) -> signal (Vec Bit b) ->
                        cava (signal Bit);
-  (* Hierarchy 
+  (* Hierarchy
   instantiate : forall (intf: CircuitInterface),
-                 (denote doSomethingToOne (mapShape port_shape (circuitInputs intf)) ->
-                 cava (denote doSomethingToOne (mapShape port_shape (circuitOutputs intf)))) ->
-                 denote doSomethingToOne (mapShape port_shape (circuitInputs intf)) ->
-                 cava (denote doSomethingToOne (mapShape port_shape (circuitOutputs intf)));
+                 (tupleInterface (circuitInputs intf) ->
+                  cava (tupleInterface (circuitOutputs intf))) ->
+                 tupleInterface (circuitInputs intf) ->
+                 cava (tupleInterface (circuitOutputs intf));
   *)
 }.               
 

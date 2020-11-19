@@ -28,7 +28,6 @@ Require Import Cava.Cava.
 Require Import Cava.VectorUtils.
 Require Import Cava.Monad.CavaClass.
 
-From Cava Require Import Kind.
 From Cava Require Import Signal.
 
 (******************************************************************************)
@@ -239,10 +238,10 @@ Definition loopBitNet (A B : SignalType) (f : (Signal A * Signal Bit)%type -> st
   ret b.
 
 Definition instantiateNet (intf : CircuitInterface)
-                          (circuit : tupleInterface (circuitInputs intf) ->
-                                    state CavaState (tupleInterface (circuitOutputs intf)))
-                          (a : tupleInterface (circuitInputs intf))
-                          : state CavaState (tupleInterface (circuitOutputs intf)) :=
+                          (circuit : tupleNetInterface (circuitInputs intf) ->
+                                    state CavaState (tupleNetInterface (circuitOutputs intf)))
+                          (a : tupleNetInterface (circuitInputs intf))
+                          : state CavaState (tupleNetInterface (circuitOutputs intf)) :=
   let cs := makeNetlist intf circuit in
   addModule intf (module cs) ;;
   x <- blackBox intf a ;;
