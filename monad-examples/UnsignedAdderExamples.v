@@ -113,13 +113,8 @@ Definition adder4Netlist
 Definition adder4_tb_inputs
   := [(bv4_0, bv4_0); (bv4_1, bv4_2); (bv4_15, bv4_1); (bv4_15, bv4_15)].
 
-Section WithCava.
-  Context {signal} `{Cava signal} `{Monad ident}.
-
 Definition adder4_tb_expected_outputs
   := map (fun '(a, b) => combinational (unsignedAdd a b)) adder4_tb_inputs.
-
-End WithCava.
 
 Definition adder4_tb
   := testBench "adder4_tb" adder4Interface
@@ -134,8 +129,6 @@ Definition adder8_3inputInterface
      [mkPort "a" (Vec Bit 8); mkPort "b" (Vec Bit 8); mkPort "c" (Vec Bit 8)]
      [mkPort "sum" (Vec Bit 10)]
      [].
-
-
 
 Definition adder8_3inputNetlist
   := makeNetlist adder8_3inputInterface (add3InputTuple 8 8 8).

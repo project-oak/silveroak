@@ -312,9 +312,9 @@ Section WithCava.
             circuit aS bS
     end.
 
-  Definition treeWithList {T: Type}
-                          (circuit: T -> T -> cava T) (def: T)
-                          (n : nat) (v: Vector.t T (2^(n+1))) : cava T :=
+  Definition treeWithList {T: Type} {m} `{Monad m}
+                          (circuit: T -> T -> m T) (def: T)
+                          (n : nat) (v: Vector.t T (2^(n+1))) : m T :=
     treeList circuit def n (to_list v).
 
   Lemma treeList_equiv
@@ -358,11 +358,12 @@ Section WithCava.
     Vector.t A (2 ^ n) * Vector.t A (2 ^ n) :=
     splitat _ (@resize_default A (2 ^ (S n)) default (2 ^ n + 2 ^ n) v).
 
-  Fixpoint tree {T: Type} (default : T) (n : nat)
-                          (circuit: T -> T -> cava T)
+  Fixpoint tree {T: Type} {m} `{Monad m}
+                          (default : T) (n : nat)
+                          (circuit: T -> T -> m T)
                           (v : Vector.t T (2^(S n))) :
-                          cava T :=
-    match n, v return cava T with
+                          m T :=
+    match n, v return m T with
     | O, v2 => circuit (@Vector.nth_order _ 2 v2 0 (ltac:(lia)))
                       (@Vector.nth_order _ 2 v2 1 (ltac:(lia)))
     | S n', vR => let '(vL, vH) := divide default vR in

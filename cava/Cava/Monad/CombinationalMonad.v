@@ -214,4 +214,4 @@ Definition loopBitBool (A B : SignalType) (f : combType A * bool -> ident (combT
 (* behavioural simulation result.                                             *)
 (******************************************************************************)
 
-Definition combinational {a} (circuit : ident a) : a := unIdent circuit.
+Definition combinational {a} (circuit : cava a) : a := unIdent circuit.

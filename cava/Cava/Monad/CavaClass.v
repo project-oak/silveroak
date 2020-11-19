@@ -29,7 +29,7 @@ Local Open Scope type_scope.
    us to define both circuit netlist interpretations for the Cava class
    as well as behavioural interpretations for attributing semantics. *)
 Class Cava (signal : SignalType -> Type) := {
-  cava : Type -> Type;     
+  cava : Type -> Type;    
   (* Constant values. *)
   zero : cava (signal Bit); (* This component always returns the value 0. *)
   one : cava (signal Bit); (* This component always returns the value 1. *)
