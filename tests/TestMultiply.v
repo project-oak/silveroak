@@ -31,6 +31,19 @@ Require Import Omega.
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
 
+Section WithCava.
+  Context {signal} `{Cava signal} `{Monad cava}.
+
+  (* A top-level multiplier circuit that can be compiled to a top-level
+    SystemVerilog circuit. *)
+  Definition multiplier {aSize bSize: nat}
+                        (ab: signal (Vec Bit aSize) * signal (Vec Bit bSize)):
+                        cava (signal (Vec Bit (aSize + bSize))) :=
+    let (a, b) := ab in
+    unsignedMult a b.
+
+End WithCava.
+
 Definition bv2_0  := N2Bv_sized 2  0.
 Definition bv2_3  := N2Bv_sized 2  3.
 Definition bv3_0  := N2Bv_sized 3  0.
@@ -41,14 +54,6 @@ Definition bv5_15 := N2Bv_sized 5 15.
 (* Check 3 * 5 = 30 *)
 Example mult3_5 : combinational (unsignedMult bv2_3 bv3_5) = bv5_15.
 Proof. reflexivity. Qed.
-
-(* A top-level multiplier circuit that can be compiled to a top-level
-   SystemVerilog circuit. *)
-Definition multiplier {m bit} `{Cava m bit} {aSize bSize: nat}
-                      (ab: Vector.t bit aSize * Vector.t bit bSize) :
-                      m (Vector.t bit (aSize + bSize)) :=
-  let (a, b) := ab in
-  unsignedMult a b.
 
 (* Check 3 * 5 = 30 *)
 Example mult3_5_top : combinational (multiplier (bv2_3, bv3_5)) = bv5_15.
@@ -62,8 +67,8 @@ Local Open Scope nat_scope.
 
 Definition mult2_3_5Interface
   := combinationalInterface "mult2_3_5"
-     (mkPort "a" (Vec Bit 2), mkPort "b" (Vec Bit 3))
-     (mkPort "product" (Vec Bit 5))
+     [mkPort "a" (Vec Bit 2); mkPort "b" (Vec Bit 3)]
+     [mkPort "product" (Vec Bit 5)]
      [].
 
 Definition mult2_3_5Netlist
