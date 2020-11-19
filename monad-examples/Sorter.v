@@ -89,4 +89,3 @@ Definition twoSorterSpec {bw: nat} (ab : Vector.t (Bvector bw) 2) :
     [b; a]
   else
     [a; b].
-

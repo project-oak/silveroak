@@ -25,15 +25,16 @@ Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
 Require Import Cava.Monad.XilinxAdder.
 
-Definition lutNAND {m bit} `{Cava m bit} (i0i1 : bit * bit) : m bit :=
+Definition lutNAND {signal} `{Cava signal} `{Monad cava}
+           (i0i1 : signal Bit * signal Bit) : cava (signal Bit) :=
   x <- lut2 (andb) i0i1 ;;
   z <- lut1 (negb) x ;;
   ret z.
 
 Definition lutNANDInterface
   := combinationalInterface "lutNAND"
-     (mkPort "a"  Bit, mkPort "b" Bit)
-     (mkPort "c" Bit)
+     [mkPort "a"  Bit; mkPort "b" Bit]
+     [mkPort "c" Bit]
      [].
 
 Definition lutNANDNetlist := makeNetlist lutNANDInterface lutNAND.
