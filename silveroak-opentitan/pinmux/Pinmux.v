@@ -60,14 +60,14 @@ module pinmux (
 Definition pinmuxInterface :=
   sequentialInterface "pinmux"
      "clk_i" NegativeEdge "rst_ni" NegativeEdge
-     (mkPort "tl_i" (ExternalType "tlul_pkg::tl_h2d_t"),
-      mkPort "periph_to_mio_i" (Vec Bit NPeriphOut),
-      mkPort "periph_to_mio_oe_i" (Vec Bit NPeriphOut),
-      mkPort "mio_in_i" (Vec Bit NMioPads))
-     (mkPort "tl_o" (ExternalType "tlul_pkg::tl_d2h_t"),
-      mkPort "mio_to_periph_o" (Vec Bit NPeriphIn),
-      mkPort "mio_out_o" (Vec Bit NMioPads),
-      mkPort "mio_oe_o" (Vec Bit NMioPads))
+     [mkPort "tl_i" (ExternalType "tlul_pkg::tl_h2d_t");
+      mkPort "periph_to_mio_i" (Vec Bit NPeriphOut);
+      mkPort "periph_to_mio_oe_i" (Vec Bit NPeriphOut);
+      mkPort "mio_in_i" (Vec Bit NMioPads)]
+     [mkPort "tl_o" (ExternalType "tlul_pkg::tl_d2h_t");
+      mkPort "mio_to_periph_o" (Vec Bit NPeriphIn);
+      mkPort "mio_out_o" (Vec Bit NMioPads);
+      mkPort "mio_oe_o" (Vec Bit NMioPads)]
      [].
 
 
@@ -89,10 +89,10 @@ Definition pinmux_reg2hw_t := ExternalType "pinmux_reg_pkg::pinmux_reg2hw_t".
 Definition pinmux_reg_top_Interface :=
    sequentialInterface "pinmux_reg_top"
    "clk_i" PositiveEdge "rst_ni" NegativeEdge
-   (mkPort "tl_i" (ExternalType "tlul_pkg::tl_h2d_t"),
-    mkPort "devmode_i" Bit)
-   (mkPort "tl_o" (ExternalType "tlul_pkg::tl_d2h_t"),
-    mkPort "reg2hw" pinmux_reg2hw_t)
+   [mkPort "tl_i" (ExternalType "tlul_pkg::tl_h2d_t");
+    mkPort "devmode_i" Bit]
+   [mkPort "tl_o" (ExternalType "tlul_pkg::tl_d2h_t");
+    mkPort "reg2hw" pinmux_reg2hw_t]
    [].
 
 Definition pinmux_reg2hw_periph_insel_mreg_t
@@ -106,25 +106,25 @@ Definition kq (f: string)
   SelectField (Vec Bit 6) (IndexConst periph_insel k) "q".
 
 Definition pinmux (inputs: Signal (ExternalType "tlul_pkg::tl_h2d_t") *
-                           Vector.t (Signal Bit) NPeriphOut  *
-                           Vector.t (Signal Bit) NPeriphOut *
-                           Vector.t (Signal Bit) NMioPads) :
+                           Signal (Vec Bit NPeriphOut)  *
+                           Signal (Vec Bit NPeriphOut) *
+                           Signal (Vec Bit NMioPads)) :
                    state CavaState (Signal (ExternalType "tlul_pkg::tl_d2h_t") *
-                     Vector.t (Signal Bit) NMioPads *
-                     Vector.t (Signal Bit) NPeriphIn *
-                     Vector.t (Signal Bit) NMioPads) :=
+                     Signal (Vec Bit NMioPads) *
+                     Signal (Vec Bit NPeriphIn) *
+                     Signal (Vec Bit NMioPads)) :=
   let '(tl_i, periph_to_mio_i, periph_to_mio_oe_i, mio_in_i) := inputs in
-  const0 <- zero ;;
-  const1 <- one ;;
+  let const0 := Gnd in
+  let const1 := Vcc in
   '(tl_o, reg2hw) <- blackBox pinmux_reg_top_Interface (tl_i, const1) ;;
   (* Input Mux *)
-  let data_in_mux := VecLit ([const0; const1] ++ mio_in_i) in
+  let data_in_mux := VecLit ([const0; const1] ++ peel mio_in_i) in
   let mio_to_periph_o :=
     Vector.map (fun k => IndexAt data_in_mux (kq "periph_insel" reg2hw k))
      (vseq 0 NPeriphIn) in
   (* Output Mux *)
-  let data_out_mux := VecLit ([const0; const1; const0] ++ periph_to_mio_i) in
-  let oe_mux := VecLit ([const1; const1; const0] ++ periph_to_mio_oe_i) in
+  let data_out_mux := VecLit ([const0; const1; const0] ++ peel periph_to_mio_i) in
+  let oe_mux := VecLit ([const1; const1; const0] ++ peel periph_to_mio_oe_i) in
   let mio_out_o :=
     Vector.map (fun k => IndexAt data_out_mux (kq "mio_outsel" reg2hw k))
               (vseq 0 NPeriphIn) in
@@ -132,8 +132,8 @@ Definition pinmux (inputs: Signal (ExternalType "tlul_pkg::tl_h2d_t") *
     Vector.map (fun k => IndexAt oe_mux (kq "mio_outsel" reg2hw k))
                (vseq 0 NPeriphIn) in
   ret (tl_o,
-       mio_to_periph_o,
-       mio_out_o,
-       mio_oe_o).
+       unpeel mio_to_periph_o,
+       unpeel mio_out_o,
+       unpeel mio_oe_o).
 
 Definition pinmux_netlist := makeNetlist pinmuxInterface pinmux.
