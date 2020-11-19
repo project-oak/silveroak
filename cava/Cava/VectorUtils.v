@@ -27,7 +27,7 @@ From ExtLib Require Import Structures.Applicative.
 From ExtLib Require Import Structures.Traversable.
 Require Export ExtLib.Data.Monads.IdentityMonad.
 
-From Cava Require Import ListUtils.
+From Cava Require ListUtils.
 
 Section traversable.
   Universe u v vF.
@@ -743,7 +743,8 @@ Section VectorFacts.
     length (to_list v) = n.
   Proof.
     induction v; [ reflexivity | ].
-    autorewrite with vsimpl push_length.
+    autorewrite with vsimpl.
+    cbn [length].
     congruence.
   Qed.
 
@@ -820,7 +821,7 @@ Hint Rewrite @to_list_nil @to_list_cons @to_list_append
      @fold_left_to_list @to_list_map @to_list_of_list_opp
      using solve [eauto] : push_to_list.
 Hint Rewrite @to_list_resize_default
-     using solve [length_hammer] : push_to_list.
+     using solve [ListUtils.length_hammer] : push_to_list.
 Hint Rewrite @to_list_length using solve [eauto] : push_length.
 
 Section VcombineFacts.
