@@ -520,9 +520,9 @@ Definition wireUpReset (c : option (Signal Bit)) (rstArgName: string) : list (st
   | Some rst => [(rstArgName, USignal rst)]
   end.
 
-Definition blackBox (intf : CircuitInterface)
-                    (inputs: tupleNetInterface (circuitInputs intf)) :
-                    state CavaState (tupleNetInterface (circuitOutputs intf)) :=
+Definition blackBoxNet (intf : CircuitInterface)
+                       (inputs: tupleNetInterface (circuitInputs intf)) :
+                       state CavaState (tupleNetInterface (circuitOutputs intf)) :=
   let inputPorts : list (string * UntypedSignal) := driveArguments (circuitInputs intf) inputs in
   '((optClk, _), (optRst, _)) <- getClockAndReset ;;
   outputSignals <- declareOutputs (circuitOutputs intf) ;;

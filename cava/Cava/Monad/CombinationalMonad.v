@@ -180,7 +180,7 @@ Definition loopBitBool (A B : SignalType) (f : combType A * bool -> ident (combT
   { cava := ident;
     zero := ret false;
     one := ret true;
-    defaultSignal := defaultCombValue;
+    defaultSignal t := @defaultCombValue t;
     delayBit i := ret i; (* Dummy definition for delayBit for now. *)
     loopBit a b := @loopBitBool a b;
     inv := notBool;
@@ -208,6 +208,7 @@ Definition loopBitBool (A B : SignalType) (f : combType A * bool -> ident (combT
     unsignedMult m n := @unsignedMultBool m n;
     greaterThanOrEqual m n := @greaterThanOrEqualBool m n;
     instantiate _ circuit := circuit;
+    blackBox intf _ := ret (tupleInterfaceDefault (map port_type (circuitOutputs intf)));
 }.
 
 (******************************************************************************)
