@@ -244,7 +244,7 @@ Definition instantiateNet (intf : CircuitInterface)
                           : state CavaState (tupleNetInterface (circuitOutputs intf)) :=
   let cs := makeNetlist intf circuit in
   addModule intf (module cs) ;;
-  x <- blackBox intf a ;;
+  x <- blackBoxNet intf a ;;
   ret x.
 
 (******************************************************************************)
@@ -284,4 +284,5 @@ Instance CavaNet : Cava denoteSignal :=
     unsignedMult m n := @unsignedMultNet m n;
     greaterThanOrEqual m n := @greaterThanOrEqualNet m n;
     instantiate := instantiateNet;
+    blackBox := blackBoxNet;
 }.

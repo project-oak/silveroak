@@ -65,7 +65,6 @@ Fixpoint tupleInterfaceR (signal: SignalType -> Type) (v : list SignalType) : Ty
   | x :: pds => signal x * tupleInterfaceR signal pds
   end.
 
-
 (* Left-associative tuples with no trailing unit. **)
 Fixpoint tupleInterface' (signal: SignalType -> Type) accum (l : list SignalType) : Type :=
   match l with
@@ -116,6 +115,17 @@ Definition unbalance (signal: SignalType -> Type)
   | [] => fun _ => tt
   | x::xs => unbalance' signal xs
   end.
+
+Local Open Scope type_scope.
+
+Fixpoint tupleInterfaceDefaultR (v : list SignalType) : tupleInterfaceR combType v :=
+  match v return tupleInterfaceR combType v with
+  | [] => tt
+  | x::xs => (defaultCombValue x, tupleInterfaceDefaultR xs)
+  end.
+
+Definition tupleInterfaceDefault (v : list SignalType) : tupleInterface combType v :=
+  rebalance combType v (tupleInterfaceDefaultR v).
 
 (******************************************************************************)
 (* Netlist AST representation for signal expressions.                         *)

@@ -89,4 +89,8 @@ Class Cava (signal : SignalType -> Type) := {
                   cava (tupleInterface signal (map port_type (circuitOutputs intf)))) ->
                  tupleInterface signal (map port_type (circuitInputs intf)) ->
                  cava (tupleInterface signal ((map port_type (circuitOutputs intf))));
+  (* Instantiation of black-box components which return default values. *)
+  blackBox : forall (intf: CircuitInterface),
+             tupleInterface signal (map port_type (circuitInputs intf)) ->
+             cava (tupleInterface signal ((map port_type (circuitOutputs intf))));
 }.               

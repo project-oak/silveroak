@@ -116,7 +116,7 @@ Definition pinmux (inputs: Signal (ExternalType "tlul_pkg::tl_h2d_t") *
   let '(tl_i, periph_to_mio_i, periph_to_mio_oe_i, mio_in_i) := inputs in
   let const0 := Gnd in
   let const1 := Vcc in
-  '(tl_o, reg2hw) <- blackBox pinmux_reg_top_Interface (tl_i, const1) ;;
+  '(tl_o, reg2hw) <- blackBoxNet pinmux_reg_top_Interface (tl_i, const1) ;;
   (* Input Mux *)
   let data_in_mux := VecLit ([const0; const1] ++ peel mio_in_i) in
   let mio_to_periph_o :=
