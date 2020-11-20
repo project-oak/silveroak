@@ -28,6 +28,19 @@ Section Misc.
   Proof. rewrite seq_S, rev_app_distr; reflexivity. Qed.
 End Misc.
 
+Section Maps.
+  Fixpoint map2 {A B C} (f : A -> B -> C) (ls1 : list A) ls2 :=
+    match ls1 with
+    | [] => []
+    | a :: ls1' =>
+      match ls2 with
+      | [] => []
+      | b :: ls2' =>
+        f a b :: map2 f ls1' ls2'
+      end
+    end.
+End Maps.
+
 (* Proofs about fold_right and fold_left *)
 Section Folds.
   Lemma fold_left_nil {A B} (f : B -> A -> B) b :
