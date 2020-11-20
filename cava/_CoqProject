@@ -38,6 +38,10 @@ Cava/Monad/UnsignedAdders.v
 Cava/Monad/NetlistGeneration.v
 Cava/Monad/XilinxAdder.v
 
+Cava/Lib/BitVectorOps.v
+Cava/Lib/FullAdder.v
+Cava/Lib/UnsignedAdders.v
+
 Cava/Arrow/Classes/Category.v
 Cava/Arrow/Classes/Arrow.v
 Cava/Arrow/Classes/Coq.v

@@ -19,7 +19,7 @@ module Main where
 import Cava2SystemVerilog
 import NandGate
 import Multiplexers
-import FullAdder
+import FullAdderExample
 import UnsignedAdderExamples
 import AdderTree
 import Sorter

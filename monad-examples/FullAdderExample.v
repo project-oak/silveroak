@@ -22,29 +22,15 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Lib.FullAdder.
 Require Import Cava.Monad.XilinxAdder.
 
 Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.
 
   (****************************************************************************)
-  (* Build a half-adder                                                       *)
+  (* Build a full-adder that takes a flat-tuple for netlist generation.       *)
   (****************************************************************************)
-
-  Definition halfAdder '(a, b) :=
-    partial_sum <- xor2 (a, b) ;;
-    carry <- and2 (a, b) ;;
-    ret (partial_sum, carry).
-
-  (****************************************************************************)
-  (* Build a full-adder                                                       *)
-  (****************************************************************************)
-
-  Definition fullAdder '(cin, (a, b)) :=
-    '(abl, abh) <- halfAdder (a, b) ;;
-    '(abcl, abch) <- halfAdder (abl, cin) ;;
-    cout <- or2 (abh, abch) ;;
-    ret (abcl, cout).
 
   Definition fullAdderTop '(cin, a, b) := fullAdder (cin, (a, b)).  
 

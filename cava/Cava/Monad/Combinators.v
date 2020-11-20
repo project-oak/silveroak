@@ -21,6 +21,7 @@ From Coq Require Import Lists.List micromega.Lia.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
+Require Import ExtLib.Structures.Traversable.
 Require Import ExtLib.Structures.MonadFix.
 From Coq Require Import Arith.PeanoNat.
 
@@ -47,6 +48,54 @@ Section WithCava.
   (****************************************************************************)
   (* Lava-style circuit combinators.                                          *)
   (****************************************************************************)
+
+  (* Use a circuit to zip together two vectors. *)
+  Definition zipWith {A B C : SignalType} {n : nat}
+           (f : signal A * signal B -> cava (signal C))
+           (a : signal (Vec A n))
+           (b : signal (Vec B n))
+           : cava(signal (Vec C n)) :=
+    let a' := peel a in
+    let b' := peel b in
+    v <- mapT f (vcombine a' b') ;;
+    ret (unpeel v).
+
+  (* A list-based left monadic-fold. *)
+  Fixpoint foldLM {m} `{Monad m} {A B : Type}
+                  (f : B -> A -> m B)
+                  (input : list A) 
+                  (accum : B) 
+                  : m B :=
+    match input with
+    | [] => ret accum
+    | k::ks => st' <- f accum k  ;;
+               foldLM f ks st'
+    end.
+
+  Lemma foldLM_fold_right {A B}
+        (bind_ext : forall {A B} x (f g : A -> cava B),
+            (forall y, f y = g y) -> bind x f = bind x g)
+        (f : B -> A -> cava B) (input : list A) (accum : B) :
+    foldLM f input accum =
+    List.fold_right
+      (fun k continuation v => bind (f v k) continuation)
+      ret input accum.
+  Proof.
+    revert accum; induction input; intros; [ reflexivity | ].
+    cbn [foldLM List.fold_right].
+    eapply bind_ext; intros.
+    rewrite IHinput. reflexivity.
+  Qed.
+
+  Lemma foldLM_ident_fold_left
+        {A B} (f : B -> A -> ident B) ls b :
+    unIdent (foldLM f ls b) = List.fold_left (fun b a => unIdent (f b a)) ls b.
+  Proof.
+    revert b; induction ls; [ reflexivity | ].
+    cbn [foldLM List.fold_left]. intros.
+    cbn [bind ret Monad_ident].
+    rewrite IHls. reflexivity.
+  Qed.
 
   (* Below combinator
 
@@ -132,141 +181,66 @@ Section WithCava.
   --            a
   -----------------------------------------------------------------------------
 
-
   *)
 
-  (* The below_cons' is a convenient combinator for composing
-    homogenous tiles that are expressed with curried inputs.
+  (* colV is a col combinator that works over Vector.t of signals.
+    The input tuple is split into separate arguments so Coq can recognize
+    the decreasing vector element.
   *)
-  Definition below_cons' {A B C}
-              (r : C -> A -> cava (B * C))
-              (s : C -> list A -> cava (list B * C))
-              (c: C) (a : list A) : cava (list B * C):=
-    match a with
-    | [] => ret ([], c)
-    | a0::ax => '(b0, c1) <- r c a0  ;;
-                '(bx, cOut) <- s c1 ax ;;
-                ret (b0::bx, cOut)
-    end.
-
-  (* col' is a curried version of col which ca be defined
-    recursively because Coq can figure out the decreasing
-    argument i.e. a
-  *)
-  Fixpoint col' {A B C}
-                (circuit : C -> A -> cava (B * C)) (c: C) (a: list A) :
-                cava (list B * C) :=
-    below_cons' circuit (col' circuit) c a.
-
-  (* A useful fact about how a col' of a circuit can be made using one
-    instance of a circuit below a col' that is one smaller.
-  *)
-  Lemma col_cons': forall {A B C} (r : C -> A -> cava (B * C)) (c: C) (a: list A),
-                  col' r c a = below_cons' r (col' r) c a.
-  Proof.
-    intros.
-    destruct a.
-    - simpl. reflexivity.
-    - simpl. reflexivity.
-  Qed.
-
-  (* To define the pair to pair tile variants of col and below_cons
-    it is useful to have some functions for currying and uncurrying,
-    with we borrow from Logical Foundations. *)
-
-  Definition prod_curry {X Y Z : Type}
-    (f : X * Y -> Z) (x : X) (y : Y) : Z := f (x, y).
-
-  Definition prod_uncurry {X Y Z : Type}
-    (f : X -> Y -> Z) (p : X * Y) : Z
-    := f (fst p) (snd p).
-
-  (* Thank you Benjamin. *)
-
-  (* Now we can define the col combinator that works with tiles that
-    map pairs to pairs by using col'.
-  *)
-  Definition col {A B C}
-                (circuit : C * A -> cava (B * C)) :
-                C * list A -> cava (list B * C) :=
-    prod_uncurry (col' (prod_curry circuit)).
-
-  (* Define a version of below_cons' that works on pair to pair tiles *)
-
-  Definition below_cons {A B C}
-              (r : C * A -> cava (B * C))
-              (s : C * list A -> cava (list B * C)) :
-              C * list A -> cava (list B * C) :=
-    prod_uncurry (below_cons' (prod_curry r) (prod_curry s)).
-
-  (* A useful fact about how a col of a circuit can be made using one
-    instance of a circuit below a col that is one smaller.
-  *)
-  Lemma col_cons: forall {A B C} (r : C * A -> cava (B * C)%type)
-                  (ca: C * list A),
-                  col r ca = below_cons r (col r) ca.
-  Proof.
-    intros.
-    destruct ca.
-    destruct l.
-    - simpl. reflexivity.
-    - simpl. reflexivity.
-  Qed.
-
-  Import EqNotations.
 
   Local Open Scope vector_scope.
 
-  Lemma add_S_contra: forall x y, x = S y -> x - 1 <> y -> False.
-  Proof. lia. Qed.
-
-  Lemma S_add_S_contra: forall x y, x = S y -> S (x - 1) <> S y -> False.
-  Proof. lia. Qed.
-
-  Definition vec_dec_rewrite1 {A x y} (H: x = S y) (v: Vector.t A y): Vector.t A (x - 1) :=
-    match Nat.eq_dec (x - 1) y with
-    | left Heq => rew <- Heq in v
-    | right Hneq => match add_S_contra _ _ H Hneq with end
+  Fixpoint colV' {A B C} {n : nat}
+                (circuit : A * B -> cava (C * A))
+                (aIn: A) (bIn: Vector.t B n) :
+                cava (Vector.t C n * A) :=
+    match bIn with
+    | [] => ret ([], aIn)
+    | x::xs => '(b0, aOut) <- circuit (aIn, x) ;;
+               '(bRest, aFinal) <- colV' circuit aOut xs ;;
+                ret (b0::bRest, aFinal)
     end.
 
-  Definition vec_dec_rewrite2 {A x y} (H: x = S y) (v: Vector.t A (S (x - 1))): Vector.t A (S y) :=
-    match Nat.eq_dec (S (x - 1)) (S y) with
-    | left Heq => rew Heq in v
-    | right Hneq => match S_add_S_contra _ _ H Hneq with end
+  Definition colV {A B C} {n : nat}
+                  (circuit : A * B -> cava (C * A))
+                  (inputs: A * Vector.t B n) :
+                  cava (Vector.t C n * A) :=
+  colV' circuit (fst inputs) (snd inputs).
+
+  (****************************************************************************)
+  (* Make the Cava signal-level col combinator use the vector-based colV      *)
+  (* under the hood.                                                          *)
+  (****************************************************************************)
+
+  Definition col {A B C} {n : nat}
+               (circuit : signal A * signal B -> cava (signal C * signal A))
+               (aIn: signal A) (bIn: signal (Vec B n)) :
+               cava (signal (Vec C n) * signal A) :=
+  '(c, a) <- colV circuit (aIn, (peel bIn)) ;;
+  ret (unpeel c, a).
+
+  Local Close Scope vector_scope.
+
+  (* List Variant *)
+
+  Local Open Scope list_scope.
+
+  Fixpoint colL' {m} `{Monad m} {A B C}
+                (circuit : A * B -> m (C * A))
+                (aIn: A) (bIn: list B) :
+                m (list C * A) :=
+    match bIn with
+    | [] => ret ([], aIn)
+    | x::xs => '(b0, aOut) <- circuit (aIn, x) ;;
+              '(bRest, aFinal) <- colL' circuit aOut xs ;;
+                ret (b0::bRest, aFinal)
     end.
 
-  Program Definition below_consV {A B C} {n: nat}
-                (r : C -> A -> cava (B * C))
-                (s : C -> Vector.t A (n-1) -> cava (Vector.t B (n-1) * C))
-                (ca: C * Vector.t A n) : cava (Vector.t B n * C) :=
-    let '(c, a) := ca in
-    match a in Vector.t _ z return n=z -> cava (Vector.t B z * C)%type with
-    | Vector.nil _ => fun _ => ret ([], c)
-    | Vector.cons _ a0 Z ax => fun H =>
-      '(b0, c1) <- r c a0 ;;
-      '(bx, cOut) <- s c1 (vec_dec_rewrite1 H ax) ;;
-      ret (vec_dec_rewrite2 H (b0 :: bx), cOut)
-    end eq_refl.
-
-  Definition circuit_dec_rewrite {A B C x y} (H: x = S y)
-    (s: C -> Vector.t A y -> cava (Vector.t B y * C))
-    : C -> Vector.t A (x-1) -> cava (Vector.t B (x-1) * C) :=
-    match Nat.eq_dec (x - 1) y with
-    | left Heq => rew <- [fun z => C -> Vector.t A z -> cava (Vector.t B z * C)] Heq in s
-    | right Hneq => match add_S_contra _ _ H Hneq with end
-    end.
-
-  Fixpoint colV {A B C} (n: nat)
-                (circuit : C -> A -> cava (B * C))
-                (c: C) (a: Vector.t A n) :
-                cava (Vector.t B n * C) :=
-    match n as n' return n=n' -> cava (Vector.t B n' * C) with
-    | O => fun _ => ret ([], c)
-    | S n0 => fun H =>
-      let s :=  circuit_dec_rewrite H (colV n0 circuit) in
-      '(x,c) <- below_consV circuit s (c, a) ;;
-      ret (rew H in x, c)
-    end eq_refl.
+  Definition colL {m} `{Monad m} {A B C}
+                  (circuit : A * B -> m (C * A))
+                  (inputs: A * list B) :
+                  m (list C * A) :=
+  colL' circuit (fst inputs) (snd inputs).
 
   Local Close Scope vector_scope.
 

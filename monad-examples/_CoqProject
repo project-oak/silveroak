@@ -6,8 +6,7 @@ INSTALLDEFAULTROOT = MonadExamples
 Examples.v
 NandGate.v
 Multiplexers.v
-FullAdder.v
-FullAdderNat.v
+FullAdderExample.v
 UnsignedAdderExamples.v
 AdderTree.v
 Sorter.v

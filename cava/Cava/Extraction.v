@@ -37,6 +37,10 @@ Require Import Cava.Monad.NetlistGeneration.
 Require Import Cava.Monad.UnsignedAdders.
 Require Import Cava.Monad.XilinxAdder.
 
+Require Import Cava.Lib.BitVectorOps.
+Require Import Cava.Lib.FullAdder.
+Require Import Cava.Lib.UnsignedAdders.
+
 Recursive Extraction Library BitArithmetic.
 Recursive Extraction Library Cava.
 Recursive Extraction Library CavaMonad.
@@ -74,4 +78,6 @@ Recursive Extraction Library VectorUtils.
 Recursive Extraction Library UnsignedAdders.
 Recursive Extraction Library XilinxAdder.
 
-
+Recursive Extraction Library BitVectorOps.
+Recursive Extraction Library FullAdder.
+Recursive Extraction Library UnsignedAdders.
