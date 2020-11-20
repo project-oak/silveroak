@@ -44,7 +44,7 @@ Definition counter_3_Interface :=
      [] [mkPort "count" (Signal.Vec Signal.Bit 3)] [].
 
 Definition counter_3_netlist :=
-  build_netlist (closure_conversion (counter 3)) "counter_3_netlist" tt "count".
+  build_netlist (closure_conversion (counter 3)) "counter_3" tt "count".
 
 Definition counter_3_tb_inputs : list unit :=
  repeat tt 8.
