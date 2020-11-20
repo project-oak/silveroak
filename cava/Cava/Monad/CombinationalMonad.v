@@ -180,6 +180,7 @@ Definition loopBitBool (A B : SignalType) (f : combType A * bool -> ident (combT
   { cava := ident;
     zero := ret false;
     one := ret true;
+    defaultSignal := defaultCombValue;
     delayBit i := ret i; (* Dummy definition for delayBit for now. *)
     loopBit a b := @loopBitBool a b;
     inv := notBool;
