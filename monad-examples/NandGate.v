@@ -32,17 +32,34 @@ Local Open Scope list_scope.
 Local Open Scope monad_scope.
 Local Open Scope string_scope.
 
-(* NAND gate example. Fist, let's define an overloaded NAND gate
-   description. *)
+Section WithCava.
+  Context {signal} `{Cava signal} `{Monad cava}.
+
+  (* NAND gate example. First, let's define an overloaded NAND gate
+     description. *)
+  Definition nand2_gate : signal Bit * signal Bit -> cava (signal Bit) :=
+     and2 >=> inv.
+
+ (* A nand-gate with registers after the AND gate and the INV gate. *)
+  Definition pipelinedNAND :=
+    nand2_gate >=> delayBit >=> inv >=> delayBit.
+
+ (* An contrived example of loopBit *)     
+  Definition loopedNAND :=
+    loopBit (second delayBit >=> nand2 >=> fork2).
+
+End WithCava.
+
+(******************************************************************************)
+(* NAND-gate netlist with tests.                                              *)
+(******************************************************************************)
 
 Definition nand2Interface
   := combinationalInterface
-     "nand2"
-     (mkPort "a" Bit, mkPort "b" Bit)
-     (mkPort "c" Bit)
-     [].
-
-Definition nand2_gate {m t} `{Cava m t} := and2 >=> inv.
+    "nand2"
+    [mkPort "a" Bit; mkPort "b" Bit]
+    [mkPort "c" Bit]
+    [].
 
 Definition nand2Netlist := makeNetlist nand2Interface nand2_gate.
 
@@ -78,17 +95,14 @@ Definition nand2_tb :=
   testBench "nand2_tb" nand2Interface nand_tb_inputs nand_tb_expected_outputs.
 
 (******************************************************************************)
-(* A nand-gate with registers after the AND gate and the INV gate.            *)
+(* Netlist for a nand-gate with registers plus tests.                         *)
 (******************************************************************************)
-
-Definition pipelinedNAND {m t} `{Cava m t}
-  := nand2_gate >=> delayBit >=> inv >=> delayBit.
 
 Definition pipelinedNANDInterface
   := sequentialInterface "pipelinedNAND"
      "clk" PositiveEdge "rst" PositiveEdge
-     (mkPort "a" Bit, mkPort "b" Bit)
-     (mkPort "c"  Bit)
+     [mkPort "a" Bit; mkPort "b" Bit]
+     [mkPort "c"  Bit]
      [].
 
 Definition pipelinedNANDNetlist :=
@@ -114,14 +128,11 @@ Definition pipelinedNAND_tb
 (* An contrived example of loopBit                                            *)
 (******************************************************************************)
 
-Definition loopedNAND {m bit} `{Cava m bit}
-  := loopBit (second delayBit >=> nand2 >=> fork2).
-
 Definition loopedNANDInterface
   := sequentialInterface "loopedNAND"
      "clk" PositiveEdge "rst" PositiveEdge
-     (mkPort "a" Bit)
-     (mkPort "b" Bit)
+     [mkPort "a" Bit]
+     [mkPort "b" Bit]
      [].
 
 Definition loopedNANDNetlist := makeNetlist loopedNANDInterface loopedNAND.
@@ -182,3 +193,4 @@ Definition loopedNAND_tb
                  110 a = 1, b = 1
                  120 a = 1, b = 0
 *)
+

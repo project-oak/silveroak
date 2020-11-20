@@ -18,6 +18,9 @@ From Coq Require Import ZArith.ZArith.
 From Coq Require Import Strings.String.
 From Coq Require Import Vectors.Vector.
 
+From Coq Require Import Lists.List.
+Import ListNotations.
+
 From Cava Require Import VectorUtils.
 
 Inductive SignalType :=
@@ -39,6 +42,8 @@ Inductive Signal : SignalType -> Type :=
   | Fst : forall {A B : SignalType}, Signal (Pair A B) -> Signal A
   | Snd : forall {A B : SignalType}, Signal (Pair A B) -> Signal B.
 
+Definition denoteSignal (t : SignalType) : Type := Signal t.
+
 Fixpoint denoteCombinational (t : SignalType) : Type :=
   match t with
   | Void => unit
@@ -48,4 +53,24 @@ Fixpoint denoteCombinational (t : SignalType) : Type :=
   | Pair A B => denoteCombinational A * denoteCombinational B
   end.
 
-Definition denoteSignal (t : SignalType) : Type := Signal t.
+Local Open Scope list_scope.
+Local Open Scope string_scope.
+
+Definition t1 : ((nat * nat) * nat) := (1, 2, 3).
+Definition t2 : ((nat * nat) * nat) := ((1, 2), 3).
+
+Fixpoint denoteInterface' (denotion : SignalType -> Type)
+                          (accum : Type) 
+                          (v : list (string * SignalType))
+                         : Type :=
+  match v with
+  | [] => accum
+  | (n, t)::pds => denoteInterface' denotion (accum * denotion t) pds
+  end.
+
+Definition denoteInterface (denotion : SignalType -> Type)
+                           (v : list (string * SignalType)) : Type :=
+  match v with
+  | [] => unit
+  | (n, t)::pds => denoteInterface' denotion (denotion t) pds
+  end.

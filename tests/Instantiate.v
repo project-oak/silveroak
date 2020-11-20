@@ -21,6 +21,8 @@ From Coq Require Import Lists.List.
 From Coq Require Import ZArith.ZArith.
 Import ListNotations.
 
+Require Import ExtLib.Structures.Monads.
+
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
 
@@ -28,31 +30,32 @@ Local Open Scope list_scope.
 Local Open Scope monad_scope.
 Local Open Scope string_scope.
 
-(* NAND gate example. Fist, let's define an overloaded NAND gate
-   description. *)
+Section WithCava.
+  Context {signal} `{Cava signal} `{Monad cava}.
 
-Definition nand2Interface
+  Definition nand2_gate (ab : signal Bit * signal Bit) : cava (signal Bit) :=
+    x <- and2 ab ;;
+    inv x.
+
+  Definition nand2Interface
   := combinationalInterface
      "nand2"
-     (mkPort "a" Bit, mkPort "b" Bit)
-     (mkPort "c" Bit)
+     [mkPort "a" Bit; mkPort "b" Bit]
+     [mkPort "c" Bit]
      [].
 
+  Definition nand3_gate '(a, b, c) :=
+      n1 <- instantiate nand2Interface nand2_gate (a, b) ;;
+      instantiate nand2Interface nand2_gate (c, n1).   
 
-Definition nand2_gate {m bit} `{Cava m bit} (ab : bit * bit) : m bit :=
-  x <- and2 ab ;;
-  inv x.
+End WithCava.
 
 Definition nand3Interface
   := combinationalInterface
      "instantiate"
-     (mkPort "a" Bit, mkPort "b" Bit, mkPort "c" Bit)
-     (mkPort "d" Bit)
+     [mkPort "a" Bit; mkPort "b" Bit; mkPort "c" Bit]
+     [mkPort "d" Bit]
      [].
-
-Definition nand3_gate {m bit} `{cava : Cava m bit} '(a, b, c) :=
-    n1 <- instantiate nand2Interface nand2_gate (a, b) ;;
-    instantiate nand2Interface nand2_gate (c, n1).   
 
 Definition instantiateNetlist := makeNetlist nand3Interface nand3_gate.
 

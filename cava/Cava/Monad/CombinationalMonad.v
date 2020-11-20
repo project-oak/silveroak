@@ -36,6 +36,26 @@ From Cava Require Import Signal.
 Require Import Cava.Monad.CavaClass.
 
 (******************************************************************************)
+(* Combinational denotion of the SignalType and default values.               *)
+(******************************************************************************)
+
+Fixpoint combType (t: SignalType) : Type :=
+  match t with
+  | Void => unit
+  | Bit => bool
+  | Vec vt sz => Vector.t (combType vt) sz
+  | ExternalType _ => unit (* No semantics for combinational interpretation. *)
+  end.
+
+Fixpoint defaultCombValue (t: SignalType) : combType t :=
+  match t  with
+  | Void => tt
+  | Bit => false
+  | Vec t2 sz => Vector.const (defaultCombValue t2) sz
+  | ExternalType _ => tt
+  end.
+
+(******************************************************************************)
 (* A boolean combinational logic interpretation for the Cava class            *)
 (******************************************************************************)
 
@@ -94,38 +114,30 @@ Definition muxcyBool (s : bool) (ci : bool) (di : bool) : ident bool :=
        | true => ci
        end).
 
-Fixpoint defaultKindBool (k: Kind) : smashTy bool k :=
-  match k return smashTy bool k  with
-  | Void => UndefinedSignal
-  | Bit => false
-  | Vec k2 sz => Vector.const (defaultKindBool k2) sz
-  | ExternalType _ => UninterpretedSignal "XXX"
-  end.
-
-Definition indexAtBool {k: Kind}
+Definition indexAtBool {t: SignalType}
                        {sz isz: nat}
-                       (i : Vector.t (smashTy bool k) sz)
-                       (sel : Bvector isz) : smashTy bool k :=
+                       (i : Vector.t (combType t) sz)
+                       (sel : Bvector isz) : combType t :=
   let selN := Bv2N sel in
   match lt_dec (N.to_nat selN) sz with
   | left H => @Vector.nth_order _ _ i (N.to_nat selN) H
-  | right _ => defaultKindBool k
+  | right _ => defaultCombValue t
   end.
 
-Definition indexConstBool {k: Kind} {sz: nat}
-                          (i : Vector.t (smashTy bool k) sz)
-                          (sel : nat) : smashTy bool k :=
+Definition indexConstBool {t: SignalType} {sz: nat}
+                          (i : Vector.t (combType t) sz)
+                          (sel : nat) : combType t :=
   match lt_dec sel sz with
   | left H => @Vector.nth_order _ _ i sel H
-  | right _ => defaultKindBool k
+  | right _ => defaultCombValue t
   end.
 
-Definition sliceBool {k: Kind}
+Definition sliceBool {t: SignalType}
                      {sz: nat}
                      (startAt len : nat)
-                     (v: Vector.t (smashTy bool k) sz)
+                     (v: Vector.t (combType t) sz)
                      (H: startAt + len <= sz) :
-                     Vector.t (smashTy bool k) len :=
+                     Vector.t (combType t) len :=
   sliceVector v startAt len H.
 
 Definition unsignedAddBool {m n : nat}
@@ -136,7 +148,6 @@ Definition unsignedAddBool {m n : nat}
   let sumSize := 1 + max m n in
   let sum := (a + b)%N in
   ret (N2Bv_sized sumSize sum).
-
 
 Definition unsignedMultBool {m n : nat}
                            (av : Bvector m) (bv : Bvector n) :
@@ -156,7 +167,7 @@ Definition greaterThanOrEqualBool {m n : nat}
 Definition bufBool (i : bool) : ident bool :=
   ret i.
 
-Definition loopBitBool (A B : Type) (f : A * bool -> ident (B * bool)) (a : A) : ident B :=
+Definition loopBitBool (A B : SignalType) (f : combType A * bool -> ident (combType B * bool)) (a : combType A) : ident (combType B) :=
   '(b, _) <- f (a, false) ;;
   ret b.
 
@@ -165,11 +176,12 @@ Definition loopBitBool (A B : Type) (f : A * bool -> ident (B * bool)) (a : A) :
 (* interpretation.                                                            *)
 (******************************************************************************)
 
-Program Instance CavaBool : Cava ident bool :=
-  { zero := ret false;
+ Instance Combinational : Cava combType :=
+  { cava := ident;
+    zero := ret false;
     one := ret true;
     delayBit i := ret i; (* Dummy definition for delayBit for now. *)
-    loopBit a b := loopBitBool a b;
+    loopBit a b := @loopBitBool a b;
     inv := notBool;
     and2 := andBool;
     nand2 := nandBool;
@@ -186,11 +198,11 @@ Program Instance CavaBool : Cava ident bool :=
     lut6 := lut6Bool;
     xorcy := xorcyBool;
     muxcy := muxcyBool;
-    indexAt k sz isz := @indexAtBool k sz isz;
-    indexBitAt sz isz := @indexAtBool Bit sz isz;
-    indexConst k sz := @indexConstBool k sz;
-    indexBitConst sz := @indexConstBool Bit sz;
-    slice k sz := @sliceBool k sz;
+    peel _ _ v := v;
+    unpeel _ _ v := v;
+    indexAt t sz isz := @indexAtBool t sz isz;
+    indexConst t sz := @indexConstBool t sz;
+    slice t sz := @sliceBool t sz;
     unsignedAdd m n := @unsignedAddBool m n;
     unsignedMult m n := @unsignedMultBool m n;
     greaterThanOrEqual m n := @greaterThanOrEqualBool m n;
@@ -202,4 +214,4 @@ Program Instance CavaBool : Cava ident bool :=
 (* behavioural simulation result.                                             *)
 (******************************************************************************)
 
-Definition combinational {a} (circuit : ident a) : a := unIdent circuit.
+Definition combinational {a} (circuit : cava a) : a := unIdent circuit.

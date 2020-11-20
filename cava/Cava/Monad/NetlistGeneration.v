@@ -28,7 +28,6 @@ Require Import Cava.Cava.
 Require Import Cava.VectorUtils.
 Require Import Cava.Monad.CavaClass.
 
-From Cava Require Import Kind.
 From Cava Require Import Signal.
 
 (******************************************************************************)
@@ -191,66 +190,58 @@ Definition muxcyNet (s ci di : Signal Bit) : state CavaState (Signal Bit) :=
   addInstance (Component "MUXCY" [] [("O", USignal o); ("S", USignal s); ("CI", USignal ci); ("DI", USignal di)]) ;;
   ret o.
 
+Definition peelNet {t : SignalType} {s : nat} (v : Signal (Vec t s)) : Vector.t (Signal t) s :=
+  Vector.map (IndexConst v) (vseq 0 s).
+
+Definition unpeelNet {t : SignalType} {s : nat} (v: Vector.t (Signal t) s) : Signal (Vec t s) :=
+  VecLit v.
+
+Definition sliceNet {t: SignalType} {sz: nat}
+                    (startAt len: nat)
+                    (v: Signal (Vec t sz))
+                    (H: startAt + len <= sz) :
+                    Signal (Vec t len) :=
+  unpeelNet (sliceVector (peelNet v) startAt len H).
+
 Definition unsignedAddNet {m n : nat}
-                          (a : Vector.t (Signal Bit) m)
-                          (b : Vector.t (Signal Bit) n) :
-                          state CavaState (Vector.t (Signal Bit) (1 + max m n)) :=
+                          (a : Signal (Vec Bit m))
+                          (b : Signal (Vec Bit n)) :
+                          state CavaState (Signal (Vec Bit (1 + max m n))) :=
   sum <- newVector Bit (1 + max m n) ;;
-  addInstance (UnsignedAdd (VecLit a) (VecLit b) sum) ;;
-  let smashedSum := Vector.map (fun i => IndexConst sum i) (vseq 0 (1 + (max m n))) in
-  ret smashedSum.
+  addInstance (UnsignedAdd a b sum) ;;
+  ret sum.
 
 Definition unsignedMultNet {m n : nat}
-                          (a : Vector.t (Signal Bit) m)
-                          (b : Vector.t (Signal Bit) n) :
-                          state CavaState (Vector.t (Signal Bit) (m + n)) :=
+                           (a : Signal (Vec Bit m))
+                           (b : Signal (Vec Bit n)) :
+                           state CavaState (Signal (Vec Bit (m + n))) :=
   product <- newVector Bit (m + n) ;;
-  addInstance (UnsignedMultiply (VecLit a) (VecLit b) product) ;;
-  let smashedMult := Vector.map (fun i => IndexConst product i) (vseq 0 (m + n)) in
-  ret smashedMult.
+  addInstance (UnsignedMultiply a b product) ;;
+  ret product.
+
+Definition greaterThanOrEqualNet {m n : nat}
+                                 (a : Signal (Vec Bit m)) (b : Signal (Vec Bit n)) :
+                                 state CavaState (Signal Bit) :=
+  comparison <- newWire ;;
+  addInstance (GreaterThanOrEqual a b comparison) ;;
+  ret comparison.
 
 Definition delayBitNet (i : Signal Bit) : state CavaState (Signal Bit) :=
   o <- newWire ;;
   addInstance (DelayBit i o) ;;
   ret o.
 
-Definition loopBitNet (A B : Type) (f : (A * Signal Bit)%type -> state CavaState (B * Signal Bit)%type) (a : A) : state CavaState B :=
+Definition loopBitNet (A B : SignalType) (f : (Signal A * Signal Bit)%type -> state CavaState (Signal B * Signal Bit)) (a : Signal A) : state CavaState (Signal B) :=
   o <- newWire ;;
   '(b, cOut) <- f (a, o) ;;
   assignSignal o cOut ;;
   ret b.
 
-Definition indexAtNet {k: Kind} {sz isz: nat}
-                      (v: Vector.t (smashTy (Signal Bit) k) sz)
-                      (i: Vector.t (Signal Bit) isz) :
-                      smashTy (Signal Bit) k :=
-  smash (IndexAt (VecLit (Vector.map vecLitS v)) (VecLit i)).
-
-Definition indexConstNet {k: Kind} {sz: nat}
-                         (v: Vector.t (smashTy (Signal Bit) k) sz)
-                         (i: nat) :
-                         smashTy (Signal Bit) k :=
-  smash (IndexConst (VecLit(Vector.map vecLitS v)) i).
-
-Definition sliceNet {k: Kind} {sz: nat}
-                    (startAt len: nat)
-                    (v: Vector.t (smashTy (Signal Bit) k) sz)
-                    (H: startAt + len <= sz) :
-                    Vector.t (smashTy (Signal Bit) k) len :=
-  sliceVector v startAt len H.
-
-Definition greaterThanOrEqualNet {m n : nat}
-                                 (a : Vector.t (Signal Bit) m) (b : Vector.t (Signal Bit) n) :
-                                 state CavaState (Signal Bit) :=
-  comparison <- newWire ;;
-  addInstance (GreaterThanOrEqual (VecLit a) (VecLit b) comparison) ;;
-  ret comparison.
-
 Definition instantiateNet (intf : CircuitInterface)
-                          (circuit : signalSmashTy (mapShape port_shape (circuitInputs intf)) ->
-                                     state CavaState (signalSmashTy (mapShape port_shape (circuitOutputs intf))))
-                          (a : signalSmashTy (mapShape port_shape (circuitInputs intf)))
-                          : state CavaState (signalSmashTy (mapShape port_shape (circuitOutputs intf))) :=
+                          (circuit : tupleNetInterface (circuitInputs intf) ->
+                                    state CavaState (tupleNetInterface (circuitOutputs intf)))
+                          (a : tupleNetInterface (circuitInputs intf))
+                          : state CavaState (tupleNetInterface (circuitOutputs intf)) :=
   let cs := makeNetlist intf circuit in
   addModule intf (module cs) ;;
   x <- blackBox intf a ;;
@@ -260,8 +251,10 @@ Definition instantiateNet (intf : CircuitInterface)
 (* Instantiate the Cava class for CavaNet which describes circuits without    *)
 (* any top-level pins or other module-level data                              *)
 (******************************************************************************)
-Instance CavaNet : Cava (state CavaState) (Signal _) :=
-  { zero := ret Gnd;
+
+Instance CavaNet : Cava denoteSignal :=
+  { cava := state CavaState;
+    zero := ret Gnd;
     one := ret Vcc;
     delayBit := delayBitNet;
     loopBit a b := loopBitNet a b;
@@ -281,11 +274,11 @@ Instance CavaNet : Cava (state CavaState) (Signal _) :=
     lut6 := lut6Net;
     xorcy := xorcyNet;
     muxcy := muxcyNet;
-    indexBitAt sz isz := @indexAtNet Bit sz isz;
-    indexAt k sz isz := @indexAtNet k sz isz;
-    indexConst k sz := indexConstNet;
-    indexBitConst sz := @indexConstNet Bit sz;
-    slice k sz start len v h := @sliceNet k sz start len v h;
+    peel := @peelNet;
+    unpeel := @unpeelNet;
+    indexAt k sz isz := IndexAt;
+    indexConst k sz := IndexConst;
+    slice k sz := @sliceNet k sz;
     unsignedAdd m n := @unsignedAddNet m n;
     unsignedMult m n := @unsignedMultNet m n;
     greaterThanOrEqual m n := @greaterThanOrEqualNet m n;

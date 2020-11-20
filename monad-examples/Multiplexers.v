@@ -32,37 +32,55 @@ From Coq Require Import NArith.Ndigits.
 
 Local Open Scope vector_scope.
 
-Definition mux2_1 {m bit} `{Cava m bit} (sab: bit * (bit * bit)) : m bit :=
-  let '(sel, (a, b)) := sab in
-  ret (indexBitAt ([a; b]) [sel]).
+Section WithCava.
+  Context {signal} `{Cava signal} `{Monad cava}.
+
+Definition mux2_1 (sab: signal Bit * signal Bit * signal Bit) : cava (signal Bit) :=
+  let '(sel, a, b) := sab in
+  ret (indexAt (unpeel [a; b]) (unpeel [sel])).
+
+  (* Mux between input buses *)
+
+  Definition muxBus {dsz sz isz: nat}
+                     (vsel: signal (Vec (Vec Bit dsz) sz) *
+                           signal (Vec Bit isz)) :
+                      cava (signal (Vec Bit dsz)) :=
+    let (v, sel) := vsel in
+    ret (indexAt v sel).
+
+End WithCava.
 
 Local Close Scope vector_scope.
 
-Example m1: combinational (mux2_1 (false, (false, true))) = false.
+(******************************************************************************)
+(* mux2_1                                                                     *)
+(******************************************************************************)
+
+Example m1: combinational (mux2_1 (false, false, true)) = false.
 Proof. reflexivity. Qed.
 
-Example m2: combinational (mux2_1 (false, (true, false))) = true.
+Example m2: combinational (mux2_1 (false, true, false)) = true.
 Proof. reflexivity. Qed.
 
-Example m3: combinational (mux2_1 (true, (false, true))) = true.
+Example m3: combinational (mux2_1 (true, false, true)) = true.
 Proof. reflexivity. Qed.
 
-Example m4: combinational (mux2_1 (true, (true, false))) = false.
+Example m4: combinational (mux2_1 (true, true, false)) = false.
 Proof. reflexivity. Qed.
 
 Definition mux2_1_Interface
   := combinationalInterface "mux2_1"
-     (mkPort "sel" Bit, (mkPort "i0" Bit, mkPort "i1" Bit))
-     (mkPort "o" Bit)
+     [mkPort "sel" Bit; mkPort "i0" Bit; mkPort "i1" Bit]
+     [mkPort "o" Bit]
      [].
 
 Definition mux2_1Netlist := makeNetlist mux2_1_Interface mux2_1.
 
 Definition mux2_1_tb_inputs :=
-  [(false, (false, true));
-   (false, (true, false));
-   (true, (false, true));
-    (true, (true, false))].
+  [(false, false, true);
+   (false, true,  false);
+   (true,  false, true);
+   (true,  true,  false)].
 
 Definition mux2_1_tb_expected_outputs
   := map (fun i => combinational (mux2_1 i)) mux2_1_tb_inputs.
@@ -71,86 +89,9 @@ Definition mux2_1_tb
   := testBench "mux2_1_tb" mux2_1_Interface
      mux2_1_tb_inputs mux2_1_tb_expected_outputs.
 
- Section index_at_test.
-
-  (* Check the indexBitAt special case *)
-
-  Definition mux2_1_bit {m bit} `{Cava m bit} {sz isz: nat}
-                        (vsel: Vector.t bit sz * Vector.t bit isz) : m bit :=
-  let (v, sel) := vsel in
-  ret (indexBitAt v sel).
-
-   Definition v := N2Bv_sized 4  11.
-   (*
-   Bit pattern for 11:
-   -- 3 2 1 0 (bit position)
-   -- 8 4 2 1 (power)
-   -- 1 0 1 1 (bit pattern for 11)
-   *)
-
-   Definition i0 := N2Bv_sized 2 0.
-   Definition i1 := N2Bv_sized 2 1.
-   Definition i2 := N2Bv_sized 2 2.
-   Definition i3 := N2Bv_sized 2 3.
-
-   Example index_bit_0 : combinational (mux2_1_bit (v, i0)) = true.
-   Proof. reflexivity. Qed.
-
-   Example index_bit_1 : combinational (mux2_1_bit (v, i1)) = true.
-   Proof. reflexivity. Qed.
-
-   Example index_bit_2 : combinational (mux2_1_bit (v, i2)) = false.
-   Proof. reflexivity. Qed.
-
-   Example index_bit_3 : combinational (mux2_1_bit (v, i3)) = true.
-   Proof. reflexivity. Qed.
-
-  Definition mux2_1_bit_Interface
-    := combinationalInterface "mux2_1_bit"
-       (mkPort "v" (Vec Bit 4),
-        mkPort "sel" (Vec Bit 2))
-       (mkPort "o" Bit)
-       [].
-
-  Definition mux2_1_bit_Netlist := makeNetlist mux2_1_bit_Interface mux2_1_bit.
-
-  Definition mux2_1_bit_tb_inputs :=
-    [(v, i0);
-     (v, i1);
-     (v, i2);
-     (v, i3)].
-
-  Definition mux2_1_bit_tb_expected_outputs
-  := map (fun i => combinational (mux2_1_bit i)) mux2_1_bit_tb_inputs.
-
- Definition mux2_1_bit_tb
-  := testBench "mux2_1_bit_tb" mux2_1_bit_Interface
-     mux2_1_bit_tb_inputs mux2_1_bit_tb_expected_outputs.
-
- End index_at_test.
-
-(* Mux between input buses *)
-
-Definition muxBusAlt {m bit} `{Cava m bit} {k} {sz isz: nat}
-                     (vsel: smashTy bit (Vec k sz) *
-                            Vector.t bit isz) :
-                     m (smashTy bit k) :=
-  let (v, sel) := vsel in
-  ret (indexAt v sel).
-
-Definition muxBus {m bit} `{Cava m bit} {sz isz dsz: nat}
-                     (vsel: Vector.t (smashTy bit (Vec Bit dsz)) sz *
-                            Vector.t bit isz) :
-                     m (smashTy bit (Vec Bit dsz)) :=
-  let (v, sel) := vsel in
-  ret (indexAt v sel).
-
-Definition muxBus4_8 {m bit} `{Cava m bit}
-                     (vsel: Vector.t (smashTy bit (Vec Bit 8)) 4 *
-                            Vector.t bit 2) :
-                     m (smashTy bit (Vec Bit 8)) :=
-  let (v, sel) := vsel in
-  ret (indexAt v sel).
+(******************************************************************************)
+(* muxBus                                                                     *)
+(******************************************************************************)
 
 Local Open Scope vector_scope.
 Definition v0 := N2Bv_sized 8   5.
@@ -175,20 +116,20 @@ Local Close Scope vector_scope.
 
 Definition muxBus4_8Interface
   := combinationalInterface "muxBus4_8"
-     (mkPort "i" (Vec (Vec Bit 8) 4), mkPort "sel" (Vec Bit 2))
-     (mkPort "o" (Vec Bit 8))
+     [mkPort "i" (Vec (Vec Bit 8) 4); mkPort "sel" (Vec Bit 2)]
+     [mkPort "o" (Vec Bit 8)]
      [].
 
-Definition muxBus4_8Netlist := makeNetlist muxBus4_8Interface muxBus4_8.
+Definition muxBus4_8Netlist := makeNetlist muxBus4_8Interface muxBus.
 
-Definition muxBus4_8_tb_inputs :=
+Definition muxBus4_8_tb_inputs : list (Vector.t (Bvector 8) 4 * Vector.t bool 2) :=
   [(v0to3, [false; false]%vector);
    (v0to3, [true;  false]%vector);
    (v0to3, [false; true]%vector);
    (v0to3, [true; true]%vector)
   ].
 
-Definition muxBus4_8_tb_expected_outputs
+Definition muxBus4_8_tb_expected_outputs : list (Bvector 8)
   := map (fun i => combinational (muxBus i)) muxBus4_8_tb_inputs.
 
 Definition muxBus4_8_tb

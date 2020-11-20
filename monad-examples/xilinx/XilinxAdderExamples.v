@@ -71,17 +71,24 @@ Proof. reflexivity. Qed.
 
 Definition adder8Interface
   := combinationalInterface "adder8"
-     (mkPort "cin" Bit, (mkPort "a" (Vec Bit 8), mkPort "b" (Vec Bit 8)))
-     (mkPort "sum" (Vec Bit 8), mkPort "cout" Bit)
+     [mkPort "cin" Bit; mkPort "a" (Vec Bit 8); mkPort "b" (Vec Bit 8)]
+     [mkPort "sum" (Vec Bit 8); mkPort "cout" Bit]
      [].
 
-Definition adder8Netlist := makeNetlist adder8Interface xilinxAdderWithCarry.
+(* Produce a version of the xilinxAdderWithCarry with a flat-tuple input. *)
+Definition xilinxAdderWithCarryFlat {signal} `{Cava signal} `{Monad cava} {n}
+                                    '(cin, a, b)
+                                    : cava (signal (Vec Bit n) * signal Bit) :=
+  xilinxAdderWithCarry (cin, (a, b)).
+
+Definition adder8Netlist
+  := makeNetlist adder8Interface xilinxAdderWithCarryFlat.
 
 Local Open Scope N_scope.
 
 Definition adder8_tb_inputs :=
   map (fun '(cin, (a, b))
-       => (n2bool cin, (N2Bv_sized 8 a, N2Bv_sized 8 b)))
+       => (n2bool cin, N2Bv_sized 8 a, N2Bv_sized 8 b))
   [(0, (7, 3));
    (1, (115, 67));
    (0, (92, 18));
@@ -90,7 +97,7 @@ Definition adder8_tb_inputs :=
    (1, (255, 255))].
 
 Definition adder8_tb_expected_outputs :=
-  map (fun i => combinational (xilinxAdderWithCarry i)) adder8_tb_inputs.
+  map (fun i => combinational (xilinxAdderWithCarryFlat i)) adder8_tb_inputs.
 
 Definition adder8_tb :=
   testBench "adder8_tb" adder8Interface

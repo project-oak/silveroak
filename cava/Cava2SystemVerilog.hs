@@ -27,7 +27,6 @@ import qualified Vector
 
 import qualified BinNums
 import Netlist
-import Kind
 import Signal
 import qualified StateMonad
 import Types
@@ -115,7 +114,7 @@ inputPort (Coq_mkPort name (Vec k s))
 inputPort  (Coq_mkPort name (ExternalType typeName))
   = "  input " ++ typeName ++ " " ++ name
 
-vectorDeclaration :: String -> Kind -> Integer -> String
+vectorDeclaration :: String -> SignalType -> Integer -> String
 vectorDeclaration name k s
   = case k of
       Bit -> "  logic[" ++ show (s - 1) ++ ":0] " ++ name
@@ -140,7 +139,7 @@ showVectorElements :: [Signal] -> String
 showVectorElements e
   = concat (insertCommas (map showSignal e))
 
-showVecLiteral :: Kind -> [Signal] -> String
+showVecLiteral :: SignalType -> [Signal] -> String
 showVecLiteral k e
   = case k of
       Bit -> -- Packed vector, downto indexing
@@ -166,7 +165,7 @@ showSignal signal
       IndexConst _ _ v i -> showSignal v ++ "[" ++ show i ++ "]"
       Slice k _ start len v -> showSignal v ++ showSliceIndex k start len
 
-showSliceIndex :: Kind -> Integer -> Integer -> String
+showSliceIndex :: SignalType -> Integer -> Integer -> String
 showSliceIndex k start len
   = case k of
       Bit -> "[" ++ show top ++ ":" ++ show start ++ "]"
@@ -321,8 +320,8 @@ generateTestBench testBench
     where
     intf = testBenchInterface testBench
     name = circuitName intf
-    inputPortList = flattenShape (circuitInputs intf)
-    outputPortList = flattenShape (circuitOutputs intf)
+    inputPortList = circuitInputs intf
+    outputPortList = circuitOutputs intf
     nrTests = length (testBenchInputs testBench)
 
 declareCircuitPorts :: Coq_shape PortDeclaration -> [String]
@@ -335,11 +334,8 @@ declareCircuitPort :: PortDeclaration -> String
 declareCircuitPort port
   = "  output " ++ declarePort port
 
-declareLocalPorts :: Coq_shape PortDeclaration -> [String]
-declareLocalPorts shape
-  = map declareLocalPort portList
-    where
-    portList :: [PortDeclaration] = flattenShape shape
+declareLocalPorts ::  [PortDeclaration] -> [String]
+declareLocalPorts = map declareLocalPort 
 
 declareLocalPort :: PortDeclaration -> String
 declareLocalPort port
@@ -415,7 +411,7 @@ formatPortWithName (Coq_mkPort name (Vec (Vec _ _) s))
 
 smashPorts :: PortDeclaration -> String
 smashPorts portDec
-  = case port_shape portDec of
+  = case port_type portDec of
       Bit -> name
       Vec Bit _ -> name
       Vec (Vec _ _) s ->
@@ -434,10 +430,10 @@ checkOutput port
      "      end;"
     ]
     where
-    fmt = formatKind (port_shape port)
+    fmt = formatKind (port_type port)
     name = port_name port
 
-formatKind :: Kind -> String
+formatKind :: SignalType -> String
 formatKind Bit = "%0b"
 formatKind (Vec Bit _) = "%0d"
 formatKind other = "error: attempt to format unknown kind"
@@ -494,7 +490,7 @@ tclScript name ticks
 --------------------------------------------------------------------------------
 
 deriving instance Eq BinNums.N
-deriving instance Eq Kind
+deriving instance Eq SignalType
 deriving instance Eq (Vector.Coq_t Signal)
 deriving instance Eq Signal
 
@@ -581,7 +577,7 @@ untypeSignal sig = USignal Void sig
 -- Check for contiguous static indexing to identify vector slices.
 --------------------------------------------------------------------------------
 
-checkIndexes :: Kind -> Integer -> Integer -> Signal -> Integer -> [Signal] -> Maybe Signal
+checkIndexes :: SignalType -> Integer -> Integer -> Signal -> Integer -> [Signal] -> Maybe Signal
 checkIndexes k fullSize startingIndex stem currentIndex []
   = Just (Slice k fullSize startingIndex (currentIndex - startingIndex) stem)
 checkIndexes k fullSize startingIndex stem currentIndex (s:sx)
@@ -592,7 +588,7 @@ checkIndexes k fullSize startingIndex stem currentIndex (s:sx)
                                 Nothing
       _ -> Nothing
 
-checkStem :: Kind -> Integer -> [Signal] -> Maybe Signal
+checkStem :: SignalType -> Integer -> [Signal] -> Maybe Signal
 checkStem k sz [] = Nothing
 checkStem k sz (v:vs)
   = case v of
@@ -647,7 +643,7 @@ freshen signal
 
 -- Add an assignment to the context to store new vector names induced by
 -- the fresh transformation.
-addAssignment :: Kind -> Signal -> Signal -> State CavaState ()
+addAssignment :: SignalType -> Signal -> Signal -> State CavaState ()
 addAssignment k a b
   = do Netlist.Coq_mkCavaState netNumber vCount vDefs ext
                     clk clkEdge rst rstEdge
@@ -659,7 +655,7 @@ addAssignment k a b
                     inputs outputs) libs)
 
 -- Declare a new local vector and return it as a signal.
-freshVector :: Kind -> Integer -> State CavaState Signal
+freshVector :: SignalType -> Integer -> State CavaState Signal
 freshVector k s
   = do Netlist.Coq_mkCavaState netNumber vCount vDefs ext
                     clk clkEdge rst rstEdge

@@ -20,69 +20,71 @@ Require Import ExtLib.Structures.Monads.
 From Cava Require Import Kind.
 From Cava Require Import Types.
 From Cava Require Import Netlist.
+From Cava Require Import Signal.
+
+Local Open Scope type_scope.
 
 (* The Cava class represents circuit graphs with Coq-level inputs and
    outputs, but does not represent the IO ports of circuits. This allows
    us to define both circuit netlist interpretations for the Cava class
    as well as behavioural interpretations for attributing semantics. *)
-Class Cava m `{Monad m} bit := {
+Class Cava (signal : SignalType -> Type) := {
+  cava : Type -> Type;    
   (* Constant values. *)
-  zero : m bit; (* This component always returns the value 0. *)
-  one : m bit; (* This component always returns the value 1. *)
-  delayBit : bit -> m bit; (* Cava bit-level unit delay. *)
-  loopBit : forall {A B : Type}, ((A * bit)%type -> m (B * bit)%type) -> A -> m B;
+  zero : cava (signal Bit); (* This component always returns the value 0. *)
+  one : cava (signal Bit); (* This component always returns the value 1. *)
+  delayBit : signal Bit -> cava (signal Bit); (* Cava bit-level unit delay. *)
+  loopBit : forall {A B : SignalType}, (signal A * signal Bit -> cava (signal B * signal Bit)) -> signal A -> cava (signal B);
   (* Primitive gates *)
-  inv : bit -> m bit;
-  and2 : bit * bit -> m bit;
-  nand2 : bit * bit -> m bit;
-  or2 : bit * bit -> m bit;
-  nor2 : bit * bit -> m bit;
-  xor2 : bit * bit -> m bit;
-  xnor2 : bit * bit -> m bit;
-  buf_gate : bit -> m bit; (* Corresponds to the SystemVerilog primitive gate 'buf' *)
+  inv : signal Bit -> cava (signal Bit);
+  and2 : signal Bit * signal Bit -> cava (signal Bit);
+  nand2 : signal Bit * signal Bit -> cava (signal Bit);
+  or2 : signal Bit * signal Bit -> cava (signal Bit);
+  nor2 : signal Bit * signal Bit -> cava (signal Bit);
+  xor2 : signal Bit * signal Bit -> cava (signal Bit);
+  xnor2 : signal Bit * signal Bit -> cava (signal Bit);
+  buf_gate : signal Bit -> cava (signal Bit); (* Corresponds to the SystemVerilog primitive gate 'buf' *)
   (* Xilinx UNISIM FPGA gates *)
-  lut1 : (bool -> bool) -> bit -> m bit; (* 1-input LUT *)
-  lut2 : (bool -> bool -> bool) -> (bit * bit) -> m bit; (* 2-input LUT *)
-  lut3 : (bool -> bool -> bool -> bool) -> (bit * bit * bit) -> m bit; (* 3-input LUT *)
-  lut4 : (bool -> bool -> bool -> bool -> bool) -> (bit * bit * bit * bit) ->
-         m bit; (* 4-input LUT *)
+  lut1 : (bool -> bool) -> signal Bit -> cava (signal Bit); (* 1-input LUT *)
+  lut2 : (bool -> bool -> bool) -> (signal Bit * signal Bit) -> cava (signal Bit); (* 2-input LUT *)
+  lut3 : (bool -> bool -> bool -> bool) -> signal Bit * signal Bit * signal Bit -> cava (signal Bit); (* 3-input LUT *)
+  lut4 : (bool -> bool -> bool -> bool -> bool) -> (signal Bit * signal Bit * signal Bit * signal Bit) ->
+         cava (signal Bit); (* 4-input LUT *)
   lut5 : (bool -> bool -> bool -> bool -> bool -> bool) ->
-         (bit * bit * bit * bit * bit) -> m bit; (* 5-input LUT *)
+         (signal Bit * signal Bit * signal Bit * signal Bit * signal Bit) -> cava (signal Bit); (* 5-input LUT *)
   lut6 : (bool -> bool -> bool -> bool -> bool -> bool -> bool) ->
-         (bit * bit * bit * bit * bit * bit) -> m bit; (* 6-input LUT *)
-  xorcy : bit * bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
-  muxcy : bit -> bit -> bit -> m bit; (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
-  (* Indexing is currently represented as a "circuit" but we may add features
-     to the SystemVerilog netlist generation back-end to allow these to me
-     functions rather than values in the monad type `m`.
-  *)
+         signal Bit * signal Bit * signal Bit * signal Bit * signal Bit * signal Bit -> cava (signal Bit); (* 6-input LUT *)
+  xorcy : signal Bit * signal Bit -> cava (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
+  muxcy : signal Bit -> signal  Bit -> signal Bit -> cava (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
+  (* Converting to/from Vector.t *)
+  peel : forall {t : SignalType} {s : nat}, signal (Vec t s) -> Vector.t (signal t) s;
+  unpeel : forall {t : SignalType} {s : nat} , Vector.t (signal t) s -> signal (Vec t s);
   (* Dynamic indexing *)
-  indexAt : forall {k: Kind} {sz isz: nat},
-            Vector.t (smashTy bit k) sz -> Vector.t bit isz -> smashTy bit k;
-  indexBitAt : forall {sz isz: nat}, Vector.t bit sz ->
-                                     Vector.t bit isz -> bit;
+  indexAt : forall {t : SignalType} {sz isz: nat},
+            signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
+            signal (Vec Bit isz) ->  (* A bit-vector index of size isz bits *)
+            signal t;                (* The indexed value of type signal t *)
   (* Static indexing *)
-  indexConst : forall {k: Kind} {sz: nat},
-               Vector.t (smashTy bit k) sz -> nat -> smashTy bit k;
-  indexBitConst : forall {sz: nat}, Vector.t bit sz -> nat -> bit;
-  slice : forall {k: Kind}  {sz: nat} (startAt len: nat),
-                 Vector.t (smashTy bit k) sz ->
-                 (startAt + len <= sz) -> Vector.t (smashTy bit k) len ;
+  indexConst : forall {t: SignalType} {sz: nat},
+               signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
+               nat ->                   (* Static index *)
+               signal t;                (* The indexed bit of type signal bit *)
+  slice : forall {t: SignalType} {sz: nat} (startAt len: nat),
+                 signal (Vec t sz) ->
+                 (startAt + len <= sz) ->
+                 signal (Vec t len);
   (* Synthesizable arithmetic operations. *)
-  unsignedAdd : forall {a b : nat}, Vector.t bit a -> Vector.t bit b ->
-                m (Vector.t bit (1 + max a b));
-  unsignedMult : forall {a b : nat}, Vector.t bit a -> Vector.t bit b ->
-                m (Vector.t bit (a + b));              
+  unsignedAdd : forall {a b : nat}, signal (Vec Bit a) -> signal (Vec Bit b) ->
+                cava (signal (Vec Bit (1 + max a b)));
+  unsignedMult : forall {a b : nat}, signal (Vec Bit a) -> signal (Vec Bit b)->
+                cava (signal (Vec Bit (a + b)));              
   (* Synthesizable relational operators *)
-  greaterThanOrEqual : forall {a b : nat}, Vector.t bit a -> Vector.t bit b ->
-                       m bit;
+  greaterThanOrEqual : forall {a b : nat}, signal (Vec Bit a) -> signal (Vec Bit b) ->
+                       cava (signal Bit);
   (* Hierarchy *)
-  doSomethingToOne := smashTy bit;
   instantiate : forall (intf: CircuitInterface),
-                 (denote doSomethingToOne (mapShape port_shape (circuitInputs intf)) ->
-                 m (denote doSomethingToOne (mapShape port_shape (circuitOutputs intf)))) ->
-                 denote doSomethingToOne (mapShape port_shape (circuitInputs intf)) ->
-                 m (denote doSomethingToOne (mapShape port_shape (circuitOutputs intf)));
+                 (tupleInterface signal (map port_type (circuitInputs intf)) ->
+                  cava (tupleInterface signal (map port_type (circuitOutputs intf)))) ->
+                 tupleInterface signal (map port_type (circuitInputs intf)) ->
+                 cava (tupleInterface signal ((map port_type (circuitOutputs intf))));
 }.               
-
-

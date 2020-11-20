@@ -23,40 +23,63 @@ Require Import ExtLib.Structures.Monads.
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
 
-(****************************************************************************)
-(* LUT1 config test                                                         *)
-(****************************************************************************)
+Section WithCava.
+  Context {signal} `{Cava signal} `{Monad cava}.
 
-Definition lut1_inv {m bit} `{Cava m bit} (i: bit) : m bit :=
-  o <- lut1 negb i ;;
+  Definition lut1_inv (i: signal Bit) : cava (signal Bit) :=
+    o <- lut1 negb i ;;
+    ret o.
+
+  Definition lut2_and i0i1 : cava (signal Bit) :=
+    o <- lut2 andb i0i1 ;;
+    ret o.
+
+  Definition lut3_mux '(s, i0, i1) : cava (signal Bit) :=
+    o <- lut3 (fun s i0 i1 => if s then i1 else i0) (s, i0, i1) ;;
+    ret o.
+
+  Definition lut4_and i : cava (signal Bit) :=
+  o <- lut4 (fun i0 i1 i2 i3 => andb (i0 && i1) (i2 && i3)) i ;;
   ret o.
 
-Definition lut1_inv_Interface
-  := combinationalInterface "lut1_inv" (mkPort "a" Bit) (mkPort "b" Bit) [].
+  Definition lut5_and i : cava (signal Bit) :=
+    o <- lut5 (fun i0 i1 i2 i3 i4 =>
+              andb (andb (andb i0 i1) (andb i2 i3)) i4) i ;;
+    ret o.
 
-Definition lut1_inv_netlist := makeNetlist lut1_inv_Interface lut1_inv.
+  Definition lut6_and i : cava (signal Bit) :=
+    o <- lut6 (fun i0 i1 i2 i3 i4 i5 =>
+              andb (andb (andb (andb i0 i1) (andb i2 i3)) i4) i5) i ;;
+    ret o.
 
-Definition lut1_inv_tb_inputs := [false; true].
+End WithCava.  
 
-Definition lut1_inv_tb_expected_outputs : list bool :=
-  map (fun i => combinational (lut1_inv i)) lut1_inv_tb_inputs.
+(******************************************************************************)
+(* LUT1 config test                                                           *)
+(******************************************************************************)
 
-Definition lut1_inv_tb :=
-  testBench "lut1_inv_tb" lut1_inv_Interface
-  lut1_inv_tb_inputs lut1_inv_tb_expected_outputs.
+  Definition lut1_inv_Interface
+    := combinationalInterface "lut1_inv" [mkPort "a" Bit] [mkPort "b" Bit] [].
+
+  Definition lut1_inv_netlist := makeNetlist lut1_inv_Interface lut1_inv.
+
+  Definition lut1_inv_tb_inputs := [false; true].
+
+  Definition lut1_inv_tb_expected_outputs : list bool :=
+    map (fun i => combinational (lut1_inv i)) lut1_inv_tb_inputs.
+
+  Definition lut1_inv_tb :=
+    testBench "lut1_inv_tb" lut1_inv_Interface
+    lut1_inv_tb_inputs lut1_inv_tb_expected_outputs.
 
 (****************************************************************************)
 (* LUT2 config test                                                         *)
 (****************************************************************************)
 
-Definition lut2_and {m bit} `{Cava m bit} (i0i1 : bit * bit) : m bit :=
-  o <- lut2 andb i0i1 ;;
-  ret o.
-
 Definition lut2_and_Interface
   := combinationalInterface "lut2_and"
-     (mkPort "a" Bit, mkPort "b" Bit)
-     (mkPort "c" Bit)
+     [mkPort "a" Bit; mkPort "b" Bit]
+     [mkPort "c" Bit]
      [].
 
 Definition lut2_and_nelist := makeNetlist lut2_and_Interface lut2_and.
@@ -75,27 +98,21 @@ Definition lut2_and_tb :=
 (* LUT3 config test                                                         *)
 (****************************************************************************)
 
-Definition lut3_mux {m bit} `{Cava m bit}
-           (si0i1 : bit * (bit * bit)) : m bit :=
-  let '(s, (i0, i1)) := si0i1 in
-  o <- lut3 (fun s i0 i1 => if s then i1 else i0) (s, i0, i1) ;;
-  ret o.
-
 Definition lut3_mux_Interface
   := combinationalInterface "lut3_mux"
-     (mkPort "s" Bit, (mkPort "i0" Bit, mkPort "i1" Bit))
-     (mkPort "o" Bit)
+     [mkPort "s" Bit; mkPort "i0" Bit; mkPort "i1" Bit]
+     [mkPort "o" Bit]
      [].
 
 Definition lut3_mux_nelist := makeNetlist lut3_mux_Interface lut3_mux.
 
-Definition lut3_mux_tb_inputs : list (bool * (bool * bool)) :=
- [(false, (false, true));
-  (false, (true, false));
-  (false, (false, false));
-  (true, (false, true));
-  (true, (true, false));
-  (true, (true, true))].
+Definition lut3_mux_tb_inputs : list (bool * bool * bool) :=
+ [(false, false, true);
+  (false, true, false);
+  (false, false, false);
+  (true, false, true);
+  (true, true, false);
+  (true, true, true)].
 
  Definition lut3_mux_tb_expected_outputs : list bool :=
   map (fun i => combinational (lut3_mux i)) lut3_mux_tb_inputs.
@@ -108,20 +125,13 @@ Definition lut3_mux_tb :=
 (* LUT4 config test                                                         *)
 (****************************************************************************)
 
-Definition lut4_and {m bit} `{Cava m bit}
-           (i : bit * bit * bit * bit) : m bit :=
-  let '(i0, i1, i2, i3) := i in
-  o <- lut4 (fun i0 i1 i2 i3 =>
-            andb (andb i0 i1) (andb i2 i3)) i ;;
-  ret o.
-
 Definition lut4_and_Interface
   := combinationalInterface "lut4_and"
-     (mkPort "i0" Bit,
-      mkPort "i1" Bit,
-      mkPort "i2" Bit,
-      mkPort "i3" Bit)
-     (mkPort "o" Bit)
+     [mkPort "i0" Bit;
+      mkPort "i1" Bit;
+      mkPort "i2" Bit;
+      mkPort "i3" Bit]
+     [mkPort "o" Bit]
      [].
 
 Definition lut4_and_nelist := makeNetlist lut4_and_Interface lut4_and.
@@ -141,21 +151,14 @@ Definition lut4_and_tb :=
 (* LUT5 config test                                                         *)
 (****************************************************************************)
 
-Definition lut5_and {m bit} `{Cava m bit}
-           (i : bit * bit * bit * bit * bit) : m bit :=
-  let '(i0, i1, i2, i3, i4) := i in
-  o <- lut5 (fun i0 i1 i2 i3 i4 =>
-            andb (andb (andb i0 i1) (andb i2 i3)) i4) i ;;
-  ret o.
-
 Definition lut5_and_Interface
   := combinationalInterface "lut5_and"
-     (mkPort "i0" Bit,
-      mkPort "i1" Bit,
-      mkPort "i2" Bit,
-      mkPort "i3" Bit,
-      mkPort "i4" Bit)
-     (mkPort "o" Bit)
+     [mkPort "i0" Bit;
+      mkPort "i1" Bit;
+      mkPort "i2" Bit;
+      mkPort "i3" Bit;
+      mkPort "i4" Bit]
+     [mkPort "o" Bit]
      [].
 
 Definition lut5_and_nelist := makeNetlist lut5_and_Interface lut5_and.
@@ -175,25 +178,15 @@ Definition lut5_and_tb :=
 (* LUT6 config test                                                         *)
 (****************************************************************************)
 
-Definition lut6_and {m bit} `{Cava m bit}
-           (i : bit * bit * bit * bit * bit * bit) : m bit :=
-  let '(i0, i1, i2, i3, i4, i5) := i in
-  o <- lut6 (fun i0 i1 i2 i3 i4 i5 =>
-            andb (andb (andb (andb i0 i1) (andb i2 i3)) i4) i5) i ;;
-  ret o.
-
-(* The left-associative nesting we need to use here is mad. We need to
-   find a better way. Satnam.
-*)
 Definition lut6_and_Interface
   := combinationalInterface "lut6_and"
-     (mkPort "i0" Bit,
-      mkPort "i1" Bit,
-      mkPort "i2" Bit,
-      mkPort "i3" Bit,
-      mkPort "i4" Bit,
-      mkPort "i5" Bit)
-     (mkPort "o" Bit)
+     [mkPort "i0" Bit;
+      mkPort "i1" Bit;
+      mkPort "i2" Bit;
+      mkPort "i3" Bit;
+      mkPort "i4" Bit;
+      mkPort "i5" Bit]
+     [mkPort "o" Bit]
      [].
 
 Definition lut6_and_nelist := makeNetlist lut6_and_Interface lut6_and.

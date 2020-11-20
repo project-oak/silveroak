@@ -153,8 +153,8 @@ Require Import Cava.Netlist.
 
 Definition fullAdderInterface
   := combinationalInterface "fullAdder"
-     (mkPort "cin" Kind.Bit, (mkPort "a" Kind.Bit, mkPort "b" Kind.Bit))
-     (mkPort "sum" Kind.Bit, mkPort "cout" Kind.Bit)
+     [mkPort "cin" Signal.Bit; mkPort "a" Signal.Bit; mkPort "b" Signal.Bit]
+     [mkPort "sum" Signal.Bit; mkPort "cout" Signal.Bit]
      [].
 
 Definition fullAdder_tb_inputs :=
@@ -169,11 +169,11 @@ Definition fullAdder_tb_inputs :=
 ].
 
 Definition fullAdder_netlist :=
-  makeNetlist fullAdderInterface (build_netlist (closure_conversion fullAdder)).
+  build_netlist (closure_conversion fullAdder) "fullAdder" ("cin", ("a", "b")) ("sum", "cout").
 
 Definition fullAdder_tb_expected_outputs  : list (bool * bool)
   := (List.map (fun i => combinational_evaluation (closure_conversion fullAdder) i) fullAdder_tb_inputs) .
 
 Definition fullAdder_tb :=
   testBench "fullAdder_tb" fullAdderInterface
-            fullAdder_tb_inputs fullAdder_tb_expected_outputs.
+            (map (fun '(a,(b,c)) => (a,b,c)) fullAdder_tb_inputs) fullAdder_tb_expected_outputs.

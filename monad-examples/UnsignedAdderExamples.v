@@ -57,15 +57,27 @@ Proof. reflexivity. Qed.
 Example add15_1 : combinational (addN bv4_15 bv4_1) = bv4_0.
 Proof. reflexivity. Qed.
 
-(******************************************************************************)
-(* Unsigned addition with growth examples.                                                *)
-(******************************************************************************)
+Section WithCava.
+  Context {signal} `{Cava signal} `{Monad cava}.
 
-Definition adderGrowth {m bit} `{Cava m bit} {aSize bSize: nat}
-                       (ab: Vector.t bit aSize * Vector.t bit bSize) :
-                       m (Vector.t bit (1 + max aSize bSize)) :=
-  let (a, b) := ab in
-  unsignedAdd a b.
+  (****************************************************************************)
+  (* Unsigned addition with growth examples.                                              *)
+  (****************************************************************************)
+
+  Definition adderGrowth {aSize bSize: nat}
+                        (ab: signal (Vec Bit aSize) * signal (Vec Bit bSize)) :
+                        cava (signal (Vec Bit (1 + max aSize bSize))) :=
+    let (a, b) := ab in
+    unsignedAdd a b.
+
+  Definition add3InputTuple (aSize bSize cSize: nat)
+                            (abc: signal (Vec Bit aSize) *
+                                  signal (Vec Bit bSize)*
+                                  signal (Vec Bit cSize)) :
+                           cava (signal (Vec Bit (1 + max (1 + max aSize bSize) cSize))) :=
+  let '(a, b, c) := abc in adder_3input a b c.
+
+End WithCava.
 
 (* Check 0 + 0 = 0 *)
 Example add5_0_0 : combinational (adderGrowth (bv4_0, bv4_0)) = bv5_0.
@@ -91,8 +103,8 @@ Local Open Scope nat_scope.
 
 Definition adder4Interface
   := combinationalInterface "adder4"
-     (mkPort "a" (Vec Bit 4), mkPort "b" (Vec Bit 4))
-     (mkPort "sum" (Vec Bit 5))
+     [mkPort "a" (Vec Bit 4); mkPort "b" (Vec Bit 4)]
+     [mkPort "sum" (Vec Bit 5)]
      [].
 
 Definition adder4Netlist
@@ -114,17 +126,9 @@ Definition adder4_tb
 
 Definition adder8_3inputInterface
   := combinationalInterface "adder8_3input"
-     (mkPort "a" (Vec Bit 8), mkPort "b" (Vec Bit 8), mkPort "c" (Vec Bit 8))
-     (mkPort "sum" (Vec Bit 10))
+     [mkPort "a" (Vec Bit 8); mkPort "b" (Vec Bit 8); mkPort "c" (Vec Bit 8)]
+     [mkPort "sum" (Vec Bit 10)]
      [].
-
-Definition add3InputTuple {m bit} `{Cava m bit}
-                          (aSize bSize cSize: nat)
-                          (abc: Vector.t bit aSize *
-                                Vector.t bit bSize *
-                                Vector.t bit cSize) :
-                          m (Vector.t bit (1 + max (1 + max aSize bSize) cSize)) :=
-  let '(a, b, c) := abc in adder_3input a b c.
 
 Definition adder8_3inputNetlist
   := makeNetlist adder8_3inputInterface (add3InputTuple 8 8 8).
