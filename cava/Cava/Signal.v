@@ -144,15 +144,14 @@ Inductive Signal : SignalType -> Type :=
 
 Definition denoteSignal (t : SignalType) : Type := Signal t.
 
-(* A default value for a given SignalType. *)
-Fixpoint defaultSignal (t: SignalType) : Signal t :=
+(* A default netlist value for a given SignalType. *)
+Fixpoint defaultNetSignal (t: SignalType) : Signal t :=
   match t with
   | Void => UndefinedSignal
   | Bit => Gnd
-  | Vec vt s => VecLit (Vector.const (defaultSignal vt) s)
+  | Vec vt s => VecLit (Vector.const (defaultNetSignal vt) s)
   | ExternalType s => UninterpretedSignal "default-defaultSignal"
   end.
-
 
 
 (* To allow us to represent a heterogenous list of Signal t values where

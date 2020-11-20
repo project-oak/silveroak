@@ -256,6 +256,7 @@ Instance CavaNet : Cava denoteSignal :=
   { cava := state CavaState;
     zero := ret Gnd;
     one := ret Vcc;
+    defaultSignal := defaultNetSignal;
     delayBit := delayBitNet;
     loopBit a b := loopBitNet a b;
     inv := invNet;
