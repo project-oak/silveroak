@@ -14,50 +14,30 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Lists.List.
-Import ListNotations.
-
 From Coq Require Import Vectors.Vector.
-Import VectorNotations.
 
 Require Import ExtLib.Structures.Monads.
-Require Import ExtLib.Structures.Traversable.
-Import MonadNotation.
 
 From Cava Require Import VectorUtils.
 From Cava Require Import Acorn.Acorn.
 From Cava Require Import Acorn.Lib.AcornVectors.
-
-Local Open Scope vector_scope.
+From AcornAes Require Import Common.
+Import Common.Notations.
 
 Section WithCava.
   Context {signal} {cava : Cava signal}.
   Context {monad: Monad m}.
 
-  Local Notation state := (Vec (Vec (Vec Bit 8) 4) 4)
-                          (only parsing).
+  (* Perform the bitwise XOR of two 4-element vectors of 8-bit values. *)
+  Definition xor4xV
+      (ab : signal (Vec (Vec Bit 8) 4) * signal (Vec (Vec Bit 8) 4))
+      : m (signal (Vec (Vec Bit 8) 4)) :=
+    zipWith xorV (fst ab) (snd ab).
 
-  Local Notation key := (Vec (Vec (Vec Bit 8) 4) 4)
-                          (only parsing).
+  (* Perform the bitwise XOR of two 4x4 matrices of 8-bit values. *)
+  Definition xor4x4V (a b : signal state) : m (signal state) :=
+    zipWith xor4xV a b.
 
-  Context (sub_bytes:     signal state -> m (signal state))
-          (shift_rows:    signal state -> m (signal state))
-          (mix_columns:   signal state -> m (signal state))
-          (add_round_key: signal key -> signal state -> m (signal state)).
-
-  Definition cipher_round (input: signal state) (key : signal key)
-    : m (signal state) :=
-    (sub_bytes >=> shift_rows >=> mix_columns >=> add_round_key key) input.
-
-  Definition cipher
-        (first_key last_key : signal key)
-        (middle_keys : list (signal key))
-        (input : signal state)
-        : m (signal state) :=
-    (add_round_key first_key         >=>
-     foldLM cipher_round middle_keys >=>
-     sub_bytes                       >=>
-     shift_rows                      >=>
-     add_round_key last_key) input.
-
+  Definition add_round_key (k : signal key) (st : signal state)
+    : m (signal state) := xor4x4V k st.
 End WithCava.

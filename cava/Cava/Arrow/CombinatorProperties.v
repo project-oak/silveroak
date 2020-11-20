@@ -69,33 +69,59 @@ Section SpecProperties.
     reflexivity.
   Qed.
 
-  Lemma denote_kind_eqb_true_iff (n : nat) (x y : Vector.t bool n) :
-    @denote_kind_eqb (Vector Bit n) x y = true <-> x = y.
+  Lemma denote_kind_eqb_true_iff_vector {A}
+        (Helem : forall a b : denote_kind A, denote_kind_eqb a b = true <-> a = b)
+        (n : nat) (x y : Vector.t (denote_kind A) n) :
+    @denote_kind_eqb (Vector A n) x y = true <-> x = y.
   Proof.
-    cbv [denote_kind_eqb].
     revert x y; induction n; intros.
     { eapply Vector.case0 with (v:=x).
       eapply Vector.case0 with (v:=y).
       autorewrite with vsimpl. tauto. }
     { rewrite (Vector.eta x), (Vector.eta y).
+      cbn [denote_kind_eqb] in *.
       autorewrite with push_vector_fold push_vector_map vsimpl.
-      rewrite Bool.andb_true_l.
-      destruct (Bool.bool_dec (Vector.hd x) (Vector.hd y));
-        [ | rewrite (proj2 (Bool.eqb_false_iff _ _)) by auto;
-            rewrite fold_left_andb_false; split; congruence ].
-      match goal with H : @eq bool _ _ |- _ => rewrite H  end.
-      rewrite Bool.eqb_reflx, IHn; split; [ congruence | ].
-      let H := fresh in
-      intro H; apply Vector.cons_inj in H; destruct H.
-      congruence. }
+      rewrite Bool.andb_true_l; split.
+      { case_eq (denote_kind_eqb (Vector.hd x) (Vector.hd y));
+          [ | rewrite fold_left_andb_false; discriminate ].
+        rewrite IHn, Helem; congruence. }
+      { intro Hcons; apply Vector.cons_inj in Hcons; destruct Hcons.
+        rewrite (proj2 (Helem _ _)), (proj2 (IHn _ _)) by congruence.
+        reflexivity. } }
   Qed.
 
-  Lemma denote_kind_eqb_false_iff (n : nat) (x y : Vector.t bool n) :
-    @denote_kind_eqb (Vector Bit n) x y = false <-> x <> y.
+  Lemma denote_kind_eqb_true_iff {A} (x y : denote_kind A) :
+    denote_kind_eqb x y = true <-> x = y.
+  Proof.
+    revert x y; induction A; intros;
+      (* handle the vector case with helper lemma *)
+      lazymatch goal with
+      | |- context [@denote_kind_eqb (Vector _ _)] =>
+        apply denote_kind_eqb_true_iff_vector; solve [auto]
+      | _ => cbn [denote_kind_eqb]; split
+      end;
+      repeat match goal with
+             | _ => progress intros
+             | x : denote_kind Unit |- _ => destruct x
+             | x : denote_kind Bit |- _ => destruct x
+             | IH : forall x y, denote_kind_eqb x y = true <-> x = y |- _ =>
+               rewrite (proj2 (IH _ _)) by congruence
+             | IH : forall x y, denote_kind_eqb x y = true <-> x = y |- _ =>
+               rewrite IH in *
+             | H : (_ && _)%bool = true |- _ =>
+               apply Bool.andb_true_iff in H; destruct H
+             | Hfst : fst ?x = fst ?y, Hsnd : snd ?x = snd ?y  |- ?x = ?y =>
+               rewrite (surjective_pairing x), (surjective_pairing y); congruence
+             | _ => reflexivity
+             | _ => discriminate
+             end.
+  Qed.
+
+  Lemma denote_kind_eqb_false_iff {A} (x y : denote_kind A) :
+    denote_kind_eqb x y = false <-> x <> y.
   Proof.
     rewrite <-denote_kind_eqb_true_iff.
-    destruct (@denote_kind_eqb (Vector Bit n) x y);
-      split; congruence.
+    destruct (denote_kind_eqb x y); split; congruence.
   Qed.
 
   Lemma denote_kind_eqb_N2Bv_sized (n : nat) (x y : N) :
@@ -111,7 +137,7 @@ Section SpecProperties.
       apply N2Bv_sized_eq_iff; auto. }
     { rewrite (proj2 (N.eqb_neq _ _)) by congruence.
       apply denote_kind_eqb_false_iff.
-      rewrite N2Bv_sized_eq_iff; auto. }
+      rewrite (N2Bv_sized_eq_iff n); auto. }
   Qed.
 End SpecProperties.
 

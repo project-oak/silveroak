@@ -79,9 +79,6 @@ Section Spec.
 
       (* get the key *pairs* *)
       pose proof all_keys_eq as Hall_keys.
-      map_inversion Hall_keys; subst.
-      match goal with H : @eq (list key) _ (_ :: _ ++ [_]) |- _ =>
-                      rename H into Hall_keys end.
 
       cbv [cipher_interleaved cipher_round_interleaved Cipher.cipher].
       rewrite fold_left_to_seq with (default:=initial_key).

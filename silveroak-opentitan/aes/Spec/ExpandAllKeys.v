@@ -39,6 +39,15 @@ Section Spec.
   Section Properties.
     Hint Unfold all_keys all_keys' : expandall.
 
+    Lemma all_keys'_cons i round_idxs k :
+      all_keys' (i :: round_idxs) k = (k :: fst (all_keys' round_idxs (key_expand i k)),
+                                      snd (all_keys' round_idxs (key_expand i k))).
+    Proof.
+      autounfold with expandall.
+      rewrite fold_left_accumulate_cons_full.
+      reflexivity.
+    Qed.
+
     Lemma all_keys_succ n k d :
       let nlist := all_keys n k in
       all_keys (S n) k = nlist ++ [key_expand n (last nlist d)].
@@ -74,9 +83,9 @@ Section Spec.
       congruence.
     Qed.
 
-    Lemma nth_all_keys_plus n rk i :
-        nth i (all_keys (i+n) rk) rk
-        = nth i (all_keys i rk) rk.
+    Lemma nth_all_keys_plus n rk d i :
+        nth i (all_keys (i+n) rk) d
+        = nth i (all_keys i rk) d.
     Proof.
       autounfold with expandall. intros.
       induction n; intros; [ rewrite Nat.add_0_r; reflexivity | ].
@@ -84,19 +93,19 @@ Section Spec.
       rewrite app_nth1 by length_hammer. eauto.
     Qed.
 
-    Lemma nth_all_keys n rk i :
+    Lemma nth_all_keys n rk d i :
       i <= n ->
-      nth i (all_keys n rk) rk
-      = nth i (all_keys i rk) rk.
+      nth i (all_keys n rk) d
+      = nth i (all_keys i rk) d.
     Proof.
       intros. replace n with (i+(n-i)) by lia.
       apply nth_all_keys_plus.
     Qed.
 
-    Lemma nth_all_keys_succ n rk i :
+    Lemma nth_all_keys_succ n rk d i :
       S i <= n ->
-      nth (S i) (all_keys n rk) rk
-      = key_expand i (nth i (all_keys n rk) rk).
+      nth (S i) (all_keys n rk) d
+      = key_expand i (nth i (all_keys n rk) d).
     Proof.
       intros. rewrite !nth_all_keys with (n:=n) by lia.
       autounfold with expandall.
@@ -104,6 +113,25 @@ Section Spec.
       rewrite !firstn_all2 by (rewrite seq_length; lia).
       rewrite seq_S, Nat.add_0_l, fold_left_app. cbn [fold_left].
       repeat destruct_pair_let. reflexivity.
+    Qed.
+
+    Lemma all_keys'_proper_projection
+          {T} (projkey : key -> T)
+          (key_expand_proper :
+             forall i k1 k2, projkey k1 = projkey k2 ->
+                        projkey (key_expand i k1) = projkey (key_expand i k2))
+          idxs k1 k2:
+      projkey k1 = projkey k2 ->
+      map projkey (fst (all_keys' idxs k1))
+      = map projkey (fst (all_keys' idxs k2)).
+    Proof.
+      autounfold with expandall.
+      revert k1 k2; induction idxs; intros;
+        autorewrite with push_fold_acc; cbn [map];
+          [ congruence | ].
+      erewrite IHidxs with (k2:=key_expand _ k2)
+        by eauto using key_expand_proper.
+      congruence.
     Qed.
   End Properties.
 End Spec.
@@ -115,10 +143,9 @@ Section Inverse.
     forall (key_expand inv_key_expand : nat -> key -> key)
       round_idxs initial_key final_key
       (final_key_correct :
-         snd (all_keys' key_expand round_idxs initial_key) = final_key)
+         final_key = (snd (all_keys' key_expand round_idxs initial_key)))
       (inv_key_expand_key_expand :
-         forall i k,
-           inv_key_expand i (key_expand i k) = k),
+         forall i k, inv_key_expand i (key_expand i k) = k),
       fst (all_keys' inv_key_expand (rev round_idxs) final_key)
       = rev (fst (all_keys' key_expand round_idxs initial_key)).
   Proof.
@@ -127,13 +154,13 @@ Section Inverse.
       autorewrite with listsimpl; cbn [rev app];
         autorewrite with push_fold_acc.
     { rewrite @fold_left_accumulate_snd in *.
-      cbn [fold_left rev app] in *. congruence. }
+      cbn [fold_left rev app map] in *. congruence. }
     { rewrite !fold_left_accumulate_snoc. cbv zeta.
       autorewrite with listsimpl in *. cbn [rev app] in *.
       rewrite @fold_left_accumulate_snd in *.
       rewrite fold_left_app in final_key_correct.
-      cbn [fold_left] in *. rewrite <-final_key_correct.
-      erewrite <-IHround_idxs; [ reflexivity | | assumption ].
+      cbn [fold_left map] in *. rewrite final_key_correct.
+      f_equal; [ ]. eapply IHround_idxs; eauto; [ ].
       rewrite fold_left_accumulate_snd.
       rewrite inv_key_expand_key_expand.
       reflexivity. }
@@ -161,28 +188,39 @@ Section Inverse.
   Lemma last_all_keys (key_expand : nat -> key -> key) k :
     forall Nr initial_key,
       last (all_keys key_expand Nr initial_key) k =
-      snd (all_keys' key_expand (seq 0 Nr) initial_key).
+      fold_left (fun k i => key_expand i k) (seq 0 Nr) initial_key.
   Proof.
     cbv [all_keys all_keys']; intros.
-    rewrite fold_left_accumulate_last, fold_left_accumulate_snd.
+    rewrite fold_left_accumulate_last.
+    reflexivity.
+  Qed.
+
+  Lemma all_keys'_map_idxs (key_expand : nat -> key -> key) (f : nat -> nat) idxs k :
+    all_keys' key_expand (map f idxs) k = all_keys'
+                                            (fun i => key_expand (f i)) idxs k.
+  Proof.
+    cbv [all_keys']. rewrite fold_left_accumulate_map.
     reflexivity.
   Qed.
 
   Lemma all_keys_inv_eq (key_expand inv_key_expand : nat -> key -> key) :
     forall Nr initial_key final_key
       (final_key_correct :
-         forall k, last (all_keys key_expand Nr initial_key) k = final_key)
+         forall k,
+           final_key = last (all_keys key_expand Nr initial_key) k)
       (inv_key_expand_key_expand :
          forall i k, inv_key_expand (Nr - S i) (key_expand i k) = k),
-    all_keys inv_key_expand Nr final_key
-    = rev (all_keys key_expand Nr initial_key).
+      all_keys inv_key_expand Nr final_key =
+      rev (all_keys key_expand Nr initial_key).
   Proof.
     intros; cbv [all_keys].
-    erewrite <-all_keys'_inv_eq
-      with (inv_key_expand:=fun i => inv_key_expand (Nr - S i))  by eauto.
-    erewrite all_keys'_rev_seq by (intros; instantiate_app_by_reflexivity).
-    erewrite <-(final_key_correct initial_key), last_all_keys.
-    reflexivity.
+    specialize (final_key_correct initial_key).
+    rewrite last_all_keys in final_key_correct.
+    erewrite <-all_keys'_inv_eq with (final_key:=final_key)
+                                    (inv_key_expand:=
+                                       fun i => inv_key_expand (Nr - S i))
+      by (eassumption || (cbv [all_keys']; rewrite fold_left_accumulate_snd;
+                         apply final_key_correct)).
+    apply all_keys'_rev_seq. reflexivity.
   Qed.
-
 End Inverse.

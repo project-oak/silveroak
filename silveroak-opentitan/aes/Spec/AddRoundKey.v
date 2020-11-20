@@ -27,11 +27,11 @@ Section Spec.
   Variable nb : nat.
 
   Definition state := Vector.t word nb.
-  Definition key := word.
+  Definition key := Vector.t word nb.
 
   (* FIPS 197, 5.1.4 AddRoundKey() Transformation *)
   Definition add_round_key (input : state) (k : key) : state :=
-    map (fun col => BVxor _ col k) input.
+    map2 (BVxor _) input k.
 
   Section Properties.
     Lemma inverse_xorb (b1 : bool) (b2 : bool) : xorb (xorb b1 b2) b2 = b1.
@@ -58,9 +58,9 @@ Section Spec.
       add_round_key (add_round_key x k) k = x.
     Proof.
       unfold add_round_key.
-      cbv [state] in *.
-      induction x; [ reflexivity | ].
-      { simpl.
+      cbv [state key] in *.
+      induction x; [ apply nil_eq | ].
+      { autorewrite with push_vector_map vsimpl.
         rewrite IHx.
         rewrite inverse_bvxor.
         reflexivity. }

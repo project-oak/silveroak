@@ -17,6 +17,7 @@ Cava/Tactics.v
 Cava/Acorn/AcornSignal.v
 Cava/Acorn/AcornCavaClass.v
 Cava/Acorn/Combinational.v
+Cava/Acorn/Identity.v
 Cava/Acorn/AcornNetlist.v
 Cava/Acorn/AcornState.v
 Cava/Acorn/AcornNetlistGeneration.v
