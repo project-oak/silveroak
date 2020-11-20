@@ -56,13 +56,13 @@ Open Scope kind_scope.
 Require Import Cava.Types.
 Require Import Cava.Netlist.
 
-Local Notation Byte := (Kind.Vec Kind.Bit 8).
+Local Notation Byte := (Signal.Vec Signal.Bit 8).
 Definition fir_Interface :=
    sequentialInterface "fir" "clk" PositiveEdge "rst" PositiveEdge
-     (mkPort "in_stream" Byte) (mkPort "out_stream" Byte) [].
+     [mkPort "in_stream" Byte] [mkPort "out_stream" Byte] [].
 
 Definition fir_netlist :=
-  makeNetlist fir_Interface (build_netlist (closure_conversion fir)).
+  build_netlist (closure_conversion fir) "fir" "in_stream" "out_stream".
 
 Definition fir_tb_inputs : list (Bvector 8) :=
  map (N2Bv_sized 8) [1; 2; 3; 4; 5; 6; 7; 8; 9]%N.

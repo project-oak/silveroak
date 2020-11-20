@@ -122,12 +122,10 @@ Fixpoint map2M (f: Signal Signal.Bit -> Signal Signal.Bit -> Instance) (ty: Kind
   match ty, x, y with
   | Tuple l r, (x1,x2), (y1, y2) =>
     map2M f l x1 y1 ;;
-    map2M f r x2 y2 ;;
-    ret tt
+    map2M f r x2 y2
   | Unit, _, _ => ret tt
   | Bit, x1, y1 =>
-    addInstance (f x1 y1) ;;
-    ret tt
+    addInstance (f x1 y1)
   | Vector t n, v1, v2 =>
     mapT (fun '(x, y)  => map2M f t x y) (map2 pair v1 v2) ;;
     ret tt
@@ -359,8 +357,89 @@ Fixpoint apply_rightmost_tt (x: Kind)
   | _ => fun x => x
   end.
 
-Definition build_netlist {X Y} (circuit: X ~> Y)
+Definition build_netlist'' {X Y} (circuit: X ~> Y)
   (i: denote (remove_rightmost_unit X))
   : state CavaState (denote Y) :=
   build_netlist' circuit (apply_rightmost_tt X i).
 
+Fixpoint stringify_kind (ty: Kind): Type :=
+match ty with
+| Tuple l r => prod (stringify_kind l) (stringify_kind r)
+| Unit => unit
+| Bit => string
+| Vector t n => string
+end.
+
+Fixpoint make_representable (ty:Kind) :=
+match ty with
+| Bit => Signal.Bit
+| Vector t n => Signal.Vec (make_representable t) n
+| _ => Signal.Vec Signal.Bit (packed_width ty)
+end.
+
+Fixpoint unpack1 (ty: Kind) (s: Signal (make_representable ty)): denote ty.
+Proof.
+  destruct ty; cbn in *.
+
+  pose (Vector.map (IndexConst s) (vseq 0 (packed_width ty1 + packed_width ty2))).
+  apply (unpack (<<ty1, ty2>>) t).
+
+  exact tt.
+  exact s.
+
+  pose (Vector.map (IndexConst s) (vseq 0 n)).
+  exact (Vector.map (unpack1 _) t).
+Defined.
+
+Fixpoint addInputPorts (ty:Kind) {struct ty}: stringify_kind ty -> state CavaState (denote ty) :=
+  match ty as ty' return stringify_kind ty' -> state CavaState (denote ty') with
+  | Tuple l r => fun '(lnames, rnames) =>
+    l <- addInputPorts l lnames ;;
+    r <- addInputPorts r rnames ;;
+    ret (l, r)
+  | Unit => fun _ => ret tt
+  | Bit => fun name =>
+    addInputPort (mkPort name Signal.Bit) ;;
+    ret (NamedWire name)
+  | Vector t n => fun name =>
+    addInputPort (mkPort name (Signal.Vec (make_representable t) n)) ;;
+    ret (unpack1 (Vector t n) (NamedVector (make_representable t) n name))
+  end.
+
+Fixpoint pack_vec (n:nat) (ty: Kind):
+  Vector.t (denote ty) n -> Signal (Vec (make_representable ty) n) :=
+  match ty as ty return Vector.t (denote ty) n -> Signal (Vec (make_representable ty) n) with
+  | Bit => fun v => VecLit v
+  | Vector t n => fun v => VecLit (Vector.map (pack_vec n t) v)
+  | Unit => fun v => VecLit (Vector.map (fun _ => VecLit []) v)
+  | Tuple l r => fun v => VecLit (Vector.map (fun x => VecLit (pack _ x)) v)
+  end.
+
+Fixpoint addOutputPorts (ty:Kind) (names: stringify_kind ty) (o: denote ty):
+  state CavaState unit :=
+  match ty, names, o with
+  | Tuple l r, (lnames, rnames), (lo, ro) =>
+    addOutputPorts l lnames lo ;;
+    addOutputPorts r rnames ro
+  | Unit, _, _ => ret tt
+  | Bit, name, i =>
+    outputBit name i
+  | Vector t n, name, i =>
+    outputVector (make_representable t) n name (pack_vec _ _ i)
+  end.
+
+Definition build_netlist {X Y}
+  (circuit: X ~> Y)
+  (name: string)
+  (inames: stringify_kind (remove_rightmost_unit X))
+  (onames: stringify_kind Y)
+  : CavaState
+  := execState (
+    setModuleName name ;;
+    setClockAndReset (NamedWire "clk", PositiveEdge) (NamedWire "rst", PositiveEdge) ;;
+    addInputPort (mkPort "clk" Signal.Bit) ;;
+    addInputPort (mkPort "rst" Signal.Bit) ;;
+    i <- addInputPorts (remove_rightmost_unit X) inames ;;
+    o <- build_netlist'' circuit i ;;
+    addOutputPorts Y onames o
+  ) initState.

@@ -81,37 +81,37 @@ Require Import Cava.Netlist.
 
 Definition adder445_interface
   := combinationalInterface "adder445"
-     (mkPort "a" (Kind.Vec Kind.Bit 4), mkPort "b" (Kind.Vec Kind.Bit 4))
-     (mkPort "sum" (Kind.Vec Kind.Bit 5))
+     [mkPort "a" (Signal.Vec Signal.Bit 4); mkPort "b" (Signal.Vec Signal.Bit 4)]
+     [mkPort "sum" (Signal.Vec Signal.Bit 5)]
      [].
 Definition adder88810_interface
   := combinationalInterface "adder88810"
-     (mkPort "a" (Kind.Vec Kind.Bit 8), (mkPort "b" (Kind.Vec Kind.Bit 8), mkPort "c" (Kind.Vec Kind.Bit 8)))
-     (mkPort "sum" (Kind.Vec Kind.Bit 10))
+     [mkPort "a" (Signal.Vec Signal.Bit 8); mkPort "b" (Signal.Vec Signal.Bit 8); mkPort "c" (Signal.Vec Signal.Bit 8)]
+     [mkPort "sum" (Signal.Vec Signal.Bit 10)]
      [].
 Definition adder444_tree_4_interface
   := combinationalInterface "adder444_tree_4"
-     (mkPort "vec" (Kind.Vec (Kind.Vec Kind.Bit 4) 4))
-     (mkPort "result" (Kind.Vec Kind.Bit 4))
+     [mkPort "vec" (Signal.Vec (Signal.Vec Signal.Bit 4) 4)]
+     [mkPort "result" (Signal.Vec Signal.Bit 4)]
      [].
 Definition adder444_tree_8_interface
   := combinationalInterface "adder444_tree_8"
-     (mkPort "vec" (Kind.Vec (Kind.Vec Kind.Bit 4) 8))
-     (mkPort "result" (Kind.Vec Kind.Bit 4))
+     [mkPort "vec" (Signal.Vec (Signal.Vec Signal.Bit 4) 8)]
+     [mkPort "result" (Signal.Vec Signal.Bit 4)]
      [].
 Definition adder444_tree_64_interface
   := combinationalInterface "adder444_tree_64"
-     (mkPort "vec" (Kind.Vec (Kind.Vec Kind.Bit 4) 64))
-     (mkPort "result" (Kind.Vec Kind.Bit 4))
+     [mkPort "vec" (Signal.Vec (Signal.Vec Signal.Bit 4) 64)]
+     [mkPort "result" (Signal.Vec Signal.Bit 4)]
      [].
 Definition growth_tree_8_interface
   := combinationalInterface "growth_tree_8"
-     (mkPort "vec" (Kind.Vec (Kind.Vec Kind.Bit 4) 8))
-     (mkPort "result" (Kind.Vec Kind.Bit 7))
+     [mkPort "vec" (Signal.Vec (Signal.Vec Signal.Bit 4) 8)]
+     [mkPort "result" (Signal.Vec Signal.Bit 7)]
      [].
 
 Definition adder445_netlist :=
-  makeNetlist adder445_interface (build_netlist (closure_conversion adder445)).
+  build_netlist (closure_conversion adder445) "adder445" ("a","b") "sum".
 
 Definition adder445_tb_inputs :=
   map (fun '(x, y) => (N2Bv_sized 4 x, N2Bv_sized 4 y))
@@ -125,7 +125,7 @@ Definition adder445_tb
      adder445_tb_inputs adder445_tb_expected_outputs.
 
 Definition adder88810_netlist :=
-  makeNetlist adder88810_interface (build_netlist (closure_conversion adder88810)).
+  build_netlist (closure_conversion adder88810) "adder88810" ("a",("b","c")) "sum".
 
 Definition adder88810_tb_inputs :=
   map (fun '(x, y, z) => (N2Bv_sized 8 x, (N2Bv_sized 8 y, N2Bv_sized 8 z)))
@@ -136,16 +136,16 @@ Definition adder88810_tb_expected_outputs
 
 Definition adder88810_tb
   := testBench "adder88810_tb" adder88810_interface
-     adder88810_tb_inputs adder88810_tb_expected_outputs.
+     (map (fun '(a,(b,c)) => (a,b,c)) adder88810_tb_inputs) adder88810_tb_expected_outputs.
 
 Definition adder444_tree_4_netlist :=
-  makeNetlist adder444_tree_4_interface (build_netlist (closure_conversion adder444_tree_4)).
+  build_netlist (closure_conversion adder444_tree_4) "adder444_tree_4" "vec" "result".
 
 Definition adder444_tree_8_netlist :=
-  makeNetlist adder444_tree_8_interface (build_netlist (closure_conversion adder444_tree_8)).
+  build_netlist (closure_conversion adder444_tree_8) "adder444_tree_8" "vec" "result".
 
 Definition adder444_tree_64_netlist :=
-  makeNetlist adder444_tree_64_interface (build_netlist (closure_conversion adder444_tree_64)).
+  build_netlist (closure_conversion adder444_tree_64) "adder444_tree_64" "vec" "result".
 
 Definition adder444_tree_4_inputs :=
   map (fun '(x, y, z, w) => [N2Bv_sized 4 x; N2Bv_sized 4 y; N2Bv_sized 4 z; N2Bv_sized 4 w]%vector)
@@ -162,7 +162,7 @@ Definition adder444_tree_4_tb
      adder444_tree_4_inputs adder444_tree_4_tb_expected_outputs.
 
 Definition growth_tree_8_netlist :=
-  makeNetlist growth_tree_8_interface (build_netlist (closure_conversion growth_tree_8)).
+  build_netlist (closure_conversion growth_tree_8) "growth_tree_8" "vec" "result".
 
 Definition growth_tree_8_inputs :=
   map (Vector.map (N2Bv_sized 4))
