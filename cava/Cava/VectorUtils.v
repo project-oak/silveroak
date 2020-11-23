@@ -928,4 +928,7 @@ Section Vector.
         end
     | S p' => nth_default default p' (tail_default default v)
     end.
+
+  Definition of_list_sized {A} (a : A) (n : nat) (l : list A) : Vector.t A n :=
+    resize_default a  _ (Vector.of_list l).
 End Vector.

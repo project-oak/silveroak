@@ -406,6 +406,39 @@ Definition fromVec := List.map Nat.b2n.
 Definition toVec := List.map nat2bool.
 
 Definition Bv2Hex {n} (x: Vector.t bool n) := HexString.of_N (Bv2N x).
+Definition Hex2Bv {n} (s : String.string) := N2Bv_sized n (HexString.to_N s).
 
 Definition byte_reverse {n} (x: Vector.t bool (n*8)) := flatten (reverse (reshape (m:=8) x)).
 
+Definition bitvec_to_byte (v : Vector.t bool 8) : Byte.byte :=
+  let '(b0,v) := Vector.uncons v in
+  let '(b1,v) := Vector.uncons v in
+  let '(b2,v) := Vector.uncons v in
+  let '(b3,v) := Vector.uncons v in
+  let '(b4,v) := Vector.uncons v in
+  let '(b5,v) := Vector.uncons v in
+  let '(b6,v) := Vector.uncons v in
+  let '(b7,v) := Vector.uncons v in
+  Byte.of_bits (b0,(b1,(b2,(b3,(b4,(b5,(b6,b7))))))).
+
+Definition byte_to_bitvec (b : Byte.byte) : Vector.t bool 8 :=
+  Ndigits.N2Bv_sized 8 (Byte.to_N b).
+Definition bitvec_to_bytevec n (v : Vector.t bool (n * 8)) : Vector.t Byte.byte n :=
+  Vector.map bitvec_to_byte (reshape v).
+Definition bytevec_to_bitvec n (v : Vector.t Byte.byte n) : Vector.t bool (n * 8) :=
+  flatten (Vector.map byte_to_bitvec v).
+
+Definition bytevec_to_wordvec
+           bytes_per_word n (v : Vector.t Byte.byte (n * bytes_per_word))
+  : Vector.t (Vector.t Byte.byte bytes_per_word) n := reshape v.
+
+Definition bitvec_to_wordvec
+           bits_per_word n (v : Vector.t bool (n * bits_per_word))
+  : Vector.t (Vector.t bool bits_per_word) n := reshape v.
+
+Definition wordvec_to_bytevec
+           bytes_per_word {n} (v : Vector.t (Vector.t Byte.byte bytes_per_word) n)
+  : Vector.t Byte.byte (n * bytes_per_word) := flatten v.
+Definition wordvec_to_bitvec
+           bits_per_word {n} (v : Vector.t (Vector.t bool bits_per_word) n)
+  : Vector.t bool (n * bits_per_word) := flatten v.
