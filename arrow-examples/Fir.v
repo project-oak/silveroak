@@ -42,12 +42,15 @@ Section notation.
     : << Byte, Byte, Unit >> ~> Byte :=
     <[ \x y => x +% y ]>.
 
+  Definition mult
+    : << Byte, Byte, Unit >> ~> Byte :=
+    <[ \x y => (x * y)[:7:0] ]>.
+
   Definition fir
     : << Byte, Unit >> ~> Byte :=
     <[ \byte =>
       letrec window = byte :: (!drop_last window) in
-      (* TODO(#302): map2 adder should be mult, but we haven't added it yet *)
-      !(foldl adder) #0 (!(map2 adder) window !coefficients)
+      !(foldl adder) #0 (!(map2 mult) window !coefficients)
     ]>.
 End notation.
 

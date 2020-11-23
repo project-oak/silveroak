@@ -282,6 +282,10 @@ Definition binary_primitive_netlist x y z (p: BinaryPrimitive x y z)
       sum <- newVector _ s ;;
       addInstance (UnsignedSubtract (VecLit x) (VecLit y) sum) ;;
       ret (Vector.map (IndexConst sum) (vseq 0 s))
+  | Primitives.Mult n m => fun x y =>
+      prod <- newVector _ (n+m) ;;
+      addInstance (UnsignedMultiply (VecLit x) (VecLit y) prod) ;;
+      ret (Vector.map (IndexConst prod) (vseq 0 (n+m)))
   | Index n o => fun x y => index' _ _ x y
   | Primitives.Cons n o => fun x y =>
     ret ((x :: y)%vector)
