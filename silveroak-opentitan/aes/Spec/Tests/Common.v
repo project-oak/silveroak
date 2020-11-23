@@ -33,6 +33,9 @@ Inductive AESStep :=
 | MixColumns
 | SubBytes
 | ShiftRows
+| InvMixColumns
+| InvSubBytes
+| InvShiftRows
 .
 
 Record TestVector {key state : Type} :=
@@ -49,6 +52,9 @@ Definition AESStep_to_string (step : AESStep) : string :=
   | MixColumns => "MixColumns"
   | SubBytes => "SubBytes"
   | ShiftRows => "ShiftRows"
+  | InvMixColumns => "InvMixColumns"
+  | InvSubBytes => "InvSubBytes"
+  | InvShiftRows => "InvShiftRows"
   end.
 
 Record StepData {key state : Type} :=

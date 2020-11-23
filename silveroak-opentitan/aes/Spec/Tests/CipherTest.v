@@ -98,12 +98,24 @@ Definition shift_rows (st : state) : state :=
 Definition mix_columns (st : state) : state :=
   from_cols (mix_columns (to_cols st)).
 
+Definition inv_sub_bytes (st : state) : state :=
+  from_cols (SubBytes.sub_bytes inverse_sbox (to_cols st)).
+
+Definition inv_shift_rows (st : state) : state :=
+  from_list_rows (inv_shift_rows Nb (to_list_rows st)).
+
+Definition inv_mix_columns (st : state) : state :=
+  from_cols (inv_mix_columns (to_cols st)).
+
 Definition aes_impl (step : AESStep) (k : round_key) : state -> state :=
   match step with
   | AddRoundKey => add_round_key k
   | MixColumns => mix_columns
   | SubBytes => sub_bytes
   | ShiftRows => shift_rows
+  | InvMixColumns => inv_mix_columns
+  | InvSubBytes => inv_sub_bytes
+  | InvShiftRows => inv_shift_rows
   end.
 
 Definition state_eqb (s1 s2 : state): bool :=
@@ -122,11 +134,21 @@ Definition print_matrix (st : state) : string :=
                  rows in
   newline ++ String.concat newline (to_list lines).
 
-(* Run AES test; if there are errors, print state/keys as hex *)
-Goal (run_test state_eqb Bv2Hex Bv2Hex fips_c3_forward aes_impl = Success).
-Proof. vm_compute. reflexivity. Qed.
+(* Shortcut/convenience definitions *)
+Definition aes_test_encrypt
+           (print_state_as_matrix : bool)
+           (impl : AESStep -> round_key -> state -> state) : TestResult :=
+  if print_state_as_matrix
+  then run_test state_eqb print_matrix print_matrix fips_c3_forward impl
+  else run_test state_eqb Bv2Hex Bv2Hex fips_c3_forward impl.
+Definition aes_test_decrypt
+           (print_state_as_matrix : bool)
+           (impl : AESStep -> round_key -> state -> state) : TestResult :=
+  if print_state_as_matrix
+  then run_test state_eqb print_matrix print_matrix fips_c3_equivalent_inverse impl
+  else run_test state_eqb Bv2Hex Bv2Hex fips_c3_equivalent_inverse impl.
 
-(* Run AES test; if there are errors print state/keys as matrices (sometimes
-   easier to debug) *)
-Goal (run_test state_eqb print_matrix print_matrix fips_c3_forward aes_impl = Success).
+Goal (aes_test_encrypt false aes_impl = Success).
+Proof. vm_compute. reflexivity. Qed.
+Goal (aes_test_decrypt false aes_impl = Success).
 Proof. vm_compute. reflexivity. Qed.

@@ -119,6 +119,105 @@ Section FIPSC3.
              (* round[14].output*) (AddRoundKey, "0x8ea2b7ca516745bfeafc49904b496089") ]
            ];
     |}.
+
+  Definition fips_c3_equivalent_inverse
+    : TestVector (key:=Vector.t bool 128) (state:=Vector.t bool 128) :=
+    {| plaintext := Hex2Bv "0x8ea2b7ca516745bfeafc49904b496089";
+       round_ksch :=
+         List.map Hex2Bv
+                  [ (* round[ 0].ik_sch *) "0x24fc79ccbf0979e9371ac23c6d68de36";
+                  (* round[ 1].ik_sch *) "0x34f1d1ffbfceaa2ffce9e25f2558016e";
+                  (* round[ 2].ik_sch *) "0x5e1648eb384c350a7571b746dc80e684";
+                  (* round[ 3].ik_sch *) "0xc8a305808b3f7bd043274870d9b1e331";
+                  (* round[ 4].ik_sch *) "0xb5708e13665a7de14d3d824ca9f151c2";
+                  (* round[ 5].ik_sch *) "0x74da7ba3439c7e50c81833a09a96ab41";
+                  (* round[ 6].ik_sch *) "0x3ca69715d32af3f22b67ffade4ccd38e";
+                  (* round[ 7].ik_sch *) "0xf85fc4f3374605f38b844df0528e98e1";
+                  (* round[ 8].ik_sch *) "0xde69409aef8c64e7f84d0c5fcfab2c23";
+                  (* round[ 9].ik_sch *) "0xaed55816cf19c100bcc24803d90ad511";
+                  (* round[10].ik_sch *) "0x15c668bd31e5247d17c168b837e6207c";
+                  (* round[11].ik_sch *) "0x7fd7850f61cc991673db890365c89d12";
+                  (* round[12].ik_sch *) "0x2a2840c924234cc026244cc5202748c4";
+                  (* round[13].ik_sch *) "0x1a1f181d1e1b1c191217101516131411";
+                  (* round[14].ik_sch *) "0x000102030405060708090a0b0c0d0e0f"
+                  ];
+       round_expected_states :=
+         List.map
+           (List.map (fun x => (fst x, Hex2Bv (snd x))))
+           [
+           (* Round 0 *)
+           [ (* round[ 1].istart *) (AddRoundKey,   "0xaa5ece06ee6e3c56dde68bac2621bebf") ];
+           (* Round 1 *)
+           [ (* round[ 1].is_box *) (InvSubBytes,   "0x629deca599456db9c9f5ceaa237b5af4");
+             (* round[ 1].is_row *) (InvShiftRows,  "0x627bceb9999d5aaac945ecf423f56da5");
+             (* round[ 1].im_col *) (InvMixColumns, "0xe51c9502a5c1950506a61024596b2b07");
+             (* round[ 2].istart *) (AddRoundKey,   "0xd1ed44fd1a0f3f2afa4ff27b7c332a69") ];
+           (* Round 2 *)
+           [ (* round[ 2].is_box *) (InvSubBytes,   "0x5153862143fb259514920403016695e4");
+             (* round[ 2].is_row *) (InvShiftRows,  "0x516604954353950314fb86e401922521");
+             (* round[ 2].im_col *) (InvMixColumns, "0x91a29306cc450d0226f4b5eaef5efed8");
+             (* round[ 3].istart *) (AddRoundKey,   "0xcfb4dbedf4093808538502ac33de185c") ];
+           (* Round 3 *)
+           [ (* round[ 3].is_box *) (InvSubBytes,   "0x5fc69f53ba4076bf50676aaa669c34a7");
+             (* round[ 3].is_row *) (InvShiftRows,  "0x5f9c6abfbac634aa50409fa766677653");
+             (* round[ 3].im_col *) (InvMixColumns, "0xb041a94eff21ae9212278d903b8a63f6");
+             (* round[ 4].istart *) (AddRoundKey,   "0x78e2acce741ed5425100c5e0e23b80c7") ];
+           (* Round 4 *)
+           [ (* round[ 4].is_box *) (InvSubBytes,   "0xc13baaeccae9b5f6705207a03b493a31");
+             (* round[ 4].is_row *) (InvShiftRows,  "0xc14907f6ca3b3aa070e9aa313b52b5ec");
+             (* round[ 4].im_col *) (InvMixColumns, "0x638357cec07de6300e30d0ec4ce2a23c");
+             (* round[ 5].istart *) (AddRoundKey,   "0xd6f3d9dda6279bd1430d52a0e513f3fe") ];
+           (* Round 5 *)
+           [ (* round[ 5].is_box *) (InvSubBytes,   "0x4a7ee5c9c53de85164f348472a827e0c");
+             (* round[ 5].is_row *) (InvShiftRows,  "0x4a824851c57e7e47643de50c2af3e8c9");
+             (* round[ 5].im_col *) (InvMixColumns, "0xca6f71058c642842a315595fdf54f685");
+             (* round[ 6].istart *) (AddRoundKey,   "0xbeb50aa6cff856126b0d6aff45c25dc4") ];
+           (* Round 6 *)
+           [ (* round[ 6].is_box *) (InvSubBytes,   "0x5ad2a3c55fe1b93905f3587d68a88d88");
+             (* round[ 6].is_row *) (InvShiftRows,  "0x5aa858395fd28d7d05e1a38868f3b9c5");
+             (* round[ 6].im_col *) (InvMixColumns, "0xca46f5ea835eab0b9537b6dbb221b6c2");
+             (* round[ 7].istart *) (AddRoundKey,   "0xf6e062ff507458f9be50497656ed654c") ];
+           (* Round 7 *)
+           [ (* round[ 7].is_box *) (InvSubBytes,   "0xd6a0ab7d6cca5e695a6ca40fb953bc5d");
+             (* round[ 7].is_row *) (InvShiftRows,  "0xd653a4696ca0bc0f5acaab5db96c5e7d");
+             (* round[ 7].im_col *) (InvMixColumns, "0x2a70c8da28b806e9f319ce42be4baead");
+             (* round[ 8].istart *) (AddRoundKey,   "0xd22f0c291ffe031a789d83b2ecc5364c") ];
+           (* Round 8 *)
+           [ (* round[ 8].is_box *) (InvSubBytes,   "0x7f4e814ccb0cd543c175413e8307245d");
+             (* round[ 8].is_row *) (InvShiftRows,  "0x7f074143cb4e243ec10c815d8375d54c");
+             (* round[ 8].im_col *) (InvMixColumns, "0xf0073ab7404a8a1fc2cba0b80df08517");
+             (* round[ 9].istart *) (AddRoundKey,   "0x2e6e7a2dafc6eef83a86ace7c25ba934") ];
+           (* Round 9 *)
+           [ (* round[ 9].is_box *) (InvSubBytes,   "0xc345bdfa1bc799e1a2dcaab0a857b728");
+             (* round[ 9].is_row *) (InvShiftRows,  "0xc357aae11b45b7b0a2c7bd28a8dc99fa");
+             (* round[ 9].im_col *) (InvMixColumns, "0x3225fe3686e498a32593c1872b613469");
+             (* round[10].istart *) (AddRoundKey,   "0x9cf0a62049fd59a399518984f26be178") ];
+           (* Round 10 *)
+           [ (* round[10].is_box *) (InvSubBytes,   "0x1c17c554a4211571f970f24f0405e0c1");
+             (* round[10].is_row *) (InvShiftRows,  "0x1c05f271a417e04ff921c5c104701554");
+             (* round[10].im_col *) (InvMixColumns, "0x9d1d5c462e655205c4395b7a2eac55e2");
+             (* round[11].istart *) (AddRoundKey,   "0x88db34fb1f807678d3f833c2194a759e") ];
+           (* Round 11 *)
+           [ (* round[11].is_box *) (InvSubBytes,   "0x979f2863cb3a0fc1a9e166a88e5c3fdf");
+             (* round[11].is_row *) (InvShiftRows,  "0x975c66c1cb9f3fa8a93a28df8ee10f63");
+             (* round[11].im_col *) (InvMixColumns, "0xd24bfb0e1f997633cfce86e37903fe87");
+             (* round[12].istart *) (AddRoundKey,   "0xad9c7e017e55ef25bc150fe01ccb6395") ];
+           (* Round 12 *)
+           [ (* round[12].is_box *) (InvSubBytes,   "0x181c8a098aed61c2782ffba0c45900ad");
+             (* round[12].is_row *) (InvShiftRows,  "0x1859fbc28a1c00a078ed8aadc42f6109");
+             (* round[12].im_col *) (InvMixColumns, "0xaec9bda23e7fd8aff96d74525cdce4e7");
+             (* round[13].istart *) (AddRoundKey,   "0x84e1fd6b1a5c946fdf4938977cfbac23") ];
+           (* Round 13 *)
+           [ (* round[13].is_box *) (InvSubBytes,   "0x4fe0210543a7e706efa476850163aa32");
+             (* round[13].is_row *) (InvShiftRows,  "0x4f63760643e0aa85efa7213201a4e705");
+             (* round[13].im_col *) (InvMixColumns, "0x794cf891177bfd1ddf67a744acd9c4f6");
+             (* round[14].istart *) (AddRoundKey,   "0x6353e08c0960e104cd70b751bacad0e7") ];
+           (* Round 14 *)
+           [ (* round[14].is_box *) (InvSubBytes,   "0x0050a0f04090e03080d02070c01060b0");
+             (* round[14].is_row *) (InvShiftRows,  "0x00102030405060708090a0b0c0d0e0f0");
+             (* round[14].ioutput*) (AddRoundKey,   "0x00112233445566778899aabbccddeeff") ]
+           ];
+    |}.
 End FIPSC3.
 
 (*
