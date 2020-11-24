@@ -136,6 +136,9 @@ Module KappaNotation.
     (in custom expr at level 4,
     a constr at level 4
     ) : kappa_scope.
+  Notation "x * y" :=
+      (App (App (Primitive (P2 (Mult _ _))) x) y)
+      (in custom expr at level 4) : kappa_scope.
 
   Notation "'[]'" := (Primitive (P0 (EmptyVec _))) (in custom expr at level 4) : kappa_scope.
   Notation "x ++ y" := (App (App (Primitive (P2 (Concat _ _))) x) y) (in custom expr at level 4) : kappa_scope.

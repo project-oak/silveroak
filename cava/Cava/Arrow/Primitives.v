@@ -58,6 +58,7 @@ Inductive BinaryPrimitive : Kind -> Kind -> Kind -> Type :=
 | Pair (x y: Kind):             BinaryPrimitive << x >> << y >> << x, y >>
 | UnsignedAdd (a b c: nat):     BinaryPrimitive << Vector Bit a >> << Vector Bit b >> << Vector Bit c >>
 | UnsignedSub (a: nat):         BinaryPrimitive << Vector Bit a >> << Vector Bit a >> << Vector Bit a >>
+| Mult (n m: nat):              BinaryPrimitive << Vector Bit n >> << Vector Bit m >> << Vector Bit (n + m) >>
 | Index (n: nat) (ty: Kind):    BinaryPrimitive << Vector ty n >> << vec_index n >> << ty >>
 | Cons (n: nat) (ty: Kind):     BinaryPrimitive << ty >> << Vector ty n >> << Vector ty (S n) >>
 | Snoc (n: nat) (ty: Kind):     BinaryPrimitive << Vector ty n >> << ty >> << Vector ty (S n) >>
@@ -135,6 +136,11 @@ Definition binary_semantics x y z (p: BinaryPrimitive x y z)
     let mod_const := (2^(Z.of_nat s))%Z in
     let c := ((a - b + mod_const) mod mod_const)%Z in
     (Ndigits.N2Bv_sized s (Z.to_N c))
+  | Mult n m => fun av bv =>
+    let a := Ndigits.Bv2N av in
+    let b := Ndigits.Bv2N bv in
+    let product := (a * b)%N in
+    N2Bv_sized (n + m) product
   | Index n o => fun x y =>
     nth_default (kind_default _) (bitvec_to_nat y) x
   | Cons n o => fun x v => (x :: v)
