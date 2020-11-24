@@ -52,6 +52,11 @@ Definition counter_3_tb_inputs : list unit :=
 Definition counter_3_tb_expected_outputs : list (Bvector.Bvector 3) :=
   unroll_circuit_evaluation (closure_conversion (counter 3)) (repeat tt 8).
 
+Lemma arrow_and_expr_counter_semantics_agree:
+  (map Bv2N counter_3_tb_expected_outputs) =
+  (map Bv2N (interp_sequential' ((counter 3 : Kappa _ _) _) counter_3_tb_inputs)).
+Proof. vm_compute; reflexivity. Qed.
+
 Definition counter_3_tb :=
   testBench "counter_3_tb" counter_3_Interface
             counter_3_tb_inputs counter_3_tb_expected_outputs.
