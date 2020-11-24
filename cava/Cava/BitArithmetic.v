@@ -16,6 +16,7 @@
 
 (* Bit-vector arithmetic operations for Cava. *)
 
+From Coq Require Import Init.Byte.
 From Coq Require Import Bool.Bool.
 From Coq Require Import Lists.List.
 From Coq Require Import Vectors.Vector.

@@ -90,6 +90,8 @@ library
                      BinPos
                      BinNatDef
                      ByteVector
+                     Byte
+                     Byte0
                      Compare_dec
                      Decimal
                      Functor
