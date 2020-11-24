@@ -158,6 +158,6 @@ Definition aes_test_decrypt
   end.
 
 Goal (aes_test_encrypt Hex aes_impl = Success).
-Proof. native_compute. reflexivity. Qed.
+Proof. vm_compute. reflexivity. Qed.
 Goal (aes_test_decrypt Hex aes_impl = Success).
-Proof. native_compute. reflexivity. Qed.
+Proof. vm_compute. reflexivity. Qed.
