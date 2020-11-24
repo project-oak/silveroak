@@ -26,10 +26,14 @@ Section notation.
   Local Open Scope category_scope.
   Local Open Scope kind_scope.
 
-  Definition counter n
-    : << Unit >> ~> Vector Bit n :=
-    <[
-      letrec counter = counter +% #1 in
+  Notation nibble := (Vector Bit 4).
+
+  Definition counter :=
+    <[fun "counter" is_valid value : nibble =>
+      letrec counter =
+        if is_valid
+        then counter +% value
+        else counter in
       counter
     ]>.
 End notation.
@@ -39,25 +43,28 @@ Open Scope kind_scope.
 Require Import Cava.Types.
 Require Import Cava.Netlist.
 
-Definition counter_3_Interface :=
-   sequentialInterface "counter_3" "clk" PositiveEdge "rst" PositiveEdge
-     [] [mkPort "count" (Signal.Vec Signal.Bit 3)] [].
+Definition signaling_counter_Interface :=
+   sequentialInterface "signaling_counter" "clk" PositiveEdge "rst" PositiveEdge
+     [mkPort "is_valid" Signal.Bit
+     ;mkPort "value" (Signal.Vec Signal.Bit 4)]
+     [mkPort "count" (Signal.Vec Signal.Bit 4)] [].
 
-Definition counter_3_netlist :=
-  build_netlist (closure_conversion (counter 3)) "counter_3" tt "count".
+Definition signaling_counter_netlist :=
+  build_netlist (closure_conversion counter) "signaling_counter" ("is_valid", "value") "count".
 
-Definition counter_3_tb_inputs : list unit :=
- repeat tt 8.
+(* first four cycles have 'is_valid = false' and should not increment the counter *)
+Definition signaling_counter_tb_inputs : list (bool * Bvector.Bvector 4) :=
+  (repeat (false, N2Bv_sized 4 1) 4) ++ (repeat (true, N2Bv_sized 4 1) 4).
 
-Definition counter_3_tb_expected_outputs : list (Bvector.Bvector 3) :=
-  unroll_circuit_evaluation (closure_conversion (counter 3)) (repeat tt 8).
+Definition signaling_counter_tb_expected_outputs : list (Bvector.Bvector 4) :=
+  unroll_circuit_evaluation (closure_conversion counter) signaling_counter_tb_inputs.
 
 Lemma arrow_and_expr_counter_semantics_agree:
-  (map Bv2N counter_3_tb_expected_outputs) =
-  (map Bv2N (interp_sequential' ((counter 3 : Kappa _ _) _) counter_3_tb_inputs)).
+  (map Bv2N signaling_counter_tb_expected_outputs) =
+  (map Bv2N (interp_sequential ((counter : Kappa _ _) _) signaling_counter_tb_inputs)).
 Proof. vm_compute; reflexivity. Qed.
 
-Definition counter_3_tb :=
-  testBench "counter_3_tb" counter_3_Interface
-            counter_3_tb_inputs counter_3_tb_expected_outputs.
+Definition signaling_counter_tb :=
+  testBench "signaling_counter_tb" signaling_counter_Interface
+            signaling_counter_tb_inputs signaling_counter_tb_expected_outputs.
 

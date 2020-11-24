@@ -23,6 +23,7 @@ import Mux2_1
 import SyntaxExamples
 import UnsignedAdder
 import Counter
+import SignalingCounter
 import Fir
 import ArrowAdderTutorial
 
@@ -44,5 +45,7 @@ main = do
   writeTestBench growth_tree_8_tb
   writeSystemVerilog counter_3_netlist
   writeTestBench counter_3_tb
+  writeSystemVerilog signaling_counter_netlist
+  writeTestBench signaling_counter_tb
   writeSystemVerilog fir_netlist
   writeTestBench fir_tb

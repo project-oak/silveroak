@@ -26,11 +26,13 @@ Set Extraction Optimize.
 
 Extraction Language Haskell.
 
+Require Import Cava.Arrow.CavaNotation.
 Require Import Cava.Arrow.Combinators.
 Require Import ArrowExamples.SyntaxExamples.
 Require Import ArrowExamples.Mux2_1.
 Require Import ArrowExamples.UnsignedAdder.
 Require Import ArrowExamples.Counter.
+Require Import ArrowExamples.SignalingCounter.
 Require Import ArrowExamples.Fir.
 
 Require Import ArrowExamples.ArrowAdderTutorial.
@@ -40,6 +42,7 @@ Extraction Library SyntaxExamples.
 Extraction Library Mux2_1.
 Extraction Library UnsignedAdder.
 Extraction Library Counter.
+Extraction Library SignalingCounter.
 Extraction Library Fir.
 
 Extraction Library ArrowAdderTutorial.

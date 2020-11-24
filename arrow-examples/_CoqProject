@@ -8,6 +8,7 @@ Mux2_1.v
 SyntaxExamples.v
 UnsignedAdder.v
 Counter.v
+SignalingCounter.v
 Fir.v
 
 ArrowAdderTutorial.v

@@ -14,6 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+From Coq Require Import Arith.Arith NArith.NArith micromega.Lia
+     Numbers.NaryFunctions Lists.List.
+
 From Cava Require Import Arrow.Classes.Category.
 From Cava Require Import Arrow.Classes.Arrow.
 From Cava Require Import Arrow.CircuitArrow.
@@ -23,10 +26,8 @@ From Cava Require Import Arrow.ExprLowering.
 From Cava Require Import Arrow.ArrowKind.
 From Cava Require Import Arrow.Primitives.
 
-From Coq Require Import Arith.Arith NArith.NArith micromega.Lia
-     Numbers.NaryFunctions.
-
 Import EqNotations.
+Import ListNotations.
 
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
@@ -36,8 +37,8 @@ Section combinational_semantics.
 
   Fixpoint interp_combinational' {i o: Kind}
     (expr: kappa coq_func i o)
-    : denote_kind i -> (denote_kind o) :=
-    match expr in kappa _ i0 o0 return denote_kind i0 -> denote_kind o0 with
+    : denote_kind i -> denote_kind o :=
+    match expr with
     | Var x => fun v : unit => x
     | Abs f => fun '(x,y) => interp_combinational' (f x) y
     | App f e => fun y =>
@@ -65,11 +66,49 @@ Section combinational_semantics.
     (i: denote_kind (remove_rightmost_unit x)): (denote_kind y) :=
     interp_combinational' expr (denote_apply_rightmost_tt x i).
 
-  (*
-  Axiom expression_evaluation_is_arrow_evaluation: forall i o (expr: Kappa i o), forall (x: denote_kind i),
-    combinational_evaluation' (closure_conversion expr) x =
-    interp_combinational' (expr _) x.
-  *)
+  Definition list_func t := list (denote_kind t).
+
+  Fixpoint interp_sequential' {i o: Kind}
+    (expr: kappa list_func i o)
+    : list_func i -> list_func o :=
+    match expr in kappa _ i o return list_func i -> list_func o with
+    | Var x => fun v : list unit => x
+    | Abs f => fun xy =>
+      let '(x,y) := split xy in interp_sequential' (f x) y
+    | App f e => fun y =>
+      (interp_sequential' f) (combine (interp_sequential' e (repeat tt (length y))) y)
+    | Comp g f => fun x => interp_sequential' g (interp_sequential' f x)
+    | Comp1 g f => fun x => interp_sequential' g (map (denote_apply_rightmost_tt _) (interp_sequential' f x))
+    | Primitive p =>
+      match p with
+      | P0 p => fun x => map (fun x => primitive_semantics (P0 p) x) x
+      | P1 p => fun x => map (fun x => primitive_semantics (P1 p) (fst x)) x
+      | P2 p => fun x => map (fun x => primitive_semantics (P2 p) (fst x, fst (snd x))) x
+      end
+    | Id => fun x => x
+    | Typecast _ _ => map (rewrite_or_default _ _)
+    | Let v f => fun y =>
+      interp_sequential' (f (interp_sequential' v (repeat tt (length y)))) y
+    | CallModule (mkModule _ m) => interp_sequential' (m _)
+
+    | LetRec v f => fun y =>
+      (* TODO(#_): fixme: this has terrible performance as it each item requires
+        resimulatution of previous steps for subcircuit.
+        Is there a performant simple way to write this?
+        Single cycle step semantics bypasses this issue (see unroll_circuit_evaluation)
+      *)
+      let vs := fold_left
+        (fun vs t => kind_default _ :: interp_sequential' (v vs) (repeat tt t))
+        (repeat (length y) (length y)) [] in
+      interp_sequential' (f vs) y
+
+    | Delay => fun x => kind_default _ :: map fst x
+    end.
+
+  Definition interp_sequential {x y: Kind}
+    (expr: kappa list_func x y)
+    (i: list_func (remove_rightmost_unit x)): (list_func y) :=
+    interp_sequential' expr (map (denote_apply_rightmost_tt x) i).
 
 End combinational_semantics.
 
