@@ -22,6 +22,8 @@ From Cava Require Import VectorUtils.
 From Cava Require Import Acorn.Acorn.
 From Cava Require Import Acorn.Lib.AcornVectors.
 From AcornAes Require Import Common.
+From AesSpec Require Import Tests.CipherTest.
+From AesSpec Require Import Tests.Common.
 Import Common.Notations.
 
 Section WithCava.
@@ -41,3 +43,25 @@ Section WithCava.
   Definition add_round_key (k : signal key) (st : signal state)
     : m (signal state) := xor4x4V k st.
 End WithCava.
+
+(* Run test as a quick-feedback check *)
+Goal
+  (let signal := denoteCombinational in
+   (* convert between flat-vector representation and state type *)
+   let to_state : Vector.t bool 128 -> signal state :=
+       fun st => map reshape (to_cols_bits st) in
+   let from_state : signal state -> Vector.t bool 128 :=
+       fun st => from_cols_bits (map flatten st) in
+   (* run encrypt test with this version of add_round_key plugged in *)
+   aes_test_encrypt Matrix
+                    (fun step key =>
+                       match step with
+                       | AddRoundKey =>
+                         fun st =>
+                           let input := to_state st in
+                           let k := to_state key in
+                           let output := unIdent (add_round_key k input) in
+                           from_state output
+                       | _ => aes_impl step key
+                       end) = Success).
+Proof. vm_compute. reflexivity. Qed.
