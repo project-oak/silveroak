@@ -134,21 +134,29 @@ Definition print_matrix (st : state) : string :=
                  rows in
   newline ++ String.concat newline (to_list lines).
 
+(* Selects how to print the state in errors *)
+Inductive TestPrintFormat := Hex | Matrix.
+
 (* Shortcut/convenience definitions *)
 Definition aes_test_encrypt
-           (print_state_as_matrix : bool)
+           (fmt : TestPrintFormat)
            (impl : AESStep -> round_key -> state -> state) : TestResult :=
-  if print_state_as_matrix
-  then run_test state_eqb print_matrix print_matrix fips_c3_forward impl
-  else run_test state_eqb Bv2Hex Bv2Hex fips_c3_forward impl.
-Definition aes_test_decrypt
-           (print_state_as_matrix : bool)
-           (impl : AESStep -> round_key -> state -> state) : TestResult :=
-  if print_state_as_matrix
-  then run_test state_eqb print_matrix print_matrix fips_c3_equivalent_inverse impl
-  else run_test state_eqb Bv2Hex Bv2Hex fips_c3_equivalent_inverse impl.
+  let test := fips_c3_forward in
+  match fmt with
+  | Matrix => run_test state_eqb print_matrix print_matrix test impl
+  | Hex => run_test state_eqb Bv2Hex Bv2Hex test impl
+  end.
 
-Goal (aes_test_encrypt false aes_impl = Success).
-Proof. vm_compute. reflexivity. Qed.
-Goal (aes_test_decrypt false aes_impl = Success).
-Proof. vm_compute. reflexivity. Qed.
+Definition aes_test_decrypt
+           (fmt : TestPrintFormat)
+           (impl : AESStep -> round_key -> state -> state) : TestResult :=
+  let test := fips_c3_equivalent_inverse in
+  match fmt with
+  | Matrix => run_test state_eqb print_matrix print_matrix test impl
+  | Hex => run_test state_eqb Bv2Hex Bv2Hex test impl
+  end.
+
+Goal (aes_test_encrypt Hex aes_impl = Success).
+Proof. native_compute. reflexivity. Qed.
+Goal (aes_test_decrypt Hex aes_impl = Success).
+Proof. native_compute. reflexivity. Qed.
