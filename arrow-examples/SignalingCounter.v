@@ -52,7 +52,7 @@ Definition signaling_counter_Interface :=
 Definition signaling_counter_netlist :=
   build_netlist (closure_conversion counter) "signaling_counter" ("is_valid", "value") "count".
 
-(* first for cycles have 'is_valid = false' and should not increment the counter *)
+(* first four cycles have 'is_valid = false' and should not increment the counter *)
 Definition signaling_counter_tb_inputs : list (bool * Bvector.Bvector 4) :=
   (repeat (false, N2Bv_sized 4 1) 4) ++ (repeat (true, N2Bv_sized 4 1) 4).
 
