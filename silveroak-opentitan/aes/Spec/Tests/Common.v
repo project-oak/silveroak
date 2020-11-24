@@ -1,3 +1,4 @@
+(****************************************************************************)
 (* Copyright 2020 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
@@ -15,10 +16,10 @@
 
 Require Import Coq.NArith.NArith.
 Require Import Coq.Numbers.DecimalString.
-Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.HexString.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
+Require Import ExtLib.Data.Char.
 Require Import Coq.Vectors.Vector.
 Require Import Cava.VectorUtils.
 Import ListNotations.
@@ -86,7 +87,7 @@ Definition full_data_for_steps
          (0%nat, test.(plaintext), [])).
 
 (* TODO: create a string-based Utils file? *)
-Definition newline := (String "010"%char "").
+Definition newline := (String chr_newline "").
 
 Section RunTest.
   Context {round_key state}
