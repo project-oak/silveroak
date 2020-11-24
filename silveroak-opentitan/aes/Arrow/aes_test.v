@@ -18,6 +18,7 @@ From Coq Require Import Arith.Arith Logic.Eqdep_dec Vectors.Vector micromega.Lia
      NArith.NArith ZArith.ZArith Strings.String NArith.Ndigits.
 From Cava Require Import Arrow.ArrowExport BitArithmetic VectorUtils.
 
+From AesSpec Require Import Tests.CipherTest Tests.Common.
 From Aes Require Import pkg mix_columns sbox sub_bytes shift_rows cipher_round.
 
 Require Import coqutil.Z.HexNotation.
@@ -64,4 +65,45 @@ Definition test_cipher_rev (cipher: bool -> Vector.t bool 256 -> Vector.t bool 1
 0x74, 0xed, 0x0b, 0xa1, ~ 0x73, 0x9b, 0x7e, 0x25, ~ 0x22, 0x51, 0xad, 0x14, ~ 0xce, 0x20, 0xd4, 0x3b = k13
 0x10, 0xf8, 0x0a, 0x17, ~ 0x53, 0xbf, 0x72, 0x9c, ~ 0x45, 0xc9, 0x79, 0xe7, ~ 0xcb, 0x70, 0x63, 0x85 = k14
 *)
+
+(* Plug aes subroutines into testing infrastructure *)
+Definition aes_impl_for_tests
+           (step : AESStep) (k st : Vector.t bool 128) : Vector.t bool 128 :=
+  (* forward vs inverse direction flag *)
+  let FWD := kinterp CIPH_FWD tt in
+  let INV := kinterp CIPH_INV tt in
+  (* convert between flat-vector representation and state type *)
+  (* Note: implementation uses row-major state *)
+  let from_flat : Vector.t bool 128 ->
+                  denote_kind << Vector (Vector (Vector Bit 8) 4) 4 >> :=
+      fun st => Vector.map (Vector.map (fun r => byte_to_bitvec r)) (to_rows st) in
+  let to_flat : denote_kind << Vector (Vector (Vector Bit 8) 4) 4 >> ->
+                Vector.t bool 128 :=
+      fun st => from_rows (Vector.map (Vector.map (fun r => bitvec_to_byte r)) st) in
+  match step with
+  | AddRoundKey =>
+    (* no specific definition for the xor; use spec version *)
+    aes_impl step k st
+  | SubBytes =>
+    to_flat (kinterp (aes_sub_bytes SboxCanright) (FWD, (from_flat st, tt)))
+  | InvSubBytes =>
+    to_flat (kinterp (aes_sub_bytes SboxCanright) (INV, (from_flat st, tt)))
+  | ShiftRows =>
+    to_flat (kinterp aes_shift_rows (FWD, (from_flat st, tt)))
+  | InvShiftRows =>
+    to_flat (kinterp aes_shift_rows (INV, (from_flat st, tt)))
+  | MixColumns =>
+    to_flat (kinterp aes_mix_columns (FWD, (from_flat st, tt)))
+  | InvMixColumns =>
+    to_flat (kinterp aes_mix_columns (INV, (from_flat st, tt)))
+  end.
+
+(* TODO: native_compute is faster here, but fails on CI because "ocaml compiler
+   is not installed" *)
+(* Run full encryption test from FIPS *)
+Goal (aes_test_encrypt Matrix aes_impl_for_tests = Success).
+Proof. vm_compute. reflexivity. Qed.
+(* Run full decryption test from FIPS *)
+Goal (aes_test_decrypt Matrix aes_impl_for_tests = Success).
+Proof. vm_compute. reflexivity. Qed.
 
