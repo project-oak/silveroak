@@ -106,6 +106,7 @@ Definition aes_cipher_core_mealy
 
   ]>.
 
+(* TODO(#357): op_i needs valid flag and to be respected *)
 Definition aes_cipher_core
   (sbox_impl: SboxImpl) :=
   <[ fun "aes_cipher_core"
@@ -137,7 +138,7 @@ Definition test_input : list
       (@reshape _ 8 4 (reshape test_key), (false, false )))))
   ].
 
-(* Test *)
+(* TODO(#357): evaluate *)
 Eval vm_compute in
   (interp_sequential (((aes_cipher_core SboxLut) : Kappa _ _) _) test_input).
 
