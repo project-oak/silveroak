@@ -1,0 +1,10 @@
+Makefile.coq
+.Makefile.coq.d
+*.sv
+!testbench/*
+*.vcd
+*.vvp
+*.hs
+*.cpp
+*.tcl
+obj_dir/

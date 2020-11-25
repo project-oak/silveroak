@@ -50,3 +50,22 @@ Definition final_cipher_round
     let stage2 = !aes_shift_rows op_i stage1 in
     stage2 ^ key
     ]>.
+
+Definition cipher_round_combined
+  (sbox_impl: SboxImpl)
+  : << Bit                               (* cipher mode: CIPH_FWD/CIPH_INV *)
+    , Vector (Vector (Vector Bit 8) 4) 4 (* data input *)
+    , Vector (Vector (Vector Bit 8) 4) 4 (* round key *)
+    , Bit                                (* first round *)
+    , Bit                                (* final round *)
+    , Unit>> ~>
+      Vector (Vector (Vector Bit 8) 4) 4 :=
+  <[\op_i data_i key first_round final_round =>
+    let stage1 = !(aes_sub_bytes sbox_impl) op_i data_i in
+    let stage2 = !aes_shift_rows op_i stage1 in
+    let stage3 = !aes_mix_columns op_i stage2 in
+    let out =
+      if first_round then data_i else
+      if final_round then stage2 else stage3 in
+    out ^ key
+    ]>.

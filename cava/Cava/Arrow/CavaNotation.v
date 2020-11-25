@@ -212,7 +212,7 @@ Section regression_examples.
   <[ \ x v => snoc x v ]>.
 
   Definition ex7_xor :=
-    <[fun "ex7_xor" (x : _ Bit) (y : _ Bit) : Bit => xor x y ]>.
+    <[fun "ex7_xor" (x : _ Bit) (y : _ Bit) : Bit => let z = xor x y in z ]>.
 
   Definition ex7_tupled_destruct: << << Bit, Bit>>, Unit>> ~> Bit :=
   <[ \ xy =>
