@@ -10,10 +10,10 @@ ExpandAllKeys.v
 InterleavedCipher.v
 InterleavedInverseCipher.v
 Sbox.v
+ShiftRows.v
 SubBytes.v
 
 Placeholder/MixColumns.v
-Placeholder/ShiftRows.v
 
 Tests/CipherTest.v
 Tests/Common.v
