@@ -32,6 +32,13 @@ Import ListNotations.
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
 
+From ExtLib Require Import Structures.Monads.
+From ExtLib Require Import Structures.Applicative.
+From ExtLib Require Import Structures.Traversable.
+From ExtLib Require Export Data.Monads.StateMonad.
+
+Import MonadNotation.
+
 Section combinational_semantics.
   Definition coq_func t := denote_kind t.
 
@@ -109,6 +116,193 @@ Section combinational_semantics.
     (expr: kappa list_func x y)
     (i: list_func (remove_rightmost_unit x)): (list_func y) :=
     interp_sequential' expr (map (denote_apply_rightmost_tt x) i).
+
+  Inductive skappa: Kind -> Kind -> Type :=
+  | SVar : forall {x}, nat -> skappa Unit x
+  | SAbs : forall {x y z}, skappa y z -> skappa (Tuple x y) z
+  | SApp : forall {x y z}, skappa (Tuple x y) z -> skappa Unit x -> skappa y z
+  | SComp: forall {x y z}, skappa y z -> skappa x y -> skappa x z
+  | SComp1: forall {x y z}, skappa y z -> skappa x (remove_rightmost_unit y) -> skappa x z
+  | SDelay: forall {x},
+    skappa (Tuple x Unit) x
+  | SPrimitive : forall prim, skappa (extended_prim_input prim) (primitive_output prim)
+  | SLet: forall {x y z}, skappa Unit x -> skappa y z -> skappa y z
+  | SLetRec : forall {x y z},
+    skappa Unit x -> skappa y z -> skappa y z
+  | SId : forall {x}, skappa x x
+  | STypecast : forall x y, skappa (Tuple x Unit) y
+  | SCallModule: forall {x y}, skappa x y -> skappa x y
+  .
+
+  Arguments skappa : clear implicits.
+
+  Print skappa.
+
+  Fixpoint to_skappa {i o} (n: nat) (e: kappa natvar i o): skappa i o :=
+    match e with
+    | Var x => SVar x
+    | Abs f => SAbs (to_skappa (S n) (f n))
+    | App f e => SApp (to_skappa n f) (to_skappa n e)
+    | Comp f g => SComp (to_skappa n f) (to_skappa n g)
+    | Comp1 f g => SComp1 (to_skappa n f) (to_skappa n g)
+    | Delay => SDelay
+    | Let v f => SLet (to_skappa n v) (to_skappa (S n) (f n))
+    | LetRec v f =>
+      SLetRec
+        (to_skappa (S n) (v n))
+        (to_skappa (S n) (f n))
+    | Id => SId
+    | Typecast _ _ => STypecast _ _
+    | CallModule (mkModule _ m) => SCallModule (to_skappa 0 (m _))
+    | Primitive p => SPrimitive p
+    end.
+
+  Definition to_skappa' {i o} (e: Kappa i o): skappa i o :=
+    to_skappa 0 (e _).
+
+  Definition merge_maybes (a b: option Type): option Type :=
+    match a, b with
+    | Some a, Some b => Some (prod a b)
+    | Some a, _ => Some a
+    | _, Some b => Some b
+    | _, _ => None
+    end.
+
+  Fixpoint skappa_state {i o} (e: skappa i o): Type :=
+    match e with
+    | SAbs f => skappa_state f
+    | SApp f e => prod (skappa_state f) (skappa_state e)
+    | SComp f g => prod (skappa_state f) (skappa_state g)
+    | SComp1 f g => prod (skappa_state f) (skappa_state g)
+    | @SDelay x => denote_kind x
+    | SLet v f => prod (skappa_state v) (skappa_state f)
+    | @SLetRec x _ _ v f =>
+      (prod (denote_kind x) (prod (skappa_state v) (skappa_state f)))
+    | SCallModule e => skappa_state e
+    | _ => unit
+    end.
+
+  Definition index_env (env: list {x&denote_kind x}) (n: nat) (x: Kind)
+    : denote_kind x :=
+    match nth_error env n with
+    | None => kind_default _
+    | Some (existT _ k v) => rewrite_or_default _ _ v
+    end.
+
+  Notation "x :< y" := (y ++ [existT _ _ x]) (at level 0, no associativity).
+
+  Fixpoint sequential_step {i o} (e: skappa i o)
+    (env: list {x&denote_kind x}) :
+    skappa_state e -> denote_kind i ->
+    (skappa_state e * denote_kind o)
+    :=
+    match e as e in skappa i o return
+      skappa_state e -> denote_kind i ->
+      (skappa_state e * denote_kind o)
+      with
+    | SVar n => fun _ _ => (tt, index_env env n _)
+    | SAbs f =>
+      fun s '(x,y) => sequential_step f (x :< env) s y
+    | SApp f e =>
+      fun s x =>
+        let '(os2, y) := sequential_step e env (snd s) tt in
+        let '(os1, z) := sequential_step f env (fst s) (y, x) in
+        ((os1,os2), z)
+    | SComp f g =>
+      fun s x =>
+        let '(os2, y) := sequential_step g env (snd s) x in
+        let '(os1, z) := sequential_step f env (fst s) y in
+        ((os1,os2), z)
+    | SComp1 f g =>
+      fun s x =>
+        let '(os2, y) := sequential_step g env (snd s) x in
+        let '(os1, z) := sequential_step f env (fst s) (denote_apply_rightmost_tt _ y) in
+        ((os1,os2), z)
+    | @SDelay x => fun s '(i,_) => (i, s)
+    | SLet v f =>
+      fun s x =>
+        let '(os1, y) := sequential_step v env (fst s) tt in
+        let '(os2, z) := sequential_step f (y :< env) (snd s) x in
+        ((os1,os2), z)
+    | @SLetRec x _ _ v f =>
+      fun  s
+      (* '(sv, (s1,s2)) *)
+      x =>
+        let '(os1, y) := sequential_step v ((fst s) :< env) (fst (snd s)) tt in
+        let '(os2, z) := sequential_step f ((fst s) :< env) (snd (snd s)) x in
+        ((y,(os1,os2)), z)
+    | SCallModule e => fun s i => sequential_step e [] s i
+    | SId => fun _ x => (tt, x)
+    | STypecast _ _ => fun _ x => (tt, rewrite_or_default _ _ x)
+    | SPrimitive p =>
+      match p with
+      | P0 p => fun _ x => (tt, primitive_semantics (P0 p) x)
+      | P1 p => fun _ x => (tt, primitive_semantics (P1 p) (fst x))
+      | P2 p => fun _ x => (tt, primitive_semantics (P2 p) (fst x, fst (snd x)))
+      end
+    end.
+
+  Fixpoint wf_indexing {i o}
+  (ctxt: list Kind)
+  (expr: skappa i o) {struct expr}
+  : Prop :=
+  match expr with
+  | SVar n  => nth_error ctxt n = Some o
+  | @SAbs x _ _ f => wf_indexing (ctxt ++ [x]) f
+  | SApp e1 e2 => wf_indexing ctxt e1 /\ wf_indexing ctxt e2
+  | SComp e1 e2 => wf_indexing ctxt e1 /\ wf_indexing ctxt e2
+  | SComp1 e1 e2 => wf_indexing ctxt e1 /\ wf_indexing ctxt e2
+  | SDelay => True
+  | SPrimitive _ => True
+  | SId => True
+  | STypecast x y => True
+  | @SLet x _ _ v f => wf_indexing (ctxt ++ [x]) f /\ wf_indexing ctxt v
+  | @SLetRec x _ _ v f => wf_indexing (ctxt ++ [x]) v/\ wf_indexing (ctxt ++ [x]) f
+  | SCallModule e => wf_indexing [] e
+  end.
+
+  Fixpoint sequential_step' {i o} (e: skappa i o):
+    skappa_state e -> denote_kind i ->
+    (skappa_state e * denote_kind o)
+    := sequential_step e [].
+
+  Fixpoint unroll_sequential_step' {i o: Kind}
+    (e: skappa i o)
+    (state: skappa_state e)
+    (i: list (denote_kind (remove_rightmost_unit i)))
+    : list (denote_kind o) :=
+    match i with
+    | [] => []
+    | x :: xs =>
+      let '(ns, o) := sequential_step' e state (denote_apply_rightmost_tt _ x)
+      in o :: unroll_sequential_step' e ns xs
+    end%list.
+
+  Fixpoint default_state {i o} (e: skappa i o) : skappa_state e :=
+    match e with
+    | SAbs f => default_state f
+    | SApp f e => pair (default_state f) (default_state e)
+    | SComp f g => pair (default_state f) (default_state g)
+    | SComp1 f g => pair (default_state f) (default_state g)
+    | @SDelay x => kind_default x
+    | SLet v f => pair (default_state v) (default_state f)
+    | @SLetRec x _ _ v f =>
+      (pair (kind_default x) (pair (default_state v) (default_state f)))
+    | SCallModule e => default_state e
+    | _ => tt
+    end.
+
+  Definition unroll_sequential_step {i o: Kind}
+    (e: skappa i o)
+    (i: list (denote_kind (remove_rightmost_unit i)))
+    : list (denote_kind o) :=
+    unroll_sequential_step' e (default_state _) i.
+
+  Lemma next_sequential_step {x y} (e: skappa x y) s i is :
+    unroll_sequential_step' e s (i::is) =
+      let '(ns, o) := sequential_step' e s (denote_apply_rightmost_tt _ i)
+      in o :: unroll_sequential_step' e ns is.
+  Proof. auto. Qed.
 
 End combinational_semantics.
 
