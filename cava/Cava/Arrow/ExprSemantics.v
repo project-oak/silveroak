@@ -55,7 +55,7 @@ Section combinational_semantics.
     | Typecast _ _ => rewrite_or_default _ _
     | Let v f => fun y =>
       interp_combinational' (f (interp_combinational' v tt)) y
-    | CallModule (mkModule _ m) => interp_combinational' (m _)
+    | CallModule m => interp_combinational' (module_to_expr m  _)
 
     | LetRec v f => fun _ => kind_default _
     | Delay => fun _ => kind_default _

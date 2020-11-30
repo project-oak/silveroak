@@ -21,17 +21,11 @@ Require Import Cava.Arrow.ArrowExport.
 (* This file contains tactics and notations designed to simplify proofs that
    derive or prove specifications for kappa-level circuits. *)
 
-Lemma reduce_module_match i o (f: ModuleK i o):
-  interp_combinational' ((f: Kappa _ _) coq_func) =
-  match f with
-  | {| module_body := m |} => interp_combinational' (m coq_func)
-  end .
-Proof. now destruct f. Qed.
-
 Ltac kappa_spec_begin :=
   intros; cbn [interp_combinational'
     denote_apply_rightmost_tt
     fst snd
+    module_to_expr module_body
   ];
   repeat match goal with
          | |- context [primitive_semantics ?p] =>
@@ -46,25 +40,6 @@ Create HintDb kappa_interp discriminated.
 
 Ltac kappa_spec_step :=
   match goal with
-  | |- context E [ interp_combinational' ((module_to_expr {| module_body := ?X |}) coq_func) ]
-    =>
-      change (interp_combinational' ((module_to_expr {| module_body := X |}) coq_func))
-        with (interp_combinational' (X coq_func))
-      ; kappa_spec_begin
-
-  | |- context E [ match ?f with _ => _ end ] =>
-    replace (match f with _ => _ end) with (kinterp f)
-    (* ; [|apply reduce_module_match] -- sometimes replace fails to replace the right thing?
-      instead catch an incorrect replace and fall back to the slower 'change' *)
-    ; [|
-    lazymatch goal with
-    | |- context[match _ with _ => _ end] => idtac
-    | |- _ => (* idtac "no match found in generated equality?!"; *) fail
-    end
-    ; apply reduce_module_match]
-  | |- context E [ match ?f with _ => _ end ] =>
-    let E' := context E [kinterp f] in change E'
-
   | H : context [interp_combinational' (_ coq_func) _ = _] |- _ => rewrite H by eauto
   | _ => progress (autorewrite with kappa_interp)
   | |- context [interp_combinational'] => kappa_spec_begin
