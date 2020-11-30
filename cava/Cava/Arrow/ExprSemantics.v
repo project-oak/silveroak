@@ -103,6 +103,67 @@ Section combinational_semantics.
     (i: list_func (remove_rightmost_unit x)): (list_func y) :=
     interp_sequential' expr (map (denote_apply_rightmost_tt x) i).
 
+  Notation state := (list {k & denote_kind k}).
+
+  Fixpoint interp_sequential1' {i o: Kind}
+    (expr: kappa coq_func i o)
+    : state -> denote_kind i -> (state * state * denote_kind o) :=
+    match expr in kappa _ i o return state -> denote_kind i -> (state * state * denote_kind o) with
+    | Abs f => fun s '(x,y) => interp_sequential1' (f x) s y
+    | App f e => fun s y =>
+      let '(state_curr, state_next1, o) := interp_sequential1' e s tt in
+      let '(state_curr, state_next2, o) := interp_sequential1' f state_curr (o, y) in
+      (state_curr, state_next1 ++ state_next2, o)
+    | Comp g f => fun s x =>
+      let '(state_curr, state_next1, o) := interp_sequential1' f s x in
+      let '(state_curr, state_next2, o) := interp_sequential1' g state_curr o in
+      (state_curr, state_next1 ++ state_next2, o)
+    | Comp1 g f => fun s x =>
+      let '(state_curr, state_next1, o) := interp_sequential1' f s x in
+      let '(state_curr, state_next2, o) := interp_sequential1' g state_curr (denote_apply_rightmost_tt _ o) in
+      (state_curr, state_next1 ++ state_next2, o)
+    | CallModule (mkModule _ m) => interp_sequential1' (m _)
+
+    | Let v f => fun s y =>
+      let '(state_curr, state_next1, o) := interp_sequential1' v s tt in
+      let '(state_curr, state_next2, o) := interp_sequential1' (f o) state_curr y in
+      (state_curr, state_next1 ++ state_next2, o)
+    | LetRec v f => fun s x =>
+      let '(state_curr, old_v) :=
+        match s with
+        | [] => ([], kind_default _)
+        | existT _ _ s :: ss => (ss, rewrite_or_default _ _ s)
+        end in
+      let '(state_curr, state_next1, next_v) := interp_sequential1' (v old_v) state_curr tt in
+      let '(state_curr, state_next2, o) := interp_sequential1' (f old_v) state_curr x in
+      (state_curr, [existT _ _ next_v] ++ state_next1 ++ state_next2, o)
+
+    | @Delay _ X => fun s '(x,_) =>
+      match s with
+      | [] => ([], [existT _ X x], kind_default _)
+      | existT _ _ s :: ss =>
+        (ss, [existT _ X x], rewrite_or_default _ _ s)
+      end
+
+    | e => fun s x => (s, [], interp_combinational' e x)
+    end.
+
+  Definition interp_sequential1 {x y: Kind}
+    (expr: kappa coq_func x y)
+    (s: state)
+    (i: coq_func (remove_rightmost_unit x)): (state * coq_func y) :=
+    let '(_, s, o) := interp_sequential1' expr s (denote_apply_rightmost_tt x i) in
+    (s, o).
+
+  Definition interp_sequential11 {x y: Kind}
+    (expr: kappa coq_func x y)
+    (i: list_func (remove_rightmost_unit x)): (list_func y) :=
+    snd (
+    fold_left (fun '(s, os) i =>
+      let (ns, o) := interp_sequential1 expr (rev s) i in
+      (ns, os ++ [o])
+    ) i ([], []) ).
+
 End combinational_semantics.
 
 (* convenient notation *)
