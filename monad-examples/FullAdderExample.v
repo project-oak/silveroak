@@ -22,46 +22,17 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Lib.FullAdder.
 Require Import Cava.Monad.XilinxAdder.
 
 Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.
 
   (****************************************************************************)
-  (* Build a half-adder                                                       *)
+  (* Build a full-adder that takes a flat-tuple for netlist generation.       *)
   (****************************************************************************)
-
-  Definition halfAdder '(a, b) :=
-    partial_sum <- xor2 (a, b) ;;
-    carry <- and2 (a, b) ;;
-    ret (partial_sum, carry).
-
-  (****************************************************************************)
-  (* Build a full-adder                                                       *)
-  (****************************************************************************)
-
-  Definition fullAdder '(cin, (a, b)) :=
-    '(abl, abh) <- halfAdder (a, b) ;;
-    '(abcl, abch) <- halfAdder (abl, cin) ;;
-    cout <- or2 (abh, abch) ;;
-    ret (abcl, cout).
 
   Definition fullAdderTop '(cin, a, b) := fullAdder (cin, (a, b)).  
-
-  (****************************************************************************)
-  (* Now build an n-bit adder out of full-adders                              *)
-  (****************************************************************************)
-
-  Definition adder' := col fullAdder.
-
-  Definition adder '(cin, (a, b)) :=
-    adder' (cin, combine a b).
-
-  Local Open Scope list_scope.
-
-  Definition adderWithGrowth '(cin, (a, b)):=
-    '(sum, carryOut) <- adder (cin, (a, b)) ;;
-    ret (sum ++ [carryOut]).
 
 End WithCava.
 
@@ -124,7 +95,7 @@ Qed.
 (* Prove the generic full adder is equivalent to Xilinx fast adder. *)
 Lemma generic_vs_xilinx_adder : forall (a : bool) (b : bool) (cin : bool),
                                 combinational (fullAdderTop (cin, a, b)) =
-                                combinational (xilinxFullAdder cin (a, b)).
+                                combinational (xilinxFullAdder (cin, (a, b))).
 Proof.
   intros.
   unfold combinational. simpl.

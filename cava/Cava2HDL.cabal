@@ -59,6 +59,7 @@ library
                      ExprSyntax
                      ExprSemantics
                      ExprLowering
+                     FullAdder
                      HexString
                      IdentityMonad
                      Kind

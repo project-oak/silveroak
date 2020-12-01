@@ -14,57 +14,63 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+From Coq Require Import Bool.Bool.
 Require Import ExtLib.Structures.Monads.
-
-Require Import Init.Nat Arith.Arith micromega.Lia.
+Require Export ExtLib.Data.Monads.IdentityMonad.
+Import MonadNotation.
+Open Scope monad_scope.
+Open Scope type_scope.
 
 Require Import Cava.Cava.
-From Cava Require Import Kind.
 Require Import Cava.Monad.CavaMonad.
 
 Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.
 
   (****************************************************************************)
-  (* An adder with two inputs of the same size and no bit-growth              *)
+  (* Build a half-adder                                                       *)
   (****************************************************************************)
 
-  Lemma n_le_n_plus_1 : forall n, 0 + n <= 1 + n.
-  Proof. auto. Defined.
-
-  Lemma max_n_n : forall n, max n n = n.
-  Proof.
-    intros.
-    induction n.
-    - reflexivity.
-    - simpl. rewrite IHn. reflexivity.
-  Defined.
-
-  Definition deMax {n} (v: signal (Vec Bit (1 + max n n))) :
-                       signal (Vec Bit (1+n)).
-  Proof.
-    rewrite max_n_n in v.
-    apply v.
-  Defined.
-
-  Definition addN {n: nat}
-                  (a b: signal (Vec Bit n))
-                  : cava (signal (Vec Bit n)) :=
-    s <- unsignedAdd a b ;;
-    ret (slice 0 n (deMax s) (n_le_n_plus_1 _)).
+  Definition halfAdder '(a, b) :=
+    partial_sum <- xor2 (a, b) ;;
+    carry <- and2 (a, b) ;;
+    ret (partial_sum, carry).
 
   (****************************************************************************)
-  (* A three input adder.                                                     *)
+  (* Build a full-adder                                                       *)
   (****************************************************************************)
-
-  Definition adder_3input {aSize bSize cSize}
-                          (a : signal (Vec Bit aSize))
-                          (b : signal (Vec Bit bSize))
-                          (c : signal (Vec Bit cSize)) :
-                          cava (signal (Vec Bit (1 + max (1 + max aSize bSize) cSize)))
-                          :=
-    a_plus_b <- unsignedAdd a b ;;
-    sum <- unsignedAdd a_plus_b c ;;
-    ret sum.
+  
+  Definition fullAdder '(cin, (a, b))
+                       : cava (signal Bit * signal Bit) :=
+    '(abl, abh) <- halfAdder (a, b) ;;
+    '(abcl, abch) <- halfAdder (abl, cin) ;;
+    cout <- or2 (abh, abch) ;;
+    ret (abcl, cout).
 
  End WithCava.
+ 
+Section Combinational.
+
+  (* A proof that the half-adder is correct. *)
+  Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
+                              unIdent (halfAdder (a, b)) = (xorb a b, a && b).
+
+  Proof.
+    auto.
+  Qed.
+
+  (* A proof that the the full-adder is correct. *)
+  Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
+                              combinational (fullAdder (cin, (a, b)))
+                                = (xorb cin (xorb a b),
+                                  (a && b) || (b && cin) || (a && cin)).
+  Proof.
+    intros.
+    unfold combinational.
+    unfold fst.
+    simpl.
+    case a, b, cin.
+    all : reflexivity.
+  Qed.
+
+End Combinational.

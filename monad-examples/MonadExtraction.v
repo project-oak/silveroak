@@ -17,7 +17,7 @@
 Require Import MonadExamples.Examples.
 Require Import MonadExamples.NandGate.
 Require Import MonadExamples.Multiplexers.
-Require Import MonadExamples.FullAdder.
+Require Import MonadExamples.FullAdderExample.
 Require Import MonadExamples.UnsignedAdderExamples.
 Require Import MonadExamples.AdderTree.
 Require Import MonadExamples.Sorter.
@@ -32,7 +32,7 @@ Extraction Language Haskell.
 Extraction Library Examples.
 Extraction Library NandGate.
 Extraction Library Multiplexers.
-Extraction Library FullAdder.
+Extraction Library FullAdderExample.
 Extraction Library UnsignedAdderExamples.
 Extraction Library AdderTree.
 Extraction Library Sorter.

@@ -31,7 +31,7 @@ Export MonadNotation.
 
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
-Require Import Cava.Monad.UnsignedAdders.
+Require Import Cava.Lib.UnsignedAdders.
 
 (******************************************************************************)
 (* A generic description of all adder trees made from a syntheszable adder    *)
@@ -44,10 +44,8 @@ Section WithCava.
   (* An adder-tree with no bit-growth. *)
   Definition adderTree {sz: nat}
                        (n: nat) (v: signal (Vec (Vec Bit sz) (2^(S n)))):
-                      cava (signal (Vec Bit sz)) :=
-    z <- zero ;;
-    let def := unpeel (Vector.const z sz) in
-    tree def n addN (peel v).
+                       cava (signal (Vec Bit sz)) :=
+    treeS addN (peel v).
 
   (* An adder tree with 2 inputs. *)
   Definition adderTree2 {sz: nat}

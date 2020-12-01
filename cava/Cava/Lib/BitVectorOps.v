@@ -14,49 +14,28 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* Definitions used for nat level proofs about the full adder which are kept
-   separate because they are not used for extraction to SystemVerilog.
-*)
-
-From Coq Require Import ZArith.ZArith.
-From Coq Require Import ZArith.BinInt.
-From Coq Require Import Bool.Bool.
-From Coq Require Import Strings.Ascii Strings.String.
-From Coq Require Import Lists.List.
-Require Import Coq.Init.Nat Coq.Arith.Arith Coq.micromega.Lia.
-Import ListNotations.
-
-From Coq Require Import btauto.Btauto.
+From Coq Require Import Vectors.Vector.
+Import VectorNotations.
+Local Open Scope vector_scope.
 
 Require Import ExtLib.Structures.Monads.
-
-Local Open Scope list_scope.
-Local Open Scope monad_scope.
+Require Import ExtLib.Structures.Traversable.
+Export MonadNotation.
+Open Scope monad_scope.
 
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
-Require Import MonadExamples.FullAdder.
+From Cava Require Import VectorUtils.
 
-Open Scope N_scope.
+Section WithCava.
+  Context {signal} `{Cava signal} `{Monad cava}.
 
-Lemma halfAdderNat_correct :
-  forall (a : N) (b : N), a < 2 -> b < 2 ->
-  let '(part_sum, carry_out) := combinational (halfAdder (n2bool a, n2bool b)) in
-  list_bits_to_nat [part_sum; carry_out] = a + b.
-Proof.
-  intros.
-  unfold list_bits_to_nat. simpl.
-  case a, b.
-  all : simpl.
-Admitted.
+  (* A circuit to xor two bit-vectors *)
+  Definition xorV {n : nat} (ab: signal (Vec Bit n) * signal (Vec Bit n)) :
+    cava (signal (Vec Bit n)) :=
+    let a' := peel (fst ab) in
+    let b' := peel (snd ab) in
+    r <- mapT xor2 (vcombine a' b') ;;
+    ret (unpeel r).
 
-
-Lemma fullAdderNat_correct :
-  forall (a : N) (b : N) (cin : N), a < 2 -> b < 2 -> cin < 2 ->
-  let '(sum, carry_out) := combinational (fullAdder (n2bool cin, (n2bool a, n2bool b))) in
-  list_bits_to_nat [sum; carry_out] = a + b + cin.
-Proof.
-  intros.
-  case a, b, cin.
-  all : simpl.
-Admitted.
+End WithCava.
