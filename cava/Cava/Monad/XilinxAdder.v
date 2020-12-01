@@ -26,8 +26,8 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
-Require Import Cava.VectorUtils.
 Require Import Cava.Monad.CavaMonad.
+Require Import Cava.VectorUtils.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -41,11 +41,8 @@ Section WithCava.
   (* Build a full-adder with explicit use of Xilinx FPGA fast carry logic     *)
   (****************************************************************************)
 
-  Definition xilinxFullAdder
-            (cin: signal Bit)
-            (ab: signal Bit * signal Bit)
-    : cava (signal Bit * signal Bit) :=
-    let (a, b) := ab in
+  Definition xilinxFullAdder '(cin, (a, b))
+                             : cava (signal Bit * signal Bit) :=
     part_sum <- xor2 (a, b) ;;
     sum <- xorcy (part_sum, cin) ;;
     cout <- muxcy part_sum cin a  ;;
@@ -61,7 +58,7 @@ Section WithCava.
     := let '(cin, (a, b)) := cinab in
       let a0 := peel a in
       let b0 := peel b in
-      '(sum, cout) <- colV n xilinxFullAdder cin (vcombine a0 b0) ;;
+      '(sum, cout) <- colV xilinxFullAdder (cin, vcombine a0 b0) ;;
       ret (unpeel sum, cout).
 
   (******************************************************************************)
@@ -95,7 +92,7 @@ Section WithCombinational.
   (* A proof that the the full-adder is correct. *)
   Lemma xilinxFullAdder_behaviour :
     forall (a : bool) (b : bool) (cin : bool),
-          combinational (xilinxFullAdder cin (a, b))
+          combinational (xilinxFullAdder (cin, (a, b)))
           = (xorb cin (xorb a b),
             (a && b) || (b && cin) || (a && cin)).
   Proof.

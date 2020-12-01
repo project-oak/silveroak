@@ -51,9 +51,9 @@ Section WithCava.
 
   Definition adderWithGrowthNoCarryInV {n : nat}
             (inputs: Vector.t (signal Bit * signal Bit) n) :
-            m (Vector.t (signal Bit) (n + 1)) :=
-    adderWithGrowthV (zero, inputs).
-
+            cava (Vector.t (signal Bit) (n + 1)) :=
+    const0 <- zero ;;    
+    adderWithGrowthV (const0, inputs).
 
   Definition addLWithCinV {n : nat}
                           (cin : signal Bit)
@@ -77,14 +77,15 @@ Section WithCava.
     colL fullAdder inputs.
 
   Definition adderWithGrowthL (inputs: signal Bit * (list (signal Bit * signal Bit))) :
-                              m (list (signal Bit)) :=
+                              cava (list (signal Bit)) :=
     '(sum, cout) <- unsignedAdderL inputs ;;
     ret (sum ++ [cout]).
 
   Definition adderWithGrowthNoCarryInL
             (inputs: list (signal Bit * signal Bit)) :
-            m (list (signal Bit)) :=
-    adderWithGrowthL (zero, inputs).
+            cava (list (signal Bit)) :=
+    const0 <- zero ;;
+    adderWithGrowthL (const0, inputs).
 
   Definition addLWithCinL (cin : signal Bit)
                           (a b : list (signal Bit)) :
