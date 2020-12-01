@@ -34,7 +34,6 @@ Require Import Cava.Monad.CombinationalMonad.
 Require Import Cava.Monad.CavaClass.
 Require Import Cava.Monad.Combinators.
 Require Import Cava.Monad.NetlistGeneration.
-Require Import Cava.Monad.UnsignedAdders.
 Require Import Cava.Monad.XilinxAdder.
 
 Require Import Cava.Lib.BitVectorOps.

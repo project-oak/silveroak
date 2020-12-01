@@ -332,6 +332,20 @@ Section WithCava.
     Vector.t A (2 ^ n) * Vector.t A (2 ^ n) :=
     splitat _ (@resize_default A (2 ^ (S n)) default (2 ^ n + 2 ^ n) v).
 
+  Fixpoint treeS {t: SignalType}
+                          {n : nat}
+                          (circuit: signal t -> signal t -> cava (signal t))
+                          (v : Vector.t (signal t) (2^(S n))) :
+                          cava (signal t) :=
+    match n, v return cava (signal t) with
+    | O, v2 => circuit (@Vector.nth_order _ 2 v2 0 (ltac:(lia)))
+                       (@Vector.nth_order _ 2 v2 1 (ltac:(lia)))
+    | S n', vR => let '(vL, vH) := divide defaultSignal vR in
+                  aS <- treeS circuit vL ;;
+                  bS <- treeS circuit vH ;;
+                  circuit aS bS
+    end.
+
   Fixpoint tree {T: Type} {m} `{Monad m}
                           (default : T) (n : nat)
                           (circuit: T -> T -> m T)

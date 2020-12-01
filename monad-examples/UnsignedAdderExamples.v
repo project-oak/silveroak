@@ -28,7 +28,7 @@ From Coq Require Import Bool.Bvector.
 
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
-Require Import Cava.Monad.UnsignedAdders.
+Require Import Cava.Lib.UnsignedAdders.
 
 (******************************************************************************)
 (* Some handy test vectors                                                   *)

@@ -61,10 +61,33 @@ Section WithCava.
                           cava (Vector.t (signal Bit) (n + 1)) :=
     adderWithGrowthV (cin, vcombine a b).
 
+  (* Curried add with no carry in *)
   Definition addV {n : nat}
             (a b: Vector.t (signal Bit) n) :
             cava (Vector.t (signal Bit) (n + 1)) :=
     adderWithGrowthNoCarryInV (vcombine a b).
+
+  (* Curried add with no carry in and no bit-growth, as signal. *)
+  Definition addN {n : nat}
+            (a b: signal (Vec Bit n)) :
+            cava (signal (Vec Bit n)) :=
+    const0 <- zero ;;
+    '(sum, _) <- unsignedAdderV (const0, vcombine (peel a) (peel b)) ;;
+    ret (unpeel sum).
+
+  (****************************************************************************)
+  (* A three input adder.                                                     *)
+  (****************************************************************************)
+
+  Definition adder_3input {aSize bSize cSize}
+                          (a : signal (Vec Bit aSize))
+                          (b : signal (Vec Bit bSize))
+                          (c : signal (Vec Bit cSize)) :
+                          cava (signal (Vec Bit (1 + max (1 + max aSize bSize) cSize)))
+                          :=
+    a_plus_b <- unsignedAdd a b ;;
+    sum <- unsignedAdd a_plus_b c ;;
+    ret sum.
 
   Local Close Scope vector_scope.
 

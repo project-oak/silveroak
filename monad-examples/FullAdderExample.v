@@ -34,21 +34,6 @@ Section WithCava.
 
   Definition fullAdderTop '(cin, a, b) := fullAdder (cin, (a, b)).  
 
-  (****************************************************************************)
-  (* Now build an n-bit adder out of full-adders                              *)
-  (****************************************************************************)
-
-  Definition adder' := col fullAdder.
-
-  Definition adder '(cin, (a, b)) :=
-    adder' (cin, combine a b).
-
-  Local Open Scope list_scope.
-
-  Definition adderWithGrowth '(cin, (a, b)):=
-    '(sum, carryOut) <- adder (cin, (a, b)) ;;
-    ret (sum ++ [carryOut]).
-
 End WithCava.
 
 Definition halfAdderInterface
@@ -110,7 +95,7 @@ Qed.
 (* Prove the generic full adder is equivalent to Xilinx fast adder. *)
 Lemma generic_vs_xilinx_adder : forall (a : bool) (b : bool) (cin : bool),
                                 combinational (fullAdderTop (cin, a, b)) =
-                                combinational (xilinxFullAdder cin (a, b)).
+                                combinational (xilinxFullAdder (cin, (a, b))).
 Proof.
   intros.
   unfold combinational. simpl.
