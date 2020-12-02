@@ -15,10 +15,10 @@
 (****************************************************************************)
 
 Require Import Coq.Program.Basics.
-From Coq Require Import Strings.Ascii Strings.String.
-From Coq Require Import ZArith.ZArith.
-From Coq Require Import Lists.List.
-From Coq Require Import Bool.Bool.
+Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.ZArith.ZArith.
+Require Import Coq.Lists.List.
+Require Import Coq.Bool.Bool.
 (* From Coq Require Import Numbers.NaryFunctions.
 From Coq Require Import Init.Datatypes. *)
 Require Import ExtLib.Structures.Monads.
@@ -28,9 +28,9 @@ Import MonadNotation.
 Open Scope list_scope.
 Open Scope monad_scope.
 
-From Cava Require Import Kind.
-From Cava Require Import Signal.
-From Cava Require Import VectorUtils.
+Require Import Cava.Kind.
+Require Import Cava.Signal.
+Require Import Cava.VectorUtils.
 
 Require Import Coq.Program.Program.
 Require Import Coq.Init.Nat Coq.Arith.Arith Coq.micromega.Lia.

@@ -14,10 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool.Bool ZArith.ZArith NArith.NArith
-     Numbers.NaryFunctions Vectors.Vector micromega.Lia Lists.List.
-From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
-From Cava Require Import Arrow.CircuitArrow Arrow.ArrowKind Arrow.Primitives.
+Require Import Coq.Bool.Bool Coq.ZArith.ZArith Coq.NArith.NArith
+     Coq.Numbers.NaryFunctions Coq.Vectors.Vector Coq.micromega.Lia Coq.Lists.List.
+Require Import Cava.Arrow.Classes.Category Cava.Arrow.Classes.Arrow.
+Require Import Cava.Arrow.CircuitArrow Cava.Arrow.ArrowKind Cava.Arrow.Primitives.
 
 Import ListNotations.
 Import VectorNotations.

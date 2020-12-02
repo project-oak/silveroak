@@ -13,10 +13,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool.Bool NArith.NArith.
-From Coq Require Import Strings.Ascii Strings.String.
+Require Import Coq.Bool.Bool Coq.NArith.NArith.
+Require Import Coq.Strings.Ascii Coq.Strings.String.
 
-From Coq Require Import Lists.List.
+Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
@@ -24,11 +24,11 @@ Require Import ExtLib.Structures.Monads.
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
 
-From Coq Require Vectors.Vector.
-From Coq Require Import Bool.Bvector.
+Require Coq.Vectors.Vector.
+Require Import Coq.Bool.Bvector.
 Import Vector.VectorNotations.
 
-From Coq Require Import NArith.Ndigits.
+Require Import Coq.NArith.Ndigits.
 
 Local Open Scope vector_scope.
 

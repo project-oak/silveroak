@@ -14,14 +14,14 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool.Bool.
+Require Import Coq.Bool.Bool.
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.IdentityMonad.
 Import MonadNotation.
 Open Scope monad_scope.
 Open Scope type_scope.
 
-From Cava Require Import Acorn.Acorn.
+Require Import Cava.Acorn.Acorn.
 
 Section WithCava.
   Context {signal} {cava : Cava signal}.

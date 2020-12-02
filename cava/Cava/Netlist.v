@@ -20,17 +20,17 @@
 *)
 
 Require Import Coq.Program.Basics.
-From Coq Require Import Strings.Ascii Strings.String.
-From Coq Require Import ZArith.ZArith.
-From Coq Require Import Lists.List.
-From Coq Require Import Bool.Bool.
-From Coq Require Import Numbers.NaryFunctions.
-From Coq Require Import Init.Datatypes.
-From Coq Require Vector.
+Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.ZArith.ZArith.
+Require Import Coq.Lists.List.
+Require Import Coq.Bool.Bool.
+Require Import Coq.Numbers.NaryFunctions.
+Require Import Coq.Init.Datatypes.
+Require Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.StateMonad.
 Require Export ExtLib.Data.List.
-From ExtLib Require Import Structures.Traversable.
+Require Import ExtLib.Structures.Traversable.
 
 Import ListNotations.
 Import MonadNotation.
@@ -38,11 +38,11 @@ Open Scope string_scope.
 Open Scope list_scope.
 Open Scope monad_scope.
 
-From Cava Require Import Kind.
-From Cava Require Import Signal.
-From Cava Require Import Types.
-From Cava Require Import BitArithmetic.
-From Cava Require Import VectorUtils.
+Require Import Cava.Kind.
+Require Import Cava.Signal.
+Require Import Cava.Types.
+Require Import Cava.BitArithmetic.
+Require Import Cava.VectorUtils.
 
 (******************************************************************************)
 (* Make it possible to convert certain types to bool shape values             *)

@@ -14,17 +14,17 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Arith.Arith NArith.NArith micromega.Lia
-     Numbers.NaryFunctions Lists.List.
+Require Import Coq.Arith.Arith Coq.NArith.NArith Coq.micromega.Lia
+     Coq.Numbers.NaryFunctions Coq.Lists.List.
 
-From Cava Require Import Arrow.Classes.Category.
-From Cava Require Import Arrow.Classes.Arrow.
-From Cava Require Import Arrow.CircuitArrow.
-From Cava Require Import Arrow.CircuitSemantics.
-From Cava Require Import Arrow.ExprSyntax.
-From Cava Require Import Arrow.ExprLowering.
-From Cava Require Import Arrow.ArrowKind.
-From Cava Require Import Arrow.Primitives.
+Require Import Cava.Arrow.Classes.Category.
+Require Import Cava.Arrow.Classes.Arrow.
+Require Import Cava.Arrow.CircuitArrow.
+Require Import Cava.Arrow.CircuitSemantics.
+Require Import Cava.Arrow.ExprSyntax.
+Require Import Cava.Arrow.ExprLowering.
+Require Import Cava.Arrow.ArrowKind.
+Require Import Cava.Arrow.Primitives.
 
 Import EqNotations.
 Import ListNotations.

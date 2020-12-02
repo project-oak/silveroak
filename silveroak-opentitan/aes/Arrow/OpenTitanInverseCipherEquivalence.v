@@ -30,9 +30,9 @@ Require Import AesSpec.Cipher.
 Require Import AesSpec.CipherRepresentationChange.
 Require Import AesSpec.ExpandAllKeys.
 Require Import AesSpec.InterleavedInverseCipher.
-From Aes Require Import CipherEquivalenceCommon
-     OpenTitanCipherProperties CipherRoundProperties
-     unrolled_opentitan_cipher.
+Require Import Aes.CipherEquivalenceCommon
+     Aes.OpenTitanCipherProperties Aes.CipherRoundProperties
+     Aes.unrolled_opentitan_cipher.
 Import VectorNotations ListNotations.
 Import CipherEquivalenceCommon.Notations.
 

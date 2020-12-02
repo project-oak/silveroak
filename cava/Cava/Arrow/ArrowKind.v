@@ -14,15 +14,15 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Lists.List Numbers.NaryFunctions Arith.Arith
-     NArith.NArith Vectors.Vector Logic.Eqdep_dec.
-From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
+Require Import Coq.Lists.List Coq.Numbers.NaryFunctions Coq.Arith.Arith
+     Coq.NArith.NArith Coq.Vectors.Vector Coq.Logic.Eqdep_dec.
+Require Import Cava.Arrow.Classes.Category Cava.Arrow.Classes.Arrow.
 
 Import ListNotations.
 Import VectorNotations.
 Import CategoryNotations.
 
-From Cava Require Import Types.
+Require Import Cava.Types.
 
 Inductive Kind : Set :=
 | Tuple: Kind -> Kind -> Kind

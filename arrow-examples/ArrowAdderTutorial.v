@@ -14,12 +14,12 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Cava Require Import Arrow.ArrowExport.
+Require Import Cava.Arrow.ArrowExport.
 
 Require Import Coq.Strings.String.
 Local Open Scope string_scope.
 
-From Coq Require Import Lists.List NArith.NArith micromega.Lia.
+Require Import Coq.Lists.List Coq.NArith.NArith Coq.micromega.Lia.
 Import ListNotations.
 
 Section notation.

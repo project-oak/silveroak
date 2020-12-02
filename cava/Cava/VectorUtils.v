@@ -14,20 +14,20 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Lists.List.
+Require Import Coq.Lists.List.
 Import ListNotations.
 
-From Coq Require Import Vectors.Vector.
+Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 
-From Coq Require Import ZArith.ZArith.
-From Coq Require Import Init.Nat Arith.Arith micromega.Lia.
+Require Import Coq.ZArith.ZArith.
+Require Import Coq.Init.Nat Coq.Arith.Arith Coq.micromega.Lia.
 
-From ExtLib Require Import Structures.Applicative.
-From ExtLib Require Import Structures.Traversable.
+Require Import ExtLib.Structures.Applicative.
+Require Import ExtLib.Structures.Traversable.
 Require Export ExtLib.Data.Monads.IdentityMonad.
 
-From Cava Require ListUtils.
+Require Cava.ListUtils.
 
 Section traversable.
   Universe u v vF.

@@ -14,18 +14,18 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Numbers.NaryFunctions Arith.Arith NArith.NArith.
-From Coq Require Import Vectors.Vector.
-From Coq Require Import Bool.Bool.
-From Coq Require Import ZArith.ZArith.
-From Cava Require Import VectorUtils.
-From Cava Require Import BitArithmetic.
+Require Import Coq.Numbers.NaryFunctions Coq.Arith.Arith Coq.NArith.NArith.
+Require Import Coq.Vectors.Vector.
+Require Import Coq.Bool.Bool.
+Require Import Coq.ZArith.ZArith.
+Require Import Cava.VectorUtils.
+Require Import Cava.BitArithmetic.
 
 Import VectorNotations.
 
 (* Module PrimitiveNotations. *)
 
-From Cava Require Export Arrow.ArrowKind.
+Require Export Cava.Arrow.ArrowKind.
 
 Notation vec_index n := (Vector Bit (Nat.log2_up n)).
 

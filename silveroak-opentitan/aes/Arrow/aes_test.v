@@ -14,12 +14,12 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Arith.Arith Logic.Eqdep_dec Vectors.Vector micromega.Lia
-     NArith.NArith ZArith.ZArith Strings.String NArith.Ndigits.
-From Cava Require Import Arrow.ArrowExport BitArithmetic VectorUtils.
+Require Import Coq.Arith.Arith Coq.Logic.Eqdep_dec Coq.Vectors.Vector Coq.micromega.Lia
+     Coq.NArith.NArith Coq.ZArith.ZArith Coq.Strings.String Coq.NArith.Ndigits.
+Require Import Cava.Arrow.ArrowExport Cava.BitArithmetic Cava.VectorUtils.
 
-From AesSpec Require Import Tests.CipherTest Tests.Common.
-From Aes Require Import pkg mix_columns sbox sub_bytes shift_rows cipher_round.
+Require Import AesSpec.Tests.CipherTest AesSpec.Tests.Common.
+Require Import Aes.pkg Aes.mix_columns Aes.sbox Aes.sub_bytes Aes.shift_rows Aes.cipher_round.
 
 Require Import coqutil.Z.HexNotation.
 

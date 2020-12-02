@@ -14,12 +14,12 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool.Bool.
-From Coq Require Import NArith.NArith.
-From Coq Require Import Lists.List.
+Require Import Coq.Bool.Bool.
+Require Import Coq.NArith.NArith.
+Require Import Coq.Lists.List.
 Import ListNotations.
-From Coq Require Import Vectors.Vector.
-From Coq Require Import Bool.Bvector.
+Require Import Coq.Vectors.Vector.
+Require Import Coq.Bool.Bvector.
 Import VectorNotations.
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.IdentityMonad.
@@ -32,12 +32,12 @@ Require Import coqutil.Tactics.Tactics.
 Require Import Coq.micromega.Lia.
 Require Import Coq.Classes.Morphisms.
 
-From Cava Require Import BitArithmetic ListUtils VectorUtils.
+Require Import Cava.BitArithmetic Cava.ListUtils Cava.VectorUtils.
 Require Import Cava.Monad.MonadFacts.
 
-From Cava Require Import Acorn.Acorn.
-From Cava Require Import Acorn.Lib.AcornFullAdder.
-From Cava Require Import Acorn.Lib.AcornUnsignedAdders.
+Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.Lib.AcornFullAdder.
+Require Import Cava.Acorn.Lib.AcornUnsignedAdders.
 
 Local Open Scope N_scope.
 

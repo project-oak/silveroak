@@ -14,15 +14,15 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import extraction.Extraction.
-From Coq Require Import extraction.ExtrHaskellZInteger.
-From Coq Require Import extraction.ExtrHaskellString.
-From Coq Require Import ExtrHaskellBasic.
-From Coq Require Import extraction.ExtrHaskellNatInteger.
+Require Import Coq.extraction.Extraction.
+Require Import Coq.extraction.ExtrHaskellZInteger.
+Require Import Coq.extraction.ExtrHaskellString.
+Require Import Coq.extraction.ExtrHaskellBasic.
+Require Import Coq.extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.
 
-Require Import Instantiate.
-Require Import TestMultiply.
+Require Import Tests.Instantiate.
+Require Import Tests.TestMultiply.
 Extraction Library Instantiate.
 Extraction Library TestMultiply.

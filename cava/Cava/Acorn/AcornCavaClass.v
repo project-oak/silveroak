@@ -16,7 +16,7 @@
 
 Require Import ExtLib.Structures.Monads.
 
-From Cava Require Import Acorn.AcornSignal.
+Require Import Cava.Acorn.AcornSignal.
 
 Open Scope type_scope.
 

@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Vectors.Vector.
+Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 Local Open Scope vector_scope.
 
@@ -23,9 +23,9 @@ Require Import ExtLib.Structures.Traversable.
 Export MonadNotation.
 Open Scope monad_scope.
 
-From Cava Require Import VectorUtils.
+Require Import Cava.VectorUtils.
 
-From Cava Require Import Acorn.Acorn.
+Require Import Cava.Acorn.Acorn.
 
 (* xor two bit-vectors *)
 Definition xorV {signal} `{Cava signal} `{Monad m} 

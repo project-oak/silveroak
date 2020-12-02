@@ -16,21 +16,21 @@
 
 Require Import ExtLib.Structures.Monads.
 
-From Coq Require Import Strings.Ascii Strings.String.
+Require Import Coq.Strings.Ascii Coq.Strings.String.
 
-From Coq Require Import Lists.List.
+Require Import Coq.Lists.List.
 Import ListNotations.
 
-From Coq Require Import Vectors.Vector.
-From Coq Require Import Bool.Bvector.
+Require Import Coq.Vectors.Vector.
+Require Import Coq.Bool.Bvector.
 Import VectorNotations.
 
-From Coq Require Import Arith.PeanoNat NArith.Ndigits NArith.NArith.
+Require Import Coq.Arith.PeanoNat Coq.NArith.Ndigits Coq.NArith.NArith.
 Require Import Cava.Cava.
 Require Import Cava.VectorUtils.
 Require Import Cava.Monad.CavaMonad.
 
-From Coq Require Import micromega.Lia.
+Require Import Coq.micromega.Lia.
 
 Local Open Scope vector_scope.
 

@@ -14,20 +14,20 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Vectors.Vector.
+Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 
-From Coq Require Import Lists.List micromega.Lia.
+Require Import Coq.Lists.List Coq.micromega.Lia.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Traversable.
 Require Import ExtLib.Structures.MonadFix.
-From Coq Require Import Arith.PeanoNat.
+Require Import Coq.Arith.PeanoNat.
 
 Export MonadNotation.
 
-From Cava Require Import Kind.
+Require Import Cava.Kind.
 Require Import Cava.Monad.CavaClass.
 Require Import Cava.VectorUtils.
 Require Import Cava.ListUtils.

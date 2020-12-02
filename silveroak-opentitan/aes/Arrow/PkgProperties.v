@@ -15,12 +15,12 @@
 (****************************************************************************)
 
 Require Import Coq.Strings.String.
-From Coq Require Import derive.Derive.
-From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec
-     Arrow.CombinatorProperties BitArithmetic VectorUtils.
+Require Import Coq.derive.Derive.
+Require Import Cava.Arrow.ArrowExport Cava.Arrow.DeriveSpec
+     Cava.Arrow.CombinatorProperties Cava.BitArithmetic Cava.VectorUtils.
 Require Import Cava.Tactics.
 
-From Aes Require Import pkg.
+Require Import Aes.pkg.
 
 Section Wf.
   Lemma aes_transpose_Wf n m : Wf (@aes_transpose n m).

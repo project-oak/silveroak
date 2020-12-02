@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Vectors.Vector.
+Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 Local Open Scope vector_scope.
 
@@ -25,7 +25,7 @@ Open Scope monad_scope.
 
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
-From Cava Require Import VectorUtils.
+Require Import Cava.VectorUtils.
 
 Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.
