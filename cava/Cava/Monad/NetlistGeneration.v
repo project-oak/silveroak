@@ -226,6 +226,13 @@ Definition greaterThanOrEqualNet {m n : nat}
   addInstance (GreaterThanOrEqual a b comparison) ;;
   ret comparison.
 
+Definition delayNet (t: SignalType)
+                    (i : Signal t)
+                    : state CavaState (Signal t) :=
+  o <- newSignal t ;;
+  addInstance (Delay t i o) ;;
+  ret o.
+
 Definition delayBitNet (i : Signal Bit) : state CavaState (Signal Bit) :=
   o <- newWire ;;
   addInstance (DelayBit i o) ;;
@@ -257,6 +264,7 @@ Instance CavaNet : Cava denoteSignal :=
     zero := ret Gnd;
     one := ret Vcc;
     defaultSignal := defaultNetSignal;
+    delay k := delayNet k;
     delayBit := delayBitNet;
     loopBit a b := loopBitNet a b;
     inv := invNet;

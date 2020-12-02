@@ -14,18 +14,23 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import extraction.Extraction.
-From Coq Require Import extraction.ExtrHaskellZInteger.
-From Coq Require Import extraction.ExtrHaskellString.
-From Coq Require Import ExtrHaskellBasic.
-From Coq Require Import extraction.ExtrHaskellNatInteger.
+Require Import ExtLib.Structures.Monads.
+Export MonadNotation.
 
-Extraction Language Haskell.
+Require Import Cava.Cava.
+Require Import Cava.Monad.CavaMonad.
 
-Require Import Instantiate.
-Require Import TestMultiply.
-Require Import Delay.
+Section WithCava.
+  Context {signal} `{Cava signal} `{Monad cava}.
 
-Extraction Library Instantiate.
-Extraction Library TestMultiply.
-Extraction Library Delay.
+  Definition delayByte (i : signal (Vec Bit 8))
+                       : cava (signal (Vec Bit 8)) :=
+  delay i.
+
+End WithCava.
+
+Definition delayByte_Interface
+  := sequentialInterface "delayByte"
+     [mkPort "i" (Vec Bit 8)]
+     [mkPort "o" (Vec Bit 8)]
+     [].

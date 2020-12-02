@@ -35,6 +35,7 @@ Class Cava (signal : SignalType -> Type) := {
   one : cava (signal Bit); (* This component always returns the value 1. *)
   (* Default values. *)
   defaultSignal: forall {t: SignalType}, signal t;
+  delay : forall {t: SignalType}, signal t -> cava (signal t);
   delayBit : signal Bit -> cava (signal Bit); (* Cava bit-level unit delay. *)
   loopBit : forall {A B : SignalType}, (signal A * signal Bit -> cava (signal B * signal Bit)) -> signal A -> cava (signal B);
   (* Primitive gates *)

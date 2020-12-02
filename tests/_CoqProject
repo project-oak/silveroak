@@ -5,4 +5,5 @@ INSTALLDEFAULTROOT = Tests
 -R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
 Instantiate.v
 TestMultiply.v
+Delay.v
 TestsExtraction.v

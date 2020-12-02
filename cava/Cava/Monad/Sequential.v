@@ -34,29 +34,72 @@ Require Import Cava.Cava.
 From Cava Require Import Kind.
 From Cava Require Import Signal.
 Require Import Cava.Monad.CavaClass.
+Require Import Cava.Monad.CombinationalMonad.
 
 (******************************************************************************)
-(* Combinational denotion of the SignalType and default values.               *)
+(* Sequential denotion of the SignalType and default values.                  *)
 (******************************************************************************)
 
-Fixpoint combType (t: SignalType) : Type :=
+Fixpoint seqType (t: SignalType) : Type :=
   match t with
-  | Void => unit
-  | Bit => bool
-  | Vec vt sz => Vector.t (combType vt) sz
-  | ExternalType _ => unit (* No semantics for combinational interpretation. *)
+  | Void => list unit
+  | Bit => list bool
+  | Vec vt sz => (Vector.t (seqType vt) sz)
+  | ExternalType _ => list unit (* No semantics for sequential interpretation. *)
   end.
 
-Fixpoint defaultCombValue (t: SignalType) : combType t :=
+Fixpoint defaultSeqValue (t: SignalType) : seqType t :=
   match t  with
-  | Void => tt
-  | Bit => false
-  | Vec t2 sz => Vector.const (defaultCombValue t2) sz
-  | ExternalType _ => tt
+  | Void => [tt]
+  | Bit => [false]
+  | Vec t2 sz => Vector.const (defaultSeqValue t2) sz
+  | ExternalType _ => [tt]
   end.
 
 (******************************************************************************)
-(* A boolean combinational logic interpretation for the Cava class            *)
+(* Loop combinator for feedback with delay.                                   *)
+(******************************************************************************)
+
+(*
+loopSeq' takes a combinational circuit f which has a pair of inputs which
+represent the current input of type A and current state of type C. This circuit
+returns a pair which represents the computed output of type B and next state
+value of type C. The list of input values for each clock tick are provided
+by the a parameter and the current state value is provided by the feedback
+parameter. The result of the loopSeq' is a list in the identity monad that
+represented the list of computed values at each tick.
+*)
+
+Fixpoint loopSeq' {A B C : SignalType}
+                  (f : combType A * combType C -> ident (combType B * combType C))
+                  (a : seqType A) (feedback: combType C)
+                  : ident (seqType B) :=
+  match A, a with
+  | _, [] => ret []
+  | Void, _ => ret [tt]
+  | Bit, x::xs => '(y, nextState) <- f (x, feedback) ;; (* One step of f *)
+                  ys <- loopSeq' f xs nextState ;; (* The remaining steps of f *)
+                  ret (y::ys)
+  | Vec t s, x::xs => ret [] (* Dummy value for now. *)
+  | ExternalType typeName, _ => [tt]
+  end.
+
+(*
+The loopSeq combinator takes a combinational circuit f which maps a pair
+representing the current input and current state to another pair
+representing the computed output and next state value. This function is used
+to compute the sequential behaviour of a circuit which uses f to iterate over
+the a inputs, using a default value for the initial state.
+*)
+
+Definition loopSeq {A B C : SignalType}
+                   (f : combType A * combType C -> ident (combType B * combType C))
+                   (a : seqType A)
+                   : ident (seqType B) :=
+  loopSeq' f a (defaultCombValue C).
+
+(******************************************************************************)
+(* A boolean sequential logic interpretation for the Cava class               *)
 (******************************************************************************)
 
 Definition notBool (i: bool) : ident bool :=
@@ -167,23 +210,19 @@ Definition greaterThanOrEqualBool {m n : nat}
 Definition bufBool (i : bool) : ident bool :=
   ret i.
 
-Definition loopBitBool (A B : SignalType) (f : combType A * bool -> ident (combType B * bool)) (a : combType A) : ident (combType B) :=
-  '(b, _) <- f (a, false) ;;
-  ret b.
-
 (******************************************************************************)
-(* Instantiate the Cava class for a boolean combinational logic               *)
+(* Instantiate the Cava class for a boolean sequential logic                  *)
 (* interpretation.                                                            *)
 (******************************************************************************)
 
- Instance Combinational : Cava combType :=
+ Instance Sequential : Cava seqType :=
   { cava := ident;
-    zero := ret false;
-    one := ret true;
-    defaultSignal t := @defaultCombValue t;
-    delay _ i := ret i; (* Dummy definition for delay for now. *)
-    delayBit i := ret i; (* Dummy definition for delayBit for now. *)
-    loopBit a b := @loopBitBool a b;
+    zero := ret [false];
+    one := ret [true];
+    defaultSignal t := @defaultSeqValue t;
+    delay _ i := ret (defaultSignal::i)
+    delayBit i := ret (false::i); 
+    loopBit a b := @loopBitSeq a b;
     inv := notBool;
     and2 := andBool;
     nand2 := nandBool;

@@ -31,6 +31,7 @@ Require Import Cava.Signal.
 Require Import Cava.VectorUtils.
 Require Import Cava.Monad.CavaMonad.
 Require Import Cava.Monad.CombinationalMonad.
+Require Import Cava.Monad.Sequential.
 Require Import Cava.Monad.CavaClass.
 Require Import Cava.Monad.Combinators.
 Require Import Cava.Monad.NetlistGeneration.
@@ -44,6 +45,7 @@ Recursive Extraction Library BitArithmetic.
 Recursive Extraction Library Cava.
 Recursive Extraction Library CavaMonad.
 Recursive Extraction Library CombinationalMonad.
+Recursive Extraction Library Sequential.
 Recursive Extraction Library Combinators.
 Recursive Extraction Library NetlistGeneration.
 

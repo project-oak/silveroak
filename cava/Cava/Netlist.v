@@ -80,6 +80,8 @@ Inductive Instance : Type :=
   | Xor:       Signal Bit -> Signal Bit -> Signal Bit -> Instance
   | Xnor:      Signal Bit -> Signal Bit -> Signal Bit -> Instance
   | Buf:       Signal Bit -> Signal Bit -> Instance
+  (* Composite delay component i.e. a register *)
+  | Delay:     forall (t : SignalType), Signal t -> Signal t -> Instance
   (* A Cava unit delay bit component. *)
   | DelayBit:  Signal Bit -> Signal Bit -> Instance
   (* Assignment of bit wire *)
@@ -214,6 +216,14 @@ Definition newExternal (t : string) : state CavaState (Signal (ExternalType t)) 
     let newExt := UninterpretedSignalIndex t (N.of_nat (length ext)) in
     put (mkCavaState o vCount vDefs (ext ++ [t]) clk clkEdge rst rstEdge m ml) ;;
     ret newExt
+  end.
+
+Definition newSignal (t: SignalType) : state CavaState (Signal t) :=
+  match t with
+  | Void => ret UndefinedSignal
+  | Bit => newWire
+  | Vec k s => newVector k s
+  | ExternalType typeName => newExternal typeName
   end.
 
 Definition addInstance (newInst: Instance) : state CavaState unit :=
