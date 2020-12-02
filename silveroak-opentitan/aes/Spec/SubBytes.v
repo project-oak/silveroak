@@ -13,13 +13,43 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Init.Byte.
+Require Import Coq.Init.Hexadecimal.
 Require Import Coq.Vectors.Vector.
+Require Import Cava.VectorUtils.
+Require Import AesSpec.Sbox.
 
 Section Spec.
-  Context {byte} {bytes_per_word Nb : nat} (sbox : byte -> byte).
+  Variables bytes_per_word Nb : nat.
   Local Notation word := (Vector.t byte bytes_per_word) (only parsing).
   Local Notation state := (Vector.t word Nb) (only parsing).
 
   Definition sub_bytes : state -> state :=
-    map (map sbox).
+    map (map forward_sbox).
+
+  Definition inv_sub_bytes : state -> state :=
+    map (map inverse_sbox).
+
+  Section Properties.
+
+    Lemma inverse_sbox_prop (x : byte) : inverse_sbox (forward_sbox x) = x.
+    Proof.
+      destruct x; reflexivity.
+    Qed.
+
+    Theorem inverse_sub_bytes (x : state) :
+      inv_sub_bytes (sub_bytes x) = x.
+    Proof.
+      unfold inv_sub_bytes.
+      unfold sub_bytes.
+      induction x; [reflexivity|].
+      simpl.
+      rewrite IHx.
+      rewrite map_map.
+      rewrite map_id_ext.
+      { reflexivity. }
+      { intros.
+        destruct a; reflexivity. }
+    Qed.
+  End Properties.
 End Spec.
