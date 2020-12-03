@@ -23,6 +23,7 @@ Import VectorNotations.
 Import CategoryNotations.
 
 Require Import Cava.Types.
+Require Import Cava.VectorUtils.
 
 Inductive Kind : Set :=
 | Tuple: Kind -> Kind -> Kind
@@ -269,7 +270,7 @@ Fixpoint rewrite_or_default (x y: Kind): denote_kind x -> denote_kind y :=
       end
   | Vector t n =>
       match y with
-      | Vector t2 n2 => fun a => VectorUtils.resize_default (kind_default _) _ (Vector.map (rewrite_or_default t t2) a)
+      | Vector t2 n2 => fun a => resize_default (kind_default _) _ (Vector.map (rewrite_or_default t t2) a)
       | _ => fun _ => kind_default _
       end
   | Bit =>
