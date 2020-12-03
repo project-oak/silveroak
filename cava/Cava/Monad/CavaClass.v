@@ -14,13 +14,13 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Vector.
+Require Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 
-From Cava Require Import Kind.
-From Cava Require Import Types.
-From Cava Require Import Netlist.
-From Cava Require Import Signal.
+Require Import Cava.Kind.
+Require Import Cava.Types.
+Require Import Cava.Netlist.
+Require Import Cava.Signal.
 
 Local Open Scope type_scope.
 

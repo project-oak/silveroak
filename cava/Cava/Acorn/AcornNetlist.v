@@ -14,10 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Lists.List.
+Require Import Coq.Lists.List.
 Require Import ExtLib.Structures.Monads.
 
-From Cava Require Import Acorn.AcornSignal.
+Require Import Cava.Acorn.AcornSignal.
 
 Inductive AcornInstance : Type :=
   | Inv : Signal Bit -> Signal Bit -> AcornInstance

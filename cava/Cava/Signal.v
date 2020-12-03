@@ -14,14 +14,14 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Strings.Ascii Strings.String.
-From Coq Require Import Lists.List.
+Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.Lists.List.
 Import ListNotations.
-From Coq Require Import ZArith.ZArith.
-From Coq Require Import Vectors.Vector.
+Require Import Coq.ZArith.ZArith.
+Require Import Coq.Vectors.Vector.
 
-From Cava Require Import Kind.
-From Cava Require Import VectorUtils.
+Require Import Cava.Kind.
+Require Import Cava.VectorUtils.
 
 (******************************************************************************)
 (* The types of signals that can flow over wires, used to index signal        *)

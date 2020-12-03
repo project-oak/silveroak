@@ -1,4 +1,4 @@
-From Cava Require Import Arrow.Classes.Category.
+Require Import Cava.Arrow.Classes.Category.
 
 Import CategoryNotations.
 

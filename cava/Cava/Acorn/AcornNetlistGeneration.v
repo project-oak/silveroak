@@ -17,12 +17,12 @@
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.StateMonad.
 
-From Cava Require Import VectorUtils.
+Require Import Cava.VectorUtils.
 
-From Cava Require Import Acorn.AcornSignal.
-From Cava Require Import Acorn.AcornCavaClass.
-From Cava Require Import Acorn.AcornNetlist.
-From Cava Require Import Acorn.AcornState.
+Require Import Cava.Acorn.AcornSignal.
+Require Import Cava.Acorn.AcornCavaClass.
+Require Import Cava.Acorn.AcornNetlist.
+Require Import Cava.Acorn.AcornState.
 
 Import MonadNotation.
 Local Open Scope monad_scope.

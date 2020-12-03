@@ -14,19 +14,19 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Ascii String.
-From Coq Require Import Bool.Bool.
-From Coq Require Import NArith.
-From Coq Require Import Lists.List.
+Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.Bool.Bool.
+Require Import Coq.NArith.NArith.
+Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
-From Coq Require Vector.
-From Coq Require Import Bool.Bvector.
+Require Coq.Vectors.Vector.
+Require Import Coq.Bool.Bvector.
 
-Require Import Omega.
+Require Import Coq.omega.Omega.
 
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.

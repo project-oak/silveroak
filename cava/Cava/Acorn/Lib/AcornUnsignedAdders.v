@@ -14,11 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool.Bool.
-From Coq Require Import Lists.List.
+Require Import Coq.Bool.Bool.
+Require Import Coq.Lists.List.
 Import ListNotations.
-From Coq Require Import Vectors.Vector.
-From Coq Require Import Bool.Bvector.
+Require Import Coq.Vectors.Vector.
+Require Import Coq.Bool.Bvector.
 Import VectorNotations.
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.IdentityMonad.
@@ -26,9 +26,9 @@ Import MonadNotation.
 Open Scope monad_scope.
 Open Scope type_scope.
 
-From Cava Require Import VectorUtils.
-From Cava Require Import Acorn.Acorn.
-From Cava Require Import Acorn.Lib.AcornFullAdder.
+Require Import Cava.VectorUtils.
+Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.Lib.AcornFullAdder.
 
 Local Open Scope vector_scope.
 

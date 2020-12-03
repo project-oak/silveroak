@@ -1,4 +1,4 @@
-From Coq Require Import Setoid Classes.Morphisms.
+Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms.
 
 (* Reserved Notation "x ~> y" (at level 90). *)
 

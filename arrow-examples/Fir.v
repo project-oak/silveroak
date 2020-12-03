@@ -14,8 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Cava Require Import Arrow.ArrowExport.
-From Coq Require Import Lists.List NArith.NArith Strings.String Bool.Bvector.
+Require Import Cava.Arrow.ArrowExport.
+Require Import Coq.Lists.List Coq.NArith.NArith Coq.Strings.String Coq.Bool.Bvector.
 Import ListNotations.
 
 Local Open Scope string_scope.

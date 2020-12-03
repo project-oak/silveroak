@@ -21,11 +21,11 @@ Require Import MonadExamples.FullAdderExample.
 Require Import MonadExamples.UnsignedAdderExamples.
 Require Import MonadExamples.AdderTree.
 Require Import MonadExamples.Sorter.
-From Coq Require Import extraction.Extraction.
-From Coq Require Import extraction.ExtrHaskellZInteger.
-From Coq Require Import extraction.ExtrHaskellString.
-From Coq Require Import extraction.ExtrHaskellBasic.
-From Coq Require Import extraction.ExtrHaskellNatInteger.
+Require Import Coq.extraction.Extraction.
+Require Import Coq.extraction.ExtrHaskellZInteger.
+Require Import Coq.extraction.ExtrHaskellString.
+Require Import Coq.extraction.ExtrHaskellBasic.
+Require Import Coq.extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.
 

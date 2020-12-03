@@ -14,15 +14,15 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Strings.Ascii Strings.String.
+Require Import Coq.Strings.Ascii Coq.Strings.String.
 
-From Coq Require Lists.List.
+Require Coq.Lists.List.
 Import List.ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
-From Coq Require Import Vectors.Vector.
+Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 
 Open Scope monad_scope.

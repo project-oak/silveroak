@@ -14,13 +14,13 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool.Bool.
-From Coq Require Import String.
+Require Import Coq.Bool.Bool.
+Require Import Coq.Strings.String.
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.IdentityMonad.
 
-From Cava Require Import Acorn.AcornSignal.
-From Cava Require Import Acorn.AcornCavaClass.
+Require Import Cava.Acorn.AcornSignal.
+Require Import Cava.Acorn.AcornCavaClass.
 
 Fixpoint denoteCombinaional (t : SignalType) : Type :=
   match t with

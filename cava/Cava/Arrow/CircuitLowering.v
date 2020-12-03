@@ -14,15 +14,15 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Bool.Bool ZArith.ZArith Numbers.NaryFunctions
-     Vectors.Vector Strings.String Lists.List Numbers.DecimalString
-     micromega.Lia.
-From Cava Require Import Arrow.Classes.Arrow.
-From Cava Require Import Arrow.Classes.Category.
-From Cava Require Import Arrow.Classes.Kleisli.
-From Cava Require Import Arrow.Primitives.
-From Cava Require Import Arrow.CircuitArrow VectorUtils BitArithmetic Types Signal Netlist.
-From Cava Require Import Arrow.ArrowKind.
+Require Import Coq.Bool.Bool Coq.ZArith.ZArith Coq.Numbers.NaryFunctions
+     Coq.Vectors.Vector Coq.Strings.String Coq.Lists.List Coq.Numbers.DecimalString
+     Coq.micromega.Lia.
+Require Import Cava.Arrow.Classes.Arrow.
+Require Import Cava.Arrow.Classes.Category.
+Require Import Cava.Arrow.Classes.Kleisli.
+Require Import Cava.Arrow.Primitives.
+Require Import Cava.Arrow.CircuitArrow Cava.VectorUtils Cava.BitArithmetic Cava.Types Cava.Signal Cava.Netlist.
+Require Import Cava.Arrow.ArrowKind.
 
 Import NilZero.
 
@@ -31,10 +31,10 @@ Import EqNotations.
 Import ListNotations.
 Import CategoryNotations.
 
-From ExtLib Require Import Structures.Monads.
-From ExtLib Require Import Structures.Applicative.
-From ExtLib Require Import Structures.Traversable.
-From ExtLib Require Export Data.Monads.StateMonad.
+Require Import ExtLib.Structures.Monads.
+Require Import ExtLib.Structures.Applicative.
+Require Import ExtLib.Structures.Traversable.
+Require Export ExtLib.Data.Monads.StateMonad.
 
 Import MonadNotation.
 

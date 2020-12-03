@@ -14,11 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import extraction.Extraction.
-From Coq Require Import extraction.ExtrHaskellZInteger.
-From Coq Require Import extraction.ExtrHaskellString.
-From Coq Require Import extraction.ExtrHaskellBasic.
-From Coq Require Import extraction.ExtrHaskellNatInteger.
+Require Import Coq.extraction.Extraction.
+Require Import Coq.extraction.ExtrHaskellZInteger.
+Require Import Coq.extraction.ExtrHaskellString.
+Require Import Coq.extraction.ExtrHaskellBasic.
+Require Import Coq.extraction.ExtrHaskellNatInteger.
 
 Require Import coqutil.Z.HexNotation.
 
@@ -26,7 +26,7 @@ Set Extraction Optimize.
 
 Extraction Language Haskell.
 
-From Cava Require Import Arrow.ArrowExport.
+Require Import Cava.Arrow.ArrowExport.
 Extraction Library CavaNotation.
 Extraction Library HexNotation.
 

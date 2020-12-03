@@ -14,9 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Strings.Ascii Strings.String.
-From Coq Require Import ZArith.ZArith.
-From Coq Require Import Lists.List.
+Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.ZArith.ZArith.
+Require Import Coq.Lists.List.
 Import ListNotations.
 Open Scope list_scope.
 Require Import ExtLib.Structures.Monads.
@@ -24,8 +24,8 @@ Require Export ExtLib.Data.Monads.StateMonad.
 Import MonadNotation.
 Open Scope monad_scope.
 
-From Cava Require Import Acorn.AcornSignal.
-From Cava Require Import Acorn.AcornNetlist.
+Require Import Cava.Acorn.AcornSignal.
+Require Import Cava.Acorn.AcornNetlist.
 
 
 Record AcornModule : Type := mkAcornModule{

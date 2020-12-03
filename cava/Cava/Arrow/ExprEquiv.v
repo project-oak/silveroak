@@ -1,5 +1,5 @@
-From Coq Require Import Lists.List Arith.PeanoNat Arith.Peano_dec.
-From Cava Require Import Arrow.ArrowKind Arrow.ExprSyntax.
+Require Import Coq.Lists.List Coq.Arith.PeanoNat Coq.Arith.Peano_dec.
+Require Import Cava.Arrow.ArrowKind Cava.Arrow.ExprSyntax.
 
 Import ListNotations.
 

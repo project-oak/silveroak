@@ -14,8 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Strings.Ascii Strings.String.
-From Coq Require Import Lists.List.
+Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
