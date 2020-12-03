@@ -35,10 +35,7 @@ Class Cava (signal : SignalType -> Type) := {
   one : cava (signal Bit); (* This component always returns the value 1. *)
   (* Default values. *)
   defaultSignal: forall {t: SignalType}, signal t;
-  delay : forall {t: SignalType}, signal t -> cava (signal t);
-  delayBit : signal Bit -> cava (signal Bit); (* Cava bit-level unit delay. *)
-  loopBit : forall {A B : SignalType}, (signal A * signal Bit -> cava (signal B * signal Bit)) -> signal A -> cava (signal B);
-  (* Primitive gates *)
+  (* SystemVerilog primitive gates *)
   inv : signal Bit -> cava (signal Bit);
   and2 : signal Bit * signal Bit -> cava (signal Bit);
   nand2 : signal Bit * signal Bit -> cava (signal Bit);
@@ -95,3 +92,14 @@ Class Cava (signal : SignalType -> Type) := {
              tupleInterface signal (map port_type (circuitInputs intf)) ->
              cava (tupleInterface signal ((map port_type (circuitOutputs intf))));
 }.               
+
+Class Sequential (signal : SignalType -> Type) := {
+  combinationalSemantics :> Cava signal;
+  (* A unit delay. *)
+  delay : forall {t: SignalType}, signal t -> cava (signal t);
+  (* Feeback loop, with unit delay inserted into the feedback path. *)
+  loop : forall {A B C: SignalType},
+         (signal A * signal C -> cava (signal B * signal C)) ->
+         signal A ->
+         cava (signal B);
+}.

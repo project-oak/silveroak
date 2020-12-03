@@ -20,6 +20,7 @@ From Coq Require Import Lists.List.
 Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.IdentityMonad.
+Require Import ExtLib.Structures.Traversable.
 Export MonadNotation.
 
 Require Vector.
@@ -37,26 +38,6 @@ Require Import Cava.Monad.CavaClass.
 Require Import Cava.Monad.CombinationalMonad.
 
 (******************************************************************************)
-(* Sequential denotion of the SignalType and default values.                  *)
-(******************************************************************************)
-
-Fixpoint seqType (t: SignalType) : Type :=
-  match t with
-  | Void => list unit
-  | Bit => list bool
-  | Vec vt sz => (Vector.t (seqType vt) sz)
-  | ExternalType _ => list unit (* No semantics for sequential interpretation. *)
-  end.
-
-Fixpoint defaultSeqValue (t: SignalType) : seqType t :=
-  match t  with
-  | Void => [tt]
-  | Bit => [false]
-  | Vec t2 sz => Vector.const (defaultSeqValue t2) sz
-  | ExternalType _ => [tt]
-  end.
-
-(******************************************************************************)
 (* Loop combinator for feedback with delay.                                   *)
 (******************************************************************************)
 
@@ -71,17 +52,16 @@ represented the list of computed values at each tick.
 *)
 
 Fixpoint loopSeq' {A B C : SignalType}
-                  (f : combType A * combType C -> ident (combType B * combType C))
-                  (a : seqType A) (feedback: combType C)
-                  : ident (seqType B) :=
-  match A, a with
-  | _, [] => ret []
-  | Void, _ => ret [tt]
-  | Bit, x::xs => '(y, nextState) <- f (x, feedback) ;; (* One step of f *)
-                  ys <- loopSeq' f xs nextState ;; (* The remaining steps of f *)
-                  ret (y::ys)
-  | Vec t s, x::xs => ret [] (* Dummy value for now. *)
-  | ExternalType typeName, _ => [tt]
+                  (f : seqType A * seqType C -> ident (seqType B * seqType C))
+                  (a : seqType A) (feedback: seqType C)
+  : ident (seqType B) :=
+  match a with
+  | [] => ret []
+  | x :: xs =>
+    '(yL, nextState) <- f ([x], feedback) ;; (* One step of f. *)
+    let y := hd defaultSignal yL in
+    ys <- loopSeq' f xs nextState ;; (* remaining steps of f *)
+    ret (y :: ys)
   end.
 
 (*
@@ -93,121 +73,146 @@ the a inputs, using a default value for the initial state.
 *)
 
 Definition loopSeq {A B C : SignalType}
-                   (f : combType A * combType C -> ident (combType B * combType C))
+                   (f : seqType A * seqType C -> ident (seqType B * seqType C))
                    (a : seqType A)
                    : ident (seqType B) :=
-  loopSeq' f a (defaultCombValue C).
+  loopSeq' f a [defaultCombValue C].
 
 (******************************************************************************)
 (* A boolean sequential logic interpretation for the Cava class               *)
 (******************************************************************************)
 
-Definition notBool (i: bool) : ident bool :=
-  ret (negb i).
+Definition notBoolList (i : list bool) : ident (list bool) :=
+  mapT notBool i.
 
-Definition andBool '(a, b) : ident bool :=
-  ret (a && b).
+Definition andBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
+  mapT andBool (combine (fst i) (snd i)).
 
-Definition nandBool (i: bool * bool) : ident bool :=
-  let (a, b) := i in ret (negb (a && b)).
+Definition nandBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
+  mapT nandBool (combine (fst i) (snd i)).
 
-Definition orBool (i: bool * bool) : ident bool :=
-  let (a, b) := i in ret (a || b).
+Definition orBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
+  mapT orBool (combine (fst i) (snd i)).
 
-Definition norBool (i: bool * bool) : ident bool :=
-  let (a, b) := i in ret (negb (a || b)).
+Definition norBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
+  mapT norBool (combine (fst i) (snd i)).
 
-Definition xorBool (i: bool * bool) : ident bool :=
-  let (a, b) := i in ret (xorb a b).
+Definition xorBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
+  mapT xorBool (combine (fst i) (snd i)).
 
-Definition xnorBool (i : bool * bool) : ident bool :=
-  let (a, b) := i in ret (negb (xorb a b)).
+Definition xnorBoolList (i : (list bool) * (list bool)) : ident (list bool) :=
+  mapT xnorBool (combine (fst i) (snd i)).
 
-Definition lut1Bool (f: bool -> bool) (i: bool) : ident bool := ret (f i).
+Definition lut1BoolList (f: bool -> bool) (i : list bool) : ident (list bool) :=
+  ret (map f i).
 
-Definition lut2Bool (f: bool -> bool -> bool) (i: bool * bool) : ident bool :=
-  ret (f (fst i) (snd i)).
+Definition lut2BoolList (f: bool -> bool -> bool)
+                        (i : (list bool) * (list bool)) : ident (list bool) :=
+  ret (map (fun (i : bool * bool) => let (a, b) := i in f a b)
+           (combine (fst i) (snd i))).
 
-Definition lut3Bool (f: bool -> bool -> bool -> bool) (i: bool * bool * bool) :
-                    ident bool :=
-  let '(i0, i1, i2) := i in
-  ret (f i0 i1 i2).
+Definition lut3BoolList (f: bool -> bool -> bool -> bool)
+                        (i : (list bool) * (list bool) * (list bool)) : ident (list bool) :=
+  let '(aL, bL, cL) := i in
+  ret (map (fun (i : bool * bool * bool) => let '(a, b, c) := i in f a b c)
+           (combine (combine aL bL) cL)).
 
-Definition lut4Bool (f: bool -> bool -> bool -> bool -> bool)
-                    (i: bool * bool * bool * bool) : ident bool :=
-  let '(i0, i1, i2, i3) := i in
-  ret (f i0 i1 i2 i3).
+Definition lut4BoolList (f: bool -> bool -> bool -> bool -> bool)
+                        (i : (list bool) * (list bool) * 
+                             (list bool) * (list bool)) : ident (list bool) :=
+  let '(aL, bL, cL, dL) := i in
+  ret (map (fun (i : bool * bool * bool * bool) =>
+            let '(a, b, c, d) := i in f a b c d)
+           (combine (combine (combine aL bL) cL) dL)).
 
-Definition lut5Bool (f: bool -> bool -> bool -> bool -> bool -> bool)
-                    (i: bool * bool * bool * bool * bool) : ident bool :=
-  let '(i0, i1, i2, i3, i4) := i in
-  ret (f i0 i1 i2 i3 i4).
+Definition lut5BoolList (f: bool -> bool -> bool -> bool -> bool -> bool)
+                        (i : (list bool) * (list bool) * (list bool) *
+                             (list bool) * (list bool)) : ident (list bool) :=
+  let '(aL, bL, cL, dL, eL) := i in
+  ret (map (fun (i : bool * bool * bool * bool * bool) =>
+            let '(a, b, c, d, e) := i in f a b c d e)
+           (combine (combine (combine (combine aL bL) cL) dL) eL)).
 
-Definition lut6Bool (f: bool -> bool -> bool -> bool -> bool -> bool -> bool)
-                    (i: bool * bool * bool * bool * bool * bool) : ident bool :=
-  let '(i0, i1, i2, i3, i4, i5) := i in
-  ret (f i0 i1 i2 i3 i4 i5).
+Definition lut6BoolList (fn: bool -> bool -> bool -> bool -> bool -> bool -> bool)
+                        (i : (list bool) * (list bool) * (list bool) *
+                             (list bool) * (list bool) * (list bool)) :
+                        ident (list bool) :=
+  let '(aL, bL, cL, dL, eL, fL) := i in
+  ret (map (fun (i : bool * bool * bool * bool * bool * bool) =>
+            let '(a, b, c, d, e, f) := i in fn a b c d e f)
+           (combine (combine (combine (combine (combine aL bL) cL) dL) eL) fL)).
 
-Definition xorcyBool (i: bool * bool) : ident bool :=
-  let (ci, li) := i in ret (xorb ci li).
+Definition xorcyBoolList := xorBoolList.
 
-Definition muxcyBool (s : bool) (ci : bool) (di : bool) : ident bool :=
-  ret (match s with
+Definition muxcyBoolList (s : list bool) (ci : list bool) (di : list bool)  : ident (list bool) :=
+  let dici := combine di ci in
+  let s_dici := combine s dici in
+  ret (map (fun (i : bool * (bool * bool)) =>
+     let '(s, (ci, di)) := i in
+     match s with
        | false => di
        | true => ci
-       end).
+     end) s_dici).
 
-Definition indexAtBool {t: SignalType}
+Definition indexAtBoolList {t: SignalType}
                        {sz isz: nat}
-                       (i : Vector.t (combType t) sz)
-                       (sel : Bvector isz) : combType t :=
-  let selN := Bv2N sel in
-  match lt_dec (N.to_nat selN) sz with
-  | left H => @Vector.nth_order _ _ i (N.to_nat selN) H
-  | right _ => defaultCombValue t
+                       (i : list (Vector.t (combType t) sz))
+                       (sel : list (Bvector isz)) : list (combType t) :=
+  map (fun '(i, sel) => indexAtBool i sel) (combine i sel).
+
+Definition indexConstBoolList {t: SignalType} {sz: nat}
+                              (i : list (Vector.t (combType t) sz))
+                              (sel : nat) : list (combType t) :=
+  map (fun i => indexConstBool i sel) i.
+
+Definition sliceBoolList {t: SignalType}
+                         {sz: nat}
+                         (startAt len : nat)
+                         (v: list (Vector.t (combType t) sz))
+                         (H: startAt + len <= sz) :
+                         list (Vector.t (combType t) len) :=
+  map (fun v => sliceBool startAt len v H) v.
+
+Definition peelVecList {t: SignalType} {s: nat}
+                       (v: list (Vector.t (combType t) s))
+                       : Vector.t (list (combType t)) s :=
+ Vector.map (fun i => map (fun j => indexConstBool j i) v) (vseq 0 s).
+
+Definition unpeelVecList' {t: SignalType} {s: nat}
+                         (v: Vector.t (list (combType t)) s)
+                         (l: nat)
+                         : list (Vector.t (combType t) s) :=
+  map (fun ni => Vector.map (fun vi => nth ni vi (defaultCombValue t)) v) (seq 0 l).
+
+Local Open Scope vector_scope.
+
+Definition unpeelVecList {t: SignalType} {s: nat}
+                         (v: Vector.t (list (combType t)) s)
+                         : list (Vector.t (combType t) s) :=
+  match s, v with
+  | O, _ => []
+  | S n, x::xs => unpeelVecList' v (length x)
+  | S _, [] => []
   end.
 
-Definition indexConstBool {t: SignalType} {sz: nat}
-                          (i : Vector.t (combType t) sz)
-                          (sel : nat) : combType t :=
-  match lt_dec sel sz with
-  | left H => @Vector.nth_order _ _ i sel H
-  | right _ => defaultCombValue t
-  end.
+Local Open Scope list_scope.
 
-Definition sliceBool {t: SignalType}
-                     {sz: nat}
-                     (startAt len : nat)
-                     (v: Vector.t (combType t) sz)
-                     (H: startAt + len <= sz) :
-                     Vector.t (combType t) len :=
-  sliceVector v startAt len H.
+Definition unsignedAddBoolList {m n : nat}
+                               (av : list (Bvector m)) (bv : list (Bvector n)) :
+                               ident (list (Bvector (1 + max m n))) :=
+  mapT (fun '(a, b) => unsignedAddBool a b) (combine av bv).
 
-Definition unsignedAddBool {m n : nat}
-                           (av : Bvector m) (bv : Bvector n) :
-                           ident (Bvector (1 + max m n)) :=
-  let a := Bv2N av in
-  let b := Bv2N bv in
-  let sumSize := 1 + max m n in
-  let sum := (a + b)%N in
-  ret (N2Bv_sized sumSize sum).
+Definition unsignedMultBoolList {m n : nat}
+                                (av : list (Bvector m)) (bv : list (Bvector n)) :
+                                ident (list (Bvector (m + n))) :=
+  mapT (fun '(a, b) => unsignedMultBool a b) (combine av bv).
 
-Definition unsignedMultBool {m n : nat}
-                           (av : Bvector m) (bv : Bvector n) :
-                           ident (Bvector (m + n)) :=
-  let a := Bv2N av in
-  let b := Bv2N bv in
-  let product := (a * b)%N in
-  ret (N2Bv_sized (m + n) product).
+Definition greaterThanOrEqualBoolList {m n : nat}
+                                      (av : list (Bvector m)) (bv : list (Bvector n)) :
+                                      ident (list bool) :=
+  mapT (fun '(a, b) => greaterThanOrEqualBool a b) (combine av bv).
 
-Definition greaterThanOrEqualBool {m n : nat}
-                                  (av : Bvector m) (bv : Bvector n) :
-                                  ident bool :=
-  let a := N.to_nat (Bv2N av) in
-  let b := N.to_nat (Bv2N bv) in
-  ret (b <=? a).
-
-Definition bufBool (i : bool) : ident bool :=
+Definition bufBoolList (i : list bool) : ident (list bool) :=
   ret i.
 
 (******************************************************************************)
@@ -215,45 +220,41 @@ Definition bufBool (i : bool) : ident bool :=
 (* interpretation.                                                            *)
 (******************************************************************************)
 
- Instance Sequential : Cava seqType :=
+ Instance SequentialCombSemantics : Cava seqType :=
   { cava := ident;
     zero := ret [false];
     one := ret [true];
     defaultSignal t := @defaultSeqValue t;
-    delay _ i := ret (defaultSignal::i)
-    delayBit i := ret (false::i); 
-    loopBit a b := @loopBitSeq a b;
-    inv := notBool;
-    and2 := andBool;
-    nand2 := nandBool;
-    or2 := orBool;
-    nor2 := norBool;
-    xor2 := xorBool;
-    xnor2 := xnorBool;
-    buf_gate := bufBool;
-    lut1 := lut1Bool;
-    lut2 := lut2Bool;
-    lut3 := lut3Bool;
-    lut4 := lut4Bool;
-    lut5 := lut5Bool;
-    lut6 := lut6Bool;
-    xorcy := xorcyBool;
-    muxcy := muxcyBool;
-    peel _ _ v := v;
-    unpeel _ _ v := v;
-    indexAt t sz isz := @indexAtBool t sz isz;
-    indexConst t sz := @indexConstBool t sz;
-    slice t sz := @sliceBool t sz;
-    unsignedAdd m n := @unsignedAddBool m n;
-    unsignedMult m n := @unsignedMultBool m n;
-    greaterThanOrEqual m n := @greaterThanOrEqualBool m n;
+    inv := notBoolList;
+    and2 := andBoolList;
+    nand2 := nandBoolList;
+    or2 := orBoolList;
+    nor2 := norBoolList;
+    xor2 := xorBoolList;
+    xnor2 := xnorBoolList;
+    buf_gate := bufBoolList;
+    lut1 := lut1BoolList;
+    lut2 := lut2BoolList;
+    lut3 := lut3BoolList;
+    lut4 := lut4BoolList;
+    lut5 := lut5BoolList;
+    lut6 := lut6BoolList;
+    xorcy := xorcyBoolList;
+    muxcy := muxcyBoolList;
+    peel _ _ v := peelVecList v;
+    unpeel _ _ v := unpeelVecList v;
+    indexAt t sz isz := @indexAtBoolList t sz isz;
+    indexConst t sz := @indexConstBoolList t sz;
+    slice t sz := @sliceBoolList t sz;
+    unsignedAdd m n := @unsignedAddBoolList m n;
+    unsignedMult m n := @unsignedMultBoolList m n;
+    greaterThanOrEqual m n := @greaterThanOrEqualBoolList m n;
     instantiate _ circuit := circuit;
-    blackBox intf _ := ret (tupleInterfaceDefault (map port_type (circuitOutputs intf)));
+    blackBox intf _ := ret (tupleInterfaceDefaultS (map port_type (circuitOutputs intf)));
 }.
 
-(******************************************************************************)
-(* A function to run a monadic circuit description and return the boolean     *)
-(* behavioural simulation result.                                             *)
-(******************************************************************************)
-
-Definition combinational {a} (circuit : cava a) : a := unIdent circuit.
+Instance CavaSequentialSemantics : Sequential seqType := {
+  combinationalSemantics := SequentialCombSemantics;
+  delay k i := ret (@defaultCombValue k :: i);
+  loop _ _ _ := loopSeq;
+}.

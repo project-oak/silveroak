@@ -167,23 +167,16 @@ Definition greaterThanOrEqualBool {m n : nat}
 Definition bufBool (i : bool) : ident bool :=
   ret i.
 
-Definition loopBitBool (A B : SignalType) (f : combType A * bool -> ident (combType B * bool)) (a : combType A) : ident (combType B) :=
-  '(b, _) <- f (a, false) ;;
-  ret b.
-
 (******************************************************************************)
 (* Instantiate the Cava class for a boolean combinational logic               *)
 (* interpretation.                                                            *)
 (******************************************************************************)
 
- Instance Combinational : Cava combType :=
+ Instance CombinationalSemantics : Cava combType :=
   { cava := ident;
     zero := ret false;
     one := ret true;
     defaultSignal t := @defaultCombValue t;
-    delay _ i := ret i; (* Dummy definition for delay for now. *)
-    delayBit i := ret i; (* Dummy definition for delayBit for now. *)
-    loopBit a b := @loopBitBool a b;
     inv := notBool;
     and2 := andBool;
     nand2 := nandBool;

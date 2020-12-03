@@ -54,6 +54,13 @@ Fixpoint defaultCombValue (t: SignalType) : combType t :=
   end.
 
 (******************************************************************************)
+(* Sequential denotion of the SignalType and default values.                  *)
+(******************************************************************************)
+
+Definition seqType t := list (combType t).
+Definition defaultSeqValue t := [defaultCombValue t].
+
+(******************************************************************************)
 (* Representation of circuit interface types with flat tuples.                *)
 (******************************************************************************)
 
@@ -126,6 +133,15 @@ Fixpoint tupleInterfaceDefaultR (v : list SignalType) : tupleInterfaceR combType
 
 Definition tupleInterfaceDefault (v : list SignalType) : tupleInterface combType v :=
   rebalance combType v (tupleInterfaceDefaultR v).
+
+Fixpoint tupleInterfaceDefaultRS (v : list SignalType) : tupleInterfaceR seqType v :=
+  match v return tupleInterfaceR seqType v with
+  | [] => tt
+  | x::xs => (defaultSeqValue x, tupleInterfaceDefaultRS xs)
+  end.
+
+Definition tupleInterfaceDefaultS (v : list SignalType) : tupleInterface seqType v :=
+  rebalance seqType v (tupleInterfaceDefaultRS v).
 
 (******************************************************************************)
 (* Netlist AST representation for signal expressions.                         *)

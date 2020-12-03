@@ -233,13 +233,13 @@ Definition delayNet (t: SignalType)
   addInstance (Delay t i o) ;;
   ret o.
 
-Definition delayBitNet (i : Signal Bit) : state CavaState (Signal Bit) :=
-  o <- newWire ;;
-  addInstance (DelayBit i o) ;;
-  ret o.
+Local Open Scope type_scope.
 
-Definition loopBitNet (A B : SignalType) (f : (Signal A * Signal Bit)%type -> state CavaState (Signal B * Signal Bit)) (a : Signal A) : state CavaState (Signal B) :=
-  o <- newWire ;;
+Definition loopNet (A B C : SignalType)
+                   (f : Signal A * Signal C -> state CavaState (Signal B * Signal C))
+                   (a : Signal A)
+                   : state CavaState (Signal B) :=
+  o <- @newSignal C ;;
   '(b, cOut) <- f (a, o) ;;
   assignSignal o cOut ;;
   ret b.
@@ -259,14 +259,11 @@ Definition instantiateNet (intf : CircuitInterface)
 (* any top-level pins or other module-level data                              *)
 (******************************************************************************)
 
-Instance CavaNet : Cava denoteSignal :=
-  { cava := state CavaState;
+Instance CavaCombinationalNet : Cava denoteSignal := {
+    cava := state CavaState;
     zero := ret Gnd;
     one := ret Vcc;
     defaultSignal := defaultNetSignal;
-    delay k := delayNet k;
-    delayBit := delayBitNet;
-    loopBit a b := loopBitNet a b;
     inv := invNet;
     and2 := andNet;
     nand2 := nandNet;
@@ -294,3 +291,10 @@ Instance CavaNet : Cava denoteSignal :=
     instantiate := instantiateNet;
     blackBox := blackBoxNet;
 }.
+
+Instance CavaSequentiallNet : Sequential denoteSignal := {
+  combinationalSemantics := CavaCombinationalNet;
+  delay k := delayNet k;
+  loop a b c := loopNet a b c;
+}.
+  

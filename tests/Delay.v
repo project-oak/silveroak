@@ -21,7 +21,7 @@ Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Monad cava}.
+  Context {signal} `{Sequential signal} `{Monad cava}.
 
   Definition delayByte (i : signal (Vec Bit 8))
                        : cava (signal (Vec Bit 8)) :=
