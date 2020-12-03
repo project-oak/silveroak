@@ -21,10 +21,9 @@ Require Import Cava.VectorUtils.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.TestVectors.
 Require Import AesSpec.Placeholder.MixColumns.
-Require Import AesSpec.Placeholder.Sbox.
 Require Import AesSpec.Placeholder.ShiftRows.
-Require Import AesSpec.Placeholder.SubBytes.
 Require Import AesSpec.AddRoundKey.
+Require Import AesSpec.SubBytes.
 Local Open Scope string_scope.
 
 Local Notation byte := Byte.byte (only parsing).
@@ -91,7 +90,7 @@ Definition add_round_key (k : round_key) (st : state) : state :=
   from_cols_bits (add_round_key bits_per_word Nb st k).
 
 Definition sub_bytes (st : state) : state :=
-  from_cols (sub_bytes forward_sbox (to_cols st)).
+  from_cols (SubBytes.sub_bytes _ _ (to_cols st)).
 
 Definition shift_rows (st : state) : state :=
   from_list_rows (shift_rows Nb (to_list_rows st)).
@@ -100,7 +99,7 @@ Definition mix_columns (st : state) : state :=
   from_cols (mix_columns (to_cols st)).
 
 Definition inv_sub_bytes (st : state) : state :=
-  from_cols (SubBytes.sub_bytes inverse_sbox (to_cols st)).
+  from_cols (SubBytes.inv_sub_bytes _ _ (to_cols st)).
 
 Definition inv_shift_rows (st : state) : state :=
   from_list_rows (inv_shift_rows Nb (to_list_rows st)).
