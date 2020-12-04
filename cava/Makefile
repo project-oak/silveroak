@@ -14,12 +14,16 @@
 # limitations under the License.
 #
 
-.PHONY: all clean coq haskell
+.PHONY: all clean coq haskell minimize-requires
 
 all:		coq haskell
 
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
+
+minimize-requires: coq
+	../tools/minimize-requires.sh
+	$(MAKE) coq
 
 %.vo:		Makefile.coq
 		$(MAKE) -f Makefile.coq $@

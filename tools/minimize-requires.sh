@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 
+# This script is a very simple wrapper that calls minimize-requires from coq-tools
+
 # do not continue if failures are encountered
 set -e
 
@@ -22,11 +24,6 @@ TOPLEVEL=$(git rev-parse --show-toplevel)
 
 # Do not use --absolutize here, because of https://github.com/JasonGross/coq-tools/issues/55
 MINIMIZE="$TOPLEVEL/third_party/coq-tools/minimize-requires.py --in-place --all -f _CoqProject"
-
-
-# TODO: remove if unneeded
-# LIBS=$(grep "^\s*-[RIQ]" _CoqProject | xargs echo) # get all library arguments from _CoqProject
-# FILES=$(grep "\.v$" _CoqProject | xargs echo) # get .v files from _CoqProject
 
 echo "Minimizing imports in $PWD..."
 echo "$MINIMIZE" # print command being executed (helpful for debugging)

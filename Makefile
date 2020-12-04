@@ -27,7 +27,7 @@
 SUBDIRS = third_party cava tests monad-examples arrow-examples silveroak-opentitan \
 	  monad-examples/xilinx tests/xilinx
 
-.PHONY: all coq clean subdirs $(SUBDIRS)
+.PHONY: all coq minimize-requires clean subdirs $(SUBDIRS)
 
 all: subdirs
 
@@ -37,6 +37,8 @@ $(SUBDIRS):
 	$(MAKE) -C $@ $(SUBDIRTARGET)
 
 coq: $(SUBDIRS)
+
+minimize-requires: $(SUBDIRS)
 
 # clean everything *except for* third_party
 clean:
@@ -52,6 +54,9 @@ cleanall:
 
 # pass the 'coq' target down to subdirs
 coq: SUBDIRTARGET=coq
+
+# pass the 'minimize-requires' target down to subdirs
+minimize-requires: SUBDIRTARGET=minimize-requires
 
 # strip off the first subdir name, then call make on that subdir with the specified .vo target
 # for example, "make cava/X/Y/Foo.vo" will call "make -C cava X/Y/Foo.vo"
