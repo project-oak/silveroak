@@ -91,10 +91,9 @@ Class Cava (signal : SignalType -> Type) := {
   blackBox : forall (intf: CircuitInterface),
              tupleInterface signal (map port_type (circuitInputs intf)) ->
              cava (tupleInterface signal ((map port_type (circuitOutputs intf))));
-}.               
-
-Class Sequential (signal : SignalType -> Type) := {
-  combinationalSemantics :> Cava signal;
+  (* These members should really be in a class that extends Cava with sequential
+     operations, but I (satnam6502) can't get that to work, so they are linlined
+     here instrad.  *)
   (* A unit delay. *)
   delay : forall {t: SignalType}, signal t -> cava (signal t);
   (* Feeback loop, with unit delay inserted into the feedback path. *)
@@ -102,4 +101,4 @@ Class Sequential (signal : SignalType -> Type) := {
          (signal A * signal C -> cava (signal B * signal C)) ->
          signal A ->
          cava (signal B);
-}.
+}.               

@@ -251,10 +251,13 @@ Definition bufBoolList (i : list bool) : ident (list bool) :=
     greaterThanOrEqual m n := @greaterThanOrEqualBoolList m n;
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefaultS (map port_type (circuitOutputs intf)));
+    delay k i := ret (@defaultCombValue k :: i);
+   loop _ _ _ := loopSeq;
 }.
 
-Instance CavaSequentialSemantics : Sequential seqType := {
-  combinationalSemantics := SequentialCombSemantics;
-  delay k i := ret (@defaultCombValue k :: i);
-  loop _ _ _ := loopSeq;
-}.
+(******************************************************************************)
+(* A function to run a monadic circuit description and return the boolean     *)
+(* behavioural simulation result.                                             *)
+(******************************************************************************)
+
+Definition sequential {a} (circuit : cava a) : a := unIdent circuit.

@@ -19,10 +19,12 @@ module Main where
 import Cava2SystemVerilog
 import Instantiate
 import TestMultiply
+import Delay
 
 main :: IO ()
 main = do writeSystemVerilog instantiateNetlist
           writeTestBench instantiate_tb
           writeSystemVerilog mult2_3_5Netlist
           writeTestBench mult2_3_5_tb
+          writeSystemVerilog delayByte_Netlist
 

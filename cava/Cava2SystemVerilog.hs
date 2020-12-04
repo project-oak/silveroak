@@ -186,7 +186,7 @@ generateInstance netlistState (DelayBit i o) _
     "      " ++ showSignal o ++ " <= 1'b0;",
     "    end else begin",
     "      " ++ showSignal o ++ " <= " ++ showSignal i ++ ";",
-         "end",
+    "    end",
     "  end"]
     where
     NetlistGenerationState (Just clk) clkEdge (Just rst) rstEdge = netlistState
@@ -196,15 +196,15 @@ generateInstance netlistState (DelayBit i o) _
     negReset = case rstEdge of
                  PositiveEdge -> ""
                  NegativeEdge -> "!"
-generateInstance netlistState (Delay _ i o) _
+generateInstance netlistState (Delay t i o) _
   = unlines [
     "  always_ff @(" ++ showEdge clkEdge ++ " " ++ showSignal clk ++ " or "
                      ++ showEdge rstEdge ++ " " ++ showSignal rst ++ ") begin",
     "    if (" ++ negReset ++ showSignal rst ++ ") begin",
-    "      " ++ showSignal o ++ " <= 1'b0;",
+    "      " ++ showSignal o ++ " <= " ++ showSignal (defaultNetSignal t) ++ ";",
     "    end else begin",
     "      " ++ showSignal o ++ " <= " ++ showSignal i ++ ";",
-         "end",
+    "    end",
     "  end"]
     where
     NetlistGenerationState (Just clk) clkEdge (Just rst) rstEdge = netlistState

@@ -33,7 +33,7 @@ Local Open Scope monad_scope.
 Local Open Scope string_scope.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Sequential signal} `{Monad cava}.
+  Context {signal} `{Cava signal} `{Monad cava}.
 
   (* NAND gate example. First, let's define an overloaded NAND gate
      description. *)
@@ -46,7 +46,7 @@ Section WithCava.
 
  (* An contrived example of loopBit *)     
   Definition loopedNAND :=
-    loopBit (second delayBit >=> nand2 >=> fork2).
+    loop (second delay >=> nand2 >=> fork2).
 
 End WithCava.
 

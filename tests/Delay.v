@@ -14,14 +14,22 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+From Coq Require Import Strings.Ascii Strings.String.
+From Coq Require Import NArith.
+From Coq Require Import Lists.List.
+Import ListNotations.
+
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
 
+From Coq Require Vector.
+From Coq Require Import Bool.Bvector.
+
 Section WithCava.
-  Context {signal} `{Sequential signal} `{Monad cava}.
+  Context {signal} `{Cava signal} `{Monad cava}.
 
   Definition delayByte (i : signal (Vec Bit 8))
                        : cava (signal (Vec Bit 8)) :=
@@ -29,8 +37,28 @@ Section WithCava.
 
 End WithCava.
 
+Definition b0 := N2Bv_sized 8 0.
+Definition b14 := N2Bv_sized 8 14.
+Definition b7 := N2Bv_sized 8 7.
+Definition b250 := N2Bv_sized 8 250.
+
+Local Open Scope list_scope.
+
+Example delay_ex1: sequential (delayByte [b14; b7; b250]) = [b0; b14; b7; b250].
+Proof. reflexivity. Qed.
+
+Lemma delayByteBehaviour: forall (i : list (Bvector 8)),
+                          sequential (delayByte i) =  b0 :: i.
+Proof.
+  reflexivity.
+Qed.
+
 Definition delayByte_Interface
   := sequentialInterface "delayByte"
+     "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "i" (Vec Bit 8)]
      [mkPort "o" (Vec Bit 8)]
      [].
+
+Definition delayByte_Netlist :=
+  makeNetlist delayByte_Interface delayByte.
