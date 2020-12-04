@@ -26,7 +26,8 @@
 
    This can be a problem because rewriting under matches is not allowed, even
    when the match has only one case. The destruct_pair_let tactic fixes the
-   issue by changing p into (fst p, snd p), making the match disapper. *)Ltac destruct_pair_let :=
+   issue by changing p into (fst p, snd p), making the match disapper. *)
+Ltac destruct_pair_let :=
   match goal with
   | |- context [ match ?p with pair _ _ => _ end ] =>
     rewrite (surjective_pairing p)
