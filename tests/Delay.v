@@ -180,20 +180,30 @@ Definition addNSpec {n} (a b : list (Bvector n)) : list (Bvector n) :=
   | _,_ => []
   end.
 
+Local Ltac seqsimpl_step :=
+  first [ progress cbn beta iota delta
+                   [fst snd hd sequential loopSeq' loop SequentialCombSemantics]
+        | progress cbv beta iota delta [loopSeq]; seqsimpl_step
+        | progress autorewrite with seqsimpl
+        | progress destruct_pair_let
+        | progress simpl_ident ].
+Local Ltac seqsimpl := repeat seqsimpl_step.
+
 (* TODO: rename typeclass arguments *)
 Lemma addNCorrect n (a b : list (Bvector n)) :
   sequential (addN (H:=SequentialCombSemantics) a b) = addNSpec a b.
 Admitted.
+Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 
 Lemma countForkStep:
   forall (i : Bvector 8) (s : Bvector 8),
     sequential (countFork (semantics:=SequentialCombSemantics) ([i], [s]))
     = (countBySpec' s [i], countBySpec' s [i]).
 Proof.
-  intros. cbv [countFork countBySpec']. cbn [fst snd].
-  simpl_ident. rewrite addNCorrect. cbn [hd].
-  reflexivity.
+  intros; cbv [countFork countBySpec'].
+  seqsimpl; reflexivity.
 Qed.
+Hint Rewrite countForkStep using solve [eauto] : seqsimpl.
 
 Lemma countForkCorrect:
   forall (i : list (Bvector 8)) (s : Bvector 8),
@@ -201,18 +211,13 @@ Lemma countForkCorrect:
     = countBySpec' s i.
 Proof.
   cbv [sequential]; induction i; intros; [ reflexivity | ].
-  cbn [loopSeq' countBySpec' fst snd].
-  simpl_ident. destruct_pair_let. simpl_ident.
-  rewrite countForkStep. cbn [fst snd].
-  cbn [countBySpec']. rewrite IHi. cbn [hd].
-  reflexivity.
+  seqsimpl. cbn [countBySpec']; rewrite IHi; reflexivity.
 Qed.
+Hint Rewrite countForkCorrect using solve [eauto] : seqsimpl.
 
 Lemma countByCorrect: forall (i : list (Bvector 8)),
                       sequential (countBy i) = countBySpec i.
 Proof.
-  intros. cbv [countBy countBySpec].
-  cbn [loop SequentialCombSemantics].
-  cbv [loopSeq]. rewrite countForkCorrect.
-  reflexivity.
+  intros; cbv [countBy countBySpec].
+  seqsimpl; reflexivity.
 Qed.
