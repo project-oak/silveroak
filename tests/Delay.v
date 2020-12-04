@@ -60,5 +60,8 @@ Definition delayByte_Interface
      [mkPort "o" (Vec Bit 8)]
      [].
 
-Definition delayByte_Netlist :=
-  makeNetlist delayByte_Interface delayByte.
+Definition delayByte_Netlist := makeNetlist delayByte_Interface delayByte.
+
+Definition delayByte_tb
+  := testBench "delayByte_tb" delayByte_Interface
+      [b14; b7; b250]  [b0; b14; b7].

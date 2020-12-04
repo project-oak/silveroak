@@ -283,7 +283,7 @@ writeTestBench :: TestBench -> IO ()
 writeTestBench testBench
   = do putStr ("Generating test bench " ++ filename ++ " " ++ driver ++ "...")
        writeFile filename (unlines (generateTestBench testBench))
-       writeFile driver (unlines (cppDriver name ticks))
+       writeFile driver (unlines (cppDriver name clk ticks))
        writeFile (name ++ ".tcl") (unlines (tclScript name ticks))
        putStrLn (" [done]")
     where
@@ -291,6 +291,12 @@ writeTestBench testBench
     filename = name ++ ".sv"
     driver = name ++ ".cpp"
     ticks = length (testBenchInputs testBench)
+    clk' = clkName (testBenchInterface testBench)
+    clk = if clk' == "" then
+            "clk" -- This is a combinational circuit, use make up a clock
+                  -- name for the test bench ticks.
+          else
+            clk'
 
 generateTestBench :: TestBench -> [String]
 generateTestBench testBench
@@ -456,8 +462,8 @@ formatKind Bit = "%0b"
 formatKind (Vec Bit _) = "%0d"
 formatKind other = "error: attempt to format unknown kind"
 
-cppDriver :: String -> Int -> [String]
-cppDriver name ticks =
+cppDriver :: String -> String -> Int -> [String]
+cppDriver name clkName ticks =
   ["#include <stdlib.h>",
     "#include \"V" ++ name ++ ".h\"",
     "#include \"verilated.h\"",
@@ -476,9 +482,9 @@ cppDriver name ticks =
     "  top->eval(); vcd_trace->dump(main_time);",
     "  vcd_trace->open(\"" ++ name ++ ".vcd\");",
     "  for (unsigned int i = 0; i < " ++ show ticks ++ "; i++) {",
-    "    top->clk = 0; main_time += 5;",
+    "    top->" ++ clkName ++ " = 0; main_time += 5;",
     "    top->eval(); vcd_trace->dump(main_time);",
-    "    top->clk = 1;  main_time += 5;",
+    "    top->" ++ clkName ++ " = 1;  main_time += 5;",
     "    top->eval(); vcd_trace->dump(main_time);",
     "  }",
     "  vcd_trace->close();",

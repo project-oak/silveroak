@@ -395,25 +395,11 @@ Fixpoint instantiateInputPortsR (inputs: list PortDeclaration)
     ret (xi, xr)
   end.
 
-Definition i1R : state CavaState (Signal Bit * unit)
-               := instantiateInputPortsR [mkPort "a" Bit].
-Definition i2R : state CavaState (Signal Bit * (Signal (Vec Bit 8) * unit))
-               := instantiateInputPortsR [mkPort "a" Bit; mkPort "b" (Vec Bit 8)].
-Definition i3R := instantiateInputPortsR [mkPort "a" Bit; mkPort "b" (Vec Bit 8); mkPort "c" Bit]
-               : state CavaState (Signal Bit * (Signal (Vec Bit 8) * (Signal Bit * unit))).
-
 (* Instantiate input ports with a left associative tuple and no unit. *)
 Definition instantiateInputPorts (inputs: list PortDeclaration)
   : state CavaState (tupleNetInterface inputs) :=
   right_unit_tuple <- instantiateInputPortsR inputs ;;
   ret (rebalanceNet inputs right_unit_tuple).
-
-Definition i1 : state CavaState (Signal Bit)
-              := instantiateInputPorts [mkPort "a" Bit].
-Definition i2 : state CavaState (Signal Bit * (Signal (Vec Bit 8)))
-              := instantiateInputPorts [mkPort "a" Bit; mkPort "b" (Vec Bit 8)].
-Definition i3 := instantiateInputPorts [mkPort "a" Bit; mkPort "b" (Vec Bit 8); mkPort "c" Bit]
-              : state CavaState (Signal Bit * Signal (Vec Bit 8) * Signal Bit).
 
 Definition instantiateOutputPort (pd : PortDeclaration)
                                  (o : Signal (port_type pd))
