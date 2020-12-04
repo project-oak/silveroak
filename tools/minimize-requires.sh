@@ -25,6 +25,8 @@ TOPLEVEL=$(git rev-parse --show-toplevel)
 # Do not use --absolutize here, because of https://github.com/JasonGross/coq-tools/issues/55
 MINIMIZE="$TOPLEVEL/third_party/coq-tools/minimize-requires.py --in-place --all -f _CoqProject"
 
+echo "WARNING: this script is best-effort and may over-eagerly remove imports. If there are build errors, you may need to hotfix. For instance, sometimes if something is transitively Required (for instance, referenced as Foo.x where some other import Requires Foo), you may need to add an explicit import."
+
 echo "Minimizing imports in $PWD..."
 echo "$MINIMIZE" # print command being executed (helpful for debugging)
 $MINIMIZE
