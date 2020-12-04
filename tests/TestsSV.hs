@@ -29,4 +29,4 @@ main = do writeSystemVerilog instantiateNetlist
           writeSystemVerilog delayByte_Netlist
           writeTestBench delayByte_tb
           writeSystemVerilog pipelinedNANDNetlist
-          (* writeTestBench pipelinedNAND_tb *)
+          -- writeTestBench pipelinedNAND_tb
