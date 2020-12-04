@@ -42,11 +42,11 @@ Section WithCava.
 
  (* A nand-gate with registers after the AND gate and the INV gate. *)
   Definition pipelinedNAND :=
-    nand2_gate >=> delayBit >=> inv >=> delayBit.
+    nand2_gate >=> delay >=> inv >=> delay.
 
  (* An contrived example of loopBit *)     
   Definition loopedNAND :=
-    loopBit (second delayBit >=> nand2 >=> fork2).
+    loop (second delay >=> nand2 >=> fork2).
 
 End WithCava.
 

@@ -186,7 +186,7 @@ generateInstance netlistState (DelayBit i o) _
     "      " ++ showSignal o ++ " <= 1'b0;",
     "    end else begin",
     "      " ++ showSignal o ++ " <= " ++ showSignal i ++ ";",
-         "end",
+    "    end",
     "  end"]
     where
     NetlistGenerationState (Just clk) clkEdge (Just rst) rstEdge = netlistState
@@ -196,6 +196,24 @@ generateInstance netlistState (DelayBit i o) _
     negReset = case rstEdge of
                  PositiveEdge -> ""
                  NegativeEdge -> "!"
+generateInstance netlistState (Delay t i o) _
+  = unlines [
+    "  always_ff @(" ++ showEdge clkEdge ++ " " ++ showSignal clk ++ " or "
+                     ++ showEdge rstEdge ++ " " ++ showSignal rst ++ ") begin",
+    "    if (" ++ negReset ++ showSignal rst ++ ") begin",
+    "      " ++ showSignal o ++ " <= " ++ showSignal (defaultNetSignal t) ++ ";",
+    "    end else begin",
+    "      " ++ showSignal o ++ " <= " ++ showSignal i ++ ";",
+    "    end",
+    "  end"]
+    where
+    NetlistGenerationState (Just clk) clkEdge (Just rst) rstEdge = netlistState
+    showEdge edge = case edge of
+                      PositiveEdge -> "posedge"
+                      NegativeEdge -> "negedge"
+    negReset = case rstEdge of
+                 PositiveEdge -> ""
+                 NegativeEdge -> "!"                 
 generateInstance _ (AssignSignal _ a b) _
    = "  assign " ++ showSignal a ++ " = " ++ showSignal b ++ ";"
 generateInstance _ (Not i o) instrNr = primitiveInstance "not" [o, i] instrNr
@@ -265,7 +283,7 @@ writeTestBench :: TestBench -> IO ()
 writeTestBench testBench
   = do putStr ("Generating test bench " ++ filename ++ " " ++ driver ++ "...")
        writeFile filename (unlines (generateTestBench testBench))
-       writeFile driver (unlines (cppDriver name ticks))
+       writeFile driver (unlines (cppDriver name clk ticks))
        writeFile (name ++ ".tcl") (unlines (tclScript name ticks))
        putStrLn (" [done]")
     where
@@ -273,6 +291,12 @@ writeTestBench testBench
     filename = name ++ ".sv"
     driver = name ++ ".cpp"
     ticks = length (testBenchInputs testBench)
+    clk' = clkName (testBenchInterface testBench)
+    clk = if clk' == "" then
+            "clk" -- This is a combinational circuit, use make up a clock
+                  -- name for the test bench ticks.
+          else
+            clk'
 
 generateTestBench :: TestBench -> [String]
 generateTestBench testBench
@@ -438,8 +462,8 @@ formatKind Bit = "%0b"
 formatKind (Vec Bit _) = "%0d"
 formatKind other = "error: attempt to format unknown kind"
 
-cppDriver :: String -> Int -> [String]
-cppDriver name ticks =
+cppDriver :: String -> String -> Int -> [String]
+cppDriver name clkName ticks =
   ["#include <stdlib.h>",
     "#include \"V" ++ name ++ ".h\"",
     "#include \"verilated.h\"",
@@ -458,9 +482,9 @@ cppDriver name ticks =
     "  top->eval(); vcd_trace->dump(main_time);",
     "  vcd_trace->open(\"" ++ name ++ ".vcd\");",
     "  for (unsigned int i = 0; i < " ++ show ticks ++ "; i++) {",
-    "    top->clk = 0; main_time += 5;",
+    "    top->" ++ clkName ++ " = 0; main_time += 5;",
     "    top->eval(); vcd_trace->dump(main_time);",
-    "    top->clk = 1;  main_time += 5;",
+    "    top->" ++ clkName ++ " = 1;  main_time += 5;",
     "    top->eval(); vcd_trace->dump(main_time);",
     "  }",
     "  vcd_trace->close();",
@@ -534,6 +558,9 @@ mapSignalsInInstanceM f inst
       DelayBit i o -> do fi <- f i
                          fo <- f o
                          return (DelayBit fi fo)
+      Delay t i o -> do fi <- f i
+                        fo <- f o
+                        return (Delay t fi fo)
       AssignSignal k t v -> do ft <- f t
                                fv <- f v
                                return (AssignSignal k ft fv)

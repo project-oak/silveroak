@@ -73,6 +73,7 @@ library
                      Ndigits
                      PeanoNat
                      Primitives
+                     Sequential
                      Signal
                      StateMonad
                      Types
@@ -115,5 +116,9 @@ library
                      String
                      Traversable
                      Wf
+                     EquivDec
+                     Injection
+                     List0
+                     RelDec
 
   default-language:  Haskell2010

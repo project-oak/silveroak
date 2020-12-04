@@ -80,6 +80,8 @@ Inductive Instance : Type :=
   | Xor:       Signal Bit -> Signal Bit -> Signal Bit -> Instance
   | Xnor:      Signal Bit -> Signal Bit -> Signal Bit -> Instance
   | Buf:       Signal Bit -> Signal Bit -> Instance
+  (* Composite delay component i.e. a register *)
+  | Delay:     forall (t : SignalType), Signal t -> Signal t -> Instance
   (* A Cava unit delay bit component. *)
   | DelayBit:  Signal Bit -> Signal Bit -> Instance
   (* Assignment of bit wire *)
@@ -214,6 +216,14 @@ Definition newExternal (t : string) : state CavaState (Signal (ExternalType t)) 
     let newExt := UninterpretedSignalIndex t (N.of_nat (length ext)) in
     put (mkCavaState o vCount vDefs (ext ++ [t]) clk clkEdge rst rstEdge m ml) ;;
     ret newExt
+  end.
+
+Definition newSignal (t: SignalType) : state CavaState (Signal t) :=
+  match t with
+  | Void => ret UndefinedSignal
+  | Bit => newWire
+  | Vec k s => newVector k s
+  | ExternalType typeName => newExternal typeName
   end.
 
 Definition addInstance (newInst: Instance) : state CavaState unit :=
@@ -385,25 +395,11 @@ Fixpoint instantiateInputPortsR (inputs: list PortDeclaration)
     ret (xi, xr)
   end.
 
-Definition i1R : state CavaState (Signal Bit * unit)
-               := instantiateInputPortsR [mkPort "a" Bit].
-Definition i2R : state CavaState (Signal Bit * (Signal (Vec Bit 8) * unit))
-               := instantiateInputPortsR [mkPort "a" Bit; mkPort "b" (Vec Bit 8)].
-Definition i3R := instantiateInputPortsR [mkPort "a" Bit; mkPort "b" (Vec Bit 8); mkPort "c" Bit]
-               : state CavaState (Signal Bit * (Signal (Vec Bit 8) * (Signal Bit * unit))).
-
 (* Instantiate input ports with a left associative tuple and no unit. *)
 Definition instantiateInputPorts (inputs: list PortDeclaration)
   : state CavaState (tupleNetInterface inputs) :=
   right_unit_tuple <- instantiateInputPortsR inputs ;;
   ret (rebalanceNet inputs right_unit_tuple).
-
-Definition i1 : state CavaState (Signal Bit)
-              := instantiateInputPorts [mkPort "a" Bit].
-Definition i2 : state CavaState (Signal Bit * (Signal (Vec Bit 8)))
-              := instantiateInputPorts [mkPort "a" Bit; mkPort "b" (Vec Bit 8)].
-Definition i3 := instantiateInputPorts [mkPort "a" Bit; mkPort "b" (Vec Bit 8); mkPort "c" Bit]
-              : state CavaState (Signal Bit * Signal (Vec Bit 8) * Signal Bit).
 
 Definition instantiateOutputPort (pd : PortDeclaration)
                                  (o : Signal (port_type pd))

@@ -334,7 +334,7 @@ Fixpoint build_netlist' {i o}
       map2M (fun x y => AssignSignal x y) Z z z' ;;
       ret y
 
-  | Delay o => fun x =>
+  | CircuitArrow.Delay o => fun x =>
       y <- fresh_wire _ ;;
       map2M (fun x y => DelayBit x y) _ x y ;;
       ret y
