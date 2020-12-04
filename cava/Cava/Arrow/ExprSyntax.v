@@ -1,9 +1,9 @@
-From Coq Require Import Strings.String.
-From Coq Require Import Lists.List.
-From Coq Require Import Arith.Peano_dec.
-From Cava Require Import Arrow.ArrowKind.
-From Cava Require Import Arrow.Primitives.
-From Cava Require Import Arrow.Classes.Category.
+Require Import Coq.Strings.String.
+Require Import Coq.Lists.List.
+Require Import Coq.Arith.Peano_dec.
+Require Import Cava.Arrow.ArrowKind.
+Require Import Cava.Arrow.Primitives.
+Require Import Cava.Arrow.Classes.Category.
 
 Import ListNotations.
 

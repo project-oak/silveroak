@@ -16,10 +16,13 @@
 
 .PHONY:	all
 
-all: coqutil bedrock2 extlib
+all: coqutil coqtools bedrock2 extlib
 
 update:
 	git submodule update --init --recursive
+
+# coq-tools is just python scripts; nothing to make
+coqtools: update
 
 coqutil: update
 	$(MAKE) -C bedrock2/deps/coqutil all

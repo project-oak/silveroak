@@ -7,3 +7,6 @@
 [submodule "third_party/bedrock2"]
 	path = third_party/bedrock2
 	url = https://github.com/mit-plv/bedrock2
+[submodule "third_party/coq-tools"]
+	path = third_party/coq-tools
+	url = https://github.com/JasonGross/coq-tools.git

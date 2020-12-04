@@ -14,13 +14,13 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import derive.Derive.
-From Cava Require Import Arrow.ArrowExport Arrow.DeriveSpec
-     Arrow.CombinatorProperties BitArithmetic VectorUtils.
+Require Import Coq.derive.Derive.
+Require Import Cava.Arrow.ArrowExport Cava.Arrow.DeriveSpec
+     Cava.Arrow.CombinatorProperties Cava.BitArithmetic Cava.VectorUtils.
 Require Import Cava.Tactics.
 
-From Aes Require Import PkgProperties CipherRoundProperties
-     pkg cipher_round unrolled_naive_cipher.
+Require Import Aes.PkgProperties Aes.CipherRoundProperties
+     Aes.pkg Aes.cipher_round Aes.unrolled_naive_cipher.
 
 Section Wf.
   Context (aes_256_naive_key_expansion_Wf :

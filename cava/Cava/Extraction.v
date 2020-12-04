@@ -14,11 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Extraction.
-From Coq Require Import extraction.ExtrHaskellZInteger.
-From Coq Require Import extraction.ExtrHaskellString.
-From Coq Require Import ExtrHaskellBasic.
-From Coq Require Import extraction.ExtrHaskellNatInteger.
+Require Import Coq.extraction.Extraction.
+Require Import Coq.extraction.ExtrHaskellZInteger.
+Require Import Coq.extraction.ExtrHaskellString.
+Require Import Coq.extraction.ExtrHaskellBasic.
+Require Import Coq.extraction.ExtrHaskellNatInteger.
 
 Extraction Language Haskell.
 Set Extraction KeepSingleton.
@@ -49,11 +49,11 @@ Recursive Extraction Library Sequential.
 Recursive Extraction Library Combinators.
 Recursive Extraction Library NetlistGeneration.
 
-From Cava.Arrow Require Import ArrowExport.
-From Cava.Arrow Require Classes.Category.
-From Cava.Arrow Require Classes.Arrow.
-From Cava.Arrow Require Classes.Coq.
-From Cava.Arrow Require Classes.Kleisli.
+Require Import Cava.Arrow.ArrowExport.
+Require Cava.Arrow.Classes.Category.
+Require Cava.Arrow.Classes.Arrow.
+Require Cava.Arrow.Classes.Coq.
+Require Cava.Arrow.Classes.Kleisli.
 
 Recursive Extraction Library Arrow.
 Recursive Extraction Library Category.

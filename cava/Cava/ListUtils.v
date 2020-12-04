@@ -30,15 +30,60 @@ End Misc.
 
 Section Maps.
   Fixpoint map2 {A B C} (f : A -> B -> C) (ls1 : list A) ls2 :=
-    match ls1 with
-    | [] => []
-    | a :: ls1' =>
-      match ls2 with
-      | [] => []
-      | b :: ls2' =>
-        f a b :: map2 f ls1' ls2'
-      end
+    match ls1, ls2 with
+    | a :: ls1', b :: ls2' => f a b :: map2 f ls1' ls2'
+    | _, _ => []
     end.
+
+  Lemma map2_length A B C (f : A -> B -> C) (l1 : list A) (l2 : list B) :
+    length (map2 f l1 l2) = Nat.min (length l1) (length l2).
+  Proof.
+    revert l2.
+    induction l1; [reflexivity|].
+    destruct l2; [reflexivity|].
+    simpl.
+    rewrite (IHl1 l2).
+    reflexivity.
+  Qed.
+
+  Lemma map2_ext {A B C} (f g : A -> B -> C) (la : list A) lb :
+      (forall a b, f a b = g a b) -> map2 f la lb = map2 g la lb.
+  Proof.
+    intros.
+    revert lb.
+    induction la; [reflexivity|].
+    intros.
+    destruct lb; [reflexivity|].
+    simpl.
+    rewrite (H a b).
+    rewrite IHla.
+    reflexivity.
+  Qed.
+
+  Lemma map2_id_l {A B} (l1 : list A) (l2 : list B) (HL : length l2 >= length l1) : map2 (fun a _ => a) l1 l2 = l1.
+  Proof.
+    generalize dependent l2.
+    induction l1; [reflexivity|].
+    intros.
+    destruct l2; [inversion HL|].
+    simpl.
+    rewrite IHl1.
+    { reflexivity. }
+    { simpl in HL.
+      inversion HL; lia. }
+  Qed.
+
+  Lemma map2_map2_r {A B C D} (f : A -> B -> C) (g : C -> B -> D) (ls1 : list A) ls2 :
+    map2 g (map2 f ls1 ls2) ls2 = map2 (fun a b => g (f a b) b) ls1 ls2.
+  Proof.
+    revert ls2.
+    induction ls1; [reflexivity|].
+    intros.
+    destruct ls2; [reflexivity|].
+    simpl.
+    rewrite IHls1.
+    reflexivity.
+  Qed.
 End Maps.
 
 (* Proofs about fold_right and fold_left *)

@@ -14,16 +14,16 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Lists.List.
-From Coq Require Import Numbers.NaryFunctions.
-From Coq Require Import Strings.String.
-From Coq Require Import Arith.Arith.
-From Coq Require Import NArith.NArith.
-From Coq Require Import Vectors.Vector.
-From Coq Require Import micromega.Lia.
-From Cava Require Import Arrow.Classes.Category Arrow.Classes.Arrow.
-From Cava Require Import Arrow.ArrowKind.
-From Cava Require Import Arrow.Primitives.
+Require Import Coq.Lists.List.
+Require Import Coq.Numbers.NaryFunctions.
+Require Import Coq.Strings.String.
+Require Import Coq.Arith.Arith.
+Require Import Coq.NArith.NArith.
+Require Import Coq.Vectors.Vector.
+Require Import Coq.micromega.Lia.
+Require Import Cava.Arrow.Classes.Category Cava.Arrow.Classes.Arrow.
+Require Import Cava.Arrow.ArrowKind.
+Require Import Cava.Arrow.Primitives.
 
 Import ListNotations.
 Import VectorNotations.

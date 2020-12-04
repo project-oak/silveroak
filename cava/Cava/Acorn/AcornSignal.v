@@ -14,14 +14,14 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import ZArith.ZArith.
-From Coq Require Import Strings.String.
-From Coq Require Import Vectors.Vector.
+Require Import Coq.ZArith.ZArith.
+Require Import Coq.Strings.String.
+Require Import Coq.Vectors.Vector.
 
-From Coq Require Import Lists.List.
+Require Import Coq.Lists.List.
 Import ListNotations.
 
-From Cava Require Import VectorUtils.
+Require Import Cava.VectorUtils.
 
 Inductive SignalType :=
   | Void : SignalType                             (* An empty type *)

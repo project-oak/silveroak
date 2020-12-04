@@ -9,12 +9,11 @@ CipherRepresentationChange.v
 ExpandAllKeys.v
 InterleavedCipher.v
 InterleavedInverseCipher.v
-
+Sbox.v
+ShiftRows.v
+SubBytes.v
 
 Placeholder/MixColumns.v
-Placeholder/Sbox.v
-Placeholder/ShiftRows.v
-Placeholder/SubBytes.v
 
 Tests/CipherTest.v
 Tests/Common.v

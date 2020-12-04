@@ -14,10 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Strings.String.
-From Coq Require Import Vectors.Vector.
+Require Import Coq.Strings.String.
+Require Import Coq.Vectors.Vector.
 
-From Cava Require Import VectorUtils.
+Require Import Cava.VectorUtils.
 
 (******************************************************************************)
 (* Values of Kind can occur as the type of signals on a circuit interface *)

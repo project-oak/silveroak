@@ -14,21 +14,21 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Strings.Ascii Strings.String.
+Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
-From Coq Require Import Vectors.Vector.
-From Coq Require Import ZArith.ZArith.
+Require Import Coq.Vectors.Vector.
+Require Import Coq.ZArith.ZArith.
 
-From Coq Require Import Lists.List.
+Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import Cava.Cava.
 Require Import Cava.VectorUtils.
 Require Import Cava.Monad.CavaClass.
 
-From Cava Require Import Signal.
+Require Import Cava.Signal.
 
 (******************************************************************************)
 (* Netlist implementations for the Cava class.                                *)

@@ -17,16 +17,16 @@
 Require Import Coq.Lists.List.
 Import ListNotations.
 
-From Coq Require Import Vectors.Vector.
+Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Traversable.
 Import MonadNotation.
 
-From Cava Require Import VectorUtils.
-From Cava Require Import Acorn.Acorn.
-From Cava Require Import Acorn.Lib.AcornVectors.
+Require Import Cava.VectorUtils.
+Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.Lib.AcornVectors.
 
 Local Open Scope vector_scope.
 

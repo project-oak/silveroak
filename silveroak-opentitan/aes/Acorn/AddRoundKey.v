@@ -14,16 +14,16 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Vectors.Vector.
+Require Import Coq.Vectors.Vector.
 
 Require Import ExtLib.Structures.Monads.
 
-From Cava Require Import VectorUtils.
-From Cava Require Import Acorn.Acorn.
-From Cava Require Import Acorn.Lib.AcornVectors.
-From AcornAes Require Import Common.
-From AesSpec Require Import Tests.CipherTest.
-From AesSpec Require Import Tests.Common.
+Require Import Cava.VectorUtils.
+Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.Lib.AcornVectors.
+Require Import AcornAes.Common.
+Require Import AesSpec.Tests.CipherTest.
+Require Import AesSpec.Tests.Common.
 Import Common.Notations.
 
 Section WithCava.

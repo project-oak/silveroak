@@ -14,16 +14,16 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Program.Basics.
-From Coq Require Import Bool.Bool Init.Nat.
-From Coq Require Import Strings.Ascii Strings.String.
-From Coq Require Import NArith.NArith.
+Require Import Coq.Program.Basics.
+Require Import Coq.Bool.Bool Coq.Init.Nat.
+Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.NArith.NArith.
 
-From Coq Require Import Vectors.Vector.
-From Coq Require Import Bool.Bvector.
+Require Import Coq.Vectors.Vector.
+Require Import Coq.Bool.Bvector.
 Import VectorNotations.
 
-From Coq Require Import Lists.List.
+Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
