@@ -28,4 +28,5 @@ main = do writeSystemVerilog instantiateNetlist
           writeTestBench mult2_3_5_tb
           writeSystemVerilog delayByte_Netlist
           writeTestBench delayByte_tb
-
+          writeSystemVerilog pipelinedNANDNetlist
+          writeTestBench pipelinedNAND_tb
