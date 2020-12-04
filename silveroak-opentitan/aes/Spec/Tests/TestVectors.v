@@ -16,7 +16,6 @@
 
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
-Require Import Coq.Vectors.Vector.
 Require Import Cava.BitArithmetic.
 Require Import AesSpec.Tests.Common.
 Import ListNotations.

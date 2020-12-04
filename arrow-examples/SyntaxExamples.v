@@ -16,7 +16,6 @@
 
 Require Import Cava.Arrow.ArrowExport.
 
-Require Import Coq.Strings.String.
 Local Open Scope string_scope.
 
 Require Import Coq.Lists.List.

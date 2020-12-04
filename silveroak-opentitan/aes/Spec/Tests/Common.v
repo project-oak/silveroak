@@ -14,14 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.NArith.NArith.
 Require Import Coq.Numbers.DecimalString.
-Require Import Coq.Strings.HexString.
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import ExtLib.Data.Char.
-Require Import Coq.Vectors.Vector.
-Require Import Cava.VectorUtils.
 Import ListNotations.
 Local Open Scope string_scope.
 

@@ -14,14 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Arith.Arith Coq.Logic.Eqdep_dec Coq.Vectors.Vector Coq.micromega.Lia
-     Coq.NArith.NArith Coq.Strings.String Coq.NArith.Ndigits.
-Require Import Cava.Arrow.ArrowExport Cava.BitArithmetic.
 
-Require Import Aes.pkg Aes.sbox Aes.unrolled_opentitan_cipher.
-
-Require Import Cava.Types.
-Require Import Cava.Netlist.
 
 (* Definition sbox_canright_interface *)
 (*   := combinationalInterface "sbox_canright" *)

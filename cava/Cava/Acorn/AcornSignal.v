@@ -16,12 +16,9 @@
 
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.Strings.String.
-Require Import Coq.Vectors.Vector.
 
 Require Import Coq.Lists.List.
 Import ListNotations.
-
-Require Import Cava.VectorUtils.
 
 Inductive SignalType :=
   | Void : SignalType                             (* An empty type *)

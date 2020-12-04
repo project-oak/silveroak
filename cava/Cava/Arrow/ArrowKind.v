@@ -15,14 +15,13 @@
 (****************************************************************************)
 
 Require Import Coq.Lists.List Coq.Numbers.NaryFunctions Coq.Arith.Arith
-     Coq.NArith.NArith Coq.Vectors.Vector Coq.Logic.Eqdep_dec.
+     Coq.Vectors.Vector Coq.Logic.Eqdep_dec.
 Require Import Cava.Arrow.Classes.Category Cava.Arrow.Classes.Arrow.
 
 Import ListNotations.
 Import VectorNotations.
 Import CategoryNotations.
 
-Require Import Cava.Types.
 Require Import Cava.VectorUtils.
 
 Inductive Kind : Set :=

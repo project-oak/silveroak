@@ -21,7 +21,6 @@ Import MonadNotation.
 Open Scope monad_scope.
 Open Scope type_scope.
 
-Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
 
 Section WithCava.

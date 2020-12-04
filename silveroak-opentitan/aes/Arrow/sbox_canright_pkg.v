@@ -14,11 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Arith.Arith Coq.Logic.Eqdep_dec Coq.Vectors.Vector Coq.micromega.Lia
-     Coq.NArith.NArith Coq.Strings.String Coq.NArith.Ndigits.
-Require Import Cava.Arrow.ArrowExport Cava.BitArithmetic.
-
-Require Import Aes.pkg.
+Require Import Coq.Arith.Arith Coq.Vectors.Vector
+     Coq.NArith.NArith.
+Require Import Cava.Arrow.ArrowExport.
 
 Import VectorNotations.
 Import KappaNotation.

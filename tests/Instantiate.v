@@ -14,11 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Program.Basics.
-Require Import Coq.Bool.Bool.
+
 Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import Coq.Lists.List.
-Require Import Coq.ZArith.ZArith.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.

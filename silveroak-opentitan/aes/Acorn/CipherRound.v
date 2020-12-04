@@ -21,12 +21,9 @@ Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 
 Require Import ExtLib.Structures.Monads.
-Require Import ExtLib.Structures.Traversable.
 Import MonadNotation.
 
-Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.Lib.AcornVectors.
 
 Local Open Scope vector_scope.
 

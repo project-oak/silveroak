@@ -17,7 +17,6 @@
 Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import Coq.Vectors.Vector.
-Require Import Coq.Bool.Bvector.
 Import VectorNotations.
 Local Open Scope vector_scope.
 Require Import ExtLib.Structures.Monads.
@@ -28,7 +27,6 @@ Open Scope monad_scope.
 Require Export Cava.Acorn.AcornSignal.
 Require Export Cava.Acorn.AcornCavaClass.
 Require Import Cava.VectorUtils.
-Require Import Cava.Monad.MonadFacts.
 
 Open Scope type_scope.
 

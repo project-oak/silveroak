@@ -28,8 +28,6 @@ Require Import Cava.Tactics.
 Require Import Cava.Monad.CavaMonad.
 Require Import Cava.Lib.UnsignedAdders.
 
-
-From Coq Require Vector.
 From Coq Require Import Bool.Bvector.
 
 (******************************************************************************)

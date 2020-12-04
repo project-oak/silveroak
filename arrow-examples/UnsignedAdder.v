@@ -17,7 +17,7 @@
 Require Import Cava.Arrow.ArrowExport.
 
 Require Import Coq.Strings.String Coq.Bool.Bvector Coq.Lists.List Coq.NArith.NArith
-     Coq.Init.Nat Coq.micromega.Lia Coq.Arith.Plus.
+     Coq.Init.Nat.
 Import ListNotations.
 Import EqNotations.
 
@@ -76,7 +76,6 @@ Proof. simply_combinational. Qed.
 Lemma adder88810_is_combinational: is_combinational (closure_conversion adder88810).
 Proof. simply_combinational. Qed.
 
-Require Import Cava.Types.
 Require Import Cava.Netlist.
 
 Definition adder445_interface

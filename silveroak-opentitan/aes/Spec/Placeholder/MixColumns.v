@@ -13,12 +13,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Init.Byte.
 Require Import Coq.NArith.NArith.
 Require Import Coq.Vectors.Vector.
 Require Import Coq.ZArith.ZArith.
-Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import Cava.BitArithmetic.
 Require Import Cava.VectorUtils.

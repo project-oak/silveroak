@@ -16,7 +16,6 @@
 
 Require Import Coq.Strings.Ascii Coq.Strings.String.
 
-Require Coq.Lists.List.
 Import List.ListNotations.
 
 Require Import ExtLib.Structures.Monads.

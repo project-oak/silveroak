@@ -24,11 +24,8 @@ Require Import ExtLib.Structures.Monads.
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
 
-Require Coq.Vectors.Vector.
 Require Import Coq.Bool.Bvector.
 Import Vector.VectorNotations.
-
-Require Import Coq.NArith.Ndigits.
 
 Local Open Scope vector_scope.
 

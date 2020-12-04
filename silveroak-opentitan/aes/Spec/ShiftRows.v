@@ -13,7 +13,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Lists.List Coq.Init.Nat Coq.Arith.Arith.
+Require Import Coq.Lists.List Coq.Arith.Arith.
 Require Import Cava.ListUtils.
 Require Import Psatz.
 

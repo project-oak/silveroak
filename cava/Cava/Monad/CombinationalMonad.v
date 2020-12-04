@@ -14,24 +14,18 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Bool.Bool.
-Require Import Coq.Strings.Ascii Coq.Strings.String.
+
 Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.IdentityMonad.
 Export MonadNotation.
 
-Require ExtLib.Data.Vector.
 Require Import Coq.Bool.Bvector.
-Require Import Coq.Vectors.Fin.
 Require Import Coq.NArith.Ndigits.
 Require Import Coq.ZArith.ZArith.
 
-Require Import Coq.micromega.Lia.
-
 Require Import Cava.Cava.
-Require Import Cava.Kind.
 Require Import Cava.Signal.
 Require Import Cava.Monad.CavaClass.
 

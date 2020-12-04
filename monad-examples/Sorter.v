@@ -25,9 +25,8 @@ Require Import Coq.Vectors.Vector.
 Require Import Coq.Bool.Bvector.
 Import VectorNotations.
 
-Require Import Coq.Arith.PeanoNat Coq.NArith.Ndigits Coq.NArith.NArith.
+Require Import Coq.Arith.PeanoNat Coq.NArith.NArith.
 Require Import Cava.Cava.
-Require Import Cava.VectorUtils.
 Require Import Cava.Monad.CavaMonad.
 
 Require Import Coq.micromega.Lia.

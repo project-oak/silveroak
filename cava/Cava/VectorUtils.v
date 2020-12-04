@@ -21,7 +21,7 @@ Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 
 Require Import Coq.ZArith.ZArith.
-Require Import Coq.Init.Nat Coq.Arith.Arith Coq.micromega.Lia.
+Require Import Coq.Init.Nat Coq.micromega.Lia.
 
 Require Import ExtLib.Structures.Applicative.
 Require Import ExtLib.Structures.Traversable.

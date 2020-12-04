@@ -44,7 +44,6 @@ Open Scope kind_scope.
 Lemma mux2_1_is_combinational: is_combinational (closure_conversion mux2_1).
 Proof. simply_combinational. Qed.
 
-Require Import Cava.Types.
 Require Import Cava.Netlist.
 Require Import Cava.Signal.
 

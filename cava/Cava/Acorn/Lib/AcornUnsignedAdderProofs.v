@@ -14,12 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Bool.Bool.
 Require Import Coq.NArith.NArith.
 Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import Coq.Vectors.Vector.
-Require Import Coq.Bool.Bvector.
 Import VectorNotations.
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.IdentityMonad.
@@ -30,7 +28,6 @@ Open Scope type_scope.
 
 Require Import coqutil.Tactics.Tactics.
 Require Import Coq.micromega.Lia.
-Require Import Coq.Classes.Morphisms.
 
 Require Import Cava.BitArithmetic Cava.ListUtils Cava.VectorUtils.
 Require Import Cava.Monad.MonadFacts.

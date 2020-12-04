@@ -14,7 +14,6 @@
 (****************************************************************************)
 
 Require Import Coq.Init.Byte.
-Require Import Coq.Init.Hexadecimal.
 Require Import Coq.Vectors.Vector.
 Require Import Cava.VectorUtils.
 Require Import AesSpec.Sbox.

@@ -14,10 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.String.
-Require Import Coq.derive.Derive.
+
 Require Import Cava.Arrow.ArrowExport Cava.Arrow.DeriveSpec
-     Cava.Arrow.CombinatorProperties Cava.BitArithmetic Cava.VectorUtils.
+     Cava.Arrow.CombinatorProperties Cava.VectorUtils.
 Require Import Cava.Tactics.
 
 Require Import Aes.pkg.

@@ -22,12 +22,10 @@ Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Traversable.
-Require Import ExtLib.Structures.MonadFix.
 Require Import Coq.Arith.PeanoNat.
 
 Export MonadNotation.
 
-Require Import Cava.Kind.
 Require Import Cava.Monad.CavaClass.
 Require Import Cava.VectorUtils.
 Require Import Cava.ListUtils.

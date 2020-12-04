@@ -15,18 +15,12 @@
 (****************************************************************************)
 
 Require Import Coq.Strings.Ascii Coq.Strings.String.
-Require Import Coq.Bool.Bool.
 Require Import Coq.NArith.NArith.
 Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
-
-Require Coq.Vectors.Vector.
-Require Import Coq.Bool.Bvector.
-
-Require Import Coq.omega.Omega.
 
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
