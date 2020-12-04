@@ -20,21 +20,23 @@ TOPLEVEL=$(git rev-parse --show-toplevel)
 # Do not use --absolutize here, because of https://github.com/JasonGross/coq-tools/issues/55
 MINIMIZE="$TOPLEVEL/third_party/coq-tools/minimize-requires.py --in-place"
 
+MAKECOQ="make -j4 coq"
+
 COQPROJECTS=$(git ls-files --full-name $TOPLEVEL/*/ | grep _CoqProject | grep -v "^investigations/" | grep -v "^third_party")
 
 # do not continue loop if failures are encountered
 set -e
 
 # minimize-requires script analyzes .glob files, so we need to fully build first
-echo "Building Coq files before minimizing..."
-make -j4 coq
+echo "Building all Coq files before minimizing..."
+$MAKECOQ
 
 for f in $COQPROJECTS;
 do
 	cd "$TOPLEVEL/$(dirname $f)";
 
 	# re-make in case we have gotten out of sync with another directory
-	make -j4 coq;
+	$MAKECOQ
 
 	LIBS=$(grep "^\s*-[RIQ]" _CoqProject | xargs echo) # get all library arguments from _CoqProject
 
@@ -47,5 +49,9 @@ do
 
 	echo "Minimizing imports in $PWD...";
 	echo "$MINIMIZE $LIBS $FILES"; # print command being executed (helpful for debugging)
-	$MINIMIZE $LIBS $FILES
+	$MINIMIZE $LIBS $FILES;
+
+	# re-make with fewer imports
+	echo "Re-building Coq files in $PWD...";
+	$MAKECOQ;
 done;
