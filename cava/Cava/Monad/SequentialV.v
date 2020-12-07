@@ -281,7 +281,7 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
 (* interpretation.                                                            *)
 (******************************************************************************)
 
- Instance SequentialVectorSemantics {ticks: nat} : Cava (seqVType ticks) :=
+ Instance SequentialVectorCombSemantics {ticks: nat} : Cava (seqVType ticks) :=
   { cava := ident;
     zero := ret (Vector.const false ticks);
     one := ret (Vector.const true ticks);
@@ -312,9 +312,13 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
     greaterThanOrEqual m n := @greaterThanOrEqualBoolVec m n ticks;
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefaultSV ticks (map port_type (circuitOutputs intf)));
-    delay k i := delayV ticks k i;
-    loop A B C := @loopSeqV A B C ticks;
-}.
+  }.
+
+ Instance SequentialVectorSemantics {ticks: nat}
+   : CavaSeq SequentialVectorCombSemantics:=
+   { delay k i := delayV ticks k i;
+     loop A B C := @loopSeqV A B C ticks;
+   }.
 
 (******************************************************************************)
 (* A function to run a monadic circuit description and return the boolean     *)

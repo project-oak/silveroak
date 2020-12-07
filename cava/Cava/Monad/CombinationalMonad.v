@@ -203,9 +203,6 @@ Definition loopBool (A B C : SignalType)
     greaterThanOrEqual m n := @greaterThanOrEqualBool m n;
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefault (map port_type (circuitOutputs intf)));
-    (* Members that ought to be in a Sequential class. Dummy definitions. *)
-    delay _ i := ret i;
-    loop a b c := @loopBool a b c;
 }.
 
 (******************************************************************************)

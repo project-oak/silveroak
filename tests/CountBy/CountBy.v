@@ -48,7 +48,8 @@ bit-growth i.e. it computes (a + b) mod 256.
 *)
 
 Section WithCava.
-  Context {signal} {semantics:Cava signal} `{Monad cava}.
+  Context {signal} {combsemantics: Cava signal}
+          {semantics: CavaSeq combsemantics} `{Monad cava}.
 
   Definition countFork (i : signal (Vec Bit 8) * signal (Vec Bit 8))
                        : cava (signal (Vec Bit 8) * signal (Vec Bit 8)) :=
