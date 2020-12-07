@@ -63,3 +63,7 @@ Lemma arrow_and_expr_counter_semantics_agree:
   (map Bv2N (interp_sequential ((counter : Kappa _ _) _) signaling_counter_tb_inputs)).
 Proof. vm_compute; reflexivity. Qed.
 
+Definition signaling_counter_tb :=
+  testBench "signaling_counter_tb" signaling_counter_Interface
+            signaling_counter_tb_inputs signaling_counter_tb_expected_outputs.
+
