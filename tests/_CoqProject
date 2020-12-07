@@ -9,3 +9,4 @@ Delay.v
 TestsExtraction.v
 
 CountBy/CountBy.v
+CountBy/ListProofs.v
