@@ -37,6 +37,19 @@ From Cava Require Import Signal.
 Require Import Cava.Monad.CavaClass.
 Require Import Cava.Monad.CombinationalMonad.
 
+(* stepOnce is a helper function that takes a circuit running for > 1 ticks and
+   runs it for only one tick. *)
+Definition stepOnce {A B C : SignalType} {ticks : nat}
+           (f : seqVType (S ticks) A * seqVType (S ticks) C
+                -> ident (seqVType (S ticks) B * seqVType (S ticks) C))
+           (input : seqVType 1 A * seqVType 1 C)
+  : ident (seqVType 1 B * seqVType 1 C) :=
+  let a := Vector.hd (fst input) in
+  let c := Vector.hd (snd input) in
+  '(b, c) <- f (a :: const (defaultCombValue A) ticks,
+               c :: const (defaultCombValue C) ticks)%vector ;;
+  ret ([Vector.hd b], [Vector.hd c]).
+
 (******************************************************************************)
 (* Loop combinator for feedback with delay.                                   *)
 (******************************************************************************)
@@ -76,14 +89,23 @@ representing the current input and current state to another pair
 representing the computed output and next state value. This function is used
 to compute the sequential behaviour of a circuit which uses f to iterate over
 the a inputs, using a default value for the initial state.
-*)
+ *)
 
 Definition loopSeqV {A B C : SignalType}
                     (ticks : nat)
-                    (f : seqVType 1 A * seqVType 1 C -> ident (seqVType 1 B * seqVType 1 C))
-                    (a : seqVType ticks A)
-                    : ident (seqVType ticks B) :=
-  loopSeqV' ticks f a [defaultCombValue C].
+  : (seqVType ticks A * seqVType ticks C
+     -> ident (seqVType ticks B * seqVType ticks C))
+    -> (seqVType ticks A) -> ident (seqVType ticks B) :=
+  match ticks as ticks0 return
+        (seqVType ticks0 A * seqVType ticks0 C
+         -> ident (seqVType ticks0 B * seqVType ticks0 C))
+        -> seqVType ticks0 A -> ident (seqVType ticks0 B)  with
+  | O => fun _ _ => ret []
+  | S ticks' =>
+    fun f a =>
+      loopSeqV' (S ticks') (stepOnce f)
+                a [defaultCombValue C]
+  end.
 
 (******************************************************************************)
 (* A boolean sequential logic interpretation for the Cava class               *)
@@ -256,7 +278,6 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
   | S ticks' => fun i => ret (defaultCombValue t :: Vector.shiftout i)%vector
   end.
 
-
 (******************************************************************************)
 (* Instantiate the Cava class for a boolean sequential logic                  *)
 (* interpretation.                                                            *)
@@ -292,9 +313,9 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
     unsignedMult m n := @unsignedMultBoolVec m n ticks;
     greaterThanOrEqual m n := @greaterThanOrEqualBoolVec m n ticks;
     instantiate _ circuit := circuit;
-    blackBox intf _ := ret (tupleInterfaceDefaultS (map port_type (circuitOutputs intf)));
+    blackBox intf _ := ret (tupleInterfaceDefaultSV ticks (map port_type (circuitOutputs intf)));
     delay k i := delayV ticks k i;
-    loop _ _ _ := loopSeqV ticks;
+    loop A B C := @loopSeqV A B C ticks;
 }.
 
 (******************************************************************************)
@@ -302,4 +323,4 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
 (* behavioural simulation result.                                             *)
 (******************************************************************************)
 
-Definition sequentialV {a} (circuit : cava a) : a := unIdent circuit.
+Definition sequentialV {ticks a} (circuit : cava (signal:=seqVType ticks) a) : a := unIdent circuit.
