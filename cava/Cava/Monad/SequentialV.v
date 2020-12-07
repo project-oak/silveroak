@@ -53,19 +53,21 @@ represented the list of computed values at each tick.
 
 Local Open Scope vector_scope.
 
-(* TODO: FIX *)
 Fixpoint loopSeqV' {A B C : SignalType}
                    (ticks: nat)
                    (f : seqVType 1 A * seqVType 1 C -> ident (seqVType 1 B * seqVType 1 C))
-                   (a : seqVType ticks A) (feedback: seqVType ticks C)
-  : ident (seqType B) :=
-  match a with
-  | [] => ret []
-  | x :: xs =>
-    '(yL, nextState) <- f ([x], feedback) ;; (* One step of f. *)
-    let y := hd defaultSignal yL in
-    ys <- loopSeqV' f xs nextState ;; (* remaining steps of f *)
-    ret (y :: ys)
+                   {struct ticks}
+  : seqVType ticks A -> seqVType 1 C -> ident (seqVType ticks B) :=
+  match ticks as ticks0 return seqVType ticks0 A -> _ -> ident (seqVType ticks0 B) with
+  | O => fun _ _ => ret []
+  | S ticks' =>
+    fun a feedback =>
+      let x := Vector.hd a in
+      let xs := Vector.tl a in
+      '(yL, nextState) <- f ([x], feedback) ;; (* One step of f. *)
+      let y := Vector.hd yL in
+      ys <- loopSeqV' ticks' f xs nextState ;; (* remaining steps of f *)
+      ret (y :: ys)
   end.
 
 (*
@@ -76,12 +78,12 @@ to compute the sequential behaviour of a circuit which uses f to iterate over
 the a inputs, using a default value for the initial state.
 *)
 
-(* TODO: FIX *)
 Definition loopSeqV {A B C : SignalType}
-                    (f : seqType A * seqType C -> ident (seqType B * seqType C))
-                    (a : seqType A)
-                    : ident (seqType B) :=
-  loopSeqV' f a [defaultCombValue C].
+                    (ticks : nat)
+                    (f : seqVType 1 A * seqVType 1 C -> ident (seqVType 1 B * seqVType 1 C))
+                    (a : seqVType ticks A)
+                    : ident (seqVType ticks B) :=
+  loopSeqV' ticks f a [defaultCombValue C].
 
 (******************************************************************************)
 (* A boolean sequential logic interpretation for the Cava class               *)
@@ -248,6 +250,13 @@ Definition bufBoolVec (ticks: nat)
            (i : Vector.t bool ticks) : ident (Vector.t bool ticks) :=
   ret i.
 
+Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (seqVType ticks t) :=
+  match ticks as ticks0 return seqVType ticks0 t -> ident (seqVType ticks0 t) with
+  | O => fun _ => ret []
+  | S ticks' => fun i => ret (defaultCombValue t :: Vector.shiftout i)%vector
+  end.
+
+
 (******************************************************************************)
 (* Instantiate the Cava class for a boolean sequential logic                  *)
 (* interpretation.                                                            *)
@@ -284,8 +293,8 @@ Definition bufBoolVec (ticks: nat)
     greaterThanOrEqual m n := @greaterThanOrEqualBoolVec m n ticks;
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefaultS (map port_type (circuitOutputs intf)));
-    delay k i := ret (@defaultCombValue k :: Vector.shiftout i); (* TODO: FIX *)
-    loop _ _ _ := loopSeqV;
+    delay k i := delayV ticks k i;
+    loop _ _ _ := loopSeqV ticks;
 }.
 
 (******************************************************************************)
