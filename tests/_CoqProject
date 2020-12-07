@@ -7,3 +7,6 @@ Instantiate.v
 TestMultiply.v
 Delay.v
 TestsExtraction.v
+
+CountBy/CountBy.v
+CountBy/ListProofs.v
