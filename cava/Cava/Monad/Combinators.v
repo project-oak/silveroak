@@ -54,7 +54,7 @@ Section WithCava.
            (f : signal A * signal B -> cava (signal C))
            (a : signal (Vec A n))
            (b : signal (Vec B n))
-           : cava(signal (Vec C n)) :=
+           : cava (signal (Vec C n)) :=
     let a' := peel a in
     let b' := peel b in
     v <- mapT f (vcombine a' b') ;;

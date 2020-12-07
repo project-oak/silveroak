@@ -58,6 +58,7 @@ Fixpoint defaultCombValue (t: SignalType) : combType t :=
 (******************************************************************************)
 
 Definition seqType t := list (combType t).
+Definition seqVType ticks t := Vector.t (combType t) ticks.
 Definition defaultSeqValue t := [defaultCombValue t].
 
 (******************************************************************************)
