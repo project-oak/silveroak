@@ -17,7 +17,6 @@
 From Coq Require Import NArith.NArith Vectors.Vector.
 Require Import Coq.Bool.Bvector.
 Import VectorNotations.
-Local Open Scope vector_scope.
 
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
@@ -31,6 +30,8 @@ Require Import Cava.Lib.UnsignedAdders.
 
 Require Import Tests.CountBy.CountBy.
 
+Local Open Scope vector_scope.
+
 Fixpoint countBySpec' {ticks : nat} (state: Bvector 8)
   : Vector.t (Bvector 8) ticks -> Vector.t (Bvector 8) ticks :=
   match ticks as ticks0 return _ ticks0 -> _ ticks0 with
@@ -40,7 +41,7 @@ Fixpoint countBySpec' {ticks : nat} (state: Bvector 8)
       let x := Vector.hd i in
       let xs := Vector.tl i in
       let newState := N2Bv_sized 8 (Bv2N x + Bv2N state) in
-      (newState :: countBySpec' newState xs)%vector
+      (newState :: countBySpec' newState xs)
   end.
 
 Definition countBySpec {ticks} := @countBySpec' ticks (N2Bv_sized 8 0).
