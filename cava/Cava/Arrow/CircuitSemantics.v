@@ -14,18 +14,15 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Bool.Bool Coq.ZArith.ZArith Coq.NArith.NArith
-     Coq.Numbers.NaryFunctions Coq.Vectors.Vector Coq.micromega.Lia Coq.Lists.List.
+Require Import Coq.Bool.Bool
+     Coq.Vectors.Vector Coq.Lists.List.
 Require Import Cava.Arrow.Classes.Category Cava.Arrow.Classes.Arrow.
-Require Import Cava.Arrow.CircuitArrow Cava.Arrow.ArrowKind Cava.Arrow.Primitives.
+Require Import Cava.Arrow.CircuitArrow Cava.Arrow.Primitives.
 
 Import ListNotations.
 Import VectorNotations.
 Import EqNotations.
 Import CategoryNotations.
-
-Require Import Cava.BitArithmetic.
-Require Import Cava.VectorUtils.
 
 (******************************************************************************)
 (* Evaluation as function evaluation                                          *)

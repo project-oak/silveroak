@@ -19,9 +19,9 @@ Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 Require Import Coq.NArith.NArith.
 Require Import Coq.Vectors.Vector.
+Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Arrow.ArrowExport.
 Require Import Cava.Arrow.CombinatorProperties.
-Require Import Cava.Arrow.DeriveSpec.
 Require Import Cava.BitArithmetic.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
@@ -141,7 +141,7 @@ Section Equivalence.
       eapply fold_left_preserves_relation; subst R; [ cbn; tauto | ].
       intros. cbv beta in *. cbv [key_expand key_expand_and_round_spec].
       repeat match goal with H : _ /\ _ |- _ => destruct H end.
-      Tactics.destruct_products. cbn [fst snd] in *. subst.
+      destruct_products. cbn [fst snd] in *. subst.
       tauto. }
     { (* prove that R is strong enough to prove postcondition *)
       subst R. cbv beta in *.

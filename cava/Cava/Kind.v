@@ -15,9 +15,6 @@
 (****************************************************************************)
 
 Require Import Coq.Strings.String.
-Require Import Coq.Vectors.Vector.
-
-Require Import Cava.VectorUtils.
 
 (******************************************************************************)
 (* Values of Kind can occur as the type of signals on a circuit interface *)

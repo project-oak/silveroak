@@ -15,13 +15,11 @@
 (****************************************************************************)
 
 Require Import Coq.derive.Derive.
-Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Arrow.ArrowExport Cava.Arrow.DeriveSpec
-     Cava.Arrow.CombinatorProperties Cava.BitArithmetic Cava.VectorUtils.
-Require Import Cava.Tactics.
+     Cava.Arrow.CombinatorProperties Cava.Tactics.
 
 Require Import Aes.PkgProperties Aes.CipherRoundProperties
-     Aes.cipher_round Aes.unrolled_opentitan_cipher.
+     Aes.unrolled_opentitan_cipher.
 
 Section Wf.
   Context (aes_key_expand_Wf :

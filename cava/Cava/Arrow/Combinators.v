@@ -14,8 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.String Coq.Bool.Bvector Coq.Lists.List Coq.NArith.NArith
-     Coq.Init.Nat Coq.micromega.Lia Coq.Arith.Plus.
+Require Import Coq.Strings.String Coq.Lists.List Coq.NArith.NArith
+     Coq.Init.Nat.
 Require Import Cava.Arrow.ArrowKind Cava.Arrow.CavaNotation Cava.Arrow.ExprSyntax Cava.Arrow.Primitives.
 
 Import ListNotations.

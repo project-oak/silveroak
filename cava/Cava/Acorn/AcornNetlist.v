@@ -14,8 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Lists.List.
-Require Import ExtLib.Structures.Monads.
+
 
 Require Import Cava.Acorn.AcornSignal.
 

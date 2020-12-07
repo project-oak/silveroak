@@ -14,7 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Bool.Bool.
 Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import Coq.Lists.List.
 Import ListNotations.
@@ -23,7 +22,6 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
-Require Import Cava.Monad.XilinxAdder.
 
 Definition lutNAND {signal} `{Cava signal} `{Monad cava}
            (i0i1 : signal Bit * signal Bit) : cava (signal Bit) :=

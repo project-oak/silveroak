@@ -14,11 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Lists.List.
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 Require Import Cava.ListUtils.
-Require Import Cava.VectorUtils.
 Require Import Cava.Monad.MonadFacts.
 Require Import Cava.Acorn.Acorn.
 

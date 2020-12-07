@@ -14,14 +14,13 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Bool.Bool Coq.ZArith.ZArith Coq.Numbers.NaryFunctions
-     Coq.Vectors.Vector Coq.Strings.String Coq.Lists.List Coq.Numbers.DecimalString
-     Coq.micromega.Lia.
+Require Import Coq.Bool.Bool Coq.ZArith.ZArith
+     Coq.Vectors.Vector Coq.Strings.String Coq.Numbers.DecimalString.
 Require Import Cava.Arrow.Classes.Arrow.
 Require Import Cava.Arrow.Classes.Category.
 Require Import Cava.Arrow.Classes.Kleisli.
 Require Import Cava.Arrow.Primitives.
-Require Import Cava.Arrow.CircuitArrow Cava.VectorUtils Cava.BitArithmetic Cava.Types Cava.Signal Cava.Netlist.
+Require Import Cava.Arrow.CircuitArrow Cava.VectorUtils Cava.Signal Cava.Netlist.
 Require Import Cava.Arrow.ArrowKind.
 
 Import NilZero.
@@ -32,7 +31,6 @@ Import ListNotations.
 Import CategoryNotations.
 
 Require Import ExtLib.Structures.Monads.
-Require Import ExtLib.Structures.Applicative.
 Require Import ExtLib.Structures.Traversable.
 Require Export ExtLib.Data.Monads.StateMonad.
 

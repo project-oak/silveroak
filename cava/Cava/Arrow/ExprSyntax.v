@@ -1,7 +1,6 @@
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import Coq.Arith.Peano_dec.
-Require Import Cava.Arrow.ArrowKind.
 Require Import Cava.Arrow.Primitives.
 Require Import Cava.Arrow.Classes.Category.
 

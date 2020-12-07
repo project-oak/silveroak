@@ -14,7 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Program.Basics.
 Require Import Coq.Bool.Bool Coq.Init.Nat.
 Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import Coq.NArith.NArith.

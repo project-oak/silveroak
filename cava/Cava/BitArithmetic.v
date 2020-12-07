@@ -16,8 +16,7 @@
 
 (* Bit-vector arithmetic operations for Cava. *)
 
-Require Import Coq.Init.Byte.
-Require Import Coq.Bool.Bool.
+
 Require Import Coq.Lists.List.
 Require Import Coq.Vectors.Vector.
 Require Import Coq.Bool.Bvector.
@@ -26,8 +25,6 @@ Require Import Coq.NArith.Nnat.
 Require Import Coq.Init.Nat.
 Require Import Coq.omega.Omega.
 Require Import Coq.micromega.Lia.
-Require Import Coq.btauto.Btauto.
-Require Import Coq.Arith.PeanoNat.
 Require Coq.Strings.HexString.
 
 Require Import Cava.VectorUtils.

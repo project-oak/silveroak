@@ -14,10 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Bool.Bool Coq.ZArith.ZArith Coq.Numbers.NaryFunctions Coq.Vectors.Vector.
+Require Import Coq.Bool.Bool Coq.ZArith.ZArith Coq.Vectors.Vector.
 Require Import Cava.Arrow.Classes.Category.
 Require Import Cava.Arrow.Classes.Arrow.
-Require Import Cava.Arrow.CircuitArrow Cava.Arrow.CircuitSemantics.
+Require Import Cava.Arrow.CircuitArrow.
 Require Import Cava.Arrow.ArrowKind Cava.Arrow.Primitives.
 
 Import VectorNotations.

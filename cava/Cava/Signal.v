@@ -18,10 +18,6 @@ Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import Coq.ZArith.ZArith.
-Require Import Coq.Vectors.Vector.
-
-Require Import Cava.Kind.
-Require Import Cava.VectorUtils.
 
 (******************************************************************************)
 (* The types of signals that can flow over wires, used to index signal        *)

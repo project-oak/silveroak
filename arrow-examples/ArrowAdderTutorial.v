@@ -19,7 +19,7 @@ Require Import Cava.Arrow.ArrowExport.
 Require Import Coq.Strings.String.
 Local Open Scope string_scope.
 
-Require Import Coq.Lists.List Coq.NArith.NArith Coq.micromega.Lia.
+Require Import Coq.Lists.List Coq.NArith.NArith.
 Import ListNotations.
 
 Section notation.
@@ -148,7 +148,6 @@ End notation.
 Lemma fullAdder_is_combinational: is_combinational (closure_conversion fullAdder).
 Proof. simply_combinational. Qed.
 
-Require Import Cava.Types.
 Require Import Cava.Netlist.
 
 Definition fullAdderInterface

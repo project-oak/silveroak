@@ -40,7 +40,6 @@ End notation.
 
 Open Scope kind_scope.
 
-Require Import Cava.Types.
 Require Import Cava.Netlist.
 
 Definition signaling_counter_Interface :=
