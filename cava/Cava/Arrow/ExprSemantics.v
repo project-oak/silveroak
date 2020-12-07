@@ -135,7 +135,7 @@ Section combinational_semantics.
         | existT _ _ s :: ss => (ss, rewrite_or_default _ _ s)
         end in
       let '(state_curr, state_next1, next_v) := interp_sequential1' (v old_v) state_curr tt in
-      let '(state_curr, state_next2, o) := interp_sequential1' (f old_v) state_curr x in
+      let '(state_curr, state_next2, o) := interp_sequential1' (f next_v) state_curr x in
       (state_curr, [existT _ _ next_v] ++ state_next1 ++ state_next2, o)
 
     | @Delay _ X => fun s '(x,_) =>
