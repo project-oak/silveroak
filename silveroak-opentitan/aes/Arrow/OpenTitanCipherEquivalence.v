@@ -16,12 +16,10 @@
 
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
-Require Import Coq.micromega.Lia.
 Require Import Coq.NArith.NArith.
 Require Import Coq.Vectors.Vector.
 Require Import Cava.Arrow.ArrowExport.
 Require Import Cava.Arrow.CombinatorProperties.
-Require Import Cava.Arrow.DeriveSpec.
 Require Import Cava.BitArithmetic.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.

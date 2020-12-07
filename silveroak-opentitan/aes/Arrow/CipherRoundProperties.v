@@ -14,14 +14,14 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+
 Require Import Coq.derive.Derive.
-Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Arrow.ArrowExport Cava.Arrow.DeriveSpec
-     Cava.Arrow.CombinatorProperties Cava.BitArithmetic Cava.VectorUtils.
+     Cava.Arrow.CombinatorProperties.
 Require Import Cava.Tactics.
 
 Require Import Aes.PkgProperties Aes.cipher_round
-     Aes.mix_columns Aes.sbox Aes.sub_bytes Aes.shift_rows.
+     Aes.mix_columns Aes.sub_bytes Aes.shift_rows.
 
 Section Wf.
   Context (aes_sub_bytes_Wf : forall sbox_impl, Wf (aes_sub_bytes sbox_impl))

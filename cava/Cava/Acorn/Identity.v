@@ -17,7 +17,6 @@
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monad.
 Require Import Cava.Acorn.Combinational.
-Require Import Cava.Acorn.AcornSignal.
 Require Import Cava.Acorn.AcornCombinators.
 Require Import Cava.Acorn.Lib.AcornVectors.
 Require Import Cava.Tactics.

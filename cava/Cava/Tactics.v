@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Lists.List.
+
 
 (* The destruct_pair_let tactic finds "destructuring lets", e.g.
 

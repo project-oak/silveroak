@@ -56,7 +56,6 @@ End notation.
 
 Open Scope kind_scope.
 
-Require Import Cava.Types.
 Require Import Cava.Netlist.
 
 Local Notation Byte := (Signal.Vec Signal.Bit 8).

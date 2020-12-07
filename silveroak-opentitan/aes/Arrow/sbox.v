@@ -14,11 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Arith.Arith Coq.Logic.Eqdep_dec Coq.Vectors.Vector Coq.micromega.Lia
-     Coq.NArith.NArith Coq.Strings.String Coq.NArith.Ndigits.
+Require Import Coq.Arith.Arith Coq.Vectors.Vector Coq.micromega.Lia
+     Coq.NArith.NArith.
 Require Import Cava.Arrow.ArrowExport Cava.BitArithmetic.
 
-Require Import Aes.pkg Aes.sbox_canright_pkg Aes.sbox_canright Aes.sbox_canright_masked_noreuse Aes.sbox_lut.
+Require Import Aes.pkg Aes.sbox_canright Aes.sbox_canright_masked_noreuse Aes.sbox_lut.
 
 Section notation.
 Import VectorNotations.

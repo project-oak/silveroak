@@ -21,7 +21,7 @@ Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 
 Require Import Coq.ZArith.ZArith.
-Require Import Coq.Init.Nat Coq.Arith.Arith Coq.micromega.Lia.
+Require Import Coq.Init.Nat Coq.micromega.Lia.
 
 Require Import ExtLib.Structures.Applicative.
 Require Import ExtLib.Structures.Traversable.
@@ -826,13 +826,13 @@ Hint Rewrite @to_list_length using solve [eauto] : push_length.
 
 Section VcombineFacts.
   Lemma to_list_vcombine {A B n} (v1 : Vector.t A n) (v2 : Vector.t B n) :
-    to_list (VectorUtils.vcombine v1 v2) = combine (to_list v1) (to_list v2).
+    to_list (vcombine v1 v2) = combine (to_list v1) (to_list v2).
   Proof.
     induction n; intros.
     { eapply case0 with (v:=v1). eapply case0 with (v:=v2).
       reflexivity. }
     { rewrite (eta v1), (eta v2).
-      cbn [VectorUtils.vcombine].
+      cbn [vcombine].
       rewrite !uncons_cons, !to_list_cons.
       cbn [combine]. rewrite IHn; reflexivity. }
   Qed.

@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-.PHONY: all coq clean
+.PHONY: all coq minimize-requires clean
 
 all:		coq
 
@@ -23,6 +23,10 @@ Makefile.coq:
 
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
+
+minimize-requires: coq
+	../../../tools/minimize-requires.sh
+	$(MAKE) coq
 
 %.vo:		Makefile.coq
 		$(MAKE) -f Makefile.coq $@

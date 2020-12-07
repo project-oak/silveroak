@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-.PHONY: all coq clean compile_pinmux
+.PHONY: all coq minimize-requires clean compile_pinmux
 
 all:		coq pinmux.sv compile_pinmux
 
@@ -26,6 +26,10 @@ Makefile.coq:	_CoqProject
 
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
+
+minimize-requires: coq
+	../../tools/minimize-requires.sh
+	$(MAKE) coq
 
 %.vo:		Makefile.coq
 		$(MAKE) -f Makefile.coq $@

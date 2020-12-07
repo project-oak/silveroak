@@ -14,16 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Arith.Arith Coq.NArith.NArith Coq.micromega.Lia
-     Coq.Numbers.NaryFunctions Coq.Lists.List.
-
-Require Import Cava.Arrow.Classes.Category.
-Require Import Cava.Arrow.Classes.Arrow.
-Require Import Cava.Arrow.CircuitArrow.
-Require Import Cava.Arrow.CircuitSemantics.
+Require Import Coq.Arith.Arith
+     Coq.Lists.List.
 Require Import Cava.Arrow.ExprSyntax.
-Require Import Cava.Arrow.ExprLowering.
-Require Import Cava.Arrow.ArrowKind.
 Require Import Cava.Arrow.Primitives.
 
 Import EqNotations.

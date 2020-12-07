@@ -14,7 +14,6 @@
 (****************************************************************************)
 
 Require Import Coq.Bool.Bool.
-Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import Coq.NArith.NArith.
 
 Require Import Coq.Vectors.Vector.
@@ -27,7 +26,6 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
 Require Import Cava.Monad.CavaMonad.
-Require Import Cava.VectorUtils.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.

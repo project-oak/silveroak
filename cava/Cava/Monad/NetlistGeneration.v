@@ -18,14 +18,12 @@ Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
-Require Import Coq.Vectors.Vector.
 Require Import Coq.ZArith.ZArith.
 
 Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import Cava.Cava.
-Require Import Cava.VectorUtils.
 Require Import Cava.Monad.CavaClass.
 
 Require Import Cava.Signal.

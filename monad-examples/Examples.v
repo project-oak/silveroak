@@ -17,7 +17,6 @@
 (* Experiments with the primitives that form the core of Cava. *)
 
 Require Import Cava.Monad.CavaMonad.
-Require Import ExtLib.Structures.Monads.
 
 (* Experiments with the primitive Cava gates. *)
 

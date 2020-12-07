@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Numbers.NaryFunctions Coq.Arith.Arith Coq.NArith.NArith.
+Require Import Coq.Numbers.NaryFunctions Coq.NArith.NArith.
 Require Import Coq.Vectors.Vector.
 Require Import Coq.Bool.Bool.
 Require Import Coq.ZArith.ZArith.

@@ -19,7 +19,7 @@
 # tools installation directory e.g.
 #    ...../vivado/2018.3
 
-.PHONY: all coq clean
+.PHONY: all coq minimize-requires clean
 
 SV = lut1_inv.sv lut2_and.sv lut3_mux.sv lut4_and.sv lut5_and.sv \
      lut6_and.sv
@@ -39,6 +39,10 @@ Makefile.coq:	_CoqProject
 
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
+
+minimize-requires: coq
+	../../tools/minimize-requires.sh
+	$(MAKE) coq
 
 %.vo:		Makefile.coq
 		$(MAKE) -f Makefile.coq $@

@@ -14,7 +14,6 @@
 (****************************************************************************)
 
 Require Import Coq.Init.Byte.
-Require Import Coq.Init.Hexadecimal.
 
 Section Sbox.
   Definition forward_sbox (b : byte) :=

@@ -14,8 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import ExtLib.Structures.Monads.
-
 Require Import Cava.Acorn.AcornSignal.
 
 Open Scope type_scope.

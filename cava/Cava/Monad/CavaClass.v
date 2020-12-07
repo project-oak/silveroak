@@ -14,11 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Coq.Vectors.Vector.
-Require Import ExtLib.Structures.Monads.
 
-Require Import Cava.Kind.
-Require Import Cava.Types.
 Require Import Cava.Netlist.
 Require Import Cava.Signal.
 

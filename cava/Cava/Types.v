@@ -14,11 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Program.Basics.
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-Require Import Coq.ZArith.ZArith.
 Require Import Coq.Lists.List.
-Require Import Coq.Bool.Bool.
 (* From Coq Require Import Numbers.NaryFunctions.
 From Coq Require Import Init.Datatypes. *)
 Require Import ExtLib.Structures.Monads.
@@ -30,10 +26,8 @@ Open Scope monad_scope.
 
 Require Import Cava.Kind.
 Require Import Cava.Signal.
-Require Import Cava.VectorUtils.
 
 Require Import Coq.Program.Program.
-Require Import Coq.Init.Nat Coq.Arith.Arith Coq.micromega.Lia.
 
 (******************************************************************************)
 (* shape describes the types of wires going into or out of a Cava circuit,    *)

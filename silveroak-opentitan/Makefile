@@ -16,7 +16,7 @@
 
 SUBDIRS = pinmux aes
 
-.PHONY: all coq clean subdirs $(SUBDIRS)
+.PHONY: all coq minimize-requires clean subdirs $(SUBDIRS)
 
 all: subdirs
 
@@ -27,10 +27,15 @@ $(SUBDIRS):
 
 coq: $(SUBDIRS)
 
+minimize-requires: $(SUBDIRS)
+
 clean: $(SUBDIRS)
 
 # pass the 'coq' target down to subdirs
 coq: SUBDIRTARGET=coq
+
+# pass the 'minimize-requires' target down to subdirs
+minimize-requires: SUBDIRTARGET=minimize-requires
 
 # pass the 'clean' target down to subdirs
 clean: SUBDIRTARGET=clean

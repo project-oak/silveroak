@@ -19,18 +19,11 @@
    Experimental work, very much in flux, as Satnam learns Coq!
 *)
 
-Require Import Coq.Program.Basics.
 Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import Coq.ZArith.ZArith.
-Require Import Coq.Lists.List.
-Require Import Coq.Bool.Bool.
-Require Import Coq.Numbers.NaryFunctions.
-Require Import Coq.Init.Datatypes.
-Require Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.StateMonad.
 Require Export ExtLib.Data.List.
-Require Import ExtLib.Structures.Traversable.
 
 Import ListNotations.
 Import MonadNotation.
@@ -38,11 +31,7 @@ Open Scope string_scope.
 Open Scope list_scope.
 Open Scope monad_scope.
 
-Require Import Cava.Kind.
 Require Import Cava.Signal.
-Require Import Cava.Types.
-Require Import Cava.BitArithmetic.
-Require Import Cava.VectorUtils.
 
 (******************************************************************************)
 (* Make it possible to convert certain types to bool shape values             *)

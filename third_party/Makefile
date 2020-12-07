@@ -14,12 +14,14 @@
 # limitations under the License.
 #
 
-.PHONY:	all
+.PHONY:	all minimize-requires
 
 all: coqutil coqtools bedrock2 extlib
 
 update:
 	git submodule update --init --recursive
+
+minimize-requires: # noop
 
 # coq-tools is just python scripts; nothing to make
 coqtools: update
