@@ -221,8 +221,6 @@ Definition unpeelVecVec {t: SignalType} {s: nat}
                         : Vector.t (Vector.t (combType t) s) ticks :=
   Vector.map (fun ni => Vector.map (fun vi => indexConstBool vi ni) v) (vseq 0 ticks).
 
-Local Open Scope list_scope.
-
 Definition unsignedAddComb {m n : nat}
                            (av : Bvector m) (bv : Bvector n) :
                            Bvector (1 + max m n) :=
@@ -275,7 +273,7 @@ Definition bufBoolVec (ticks: nat)
 Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (seqVType ticks t) :=
   match ticks as ticks0 return seqVType ticks0 t -> ident (seqVType ticks0 t) with
   | O => fun _ => ret []
-  | S ticks' => fun i => ret (defaultCombValue t :: Vector.shiftout i)%vector
+  | S ticks' => fun i => ret (defaultCombValue t :: Vector.shiftout i)
   end.
 
 (******************************************************************************)
