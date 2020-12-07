@@ -90,9 +90,11 @@ Section combinational_semantics.
         Is there a performant simple way to write this?
         Single cycle step semantics bypasses this issue (see unroll_circuit_evaluation)
       *)
-      let vs := fold_left
+      let vs := tl (
+        fold_left
         (fun vs t => kind_default _ :: interp_sequential' (v vs) (repeat tt t))
-        (repeat (length y) (length y)) [] in
+        (seq 0 (S (length y))) []) in
+
       interp_sequential' (f vs) y
 
     | Delay => fun x => kind_default _ :: map fst x

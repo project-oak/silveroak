@@ -16,7 +16,7 @@
 
 
 Require Import Cava.Arrow.ArrowExport.
-Require Import Coq.Lists.List Coq.NArith.NArith Coq.Strings.String.
+Require Import Coq.Lists.List Coq.NArith.NArith Coq.Strings.String Bool.Bvector.
 Import ListNotations.
 
 Local Open Scope string_scope.
@@ -52,10 +52,10 @@ Definition signaling_counter_netlist :=
   build_netlist (closure_conversion counter) "signaling_counter" ("is_valid", "value") "count".
 
 (* first four cycles have 'is_valid = false' and should not increment the counter *)
-Definition signaling_counter_tb_inputs : list (bool * Bvector.Bvector 4) :=
+Definition signaling_counter_tb_inputs : list (bool * Bvector 4) :=
   (repeat (false, N2Bv_sized 4 1) 4) ++ (repeat (true, N2Bv_sized 4 1) 4).
 
-Definition signaling_counter_tb_expected_outputs : list (Bvector.Bvector 4) :=
+Definition signaling_counter_tb_expected_outputs : list (Bvector 4) :=
   unroll_circuit_evaluation (closure_conversion counter) signaling_counter_tb_inputs.
 
 Lemma arrow_and_expr_counter_semantics_agree:
@@ -68,26 +68,31 @@ Lemma expr_single_step_agree:
   (map Bv2N (interp_sequential11 ((counter : Kappa _ _) _) signaling_counter_tb_inputs)).
 Proof. vm_compute; reflexivity. Qed.
 
-Definition bv_add s (av bv: Bvector.Bvector s) :=
+Definition bv_add s (av bv: Bvector s) :=
     let a := Ndigits.Bv2N av in
     let b := Ndigits.Bv2N bv in
     let c := (a + b)%N in
     (Ndigits.N2Bv_sized s c).
 
 (* List based specification *)
-Definition gallina_counter (inputs: list (bool * Bvector.Bvector 4)): list (Bvector.Bvector 4) :=
-  let zero := N2Bv_sized _ 0 in
-  rev (snd (fold_left (fun '(s, os) '(is_valid, value) =>
-    let last := hd zero os in
-      (if is_valid : bool then value else zero, bv_add _ last s :: os)) inputs (zero, []) )).
+Fixpoint gallina_counter (state: Bvector 4) (inputs: list (bool * Bvector 4)): list (Bvector 4) :=
+  match inputs with
+  | [] => []
+  | i :: is =>
+    let '(is_valid, value) := i in
+    let s := if is_valid then N2Bv_sized _ (Bv2N value + Bv2N state) else state in
+    s :: gallina_counter s is
+  end.
+
+
 
 Lemma spec_and_kappa_agree_on_given:
   (map Bv2N (interp_sequential ((counter : Kappa _ _) _) signaling_counter_tb_inputs)) =
-  (map Bv2N (gallina_counter signaling_counter_tb_inputs)).
+  (map Bv2N (gallina_counter (N2Bv_sized _ 0) signaling_counter_tb_inputs)).
 Proof. vm_compute; reflexivity. Qed.
 
 Lemma kappa_counter_is_gallina_counter: forall is,
-  gallina_counter is =
+  gallina_counter (N2Bv_sized _ 0) is =
   interp_sequential ((counter : Kappa _ _) _) is.
 Proof.
   intros.
@@ -96,27 +101,19 @@ Proof.
   (* gallina_counter (a :: is) = interp_sequential (counter list_func) (a :: is) *)
 Admitted.
 
-Notation state := (list {k & denote_kind k}).
-
 (* Single step specification *)
 Definition gallina_counter_single_step1
-  (s: state) (inputs : bool * Bvector.Bvector 4): (state * Bvector.Bvector 4) :=
-  let '(is_valid, value) := inputs in
-  let inc := if is_valid then value else N2Bv_sized _ 0 in
-  let s := match s with
-           | [] => N2Bv_sized _ 0
-           | existT _ sk s :: _ => ArrowKind.rewrite_or_default sk (Vector Bit 4) s
-           end in
-  ([existT _ (Vector Bit 4) (bv_add _ s inc)], s).
+  (state: Bvector 4) (is_valid : bool) (value: Bvector 4): Bvector 4 :=
+  if is_valid then N2Bv_sized 4 (Bv2N value + Bv2N state) else state.
 
 Lemma singlestep_agree_on_a_point:
-  interp_sequential1 ((counter : Kappa _ _) _) [] (true, N2Bv_sized _ 1) =
-  gallina_counter_single_step1 [] (true, N2Bv_sized _ 1).
+  snd (interp_sequential1 ((counter : Kappa _ _) _) [] (true, N2Bv_sized _ 1)) =
+  gallina_counter_single_step1 (N2Bv_sized _ 0) true (N2Bv_sized _ 1).
 Proof. vm_compute; reflexivity. Qed.
 
-Lemma kappa_counter_is_gallina_counter_single_step: forall is,
-  gallina_counter_single_step1 [] is =
-  interp_sequential1 ((counter : Kappa _ _) _) [] is.
+Lemma kappa_counter_is_gallina_counter_single_step: forall is s,
+  gallina_counter_single_step1 s (fst is) (snd is) =
+  snd (interp_sequential1 ((counter : Kappa _ _) _) [existT _ (Vector Bit 4) s] is).
 Proof.
   intros.
   destruct is.
