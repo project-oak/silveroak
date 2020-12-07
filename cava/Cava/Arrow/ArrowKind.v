@@ -22,6 +22,7 @@ Import ListNotations.
 Import VectorNotations.
 Import CategoryNotations.
 
+Require Import Cava.Types.
 Require Import Cava.VectorUtils.
 
 Inductive Kind : Set :=

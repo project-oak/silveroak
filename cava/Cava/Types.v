@@ -14,7 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-
 Require Import Coq.Lists.List.
 (* From Coq Require Import Numbers.NaryFunctions.
 From Coq Require Import Init.Datatypes. *)
@@ -27,6 +26,8 @@ Open Scope monad_scope.
 
 Require Import Cava.Kind.
 Require Import Cava.Signal.
+
+Require Import Coq.Program.Program.
 
 (******************************************************************************)
 (* shape describes the types of wires going into or out of a Cava circuit,    *)
