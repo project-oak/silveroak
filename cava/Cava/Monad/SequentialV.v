@@ -37,6 +37,8 @@ From Cava Require Import Signal.
 Require Import Cava.Monad.CavaClass.
 Require Import Cava.Monad.CombinationalMonad.
 
+Local Open Scope vector_scope.
+
 (* stepOnce is a helper function that takes a circuit running for > 1 ticks and
    runs it for only one tick. *)
 Definition stepOnce {A B C : SignalType} {ticks : nat}
@@ -47,7 +49,7 @@ Definition stepOnce {A B C : SignalType} {ticks : nat}
   let a := Vector.hd (fst input) in
   let c := Vector.hd (snd input) in
   '(b, c) <- f (a :: const (defaultCombValue A) ticks,
-               c :: const (defaultCombValue C) ticks)%vector ;;
+               c :: const (defaultCombValue C) ticks) ;;
   ret ([Vector.hd b], [Vector.hd c]).
 
 (******************************************************************************)
@@ -63,8 +65,6 @@ by the a parameter and the current state value is provided by the feedback
 parameter. The result of the loopSeq' is a list in the identity monad that
 represented the list of computed values at each tick.
 *)
-
-Local Open Scope vector_scope.
 
 Fixpoint loopSeqV' {A B C : SignalType}
                    (ticks: nat)
