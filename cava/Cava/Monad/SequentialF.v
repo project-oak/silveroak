@@ -212,11 +212,11 @@ Definition blackBoxF (intf : CircuitInterface)
 (* interpretation.                                                            *)
 (******************************************************************************)
 
- Instance SequentialVectorSemantics : Cava combType :=
+ Instance TimedCombSemantics : Cava combType :=
   { cava := timed;
     zero := ret false;
     one := ret true;
-    defaultSignal t := ret (@defaultCombValue t);
+    defaultSignal t := defaultCombValue t;
     inv := unopF negb;
     and2 := binopF andb;
     nand2 := binopF (fun a b => negb (andb a b));
@@ -243,14 +243,16 @@ Definition blackBoxF (intf : CircuitInterface)
     greaterThanOrEqual m n := @greaterThanOrEqualBoolF m n;
     instantiate _ circuit := circuit;
     blackBox intf _ := blackBoxF intf;
-    (* TODO: needs different semantics that feed timed input to delay/loop *)
-    delay k i := delay i;
-    loop A B C := @loopSeqV A B C ticks;
-}.
+  }.
+
+ Instance TimedSeqSemantics : CavaSeqMonad TimedCombSemantics :=
+   { delaym k i := delay i;
+     loopm A B C := @loopSeqF A B C;
+   }.
 
 (******************************************************************************)
 (* A function to run a monadic circuit description and return the boolean     *)
-(* behavioural simulation result.                                             *)
+(* behavioural simulation result at the given timestep.                       *)
 (******************************************************************************)
 
-Definition sequentialV {ticks a} (circuit : cava (signal:=seqVType ticks) a) : a := unIdent circuit.
+Definition sequentialF {a} (circuit : cava a) (t : nat) : a := circuit t.
