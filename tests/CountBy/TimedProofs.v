@@ -28,7 +28,7 @@ Require Import Cava.Signal.
 Require Import Cava.Tactics.
 Require Import Cava.Monad.CavaClass.
 Require Import Cava.Monad.TimedMonad.
-Require Import Cava.Monad.SequentialF.
+Require Import Cava.Monad.SequentialTimed.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import Tests.CountBy.CountBy.
