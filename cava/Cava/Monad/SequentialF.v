@@ -35,33 +35,12 @@ Require Import Cava.Cava.
 From Cava Require Import Kind.
 From Cava Require Import Signal.
 Require Import Cava.Monad.CavaClass.
+Require Import Cava.Monad.TimedMonad.
 Require Import Cava.Monad.CombinationalMonad.
 
 (******************************************************************************)
-(* Loop combinator for feedback with delay.                                   *)
+(* Delay combinator.                                                          *)
 (******************************************************************************)
-
-Definition timed (A : Type) : Type := nat -> A.
-
-Instance Monad_timed : Monad timed :=
-  {| ret := fun _ x t => x;
-     bind :=
-       fun A B (x : timed A) (f : A -> timed B) t =>
-         f (x t) t
-  |}.
-
-Definition asList {A} (x : timed A) (n : nat) := List.map x (seq 0 n).
-
-Definition countUp : timed nat := fun t => t.
-
-Compute asList countUp 5.
-
-Definition multiply (x y : nat) : timed nat := ret (x * y).
-
-Compute asList
-        (x <- countUp ;;
-         y <- countUp ;;
-         multiply x y) 5.
 
 Definition delay {A} (x : timed (combType A)) : timed (combType A) :=
   fun t =>
@@ -70,61 +49,20 @@ Definition delay {A} (x : timed (combType A)) : timed (combType A) :=
     | S t' => x t'
     end.
 
-Definition delayNat (x : timed nat) : timed nat :=
-  fun t =>
-    match t with
-    | 0 => 0
-    | S t' => x t'
-    end.
+(******************************************************************************)
+(* Loop combinator for feedback with delay.                                   *)
+(******************************************************************************)
 
-Compute asList
-        (x <- delayNat countUp ;;
-         y <- countUp ;;
-         xy <- multiply x y ;;
-         ret xy) 5.
-
-Definition timedFix {A} (x : A) (f : A -> A) : timed A :=
-  fix body (t : nat) :=
-    match t with
-    | 0 => x
-    | S t' => f (body t')
-    end.
-
-Definition counter := timedFix 0 (Nat.add 1).
-
-Compute asList counter 10.
-
-Definition timedFold {A B} (f : A -> B -> A) (x : A) (y : timed B) : timed A :=
-  fix body (t : nat) :=
-    match t with
-    | 0 => x
-    | S t' => f (body t') (y t')
-    end.
-
-Definition countBy := timedFold Nat.add 0 countUp.
-
-Compute asList countBy 10.
-
-Fixpoint loopSeqF' {A B C : SignalType}
+Definition loopSeqF' {A B C : SignalType}
          (f : combType A * combType C -> combType B * combType C)
-         (a : timed (combType A)) (feedback : combType C)
-  : timed (combType B * combType C) :=
-  timedFold (fun bc a => f (a, snd bc)) (f (a 0, feedback)) a.
+         (a : timed (combType A)) : timed (combType B * combType C) :=
+  timedFold (fun bc a => f (a, snd bc)) (defaultCombValue B, defaultCombValue C) a.
 
 Definition loopSeqF {A B C : SignalType}
          (f : combType A * combType C -> timed (combType B * combType C))
          (a : timed (combType A)) : timed (combType B) :=
-  '(b, _) <- loopSeqF' (fun ac => f ac 0) a (defaultCombValue C) ;;
+  '(b, _) <- loopSeqF' (fun ac => f ac 0) a ;;
   ret b.
-
-Definition countByLoop : timed N :=
-  out <- @loopSeqF (Vec Bit 4) (Vec Bit 4) (Vec Bit 4)
-                  (fun ac _ => let r := N2Bv_sized 4 (N.add (Bv2N (fst ac)) (Bv2N (snd ac))) in
-                            (r, r))
-                  (fun t => N2Bv_sized 4 (N.of_nat (countUp t))) ;;
-  ret (Bv2N out).
-
-Compute asList countByLoop 10.
 
 (******************************************************************************)
 (* A boolean sequential logic interpretation for the Cava class               *)
