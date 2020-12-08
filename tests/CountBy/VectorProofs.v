@@ -64,7 +64,7 @@ Local Ltac seqsimpl := repeat seqsimpl_step.
 
 (* TODO: rename typeclass arguments *)
 Lemma addNCorrect ticks n (a b : Vector.t (Bvector n) ticks) :
-  unIdent (addN (H:=SequentialVectorSemantics) a b) = addNSpec a b.
+  unIdent (addN (H:=SequentialVectorCombSemantics) a b) = addNSpec a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 
@@ -72,7 +72,7 @@ Lemma countForkStepOnce (ticks: nat) (i s : Vector.t (Bvector 8) 1) :
   unIdent
     (stepOnce
        (ticks:=ticks)
-       (countFork (semantics:=SequentialVectorSemantics))
+       (countFork (combsemantics:=SequentialVectorCombSemantics))
        (i, s))
   = (countBySpec' (Vector.hd s) i, countBySpec' (Vector.hd s) i).
 Proof.
@@ -85,7 +85,7 @@ Lemma countForkCorrect ticks :
   forall(i : Vector.t (Bvector 8) ticks) (s : Vector.t (Bvector 8) 1),
     unIdent
       (loopSeqV' ticks (stepOnce (ticks:=ticks)
-                                 (countFork (semantics:=SequentialVectorSemantics)))
+                                 (countFork (combsemantics:=SequentialVectorCombSemantics)))
                  i s)
     = countBySpec' (Vector.hd s) i.
 Proof.
