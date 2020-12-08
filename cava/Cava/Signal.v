@@ -55,10 +55,8 @@ Fixpoint defaultCombValue (t: SignalType) : combType t :=
 
 Definition seqType t := list (combType t).
 Definition seqVType ticks t := Vector.t (combType t) ticks.
-Definition seqFType t := nat -> combType t.
 Definition defaultSeqValue t := [defaultCombValue t].
 Definition defaultSeqVValue ticks t := Vector.const (defaultCombValue t) ticks.
-Definition defaultSeqValueF t : seqFType t := fun _ => defaultCombValue t.
 
 (******************************************************************************)
 (* Representation of circuit interface types with flat tuples.                *)
