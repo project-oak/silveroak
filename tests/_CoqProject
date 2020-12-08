@@ -10,3 +10,5 @@ TestsExtraction.v
 
 CountBy/CountBy.v
 CountBy/ListProofs.v
+CountBy/TimedProofs.v
+CountBy/VectorProofs.v

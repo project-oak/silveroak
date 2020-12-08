@@ -184,8 +184,19 @@ Section Folds.
     rewrite in_seq; intros.
     reflexivity.
   Qed.
+
+  Lemma fold_left_invariant {A B C} (I P : B -> C -> Prop)
+        (f : B -> A -> B) (g : C -> A -> C) (ls : list A) b c :
+    I b c -> (* invariant holds at start *)
+    (forall b c a, I b c -> I (f b a) (g c a)) -> (* invariant holds through loop body *)
+    (forall b c, I b c -> P b c) -> (* invariant implies postcondition *)
+    P (fold_left f ls b) (fold_left g ls c).
+  Proof.
+    intros ? ? IimpliesP. apply IimpliesP.
+    apply fold_left_preserves_relation; eauto.
+  Qed.
 End Folds.
-Hint Rewrite @fold_left_cons @fold_left_nil
+Hint Rewrite @fold_left_cons @fold_left_nil @fold_left_app
      using solve [eauto] : push_list_fold.
 
 (* Defines a version of fold_left that accumulates a list of (a
@@ -530,3 +541,22 @@ Section MapInversionTests.
     repeat eexists; eauto.
   Qed.
 End MapInversionTests.
+
+(* Factor out loops from a goal in preparation for using fold_left_invariant *)
+Ltac factor_out_loops :=
+  lazymatch goal with
+  | |- ?G =>
+    lazymatch G with
+    | context [fold_left ?f1 ?ls ?b1] =>
+      let F1 :=
+          lazymatch (eval pattern (fold_left f1 ls b1) in G) with
+          | ?F _ => F end in
+      lazymatch F1 with
+      | context [fold_left ?f2 ?ls ?b2] =>
+      let F2 :=
+          lazymatch (eval pattern (fold_left f2 ls b2) in F1) with
+          | ?F _ => F end in
+      change (F2 (fold_left f2 ls b2) (fold_left f1 ls b1))
+      end
+    end
+  end.

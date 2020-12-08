@@ -89,6 +89,7 @@ Class Cava (signal : SignalType -> Type) := {
              cava (tupleInterface signal ((map port_type (circuitOutputs intf))));
 }.
 
+(* Sequential semantics -- assumes the sequential part of the interpretation is in [signal] *)
 Class CavaSeq {signal : SignalType -> Type} (combinationalSemantics : Cava signal) := {
   (* A unit delay. *)
   delay : forall {t: SignalType}, signal t -> cava (signal t);
@@ -97,4 +98,17 @@ Class CavaSeq {signal : SignalType -> Type} (combinationalSemantics : Cava signa
          (signal A * signal C -> cava (signal B * signal C)) ->
          signal A ->
          cava (signal B);
+}.
+
+(* Alternate version of sequential semantics which assumes the sequential part
+   of the interpretation is in [cava]; type signatures are different because
+   delay and loop must accept sequential input *)
+Class CavaSeqMonad {signal : SignalType -> Type} (combinationalSemantics : Cava signal) := {
+  (* A unit delay. *)
+  delaym : forall {t: SignalType}, cava (signal t) -> cava (signal t);
+  (* Feeback loop, with unit delay inserted into the feedback path. *)
+  loopm : forall {A B C: SignalType},
+      (signal A * signal C -> cava (signal B * signal C)) ->
+      cava (signal A) ->
+      cava (signal B);
 }.
