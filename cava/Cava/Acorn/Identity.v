@@ -67,4 +67,4 @@ Ltac simpl_ident :=
                                   instantiate_app_by_reflexivity ]
           | erewrite fold_left_ext; [ | intros; progress simpl_ident;
                                         instantiate_app_by_reflexivity ]
-          | progress cbn [fst snd mcompose bind ret Monad_ident unIdent] ].
+          | progress cbn [fst snd bind ret Monad_ident unIdent] ].

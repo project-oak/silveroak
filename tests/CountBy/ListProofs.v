@@ -67,8 +67,7 @@ Lemma countForkStep:
     sequential ((addN >=> fork2) ([i], [s]))
     = (countBySpec' s [i], countBySpec' s [i]).
 Proof.
-  unfold mcompose.
-  intros; cbv [countBySpec'].
+  intros; cbv [countBySpec' mcompose].
   seqsimpl; reflexivity.
 Qed.
 Hint Rewrite countForkStep using solve [eauto] : seqsimpl.
