@@ -72,10 +72,15 @@ Proof.
 Qed.
 Hint Rewrite countForkStep using solve [eauto] : seqsimpl.
 
+(* TODO: this should live in a more general location *)
+Lemma overlap_nil {A} (x : seqType A) : overlap 0 [] x = x.
+Proof. reflexivity. Qed.
+Hint Rewrite @overlap_nil using solve [eauto] : seqsimpl.
+
 Lemma countForkCorrect:
   forall (i : list (Bvector 8)) (s : Bvector 8),
     sequential (loopSeq' (countFork (combsemantics:=SequentialCombSemantics)) i [s])
-    = countBySpec' s i.
+    = (countBySpec' s i, countBySpec' s i).
 Proof.
   cbv [sequential]; induction i; intros; [ reflexivity | ].
   seqsimpl. cbn [countBySpec']; rewrite IHi; reflexivity.

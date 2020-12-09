@@ -29,35 +29,54 @@ From Cava Require Import Signal.
 Require Import Cava.Monad.CavaClass.
 Require Import Cava.Monad.CombinationalMonad.
 
+(* Given two sequential inputs, combine them by combining all the elements of
+   the first with the elements of the second that *do not overlap* when the
+   second is offset from the first by the specified offset. For example:
+
+   a1 = [0;0;1], a2 = [0;0;2], offset = 1:
+   a1            : 0 0 1
+   a2            :   0 0 2
+   overlap a1 a2 : 0 0 1 2
+
+   a1 = [0;1;2;3], a2 = [4;5;6], offset = 2:
+   a1            : 0 1 2 3
+   a2            :     4 5 6
+   overlap a1 a2 : 0 1 2 3 6
+
+   This is particularly useful for chaining repeated outputs of a circuit with
+   delays. *)
+Definition overlap {A} (offset : nat) (a1 a2 : seqType A) : seqType A :=
+  a1 ++ skipn (length a1 - offset) a2.
+
 (******************************************************************************)
 (* Loop combinator for feedback with delay.                                   *)
 (******************************************************************************)
 
 (*
-loopSeq' takes a combinational circuit f which has a pair of inputs which
+loopSeq' takes a sequential circuit f which has a pair of inputs which
 represent the current input of type A and current state of type C. This circuit
 returns a pair which represents the computed output of type B and next state
 value of type C. The list of input values for each clock tick are provided
 by the a parameter and the current state value is provided by the feedback
 parameter. The result of the loopSeq' is a list in the identity monad that
-represented the list of computed values at each tick.
+represented the list of computed values and states at each tick.
 *)
 
 Fixpoint loopSeq' {A B C : SignalType}
                   (f : seqType A * seqType C -> ident (seqType B * seqType C))
                   (a : seqType A) (feedback: seqType C)
-  : ident (seqType B) :=
-  match a with
-  | [] => ret []
-  | x :: xs =>
-    '(yL, nextState) <- f ([x], feedback) ;; (* One step of f. *)
-    let y := hd defaultSignal yL in
-    ys <- loopSeq' f xs nextState ;; (* remaining steps of f *)
-    ret (y :: ys)
+  : ident (seqType B * seqType C) :=
+  match a, feedback with
+  | x :: xs, y :: ys =>
+    '(b, c) <- f ([x], [y]) ;; (* Process one input *)
+    let ys : seqType C := overlap 0 ys c in (* append new feedback *)
+    '(b', c') <- loopSeq' f xs ys ;; (* remaining steps of f *)
+    ret (overlap 1 b b', overlap 1 c c')
+  | _, _ => ret ([], [])
   end.
 
 (*
-The loopSeq combinator takes a combinational circuit f which maps a pair
+The loopSeq combinator takes a sequential circuit f which maps a pair
 representing the current input and current state to another pair
 representing the computed output and next state value. This function is used
 to compute the sequential behaviour of a circuit which uses f to iterate over
@@ -66,9 +85,9 @@ the a inputs, using a default value for the initial state.
 
 Definition loopSeq {A B C : SignalType}
                    (f : seqType A * seqType C -> ident (seqType B * seqType C))
-                   (a : seqType A)
-                   : ident (seqType B) :=
-  loopSeq' f a [defaultCombValue C].
+                   (a : seqType A) : ident (seqType B) :=
+  '(b, _) <- loopSeq' f a [defaultCombValue C] ;;
+  ret b.
 
 (******************************************************************************)
 (* A boolean sequential logic interpretation for the Cava class               *)
