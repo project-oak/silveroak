@@ -12,3 +12,5 @@ CountBy/CountBy.v
 CountBy/ListProofs.v
 CountBy/TimedProofs.v
 CountBy/VectorProofs.v
+
+AddWithDelay/AddWithDelay.v
