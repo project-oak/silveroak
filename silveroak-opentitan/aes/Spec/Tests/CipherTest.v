@@ -90,7 +90,7 @@ Definition add_round_key (k : round_key) (st : state) : state :=
   from_cols_bits (add_round_key bits_per_word Nb st k).
 
 Definition sub_bytes (st : state) : state :=
-  from_cols (SubBytes.sub_bytes _ _ (to_cols st)).
+  from_list_rows (SubBytes.sub_bytes (to_list_rows st)).
 
 Definition shift_rows (st : state) : state :=
   from_list_rows (shift_rows (to_list_rows st)).
@@ -99,7 +99,7 @@ Definition mix_columns (st : state) : state :=
   from_cols (mix_columns (to_cols st)).
 
 Definition inv_sub_bytes (st : state) : state :=
-  from_cols (SubBytes.inv_sub_bytes _ _ (to_cols st)).
+  from_list_rows (SubBytes.inv_sub_bytes (to_list_rows st)).
 
 Definition inv_shift_rows (st : state) : state :=
   from_list_rows (inv_shift_rows (to_list_rows st)).

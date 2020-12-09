@@ -14,14 +14,15 @@
 (****************************************************************************)
 
 Require Import Coq.Init.Byte.
-Require Import Coq.Vectors.Vector.
-Require Import Cava.VectorUtils.
+Require Import Coq.Lists.List.
+
 Require Import AesSpec.Sbox.
+Require Import Cava.ListUtils.
 
 Section Spec.
   Variables bytes_per_word Nb : nat.
-  Local Notation word := (Vector.t byte bytes_per_word) (only parsing).
-  Local Notation state := (Vector.t word Nb) (only parsing).
+  Local Notation word := (list byte) (only parsing).
+  Local Notation state := (list word) (only parsing).
 
   Definition sub_bytes : state -> state :=
     map (map forward_sbox).
@@ -47,8 +48,9 @@ Section Spec.
       rewrite map_map.
       rewrite map_id_ext.
       { reflexivity. }
-      { intros.
-        destruct a; reflexivity. }
+      { intro b.
+        destruct b; reflexivity. }
     Qed.
+
   End Properties.
 End Spec.
