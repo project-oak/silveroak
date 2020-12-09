@@ -34,8 +34,11 @@ Section Spec.
     | S r' => shift_row (shift_row_once w) r'
     end.
 
+  Definition shift_rows_start (st : state) (n : nat) :=
+    map2 shift_row st (List.seq n (length st)).
+
   Definition shift_rows (st : state) :=
-    map2 shift_row st (List.seq 0 (length st)).
+    shift_rows_start st 0.
 
   Definition inv_shift_row (w : word) (r : nat) :=
     rev (shift_row (rev w) r).
@@ -44,6 +47,15 @@ Section Spec.
     map2 inv_shift_row st (List.seq 0 (length st)).
 
   Section Properties.
+    Lemma shift_row_nil : forall shift,
+      shift_row nil shift = nil.
+    Proof.
+      induction shift; [reflexivity|].
+      simpl.
+      rewrite IHshift.
+      reflexivity.
+    Qed.
+
     Lemma inv_shift_row_hd w h : inv_shift_row (w ++ h :: nil) 1 = h :: w.
     Proof.
       unfold inv_shift_row.
@@ -106,6 +118,7 @@ Section Spec.
     Proof.
       unfold shift_rows.
       unfold inv_shift_rows.
+      unfold shift_rows_start.
 
       rewrite map2_length.
       rewrite seq_length.
