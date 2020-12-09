@@ -62,7 +62,6 @@ parameter. The result of the loopSeq' is a list in the identity monad that
 represented the list of computed values and states at each tick.
 *)
 
-<<<<<<< HEAD
 Local Open Scope type_scope.
 
 Fixpoint loopSeq' {m} `{Monad m} {A B C : SignalType}
@@ -76,19 +75,6 @@ Fixpoint loopSeq' {m} `{Monad m} {A B C : SignalType}
     '(b', c') <- loopSeq' f xs ys ;; (* remaining steps of f *)
     ret (overlap 1 b b', overlap 1 c c')
   | _, _ => ret ([], [])
-=======
-Fixpoint loopSeq' {m} `{Monad m} {A B C : SignalType}
-         (f : seqType A * seqType C -> m (seqType B * seqType C)%type)
-         (a : seqType A) (feedback: seqType C)
-  : m (seqType B) :=
-  match a with
-  | [] => ret []
-  | x :: xs =>
-    '(yL, nextState) <- f ([x], feedback) ;; (* One step of f. *)
-    let y := hd defaultSignal yL in
-    ys <- loopSeq' f xs nextState ;; (* remaining steps of f *)
-    ret (y :: ys)
->>>>>>> 4a727e1 (parameterize loopSeq' over all monads and don't simplify mcompose in simpl_ident)
   end.
 
 (*

@@ -83,7 +83,7 @@ Lemma countForkStepOnce (ticks: nat) (i s : Vector.t (Bvector 8) 1) :
        (i, s))
   = (countBySpec' (Vector.hd s) i, countBySpec' (Vector.hd s) i).
 Proof.
-  intros; cbv [countBySpec' stepOnce].
+  intros. unfold mcompose. cbv [countBySpec' stepOnce].
   seqsimpl. reflexivity.
 Qed.
 Hint Rewrite countForkStepOnce using solve [eauto] : seqsimpl.
@@ -96,8 +96,10 @@ Lemma countForkCorrect ticks :
                  i s)
     = countBySpec' (Vector.hd s) i.
 Proof.
-  cbv [sequentialV]; induction ticks; intros; [ reflexivity | ].
-  seqsimpl. cbn [countBySpec']; rewrite IHticks; reflexivity.
+  unfold mcompose. 
+  cbv [sequentialV];  
+  induction ticks; intros; [ reflexivity | ].
+  seqsimpl. cbn [countBySpec']. rewrite IHticks. reflexivity.
 Qed.
 Hint Rewrite countForkCorrect using solve [eauto] : seqsimpl.
 

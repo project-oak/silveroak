@@ -23,6 +23,7 @@ Export MonadNotation.
 
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Cava.
+Require Import Cava.Monad.Combinators.
 Require Import Cava.ListUtils.
 Require Import Cava.Signal.
 Require Import Cava.Tactics.
