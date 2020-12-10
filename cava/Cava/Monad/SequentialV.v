@@ -39,13 +39,16 @@ Require Import Cava.Monad.CombinationalMonad.
 
 Local Open Scope vector_scope.
 
+
+Local Open Scope type_scope.
+
 (* stepOnce is a helper function that takes a circuit running for > 1 ticks and
    runs it for only one tick. *)
-Definition stepOnce {A B C : SignalType} {ticks : nat}
+Definition stepOnce {m} `{Monad m}  {A B C : SignalType} {ticks : nat}
            (f : seqVType (S ticks) A * seqVType (S ticks) C
-                -> ident (seqVType (S ticks) B * seqVType (S ticks) C))
+                -> m (seqVType (S ticks) B * seqVType (S ticks) C))
            (input : seqVType 1 A * seqVType 1 C)
-  : ident (seqVType 1 B * seqVType 1 C) :=
+  : m (seqVType 1 B * seqVType 1 C) :=
   let a := Vector.hd (fst input) in
   let c := Vector.hd (snd input) in
   '(b, c) <- f (a :: const (defaultCombValue A) ticks,
@@ -66,12 +69,13 @@ parameter. The result of the loopSeq' is a list in the identity monad that
 represented the list of computed values at each tick.
 *)
 
-Fixpoint loopSeqV' {A B C : SignalType}
+Fixpoint loopSeqV' {m} `{Monad m} 
+                   {A B C : SignalType}
                    (ticks: nat)
-                   (f : seqVType 1 A * seqVType 1 C -> ident (seqVType 1 B * seqVType 1 C))
+                   (f : seqVType 1 A * seqVType 1 C -> m (seqVType 1 B * seqVType 1 C))
                    {struct ticks}
-  : seqVType ticks A -> seqVType 1 C -> ident (seqVType ticks B) :=
-  match ticks as ticks0 return seqVType ticks0 A -> _ -> ident (seqVType ticks0 B) with
+  : seqVType ticks A -> seqVType 1 C -> m (seqVType ticks B) :=
+  match ticks as ticks0 return seqVType ticks0 A -> _ -> m (seqVType ticks0 B) with
   | O => fun _ _ => ret []
   | S ticks' =>
     fun a feedback =>
@@ -220,6 +224,9 @@ Definition unpeelVecVec {t: SignalType} {s: nat}
                         (v: Vector.t (Vector.t (combType t) ticks) s)
                         : Vector.t (Vector.t (combType t) s) ticks :=
   Vector.map (fun ni => Vector.map (fun vi => indexConstBool vi ni) v) (vseq 0 ticks).
+
+
+Local Open Scope nat_scope.
 
 Definition unsignedAddComb {m n : nat}
                            (av : Bvector m) (bv : Bvector n) :

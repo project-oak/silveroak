@@ -25,6 +25,7 @@ Require Import Cava.Acorn.Identity.
 Require Import Cava.Cava.
 Require Import Cava.Tactics.
 Require Import Cava.Monad.CavaClass.
+Require Import Cava.Monad.Combinators.
 Require Import Cava.Monad.SequentialV.
 Require Import Cava.Lib.UnsignedAdders.
 
@@ -55,51 +56,54 @@ Local Ltac seqsimpl_step :=
                    [fst snd hd loopSeqV' loop SequentialVectorSemantics]
         | progress cbv beta iota delta [loopSeqV]; seqsimpl_step
         | progress autorewrite with seqsimpl
+        | lazymatch goal with
+          | |- context [(@SequentialVectorCombSemantics ?ticks)] =>
+            progress (change ident with (@cava _ (@SequentialVectorCombSemantics ticks));
+                      change @unIdent with (@sequentialV ticks));
+            seqsimpl_step
+          end
         | progress destruct_pair_let
         | progress simpl_ident ].
 Local Ltac seqsimpl := repeat seqsimpl_step.
 
-(* TODO: because sequentialV ignores the ticks argument, using sequentialV
-   instead of unIdent means autorewrite doesn't work without explicit ticks. *)
-
 (* TODO: rename typeclass arguments *)
 Lemma addNCorrect ticks n (a b : Vector.t (Bvector n) ticks) :
-  unIdent (addN (H:=SequentialVectorCombSemantics) a b) = addNSpec a b.
+  unIdent (addN (H:=SequentialVectorCombSemantics) (a, b)) = addNSpec a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 
 Lemma countForkStepOnce (ticks: nat) (i s : Vector.t (Bvector 8) 1) :
-  unIdent
+  sequentialV
     (stepOnce
        (ticks:=ticks)
-       (countFork (combsemantics:=SequentialVectorCombSemantics))
+       (addN >=> fork2)
        (i, s))
   = (countBySpec' (Vector.hd s) i, countBySpec' (Vector.hd s) i).
 Proof.
-  intros; cbv [countFork countBySpec' stepOnce].
+  intros. unfold mcompose. cbv [countBySpec' stepOnce].
   seqsimpl. reflexivity.
 Qed.
 Hint Rewrite countForkStepOnce using solve [eauto] : seqsimpl.
 
 Lemma countForkCorrect ticks :
   forall(i : Vector.t (Bvector 8) ticks) (s : Vector.t (Bvector 8) 1),
-    unIdent
+    sequentialV
       (loopSeqV' ticks (stepOnce (ticks:=ticks)
-                                 (countFork (combsemantics:=SequentialVectorCombSemantics)))
+                                 (addN >=> fork2))
                  i s)
     = countBySpec' (Vector.hd s) i.
 Proof.
-  cbv [sequentialV]; induction ticks; intros; [ reflexivity | ].
-  seqsimpl. cbn [countBySpec']; rewrite IHticks; reflexivity.
+  cbv [sequentialV].
+  induction ticks; intros; [ reflexivity | ].
+  seqsimpl. cbn [countBySpec']. rewrite IHticks. reflexivity.
 Qed.
 Hint Rewrite countForkCorrect using solve [eauto] : seqsimpl.
 
 Lemma countByCorrect ticks (i : Vector.t (Bvector 8) ticks) :
   sequentialV (countBy i) = countBySpec i.
 Proof.
+  unfold mcompose.
   intros; cbv [countBy countBySpec].
   destruct ticks; seqsimpl; [ reflexivity | ].
-  seqsimpl.
-  rewrite (countForkCorrect ticks).
-  reflexivity.
+  seqsimpl. reflexivity.
 Qed.

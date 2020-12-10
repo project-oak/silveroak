@@ -46,11 +46,11 @@ Definition bv5_30 := N2Bv_sized 5 30.
 (******************************************************************************)
 
 (* Check 0 + 0 = 0 *)
-Example add0_0 : combinational (addN bv4_0 bv4_0) = bv4_0.
+Example add0_0 : combinational (addN (bv4_0, bv4_0)) = bv4_0.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 1 = 0 *)
-Example add15_1 : combinational (addN bv4_15 bv4_1) = bv4_0.
+Example add15_1 : combinational (addN (bv4_15, bv4_1)) = bv4_0.
 Proof. reflexivity. Qed.
 
 Section WithCava.

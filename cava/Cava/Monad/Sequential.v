@@ -62,10 +62,12 @@ parameter. The result of the loopSeq' is a list in the identity monad that
 represented the list of computed values and states at each tick.
 *)
 
-Fixpoint loopSeq' {A B C : SignalType}
-                  (f : seqType A * seqType C -> ident (seqType B * seqType C))
+Local Open Scope type_scope.
+
+Fixpoint loopSeq' {m} `{Monad m} {A B C : SignalType}
+                  (f : seqType A * seqType C -> m (seqType B * seqType C))
                   (a : seqType A) (feedback: seqType C)
-  : ident (seqType B * seqType C) :=
+  : m (seqType B * seqType C) :=
   match a, feedback with
   | x :: xs, y :: ys =>
     '(b, c) <- f ([x], [y]) ;; (* Process one input *)

@@ -112,9 +112,8 @@ Definition pipelinedNAND_tb_inputs
 Definition pipelinedNAND_tb_expected_outputs
   := sequential (pipelinedNAND pipelinedNAND_tb_inputs).
 
-Compute list (tupleSimInterface (circuitInputs pipelinedNANDInterface)).
-
 (* TODO(satnam6502): Sequential interface for test-bench generation.
+Compute list (tupleSimInterface (circuitInputs pipelinedNANDInterface)).
 Definition pipelinedNAND_tb
   := testBench "pipelinedNAND_tb" pipelinedNANDInterface
      pipelinedNAND_tb_inputs pipelinedNAND_tb_expected_outputs.

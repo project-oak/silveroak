@@ -23,6 +23,7 @@ Export MonadNotation.
 
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Cava.
+Require Import Cava.Monad.Combinators.
 Require Import Cava.ListUtils.
 Require Import Cava.Signal.
 Require Import Cava.Tactics.
@@ -37,6 +38,11 @@ Require Import Tests.CountBy.CountBy.
    assumes the sequential part is in the monad *)
 Section WithCava.
   Context `{semantics:CavaSeqMonad} `{Monad cava}.
+
+  Definition countFork (ab: signal (Vec Bit 8) * signal (Vec Bit 8)) :
+                       cava (signal (Vec Bit 8) * signal (Vec Bit 8)) :=
+    sum <- addN ab;;
+    ret (sum, sum).
 
   Definition countBy : cava (signal (Vec Bit 8)) -> cava (signal (Vec Bit 8))
     := loopm countFork.
@@ -63,7 +69,7 @@ Local Ltac seqsimpl := repeat seqsimpl_step.
 
 (* TODO: rename typeclass arguments *)
 Lemma addNCorrect n (a b : Bvector n) t :
-  addN (H:=TimedCombSemantics) a b t = addNSpec a b.
+  addN (H:=TimedCombSemantics) (a, b) t = addNSpec a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 
