@@ -58,16 +58,17 @@ Local Ltac seqsimpl := repeat seqsimpl_step.
 
 (* TODO: rename typeclass arguments *)
 Lemma addNCorrect n (a b : list (Bvector n)) :
-  sequential (addN (H:=SequentialCombSemantics) a b) = addNSpec a b.
+  sequential (addN (H:=SequentialCombSemantics) (a, b)) = addNSpec a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 
 Lemma countForkStep:
   forall (i : Bvector 8) (s : Bvector 8),
-    sequential (countFork ([i], [s]))
+    sequential ((addN >=> fork2) ([i], [s]))
     = (countBySpec' s [i], countBySpec' s [i]).
 Proof.
-  intros; cbv [countFork countBySpec'].
+  unfold mcompose.
+  intros; cbv [countBySpec'].
   seqsimpl; reflexivity.
 Qed.
 Hint Rewrite countForkStep using solve [eauto] : seqsimpl.
@@ -79,11 +80,12 @@ Hint Rewrite @overlap_nil using solve [eauto] : seqsimpl.
 
 Lemma countForkCorrect:
   forall (i : list (Bvector 8)) (s : Bvector 8),
-    sequential (loopSeq' (countFork (combsemantics:=SequentialCombSemantics)) i [s])
+    sequential (loopSeq' (addN >=> fork2) i [s])
     = (countBySpec' s i, countBySpec' s i).
 Proof.
+  unfold mcompose.
   cbv [sequential]; induction i; intros; [ reflexivity | ].
-  seqsimpl. cbn [countBySpec']; rewrite IHi; reflexivity.
+  seqsimpl. cbn [countBySpec']; simpl; rewrite IHi; reflexivity.
 Qed.
 Hint Rewrite countForkCorrect using solve [eauto] : seqsimpl.
 

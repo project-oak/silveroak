@@ -69,7 +69,7 @@ Section WithCava.
 
   Definition addWithDelayStep (i : signal (Vec Bit 8) * signal (Vec Bit 8))
                        : cava (signal (Vec Bit 8) * signal (Vec Bit 8)) :=
-    newCount <- addN (fst i) (snd i) ;;
+    newCount <- addN i ;;
     newCount <- delay newCount ;;
     ret (newCount, newCount).
 

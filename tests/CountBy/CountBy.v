@@ -51,13 +51,8 @@ Section WithCava.
   Context {signal} {combsemantics: Cava signal}
           {semantics: CavaSeq combsemantics} `{Monad cava}.
 
-  Definition countFork (i : signal (Vec Bit 8) * signal (Vec Bit 8))
-                       : cava (signal (Vec Bit 8) * signal (Vec Bit 8)) :=
-    newCount <- addN (fst i) (snd i) ;;
-    ret (newCount, newCount).
-
   Definition countBy : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))
-    := loop countFork.
+    := loop (addN >=> fork2).
 
 End WithCava.
 

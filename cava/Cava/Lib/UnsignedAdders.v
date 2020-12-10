@@ -64,11 +64,12 @@ Section WithCava.
             cava (Vector.t (signal Bit) (n + 1)) :=
     adderWithGrowthNoCarryInV (vcombine a b).
 
-  (* Curried add with no carry in and no bit-growth, as signal. *)
+  (* Adder with a pair of inputs of the same size and no bit-growth, as signal. *)
   Definition addN {n : nat}
-            (a b: signal (Vec Bit n)) :
+            (ab: signal (Vec Bit n) * signal (Vec Bit n)) :
             cava (signal (Vec Bit n)) :=
     const0 <- zero ;;
+    let (a, b) := ab in
     '(sum, _) <- unsignedAdderV (const0, vcombine (peel a) (peel b)) ;;
     ret (unpeel sum).
 
