@@ -6,6 +6,7 @@ INSTALLDEFAULTROOT = AesSpec
 AddRoundKey.v
 Cipher.v
 CipherRepresentationChange.v
+CommuteProperties.v
 ExpandAllKeys.v
 InterleavedCipher.v
 InterleavedInverseCipher.v

@@ -29,6 +29,15 @@ Section Misc.
 End Misc.
 
 Section Maps.
+  Lemma map_id_ext {A} (f : A -> A) (l : list A) :
+    (forall a, f a = a) -> map f l = l.
+  Proof.
+    intro Hf; induction l; [reflexivity|].
+    simpl.
+    rewrite Hf, IHl.
+    reflexivity.
+  Qed.
+
   Fixpoint map2 {A B C} (f : A -> B -> C) (ls1 : list A) ls2 :=
     match ls1, ls2 with
     | a :: ls1', b :: ls2' => f a b :: map2 f ls1' ls2'

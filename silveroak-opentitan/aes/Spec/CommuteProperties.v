@@ -17,41 +17,56 @@
 Require Import Coq.Init.Byte.
 Require Import Coq.Lists.List.
 
+Require Import AesSpec.ShiftRows.
+Require Import AesSpec.SubBytes.
 Require Import AesSpec.Sbox.
-Require Import Cava.ListUtils.
 
 Section Spec.
-  Variables bytes_per_word Nb : nat.
-  Local Notation word := (list byte) (only parsing).
-  Local Notation state := (list word) (only parsing).
-
-  Definition sub_bytes : state -> state :=
-    map (map forward_sbox).
-
-  Definition inv_sub_bytes : state -> state :=
-    map (map inverse_sbox).
-
   Section Properties.
-
-    Lemma inverse_sbox_prop (x : byte) : inverse_sbox (forward_sbox x) = x.
+    Lemma sub_byte_shift_row_once_comm : forall row,
+      shift_row_once (map forward_sbox row) =
+      map forward_sbox (shift_row_once row).
     Proof.
-      destruct x; reflexivity.
-    Qed.
-
-    Theorem inverse_sub_bytes (x : state) :
-      inv_sub_bytes (sub_bytes x) = x.
-    Proof.
-      unfold inv_sub_bytes.
-      unfold sub_bytes.
-      induction x; [reflexivity|].
+      intros.
+      destruct row; [reflexivity|].
       simpl.
-      rewrite IHx.
-      rewrite map_map.
-      rewrite map_id_ext.
-      { reflexivity. }
-      { intro b.
-        destruct b; reflexivity. }
+      rewrite map_app.
+      reflexivity.
     Qed.
 
+    Lemma sub_byte_shift_row_comm : forall row shift,
+      shift_row (map forward_sbox row) shift =
+      map forward_sbox (shift_row row shift).
+    Proof.
+      intros.
+      generalize dependent row.
+      induction shift; [reflexivity|].
+      intros.
+      simpl.
+      rewrite <- IHshift.
+      rewrite sub_byte_shift_row_once_comm.
+      reflexivity.
+    Qed.
+
+    Lemma sub_bytes_shift_rows_start_comm : forall st n,
+      shift_rows_start (sub_bytes st) n =
+      sub_bytes (shift_rows_start st n).
+    Proof.
+      induction st; [reflexivity|].
+      intro n.
+      unfold shift_rows_start.
+      simpl.
+      rewrite sub_byte_shift_row_comm.
+      unfold shift_rows_start in IHst.
+      rewrite IHst.
+      reflexivity.
+    Qed.
+
+    Theorem sub_bytes_shift_rows_comm : forall st,
+      shift_rows (sub_bytes st) = sub_bytes (shift_rows st).
+    Proof.
+      intros.
+      apply (sub_bytes_shift_rows_start_comm st 0).
+    Qed.
   End Properties.
 End Spec.
