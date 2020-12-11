@@ -14,47 +14,36 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import NArith.NArith Lists.List.
+From Coq Require Import NArith.NArith Arith.PeanoNat Lists.List.
 Require Import Coq.Bool.Bvector.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
-Require Import Cava.Acorn.Identity.
+Require Import coqutil.Tactics.Tactics.
+
 Require Import Cava.Cava.
+Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Monad.SequentialProperties.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import Tests.CountBy.CountBy.
 
-Fixpoint countBySpec' (state: Bvector 8) (i : list (Bvector 8))
-                      : list (Bvector 8) :=
-  match i with
-  | [] => []
-  | x::xs =>
-    let newState := N2Bv_sized 8 (Bv2N x + Bv2N state) in
-    newState :: countBySpec' newState xs
-  end.
+Definition bvadd {n} (a b : Bvector n) : Bvector n :=
+  N2Bv_sized n (Bv2N a + Bv2N b).
 
-Definition countBySpec := countBySpec' (N2Bv_sized 8 0).
+Definition bvsum {n} (l : list (Bvector n)) : Bvector n :=
+  fold_left bvadd l (N2Bv_sized n 0).
+
+Definition countBySpec (i : list (Bvector 8)) : list (Bvector 8) :=
+  map (fun t => bvsum (firstn t i)) (seq 1 (length i)).
 
 (* TODO: addN sequential seems to only return one result; shouldn't it be a map2? *)
 Definition addNSpec {n} (a b : list (Bvector n)) : list (Bvector n) :=
-  match a,b with
-  | a :: _, b :: _ => [N2Bv_sized n ((Bv2N a + Bv2N b))]
-  | _,_ => []
-  end.
-
-Local Ltac seqsimpl_step :=
-  first [ progress cbn beta iota delta
-                   [fst snd hd sequential loopSeq' loop SequentialSemantics]
-        | progress cbv beta iota delta [loopSeq]; seqsimpl_step
-        | progress autorewrite with seqsimpl
-        | progress destruct_pair_let
-        | progress simpl_ident ].
-Local Ltac seqsimpl := repeat seqsimpl_step.
+  map2 bvadd a b.
 
 (* TODO: rename typeclass arguments *)
 Lemma addNCorrect n (a b : list (Bvector n)) :
@@ -62,35 +51,47 @@ Lemma addNCorrect n (a b : list (Bvector n)) :
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 
-Lemma countForkStep:
+Lemma countForkCorrect:
   forall (i : Bvector 8) (s : Bvector 8),
     sequential ((addN >=> fork2) ([i], [s]))
-    = (countBySpec' s [i], countBySpec' s [i]).
+    = (addNSpec [i] [s], addNSpec [i] [s]).
 Proof.
-  intros; cbv [countBySpec' mcompose].
-  seqsimpl; reflexivity.
-Qed.
-Hint Rewrite countForkStep using solve [eauto] : seqsimpl.
-
-(* TODO: this should live in a more general location *)
-Lemma overlap_nil {A} (x : seqType A) : overlap 0 [] x = x.
-Proof. reflexivity. Qed.
-Hint Rewrite @overlap_nil using solve [eauto] : seqsimpl.
-
-Lemma countForkCorrect:
-  forall (i : list (Bvector 8)) (s : Bvector 8),
-    sequential (loopSeq' (addN >=> fork2) i [s])
-    = (countBySpec' s i, countBySpec' s i).
-Proof.
-  unfold mcompose.
-  cbv [sequential]; induction i; intros; [ reflexivity | ].
-  seqsimpl. cbn [countBySpec']; simpl; rewrite IHi; reflexivity.
+  intros; cbv [addNSpec mcompose].
+  seqsimpl. reflexivity.
 Qed.
 Hint Rewrite countForkCorrect using solve [eauto] : seqsimpl.
 
 Lemma countByCorrect: forall (i : list (Bvector 8)),
                       sequential (countBy i) = countBySpec i.
 Proof.
-  intros; cbv [countBy countBySpec].
-  seqsimpl. reflexivity.
+  intros; cbv [countBy].
+  eapply (loop_invariant (B:=Vec Bit 8) (C:=Vec Bit 8)) with
+      (I:=fun t acc feedback =>
+            feedback = [bvsum (firstn t i)]
+            /\ acc = countBySpec (firstn t i)).
+  { (* invariant holds at start *)
+    ssplit; reflexivity. }
+  { (* invariant holds through body *)
+    cbv zeta. intros *.
+    intros [Hfeedback Hacc]; intros; subst. seqsimpl.
+    cbv [addNSpec countBySpec bvsum map2].
+    rewrite firstn_succ_snoc with (d:=N2Bv_sized 8 0) by length_hammer.
+    autorewrite with push_list_fold.
+    ssplit; [ cbv [bvadd]; rewrite N.add_comm; reflexivity | ].
+    cbv [seqType Signal.combType Bvector] in *.
+    repeat first [ rewrite Nat.add_1_r
+                 | rewrite seq_S, map_app; cbn [map]
+                 | progress cbn [repeat app]
+                 | progress seqsimpl
+                 | progress autorewrite with push_length natsimpl
+                                             push_list_fold push_firstn ].
+    f_equal.
+    { apply map_ext_in; intros.
+      match goal with H : _ |- _ => apply in_seq in H end.
+      autorewrite with push_length natsimpl push_firstn push_list_fold.
+      reflexivity. }
+    { cbv [bvadd]. rewrite N.add_comm. reflexivity. } }
+  { (* invariant implies postcondition *)
+    intros *; intros [Hfeedback Hacc]; seqsimpl; subst.
+    rewrite firstn_all; reflexivity. }
 Qed.
