@@ -45,7 +45,7 @@ Require Import
   Aes.UnrolledNaiveCipher
   Aes.SboxCanrightPkg
   Aes.AesTest
-  Aes.Netlists.
+  Aes.Netlist.
 
 Extraction Library Sbox.
 Extraction Library MixSingleColumn.
@@ -61,4 +61,4 @@ Extraction Library CipherRound.
 Extraction Library UnrolledNaiveCipher.
 Extraction Library UnrolledOpenTitanCipher.
 Extraction Library AesTest.
-Extraction Library Netlists.
+Extraction Library Netlist.
