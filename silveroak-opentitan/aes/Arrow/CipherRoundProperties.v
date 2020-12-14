@@ -20,8 +20,8 @@ Require Import Cava.Arrow.ArrowExport Cava.Arrow.DeriveSpec
      Cava.Arrow.CombinatorProperties.
 Require Import Cava.Tactics.
 
-Require Import Aes.PkgProperties Aes.cipher_round
-     Aes.mix_columns Aes.sub_bytes Aes.shift_rows.
+Require Import Aes.PkgProperties Aes.CipherRound
+     Aes.MixColumns Aes.SubBytes Aes.ShiftRows.
 
 Section Wf.
   Context (aes_sub_bytes_Wf : forall sbox_impl, Wf (aes_sub_bytes sbox_impl))
@@ -51,7 +51,7 @@ Hint Resolve cipher_round_Wf final_cipher_round_Wf : Wf.
 (* These need to be axioms instead of context variables for
    [autorewrite with kappa_interp] to work as intended *)
 Axiom aes_sub_bytes_spec :
-  pkg.SboxImpl -> bool -> Vector.t (Vector.t (Vector.t bool 8) 4) 4
+  Pkg.SboxImpl -> bool -> Vector.t (Vector.t (Vector.t bool 8) 4) 4
   -> Vector.t (Vector.t (Vector.t bool 8) 4) 4.
 Axiom aes_shift_rows_spec :
   bool -> Vector.t (Vector.t (Vector.t bool 8) 4) 4
@@ -72,14 +72,14 @@ Section Equivalence.
                = aes_shift_rows_spec op_i state)
           (aes_mix_columns_correct :
              forall op_i state,
-               kinterp mix_columns.aes_mix_columns (op_i, (state, tt))
+               kinterp MixColumns.aes_mix_columns (op_i, (state, tt))
                = aes_mix_columns_spec op_i state).
   Hint Rewrite @aes_sub_bytes_correct @aes_shift_rows_correct
        @aes_mix_columns_correct : kappa_interp.
   Opaque aes_sub_bytes aes_shift_rows aes_mix_columns.
 
   Derive cipher_round_spec
-         SuchThat (forall (sbox_impl : pkg.SboxImpl) (op_i : bool)
+         SuchThat (forall (sbox_impl : Pkg.SboxImpl) (op_i : bool)
                      (data : Vector.t (Vector.t byte 4) 4)
                      (key : Vector.t (Vector.t byte 4) 4),
                       kinterp (cipher_round sbox_impl)
@@ -96,7 +96,7 @@ Section Equivalence.
   Opaque cipher_round.
 
   Derive final_cipher_round_spec
-         SuchThat (forall (sbox_impl : pkg.SboxImpl) (op_i : bool)
+         SuchThat (forall (sbox_impl : Pkg.SboxImpl) (op_i : bool)
                      (data : Vector.t (Vector.t byte 4) 4)
                      (key : Vector.t (Vector.t byte 4) 4),
                       kinterp (final_cipher_round sbox_impl)

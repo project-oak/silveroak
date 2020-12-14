@@ -32,14 +32,14 @@ Require Import AesSpec.ExpandAllKeys.
 Require Import AesSpec.InterleavedInverseCipher.
 Require Import Aes.CipherEquivalenceCommon
      Aes.OpenTitanCipherProperties Aes.CipherRoundProperties
-     Aes.unrolled_opentitan_cipher.
+     Aes.UnrolledOpenTitanCipher.
 Import VectorNotations ListNotations.
 Import CipherEquivalenceCommon.Notations.
 
 Section Equivalence.
-  Context (sbox : pkg.SboxImpl)
+  Context (sbox : Pkg.SboxImpl)
           (aes_key_expand_spec :
-             pkg.SboxImpl -> bool -> Vector.t bool 4 ->
+             Pkg.SboxImpl -> bool -> Vector.t bool 4 ->
              rconst -> keypair -> rconst * keypair)
           (aes_key_expand_correct :
              forall sbox_impl op_i round_id rcon key_i,
@@ -48,15 +48,15 @@ Section Equivalence.
                = aes_key_expand_spec sbox_impl op_i round_id rcon key_i)
           (aes_sub_bytes_correct :
              forall sbox_impl op_i state,
-               kinterp (sub_bytes.aes_sub_bytes sbox_impl) (op_i, (state, tt))
+               kinterp (SubBytes.aes_sub_bytes sbox_impl) (op_i, (state, tt))
                = aes_sub_bytes_spec sbox_impl op_i state)
           (aes_shift_rows_correct :
              forall op_i state,
-               kinterp shift_rows.aes_shift_rows (op_i, (state, tt))
+               kinterp ShiftRows.aes_shift_rows (op_i, (state, tt))
                = aes_shift_rows_spec op_i state)
            (aes_mix_columns_correct :
              forall op_i state,
-               kinterp mix_columns.aes_mix_columns (op_i, (state, tt))
+               kinterp MixColumns.aes_mix_columns (op_i, (state, tt))
                = aes_mix_columns_spec op_i state).
 
   Definition add_round_key : state -> key -> state :=

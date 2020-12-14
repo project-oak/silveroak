@@ -17,7 +17,7 @@
 Require Import Coq.Arith.Arith Coq.Vectors.Vector.
 Require Import Cava.Arrow.ArrowExport.
 
-Require Import Aes.pkg Aes.mix_columns Aes.sub_bytes Aes.shift_rows.
+Require Import Aes.Pkg Aes.MixColumns Aes.SubBytes Aes.ShiftRows.
 
 Import VectorNotations.
 Import KappaNotation.

@@ -19,15 +19,15 @@ Require Import Cava.Arrow.ArrowExport Cava.Arrow.DeriveSpec
 Require Import Cava.Tactics.
 
 Require Import Aes.PkgProperties Aes.CipherRoundProperties
-     Aes.unrolled_naive_cipher.
+     Aes.UnrolledNaiveCipher.
 
 Section Wf.
   Context (aes_256_naive_key_expansion_Wf :
              forall sbox_impl, Wf (aes_256_naive_key_expansion sbox_impl))
           (aes_sub_bytes_Wf :
-             forall sbox_impl, Wf (sub_bytes.aes_sub_bytes sbox_impl))
-          (aes_shift_rows_Wf : Wf shift_rows.aes_shift_rows)
-          (aes_mix_columns_Wf : Wf mix_columns.aes_mix_columns).
+             forall sbox_impl, Wf (SubBytes.aes_sub_bytes sbox_impl))
+          (aes_shift_rows_Wf : Wf ShiftRows.aes_shift_rows)
+          (aes_mix_columns_Wf : Wf MixColumns.aes_mix_columns).
 
   Hint Resolve aes_256_naive_key_expansion_Wf aes_sub_bytes_Wf aes_shift_rows_Wf
        aes_mix_columns_Wf : Wf.
@@ -49,7 +49,7 @@ End Wf.
 Section Equivalence.
   Local Notation byte := (Vector.t bool 8).
   Context (aes_256_naive_key_expansion_spec :
-             pkg.SboxImpl ->
+             Pkg.SboxImpl ->
              Vector.t (Vector.t (Vector.t bool 8) 4) 8 ->
              (Vector.t (Vector.t (Vector.t (Vector.t bool 8) 4) 4) 15))
           (aes_256_naive_key_expansion_correct :
@@ -58,22 +58,22 @@ Section Equivalence.
                aes_256_naive_key_expansion_spec sbox_impl key)
            (aes_sub_bytes_correct :
              forall sbox_impl op_i state,
-               kinterp (sub_bytes.aes_sub_bytes sbox_impl) (op_i, (state, tt))
+               kinterp (SubBytes.aes_sub_bytes sbox_impl) (op_i, (state, tt))
                = aes_sub_bytes_spec sbox_impl op_i state)
           (aes_shift_rows_correct :
              forall op_i state,
-               kinterp shift_rows.aes_shift_rows (op_i, (state, tt))
+               kinterp ShiftRows.aes_shift_rows (op_i, (state, tt))
                = aes_shift_rows_spec op_i state)
           (aes_mix_columns_correct :
              forall op_i state,
-               kinterp mix_columns.aes_mix_columns (op_i, (state, tt))
+               kinterp MixColumns.aes_mix_columns (op_i, (state, tt))
                = aes_mix_columns_spec op_i state).
   Hint Rewrite @aes_256_naive_key_expansion_correct @aes_sub_bytes_correct
        @aes_shift_rows_correct @aes_mix_columns_correct : kappa_interp.
-  Opaque aes_256_naive_key_expansion mix_columns.aes_mix_columns.
+  Opaque aes_256_naive_key_expansion MixColumns.aes_mix_columns.
 
   Derive unrolled_cipher_naive'_spec
-         SuchThat (forall (sbox_impl : pkg.SboxImpl) (op_i : bool)
+         SuchThat (forall (sbox_impl : Pkg.SboxImpl) (op_i : bool)
                      (data : Vector.t (Vector.t (Vector.t bool 8) 4) 4)
                      (key : Vector.t (Vector.t (Vector.t bool 8) 4) 8),
                       kinterp (unrolled_cipher_naive' sbox_impl)

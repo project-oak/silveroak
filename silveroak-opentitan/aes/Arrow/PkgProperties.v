@@ -19,7 +19,7 @@ Require Import Cava.Arrow.ArrowExport Cava.Arrow.DeriveSpec
      Cava.Arrow.CombinatorProperties Cava.VectorUtils.
 Require Import Cava.Tactics.
 
-Require Import Aes.pkg.
+Require Import Aes.Pkg.
 
 Section Wf.
   Lemma aes_transpose_Wf n m : Wf (@aes_transpose n m).
