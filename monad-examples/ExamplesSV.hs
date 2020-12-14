@@ -27,10 +27,6 @@ import Sorter
 main :: IO ()
 main = do writeSystemVerilog nand2Netlist
           writeTestBench nand2_tb
-          writeSystemVerilog pipelinedNANDNetlist
-          writeTestBench pipelinedNAND_tb
-          writeSystemVerilog loopedNANDNetlist
-          writeTestBench loopedNAND_tb
           writeSystemVerilog mux2_1Netlist
           writeTestBench mux2_1_tb
           writeSystemVerilog muxBus4_8Netlist
