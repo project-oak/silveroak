@@ -248,20 +248,13 @@ removes the list Kind, we first need to copy the list Kind. *)
         copy >>>                     (* ctxt*ctxt ~> o *)
         first (                         (* ctxt ~> o *)
           loopl (
-          (* z * ctx *)
-            first copy >>>
-            (* (z * z) ctx  *)
-            assoc >>>
-            (* z * z * ctx *)
-            second (
             (*  z * ctx *)
               uncancell >>>
             (* u * z * ctx *)
-              v' >>> Delay _
-            )
-            (* z * z' *)
-            >>> swap
-          )
+              v' >>> copy
+
+              >>> first (Delay _)
+        )
       )
     )
     >>> f'
