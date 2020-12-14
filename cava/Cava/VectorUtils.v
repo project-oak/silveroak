@@ -765,6 +765,10 @@ Section VectorFacts.
     rewrite IHv; reflexivity.
   Qed.
 
+  Lemma const_cons {A n} (a : A) :
+    const a (S n) = Vector.cons _ a _ (const a n).
+  Proof. reflexivity. Qed.
+
   Lemma const_nil {A n} (v : t (t A 0) n) : v = const (nil _) _.
   Proof.
     revert v; induction n; [ solve [vnil] | ].

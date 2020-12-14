@@ -282,4 +282,4 @@ Definition bufBoolList (i : list bool) : ident (list bool) :=
 (* behavioural simulation result.                                             *)
 (******************************************************************************)
 
-Definition sequential {a} (circuit : cava a) : a := unIdent circuit.
+ Definition sequential {A} (circuit : cava A) : A := unIdent circuit.
