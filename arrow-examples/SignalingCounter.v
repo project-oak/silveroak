@@ -16,7 +16,7 @@
 
 
 Require Import Cava.Arrow.ArrowExport.
-Require Import Coq.Lists.List Coq.NArith.NArith Coq.Strings.String.
+Require Import Coq.Lists.List Coq.NArith.NArith Coq.Strings.String Bool.Bvector.
 Import ListNotations.
 
 Local Open Scope string_scope.
@@ -52,10 +52,10 @@ Definition signaling_counter_netlist :=
   build_netlist (closure_conversion counter) "signaling_counter" ("is_valid", "value") "count".
 
 (* first four cycles have 'is_valid = false' and should not increment the counter *)
-Definition signaling_counter_tb_inputs : list (bool * Bvector.Bvector 4) :=
+Definition signaling_counter_tb_inputs : list (bool * Bvector 4) :=
   (repeat (false, N2Bv_sized 4 1) 4) ++ (repeat (true, N2Bv_sized 4 1) 4).
 
-Definition signaling_counter_tb_expected_outputs : list (Bvector.Bvector 4) :=
+Definition signaling_counter_tb_expected_outputs : list (Bvector 4) :=
   unroll_circuit_evaluation (closure_conversion counter) signaling_counter_tb_inputs.
 
 Lemma arrow_and_expr_counter_semantics_agree:
