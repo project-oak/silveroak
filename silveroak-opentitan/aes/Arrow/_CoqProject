@@ -19,7 +19,7 @@ UnrolledNaiveCipher.v
 UnrolledOpenTitanCipher.v
 CipherRound.v
 KeyExpand.v
-Netlists.v
+Netlist.v
 AesTest.v
 CipherEquivalenceCommon.v
 CipherRoundProperties.v
