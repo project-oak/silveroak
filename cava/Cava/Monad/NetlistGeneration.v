@@ -233,13 +233,15 @@ Definition delayNet (t: SignalType)
 
 Local Open Scope type_scope.
 
+(* Create a loop circuit with a delay element along the feedback path. *)
 Definition loopNet (A B C : SignalType)
                    (f : Signal A * Signal C -> state CavaState (Signal B * Signal C))
                    (a : Signal A)
                    : state CavaState (Signal B) :=
   o <- @newSignal C ;;
   '(b, cOut) <- f (a, o) ;;
-  assignSignal o cOut ;;
+  oDelay <- delayNet C cOut ;;
+  assignSignal o oDelay ;;
   ret b.
 
 Definition instantiateNet (intf : CircuitInterface)
