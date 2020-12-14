@@ -14,6 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+From Coq Require Import Strings.Ascii Strings.String.
 From Coq Require Import NArith.NArith Lists.List.
 Import ListNotations.
 
@@ -70,3 +71,21 @@ Local Open Scope list_scope.
 
 Example countBy_ex1: sequential (countBy [b14; b7; b3; b250]) = [b14; b21; b24; b18].
 Proof. reflexivity. Qed.
+
+Definition countBy_Interface
+  := sequentialInterface "countBy"
+     "clk" PositiveEdge "rst" PositiveEdge
+     [mkPort "i" (Vec Bit 8)]
+     [mkPort "o" (Vec Bit 8)]
+     [].
+
+Definition countBy_Netlist := makeNetlist countBy_Interface countBy.
+
+Definition countBy_tb_inputs
+  := [b14; b7; b3; b250].
+
+Definition countBy_tb_expected_inputs := sequential (countBy countBy_tb_inputs).
+
+Definition countBy_tb
+  := testBench "countBy_tb" countBy_Interface
+     countBy_tb_inputs countBy_tb_expected_inputs.

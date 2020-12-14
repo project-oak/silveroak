@@ -17,6 +17,7 @@
 
 Require Import Cava.Arrow.ArrowExport.
 Require Import Coq.Lists.List Coq.NArith.NArith Coq.Strings.String.
+From Coq Require Import Bool.Bvector.
 Import ListNotations.
 
 Local Open Scope string_scope.
@@ -51,12 +52,38 @@ Definition counter_3_tb_inputs : list unit :=
 Definition counter_3_tb_expected_outputs : list (Bvector.Bvector 3) :=
   unroll_circuit_evaluation (closure_conversion (counter 3)) (repeat tt 8).
 
-Lemma arrow_and_expr_counter_semantics_agree:
-  (map Bv2N counter_3_tb_expected_outputs) =
-  (map Bv2N (interp_sequential' ((counter 3 : Kappa _ _) _) counter_3_tb_inputs)).
-Proof. vm_compute; reflexivity. Qed.
-
 Definition counter_3_tb :=
   testBench "counter_3_tb" counter_3_Interface
             counter_3_tb_inputs counter_3_tb_expected_outputs.
 
+(* Monad test/Delay.v counter *)
+Section notation.
+  Import KappaNotation.
+  Local Open Scope category_scope.
+  Local Open Scope kind_scope.
+
+  Definition countBy n :=
+    <[ fun "countBy" i : Vector Bit n =>
+      letrec counter = counter +% i in
+      counter
+    ]>.
+End notation.
+
+Definition countBySpec' (state: Bvector 8) (x : Bvector 8)
+  : Bvector 8 :=
+  N2Bv_sized 8 (Bv2N x + Bv2N state).
+
+Definition countBySpec := countBySpec' (N2Bv_sized 8 0).
+
+Lemma countByCorrect: forall (i : Bvector 8) s,
+                      snd (interp_sequential1 (module_to_expr (countBy 8) _) [existT _ (Vector Bit 8) s] i) = countBySpec' s i.
+Proof.
+  intros.
+  cbv [interp_sequential1'].
+  cbv [countBy module_to_expr module_body countBySpec'] in *.
+  cbn -[VectorUtils.resize_default].
+  rewrite VectorUtils.resize_default_id.
+  rewrite N.add_comm.
+  rewrite Vector.map_id.
+  reflexivity.
+Qed.
