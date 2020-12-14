@@ -14,12 +14,9 @@
 # limitations under the License.
 #
 
-.PHONY: all coq minimize-requires clean check
+.PHONY: all coq minimize-requires clean
 
-all:		check coq
-
-check:
-	ls -la
+all:		coq
 
 Makefile.coq:
 		coq_makefile -f _CoqProject -o Makefile.coq
