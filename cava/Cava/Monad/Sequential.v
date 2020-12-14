@@ -63,7 +63,12 @@ the timestep, the accumulator for (past) output values, and the queue
 for (future) feedback values. The nth value in the output accumulator
 is always the output value for timestep n, and the nth value in
 feedback queue is the feedback to be consumed at timestep (t + n),
-where t is the current timestep. *)
+where t is the current timestep. The size of the feedback queue
+depends on the amount of delay in the subcircuit; a subcircuit with
+three delays will return output that tells us the value on the
+feedback wire for the next three timesteps, so we need a feedback
+queue with 4 elements (one for the current timestep, and then 3 to
+buffer future values). *)
 
 Definition loopSeq' {A B C : SignalType}
            (f : seqType A * seqType C -> ident (seqType B * seqType C))

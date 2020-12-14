@@ -188,8 +188,8 @@ Section Loops.
   Qed.
 
   Lemma loop_invariant {A B C}
-        (f : seqType A * seqType C -> ident (seqType B * seqType C))
         (I : nat -> seqType B -> seqType C -> Prop)
+        (f : seqType A * seqType C -> ident (seqType B * seqType C))
         (P : seqType B -> Prop) input :
     (* invariant is true for start state *)
     I 0 [] [defaultCombValue C] ->
@@ -219,8 +219,8 @@ Section Loops.
 
   (* More flexible than loop_invariant about the start state satisfying the invariant *)
   Lemma loop_invariant_alt {A B C}
-        (f : seqType A * seqType C -> ident (seqType B * seqType C))
         (I : nat -> seqType B -> seqType C -> Prop)
+        (f : seqType A * seqType C -> ident (seqType B * seqType C))
         (P : seqType B -> Prop) input :
     (* Either the input is nil and P holds on nil, or the invariant is satisfied
        after one step *)
