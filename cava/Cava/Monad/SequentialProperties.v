@@ -127,7 +127,7 @@ Section Loops.
         (spec : combType A -> combType C -> seqType B * seqType C)
         input :
     (forall a c, sequential (f ([a], [c])) = spec a c) ->
-    sequential (loop (CavaSeq:=SequentialSemantics) f input)
+    sequential (loopDelay (CavaSeq:=SequentialSemantics) f input)
     = snd (fst (fold_left (fun loop_state a =>
                              let '(t, acc, feedback) := loop_state in
                              let c := hd (defaultCombValue C) feedback in
@@ -135,7 +135,7 @@ Section Loops.
                              (S t, overlap t acc (fst r), overlap 0 (tl feedback) (snd r)))
                           input (0, [], [defaultCombValue C]))).
   Proof.
-    cbv [loop loopSeq SequentialSemantics sequential]; intros.
+    cbv [loopDelay loopSeq SequentialSemantics sequential]; intros.
     seqsimpl.
     erewrite fold_left_ext with (f0:=loopSeq' _) by (apply loopSeq'_step; eassumption).
     factor_out_loops.
@@ -156,7 +156,7 @@ Section Loops.
         (spec : combType A -> combType C -> seqType B * seqType C)
         input :
     (forall a c, sequential (f ([a], [c])) = spec a c) ->
-    sequential (loop (CavaSeq:=SequentialSemantics) f input)
+    sequential (loopDelay (CavaSeq:=SequentialSemantics) f input)
     = fst (fold_left (fun loop_state t =>
                         let '(acc, feedback) := loop_state in
                         let a := nth t input (defaultCombValue A) in
@@ -203,7 +203,7 @@ Section Loops.
         I (S t) (overlap t b (fst r)) (overlap 0 (tl c) (snd r))) ->
     (* invariant is strong enough to prove postcondition *)
     (forall b c, I (length input) b c -> P b) ->
-    P (sequential (loop (CavaSeq:=SequentialSemantics) f input)).
+    P (sequential (loopDelay (CavaSeq:=SequentialSemantics) f input)).
   Proof.
     intros Hstart Hbody Hpost.
     erewrite loop_stepwise_indexed by (intros; reflexivity).
@@ -240,7 +240,7 @@ Section Loops.
         I (S t) (overlap t b (fst r)) (overlap 0 (tl c) (snd r))) ->
     (* invariant is strong enough to prove postcondition *)
     (forall b c, I (length input) b c -> P b) ->
-    P (sequential (loop (CavaSeq:=SequentialSemantics) f input)).
+    P (sequential (loopDelay (CavaSeq:=SequentialSemantics) f input)).
   Proof.
     intros Hstart Hbody Hpost.
     erewrite loop_stepwise_indexed by (intros; reflexivity).

@@ -294,5 +294,5 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
 
 Instance CavaSequentialNet : CavaSeq CavaCombinationalNet :=
   { delay k := delayNet k;
-    loop a b c := loopNet a b c;
+    loopDelay a b c := loopNet a b c;
   }.
