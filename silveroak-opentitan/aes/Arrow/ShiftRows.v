@@ -18,7 +18,7 @@ Require Import Coq.Arith.Arith Coq.Vectors.Vector
      Coq.NArith.NArith.
 Require Import Cava.Arrow.ArrowExport.
 
-Require Import Aes.pkg.
+Require Import Aes.Pkg.
 
 Import VectorNotations.
 Import KappaNotation.

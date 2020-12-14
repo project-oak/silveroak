@@ -18,7 +18,7 @@ Require Import Coq.Arith.Arith Coq.Vectors.Vector Coq.micromega.Lia
      Coq.NArith.NArith.
 Require Import Cava.Arrow.ArrowExport Cava.BitArithmetic.
 
-Require Import Aes.pkg Aes.sbox_canright Aes.sbox_canright_masked_noreuse Aes.sbox_lut.
+Require Import Aes.Pkg Aes.SboxCanright Aes.SboxCanrightMaskedNoReuse Aes.SboxLut.
 
 Section notation.
 Import VectorNotations.

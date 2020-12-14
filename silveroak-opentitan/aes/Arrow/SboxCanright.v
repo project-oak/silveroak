@@ -20,7 +20,7 @@ Require Import Cava.Arrow.ArrowExport
      Cava.BitArithmetic Cava.VectorUtils.
 Require Import Cava.Tactics.
 
-Require Import Aes.pkg Aes.sbox_canright_pkg.
+Require Import Aes.Pkg Aes.SboxCanrightPkg.
 
 Import VectorNotations.
 Import KappaNotation.
