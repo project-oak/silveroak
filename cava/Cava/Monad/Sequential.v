@@ -26,6 +26,7 @@ From Coq Require Import Bool.Bvector.
 
 Require Import Cava.Cava.
 From Cava Require Import Signal.
+Require Import Cava.Tactics.
 Require Import Cava.Monad.CavaClass.
 Require Import Cava.Monad.CombinationalMonad.
 
@@ -43,39 +44,44 @@ Require Import Cava.Monad.CombinationalMonad.
    a2            :     4 5 6
    overlap a1 a2 : 0 1 2 3 6
 
+   a1 = [0;1;2;3], a2 = [4;5;6], offset = 6:
+   a1            : 0 1 2 3
+   a2            :             4 5 6
+   overlap a1 a2 : 0 1 2 3 0 0 4 5 6
+
    This is particularly useful for chaining repeated outputs of a circuit with
    delays. *)
 Definition overlap {A} (offset : nat) (a1 a2 : seqType A) : seqType A :=
-  a1 ++ skipn (length a1 - offset) a2.
+  a1 ++ repeat (defaultCombValue A) (offset - length a1) ++ skipn (length a1 - offset) a2.
 
 (******************************************************************************)
 (* Loop combinator for feedback with delay.                                   *)
 (******************************************************************************)
 
-(*
-loopSeq' takes a sequential circuit f which has a pair of inputs which
-represent the current input of type A and current state of type C. This circuit
-returns a pair which represents the computed output of type B and next state
-value of type C. The list of input values for each clock tick are provided
-by the a parameter and the current state value is provided by the feedback
-parameter. The result of the loopSeq' is a list in the identity monad that
-represented the list of computed values and states at each tick.
-*)
+(* loopSeq' performs a single loop step, given a state consisting of
+the timestep, the accumulator for (past) output values, and the queue
+for (future) feedback values. The nth value in the output accumulator
+is always the output value for timestep n, and the nth value in
+feedback queue is the feedback to be consumed at timestep (t + n),
+where t is the current timestep. The size of the feedback queue
+depends on the amount of delay in the subcircuit; a subcircuit with
+three delays will return output that tells us the value on the
+feedback wire for the next three timesteps, so we need a feedback
+queue with 4 elements (one for the current timestep, and then 3 to
+buffer future values). *)
 
-Local Open Scope type_scope.
-
-Fixpoint loopSeq' {m} `{Monad m} {A B C : SignalType}
-                  (f : seqType A * seqType C -> m (seqType B * seqType C))
-                  (a : seqType A) (feedback: seqType C)
-  : m (seqType B * seqType C) :=
-  match a, feedback with
-  | x :: xs, y :: ys =>
-    '(b, c) <- f ([x], [y]) ;; (* Process one input *)
-    let ys : seqType C := overlap 0 ys c in (* append new feedback *)
-    '(b', c') <- loopSeq' f xs ys ;; (* remaining steps of f *)
-    ret (overlap 1 b b', overlap 1 c c')
-  | _, _ => ret ([], [])
-  end.
+Definition loopSeq' {A B C : SignalType}
+           (f : seqType A * seqType C -> ident (seqType B * seqType C))
+           (state: nat * ident (seqType B * seqType C)) (a : combType A)
+  : nat * ident (seqType B * seqType C) :=
+  let t := fst state in
+  (S t,
+   '(acc, feedback) <- snd state ;; (* current state : out accumulator and feedback remaining *)
+   let y := hd (defaultCombValue C) feedback in
+   '(b, c) <- f ([a], [y]) ;; (* Process one input *)
+   let feedback' := overlap 0 (tl feedback) c in (* append new feedback *)
+   let acc' := overlap t acc b in (* append new output *)
+   ret (acc', feedback')).
 
 (*
 The loopSeq combinator takes a sequential circuit f which maps a pair
@@ -88,7 +94,7 @@ the a inputs, using a default value for the initial state.
 Definition loopSeq {A B C : SignalType}
                    (f : seqType A * seqType C -> ident (seqType B * seqType C))
                    (a : seqType A) : ident (seqType B) :=
-  '(b, _) <- loopSeq' f a [defaultCombValue C] ;;
+  '(b, _) <- snd (fold_left (loopSeq' f) a (0, ret ([], [defaultCombValue C]))) ;;
   ret b.
 
 (******************************************************************************)

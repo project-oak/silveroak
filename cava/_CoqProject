@@ -35,6 +35,7 @@ Cava/Monad/CombinationalMonad.v
 Cava/Monad/Sequential.v
 Cava/Monad/SequentialV.v
 Cava/Monad/SequentialTimed.v
+Cava/Monad/SequentialProperties.v
 Cava/Monad/Combinators.v
 Cava/Monad/MonadFacts.v
 Cava/Monad/TimedMonad.v

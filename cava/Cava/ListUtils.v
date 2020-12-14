@@ -7,6 +7,12 @@ Local Open Scope list_scope.
 (* Generic rewrite database for common list simplifications *)
 Hint Rewrite @app_nil_l @app_nil_r @last_last @rev_app_distr : listsimpl.
 
+(* Natural number simplifications are also useful for lists *)
+Hint Rewrite Nat.add_0_l Nat.add_0_r Nat.sub_0_r Nat.sub_0_l Nat.sub_diag
+     using solve [eauto] : natsimpl.
+Hint Rewrite Min.min_r Min.min_l Nat.add_sub using lia : natsimpl.
+Hint Rewrite (fun n m => proj2 (Nat.sub_0_le n m)) using lia : natsimpl.
+
 Section Length.
   Lemma nil_length {A} : @length A nil = 0.
   Proof. reflexivity. Qed.
@@ -94,6 +100,46 @@ Section Maps.
     reflexivity.
   Qed.
 End Maps.
+
+(* Proofs about firstn and skipn *)
+Section FirstnSkipn.
+  Lemma skipn_skipn {A} n m (x : list A) :
+    skipn n (skipn m x) = skipn (n + m) x.
+  Proof.
+    revert n x; induction m; intros; [ f_equal; lia | ].
+    rewrite Nat.add_succ_r.
+    cbn [skipn]. destruct x; [ rewrite skipn_nil; reflexivity |].
+    apply IHm.
+  Qed.
+
+  Lemma skipn_repeat {A} n (x : A) m :
+    skipn n (repeat x m) = repeat x (m - n).
+  Proof.
+    revert n x; induction m; intros; [ rewrite skipn_nil; reflexivity | ].
+    destruct n; autorewrite with natsimpl; [ reflexivity | ].
+    cbn [repeat skipn]. rewrite Nat.sub_succ.
+    rewrite IHm; reflexivity.
+  Qed.
+
+  Lemma firstn_succ_snoc {A} (x : list A) n d :
+    n < length x ->
+    firstn (S n) x = firstn n x ++ [nth n x d].
+  Proof.
+    revert x; induction n.
+    { destruct x; cbn [length firstn nth]; intros;
+        (reflexivity || lia). }
+    { intros. destruct x; cbn [length] in *; [ lia | ].
+      rewrite !firstn_cons. cbn [nth].
+      rewrite IHn by lia.
+      apply app_comm_cons. }
+  Qed.
+End FirstnSkipn.
+Hint Rewrite @skipn_app @skipn_skipn @skipn_repeat @skipn_cons @skipn_O
+     @skipn_nil @skipn_all
+     using solve [eauto] : push_skipn.
+Hint Rewrite @firstn_nil @firstn_cons @firstn_all @firstn_app @firstn_O
+     @firstn_firstn @combine_firstn
+     using solve [eauto] : push_firstn.
 
 (* Proofs about fold_right and fold_left *)
 Section Folds.
@@ -194,7 +240,40 @@ Section Folds.
     reflexivity.
   Qed.
 
-  Lemma fold_left_invariant {A B C} (I P : B -> C -> Prop)
+  Lemma fold_left_invariant {A B} (I P : B -> Prop)
+        (f : B -> A -> B) (ls : list A) b :
+    I b -> (* invariant holds at start *)
+    (forall b a, I b -> In a ls -> I (f b a)) -> (* invariant holds through loop body *)
+    (forall b, I b -> P b) -> (* invariant implies postcondition *)
+    P (fold_left f ls b).
+  Proof.
+    intros ? ? IimpliesP. apply IimpliesP. clear IimpliesP P.
+    revert dependent b. revert dependent ls.
+    induction ls; intros; cbn [fold_left]; [ assumption | ].
+    apply IHls; intros; auto using in_cons, in_eq.
+  Qed.
+
+  Lemma fold_left_invariant_seq {A} (I : nat -> A -> Prop) (P : A -> Prop)
+        (f : A -> nat -> A) start len a :
+    I start a -> (* invariant holds at start *)
+    (forall n a, I n a -> start <= n < start + len ->
+            I (S n) (f a n)) -> (* invariant holds through loop body *)
+    (forall a, I (start + len) a -> P a) -> (* invariant implies postcondition *)
+    P (fold_left f (seq start len) a).
+  Proof.
+    intros Istart Ibody IimpliesP. apply IimpliesP. clear IimpliesP P.
+    revert dependent a. revert dependent start. revert dependent len.
+    induction len; intros; cbn [fold_left].
+    { autorewrite with natsimpl. cbn [seq fold_left].
+      apply Istart. }
+    { rewrite seq_S, fold_left_app. cbn [fold_left].
+      rewrite Nat.add_succ_r. apply Ibody; [ | lia ].
+      apply IHlen; auto; [ ].
+      intros. apply Ibody; eauto; lia. }
+  Qed.
+
+  (* Uses an invariant to relate two loops to each other *)
+  Lemma fold_left_double_invariant {A B C} (I P : B -> C -> Prop)
         (f : B -> A -> B) (g : C -> A -> C) (ls : list A) b c :
     I b c -> (* invariant holds at start *)
     (forall b c a, I b c -> I (f b a) (g c a)) -> (* invariant holds through loop body *)
