@@ -88,7 +88,7 @@ Proof.
   intros; cbv [countBy countBySpec].
   seqsimpl.
   rewrite timedFold_fold_left. factor_out_loops.
-  eapply fold_left_invariant with (I:= fun x y => x = (y,y)).
+  eapply fold_left_double_invariant with (I:= fun x y => x = (y,y)).
   { (* invariant holds at start *)
     reflexivity. }
   { (* invariant holds through loop body *)

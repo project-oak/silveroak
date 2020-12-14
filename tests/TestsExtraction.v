@@ -25,7 +25,9 @@ Extraction Language Haskell.
 Require Import Tests.Instantiate.
 Require Import Tests.TestMultiply.
 Require Import Tests.Delay.
+Require Import Tests.CountBy.CountBy.
 
 Extraction Library Instantiate.
 Extraction Library TestMultiply.
 Extraction Library Delay.
+Extraction Library CountBy.
