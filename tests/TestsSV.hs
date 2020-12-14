@@ -20,6 +20,7 @@ import Cava2SystemVerilog
 import Instantiate
 import TestMultiply
 import Delay
+import CountBy
 
 main :: IO ()
 main = do writeSystemVerilog instantiateNetlist
@@ -30,3 +31,5 @@ main = do writeSystemVerilog instantiateNetlist
           writeTestBench delayByte_tb
           writeSystemVerilog pipelinedNANDNetlist
           -- writeTestBench pipelinedNAND_tb
+          writeSystemVerilog countBy_Netlist
+          writeTestBench countBy_tb
