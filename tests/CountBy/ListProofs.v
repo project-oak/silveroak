@@ -45,9 +45,8 @@ Definition countBySpec (i : list (Bvector 8)) : list (Bvector 8) :=
 Definition addNSpec {n} (a b : list (Bvector n)) : list (Bvector n) :=
   map2 bvadd a b.
 
-(* TODO: rename typeclass arguments *)
 Lemma addNCorrect n (a b : list (Bvector n)) :
-  sequential (addN (H:=SequentialCombSemantics) (a, b)) = addNSpec a b.
+  sequential (addN (semantics:=SequentialCombSemantics) (a, b)) = addNSpec a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 

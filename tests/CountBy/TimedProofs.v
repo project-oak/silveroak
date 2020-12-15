@@ -67,9 +67,8 @@ Local Ltac seqsimpl_step :=
         | progress simpl_timed ].
 Local Ltac seqsimpl := repeat seqsimpl_step.
 
-(* TODO: rename typeclass arguments *)
 Lemma addNCorrect n (a b : Bvector n) t :
-  addN (H:=TimedCombSemantics) (a, b) t = addNSpec a b.
+  addN (semantics:=TimedCombSemantics) (a, b) t = addNSpec a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 

@@ -31,7 +31,7 @@ Require Import Cava.Lib.FullAdder.
 Local Open Scope vector_scope.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Monad cava}.
+  Context {signal} {semantics: Cava signal} `{Monad cava}.
 
   (* Vector version *)
 

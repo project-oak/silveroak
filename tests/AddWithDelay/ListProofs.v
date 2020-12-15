@@ -58,7 +58,7 @@ Definition addNSpec {n} (a b : seqType (Vec Bit n)) :=
 
 (* TODO: rename typeclass arguments *)
 Lemma addNCorrect n (a b : list (Bvector n)) :
-  sequential (addN (H:=SequentialCombSemantics) (a, b)) = addNSpec a b.
+  sequential (addN (semantics:=SequentialCombSemantics) (a, b)) = addNSpec a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 
