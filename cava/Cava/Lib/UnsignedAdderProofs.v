@@ -29,12 +29,14 @@ Open Scope type_scope.
 Require Import coqutil.Tactics.Tactics.
 Require Import Coq.micromega.Lia.
 
-Require Import Cava.BitArithmetic Cava.ListUtils Cava.VectorUtils.
+Require Import Cava.BitArithmetic Cava.ListUtils Cava.VectorUtils Cava.Tactics.
+Require Import Cava.Lib.FullAdder.
+Require Import Cava.Lib.UnsignedAdders.
+Require Import Cava.Monad.CavaClass.
+Require Import Cava.Monad.CombinationalMonad.
+Require Import Cava.Monad.Combinators.
+Require Import Cava.Monad.Identity.
 Require Import Cava.Monad.MonadFacts.
-
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.Lib.AcornFullAdder.
-Require Import Cava.Acorn.Lib.AcornUnsignedAdders.
 
 Local Open Scope N_scope.
 
@@ -78,8 +80,8 @@ Proof.
   cbv zeta. cbv [addLWithCinL adderWithGrowthL unsignedAdderL colL].
   cbn [fst snd].
   (* get rid of pair-let because it will cause problems in the inductive case *)
-  erewrite ident_bind_Proper_ext with (g := fun x => ret (fst x ++ [snd x]));
-    [ | intros; destruct_products; reflexivity ].
+  simpl_ident. repeat destruct_pair_let.
+
   (* start induction; eliminate cases where length b <> length a and solve base
      case immediately *)
   revert dependent cin. revert dependent b.
@@ -88,24 +90,15 @@ Proof.
 
   (* inductive case only now; simplify *)
   cbn [combine colL']. rewrite !list_bits_to_nat_cons.
-  autorewrite with monadlaws.
+  simpl_ident.
 
   (* use fullAdder_correct to replace fullAdder call with addition + testbit *)
-  rewrite combinational_bind.
   rewrite fullAdder_correct. cbv zeta.
-  (cbn match beta). autorewrite with monadlaws.
+  (cbn match beta). repeat destruct_pair_let; simpl_ident.
 
-  (* Now, use the _ext lemma to rearrange under the binder and match inductive
-     hypothesis *)
-  erewrite ident_bind_Proper_ext.
-  2:{ intro y. rewrite (surjective_pairing y) at 1.
-      autorewrite with monadlaws. cbn [fst snd].
-      rewrite <-app_comm_cons. reflexivity. }
-
-  (* pull cons out of the ret statement *)
-  rewrite ident_bind_lift_app.
-  rewrite combinational_bind, combinational_ret.
-  rewrite list_bits_to_nat_cons.
+  (* Rearrange to match inductive hypothesis *)
+  rewrite <-app_comm_cons. cbv [combinational] in *.
+  cbn [unIdent] in *. rewrite list_bits_to_nat_cons.
 
   (* Finally we have the right expression to use IHa *)
   rewrite IHa by lia.
@@ -130,36 +123,8 @@ Proof.
   reflexivity.
 Qed.
 
-Require Import Cava.Tactics.
-
-Ltac destruct_pair_let_under_bind' :=
-  lazymatch goal with
-  | |- context [bind ?x ?f] =>
-    let A := lazymatch type of f with
-             | prod ?A _ -> _ => A end in
-    let B := lazymatch type of f with
-             | prod _ ?B -> _ => B end in
-    lazymatch f with
-    | (fun y =>
-         match y with
-         | @Datatypes.pair _ _ a b => ?e
-         end) =>
-      let g := constr:(fun (y : A * B) =>
-                         let a := fst y in
-                         let b := snd y in e) in
-      erewrite (ident_bind_Proper_ext _ _ x f g)
-    end
-  end.
-
-Ltac destruct_pair_let_under_bind :=
-  destruct_pair_let_under_bind';
-  [ | let x := fresh in
-      intro x; destruct_pair_let;
-      rewrite <-(surjective_pairing x);
-      reflexivity ].
-
 Lemma colV_colL {A B C} {n} circuit inputs d :
-  @colV ident _ A B C n circuit inputs =
+  @colV _ CombinationalSemantics _ A B C n circuit inputs =
   (let inputL := (fst inputs, to_list (snd inputs)) in
    rL <- colL circuit inputL ;;
       let rV := VectorUtils.resize_default
@@ -171,16 +136,9 @@ Proof.
   { cbn [colL' colV' to_list fst snd].
     autorewrite with monadlaws; reflexivity. }
   { rewrite !to_list_cons. cbn [colL' colV'].
-    autorewrite with monadlaws.
-    destruct_pair_let_under_bind. cbv zeta.
-    cbv [Monad_ident bind ret unIdent].
-    rewrite IHbs. clear IHbs.
-    cbv [Monad_ident bind ret unIdent].
-    f_equal.
-    repeat first [ progress cbn [fst snd]
-                 | destruct_pair_let
-                 | destruct_one_match ].
-    cbn [fst snd of_list length].
+    simpl_ident. repeat destruct_pair_let.
+    simpl_ident. rewrite IHbs. clear IHbs.
+    simpl_ident. cbn [fst snd of_list length].
     cbn [VectorUtils.resize_default].
     autorewrite with vsimpl.
     reflexivity. }

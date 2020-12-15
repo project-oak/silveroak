@@ -259,19 +259,6 @@ Section WithCava.
     ret (a, c).
 
   (****************************************************************************)
-  (* Bitvector operations                                                     *)
-  (****************************************************************************)
-
-  (* xor two bit-vectors *)
-  Definition xorV {signal} `{Cava signal} `{Monad cava}
-             {n : nat} (ab: signal (Vec Bit n) * signal (Vec Bit n)) :
-    cava (signal (Vec Bit n)) :=
-    let a' := peel (fst ab) in
-    let b' := peel (snd ab) in
-    r <- mapT xor2 (vcombine a' b') ;;
-    ret (unpeel r).
-
-  (****************************************************************************)
   (* Split a bus into two halves.                                             *)
   (****************************************************************************)
 

@@ -25,7 +25,6 @@ Cava/Acorn/Acorn.v
 Cava/Acorn/Lib/AcornVectors.v
 Cava/Acorn/Lib/AcornFullAdder.v
 Cava/Acorn/Lib/AcornUnsignedAdders.v
-Cava/Acorn/Lib/AcornUnsignedAdderProofs.v
 Cava/Acorn/Tests/UnsignedAdderTests.v
 
 Cava/Monad/CavaMonad.v
@@ -45,6 +44,7 @@ Cava/Monad/XilinxAdder.v
 Cava/Lib/BitVectorOps.v
 Cava/Lib/FullAdder.v
 Cava/Lib/UnsignedAdders.v
+Cava/Lib/UnsignedAdderProofs.v
 
 Cava/Arrow/Classes/Category.v
 Cava/Arrow/Classes/Arrow.v

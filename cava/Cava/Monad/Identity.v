@@ -19,6 +19,7 @@ Require Import ExtLib.Structures.Monad.
 Require Import Cava.Signal.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
+Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.Monad.CavaClass.
 Require Import Cava.Monad.CombinationalMonad.
 Require Import Cava.Monad.Combinators.
