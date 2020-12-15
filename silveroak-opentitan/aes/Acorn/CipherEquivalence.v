@@ -18,12 +18,12 @@ Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 Require Import Cava.ListUtils.
 Require Import Cava.Monad.MonadFacts.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Monad.CavaMonad.
 
 Require Import AesSpec.Cipher.
 Require Import AcornAes.CipherRound.
 
-Existing Instance Combinational.
+Existing Instance CombinationalSemantics.
 
 Section WithSubroutines.
   Local Notation byte := (t bool 8).

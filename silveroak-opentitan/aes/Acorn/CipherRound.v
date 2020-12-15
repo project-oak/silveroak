@@ -23,34 +23,30 @@ Import VectorNotations.
 Require Import ExtLib.Structures.Monads.
 Import MonadNotation.
 
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Monad.CavaMonad.
+Require Import AcornAes.Common.
+Import Common.Notations.
 
-Local Open Scope vector_scope.
+Local Open Scope monad_scope.
 
 Section WithCava.
-  Context {signal} {cava : Cava signal}.
-  Context {monad: Monad m}.
+  Context {signal} {semantics : Cava signal}.
+  Context {monad: Monad cava}.
 
-  Local Notation state := (Vec (Vec (Vec Bit 8) 4) 4)
-                          (only parsing).
-
-  Local Notation key := (Vec (Vec (Vec Bit 8) 4) 4)
-                          (only parsing).
-
-  Context (sub_bytes:     signal state -> m (signal state))
-          (shift_rows:    signal state -> m (signal state))
-          (mix_columns:   signal state -> m (signal state))
-          (add_round_key: signal key -> signal state -> m (signal state)).
+  Context (sub_bytes:     signal state -> cava (signal state))
+          (shift_rows:    signal state -> cava (signal state))
+          (mix_columns:   signal state -> cava (signal state))
+          (add_round_key: signal key -> signal state -> cava (signal state)).
 
   Definition cipher_round (input: signal state) (key : signal key)
-    : m (signal state) :=
+    : cava (signal state) :=
     (sub_bytes >=> shift_rows >=> mix_columns >=> add_round_key key) input.
 
   Definition cipher
         (first_key last_key : signal key)
         (middle_keys : list (signal key))
         (input : signal state)
-        : m (signal state) :=
+        : cava (signal state) :=
     (add_round_key first_key         >=>
      foldLM cipher_round middle_keys >=>
      sub_bytes                       >=>

@@ -28,7 +28,7 @@ Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
 
 (* xor two bit-vectors *)
-Definition xorV {signal} `{Cava signal} `{Monad m} 
+Definition xorV {signal} `{Cava signal} `{Monad m}
   {n : nat} (ab: signal (Vec Bit n) * signal (Vec Bit n)) :
   m (signal (Vec Bit n)) :=
   let a' := peel (fst ab) in
