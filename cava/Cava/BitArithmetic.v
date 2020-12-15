@@ -440,3 +440,37 @@ Definition wordvec_to_bytevec
 Definition wordvec_to_bitvec
            bits_per_word {n} (v : Vector.t (Vector.t bool bits_per_word) n)
   : Vector.t bool (n * bits_per_word) := flatten v.
+
+Lemma byte_to_bitvec_to_byte b :
+  bitvec_to_byte (byte_to_bitvec b) = b.
+Proof. destruct b; reflexivity. Qed.
+
+Lemma bitvec_to_byte_to_bitvec v :
+  byte_to_bitvec (bitvec_to_byte v) = v.
+Proof.
+  cbv [bitvec_to_byte byte_to_bitvec].
+  constant_vector_simpl v.
+  autorewrite with vsimpl.
+  match goal with
+  | |- context [Byte.of_bits (?b0, (?b1, (?b2, (?b3, (?b4, (?b5, (?b6, ?b7)))))))] =>
+    destruct b0, b1, b2, b3, b4, b5, b6, b7; reflexivity
+  end.
+Qed.
+
+Lemma bytevec_to_bitvec_to_bytevec n v :
+  bitvec_to_bytevec n (bytevec_to_bitvec n v) = v.
+Proof.
+  cbv [bitvec_to_bytevec bytevec_to_bitvec].
+  autorewrite with vsimpl. rewrite map_map.
+  apply map_id_ext; intros.
+  apply byte_to_bitvec_to_byte.
+Qed.
+
+Lemma bitvec_to_bytevec_to_bitvec n v :
+  bytevec_to_bitvec n (bitvec_to_bytevec n v) = v.
+Proof.
+  cbv [bitvec_to_bytevec bytevec_to_bitvec].
+  rewrite map_map, map_id_ext by (intros; apply bitvec_to_byte_to_bitvec).
+  autorewrite with vsimpl; reflexivity.
+Qed.
+

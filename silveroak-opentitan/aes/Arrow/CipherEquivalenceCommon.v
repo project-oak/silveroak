@@ -43,15 +43,6 @@ Definition sndkey : keypair -> key :=
 
 Definition swap_keys (k : keypair) := sndkey k ++ fstkey k.
 
-Local Ltac constant_vector_simpl vec :=
-  lazymatch type of vec with
-  | t _ (S ?n) =>
-    let v' := fresh "v" in
-    rewrite (eta vec); set (v':=tl vec);
-    cbv beta in v'; constant_vector_simpl v'
-  | t _ 0 => eapply case0 with (v:=vec)
-  end.
-
 Lemma sndkey_of_append (v1 v2 : Vector.t _ 4) : sndkey (v1 ++ v2) = v2.
 Proof.
   cbv [sndkey slice_by_position]. rewrite !resize_default_id.

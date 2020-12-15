@@ -18,6 +18,7 @@ Require Import Coq.Arith.Arith Coq.Vectors.Vector
      Coq.NArith.NArith Coq.ZArith.ZArith.
 Require Import Cava.Arrow.ArrowExport Cava.BitArithmetic.
 
+Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.Tests.CipherTest AesSpec.Tests.Common.
 Require Import Aes.Pkg Aes.MixColumns Aes.SubBytes Aes.ShiftRows.
 

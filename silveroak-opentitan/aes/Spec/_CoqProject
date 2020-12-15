@@ -8,10 +8,12 @@ Cipher.v
 CipherRepresentationChange.v
 CommuteProperties.v
 ExpandAllKeys.v
+FullCipher.v
 InterleavedCipher.v
 InterleavedInverseCipher.v
 Sbox.v
 ShiftRows.v
+StateTypeConversions.v
 SubBytes.v
 
 Placeholder/MixColumns.v

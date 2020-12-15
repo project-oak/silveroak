@@ -1,0 +1,12 @@
+Axioms:
+mix_columns_add_round_key_comm
+  : forall st k : Vector.t (Vector.t Byte.byte 4) 4,
+    let to_bits := fun x : Vector.t (Vector.t Byte.byte 4) 4 => to_cols_bits (from_cols x) in
+    let from_bits := fun x : Vector.t (Vector.t bool (4 * 8)) 4 => to_cols (from_cols_bits x) in
+    AddRoundKey.add_round_key 32 4 (to_bits (MixColumns.inv_mix_columns st))
+      (to_bits (MixColumns.inv_mix_columns k)) =
+    to_bits
+      (MixColumns.inv_mix_columns (from_bits (AddRoundKey.add_round_key 32 4 (to_bits st) (to_bits k))))
+inverse_mix_columns
+  : forall (Nb : nat) (st : Vector.t (Vector.t Byte.byte 4) Nb),
+    MixColumns.inv_mix_columns (MixColumns.mix_columns st) = st

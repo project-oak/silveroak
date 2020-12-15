@@ -53,5 +53,24 @@ Section Spec.
         destruct b; reflexivity. }
     Qed.
 
+    Theorem sub_bytes_length_outer (x : state) :
+      length (sub_bytes x) = length x.
+    Proof.
+      cbv [sub_bytes]. autorewrite with push_length.
+      reflexivity.
+    Qed.
+
+    Theorem sub_bytes_length_inner (x : state) n r :
+      (forall r, In r x -> length r = n) ->
+      In r (sub_bytes x) -> length r = n.
+    Proof.
+      cbv [sub_bytes]; intros Hx Hin.
+      apply in_map_iff in Hin.
+      destruct Hin as [? [? ?]]. subst.
+      autorewrite with push_length.
+      auto.
+    Qed.
+
   End Properties.
 End Spec.
+Hint Resolve sub_bytes_length_inner sub_bytes_length_outer : length.
