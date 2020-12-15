@@ -56,7 +56,7 @@ Definition counter_3_tb :=
   testBench "counter_3_tb" counter_3_Interface
             counter_3_tb_inputs counter_3_tb_expected_outputs.
 
-(* Monad test/Delay.v counter *)
+(* Monad test/CountBy/CountBy.v counter *)
 Section notation.
   Import KappaNotation.
   Local Open Scope category_scope.

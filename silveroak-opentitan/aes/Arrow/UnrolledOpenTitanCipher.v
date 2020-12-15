@@ -18,8 +18,8 @@ Require Import Coq.Arith.Arith Coq.Vectors.Vector
      Coq.NArith.NArith.
 Require Import Cava.Arrow.ArrowExport.
 
-Require Import Aes.pkg Aes.mix_columns Aes.sbox Aes.cipher_round.
-Require Import Aes.aes_test.
+Require Import Aes.Pkg Aes.MixColumns Aes.Sbox Aes.CipherRound.
+Require Import Aes.AesTest.
 
 Import VectorNotations.
 Import KappaNotation.
