@@ -16,13 +16,14 @@
 
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monad.
-Require Import Cava.Acorn.Combinational.
-Require Import Cava.Acorn.AcornCombinators.
-Require Import Cava.Acorn.Lib.AcornVectors.
+Require Import Cava.Signal.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
+Require Import Cava.Monad.CavaClass.
+Require Import Cava.Monad.CombinationalMonad.
+Require Import Cava.Monad.Combinators.
 
-Existing Instance Combinational.
+Existing Instance CombinationalSemantics.
 
 (* Lemmas about combinators specialized to the identity monad *)
 Section Combinators.
@@ -31,7 +32,7 @@ Section Combinators.
     = map2 (fun a b => unIdent (f (a,b))) va vb.
   Proof.
     cbv [zipWith Traversable.mapT Traversable_vector].
-    cbn [peel unpeel Combinational].
+    cbn [peel unpeel CombinationalSemantics].
     revert va vb; induction n; intros; [ apply nil_eq | ].
     cbn [vcombine]. rewrite (eta va), (eta vb).
     autorewrite with push_vector_map vsimpl.
@@ -45,7 +46,7 @@ Section Vectors.
     unIdent (@xorV _ _ Monad_ident n ab) = map2 xorb (fst ab) (snd ab).
   Proof.
     cbv [xorV Traversable.mapT Traversable_vector].
-    cbn [peel unpeel Combinational]. destruct ab as [a b].
+    cbn [peel unpeel CombinationalSemantics]. destruct ab as [a b].
     revert a b; induction n; intros; [ apply nil_eq | ].
     cbn [vcombine]. rewrite (eta a), (eta b).
     autorewrite with push_vector_map vsimpl.

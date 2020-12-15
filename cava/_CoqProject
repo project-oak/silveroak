@@ -17,7 +17,6 @@ Cava/Tactics.v
 Cava/Acorn/AcornSignal.v
 Cava/Acorn/AcornCavaClass.v
 Cava/Acorn/Combinational.v
-Cava/Acorn/Identity.v
 Cava/Acorn/AcornNetlist.v
 Cava/Acorn/AcornState.v
 Cava/Acorn/AcornNetlistGeneration.v
@@ -37,6 +36,7 @@ Cava/Monad/SequentialV.v
 Cava/Monad/SequentialTimed.v
 Cava/Monad/SequentialProperties.v
 Cava/Monad/Combinators.v
+Cava/Monad/Identity.v
 Cava/Monad/MonadFacts.v
 Cava/Monad/TimedMonad.v
 Cava/Monad/NetlistGeneration.v
