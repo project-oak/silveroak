@@ -74,7 +74,7 @@ Section WithCava.
     ret (newCount, newCount).
 
   Definition addWithDelay : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))
-    := loop addWithDelayStep.
+    := loopDelay addWithDelayStep.
 
 End WithCava.
 

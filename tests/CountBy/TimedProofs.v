@@ -45,7 +45,7 @@ Section WithCava.
     ret (sum, sum).
 
   Definition countBy : cava (signal (Vec Bit 8)) -> cava (signal (Vec Bit 8))
-    := loopm countFork.
+    := loopDelaym countFork.
 End WithCava.
 
 Definition countBySpec (i : list (Bvector 8)) :=
@@ -60,7 +60,7 @@ Ltac simpl_timed := cbn [fst snd mcompose bind ret Monad_timed].
 
 Local Ltac seqsimpl_step :=
   first [ progress cbn beta iota delta
-                   [fst snd hd sequentialF loopm TimedSeqSemantics]
+                   [fst snd hd sequentialF loopDelaym TimedSeqSemantics]
         | progress cbv beta iota delta [loopSeqF loopSeqF']; seqsimpl_step
         | progress autorewrite with seqsimpl
         | progress destruct_pair_let

@@ -185,7 +185,7 @@ Definition blackBoxF (intf : CircuitInterface)
 
  Instance TimedSeqSemantics : CavaSeqMonad TimedCombSemantics :=
    { delaym k i := delay i;
-     loopm A B C := @loopSeqF A B C;
+     loopDelaym A B C := @loopSeqF A B C;
    }.
 
 (******************************************************************************)

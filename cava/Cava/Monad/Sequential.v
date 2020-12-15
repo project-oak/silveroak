@@ -274,7 +274,7 @@ Definition bufBoolList (i : list bool) : ident (list bool) :=
 
  Instance SequentialSemantics : CavaSeq SequentialCombSemantics :=
    { delay k i := ret (@defaultCombValue k :: i);
-     loop _ _ _ := loopSeq;
+     loopDelay _ _ _ := loopSeq;
    }.
 
 (******************************************************************************)
