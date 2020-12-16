@@ -25,6 +25,7 @@ Require Import Cava.Signal.
 Require Import Cava.Tactics.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.Combinators.
 Require Import Cava.Acorn.Sequential.
 
 Require Import Coq.Arith.PeanoNat.
@@ -61,6 +62,21 @@ Section Overlap.
   Proof.
     intros; cbv [overlap]. cbn [length].
     replace (length xs - n) with 0 by lia.
+    reflexivity.
+  Qed.
+
+  Lemma overlap_snoc_cons {A} n (xs ys : seqType A) x y :
+    length xs = n ->
+    overlap n (xs ++ [x]) (y :: ys) = xs ++ x :: ys.
+  Proof.
+    intros; cbv [overlap]. cbn [length].
+    autorewrite with push_length. subst.
+    match goal with |- context [repeat _ ?n] =>
+                    replace n with 0 by lia end.
+    cbn [repeat app].
+    match goal with |- context [?n + 1 - ?n] =>
+                    replace (n + 1 - n) with 1 by lia end.
+    cbn [skipn]. rewrite <-app_assoc.
     reflexivity.
   Qed.
 
@@ -101,7 +117,7 @@ Section Overlap.
     repeat (f_equal; try lia).
   Qed.
 End Overlap.
-Hint Rewrite @overlap_cons1 @overlap_cons2 @overlap_nil_r
+Hint Rewrite @overlap_cons1 @overlap_cons2 @overlap_nil_r @overlap_snoc_cons
      using solve [length_hammer] : seqsimpl.
 Hint Rewrite @overlap_0_nil @overlap_app_same using solve [eauto] : seqsimpl.
 
@@ -255,3 +271,22 @@ Section Loops.
       eauto. }
   Qed.
 End Loops.
+
+Section Evaluation.
+  Lemma sequential_compose {A B C}
+        (f : A -> @cava _ SequentialCombSemantics B)
+        (g : B -> @cava _ SequentialCombSemantics C) i :
+    sequential ((f >=> g) i) = sequential (g (sequential (f i))).
+  Proof. reflexivity. Qed.
+
+  Lemma delayCorrect {A} (i : seqType A) :
+    sequential (delay i) = defaultCombValue A :: i.
+  Proof. reflexivity. Qed.
+
+  Lemma fork2Correct {A} (i : seqType A) :
+    sequential (fork2 i) = (i, i).
+  Proof. reflexivity. Qed.
+End Evaluation.
+Hint Rewrite @sequential_compose using solve [eauto] : seqsimpl.
+Hint Rewrite @delayCorrect using solve [eauto] : seqsimpl.
+Hint Rewrite @fork2Correct using solve [eauto] : seqsimpl.

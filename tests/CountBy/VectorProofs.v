@@ -68,7 +68,7 @@ Local Ltac seqsimpl := repeat seqsimpl_step.
 
 (* TODO: rename typeclass arguments *)
 Lemma addNCorrect ticks n (a b : Vector.t (Bvector n) ticks) :
-  unIdent (addN (H:=SequentialVectorCombSemantics) (a, b)) = addNSpec a b.
+  unIdent (addN (semantics:=SequentialVectorCombSemantics) (a, b)) = addNSpec a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 

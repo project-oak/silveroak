@@ -8,8 +8,11 @@ Local Open Scope list_scope.
 Hint Rewrite @app_nil_l @app_nil_r @last_last @rev_app_distr : listsimpl.
 
 (* Natural number simplifications are also useful for lists *)
+Lemma sub_succ_l_same n : S n - n = 1.
+Proof. lia. Qed.
 Hint Rewrite Nat.add_0_l Nat.add_0_r Nat.sub_0_r Nat.sub_0_l Nat.sub_diag
      using solve [eauto] : natsimpl.
+Hint Rewrite Nat.sub_succ sub_succ_l_same using solve [eauto] : natsimpl.
 Hint Rewrite Min.min_r Min.min_l Nat.add_sub using lia : natsimpl.
 Hint Rewrite (fun n m => proj2 (Nat.sub_0_le n m)) using lia : natsimpl.
 
@@ -26,6 +29,9 @@ Hint Rewrite @nil_length @cons_length @seq_length @repeat_length @rev_length
      using solve [eauto] : push_length.
 Ltac length_hammer :=
   autorewrite with push_length; eauto; lia.
+
+(* The push_nth database simplifies goals including [nth] *)
+Hint Rewrite @app_nth1 @app_nth2 using length_hammer : push_nth.
 
 (* Miscellaneous proofs about lists *)
 Section Misc.
@@ -117,7 +123,7 @@ Section FirstnSkipn.
   Proof.
     revert n x; induction m; intros; [ rewrite skipn_nil; reflexivity | ].
     destruct n; autorewrite with natsimpl; [ reflexivity | ].
-    cbn [repeat skipn]. rewrite Nat.sub_succ.
+    cbn [repeat skipn].
     rewrite IHm; reflexivity.
   Qed.
 

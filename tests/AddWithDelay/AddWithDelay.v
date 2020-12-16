@@ -67,14 +67,8 @@ Section WithCava.
   Context {signal} {combsemantics: Cava signal}
           {semantics: CavaSeq combsemantics} `{Monad cava}.
 
-  Definition addWithDelayStep (i : signal (Vec Bit 8) * signal (Vec Bit 8))
-                       : cava (signal (Vec Bit 8) * signal (Vec Bit 8)) :=
-    newCount <- addN i ;;
-    newCount <- delay newCount ;;
-    ret (newCount, newCount).
-
   Definition addWithDelay : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))
-    := loopDelay addWithDelayStep.
+    := loopDelay (addN >=> delay >=> fork2).
 
 End WithCava.
 
