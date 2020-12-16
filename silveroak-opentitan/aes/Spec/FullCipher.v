@@ -98,14 +98,14 @@ Section Equivalence.
              (input : state) : state :=
     equivalent_inverse_cipher
       state round_key add_round_key inv_sub_bytes inv_shift_rows inv_mix_columns
-      last_key first_key (map inv_mix_columns (rev middle_keys)) input.
+      first_key last_key middle_keys input.
 
   Hint Rewrite @inverse_add_round_key @inverse_shift_rows @inverse_sub_bytes
        @inverse_mix_columns @sub_bytes_shift_rows_comm @mix_columns_add_round_key_comm
        using solve [eauto] : inverse.
 
   Lemma aes256_decrypt_encrypt first_key last_key middle_keys input :
-    aes256_decrypt first_key last_key middle_keys
+    aes256_decrypt last_key first_key (map inv_mix_columns (rev middle_keys))
                    (aes256_encrypt first_key last_key middle_keys input) = input.
   Proof.
     cbv [aes256_decrypt aes256_encrypt].
