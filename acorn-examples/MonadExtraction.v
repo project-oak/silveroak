@@ -14,35 +14,25 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-Require Import Coq.Lists.List.
-Import ListNotations.
+Require Import AcornExamples.Examples.
+Require Import AcornExamples.NandGate.
+Require Import AcornExamples.Multiplexers.
+Require Import AcornExamples.FullAdderExample.
+Require Import AcornExamples.UnsignedAdderExamples.
+Require Import AcornExamples.AdderTree.
+Require Import AcornExamples.Sorter.
+Require Import Coq.extraction.Extraction.
+Require Import Coq.extraction.ExtrHaskellZInteger.
+Require Import Coq.extraction.ExtrHaskellString.
+Require Import Coq.extraction.ExtrHaskellBasic.
+Require Import Coq.extraction.ExtrHaskellNatInteger.
 
-Require Import ExtLib.Structures.Monads.
+Extraction Language Haskell.
 
-Require Import Cava.Cava.
-Require Import Cava.Monad.CavaMonad.
-
-Definition lutNAND {signal} `{Cava signal} `{Monad cava}
-           (i0i1 : signal Bit * signal Bit) : cava (signal Bit) :=
-  x <- lut2 (andb) i0i1 ;;
-  z <- lut1 (negb) x ;;
-  ret z.
-
-Definition lutNANDInterface
-  := combinationalInterface "lutNAND"
-     [mkPort "a"  Bit; mkPort "b" Bit]
-     [mkPort "c" Bit]
-     [].
-
-Definition lutNANDNetlist := makeNetlist lutNANDInterface lutNAND.
-
- Definition lutNAND_tb_inputs : list (bool * bool) :=
- [(false, false); (false, true); (true, false); (true, true)].
-
- Definition lutNAND_tb_expected_outputs : list bool :=
-  map (fun i => combinational (lutNAND i)) lutNAND_tb_inputs.
-
-Definition lutNAND_tb :=
-  testBench "lutNAND_tb" lutNANDInterface
-  lutNAND_tb_inputs lutNAND_tb_expected_outputs.
+Extraction Library Examples.
+Extraction Library NandGate.
+Extraction Library Multiplexers.
+Extraction Library FullAdderExample.
+Extraction Library UnsignedAdderExamples.
+Extraction Library AdderTree.
+Extraction Library Sorter.

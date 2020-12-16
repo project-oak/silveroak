@@ -27,8 +27,8 @@ From Coq Require Import Bool.Bvector.
 Require Import Cava.Cava.
 From Cava Require Import Signal.
 Require Import Cava.Tactics.
-Require Import Cava.Monad.CavaClass.
-Require Import Cava.Monad.CombinationalMonad.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.CombinationalMonad.
 
 (* Given two sequential inputs, combine them by combining all the elements of
    the first with the elements of the second that *do not overlap* when the

@@ -27,7 +27,7 @@ Require Import Coq.ZArith.ZArith.
 
 Require Import Cava.Cava.
 Require Import Cava.Signal.
-Require Import Cava.Monad.CavaClass.
+Require Import Cava.Acorn.CavaClass.
 
 (******************************************************************************)
 (* Combinational denotion of the SignalType and default values.               *)

@@ -29,13 +29,13 @@ Require Import Cava.Cava.
 Require Import Cava.Kind.
 Require Import Cava.Signal.
 Require Import Cava.VectorUtils.
-Require Import Cava.Monad.CavaMonad.
-Require Import Cava.Monad.CombinationalMonad.
-Require Import Cava.Monad.Sequential.
-Require Import Cava.Monad.CavaClass.
-Require Import Cava.Monad.Combinators.
-Require Import Cava.Monad.NetlistGeneration.
-Require Import Cava.Monad.XilinxAdder.
+Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.CombinationalMonad.
+Require Import Cava.Acorn.Sequential.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.Combinators.
+Require Import Cava.Acorn.NetlistGeneration.
+Require Import Cava.Acorn.XilinxAdder.
 
 Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.Lib.FullAdder.
@@ -43,7 +43,7 @@ Require Import Cava.Lib.UnsignedAdders.
 
 Recursive Extraction Library BitArithmetic.
 Recursive Extraction Library Cava.
-Recursive Extraction Library CavaMonad.
+Recursive Extraction Library Acorn.
 Recursive Extraction Library CombinationalMonad.
 Recursive Extraction Library Sequential.
 Recursive Extraction Library Combinators.

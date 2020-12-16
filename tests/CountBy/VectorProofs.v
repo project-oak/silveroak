@@ -24,9 +24,9 @@ Export MonadNotation.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Cava.
 Require Import Cava.Tactics.
-Require Import Cava.Monad.CavaClass.
-Require Import Cava.Monad.Combinators.
-Require Import Cava.Monad.SequentialV.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.Combinators.
+Require Import Cava.Acorn.SequentialV.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import Tests.CountBy.CountBy.

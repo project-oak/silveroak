@@ -14,11 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Export Cava.Acorn.AcornSignal.
-Require Export Cava.Acorn.AcornCavaClass.
-Require Export Cava.Acorn.AcornNetlist.
-Require Export Cava.Acorn.AcornState.
-Require Export Cava.Acorn.Combinational.
-Require Export Cava.Acorn.AcornNetlistGeneration.
-Require Export Cava.Acorn.Combinational.
-Require Export Cava.Acorn.AcornCombinators.
+Require Export Cava.Acorn.CavaClass.
+Require Export Cava.Signal.
+Require Export Cava.Acorn.CombinationalMonad.
+Require Export Cava.Acorn.Sequential.
+Require Export Cava.Acorn.Combinators.
+Require Export Cava.Acorn.NetlistGeneration.

@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Signal.
 
 Module Notations.
   Notation state := (Vec (Vec (Vec Bit 8) 4) 4) (only parsing).

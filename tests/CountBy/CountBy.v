@@ -21,10 +21,9 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
-Require Import Cava.Acorn.Identity.
 Require Import Cava.Cava.
 Require Import Cava.Tactics.
-Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.UnsignedAdders.
 
 (******************************************************************************)

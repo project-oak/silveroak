@@ -14,43 +14,35 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.Lists.List.
+Import ListNotations.
+
 Require Import ExtLib.Structures.Monads.
-Require Export ExtLib.Data.Monads.StateMonad.
 
-Require Import Cava.VectorUtils.
+Require Import Cava.Cava.
+Require Import Cava.Acorn.Acorn.
 
-Require Import Cava.Acorn.AcornSignal.
-Require Import Cava.Acorn.AcornCavaClass.
-Require Import Cava.Acorn.AcornNetlist.
-Require Import Cava.Acorn.AcornState.
+Definition lutNAND {signal} `{Cava signal} `{Monad cava}
+           (i0i1 : signal Bit * signal Bit) : cava (signal Bit) :=
+  x <- lut2 (andb) i0i1 ;;
+  z <- lut1 (negb) x ;;
+  ret z.
 
-Import MonadNotation.
-Local Open Scope monad_scope.
+Definition lutNANDInterface
+  := combinationalInterface "lutNAND"
+     [mkPort "a"  Bit; mkPort "b" Bit]
+     [mkPort "c" Bit]
+     [].
 
-Definition invNet (i : Signal Bit) : state AcornState (Signal Bit) :=
-  o <- newWire ;;
-  addInstance (Inv i o) ;;
-  ret o.
+Definition lutNANDNetlist := makeNetlist lutNANDInterface lutNAND.
 
-Definition binaryGate (gate : Signal Bit -> Signal Bit -> Signal Bit -> AcornInstance)
-                      (i : Signal Bit * Signal Bit)
-                      : state AcornState (Signal Bit) :=
-  let (i0, i1) := i in
-  o <- newWire ;;
-  addInstance (gate i0 i1 o) ;;
-  ret o.
+ Definition lutNAND_tb_inputs : list (bool * bool) :=
+ [(false, false); (false, true); (true, false); (true, true)].
 
-Instance AcornNetlist : Cava denoteSignal :=
-{ m := state AcornState;
-  one := Const1;
-  zero := Const0;
-  inv :=  invNet;
-  and2 := binaryGate And2;
-  or2 := binaryGate Or2;
-  xor2 := binaryGate Xor2;
-  pair _ _ a b := MkPair a b;
-  fsT _ _  := Fst;
-  snD _ _ := Snd;
-  peel s l v := Vector.map (IndexSignal v) (vseq 0 s);
-  unpeel _ _ v := VecLit v;
-}.
+ Definition lutNAND_tb_expected_outputs : list bool :=
+  map (fun i => combinational (lutNAND i)) lutNAND_tb_inputs.
+
+Definition lutNAND_tb :=
+  testBench "lutNAND_tb" lutNANDInterface
+  lutNAND_tb_inputs lutNAND_tb_expected_outputs.

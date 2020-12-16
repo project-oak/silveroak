@@ -26,8 +26,8 @@ Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Cava.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
-Require Import Cava.Monad.CavaMonad.
-Require Import Cava.Monad.SequentialProperties.
+Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.SequentialProperties.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import Tests.CountBy.CountBy.

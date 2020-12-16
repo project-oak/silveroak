@@ -24,8 +24,8 @@ Require Import Cava.Cava.
 Require Import Cava.Signal.
 Require Import Cava.Tactics.
 Require Import Cava.Acorn.Identity.
-Require Import Cava.Monad.CavaClass.
-Require Import Cava.Monad.Sequential.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.Sequential.
 
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.micromega.Lia.

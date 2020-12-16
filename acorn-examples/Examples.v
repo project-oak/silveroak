@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2020 The Project Oak Authors                                   *)
+(* Copyright 2019 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,25 +14,20 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import MonadExamples.Examples.
-Require Import MonadExamples.NandGate.
-Require Import MonadExamples.Multiplexers.
-Require Import MonadExamples.FullAdderExample.
-Require Import MonadExamples.UnsignedAdderExamples.
-Require Import MonadExamples.AdderTree.
-Require Import MonadExamples.Sorter.
-Require Import Coq.extraction.Extraction.
-Require Import Coq.extraction.ExtrHaskellZInteger.
-Require Import Coq.extraction.ExtrHaskellString.
-Require Import Coq.extraction.ExtrHaskellBasic.
-Require Import Coq.extraction.ExtrHaskellNatInteger.
+(* Experiments with the primitives that form the core of Cava. *)
 
-Extraction Language Haskell.
+Require Import Cava.Acorn.Acorn.
 
-Extraction Library Examples.
-Extraction Library NandGate.
-Extraction Library Multiplexers.
-Extraction Library FullAdderExample.
-Extraction Library UnsignedAdderExamples.
-Extraction Library AdderTree.
-Extraction Library Sorter.
+(* Experiments with the primitive Cava gates. *)
+
+Example inv_false : combinational (inv false) = true.
+Proof. reflexivity. Qed.
+
+Example inv_true  : combinational (inv true) = false.
+Proof. reflexivity. Qed.
+
+Example and_00 : combinational (and2 (false, false)) = false.
+Proof. reflexivity. Qed.
+
+Example and_11 : combinational (and2 (true, true)) = true.
+Proof. reflexivity. Qed.

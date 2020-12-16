@@ -16,7 +16,7 @@
 Require Import ExtLib.Structures.MonadLaws.
 Require Import ExtLib.Structures.Monad.
 
-Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Acorn.Acorn.
 
 Local Open Scope monad_scope.
 

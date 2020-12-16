@@ -21,15 +21,15 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
-Require Import Cava.Acorn.Identity.
 Require Import Cava.Cava.
-Require Import Cava.Monad.Combinators.
+Require Import Cava.Acorn.Combinators.
+Require Import Cava.Acorn.Identity.
 Require Import Cava.ListUtils.
 Require Import Cava.Signal.
 Require Import Cava.Tactics.
-Require Import Cava.Monad.CavaClass.
-Require Import Cava.Monad.TimedMonad.
-Require Import Cava.Monad.SequentialTimed.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.TimedMonad.
+Require Import Cava.Acorn.SequentialTimed.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import Tests.CountBy.CountBy.

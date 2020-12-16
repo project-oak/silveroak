@@ -20,33 +20,33 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.Lib.AcornVectors.
+Require Import Cava.Lib.BitVectorOps.
 Require Import AcornAes.Common.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AesSpec.Tests.Common.
 Import Common.Notations.
 
 Section WithCava.
-  Context {signal} {cava : Cava signal}.
-  Context {monad: Monad m}.
+  Context {signal} {semantics : Cava signal}.
+  Context {monad: Monad cava}.
 
   (* Perform the bitwise XOR of two 4-element vectors of 8-bit values. *)
   Definition xor4xV
       (ab : signal (Vec (Vec Bit 8) 4) * signal (Vec (Vec Bit 8) 4))
-      : m (signal (Vec (Vec Bit 8) 4)) :=
+      : cava (signal (Vec (Vec Bit 8) 4)) :=
     zipWith xorV (fst ab) (snd ab).
 
   (* Perform the bitwise XOR of two 4x4 matrices of 8-bit values. *)
-  Definition xor4x4V (a b : signal state) : m (signal state) :=
+  Definition xor4x4V (a b : signal state) : cava (signal state) :=
     zipWith xor4xV a b.
 
   Definition add_round_key (k : signal key) (st : signal state)
-    : m (signal state) := xor4x4V k st.
+    : cava (signal state) := xor4x4V k st.
 End WithCava.
 
 (* Run test as a quick-feedback check *)
 Goal
-  (let signal := denoteCombinational in
+  (let signal := combType in
    (* convert between flat-vector representation and state type *)
    let to_state : Vector.t bool 128 -> signal state :=
        fun st => map reshape (to_cols_bits st) in
