@@ -1,0 +1,60 @@
+Axioms:
+sub_bytes_equiv
+  : forall st : t bool 128,
+    from_cols_bitvecs (combinational (sub_bytes false (to_cols_bitvecs st))) =
+    AES256.sub_bytes st
+sub_bytes
+  : forall (signal : SignalType -> Type) (semantics : Cava signal),
+    Monad cava ->
+    signal Bit ->
+    signal (Vec (Vec (Vec Bit 8) 4) 4) ->
+    cava (signal (Vec (Vec (Vec Bit 8) 4) 4))
+shift_rows_equiv
+  : forall st : t bool 128,
+    from_cols_bitvecs (combinational (shift_rows false (to_cols_bitvecs st))) =
+    AES256.shift_rows st
+shift_rows
+  : forall (signal : SignalType -> Type) (semantics : Cava signal),
+    Monad cava ->
+    signal Bit ->
+    signal (Vec (Vec (Vec Bit 8) 4) 4) ->
+    cava (signal (Vec (Vec (Vec Bit 8) 4) 4))
+mix_columns_equiv
+  : forall st : t bool 128,
+    from_cols_bitvecs
+      (combinational (mix_columns false (to_cols_bitvecs st))) =
+    AES256.mix_columns st
+mix_columns_add_round_key_comm
+  : forall st k : t (t Byte.byte 4) 4,
+    let to_bits := fun x : t (t Byte.byte 4) 4 => to_cols_bits (from_cols x)
+      in
+    let from_bits :=
+      fun x : t (t bool (4 * 8)) 4 => to_cols (from_cols_bits x) in
+    AesSpec.AddRoundKey.add_round_key 32 4
+      (to_bits (MixColumns.inv_mix_columns st))
+      (to_bits (MixColumns.inv_mix_columns k)) =
+    to_bits
+      (MixColumns.inv_mix_columns
+         (from_bits
+            (AesSpec.AddRoundKey.add_round_key 32 4 (to_bits st) (to_bits k))))
+mix_columns
+  : forall (signal : SignalType -> Type) (semantics : Cava signal),
+    Monad cava ->
+    signal Bit ->
+    signal (Vec (Vec (Vec Bit 8) 4) 4) ->
+    cava (signal (Vec (Vec (Vec Bit 8) 4) 4))
+inverse_mix_columns
+  : forall (Nb : nat) (st : t (t Byte.byte 4) Nb),
+    MixColumns.inv_mix_columns (MixColumns.mix_columns st) = st
+inv_sub_bytes_equiv
+  : forall st : t bool 128,
+    from_cols_bitvecs (combinational (sub_bytes true (to_cols_bitvecs st))) =
+    inv_sub_bytes st
+inv_shift_rows_equiv
+  : forall st : t bool 128,
+    from_cols_bitvecs (combinational (shift_rows true (to_cols_bitvecs st))) =
+    inv_shift_rows st
+inv_mix_columns_equiv
+  : forall st : t bool 128,
+    from_cols_bitvecs (combinational (mix_columns true (to_cols_bitvecs st))) =
+    inv_mix_columns st

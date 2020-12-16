@@ -27,7 +27,7 @@ Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
 Require Import AesSpec.Cipher.
-Require Import AesSpec.CipherRepresentationChange.
+Require Import AesSpec.CipherProperties.
 Require Import AesSpec.ExpandAllKeys.
 Require Import AesSpec.InterleavedInverseCipher.
 Require Import Aes.CipherEquivalenceCommon

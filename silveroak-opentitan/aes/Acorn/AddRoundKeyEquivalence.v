@@ -25,7 +25,8 @@ Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Import VectorNotations.
 
-Require Import AesSpec.AddRoundKey.
+Require Import AesSpec.AES256.
+Require Import AesSpec.StateTypeConversions.
 Require Import AcornAes.AddRoundKey.
 
 Existing Instance CombinationalSemantics.
@@ -35,22 +36,26 @@ Section Equivalence.
   Local Notation state := (Vector.t (Vector.t byte 4) 4) (only parsing).
   Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
 
-  Lemma add_round_key_equiv (k : key) (st : state) :
-    let to_words : state -> AddRoundKey.state 32 4 := map flatten in
-    let impl := (AcornAes.AddRoundKey.add_round_key k st) in
-    let spec := (AesSpec.AddRoundKey.add_round_key
-                   32 4 (to_words k) (to_words st)) in
-    to_words (unIdent impl) = spec.
+  Lemma add_round_key_equiv (k st : Vector.t bool 128) :
+    let impl := add_round_key (to_cols_bitvecs k) (to_cols_bitvecs st) in
+    from_cols_bitvecs (combinational impl) = AES256.add_round_key st k.
   Proof.
-    cbv zeta. cbv [AcornAes.AddRoundKey.add_round_key AesSpec.AddRoundKey.add_round_key].
+    cbv [AES256.add_round_key
+           AcornAes.AddRoundKey.add_round_key
+           AesSpec.AddRoundKey.add_round_key].
     cbv [xor4x4V xor4xV]. cbv [Bvector.BVxor].
     autorewrite with simpl_ident.
-    rewrite map2_map. rewrite map_map2.
-    apply map2_ext; intros.
-    autorewrite with simpl_ident.
-    rewrite map2_flatten with (n:=8) (m:=4).
-    f_equal. apply map2_ext; intros.
-    autorewrite with simpl_ident.
-    reflexivity.
+    cbv [to_cols_bitvecs from_cols_bitvecs].
+    cbn [fst snd]. rewrite map2_map, map_map2.
+    rewrite map2_swap.
+    erewrite map2_ext; [ reflexivity | ].
+    intros. autorewrite with simpl_ident.
+    erewrite map2_ext
+      by (intros; autorewrite with simpl_ident;
+          cbn [fst snd]; reflexivity).
+    cbn [combType].
+    rewrite <-map2_flatten, !flatten_reshape.
+    rewrite map2_swap; apply map2_ext; intros.
+    apply Bool.xorb_comm.
   Qed.
 End Equivalence.

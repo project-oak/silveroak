@@ -20,7 +20,7 @@ Require Import Cava.BitArithmetic.
 Require Import Cava.VectorUtils.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.TestVectors.
-Require Import AesSpec.FullCipher.
+Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
 Local Open Scope string_scope.
 

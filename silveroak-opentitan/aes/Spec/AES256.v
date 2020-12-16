@@ -31,19 +31,6 @@ Require Import AesSpec.StateTypeConversions.
 Axiom inverse_mix_columns :
   forall Nb (st : Vector.t _ Nb), inv_mix_columns (mix_columns st) = st.
 
-(*
-Axiom mix_columns_add_round_key_comm :
-  forall st k,
-    add_round_key
-      32 4
-      (to_cols_bits (from_cols (inv_mix_columns (to_cols (from_cols_bits st)))))
-      (to_cols_bits (from_cols (inv_mix_columns (to_cols (from_cols_bits k)))))
-    = to_cols_bits
-        (from_cols
-           (inv_mix_columns
-              (to_cols (from_cols_bits
-                          (add_round_key 32 4 st k))))).
-*)
 Axiom mix_columns_add_round_key_comm :
   forall (st k : Vector.t _ 4),
     let to_bits x := to_cols_bits (from_cols x) in
@@ -117,4 +104,4 @@ Section Equivalence.
   Qed.
 End Equivalence.
 
-Redirect "FullCipherAssumptions" Print Assumptions aes256_decrypt_encrypt.
+Redirect "AES256_Assumptions" Print Assumptions aes256_decrypt_encrypt.

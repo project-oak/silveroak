@@ -7,4 +7,6 @@ INSTALLDEFAULTROOT = AcornAes
 CipherRound.v
 CipherEquivalence.v
 AddRoundKey.v
+AddRoundKeyEquivalence.v
+AES256Equivalence.v
 Common.v

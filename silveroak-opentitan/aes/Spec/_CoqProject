@@ -5,10 +5,10 @@ INSTALLDEFAULTROOT = AesSpec
 -R ../../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
 AddRoundKey.v
 Cipher.v
-CipherRepresentationChange.v
+CipherProperties.v
 CommuteProperties.v
 ExpandAllKeys.v
-FullCipher.v
+AES256.v
 InterleavedCipher.v
 InterleavedInverseCipher.v
 Sbox.v

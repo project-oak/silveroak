@@ -67,6 +67,15 @@ Section Conversions.
   Definition from_cols_bits (bits : Vector.t (Vector.t bool bits_per_word) Nb)
     : state := from_cols (map (fun c => reverse (bitvec_to_bytevec _ (reverse c))) bits).
 
+  (* Convert state to/from columns, but such that bytes are expanded to
+     (big-endian) bitvectors. *)
+  Definition to_cols_bitvecs (st : state)
+    : Vector.t (Vector.t (Vector.t bool 8) bytes_per_word) Nb
+   := map reshape (to_cols_bits st).
+  Definition from_cols_bitvecs
+             (cols : Vector.t (Vector.t (Vector.t bool 8) bytes_per_word) Nb)
+    : state := from_cols_bits (map flatten cols).
+
   (* Convert state to/from rows, but as lists instead of vectors *)
   Definition to_list_rows (st : state) : list (list Byte.byte) :=
     to_list (map to_list (to_rows st)).
@@ -107,6 +116,11 @@ Section Properties.
     to_cols_bits (from_cols_bits bits) = bits.
   Proof. cbv [to_cols_bits from_cols_bits]. inverse. Qed.
   Hint Rewrite to_cols_bits_from_cols_bits : inverse.
+
+  Lemma to_cols_bitvecs_from_cols_bitvecs bitvecs :
+    to_cols_bitvecs (from_cols_bitvecs bitvecs) = bitvecs.
+  Proof. cbv [to_cols_bitvecs from_cols_bitvecs]. inverse. Qed.
+  Hint Rewrite to_cols_bitvecs_from_cols_bitvecs : inverse.
 
   Lemma to_rows_from_rows rows :
     to_rows (from_rows rows) = rows.
@@ -166,6 +180,11 @@ Section Properties.
   Proof. cbv [from_cols_bits to_cols_bits]. inverse. Qed.
   Hint Rewrite from_cols_bits_to_cols_bits : inverse.
 
+  Lemma from_cols_bitvecs_to_cols_bitvecs st :
+    from_cols_bitvecs (to_cols_bitvecs st) = st.
+  Proof. cbv [from_cols_bitvecs to_cols_bitvecs]. inverse. Qed.
+  Hint Rewrite from_cols_bitvecs_to_cols_bitvecs : inverse.
+
   Lemma from_rows_to_rows st :
     from_rows (to_rows st) = st.
   Proof. cbv [from_rows to_rows]. inverse. Qed.
@@ -181,6 +200,7 @@ Hint Rewrite to_big_endian_bytes_from_big_endian_bytes
      from_big_endian_bytes_to_big_endian_bytes
      to_cols_from_cols from_cols_to_cols
      to_cols_bits_from_cols_bits from_cols_bits_to_cols_bits
+     to_cols_bitvecs_from_cols_bitvecs from_cols_bitvecs_to_cols_bitvecs
      to_rows_from_rows from_rows_to_rows
      from_list_rows_to_list_rows
      using solve [eauto] : conversions.
