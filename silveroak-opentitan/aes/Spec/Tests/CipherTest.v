@@ -20,10 +20,7 @@ Require Import Cava.BitArithmetic.
 Require Import Cava.VectorUtils.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.TestVectors.
-Require Import AesSpec.Placeholder.MixColumns.
-Require Import AesSpec.AddRoundKey.
-Require Import AesSpec.ShiftRows.
-Require Import AesSpec.SubBytes.
+Require Import AesSpec.FullCipher.
 Require Import AesSpec.StateTypeConversions.
 Local Open Scope string_scope.
 
@@ -33,29 +30,6 @@ Local Notation state := (Vector.t bool 128) (only parsing).
 Local Notation bytes_per_word := 4%nat.
 Local Notation bits_per_word := (bytes_per_word * 8)%nat.
 Local Notation Nb := 4%nat.
-
-Definition add_round_key (k : round_key) (st : state) : state :=
-  let st := to_cols_bits st in
-  let k := to_cols_bits k in
-  from_cols_bits (add_round_key bits_per_word Nb st k).
-
-Definition sub_bytes (st : state) : state :=
-  from_list_rows (SubBytes.sub_bytes (to_list_rows st)).
-
-Definition shift_rows (st : state) : state :=
-  from_list_rows (shift_rows (to_list_rows st)).
-
-Definition mix_columns (st : state) : state :=
-  from_cols (mix_columns (to_cols st)).
-
-Definition inv_sub_bytes (st : state) : state :=
-  from_list_rows (SubBytes.inv_sub_bytes (to_list_rows st)).
-
-Definition inv_shift_rows (st : state) : state :=
-  from_list_rows (inv_shift_rows (to_list_rows st)).
-
-Definition inv_mix_columns (st : state) : state :=
-  from_cols (inv_mix_columns (to_cols st)).
 
 Definition aes_impl (step : AESStep) (k : round_key) : state -> state :=
   match step with
