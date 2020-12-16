@@ -20,9 +20,9 @@ Require Import Cava.Signal.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
 Require Import Cava.Lib.BitVectorOps.
-Require Import Cava.Monad.CavaClass.
-Require Import Cava.Monad.CombinationalMonad.
-Require Import Cava.Monad.Combinators.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.CombinationalMonad.
+Require Import Cava.Acorn.Combinators.
 
 Existing Instance CombinationalSemantics.
 

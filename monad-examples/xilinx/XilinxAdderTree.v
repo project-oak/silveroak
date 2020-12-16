@@ -28,8 +28,8 @@ Import VectorNotations.
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
-Require Import Cava.Monad.CavaMonad.
-Require Import Cava.Monad.XilinxAdder.
+Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.XilinxAdder.
 
 Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.

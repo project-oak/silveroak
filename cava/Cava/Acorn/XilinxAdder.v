@@ -25,7 +25,7 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
-Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Acorn.Acorn.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.

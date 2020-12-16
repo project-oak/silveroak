@@ -19,7 +19,7 @@ Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.VectorUtils.
-Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Require Import AcornAes.Common.
 Require Import AesSpec.Tests.CipherTest.

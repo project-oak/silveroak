@@ -34,9 +34,9 @@ From Coq Require Import micromega.Lia.
 Require Import Cava.Cava.
 From Cava Require Import Kind.
 From Cava Require Import Signal.
-Require Import Cava.Monad.CavaClass.
-Require Import Cava.Monad.TimedMonad.
-Require Import Cava.Monad.CombinationalMonad.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.TimedMonad.
+Require Import Cava.Acorn.CombinationalMonad.
 
 (******************************************************************************)
 (* Delay combinator.                                                          *)

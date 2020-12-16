@@ -23,7 +23,7 @@ Export MonadNotation.
 
 Require Import Cava.Cava.
 Require Import Cava.Tactics.
-Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.UnsignedAdders.
 
 (******************************************************************************)

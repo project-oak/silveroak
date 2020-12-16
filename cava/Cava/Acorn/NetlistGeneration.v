@@ -24,7 +24,7 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import Cava.Cava.
-Require Import Cava.Monad.CavaClass.
+Require Import Cava.Acorn.CavaClass.
 
 Require Import Cava.Signal.
 

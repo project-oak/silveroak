@@ -13,19 +13,19 @@ Cava/Netlist.v
 Cava/Cava.v
 Cava/Tactics.v
 
-Cava/Monad/CavaMonad.v
-Cava/Monad/CavaClass.v
-Cava/Monad/CombinationalMonad.v
-Cava/Monad/Sequential.v
-Cava/Monad/SequentialV.v
-Cava/Monad/SequentialTimed.v
-Cava/Monad/SequentialProperties.v
-Cava/Monad/Combinators.v
-Cava/Monad/Identity.v
-Cava/Monad/MonadFacts.v
-Cava/Monad/TimedMonad.v
-Cava/Monad/NetlistGeneration.v
-Cava/Monad/XilinxAdder.v
+Cava/Acorn/Acorn.v
+Cava/Acorn/CavaClass.v
+Cava/Acorn/CombinationalMonad.v
+Cava/Acorn/Sequential.v
+Cava/Acorn/SequentialV.v
+Cava/Acorn/SequentialTimed.v
+Cava/Acorn/SequentialProperties.v
+Cava/Acorn/Combinators.v
+Cava/Acorn/Identity.v
+Cava/Acorn/MonadFacts.v
+Cava/Acorn/TimedMonad.v
+Cava/Acorn/NetlistGeneration.v
+Cava/Acorn/XilinxAdder.v
 
 Cava/Lib/BitVectorOps.v
 Cava/Lib/FullAdder.v

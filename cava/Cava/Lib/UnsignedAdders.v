@@ -25,7 +25,7 @@ Open Scope monad_scope.
 Open Scope type_scope.
 
 Require Import Cava.Cava.
-Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.FullAdder.
 
 Local Open Scope vector_scope.

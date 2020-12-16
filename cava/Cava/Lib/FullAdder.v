@@ -21,7 +21,7 @@ Import MonadNotation.
 Open Scope monad_scope.
 Open Scope type_scope.
 
-Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Acorn.Acorn.
 
 Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.

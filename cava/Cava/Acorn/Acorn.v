@@ -14,9 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Export Cava.Monad.CavaClass.
+Require Export Cava.Acorn.CavaClass.
 Require Export Cava.Signal.
-Require Export Cava.Monad.CombinationalMonad.
-Require Export Cava.Monad.Sequential.
-Require Export Cava.Monad.Combinators.
-Require Export Cava.Monad.NetlistGeneration.
+Require Export Cava.Acorn.CombinationalMonad.
+Require Export Cava.Acorn.Sequential.
+Require Export Cava.Acorn.Combinators.
+Require Export Cava.Acorn.NetlistGeneration.

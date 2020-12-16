@@ -21,7 +21,7 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
-Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Acorn.Acorn.
 
 Definition lutNAND {signal} `{Cava signal} `{Monad cava}
            (i0i1 : signal Bit * signal Bit) : cava (signal Bit) :=

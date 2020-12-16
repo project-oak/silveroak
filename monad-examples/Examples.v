@@ -16,7 +16,7 @@
 
 (* Experiments with the primitives that form the core of Cava. *)
 
-Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Acorn.Acorn.
 
 (* Experiments with the primitive Cava gates. *)
 

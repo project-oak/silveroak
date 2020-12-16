@@ -27,7 +27,7 @@ Import VectorNotations.
 Open Scope monad_scope.
 
 Require Import Cava.Cava.
-Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Acorn.Acorn.
 
 Local Open Scope type_scope.
 Local Open Scope vector_scope.

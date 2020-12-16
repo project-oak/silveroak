@@ -21,7 +21,7 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
-Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Acorn.Acorn.
 
 Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.

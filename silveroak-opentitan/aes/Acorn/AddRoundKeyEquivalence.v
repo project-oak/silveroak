@@ -19,9 +19,9 @@ Require Import ExtLib.Structures.Monads.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
-Require Import Cava.Monad.MonadFacts.
-Require Import Cava.Monad.Identity.
-Require Import Cava.Monad.CavaMonad.
+Require Import Cava.Acorn.MonadFacts.
+Require Import Cava.Acorn.Identity.
+Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Import VectorNotations.
 
