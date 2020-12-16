@@ -24,8 +24,8 @@
 # Clean everything:
 # make clean
 
-SUBDIRS = third_party cava tests monad-examples arrow-examples silveroak-opentitan \
-	  monad-examples/xilinx tests/xilinx
+SUBDIRS = third_party cava tests acorn-examples arrow-examples silveroak-opentitan \
+	  acorn-examples/xilinx tests/xilinx
 
 .PHONY: all coq minimize-requires clean subdirs $(SUBDIRS)
 
@@ -77,11 +77,11 @@ tests: cava
 # tests/xilinx depends on tests
 tests/xilinx : cava tests
 
-# monad-examples depends on cava
-monad-examples : cava
+# acorn-examples depends on cava
+acorn-examples : cava
 
-# monad-examples/xilinx depends on monad-examples
-monad-examples/xilinx : monad-examples
+# acorn-examples/xilinx depends on acorn-examples
+acorn-examples/xilinx : acorn-examples
 
 # arrow-examples depends on cava
 arrow-examples: cava

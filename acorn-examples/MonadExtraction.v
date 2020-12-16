@@ -14,13 +14,13 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import MonadExamples.Examples.
-Require Import MonadExamples.NandGate.
-Require Import MonadExamples.Multiplexers.
-Require Import MonadExamples.FullAdderExample.
-Require Import MonadExamples.UnsignedAdderExamples.
-Require Import MonadExamples.AdderTree.
-Require Import MonadExamples.Sorter.
+Require Import AcornExamples.Examples.
+Require Import AcornExamples.NandGate.
+Require Import AcornExamples.Multiplexers.
+Require Import AcornExamples.FullAdderExample.
+Require Import AcornExamples.UnsignedAdderExamples.
+Require Import AcornExamples.AdderTree.
+Require Import AcornExamples.Sorter.
 Require Import Coq.extraction.Extraction.
 Require Import Coq.extraction.ExtrHaskellZInteger.
 Require Import Coq.extraction.ExtrHaskellString.
