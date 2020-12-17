@@ -128,8 +128,6 @@ Fixpoint vcombine {A B: Type} {s: nat} (a: Vector.t A s)
                  (x, y) :: vcombine xs ys
   end.
 
-Local Close Scope vector_scope.
-
 (* Vector version of seq *)
 
 Fixpoint vseq (start len: nat) : Vector.t nat len :=
@@ -209,10 +207,10 @@ Proof.
 Qed.
 
 Fixpoint listToAltVector {A: Type} (l: list A) : AltVector A (length l) :=
-  match l return AltVector A (length l)  with
-  | [] => tt
-  | x::xs => vec_cons (consAltVector x (listToAltVector xs))
-  end.
+  (match l return AltVector A (length l)  with
+   | [] => tt
+   | x::xs => vec_cons (consAltVector x (listToAltVector xs))
+   end)%list.
 
 Section resize.
   Context {A:Type}.
@@ -725,12 +723,12 @@ Section VectorFacts.
   Lemma to_list_nil {A} : to_list (Vector.nil A) = List.nil.
   Proof. reflexivity. Qed.
   Lemma to_list_cons {A n} a (v : t A n) :
-    to_list (a :: v)%vector = a :: to_list v.
+    to_list (a :: v) = (a :: to_list v)%list.
   Proof. reflexivity. Qed.
   Hint Rewrite @to_list_nil @to_list_cons using solve [eauto] : vsimpl.
 
   Lemma to_list_append {A n m} (v1 : t A n) (v2 : t A m) :
-    to_list (v1 ++ v2)%vector = to_list v1 ++ to_list v2.
+    to_list (v1 ++ v2) = (to_list v1 ++ to_list v2)%list.
   Proof.
     revert v2; induction v1; [ reflexivity | ].
     intros. rewrite <-append_comm_cons.
@@ -775,6 +773,36 @@ Section VectorFacts.
     intro v; rewrite (eta v). eapply case0 with (v:=hd v).
     rewrite (IHn (tl v)); reflexivity.
   Qed.
+
+  Lemma reshape_flatten {A n m} (v : t (t A n) m) :
+    reshape (flatten v) = v.
+  Proof.
+    revert n v. induction m; [ solve [vnil] | ].
+    cbn [reshape flatten]; intros. rewrite (eta v).
+    rewrite uncons_cons, splitat_append.
+    rewrite IHm; reflexivity.
+  Qed.
+
+  Lemma flatten_reshape {A n m} (v : t A (m * n)) :
+    flatten (reshape v) = v.
+  Proof.
+    revert n v. induction m; cbn [Nat.mul]; [ solve [vnil] | ].
+    intros. cbn [reshape flatten]; intros.
+    rewrite (surjective_pairing (splitat _ _)).
+    rewrite uncons_cons. rewrite IHm.
+    erewrite <-append_splitat; [ reflexivity | ].
+    rewrite <-surjective_pairing. reflexivity.
+  Qed.
+
+  Lemma reverse_reverse {A n} (v : t A n) :
+    reverse (reverse v) = v.
+  Proof.
+    revert v; induction n; [ solve [vnil] | ].
+    intros. rewrite (eta_snoc v).
+    rewrite reverse_snoc. cbn [reverse].
+    autorewrite with vsimpl. rewrite IHn.
+    reflexivity.
+  Qed.
 End VectorFacts.
 (* These hints create and populate the following autorewrite databases:
  * - push_vector_fold : simplify using properties of Vector.fold_left
@@ -796,7 +824,7 @@ Hint Rewrite @map2_0 @map_0 @map_to_const @map2_append
      using solve [eauto] : push_vector_map vsimpl.
 Hint Rewrite @resize_default_id @Vector.map_id
      using solve [eauto] : vsimpl.
-Hint Rewrite @to_list_cons @to_list_nil @uncons_cons
+Hint Rewrite @to_list_cons @to_list_nil @uncons_cons @reshape_flatten @flatten_reshape
      using solve [eauto] : vsimpl.
 
 
@@ -897,6 +925,46 @@ Section TransposeFacts.
       by (intros; rewrite <-eta_snoc; reflexivity).
     reflexivity.
   Qed.
+
+  Lemma cons_transpose {A n m} (v : t (t A n) m) (x : t A m) :
+    x :: transpose v = transpose (map2 (fun a v => a :: v) x v).
+  Proof.
+    revert n v x; induction m; intros; cbn [transpose].
+    { eapply case0 with (v:=x). reflexivity. }
+    { rewrite map2_cons with (va:=x).
+      autorewrite with vsimpl. rewrite <-IHm.
+      rewrite map2_cons. autorewrite with vsimpl.
+      rewrite <-(eta x). reflexivity. }
+  Qed.
+
+  Lemma transpose_cons {A n m} (v : t (t A (S n)) m) :
+    transpose v = (map hd v :: transpose (map tl v))%vector.
+  Proof.
+    revert n v; induction m; intros; cbn [transpose].
+    { eapply case0 with (v:=map hd v). reflexivity. }
+    { rewrite map2_cons. autorewrite with vsimpl.
+      rewrite IHm.
+      autorewrite with vsimpl push_vector_map.
+      reflexivity. }
+  Qed.
+
+  Lemma transpose_involutive {A n m} (v : t (t A n) m) :
+    transpose (transpose v) = v.
+  Proof.
+    revert n v; induction m; intros; [ solve [apply nil_eq] | ].
+    destruct n; cbn [transpose];
+      [ rewrite (const_nil v); reflexivity | ].
+    match goal with |- context [ hd (map2 ?f ?va ?vb) ] =>
+                    rewrite (map2_cons _ _ _ _ f va vb)
+    end.
+    autorewrite with vsimpl.
+    rewrite <-cons_transpose, transpose_cons.
+    autorewrite with vsimpl.
+    rewrite IHm.
+    rewrite <-!map_cons, map2_map, map2_drop_same.
+    apply map_id_ext; intros.
+    rewrite <-eta; reflexivity.
+  Qed.
 End TransposeFacts.
 
 Section Vector.
@@ -935,4 +1003,26 @@ Section Vector.
 
   Definition of_list_sized {A} (a : A) (n : nat) (l : list A) : Vector.t A n :=
     resize_default a  _ (Vector.of_list l).
+
+  Lemma of_list_sized_to_list a n (v : t A n) :
+    of_list_sized a n (to_list v) = v.
+  Proof.
+    cbv [of_list_sized].
+    revert v; induction n; intros; [ apply nil_eq | ].
+    rewrite (eta v). autorewrite with push_to_list.
+    cbn [of_list length resize_default].
+    autorewrite with vsimpl. rewrite IHn.
+    reflexivity.
+  Qed.
+
 End Vector.
+
+(* Useful tactic to destruct vectors of constant length *)
+Ltac constant_vector_simpl vec :=
+  lazymatch type of vec with
+  | Vector.t _ (S ?n) =>
+    let v' := fresh "v" in
+    rewrite (eta vec); set (v':=tl vec);
+    cbv beta in v'; constant_vector_simpl v'
+  | Vector.t _ 0 => eapply case0 with (v:=vec)
+  end.

@@ -27,8 +27,9 @@ End Length.
 Hint Rewrite @nil_length @cons_length @seq_length @repeat_length @rev_length
      @map_length @firstn_length @skipn_length @app_length @combine_length
      using solve [eauto] : push_length.
+Create HintDb length discriminated.
 Ltac length_hammer :=
-  autorewrite with push_length; eauto; lia.
+  autorewrite with push_length; eauto with length; lia.
 
 (* The push_nth database simplifies goals including [nth] *)
 Hint Rewrite @app_nth1 @app_nth2 using length_hammer : push_nth.
@@ -81,6 +82,18 @@ Section Maps.
     reflexivity.
   Qed.
 
+  Lemma in_map2_impl {A B C} (f : A -> B -> C) (la : list A) lb c :
+    In c (map2 f la lb) -> (exists a b, f a b = c /\ In a la /\ In b lb).
+  Proof.
+    revert lb; induction la; destruct lb; cbn [map2 In];
+      [ tauto .. | ].
+    intros [? | ?];
+      [ subst; do 2 eexists; repeat split; tauto | ].
+    specialize (IHla _ ltac:(eassumption)).
+    destruct IHla as [? [? [? [? ?]]]]. subst.
+    do 2 eexists; eauto.
+  Qed.
+
   Lemma map2_id_l {A B} (l1 : list A) (l2 : list B) (HL : length l2 >= length l1) : map2 (fun a _ => a) l1 l2 = l1.
   Proof.
     generalize dependent l2.
@@ -106,6 +119,7 @@ Section Maps.
     reflexivity.
   Qed.
 End Maps.
+Hint Rewrite @map2_length using solve [eauto] : push_length.
 
 (* Proofs about firstn and skipn *)
 Section FirstnSkipn.

@@ -131,8 +131,42 @@ Section Spec.
       rewrite seq_length.
       lia.
     Qed.
+
+    Theorem shift_rows_length_outer (x : state) :
+      length (shift_rows x) = length x.
+    Proof.
+      cbv [shift_rows shift_rows_start].
+      autorewrite with push_length.
+      lia.
+    Qed.
+
+    Lemma shift_row_once_length (row : list byte) :
+      length (shift_row_once row) = length row.
+    Proof.
+      cbv [shift_row_once]. destruct row; length_hammer.
+    Qed.
+
+    Lemma shift_row_length (row : list byte) n :
+      length (shift_row row n) = length row.
+    Proof.
+      revert row; induction n; intros; [ reflexivity | ].
+      cbn [shift_row]. rewrite IHn, shift_row_once_length.
+      reflexivity.
+    Qed.
+
+    Theorem shift_rows_length_inner (x : state) n :
+      (forall r, In r x -> length r = n) ->
+      forall r, In r (shift_rows x) -> length r = n.
+    Proof.
+      cbv [shift_rows shift_rows_start]; intros Hx ? Hin.
+      apply in_map2_impl in Hin. destruct Hin as [? [? ?]].
+      intuition; subst.
+      rewrite shift_row_length. auto.
+    Qed.
+
   End Properties.
 End Spec.
+Hint Resolve shift_rows_length_inner shift_rows_length_outer : length.
 
 Section BasicTests.
   Import ListNotations.
