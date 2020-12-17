@@ -128,8 +128,6 @@ Fixpoint vcombine {A B: Type} {s: nat} (a: Vector.t A s)
                  (x, y) :: vcombine xs ys
   end.
 
-Local Close Scope vector_scope.
-
 (* Vector version of seq *)
 
 Fixpoint vseq (start len: nat) : Vector.t nat len :=
@@ -209,10 +207,10 @@ Proof.
 Qed.
 
 Fixpoint listToAltVector {A: Type} (l: list A) : AltVector A (length l) :=
-  match l return AltVector A (length l)  with
-  | [] => tt
-  | x::xs => vec_cons (consAltVector x (listToAltVector xs))
-  end.
+  (match l return AltVector A (length l)  with
+   | [] => tt
+   | x::xs => vec_cons (consAltVector x (listToAltVector xs))
+   end)%list.
 
 Section resize.
   Context {A:Type}.
@@ -725,12 +723,12 @@ Section VectorFacts.
   Lemma to_list_nil {A} : to_list (Vector.nil A) = List.nil.
   Proof. reflexivity. Qed.
   Lemma to_list_cons {A n} a (v : t A n) :
-    to_list (a :: v)%vector = a :: to_list v.
+    to_list (a :: v) = (a :: to_list v)%list.
   Proof. reflexivity. Qed.
   Hint Rewrite @to_list_nil @to_list_cons using solve [eauto] : vsimpl.
 
   Lemma to_list_append {A n m} (v1 : t A n) (v2 : t A m) :
-    to_list (v1 ++ v2)%vector = to_list v1 ++ to_list v2.
+    to_list (v1 ++ v2) = (to_list v1 ++ to_list v2)%list.
   Proof.
     revert v2; induction v1; [ reflexivity | ].
     intros. rewrite <-append_comm_cons.
@@ -929,7 +927,7 @@ Section TransposeFacts.
   Qed.
 
   Lemma cons_transpose {A n m} (v : t (t A n) m) (x : t A m) :
-    (x :: transpose v)%vector = transpose (map2 (fun a v => (a :: v)%vector) x v).
+    x :: transpose v = transpose (map2 (fun a v => a :: v) x v).
   Proof.
     revert n v x; induction m; intros; cbn [transpose].
     { eapply case0 with (v:=x). reflexivity. }
