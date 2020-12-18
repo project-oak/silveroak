@@ -15,3 +15,5 @@ CountBy/VectorProofs.v
 
 AddWithDelay/AddWithDelay.v
 AddWithDelay/ListProofs.v
+
+SignallingCounter/SignallingCounter.v
