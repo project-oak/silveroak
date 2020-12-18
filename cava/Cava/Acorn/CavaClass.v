@@ -93,6 +93,8 @@ Class Cava (signal : SignalType -> Type) := {
 Class CavaSeq {signal : SignalType -> Type} (combinationalSemantics : Cava signal) := {
   (* A unit delay. *)
   delay : forall {t: SignalType}, signal t -> cava (signal t);
+  (* A unit delay with enable. *)
+  delayEnable : forall {t: SignalType}, signal Bit -> signal t -> cava (signal t);
   (* Feeback loop, with unit delay inserted into the feedback path. *)
   loopDelay : forall {A B C: SignalType},
               (signal A * signal C -> cava (signal B * signal C)) ->

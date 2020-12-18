@@ -324,6 +324,10 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
  Instance SequentialVectorSemantics {ticks: nat}
    : CavaSeq SequentialVectorCombSemantics:=
    { delay k i := delayV ticks k i;
+     (* Dummy definition now for delayEnable.
+        TODO(satnam6502, jadep): implement delayEnableV
+     *)
+     delayEnable k en i := delayV ticks k i;
      loopDelay A B C := @loopSeqV A B C ticks;
    }.
 
