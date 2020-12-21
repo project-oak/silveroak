@@ -188,6 +188,12 @@ Definition muxcyNet (s ci di : Signal Bit) : state CavaState (Signal Bit) :=
   addInstance (Component "MUXCY" [] [("O", USignal o); ("S", USignal s); ("CI", USignal ci); ("DI", USignal di)]) ;;
   ret o.
 
+Definition unpairNet {t1 t2 : SignalType} (v : Signal (Pair t1 t2)) : Signal t1 * Signal t2 :=
+  (SignalFst v, SignalSnd v).
+
+Definition mkpairNet {t1 t2 : SignalType} (v1 : Signal t1) (v2 : Signal t2) : Signal (Pair t1 t2) :=
+  SignalPair v1 v2.
+
 Definition peelNet {t : SignalType} {s : nat} (v : Signal (Vec t s)) : Vector.t (Signal t) s :=
   Vector.map (IndexConst v) (vseq 0 s).
 
@@ -280,6 +286,8 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     lut6 := lut6Net;
     xorcy := xorcyNet;
     muxcy := muxcyNet;
+    mkpair := @mkpairNet;
+    unpair := @unpairNet;
     peel := @peelNet;
     unpeel := @unpeelNet;
     indexAt k sz isz := IndexAt;

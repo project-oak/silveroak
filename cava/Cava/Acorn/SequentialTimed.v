@@ -171,6 +171,8 @@ Definition blackBoxF (intf : CircuitInterface)
     lut6 := lut6BoolF;
     xorcy := binopF xorb;
     muxcy := muxcyBoolF;
+    mkpair _ _ v1 v2 := (v1, v2);
+    unpair _ _ v := v;
     peel _ _ v := v;
     unpeel _ _ v := v;
     indexAt t sz isz := @indexAtBool t sz isz;

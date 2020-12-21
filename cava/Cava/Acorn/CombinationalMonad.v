@@ -195,6 +195,8 @@ Definition loopBool (A B C : SignalType)
     lut6 := lut6Bool;
     xorcy := xorcyBool;
     muxcy := muxcyBool;
+    unpair _ _ v := v;
+    mkpair _ _ v1 v2 := (v1, v2);
     peel _ _ v := v;
     unpeel _ _ v := v;
     indexAt t sz isz := @indexAtBool t sz isz;

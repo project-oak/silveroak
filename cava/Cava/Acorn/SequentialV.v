@@ -309,6 +309,8 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
     lut6 := lut6BoolVec ticks;
     xorcy := binOpV ticks xorb;
     muxcy := muxcyBoolVec ticks;
+    mkpair _ _ v1 v2:= vcombine v1 v2;
+    unpair _ _ v := separate v;
     peel _ _ v := peelVecVec ticks v;
     unpeel _ _ v := unpeelVecVec ticks v;
     indexAt t sz isz := @indexAtBoolVec t sz isz ticks;
