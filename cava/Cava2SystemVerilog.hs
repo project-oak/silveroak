@@ -164,6 +164,12 @@ showSignal signal
       IndexAt _ _ _ v i -> showSignal v ++ "[" ++ showSignal i ++ "]"
       IndexConst _ _ v i -> showSignal v ++ "[" ++ show i ++ "]"
       Slice k _ start len v -> showSignal v ++ showSliceIndex k start len
+      SignalSel _ (SignalPair _ _ a b) sel ->
+        "(" ++ showSignal sel ++ " ? " ++  showSignal b ++ " : " ++
+        showSignal a ++ ")"
+      -- SignalPair should never occur but added here to aid debugging.
+      SignalPair _ _ a b -> "(" ++ showSignal a ++ ", " ++ showSignal b ++ ")"
+      other -> error ("showSignal: unsupported expresson: " ++ show other)
 
 showSliceIndex :: SignalType -> Integer -> Integer -> String
 showSliceIndex k start len
@@ -517,6 +523,12 @@ deriving instance Eq BinNums.N
 deriving instance Eq SignalType
 deriving instance Eq (Vector.Coq_t Signal)
 deriving instance Eq Signal
+
+-- Show instances for debugging.
+deriving instance Show Signal
+deriving instance Show (Vector.Coq_t Signal)
+deriving instance Show BinNums.N
+deriving instance Show SignalType
 
 unsmashSignalInstance :: Instance -> State CavaState Instance
 unsmashSignalInstance = mapSignalsInInstanceM unsmashSignal

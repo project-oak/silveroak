@@ -34,7 +34,7 @@ Section WithCava.
 
 Definition mux2_1 (sab: signal Bit * signal Bit * signal Bit) : cava (signal Bit) :=
   let '(sel, a, b) := sab in
-  ret (indexAt (unpeel [a; b]) (unpeel [sel])).
+  ret (pairSel (mkpair a b) sel).
 
   (* Mux between input buses *)
 

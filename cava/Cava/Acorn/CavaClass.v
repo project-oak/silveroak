@@ -52,10 +52,14 @@ Class Cava (signal : SignalType -> Type) := {
          signal Bit * signal Bit * signal Bit * signal Bit * signal Bit * signal Bit -> cava (signal Bit); (* 6-input LUT *)
   xorcy : signal Bit * signal Bit -> cava (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
   muxcy : signal Bit -> signal  Bit -> signal Bit -> cava (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
+  (* Converting to/from pairs *)
+  mkpair : forall {t1 t2 : SignalType}, signal t1 -> signal t2 -> signal (Pair t1 t2);
+  unpair : forall {t1 t2 : SignalType}, signal (Pair t1 t2) -> signal t1 * signal t2;
   (* Converting to/from Vector.t *)
   peel : forall {t : SignalType} {s : nat}, signal (Vec t s) -> Vector.t (signal t) s;
   unpeel : forall {t : SignalType} {s : nat} , Vector.t (signal t) s -> signal (Vec t s);
   (* Dynamic indexing *)
+  pairSel : forall {t : SignalType}, signal (Pair t t) -> signal Bit -> signal t;
   indexAt : forall {t : SignalType} {sz isz: nat},
             signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
             signal (Vec Bit isz) ->  (* A bit-vector index of size isz bits *)

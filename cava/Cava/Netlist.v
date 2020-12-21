@@ -207,11 +207,16 @@ Definition newExternal (t : string) : state CavaState (Signal (ExternalType t)) 
     ret newExt
   end.
 
-Definition newSignal (t: SignalType) : state CavaState (Signal t) :=
+Fixpoint newSignal (t: SignalType) : state CavaState (Signal t) :=
   match t with
   | Void => ret UndefinedSignal
   | Bit => newWire
   | Vec k s => newVector k s
+  | Pair t1 t2 =>
+    cs <- get ;;
+    v1 <- newSignal t1 ;;
+    v2 <- newSignal t2 ;;
+    ret (SignalPair v1 v2)
   | ExternalType typeName => newExternal typeName
   end.
 
@@ -345,15 +350,22 @@ Definition initState : CavaState
 (* Execute a monadic circuit description and return the generated netlist.    *)
 (******************************************************************************)
 
-Definition instantiateInputPort (input : PortDeclaration)
-                              : state CavaState (Signal (port_type input)) :=
-  match input with
-  | mkPort _ Void => ret UndefinedSignal
-  | mkPort name Bit => inputBit name
-  | mkPort name (Vec k sz) => inputVector k sz name
-  | mkPort name (ExternalType t) => addInputPort (mkPort name (ExternalType t)) ;;
-                                    ret (UninterpretedSignal name)
+Fixpoint instantiateInputPort' (name : string) (port_type : SignalType)
+  : state CavaState (Signal port_type) :=
+  match port_type with
+  | Void => ret UndefinedSignal
+  | Bit => inputBit name
+  | Vec k sz => inputVector k sz name
+  | Pair t1 t2 =>
+    p0 <- instantiateInputPort' (name ++ "_0") t1 ;;
+    p1 <- instantiateInputPort' (name ++ "_1") t2 ;;
+    ret (SignalPair p0 p1)
+  | ExternalType t => addInputPort (mkPort name (ExternalType t)) ;;
+                     ret (UninterpretedSignal name)
   end.
+Definition instantiateInputPort (input : PortDeclaration)
+  : state CavaState (Signal (port_type input)) :=
+  instantiateInputPort' (port_name input) (port_type input).
 
 Local Open Scope list_scope.
 
@@ -390,16 +402,22 @@ Definition instantiateInputPorts (inputs: list PortDeclaration)
   right_unit_tuple <- instantiateInputPortsR inputs ;;
   ret (rebalanceNet inputs right_unit_tuple).
 
+Fixpoint instantiateOutputPort' (name : string) (port_type : SignalType)
+  : Signal port_type -> state CavaState unit :=
+  match port_type as t0 return Signal t0 -> _ with
+  | Void => fun _ => ret tt
+  | Bit => fun s => outputBit name s
+  | Vec k sz => fun s => outputVector k sz name s
+  | Pair t1 t2 => fun s =>
+                   instantiateOutputPort' (name ++ "_0") t1 (SignalFst s) ;;
+                   instantiateOutputPort' (name ++ "_1") t2 (SignalSnd s)
+  | ExternalType t => fun s => addOutputPort (mkPort name (ExternalType t)) ;;
+                           assignSignal (UninterpretedSignal name) s
+  end.
 Definition instantiateOutputPort (pd : PortDeclaration)
                                  (o : Signal (port_type pd))
-                                 : state CavaState unit :=
-  match pd, o with
-  | mkPort _ Void, _ => ret tt
-  | mkPort name Bit, s => outputBit name s
-  | mkPort name (Vec k sz), s => outputVector k sz name s
-  | mkPort name (ExternalType t), s => addOutputPort (mkPort name (ExternalType t)) ;;
-                                       assignSignal (UninterpretedSignal name) s
-  end.
+  : state CavaState unit :=
+  instantiateOutputPort' (port_name pd) (port_type pd) o.
 
 (* instantiateOutputPorts will take a list of port declarations and a bunch
    of signals which are right-associated and match up the elements of the
@@ -475,6 +493,11 @@ Definition declareOutput (output : PortDeclaration) : state CavaState (Signal (p
   | Void => ret UndefinedSignal
   | Bit => newWire
   | Vec k sz => newVector k sz
+  | Pair t1 t2 =>
+    cs <- get ;;
+    v1 <- newSignal t1 ;;
+    v2 <- newSignal t2 ;;
+    ret (SignalPair v1 v2)
   | ExternalType t => newExternal t
   end.
 
@@ -533,6 +556,7 @@ Fixpoint toSignalExpr (t: SignalType) (v: combType t) : SignalExpr :=
   | Void, _ => NoSignal
   | Bit, v => BitVal v
   | Vec vt _, y => VecVal (map (toSignalExpr vt) (Vector.to_list y))
+  | Pair lt rt, y => VecVal [toSignalExpr lt (fst y); toSignalExpr rt (snd y)]
   | ExternalType t, zx => NoSignal
   end.
 
