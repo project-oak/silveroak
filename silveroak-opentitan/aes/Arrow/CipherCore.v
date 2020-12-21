@@ -17,7 +17,8 @@
 From Coq Require Import NArith PeanoNat Strings.String Lists.List.
 From Cava Require Import Arrow.ArrowExport BitArithmetic VectorUtils.
 
-From Aes Require Import pkg mix_columns sbox sub_bytes shift_rows cipher_round key_expand aes_test.
+Require Import Aes.Pkg Aes.MixColumns Aes.Sbox Aes.SubBytes Aes.ShiftRows
+        Aes.CipherRound Aes.KeyExpand Aes.AesTest.
 
 Import ListNotations.
 Import KappaNotation.
@@ -138,7 +139,9 @@ Definition test_input : list
       (@reshape _ 8 4 (reshape test_key), (false, false )))))
   ].
 
+(*
 (* TODO(#357): evaluate *)
 Eval vm_compute in
   (interp_sequential (((aes_cipher_core SboxLut) : Kappa _ _) _) test_input).
+*)
 

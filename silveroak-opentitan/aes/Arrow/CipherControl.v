@@ -18,7 +18,7 @@ From Coq Require Import Arith.Arith Logic.Eqdep_dec Vectors.Vector micromega.Lia
      NArith.NArith Strings.String NArith.Ndigits.
 From Cava Require Import Arrow.ArrowExport BitArithmetic.
 
-From Aes Require Import pkg mix_columns sbox sub_bytes shift_rows cipher_round.
+Require Import Aes.Pkg Aes.MixColumns Aes.Sbox Aes.SubBytes Aes.ShiftRows Aes.CipherRound.
 
 Import VectorNotations.
 Import KappaNotation.
