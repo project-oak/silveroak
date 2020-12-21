@@ -21,6 +21,14 @@ all:		coq pinmux.sv compile_pinmux
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt
 VLINT = $(VERILATOR) --lint-only
 
+_CoqProject:
+		@echo "INSTALLDEFAULTROOT = Pinmux" > _CoqProject
+		@echo "-R . Pinmux" >> _CoqProject
+		@echo "-R ../../cava/Cava Cava" >> _CoqProject
+		@echo "-R ../../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
+		@echo "-R ../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
+		git ls-files | grep "\.v$$" >> _CoqProject
+
 Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
 
@@ -47,5 +55,5 @@ clean:
 		-@$(MAKE) -f Makefile.coq clean
 		rm -rf PinmuxSV.hi PinmuxSV.o PinmuxSV \
 		       Pinmux.vo Pinmux.o Pinmux.hs Pinmux.hi pinmux.sv
-		rm -rf Makefile.coq Makefile.coq.conf
+		rm -rf _CoqProject Makefile.coq Makefile.coq.conf
 		cd snapshot && $(MAKE) clean

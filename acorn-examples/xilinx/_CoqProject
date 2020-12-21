@@ -1,9 +1,0 @@
-INSTALLDEFAULTROOT = XilinxExamples
--R . XilinxExamples
--R ../../cava/Cava Cava
--R ../../third_party/coq-ext-lib/theories ExtLib
--R ../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
-NandLUT.v
-XilinxAdderExamples.v
-XilinxAdderTree.v
-XilinxExtraction.v

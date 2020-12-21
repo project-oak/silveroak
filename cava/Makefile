@@ -43,7 +43,14 @@ haskell:	coq FixupHaskell
 Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
 
+_CoqProject:
+		@echo "INSTALLDEFAULTROOT = Cava" > _CoqProject
+		@echo "-R Cava Cava" >> _CoqProject
+		@echo "-R ../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
+		@echo "-R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
+		git ls-files | grep "\.v$$" >> _CoqProject
+
 clean:
 		-@$(MAKE) -f Makefile.coq clean
-		rm -rf Makefile.coq Makefile.coq.conf dist
+		rm -rf _CoqProject Makefile.coq Makefile.coq.conf dist
 		git clean -Xfd
