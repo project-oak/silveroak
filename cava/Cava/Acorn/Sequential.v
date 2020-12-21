@@ -239,6 +239,19 @@ Definition greaterThanOrEqualBoolList {m n : nat}
 Definition bufBoolList (i : list bool) : ident (list bool) :=
   ret i.
 
+Fixpoint delayEnableBoolList' (t: SignalType) (en: list bool) (i : seqType t)
+                              (state: combType t) :
+                              ident (seqType t) :=
+  match en ,i with
+  | enV::enX, iV::iX =>  r <- delayEnableBoolList' t enX iX (if enV then iV else state) ;;
+                         ret (state:: r)
+  | _, _ => ret []
+  end.                         
+
+Definition delayEnableBoolList (t: SignalType) (en: list bool) (i : seqType t) :
+                             ident (seqType t) :=
+  delayEnableBoolList' t en i (defaultCombValue t).
+
 (******************************************************************************)
 (* Instantiate the Cava class for a boolean sequential logic                  *)
 (* interpretation.                                                            *)
@@ -281,7 +294,8 @@ Definition bufBoolList (i : list bool) : ident (list bool) :=
   }.
 
  Instance SequentialSemantics : CavaSeq SequentialCombSemantics :=
-   { delay k i := ret (@defaultCombValue k :: i);
+   { delay t i := ret (@defaultCombValue t :: i);
+     delayEnable t en i := delayEnableBoolList t en i; 
      loopDelay _ _ _ := loopSeq;
    }.
 

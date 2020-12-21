@@ -237,6 +237,14 @@ Definition delayNet (t: SignalType)
   addInstance (Delay t i o) ;;
   ret o.
 
+Definition delayEnableNet (t : SignalType)
+                          (en : Signal Bit)
+                          (i : Signal t)
+                          : state CavaState (Signal t) :=
+  o <- newSignal t ;;
+  addInstance (DelayEnable t en i o) ;;
+  ret o.
+
 Local Open Scope type_scope.
 
 (* Create a loop circuit with a delay element along the feedback path. *)
@@ -303,5 +311,6 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
 
 Instance CavaSequentialNet : CavaSeq CavaCombinationalNet :=
   { delay k := delayNet k;
+    delayEnable k := delayEnableNet k;
     loopDelay a b c := loopNet a b c;
   }.

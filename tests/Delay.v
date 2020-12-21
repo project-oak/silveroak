@@ -35,7 +35,6 @@ From Coq Require Import Bool.Bvector.
 Section WithCava.
   Context `{CavaSeq} `{Monad cava}.
 
-
   Definition delayByte (i : signal (Vec Bit 8))
                        : cava (signal (Vec Bit 8)) :=
   delay i.
@@ -79,6 +78,67 @@ Definition delayByte_tb_expected_outputs
 Definition delayByte_tb
   := testBench "delayByte_tb" delayByte_Interface
       delayByte_tb_inputs delayByte_tb_expected_outputs.
+
+(******************************************************************************)
+(* A byte unit delay with enable.                                             *)
+(******************************************************************************)
+
+Section WithCava.
+  Context `{CavaSeq} `{Monad cava}.
+
+  Definition delayEnableByte (en_i : signal Bit * signal (Vec Bit 8))
+                             : cava (signal (Vec Bit 8)) :=
+  let (en, i) := en_i in                           
+  delayEnable en i.
+
+End WithCava.
+
+Definition delayEnableByte_Interface
+  := sequentialInterface "delayEnableByte"
+     "clk" PositiveEdge "rst" PositiveEdge
+     [mkPort "en" Bit; mkPort "i" (Vec Bit 8)]
+     [mkPort "o" (Vec Bit 8)]
+     [].
+
+Definition delayEnableByte_Netlist
+  := makeNetlist delayEnableByte_Interface delayEnableByte.
+
+(* Ideally we want to provide this representation for the sequential test
+   inputs i.e. delayEnableByte_transposed_tb_inputs and then automatically
+   compute delayEnableByte_tb_inputs but for the moment we explicitly provide
+   both versions. Likewise for the output types.
+   TODO(satnam6502): Write appropriate transpose functions that maps:
+     list (tupleInterface combType [t1; t2; ... tN]])
+   to:
+     tupleInterface seqType [t1; t2; ... tN]
+*)
+Definition delayEnableByte_transposed_tb_inputs : list (tupleInterface combType [Bit; Vec Bit 8]) :=
+  [(true,  b14);
+   (false, b7);
+   (true,  b250);
+   (true,  b18)
+  ].
+
+(* The first output should be the default initial/reset value of the
+   register i.e. followed by the input values that arrive with enable=1,
+   with enable=0 input values ignored i.e. [0; 14; 14; 250]. The last
+   input value influences the internal state but does not appear in the output
+   stream.
+*)
+Definition delayEnableByte_tb_inputs : tupleInterface seqType [Bit; Vec Bit 8]
+  := ([true; false; true; true],
+      [b14;  b7;    b250; b18]).
+
+Example delayEnableByte_test:
+  sequential (delayEnableByte delayEnableByte_tb_inputs) = [b0; b14; b14; b250].
+Proof. reflexivity. Qed.
+
+Definition delayEnableByte_tb_expected_outputs
+  := sequential (delayEnableByte delayEnableByte_tb_inputs).
+
+Definition delayEnableByte_tb
+  := testBench "delayEnableByte_tb" delayEnableByte_Interface
+     delayEnableByte_transposed_tb_inputs [b0; b14; b14; b250].
 
 (******************************************************************************)
 (* A pipelined NAND gate.                                                     *)

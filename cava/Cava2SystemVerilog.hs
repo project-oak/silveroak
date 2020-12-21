@@ -222,6 +222,25 @@ generateInstance netlistState (Delay t i o) _
     negReset = case rstEdge of
                  PositiveEdge -> ""
                  NegativeEdge -> "!"                 
+generateInstance netlistState (DelayEnable t en i o) _
+  = unlines [
+    "  always_ff @(" ++ showEdge clkEdge ++ " " ++ showSignal clk ++ " or "
+                     ++ showEdge rstEdge ++ " " ++ showSignal rst ++ ") begin",
+    "    if (" ++ negReset ++ showSignal rst ++ ") begin",
+    "      " ++ showSignal o ++ " <= " ++ showSignal (defaultNetSignal t) ++ ";",
+    "    end else",
+    "      if (" ++ showSignal en ++ ") begin",
+    "        " ++ showSignal o ++ " <= " ++ showSignal i ++ ";",
+    "    end",
+    "  end"]
+    where
+    NetlistGenerationState (Just clk) clkEdge (Just rst) rstEdge = netlistState
+    showEdge edge = case edge of
+                      PositiveEdge -> "posedge"
+                      NegativeEdge -> "negedge"
+    negReset = case rstEdge of
+                 PositiveEdge -> ""
+                 NegativeEdge -> "!" 
 generateInstance _ (AssignSignal _ a b) _
    = "  assign " ++ showSignal a ++ " = " ++ showSignal b ++ ";"
 generateInstance _ (Not i o) instrNr = primitiveInstance "not" [o, i] instrNr
@@ -575,6 +594,10 @@ mapSignalsInInstanceM f inst
       Delay t i o -> do fi <- f i
                         fo <- f o
                         return (Delay t fi fo)
+      DelayEnable t en i o -> do fen <- f en
+                                 fi <- f i
+                                 fo <- f o
+                                 return (DelayEnable t fen fi fo)
       AssignSignal k t v -> do ft <- f t
                                fv <- f v
                                return (AssignSignal k ft fv)

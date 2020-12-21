@@ -71,6 +71,9 @@ Inductive Instance : Type :=
   | Buf:       Signal Bit -> Signal Bit -> Instance
   (* Composite delay component i.e. a register *)
   | Delay:     forall (t : SignalType), Signal t -> Signal t -> Instance
+  (* Composite delay component with enable i.e. a register with clock enable *)
+  | DelayEnable: forall (t : SignalType),
+                 Signal Bit -> Signal t -> Signal t -> Instance
   (* A Cava unit delay bit component. *)
   | DelayBit:  Signal Bit -> Signal Bit -> Instance
   (* Assignment of bit wire *)
