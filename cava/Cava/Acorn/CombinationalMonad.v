@@ -38,6 +38,7 @@ Fixpoint combType (t: SignalType) : Type :=
   | Void => unit
   | Bit => bool
   | Vec vt sz => Vector.t (combType vt) sz
+  | Pair t1 t2 => (combType t1 * combType t2)%type
   | ExternalType _ => unit (* No semantics for combinational interpretation. *)
   end.
 
@@ -46,6 +47,7 @@ Fixpoint defaultCombValue (t: SignalType) : combType t :=
   | Void => tt
   | Bit => false
   | Vec t2 sz => Vector.const (defaultCombValue t2) sz
+  | Pair t1 t2 => (defaultCombValue t1, defaultCombValue t2)
   | ExternalType _ => tt
   end.
 
