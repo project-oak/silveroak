@@ -167,6 +167,8 @@ showSignal signal
       SignalSel _ (SignalPair _ _ a b) sel ->
         "(" ++ showSignal sel ++ " ? " ++  showSignal b ++ " : " ++
         showSignal a ++ ")"
+      SignalFst _ _ (SignalPair _ _ a _) -> showSignal a
+      SignalSnd _ _ (SignalPair _ _ _ b) -> showSignal b
       -- SignalPair should never occur but added here to aid debugging.
       SignalPair _ _ a b -> "(" ++ showSignal a ++ ", " ++ showSignal b ++ ")"
       other -> error ("showSignal: unsupported expresson: " ++ show other)
