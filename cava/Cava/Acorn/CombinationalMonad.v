@@ -38,6 +38,7 @@ Fixpoint combType (t: SignalType) : Type :=
   | Void => unit
   | Bit => bool
   | Vec vt sz => Vector.t (combType vt) sz
+  | Pair t1 t2 => (combType t1 * combType t2)%type
   | ExternalType _ => unit (* No semantics for combinational interpretation. *)
   end.
 
@@ -46,6 +47,7 @@ Fixpoint defaultCombValue (t: SignalType) : combType t :=
   | Void => tt
   | Bit => false
   | Vec t2 sz => Vector.const (defaultCombValue t2) sz
+  | Pair t1 t2 => (defaultCombValue t1, defaultCombValue t2)
   | ExternalType _ => tt
   end.
 
@@ -107,6 +109,10 @@ Definition muxcyBool (s : bool) (ci : bool) (di : bool) : ident bool :=
        | false => di
        | true => ci
        end).
+
+Definition pairSelBool {t : SignalType}
+                       (v : combType t * combType t) (sel : bool) :=
+  if sel then snd v else fst v.
 
 Definition indexAtBool {t: SignalType}
                        {sz isz: nat}
@@ -193,8 +199,11 @@ Definition loopBool (A B C : SignalType)
     lut6 := lut6Bool;
     xorcy := xorcyBool;
     muxcy := muxcyBool;
+    unpair _ _ v := v;
+    mkpair _ _ v1 v2 := (v1, v2);
     peel _ _ v := v;
     unpeel _ _ v := v;
+    pairSel t v sel := pairSelBool v sel;
     indexAt t sz isz := @indexAtBool t sz isz;
     indexConst t sz := @indexConstBool t sz;
     slice t sz := @sliceBool t sz;
