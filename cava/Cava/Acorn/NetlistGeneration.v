@@ -290,6 +290,7 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     unpair := @unpairNet;
     peel := @peelNet;
     unpeel := @unpeelNet;
+    pairSel := @SignalSel;
     indexAt k sz isz := IndexAt;
     indexConst k sz := IndexConst;
     slice k sz := @sliceNet k sz;

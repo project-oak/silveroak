@@ -172,13 +172,14 @@ Inductive Signal : SignalType -> Type :=
   | LocalVec: forall t s, N -> Signal (Vec t s)
   | VecLit: forall {t s}, Vector.t (Signal t) s -> Signal (Vec t s)
   | SignalPair : forall {t1 t2}, Signal t1 -> Signal t2 -> Signal (Pair t1 t2)
-  | SignalFst : forall {t1 t2}, Signal (Pair t1 t2) -> Signal t1
-  | SignalSnd : forall {t1 t2}, Signal (Pair t1 t2) -> Signal t2
   (* Dynamic index *)
   | IndexAt:  forall {t sz isz}, Signal (Vec t sz) ->
               Signal (Vec Bit isz) -> Signal t
+  | SignalSel : forall {t}, Signal (Pair t t) -> Signal Bit -> Signal t
   (* Static indexing *)
   | IndexConst: forall {t sz}, Signal (Vec t sz) -> nat -> Signal t
+  | SignalFst : forall {t1 t2}, Signal (Pair t1 t2) -> Signal t1
+  | SignalSnd : forall {t1 t2}, Signal (Pair t1 t2) -> Signal t2
   (* Static slice *)
   | Slice: forall {t sz} (start len: nat), Signal (Vec t sz) ->
                                            Signal (Vec t len).

@@ -173,6 +173,11 @@ Definition muxcyBoolList (s : list bool) (ci : list bool) (di : list bool)  : id
        | true => ci
      end) s_dici).
 
+Definition pairSelList {t: SignalType}
+                       (v: list (combType t * combType t)) (sel : list bool)
+  : list (combType t) :=
+  ListUtils.map2 pairSelBool v sel.
+
 Definition indexAtBoolList {t: SignalType}
                        {sz isz: nat}
                        (i : list (Vector.t (combType t) sz))
@@ -264,6 +269,7 @@ Definition bufBoolList (i : list bool) : ident (list bool) :=
     unpair _ _ v := split v;
     peel _ _ v := peelVecList v;
     unpeel _ _ v := unpeelVecList v;
+    pairSel _ v sel := pairSelList v sel;
     indexAt t sz isz := @indexAtBoolList t sz isz;
     indexConst t sz := @indexConstBoolList t sz;
     slice t sz := @sliceBoolList t sz;

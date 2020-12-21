@@ -110,6 +110,10 @@ Definition muxcyBool (s : bool) (ci : bool) (di : bool) : ident bool :=
        | true => ci
        end).
 
+Definition pairSelBool {t : SignalType}
+                       (v : combType t * combType t) (sel : bool) :=
+  if sel then snd v else fst v.
+
 Definition indexAtBool {t: SignalType}
                        {sz isz: nat}
                        (i : Vector.t (combType t) sz)
@@ -199,6 +203,7 @@ Definition loopBool (A B C : SignalType)
     mkpair _ _ v1 v2 := (v1, v2);
     peel _ _ v := v;
     unpeel _ _ v := v;
+    pairSel t v sel := pairSelBool v sel;
     indexAt t sz isz := @indexAtBool t sz isz;
     indexConst t sz := @indexConstBool t sz;
     slice t sz := @sliceBool t sz;
