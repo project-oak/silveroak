@@ -40,6 +40,14 @@ extraction:	$(SV)
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt -y $(XILINX)/data/verilog/src/unisims
 VLINT = $(VERILATOR) --lint-only
 
+_CoqProject:
+		@echo "INSTALLDEFAULTROOT = XilinxExamples" > _CoqProject
+		@echo "-R . XilinxExamples" >> _CoqProject
+		@echo "-R ../../cava/Cava Cava" >> _CoqProject
+		@echo "-R ../../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
+		@echo "-R ../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
+		git ls-files | grep "\.v$$" >> _CoqProject
+
 Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
 
@@ -71,5 +79,6 @@ lutNAND_tb.vcd:	lutNAND.sv lutNAND_tb.sv lutNAND_tb.tcl
 
 clean:
 	-@$(MAKE) -f Makefile.coq clean
+	rm -f _CoqProject Makefile.coq
 	git clean -Xfd
 	rm -rf obj_dir

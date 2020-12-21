@@ -30,6 +30,14 @@ all:		coq $(VCDS)
 
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt
 
+_CoqProject:
+		@echo "INSTALLDEFAULTROOT = Tests" > _CoqProject
+		@echo "-R . Tests" >> _CoqProject
+		@echo "-R ../cava/Cava Cava" >> _CoqProject
+		@echo "-R ../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
+		@echo "-R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
+		git ls-files | grep "\.v$$" | grep -v "^xilinx/" >> _CoqProject
+
 Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
 
@@ -60,5 +68,6 @@ $(SV) $(BENCHES) $(VCDS):	coq TestsSV
 
 clean:
 	-@$(MAKE) -f Makefile.coq clean
+	rm -f _CoqProject Makefile.coq
 	git clean -Xfd
 
