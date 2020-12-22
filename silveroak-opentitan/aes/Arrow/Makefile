@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-.PHONY: all coq minimize-requires clean
+.PHONY: all coq minimize-requires clean _CoqProject
 
 all:		coq
 
