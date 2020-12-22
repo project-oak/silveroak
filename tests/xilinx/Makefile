@@ -19,7 +19,7 @@
 # tools installation directory e.g.
 #    ...../vivado/2018.3
 
-.PHONY: all coq minimize-requires clean
+.PHONY: all coq minimize-requires clean _CoqProject
 
 SV = lut1_inv.sv lut2_and.sv lut3_mux.sv lut4_and.sv lut5_and.sv \
      lut6_and.sv
