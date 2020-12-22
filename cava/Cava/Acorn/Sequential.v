@@ -298,10 +298,15 @@ Definition delayEnableBoolList (t: SignalType) (en: list bool) (i : seqType t) :
    { delay t i := ret (@defaultCombValue t :: i);
      delayEnable t en i := delayEnableBoolList t en i; 
      loopDelay _ _ _ := loopSeq;
-     loopDelayEnable _ _ _ en f :=
+     loopDelayEnable A B C en f :=
        (* The semantics of loopDelayEnable is defined in terms of loopDelay and
           the circuitry required to model a clock enable with a multiplexor. *)
-       loopSeq (second fork2 >=> pairLeft >=> first f >=> pairRight >=> second (swap >=> mux2 en));
+       fun i =>
+         loopSeq (fun (en_i_feedback : seqType (Pair Bit A) * seqType C)  =>
+                    let feedback := snd en_i_feedback in
+                    let '(en, i) := unpair (fst en_i_feedback) in
+                    (second fork2 >=> pairLeft >=> first f >=> pairRight >=> second (swap >=> mux2 en))
+                      (i, feedback)) (mkpair en i);
    }.
 
 (******************************************************************************)
