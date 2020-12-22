@@ -111,7 +111,7 @@ Definition muxcyBool (s : bool) (ci : bool) (di : bool) : ident bool :=
        end).
 
 Definition pairSelBool {t : SignalType}
-                       (v : combType t * combType t) (sel : bool) :=
+                       (sel : bool) (v : combType t * combType t) :=
   if sel then snd v else fst v.
 
 Definition indexAtBool {t: SignalType}
@@ -203,7 +203,7 @@ Definition loopBool (A B C : SignalType)
     mkpair _ _ v1 v2 := (v1, v2);
     peel _ _ v := v;
     unpeel _ _ v := v;
-    pairSel t v sel := pairSelBool v sel;
+    pairSel t sel v := pairSelBool sel v;
     indexAt t sz isz := @indexAtBool t sz isz;
     indexConst t sz := @indexConstBool t sz;
     slice t sz := @sliceBool t sz;

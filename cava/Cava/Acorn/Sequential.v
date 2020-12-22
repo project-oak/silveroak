@@ -29,6 +29,7 @@ From Cava Require Import Signal.
 Require Import Cava.Tactics.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.CombinationalMonad.
+Require Import Cava.Acorn.Combinators.
 
 (* Given two sequential inputs, combine them by combining all the elements of
    the first with the elements of the second that *do not overlap* when the
@@ -174,9 +175,9 @@ Definition muxcyBoolList (s : list bool) (ci : list bool) (di : list bool)  : id
      end) s_dici).
 
 Definition pairSelList {t: SignalType}
-                       (v: list (combType t * combType t)) (sel : list bool)
+                       (sel : list bool) (v: list (combType t * combType t))
   : list (combType t) :=
-  ListUtils.map2 pairSelBool v sel.
+  ListUtils.map2 pairSelBool sel v.
 
 Definition indexAtBoolList {t: SignalType}
                        {sz isz: nat}
@@ -297,6 +298,10 @@ Definition delayEnableBoolList (t: SignalType) (en: list bool) (i : seqType t) :
    { delay t i := ret (@defaultCombValue t :: i);
      delayEnable t en i := delayEnableBoolList t en i; 
      loopDelay _ _ _ := loopSeq;
+     loopDelayEnable _ _ _ en f :=
+       (* The semantics of loopDelayEnable is defined in terms of loopDelay and
+          the circuitry required to model a clock enable with a multiplexor. *)
+       loopSeq (second fork2 >=> pairLeft >=> first f >=> pairRight >=> second (swap >=> mux2 en));
    }.
 
 (******************************************************************************)

@@ -332,6 +332,10 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
      *)
      delayEnable k en i := delayV ticks k i;
      loopDelay A B C := @loopSeqV A B C ticks;
+     (* TODO(satnam6502, jadep): Placeholder definition for loopDelayEnable for
+        now. Replace with actual definition that models clock enable behaviour.
+     *)
+     loopDelayEnable A B C en := @loopSeqV A B C ticks;
    }.
 
 (******************************************************************************)
