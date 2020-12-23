@@ -119,18 +119,6 @@ Section WithCava.
 
 End WithCava.
 
-
-Compute map Bv2N (sequential (counterWithEnableTop
-                (combine
-                   (# [1;1;1;1;1;1;1;1])
-                   (map nat2bool [1;1;1;1;0;0;0;0])))).
-
-(* Note that the signalling counter with delay is slightly different than the
-   one above, in that when not enabled it *does* add the input to the current
-   state, and returns this result, but does not save it. The directly defined
-   version of the counter returns the saved (unchanged) state instead of the
-   unsaved addition result. *)
-
 Example counterEnable_ex1:
   sequential (counterWithEnableTop
                 (combine
@@ -141,5 +129,5 @@ Proof. reflexivity. Qed.
 Example counterEnable_ex2:
   sequential (counterWithEnable
                 (map nat2bool [0;0;0;1;1;1;0;1])
-                (# [0;1;2;3;4;5;6;7]) ) = # [0;1;2;3;7;12;18;19].
+                (# [0;1;2;3;4;5;6;7]) ) = # [0;0;0;3;7;12;12;19].
 Proof. reflexivity. Qed.
