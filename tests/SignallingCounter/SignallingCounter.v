@@ -68,7 +68,7 @@ Section WithCava.
 
   Definition mux2 {A} (sel : signal Bit) (f : signal A) (t : signal A)
     : cava (signal A) :=
-    ret (pairSel (mkpair f t) sel).
+    ret (pairSel sel (mkpair f t)).
 
   Definition signallingCounter : signal (Pair (Vec Bit 8) Bit) -> cava (signal (Vec Bit 8))
     := loopDelay (fun '(inp_and_valid, state) =>
@@ -99,3 +99,33 @@ Example signallingCounter_ex2:
                    (map nat2bool [0;0;0;1;1;1;0;1]))) = # [0;0;0;3;7;12;12;19].
 Proof. reflexivity. Qed.
 
+(* Now re-do the "signalling counter" using a loop with a delay with
+   a clock-enable input. *)
+
+Section WithCava.
+  Context {signal} {combsemantics: Cava signal}
+          {semantics: CavaSeq combsemantics} `{Monad cava}.
+
+  Definition counterWithEnable (en : signal Bit) :
+                               signal (Vec Bit 8) ->
+                               cava (signal (Vec Bit 8)) :=
+    loopDelayEnable en (addN >=> fork2).
+End WithCava.
+
+(* Note that the signalling counter with delay is slightly different than the
+   one above, in that when not enabled it *does* add the input to the current
+   state, and returns this result, but does not save it. The directly defined
+   version of the counter returns the saved (unchanged) state instead of the
+   unsaved addition result. *)
+
+Example counterEnable_ex1:
+  sequential (counterWithEnable
+                (map nat2bool [1;1;1;1;0;0;0;0])
+                (# [1;1;1;1;1;1;1;1])) = # [1;2;3;4;5;5;5;5].
+Proof. reflexivity. Qed.
+
+Example counterEnable_ex2:
+  sequential (counterWithEnable
+                (map nat2bool [0;0;0;1;1;1;0;1])
+                (# [0;1;2;3;4;5;6;7]) ) = # [0;1;2;3;7;12;18;19].
+Proof. reflexivity. Qed.

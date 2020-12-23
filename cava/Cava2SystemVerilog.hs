@@ -164,7 +164,7 @@ showSignal signal
       IndexAt _ _ _ v i -> showSignal v ++ "[" ++ showSignal i ++ "]"
       IndexConst _ _ v i -> showSignal v ++ "[" ++ show i ++ "]"
       Slice k _ start len v -> showSignal v ++ showSliceIndex k start len
-      SignalSel _ (SignalPair _ _ a b) sel ->
+      SignalSel _ sel (SignalPair _ _ a b) ->
         "(" ++ showSignal sel ++ " ? " ++  showSignal b ++ " : " ++
         showSignal a ++ ")"
       SignalFst _ _ (SignalPair _ _ a _) -> showSignal a

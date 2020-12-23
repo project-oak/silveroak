@@ -47,6 +47,53 @@ Section WithCava.
   (* Lava-style circuit combinators.                                          *)
   (****************************************************************************)
 
+  (* Operations over the first or second element of a pair of inputs. *)
+
+  (* Apply a circuit f to the first element of a pair. *)
+  Definition fsT {A B C : SignalType}
+                 (f: signal A -> cava (signal C))
+                 (i: signal (Pair A B)) :
+                 cava (signal (Pair C B)) :=
+    let (a, b) := unpair i in
+    c <- f a ;;
+    ret (mkpair c b).
+
+  (* Apply a circuit f to the second element of a pair. *)
+  Definition snD {A B C : SignalType}
+                 (f: signal B -> cava (signal C))
+                 (i: signal (Pair A B)) :
+                 cava (signal (Pair A C)) :=
+    let (a, b) := unpair i in
+    c <- f b ;;
+    ret (mkpair a c).
+
+  (* A fork that returns a Pair SignalType. *)
+  Definition fork2S {A : SignalType}
+                    (i: signal A) : cava (signal (Pair A A)) :=
+    ret (mkpair i i).
+
+   (* pairLeft takes an input with shape (a, (b, c)) and re-organizes
+      it as ((a, b), c) *)
+   Definition pairLeft {A B C : SignalType}
+                       (i : signal A * (signal B * signal C)) :
+                       cava ((signal A * signal B) * signal C) :=
+   let '(a, (b, c)) := i in
+   ret ((a, b), c).
+
+  (* pairRight takes an input with shape ((a, b), c) and re-organizes
+     it as (a, (b, c)) *)
+  Definition pairRight {A B C : SignalType}
+                       (i : (signal A * signal B) * signal C) :
+                       cava (signal A * (signal B * signal C)) :=
+   let '((a, b), c) := i in
+   ret (a, (b, c)).
+
+  Definition mux2 {A : SignalType}
+                  (sel : signal Bit)
+                  (i : signal A * signal A) :
+                  cava (signal A) :=
+  ret (pairSel sel (mkpair (fst i) (snd i))).
+ 
   (* Use a circuit to zip together two vectors. *)
   Definition zipWith {A B C : SignalType} {n : nat}
            (f : signal A * signal B -> cava (signal C))
@@ -246,17 +293,27 @@ Section WithCava.
   (* Forks in wires                                                           *)
   (****************************************************************************)
 
-  Definition fork2 `{Mondad_m : Monad cava} {A} (a:A) := ret (a, a).
+  Definition fork2 `{Monad_m : Monad cava} {A} (a:A) := ret (a, a).
 
-  Definition first `{Mondad_m : Monad cava} {A B C} (f : A -> cava C) (ab : A * B) : cava (C * B) :=
+  Definition first `{Monad_m : Monad cava} {A B C} (f : A -> cava C) (ab : A * B) : cava (C * B) :=
     let '(a, b) := ab in
     c <- f a ;;
     ret (c, b).
 
-  Definition second `{Mondad_m : Monad cava} {A B C} (f : B -> cava C) (ab : A * B) : cava (A * C) :=
+  Definition second `{Monad_m : Monad cava} {A B C} (f : B -> cava C) (ab : A * B) : cava (A * C) :=
     let '(a, b) := ab in
     c <- f b ;;
     ret (a, c).
+
+  (****************************************************************************)
+  (* Swap                                                                     *)
+  (****************************************************************************)
+
+  Definition swap `{Monad_m : Monad cava} {A B}
+                  (i : signal A * signal B) 
+                  : cava (signal B * signal A) :=
+    let (a, b) := i in
+    ret (b, a).
 
   (****************************************************************************)
   (* Split a bus into two halves.                                             *)

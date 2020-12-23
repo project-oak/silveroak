@@ -258,6 +258,18 @@ Definition loopNet (A B C : SignalType)
   assignSignal o oDelay ;;
   ret b.
 
+(* Create a loop circuit with a delay element with enable along the feedback path. *)
+Definition loopNetEnable (A B C : SignalType)
+                         (en : Signal Bit)
+                         (f : Signal A * Signal C -> state CavaState (Signal B * Signal C))
+                         (a : Signal A)
+                         : state CavaState (Signal B) :=
+  o <- @newSignal C ;;
+  '(b, cOut) <- f (a, o) ;;
+  oDelay <- delayEnableNet C en cOut ;;
+  assignSignal o oDelay ;;
+  ret b.
+
 Definition instantiateNet (intf : CircuitInterface)
                           (circuit : tupleNetInterface (circuitInputs intf) ->
                                     state CavaState (tupleNetInterface (circuitOutputs intf)))
@@ -313,4 +325,5 @@ Instance CavaSequentialNet : CavaSeq CavaCombinationalNet :=
   { delay k := delayNet k;
     delayEnable k := delayEnableNet k;
     loopDelay a b c := loopNet a b c;
+    loopDelayEnable en a b c := loopNetEnable en a b c;
   }.

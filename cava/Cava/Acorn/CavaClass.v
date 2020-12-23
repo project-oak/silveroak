@@ -59,7 +59,7 @@ Class Cava (signal : SignalType -> Type) := {
   peel : forall {t : SignalType} {s : nat}, signal (Vec t s) -> Vector.t (signal t) s;
   unpeel : forall {t : SignalType} {s : nat} , Vector.t (signal t) s -> signal (Vec t s);
   (* Dynamic indexing *)
-  pairSel : forall {t : SignalType}, signal (Pair t t) -> signal Bit -> signal t;
+  pairSel : forall {t : SignalType}, signal Bit -> signal (Pair t t) -> signal t;
   indexAt : forall {t : SignalType} {sz isz: nat},
             signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
             signal (Vec Bit isz) ->  (* A bit-vector index of size isz bits *)
@@ -104,6 +104,12 @@ Class CavaSeq {signal : SignalType -> Type} (combinationalSemantics : Cava signa
               (signal A * signal C -> cava (signal B * signal C)) ->
               signal A ->
               cava (signal B);
+  (* A version of loopDelay with a clock enable. *)
+  loopDelayEnable : forall {A B C: SignalType},
+                    signal Bit -> (* Clock enable *)
+                    (signal A * signal C -> cava (signal B * signal C)) ->
+                    signal A ->
+                    cava (signal B);
 }.
 
 (* Alternate version of sequential semantics which assumes the sequential part
