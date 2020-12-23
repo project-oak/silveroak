@@ -109,8 +109,21 @@ Section WithCava.
   Definition counterWithEnable (en : signal Bit) :
                                signal (Vec Bit 8) ->
                                cava (signal (Vec Bit 8)) :=
-    loopDelayEnable en (addN >=> fork2).
+    loopDelaySEnable en (addN >=> fork2) >=> projSnd.
+
+
+  Definition counterWithEnableTop (i_en : signal (Pair (Vec Bit 8) Bit))
+                                  : cava (signal (Vec Bit 8)) :=
+  let '(i, en) := unpair i_en in
+  counterWithEnable en i.
+
 End WithCava.
+
+
+Compute map Bv2N (sequential (counterWithEnableTop
+                (combine
+                   (# [1;1;1;1;1;1;1;1])
+                   (map nat2bool [1;1;1;1;0;0;0;0])))).
 
 (* Note that the signalling counter with delay is slightly different than the
    one above, in that when not enabled it *does* add the input to the current
@@ -119,9 +132,10 @@ End WithCava.
    unsaved addition result. *)
 
 Example counterEnable_ex1:
-  sequential (counterWithEnable
-                (map nat2bool [1;1;1;1;0;0;0;0])
-                (# [1;1;1;1;1;1;1;1])) = # [1;2;3;4;5;5;5;5].
+  sequential (counterWithEnableTop
+                (combine
+                   (# [1;1;1;1;1;1;1;1])
+                   (map nat2bool [1;1;1;1;0;0;0;0]))) = # [1;2;3;4;4;4;4;4].
 Proof. reflexivity. Qed.
 
 Example counterEnable_ex2:
