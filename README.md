@@ -1,11 +1,18 @@
-# Cava: Lava-style circuits in Coq
+# Silver Oak
 
-This is a work in progress attempt to encode Lava-style gate-level circuit
-descriptions in Coq for circuit specification, formal verification and
-extraction into VHDL or SystemVerilog for implementation on FPGAs. The code
-is currently very experimental and in constant flux.
+Silver Oak is a research project at Google Research exploring alternative
+techniques for producing high assurance circuits and systems based on an
+approach that unifies the specification, implementation and formal verification
+in a single system, specifically the [Coq](https://coq.inria.fr/) interactive
+theorem prover.
 
-Please see the [contributing guide](CONTRIBUTING.md) for how to submit push
+The Silver Oak project focuses on the design and verification of high assurance variants
+of some of the peripherals used in the [OpenTitan](https://opentitan.org/) silicon root of trust e.g.
+the AES crypto-accelerator block.
+
+## The Code
+
+The code is currently very experimental and in constant flux! Please see the [contributing guide](CONTRIBUTING.md) for how to submit push
 requests.
 
 ## Pre-requisites
@@ -16,6 +23,9 @@ Please install the following components:
 * The [GHC Haskell compiler](https://www.haskell.org/ghc/) version 8.6.5 or later
 * [Verilator](https://www.veripool.org/wiki/verilator) version 4.028 (as specified by the
   [OpenTitan](https://docs.opentitan.org/doc/ug/install_instructions/#verilator) documentation).
+
+To re-build the OpenTitan system with the Cava versions of the high assurance
+peripherals you will also need to install [OpenTitan](https://github.com/lowRISC/opentitan/blob/master/README.md).
 
 ## Building
 
@@ -32,5 +42,5 @@ $ make clean
 ```
 
 ## Cava Examples (monadic versions)
-See [Cava Examples](https://github.com/project-oak/oak-hardware/blob/main/monad-examples/README.md) for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.
+See [Cava Examples](https://github.com/project-oak/oak-hardware/blob/main/acorn-examples/README.md) for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.
 
