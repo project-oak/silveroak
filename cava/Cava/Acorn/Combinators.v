@@ -295,6 +295,10 @@ Section WithCava.
 
   Definition fork2 `{Monad_m : Monad cava} {A} (a:A) := ret (a, a).
 
+  (****************************************************************************)
+  (* Operations over pairs.                                                   *)
+  (****************************************************************************)
+
   Definition first `{Monad_m : Monad cava} {A B C} (f : A -> cava C) (ab : A * B) : cava (C * B) :=
     let '(a, b) := ab in
     c <- f a ;;
@@ -304,6 +308,16 @@ Section WithCava.
     let '(a, b) := ab in
     c <- f b ;;
     ret (a, c).
+
+  (* Project out the first element of a pair. *)
+  Definition projFst `{Monad_m : Monad cava} {A B} (ab : A * B) : cava A :=
+    let '(a, _) := ab in
+    ret a.
+
+  (* Project out the second element of a pair. *)
+  Definition projSnd `{Monad_m : Monad cava} {A B} (ab : A * B) : cava B :=
+    let '(_, b) := ab in
+    ret b.
 
   (****************************************************************************)
   (* Swap                                                                     *)
