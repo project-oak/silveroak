@@ -2,13 +2,39 @@
 
 Silver Oak is a research project at Google Research exploring alternative
 techniques for producing high assurance circuits and systems based on an
-approach that unifies the specification, implementation and formal verification
+approach that unifies specification, implementation and formal verification
 in a single system, specifically the [Coq](https://coq.inria.fr/) interactive
-theorem prover.
+theorem prover. We follow an approach inspired by the vision set out by
+[Adam Chlipala](http://adam.chlipala.net/) at MIT in his book
+[Certified Programming with Dependent Types](http://adam.chlipala.net/cpdt/).
 
 The Silver Oak project focuses on the design and verification of high assurance variants
 of some of the peripherals used in the [OpenTitan](https://opentitan.org/) silicon root of trust e.g.
-the AES crypto-accelerator block.
+the AES crypto-accelerator block. We focus on the specification, implementation
+and verification of low-level structural circuits built bottom up by composing
+basic circuit elements (gates, registers, wires) using powerful higher order
+combinators in the style of [Lava](https://dl.acm.org/doi/abs/10.1145/291251.289440).
+Another Coq-based approache for producing hardware is
+[Kami](https://plv.csail.mit.edu/kami/) which encodes aspects of the
+[Bluespec](http://wiki.bluespec.com/) hardware description language as a EDSL in Coq.
+Kami and Bluespec are powerful tools for designing processor-style control-orientated
+circuits. We focus instead on "network-style" and "daatpath" low level circuits
+e.g. hardware accelerators for AES.
+
+A key design goal for our project is to produce hardware which are just as
+efficient as the existing blocks written by hardware engineers in SystemVerilog.
+Consequently our design decisions focus on giving the designer a lot of
+control over the generated circuit netlist by using high level combinators
+to make low level circuit design more productive and more ameanble to
+formal verification. The EDSL we are developing for this task is called
+Cava (Coq + Lava).
+
+Our verification work is focused on specification and verification of
+circuit designs (i.e. "programs") and not currently on the "compiler" i.e.
+the infrastructure that maps form Cava EDSL in Coq to SystemVerilog. Complementary
+work is under way at other research groups that tackle the compiler
+verification challenge for hardware RTL sythesis to gates e.g.
+[Verified Compilation on a Verified Processor](https://ts.data61.csiro.au/publications/csiro_full_text/Loeoew_KTMNAF_19.pdf).
 
 ## The Code
 
