@@ -65,7 +65,6 @@ Lemma mux2Correct {A} (sel : seqType Bit) (f t : seqType A) :
 Proof.
   intros; cbv [mux2 sequential]. seqsimpl.
   cbv [pairSel pairSelList pairSelBool SequentialCombSemantics].
-  rewrite map2_swap.
   apply map2_ext; intros; reflexivity.
 Qed.
 Hint Rewrite @mux2Correct using solve [eauto] : seqsimpl.
