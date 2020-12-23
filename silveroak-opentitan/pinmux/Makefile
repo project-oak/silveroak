@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-.PHONY: all coq minimize-requires clean compile_pinmux
+.PHONY: all coq minimize-requires clean compile_pinmux _CoqProject
 
 all:		coq pinmux.sv compile_pinmux
 
