@@ -41,6 +41,33 @@ Section Misc.
   Proof. rewrite seq_S, rev_app_distr; reflexivity. Qed.
 End Misc.
 
+Section Nth.
+  Lemma nth_step {A} n (l : list A) x d :
+    nth (S n) (x :: l) d = nth n l d.
+  Proof. reflexivity. Qed.
+
+  Lemma nth_found {A} (l : list A) x d :
+    nth 0 (x :: l) d = x.
+  Proof. reflexivity. Qed.
+
+  Lemma nth_nil {A} n (d : A) :
+    nth n [] d = d.
+  Proof. destruct n; reflexivity. Qed.
+
+  Lemma nth_map_seq {T} (f : nat -> T) n start len d :
+    n < len ->
+    nth n (map f (seq start len)) d = f (start + n)%nat.
+  Proof.
+    revert n start; induction len; [ lia | ].
+    intros; destruct n; cbn [seq map nth];
+      autorewrite with natsimpl; [ reflexivity | ].
+    rewrite IHlen by lia.
+    f_equal; lia.
+  Qed.
+End Nth.
+Hint Rewrite @nth_step @nth_found @nth_nil using solve [eauto] : push_nth.
+Hint Rewrite @nth_map_seq using lia : push_nth.
+
 Section Maps.
   Lemma map_id_ext {A} (f : A -> A) (l : list A) :
     (forall a, f a = a) -> map f l = l.
@@ -117,6 +144,14 @@ Section Maps.
     simpl.
     rewrite IHls1.
     reflexivity.
+  Qed.
+
+  Lemma map2_swap {A B C} (f : A -> B -> C) la lb :
+    map2 f la lb = map2 (fun b a => f a b) lb la.
+  Proof.
+    revert lb; induction la; destruct lb; cbn [map2];
+      [ reflexivity .. | ].
+    rewrite IHla; reflexivity.
   Qed.
 End Maps.
 Hint Rewrite @map2_length using solve [eauto] : push_length.
