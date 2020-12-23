@@ -249,7 +249,7 @@ Section Loops.
     (* invariant holds through loop *)
     (forall t b c,
         I t b c ->
-        t < length input ->
+        0 < t < length input ->
         let a := nth t input (defaultCombValue A) in
         let x := hd (defaultCombValue C) c in
         let r := sequential (f ([a], [x])) in
@@ -286,7 +286,10 @@ Section Evaluation.
   Lemma fork2Correct {A} (i : seqType A) :
     sequential (fork2 i) = (i, i).
   Proof. reflexivity. Qed.
+
+  Lemma unpair_single {A B} (p : combType (Pair A B)) :
+    unpair (Cava:=SequentialCombSemantics) [p] = ([fst p], [snd p]).
+  Proof. destruct p; reflexivity. Qed.
 End Evaluation.
-Hint Rewrite @sequential_compose using solve [eauto] : seqsimpl.
-Hint Rewrite @delayCorrect using solve [eauto] : seqsimpl.
-Hint Rewrite @fork2Correct using solve [eauto] : seqsimpl.
+Hint Rewrite @sequential_compose @delayCorrect @fork2Correct @unpair_single
+     using solve [eauto] : seqsimpl.
