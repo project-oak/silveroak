@@ -113,13 +113,13 @@ Definition loopSeqV {A B C : SignalType}
 
 (* Dummy definition for loopSeqV for now.
    TODO(satnam6502, defaultSignal): implement. *)
-Definition loopSeqSV {A B C : SignalType}
+Definition loopSeqSV {A B : SignalType}
                      (ticks : nat)
-    (f : seqVType ticks A * seqVType ticks C
-         -> ident ((seqVType ticks B) * (seqVType ticks C)))
+    (f : seqVType ticks A * seqVType ticks B
+         -> ident (seqVType ticks B))
     (i : seqVType ticks A)
-    :  ident (seqVType ticks B * seqVType ticks C) :=
-  ret (Vector.const defaultSignal ticks, Vector.const defaultSignal ticks).
+    :  ident (seqVType ticks B) :=
+  ret (Vector.const defaultSignal ticks).
 
 (******************************************************************************)
 (* A boolean sequential logic interpretation for the Cava class               *)
@@ -343,12 +343,12 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
      delayEnable k en i := delayV ticks k i;
      loopDelay A B C := @loopSeqV A B C ticks;
      (* Dummy definition for now for loopDelayS *)
-     loopDelayS A B C := @loopSeqSV A B C ticks;
+     loopDelayS A B := @loopSeqSV A B ticks;
      (* TODO(satnam6502, jadep): Placeholder definition for loopDelayEnable for
         now. Replace with actual definition that models clock enable behaviour.
      *)
      loopDelayEnable A B C en := @loopSeqV A B C ticks;
-     loopDelaySEnable A B C en := @loopSeqSV A B C ticks; (* Dummy *)
+     loopDelaySEnable A B en := @loopSeqSV A B ticks; (* Dummy *)
    }.
 
 (******************************************************************************)

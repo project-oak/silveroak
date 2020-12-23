@@ -260,15 +260,15 @@ Definition loopNet (A B C : SignalType)
 
 (* Create a loop circuit with a delay element along the feedback path which
    makes the current state available at the output. *)
-Definition loopNetS (A B C : SignalType)
-                    (f : Signal A * Signal C -> state CavaState (Signal B * Signal C))
+Definition loopNetS (A B : SignalType)
+                    (f : Signal A * Signal B -> state CavaState (Signal B))
                     (a : Signal A)
-                    : state CavaState (Signal B * Signal C) :=
-  o <- @newSignal C ;;
-  '(b, cOut) <- f (a, o) ;;
-  oDelay <- delayNet C cOut ;;
+                    : state CavaState (Signal B) :=
+  o <- @newSignal B ;;
+  out <- f (a, o) ;;
+  oDelay <- delayNet B out ;;
   assignSignal o oDelay ;;
-  ret (b, o).
+  ret out.
 
 (* Create a loop circuit with a delay element with enable along the feedback path. *)
 Definition loopNetEnable (A B C : SignalType)
@@ -284,16 +284,16 @@ Definition loopNetEnable (A B C : SignalType)
 
 (* Create a loop circuit with a delay element with enable along the feedback
    path with the current state exposed at the output. *)
-Definition loopNetEnableS (A B C : SignalType)
+Definition loopNetEnableS (A B : SignalType)
                           (en : Signal Bit)
-                          (f : Signal A * Signal C -> state CavaState (Signal B * Signal C))
+                          (f : Signal A * Signal B -> state CavaState (Signal B))
                           (a : Signal A)
-                         : state CavaState (Signal B * Signal C) :=
-  o <- @newSignal C ;;
-  '(b, cOut) <- f (a, o) ;;
-  oDelay <- delayEnableNet C en cOut ;;
+                         : state CavaState (Signal B) :=
+  o <- @newSignal B ;;
+  out <- f (a, o) ;;
+  oDelay <- delayEnableNet B en out ;;
   assignSignal o oDelay ;;
-  ret (b, o).
+  ret out.
 
 Definition instantiateNet (intf : CircuitInterface)
                           (circuit : tupleNetInterface (circuitInputs intf) ->
@@ -350,7 +350,7 @@ Instance CavaSequentialNet : CavaSeq CavaCombinationalNet :=
   { delay k := delayNet k;
     delayEnable k := delayEnableNet k;
     loopDelay a b c := loopNet a b c;
-    loopDelayS a b c := loopNetS a b c;
+    loopDelayS a b := loopNetS a b;
     loopDelayEnable en a b c := loopNetEnable en a b c;
-    loopDelaySEnable en a b c := loopNetEnableS en a b c;
+    loopDelaySEnable en a b := loopNetEnableS en a b;
   }.

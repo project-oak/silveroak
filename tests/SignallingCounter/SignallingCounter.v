@@ -109,7 +109,7 @@ Section WithCava.
   Definition counterWithEnable (en : signal Bit) :
                                signal (Vec Bit 8) ->
                                cava (signal (Vec Bit 8)) :=
-    loopDelaySEnable en (addN >=> fork2) >=> projSnd.
+    loopDelaySEnable en addN.
 
 
   Definition counterWithEnableTop (i_en : signal (Pair (Vec Bit 8) Bit))

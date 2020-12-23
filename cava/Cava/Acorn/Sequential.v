@@ -98,12 +98,40 @@ Definition loopSeq {A B C : SignalType}
   '(b, _) <- snd (fold_left (loopSeq' f) a (0, ret ([], [defaultCombValue C]))) ;;
   ret b.
 
-Definition loopSeqS {A B C : SignalType}
-                    (f : seqType A * seqType C -> ident (seqType B * seqType C))
-                    (a : seqType A) : ident (seqType B * seqType C) :=
-  snd (fold_left (loopSeq' f) a (0, ret ([], [defaultCombValue C]))).
-(* This is wrong, because I think it will return just the last element
-   for the current state output stream. *)
+(* loopSeqS' performs a single loop step, given a state consisting of the
+timestep and the accumulator for (past) output values. This loop step
+represents a circuit in which the output and the feedback are the same:
+        _______
+    ---| delay |-------
+   |   |_______|       |
+   |   ______          |
+    --| body |----------------- out
+ in --|______|
+
+The nth value in the output accumulator is always the output value for
+timestep n. Because there may be delay in the body of the loop, the accumulator
+might include outputs past the current timestep. *)
+
+Definition loopSeqS' {A B : SignalType}
+           (f : seqType A * seqType B -> ident (seqType B))
+           (state: nat * ident (seqType B)) (a : combType A)
+  : nat * ident (seqType B) :=
+  let t := fst state in
+  (S t,
+   out <- snd state ;; (* get the output accumulator *)
+   (* get the value of out at previous timestep (because of delay) *)
+   let outDelayed := match t with
+                     | 0 => defaultCombValue B
+                     | S t' => nth t' out (defaultCombValue B)
+                     end in
+   b <- f ([a], [outDelayed]) ;; (* Process one input *)
+   let out' := overlap t out b in (* append new output, starting at timestep t *)
+   ret out').
+
+Definition loopSeqS {A B : SignalType}
+                    (f : seqType A * seqType B -> ident (seqType B))
+                    (a : seqType A) : ident (seqType B) :=
+  snd (fold_left (loopSeqS' f) a (0, ret [])).
 
 (******************************************************************************)
 (* A boolean sequential logic interpretation for the Cava class               *)
@@ -303,9 +331,9 @@ Definition delayEnableBoolList (t: SignalType) (en: list bool) (i : seqType t) :
 
  Instance SequentialSemantics : CavaSeq SequentialCombSemantics :=
    { delay t i := ret (@defaultCombValue t :: i);
-     delayEnable t en i := delayEnableBoolList t en i; 
+     delayEnable t en i := delayEnableBoolList t en i;
      loopDelay _ _ _ := loopSeq;
-     loopDelayS _ _ _ := loopSeqS;
+     loopDelayS _ _ := loopSeqS;
      loopDelayEnable A B C en f :=
        (* The semantics of loopDelayEnable is defined in terms of loopDelay and
           the circuitry required to model a clock enable with a multiplexor. *)
@@ -315,14 +343,18 @@ Definition delayEnableBoolList (t: SignalType) (en: list bool) (i : seqType t) :
                     let '(en, i) := unpair (fst en_i_feedback) in
                     (second fork2 >=> pairLeft >=> first f >=> pairRight >=> second (swap >=> mux2 en))
                       (i, feedback)) (mkpair en i);
-     loopDelaySEnable A B C en f input :=
+     loopDelaySEnable A B en f input :=
        (* The semantics of loopDelaySEnable is defined in terms of loopDelayS and
           the circuitry required to model a clock enable with a multiplexor. *)
-         loopSeqS (fun (en_i_feedback : seqType (Pair Bit A) * seqType C)  =>
-                     let feedback := snd en_i_feedback in
-                     let '(en, i) := unpair (fst en_i_feedback) in
-                     (second fork2 >=> pairLeft >=> first f >=> pairRight >=> second (swap >=> mux2 en))
-                       (i, feedback)) (mkpair en input)
+         loopSeqS (fun (en_i_state : seqType (Pair Bit A) * seqType B)  =>
+                     let state := snd en_i_state in
+                     let '(en, i) := unpair (fst en_i_state) in
+                     (second fork2 >=> (* (i, state, state) *)
+                       pairLeft >=>    (* ((i, state), state) *)
+                       first f >=>     (* (f (i, state), state) *)
+                       swap >=>        (* (state, f (i, state) *)
+                       mux2 en)        (* if en then f (i, state) else state *)
+                       (i, state)) (mkpair en input)
    }.
 
 (******************************************************************************)

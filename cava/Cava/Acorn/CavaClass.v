@@ -108,10 +108,10 @@ Class CavaSeq {signal : SignalType -> Type} (combinationalSemantics : Cava signa
               cava (signal B);
   (* Feedback loop, with unit delay inserted into the feedback path and current
      state available at output . *)
-  loopDelayS : forall {A B C: SignalType},
-               (signal A * signal C -> cava (signal B * signal C)) ->
+  loopDelayS : forall {A B: SignalType},
+               (signal A * signal B -> cava (signal B)) ->
                signal A ->
-               cava (signal B * signal C);
+               cava (signal B);
   (* A version of loopDelay with a clock enable. *)
   loopDelayEnable : forall {A B C: SignalType},
                     signal Bit -> (* Clock enable *)
@@ -120,11 +120,11 @@ Class CavaSeq {signal : SignalType -> Type} (combinationalSemantics : Cava signa
                     cava (signal B);
   (* A version of loopDelayEnable with a clock enable and current state at
      the output. *)
-  loopDelaySEnable : forall {A B C: SignalType},
+  loopDelaySEnable : forall {A B: SignalType},
                      signal Bit -> (* Clock enable *)
-                     (signal A * signal C -> cava (signal B * signal C)) ->
+                     (signal A * signal B -> cava (signal B)) ->
                      signal A ->
-                     cava (signal B * signal C);
+                     cava (signal B);
 }.
 
 (* Alternate version of sequential semantics which assumes the sequential part
