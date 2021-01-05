@@ -21,6 +21,7 @@ Require Import Coq.Vectors.Vector.
 Require Import Cava.Arrow.ArrowExport.
 Require Import Cava.Arrow.CombinatorProperties.
 Require Import Cava.BitArithmetic.
+Require Import Cava.NatUtils.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
@@ -127,7 +128,7 @@ Section Equivalence.
       repeat destruct_pair_let; cbn [fst snd].
       rewrite denote_kind_eqb_refl. cbn [mux].
       fold fstkey sndkey. repeat (f_equal; [ ]).
-      rewrite denote_kind_eqb_N2Bv_sized by (apply N_size_nat_le; cbn; Lia.lia).
+      rewrite denote_kind_eqb_N2Bv_sized by (apply N.size_nat_le; cbn; Lia.lia).
       cbv [mux]. change 0%N with (N.of_nat 0).
       rewrite N.eqb_compare, N2Nat.inj_compare, !Nat2N.id, <-Nat.eqb_compare.
       reflexivity. }
