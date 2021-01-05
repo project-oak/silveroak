@@ -581,6 +581,40 @@ Section WithCava.
     let x := pairAssoc input in
     pairSel (indexConst sel 0) (pairSel (indexConst sel 1) x).
 
+  Definition half_adder (input : signal Bit * signal Bit)
+    : cava (signal Bit * signal Bit) :=
+    sum <- xor2 input ;;
+    carry <- and2 input ;;
+    ret (sum, carry).
+
+  (* increment a 4-bit vector *)
+  Definition incr4 (input : signal (Vec Bit 4))
+    : cava (signal (Vec Bit 4)) :=
+    true_ <- one ;;
+    '(sum0, carry) <- half_adder (true_, indexConst input 0) ;;
+    '(sum1, carry) <- half_adder (carry, indexConst input 1) ;;
+    '(sum2, carry) <- half_adder (carry, indexConst input 2) ;;
+    '(sum3, carry) <- half_adder (carry, indexConst input 3) ;;
+    ret (unpeel [sum0;sum1;sum2;sum3]%vector).
+
+  Definition half_subtractor (input : signal Bit * signal Bit)
+    : cava (signal Bit * signal Bit) :=
+    let '(x,y) := input in
+    diff <- xor2 (x,y) ;;
+    notx <- inv x ;;
+    borrow <- and2 (notx, y) ;;
+    ret (diff, borrow).
+
+  (* decrement a 4-bit vector *)
+  Definition decr4 (input : signal (Vec Bit 4))
+    : cava (signal (Vec Bit 4)) :=
+    true_ <- one ;;
+    '(diff0, borrow) <- half_subtractor (true_, indexConst input 0) ;;
+    '(diff1, borrow) <- half_subtractor (borrow, indexConst input 1) ;;
+    '(diff2, borrow) <- half_subtractor (borrow, indexConst input 2) ;;
+    '(diff3, borrow) <- half_subtractor (borrow, indexConst input 3) ;;
+    ret (unpeel [diff0;diff1;diff2;diff3]%vector).
+
   Section Sequential.
     Context {seqsemantics : CavaSeq semantics}.
 
