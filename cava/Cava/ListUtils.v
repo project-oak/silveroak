@@ -39,7 +39,29 @@ Section Misc.
   Lemma rev_seq_S start len :
     rev (seq start (S len)) = (start + len) :: rev (seq start len).
   Proof. rewrite seq_S, rev_app_distr; reflexivity. Qed.
+
+  Lemma seq_snoc start len :
+    seq start (S len) = seq start len ++ [start + len].
+  Proof. rewrite seq_S. reflexivity. Qed.
+
+  Lemma rev_eq_nil {A} (l : list A) : rev l = nil -> l = nil.
+  Proof.
+    destruct l; [ reflexivity | ].
+    cbn [rev]. intro Hnil.
+    apply app_eq_nil in Hnil; destruct Hnil.
+    congruence.
+  Qed.
+
+  Lemma rev_eq_cons {A} x (l l' : list A) : rev l = (x :: l') -> l = rev l' ++ [x].
+  Proof.
+    revert x l'; induction l using rev_ind; cbn [rev]; [ congruence | ].
+    intros *. intro Hrev.
+    rewrite rev_app_distr in Hrev.
+    cbn [rev app] in *. inversion Hrev; subst.
+    rewrite rev_involutive. reflexivity.
+  Qed.
 End Misc.
+Hint Rewrite @seq_snoc using solve [eauto] : pull_snoc.
 
 Section Nth.
   Lemma nth_step {A} n (l : list A) x d :
@@ -77,6 +99,10 @@ Section Maps.
     rewrite Hf, IHl.
     reflexivity.
   Qed.
+
+  Lemma map_snoc {A B} (f : A -> B) ls a :
+    map f (ls ++ [a]) = map f ls ++ [f a].
+  Proof. rewrite map_app. reflexivity. Qed.
 
   Fixpoint map2 {A B C} (f : A -> B -> C) (ls1 : list A) ls2 :=
     match ls1, ls2 with
@@ -155,6 +181,7 @@ Section Maps.
   Qed.
 End Maps.
 Hint Rewrite @map2_length using solve [eauto] : push_length.
+Hint Rewrite @map_snoc using solve [eauto] : pull_snoc.
 
 (* Proofs about firstn and skipn *)
 Section FirstnSkipn.
@@ -295,6 +322,10 @@ Section Folds.
     reflexivity.
   Qed.
 
+  Lemma fold_left_snoc {A B} (f : A -> B -> A) ls a b :
+    fold_left f (ls ++ [b]) a = f (fold_left f ls a) b.
+  Proof. rewrite fold_left_app. reflexivity. Qed.
+
   Lemma fold_left_invariant {A B} (I P : B -> Prop)
         (f : B -> A -> B) (ls : list A) b :
     I b -> (* invariant holds at start *)
@@ -338,9 +369,25 @@ Section Folds.
     intros ? ? IimpliesP. apply IimpliesP.
     apply fold_left_preserves_relation; eauto.
   Qed.
+
+  (* Similar to fold_left_double_invariant, except the invariant can depend on
+     the index *)
+  Lemma fold_left_double_invariant_seq {A B}
+        (I : nat -> A -> B -> Prop) (P : A -> B -> Prop)
+        (f : A -> nat -> A) (g : B -> nat -> B) start len a b :
+    I start a b -> (* invariant holds at start *)
+    (forall i a b, I i a b -> start <= i < start + len ->
+              I (S i) (f a i) (g b i)) -> (* invariant holds through loop body *)
+    (forall a b, I (start + len) a b -> P a b) -> (* invariant implies postcondition *)
+    P (fold_left f (seq start len) a) (fold_left g (seq start len) b).
+  Proof.
+    intros ? ? IimpliesP. apply IimpliesP.
+    apply fold_left_preserves_relation_seq; eauto.
+  Qed.
 End Folds.
 Hint Rewrite @fold_left_cons @fold_left_nil @fold_left_app
      using solve [eauto] : push_list_fold.
+Hint Rewrite @fold_left_snoc using solve [eauto] : pull_snoc.
 
 (* Defines a version of fold_left that accumulates a list of (a
    projection of) all the states it passed through *)
@@ -685,21 +732,76 @@ Section MapInversionTests.
   Qed.
 End MapInversionTests.
 
+(* tactic that help infer information from hypotheses with list expressions *)
+Ltac list_inversion :=
+  repeat lazymatch goal with
+         | H : map _ _ = _ :: _ |- _ =>
+           apply map_eq_cons in H; destruct H as [? [? [? [? ?]]]]
+         | H : rev _ = _ :: _ |- _ =>
+           apply rev_eq_cons in H
+         | H : map _ _ = _ ++ _ |- _ =>
+           apply map_eq_app in H; destruct H as [? [? [? [? ?]]]]
+         | H : rev _ = _ ++ _ |- _ =>
+           apply rev_eq_app in H
+         | H : map _ _ = [] |- _ => apply map_eq_nil in H
+         | H : rev _ = [] |- _ => apply rev_eq_nil in H
+         | H : context [rev (_ ++ [_])] |- _ => rewrite rev_unit in H
+         end.
+
+Section ListInversionTests.
+  (* simple application of map_eq_nil *)
+  Goal (forall (f : nat -> nat) (l : list nat), map f l = nil -> l = nil).
+  Proof.
+    intros. list_inversion.
+    assumption.
+  Qed.
+
+  (* simple application of rev_eq_nil *)
+  Goal (forall (l : list nat), rev l = nil -> l = nil).
+  Proof.
+    intros. list_inversion.
+    assumption.
+  Qed.
+
+  (* cons/snoc, recursive pattern *)
+  Goal (forall (f : nat -> nat) (l1 l2 : list nat) (x y : nat),
+           map f l1 = x :: l2 ++ [y] ->
+           exists a b l3, f a = x /\ f b = y /\ map f l3 = l2).
+  Proof.
+    intros. list_inversion.
+    repeat eexists; eauto.
+  Qed.
+
+  (* cons/snoc, recursive pattern, mix of map and rev *)
+  Goal (forall (f : nat -> nat) (l1 l2 : list nat) (x y : nat),
+           map f (rev l1) = x :: l2 ++ [y] ->
+           exists a b l3, f a = x /\ f b = y /\ map f (rev l3) = l2).
+  Proof.
+    intros. list_inversion. subst.
+    repeat eexists; eauto.
+    rewrite rev_involutive. reflexivity.
+  Qed.
+End ListInversionTests.
+
 (* Factor out loops from a goal in preparation for using fold_left_invariant *)
 Ltac factor_out_loops :=
   lazymatch goal with
   | |- ?G =>
     lazymatch G with
-    | context [fold_left ?f1 ?ls ?b1] =>
+    | context [(@fold_left ?A1 ?B1 ?f1 ?ls1 ?b1)] =>
       let F1 :=
-          lazymatch (eval pattern (fold_left f1 ls b1) in G) with
+          lazymatch (eval pattern (@fold_left A1 B1 f1 ls1 b1) in G) with
           | ?F _ => F end in
       lazymatch F1 with
-      | context [fold_left ?f2 ?ls ?b2] =>
-      let F2 :=
-          lazymatch (eval pattern (fold_left f2 ls b2) in F1) with
-          | ?F _ => F end in
-      change (F2 (fold_left f2 ls b2) (fold_left f1 ls b1))
+      | context [(@fold_left ?A2 ?B2 ?f2 ?ls2 ?b2)] =>
+        (unify ls1 ls2 + fail "Failed to unify loop lists:" ls1 ls2);
+        let F2 :=
+            lazymatch (eval pattern (@fold_left A2 B2 f2 ls2 b2) in F1) with
+            | ?F _ => F end in
+        (change (F2 (@fold_left A2 B2 f2 ls2 b2) (@fold_left A1 B1 f1 ls1 b1))
+         || let loop1 := constr:(@fold_left A1 B1 f1 ls1 b1) in
+           let loop2 := constr:(@fold_left A2 B2 f2 ls2 b2) in
+           fail "Failed to change goal with:" F2 loop2 loop1)
       end
     end
   end.
