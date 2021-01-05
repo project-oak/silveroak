@@ -84,3 +84,33 @@ Proof.
   rewrite N2Bv_sized_eq_iff with (n:=sz) by auto using N.size_nat_le_nat.
   lia.
 Qed.
+
+Lemma pairSel_mkpair {t} (x y : combType t) (sel : bool) :
+  pairSel sel (mkpair x y) = if sel then y else x.
+Proof. reflexivity. Qed.
+
+Lemma pairAssoc_mkpair {A B C} a b c :
+  @pairAssoc _ _ A B C (mkpair (mkpair a b) c) = mkpair a (mkpair b c).
+Proof. reflexivity. Qed.
+
+Lemma mux4_mkpair {t} (i0 i1 i2 i3 : combType t) sel :
+  mux4 (mkpair (mkpair (mkpair i0 i1) i2) i3) sel =
+  if Vector.hd (Vector.tl sel)
+  then if Vector.hd sel then i3 else i2
+  else if Vector.hd sel then i1 else i0.
+Proof.
+  cbv in sel. constant_vector_simpl sel.
+  cbv [mux4 indexConst CombinationalSemantics].
+  autorewrite with vsimpl.
+  repeat
+    match goal with
+    | |- context [(@indexConstBool ?t ?sz ?v ?n)] =>
+      let x := constr:(@indexConstBool t sz v n) in
+      let y := (eval cbn in x) in
+      progress change x with y
+    | _ => rewrite pairAssoc_mkpair
+    | _ => rewrite pairSel_mkpair
+    | _ => destruct_one_match
+    | _ => reflexivity
+    end.
+Qed.

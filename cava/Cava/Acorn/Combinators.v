@@ -569,4 +569,16 @@ Section WithCava.
                   eq_results <- zipWith (fun '(a, b) => eqb a b) x y ;;
                   all eq_results
     end.
+
+  Definition pairAssoc {A B C} (x : signal (Pair (Pair A B) C))
+    : signal (Pair A (Pair B C)) :=
+    let '(ab, c) := unpair x in
+    let '(a, b) := unpair ab in
+    mkpair a (mkpair b c).
+
+  Definition mux4 {t} (input : signal (Pair (Pair (Pair t t) t) t))
+             (sel : signal (Vec Bit 2)) :=
+    let x := pairAssoc input in
+    pairSel (indexConst sel 0) (pairSel (indexConst sel 1) x).
+
  End WithCava.
