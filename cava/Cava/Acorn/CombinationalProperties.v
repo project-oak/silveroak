@@ -14,10 +14,15 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Arith.PeanoNat.
+Require Import Coq.micromega.Lia.
+Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Combinators.
 Require Import Cava.Acorn.CombinationalMonad.
 Require Import Cava.Acorn.Identity.
+Require Import Cava.BitArithmetic.
+Require Import Cava.NatUtils.
 Require Import Cava.Signal.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
@@ -67,3 +72,15 @@ Proof. apply eqb_eq. reflexivity. Qed.
 
 Lemma eqb_neq {t} (x y : combType t) : x <> y ->  unIdent (eqb x y) = false.
 Proof. rewrite <-Bool.not_true_iff_false, eqb_eq. tauto. Qed.
+
+Lemma eqb_nat_to_bitvec_sized sz n m :
+  n < 2 ^ sz -> m < 2 ^ sz ->
+  unIdent (eqb (t:=Vec Bit sz) (nat_to_bitvec_sized sz n)
+               (nat_to_bitvec_sized sz m))
+  = if Nat.eqb n m then true else false.
+Proof.
+  intros; destruct_one_match; subst; [ solve [apply eqb_refl] | ].
+  apply eqb_neq. cbv [nat_to_bitvec_sized].
+  rewrite N2Bv_sized_eq_iff with (n:=sz) by auto using N.size_nat_le_nat.
+  lia.
+Qed.
