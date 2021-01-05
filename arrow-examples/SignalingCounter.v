@@ -56,7 +56,7 @@ Definition signaling_counter_tb_inputs : list (bool * Bvector 4) :=
   (repeat (false, N2Bv_sized 4 1) 4) ++ (repeat (true, N2Bv_sized 4 1) 4).
 
 Definition signaling_counter_tb_expected_outputs : list (Bvector 4) :=
-  unroll_circuit_evaluation (closure_conversion counter) signaling_counter_tb_inputs.
+  interp_sequential (module_to_expr counter _) signaling_counter_tb_inputs.
 
 Lemma arrow_and_expr_counter_semantics_agree:
   (map Bv2N signaling_counter_tb_expected_outputs) =

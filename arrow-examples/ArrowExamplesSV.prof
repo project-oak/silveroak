@@ -1,0 +1,266 @@
+	Mon Nov 30 22:21 2020 Time and Allocation Profiling Report  (Final)
+
+	   ArrowExamplesSV +RTS -p -RTS
+
+	total time  =        6.58 secs   (6575 ticks @ 1000 us, 1 processor)
+	total alloc = 9,035,324,568 bytes  (excludes profiling overheads)
+
+COST CENTRE         MODULE             SRC                                     %time %alloc
+
+build_netlist'      CircuitLowering    CircuitLowering.hs:(277,1)-(642,69)      20.2   21.7
+count_rewrites      CircuitSemantics   CircuitSemantics.hs:(42,1)-(53,19)       16.7    0.0
+coq_Monad_state     StateMonad         StateMonad.hs:(62,1)-(66,38)             12.6    0.3
+closure_conversion' ExprLowering       ExprLowering.hs:(61,1)-(583,70)          11.8   26.7
+bind                Monad              Monad.hs:(47,1)-(49,56)                   9.8    7.2
+coq_CircuitCat      CircuitArrow       CircuitArrow.hs:(89,1)-(92,71)            8.8   11.0
+ret                 Monad              Monad.hs:(42,1)-(44,48)                   7.5    9.9
+runState            StateMonad         StateMonad.hs:(47,1)-(49,38)              2.8    0.0
+coq_CircuitArrow    CircuitArrow       CircuitArrow.hs:(95,1)-(103,50)           2.2    5.0
+mcompose            Monad              Monad.hs:(68,1)-(69,16)                   1.7    3.7
+writeSystemVerilog  Cava2SystemVerilog Cava2SystemVerilog.hs:(36,1)-(47,73)      0.9    2.0
+extract_nth         ExprLowering       ExprLowering.hs:(44,1)-(55,60)            0.8    2.0
+primitiveInstance   Cava2SystemVerilog Cava2SystemVerilog.hs:(225,1)-(227,24)    0.6    2.4
+showArgs            Cava2SystemVerilog Cava2SystemVerilog.hs:230:1-73            0.2    1.4
+
+
+                                                                                                                   individual      inherited
+COST CENTRE                     MODULE                SRC                                       no.     entries  %time %alloc   %time %alloc
+
+MAIN                            MAIN                  <built-in>                                183           0    0.0    0.0   100.0  100.0
+ CAF                            Combinators           <entire-module>                           365           0    0.0    0.0     0.0    0.0
+  unsafeCoerce                  Combinators           Combinators.hs:27:1-37                    485           1    0.0    0.0     0.0    0.0
+ CAF                            ArrowAdderTutorial    <entire-module>                           364           0    0.0    0.0    97.1   91.6
+  adder_large                   ArrowAdderTutorial    ArrowAdderTutorial.hs:(1027,1)-(1081,260) 463           1    0.0    0.0     0.0    0.0
+   tree_adder                   ArrowAdderTutorial    ArrowAdderTutorial.hs:(1009,1)-(1024,53)  464           1    0.0    0.0     0.0    0.0
+    tree                        Combinators           Combinators.hs:(1063,1)-(1167,5)          484           7    0.0    0.0     0.0    0.0
+     primitive_output           Primitives            Primitives.hs:(188,1)-(209,22)            491           7    0.0    0.0     0.0    0.0
+     split_pow2                 Combinators           Combinators.hs:(60,1)-(784,82)            488           6    0.0    0.0     0.0    0.0
+      pow                       Nat                   Nat.hs:(100,1)-(104,5)                    495          21    0.0    0.0     0.0    0.0
+      rewrite_vector            Combinators           Combinators.hs:(49,1)-(56,41)             494           6    0.0    0.0     0.0    0.0
+       eq_rect                  Logic                 Logic.hs:(35,1)-(36,3)                    496           6    0.0    0.0     0.0    0.0
+    xilinxAdder                 ArrowAdderTutorial    ArrowAdderTutorial.hs:(947,1)-(1005,71)   497           1    0.0    0.0     0.0    0.0
+     rippleCarryAdder           ArrowAdderTutorial    ArrowAdderTutorial.hs:(825,1)-(944,56)    500           1    0.0    0.0     0.0    0.0
+      interleave                ArrowAdderTutorial    ArrowAdderTutorial.hs:(437,1)-(719,5)     502         256    0.0    0.0     0.0    0.0
+       primitive_output         Primitives            Primitives.hs:(188,1)-(209,22)            504         255    0.0    0.0     0.0    0.0
+      productToVec              ArrowAdderTutorial    ArrowAdderTutorial.hs:(722,1)-(812,5)     533         256    0.0    0.0     0.0    0.0
+      rippleCarryAdder'         ArrowAdderTutorial    ArrowAdderTutorial.hs:(815,1)-(822,55)    509           1    0.0    0.0     0.0    0.0
+       col                      ArrowAdderTutorial    ArrowAdderTutorial.hs:(419,1)-(434,5)     510         256    0.0    0.0     0.0    0.0
+        below                   ArrowAdderTutorial    ArrowAdderTutorial.hs:(247,1)-(403,79)    511         255    0.0    0.0     0.0    0.0
+  adder_large_interface         ArrowAdderTutorial    ArrowAdderTutorial.hs:(1135,1)-(1258,8)   413           1    0.0    0.0     0.0    0.0
+   combinationalInterface       Netlist               Netlist.hs:(296,1)-(298,46)               414           1    0.0    0.0     0.0    0.0
+    sequentialInterface         Netlist               Netlist.hs:(287,1)-(290,15)               415           1    0.0    0.0     0.0    0.0
+     toShape                    Types                 Types.hs:(123,1)-(125,38)                 421           2    0.0    0.0     0.0    0.0
+  adder_large_netlist           ArrowAdderTutorial    ArrowAdderTutorial.hs:(1386,1)-(1509,27)  368           1    0.0    0.0    45.4   32.4
+   makeNetlist                  Netlist               Netlist.hs:(772,1)-(773,61)               369           1    0.0    0.0    45.4   32.4
+    execState                   StateMonad            StateMonad.hs:(57,1)-(59,16)              370           1    0.0    0.0    45.4   32.4
+     runState                   StateMonad            StateMonad.hs:(47,1)-(49,38)              371    32564901    2.8    0.0    45.4   32.4
+      wireUpCircuit             Netlist               Netlist.hs:(667,1)-(683,52)               378           0    0.0    0.0    42.6   32.4
+       bind                     Monad                 Monad.hs:(47,1)-(49,56)                   379    16201798    9.8    7.2    42.6   32.4
+        coq_Monad_state         StateMonad            StateMonad.hs:(62,1)-(66,38)              380           0   12.6    0.3    32.8   25.3
+         _N__add                BinNat                BinNat.hs:(64,1)-(70,60)                  564       80640    0.1    0.0     0.3    0.1
+          _Pos__add             BinPos                BinPos.hs:(32,1)-(64,5)                   565       80639    0.2    0.0     0.2    0.1
+           _Pos__succ           BinPos                BinPos.hs:(21,1)-(29,5)                   566       80618    0.0    0.0     0.0    0.0
+         put                    MonadState            MonadState.hs:(17,1)-(19,35)              526       80640    0.1    0.0     0.1    0.0
+         ret                    Monad                 Monad.hs:(42,1)-(44,48)                   527       80640    0.1    0.0     0.1    0.0
+         circuitOutputs         Netlist               Netlist.hs:(273,1)-(275,75)               537           1    0.0    0.0     0.0    0.0
+         instantiateOutputPorts Netlist               Netlist.hs:(643,1)-(662,75)               538           1    0.0    0.0     0.0    0.0
+          outputVector          Netlist               Netlist.hs:(600,1)-(604,23)               540           1    0.0    0.0     0.0    0.0
+           addOutputPort        Netlist               Netlist.hs:(498,1)-(508,70)               542           1    0.0    0.0     0.0    0.0
+            put                 MonadState            MonadState.hs:(17,1)-(19,35)              545           1    0.0    0.0     0.0    0.0
+           assignSmashedSignal  Netlist               Netlist.hs:(475,1)-(476,54)               546           1    0.0    0.0     0.0    0.0
+            vecLitS             Types                 Types.hs:(200,1)-(206,71)                 576         257    0.0    0.0     0.0    0.0
+             map                Vector                Vector.hs:(197,1)-(200,55)                583         257    0.0    0.0     0.0    0.0
+            addInstance         Netlist               Netlist.hs:(424,1)-(434,73)               547           1    0.0    0.0     0.0    0.0
+             put                MonadState            MonadState.hs:(17,1)-(19,35)              548           1    0.0    0.0     0.0    0.0
+         build_netlist          CircuitLowering       CircuitLowering.hs:(672,1)-(673,68)       453           0    0.0    0.0    19.8   24.7
+          build_netlist'        CircuitLowering       CircuitLowering.hs:(277,1)-(642,69)       454           0   10.3   10.7    19.8   24.7
+           ret                  Monad                 Monad.hs:(42,1)-(44,48)                   460    15879109    7.4    9.8     7.4    9.8
+           mcompose             Monad                 Monad.hs:(68,1)-(69,16)                   455    10376281    1.7    3.7     1.7    3.7
+           const_wire           CircuitLowering       CircuitLowering.hs:(79,1)-(89,72)         490      451717    0.2    0.3     0.2    0.3
+            map                 Vector                Vector.hs:(197,1)-(200,55)                580         257    0.0    0.0     0.0    0.0
+           addInstance          Netlist               Netlist.hs:(424,1)-(434,73)               528       80640    0.2    0.1     0.2    0.2
+            put                 MonadState            MonadState.hs:(17,1)-(19,35)              531       80640    0.0    0.0     0.0    0.0
+           index'               CircuitLowering       CircuitLowering.hs:(238,1)-(272,5)        507         126    0.0    0.0     0.0    0.0
+            ret                 Monad                 Monad.hs:(42,1)-(44,48)                   508         126    0.0    0.0     0.0    0.0
+         coq_MonadState_state   StateMonad            StateMonad.hs:(69,1)-(71,55)              525           0    0.1    0.0     0.1    0.0
+         newWire                Netlist               Netlist.hs:(363,1)-(372,78)               523           0    0.0    0.0     0.0    0.0
+       build_netlist            CircuitLowering       CircuitLowering.hs:(672,1)-(673,68)       440           1    0.0    0.0     0.0    0.0
+        apply_rightmost_tt      CircuitLowering       CircuitLowering.hs:(645,1)-(667,20)       473           0    0.0    0.0     0.0    0.0
+        build_netlist'          CircuitLowering       CircuitLowering.hs:(277,1)-(642,69)       450           0    0.0    0.0     0.0    0.0
+         mcompose               Monad                 Monad.hs:(68,1)-(69,16)                   451           1    0.0    0.0     0.0    0.0
+          bind                  Monad                 Monad.hs:(47,1)-(49,56)                   452           1    0.0    0.0     0.0    0.0
+         ret                    Monad                 Monad.hs:(42,1)-(44,48)                   459           1    0.0    0.0     0.0    0.0
+       addInputPort             Netlist               Netlist.hs:(479,1)-(495,22)               408           0    0.0    0.0     0.0    0.0
+        bind                    Monad                 Monad.hs:(47,1)-(49,56)                   409           0    0.0    0.0     0.0    0.0
+         coq_Monad_state        StateMonad            StateMonad.hs:(62,1)-(66,38)              410           0    0.0    0.0     0.0    0.0
+        ret                     Monad                 Monad.hs:(42,1)-(44,48)                   417           0    0.0    0.0     0.0    0.0
+       instantiateInputPorts    Netlist               Netlist.hs:(618,1)-(638,57)               426           0    0.0    0.0     0.0    0.0
+        inputVector             Netlist               Netlist.hs:(584,1)-(588,67)               427           0    0.0    0.0     0.0    0.0
+         addInputPort           Netlist               Netlist.hs:(479,1)-(495,22)               432           0    0.0    0.0     0.0    0.0
+          put                   MonadState            MonadState.hs:(17,1)-(19,35)              436           1    0.0    0.0     0.0    0.0
+          bind                  Monad                 Monad.hs:(47,1)-(49,56)                   433           0    0.0    0.0     0.0    0.0
+           coq_Monad_state      StateMonad            StateMonad.hs:(62,1)-(66,38)              434           0    0.0    0.0     0.0    0.0
+         bind                   Monad                 Monad.hs:(47,1)-(49,56)                   428           0    0.0    0.0     0.0    0.0
+          coq_Monad_state       StateMonad            StateMonad.hs:(62,1)-(66,38)              429           0    0.0    0.0     0.0    0.0
+         ret                    Monad                 Monad.hs:(42,1)-(44,48)                   439           0    0.0    0.0     0.0    0.0
+       setClockAndReset         Netlist               Netlist.hs:(550,1)-(562,58)               398           0    0.0    0.0     0.0    0.0
+        put                     MonadState            MonadState.hs:(17,1)-(19,35)              403           1    0.0    0.0     0.0    0.0
+        bind                    Monad                 Monad.hs:(47,1)-(49,56)                   399           0    0.0    0.0     0.0    0.0
+         coq_Monad_state        StateMonad            StateMonad.hs:(62,1)-(66,38)              400           0    0.0    0.0     0.0    0.0
+       setModuleName            Netlist               Netlist.hs:(536,1)-(546,59)               384           0    0.0    0.0     0.0    0.0
+        put                     MonadState            MonadState.hs:(17,1)-(19,35)              393           1    0.0    0.0     0.0    0.0
+        bind                    Monad                 Monad.hs:(47,1)-(49,56)                   385           0    0.0    0.0     0.0    0.0
+         coq_Monad_state        StateMonad            StateMonad.hs:(62,1)-(66,38)              386           0    0.0    0.0     0.0    0.0
+          coq_MonadState_state  StateMonad            StateMonad.hs:(69,1)-(71,55)              389           0    0.0    0.0     0.0    0.0
+    wireUpCircuit               Netlist               Netlist.hs:(667,1)-(683,52)               372           1    0.0    0.0     0.0    0.0
+     bind                       Monad                 Monad.hs:(47,1)-(49,56)                   373           5    0.0    0.0     0.0    0.0
+     addInputPort               Netlist               Netlist.hs:(479,1)-(495,22)               405           2    0.0    0.0     0.0    0.0
+      bind                      Monad                 Monad.hs:(47,1)-(49,56)                   406           2    0.0    0.0     0.0    0.0
+     circuitInputs              Netlist               Netlist.hs:(268,1)-(270,73)               420           1    0.0    0.0     0.0    0.0
+     circuitName                Netlist               Netlist.hs:(243,1)-(245,69)               552           1    0.0    0.0     0.0    0.0
+     clkName                    Netlist               Netlist.hs:(248,1)-(250,61)               412           1    0.0    0.0     0.0    0.0
+     instantiateInputPorts      Netlist               Netlist.hs:(618,1)-(638,57)               419           1    0.0    0.0     0.0    0.0
+      inputVector               Netlist               Netlist.hs:(584,1)-(588,67)               423           1    0.0    0.0     0.0    0.0
+       addInputPort             Netlist               Netlist.hs:(479,1)-(495,22)               430           1    0.0    0.0     0.0    0.0
+        bind                    Monad                 Monad.hs:(47,1)-(49,56)                   431           1    0.0    0.0     0.0    0.0
+       bind                     Monad                 Monad.hs:(47,1)-(49,56)                   424           1    0.0    0.0     0.0    0.0
+       ret                      Monad                 Monad.hs:(42,1)-(44,48)                   438           1    0.0    0.0     0.0    0.0
+     rstName                    Netlist               Netlist.hs:(258,1)-(260,61)               418           1    0.0    0.0     0.0    0.0
+     setClockAndReset           Netlist               Netlist.hs:(550,1)-(562,58)               395           1    0.0    0.0     0.0    0.0
+      bind                      Monad                 Monad.hs:(47,1)-(49,56)                   396           1    0.0    0.0     0.0    0.0
+     setModuleName              Netlist               Netlist.hs:(536,1)-(546,59)               381           1    0.0    0.0     0.0    0.0
+      bind                      Monad                 Monad.hs:(47,1)-(49,56)                   382           1    0.0    0.0     0.0    0.0
+     circuitOutputs             Netlist               Netlist.hs:(273,1)-(275,75)               539           0    0.0    0.0     0.0    0.0
+   build_netlist                CircuitLowering       CircuitLowering.hs:(672,1)-(673,68)       443           0    0.0    0.0     0.0    0.0
+  adder_large_netlist'          ArrowAdderTutorial    ArrowAdderTutorial.hs:(1261,1)-(1383,30)  445           1    0.0    0.0    24.7   48.1
+   closure_conversion           ExprLowering          ExprLowering.hs:(587,1)-(593,51)          446           1    0.0    0.0    24.7   48.1
+    closure_conversion'         ExprLowering          ExprLowering.hs:(61,1)-(583,70)           467     3147120   11.8   26.7    24.7   48.1
+     extract_nth                ExprLowering          ExprLowering.hs:(44,1)-(55,60)            480      903551    0.8    2.0     1.7    3.5
+      kind_default              ArrowKind             ArrowKind.hs:(142,1)-(147,66)             492      451462    0.2    0.2     0.2    0.2
+       const                    Vector                Vector.hs:(81,1)-(82,53)                  581           1    0.0    0.0     0.0    0.0
+        nat_rect                Datatypes             Datatypes.hs:(87,1)-(91,5)                582         257    0.0    0.0     0.0    0.0
+      coq_CircuitArrowDrop      CircuitArrow          CircuitArrow.hs:(106,1)-(107,72)          482           0    0.2    0.3     0.2    0.3
+      coq_CircuitCat            CircuitArrow          CircuitArrow.hs:(89,1)-(92,71)            481           0    0.6    1.0     0.6    1.0
+     adder_large                ArrowAdderTutorial    ArrowAdderTutorial.hs:(1027,1)-(1081,260) 474           0    0.0    0.0     0.2    1.1
+      tree_adder                ArrowAdderTutorial    ArrowAdderTutorial.hs:(1009,1)-(1024,53)  486           0    0.0    0.0     0.2    1.1
+       primitive_output         Primitives            Primitives.hs:(188,1)-(209,22)            579           1    0.0    0.0     0.0    0.0
+       tree                     Combinators           Combinators.hs:(1063,1)-(1167,5)          487           0    0.0    0.0     0.0    0.0
+        split_pow2              Combinators           Combinators.hs:(60,1)-(784,82)            489           0    0.0    0.0     0.0    0.0
+       xilinxAdder              ArrowAdderTutorial    ArrowAdderTutorial.hs:(947,1)-(1005,71)   499           0    0.0    0.0     0.2    1.1
+        rippleCarryAdder        ArrowAdderTutorial    ArrowAdderTutorial.hs:(825,1)-(944,56)    501           0    0.0    0.0     0.2    1.1
+         interleave             ArrowAdderTutorial    ArrowAdderTutorial.hs:(437,1)-(719,5)     503           0    0.0    0.3     0.0    0.3
+         productToVec           ArrowAdderTutorial    ArrowAdderTutorial.hs:(722,1)-(812,5)     534           0    0.0    0.1     0.0    0.1
+         rippleCarryAdder'      ArrowAdderTutorial    ArrowAdderTutorial.hs:(815,1)-(822,55)    512           0    0.0    0.0     0.1    0.7
+          col                   ArrowAdderTutorial    ArrowAdderTutorial.hs:(419,1)-(434,5)     513           0    0.0    0.0     0.1    0.7
+           below                ArrowAdderTutorial    ArrowAdderTutorial.hs:(247,1)-(403,79)    514           0    0.1    0.7     0.1    0.7
+     coq_CircuitArrow           CircuitArrow          CircuitArrow.hs:(95,1)-(103,50)           469           0    2.2    5.0     2.2    5.0
+     coq_CircuitArrowCopy       CircuitArrow          CircuitArrow.hs:(114,1)-(115,72)          476           0    0.3    0.5     0.3    0.5
+     coq_CircuitArrowDrop       CircuitArrow          CircuitArrow.hs:(106,1)-(107,72)          483           0    0.1    0.2     0.1    0.2
+     coq_CircuitArrowSwap       CircuitArrow          CircuitArrow.hs:(110,1)-(111,76)          471           0    0.2    0.5     0.2    0.5
+     coq_CircuitCat             CircuitArrow          CircuitArrow.hs:(89,1)-(92,71)            468           0    8.2   10.1     8.2   10.1
+     fullAdder                  ArrowAdderTutorial    ArrowAdderTutorial.hs:(93,1)-(241,88)     517           0    0.0    0.3     0.0    0.3
+     halfAdder                  ArrowAdderTutorial    ArrowAdderTutorial.hs:(44,1)-(90,62)      520           0    0.0    0.2     0.0    0.2
+     interleave                 ArrowAdderTutorial    ArrowAdderTutorial.hs:(437,1)-(719,5)     506           0    0.0    0.0     0.0    0.0
+     productToVec               ArrowAdderTutorial    ArrowAdderTutorial.hs:(722,1)-(812,5)     536           0    0.0    0.0     0.0    0.0
+    coq_CircuitArrow            CircuitArrow          CircuitArrow.hs:(95,1)-(103,50)           457           0    0.0    0.0     0.0    0.0
+    coq_CircuitCat              CircuitArrow          CircuitArrow.hs:(89,1)-(92,71)            448           0    0.0    0.0     0.0    0.0
+  adder_large_netlist_count     ArrowAdderTutorial    ArrowAdderTutorial.hs:(1512,1)-(1634,39)  599           1    0.0    0.0    17.1    0.0
+   count_rewrites               CircuitSemantics      CircuitSemantics.hs:(42,1)-(53,19)        600    26255518   16.7    0.0    17.1    0.0
+    _N__add                     BinNat                BinNat.hs:(64,1)-(70,60)                  601    10376282    0.4    0.0     0.4    0.0
+  fullAdder                     ArrowAdderTutorial    ArrowAdderTutorial.hs:(93,1)-(241,88)     515           1    0.0    0.0     0.0    0.0
+  halfAdder                     ArrowAdderTutorial    ArrowAdderTutorial.hs:(44,1)-(90,62)      518           1    0.0    0.0     0.0    0.0
+  primitive_output              Primitives            Primitives.hs:(188,1)-(209,22)            575           1    0.0    0.0     0.0    0.0
+  unsafeCoerce                  ArrowAdderTutorial    ArrowAdderTutorial.hs:33:1-37             462           1    0.0    0.0     0.0    0.0
+  build_netlist                 CircuitLowering       CircuitLowering.hs:(672,1)-(673,68)       441           0    0.0    0.0     9.9   11.0
+   build_netlist'               CircuitLowering       CircuitLowering.hs:(277,1)-(642,69)       442    26255518    9.9   11.0     9.9   11.0
+   apply_rightmost_tt           CircuitLowering       CircuitLowering.hs:(645,1)-(667,20)       472           1    0.0    0.0     0.0    0.0
+ CAF                            Main                  <entire-module>                           358           0    0.0    0.0     0.0    0.0
+  main                          Main                  ArrowExamplesSV.hs:(30,1)-(51,41)         366           1    0.0    0.0     0.0    0.0
+   fromN                        Cava2SystemVerilog    Cava2SystemVerilog.hs:(57,1)-(60,25)      598           1    0.0    0.0     0.0    0.0
+ CAF                            Cava2SystemVerilog    <entire-module>                           357           0    0.0    0.0     0.0    0.1
+  inputPorts                    Cava2SystemVerilog    Cava2SystemVerilog.hs:112:1-26            554           1    0.0    0.0     0.0    0.0
+  outputPorts                   Cava2SystemVerilog    Cava2SystemVerilog.hs:128:1-28            557           1    0.0    0.0     0.0    0.0
+  unsmashSignalInstance         Cava2SystemVerilog    Cava2SystemVerilog.hs:503:1-59            569           1    0.0    0.0     0.0    0.0
+  cava2SystemVerilog            Cava2SystemVerilog    Cava2SystemVerilog.hs:(63,1)-(99,46)      585           0    0.0    0.1     0.0    0.1
+ CAF                            ArrowKind             <entire-module>                           356           0    0.0    0.0     0.0    0.0
+  unsafeCoerce                  ArrowKind             ArrowKind.hs:25:1-37                      493           1    0.0    0.0     0.0    0.0
+ CAF                            CircuitArrow          <entire-module>                           349           0    0.0    0.0     0.0    0.0
+  coq_CircuitArrow              CircuitArrow          CircuitArrow.hs:(95,1)-(103,50)           456           1    0.0    0.0     0.0    0.0
+  coq_CircuitArrowCopy          CircuitArrow          CircuitArrow.hs:(114,1)-(115,72)          475           1    0.0    0.0     0.0    0.0
+  coq_CircuitArrowDrop          CircuitArrow          CircuitArrow.hs:(106,1)-(107,72)          478           1    0.0    0.0     0.0    0.0
+  coq_CircuitArrowSwap          CircuitArrow          CircuitArrow.hs:(110,1)-(111,76)          470           1    0.0    0.0     0.0    0.0
+  coq_CircuitCat                CircuitArrow          CircuitArrow.hs:(89,1)-(92,71)            447           1    0.0    0.0     0.0    0.0
+  unsafeCoerce                  CircuitArrow          CircuitArrow.hs:23:1-37                   449           1    0.0    0.0     0.0    0.0
+ CAF                            CircuitLowering       <entire-module>                           348           0    0.0    0.0     0.0    0.0
+  unsafeCoerce                  CircuitLowering       CircuitLowering.hs:43:1-37                444           1    0.0    0.0     0.0    0.0
+  build_netlist'                CircuitLowering       CircuitLowering.hs:(277,1)-(642,69)       458           0    0.0    0.0     0.0    0.0
+ CAF                            ExprLowering          <entire-module>                           342           0    0.0    0.0     0.0    0.0
+  unsafeCoerce                  ExprLowering          ExprLowering.hs:26:1-37                   461           1    0.0    0.0     0.0    0.0
+  closure_conversion'           ExprLowering          ExprLowering.hs:(61,1)-(583,70)           477           0    0.0    0.0     0.0    0.0
+   coq_CircuitArrowDrop         CircuitArrow          CircuitArrow.hs:(106,1)-(107,72)          479           0    0.0    0.0     0.0    0.0
+ CAF                            Monad                 <entire-module>                           337           0    0.0    0.0     0.0    0.0
+  unsafeCoerce                  Monad                 Monad.hs:21:1-37                          377           1    0.0    0.0     0.0    0.0
+ CAF                            Netlist               <entire-module>                           335           0    0.0    0.0     0.0    0.0
+  initState                     Netlist               Netlist.hs:(612,1)-(613,26)               391           1    0.0    0.0     0.0    0.0
+   initStateFrom                Netlist               Netlist.hs:(607,1)-(609,76)               392           1    0.0    0.0     0.0    0.0
+  newWire                       Netlist               Netlist.hs:(363,1)-(372,78)               521           1    0.0    0.0     0.0    0.0
+   bind                         Monad                 Monad.hs:(47,1)-(49,56)                   522           1    0.0    0.0     0.0    0.0
+   get                          MonadState            MonadState.hs:(12,1)-(14,35)              524           1    0.0    0.0     0.0    0.0
+  unsafeCoerce                  Netlist               Netlist.hs:31:1-37                        375           1    0.0    0.0     0.0    0.0
+  addInputPort                  Netlist               Netlist.hs:(479,1)-(495,22)               407           0    0.0    0.0     0.0    0.0
+   get                          MonadState            MonadState.hs:(12,1)-(14,35)              411           1    0.0    0.0     0.0    0.0
+   ret                          Monad                 Monad.hs:(42,1)-(44,48)                   416           1    0.0    0.0     0.0    0.0
+  addInstance                   Netlist               Netlist.hs:(424,1)-(434,73)               529           0    0.0    0.0     0.0    0.0
+   get                          MonadState            MonadState.hs:(12,1)-(14,35)              530           1    0.0    0.0     0.0    0.0
+  addOutputPort                 Netlist               Netlist.hs:(498,1)-(508,70)               543           0    0.0    0.0     0.0    0.0
+   get                          MonadState            MonadState.hs:(12,1)-(14,35)              544           1    0.0    0.0     0.0    0.0
+  setClockAndReset              Netlist               Netlist.hs:(550,1)-(562,58)               397           0    0.0    0.0     0.0    0.0
+   get                          MonadState            MonadState.hs:(12,1)-(14,35)              401           1    0.0    0.0     0.0    0.0
+  setModuleName                 Netlist               Netlist.hs:(536,1)-(546,59)               383           0    0.0    0.0     0.0    0.0
+   get                          MonadState            MonadState.hs:(12,1)-(14,35)              387           1    0.0    0.0     0.0    0.0
+  wireUpCircuit                 Netlist               Netlist.hs:(667,1)-(683,52)               374           0    0.0    0.0     0.0    0.0
+ CAF                            StateMonad            <entire-module>                           329           0    0.0    0.0     0.0    0.0
+  coq_MonadState_state          StateMonad            StateMonad.hs:(69,1)-(71,55)              388           1    0.0    0.0     0.0    0.0
+  coq_Monad_state               StateMonad            StateMonad.hs:(62,1)-(66,38)              376           1    0.0    0.0     0.0    0.0
+  unsafeCoerce                  StateMonad            StateMonad.hs:29:1-37                     390           1    0.0    0.0     0.0    0.0
+ CAF                            Types                 <entire-module>                           328           0    0.0    0.0     0.0    0.0
+  coq_ShapeOne                  Types                 Types.hs:(132,1)-(133,29)                 422           1    0.0    0.0     0.0    0.0
+  unsafeCoerce                  Types                 Types.hs:26:1-37                          578           1    0.0    0.0     0.0    0.0
+ CAF                            GHC.Conc.Signal       <entire-module>                           279           0    0.0    0.0     0.0    0.0
+ CAF                            GHC.IO.Encoding       <entire-module>                           261           0    0.0    0.0     0.0    0.0
+ CAF                            GHC.IO.Encoding.Iconv <entire-module>                           259           0    0.0    0.0     0.0    0.0
+ CAF                            GHC.IO.FD             <entire-module>                           252           0    0.0    0.0     0.0    0.0
+ CAF                            GHC.IO.Handle.FD      <entire-module>                           250           0    0.0    0.0     0.0    0.0
+ CAF                            GHC.IO.Handle.Text    <entire-module>                           248           0    0.0    0.0     0.0    0.0
+ main                           Main                  ArrowExamplesSV.hs:(30,1)-(51,41)         367           0    0.0    0.0     2.9    8.4
+  writeSystemVerilog            Cava2SystemVerilog    Cava2SystemVerilog.hs:(36,1)-(47,73)      549           1    0.9    2.0     2.9    8.4
+   cava2SystemVerilog           Cava2SystemVerilog    Cava2SystemVerilog.hs:(63,1)-(99,46)      553           1    0.1    0.1     2.0    6.3
+    generateInstance            Cava2SystemVerilog    Cava2SystemVerilog.hs:(185,1)-(222,90)    586       80641    0.0    0.1     1.3    5.4
+     primitiveInstance          Cava2SystemVerilog    Cava2SystemVerilog.hs:(225,1)-(227,24)    593       80640    0.6    2.4     1.3    5.4
+      showArgs                  Cava2SystemVerilog    Cava2SystemVerilog.hs:230:1-73            594       80640    0.2    1.4     0.7    2.9
+       insertCommas             Cava2SystemVerilog    Cava2SystemVerilog.hs:(138,1)-(140,56)    595      241920    0.2    0.8     0.2    0.8
+       showSignal               Cava2SystemVerilog    Cava2SystemVerilog.hs:(155,1)-(170,73)    596      241920    0.3    0.7     0.4    0.7
+        fromN                   Cava2SystemVerilog    Cava2SystemVerilog.hs:(57,1)-(60,25)      597       80640    0.1    0.0     0.1    0.0
+     showSignal                 Cava2SystemVerilog    Cava2SystemVerilog.hs:(155,1)-(170,73)    587         258    0.0    0.0     0.0    0.0
+      showVecLiteral            Cava2SystemVerilog    Cava2SystemVerilog.hs:(147,1)-(152,48)    588           1    0.0    0.0     0.0    0.0
+       showVectorElements       Cava2SystemVerilog    Cava2SystemVerilog.hs:(143,1)-(144,44)    591           1    0.0    0.0     0.0    0.0
+        insertCommas            Cava2SystemVerilog    Cava2SystemVerilog.hs:(138,1)-(140,56)    592         256    0.0    0.0     0.0    0.0
+      to_list                   Vector                Vector.hs:(239,1)-(245,28)                589           1    0.0    0.0     0.0    0.0
+    insertCommas                Cava2SystemVerilog    Cava2SystemVerilog.hs:(138,1)-(140,56)    556           2    0.0    0.0     0.0    0.0
+    declareLocalNets            Cava2SystemVerilog    Cava2SystemVerilog.hs:(102,1)-(106,46)    567           1    0.0    0.0     0.0    0.0
+    fromN                       Cava2SystemVerilog    Cava2SystemVerilog.hs:(57,1)-(60,25)      563           1    0.0    0.0     0.0    0.0
+    unsmashSignalInstances      Cava2SystemVerilog    Cava2SystemVerilog.hs:(506,1)-(507,48)    568           1    0.3    0.3     0.6    0.8
+     unsmashSignalInstance      Cava2SystemVerilog    Cava2SystemVerilog.hs:503:1-59            570           0    0.0    0.0     0.3    0.5
+      mapSignalsInInstanceM     Cava2SystemVerilog    Cava2SystemVerilog.hs:(511,1)-(563,85)    571       80641    0.2    0.3     0.3    0.5
+       unsmashSignal            Cava2SystemVerilog    Cava2SystemVerilog.hs:(614,1)-(632,24)    572      242178    0.0    0.2     0.0    0.2
+        of_list                 Vector                Vector.hs:(233,1)-(236,67)                590         257    0.0    0.0     0.0    0.0
+        checkStem               Cava2SystemVerilog    Cava2SystemVerilog.hs:(592,1)-(599,18)    584           1    0.0    0.0     0.0    0.0
+        to_list                 Vector                Vector.hs:(239,1)-(245,28)                577           1    0.0    0.0     0.0    0.0
+    inputPorts                  Cava2SystemVerilog    Cava2SystemVerilog.hs:112:1-26            555           0    0.0    0.0     0.0    0.0
+     inputPort                  Cava2SystemVerilog    Cava2SystemVerilog.hs:(115,1)-(119,41)    559           1    0.0    0.0     0.0    0.0
+      vectorDeclaration         Cava2SystemVerilog    Cava2SystemVerilog.hs:(122,1)-(125,71)    560           2    0.0    0.0     0.0    0.0
+    outputPorts                 Cava2SystemVerilog    Cava2SystemVerilog.hs:128:1-28            558           0    0.0    0.0     0.0    0.0
+     outputPort                 Cava2SystemVerilog    Cava2SystemVerilog.hs:(131,1)-(135,42)    561           1    0.0    0.0     0.0    0.0
+      vectorDeclaration         Cava2SystemVerilog    Cava2SystemVerilog.hs:(122,1)-(125,71)    562           1    0.0    0.0     0.0    0.0
+   coq_module                   Netlist               Netlist.hs:(349,1)-(351,56)               550           1    0.0    0.0     0.0    0.0
+   moduleName                   Netlist               Netlist.hs:(201,1)-(203,49)               551           1    0.0    0.0     0.0    0.0

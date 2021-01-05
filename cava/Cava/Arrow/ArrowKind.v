@@ -38,6 +38,31 @@ Proof.
   exact (PeanoNat.Nat.eq_dec n n0).
 Defined.
 
+Fixpoint kind_eqb (k1 k2: Kind) : bool :=
+match k1 with
+| Tuple l r =>
+  match k2 with
+  | Tuple l2 r2 =>
+    kind_eqb l l2 && kind_eqb r r2
+  | _ => false
+  end
+| Unit =>
+  match k2 with
+  | Unit => true
+  | _ => false
+  end
+| Bit =>
+  match k2 with
+  | Bit => true
+  | _ => false
+  end
+| Vector ty n =>
+  match k2 with
+  | Vector ty2 n2 => Nat.eqb n n2 && kind_eqb ty ty2
+  | _ => false
+  end
+end.
+
 Instance kind_decidable_equality_inst : DecidableEquality Kind := {
   eq_dec := eq_kind_dec
 }.

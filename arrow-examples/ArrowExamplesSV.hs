@@ -25,27 +25,28 @@ import UnsignedAdder
 import Counter
 import SignalingCounter
 import Fir
-import ArrowAdderTutorial
+-- import ArrowAdderTutorial
+import D
 
 main :: IO ()
 main = do
-  writeSystemVerilog mux2_1_netlist
-  writeTestBench mux2_1_tb
-  writeSystemVerilog fullAdder_netlist
-  writeTestBench fullAdder_tb
-  writeSystemVerilog adder445_netlist
-  writeTestBench adder445_tb
-  writeSystemVerilog adder88810_netlist
-  writeTestBench adder88810_tb
-  writeSystemVerilog adder444_tree_4_netlist
-  writeSystemVerilog adder444_tree_8_netlist
-  writeSystemVerilog adder444_tree_64_netlist
-  writeTestBench adder444_tree_4_tb
-  writeSystemVerilog growth_tree_8_netlist
-  writeTestBench growth_tree_8_tb
-  writeSystemVerilog counter_3_netlist
-  writeTestBench counter_3_tb
-  writeSystemVerilog signaling_counter_netlist
-  writeTestBench signaling_counter_tb
-  writeSystemVerilog fir_netlist
-  writeTestBench fir_tb
+  writeSystemVerilog adder_large_netlist
+  -- writeTestBench mux2_1_tb
+  -- writeSystemVerilog fullAdder_netlist
+  -- writeTestBench fullAdder_tb
+  -- writeSystemVerilog adder445_netlist
+  -- writeTestBench adder445_tb
+  -- writeSystemVerilog adder88810_netlist
+  -- writeTestBench adder88810_tb
+  -- writeSystemVerilog adder444_tree_4_netlist
+  -- writeSystemVerilog adder444_tree_8_netlist
+  -- writeSystemVerilog adder444_tree_64_netlist
+  -- writeTestBench adder444_tree_4_tb
+  -- writeSystemVerilog growth_tree_8_netlist
+  -- writeTestBench growth_tree_8_tb
+  -- writeSystemVerilog counter_3_netlist
+  -- writeTestBench counter_3_tb
+  -- writeSystemVerilog signaling_counter_netlist
+  -- writeTestBench signaling_counter_tb
+  -- writeSystemVerilog fir_netlist
+  -- writeTestBench fir_tb

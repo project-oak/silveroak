@@ -70,7 +70,7 @@ Definition fir_tb_inputs : list (Bvector 8) :=
  map (N2Bv_sized 8) [1; 2; 3; 4; 5; 6; 7; 8; 9]%N.
 
 Definition fir_tb_expected_outputs : list (Bvector 8) :=
-  unroll_circuit_evaluation (closure_conversion fir) fir_tb_inputs.
+  interp_sequential (module_to_expr fir _) fir_tb_inputs.
 
 Definition fir_tb :=
   testBench "fir_tb" fir_Interface

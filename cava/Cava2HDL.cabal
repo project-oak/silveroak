@@ -88,6 +88,7 @@ library
                      Arrow
                      Coq
                      Kleisli
+                     Specif
   other-Modules:     Applicative
                      BinPos
                      BinNatDef
@@ -99,7 +100,7 @@ library
                      Functor
                      Hexadecimal
                      Numeral
-                     Specif
+                     -- Specif
                      ListUtils
                      MonadExc
                      MonadFix

@@ -39,5 +39,3 @@ End notation.
 
 Open Scope kind_scope.
 
-Lemma xilinxFullAdder_is_combinational: is_combinational (closure_conversion xilinxFullAdder).
-Proof. simply_combinational. Qed.

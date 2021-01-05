@@ -1,0 +1,3 @@
+packages: ./cava/Cava2HDL.cabal
+packages: ./arrow-examples/arrow-examples.cabal
+

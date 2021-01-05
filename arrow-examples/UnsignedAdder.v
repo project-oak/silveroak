@@ -17,7 +17,7 @@
 Require Import Cava.Arrow.ArrowExport.
 
 Require Import Coq.Strings.String Coq.Bool.Bvector Coq.Lists.List Coq.NArith.NArith
-     Coq.Init.Nat.
+     Coq.Init.Nat Coq.micromega.Lia.
 Import ListNotations.
 Import EqNotations.
 
@@ -39,6 +39,33 @@ Section notation.
   Definition tree_adder a n
   : << Vector (Vector Bit a) (2^n), Unit >> ~> (Vector Bit a) :=
   <[ \ v => !(tree (Vector Bit a) n (unsigned_adder a a a)) v  ]>.
+  (* Lemma tktk n : {x | (2 ^ S n) = (1 + x )}. *)
+  (* Proof. induction n. *)
+  (*   eexists. cbv. eauto. *)
+  (*   destruct IHn. *)
+  (*   eexists. *)
+  (*   rewrite PeanoNat.Nat.pow_succ_r'. *)
+  (*   rewrite e. *)
+  (*   cbn [mult]. *)
+  (*   rewrite <- PeanoNat.Nat.add_assoc. *)
+  (*   f_equal. *)
+  (* Qed. *)
+
+  (* Definition tree_adder a n *)
+  (* : << Vector (Vector Bit a) (2^n), Unit >> ~> (Vector Bit a). refine( *)
+  (* match n with *)
+  (* | 0 => <[\_=> #0 ]> *)
+  (* | S n' => _ *)
+  (* end). *)
+  (* pose (tktk n'). *)
+  (* destruct s. *)
+  (* rewrite e. *)
+  (* refine ( *)
+  (*   <[\ xs => *)
+  (*   let '(x,_) = uncons xs in *)
+  (*   x]>). *)
+  (* Defined. *)
+  (* Print tree_adder. *)
 
   Lemma max_nn_add_1_is_S_n: forall n, 1 + max n n = S n.
   Proof. intros; rewrite PeanoNat.Nat.max_id; auto. Qed.
@@ -69,12 +96,6 @@ Section notation.
   Definition growth_tree_8: << Vector (Vector Bit 4) 8, Unit >> ~> (Vector Bit 7)
     := growth_tree_adder 4 3.
 End notation.
-
-Lemma adder445_is_combinational: is_combinational (closure_conversion adder445).
-Proof. simply_combinational. Qed.
-
-Lemma adder88810_is_combinational: is_combinational (closure_conversion adder88810).
-Proof. simply_combinational. Qed.
 
 Require Import Cava.Netlist.
 
@@ -117,7 +138,7 @@ Definition adder445_tb_inputs :=
   [(0, 0); (1, 2); (15, 1); (15, 15)]%N.
 
 Definition adder445_tb_expected_outputs
-  := map (fun i => combinational_evaluation (closure_conversion adder445) i) adder445_tb_inputs.
+  := map (fun i => interp_combinational (module_to_expr adder445 _) i) adder445_tb_inputs.
 
 Definition adder445_tb
   := testBench "adder445_tb" adder445_interface
@@ -131,7 +152,7 @@ Definition adder88810_tb_inputs :=
   [(17, 23, 95); (4, 200, 30); (255, 255, 200)]%N.
 
 Definition adder88810_tb_expected_outputs
-  := map (fun i => combinational_evaluation (closure_conversion adder88810) i) adder88810_tb_inputs.
+  := map (fun i => interp_combinational (module_to_expr adder88810 _) i) adder88810_tb_inputs.
 
 Definition adder88810_tb
   := testBench "adder88810_tb" adder88810_interface
@@ -150,11 +171,8 @@ Definition adder444_tree_4_inputs :=
   map (fun '(x, y, z, w) => [N2Bv_sized 4 x; N2Bv_sized 4 y; N2Bv_sized 4 z; N2Bv_sized 4 w]%vector)
   [(0, 0, 0, 1); (1, 1, 1, 1); (1, 3, 5, 2); (15, 1, 1, 1)]%N.
 
-Lemma adder444_tree_4_is_combinational: is_combinational (closure_conversion adder444_tree_4).
-Proof. simply_combinational. Qed.
-
 Definition adder444_tree_4_tb_expected_outputs
-  := map (fun i => combinational_evaluation (closure_conversion adder444_tree_4) i) adder444_tree_4_inputs.
+  := map (fun i => interp_combinational (module_to_expr adder444_tree_4 _) i) adder444_tree_4_inputs.
 
 Definition adder444_tree_4_tb
   := testBench "adder444_tree_4_tb" adder444_tree_4_interface
@@ -162,6 +180,8 @@ Definition adder444_tree_4_tb
 
 Definition growth_tree_8_netlist :=
   build_netlist (closure_conversion growth_tree_8) "growth_tree_8" "vec" "result".
+
+Compute growth_tree_8_netlist.
 
 Definition growth_tree_8_inputs :=
   map (Vector.map (N2Bv_sized 4))
@@ -171,11 +191,8 @@ Definition growth_tree_8_inputs :=
   ;[15; 15; 15; 15; 15; 15; 15; 15]%vector %N
   ].
 
-Lemma growth_tree_8_is_combinational: is_combinational (closure_conversion growth_tree_8).
-Proof. simply_combinational. Qed.
-
 Definition growth_tree_8_tb_expected_outputs
-  := map (fun i => combinational_evaluation (closure_conversion growth_tree_8) i) growth_tree_8_inputs.
+  := map (fun i => interp_combinational (module_to_expr growth_tree_8 _) i) growth_tree_8_inputs.
 
 Definition growth_tree_8_tb
   := testBench "growth_tree_8_tb" growth_tree_8_interface

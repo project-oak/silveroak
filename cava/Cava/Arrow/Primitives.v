@@ -156,3 +156,92 @@ Definition primitive_semantics (p: CircuitPrimitive):
   | P2 p => fun '(x, y) => binary_semantics _ _ _ p x y
   end.
 
+Fixpoint denote_kind_eq {a b} (p1: denote_kind a) (p2: denote_kind b) {struct b}: bool :=
+  match eq_kind_dec a b with
+  | left e =>
+      let p3 := eq_rect a (fun a0 : Kind => denote_kind a0) p1 b e in
+      match
+        b as k return (denote_kind k -> denote_kind k -> a = k -> bool)
+      with
+      | Tuple b1 b2 =>
+          fun (p4 p5 : denote_kind << b1, b2 >>) (_ : a = Tuple b1 b2) =>
+          let (d, d0) := p4 in
+          let (d1, d2) := p5 in
+          denote_kind_eq d d1 && denote_kind_eq d0 d2
+      | Unit => fun (_ _ : denote_kind Unit) (_ : a = Unit) => true
+      | Bit => fun (p4 p5 : denote_kind Bit) (_ : a = Bit) => eqb p4 p5
+      | Vector b0 n =>
+          fun (p4 p5 : denote_kind (Vector b0 n)) (_ : a = Vector b0 n) =>
+          let t := map2 (denote_kind_eq ) p4 p5 in fold_left andb true t
+      end p3 p2 e
+  | right _ => false
+  end.
+
+(* Seems to compute fine? *)
+(* Compute (@denote_kind_eq (Vector Bit 3) (Vector Bit 3) [true;false;true] [true;false;false]). *)
+(* Compute (@denote_kind_eq (Vector Bit 2) (Vector Bit 3) [true;false] [true;false;false]). *)
+
+Definition nullary_primitive_eqb {a b} (p1: NullaryPrimitive a) (p2: NullaryPrimitive b) : bool :=
+  if kind_eqb a b then
+    match p1, p2 with
+    | Constant _ v1, Constant _ v2 => denote_kind_eq v1 v2
+    | ConstantVec n1 ty1 v1, ConstantVec n2 ty2 v2 =>
+      List.fold_left (fun t '(x,y) => t && denote_kind_eq x y) (List.combine v1 v2) true
+    | EmptyVec _, EmptyVec _ => true
+    | _, _ => false
+    end
+  else false.
+
+Definition unary_primitive_eqb {a b c d} (p1: UnaryPrimitive a c) (p2: UnaryPrimitive b d) : bool :=
+  if kind_eqb a b then
+    if kind_eqb c d then
+      match p1, p2 with
+      | BufGate, BufGate => true
+      (* | Lut (n: nat) (f: bool^^n --> bool) *)
+      | Not,  Not => true
+      | Fst _ _,  Fst _ _ => true
+      | Snd _ _,  Snd _ _ => true
+      | Uncons _ _,  Uncons _ _ => true
+      | Unsnoc _ _,  Unsnoc _ _ => true
+      | Slice _ x y _,  Slice _ z w _ => Nat.eqb x z && Nat.eqb y w (* not uniquely defined by type *)
+      | Split _ _ _,  Split _ _ _ => true
+      | _, _ => false
+      end
+    else false
+  else false.
+
+Definition binary_primitive_eqb {a b c d e f} (p1: BinaryPrimitive a c e) (p2: BinaryPrimitive b d f) : bool :=
+  if kind_eqb a b then
+    if kind_eqb c d then
+      if kind_eqb e f then
+        match p1, p2 with
+        | And, And => true
+        | Nand, Nand => true
+        | Or, Or => true
+        | Nor, Nor => true
+        | Xor, Xor => true
+        | Xnor, Xnor => true
+        | Xorcy, Xorcy => true
+        | Muxcy, Muxcy => true
+        | Pair _ _, Pair _ _ => true
+        | UnsignedAdd _ _ _, UnsignedAdd _ _ _ => true
+        | UnsignedSub _, UnsignedSub _ => true
+        | Mult _ _, Mult _ _ => true
+        | Index _ _, Index _ _ => true
+        | Cons _ _, Cons _ _ => true
+        | Snoc _ _, Snoc _ _ => true
+        | Concat _ _ _, Concat _ _ _ => true
+        | _, _ => false
+        end
+      else false
+    else false
+  else false.
+
+Definition primitive_eqb (p1 p2: CircuitPrimitive) : bool :=
+  match p1, p2 with
+  | P0 p1, P0 p2 => nullary_primitive_eqb p1 p2
+  | P1 p1, P1 p2 => unary_primitive_eqb p1 p2
+  | P2 p1, P2 p2 => binary_primitive_eqb p1 p2
+  | _ , _ => false
+  end.
+

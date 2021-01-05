@@ -144,6 +144,7 @@ Module KappaNotation.
 
   Notation "'true''" := (Primitive (P0 (Constant Bit true))) (in custom expr at level 2) : kappa_scope.
   Notation "'false''" := (Primitive (P0 (Constant Bit false))) (in custom expr at level 2) : kappa_scope.
+  Notation "'tt''" := (Primitive (P0 (Constant Unit tt))) (in custom expr at level 2) : kappa_scope.
 
   Notation "# x" := (Primitive (P0 (Constant (Vector Bit _) (N2Bv_sized _ x))))%N
     (in custom expr at level 2,

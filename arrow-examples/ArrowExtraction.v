@@ -36,6 +36,7 @@ Require Import ArrowExamples.SignalingCounter.
 Require Import ArrowExamples.Fir.
 
 Require Import ArrowExamples.ArrowAdderTutorial.
+Require Import ArrowExamples.D.
 
 Extraction Library Combinators.
 Extraction Library SyntaxExamples.
@@ -46,3 +47,4 @@ Extraction Library SignalingCounter.
 Extraction Library Fir.
 
 Extraction Library ArrowAdderTutorial.
+Extraction Library D.

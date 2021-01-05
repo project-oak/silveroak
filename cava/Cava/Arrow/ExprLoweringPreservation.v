@@ -28,94 +28,94 @@ Require Import Cava.Arrow.ExprLowering.
 Require Import Cava.Arrow.ExprSemantics.
 Require Import Cava.Arrow.ExprSyntax.
 
-(* TODO: this is copied from CircuitFunctionalEquivalence and extended; it
-   should be moved to a more general location *)
-Local Ltac arrowsimpl :=
-  cbn [cancell cancelr uncancell uncancelr assoc unassoc first second copy drop
-               loopr loopl swap compose id
-               CircuitCat CircuitArrow CircuitArrowSwap CircuitArrowLoop
-               CircuitArrowDrop CircuitArrowCopy arrow_category as_kind
-               Datatypes.length Nat.eqb extract_nth ].
+(* (1* TODO: this is copied from CircuitFunctionalEquivalence and extended; it *)
+(*    should be moved to a more general location *1) *)
+(* Local Ltac arrowsimpl := *)
+(*   cbn [cancell cancelr uncancell uncancelr assoc unassoc first second copy drop *)
+(*                loopr loopl swap compose id *)
+(*                CircuitCat CircuitArrow CircuitArrowSwap CircuitArrowLoop *)
+(*                CircuitArrowDrop CircuitArrowCopy arrow_category as_kind *)
+(*                Datatypes.length Nat.eqb extract_nth ]. *)
 
-Lemma rewrite_or_default_refl A x :
-  rewrite_or_default A A x = x.
-Proof.
-  induction A; cbn [rewrite_or_default] in *;
-    repeat destruct_one_match; autorewrite with vsimpl;
-      try reflexivity; [ ].
-  rewrite IHA1, IHA2; eauto using surjective_pairing.
-Qed.
+(* Lemma rewrite_or_default_refl A x : *)
+(*   rewrite_or_default A A x = x. *)
+(* Proof. *)
+(*   induction A; cbn [rewrite_or_default] in *; *)
+(*     repeat destruct_one_match; autorewrite with vsimpl; *)
+(*       try reflexivity; [ ]. *)
+(*   rewrite IHA1, IHA2; eauto using surjective_pairing. *)
+(* Qed. *)
 
-Definition context_entry_ok
-           (ctxt_types : list Kind)
-           (ctxt_values : denote_kind (as_kind ctxt_types))
-           (e : { t : Kind & (coq_func t * natvar t)%type})
-  : Prop :=
-  let value := fst (projT2 e) in
-  let index := snd (projT2 e) in
-  reverse_nth ctxt_types index = Some (projT1 e) /\
-  combinational_evaluation' (extract_nth ctxt_types _ index) ctxt_values = value.
+(* Definition context_entry_ok *)
+(*            (ctxt_types : list Kind) *)
+(*            (ctxt_values : denote_kind (as_kind ctxt_types)) *)
+(*            (e : { t : Kind & (coq_func t * natvar t)%type}) *)
+(*   : Prop := *)
+(*   let value := fst (projT2 e) in *)
+(*   let index := snd (projT2 e) in *)
+(*   reverse_nth ctxt_types index = Some (projT1 e) /\ *)
+(*   combinational_evaluation' (extract_nth ctxt_types _ index) ctxt_values = value. *)
 
-Lemma extend_context_entry_ok_tl ctxt_types ctxt t (x : denote_kind t) e :
-  context_entry_ok ctxt_types ctxt e ->
-  context_entry_ok (t :: ctxt_types) (x, ctxt) e.
-Proof.
-  cbv [context_entry_ok]; intros.
-  repeat match goal with
-         | x : { _ & _ } |- _ => destruct x
-         | x : _ * _ |- _ => destruct x
-         | H : _ /\ _ |- _ => destruct H
-         | _ => progress cbn [projT1 projT2 fst snd rev] in *
-         end.
-  erewrite split_lookup by eauto.
-  split; [ reflexivity | ].
-  cbn [extract_nth].
-  destruct_one_match; arrowsimpl; cbn [combinational_evaluation' fst snd];
-    subst; [ | tauto ].
-  match goal with
-  | H : reverse_nth _ (length _) = Some _ |- _ =>
-    apply lookup_upper_contra in H
-  end.
-  tauto.
-Qed.
+(* Lemma extend_context_entry_ok_tl ctxt_types ctxt t (x : denote_kind t) e : *)
+(*   context_entry_ok ctxt_types ctxt e -> *)
+(*   context_entry_ok (t :: ctxt_types) (x, ctxt) e. *)
+(* Proof. *)
+(*   cbv [context_entry_ok]; intros. *)
+(*   repeat match goal with *)
+(*          | x : { _ & _ } |- _ => destruct x *)
+(*          | x : _ * _ |- _ => destruct x *)
+(*          | H : _ /\ _ |- _ => destruct H *)
+(*          | _ => progress cbn [projT1 projT2 fst snd rev] in * *)
+(*          end. *)
+(*   erewrite split_lookup by eauto. *)
+(*   split; [ reflexivity | ]. *)
+(*   cbn [extract_nth]. *)
+(*   destruct_one_match; arrowsimpl; cbn [combinational_evaluation' fst snd]; *)
+(*     subst; [ | tauto ]. *)
+(*   match goal with *)
+(*   | H : reverse_nth _ (length _) = Some _ |- _ => *)
+(*     apply lookup_upper_contra in H *)
+(*   end. *)
+(*   tauto. *)
+(* Qed. *)
 
-Lemma extend_context_entry_ok_hd ctxt_types ctxt t (x : denote_kind t) :
-  context_entry_ok (t :: ctxt_types) (x, ctxt) (vars _ _ (x, length ctxt_types)).
-Proof.
-  cbv [context_entry_ok]. fold as_kind denote_kind in *.
-  cbn [rev projT1 projT2 fst snd vars].
-  erewrite split_lookup by eauto.
-  split; [ reflexivity | ]. cbn [extract_nth].
-  destruct_one_match; arrowsimpl; cbn [combinational_evaluation']; [ | tauto ].
-  cbn [fst snd]. apply rewrite_or_default_refl.
-Qed.
+(* Lemma extend_context_entry_ok_hd ctxt_types ctxt t (x : denote_kind t) : *)
+(*   context_entry_ok (t :: ctxt_types) (x, ctxt) (vars _ _ (x, length ctxt_types)). *)
+(* Proof. *)
+(*   cbv [context_entry_ok]. fold as_kind denote_kind in *. *)
+(*   cbn [rev projT1 projT2 fst snd vars]. *)
+(*   erewrite split_lookup by eauto. *)
+(*   split; [ reflexivity | ]. cbn [extract_nth]. *)
+(*   destruct_one_match; arrowsimpl; cbn [combinational_evaluation']; [ | tauto ]. *)
+(*   cbn [fst snd]. apply rewrite_or_default_refl. *)
+(* Qed. *)
 
-Fixpoint no_letrec {var i o} (e : kappa var i o) : Prop :=
-  match e with
-  | Var _ => True
-  | Abs f => forall v, no_letrec (f v)
-  | App f x => no_letrec f /\ no_letrec x
-  | Comp e1 e2 => no_letrec e1 /\ no_letrec e2
-  | Comp1 e1 e2 => no_letrec e1 /\ no_letrec e2
-  | Delay => False
-  | Primitive _ => True
-  | Let x f => no_letrec x /\ forall v, no_letrec (f v)
-  | LetRec _ _ => False
-  | Id => True
-  | Typecast _ _ => True
-  | CallModule m => True
-  end.
-Definition NoLetRec {i o} (e : Kappa i o) : Prop := no_letrec (e unitvar).
+(* Fixpoint no_letrec {var i o} (e : kappa var i o) : Prop := *)
+(*   match e with *)
+(*   | Var _ => True *)
+(*   | Abs f => forall v, no_letrec (f v) *)
+(*   | App f x => no_letrec f /\ no_letrec x *)
+(*   | Comp e1 e2 => no_letrec e1 /\ no_letrec e2 *)
+(*   | Comp1 e1 e2 => no_letrec e1 /\ no_letrec e2 *)
+(*   | Delay => False *)
+(*   | Primitive _ => True *)
+(*   | Let x f => no_letrec x /\ forall v, no_letrec (f v) *)
+(*   | LetRec _ _ => False *)
+(*   | Id => True *)
+(*   | Typecast _ _ => True *)
+(*   | CallModule m => True *)
+(*   end. *)
+(* Definition NoLetRec {i o} (e : Kappa i o) : Prop := no_letrec (e unitvar). *)
 
-Lemma no_letrec_unitvar_equiv
-      i o var (expr1 : kappa unitvar i o) (expr2 : kappa var i o) G :
-  kappa_equivalence G expr1 expr2 ->
-  no_letrec expr1 ->
-  no_letrec expr2.
-Proof.
-  induction 1; intros; cbn [no_letrec] in *; destruct_products; solve [eauto].
-  Unshelve. all: apply tt.
-Qed.
+(* Lemma no_letrec_unitvar_equiv *)
+(*       i o var (expr1 : kappa unitvar i o) (expr2 : kappa var i o) G : *)
+(*   kappa_equivalence G expr1 expr2 -> *)
+(*   no_letrec expr1 -> *)
+(*   no_letrec expr2. *)
+(* Proof. *)
+(*   induction 1; intros; cbn [no_letrec] in *; destruct_products; solve [eauto]. *)
+(*   Unshelve. all: apply tt. *)
+(* Qed. *)
 
 (* TODO: fix this proof *)
 (*

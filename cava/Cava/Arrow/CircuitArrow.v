@@ -15,45 +15,23 @@
 (****************************************************************************)
 
 Require Import Coq.Lists.List.
-Require Import Coq.Vectors.Vector.
 Require Import Cava.Arrow.Classes.Category Cava.Arrow.Classes.Arrow.
 Require Import Cava.Arrow.Primitives.
 
 Import ListNotations.
-Import VectorNotations.
 Import CategoryNotations.
 
 Local Open Scope category_scope.
 Local Open Scope arrow_scope.
 
-(* Class CircuitLaws `(A: Arrow, ! ArrowCopy A, ! ArrowSwap A, ! ArrowDrop A) := {
-  cancelr_unit_uncancelr {x}: @cancelr x >>> uncancelr =M= id;
-  cancell_unit_uncancell {x}: @cancell _ _ A x >>> uncancell =M= id;
-  uncancelr_cancelr {x}:      @uncancelr _ _ A x >>> cancelr =M= id;
-  uncancell_cancell {x}:      @uncancell _ _ A x >>> cancell =M= id;
-
-  drop_annhilates {x y} (f: x~>y): f >>> drop =M= drop;
-
-  cancelr_unit_is_drop : @cancelr A unit =M= drop;
-  cancell_unit_is_drop : @cancell A unit =M= drop;
-
-  first_first   {x y z w} (f: x~>y) (g:y~>z): @first A x y w f >>> first g  =M= first (f >>> g);
-  second_second {x y z w} (f: x~>y) (g:y~>z): @second A x y w f >>> second g  =M= second (f >>> g);
-
-  swap_swap {x y}: @swap A _ x y >>> swap =M= id;
-
-  first_id  {x w}: @first A x x w id  =M= id;
-  second_id {x w}: @second A x x w id  =M= id;
-
-  first_f  {x y w} (f: x~>y) (g:x~>y): f =M= g -> @first A x y w f =M= first g;
-  second_f {x y w} (f: x~>y) (g:x~>y): f =M= g -> @second A x y w f =M= second g;
-}. *)
+Set Implicit Arguments.
 
 Notation arrow_input x := (arrow_input (object:=Kind) (unit:=Unit) (product:=Tuple) x).
 Notation arrow_output x := (arrow_output (object:=Kind) (unit:=Unit) (product:=Tuple) x).
 
-(* Single clock circuit *)
-Inductive Circuit: Kind -> Kind -> Type :=
+Section x.
+  (* Single clock circuit *)
+  Inductive Circuit: Kind -> Kind -> Type :=
   | Structural: forall (x: ArrowStructure), Circuit (arrow_input x) (arrow_output x)
   | Primitive: forall (x: CircuitPrimitive), Circuit (primitive_input x) (primitive_output x)
 
@@ -65,19 +43,56 @@ Inductive Circuit: Kind -> Kind -> Type :=
   | Loopl: forall x y z, Circuit (Tuple z x) (Tuple z y) -> Circuit x y
 
   | Delay: forall x, Circuit x x
-
   | RewriteTy: forall x y, Circuit x y
+  | Call: forall x y, nat -> Circuit x y
   .
+
+  Fixpoint renumber {i o} (fn: nat -> nat) (x: Circuit i o): Circuit i o :=
+    match x with
+    | Composition f g => Composition (renumber fn f) (renumber fn g)
+    | First _ f => First _ (renumber fn f)
+    | Second _ f => Second _ (renumber fn f)
+    | Loopr f => Loopr (renumber fn f)
+    | Loopl f => Loopl (renumber fn f)
+
+    | Call _ _ n => Call _ _ (fn n)
+    | x => x
+    end.
+
+  (* Fixpoint ident_max {i o} (x: Circuit i o): nat := *)
+  (*   match x with *)
+  (*   | Composition f g => max (ident_max f) (ident_max g) *)
+  (*   | First _ f => ident_max f *)
+  (*   | Second _ f => ident_max f *)
+  (*   | Loopr f => ident_max f *)
+  (*   | Loopl f => ident_max f *)
+  (*   | Call _ _ n => n *)
+  (*   | x => 0 *)
+  (*   end. *)
+
+  Record TopCircuit (i o : Kind) : Type := mkTop {
+    fragments : list { '(i,o) & Circuit i o} ;
+    toplevel : Circuit i o
+  }.
+
+  Definition renumber_top {i o} (fn: nat -> nat) (x: TopCircuit i o): TopCircuit i o :=
+    match x with
+    | mkTop frag top => mkTop (map (
+      fun '(existT _ (x,y) c) => existT _ (x,y) (renumber fn c)
+    ) frag) (renumber fn top)
+    end.
+
+End x.
 
 Instance CircuitCat : Category Kind := {
   morphism X Y := Circuit X Y;
   id X := Structural (Id X);
-  compose X Y Z f g := Composition X Y Z g f;
+  compose X Y Z f g := Composition g f;
 }.
 
 Instance CircuitArrow : Arrow Kind CircuitCat Unit Tuple := {
-  first  f := First f;
-  second f := Second f;
+  first  _ _ f := First f;
+  second _ _ f := Second f;
   assoc   x y z := Structural (Assoc x y z);
   unassoc x y z := Structural (Unassoc x y z);
   cancelr  x := Structural (Cancelr x);
@@ -92,15 +107,5 @@ Instance CircuitArrowCopy : ArrowCopy CircuitArrow := { copy _ := Structural (Co
 Instance CircuitArrowLoop : ArrowLoop CircuitArrow := { loopl := Loopl; loopr := Loopr; }.
 Instance CircuitArrowSTKC : ArrowSTKC CircuitArrow := { }.
 
-Ltac match_primitive X :=
-  match X with
-  | (Circuit _ _ _) => idtac
-  end.
-
-Ltac match_compose X :=
-  match X with
-  | (Composition _ _ ?Y ?Z) => idtac
-  end.
-
-Definition high : Unit ~> Bit := Primitive (P0 (Constant Bit true)).
-Definition low : Unit ~> Bit := Primitive (P0 (Constant Bit false)).
+(* Definition high : Unit ~> Bit := Primitive (P0 (Constant Bit true)). *)
+(* Definition low : Unit ~> Bit := Primitive (P0 (Constant Bit false)). *)

@@ -41,9 +41,6 @@ End notation.
 
 Open Scope kind_scope.
 
-Lemma mux2_1_is_combinational: is_combinational (closure_conversion mux2_1).
-Proof. simply_combinational. Qed.
-
 Require Import Cava.Netlist.
 Require Import Cava.Signal.
 
@@ -59,9 +56,7 @@ Definition mux2_1_tb_inputs : list (bool * (bool * bool)) :=
   (true, (true, true))].
 
 Definition mux2_1_tb_expected_outputs : list bool :=
- map (fun i => combinational_evaluation (closure_conversion mux2_1) i) mux2_1_tb_inputs.
-
-Goal is_combinational (closure_conversion mux2_1). Proof. simply_combinational. Qed.
+ map (fun i => interp_combinational (module_to_expr mux2_1 _) i) mux2_1_tb_inputs.
 
 Definition mux2_1_tb :=
   testBench "mux2_1_tb"

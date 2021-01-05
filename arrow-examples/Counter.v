@@ -50,7 +50,7 @@ Definition counter_3_tb_inputs : list unit :=
  repeat tt 8.
 
 Definition counter_3_tb_expected_outputs : list (Bvector.Bvector 3) :=
-  unroll_circuit_evaluation (closure_conversion (counter 3)) (repeat tt 8).
+  interp_sequential (module_to_expr (counter 3) _) (repeat tt 8).
 
 Definition counter_3_tb :=
   testBench "counter_3_tb" counter_3_Interface

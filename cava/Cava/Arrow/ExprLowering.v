@@ -144,7 +144,7 @@ End ctxt.
 (* Construct an Arrow morphism that takes a variable list Kind
 and returns the variable at an index *)
 Fixpoint extract_nth (ctxt: list Kind) (ty: Kind) (x: nat)
-  : (as_kind ctxt) ~[CircuitArrow]~> ty :=
+  : (as_kind ctxt) ~> ty :=
   match ctxt with
   | [] => drop >>> Primitive (P0 (Constant _ (kind_default _)))
   | ty' :: ctxt' =>
@@ -152,6 +152,60 @@ Fixpoint extract_nth (ctxt: list Kind) (ty: Kind) (x: nat)
     then second drop >>> cancelr >>> RewriteTy ty' ty
     else first drop >>> cancell >>> extract_nth ctxt' _ x
   end.
+
+Fixpoint kappa_eq {x y z w}
+  (free_var: nat)
+  (e1: kappa natvar x y)
+  (e2: kappa natvar z w): bool :=
+  if kind_eqb x z then
+    if kind_eqb y w then
+      match e1, e2 with
+      | Var n , Var m =>
+        n =? m
+      | Abs f , Abs g =>
+        kappa_eq (S free_var) (f free_var) (g free_var)
+      | App f g , App h j =>
+        kappa_eq free_var f h && kappa_eq free_var g j
+      | Comp f g , Comp h j =>
+        kappa_eq free_var f h && kappa_eq free_var g j
+      | Comp1 f g , Comp1 h j =>
+        kappa_eq free_var f h && kappa_eq free_var g j
+      | ExprSyntax.Delay , ExprSyntax.Delay => true
+      | ExprSyntax.Primitive p1, ExprSyntax.Primitive p2 => primitive_eqb p1 p2
+      | Let x f , Let y g =>
+        kappa_eq (S free_var) (f free_var) (g free_var)
+        && kappa_eq free_var x y
+      | LetRec x f , LetRec y g =>
+        kappa_eq (S free_var) (f free_var) (g free_var) &&
+        kappa_eq (S free_var) (x free_var) (y free_var)
+      | ExprSyntax.Id , ExprSyntax.Id => true
+      | Typecast _ _ , Typecast _ _ => true
+      | CallModule (mkModule _ m1) , CallModule (mkModule _ m2) =>
+        kappa_eq 0 (m1 _) (m2 _)
+      | _ , _ => false
+      end
+    else false
+  else false.
+
+Fixpoint lookup_frag {i o}
+  (expr: kappa natvar i o)
+  (fragments: list { '(i,o) & kappa natvar i o * (Circuit (i**Unit) o) }%type)
+  : option nat :=
+  match fragments with
+    | nil => None
+    | existT _ (x,y) (expr', f) :: frags =>
+      if kappa_eq 0 expr expr'
+        then Some 0
+        else
+          match lookup_frag expr frags with None => None | Some n => Some (S n) end
+  end.
+
+Definition extend_frags {i o}
+  (expr: kappa natvar i o)
+  (x: Circuit (i**Unit) o)
+  (fragments: list { '(i,o) & kappa natvar i o * (Circuit (i**Unit) o) }%type)
+  : list { '(i,o) & kappa natvar i o * (Circuit (i**Unit) o) }%type
+  := fragments ++ [existT _ (i,o) (expr, x)].
 
 (* Perform closure conversion by passing an explicit list Kind. The PHOAS
 representation is converted to first order form with de Brujin
@@ -165,19 +219,20 @@ from the list Kind.
 *)
 Fixpoint closure_conversion' {i o}
   (ctxt: list Kind)
+  (fragments: list { '(i,o) & kappa natvar i o * (Circuit (i**Unit) o) }%type)
   (expr: kappa natvar i o) {struct expr}
-  : (i ** (as_kind ctxt)) ~> o
+  : (Circuit (i ** (as_kind ctxt)) o) * list { '(i,o) & kappa natvar i o * (Circuit (i**Unit) o) }%type
   :=
 match expr with
 (* Instantiating a variable is done by 'cancell' to select the list Kind,
 and then indexing using lookup_morphism. *)
 | Var v =>
-  first drop >>> cancell >>> (extract_nth ctxt _ v)
+  (first drop >>> cancell >>> (extract_nth ctxt _ v), fragments)
 
 (* Kappa abstraction requires extending the list Kind then moving the
 new list Kind variable in to place*)
 | Abs f =>
-  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
+  let (f, fragments) := closure_conversion' (_ :: ctxt) fragments (f (length ctxt)) in
   (*
       input:      (x*y)*list Kind_variables
 
@@ -190,150 +245,88 @@ new list Kind variable in to place*)
   3. call f'
       f':         y*new_list Kind_variables ~> o
   *)
-  first swap >>> assoc >>> f'
+  (first swap >>> assoc >>> f, fragments)
 
 (* Application requires the Kind list Kind to be piped to the abstraction
 'f' and applicant 'e'. since running 'closure_conversion' on each binder
 removes the list Kind, we first need to copy the list Kind. *)
 | App f e =>
-  second (copy >>> first (uncancell >>> closure_conversion' ctxt e))
+  let (f, fragments) := closure_conversion' ctxt fragments f in
+  let (e, fragments) := closure_conversion' ctxt fragments e in
+  (second (copy >>> first (uncancell >>> e))
   >>> unassoc >>> first swap
-  >>> closure_conversion' ctxt f
+  >>> f, fragments)
 
 | Comp e1 e2 =>
-  second copy
+  let (e1, fragments) := closure_conversion' ctxt fragments e1 in
+  let (e2, fragments) := closure_conversion' ctxt fragments e2 in
+  (second copy
   >>> unassoc
-  >>> first (closure_conversion' ctxt e2)
-  >>> closure_conversion' ctxt e1
+  >>> first e2
+  >>> e1, fragments)
 
 | Comp1 e1 e2 =>
-  second copy
+  let (e1, fragments) := closure_conversion' ctxt fragments e1 in
+  let (e2, fragments) := closure_conversion' ctxt fragments e2 in
+  (second copy
   >>> unassoc
-  >>> first (closure_conversion' ctxt e2 >>> apply_rightmost_tt _)
-  >>> closure_conversion' ctxt e1
+  >>> first (e2 >>> apply_rightmost_tt _)
+  >>> e1, fragments)
 
 | ExprSyntax.Primitive p =>
   match p with
   | P0 p =>
-    second drop >>> cancelr >>> (CircuitArrow.Primitive (P0 p))
+    (second drop >>> cancelr >>> (CircuitArrow.Primitive (P0 p)), fragments)
   | P1 p =>
-    second drop >>> cancelr >>> cancelr >>> (CircuitArrow.Primitive (P1 p))
+    (second drop >>> cancelr >>> cancelr >>> (CircuitArrow.Primitive (P1 p)), fragments)
   | P2 p =>
-    second drop >>> cancelr >>> second cancelr >>> (CircuitArrow.Primitive (P2 p))
+    (second drop >>> cancelr >>> second cancelr >>> (CircuitArrow.Primitive (P2 p)), fragments)
   end
 
 | ExprSyntax.Delay =>
-    second drop >>> cancelr >>> cancelr >>> CircuitArrow.Delay _
+    (second drop >>> cancelr >>> cancelr >>> CircuitArrow.Delay _, fragments)
 
 | ExprSyntax.Id =>
-    second drop >>> cancelr >>> id
+    (second drop >>> cancelr >>> id, fragments)
 | Typecast x y =>
-    second drop >>> cancelr >>> cancelr >>> CircuitArrow.RewriteTy x y
+    (second drop >>> cancelr >>> cancelr >>> CircuitArrow.RewriteTy x y, fragments)
 
-| CallModule (mkModule _ m) =>
-  second drop >>> closure_conversion' [] (m _)
+| @CallModule _ _ _ (mkModule _ m) =>
+  match lookup_frag (m _) fragments with
+  | Some n => (Call _ _ n, fragments)
+  | None =>
+    let (f, fragments) := closure_conversion' [] fragments (m _) in
+    let n := length fragments in
+    let fragments := extend_frags (m _) f fragments in
+    (Call _ _ n, fragments)
+  end
 
 | Let v f =>
-  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
-  second (copy >>> first (uncancell
-  >>> closure_conversion' ctxt v))
-  >>> f'
+  let (f, fragments) := closure_conversion' (_ :: ctxt) fragments (f (length ctxt)) in
+  let (v, fragments) := closure_conversion' ctxt fragments v in
+  (second (copy >>> first (uncancell
+  >>> v))
+  >>> f, fragments)
 
 | LetRec v f =>
-  let v' := closure_conversion' (_ :: ctxt) (v (length ctxt)) in
-  let f' := closure_conversion' (_ :: ctxt) (f (length ctxt)) in
-
-                                  (* i**ctxt ~> o *)
-  second (                       (* ctxt ~> o *)
-        copy >>>                     (* ctxt*ctxt ~> o *)
-        first (                         (* ctxt ~> o *)
+  let (v, fragments) := closure_conversion' (_ :: ctxt) fragments (v (length ctxt)) in
+  let (f, fragments) := closure_conversion' (_ :: ctxt) fragments (f (length ctxt)) in
+                                 (* i**ctxt ~> o *)
+  (second (                       (* ctxt ~> o *)
+        copy >>>                 (* ctxt*ctxt ~> o *)
+        first (                  (* ctxt ~> o *)
           loopl (
             (*  z * ctx *)
               uncancell >>>
             (* u * z * ctx *)
-              v' >>> copy
+              v >>> copy
 
               >>> first (Delay _)
         )
       )
     )
-    >>> f'
+    >>> f, fragments)
 end.
-
-Lemma lower_var: forall x (v: _ x) ctxt,
-  closure_conversion' ctxt (Var v)
-  = first drop >>> cancell >>> (extract_nth ctxt _ v).
-Proof. reflexivity. Qed.
-
-Lemma lower_var': forall x (v: _ x) ctxt cv,
-  cv = extract_nth ctxt _ v ->
-  closure_conversion' ctxt (Var v)
-  = first drop >>> cancell >>> cv.
-Proof. intros; subst; reflexivity. Qed.
-
-Lemma lower_abs: forall x y z (f: _ x -> kappa _ y z) ctxt,
-  closure_conversion' ctxt (Abs f)
-  = first swap >>> assoc >>> closure_conversion' (_ :: ctxt) (f (length ctxt)).
-Proof. intros; cbn [closure_conversion']; reflexivity. Qed.
-
-Lemma lower_abs': forall x y z (f: _ x -> kappa _ y z) ctxt c1,
-  c1 = closure_conversion' (_ :: ctxt) (f (length ctxt)) ->
-  closure_conversion' ctxt (Abs f) = first swap >>> assoc >>> c1.
-Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
-
-Lemma lower_app: forall x y z (f: kappa _ (Tuple x y) z) e ctxt,
-  closure_conversion' ctxt (App f e)
-  = second (copy >>> first (uncancell >>> closure_conversion' ctxt e))
-  >>> unassoc >>> first swap
-  >>> closure_conversion' ctxt f.
-Proof. cbn [closure_conversion'];  reflexivity.  Qed.
-
-Lemma lower_app': forall x y z (f: kappa _ (Tuple x y) z) e ctxt c1 c2,
-  c1 = closure_conversion' ctxt e ->
-  c2 = closure_conversion' ctxt f ->
-  closure_conversion' ctxt (App f e)
-  = second (copy >>> first (uncancell >>> c1))
-  >>> unassoc >>> first swap
-  >>> c2.
-Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
-
-Lemma lower_comp: forall x y z (e2: kappa _ x y) (e1: kappa _ y z) ctxt,
-  closure_conversion' ctxt (Comp e1 e2)
-  = second copy
-  >>> unassoc
-  >>> first (closure_conversion' ctxt e2)
-  >>> closure_conversion' ctxt e1.
-Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
-
-Lemma lower_comp': forall x y z (e2: kappa _ x y) (e1: kappa _ y z) ctxt c1 c2,
-  c1 = closure_conversion' ctxt e1 ->
-  c2 = closure_conversion' ctxt e2 ->
-  closure_conversion' ctxt (Comp e1 e2)
-  = second copy
-  >>> unassoc
-  >>> first c2
-  >>> c1.
-Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
-
-Lemma lower_id: forall x ctxt,
-  closure_conversion' (i:=x) ctxt ExprSyntax.Id
-  = second drop >>> cancelr >>> id.
-Proof. reflexivity. Qed.
-
-Lemma lower_let: forall x y z (f: _ x -> kappa _ y z) v ctxt,
-  closure_conversion' ctxt (Let v f)
-  = second (copy >>> first (uncancell
-    >>> closure_conversion' ctxt v))
-  >>> (closure_conversion' (_ :: ctxt) (f (length ctxt))).
-Proof. reflexivity. Qed.
-
-Lemma lower_let': forall x y z (f: natvar x -> kappa _ y z) v ctxt c1 c2,
-  c1 = closure_conversion' ctxt v ->
-  c2 = closure_conversion' (_::ctxt) (f (length ctxt)) ->
-  closure_conversion' ctxt (Let v f)
-  = second (copy >>> first (uncancell >>> c1))
-  >>> c2.
-Proof. intros; subst; cbn [closure_conversion']; reflexivity. Qed.
 
 Notation variable_pair t n1 n2 := (@vars natvar natvar t (pair n1 n2)).
 
@@ -418,8 +411,16 @@ Proof.
   cbv [Wf]; eauto with kappa_cc.
 Qed.
 
-Definition closure_conversion {i o} (expr: Kappa i o) : i ~> o
-  := uncancelr >>> closure_conversion' [] (expr _) .
+Definition extract_circuit
+  (x: {'(i, o) : Kind * Kind & (kappa natvar i o * (Circuit (i**Unit) o))%type})
+  : {'(i, o) : Kind * Kind & Circuit i o} :=
+  match x with
+  | existT _ (i,o) (_,c) => existT _ (i**Unit,o) c
+  end.
+
+Definition closure_conversion {i o} (expr: Kappa i o) : TopCircuit i o :=
+  let (f, fragments) := closure_conversion' [] [] (expr _) in
+  mkTop (map extract_circuit fragments) (uncancelr >>> f).
 
 Hint Resolve closure_conversion' : core.
 Hint Resolve closure_conversion : core.

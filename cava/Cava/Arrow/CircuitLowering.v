@@ -130,29 +130,10 @@ Fixpoint map2M (f: Signal Signal.Bit -> Signal Signal.Bit -> Instance) (ty: Kind
   end.
 
 Fixpoint rewrite_or_default (x y: Kind): denote x -> denote y :=
-  match x as x' return denote x' -> denote y with
-  | Unit =>
-      match y with
-      | Unit => fun a => a
-      | _ => fun _ => (const_wire _ (kind_default _))
-      end
-  | Tuple l r =>
-      match y with
-      | Tuple ll rr => fun '(a,b) => (rewrite_or_default l ll a, rewrite_or_default r rr b)
-      | _ => fun _ => (const_wire _ (kind_default _))
-      end
-  | Vector t n =>
-      match y with
-      | Vector t2 n2 => fun a => VectorUtils.resize_default (const_wire _ (kind_default _)) _ (Vector.map (rewrite_or_default t t2) a)
-      | _ => fun _ => (const_wire _ (kind_default _))
-      end
-  | Bit =>
-      match y with
-      | Bit => fun a => a
-      | _ => fun _ => (const_wire _ (kind_default _))
-      end
+  match eq_kind_dec x y with
+  | left e => fun v => eq_rect x (fun a0 : Kind => denote a0) v y e
+  | _ => fun _ => (const_wire _ (kind_default _))
   end.
-
 
 Definition slice' n x y (o: Kind) (v: denote (Vector o n)) : state CavaState (denote (Vector o (x - y + 1))) :=
   let length := x - y + 1 in
@@ -300,14 +281,15 @@ Definition primitive_netlist (p: CircuitPrimitive)
   | P2 p => fun x => binary_primitive_netlist _ _ _ p (fst x) (snd x)
   end.
 
-Fixpoint build_netlist' {i o}
+Fixpoint circuit_to_netlist {i o}
+  (fragments: list { '(i,o) & denote i -> state CavaState (denote o)})
   (c: Circuit i o)
   : denote i ->
     state CavaState (denote o) :=
     match c as c' in Circuit i' o' return denote i' -> state CavaState (denote o') with
-  | Composition _ _ _ f g => build_netlist' f >=> build_netlist' g
-  | First x y z f => first (Arrow:=kleisli) (build_netlist' f)
-  | Second x y z f => second (Arrow:=kleisli) (build_netlist' f)
+  | Composition f g => circuit_to_netlist fragments f >=> circuit_to_netlist fragments g
+  | First _ f => first (Arrow:=kleisli) (circuit_to_netlist fragments f)
+  | Second _ f => second (Arrow:=kleisli) (circuit_to_netlist fragments f)
 
   | Structural (Id _) => ret
   | Structural (Cancelr X) => cancelr (Arrow:=kleisli)
@@ -320,15 +302,15 @@ Fixpoint build_netlist' {i o}
   | Structural (Swap x y) => fun '(x,y) => ret (y,x)
   | Structural (Copy x) => fun x => ret (x,x)
 
-  | Loopr _ _ Z f => fun x =>
+  | @Loopr _ _ Z f => fun x =>
       z <- fresh_wire Z ;;
-      '(y,z') <- (build_netlist' f) (x,z) ;;
+      '(y,z') <- (circuit_to_netlist fragments f) (x,z) ;;
       map2M (fun x y => AssignSignal x y) Z z z' ;;
       ret y
 
-  | Loopl _ _ Z f => fun x =>
+  | @Loopl _ _ Z f => fun x =>
       z <- fresh_wire Z ;;
-      '(z',y) <- (build_netlist' f) (z,x) ;;
+      '(z',y) <- (circuit_to_netlist fragments f) (z,x) ;;
       map2M (fun x y => AssignSignal x y) Z z z' ;;
       ret y
 
@@ -338,6 +320,13 @@ Fixpoint build_netlist' {i o}
       ret y
   | Primitive p => primitive_netlist p
   | RewriteTy x y => fun v => ret (rewrite_or_default x y v)
+  | Call x y n =>
+    match nth_error fragments n with
+    | Some (existT _ (x,y) f) => fun v =>
+      v <- f (rewrite_or_default _ _ v) ;;
+      ret (rewrite_or_default _ _ v)
+    | None => fun v => ret (rewrite_or_default x y v)
+    end
 end.
 
 Close Scope string_scope.
@@ -359,10 +348,26 @@ Fixpoint apply_rightmost_tt (x: Kind)
   | _ => fun x => x
   end.
 
-Definition build_netlist'' {X Y} (circuit: X ~> Y)
-  (i: denote (remove_rightmost_unit X))
-  : state CavaState (denote Y) :=
-  build_netlist' circuit (apply_rightmost_tt X i).
+(* Definition build_netlist {X Y} *)
+(*   (fragments: list { '(i,o) & denote i -> state CavaState (denote o)}) *)
+(*   (circuit: Circuit X Y) *)
+(*   : denote X -> state CavaState (denote Y) := *)
+(*   circuit_to_netlist fragments circuit. *)
+
+Fixpoint build_netlists
+  (* {X Y} *)
+  (circuits: list { '(i,o) & Circuit i o} )
+  (fragments: list { '(i,o) & denote i -> state CavaState (denote o)})
+  (* (circuits: TopCircuit X Y) *)
+  :
+  (list { '(i,o) & denote i -> state CavaState (denote o)})
+  (* denote X -> state CavaState (denote Y) *)
+  :=
+  match circuits with
+  | [] => fragments
+  | (existT _ (x,y) frag) :: xs =>
+    build_netlists xs (fragments ++ [existT _ (x,y) (circuit_to_netlist fragments frag)])
+  end%list.
 
 Fixpoint stringify_kind (ty: Kind): Type :=
 match ty with
@@ -430,8 +435,8 @@ Fixpoint addOutputPorts (ty:Kind) (names: stringify_kind ty) (o: denote ty):
     outputVector (make_representable t) n name (pack_vec _ _ i)
   end.
 
-Definition build_netlist {X Y}
-  (circuit: X ~> Y)
+Program Definition build_netlist {X Y}
+  (circuit: TopCircuit X Y)
   (name: string)
   (inames: stringify_kind (remove_rightmost_unit X))
   (onames: stringify_kind Y)
@@ -442,6 +447,8 @@ Definition build_netlist {X Y}
     addInputPort (mkPort "clk" Signal.Bit) ;;
     addInputPort (mkPort "rst" Signal.Bit) ;;
     i <- addInputPorts (remove_rightmost_unit X) inames ;;
-    o <- build_netlist'' circuit i ;;
+
+    o <- circuit_to_netlist (build_netlists (fragments circuit) []) (toplevel circuit) (apply_rightmost_tt X i) ;;
     addOutputPorts Y onames o
+
   ) initState.
