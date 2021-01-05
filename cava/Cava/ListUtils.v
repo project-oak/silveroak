@@ -727,57 +727,6 @@ Section MapInversionTests.
   Qed.
 End MapInversionTests.
 
-(* tactic that help infer information from hypotheses with list expressions *)
-Ltac list_inversion :=
-  repeat lazymatch goal with
-         | H : map _ _ = _ :: _ |- _ =>
-           apply map_eq_cons in H; destruct H as [? [? [? [? ?]]]]
-         | H : rev _ = _ :: _ |- _ =>
-           apply rev_eq_cons in H
-         | H : map _ _ = _ ++ _ |- _ =>
-           apply map_eq_app in H; destruct H as [? [? [? [? ?]]]]
-         | H : rev _ = _ ++ _ |- _ =>
-           apply rev_eq_app in H
-         | H : map _ _ = [] |- _ => apply map_eq_nil in H
-         | H : rev _ = [] |- _ => apply rev_eq_nil in H
-         | H : context [rev (_ ++ [_])] |- _ => rewrite rev_unit in H
-         end.
-
-Section ListInversionTests.
-  (* simple application of map_eq_nil *)
-  Goal (forall (f : nat -> nat) (l : list nat), map f l = nil -> l = nil).
-  Proof.
-    intros. list_inversion.
-    assumption.
-  Qed.
-
-  (* simple application of rev_eq_nil *)
-  Goal (forall (l : list nat), rev l = nil -> l = nil).
-  Proof.
-    intros. list_inversion.
-    assumption.
-  Qed.
-
-  (* cons/snoc, recursive pattern *)
-  Goal (forall (f : nat -> nat) (l1 l2 : list nat) (x y : nat),
-           map f l1 = x :: l2 ++ [y] ->
-           exists a b l3, f a = x /\ f b = y /\ map f l3 = l2).
-  Proof.
-    intros. list_inversion.
-    repeat eexists; eauto.
-  Qed.
-
-  (* cons/snoc, recursive pattern, mix of map and rev *)
-  Goal (forall (f : nat -> nat) (l1 l2 : list nat) (x y : nat),
-           map f (rev l1) = x :: l2 ++ [y] ->
-           exists a b l3, f a = x /\ f b = y /\ map f (rev l3) = l2).
-  Proof.
-    intros. list_inversion. subst.
-    repeat eexists; eauto.
-    rewrite rev_involutive. reflexivity.
-  Qed.
-End ListInversionTests.
-
 (* Factor out loops from a goal in preparation for using fold_left_invariant *)
 Ltac factor_out_loops :=
   lazymatch goal with
