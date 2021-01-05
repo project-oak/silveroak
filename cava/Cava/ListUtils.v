@@ -1,20 +1,12 @@
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
+Require Import Cava.NatUtils.
 Import ListNotations.
 Local Open Scope list_scope.
 
 (* Generic rewrite database for common list simplifications *)
 Hint Rewrite @app_nil_l @app_nil_r @last_last @rev_app_distr : listsimpl.
-
-(* Natural number simplifications are also useful for lists *)
-Lemma sub_succ_l_same n : S n - n = 1.
-Proof. lia. Qed.
-Hint Rewrite Nat.add_0_l Nat.add_0_r Nat.sub_0_r Nat.sub_0_l Nat.sub_diag
-     using solve [eauto] : natsimpl.
-Hint Rewrite Nat.sub_succ sub_succ_l_same using solve [eauto] : natsimpl.
-Hint Rewrite Min.min_r Min.min_l Nat.add_sub using lia : natsimpl.
-Hint Rewrite (fun n m => proj2 (Nat.sub_0_le n m)) using lia : natsimpl.
 
 Section Length.
   Lemma nil_length {A} : @length A nil = 0.
@@ -60,6 +52,9 @@ Section Misc.
     cbn [rev app] in *. inversion Hrev; subst.
     rewrite rev_involutive. reflexivity.
   Qed.
+
+  Lemma eta_list {A} (l : list A) d : 0 < length l -> l = hd d l :: tl l.
+  Proof. destruct l; length_hammer. Qed.
 End Misc.
 Hint Rewrite @seq_snoc using solve [eauto] : pull_snoc.
 

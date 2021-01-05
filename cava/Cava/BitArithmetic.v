@@ -27,6 +27,7 @@ Require Import Coq.omega.Omega.
 Require Import Coq.micromega.Lia.
 Require Coq.Strings.HexString.
 
+Require Import Cava.NatUtils.
 Require Import Cava.VectorUtils.
 
 Import ListNotations.
@@ -357,30 +358,44 @@ Proof.
   all:(tauto || congruence).
 Qed.
 
-Lemma Pos_size_nat_equiv (x : positive) :
-  Pos.size_nat x = Pos.to_nat (Pos.size x).
+Lemma Bv2N_append {n m} (v1 : Bvector.Bvector n) (v2 : Bvector.Bvector m) :
+  Bv2N (v1 ++ v2)%vector = (Bv2N v1 + N.shiftl (Bv2N v2) (N.of_nat n))%N.
 Proof.
-  induction x; intros; cbn [Pos.size_nat Pos.size];
-    rewrite ?Pnat.Pos2Nat.inj_succ; (reflexivity || congruence).
+  revert v1 v2; induction n.
+  { intros v1 ?; eapply case0 with (v:=v1).
+    simpl. rewrite N.shiftl_0_r. reflexivity. }
+  { intros v1 ?. rewrite (eta v1).
+    rewrite <-append_comm_cons. cbn [Bv2N].
+    rewrite IHn. rewrite !N.succ_double_add, !N.double_add.
+    rewrite Nat2N.inj_succ, N.shiftl_succ_r.
+    rewrite !N.succ_double_spec, !N.double_spec.
+    repeat lazymatch goal with
+           | |- context [N.double ?n] => rewrite (N.double_spec n)
+           end.
+    destruct (Vector.hd v1); lia. }
 Qed.
 
-Lemma N_size_nat_equiv (x : N) :
-  N.size_nat x = N.to_nat (N.size x).
+Lemma Bv2N_Bvect_false n : Bv2N (Bvector.Bvect_false n) = 0%N.
 Proof.
-  destruct x as [|p]; [ reflexivity | ].
-  apply Pos_size_nat_equiv.
+  induction n; [ reflexivity | ]. simpl. rewrite IHn. reflexivity.
 Qed.
 
-Lemma N_size_nat_le (n : nat) (x : N) :
-  (x < 2 ^ N.of_nat n)%N ->
-  N.size_nat x <= n.
+Lemma Bv2N_N2Bv_sized sz n :
+  (n < 2 ^ N.of_nat sz)%N -> Bv2N (N2Bv_sized sz n) = n.
 Proof.
-  destruct (N.eq_dec x 0);
-    [ intros; subst; cbn [N.size_nat]; lia | ].
-  destruct n; [ rewrite N.pow_0_r; lia | ].
-  intros. rewrite N_size_nat_equiv, N.size_log2 by auto.
-  pose proof (proj1 (N.log2_lt_pow2 x (N.of_nat (S n)) ltac:(lia))
-                    ltac:(eassumption)).
+  intros. pose proof (N.size_nat_le _ _ ltac:(eauto)).
+  replace sz with (N.size_nat n + (sz - N.size_nat n)) by lia.
+  rewrite N2Bv_N2Bv_sized_above. rewrite Bv2N_append, Bv2N_Bvect_false.
+  rewrite N.shiftl_0_l, N.add_0_r. apply Bv2N_N2Bv.
+Qed.
+
+Lemma nat_to_bitvec_to_nat sz n :
+  n < 2 ^ sz ->
+  N.to_nat (Bv2N (nat_to_bitvec_sized sz n)) = n.
+Proof.
+  intros. cbv [nat_to_bitvec_sized].
+  rewrite Bv2N_N2Bv_sized; [ solve [apply Nat2N.id] | ].
+  change 2%N with (N.of_nat 2). rewrite Nat2N.inj_pow.
   lia.
 Qed.
 
