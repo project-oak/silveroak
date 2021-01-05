@@ -267,6 +267,10 @@ Section resize.
     resize p Hlen2 (resize m Hlen1 v) = resize p (eq_trans Hlen1 Hlen2) v.
   Proof. subst; reflexivity. Qed.
 
+  Lemma resize_default_resize_default n m p (v : t A n) d :
+    n = m -> resize_default d p (resize_default d m v) = resize_default d p v.
+  Proof. intros; subst. rewrite resize_default_id. reflexivity. Qed.
+
   Lemma fold_left_resize {B} (f : B -> A -> B) n m H b (v : t A n) :
     Vector.fold_left f b (resize m H v) = Vector.fold_left f b v.
   Proof. subst. rewrite <-resize_id. reflexivity. Qed.
@@ -803,6 +807,7 @@ Section VectorFacts.
     autorewrite with vsimpl. rewrite IHn.
     reflexivity.
   Qed.
+
 End VectorFacts.
 (* These hints create and populate the following autorewrite databases:
  * - push_vector_fold : simplify using properties of Vector.fold_left
@@ -816,7 +821,7 @@ End VectorFacts.
  *)
 Hint Rewrite @fold_left_0
      using solve [eauto] : push_vector_fold vsimpl.
-Hint Rewrite @tl_0 @hd_0 @tl_cons @hd_cons @last_tl
+Hint Rewrite @tl_0 @tl_cons @hd_cons @last_tl
      using solve [eauto] : push_vector_tl_hd_last vsimpl.
 Hint Rewrite @nth_order_hd @nth_order_last
      using solve [eauto] : push_vector_nth_order vsimpl.
@@ -1015,6 +1020,34 @@ Section Vector.
     reflexivity.
   Qed.
 
+  Lemma eqb_fold A_beq n (v1 v2 : Vector.t A n) :
+    Vector.eqb A A_beq v1 v2
+    = Vector.fold_left andb true (Vector.map2 A_beq v1 v2).
+  Proof.
+    revert v1 v2; induction n.
+    { intros v1 v2.
+      eapply Vector.case0 with (v:=v1).
+      eapply Vector.case0 with (v:=v2).
+      reflexivity. }
+    { intros v1 v2. rewrite (Vector.eta v1), (Vector.eta v2). cbn [Vector.eqb].
+      autorewrite with push_vector_fold push_vector_map vsimpl.
+      rewrite Bool.andb_true_l, IHn.
+      symmetry; apply VectorUtils.fold_left_S_assoc;
+      auto using Bool.andb_true_r, Bool.andb_true_l, Bool.andb_assoc. }
+  Qed.
+
+  Lemma fold_andb_eq_iff A_beq n (v1 v2 : Vector.t A n) :
+    (forall x y, A_beq x y = true <-> x = y) ->
+    Vector.fold_left andb true (Vector.map2 A_beq v1 v2) = true <-> v1 = v2.
+  Proof. intros. rewrite <-eqb_fold. apply Vector.eqb_eq; auto. Qed.
+
+  Lemma fold_andb_neq_iff A_beq n (v1 v2 : Vector.t A n) :
+    (forall x y, A_beq x y = true <-> x = y) ->
+    Vector.fold_left andb true (Vector.map2 A_beq v1 v2) = false <-> v1 <> v2.
+  Proof.
+    intros; rewrite <-fold_andb_eq_iff by auto.
+    erewrite Bool.not_true_iff_false. reflexivity.
+  Qed.
 End Vector.
 
 (* Useful tactic to destruct vectors of constant length *)

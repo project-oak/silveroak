@@ -1,20 +1,28 @@
+(****************************************************************************)
+(* Copyright 2020 The Project Oak Authors                                   *)
+(*                                                                          *)
+(* Licensed under the Apache License, Version 2.0 (the "License")           *)
+(* you may not use this file except in compliance with the License.         *)
+(* You may obtain a copy of the License at                                  *)
+(*                                                                          *)
+(*     http://www.apache.org/licenses/LICENSE-2.0                           *)
+(*                                                                          *)
+(* Unless required by applicable law or agreed to in writing, software      *)
+(* distributed under the License is distributed on an "AS IS" BASIS,        *)
+(* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *)
+(* See the License for the specific language governing permissions and      *)
+(* limitations under the License.                                           *)
+(****************************************************************************)
+
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
+Require Import Cava.NatUtils.
 Import ListNotations.
 Local Open Scope list_scope.
 
 (* Generic rewrite database for common list simplifications *)
 Hint Rewrite @app_nil_l @app_nil_r @last_last @rev_app_distr : listsimpl.
-
-(* Natural number simplifications are also useful for lists *)
-Lemma sub_succ_l_same n : S n - n = 1.
-Proof. lia. Qed.
-Hint Rewrite Nat.add_0_l Nat.add_0_r Nat.sub_0_r Nat.sub_0_l Nat.sub_diag
-     using solve [eauto] : natsimpl.
-Hint Rewrite Nat.sub_succ sub_succ_l_same using solve [eauto] : natsimpl.
-Hint Rewrite Min.min_r Min.min_l Nat.add_sub using lia : natsimpl.
-Hint Rewrite (fun n m => proj2 (Nat.sub_0_le n m)) using lia : natsimpl.
 
 Section Length.
   Lemma nil_length {A} : @length A nil = 0.
@@ -39,7 +47,32 @@ Section Misc.
   Lemma rev_seq_S start len :
     rev (seq start (S len)) = (start + len) :: rev (seq start len).
   Proof. rewrite seq_S, rev_app_distr; reflexivity. Qed.
+
+  Lemma seq_snoc start len :
+    seq start (S len) = seq start len ++ [start + len].
+  Proof. rewrite seq_S. reflexivity. Qed.
+
+  Lemma rev_eq_nil {A} (l : list A) : rev l = nil -> l = nil.
+  Proof.
+    destruct l; [ reflexivity | ].
+    cbn [rev]. intro Hnil.
+    apply app_eq_nil in Hnil; destruct Hnil.
+    congruence.
+  Qed.
+
+  Lemma rev_eq_cons {A} x (l l' : list A) : rev l = (x :: l') -> l = rev l' ++ [x].
+  Proof.
+    revert x l'; induction l using rev_ind; cbn [rev]; [ congruence | ].
+    intros *. intro Hrev.
+    rewrite rev_app_distr in Hrev.
+    cbn [rev app] in *. inversion Hrev; subst.
+    rewrite rev_involutive. reflexivity.
+  Qed.
+
+  Lemma eta_list {A} (l : list A) d : 0 < length l -> l = hd d l :: tl l.
+  Proof. destruct l; length_hammer. Qed.
 End Misc.
+Hint Rewrite @seq_snoc using solve [eauto] : pull_snoc.
 
 Section Nth.
   Lemma nth_step {A} n (l : list A) x d :
@@ -77,6 +110,10 @@ Section Maps.
     rewrite Hf, IHl.
     reflexivity.
   Qed.
+
+  Lemma map_snoc {A B} (f : A -> B) ls a :
+    map f (ls ++ [a]) = map f ls ++ [f a].
+  Proof. rewrite map_app. reflexivity. Qed.
 
   Fixpoint map2 {A B C} (f : A -> B -> C) (ls1 : list A) ls2 :=
     match ls1, ls2 with
@@ -155,6 +192,7 @@ Section Maps.
   Qed.
 End Maps.
 Hint Rewrite @map2_length using solve [eauto] : push_length.
+Hint Rewrite @map_snoc using solve [eauto] : pull_snoc.
 
 (* Proofs about firstn and skipn *)
 Section FirstnSkipn.
@@ -295,6 +333,10 @@ Section Folds.
     reflexivity.
   Qed.
 
+  Lemma fold_left_snoc {A B} (f : A -> B -> A) ls a b :
+    fold_left f (ls ++ [b]) a = f (fold_left f ls a) b.
+  Proof. rewrite fold_left_app. reflexivity. Qed.
+
   Lemma fold_left_invariant {A B} (I P : B -> Prop)
         (f : B -> A -> B) (ls : list A) b :
     I b -> (* invariant holds at start *)
@@ -338,9 +380,25 @@ Section Folds.
     intros ? ? IimpliesP. apply IimpliesP.
     apply fold_left_preserves_relation; eauto.
   Qed.
+
+  (* Similar to fold_left_double_invariant, except the invariant can depend on
+     the index *)
+  Lemma fold_left_double_invariant_seq {A B}
+        (I : nat -> A -> B -> Prop) (P : A -> B -> Prop)
+        (f : A -> nat -> A) (g : B -> nat -> B) start len a b :
+    I start a b -> (* invariant holds at start *)
+    (forall i a b, I i a b -> start <= i < start + len ->
+              I (S i) (f a i) (g b i)) -> (* invariant holds through loop body *)
+    (forall a b, I (start + len) a b -> P a b) -> (* invariant implies postcondition *)
+    P (fold_left f (seq start len) a) (fold_left g (seq start len) b).
+  Proof.
+    intros ? ? IimpliesP. apply IimpliesP.
+    apply fold_left_preserves_relation_seq; eauto.
+  Qed.
 End Folds.
 Hint Rewrite @fold_left_cons @fold_left_nil @fold_left_app
      using solve [eauto] : push_list_fold.
+Hint Rewrite @fold_left_snoc using solve [eauto] : pull_snoc.
 
 (* Defines a version of fold_left that accumulates a list of (a
    projection of) all the states it passed through *)
@@ -690,16 +748,20 @@ Ltac factor_out_loops :=
   lazymatch goal with
   | |- ?G =>
     lazymatch G with
-    | context [fold_left ?f1 ?ls ?b1] =>
+    | context [(@fold_left ?A1 ?B1 ?f1 ?ls1 ?b1)] =>
       let F1 :=
-          lazymatch (eval pattern (fold_left f1 ls b1) in G) with
+          lazymatch (eval pattern (@fold_left A1 B1 f1 ls1 b1) in G) with
           | ?F _ => F end in
       lazymatch F1 with
-      | context [fold_left ?f2 ?ls ?b2] =>
-      let F2 :=
-          lazymatch (eval pattern (fold_left f2 ls b2) in F1) with
-          | ?F _ => F end in
-      change (F2 (fold_left f2 ls b2) (fold_left f1 ls b1))
+      | context [(@fold_left ?A2 ?B2 ?f2 ?ls2 ?b2)] =>
+        (unify ls1 ls2 + fail "Failed to unify loop lists:" ls1 ls2);
+        let F2 :=
+            lazymatch (eval pattern (@fold_left A2 B2 f2 ls2 b2) in F1) with
+            | ?F _ => F end in
+        (change (F2 (@fold_left A2 B2 f2 ls2 b2) (@fold_left A1 B1 f1 ls1 b1))
+         || let loop1 := constr:(@fold_left A1 B1 f1 ls1 b1) in
+           let loop2 := constr:(@fold_left A2 B2 f2 ls2 b2) in
+           fail "Failed to change goal with:" F2 loop2 loop1)
       end
     end
   end.

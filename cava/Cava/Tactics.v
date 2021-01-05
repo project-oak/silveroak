@@ -14,7 +14,45 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+(* substitutes lets in a goal *)
+Ltac subst_lets :=
+  repeat lazymatch goal with x := _ |- _ => subst x end.
 
+Section SubstLetsTests.
+  Goal (forall (x : nat) (add:=Nat.add) (z:=x) (y:=add x z),
+           0 < x + x -> 0 < y).
+  Proof.
+    intros. subst_lets.
+    (* should now be fully substituted *)
+    lazymatch goal with
+    | |- 0 < x + x => idtac
+    end.
+    assumption.
+  Qed.
+End SubstLetsTests.
+
+(* replaces an expression in the goal with the computed version of itself *)
+Ltac compute_expr t :=
+  let x := (eval compute in t) in
+  change t with x.
+
+Section ComputeExprTests.
+  (* compute 2 * 16 *)
+  Goal ((5 <= 2 * 16)).
+  Proof.
+    compute_expr (2 * 16).
+    lazymatch goal with |- 5 <= 32 => idtac end.
+    repeat apply le_n_S. apply le_0_n.
+  Qed.
+
+  (* selectively compute a subexpression *)
+  Goal ((1 + (4 + 3) <= 2 * (4 + 3))).
+  Proof.
+    compute_expr (4 + 3).
+    lazymatch goal with |- 1 + 7 <= 2 * 7 => idtac end.
+    repeat apply le_n_S. apply le_0_n.
+  Qed.
+End ComputeExprTests.
 
 (* The destruct_pair_let tactic finds "destructuring lets", e.g.
 
@@ -135,3 +173,25 @@ Section InstantiateAppByReflexivityTests.
     instantiate_app_by_reflexivity.
   Qed.
 End InstantiateAppByReflexivityTests.
+
+(* Import for boolsimpl tactic *)
+Require Coq.Bool.Bool.
+
+(* Rewrite database for boolsimpl *)
+Lemma negb_true : negb true = false. Proof. reflexivity. Qed.
+Lemma negb_false : negb false = true. Proof. reflexivity. Qed.
+Hint Rewrite Bool.andb_true_l Bool.andb_true_r Bool.andb_diag
+     Bool.andb_false_l Bool.andb_false_r Bool.andb_negb_l Bool.andb_negb_r
+     Bool.orb_true_l Bool.orb_true_r Bool.orb_diag Bool.orb_false_l
+     Bool.orb_false_r Bool.orb_negb_l Bool.orb_negb_r
+     Bool.xorb_true_l Bool.xorb_true_r Bool.xorb_nilpotent Bool.xorb_false_l
+     Bool.xorb_false_r Bool.negb_involutive negb_true negb_false
+     using solve [eauto] : boolsimpl.
+
+(* simplify boolean expressions *)
+Ltac boolsimpl := autorewrite with boolsimpl; cbn [negb andb orb xorb].
+
+Section BoolSimplTests.
+  Goal (forall b : bool, ((negb b && b) || (b && negb (xorb b b)))%bool = b).
+  Proof. intros. boolsimpl. reflexivity. Qed.
+End BoolSimplTests.

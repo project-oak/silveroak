@@ -23,6 +23,7 @@ Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Arrow.ArrowExport.
 Require Import Cava.Arrow.CombinatorProperties.
 Require Import Cava.BitArithmetic.
+Require Import Cava.NatUtils.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
@@ -233,6 +234,6 @@ Section Equivalence.
       reflexivity. }
     { (* equivalence holds through loop body *)
       intros. eapply key_expand_and_round_spec_equiv_inverse; eauto; [ ].
-      apply N_size_nat_le. cbn. lia. }
+      apply N.size_nat_le. cbn. lia. }
   Qed.
 End Equivalence.

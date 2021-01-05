@@ -16,6 +16,7 @@
 
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monad.
+Require Import ExtLib.Structures.MonadLaws.
 Require Import Cava.Signal.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
@@ -55,6 +56,9 @@ Section Vectors.
     rewrite <-IHn. reflexivity.
   Qed.
 End Vectors.
+
+Instance MonadLaws_ident : MonadLaws Monad_ident.
+Proof. econstructor; intros; exact eq_refl. Defined.
 
 (* Automation to help simplify expressions using the identity monad *)
 Create HintDb simpl_ident discriminated.

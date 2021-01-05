@@ -22,6 +22,7 @@ Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Traversable.
+Require Import coqutil.Tactics.Tactics.
 Require Import Coq.Arith.PeanoNat.
 
 Export MonadNotation.
@@ -40,8 +41,7 @@ Local Open Scope monad_scope.
 Local Open Scope type_scope.
 
 Section WithCava.
-  Context {signal} `{m: Cava signal}.
-  Context {monad: Monad cava}.
+  Context {signal} {semantics: Cava signal} {monad: Monad cava}.
 
   (****************************************************************************)
   (* Lava-style circuit combinators.                                          *)
@@ -130,6 +130,16 @@ Section WithCava.
     cbn [foldLM List.fold_right].
     eapply bind_ext; intros.
     rewrite IHinput. reflexivity.
+  Qed.
+
+  Lemma foldLM_of_ret {m} `{Monad m} `{MonadLaws.MonadLaws m} {A B}
+        (f : B -> A -> m B) (g : B -> A -> B) input accum :
+    (forall b a, f b a = ret (g b a)) ->
+    foldLM f input accum = ret (fold_left g input accum).
+  Proof.
+    intro Hfg; revert accum; induction input; intros; [ reflexivity | ].
+    cbn [foldLM fold_left]. rewrite Hfg, MonadLaws.bind_of_return by auto.
+    apply IHinput.
   Qed.
 
   Lemma foldLM_ident_fold_left
@@ -460,6 +470,7 @@ Section WithCava.
     induction n; intros.
     { change (2 ^ 1) with 2 in *.
       cbn [tree]. autorewrite with push_vector_fold vsimpl.
+      rewrite hd_0. autorewrite with vsimpl.
       rewrite circuit_equiv, op_id_left. reflexivity. }
     { cbn [tree]. destruct_pair_let.
       rewrite !IHn by eauto.
@@ -471,5 +482,103 @@ Section WithCava.
       rewrite (append_divide _ _ ltac:(eassumption)).
       rewrite fold_left_resize. reflexivity. }
   Qed.
+
+  (* Version of tree combinator that accepts all sizes by creating a tree out of
+     the elements based on the closest power of two, and then tacking on the
+     remaining elements one by one.
+
+     The result will not be maximally efficient for non-powers of two; for
+     example, for an and-tree with 6 elements i0..i5, this definition will
+     produce:
+
+     (((i0 & i1) & (i2 & i3)) & i4) & i5
+
+     ...instead of &-ing i4 and i5 together before combining them with the
+     tree. *)
+  Definition tree_all_sizes {m} {monad : Monad m} {A}
+             (default : A) (circuit : A -> A -> m A) {n} (v : Vector.t A n) : m A :=
+    let '(v1, v2) := Vector.splitat (2 ^ Nat.log2 n)
+                                    (resize_default
+                                       default (2 ^ Nat.log2 n + (n - 2 ^ Nat.log2 n))
+                                       v) in
+    tree_result <- (match Nat.log2 n as n0 return Vector.t A (2 ^ n0) -> m A with
+                   | 0 => fun v : Vector.t A 1 => ret (Vector.hd v)
+                   | S n' => fun v : Vector.t A (2 ^ S n') => tree default n' circuit v
+                   end) v1 ;;
+    foldLM circuit (to_list v2) tree_result.
+
+  Lemma tree_all_sizes_equiv {T} {monad_laws : MonadLaws.MonadLaws monad}:
+    forall (id : T) (op : T -> T -> T),
+      (forall a : T, op id a = a) ->
+      (forall a : T, op a id = a) ->
+      (forall a b c : T, op a (op b c) = op (op a b) c) ->
+      forall circuit : T -> T -> cava T,
+        (forall a b : T, circuit a b = ret (op a b)) ->
+        forall (default : T) (n : nat) (v : t T n),
+          n <> 0 ->
+          tree_all_sizes default circuit v = ret (Vector.fold_left op id v).
+  Proof.
+    cbv [tree_all_sizes]; intros. repeat destruct_pair_let.
+    assert (n = 2 ^ Nat.log2 n + (n - 2 ^ Nat.log2 n))
+      by (apply Minus.le_plus_minus, Nat.log2_spec; Lia.lia).
+    (* change the vector expression on the RHS to match LHS *)
+    lazymatch goal with
+      |- ?lhs = ?rhs =>
+      lazymatch lhs with
+        context [splitat ?n (resize_default ?d (?n + ?m) ?v)] =>
+          let rhsF := lazymatch (eval pattern v in rhs) with
+                      | ?F _ => F end in
+          transitivity
+            (rhsF
+               (resize_default
+                  d _
+                  ((fst (splitat n (resize_default d (n + m) v)))
+                      ++ snd (splitat n (resize_default d (n + m) v)))%vector))
+      end
+    end.
+    2:{ erewrite <-append_splitat by (rewrite <-surjective_pairing; reflexivity).
+        rewrite resize_default_resize_default, resize_default_id by Lia.lia.
+        reflexivity. }
+    pose proof (Nat.log2_pos n).
+    destruct n; [ congruence | ].
+    destruct n;[ subst; cbn in *; rewrite MonadLaws.bind_of_return by auto;
+                 match goal with H : _ |- _ => rewrite H; reflexivity end | ].
+    destruct_one_match; [ Lia.lia | ].
+    erewrite tree_equiv by eauto.
+    rewrite MonadLaws.bind_of_return by auto.
+    autorewrite with push_to_list push_list_fold.
+    erewrite foldLM_of_ret by eauto. reflexivity.
+  Qed.
+
+  Definition all {n} (v : signal (Vec Bit n)) : cava (signal Bit) :=
+    default <- one ;;
+    tree_all_sizes default (fun x y => and2 (x,y)) (peel v).
+
+  Fixpoint eqb {t : SignalType} : signal t -> signal t -> cava (signal Bit) :=
+    match t as t0 return signal t0 -> signal t0 -> cava (signal Bit) with
+    | Void => fun _ _ => one
+    | Bit => fun x y => xnor2 (x, y)
+    | ExternalType s => fun x y => one
+    | Pair a b => fun x y : signal (Pair a b) =>
+                   let '(x1,x2) := unpair x in
+                   let '(y1, y2) := unpair y in
+                   eq1 <- eqb x1 y1 ;;
+                   eq2 <- eqb x2 y2 ;;
+                   and2 (eq1, eq2)
+    | Vec a n => fun x y : signal (Vec a n) =>
+                  eq_results <- zipWith (fun '(a, b) => eqb a b) x y ;;
+                  all eq_results
+    end.
+
+  Definition pairAssoc {A B C} (x : signal (Pair (Pair A B) C))
+    : signal (Pair A (Pair B C)) :=
+    let '(ab, c) := unpair x in
+    let '(a, b) := unpair ab in
+    mkpair a (mkpair b c).
+
+  Definition mux4 {t} (input : signal (Pair (Pair (Pair t t) t) t))
+             (sel : signal (Vec Bit 2)) :=
+    let x := pairAssoc input in
+    pairSel (indexConst sel 0) (pairSel (indexConst sel 1) x).
 
  End WithCava.
