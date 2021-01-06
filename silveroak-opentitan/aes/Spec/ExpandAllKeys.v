@@ -133,8 +133,25 @@ Section Spec.
         by eauto using key_expand_proper.
       congruence.
     Qed.
+
+    Lemma length_all_keys_direct (n : nat) (k : key) :
+      length (all_keys n k) = S n.
+    Proof. cbv [all_keys all_keys']. length_hammer. Qed.
   End Properties.
 End Spec.
+Hint Rewrite @length_all_keys_direct using solve [eauto] : push_length.
+
+Section Extensionality.
+  Lemma all_keys_ext {key} (key_expand key_expand' : nat -> key -> key) n k :
+    (forall i k, i < n -> key_expand i k = key_expand' i k) ->
+    all_keys key_expand n k = all_keys key_expand' n k.
+  Proof.
+    intro Hext. cbv [all_keys all_keys'].
+    f_equal. apply fold_left_accumulate_ext1_In.
+    intros *; intro Hseq. apply in_seq in Hseq.
+    apply Hext; lia.
+  Qed.
+End Extensionality.
 
 Section Inverse.
   Context {key : Type}.

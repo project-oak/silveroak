@@ -43,6 +43,19 @@ mix_columns
     signal Bit ->
     signal (Vec (Vec (Vec Bit 8) 4) 4) ->
     cava (signal (Vec (Vec (Vec Bit 8) 4) 4))
+key_expand_spec : nat -> t bool 128 * t bool 8 -> t bool 128 * t bool 8
+key_expand_equiv
+  : forall (i : nat) (k : t (t (t bool 8) 4) 4 * t bool 8),
+    i < 16 ->
+    combinational (key_expand false (nat_to_bitvec_sized 4 i) k) =
+    unflatten_key (key_expand_spec i (flatten_key k))
+key_expand
+  : forall (signal : SignalType -> Type) (semantics : Cava signal),
+    Monad cava ->
+    signal Bit ->
+    signal (Vec Bit 4) ->
+    signal (Vec (Vec (Vec Bit 8) 4) 4) * signal (Vec Bit 8) ->
+    cava (signal (Vec (Vec (Vec Bit 8) 4) 4) * signal (Vec Bit 8))
 inverse_mix_columns
   : forall (Nb : nat) (st : t (t Byte.byte 4) Nb),
     MixColumns.inv_mix_columns (MixColumns.mix_columns st) = st
@@ -58,3 +71,9 @@ inv_mix_columns_equiv
   : forall st : t bool 128,
     from_cols_bitvecs (combinational (mix_columns true (to_cols_bitvecs st))) =
     inv_mix_columns st
+inv_key_expand_spec : nat -> t bool 128 * t bool 8 -> t bool 128 * t bool 8
+inv_key_expand_equiv
+  : forall (i : nat) (k : t (t (t bool 8) 4) 4 * t bool 8),
+    i < 16 ->
+    combinational (key_expand true (nat_to_bitvec_sized 4 i) k) =
+    unflatten_key (inv_key_expand_spec i (flatten_key k))
