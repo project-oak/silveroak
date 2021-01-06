@@ -27,12 +27,12 @@ Import VectorNotations.
 Local Open Scope vector_scope.
 
 (******************************************************************************)
-(* Signalling counter                                                         *)
+(* Accumulating adder with an enable.                                         *)
 (******************************************************************************)
 
 (*
 
-The signalling counter is similar to the countBy circuit, except that it also
+The accumulating adder is similar to the countBy circuit, except that it also
 takes a "valid" bit and ignores the input if this bit is false. For example:
 
           _______
@@ -70,7 +70,7 @@ Section WithCava.
     : cava (signal A) :=
     ret (pairSel sel (mkpair f t)).
 
-  Definition signallingCounter : signal (Pair (Vec Bit 8) Bit) -> cava (signal (Vec Bit 8))
+  Definition accumulatingAdderEnable : signal (Pair (Vec Bit 8) Bit) -> cava (signal (Vec Bit 8))
     := loopDelay (fun '(inp_and_valid, state) =>
                     let '(inp, valid) := unpair inp_and_valid in
                     (addN >=>
@@ -85,49 +85,49 @@ Local Notation "'#' l" := (map (fun i => N2Bv_sized _ (N.of_nat i)) l)
 
 Local Open Scope list_scope.
 
-Example signallingCounter_ex1:
-  sequential (signallingCounter
+Example accumulatingAdderEnable_ex1:
+  sequential (accumulatingAdderEnable
                 (combine
                    (# [1;1;1;1;1;1;1;1])
                    (map nat2bool [1;1;1;1;0;0;0;0]))) = # [1;2;3;4;4;4;4;4].
 Proof. reflexivity. Qed.
 
-Example signallingCounter_ex2:
-  sequential (signallingCounter
+Example accumulatingAdderEnable_ex2:
+  sequential (accumulatingAdderEnable
                 (combine
                    (# [0;1;2;3;4;5;6;7])
                    (map nat2bool [0;0;0;1;1;1;0;1]))) = # [0;0;0;3;7;12;12;19].
 Proof. reflexivity. Qed.
 
-(* Now re-do the "signalling counter" using a loop with a delay with
+(* Now re-do the accumulating adder with enable using a loop with a delay with
    a clock-enable input. *)
 
 Section WithCava.
   Context {signal} {combsemantics: Cava signal}
           {semantics: CavaSeq combsemantics} `{Monad cava}.
 
-  Definition counterWithEnable (en : signal Bit) :
-                               signal (Vec Bit 8) ->
-                               cava (signal (Vec Bit 8)) :=
+  Definition accumulatingAdderEnable2 (en : signal Bit) :
+                                       signal (Vec Bit 8) ->
+                                       cava (signal (Vec Bit 8)) :=
     loopDelaySEnable en addN.
 
 
-  Definition counterWithEnableTop (i_en : signal (Pair (Vec Bit 8) Bit))
-                                  : cava (signal (Vec Bit 8)) :=
+  Definition accumulatingAdderEnableTop (i_en : signal (Pair (Vec Bit 8) Bit))
+                                        : cava (signal (Vec Bit 8)) :=
   let '(i, en) := unpair i_en in
-  counterWithEnable en i.
+  accumulatingAdderEnable2 en i.
 
 End WithCava.
 
-Example counterEnable_ex1:
-  sequential (counterWithEnableTop
+Example accumulatingAdderEnable2_ex1:
+  sequential (accumulatingAdderEnableTop
                 (combine
                    (# [1;1;1;1;1;1;1;1])
                    (map nat2bool [1;1;1;1;0;0;0;0]))) = # [1;2;3;4;4;4;4;4].
 Proof. reflexivity. Qed.
 
-Example counterEnable_ex2:
-  sequential (counterWithEnable
+Example accumulatingAdderEnable2_ex2:
+  sequential (accumulatingAdderEnable2
                 (map nat2bool [0;0;0;1;1;1;0;1])
                 (# [0;1;2;3;4;5;6;7]) ) = # [0;0;0;3;7;12;12;19].
 Proof. reflexivity. Qed.
