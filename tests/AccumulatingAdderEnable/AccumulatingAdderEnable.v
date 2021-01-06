@@ -14,6 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+From Coq Require Import Strings.Ascii Strings.String.
 From Coq Require Import NArith.NArith Lists.List Vectors.Vector.
 Import ListNotations.
 
@@ -99,6 +100,17 @@ Example accumulatingAdderEnable_ex2:
                    (map nat2bool [0;0;0;1;1;1;0;1]))) = # [0;0;0;3;7;12;12;19].
 Proof. reflexivity. Qed.
 
+Definition accumulatingAdderEnable_Interface
+  := sequentialInterface "accumulatingAdderEnable"
+     "clk" PositiveEdge "rst" PositiveEdge
+     [mkPort "en" Bit; mkPort "i" (Vec Bit 8)]
+     [mkPort "o" (Vec Bit 8)]
+     [].
+
+Definition accumulatingAdderEnable_Netlist
+  := makeNetlist accumulatingAdderEnable_Interface
+                 (fun '(en, i) => accumulatingAdderEnable (mkpair i en)).
+
 (* Now re-do the accumulating adder with enable using a loop with a delay with
    a clock-enable input. *)
 
@@ -131,3 +143,7 @@ Example accumulatingAdderEnable2_ex2:
                 (map nat2bool [0;0;0;1;1;1;0;1])
                 (# [0;1;2;3;4;5;6;7]) ) = # [0;0;0;3;7;12;12;19].
 Proof. reflexivity. Qed.
+
+Definition accumulatingAdderEnable2_Netlist
+  := makeNetlist accumulatingAdderEnable_Interface
+                 (fun '(en, i) => accumulatingAdderEnableTop (mkpair i en)).

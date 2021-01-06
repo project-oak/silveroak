@@ -16,6 +16,7 @@
 
 module Main where
 
+import AccumulatingAdderEnable
 import Cava2SystemVerilog
 import Instantiate
 import TestMultiply
@@ -35,3 +36,5 @@ main = do writeSystemVerilog instantiateNetlist
           -- writeTestBench pipelinedNAND_tb
           writeSystemVerilog countBy_Netlist
           writeTestBench countBy_tb
+          writeSystemVerilog accumulatingAdderEnable_Netlist
+          writeSystemVerilog accumulatingAdderEnable2_Netlist
