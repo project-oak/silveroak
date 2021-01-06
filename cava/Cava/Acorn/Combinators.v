@@ -597,6 +597,22 @@ Section WithCava.
     '(sum3, carry) <- half_adder (carry, indexConst input 3) ;;
     ret (unpeel [sum0;sum1;sum2;sum3]%vector).
 
+  Fixpoint incr' {sz} (carry : signal Bit)
+    : signal (Vec Bit sz) -> cava (signal (Vec Bit sz)) :=
+    match sz as sz0 return
+          signal (Vec Bit sz0) -> cava (signal (Vec Bit sz0)) with
+    | 0 => fun input => ret input
+    | S sz' => fun input : signal (Vec Bit (S sz')) =>
+                let i0 := Vector.hd (peel input) in
+                '(sum0, carry) <- half_adder (carry, i0) ;;
+                sum <- incr' carry (unpeel (Vector.tl (peel input))) ;;
+                ret (unpeel (sum0 :: peel sum)%vector)
+    end.
+
+  (* increments a bit vector of any length *)
+  Definition incr {sz} (input : signal (Vec Bit sz)) : cava (signal (Vec Bit sz)) :=
+    true_ <- one ;; incr' true_ input.
+
   Definition half_subtractor (input : signal Bit * signal Bit)
     : cava (signal Bit * signal Bit) :=
     let '(x,y) := input in
@@ -609,11 +625,27 @@ Section WithCava.
   Definition decr4 (input : signal (Vec Bit 4))
     : cava (signal (Vec Bit 4)) :=
     true_ <- one ;;
-    '(diff0, borrow) <- half_subtractor (true_, indexConst input 0) ;;
-    '(diff1, borrow) <- half_subtractor (borrow, indexConst input 1) ;;
-    '(diff2, borrow) <- half_subtractor (borrow, indexConst input 2) ;;
-    '(diff3, borrow) <- half_subtractor (borrow, indexConst input 3) ;;
+    '(diff0, borrow) <- half_subtractor (indexConst input 0, true_) ;;
+    '(diff1, borrow) <- half_subtractor (indexConst input 1, borrow) ;;
+    '(diff2, borrow) <- half_subtractor (indexConst input 2, borrow) ;;
+    '(diff3, borrow) <- half_subtractor (indexConst input 3, borrow) ;;
     ret (unpeel [diff0;diff1;diff2;diff3]%vector).
+
+  Fixpoint decr' {sz} (borrow : signal Bit)
+    : signal (Vec Bit sz) -> cava (signal (Vec Bit sz)) :=
+    match sz as sz0 return
+          signal (Vec Bit sz0) -> cava (signal (Vec Bit sz0)) with
+    | 0 => fun input => ret input
+    | S sz' => fun input : signal (Vec Bit (S sz')) =>
+                let i0 := Vector.hd (peel input) in
+                '(diff0, borrow) <- half_subtractor (borrow, i0) ;;
+                diff <- decr' borrow (unpeel (Vector.tl (peel input))) ;;
+                ret (unpeel (diff0 :: peel diff)%vector)
+    end.
+
+  (* decrements a bit vector of any length *)
+  Definition decr {sz} (input : signal (Vec Bit sz)) : cava (signal (Vec Bit sz)) :=
+    true_ <- one ;; decr' true_ input.
 
   Section Sequential.
     Context {seqsemantics : CavaSeq semantics}.

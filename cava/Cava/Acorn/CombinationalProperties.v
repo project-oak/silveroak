@@ -16,6 +16,8 @@
 
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.micromega.Lia.
+Require Import Coq.NArith.NArith.
+Require Import Coq.Vectors.Vector.
 Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Combinators.
@@ -26,6 +28,7 @@ Require Import Cava.NatUtils.
 Require Import Cava.Signal.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
+Import VectorNotations.
 
 Existing Instance CombinationalSemantics.
 
@@ -56,7 +59,7 @@ Proof.
     try (split; congruence); [ | ].
   { (* Vector case *)
     match goal with
-    | |- context [@unIdent (Vector.t bool ?n) (zipWith _ _ _)] =>
+    | |- context [(@unIdent (Vector.t bool ?n) (zipWith _ _ _))] =>
       change (Vector.t bool n) with (combType (Vec Bit n));
         rewrite zipWith_unIdent
     end.
@@ -114,3 +117,87 @@ Proof.
     | _ => reflexivity
     end.
 Qed.
+
+Lemma one_correct : @unIdent (combType Bit) one = true.
+Proof. reflexivity. Qed.
+Hint Rewrite one_correct using solve [eauto] : simpl_ident.
+
+Lemma zero_correct : @unIdent (combType Bit) zero = false.
+Proof. reflexivity. Qed.
+Hint Rewrite zero_correct using solve [eauto] : simpl_ident.
+
+Lemma half_adder_correct (input : combType Bit * combType Bit) :
+  combinational (half_adder input)
+  = (xorb (fst input) (snd input), andb (fst input) (snd input)).
+Proof.
+  cbv [half_adder combinational and2 xor2 CombinationalSemantics
+                  xorBool andBool].
+  repeat destruct_pair_let. simpl_ident.
+  reflexivity.
+Qed.
+Hint Rewrite half_adder_correct using solve [eauto] : simpl_ident.
+
+Lemma incr4_correct (input : combType (Vec Bit 4)) :
+  combinational (incr4 input) = N2Bv_sized 4 (Bv2N input + 1).
+Proof.
+  cbv [incr4 combinational]. simpl_ident. boolsimpl.
+  cbn [unpeel indexConst CombinationalSemantics].
+  cbn [combType] in input. constant_bitvec_cases input.
+  all:reflexivity.
+Qed.
+
+Lemma half_subtractor_correct (input : combType Bit * combType Bit) :
+  combinational (half_subtractor input)
+  = (xorb (fst input) (snd input), andb (negb (fst input)) (snd input)).
+Proof.
+  cbv [half_subtractor combinational and2 xor2 inv
+                       CombinationalSemantics xorBool andBool].
+  repeat destruct_pair_let. simpl_ident.
+  reflexivity.
+Qed.
+Hint Rewrite half_subtractor_correct using solve [eauto] : simpl_ident.
+
+Lemma decr4_correct (input : combType (Vec Bit 4)) :
+  combinational (decr4 input) = N2Bv_sized 4 (if (Bv2N input =? 0)%N then 15
+                                              else Bv2N input - 1).
+Proof.
+  cbv [decr4 combinational]. simpl_ident. boolsimpl.
+  cbn [unpeel indexConst CombinationalSemantics].
+  cbn [combType] in input. constant_bitvec_cases input.
+  all:reflexivity.
+Qed.
+
+Lemma incr'_correct {sz} carry (input : combType (Vec Bit sz)) :
+  combinational (incr' carry input)
+  = N2Bv_sized _ (Bv2N input + if carry then 1 else 0)%N.
+Proof.
+  cbv [combinational].
+  revert carry input; induction sz; intros; [ solve [apply nil_eq] | ].
+  cbn [incr']. simpl_ident. cbn [unpeel peel CombinationalSemantics].
+  rewrite (eta input). autorewrite with vsimpl.
+  rewrite IHsz; clear IHsz.
+  destruct carry, (Vector.hd input);
+    boolsimpl; rewrite ?N.add_0_r, ?N2Bv_sized_Bv2N;
+      try reflexivity; [ | ].
+  (* TODO(jadep) : improve this proof *)
+  { apply Bv2N_inj; autorewrite with push_Bv2N.
+    compute_expr (N.of_nat 1). rewrite !Bv2N_N2Bv_sized_modulo.
+    rewrite !N.double_spec, !N.succ_double_spec.
+    rewrite Nat2N.inj_succ. rewrite N.pow_succ_r by lia.
+    rewrite N.mod_mul_r by (try apply N.pow_nonzero; lia).
+    lazymatch goal with
+    | |- context [(2 * ?n + 1 + 1)%N] =>
+      replace (2 * n + 1 + 1)%N with ((n + 1) * 2)%N by lia
+    end.
+    rewrite N.div_mul, N.mod_mul by lia.
+    lia. }
+  { autorewrite with push_Bv2N.
+    rewrite N.double_succ_double.
+    autorewrite with push_N2Bv_sized.
+    rewrite N2Bv_sized_Bv2N.
+    reflexivity. }
+Qed.
+
+Lemma incr_correct {sz} (input : combType (Vec Bit sz)) :
+  combinational (incr input) = N2Bv_sized _ (Bv2N input + 1).
+Proof. cbv [incr]. simpl_ident. apply incr'_correct. Qed.
