@@ -26,8 +26,10 @@ Require Import Tests.Instantiate.
 Require Import Tests.TestMultiply.
 Require Import Tests.Delay.
 Require Import Tests.CountBy.CountBy.
+Require Import Tests.AccumulatingAdderEnable.AccumulatingAdderEnable.
 
 Extraction Library Instantiate.
 Extraction Library TestMultiply.
 Extraction Library Delay.
+Extraction Library AccumulatingAdderEnable.
 Extraction Library CountBy.

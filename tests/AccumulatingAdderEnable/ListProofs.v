@@ -32,19 +32,19 @@ Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.SequentialProperties.
 Require Import Cava.Lib.UnsignedAdders.
 
-Require Import Tests.SignallingCounter.SignallingCounter.
+Require Import Tests.AccumulatingAdderEnable.AccumulatingAdderEnable.
 
 Definition bvadd {n} (a b : Signal.combType (Vec Bit n)) : Signal.combType (Vec Bit n) :=
   N2Bv_sized n (Bv2N a + Bv2N b).
 
 Definition bvzero {n} : Signal.combType (Vec Bit n) := N2Bv_sized n 0.
 
-Fixpoint signallingCounterSpec
+Fixpoint accumulatingCounterEnableSpec
            (input : nat -> combType (Vec Bit 8) * combType Bit)
            (t : nat) : combType (Vec Bit 8) :=
   let feedback := match t with
                   | 0 => bvzero
-                  | S t' => signallingCounterSpec input t'
+                  | S t' => accumulatingCounterEnableSpec input t'
                   end in
   let (n, valid) := input t in
   if valid
@@ -69,23 +69,23 @@ Proof.
 Qed.
 Hint Rewrite @mux2Correct using solve [eauto] : seqsimpl.
 
-Lemma signallingCounterCorrect (i : list (Bvector 8 * bool)) :
-  sequential (signallingCounter i) =
-  map (signallingCounterSpec
+Lemma accumulatingCounterEnableCorrect (i : list (Bvector 8 * bool)) :
+  sequential (accumulatingAdderEnable i) =
+  map (accumulatingCounterEnableSpec
          (fun n => nth n i (bvzero, false)))
       (seq 0 (length i)).
 Proof.
-  intros; cbv [signallingCounter].
+  intros; cbv [accumulatingAdderEnable].
   eapply loop_invariant_alt
     with (I:=fun t acc feedback =>
                feedback = [nth (t-1) acc bvzero]
-               /\ acc = map (signallingCounterSpec
+               /\ acc = map (accumulatingCounterEnableSpec
                               (fun n => nth n i (bvzero, false)))
                               (seq 0 t)).
   { (* postcondition hold for nil input, and invariant holds after first step *)
 
     destruct i; cbn [map seq nth length]; [ reflexivity | ].
-    seqsimpl. cbv [addNSpec signallingCounterSpec].
+    seqsimpl. cbv [addNSpec accumulatingCounterEnableSpec].
     cbn [combine map2 fst snd]. autorewrite with natsimpl push_nth.
     seqsimpl. split; reflexivity. }
   { (* invariant holds through loop body *)
@@ -104,7 +104,7 @@ Proof.
     autorewrite with natsimpl push_nth.
     destruct t; [ lia | ].
     autorewrite with natsimpl.
-    cbn [signallingCounterSpec].
+    cbn [accumulatingCounterEnableSpec].
     seqsimpl. reflexivity. }
   { (* invariant implies postcondition *)
     intros *; intros [Hfeedback Hacc]. subst; reflexivity. }
