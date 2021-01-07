@@ -74,6 +74,53 @@ Section Misc.
 End Misc.
 Hint Rewrite @seq_snoc using solve [eauto] : pull_snoc.
 
+(* Proofs about [split] *)
+Section Split.
+  Lemma split_skipn {A B} n (l : list (A * B)) :
+    split (skipn n l) = (skipn n (fst (split l)), skipn n (snd (split l))).
+  Proof.
+    revert l; induction n; destruct l; try reflexivity; [ | ];
+      repeat match goal with
+             | _ => progress cbn [skipn split fst snd]
+             | |- context [match ?p with pair _ _ => _ end ] =>
+               rewrite (surjective_pairing p)
+             | _ => solve [auto]
+             end.
+  Qed.
+
+  Lemma split_app {A B} (l1 l2 : list (A * B)) :
+    split (l1 ++ l2) = (fst (split l1) ++ fst (split l2),
+                        snd (split l1) ++ snd (split l2)).
+  Proof.
+    revert l2; induction l1; destruct l2;
+      repeat first [ progress cbn [split fst snd]
+                   | progress autorewrite with listsimpl
+                   | rewrite <-app_comm_cons
+                   | match goal with
+                     | |- context [match ?p with pair _ _ => _ end] =>
+                       rewrite (surjective_pairing p)
+                     end
+                   | rewrite IHl1; clear IHl1
+                   | reflexivity ].
+  Qed.
+
+  Lemma split_repeat {A B} n (ab : A * B) :
+    split (repeat ab n) = (repeat (fst ab) n, repeat (snd ab) n).
+  Proof.
+    induction n;
+      repeat first [ progress cbn [split repeat fst snd]
+                   | match goal with
+                     | |- context [match ?p with pair _ _ => _ end] =>
+                       rewrite (surjective_pairing p)
+                     end
+                   | rewrite IHn
+                   | rewrite <-surjective_pairing
+                   | reflexivity ].
+  Qed.
+End Split.
+Hint Rewrite @split_skipn @split_app @split_repeat
+     using solve [eauto] : push_split.
+
 Section Nth.
   Lemma nth_step {A} n (l : list A) x d :
     nth (S n) (x :: l) d = nth n l d.
@@ -225,6 +272,20 @@ Section FirstnSkipn.
       rewrite !firstn_cons. cbn [nth].
       rewrite IHn by lia.
       apply app_comm_cons. }
+  Qed.
+
+  Lemma hd_skipn {A} n (l : list A) d : hd d (skipn n l) = nth n l d.
+  Proof.
+    revert l; induction n; intros; [ destruct l; reflexivity | ].
+    destruct l; [ reflexivity | ]. cbn [skipn nth].
+    apply IHn.
+  Qed.
+
+  Lemma tl_skipn {A} n (l : list A) : tl (skipn n l) = skipn (S n) l.
+  Proof.
+    revert l; induction n; intros; [ destruct l; reflexivity | ].
+    destruct l; [ reflexivity | ]. cbn [skipn tl].
+    apply IHn.
   Qed.
 End FirstnSkipn.
 Hint Rewrite @skipn_app @skipn_skipn @skipn_repeat @skipn_cons @skipn_O

@@ -247,17 +247,6 @@ Definition delayEnableNet (t : SignalType)
 
 Local Open Scope type_scope.
 
-(* Create a loop circuit with a delay element along the feedback path. *)
-Definition loopNet (A B C : SignalType)
-                   (f : Signal A * Signal C -> state CavaState (Signal B * Signal C))
-                   (a : Signal A)
-                   : state CavaState (Signal B) :=
-  o <- @newSignal C ;;
-  '(b, cOut) <- f (a, o) ;;
-  oDelay <- delayNet C cOut ;;
-  assignSignal o oDelay ;;
-  ret b.
-
 (* Create a loop circuit with a delay element along the feedback path which
    makes the current state available at the output. *)
 Definition loopNetS (A B : SignalType)
@@ -269,18 +258,6 @@ Definition loopNetS (A B : SignalType)
   oDelay <- delayNet B out ;;
   assignSignal o oDelay ;;
   ret out.
-
-(* Create a loop circuit with a delay element with enable along the feedback path. *)
-Definition loopNetEnable (A B C : SignalType)
-                         (en : Signal Bit)
-                         (f : Signal A * Signal C -> state CavaState (Signal B * Signal C))
-                         (a : Signal A)
-                         : state CavaState (Signal B) :=
-  o <- @newSignal C ;;
-  '(b, cOut) <- f (a, o) ;;
-  oDelay <- delayEnableNet C en cOut ;;
-  assignSignal o oDelay ;;
-  ret b.
 
 (* Create a loop circuit with a delay element with enable along the feedback
    path with the current state exposed at the output. *)
@@ -349,8 +326,6 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
 Instance CavaSequentialNet : CavaSeq CavaCombinationalNet :=
   { delay k := delayNet k;
     delayEnable k := delayEnableNet k;
-    loopDelay a b c := loopNet a b c;
     loopDelayS a b := loopNetS a b;
-    loopDelayEnable en a b c := loopNetEnable en a b c;
     loopDelaySEnable en a b := loopNetEnableS en a b;
   }.
