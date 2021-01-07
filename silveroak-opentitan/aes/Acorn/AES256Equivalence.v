@@ -37,6 +37,7 @@ Require Import AcornAes.AddRoundKeyEquivalence.
 Require Import AcornAes.CipherRound.
 Require Import AcornAes.CipherEquivalence.
 Require Import AcornAes.Common.
+(* FIXME: import sub_bytes *)
 Import ListNotations.
 Import Common.Notations.
 Import StateTypeConversions.LittleEndian.
@@ -44,6 +45,7 @@ Import StateTypeConversions.LittleEndian.
 Local Notation round_constant := (Vec Bit 8) (only parsing).
 Local Notation round_index := (Vec Bit 4) (only parsing).
 
+(* FIXME: remove axiom *)
 Axiom sub_bytes : forall {signal} {semantics : Cava signal} {monad : Monad cava},
     signal Bit -> signal state -> cava (signal state).
 Axiom shift_rows : forall {signal} {semantics : Cava signal} {monad : Monad cava},
