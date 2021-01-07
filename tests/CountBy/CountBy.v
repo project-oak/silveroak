@@ -52,7 +52,7 @@ Section WithCava.
           {semantics: CavaSeq combsemantics} `{Monad cava}.
 
   Definition countBy : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))
-    := loopDelay (addN >=> fork2).
+    := loopDelayS addN.
 
 End WithCava.
 

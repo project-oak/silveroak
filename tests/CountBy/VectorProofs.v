@@ -53,8 +53,8 @@ Definition addNSpec {ticks : nat} {n} (a b : Vector.t (Bvector n) ticks)
 
 Local Ltac seqsimpl_step :=
   first [ progress cbn beta iota delta
-                   [fst snd hd loopSeqV' loopDelay SequentialVectorSemantics]
-        | progress cbv beta iota delta [loopSeqV]; seqsimpl_step
+                   [fst snd hd loopSeqSV' loopDelayS SequentialVectorSemantics]
+        | progress cbv beta iota delta [loopSeqSV]; seqsimpl_step
         | progress autorewrite with seqsimpl
         | lazymatch goal with
           | |- context [(@SequentialVectorCombSemantics ?ticks)] =>
@@ -74,23 +74,23 @@ Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 
 Lemma countForkStepOnce (ticks: nat) (i s : Vector.t (Bvector 8) 1) :
   sequentialV
-    (stepOnce
-       (ticks:=ticks)
-       (addN >=> fork2)
-       (i, s))
-  = (countBySpec' (Vector.hd s) i, countBySpec' (Vector.hd s) i).
+    (stepOnce (ticks:=ticks) addN (i, s))
+  = countBySpec' (Vector.hd s) i.
 Proof.
   intros. unfold mcompose. cbv [countBySpec' stepOnce].
-  seqsimpl. reflexivity.
+  simpl_ident.
+  change (t (Signal.combType (Signal.Vec Signal.Bit 8)) (S ticks)) with
+      (Signal.seqVType (S ticks) (Signal.Vec Signal.Bit 8)).
+  rewrite addNCorrect with (ticks:=S ticks).
+  seqsimpl. cbn [sequentialV unIdent].
+  reflexivity.
 Qed.
 Hint Rewrite countForkStepOnce using solve [eauto] : seqsimpl.
 
 Lemma countForkCorrect ticks :
   forall(i : Vector.t (Bvector 8) ticks) (s : Vector.t (Bvector 8) 1),
     sequentialV
-      (loopSeqV' ticks (stepOnce (ticks:=ticks)
-                                 (addN >=> fork2))
-                 i s)
+      (loopSeqSV' ticks (stepOnce (ticks:=ticks) addN) i s)
     = countBySpec' (Vector.hd s) i.
 Proof.
   cbv [sequentialV].

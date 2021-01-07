@@ -90,34 +90,29 @@ Lemma addWithDelayCorrect (i : list (Bvector 8)) :
                                     (seq 0 (if length i =? 0 then 0 else S (length i))).
 Proof.
   intros; cbv [addWithDelay].
-  eapply (loop_invariant_alt (B:=Vec Bit 8) (C:=Vec Bit 8))
-    with (I:=fun t acc feedback =>
-               0 < t
-               /\ feedback = [nth (t-1) acc bvzero; nth t acc bvzero]
-               /\ acc = map (fun t => addWithDelaySpecF
-                                    (fun n => nth n i bvzero) t) (seq 0 (S t))).
+  eapply (loopDelayS_invariant_alt (B:=Vec Bit 8))
+    with (I:=fun t acc =>
+               0 < t /\
+               acc = map (fun t => addWithDelaySpecF
+                                  (fun n => nth n i bvzero) t)
+                         (seq 0  (S t))).
   { (* invariant is satisfied at start *)
-    destruct i; [ ssplit; reflexivity | ].
+    destruct i; [ reflexivity | ]. split; [ lia | ].
     seqsimpl. autorewrite with natsimpl.
     cbn [nth map seq addWithDelaySpecF].
     change (Signal.defaultCombValue (Vec Bit 8)) with (@bvzero 8).
-    rewrite bvadd_bvzero_l. ssplit; (reflexivity || lia). }
+    cbv [addNSpec map2]. rewrite bvadd_bvzero_l; reflexivity. }
   { (* invariant holds through loop *)
-    intros *. intros [Ht [Hfeedback Hacc]]. cbv zeta; intros.
-    subst. seqsimpl.
-    rewrite seq_S, map_app. cbn [map].
+    cbv zeta; intros *; intros [? ?].
+    intros;  subst; seqsimpl. split; [ lia | ].
+    autorewrite with pull_snoc.
     rewrite !overlap_snoc_cons by length_hammer.
-    autorewrite with push_nth push_length natsimpl.
-    cbn [nth]. ssplit; [ lia | reflexivity | ].
-    rewrite !seq_S, !map_app. cbn [map].
-    autorewrite with natsimpl. cbn [addWithDelaySpecF].
     destruct t; [ lia | ].
-    rewrite !seq_S, !map_app. cbn [map].
-    autorewrite with natsimpl push_length push_nth.
-    cbn [nth]. rewrite <-!app_assoc.
-    reflexivity. }
+    autorewrite with push_nth push_length natsimpl push_length pull_snoc.
+    cbn [addWithDelaySpecF]. rewrite <-!app_assoc. cbn [app].
+    cbn [addNSpec map2]. reflexivity. }
   { (* invariant implies postcondition *)
-    intros *; intros [Ht [Hfeedback Hacc]]; intros.
-    subst. destruct i; autorewrite with push_length in *; [ lia | ].
+    intros *; intros [? ?]; subst.
+    destruct i; autorewrite with push_length in *; [ lia | ].
     reflexivity. }
 Qed.
