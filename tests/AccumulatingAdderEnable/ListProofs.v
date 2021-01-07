@@ -78,7 +78,7 @@ Proof.
   intros; cbv [accumulatingAdderEnable].
   eapply loopDelayS_invariant
     with (I:=fun t acc =>
-               acc = map (signallingCounterSpec
+               acc = map (accumulatingCounterEnableSpec
                             (fun n => nth n i (bvzero, false)))
                          (seq 0 t)).
   { (* invariant holds after first step *)
@@ -96,8 +96,6 @@ Proof.
     autorewrite with push_nth.
     rewrite seq_S, map_app. cbn [map].
     autorewrite with natsimpl push_nth.
-    destruct t; [ lia | ].
-    autorewrite with natsimpl.
     cbn [accumulatingCounterEnableSpec].
     destruct t;
       [ cbn; repeat destruct_pair_let;
