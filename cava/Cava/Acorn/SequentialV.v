@@ -44,23 +44,20 @@ Local Open Scope type_scope.
 
 (* stepOnce is a helper function that takes a circuit running for > 1 ticks and
    runs it for only one tick. *)
-Definition stepOnce {m} `{Monad m}  {A B C : SignalType} {ticks : nat}
-           (f : seqVType (S ticks) A * seqVType (S ticks) C
-                -> m (seqVType (S ticks) B * seqVType (S ticks) C))
-           (input : seqVType 1 A * seqVType 1 C)
-  : m (seqVType 1 B * seqVType 1 C) :=
+Definition stepOnce {m} `{Monad m}  {A B : SignalType} {ticks : nat}
+           (f : seqVType (S ticks) A * seqVType (S ticks) B -> m (seqVType (S ticks) B))
+           (input : seqVType 1 A * seqVType 1 B) : m (seqVType 1 B) :=
   let a := Vector.hd (fst input) in
-  let c := Vector.hd (snd input) in
-  '(b, c) <- f (a :: const (defaultCombValue A) ticks,
-               c :: const (defaultCombValue C) ticks) ;;
-  ret ([Vector.hd b], [Vector.hd c]).
+  let b := Vector.hd (snd input) in
+  b <- f (a :: const (defaultCombValue A) ticks, b :: const (defaultCombValue B) ticks) ;;
+  ret ([Vector.hd b]).
 
 (******************************************************************************)
 (* Loop combinator for feedback with delay.                                   *)
 (******************************************************************************)
 
 (*
-loopSeq' takes a combinational circuit f which has a pair of inputs which
+loopSeqSV' takes a combinational circuit f which has a pair of inputs which
 represent the current input of type A and current state of type C. This circuit
 returns a pair which represents the computed output of type B and next state
 value of type C. The list of input values for each clock tick are provided
@@ -69,57 +66,43 @@ parameter. The result of the loopSeq' is a list in the identity monad that
 represented the list of computed values at each tick.
 *)
 
-Fixpoint loopSeqV' {m} `{Monad m} 
-                   {A B C : SignalType}
+Fixpoint loopSeqSV' {m} `{Monad m}
+                   {A B : SignalType}
                    (ticks: nat)
-                   (f : seqVType 1 A * seqVType 1 C -> m (seqVType 1 B * seqVType 1 C))
+                   (f : seqVType 1 A * seqVType 1 B -> m (seqVType 1 B))
                    {struct ticks}
-  : seqVType ticks A -> seqVType 1 C -> m (seqVType ticks B) :=
+  : seqVType ticks A -> seqVType 1 B -> m (seqVType ticks B) :=
   match ticks as ticks0 return seqVType ticks0 A -> _ -> m (seqVType ticks0 B) with
   | O => fun _ _ => ret []
   | S ticks' =>
     fun a feedback =>
       let x := Vector.hd a in
       let xs := Vector.tl a in
-      '(yL, nextState) <- f ([x], feedback) ;; (* One step of f. *)
-      let y := Vector.hd yL in
-      ys <- loopSeqV' ticks' f xs nextState ;; (* remaining steps of f *)
-      ret (y :: ys)
+      nextState <- f ([x], feedback) ;; (* One step of f. *)
+      ys <- loopSeqSV' ticks' f xs nextState ;; (* remaining steps of f *)
+      ret (nextState ++ ys)
   end.
 
 (*
-The loopSeq combinator takes a combinational circuit f which maps a pair
+The loopSeqSV combinator takes a combinational circuit f which maps a pair
 representing the current input and current state to another pair
 representing the computed output and next state value. This function is used
 to compute the sequential behaviour of a circuit which uses f to iterate over
 the a inputs, using a default value for the initial state.
  *)
 
-Definition loopSeqV {A B C : SignalType}
-                    (ticks : nat)
-  : (seqVType ticks A * seqVType ticks C
-     -> ident (seqVType ticks B * seqVType ticks C))
-    -> (seqVType ticks A) -> ident (seqVType ticks B) :=
+Definition loopSeqSV {A B : SignalType} (ticks : nat)
+  : (seqVType ticks A * seqVType ticks B -> ident (seqVType ticks B))
+    -> seqVType ticks A -> ident (seqVType ticks B) :=
   match ticks as ticks0 return
-        (seqVType ticks0 A * seqVType ticks0 C
-         -> ident (seqVType ticks0 B * seqVType ticks0 C))
+        (seqVType ticks0 A * seqVType ticks0 B -> ident (seqVType ticks0 B))
         -> seqVType ticks0 A -> ident (seqVType ticks0 B)  with
   | O => fun _ _ => ret []
   | S ticks' =>
     fun f a =>
-      loopSeqV' (S ticks') (stepOnce f)
-                a [defaultCombValue C]
+      loopSeqSV' (S ticks') (stepOnce f)
+                a [defaultCombValue B]
   end.
-
-(* Dummy definition for loopSeqV for now.
-   TODO(satnam6502, defaultSignal): implement. *)
-Definition loopSeqSV {A B : SignalType}
-                     (ticks : nat)
-    (f : seqVType ticks A * seqVType ticks B
-         -> ident (seqVType ticks B))
-    (i : seqVType ticks A)
-    :  ident (seqVType ticks B) :=
-  ret (Vector.const defaultSignal ticks).
 
 (******************************************************************************)
 (* A boolean sequential logic interpretation for the Cava class               *)
@@ -341,13 +324,10 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
         TODO(satnam6502, jadephilipoom): implement delayEnableV
      *)
      delayEnable k en i := delayV ticks k i;
-     loopDelay A B C := @loopSeqV A B C ticks;
-     (* Dummy definition for now for loopDelayS *)
      loopDelayS A B := @loopSeqSV A B ticks;
      (* TODO(satnam6502, jadep): Placeholder definition for loopDelayEnable for
         now. Replace with actual definition that models clock enable behaviour.
      *)
-     loopDelayEnable A B C en := @loopSeqV A B C ticks;
      loopDelaySEnable A B en := @loopSeqSV A B ticks; (* Dummy *)
    }.
 

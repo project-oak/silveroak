@@ -59,45 +59,6 @@ Definition overlap {A} (offset : nat) (a1 a2 : seqType A) : seqType A :=
 (* Loop combinator for feedback with delay.                                   *)
 (******************************************************************************)
 
-(* loopSeq' performs a single loop step, given a state consisting of
-the timestep, the accumulator for (past) output values, and the queue
-for (future) feedback values. The nth value in the output accumulator
-is always the output value for timestep n, and the nth value in
-feedback queue is the feedback to be consumed at timestep (t + n),
-where t is the current timestep. The size of the feedback queue
-depends on the amount of delay in the subcircuit; a subcircuit with
-three delays will return output that tells us the value on the
-feedback wire for the next three timesteps, so we need a feedback
-queue with 4 elements (one for the current timestep, and then 3 to
-buffer future values). *)
-
-Definition loopSeq' {A B C : SignalType}
-           (f : seqType A * seqType C -> ident (seqType B * seqType C))
-           (state: nat * ident (seqType B * seqType C)) (a : combType A)
-  : nat * ident (seqType B * seqType C) :=
-  let t := fst state in
-  (S t,
-   '(acc, feedback) <- snd state ;; (* current state : out accumulator and feedback remaining *)
-   let y := hd (defaultCombValue C) feedback in
-   '(b, c) <- f ([a], [y]) ;; (* Process one input *)
-   let feedback' := overlap 0 (tl feedback) c in (* append new feedback *)
-   let acc' := overlap t acc b in (* append new output *)
-   ret (acc', feedback')).
-
-(*
-The loopSeq combinator takes a sequential circuit f which maps a pair
-representing the current input and current state to another pair
-representing the computed output and next state value. This function is used
-to compute the sequential behaviour of a circuit which uses f to iterate over
-the a inputs, using a default value for the initial state.
-*)
-
-Definition loopSeq {A B C : SignalType}
-                   (f : seqType A * seqType C -> ident (seqType B * seqType C))
-                   (a : seqType A) : ident (seqType B) :=
-  '(b, _) <- snd (fold_left (loopSeq' f) a (0, ret ([], [defaultCombValue C]))) ;;
-  ret b.
-
 (* loopSeqS' performs a single loop step, given a state consisting of the
 timestep and the accumulator for (past) output values. This loop step
 represents a circuit in which the output and the feedback are the same:
@@ -332,17 +293,7 @@ Definition delayEnableBoolList (t: SignalType) (en: list bool) (i : seqType t) :
  Instance SequentialSemantics : CavaSeq SequentialCombSemantics :=
    { delay t i := ret (@defaultCombValue t :: i);
      delayEnable t en i := delayEnableBoolList t en i;
-     loopDelay _ _ _ := loopSeq;
      loopDelayS _ _ := loopSeqS;
-     loopDelayEnable A B C en f :=
-       (* The semantics of loopDelayEnable is defined in terms of loopDelay and
-          the circuitry required to model a clock enable with a multiplexor. *)
-       fun i =>
-         loopSeq (fun (en_i_feedback : seqType (Pair Bit A) * seqType C)  =>
-                    let feedback := snd en_i_feedback in
-                    let '(en, i) := unpair (fst en_i_feedback) in
-                    (second fork2 >=> pairLeft >=> first f >=> pairRight >=> second (swap >=> mux2 en))
-                      (i, feedback)) (mkpair en i);
      loopDelaySEnable A B en f input :=
        (* The semantics of loopDelaySEnable is defined in terms of loopDelayS and
           the circuitry required to model a clock enable with a multiplexor. *)

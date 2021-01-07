@@ -581,4 +581,34 @@ Section WithCava.
     let x := pairAssoc input in
     pairSel (indexConst sel 0) (pairSel (indexConst sel 1) x).
 
+  Section Sequential.
+    Context {seqsemantics : CavaSeq semantics}.
+
+    (* Alternate form of feedback loop with feedback and output types separated *)
+    Definition loopDelay {A B C: SignalType}
+               (body : signal A * signal C -> cava (signal B * signal C))
+               (input : signal A) : cava (signal B) :=
+      bc <- loopDelayS
+             (fun (a_bc : signal A * signal (Pair B C)) =>
+                let '(a, bc) := a_bc in
+                let '(b,c) := unpair bc in
+                '(b,c) <- body (a,c) ;;
+                ret (mkpair b c))
+             input ;;
+      ret (fst (unpair bc)).
+
+    (* Alternate form of enabled feedback loop with feedback and output types separated *)
+    Definition loopDelayEnable {A B C: SignalType} (enable : signal Bit)
+        (body : signal A * signal C -> cava (signal B * signal C))
+        (input : signal A) : cava (signal B) :=
+      bc <- loopDelaySEnable
+             enable
+             (fun (a_bc : signal A * signal (Pair B C)) =>
+                let '(a, bc) := a_bc in
+                let '(b,c) := unpair bc in
+                '(b,c) <- body (a,c) ;;
+                ret (mkpair b c))
+             input ;;
+      ret (fst (unpair bc)).
+  End Sequential.
  End WithCava.

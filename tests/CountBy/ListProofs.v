@@ -64,19 +64,15 @@ Lemma countByCorrect: forall (i : list (Bvector 8)),
                       sequential (countBy i) = countBySpec i.
 Proof.
   intros; cbv [countBy].
-  eapply (loop_invariant (B:=Vec Bit 8) (C:=Vec Bit 8)) with
-      (I:=fun t acc feedback =>
-            feedback = [bvsum (firstn t i)]
-            /\ acc = countBySpec (firstn t i)).
+  eapply (loopDelayS_invariant (B:=Vec Bit 8)) with
+      (I:=fun t acc => acc = countBySpec (firstn t i)).
   { (* invariant holds at start *)
-    ssplit; reflexivity. }
+    reflexivity. }
   { (* invariant holds through body *)
-    cbv zeta. intros *.
-    intros [Hfeedback Hacc]; intros; subst. seqsimpl.
+    cbv zeta. intros; subst. seqsimpl.
     cbv [addNSpec countBySpec bvsum map2].
     rewrite firstn_succ_snoc with (d:=N2Bv_sized 8 0) by length_hammer.
     autorewrite with push_list_fold.
-    ssplit; [ cbv [bvadd]; rewrite N.add_comm; reflexivity | ].
     cbv [seqType Signal.combType Bvector] in *.
     repeat first [ rewrite Nat.add_1_r
                  | rewrite seq_S, map_app; cbn [map]
@@ -89,8 +85,10 @@ Proof.
       match goal with H : _ |- _ => apply in_seq in H end.
       autorewrite with push_length natsimpl push_firstn push_list_fold.
       reflexivity. }
-    { cbv [bvadd]. rewrite N.add_comm. reflexivity. } }
+    { cbv [bvadd]. rewrite N.add_comm.
+      destruct t; autorewrite with push_nth push_firstn push_list_fold natsimpl;
+        reflexivity. } }
   { (* invariant implies postcondition *)
-    intros *; intros [Hfeedback Hacc]; seqsimpl; subst.
+    intros; seqsimpl; subst.
     rewrite firstn_all; reflexivity. }
 Qed.

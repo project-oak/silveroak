@@ -16,6 +16,7 @@
 
 Require Import Coq.Lists.List.
 Import ListNotations.
+Require Import coqutil.Tactics.Tactics.
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Data.Monads.IdentityMonad.
 Export MonadNotation.
@@ -40,6 +41,16 @@ Ltac seqsimpl_step :=
         | progress destruct_pair_let
         | progress simpl_ident ].
 Ltac seqsimpl := repeat seqsimpl_step.
+
+Section Misc.
+  Lemma unpair_skipn {A B} n (l : seqType (Pair A B)) :
+    unpair (skipn n l) = (skipn n (fst (unpair l)), skipn n (snd (unpair l))).
+  Proof. apply split_skipn. Qed.
+  Lemma unpair_mkpair {A B} (a : seqType A) (b : seqType B) :
+    length a = length b ->
+    unpair (mkpair a b) = (a, b).
+  Proof. apply combine_split. Qed.
+End Misc.
 
 Section Overlap.
   Lemma overlap_cons1 {A} n (xs ys : seqType A) x :
@@ -113,79 +124,106 @@ Section Overlap.
     rewrite !app_assoc.
     autorewrite with push_skipn push_length natsimpl.
     rewrite <-!app_assoc.
-    change CombinationalMonad.combType with Signal.combType in *.
     repeat (f_equal; try lia).
+  Qed.
+
+  Lemma skipn_overlap_same {A} n (x y : seqType A) :
+    skipn n (overlap n x y) = overlap 0 (skipn n x) y.
+  Proof.
+    cbv [overlap]. intros.
+    autorewrite with push_skipn push_length natsimpl.
+    reflexivity.
+  Qed.
+
+  Lemma unpair_overlap_mkpair_r {A B} offset ab (a : seqType A) (b : seqType B) :
+    length a = length b ->
+    unpair (overlap offset ab (mkpair a b)) = (overlap offset (fst (unpair ab)) a,
+                                               overlap offset (snd (unpair ab)) b).
+  Proof.
+    cbv [overlap]; intros. cbn [unpair mkpair SequentialCombSemantics].
+    cbn [seqType combType defaultCombValue] in *.
+    autorewrite with push_split. cbn [fst snd].
+    cbv [seqType]. cbn [combType defaultCombValue] in *.
+    rewrite split_length_r, split_length_l.
+    rewrite combine_split by auto. reflexivity.
   Qed.
 End Overlap.
 Hint Rewrite @overlap_cons1 @overlap_cons2 @overlap_nil_r @overlap_snoc_cons
      using solve [length_hammer] : seqsimpl.
 Hint Rewrite @overlap_0_nil @overlap_app_same using solve [eauto] : seqsimpl.
+Hint Rewrite @skipn_overlap_same using solve [eauto] : push_skipn.
 
 Section Loops.
-  Lemma loopSeq'_step {A B C}
-        (f : seqType A * seqType C -> ident (seqType B * seqType C))
-        (spec : combType A -> combType C -> seqType B * seqType C) :
-    (forall a c, sequential (f ([a], [c])) = spec a c) ->
-    forall (loop_state : nat * ident (seqType B * seqType C)) a,
-      loopSeq' f loop_state a
+  Lemma loopSeqS'_step {A B}
+        (f : seqType A * seqType B -> ident (seqType B))
+        (spec : combType A -> combType B -> seqType B) :
+    (forall a b, sequential (f ([a], [b])) = spec a b) ->
+    forall (loop_state : nat * ident (seqType B)) a,
+      loopSeqS' f loop_state a
       = let t := fst loop_state in
-        let '(acc, feedback) := unIdent (snd loop_state) in
-        let c := hd (defaultCombValue C) feedback in
-        let r := spec a c in
-        (S t, ret (overlap t acc (fst r), overlap 0 (tl feedback) (snd r))).
+        let acc := unIdent (snd loop_state) in
+        let feedback := match t with
+                        | 0 => defaultCombValue B
+                        | S t' => nth t' acc (defaultCombValue B)
+                        end in
+        let r := spec a feedback in
+        (S t, ret (overlap t acc r)).
   Proof.
-    cbv [sequential loopSeq' SequentialSemantics]. intro Hfspec.
+    cbv [sequential loopSeqS' SequentialSemantics]. intro Hfspec.
     intros. seqsimpl. rewrite Hfspec. reflexivity.
   Qed.
 
-  Lemma loop_stepwise {A B C}
-        (f : seqType A * seqType C -> ident (seqType B * seqType C))
-        (spec : combType A -> combType C -> seqType B * seqType C)
+  Lemma loopDelayS_stepwise {A B}
+        (f : seqType A * seqType B -> ident (seqType B))
+        (spec : combType A -> combType B -> seqType B)
         input :
-    (forall a c, sequential (f ([a], [c])) = spec a c) ->
-    sequential (loopDelay (CavaSeq:=SequentialSemantics) f input)
-    = snd (fst (fold_left (fun loop_state a =>
-                             let '(t, acc, feedback) := loop_state in
-                             let c := hd (defaultCombValue C) feedback in
-                             let r := spec a c in
-                             (S t, overlap t acc (fst r), overlap 0 (tl feedback) (snd r)))
-                          input (0, [], [defaultCombValue C]))).
+    (forall a b, sequential (f ([a], [b])) = spec a b) ->
+    sequential (loopDelayS (CavaSeq:=SequentialSemantics) f input)
+    = snd (fold_left (fun loop_state a =>
+                        let '(t, acc) := loop_state in
+                        let feedback := match t with
+                                        | 0 => defaultCombValue B
+                                        | S t' => nth t' acc (defaultCombValue B)
+                                        end in
+                        let r := spec a feedback in
+                        (S t, overlap t acc r))
+                     input (0, [])).
   Proof.
-    cbv [loopDelay loopSeq SequentialSemantics sequential]; intros.
+    cbv [loopDelayS loopSeqS SequentialSemantics sequential]; intros.
     seqsimpl.
-    erewrite fold_left_ext with (f0:=loopSeq' _) by (apply loopSeq'_step; eassumption).
+    erewrite fold_left_ext with (f0:=loopSeqS' _) by (apply loopSeqS'_step; eassumption).
     factor_out_loops.
     eapply fold_left_double_invariant
-      with(I:=fun (x : nat * seqType B * seqType C) (y : nat * ident (seqType B * seqType C)) =>
-                x = (fst y, fst (unIdent (snd y)), snd (unIdent (snd y)))).
+      with(I:=fun (x : nat * seqType B) (y : nat * ident (seqType B)) =>
+                x = (fst y, unIdent (snd y))).
     { (* invariant holds at start *)
       reflexivity. }
     { (* invariant holds through loop *)
-    intros; repeat destruct_pair_let. subst.
-    seqsimpl. reflexivity. }
+      intros; repeat destruct_pair_let. subst.
+      seqsimpl. reflexivity. }
   { (* invariant implies postcondition *)
     intros. subst. seqsimpl. reflexivity. }
   Qed.
 
-  Lemma loop_stepwise_indexed {A B C}
-        (f : seqType A * seqType C -> ident (seqType B * seqType C))
-        (spec : combType A -> combType C -> seqType B * seqType C)
+  Lemma loopDelayS_stepwise_indexed {A B}
+        (f : seqType A * seqType B -> ident (seqType B))
+        (spec : combType A -> combType B -> seqType B)
         input :
-    (forall a c, sequential (f ([a], [c])) = spec a c) ->
-    sequential (loopDelay (CavaSeq:=SequentialSemantics) f input)
-    = fst (fold_left (fun loop_state t =>
-                        let '(acc, feedback) := loop_state in
-                        let a := nth t input (defaultCombValue A) in
-                        let c := hd (defaultCombValue C) feedback in
-                        let r := spec a c in
-                        (overlap t acc (fst r), overlap 0 (tl feedback) (snd r)))
-                     (seq 0 (length input))
-                     ([], [defaultCombValue C])).
+    (forall a b, sequential (f ([a], [b])) = spec a b) ->
+    sequential (loopDelayS (CavaSeq:=SequentialSemantics) f input)
+    = fold_left (fun acc t =>
+                   let a := nth t input (defaultCombValue A) in
+                   let feedback := match t with
+                                   | 0 => defaultCombValue B
+                                   | S t' => nth t' acc (defaultCombValue B)
+                                   end in
+                   let r := spec a feedback in
+                   overlap t acc r)
+                (seq 0 (length input)) [].
   Proof.
-    intros. erewrite loop_stepwise by eassumption.
+    intros. erewrite loopDelayS_stepwise by eassumption.
     erewrite fold_left_to_seq with (ls:=input) (default:=defaultCombValue A).
-    pose (R:=fun t (x : seqType B * seqType C) (y : nat * seqType B * seqType C) =>
-               y = (t, fst x, snd x)).
+    pose (R:=fun t (x : seqType B) (y : nat * seqType B) => y  = (t, x)).
     factor_out_loops.
     lazymatch goal with
     | |- ?P ?loop1 ?loop2 =>
@@ -203,12 +241,88 @@ Section Loops.
       reflexivity. }
   Qed.
 
-  Lemma loop_invariant {A B C}
+  Lemma loopDelayS_invariant {A B}
+        (I : nat -> seqType B  -> Prop)
+        (f : seqType A * seqType B -> ident (seqType B))
+        (P : seqType B -> Prop) input :
+    (* invariant is true for start state *)
+    I 0 [] ->
+    (* invariant holds through loop *)
+    (forall t acc,
+        I t acc ->
+        t < length input ->
+        let a := nth t input (defaultCombValue A) in
+        let feedback := match t with
+                        | 0 => defaultCombValue B
+                        | S t' => nth t' acc (defaultCombValue B)
+                        end in
+        let r := sequential (f ([a], [feedback])) in
+        I (S t) (overlap t acc r)) ->
+    (* invariant is strong enough to prove postcondition *)
+    (forall b, I (length input) b -> P b) ->
+    P (sequential (loopDelayS (CavaSeq:=SequentialSemantics) f input)).
+  Proof.
+    intros Hstart Hbody Hpost.
+    erewrite loopDelayS_stepwise_indexed by (intros; reflexivity).
+    cbv beta. eapply fold_left_invariant_seq with (I0 := I).
+    { assumption. }
+    { intros *; repeat destruct_pair_let; intros.
+      seqsimpl. apply Hbody; eauto; lia. }
+    { intros *; repeat destruct_pair_let; intros.
+      eauto. }
+  Qed.
+
+  (* More flexible than loop_invariant about the start state satisfying the invariant *)
+  Lemma loopDelayS_invariant_alt {A B}
+        (I : nat -> seqType B -> Prop)
+        (f : seqType A * seqType B -> ident (seqType B))
+        (P : seqType B -> Prop) input :
+    (* Either the input is nil and P holds on nil, or the invariant is satisfied
+       after one step *)
+    (match input with
+     | [] => P []
+     | i0 :: _ =>
+       I 1 (sequential (f ([i0], [defaultCombValue B])))
+     end) ->
+    (* invariant holds through loop *)
+    (forall t acc,
+        I t acc ->
+        0 < t < length input ->
+        let a := nth t input (defaultCombValue A) in
+        let feedback := match t with
+                        | 0 => defaultCombValue B
+                        | S t' => nth t' acc (defaultCombValue B)
+                        end in
+        let r := sequential (f ([a], [feedback])) in
+        I (S t) (overlap t acc r)) ->
+    (* invariant is strong enough to prove postcondition *)
+    (forall b, I (length input) b -> P b) ->
+    P (sequential (loopDelayS (CavaSeq:=SequentialSemantics) f input)).
+  Proof.
+    intros Hstart Hbody Hpost.
+    erewrite loopDelayS_stepwise_indexed by (intros; reflexivity).
+    destruct input; [ cbn [fold_left]; seqsimpl; assumption | ].
+    cbn [fold_left seq length]. seqsimpl.
+    eapply fold_left_invariant_seq with (I0:=I).
+    { apply Hstart. }
+    { intros *; repeat destruct_pair_let; intros.
+      apply Hbody; eauto using in_cons; length_hammer. }
+    { intros *; repeat destruct_pair_let; intros.
+      eauto. }
+  Qed.
+
+  Lemma loopDelay_invariant {A B C}
         (I : nat -> seqType B -> seqType C -> Prop)
         (f : seqType A * seqType C -> ident (seqType B * seqType C))
         (P : seqType B -> Prop) input :
+    (* TODO(jadep): this precondition can be removed if mkpair is changed from
+       combine (truncating) to something that pads the lists to the same length
+       before combining them. *)
+    (* function produces same number of results for feedback and output *)
+    (forall a c, length (fst (unIdent (f ([a],[c]))))
+            = length (snd (unIdent (f ([a],[c]))))) ->
     (* invariant is true for start state *)
-    I 0 [] [defaultCombValue C] ->
+    I 0 [] [] ->
     (* invariant holds through loop *)
     (forall t b c,
         I t b c ->
@@ -219,17 +333,45 @@ Section Loops.
         I (S t) (overlap t b (fst r)) (overlap 0 (tl c) (snd r))) ->
     (* invariant is strong enough to prove postcondition *)
     (forall b c, I (length input) b c -> P b) ->
-    P (sequential (loopDelay (CavaSeq:=SequentialSemantics) f input)).
+    P (sequential (loopDelay (seqsemantics:=SequentialSemantics) f input)).
   Proof.
-    intros Hstart Hbody Hpost.
-    erewrite loop_stepwise_indexed by (intros; reflexivity).
-    cbv beta.
-    eapply fold_left_invariant_seq with
-        (I0:=fun t '(b,c) => I t b c).
-    { assumption. }
-    { intros *; repeat destruct_pair_let; intros.
-      seqsimpl. apply Hbody; eauto; lia. }
-    { intros *; repeat destruct_pair_let; intros.
+    intros ? ? Hbody; intros; cbv [loopDelay sequential]. seqsimpl.
+    eapply loopDelayS_invariant
+      with (I0:=fun t (bc : seqType (Pair B C)) =>
+                  (t = 0 -> bc = nil) /\
+                  I t (fst (unpair bc)) (match t with
+                                         | 0 => []
+                                         | S t' => snd (unpair (skipn t' bc))
+                                         end)).
+    { split; tauto || assumption. }
+    { cbv zeta; intros *. intros [Ht0 HI]. intros.
+      split; [ congruence | ]. repeat destruct_pair_let.
+      cbv [sequential]; seqsimpl. rewrite unpair_skipn.
+      rewrite !unpair_overlap_mkpair_r
+        by (destruct t; cbn [unpair split SequentialCombSemantics];
+            destruct_one_match; cbn [fst snd]; auto).
+      cbn [fst snd]. autorewrite with push_skipn. cbv zeta in Hbody.
+      specialize (Hbody _ _ _ ltac:(eassumption) ltac:(eassumption)).
+      (* Some unfortunately specific and manual replaces to make invariant
+         expressions match *)
+      match goal with
+      | H : context [f (?x, ?y1)] |- context [f (?x, ?y2)] =>
+        replace y2 with y1
+      end.
+      2:{ destruct_one_match; autorewrite with push_skipn;
+          [ reflexivity | ]. rewrite unpair_skipn.
+          cbn [defaultCombValue combType fst snd].
+          rewrite split_nth. cbn [fst snd].
+          rewrite hd_skipn. reflexivity. }
+      match goal with
+      | H : context [overlap 0 ?x1 ?y] |- context [overlap 0 ?x2 ?y] =>
+        replace x2 with x1
+      end.
+      2:{ destruct_one_match; [ rewrite Ht0 by reflexivity; reflexivity | ].
+          rewrite unpair_skipn. cbn [snd].
+          rewrite tl_skipn.  reflexivity. }
+      apply Hbody. }
+    { intros *. intros [? ?]. intros.
       eauto. }
   Qed.
 
@@ -238,6 +380,12 @@ Section Loops.
         (I : nat -> seqType B -> seqType C -> Prop)
         (f : seqType A * seqType C -> ident (seqType B * seqType C))
         (P : seqType B -> Prop) input :
+    (* TODO(jadep): this precondition can be removed if mkpair is changed from
+       combine (truncating) to something that pads the lists to the same length
+       before combining them. *)
+    (* function produces same number of results for feedback and output *)
+    (forall a c, length (fst (unIdent (f ([a],[c]))))
+            = length (snd (unIdent (f ([a],[c]))))) ->
     (* Either the input is nil and P holds on nil, or the invariant is satisfied
        after one step *)
     (match input with
@@ -256,19 +404,50 @@ Section Loops.
         I (S t) (overlap t b (fst r)) (overlap 0 (tl c) (snd r))) ->
     (* invariant is strong enough to prove postcondition *)
     (forall b c, I (length input) b c -> P b) ->
-    P (sequential (loopDelay (CavaSeq:=SequentialSemantics) f input)).
+    P (sequential (loopDelay (seqsemantics:=SequentialSemantics) f input)).
   Proof.
-    intros Hstart Hbody Hpost.
-    erewrite loop_stepwise_indexed by (intros; reflexivity).
-    destruct input; [ cbn [fold_left]; seqsimpl; assumption | ].
-    cbn [fold_left seq length]. seqsimpl.
-    eapply fold_left_invariant_seq with
-        (I0:=fun t '(b,c) => I t b c).
-    { apply Hstart. }
-    { intros *; repeat destruct_pair_let; intros.
-      apply Hbody; eauto using in_cons; length_hammer. }
-    { intros *; repeat destruct_pair_let; intros.
-      eauto. }
+    intros ? ? Hbody; intros; cbv [loopDelay sequential]. seqsimpl.
+    eapply loopDelayS_invariant_alt
+      with (I0:=fun t (bc : seqType (Pair B C)) =>
+                  I t (fst (unpair bc)) (match t with
+                                         | 0 => []
+                                         | S t' => snd (unpair (skipn t' bc))
+                                         end)).
+    { destruct input; [ solve [auto] | ].
+      repeat destruct_pair_let.
+      cbv zeta in *. cbn [sequential unIdent].
+      autorewrite with push_skipn.
+      rewrite unpair_mkpair
+        by (cbn [unpair split SequentialCombSemantics];
+            destruct_one_match; cbn [fst snd]; auto).
+      cbn [fst snd]. auto. }
+    { cbv zeta; intros. repeat destruct_pair_let.
+      cbv [sequential]; seqsimpl. rewrite unpair_skipn.
+      rewrite !unpair_overlap_mkpair_r
+        by (destruct t; cbn [unpair split SequentialCombSemantics];
+            destruct_one_match; cbn [fst snd]; auto).
+      cbn [fst snd]. autorewrite with push_skipn. cbv zeta in Hbody.
+      specialize (Hbody _ _ _ ltac:(eassumption) ltac:(eassumption)).
+      (* Some unfortunately specific and manual replaces to make invariant
+         expressions match *)
+      match goal with
+      | H : context [f (?x, ?y1)] |- context [f (?x, ?y2)] =>
+        replace y2 with y1
+      end.
+      2:{ destruct_one_match; autorewrite with push_skipn;
+          [ reflexivity | ]. rewrite unpair_skipn.
+          cbn [defaultCombValue combType fst snd].
+          rewrite split_nth. cbn [fst snd].
+          rewrite hd_skipn. reflexivity. }
+      match goal with
+      | H : context [overlap 0 ?x1 ?y] |- context [overlap 0 ?x2 ?y] =>
+        replace x2 with x1
+      end.
+      2:{ destruct_one_match; [ lia | ].
+          rewrite unpair_skipn. cbn [snd].
+          rewrite tl_skipn.  reflexivity. }
+      apply Hbody. }
+    { intros; eauto. }
   Qed.
 End Loops.
 

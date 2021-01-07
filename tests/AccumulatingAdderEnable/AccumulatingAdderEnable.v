@@ -72,11 +72,10 @@ Section WithCava.
     ret (pairSel sel (mkpair f t)).
 
   Definition accumulatingAdderEnable : signal (Pair (Vec Bit 8) Bit) -> cava (signal (Vec Bit 8))
-    := loopDelay (fun '(inp_and_valid, state) =>
+    := loopDelayS (fun '(inp_and_valid, state) =>
                     let '(inp, valid) := unpair inp_and_valid in
                     (addN >=>
-                     mux2 valid state >=>
-                     fork2) (inp, state)).
+                     mux2 valid state) (inp, state)).
 
 End WithCava.
 

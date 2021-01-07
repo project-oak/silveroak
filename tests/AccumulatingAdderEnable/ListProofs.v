@@ -76,36 +76,33 @@ Lemma accumulatingCounterEnableCorrect (i : list (Bvector 8 * bool)) :
       (seq 0 (length i)).
 Proof.
   intros; cbv [accumulatingAdderEnable].
-  eapply loop_invariant_alt
-    with (I:=fun t acc feedback =>
-               feedback = [nth (t-1) acc bvzero]
-               /\ acc = map (accumulatingCounterEnableSpec
-                              (fun n => nth n i (bvzero, false)))
-                              (seq 0 t)).
-  { (* postcondition hold for nil input, and invariant holds after first step *)
-
-    destruct i; cbn [map seq nth length]; [ reflexivity | ].
-    seqsimpl. cbv [addNSpec accumulatingCounterEnableSpec].
-    cbn [combine map2 fst snd]. autorewrite with natsimpl push_nth.
-    seqsimpl. split; reflexivity. }
+  eapply loopDelayS_invariant
+    with (I:=fun t acc =>
+               acc = map (accumulatingCounterEnableSpec
+                            (fun n => nth n i (bvzero, false)))
+                         (seq 0 t)).
+  { (* invariant holds after first step *)
+    reflexivity. }
   { (* invariant holds through loop body *)
-    intros *; intros [Hfeedback Hacc]. subst.
+    intros *; intros Hacc. subst.
     cbv zeta; intros. seqsimpl. cbv [addNSpec].
     autorewrite with push_length natsimpl push_nth.
     cbn [repeat app].
     match goal with
-    | |- context [Signal.defaultCombValue ?t] =>
-      change (Signal.defaultCombValue t) with (@bvzero 8, false)
+    | |- context [defaultCombValue ?t] =>
+      change (defaultCombValue t) with (@bvzero 8, false)
     end.
     seqsimpl. cbn [combine map2 fst snd].
     autorewrite with push_nth.
-    ssplit; [ reflexivity | ].
     rewrite seq_S, map_app. cbn [map].
     autorewrite with natsimpl push_nth.
-    destruct t; [ lia | ].
-    autorewrite with natsimpl.
+    cbn [accumulatingCounterEnableSpec].
+    destruct t;
+      [ cbn; repeat destruct_pair_let;
+        reflexivity | ].
+    autorewrite with natsimpl push_nth.
     cbn [accumulatingCounterEnableSpec].
     seqsimpl. reflexivity. }
   { (* invariant implies postcondition *)
-    intros *; intros [Hfeedback Hacc]. subst; reflexivity. }
+    intros; subst; reflexivity. }
 Qed.

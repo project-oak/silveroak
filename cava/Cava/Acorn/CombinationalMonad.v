@@ -30,28 +30,6 @@ Require Import Cava.Signal.
 Require Import Cava.Acorn.CavaClass.
 
 (******************************************************************************)
-(* Combinational denotion of the SignalType and default values.               *)
-(******************************************************************************)
-
-Fixpoint combType (t: SignalType) : Type :=
-  match t with
-  | Void => unit
-  | Bit => bool
-  | Vec vt sz => Vector.t (combType vt) sz
-  | Pair t1 t2 => (combType t1 * combType t2)%type
-  | ExternalType _ => unit (* No semantics for combinational interpretation. *)
-  end.
-
-Fixpoint defaultCombValue (t: SignalType) : combType t :=
-  match t  with
-  | Void => tt
-  | Bit => false
-  | Vec t2 sz => Vector.const (defaultCombValue t2) sz
-  | Pair t1 t2 => (defaultCombValue t1, defaultCombValue t2)
-  | ExternalType _ => tt
-  end.
-
-(******************************************************************************)
 (* A boolean combinational logic interpretation for the Cava class            *)
 (******************************************************************************)
 
