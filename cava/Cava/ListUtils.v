@@ -74,6 +74,34 @@ Section Misc.
 End Misc.
 Hint Rewrite @seq_snoc using solve [eauto] : pull_snoc.
 
+(* Definition and proofs of [extend], which pads a list to a specified length *)
+Section Extend.
+  Definition extend {A} (l : list A) (d : A) (n : nat) : list A :=
+    l ++ repeat d (n - length l).
+
+  Lemma extend_nil {A} (d : A) n : extend [] d n = repeat d n.
+  Proof. cbv [extend]. autorewrite with push_length natsimpl. reflexivity. Qed.
+
+  Lemma extend_le {A} l (d : A) n : n <= length l -> extend l d n = l.
+  Proof.
+    cbv [extend]; intros.
+    rewrite (proj2 (Nat.sub_0_le _ _)) by lia.
+    cbn [repeat]; autorewrite with listsimpl.
+    reflexivity.
+  Qed.
+
+  Lemma extend_to_match {A B} l1 l2 (a : A) (b : B) :
+    length (extend l1 a (length l2)) = length (extend l2 b (length l1)).
+  Proof.
+    cbv [extend]; intros. autorewrite with push_length.
+    destruct (Nat.min_dec (length l1) (length l2));
+      [ rewrite (proj2 (Nat.sub_0_le (length l1) (length l2))) by lia
+      | rewrite (proj2 (Nat.sub_0_le (length l2) (length l1))) by lia ];
+      lia.
+  Qed.
+End Extend.
+
+
 (* Proofs about [split] *)
 Section Split.
   Lemma split_skipn {A B} n (l : list (A * B)) :
