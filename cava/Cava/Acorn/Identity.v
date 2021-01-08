@@ -14,31 +14,41 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Lists.List.
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monad.
 Require Import ExtLib.Structures.MonadLaws.
 Require Import Cava.Signal.
 Require Import Cava.Tactics.
+Require Import Cava.ListUtils.
 Require Import Cava.VectorUtils.
 Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.CombinationalMonad.
 Require Import Cava.Acorn.Combinators.
+Import ListNotations.
 
 Existing Instance CombinationalSemantics.
 
 (* Lemmas about combinators specialized to the identity monad *)
 Section Combinators.
-  Lemma zipWith_unIdent {A B C : SignalType} n f va vb :
-    unIdent (@zipWith _ _ Monad_ident A B C n f va vb)
-    = map2 (fun a b => unIdent (f (a,b))) va vb.
+  Lemma zipWith_unIdent {A B C : SignalType} n
+        (f : seqType A * seqType B -> cava (seqType C))
+        (va : combType (Vec A n)) (vb : combType (Vec B n)) :
+    unIdent (@zipWith _ _ Monad_ident A B C n f [va] [vb])
+    = Vector.map2 (fun a b => unIdent (f ([a],[b])))
+                  (peel [va]) (peel [vb]).
   Proof.
     cbv [zipWith Traversable.mapT Traversable_vector].
     cbn [peel unpeel CombinationalSemantics].
     revert va vb; induction n; intros; [ apply nil_eq | ].
-    cbn [vcombine]. rewrite (eta va), (eta vb).
-    autorewrite with push_vector_map vsimpl.
-    rewrite <-IHn. reflexivity.
+    { cbn [vcombine]. rewrite (eta va), (eta vb).
+      autorewrite with push_vector_map vsimpl.
+      repeat destruct_pair_let. fold combType.
+      cbn.
+      cbn [Monad_ident bind ret unIdent].
+      cbv [unpeelVecList] in *.
+      rewrite <-IHn. reflexivity. }
   Qed.
 End Combinators.
 

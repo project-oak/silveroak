@@ -123,19 +123,12 @@ Definition peelVecList {t: SignalType} {s: nat}
                        : Vector.t (list (combType t)) s :=
  Vector.map (indexConstBoolList v) (vseq 0 s).
 
-Definition unpeelVecList' {t: SignalType} {s: nat}
-                         (v: Vector.t (list (combType t)) s) (l: nat)
-                         : list (Vector.t (combType t) s) :=
-  map (fun ni => Vector.map (fun vi => nth ni vi (defaultCombValue t)) v)
-      (seq 0 l).
-
 Definition unpeelVecList {t: SignalType} {s: nat}
                          (v: Vector.t (list (combType t)) s)
                          : list (Vector.t (combType t) s) :=
-  (match s, v with
-   | S n, x::xs => unpeelVecList' v (length x)
-   |  _, _ => List.nil
-   end)%vector.
+  let max_length := Vector.fold_left Nat.max 0 (Vector.map (@length _) v) in
+  map (fun ni => Vector.map (fun vi => nth ni vi (defaultCombValue t)) v)
+      (seq 0 max_length).
 
 Definition sliceBoolList {t: SignalType}
                          {sz: nat}
