@@ -465,6 +465,15 @@ Proof.
   apply N.bits_inj; intro. autorewrite with push_Ntestbit. reflexivity.
 Qed.
 
+Lemma N2Bv_sized_ones_step sz :
+  N2Bv_sized (S sz) (N.ones (N.of_nat (S sz)))
+  = (true :: N2Bv_sized sz (N.ones (N.of_nat sz)))%vector.
+Proof.
+  rewrite N.ones_succ. autorewrite with push_N2Bv_sized.
+  reflexivity.
+Qed.
+Hint Rewrite N2Bv_sized_ones_step using solve [eauto] : push_N2Bv_sized.
+
 (******************************************************************************)
 (* Functions useful for examples and tests                                    *)
 (******************************************************************************)

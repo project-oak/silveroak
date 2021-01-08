@@ -638,7 +638,7 @@ Section WithCava.
     | 0 => fun input => ret input
     | S sz' => fun input : signal (Vec Bit (S sz')) =>
                 let i0 := Vector.hd (peel input) in
-                '(diff0, borrow) <- half_subtractor (borrow, i0) ;;
+                '(diff0, borrow) <- half_subtractor (i0, borrow) ;;
                 diff <- decr' borrow (unpeel (Vector.tl (peel input))) ;;
                 ret (unpeel (diff0 :: peel diff)%vector)
     end.

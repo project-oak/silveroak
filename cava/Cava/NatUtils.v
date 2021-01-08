@@ -107,6 +107,24 @@ Module N.
      rewrite ?N.mod_pow2_bits_low, ?N.mod_pow2_bits_high by lia;
       try reflexivity.
   Qed.
+
+  Lemma div_mul_l a b : (b <> 0)%N -> ((b * a) / b)%N = a.
+  Proof. intros; rewrite N.mul_comm. apply N.div_mul. auto. Qed.
+
+  Lemma mod_mul_l a b : (b <> 0)%N -> ((b * a) mod b = 0)%N.
+  Proof. intros; rewrite N.mul_comm. apply N.mod_mul. auto. Qed.
+
+  Lemma succ_double_double n : (N.succ_double n- 1)%N = N.double n.
+  Proof. destruct n; reflexivity. Qed.
+
+  Lemma ones_succ sz : N.ones (N.of_nat (S sz)) = N.succ_double (N.ones (N.of_nat sz)).
+  Proof.
+    cbv [N.ones].
+    rewrite !N.shiftl_1_l, !N.pred_sub, N.succ_double_spec.
+    rewrite Nat2N.inj_succ, N.pow_succ_r by lia.
+    assert (2 ^ N.of_nat sz <> 0)%N by (apply N.pow_nonzero; lia).
+    lia.
+  Qed.
 End N.
 Hint Rewrite N.clearbit_eq N.b2n_bit0 N.shiftr_spec'
      N.pow2_bits_true N.add_bit0 N.land_spec N.lor_spec

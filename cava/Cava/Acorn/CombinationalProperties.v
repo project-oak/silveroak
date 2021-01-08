@@ -201,3 +201,51 @@ Qed.
 Lemma incr_correct {sz} (input : combType (Vec Bit sz)) :
   combinational (incr input) = N2Bv_sized _ (Bv2N input + 1).
 Proof. cbv [incr]. simpl_ident. apply incr'_correct. Qed.
+
+Lemma decr'_correct {sz} borrow (input : combType (Vec Bit sz)) :
+  combinational (decr' borrow input)
+  = N2Bv_sized _ (if borrow
+                  then if (Bv2N input =? 0)%N
+                       then N.ones (N.of_nat sz)
+                       else N.pred (Bv2N input)
+                  else Bv2N input).
+Proof.
+  cbv [combinational].
+  revert borrow input; induction sz; intros; [ solve [apply nil_eq] | ].
+  cbn [decr']. simpl_ident. cbn [unpeel peel CombinationalSemantics].
+  rewrite (eta input). autorewrite with vsimpl.
+  rewrite IHsz; clear IHsz. autorewrite with push_Bv2N.
+  destruct borrow, (Vector.hd input); boolsimpl;
+    autorewrite with push_Bv2N push_N2Bv_sized;
+    rewrite ?N.sub_0_r, ?N2Bv_sized_Bv2N;
+    try reflexivity; [ | ].
+  (* solve the majority of cases *)
+  all:repeat match goal with
+             | H : (?n = 0)%N |- _ => rewrite H
+             | H : (N.succ_double ?n = 0)%N |- _ =>
+               rewrite N.succ_double_spec in H; lia
+             | H : (N.double 0 <> 0)%N |- _ =>
+               cbn [N.double] in H; congruence
+             | H1 : (?n <> 0)%N, H2 : (N.double ?n = 0)%N |- _ =>
+               rewrite N.double_spec in H2; lia
+             | _ => first [ progress autorewrite with push_N2Bv_sized
+                         | rewrite N2Bv_sized_Bv2N
+                         | rewrite N.pred_sub, N.succ_double_double
+                         | destruct_one_match
+                         | reflexivity ]
+             end.
+  (* should only have one case left *)
+  {  rewrite <-N2Bv_sized_succ_double.
+     rewrite !N.double_spec, !N.succ_double_spec, !N.pred_sub.
+     f_equal; lia. }
+Qed.
+
+Lemma decr_correct {sz} (input : combType (Vec Bit sz)) :
+  combinational (decr input)
+  = N2Bv_sized _ ( if (Bv2N input =? 0)%N
+                   then 2 ^ (N.of_nat sz) - 1
+                   else Bv2N input - 1)%N.
+Proof.
+  cbv [decr]. simpl_ident. rewrite decr'_correct.
+  rewrite N.ones_equiv, !N.pred_sub. reflexivity.
+Qed.
