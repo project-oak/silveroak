@@ -145,27 +145,6 @@ Definition sliceBoolList {t: SignalType}
                          list (Vector.t (combType t) len) :=
   map (fun v => sliceVector v startAt len H) v.
 
-Definition unsignedAddBool {m n : nat}
-                           (av : Bvector m) (bv : Bvector n)
-: Bvector (1 + max m n) :=
-  let a := Bv2N av in
-  let b := Bv2N bv in
-  let sumSize := 1 + max m n in
-  let sum := (a + b)%N in
-  N2Bv_sized sumSize sum.
-
-Definition unsignedMultBool {m n : nat}
-           (av : Bvector m) (bv : Bvector n)
-  : Bvector (m + n) :=
-  let a := Bv2N av in
-  let b := Bv2N bv in
-  let product := (a * b)%N in
-  N2Bv_sized (m + n) product.
-
-Definition greaterThanOrEqualBool {m n : nat}
-           (av : Bvector m) (bv : Bvector n) : bool :=
-  (Bv2N bv <=? Bv2N av)%N.
-
 Local Notation lift1Bool := (@lift1 Bit Bit).
 Local Notation lift2Bool := (@lift2 Bit Bit Bit).
 Local Notation lift3Bool := (@lift3 Bit Bit Bit Bit).
