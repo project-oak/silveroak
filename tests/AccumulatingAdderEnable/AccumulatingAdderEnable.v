@@ -143,6 +143,13 @@ Example accumulatingAdderEnable2_ex2:
                 (# [0;1;2;3;4;5;6;7]) ) = # [0;0;0;3;7;12;12;19].
 Proof. reflexivity. Qed.
 
+Definition accumulatingAdderEnable2_Interface
+  := sequentialInterface "accumulatingAdderEnable2"
+     "clk" PositiveEdge "rst" PositiveEdge
+     [mkPort "en" Bit; mkPort "i" (Vec Bit 8)]
+     [mkPort "o" (Vec Bit 8)]
+     [].
+
 Definition accumulatingAdderEnable2_Netlist
-  := makeNetlist accumulatingAdderEnable_Interface
+  := makeNetlist accumulatingAdderEnable2_Interface
                  (fun '(en, i) => accumulatingAdderEnableTop (mkpair i en)).
