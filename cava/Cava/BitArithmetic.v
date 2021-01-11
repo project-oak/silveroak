@@ -399,6 +399,81 @@ Proof.
   lia.
 Qed.
 
+Lemma N2Bv_sized_succ_double sz n :
+  N2Bv_sized (S sz) (N.succ_double n) = (true :: N2Bv_sized sz n)%vector.
+Proof. destruct n; reflexivity. Qed.
+
+Lemma N2Bv_sized_double sz n :
+  N2Bv_sized (S sz) (N.double n) = (false :: N2Bv_sized sz n)%vector.
+Proof. destruct n; reflexivity. Qed.
+
+Lemma Bv2N_cons {n : nat} (b : bool) (v : Bvector.Bvector n) :
+  Bv2N (b :: v)%vector = (if b then N.succ_double (Bv2N v) else N.double (Bv2N v))%N.
+Proof. reflexivity. Qed.
+
+Lemma Bv2N_inj {n} (x y : Bvector.Bvector n) : Bv2N x = Bv2N y -> x = y.
+Proof.
+  cbv [Bvector.Bvector] in *.
+  revert x y; induction n; intros x y ?; [ apply nil_eq | ].
+  rewrite (eta x), (eta y) in *. cbn [Bv2N] in *.
+  destruct (Vector.hd x), (Vector.hd y);
+    repeat lazymatch goal with
+           | H : N.succ_double _ = N.succ_double _  |- _ =>
+             apply N.succ_double_inj in H
+           | H : N.double _ = N.double _  |- _ =>
+             apply N.double_inj in H
+           | H : N.succ_double _ = N.double _  |- _ =>
+             apply N.succ_double_double_neq in H; tauto
+           | H : N.double _ = N.succ_double _ |- _ => symmetry in H
+           end; [ | ].
+  all:rewrite (IHn (Vector.tl x) (Vector.tl y)) by auto.
+  all:reflexivity.
+Qed.
+
+Hint Rewrite @Bv2N_N2Bv @Bv2N_cons @Bv2N_Bvect_false @Bv2N_append
+     using solve [eauto] : push_Bv2N.
+Hint Rewrite @Bv2N_N2Bv_sized using lia : push_Bv2N.
+
+Hint Rewrite @N2Bv_sized_double @N2Bv_sized_succ_double @N2Bv_sized_Nsize
+     using solve [eauto] : push_N2Bv_sized.
+
+Lemma Bv2N_N2Bv_sized_testbit sz n i :
+  N.testbit (Bv2N (N2Bv_sized sz n)) i = if (i <? N.of_nat sz)%N
+                                         then N.testbit n i else false.
+Proof.
+  revert i sz; induction n using N.binary_ind; intros;
+    (destruct sz; [ |  pose proof (N.pow_gt_1 2 (N.of_nat (S sz)) ltac:(lia) ltac:(lia)) ]);
+    repeat match goal with
+           | |- context [N2Bv_sized 0 ?n] => eapply case0 with (v:=N2Bv_sized 0 n)
+           | |- context [N.ltb ?a ?b] => case_eq (N.ltb a b);
+                                         [ rewrite N.ltb_lt | rewrite N.ltb_ge ];
+                                         intros
+           | |- context [N.eqb ?a ?b] => case_eq (N.eqb a b);
+                                         [ rewrite N.eqb_eq | rewrite N.eqb_neq ];
+                                         intros
+           | _ => first [ rewrite IHn
+                       | progress autorewrite with push_Bv2N push_N2Bv_sized push_Ntestbit
+                       | reflexivity
+                       | lia ]
+           end.
+Qed.
+Hint Rewrite Bv2N_N2Bv_sized_testbit using solve [eauto] : push_Ntestbit.
+
+Lemma Bv2N_N2Bv_sized_modulo sz n :
+  Bv2N (N2Bv_sized sz n) = (n mod 2 ^ (N.of_nat sz))%N.
+Proof.
+  apply N.bits_inj; intro. autorewrite with push_Ntestbit. reflexivity.
+Qed.
+
+Lemma N2Bv_sized_ones_step sz :
+  N2Bv_sized (S sz) (N.ones (N.of_nat (S sz)))
+  = (true :: N2Bv_sized sz (N.ones (N.of_nat sz)))%vector.
+Proof.
+  rewrite N.ones_succ. autorewrite with push_N2Bv_sized.
+  reflexivity.
+Qed.
+Hint Rewrite N2Bv_sized_ones_step using solve [eauto] : push_N2Bv_sized.
+
 (******************************************************************************)
 (* Functions useful for examples and tests                                    *)
 (******************************************************************************)
@@ -489,3 +564,14 @@ Proof.
   autorewrite with vsimpl; reflexivity.
 Qed.
 
+(* Destructs into cases for all possible values of a constant-length bit
+   vector *)
+Ltac constant_bitvec_cases vec :=
+  lazymatch type of vec with
+  | Vector.t bool (S ?n) =>
+      let v' := fresh "v" in
+      rewrite (Vector.eta vec); set (v' := Vector.tl vec);
+      cbv beta in v'; constant_bitvec_cases v';
+      destruct (Vector.hd vec)
+  | Vector.t bool 0 => eapply Vector.case0 with (v := vec)
+  end.

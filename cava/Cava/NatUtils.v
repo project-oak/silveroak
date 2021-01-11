@@ -73,4 +73,63 @@ Module N.
     change 2%N with (N.of_nat 2).
     rewrite Nat2N.inj_pow. lia.
   Qed.
+
+  Lemma double_succ_double n : (N.double n + 1 = N.succ_double n)%N.
+  Proof.
+    rewrite !N.double_spec, !N.succ_double_spec. reflexivity.
+  Qed.
+
+  Lemma succ_double_double_neq n m : N.succ_double n <> N.double m.
+  Proof.
+    rewrite N.double_spec, N.succ_double_spec. nia.
+  Qed.
+
+  Lemma succ_double_testbit n i :
+    N.testbit (N.succ_double n) i = if (i =? 0)%N then true else N.testbit n (i-1).
+  Proof.
+    destruct i; subst.
+    { rewrite N.bit0_odd; apply Ndouble_plus_one_bit0. }
+    { destruct n, p; try congruence; try reflexivity. }
+  Qed.
+
+  Lemma double_testbit n i :
+    N.testbit (N.double n) i = if (i =? 0)%N then false else N.testbit n (i-1).
+  Proof.
+    destruct i; subst.
+    { rewrite N.bit0_odd. apply Ndouble_bit0. }
+    { destruct n, p; try congruence; try reflexivity. }
+  Qed.
+
+  Lemma mod_pow2_bits_full n m i :
+    N.testbit (n mod 2 ^ m) i = if (i <? m)%N then N.testbit n i else false.
+  Proof.
+    case_eq (N.ltb i m); rewrite ?N.ltb_lt, ?N.ltb_ge; intros;
+     rewrite ?N.mod_pow2_bits_low, ?N.mod_pow2_bits_high by lia;
+      try reflexivity.
+  Qed.
+
+  Lemma div_mul_l a b : (b <> 0)%N -> ((b * a) / b)%N = a.
+  Proof. intros; rewrite N.mul_comm. apply N.div_mul. auto. Qed.
+
+  Lemma mod_mul_l a b : (b <> 0)%N -> ((b * a) mod b = 0)%N.
+  Proof. intros; rewrite N.mul_comm. apply N.mod_mul. auto. Qed.
+
+  Lemma succ_double_double n : (N.succ_double n- 1)%N = N.double n.
+  Proof. destruct n; reflexivity. Qed.
+
+  Lemma ones_succ sz : N.ones (N.of_nat (S sz)) = N.succ_double (N.ones (N.of_nat sz)).
+  Proof.
+    cbv [N.ones].
+    rewrite !N.shiftl_1_l, !N.pred_sub, N.succ_double_spec.
+    rewrite Nat2N.inj_succ, N.pow_succ_r by lia.
+    assert (2 ^ N.of_nat sz <> 0)%N by (apply N.pow_nonzero; lia).
+    lia.
+  Qed.
 End N.
+Hint Rewrite N.clearbit_eq N.b2n_bit0 N.shiftr_spec'
+     N.pow2_bits_true N.add_bit0 N.land_spec N.lor_spec
+     N.testbit_even_0 N.setbit_eqb N.pow2_bits_eqb N.ldiff_spec
+     N.div2_bits N.double_bits_succ N.clearbit_eqb
+     N.bits_0 N.succ_double_testbit N.double_testbit
+     N.mod_pow2_bits_full
+     using solve [eauto] : push_Ntestbit.

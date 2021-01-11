@@ -16,6 +16,8 @@
 
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.micromega.Lia.
+Require Import Coq.NArith.NArith.
+Require Import Coq.Vectors.Vector.
 Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Combinators.
@@ -26,6 +28,7 @@ Require Import Cava.NatUtils.
 Require Import Cava.Signal.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
+Import VectorNotations.
 
 Existing Instance CombinationalSemantics.
 
@@ -56,7 +59,7 @@ Proof.
     try (split; congruence); [ | ].
   { (* Vector case *)
     match goal with
-    | |- context [@unIdent (Vector.t bool ?n) (zipWith _ _ _)] =>
+    | |- context [(@unIdent (Vector.t bool ?n) (zipWith _ _ _))] =>
       change (Vector.t bool n) with (combType (Vec Bit n));
         rewrite zipWith_unIdent
     end.
@@ -114,3 +117,11 @@ Proof.
     | _ => reflexivity
     end.
 Qed.
+
+Lemma one_correct : @unIdent (combType Bit) one = true.
+Proof. reflexivity. Qed.
+Hint Rewrite one_correct using solve [eauto] : simpl_ident.
+
+Lemma zero_correct : @unIdent (combType Bit) zero = false.
+Proof. reflexivity. Qed.
+Hint Rewrite zero_correct using solve [eauto] : simpl_ident.
