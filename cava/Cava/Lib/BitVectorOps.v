@@ -32,9 +32,6 @@ Section WithCava.
   (* A circuit to xor two bit-vectors *)
   Definition xorV {n : nat} (ab: signal (Vec Bit n) * signal (Vec Bit n)) :
     cava (signal (Vec Bit n)) :=
-    let a' := peel (fst ab) in
-    let b' := peel (snd ab) in
-    r <- mapT xor2 (vcombine a' b') ;;
-    ret (unpeel r).
+    zipWith xor2 (fst ab) (snd ab).
 
 End WithCava.
