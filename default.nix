@@ -32,7 +32,7 @@ rec {
     };
 
   docker-image-build = pkgs.dockerTools.buildLayeredImage {
-    name = "gcr.io/oak-ci/oak-hardware";
+    name = "gcr.io/oak-ci/silveroak";
     tag = "latest";
     contents = tools;
     config = {

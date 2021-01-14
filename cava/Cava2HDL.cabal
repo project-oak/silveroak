@@ -33,7 +33,7 @@ maintainer:          Satnam Singh <satnam6502@gmail.com>
 bug-reports:	     Satnam Singh <satnam6502@gmail.com>
 build-type:          Simple
 category:            Hardware
-package-URL:         https://github.com/project-oak/oak-hardware/tree/master/cava
+package-URL:         https://github.com/project-oak/silveroak/tree/master/cava
 stability:           Experimental
 cabal-version:        >= 1.10
 
