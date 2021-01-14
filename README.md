@@ -58,7 +58,7 @@ peripherals you will also need to install [OpenTitan](https://github.com/lowRISC
 To build the Cava system and its examples and run tests, type `make` in the root directory of the repo.
 
 ```console
-$ cd oak-hardware
+$ cd silveroak
 $ make
 ```
 
@@ -68,5 +68,5 @@ $ make clean
 ```
 
 ## Cava Examples (monadic versions)
-See [Cava Examples](https://github.com/project-oak/oak-hardware/blob/main/acorn-examples/README.md) for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.
+See [Cava Examples](https://github.com/project-oak/silveroak/blob/main/acorn-examples/README.md) for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.
 
