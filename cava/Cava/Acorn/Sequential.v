@@ -221,17 +221,17 @@ Local Open Scope list_scope.
 Definition unsignedAddBoolList {m n : nat}
                                (av : list (Bvector m)) (bv : list (Bvector n)) :
                                ident (list (Bvector (1 + max m n))) :=
-  mapT (fun '(a, b) => unsignedAddBool a b) (combine av bv).
+  mapT (fun '(a, b) => ret (unsignedAddBool a b)) (combine av bv).
 
 Definition unsignedMultBoolList {m n : nat}
                                 (av : list (Bvector m)) (bv : list (Bvector n)) :
                                 ident (list (Bvector (m + n))) :=
-  mapT (fun '(a, b) => unsignedMultBool a b) (combine av bv).
+  mapT (fun '(a, b) => ret (unsignedMultBool a b)) (combine av bv).
 
 Definition greaterThanOrEqualBoolList {m n : nat}
                                       (av : list (Bvector m)) (bv : list (Bvector n)) :
                                       ident (list bool) :=
-  mapT (fun '(a, b) => greaterThanOrEqualBool a b) (combine av bv).
+  mapT (fun '(a, b) => ret (greaterThanOrEqualBool a b)) (combine av bv).
 
 Definition bufBoolList (i : list bool) : ident (list bool) :=
   ret i.
