@@ -58,7 +58,7 @@ peripherals you will also need to install [OpenTitan](https://github.com/lowRISC
 To build the Cava system and its examples and run tests, type `make` in the root directory of the repo.
 
 ```console
-$ cd oak-hardware
+$ cd silveroak
 $ make
 ```
 
