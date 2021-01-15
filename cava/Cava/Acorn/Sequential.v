@@ -256,6 +256,7 @@ Definition delayEnableBoolList (t: SignalType) (en: list bool) (i : seqType t) :
 
  Instance SequentialCombSemantics : Cava seqType :=
   { cava := ident;
+    constant b := [b];
     zero := ret [false];
     one := ret [true];
     defaultSignal t := @defaultSeqValue t;

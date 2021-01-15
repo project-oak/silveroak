@@ -152,6 +152,7 @@ Definition blackBoxF (intf : CircuitInterface)
 
  Instance TimedCombSemantics : Cava combType :=
   { cava := timed;
+    constant b := b;
     zero := ret false;
     one := ret true;
     defaultSignal t := defaultCombValue t;

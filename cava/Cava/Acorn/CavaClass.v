@@ -27,6 +27,7 @@ Local Open Scope type_scope.
 Class Cava (signal : SignalType -> Type) := {
   cava : Type -> Type;    
   (* Constant values. *)
+  constant : bool -> signal Bit;
   zero : cava (signal Bit); (* This component always returns the value 0. *)
   one : cava (signal Bit); (* This component always returns the value 1. *)
   (* Default values. *)
