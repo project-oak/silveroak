@@ -53,16 +53,16 @@ Local Close Scope vector_scope.
 (* mux2_1                                                                     *)
 (******************************************************************************)
 
-Example m1: combinational (mux2_1 (false, false, true)) = false.
+Example m1: combinational (mux2_1 ([false], [false], [true])) = [false].
 Proof. reflexivity. Qed.
 
-Example m2: combinational (mux2_1 (false, true, false)) = true.
+Example m2: combinational (mux2_1 ([false], [true], [false])) = [true].
 Proof. reflexivity. Qed.
 
-Example m3: combinational (mux2_1 (true, false, true)) = true.
+Example m3: combinational (mux2_1 ([true], [false], [true])) = [true].
 Proof. reflexivity. Qed.
 
-Example m4: combinational (mux2_1 (true, true, false)) = false.
+Example m4: combinational (mux2_1 ([true], [true], [false])) = [false].
 Proof. reflexivity. Qed.
 
 Definition mux2_1_Interface
@@ -80,7 +80,9 @@ Definition mux2_1_tb_inputs :=
    (true,  true,  false)].
 
 Definition mux2_1_tb_expected_outputs
-  := map (fun i => combinational (mux2_1 i)) mux2_1_tb_inputs.
+  := map (fun '(i0,i1,i2) =>
+            List.hd false (combinational (mux2_1 ([i0],[i1],[i2])%list)))
+         mux2_1_tb_inputs.
 
 Definition mux2_1_tb
   := testBench "mux2_1_tb" mux2_1_Interface
@@ -97,16 +99,16 @@ Definition v2 := N2Bv_sized 8 255.
 Definition v3 := N2Bv_sized 8  63.
 Definition v0to3 : Vector.t (Bvector 8) 4 := [v0; v1; v2; v3].
 
-Example m5: combinational (muxBus (v0to3, [false; false])) = v0.
+Example m5: combinational (muxBus ([v0to3]%list, [[false; false]%vector]%list)) = [v0]%list.
 Proof. reflexivity. Qed.
 
-Example m6: combinational (muxBus (v0to3, [true; false])) = v1.
+Example m6: combinational (muxBus ([v0to3]%list, [[true; false]%vector]%list)) = [v1]%list.
 Proof. reflexivity. Qed.
 
-Example m7: combinational (muxBus (v0to3, [false; true])) = v2.
+Example m7: combinational (muxBus ([v0to3]%list, [[false; true]%vector]%list)) = [v2]%list.
 Proof. reflexivity. Qed.
 
-Example m8: combinational (muxBus (v0to3, [true; true])) = v3.
+Example m8: combinational (muxBus ([v0to3]%list, [[true; true]%vector]%list)) = [v3]%list.
 Proof. reflexivity. Qed.
 
 Local Close Scope vector_scope.
@@ -127,7 +129,9 @@ Definition muxBus4_8_tb_inputs : list (Vector.t (Bvector 8) 4 * Vector.t bool 2)
   ].
 
 Definition muxBus4_8_tb_expected_outputs : list (Bvector 8)
-  := map (fun i => combinational (muxBus i)) muxBus4_8_tb_inputs.
+  := map (fun '(i0,i1) => List.hd (defaultCombValue _)
+                               (combinational (muxBus ([i0],[i1])%list)))
+         muxBus4_8_tb_inputs.
 
 Definition muxBus4_8_tb
   := testBench "muxBus4_8_tb" muxBus4_8Interface

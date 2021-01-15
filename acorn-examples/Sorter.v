@@ -74,7 +74,8 @@ Definition two_sorter_tb_inputs : list (Vector.t (Bvector 8) _) :=
   ].
 
 Definition adder_tree4_8_tb_expected_outputs : list (Vector.t (Bvector 8) _) :=
-  map (fun i => combinational (twoSorter i)) two_sorter_tb_inputs.
+  map (fun i => List.hd (defaultCombValue _) (combinational (twoSorter [i]%list)))
+      two_sorter_tb_inputs.
 
 Definition two_sorter_tb :=
   testBench "two_sorter_tb" (two_sorter_Interface 8)

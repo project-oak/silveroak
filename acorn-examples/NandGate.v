@@ -56,22 +56,22 @@ Definition nand2Netlist := makeNetlist nand2Interface nand2_gate.
 
 (* A proof that the NAND gate implementation is correct. *)
 Lemma nand2_behaviour : forall (a : bool) (b : bool),
-                        combinational (nand2_gate (a, b)) = negb (a && b).
+                        combinational (nand2_gate ([a], [b])) = [negb (a && b)].
 Proof.
   auto.
 Qed.
 
 (* An exhuastive proof by analyzing all four cases. *)
-Example nand_00 : combinational (nand2_gate (false, false)) = true.
+Example nand_00 : combinational (nand2_gate ([false], [false])) = [true].
 Proof. reflexivity. Qed.
 
-Example nand_01 : combinational (nand2_gate (false, true)) = true.
+Example nand_01 : combinational (nand2_gate ([false], [true])) = [true].
 Proof. reflexivity. Qed.
 
-Example nand_10 : combinational (nand2_gate (true, false)) = true.
+Example nand_10 : combinational (nand2_gate ([true], [false])) = [true].
 Proof. reflexivity. Qed.
 
-Example nand_11 : combinational (nand2_gate (true, true)) = false.
+Example nand_11 : combinational (nand2_gate ([true], [true])) = [false].
 Proof. reflexivity. Qed.
 
 (* Test bench tables for generated SystemVerilog simulation test bench *)
@@ -80,7 +80,7 @@ Definition nand_tb_inputs : list (bool * bool) :=
 
 (* Compute expected outputs. *)
 Definition nand_tb_expected_outputs : list bool :=
-  map (fun i => combinational (nand2_gate i)) nand_tb_inputs.
+  map (fun '(i0,i1) => List.hd false (combinational (nand2_gate ([i0], [i1])%list))) nand_tb_inputs.
 
 Definition nand2_tb :=
   testBench "nand2_tb" nand2Interface nand_tb_inputs nand_tb_expected_outputs.

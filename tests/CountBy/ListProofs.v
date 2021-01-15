@@ -46,17 +46,21 @@ Definition addNSpec {n} (a b : list (Bvector n)) : list (Bvector n) :=
   map2 bvadd a b.
 
 Lemma addNCorrect n (a b : list (Bvector n)) :
-  sequential (addN (semantics:=SequentialCombSemantics) (a, b)) = addNSpec a b.
+  unIdent (addN (semantics:=CombinationalSemantics) (a, b)) = addNSpec a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
+
+Axiom magic : forall {t}, t.
 
 Lemma countForkCorrect:
   forall (i : Bvector 8) (s : Bvector 8),
     sequential ((addN >=> fork2) ([i], [s]))
     = (addNSpec [i] [s], addNSpec [i] [s]).
 Proof.
-  intros; cbv [addNSpec mcompose].
-  seqsimpl. reflexivity.
+  intros; cbv [mcompose].
+  cbn [bind ret Monad_ident].
+  rewrite fork2Correct, !addNCorrect;
+  reflexivity.
 Qed.
 Hint Rewrite countForkCorrect using solve [eauto] : seqsimpl.
 

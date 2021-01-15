@@ -66,7 +66,8 @@ Definition instantiate_tb_inputs : list (bool * bool * bool) :=
 
 (* Compute expected outputs. *)
 Definition instantiate_tb_expected_outputs : list bool :=
-  map (fun i => combinational (nand3_gate i)) instantiate_tb_inputs.
+  map (fun '(i0,i1,i2) => List.hd false (combinational (nand3_gate ([i0],[i1],[i2])%list)))
+      instantiate_tb_inputs.
 
 Definition instantiate_tb :=
   testBench "instantiate_tb" nand3Interface instantiate_tb_inputs instantiate_tb_expected_outputs.
