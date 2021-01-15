@@ -770,6 +770,38 @@ Section VectorFacts.
     f_equal; auto.
   Qed.
 
+  Lemma to_list_splitat1 {A} n m (v : Vector.t A (n + m)) :
+    to_list (fst (splitat _ v)) = firstn n (to_list v).
+  Proof.
+    erewrite append_splitat with (vw:=v) by apply surjective_pairing.
+    rewrite splitat_append, to_list_append. cbn [fst snd].
+    autorewrite with push_firstn. rewrite to_list_length.
+    autorewrite with natsimpl push_firstn listsimpl.
+    rewrite firstn_all2 by (rewrite to_list_length; reflexivity).
+    reflexivity.
+  Qed.
+
+  Lemma to_list_splitat2 {A} n m (v : Vector.t A (n + m)) :
+    to_list (snd (splitat _ v)) = skipn n (to_list v).
+  Proof.
+    erewrite append_splitat with (vw:=v) by apply surjective_pairing.
+    rewrite splitat_append, to_list_append. cbn [fst snd].
+    autorewrite with push_skipn. rewrite to_list_length.
+    autorewrite with natsimpl push_skipn listsimpl.
+    rewrite skipn_all2 by (rewrite to_list_length; reflexivity).
+    reflexivity.
+  Qed.
+
+  Lemma to_list_snoc {A n} (v : Vector.t A n) x :
+    to_list (snoc v x) = (to_list v ++ [x])%list.
+  Proof.
+    revert v; induction n; [ vnil; reflexivity | ].
+    intros; rewrite (eta v). cbn [snoc].
+    autorewrite with vsimpl.
+    rewrite IHn, app_comm_cons.
+    reflexivity.
+  Qed.
+
   Lemma fold_left_to_list {A B} (f : B -> A -> B) n b (v : t A n) :
     fold_left f b v = List.fold_left f (to_list v) b.
   Proof.
@@ -865,9 +897,10 @@ Hint Rewrite @map_id_ext
      using solve [intros; autorewrite with vsimpl; eauto]
   : push_vector_map vsimpl.
 
-(* Hints to change a goal from vectors to list go in the vec_to_list database *)
+(* Hints to change a goal from vectors to list go in the push_to_list database *)
 Hint Rewrite @to_list_nil @to_list_cons @to_list_append
      @fold_left_to_list @to_list_map @to_list_of_list_opp
+     @to_list_splitat1 @to_list_splitat2 @to_list_snoc
      using solve [eauto] : push_to_list.
 Hint Rewrite @to_list_resize_default
      using solve [ListUtils.length_hammer] : push_to_list.
@@ -1266,12 +1299,6 @@ Section Vector.
       (x::xs,y::ys)
     ) _ v.
 
-  Definition tail_default {n} (default: A) (v: t A n): t A (n-1) :=
-    t_rect _ (fun n v => t A (n-1)) ([])
-    (fun x n v f =>
-      resize_default default _ v
-    ) _ v.
-
   Fixpoint nth_default {n} (default: A) p (v: t A n): A :=
     match p with
     | 0 =>
@@ -1279,7 +1306,11 @@ Section Vector.
         | [] => default
         | x :: _ => x
         end
-    | S p' => nth_default default p' (tail_default default v)
+    | S p' =>
+        match v with
+        | [] => default
+        | _ :: v' => nth_default default p' v'
+        end
     end.
 
   Definition of_list_sized {A} (a : A) (n : nat) (l : list A) : Vector.t A n :=
@@ -1325,6 +1356,37 @@ Section Vector.
     erewrite Bool.not_true_iff_false. reflexivity.
   Qed.
 End Vector.
+
+Section NthDefault.
+  Lemma nth_default_snoc {A n} (v : Vector.t A n) x i d :
+    i < n -> nth_default d i (snoc v x) = nth_default d i v.
+  Proof.
+    revert n v; induction i; intros.
+    { destruct n; [ lia | ]. rewrite (eta v).
+      reflexivity. }
+    { destruct n; [ lia | ]. rewrite (eta v).
+      cbn [snoc]. autorewrite with vsimpl.
+      cbn [nth_default]. rewrite IHi by lia.
+      reflexivity. }
+  Qed.
+
+  Lemma nth_default_to_list {A n} (v : Vector.t A n) d i :
+    nth_default d i v = List.nth i (to_list v) d.
+  Proof.
+    revert n v; induction i; intros.
+    { destruct n; [ eapply case0 with (v:=v) | rewrite (eta v) ];
+        reflexivity. }
+    { destruct n; [ eapply case0 with (v:=v); reflexivity | ].
+      rewrite (eta v). autorewrite with push_to_list.
+      cbn [nth_default List.nth]. apply IHi. }
+  Qed.
+
+  Lemma nth_default_resize_default {A n} (v : Vector.t A n) d m i :
+    m = n -> nth_default d i (resize_default d m v) = nth_default d i v.
+  Proof.
+    intros; subst. rewrite resize_default_id. reflexivity.
+  Qed.
+End NthDefault.
 
 (* Useful tactic to destruct vectors of constant length *)
 Ltac constant_vector_simpl vec :=

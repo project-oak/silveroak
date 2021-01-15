@@ -599,7 +599,8 @@ Section WithCava.
     destruct_one_match; [ Lia.lia | ].
     erewrite tree_equiv' with (valid0:=valid) (id0:=id); eauto; [ | ].
     { rewrite MonadLaws.bind_of_return by auto.
-      autorewrite with push_to_list push_list_fold.
+      rewrite !fold_left_to_list, to_list_resize_default, to_list_append by lia.
+      autorewrite with push_list_fold.
       erewrite foldLM_of_ret_valid with (validA:=valid) (validB:=valid);
         eauto; [ | ].
       { apply fold_left_invariant with (I:=valid); auto; [ ].
