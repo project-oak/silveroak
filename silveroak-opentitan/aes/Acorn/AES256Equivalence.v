@@ -15,6 +15,7 @@
 (****************************************************************************)
 
 Require Import Coq.Arith.PeanoNat.
+Require Import Coq.NArith.NArith.
 Require Import Coq.Vectors.Vector.
 Require Import Coq.Lists.List.
 Require Import coqutil.Tactics.destr.
@@ -74,44 +75,33 @@ Qed.
 Hint Rewrite @unflatten_flatten @flatten_unflatten using solve [eauto] : conversions.
 
 Axiom sub_bytes_equiv :
- forall st : t bool 128,
-   from_cols_bitvecs
-     (combinational (sub_bytes false (to_cols_bitvecs st))) = AES256.sub_bytes st.
+  forall (is_decrypt : bool) (st : combType state),
+    unIdent (sub_bytes [is_decrypt] [st])
+    = [if is_decrypt
+       then to_cols_bitvecs (AES256.inv_sub_bytes (from_cols_bitvecs st))
+       else to_cols_bitvecs (AES256.sub_bytes (from_cols_bitvecs st))].
 Axiom shift_rows_equiv :
-  forall st : t bool 128,
-    from_cols_bitvecs
-      (combinational (shift_rows false (to_cols_bitvecs st))) = AES256.shift_rows st.
+  forall (is_decrypt : bool) (st : combType state),
+    unIdent (shift_rows [is_decrypt] [st])
+    = [if is_decrypt
+       then to_cols_bitvecs (AES256.inv_shift_rows (from_cols_bitvecs st))
+       else to_cols_bitvecs (AES256.shift_rows (from_cols_bitvecs st))].
 Axiom mix_columns_equiv :
-  forall st : t bool 128,
-    from_cols_bitvecs
-      (combinational (mix_columns false (to_cols_bitvecs st))) = AES256.mix_columns st.
-Axiom key_expand_equiv :
-  forall (i : nat) (k : t (t (t bool 8) 4) 4 * t bool 8),
-    (i < 16)%nat ->
-    combinational (key_expand false (nat_to_bitvec_sized _ i) k)
-    = unflatten_key (key_expand_spec i (flatten_key k)).
+  forall (is_decrypt : bool) (st : combType state),
+    unIdent (mix_columns [is_decrypt] [st])
+    = [if is_decrypt
+       then to_cols_bitvecs (AES256.inv_mix_columns (from_cols_bitvecs st))
+       else to_cols_bitvecs (AES256.mix_columns (from_cols_bitvecs st))].
 
-Axiom inv_sub_bytes_equiv :
- forall st : t bool 128,
-   from_cols_bitvecs
-     (combinational (sub_bytes true (to_cols_bitvecs st))) = inv_sub_bytes st.
-Axiom inv_shift_rows_equiv :
-  forall st : t bool 128,
-    from_cols_bitvecs
-      (combinational (shift_rows true (to_cols_bitvecs st))) = inv_shift_rows st.
-Axiom inv_mix_columns_equiv :
-  forall st : t bool 128,
-    from_cols_bitvecs
-      (combinational (mix_columns true (to_cols_bitvecs st))) = inv_mix_columns st.
-Axiom inv_key_expand_equiv :
-  forall (i : nat) (k : t (t (t bool 8) 4) 4 * t bool 8),
-    (i < 16)%nat ->
-    combinational (key_expand true (nat_to_bitvec_sized _ i) k)
-    = unflatten_key (inv_key_expand_spec i (flatten_key k)).
+Axiom key_expand_equiv :
+  forall (is_decrypt : bool) (round_i : t bool 4) (k : t (t (t bool 8) 4) 4) (rcon : t bool 8),
+    combinational (key_expand [is_decrypt] [round_i] ([k], [rcon]))
+    = let spec := if is_decrypt then inv_key_expand_spec else key_expand_spec in
+      let kr := spec (N.to_nat (Bv2N round_i)) (flatten_key (k, rcon)) in
+      ([to_cols_bitvecs (fst kr)], [snd kr]).
 
 Hint Resolve add_round_key_equiv sub_bytes_equiv shift_rows_equiv
-     mix_columns_equiv inv_sub_bytes_equiv inv_shift_rows_equiv
-     inv_mix_columns_equiv : subroutines_equiv.
+     mix_columns_equiv : subroutines_equiv.
 
 Definition full_cipher {signal} {semantics : Cava signal} {monad : Monad cava}
            (num_rounds_regular round_0 : signal (Vec Bit 4))
@@ -134,32 +124,45 @@ Lemma full_cipher_equiv
                 else (fun i k => unflatten_key (key_expand_spec i (flatten_key k))))
                Nr (first_key, first_rcon) in
   let all_keys := List.map fst all_keys_and_rcons in
-  let round_indices := map (fun i => nat_to_bitvec_sized 4 i) (List.seq 0 (S Nr)) in
+  let round_indices := map (fun i => [nat_to_bitvec_sized 4 i]) (List.seq 0 (S Nr)) in
   let middle_keys_flat :=
       if is_decrypt
       then List.map AES256.inv_mix_columns (List.map from_cols_bitvecs middle_keys)
       else List.map from_cols_bitvecs middle_keys in
   all_keys = (first_key :: middle_keys ++ [last_key])%list ->
   combinational
-    (full_cipher (nat_to_bitvec_sized _ Nr) (nat_to_bitvec_sized _ 0) is_decrypt
-                 first_key first_rcon round_indices input)
-  = to_cols_bitvecs
-      ((if is_decrypt then aes256_decrypt else aes256_encrypt)
-         (from_cols_bitvecs first_key) (from_cols_bitvecs last_key) middle_keys_flat
-         (from_cols_bitvecs input)).
+    (full_cipher [nat_to_bitvec_sized _ Nr] [nat_to_bitvec_sized _ 0]
+                 [is_decrypt] [first_key] [first_rcon] round_indices [input])
+  = [to_cols_bitvecs
+       ((if is_decrypt then aes256_decrypt else aes256_encrypt)
+          (from_cols_bitvecs first_key) (from_cols_bitvecs last_key) middle_keys_flat
+          (from_cols_bitvecs input))].
 Proof.
   cbv [full_cipher]; intros.
 
   destruct is_decrypt.
   { (* decryption *)
-    erewrite inverse_cipher_equiv with (Nr:=14);
-      [ |  lazymatch goal with
-           | |- _ = (_ :: _ ++ [_])%list =>
-             erewrite ?all_keys_ext
-               by (intros; rewrite inv_key_expand_equiv by Lia.lia;
-                   instantiate_app_by_reflexivity); solve [eauto]
-           | _ => change (2^4)%nat with 16; (reflexivity || Lia.lia)
-           end .. ].
+    erewrite inverse_cipher_equiv with
+        (Nr:=14)
+        (add_round_key_spec:=
+           fun k st => to_cols_bitvecs (AES256.add_round_key (from_cols_bitvecs k) (from_cols_bitvecs st)))
+        (key_expand_spec:=
+           fun i k_rcon => unflatten_key (key_expand_spec i (flatten_key k_rcon)))
+        (inv_key_expand_spec:=
+           fun i k_rcon => unflatten_key (inv_key_expand_spec i (flatten_key k_rcon)))
+        by first [ reflexivity
+                 | change (2 ^ 4)%nat with 16; Lia.lia
+                 | cbv zeta; intros;
+                   first [ eapply shift_rows_equiv
+                         | eapply sub_bytes_equiv
+                         | eapply mix_columns_equiv
+                         | eapply add_round_key_equiv ]
+                 | cbv zeta; intros;
+                   rewrite key_expand_equiv; cbv zeta;
+                   destruct is_decrypt; reflexivity
+                 | erewrite ?all_keys_ext
+                   by (intros; rewrite inv_key_expand_equiv by Lia.lia;
+                       instantiate_app_by_reflexivity); solve [eauto] ].
 
     cbv [aes256_decrypt].
 
@@ -174,23 +177,35 @@ Proof.
            (last_key_alt:=from_cols_bitvecs last_key)
       by (try apply to_cols_bitvecs_from_cols_bitvecs;
           rewrite !List.map_map; apply List.map_ext;
-          intros; rewrite <-inv_mix_columns_equiv;
           autorewrite with conversions; reflexivity).
 
     (* Prove that ciphers are equivalent because all subroutines are
        equivalent *)
-    f_equal.
+    f_equal. f_equal.
     eapply equivalent_inverse_cipher_subroutine_ext;
-      eauto with subroutines_equiv. }
+      intros; autorewrite with conversions; reflexivity. }
   { (* encryption *)
-    erewrite cipher_equiv with (Nr:=14);
-      [ |  lazymatch goal with
-           | |- _ = (_ :: _ ++ [_])%list =>
-             erewrite ?all_keys_ext
-               by (intros; rewrite key_expand_equiv by Lia.lia;
-                   instantiate_app_by_reflexivity); solve [eauto]
-           | _ => change (2^4)%nat with 16; (reflexivity || Lia.lia)
-           end .. ].
+    erewrite cipher_equiv with
+        (Nr:=14)
+        (add_round_key_spec:=
+           fun k st => to_cols_bitvecs (AES256.add_round_key (from_cols_bitvecs k) (from_cols_bitvecs st)))
+        (key_expand_spec:=
+           fun i k_rcon => unflatten_key (key_expand_spec i (flatten_key k_rcon)))
+        (inv_key_expand_spec:=
+           fun i k_rcon => unflatten_key (inv_key_expand_spec i (flatten_key k_rcon)))
+        by first [ reflexivity
+                 | change (2 ^ 4)%nat with 16; Lia.lia
+                 | cbv zeta; intros;
+                   first [ eapply shift_rows_equiv
+                         | eapply sub_bytes_equiv
+                         | eapply mix_columns_equiv
+                         | eapply add_round_key_equiv ]
+                 | cbv zeta; intros;
+                   rewrite key_expand_equiv; cbv zeta;
+                   destruct is_decrypt; reflexivity
+                 | erewrite ?all_keys_ext
+                   by (intros; rewrite inv_key_expand_equiv by Lia.lia;
+                       instantiate_app_by_reflexivity); solve [eauto] ].
 
     cbv [aes256_encrypt].
 
@@ -206,23 +221,12 @@ Proof.
 
     (* Prove that ciphers are equivalent because all subroutines are
        equivalent *)
-    f_equal.
-    eapply cipher_subroutine_ext; eauto with subroutines_equiv. }
+    f_equal. f_equal.
+    eapply cipher_subroutine_ext;
+      intros; autorewrite with conversions; reflexivity. }
 Qed.
 
 Local Open Scope monad_scope.
-
-Lemma decrypt_middle_keys_equiv (middle_keys : list (combType key)) :
-  List.map (fun k => from_cols_bitvecs (combinational (mix_columns true k)))
-           (List.rev middle_keys) =
-  List.map inv_mix_columns (List.rev (List.map from_cols_bitvecs middle_keys)).
-Proof.
-  rewrite !List.map_rev. f_equal.
-  rewrite List.map_map. apply List.map_ext; intro x.
-  rewrite <-(to_cols_bitvecs_from_cols_bitvecs x).
-  rewrite inv_mix_columns_equiv.
-  autorewrite with conversions; reflexivity.
-Qed.
 
 (* TODO: define a downto/upto loop combinator and then prove the cipher in terms of that *)
 Lemma full_cipher_inverse
@@ -232,7 +236,7 @@ Lemma full_cipher_inverse
   let all_keys_and_rcons :=
       all_keys (fun i k => unflatten_key (key_expand_spec i (flatten_key k)))
                Nr (first_key, first_rcon) in
-  let round_indices := map (fun i => nat_to_bitvec_sized 4 i) (List.seq 0 (S Nr)) in
+  let round_indices := map (fun i => [nat_to_bitvec_sized 4 i]) (List.seq 0 (S Nr)) in
   (* last_key and last_rcon are correct *)
   (exists keys, all_keys_and_rcons = keys ++ [(last_key, last_rcon)]) ->
   (* inverse key expansion reverses key expansion *)
@@ -241,10 +245,10 @@ Lemma full_cipher_inverse
         (inv_key_expand_spec
            (Nr - S i) (key_expand_spec i (flatten_key kr))) = kr) ->
   combinational
-    ((full_cipher (nat_to_bitvec_sized _ Nr) (nat_to_bitvec_sized _ 0)
-                  false first_key first_rcon round_indices >=>
-      full_cipher (nat_to_bitvec_sized _ Nr) (nat_to_bitvec_sized _ 0)
-                  true last_key last_rcon round_indices) input) = input.
+    ((full_cipher [nat_to_bitvec_sized _ Nr] [nat_to_bitvec_sized _ 0]
+                  [false] [first_key] [first_rcon] round_indices >=>
+      full_cipher [nat_to_bitvec_sized _ Nr] [nat_to_bitvec_sized _ 0]
+                  [true] [last_key] [last_rcon] round_indices) [input]) = [input].
 Proof.
   cbv [mcompose]. intros [keys Hkeys] ?. simpl_ident.
 
@@ -261,10 +265,8 @@ Proof.
   subst.
 
   (* TODO(jadep): can ExpandAllKeys be improved to make this less awkward? *)
+  cbv [combinational].
   erewrite !full_cipher_equiv.
-  2:{
-    rewrite Hkeys. cbn [map]. rewrite map_app. cbn [map fst].
-    reflexivity. }
   2:{
     erewrite all_keys_inv_eq
       by (intros; lazymatch goal with
@@ -273,6 +275,9 @@ Proof.
                   end).
     rewrite Hkeys. cbn [map rev]. rewrite map_app, rev_unit. cbn [map rev fst].
     rewrite <-app_comm_cons. reflexivity. }
+  2:{
+    rewrite Hkeys. cbn [map]. rewrite map_app. cbn [map fst].
+    reflexivity. }
 
   autorewrite with conversions.
   do 2 rewrite map_rev.

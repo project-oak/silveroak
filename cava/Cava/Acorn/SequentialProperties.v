@@ -27,6 +27,8 @@ Require Import Cava.Tactics.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Combinators.
+Require Import Cava.Acorn.CombinationalMonad.
+Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Acorn.Sequential.
 
 Require Import Coq.Arith.PeanoNat.
@@ -41,16 +43,6 @@ Ltac seqsimpl_step :=
         | progress destruct_pair_let
         | progress simpl_ident ].
 Ltac seqsimpl := repeat seqsimpl_step.
-
-Section Misc.
-  Lemma unpair_skipn {A B} n (l : seqType (Pair A B)) :
-    unpair (skipn n l) = (skipn n (fst (unpair l)), skipn n (snd (unpair l))).
-  Proof. apply split_skipn. Qed.
-  Lemma unpair_mkpair {A B} (a : seqType A) (b : seqType B) :
-    length a = length b ->
-    unpair (mkpair a b) = (a, b).
-  Proof. apply combine_split. Qed.
-End Misc.
 
 Section Overlap.
   Lemma overlap_cons1 {A} n (xs ys : seqType A) x :
@@ -140,11 +132,12 @@ Section Overlap.
     unpair (overlap offset ab (mkpair a b)) = (overlap offset (fst (unpair ab)) a,
                                                overlap offset (snd (unpair ab)) b).
   Proof.
-    cbv [overlap]; intros. cbn [unpair mkpair SequentialCombSemantics].
+    cbv [overlap]; intros. cbn [unpair mkpair CombinationalSemantics].
     cbn [seqType combType defaultCombValue] in *.
     autorewrite with push_split. cbn [fst snd].
     cbv [seqType]. cbn [combType defaultCombValue] in *.
     rewrite split_length_r, split_length_l.
+    rewrite pad_combine_eq by length_hammer.
     rewrite combine_split by auto. reflexivity.
   Qed.
 End Overlap.
@@ -348,7 +341,7 @@ Section Loops.
       split; [ congruence | ]. repeat destruct_pair_let.
       cbv [sequential]; seqsimpl. rewrite unpair_skipn.
       rewrite !unpair_overlap_mkpair_r
-        by (destruct t; cbn [unpair split SequentialCombSemantics];
+        by (destruct t; cbn [unpair split CombinationalSemantics];
             destruct_one_match; cbn [fst snd]; auto).
       cbn [fst snd]. autorewrite with push_skipn. cbv zeta in Hbody.
       specialize (Hbody _ _ _ ltac:(eassumption) ltac:(eassumption)).
@@ -418,13 +411,13 @@ Section Loops.
       cbv zeta in *. cbn [sequential unIdent].
       autorewrite with push_skipn.
       rewrite unpair_mkpair
-        by (cbn [unpair split SequentialCombSemantics];
+        by (cbn [unpair split CombinationalSemantics];
             destruct_one_match; cbn [fst snd]; auto).
       cbn [fst snd]. auto. }
     { cbv zeta; intros. repeat destruct_pair_let.
       cbv [sequential]; seqsimpl. rewrite unpair_skipn.
       rewrite !unpair_overlap_mkpair_r
-        by (destruct t; cbn [unpair split SequentialCombSemantics];
+        by (destruct t; cbn [unpair split CombinationalSemantics];
             destruct_one_match; cbn [fst snd]; auto).
       cbn [fst snd]. autorewrite with push_skipn. cbv zeta in Hbody.
       specialize (Hbody _ _ _ ltac:(eassumption) ltac:(eassumption)).
@@ -453,8 +446,8 @@ End Loops.
 
 Section Evaluation.
   Lemma sequential_compose {A B C}
-        (f : A -> @cava _ SequentialCombSemantics B)
-        (g : B -> @cava _ SequentialCombSemantics C) i :
+        (f : A -> @cava _ CombinationalSemantics B)
+        (g : B -> @cava _ CombinationalSemantics C) i :
     sequential ((f >=> g) i) = sequential (g (sequential (f i))).
   Proof. reflexivity. Qed.
 
@@ -467,7 +460,7 @@ Section Evaluation.
   Proof. reflexivity. Qed.
 
   Lemma unpair_single {A B} (p : combType (Pair A B)) :
-    unpair (Cava:=SequentialCombSemantics) [p] = ([fst p], [snd p]).
+    unpair (Cava:=CombinationalSemantics) [p] = ([fst p], [snd p]).
   Proof. destruct p; reflexivity. Qed.
 End Evaluation.
 Hint Rewrite @sequential_compose @delayCorrect @fork2Correct @unpair_single
