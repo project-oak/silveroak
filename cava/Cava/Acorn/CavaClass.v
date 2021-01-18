@@ -122,8 +122,7 @@ Class CavaSeqMonad {signal : SignalType -> Type} (combinationalSemantics : Cava 
   (* A unit delay. *)
   delaym : forall {t: SignalType}, cava (signal t) -> cava (signal t);
   (* Feeback loop, with unit delay inserted into the feedback path. *)
-  loopDelaym : forall {A B C: SignalType},
-               (signal A * signal C -> cava (signal B * signal C)) ->
-               cava (signal A) ->
-               cava (signal B);
+  loopDelaySm : forall {A B: SignalType},
+      (signal A * signal B -> cava (signal B)) ->
+      cava (signal A) -> cava (signal B);
 }.

@@ -117,16 +117,9 @@ End Transpose.
 (* Vector version of combine                                                  *)
 (******************************************************************************)
 
-Fixpoint vcombine {A B: Type} {s: nat} (a: Vector.t A s)
-                                       (b: Vector.t B s) :
-                                       Vector.t (A * B) s :=
-
-  match s, a, b with
-  | O, _, _ => []
-  | S n, a, b => let (x, xs) := Vector.uncons a in
-                 let (y, ys) := Vector.uncons b in
-                 (x, y) :: vcombine xs ys
-  end.
+Definition vcombine {A B: Type} {s: nat} (a: Vector.t A s) (b: Vector.t B s) :
+  Vector.t (A * B) s :=
+  Vector.map2 (fun a b => (a,b)) a b.
 
 (* Vector version of seq *)
 
@@ -340,35 +333,8 @@ Section VectorFacts.
     rewrite IHn. reflexivity.
   Qed.
 
-  Lemma fold_left_S_identity {A} (f : A -> A -> A) id
-        (left_identity : forall a, f id a = a) n (v : t A (S n)) :
-    Vector.fold_left f id v = Vector.fold_left f (Vector.hd v) (Vector.tl v).
-  Proof.
-    intros. rewrite (eta v).
-    rewrite !fold_left_S, left_identity.
-    reflexivity.
-  Qed.
-
   Hint Rewrite @fold_left_S @fold_left_0
        using solve [eauto] : push_vector_fold vsimpl.
-
-  Lemma fold_left_S_assoc {A} (f : A -> A -> A) id
-        (right_identity : forall a, f a id = a)
-        (left_identity : forall a, f id a = a)
-        (associative :
-           forall a b c, f a (f b c) = f (f a b) c) :
-    forall n start (v : t A n),
-      Vector.fold_left f start v = f start (Vector.fold_left f id v).
-  Proof.
-    induction n; intros; autorewrite with push_vector_fold.
-    { rewrite right_identity. reflexivity. }
-    { rewrite left_identity.
-      erewrite <-fold_left_S_identity by eauto.
-      rewrite IHn, <-associative.
-      rewrite fold_left_S with (b:=id).
-      f_equal. rewrite !left_identity, <-IHn.
-      reflexivity. }
-  Qed.
 
   Lemma nil_eq {A} (v1 v2 : t A 0) : v1 = v2.
   Proof.
@@ -596,6 +562,41 @@ Section VectorFacts.
     rewrite IHm. reflexivity.
   Qed.
 
+  Lemma map2_splitat1 {A B C} (f : A -> B -> C) n m (va : Vector.t A (n + m)) vb :
+    map2 f (fst (splitat _ va)) (fst (splitat _ vb))
+    = fst (splitat _ (map2 f va vb)).
+  Proof.
+    erewrite append_splitat with (vw:=va) by apply surjective_pairing.
+    erewrite append_splitat with (vw:=vb) by apply surjective_pairing.
+    rewrite map2_append, !splitat_append. cbn [fst snd].
+    reflexivity.
+  Qed.
+
+  Lemma map2_splitat2 {A B C} (f : A -> B -> C) n m (va : Vector.t A (n + m)) vb :
+    map2 f (snd (splitat _ va)) (snd (splitat _ vb))
+    = snd (splitat _ (map2 f va vb)).
+  Proof.
+    erewrite append_splitat with (vw:=va) by apply surjective_pairing.
+    erewrite append_splitat with (vw:=vb) by apply surjective_pairing.
+    rewrite map2_append, !splitat_append. cbn [fst snd].
+    reflexivity.
+  Qed.
+
+  Lemma map2_reshape {A B C} (f : A -> B -> C) n m
+        (va : t A (n * m)) (vb : t B (n * m)) :
+    map2 (map2 f) (reshape va) (reshape vb) = reshape (map2 f va vb).
+  Proof.
+    revert va vb; induction n; intros; [ apply nil_eq | ].
+    cbn [reshape].
+    repeat match goal with
+           | |- context [match ?p with pair _ _ => _ end] =>
+             rewrite (surjective_pairing p)
+           end.
+    rewrite !map2_cons, ?hd_cons, ?tl_cons.
+    rewrite IHn, map2_splitat1, map2_splitat2.
+    reflexivity.
+  Qed.
+
   Lemma hd_snoc {A} n (v : t A (S n)) x :
     hd (snoc v x) = hd v.
   Proof. rewrite (eta v). reflexivity. Qed.
@@ -759,6 +760,48 @@ Section VectorFacts.
     rewrite IHn; reflexivity.
   Qed.
 
+  Lemma to_list_inj {A n} (v1 v2 : t A n) :
+    to_list v1 = to_list v2 -> v1 = v2.
+  Proof.
+    revert v1 v2; induction n; [ intros; apply nil_eq | ].
+    intros v1 v2; rewrite (Vector.eta v1), (Vector.eta v2) in *.
+    rewrite !to_list_cons; intros.
+    match goal with H : (_ :: _)%list = _ |- _ => inversion H; clear H end.
+    f_equal; auto.
+  Qed.
+
+  Lemma to_list_splitat1 {A} n m (v : Vector.t A (n + m)) :
+    to_list (fst (splitat _ v)) = firstn n (to_list v).
+  Proof.
+    erewrite append_splitat with (vw:=v) by apply surjective_pairing.
+    rewrite splitat_append, to_list_append. cbn [fst snd].
+    autorewrite with push_firstn. rewrite to_list_length.
+    autorewrite with natsimpl push_firstn listsimpl.
+    rewrite firstn_all2 by (rewrite to_list_length; reflexivity).
+    reflexivity.
+  Qed.
+
+  Lemma to_list_splitat2 {A} n m (v : Vector.t A (n + m)) :
+    to_list (snd (splitat _ v)) = skipn n (to_list v).
+  Proof.
+    erewrite append_splitat with (vw:=v) by apply surjective_pairing.
+    rewrite splitat_append, to_list_append. cbn [fst snd].
+    autorewrite with push_skipn. rewrite to_list_length.
+    autorewrite with natsimpl push_skipn listsimpl.
+    rewrite skipn_all2 by (rewrite to_list_length; reflexivity).
+    reflexivity.
+  Qed.
+
+  Lemma to_list_snoc {A n} (v : Vector.t A n) x :
+    to_list (snoc v x) = (to_list v ++ [x])%list.
+  Proof.
+    revert v; induction n; [ vnil; reflexivity | ].
+    intros; rewrite (eta v). cbn [snoc].
+    autorewrite with vsimpl.
+    rewrite IHn, app_comm_cons.
+    reflexivity.
+  Qed.
+
   Lemma fold_left_to_list {A B} (f : B -> A -> B) n b (v : t A n) :
     fold_left f b v = List.fold_left f (to_list v) b.
   Proof.
@@ -845,7 +888,8 @@ Hint Rewrite @map_cons @map2_cons
    databases *)
 Hint Rewrite <- @reverse_map2 @snoc_map2 @unsnoc_map2 @snoc_map @unsnoc_map
      using solve [eauto] : push_vector_map.
-Hint Rewrite  @nth_map @map_to_const @map2_flatten
+Hint Rewrite  @nth_map @map_to_const @map2_flatten @map2_reshape @map2_splitat1
+     @map2_splitat2
      using solve [eauto] : push_vector_map.
 
 (* [eauto] might not solve map_id_ext, so add more power to the strategy *)
@@ -853,9 +897,10 @@ Hint Rewrite @map_id_ext
      using solve [intros; autorewrite with vsimpl; eauto]
   : push_vector_map vsimpl.
 
-(* Hints to change a goal from vectors to list go in the vec_to_list database *)
+(* Hints to change a goal from vectors to list go in the push_to_list database *)
 Hint Rewrite @to_list_nil @to_list_cons @to_list_append
      @fold_left_to_list @to_list_map @to_list_of_list_opp
+     @to_list_splitat1 @to_list_splitat2 @to_list_snoc
      using solve [eauto] : push_to_list.
 Hint Rewrite @to_list_resize_default
      using solve [ListUtils.length_hammer] : push_to_list.
@@ -865,16 +910,36 @@ Section VcombineFacts.
   Lemma to_list_vcombine {A B n} (v1 : Vector.t A n) (v2 : Vector.t B n) :
     to_list (vcombine v1 v2) = combine (to_list v1) (to_list v2).
   Proof.
+    cbv [vcombine].
     induction n; intros.
     { eapply case0 with (v:=v1). eapply case0 with (v:=v2).
       reflexivity. }
     { rewrite (eta v1), (eta v2).
-      cbn [vcombine].
-      rewrite !uncons_cons, !to_list_cons.
-      cbn [combine]. rewrite IHn; reflexivity. }
+      autorewrite with push_vector_map vsimpl.
+      cbn [combine].
+      rewrite IHn; reflexivity. }
   Qed.
+
+  Lemma map_vcombine_map2 {A B C n} (f : A * B -> C)
+        (va : Vector.t A n) (vb : Vector.t B n) :
+    map f (vcombine va vb) = Vector.map2 (fun a b => f (a,b)) va vb.
+  Proof.
+    cbv [vcombine]. rewrite map_map2. reflexivity.
+  Qed.
+
+  Lemma vcombine_cons {A B n} (va : Vector.t A n) (vb : Vector.t B n) a b :
+    vcombine (a :: va)%vector (b :: vb)%vector = ((a,b) :: vcombine va vb)%vector.
+  Proof.
+    cbv [vcombine]; autorewrite with push_vector_map vsimpl.
+    reflexivity.
+  Qed.
+
+  Lemma vcombine_nil {A B} (va : Vector.t A 0) (vb : Vector.t B 0) :
+    vcombine va vb = Vector.nil _.
+  Proof. apply nil_eq. Qed.
 End VcombineFacts.
 Hint Rewrite @to_list_vcombine using solve [eauto] : push_to_list.
+Hint Rewrite @vcombine_cons @vcombine_nil using solve [eauto] : push_vcombine.
 
 Section VseqFacts.
   Lemma vseq_S start len :
@@ -972,6 +1037,250 @@ Section TransposeFacts.
   Qed.
 End TransposeFacts.
 
+Section InV.
+  (* Version of Vector.In that is defined as a computable Prop rather than an
+     inductive (similar to List.In). The reason for defining this is that
+     Vector.In does not play nicely with [inversion] and requires using the
+     EqDep axioms to prove that In x (y :: v) -> y = x \/ In x v. *)
+  Fixpoint InV {A n} (x : A) : Vector.t A n -> Prop :=
+    match n with
+    | 0 => fun _ => False
+    | S n' => fun v => x = Vector.hd v \/ InV x (Vector.tl v)
+    end.
+
+  Lemma InV_cons_iff {A n} (v : Vector.t A n) (a x : A) :
+    InV x (a :: v)%vector <-> (x = a \/ InV x v).
+  Proof. reflexivity. Qed.
+
+  Lemma InV_map_iff {A B n} (f : A -> B) (v : Vector.t A n) x :
+    InV x (map f v)%vector <-> (exists y, f y = x /\ InV y v).
+  Proof.
+    revert v; induction n; intros *; [ eapply case0 with (v:=v) | rewrite (eta v) ].
+    all:cbn [InV] in *.
+    all:autorewrite with push_vector_map vsimpl.
+    all:split; intros;
+      repeat match goal with
+             | H : exists _, _ |- _ => destruct H
+             | H : _ /\ _ |- _ => destruct H
+             | H : _ \/ _ |- _ => destruct H
+             | H : InV _ (map _ _) |- _ => rewrite IHn in H
+             | _ => progress subst
+             | |- exists y, ?f y = ?f ?x /\ _ =>
+               exists x; split; [ reflexivity | ];
+                 constructor; solve [eauto]
+             | |- _ \/ InV _ (map _ _) =>
+               rewrite IHn; right; eexists; split; solve [eauto]
+             | _ => tauto
+             end.
+  Qed.
+
+  Lemma InV_map2_impl {A B C n} (f : A -> B -> C) (v1 : Vector.t A n) v2 x :
+    InV x (Vector.map2 f v1 v2)%vector -> (exists a b, f a b = x /\ InV a v1 /\ InV b v2).
+  Proof.
+    revert v1 v2; induction n; intros v1 v2;
+      [ eapply case0 with (v:=v1); eapply case0 with (v:=v2);
+        cbn [InV]; tauto | ].
+    rewrite (eta v1), (eta v2). cbn [InV]; intros.
+    repeat match goal with
+           | _ => progress subst
+           | _ => progress autorewrite with push_vector_map vsimpl in *
+           | H : exists _, _ |- _ => destruct H
+           | H : _ /\ _ |- _ => destruct H
+           | H : _ \/ _ |- _ => destruct H
+           | H : InV _ (Vector.map2 _ _ _) |- _ => apply IHn in H
+           | |- exists x y, ?f x y = ?f ?a ?b /\ _ =>
+             exists a, b; repeat split; cbn [InV]; solve [eauto]
+           end.
+  Qed.
+
+  Lemma InV_to_list_iff {A n} (v : Vector.t A n) x :
+    List.In x (to_list v)%vector <-> InV x v.
+  Proof.
+    revert v; induction n; intros;
+      [ eapply case0 with (v:=v); cbn [InV]; tauto | ].
+    rewrite (eta v). autorewrite with push_to_list.
+    cbn [InV List.In]; intros.
+    repeat match goal with
+           | _ => progress subst
+           | _ => progress autorewrite with push_vector_map vsimpl in *
+           | H : exists _, _ |- _ => destruct H
+           | H : _ /\ _ |- _ => destruct H
+           | H : _ \/ _ |- _ => destruct H
+           | _ => rewrite <-IHn
+           | |- _ <-> _ => split; intros
+           | |- ?x = ?x \/ _ => left; reflexivity
+           | H : ?P |- _ \/ ?P => right; assumption
+           end.
+  Qed.
+End InV.
+
+Section ForallV.
+  (* Non-inductive version of Vector.Forall; the standard library version is
+     hard to extract information from because it creates existT terms after
+     inversion in the cons case *)
+  Fixpoint ForallV {A n} (P : A -> Prop) : Vector.t A n -> Prop :=
+    match n with
+    | 0 => fun _ => True
+    | S n' => fun v => P (Vector.hd v) /\ ForallV P (Vector.tl v)
+    end.
+
+  Lemma ForallV_forall {A n} P (v : Vector.t A n) :
+    ForallV P v <-> (forall x, InV x v -> P x).
+  Proof.
+    revert v; induction n; intros; cbn [ForallV InV]; [ tauto | ].
+    rewrite IHn. split; intros.
+    all:repeat match goal with
+               | _ => progress subst
+               | H : _ \/ _ |- _ => destruct H
+               | H : _ /\ _ |- _ => destruct H
+               | _ => repeat split; solve [eauto]
+               end.
+  Qed.
+
+  Lemma ForallV_append {A n m} P (v1 : Vector.t A n) (v2 : Vector.t A m) :
+    ForallV P (v1 ++ v2) <-> (ForallV P v1 /\ ForallV P v2).
+  Proof.
+    revert v1 v2; induction n; intros v1 v2.
+    { eapply case0 with (v:=v1); cbn [Vector.append ForallV].
+      tauto. }
+    { rewrite (eta v1). rewrite <-append_comm_cons.
+      change (S n + m) with (S (n + m)) in *.
+      cbn [ForallV]. autorewrite with vsimpl.
+      rewrite IHn; tauto. }
+  Qed.
+
+  Lemma ForallV_const {A} n (P : A -> Prop) x :
+    P x -> ForallV P (const x n).
+  Proof.
+    induction n; intros; cbn [ForallV]; [ tauto | ].
+    rewrite const_cons. autorewrite with vsimpl. tauto.
+  Qed.
+
+  Lemma ForallV_resize {A n} m P (v : Vector.t A n) H :
+    ForallV P (resize m H v) <-> ForallV P v.
+  Proof. subst. rewrite <-resize_id. reflexivity. Qed.
+
+  Lemma ForallV_trivial {A} n (P : A -> Prop) (v : Vector.t A n) :
+    (forall x, P x) -> ForallV P v.
+  Proof.
+    induction n; intros; cbn [ForallV]; [ tauto | ].
+    split; auto.
+  Qed.
+
+  Lemma ForallV_splitat1 {A} (P : A -> Prop) n m (v : Vector.t A (n + m)) :
+    ForallV P v -> ForallV P (fst (splitat _ v)).
+  Proof.
+    intro Hv.
+    erewrite append_splitat in Hv by apply surjective_pairing.
+    apply ForallV_append in Hv. tauto.
+  Qed.
+
+  Lemma ForallV_splitat2 {A} (P : A -> Prop) n m (v : Vector.t A (n + m)) :
+    ForallV P v -> ForallV P (snd (splitat _ v)).
+  Proof.
+    intro Hv.
+    erewrite append_splitat in Hv by apply surjective_pairing.
+    apply ForallV_append in Hv. tauto.
+  Qed.
+
+  Lemma ForallV_to_list_iff {A} (P : A -> Prop) n (v : Vector.t A n) :
+    ForallV P v <-> List.Forall P (to_list v).
+  Proof.
+    revert v; induction n; intro v; intros;
+      [ eapply case0 with (v:=v) | rewrite (eta v) ].
+    all:repeat match goal with
+               | _ => progress cbn [ForallV]
+               | _ => progress autorewrite with push_to_list vsimpl
+               | H : _ /\ _ |- _ => destruct H
+               | H : List.Forall _ (_ :: _)%list |- _ =>
+                 inversion H; subst; clear H
+               | |- _ <-> _ => split; intros; [ constructor | ]
+               | |- _ /\ _ => split
+               | _ => apply IHn; solve [auto]
+               | _ => tauto
+               end.
+  Qed.
+End ForallV.
+
+Section AlgebraicFold.
+  Local Notation t := Vector.t.
+
+  Lemma fold_left_S_identity' {A} (f : A -> A -> A) id (valid : A -> Prop)
+        (left_identity : forall a, valid a -> f id a = a) n (v : t A (S n)) :
+    ForallV valid v ->
+    Vector.fold_left f id v = Vector.fold_left f (Vector.hd v) (Vector.tl v).
+  Proof.
+    cbn [ForallV]; destruct 1. rewrite (eta v).
+    autorewrite with push_vector_fold vsimpl.
+    rewrite left_identity by auto. reflexivity.
+  Qed.
+
+  Lemma fold_left_S_identity {A} (f : A -> A -> A) id
+        (left_identity : forall a, f id a = a) n (v : t A (S n)) :
+    Vector.fold_left f id v = Vector.fold_left f (Vector.hd v) (Vector.tl v).
+  Proof.
+    eapply fold_left_S_identity' with (valid:=fun _ => True); auto; [ ].
+    apply ForallV_trivial. tauto.
+  Qed.
+
+  Lemma fold_left_preserves_valid {A} (f : A -> A -> A) (valid : A -> Prop)
+        (preserves_valid : forall a b, valid a -> valid b -> valid (f a b)) :
+    forall n start (v : t A n),
+      ForallV valid v -> valid start ->
+      valid (Vector.fold_left f start v).
+  Proof.
+    intros. rewrite fold_left_to_list.
+    eapply ListUtils.fold_left_invariant with (I:=valid); eauto; [ ].
+    intros *. rewrite InV_to_list_iff. intros.
+    match goal with H : ForallV _ _ |- _ =>
+                    eapply ForallV_forall in H; [ | solve [eauto] ] end.
+    eauto.
+  Qed.
+
+  Lemma fold_left_S_assoc' {A} (f : A -> A -> A) (valid : A -> Prop) id
+        (identity_valid : valid id)
+        (preserves_valid : forall a b, valid a -> valid b -> valid (f a b))
+        (right_identity : forall a, valid a -> f a id = a)
+        (left_identity : forall a, valid a -> f id a = a)
+        (associative :
+           forall a b c,
+             valid a -> valid b -> valid c ->
+             f a (f b c) = f (f a b) c) :
+    forall n start (v : t A n),
+      ForallV valid v -> valid start ->
+      Vector.fold_left f start v = f start (Vector.fold_left f id v).
+  Proof.
+    induction n; intros; autorewrite with push_vector_fold.
+    { rewrite right_identity by auto. reflexivity. }
+    { match goal with H : ForallV _ _ |- _ => destruct H end.
+      rewrite left_identity by eauto.
+      erewrite <-fold_left_S_identity' by (cbn [ForallV]; eauto).
+      rewrite IHn, <-associative; auto;
+        [ | apply fold_left_preserves_valid with (valid0:=valid); solve [auto] ].
+      rewrite fold_left_S with (b:=id).
+      f_equal. rewrite !left_identity, <-IHn by auto.
+      reflexivity. }
+  Qed.
+
+  Lemma fold_left_S_assoc {A} (f : A -> A -> A) id
+        (right_identity : forall a, f a id = a)
+        (left_identity : forall a, f id a = a)
+        (associative :
+           forall a b c, f a (f b c) = f (f a b) c) :
+    forall n start (v : t A n),
+      Vector.fold_left f start v = f start (Vector.fold_left f id v).
+  Proof.
+    induction n; intros; autorewrite with push_vector_fold.
+    { rewrite right_identity. reflexivity. }
+    { rewrite left_identity.
+      erewrite <-fold_left_S_identity by eauto.
+      rewrite IHn, <-associative.
+      rewrite fold_left_S with (b:=id).
+      f_equal. rewrite !left_identity, <-IHn.
+      reflexivity. }
+  Qed.
+End AlgebraicFold.
+
 Section Vector.
   Context {A:Type}.
   Local Notation t := (Vector.t).
@@ -990,12 +1299,6 @@ Section Vector.
       (x::xs,y::ys)
     ) _ v.
 
-  Definition tail_default {n} (default: A) (v: t A n): t A (n-1) :=
-    t_rect _ (fun n v => t A (n-1)) ([])
-    (fun x n v f =>
-      resize_default default _ v
-    ) _ v.
-
   Fixpoint nth_default {n} (default: A) p (v: t A n): A :=
     match p with
     | 0 =>
@@ -1003,7 +1306,11 @@ Section Vector.
         | [] => default
         | x :: _ => x
         end
-    | S p' => nth_default default p' (tail_default default v)
+    | S p' =>
+        match v with
+        | [] => default
+        | _ :: v' => nth_default default p' v'
+        end
     end.
 
   Definition of_list_sized {A} (a : A) (n : nat) (l : list A) : Vector.t A n :=
@@ -1049,6 +1356,37 @@ Section Vector.
     erewrite Bool.not_true_iff_false. reflexivity.
   Qed.
 End Vector.
+
+Section NthDefault.
+  Lemma nth_default_snoc {A n} (v : Vector.t A n) x i d :
+    i < n -> nth_default d i (snoc v x) = nth_default d i v.
+  Proof.
+    revert n v; induction i; intros.
+    { destruct n; [ lia | ]. rewrite (eta v).
+      reflexivity. }
+    { destruct n; [ lia | ]. rewrite (eta v).
+      cbn [snoc]. autorewrite with vsimpl.
+      cbn [nth_default]. rewrite IHi by lia.
+      reflexivity. }
+  Qed.
+
+  Lemma nth_default_to_list {A n} (v : Vector.t A n) d i :
+    nth_default d i v = List.nth i (to_list v) d.
+  Proof.
+    revert n v; induction i; intros.
+    { destruct n; [ eapply case0 with (v:=v) | rewrite (eta v) ];
+        reflexivity. }
+    { destruct n; [ eapply case0 with (v:=v); reflexivity | ].
+      rewrite (eta v). autorewrite with push_to_list.
+      cbn [nth_default List.nth]. apply IHi. }
+  Qed.
+
+  Lemma nth_default_resize_default {A n} (v : Vector.t A n) d m i :
+    m = n -> nth_default d i (resize_default d m v) = nth_default d i v.
+  Proof.
+    intros; subst. rewrite resize_default_id. reflexivity.
+  Qed.
+End NthDefault.
 
 (* Useful tactic to destruct vectors of constant length *)
 Ltac constant_vector_simpl vec :=

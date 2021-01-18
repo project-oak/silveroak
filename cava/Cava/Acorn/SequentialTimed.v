@@ -53,16 +53,15 @@ Definition delay {A} (x : timed (combType A)) : timed (combType A) :=
 (* Loop combinator for feedback with delay.                                   *)
 (******************************************************************************)
 
-Definition loopSeqF' {A B C : SignalType}
-         (f : combType A * combType C -> combType B * combType C)
-         (a : timed (combType A)) : timed (combType B * combType C) :=
-  timedFold (fun bc a => f (a, snd bc)) (defaultCombValue B, defaultCombValue C) a.
-
-Definition loopSeqF {A B C : SignalType}
-         (f : combType A * combType C -> timed (combType B * combType C))
+Definition loopSeqF' {A B : SignalType}
+         (f : combType A * combType B -> combType B)
          (a : timed (combType A)) : timed (combType B) :=
-  '(b, _) <- loopSeqF' (fun ac => f ac 0) a ;;
-  ret b.
+  timedFold (fun b a => f (a, b)) (defaultCombValue B) a.
+
+Definition loopSeqF {A B : SignalType}
+         (f : combType A * combType B -> timed (combType B))
+         (a : timed (combType A)) : timed (combType B) :=
+  loopSeqF' (fun ac => f ac 0) a.
 
 (******************************************************************************)
 (* A boolean sequential logic interpretation for the Cava class               *)
@@ -102,42 +101,24 @@ Definition lut6BoolF (f: bool -> bool -> bool -> bool -> bool -> bool -> bool)
 Definition muxcyBoolF (s ci di : bool) : timed bool :=
   ret (if s then ci else di).
 
-Local Open Scope list_scope.
+Definition indexConstBoolF {t sz} (v : combType (Vec t sz)) (sel : nat) :=
+  nth_default (defaultCombValue _) sel v.
 
-Definition unsignedAddComb {m n : nat}
-                           (av : Bvector m) (bv : Bvector n) :
-                           Bvector (1 + max m n) :=
-  let a := Bv2N av in
-  let b := Bv2N bv in
-  let sumSize := 1 + max m n in
-  let sum := (a + b)%N in
-  N2Bv_sized sumSize sum.
+Definition indexAtBoolF {t sz isz}
+           (v : combType (Vec t sz)) (sel : combType (Vec Bit isz)) :=
+  nth_default (defaultCombValue _) (N.to_nat (Bv2N sel)) v.
 
 Definition unsignedAddBoolF {m n : nat} (av : Bvector m) (bv : Bvector n)
   : timed (Bvector (1 + max m n)) :=
-  ret (unsignedAddComb av bv).
-
-Definition unsignedMultComb {m n : nat}
-           (av : Bvector m) (bv : Bvector n)
-  : Bvector (m + n) :=
-  let a := Bv2N av in
-  let b := Bv2N bv in
-  let product := (a * b)%N in
-  N2Bv_sized (m + n) product.
+  ret (unsignedAddBool av bv).
 
 Definition unsignedMultBoolF {m n : nat} (av : Bvector m) (bv : Bvector n)
   : timed (Bvector (m + n)) :=
-  ret (unsignedMultComb av bv).
-
-Definition greaterThanOrEqualComb
-           {m n : nat} (av : Bvector m) (bv : Bvector n) : bool :=
-  let a := N.to_nat (Bv2N av) in
-  let b := N.to_nat (Bv2N bv) in
-  b <=? a.
+  ret (unsignedMultBool av bv).
 
 Definition greaterThanOrEqualBoolF {m n : nat} (av : Bvector m) (bv : Bvector n)
   : timed bool :=
-  ret (greaterThanOrEqualComb av bv).
+  ret (greaterThanOrEqualBool av bv).
 
 
 Definition blackBoxF (intf : CircuitInterface)
@@ -177,9 +158,9 @@ Definition blackBoxF (intf : CircuitInterface)
     peel _ _ v := v;
     unpeel _ _ v := v;
     pairSel _ v sel := pairSelBool v sel;
-    indexAt t sz isz := @indexAtBool t sz isz;
-    indexConst t sz := @indexConstBool t sz;
-    slice t sz := @sliceBool t sz;
+    indexAt t sz isz := @indexAtBoolF t sz isz;
+    indexConst t sz := @indexConstBoolF t sz;
+    slice t sz startAt len v H := sliceVector v startAt len H;
     unsignedAdd m n := @unsignedAddBoolF m n;
     unsignedMult m n := @unsignedMultBoolF m n;
     greaterThanOrEqual m n := @greaterThanOrEqualBoolF m n;
@@ -189,7 +170,7 @@ Definition blackBoxF (intf : CircuitInterface)
 
  Instance TimedSeqSemantics : CavaSeqMonad TimedCombSemantics :=
    { delaym k i := delay i;
-     loopDelaym A B C := @loopSeqF A B C;
+     loopDelaySm A B := @loopSeqF A B;
    }.
 
 (******************************************************************************)

@@ -182,20 +182,22 @@ Definition muxcyBoolVec (ticks: nat)
        | true => ci
      end) s_dici).
 
+Definition indexConstBoolVec {t: SignalType}
+                          {sz : nat}
+                          (ticks: nat)
+                          (i : Vector.t (Vector.t (combType t) sz) ticks)
+                          (sel : nat)
+                          : Vector.t (combType t) ticks :=
+  Vector.map (fun i => nth_default (defaultCombValue t) sel i) i.
+
 Definition indexAtBoolVec {t: SignalType}
                           {sz isz: nat}
                           (ticks: nat)
                           (i : Vector.t (Vector.t (combType t) sz) ticks)
                           (sel : Vector.t (Bvector isz) ticks)
                           : Vector.t (combType t) ticks :=
-  Vector.map (fun '(i, sel) => indexAtBool i sel) (vcombine i sel).
-
-Definition indexConstBoolVec {t: SignalType} {sz: nat}
-                             (ticks: nat)
-                             (i : Vector.t (Vector.t (combType t) sz) ticks)
-                             (sel : nat)
-                             : Vector.t (combType t) ticks :=
-  Vector.map (fun i => indexConstBool i sel) i.
+  Vector.map (fun '(i, sel) => nth_default (defaultCombValue t) (N.to_nat (Bv2N sel)) i)
+             (vcombine i sel).
 
 Definition sliceBoolVec {t: SignalType}
                         {sz: nat}
@@ -204,67 +206,21 @@ Definition sliceBoolVec {t: SignalType}
                         (v: Vector.t (Vector.t (combType t) sz) ticks)
                         (H: startAt + len <= sz) :
                         Vector.t (Vector.t (combType t) len) ticks :=
-  Vector.map (fun v => sliceBool startAt len v H) v.
+  Vector.map (fun v => sliceVector v startAt len H) v.
 
 Definition peelVecVec {t: SignalType} {s: nat}
                       (ticks: nat)
                       (v: Vector.t (Vector.t (combType t) s) ticks)
                       : Vector.t (Vector.t (combType t) ticks) s :=
- Vector.map (fun i => Vector.map (fun j => indexConstBool j i) v) (vseq 0 s).
+  Vector.map (indexConstBoolVec _ v) (vseq 0 s).
 
 Definition unpeelVecVec {t: SignalType} {s: nat}
                         (ticks: nat)
                         (v: Vector.t (Vector.t (combType t) ticks) s)
                         : Vector.t (Vector.t (combType t) s) ticks :=
-  Vector.map (fun ni => Vector.map (fun vi => indexConstBool vi ni) v) (vseq 0 ticks).
-
-
-Local Open Scope nat_scope.
-
-Definition unsignedAddComb {m n : nat}
-                           (av : Bvector m) (bv : Bvector n) :
-                           Bvector (1 + max m n) :=
-  let a := Bv2N av in
-  let b := Bv2N bv in
-  let sumSize := 1 + max m n in
-  let sum := (a + b)%N in
-  N2Bv_sized sumSize sum.
-
-Definition unsignedAddBoolVec {m n : nat}
-                              (ticks: nat)
-                              (av : Vector.t (Bvector m) ticks)
-                              (bv : Vector.t (Bvector n) ticks) :
-                              ident (Vector.t (Bvector (1 + max m n)) ticks) :=
-  binOpV ticks unsignedAddComb (av, bv).
-
-Definition unsignedMultComb {m n : nat}
-                            (av : Bvector m) (bv : Bvector n) :
-                            Bvector (m + n) :=
-  let a := Bv2N av in
-  let b := Bv2N bv in
-  let product := (a * b)%N in
-  N2Bv_sized (m + n) product.
-
-Definition unsignedMultBoolVec {m n : nat}
-                               (ticks: nat)
-                               (av : Vector.t (Bvector m) ticks)
-                               (bv : Vector.t (Bvector n) ticks) :
-                               ident (Vector.t (Bvector (m + n)) ticks) :=
-  binOpV ticks unsignedMultComb (av, bv).
-
-Definition greaterThanOrEqualComb {m n : nat}
-                                  (av : Bvector m) (bv : Bvector n) :
-                                  bool :=
-  let a := N.to_nat (Bv2N av) in
-  let b := N.to_nat (Bv2N bv) in
-  b <=? a.
-
-Definition greaterThanOrEqualBoolVec {m n : nat}
-                                     (ticks: nat)
-                                     (av : Vector.t (Bvector m) ticks)
-                                     (bv : Vector.t (Bvector n) ticks) :
-                                     ident (Bvector ticks) :=
-  binOpV ticks greaterThanOrEqualComb (av, bv).
+  Vector.map
+    (fun ni => Vector.map (fun vi => nth_default (defaultCombValue t) ni vi) v)
+    (vseq 0 ticks).
 
 Definition bufBoolVec (ticks: nat)
            (i : Vector.t bool ticks) : ident (Vector.t bool ticks) :=
@@ -311,9 +267,9 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
     indexAt t sz isz := @indexAtBoolVec t sz isz ticks;
     indexConst t sz := @indexConstBoolVec t sz ticks;
     slice t sz := @sliceBoolVec t sz ticks;
-    unsignedAdd m n := @unsignedAddBoolVec m n ticks;
-    unsignedMult m n := @unsignedMultBoolVec m n ticks;
-    greaterThanOrEqual m n := @greaterThanOrEqualBoolVec m n ticks;
+    unsignedAdd m n x y := ret (Vector.map2 (@unsignedAddBool m n) x y);
+    unsignedMult m n x y := ret (Monad:=Monad_ident) (Vector.map2 (@unsignedMultBool m n) x y);
+    greaterThanOrEqual m n x y := ret (Vector.map2 (@greaterThanOrEqualBool m n) x y);
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefaultSV ticks (map port_type (circuitOutputs intf)));
   }.
