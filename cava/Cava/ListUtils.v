@@ -74,6 +74,34 @@ Section Misc.
 End Misc.
 Hint Rewrite @seq_snoc using solve [eauto] : pull_snoc.
 
+(* Definition and proofs of [extend], which pads a list to a specified length *)
+Section Extend.
+  Definition extend {A} (l : list A) (d : A) (n : nat) : list A :=
+    l ++ repeat d (n - length l).
+
+  Lemma extend_nil {A} (d : A) n : extend [] d n = repeat d n.
+  Proof. cbv [extend]. autorewrite with push_length natsimpl. reflexivity. Qed.
+
+  Lemma extend_le {A} l (d : A) n : n <= length l -> extend l d n = l.
+  Proof.
+    cbv [extend]; intros.
+    rewrite (proj2 (Nat.sub_0_le _ _)) by lia.
+    cbn [repeat]; autorewrite with listsimpl.
+    reflexivity.
+  Qed.
+
+  Lemma extend_to_match {A B} l1 l2 (a : A) (b : B) :
+    length (extend l1 a (length l2)) = length (extend l2 b (length l1)).
+  Proof.
+    cbv [extend]; intros. autorewrite with push_length.
+    destruct (Nat.min_dec (length l1) (length l2));
+      [ rewrite (proj2 (Nat.sub_0_le (length l1) (length l2))) by lia
+      | rewrite (proj2 (Nat.sub_0_le (length l2) (length l1))) by lia ];
+      lia.
+  Qed.
+End Extend.
+
+
 (* Proofs about [split] *)
 Section Split.
   Lemma split_skipn {A B} n (l : list (A * B)) :
@@ -144,9 +172,18 @@ Section Nth.
     rewrite IHlen by lia.
     f_equal; lia.
   Qed.
+
+  Lemma map_nth_inbounds {A B} (f : A -> B) l d1 d2 n :
+    n < length l -> nth n (map f l) d1 = f (nth n l d2).
+  Proof.
+    revert l; induction n; intros;
+      (destruct l; autorewrite with push_length in *; [ lia | ]);
+      [ reflexivity | ].
+    cbn [map nth]. apply IHn. lia.
+  Qed.
 End Nth.
 Hint Rewrite @nth_step @nth_found @nth_nil using solve [eauto] : push_nth.
-Hint Rewrite @nth_map_seq using lia : push_nth.
+Hint Rewrite @nth_map_seq @map_nth_inbounds using lia : push_nth.
 
 Section Maps.
   Lemma map_id_ext {A} (f : A -> A) (l : list A) :

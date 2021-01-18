@@ -39,13 +39,8 @@ Require Import Tests.CountBy.CountBy.
 Section WithCava.
   Context `{semantics:CavaSeqMonad} `{Monad cava}.
 
-  Definition countFork (ab: signal (Vec Bit 8) * signal (Vec Bit 8)) :
-                       cava (signal (Vec Bit 8) * signal (Vec Bit 8)) :=
-    sum <- addN ab;;
-    ret (sum, sum).
-
   Definition countBy : cava (signal (Vec Bit 8)) -> cava (signal (Vec Bit 8))
-    := loopDelaym countFork.
+    := loopDelaySm addN.
 End WithCava.
 
 Definition countBySpec (i : list (Bvector 8)) :=
@@ -60,7 +55,7 @@ Ltac simpl_timed := cbn [fst snd mcompose bind ret Monad_timed].
 
 Local Ltac seqsimpl_step :=
   first [ progress cbn beta iota delta
-                   [fst snd hd sequentialF loopDelaym TimedSeqSemantics]
+                   [fst snd hd sequentialF loopDelaySm TimedSeqSemantics]
         | progress cbv beta iota delta [loopSeqF loopSeqF']; seqsimpl_step
         | progress autorewrite with seqsimpl
         | progress destruct_pair_let
@@ -72,22 +67,13 @@ Lemma addNCorrect n (a b : Bvector n) t :
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 
-Lemma countForkStep:
-  forall (i : Bvector 8) (s : Bvector 8) t,
-    countFork (i, s) t = (addNSpec i s, addNSpec i s).
-Proof.
-  intros; cbv [countFork].
-  seqsimpl. reflexivity.
-Qed.
-Hint Rewrite countForkStep using solve [eauto] : seqsimpl.
-
 Lemma countByCorrect (i : timed (Bvector 8)) t :
   countBy i t = countBySpec (asList i t).
 Proof.
   intros; cbv [countBy countBySpec].
-  seqsimpl.
+  seqsimpl. cbv [loopSeqF loopSeqF'].
   rewrite timedFold_fold_left. factor_out_loops.
-  eapply fold_left_double_invariant with (I:= fun x y => x = (y,y)).
+  eapply fold_left_double_invariant with (I:= fun x y => x = y).
   { (* invariant holds at start *)
     reflexivity. }
   { (* invariant holds through loop body *)

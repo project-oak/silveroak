@@ -118,30 +118,6 @@ Definition sliceBool {t: SignalType}
                      Vector.t (combType t) len :=
   sliceVector v startAt len H.
 
-Definition unsignedAddBool {m n : nat}
-                           (av : Bvector m) (bv : Bvector n) :
-                           ident (Bvector (1 + max m n)) :=
-  let a := Bv2N av in
-  let b := Bv2N bv in
-  let sumSize := 1 + max m n in
-  let sum := (a + b)%N in
-  ret (N2Bv_sized sumSize sum).
-
-Definition unsignedMultBool {m n : nat}
-                           (av : Bvector m) (bv : Bvector n) :
-                           ident (Bvector (m + n)) :=
-  let a := Bv2N av in
-  let b := Bv2N bv in
-  let product := (a * b)%N in
-  ret (N2Bv_sized (m + n) product).
-
-Definition greaterThanOrEqualBool {m n : nat}
-                                  (av : Bvector m) (bv : Bvector n) :
-                                  ident bool :=
-  let a := N.to_nat (Bv2N av) in
-  let b := N.to_nat (Bv2N bv) in
-  ret (b <=? a).
-
 Definition bufBool (i : bool) : ident bool :=
   ret i.
 
@@ -185,9 +161,9 @@ Definition loopBool (A B C : SignalType)
     indexAt t sz isz := @indexAtBool t sz isz;
     indexConst t sz := @indexConstBool t sz;
     slice t sz := @sliceBool t sz;
-    unsignedAdd m n := @unsignedAddBool m n;
-    unsignedMult m n := @unsignedMultBool m n;
-    greaterThanOrEqual m n := @greaterThanOrEqualBool m n;
+    unsignedAdd m n := fun x  y => ret (@unsignedAddBool m n x y);
+    unsignedMult m n := fun x y => ret (@unsignedMultBool m n x y);
+    greaterThanOrEqual m n := fun x y => ret (@greaterThanOrEqualBool m n x y);
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefault (map port_type (circuitOutputs intf)));
 }.
