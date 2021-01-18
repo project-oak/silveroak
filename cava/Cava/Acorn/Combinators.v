@@ -132,6 +132,21 @@ Section WithCava.
     rewrite IHinput. reflexivity.
   Qed.
 
+  Lemma foldLM_of_ret_valid {m} `{Monad m} `{MonadLaws.MonadLaws m} {A B}
+        (validA : A -> Prop) (validB : B -> Prop)
+        (f : B -> A -> m B) (g : B -> A -> B) input accum :
+    (forall b a, validA a -> validB b -> f b a = ret (g b a)) ->
+    (forall b a, validA a -> validB b -> validB (g b a)) ->
+    validB accum -> Forall validA input ->
+    foldLM f input accum = ret (fold_left g input accum).
+  Proof.
+    intro Hfg; revert accum; induction input; intros; [ reflexivity | ].
+    cbn [foldLM fold_left].
+    match goal with H : Forall _ (_ :: _) |- _ => inversion H; subst; clear H end.
+    rewrite Hfg, MonadLaws.bind_of_return; auto.
+  Qed.
+
+
   Lemma foldLM_of_ret {m} `{Monad m} `{MonadLaws.MonadLaws m} {A B}
         (f : B -> A -> m B) (g : B -> A -> B) input accum :
     (forall b a, f b a = ret (g b a)) ->
@@ -451,6 +466,53 @@ Section WithCava.
 
   Local Open Scope nat_scope.
 
+  Lemma tree_equiv'
+        {T}  {monad_laws : MonadLaws monad} (valid : T -> Prop)
+        (id : T)
+        (op : T -> T -> T)
+        (valid_id : valid id)
+        (op_preserves_valid : forall a b, valid a -> valid b -> valid (op a b))
+        (op_id_left : forall a : T, valid a -> op id a = a)
+        (op_id_right : forall a : T, valid a -> op a id = a)
+        (op_assoc :
+           forall a b c : T,
+             valid a -> valid b -> valid c ->
+             op a (op b c) = op (op a b) c)
+        (circuit : T -> T -> cava T)
+        (circuit_equiv :
+          forall a b : T, valid a -> valid b -> circuit a b = ret (op a b))
+        (default : T) (n : nat) :
+    forall v,
+      ForallV valid v ->
+      tree default n circuit v = ret (Vector.fold_left op id v).
+  Proof.
+    induction n; intros.
+    { change (2 ^ 1) with 2 in *.
+      cbn [tree]. autorewrite with push_vector_fold vsimpl.
+      rewrite hd_0. autorewrite with vsimpl. cbn [ForallV] in *.
+      rewrite circuit_equiv, op_id_left; try tauto; [ ].
+      constant_vector_simpl v. cbn; tauto. }
+    { cbn [tree]. destruct_pair_let.
+      assert (2 ^ (S (S n)) = 2 ^ (S n) + 2 ^ (S n)) as Heq
+        by abstract (rewrite Nat.pow_succ_r by lia; lia).
+      lazymatch goal with
+      | _ : ForallV ?P ?v |- context [divide ?d ?v] =>
+        let H' := fresh in
+        assert (ForallV P (fst (divide d v) ++ snd (divide d v))%vector) as H'
+            by (rewrite @append_divide with (H:=Heq);
+                apply ForallV_resize; auto);
+          apply ForallV_append in H'; destruct H'
+      end.
+      rewrite !IHn by eauto.
+      rewrite !bind_of_return by eauto.
+      rewrite circuit_equiv by (apply fold_left_preserves_valid; solve [eauto]).
+      erewrite <-fold_left_S_assoc' with (valid0:=valid); auto;
+        [ | apply fold_left_preserves_valid; solve [eauto] ].
+      rewrite <-fold_left_append by eauto.
+      rewrite @append_divide with (H:=Heq).
+      rewrite fold_left_resize. reflexivity. }
+  Qed.
+
   Lemma tree_equiv
         {T}  {monad_laws : MonadLaws monad}
         (id : T)
@@ -467,20 +529,7 @@ Section WithCava.
     forall v,
       tree default n circuit v = ret (Vector.fold_left op id v).
   Proof.
-    induction n; intros.
-    { change (2 ^ 1) with 2 in *.
-      cbn [tree]. autorewrite with push_vector_fold vsimpl.
-      rewrite hd_0. autorewrite with vsimpl.
-      rewrite circuit_equiv, op_id_left. reflexivity. }
-    { cbn [tree]. destruct_pair_let.
-      rewrite !IHn by eauto.
-      rewrite !bind_of_return by eauto.
-      rewrite circuit_equiv by eauto.
-      rewrite <-fold_left_S_assoc, <-fold_left_append by auto.
-      assert (2 ^ S (S n) = 2 ^ S n + 2 ^ S n)
-        by (rewrite Nat.pow_succ_r'; lia).
-      rewrite (append_divide _ _ ltac:(eassumption)).
-      rewrite fold_left_resize. reflexivity. }
+    intros. apply tree_equiv' with (valid:=fun _ => True); auto using ForallV_trivial.
   Qed.
 
   (* Version of tree combinator that accepts all sizes by creating a tree out of
@@ -507,15 +556,18 @@ Section WithCava.
                    end) v1 ;;
     foldLM circuit (to_list v2) tree_result.
 
-  Lemma tree_all_sizes_equiv {T} {monad_laws : MonadLaws.MonadLaws monad}:
-    forall (id : T) (op : T -> T -> T),
-      (forall a : T, op id a = a) ->
-      (forall a : T, op a id = a) ->
-      (forall a b c : T, op a (op b c) = op (op a b) c) ->
+  Lemma tree_all_sizes_equiv' {T} {monad_laws : MonadLaws.MonadLaws monad}:
+    forall (id : T) (op : T -> T -> T) (valid : T -> Prop),
+      valid id ->
+      (forall a b, valid a -> valid b -> valid (op a b)) ->
+      (forall a : T, valid a -> op id a = a) ->
+      (forall a : T, valid a -> op a id = a) ->
+      (forall a b c : T, valid a -> valid b -> valid c ->
+                    op a (op b c) = op (op a b) c) ->
       forall circuit : T -> T -> cava T,
-        (forall a b : T, circuit a b = ret (op a b)) ->
+        (forall a b : T, valid a -> valid b -> circuit a b = ret (op a b)) ->
         forall (default : T) (n : nat) (v : t T n),
-          n <> 0 ->
+          n <> 0 -> ForallV valid v ->
           tree_all_sizes default circuit v = ret (Vector.fold_left op id v).
   Proof.
     cbv [tree_all_sizes]; intros. repeat destruct_pair_let.
@@ -540,14 +592,45 @@ Section WithCava.
         rewrite resize_default_resize_default, resize_default_id by Lia.lia.
         reflexivity. }
     pose proof (Nat.log2_pos n).
-    destruct n; [ congruence | ].
+    destruct n; [ congruence | ]. cbn [ForallV] in *.
+    repeat match goal with H : _ /\ _ |- _ => destruct H end.
     destruct n;[ subst; cbn in *; rewrite MonadLaws.bind_of_return by auto;
-                 match goal with H : _ |- _ => rewrite H; reflexivity end | ].
+                 match goal with H : _ |- _ => rewrite H; solve [auto] end | ].
     destruct_one_match; [ Lia.lia | ].
-    erewrite tree_equiv by eauto.
-    rewrite MonadLaws.bind_of_return by auto.
-    autorewrite with push_to_list push_list_fold.
-    erewrite foldLM_of_ret by eauto. reflexivity.
+    erewrite tree_equiv' with (valid0:=valid) (id0:=id); eauto; [ | ].
+    { rewrite MonadLaws.bind_of_return by auto.
+      rewrite !fold_left_to_list, to_list_resize_default, to_list_append by lia.
+      autorewrite with push_list_fold.
+      erewrite foldLM_of_ret_valid with (validA:=valid) (validB:=valid);
+        eauto; [ | ].
+      { apply fold_left_invariant with (I:=valid); auto; [ ].
+        intros *. rewrite InV_to_list_iff. intros.
+        match goal with H : forall a b, _ -> _ -> valid (op a b) |- _ => apply H end;
+          auto; [ ].
+        eapply ForallV_forall; [ | solve [eauto]].
+        intros. apply ForallV_splitat1.
+        erewrite <-(resize_default_eq _ _ _ (ltac:(eassumption))).
+        apply ForallV_resize. cbn [ForallV] in *; auto. }
+      { apply ForallV_to_list_iff, ForallV_splitat2.
+        erewrite <-(resize_default_eq _ _ _ (ltac:(eassumption))).
+        apply ForallV_resize. cbn [ForallV] in *; auto. } }
+    { intros. apply ForallV_splitat1.
+      erewrite <-(resize_default_eq _ _ _ (ltac:(eassumption))).
+      apply ForallV_resize. cbn [ForallV] in *; auto. }
+  Qed.
+
+  Lemma tree_all_sizes_equiv {T} {monad_laws : MonadLaws.MonadLaws monad}:
+    forall (id : T) (op : T -> T -> T),
+      (forall a : T, op id a = a) ->
+      (forall a : T, op a id = a) ->
+      (forall a b c : T, op a (op b c) = op (op a b) c) ->
+      forall circuit : T -> T -> cava T,
+        (forall a b : T, circuit a b = ret (op a b)) ->
+        forall (default : T) (n : nat) (v : t T n),
+          n <> 0 ->
+          tree_all_sizes default circuit v = ret (Vector.fold_left op id v).
+  Proof.
+    intros. apply tree_all_sizes_equiv' with (valid:=fun _ => True); auto using ForallV_trivial.
   Qed.
 
   Definition all {n} (v : signal (Vec Bit n)) : cava (signal Bit) :=

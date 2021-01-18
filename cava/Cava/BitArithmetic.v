@@ -575,3 +575,28 @@ Ltac constant_bitvec_cases vec :=
       destruct (Vector.hd vec)
   | Vector.t bool 0 => eapply Vector.case0 with (v := vec)
   end.
+
+(******************************************************************************)
+(* Arithmetic operations                                                      *)
+(******************************************************************************)
+
+Definition unsignedAddBool {m n : nat}
+                           (av : Bvector m) (bv : Bvector n)
+: Bvector (1 + max m n) :=
+  let a := Bv2N av in
+  let b := Bv2N bv in
+  let sumSize := 1 + max m n in
+  let sum := (a + b)%N in
+  N2Bv_sized sumSize sum.
+
+Definition unsignedMultBool {m n : nat}
+           (av : Bvector m) (bv : Bvector n)
+  : Bvector (m + n) :=
+  let a := Bv2N av in
+  let b := Bv2N bv in
+  let product := (a * b)%N in
+  N2Bv_sized (m + n) product.
+
+Definition greaterThanOrEqualBool {m n : nat}
+           (av : Bvector m) (bv : Bvector n) : bool :=
+  (Bv2N bv <=? Bv2N av)%N.
