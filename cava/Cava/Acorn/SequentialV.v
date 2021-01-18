@@ -239,6 +239,7 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
 
  Instance SequentialVectorCombSemantics {ticks: nat} : Cava (seqVType ticks) :=
   { cava := ident;
+    constant b := Vector.const b ticks;
     zero := ret (Vector.const false ticks);
     one := ret (Vector.const true ticks);
     defaultSignal t := Vector.const (@defaultCombValue t) ticks;

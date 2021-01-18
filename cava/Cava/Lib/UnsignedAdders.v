@@ -49,8 +49,7 @@ Section WithCava.
   Definition adderWithGrowthNoCarryInV {n : nat}
             (inputs: Vector.t (signal Bit * signal Bit) n) :
             cava (Vector.t (signal Bit) (n + 1)) :=
-    const0 <- zero ;;    
-    adderWithGrowthV (const0, inputs).
+    adderWithGrowthV (constant false, inputs).
 
   Definition addLWithCinV {n : nat}
                           (cin : signal Bit)
@@ -68,9 +67,8 @@ Section WithCava.
   Definition addN {n : nat}
             (ab: signal (Vec Bit n) * signal (Vec Bit n)) :
             cava (signal (Vec Bit n)) :=
-    const0 <- zero ;;
     let (a, b) := ab in
-    '(sum, _) <- unsignedAdderV (const0, vcombine (peel a) (peel b)) ;;
+    '(sum, _) <- unsignedAdderV (constant false, vcombine (peel a) (peel b)) ;;
     ret (unpeel sum).
 
   (****************************************************************************)

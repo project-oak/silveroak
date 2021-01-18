@@ -66,8 +66,7 @@ Section WithCava.
   Definition xilinxAdder {n: nat}
               (a b: signal (Vec Bit n))
               : cava (signal (Vec Bit n)) :=
-    z <- zero ;;
-    '(sum, carry) <- xilinxAdderWithCarry (z, (a, b)) ;;
+    '(sum, carry) <- xilinxAdderWithCarry (constant false, (a, b)) ;;
     ret sum.
 
 End WithCava.
