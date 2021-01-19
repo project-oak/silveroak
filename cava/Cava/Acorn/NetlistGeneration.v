@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2020 The Project Oak Authors                                   *)
+(* Copyright 2021 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -289,7 +289,7 @@ Definition instantiateNet (intf : CircuitInterface)
 
 Instance CavaCombinationalNet : Cava denoteSignal := {
     cava := state CavaState;
-    constant b := if b then Gnd else Vcc;
+    constant b := if b then Vcc else Gnd;
     zero := ret Gnd;
     one := ret Vcc;
     defaultSignal := defaultNetSignal;

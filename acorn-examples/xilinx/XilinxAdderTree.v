@@ -40,10 +40,8 @@ Section WithCava.
   (****************************************************************************)
   Definition adderTree {sz: nat}
                        (n: nat) (v: signal (Vec (Vec Bit sz) (2^(S n)))):
-                      cava (signal (Vec Bit sz)) :=
-    z <- zero ;;
-    let def := unpeel (Vector.const z sz) in
-    tree def n xilinxAdder (peel v).
+                       cava (signal (Vec Bit sz)) :=
+    tree defaultSignal n xilinxAdder (peel v).
 
   (****************************************************************************)
   (* An adder tree with 2 inputs.                                             *)

@@ -476,7 +476,7 @@ checkOutputs ports = concat (map checkOutput ports)
 checkOutput :: PortDeclaration -> [String]
 checkOutput port
   = ["      if(" ++ name ++ " != " ++ name ++ "_vectors[i_cava]) begin",
-     "        $fatal (\"For " ++ name ++ " expected " ++ fmt ++ " but got " ++
+     "        $error (\"For " ++ name ++ " expected " ++ fmt ++ " but got " ++
      fmt ++ "\", " ++ name ++ "_vectors[i_cava], " ++ name ++ ");",
      "      end;"
     ]
