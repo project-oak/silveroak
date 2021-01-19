@@ -30,7 +30,7 @@ Inductive SignalType :=
   | ExternalType : string -> SignalType.            (* An uninterpreted type *)
 
 (******************************************************************************)
-(* Define the type of a collection of one or moer differently-typed signals   *)
+(* Define the type of a collection of one or more differently-typed signals   *)
 (******************************************************************************)
 
 (* A collection of SignalTypes *)
