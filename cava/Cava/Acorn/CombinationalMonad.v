@@ -96,19 +96,12 @@ Definition indexAtBool {t: SignalType}
                        {sz isz: nat}
                        (i : Vector.t (combType t) sz)
                        (sel : Bvector isz) : combType t :=
-  let selN := Bv2N sel in
-  match lt_dec (N.to_nat selN) sz with
-  | left H => @Vector.nth_order _ _ i (N.to_nat selN) H
-  | right _ => defaultCombValue t
-  end.
+  nth_default (@defaultCombValue t) (N.to_nat (Bv2N sel)) i.
 
 Definition indexConstBool {t: SignalType} {sz: nat}
                           (i : Vector.t (combType t) sz)
                           (sel : nat) : combType t :=
-  match lt_dec sel sz with
-  | left H => @Vector.nth_order _ _ i sel H
-  | right _ => defaultCombValue t
-  end.
+  nth_default (@defaultCombValue t) sel i.
 
 Definition sliceBool {t: SignalType}
                      {sz: nat}
