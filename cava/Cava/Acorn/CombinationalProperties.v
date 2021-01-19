@@ -47,7 +47,7 @@ Lemma eqb_eq {t} (x y : combType t) :
 Proof.
   revert x y.
   induction t;
-    cbn [eqb combType and2 andBool xnor2 xnorBool one unpair
+    cbn [eqb combType and2 andBool xnor2 xnorBool one
              CombinationalSemantics] in *;
     intros; simpl_ident; repeat destruct_pair_let;
     (* handle easy cases first *)
@@ -56,18 +56,11 @@ Proof.
            | x : bool |- _ => destruct x; cbn [xorb negb]
            | |- (?x = ?x <-> ?y = ?y) => split; reflexivity
            end;
-    try (split; congruence); [ | ].
+    try (split; congruence); [ ].
   { (* Vector case *)
-    match goal with
-    | |- context [(@unIdent (Vector.t bool ?n) (zipWith _ _ _))] =>
-      change (Vector.t bool n) with (combType (Vec Bit n));
-        rewrite zipWith_unIdent
-    end.
+    rewrite (zipWith_unIdent (C:=Bit)).
     rewrite <-fold_andb_eq_iff by apply IHt.
     rewrite all_fold_left. reflexivity. }
-  { (* Pair case *)
-    simpl_ident. rewrite pair_equal_spec, <-IHt1, <-IHt2.
-    rewrite Bool.andb_true_iff. reflexivity. }
 Qed.
 
 Lemma eqb_refl {t} (x : combType t) : unIdent (eqb x x) = true.
@@ -88,31 +81,51 @@ Proof.
   lia.
 Qed.
 
-Lemma pairSel_mkpair {t} (x y : combType t) (sel : bool) :
-  pairSel sel (mkpair x y) = if sel then y else x.
-Proof. reflexivity. Qed.
+Lemma mux2_unIdent' {t} (i0 i1 : combType t) sel :
+  @unIdent (combType t) (mux2 (A:=ione t) sel (i0, i1)) = if sel then i1 else i0.
+Proof.
+  cbv [mux2 on_bits2].
+  revert sel i0 i1; induction t; intros;
+    cbn [on_bits2' fst snd signals signals_gen combType] in *;
+    repeat match goal with
+           | x : unit |- _ => destruct x
+           | _ => destruct_one_match; reflexivity
+           end; [ ].
+  { (* Vector case *)
+    simpl_ident.
+    erewrite map2_ext by (intros; rewrite IHt; instantiate_app_by_reflexivity).
+    destruct_one_match; [ rewrite map2_swap | ];
+      rewrite map2_drop; apply map_id_ext; reflexivity. }
+Qed.
 
-Lemma pairAssoc_mkpair {A B C} a b c :
-  @pairAssoc _ _ A B C (mkpair (mkpair a b) c) = mkpair a (mkpair b c).
-Proof. reflexivity. Qed.
+Lemma mux2_unIdent {t} (i0 i1 : signals t) sel :
+  unIdent (mux2 sel (i0, i1)) = if sel then i1 else i0.
+Proof.
+  cbv [mux2].
+  revert sel i0 i1; induction t; intros; [ solve [apply mux2_unIdent'] | ].
+  cbn [on_bits2]. simpl_ident. rewrite IHt1, IHt2.
+  destruct i0,i1. cbn [fst snd].
+  destruct_one_match; reflexivity.
+Qed.
+Hint Rewrite @mux2_unIdent using solve [eauto] : simpl_ident.
 
-Lemma mux4_mkpair {t} (i0 i1 i2 i3 : combType t) sel :
-  mux4 (mkpair (mkpair (mkpair i0 i1) i2) i3) sel =
+Lemma mux4_unIdent {t} (i0 i1 i2 i3 : combType t) sel :
+  unIdent (mux4 (i0, i1, i2, i3) sel) =
   if Vector.hd (Vector.tl sel)
   then if Vector.hd sel then i3 else i2
   else if Vector.hd sel then i1 else i0.
 Proof.
-  cbv in sel. constant_vector_simpl sel.
-  cbv [mux4 indexConst CombinationalSemantics].
-  autorewrite with vsimpl.
+  cbv in sel. constant_vector_simpl sel. autorewrite with vsimpl.
+  cbv [mux4 pairRight Monad.mcompose]; cbn [indexConst CombinationalSemantics].
+  simpl_ident.
   repeat
     match goal with
     | |- context [(@indexConstBool ?t ?sz ?v ?n)] =>
       let x := constr:(@indexConstBool t sz v n) in
       let y := (eval cbn in x) in
       progress change x with y
-    | _ => rewrite pairAssoc_mkpair
-    | _ => rewrite pairSel_mkpair
+    | _ => progress cbn [signals signals_gen]
+    | _ => rewrite mux2_unIdent'
     | _ => destruct_one_match
     | _ => reflexivity
     end.

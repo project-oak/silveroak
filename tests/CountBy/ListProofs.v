@@ -70,10 +70,11 @@ Proof.
     reflexivity. }
   { (* invariant holds through body *)
     cbv zeta. intros; subst. seqsimpl.
-    cbv [addNSpec countBySpec bvsum map2].
+    cbv [addNSpec countBySpec bvsum map2 overlap_signals].
     rewrite firstn_succ_snoc with (d:=N2Bv_sized 8 0) by length_hammer.
     autorewrite with push_list_fold.
-    cbv [seqType Signal.combType Bvector] in *.
+    cbv [Bvector peel_signals unpeel_signals] in *.
+    cbn [seqType signals signals_gen combType] in *.
     repeat first [ rewrite Nat.add_1_r
                  | rewrite seq_S, map_app; cbn [map]
                  | progress cbn [repeat app]

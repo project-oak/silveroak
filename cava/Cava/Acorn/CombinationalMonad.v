@@ -114,12 +114,6 @@ Definition sliceBool {t: SignalType}
 Definition bufBool (i : bool) : ident bool :=
   ret i.
 
-Definition loopBool (A B C : SignalType)
-                    (f : combType A * combType C -> ident (combType B * combType C))
-                    (a : combType A) : ident (combType B) :=
-  '(b, _) <- f (a, @defaultCombValue C) ;;
-  ret b.
-
 (******************************************************************************)
 (* Instantiate the Cava class for a boolean combinational logic               *)
 (* interpretation.                                                            *)
@@ -147,11 +141,8 @@ Definition loopBool (A B C : SignalType)
     lut6 := lut6Bool;
     xorcy := xorcyBool;
     muxcy := muxcyBool;
-    unpair _ _ v := v;
-    mkpair _ _ v1 v2 := (v1, v2);
     peel _ _ v := v;
     unpeel _ _ v := v;
-    pairSel t sel v := pairSelBool sel v;
     indexAt t sz isz := @indexAtBool t sz isz;
     indexConst t sz := @indexConstBool t sz;
     slice t sz := @sliceBool t sz;
@@ -167,4 +158,4 @@ Definition loopBool (A B C : SignalType)
 (* behavioural simulation result.                                             *)
 (******************************************************************************)
 
-Definition combinational {a} (circuit : cava a) : a := unIdent circuit.
+ Definition combinational {a} (circuit : @cava _ CombinationalSemantics a) : a := unIdent circuit.

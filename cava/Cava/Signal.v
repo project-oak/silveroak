@@ -27,8 +27,30 @@ Inductive SignalType :=
   | Void : SignalType                              (* An empty type *)
   | Bit : SignalType                               (* A single wire *)
   | Vec : SignalType -> nat -> SignalType              (* Vectors, possibly nested *)
-  | Pair : SignalType -> SignalType -> SignalType    (* A pair of signals *)
   | ExternalType : string -> SignalType.            (* An uninterpreted type *)
+
+(******************************************************************************)
+(* Define the type of a collection of one or moer differently-typed signals   *)
+(******************************************************************************)
+
+(* A collection of SignalTypes *)
+Inductive SignalInterface : Type :=
+| ione : forall t : SignalType, SignalInterface
+| ipair : forall t1 t2 : SignalInterface, SignalInterface
+.
+
+(* The Gallina type that represents a particular signal interface, based on a
+   single-signal interpretation *)
+Fixpoint signals_gen (signal : SignalType -> Type)
+         (i : SignalInterface) : Type :=
+  match i with
+  | ione t => signal t
+  | ipair i1 i2 => (@signals_gen signal i1 * @signals_gen signal i2)
+  end.
+
+(* This coercion automatically converts a single SignalType written in a place
+   that expects a SignalInterface into a one-element SignalInterface *)
+Coercion ione : SignalType >-> SignalInterface.
 
 (******************************************************************************)
 (* Combinational denotion of the SignalType and default values.               *)
@@ -39,7 +61,6 @@ Fixpoint combType (t: SignalType) : Type :=
   | Void => unit
   | Bit => bool
   | Vec vt sz => Vector.t (combType vt) sz
-  | Pair lt rt => combType lt * combType rt
   | ExternalType _ => unit (* No semantics for combinational interpretation. *)
   end.
 
@@ -48,7 +69,6 @@ Fixpoint defaultCombValue (t: SignalType) : combType t :=
   | Void => tt
   | Bit => false
   | Vec t2 sz => Vector.const (defaultCombValue t2) sz
-  | Pair t1 t2 => (defaultCombValue t1, defaultCombValue t2)
   | ExternalType _ => tt
   end.
 
@@ -171,15 +191,11 @@ Inductive Signal : SignalType -> Type :=
   | NamedVector: forall t s, string -> Signal (Vec t s)
   | LocalVec: forall t s, N -> Signal (Vec t s)
   | VecLit: forall {t s}, Vector.t (Signal t) s -> Signal (Vec t s)
-  | SignalPair : forall {t1 t2}, Signal t1 -> Signal t2 -> Signal (Pair t1 t2)
   (* Dynamic index *)
   | IndexAt:  forall {t sz isz}, Signal (Vec t sz) ->
               Signal (Vec Bit isz) -> Signal t
-  | SignalSel : forall {t}, Signal Bit -> Signal (Pair t t) -> Signal t
   (* Static indexing *)
   | IndexConst: forall {t sz}, Signal (Vec t sz) -> nat -> Signal t
-  | SignalFst : forall {t1 t2}, Signal (Pair t1 t2) -> Signal t1
-  | SignalSnd : forall {t1 t2}, Signal (Pair t1 t2) -> Signal t2
   (* Static slice *)
   | Slice: forall {t sz} (start len: nat), Signal (Vec t sz) ->
                                            Signal (Vec t len).
@@ -192,10 +208,8 @@ Fixpoint defaultNetSignal (t: SignalType) : Signal t :=
   | Void => UndefinedSignal
   | Bit => Gnd
   | Vec vt s => VecLit (Vector.const (defaultNetSignal vt) s)
-  | Pair lt rt => SignalPair (defaultNetSignal lt) (defaultNetSignal rt)
   | ExternalType s => UninterpretedSignal "default-defaultSignal"
   end.
-
 
 (* To allow us to represent a heterogenous list of Signal t values where
    the Signal t varies we make a wrapper that erase the Kind index type.

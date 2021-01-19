@@ -63,7 +63,7 @@ Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 
 Lemma addWithDelayStepCorrect :
   forall (i : Bvector 8) (s : Bvector 8),
-    sequential ((addN >=> delay >=> fork2) ([i], [s]))
+    sequential ((addN >=> delay (t:=Vec Bit 8) >=> fork2) ([i], [s]))
     = ([bvzero; bvadd i s], [bvzero; bvadd i s]).
 Proof.
   intros. seqsimpl. reflexivity.
@@ -96,17 +96,21 @@ Proof.
                acc = map (fun t => addWithDelaySpecF
                                   (fun n => nth n i bvzero) t)
                          (seq 0  (S t))).
+  { (* loop body produces well-formed output *)
+    intros; cbn; reflexivity. }
   { (* invariant is satisfied at start *)
     destruct i; [ reflexivity | ]. split; [ lia | ].
     seqsimpl. autorewrite with natsimpl.
     cbn [nth map seq addWithDelaySpecF].
-    change (Signal.defaultCombValue (Vec Bit 8)) with (@bvzero 8).
-    cbv [addNSpec map2]. rewrite bvadd_bvzero_l; reflexivity. }
+    change (defaultSignals (Vec Bit 8)) with (@bvzero 8).
+    cbv [addNSpec map2 unpeel_signals peel_signals].
+    rewrite bvadd_bvzero_l; reflexivity. }
   { (* invariant holds through loop *)
     cbv zeta; intros *; intros [? ?].
     intros;  subst; seqsimpl. split; [ lia | ].
+    cbv [overlap_signals]. cbn [unpeel_signals peel_signals].
     autorewrite with pull_snoc.
-    rewrite !overlap_snoc_cons by length_hammer.
+    rewrite !(overlap_snoc_cons (A:=Vec Bit 8)) by length_hammer.
     destruct t; [ lia | ].
     autorewrite with push_nth push_length natsimpl push_length pull_snoc.
     cbn [addWithDelaySpecF]. rewrite <-!app_assoc. cbn [app].

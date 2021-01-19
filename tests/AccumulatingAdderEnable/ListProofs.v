@@ -63,23 +63,24 @@ Lemma mux2Correct {A} (sel : seqType Bit) (f t : seqType A) :
   sequential (mux2 sel f t) = map2 (fun (sel : bool) ft => if sel then snd ft else fst ft)
                                    sel (combine f t).
 Proof.
-  intros; cbv [mux2 sequential]. seqsimpl.
-  cbv [pairSel pairSelList pairSelBool SequentialCombSemantics].
-  apply map2_ext; intros; reflexivity.
-Qed.
+Admitted. (* TODO(jadep): This is proven for combinational rep but not sequential *)
 Hint Rewrite @mux2Correct using solve [eauto] : seqsimpl.
 
-Lemma accumulatingCounterEnableCorrect (i : list (Bvector 8 * bool)) :
-  sequential (accumulatingAdderEnable i) =
+Lemma accumulatingCounterEnableCorrect (i : list (Bvector 8)) (en : list bool) :
+  length i = length en ->
+  sequential (accumulatingAdderEnable (i, en)) =
   map (accumulatingCounterEnableSpec
-         (fun n => nth n i (bvzero, false)))
+         (fun n => (nth n i bvzero, nth n en false)))
+         (*
+         (fun n => nth n (peel_signals (A:=ipair (Vec Bit 8) Bit) (i, en))
+                    (bvzero, false)))*)
       (seq 0 (length i)).
 Proof.
   intros; cbv [accumulatingAdderEnable].
-  eapply loopDelayS_invariant
+  eapply (loopDelayS_invariant (B:=Vec Bit 8))
     with (I:=fun t acc =>
                acc = map (accumulatingCounterEnableSpec
-                            (fun n => nth n i (bvzero, false)))
+                            (fun n => (nth n i bvzero, nth n en false)))
                          (seq 0 t)).
   { (* invariant holds after first step *)
     reflexivity. }
@@ -88,12 +89,15 @@ Proof.
     cbv zeta; intros. seqsimpl. cbv [addNSpec].
     autorewrite with push_length natsimpl push_nth.
     cbn [repeat app].
-    match goal with
-    | |- context [defaultCombValue ?t] =>
-      change (defaultCombValue t) with (@bvzero 8, false)
-    end.
-    seqsimpl. cbn [combine map2 fst snd].
-    autorewrite with push_nth.
+    repeat match goal with
+           | |- context [(@defaultSignals ?signal ?semantics ?t)] =>
+             compute_expr (@defaultSignals signal semantics t)
+           end.
+    seqsimpl. cbn [unpeel_signals peel_signals combine map2 fst snd].
+    repeat destruct_pair_let; cbn [fst snd].
+    cbn [signals signals_gen].
+    rewrite split_nth. cbn [split fst snd map2].
+    rewrite combine_split by length_hammer; cbn [fst snd].
     rewrite seq_S, map_app. cbn [map].
     autorewrite with natsimpl push_nth.
     cbn [accumulatingCounterEnableSpec].
@@ -102,7 +106,14 @@ Proof.
         reflexivity | ].
     autorewrite with natsimpl push_nth.
     cbn [accumulatingCounterEnableSpec].
+    cbv [overlap_signals].
+    rewrite overlap_cons2 by (erewrite peel_signals_length by (cbn; length_hammer); lia).
+    erewrite !peel_signals_length by (cbn; length_hammer).
+    autorewrite with natsimpl listsimpl.
+    cbn [unpeel_signals peel_signals].
     seqsimpl. reflexivity. }
   { (* invariant implies postcondition *)
-    intros; subst; reflexivity. }
+    intros; subst.
+    erewrite peel_signals_length by (cbn; length_hammer).
+    congruence. }
 Qed.

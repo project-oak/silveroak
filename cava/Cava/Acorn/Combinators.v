@@ -47,53 +47,28 @@ Section WithCava.
   (* Lava-style circuit combinators.                                          *)
   (****************************************************************************)
 
-  (* Operations over the first or second element of a pair of inputs. *)
-
-  (* Apply a circuit f to the first element of a pair. *)
-  Definition fsT {A B C : SignalType}
-                 (f: signal A -> cava (signal C))
-                 (i: signal (Pair A B)) :
-                 cava (signal (Pair C B)) :=
-    let (a, b) := unpair i in
-    c <- f a ;;
-    ret (mkpair c b).
-
-  (* Apply a circuit f to the second element of a pair. *)
-  Definition snD {A B C : SignalType}
-                 (f: signal B -> cava (signal C))
-                 (i: signal (Pair A B)) :
-                 cava (signal (Pair A C)) :=
-    let (a, b) := unpair i in
-    c <- f b ;;
-    ret (mkpair a c).
-
-  (* A fork that returns a Pair SignalType. *)
-  Definition fork2S {A : SignalType}
-                    (i: signal A) : cava (signal (Pair A A)) :=
-    ret (mkpair i i).
+  Fixpoint defaultSignals (t : SignalInterface) : signals t :=
+    match t with
+    | ione t => defaultSignal
+    | ipair t1 t2 => (defaultSignals t1, defaultSignals t2)
+    end.
 
    (* pairLeft takes an input with shape (a, (b, c)) and re-organizes
       it as ((a, b), c) *)
-   Definition pairLeft {A B C : SignalType}
-                       (i : signal A * (signal B * signal C)) :
-                       cava ((signal A * signal B) * signal C) :=
+   Definition pairLeft {A B C : SignalInterface}
+                       (i : signals A * (signals B * signals C)) :
+                       cava ((signals A * signals B) * signals C) :=
    let '(a, (b, c)) := i in
    ret ((a, b), c).
 
   (* pairRight takes an input with shape ((a, b), c) and re-organizes
      it as (a, (b, c)) *)
-  Definition pairRight {A B C : SignalType}
-                       (i : (signal A * signal B) * signal C) :
-                       cava (signal A * (signal B * signal C)) :=
+  Definition pairRight {A B C : SignalInterface}
+                       (i : (signals A * signals B) * signals C) :
+                       cava (signals A * (signals B * signals C)) :=
    let '((a, b), c) := i in
    ret (a, (b, c)).
 
-  Definition mux2 {A : SignalType}
-                  (sel : signal Bit)
-                  (i : signal A * signal A) :
-                  cava (signal A) :=
-  ret (pairSel sel (mkpair (fst i) (snd i))).
- 
   (* Use a circuit to zip together two vectors. *)
   Definition zipWith {A B C : SignalType} {n : nat}
            (f : signal A * signal B -> cava (signal C))
@@ -105,11 +80,39 @@ Section WithCava.
     v <- mapT f (vcombine a' b') ;;
     ret (unpeel v).
 
+  Fixpoint on_bits2' {A : SignalType}
+             (f : signal Bit * signal Bit -> cava (signal Bit))
+             : signal A * signal A -> cava (signal A) :=
+    match A with
+    | Bit => f
+    | Vec t n => fun i => zipWith (on_bits2' f) (fst i) (snd i)
+    | Void => fun i => ret (fst i)
+    | ExternalType s => fun i => ret (fst i) (* no interpretation *)
+    end.
+
+  Fixpoint on_bits2 {A : SignalInterface}
+             (f : signal Bit * signal Bit -> cava (signal Bit))
+    : signals A * signals A -> cava (signals A) :=
+    match A as A return signals A * signals A -> cava (signals A) with
+    | ione t => on_bits2' f
+    | ipair t1 t2 =>
+      fun '(x, y) =>
+        o1 <- on_bits2 f (fst x, fst y) ;;
+        o2 <- on_bits2 f (snd x, snd y) ;;
+        ret (Monad:=monad) (o1, o2)
+    end.
+
+  Definition mux2 {A : SignalInterface}
+                  (sel : signal Bit)
+                  (i : signals A * signals A) :
+    cava (signals A) :=
+    on_bits2 (fun xy => muxcy sel (snd xy) (fst xy)) i.
+
   (* A list-based left monadic-fold. *)
   Fixpoint foldLM {m} `{Monad m} {A B : Type}
                   (f : B -> A -> m B)
-                  (input : list A) 
-                  (accum : B) 
+                  (input : list A)
+                  (accum : B)
                   : m B :=
     match input with
     | [] => ret accum
@@ -348,9 +351,9 @@ Section WithCava.
   (* Swap                                                                     *)
   (****************************************************************************)
 
-  Definition swap `{Monad_m : Monad cava} {A B}
-                  (i : signal A * signal B) 
-                  : cava (signal B * signal A) :=
+  Definition swap `{Monad_m : Monad cava} {signal} {A B}
+                  (i : signals_gen signal A * signals_gen signal B)
+                  : cava (signals_gen signal B * signals_gen signal A) :=
     let (a, b) := i in
     ret (b, a).
 
@@ -642,56 +645,41 @@ Section WithCava.
     | Void => fun _ _ => one
     | Bit => fun x y => xnor2 (x, y)
     | ExternalType s => fun x y => one
-    | Pair a b => fun x y : signal (Pair a b) =>
-                   let '(x1,x2) := unpair x in
-                   let '(y1, y2) := unpair y in
-                   eq1 <- eqb x1 y1 ;;
-                   eq2 <- eqb x2 y2 ;;
-                   and2 (eq1, eq2)
     | Vec a n => fun x y : signal (Vec a n) =>
                   eq_results <- zipWith (fun '(a, b) => eqb a b) x y ;;
                   all eq_results
     end.
 
-  Definition pairAssoc {A B C} (x : signal (Pair (Pair A B) C))
-    : signal (Pair A (Pair B C)) :=
-    let '(ab, c) := unpair x in
-    let '(a, b) := unpair ab in
-    mkpair a (mkpair b c).
-
-  Definition mux4 {t} (input : signal (Pair (Pair (Pair t t) t) t))
+  Definition mux4 {t} (input : signal t * signal t * signal t * signal t)
              (sel : signal (Vec Bit 2)) :=
-    let x := pairAssoc input in
-    pairSel (indexConst sel 0) (pairSel (indexConst sel 1) x).
+    (pairRight (A:=ipair t t) (B:=t) (C:=t) >=>
+     mux2 (A:=ipair t t) (indexConst sel 1) >=>
+     mux2 (A:=t) (indexConst sel 0)) input.
 
   Section Sequential.
     Context {seqsemantics : CavaSeq semantics}.
 
     (* Alternate form of feedback loop with feedback and output types separated *)
-    Definition loopDelay {A B C: SignalType}
-               (body : signal A * signal C -> cava (signal B * signal C))
-               (input : signal A) : cava (signal B) :=
-      bc <- loopDelayS
-             (fun (a_bc : signal A * signal (Pair B C)) =>
-                let '(a, bc) := a_bc in
-                let '(b,c) := unpair bc in
-                '(b,c) <- body (a,c) ;;
-                ret (mkpair b c))
-             input ;;
-      ret (fst (unpair bc)).
+    Definition loopDelay {A B C: SignalInterface}
+               (body : signals A * signals C -> cava (signals B * signals C))
+               (input : signals A) : cava (signals B) :=
+      '(b, _) <- loopDelayS
+                  (fun (a_bc : signals A * signals (ipair B C)) =>
+                     let '(a, (b, c)) := a_bc in
+                     body (a,c))
+                  input ;;
+      ret b.
 
     (* Alternate form of enabled feedback loop with feedback and output types separated *)
-    Definition loopDelayEnable {A B C: SignalType} (enable : signal Bit)
-        (body : signal A * signal C -> cava (signal B * signal C))
-        (input : signal A) : cava (signal B) :=
-      bc <- loopDelaySEnable
-             enable
-             (fun (a_bc : signal A * signal (Pair B C)) =>
-                let '(a, bc) := a_bc in
-                let '(b,c) := unpair bc in
-                '(b,c) <- body (a,c) ;;
-                ret (mkpair b c))
-             input ;;
-      ret (fst (unpair bc)).
+    Definition loopDelayEnable {A B C: SignalInterface} (enable : signal Bit)
+        (body : signals A * signals C -> cava (signals B * signals C))
+        (input : signals A) : cava (signals B) :=
+      '(b, _) <- loopDelaySEnable
+                  enable
+                  (fun (a_bc : signals A * signals (ipair B C)) =>
+                     let '(a, (b, c)) := a_bc in
+                     body (a,c))
+                  input ;;
+      ret b.
   End Sequential.
  End WithCava.

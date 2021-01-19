@@ -34,6 +34,7 @@ End Length.
 (* The push_length autorewrite database simplifies goals including [length] *)
 Hint Rewrite @nil_length @cons_length @seq_length @repeat_length @rev_length
      @map_length @firstn_length @skipn_length @app_length @combine_length
+     @split_length_l @split_length_r
      using solve [eauto] : push_length.
 Create HintDb length discriminated.
 Ltac length_hammer :=

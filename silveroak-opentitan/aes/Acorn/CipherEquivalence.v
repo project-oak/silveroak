@@ -81,7 +81,6 @@ Section WithSubroutines.
     first [ destruct_pair_let
           | rewrite N2Nat.id
           | rewrite N2Bv_sized_Bv2N
-          | rewrite pairSel_mkpair
           | progress simpl_ident ]; [ ].
   Local Ltac simplify := repeat simplify_step.
 
@@ -113,7 +112,7 @@ Section WithSubroutines.
     destruct_one_match;
       compute_expr (nat_to_bitvec_sized 2 0);
       compute_expr (nat_to_bitvec_sized 2 1).
-    all:rewrite mux4_mkpair; autorewrite with vsimpl.
+    all:rewrite mux4_unIdent; autorewrite with vsimpl.
     all:reflexivity.
   Qed.
 
@@ -145,7 +144,7 @@ Section WithSubroutines.
     repeat destruct_one_match; autorewrite with boolsimpl in *; try congruence.
     all: compute_expr (N2Bv_sized 2 (N.of_nat 0)).
     all: compute_expr (N2Bv_sized 2 (N.of_nat 1)).
-    all: rewrite mux4_mkpair; autorewrite with vsimpl.
+    all: rewrite mux4_unIdent; autorewrite with vsimpl.
     all: rewrite <-surjective_pairing.
     all: reflexivity.
   Qed.
@@ -163,7 +162,7 @@ Section WithSubroutines.
       else add_round_key' (shift_rows' (sub_bytes' data)) round_key.
   Proof.
     cbv [key_expand_and_round mcompose]; intros. subst_lets.
-    simplify. rewrite mux4_mkpair. autorewrite with vsimpl.
+    simplify. rewrite mux4_unIdent. autorewrite with vsimpl.
     destruct is_decrypt; reflexivity.
   Qed.
 

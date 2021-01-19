@@ -34,6 +34,7 @@ From Coq Require Import micromega.Lia.
 Require Import Cava.Cava.
 From Cava Require Import Kind.
 From Cava Require Import Signal.
+Require Import Cava.Acorn.Combinators.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.TimedMonad.
 Require Import Cava.Acorn.CombinationalMonad.
@@ -42,10 +43,10 @@ Require Import Cava.Acorn.CombinationalMonad.
 (* Delay combinator.                                                          *)
 (******************************************************************************)
 
-Definition delay {A} (x : timed (combType A)) : timed (combType A) :=
+Definition delay {A} (default : A) (x : timed A) : timed (A) :=
   fun t =>
     match t with
-    | 0 => defaultCombValue A
+    | 0 => default
     | S t' => x t'
     end.
 
@@ -53,14 +54,14 @@ Definition delay {A} (x : timed (combType A)) : timed (combType A) :=
 (* Loop combinator for feedback with delay.                                   *)
 (******************************************************************************)
 
-Definition loopSeqF' {A B : SignalType}
-         (f : combType A * combType B -> combType B)
-         (a : timed (combType A)) : timed (combType B) :=
-  timedFold (fun b a => f (a, b)) (defaultCombValue B) a.
+Definition loopSeqF' {A B : SignalInterface}
+         (f : signals A * signals B -> signals B)
+         (a : timed (signals A)) : timed (signals B) :=
+  timedFold (fun b a => f (a, b)) (defaultSignals B) a.
 
-Definition loopSeqF {A B : SignalType}
-         (f : combType A * combType B -> timed (combType B))
-         (a : timed (combType A)) : timed (combType B) :=
+Definition loopSeqF {A B : SignalInterface}
+         (f : signals A * signals B -> timed (signals B))
+         (a : timed (signals A)) : timed (signals B) :=
   loopSeqF' (fun ac => f ac 0) a.
 
 (******************************************************************************)
@@ -153,11 +154,8 @@ Definition blackBoxF (intf : CircuitInterface)
     lut6 := lut6BoolF;
     xorcy := binopF xorb;
     muxcy := muxcyBoolF;
-    mkpair _ _ v1 v2 := (v1, v2);
-    unpair _ _ v := v;
     peel _ _ v := v;
     unpeel _ _ v := v;
-    pairSel _ v sel := pairSelBool v sel;
     indexAt t sz isz := @indexAtBoolF t sz isz;
     indexConst t sz := @indexConstBoolF t sz;
     slice t sz startAt len v H := sliceVector v startAt len H;
@@ -169,7 +167,7 @@ Definition blackBoxF (intf : CircuitInterface)
   }.
 
  Instance TimedSeqSemantics : CavaSeqMonad TimedCombSemantics :=
-   { delaym k i := delay i;
+   { delaym k i := delay (defaultSignals k) i;
      loopDelaySm A B := @loopSeqF A B;
    }.
 
@@ -178,4 +176,4 @@ Definition blackBoxF (intf : CircuitInterface)
 (* behavioural simulation result at the given timestep.                       *)
 (******************************************************************************)
 
-Definition sequentialF {a} (circuit : cava a) (t : nat) : a := circuit t.
+Definition sequentialF {a} (circuit : @cava _ TimedCombSemantics a) (t : nat) : a := circuit t.

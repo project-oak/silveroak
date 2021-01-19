@@ -37,7 +37,7 @@ Section WithCava.
 
   Definition delayByte (i : signal (Vec Bit 8))
                        : cava (signal (Vec Bit 8)) :=
-  delay i.
+  delay (t:=Vec Bit 8) i.
 
 End WithCava.
 
@@ -87,9 +87,9 @@ Section WithCava.
   Context `{CavaSeq} `{Monad cava}.
 
   Definition delayEnableByte (en_i : signal Bit * signal (Vec Bit 8))
-                             : cava (signal (Vec Bit 8)) :=
-  let (en, i) := en_i in                           
-  delayEnable en i.
+    : cava (signal (Vec Bit 8)) :=
+    let (en, i) := en_i in
+    delayEnable (t:=Vec Bit 8) en i.
 
 End WithCava.
 
@@ -147,9 +147,9 @@ Definition delayEnableByte_tb
 Section WithCava.
   Context `{semantics: CavaSeq} `{Monad cava}.
 
- (* A nand-gate with registers after the AND gate and the INV gate. *)
+  (* A nand-gate with registers after the AND gate and the INV gate. *)
   Definition pipelinedNAND : signal Bit * signal Bit -> cava (signal Bit) :=
-    nand2 >=> delay >=> inv >=> delay.
+    (nand2 >=> delay (t:=Bit) >=> inv >=> delay (t:=Bit)).
 
 End WithCava.
 

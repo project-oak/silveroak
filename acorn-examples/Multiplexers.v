@@ -32,9 +32,9 @@ Local Open Scope vector_scope.
 Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.
 
-Definition mux2_1 (sab: signal Bit * signal Bit * signal Bit) : cava (signal Bit) :=
-  let '(sel, a, b) := sab in
-  ret (pairSel sel (mkpair a b)).
+  Definition mux2_1 (sab: signal Bit * signal Bit * signal Bit) : cava (signal Bit) :=
+    let '(sel, a, b) := sab in
+    mux2 (A:=Bit) sel (a, b).
 
   (* Mux between input buses *)
 

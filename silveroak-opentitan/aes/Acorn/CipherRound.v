@@ -67,15 +67,17 @@ Section WithCava.
 
     (* Different rounds perform different operations on the state before adding
        the round key; select the appropriate wire based on add_round_key_in_sel *)
-    let add_round_key_in :=
-        mux4 (mkpair (mkpair (mkpair mix_columns_out input) shift_rows_out) mix_columns_out)
-             add_round_key_in_sel in
+    add_round_key_in <-
+        mux4 (mix_columns_out, input, shift_rows_out, mix_columns_out)
+             add_round_key_in_sel ;;
 
     (* Intermediate decryption rounds need to mix the key columns *)
     mixed_round_key <- inv_mix_columns_key round_key ;;
 
-    out <- add_round_key (pairSel round_key_sel (mkpair round_key mixed_round_key))
-                        add_round_key_in ;;
+    round_key' <- mux2 (A:=Vec (Vec (Vec Bit 8) 4) 4)
+                      round_key_sel (round_key, mixed_round_key) ;;
+
+    out <- add_round_key round_key' add_round_key_in ;;
 
     (* Key expansion *)
     '(round_key, rcon) <- key_expand is_decrypt round_i (round_key, rcon) ;;

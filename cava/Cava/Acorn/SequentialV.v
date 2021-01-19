@@ -42,15 +42,63 @@ Local Open Scope vector_scope.
 
 Local Open Scope type_scope.
 
+(* Peels off the first signals from each member of a collection of signals *)
+Fixpoint nil_signals (t : SignalInterface)
+  : signals_gen (seqVType 0) t :=
+  match t as t return signals_gen (seqVType 0) t with
+  | ione t => []
+  | ipair t1 t2 => (nil_signals t1, nil_signals t2)
+  end.
+
+(* Peels off the first signals from each member of a collection of signals *)
+Fixpoint uncons_signals {A : SignalInterface} {ticks: nat}
+  : signals_gen (seqVType (S ticks)) A
+    -> signals_gen (seqVType 1) A * signals_gen (seqVType ticks) A :=
+  match A as A return signals_gen (seqVType (S ticks)) A
+    -> signals_gen (seqVType 1) A * signals_gen (seqVType ticks) A with
+  | ione t => fun i : seqVType (S _) t => ([Vector.hd i], Vector.tl i)
+  | ipair t1 t2 =>
+    fun i => let '(hd1, tl1) := uncons_signals (fst i) in
+          let '(hd2, tl2) := uncons_signals (snd i) in
+          ((hd1, hd2), (tl1, tl2))
+  end.
+
+(* The inverse of uncons_signals; reassembles a collection of signals *)
+Fixpoint cons_signals {A : SignalInterface} {ticks: nat}
+  : signals_gen (seqVType 1) A -> signals_gen (seqVType ticks) A
+    -> signals_gen (seqVType (S ticks)) A :=
+  match A as A return signals_gen (seqVType 1) A -> signals_gen (seqVType ticks) A
+                      -> signals_gen (seqVType (S ticks)) A with
+  | ione t => fun i0 i => (i0 ++ i)%vector
+  | ipair t1 t2 =>
+    fun i0 i => (cons_signals (fst i0) (fst i), cons_signals (snd i0) (snd i))
+  end.
+
+Fixpoint default_signals {A : SignalInterface} (ticks: nat)
+  : signals_gen (seqVType ticks) A :=
+  match A as A return signals_gen (seqVType ticks) A with
+  | ione t => Vector.const (defaultCombValue t) ticks
+  | ipair t1 t2 => (default_signals ticks, default_signals ticks)
+  end.
+
+Fixpoint shiftout_signals {A : SignalInterface} {ticks: nat}
+  : signals_gen (seqVType (S ticks)) A -> signals_gen (seqVType ticks) A :=
+  match A as A return signals_gen (seqVType (S ticks)) A
+                      -> signals_gen (seqVType ticks) A with
+  | ione t => fun v => Vector.shiftout v
+  | ipair t1 t2 => fun v => (shiftout_signals (fst v), shiftout_signals (snd v))
+  end.
+
 (* stepOnce is a helper function that takes a circuit running for > 1 ticks and
    runs it for only one tick. *)
-Definition stepOnce {m} `{Monad m}  {A B : SignalType} {ticks : nat}
-           (f : seqVType (S ticks) A * seqVType (S ticks) B -> m (seqVType (S ticks) B))
-           (input : seqVType 1 A * seqVType 1 B) : m (seqVType 1 B) :=
-  let a := Vector.hd (fst input) in
-  let b := Vector.hd (snd input) in
-  b <- f (a :: const (defaultCombValue A) ticks, b :: const (defaultCombValue B) ticks) ;;
-  ret ([Vector.hd b]).
+Definition stepOnce {m} `{Monad m}  {A B : SignalInterface} {ticks : nat}
+           (f : signals_gen (seqVType (S ticks)) A * signals_gen (seqVType (S ticks)) B
+                -> m (signals_gen (seqVType (S ticks)) B))
+           (input : signals_gen (seqVType 1) A * signals_gen (seqVType 1) B)
+  : m (signals_gen (seqVType 1) B) :=
+  b <- f (cons_signals (fst input) (default_signals ticks),
+         cons_signals (snd input) (default_signals ticks)) ;;
+  ret (fst (uncons_signals b)).
 
 (******************************************************************************)
 (* Loop combinator for feedback with delay.                                   *)
@@ -67,20 +115,22 @@ represented the list of computed values at each tick.
 *)
 
 Fixpoint loopSeqSV' {m} `{Monad m}
-                   {A B : SignalType}
+                   {A B : SignalInterface}
                    (ticks: nat)
-                   (f : seqVType 1 A * seqVType 1 B -> m (seqVType 1 B))
+                   (f : signals_gen (seqVType 1) A * signals_gen (seqVType 1) B
+                        -> m (signals_gen (seqVType 1) B))
                    {struct ticks}
-  : seqVType ticks A -> seqVType 1 B -> m (seqVType ticks B) :=
-  match ticks as ticks0 return seqVType ticks0 A -> _ -> m (seqVType ticks0 B) with
-  | O => fun _ _ => ret []
+  : signals_gen (seqVType ticks) A -> signals_gen (seqVType 1) B
+    -> m (signals_gen (seqVType ticks) B) :=
+  match ticks as ticks0 return signals_gen (seqVType ticks0) A -> _
+                               -> m (signals_gen (seqVType ticks0) B) with
+  | O => fun _ _ => ret (nil_signals _)
   | S ticks' =>
     fun a feedback =>
-      let x := Vector.hd a in
-      let xs := Vector.tl a in
-      nextState <- f ([x], feedback) ;; (* One step of f. *)
+      let '(x,xs) := uncons_signals a in
+      nextState <- f (x, feedback) ;; (* One step of f. *)
       ys <- loopSeqSV' ticks' f xs nextState ;; (* remaining steps of f *)
-      ret (nextState ++ ys)
+      ret (cons_signals nextState ys)
   end.
 
 (*
@@ -91,17 +141,20 @@ to compute the sequential behaviour of a circuit which uses f to iterate over
 the a inputs, using a default value for the initial state.
  *)
 
-Definition loopSeqSV {A B : SignalType} (ticks : nat)
-  : (seqVType ticks A * seqVType ticks B -> ident (seqVType ticks B))
-    -> seqVType ticks A -> ident (seqVType ticks B) :=
+Definition loopSeqSV {A B : SignalInterface} (ticks : nat)
+  : (signals_gen (seqVType ticks) A * signals_gen (seqVType ticks) B
+     -> ident (signals_gen (seqVType ticks) B))
+    -> signals_gen (seqVType ticks) A -> ident (signals_gen (seqVType ticks) B) :=
   match ticks as ticks0 return
-        (seqVType ticks0 A * seqVType ticks0 B -> ident (seqVType ticks0 B))
-        -> seqVType ticks0 A -> ident (seqVType ticks0 B)  with
-  | O => fun _ _ => ret []
+        (signals_gen (seqVType ticks0) A * signals_gen (seqVType ticks0) B
+         -> ident (signals_gen (seqVType ticks0) B))
+        -> signals_gen (seqVType ticks0) A
+        -> ident (signals_gen (seqVType ticks0) B)  with
+  | O => fun _ _ => ret (nil_signals _)
   | S ticks' =>
     fun f a =>
       loopSeqSV' (S ticks') (stepOnce f)
-                a [defaultCombValue B]
+                a (default_signals _)
   end.
 
 (******************************************************************************)
@@ -226,10 +279,13 @@ Definition bufBoolVec (ticks: nat)
            (i : Vector.t bool ticks) : ident (Vector.t bool ticks) :=
   ret i.
 
-Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (seqVType ticks t) :=
-  match ticks as ticks0 return seqVType ticks0 t -> ident (seqVType ticks0 t) with
-  | O => fun _ => ret []
-  | S ticks' => fun i => ret (defaultCombValue t :: Vector.shiftout i)
+
+Definition delayV (ticks : nat) (t : SignalInterface)
+  : signals_gen (seqVType ticks) t -> ident (signals_gen (seqVType ticks) t) :=
+  match ticks as ticks0 return signals_gen (seqVType ticks0) t
+                               -> ident (signals_gen (seqVType ticks0) t) with
+  | O => fun _ => ret (nil_signals _)
+  | S ticks' => fun i => ret (cons_signals (default_signals _) (shiftout_signals i))
   end.
 
 (******************************************************************************)
@@ -259,11 +315,8 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
     lut6 := lut6BoolVec ticks;
     xorcy := binOpV ticks xorb;
     muxcy := muxcyBoolVec ticks;
-    mkpair _ _ v1 v2:= vcombine v1 v2;
-    unpair _ _ v := separate v;
     peel _ _ v := peelVecVec ticks v;
     unpeel _ _ v := unpeelVecVec ticks v;
-    pairSel t v sel := map2 pairSelBool v sel;
     indexAt t sz isz := @indexAtBoolVec t sz isz ticks;
     indexConst t sz := @indexConstBoolVec t sz ticks;
     slice t sz := @sliceBoolVec t sz ticks;

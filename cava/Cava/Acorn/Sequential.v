@@ -31,6 +31,25 @@ Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.CombinationalMonad.
 Require Import Cava.Acorn.Combinators.
 
+(* Sequential signal collections are represented as tuples of lists; convert to
+   and from a list-of-tuples form that is convenient for list operations *)
+
+Fixpoint peel_signals {A : SignalInterface}
+  : signals_gen seqType A -> list (signals A) :=
+  match A with
+  | ione t => fun x => x
+  | ipair t1 t2 => fun x => combine (peel_signals (fst x)) (peel_signals (snd x))
+  end.
+
+Fixpoint unpeel_signals {A : SignalInterface}
+  : list (signals A) -> signals_gen seqType A :=
+  match A as A return list (signals A) -> signals_gen seqType A with
+  | ione t => fun x => x
+  | ipair t1 t2 => fun x =>
+                    let '(x1, x2) := split x in
+                    (unpeel_signals x1, unpeel_signals x2)
+  end.
+
 (* Given two sequential inputs, combine them by combining all the elements of
    the first with the elements of the second that *do not overlap* when the
    second is offset from the first by the specified offset. For example:
@@ -52,8 +71,13 @@ Require Import Cava.Acorn.Combinators.
 
    This is particularly useful for chaining repeated outputs of a circuit with
    delays. *)
-Definition overlap {A} (offset : nat) (a1 a2 : seqType A) : seqType A :=
-  a1 ++ repeat (defaultCombValue A) (offset - length a1) ++ skipn (length a1 - offset) a2.
+Definition overlap {A} (offset : nat) (a1 a2 : list (signals A))
+  : list (signals A) :=
+  a1 ++ repeat (defaultSignals A) (offset - length a1) ++ skipn (length a1 - offset) a2.
+
+Definition overlap_signals {A} (offset : nat) (a1 a2 : signals_gen seqType A)
+  : signals_gen seqType A :=
+  unpeel_signals (overlap offset (peel_signals a1) (peel_signals a2)).
 
 (******************************************************************************)
 (* Loop combinator for feedback with delay.                                   *)
@@ -73,26 +97,27 @@ The nth value in the output accumulator is always the output value for
 timestep n. Because there may be delay in the body of the loop, the accumulator
 might include outputs past the current timestep. *)
 
-Definition loopSeqS' {A B : SignalType}
-           (f : seqType A * seqType B -> ident (seqType B))
-           (state: nat * ident (seqType B)) (a : combType A)
-  : nat * ident (seqType B) :=
+Definition loopSeqS' {A B : SignalInterface}
+           (f : signals_gen seqType A * signals_gen seqType B -> ident (signals_gen seqType B))
+           (state: nat * ident (signals_gen seqType B)) (a : signals A)
+  : nat * ident (signals_gen seqType B) :=
   let t := fst state in
   (S t,
    out <- snd state ;; (* get the output accumulator *)
    (* get the value of out at previous timestep (because of delay) *)
    let outDelayed := match t with
-                     | 0 => defaultCombValue B
-                     | S t' => nth t' out (defaultCombValue B)
+                     | 0 => defaultSignals B
+                     | S t' => nth t' (peel_signals out) (defaultSignals B)
                      end in
-   b <- f ([a], [outDelayed]) ;; (* Process one input *)
-   let out' := overlap t out b in (* append new output, starting at timestep t *)
-   ret out').
+   b <- f (unpeel_signals [a], unpeel_signals [outDelayed]) ;; (* Process one input *)
+   let out' := overlap_signals t out b in (* append new output, starting at timestep t *)
+   ret (Monad:=Monad_ident) out').
 
-Definition loopSeqS {A B : SignalType}
-                    (f : seqType A * seqType B -> ident (seqType B))
-                    (a : seqType A) : ident (seqType B) :=
-  snd (fold_left (loopSeqS' f) a (0, ret [])).
+Definition loopSeqS {A B : SignalInterface}
+           (f : signals_gen seqType A * signals_gen seqType B
+                -> ident (signals_gen seqType B))
+           (a : signals_gen seqType A) : ident (signals_gen seqType B) :=
+  snd (fold_left (loopSeqS' f) (peel_signals a) (0, ret (unpeel_signals []))).
 
 (******************************************************************************)
 (* A boolean sequential logic interpretation for the Cava class               *)
@@ -164,7 +189,7 @@ Definition muxcyBoolList (s : list bool) (ci : list bool) (di : list bool)  : id
   let dici := combine di ci in
   let s_dici := combine s dici in
   ret (map (fun (i : bool * (bool * bool)) =>
-     let '(s, (ci, di)) := i in
+     let '(s, (di, ci)) := i in
      match s with
        | false => di
        | true => ci
@@ -236,18 +261,20 @@ Definition greaterThanOrEqualBoolList {m n : nat}
 Definition bufBoolList (i : list bool) : ident (list bool) :=
   ret i.
 
-Fixpoint delayEnableBoolList' (t: SignalType) (en: list bool) (i : seqType t)
-                              (state: combType t) :
-                              ident (seqType t) :=
+Fixpoint delayEnableBoolList' (t: SignalInterface) (en: list bool)
+                              (i : list (signals t))
+                              (state: signals t) :
+                              ident (list (signals t)) :=
   match en ,i with
   | enV::enX, iV::iX =>  r <- delayEnableBoolList' t enX iX (if enV then iV else state) ;;
-                         ret (state:: r)
+                         ret (state :: r)
   | _, _ => ret []
-  end.                         
+  end.
 
-Definition delayEnableBoolList (t: SignalType) (en: list bool) (i : seqType t) :
-                             ident (seqType t) :=
-  delayEnableBoolList' t en i (defaultCombValue t).
+Definition delayEnableBoolList (t: SignalInterface) (en: list bool) (i : signals_gen seqType t) :
+                             ident (signals_gen seqType t) :=
+  r <- delayEnableBoolList' t en (peel_signals i) (defaultSignals t) ;;
+  ret (unpeel_signals r).
 
 (******************************************************************************)
 (* Instantiate the Cava class for a boolean sequential logic                  *)
@@ -276,11 +303,8 @@ Definition delayEnableBoolList (t: SignalType) (en: list bool) (i : seqType t) :
     lut6 := lut6BoolList;
     xorcy := xorcyBoolList;
     muxcy := muxcyBoolList;
-    mkpair _ _ v1 v2 := combine v1 v2;
-    unpair _ _ v := split v;
     peel _ _ v := peelVecList v;
     unpeel _ _ v := unpeelVecList v;
-    pairSel _ v sel := pairSelList v sel;
     indexAt t sz isz := @indexAtBoolList t sz isz;
     indexConst t sz := @indexConstBoolList t sz;
     slice t sz := @sliceBoolList t sz;
@@ -292,21 +316,24 @@ Definition delayEnableBoolList (t: SignalType) (en: list bool) (i : seqType t) :
   }.
 
  Instance SequentialSemantics : CavaSeq SequentialCombSemantics :=
-   { delay t i := ret (@defaultCombValue t :: i);
+   { delay t i := ret (unpeel_signals (defaultSignals t :: peel_signals i));
      delayEnable t en i := delayEnableBoolList t en i;
-     loopDelayS _ _ := loopSeqS;
+     loopDelayS A B := @loopSeqS A B;
      loopDelaySEnable A B en f input :=
        (* The semantics of loopDelaySEnable is defined in terms of loopDelayS and
           the circuitry required to model a clock enable with a multiplexor. *)
-         loopSeqS (fun (en_i_state : seqType (Pair Bit A) * seqType B)  =>
-                     let state := snd en_i_state in
-                     let '(en, i) := unpair (fst en_i_state) in
-                     (second fork2 >=> (* (i, state, state) *)
-                       pairLeft >=>    (* ((i, state), state) *)
-                       first f >=>     (* (f (i, state), state) *)
-                       swap >=>        (* (state, f (i, state) *)
-                       mux2 en)        (* if en then f (i, state) else state *)
-                       (i, state)) (mkpair en input)
+       loopSeqS
+         (A:=ipair Bit A)
+         (B:=B)
+         (fun (en_i_state : signals (ipair Bit A) * signals B)  =>
+            let '(en, i, state) := en_i_state in
+            (second fork2 >=> (* (i, (state, state)) *)
+             pairLeft >=>    (* ((i, state), state) *)
+             first f >=>     (* (f (i, state), state) *)
+             swap >=>        (* (state, f (i, state) *)
+             mux2 en)        (* if en then f (i, state) else state *)
+              (i, state))
+         (en, input)
    }.
 
 (******************************************************************************)
@@ -314,4 +341,4 @@ Definition delayEnableBoolList (t: SignalType) (en: list bool) (i : seqType t) :
 (* behavioural simulation result.                                             *)
 (******************************************************************************)
 
-Definition sequential {A} (circuit : cava A) : A := unIdent circuit.
+Definition sequential {A} (circuit : @cava _ SequentialCombSemantics A) : A := unIdent circuit.

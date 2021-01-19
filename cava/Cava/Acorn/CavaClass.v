@@ -25,7 +25,8 @@ Local Open Scope type_scope.
    us to define both circuit netlist interpretations for the Cava class
    as well as behavioural interpretations for attributing semantics. *)
 Class Cava (signal : SignalType -> Type) := {
-  cava : Type -> Type;    
+  signals := signals_gen signal;
+  cava : Type -> Type;
   (* Constant values. *)
   constant : bool -> signal Bit;
   zero : cava (signal Bit); (* This component always returns the value 0. *)
@@ -53,14 +54,10 @@ Class Cava (signal : SignalType -> Type) := {
          signal Bit * signal Bit * signal Bit * signal Bit * signal Bit * signal Bit -> cava (signal Bit); (* 6-input LUT *)
   xorcy : signal Bit * signal Bit -> cava (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
   muxcy : signal Bit -> signal  Bit -> signal Bit -> cava (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
-  (* Converting to/from pairs *)
-  mkpair : forall {t1 t2 : SignalType}, signal t1 -> signal t2 -> signal (Pair t1 t2);
-  unpair : forall {t1 t2 : SignalType}, signal (Pair t1 t2) -> signal t1 * signal t2;
   (* Converting to/from Vector.t *)
   peel : forall {t : SignalType} {s : nat}, signal (Vec t s) -> Vector.t (signal t) s;
   unpeel : forall {t : SignalType} {s : nat} , Vector.t (signal t) s -> signal (Vec t s);
   (* Dynamic indexing *)
-  pairSel : forall {t : SignalType}, signal Bit -> signal (Pair t t) -> signal t;
   indexAt : forall {t : SignalType} {sz isz: nat},
             signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
             signal (Vec Bit isz) ->  (* A bit-vector index of size isz bits *)
@@ -78,7 +75,7 @@ Class Cava (signal : SignalType -> Type) := {
   unsignedAdd : forall {a b : nat}, signal (Vec Bit a) -> signal (Vec Bit b) ->
                 cava (signal (Vec Bit (1 + max a b)));
   unsignedMult : forall {a b : nat}, signal (Vec Bit a) -> signal (Vec Bit b)->
-                cava (signal (Vec Bit (a + b)));              
+                cava (signal (Vec Bit (a + b)));
   (* Synthesizable relational operators *)
   greaterThanOrEqual : forall {a b : nat}, signal (Vec Bit a) -> signal (Vec Bit b) ->
                        cava (signal Bit);
@@ -97,32 +94,32 @@ Class Cava (signal : SignalType -> Type) := {
 (* Sequential semantics -- assumes the sequential part of the interpretation is in [signal] *)
 Class CavaSeq {signal : SignalType -> Type} (combinationalSemantics : Cava signal) := {
   (* A unit delay. *)
-  delay : forall {t: SignalType}, signal t -> cava (signal t);
+  delay : forall {t: SignalInterface}, signals t -> cava (signals t);
   (* A unit delay with enable. *)
-  delayEnable : forall {t: SignalType}, signal Bit -> signal t -> cava (signal t);
+  delayEnable : forall {t: SignalInterface}, signal Bit -> signals t -> cava (signals t);
   (* Feedback loop, with unit delay inserted into the feedback path and current
      state available at output . *)
-  loopDelayS : forall {A B: SignalType},
-               (signal A * signal B -> cava (signal B)) ->
-               signal A ->
-               cava (signal B);
+  loopDelayS : forall {A B: SignalInterface},
+               (signals A * signals B -> cava (signals B)) ->
+               signals A ->
+               cava (signals B);
   (* A version of loopDelayEnable with a clock enable and current state at
      the output. *)
-  loopDelaySEnable : forall {A B: SignalType},
-                     signal Bit -> (* Clock enable *)
-                     (signal A * signal B -> cava (signal B)) ->
-                     signal A ->
-                     cava (signal B);
+  loopDelaySEnable : forall {A B: SignalInterface},
+                     signals Bit -> (* Clock enable *)
+                     (signals A * signals B -> cava (signals B)) ->
+                     signals A ->
+                     cava (signals B);
 }.
 
 (* Alternate version of sequential semantics which assumes the sequential part
    of the interpretation is in [cava]; type signatures are different because
    delay and loop must accept sequential input *)
-Class CavaSeqMonad {signal : SignalType -> Type} (combinationalSemantics : Cava signal) := {
+Class CavaSeqMonad {signal} (combinationalSemantics : Cava signal) := {
   (* A unit delay. *)
-  delaym : forall {t: SignalType}, cava (signal t) -> cava (signal t);
+  delaym : forall {t: SignalInterface}, cava (signals t) -> cava (signals t);
   (* Feeback loop, with unit delay inserted into the feedback path. *)
-  loopDelaySm : forall {A B: SignalType},
-      (signal A * signal B -> cava (signal B)) ->
-      cava (signal A) -> cava (signal B);
+  loopDelaySm : forall {A B: SignalInterface},
+      (signals A * signals B -> cava (signals B)) ->
+      cava (signals A) -> cava (signals B);
 }.

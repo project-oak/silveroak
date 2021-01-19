@@ -40,7 +40,7 @@ Section WithCava.
   Context `{semantics:CavaSeqMonad} `{Monad cava}.
 
   Definition countBy : cava (signal (Vec Bit 8)) -> cava (signal (Vec Bit 8))
-    := loopDelaySm addN.
+    := loopDelaySm (A:=Vec Bit 8) (B:=Vec Bit 8) addN.
 End WithCava.
 
 Definition countBySpec (i : list (Bvector 8)) :=

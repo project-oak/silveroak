@@ -44,12 +44,18 @@ Section Equivalence.
            AcornAes.AddRoundKey.add_round_key
            AesSpec.AddRoundKey.add_round_key].
     cbv [xor4x4V xor4xV]. cbv [Bvector.BVxor].
-    autorewrite with simpl_ident.
+    rewrite (zipWith_unIdent (A:=Vec (Vec Bit 8) 4)
+                             (B:=Vec (Vec Bit 8) 4)
+                             (C:=Vec (Vec Bit 8) 4) 4).
     cbv [to_cols_bitvecs from_cols_bitvecs].
-    cbn [fst snd]. rewrite map2_map, map_map2.
+    cbn [fst snd].
+    rewrite map2_map, map_map2.
     rewrite map2_swap.
     erewrite map2_ext; [ reflexivity | ].
     intros. autorewrite with simpl_ident.
+    rewrite (zipWith_unIdent (A:=Vec Bit 8)
+                             (B:=Vec Bit 8)
+                             (C:=Vec Bit 8) 4).
     erewrite map2_ext
       by (intros; autorewrite with simpl_ident;
           cbn [fst snd]; reflexivity).

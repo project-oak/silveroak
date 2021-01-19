@@ -188,12 +188,6 @@ Definition muxcyNet (s ci di : Signal Bit) : state CavaState (Signal Bit) :=
   addInstance (Component "MUXCY" [] [("O", USignal o); ("S", USignal s); ("CI", USignal ci); ("DI", USignal di)]) ;;
   ret o.
 
-Definition unpairNet {t1 t2 : SignalType} (v : Signal (Pair t1 t2)) : Signal t1 * Signal t2 :=
-  (SignalFst v, SignalSnd v).
-
-Definition mkpairNet {t1 t2 : SignalType} (v1 : Signal t1) (v2 : Signal t2) : Signal (Pair t1 t2) :=
-  SignalPair v1 v2.
-
 Definition peelNet {t : SignalType} {s : nat} (v : Signal (Vec t s)) : Vector.t (Signal t) s :=
   Vector.map (IndexConst v) (vseq 0 s).
 
@@ -230,46 +224,71 @@ Definition greaterThanOrEqualNet {m n : nat}
   addInstance (GreaterThanOrEqual a b comparison) ;;
   ret comparison.
 
-Definition delayNet (t: SignalType)
-                    (i : Signal t)
-                    : state CavaState (Signal t) :=
+Fixpoint forEachSignal {T} (f : forall t: SignalType, Signal t -> state CavaState T)
+         {t : SignalInterface} : signals_gen Signal t -> state CavaState T :=
+  match t with
+  | ione t => f _
+  | ipair t1 t2 => fun i => forEachSignal f (fst i) ;;
+                        forEachSignal f (snd i)
+  end.
+
+Definition delaySingle (t: SignalType) (i : Signal t)
+  : state CavaState (Signal t) :=
   o <- newSignal t ;;
   addInstance (Delay t i o) ;;
   ret o.
 
-Definition delayEnableNet (t : SignalType)
-                          (en : Signal Bit)
-                          (i : Signal t)
-                          : state CavaState (Signal t) :=
+Fixpoint delayNet (t: SignalInterface)
+  : signals_gen Signal t -> state CavaState (signals_gen _ t) :=
+  match t as t return signals_gen Signal t -> _ (signals_gen Signal t) with
+  | ione t => delaySingle t
+  | ipair t1 t2 => fun i => o1 <- delayNet t1 (fst i) ;;
+                        o2 <- delayNet t2 (snd i) ;;
+                        ret (o1, o2)
+  end.
+
+Definition delayEnableSingle (t: SignalType) (en : Signal Bit) (i : Signal t)
+  : state CavaState (Signal t) :=
   o <- newSignal t ;;
   addInstance (DelayEnable t en i o) ;;
   ret o.
+
+Fixpoint delayEnableNet (t: SignalInterface) (en : Signal Bit)
+  : signals_gen _ t -> state CavaState (signals_gen _ t) :=
+  match t as t return signals_gen Signal t -> _ (signals_gen Signal t) with
+  | ione t => delayEnableSingle t en
+  | ipair t1 t2 => fun i => o1 <- delayEnableNet t1 en (fst i) ;;
+                        o2 <- delayEnableNet t2 en (snd i) ;;
+                        ret (o1, o2)
+  end.
 
 Local Open Scope type_scope.
 
 (* Create a loop circuit with a delay element along the feedback path which
    makes the current state available at the output. *)
-Definition loopNetS (A B : SignalType)
-                    (f : Signal A * Signal B -> state CavaState (Signal B))
-                    (a : Signal A)
-                    : state CavaState (Signal B) :=
-  o <- @newSignal B ;;
+Definition loopNetS (A B : SignalInterface)
+                    (f : signals_gen _ A * signals_gen _ B
+                         -> state CavaState (signals_gen _ B))
+                    (a : signals_gen Signal A)
+                    : state CavaState (signals_gen _ B) :=
+  o <- @newSignals B ;;
   out <- f (a, o) ;;
   oDelay <- delayNet B out ;;
-  assignSignal o oDelay ;;
+  assignSignals o oDelay ;;
   ret out.
 
 (* Create a loop circuit with a delay element with enable along the feedback
    path with the current state exposed at the output. *)
-Definition loopNetEnableS (A B : SignalType)
+Definition loopNetEnableS (A B : SignalInterface)
                           (en : Signal Bit)
-                          (f : Signal A * Signal B -> state CavaState (Signal B))
-                          (a : Signal A)
-                         : state CavaState (Signal B) :=
-  o <- @newSignal B ;;
+                          (f : signals_gen _ A * signals_gen _ B
+                               -> state CavaState (signals_gen _ B))
+                          (a : signals_gen Signal A)
+                         : state CavaState (signals_gen _ B) :=
+  o <- @newSignals B ;;
   out <- f (a, o) ;;
   oDelay <- delayEnableNet B en out ;;
-  assignSignal o oDelay ;;
+  assignSignals o oDelay ;;
   ret out.
 
 Definition instantiateNet (intf : CircuitInterface)
@@ -309,11 +328,8 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     lut6 := lut6Net;
     xorcy := xorcyNet;
     muxcy := muxcyNet;
-    mkpair := @mkpairNet;
-    unpair := @unpairNet;
     peel := @peelNet;
     unpeel := @unpeelNet;
-    pairSel := @SignalSel;
     indexAt k sz isz := IndexAt;
     indexConst k sz := IndexConst;
     slice k sz := @sliceNet k sz;
@@ -328,5 +344,7 @@ Instance CavaSequentialNet : CavaSeq CavaCombinationalNet :=
   { delay k := delayNet k;
     delayEnable k := delayEnableNet k;
     loopDelayS a b := loopNetS a b;
-    loopDelaySEnable en a b := loopNetEnableS en a b;
+    loopDelaySEnable a b en := loopNetEnableS a b en;
   }.
+
+Instance Monad_netlist : Monad (cava (Cava:=CavaCombinationalNet)) := (Monad_state _).
