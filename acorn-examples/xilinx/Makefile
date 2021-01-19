@@ -32,7 +32,10 @@ BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)
 VCDS = $(SV:.sv=_tb.vcd)
 
-all:		coq $(VCDS)
+.PRECIOUS: $(VCDS)
+
+all:		coq $(BENCHES)
+tests:		$(VCDS)
 small:		xadder_tree4_8_tb.vcd
 
 extraction:	$(SV)
@@ -65,13 +68,14 @@ ExamplesSV:	coq ExamplesSV.hs
 		ghc -O2 --make ExamplesSV.hs
 		./ExamplesSV
 
-$(SV) $(BENCHES) $(VCDS):	coq ExamplesSV
+$(SV) $(BENCHES) $(CPPS):	ExamplesSV
 
-%_tb.vcd:	%.sv %_tb.sv %_tb.cpp
+obj_dir/V%_tb:	%.sv %_tb.sv %_tb.cpp
 		$(VERILATOR) --trace --cc --top-module $*_tb $*_tb.sv $*.sv --exe $*_tb.cpp
 		make -C obj_dir -f V$*_tb.mk V$*_tb
-		obj_dir/V$*_tb
 
+%_tb.vcd:	obj_dir/V%_tb
+		$<
 
 lutNAND_tb.vcd:	lutNAND.sv lutNAND_tb.sv lutNAND_tb.tcl
 		vivado -mode tcl -source lutNAND_tb.tcl

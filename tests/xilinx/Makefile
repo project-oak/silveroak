@@ -28,7 +28,10 @@ BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)
 VCDS = $(SV:.sv=_tb.vcd)
 
-all:		coq $(VCDS)
+.PRECIOUS: $(VCDS)
+
+all:		coq $(BENCHES)
+tests:		$(VCDS)
 extraction:	$(SV)
 
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt -y $(XILINX)/data/verilog/src/xeclib
@@ -59,12 +62,14 @@ VivadoTestsSV:	coq VivadoTestsSV.hs
 		ghc -O2 --make VivadoTestsSV.hs
 		./VivadoTestsSV
 
-$(SV) $(BENCHES) $(VCDS):	coq VivadoTestsSV
+$(SV) $(BENCHES) $(CPPS):	VivadoTestsSV
 
-%_tb.vcd:	%.sv %_tb.sv %_tb.cpp
+obj_dir/V%_tb:	%.sv %_tb.sv %_tb.cpp
 		$(VERILATOR) --trace --cc --top-module $*_tb $*_tb.sv $*.sv --exe $*_tb.cpp
 		make -C obj_dir -f V$*_tb.mk V$*_tb
-		obj_dir/V$*_tb
+
+%_tb.vcd:	obj_dir/V%_tb
+		$<
 
 %_tb_xsim.vcd:	%.sv
 		xvlog -sv $*.sv $*_tb.sv

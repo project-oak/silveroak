@@ -27,6 +27,8 @@ BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)
 VCDS = $(SV:.sv=_tb.vcd)
 
+.PRECIOUS: $(VCDS)
+
 all:		coq $(VCDS)
 xilinx:		adder8.vcd
 
@@ -58,7 +60,7 @@ ExamplesSV:	coq ExamplesSV.hs
 		ghc --make ExamplesSV.hs
 		./ExamplesSV
 
-$(SV) $(BENCHES) $(VCDS):	coq ExamplesSV
+$(SV) $(BENCHES) $(CPPS):	ExamplesSV
 
 
 %_tb.vcd:	%.sv %_tb.sv %_tb.cpp
