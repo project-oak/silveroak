@@ -46,7 +46,7 @@ Definition halfAdderNetlist := makeNetlist halfAdderInterface halfAdder.
 
 (* A proof that the half-adder is correct. *)
 Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
-                            combinational (halfAdder (a, b)) = (xorb a b, a && b).
+                            combinational (halfAdder ([a], [b])) = ([xorb a b], [a && b]).
 
 Proof.
   auto.
@@ -72,7 +72,10 @@ Definition fullAdder_tb_inputs :=
 ].
 
 Definition fullAdder_tb_expected_outputs
-   := map (fun i => combinational (fullAdderTop i)) fullAdder_tb_inputs.
+  := map (fun '(i0,i1,i2) =>
+            let '(r1, r2) := combinational (fullAdderTop ([i0],[i1],[i2])%list) in
+            (List.hd (defaultCombValue _) r1, List.hd (defaultCombValue _) r2))
+         fullAdder_tb_inputs.
 
 Definition fullAdder_tb
   := testBench "fullAdder_tb" fullAdderInterface
@@ -80,9 +83,9 @@ Definition fullAdder_tb
 
 (* A proof that the the full-adder is correct. *)
 Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
-                            combinational (fullAdderTop (cin, a, b))
-                              = (xorb cin (xorb a b),
-                                 (a && b) || (b && cin) || (a && cin)).
+                            combinational (fullAdderTop ([cin], [a], [b]))
+                              = ([xorb cin (xorb a b)],
+                                 [(a && b) || (b && cin) || (a && cin)]).
 Proof.
   intros.
   unfold combinational.
@@ -94,8 +97,8 @@ Qed.
 
 (* Prove the generic full adder is equivalent to Xilinx fast adder. *)
 Lemma generic_vs_xilinx_adder : forall (a : bool) (b : bool) (cin : bool),
-                                combinational (fullAdderTop (cin, a, b)) =
-                                combinational (xilinxFullAdder (cin, (a, b))).
+                                combinational (fullAdderTop ([cin], [a], [b])) =
+                                combinational (xilinxFullAdder ([cin], ([a], [b]))).
 Proof.
   intros.
   unfold combinational. simpl.

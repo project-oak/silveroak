@@ -60,12 +60,14 @@ Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 
 Lemma mux2Correct {A} (sel : seqType Bit) (f t : seqType A) :
-  sequential (mux2 sel f t) = map2 (fun (sel : bool) ft => if sel then snd ft else fst ft)
-                                   sel (combine f t).
+  sequential (mux2 sel f t) = map (fun (f_t_sel : combType A * combType A * bool) =>
+                                     let '(f, t, sel) := f_t_sel in
+                                     if sel then t else f)
+                                   (pad_combine (pad_combine f t) sel).
 Proof.
   intros; cbv [mux2 sequential]. seqsimpl.
-  cbv [pairSel pairSelList pairSelBool SequentialCombSemantics].
-  apply map2_ext; intros; reflexivity.
+  cbv [pairSel pairSelList CombinationalSemantics]. fold combType.
+  apply map_ext; intros. reflexivity.
 Qed.
 Hint Rewrite @mux2Correct using solve [eauto] : seqsimpl.
 
