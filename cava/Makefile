@@ -35,7 +35,6 @@ haskell:	coq FixupHaskell
 		./FixupHaskell
 		mv Ascii2.hs Ascii.hs
 		mv ByteVector2.hs ByteVector.hs
-		mv DecimalString2.hs DecimalString.hs
 		runhaskell Setup.hs configure --user
 		runhaskell Setup.hs build
 		runhaskell Setup.hs install
