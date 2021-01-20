@@ -46,6 +46,7 @@ Section WithCava.
 End WithCava.
 
 (* Run test as a quick-feedback check *)
+Import List.ListNotations.
 Goal
   (let signal := combType in
    (* convert between flat-vector representation and state type *)
@@ -61,8 +62,8 @@ Goal
                          fun st =>
                            let input := to_state st in
                            let k := to_state key in
-                           let output := unIdent (add_round_key k input) in
-                           from_state output
+                           let output := unIdent (add_round_key [k]%list [input]%list) in
+                           from_state (List.hd (defaultCombValue _) output)
                        | _ => aes_impl step key
                        end) = Success).
 Proof. vm_compute. reflexivity. Qed.

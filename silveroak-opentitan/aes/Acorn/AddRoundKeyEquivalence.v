@@ -14,6 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Lists.List.
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 Require Import Cava.ListUtils.
@@ -23,7 +24,7 @@ Require Import Cava.Acorn.MonadFacts.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
-Import VectorNotations.
+Import ListNotations.
 
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
@@ -36,16 +37,29 @@ Section Equivalence.
   Local Notation state := (Vector.t (Vector.t byte 4) 4) (only parsing).
   Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
 
-  Lemma add_round_key_equiv (k st : Vector.t bool 128) :
-    let impl := add_round_key (to_cols_bitvecs k) (to_cols_bitvecs st) in
-    from_cols_bitvecs (combinational impl) = AES256.add_round_key st k.
+  Lemma add_round_key_equiv (k : key) (st : state) :
+    combinational (add_round_key [k] [st])
+    = [to_cols_bitvecs (AES256.add_round_key (from_cols_bitvecs st)
+                                             (from_cols_bitvecs k))].
   Proof.
     cbv [AES256.add_round_key
            AcornAes.AddRoundKey.add_round_key
            AesSpec.AddRoundKey.add_round_key].
     cbv [xor4x4V xor4xV]. cbv [Bvector.BVxor].
-    autorewrite with simpl_ident.
-    cbv [to_cols_bitvecs from_cols_bitvecs].
+    erewrite (zipWith_unIdent (A:=Vec (Vec Bit 8) 4)
+                              (B:=Vec (Vec Bit 8) 4)
+                              (C:=Vec (Vec Bit 8) 4));
+      [ | congruence | ].
+    2:{ cbn [fst snd]. intros.
+        erewrite (zipWith_unIdent (A:=Vec Bit 8)
+                                  (B:=Vec Bit 8)
+                                  (C:=Vec Bit 8))
+          by first [ congruence
+                   | intros; rewrite xorV_unIdent by congruence;
+                     reflexivity ].
+        reflexivity. }
+    cbv [to_cols_bitvecs from_cols_bitvecs]. f_equal.
+    autorewrite with conversions.
     cbn [fst snd]. rewrite map2_map, map_map2.
     rewrite map2_swap.
     erewrite map2_ext; [ reflexivity | ].
@@ -54,8 +68,9 @@ Section Equivalence.
       by (intros; autorewrite with simpl_ident;
           cbn [fst snd]; reflexivity).
     cbn [combType].
-    rewrite <-map2_flatten, !flatten_reshape.
-    rewrite map2_swap; apply map2_ext; intros.
-    apply Bool.xorb_comm.
+    rewrite <-map2_reshape, !reshape_flatten.
+    rewrite map2_swap. apply map2_ext; intros.
+    rewrite map2_swap. apply map2_ext; intros.
+    intros; apply Bool.xorb_comm.
   Qed.
 End Equivalence.

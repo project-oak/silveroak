@@ -57,7 +57,7 @@ Definition addNSpec {n} (a b : seqType (Vec Bit n)) :=
   map2 bvadd a b.
 
 Lemma addNCorrect n (a b : list (Bvector n)) :
-  sequential (addN (semantics:=SequentialCombSemantics) (a, b)) = addNSpec a b.
+  sequential (addN (semantics:=CombinationalSemantics) (a, b)) = addNSpec a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
 

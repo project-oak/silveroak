@@ -1,8 +1,10 @@
 Axioms:
 sub_bytes_equiv
-  : forall st : t bool 128,
-    from_cols_bitvecs (combinational (sub_bytes false (to_cols_bitvecs st))) =
-    AES256.sub_bytes st
+  : forall (is_decrypt : bool) (st : combType (Vec (Vec (Vec Bit 8) 4) 4)),
+    unIdent (sub_bytes [is_decrypt] [st]) =
+    [if is_decrypt
+     then to_cols_bitvecs (inv_sub_bytes (from_cols_bitvecs st))
+     else to_cols_bitvecs (AES256.sub_bytes (from_cols_bitvecs st))]
 sub_bytes
   : forall (signal : SignalType -> Type) (semantics : Cava signal),
     Monad cava ->
@@ -10,9 +12,11 @@ sub_bytes
     signal (Vec (Vec (Vec Bit 8) 4) 4) ->
     cava (signal (Vec (Vec (Vec Bit 8) 4) 4))
 shift_rows_equiv
-  : forall st : t bool 128,
-    from_cols_bitvecs (combinational (shift_rows false (to_cols_bitvecs st))) =
-    AES256.shift_rows st
+  : forall (is_decrypt : bool) (st : combType (Vec (Vec (Vec Bit 8) 4) 4)),
+    unIdent (shift_rows [is_decrypt] [st]) =
+    [if is_decrypt
+     then to_cols_bitvecs (inv_shift_rows (from_cols_bitvecs st))
+     else to_cols_bitvecs (AES256.shift_rows (from_cols_bitvecs st))]
 shift_rows
   : forall (signal : SignalType -> Type) (semantics : Cava signal),
     Monad cava ->
@@ -20,10 +24,11 @@ shift_rows
     signal (Vec (Vec (Vec Bit 8) 4) 4) ->
     cava (signal (Vec (Vec (Vec Bit 8) 4) 4))
 mix_columns_equiv
-  : forall st : t bool 128,
-    from_cols_bitvecs
-      (combinational (mix_columns false (to_cols_bitvecs st))) =
-    AES256.mix_columns st
+  : forall (is_decrypt : bool) (st : combType (Vec (Vec (Vec Bit 8) 4) 4)),
+    unIdent (mix_columns [is_decrypt] [st]) =
+    [if is_decrypt
+     then to_cols_bitvecs (inv_mix_columns (from_cols_bitvecs st))
+     else to_cols_bitvecs (AES256.mix_columns (from_cols_bitvecs st))]
 mix_columns_add_round_key_comm
   : forall st k : t (t Byte.byte 4) 4,
     let to_bits := fun x : t (t Byte.byte 4) 4 => to_cols_bits (from_cols x)
@@ -45,10 +50,13 @@ mix_columns
     cava (signal (Vec (Vec (Vec Bit 8) 4) 4))
 key_expand_spec : nat -> t bool 128 * t bool 8 -> t bool 128 * t bool 8
 key_expand_equiv
-  : forall (i : nat) (k : t (t (t bool 8) 4) 4 * t bool 8),
-    i < 16 ->
-    combinational (key_expand false (nat_to_bitvec_sized 4 i) k) =
-    unflatten_key (key_expand_spec i (flatten_key k))
+  : forall (is_decrypt : bool) (round_i : t bool 4)
+      (k : t (t (t bool 8) 4) 4) (rcon : t bool 8),
+    combinational (key_expand [is_decrypt] [round_i] ([k], [rcon])) =
+    (let spec := if is_decrypt then inv_key_expand_spec else key_expand_spec
+       in
+     let kr := spec (N.to_nat (Bv2N round_i)) (flatten_key (k, rcon)) in
+     ([to_cols_bitvecs (fst kr)], [snd kr]))
 key_expand
   : forall (signal : SignalType -> Type) (semantics : Cava signal),
     Monad cava ->
@@ -59,21 +67,4 @@ key_expand
 inverse_mix_columns
   : forall (Nb : nat) (st : t (t Byte.byte 4) Nb),
     MixColumns.inv_mix_columns (MixColumns.mix_columns st) = st
-inv_sub_bytes_equiv
-  : forall st : t bool 128,
-    from_cols_bitvecs (combinational (sub_bytes true (to_cols_bitvecs st))) =
-    inv_sub_bytes st
-inv_shift_rows_equiv
-  : forall st : t bool 128,
-    from_cols_bitvecs (combinational (shift_rows true (to_cols_bitvecs st))) =
-    inv_shift_rows st
-inv_mix_columns_equiv
-  : forall st : t bool 128,
-    from_cols_bitvecs (combinational (mix_columns true (to_cols_bitvecs st))) =
-    inv_mix_columns st
 inv_key_expand_spec : nat -> t bool 128 * t bool 8 -> t bool 128 * t bool 8
-inv_key_expand_equiv
-  : forall (i : nat) (k : t (t (t bool 8) 4) 4 * t bool 8),
-    i < 16 ->
-    combinational (key_expand true (nat_to_bitvec_sized 4 i) k) =
-    unflatten_key (inv_key_expand_spec i (flatten_key k))

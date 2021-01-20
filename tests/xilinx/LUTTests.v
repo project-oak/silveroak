@@ -66,7 +66,8 @@ End WithCava.
   Definition lut1_inv_tb_inputs := [false; true].
 
   Definition lut1_inv_tb_expected_outputs : list bool :=
-    map (fun i => combinational (lut1_inv i)) lut1_inv_tb_inputs.
+    map (fun i => List.hd (defaultCombValue _) (combinational (lut1_inv [i]%list)))
+        lut1_inv_tb_inputs.
 
   Definition lut1_inv_tb :=
     testBench "lut1_inv_tb" lut1_inv_Interface
@@ -88,7 +89,8 @@ Definition lut2_and_tb_inputs : list (bool * bool) :=
  [(false, false); (false, true); (true, false); (true, true)].
 
  Definition lut2_and_tb_expected_outputs : list bool :=
-  map (fun i => combinational (lut2_and i)) lut2_and_tb_inputs.
+   map (fun '(i0,i1) => List.hd (defaultCombValue _)
+                             (combinational (lut2_and ([i0],[i1])%list))) lut2_and_tb_inputs.
 
 Definition lut2_and_tb :=
   testBench "lut2_and_tb" lut2_and_Interface
@@ -115,7 +117,9 @@ Definition lut3_mux_tb_inputs : list (bool * bool * bool) :=
   (true, true, true)].
 
  Definition lut3_mux_tb_expected_outputs : list bool :=
-  map (fun i => combinational (lut3_mux i)) lut3_mux_tb_inputs.
+   map (fun '(i0,i1,i2) =>
+          List.hd (defaultCombValue _) (combinational (lut3_mux ([i0],[i1],[i2])%list)))
+       lut3_mux_tb_inputs.
 
 Definition lut3_mux_tb :=
   testBench "lut3_mux_tb" lut3_mux_Interface
@@ -141,7 +145,10 @@ Definition lut4_and_tb_inputs : list (bool * bool * bool * bool) :=
   (true, true, true, true)].
 
 Definition lut4_and_tb_expected_outputs : list bool :=
-  map (fun i => combinational (lut4_and i)) lut4_and_tb_inputs.
+  map (fun '(i0,i1,i2,i3) =>
+         List.hd (defaultCombValue _)
+                 (combinational (lut4_and ([i0],[i1],[i2],[i3])%list)))
+      lut4_and_tb_inputs.
 
 Definition lut4_and_tb :=
   testBench "lut4_and_tb" lut4_and_Interface
@@ -168,7 +175,10 @@ Definition lut5_and_tb_inputs : list (bool * bool * bool * bool * bool) :=
   (true, true, true, true, true)].
 
 Definition lut5_and_tb_expected_outputs : list bool :=
-  map (fun i => combinational (lut5_and i)) lut5_and_tb_inputs.
+  map (fun '(i0,i1,i2,i3,i4) =>
+         List.hd (defaultCombValue _)
+                 (combinational (lut5_and ([i0],[i1],[i2],[i3],[i4])%list)))
+      lut5_and_tb_inputs.
 
 Definition lut5_and_tb :=
   testBench "lut5_and_tb" lut5_and_Interface
@@ -195,8 +205,12 @@ Definition lut6_and_tb_inputs : list (bool * bool * bool * bool * bool * bool) :
  [(false, false, false, false, false, false);
   (true, true, true, true, true, true)].
 
+
 Definition lut6_and_tb_expected_outputs : list bool :=
-  map (fun i => combinational (lut6_and i)) lut6_and_tb_inputs.
+  map (fun '(i0,i1,i2,i3,i4,i5) =>
+         List.hd (defaultCombValue _)
+                 (combinational (lut6_and ([i0],[i1],[i2],[i3],[i4],[i5])%list)))
+      lut6_and_tb_inputs.
 
 Definition lut6_and_tb :=
   testBench "lut6_and_tb" lut6_and_Interface

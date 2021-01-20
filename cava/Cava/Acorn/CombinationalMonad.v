@@ -15,6 +15,8 @@
 (****************************************************************************)
 
 
+Require Import Coq.Vectors.Vector.
+Import VectorNotations.
 Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import ExtLib.Structures.Monads.
@@ -27,139 +29,165 @@ Require Import Coq.ZArith.ZArith.
 
 Require Import Cava.Cava.
 Require Import Cava.Signal.
+Require Import Cava.ListUtils.
 Require Import Cava.Acorn.CavaClass.
 
 (******************************************************************************)
 (* A boolean combinational logic interpretation for the Cava class            *)
 (******************************************************************************)
 
-Definition notBool (i: bool) : ident bool :=
-  ret (negb i).
+Definition nandb b1 b2 : bool := negb (andb b1 b2).
+Definition norb b1 b2 : bool := negb (orb b1 b2).
+Definition xnorb b1 b2 : bool := negb (xorb b1 b2).
 
-Definition andBool '(a, b) : ident bool :=
-  ret (a && b).
+Definition lastSignal {A} (l : seqType A) : combType A := last l (defaultCombValue A).
 
-Definition nandBool (i: bool * bool) : ident bool :=
-  let (a, b) := i in ret (negb (a && b)).
+(* If one signal sequence is shorter than the other, repeat the last signal of
+   the shorter sequence until lengths match, then combine the lists. *)
+Definition pad_combine {A B : SignalType}
+           (a : seqType A) (b : seqType B) : seqType (Pair A B) :=
+  combine (extend a (lastSignal a) (length b))
+          (extend b (lastSignal b) (length a)).
 
-Definition orBool (i: bool * bool) : ident bool :=
-  let (a, b) := i in ret (a || b).
+Definition lift1 {A B} (f : combType A -> combType B) (a : seqType A)
+  : ident (seqType B) :=
+  ret (map f a).
 
-Definition norBool (i: bool * bool) : ident bool :=
-  let (a, b) := i in ret (negb (a || b)).
+Definition lift2 {A B C} (f : combType A -> combType B -> combType C)
+           (a : seqType A) (b : seqType B)
+  : ident (seqType C) :=
+  ret (map (fun ab => f (fst ab) (snd ab)) (pad_combine a b)).
 
-Definition xorBool (i: bool * bool) : ident bool :=
-  let (a, b) := i in ret (xorb a b).
+Definition lift3 {A B C D}
+           (f : combType A -> combType B -> combType C -> combType D)
+           (a : seqType A) (b : seqType B) (c : seqType C)
+  : ident (seqType D) :=
+  ret (map (fun abc =>
+              f (fst (fst abc)) (snd (fst abc)) (snd abc))
+           (pad_combine (pad_combine a b) c)).
 
-Definition xnorBool (i : bool * bool) : ident bool :=
-  let (a, b) := i in ret (negb (xorb a b)).
+Definition lift4 {A B C D E}
+           (f : combType A -> combType B -> combType C -> combType D -> combType E)
+           (a : seqType A) (b : seqType B) (c : seqType C) (d : seqType D)
+  : ident (seqType E) :=
+  ret (map (fun abcd =>
+              f (fst (fst (fst abcd))) (snd (fst (fst abcd))) (snd (fst abcd))
+                (snd abcd))
+           (pad_combine (pad_combine (pad_combine a b) c) d)).
 
-Definition lut1Bool (f: bool -> bool) (i: bool) : ident bool := ret (f i).
+Definition lift5 {A B C D E G}
+           (f : combType A -> combType B -> combType C -> combType D -> combType E
+                -> combType G)
+           (a : seqType A) (b : seqType B) (c : seqType C) (d : seqType D)
+           (e : seqType E) : ident (seqType G) :=
+  ret (map (fun abcde =>
+              f (fst (fst (fst (fst abcde)))) (snd (fst (fst (fst abcde))))
+                (snd (fst (fst abcde))) (snd (fst abcde)) (snd abcde))
+           (pad_combine (pad_combine (pad_combine (pad_combine a b) c) d) e)).
 
-Definition lut2Bool (f: bool -> bool -> bool) (i: bool * bool) : ident bool :=
-  ret (f (fst i) (snd i)).
-
-Definition lut3Bool (f: bool -> bool -> bool -> bool) (i: bool * bool * bool) :
-                    ident bool :=
-  let '(i0, i1, i2) := i in
-  ret (f i0 i1 i2).
-
-Definition lut4Bool (f: bool -> bool -> bool -> bool -> bool)
-                    (i: bool * bool * bool * bool) : ident bool :=
-  let '(i0, i1, i2, i3) := i in
-  ret (f i0 i1 i2 i3).
-
-Definition lut5Bool (f: bool -> bool -> bool -> bool -> bool -> bool)
-                    (i: bool * bool * bool * bool * bool) : ident bool :=
-  let '(i0, i1, i2, i3, i4) := i in
-  ret (f i0 i1 i2 i3 i4).
-
-Definition lut6Bool (f: bool -> bool -> bool -> bool -> bool -> bool -> bool)
-                    (i: bool * bool * bool * bool * bool * bool) : ident bool :=
-  let '(i0, i1, i2, i3, i4, i5) := i in
-  ret (f i0 i1 i2 i3 i4 i5).
-
-Definition xorcyBool (i: bool * bool) : ident bool :=
-  let (ci, li) := i in ret (xorb ci li).
-
-Definition muxcyBool (s : bool) (ci : bool) (di : bool) : ident bool :=
-  ret (match s with
-       | false => di
-       | true => ci
-       end).
+Definition lift6 {A B C D E G H}
+           (f : combType A -> combType B -> combType C -> combType D -> combType E
+                -> combType G -> combType H)
+           (a : seqType A) (b : seqType B) (c : seqType C) (d : seqType D)
+           (e : seqType E) (g : seqType G) : ident (seqType H) :=
+  ret (map (fun abcdeg =>
+              f (fst (fst (fst (fst (fst abcdeg)))))
+                (snd (fst (fst (fst (fst abcdeg)))))
+                (snd (fst (fst (fst abcdeg)))) (snd (fst (fst abcdeg)))
+                (snd (fst abcdeg)) (snd abcdeg))
+           (pad_combine
+              (pad_combine (pad_combine (pad_combine (pad_combine a b) c) d) e) g)).
 
 Definition pairSelBool {t : SignalType}
                        (sel : bool) (v : combType t * combType t) :=
   if sel then snd v else fst v.
 
-Definition indexAtBool {t: SignalType}
-                       {sz isz: nat}
-                       (i : Vector.t (combType t) sz)
-                       (sel : Bvector isz) : combType t :=
-  nth_default (@defaultCombValue t) (N.to_nat (Bv2N sel)) i.
+Definition pairSelList {t: SignalType} (sel : seqType Bit) (v: seqType (Pair t t))
+  : list (combType t) :=
+  map (fun '(x,y,sel) => if (sel : bool) then y else x) (pad_combine v sel).
 
-Definition indexConstBool {t: SignalType} {sz: nat}
-                          (i : Vector.t (combType t) sz)
-                          (sel : nat) : combType t :=
-  nth_default (@defaultCombValue t) sel i.
+Definition indexConstBoolList {t: SignalType} {sz: nat}
+           (v : seqType (Vec t sz)) (sel : nat)
+  : seqType t :=
+  map (nth_default (defaultCombValue t) sel) v.
 
-Definition sliceBool {t: SignalType}
-                     {sz: nat}
-                     (startAt len : nat)
-                     (v: Vector.t (combType t) sz)
-                     (H: startAt + len <= sz) :
-                     Vector.t (combType t) len :=
-  sliceVector v startAt len H.
+Definition indexAtBoolList {t: SignalType} {sz isz: nat}
+           (v : seqType (Vec t sz)) (sel : seqType (Vec Bit isz))
+  : seqType t :=
+  map (fun '(sel, v) =>
+         nth_default (defaultCombValue t) (N.to_nat (Bv2N sel)) v)
+      (pad_combine sel v).
 
-Definition bufBool (i : bool) : ident bool :=
-  ret i.
+Definition peelVecList {t: SignalType} {s: nat}
+                       (v: list (Vector.t (combType t) s))
+                       : Vector.t (list (combType t)) s :=
+ Vector.map (indexConstBoolList v) (vseq 0 s).
 
-Definition loopBool (A B C : SignalType)
-                    (f : combType A * combType C -> ident (combType B * combType C))
-                    (a : combType A) : ident (combType B) :=
-  '(b, _) <- f (a, @defaultCombValue C) ;;
-  ret b.
+Definition unpeelVecList {t: SignalType} {s: nat}
+                         (v: Vector.t (list (combType t)) s)
+                         : list (Vector.t (combType t) s) :=
+  let max_length := Vector.fold_left Nat.max 0 (Vector.map (@length _) v) in
+  map (fun ni => Vector.map (fun vi => nth ni vi (defaultCombValue t)) v)
+      (seq 0 max_length).
+
+Definition sliceBoolList {t: SignalType}
+                         {sz: nat}
+                         (startAt len : nat)
+                         (v: list (Vector.t (combType t) sz))
+                         (H: startAt + len <= sz) :
+                         list (Vector.t (combType t) len) :=
+  map (fun v => sliceVector v startAt len H) v.
+
+Local Notation lift1Bool := (@lift1 Bit Bit).
+Local Notation lift2Bool := (@lift2 Bit Bit Bit).
+Local Notation lift3Bool := (@lift3 Bit Bit Bit Bit).
+Local Notation lift4Bool := (@lift4 Bit Bit Bit Bit Bit).
+Local Notation lift5Bool := (@lift5 Bit Bit Bit Bit Bit Bit).
+Local Notation lift6Bool := (@lift6 Bit Bit Bit Bit Bit Bit Bit).
 
 (******************************************************************************)
 (* Instantiate the Cava class for a boolean combinational logic               *)
 (* interpretation.                                                            *)
 (******************************************************************************)
 
- Instance CombinationalSemantics : Cava combType :=
+Instance CombinationalSemantics : Cava seqType :=
   { cava := ident;
-    constant b := b;
-    zero := ret false;
-    one := ret true;
-    defaultSignal t := @defaultCombValue t;
-    inv := notBool;
-    and2 := andBool;
-    nand2 := nandBool;
-    or2 := orBool;
-    nor2 := norBool;
-    xor2 := xorBool;
-    xnor2 := xnorBool;
-    buf_gate := bufBool;
-    lut1 := lut1Bool;
-    lut2 := lut2Bool;
-    lut3 := lut3Bool;
-    lut4 := lut4Bool;
-    lut5 := lut5Bool;
-    lut6 := lut6Bool;
-    xorcy := xorcyBool;
-    muxcy := muxcyBool;
-    unpair _ _ v := v;
-    mkpair _ _ v1 v2 := (v1, v2);
-    peel _ _ v := v;
-    unpeel _ _ v := v;
-    pairSel t sel v := pairSelBool sel v;
-    indexAt t sz isz := @indexAtBool t sz isz;
-    indexConst t sz := @indexConstBool t sz;
-    slice t sz := @sliceBool t sz;
-    unsignedAdd m n := fun x  y => ret (@unsignedAddBool m n x y);
-    unsignedMult m n := fun x y => ret (@unsignedMultBool m n x y);
-    greaterThanOrEqual m n := fun x y => ret (@greaterThanOrEqualBool m n x y);
+    constant := fun x => [x];
+    zero := ret [false];
+    one := ret [true];
+    defaultSignal t := [];
+    inv := lift1Bool negb;
+    and2 :=  fun '(x,y) => lift2Bool andb x y;
+    nand2 := fun '(x,y) => lift2Bool nandb x y;
+    or2 :=   fun '(x,y) => lift2Bool orb x y;
+    nor2 :=  fun '(x,y) => lift2Bool norb x y;
+    xor2 :=  fun '(x,y) => lift2Bool xorb x y;
+    xnor2 := fun '(x,y) => lift2Bool xnorb x y;
+    buf_gate := ret;
+    lut1 := lift1Bool;
+    lut2 := fun f '(a,b) => lift2Bool f a b;
+    lut3 := fun f '(a,b,c) => lift3Bool f a b c;
+    lut4 := fun f '(a,b,c,d) => lift4Bool f a b c d;
+    lut5 := fun f '(a,b,c,d,e) => lift5Bool f a b c d e;
+    lut6 := fun f '(a,b,c,d,e,g) => lift6Bool f a b c d e g;
+    xorcy := fun '(x,y) => lift2Bool xorb x y;
+    muxcy := lift3Bool (fun sel x y => if sel then x else y);
+    unpair _ _ v := split v;
+    mkpair _ _ v1 v2 := pad_combine v1 v2;
+    peel _ _ v := peelVecList v;
+    unpeel _ _ v := unpeelVecList v;
+    pairSel t sel v := pairSelList sel v;
+    indexAt t sz isz := @indexAtBoolList t sz isz;
+    indexConst t sz := @indexConstBoolList t sz;
+    slice t sz := @sliceBoolList t sz;
+    unsignedAdd m n := @lift2 (Vec Bit _) (Vec Bit _) (Vec Bit (1 + Nat.max m n))
+                              (@unsignedAddBool m n);
+    unsignedMult m n := @lift2 (Vec Bit _) (Vec Bit _) (Vec Bit _)
+                               (@unsignedMultBool m n);
+    greaterThanOrEqual m n := @lift2 (Vec Bit _) (Vec Bit _) Bit
+                                     (@greaterThanOrEqualBool m n);
     instantiate _ circuit := circuit;
-    blackBox intf _ := ret (tupleInterfaceDefault (map port_type (circuitOutputs intf)));
+    blackBox intf _ := ret (tupleInterfaceDefaultS (map port_type (circuitOutputs intf)));
 }.
 
 (******************************************************************************)
