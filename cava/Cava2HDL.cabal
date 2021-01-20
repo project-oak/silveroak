@@ -40,7 +40,6 @@ cabal-version:        >= 1.10
 library
   build-Depends:     base >= 4, mtl >= 2
   exposed-Modules:   Cava2SystemVerilog
-                     ArrowKind
                      BinNat
                      BinNums
                      BinInt
@@ -48,17 +47,9 @@ library
                      Bool
                      Bvector
                      CavaClass
-                     CircuitArrow
-                     CircuitLowering
-                     CircuitSemantics
-                     CavaNotation
                      Combinators
                      CombinationalMonad
                      Datatypes
-                     DecimalString
-                     ExprSyntax
-                     ExprSemantics
-                     ExprLowering
                      FullAdder
                      HexString
                      IdentityMonad
@@ -66,13 +57,11 @@ library
                      List
                      Logic
                      Monad
-                     NaryFunctions
                      Netlist
                      NetlistGeneration
                      Nat
                      Ndigits
                      PeanoNat
-                     Primitives
                      Sequential
                      Signal
                      StateMonad
@@ -83,11 +72,6 @@ library
                      VectorUtils
                      XilinxAdder
 
-                     -- From arrow-lib
-                     Category
-                     Arrow
-                     Coq
-                     Kleisli
   other-Modules:     Applicative
                      BinPos
                      BinNatDef

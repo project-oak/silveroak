@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-SUBDIRS = Spec Arrow Acorn
+SUBDIRS = Spec Acorn
 
 .PHONY: all coq minimize-requires clean subdirs $(SUBDIRS)
 
@@ -48,9 +48,6 @@ clean: SUBDIRTARGET=clean
 %.vo: DIR=$(firstword $(subst /, , $@))
 
 %.vo: TARGET=$(subst $(DIR)/,,$@)
-
-# Arrow depends on Spec
-Arrow: Spec
 
 # Acorn depends on Spec
 Acorn: Spec

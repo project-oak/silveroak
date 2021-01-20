@@ -49,28 +49,6 @@ Recursive Extraction Library Sequential.
 Recursive Extraction Library Combinators.
 Recursive Extraction Library NetlistGeneration.
 
-Require Import Cava.Arrow.ArrowExport.
-Require Cava.Arrow.Classes.Category.
-Require Cava.Arrow.Classes.Arrow.
-Require Cava.Arrow.Classes.Coq.
-Require Cava.Arrow.Classes.Kleisli.
-
-Recursive Extraction Library Arrow.
-Recursive Extraction Library Category.
-Recursive Extraction Library Coq.
-Recursive Extraction Library Kleisli.
-Recursive Extraction Library ArrowKind.
-Recursive Extraction Library Primitives.
-Recursive Extraction Library CircuitArrow.
-Recursive Extraction Library ExprSyntax.
-Recursive Extraction Library ExprSemantics.
-Recursive Extraction Library ExprLowering.
-Recursive Extraction Library ExprEquiv.
-Recursive Extraction Library CavaNotation.
-Recursive Extraction Library CircuitSemantics.
-Recursive Extraction Library CircuitLowering.
-Recursive Extraction Library CircuitProp.
-
 Recursive Extraction Library Netlist.
 Recursive Extraction Library Signal.
 Recursive Extraction Library Kind.
