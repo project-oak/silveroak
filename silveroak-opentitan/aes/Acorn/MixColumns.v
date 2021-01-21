@@ -86,8 +86,8 @@ Section WithCava.
   Definition aes_mix_columns
     (op_i : signal Bit) (a: signal (Vec (Vec (Vec Bit 8) 4) 4))
     : cava (signal (Vec (Vec (Vec Bit 8) 4) 4)) :=
-  let transposed := aes_transpose a in
-  mixed <- mapT (aes_mix_single_column op_i) (peel transposed) ;;
-  ret (aes_transpose (unpeel mixed)).
+    let transposed := aes_transpose a in
+    mixed <- mapT (aes_mix_single_column op_i) (peel transposed) ;;
+    ret (aes_transpose (unpeel mixed)).
 
 End WithCava.
