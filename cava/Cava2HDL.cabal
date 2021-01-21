@@ -57,6 +57,7 @@ library
                      List
                      Logic
                      Monad
+                     Multiplexers
                      Netlist
                      NetlistGeneration
                      Nat
