@@ -20,3 +20,4 @@ Require Export Cava.Acorn.CombinationalMonad.
 Require Export Cava.Acorn.Sequential.
 Require Export Cava.Acorn.Combinators.
 Require Export Cava.Acorn.NetlistGeneration.
+Require Export Cava.Acorn.CavaPrelude.

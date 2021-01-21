@@ -36,10 +36,10 @@ Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Combinators.
 Require Import Cava.Acorn.NetlistGeneration.
 Require Import Cava.Acorn.XilinxAdder.
+Require Import Cava.Acorn.CavaPrelude.
 
 Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.Lib.FullAdder.
-Require Import Cava.Lib.Multiplexers.
 Require Import Cava.Lib.UnsignedAdders.
 
 Recursive Extraction Library BitArithmetic.
@@ -57,8 +57,8 @@ Recursive Extraction Library Types.
 Recursive Extraction Library VectorUtils.
 Recursive Extraction Library UnsignedAdders.
 Recursive Extraction Library XilinxAdder.
+Recursive Extraction Library CavaPrelude.
 
 Recursive Extraction Library BitVectorOps.
 Recursive Extraction Library FullAdder.
-Recursive Extraction Library Multiplexers.
 Recursive Extraction Library UnsignedAdders.

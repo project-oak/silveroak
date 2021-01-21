@@ -47,6 +47,7 @@ library
                      Bool
                      Bvector
                      CavaClass
+                     CavaPrelude
                      Combinators
                      CombinationalMonad
                      Datatypes
@@ -57,7 +58,6 @@ library
                      List
                      Logic
                      Monad
-                     Multiplexers
                      Netlist
                      NetlistGeneration
                      Nat

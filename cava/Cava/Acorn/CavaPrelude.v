@@ -21,17 +21,22 @@ Import VectorNotations.
 Require Import ExtLib.Structures.Monads.
 Import MonadNotation.
 
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Signal.
 
 Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.
 
-(* A two to one multiplexer that takes its two arguments as a pair rather
-   than as a 2 element vector which is what indexAt works over. *)
+  (* Ideally muxPair would be in Cava.Lib but we need to use it in the Cava
+     core modules for a definition is Sequential.v
+  *)
 
-Definition mux2 {A : SignalType}
-                (sel : signal Bit)
-                (ab : signal A * signal A) : cava (signal A) :=
+  (* A two to one multiplexer that takes its two arguments as a pair rather
+     than as a 2 element vector which is what indexAt works over. *)
+
+  Definition muxPair {A : SignalType}
+                     (sel : signal Bit)
+                     (ab : signal A * signal A) : cava (signal A) :=
   let (a, b) := ab in
   ret (indexAt (unpeel [a; b]) (unpeel [sel])).
 
