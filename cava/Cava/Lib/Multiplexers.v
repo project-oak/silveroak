@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2020 The Project Oak Authors                                   *)
+(* Copyright 2021 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,25 +14,25 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import AcornExamples.Examples.
-Require Import AcornExamples.NandGate.
-Require Import AcornExamples.MuxExamples.
-Require Import AcornExamples.FullAdderExample.
-Require Import AcornExamples.UnsignedAdderExamples.
-Require Import AcornExamples.AdderTree.
-Require Import AcornExamples.Sorter.
-Require Import Coq.extraction.Extraction.
-Require Import Coq.extraction.ExtrHaskellZInteger.
-Require Import Coq.extraction.ExtrHaskellString.
-Require Import Coq.extraction.ExtrHaskellBasic.
-Require Import Coq.extraction.ExtrHaskellNatInteger.
+Require Import Coq.Vectors.Vector.
+Local Open Scope vector_scope.
+Import VectorNotations.
 
-Extraction Language Haskell.
+Require Import ExtLib.Structures.Monads.
+Import MonadNotation.
 
-Extraction Library Examples.
-Extraction Library NandGate.
-Extraction Library MuxExamples.
-Extraction Library FullAdderExample.
-Extraction Library UnsignedAdderExamples.
-Extraction Library AdderTree.
-Extraction Library Sorter.
+Require Import Cava.Acorn.Acorn.
+
+Section WithCava.
+  Context {signal} `{Cava signal} `{Monad cava}.
+
+(* A two to one multiplexer that takes its two arguments as a pair rather
+   than as a 2 element vector which is what indexAt works over. *)
+
+Definition mux2 {A : SignalType}
+                (sel : signal Bit)
+                (ab : signal A * signal A) : cava (signal A) :=
+  let (a, b) := ab in
+  ret (indexAt (unpeel [a; b]) (unpeel [sel])).
+
+End WithCava.

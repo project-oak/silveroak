@@ -23,6 +23,7 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
+Require Import Cava.Lib.Multiplexers.
 
 Require Import Coq.Bool.Bvector.
 Import Vector.VectorNotations.
@@ -31,10 +32,6 @@ Local Open Scope vector_scope.
 
 Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.
-
-Definition mux2_1 (sab: signal Bit * signal Bit * signal Bit) : cava (signal Bit) :=
-  let '(sel, a, b) := sab in
-  ret (pairSel sel (mkpair a b)).
 
   (* Mux between input buses *)
 
@@ -53,16 +50,16 @@ Local Close Scope vector_scope.
 (* mux2_1                                                                     *)
 (******************************************************************************)
 
-Example m1: combinational (mux2_1 ([false], [false], [true])) = [false].
+Example m1: combinational (mux2 (A:=Bit) [true] ([false], [false])) = [false].
 Proof. reflexivity. Qed.
 
-Example m2: combinational (mux2_1 ([false], [true], [false])) = [true].
+Example m2: combinational (mux2 (A:=Bit) [false] ([false], [true])) = [false].
 Proof. reflexivity. Qed.
 
-Example m3: combinational (mux2_1 ([true], [false], [true])) = [true].
+Example m3: combinational (mux2 (A:=Bit) [true] ([true], [false])) = [false].
 Proof. reflexivity. Qed.
 
-Example m4: combinational (mux2_1 ([true], [true], [false])) = [false].
+Example m4: combinational (mux2 (A:=Bit) [false] ([true], [false])) = [true].
 Proof. reflexivity. Qed.
 
 Definition mux2_1_Interface
@@ -71,7 +68,8 @@ Definition mux2_1_Interface
      [mkPort "o" Bit]
      [].
 
-Definition mux2_1Netlist := makeNetlist mux2_1_Interface mux2_1.
+Definition mux2_1Netlist
+  := makeNetlist mux2_1_Interface (fun '(sel, a, b) => mux2 sel (a, b)).
 
 Definition mux2_1_tb_inputs :=
   [(false, false, true);
@@ -81,7 +79,7 @@ Definition mux2_1_tb_inputs :=
 
 Definition mux2_1_tb_expected_outputs
   := map (fun '(i0,i1,i2) =>
-            List.hd false (combinational (mux2_1 ([i0],[i1],[i2])%list)))
+            List.hd false (combinational (mux2 (A:=Bit) [i0] ([i1],[i2]))))
          mux2_1_tb_inputs.
 
 Definition mux2_1_tb
