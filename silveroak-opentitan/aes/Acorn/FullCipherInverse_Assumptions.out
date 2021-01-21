@@ -31,10 +31,10 @@ mix_columns_equiv
      else to_cols_bitvecs (AES256.mix_columns (from_cols_bitvecs st))]
 mix_columns_add_round_key_comm
   : forall st k : t (t Byte.byte 4) 4,
-    let to_bits := fun x : t (t Byte.byte 4) 4 => to_cols_bits (from_cols x)
-      in
+    let to_bits :=
+      fun x : t (t Byte.byte 4) 4 => to_cols_bits (BigEndian.from_cols x) in
     let from_bits :=
-      fun x : t (t bool (4 * 8)) 4 => to_cols (from_cols_bits x) in
+      fun x : t (t bool (4 * 8)) 4 => BigEndian.to_cols (from_cols_bits x) in
     AesSpec.AddRoundKey.add_round_key 32 4
       (to_bits (MixColumns.inv_mix_columns st))
       (to_bits (MixColumns.inv_mix_columns k)) =

@@ -27,14 +27,16 @@ Require Import AesSpec.Cipher.
 Require Import AesSpec.CommuteProperties.
 Require Import AesSpec.StateTypeConversions.
 
+Import StateTypeConversions.BigEndian.
+
 (* TODO: these definitions need to be filled in once the mixcolumns spec is finalized *)
 Axiom inverse_mix_columns :
   forall Nb (st : Vector.t _ Nb), inv_mix_columns (mix_columns st) = st.
 
 Axiom mix_columns_add_round_key_comm :
   forall (st k : Vector.t _ 4),
-    let to_bits x := to_cols_bits (from_cols x) in
-    let from_bits x := to_cols (from_cols_bits x) in
+    let to_bits x := LittleEndian.to_cols_bits (from_cols x) in
+    let from_bits x := to_cols (LittleEndian.from_cols_bits x) in
     add_round_key 32 4
                   (to_bits (inv_mix_columns st))
                   (to_bits (inv_mix_columns k))
@@ -52,9 +54,9 @@ Section Equivalence.
   Let Nr := 14%nat. (* From FIPS -- number of rounds *)
 
   Definition add_round_key (st : state) (k : round_key) : state :=
-    let st := to_cols_bits st in
-    let k := to_cols_bits k in
-    from_cols_bits (add_round_key bits_per_word Nb st k).
+    let st := LittleEndian.to_cols_bits st in
+    let k := LittleEndian.to_cols_bits k in
+    LittleEndian.from_cols_bits (add_round_key bits_per_word Nb st k).
 
   Definition sub_bytes (st : state) : state :=
     from_list_rows (sub_bytes (to_list_rows st)).

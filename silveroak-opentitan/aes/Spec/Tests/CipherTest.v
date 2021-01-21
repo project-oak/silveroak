@@ -24,6 +24,8 @@ Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
 Local Open Scope string_scope.
 
+Import StateTypeConversions.BigEndian.
+
 Local Notation byte := Byte.byte (only parsing).
 Local Notation round_key := (Vector.t bool 128) (only parsing).
 Local Notation state := (Vector.t bool 128) (only parsing).
