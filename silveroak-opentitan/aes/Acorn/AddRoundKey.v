@@ -51,9 +51,9 @@ Goal
   (let signal := combType in
    (* convert between flat-vector representation and state type *)
    let to_state : Vector.t bool 128 -> signal state :=
-       fun st => map reshape (to_cols_bits st) in
+       fun st => map reshape (LittleEndian.to_cols_bits st) in
    let from_state : signal state -> Vector.t bool 128 :=
-       fun st => from_cols_bits (map flatten st) in
+       fun st => LittleEndian.from_cols_bits (map flatten st) in
    (* run encrypt test with this version of add_round_key plugged in *)
    aes_test_encrypt Matrix
                     (fun step key =>

@@ -29,6 +29,7 @@ Import ListNotations.
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
 Require Import AcornAes.AddRoundKey.
+Import StateTypeConversions.LittleEndian.
 
 Existing Instance CombinationalSemantics.
 

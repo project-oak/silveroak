@@ -26,17 +26,20 @@ Local Notation bits_per_word := (bytes_per_word * 8)%nat.
 Local Notation Nb := 4%nat.
 
 (* Conversions between different representations of the state *)
-Section Conversions.
-  (* Notes on representation:
+(* Notes on representation:
 
-     Everything in FIPS is big-endian, while Coq's native bitvectors are
-     little-endian. The flat bit-vector for the state is therefore
-     little-endian, while rows/columns created from it use the big-endian
-     representation.
+   Everything in FIPS is big-endian, while Coq's native bitvectors are
+   little-endian. The flat bit-vector for the state is therefore
+   little-endian. The "rows", "cols", and "list_rows" representations, which are
+   used mainly for the specifications, are big-endian to match FIPS.  The
+   "cols_bits" and "cols_bitvecs" representations, which are used for
+   implementations, are little-endian for compatibility with Coq.
 
-     For interpretation as a 2-D matrix, bytes in the flat representation are in
-     *column-major* order (see FIPS 197 Fig. 3) *)
+   For interpretation as a 2-D matrix, bytes in the flat representation are in
+   *column-major* order (see FIPS 197 Fig. 3) *)
 
+(**** Big-endian representations ***)
+Module BigEndian.
   Definition to_big_endian_bytes (st : state) : Vector.t byte (bytes_per_word * Nb) :=
     (* byte conversion expects little-endian form *)
     let bytes := bitvec_to_bytevec (bytes_per_word * Nb) st in
@@ -57,25 +60,6 @@ Section Conversions.
   Definition from_rows (v : Vector.t (Vector.t byte Nb) bytes_per_word) : state :=
     from_cols (transpose v).
 
-  (* Convert state to/from columns, but such that columns are bits (still
-     big-endian) instead of bytes *)
-  Definition to_cols_bits (st : state) : Vector.t (Vector.t bool bits_per_word) Nb :=
-    let cols := to_cols st in
-    (* byte conversion expects little-endian form, so reverse each column and
-       then reverse back *)
-    map (fun c => reverse (bytevec_to_bitvec _ (reverse c))) cols.
-  Definition from_cols_bits (bits : Vector.t (Vector.t bool bits_per_word) Nb)
-    : state := from_cols (map (fun c => reverse (bitvec_to_bytevec _ (reverse c))) bits).
-
-  (* Convert state to/from columns, but such that bytes are expanded to
-     (big-endian) bitvectors. *)
-  Definition to_cols_bitvecs (st : state)
-    : Vector.t (Vector.t (Vector.t bool 8) bytes_per_word) Nb
-   := map reshape (to_cols_bits st).
-  Definition from_cols_bitvecs
-             (cols : Vector.t (Vector.t (Vector.t bool 8) bytes_per_word) Nb)
-    : state := from_cols_bits (map flatten cols).
-
   (* Convert state to/from rows, but as lists instead of vectors *)
   Definition to_list_rows (st : state) : list (list Byte.byte) :=
     to_list (map to_list (to_rows st)).
@@ -83,7 +67,34 @@ Section Conversions.
     let rows := of_list_sized (@List.nil _) Nb rows in
     let rows := map (of_list_sized Byte.x00 bytes_per_word) rows in
     from_rows rows.
-End Conversions.
+End BigEndian.
+
+(**** Little-endian representations ***)
+Module LittleEndian.
+  (* Convert state to/from columns, but in a little-endian representation and
+     with bit vectors instead of bytes. *)
+  Definition to_cols_bits (st : state) : Vector.t (Vector.t bool bits_per_word) Nb :=
+    let cols := BigEndian.to_cols st in
+    (* byte conversion expects little-endian form, so reverse each column before
+       converting to bits *)
+    let cols_bits := map (fun c => bytevec_to_bitvec _ (reverse c)) cols in
+    (* Finally, reverse order of columns for full little-endianness *)
+    reverse cols_bits.
+  Definition from_cols_bits (bits : Vector.t (Vector.t bool bits_per_word) Nb)
+    : state := BigEndian.from_cols (map (fun c => reverse (bitvec_to_bytevec _ c))
+                                        (reverse bits)).
+
+  (* Convert state to/from columns, but such that bytes are expanded to
+     (little-endian) bitvectors. *)
+  Definition to_cols_bitvecs (st : state)
+    : Vector.t (Vector.t (Vector.t bool 8) bytes_per_word) Nb
+   := map reshape (to_cols_bits st).
+  Definition from_cols_bitvecs
+             (cols : Vector.t (Vector.t (Vector.t bool 8) bytes_per_word) Nb)
+    : state := from_cols_bits (map flatten cols).
+End LittleEndian.
+
+Import BigEndian LittleEndian.
 
 Section Properties.
 
