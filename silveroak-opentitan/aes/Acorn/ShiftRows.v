@@ -38,6 +38,13 @@ Section WithCava.
   Context {signal} {semantics : Cava signal}.
   Context {monad: Monad cava}.
 
+  Definition aes_circ_byte_shift (shift: nat) (input: signal (Vec byte 4)):
+    cava (signal (Vec byte 4)) :=
+    let indices := [4 - shift; 5 - shift; 6 - shift; 7 - shift] in
+    let indices := map (fun x => Nat.modulo x 4) indices in
+    ret (unpeel (map (indexConst input) indices))
+    .
+
   Definition aes_shift_rows
     (op_i: signal Bit)
     (data_i: signal (Vec (Vec byte 4) 4))
@@ -54,14 +61,14 @@ Section WithCava.
   (*                                       : aes_circ_byte_shift(data_i[1], 2'h1); *)
   data_o_1_0 <- aes_circ_byte_shift 3 data_i[@1] ;;
   data_o_1_1 <- aes_circ_byte_shift 1 data_i[@1] ;;
-  let data_o_1 := indexAt (unpeel (data_o_1_0 :: data_o_1_1 :: [])) (unpeel (op_i::[])) in
+  data_o_1 <- muxPair op_i (data_o_1_0, data_o_1_1) ;;
 
   (* // Row 3 *)
   (* assign data_o[3] = (op_i == CIPH_FWD) ? aes_circ_byte_shift(data_i[3], 2'h1) *)
   (*                                       : aes_circ_byte_shift(data_i[3], 2'h3); *)
   data_o_3_0 <- aes_circ_byte_shift 1 data_i[@3] ;;
   data_o_3_1 <- aes_circ_byte_shift 3 data_i[@3] ;;
-  let data_o_3 := indexAt (unpeel (data_o_3_0 :: data_o_3_1 :: [])) (unpeel (op_i::[])) in
+  data_o_3 <- muxPair op_i (data_o_3_0, data_o_3_1) ;;
 
   ret (unpeel [data_o_0; data_o_1; data_o_2; data_o_3]).
 

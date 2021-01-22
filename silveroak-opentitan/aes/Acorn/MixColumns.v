@@ -93,15 +93,15 @@ Section WithCava.
     (* assign z[1] = y2 ^ y[1]; *)
     z_0 <- xor y2 y[@0] ;;
     z_1 <- xor y2 y[@1] ;;
-    let z := unpeel (z_0 :: z_1 :: []) in
+    let z := unpeel [z_0; z_1] in
 
     (* // Mux z *)
     (* assign z_muxed[0] = (op_i == CIPH_FWD) ? 8'b0 : z[0]; *)
     (* assign z_muxed[1] = (op_i == CIPH_FWD) ? 8'b0 : z[1]; *)
     op_i_inv <- inv op_i ;; (* CIPH_FWD := false *)
     zb <- zero_byte;;
-    let paired := unpeel (unpeel (zb :: zb :: []) :: z :: []) in
-    let z_muxed := indexAt paired (unpeel (op_i :: [])) in
+    let paired := [unpeel [zb; zb]; z] in
+    z_muxed <- muxPair op_i (unpeel [zb; zb], z) ;;
 
     (* // Drive outputs *)
     (* assign data_o[0] = data_i[1] ^ x_mul2[3] ^ x[1] ^ z_muxed[1]; *)
@@ -113,7 +113,7 @@ Section WithCava.
     data_o2 <- (xor data_i[@3] x_mul2[@1] >>= xor x[@3] >>= xor z_muxed[@1]) ;;
     data_o3 <- (xor data_i[@2] x_mul2[@0] >>= xor x[@3] >>= xor z_muxed[@0]) ;;
 
-    ret (unpeel (data_o0 :: data_o1 :: data_o2 :: data_o3 :: [])).
+    ret (unpeel [data_o0; data_o1; data_o2; data_o3]).
 
   Definition aes_mix_columns
     (op_i : signal Bit) (a: signal (Vec (Vec (Vec Bit 8) 4) 4))

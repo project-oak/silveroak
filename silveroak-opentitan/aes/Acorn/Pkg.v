@@ -95,7 +95,4 @@ Section WithCava.
     let indices := map (fun x => Nat.modulo x 4) indices in
     ret (unpeel (map (indexConst input) indices)).
 
-  Definition is_CIPH_FWD (op_i: signal Bit): cava (signal Bit) :=
-    inv op_i.
-
 End WithCava.
