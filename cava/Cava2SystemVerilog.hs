@@ -29,7 +29,6 @@ import qualified BinNums
 import Netlist
 import Signal
 import qualified StateMonad
-import Types
 
 writeSystemVerilog :: CavaState -> IO ()
 writeSystemVerilog cavastate@(Netlist.Coq_mkCavaState _ _ _ _
@@ -374,12 +373,6 @@ generateTestBench testBench
     inputPortList = circuitInputs intf
     outputPortList = circuitOutputs intf
     nrTests = length (testBenchInputs testBench)
-
-declareCircuitPorts :: Coq_shape PortDeclaration -> [String]
-declareCircuitPorts shape
-  = insertCommas (map declareCircuitPort portList)
-    where
-    portList :: [PortDeclaration]  = flattenShape shape
 
 declareCircuitPort :: PortDeclaration -> String
 declareCircuitPort port
