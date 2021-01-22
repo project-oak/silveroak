@@ -77,9 +77,7 @@ Section WithCava.
   Definition xor' {n} '( (a,b) : signal (Vec Bit n) * signal (Vec Bit n) ): cava (signal (Vec Bit n)) :=
     xor a b.
 
-  Definition zero_byte : cava (signal byte) :=
-    z <- zero ;;
-    ret (unpeel (z :: z :: z :: z :: z :: z :: z :: z :: [])).
+  Definition zero_byte : signal byte := unpeel (Vector.const zero 8).
 
   (* function automatic logic [31:0] aes_circ_byte_shift(logic [31:0] in, logic [1:0] shift);
     logic [31:0] out;

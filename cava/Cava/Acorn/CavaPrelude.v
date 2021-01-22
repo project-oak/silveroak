@@ -27,6 +27,14 @@ Require Import Cava.Signal.
 Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.
 
+  (* Constant signals. *)
+
+  (* This component always returns the value 0. *)
+  Definition zero : signal Bit := constant false.
+
+  (* This component always returns the value 1. *)
+  Definition one : signal Bit := constant true.
+
   (* Ideally muxPair would be in Cava.Lib but we need to use it in the Cava
      core modules for a definition is Sequential.v
   *)

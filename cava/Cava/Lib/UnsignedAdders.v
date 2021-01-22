@@ -103,8 +103,7 @@ Section WithCava.
   Definition adderWithGrowthNoCarryInL
             (inputs: list (signal Bit * signal Bit)) :
             cava (list (signal Bit)) :=
-    const0 <- zero ;;
-    adderWithGrowthL (const0, inputs).
+    adderWithGrowthL (zero, inputs).
 
   Definition addLWithCinL (cin : signal Bit)
                           (a b : list (signal Bit)) :
