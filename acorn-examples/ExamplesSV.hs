@@ -18,7 +18,7 @@ module Main where
 
 import Cava2SystemVerilog
 import NandGate
-import Multiplexers
+import MuxExamples
 import FullAdderExample
 import UnsignedAdderExamples
 import AdderTree

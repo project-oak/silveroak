@@ -47,6 +47,7 @@ library
                      Bool
                      Bvector
                      CavaClass
+                     CavaPrelude
                      Combinators
                      CombinationalMonad
                      Datatypes

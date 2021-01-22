@@ -87,12 +87,6 @@ Section WithCava.
                        cava (signal A * (signal B * signal C)) :=
    let '((a, b), c) := i in
    ret (a, (b, c)).
-
-  Definition mux2 {A : SignalType}
-                  (sel : signal Bit)
-                  (i : signal A * signal A) :
-                  cava (signal A) :=
-  ret (pairSel sel (mkpair (fst i) (snd i))).
  
   (* Use a circuit to zip together two vectors. *)
   Definition zipWith {A B C : SignalType} {n : nat}
