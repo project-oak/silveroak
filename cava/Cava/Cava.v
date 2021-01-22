@@ -22,5 +22,4 @@
 Require Export Cava.BitArithmetic.
 Require Export Cava.Netlist.
 Require Export Cava.Kind.
-Require Export Cava.Types.
 Require Export Cava.VectorUtils.
