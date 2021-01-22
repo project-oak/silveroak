@@ -58,7 +58,6 @@ Section WithCava.
     (* assign x[1] = data_i[3] ^ data_i[2]; *)
     (* assign x[2] = data_i[2] ^ data_i[1]; *)
     (* assign x[3] = data_i[1] ^ data_i[0]; *)
-
     let x :=
       (data_i[@0], data_i[@3]) ::
       (data_i[@3], data_i[@2]) ::
@@ -73,7 +72,6 @@ Section WithCava.
     x_mul2 <- mapT aes_mul2 x ;;
     let x := unpeel x in
     let x_mul2 := unpeel x_mul2 in
-
 
     (* // Drive y_pre_mul4 *)
     (* assign y_pre_mul4[0] = data_i[3] ^ data_i[1]; *)
@@ -100,7 +98,6 @@ Section WithCava.
     z_0 <- xor y2 y[@0] ;;
     z_1 <- xor y2 y[@1] ;;
     let z := unpeel (z_0 :: z_1 :: []) in
-
 
     (* // Mux z *)
     (* assign z_muxed[0] = (op_i == CIPH_FWD) ? 8'b0 : z[0]; *)
