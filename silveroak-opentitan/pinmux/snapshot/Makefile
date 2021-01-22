@@ -82,4 +82,4 @@ pinmux_pkg.sv:	$(OPENTITAN)/hw/ip/pinmux/rtl/pinmux_pkg.sv
 		cp $^ $@
 
 clean:		
-		rm -rf $(SOURCES)
+		rm -rf $(SOURCES) pinmux.vlt
