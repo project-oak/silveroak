@@ -144,8 +144,6 @@ Section WithCava.
     let transposed := aes_transpose a in
     mixed <- mapT (aes_mix_single_column op_i) (peel transposed) ;;
     ret (aes_transpose (unpeel mixed)).
-    (* mixed <- mapT (aes_mix_single_column op_i) (peel a) ;; *)
-    (* ret ((unpeel mixed)). *)
 
 End WithCava.
 
