@@ -23,12 +23,14 @@ Require Import Coq.extraction.ExtrHaskellNatInteger.
 Extraction Language Haskell.
 
 Require Import Tests.Instantiate.
+Require Import Tests.MuxTests.
 Require Import Tests.TestMultiply.
 Require Import Tests.Delay.
 Require Import Tests.CountBy.CountBy.
 Require Import Tests.AccumulatingAdderEnable.AccumulatingAdderEnable.
 
 Extraction Library Instantiate.
+Extraction Library MuxTests.
 Extraction Library TestMultiply.
 Extraction Library Delay.
 Extraction Library AccumulatingAdderEnable.
