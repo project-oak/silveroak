@@ -59,7 +59,7 @@ Section WithCava.
       (data_i[@3], data_i[@2]) ::
       (data_i[@2], data_i[@1]) ::
       (data_i[@1], data_i[@0]) :: [] in
-    x <- mapT xor' x ;;
+    x <- mapT xorV x ;;
 
     (* // Mul2(x) *)
     (*   for (genvar i = 0; i < 4; i++) begin : gen_x_mul2 *)
@@ -72,8 +72,8 @@ Section WithCava.
     (* // Drive y_pre_mul4 *)
     (* assign y_pre_mul4[0] = data_i[3] ^ data_i[1]; *)
     (* assign y_pre_mul4[1] = data_i[2] ^ data_i[0]; *)
-    y_pre_mul4_0 <- xor data_i[@3] data_i[@1] ;;
-    y_pre_mul4_1 <- xor data_i[@3] data_i[@1] ;;
+    y_pre_mul4_0 <- xorv data_i[@3] data_i[@1] ;;
+    y_pre_mul4_1 <- xorv data_i[@3] data_i[@1] ;;
     (* // Mul4(y_pre_mul4) *)
     (* for (genvar i = 0; i < 2; i++) begin : gen_mul4 *)
     (*   assign y[i] = aes_mul4(y_pre_mul4[i]); *)
@@ -83,7 +83,7 @@ Section WithCava.
 
     (* // Drive y2_pre_mul2 *)
     (* assign y2_pre_mul2 = y[0] ^ y[1]; *)
-    y2_pre_mul2 <- xor y[@0] y[@1] ;;
+    y2_pre_mul2 <- xorv y[@0] y[@1] ;;
     (* // Mul2(y) *)
     (* assign y2 = aes_mul2(y2_pre_mul2); *)
     y2 <- aes_mul2 y2_pre_mul2 ;;
@@ -91,8 +91,8 @@ Section WithCava.
     (* // Drive z *)
     (* assign z[0] = y2 ^ y[0]; *)
     (* assign z[1] = y2 ^ y[1]; *)
-    z_0 <- xor y2 y[@0] ;;
-    z_1 <- xor y2 y[@1] ;;
+    z_0 <- xorv y2 y[@0] ;;
+    z_1 <- xorv y2 y[@1] ;;
     let z := unpeel [z_0; z_1] in
 
     (* // Mux z *)
@@ -107,10 +107,10 @@ Section WithCava.
     (* assign data_o[1] = data_i[0] ^ x_mul2[2] ^ x[1] ^ z_muxed[0]; *)
     (* assign data_o[2] = data_i[3] ^ x_mul2[1] ^ x[3] ^ z_muxed[1]; *)
     (* assign data_o[3] = data_i[2] ^ x_mul2[0] ^ x[3] ^ z_muxed[0]; *)
-    data_o0 <- (xor data_i[@1] x_mul2[@3] >>= xor x[@1] >>= xor z_muxed[@1]) ;;
-    data_o1 <- (xor data_i[@0] x_mul2[@2] >>= xor x[@1] >>= xor z_muxed[@0]) ;;
-    data_o2 <- (xor data_i[@3] x_mul2[@1] >>= xor x[@3] >>= xor z_muxed[@1]) ;;
-    data_o3 <- (xor data_i[@2] x_mul2[@0] >>= xor x[@3] >>= xor z_muxed[@0]) ;;
+    data_o0 <- (xorv data_i[@1] x_mul2[@3] >>= xorv x[@1] >>= xorv z_muxed[@1]) ;;
+    data_o1 <- (xorv data_i[@0] x_mul2[@2] >>= xorv x[@1] >>= xorv z_muxed[@0]) ;;
+    data_o2 <- (xorv data_i[@3] x_mul2[@1] >>= xorv x[@3] >>= xorv z_muxed[@1]) ;;
+    data_o3 <- (xorv data_i[@2] x_mul2[@0] >>= xorv x[@3] >>= xorv z_muxed[@0]) ;;
 
     ret (unpeel [data_o0; data_o1; data_o2; data_o3]).
 

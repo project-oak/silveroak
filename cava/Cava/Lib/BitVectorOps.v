@@ -34,4 +34,7 @@ Section WithCava.
     cava (signal (Vec Bit n)) :=
     zipWith xor2 (fst ab) (snd ab).
 
+  (* Make a curried version of xorV *)
+  Definition xorv {n} (a b : signal (Vec Bit n)) : cava (signal (Vec Bit n)) := xorV (a, b).
+
 End WithCava.

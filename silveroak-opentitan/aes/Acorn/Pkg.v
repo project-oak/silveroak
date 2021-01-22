@@ -54,28 +54,20 @@ Section WithCava.
     c <- xor2 (x[@3], x[@7]) ;;
 
     ret (unpeel
-      (x[@7]
-          :: a
-          :: x[@1]
-          :: b
-          :: c
-          :: x[@4]
-          :: x[@5]
-          :: x[@6] :: []
-    )).
+          [x[@7];
+           a;
+           x[@1];
+           b;
+           c;
+           x[@4];
+           x[@5];
+           x[@6]
+          ]
+    ).
 
   Definition aes_mul4
     : signal byte -> cava (signal byte) :=
     aes_mul2 >=> aes_mul2.
-
-  (* bitwise xor2 *)
-  Definition xor {n} (a b: signal (Vec Bit n)): cava (signal (Vec Bit n)) :=
-    x <- mapT xor2 (vcombine (peel a) (peel b)) ;;
-    ret (unpeel x).
-
-  (* Uncurried bitwise xor2 *)
-  Definition xor' {n} '( (a,b) : signal (Vec Bit n) * signal (Vec Bit n) ): cava (signal (Vec Bit n)) :=
-    xor a b.
 
   Definition zero_byte : signal byte := unpeel (Vector.const zero 8).
 
