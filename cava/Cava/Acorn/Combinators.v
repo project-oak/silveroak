@@ -32,6 +32,7 @@ Require Import Cava.VectorUtils.
 Require Import Cava.ListUtils.
 Require Import Cava.Signal.
 Require Import Cava.Tactics.
+Require Import Cava.Acorn.CavaPrelude.
 
 Generalizable All Variables.
 
@@ -87,6 +88,12 @@ Section WithCava.
                        cava (signal A * (signal B * signal C)) :=
    let '((a, b), c) := i in
    ret (a, (b, c)).
+
+  Definition mux2 {A : SignalType}
+                  (sel : signal Bit)
+                  (i : signal A * signal A) :
+                  cava (signal A) :=
+  ret (pairSel sel (mkpair (fst i) (snd i))).
  
   (* Use a circuit to zip together two vectors. *)
   Definition zipWith {A B C : SignalType} {n : nat}
@@ -628,14 +635,13 @@ Section WithCava.
   Qed.
 
   Definition all {n} (v : signal (Vec Bit n)) : cava (signal Bit) :=
-    default <- one ;;
-    tree_all_sizes default (fun x y => and2 (x,y)) (peel v).
+    tree_all_sizes one (fun x y => and2 (x,y)) (peel v).
 
   Fixpoint eqb {t : SignalType} : signal t -> signal t -> cava (signal Bit) :=
     match t as t0 return signal t0 -> signal t0 -> cava (signal Bit) with
-    | Void => fun _ _ => one
+    | Void => fun _ _ => ret one
     | Bit => fun x y => xnor2 (x, y)
-    | ExternalType s => fun x y => one
+    | ExternalType s => fun x y => ret one
     | Pair a b => fun x y : signal (Pair a b) =>
                    let '(x1,x2) := unpair x in
                    let '(y1, y2) := unpair y in

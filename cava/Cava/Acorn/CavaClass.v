@@ -28,8 +28,6 @@ Class Cava (signal : SignalType -> Type) := {
   cava : Type -> Type;    
   (* Constant values. *)
   constant : bool -> signal Bit;
-  zero : cava (signal Bit); (* This component always returns the value 0. *)
-  one : cava (signal Bit); (* This component always returns the value 1. *)
   (* Default values. *)
   defaultSignal: forall {t: SignalType}, signal t;
   (* SystemVerilog primitive gates *)

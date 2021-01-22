@@ -153,8 +153,6 @@ Local Notation lift6Bool := (@lift6 Bit Bit Bit Bit Bit Bit Bit).
 Instance CombinationalSemantics : Cava seqType :=
   { cava := ident;
     constant := fun x => [x];
-    zero := ret [false];
-    one := ret [true];
     defaultSignal t := [];
     inv := lift1Bool negb;
     and2 :=  fun '(x,y) => lift2Bool andb x y;

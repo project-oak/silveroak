@@ -111,7 +111,7 @@ Definition full_cipher {signal} {semantics : Cava signal} {monad : Monad cava}
   cipher
     (round_index:=Vec Bit 4) (round_constant:=Vec Bit 8)
     sub_bytes shift_rows mix_columns add_round_key
-    (fun k => is_decrypt <- one ;; mix_columns is_decrypt k)
+    (fun k => mix_columns one k) (* Hard-wire is_decrypt to '1' *)
     key_expand num_rounds_regular round_0.
 
 Lemma full_cipher_equiv

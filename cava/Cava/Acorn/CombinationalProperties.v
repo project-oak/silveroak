@@ -21,6 +21,7 @@ Require Import Coq.NArith.NArith.
 Require Import Coq.Vectors.Vector.
 Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.Combinators.
 Require Import Cava.Acorn.CombinationalMonad.
 Require Import Cava.Acorn.Identity.
@@ -192,7 +193,6 @@ Lemma all_correct {n} v :
 Proof.
   destruct n; [ eapply Vector.case0 with (v:=v); reflexivity | ].
   cbv [all]. cbn [one CombinationalSemantics].
-  rewrite MonadLaws.bind_of_return by apply MonadLaws_ident.
   erewrite tree_all_sizes_equiv' with (op:=map2 andb) (id:=[true]) (valid:=fun a => length a = 1);
     intros; destruct_lists_by_length;
       cbn [map2 length unIdent Monad.bind Monad.ret Monad_ident]; boolsimpl;
@@ -298,11 +298,3 @@ Proof.
     | _ => reflexivity
     end.
 Qed.
-
-Lemma one_correct : @unIdent (seqType Bit) one = [true].
-Proof. reflexivity. Qed.
-Hint Rewrite one_correct using solve [eauto] : simpl_ident.
-
-Lemma zero_correct : @unIdent (seqType Bit) zero = [false].
-Proof. reflexivity. Qed.
-Hint Rewrite zero_correct using solve [eauto] : simpl_ident.

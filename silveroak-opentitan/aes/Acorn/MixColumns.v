@@ -99,9 +99,8 @@ Section WithCava.
     (* assign z_muxed[0] = (op_i == CIPH_FWD) ? 8'b0 : z[0]; *)
     (* assign z_muxed[1] = (op_i == CIPH_FWD) ? 8'b0 : z[1]; *)
     op_i_inv <- inv op_i ;; (* CIPH_FWD := false *)
-    zb <- zero_byte;;
-    let paired := [unpeel [zb; zb]; z] in
-    z_muxed <- muxPair op_i (unpeel [zb; zb], z) ;;
+    let paired := [unpeel [zero_byte; zero_byte]; z] in
+    z_muxed <- muxPair op_i (unpeel [zero_byte; zero_byte], z) ;;
 
     (* // Drive outputs *)
     (* assign data_o[0] = data_i[1] ^ x_mul2[3] ^ x[1] ^ z_muxed[1]; *)
