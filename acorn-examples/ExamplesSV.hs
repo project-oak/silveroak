@@ -18,7 +18,6 @@ module Main where
 
 import Cava2SystemVerilog
 import NandGate
-import MuxExamples
 import FullAdderExample
 import UnsignedAdderExamples
 import AdderTree
@@ -27,10 +26,6 @@ import Sorter
 main :: IO ()
 main = do writeSystemVerilog nand2Netlist
           writeTestBench nand2_tb
-          writeSystemVerilog mux2_1Netlist
-          writeTestBench mux2_1_tb
-          writeSystemVerilog muxBus4_8Netlist
-          writeTestBench muxBus4_8_tb
           writeSystemVerilog adder4Netlist
           writeTestBench adder4_tb
           writeSystemVerilog adder8_3inputNetlist
