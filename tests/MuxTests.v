@@ -32,6 +32,10 @@ Local Open Scope vector_scope.
 Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.
 
+  (* muxPair specialized to single bit inputs *)
+  Definition mux2_1: signal Bit -> signal Bit * signal Bit -> cava (signal Bit)
+  := muxPair.
+
   (* Mux between input buses *)
 
   Definition muxBus {dsz sz isz: nat}
@@ -49,16 +53,26 @@ Local Close Scope vector_scope.
 (* muxPair tests                                                              *)
 (******************************************************************************)
 
-Example m1: combinational (muxPair (A:=Bit) [true] ([false], [false])) = [false].
+Example m1: combinational (mux2_1 [true] ([false], [false])) = [false].
 Proof. reflexivity. Qed.
 
-Example m2: combinational (muxPair (A:=Bit) [false] ([false], [true])) = [false].
+Example m2: combinational (mux2_1 [false] ([false], [true])) = [false].
 Proof. reflexivity. Qed.
 
-Example m3: combinational (muxPair (A:=Bit) [true] ([true], [false])) = [false].
+Example m3: combinational (mux2_1 [true] ([true], [false])) = [false].
 Proof. reflexivity. Qed.
 
-Example m4: combinational (muxPair (A:=Bit) [false] ([true], [false])) = [true].
+Example m4: combinational (mux2_1 [false] ([true], [false])) = [true].
+Proof. reflexivity. Qed.
+
+Definition muxTestSel :=   [true; false; true; false].
+Definition muxTestSelAB := ([false; false; true; true],
+                            [false; true; false; true]
+                           ).
+
+Definition muxTestExpectedOutputs := [false; false; false; true].
+
+Example m1_4:  combinational (mux2_1 muxTestSel muxTestSelAB) = muxTestExpectedOutputs.
 Proof. reflexivity. Qed.
 
 Definition mux2_1_Interface
@@ -68,7 +82,7 @@ Definition mux2_1_Interface
      [].
 
 Definition mux2_1Netlist
-  := makeNetlist mux2_1_Interface (fun '(sel, a, b) => muxPair sel (a, b)).
+  := makeNetlist mux2_1_Interface (fun '(sel, a, b) => mux2_1 sel (a, b)).
 
 Definition mux2_1_tb_inputs :=
   [(false, false, true);
@@ -78,7 +92,7 @@ Definition mux2_1_tb_inputs :=
 
 Definition mux2_1_tb_expected_outputs
   := map (fun '(i0,i1,i2) =>
-            List.hd false (combinational (muxPair (A:=Bit) [i0] ([i1],[i2]))))
+            List.hd false (combinational (mux2_1 [i0] ([i1],[i2]))))
          mux2_1_tb_inputs.
 
 Definition mux2_1_tb

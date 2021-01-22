@@ -19,12 +19,17 @@ module Main where
 import AccumulatingAdderEnable
 import Cava2SystemVerilog
 import Instantiate
+import MuxTests
 import TestMultiply
 import Delay
 import CountBy
 
 main :: IO ()
-main = do writeSystemVerilog instantiateNetlist
+main = do writeSystemVerilog mux2_1Netlist
+          writeTestBench mux2_1_tb
+          writeSystemVerilog muxBus4_8Netlist
+          writeTestBench muxBus4_8_tb
+          writeSystemVerilog instantiateNetlist
           writeTestBench instantiate_tb
           writeSystemVerilog mult2_3_5Netlist
           writeTestBench mult2_3_5_tb

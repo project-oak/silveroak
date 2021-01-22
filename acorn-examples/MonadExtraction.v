@@ -16,7 +16,6 @@
 
 Require Import AcornExamples.Examples.
 Require Import AcornExamples.NandGate.
-Require Import AcornExamples.MuxExamples.
 Require Import AcornExamples.FullAdderExample.
 Require Import AcornExamples.UnsignedAdderExamples.
 Require Import AcornExamples.AdderTree.
@@ -31,7 +30,6 @@ Extraction Language Haskell.
 
 Extraction Library Examples.
 Extraction Library NandGate.
-Extraction Library MuxExamples.
 Extraction Library FullAdderExample.
 Extraction Library UnsignedAdderExamples.
 Extraction Library AdderTree.
