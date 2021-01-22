@@ -14,7 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-
 From Coq Require Import Lists.List.
 Import ListNotations.
 Require Import ExtLib.Structures.Monads.
@@ -30,6 +29,7 @@ Require Import Cava.Tactics.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.CombinationalMonad.
 Require Import Cava.Acorn.Combinators.
+Require Import Cava.Acorn.CavaPrelude.
 
 (* Given two sequential inputs, combine them by combining all the elements of
    the first with the elements of the second that *do not overlap* when the
@@ -127,7 +127,7 @@ Instance SequentialSemantics : CavaSeq CombinationalSemantics :=
                        pairLeft >=>    (* ((i, state), state) *)
                        first f >=>     (* (f (i, state), state) *)
                        swap >=>        (* (state, f (i, state) *)
-                       mux2 en)        (* if en then f (i, state) else state *)
+                       muxPair en)     (* if en then f (i, state) else state *)
                        (i, state)) (mkpair en input)
    }.
 
