@@ -38,10 +38,6 @@ Section WithCava.
   Context {signal} {semantics : Cava signal}.
   Context {monad: Monad cava}.
 
-  Definition zero_byte : cava (signal byte) :=
-    z <- zero ;;
-    ret (unpeel (z :: z :: z :: z :: z :: z :: z :: z :: [])).
-
   Definition aes_mix_single_column
     (op_i: signal Bit) (data_i: signal (Vec byte 4))
     : cava (signal (Vec byte 4)) :=

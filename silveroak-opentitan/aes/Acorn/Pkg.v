@@ -77,4 +77,25 @@ Section WithCava.
   Definition xor' {n} '( (a,b) : signal (Vec Bit n) * signal (Vec Bit n) ): cava (signal (Vec Bit n)) :=
     xor a b.
 
+  Definition zero_byte : cava (signal byte) :=
+    z <- zero ;;
+    ret (unpeel (z :: z :: z :: z :: z :: z :: z :: z :: [])).
+
+  (* function automatic logic [31:0] aes_circ_byte_shift(logic [31:0] in, logic [1:0] shift);
+    logic [31:0] out;
+    logic [31:0] s;
+    s = {30'b0,shift};
+    out = {in[8*((7-s)%4) +: 8], in[8*((6-s)%4) +: 8],
+           in[8*((5-s)%4) +: 8], in[8*((4-s)%4) +: 8]};
+    return out;
+  endfunction *)
+  Definition aes_circ_byte_shift (shift: nat) (input: signal (Vec byte 4)):
+    cava (signal (Vec byte 4)) :=
+    let indices := [4 - shift; 5 - shift; 6 - shift; 7 - shift] in
+    let indices := map (fun x => Nat.modulo x 4) indices in
+    ret (unpeel (map (indexConst input) indices)).
+
+  Definition is_CIPH_FWD (op_i: signal Bit): cava (signal Bit) :=
+    inv op_i.
+
 End WithCava.
