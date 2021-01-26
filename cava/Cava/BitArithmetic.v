@@ -581,8 +581,9 @@ Ltac constant_bitvec_cases vec :=
 (******************************************************************************)
 
 Definition unsignedAddBool {m n : nat}
-                           (av : Bvector m) (bv : Bvector n)
+                           (av_bv : Bvector m *  Bvector n)
 : Bvector (1 + max m n) :=
+  let (av, bv) := av_bv in
   let a := Bv2N av in
   let b := Bv2N bv in
   let sumSize := 1 + max m n in
@@ -590,13 +591,15 @@ Definition unsignedAddBool {m n : nat}
   N2Bv_sized sumSize sum.
 
 Definition unsignedMultBool {m n : nat}
-           (av : Bvector m) (bv : Bvector n)
+           (av_bv : Bvector m *  Bvector n)
   : Bvector (m + n) :=
+  let (av, bv) := av_bv in
   let a := Bv2N av in
   let b := Bv2N bv in
   let product := (a * b)%N in
   N2Bv_sized (m + n) product.
 
 Definition greaterThanOrEqualBool {m n : nat}
-           (av : Bvector m) (bv : Bvector n) : bool :=
+           (av_bv : Bvector m *  Bvector n) : bool :=
+  let (av, bv) := av_bv in
   (Bv2N bv <=? Bv2N av)%N.

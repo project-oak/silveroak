@@ -41,7 +41,7 @@ Definition twoSorter {signal} `{Cava signal} `{Monad cava} {n}
                      cava (signal (Vec (Vec Bit n) 2)) :=
    let a := indexConst ab 0 in
    let b := indexConst ab 1 in
-   comparison <- greaterThanOrEqual a b ;;
+   let comparison := greaterThanOrEqual (a, b) in
    negComparison <- inv comparison ;;
    let sorted : Vector.t (signal (Vec Bit n)) 2 :=
      [indexAt ab (unpeel [comparison]);

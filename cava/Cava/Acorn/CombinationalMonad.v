@@ -52,6 +52,12 @@ Definition lift1 {A B} (f : combType A -> combType B) (a : seqType A)
   : ident (seqType B) :=
   ret (map f a).
 
+Definition liftP {A B C} (f : combType A * combType B -> combType C)
+           (ab : seqType A * seqType B)
+  : seqType C :=
+  let (a, b) := ab in
+  map f (pad_combine a b).
+
 Definition lift2 {A B C} (f : combType A -> combType B -> combType C)
            (a : seqType A) (b : seqType B)
   : ident (seqType C) :=
@@ -177,11 +183,10 @@ Instance CombinationalSemantics : Cava seqType :=
     indexAt t sz isz := @indexAtBoolList t sz isz;
     indexConst t sz := @indexConstBoolList t sz;
     slice t sz := @sliceBoolList t sz;
-    unsignedAdd m n := @lift2 (Vec Bit _) (Vec Bit _) (Vec Bit (1 + Nat.max m n))
-                              (@unsignedAddBool m n);
-    unsignedMult m n := @lift2 (Vec Bit _) (Vec Bit _) (Vec Bit _)
+    unsignedAdd m n := @liftP (Vec Bit m) (Vec Bit n) (Vec Bit (1 + max m n)) (@unsignedAddBool m n);
+    unsignedMult m n := @liftP (Vec Bit _) (Vec Bit _) (Vec Bit _)
                                (@unsignedMultBool m n);
-    greaterThanOrEqual m n := @lift2 (Vec Bit _) (Vec Bit _) Bit
+    greaterThanOrEqual m n := @liftP (Vec Bit _) (Vec Bit _) Bit
                                      (@greaterThanOrEqualBool m n);
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefaultS (map port_type (circuitOutputs intf)));

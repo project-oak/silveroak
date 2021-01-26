@@ -205,29 +205,6 @@ Definition sliceNet {t: SignalType} {sz: nat}
                     Signal (Vec t len) :=
   unpeelNet (sliceVector (peelNet v) startAt len H).
 
-Definition unsignedAddNet {m n : nat}
-                          (a : Signal (Vec Bit m))
-                          (b : Signal (Vec Bit n)) :
-                          state CavaState (Signal (Vec Bit (1 + max m n))) :=
-  sum <- newVector Bit (1 + max m n) ;;
-  addInstance (UnsignedAdd a b sum) ;;
-  ret sum.
-
-Definition unsignedMultNet {m n : nat}
-                           (a : Signal (Vec Bit m))
-                           (b : Signal (Vec Bit n)) :
-                           state CavaState (Signal (Vec Bit (m + n))) :=
-  product <- newVector Bit (m + n) ;;
-  addInstance (UnsignedMultiply a b product) ;;
-  ret product.
-
-Definition greaterThanOrEqualNet {m n : nat}
-                                 (a : Signal (Vec Bit m)) (b : Signal (Vec Bit n)) :
-                                 state CavaState (Signal Bit) :=
-  comparison <- newWire ;;
-  addInstance (GreaterThanOrEqual a b comparison) ;;
-  ret comparison.
-
 Definition delayNet (t: SignalType)
                     (i : Signal t)
                     : state CavaState (Signal t) :=
@@ -313,9 +290,9 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     indexAt k sz isz := IndexAt;
     indexConst k sz := IndexConst;
     slice k sz := @sliceNet k sz;
-    unsignedAdd m n := @unsignedAddNet m n;
-    unsignedMult m n := @unsignedMultNet m n;
-    greaterThanOrEqual m n := @greaterThanOrEqualNet m n;
+    unsignedAdd m n ab := @UnsignedAdd m n (1 + max m n) (fst ab) (snd ab);
+    unsignedMult m n ab := @UnsignedMultiply m n (m + n) (fst ab) (snd ab);
+    greaterThanOrEqual m n ab := @GreaterThanOrEqual m n (fst ab) (snd ab);
     instantiate := instantiateNet;
     blackBox := blackBoxNet;
 }.

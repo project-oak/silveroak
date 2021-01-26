@@ -73,13 +73,13 @@ Class Cava (signal : SignalType -> Type) := {
                  (startAt + len <= sz) ->
                  signal (Vec t len);
   (* Synthesizable arithmetic operations. *)
-  unsignedAdd : forall {a b : nat}, signal (Vec Bit a) -> signal (Vec Bit b) ->
-                cava (signal (Vec Bit (1 + max a b)));
-  unsignedMult : forall {a b : nat}, signal (Vec Bit a) -> signal (Vec Bit b)->
-                cava (signal (Vec Bit (a + b)));              
+  unsignedAdd : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b) ->
+                signal (Vec Bit (1 + max a b));
+  unsignedMult : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b)->
+                signal (Vec Bit (a + b));              
   (* Synthesizable relational operators *)
-  greaterThanOrEqual : forall {a b : nat}, signal (Vec Bit a) -> signal (Vec Bit b) ->
-                       cava (signal Bit);
+  greaterThanOrEqual : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b) ->
+                      signal Bit;
   (* Hierarchy *)
   instantiate : forall (intf: CircuitInterface),
                  (tupleInterface signal (map port_type (circuitInputs intf)) ->

@@ -106,17 +106,17 @@ Definition indexAtBoolF {t sz isz}
            (v : combType (Vec t sz)) (sel : combType (Vec Bit isz)) :=
   nth_default (defaultCombValue _) (N.to_nat (Bv2N sel)) v.
 
-Definition unsignedAddBoolF {m n : nat} (av : Bvector m) (bv : Bvector n)
-  : timed (Bvector (1 + max m n)) :=
-  ret (unsignedAddBool av bv).
+Definition unsignedAddBoolF {m n : nat} (av_bv : Bvector m * Bvector n)
+  : Bvector (1 + max m n) :=
+   unsignedAddBool av_bv.
 
-Definition unsignedMultBoolF {m n : nat} (av : Bvector m) (bv : Bvector n)
-  : timed (Bvector (m + n)) :=
-  ret (unsignedMultBool av bv).
+Definition unsignedMultBoolF {m n : nat} (av_bv : Bvector m * Bvector n)
+  : Bvector (m + n) :=
+  unsignedMultBool av_bv.
 
-Definition greaterThanOrEqualBoolF {m n : nat} (av : Bvector m) (bv : Bvector n)
-  : timed bool :=
-  ret (greaterThanOrEqualBool av bv).
+Definition greaterThanOrEqualBoolF {m n : nat} (av_bv : Bvector m * Bvector n)
+  : bool :=
+  greaterThanOrEqualBool av_bv.
 
 
 Definition blackBoxF (intf : CircuitInterface)

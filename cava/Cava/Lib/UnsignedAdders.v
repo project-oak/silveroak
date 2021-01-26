@@ -81,8 +81,8 @@ Section WithCava.
                           (c : signal (Vec Bit cSize)) :
                           cava (signal (Vec Bit (1 + max (1 + max aSize bSize) cSize)))
                           :=
-    a_plus_b <- unsignedAdd a b ;;
-    sum <- unsignedAdd a_plus_b c ;;
+    let a_plus_b := unsignedAdd (a, b) in
+    let sum := unsignedAdd (a_plus_b, c) in
     ret sum.
 
   Local Close Scope vector_scope.

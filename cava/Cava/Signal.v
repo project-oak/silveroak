@@ -198,7 +198,19 @@ Inductive Signal : SignalType -> Type :=
   | SignalSnd : forall {t1 t2}, Signal (Pair t1 t2) -> Signal t2
   (* Static slice *)
   | Slice: forall {t sz} (start len: nat), Signal (Vec t sz) ->
-                                           Signal (Vec t len).
+                                           Signal (Vec t len)
+  (* Synthesizable arithmetic operations. *)
+  | UnsignedAdd: forall {a b c : nat}, Signal (Vec Bit a) -> Signal (Vec Bit b) ->
+                                       Signal (Vec Bit c)
+  | UnsignedSubtract : forall {a b c : nat}, Signal (Vec Bit a) ->
+                                        Signal (Vec Bit b) ->
+                                        Signal (Vec Bit c)
+  | UnsignedMultiply : forall {a b c : nat}, Signal (Vec Bit a) ->
+                                        Signal (Vec Bit b) ->
+                                        Signal (Vec Bit c)
+  | GreaterThanOrEqual: forall {a b : nat}, Signal (Vec Bit a) ->
+                                            Signal (Vec Bit b) ->
+                                            Signal Bit.
 
 Definition denoteSignal (t : SignalType) : Type := Signal t.
 
