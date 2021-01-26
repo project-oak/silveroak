@@ -688,6 +688,23 @@ Section WithCava.
              input ;;
       ret (fst (unpair bc)).
 
+    (* A loop with an initial state. The circuit diagram looks like:
+
+                      _______
+               ______| delay |____________
+              |      |_______|            |
+              |       _______             |
+              |   ___| delay |_________   |
+              |  |   |_______|         |  |
+              |  |                     |  |
+              |  |                     |  |
+              |  |_                  one  |
+              |_|   \       _________     |
+initial_state __|mux |-----|         |    |
+                |___/      |  body   |____|
+        input -------------|_________|
+
+     *)
     Definition loopDelaySWithInitialState {A B: SignalType}
                (body : signal A * signal B -> cava (signal B))
                (input : signal A) (initial_state : signal B)
