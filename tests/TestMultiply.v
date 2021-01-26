@@ -33,8 +33,7 @@ Section WithCava.
   Definition multiplier {aSize bSize: nat}
                         (ab: signal (Vec Bit aSize) * signal (Vec Bit bSize)):
                         cava (signal (Vec Bit (aSize + bSize))) :=
-    let (a, b) := ab in
-    ret (unsignedMult (a, b)).
+    ret (unsignedMult ab).
 
 End WithCava.
 
