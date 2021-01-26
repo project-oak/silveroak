@@ -54,7 +54,6 @@ library
                      FullAdder
                      HexString
                      IdentityMonad
-                     Kind
                      List
                      Logic
                      Monad
