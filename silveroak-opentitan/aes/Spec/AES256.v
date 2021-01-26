@@ -20,7 +20,7 @@
 Require Import Coq.Lists.List.
 Require Import Cava.ListUtils.
 Require Import AesSpec.AddRoundKey.
-Require Import AesSpec.Placeholder.MixColumns.
+Require Import AesSpec.MixColumns.
 Require Import AesSpec.ShiftRows.
 Require Import AesSpec.SubBytes.
 Require Import AesSpec.Cipher.
