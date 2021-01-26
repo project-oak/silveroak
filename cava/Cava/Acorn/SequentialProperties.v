@@ -126,30 +126,70 @@ Section Overlap.
     reflexivity.
   Qed.
 
+  Lemma overlap_length {A} n x y :
+    length (@overlap A n x y) = Nat.max (length x) (length y + n).
+  Proof.
+    cbv [overlap]. autorewrite with push_length. lia.
+  Qed.
+  Hint Rewrite @overlap_length using solve [eauto] : push_length.
+
+  Lemma overlap_repeat {A} n m p (x : combType A) :
+    n <= m ->
+    overlap n (repeat x m) (repeat x p) = repeat x (Nat.max m (p + n)).
+  Proof.
+    intros; cbv [overlap]. autorewrite with push_length natsimpl.
+    cbn [repeat app]. rewrite skipn_repeat, <-repeat_append.
+    f_equal; lia.
+  Qed.
+
+  Lemma overlap_mkpair_repeat_l {A B} (x : combType A) (b1 b2 : seqType B)
+        offset n m :
+    length b1 = n -> length b2 = m -> offset <= length b1 ->
+    overlap offset (mkpair (repeat x n) b1) (mkpair (repeat x m) b2)
+    = mkpair (repeat x (Nat.max n (m + offset))) (overlap offset b1 b2).
+  Proof.
+    intros. cbn [mkpair CombinationalSemantics].
+    rewrite !pad_combine_eq by length_hammer.
+    cbv [overlap]. cbn [combType] in *.
+    autorewrite with push_length natsimpl push_skipn.
+    rewrite (proj2 (Nat.sub_0_le offset (length b1))) by lia.
+    cbn [repeat app]. rewrite <-combine_append, <-repeat_append by length_hammer.
+    subst; f_equal; [ ]. f_equal; lia.
+  Qed.
+
   Lemma unpair_overlap_mkpair_r {A B} offset ab (a : seqType A) (b : seqType B) :
+    unpair (overlap offset ab (mkpair a b)) = (overlap offset (fst (unpair ab))
+                                                       (extend a (lastSignal a) (length b)),
+                                               overlap offset (snd (unpair ab))
+                                                       (extend b (lastSignal b) (length a))).
+  Proof.
+    cbv [overlap]; intros. cbn [unpair mkpair CombinationalSemantics].
+    cbn [seqType combType defaultCombValue] in *. cbv [pad_combine].
+    autorewrite with push_split. cbn [fst snd].
+    cbv [seqType]. cbn [combType defaultCombValue] in *.
+    rewrite split_length_r, split_length_l.
+    rewrite combine_split by apply extend_to_match.
+    reflexivity.
+  Qed.
+
+  Lemma unpair_overlap_mkpair_r_same {A B} offset ab (a : seqType A) (b : seqType B) :
     length a = length b ->
     unpair (overlap offset ab (mkpair a b)) = (overlap offset (fst (unpair ab)) a,
                                                overlap offset (snd (unpair ab)) b).
   Proof.
-    cbv [overlap]; intros. cbn [unpair mkpair CombinationalSemantics].
-    cbn [seqType combType defaultCombValue] in *.
-    autorewrite with push_split. cbn [fst snd].
-    cbv [seqType]. cbn [combType defaultCombValue] in *.
-    rewrite split_length_r, split_length_l.
-    rewrite pad_combine_eq by length_hammer.
-    rewrite combine_split by auto. reflexivity.
+    intros. rewrite unpair_overlap_mkpair_r.
+    rewrite !extend_le by lia. reflexivity.
   Qed.
 End Overlap.
 Hint Rewrite @overlap_cons1 @overlap_cons2 @overlap_nil_r @overlap_snoc_cons
      using solve [length_hammer] : seqsimpl.
 Hint Rewrite @overlap_0_nil @overlap_app_same using solve [eauto] : seqsimpl.
 Hint Rewrite @skipn_overlap_same using solve [eauto] : push_skipn.
+Hint Rewrite @overlap_length using solve [eauto] : push_length.
 
 Section Loops.
   Lemma loopSeqS'_step {A B}
-        (f : seqType A * seqType B -> ident (seqType B))
-        (spec : combType A -> combType B -> seqType B) :
-    (forall a b, sequential (f ([a], [b])) = spec a b) ->
+        (f : seqType A * seqType B -> ident (seqType B)) :
     forall (loop_state : nat * ident (seqType B)) a,
       loopSeqS' f loop_state a
       = let t := fst loop_state in
@@ -158,18 +198,16 @@ Section Loops.
                         | 0 => defaultCombValue B
                         | S t' => nth t' acc (defaultCombValue B)
                         end in
-        let r := spec a feedback in
+        let r := sequential (f ([a], [feedback])) in
         (S t, ret (overlap t acc r)).
   Proof.
-    cbv [sequential loopSeqS' SequentialSemantics]. intro Hfspec.
-    intros. seqsimpl. rewrite Hfspec. reflexivity.
+    cbv [sequential loopSeqS' SequentialSemantics].
+    intros. seqsimpl. reflexivity.
   Qed.
 
   Lemma loopDelayS_stepwise {A B}
         (f : seqType A * seqType B -> ident (seqType B))
-        (spec : combType A -> combType B -> seqType B)
         input :
-    (forall a b, sequential (f ([a], [b])) = spec a b) ->
     sequential (loopDelayS (CavaSeq:=SequentialSemantics) f input)
     = snd (fold_left (fun loop_state a =>
                         let '(t, acc) := loop_state in
@@ -177,7 +215,7 @@ Section Loops.
                                         | 0 => defaultCombValue B
                                         | S t' => nth t' acc (defaultCombValue B)
                                         end in
-                        let r := spec a feedback in
+                        let r := sequential (f ([a], [feedback])) in
                         (S t, overlap t acc r))
                      input (0, [])).
   Proof.
@@ -199,9 +237,7 @@ Section Loops.
 
   Lemma loopDelayS_stepwise_indexed {A B}
         (f : seqType A * seqType B -> ident (seqType B))
-        (spec : combType A -> combType B -> seqType B)
         input :
-    (forall a b, sequential (f ([a], [b])) = spec a b) ->
     sequential (loopDelayS (CavaSeq:=SequentialSemantics) f input)
     = fold_left (fun acc t =>
                    let a := nth t input (defaultCombValue A) in
@@ -209,7 +245,7 @@ Section Loops.
                                    | 0 => defaultCombValue B
                                    | S t' => nth t' acc (defaultCombValue B)
                                    end in
-                   let r := spec a feedback in
+                   let r := sequential (f ([a], [feedback])) in
                    overlap t acc r)
                 (seq 0 (length input)) [].
   Proof.
@@ -339,7 +375,7 @@ Section Loops.
     { cbv zeta; intros *. intros [Ht0 HI]. intros.
       split; [ congruence | ]. repeat destruct_pair_let.
       cbv [sequential]; seqsimpl. rewrite unpair_skipn.
-      rewrite !unpair_overlap_mkpair_r
+      rewrite !unpair_overlap_mkpair_r_same
         by (destruct t; cbn [unpair split CombinationalSemantics];
             destruct_one_match; cbn [fst snd]; auto).
       cbn [fst snd]. autorewrite with push_skipn. cbv zeta in Hbody.
@@ -415,7 +451,7 @@ Section Loops.
       cbn [fst snd]. auto. }
     { cbv zeta; intros. repeat destruct_pair_let.
       cbv [sequential]; seqsimpl. rewrite unpair_skipn.
-      rewrite !unpair_overlap_mkpair_r
+      rewrite !unpair_overlap_mkpair_r_same
         by (destruct t; cbn [unpair split CombinationalSemantics];
             destruct_one_match; cbn [fst snd]; auto).
       cbn [fst snd]. autorewrite with push_skipn. cbv zeta in Hbody.
@@ -440,6 +476,69 @@ Section Loops.
           rewrite tl_skipn.  reflexivity. }
       apply Hbody. }
     { intros; eauto. }
+  Qed.
+
+  Lemma loopDelaySWithInitialState_stepwise_indexed {A B}
+        (f : seqType A * seqType B -> ident (seqType B))
+        input initial_state :
+    (forall a b, length (sequential (f (([a] : seqType A), ([b] : seqType B)))) <> 0) ->
+    unIdent (loopDelaySWithInitialState
+               (seqsemantics:=SequentialSemantics) f input [initial_state])
+    = fold_left (fun acc t =>
+                   let a := nth t input (defaultCombValue A) in
+                   let state := match t with
+                                | 0 => initial_state
+                                | S t' => nth t' acc (defaultCombValue B)
+                                end in
+                   let r := sequential (f ([a], [state])) in
+                   overlap t acc r)
+                (seq 0 (length input)) [].
+  Proof.
+    intro Hnonnil. intros.
+    cbv [loopDelaySWithInitialState]. simpl_ident.
+    rewrite loopDelayS_stepwise_indexed.
+    seqsimpl.
+
+    (* Factor out t=0 run, which is markedly different from others *)
+    destruct input; [ reflexivity | ].
+    autorewrite with push_length.
+    cbn [seq fold_left]. seqsimpl.
+    cbn [sequential unIdent].
+    autorewrite with push_nth.
+    rewrite unpair_default; cbn [fst snd defaultCombValue].
+    rewrite muxPair_correct.
+
+    factor_out_loops.
+    eapply fold_left_double_invariant_seq
+      with(I:=fun t (x : seqType B) (y : seqType (Pair Bit B)) =>
+                t <= length x /\
+                y = mkpair CavaPrelude.one x).
+    { (* invariant holds at start *)
+      ssplit; [ | reflexivity ].
+      apply Lt.lt_le_S, Lt.neq_0_lt.
+      intro Heq. refine (Hnonnil _ _ _).
+      symmetry. apply Heq. }
+    { (* invariant holds through loop *)
+      intros *; intros [Hlen ?]; intros; subst.
+      repeat destruct_pair_let. cbn [fst snd] in *.
+      cbn [sequential unIdent]. seqsimpl.
+      destruct i; [ lia | ]. autorewrite with push_nth.
+      match goal with
+      | |- context [f ([?a], [?b])] =>
+        specialize (Hnonnil a b)
+      end.
+      ssplit; [ cbv [seqType] in *; length_hammer | ].
+      rewrite unpair_nth. cbn [fst snd].
+      rewrite !mkpair_one, !unpair_mkpair by length_hammer.
+      rewrite fst_unpair, snd_unpair. cbn [List.map fst snd].
+      rewrite muxPair_correct. autorewrite with push_nth.
+      rewrite !mkpair_one by length_hammer.
+      rewrite (overlap_mkpair_repeat_l (A:=Bit)) by length_hammer.
+      autorewrite with push_length. reflexivity. }
+    { intros *; intros [? ?]; subst.
+      rewrite mkpair_one by length_hammer.
+      rewrite unpair_mkpair by length_hammer.
+      reflexivity. }
   Qed.
 End Loops.
 

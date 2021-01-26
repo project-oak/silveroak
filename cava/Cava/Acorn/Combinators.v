@@ -687,5 +687,22 @@ Section WithCava.
                 ret (mkpair b c))
              input ;;
       ret (fst (unpair bc)).
+
+    Definition loopDelaySWithInitialState {A B: SignalType}
+               (body : signal A * signal B -> cava (signal B))
+               (input : signal A) (initial_state : signal B)
+      : cava (signal B) :=
+      loop_out <- loopDelayS
+                   (B:=Pair Bit B)
+                   (fun (loop_state : signal A * signal (Pair Bit B)) =>
+                      let inp := fst loop_state in
+                      let '(use_feedback_state, feedback_state) :=
+                          unpair (snd loop_state) in
+                      state <- muxPair use_feedback_state
+                                      (initial_state, feedback_state) ;;
+                      new_state <- body (inp, state) ;;
+                      ret (mkpair one new_state))
+                   input ;;
+      ret (snd (unpair loop_out)).
   End Sequential.
  End WithCava.

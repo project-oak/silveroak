@@ -172,10 +172,4 @@ Hint Rewrite @zipWith_unIdent @xorV_unIdent
 Ltac simpl_ident :=
   repeat
     first [ progress autorewrite with simpl_ident
-          | erewrite map2_ext; [ | intros; progress simpl_ident;
-                                   instantiate_app_by_reflexivity ]
-          | erewrite map_ext; [ | intros; progress simpl_ident;
-                                  instantiate_app_by_reflexivity ]
-          | erewrite fold_left_ext; [ | intros; progress simpl_ident;
-                                        instantiate_app_by_reflexivity ]
           | progress cbn [fst snd bind ret Monad_ident unIdent] ].

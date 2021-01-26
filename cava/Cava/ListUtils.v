@@ -71,6 +71,30 @@ Section Misc.
 
   Lemma eta_list {A} (l : list A) d : 0 < length l -> l = hd d l :: tl l.
   Proof. destruct l; length_hammer. Qed.
+
+  Lemma repeat_append {A} (x : A) n m :
+    repeat x (n + m) = repeat x n ++ repeat x m.
+  Proof.
+    revert m; induction n; [ reflexivity | ].
+    intros. cbn [Nat.add repeat]. rewrite <-app_comm_cons.
+    rewrite IHn. reflexivity.
+  Qed.
+
+  Lemma repeat_S {A} (x : A) n :
+   repeat x (S n) = x :: repeat x n.
+  Proof. reflexivity. Qed.
+
+  Lemma combine_append {A B} (la1 la2 : list A) (lb1 lb2 : list B) :
+    length la1 = length lb1 ->
+    combine (la1 ++ la2) (lb1 ++ lb2) = combine la1 lb1 ++ combine la2 lb2.
+  Proof.
+    revert la1 la2 lb1 lb2; induction la1; intros.
+    { destruct lb1; [ reflexivity | cbn [length] in *; lia ]. }
+    { destruct lb1; cbn [length] in *; [ lia | ].
+      rewrite <-!app_comm_cons. cbn [combine].
+      rewrite <-!app_comm_cons. rewrite IHla1 by lia.
+      reflexivity. }
+  Qed.
 End Misc.
 Hint Rewrite @seq_snoc using solve [eauto] : pull_snoc.
 
@@ -95,12 +119,17 @@ Section Extend.
   Proof.
     cbv [extend]; intros. autorewrite with push_length.
     destruct (Nat.min_dec (length l1) (length l2));
-      [ rewrite (proj2 (Nat.sub_0_le (length l1) (length l2))) by lia
-      | rewrite (proj2 (Nat.sub_0_le (length l2) (length l1))) by lia ];
-      lia.
+      autorewrite with natsimpl; lia.
+  Qed.
+
+  Lemma extend_length {A} (l : list A) a n:
+    length (extend l a n) = Nat.max (length l) n.
+  Proof.
+    cbv [extend]. autorewrite with push_length natsimpl.
+    lia.
   Qed.
 End Extend.
-
+Hint Rewrite @extend_length using solve [eauto] : push_length.
 
 (* Proofs about [split] *)
 Section Split.
@@ -181,9 +210,25 @@ Section Nth.
       [ reflexivity | ].
     cbn [map nth]. apply IHn. lia.
   Qed.
+
+  Lemma nth_repeat_inbounds {A} (x : A) d n m :
+    n < m -> nth n (repeat x m) d = x.
+  Proof.
+    revert m; induction n; destruct m; cbn [repeat nth]; intros;
+      try apply IHn; lia || reflexivity.
+  Qed.
+
+  Lemma nth_repeat {A} (x : A) d n m :
+    nth n (repeat x m) d = if n <? m then x else d.
+  Proof.
+    case_eq (n <? m); [ rewrite Nat.ltb_lt | rewrite Nat.ltb_nlt ]; intros;
+      [ | rewrite nth_overflow by length_hammer; reflexivity ].
+    apply nth_repeat_inbounds; lia.
+  Qed.
 End Nth.
 Hint Rewrite @nth_step @nth_found @nth_nil using solve [eauto] : push_nth.
-Hint Rewrite @nth_map_seq @map_nth_inbounds using lia : push_nth.
+Hint Rewrite @nth_map_seq @map_nth_inbounds @nth_repeat_inbounds
+     using lia : push_nth.
 
 Section Maps.
   Lemma map_id_ext {A} (f : A -> A) (l : list A) :
@@ -324,9 +369,18 @@ Section FirstnSkipn.
     destruct l; [ reflexivity | ]. cbn [skipn tl].
     apply IHn.
   Qed.
+
+  Lemma skipn_combine {A B} (la : list A) (lb : list B) n :
+    skipn n (combine la lb) = combine (skipn n la) (skipn n lb).
+  Proof.
+    revert la lb; induction n; intros; [ reflexivity | ].
+    destruct la; [ reflexivity | ].
+    destruct lb; cbn [skipn combine]; [ rewrite combine_nil; reflexivity | ].
+    rewrite IHn. reflexivity.
+  Qed.
 End FirstnSkipn.
 Hint Rewrite @skipn_app @skipn_skipn @skipn_repeat @skipn_cons @skipn_O
-     @skipn_nil @skipn_all
+     @skipn_nil @skipn_all @skipn_combine
      using solve [eauto] : push_skipn.
 Hint Rewrite @firstn_nil @firstn_cons @firstn_all @firstn_app @firstn_O
      @firstn_firstn @combine_firstn
