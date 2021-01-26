@@ -155,6 +155,22 @@ Definition tupleInterfaceDefaultSV (ticks : nat) (v : list SignalType)
   : tupleInterface (seqVType ticks) v :=
   rebalance (seqVType ticks) v (tupleInterfaceDefaultRSV ticks v).
 
+(* Sometimes it is convenient to convert a list of tuples to a tuple of
+   lists e.g. in test benches. *)
+
+Fixpoint fromListOfTuplesR (ts: list SignalType)
+                           (i : (list (tupleInterfaceR combType ts)))
+                           : tupleInterfaceR seqType ts :=
+  match ts, i with
+  | [], _ => tt
+  | t::ts, ix => (map fst ix, fromListOfTuplesR ts (map snd ix))
+  end.
+
+Definition fromListOfTuples (ts: list SignalType)
+                            (i : (list (tupleInterface combType ts)))
+                            : tupleInterface seqType ts :=
+  rebalance seqType ts (fromListOfTuplesR ts (map (unbalance combType ts) i)).
+
 (******************************************************************************)
 (* Netlist AST representation for signal expressions.                         *)
 (******************************************************************************)
@@ -195,7 +211,6 @@ Fixpoint defaultNetSignal (t: SignalType) : Signal t :=
   | Pair lt rt => SignalPair (defaultNetSignal lt) (defaultNetSignal rt)
   | ExternalType s => UninterpretedSignal "default-defaultSignal"
   end.
-
 
 (* To allow us to represent a heterogenous list of Signal t values where
    the Signal t varies we make a wrapper that erase the Kind index type.
