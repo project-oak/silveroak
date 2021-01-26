@@ -57,14 +57,19 @@ Section WithCava.
   Context {signal} `{Cava signal} `{Monad cava}.
 
   (****************************************************************************)
-  (* Unsigned addition with growth examples.                                              *)
+  (* Unsigned addition with growth examples.                                  *)
   (****************************************************************************)
+
+  Definition unsignedAddCircuit {m n : nat}
+                                (ab : signal (Vec Bit m) * signal (Vec Bit n))
+                                : cava (signal (Vec Bit (1 + max m n))) :=
+    ret (unsignedAdd (fst ab, snd ab)).
 
   Definition adderGrowth {aSize bSize: nat}
                         (ab: signal (Vec Bit aSize) * signal (Vec Bit bSize)) :
                         cava (signal (Vec Bit (1 + max aSize bSize))) :=
     let (a, b) := ab in
-    unsignedAdd a b.
+    unsignedAddCircuit (a, b) .
 
   Definition add3InputTuple (aSize bSize cSize: nat)
                             (abc: signal (Vec Bit aSize) *
@@ -109,10 +114,10 @@ Definition adder4Netlist
 Definition adder4_tb_inputs
   := [(bv4_0, bv4_0); (bv4_1, bv4_2); (bv4_15, bv4_1); (bv4_15, bv4_15)].
 
+Definition adder4_tb_inputs' := fromListOfTuples [Vec Bit 4; Vec Bit 4] adder4_tb_inputs.  
+
 Definition adder4_tb_expected_outputs
-  := map (fun '(a, b) =>
-            List.hd (defaultCombValue _)
-                    (combinational (unsignedAdd [a] [b]))) adder4_tb_inputs.
+  := combinational (unsignedAddCircuit adder4_tb_inputs').
 
 Definition adder4_tb
   := testBench "adder4_tb" adder4Interface

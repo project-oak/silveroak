@@ -78,24 +78,6 @@ Inductive Instance : Type :=
   | DelayBit:  Signal Bit -> Signal Bit -> Instance
   (* Assignment of bit wire *)
   | AssignSignal: forall {k: SignalType}, Signal k -> Signal k -> Instance
-  (* Arithmetic operations *)
-  | UnsignedAdd : forall {a b c : nat}, Signal (Vec Bit a) ->
-                                        Signal (Vec Bit b) ->
-                                        Signal (Vec Bit c) ->
-                                        Instance
-  | UnsignedSubtract : forall {a b c : nat}, Signal (Vec Bit a) ->
-                                        Signal (Vec Bit b) ->
-                                        Signal (Vec Bit c) ->
-                                        Instance
-  | UnsignedMultiply : forall {a b c : nat}, Signal (Vec Bit a) ->
-                                        Signal (Vec Bit b) ->
-                                        Signal (Vec Bit c) ->
-                                        Instance
-  (* Relational operations *)
-  | GreaterThanOrEqual: forall {a b : nat}, Signal (Vec Bit a) ->
-                                            Signal (Vec Bit b) ->
-                                            Signal Bit ->
-                                            Instance
   (* TODO(satnam): Switch to using tupleInterface instead of UntypedSignal *)
   | Component: string ->
                list (string * ConstExpr) ->

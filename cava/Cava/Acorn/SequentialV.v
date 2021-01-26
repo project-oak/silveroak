@@ -263,9 +263,9 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
     indexAt t sz isz := @indexAtBoolVec t sz isz ticks;
     indexConst t sz := @indexConstBoolVec t sz ticks;
     slice t sz := @sliceBoolVec t sz ticks;
-    unsignedAdd m n x y := ret (Vector.map2 (@unsignedAddBool m n) x y);
-    unsignedMult m n x y := ret (Vector.map2 (@unsignedMultBool m n) x y);
-    greaterThanOrEqual m n x y := ret (Vector.map2 (@greaterThanOrEqualBool m n) x y);
+    unsignedAdd m n xy := Vector.map (@unsignedAddBool m n) (vcombine (fst xy) (snd xy));
+    unsignedMult m n xy := Vector.map (@unsignedMultBool m n) (vcombine (fst xy) (snd xy));
+    greaterThanOrEqual m n xy := Vector.map (@greaterThanOrEqualBool m n) (vcombine (fst xy) (snd xy));
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefaultSV ticks (map port_type (circuitOutputs intf)));
   }.

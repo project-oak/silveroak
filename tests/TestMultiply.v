@@ -34,7 +34,7 @@ Section WithCava.
                         (ab: signal (Vec Bit aSize) * signal (Vec Bit bSize)):
                         cava (signal (Vec Bit (aSize + bSize))) :=
     let (a, b) := ab in
-    unsignedMult a b.
+    ret (unsignedMult (a, b)).
 
 End WithCava.
 
@@ -46,7 +46,7 @@ Definition bv3_7  := N2Bv_sized 3  7.
 Definition bv5_15 := N2Bv_sized 5 15.
 
 (* Check 3 * 5 = 30 *)
-Example mult3_5 : combinational (unsignedMult [bv2_3] [bv3_5]) = [bv5_15].
+Example mult3_5 : combinational (multiplier ([bv2_3], [bv3_5])) = [bv5_15].
 Proof. reflexivity. Qed.
 
 (* Check 3 * 5 = 30 *)
@@ -71,10 +71,10 @@ Definition mult2_3_5Netlist
 Definition mult2_3_5_tb_inputs
   := [(bv2_3, bv3_5); (bv2_3, bv3_7); (bv2_0, bv3_0)].
 
+Definition mult2_3_5_tb_inputs' := fromListOfTuples[Vec Bit 2; Vec Bit 3] mult2_3_5_tb_inputs.
+
 Definition mult2_3_5_tb_expected_outputs
-  := map (fun '(a,b) => List.hd (Vector.const false _)
-                         (combinational (multiplier ([a],[b])%list)))
-         mult2_3_5_tb_inputs.
+  := combinational (multiplier mult2_3_5_tb_inputs').
 
 Definition  mult2_3_5_tb
   := testBench "mult2_3_5_tb" mult2_3_5Interface

@@ -170,6 +170,10 @@ showSignal signal
       SignalSnd _ _ (SignalPair _ _ _ b) -> showSignal b
       -- SignalPair should never occur but added here to aid debugging.
       SignalPair _ _ a b -> "(" ++ showSignal a ++ ", " ++ showSignal b ++ ")"
+      UnsignedAdd _ _ _ a b -> "(" ++ showSignal a ++ " + " ++ showSignal b ++ ")"
+      UnsignedSubtract _ _ _ a b -> "(" ++ showSignal a ++ " - " ++ showSignal b ++ ")"
+      UnsignedMultiply _ _ _ a b -> "(" ++ showSignal a ++ " * " ++ showSignal b ++ ")"
+      GreaterThanOrEqual _ _ a b -> "(" ++ showSignal a ++ " >= " ++ showSignal b ++ ")"
       other -> error ("showSignal: unsupported expresson: " ++ show other)
 
 showSliceIndex :: SignalType -> Integer -> Integer -> String
@@ -254,14 +258,6 @@ generateInstance _ (Component name parameters connections) instNr =
   mkInstance name parameters connections' instNr
   where
   connections' = [(n, extractSignal us) | (n, us) <- connections]
-generateInstance _ (UnsignedAdd _ _ _ a b c) _
-   = "  assign " ++ showSignal c ++ " = " ++ showSignal a ++ " + " ++ showSignal b ++ ";"
-generateInstance _ (UnsignedSubtract _ _ _ a b c) _
-   = "  assign " ++ showSignal c ++ " = " ++ showSignal a ++ " - " ++ showSignal b ++ ";"
-generateInstance _ (UnsignedMultiply _ _ _ a b c) _
-   = "  assign " ++ showSignal c ++ " = " ++ showSignal a ++ " * " ++ showSignal b ++ ";"
-generateInstance _ (GreaterThanOrEqual _ _ a b g) _
-   = "  assign " ++ showSignal g ++ " = " ++ showSignal a ++ " >= " ++ showSignal b ++ ";"
 
 primitiveInstance :: String -> [Signal] -> Int -> String
 primitiveInstance instName args instNr
@@ -594,26 +590,6 @@ mapSignalsInInstanceM f inst
       AssignSignal k t v -> do ft <- f t
                                fv <- f v
                                return (AssignSignal k ft fv)
-      UnsignedAdd s1 s2 s3 a b c ->
-        do fa <- f a
-           fb <- f b
-           fc <- f c
-           return (UnsignedAdd s1 s2 s3 fa fb fc)
-      UnsignedSubtract s1 s2 s3 a b c ->
-        do fa <- f a
-           fb <- f b
-           fc <- f c
-           return (UnsignedSubtract s1 s2 s3 fa fb fc)
-      UnsignedMultiply s1 s2 s3 a b c ->
-        do fa <- f a
-           fb <- f b
-           fc <- f c
-           return (UnsignedMultiply s1 s2 s3 fa fb fc)     
-      GreaterThanOrEqual s1 s2 a b t ->
-        do fa <- f a
-           fb <- f b
-           ft <- f t
-           return (GreaterThanOrEqual s1 s2 fa fb ft)
       Component name args vals ->
         do let sigs = map (extractSignal . snd) vals
            sigs' <- sequence (map f sigs)
