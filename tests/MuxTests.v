@@ -36,6 +36,8 @@ Section WithCava.
   Definition mux2_1: signal Bit -> signal Bit * signal Bit -> cava (signal Bit)
   := muxPair.
 
+  Definition mux2_1_top '(sel, a, b) := mux2_1 sel (a, b).
+
   (* Mux between input buses *)
 
   Definition muxBus {dsz sz isz: nat}
@@ -53,26 +55,22 @@ Local Close Scope vector_scope.
 (* muxPair tests                                                              *)
 (******************************************************************************)
 
-Example m1: combinational (mux2_1 [true] ([false], [false])) = [false].
-Proof. reflexivity. Qed.
+Definition mux2_1_tb_inputs :=
+  [(false, false, true);
+   (false, true,  false);
+   (true,  false, true);
+   (true,  true,  false)].
 
-Example m2: combinational (mux2_1 [false] ([false], [true])) = [false].
-Proof. reflexivity. Qed.
+(* Transpose test vectors for use in Coq simulation. *)
+(* Satnam asks: why can't [Bit; Bit; Bit] be inferred? *)
+Definition mux2_1_tb_inputs' := fromListOfTuples [Bit; Bit; Bit] mux2_1_tb_inputs.
 
-Example m3: combinational (mux2_1 [true] ([true], [false])) = [false].
-Proof. reflexivity. Qed.
+(* Enumerate the expected outputs. *)
+Definition muxManualExpectedOutputs := [false; true; true; false].
 
-Example m4: combinational (mux2_1 [false] ([true], [false])) = [true].
-Proof. reflexivity. Qed.
+Definition mux2_1_tb_expected_outputs := combinational (mux2_1_top mux2_1_tb_inputs').
 
-Definition muxTestSel :=   [true; false; true; false].
-Definition muxTestSelAB := ([false; false; true; true],
-                            [false; true; false; true]
-                           ).
-
-Definition muxTestExpectedOutputs := [false; false; false; true].
-
-Example m1_4:  combinational (mux2_1 muxTestSel muxTestSelAB) = muxTestExpectedOutputs.
+Example m1_4: mux2_1_tb_expected_outputs = muxManualExpectedOutputs.
 Proof. reflexivity. Qed.
 
 Definition mux2_1_Interface
@@ -84,17 +82,8 @@ Definition mux2_1_Interface
 Definition mux2_1Netlist
   := makeNetlist mux2_1_Interface (fun '(sel, a, b) => mux2_1 sel (a, b)).
 
-Definition mux2_1_tb_inputs :=
-  [(false, false, true);
-   (false, true,  false);
-   (true,  false, true);
-   (true,  true,  false)].
-
-Definition mux2_1_tb_expected_outputs
-  := map (fun '(i0,i1,i2) =>
-            List.hd false (combinational (mux2_1 [i0] ([i1],[i2]))))
-         mux2_1_tb_inputs.
-
+(* The test bench ensures the generated SystemVerilog for this mux2 circuit
+   has the same behaviour as the Coq simulation semantics. *)
 Definition mux2_1_tb
   := testBench "mux2_1_tb" mux2_1_Interface
      mux2_1_tb_inputs mux2_1_tb_expected_outputs.
