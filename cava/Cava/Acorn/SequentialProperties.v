@@ -22,7 +22,6 @@ Require Import ExtLib.Data.Monads.IdentityMonad.
 Export MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.Signal.
 Require Import Cava.Tactics.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.CavaClass.

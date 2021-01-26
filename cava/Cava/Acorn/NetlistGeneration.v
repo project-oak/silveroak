@@ -26,8 +26,6 @@ Import ListNotations.
 Require Import Cava.Cava.
 Require Import Cava.Acorn.CavaClass.
 
-Require Import Cava.Signal.
-
 (******************************************************************************)
 (* Netlist implementations for the Cava class.                                *)
 (******************************************************************************)

@@ -28,7 +28,6 @@ Require Import Coq.NArith.Ndigits.
 Require Import Coq.ZArith.ZArith.
 
 Require Import Cava.Cava.
-Require Import Cava.Signal.
 Require Import Cava.ListUtils.
 Require Import Cava.Acorn.CavaClass.
 

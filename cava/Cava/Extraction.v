@@ -26,7 +26,6 @@ Set Extraction File Comment "Auto-generated from Cava/Coq. Please do not hand ed
 
 Require Import Cava.BitArithmetic.
 Require Import Cava.Cava.
-Require Import Cava.Kind.
 Require Import Cava.Signal.
 Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
@@ -52,7 +51,6 @@ Recursive Extraction Library NetlistGeneration.
 
 Recursive Extraction Library Netlist.
 Recursive Extraction Library Signal.
-Recursive Extraction Library Kind.
 Recursive Extraction Library VectorUtils.
 Recursive Extraction Library UnsignedAdders.
 Recursive Extraction Library XilinxAdder.
