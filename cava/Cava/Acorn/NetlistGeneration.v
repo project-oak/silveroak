@@ -205,19 +205,33 @@ Definition sliceNet {t: SignalType} {sz: nat}
                     Signal (Vec t len) :=
   unpeelNet (sliceVector (peelNet v) startAt len H).
 
+Fixpoint combToSignal (t : SignalType) (v : combType t) : Signal t :=
+  match t, v with
+  | Void, _ => UndefinedSignal
+  | Bit, bv => match bv with
+               | false => Gnd
+               | true => Vcc
+               end
+  | Vec vt s, v => VecLit (Vector.map (combToSignal vt) v)
+  | Pair ta tb, (a, b) => SignalPair (combToSignal ta a) (combToSignal tb b)
+  | ExternalType typ, _ => UninterpretedSignal typ
+  end.
+
 Definition delayNet (t: SignalType)
+                    (resetValue : combType t)
                     (i : Signal t)
                     : state CavaState (Signal t) :=
   o <- newSignal t ;;
-  addInstance (Delay t i o) ;;
+  addInstance (Delay t (combToSignal t resetValue) i o) ;;
   ret o.
 
 Definition delayEnableNet (t : SignalType)
+                          (resetValue : combType t)
                           (en : Signal Bit)
                           (i : Signal t)
                           : state CavaState (Signal t) :=
   o <- newSignal t ;;
-  addInstance (DelayEnable t en i o) ;;
+  addInstance (DelayEnable t (combToSignal t resetValue) en i o) ;;
   ret o.
 
 Local Open Scope type_scope.
@@ -225,25 +239,27 @@ Local Open Scope type_scope.
 (* Create a loop circuit with a delay element along the feedback path which
    makes the current state available at the output. *)
 Definition loopNetS (A B : SignalType)
+                    (resetValue : combType B)
                     (f : Signal A * Signal B -> state CavaState (Signal B))
                     (a : Signal A)
                     : state CavaState (Signal B) :=
   o <- @newSignal B ;;
   out <- f (a, o) ;;
-  oDelay <- delayNet B out ;;
+  oDelay <- delayNet B resetValue out ;;
   assignSignal o oDelay ;;
   ret out.
 
 (* Create a loop circuit with a delay element with enable along the feedback
    path with the current state exposed at the output. *)
 Definition loopNetEnableS (A B : SignalType)
+                          (resetValue : combType B)
                           (en : Signal Bit)
                           (f : Signal A * Signal B -> state CavaState (Signal B))
                           (a : Signal A)
                          : state CavaState (Signal B) :=
   o <- @newSignal B ;;
   out <- f (a, o) ;;
-  oDelay <- delayEnableNet B en out ;;
+  oDelay <- delayEnableNet B resetValue en out ;;
   assignSignal o oDelay ;;
   ret out.
 
@@ -298,8 +314,8 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
 }.
 
 Instance CavaSequentialNet : CavaSeq CavaCombinationalNet :=
-  { delay k := delayNet k;
-    delayEnable k := delayEnableNet k;
-    loopDelayS a b := loopNetS a b;
-    loopDelaySEnable en a b := loopNetEnableS en a b;
+  { delayWith k d := delayNet k d;
+    delayEnableWith k d := delayEnableNet k d;
+    loopDelaySR a b := loopNetS a b;
+    loopDelaySEnableR en a b := loopNetEnableS en a b;
   }.

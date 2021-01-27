@@ -53,7 +53,8 @@ Definition addNSpec {ticks : nat} {n} (a b : Vector.t (Bvector n) ticks)
 
 Local Ltac seqsimpl_step :=
   first [ progress cbn beta iota delta
-                   [fst snd hd loopSeqSV' loopDelayS SequentialVectorSemantics]
+                   [fst snd hd loopSeqSV' loopDelayS loopDelaySR
+                        SequentialVectorSemantics]
         | progress cbv beta iota delta [loopSeqSV]; seqsimpl_step
         | progress autorewrite with seqsimpl
         | lazymatch goal with

@@ -189,30 +189,12 @@ showSliceIndex k start len
 --------------------------------------------------------------------------------
 
 generateInstance :: NetlistGenerationState -> Instance -> Int -> String
-generateInstance netlistState (DelayBit i o) _
+generateInstance netlistState (Delay t d i o) _
   = unlines [
     "  always_ff @(" ++ showEdge clkEdge ++ " " ++ showSignal clk ++ " or "
                      ++ showEdge rstEdge ++ " " ++ showSignal rst ++ ") begin",
     "    if (" ++ negReset ++ showSignal rst ++ ") begin",
-    "      " ++ showSignal o ++ " <= 1'b0;",
-    "    end else begin",
-    "      " ++ showSignal o ++ " <= " ++ showSignal i ++ ";",
-    "    end",
-    "  end"]
-    where
-    NetlistGenerationState (Just clk) clkEdge (Just rst) rstEdge = netlistState
-    showEdge edge = case edge of
-                      PositiveEdge -> "posedge"
-                      NegativeEdge -> "negedge"
-    negReset = case rstEdge of
-                 PositiveEdge -> ""
-                 NegativeEdge -> "!"
-generateInstance netlistState (Delay t i o) _
-  = unlines [
-    "  always_ff @(" ++ showEdge clkEdge ++ " " ++ showSignal clk ++ " or "
-                     ++ showEdge rstEdge ++ " " ++ showSignal rst ++ ") begin",
-    "    if (" ++ negReset ++ showSignal rst ++ ") begin",
-    "      " ++ showSignal o ++ " <= " ++ showSignal (defaultNetSignal t) ++ ";",
+    "      " ++ showSignal o ++ " <= " ++ showSignal d ++ ";",
     "    end else begin",
     "      " ++ showSignal o ++ " <= " ++ showSignal i ++ ";",
     "    end",
@@ -225,12 +207,12 @@ generateInstance netlistState (Delay t i o) _
     negReset = case rstEdge of
                  PositiveEdge -> ""
                  NegativeEdge -> "!"                 
-generateInstance netlistState (DelayEnable t en i o) _
+generateInstance netlistState (DelayEnable t d en i o) _
   = unlines [
     "  always_ff @(" ++ showEdge clkEdge ++ " " ++ showSignal clk ++ " or "
                      ++ showEdge rstEdge ++ " " ++ showSignal rst ++ ") begin",
     "    if (" ++ negReset ++ showSignal rst ++ ") begin",
-    "      " ++ showSignal o ++ " <= " ++ showSignal (defaultNetSignal t) ++ ";",
+    "      " ++ showSignal o ++ " <= " ++ showSignal d ++ ";",
     "    end else",
     "      if (" ++ showSignal en ++ ") begin",
     "        " ++ showSignal o ++ " <= " ++ showSignal i ++ ";",
@@ -577,16 +559,15 @@ mapSignalsInInstanceM f inst
       Buf i o -> do fi <- f i
                     fo <- f o
                     return (Buf fi fo)
-      DelayBit i o -> do fi <- f i
-                         fo <- f o
-                         return (DelayBit fi fo)
-      Delay t i o -> do fi <- f i
-                        fo <- f o
-                        return (Delay t fi fo)
-      DelayEnable t en i o -> do fen <- f en
-                                 fi <- f i
-                                 fo <- f o
-                                 return (DelayEnable t fen fi fo)
+      Delay t d i o -> do fd <- f d
+                          fi <- f i
+                          fo <- f o
+                          return (Delay t fd fi fo)
+      DelayEnable t d en i o -> do fd <- f d
+                                   fen <- f en
+                                   fi <- f i
+                                   fo <- f o
+                                   return (DelayEnable t fd fen fi fo)
       AssignSignal k t v -> do ft <- f t
                                fv <- f v
                                return (AssignSignal k ft fv)

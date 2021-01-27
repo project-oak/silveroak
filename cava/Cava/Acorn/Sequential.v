@@ -74,6 +74,7 @@ timestep n. Because there may be delay in the body of the loop, the accumulator
 might include outputs past the current timestep. *)
 
 Definition loopSeqS' {A B : SignalType}
+           (resetValue : combType B)
            (f : seqType A * seqType B -> ident (seqType B))
            (state: nat * ident (seqType B)) (a : combType A)
   : nat * ident (seqType B) :=
@@ -82,7 +83,7 @@ Definition loopSeqS' {A B : SignalType}
    out <- snd state ;; (* get the output accumulator *)
    (* get the value of out at previous timestep (because of delay) *)
    let outDelayed := match t with
-                     | 0 => defaultCombValue B
+                     | 0 => resetValue
                      | S t' => nth t' out (defaultCombValue B)
                      end in
    b <- f ([a], [outDelayed]) ;; (* Process one input *)
@@ -90,9 +91,10 @@ Definition loopSeqS' {A B : SignalType}
    ret out').
 
 Definition loopSeqS {A B : SignalType}
+                    (resetValue : combType B)
                     (f : seqType A * seqType B -> ident (seqType B))
                     (a : seqType A) : ident (seqType B) :=
-  snd (fold_left (loopSeqS' f) a (0, ret [])).
+  snd (fold_left (loopSeqS' resetValue f) a (0, ret [])).
 
 
 Fixpoint delayEnableBoolList' (t: SignalType) (en: list bool) (i : seqType t)
@@ -104,9 +106,10 @@ Fixpoint delayEnableBoolList' (t: SignalType) (en: list bool) (i : seqType t)
   | _, _ => ret []
   end.
 
-Definition delayEnableBoolList (t: SignalType) (en: list bool) (i : seqType t) :
-                             ident (seqType t) :=
-  delayEnableBoolList' t en i (defaultCombValue t).
+Definition delayEnableBoolList (t: SignalType) (def : combType t)
+                               (en: list bool) (i : seqType t) :
+                               ident (seqType t) :=
+  delayEnableBoolList' t en i def.
 
 (******************************************************************************)
 (* Instantiate the Cava class for a boolean sequential logic                  *)
@@ -114,13 +117,14 @@ Definition delayEnableBoolList (t: SignalType) (en: list bool) (i : seqType t) :
 (******************************************************************************)
 
 Instance SequentialSemantics : CavaSeq CombinationalSemantics :=
-   { delay t i := ret (@defaultCombValue t :: i);
-     delayEnable t en i := delayEnableBoolList t en i;
-     loopDelayS _ _ := loopSeqS;
-     loopDelaySEnable A B en f input :=
+   { delayWith t d i := ret (d :: i);
+     delayEnableWith t d en i := delayEnableBoolList t d en i;
+     loopDelaySR _ _ := loopSeqS;
+     loopDelaySEnableR A B resetValue en f input :=
        (* The semantics of loopDelaySEnable is defined in terms of loopDelayS and
           the circuitry required to model a clock enable with a multiplexor. *)
-         loopSeqS (fun (en_i_state : seqType (Pair Bit A) * seqType B)  =>
+         loopSeqS resetValue
+                  (fun (en_i_state : seqType (Pair Bit A) * seqType B)  =>
                      let state := snd en_i_state in
                      let '(en, i) := unpair (fst en_i_state) in
                      (second fork2 >=> (* (i, state, state) *)

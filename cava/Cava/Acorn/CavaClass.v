@@ -29,7 +29,7 @@ Class Cava (signal : SignalType -> Type) := {
   (* Constant values. *)
   constant : bool -> signal Bit;
   (* Default values. *)
-  defaultSignal: forall {t: SignalType}, signal t;
+  defaultSignal : forall {t: SignalType}, signal t;
   (* SystemVerilog primitive gates *)
   inv : signal Bit -> cava (signal Bit);
   and2 : signal Bit * signal Bit -> cava (signal Bit);
@@ -94,23 +94,25 @@ Class Cava (signal : SignalType -> Type) := {
 
 (* Sequential semantics -- assumes the sequential part of the interpretation is in [signal] *)
 Class CavaSeq {signal : SignalType -> Type} (combinationalSemantics : Cava signal) := {
-  (* A unit delay. *)
-  delay : forall {t: SignalType}, signal t -> cava (signal t);
-  (* A unit delay with enable. *)
-  delayEnable : forall {t: SignalType}, signal Bit -> signal t -> cava (signal t);
+  (* A unit delay with a reset value. *)
+  delayWith : forall {t: SignalType}, combType t -> signal t -> cava (signal t);
+  (* A unit delay with a clock-enable input. *)
+  delayEnableWith : forall {t: SignalType}, combType t -> signal Bit -> signal t -> cava (signal t);
   (* Feedback loop, with unit delay inserted into the feedback path and current
      state available at output . *)
-  loopDelayS : forall {A B: SignalType},
-               (signal A * signal B -> cava (signal B)) ->
-               signal A ->
-               cava (signal B);
+  loopDelaySR : forall {A B: SignalType},
+                combType B ->
+                (signal A * signal B -> cava (signal B)) ->
+                signal A ->
+                cava (signal B);
   (* A version of loopDelayEnable with a clock enable and current state at
      the output. *)
-  loopDelaySEnable : forall {A B: SignalType},
-                     signal Bit -> (* Clock enable *)
-                     (signal A * signal B -> cava (signal B)) ->
-                     signal A ->
-                     cava (signal B);
+  loopDelaySEnableR : forall {A B: SignalType},
+                      combType B ->
+                      signal Bit -> (* Clock enable *)
+                      (signal A * signal B -> cava (signal B)) ->
+                      signal A ->
+                      cava (signal B);
 }.
 
 (* Alternate version of sequential semantics which assumes the sequential part
