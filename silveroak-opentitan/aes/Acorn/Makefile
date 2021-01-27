@@ -16,7 +16,18 @@
 
 .PHONY: all coq minimize-requires clean _CoqProject
 
-all:		coq 
+SV = aes_mix_columns.sv
+
+BENCHES = $(SV:.sv=_tb.sv)
+CPPS = $(SV:.sv=_tb.cpp)
+VCDS = $(SV:.sv=_tb.vcd)
+
+.PRECIOUS: $(VCDS)
+
+all:		coq $(VCDS)
+
+VERILATOR = verilator +1800-2012ext+sv verilator.vlt
+VLINT = $(VERILATOR) --lint-only
 
 _CoqProject:
 		@echo "INSTALLDEFAULTROOT = AcornAes" > _CoqProject
@@ -33,6 +44,10 @@ Makefile.coq:	_CoqProject
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
+AESSV:		coq AESSV.hs
+		ghc --make AESSV.hs
+		./AESSV
+
 minimize-requires: coq
 	../../../tools/minimize-requires.sh
 	$(MAKE) coq
@@ -40,6 +55,15 @@ minimize-requires: coq
 %.vo:		Makefile.coq
 		$(MAKE) -f Makefile.coq $@
 
+$(SV) $(BENCHES) $(CPPS):	AESSV
+
+%_tb.vcd:	%.sv %_tb.sv %_tb.cpp
+		$(VERILATOR) --trace --cc --top-module $*_tb $*_tb.sv $*.sv --exe $*_tb.cpp
+		make -C obj_dir -f V$*_tb.mk V$*_tb
+		obj_dir/V$*_tb
+
+
 clean:		
 		-@$(MAKE) -f Makefile.coq clean
-		rm -rf _CoqProject Makefile.coq Makefile.coq.conf
+		rm -rf _CoqProject Makefile.coq Makefile.coq.conf AESSV
+		git clean -Xfd

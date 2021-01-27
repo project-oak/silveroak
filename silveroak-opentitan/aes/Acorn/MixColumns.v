@@ -14,11 +14,16 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.Lists.List.
+Import ListNotations.
+
 Require Import Coq.Vectors.Vector.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Traversable.
 
+Require Import Cava.Cava.
 Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
@@ -138,6 +143,27 @@ Section WithCava.
     ret (aes_transpose (unpeel mixed)).
 
 End WithCava.
+
+(* Interface designed to match interface of corresponding SystemVerilog component:
+     https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_mix_columns.sv
+*)
+Definition aes_mix_columns_Interface :=
+  combinationalInterface "aes_mix_columns"
+  [mkPort "op_i" Bit; mkPort "data_i" (Vec (Vec (Vec Bit 8) 4) 4)]
+  [mkPort "data_o" (Vec (Vec (Vec Bit 8) 4) 4)]
+  [].
+
+(* Create a netlidt for the aes_mix_columns_Netlist block. The block is written with
+   curried inputs but netlist extraction for top-level blocks requires they are
+   written with a single argument, using tupling for composite inputs. A lambda
+   expression maps from the tuple inputs to the curried arguments.  *)
+Definition aes_mix_columns_Netlist
+  := makeNetlist aes_mix_columns_Interface (fun '(op_i, data_i) => aes_mix_columns op_i data_i).
+
+(* Use an empty test bench for now to just check SystemVerilog compilation of
+   the aes_mix_columns block. *)
+Definition aes_mix_columns_tb :=
+  testBench "aes_mix_columns_tb" aes_mix_columns_Interface [] [].
 
 (* Run test as a quick-feedback check *)
 Require Import Cava.BitArithmetic.
