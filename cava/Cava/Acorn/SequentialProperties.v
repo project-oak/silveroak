@@ -127,24 +127,66 @@ Section Overlap.
     reflexivity.
   Qed.
 
+  Lemma overlap_length {A} n x y :
+    length (@overlap A n x y) = Nat.max (length x) (length y + n).
+  Proof.
+    cbv [overlap]. autorewrite with push_length. lia.
+  Qed.
+  Hint Rewrite @overlap_length using solve [eauto] : push_length.
+
+  Lemma overlap_repeat {A} n m p (x : combType A) :
+    n <= m ->
+    overlap n (repeat x m) (repeat x p) = repeat x (Nat.max m (p + n)).
+  Proof.
+    intros; cbv [overlap]. autorewrite with push_length natsimpl.
+    cbn [repeat app]. rewrite skipn_repeat, <-repeat_append.
+    f_equal; lia.
+  Qed.
+
+  Lemma overlap_mkpair_repeat_l {A B} (x : combType A) (b1 b2 : seqType B)
+        offset n m :
+    length b1 = n -> length b2 = m -> offset <= length b1 ->
+    overlap offset (mkpair (repeat x n) b1) (mkpair (repeat x m) b2)
+    = mkpair (repeat x (Nat.max n (m + offset))) (overlap offset b1 b2).
+  Proof.
+    intros. cbn [mkpair CombinationalSemantics].
+    rewrite !pad_combine_eq by length_hammer.
+    cbv [overlap]. cbn [combType] in *.
+    autorewrite with push_length natsimpl push_skipn.
+    rewrite (proj2 (Nat.sub_0_le offset (length b1))) by lia.
+    cbn [repeat app]. rewrite <-combine_append, <-repeat_append by length_hammer.
+    subst; f_equal; [ ]. f_equal; lia.
+  Qed.
+
   Lemma unpair_overlap_mkpair_r {A B} offset ab (a : seqType A) (b : seqType B) :
+    unpair (overlap offset ab (mkpair a b)) = (overlap offset (fst (unpair ab))
+                                                       (extend a (lastSignal a) (length b)),
+                                               overlap offset (snd (unpair ab))
+                                                       (extend b (lastSignal b) (length a))).
+  Proof.
+    cbv [overlap]; intros. cbn [unpair mkpair CombinationalSemantics].
+    cbn [seqType combType defaultCombValue] in *. cbv [pad_combine].
+    autorewrite with push_split. cbn [fst snd].
+    cbv [seqType]. cbn [combType defaultCombValue] in *.
+    rewrite split_length_r, split_length_l.
+    rewrite combine_split by apply extend_to_match.
+    reflexivity.
+  Qed.
+
+  Lemma unpair_overlap_mkpair_r_same {A B} offset ab (a : seqType A) (b : seqType B) :
     length a = length b ->
     unpair (overlap offset ab (mkpair a b)) = (overlap offset (fst (unpair ab)) a,
                                                overlap offset (snd (unpair ab)) b).
   Proof.
-    cbv [overlap]; intros. cbn [unpair mkpair CombinationalSemantics].
-    cbn [seqType combType defaultCombValue] in *.
-    autorewrite with push_split. cbn [fst snd].
-    cbv [seqType]. cbn [combType defaultCombValue] in *.
-    rewrite split_length_r, split_length_l.
-    rewrite pad_combine_eq by length_hammer.
-    rewrite combine_split by auto. reflexivity.
+    intros. rewrite unpair_overlap_mkpair_r.
+    rewrite !extend_le by lia. reflexivity.
   Qed.
 End Overlap.
 Hint Rewrite @overlap_cons1 @overlap_cons2 @overlap_nil_r @overlap_snoc_cons
      using solve [length_hammer] : seqsimpl.
 Hint Rewrite @overlap_0_nil @overlap_app_same using solve [eauto] : seqsimpl.
 Hint Rewrite @skipn_overlap_same using solve [eauto] : push_skipn.
+Hint Rewrite @overlap_length using solve [eauto] : push_length.
 
 Section Loops.
   Lemma loopSeqS'_step {A B}
@@ -377,7 +419,7 @@ Section Loops.
     { cbv zeta; intros *. intros [Ht0 HI]. intros.
       split; [ congruence | ]. repeat destruct_pair_let.
       cbv [sequential]; seqsimpl. rewrite unpair_skipn.
-      rewrite !unpair_overlap_mkpair_r
+      rewrite !unpair_overlap_mkpair_r_same
         by (destruct t; cbn [unpair split CombinationalSemantics];
             destruct_one_match; cbn [fst snd]; auto).
       cbn [fst snd]. autorewrite with push_skipn. cbv zeta in Hbody.
@@ -453,7 +495,7 @@ Section Loops.
       cbn [fst snd]. auto. }
     { cbv zeta; intros. repeat destruct_pair_let.
       cbv [sequential]; seqsimpl. rewrite unpair_skipn.
-      rewrite !unpair_overlap_mkpair_r
+      rewrite !unpair_overlap_mkpair_r_same
         by (destruct t; cbn [unpair split CombinationalSemantics];
             destruct_one_match; cbn [fst snd]; auto).
       cbn [fst snd]. autorewrite with push_skipn. cbv zeta in Hbody.

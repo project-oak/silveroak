@@ -276,6 +276,69 @@ Proof. cbn - [pairSel]. reflexivity. Qed.
 Lemma pairAssoc_mkpair {A B C} a b c :
   @pairAssoc _ _ A B C (mkpair (mkpair [a] [b]) [c]) = mkpair [a] (mkpair [b] [c]).
 Proof. reflexivity. Qed.
+Lemma unpair_default {A B} :
+  unpair [defaultCombValue (Pair A B)] = ([defaultCombValue A], [defaultCombValue B]).
+Proof. reflexivity. Qed.
+
+Lemma unpair_nth {A B} (p : seqType (Pair A B)) n d :
+  List.nth n p d = (List.nth n (fst (unpair p)) (fst d),
+                    List.nth n (snd (unpair p)) (snd d)).
+Proof. apply split_nth. Qed.
+
+Lemma muxPair_correct {t} (i0 i1 : combType t) (sel : combType Bit) :
+  unIdent (muxPair [sel] (([i0] : seqType _), ([i1] : seqType _))) = [if sel then i1 else i0].
+Proof. destruct sel; reflexivity. Qed.
+
+Lemma mkpair_single {A B} (a : combType A) (b : seqType B):
+  length b <> 0 ->
+  mkpair [a] b = mkpair (repeat a (length b)) b.
+Proof.
+  intros; cbv [mkpair pad_combine CombinationalSemantics].
+  cbv [lastSignal]. cbn [List.last].
+  destruct b; cbn [length] in *; [ lia | ].
+  cbn [repeat]; rewrite repeat_cons, last_last.
+  cbv [extend]. autorewrite with push_length natsimpl.
+  cbn [repeat]. autorewrite with listsimpl.
+  rewrite <-repeat_cons. reflexivity.
+Qed.
+
+Lemma mkpair_one {t} (x : seqType t):
+  length x <> 0 ->
+  mkpair one x = mkpair (repeat true (length x)) x.
+Proof.
+  intros; cbn [one constant CombinationalSemantics].
+  rewrite (mkpair_single (A:=Bit)) by auto.
+  reflexivity.
+Qed.
+
+Lemma mkpair_zero {t} (x : seqType t):
+  length x <> 0 ->
+  mkpair zero x = mkpair (repeat false (length x)) x.
+Proof.
+  intros; cbn [zero constant CombinationalSemantics].
+  rewrite (mkpair_single (A:=Bit)) by auto.
+  reflexivity.
+Qed.
+
+Lemma fst_unpair {A B} (ab : seqType (Pair A B)) :
+  fst (unpair ab) = List.map fst ab.
+Proof.
+  cbv [unpair CombinationalSemantics].
+  induction ab; [ reflexivity | ].
+  cbn [split List.map].
+  repeat destruct_pair_let.
+  rewrite <-IHab. reflexivity.
+Qed.
+
+Lemma snd_unpair {A B} (ab : seqType (Pair A B)) :
+  snd (unpair ab) = List.map snd ab.
+Proof.
+  cbv [unpair CombinationalSemantics].
+  induction ab; [ reflexivity | ].
+  cbn [split List.map].
+  repeat destruct_pair_let.
+  rewrite <-IHab. reflexivity.
+Qed.
 
 Lemma mux4_mkpair {t} (i0 i1 i2 i3 : combType t) (sel : combType (Vec Bit 2)) :
   mux4 (mkpair (mkpair (mkpair [i0] [i1]) [i2]) [i3]) [sel] =
