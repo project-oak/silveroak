@@ -33,6 +33,7 @@ From Coq Require Import micromega.Lia.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.CombinationalMonad.
 
 Local Open Scope vector_scope.
@@ -224,10 +225,10 @@ Definition bufBoolVec (ticks: nat)
            (i : Vector.t bool ticks) : ident (Vector.t bool ticks) :=
   ret i.
 
-Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (seqVType ticks t) :=
+Definition delayV (ticks : nat) (t : SignalType) (def : combType t) : seqVType ticks t -> ident (seqVType ticks t) :=
   match ticks as ticks0 return seqVType ticks0 t -> ident (seqVType ticks0 t) with
   | O => fun _ => ret []
-  | S ticks' => fun i => ret (defaultCombValue t :: Vector.shiftout i)
+  | S ticks' => fun i => ret (def  :: Vector.shiftout i)
   end.
 
 (******************************************************************************)
@@ -272,11 +273,11 @@ Definition delayV (ticks : nat) (t : SignalType) : seqVType ticks t -> ident (se
 
  Instance SequentialVectorSemantics {ticks: nat}
    : CavaSeq SequentialVectorCombSemantics:=
-   { delay k i := delayV ticks k i;
+   { delayWith k d i := delayV ticks k d i;
      (* Dummy definition now for delayEnable.
         TODO(satnam6502, jadephilipoom): implement delayEnableV
      *)
-     delayEnable k en i := delayV ticks k i;
+     delayEnableWith k d en i := delayV ticks k d i;
      loopDelayS A B := @loopSeqSV A B ticks;
      (* TODO(satnam6502, jadep): Placeholder definition for loopDelayEnable for
         now. Replace with actual definition that models clock enable behaviour.

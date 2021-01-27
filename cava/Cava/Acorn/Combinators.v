@@ -661,6 +661,19 @@ Section WithCava.
   Section Sequential.
     Context {seqsemantics : CavaSeq semantics}.
 
+    Definition loopDelayS {A B: SignalType}
+                          (body : signal A * signal B -> cava (signal B))
+                          (input : signal A)
+                          : cava (signal B) :=
+      loopDelaySR (defaultCombValue B) body input.
+
+    Definition loopDelaySEnable {A B: SignalType}
+                                (en : signal Bit)
+                                (body : signal A * signal B -> cava (signal B))
+                                (input : signal A)
+                                : cava (signal B) :=
+      loopDelaySEnableR (defaultCombValue B) en body input.
+
     (* Alternate form of feedback loop with feedback and output types separated *)
     Definition loopDelay {A B C: SignalType}
                (body : signal A * signal C -> cava (signal B * signal C))

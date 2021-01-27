@@ -25,6 +25,7 @@ Require Import Cava.Cava.
 Require Import Cava.Tactics.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.Combinators.
 Require Import Cava.Acorn.CombinationalMonad.
 Require Import Cava.Acorn.CombinationalProperties.
