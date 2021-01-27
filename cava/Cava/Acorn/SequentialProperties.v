@@ -148,15 +148,16 @@ Hint Rewrite @skipn_overlap_same using solve [eauto] : push_skipn.
 
 Section Loops.
   Lemma loopSeqS'_step {A B}
+        (resetval : combType B)
         (f : seqType A * seqType B -> ident (seqType B))
         (spec : combType A -> combType B -> seqType B) :
     (forall a b, sequential (f ([a], [b])) = spec a b) ->
     forall (loop_state : nat * ident (seqType B)) a,
-      loopSeqS' f loop_state a
+      loopSeqS' resetval f loop_state a
       = let t := fst loop_state in
         let acc := unIdent (snd loop_state) in
         let feedback := match t with
-                        | 0 => defaultCombValue B
+                        | 0 => resetval
                         | S t' => nth t' acc (defaultCombValue B)
                         end in
         let r := spec a feedback in
@@ -166,25 +167,26 @@ Section Loops.
     intros. seqsimpl. rewrite Hfspec. reflexivity.
   Qed.
 
-  Lemma loopDelayS_stepwise {A B}
+  Lemma loopDelaySR_stepwise {A B}
+        (resetval : combType B)
         (f : seqType A * seqType B -> ident (seqType B))
         (spec : combType A -> combType B -> seqType B)
         input :
     (forall a b, sequential (f ([a], [b])) = spec a b) ->
-    sequential (loopDelayS (CavaSeq:=SequentialSemantics) f input)
+    sequential (loopDelaySR (CavaSeq:=SequentialSemantics) resetval f input)
     = snd (fold_left (fun loop_state a =>
                         let '(t, acc) := loop_state in
                         let feedback := match t with
-                                        | 0 => defaultCombValue B
+                                        | 0 => resetval
                                         | S t' => nth t' acc (defaultCombValue B)
                                         end in
                         let r := spec a feedback in
                         (S t, overlap t acc r))
                      input (0, [])).
   Proof.
-    cbv [loopDelayS loopSeqS SequentialSemantics sequential]; intros.
+    cbv [loopDelaySR loopSeqS SequentialSemantics sequential]; intros.
     seqsimpl.
-    erewrite fold_left_ext with (f0:=loopSeqS' _) by (apply loopSeqS'_step; eassumption).
+    erewrite fold_left_ext with (f0:=loopSeqS' _ _) by (apply loopSeqS'_step; eassumption).
     factor_out_loops.
     eapply fold_left_double_invariant
       with(I:=fun (x : nat * seqType B) (y : nat * ident (seqType B)) =>
@@ -198,23 +200,24 @@ Section Loops.
     intros. subst. seqsimpl. reflexivity. }
   Qed.
 
-  Lemma loopDelayS_stepwise_indexed {A B}
+  Lemma loopDelaySR_stepwise_indexed {A B}
+        (resetval : combType B)
         (f : seqType A * seqType B -> ident (seqType B))
         (spec : combType A -> combType B -> seqType B)
         input :
     (forall a b, sequential (f ([a], [b])) = spec a b) ->
-    sequential (loopDelayS (CavaSeq:=SequentialSemantics) f input)
+    sequential (loopDelaySR (CavaSeq:=SequentialSemantics) resetval f input)
     = fold_left (fun acc t =>
                    let a := nth t input (defaultCombValue A) in
                    let feedback := match t with
-                                   | 0 => defaultCombValue B
+                                   | 0 => resetval
                                    | S t' => nth t' acc (defaultCombValue B)
                                    end in
                    let r := spec a feedback in
                    overlap t acc r)
                 (seq 0 (length input)) [].
   Proof.
-    intros. erewrite loopDelayS_stepwise by eassumption.
+    intros. erewrite loopDelaySR_stepwise by eassumption.
     erewrite fold_left_to_seq with (ls:=input) (default:=defaultCombValue A).
     pose (R:=fun t (x : seqType B) (y : nat * seqType B) => y  = (t, x)).
     factor_out_loops.
@@ -233,6 +236,40 @@ Section Loops.
       intros. repeat destruct_pair_let. subst.
       reflexivity. }
   Qed.
+
+  Lemma loopDelayS_stepwise {A B}
+        (f : seqType A * seqType B -> ident (seqType B))
+        (spec : combType A -> combType B -> seqType B)
+        input :
+    (forall a b, sequential (f ([a], [b])) = spec a b) ->
+    sequential (loopDelayS f input)
+    = snd (fold_left (fun loop_state a =>
+                        let '(t, acc) := loop_state in
+                        let feedback := match t with
+                                        | 0 => defaultCombValue B
+                                        | S t' => nth t' acc (defaultCombValue B)
+                                        end in
+                        let r := spec a feedback in
+                        (S t, overlap t acc r))
+                     input (0, [])).
+  Proof. cbv [loopDelayS]. apply loopDelaySR_stepwise. Qed.
+
+  Lemma loopDelayS_stepwise_indexed {A B}
+        (f : seqType A * seqType B -> ident (seqType B))
+        (spec : combType A -> combType B -> seqType B)
+        input :
+    (forall a b, sequential (f ([a], [b])) = spec a b) ->
+    sequential (loopDelayS f input)
+    = fold_left (fun acc t =>
+                   let a := nth t input (defaultCombValue A) in
+                   let feedback := match t with
+                                   | 0 => defaultCombValue B
+                                   | S t' => nth t' acc (defaultCombValue B)
+                                   end in
+                   let r := spec a feedback in
+                   overlap t acc r)
+                (seq 0 (length input)) [].
+  Proof. cbv [loopDelayS]. apply loopDelaySR_stepwise_indexed. Qed.
 
   Lemma loopDelayS_invariant {A B}
         (I : nat -> seqType B  -> Prop)
@@ -253,7 +290,7 @@ Section Loops.
         I (S t) (overlap t acc r)) ->
     (* invariant is strong enough to prove postcondition *)
     (forall b, I (length input) b -> P b) ->
-    P (sequential (loopDelayS (CavaSeq:=SequentialSemantics) f input)).
+    P (sequential (loopDelayS f input)).
   Proof.
     intros Hstart Hbody Hpost.
     erewrite loopDelayS_stepwise_indexed by (intros; reflexivity).
@@ -290,7 +327,7 @@ Section Loops.
         I (S t) (overlap t acc r)) ->
     (* invariant is strong enough to prove postcondition *)
     (forall b, I (length input) b -> P b) ->
-    P (sequential (loopDelayS (CavaSeq:=SequentialSemantics) f input)).
+    P (sequential (loopDelayS f input)).
   Proof.
     intros Hstart Hbody Hpost.
     erewrite loopDelayS_stepwise_indexed by (intros; reflexivity).

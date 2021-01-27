@@ -84,7 +84,7 @@ Definition loopSeqS' {A B : SignalType}
    (* get the value of out at previous timestep (because of delay) *)
    let outDelayed := match t with
                      | 0 => resetValue
-                     | S t' => nth t' out resetValue
+                     | S t' => nth t' out (defaultCombValue B)
                      end in
    b <- f ([a], [outDelayed]) ;; (* Process one input *)
    let out' := overlap t out b in (* append new output, starting at timestep t *)

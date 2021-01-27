@@ -90,7 +90,7 @@ to compute the sequential behaviour of a circuit which uses f to iterate over
 the a inputs, using a default value for the initial state.
  *)
 
-Definition loopSeqSV {A B : SignalType} (ticks : nat)
+Definition loopSeqSV {A B : SignalType} (ticks : nat) (resetval : combType B)
   : (seqVType ticks A * seqVType ticks B -> ident (seqVType ticks B))
     -> seqVType ticks A -> ident (seqVType ticks B) :=
   match ticks as ticks0 return
@@ -99,8 +99,7 @@ Definition loopSeqSV {A B : SignalType} (ticks : nat)
   | O => fun _ _ => ret []
   | S ticks' =>
     fun f a =>
-      loopSeqSV' (S ticks') (stepOnce f)
-                a [defaultCombValue B]
+      loopSeqSV' (S ticks') (stepOnce f) a [resetval]
   end.
 
 (******************************************************************************)
@@ -278,11 +277,11 @@ Definition delayV (ticks : nat) (t : SignalType) (def : combType t) : seqVType t
         TODO(satnam6502, jadephilipoom): implement delayEnableV
      *)
      delayEnableWith k d en i := delayV ticks k d i;
-     loopDelayS A B := @loopSeqSV A B ticks;
+     loopDelaySR A B := @loopSeqSV A B ticks;
      (* TODO(satnam6502, jadep): Placeholder definition for loopDelayEnable for
         now. Replace with actual definition that models clock enable behaviour.
      *)
-     loopDelaySEnable A B en := @loopSeqSV A B ticks; (* Dummy *)
+     loopDelaySEnableR A B resetval en := @loopSeqSV A B ticks resetval; (* Dummy *)
    }.
 
 (******************************************************************************)
