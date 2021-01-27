@@ -802,6 +802,19 @@ Section VectorFacts.
     reflexivity.
   Qed.
 
+  Lemma to_list_map2 {A B C} (f : A -> B -> C) n
+        (va : Vector.t A n) (vb : Vector.t B n) :
+    to_list (map2 f va vb) = ListUtils.map2 f (to_list va) (to_list vb).
+  Proof.
+    revert va vb; induction n; intros.
+    { eapply case0 with (v:=va).
+      eapply case0 with (v:=vb).
+      reflexivity. }
+    { rewrite (eta va), (eta vb).
+      rewrite map2_cons. autorewrite with vsimpl.
+      rewrite IHn. reflexivity. }
+  Qed.
+
   Lemma fold_left_to_list {A B} (f : B -> A -> B) n b (v : t A n) :
     fold_left f b v = List.fold_left f (to_list v) b.
   Proof.
@@ -900,7 +913,7 @@ Hint Rewrite @map_id_ext
 (* Hints to change a goal from vectors to list go in the push_to_list database *)
 Hint Rewrite @to_list_nil @to_list_cons @to_list_append
      @fold_left_to_list @to_list_map @to_list_of_list_opp
-     @to_list_splitat1 @to_list_splitat2 @to_list_snoc
+     @to_list_splitat1 @to_list_splitat2 @to_list_snoc @to_list_map2
      using solve [eauto] : push_to_list.
 Hint Rewrite @to_list_resize_default
      using solve [ListUtils.length_hammer] : push_to_list.
@@ -1327,6 +1340,15 @@ Section Vector.
     reflexivity.
   Qed.
 
+  Lemma to_list_of_list_sized a n (l : list A) :
+    length l = n ->
+    to_list (of_list_sized a n l) = l.
+  Proof.
+    cbv [of_list_sized]; intros; subst.
+    rewrite resize_default_id, to_list_of_list_opp.
+    reflexivity.
+  Qed.
+
   Lemma eqb_fold A_beq n (v1 v2 : Vector.t A n) :
     Vector.eqb A A_beq v1 v2
     = Vector.fold_left andb true (Vector.map2 A_beq v1 v2).
@@ -1356,6 +1378,7 @@ Section Vector.
     erewrite Bool.not_true_iff_false. reflexivity.
   Qed.
 End Vector.
+Hint Rewrite @to_list_of_list_sized using solve [eauto] : push_to_list.
 
 Section NthDefault.
   Lemma nth_default_snoc {A n} (v : Vector.t A n) x i d :

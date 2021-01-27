@@ -29,7 +29,9 @@ Local Open Scope list_scope.
 
 Class FieldOperations {T : Type} :=
   { fzero : T;
+    fone : T;
     fis_zero : T -> bool;
+    fopp : T -> T;
     fadd : T -> T -> T;
     fsub : T -> T -> T;
     fmul : T -> T -> T;
@@ -50,17 +52,18 @@ Section Polynomials.
   Definition poly : Type := list coeff.
 
   Definition zero_poly : poly := [].
+  Definition one_poly : poly := [fone].
 
   (* Pad with zeroes to ensure same length *)
   Definition add_poly (A B : poly) : poly :=
     map2 fadd
-         (A ++ repeat fzero (length B - length A)%nat)
-         (B ++ repeat fzero (length A - length B)%nat).
+         (extend A fzero (length B))
+         (extend B fzero (length A)).
 
   Definition sub_poly (A B : poly) : poly :=
     map2 fsub
-         (A ++ repeat fzero (length B - length A)%nat)
-         (B ++ repeat fzero (length A - length B)%nat).
+         (extend A fzero (length B))
+         (extend B fzero (length A)).
 
   (* Idea borrowed from fiat-crypto's bignum library (see "associational"
      representation). This form is an unordered list where the index represents
@@ -172,7 +175,9 @@ Global Arguments poly : clear implicits.
 Section PolynomialTests.
   Local Instance zops : FieldOperations Z :=
     {| fzero := 0;
+       fone := 1;
        fis_zero := Z.eqb 0;
+       fopp := Z.opp;
        fadd := Z.add;
        fsub := Z.sub;
        fmul := Z.mul;
@@ -216,6 +221,91 @@ Section PolynomialTests.
   Proof. vm_compute. reflexivity. Qed.
 End PolynomialTests.
 
+
+(* TODO: move *)
+Lemma map2_app {A B C} (f : A -> B -> C) la1 la2 lb1 lb2 :
+  length la1 = length lb1 ->
+  map2 f (la1 ++ la2) (lb1 ++ lb2) = map2 f la1 lb1 ++ map2 f la2 lb2.
+Proof.
+  revert la1 la2 lb1 lb2.
+  induction la1; destruct lb1; cbn [length]; [ reflexivity | congruence .. | ].
+  intros. rewrite <-!app_comm_cons. cbn [map2].
+  rewrite <-app_comm_cons, IHla1 by Lia.lia.
+  reflexivity.
+Qed.
+
+Require Import coqutil.Tactics.Tactics.
+
+Section PolynomialProperties.
+  Context {A} {ops : FieldOperations A}.
+  Context {rtheory : ring_theory fzero fone fadd fmul fsub fopp eq}.
+  Add Ring ringA : rtheory.
+
+  Local Infix "+" := fadd.
+  Local Infix "-" := fsub.
+  Local Infix "*" := fmul.
+
+  Lemma add_poly_0_l p : add_poly zero_poly p = p.
+  Proof.
+    cbv [add_poly zero_poly extend].
+    autorewrite with push_length listsimpl natsimpl.
+    induction p; intros; [ reflexivity | ].
+    cbn [length repeat map2]. rewrite IHp.
+    f_equal; ring.
+  Qed.
+
+  Lemma add_poly_comm p q : add_poly p q = add_poly q p.
+  Proof.
+    cbv [add_poly]. rewrite map2_swap.
+    eapply map2_ext. intros; ring.
+  Qed.
+
+  Lemma add_poly_cons p0 q0 (p q : poly A) :
+    add_poly (p0 :: p) (q0 :: q) = fadd p0 q0 :: add_poly p q.
+  Proof.
+    cbv [add_poly]. autorewrite with push_length.
+    rewrite !extend_cons_S. reflexivity.
+  Qed.
+
+  Lemma add_poly_nil_l (p : poly A) : add_poly [] p = p.
+  Proof. apply add_poly_0_l. Qed.
+
+  Lemma add_poly_nil_r (p : poly A) : add_poly p [] = p.
+  Proof. rewrite add_poly_comm; apply add_poly_0_l. Qed.
+
+  Lemma add_poly_assoc p q r :
+    add_poly p (add_poly q r) = add_poly (add_poly p q) r.
+  Proof.
+    revert q r; induction p; destruct q,r;
+      rewrite ?add_poly_nil_l, ?add_poly_nil_r, ?add_poly_cons;
+      try reflexivity; [ ].
+    rewrite IHp. f_equal; ring.
+  Qed.
+
+  Lemma mul_poly_1_l p : mul_poly one_poly p = p.
+  Proof.
+    cbv [mul_poly one_poly]. cbn.
+    autorewrite with listsimpl.
+    cbv [to_indexed_poly]. rewrite map_map.
+    cbv [indexed_term_to_poly].
+    induction p; [ reflexivity | ].
+    autorewrite with push_length pull_snoc.
+    Search combine.
+    rewrite combine_append.
+  Lemma to_indexed_poly_cons
+
+
+  (* add_0_l *)
+  (* add_comm *)
+  (* add_assoc *)
+  (* mul_1_l *)
+  (* mul_comm *)
+  (* mul_assoc *)
+  (* distr_l *)
+  (* sub_def *)
+  (* opp_def *)
+End PolynomialProperties.
+
 Section ByteField.
   (* Representation of bytes as polynomials with boolean coefficients;
      relies on N2Bv being little-endian *)
@@ -230,13 +320,16 @@ Section ByteField.
   (* Operations in GF(2) *)
   Local Instance bitops : FieldOperations bool :=
     {| fzero := false;
+       fone := true;
        fis_zero := negb;
+       fopp := fun b => b;
        fadd := xorb;
        fsub := xorb;
        fmul := andb;
        fdiv := fun b1 _ => b1; (* divisor must be 1, otherwise division by 0 *)
        fmodulo := fun b1 b2 => xorb b1 (andb b2 b1); (* b1 mod b2 = b1 - b2 * (b1 / b2) *)
     |}.
+  Definition bit_theory : ring_theory fzero fone fadd fmul fsub fopp eq := BoolTheory.
 
   (* FIPS 197: 4.2 Multiplication
 
@@ -256,7 +349,9 @@ Section ByteField.
   (* Operations in GF(2^8) *)
   Local Instance byteops : FieldOperations byte :=
     {| fzero := Byte.x00;
+       fone := Byte.x01;
        fis_zero := Byte.eqb x00;
+       fopp := fun b => b;
        fadd :=
          fun a b => poly_to_byte (add_poly (byte_to_poly a) (byte_to_poly b));
        fsub :=
@@ -270,6 +365,13 @@ Section ByteField.
        fmodulo :=
          fun a b => poly_to_byte (modulo_poly (byte_to_poly a) (byte_to_poly b));
     |}.
+  (*
+  Definition byte_theory : ring_theory fzero fone fadd fmul fsub fopp eq.
+  Proof.
+    constructor.
+    { destruct x; reflexivity. }
+    { destruct x,y; reflexivity.
+  Qed.*)
 
   (* Test case from FIPS : {57} ∘ {83} = {c1} *)
   Goal (let b57 : byte := Byte.x57 in
@@ -355,9 +457,9 @@ Section Spec.
 
 
                c'0 = ({0e} ∙ c0) ⊕ ({0b} ∙ c1) ⊕ ({0d} ∙ c2) ⊕ ({09} ∙ c3)
-               c'0 = ({09} ∙ c0) ⊕ ({0e} ∙ c1) ⊕ ({0b} ∙ c2) ⊕ ({0d} ∙ c3)
-               c'0 = ({0d} ∙ c0) ⊕ ({09} ∙ c1) ⊕ ({0e} ∙ c2) ⊕ ({0b} ∙ c3)
-               c'0 = ({0b} ∙ c0) ⊕ ({0d} ∙ c1) ⊕ ({09} ∙ c2) ⊕ ({0e} ∙ c3)
+               c'1 = ({09} ∙ c0) ⊕ ({0e} ∙ c1) ⊕ ({0b} ∙ c2) ⊕ ({0d} ∙ c3)
+               c'2 = ({0d} ∙ c0) ⊕ ({09} ∙ c1) ⊕ ({0e} ∙ c2) ⊕ ({0b} ∙ c3)
+               c'3 = ({0b} ∙ c0) ⊕ ({0d} ∙ c1) ⊕ ({09} ∙ c2) ⊕ ({0e} ∙ c3)
  *)
 
   (* InvMixColumns on a single column using matrix-based formula *)
@@ -406,3 +508,126 @@ Section MixColumnsTests.
   Proof. vm_compute. reflexivity. Qed.
 End MixColumnsTests.
 
+Require Import Coq.micromega.Lia.
+Require Import Cava.Tactics.
+
+Section Properties.
+  Existing Instance byteops.
+  Context {rtheory : ring_theory fzero fone fadd fmul fsub fopp eq}.
+  Add Ring fring : rtheory.
+
+  Local Infix "+" := fadd.
+  Local Infix "-" := fsub.
+  Local Infix "*" := fmul.
+
+  (* This odd property holds on bytes because add/sub are xors *)
+  Lemma bytes_sub_is_add (a b : byte) :
+    @fadd _ byteops a b = @fadd _ byteops a b.
+  Proof. reflexivity. Qed.
+
+  Definition sum (p : poly byte) : byte := fold_left fadd p fzero.
+  Definition prod (p q : poly byte) : poly byte := map2 fmul p q.
+
+  (* multiplication modulo x^4-1 for 4-digit polynomials *)
+  Definition matrix_mulmod (p q : poly byte) : poly byte :=
+    let p0 := nth 0 p fzero in
+    let p1 := nth 1 p fzero in
+    let p2 := nth 2 p fzero in
+    let p3 := nth 3 p fzero in
+    let q0 := nth 0 q fzero in
+    let q1 := nth 1 q fzero in
+    let q2 := nth 2 q fzero in
+    let q3 := nth 3 q fzero in
+    [ sum (prod [q0;q3;q2;q1] [p0;p1;p2;p3]);
+      sum (prod [q1;q0;q3;q2] [p0;p1;p2;p3]);
+      sum (prod [q2;q1;q0;q3] [p0;p1;p2;p3]);
+      sum (prod [q3;q2;q1;q0] [p0;p1;p2;p3])
+    ].
+
+  Hint Unfold matrix_mulmod sum prod nth map2 fold_left : matrix_mulmod.
+
+  Ltac fequal_list :=
+    repeat match goal with
+           | |- cons _ _ = cons _ _ => f_equal
+           end.
+  Ltac fequal_vector :=
+    repeat match goal with
+           | |- Vector.cons _ _ _ _ = Vector.cons _ _ _ _ => f_equal
+           end.
+
+  Lemma matrix_mulmod_assoc a b c :
+    length a = 4%nat -> length b = 4%nat -> length c = 4%nat ->
+    matrix_mulmod a (matrix_mulmod b c) = matrix_mulmod (matrix_mulmod a b) c.
+  Proof.
+    intros; destruct_lists_by_length.
+    autounfold with matrix_mulmod.
+    fequal_list; ring.
+  Qed.
+
+  Lemma matrix_mulmod_1_l p :
+    length p = 4%nat ->
+    matrix_mulmod [fone;fzero;fzero;fzero] p = p.
+  Proof.
+    intros; destruct_lists_by_length.
+    autounfold with matrix_mulmod.
+    fequal_list; ring.
+  Qed.
+
+  Lemma matrix_mulmod_distr_l a b c :
+    length a = 4%nat -> length b = 4%nat -> length c = 4%nat ->
+    matrix_mulmod a (map2 fadd b c)
+    = map2 fadd (matrix_mulmod a b) (matrix_mulmod a c).
+  Proof.
+    intros; destruct_lists_by_length.
+    autounfold with matrix_mulmod.
+    fequal_list; ring.
+  Qed.
+
+  Lemma mix_single_column_is_matrix_mulmod d c :
+    mix_single_column c = of_list_sized d 4%nat
+                                        (matrix_mulmod [x02;x01;x01;x03] (to_list c)).
+  Proof.
+    cbv [mix_single_column]. constant_vector_simpl c.
+    autorewrite with push_to_list.
+    autounfold with matrix_mulmod.
+    cbv [of_list_sized of_list].
+    rewrite resize_default_id.
+    fequal_vector; ring.
+  Qed.
+
+  Lemma inv_mix_single_column_is_matrix_mulmod d c :
+    inv_mix_single_column c = of_list_sized d 4%nat
+                                        (matrix_mulmod [x0e;x09;x0d;x0b] (to_list c)).
+  Proof.
+    cbv [inv_mix_single_column]. constant_vector_simpl c.
+    autorewrite with push_to_list.
+    autounfold with matrix_mulmod.
+    cbv [of_list_sized of_list].
+    rewrite resize_default_id.
+    fequal_vector; try ring.
+  Qed.
+
+  Lemma inverse_mix_single_column c :
+    inv_mix_single_column (mix_single_column c) = c.
+  Proof.
+    rewrite inv_mix_single_column_is_matrix_mulmod with (d:=fzero).
+    rewrite mix_single_column_is_matrix_mulmod with (d:=fzero).
+    autorewrite with push_to_list.
+    rewrite matrix_mulmod_assoc by length_hammer.
+    match goal with
+    | |- context [matrix_mulmod (cons ?a0 ?a) (cons ?b0 ?b)] =>
+      compute_expr (matrix_mulmod (cons a0 a) (cons b0 b))
+    end.
+    rewrite matrix_mulmod_1_l by length_hammer.
+    rewrite of_list_sized_to_list; reflexivity.
+  Qed.
+
+  Lemma inverse_mix_columns {Nb} (state : Vector.t (Vector.t byte 4) Nb) :
+    inv_mix_columns (mix_columns state) = state.
+  Proof.
+    cbv [inv_mix_columns mix_columns].
+    rewrite Vector.map_map.
+    apply VectorUtils.map_id_ext.
+    apply inverse_mix_single_column.
+  Qed.
+End Properties.

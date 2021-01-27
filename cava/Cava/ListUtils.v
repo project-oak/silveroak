@@ -106,6 +106,13 @@ Section Extend.
   Lemma extend_nil {A} (d : A) n : extend [] d n = repeat d n.
   Proof. cbv [extend]. autorewrite with push_length natsimpl. reflexivity. Qed.
 
+  Lemma extend_cons_S {A} x0 x (d : A) n :
+    extend (x0 :: x) d (S n) = x0 :: extend x d n.
+  Proof.
+    cbv [extend]. autorewrite with push_length natsimpl.
+    rewrite <-app_comm_cons; reflexivity.
+  Qed.
+
   Lemma extend_le {A} l (d : A) n : n <= length l -> extend l d n = l.
   Proof.
     cbv [extend]; intros.
