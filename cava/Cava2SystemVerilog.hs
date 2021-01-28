@@ -320,30 +320,11 @@ generateTestBench testBench
      "  // Circuit inputs"] ++
      declareLocalPorts (circuitInputs intf) ++
     ["  // Circuit outputs"] ++
-     declareLocalPorts (circuitOutputs intf) ++
-     ["",
-      "  // Input test vectors"] ++
-     initTestVectors inputPortList (testBenchInputs testBench) ++
-     ["",
-      "  // Expected output test vectors"] ++
-     initTestVectors outputPortList (testBenchExpectedOutputs testBench) ++
-    ["",
-     "  int unsigned i_cava = 0;"] ++
-     assignInputs inputPortList ++
-    ["",
-     "  always @(posedge clk) begin"
-     ] ++
-     [addDisplay (inputPortList ++ outputPortList)] ++
-     checkOutputs outputPortList ++
-    ["    if (i_cava == " ++ show (nrTests - 1) ++ ") begin",
-     "      $display (\"PASSED\");",
-     "      i_cava <= 0;",
-     "    end else begin",
-     "      i_cava <= i_cava + 1 ;",
-     "    end;",
-     "  end",
-     "",
-     "endmodule"
+    declareLocalPorts (circuitOutputs intf) ++
+    [] ++
+    (if length (testBenchInputs testBench) == 0 then [] else body) ++
+    [] ++
+    ["endmodule"
     ]
     where
     intf = testBenchInterface testBench
@@ -351,6 +332,28 @@ generateTestBench testBench
     inputPortList = circuitInputs intf
     outputPortList = circuitOutputs intf
     nrTests = length (testBenchInputs testBench)
+    body =
+      ["  // Input test vectors"] ++
+      initTestVectors inputPortList (testBenchInputs testBench) ++
+      ["",
+       "  // Expected output test vectors"] ++
+      initTestVectors outputPortList (testBenchExpectedOutputs testBench) ++
+      ["",
+      "  int unsigned i_cava = 0;"] ++
+      assignInputs inputPortList ++
+      ["",
+      "  always @(posedge clk) begin"
+      ] ++
+      [addDisplay (inputPortList ++ outputPortList)] ++
+      checkOutputs outputPortList ++
+      ["    if (i_cava == " ++ show (nrTests - 1) ++ ") begin",
+      "      $display (\"PASSED\");",
+      "      i_cava <= 0;",
+      "    end else begin",
+      "      i_cava <= i_cava + 1 ;",
+      "    end;",
+      "  end"
+      ]
 
 declareCircuitPort :: PortDeclaration -> String
 declareCircuitPort port
@@ -370,6 +373,7 @@ declarePort (Coq_mkPort name kind) =
     Vec k s -> "  (* mark_debug = \"true\" *) " ++ vectorDeclaration name k s
 
 initTestVectors :: [PortDeclaration] -> [[SignalExpr]] -> [String]
+initTestVectors _ [] = [] -- No test vectors provided, SystemVerilog does not permit zero length arrays
 initTestVectors [] _ = []
 initTestVectors (p:ps) s
   = initTestVector p (map head s) ++
