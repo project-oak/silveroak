@@ -14,7 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Bool.Bvector Coq.Vectors.VectorDef.
+Require Import Coq.Bool.Bvector.
+Require Import Coq.Vectors.Vector.
 Require Import Cava.VectorUtils.
 
 Section Spec.
