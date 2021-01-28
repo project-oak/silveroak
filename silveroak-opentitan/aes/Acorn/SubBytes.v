@@ -14,6 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.Lists.List.
+Import ListNotations.
+Require Import Cava.Cava.
+
 Require Import Coq.Vectors.Vector.
 Require Import Coq.NArith.Ndigits.
 
@@ -147,15 +152,48 @@ Section WithCava.
   Definition sbox_fwd_lut := natvec_to_signal_sized 8 sbox_fwd.
   Definition sbox_inv_lut := natvec_to_signal_sized 8 sbox_inv.
 
-  Definition state_map (f : signal (Vec Bit 8) -> signal (Vec Bit 8)) (s : signal state) : signal state :=
-    unpeel (map unpeel (map (fun t => map f t) (map peel (peel s)))).
+  Definition column_map (f : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))) (s : signal (Vec (Vec Bit 8) 4)) : cava (signal (Vec (Vec Bit 8) 4)) :=
+    xs <- Traversable.mapT f (peel s) ;;
+    ret (unpeel xs).
+
+  Definition state_map (f : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))) (s : signal state) : cava (signal state) :=
+    xs <- Traversable.mapT (column_map f) (peel s) ;;
+    ret (unpeel xs).
+
+  Definition aes_sbox_lut (is_decrypt : signal Bit) (b : signal (Vec Bit 8))
+    : cava (signal (Vec Bit 8)) :=
+    let encrypted := indexAt sbox_fwd_lut b in
+    let decrypted := indexAt sbox_inv_lut b in
+    ret (pairSel is_decrypt (mkpair encrypted decrypted)).
 
   Definition sub_bytes (is_decrypt : signal Bit) (b : signal state)
     : cava (signal state) :=
-    let encrypted := state_map (fun i => indexAt sbox_fwd_lut i) b in
-    let decrypted := state_map (fun i => indexAt sbox_inv_lut i) b in
-    ret (pairSel is_decrypt (mkpair encrypted decrypted)).
+    state_map (aes_sbox_lut is_decrypt) b.
 End WithCava.
+
+(* Interface designed to match interface of corresponding SystemVerilog component:
+     https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_sbox_lut.sv
+*)
+Definition aes_sbox_lut_Interface :=
+  combinationalInterface "aes_sbox_lut"
+  [mkPort "op_i" Bit; mkPort "data_i" (Vec Bit 8)]
+  [mkPort "data_o" (Vec Bit 8)]
+  [].
+
+(* Interface designed to match interface of corresponding SystemVerilog component:
+     https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_sub_bytes.sv
+*)
+Definition aes_sub_bytes_Interface :=
+  combinationalInterface "aes_sub_bytes"
+  [mkPort "op_i" Bit; mkPort "data_i" state]
+  [mkPort "data_o" state]
+  [].
+
+Definition aes_sbox_lut_Netlist
+  := makeNetlist aes_sbox_lut_Interface (fun '(op_i, data_i) => aes_sbox_lut op_i data_i).
+
+Definition aes_sub_bytes_Netlist
+  := makeNetlist aes_sub_bytes_Interface (fun '(op_i, data_i) => sub_bytes op_i data_i).
 
 (* Run test as a quick-feedback check *)
 Import List.ListNotations.

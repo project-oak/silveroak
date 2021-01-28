@@ -14,6 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.Lists.List.
+Import ListNotations.
+Require Import Cava.Cava.
+
 Require Import Coq.Vectors.Vector.
 
 Require Import ExtLib.Structures.Monads.
@@ -44,6 +49,20 @@ Section WithCava.
   Definition add_round_key (k : signal key) (st : signal state)
     : cava (signal state) := xor4x4V k st.
 End WithCava.
+
+(* add_round_key is internal to aes_cipher_core in OpenTitan and so does not have
+* an "official" interface.
+  https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_cipher_core.sv
+*)
+Definition add_round_key_Interface :=
+  combinationalInterface "aes_add_round_key"
+  [ mkPort "key_i" (Vec (Vec (Vec Bit 8) 4) 4);
+    mkPort "data_i" (Vec (Vec (Vec Bit 8) 4) 4)]
+  [mkPort "data_o" (Vec (Vec (Vec Bit 8) 4) 4)]
+  [].
+
+Definition aes_add_round_key_Netlist
+  := makeNetlist add_round_key_Interface (fun '(key_i, data_i) => add_round_key key_i data_i).
 
 (* Run test as a quick-feedback check *)
 Import List.ListNotations.

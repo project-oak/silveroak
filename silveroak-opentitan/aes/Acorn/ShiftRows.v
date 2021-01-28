@@ -14,6 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.Lists.List.
+Import ListNotations.
+Require Import Cava.Cava.
+
 Require Import Coq.Vectors.Vector.
 
 Require Import ExtLib.Structures.Monads.
@@ -73,6 +78,18 @@ Section WithCava.
   ret (unpeel [data_o_0; data_o_1; data_o_2; data_o_3]).
 
 End WithCava.
+
+(* Interface designed to match interface of corresponding SystemVerilog component:
+     https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_shift_rows.sv
+*)
+Definition aes_shift_rows_Interface :=
+  combinationalInterface "aes_shift_rows"
+  [mkPort "op_i" Bit; mkPort "data_i" (Vec (Vec (Vec Bit 8) 4) 4)]
+  [mkPort "data_o" (Vec (Vec (Vec Bit 8) 4) 4)]
+  [].
+
+Definition aes_shift_rows_Netlist
+  := makeNetlist aes_shift_rows_Interface (fun '(op_i, data_i) => aes_shift_rows op_i data_i).
 
 (* Run test as a quick-feedback check *)
 Require Import Cava.BitArithmetic.
