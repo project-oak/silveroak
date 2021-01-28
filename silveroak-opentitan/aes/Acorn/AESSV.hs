@@ -16,11 +16,10 @@
 module Main where
 
 import Cava2SystemVerilog
-import MixColumns
+import MixColumnsCircuit
 import ShiftRows
 import SubBytes
 import AddRoundKey
-
 
 main :: IO ()
 main = do writeSystemVerilog aes_mix_columns_Netlist

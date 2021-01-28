@@ -9,3 +9,5 @@
 -Q monad-examples/xilinx XilinxExamples
 -Q arrow-examples ArrowExamples
 -Q arrow-lib Arrow
+-Q silveroak-opentitan/aes/Acorn AcornAes
+-Q silveroak-opentitan/aes/Spec AesSpec

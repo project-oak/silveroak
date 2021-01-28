@@ -18,7 +18,9 @@
    subroutines instantiated. *)
 
 Require Import Coq.Lists.List.
+Require Import Cava.BitArithmetic.
 Require Import Cava.ListUtils.
+Require Import Cava.VectorUtils.
 Require Import AesSpec.AddRoundKey.
 Require Import AesSpec.MixColumns.
 Require Import AesSpec.ShiftRows.
@@ -88,6 +90,14 @@ Section Equivalence.
     equivalent_inverse_cipher
       state round_key add_round_key inv_sub_bytes inv_shift_rows inv_mix_columns
       first_key last_key middle_keys input.
+
+  (* Top level specifications of OpenTitan mix_columns sub-components. *)
+  Definition aes_mix_columns_top_spec (op : bool) (i : Vector.t (Vector.t (Vector.t bool 8) 4) 4)
+                                      : Vector.t (Vector.t (Vector.t bool 8) 4) 4 :=
+    let i_bytes := Vector.map (Vector.map bitvec_to_byte) (transpose i) in
+    let i_big := BigEndian.from_rows (transpose i_bytes) in
+    let bytes_o := BigEndian.to_cols (mix_columns i_big) in
+    Vector.map (Vector.map byte_to_bitvec) bytes_o.
 
   Hint Rewrite @inverse_add_round_key @inverse_shift_rows @inverse_sub_bytes
        @inverse_mix_columns @sub_bytes_shift_rows_comm @mix_columns_add_round_key_comm

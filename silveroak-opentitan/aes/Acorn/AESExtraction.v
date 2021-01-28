@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 Require Import AcornAes.Pkg.
-Require Import AcornAes.MixColumns.
+Require Import AcornAes.MixColumnsCircuit.
 Require Import AcornAes.ShiftRows.
 Require Import AcornAes.SubBytes.
 Require Import AcornAes.AddRoundKey.
@@ -28,7 +28,7 @@ Require Import Coq.extraction.ExtrHaskellNatInteger.
 Extraction Language Haskell.
 
 Extraction Library Pkg.
-Extraction Library MixColumns.
+Extraction Library MixColumnsCircuit.
 Extraction Library ShiftRows.
 Extraction Library SubBytes.
 Extraction Library AddRoundKey.
