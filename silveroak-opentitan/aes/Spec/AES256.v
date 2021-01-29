@@ -91,14 +91,6 @@ Section Equivalence.
       state round_key add_round_key inv_sub_bytes inv_shift_rows inv_mix_columns
       first_key last_key middle_keys input.
 
-  (* Top level specifications of OpenTitan mix_columns sub-components. *)
-  Definition aes_mix_columns_top_spec (op : bool) (i : Vector.t (Vector.t (Vector.t bool 8) 4) 4)
-                                      : Vector.t (Vector.t (Vector.t bool 8) 4) 4 :=
-    let i_bytes := Vector.map (Vector.map bitvec_to_byte) (transpose i) in
-    let i_big := BigEndian.from_rows (transpose i_bytes) in
-    let bytes_o := BigEndian.to_cols (mix_columns i_big) in
-    Vector.map (Vector.map byte_to_bitvec) bytes_o.
-
   Hint Rewrite @inverse_add_round_key @inverse_shift_rows @inverse_sub_bytes
        @inverse_mix_columns @sub_bytes_shift_rows_comm @mix_columns_add_round_key_comm
        using solve [eauto] : inverse.
@@ -117,3 +109,21 @@ Section Equivalence.
 End Equivalence.
 
 Redirect "AES256_Assumptions" Print Assumptions aes256_decrypt_encrypt.
+
+(* Specifications for OpenTitan circuits in terms of their exact state
+   representation and arguments. *)
+Section CircuitSpec.
+  (* OpenTitan circuits expect row-major order with big-endian rows and columns
+     and little-endan bytes. *)
+  Definition from_flat st :=
+    Vector.map (Vector.map (fun r => byte_to_bitvec r)) (BigEndian.to_rows st).
+  Definition to_flat st :=
+    BigEndian.from_rows (Vector.map (Vector.map (fun r => bitvec_to_byte r)) st).
+
+  Definition aes_mix_columns_circuit_spec
+             (op_i : bool) (state : Vector.t (Vector.t (Vector.t bool 8) 4) 4)
+  : Vector.t (Vector.t (Vector.t bool 8) 4) 4 :=
+    if op_i
+    then from_flat (AES256.inv_mix_columns (to_flat state))
+    else from_flat (AES256.mix_columns (to_flat state)).
+End CircuitSpec.

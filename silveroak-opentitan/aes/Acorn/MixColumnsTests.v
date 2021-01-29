@@ -36,7 +36,7 @@ Local Open Scope vector_scope.
 
 Definition mixColTest1ExpectedOutput : Vector.t (Vector.t nat 4) 4
   := [[142; 77; 161; 188];
-      [159; 220; 88; 157]; 
+      [159; 220; 88; 157];
       [1; 1; 1; 1];
       [77; 126; 189; 248]].
 
@@ -60,7 +60,7 @@ Proof. vm_compute. reflexivity. Qed.
 (*** Second check with AES256.aes_mix_columns_top_spec. *)
 
 Definition i1 := fromNatVec (transpose mixColTest1InputNat).
-Definition s2 := AES256.aes_mix_columns_top_spec false i1.
+Definition s2 := transpose (AES256.aes_mix_columns_circuit_spec false i1).
 
 Example test_aes_spec : toNatVec s2 = mixColTest1ExpectedOutput.
 Proof. vm_compute. reflexivity. Qed.
@@ -83,25 +83,20 @@ Local Open Scope list_scope.
    the the specification aes_mix_columns_top_spec.
 *)
 Lemma aes_mix_columns_correct : forall (op : bool) (i :  Vector.t (Vector.t (Vector.t bool 8) 4) 4),
-      combinational (aes_mix_columns [op] [i]) = [aes_mix_columns_top_spec op i].
+      combinational (aes_mix_columns [op] [i]) = [aes_mix_columns_circuit_spec op i].
 Abort.
 
 Goal
   (let signal := combType in
-  let to_state : Vector.t bool 128 -> signal AcornAes.Common.Notations.state :=
-      fun st => Vector.map (Vector.map (fun r => byte_to_bitvec r)) (BigEndian.to_rows st) in
-  let from_state : signal AcornAes.Common.Notations.state -> Vector.t bool 128 :=
-      fun st => BigEndian.from_rows (Vector.map (Vector.map (fun r => bitvec_to_byte r)) st) in
-
    (* run encrypt test with this version of aes_mix_columns plugged in *)
    aes_test_encrypt Matrix
                     (fun step key =>
                        match step with
                        | MixColumns =>
                          fun st =>
-                           let input := to_state st in
+                           let input := from_flat st in
                            let output := unIdent (aes_mix_columns [false]%list [input]%list) in
-                           from_state (List.hd (defaultCombValue _) output)
+                           to_flat (List.hd (defaultCombValue _) output)
                        | _ => aes_impl step key
                        end) = Success).
 Proof. vm_compute. reflexivity. Qed.
