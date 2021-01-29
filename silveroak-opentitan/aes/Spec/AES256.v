@@ -104,10 +104,49 @@ Section CircuitSpec.
   Definition to_flat st :=
     BigEndian.from_rows (Vector.map (Vector.map (fun r => bitvec_to_byte r)) st).
 
+  Lemma from_flat_to_flat st : from_flat (to_flat st) = st.
+  Proof.
+    cbv [from_flat to_flat]. autorewrite with conversions.
+    do 2 (rewrite Vector.map_map; apply map_id_ext; intros).
+    rewrite bitvec_to_byte_to_bitvec. reflexivity.
+  Qed.
+
+  Lemma to_flat_from_flat st : to_flat (from_flat st) = st.
+  Proof.
+    cbv [from_flat to_flat]. rewrite !Vector.map_map.
+    erewrite map_id_ext; intros;
+      [ autorewrite with conversions; reflexivity | ].
+    rewrite Vector.map_map; apply map_id_ext; intros.
+    rewrite byte_to_bitvec_to_byte. reflexivity.
+  Qed.
+
+  (* Note that key and state are reversed here *)
+  Definition aes_add_round_key_circuit_spec
+             (key state : Vector.t (Vector.t (Vector.t bool 8) 4) 4)
+    : Vector.t (Vector.t (Vector.t bool 8) 4) 4 :=
+    from_flat (add_round_key (to_flat state) (to_flat key)).
+
+  Definition aes_sub_bytes_circuit_spec
+             (op_i : bool) (state : Vector.t (Vector.t (Vector.t bool 8) 4) 4)
+  : Vector.t (Vector.t (Vector.t bool 8) 4) 4 :=
+    if op_i
+    then from_flat (inv_sub_bytes (to_flat state))
+    else from_flat (sub_bytes (to_flat state)).
+
+  Definition aes_shift_rows_circuit_spec
+             (op_i : bool) (state : Vector.t (Vector.t (Vector.t bool 8) 4) 4)
+  : Vector.t (Vector.t (Vector.t bool 8) 4) 4 :=
+    if op_i
+    then from_flat (inv_shift_rows (to_flat state))
+    else from_flat (shift_rows (to_flat state)).
+
   Definition aes_mix_columns_circuit_spec
              (op_i : bool) (state : Vector.t (Vector.t (Vector.t bool 8) 4) 4)
   : Vector.t (Vector.t (Vector.t bool 8) 4) 4 :=
     if op_i
-    then from_flat (AES256.inv_mix_columns (to_flat state))
-    else from_flat (AES256.mix_columns (to_flat state)).
+    then from_flat (inv_mix_columns (to_flat state))
+    else from_flat (mix_columns (to_flat state)).
 End CircuitSpec.
+Hint Rewrite from_flat_to_flat to_flat_from_flat using solve [eauto] : conversions.
+Hint Unfold aes_add_round_key_circuit_spec aes_sub_bytes_circuit_spec
+     aes_shift_rows_circuit_spec aes_mix_columns_circuit_spec : circuit_specs.

@@ -2,15 +2,11 @@ Axioms:
 sub_bytes_equiv
   : forall (is_decrypt : bool) (st : combType (Vec (Vec (Vec Bit 8) 4) 4)),
     unIdent (sub_bytes [is_decrypt] [st]) =
-    [if is_decrypt
-     then to_cols_bitvecs (inv_sub_bytes (from_cols_bitvecs st))
-     else to_cols_bitvecs (AES256.sub_bytes (from_cols_bitvecs st))]
+    [aes_sub_bytes_circuit_spec is_decrypt st]
 shift_rows_equiv
   : forall (is_decrypt : bool) (st : combType (Vec (Vec (Vec Bit 8) 4) 4)),
     unIdent (shift_rows [is_decrypt] [st]) =
-    [if is_decrypt
-     then to_cols_bitvecs (inv_shift_rows (from_cols_bitvecs st))
-     else to_cols_bitvecs (AES256.shift_rows (from_cols_bitvecs st))]
+    [aes_shift_rows_circuit_spec is_decrypt st]
 shift_rows
   : forall (signal : SignalType -> Type) (semantics : Cava signal),
     signal Bit ->
@@ -19,9 +15,7 @@ shift_rows
 mix_columns_equiv
   : forall (is_decrypt : bool) (st : combType (Vec (Vec (Vec Bit 8) 4) 4)),
     unIdent (mix_columns [is_decrypt] [st]) =
-    [if is_decrypt
-     then to_cols_bitvecs (inv_mix_columns (from_cols_bitvecs st))
-     else to_cols_bitvecs (AES256.mix_columns (from_cols_bitvecs st))]
+    [aes_mix_columns_circuit_spec is_decrypt st]
 mix_columns
   : forall (signal : SignalType -> Type) (semantics : Cava signal),
     signal Bit ->
@@ -35,7 +29,7 @@ key_expand_equiv
     (let spec := if is_decrypt then inv_key_expand_spec else key_expand_spec
        in
      let kr := spec (N.to_nat (Bv2N round_i)) (flatten_key (k, rcon)) in
-     ([to_cols_bitvecs (fst kr)], [snd kr]))
+     ([from_flat (fst kr)], [snd kr]))
 key_expand
   : forall (signal : SignalType -> Type) (semantics : Cava signal),
     signal Bit ->

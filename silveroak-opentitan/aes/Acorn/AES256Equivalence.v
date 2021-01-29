@@ -58,9 +58,9 @@ Axiom inv_key_expand_spec : nat -> t bool 128 * t bool 8 -> t bool 128 * t bool 
 (* convenience definition for converting to/from flat keys in key * round
    constant pairs *)
 Definition flatten_key (kr : combType key * combType round_constant)
-  : t bool 128 * combType round_constant := (from_cols_bitvecs (fst kr), snd kr).
+  : t bool 128 * combType round_constant := (to_flat (fst kr), snd kr).
 Definition unflatten_key (kr : t bool 128 * combType round_constant)
-  : combType key * combType round_constant := (to_cols_bitvecs (fst kr), snd kr).
+  : combType key * combType round_constant := (from_flat (fst kr), snd kr).
 Lemma flatten_unflatten kr : flatten_key (unflatten_key kr) = kr.
 Proof.
   cbv [flatten_key unflatten_key]. destruct kr; cbn [fst snd].
@@ -76,28 +76,22 @@ Hint Rewrite @unflatten_flatten @flatten_unflatten using solve [eauto] : convers
 Axiom sub_bytes_equiv :
   forall (is_decrypt : bool) (st : combType state),
     unIdent (sub_bytes [is_decrypt] [st])
-    = [if is_decrypt
-       then to_cols_bitvecs (AES256.inv_sub_bytes (from_cols_bitvecs st))
-       else to_cols_bitvecs (AES256.sub_bytes (from_cols_bitvecs st))].
+    = [AES256.aes_sub_bytes_circuit_spec is_decrypt st].
 Axiom shift_rows_equiv :
   forall (is_decrypt : bool) (st : combType state),
     unIdent (shift_rows [is_decrypt] [st])
-    = [if is_decrypt
-       then to_cols_bitvecs (AES256.inv_shift_rows (from_cols_bitvecs st))
-       else to_cols_bitvecs (AES256.shift_rows (from_cols_bitvecs st))].
+    = [AES256.aes_shift_rows_circuit_spec is_decrypt st].
 Axiom mix_columns_equiv :
   forall (is_decrypt : bool) (st : combType state),
     unIdent (mix_columns [is_decrypt] [st])
-    = [if is_decrypt
-       then to_cols_bitvecs (AES256.inv_mix_columns (from_cols_bitvecs st))
-       else to_cols_bitvecs (AES256.mix_columns (from_cols_bitvecs st))].
+    = [AES256.aes_mix_columns_circuit_spec is_decrypt st].
 
 Axiom key_expand_equiv :
   forall (is_decrypt : bool) (round_i : t bool 4) (k : t (t (t bool 8) 4) 4) (rcon : t bool 8),
     combinational (key_expand [is_decrypt] [round_i] ([k], [rcon]))
     = let spec := if is_decrypt then inv_key_expand_spec else key_expand_spec in
       let kr := spec (N.to_nat (Bv2N round_i)) (flatten_key (k, rcon)) in
-      ([to_cols_bitvecs (fst kr)], [snd kr]).
+      ([from_flat (fst kr)], [snd kr]).
 
 Hint Resolve add_round_key_equiv sub_bytes_equiv shift_rows_equiv
      mix_columns_equiv : subroutines_equiv.
@@ -146,16 +140,16 @@ Lemma full_cipher_equiv
   let round_indices := map (fun i => [nat_to_bitvec_sized 4 i]) (List.seq 0 (S Nr)) in
   let middle_keys_flat :=
       if is_decrypt
-      then List.map AES256.inv_mix_columns (List.map from_cols_bitvecs middle_keys)
-      else List.map from_cols_bitvecs middle_keys in
+      then List.map AES256.inv_mix_columns (List.map to_flat middle_keys)
+      else List.map to_flat middle_keys in
   all_keys = (first_key :: middle_keys ++ [last_key])%list ->
   combinational
     (full_cipher [nat_to_bitvec_sized _ Nr] [nat_to_bitvec_sized _ 0]
                  [is_decrypt] [first_key] [first_rcon] round_indices [input])
-  = [to_cols_bitvecs
+  = [from_flat
        ((if is_decrypt then aes256_decrypt else aes256_encrypt)
-          (from_cols_bitvecs first_key) (from_cols_bitvecs last_key) middle_keys_flat
-          (from_cols_bitvecs input))].
+          (to_flat first_key) (to_flat last_key) middle_keys_flat
+          (to_flat input))].
 Proof.
   cbv [full_cipher]; intros.
 
@@ -164,7 +158,7 @@ Proof.
     erewrite inverse_cipher_equiv with
         (Nr:=14)
         (add_round_key_spec:=
-           fun k st => to_cols_bitvecs (AES256.add_round_key (from_cols_bitvecs k) (from_cols_bitvecs st)))
+           fun st k => AES256.aes_add_round_key_circuit_spec k st)
         (key_expand_spec:=
            fun i k_rcon => unflatten_key (key_expand_spec i (flatten_key k_rcon)))
         (inv_key_expand_spec:=
@@ -175,14 +169,14 @@ Proof.
 
     (* Change key and state representations so they match *)
     erewrite equivalent_inverse_cipher_change_state_rep
-      by eapply to_cols_bitvecs_from_cols_bitvecs.
+      by eapply from_flat_to_flat.
     erewrite equivalent_inverse_cipher_change_key_rep
-      with (projkey:=to_cols_bitvecs)
+      with (projkey:=from_flat)
            (middle_keys_alt:=
-              List.map inv_mix_columns (List.map from_cols_bitvecs middle_keys))
-           (first_key_alt:=from_cols_bitvecs first_key)
-           (last_key_alt:=from_cols_bitvecs last_key)
-      by (try apply to_cols_bitvecs_from_cols_bitvecs;
+              List.map inv_mix_columns (List.map to_flat middle_keys))
+           (first_key_alt:=to_flat first_key)
+           (last_key_alt:=to_flat last_key)
+      by (try apply from_flat_to_flat;
           rewrite !List.map_map; apply List.map_ext;
           autorewrite with conversions; reflexivity).
 
@@ -190,12 +184,13 @@ Proof.
        equivalent *)
     f_equal. f_equal.
     eapply equivalent_inverse_cipher_subroutine_ext;
-      intros; autorewrite with conversions; reflexivity. }
+      intros; autounfold with circuit_specs;
+        autorewrite with conversions; reflexivity. }
   { (* encryption *)
     erewrite cipher_equiv with
         (Nr:=14)
         (add_round_key_spec:=
-           fun k st => to_cols_bitvecs (AES256.add_round_key (from_cols_bitvecs k) (from_cols_bitvecs st)))
+           fun st k => AES256.aes_add_round_key_circuit_spec k st)
         (key_expand_spec:=
            fun i k_rcon => unflatten_key (key_expand_spec i (flatten_key k_rcon)))
         (inv_key_expand_spec:=
@@ -206,11 +201,11 @@ Proof.
 
     (* Change key and state representations so they match *)
     erewrite cipher_change_state_rep
-      by eapply to_cols_bitvecs_from_cols_bitvecs.
+      by eapply from_flat_to_flat.
     erewrite cipher_change_key_rep
-      with (projkey:=to_cols_bitvecs)
-           (middle_keys_alt:=List.map from_cols_bitvecs middle_keys)
-      by (apply to_cols_bitvecs_from_cols_bitvecs ||
+      with (projkey:=from_flat)
+           (middle_keys_alt:=List.map to_flat middle_keys)
+      by (apply from_flat_to_flat ||
           (rewrite List.map_map; apply ListUtils.map_id_ext;
            intros; autorewrite with conversions; reflexivity)).
 
@@ -218,7 +213,8 @@ Proof.
        equivalent *)
     f_equal. f_equal.
     eapply cipher_subroutine_ext;
-      intros; autorewrite with conversions; reflexivity. }
+      intros; autounfold with circuit_specs;
+        autorewrite with conversions; reflexivity. }
 Qed.
 
 Local Open Scope monad_scope.
