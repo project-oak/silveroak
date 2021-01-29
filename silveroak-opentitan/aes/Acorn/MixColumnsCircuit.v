@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2020 The Project Oak Authors                                   *)
+(* Copyright 2021 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -19,6 +19,8 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import Coq.Vectors.Vector.
+Require Import Coq.NArith.Ndigits.
+Require Import Coq.NArith.BinNat.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Traversable.
@@ -29,12 +31,12 @@ Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Require Import AcornAes.Common.
 Require Import AcornAes.Pkg.
-Require Import AesSpec.Tests.CipherTest.
 Require Import AesSpec.Tests.Common.
-Require Import AesSpec.StateTypeConversions.
 Import Common.Notations.
 
 Import VectorNotations.
+
+Require Import AesSpec.AES256.
 
 Local Notation byte := (Vec Bit 8) (only parsing).
 Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").
@@ -153,39 +155,40 @@ Definition aes_mix_columns_Interface :=
   [mkPort "data_o" (Vec (Vec (Vec Bit 8) 4) 4)]
   [].
 
-(* Create a netlidt for the aes_mix_columns_Netlist block. The block is written with
+(* Create a netlist for the aes_mix_columns_Netlist block. The block is written with
    curried inputs but netlist extraction for top-level blocks requires they are
    written with a single argument, using tupling for composite inputs. A lambda
    expression maps from the tuple inputs to the curried arguments.  *)
 Definition aes_mix_columns_Netlist
   := makeNetlist aes_mix_columns_Interface (fun '(op_i, data_i) => aes_mix_columns op_i data_i).
 
-(* Use an empty test bench for now to just check SystemVerilog compilation of
-   the aes_mix_columns block. *)
+(* Test case from the first four rows of the Wikipedia page on AES mix_columns:
+     https://en.wikipedia.org/wiki/Rijndael_MixColumns
+*)
+Definition mixColTest1InputNat : Vector.t (Vector.t nat 4) 4
+  := [[219; 19; 83; 69];
+      [242; 10; 34; 92];
+      [1; 1; 1; 1];
+      [45; 38; 49; 76]
+  ].
+
+(* A function to convert a matrix of nat values to a maxtrix of bitvecss *)
+Definition fromNatVec (i : Vector.t (Vector.t nat 4) 4 ): Vector.t (Vector.t (Vector.t bool 8) 4) 4
+  := Vector.map (Vector.map (fun v => N2Bv_sized 8 (N.of_nat v))) i.
+
+(* A function to convert a bitvec matrix to a nat matrix. *)
+Definition toNatVec (i: Vector.t (Vector.t (Vector.t bool 8) 4) 4) : Vector.t (Vector.t nat 4) 4
+  := Vector.map (Vector.map (fun v => N.to_nat (Bv2N v))) i.
+
+Local Open Scope list_scope. 
+
+(* Get the test inputs into the right format for the circuit inputs. *)
+Definition mix_cols_i1 := fromNatVec mixColTest1InputNat.
+(* Compute the expected outputs from the Coq/Cava semantics. *)
+Definition mix_cols_expected_outputs := combinational (aes_mix_columns [false] [mix_cols_i1]).
+
 Definition aes_mix_columns_tb :=
-  testBench "aes_mix_columns_tb" aes_mix_columns_Interface [] [].
-
-(* Run test as a quick-feedback check *)
-Require Import Cava.BitArithmetic.
-Require Import AesSpec.StateTypeConversions.
-
-Import List.ListNotations.
-Goal
-  (let signal := combType in
-  let to_state : Vector.t bool 128 -> signal state :=
-      fun st => Vector.map (Vector.map (fun r => byte_to_bitvec r)) (BigEndian.to_rows st) in
-  let from_state : signal state -> Vector.t bool 128 :=
-      fun st => BigEndian.from_rows (Vector.map (Vector.map (fun r => bitvec_to_byte r)) st) in
-
-   (* run encrypt test with this version of aes_mix_columns plugged in *)
-   aes_test_encrypt Matrix
-                    (fun step key =>
-                       match step with
-                       | MixColumns =>
-                         fun st =>
-                           let input := to_state st in
-                           let output := unIdent (aes_mix_columns [false]%list [input]%list) in
-                           from_state (List.hd (defaultCombValue _) output)
-                       | _ => aes_impl step key
-                       end) = Success).
-Proof. vm_compute. reflexivity. Qed.
+  testBench "aes_mix_columns_tb"
+            aes_mix_columns_Interface
+            [(false, mix_cols_i1)]
+            mix_cols_expected_outputs.

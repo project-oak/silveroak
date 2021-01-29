@@ -18,7 +18,9 @@
    subroutines instantiated. *)
 
 Require Import Coq.Lists.List.
+Require Import Cava.BitArithmetic.
 Require Import Cava.ListUtils.
+Require Import Cava.VectorUtils.
 Require Import AesSpec.AddRoundKey.
 Require Import AesSpec.MixColumns.
 Require Import AesSpec.ShiftRows.
@@ -107,3 +109,21 @@ Section Equivalence.
 End Equivalence.
 
 Redirect "AES256_Assumptions" Print Assumptions aes256_decrypt_encrypt.
+
+(* Specifications for OpenTitan circuits in terms of their exact state
+   representation and arguments. *)
+Section CircuitSpec.
+  (* OpenTitan circuits expect row-major order with big-endian rows and columns
+     and little-endan bytes. *)
+  Definition from_flat st :=
+    Vector.map (Vector.map (fun r => byte_to_bitvec r)) (BigEndian.to_rows st).
+  Definition to_flat st :=
+    BigEndian.from_rows (Vector.map (Vector.map (fun r => bitvec_to_byte r)) st).
+
+  Definition aes_mix_columns_circuit_spec
+             (op_i : bool) (state : Vector.t (Vector.t (Vector.t bool 8) 4) 4)
+  : Vector.t (Vector.t (Vector.t bool 8) 4) 4 :=
+    if op_i
+    then from_flat (AES256.inv_mix_columns (to_flat state))
+    else from_flat (AES256.mix_columns (to_flat state)).
+End CircuitSpec.

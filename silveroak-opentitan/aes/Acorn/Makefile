@@ -55,12 +55,14 @@ minimize-requires: coq
 %.vo:		Makefile.coq
 		$(MAKE) -f Makefile.coq $@
 
-$(SV) $(BENCHES) $(CPPS):	AESSV
+$(SV) $(BENCHES) $(CPPS):	coq AESSV
 
-%_tb.vcd:	%.sv %_tb.sv %_tb.cpp
+obj_dir/V%_tb:	%.sv %_tb.sv %_tb.cpp
 		$(VERILATOR) --trace --cc --top-module $*_tb $*_tb.sv $*.sv --exe $*_tb.cpp
 		make -C obj_dir -f V$*_tb.mk V$*_tb
-		obj_dir/V$*_tb
+
+%_tb.vcd:	obj_dir/V%_tb
+		$<
 
 
 clean:		

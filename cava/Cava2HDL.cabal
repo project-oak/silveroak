@@ -73,13 +73,13 @@ library
                      Vector
                      VectorUtils
                      XilinxAdder
+                     Byte0
 
   other-Modules:     Applicative
                      BinPos
                      BinNatDef
                      ByteVector
                      Byte
-                     Byte0
                      Compare_dec
                      Decimal
                      Functor
