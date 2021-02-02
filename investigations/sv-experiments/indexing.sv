@@ -66,16 +66,24 @@ module indexing(
   logic o;
 
   logic[1:0] v0;
+  logic v0U[1:0] = '{i1,i0};
   logic[0:0] v1;
 
   assign o = v0[v1];
-  assign v1 = {sel1};
+  assign v1 = '{sel1};
   assign v0 = {i1,i0};
+  logic idx0 = q[{i1,i0}];
+  logic [1:0] iv1 = 2'({v0U[1], v0U[0]});
+  logic qU[3:0] = '{1'b0, 1'b0, 1'b1, 1'b0};
+  logic idx1 = qU[{v0U[1], v0U[0]}];
+  logic idx2 = v0[{sel1}];
 
   logic[3:0] alpha = '{1'b1, 1'b1, 1'b0, 1'b0};
   logic[5:0] beta = $bits(beta)'({1'b1, 1'b1, 1'b0, 1'b0});
   logic[10:0] gamma = $bits(gamma)'({alpha, 1'b1, 1'b1});
   logic[3:0] delta = {1'b1, 1'b1, 1'b0, 1'b0};
+
+  logic alphaIdx = alpha[{i1,i0}];
 
   logic[3:0] uA = 4'd12;
   logic[3:0] uB = 4'd5;
@@ -85,7 +93,19 @@ module indexing(
   logic[3:0] uF = uD - uE;
   logic[3:0] uG = uD - uA;
 
+
+  logic v00 [7:0] = '{1'b1, 1'b1, 1'b0, 1'b0, 1'b1, 1'b1, 1'b0, 1'b0};
+
+  logic unpackedA [2:0][1:0][7:0]
+    = '{ '{ v00, v00 },
+         '{ v00, v00 },
+         '{ v00, v00 }
+       };
+
   initial begin
+    $display("v0U = %b", v0U);
+    $display("$bits(v0U) = %d", $bits(v0U));
+    $display("iv1 = %b", iv1);
     $display("bat1 = %b", bat1);
     $display("bat2 = %b", bat2);
     $display("bat3 = %b", bat3);
@@ -111,7 +131,9 @@ module indexing(
     $display("2**$clog2(32+2) = %d", 2**$clog2(32+2));
     $display("uC = %d %b", uC, uC);
     $display("uF = %d %b", uF, uF);
-    $display("uG = %d %b", uG, uG);
+    $display("uG [= %d %b", uG, uG);
+    $display("v00[0] = %b", v00[0]);
+    $display("v00[0] = %b", v00[7]);
   end
 
 endmodule  

@@ -1,6 +1,8 @@
 # Haskell files except the manually created ones
 *.hs
 !Cava2SystemVerilog.hs
+!TestBench.hs
+!SystemVerilogUtils.hs
 !FixupHaskell.hs
 
 FixupHaskell
