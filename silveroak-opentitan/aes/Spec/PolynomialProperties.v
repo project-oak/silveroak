@@ -55,17 +55,14 @@ Section PolynomialProperties.
     rewrite !extend_cons_S. reflexivity.
   Qed.
 
-  Lemma add_poly_nil_l (p : poly A) : add_poly [] p = p.
-  Proof. apply add_poly_0_l. Qed.
-
-  Lemma add_poly_nil_r (p : poly A) : add_poly p [] = p.
+  Lemma add_poly_0_r (p : poly A) : add_poly p zero_poly = p.
   Proof. rewrite add_poly_comm; apply add_poly_0_l. Qed.
 
   Lemma add_poly_assoc p q r :
     add_poly p (add_poly q r) = add_poly (add_poly p q) r.
   Proof.
     revert q r; induction p; destruct q,r;
-      rewrite ?add_poly_nil_l, ?add_poly_nil_r, ?add_poly_cons;
+      rewrite ?add_poly_0_l, ?add_poly_0_r, ?add_poly_cons;
       try reflexivity; [ ].
     rewrite IHp. f_equal; ring.
   Qed.
@@ -74,7 +71,7 @@ Section PolynomialProperties.
     add_poly p1 (repeat fzero (length p1) ++ p2) = p1 ++ p2.
   Proof.
     revert p2; induction p1; intros.
-    { rewrite add_poly_nil_l. reflexivity. }
+    { rewrite add_poly_0_l. reflexivity. }
     { cbn [length repeat]. rewrite <-!app_comm_cons.
       rewrite add_poly_cons, IHp1. f_equal; ring. }
   Qed.
@@ -107,7 +104,7 @@ Section PolynomialProperties.
       rewrite !add_poly_0_l.
       rewrite !fold_left_assoc with (start:=indexed_term_to_poly _)
                                     (id:=zero_poly)
-        by auto using add_poly_0_l, add_poly_comm, add_poly_assoc, add_poly_nil_r.
+        by auto using add_poly_0_l, add_poly_comm, add_poly_assoc, add_poly_0_r.
       rewrite IHp1, add_poly_assoc. reflexivity. }
   Qed.
 
@@ -118,7 +115,7 @@ Section PolynomialProperties.
     add_poly (repeat fzero n) p = p ++ repeat fzero (n - length p).
   Proof.
     revert p; induction n; destruct p; intros; autorewrite with natsimpl listsimpl;
-      cbn [repeat]; rewrite ?add_poly_nil_l, ?add_poly_nil_r;
+      cbn [repeat]; rewrite ?add_poly_0_l, ?add_poly_0_r;
       [ reflexivity .. | ].
     rewrite add_poly_cons. rewrite IHn.
     autorewrite with push_length natsimpl. rewrite <-app_comm_cons.
@@ -167,67 +164,6 @@ Section PolynomialProperties.
     lia.
   Qed.
 
-  (*
-  Lemma mul_poly_cons_l p0 p q :
-    mul_poly (p0 :: p) q = add_poly (mul_poly [p0] q) (mul_poly (fzero :: p) q).
-  Proof.
-    cbv [mul_poly].
-    cbv [mul_poly to_indexed_poly mul_indexed_poly mul_term].
-    autorewrite with push_length.
-    cbn [seq combine flat_map fst snd]. rewrite of_indexed_poly_app.
-    autorewrite with listsimpl. f_equal; [ ].
-    rewrite of_indexed_poly_app.
-    match goal with |- ?x = add_poly ?y ?x =>
-                    replace y with (repeat fzero (length q))
-    end.
-    { rewrite add_poly_fzero_l.
-      rewrite (proj2 (Nat.sub_0_le _ _));
-        [ cbn [repeat]; autorewrite with listsimpl; reflexivity | ].
-      (* length of_indexed_poly is max of indices *)
-      (* by induction, max of this flat_map's indices is sum of maxes of args *)
-      (* args : length p, length q *)
-      admit. }
-    { induction q using rev_ind; [ reflexivity | ].
-      autorewrite with push_length. rewrite Nat.add_1_r.
-      autorewrite with pull_snoc natsimpl. cbv [of_indexed_poly] in *.
-      rewrite combine_append, !map_app, fold_left_app by length_hammer.
-      cbn [combine map fold_left]. rewrite <-IHq.
-      rewrite add_poly_fzero_l. cbv [indexed_term_to_poly]. cbn [fst snd].
-      autorewrite with push_length natsimpl. cbn [repeat].
-      match goal with
-      | |- context [fzero * ?x] =>
-        replace (fzero * x) with fzero by ring
-      end.
-      rewrite repeat_cons. autorewrite with listsimpl.
-      reflexivity. }
-  Admitted.
-
-  Lemma mul_poly_app_l p1 p2 q :
-    mul_poly (p1 ++ p2) q = add_poly (mul_poly p1 q) (mul_poly (repeat fzero (length p1) ++ p2) q).
-  Proof.
-    revert p2 q; induction p1.
-    { intros; autorewrite with listsimpl.
-      rewrite mul_poly_0_l, add_poly_0_l. reflexivity. }
-    { intros; autorewrite with push_length.
-      cbn [repeat]. rewrite <-!app_comm_cons.
-      rewrite mul_poly_cons_l with (p:=p1).
-      rewrite mul_poly_cons_l with (p:=p1 ++ p2).
-  Qed.
-
-  Lemma mul_app p1 p2 q :
-    of_indexed_poly
-      (flat_map
-         (fun a : nat * A =>
-            map (fun b : nat * A => ((fst a + fst b)%nat, snd a * snd b))
-                (p1 ++ p2))) q)
-       = add_poly
-           (of_indexed_poly
-              (flat_map
-                 (fun a : nat * A =>
-                    map (fun b : nat * A => ((fst a + fst b)%nat, snd a * snd b))
-                        (combine (seq 0 (length p)) p)) q))
-           (flat_map*)
-
   Lemma mul_indexed_poly_cons_l p0 p q :
     of_indexed_poly (mul_indexed_poly (p0 :: p) q)
     = add_poly (of_indexed_poly (mul_term p0 q))
@@ -236,7 +172,7 @@ Section PolynomialProperties.
     cbv [of_indexed_poly mul_indexed_poly].
     cbn [flat_map]. rewrite map_app, fold_left_app.
     rewrite fold_left_assoc with (start:=fold_left _ _ _) (id:=zero_poly)
-      by auto using add_poly_0_l, add_poly_comm, add_poly_assoc, add_poly_nil_r.
+      by auto using add_poly_0_l, add_poly_comm, add_poly_assoc, add_poly_0_r.
     reflexivity.
   Qed.
 
@@ -245,7 +181,7 @@ Section PolynomialProperties.
   Proof.
     cbv [of_indexed_poly]. cbn [map fold_left]. rewrite add_poly_0_l.
     apply fold_left_assoc;
-      auto using add_poly_0_l, add_poly_comm, add_poly_assoc, add_poly_nil_r.
+      auto using add_poly_0_l, add_poly_comm, add_poly_assoc, add_poly_0_r.
   Qed.
 
   Lemma mul_term_cons t p0 p :
@@ -320,7 +256,7 @@ Section PolynomialProperties.
     cbn [fst snd].
     rewrite !fold_left_assoc with (start:=fold_left _ _ _)
                                   (id:=zero_poly)
-      by auto using add_poly_0_l, add_poly_comm, add_poly_assoc, add_poly_nil_r.
+      by auto using add_poly_0_l, add_poly_comm, add_poly_assoc, add_poly_0_r.
     rewrite IHp. f_equal; [ ].
     rewrite !map_map. cbn [fst snd].
     f_equal; [ ]. apply map_ext; intros.
@@ -337,7 +273,7 @@ Section PolynomialProperties.
     cbn [fst snd].
     rewrite !fold_left_assoc with (start:=fold_left _ _ _)
                                   (id:=zero_poly)
-      by auto using add_poly_0_l, add_poly_comm, add_poly_assoc, add_poly_nil_r.
+      by auto using add_poly_0_l, add_poly_comm, add_poly_assoc, add_poly_0_r.
     rewrite IHp. f_equal; [ ].
     rewrite !map_map. cbn [fst snd].
     f_equal; [ ]. apply map_ext; intros.
@@ -365,44 +301,6 @@ Section PolynomialProperties.
     rewrite !extend_cons_S. cbn [map2]. f_equal; ring.
   Qed.
 
-  (*
-  Lemma shift_distr_l p q :
-    of_indexed_poly
-      (mul_term (1%nat, fone)
-                (mul_indexed_poly (to_indexed_poly (add_poly p q)) r))
-    = add_poly (of_indexed_poly (mul_term (1%nat, fone) (to_indexed_poly p)))
-               (of_indexed_poly (mul_term (1%nat, fone) (to_indexed_poly q))).
-    of_indexed_poly (mul_term (1%nat, fone) (of_indexed_poly (add_poly p q))) = add_poly (fzero :: p) (fzero :: q).
-  Proof.
-    cbv [add_poly]. autorewrite with push_length.
-    rewrite !extend_cons_S. cbn [map2]. f_equal; ring.
-  Qed.*)
-
-  (*
-  Lemma of_indexed_poly_shift p :
-    p <> [] ->
-    of_indexed_poly (map (fun t => (S (fst t), snd t)) p) = fzero :: of_indexed_poly p.
-  Proof.
-    induction p as [|p0 p]; [ congruence | ].
-    intros; cbn [map]; rewrite of_indexed_poly_cons.
-    destruct p as [|p1 p]; intros.
-    { subst. cbv [of_indexed_poly]. cbn [map fold_left].
-      rewrite add_poly_0_l.
-      cbv [indexed_term_to_poly]. cbn [fst snd].
-      rewrite add_poly_nil_r. reflexivity. }
-    { set (P:=p1::p) in *.
-      rewrite IHp by (subst P; congruence).
-      cbv [of_indexed_poly]. cbn [map fold_left].
-      cbv [indexed_term_to_poly]. cbn [fst snd].
-      cbn [repeat]. rewrite <-app_comm_cons.
-      rewrite <-cons_fzero_distr_l.
-      rewrite !fold_left_assoc with (start:=add_poly _ _)
-                                    (id:=zero_poly)
-        by auto using add_poly_0_l, add_poly_comm, add_poly_assoc, add_poly_nil_r.
-      rewrite add_poly_0_l.
-      reflexivity. }
-  Qed.*)
-
   Lemma to_indexed_poly_cons p0 (p : poly A) :
     to_indexed_poly (p0 :: p) = (0%nat, p0) :: map (fun t => (S (fst t), snd t)) (to_indexed_poly p).
   Proof.
@@ -429,21 +327,10 @@ Section PolynomialProperties.
     add_poly (shift_poly p) (shift_poly q) = shift_poly (add_poly p q).
   Proof.
     destruct p, q; cbn [shift_poly];
-      rewrite ?add_poly_nil_l, ?add_poly_nil_r; [ reflexivity .. | ].
+      rewrite ?add_poly_0_l, ?add_poly_0_r; [ reflexivity .. | ].
     rewrite !add_poly_cons. cbn [shift_poly].
     f_equal; ring.
   Qed.
-
-  (*
-  Lemma of_indexed_poly_shift_poly p :
-    of_indexed_poly (mul_term (1%nat, fone) p) = shift_poly (of_indexed_poly p).
-  Proof.
-    induction p as [|p0 p]; [ reflexivity | ]. rewrite mul_term_cons. cbn [fst snd].
-    rewrite !of_indexed_poly_cons. rewrite IHp.
-    rewrite indexed_term_to_poly_shift_poly, add_poly_shift_poly.
-    replace (fone * snd p0) with (snd p0) by ring.
-    destruct p0; reflexivity.
-  Qed.*)
 
   Lemma of_indexed_poly_shift p :
     of_indexed_poly (map (fun t => (S (fst t), snd t)) p) = shift_poly (of_indexed_poly p).
@@ -466,24 +353,7 @@ Section PolynomialProperties.
     rewrite <-map_flat_map. rewrite of_indexed_poly_shift.
     reflexivity.
   Qed.
-  (*
 
-  Lemma mul_poly_cons_l p0 (p q : poly A) :
-    p <> nil -> q <> nil ->
-    mul_poly (p0 :: p) q = add_poly (of_indexed_poly (mul_term (0%nat, p0) (to_indexed_poly q)))
-                                   (fzero :: (mul_poly p q)).
-  Proof.
-    intros; cbv [mul_poly]. rewrite to_indexed_poly_cons.
-    rewrite mul_indexed_poly_cons_l.
-    f_equal; [ ]. cbv [mul_indexed_poly].
-    rewrite flat_map_map.
-    erewrite flat_map_ext by (intros; apply mul_term_shift).
-    rewrite <-map_flat_map.
-    rewrite of_indexed_poly_shift; [ reflexivity | ].
-    cbv [to_indexed_poly mul_term]. destruct p, q; [ congruence .. | ].
-    apply flat_map_nonnil; intros; apply length_pos_nonnil; length_hammer.
-  Qed.
-*)
   Lemma add_poly_snoc n x y :
     add_poly (repeat fzero n ++ [x]) (repeat fzero n ++ [y]) = repeat fzero n ++ [x + y].
   Proof.
@@ -538,7 +408,7 @@ Section PolynomialProperties.
                (of_indexed_poly (mul_term t (to_indexed_poly q))).
   Proof.
     revert t q; induction p; destruct q; intros;
-      [ rewrite ?add_poly_nil_l, ?add_poly_nil_r; reflexivity .. | ].
+      [ rewrite ?add_poly_0_l, ?add_poly_0_r; reflexivity .. | ].
     rewrite add_poly_cons, !to_indexed_poly_cons, !mul_term_cons.
     rewrite !of_indexed_poly_cons. cbn [fst snd].
     rewrite !mul_term_shift_r, !of_indexed_poly_shift.
@@ -562,11 +432,7 @@ Section PolynomialProperties.
     rewrite !mul_indexed_poly_cons_l. rewrite IHp.
     rewrite mul_term_distr_r. apply add_poly_arith_helper.
   Qed.
-  (*
-  Lemma add_poly_shift_r t p q :
-    add_poly p (of_indexed_poly (mul_term t q)) = add_poly 
-(add_poly (of_indexed_poly (mul_term (0%nat, r0) (to_indexed_poly p)))
-       (of_indexed_poly (mul_term (1%nat, fone) (mul_indexed_poly (to_indexed_poly r) (to_indexed_poly p)))))*)
+
   Lemma mul_poly_distr_l p q r :
     mul_poly (add_poly p q) r = add_poly (mul_poly p r) (mul_poly q r).
   Proof.
@@ -604,10 +470,6 @@ Section PolynomialProperties.
     lia.
   Qed.
 
-  Lemma mul_term_fzero_r x n :
-    mul_term x (to_indexed_poly (repeat fzero n)) = to_indexed_poly (repeat fzero n).
-  Admitted.
-
   Lemma of_indexed_poly_to_indexed_poly p :
     of_indexed_poly (to_indexed_poly p) = p.
   Proof.
@@ -617,41 +479,62 @@ Section PolynomialProperties.
     cbn [indexed_term_to_poly fst snd repeat app].
     destruct p; [ cbn; f_equal; ring | ].
     cbn [shift_poly].
-    rewrite add_poly_cons, add_poly_nil_l.
+    rewrite add_poly_cons, add_poly_0_l.
     f_equal; ring.
   Qed.
 
-  Lemma mul_term_to_indexed_poly_of_indexed_poly x p :
-    of_indexed_poly (mul_term x (to_indexed_poly (of_indexed_poly p)))
-    = of_indexed_poly (mul_term x p).
+  Lemma add_poly_singleton_shift x p :
+    add_poly (indexed_term_to_poly (0, x)) (shift_poly p) = x :: p.
   Proof.
-    induction p as [|p0 p]; intros; [ reflexivity | ].
-    rewrite mul_term_cons, !of_indexed_poly_cons.
-    rewrite mul_term_distr_r. rewrite IHp. f_equal; [ ].
-    cbv [mul_term indexed_term_to_poly to_indexed_poly].
-    cbn [fst snd]. autorewrite with push_length.
-    rewrite Nat.add_1_r. autorewrite with pull_snoc.
-    rewrite combine_append by length_hammer.
-    rewrite map_app. cbn [map combine fst snd].
-    rewrite of_indexed_poly_app.
-    replace (map (fun b : nat * A => ((fst x + fst b)%nat, snd x * snd b))
-                 (combine (seq 0 (fst p0)) (repeat fzero (fst p0))))
-      with (mul_term x (to_indexed_poly (repeat fzero (fst p0))))
-      by (cbv [mul_term to_indexed_poly]; autorewrite with push_length;
-          reflexivity).
-    rewrite mul_term_fzero_r.
-    rewrite of_indexed_poly_to_indexed_poly.
-    cbn [of_indexed_poly fold_left map fst snd].
-    rewrite add_poly_0_l, add_poly_fzero_l.
+    cbn [indexed_term_to_poly fst snd repeat app].
+    destruct p; [ cbn; f_equal; ring | ].
+    cbv [add_poly shift_poly]. cbn [length].
+    rewrite extend_le with (l:=_ :: _ :: _) by length_hammer.
+    rewrite !extend_cons_S, !extend_nil.
+    cbn [repeat map2]. repeat (f_equal; [ ring | ]).
+    induction p; [reflexivity | ].
+    cbn [repeat map2 length]. rewrite IHp. f_equal; ring.
+  Qed.
+
+  Lemma mul_poly_singleton_map p0 (q : poly A) :
+    mul_poly [p0] q = map (fmul p0) q.
+  Proof.
+    rewrite mul_poly_singleton.
+    induction q; [ reflexivity | ].
+    rewrite to_indexed_poly_cons.
+    rewrite mul_term_cons; cbn [fst snd map].
+    rewrite of_indexed_poly_cons.
+    rewrite mul_term_shift_r, of_indexed_poly_shift.
+    rewrite IHq. autorewrite with natsimpl.
+    rewrite add_poly_singleton_shift. reflexivity.
+  Qed.
+
+  Lemma mul_term_mul_singleton x p0 q :
+    of_indexed_poly (mul_term x (to_indexed_poly (mul_poly [p0] q)))
+    = of_indexed_poly (mul_term (fst x, snd x * p0) (to_indexed_poly q)).
+  Proof.
+    rewrite mul_poly_singleton_map.
+    cbv [to_indexed_poly]. rewrite combine_map_r.
+    cbv [mul_term]. rewrite map_map.
+    autorewrite with push_length.
+    f_equal; apply map_ext; intros.
+    cbn [fst snd].
+    f_equal; ring.
+  Qed.
+
+  Lemma indexed_term_to_poly_fzero i :
+    indexed_term_to_poly (i, fzero) = repeat fzero (S i).
+  Proof.
     cbv [indexed_term_to_poly]. cbn [fst snd].
-    autorewrite with push_length natsimpl.
-    cbn [repeat]; autorewrite with listsimpl.
-    reflexivity.
+    rewrite <-repeat_cons. reflexivity.
   Qed.
 
   Lemma add_poly_indexed_term_to_poly_fzero_l i p :
-    add_poly (indexed_term_to_poly (i, fzero)) p = p ++ repeat fzero (i - length p).
-  Admitted.
+    add_poly (indexed_term_to_poly (i, fzero)) p = p ++ repeat fzero (S i - length p).
+  Proof.
+    rewrite indexed_term_to_poly_fzero.
+    rewrite add_poly_fzero_l; reflexivity.
+  Qed.
 
   Lemma mul_term_shift_poly x p :
     of_indexed_poly (mul_term x (to_indexed_poly (shift_poly p)))
@@ -698,14 +581,11 @@ Section PolynomialProperties.
     rewrite !mul_poly_cons_l. rewrite mul_term_distr_r.
     rewrite to_indexed_poly_cons, mul_term_cons.
     cbn [fst snd]. rewrite of_indexed_poly_cons.
-    rewrite mul_term_to_indexed_poly_of_indexed_poly.
-    rewrite mul_term_mul_term. cbn [fst snd].
+    rewrite <-mul_poly_singleton, mul_term_mul_singleton.
+    rewrite mul_term_shift_r, of_indexed_poly_shift.
     rewrite mul_poly_distr_l, mul_poly_indexed_term_to_poly.
-    f_equal; [ ].
-    rewrite mul_term_shift_r.
-    rewrite of_indexed_poly_shift.
-    rewrite mul_poly_shift_l.
-    rewrite <-IHp.
+    autorewrite with natsimpl. f_equal; [ ].
+    rewrite mul_poly_shift_l. rewrite <-IHp.
     rewrite mul_term_shift_poly.
     reflexivity.
   Qed.

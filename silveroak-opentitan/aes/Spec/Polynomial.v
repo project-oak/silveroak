@@ -160,26 +160,7 @@ Section Polynomials.
         let r := add_poly (indexed_term_to_poly r_ab) (snd qr_AB) in
         (q,r)
       end.
-        (*
-  (* divides (firstn (S n) A) by (B ++ [b]); snoc is because B cannot be nil *)
-  Fixpoint div_rem_poly' (n : nat) (A B : poly) (b : coeff) : poly * poly :=
-    let a := nth n A fzero in
-    (* extract quotient remainder of a / b *)
-    let qr_ab := div_rem_indexed_term (n, a) (length B, b) in
-    let q_ab := indexed_term_to_poly (fst qr_ab) in
-    (* multiply B * (a // b) so highest-degree term of B is close to a *)
-    let Bq := mul_poly (B ++ [b]) q_ab in
-    (* subtract Bq from A to get new A *)
-    let A' := sub_poly A Bq in
-    (* we can now ignore nth term of A and proceed to next term *)
-    match n with
-    | O => (q_ab, A') (* done; A' is the remainder *)
-    | S n' =>
-      (* recursively divide with new value of A *)
-      let qr_AB := div_rem_poly' n' A' B b in
-      (add_poly (fst qr_AB) q_ab, snd qr_AB)
-    end.
-         *)
+
   (* Removes terms with zero coefficients *)
   Definition remove_zeroes (A : indexed_poly) : indexed_poly :=
     filter (fun t => negb (fis_zero (snd t))) A.

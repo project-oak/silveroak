@@ -279,6 +279,16 @@ Section Maps.
     reflexivity.
   Qed.
 
+  Lemma combine_map_r {A B C} (f : B -> C) (la : list A) lb :
+    combine la (map f lb) = map (fun ab => (fst ab, f (snd ab)))
+                                (combine la lb).
+  Proof.
+    revert lb; induction la; [ reflexivity | ].
+    destruct lb; intros; [ reflexivity | ].
+    cbn [map combine fst snd]. rewrite IHla.
+    reflexivity.
+  Qed.
+
   Lemma flat_map_map {A B C} (f : A -> B) (g : B -> list C) la :
     flat_map g (map f la) = flat_map (fun a => g (f a)) la.
   Proof.

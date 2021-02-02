@@ -17,6 +17,8 @@
 Require Import Coq.Init.Byte.
 Require Import Coq.NArith.NArith.
 Require Import Coq.Lists.List.
+Require Import Coq.micromega.Lia.
+Require Import Cava.Tactics.
 Require Coq.Vectors.Vector. (* not imported due to name collisions with List *)
 
 Require Import Cava.BitArithmetic.
@@ -51,7 +53,6 @@ Section ByteField.
        fdiv := fun b1 _ => b1; (* divisor must be 1, otherwise division by 0 *)
        fmodulo := fun b1 b2 => xorb b1 (andb b2 b1); (* b1 mod b2 = b1 - b2 * (b1 / b2) *)
     |}.
-  Definition bit_theory : ring_theory fzero fone fadd fmul fsub fopp eq := BoolTheory.
 
   (* FIPS 197: 4.2 Multiplication
 
@@ -68,8 +69,6 @@ Section ByteField.
   Definition m : poly bool :=
     [true; true; false; true; true; false; false; false; true].
 
-  Definition M := list_bits_to_nat m.
-
   (* Operations in GF(2^8) *)
   Local Instance byteops : FieldOperations byte :=
     {| fzero := Byte.x00;
@@ -83,8 +82,7 @@ Section ByteField.
        fmul :=
          fun a b =>
            let ab := mul_poly (byte_to_poly a) (byte_to_poly b) in
-           (* it is safe to strip bits over 8; they are guaranteed to be 0 *)
-           poly_to_byte (firstn 8 (modulo_poly ab m));
+           poly_to_byte (modulo_poly ab m);
        fdiv :=
          fun a b => poly_to_byte (div_poly (byte_to_poly a) (byte_to_poly b));
        fmodulo :=
@@ -97,195 +95,6 @@ Section ByteField.
         let bc1 : byte := Byte.xc1 in
         fmul b57 b83 = bc1).
   Proof. vm_compute. reflexivity. Qed.
-
-  Compute (let b57 : byte := Byte.x57 in
-           let b83 : byte := Byte.x83 in
-           let xy := mul_poly (byte_to_poly b57) (byte_to_poly b83) in
-           modulo_poly xy m).
-
-  Definition BitTheory :
-    semi_ring_theory (@fzero _ bitops) (@fone _ bitops) (@fadd _ bitops) (@fmul _ bitops) eq.
-  Proof.
-    constructor; intros; cbn [fzero fone fadd fmul bitops];
-      repeat match goal with x : bool |- _ => destruct x end; reflexivity.
-  Qed.
-
-  Require Import Derive.
-  Derive modulo_formula4
-         SuchThat
-         (forall p0 p1 p2 p3 : bool,
-             modulo_poly [p0; p1; p2; p3]
-                         m = modulo_formula4 p0 p1 p2 p3)
-         As modulo_formula4_correct.
-  Proof.
-    intros; cbv [m]. cbv [modulo_poly div_rem_poly]. cbn [length Nat.sub].
-    repeat match goal with
-           | |- context [remove_leading_zeroes ?m] =>
-             let x := constr:(remove_leading_zeroes m) in
-             let y := (eval compute in x) in
-             change x with y
-           end.
-    cbn [removelast last].
-    vm_compute.
-    reflexivity.
-  Qed.
-  Print modulo_formula4.
-
-  Derive modulo_formula9
-         SuchThat
-         (forall p0 p1 p2 p3 p4 p5 p6 p7 p8 : bool,
-             modulo_poly [p0; p1; p2; p3; p4; p5; p6; p7; p8]
-                         m = modulo_formula9 p0 p1 p2 p3 p4 p5 p6 p7 p8)
-         As modulo_formula9_correct.
-  Proof.
-    intros; cbv [m]. cbv [modulo_poly div_rem_poly]. cbn [length Nat.sub].
-    repeat match goal with
-           | |- context [remove_leading_zeroes ?m] =>
-             let x := constr:(remove_leading_zeroes m) in
-             let y := (eval compute in x) in
-             change x with y
-           end.
-    cbn [removelast last].
-    cbv - [fdiv fmodulo fadd fone fzero fopp fis_zero fsub].
-    reflexivity.
-  Qed.
-
-  Lemma if_id (b : bool) : (if b then true else false) = b.
-  Proof. destruct b; reflexivity. Qed.
-  Lemma if_negb (b : bool) : (if b then false else true) = negb b.
-  Proof. destruct b; reflexivity. Qed.
-  Lemma if_false_formula (b : bool) : (if b then negb b else b) = false.
-  Proof. destruct b; reflexivity. Qed.
-
-  Derive modulo_formula
-         SuchThat
-         (forall p0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 : bool,
-             modulo_poly [p0; p1; p2; p3; p4; p5; p6; p7; p8; p9; p10; p11; p12; p13; p14]
-                         m = modulo_formula p0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14)
-         As modulo_formula_correct.
-  Proof.
-    intros; cbv [modulo_poly div_rem_poly]. cbn [length Nat.sub].
-    let x := constr:(remove_leading_zeroes m) in
-    let y := (eval compute in x) in
-    change x with y.
-    cbn [removelast last fst snd].
-    Time
-      lazymatch goal with
-      | |- ?lhs = _ => set (LHS:=lhs)
-      end;
-  vm_compute in LHS; subst LHS;
-  rewrite !Tauto.if_same;
-  rewrite !if_id, !if_negb, !if_false_formula;
-  subst modulo_formula; reflexivity. (* 6.1s *)
-    Time Qed. (* 5.55s *)
-  Print modulo_formula.
-
-  Lemma bit_add_0_l (x : bool) : fadd false x = x.
-  Proof. destruct x; reflexivity. Qed.
-(*
-  Derive mul_formula
-         SuchThat
-         (forall p0 p1 p2 p3 p4 p5 p6 p7
-            q0 q1 q2 q3 q4 q5 q6 q7 q8 q9 q10 q11 q12 q13 q14 : bool,
-             mul_poly [p0; p1; p2; p3; p4; p5; p6; p7]
-                      [q0; q1; q2; q3; q4; q5; q6; q7; q8; q9; q10; q11; q12; q13; q14]
-             = mul_formula q0 q1 q2 q3 q4 q5 q6 q7 q8 q9 q10 q11 q12 q13 q14)
-         As mul_formula_correct.
-  Proof.
-    intros; cbv - [mul_formula fadd fmul].
-    subst mul_formula. reflexivity.
-  Qed.*)
-
-  (*
-  Lemma byte_mul_poly_modulo_poly p q :
-    length q = 15%nat ->
-    modulo_poly (mul_poly p (firstn 8 (modulo_poly q m))) m
-    = modulo_poly (mul_poly p q) m.
-  Proof.
-    intros; destruct_lists_by_length.
-    rewrite modulo_formula_correct.
-    cbv [modulo_formula firstn].
-    vm_compute.
-  Qed.*)
-
-  Lemma byte_mul_comm (a b : byte) :
-    fmul a b = fmul b a.
-  Proof.
-    cbv [fmul byteops].
-    rewrite (mul_poly_comm (rtheory:=BitTheory)).
-    reflexivity.
-  Qed.
-
-  Lemma byte_mul_1_l (a : byte) : fmul fone a = a.
-  Proof. destruct a; vm_compute; reflexivity. Qed.
-
-  Compute (fmul Byte.x57 Byte.x83).
-  Compute
-    ((list_bits_to_nat
-        ((fun a b =>
-            let ab := mul_poly (byte_to_poly a) (byte_to_poly b) in
-            ab) Byte.x57 Byte.x83)) mod M)%N.
-
-  Lemma poly_to_byte_to_poly p :
-    (length p = 8)%nat -> byte_to_poly (poly_to_byte p) = p.
-  Proof.
-    cbv [poly_to_byte byte_to_poly]; intros.
-    destruct_lists_by_length.
-    repeat match goal with x : bool |- _ => destruct x end;
-      vm_compute; reflexivity.
-  Qed.
-
-  Lemma byte_to_poly_length b : length (byte_to_poly b) = 8%nat.
-  Proof. cbv [byte_to_poly]; length_hammer. Qed.
-
-  Lemma byte_mul_length a b :
-    length a = 8%nat -> length b = 8%nat ->
-    length (mul_poly a b) = 15%nat.
-  Proof.
-    intros; destruct_lists_by_length.
-    cbv [mul_poly].
-    cbn [to_indexed_poly seq combine length].
-    cbv [mul_indexed_poly]. cbn [flat_map].
-    cbv [mul_term]. cbn [map fst snd app Nat.add].
-    rewrite of_indexed_poly_length.
-    reflexivity.
-  Qed.
-
-  Lemma byte_mul_distr_l (a b c : byte) :
-    fmul (fadd a b) c = fadd (fmul a c) (fmul b c).
-  Proof.
-    cbv [fmul fadd byteops].
-    rewrite poly_to_byte_to_poly with (p:=add_poly _ _)
-      by (rewrite add_poly_length, !byte_to_poly_length; Lia.lia).
-    rewrite (mul_poly_distr_l (rtheory:=BitTheory)).
-    remember (byte_to_poly a) as A.
-    remember (byte_to_poly b) as B.
-    remember (byte_to_poly c) as C.
-    rewrite <-(add_poly_modulo_poly_l (rtheory:=BitTheory))
-      by (try (intro x; destruct x); reflexivity).
-    rewrite (add_poly_comm (rtheory:=BitTheory) (modulo_poly _ _)).
-    rewrite <-(add_poly_modulo_poly_l (rtheory:=BitTheory))
-      by (try (intro x; destruct x); reflexivity).
-    rewrite (modulo_poly_small (add_poly _ _)).
-    (*
-    2:{
-      rewrite add_poly_length.
-      rewrite 
-    rewrite (mul_poly_comm (rtheory:=BitTheory)).
-    rewrite mul_poly_modulo_poly_l.
-    Search mul_poly.*)
-  Admitted.
-
-  Lemma byte_mul_assoc (a b c : byte) :
-    fmul a (fmul b c) = fmul (fmul a b) c.
-  Proof.
-    cbv [fmul byteops].
-    remember (byte_to_poly a) as A.
-    remember (byte_to_poly b) as B.
-    remember (byte_to_poly c) as C.
-    rewrite (mul_poly_comm (rtheory:=BitTheory)).
-  Admitted.
-
 End ByteField.
 
 Section Spec.
@@ -415,80 +224,63 @@ Section MixColumnsTests.
   Proof. vm_compute. reflexivity. Qed.
 End MixColumnsTests.
 
-Require Import Coq.micromega.Lia.
-Require Import Cava.Tactics.
-
-Section Properties.
-  Existing Instance byteops.
-  (*
-  Definition BitTheory :
-    semi_ring_theory (@fzero _ bitops) (@fone _ bitops) (@fadd _ bitops) (@fmul _ bitops) eq.
+Section ByteFieldProperties.
+  Existing Instances bitops byteops.
+  Definition BitTheory : semi_ring_theory (R:=bool) fzero fone fadd fmul eq.
   Proof.
     constructor; intros; cbn [fzero fone fadd fmul bitops];
       repeat match goal with x : bool |- _ => destruct x end; reflexivity.
   Qed.
-  Definition ByteTheory : semi_ring_theory fzero fone fadd fmul eq.
-  Proof.
-    constructor.
-    { destruct 0; reflexivity. }
-    { intros; cbv [fadd byteops].
-      rewrite (add_poly_comm (rtheory:=BitTheory)).
-      reflexivity. }
-    { intros; cbv [fadd byteops].
-      Print byte_to_poly.
-      Search byte_to_poly.
-      rewrite (add_poly_assoc (rtheory:=BitTheory)).
-  Locate ring_theory.
-  Print Ring_theory.
-  Check ring_morphism.
-  Definition ByteTheory : semi_ring_theory fzero fone fadd fmul eq.
-  Proof.
-    constructor.
-    { destruct 0; reflexivity. }
-    { intros; cbv [fadd byteops].
-      rewrite (add_poly_comm (rtheory:=BitTheory)).
-      reflexivity. }
-    { intros; cbv [fadd byteops].
-      Print byte_to_poly.
-      Search byte_to_poly.
-      rewrite (add_poly_assoc (rtheory:=BitTheory)).
-    PolyTheory.
-  Definition poly_eq_dec {coeff} (coeff_eq_dec : forall x y, {x = y} + {x <> y}) :
-    forall p q : poly coeff, {p = q} + {p <> q} :=
-    list_eq_dec coeff_eq_dec.
-
-  Print semi_morph.
-  Existing Instance bitops.
-  (*
-  Context {rmorph : semi_morph (R:=byte) fzero fone fadd fmul eq
-                               (C:=poly bool)
-                               zero_poly one_poly add_poly mul_poly
-                               (fun x y => if poly_eq_dec Bool.bool_dec x y
-                                        then true else false)
-                               poly_to_byte}.
-  Existing Instance byteops.
-  Context {rtheory : semi_ring_theory (R:=byte) fzero fone fadd fmul eq}.*)
-  Context {rmorph : semi_morph (R:=poly bool)
-                               zero_poly one_poly add_poly mul_poly eq
-                               (C:=byte) fzero fone fadd fmul Byte.eqb
-                               byte_to_poly}.
-  Context {rtheory : semi_ring_theory
-                       (R:=poly bool)
-                       zero_poly one_poly add_poly mul_poly eq}.
-  Add Ring fring : rtheory (morphism rmorph).*)
-
-  Context {rtheory : semi_ring_theory
-                       (R:=byte) fzero fone fadd fmul eq}.
-  Add Ring bytering : rtheory.
-
-  Local Infix "+" := fadd.
-  Local Infix "-" := fsub.
-  Local Infix "*" := fmul.
 
   (* This odd property holds on bytes because add/sub are xors *)
   Lemma bytes_sub_is_add (a b : byte) :
     @fadd _ byteops a b = @fadd _ byteops a b.
   Proof. reflexivity. Qed.
+
+  Lemma poly_to_byte_to_poly p :
+    (length p = 8)%nat -> byte_to_poly (poly_to_byte p) = p.
+  Proof.
+    cbv [poly_to_byte byte_to_poly]; intros.
+    destruct_lists_by_length.
+    repeat match goal with x : bool |- _ => destruct x end;
+      vm_compute; reflexivity.
+  Qed.
+
+  Lemma byte_to_poly_length b : length (byte_to_poly b) = 8%nat.
+  Proof. cbv [byte_to_poly]; length_hammer. Qed.
+
+  Hint Rewrite @add_poly_length byte_to_poly_length
+        using solve [eauto] : push_length.
+
+  Lemma byte_mul_distr_l (a b c : byte) :
+    fmul (fadd a b) c = fadd (fmul a c) (fmul b c).
+  Admitted.
+
+  Lemma byte_mul_assoc (a b c : byte) :
+    fmul a (fmul b c) = fmul (fmul a b) c.
+  Admitted.
+
+  Definition ByteTheory : semi_ring_theory (R:=byte) fzero fone fadd fmul eq.
+  Proof.
+    constructor; cbn [fadd fmul byteops].
+    { intro b; destruct b; reflexivity. }
+    { intros. f_equal. apply @add_poly_comm, BitTheory. }
+    { intros. rewrite !poly_to_byte_to_poly by length_hammer.
+      f_equal. apply @add_poly_assoc, BitTheory. }
+    { intro b; destruct b; vm_compute; reflexivity. }
+    { intro b; destruct b; vm_compute; reflexivity. }
+    { intros; do 2 f_equal. apply @mul_poly_comm, BitTheory. }
+    { apply byte_mul_assoc. }
+    { apply byte_mul_distr_l. }
+  Qed.
+End ByteFieldProperties.
+
+Section Properties.
+  Existing Instance byteops.
+  Add Ring bytering : ByteTheory.
+  Local Infix "+" := fadd.
+  Local Infix "-" := fsub.
+  Local Infix "*" := fmul.
 
   Definition sum (p : poly byte) : byte := List.fold_left fadd p fzero.
   Definition prod (p q : poly byte) : poly byte := map2 fmul p q.
@@ -532,16 +324,6 @@ Section Properties.
   Lemma matrix_mulmod_1_l p :
     length p = 4%nat ->
     matrix_mulmod [fone;fzero;fzero;fzero] p = p.
-  Proof.
-    intros; destruct_lists_by_length.
-    autounfold with matrix_mulmod.
-    fequal_list; ring.
-  Qed.
-
-  Lemma matrix_mulmod_distr_l a b c :
-    length a = 4%nat -> length b = 4%nat -> length c = 4%nat ->
-    matrix_mulmod a (map2 fadd b c)
-    = map2 fadd (matrix_mulmod a b) (matrix_mulmod a c).
   Proof.
     intros; destruct_lists_by_length.
     autounfold with matrix_mulmod.
