@@ -29,6 +29,9 @@ Section Length.
   Proof. reflexivity. Qed.
   Lemma cons_length {A} x (ls : list A) : length (x :: ls) = S (length ls).
   Proof. reflexivity. Qed.
+  Lemma length_pos_nonnil {A} (l : list A) :
+    (0 < length l)%nat -> l <> nil.
+  Proof. destruct l; cbn [length]; (Lia.lia || congruence). Qed.
 End Length.
 
 (* The push_length autorewrite database simplifies goals including [length] *)
@@ -252,6 +255,58 @@ Section Maps.
     map f (ls ++ [a]) = map f ls ++ [f a].
   Proof. rewrite map_app. reflexivity. Qed.
 
+  Lemma map_repeat {A B} (f : A -> B) a n :
+    map f (repeat a n) = repeat (f a) n.
+  Proof.
+    induction n; [ reflexivity | ].
+    cbn [repeat map]; rewrite IHn; reflexivity.
+  Qed.
+
+  Lemma flat_map_nil_ext {A B} (l : list A) :
+    flat_map (B:=B) (fun a => []) l = [].
+  Proof.
+    induction l; [ reflexivity | ].
+    cbn [flat_map]. rewrite IHl; reflexivity.
+  Qed.
+
+  Lemma combine_map_l {A B C} (f : A -> B) la (lc : list C) :
+    combine (map f la) lc = map (fun ac => (f (fst ac), snd ac))
+                                (combine la lc).
+  Proof.
+    revert lc; induction la; [ reflexivity | ].
+    destruct lc; intros; [ reflexivity | ].
+    cbn [map combine fst snd]. rewrite IHla.
+    reflexivity.
+  Qed.
+
+  Lemma flat_map_map {A B C} (f : A -> B) (g : B -> list C) la :
+    flat_map g (map f la) = flat_map (fun a => g (f a)) la.
+  Proof.
+    induction la; [ reflexivity | ].
+    cbn [map flat_map]. rewrite IHla.
+    reflexivity.
+  Qed.
+
+  Lemma map_flat_map {A B C} (f : A -> list B) (g : B -> C) la :
+    map g (flat_map f la) = flat_map (fun a => map g (f a)) la.
+  Proof.
+    induction la; [ reflexivity | ].
+    cbn [map flat_map]. rewrite map_app.
+    rewrite IHla. reflexivity.
+  Qed.
+
+  Lemma flat_map_nonnil {A B} (f : A -> list B) la :
+    la <> [] -> (forall a, f a <> nil) ->
+    flat_map f la <> nil.
+  Proof.
+    intros ? Hf.
+    destruct la as [|a ?]; intros; [ congruence | ].
+    specialize (Hf a).
+    cbn [flat_map]. intro Heq.
+    apply app_eq_nil in Heq.
+    tauto.
+  Qed.
+
   Fixpoint map2 {A B C} (f : A -> B -> C) (ls1 : list A) ls2 :=
     match ls1, ls2 with
     | a :: ls1', b :: ls2' => f a b :: map2 f ls1' ls2'
@@ -326,6 +381,24 @@ Section Maps.
     revert lb; induction la; destruct lb; cbn [map2];
       [ reflexivity .. | ].
     rewrite IHla; reflexivity.
+  Qed.
+
+  Lemma map2_app {A B C} (f : A -> B -> C) la1 la2 lb1 lb2 :
+    length la1 = length lb1 ->
+    map2 f (la1 ++ la2) (lb1 ++ lb2) = map2 f la1 lb1 ++ map2 f la2 lb2.
+  Proof.
+    revert la1 la2 lb1 lb2.
+    induction la1; destruct lb1; cbn [length]; [ reflexivity | congruence .. | ].
+    intros. rewrite <-!app_comm_cons. cbn [map2].
+    rewrite <-app_comm_cons, IHla1 by Lia.lia.
+    reflexivity.
+  Qed.
+
+  Lemma map2_drop_same {A B} (f : A -> A -> B) la :
+    map2 f la la = map (fun a => f a a) la.
+  Proof.
+    induction la; [ reflexivity | ].
+    cbn [map2]; rewrite IHla; reflexivity.
   Qed.
 End Maps.
 Hint Rewrite @map2_length using solve [eauto] : push_length.
