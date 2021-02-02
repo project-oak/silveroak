@@ -16,211 +16,25 @@
 
 Require Import Coq.Init.Byte.
 Require Import Coq.NArith.NArith.
-Require Import Coq.Vectors.Vector.
-Require Import Coq.ZArith.ZArith.
 Require Import Coq.Lists.List.
+Require Import Coq.micromega.Lia.
+Require Import Cava.Tactics.
+Require Coq.Vectors.Vector. (* not imported due to name collisions with List *)
+
 Require Import Cava.BitArithmetic.
-Require Import Cava.VectorUtils.
 Require Import Cava.ListUtils.
-Import VectorNotations.
+Require Import Cava.VectorUtils.
+Require Import AesSpec.Polynomial.
+Require Import AesSpec.PolynomialProperties.
+Import Vector.VectorNotations.
 Import ListNotations.
-Local Open Scope Z_scope.
 Local Open Scope list_scope.
-
-Class FieldOperations {T : Type} :=
-  { fzero : T;
-    fis_zero : T -> bool;
-    fadd : T -> T -> T;
-    fsub : T -> T -> T;
-    fmul : T -> T -> T;
-    fdiv : T -> T -> T;
-    fmodulo : T -> T -> T
-  }.
-Global Arguments FieldOperations : clear implicits.
-
-Section Polynomials.
-  Context {coeff : Type} {ops : FieldOperations coeff}.
-  Local Infix "+" := fadd.
-  Local Infix "-" := fsub.
-  Local Infix "*" := fmul.
-  Local Infix "/" := fdiv.
-  Local Infix "mod" := fmodulo.
-
-  (* Little-endian polynomial; x^3 + 3x^2 + 1 = [1; 0; 3; 1] *)
-  Definition poly : Type := list coeff.
-
-  Definition zero_poly : poly := [].
-
-  (* Pad with zeroes to ensure same length *)
-  Definition add_poly (A B : poly) : poly :=
-    map2 fadd
-         (A ++ repeat fzero (length B - length A)%nat)
-         (B ++ repeat fzero (length A - length B)%nat).
-
-  Definition sub_poly (A B : poly) : poly :=
-    map2 fsub
-         (A ++ repeat fzero (length B - length A)%nat)
-         (B ++ repeat fzero (length A - length B)%nat).
-
-  (* Idea borrowed from fiat-crypto's bignum library (see "associational"
-     representation). This form is an unordered list where the index represents
-     the position in the polynomial. Multiple terms can have the same index. For
-     example, x^3 + 3x^2 + 1 could be, completely equivalently:
-
-     [(0,1); (2,3); (3,1)]
-     [(2,3); (3,1); (0,1)]
-     [(0,1); (2,2); (2,1); (3,1); (3;0)] *)
-  Definition indexed_poly : Type := list (nat * coeff).
-
-  Definition mul_indexed_poly (A B : indexed_poly) : indexed_poly :=
-    flat_map (fun a =>
-                map (fun b =>
-                       (* add indices, multiply coefficients *)
-                       ((fst a + fst b)%nat, snd a * snd b))
-                    B) A.
-
-  Definition to_indexed_poly (A : poly) := combine (seq 0 (length A)) A.
-
-  (* Prefix with zeroes *)
-  Definition indexed_term_to_poly (a : nat * coeff) : poly :=
-    repeat fzero (fst a) ++ [snd a].
-
-  (* Note: this implementation could be made more efficient by keeping a
-     polynomial accumulator and adding terms to the correct coefficient of the
-     accumulator one by one. *)
-  (* Convert each *term* of the indexed polynomial into a one-term polynomial,
-     and add them together *)
-  Definition of_indexed_poly (A : indexed_poly) : poly :=
-    fold_left add_poly (map indexed_term_to_poly A) zero_poly.
-
-  Definition mul_poly (A B : poly) : poly :=
-    let A := to_indexed_poly A in
-    let B := to_indexed_poly B in
-    let AB := mul_indexed_poly A B in
-    of_indexed_poly AB.
-
-  (* Computes (a / b) where a and b are both indexed terms *)
-  Definition div_rem_indexed_term (a b : nat * coeff) : (nat * coeff) * (nat * coeff) :=
-    if (fst a <? fst b)%nat
-    then
-      (* degree of b is higher than degree of a, so quotient is 0 *)
-      ((0%nat, fzero), a)
-    else
-      (* degree of a is higher than degree of b *)
-      (* quotient of powers; x^a/x^b = x^(a-b) *)
-      let qi := (fst a - fst b)%nat in
-      (* remainder of powers; we know b <= a, so
-         x^a % x^b = (x^b*x^(a-b)) % x^b = 0 *)
-      let ri := 0%nat in
-      let q :=  (snd a / snd b) in
-      let r := (snd a) mod (snd b) in
-      ((qi, q), (ri, r)).
-
-  (* Divides polynomial A by term b; returns quotient and remainder *)
-  Fixpoint divide_indexed_poly_by_term (A : indexed_poly) (b : nat * coeff)
-    : indexed_poly * indexed_poly :=
-    match A with
-    | [] => ([], []) (* 0 / b *)
-    | a :: A' =>
-      (* Compute quotient and remainder for A' / b *)
-      let rec := divide_indexed_poly_by_term A' b in
-      (* Compute quotient and remainder of a / b and add to result *)
-      let qr := div_rem_indexed_term a b in
-      (fst qr :: fst rec, snd qr :: snd rec)
-    end.
-
-  (* divides (firstn (S n) A) by (B ++ [b]); snoc is because B cannot be nil *)
-  Fixpoint div_rem_poly' (n : nat) (A B : poly) (b : coeff) : poly * poly :=
-    let a := nth n A fzero in
-    (* extract quotient remainder of a / b *)
-    let qr_ab := div_rem_indexed_term (n, a) (length B, b) in
-    let q_ab := indexed_term_to_poly (fst qr_ab) in
-    (* multiply B * (a // b) so highest-degree term of B is close to a *)
-    let Bq := mul_poly (B ++ [b]) q_ab in
-    (* subtract Bq from A to get new A *)
-    let A' := sub_poly A Bq in
-    (* we can now ignore nth term of A and proceed to next term *)
-    match n with
-    | O => (q_ab, A') (* done; A' is the remainder *)
-    | S n' =>
-      (* recursively divide with new value of A *)
-      let qr_AB := div_rem_poly' n' A' B b in
-      (add_poly (fst qr_AB) q_ab, snd qr_AB)
-    end.
-
-  (* Removes terms with zero coefficients *)
-  Definition remove_zeroes (A : indexed_poly) : indexed_poly :=
-    filter (fun t => negb (fis_zero (snd t))) A.
-
-  (* Removes zeroes from the most significant end of the polynomial *)
-  Definition remove_leading_zeroes (A : poly) :=
-    let A := to_indexed_poly A in
-    let A := remove_zeroes A in
-    of_indexed_poly A.
-
-  (* Classical polynomial long division; produces quotient and remainder. B
-     (divisor) cannot be zero. *)
-  Definition div_rem_poly (A B : poly) : poly * poly :=
-    let B := remove_leading_zeroes B in
-    div_rem_poly' (length A-1) A (removelast B) (last B fzero).
-
-  Definition div_poly (A B : poly) : poly := fst (div_rem_poly A B).
-  Definition modulo_poly (A B : poly) : poly := snd (div_rem_poly A B).
-End Polynomials.
-Global Arguments poly : clear implicits.
-
-Section PolynomialTests.
-  Local Instance zops : FieldOperations Z :=
-    {| fzero := 0;
-       fis_zero := Z.eqb 0;
-       fadd := Z.add;
-       fsub := Z.sub;
-       fmul := Z.mul;
-       fdiv := Z.div;
-       fmodulo := Z.modulo |}.
-
-  (* Converting to and from indexed_poly should give the same result *)
-  Goal (of_indexed_poly (to_indexed_poly [1;2;3]) = [1;2;3]).
-  Proof. vm_compute. reflexivity. Qed.
-
-  (* (1 + 2x)^2 = 1 + 4x + 4x^2 *)
-  Goal (mul_poly [1;2] [1;2] = [1;4;4]).
-  Proof. vm_compute. reflexivity. Qed.
-
-  (* (1 + 2x + 3x^2)(1 + 2x + 3x^2)
-     1 + 2x + 3x^2 + 2x(1 + 2x + 3x^2) + 3x^2(1 + 2x + 3x^2)
-     1 + 2x + 3x^2 + 2x + 4x^2 + 6x^3 + 3x^2 + 6x^3 + 9x^4
-     1 + 4x + 10x^2 + 12x^3 + 9x^4 *)
-  Goal (mul_poly [1;2;3] [1;2;3] = [1;4;10;12;9]).
-  Proof. vm_compute. reflexivity. Qed.
-
-  (* 3x * (1 + 2x) + (1 + 2x + 2x^2) = 1 + 5x + 8x^2 *)
-  Goal (add_poly (mul_poly [0;3] [1;2]) [1;2;2] = [1;5;8]).
-  Proof. vm_compute. reflexivity. Qed.
-
-  (* Note: this test expects 5 zeroes, but any number is fine *)
-  (* (1 + 4x + 10x^2 + 12x^3 + 9x^4) ÷ (1 + 2x + 3x^2)
-     = (1 + 2x + 3x^2) (no remainder *)
-  Goal (div_rem_poly [1;4;10;12;9] [1;2;3] = ([1;2;3],[0;0;0;0;0])).
-  Proof. vm_compute. reflexivity. Qed.
-
-  (* 1 ÷ 3x = 0 (remainder: 1) *)
-  Goal (div_rem_poly [1] [0;3] = ([0],[1;0])).
-  Proof. vm_compute. reflexivity. Qed.
-
-  Goal (div_rem_poly [1;5] [0;3] = ([1],[1;2])).
-  Proof. vm_compute. reflexivity. Qed.
-
-  (* 1 + 5x + 8x^2 ÷ 3x = 1 + 2x (remainder 1 + 2x + 2x^2)*)
-  Goal (div_rem_poly [1;5;8] [0;3] = ([1;2],[1;2;2])).
-  Proof. vm_compute. reflexivity. Qed.
-End PolynomialTests.
 
 Section ByteField.
   (* Representation of bytes as polynomials with boolean coefficients;
      relies on N2Bv being little-endian *)
   Definition byte_to_poly (b : byte) : poly bool :=
-    to_list (N2Bv_sized 8 (Byte.to_N b)).
+    Vector.to_list (N2Bv_sized 8 (Byte.to_N b)).
   Definition poly_to_byte (x : poly bool) : byte :=
     match Byte.of_N (list_bits_to_nat x) with
     | Some b => b
@@ -230,7 +44,9 @@ Section ByteField.
   (* Operations in GF(2) *)
   Local Instance bitops : FieldOperations bool :=
     {| fzero := false;
+       fone := true;
        fis_zero := negb;
+       fopp := fun b => b;
        fadd := xorb;
        fsub := xorb;
        fmul := andb;
@@ -256,7 +72,9 @@ Section ByteField.
   (* Operations in GF(2^8) *)
   Local Instance byteops : FieldOperations byte :=
     {| fzero := Byte.x00;
+       fone := Byte.x01;
        fis_zero := Byte.eqb x00;
+       fopp := fun b => b;
        fadd :=
          fun a b => poly_to_byte (add_poly (byte_to_poly a) (byte_to_poly b));
        fsub :=
@@ -286,12 +104,12 @@ Section Spec.
   Local Existing Instance byteops.
 
   (* Convert columns to and from polynomials with coeffs in GF(2^8) *)
-  Definition column_to_poly : column -> poly byte := to_list.
+  Definition column_to_poly : column -> poly byte := Vector.to_list.
   Definition poly_to_column (c : poly byte) : column :=
-    resize_default fzero _ (of_list c).
+    resize_default fzero _ (Vector.of_list c).
 
   (* Modulus : x^4 + 1 *)
-  Definition modulus := [x01; x00; x00; x00; x01].
+  Definition modulus := [x01; x00; x00; x00; x01]%list.
 
   (* Multiplication modulo x^4 + 1 *)
   Definition mulmod (x y : poly byte) : poly byte :=
@@ -355,9 +173,9 @@ Section Spec.
 
 
                c'0 = ({0e} ∙ c0) ⊕ ({0b} ∙ c1) ⊕ ({0d} ∙ c2) ⊕ ({09} ∙ c3)
-               c'0 = ({09} ∙ c0) ⊕ ({0e} ∙ c1) ⊕ ({0b} ∙ c2) ⊕ ({0d} ∙ c3)
-               c'0 = ({0d} ∙ c0) ⊕ ({09} ∙ c1) ⊕ ({0e} ∙ c2) ⊕ ({0b} ∙ c3)
-               c'0 = ({0b} ∙ c0) ⊕ ({0d} ∙ c1) ⊕ ({09} ∙ c2) ⊕ ({0e} ∙ c3)
+               c'1 = ({09} ∙ c0) ⊕ ({0e} ∙ c1) ⊕ ({0b} ∙ c2) ⊕ ({0d} ∙ c3)
+               c'2 = ({0d} ∙ c0) ⊕ ({09} ∙ c1) ⊕ ({0e} ∙ c2) ⊕ ({0b} ∙ c3)
+               c'3 = ({0b} ∙ c0) ⊕ ({0d} ∙ c1) ⊕ ({09} ∙ c2) ⊕ ({0e} ∙ c3)
  *)
 
   (* InvMixColumns on a single column using matrix-based formula *)
@@ -374,8 +192,8 @@ Section Spec.
 End Spec.
 
 Section MixColumnsTests.
-  Import VectorNotations.
   Existing Instance byteops.
+  Local Open Scope vector_scope.
 
   (* Check that mix_single_column with polynomials is the same as with matrices *)
   Goal (let c := [x00; x01; x02; x03] in
@@ -406,3 +224,159 @@ Section MixColumnsTests.
   Proof. vm_compute. reflexivity. Qed.
 End MixColumnsTests.
 
+Section ByteFieldProperties.
+  Existing Instances bitops byteops.
+  Definition BitTheory : semi_ring_theory (R:=bool) fzero fone fadd fmul eq.
+  Proof.
+    constructor; intros; cbn [fzero fone fadd fmul bitops];
+      repeat match goal with x : bool |- _ => destruct x end; reflexivity.
+  Qed.
+
+  (* This odd property holds on bytes because add/sub are xors *)
+  Lemma bytes_sub_is_add (a b : byte) :
+    @fadd _ byteops a b = @fadd _ byteops a b.
+  Proof. reflexivity. Qed.
+
+  Lemma poly_to_byte_to_poly p :
+    (length p = 8)%nat -> byte_to_poly (poly_to_byte p) = p.
+  Proof.
+    cbv [poly_to_byte byte_to_poly]; intros.
+    destruct_lists_by_length.
+    repeat match goal with x : bool |- _ => destruct x end;
+      vm_compute; reflexivity.
+  Qed.
+
+  Lemma byte_to_poly_length b : length (byte_to_poly b) = 8%nat.
+  Proof. cbv [byte_to_poly]; length_hammer. Qed.
+
+  Hint Rewrite @add_poly_length byte_to_poly_length
+        using solve [eauto] : push_length.
+
+  Lemma byte_mul_distr_l (a b c : byte) :
+    fmul (fadd a b) c = fadd (fmul a c) (fmul b c).
+  Admitted.
+
+  Lemma byte_mul_assoc (a b c : byte) :
+    fmul a (fmul b c) = fmul (fmul a b) c.
+  Admitted.
+
+  Definition ByteTheory : semi_ring_theory (R:=byte) fzero fone fadd fmul eq.
+  Proof.
+    constructor; cbn [fadd fmul byteops].
+    { intro b; destruct b; reflexivity. }
+    { intros. f_equal. apply @add_poly_comm, BitTheory. }
+    { intros. rewrite !poly_to_byte_to_poly by length_hammer.
+      f_equal. apply @add_poly_assoc, BitTheory. }
+    { intro b; destruct b; vm_compute; reflexivity. }
+    { intro b; destruct b; vm_compute; reflexivity. }
+    { intros; do 2 f_equal. apply @mul_poly_comm, BitTheory. }
+    { apply byte_mul_assoc. }
+    { apply byte_mul_distr_l. }
+  Qed.
+End ByteFieldProperties.
+
+Section Properties.
+  Existing Instance byteops.
+  Add Ring bytering : ByteTheory.
+  Local Infix "+" := fadd.
+  Local Infix "-" := fsub.
+  Local Infix "*" := fmul.
+
+  Definition sum (p : poly byte) : byte := List.fold_left fadd p fzero.
+  Definition prod (p q : poly byte) : poly byte := map2 fmul p q.
+
+  (* multiplication modulo x^4-1 for 4-digit polynomials *)
+  Definition matrix_mulmod (p q : poly byte) : poly byte :=
+    let p0 := nth 0 p fzero in
+    let p1 := nth 1 p fzero in
+    let p2 := nth 2 p fzero in
+    let p3 := nth 3 p fzero in
+    let q0 := nth 0 q fzero in
+    let q1 := nth 1 q fzero in
+    let q2 := nth 2 q fzero in
+    let q3 := nth 3 q fzero in
+    [ sum (prod [q0;q3;q2;q1] [p0;p1;p2;p3]);
+      sum (prod [q1;q0;q3;q2] [p0;p1;p2;p3]);
+      sum (prod [q2;q1;q0;q3] [p0;p1;p2;p3]);
+      sum (prod [q3;q2;q1;q0] [p0;p1;p2;p3])
+    ].
+
+  Hint Unfold matrix_mulmod sum prod nth map2 fold_left : matrix_mulmod.
+
+  Ltac fequal_list :=
+    repeat match goal with
+           | |- cons _ _ = cons _ _ => f_equal
+           end.
+  Ltac fequal_vector :=
+    repeat match goal with
+           | |- Vector.cons _ _ _ _ = Vector.cons _ _ _ _ => f_equal
+           end.
+
+  Lemma matrix_mulmod_assoc a b c :
+    length a = 4%nat -> length b = 4%nat -> length c = 4%nat ->
+    matrix_mulmod a (matrix_mulmod b c) = matrix_mulmod (matrix_mulmod a b) c.
+  Proof.
+    intros; destruct_lists_by_length.
+    autounfold with matrix_mulmod.
+    fequal_list; ring.
+  Qed.
+
+  Lemma matrix_mulmod_1_l p :
+    length p = 4%nat ->
+    matrix_mulmod [fone;fzero;fzero;fzero] p = p.
+  Proof.
+    intros; destruct_lists_by_length.
+    autounfold with matrix_mulmod.
+    fequal_list; ring.
+  Qed.
+
+  Lemma mix_single_column_is_matrix_mulmod d c :
+    mix_single_column c = of_list_sized d 4%nat
+                                        (matrix_mulmod [x02;x01;x01;x03]
+                                                       (Vector.to_list c)).
+  Proof.
+    cbv [mix_single_column]. constant_vector_simpl c.
+    autorewrite with push_to_list.
+    autounfold with matrix_mulmod.
+    cbv [of_list_sized Vector.of_list].
+    rewrite resize_default_id.
+    fequal_vector; ring.
+  Qed.
+
+  Lemma inv_mix_single_column_is_matrix_mulmod d c :
+    inv_mix_single_column c = of_list_sized d 4%nat
+                                            (matrix_mulmod [x0e;x09;x0d;x0b]
+                                                           (Vector.to_list c)).
+  Proof.
+    cbv [inv_mix_single_column]. constant_vector_simpl c.
+    autorewrite with push_to_list.
+    autounfold with matrix_mulmod.
+    cbv [of_list_sized Vector.of_list].
+    rewrite resize_default_id.
+    fequal_vector; try ring.
+  Qed.
+
+  Lemma inverse_mix_single_column c :
+    inv_mix_single_column (mix_single_column c) = c.
+  Proof.
+    rewrite inv_mix_single_column_is_matrix_mulmod with (d:=fzero).
+    rewrite mix_single_column_is_matrix_mulmod with (d:=fzero).
+    autorewrite with push_to_list.
+    rewrite matrix_mulmod_assoc by length_hammer.
+    match goal with
+    | |- context [matrix_mulmod (cons ?a0 ?a) (cons ?b0 ?b)] =>
+      compute_expr (matrix_mulmod (cons a0 a) (cons b0 b))
+    end.
+    rewrite matrix_mulmod_1_l by length_hammer.
+    rewrite of_list_sized_to_list; reflexivity.
+  Qed.
+
+  Lemma inverse_mix_columns {Nb} (state : Vector.t (Vector.t byte 4) Nb) :
+    inv_mix_columns (mix_columns state) = state.
+  Proof.
+    cbv [inv_mix_columns mix_columns].
+    rewrite Vector.map_map.
+    apply map_id_ext.
+    apply inverse_mix_single_column.
+  Qed.
+End Properties.
