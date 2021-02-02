@@ -1,3 +1,4 @@
 `verilator_config
 lint_off -rule UNOPTFLAT
 lint_off -rule BLKANDNBLK
+lint_off -rule DETECTARRAY

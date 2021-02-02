@@ -99,6 +99,12 @@ Definition v2 := N2Bv_sized 8 255.
 Definition v3 := N2Bv_sized 8  63.
 Definition v0to3 : Vector.t (Bvector 8) 4 := [v0; v1; v2; v3].
 
+Definition v4 := N2Bv_sized 8   9.
+Definition v5 := N2Bv_sized 8 121.
+Definition v6 := N2Bv_sized 8 240.
+Definition v7 := N2Bv_sized 8  42.
+Definition v4to7 : Vector.t (Bvector 8) 4 := [v4; v5; v6; v7].
+
 Example m5: combinational (muxBus ([v0to3]%list, [[false; false]%vector]%list)) = [v0]%list.
 Proof. reflexivity. Qed.
 
@@ -123,7 +129,7 @@ Definition muxBus4_8Netlist := makeNetlist muxBus4_8Interface muxBus.
 
 Definition muxBus4_8_tb_inputs : list (Vector.t (Bvector 8) 4 * Vector.t bool 2) :=
   [(v0to3, [false; false]%vector);
-   (v0to3, [true;  false]%vector);
+   (v4to7, [true;  false]%vector);
    (v0to3, [false; true]%vector);
    (v0to3, [true; true]%vector)
   ].

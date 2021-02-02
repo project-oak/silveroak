@@ -74,7 +74,7 @@ Inductive Instance : Type :=
   (* Composite delay component with enable i.e. a register with clock enable *)
   | DelayEnable: forall (t : SignalType),
                  Signal t -> Signal Bit -> Signal t -> Signal t -> Instance
-  (* Assignment of bit wire *)
+  (* Assignment *)
   | AssignSignal: forall {k: SignalType}, Signal k -> Signal k -> Instance
   (* TODO(satnam): Switch to using tupleInterface instead of UntypedSignal *)
   | Component: string ->
