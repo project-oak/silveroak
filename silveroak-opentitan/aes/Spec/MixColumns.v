@@ -135,6 +135,38 @@ Section Polynomials.
       (fst qr :: fst rec, snd qr :: snd rec)
     end.
 
+  (* divides A by (B ++ [b]); snoc is because B cannot be nil. n is expected to
+     always match length of A. *)
+  Fixpoint div_rem_poly' n (A B : poly) (b : coeff) {struct n} : poly * poly :=
+    if (n <=? length B)%nat
+    then
+      (* the degree of our numerator A (n-1) is less than the degree of our
+         denominator B (length B), so the numerator is necessarily smaller;
+         quotient is 0 and remainder is A *)
+      ([], A)
+    else
+      match n with
+      | O => (* numerator is zero, therefore quotient and remainder both 0 *)
+        ([], [])
+      | S n' =>
+        (* get last (highest-degree) coefficient of A *)
+        let a := nth n' A fzero in
+        (* get the quotient and remainder of a / b as indexed terms *)
+        let q_ab := ((n' - length B)%nat, a / b) in (* (a / b) x^(n'-length B) *)
+        let r_ab := (n', a mod b) in
+        (* multiply B * (a // b) *)
+        let Bq := mul_poly (indexed_term_to_poly q_ab) B in
+        (* subtract Bq from remaining A (excluding last elt) to get new A *)
+        let A' := sub_poly (firstn n' A) Bq in
+        (* recursively divide with new A' *)
+        let qr_AB := div_rem_poly' n' A' B b in
+        (* add quotient and remainder of highest terms to recursive quotient
+           and remainder *)
+        let q := add_poly (indexed_term_to_poly q_ab) (fst qr_AB) in
+        let r := add_poly (indexed_term_to_poly r_ab) (snd qr_AB) in
+        (q,r)
+      end.
+        (*
   (* divides (firstn (S n) A) by (B ++ [b]); snoc is because B cannot be nil *)
   Fixpoint div_rem_poly' (n : nat) (A B : poly) (b : coeff) : poly * poly :=
     let a := nth n A fzero in
@@ -153,7 +185,7 @@ Section Polynomials.
       let qr_AB := div_rem_poly' n' A' B b in
       (add_poly (fst qr_AB) q_ab, snd qr_AB)
     end.
-
+         *)
   (* Removes terms with zero coefficients *)
   Definition remove_zeroes (A : indexed_poly) : indexed_poly :=
     filter (fun t => negb (fis_zero (snd t))) A.
@@ -168,7 +200,7 @@ Section Polynomials.
      (divisor) cannot be zero. *)
   Definition div_rem_poly (A B : poly) : poly * poly :=
     let B := remove_leading_zeroes B in
-    div_rem_poly' (length A-1) A (removelast B) (last B fzero).
+    div_rem_poly' (length A) A (removelast B) (last B fzero).
 
   Definition div_poly (A B : poly) : poly := fst (div_rem_poly A B).
   Definition modulo_poly (A B : poly) : poly := snd (div_rem_poly A B).
@@ -213,7 +245,7 @@ Section PolynomialTests.
   Proof. vm_compute. reflexivity. Qed.
 
   (* 1 ÷ 3x = 0 (remainder: 1) *)
-  Goal (div_rem_poly [1] [0;3] = ([0],[1;0])).
+  Goal (div_rem_poly [1] [0;3] = ([],[1])).
   Proof. vm_compute. reflexivity. Qed.
 
   Goal (div_rem_poly [1;5] [0;3] = ([1],[1;2])).
@@ -304,6 +336,19 @@ Qed.
 
 Require Import coqutil.Tactics.Tactics.
 
+(*
+Section PolynomialProperties.
+  Context {A} {ops : FieldOperations A} {to_z : A -> Z} {m : Z}.
+  Context {to_z_fzero : to_z fzero = 0}
+          {to_z_fone : to_z fone = 1}
+          {to_z_fadd : forall x y, to_z (fadd x y) = to_z x + to_z y}
+          {to_z_fmul : forall x y, to_z (fmul x y) = (to_z x * to_z y) mod m}.
+
+  Definition eval : poly A -> Z :=
+    map to_z
+  Lemma eval_mul_poly : eval (mul_poly p q) = eval p * eval q.
+End PolynomialProperties.
+*)
 Section PolynomialProperties.
   Context {A} {ops : FieldOperations A}.
   Context {rtheory : semi_ring_theory fzero fone fadd fmul eq}.
@@ -859,7 +904,11 @@ Section PolynomialProperties.
     apply add_poly_arith_helper.
   Qed.
 
-  Lemma shift_poly_length p : (length p <= length (shift_poly p))%nat.
+  Lemma shift_poly_length p :
+    p <> nil -> length (shift_poly p) = S (length p).
+  Proof. destruct p; [ congruence | ]; cbn [shift_poly]; length_hammer. Qed.
+
+  Lemma shift_poly_length_le p : (length p <= length (shift_poly p))%nat.
   Proof. destruct p; cbn [shift_poly]; length_hammer. Qed.
 
   Lemma mul_poly_shift_l p q :
@@ -874,7 +923,7 @@ Section PolynomialProperties.
     rewrite <-!add_poly_shift_poly.
     rewrite add_poly_length.
     match goal with |- context [length (shift_poly (mul_poly [?x] ?p))] =>
-                    pose proof (shift_poly_length (mul_poly [x] p))
+                    pose proof (shift_poly_length_le (mul_poly [x] p))
     end.
     rewrite !mul_poly_singleton_length in *.
     Lia.lia.
@@ -950,7 +999,7 @@ Section PolynomialProperties.
     cbv [indexed_term_to_poly]. cbn [fst snd].
     match goal with
     | |- context [length (shift_poly ?p)] =>
-      pose proof (shift_poly_length p)
+      pose proof (shift_poly_length_le p)
     end.
     autorewrite with push_length in *. Lia.lia.
   Qed.
@@ -995,6 +1044,19 @@ Section PolynomialProperties.
     reflexivity.
   Qed.
 
+  Lemma of_indexed_poly_length p :
+    length (of_indexed_poly p) = fold_left Nat.max (map (fun t => S (fst t)) p) 0%nat.
+  Proof.
+    cbv [of_indexed_poly]. change 0%nat with (length (@zero_poly A)).
+    generalize (@zero_poly A) as acc.
+    induction p; intros; [ reflexivity | ].
+    cbn [map fold_left]. rewrite IHp.
+    rewrite add_poly_length.
+    cbv [indexed_term_to_poly].
+    autorewrite with push_length.
+    rewrite Nat.add_1_r; reflexivity.
+  Qed.
+
   Definition PolyTheory
     : semi_ring_theory zero_poly one_poly add_poly mul_poly eq.
   Proof.
@@ -1009,7 +1071,275 @@ Section PolynomialProperties.
     { apply mul_poly_distr_l. }
   Qed.
 
-  Print Assumptions PolyTheory.
+  Lemma mul_term_length t p :
+    p <> nil ->
+    length (of_indexed_poly (mul_term t (to_indexed_poly p)))
+    = (fst t + length p)%nat.
+  Proof.
+    intros; cbv [mul_term to_indexed_poly].
+    rewrite of_indexed_poly_length.
+    rewrite map_map. cbn [fst snd].
+    induction p using rev_ind; [ congruence | ].
+    destruct p as [|p1 p']; [ cbn; Lia.lia | set (p:=p1 :: p') in * ].
+    autorewrite with push_length.
+    rewrite Nat.add_1_r.
+    autorewrite with pull_snoc natsimpl.
+    rewrite combine_append by length_hammer.
+    rewrite map_app. cbn [map combine fst snd].
+    rewrite fold_left_app.
+    rewrite IHp by (subst p; congruence).
+    cbn; Lia.lia.
+  Qed.
+
+  Lemma mul_poly_nonnil (p q : poly A) :
+    p <> nil -> q <> nil -> mul_poly p q <> nil.
+  Proof.
+    revert q. induction p as [|p0 p]; intros; [ congruence | ].
+    destruct p as [|p1 p']; [ | set (p:=p1 :: p') in * ];
+      [ apply length_pos_nonnil; rewrite mul_poly_singleton_length;
+        destruct q; [ congruence | ]; length_hammer | ].
+    apply length_pos_nonnil.
+    rewrite mul_poly_cons_l, add_poly_length.
+    rewrite mul_term_length by auto. cbn [fst snd].
+    rewrite shift_poly_length; [ Lia.lia | ].
+    apply IHp; subst p; congruence.
+  Qed.
+
+  Lemma mul_poly_length (p q : poly A) :
+    p <> nil -> q <> nil ->
+    length (mul_poly p q) = (length p + length q - 1)%nat.
+  Proof.
+    revert q. induction p as [|p0 p]; intros; [ congruence | ].
+    destruct p as [|p1 p']; [ | set (p:=p1 :: p') in * ];
+      [ rewrite mul_poly_singleton_length;
+        destruct q; [ congruence | ]; length_hammer | ].
+    cbn [length]. rewrite mul_poly_cons_l, add_poly_length.
+    rewrite mul_term_length by auto. cbn [fst snd].
+    rewrite shift_poly_length by (apply mul_poly_nonnil; subst p; congruence).
+    rewrite IHp by (subst p; congruence).
+    autorewrite with natsimpl.
+    subst p; length_hammer.
+  Qed.
+
+  Lemma indexed_term_to_poly_length t : length (indexed_term_to_poly t) = S (fst t).
+  Proof.
+    cbv [indexed_term_to_poly]. length_hammer.
+  Qed.
+
+  Lemma indexed_term_to_poly_nonnil t : indexed_term_to_poly t <> nil.
+  Proof.
+    apply length_pos_nonnil. rewrite indexed_term_to_poly_length; Lia.lia.
+  Qed.
+
+  Lemma div_rem_poly'_length2 n p q qn :
+    length p = n ->
+    length (snd (div_rem_poly' n p q qn)) = n.
+  Proof.
+    revert p; induction n; [ destruct p; length_hammer | ].
+    intros p Hp. cbn [div_rem_poly'].
+    destruct_one_match; [ rewrite <-Hp; reflexivity | ].
+    cbn [fst snd]. rewrite add_poly_length.
+    rewrite indexed_term_to_poly_length; cbn [fst].
+    rewrite IHn; [ Lia.lia | ].
+    cbv [sub_poly opp_poly].
+    rewrite add_poly_length.
+    destruct q as [|q0 q'];
+      [ rewrite (mul_poly_comm _ []), mul_poly_0_l;
+        length_hammer | set (q:=q0::q') in * ].
+    autorewrite with push_length.
+    rewrite mul_poly_length
+      by (subst q; apply indexed_term_to_poly_nonnil || congruence).
+    rewrite indexed_term_to_poly_length. cbn [fst snd].
+    Lia.lia.
+  Qed.
+
+  (*
+  Lemma modulo_poly_length p m : length (modulo_poly p m) = length p.
+  Proof.
+    cbv [modulo_poly div_rem_poly].
+    rewrite div_rem_poly'_length2; reflexivity.
+  Qed.
+*)
+  Lemma modulo_poly_small p q :
+    (length p < length (remove_leading_zeroes q))%nat ->
+    modulo_poly p q = p.
+  Proof.
+    cbv [modulo_poly div_rem_poly]. intro Hlt.
+    destruct p; [ reflexivity | ].
+    rewrite removelast_firstn_len.
+    cbn [length div_rem_poly'].
+    autorewrite with push_length in Hlt |- *.
+    destruct_one_match; [ reflexivity | exfalso; Lia.lia ].
+  Qed.
+
+  Context (fopp_0 : fopp fzero = fzero)
+          (fdiv_0_l : forall x, fdiv fzero x = fzero)
+          (fmod_0_l : forall x, fmodulo fzero x = fzero).
+
+  Lemma div_rem_indexed_term_0_l t :
+    div_rem_indexed_term (0%nat, fzero) t = (0%nat, fzero, (0%nat, fzero)).
+  Proof.
+    cbv [div_rem_indexed_term]. cbn [fst snd].
+    rewrite fdiv_0_l, fmod_0_l.
+    autorewrite with natsimpl.
+    destruct_one_match; reflexivity.
+  Qed.
+
+  Lemma opp_poly_fzero n : opp_poly (repeat fzero n) = repeat fzero n.
+  Proof.
+    cbv [opp_poly]. rewrite map_repeat, fopp_0. reflexivity.
+  Qed.
+
+  Lemma sub_poly_0_l p :
+    sub_poly zero_poly p = opp_poly p.
+  Proof.
+    cbv [sub_poly]. rewrite add_poly_0_l. reflexivity.
+  Qed.
+
+  Lemma sub_poly_fzero_l n p :
+    sub_poly (repeat fzero n) p = opp_poly p ++ repeat fzero (n - length p).
+  Proof.
+    cbv [sub_poly]. rewrite add_poly_fzero_l.
+    cbv [opp_poly]. autorewrite with push_length.
+    reflexivity.
+  Qed.
+
+  Lemma add_poly_modulo_poly_l (p q m : poly A) :
+    modulo_poly (add_poly (modulo_poly p m) q) m
+    = modulo_poly (add_poly p q) m.
+  Proof.
+  Admitted.
+  (*
+  Lemma modulo_poly_cons_l pn p m x :
+    modulo_poly (p ++ [pn]) m = x.
+  Proof.
+    cbv [modulo_poly].
+*)
+  Lemma mul_poly_modulo_poly_l (p q m : poly A) :
+    modulo_poly (mul_poly (modulo_poly p m) q) m
+    = modulo_poly (mul_poly p q) m.
+  Proof.
+    cbv [modulo_poly div_rem_poly].
+    generalize (last (remove_leading_zeroes m) fzero) as Ml.
+    generalize (removelast (remove_leading_zeroes m)) as M.
+    intros.
+    set (n:=length (mul_poly (snd (div_rem_poly' (length p) p M Ml)) q)).
+  Admitted.
+(*
+    
+    induction p as [|p0 p].
+    { rewrite mul_poly_0_l. cbn [length zero_poly Nat.sub].
+      destruct q; [ rewrite (mul_poly_comm _ []), mul_poly_0_l; reflexivity | ].
+      rewrite !div_rem_poly'_0_l. cbn [fst snd].
+      rewrite mul_poly_fzeros_l by congruence.
+      cbn [length]; autorewrite with push_length natsimpl.
+      rewrite div_rem_poly'_fzeros_l.
+    { cbn. cbv [div_rem_indexed_term]. cbn [fst snd].
+      destr (0 <? length M)%nat; [ | Lia.lia ].
+    Print div_rem_poly'.
+    
+  Qed.*)
+(*
+  Lemma div_rem_poly'_0_l b B:
+    div_rem_poly' 0 [] b B = ([fzero], repeat fzero (S (length b))).
+  Proof.
+    cbn [div_rem_poly' div_rem_indexed_term fst snd nth].
+    rewrite Tauto.if_same.
+    rewrite sub_poly_0_l.
+    rewrite div_rem_indexed_term_0_l. cbn [fst snd].
+    rewrite mul_poly_comm, mul_poly_fzero_l.
+    cbv [indexed_term_to_poly]. cbn [fst snd repeat app].
+    f_equal; [ ]. rewrite opp_poly_fzero.
+    autorewrite with push_length. rewrite Nat.add_1_r.
+    reflexivity.
+  Qed.
+
+  Lemma indexed_term_to_poly_fzero i :
+    indexed_term_to_poly (i, fzero) = repeat fzero (S i).
+  Proof.
+    cbv [indexed_term_to_poly]. cbn [fst snd].
+    rewrite <-repeat_cons. reflexivity.
+  Qed.
+
+  Lemma mul_term_fzero_l p :
+    p <> nil ->
+    of_indexed_poly (mul_term (0%nat, fzero) (to_indexed_poly p)) = repeat fzero (length p).
+  Proof.
+    induction p as [|p0 p]; [ reflexivity | ].
+    destruct p as [|p1 p']; intros;
+      [ cbn; f_equal; ring | set (p:=p1 :: p') in * ].
+    rewrite to_indexed_poly_cons, mul_term_cons. cbn [fst snd].
+    rewrite of_indexed_poly_cons. rewrite mul_term_shift_r.
+    rewrite of_indexed_poly_shift. rewrite IHp by (subst p; congruence).
+    replace (fzero * p0) with fzero by ring.
+    rewrite add_poly_indexed_term_to_poly_fzero_l.
+    autorewrite with natsimpl. cbn [repeat].
+    autorewrite with listsimpl. reflexivity.
+  Qed.
+
+  Lemma mul_poly_fzeros_l n p :
+    n <> 0%nat -> p <> nil ->
+    mul_poly (repeat fzero n) p = repeat fzero (n + length p - 1).
+  Proof.
+    revert p; induction n; [ congruence | ].
+    destruct n as [|n']; intros;
+      [ cbn [repeat]; rewrite mul_poly_fzero_l; f_equal; Lia.lia
+      | set (n:=S n') in * ].
+    cbn [repeat]. rewrite mul_poly_cons_l.
+    rewrite mul_term_fzero_l by auto.
+    rewrite add_poly_fzero_l.
+    rewrite shift_poly_length, mul_poly_length
+      by (try apply mul_poly_nonnil;
+          subst n; cbn [repeat]; congruence).
+    autorewrite with natsimpl. cbn [repeat].
+    autorewrite with listsimpl.
+    rewrite IHn by (subst n; congruence).
+    destruct p; [ congruence | ].
+    cbn [length].
+    replace (n + S (length p) - 1)%nat with (S (n + length p - 1)) by Lia.lia.
+    replace (S n + S (length p) - 1)%nat with (S (S (n + length p - 1))) by Lia.lia.
+    reflexivity.
+  Qed.
+
+  Lemma div_rem_poly'_fzeros_l n m b B :
+    div_rem_poly' n (repeat fzero m) B b = ([fzero], repeat fzero m).
+  Proof.
+    induction n; intros.
+    { cbv [div_rem_poly']. rewrite nth_repeat, Tauto.if_same.
+      rewrite div_rem_indexed_term_0_l. cbn [fst snd].
+      rewrite indexed_term_to_poly_fzero. cbn [repeat].
+      rewrite (mul_poly_comm _ [fzero]), mul_poly_fzero_l.
+      rewrite sub_poly_fzero_l, opp_poly_fzero.
+      rewrite <-repeat_append.
+      autorewrite with push_length natsimpl.
+      do 2 f_equal; [ ].
+      assert (length B + 1 < m)%nat by admit.
+      Lia.lia. 
+  Qed.
+
+  Lemma mul_poly_modulo_poly_l (p q m : poly A) :
+    (*
+    (0 < length (removelast (remove_leading_zeroes m)))%nat ->*)
+    modulo_poly (mul_poly (modulo_poly p m) q) m
+    = modulo_poly (mul_poly p q) m.
+  Proof.
+    cbv [modulo_poly div_rem_poly].
+    generalize (last (remove_leading_zeroes m) fzero) as Ml.
+    generalize (removelast (remove_leading_zeroes m)) as M.
+    intros.
+    induction p as [|p0 p].
+    { rewrite mul_poly_0_l. cbn [length zero_poly Nat.sub].
+      destruct q; [ rewrite (mul_poly_comm _ []), mul_poly_0_l; reflexivity | ].
+      rewrite !div_rem_poly'_0_l. cbn [fst snd].
+      rewrite mul_poly_fzeros_l by congruence.
+      cbn [length]; autorewrite with push_length natsimpl.
+      rewrite div_rem_poly'_fzeros_l.
+    { cbn. cbv [div_rem_indexed_term]. cbn [fst snd].
+      destr (0 <? length M)%nat; [ | Lia.lia ].
+    Print div_rem_poly'.
+    
+  Qed.
+*)
 End PolynomialProperties.
 
 Section ByteField.
@@ -1052,6 +1382,8 @@ Section ByteField.
   Definition m : poly bool :=
     [true; true; false; true; true; false; false; false; true].
 
+  Definition M := list_bits_to_nat m.
+
   (* Operations in GF(2^8) *)
   Local Instance byteops : FieldOperations byte :=
     {| fzero := Byte.x00;
@@ -1065,19 +1397,13 @@ Section ByteField.
        fmul :=
          fun a b =>
            let ab := mul_poly (byte_to_poly a) (byte_to_poly b) in
-           poly_to_byte (modulo_poly ab m);
+           (* it is safe to strip bits over 8; they are guaranteed to be 0 *)
+           poly_to_byte (firstn 8 (modulo_poly ab m));
        fdiv :=
          fun a b => poly_to_byte (div_poly (byte_to_poly a) (byte_to_poly b));
        fmodulo :=
          fun a b => poly_to_byte (modulo_poly (byte_to_poly a) (byte_to_poly b));
     |}.
-  (*
-  Definition byte_theory : ring_theory fzero fone fadd fmul fsub fopp eq.
-  Proof.
-    constructor.
-    { destruct x; reflexivity. }
-    { destruct x,y; reflexivity.
-  Qed.*)
 
   (* Test case from FIPS : {57} ∘ {83} = {c1} *)
   Goal (let b57 : byte := Byte.x57 in
@@ -1085,6 +1411,193 @@ Section ByteField.
         let bc1 : byte := Byte.xc1 in
         fmul b57 b83 = bc1).
   Proof. vm_compute. reflexivity. Qed.
+
+  Compute (let b57 : byte := Byte.x57 in
+           let b83 : byte := Byte.x83 in
+           let xy := mul_poly (byte_to_poly b57) (byte_to_poly b83) in
+           modulo_poly xy m).
+
+  Definition BitTheory :
+    semi_ring_theory (@fzero _ bitops) (@fone _ bitops) (@fadd _ bitops) (@fmul _ bitops) eq.
+  Proof.
+    constructor; intros; cbn [fzero fone fadd fmul bitops];
+      repeat match goal with x : bool |- _ => destruct x end; reflexivity.
+  Qed.
+
+  Require Import Derive.
+  Derive modulo_formula4
+         SuchThat
+         (forall p0 p1 p2 p3 : bool,
+             modulo_poly [p0; p1; p2; p3]
+                         m = modulo_formula4 p0 p1 p2 p3)
+         As modulo_formula4_correct.
+  Proof.
+    intros; cbv [m]. cbv [modulo_poly div_rem_poly]. cbn [length Nat.sub].
+    repeat match goal with
+           | |- context [remove_leading_zeroes ?m] =>
+             let x := constr:(remove_leading_zeroes m) in
+             let y := (eval compute in x) in
+             change x with y
+           end.
+    cbn [removelast last].
+    vm_compute.
+    reflexivity.
+  Qed.
+  Print modulo_formula4.
+
+  Derive modulo_formula9
+         SuchThat
+         (forall p0 p1 p2 p3 p4 p5 p6 p7 p8 : bool,
+             modulo_poly [p0; p1; p2; p3; p4; p5; p6; p7; p8]
+                         m = modulo_formula9 p0 p1 p2 p3 p4 p5 p6 p7 p8)
+         As modulo_formula9_correct.
+  Proof.
+    intros; cbv [m]. cbv [modulo_poly div_rem_poly]. cbn [length Nat.sub].
+    repeat match goal with
+           | |- context [remove_leading_zeroes ?m] =>
+             let x := constr:(remove_leading_zeroes m) in
+             let y := (eval compute in x) in
+             change x with y
+           end.
+    cbn [removelast last].
+    cbv - [fdiv fmodulo fadd fone fzero fopp fis_zero fsub].
+    reflexivity.
+  Qed.
+
+  Lemma if_id (b : bool) : (if b then true else false) = b.
+  Proof. destruct b; reflexivity. Qed.
+  Lemma if_negb (b : bool) : (if b then false else true) = negb b.
+  Proof. destruct b; reflexivity. Qed.
+  Lemma if_false_formula (b : bool) : (if b then negb b else b) = false.
+  Proof. destruct b; reflexivity. Qed.
+
+  Derive modulo_formula
+         SuchThat
+         (forall p0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14 : bool,
+             modulo_poly [p0; p1; p2; p3; p4; p5; p6; p7; p8; p9; p10; p11; p12; p13; p14]
+                         m = modulo_formula p0 p1 p2 p3 p4 p5 p6 p7 p8 p9 p10 p11 p12 p13 p14)
+         As modulo_formula_correct.
+  Proof.
+    intros; cbv [modulo_poly div_rem_poly]. cbn [length Nat.sub].
+    let x := constr:(remove_leading_zeroes m) in
+    let y := (eval compute in x) in
+    change x with y.
+    cbn [removelast last fst snd].
+    Time
+      lazymatch goal with
+      | |- ?lhs = _ => set (LHS:=lhs)
+      end;
+  vm_compute in LHS; subst LHS;
+  rewrite !Tauto.if_same;
+  rewrite !if_id, !if_negb, !if_false_formula;
+  subst modulo_formula; reflexivity. (* 6.1s *)
+    Time Qed. (* 5.55s *)
+  Print modulo_formula.
+
+  Lemma bit_add_0_l (x : bool) : fadd false x = x.
+  Proof. destruct x; reflexivity. Qed.
+(*
+  Derive mul_formula
+         SuchThat
+         (forall p0 p1 p2 p3 p4 p5 p6 p7
+            q0 q1 q2 q3 q4 q5 q6 q7 q8 q9 q10 q11 q12 q13 q14 : bool,
+             mul_poly [p0; p1; p2; p3; p4; p5; p6; p7]
+                      [q0; q1; q2; q3; q4; q5; q6; q7; q8; q9; q10; q11; q12; q13; q14]
+             = mul_formula q0 q1 q2 q3 q4 q5 q6 q7 q8 q9 q10 q11 q12 q13 q14)
+         As mul_formula_correct.
+  Proof.
+    intros; cbv - [mul_formula fadd fmul].
+    subst mul_formula. reflexivity.
+  Qed.*)
+
+  Lemma byte_mul_poly_modulo_poly p q :
+    length q = 15%nat ->
+    modulo_poly (mul_poly p (firstn 8 (modulo_poly q m))) m
+    = modulo_poly (mul_poly p q) m.
+  Proof.
+    intros; destruct_lists_by_length.
+    rewrite modulo_formula_correct.
+    cbv [modulo_formula firstn].
+    vm_compute.
+  Qed.
+
+  Lemma byte_mul_comm (a b : byte) :
+    fmul a b = fmul b a.
+  Proof.
+    cbv [fmul byteops].
+    rewrite (mul_poly_comm (rtheory:=BitTheory)).
+    reflexivity.
+  Qed.
+
+  Lemma byte_mul_1_l (a : byte) : fmul fone a = a.
+  Proof. destruct a; vm_compute; reflexivity. Qed.
+
+  Compute (fmul Byte.x57 Byte.x83).
+  Compute
+    ((list_bits_to_nat
+        ((fun a b =>
+            let ab := mul_poly (byte_to_poly a) (byte_to_poly b) in
+            ab) Byte.x57 Byte.x83)) mod M)%N.
+
+  Lemma poly_to_byte_to_poly p :
+    (length p = 8)%nat -> byte_to_poly (poly_to_byte p) = p.
+  Proof.
+    cbv [poly_to_byte byte_to_poly]; intros.
+    destruct_lists_by_length.
+    repeat match goal with x : bool |- _ => destruct x end;
+      vm_compute; reflexivity.
+  Qed.
+
+  Lemma byte_to_poly_length b : length (byte_to_poly b) = 8%nat.
+  Proof. cbv [byte_to_poly]; length_hammer. Qed.
+
+  Lemma byte_mul_length a b :
+    length a = 8%nat -> length b = 8%nat ->
+    length (mul_poly a b) = 15%nat.
+  Proof.
+    intros; destruct_lists_by_length.
+    cbv [mul_poly].
+    cbn [to_indexed_poly seq combine length].
+    cbv [mul_indexed_poly]. cbn [flat_map].
+    cbv [mul_term]. cbn [map fst snd app Nat.add].
+    rewrite of_indexed_poly_length.
+    reflexivity.
+  Qed.
+
+  Lemma byte_mul_distr_l (a b c : byte) :
+    fmul (fadd a b) c = fadd (fmul a c) (fmul b c).
+  Proof.
+    cbv [fmul fadd byteops].
+    rewrite poly_to_byte_to_poly with (p:=add_poly _ _)
+      by (rewrite add_poly_length, !byte_to_poly_length; Lia.lia).
+    rewrite (mul_poly_distr_l (rtheory:=BitTheory)).
+    remember (byte_to_poly a) as A.
+    remember (byte_to_poly b) as B.
+    remember (byte_to_poly c) as C.
+    rewrite <-(add_poly_modulo_poly_l (rtheory:=BitTheory))
+      by (try (intro x; destruct x); reflexivity).
+    rewrite (add_poly_comm (rtheory:=BitTheory) (modulo_poly _ _)).
+    rewrite <-(add_poly_modulo_poly_l (rtheory:=BitTheory))
+      by (try (intro x; destruct x); reflexivity).
+    rewrite (modulo_poly_small (add_poly _ _)).
+    2:{
+      rewrite add_poly_length.
+      rewrite 
+    rewrite (mul_poly_comm (rtheory:=BitTheory)).
+    rewrite mul_poly_modulo_poly_l.
+    Search mul_poly.
+  Admitted.
+
+  Lemma byte_mul_assoc (a b c : byte) :
+    fmul a (fmul b c) = fmul (fmul a b) c.
+  Proof.
+    cbv [fmul byteops].
+    remember (byte_to_poly a) as A.
+    remember (byte_to_poly b) as B.
+    remember (byte_to_poly c) as C.
+    rewrite (mul_poly_comm (rtheory:=BitTheory)).
+  Admitted.
+
 End ByteField.
 
 Section Spec.
@@ -1219,6 +1732,7 @@ Require Import Cava.Tactics.
 
 Section Properties.
   Existing Instance byteops.
+  (*
   Definition BitTheory :
     semi_ring_theory (@fzero _ bitops) (@fone _ bitops) (@fadd _ bitops) (@fmul _ bitops) eq.
   Proof.
@@ -1250,12 +1764,7 @@ Section Properties.
       Print byte_to_poly.
       Search byte_to_poly.
       rewrite (add_poly_assoc (rtheory:=BitTheory)).
-      
-
-
-
-      
-    PolyTheory.*)
+    PolyTheory.
   Definition poly_eq_dec {coeff} (coeff_eq_dec : forall x y, {x = y} + {x <> y}) :
     forall p q : poly coeff, {p = q} + {p <> q} :=
     list_eq_dec coeff_eq_dec.
@@ -1278,7 +1787,11 @@ Section Properties.
   Context {rtheory : semi_ring_theory
                        (R:=poly bool)
                        zero_poly one_poly add_poly mul_poly eq}.
-  Add Ring fring : rtheory (morphism rmorph).
+  Add Ring fring : rtheory (morphism rmorph).*)
+
+  Context {rtheory : semi_ring_theory
+                       (R:=byte) fzero fone fadd fmul eq}.
+  Add Ring bytering : rtheory.
 
   Local Infix "+" := fadd.
   Local Infix "-" := fsub.
