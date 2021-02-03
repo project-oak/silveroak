@@ -7,6 +7,7 @@ components against this OpenTitan commit hash.
 
 ## Baseline OpenTitan SystemVerilog Components
 * [aes_mix_columns.sv](https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_mix_columns.sv)
+* [aes_sub_bytes.sv](https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_sub_bytes.sv)
 * [aes_shift_rows.sv](https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_shift_rows.sv)
 * [aes_sbox.sv](https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_sbox.sv)
 
@@ -118,3 +119,82 @@ A picture of the `aes_mix_columns` schematic in Vivado:
 ![ot_mixcols](ot_mix_cols.png)
 
 We should investigate why the Cava version is so much smaller since this sounds very suspicious.
+
+## SubBytes Performance Comparison
+A comparison of the OpenTitan `aes_sub_bytes` module and the Silver Oak
+version shows identitcal LUT utilization.
+### OpenTitan `aes_sub_bytes` baseline block
+OpenTitan version synthesis report:
+```
++-------------------------+------+-------+-----------+-------+
+|        Site Type        | Used | Fixed | Available | Util% |
++-------------------------+------+-------+-----------+-------+
+| Slice LUTs*             | 1152 |     0 |    134600 |  0.86 |
+|   LUT as Logic          | 1152 |     0 |    134600 |  0.86 |
+|   LUT as Memory         |    0 |     0 |     46200 |  0.00 |
+| Slice Registers         |    0 |     0 |    269200 |  0.00 |
+|   Register as Flip Flop |    0 |     0 |    269200 |  0.00 |
+|   Register as Latch     |    0 |     0 |    269200 |  0.00 |
+| F7 Muxes                |  512 |     0 |     67300 |  0.76 |
+| F8 Muxes                |    0 |     0 |     33650 |  0.00 |
++-------------------------+------+-------+-----------+-------+
+```
+OpenTitan version utilization after implementation and optmization:
+```
++------------------------------------------+------+-------+-----------+-------+
+|                 Site Type                | Used | Fixed | Available | Util% |
++------------------------------------------+------+-------+-----------+-------+
+| Slice                                    |  337 |     0 |     33450 |  1.01 |
+|   SLICEL                                 |  234 |     0 |           |       |
+|   SLICEM                                 |  103 |     0 |           |       |
+| LUT as Logic                             | 1152 |     0 |    133800 |  0.86 |
+|   using O5 output only                   |    0 |       |           |       |
+|   using O6 output only                   | 1152 |       |           |       |
+|   using O5 and O6                        |    0 |       |           |       |
+| LUT as Memory                            |    0 |     0 |     46200 |  0.00 |
+|   LUT as Distributed RAM                 |    0 |     0 |           |       |
+|   LUT as Shift Register                  |    0 |     0 |           |       |
+| Slice Registers                          |    0 |     0 |    267600 |  0.00 |
+|   Register driven from within the Slice  |    0 |       |           |       |
+|   Register driven from outside the Slice |    0 |       |           |       |
+| Unique Control Sets                      |    0 |       |     33450 |  0.00 |
++------------------------------------------+------+-------+-----------+-------+
+```
+### Silver Oak `aes_sub_bytes` baseline block
+Silver Oak version after synthesis:
+```
++-------------------------+------+-------+-----------+-------+
+|        Site Type        | Used | Fixed | Available | Util% |
++-------------------------+------+-------+-----------+-------+
+| Slice LUTs*             | 1152 |     0 |    134600 |  0.86 |
+|   LUT as Logic          | 1152 |     0 |    134600 |  0.86 |
+|   LUT as Memory         |    0 |     0 |     46200 |  0.00 |
+| Slice Registers         |    0 |     0 |    269200 |  0.00 |
+|   Register as Flip Flop |    0 |     0 |    269200 |  0.00 |
+|   Register as Latch     |    0 |     0 |    269200 |  0.00 |
+| F7 Muxes                |  512 |     0 |     67300 |  0.76 |
+| F8 Muxes                |    0 |     0 |     33650 |  0.00 |
++-------------------------+------+-------+-----------+-------+
+```
+Silver Oak version after routing:
+```
++------------------------------------------+------+-------+-----------+-------+
+|                 Site Type                | Used | Fixed | Available | Util% |
++------------------------------------------+------+-------+-----------+-------+
+| Slice                                    |  338 |     0 |     33450 |  1.01 |
+|   SLICEL                                 |  239 |     0 |           |       |
+|   SLICEM                                 |   99 |     0 |           |       |
+| LUT as Logic                             | 1152 |     0 |    133800 |  0.86 |
+|   using O5 output only                   |    0 |       |           |       |
+|   using O6 output only                   | 1152 |       |           |       |
+|   using O5 and O6                        |    0 |       |           |       |
+| LUT as Memory                            |    0 |     0 |     46200 |  0.00 |
+|   LUT as Distributed RAM                 |    0 |     0 |           |       |
+|   LUT as Shift Register                  |    0 |     0 |           |       |
+| Slice Registers                          |    0 |     0 |    267600 |  0.00 |
+|   Register driven from within the Slice  |    0 |       |           |       |
+|   Register driven from outside the Slice |    0 |       |           |       |
+| Unique Control Sets                      |    0 |       |     33450 |  0.00 |
++------------------------------------------+------+-------+-----------+-------+
+
+```

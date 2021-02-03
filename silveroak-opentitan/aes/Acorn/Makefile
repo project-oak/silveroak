@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-.PHONY: all coq minimize-requires clean _CoqProject
+.PHONY: all coq minimize-requires clean _CoqProject impl
 
 SV = aes_mix_columns.sv
 
@@ -64,6 +64,8 @@ obj_dir/V%_tb:	%.sv %_tb.sv %_tb.cpp
 %_tb.vcd:	obj_dir/V%_tb
 		$<
 
+impl:		
+		vivado -mode tcl -source aes_sub_bytes.tcl
 
 clean:		
 		-@$(MAKE) -f Makefile.coq clean
