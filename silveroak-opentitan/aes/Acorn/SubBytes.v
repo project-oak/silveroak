@@ -164,7 +164,8 @@ Section WithCava.
     : cava (signal (Vec Bit 8)) :=
     let encrypted := indexAt sbox_fwd_lut b in
     let decrypted := indexAt sbox_inv_lut b in
-    ret (pairSel is_decrypt (mkpair encrypted decrypted)).
+    let vec := unpeel [encrypted; decrypted] in
+    ret (indexAt vec (unpeel [is_decrypt])).
 
   Definition sub_bytes (is_decrypt : signal Bit) (b : signal state)
     : cava (signal state) :=
