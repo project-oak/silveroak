@@ -226,16 +226,21 @@ End MixColumnsTests.
 
 Section ByteFieldProperties.
   Existing Instances bitops byteops.
+  Local Infix "*" := fmul.
+  Local Infix "+" := fadd.
+  Local Infix "-" := fsub.
+
+  (* Declare a full ring because we need subtraction for some goals *)
+  Definition bit_theory : ring_theory (R:=bool) fzero fone fadd fmul fsub fopp eq
+    := BoolTheory.
+  Add Ring bitring : bit_theory.
+
+  (* Declare semi-ring for polynomial proof preconditions *)
   Definition BitTheory : semi_ring_theory (R:=bool) fzero fone fadd fmul eq.
   Proof.
     constructor; intros; cbn [fzero fone fadd fmul bitops];
       repeat match goal with x : bool |- _ => destruct x end; reflexivity.
   Qed.
-
-  (* This odd property holds on bytes because add/sub are xors *)
-  Lemma bytes_sub_is_add (a b : byte) :
-    @fadd _ byteops a b = @fadd _ byteops a b.
-  Proof. reflexivity. Qed.
 
   Lemma poly_to_byte_to_poly p :
     (length p = 8)%nat -> byte_to_poly (poly_to_byte p) = p.
@@ -246,19 +251,281 @@ Section ByteFieldProperties.
       vm_compute; reflexivity.
   Qed.
 
+  Lemma poly_to_byte_to_poly_strip_zeroes p n :
+    length p = 8%nat ->
+    byte_to_poly (poly_to_byte (p ++ repeat false n)) = p.
+  Proof.
+    cbv [poly_to_byte byte_to_poly]; intros.
+    rewrite list_bits_to_nat_app, list_bits_to_nat_zero.
+    rewrite N.mul_0_r, N.add_0_r.
+    apply poly_to_byte_to_poly; auto.
+  Qed.
+
   Lemma byte_to_poly_length b : length (byte_to_poly b) = 8%nat.
   Proof. cbv [byte_to_poly]; length_hammer. Qed.
 
-  Hint Rewrite @add_poly_length byte_to_poly_length
-        using solve [eauto] : push_length.
+  Lemma byte_to_poly_inj b1 b2 : byte_to_poly b1 = byte_to_poly b2 -> b1 = b2.
+  Proof.
+    cbv [byte_to_poly]. intro Heq.
+    apply to_list_inj in Heq.
+    assert (forall b, N.size_nat (Byte.to_N b) <= 8%nat)
+      by (intro b; destruct b; vm_compute; lia).
+    apply N2Bv_sized_eq_iff in Heq; [ | solve [auto] .. ].
+    apply Byte.to_of_N_iff in Heq.
+    rewrite Byte.of_to_N in Heq.
+    congruence.
+  Qed.
 
-  Lemma byte_mul_distr_l (a b c : byte) :
-    fmul (fadd a b) c = fadd (fmul a c) (fmul b c).
-  Admitted.
+  (* Extra hints for length_hammer *)
+  Hint Rewrite @add_poly_length byte_to_poly_length
+       using solve [eauto] : push_length.
+  Hint Rewrite @mul_poly_length
+       using (try apply BitTheory; try apply length_pos_nonnil; length_hammer)
+    : push_length.
+  Hint Resolve byte_to_poly_length : length.
+
+  (* Some lemmas to simplify boolean expressions *)
+  Lemma if_id (b : bool) : (if b then true else false) = b.
+  Proof. destruct b; reflexivity. Qed.
+  Lemma if_negb (b : bool) : (if b then false else true) = negb b.
+  Proof. destruct b; reflexivity. Qed.
+  Lemma if_false_formula (b : bool) : (if b then negb b else b) = false.
+  Proof. destruct b; reflexivity. Qed.
+
+  (* Complete formula for multiplication of 8-bit vectors in GF(2^8) *)
+  Definition mul8 (p q : list bool) : list bool :=
+    let p0 := nth 0 p false in
+    let p1 := nth 1 p false in
+    let p2 := nth 2 p false in
+    let p3 := nth 3 p false in
+    let p4 := nth 4 p false in
+    let p5 := nth 5 p false in
+    let p6 := nth 6 p false in
+    let p7 := nth 7 p false in
+    let q0 := nth 0 q false in
+    let q1 := nth 1 q false in
+    let q2 := nth 2 q false in
+    let q3 := nth 3 q false in
+    let q4 := nth 4 q false in
+    let q5 := nth 5 q false in
+    let q6 := nth 6 q false in
+    let q7 := nth 7 q false in
+    [ (p0 * q0);
+    (p0 * q1) + (p1 * q0);
+    (p0 * q2) + (p1 * q1) + (p2 * q0);
+    (p0 * q3) + (p1 * q2) + (p2 * q1) + (p3 * q0);
+    (p0 * q4) + (p1 * q3) + (p2 * q2) + (p3 * q1) + (p4 * q0);
+    (p0 * q5) + (p1 * q4) + (p2 * q3) + (p3 * q2) + (p4 * q1) + (p5 * q0);
+    (p0 * q6) + (p1 * q5) + (p2 * q4) + (p3 * q3) + (p4 * q2) + (p5 * q1) + (p6 * q0);
+    (p0 * q7) + (p1 * q6) + (p2 * q5) + (p3 * q4) + (p4 * q3) + (p5 * q2) + (p6 * q1) + (p7 * q0);
+    (p1 * q7) + (p2 * q6) + (p3 * q5) + (p4 * q4) + (p5 * q3) + (p6 * q2) + (p7 * q1);
+    (p2 * q7) + (p3 * q6) + (p4 * q5) + (p5 * q4) + (p6 * q3) + (p7 * q2);
+    (p3 * q7) + (p4 * q6) + (p5 * q5) + (p6 * q4) + (p7 * q3);
+    (p4 * q7) + (p5 * q6) + (p6 * q5) + (p7 * q4);
+    (p5 * q7) + (p6 * q6) + (p7 * q5);
+    (p6 * q7) + (p7 * q6);
+    (p7 * q7)
+    ].
+
+  Lemma mul8_correct p q :
+    length p = 8%nat -> length q = 8%nat ->
+    mul_poly (ops:=bitops) p q = mul8 p q.
+  Proof.
+    intros; destruct_lists_by_length.
+    vm_compute. rewrite !if_id, !if_negb.
+    reflexivity.
+  Qed.
+
+  (* Modular reduction with modulus m and 15-bit input:
+
+    round 1 (a[14]):
+    a[6] -= a[14]
+    a[7] -= a[14]
+    a[9] -= a[14]
+    a[10] -= a[14]
+
+    round 2 (a[13]):
+    a[5] -= a[13]
+    a[6] -= a[13]
+    a[8] -= a[13]
+    a[9] -= a[13]
+
+    round 3 (a[12]):
+    a[4] -= a[12]
+    a[5] -= a[12]
+    a[7] -= a[12]
+    a[8] -= a[12]
+
+    round 4 (a[11]):
+    a[3] -= a[11]
+    a[4] -= a[11]
+    a[6] -= a[11]
+    a[7] -= a[11]
+
+    round 5 (a[10]):
+    a[2] -= a[10]
+    a[3] -= a[10]
+    a[5] -= a[10]
+    a[6] -= a[10]
+
+    round 6 (a[9]):
+    a[1] -= a[9]
+    a[2] -= a[9]
+    a[4] -= a[9]
+    a[5] -= a[9]
+
+    round 7 (a[8]):
+    a[0] -= a[8]
+    a[1] -= a[8]
+    a[3] -= a[8]
+    a[4] -= a[8]
+
+    final in terms of initial:
+
+    a'[8]  = a[8]  - a[13] - a[12]
+    a'[9]  = a[9]  - a[14] - a[13]
+    a'[10] = a[10] - a[14]
+
+    a[0] = a[0] - a'[8]
+    a[1] = a[1] - a'[9] - a'[8]
+    a[2] = a[2] - a'[10] - a'[9]
+    a[3] = a[3] - a[11] - a'[10] - a'[8]
+    a[4] = a[4] - a[12] - a[11]  - a'[9]  - a'[8]
+    a[5] = a[5] - a[13] - a[12]  - a'[10] - a'[9]
+    a[6] = a[6] - a[14] - a[13]  - a[11] - a'[10]
+    a[7] = a[7] - a[14] - a[12]  - a[11]
+
+   *)
+  Definition modulo15 (p : list bool) : list bool :=
+    let p0 := nth 0 p false in
+    let p1 := nth 1 p false in
+    let p2 := nth 2 p false in
+    let p3 := nth 3 p false in
+    let p4 := nth 4 p false in
+    let p5 := nth 5 p false in
+    let p6 := nth 6 p false in
+    let p7 := nth 7 p false in
+    let p8 := nth 8 p false in
+    let p9 := nth 9 p false in
+    let p10 := nth 10 p false in
+    let p11 := nth 11 p false in
+    let p12 := nth 12 p false in
+    let p13 := nth 13 p false in
+    let p14 := nth 14 p false in
+    (* redefine p8, p9, and p10 to their final values *)
+    let p8 := p8 - p13 - p12 in
+    let p9 := p9 - p14 - p13 in
+    let p10 := p10 - p14 in
+    [ p0 - p8;
+    p1 - p9 - p8;
+    p2 - p10 - p9;
+    p3 - p11 - p10 - p8;
+    p4 - p12 - p11 - p9 - p8;
+    p5 - p13 - p12 - p10 - p9;
+    p6 - p14 - p13 - p11 - p10;
+    p7 - p14 - p12 - p11
+    ].
+
+  Lemma modulo15_correct p :
+    length p = 15%nat -> byte_to_poly (poly_to_byte (modulo_poly p m)) = modulo15 p.
+  Proof.
+    intros. set (X:=modulo_poly p m).
+    destruct_lists_by_length.
+    vm_compute in X. subst X.
+    (* simplify boolean expressions *)
+    rewrite !Tauto.if_same, !if_id, !if_negb, !if_false_formula.
+    (* strip zeroes *)
+    match goal with
+    | |- byte_to_poly
+          (poly_to_byte
+             [?x0;?x1;?x2;?x3;?x4;?x5;?x6;?x7;
+              false;false;false;false;false;false;false]) = _ =>
+      let H := fresh in
+      pose proof
+           (poly_to_byte_to_poly_strip_zeroes
+              [x0;x1;x2;x3;x4;x5;x6;x7] 7) as H;
+        cbn [repeat app] in H; rewrite H by reflexivity;
+          clear H
+    end.
+    cbv [modulo15 nth].
+    fequal_list; clear;
+      repeat match goal with b : bool |- _ => destruct b end;
+      vm_compute; reflexivity.
+  Qed.
+
+  (* Explicit formula for addition of two 8-bit vectors *)
+  Definition add8 (p q : list bool) : list bool :=
+    let p0 := nth 0 p false in
+    let p1 := nth 1 p false in
+    let p2 := nth 2 p false in
+    let p3 := nth 3 p false in
+    let p4 := nth 4 p false in
+    let p5 := nth 5 p false in
+    let p6 := nth 6 p false in
+    let p7 := nth 7 p false in
+    let q0 := nth 0 q false in
+    let q1 := nth 1 q false in
+    let q2 := nth 2 q false in
+    let q3 := nth 3 q false in
+    let q4 := nth 4 q false in
+    let q5 := nth 5 q false in
+    let q6 := nth 6 q false in
+    let q7 := nth 7 q false in
+    [ p0 + q0;
+    p1 + q1;
+    p2 + q2;
+    p3 + q3;
+    p4 + q4;
+    p5 + q5;
+    p6 + q6;
+    p7 + q7
+    ].
+
+  Lemma add8_correct p q :
+    length p = 8%nat -> length q = 8%nat ->
+    add_poly p q = add8 p q.
+  Proof. intros; destruct_lists_by_length; reflexivity. Qed.
+
+  Local Ltac generalize_bytes_as_polynomials :=
+    repeat lazymatch goal with
+           | |- context [byte_to_poly ?b] =>
+             pose proof (byte_to_poly_length b);
+             generalize dependent (byte_to_poly b);
+             intros
+           end.
 
   Lemma byte_mul_assoc (a b c : byte) :
     fmul a (fmul b c) = fmul (fmul a b) c.
-  Admitted.
+  Proof.
+    cbv [fmul fadd byteops]. apply byte_to_poly_inj.
+    rewrite !modulo15_correct, !mul8_correct by length_hammer.
+    generalize_bytes_as_polynomials. destruct_lists_by_length.
+    lazy [mul8 nth modulo15].
+    (* use ring to prove that each element of the list is equal *)
+    fequal_list; clear.
+    Time all:ring.
+  Qed.
+
+  Lemma byte_mul_distr_l (a b c : byte) :
+    fmul (fadd a b) c = fadd (fmul a c) (fmul b c).
+  Proof.
+    cbv [fmul fadd byteops].
+    apply byte_to_poly_inj.
+    rewrite !modulo15_correct by length_hammer.
+    rewrite !mul8_correct by length_hammer.
+    rewrite !add8_correct by length_hammer.
+    rewrite !poly_to_byte_to_poly by reflexivity.
+    pose proof (byte_to_poly_length a).
+    pose proof (byte_to_poly_length b).
+    pose proof (byte_to_poly_length c).
+    generalize dependent (byte_to_poly a); intros A ?.
+    generalize dependent (byte_to_poly b); intros B ?.
+    generalize dependent (byte_to_poly c); intros C ?.
+    destruct_lists_by_length.
+    lazy [mul8 add8 nth modulo15].
+    (* use ring to prove that each element of the list is equal *)
+    fequal_list; clear; ring.
+  Qed.
 
   Definition ByteTheory : semi_ring_theory (R:=byte) fzero fone fadd fmul eq.
   Proof.
@@ -302,15 +569,6 @@ Section Properties.
     ].
 
   Hint Unfold matrix_mulmod sum prod nth map2 fold_left : matrix_mulmod.
-
-  Ltac fequal_list :=
-    repeat match goal with
-           | |- cons _ _ = cons _ _ => f_equal
-           end.
-  Ltac fequal_vector :=
-    repeat match goal with
-           | |- Vector.cons _ _ _ _ = Vector.cons _ _ _ _ => f_equal
-           end.
 
   Lemma matrix_mulmod_assoc a b c :
     length a = 4%nat -> length b = 4%nat -> length c = 4%nat ->

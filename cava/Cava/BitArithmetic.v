@@ -206,6 +206,31 @@ Proof.
     rewrite N.double_spec. lia.
 Qed.
 
+
+Lemma list_bits_to_nat_zero n : list_bits_to_nat (repeat false n) = 0%N.
+Proof.
+  induction n; [ reflexivity | ].
+  cbn [repeat]; rewrite list_bits_to_nat_cons, IHn.
+  cbn [N.b2n]. lia.
+Qed.
+
+Lemma list_bits_to_nat_nil : list_bits_to_nat [] = 0%N.
+Proof. reflexivity. Qed.
+
+Lemma list_bits_to_nat_app l1 l2 :
+  list_bits_to_nat (l1 ++ l2)
+  = (list_bits_to_nat l1 + 2 ^ (N.of_nat (length l1)) * list_bits_to_nat l2)%N.
+Proof.
+  revert l2; induction l1; intros; cbn [app length].
+  { destruct l2; [ reflexivity | ].
+    change (2 ^ (N.of_nat 0))%N with 1%N.
+    rewrite !list_bits_to_nat_cons, !list_bits_to_nat_nil.
+    lia. }
+  { rewrite !list_bits_to_nat_cons, IHl1.
+    rewrite Nat2N.inj_succ, N.pow_succ_r by lia.
+    lia. }
+Qed.
+
 Local Close Scope N_scope.
 
 (******************************************************************************)

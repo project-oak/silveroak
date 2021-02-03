@@ -986,6 +986,12 @@ Section MapInversionTests.
   Qed.
 End MapInversionTests.
 
+(* Prove two lists are equal by proving each element is equal *)
+Ltac fequal_list :=
+  repeat match goal with
+         | |- cons _ _ = cons _ _ => f_equal
+         end.
+
 (* Factor out loops from a goal in preparation for using fold_left_invariant *)
 Ltac factor_out_loops :=
   lazymatch goal with
