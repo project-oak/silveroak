@@ -191,7 +191,6 @@ Inductive Signal : SignalType -> Type :=
   (* Dynamic index *)
   | IndexAt:  forall {t sz isz}, Signal (Vec t sz) ->
               Signal (Vec Bit isz) -> Signal t
-  | SignalSel : forall {t}, Signal Bit -> Signal (Pair t t) -> Signal t
   (* Static indexing *)
   | IndexConst: forall {t sz}, Signal (Vec t sz) -> nat -> Signal t
   | SignalFst : forall {t1 t2}, Signal (Pair t1 t2) -> Signal t1

@@ -172,9 +172,6 @@ showSignal signal
       IndexAt _ _ _ v i -> showSignal v ++ "[" ++ showSignal i ++ "]"
       IndexConst _ _ v i -> showSignal v ++ "[" ++ show i ++ "]"
       Slice k _ start len v -> showSignal v ++ showSliceIndex k start len
-      SignalSel _ sel (SignalPair _ _ a b) ->
-        "(" ++ showSignal sel ++ " ? " ++  showSignal b ++ " : " ++
-        showSignal a ++ ")"
       SignalFst _ _ (SignalPair _ _ a _) -> showSignal a
       SignalSnd _ _ (SignalPair _ _ _ b) -> showSignal b
       -- SignalPair should never occur but added here to aid debugging.
@@ -427,7 +424,8 @@ unsmashSignal signal
       _ -> return signal
 
 -- If a signal is a vector literal, give it a name and return that name.
--- Used to rewrite vector literals in locations where they are not allowed.
+-- Used to rewrite vector literals in locations where they are not allowed
+-- or in places where very large long lines would get generated.
 freshen :: Signal -> State CavaState Signal
 freshen signal
   = case signal of
