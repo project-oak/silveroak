@@ -74,6 +74,8 @@ library
                      VectorUtils
                      XilinxAdder
                      Byte0
+                     TestBench
+                     SystemVerilogUtils
 
   other-Modules:     Applicative
                      BinPos
