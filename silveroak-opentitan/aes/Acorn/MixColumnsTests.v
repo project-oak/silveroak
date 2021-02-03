@@ -100,3 +100,18 @@ Goal
                        | _ => aes_impl step key
                        end) = Success).
 Proof. vm_compute. reflexivity. Qed.
+
+Goal
+  (let signal := combType in
+   (* run encrypt test with this version of aes_mix_columns plugged in *)
+   aes_test_decrypt Matrix
+                    (fun step key =>
+                       match step with
+                       | InvMixColumns =>
+                         fun st =>
+                           let input := from_flat st in
+                           let output := unIdent (aes_mix_columns [true]%list [input]%list) in
+                           to_flat (List.hd (defaultCombValue _) output)
+                       | _ => aes_impl step key
+                       end) = Success).
+Proof. vm_compute. reflexivity. Qed.
