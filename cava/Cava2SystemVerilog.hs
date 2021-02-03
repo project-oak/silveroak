@@ -437,9 +437,8 @@ unsmashSignal signal
 freshen :: Signal -> State CavaState Signal
 freshen signal
   = case signal of
-      VecLit k s v -> do vf <- mapM freshen (Vector.to_list s v)
-                         freshV <- freshVector k s
-                         addAssignment (Vec k s) freshV (VecLit k s (Vector.of_list vf))
+      VecLit k s v -> do freshV <- freshVector k s
+                         addAssignment (Vec k s) freshV (VecLit k s v)
                          return freshV
       IndexAt k sz isz v i -> do vf <- freshen v
                                  return (IndexAt k sz isz vf i)
