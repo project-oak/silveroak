@@ -38,7 +38,6 @@ Require Import AcornAes.SubBytes.
 Require Import AcornAes.CipherRound.
 Require Import AcornAes.CipherEquivalence.
 Require Import AcornAes.Common.
-(* FIXME: import sub_bytes *)
 Import ListNotations.
 Import Common.Notations.
 Import StateTypeConversions.LittleEndian.
