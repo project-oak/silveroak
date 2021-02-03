@@ -80,7 +80,7 @@ Section WithCava.
     (* assign y_pre_mul4[0] = data_i[3] ^ data_i[1]; *)
     (* assign y_pre_mul4[1] = data_i[2] ^ data_i[0]; *)
     y_pre_mul4_0 <- xorv data_i[@3] data_i[@1] ;;
-    y_pre_mul4_1 <- xorv data_i[@3] data_i[@1] ;;
+    y_pre_mul4_1 <- xorv data_i[@2] data_i[@0] ;;
     (* // Mul4(y_pre_mul4) *)
     (* for (genvar i = 0; i < 2; i++) begin : gen_mul4 *)
     (*   assign y[i] = aes_mul4(y_pre_mul4[i]); *)
@@ -105,8 +105,6 @@ Section WithCava.
     (* // Mux z *)
     (* assign z_muxed[0] = (op_i == CIPH_FWD) ? 8'b0 : z[0]; *)
     (* assign z_muxed[1] = (op_i == CIPH_FWD) ? 8'b0 : z[1]; *)
-    op_i_inv <- inv op_i ;; (* CIPH_FWD := false *)
-    let paired := [unpeel [zero_byte; zero_byte]; z] in
     z_muxed <- muxPair op_i (unpeel [zero_byte; zero_byte], z) ;;
 
     (* // Drive outputs *)
@@ -180,7 +178,7 @@ Definition fromNatVec (i : Vector.t (Vector.t nat 4) 4 ): Vector.t (Vector.t (Ve
 Definition toNatVec (i: Vector.t (Vector.t (Vector.t bool 8) 4) 4) : Vector.t (Vector.t nat 4) 4
   := Vector.map (Vector.map (fun v => N.to_nat (Bv2N v))) i.
 
-Local Open Scope list_scope. 
+Local Open Scope list_scope.
 
 (* Get the test inputs into the right format for the circuit inputs. *)
 Definition mix_cols_i1 := fromNatVec mixColTest1InputNat.
