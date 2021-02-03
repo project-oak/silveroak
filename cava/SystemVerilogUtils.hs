@@ -21,7 +21,7 @@ import Signal
 insertCommas :: [String] -> [String]
 insertCommas [] = []
 insertCommas [x] = [x]
-insertCommas (x:y:xs) = (x ++ ",") : insertCommas (y:xs)
+insertCommas (x:y:xs) = (x ++ ", ") : insertCommas (y:xs)
 
 vectorDeclaration' ::  SignalType -> Integer -> String
 vectorDeclaration' k s
