@@ -127,15 +127,34 @@ showVectorElements :: [Signal] -> String
 showVectorElements e
   = concat (insertCommas (map showSignal e))
 
+
+isGndOrVcc :: Signal -> Bool
+isGndOrVcc Gnd = True
+isGndOrVcc Vcc = True
+isGndOrVcc _ = False
+
+gndVccListToInt :: [Signal] -> Int
+gndVccListToInt [] = 0
+gndVccListToInt (Gnd:xs) = 2 * gndVccListToInt xs
+gndVccListToInt (Vcc:xs) = 1 + 2 * gndVccListToInt xs
+
+bvConst :: [Signal] -> String
+bvConst bv
+  = show (length bv) ++ "'h" ++ showHex (gndVccListToInt bv) ""
+
 -- Show vector literals, interpretating them as packed arrays
 -- with downto indexing.
 showVecLiteral :: SignalType -> [Signal] -> String
 showVecLiteral k e
   = case k of
-      Bit -> -- Packed vector, downto indexing
+      Bit -> if all isGndOrVcc e then  -- special case for bit-vector constants
+               bvConst e
+             else
+              -- Vector, downto indexing
+              "{" ++ showVectorElements (reverse e) ++ "}"
+      _   -> -- Vector, downto indexing
              "{" ++ showVectorElements (reverse e) ++ "}"
-      _   -> -- unpacked vector, downto indexing
-             "'{" ++ showVectorElements (reverse e) ++ "}"
+
 showSignal :: Signal -> String
 showSignal signal
   = case signal of
@@ -153,9 +172,6 @@ showSignal signal
       IndexAt _ _ _ v i -> showSignal v ++ "[" ++ showSignal i ++ "]"
       IndexConst _ _ v i -> showSignal v ++ "[" ++ show i ++ "]"
       Slice k _ start len v -> showSignal v ++ showSliceIndex k start len
-      SignalSel _ sel (SignalPair _ _ a b) ->
-        "(" ++ showSignal sel ++ " ? " ++  showSignal b ++ " : " ++
-        showSignal a ++ ")"
       SignalFst _ _ (SignalPair _ _ a _) -> showSignal a
       SignalSnd _ _ (SignalPair _ _ _ b) -> showSignal b
       -- SignalPair should never occur but added here to aid debugging.
@@ -408,7 +424,8 @@ unsmashSignal signal
       _ -> return signal
 
 -- If a signal is a vector literal, give it a name and return that name.
--- Used to rewrite vector literals in locations where they are not allowed.
+-- Used to rewrite vector literals in locations where they are not allowed
+-- or in places where very large long lines would get generated.
 freshen :: Signal -> State CavaState Signal
 freshen signal
   = case signal of
