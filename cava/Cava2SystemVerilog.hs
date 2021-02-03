@@ -401,7 +401,8 @@ fullSlice s@(Slice _ fullLen startingIndex len stem)
     else
       s
 
--- Recover slices and whole vector stems.
+-- Recover slices and whole vector stems and look for places where a vector
+-- literal is not legal and re-write by creating a fresh vector name.
 unsmashSignal :: Signal -> State CavaState Signal
 unsmashSignal signal
   = case signal of
@@ -409,17 +410,24 @@ unsmashSignal signal
                          case checkStem k s uv  of
                            Just stem -> return (fullSlice stem)
                            Nothing -> return (VecLit k s (Vector.of_list uv))
+      SignalPair t1 t2 v1 v2 -> do v1' <- unsmashSignal v1
+                                   v2' <- unsmashSignal v2
+                                   return (SignalPair t1 t2 v1' v2')
+      SignalFst t1 t2 p -> do p' <- unsmashSignal p
+                              return (SignalFst t1 t2 p')
+      SignalSnd t1 t2 p -> do p' <- unsmashSignal p
+                              return (SignalSnd t1 t2 p')
       IndexAt k sz isz v i -> do uv <- unsmashSignal v
-                                 fv <- freshen uv
+                                 fv <- freshen uv -- The vector to be indexed can't be a vector literal
                                  ui <- unsmashSignal i
                                  return (IndexAt k sz isz fv ui)
       IndexConst k s v i -> do uv <- unsmashSignal v
-                               fv <- freshen uv
+                               fv <- freshen uv -- The vector to be indexed can't be a vector literal
                                return (IndexConst k s fv i)
       SelectField k1 k2 sk1 f -> do usk1 <- unsmashSignal sk1
                                     return (SelectField k1 k2 usk1 f)
       Slice k s startAt len v -> do uv <- unsmashSignal v
-                                    fv <- freshen uv
+                                    fv <- freshen uv -- The slice to be indexed can't be a vector literal
                                     return (Slice k s startAt len fv)
       _ -> return signal
 
@@ -429,9 +437,12 @@ unsmashSignal signal
 freshen :: Signal -> State CavaState Signal
 freshen signal
   = case signal of
-      VecLit k s v -> do freshV <- freshVector k s
-                         addAssignment (Vec k s) freshV signal
+      VecLit k s v -> do vf <- mapM freshen (Vector.to_list s v)
+                         freshV <- freshVector k s
+                         addAssignment (Vec k s) freshV (VecLit k s (Vector.of_list vf))
                          return freshV
+      IndexAt k sz isz v i -> do vf <- freshen v
+                                 return (IndexAt k sz isz vf i)
       _ -> return signal
 
 -- Add an assignment to the context to store new vector names induced by
