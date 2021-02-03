@@ -99,36 +99,6 @@ Section Polynomials.
     let AB := mul_indexed_poly A B in
     of_indexed_poly AB.
 
-  (* Computes (a / b) where a and b are both indexed terms *)
-  Definition div_rem_indexed_term (a b : nat * coeff) : (nat * coeff) * (nat * coeff) :=
-    if (fst a <? fst b)%nat
-    then
-      (* degree of b is higher than degree of a, so quotient is 0 *)
-      ((0%nat, fzero), a)
-    else
-      (* degree of a is higher than degree of b *)
-      (* quotient of powers; x^a/x^b = x^(a-b) *)
-      let qi := (fst a - fst b)%nat in
-      (* remainder of powers; we know b <= a, so
-         x^a % x^b = (x^b*x^(a-b)) % x^b = 0 *)
-      let ri := 0%nat in
-      let q :=  (snd a / snd b) in
-      let r := (snd a) mod (snd b) in
-      ((qi, q), (ri, r)).
-
-  (* Divides polynomial A by term b; returns quotient and remainder *)
-  Fixpoint divide_indexed_poly_by_term (A : indexed_poly) (b : nat * coeff)
-    : indexed_poly * indexed_poly :=
-    match A with
-    | [] => ([], []) (* 0 / b *)
-    | a :: A' =>
-      (* Compute quotient and remainder for A' / b *)
-      let rec := divide_indexed_poly_by_term A' b in
-      (* Compute quotient and remainder of a / b and add to result *)
-      let qr := div_rem_indexed_term a b in
-      (fst qr :: fst rec, snd qr :: snd rec)
-    end.
-
   (* divides A by (B ++ [b]); snoc is because B cannot be nil. n is expected to
      always match length of A. *)
   Fixpoint div_rem_poly' n (A B : poly) (b : coeff) {struct n} : poly * poly :=

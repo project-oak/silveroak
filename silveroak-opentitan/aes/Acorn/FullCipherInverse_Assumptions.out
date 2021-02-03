@@ -64,7 +64,4 @@ key_expand
     signal (Vec Bit 4) ->
     signal (Vec (Vec (Vec Bit 8) 4) 4) * signal (Vec Bit 8) ->
     cava (signal (Vec (Vec (Vec Bit 8) 4) 4) * signal (Vec Bit 8))
-inverse_mix_columns
-  : forall (Nb : nat) (st : t (t Byte.byte 4) Nb),
-    MixColumns.inv_mix_columns (MixColumns.mix_columns st) = st
 inv_key_expand_spec : nat -> t bool 128 * t bool 8 -> t bool 128 * t bool 8
