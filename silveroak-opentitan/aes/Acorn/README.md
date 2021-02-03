@@ -5,6 +5,25 @@ We must use the snapshot of the OpenTitan source from 11 May 2020 as the baselin
 at commit hash [783edaf444](https://github.com/lowRISC/opentitan/tree/783edaf444eb0d9eaf9df71c785089bffcda574e) on the OpenTitan GitHub repo. For consistency and to allow us to produce a single FPGA implementation we should design and verify all our Silver Oak OpenTitan
 components against this OpenTitan commit hash.
 
+## Generating utilization reports
+To generate a utilization report for a particular module invoke the Makefile with the name of the module followed by `_util` e.g.
+```console
+$ make aes_sub_bytes_util
+```
+This will generate an FPGA implementation sub-directory in the directrory `aes_implemention`:
+```console
+$ ls aes_implemention
+aes_sub_bytes
+```
+There might be other circuit implenetations thre from previous runs.
+Two reports are of itnerest:
+* The post synthesis utilization report which gives an approximate resource utilization.
+* The post-placement and optimization which gives an accurate utilization report.
+
+For the `aes_sub_bytes` component these reports can be found in the `aes_implementation` subdirectory after implementation at:
+* Post synthesis: `aes_implementation/aes_sub_bytes/post_synth_util.rpt`
+* Post place and route: `aes_implementation/aes_sub_bytes/post_route_util.rpt`
+
 ## Baseline OpenTitan SystemVerilog Components
 * [aes_mix_columns.sv](https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_mix_columns.sv)
 * [aes_sub_bytes.sv](https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_sub_bytes.sv)
@@ -67,42 +86,41 @@ After synthesis the Silver Oak AES block turns out to use 184 LUTs.
 ```
 -----------------------------------------------------------------------------------
 | Tool Version : Vivado v.2018.3 (lin64) Build 2405991 Thu Dec  6 23:36:41 MST 2018
-| Date         : Fri Jan 29 00:47:37 2021
-| Host         : glasgow.mtv.corp.google.com running 64-bit Debian GNU/Linux rodete
-| Command      : report_utilization -file aes_mix_columns_utilization_synth.rpt -pb aes_mix_columns_utilization_synth.pb
+| Date         : Wed Feb  3 10:08:57 2021
+| Host         : satnam-glaptop running 64-bit Debian GNU/Linux rodete
+| Command      : report_utilization -file ./aes_implementation/aes_mix_columns/post_synth_util.rpt
 | Design       : aes_mix_columns
 | Device       : 7a200tsbg484-1
 | Design State : Synthesized
 -----------------------------------------------------------------------------------
 
-
 +-------------------------+------+-------+-----------+-------+
 |        Site Type        | Used | Fixed | Available | Util% |
 +-------------------------+------+-------+-----------+-------+
-| Slice LUTs*             |  184 |     0 |    134600 |  0.14 |
-|   LUT as Logic          |  184 |     0 |    134600 |  0.14 |
+| Slice LUTs*             |  264 |     0 |    134600 |  0.20 |
+|   LUT as Logic          |  264 |     0 |    134600 |  0.20 |
 |   LUT as Memory         |    0 |     0 |     46200 |  0.00 |
 
 ```
-After implementation:
+After placement and optmization:
 ```
 +-------------------------+------+-------+-----------+-------+
 |        Site Type        | Used | Fixed | Available | Util% |
 +-------------------------+------+-------+-----------+-------+
-| Slice LUTs*             |  184 |     0 |    134600 |  0.14 |
-|   LUT as Logic          |  184 |     0 |    134600 |  0.14 |
+| Slice LUTs              |  262 |     0 |    133800 |  0.20 |
+|   LUT as Logic          |  262 |     0 |    133800 |  0.20 |
 
 
 +------------------------------------------+------+-------+-----------+-------+
 |                 Site Type                | Used | Fixed | Available | Util% |
 +------------------------------------------+------+-------+-----------+-------+
-| Slice                                    |   54 |     0 |     33450 |  0.16 |
-|   SLICEL                                 |   42 |     0 |           |       |
-|   SLICEM                                 |   12 |     0 |           |       |
-| LUT as Logic                             |  180 |     0 |    133800 |  0.13 |
+| Slice                                    |   75 |     0 |     33450 |  0.22 |
+|   SLICEL                                 |   57 |     0 |           |       |
+|   SLICEM                                 |   18 |     0 |           |       |
+| LUT as Logic                             |  262 |     0 |    133800 |  0.20 |
 |   using O5 output only                   |    0 |       |           |       |
-|   using O6 output only                   |  152 |       |           |       |
-|   using O5 and O6                        |   28 |       |           |       |
+|   using O6 output only                   |  204 |       |           |       |
+|   using O5 and O6                        |   58 |       |           |       |
 | LUT as Memory                            |    0 |     0 |     46200 |  0.00 |
 |   LUT as Distributed RAM                 |    0 |     0 |           |       |
 |   LUT as Shift Register                  |    0 |     0 |           |       |
@@ -112,13 +130,15 @@ After implementation:
 | Unique Control Sets                      |    0 |       |     33450 |  0.00 |
 +------------------------------------------+------+-------+-----------+-------+
 
+
 ```
+The current Silver Oak `aes_mix_columns` has 4% greater utilization than the
+OpenTitan version.
 
 A picture of the `aes_mix_columns` schematic in Vivado:
 
 ![ot_mixcols](ot_mix_cols.png)
 
-We should investigate why the Cava version is so much smaller since this sounds very suspicious.
 
 ## SubBytes Performance Comparison
 A comparison of the OpenTitan `aes_sub_bytes` module and the Silver Oak

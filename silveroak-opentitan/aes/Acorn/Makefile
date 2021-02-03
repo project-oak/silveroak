@@ -14,7 +14,21 @@
 # limitations under the License.
 #
 
-.PHONY: all coq minimize-requires clean _CoqProject impl
+# To produce the SystemVerilog AES implementation files and their
+# associated test artifcats do:
+#
+# $ make
+#
+# To run FPGA implementation of the AES subcomponents and generate
+# utilization reports do:
+#
+# $ make util
+#
+# The resulting implementations will be in the aes_implementation directory.
+# This step will require the installation of the Xilinx Vivado
+# FPAG design tools.
+
+.PHONY: all coq minimize-requires clean _CoqProject
 
 SV = aes_mix_columns.sv
 
@@ -25,6 +39,7 @@ VCDS = $(SV:.sv=_tb.vcd)
 .PRECIOUS: $(VCDS)
 
 all:		coq $(VCDS)
+util:		aes_sub_bytes_util aes_mix_columns_util
 
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt
 VLINT = $(VERILATOR) --lint-only
@@ -64,8 +79,10 @@ obj_dir/V%_tb:	%.sv %_tb.sv %_tb.cpp
 %_tb.vcd:	obj_dir/V%_tb
 		$<
 
-impl:		
-		vivado -mode tcl -source aes_sub_bytes.tcl
+# Run FPGA implementation to the palcement stage to get a utilization report.
+%_util:		
+		echo "Utilization report for " $*
+		vivado -mode tcl -source aes_util.tcl -tclargs $*
 
 clean:		
 		-@$(MAKE) -f Makefile.coq clean
