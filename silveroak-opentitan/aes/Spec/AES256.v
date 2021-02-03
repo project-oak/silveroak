@@ -31,19 +31,6 @@ Require Import AesSpec.StateTypeConversions.
 
 Import StateTypeConversions.BigEndian.
 
-Axiom mix_columns_add_round_key_comm :
-  forall (st k : Vector.t _ 4),
-    let to_bits x := LittleEndian.to_cols_bits (from_cols x) in
-    let from_bits x := to_cols (LittleEndian.from_cols_bits x) in
-    add_round_key 32 4
-                  (to_bits (inv_mix_columns st))
-                  (to_bits (inv_mix_columns k))
-    = to_bits
-        (inv_mix_columns
-           (from_bits
-              (add_round_key
-                 32 4 (to_bits st) (to_bits k)))).
-
 Section Equivalence.
   Let state := Vector.t bool 128.
   Let round_key := Vector.t bool 128.
@@ -88,7 +75,8 @@ Section Equivalence.
       first_key last_key middle_keys input.
 
   Hint Rewrite @inverse_add_round_key @inverse_shift_rows @inverse_sub_bytes
-       @inverse_mix_columns @sub_bytes_shift_rows_comm @mix_columns_add_round_key_comm
+       @inverse_mix_columns @sub_bytes_shift_rows_comm
+       @inv_mix_columns_add_round_key_comm
        using solve [eauto] : inverse.
 
   Lemma aes256_decrypt_encrypt first_key last_key middle_keys input :
