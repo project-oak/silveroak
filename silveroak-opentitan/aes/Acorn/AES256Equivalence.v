@@ -34,6 +34,7 @@ Require Import AesSpec.CipherProperties.
 Require Import AesSpec.ExpandAllKeys.
 Require Import AcornAes.AddRoundKey.
 Require Import AcornAes.AddRoundKeyEquivalence.
+Require Import AcornAes.SubBytes.
 Require Import AcornAes.CipherRound.
 Require Import AcornAes.CipherEquivalence.
 Require Import AcornAes.Common.
@@ -45,9 +46,6 @@ Import StateTypeConversions.LittleEndian.
 Local Notation round_constant := (Vec Bit 8) (only parsing).
 Local Notation round_index := (Vec Bit 4) (only parsing).
 
-(* FIXME: remove axiom *)
-Axiom sub_bytes : forall {signal} {semantics : Cava signal} {monad : Monad cava},
-    signal Bit -> signal state -> cava (signal state).
 Axiom shift_rows : forall {signal} {semantics : Cava signal} {monad : Monad cava},
     signal Bit -> signal state -> cava (signal state).
 Axiom mix_columns : forall {signal} {semantics : Cava signal} {monad : Monad cava},
@@ -153,19 +151,25 @@ Proof.
            fun i k_rcon => unflatten_key (key_expand_spec i (flatten_key k_rcon)))
         (inv_key_expand_spec:=
            fun i k_rcon => unflatten_key (inv_key_expand_spec i (flatten_key k_rcon)))
-        by first [ reflexivity
-                 | change (2 ^ 4)%nat with 16; Lia.lia
-                 | cbv zeta; intros;
-                   first [ eapply shift_rows_equiv
-                         | eapply sub_bytes_equiv
-                         | eapply mix_columns_equiv
-                         | eapply add_round_key_equiv ]
-                 | cbv zeta; intros;
-                   rewrite key_expand_equiv; cbv zeta;
-                   destruct is_decrypt; reflexivity
-                 | erewrite ?all_keys_ext
-                   by (intros; rewrite inv_key_expand_equiv by Lia.lia;
-                       instantiate_app_by_reflexivity); solve [eauto] ].
+        by
+          lazymatch goal with
+          | |- ?x = ?x => reflexivity
+          | |- context [unIdent (add_round_key _ _) = _] =>
+            intros; eapply add_round_key_equiv
+          | |- context [unIdent (sub_bytes _ _) = _] =>
+            intros; eapply sub_bytes_equiv
+          | |- context [unIdent (shift_rows _ _) = _] =>
+            intros; eapply shift_rows_equiv
+          | |- context [unIdent (mix_columns _ _) = _] =>
+            intros; eapply mix_columns_equiv
+          | |- context [unIdent (key_expand _ _ _) = _] =>
+            cbv zeta; intros;
+              rewrite key_expand_equiv; cbv zeta;
+                destruct is_decrypt; reflexivity
+          | |- context [_ < 2 ^ 4] => change (2 ^ 4)%nat with 16; Lia.lia
+          | |- map fst (all_keys _ _ _) = _ => solve [eauto]
+          | _ => idtac
+          end.
 
     cbv [aes256_decrypt].
 
@@ -196,19 +200,25 @@ Proof.
            fun i k_rcon => unflatten_key (key_expand_spec i (flatten_key k_rcon)))
         (inv_key_expand_spec:=
            fun i k_rcon => unflatten_key (inv_key_expand_spec i (flatten_key k_rcon)))
-        by first [ reflexivity
-                 | change (2 ^ 4)%nat with 16; Lia.lia
-                 | cbv zeta; intros;
-                   first [ eapply shift_rows_equiv
-                         | eapply sub_bytes_equiv
-                         | eapply mix_columns_equiv
-                         | eapply add_round_key_equiv ]
-                 | cbv zeta; intros;
-                   rewrite key_expand_equiv; cbv zeta;
-                   destruct is_decrypt; reflexivity
-                 | erewrite ?all_keys_ext
-                   by (intros; rewrite inv_key_expand_equiv by Lia.lia;
-                       instantiate_app_by_reflexivity); solve [eauto] ].
+        by
+          lazymatch goal with
+          | |- ?x = ?x => reflexivity
+          | |- context [unIdent (add_round_key _ _) = _] =>
+            intros; eapply add_round_key_equiv
+          | |- context [unIdent (sub_bytes _ _) = _] =>
+            intros; eapply sub_bytes_equiv
+          | |- context [unIdent (shift_rows _ _) = _] =>
+            intros; eapply shift_rows_equiv
+          | |- context [unIdent (mix_columns _ _) = _] =>
+            intros; eapply mix_columns_equiv
+          | |- context [unIdent (key_expand _ _ _) = _] =>
+            cbv zeta; intros;
+              rewrite key_expand_equiv; cbv zeta;
+                destruct is_decrypt; reflexivity
+          | |- context [_ < 2 ^ 4] => change (2 ^ 4)%nat with 16; Lia.lia
+          | |- map fst (all_keys _ _ _) = _ => solve [eauto]
+          | _ => idtac
+          end.
 
     cbv [aes256_encrypt].
 
