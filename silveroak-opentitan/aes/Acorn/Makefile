@@ -39,7 +39,8 @@ VCDS = $(SV:.sv=_tb.vcd)
 .PRECIOUS: $(VCDS)
 
 all:		coq $(VCDS)
-util:		aes_sub_bytes_util aes_mix_columns_util
+util:		aes_sub_bytes_util aes_mix_columns_util aes_add_round_key_util \
+		aes_shift_rows_util aes_sbox_lut_util
 
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt
 VLINT = $(VERILATOR) --lint-only

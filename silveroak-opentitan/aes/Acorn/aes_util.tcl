@@ -26,7 +26,7 @@ file mkdir $outputDir
 #
 read_verilog -sv $circuit.sv
 #
-synth_design -top $circuit -part xc7a200tsbg484-1
+synth_design -top $circuit -part xc7a200tsbg484-1 -mode out_of_context
 write_checkpoint -force $outputDir/post_synth
 report_utilization -file $outputDir/post_synth_util.rpt
 opt_design

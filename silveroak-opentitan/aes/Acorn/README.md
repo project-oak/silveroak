@@ -6,6 +6,10 @@ at commit hash [783edaf444](https://github.com/lowRISC/opentitan/tree/783edaf444
 components against this OpenTitan commit hash.
 
 ## Generating utilization reports
+To generate utilization reports for all the circuit modules type:
+```console
+$ make util
+```
 To generate a utilization report for a particular module invoke the Makefile with the name of the module followed by `_util` e.g.
 ```console
 $ make aes_sub_bytes_util
