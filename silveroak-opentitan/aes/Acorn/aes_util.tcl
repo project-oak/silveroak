@@ -14,18 +14,26 @@
 # limitations under the License.
 #
 
-set outputDir ./aes_implementation/aes_sub_bytes
+# This tcl script drives FPGA implementation far enough
+# to get a post-placement utilization report. Give the
+# root name of the module as the sole argument e.g.
+# vivado -mode tcl -source aes_util.tcl -tclargs aes_sub_bytes
+
+puts "Utilization report for [lindex $argv 0]"
+set circuit [lindex $argv 0]
+set outputDir ./aes_implementation/$circuit
 file mkdir $outputDir
 #
-read_verilog -sv aes_sub_bytes.sv
+read_verilog -sv $circuit.sv
 #
-synth_design -top aes_sub_bytes -part xc7a200tsbg484-1
+synth_design -top $circuit -part xc7a200tsbg484-1 -mode out_of_context
 write_checkpoint -force $outputDir/post_synth
 report_utilization -file $outputDir/post_synth_util.rpt
 opt_design
 place_design
 phys_opt_design
 write_checkpoint -force $outputDir/post_place
+report_utilization -file $outputDir/post_route_util.rpt
 report_timing_summary -file $outputDir/post_place_timing_summary.rpt
 #
 route_design
