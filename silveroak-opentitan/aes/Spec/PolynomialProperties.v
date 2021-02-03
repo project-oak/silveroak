@@ -626,4 +626,65 @@ Section PolynomialProperties.
     { apply mul_poly_distr_l. }
   Qed.
 
+  Lemma modulo_poly_small p q :
+    (length p < length (remove_leading_zeroes q))%nat ->
+    modulo_poly p q = p.
+  Proof.
+    cbv [modulo_poly div_rem_poly]. intro Hlt.
+    destruct p; [ reflexivity | ].
+    rewrite removelast_firstn_len.
+    cbn [length div_rem_poly'].
+    autorewrite with push_length in Hlt |- *.
+    destruct_one_match; [ reflexivity | exfalso; lia ].
+  Qed.
+
+  Lemma mul_term_length t p :
+    p <> nil ->
+    length (of_indexed_poly (mul_term t (to_indexed_poly p)))
+    = (fst t + length p)%nat.
+  Proof.
+    intros; cbv [mul_term to_indexed_poly].
+    rewrite of_indexed_poly_length.
+    rewrite map_map. cbn [fst snd].
+    induction p using rev_ind; [ congruence | ].
+    destruct p as [|p1 p']; [ cbn; lia | set (p:=p1 :: p') in * ].
+    autorewrite with push_length.
+    rewrite Nat.add_1_r.
+    autorewrite with pull_snoc natsimpl.
+    rewrite combine_append by length_hammer.
+    rewrite map_app. cbn [map combine fst snd].
+    rewrite fold_left_app.
+    rewrite IHp by (subst p; congruence).
+    cbn; lia.
+  Qed.
+
+  Lemma mul_poly_nonnil (p q : poly A) :
+    p <> nil -> q <> nil -> mul_poly p q <> nil.
+  Proof.
+    revert q. induction p as [|p0 p]; intros; [ congruence | ].
+    destruct p as [|p1 p']; [ | set (p:=p1 :: p') in * ];
+      [ apply length_pos_nonnil; rewrite mul_poly_singleton_length;
+        destruct q; [ congruence | ]; length_hammer | ].
+    apply length_pos_nonnil.
+    rewrite mul_poly_cons_l, add_poly_length.
+    rewrite mul_term_length by auto. cbn [fst snd].
+    rewrite shift_poly_length; [ lia | ].
+    apply IHp; subst p; congruence.
+  Qed.
+
+  Lemma mul_poly_length (p q : poly A) :
+    p <> nil -> q <> nil ->
+    length (mul_poly p q) = (length p + length q - 1)%nat.
+  Proof.
+    revert q. induction p as [|p0 p]; intros; [ congruence | ].
+    destruct p as [|p1 p']; [ | set (p:=p1 :: p') in * ];
+      [ rewrite mul_poly_singleton_length;
+        destruct q; [ congruence | ]; length_hammer | ].
+    cbn [length]. rewrite mul_poly_cons_l, add_poly_length.
+    rewrite mul_term_length by auto. cbn [fst snd].
+    rewrite shift_poly_length by (apply mul_poly_nonnil; subst p; congruence).
+    rewrite IHp by (subst p; congruence).
+    autorewrite with natsimpl.
+    subst p; length_hammer.
+  Qed.
 End PolynomialProperties.
