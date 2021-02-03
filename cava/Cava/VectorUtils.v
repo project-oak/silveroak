@@ -1411,6 +1411,12 @@ Section NthDefault.
   Qed.
 End NthDefault.
 
+(* Prove two vectors are equal by proving each element is equal *)
+Ltac fequal_vector :=
+  repeat match goal with
+         | |- Vector.cons _ _ _ _ = Vector.cons _ _ _ _ => f_equal
+         end.
+
 (* Useful tactic to destruct vectors of constant length *)
 Ltac constant_vector_simpl vec :=
   lazymatch type of vec with

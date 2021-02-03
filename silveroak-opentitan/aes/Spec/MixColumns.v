@@ -224,15 +224,6 @@ Section MixColumnsTests.
   Proof. vm_compute. reflexivity. Qed.
 End MixColumnsTests.
 
-Ltac fequal_list :=
-  repeat match goal with
-         | |- cons _ _ = cons _ _ => f_equal
-         end.
-Ltac fequal_vector :=
-  repeat match goal with
-         | |- Vector.cons _ _ _ _ = Vector.cons _ _ _ _ => f_equal
-         end.
-
 Section ByteFieldProperties.
   Existing Instances bitops byteops.
   Local Infix "*" := fmul.
