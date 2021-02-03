@@ -31,10 +31,6 @@ Require Import AesSpec.StateTypeConversions.
 
 Import StateTypeConversions.BigEndian.
 
-(* TODO: these definitions need to be filled in once the mixcolumns spec is finalized *)
-Axiom inverse_mix_columns :
-  forall Nb (st : Vector.t _ Nb), inv_mix_columns (mix_columns st) = st.
-
 Axiom mix_columns_add_round_key_comm :
   forall (st k : Vector.t _ 4),
     let to_bits x := LittleEndian.to_cols_bits (from_cols x) in
