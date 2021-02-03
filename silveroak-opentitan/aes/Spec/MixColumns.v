@@ -541,6 +541,8 @@ Section ByteFieldProperties.
     { apply byte_mul_distr_l. }
   Qed.
 End ByteFieldProperties.
+Hint Rewrite @add_poly_length byte_to_poly_length
+     using solve [eauto] : push_length.
 
 Section Properties.
   Existing Instance byteops.
@@ -582,6 +584,16 @@ Section Properties.
   Lemma matrix_mulmod_1_l p :
     length p = 4%nat ->
     matrix_mulmod [fone;fzero;fzero;fzero] p = p.
+  Proof.
+    intros; destruct_lists_by_length.
+    autounfold with matrix_mulmod.
+    fequal_list; ring.
+  Qed.
+
+  Lemma matrix_mulmod_distr_l a b c :
+    length a = 4%nat -> length b = 4%nat -> length c = 4%nat ->
+    matrix_mulmod a (map2 fadd b c)
+    = map2 fadd (matrix_mulmod a b) (matrix_mulmod a c).
   Proof.
     intros; destruct_lists_by_length.
     autounfold with matrix_mulmod.
@@ -636,5 +648,19 @@ Section Properties.
     rewrite Vector.map_map.
     apply map_id_ext.
     apply inverse_mix_single_column.
+  Qed.
+
+  (* add in this field is the same as add_round_key *)
+  Lemma inv_mix_columns_add_comm
+        {Nb} (x y : Vector.t (Vector.t byte 4) Nb) :
+    Vector.map2 (Vector.map2 fadd) (inv_mix_columns x) (inv_mix_columns y)
+    = inv_mix_columns (Vector.map2 (Vector.map2 fadd) x y).
+  Proof.
+    cbv [inv_mix_columns]. rewrite map2_map, map_map2.
+    apply map2_ext; intros.
+    rewrite !inv_mix_single_column_is_matrix_mulmod with (d:=fzero).
+    apply to_list_inj. autorewrite with push_to_list.
+    rewrite matrix_mulmod_distr_l by length_hammer.
+    reflexivity.
   Qed.
 End Properties.

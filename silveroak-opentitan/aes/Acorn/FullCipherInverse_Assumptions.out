@@ -5,12 +5,6 @@ sub_bytes_equiv
     [if is_decrypt
      then to_cols_bitvecs (inv_sub_bytes (from_cols_bitvecs st))
      else to_cols_bitvecs (AES256.sub_bytes (from_cols_bitvecs st))]
-sub_bytes
-  : forall (signal : SignalType -> Type) (semantics : Cava signal),
-    Monad cava ->
-    signal Bit ->
-    signal (Vec (Vec (Vec Bit 8) 4) 4) ->
-    cava (signal (Vec (Vec (Vec Bit 8) 4) 4))
 shift_rows_equiv
   : forall (is_decrypt : bool) (st : combType (Vec (Vec (Vec Bit 8) 4) 4)),
     unIdent (shift_rows [is_decrypt] [st]) =
@@ -29,19 +23,6 @@ mix_columns_equiv
     [if is_decrypt
      then to_cols_bitvecs (inv_mix_columns (from_cols_bitvecs st))
      else to_cols_bitvecs (AES256.mix_columns (from_cols_bitvecs st))]
-mix_columns_add_round_key_comm
-  : forall st k : t (t Byte.byte 4) 4,
-    let to_bits :=
-      fun x : t (t Byte.byte 4) 4 => to_cols_bits (BigEndian.from_cols x) in
-    let from_bits :=
-      fun x : t (t bool (4 * 8)) 4 => BigEndian.to_cols (from_cols_bits x) in
-    AesSpec.AddRoundKey.add_round_key 32 4
-      (to_bits (MixColumns.inv_mix_columns st))
-      (to_bits (MixColumns.inv_mix_columns k)) =
-    to_bits
-      (MixColumns.inv_mix_columns
-         (from_bits
-            (AesSpec.AddRoundKey.add_round_key 32 4 (to_bits st) (to_bits k))))
 mix_columns
   : forall (signal : SignalType -> Type) (semantics : Cava signal),
     Monad cava ->
