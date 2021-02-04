@@ -30,7 +30,7 @@ Import Vector.VectorNotations.
 Local Open Scope vector_scope.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Monad cava}.
+  Context {signal} `{Cava signal}.
 
   (* muxPair specialized to single bit inputs *)
   Definition mux2_1: signal Bit -> signal Bit * signal Bit -> cava (signal Bit)

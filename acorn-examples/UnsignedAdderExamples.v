@@ -54,7 +54,7 @@ Example add15_1 : combinational (addN ([bv4_15], [bv4_1])) = [bv4_0].
 Proof. reflexivity. Qed.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Monad cava}.
+  Context {signal} `{Cava signal}.
 
   (****************************************************************************)
   (* Unsigned addition with growth examples.                                  *)

@@ -29,7 +29,7 @@ Local Open Scope monad_scope.
 Local Open Scope string_scope.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Monad cava}.
+  Context {signal} `{Cava signal}.
 
   Definition nand2_gate (ab : signal Bit * signal Bit) : cava (signal Bit) :=
     x <- and2 ab ;;

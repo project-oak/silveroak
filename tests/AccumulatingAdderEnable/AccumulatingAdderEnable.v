@@ -65,7 +65,7 @@ out    0  0  0  3  7 12 12 19
 
 Section WithCava.
   Context {signal} {combsemantics: Cava signal}
-          {semantics: CavaSeq combsemantics} `{Monad cava}.
+          {semantics: CavaSeq combsemantics}.
 
   Definition mux2 {A} (sel : signal Bit) (f : signal A) (t : signal A)
     : cava (signal A) :=
@@ -115,7 +115,7 @@ Definition accumulatingAdderEnable_Netlist
 
 Section WithCava.
   Context {signal} {combsemantics: Cava signal}
-          {semantics: CavaSeq combsemantics} `{Monad cava}.
+          {semantics: CavaSeq combsemantics}.
 
   Definition accumulatingAdderEnable2 (en : signal Bit) :
                                        signal (Vec Bit 8) ->

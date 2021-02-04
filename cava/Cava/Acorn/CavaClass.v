@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-
+Require Import ExtLib.Structures.Monad.
 Require Import Cava.Netlist.
 Require Import Cava.Signal.
 
@@ -25,7 +25,8 @@ Local Open Scope type_scope.
    us to define both circuit netlist interpretations for the Cava class
    as well as behavioural interpretations for attributing semantics. *)
 Class Cava (signal : SignalType -> Type) := {
-  cava : Type -> Type;    
+  cava : Type -> Type;
+  monad :> Monad cava;
   (* Constant values. *)
   constant : bool -> signal Bit;
   (* Default values. *)

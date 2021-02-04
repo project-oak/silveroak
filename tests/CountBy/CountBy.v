@@ -49,7 +49,7 @@ bit-growth i.e. it computes (a + b) mod 256.
 
 Section WithCava.
   Context {signal} {combsemantics: Cava signal}
-          {semantics: CavaSeq combsemantics} `{Monad cava}.
+          {semantics: CavaSeq combsemantics}.
 
   Definition countBy : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))
     := loopDelayS addN.

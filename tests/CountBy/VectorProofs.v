@@ -54,6 +54,7 @@ Definition addNSpec {ticks : nat} {n} (a b : Vector.t (Bvector n) ticks)
 Local Ltac seqsimpl_step :=
   first [ progress cbn beta iota delta
                    [fst snd hd loopSeqSV' loopDelayS loopDelaySR
+                        monad SequentialVectorCombSemantics
                         SequentialVectorSemantics]
         | progress cbv beta iota delta [loopSeqSV]; seqsimpl_step
         | progress autorewrite with seqsimpl
@@ -79,7 +80,7 @@ Lemma countForkStepOnce (ticks: nat) (i s : Vector.t (Bvector 8) 1) :
   = countBySpec' (Vector.hd s) i.
 Proof.
   intros. unfold mcompose. cbv [countBySpec' stepOnce].
-  simpl_ident.
+  cbn [monad SequentialVectorCombSemantics]. simpl_ident.
   change (t (Signal.combType (Signal.Vec Signal.Bit 8)) (S ticks)) with
       (Signal.seqVType (S ticks) (Signal.Vec Signal.Bit 8)).
   rewrite addNCorrect with (ticks:=S ticks).

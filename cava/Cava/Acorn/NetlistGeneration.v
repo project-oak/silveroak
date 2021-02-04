@@ -291,6 +291,7 @@ Definition instantiateNet (intf : CircuitInterface)
 
 Instance CavaCombinationalNet : Cava denoteSignal := {
     cava := state CavaState;
+    monad := Monad_state _;
     constant b := if b then Vcc else Gnd;
     defaultSignal := defaultNetSignal;
     inv := invNet;

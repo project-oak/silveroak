@@ -33,7 +33,7 @@ Require Import Coq.Bool.Bvector.
 From Coq Require Import Bool.Bvector.
 
 Section WithCava.
-  Context `{CavaSeq} `{Monad cava}.
+  Context `{CavaSeq}.
 
   Definition bitvec_to_signal {n : nat} (lut : Vector.t bool n) : signal (Vec Bit n) :=
     unpeel (Vector.map constant lut).

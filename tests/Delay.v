@@ -33,7 +33,7 @@ From Coq Require Import Bool.Bvector.
 (******************************************************************************)
 
 Section WithCava.
-  Context `{CavaSeq} `{Monad cava}.
+  Context `{CavaSeq}.
 
   Definition delayByte (i : signal (Vec Bit 8))
                        : cava (signal (Vec Bit 8)) :=
@@ -84,7 +84,7 @@ Definition delayByte_tb
 (******************************************************************************)
 
 Section WithCava.
-  Context `{CavaSeq} `{Monad cava}.
+  Context `{CavaSeq}.
 
   Definition delayEnableByte (en_i : signal Bit * signal (Vec Bit 8))
                              : cava (signal (Vec Bit 8)) :=
@@ -145,7 +145,7 @@ Definition delayEnableByte_tb
 (******************************************************************************)
 
 Section WithCava.
-  Context `{semantics: CavaSeq} `{Monad cava}.
+  Context `{semantics: CavaSeq}.
 
  (* A nand-gate with registers after the AND gate and the INV gate. *)
   Definition pipelinedNAND : signal Bit * signal Bit -> cava (signal Bit) :=

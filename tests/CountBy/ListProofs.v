@@ -58,7 +58,8 @@ Lemma countForkCorrect:
     = (addNSpec [i] [s], addNSpec [i] [s]).
 Proof.
   intros; cbv [mcompose].
-  cbn [bind ret Monad_ident].
+  cbn [bind ret monad CombinationalSemantics
+            Monad_ident].
   rewrite fork2Correct, !addNCorrect;
   reflexivity.
 Qed.

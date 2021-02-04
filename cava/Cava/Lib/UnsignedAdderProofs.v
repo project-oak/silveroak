@@ -129,7 +129,7 @@ Proof.
 Qed.
 
 Lemma colV_colL {A B C} {n} circuit inputs d :
-  @colV _ CombinationalSemantics _ A B C n circuit inputs =
+  @colV _ CombinationalSemantics A B C n circuit inputs =
   (let inputL := (fst inputs, to_list (snd inputs)) in
    rL <- colL circuit inputL ;;
       let rV := VectorUtils.resize_default

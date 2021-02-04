@@ -27,7 +27,7 @@ Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Monad cava}.
+  Context {signal} `{Cava signal}.
 
   (* A circuit to xor two bit-vectors *)
   Definition xorV {n : nat} (ab: signal (Vec Bit n) * signal (Vec Bit n)) :

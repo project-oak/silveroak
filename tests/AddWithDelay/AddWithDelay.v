@@ -65,7 +65,7 @@ s   :  0 0 14  7 17 1
 
 Section WithCava.
   Context {signal} {combsemantics: Cava signal}
-          {semantics: CavaSeq combsemantics} `{Monad cava}.
+          {semantics: CavaSeq combsemantics}.
 
   Definition addWithDelay : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))
     := loopDelayS (addN >=> delay).

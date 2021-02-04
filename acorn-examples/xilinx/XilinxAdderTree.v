@@ -32,7 +32,7 @@ Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.XilinxAdder.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Monad cava}.
+  Context {signal} `{Cava signal}.
 
   (****************************************************************************)
   (* A generic description of all adder trees made from a Xilinx adder        *)

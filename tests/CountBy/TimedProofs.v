@@ -37,7 +37,7 @@ Require Import Tests.CountBy.CountBy.
 (* Need to redefine count-by to use the version of sequential semantics that
    assumes the sequential part is in the monad *)
 Section WithCava.
-  Context `{semantics:CavaSeqMonad} `{Monad cava}.
+  Context `{semantics:CavaSeqMonad}.
 
   Definition countBy : cava (signal (Vec Bit 8)) -> cava (signal (Vec Bit 8))
     := loopDelaySm addN.
