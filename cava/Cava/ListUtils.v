@@ -984,6 +984,18 @@ Section FoldLeftAccumulate.
     rewrite nth_fold_left_accumulate'_id by (cbn [length]; lia).
     rewrite Nat.sub_0_r. reflexivity.
   Qed.
+
+  Lemma fold_left_accumulate_to_seq
+        {A B C} (f : A -> B -> A) (g : A -> C) ls b default :
+    fold_left_accumulate f g ls b =
+    fold_left_accumulate
+      (fun x i => f x (nth i ls default)) g (seq 0 (length ls)) b.
+  Proof.
+    cbv [fold_left_accumulate fold_left_accumulate'].
+    rewrite fold_left_to_seq with (default0:=default).
+    apply fold_left_ext; intros [? ?] ?.
+    reflexivity.
+  Qed.
 End FoldLeftAccumulate.
 
 Hint Rewrite @fold_left_accumulate_cons @fold_left_accumulate_nil
