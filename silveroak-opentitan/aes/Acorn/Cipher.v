@@ -101,20 +101,27 @@ Section WithCava.
     key_expand_and_round is_decrypt key_rcon_data
                          add_round_key_in_sel round_key_sel round_i.
 
+  Definition cipher_loop
+             (is_decrypt : signal Bit) (* called op_i in OpenTitan *)
+             (initial_key : signal key) (initial_rcon : signal round_constant)
+             (round_i : signal round_index) (input : signal state)
+    : cava (signal (Pair (Pair key round_constant) state)) :=
+    let initial_state := mkpair (mkpair initial_key initial_rcon) input in
+    loopDelayS
+      (fun index_and_state : signal round_index
+                           * signal (Pair (Pair key round_constant) state) =>
+         let '(idx, feedback_state) := index_and_state in
+         is_first_round <- idx ==? round_0 ;;
+         cipher_state <- muxPair is_first_round (initial_state, feedback_state) ;;
+         cipher_step is_decrypt cipher_state idx)
+      round_i.
+
   Definition cipher
              (is_decrypt : signal Bit) (* called op_i in OpenTitan *)
              (initial_key : signal key) (initial_rcon : signal round_constant)
              (round_i : signal round_index) (input : signal state)
     : cava (signal state) :=
-    let initial_state := mkpair (mkpair initial_key initial_rcon) input in
-    loop_out <- loopDelayS
-                 (fun index_and_state : signal round_index
-                                      * signal (Pair (Pair key round_constant) state) =>
-                    let '(idx, feedback_state) := index_and_state in
-                    is_first_round <- idx ==? round_0 ;;
-                    cipher_state <- muxPair is_first_round (initial_state, feedback_state) ;;
-                    cipher_step is_decrypt cipher_state idx)
-                 round_i ;;
+    loop_out <- cipher_loop is_decrypt initial_key initial_rcon round_i input ;;
     let '(_,final_data) := unpair loop_out in
     ret final_data.
 
