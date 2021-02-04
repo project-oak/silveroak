@@ -26,7 +26,7 @@ Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Monad cava}.
+  Context {signal} `{Cava signal}.
 
   (* A top-level multiplier circuit that can be compiled to a top-level
     SystemVerilog circuit. *)

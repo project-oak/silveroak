@@ -33,7 +33,6 @@ Local Open Scope type_scope.
 
 Section WithCava.
   Context {signal} {m : Cava signal}.
-  Context {monad: Monad cava}.
 
   (****************************************************************************)
   (* Build a full-adder with explicit use of Xilinx FPGA fast carry logic     *)

@@ -45,12 +45,12 @@ Import StateTypeConversions.LittleEndian.
 Local Notation round_constant := (Vec Bit 8) (only parsing).
 Local Notation round_index := (Vec Bit 4) (only parsing).
 
-Axiom shift_rows : forall {signal} {semantics : Cava signal} {monad : Monad cava},
+Axiom shift_rows : forall {signal} {semantics : Cava signal},
     signal Bit -> signal state -> cava (signal state).
-Axiom mix_columns : forall {signal} {semantics : Cava signal} {monad : Monad cava},
+Axiom mix_columns : forall {signal} {semantics : Cava signal},
     signal Bit -> signal state -> cava (signal state).
 
-Axiom key_expand : forall {signal} {semantics : Cava signal} {monad : Monad cava},
+Axiom key_expand : forall {signal} {semantics : Cava signal},
     signal Bit -> signal round_index -> signal key * signal round_constant ->
     cava (signal key * signal round_constant).
 Axiom key_expand_spec : nat -> t bool 128 * t bool 8 -> t bool 128 * t bool 8.
@@ -103,7 +103,7 @@ Axiom key_expand_equiv :
 Hint Resolve add_round_key_equiv sub_bytes_equiv shift_rows_equiv
      mix_columns_equiv : subroutines_equiv.
 
-Definition full_cipher {signal} {semantics : Cava signal} {monad : Monad cava}
+Definition full_cipher {signal} {semantics : Cava signal}
            (num_rounds_regular round_0 : signal (Vec Bit 4))
   : signal Bit -> signal key -> signal (Vec Bit 8) ->
     list (signal (Vec Bit 4)) -> signal state -> cava (signal state) :=

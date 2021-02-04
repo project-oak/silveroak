@@ -32,7 +32,7 @@ Local Open Scope string_scope.
 
 Section WithCava.
   Context {signal} {combsemantics : Cava signal}
-          {seqsemantics: CavaSeq combsemantics} `{Monad cava}.
+          {seqsemantics: CavaSeq combsemantics}.
 
   (* NAND gate example. First, let's define an overloaded NAND gate
      description. *)

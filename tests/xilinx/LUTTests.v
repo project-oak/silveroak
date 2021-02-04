@@ -24,7 +24,7 @@ Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Monad cava}.
+  Context {signal} `{Cava signal}.
 
   Definition lut1_inv (i: signal Bit) : cava (signal Bit) :=
     o <- lut1 negb i ;;

@@ -43,7 +43,6 @@ Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").
 
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
-  Context {monad: Monad cava}.
 
   Definition aes_mix_single_column
     (op_i: signal Bit) (data_i: signal (Vec byte 4))

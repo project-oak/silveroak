@@ -23,7 +23,7 @@ Require Import ExtLib.Structures.Monads.
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 
-Definition lutNAND {signal} `{Cava signal} `{Monad cava}
+Definition lutNAND {signal} `{Cava signal}
            (i0i1 : signal Bit * signal Bit) : cava (signal Bit) :=
   x <- lut2 (andb) i0i1 ;;
   z <- lut1 (negb) x ;;

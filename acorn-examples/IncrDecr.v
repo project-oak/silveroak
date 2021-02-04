@@ -32,7 +32,7 @@ Open Scope monad_scope.
 Open Scope list_scope.
 
 Section WithCava.
-  Context `{semantics: Cava} {monad : Monad cava}.
+  Context `{semantics: Cava}.
 
   Definition half_adder (input : signal Bit * signal Bit)
   : cava (signal Bit * signal Bit) :=

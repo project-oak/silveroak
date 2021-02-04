@@ -138,7 +138,6 @@ End SboxLut.
 
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
-  Context {monad: Monad cava}.
 
   Definition bitvec_to_signal {n : nat} (lut : t bool n) : signal (Vec Bit n) :=
     unpeel (map constant lut).

@@ -31,7 +31,7 @@ Import Common.Notations.
 Local Open Scope monad_scope.
 
 Section WithCava.
-  Context {signal} {semantics : Cava signal} {monad: Monad cava}.
+  Context {signal} {semantics : Cava signal}.
   Context {round_index round_constant : SignalType}.
 
   Context (sub_bytes:     signal Bit -> signal state -> cava (signal state))

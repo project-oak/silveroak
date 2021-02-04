@@ -42,7 +42,7 @@ Local Open Scope monad_scope.
 Local Open Scope type_scope.
 
 Section WithCava.
-  Context {signal} {semantics: Cava signal} {monad: Monad cava}.
+  Context {signal} {semantics: Cava signal}.
 
   (****************************************************************************)
   (* Lava-style circuit combinators.                                          *)
@@ -313,29 +313,29 @@ Section WithCava.
   (* Forks in wires                                                           *)
   (****************************************************************************)
 
-  Definition fork2 `{Monad_m : Monad cava} {A} (a:A) := ret (a, a).
+  Definition fork2 {A} (a:A) := ret (a, a).
 
   (****************************************************************************)
   (* Operations over pairs.                                                   *)
   (****************************************************************************)
 
-  Definition first `{Monad_m : Monad cava} {A B C} (f : A -> cava C) (ab : A * B) : cava (C * B) :=
+  Definition first {A B C} (f : A -> cava C) (ab : A * B) : cava (C * B) :=
     let '(a, b) := ab in
     c <- f a ;;
     ret (c, b).
 
-  Definition second `{Monad_m : Monad cava} {A B C} (f : B -> cava C) (ab : A * B) : cava (A * C) :=
+  Definition second {A B C} (f : B -> cava C) (ab : A * B) : cava (A * C) :=
     let '(a, b) := ab in
     c <- f b ;;
     ret (a, c).
 
   (* Project out the first element of a pair. *)
-  Definition projFst `{Monad_m : Monad cava} {A B} (ab : A * B) : cava A :=
+  Definition projFst {A B} (ab : A * B) : cava A :=
     let '(a, _) := ab in
     ret a.
 
   (* Project out the second element of a pair. *)
-  Definition projSnd `{Monad_m : Monad cava} {A B} (ab : A * B) : cava B :=
+  Definition projSnd {A B} (ab : A * B) : cava B :=
     let '(_, b) := ab in
     ret b.
 
@@ -343,7 +343,7 @@ Section WithCava.
   (* Swap                                                                     *)
   (****************************************************************************)
 
-  Definition swap `{Monad_m : Monad cava} {A B}
+  Definition swap {A B}
                   (i : signal A * signal B) 
                   : cava (signal B * signal A) :=
     let (a, b) := i in

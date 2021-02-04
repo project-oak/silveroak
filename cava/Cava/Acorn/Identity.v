@@ -104,11 +104,11 @@ Section Combinators.
         (va : combType (Vec A n)) (vb : combType (Vec B n)) :
     n <> 0 ->
     (forall a b, unIdent (f ([a], [b])) = [spec a b]) ->
-    unIdent (@zipWith _ _ Monad_ident A B C n f [va] [vb])
+    unIdent (@zipWith _ _ A B C n f [va] [vb])
     = [Vector.map2 spec va vb].
   Proof.
     cbv [zipWith Traversable.mapT Traversable_vector].
-    cbn [peel unpeel CombinationalSemantics].
+    cbn [peel unpeel monad CombinationalSemantics].
     cbn [bind ret Monad_ident unIdent] in *.
     rewrite mapT_vector_ident.
     revert va vb; induction n; intros; [ lia | ].
@@ -154,7 +154,7 @@ End Combinators.
 Section Vectors.
   Lemma xorV_unIdent n a b :
     n <> 0 ->
-    unIdent (@xorV _ _ Monad_ident n ([a],[b])) = [Vector.map2 xorb a b].
+    unIdent (@xorV _ _ n ([a],[b])) = [Vector.map2 xorb a b].
   Proof.
     intros. cbv [xorV]. cbn [fst snd].
     erewrite zipWith_unIdent; [ reflexivity | lia | ].
@@ -178,4 +178,5 @@ Ltac simpl_ident :=
                                   instantiate_app_by_reflexivity ]
           | erewrite fold_left_ext; [ | intros; progress simpl_ident;
                                         instantiate_app_by_reflexivity ]
-          | progress cbn [fst snd bind ret Monad_ident unIdent] ].
+          | progress cbn [fst snd bind ret Monad_ident monad
+                              CombinationalSemantics unIdent] ].
