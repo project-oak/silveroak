@@ -29,10 +29,9 @@ Require Import Cava.Cava.
 Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
-Require Import AcornAes.Common.
 Require Import AcornAes.Pkg.
 Require Import AesSpec.Tests.Common.
-Import Common.Notations.
+Import Pkg.Notations.
 
 Import VectorNotations.
 
@@ -169,14 +168,6 @@ Definition mixColTest1InputNat : Vector.t (Vector.t nat 4) 4
       [1; 1; 1; 1];
       [45; 38; 49; 76]
   ].
-
-(* A function to convert a matrix of nat values to a maxtrix of bitvecss *)
-Definition fromNatVec (i : Vector.t (Vector.t nat 4) 4 ): Vector.t (Vector.t (Vector.t bool 8) 4) 4
-  := Vector.map (Vector.map (fun v => N2Bv_sized 8 (N.of_nat v))) i.
-
-(* A function to convert a bitvec matrix to a nat matrix. *)
-Definition toNatVec (i: Vector.t (Vector.t (Vector.t bool 8) 4) 4) : Vector.t (Vector.t nat 4) 4
-  := Vector.map (Vector.map (fun v => N.to_nat (Bv2N v))) i.
 
 Local Open Scope list_scope.
 

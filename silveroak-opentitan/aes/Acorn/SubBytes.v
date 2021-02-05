@@ -28,11 +28,11 @@ Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Lib.BitVectorOps.
-Require Import AcornAes.Common.
 Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AesSpec.Tests.Common.
-Import Common.Notations.
+Require Import AcornAes.Pkg.
+Import Pkg.Notations.
 Import VectorNotations.
 Import StateTypeConversions.LittleEndian.
 
@@ -222,3 +222,20 @@ Goal
                        end) = Success).
 Proof. vm_compute. reflexivity. Qed.
 
+Definition subBytesTestVec : Vector.t (Vector.t nat 4) 4
+  := [[219; 19; 83; 69];
+      [242; 10; 34; 92];
+      [1; 1; 1; 1];
+      [45; 38; 49; 76]
+  ].
+
+Local Open Scope list_scope.
+
+(* Compute the expected outputs from the Coq/Cava semantics. *)
+Definition sub_bytes_expected_outputs := combinational (sub_bytes [false] [fromNatVec subBytesTestVec]).
+
+Definition aes_sub_bytes_tb :=
+  testBench "aes_sub_bytes_tb"
+            aes_sub_bytes_Interface
+            [(false, fromNatVec subBytesTestVec)]
+            sub_bytes_expected_outputs.

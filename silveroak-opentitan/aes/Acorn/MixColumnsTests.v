@@ -27,10 +27,12 @@ Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 
 Require Import AesSpec.StateTypeConversions.
-Require Import AcornAes.MixColumnsCircuit.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.AES256.
+
+Require Import AcornAes.MixColumnsCircuit.
+Require Import AcornAes.Pkg.
 
 Local Open Scope vector_scope.
 
@@ -41,14 +43,6 @@ Definition mixColTest1ExpectedOutput : Vector.t (Vector.t nat 4) 4
       [77; 126; 189; 248]].
 
 (*** First work with MixCols.mix_cols spec. ***)
-
-(* A function to convert a matrix of nat values to a valyue of type state *)
-Definition fromNatState (i : Vector.t (Vector.t nat 4) 4 ): Vector.t (Vector.t Byte.byte 4) 4
-  := Vector.map (Vector.map (fun v => bitvec_to_byte (N2Bv_sized 8 (N.of_nat v)))) i.
-
-(* A function to convert a state value to a matrix of nat values. *)
-Definition toNatState (i: Vector.t (Vector.t Byte.byte 4) 4) : Vector.t (Vector.t nat 4) 4
-  := Vector.map (Vector.map (fun v => N.to_nat (Bv2N (byte_to_bitvec v)))) i.
 
 Definition mixColTestInputs' : Vector.t (Vector.t Byte.byte 4) 4 := fromNatState mixColTest1InputNat.
 

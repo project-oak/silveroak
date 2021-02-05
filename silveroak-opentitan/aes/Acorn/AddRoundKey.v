@@ -26,11 +26,11 @@ Require Import ExtLib.Structures.Monads.
 Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
-Require Import AcornAes.Common.
+Require Import AcornAes.Pkg.
 Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AesSpec.Tests.Common.
-Import Common.Notations.
+Import Pkg.Notations.
 
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
