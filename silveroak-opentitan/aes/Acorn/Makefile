@@ -54,20 +54,13 @@ _CoqProject:
 		@echo "-R ../../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
 		git ls-files | grep "\.v$$" >> _CoqProject
 
-FixupHaskell:	FixupHaskell.hs
-		ghc --make $^
-
 Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
 
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
-AESSV:		coq AESSV.hs FixupHaskell
-		./FixupHaskell
-		mv DecimalString2.hs DecimalString.hs
-		mv Ascii2.hs Ascii.hs
-		mv Char2.hs Char.hs
+AESSV:		coq AESSV.hs
 		ghc --make AESSV.hs
 		./AESSV
 

@@ -25,6 +25,9 @@ main :: IO ()
 main = do writeSystemVerilog aes_mix_columns_Netlist
           writeTestBench aes_mix_columns_tb
           writeSystemVerilog aes_shift_rows_Netlist
+          writeTestBench aes_shift_rows_tb
           writeSystemVerilog aes_sbox_lut_Netlist
           writeSystemVerilog aes_sub_bytes_Netlist
+          writeTestBench aes_sub_bytes_tb
           writeSystemVerilog aes_add_round_key_Netlist
+          writeTestBench aes_add_round_key_tb

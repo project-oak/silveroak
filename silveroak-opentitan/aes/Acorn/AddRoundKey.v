@@ -16,6 +16,8 @@
 
 Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import Coq.Lists.List.
+Require Import Coq.NArith.BinNat.
+Require Import Coq.NArith.Ndigits.
 Import ListNotations.
 Require Import Cava.Cava.
 
@@ -31,6 +33,8 @@ Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AesSpec.Tests.Common.
 Import Pkg.Notations.
+
+Import VectorNotations.
 
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
@@ -63,6 +67,30 @@ Definition add_round_key_Interface :=
 
 Definition aes_add_round_key_Netlist
   := makeNetlist add_round_key_Interface (fun '(key_i, data_i) => add_round_key key_i data_i).
+
+Definition test_state
+  := [[219; 19; 83; 69];
+      [242; 10; 34; 92];
+      [1; 1; 1; 1];
+      [45; 38; 49; 76]
+  ].
+Definition test_key
+  := [[219; 19; 83; 69];
+      [242; 10; 34; 92];
+      [1; 1; 1; 1];
+      [45; 38; 49; 76]
+  ].
+
+Local Open Scope list_scope.
+(* Compute the expected outputs from the Coq/Cava semantics. *)
+Definition add_round_key_expected_outputs : seqType (Vec (Vec (Vec Bit 8) 4) 4)
+  := combinational (add_round_key [fromNatVec test_key] [fromNatVec test_state]).
+
+Definition aes_add_round_key_tb :=
+  testBench "aes_add_round_key_tb"
+            add_round_key_Interface
+            [(fromNatVec test_key, fromNatVec test_state)]
+            add_round_key_expected_outputs.
 
 (* Run test as a quick-feedback check *)
 Import List.ListNotations.
