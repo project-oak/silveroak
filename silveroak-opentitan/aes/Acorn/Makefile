@@ -30,7 +30,7 @@
 
 .PHONY: all coq minimize-requires clean _CoqProject
 
-SV = aes_mix_columns.sv
+SV = aes_mix_columns.sv aes_shift_rows.sv aes_sub_bytes.sv
 
 BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)
@@ -81,11 +81,11 @@ obj_dir/V%_tb:	%.sv %_tb.sv %_tb.cpp
 		$<
 
 # Run FPGA implementation to the palcement stage to get a utilization report.
-%_util:		
+%_util:
 		echo "Utilization report for " $*
 		vivado -mode tcl -source aes_util.tcl -tclargs $*
 
-clean:		
+clean:
 		-@$(MAKE) -f Makefile.coq clean
 		rm -rf _CoqProject Makefile.coq Makefile.coq.conf AESSV
 		git clean -Xfd

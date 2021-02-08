@@ -25,8 +25,8 @@ Import MonadNotation.
 
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Combinators.
-Require Import AcornAes.Common.
-Import Common.Notations.
+Require Import AcornAes.Pkg.
+Import Pkg.Notations.
 
 Local Open Scope monad_scope.
 

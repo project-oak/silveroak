@@ -16,6 +16,8 @@
 
 Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import Coq.Lists.List.
+Require Import Coq.NArith.BinNat.
+Require Import Coq.NArith.Ndigits.
 Import ListNotations.
 Require Import Cava.Cava.
 
@@ -24,15 +26,15 @@ Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Traversable.
 
+
 Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
-Require Import AcornAes.Common.
 Require Import AcornAes.Pkg.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.StateTypeConversions.
-Import Common.Notations.
+Import Pkg.Notations.
 
 Import VectorNotations.
 
@@ -41,13 +43,6 @@ Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").
 
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
-
-  Definition aes_circ_byte_shift (shift: nat) (input: signal (Vec byte 4)):
-    cava (signal (Vec byte 4)) :=
-    let indices := [4 - shift; 5 - shift; 6 - shift; 7 - shift] in
-    let indices := map (fun x => Nat.modulo x 4) indices in
-    ret (unpeel (map (indexConst input) indices))
-    .
 
   Definition aes_shift_rows
     (op_i: signal Bit)
@@ -114,3 +109,21 @@ Goal
                        | _ => aes_impl step key
                        end) = Success).
 Proof. vm_compute. reflexivity. Qed.
+
+Definition shiftRowsTestVec : Vector.t (Vector.t nat 4) 4
+  := [[219; 19; 83; 69];
+      [242; 10; 34; 92];
+      [1; 1; 1; 1];
+      [45; 38; 49; 76]
+  ].
+
+Local Open Scope list_scope.
+
+(* Compute the expected outputs from the Coq/Cava semantics. *)
+Definition shift_rows_expected_outputs := combinational (aes_shift_rows [false] [fromNatVec shiftRowsTestVec]).
+
+Definition aes_shift_rows_tb :=
+  testBench "aes_shift_rows_tb"
+            aes_shift_rows_Interface
+            [(false, fromNatVec shiftRowsTestVec)]
+            shift_rows_expected_outputs.

@@ -37,9 +37,8 @@ Require Import AcornAes.AddRoundKeyEquivalence.
 Require Import AcornAes.SubBytes.
 Require Import AcornAes.CipherRound.
 Require Import AcornAes.CipherEquivalence.
-Require Import AcornAes.Common.
 Import ListNotations.
-Import Common.Notations.
+Import Pkg.Notations.
 Import StateTypeConversions.LittleEndian.
 
 Local Notation round_constant := (Vec Bit 8) (only parsing).

@@ -15,6 +15,9 @@
 (****************************************************************************)
 
 Require Import Coq.Vectors.Vector.
+Require Import Coq.NArith.BinNat.
+Require Import Coq.NArith.Ndigits.
+Require Import Cava.BitArithmetic.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Traversable.
@@ -22,13 +25,33 @@ Require Import ExtLib.Structures.Traversable.
 Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
-Require Import AcornAes.Common.
+Require Import Cava.Signal.
 Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AesSpec.Tests.Common.
-Import Common.Notations.
 
 Import VectorNotations.
+
+Module Notations.
+  Notation state := (Vec (Vec (Vec Bit 8) 4) 4) (only parsing).
+  Notation key := (Vec (Vec (Vec Bit 8) 4) 4) (only parsing).
+End Notations.
+
+(* A function to convert a matrix of nat values to a value of type state *)
+Definition fromNatState (i : Vector.t (Vector.t nat 4) 4 ): Vector.t (Vector.t Byte.byte 4) 4
+  := Vector.map (Vector.map (fun v => bitvec_to_byte (N2Bv_sized 8 (N.of_nat v)))) i.
+
+(* A function to convert a state value to a matrix of nat values. *)
+Definition toNatState (i: Vector.t (Vector.t Byte.byte 4) 4) : Vector.t (Vector.t nat 4) 4
+  := Vector.map (Vector.map (fun v => N.to_nat (Bv2N (byte_to_bitvec v)))) i.
+
+(* A function to convert a matrix of nat values to a matrix of bitvecs *)
+Definition fromNatVec (i : Vector.t (Vector.t nat 4) 4 ): Vector.t (Vector.t (Vector.t bool 8) 4) 4
+  := Vector.map (Vector.map (fun v => N2Bv_sized 8 (N.of_nat v))) i.
+
+(* A function to convert a bitvec matrix to a nat matrix. *)
+Definition toNatVec (i: Vector.t (Vector.t (Vector.t bool 8) 4) 4) : Vector.t (Vector.t nat 4) 4
+  := Vector.map (Vector.map (fun v => N.to_nat (Bv2N v))) i.
 
 Local Notation byte := (Vec Bit 8) (only parsing).
 Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").
