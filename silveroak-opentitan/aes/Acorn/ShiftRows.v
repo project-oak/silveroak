@@ -44,13 +44,6 @@ Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
-  Definition aes_circ_byte_shift (shift: nat) (input: signal (Vec byte 4)):
-    cava (signal (Vec byte 4)) :=
-    let indices := [4 - shift; 5 - shift; 6 - shift; 7 - shift] in
-    let indices := map (fun x => Nat.modulo x 4) indices in
-    ret (unpeel (map (indexConst input) indices))
-    .
-
   Definition aes_shift_rows
     (op_i: signal Bit)
     (data_i: signal (Vec (Vec byte 4) 4))
