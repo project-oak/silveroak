@@ -153,7 +153,6 @@ Definition blackBoxF (intf : CircuitInterface)
     unpair _ _ v := v;
     peel _ _ v := v;
     unpeel _ _ v := v;
-    pairSel _ v sel := pairSelBool v sel;
     indexAt t sz isz := @indexAtBoolF t sz isz;
     indexConst t sz := @indexConstBoolF t sz;
     slice t sz startAt len v H := sliceVector v startAt len H;

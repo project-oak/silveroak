@@ -48,6 +48,13 @@ Section WithCava.
   let (a, b) := ab in
   ret (indexAt (unpeel [a; b]) (unpeel [sel])).
 
+  (* A variant of muxPair that works over a Cava pair. *)
+  Definition pairSel {A : SignalType}
+                     (sel : signal Bit)
+                     (ab : signal (Pair A A)) : signal A :=
+  let (a, b) := unpair ab in
+  indexAt (unpeel [a; b]) (unpeel [sel]).
+
   (* A unit delay with a default reset value. *)
   Definition delay {A : SignalType} (i : signal A) : cava (signal A) :=
     delayWith (defaultCombValue A) i.
