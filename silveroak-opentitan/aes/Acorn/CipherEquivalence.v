@@ -93,7 +93,7 @@ Section WithSubroutines.
     first [ destruct_pair_let
           | rewrite N2Nat.id
           | rewrite N2Bv_sized_Bv2N
-          | rewrite (pairSel_mkpair (t:=Vec (Vec (Vec Bit 8) 4) 4))
+          | rewrite (pairSel_mkpair_singleton (t:=Vec (Vec (Vec Bit 8) 4) 4))
           | progress autorewrite with to_spec
           | progress simpl_ident ]; [ ].
   Local Ltac simplify := repeat simplify_step.
