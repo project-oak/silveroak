@@ -25,7 +25,7 @@ Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Signal.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{CavaSeq signal}.
+  Context {signal} `{Cava signal}.
 
   (* Constant signals. *)
 

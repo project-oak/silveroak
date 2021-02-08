@@ -314,11 +314,8 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     greaterThanOrEqual m n ab := @GreaterThanOrEqual m n (fst ab) (snd ab);
     instantiate := instantiateNet;
     blackBox := blackBoxNet;
-}.
-
-Instance CavaSequentialNet : CavaSeq CavaCombinationalNet :=
-  { delayWith k d := delayNet k d;
+    delayWith k d := delayNet k d;
     delayEnableWith k d := delayEnableNet k d;
     loopDelaySR a b := loopNetS a b;
     loopDelaySEnableR en a b := loopNetEnableS en a b;
-  }.
+}.

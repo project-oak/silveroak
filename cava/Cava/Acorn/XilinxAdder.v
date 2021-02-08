@@ -70,34 +70,34 @@ Section WithCava.
 
 End WithCava.
 
-Section WithCombinational.
+Section Withsemantics.
 
   (* A quick sanity check of the Xilinx adder with carry in and out *)
   Example xilinx_add_17_52:
-    combinational (xilinxAdderWithCarry
+    semantics (xilinxAdderWithCarry
                   ([false], ([N2Bv_sized 8 17], [N2Bv_sized 8 52]))) =
                   ([N2Bv_sized 8 69], [false]).
   Proof. vm_compute. reflexivity. Qed.
 
   (* A quick sanity check of the Xilinx adder with no bit-growth *)
   Example xilinx_no_growth_add_17_52:
-    combinational (xilinxAdder [N2Bv_sized 8 17] [N2Bv_sized 8 52]) =
+    semantics (xilinxAdder [N2Bv_sized 8 17] [N2Bv_sized 8 52]) =
                   [N2Bv_sized 8 69].
   Proof. reflexivity. Qed.
 
   (* A proof that the the full-adder is correct. *)
   Lemma xilinxFullAdder_behaviour :
     forall (a : bool) (b : bool) (cin : bool),
-          combinational (xilinxFullAdder ([cin], ([a], [b])))
+          semantics (xilinxFullAdder ([cin], ([a], [b])))
           = ([xorb cin (xorb a b)],
              [(a && b) || (b && cin) || (a && cin)]).
   Proof.
     intros.
-    unfold combinational.
+    unfold semantics.
     unfold fst.
     simpl.
     case a, b, cin.
     all : reflexivity.
   Qed.
 
-End WithCombinational.
+End Withsemantics.

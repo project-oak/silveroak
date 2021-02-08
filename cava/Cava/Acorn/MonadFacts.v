@@ -78,19 +78,19 @@ Instance MonadLaws_ident : MonadLaws Monad_ident.
 Proof. constructor; intros; reflexivity. Qed.
 
 (* Decompose a serial composition of circuits f and g into
-   two separate combinational interpretations. *)
-Lemma combinational_bind {A B} (f : ident A) (g : A -> ident B) :
-  combinational (f >>= g) = combinational (g (combinational f)).
+   two separate semantic interpretations. *)
+Lemma semantics_bind {A B} (f : ident A) (g : A -> ident B) :
+  semantics (f >>= g) = semantics (g (semantics f)).
 Proof.
   destruct f. (* Take apart on the circuit f.
-    combinational (` x : _ <- {| unIdent := unIdent |};; g x) =
-    combinational (g (combinational {| unIdent := unIdent |}))   *)
+    semantics (` x : _ <- {| unIdent := unIdent |};; g x) =
+    semantics (g (semantics {| unIdent := unIdent |}))   *)
   reflexivity. (* Both sides boil down to computing x as the result of
                   circuit f which is passed as an argument to circuit g *)
 Qed.
 
-(* The combinational interpretation of the `return` of any value is
+(* The semantic interpretation of the `return` of any value is
    just the same value. *)
-Lemma combinational_ret {A} (x : A) : combinational (ret x) = x.
+Lemma semantics_ret {A} (x : A) : semantics (ret x) = x.
 Proof. reflexivity. Qed.
 

@@ -129,6 +129,10 @@ Definition blackBoxF (intf : CircuitInterface)
 (* interpretation.                                                            *)
 (******************************************************************************)
 
+(*
+
+TODO: Work out if there is a sensible way to reintroduce TimedCombSemantics.
+
  Instance TimedCombSemantics : Cava combType :=
   { cava := timed;
     constant b := b;
@@ -174,3 +178,5 @@ Definition blackBoxF (intf : CircuitInterface)
 (******************************************************************************)
 
 Definition sequentialF {a} (circuit : cava a) (t : nat) : a := circuit t.
+
+*)

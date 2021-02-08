@@ -43,7 +43,7 @@ Local Open Scope N_scope.
 (* First prove the full-adder correct. *)
 
 Lemma fullAdder_correct (cin a b : bool) :
-  combinational (fullAdder ([cin], ([a], [b]))) =
+  semantics (fullAdder ([cin], ([a], [b]))) =
   let sum := N.b2n a + N.b2n b + N.b2n cin in
   ([N.testbit sum 0], [N.testbit sum 1]).
 Proof. destruct cin, a, b; reflexivity. Qed.
@@ -67,13 +67,13 @@ Hint Rewrite @bind_of_return @bind_associativity
 
 (* Correctness of the list based adder. *)
 
-Lemma combinational_bind {A B} (f : ident A) (g : A -> ident B) :
-  combinational (x <- f;; g x) = combinational (g (combinational f)).
+Lemma semantics_bind {A B} (f : ident A) (g : A -> ident B) :
+  semantics (x <- f;; g x) = semantics (g (semantics f)).
 Proof. reflexivity. Qed.
 
 Lemma addLCorrect (cin : bool) (a b : list bool) :
   length a = length b ->
-  match combinational (addLWithCinL [cin] [a] [b]) with
+  match semantics (addLWithCinL [cin] [a] [b]) with
     | [bitAddition] => list_bits_to_nat bitAddition =
                       list_bits_to_nat a + list_bits_to_nat b + N.b2n cin
     | _ => False
@@ -101,7 +101,7 @@ Proof.
   (cbn match beta). repeat destruct_pair_let; simpl_ident.
 
   (* Rearrange to match inductive hypothesis *)
-  rewrite <-app_comm_cons. cbv [combinational] in *.
+  rewrite <-app_comm_cons. cbv [semantics] in *.
   cbn [unIdent] in *. rewrite list_bits_to_nat_cons.
 
   (* Finally we have the right expression to use IHa *)
@@ -129,7 +129,7 @@ Proof.
 Qed.
 
 Lemma colV_colL {A B C} {n} circuit inputs d :
-  @colV _ CombinationalSemantics A B C n circuit inputs =
+  @colV _ CircuitSemantics A B C n circuit inputs =
   (let inputL := (fst inputs, to_list (snd inputs)) in
    rL <- colL circuit inputL ;;
       let rV := VectorUtils.resize_default
@@ -158,14 +158,14 @@ Proof.
 Qed.
 
 Lemma colL_length {A B C} circuit a bs :
-  length (fst (combinational (@colL ident _ A B C circuit (a,bs))))
+  length (fst (semantics (@colL ident _ A B C circuit (a,bs))))
   = length bs.
 Proof.
   cbv [colL]; cbn [fst snd].
   revert a; induction bs; intros; [ reflexivity | ].
   cbn [colL'].
-  repeat first [ rewrite combinational_bind
-               | rewrite combinational_ret
+  repeat first [ rewrite semantics_bind
+               | rewrite semantics_ret
                | destruct_pair_let ].
   cbn [fst snd length].
   rewrite IHbs. reflexivity.
@@ -174,15 +174,15 @@ Qed.
 Hint Rewrite @colL_length using solve [length_hammer] : push_length.
 
 Ltac simpl_monad :=
-  repeat first [ rewrite combinational_bind
-               | rewrite combinational_ret
+  repeat first [ rewrite semantics_bind
+               | rewrite semantics_ret
                | destruct_pair_let
                | progress autorewrite with monadlaws
                | progress cbn [fst snd] ].
 
 Lemma addVCorrect (cin : bool) (n : nat) (a b : Vector.t bool n) :
-  combinational (addLWithCinV [cin] (peel [a]) (peel [b])) =
-  peel (Cava:=CombinationalSemantics) (t:= Signal.Bit)
+  semantics (addLWithCinV [cin] (peel [a]) (peel [b])) =
+  peel 
        [N2Bv_sized (n+1) (Bv2N a + Bv2N b + (N.b2n cin))].
 Proof.
   cbv zeta. rewrite !Bv2N_list_bits_to_nat.

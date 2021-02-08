@@ -42,7 +42,7 @@ Local Open Scope monad_scope.
 Local Open Scope type_scope.
 
 Section WithCava.
-  Context {signal} {semantics: Cava signal}.
+  Context {signal} {interpretation: Cava signal}.
 
   (****************************************************************************)
   (* Lava-style circuit combinators.                                          *)
@@ -313,7 +313,7 @@ Section WithCava.
   (* Forks in wires                                                           *)
   (****************************************************************************)
 
-  Definition fork2 {A} (a:A) := ret (a, a).
+  Definition fork2 {A} (a:A) : cava (A * A) := ret (a, a).
 
   (****************************************************************************)
   (* Operations over pairs.                                                   *)
@@ -658,9 +658,6 @@ Section WithCava.
     let x := pairAssoc input in
     pairSel (indexConst sel 0) (pairSel (indexConst sel 1) x).
 
-  Section Sequential.
-    Context {seqsemantics : CavaSeq semantics}.
-
     Definition loopDelayS {A B: SignalType}
                           (body : signal A * signal B -> cava (signal B))
                           (input : signal A)
@@ -700,5 +697,5 @@ Section WithCava.
                 ret (mkpair b c))
              input ;;
       ret (fst (unpair bc)).
-  End Sequential.
+      
  End WithCava.

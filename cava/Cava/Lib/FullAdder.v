@@ -50,7 +50,7 @@ Section WithCava.
 
  End WithCava.
  
-Section Combinational.
+Section semantics.
 
   (* A proof that the half-adder is correct. *)
   Lemma halfAdder_behaviour :
@@ -62,16 +62,16 @@ Section Combinational.
 
   (* A proof that the the full-adder is correct. *)
   Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
-                              combinational (fullAdder ([cin], ([a], [b])))
+                              semantics (fullAdder ([cin], ([a], [b])))
                                 = ([xorb cin (xorb a b)],
                                   [(a && b) || (b && cin) || (a && cin)]).
   Proof.
     intros.
-    unfold combinational.
+    unfold semantics.
     unfold fst.
     simpl.
     case a, b, cin.
     all : reflexivity.
   Qed.
 
-End Combinational.
+End semantics.

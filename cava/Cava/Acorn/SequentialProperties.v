@@ -29,16 +29,15 @@ Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.Combinators.
 Require Import Cava.Acorn.CombinationalMonad.
 Require Import Cava.Acorn.CombinationalProperties.
-Require Import Cava.Acorn.Sequential.
 
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.micromega.Lia.
 Require Import Cava.ListUtils.
 
-(* Helpful tactics for simplifying sequential goals *)
+(* Helpful tactics for simplifying semantics goals *)
 Ltac seqsimpl_step :=
   first [ progress cbn beta iota delta
-                   [fst snd hd tl sequential SequentialSemantics]
+                   [fst snd hd tl semantics CircuitSemantics]
         | progress autorewrite with seqsimpl
         | progress destruct_pair_let
         | progress simpl_ident ].
@@ -149,7 +148,7 @@ Section Overlap.
     overlap offset (mkpair (repeat x n) b1) (mkpair (repeat x m) b2)
     = mkpair (repeat x (Nat.max n (m + offset))) (overlap offset b1 b2).
   Proof.
-    intros. cbn [mkpair CombinationalSemantics].
+    intros. cbn [mkpair CircuitSemantics].
     rewrite !pad_combine_eq by length_hammer.
     cbv [overlap]. cbn [combType] in *.
     autorewrite with push_length natsimpl push_skipn.
@@ -164,7 +163,7 @@ Section Overlap.
                                                overlap offset (snd (unpair ab))
                                                        (extend b (lastSignal b) (length a))).
   Proof.
-    cbv [overlap]; intros. cbn [unpair mkpair CombinationalSemantics].
+    cbv [overlap]; intros. cbn [unpair mkpair CircuitSemantics].
     cbn [seqType combType defaultCombValue] in *. cbv [pad_combine].
     autorewrite with push_split. cbn [fst snd].
     cbv [seqType]. cbn [combType defaultCombValue] in *.
@@ -193,7 +192,7 @@ Section Loops.
         (resetval : combType B)
         (f : seqType A * seqType B -> ident (seqType B))
         (spec : combType A -> combType B -> seqType B) :
-    (forall a b, sequential (f ([a], [b])) = spec a b) ->
+    (forall a b, semantics (f ([a], [b])) = spec a b) ->
     forall (loop_state : nat * ident (seqType B)) a,
       loopSeqS' resetval f loop_state a
       = let t := fst loop_state in
@@ -205,7 +204,7 @@ Section Loops.
         let r := spec a feedback in
         (S t, ret (overlap t acc r)).
   Proof.
-    cbv [sequential loopSeqS' SequentialSemantics]. intro Hfspec.
+    cbv [semantics loopSeqS' CircuitSemantics]. intro Hfspec.
     intros. seqsimpl. rewrite Hfspec. reflexivity.
   Qed.
 
@@ -214,8 +213,8 @@ Section Loops.
         (f : seqType A * seqType B -> ident (seqType B))
         (spec : combType A -> combType B -> seqType B)
         input :
-    (forall a b, sequential (f ([a], [b])) = spec a b) ->
-    sequential (loopDelaySR (CavaSeq:=SequentialSemantics) resetval f input)
+    (forall a b, semantics (f ([a], [b])) = spec a b) ->
+    semantics (loopDelaySR (Cava:=CircuitSemantics) resetval f input)
     = snd (fold_left (fun loop_state a =>
                         let '(t, acc) := loop_state in
                         let feedback := match t with
@@ -226,7 +225,7 @@ Section Loops.
                         (S t, overlap t acc r))
                      input (0, [])).
   Proof.
-    cbv [loopDelaySR loopSeqS SequentialSemantics sequential]; intros.
+    cbv [loopDelaySR loopSeqS CircuitSemantics semantics]; intros.
     seqsimpl.
     erewrite fold_left_ext with (f0:=loopSeqS' _ _) by (apply loopSeqS'_step; eassumption).
     factor_out_loops.
@@ -247,8 +246,8 @@ Section Loops.
         (f : seqType A * seqType B -> ident (seqType B))
         (spec : combType A -> combType B -> seqType B)
         input :
-    (forall a b, sequential (f ([a], [b])) = spec a b) ->
-    sequential (loopDelaySR (CavaSeq:=SequentialSemantics) resetval f input)
+    (forall a b, semantics (f ([a], [b])) = spec a b) ->
+    semantics (loopDelaySR resetval f input)
     = fold_left (fun acc t =>
                    let a := nth t input (defaultCombValue A) in
                    let feedback := match t with
@@ -283,8 +282,8 @@ Section Loops.
         (f : seqType A * seqType B -> ident (seqType B))
         (spec : combType A -> combType B -> seqType B)
         input :
-    (forall a b, sequential (f ([a], [b])) = spec a b) ->
-    sequential (loopDelayS f input)
+    (forall a b, semantics (f ([a], [b])) = spec a b) ->
+    semantics (loopDelayS f input)
     = snd (fold_left (fun loop_state a =>
                         let '(t, acc) := loop_state in
                         let feedback := match t with
@@ -300,8 +299,8 @@ Section Loops.
         (f : seqType A * seqType B -> ident (seqType B))
         (spec : combType A -> combType B -> seqType B)
         input :
-    (forall a b, sequential (f ([a], [b])) = spec a b) ->
-    sequential (loopDelayS f input)
+    (forall a b, semantics (f ([a], [b])) = spec a b) ->
+    semantics (loopDelayS f input)
     = fold_left (fun acc t =>
                    let a := nth t input (defaultCombValue A) in
                    let feedback := match t with
@@ -328,11 +327,11 @@ Section Loops.
                         | 0 => defaultCombValue B
                         | S t' => nth t' acc (defaultCombValue B)
                         end in
-        let r := sequential (f ([a], [feedback])) in
+        let r := semantics (f ([a], [feedback])) in
         I (S t) (overlap t acc r)) ->
     (* invariant is strong enough to prove postcondition *)
     (forall b, I (length input) b -> P b) ->
-    P (sequential (loopDelayS f input)).
+    P (semantics (loopDelayS f input)).
   Proof.
     intros Hstart Hbody Hpost.
     erewrite loopDelayS_stepwise_indexed by (intros; reflexivity).
@@ -354,7 +353,7 @@ Section Loops.
     (match input with
      | [] => P []
      | i0 :: _ =>
-       I 1 (sequential (f ([i0], [defaultCombValue B])))
+       I 1 (semantics (f ([i0], [defaultCombValue B])))
      end) ->
     (* invariant holds through loop *)
     (forall t acc,
@@ -365,11 +364,11 @@ Section Loops.
                         | 0 => defaultCombValue B
                         | S t' => nth t' acc (defaultCombValue B)
                         end in
-        let r := sequential (f ([a], [feedback])) in
+        let r := semantics (f ([a], [feedback])) in
         I (S t) (overlap t acc r)) ->
     (* invariant is strong enough to prove postcondition *)
     (forall b, I (length input) b -> P b) ->
-    P (sequential (loopDelayS f input)).
+    P (semantics (loopDelayS f input)).
   Proof.
     intros Hstart Hbody Hpost.
     erewrite loopDelayS_stepwise_indexed by (intros; reflexivity).
@@ -401,13 +400,13 @@ Section Loops.
         t < length input ->
         let a := nth t input (defaultCombValue A) in
         let x := hd (defaultCombValue C) c in
-        let r := sequential (f ([a], [x])) in
+        let r := semantics (f ([a], [x])) in
         I (S t) (overlap t b (fst r)) (overlap 0 (tl c) (snd r))) ->
     (* invariant is strong enough to prove postcondition *)
     (forall b c, I (length input) b c -> P b) ->
-    P (sequential (loopDelay (seqsemantics:=SequentialSemantics) f input)).
+    P (semantics (loopDelay f input)).
   Proof.
-    intros ? ? Hbody; intros; cbv [loopDelay sequential]. seqsimpl.
+    intros ? ? Hbody; intros; cbv [loopDelay semantics]. seqsimpl.
     eapply loopDelayS_invariant
       with (I0:=fun t (bc : seqType (Pair B C)) =>
                   (t = 0 -> bc = nil) /\
@@ -418,9 +417,9 @@ Section Loops.
     { split; tauto || assumption. }
     { cbv zeta; intros *. intros [Ht0 HI]. intros.
       split; [ congruence | ]. repeat destruct_pair_let.
-      cbv [sequential]; seqsimpl. rewrite unpair_skipn.
+      cbv [semantics]; seqsimpl. rewrite unpair_skipn.
       rewrite !unpair_overlap_mkpair_r_same
-        by (destruct t; cbn [unpair split CombinationalSemantics];
+        by (destruct t; cbn [unpair split CircuitSemantics];
             destruct_one_match; cbn [fst snd]; auto).
       cbn [fst snd]. autorewrite with push_skipn. cbv zeta in Hbody.
       specialize (Hbody _ _ _ ltac:(eassumption) ltac:(eassumption)).
@@ -463,7 +462,7 @@ Section Loops.
     (match input with
      | [] => P []
      | i0 :: _ =>
-       let r := sequential (f ([i0], [defaultCombValue C])) in
+       let r := semantics (f ([i0], [defaultCombValue C])) in
        I 1 (fst r) (snd r)
      end) ->
     (* invariant holds through loop *)
@@ -472,13 +471,13 @@ Section Loops.
         0 < t < length input ->
         let a := nth t input (defaultCombValue A) in
         let x := hd (defaultCombValue C) c in
-        let r := sequential (f ([a], [x])) in
+        let r := semantics (f ([a], [x])) in
         I (S t) (overlap t b (fst r)) (overlap 0 (tl c) (snd r))) ->
     (* invariant is strong enough to prove postcondition *)
     (forall b c, I (length input) b c -> P b) ->
-    P (sequential (loopDelay (seqsemantics:=SequentialSemantics) f input)).
+    P (semantics (loopDelay f input)).
   Proof.
-    intros ? ? Hbody; intros; cbv [loopDelay sequential]. seqsimpl.
+    intros ? ? Hbody; intros; cbv [loopDelay semantics]. seqsimpl.
     eapply loopDelayS_invariant_alt
       with (I0:=fun t (bc : seqType (Pair B C)) =>
                   I t (fst (unpair bc)) (match t with
@@ -487,16 +486,16 @@ Section Loops.
                                          end)).
     { destruct input; [ solve [auto] | ].
       repeat destruct_pair_let.
-      cbv zeta in *. cbn [sequential unIdent].
+      cbv zeta in *. cbn [semantics unIdent].
       autorewrite with push_skipn.
       rewrite unpair_mkpair
-        by (cbn [unpair split CombinationalSemantics];
+        by (cbn [unpair split CircuitSemantics];
             destruct_one_match; cbn [fst snd]; auto).
       cbn [fst snd]. auto. }
     { cbv zeta; intros. repeat destruct_pair_let.
-      cbv [sequential]; seqsimpl. rewrite unpair_skipn.
+      cbv [semantics]; seqsimpl. rewrite unpair_skipn.
       rewrite !unpair_overlap_mkpair_r_same
-        by (destruct t; cbn [unpair split CombinationalSemantics];
+        by (destruct t; cbn [unpair split CircuitSemantics];
             destruct_one_match; cbn [fst snd]; auto).
       cbn [fst snd]. autorewrite with push_skipn. cbv zeta in Hbody.
       specialize (Hbody _ _ _ ltac:(eassumption) ltac:(eassumption)).
@@ -524,23 +523,23 @@ Section Loops.
 End Loops.
 
 Section Evaluation.
-  Lemma sequential_compose {A B C}
-        (f : A -> @cava _ CombinationalSemantics B)
-        (g : B -> @cava _ CombinationalSemantics C) i :
-    sequential ((f >=> g) i) = sequential (g (sequential (f i))).
+  Lemma semantics_compose {A B C}
+        (f : A -> cava B)
+        (g : B -> cava C) i :
+    semantics ((f >=> g) i) = semantics (g (semantics (f i))).
   Proof. reflexivity. Qed.
 
   Lemma delayCorrect {A} (i : seqType A) :
-    sequential (delay i) = defaultCombValue A :: i.
+    semantics (delay i) = defaultCombValue A :: i.
   Proof. reflexivity. Qed.
 
   Lemma fork2Correct {A} (i : seqType A) :
-    sequential (fork2 i) = (i, i).
+    semantics (fork2 i) = (i, i).
   Proof. reflexivity. Qed.
 
   Lemma unpair_single {A B} (p : combType (Pair A B)) :
-    unpair (Cava:=CombinationalSemantics) [p] = ([fst p], [snd p]).
+    unpair [p] = ([fst p], [snd p]).
   Proof. destruct p; reflexivity. Qed.
 End Evaluation.
-Hint Rewrite @sequential_compose @delayCorrect @fork2Correct @unpair_single
+Hint Rewrite @semantics_compose @delayCorrect @fork2Correct @unpair_single
      using solve [eauto] : seqsimpl.

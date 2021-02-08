@@ -235,6 +235,10 @@ Definition delayV (ticks : nat) (t : SignalType) (def : combType t) : seqVType t
 (* interpretation.                                                            *)
 (******************************************************************************)
 
+(*
+
+TODO: Work out if there is a sensible way to reintroduce SequentialVectorCombSemantics
+
  Instance SequentialVectorCombSemantics {ticks: nat} : Cava (seqVType ticks) :=
   { cava := ident;
     constant b := Vector.const b ticks;
@@ -289,3 +293,5 @@ Definition delayV (ticks : nat) (t : SignalType) (def : combType t) : seqVType t
 (******************************************************************************)
 
 Definition sequentialV {ticks a} (circuit : cava (signal:=seqVType ticks) a) : a := unIdent circuit.
+
+*)

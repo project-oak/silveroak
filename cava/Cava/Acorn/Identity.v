@@ -31,7 +31,7 @@ Require Import Cava.Acorn.Combinators.
 Import VectorNotations ListNotations.
 Open Scope list_scope.
 
-Existing Instance CombinationalSemantics.
+Existing Instance CircuitSemantics.
 
 
 Section MapT.
@@ -108,7 +108,7 @@ Section Combinators.
     = [Vector.map2 spec va vb].
   Proof.
     cbv [zipWith Traversable.mapT Traversable_vector].
-    cbn [peel unpeel monad CombinationalSemantics].
+    cbn [peel unpeel monad CircuitSemantics].
     cbn [bind ret Monad_ident unIdent] in *.
     rewrite mapT_vector_ident.
     revert va vb; induction n; intros; [ lia | ].
@@ -179,4 +179,4 @@ Ltac simpl_ident :=
           | erewrite fold_left_ext; [ | intros; progress simpl_ident;
                                         instantiate_app_by_reflexivity ]
           | progress cbn [fst snd bind ret Monad_ident monad
-                              CombinationalSemantics unIdent] ].
+                              CircuitSemantics unIdent] ].

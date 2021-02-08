@@ -89,10 +89,6 @@ Class Cava (signal : SignalType -> Type) := {
   blackBox : forall (intf: CircuitInterface),
              tupleInterface signal (map port_type (circuitInputs intf)) ->
              cava (tupleInterface signal ((map port_type (circuitOutputs intf))));
-}.
-
-(* Sequential semantics -- assumes the sequential part of the interpretation is in [signal] *)
-Class CavaSeq {signal : SignalType -> Type} (combinationalSemantics : Cava signal) := {
   (* A unit delay with a reset value. *)
   delayWith : forall {t: SignalType}, combType t -> signal t -> cava (signal t);
   (* A unit delay with a clock-enable input. *)
@@ -100,14 +96,14 @@ Class CavaSeq {signal : SignalType -> Type} (combinationalSemantics : Cava signa
   (* Feedback loop, with unit delay inserted into the feedback path and current
      state available at output . *)
   loopDelaySR : forall {A B: SignalType},
-                combType B ->
+                combType B -> (* Reset value *)
                 (signal A * signal B -> cava (signal B)) ->
                 signal A ->
                 cava (signal B);
   (* A version of loopDelayEnable with a clock enable and current state at
      the output. *)
   loopDelaySEnableR : forall {A B: SignalType},
-                      combType B ->
+                      combType B -> (* Reset value *)
                       signal Bit -> (* Clock enable *)
                       (signal A * signal B -> cava (signal B)) ->
                       signal A ->
@@ -124,4 +120,4 @@ Class CavaSeqMonad {signal : SignalType -> Type} (combinationalSemantics : Cava 
   loopDelaySm : forall {A B: SignalType},
       (signal A * signal B -> cava (signal B)) ->
       cava (signal A) -> cava (signal B);
-}.
+}.   

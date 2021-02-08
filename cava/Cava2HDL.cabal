@@ -64,7 +64,6 @@ library
                      Nat
                      Ndigits
                      PeanoNat
-                     Sequential
                      Signal
                      StateMonad
                      Traversable

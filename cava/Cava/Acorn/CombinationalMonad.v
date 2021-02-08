@@ -31,6 +31,9 @@ Require Import Cava.Cava.
 Require Import Cava.ListUtils.
 Require Import Cava.Acorn.CavaClass.
 
+Require Import Cava.Acorn.Combinators.
+Require Import Cava.Acorn.CavaPrelude.
+
 (******************************************************************************)
 (* A boolean combinational logic interpretation for the Cava class            *)
 (******************************************************************************)
@@ -146,12 +149,103 @@ Local Notation lift4Bool := (@lift4 Bit Bit Bit Bit Bit).
 Local Notation lift5Bool := (@lift5 Bit Bit Bit Bit Bit Bit).
 Local Notation lift6Bool := (@lift6 Bit Bit Bit Bit Bit Bit Bit).
 
+(* Given two sequential inputs, combine them by combining all the elements of
+   the first with the elements of the second that *do not overlap* when the
+   second is offset from the first by the specified offset. For example:
+
+   a1 = [0;0;1], a2 = [0;0;2], offset = 1:
+   a1            : 0 0 1
+   a2            :   0 0 2
+   overlap a1 a2 : 0 0 1 2
+
+   a1 = [0;1;2;3], a2 = [4;5;6], offset = 2:
+   a1            : 0 1 2 3
+   a2            :     4 5 6
+   overlap a1 a2 : 0 1 2 3 6
+
+   a1 = [0;1;2;3], a2 = [4;5;6], offset = 6:
+   a1            : 0 1 2 3
+   a2            :             4 5 6
+   overlap a1 a2 : 0 1 2 3 0 0 4 5 6
+
+   This is particularly useful for chaining repeated outputs of a circuit with
+   delays. *)
+Definition overlap {A} (offset : nat) (a1 a2 : seqType A) : seqType A :=
+  a1 ++ repeat (defaultCombValue A) (offset - length a1) ++ skipn (length a1 - offset) a2.
+
+(******************************************************************************)
+(* Loop combinator for feedback with delay.                                   *)
+(******************************************************************************)
+
+(* loopSeqS' performs a single loop step, given a state consisting of the
+timestep and the accumulator for (past) output values. This loop step
+represents a circuit in which the output and the feedback are the same:
+        _______
+    ---| delay |-------
+   |   |_______|       |
+   |   ______          |
+    --| body |----------------- out
+ in --|______|
+
+The nth value in the output accumulator is always the output value for
+timestep n. Because there may be delay in the body of the loop, the accumulator
+might include outputs past the current timestep. *)
+
+Definition loopSeqS' {A B : SignalType}
+           (resetValue : combType B)
+           (f : seqType A * seqType B -> ident (seqType B))
+           (state: nat * ident (seqType B)) (a : combType A)
+  : nat * ident (seqType B) :=
+  let t := fst state in
+  (S t,
+   out <- snd state ;; (* get the output accumulator *)
+   (* get the value of out at previous timestep (because of delay) *)
+   let outDelayed := match t with
+                     | 0 => resetValue
+                     | S t' => nth t' out (defaultCombValue B)
+                     end in
+   b <- f ([a], [outDelayed]) ;; (* Process one input *)
+   let out' := overlap t out b in (* append new output, starting at timestep t *)
+   ret out').
+
+Definition loopSeqS {A B : SignalType}
+                    (resetValue : combType B)
+                    (f : seqType A * seqType B -> ident (seqType B))
+                    (a : seqType A) : ident (seqType B) :=
+  snd (fold_left (loopSeqS' resetValue f) a (0, ret [])).
+
+
+Fixpoint delayEnableBoolList' (t: SignalType) (en: list bool) (i : seqType t)
+                              (state: combType t) :
+                              ident (seqType t) :=
+  match en ,i with
+  | enV::enX, iV::iX =>  r <- delayEnableBoolList' t enX iX (if enV then iV else state) ;;
+                         ret (state:: r)
+  | _, _ => ret []
+  end.
+
+Definition delayEnableBoolList (t: SignalType) (def : combType t)
+                               (en: list bool) (i : seqType t) :
+                               ident (seqType t) :=
+  delayEnableBoolList' t en i def.
+
+Definition encodeLoopEnable
+  {A B : SignalType}
+  (en: seqType Bit)
+  (f : seqType A * seqType B -> ident (seqType B))
+  (i_state : seqType A * seqType B) :
+  ident (seqType B) :=
+    let state := snd i_state in
+    let i := fst i_state in 
+    let newState := unIdent (f (i, state)) in
+    if en then ret newState else ret state.
+
 (******************************************************************************)
 (* Instantiate the Cava class for a boolean combinational logic               *)
 (* interpretation.                                                            *)
 (******************************************************************************)
 
-Instance CombinationalSemantics : Cava seqType :=
+Instance CircuitSemantics : Cava seqType :=
   { cava := ident;
     monad := Monad_ident;
     constant := fun x => [x];
@@ -186,11 +280,18 @@ Instance CombinationalSemantics : Cava seqType :=
                                      (@greaterThanOrEqualBool m n);
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefaultS (map port_type (circuitOutputs intf)));
-}.
+    delayWith t d i := ret (d :: i);
+    delayEnableWith t d en i := delayEnableBoolList t d en i;
+    loopDelaySR _ _ := loopSeqS;
+    (* The semantics of loopDelaySEnable is defined in terms of loopDelayS and
+       the circuitry required to model a clock enable with a multiplexor. *)
+    loopDelaySEnableR _ _ resetValue en f input :=
+       loopSeqS resetValue (encodeLoopEnable en f) input;
+   }.
 
 (******************************************************************************)
 (* A function to run a monadic circuit description and return the boolean     *)
 (* behavioural simulation result.                                             *)
 (******************************************************************************)
 
-Definition combinational {a} (circuit : cava a) : a := unIdent circuit.
+Definition semantics {a} (circuit : cava a) : a := unIdent circuit.

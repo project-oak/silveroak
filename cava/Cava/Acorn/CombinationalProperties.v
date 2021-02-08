@@ -34,7 +34,7 @@ Require Import Cava.VectorUtils.
 Import VectorNotations ListNotations.
 Local Open Scope list_scope.
 
-Existing Instance CombinationalSemantics.
+Existing Instance CircuitSemantics.
 
 Section LastSignal.
   Lemma lastSignal_nil {A} : @lastSignal A [] = defaultCombValue A.
@@ -167,7 +167,7 @@ Section Pairs.
     length a = length b ->
     unpair (mkpair a b) = (a, b).
   Proof.
-    cbv [mkpair unpair CombinationalSemantics]; intros.
+    cbv [mkpair unpair CircuitSemantics]; intros.
     rewrite pad_combine_eq by lia.
     apply combine_split; lia.
   Qed.
@@ -178,7 +178,7 @@ Section Pairs.
      List.map (A:=combType (Pair A B))
               (@snd (combType A) (combType B)) (pad_combine a b)).
   Proof.
-    cbv [mkpair unpair CombinationalSemantics]; intros.
+    cbv [mkpair unpair CircuitSemantics]; intros.
     rewrite split_map. reflexivity.
   Qed.
 End Pairs.
@@ -188,7 +188,7 @@ Section Peel.
         (v : combType (Vec A n)) (start : combType B) :
     fold_left (map2 f) [start] (peel [v]) = [fold_left f start v].
   Proof.
-    cbn [peel CombinationalSemantics].
+    cbn [peel CircuitSemantics].
     revert v start; induction n; [ intros; eapply case0 with (v:=v); reflexivity | ].
     intros v start; rewrite (eta v). fold combType. cbn [combType].
     rewrite peelVecList_cons_cons.
@@ -203,7 +203,7 @@ Section Peel.
   Lemma peel_length_ForallV {A} n (vs : seqType (Vec A n)) :
     ForallV (fun l => length l = length vs) (peel vs).
   Proof.
-    cbv [peel peelVecList indexConstBoolList CombinationalSemantics].
+    cbv [peel peelVecList indexConstBoolList CircuitSemantics].
     apply ForallV_forall. intros *.
     rewrite InV_map_iff; intros [? [? ?]]. subst.
     length_hammer.
@@ -259,7 +259,7 @@ Section Peel.
   Lemma unpeel_peel A n (v : seqType (Vec A n)) :
     n <> 0 -> unpeel (peel v) = v.
   Proof.
-    cbv [unpeel peel unpeelVecList peelVecList CombinationalSemantics].
+    cbv [unpeel peel unpeelVecList peelVecList CircuitSemantics].
     cbv [indexConstBoolList]. intros.
     erewrite max_length_same_length with (len:=length v); [ | | lia .. ];
       [ | intros *; rewrite InV_map_iff; intros [? [? ?]]; subst;
@@ -315,7 +315,7 @@ Lemma all_correct {n} v :
   unIdent (all (n:=n) [v]) = [Vector.fold_left andb true v].
 Proof.
   destruct n; [ eapply Vector.case0 with (v:=v); reflexivity | ].
-  cbv [all]. cbn [one CombinationalSemantics].
+  cbv [all]. cbn [one CircuitSemantics].
   erewrite tree_all_sizes_equiv' with (op:=map2 andb) (id:=[true]) (valid:=fun a => length a = 1);
     intros; destruct_lists_by_length;
       cbn [map2 length unIdent Monad.bind Monad.ret Monad_ident]; boolsimpl;
@@ -334,7 +334,7 @@ Proof.
   revert x y.
   induction t;
     cbn [eqb combType and2 xnor2 one unpair
-             CombinationalSemantics] in *; cbv [lift2];
+             CircuitSemantics] in *; cbv [lift2];
     intros; simpl_ident; repeat destruct_pair_let;
     (* handle easy cases first *)
     repeat lazymatch goal with
@@ -427,7 +427,7 @@ Lemma indexAt_unpeel' {A} n isz
        nth_default (defaultCombValue A) (N.to_nat (Bv2N sel)) v)
     (seq 0 (Nat.max vlen sellen)).
 Proof.
-  intros ? ? ? ? Hv Hsel; cbn [indexAt unpeel CombinationalSemantics].
+  intros ? ? ? ? Hv Hsel; cbn [indexAt unpeel CircuitSemantics].
   cbv [indexAtBoolList unpeelVecList].
   erewrite map_to_nth with (ls:=@pad_combine (Vec Bit isz) (Vec A n) _ _)
                            (d:=(defaultCombValue (Vec Bit isz), defaultCombValue (Vec A n))).
@@ -461,7 +461,7 @@ Lemma unpeel_uniform_length {A} n (v : Vector.t (seqType A) n) len :
   length (unpeel v) = len.
 Proof.
   destruct n; [ congruence | ].
-  intros ? Hv. cbn [unpeel CombinationalSemantics].
+  intros ? Hv. cbn [unpeel CircuitSemantics].
   cbv [unpeelVecList]. erewrite max_length_uniform_length by eauto.
   length_hammer.
 Qed.
@@ -490,7 +490,7 @@ Proof.
              | H : length ?v = 0 |- _ =>
                destruct v; [ clear H | cbn [length] in *; congruence ]
              | |- context [indexAt] =>
-               progress cbn [indexAt unpeel CombinationalSemantics];
+               progress cbn [indexAt unpeel CircuitSemantics];
                  cbv [indexAtBoolList unpeelVecList]
              | |- List.map _ ?l = List.map _ ?l =>
                apply List.map_ext_in; intros *; rewrite in_seq; intros;
@@ -568,7 +568,7 @@ Lemma mkpair_single {A B} (a : combType A) (b : seqType B):
   length b <> 0 ->
   mkpair [a] b = mkpair (repeat a (length b)) b.
 Proof.
-  intros; cbv [mkpair pad_combine CombinationalSemantics].
+  intros; cbv [mkpair pad_combine CircuitSemantics].
   cbv [lastSignal]. cbn [List.last].
   destruct b; cbn [length] in *; [ lia | ].
   cbn [repeat]; rewrite repeat_cons, last_last.
@@ -581,7 +581,7 @@ Lemma mkpair_one {t} (x : seqType t):
   length x <> 0 ->
   mkpair one x = mkpair (repeat true (length x)) x.
 Proof.
-  intros; cbn [one constant CombinationalSemantics].
+  intros; cbn [one constant CircuitSemantics].
   rewrite (mkpair_single (A:=Bit)) by auto.
   reflexivity.
 Qed.
@@ -590,7 +590,7 @@ Lemma mkpair_zero {t} (x : seqType t):
   length x <> 0 ->
   mkpair zero x = mkpair (repeat false (length x)) x.
 Proof.
-  intros; cbn [zero constant CombinationalSemantics].
+  intros; cbn [zero constant CircuitSemantics].
   rewrite (mkpair_single (A:=Bit)) by auto.
   reflexivity.
 Qed.
@@ -598,7 +598,7 @@ Qed.
 Lemma fst_unpair {A B} (ab : seqType (Pair A B)) :
   fst (unpair ab) = List.map fst ab.
 Proof.
-  cbv [unpair CombinationalSemantics].
+  cbv [unpair CircuitSemantics].
   induction ab; [ reflexivity | ].
   cbn [split List.map].
   repeat destruct_pair_let.
@@ -608,7 +608,7 @@ Qed.
 Lemma snd_unpair {A B} (ab : seqType (Pair A B)) :
   snd (unpair ab) = List.map snd ab.
 Proof.
-  cbv [unpair CombinationalSemantics].
+  cbv [unpair CircuitSemantics].
   induction ab; [ reflexivity | ].
   cbn [split List.map].
   repeat destruct_pair_let.
@@ -622,7 +622,7 @@ Lemma mux4_mkpair {t} (i0 i1 i2 i3 : combType t) (sel : combType (Vec Bit 2)) :
    else if Vector.hd sel then i1 else i0].
 Proof.
   cbv in sel. constant_vector_simpl sel.
-  cbv [mux4 indexConst CombinationalSemantics].
+  cbv [mux4 indexConst CircuitSemantics].
   autorewrite with vsimpl.
   repeat
     match goal with

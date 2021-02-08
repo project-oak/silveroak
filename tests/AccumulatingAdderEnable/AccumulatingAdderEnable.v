@@ -64,8 +64,7 @@ out    0  0  0  3  7 12 12 19
 *)
 
 Section WithCava.
-  Context {signal} {combsemantics: Cava signal}
-          {semantics: CavaSeq combsemantics}.
+  Context {signal} {combsemantics: Cava signal}.
 
   Definition mux2 {A} (sel : signal Bit) (f : signal A) (t : signal A)
     : cava (signal A) :=
@@ -86,14 +85,14 @@ Local Notation "'#' l" := (map (fun i => N2Bv_sized _ (N.of_nat i)) l)
 Local Open Scope list_scope.
 
 Example accumulatingAdderEnable_ex1:
-  sequential (accumulatingAdderEnable
+  semantics (accumulatingAdderEnable
                 (combine
                    (# [1;1;1;1;1;1;1;1])
                    (map nat2bool [1;1;1;1;0;0;0;0]))) = # [1;2;3;4;4;4;4;4].
 Proof. reflexivity. Qed.
 
 Example accumulatingAdderEnable_ex2:
-  sequential (accumulatingAdderEnable
+  semantics (accumulatingAdderEnable
                 (combine
                    (# [0;1;2;3;4;5;6;7])
                    (map nat2bool [0;0;0;1;1;1;0;1]))) = # [0;0;0;3;7;12;12;19].
@@ -114,8 +113,7 @@ Definition accumulatingAdderEnable_Netlist
    a clock-enable input. *)
 
 Section WithCava.
-  Context {signal} {combsemantics: Cava signal}
-          {semantics: CavaSeq combsemantics}.
+  Context {signal} {combsemantics: Cava signal}.
 
   Definition accumulatingAdderEnable2 (en : signal Bit) :
                                        signal (Vec Bit 8) ->
@@ -131,7 +129,7 @@ Section WithCava.
 End WithCava.
 
 Example accumulatingAdderEnable2_ex1:
-  sequential (accumulatingAdderEnableTop
+  semantics (accumulatingAdderEnableTop
                 (combine
                    (# [1;1;1;1;1;1;1;1])
                    (map nat2bool [1;1;1;1;0;0;0;0]))) = # [1;2;3;4;4;4;4;4].
