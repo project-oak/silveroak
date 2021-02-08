@@ -67,11 +67,7 @@ Lemma mux2Correct {A} (sel : seqType Bit) (f t : seqType A) :
                                    (pad_combine (pad_combine f t) sel).
 Proof.
   intros; cbv [mux2 sequential]. seqsimpl.
-  cbv [pairSel mkpair unpeel unpeelVecList
-               Vector.map Vector.fold_left
-               CombinationalSemantics].
-  fold combType.
-  apply map_ext; intros. reflexivity.
+  apply pairSel_mkpair.
 Qed.
 Hint Rewrite @mux2Correct using solve [eauto] : seqsimpl.
 
