@@ -38,7 +38,6 @@ Import VectorNotations.
 
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
-  Context {monad: Monad cava}.
 
   (* Perform the bitwise XOR of two 4-element vectors of 8-bit values. *)
   Definition xor4xV

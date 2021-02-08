@@ -34,9 +34,9 @@ Require Import Coq.micromega.Lia.
 Local Open Scope vector_scope.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Monad cava}.
+  Context {signal} `{Cava signal}.
 
-Definition twoSorter {signal} `{Cava signal} `{Monad cava} {n}
+Definition twoSorter {signal} `{Cava signal} {n}
                      (ab:  signal (Vec (Vec Bit n) 2)) :
                      cava (signal (Vec (Vec Bit n) 2)) :=
    let a := indexConst ab 0 in

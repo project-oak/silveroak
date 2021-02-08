@@ -13,7 +13,6 @@ shift_rows_equiv
      else to_cols_bitvecs (AES256.shift_rows (from_cols_bitvecs st))]
 shift_rows
   : forall (signal : SignalType -> Type) (semantics : Cava signal),
-    Monad cava ->
     signal Bit ->
     signal (Vec (Vec (Vec Bit 8) 4) 4) ->
     cava (signal (Vec (Vec (Vec Bit 8) 4) 4))
@@ -25,7 +24,6 @@ mix_columns_equiv
      else to_cols_bitvecs (AES256.mix_columns (from_cols_bitvecs st))]
 mix_columns
   : forall (signal : SignalType -> Type) (semantics : Cava signal),
-    Monad cava ->
     signal Bit ->
     signal (Vec (Vec (Vec Bit 8) 4) 4) ->
     cava (signal (Vec (Vec (Vec Bit 8) 4) 4))
@@ -40,7 +38,6 @@ key_expand_equiv
      ([to_cols_bitvecs (fst kr)], [snd kr]))
 key_expand
   : forall (signal : SignalType -> Type) (semantics : Cava signal),
-    Monad cava ->
     signal Bit ->
     signal (Vec Bit 4) ->
     signal (Vec (Vec (Vec Bit 8) 4) 4) * signal (Vec Bit 8) ->

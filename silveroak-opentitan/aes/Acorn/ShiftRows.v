@@ -43,7 +43,6 @@ Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").
 
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
-  Context {monad: Monad cava}.
 
   Definition aes_circ_byte_shift (shift: nat) (input: signal (Vec byte 4)):
     cava (signal (Vec byte 4)) :=

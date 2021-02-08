@@ -43,7 +43,7 @@ Ltac length_hammer :=
   autorewrite with push_length; eauto with length; lia.
 
 (* The push_nth database simplifies goals including [nth] *)
-Hint Rewrite @app_nth1 @app_nth2 using length_hammer : push_nth.
+Hint Rewrite @app_nth1 @app_nth2 @nth_overflow using length_hammer : push_nth.
 
 (* Miscellaneous proofs about lists *)
 Section Misc.
@@ -140,7 +140,45 @@ Section Extend.
   Qed.
 End Extend.
 Hint Rewrite @extend_length using solve [eauto] : push_length.
+Hint Rewrite @extend_nil @extend_cons_S using solve [eauto] : push_extend.
+Hint Rewrite @extend_le using solve [length_hammer] : push_extend.
 
+Section Combine.
+  Lemma combine_nil_r {A B} (la : list A) :
+    @combine A B la [] = [].
+  Proof. destruct la; reflexivity. Qed.
+
+  Lemma combine_repeat_r {A B} (la : list A) (b : B) n :
+    length la <= n ->
+    combine la (repeat b n) = map (fun a => (a,b)) la.
+  Proof.
+    revert n; induction la; [ reflexivity | ].
+    destruct n; [ length_hammer | ].
+    cbn [combine length map repeat]; intros.
+    rewrite IHla by lia; reflexivity.
+  Qed.
+
+  Lemma combine_repeat_l {A B} (lb : list B) (a : A) n :
+    length lb <= n ->
+    combine (repeat a n) lb = map (fun b => (a,b)) lb.
+  Proof.
+    revert n; induction lb;
+      [ cbn [repeat]; intros; rewrite combine_nil_r; reflexivity | ].
+    destruct n; [ length_hammer | ].
+    cbn [combine length map repeat]; intros.
+    rewrite IHlb by lia; reflexivity.
+  Qed.
+
+  Lemma combine_length {A B} (la : list A) (lb : list B) :
+    length (combine la lb) = Nat.min (length la) (length lb).
+  Proof.
+    revert lb; induction la; [ reflexivity | ].
+    destruct lb; [ reflexivity | ].
+    cbn [combine length Nat.min]. rewrite IHla.
+    lia.
+  Qed.
+End Combine.
+Hint Rewrite @combine_length : push_length.
 
 (* Proofs about [split] *)
 Section Split.
@@ -184,6 +222,13 @@ Section Split.
                    | rewrite IHn
                    | rewrite <-surjective_pairing
                    | reflexivity ].
+  Qed.
+
+  Lemma split_map {A B} (l : list (A * B)) :
+    split l = (map fst l, map snd l).
+  Proof.
+    induction l as [| [? ?] ?]; [ reflexivity | ].
+    cbn [map split]. rewrite IHl. reflexivity.
   Qed.
 End Split.
 Hint Rewrite @split_skipn @split_app @split_repeat
@@ -236,8 +281,41 @@ Section Nth.
       [ | rewrite nth_overflow by length_hammer; reflexivity ].
     apply nth_repeat_inbounds; lia.
   Qed.
+
+  Lemma map_to_nth {A B} (f : A -> B) ls d :
+    map f ls = map (fun i => f (nth i ls d)) (seq 0 (length ls)).
+  Proof.
+    induction ls; [ reflexivity | ].
+    cbn [map length seq]. rewrite <-seq_shift, map_map.
+    cbn [nth]. rewrite IHls; reflexivity.
+  Qed.
+
+  Lemma nth_inbounds_change_default {A} n (l : list A) (d1 d2 : A) :
+    n < length l -> nth n l d1 = nth n l d2.
+  Proof.
+    revert l; induction n; (destruct l; [ length_hammer | ]); [ reflexivity | ].
+    cbn [nth length]; intros. apply IHn. lia.
+  Qed.
+
+  Lemma nth_extend {A} (l : list A) a n i :
+    nth i (extend l a n) a = nth i l a.
+  Proof.
+    cbv [extend]; destruct (Compare_dec.lt_dec i (length l));
+      autorewrite with push_nth; [ reflexivity | ].
+    rewrite nth_repeat, nth_overflow by lia.
+    rewrite Tauto.if_same; reflexivity.
+  Qed.
+
+  Lemma nth_last {A} (l : list A) n d :
+    n = length l - 1 ->
+    nth n l d = last l d.
+  Proof.
+    revert n; induction l using rev_ind; intros; subst; [ reflexivity | ].
+    autorewrite with push_length natsimpl listsimpl push_nth.
+    reflexivity.
+  Qed.
 End Nth.
-Hint Rewrite @nth_step @nth_found @nth_nil using solve [eauto] : push_nth.
+Hint Rewrite @nth_step @nth_found @nth_nil @nth_extend using solve [eauto] : push_nth.
 Hint Rewrite @nth_map_seq @map_nth_inbounds @nth_repeat_inbounds
      using lia : push_nth.
 
@@ -261,6 +339,13 @@ Section Maps.
     induction n; [ reflexivity | ].
     cbn [repeat map]; rewrite IHn; reflexivity.
   Qed.
+
+  Lemma map_constant {A B} (ls : list A) (b : B) :
+    map (fun _ => b) ls = repeat b (length ls).
+  Proof.
+    induction ls; [ reflexivity | ].
+    cbn [map length repeat]; congruence.
+    Qed.
 
   Lemma flat_map_nil_ext {A B} (l : list A) :
     flat_map (B:=B) (fun a => []) l = [].

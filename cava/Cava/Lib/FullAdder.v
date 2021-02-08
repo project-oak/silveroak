@@ -26,7 +26,7 @@ Require Import Cava.ListUtils.
 Require Import Cava.Acorn.Acorn.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Monad cava}.
+  Context {signal} `{Cava signal}.
 
   (****************************************************************************)
   (* Build a half-adder                                                       *)

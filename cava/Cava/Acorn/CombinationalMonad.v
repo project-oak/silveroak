@@ -107,10 +107,6 @@ Definition pairSelBool {t : SignalType}
                        (sel : bool) (v : combType t * combType t) :=
   if sel then snd v else fst v.
 
-Definition pairSelList {t: SignalType} (sel : seqType Bit) (v: seqType (Pair t t))
-  : list (combType t) :=
-  map (fun '(x,y,sel) => if (sel : bool) then y else x) (pad_combine v sel).
-
 Definition indexConstBoolList {t: SignalType} {sz: nat}
            (v : seqType (Vec t sz)) (sel : nat)
   : seqType t :=
@@ -157,6 +153,7 @@ Local Notation lift6Bool := (@lift6 Bit Bit Bit Bit Bit Bit Bit).
 
 Instance CombinationalSemantics : Cava seqType :=
   { cava := ident;
+    monad := Monad_ident;
     constant := fun x => [x];
     defaultSignal t := [];
     inv := lift1Bool negb;
@@ -179,7 +176,6 @@ Instance CombinationalSemantics : Cava seqType :=
     mkpair _ _ v1 v2 := pad_combine v1 v2;
     peel _ _ v := peelVecList v;
     unpeel _ _ v := unpeelVecList v;
-    pairSel t sel v := pairSelList sel v;
     indexAt t sz isz := @indexAtBoolList t sz isz;
     indexConst t sz := @indexConstBoolList t sz;
     slice t sz := @sliceBoolList t sz;

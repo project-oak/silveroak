@@ -41,7 +41,7 @@ Existing Instance CavaCombinationalNet.
 (******************************************************************************)
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Monad cava}.
+  Context {signal} `{Cava signal}.
 
   (* An adder-tree with no bit-growth. *)
   Definition adderTree {sz: nat}

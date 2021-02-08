@@ -26,7 +26,7 @@ Require Import Cava.Lib.FullAdder.
 Require Import Cava.Acorn.XilinxAdder.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{Monad cava}.
+  Context {signal} `{Cava signal}.
 
   (****************************************************************************)
   (* Build a full-adder that takes a flat-tuple for netlist generation.       *)

@@ -31,10 +31,45 @@ Require Import Cava.NatUtils.
 Require Import Cava.Signal.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
-Import ListNotations VectorNotations.
+Import VectorNotations ListNotations.
 Local Open Scope list_scope.
 
 Existing Instance CombinationalSemantics.
+
+Section LastSignal.
+  Lemma lastSignal_nil {A} : @lastSignal A [] = defaultCombValue A.
+  Proof. reflexivity. Qed.
+  Lemma lastSignal_cons {A} a0 a :
+    a <> [] -> @lastSignal A (a0 :: a) = lastSignal a.
+  Proof. destruct a; [ congruence | reflexivity ]. Qed.
+  Lemma lastSignal_map {A B} (f : combType A -> combType B) (a : seqType A) :
+    f (defaultCombValue A) = defaultCombValue B ->
+    lastSignal (List.map f a) = f (lastSignal a).
+  Proof.
+    cbv [lastSignal]. intros.
+    induction a as [|a0 a]; [ cbn; congruence | ].
+    destruct a; [ reflexivity | ].
+    cbn [List.map List.last] in *. auto.
+  Qed.
+  Lemma lastSignal_map_seq {A} (f : nat -> combType A) start len :
+    len <> 0 ->
+    lastSignal (List.map f (seq start len)) = f (start + (len - 1)).
+  Proof.
+    destruct len; intros; [ congruence | ].
+    autorewrite with pull_snoc natsimpl.
+    cbv [lastSignal]. rewrite last_last. reflexivity.
+  Qed.
+  Lemma lastSignal_nth {A} (l : seqType A) n d :
+    l <> [] -> n = length l - 1 ->
+    List.nth n l d = lastSignal l.
+  Proof.
+    intros; cbv [lastSignal].
+    rewrite nth_last by auto. subst.
+    induction l; [ congruence | ].
+    cbn [List.last]. destruct l; [ reflexivity | ].
+    apply IHl; congruence.
+  Qed.
+End LastSignal.
 
 Section PadCombine.
   Lemma pad_combine_eq {A B} a b :
@@ -44,7 +79,85 @@ Section PadCombine.
     rewrite !extend_le by lia.
     reflexivity.
   Qed.
+
+  Lemma pad_combine_nil_r {A B} a :
+    @pad_combine A B a [] = List.map (fun a => (a, defaultCombValue B)) a.
+  Proof.
+    cbv [pad_combine]. autorewrite with push_extend.
+    rewrite combine_repeat_r by length_hammer. reflexivity.
+  Qed.
+
+  Lemma pad_combine_nil_l {A B} b :
+    @pad_combine A B [] b = List.map (fun b => (defaultCombValue A, b)) b.
+  Proof.
+    cbv [pad_combine]. autorewrite with push_extend.
+    rewrite combine_repeat_l by length_hammer. reflexivity.
+  Qed.
+
+  Lemma pad_combine_cons {A B} a b la lb :
+    la <> [] -> lb <> [] ->
+    @pad_combine A B (a :: la) (b :: lb) = (a,b) :: pad_combine la lb.
+  Proof.
+    cbv [pad_combine]. autorewrite with push_length push_extend.
+    cbn [combine]. intros. f_equal; [ ].
+    destruct la, lb; intros; [ congruence .. | ].
+    autorewrite with push_length push_extend.
+    rewrite lastSignal_cons by congruence. reflexivity.
+  Qed.
+
+  Lemma pad_combine_length {A B} a b :
+    @length (combType (Pair A B))
+            (@pad_combine A B a b) = Nat.max (length a) (length b).
+  Proof. cbv [pad_combine]. cbn [combType]. length_hammer. Qed.
+
+  Lemma pad_combine_to_nth {A B} (a : seqType A) (b : seqType B) :
+    pad_combine a b = List.map (fun n => (List.nth n a (lastSignal a),
+                                       List.nth n b (lastSignal b)))
+                               (seq 0 (Nat.max (length a) (length b))).
+  Proof.
+    revert b; induction a as [|a0 a]; intros.
+    { rewrite pad_combine_nil_l. cbn [length List.nth Nat.max].
+      rewrite map_to_nth with (d:=lastSignal b).
+      apply List.map_ext; intros.
+      destruct_one_match; reflexivity. }
+    { destruct b.
+      { rewrite pad_combine_nil_r.
+        cbn [length seq Nat.max List.map].
+        rewrite <-seq_shift, List.map_map.
+        autorewrite with push_nth. f_equal; [ ].
+        erewrite map_to_nth.
+        apply List.map_ext; intros. reflexivity. }
+      { destruct a, b; [ reflexivity | cbv [pad_combine] .. | ];
+        repeat match goal with
+               | _ => progress cbn [combine repeat Nat.max seq List.map]
+               | _ => erewrite combine_repeat_l by reflexivity
+               | _ => erewrite combine_repeat_r by reflexivity
+               | _ => rewrite <-seq_shift, List.map_map by auto
+               | _ => rewrite pad_combine_cons by congruence
+               | _ => rewrite IHa by auto
+               | |- ?x :: _ = ?x :: _ => f_equal; [ ]
+               | |- List.map ?f ?x = List.map ?g (seq 0 (length ?x)) =>
+                 erewrite map_to_nth with (ls:=x)
+               | |- List.map ?f ?x = List.map ?g ?x => apply List.map_ext; intros
+               | _ => progress
+                       autorewrite with push_length push_extend push_nth
+               | _ => reflexivity
+               end. } }
+  Qed.
+
+  Lemma nth_pad_combine_inbounds {A B} (a : seqType A) (b : seqType B) n d :
+    n < Nat.max (length a) (length b) ->
+    List.nth n (pad_combine a b) d = (List.nth n a (lastSignal a),
+                                      List.nth n b (lastSignal b)).
+  Proof.
+    intros.
+    rewrite nth_inbounds_change_default with (d2:=(lastSignal a, lastSignal b))
+      by (rewrite (@pad_combine_length A B); lia).
+    cbv [pad_combine]. rewrite combine_nth by apply extend_to_match.
+    rewrite !nth_extend; reflexivity.
+  Qed.
 End PadCombine.
+Hint Rewrite @pad_combine_length using solve [eauto] : push_length.
 
 Section Pairs.
   Lemma unpair_skipn {A B} n (l : seqType (Pair A B)) :
@@ -57,6 +170,16 @@ Section Pairs.
     cbv [mkpair unpair CombinationalSemantics]; intros.
     rewrite pad_combine_eq by lia.
     apply combine_split; lia.
+  Qed.
+  Lemma unpair_mkpair_pad_combine {A B} (a : seqType A) (b : seqType B) :
+    unpair (mkpair a b) =
+    (List.map (A:=combType (Pair A B))
+              (@fst (combType A) (combType B)) (pad_combine a b),
+     List.map (A:=combType (Pair A B))
+              (@snd (combType A) (combType B)) (pad_combine a b)).
+  Proof.
+    cbv [mkpair unpair CombinationalSemantics]; intros.
+    rewrite split_map. reflexivity.
   Qed.
 End Pairs.
 
@@ -269,9 +392,161 @@ Proof.
   lia.
 Qed.
 
-Lemma pairSel_mkpair {t} (x y : combType t) (sel : bool) :
+Lemma pairSel_mkpair_singleton {t} (x y : combType t) (sel : bool) :
   pairSel [sel] (mkpair [x] [y]) = [if sel then y else x].
-Proof. cbn - [pairSel]. reflexivity. Qed.
+Proof. destruct sel; reflexivity. Qed.
+
+Lemma max_length_uniform_length {A} n (v : Vector.t (list A) n) len :
+  n <> 0 -> ForallV (fun l => length l = len) v ->
+  fold_left Nat.max 0 (map (@length A) v) = len.
+Proof.
+  destruct n; [ congruence | ]. intro H; clear H.
+  cbn [ForallV]; intros [? ?].
+  assert (0 <= len) by lia. generalize dependent 0.
+  generalize dependent v.
+  induction n; cbn [ForallV]; intros;
+    autorewrite with push_vector_fold push_vector_map vsimpl;
+    cbn [Nat.max]; repeat match goal with H : _ /\ _ |- _ => destruct H end;
+      [ lia | ].
+  erewrite <-IHn with (v:=tl v);
+    [ autorewrite with push_vector_fold push_vector_map vsimpl;
+      reflexivity | .. ].
+  all:auto; lia.
+Qed.
+
+Lemma indexAt_unpeel' {A} n isz
+      (v : Vector.t (seqType A) n) (sel : Vector.t (seqType Bit) isz) vlen sellen :
+  n <> 0 -> isz <> 0 -> sellen <> 0 -> vlen <> 0 ->
+  ForallV (fun s => length s = vlen) v ->
+  ForallV (fun s => length s = sellen) sel ->
+  indexAt (unpeel v) (unpeel sel) =
+  List.map
+    (fun t =>
+       let sel := map (fun s => List.nth t s (lastSignal s)) sel in
+       let v := map (fun s => List.nth t s (lastSignal s)) v in
+       nth_default (defaultCombValue A) (N.to_nat (Bv2N sel)) v)
+    (seq 0 (Nat.max vlen sellen)).
+Proof.
+  intros ? ? ? ? Hv Hsel; cbn [indexAt unpeel CombinationalSemantics].
+  cbv [indexAtBoolList unpeelVecList].
+  erewrite map_to_nth with (ls:=@pad_combine (Vec Bit isz) (Vec A n) _ _)
+                           (d:=(defaultCombValue (Vec Bit isz), defaultCombValue (Vec A n))).
+  autorewrite with push_length.
+  erewrite !max_length_uniform_length, Nat.max_comm by eauto.
+  apply List.map_ext_in. intro i; rewrite in_seq; intros.
+  rewrite nth_pad_combine_inbounds by length_hammer.
+  rewrite ForallV_forall in Hv.
+  rewrite ForallV_forall in Hsel.
+  f_equal; [ destr (i <? sellen) | destr (i <? vlen) ];
+    repeat lazymatch goal with
+           | |- N.to_nat _ = N.to_nat _ => f_equal
+           | |- Bv2N _ = Bv2N _ => f_equal
+           | |- Vector.map _ ?v = Vector.map _ ?v => apply map_ext_InV; intros
+           | H : InV _ sel |- _ => apply Hsel in H
+           | H : InV _ v |- _ => apply Hv in H
+           | |- List.nth ?n ?l ?d1 = List.nth ?n ?l ?d2 =>
+             apply nth_inbounds_change_default;
+               cbn [combType] in *; fold combType; solve [length_hammer]
+           | |- @lastSignal ?A (List.map _ (seq _ _)) = _ =>
+             rewrite (@lastSignal_map_seq A) by auto
+           | _ => first [ progress autorewrite with push_nth natsimpl
+                       | rewrite lastSignal_nth
+                         by (try apply length_pos_nonnil; length_hammer)
+                       | reflexivity ]
+           end.
+Qed.
+
+Lemma unpeel_uniform_length {A} n (v : Vector.t (seqType A) n) len :
+  n <> 0 -> ForallV (fun s => length s = len) v ->
+  length (unpeel v) = len.
+Proof.
+  destruct n; [ congruence | ].
+  intros ? Hv. cbn [unpeel CombinationalSemantics].
+  cbv [unpeelVecList]. erewrite max_length_uniform_length by eauto.
+  length_hammer.
+Qed.
+
+Lemma indexAt_unpeel {A} n isz
+      (v : Vector.t (seqType A) n) (sel : Vector.t (seqType Bit) isz) vlen sellen :
+  n <> 0 -> isz <> 0 ->
+  ForallV (fun s => length s = vlen) v ->
+  ForallV (fun s => length s = sellen) sel ->
+  indexAt (unpeel v) (unpeel sel) =
+  List.map
+    (fun t =>
+       let sel := map (fun s => List.nth t s (lastSignal s)) sel in
+       let v := map (fun s => List.nth t s (lastSignal s)) v in
+       nth_default (defaultCombValue A) (N.to_nat (Bv2N sel)) v)
+    (seq 0 (Nat.max vlen sellen)).
+Proof.
+  intros ? ? Hv Hsel.
+  (* use indexAt_unpeel' to solve the case where both are nonzero *)
+  destr (sellen =? 0); [ | destr (vlen =? 0) ]; subst;
+    [ pose proof (unpeel_uniform_length isz sel 0 ltac:(auto) ltac:(auto))
+    | pose proof (unpeel_uniform_length n v 0 ltac:(auto) ltac:(auto))
+    | apply indexAt_unpeel'; solve [auto] ].
+  (* separately prove cases where one or the other input is 0-length *)
+  all:repeat lazymatch goal with
+             | H : length ?v = 0 |- _ =>
+               destruct v; [ clear H | cbn [length] in *; congruence ]
+             | |- context [indexAt] =>
+               progress cbn [indexAt unpeel CombinationalSemantics];
+                 cbv [indexAtBoolList unpeelVecList]
+             | |- List.map _ ?l = List.map _ ?l =>
+               apply List.map_ext_in; intros *; rewrite in_seq; intros;
+                 rewrite ForallV_forall in Hsel; rewrite ForallV_forall in Hv
+             | |- nth_default ?d _ _ = nth_default ?d _ _ => f_equal
+             | |- N.to_nat _ = N.to_nat _ => f_equal
+             | |- Bv2N _ = Bv2N _ => f_equal
+             | |- defaultCombValue ?A = map _ _ =>
+               rewrite map_ext_InV with (g:=fun _ => defaultCombValue _);
+                 [ rewrite map_to_const; reflexivity | intros ]
+             | |- map _ ?v = map _ ?v => apply map_ext_InV; intros
+             | |- List.nth ?n ?l ?d1 = List.nth ?n ?l ?d2 =>
+               apply nth_inbounds_change_default
+             | Hv: (forall x, InV x ?v -> _), Hin : InV ?l ?v |- _ =>
+               apply Hv in Hin
+             | |- ?x = ?x => reflexivity
+             | _ => first [ rewrite pad_combine_nil_l
+                         | rewrite pad_combine_nil_r
+                         | erewrite max_length_uniform_length by eauto
+                         | rewrite List.map_map
+                         | rewrite Nat.max_0_r
+                         | rewrite Nat.max_0_l
+                         | rewrite lastSignal_nil
+                         | progress autorewrite with push_nth
+                         | solve [length_hammer] ]
+             end.
+Qed.
+
+Lemma pairSel_mkpair {t} (x y : seqType t) (sel : seqType Bit) :
+  pairSel sel (mkpair x y) = List.map
+                               (fun (xysel : combType t * combType t * combType Bit) =>
+                                  let '(x,y,sel) := xysel in
+                                  if sel then y else x)
+                               (pad_combine (pad_combine x y) sel).
+Proof.
+  cbv [pairSel]. intros. rewrite unpair_mkpair_pad_combine.
+  rewrite !indexAt_unpeel with
+      (sellen :=length sel) (vlen := Nat.max (length x) (length y))
+      by (try congruence; cbn [ForallV]; ssplit; try reflexivity;
+          autorewrite with vsimpl; length_hammer).
+  autorewrite with vsimpl push_length.
+  cbn [Vector.map].
+  rewrite !(pad_combine_to_nth _ sel), List.map_map.
+  autorewrite with push_length.
+  eapply List.map_ext_in.
+  intro i; rewrite in_seq. intros.
+  repeat destruct_pair_let.
+  cbn [Bv2N N.succ_double N.double].
+  destr (i <? Nat.max (length x) (length y));
+    [ erewrite !map_nth_inbounds with (d2:=lastSignal (pad_combine x y))
+      by length_hammer; destruct_one_match; reflexivity | ].
+  rewrite !nth_overflow with (l:=List.map _ _) by length_hammer.
+  rewrite !nth_overflow with (l:=pad_combine _ _) by length_hammer.
+  rewrite !lastSignal_map by reflexivity.
+  destruct_one_match; reflexivity.
+Qed.
 
 Lemma pairAssoc_mkpair {A B C} a b c :
   @pairAssoc _ _ A B C (mkpair (mkpair [a] [b]) [c]) = mkpair [a] (mkpair [b] [c]).

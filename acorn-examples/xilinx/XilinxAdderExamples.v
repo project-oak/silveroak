@@ -74,7 +74,7 @@ Definition adder8Interface
      [].
 
 (* Produce a version of the xilinxAdderWithCarry with a flat-tuple input. *)
-Definition xilinxAdderWithCarryFlat {signal} `{Cava signal} `{Monad cava} {n}
+Definition xilinxAdderWithCarryFlat {signal} `{Cava signal} {n}
                                     '(cin, a, b)
                                     : cava (signal (Vec Bit n) * signal Bit) :=
   xilinxAdderWithCarry (cin, (a, b)).

@@ -58,7 +58,6 @@ Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").
 
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
-  Context {monad: Monad cava}.
 
   Definition aes_transpose {n m}
       (matrix : signal (Vec (Vec byte n) m))

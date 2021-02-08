@@ -1125,6 +1125,26 @@ Section InV.
            | H : ?P |- _ \/ ?P => right; assumption
            end.
   Qed.
+
+  Lemma map_ext_InV {A B n} (f g : A -> B) (v : Vector.t A n) :
+    (forall a, InV a v -> f a = g a) -> map f v = map g v.
+  Proof.
+    revert v; induction n; intros;
+      [ eapply case0 with (v:=v); cbn [InV]; tauto | ].
+    rewrite (eta v) in *; cbn [InV] in *.
+    autorewrite with push_vector_map vsimpl in *.
+    f_equal; auto.
+  Qed.
+
+  Lemma map2_ext_InV {A B C n} (f g : A -> B -> C) (va : Vector.t A n) vb :
+    (forall a b, InV a va -> InV b vb -> f a b = g a b) -> map2 f va vb = map2 g va vb.
+  Proof.
+    revert va vb; induction n; intros;
+      [ eapply case0 with (v:=va); cbn [InV]; tauto | ].
+    rewrite (eta va), (eta vb) in *; cbn [InV] in *.
+    autorewrite with push_vector_map vsimpl in *.
+    f_equal; auto.
+  Qed.
 End InV.
 
 Section ForallV.

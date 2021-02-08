@@ -201,14 +201,6 @@ Definition peelNet {t : SignalType} {s : nat} (v : Signal (Vec t s)) : Vector.t 
 Definition unpeelNet {t : SignalType} {s : nat} (v: Vector.t (Signal t) s) : Signal (Vec t s) :=
   VecLit v.
 
-Local Open Scope vector_scope.
-
-Definition pairSelNet {t : SignalType}
-                      (sel : Signal Bit)
-                      (ab : Signal (Pair t t)) : Signal t :=
- let (a, b) := unpairNet ab in
- IndexAt (unpeelNet [a; b]) (unpeelNet [sel]).
-
 Definition sliceNet {t: SignalType} {sz: nat}
                     (startAt len: nat)
                     (v: Signal (Vec t sz))
@@ -291,6 +283,7 @@ Definition instantiateNet (intf : CircuitInterface)
 
 Instance CavaCombinationalNet : Cava denoteSignal := {
     cava := state CavaState;
+    monad := Monad_state _;
     constant b := if b then Vcc else Gnd;
     defaultSignal := defaultNetSignal;
     inv := invNet;
@@ -313,7 +306,6 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     unpair := @unpairNet;
     peel := @peelNet;
     unpeel := @unpeelNet;
-    pairSel t := pairSelNet;
     indexAt k sz isz := IndexAt;
     indexConst k sz := IndexConst;
     slice k sz := @sliceNet k sz;

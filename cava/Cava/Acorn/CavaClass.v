@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-
+Require Import ExtLib.Structures.Monad.
 Require Import Cava.Netlist.
 Require Import Cava.Signal.
 
@@ -25,7 +25,8 @@ Local Open Scope type_scope.
    us to define both circuit netlist interpretations for the Cava class
    as well as behavioural interpretations for attributing semantics. *)
 Class Cava (signal : SignalType -> Type) := {
-  cava : Type -> Type;    
+  cava : Type -> Type;
+  monad :> Monad cava;
   (* Constant values. *)
   constant : bool -> signal Bit;
   (* Default values. *)
@@ -57,8 +58,6 @@ Class Cava (signal : SignalType -> Type) := {
   (* Converting to/from Vector.t *)
   peel : forall {t : SignalType} {s : nat}, signal (Vec t s) -> Vector.t (signal t) s;
   unpeel : forall {t : SignalType} {s : nat} , Vector.t (signal t) s -> signal (Vec t s);
-  (* Dynamic indexing *)
-  pairSel : forall {t : SignalType}, signal Bit -> signal (Pair t t) -> signal t;
   indexAt : forall {t : SignalType} {sz isz: nat},
             signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
             signal (Vec Bit isz) ->  (* A bit-vector index of size isz bits *)

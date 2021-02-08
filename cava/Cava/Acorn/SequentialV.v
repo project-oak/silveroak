@@ -259,7 +259,6 @@ Definition delayV (ticks : nat) (t : SignalType) (def : combType t) : seqVType t
     unpair _ _ v := separate v;
     peel _ _ v := peelVecVec ticks v;
     unpeel _ _ v := unpeelVecVec ticks v;
-    pairSel t v sel := map2 pairSelBool v sel;
     indexAt t sz isz := @indexAtBoolVec t sz isz ticks;
     indexConst t sz := @indexConstBoolVec t sz ticks;
     slice t sz := @sliceBoolVec t sz ticks;
