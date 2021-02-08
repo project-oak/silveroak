@@ -29,6 +29,7 @@ Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Identity.
+Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Acorn.SequentialProperties.
 Require Import Cava.Lib.UnsignedAdders.
 
@@ -66,7 +67,10 @@ Lemma mux2Correct {A} (sel : seqType Bit) (f t : seqType A) :
                                    (pad_combine (pad_combine f t) sel).
 Proof.
   intros; cbv [mux2 sequential]. seqsimpl.
-  cbv [pairSel pairSelList CombinationalSemantics]. fold combType.
+  cbv [pairSel mkpair unpeel unpeelVecList
+               Vector.map Vector.fold_left
+               CombinationalSemantics].
+  fold combType.
   apply map_ext; intros. reflexivity.
 Qed.
 Hint Rewrite @mux2Correct using solve [eauto] : seqsimpl.
