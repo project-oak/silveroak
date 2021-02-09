@@ -16,9 +16,9 @@
 
 Require Import AcornAes.Pkg.
 Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.ShiftRows.
-Require Import AcornAes.SubBytes.
-Require Import AcornAes.AddRoundKey.
+Require Import AcornAes.ShiftRowsCircuit.
+Require Import AcornAes.SubBytesCircuit.
+Require Import AcornAes.AddRoundKeyCircuit.
 Require Import Coq.extraction.Extraction.
 Require Import Coq.extraction.ExtrHaskellZInteger.
 Require Import Coq.extraction.ExtrHaskellString.
@@ -29,6 +29,6 @@ Extraction Language Haskell.
 
 Extraction Library Pkg.
 Extraction Library MixColumnsCircuit.
-Extraction Library ShiftRows.
-Extraction Library SubBytes.
-Extraction Library AddRoundKey.
+Extraction Library ShiftRowsCircuit.
+Extraction Library SubBytesCircuit.
+Extraction Library AddRoundKeyCircuit.
