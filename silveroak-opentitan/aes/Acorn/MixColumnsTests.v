@@ -14,33 +14,92 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
-Import ListNotations.
-
 Require Import Coq.Vectors.Vector.
-Import VectorNotations.
-
-Require Import Coq.NArith.Ndigits.
-Require Import Coq.NArith.BinNat.
+Import ListNotations VectorNotations.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
-
-Require Import AesSpec.StateTypeConversions.
-Require Import AesSpec.Tests.CipherTest.
-Require Import AesSpec.Tests.Common.
 Require Import AesSpec.AES256.
-
+Require Import AesSpec.Tests.Common.
+Require Import AesSpec.Tests.CipherTest.
 Require Import AcornAes.MixColumnsCircuit.
 Require Import AcornAes.Pkg.
+Import Pkg.Notations.
 
-Local Open Scope vector_scope.
+(* Test against FIPS test vectors *)
+Section FIPSTests.
+  (* Create a version of AES with the mix_columns circuit plugged in *)
+  Let impl : AESStep -> Vector.t bool 128 -> Vector.t bool 128 -> Vector.t bool 128 :=
+    (fun step key =>
+       match step with
+       | MixColumns =>
+         fun st =>
+           let input := from_flat st in
+           let output := unIdent (aes_mix_columns [false]%list [input]%list) in
+           to_flat (List.hd (defaultCombValue _) output)
+       | InvMixColumns =>
+         fun st =>
+           let input := from_flat st in
+           let output := unIdent (aes_mix_columns [true]%list [input]%list) in
+           to_flat (List.hd (defaultCombValue _) output)
+       | _ => aes_impl step key
+       end).
+
+  (* encryption test *)
+  Goal (aes_test_encrypt Matrix impl = Success).
+  Proof. vm_compute. reflexivity. Qed.
+
+  (* decryption test *)
+  Goal (aes_test_decrypt Matrix impl = Success).
+  Proof. vm_compute. reflexivity. Qed.
+End FIPSTests.
+
+(* Interface designed to match interface of corresponding SystemVerilog component:
+     https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_mix_columns.sv
+*)
+Definition aes_mix_columns_Interface :=
+  combinationalInterface "aes_mix_columns"
+  [mkPort "op_i" Bit; mkPort "data_i" (Vec (Vec (Vec Bit 8) 4) 4)]
+  [mkPort "data_o" (Vec (Vec (Vec Bit 8) 4) 4)]
+  [].
+
+(* Create a netlist for the aes_mix_columns_Netlist block. The block is written with
+   curried inputs but netlist extraction for top-level blocks requires they are
+   written with a single argument, using tupling for composite inputs. A lambda
+   expression maps from the tuple inputs to the curried arguments.  *)
+Definition aes_mix_columns_Netlist
+  := makeNetlist aes_mix_columns_Interface (fun '(op_i, data_i) => aes_mix_columns op_i data_i).
+
+(* Test case from the first four rows of the Wikipedia page on AES mix_columns:
+     https://en.wikipedia.org/wiki/Rijndael_MixColumns
+*)
+Definition mixColTest1InputNat : Vector.t (Vector.t nat 4) 4
+  := [[219; 19; 83; 69];
+      [242; 10; 34; 92];
+      [1; 1; 1; 1];
+      [45; 38; 49; 76]
+  ]%vector.
+
+Local Open Scope list_scope.
+
+(* Get the test inputs into the right format for the circuit inputs. *)
+Definition mix_cols_i1 := fromNatVec mixColTest1InputNat.
+(* Compute the expected outputs from the Coq/Cava semantics. *)
+Definition mix_cols_expected_outputs := combinational (aes_mix_columns [false] [mix_cols_i1]).
+
+Definition aes_mix_columns_tb :=
+  testBench "aes_mix_columns_tb"
+            aes_mix_columns_Interface
+            [(false, mix_cols_i1)]
+            mix_cols_expected_outputs.
 
 Definition mixColTest1ExpectedOutput : Vector.t (Vector.t nat 4) 4
   := [[142; 77; 161; 188];
       [159; 220; 88; 157];
       [1; 1; 1; 1];
-      [77; 126; 189; 248]].
+      [77; 126; 189; 248]]%vector.
 
 (*** First work with MixCols.mix_cols spec. ***)
 
@@ -69,43 +128,4 @@ Definition o1 := List.hd (defaultCombValue (Vec (Vec (Vec Bit 8) 4) 4)) r1L.
 Local Open Scope vector_scope.
 
 Example check_mix_cols_circuit : transpose (toNatVec o1) = mixColTest1ExpectedOutput.
-Proof. vm_compute. reflexivity. Qed.
-
-Local Open Scope list_scope.
-
-(* The lemma which needs to be proved to show the Cava mix_colnumns corresponds
-   the the specification aes_mix_columns_top_spec.
-*)
-Lemma aes_mix_columns_correct : forall (op : bool) (i :  Vector.t (Vector.t (Vector.t bool 8) 4) 4),
-      combinational (aes_mix_columns [op] [i]) = [aes_mix_columns_circuit_spec op i].
-Abort.
-
-Goal
-  (let signal := combType in
-   (* run encrypt test with this version of aes_mix_columns plugged in *)
-   aes_test_encrypt Matrix
-                    (fun step key =>
-                       match step with
-                       | MixColumns =>
-                         fun st =>
-                           let input := from_flat st in
-                           let output := unIdent (aes_mix_columns [false]%list [input]%list) in
-                           to_flat (List.hd (defaultCombValue _) output)
-                       | _ => aes_impl step key
-                       end) = Success).
-Proof. vm_compute. reflexivity. Qed.
-
-Goal
-  (let signal := combType in
-   (* run encrypt test with this version of aes_mix_columns plugged in *)
-   aes_test_decrypt Matrix
-                    (fun step key =>
-                       match step with
-                       | InvMixColumns =>
-                         fun st =>
-                           let input := from_flat st in
-                           let output := unIdent (aes_mix_columns [true]%list [input]%list) in
-                           to_flat (List.hd (defaultCombValue _) output)
-                       | _ => aes_impl step key
-                       end) = Success).
 Proof. vm_compute. reflexivity. Qed.
