@@ -14,7 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import Coq.Vectors.Vector.
 Import ListNotations VectorNotations.
@@ -25,8 +24,6 @@ Require Import AesSpec.AES256.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AcornAes.ShiftRowsCircuit.
-Require Import AcornAes.Pkg.
-Import Pkg.Notations.
 
 (* Test against FIPS test vectors *)
 Section FIPSTests.
@@ -55,32 +52,3 @@ Section FIPSTests.
   Goal (aes_test_decrypt Matrix impl = Success).
   Proof. vm_compute. reflexivity. Qed.
 End FIPSTests.
-
-(* Interface designed to match interface of corresponding SystemVerilog component:
-     https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_shift_rows.sv
-*)
-Definition aes_shift_rows_Interface :=
-  combinationalInterface "aes_shift_rows"
-  [mkPort "op_i" Bit; mkPort "data_i" (Vec (Vec (Vec Bit 8) 4) 4)]
-  [mkPort "data_o" (Vec (Vec (Vec Bit 8) 4) 4)]
-  [].
-
-Definition aes_shift_rows_Netlist
-  := makeNetlist aes_shift_rows_Interface (fun '(op_i, data_i) => aes_shift_rows op_i data_i).
-
-Definition shiftRowsTestVec : Vector.t (Vector.t nat 4) 4
-  := [[219; 19; 83; 69];
-      [242; 10; 34; 92];
-      [1; 1; 1; 1];
-      [45; 38; 49; 76]
-  ]%vector.
-
-(* Compute the expected outputs from the Coq/Cava semantics. *)
-Definition shift_rows_expected_outputs :=
-  combinational (aes_shift_rows [false] [fromNatVec shiftRowsTestVec]).
-
-Definition aes_shift_rows_tb :=
-  testBench "aes_shift_rows_tb"
-            aes_shift_rows_Interface
-            [(false, fromNatVec shiftRowsTestVec)]
-            shift_rows_expected_outputs.
