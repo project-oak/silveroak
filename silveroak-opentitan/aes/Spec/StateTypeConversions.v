@@ -206,6 +206,21 @@ Section Properties.
   Proof. cbv [from_list_rows to_list_rows]. inverse. Qed.
   Hint Rewrite from_list_rows_to_list_rows : inverse.
 
+  Lemma map2_to_cols_bits (f : bool -> bool -> bool) (v1 v2 : Vector.t bool 128):
+    Vector.map2 (Vector.map2 f) (to_cols_bits v1) (to_cols_bits v2)
+    = to_cols_bits (Vector.map2 f v1 v2).
+  Proof.
+    cbv [to_cols_bits to_cols to_big_endian_bytes
+                      bitvec_to_bytevec bytevec_to_bitvec ].
+    repeat first [ rewrite map_map
+                 | rewrite map2_map
+                 | rewrite map_map2
+                 | rewrite bitvec_to_byte_to_bitvec
+                 | apply map2_ext; intros
+                 | rewrite map2_flatten; apply (f_equal flatten)
+                 | progress autorewrite with pull_vector_map ].
+    reflexivity.
+  Qed.
 End Properties.
 Hint Rewrite to_big_endian_bytes_from_big_endian_bytes
      from_big_endian_bytes_to_big_endian_bytes
@@ -217,5 +232,7 @@ Hint Rewrite to_big_endian_bytes_from_big_endian_bytes
      using solve [eauto] : conversions.
 Hint Rewrite to_list_rows_from_list_rows
      using solve [length_hammer] : conversions.
+Hint Rewrite @map2_to_cols_bits using solve [eauto] : push_vector_map.
+Hint Rewrite <- @map2_to_cols_bits using solve [eauto] : pull_vector_map.
 Hint Resolve to_list_rows_length_outer
      to_list_rows_length_inner : length.

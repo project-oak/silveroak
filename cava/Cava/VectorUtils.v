@@ -701,6 +701,14 @@ Section VectorFacts.
                    | reflexivity ].
   Qed.
 
+  Lemma reverse_map {A B} n (f : A -> B) v :
+    reverse (map (n:=n) f v) = map f (reverse v).
+  Proof.
+    induction n; intros; [ autorewrite with vsimpl; reflexivity | ].
+    rewrite (eta v). cbn [map reverse]. autorewrite with vsimpl.
+    rewrite IHn. rewrite snoc_map. reflexivity.
+  Qed.
+
   Lemma fold_left_andb_true (n : nat) :
     Vector.fold_left andb true (Vector.const true n) = true.
   Proof.
@@ -854,6 +862,55 @@ Section VectorFacts.
     rewrite <-surjective_pairing. reflexivity.
   Qed.
 
+  Lemma map_append {A B} (f : A -> B) n m (v1 : t A n) (v2 : t A m) :
+    map f (v1 ++ v2) = map f v1 ++ map f v2.
+  Proof.
+    revert m v1 v2; induction n; [ vnil; reflexivity | ].
+    intros m v1 v2; rewrite (eta v1).
+    rewrite <-append_comm_cons. cbn [map].
+    rewrite IHn. rewrite <-append_comm_cons.
+    reflexivity.
+  Qed.
+
+  Lemma map_splitat1 {A B} (f : A -> B) n m (v : Vector.t A (n + m)) :
+    map f (fst (splitat _ v)) = fst (splitat _ (map f v)).
+  Proof.
+    erewrite append_splitat with (vw:=v) by apply surjective_pairing.
+    rewrite !map_append, !splitat_append. cbn [fst snd].
+    reflexivity.
+  Qed.
+
+  Lemma map_splitat2 {A B} (f : A -> B) n m (v : Vector.t A (n + m)) :
+    map f (snd (splitat _ v)) = snd (splitat _ (map f v)).
+  Proof.
+    erewrite append_splitat with (vw:=v) by apply surjective_pairing.
+    rewrite !map_append, !splitat_append. cbn [fst snd].
+    reflexivity.
+  Qed.
+
+  Lemma map_reshape {A B n m} (f : A -> B) (v : t A (m * n)) :
+    map (map f) (reshape v) = reshape (map f v).
+  Proof.
+    revert n v; induction m; cbn [Nat.mul]; [ solve [vnil] | ].
+    intros. cbn [reshape].
+    repeat match goal with
+             |- context [match ?p with pair _ _ => _ end] =>
+             rewrite (surjective_pairing p)
+           end.
+    rewrite map_cons. autorewrite with vsimpl.
+    rewrite IHm. rewrite map_splitat1, map_splitat2.
+    reflexivity.
+  Qed.
+
+  Lemma map_flatten {A B} (f : A -> B) (n m : nat) (v : t (t A n) m) :
+    map f (flatten v) = flatten (map (map f) v).
+  Proof.
+    revert n v; induction m; cbn [Nat.mul]; [ vnil; reflexivity | ].
+    intros; rewrite (eta v). cbn [flatten uncons].
+    rewrite !map_cons. autorewrite with vsimpl.
+    rewrite map_append. rewrite IHm. reflexivity.
+  Qed.
+
   Lemma reverse_reverse {A n} (v : t A n) :
     reverse (reverse v) = v.
   Proof.
@@ -870,7 +927,8 @@ End VectorFacts.
  * - push_vector_tl_hd_last : simplify using properties of Vector.tl, Vector.hd,
      and Vector.last
  * - push_vector_nth_order : simplify expressions containing Vector.nth_order
- * - push_vector_map : simplify expressions containing Vector.map or Vector.map2
+ * - push_vector_map : push Vector.map or Vector.map2 deeper into the expression
+ * - pull_vector_map : pull Vector.map or Vector.map2 to the outside of the expression
  * - vsimpl : generic vector simplification, includes all of the above and more
  *
  * No hint added to one of these databases should leave any subgoals unsolved.
@@ -881,13 +939,14 @@ Hint Rewrite @tl_0 @tl_cons @hd_cons @last_tl
      using solve [eauto] : push_vector_tl_hd_last vsimpl.
 Hint Rewrite @nth_order_hd @nth_order_last
      using solve [eauto] : push_vector_nth_order vsimpl.
-Hint Rewrite @map2_0 @map_0 @map_to_const @map2_append
+Hint Rewrite @map2_0 @map_0 @map_to_const @map2_append @map_append
      using solve [eauto] : push_vector_map vsimpl.
+Hint Rewrite <- @map2_append @map_append
+     using solve [eauto] : pull_vector_map.
 Hint Rewrite @resize_default_id @Vector.map_id
      using solve [eauto] : vsimpl.
 Hint Rewrite @to_list_cons @to_list_nil @uncons_cons @reshape_flatten @flatten_reshape
      using solve [eauto] : vsimpl.
-
 
 (* Lemmas that work on any (S _) length don't get added to vsimpl, because
    they can end up happening many times for constant-length expressions *)
@@ -899,11 +958,18 @@ Hint Rewrite @map_cons @map2_cons
 (* Some extra lemmas that don't necessarily make a goal *simpler*, but do push a
    certain kind of operation deeper into the expression, go into the push_*
    databases *)
-Hint Rewrite <- @reverse_map2 @snoc_map2 @unsnoc_map2 @snoc_map @unsnoc_map
+Hint Rewrite <- @reverse_map2 @reverse_map @snoc_map2 @unsnoc_map2 @snoc_map @unsnoc_map
      using solve [eauto] : push_vector_map.
-Hint Rewrite  @nth_map @map_to_const @map2_flatten @map2_reshape @map2_splitat1
-     @map2_splitat2
+Hint Rewrite @nth_map @map2_flatten @map2_reshape @map2_splitat1
+     @map2_splitat2 @map_reshape @map_splitat1 @map_splitat2 @map_flatten
      using solve [eauto] : push_vector_map.
+
+(* Reverse rewrites for pull_* *)
+Hint Rewrite @reverse_map2 @reverse_map @snoc_map2 @unsnoc_map2 @snoc_map @unsnoc_map
+     using solve [eauto] : pull_vector_map.
+Hint Rewrite <- @map2_flatten @map2_reshape @map2_splitat1 @map2_splitat2
+     @map_reshape @map_splitat1 @map_splitat2 @map_flatten
+     using solve [eauto] : pull_vector_map.
 
 (* [eauto] might not solve map_id_ext, so add more power to the strategy *)
 Hint Rewrite @map_id_ext
@@ -1048,7 +1114,44 @@ Section TransposeFacts.
     apply map_id_ext; intros.
     rewrite <-eta; reflexivity.
   Qed.
+
+  Lemma transpose_map_map {A B} n m (f: A -> B) (v : Vector.t (Vector.t A n) m) :
+    transpose (map (map f) v) = map (map f) (transpose v).
+  Proof.
+    revert n v; induction m; intros; [ symmetry; solve [apply const_nil] | ].
+    destruct n; cbn [transpose]; [ solve [apply nil_eq] | ].
+    autorewrite with push_vector_map vsimpl.
+    rewrite IHm. autorewrite with push_vector_map vsimpl.
+    rewrite map2_map, map_map2.
+    reflexivity.
+  Qed.
+
+  (* Helper lemma for transpose_map2_map2 *)
+  Lemma transpose_map2_map2_helper {A B C n m} (f : A -> B -> C)
+        (va : Vector.t A n) vb (vva : Vector.t (Vector.t A m) n) vvb :
+    map2 (fun x v => x :: v) (map2 f va vb) (map2 (map2 f) vva vvb)
+    = map2 (map2 f) (map2 (fun x v => x :: v) va vva) (map2 (fun x v => x :: v) vb vvb).
+  Proof.
+    revert va vb vva vvb; induction n; intros; [ solve [apply nil_eq] | ].
+    autorewrite with push_vector_map vsimpl.
+    rewrite IHn. reflexivity.
+  Qed.
+
+  Lemma transpose_map2_map2 {A B C} n m (f: A -> B -> C)
+        (va : Vector.t (Vector.t A n) m) vb:
+    transpose (map2 (map2 f) va vb) = map2 (map2 f) (transpose va) (transpose vb).
+  Proof.
+    revert n va vb; induction m; intros; [ symmetry; solve [apply const_nil] | ].
+    destruct n; cbn [transpose]; [ solve [apply nil_eq] | ].
+    autorewrite with push_vector_map vsimpl.
+    rewrite IHm. autorewrite with push_vector_map vsimpl.
+    f_equal. apply transpose_map2_map2_helper.
+  Qed.
 End TransposeFacts.
+Hint Rewrite @transpose_map_map @transpose_map2_map2
+     using solve [eauto] : pull_vector_map.
+Hint Rewrite <- @transpose_map_map @transpose_map2_map2
+     using solve [eauto] : push_vector_map.
 
 Section InV.
   (* Version of Vector.In that is defined as a computable Prop rather than an
