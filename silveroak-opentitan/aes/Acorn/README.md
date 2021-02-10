@@ -222,3 +222,70 @@ Silver Oak version after routing:
 +------------------------------------------+------+-------+-----------+-------+
 
 ```
+
+## SBox LUT Performance Comparison
+### OpenTitan `aes_sbox_lut` baseline block
+After synthesis the utilization for the OpenTitan `aes_sbox_lut` baseline block is:
+```
++-------------------------+------+-------+-----------+-------+
+|        Site Type        | Used | Fixed | Available | Util% |
++-------------------------+------+-------+-----------+-------+
+| Slice LUTs*             |   72 |     0 |    134600 |  0.05 |
+|   LUT as Logic          |   72 |     0 |    134600 |  0.05 |
+|   LUT as Memory         |    0 |     0 |     46200 |  0.00 |
+
+```
+After implementation:
+```
++------------------------------------------+------+-------+-----------+-------+
+|                 Site Type                | Used | Fixed | Available | Util% |
++------------------------------------------+------+-------+-----------+-------+
+| Slice                                    |   22 |     0 |     33450 |  0.07 |
+|   SLICEL                                 |   17 |     0 |           |       |
+|   SLICEM                                 |    5 |     0 |           |       |
+| LUT as Logic                             |   72 |     0 |    133800 |  0.05 |
+|   using O5 output only                   |    0 |       |           |       |
+|   using O6 output only                   |   72 |       |           |       |
+|   using O5 and O6                        |    0 |       |           |       |
+| LUT as Memory                            |    0 |     0 |     46200 |  0.00 |
+|   LUT as Distributed RAM                 |    0 |     0 |           |       |
+|   LUT as Shift Register                  |    0 |     0 |           |       |
+| Slice Registers                          |    0 |     0 |    267600 |  0.00 |
+|   Register driven from within the Slice  |    0 |       |           |       |
+|   Register driven from outside the Slice |    0 |       |           |       |
+| Unique Control Sets                      |    0 |       |     33450 |  0.00 |
++------------------------------------------+------+-------+-----------+-------+
+```
+
+### Silver Oak `aes_sbox_lut` block
+After synthesis:
+```
++-------------------------+------+-------+-----------+-------+
+|        Site Type        | Used | Fixed | Available | Util% |
++-------------------------+------+-------+-----------+-------+
+| Slice LUTs*             |   72 |     0 |    134600 |  0.05 |
+|   LUT as Logic          |   72 |     0 |    134600 |  0.05 |
+```
+After implementation:
+```
++------------------------------------------+------+-------+-----------+-------+
+|                 Site Type                | Used | Fixed | Available | Util% |
++------------------------------------------+------+-------+-----------+-------+
+| Slice                                    |   22 |     0 |     33450 |  0.07 |
+|   SLICEL                                 |   16 |     0 |           |       |
+|   SLICEM                                 |    6 |     0 |           |       |
+| LUT as Logic                             |   72 |     0 |    133800 |  0.05 |
+|   using O5 output only                   |    0 |       |           |       |
+|   using O6 output only                   |   72 |       |           |       |
+|   using O5 and O6                        |    0 |       |           |       |
+| LUT as Memory                            |    0 |     0 |     46200 |  0.00 |
+|   LUT as Distributed RAM                 |    0 |     0 |           |       |
+|   LUT as Shift Register                  |    0 |     0 |           |       |
+| Slice Registers                          |    0 |     0 |    267600 |  0.00 |
+|   Register driven from within the Slice  |    0 |       |           |       |
+|   Register driven from outside the Slice |    0 |       |           |       |
+| Unique Control Sets                      |    0 |       |     33450 |  0.00 |
++------------------------------------------+------+-------+-----------+-------+
+```
+The Silver Oak block has identical utilization.
+
