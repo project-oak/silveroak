@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2021 The Project Oak Authors                                   *)
+(* Copyright 2020 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,29 +14,24 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Cava.Acorn.Acorn.
+Require Import Cava.Lib.BitVectorOps.
 Require Import AcornAes.Pkg.
-Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.ShiftRowsCircuit.
-Require Import AcornAes.SubBytesCircuit.
-Require Import AcornAes.AddRoundKeyCircuit.
-Require Import AcornAes.MixColumnsNetlist.
-Require Import AcornAes.ShiftRowsNetlist.
-Require Import AcornAes.SubBytesNetlist.
-Require Import AcornAes.AddRoundKeyNetlist.
-Require Import Coq.extraction.Extraction.
-Require Import Coq.extraction.ExtrHaskellZInteger.
-Require Import Coq.extraction.ExtrHaskellString.
-Require Import Coq.extraction.ExtrHaskellBasic.
-Require Import Coq.extraction.ExtrHaskellNatInteger.
+Import Pkg.Notations.
 
-Extraction Language Haskell.
+Section WithCava.
+  Context {signal} {semantics : Cava signal}.
 
-Extraction Library Pkg.
-Extraction Library MixColumnsCircuit.
-Extraction Library ShiftRowsCircuit.
-Extraction Library SubBytesCircuit.
-Extraction Library AddRoundKeyCircuit.
-Extraction Library MixColumnsNetlist.
-Extraction Library ShiftRowsNetlist.
-Extraction Library SubBytesNetlist.
-Extraction Library AddRoundKeyNetlist.
+  (* Perform the bitwise XOR of two 4-element vectors of 8-bit values. *)
+  Definition xor4xV
+      (ab : signal (Vec (Vec Bit 8) 4) * signal (Vec (Vec Bit 8) 4))
+      : cava (signal (Vec (Vec Bit 8) 4)) :=
+    zipWith xorV (fst ab) (snd ab).
+
+  (* Perform the bitwise XOR of two 4x4 matrices of 8-bit values. *)
+  Definition xor4x4V (a b : signal state) : cava (signal state) :=
+    zipWith xor4xV a b.
+
+  Definition add_round_key (k : signal key) (st : signal state)
+    : cava (signal state) := xor4x4V k st.
+End WithCava.

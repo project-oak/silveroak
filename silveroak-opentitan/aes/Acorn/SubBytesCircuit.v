@@ -14,27 +14,18 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import Coq.Lists.List.
-Import ListNotations.
-Require Import Cava.Cava.
-
 Require Import Coq.Vectors.Vector.
-Require Import Coq.NArith.Ndigits.
+Import ListNotations VectorNotations.
 
 Require Import ExtLib.Structures.Monads.
 
-Require Import Cava.VectorUtils.
+Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.BitArithmetic.
-Require Import Cava.Lib.BitVectorOps.
-Require Import AesSpec.StateTypeConversions.
-Require Import AesSpec.Tests.CipherTest.
-Require Import AesSpec.Tests.Common.
 Require Import AcornAes.Pkg.
 Import Pkg.Notations.
-Import VectorNotations.
-Import StateTypeConversions.LittleEndian.
+
+Local Open Scope vector_scope.
 
 Section SboxLut.
   Definition sbox_fwd : t nat _ :=
@@ -140,13 +131,13 @@ Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
   Definition bitvec_to_signal {n : nat} (lut : t bool n) : signal (Vec Bit n) :=
-    unpeel (map constant lut).
+    unpeel (Vector.map constant lut).
 
   Definition bitvecvec_to_signal {a b : nat} (lut : t (t bool b) a) : signal (Vec (Vec Bit b) a) :=
-    unpeel (map bitvec_to_signal lut).
+    unpeel (Vector.map bitvec_to_signal lut).
 
   Definition natvec_to_signal_sized {n : nat} (size : nat) (lut : t nat n) : signal (Vec (Vec Bit size) n) :=
-    bitvecvec_to_signal (map (nat_to_bitvec_sized size) lut).
+    bitvecvec_to_signal (Vector.map (nat_to_bitvec_sized size) lut).
 
   Definition sbox_fwd_lut := natvec_to_signal_sized 8 sbox_fwd.
   Definition sbox_inv_lut := natvec_to_signal_sized 8 sbox_inv.
@@ -170,71 +161,3 @@ Section WithCava.
     : cava (signal state) :=
     state_map (aes_sbox_lut is_decrypt) b.
 End WithCava.
-
-(* Interface designed to match interface of corresponding SystemVerilog component:
-     https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_sbox_lut.sv
-*)
-Definition aes_sbox_lut_Interface :=
-  combinationalInterface "aes_sbox_lut"
-  [mkPort "op_i" Bit; mkPort "data_i" (Vec Bit 8)]
-  [mkPort "data_o" (Vec Bit 8)]
-  [].
-
-(* Interface designed to match interface of corresponding SystemVerilog component:
-     https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_sub_bytes.sv
-*)
-Definition aes_sub_bytes_Interface :=
-  combinationalInterface "aes_sub_bytes"
-  [mkPort "op_i" Bit; mkPort "data_i" state]
-  [mkPort "data_o" state]
-  [].
-
-Definition aes_sbox_lut_Netlist
-  := makeNetlist aes_sbox_lut_Interface (fun '(op_i, data_i) => aes_sbox_lut op_i data_i).
-
-Definition aes_sub_bytes_Netlist
-  := makeNetlist aes_sub_bytes_Interface (fun '(op_i, data_i) => sub_bytes op_i data_i).
-
-(* Run test as a quick-feedback check *)
-Import List.ListNotations.
-Require Import Coq.Strings.String.
-Goal
-  (let signal := combType in
-   (* convert between flat-vector representation and state type *)
-   let to_state : Vector.t bool 128 -> signal state :=
-       fun st => map reshape (to_cols_bits st) in
-   let from_state : signal state -> Vector.t bool 128 :=
-       fun st => from_cols_bits (map flatten st) in
-   (* run encrypt test with this version of add_round_key plugged in *)
-   aes_test_encrypt Hex
-                    (fun step key =>
-                       match step with
-                       | SubBytes => fun st =>
-                           let input := to_state st in
-                           let output := unIdent (sub_bytes [false]%list [input]%list) in
-                           from_state (List.hd (defaultCombValue _) output)
-                       | InvSubBytes => fun st =>
-                           let input := to_state st in
-                           let output := unIdent (sub_bytes [true]%list [input]%list) in
-                           from_state (List.hd (defaultCombValue _) output)
-                       | _ => aes_impl step key
-                       end) = Success).
-Proof. vm_compute. reflexivity. Qed.
-
-Definition subBytesTestVec : Vector.t (Vector.t nat 4) 4
-  := [[219; 19; 83; 69];
-      [242; 10; 34; 92];
-      [1; 1; 1; 1];
-      [45; 38; 49; 76]
-  ].
-
-Local Open Scope list_scope.
-
-(* Compute the expected outputs from the Coq/Cava semantics. *)
-Definition sub_bytes_expected_outputs := combinational (sub_bytes [false] [fromNatVec subBytesTestVec]).
-
-Definition aes_sub_bytes_tb :=
-  testBench "aes_sub_bytes_tb"
-            aes_sub_bytes_Interface
-            [(false, fromNatVec subBytesTestVec)]
-            sub_bytes_expected_outputs.

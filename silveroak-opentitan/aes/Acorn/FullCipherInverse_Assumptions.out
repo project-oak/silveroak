@@ -3,24 +3,10 @@ sub_bytes_equiv
   : forall (is_decrypt : bool) (st : combType (Vec (Vec (Vec Bit 8) 4) 4)),
     unIdent (sub_bytes [is_decrypt] [st]) =
     [aes_sub_bytes_circuit_spec is_decrypt st]
-shift_rows_equiv
-  : forall (is_decrypt : bool) (st : combType (Vec (Vec (Vec Bit 8) 4) 4)),
-    unIdent (shift_rows [is_decrypt] [st]) =
-    [aes_shift_rows_circuit_spec is_decrypt st]
-shift_rows
-  : forall (signal : SignalType -> Type) (semantics : Cava signal),
-    signal Bit ->
-    signal (Vec (Vec (Vec Bit 8) 4) 4) ->
-    cava (signal (Vec (Vec (Vec Bit 8) 4) 4))
 mix_columns_equiv
   : forall (is_decrypt : bool) (st : combType (Vec (Vec (Vec Bit 8) 4) 4)),
-    unIdent (mix_columns [is_decrypt] [st]) =
+    unIdent (aes_mix_columns [is_decrypt] [st]) =
     [aes_mix_columns_circuit_spec is_decrypt st]
-mix_columns
-  : forall (signal : SignalType -> Type) (semantics : Cava signal),
-    signal Bit ->
-    signal (Vec (Vec (Vec Bit 8) 4) 4) ->
-    cava (signal (Vec (Vec (Vec Bit 8) 4) 4))
 key_expand_spec : nat -> t bool 128 * t bool 8 -> t bool 128 * t bool 8
 key_expand_equiv
   : forall (is_decrypt : bool) (round_i : t bool 4)

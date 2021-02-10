@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2020 The Project Oak Authors                                   *)
+(* Copyright 2021 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,44 +14,16 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
-Require Import Coq.NArith.BinNat.
-Require Import Coq.NArith.Ndigits.
-Import ListNotations.
-Require Import Cava.Cava.
-
 Require Import Coq.Vectors.Vector.
+Import ListNotations VectorNotations.
 
-Require Import ExtLib.Structures.Monads.
-
-Require Import Cava.VectorUtils.
+Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.BitVectorOps.
+Require Import AcornAes.AddRoundKeyCircuit.
 Require Import AcornAes.Pkg.
-Require Import AesSpec.StateTypeConversions.
-Require Import AesSpec.Tests.CipherTest.
-Require Import AesSpec.Tests.Common.
-Import Pkg.Notations.
-
-Import VectorNotations.
-
-Section WithCava.
-  Context {signal} {semantics : Cava signal}.
-
-  (* Perform the bitwise XOR of two 4-element vectors of 8-bit values. *)
-  Definition xor4xV
-      (ab : signal (Vec (Vec Bit 8) 4) * signal (Vec (Vec Bit 8) 4))
-      : cava (signal (Vec (Vec Bit 8) 4)) :=
-    zipWith xorV (fst ab) (snd ab).
-
-  (* Perform the bitwise XOR of two 4x4 matrices of 8-bit values. *)
-  Definition xor4x4V (a b : signal state) : cava (signal state) :=
-    zipWith xor4xV a b.
-
-  Definition add_round_key (k : signal key) (st : signal state)
-    : cava (signal state) := xor4x4V k st.
-End WithCava.
+Local Open Scope vector_scope.
 
 (* add_round_key is internal to aes_cipher_core in OpenTitan and so does not have
 * an "official" interface.
@@ -81,6 +53,7 @@ Definition test_key
   ].
 
 Local Open Scope list_scope.
+
 (* Compute the expected outputs from the Coq/Cava semantics. *)
 Definition add_round_key_expected_outputs : seqType (Vec (Vec (Vec Bit 8) 4) 4)
   := combinational (add_round_key [fromNatVec test_key] [fromNatVec test_state]).
@@ -90,26 +63,3 @@ Definition aes_add_round_key_tb :=
             add_round_key_Interface
             [(fromNatVec test_key, fromNatVec test_state)]
             add_round_key_expected_outputs.
-
-(* Run test as a quick-feedback check *)
-Import List.ListNotations.
-Goal
-  (let signal := combType in
-   (* convert between flat-vector representation and state type *)
-   let to_state : Vector.t bool 128 -> signal state :=
-       fun st => map reshape (LittleEndian.to_cols_bits st) in
-   let from_state : signal state -> Vector.t bool 128 :=
-       fun st => LittleEndian.from_cols_bits (map flatten st) in
-   (* run encrypt test with this version of add_round_key plugged in *)
-   aes_test_encrypt Matrix
-                    (fun step key =>
-                       match step with
-                       | AddRoundKey =>
-                         fun st =>
-                           let input := to_state st in
-                           let k := to_state key in
-                           let output := unIdent (add_round_key [k]%list [input]%list) in
-                           from_state (List.hd (defaultCombValue _) output)
-                       | _ => aes_impl step key
-                       end) = Success).
-Proof. vm_compute. reflexivity. Qed.

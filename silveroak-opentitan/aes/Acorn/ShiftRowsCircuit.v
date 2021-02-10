@@ -14,29 +14,14 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-Require Import Coq.Lists.List.
-Require Import Coq.NArith.BinNat.
-Require Import Coq.NArith.Ndigits.
-Import ListNotations.
-Require Import Cava.Cava.
-
 Require Import Coq.Vectors.Vector.
+Import VectorNotations.
 
 Require Import ExtLib.Structures.Monads.
-Require Import ExtLib.Structures.Traversable.
 
-
-Require Import Cava.VectorUtils.
+Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.BitVectorOps.
 Require Import AcornAes.Pkg.
-Require Import AesSpec.Tests.CipherTest.
-Require Import AesSpec.Tests.Common.
-Require Import AesSpec.StateTypeConversions.
-Import Pkg.Notations.
-
-Import VectorNotations.
 
 Local Notation byte := (Vec Bit 8) (only parsing).
 Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").
@@ -72,58 +57,3 @@ Section WithCava.
   ret (unpeel [data_o_0; data_o_1; data_o_2; data_o_3]).
 
 End WithCava.
-
-(* Interface designed to match interface of corresponding SystemVerilog component:
-     https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_shift_rows.sv
-*)
-Definition aes_shift_rows_Interface :=
-  combinationalInterface "aes_shift_rows"
-  [mkPort "op_i" Bit; mkPort "data_i" (Vec (Vec (Vec Bit 8) 4) 4)]
-  [mkPort "data_o" (Vec (Vec (Vec Bit 8) 4) 4)]
-  [].
-
-Definition aes_shift_rows_Netlist
-  := makeNetlist aes_shift_rows_Interface (fun '(op_i, data_i) => aes_shift_rows op_i data_i).
-
-(* Run test as a quick-feedback check *)
-Require Import Cava.BitArithmetic.
-Require Import AesSpec.StateTypeConversions.
-
-Import List.ListNotations.
-Goal
-  (let signal := combType in
-  let to_state : Vector.t bool 128 -> signal state :=
-      fun st => Vector.map (Vector.map (fun r => byte_to_bitvec r)) (BigEndian.to_rows st) in
-  let from_state : signal state -> Vector.t bool 128 :=
-      fun st => BigEndian.from_rows (Vector.map (Vector.map (fun r => bitvec_to_byte r)) st) in
-
-   (* run encrypt test with this version of aes_mix_columns plugged in *)
-   aes_test_encrypt Matrix
-                    (fun step key =>
-                       match step with
-                       | ShiftRows =>
-                         fun st =>
-                           let input := to_state st in
-                           let output := unIdent (aes_shift_rows [false]%list [input]%list) in
-                           from_state (List.hd (defaultCombValue _) output)
-                       | _ => aes_impl step key
-                       end) = Success).
-Proof. vm_compute. reflexivity. Qed.
-
-Definition shiftRowsTestVec : Vector.t (Vector.t nat 4) 4
-  := [[219; 19; 83; 69];
-      [242; 10; 34; 92];
-      [1; 1; 1; 1];
-      [45; 38; 49; 76]
-  ].
-
-Local Open Scope list_scope.
-
-(* Compute the expected outputs from the Coq/Cava semantics. *)
-Definition shift_rows_expected_outputs := combinational (aes_shift_rows [false] [fromNatVec shiftRowsTestVec]).
-
-Definition aes_shift_rows_tb :=
-  testBench "aes_shift_rows_tb"
-            aes_shift_rows_Interface
-            [(false, fromNatVec shiftRowsTestVec)]
-            shift_rows_expected_outputs.

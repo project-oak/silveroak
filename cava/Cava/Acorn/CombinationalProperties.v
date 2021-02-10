@@ -548,6 +548,31 @@ Proof.
   destruct_one_match; reflexivity.
 Qed.
 
+Lemma peel_singleton {A n} (v : Vector.t (combType A) n) :
+  peel [v] = map (fun x => [x]) v.
+Proof.
+  cbv [peel CombinationalSemantics peelVecList indexConstBoolList].
+  cbn [List.map].
+  transitivity
+    (map (fun x => [x])
+         (map (fun sel => nth_default (defaultCombValue A) sel v) (vseq 0 n)));
+    [ rewrite map_map; reflexivity | ].
+  rewrite map_nth_default_vseq. reflexivity.
+Qed.
+
+Lemma unpeel_singleton {A B n} (f : A -> combType B) (v : Vector.t A n) :
+  n <> 0 ->
+  unpeel (map (fun x => [f x]) v) = [map f v].
+Proof.
+  cbv [unpeel CombinationalSemantics unpeelVecList]. intros.
+  erewrite max_length_uniform_length with (len:=1)
+    by (auto || apply ForallV_forall; intros *;
+        rewrite InV_map_iff; intros [? [? ?]];
+        subst; reflexivity).
+  cbn [List.seq List.map].
+  rewrite map_map. reflexivity.
+Qed.
+
 Lemma pairAssoc_mkpair {A B C} a b c :
   @pairAssoc _ _ A B C (mkpair (mkpair [a] [b]) [c]) = mkpair [a] (mkpair [b] [c]).
 Proof. reflexivity. Qed.
@@ -636,3 +661,7 @@ Proof.
     | _ => reflexivity
     end.
 Qed.
+
+Lemma indexConst_singleton {A sz} (v : combType (Vec A sz)) (n : nat) :
+  indexConst [v] n = [nth_default (defaultCombValue _) n v].
+Proof. reflexivity. Qed.
