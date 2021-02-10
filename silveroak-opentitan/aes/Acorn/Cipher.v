@@ -108,4 +108,29 @@ Section WithCava.
                           (initial_key, initial_rcon, input) ;;
     ret out.
 
+  Definition cipher_inner_loop
+             (is_decrypt : signal Bit) (* called op_i in OpenTitan *)
+             (initial_state : signal (Pair (Pair key round_constant) state))
+             (index_and_state : signal round_index * signal (Pair (Pair key round_constant) state))
+    : cava (signal (Pair (Pair key round_constant) state)) :=
+    let '(idx, feedback_state) := index_and_state in
+    is_first_round <- idx ==? round_0 ;;
+    cipher_state <- muxPair is_first_round (initial_state, feedback_state) ;;
+    let '(key_round, state') := unpair cipher_state in
+    let '(key', round) := unpair key_round in
+    '(key_round, state') <- cipher_step is_decrypt (key', round, state') idx ;;
+    ret (mkpair (mkpair (fst key_round) (snd key_round)) state').
+
+  Context {seqsemantics : CavaSeq semantics}.
+
+  Definition cipher_new
+             (is_decrypt : signal Bit) (* called op_i in OpenTitan *)
+             (initial_key : signal key) (initial_rcon : signal round_constant)
+             (round_i : signal round_index) (input : signal state)
+    : cava (signal state) :=
+    let initial_state := mkpair (mkpair initial_key initial_rcon) input in
+    loop_out <- loopDelayS (cipher_inner_loop is_decrypt initial_state) round_i ;;
+    let '(_, final_data) := unpair loop_out in
+    ret final_data.
+
 End WithCava.
