@@ -109,6 +109,9 @@ Section WithCava.
 
 End WithCava.
 
+(* These values are arbitrary and are to be used as inputs for generating
+  SystemVerilog testbenches. The expected output tested in the generated test bench is created
+  from the Cava semantics for AES sub components on these arbitrary inputs. *)
 Definition test_state
   := [[219; 19; 83; 69];
       [242; 10; 34; 92];
