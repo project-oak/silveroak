@@ -38,12 +38,12 @@ Section FIPSTests.
        | MixColumns =>
          fun st =>
            let input := from_flat st in
-           let output := unIdent (aes_mix_columns [false]%list [input]%list) in
+           let output := unIdent (aes_mix_columns [false] [input]) in
            to_flat (List.hd (defaultCombValue _) output)
        | InvMixColumns =>
          fun st =>
            let input := from_flat st in
-           let output := unIdent (aes_mix_columns [true]%list [input]%list) in
+           let output := unIdent (aes_mix_columns [true] [input]) in
            to_flat (List.hd (defaultCombValue _) output)
        | _ => aes_impl step key
        end).
