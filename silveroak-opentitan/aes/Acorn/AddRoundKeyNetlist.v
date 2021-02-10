@@ -29,7 +29,7 @@ Local Open Scope vector_scope.
 * an "official" interface.
   https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_cipher_core.sv
 *)
-Definition add_round_key_Interface :=
+Definition aes_add_round_key_Interface :=
   combinationalInterface "aes_add_round_key"
   [ mkPort "key_i" (Vec (Vec (Vec Bit 8) 4) 4);
     mkPort "data_i" (Vec (Vec (Vec Bit 8) 4) 4)]
@@ -37,7 +37,7 @@ Definition add_round_key_Interface :=
   [].
 
 Definition aes_add_round_key_Netlist
-  := makeNetlist add_round_key_Interface (fun '(key_i, data_i) => add_round_key key_i data_i).
+  := makeNetlist aes_add_round_key_Interface (fun '(key_i, data_i) => aes_add_round_key key_i data_i).
 
 Definition test_state
   := [[219; 19; 83; 69];
@@ -55,11 +55,11 @@ Definition test_key
 Local Open Scope list_scope.
 
 (* Compute the expected outputs from the Coq/Cava semantics. *)
-Definition add_round_key_expected_outputs : seqType (Vec (Vec (Vec Bit 8) 4) 4)
-  := combinational (add_round_key [fromNatVec test_key] [fromNatVec test_state]).
+Definition aes_add_round_key_expected_outputs : seqType (Vec (Vec (Vec Bit 8) 4) 4)
+  := combinational (aes_add_round_key [fromNatVec test_key] [fromNatVec test_state]).
 
 Definition aes_add_round_key_tb :=
   testBench "aes_add_round_key_tb"
-            add_round_key_Interface
+            aes_add_round_key_Interface
             [(fromNatVec test_key, fromNatVec test_state)]
-            add_round_key_expected_outputs.
+            aes_add_round_key_expected_outputs.

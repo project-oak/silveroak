@@ -96,7 +96,7 @@ Definition full_cipher {signal} {semantics : Cava signal}
     list (signal (Vec Bit 4)) -> signal state -> cava (signal state) :=
   cipher
     (round_index:=Vec Bit 4) (round_constant:=Vec Bit 8)
-    aes_sub_bytes aes_shift_rows aes_mix_columns add_round_key
+    aes_sub_bytes aes_shift_rows aes_mix_columns aes_add_round_key
     (fun k => mix_columns one k) (* Hard-wire is_decrypt to '1' *)
     key_expand num_rounds_regular round_0.
 
@@ -104,7 +104,7 @@ Local Ltac solve_side_conditions :=
   cbv zeta; intros;
   lazymatch goal with
   | |- ?x = ?x => reflexivity
-  | |- context [unIdent (add_round_key _ _) = _] =>
+  | |- context [unIdent (aes_add_round_key _ _) = _] =>
     eapply add_round_key_equiv
   | |- context [unIdent (aes_sub_bytes _ _) = _] =>
     eapply sub_bytes_equiv
