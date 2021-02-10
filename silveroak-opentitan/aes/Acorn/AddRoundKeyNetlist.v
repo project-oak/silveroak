@@ -39,19 +39,6 @@ Definition aes_add_round_key_Interface :=
 Definition aes_add_round_key_Netlist
   := makeNetlist aes_add_round_key_Interface (fun '(key_i, data_i) => aes_add_round_key key_i data_i).
 
-Definition test_state
-  := [[219; 19; 83; 69];
-      [242; 10; 34; 92];
-      [1; 1; 1; 1];
-      [45; 38; 49; 76]
-  ].
-Definition test_key
-  := [[219; 19; 83; 69];
-      [242; 10; 34; 92];
-      [1; 1; 1; 1];
-      [45; 38; 49; 76]
-  ].
-
 Local Open Scope list_scope.
 
 (* Compute the expected outputs from the Coq/Cava semantics. *)

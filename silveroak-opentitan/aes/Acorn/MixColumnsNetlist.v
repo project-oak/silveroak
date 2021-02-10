@@ -40,25 +40,14 @@ Definition aes_mix_columns_Interface :=
 Definition aes_mix_columns_Netlist
   := makeNetlist aes_mix_columns_Interface (fun '(op_i, data_i) => aes_mix_columns op_i data_i).
 
-(* Test case from the first four rows of the Wikipedia page on AES mix_columns:
-     https://en.wikipedia.org/wiki/Rijndael_MixColumns
-*)
-Definition mixColTest1InputNat : Vector.t (Vector.t nat 4) 4
-  := [[219; 19; 83; 69];
-      [242; 10; 34; 92];
-      [1; 1; 1; 1];
-      [45; 38; 49; 76]
-  ]%vector.
-
 Local Open Scope list_scope.
 
-(* Get the test inputs into the right format for the circuit inputs. *)
-Definition mix_cols_i1 := fromNatVec mixColTest1InputNat.
 (* Compute the expected outputs from the Coq/Cava semantics. *)
-Definition mix_cols_expected_outputs := combinational (aes_mix_columns [false] [mix_cols_i1]).
+Definition aes_mix_cols_expected_outputs :=
+  combinational (aes_mix_columns [false] [fromNatVec test_state]).
 
 Definition aes_mix_columns_tb :=
   testBench "aes_mix_columns_tb"
             aes_mix_columns_Interface
-            [(false, mix_cols_i1)]
-            mix_cols_expected_outputs.
+            [(false, fromNatVec test_state)]
+            aes_mix_cols_expected_outputs.

@@ -49,18 +49,11 @@ Definition aes_sbox_lut_Netlist
 Definition aes_sub_bytes_Netlist
   := makeNetlist aes_sub_bytes_Interface (fun '(op_i, data_i) => aes_sub_bytes op_i data_i).
 
-Definition subBytesTestVec : Vector.t (Vector.t nat 4) 4
-  := [[219; 19; 83; 69];
-      [242; 10; 34; 92];
-      [1; 1; 1; 1];
-      [45; 38; 49; 76]
-  ]%vector.
-
 (* Compute the expected outputs from the Coq/Cava semantics. *)
-Definition sub_bytes_expected_outputs := combinational (aes_sub_bytes [false] [fromNatVec subBytesTestVec]).
+Definition aes_sub_bytes_expected_outputs := combinational (aes_sub_bytes [false] [fromNatVec test_state]).
 
 Definition aes_sub_bytes_tb :=
   testBench "aes_sub_bytes_tb"
             aes_sub_bytes_Interface
-            [(false, fromNatVec subBytesTestVec)]
-            sub_bytes_expected_outputs.
+            [(false, fromNatVec test_state)]
+            aes_sub_bytes_expected_outputs.

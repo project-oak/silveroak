@@ -108,3 +108,17 @@ Section WithCava.
     ret (unpeel (map (indexConst input) indices)).
 
 End WithCava.
+
+Definition test_state
+  := [[219; 19; 83; 69];
+      [242; 10; 34; 92];
+      [1; 1; 1; 1];
+      [45; 38; 49; 76]
+  ].
+
+Definition test_key
+  := [[219; 19; 83; 69];
+      [242; 10; 34; 92];
+      [1; 1; 1; 1];
+      [45; 38; 49; 76]
+  ].

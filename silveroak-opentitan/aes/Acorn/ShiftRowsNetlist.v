@@ -36,19 +36,12 @@ Definition aes_shift_rows_Interface :=
 Definition aes_shift_rows_Netlist
   := makeNetlist aes_shift_rows_Interface (fun '(op_i, data_i) => aes_shift_rows op_i data_i).
 
-Definition shiftRowsTestVec : Vector.t (Vector.t nat 4) 4
-  := [[219; 19; 83; 69];
-      [242; 10; 34; 92];
-      [1; 1; 1; 1];
-      [45; 38; 49; 76]
-  ]%vector.
-
 (* Compute the expected outputs from the Coq/Cava semantics. *)
-Definition shift_rows_expected_outputs :=
-  combinational (aes_shift_rows [false] [fromNatVec shiftRowsTestVec]).
+Definition aes_shift_rows_expected_outputs :=
+  combinational (aes_shift_rows [false] [fromNatVec test_state]).
 
 Definition aes_shift_rows_tb :=
   testBench "aes_shift_rows_tb"
             aes_shift_rows_Interface
-            [(false, fromNatVec shiftRowsTestVec)]
-            shift_rows_expected_outputs.
+            [(false, fromNatVec test_state)]
+            aes_shift_rows_expected_outputs.
