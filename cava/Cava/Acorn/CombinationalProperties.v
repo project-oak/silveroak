@@ -661,3 +661,7 @@ Proof.
     | _ => reflexivity
     end.
 Qed.
+
+Lemma indexConst_singleton {A sz} (v : combType (Vec A sz)) (n : nat) :
+  indexConst [v] n = [nth_default (defaultCombValue _) n v].
+Proof. reflexivity. Qed.
