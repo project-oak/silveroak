@@ -32,9 +32,9 @@ Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.CipherProperties.
 Require Import AesSpec.ExpandAllKeys.
-Require Import AcornAes.AddRoundKey.
+Require Import AcornAes.AddRoundKeyCircuit.
 Require Import AcornAes.AddRoundKeyEquivalence.
-Require Import AcornAes.SubBytes.
+Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.CipherRound.
 Require Import AcornAes.CipherEquivalence.
 Import ListNotations.

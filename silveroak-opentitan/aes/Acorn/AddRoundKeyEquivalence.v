@@ -28,7 +28,7 @@ Import ListNotations.
 
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
-Require Import AcornAes.AddRoundKey.
+Require Import AcornAes.AddRoundKeyCircuit.
 Import StateTypeConversions.LittleEndian.
 
 Existing Instance CombinationalSemantics.
@@ -61,8 +61,8 @@ Section Equivalence.
   Proof.
     cbv [AES256.aes_add_round_key_circuit_spec
            AES256.add_round_key
-           AcornAes.AddRoundKey.add_round_key
-           AesSpec.AddRoundKey.add_round_key].
+           AddRoundKeyCircuit.add_round_key
+           AddRoundKey.add_round_key].
     cbv [xor4x4V xor4xV]. cbv [Bvector.BVxor].
     erewrite (zipWith_unIdent (A:=Vec (Vec Bit 8) 4)
                               (B:=Vec (Vec Bit 8) 4)

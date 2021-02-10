@@ -14,29 +14,41 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import AcornAes.Pkg.
-Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.ShiftRowsCircuit.
+Require Import Coq.Lists.List.
+Require Import Coq.Vectors.Vector.
+Import ListNotations VectorNotations.
+
+Require Import Cava.Cava.
+Require Import Cava.Acorn.Acorn.
+Require Import AesSpec.AES256.
+Require Import AesSpec.Tests.Common.
+Require Import AesSpec.Tests.CipherTest.
 Require Import AcornAes.SubBytesCircuit.
-Require Import AcornAes.AddRoundKeyCircuit.
-Require Import AcornAes.MixColumnsNetlist.
-Require Import AcornAes.ShiftRowsNetlist.
-Require Import AcornAes.SubBytesNetlist.
-Require Import AcornAes.AddRoundKeyNetlist.
-Require Import Coq.extraction.Extraction.
-Require Import Coq.extraction.ExtrHaskellZInteger.
-Require Import Coq.extraction.ExtrHaskellString.
-Require Import Coq.extraction.ExtrHaskellBasic.
-Require Import Coq.extraction.ExtrHaskellNatInteger.
 
-Extraction Language Haskell.
+(* Test against FIPS test vectors *)
+Section FIPSTests.
+  (* Create a version of AES with the sub_bytes circuit plugged in *)
+  Let impl : AESStep -> Vector.t bool 128 -> Vector.t bool 128 -> Vector.t bool 128 :=
+    (fun step key =>
+       match step with
+       | SubBytes =>
+         fun st =>
+           let input := from_flat st in
+           let output := unIdent (sub_bytes [false] [input]) in
+           to_flat (List.hd (defaultCombValue _) output)
+       | InvSubBytes =>
+         fun st =>
+           let input := from_flat st in
+           let output := unIdent (sub_bytes [true] [input]) in
+           to_flat (List.hd (defaultCombValue _) output)
+       | _ => aes_impl step key
+       end).
 
-Extraction Library Pkg.
-Extraction Library MixColumnsCircuit.
-Extraction Library ShiftRowsCircuit.
-Extraction Library SubBytesCircuit.
-Extraction Library AddRoundKeyCircuit.
-Extraction Library MixColumnsNetlist.
-Extraction Library ShiftRowsNetlist.
-Extraction Library SubBytesNetlist.
-Extraction Library AddRoundKeyNetlist.
+  (* encryption test *)
+  Goal (aes_test_encrypt Matrix impl = Success).
+  Proof. vm_compute. reflexivity. Qed.
+
+  (* decryption test *)
+  Goal (aes_test_decrypt Matrix impl = Success).
+  Proof. vm_compute. reflexivity. Qed.
+End FIPSTests.
