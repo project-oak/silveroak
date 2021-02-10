@@ -34,7 +34,9 @@ Require Import AesSpec.CipherProperties.
 Require Import AesSpec.ExpandAllKeys.
 Require Import AcornAes.AddRoundKeyCircuit.
 Require Import AcornAes.AddRoundKeyEquivalence.
+Require Import AcornAes.ShiftRowsCircuit.
 Require Import AcornAes.SubBytesCircuit.
+Require Import AcornAes.MixColumnsCircuit.
 Require Import AcornAes.CipherRound.
 Require Import AcornAes.CipherEquivalence.
 Import ListNotations.
@@ -43,11 +45,6 @@ Import StateTypeConversions.LittleEndian.
 
 Local Notation round_constant := (Vec Bit 8) (only parsing).
 Local Notation round_index := (Vec Bit 4) (only parsing).
-
-Axiom shift_rows : forall {signal} {semantics : Cava signal},
-    signal Bit -> signal state -> cava (signal state).
-Axiom mix_columns : forall {signal} {semantics : Cava signal},
-    signal Bit -> signal state -> cava (signal state).
 
 Axiom key_expand : forall {signal} {semantics : Cava signal},
     signal Bit -> signal round_index -> signal key * signal round_constant ->
@@ -79,11 +76,11 @@ Axiom sub_bytes_equiv :
     = [AES256.aes_sub_bytes_circuit_spec is_decrypt st].
 Axiom shift_rows_equiv :
   forall (is_decrypt : bool) (st : combType state),
-    unIdent (shift_rows [is_decrypt] [st])
+    unIdent (aes_shift_rows [is_decrypt] [st])
     = [AES256.aes_shift_rows_circuit_spec is_decrypt st].
 Axiom mix_columns_equiv :
   forall (is_decrypt : bool) (st : combType state),
-    unIdent (mix_columns [is_decrypt] [st])
+    unIdent (aes_mix_columns [is_decrypt] [st])
     = [AES256.aes_mix_columns_circuit_spec is_decrypt st].
 
 Axiom key_expand_equiv :
@@ -102,8 +99,8 @@ Definition full_cipher {signal} {semantics : Cava signal}
     list (signal (Vec Bit 4)) -> signal state -> cava (signal state) :=
   cipher
     (round_index:=Vec Bit 4) (round_constant:=Vec Bit 8)
-    sub_bytes shift_rows mix_columns add_round_key
-    (fun k => mix_columns one k) (* Hard-wire is_decrypt to '1' *)
+    sub_bytes aes_shift_rows aes_mix_columns add_round_key
+    (fun k => aes_mix_columns one k) (* Hard-wire is_decrypt to '1' *)
     key_expand num_rounds_regular round_0.
 
 Local Ltac solve_side_conditions :=
@@ -114,9 +111,9 @@ Local Ltac solve_side_conditions :=
     eapply add_round_key_equiv
   | |- context [unIdent (sub_bytes _ _) = _] =>
     eapply sub_bytes_equiv
-  | |- context [unIdent (shift_rows _ _) = _] =>
+  | |- context [unIdent (aes_shift_rows _ _) = _] =>
     eapply shift_rows_equiv
-  | |- context [unIdent (mix_columns _ _) = _] =>
+  | |- context [unIdent (aes_mix_columns _ _) = _] =>
     eapply mix_columns_equiv
   | |- context [unIdent (key_expand [?is_decrypt] _ _) = _] =>
     rewrite key_expand_equiv; cbv zeta;
