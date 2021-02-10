@@ -35,6 +35,7 @@ Require Import AesSpec.ExpandAllKeys.
 Require Import AcornAes.AddRoundKeyCircuit.
 Require Import AcornAes.AddRoundKeyEquivalence.
 Require Import AcornAes.ShiftRowsCircuit.
+Require Import AcornAes.ShiftRowsEquivalence.
 Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.MixColumnsCircuit.
 Require Import AcornAes.CipherRound.
@@ -74,10 +75,6 @@ Axiom sub_bytes_equiv :
   forall (is_decrypt : bool) (st : combType state),
     unIdent (sub_bytes [is_decrypt] [st])
     = [AES256.aes_sub_bytes_circuit_spec is_decrypt st].
-Axiom shift_rows_equiv :
-  forall (is_decrypt : bool) (st : combType state),
-    unIdent (aes_shift_rows [is_decrypt] [st])
-    = [AES256.aes_shift_rows_circuit_spec is_decrypt st].
 Axiom mix_columns_equiv :
   forall (is_decrypt : bool) (st : combType state),
     unIdent (aes_mix_columns [is_decrypt] [st])
