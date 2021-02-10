@@ -38,7 +38,7 @@ Require Import AcornAes.ShiftRowsCircuit.
 Require Import AcornAes.ShiftRowsEquivalence.
 Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.CipherRound.
+Require Import AcornAes.Cipher.
 Require Import AcornAes.CipherEquivalence.
 Import ListNotations.
 Import Pkg.Notations.
