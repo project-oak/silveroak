@@ -25,7 +25,6 @@ Require Import AesSpec.AES256.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.MixColumnsNetlist.
 Require Import AcornAes.Pkg.
 Import Pkg.Notations.
 
@@ -64,6 +63,16 @@ Definition mixColTest1ExpectedOutput : Vector.t (Vector.t nat 4) 4
       [77; 126; 189; 248]]%vector.
 
 (*** First work with MixCols.mix_cols spec. ***)
+
+(* Test case from the first four rows of the Wikipedia page on AES mix_columns:
+     https://en.wikipedia.org/wiki/Rijndael_MixColumns
+*)
+Definition mixColTest1InputNat : Vector.t (Vector.t nat 4) 4
+  := [[219; 19; 83; 69];
+      [242; 10; 34; 92];
+      [1; 1; 1; 1];
+      [45; 38; 49; 76]
+  ]%vector.
 
 Definition mixColTestInputs' : Vector.t (Vector.t Byte.byte 4) 4 := fromNatState mixColTest1InputNat.
 

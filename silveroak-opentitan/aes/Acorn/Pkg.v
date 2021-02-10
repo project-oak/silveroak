@@ -108,3 +108,20 @@ Section WithCava.
     ret (unpeel (map (indexConst input) indices)).
 
 End WithCava.
+
+(* These values are arbitrary and are to be used as inputs for generating
+  SystemVerilog testbenches. The expected output tested in the generated test bench is created
+  from the Cava semantics for AES sub components on these arbitrary inputs. *)
+Definition test_state
+  := [[219; 19; 83; 69];
+      [242; 10; 34; 92];
+      [1; 1; 1; 1];
+      [45; 38; 49; 76]
+  ].
+
+Definition test_key
+  := [[219; 19; 83; 69];
+      [242; 10; 34; 92];
+      [1; 1; 1; 1];
+      [45; 38; 49; 76]
+  ].

@@ -157,7 +157,7 @@ Section WithCava.
     let vec := unpeel [encrypted; decrypted] in
     ret (indexAt vec (unpeel [is_decrypt])).
 
-  Definition sub_bytes (is_decrypt : signal Bit) (b : signal state)
+  Definition aes_sub_bytes (is_decrypt : signal Bit) (b : signal state)
     : cava (signal state) :=
     state_map (aes_sbox_lut is_decrypt) b.
 End WithCava.
