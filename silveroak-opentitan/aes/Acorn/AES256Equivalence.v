@@ -97,7 +97,7 @@ Definition full_cipher {signal} {semantics : Cava signal}
   cipher
     (round_index:=Vec Bit 4) (round_constant:=Vec Bit 8)
     aes_sub_bytes aes_shift_rows aes_mix_columns aes_add_round_key
-    (fun k => mix_columns one k) (* Hard-wire is_decrypt to '1' *)
+    (fun k => aes_mix_columns one k) (* Hard-wire is_decrypt to '1' *)
     key_expand num_rounds_regular round_0.
 
 Local Ltac solve_side_conditions :=
