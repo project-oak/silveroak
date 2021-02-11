@@ -15,6 +15,7 @@
 (****************************************************************************)
 
 Require Import Coq.Lists.List.
+Require Import Coq.micromega.Lia.
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 Require Import Cava.BitArithmetic.
@@ -42,8 +43,29 @@ Section Equivalence.
   Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
 
   Lemma aes_transpose_correct n m (v : combType (Vec (Vec (Vec Bit 8) n) m)) :
+    m <> 0 ->
+    n <> 0 ->
     aes_transpose [v] = [transpose v].
-  Admitted.
+  Proof.
+    intros Hm Hn.
+    unfold aes_transpose.
+    setoid_rewrite peel_singleton.
+    rewrite map_map.
+    erewrite (@map_ext
+                (combType (Vec (Vec Bit 8) n)))
+      by apply (peel_singleton).
+    erewrite (transpose_map_map
+                (A := combType (Vec Bit 8))
+                (B := seqType (Vec Bit 8))).
+    rewrite map_map.
+    erewrite map_ext
+      by (intro;
+          rewrite <- (peel_singleton (A := (Vec Bit 8)));
+          eapply unpeel_peel;
+          auto).
+    rewrite <- (peel_singleton (A := Vec (Vec Bit 8) m)).
+    auto using unpeel_peel.
+  Qed.
 
   Lemma mix_single_column_equiv (is_decrypt : bool) (col : Vector.t byte 4) :
     unIdent (aes_mix_single_column [is_decrypt] [col])
@@ -59,12 +81,12 @@ Section Equivalence.
     = [AES256.aes_mix_columns_circuit_spec is_decrypt st].
   Proof.
     cbv [aes_mix_columns combinational]. simpl_ident.
-    rewrite aes_transpose_correct.
+    rewrite aes_transpose_correct by lia.
     rewrite (peel_singleton (A:=Vec (Vec Bit 8) 4)).
     rewrite map_map.
     erewrite map_ext by apply mix_single_column_equiv.
     rewrite (unpeel_singleton (B:=Vec (Vec Bit 8) 4)) by congruence.
-    rewrite aes_transpose_correct.
+    rewrite aes_transpose_correct by lia.
     cbv [AES256.aes_mix_columns_circuit_spec
            AES256.mix_columns AES256.inv_mix_columns
            MixColumns.mix_columns MixColumns.inv_mix_columns].
