@@ -132,12 +132,13 @@ Section WithSubroutines.
       compute_expr (nat_to_bitvec_sized 2 0);
       compute_expr (nat_to_bitvec_sized 2 1).
     all:rewrite (mux4_mkpair (t:=Vec (Vec (Vec Bit 8) 4) 4)).
-    all:simplify.
     all:rewrite (mkpair_singleton (A:=Vec (Vec (Vec Bit 8) 4) 4)
                                   (B:=Vec Bit 8)).
+    all:rewrite <-surjective_pairing.
+    all:simplify.
+    all:rewrite add_round_key_correct.
     all:rewrite (mkpair_singleton (A:=Pair (Vec (Vec (Vec Bit 8) 4) 4) (Vec Bit 8))
                                   (B:=Vec (Vec (Vec Bit 8) 4) 4)).
-    all:rewrite <-surjective_pairing.
     all:reflexivity.
   Qed.
 

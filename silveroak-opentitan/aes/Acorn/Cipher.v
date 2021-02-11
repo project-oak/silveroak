@@ -116,14 +116,16 @@ Section WithCava.
          cipher_step is_decrypt cipher_state idx)
       round_i.
 
+  (* Combinational-loop definition (to be deleted once proofs are adapted to
+     sequential version) *)
   Definition cipher
              (is_decrypt : signal Bit) (* called op_i in OpenTitan *)
              (initial_key : signal key) (initial_rcon : signal round_constant)
-             (round_i : signal round_index) (input : signal state)
+             (round_indices : list (signal round_index)) (input : signal state)
     : cava (signal state) :=
-    loop_out <- cipher_loop is_decrypt initial_key initial_rcon round_i input ;;
-    let '(_,final_data) := unpair loop_out in
-    ret final_data.
+    loop_out <- foldLM (cipher_step is_decrypt) round_indices
+                      (mkpair (mkpair initial_key initial_rcon) input) ;;
+    ret (snd (unpair loop_out)).
 
   Definition cipher_inner_loop
              (is_decrypt : signal Bit) (* called op_i in OpenTitan *)
