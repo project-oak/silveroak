@@ -15,6 +15,7 @@
 (****************************************************************************)
 
 Require Import Coq.Lists.List.
+Require Import Coq.micromega.Lia.
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 Require Import Cava.BitArithmetic.
@@ -33,8 +34,6 @@ Require Import AesSpec.StateTypeConversions.
 Require Import AcornAes.Pkg.
 Require Import AcornAes.MixColumnsCircuit.
 Import StateTypeConversions.LittleEndian.
-
-Require Import Coq.micromega.Lia.
 
 Existing Instance CombinationalSemantics.
 
