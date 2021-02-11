@@ -116,10 +116,10 @@ Section WithCava.
     let '(idx, feedback_state) := index_and_state in
     is_first_round <- idx ==? round_0 ;;
     cipher_state <- muxPair is_first_round (initial_state, feedback_state) ;;
-    let '(key_round, state') := unpair cipher_state in
-    let '(key', round) := unpair key_round in
-    '(key_round, state') <- cipher_step is_decrypt (key', round, state') idx ;;
-    ret (mkpair (mkpair (fst key_round) (snd key_round)) state').
+    let '(key_round, st) := unpair cipher_state in
+    let '(k, round) := unpair key_round in
+    '(key_round, st) <- cipher_step is_decrypt (k, round, st) idx ;;
+    ret (mkpair (mkpair (fst key_round) (snd key_round)) st).
 
   Context {seqsemantics : CavaSeq semantics}.
 
