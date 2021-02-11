@@ -56,12 +56,12 @@ Section Equivalence.
   Qed.
 
   Lemma add_round_key_equiv (k : key) (st : state) :
-    combinational (add_round_key [k] [st])
+    combinational (aes_add_round_key [k] [st])
     = [AES256.aes_add_round_key_circuit_spec k st].
   Proof.
     cbv [AES256.aes_add_round_key_circuit_spec
            AES256.add_round_key
-           AddRoundKeyCircuit.add_round_key
+           AddRoundKeyCircuit.aes_add_round_key
            AddRoundKey.add_round_key].
     cbv [xor4x4V xor4xV]. cbv [Bvector.BVxor].
     erewrite (zipWith_unIdent (A:=Vec (Vec Bit 8) 4)

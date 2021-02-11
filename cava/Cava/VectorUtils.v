@@ -1472,6 +1472,13 @@ Section Vector.
     reflexivity.
   Qed.
 
+  Lemma of_list_sized_cons n (l : list A) a d :
+    of_list_sized d (S n) (a :: l) = (a :: of_list_sized d n l)%vector.
+  Proof. reflexivity. Qed.
+
+  Lemma of_list_sized_0_nil (d : A) : of_list_sized d 0 [] = []%vector.
+  Proof. reflexivity. Qed.
+
   Lemma eqb_fold A_beq n (v1 v2 : Vector.t A n) :
     Vector.eqb A A_beq v1 v2
     = Vector.fold_left andb true (Vector.map2 A_beq v1 v2).
@@ -1502,6 +1509,8 @@ Section Vector.
   Qed.
 End Vector.
 Hint Rewrite @to_list_of_list_sized using solve [eauto] : push_to_list.
+Hint Rewrite @of_list_sized_0_nil @of_list_sized_cons @of_list_sized_to_list
+     using solve [eauto] : push_of_list_sized.
 
 Section NthDefault.
   Lemma nth_default_snoc {A n} (v : Vector.t A n) x i d :
@@ -1545,7 +1554,8 @@ Ltac constant_vector_simpl vec :=
   lazymatch type of vec with
   | Vector.t _ (S ?n) =>
     let v' := fresh "v" in
-    rewrite (eta vec); set (v':=tl vec);
-    cbv beta in v'; constant_vector_simpl v'
-  | Vector.t _ 0 => eapply case0 with (v:=vec)
+    let x := fresh "x" in
+    rewrite (eta vec); set (v' := tl vec); set (x:=hd vec);
+    cbv beta in v', x; constant_vector_simpl v'
+  | Vector.t _ 0 => eapply case0 with (v := vec)
   end.

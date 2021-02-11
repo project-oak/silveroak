@@ -32,6 +32,6 @@ Section WithCava.
   Definition xor4x4V (a b : signal state) : cava (signal state) :=
     zipWith xor4xV a b.
 
-  Definition add_round_key (k : signal key) (st : signal state)
+  Definition aes_add_round_key (k : signal key) (st : signal state)
     : cava (signal state) := xor4x4V k st.
 End WithCava.

@@ -35,9 +35,10 @@ Require Import AesSpec.ExpandAllKeys.
 Require Import AcornAes.AddRoundKeyCircuit.
 Require Import AcornAes.AddRoundKeyEquivalence.
 Require Import AcornAes.ShiftRowsCircuit.
+Require Import AcornAes.ShiftRowsEquivalence.
 Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.CipherRound.
+Require Import AcornAes.Cipher.
 Require Import AcornAes.CipherEquivalence.
 Import ListNotations.
 Import Pkg.Notations.
@@ -72,12 +73,8 @@ Hint Rewrite @unflatten_flatten @flatten_unflatten using solve [eauto] : convers
 
 Axiom sub_bytes_equiv :
   forall (is_decrypt : bool) (st : combType state),
-    unIdent (sub_bytes [is_decrypt] [st])
+    unIdent (aes_sub_bytes [is_decrypt] [st])
     = [AES256.aes_sub_bytes_circuit_spec is_decrypt st].
-Axiom shift_rows_equiv :
-  forall (is_decrypt : bool) (st : combType state),
-    unIdent (aes_shift_rows [is_decrypt] [st])
-    = [AES256.aes_shift_rows_circuit_spec is_decrypt st].
 Axiom mix_columns_equiv :
   forall (is_decrypt : bool) (st : combType state),
     unIdent (aes_mix_columns [is_decrypt] [st])
@@ -99,7 +96,7 @@ Definition full_cipher {signal} {semantics : Cava signal}
     list (signal (Vec Bit 4)) -> signal state -> cava (signal state) :=
   cipher
     (round_index:=Vec Bit 4) (round_constant:=Vec Bit 8)
-    sub_bytes aes_shift_rows aes_mix_columns add_round_key
+    aes_sub_bytes aes_shift_rows aes_mix_columns aes_add_round_key
     (fun k => aes_mix_columns one k) (* Hard-wire is_decrypt to '1' *)
     key_expand num_rounds_regular round_0.
 
@@ -107,9 +104,9 @@ Local Ltac solve_side_conditions :=
   cbv zeta; intros;
   lazymatch goal with
   | |- ?x = ?x => reflexivity
-  | |- context [unIdent (add_round_key _ _) = _] =>
+  | |- context [unIdent (aes_add_round_key _ _) = _] =>
     eapply add_round_key_equiv
-  | |- context [unIdent (sub_bytes _ _) = _] =>
+  | |- context [unIdent (aes_sub_bytes _ _) = _] =>
     eapply sub_bytes_equiv
   | |- context [unIdent (aes_shift_rows _ _) = _] =>
     eapply shift_rows_equiv

@@ -42,7 +42,7 @@ Require Import AesSpec.CipherProperties.
 Require Import AesSpec.ExpandAllKeys.
 Require Import AesSpec.InterleavedCipher.
 Require Import AesSpec.InterleavedInverseCipher.
-Require Import AcornAes.CipherRound.
+Require Import AcornAes.Cipher.
 
 Existing Instance CombinationalSemantics.
 
@@ -201,7 +201,7 @@ Section WithSubroutines.
          sub_bytes shift_rows mix_columns add_round_key (mix_columns [true])
          key_expand [num_regular_rounds] [round0] [false]
          [first_key] [init_rcon] round_indices [input])
-    = [Cipher.cipher
+    = [AesSpec.Cipher.cipher
          _ _ add_round_key_spec sub_bytes_spec shift_rows_spec mix_columns_spec
          first_key last_key middle_keys input].
   Proof.
