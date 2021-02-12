@@ -309,3 +309,121 @@ which performs a bit-wise XOR between 4x4 bytes. We're confident this is directl
   xor inst_6 (net[122], key_i[3][3][2], data_i[3][3][2]);
 ...  
 ```
+
+## Top level Earl Grey circuit
+### Open Titan baseline Earl Grey block
+The complete FPGA Earl Grey FPGA design for the Nexys Video board is 26651 LUTs in size. Specificaslly, after synthesis the utilization is:
+```
+
++----------------------------+-------+-------+-----------+-------+
+|          Site Type         |  Used | Fixed | Available | Util% |
++----------------------------+-------+-------+-----------+-------+
+| Slice LUTs*                | 26737 |     0 |    134600 | 19.86 |
+|   LUT as Logic             | 26553 |     0 |    134600 | 19.73 |
+|   LUT as Memory            |   184 |     0 |     46200 |  0.40 |
+|     LUT as Distributed RAM |   184 |     0 |           |       |
+|     LUT as Shift Register  |     0 |     0 |           |       |
+| Slice Registers            | 21419 |     0 |    269200 |  7.96 |
+|   Register as Flip Flop    | 21419 |     0 |    269200 |  7.96 |
+|   Register as Latch        |     0 |     0 |    269200 |  0.00 |
+| F7 Muxes                   |  1335 |     0 |     67300 |  1.98 |
+| F8 Muxes                   |   359 |     0 |     33650 |  1.07 |
++----------------------------+-------+-------+-----------+-------+
+```
+
+After implementation it is:
+```
++----------------------------+-------+-------+-----------+-------+
+|          Site Type         |  Used | Fixed | Available | Util% |
++----------------------------+-------+-------+-----------+-------+
+| Slice LUTs                 | 26651 |     0 |    133800 | 19.92 |
+|   LUT as Logic             | 26467 |     0 |    133800 | 19.78 |
+|   LUT as Memory            |   184 |     0 |     46200 |  0.40 |
+|     LUT as Distributed RAM |   184 |     0 |           |       |
+|     LUT as Shift Register  |     0 |     0 |           |       |
+| Slice Registers            | 21416 |     0 |    267600 |  8.00 |
+|   Register as Flip Flop    | 21416 |     0 |    267600 |  8.00 |
+|   Register as Latch        |     0 |     0 |    267600 |  0.00 |
+| F7 Muxes                   |  1335 |     0 |     66900 |  2.00 |
+| F8 Muxes                   |   359 |     0 |     33450 |  1.07 |
++----------------------------+-------+-------+-----------+-------+
+```
+with the following slice distribution:
+```
++--------------------------------------------+-------+-------+-----------+-------+
+|                  Site Type                 |  Used | Fixed | Available | Util% |
++--------------------------------------------+-------+-------+-----------+-------+
+| Slice                                      | 10447 |     0 |     33450 | 31.23 |
+|   SLICEL                                   |  6682 |     0 |           |       |
+|   SLICEM                                   |  3765 |     0 |           |       |
+| LUT as Logic                               | 26467 |     0 |    133800 | 19.78 |
+|   using O5 output only                     |     2 |       |           |       |
+|   using O6 output only                     | 21660 |       |           |       |
+|   using O5 and O6                          |  4805 |       |           |       |
+| LUT as Memory                              |   184 |     0 |     46200 |  0.40 |
+|   LUT as Distributed RAM                   |   184 |     0 |           |       |
+|     using O5 output only                   |     0 |       |           |       |
+|     using O6 output only                   |     0 |       |           |       |
+|     using O5 and O6                        |   184 |       |           |       |
+|   LUT as Shift Register                    |     0 |     0 |           |       |
+| Slice Registers                            | 21416 |     0 |    267600 |  8.00 |
+|   Register driven from within the Slice    |  7575 |       |           |       |
+|   Register driven from outside the Slice   | 13841 |       |           |       |
+|     LUT in front of the register is unused |  7081 |       |           |       |
+|     LUT in front of the register is used   |  6760 |       |           |       |
+| Unique Control Sets                        |   885 |       |     33450 |  2.65 |
++--------------------------------------------+-------+-------+-----------+-------+
+```
+The timing summary shows the clocking requirements for this design:
+```
+----------------------------------------------------------------------------------
+| Clock Summary
+| -------------
+----------------------------------------------------------------------------------
+
+Clock           Waveform(ns)       Period(ns)      Frequency(MHz)
+-----           ------------       ----------      --------------
+sys_clk_pin     {0.000 5.000}      10.000          100.000         
+  clk_48_unbuf  {0.000 10.417}     20.833          48.000          
+  clk_50_unbuf  {0.000 10.000}     20.000          50.000          
+  clk_fb_unbuf  {0.000 5.000}      10.000          100.000  
+```
+The Silver Oak generated blocks need to ensure we can still meet these timing requirements.
+
+### Version of Early Grey with AES block replaced with Silver Oak verison
+Currently these results are for a drop-in replacement for the data-path block but not the control (yet).
+After synthesis:
+```
++----------------------------+-------+-------+-----------+-------+
+|          Site Type         |  Used | Fixed | Available | Util% |
++----------------------------+-------+-------+-----------+-------+
+| Slice LUTs*                | 26733 |     0 |    134600 | 19.86 |
+|   LUT as Logic             | 26549 |     0 |    134600 | 19.72 |
+|   LUT as Memory            |   184 |     0 |     46200 |  0.40 |
+|     LUT as Distributed RAM |   184 |     0 |           |       |
+|     LUT as Shift Register  |     0 |     0 |           |       |
+| Slice Registers            | 21419 |     0 |    269200 |  7.96 |
+|   Register as Flip Flop    | 21419 |     0 |    269200 |  7.96 |
+|   Register as Latch        |     0 |     0 |    269200 |  0.00 |
+| F7 Muxes                   |  1335 |     0 |     67300 |  1.98 |
+| F8 Muxes                   |   359 |     0 |     33650 |  1.07 |
++----------------------------+-------+-------+-----------+-------+
+```
+After implementation:
+```
++----------------------------+-------+-------+-----------+-------+
+|          Site Type         |  Used | Fixed | Available | Util% |
++----------------------------+-------+-------+-----------+-------+
+| Slice LUTs                 | 26647 |     0 |    133800 | 19.92 |
+|   LUT as Logic             | 26463 |     0 |    133800 | 19.78 |
+|   LUT as Memory            |   184 |     0 |     46200 |  0.40 |
+|     LUT as Distributed RAM |   184 |     0 |           |       |
+|     LUT as Shift Register  |     0 |     0 |           |       |
+| Slice Registers            | 21416 |     0 |    267600 |  8.00 |
+|   Register as Flip Flop    | 21416 |     0 |    267600 |  8.00 |
+|   Register as Latch        |     0 |     0 |    267600 |  0.00 |
+| F7 Muxes                   |  1335 |     0 |     66900 |  2.00 |
+| F8 Muxes                   |   359 |     0 |     33450 |  1.07 |
++----------------------------+-------+-------+-----------+-------+
+```
+This shows that after global optimization the Silver Oak block is slightly smaller, occupying 4 LUTs less (a 0.015% difference). For the final analysis we need to complete the implementation fo the AES control block.
