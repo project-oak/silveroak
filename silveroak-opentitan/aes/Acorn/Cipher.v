@@ -112,7 +112,7 @@ Section WithCava.
                            * signal (Pair (Pair key round_constant) state) =>
          let '(idx, feedback_state) := index_and_state in
          is_first_round <- idx ==? round_0 ;;
-         cipher_state <- muxPair is_first_round (initial_state, feedback_state) ;;
+         cipher_state <- muxPair is_first_round (feedback_state, initial_state) ;;
          cipher_step is_decrypt cipher_state idx)
       round_i.
 

@@ -30,7 +30,7 @@ Section Spec.
     : list key * key :=
     fold_left_accumulate
       (fun round_key i => key_expand i round_key)
-      (fun x => x) round_idxs initial_key.
+      round_idxs initial_key.
 
   Definition all_keys (Nr : nat) (initial_key : key)
     : list key :=
@@ -109,7 +109,7 @@ Section Spec.
     Proof.
       intros. rewrite !nth_all_keys with (n:=n) by lia.
       autounfold with expandall.
-      rewrite !nth_fold_left_accumulate_id by (rewrite seq_length; lia).
+      rewrite !nth_fold_left_accumulate by (rewrite seq_length; lia).
       rewrite !firstn_all2 by (rewrite seq_length; lia).
       rewrite seq_S, Nat.add_0_l, fold_left_app. cbn [fold_left].
       repeat destruct_pair_let. reflexivity.
@@ -147,7 +147,7 @@ Section Extensionality.
     all_keys key_expand n k = all_keys key_expand' n k.
   Proof.
     intro Hext. cbv [all_keys all_keys'].
-    f_equal. apply fold_left_accumulate_ext1_In.
+    f_equal. apply fold_left_accumulate_ext_In.
     intros *; intro Hseq. apply in_seq in Hseq.
     apply Hext; lia.
   Qed.
@@ -196,7 +196,7 @@ Section Inverse.
     rewrite <-seq_shift, fold_left_accumulate_map.
     erewrite IHn by (intros; instantiate_app_by_reflexivity).
     rewrite Hequiv, Nat.sub_diag.
-    erewrite fold_left_accumulate_ext1_In; [ reflexivity | ].
+    erewrite fold_left_accumulate_ext_In; [ reflexivity | ].
     intros *. rewrite in_rev, rev_involutive, in_seq.
     intros; cbv beta; rewrite Hequiv.
     f_equal; lia.

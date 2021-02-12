@@ -270,13 +270,17 @@ Section Loops.
         (f : seqType A * seqType B -> ident (seqType B))
         (spec : combType A -> combType B -> combType B)
         input :
-    (forall a b, sequential (f ([a], [b])) = [spec a b]) ->
+    (forall a b, In a input ->
+            sequential (f ([a], [b])) = [spec a b]) ->
     sequential (loopDelaySR (CavaSeq:=SequentialSemantics) resetval f input)
     = tl (fst (fold_left_accumulate
-                 (fun feedback a => spec a feedback) (fun x => x) input resetval)).
+                 (fun feedback a => spec a feedback) input resetval)).
   Proof.
     cbv [loopDelaySR loopSeqS SequentialSemantics sequential]; intros *.
     intro Hspec; seqsimpl.
+    erewrite fold_left_ext_In
+      by (intros; cbv [loopSeqS']; simpl_ident;
+          rewrite Hspec by auto; reflexivity).
     cbv [fold_left_accumulate fold_left_accumulate']. cbn [app].
     factor_out_loops.
     eapply fold_left_double_invariant
@@ -293,7 +297,7 @@ Section Loops.
       intros [Hlen [Heq Hlast]]. cbn [loopSeqS' fst snd].
       simpl_ident. autorewrite with push_length listsimpl push_nth.
       change (list (combType B)) with (seqType B) in *.
-      rewrite Heq, Hspec.
+      rewrite Heq.
       autorewrite with push_length natsimpl push_nth.
       destruct n;
         [ subst; destruct_lists_by_length; cbn [tl length] in *;
@@ -348,13 +352,13 @@ Section Loops.
         (f : seqType A * seqType B -> ident (seqType B))
         (spec : combType A -> combType B -> combType B)
         input :
-    (forall a b, sequential (f ([a], [b])) = [spec a b]) ->
+    (forall a b, In a input -> sequential (f ([a], [b])) = [spec a b]) ->
     sequential (loopDelaySR (CavaSeq:=SequentialSemantics) resetval f input)
     = tl (fst (fold_left_accumulate
                  (fun feedback n =>
                     let a := nth n input (defaultCombValue A) in
                     spec a feedback)
-                 (fun x => x) (seq 0 (length input)) resetval)).
+                 (seq 0 (length input)) resetval)).
   Proof.
     intros; erewrite loopDelaySR_combinational_body_stepwise by eauto.
     rewrite fold_left_accumulate_to_seq with (default:=defaultCombValue A).
@@ -382,10 +386,10 @@ Section Loops.
         (f : seqType A * seqType B -> ident (seqType B))
         (spec : combType A -> combType B -> combType B)
         input :
-    (forall a b, sequential (f ([a], [b])) = [spec a b]) ->
+    (forall a b, In a input -> sequential (f ([a], [b])) = [spec a b]) ->
     sequential (loopDelayS f input)
     = tl (fst (fold_left_accumulate
-                 (fun feedback a => spec a feedback) (fun x => x) input
+                 (fun feedback a => spec a feedback) input
                  (defaultCombValue B))).
   Proof.
     apply loopDelaySR_combinational_body_stepwise.
@@ -412,13 +416,13 @@ Section Loops.
         (f : seqType A * seqType B -> ident (seqType B))
         (spec : combType A -> combType B -> combType B)
         input :
-    (forall a b, sequential (f ([a], [b])) = [spec a b]) ->
+    (forall a b, In a input -> sequential (f ([a], [b])) = [spec a b]) ->
     sequential (loopDelayS f input)
     = tl (fst (fold_left_accumulate
                  (fun feedback n =>
                     let a := nth n input (defaultCombValue A) in
                     spec a feedback)
-                 (fun x => x) (seq 0 (length input)) (defaultCombValue B))).
+                 (seq 0 (length input)) (defaultCombValue B))).
   Proof.
     apply loopDelaySR_combinational_body_stepwise_indexed.
   Qed.
