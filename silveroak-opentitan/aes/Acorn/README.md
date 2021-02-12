@@ -289,3 +289,23 @@ After implementation:
 ```
 The Silver Oak block has identical utilization.
 
+## The `aes_add_round_key` operation
+There is no distinct block in the OpenTitan AES implementaiton for performing the AES add round key operaiton because this occurs as a single line in the `aes_cipher_core` block that performs a bit-wise XOR:
+```verilog
+  assign add_round_key_out = add_round_key_in ^ round_key;
+```
+The corresponding Cava code is:
+```coq
+  Definition aes_add_round_key (k : signal key) (st : signal state)
+    : cava (signal state) := xor4x4V k st.
+```
+which performs a bit-wise XOR between 4x4 bytes. We're confident this is directly equivalent and this is borne out by the generated SystemVerilog which is just a bunch of XOR-gates:
+```verilog
+  xor inst_1 (net[127], key_i[3][3][7], data_i[3][3][7]);
+  xor inst_2 (net[126], key_i[3][3][6], data_i[3][3][6]);
+  xor inst_3 (net[125], key_i[3][3][5], data_i[3][3][5]);
+  xor inst_4 (net[124], key_i[3][3][4], data_i[3][3][4]);
+  xor inst_5 (net[123], key_i[3][3][3], data_i[3][3][3]);
+  xor inst_6 (net[122], key_i[3][3][2], data_i[3][3][2]);
+...  
+```
