@@ -298,6 +298,166 @@ Section WithSubroutines.
     List.map snd (inverse_cipher_trace_with_keys Nr first_key init_rcon input).
 
   Print cipher_loop.
+  Notation mkpair := (mkpair (Cava:=CombinationalSemantics)).
+  Lemma cipher_loop_equiv
+        (Nr : nat) (num_regular_rounds round0 : round_index)
+        (is_decrypt : bool) (init_rcon : round_constant)
+        (init_key : key) (init_state : state)
+        (round_indices : seqType (Vec Bit 4)) :
+    (* Nr must be at least two and small enough to fit in round_index size *)
+    1 < Nr < 2 ^ 4 ->
+    round_indices = map (nat_to_bitvec_sized 4) (List.seq 0 (S Nr)) ->
+    num_regular_rounds = nat_to_bitvec_sized _ Nr ->
+    round0 = nat_to_bitvec_sized _ 0 ->
+    let init_key_ : seqType (Vec (Vec (Vec Bit 8) 4) 4) :=
+        repeat init_key (S Nr) in
+    let init_rcon_ : seqType (Vec Bit 8) := repeat init_rcon (S Nr) in
+    let init_state_ : seqType (Vec (Vec (Vec Bit 8) 4) 4) :=
+        repeat init_state (S Nr) in
+    let num_regular_rounds_ : seqType (Vec Bit 4) :=
+        repeat num_regular_rounds (S Nr) in
+    let round0_ : seqType (Vec Bit 4) :=
+        repeat round0 (S Nr) in
+    let is_decrypt_ : seqType Bit := repeat is_decrypt (S Nr) in
+    let initial_cipher_state :=
+        mkpair (mkpair init_key_ init_rcon_) init_state_ in
+    unIdent
+      (cipher_loop
+         (round_index:=Vec Bit 4) (round_constant:=Vec Bit 8)
+         sub_bytes shift_rows mix_columns add_round_key (mix_columns [true])
+         key_expand
+         (mkpair (mkpair (mkpair (mkpair num_regular_rounds_ round0_)
+                                 is_decrypt_) initial_cipher_state)
+                 round_indices))
+    = cipher_trace_with_keys Nr init_key init_rcon init_state.
+  Proof.
+    cbv zeta; intro Hall_keys; intros. subst.
+    cbv [cipher_loop cipher_step mcompose]. simplify.
+
+    (* Helpful rephrasing of Nr upper bound *)
+    assert (N.of_nat Nr < 2 ^ N.of_nat 4)%N
+      by (cbn; change (2^4)%nat with 16 in *; Lia.lia).
+    pose proof (N.size_nat_le 4 (N.of_nat Nr) ltac:(Lia.lia)).
+
+    (* simplify loop body *)
+    cbn [nor2 and2 unpeel mkpair CombinationalSemantics].
+    cbv [lift2]. simpl_ident.
+
+    (* simplify loop input *)
+    rewrite !pad_combine_eq by length_hammer.
+    repeat first [ progress cbn [fst snd]
+                 | rewrite combine_repeat_l by length_hammer
+                 | rewrite combine_repeat_r by length_hammer
+                 | rewrite combine_map_l
+                 | rewrite combine_map_r
+                 | rewrite map_map ].
+
+    (* change to fold_left *)
+    erewrite loopDelayS_combinational_body_stepwise_indexed.
+    2:{ intros *; rewrite in_map_iff. intros [? [? Hin]].
+        rewrite in_seq in Hin. subst.
+        lazymatch goal with
+               | |- context [(@unpair _ _ ?t1 ?t2 [?x])] =>
+                 rewrite (@unpair_single t1 t2 x); cbn [fst snd]
+        end.
+        lazymatch goal with
+        | |- context [(@unpair _ _ ?t1 ?t2 [?x])] =>
+          rewrite (@unpair_single t1 t2 x); cbn [fst snd]
+        end.
+        
+        repeat (rewrite unpair_single; cbn [fst snd]).
+        rewrite unpair_single.
+        repeat destruct_pair_let.
+        rewrite !eqb_nat_to_bitvec_sized by Lia.lia.
+        rewrite !pad_combine_eq by reflexivity.
+        cbn [map combine fst snd].
+        match goal with
+        | |- context [(@unpeelVecList ?t ?n [[?x]%list;[?y]%list]%vector)] =>
+          change (@unpeelVecList t n [[x]%list;[y]%list]%vector)
+            with ([[x;y]%vector]%list)
+        end. boolsimpl.
+        match goal with
+        | |- context [(@muxPair _ _ ?A [?sel] ([?x], [?y]))] =>
+          rewrite (muxPair_correct (t:=A))
+        end.
+        rewrite key_expand_and_round_equiv with (Nr:=Nr)
+          by lazymatch goal with
+             | |- _ <> 0 => Lia.lia
+             | |- ?x = ?x => reflexivity
+             | _ => rewrite nat_to_bitvec_to_nat by Lia.lia;
+                     repeat destruct_one_match; reflexivity
+             end.
+        rewrite nat_to_bitvec_to_nat by Lia.lia.
+        cbn [combType]. fequal_list.
+        match goal with
+          |- _ = _ (nat_to_bitvec_sized ?sz ?x) _ =>
+          rewrite <-(nat_to_bitvec_to_nat sz x) by Lia.lia;
+            let H := fresh in
+            pose proof (bits_of_nat_sized
+                          _ (nat_to_bitvec_sized sz x)) as H;
+              cbv [bitvec_to_nat] in H; rewrite H;
+                remember (nat_to_bitvec_sized sz x)
+        end.
+        instantiate_app_by_reflexivity. }
+    autorewrite with push_length.
+
+    (* process last round on LHS *)
+    autorewrite with pull_snoc natsimpl.
+    rewrite fold_left_accumulate_snoc.
+
+    factor_out_loops.
+    eapply fold_left_accumulate_double_invariant_seq
+      with (I:=fun i (st1 st2 : key * round_constant * state) =>
+                 if i =? 0
+                 then
+                   (* for the first round, st1 is the default value and the loop
+                      selects the initial inputs *)
+                   st1 = (first_key, init_rcon, input)
+                 else if i =? S Nr
+                      then
+                        (* for the last round, we care only about the state vector *)
+                        snd st1 = snd st2
+                      else st1 = st2).
+    { reflexivity. }
+    { intro i. intros. destruct_products.
+      destr (S i =? 0); [ Lia.lia | ].
+      autorewrite with push_nth natsimpl.
+      cbv zeta. rewrite !nat_to_bitvec_to_nat by Lia.lia.
+      repeat lazymatch goal with
+             | |- context [?x =? ?y] =>
+               destr (x =? y); try Lia.lia
+             | H : context [?x =? ?y] |- _ =>
+               destr (x =? y); try Lia.lia
+             | H : (_ , _) = (_ , _) |- _ =>
+               inversion H; subst; clear H; cbn [fst snd] in *
+             | |- _ => first [Lia.lia | reflexivity ]
+             end. }
+    { intros *. intros ? Hnth. intros. destruct_products.
+      cbn [fst snd combType].
+      autorewrite with push_nth push_length natsimpl.
+      rewrite !nat_to_bitvec_to_nat by Lia.lia.
+      repeat lazymatch goal with
+             | |- context [?x =? ?y] =>
+               destr (x =? y); try Lia.lia
+             | H : context [?x =? ?y] |- _ =>
+               destr (x =? y); try Lia.lia
+             | H : (_,_) = (_,_) |- _ =>
+               inversion H; clear H; subst; cbn [fst snd]
+             end; [ ].
+      cbv [add_round_key_spec'].
+      rewrite tl_app by (apply length_pos_nonnil; length_hammer).
+      f_equal; [ ].
+      apply list_eq_elementwise; [ length_hammer | ].
+      intro j; intros; rewrite !nth_tl.
+      autorewrite with push_length in *.
+      specialize (Hnth (S j)).
+      autorewrite with natsimpl in Hnth.
+      repeat destruct_one_match_hyp; try Lia.lia; [ ].
+      erewrite Hnth by Lia.lia; reflexivity. }
+  Qed.
+
+
+  Print cipher_loop.
   Lemma cipher_loop_equiv
         (Nr : nat) (init_rcon : round_constant) (round_indices : list round_index)
         (num_regular_rounds round0 : round_index)
