@@ -84,7 +84,7 @@ Section WithSubroutines.
            ([fst (spec i (k, rcon))], [snd (spec i (k, rcon))])).
 
   Let add_round_key_spec' : state -> key * round_constant -> state :=
-    (fun st '(k,_) => add_round_key_spec st k).
+    (fun st k => add_round_key_spec st (fst k)).
   Let inv_mix_columns_key_spec : key * round_constant -> key * round_constant :=
     (fun '(k,rcon) => (inv_mix_columns_spec k, rcon)).
   Let fwd_round_spec : key * round_constant * state -> nat -> key * round_constant * state :=
@@ -273,14 +273,9 @@ Section WithSubroutines.
                  round_indices))
     = cipher_trace_with_keys Nr is_decrypt init_key init_rcon init_state.
   Proof.
-    cbv zeta; intro Hall_keys; intros.
+    cbv zeta; intros.
     subst round0 num_regular_rounds round_indices.
     cbv [cipher_loop mcompose]. simplify.
-
-    (* Helpful rephrasing of Nr upper bound *)
-    assert (N.of_nat Nr < 2 ^ N.of_nat 4)%N
-      by (cbn; change (2^4)%nat with 16 in *; Lia.lia).
-    pose proof (N.size_nat_le 4 (N.of_nat Nr) ltac:(Lia.lia)).
 
     (* simplify loop input *)
     rewrite !pad_combine_eq by length_hammer.
@@ -393,7 +388,7 @@ Section WithSubroutines.
 
   Lemma cipher_equiv
         (Nr : nat)
-        (num_regular_rounds round0 : seqType (Vec Bit $)
+        (num_regular_rounds round0 : seqType (Vec Bit 4))
         (init_rcon : seqType (Vec Bit 8))
         (init_key init_state : seqType (Vec (Vec (Vec Bit 8) 4) 4))
         (round_indices : seqType (Vec Bit 4))
@@ -406,60 +401,53 @@ Section WithSubroutines.
     (* Nr must be at least two and small enough to fit in round_index size *)
     1 < Nr < 2 ^ 4 ->
     round_indices = map (nat_to_bitvec_sized 4) (List.seq 0 (S Nr)) ->
-    num_regular_rounds = nat_to_bitvec_sized _ Nr ->
-    round0 = nat_to_bitvec_sized _ 0 ->
-    init_rcon = repeat first_rcon (S Nr) ->
-    init_key = repeat first_key (S Nr) ->
-    init_state = repeat input (S Nr) ->
-    num_ro
-    let num_regular_rounds_ : seqType (Vec Bit 4) :=
-        repeat num_regular_rounds (S Nr) in
-    let round0_ : seqType (Vec Bit 4) :=
-        repeat round0 (S Nr) in
-    let is_decrypt_ : seqType Bit := repeat false (S Nr) in
-    let initial_cipher_state := mkpair (mkpair init_key init_rcon) init_state in
+    (* For the initial state signals, the values are ignored after the first
+       round; we only care about the first value and the length *)
+    hd (defaultCombValue _) init_key = first_key ->
+    hd (defaultCombValue _) init_rcon = first_rcon ->
+    hd (defaultCombValue _) init_state = input ->
+    length init_key = S Nr ->
+    length init_rcon = S Nr ->
+    length init_state = S Nr ->
+    let num_regular_rounds : seqType (Vec Bit 4) :=
+        repeat (nat_to_bitvec_sized _ Nr) (S Nr) in
+    let round_0 : seqType (Vec Bit 4) :=
+        repeat (nat_to_bitvec_sized _ 0) (S Nr) in
+    let is_decrypt : seqType Bit := repeat false (S Nr) in
     (* Nr must be at least two and small enough to fit in round_index size *)
     1 < Nr < 2 ^ 4 ->
-    round_indices = map (nat_to_bitvec_sized 4) (List.seq 0 (S Nr)) ->
-    num_regular_rounds = nat_to_bitvec_sized _ Nr ->
-    round0 = nat_to_bitvec_sized _ 0 ->
     nth Nr
         (unIdent
            (cipher
               (round_index:=Vec Bit 4) (round_constant:=Vec Bit 8)
               sub_bytes shift_rows mix_columns add_round_key (mix_columns [true])
-              key_expand [num_regular_rounds] [round0] [false]
-              [first_key] [init_rcon] round_indices [input])) d
+              key_expand num_regular_rounds round_0 is_decrypt
+              init_key init_rcon init_state round_indices)) d
     = AesSpec.Cipher.cipher
         _ _ add_round_key_spec sub_bytes_spec shift_rows_spec mix_columns_spec
         first_key last_key middle_keys input.
   Proof.
     cbv zeta; intro Hall_keys; intros. subst.
-    cbv [cipher cipher_step mcompose]. simplify.
+    cbv [cipher]. simplify. simpl_ident.
 
-    (* Helpful rephrasing of Nr upper bound *)
-    assert (N.of_nat Nr < 2 ^ N.of_nat 4)%N
-      by (cbn; change (2^4)%nat with 16 in *; Lia.lia).
-    pose proof (N.size_nat_le 4 (N.of_nat Nr) ltac:(Lia.lia)).
+    (* extract first value of initial-state signals *)
+    destruct init_key; [ cbn [length] in *; Lia.lia | ].
+    destruct init_rcon; [ cbn [length] in *; Lia.lia | ].
+    destruct init_state; [ cbn [length] in *; Lia.lia | ].
+    cbn [length hd] in *.
 
-    (* simplify *)
-    cbn [nor2 and2 unpeel CombinationalSemantics]. cbv [lift2].
-    cbn [bind ret Monad_ident unIdent].
+    (* use cipher_loop lemma *)
+    rewrite cipher_loop_equiv by (try reflexivity; length_hammer).
+    cbv [cipher_trace_with_keys]. simplify.
 
-    (* separate the last round *)
-    erewrite loopDelayS_stepwise_indexed
-      by (intros; repeat destruct_pair_let; instantiate_app_by_reflexivity).
-    autorewrite with push_length pull_snoc natsimpl.
-    cbn [fold_left]. autorewrite with push_nth push_length natsimpl.
-
-    (* simplify round-index comparisons *)
-    rewrite !eqb_nat_to_bitvec_sized, Nat.eqb_refl by Lia.lia.
-    match goal with |- context [?n =? 0] => destr (n =? 0); [ Lia.lia | ] end.
-    boolsimpl. rewrite !pad_combine_eq by length_hammer.
-    cbn [map combine fst snd norb]. boolsimpl.
-    cbn [fold_left]. autorewrite with push_nth push_length natsimpl.
-    idtac. cbn [fold_left].
-    Set Printing Depth 10000.
+    (* simplify selection of last element *)
+    erewrite map_nth_inbounds
+      with (d2:=defaultCombValue
+                  (Pair (Pair (Vec (Vec (Vec Bit 8) 4) 4) (Vec Bit 8))
+                        (Vec (Vec (Vec Bit 8) 4) 4)))
+      by length_hammer.
+    autorewrite with push_nth. rewrite nth_tl, nth_last by length_hammer.
+    rewrite fold_left_accumulate_last.
 
     (* Get all states from key expansion *)
     map_inversion Hall_keys; subst.
@@ -468,51 +456,21 @@ Section WithSubroutines.
 
     (* representation change; use full key-expansion state (key * round_constant) *)
     erewrite cipher_change_key_rep with (projkey:=@fst key round_constant)
-      by reflexivity.
+      by (reflexivity || eauto).
 
     erewrite <-cipher_interleaved_equiv by eassumption.
     cbv [cipher_interleaved]. repeat destruct_pair_let.
 
-    (* prove using loop invariant *)
-    rewrite fold_left_map.
-    factor_out_loops.
-    eapply fold_left_double_invariant_seq
-      with (I:=fun _ x y => y = ([fst (fst x)], [snd (fst x)], [snd x])).
-    { (* invariant holds at start of loop *)
-      reflexivity. }
-    { (* invariant holds through loop body *)
-      intros; subst.
-      autorewrite with natsimpl in *. repeat destruct_pair_let.
-      rewrite !eqb_nat_to_bitvec_sized by Lia.lia.
-      erewrite (unpeelVecList_cons_singleton (A:=Bit))
-        by first [ Lia.lia | reflexivity
-                   | intros *; cbn [InV];
-                     autorewrite with vsimpl;
-                     intros [? | ?]; [ | tauto];
-                     subst; reflexivity ].
-      rewrite !pad_combine_eq by length_hammer.
-      cbn [combine map].
-      rewrite key_expand_and_round_equiv
-        by first [ boolsimpl; reflexivity
-                 | rewrite nat_to_bitvec_to_nat by Lia.lia;
-                   repeat destruct_one_match; (reflexivity || Lia.lia) ].
-      rewrite nat_to_bitvec_to_nat by Lia.lia.
-      cbv [cipher_round_interleaved].
-      repeat destruct_pair_let. subst_lets. cbn [fst snd].
-      rewrite <-surjective_pairing.
-      reflexivity. }
-    { (* invariant implies postcondition *)
-      intros; subst. cbn [fst snd].
-      erewrite (unpeelVecList_cons_singleton (A:=Bit))
-        by first [ Lia.lia | reflexivity
-                   | intros *; cbn [InV];
-                     autorewrite with vsimpl;
-                     intros [? | ?]; [ | tauto];
-                     subst; reflexivity ].
-      rewrite !pad_combine_eq by length_hammer.
-      cbn [combine map fst snd].
-      rewrite key_expand_and_round_last_equiv.
-      reflexivity. }
+    (* process last round on LHS *)
+    autorewrite with pull_snoc.
+    destruct_one_match; try Lia.lia; [ ].
+
+    (* remove the last-round case from loop body *)
+    erewrite ListUtils.fold_left_ext_In with (f:= fun _ _ => if _ =? Nr then _ else _)
+      by (intros *; rewrite in_seq; intros; repeat destruct_one_match; try Lia.lia;
+          reflexivity).
+
+    reflexivity.
   Qed.
 
   Lemma inv_mix_columns_key_spec_map keys :
@@ -524,50 +482,69 @@ Section WithSubroutines.
   Qed.
 
   Lemma inverse_cipher_equiv
-        (Nr : nat) (init_rcon : round_constant) (round_indices : list (list round_index))
-        (num_regular_rounds round0 : round_index)
-        (first_key last_key : key) (middle_keys : list key) (input : state) :
-    let all_keys_and_rcons := all_keys inv_key_expand_spec Nr (first_key, init_rcon) in
+        (Nr : nat) (num_regular_rounds round0 : seqType (Vec Bit 4))
+        (init_rcon : seqType (Vec Bit 8))
+        (init_key init_state : seqType (Vec (Vec (Vec Bit 8) 4) 4))
+        (round_indices : seqType (Vec Bit 4))
+        (first_rcon : round_constant)
+        (first_key last_key : key) (middle_keys : list key) (input : state) d :
+    (* precomputed keys match key expansion *)
+    let all_keys_and_rcons := all_keys inv_key_expand_spec Nr (first_key, first_rcon) in
     let all_keys := List.map fst all_keys_and_rcons in
     all_keys = (first_key :: middle_keys ++ [last_key])%list ->
     (* Nr must be at least two and small enough to fit in round_index size *)
     1 < Nr < 2 ^ 4 ->
-    round_indices = map (fun i => [nat_to_bitvec_sized 4 i]) (List.seq 0 (S Nr)) ->
-    num_regular_rounds = nat_to_bitvec_sized _ Nr ->
-    round0 = nat_to_bitvec_sized _ 0 ->
-    unIdent
-      (cipher
-         (round_index:=Vec Bit 4) (round_constant:=Vec Bit 8)
-         sub_bytes shift_rows mix_columns add_round_key (mix_columns [true])
-         key_expand [num_regular_rounds] [round0] [true]
-         [first_key] [init_rcon] round_indices [input])
-    = [Cipher.equivalent_inverse_cipher
+    round_indices = map (nat_to_bitvec_sized 4) (List.seq 0 (S Nr)) ->
+    (* For the initial state signals, the values are ignored after the first
+       round; we only care about the first value and the length *)
+    hd (defaultCombValue _) init_key = first_key ->
+    hd (defaultCombValue _) init_rcon = first_rcon ->
+    hd (defaultCombValue _) init_state = input ->
+    length init_key = S Nr ->
+    length init_rcon = S Nr ->
+    length init_state = S Nr ->
+    let num_regular_rounds : seqType (Vec Bit 4) :=
+        repeat (nat_to_bitvec_sized _ Nr) (S Nr) in
+    let round_0 : seqType (Vec Bit 4) :=
+        repeat (nat_to_bitvec_sized _ 0) (S Nr) in
+    let is_decrypt : seqType Bit := repeat true (S Nr) in
+    (* Nr must be at least two and small enough to fit in round_index size *)
+    1 < Nr < 2 ^ 4 ->
+    nth Nr
+        (unIdent
+           (cipher
+              (round_index:=Vec Bit 4) (round_constant:=Vec Bit 8)
+              sub_bytes shift_rows mix_columns add_round_key (mix_columns [true])
+              key_expand num_regular_rounds round_0 is_decrypt
+              init_key init_rcon init_state round_indices)) d
+    = Cipher.equivalent_inverse_cipher
          _ _ add_round_key_spec inv_sub_bytes_spec inv_shift_rows_spec inv_mix_columns_spec
-         first_key last_key (map inv_mix_columns_spec middle_keys) input].
+         first_key last_key (map inv_mix_columns_spec middle_keys) input.
   Proof.
     cbv zeta; intro Hall_keys; intros. subst.
-    cbv [cipher cipher_step mcompose]. simplify.
+    cbv [cipher]. simplify. simpl_ident.
 
-    (* Helpful rephrasing of Nr upper bound *)
-    assert (N.of_nat Nr < 2 ^ N.of_nat 4)%N
-      by (cbn; change (2^4)%nat with 16 in *; Lia.lia).
-    pose proof (N.size_nat_le 4 (N.of_nat Nr) ltac:(Lia.lia)).
+    (* extract first value of initial-state signals *)
+    destruct init_key; [ cbn [length] in *; Lia.lia | ].
+    destruct init_rcon; [ cbn [length] in *; Lia.lia | ].
+    destruct init_state; [ cbn [length] in *; Lia.lia | ].
+    cbn [length hd] in *.
 
-    (* simplify *)
-    cbn [nor2 and2 unpeel CombinationalSemantics]. cbv [lift2].
-    cbn [bind ret Monad_ident unIdent].
+    (* use cipher_loop lemma *)
+    rewrite cipher_loop_equiv by (try reflexivity; length_hammer).
+    cbv [cipher_trace_with_keys]. simplify.
 
-    (* separate the last round *)
-    rewrite foldLM_ident_fold_left.
-    autorewrite with pull_snoc natsimpl.
+    (* simplify selection of last element *)
+    erewrite map_nth_inbounds
+      with (d2:=defaultCombValue
+                  (Pair (Pair (Vec (Vec (Vec Bit 8) 4) 4) (Vec Bit 8))
+                        (Vec (Vec (Vec Bit 8) 4) 4)))
+      by length_hammer.
+    autorewrite with push_nth. rewrite nth_tl, nth_last by length_hammer.
+    rewrite fold_left_accumulate_last.
 
-    (* simplify round-index comparisons *)
-    rewrite !eqb_nat_to_bitvec_sized, Nat.eqb_refl by Lia.lia.
-    match goal with |- context [?n =? 0] => destr (n =? 0); [ Lia.lia | ] end.
-    boolsimpl.
-
-    (* Extract information from key expansion expression *)
-    map_inversion Hall_keys. subst.
+    (* Get all states from key expansion *)
+    map_inversion Hall_keys; subst.
     match goal with H : @eq (list (_ * _)) _ (_ :: _ ++ [_])%list |- _ =>
                     rename H into Hall_keys end.
 
@@ -577,50 +554,18 @@ Section WithSubroutines.
            (middle_keys_alt:=List.map inv_mix_columns_key_spec _)
       by (reflexivity || apply inv_mix_columns_key_spec_map).
 
-    erewrite <-equivalent_inverse_cipher_interleaved_equiv by eauto.
-    cbv [equivalent_inverse_cipher_interleaved].
-    repeat destruct_pair_let.
+    erewrite <-equivalent_inverse_cipher_interleaved_equiv by eassumption.
+    cbv [equivalent_inverse_cipher_interleaved]. repeat destruct_pair_let.
 
-    (* prove using loop invariant *)
-    rewrite fold_left_map.
-    factor_out_loops.
-    eapply fold_left_double_invariant_seq
-      with (I:=fun _ x y => y = ([fst (fst x)], [snd (fst x)], [snd x])).
-    { (* invariant holds at start of loop *)
-      reflexivity. }
-    { (* invariant holds through loop body *)
-      intros; subst.
-      autorewrite with natsimpl in *. repeat destruct_pair_let.
-      rewrite !eqb_nat_to_bitvec_sized by Lia.lia.
-      erewrite (unpeelVecList_cons_singleton (A:=Bit))
-        by first [ Lia.lia | reflexivity
-                   | intros *; cbn [InV];
-                     autorewrite with vsimpl;
-                     intros [? | ?]; [ | tauto];
-                     subst; reflexivity ].
-      rewrite !pad_combine_eq by length_hammer.
-      cbn [combine map].
-      rewrite inverse_key_expand_and_round_equiv
-        by first [ boolsimpl; reflexivity
-                 | rewrite nat_to_bitvec_to_nat by Lia.lia;
-                   repeat destruct_one_match; (reflexivity || Lia.lia) ].
-      rewrite nat_to_bitvec_to_nat by Lia.lia.
-      cbv [equivalent_inverse_cipher_round_interleaved].
-      subst_lets. repeat destruct_pair_let. cbn [fst snd].
-      rewrite <-surjective_pairing.
-      reflexivity. }
-    { (* invariant implies postcondition *)
-      intros; subst. cbn [fst snd].
-      erewrite (unpeelVecList_cons_singleton (A:=Bit))
-        by first [ Lia.lia | reflexivity
-                   | intros *; cbn [InV];
-                     autorewrite with vsimpl;
-                     intros [? | ?]; [ | tauto];
-                     subst; reflexivity ].
-      rewrite !pad_combine_eq by length_hammer.
-      cbn [combine map fst snd].
-      rewrite key_expand_and_round_last_equiv.
-      reflexivity. }
+    (* process last round on LHS *)
+    autorewrite with pull_snoc.
+    destruct_one_match; try Lia.lia; [ ].
+
+    (* remove the last-round case from loop body *)
+    erewrite ListUtils.fold_left_ext_In with (f:= fun _ _ => if _ =? Nr then _ else _)
+      by (intros *; rewrite in_seq; intros; repeat destruct_one_match; try Lia.lia;
+          reflexivity).
+
+    reflexivity.
   Qed.
-
 End WithSubroutines.
