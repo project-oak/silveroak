@@ -64,6 +64,13 @@ Section WithCava.
     ** state       (* state_o *)
     ** Bit         (* out latch when not accepted *).
 
+  Let cipher_control_signals :=
+    Bit (* is_decrypt *)
+    ** Bit (* in_valid_i *)
+    ** Bit (* out_ready_i *)
+    ** key (* initial_key *)
+    ** state (* initial_state *).
+
   Section Packing.
     Fixpoint unpacked_left_type A: Type :=
       match A with
@@ -185,6 +192,7 @@ Section WithCava.
   Context (num_rounds_regular round_0 round_1 round_final: signal (round_index)).
   Context (inc_round: signal round_index -> cava (signal round_index)).
 
+
   (* Comparable to OpenTitan aes_cipher_core but with simplified signalling *)
   Definition aes_cipher_core_simplified
     (is_decrypt: signal Bit)
@@ -200,10 +208,11 @@ Section WithCava.
     (* state and key buffers are handled by `cipher_new` so we don't explicitly
     * register them here. There is an additional state buffer here for storing the output
     * until it is accepted via out_ready_i. *)
-      (fun '((inputs, st) : signal (Pair Bit Bit)  * signal cipher_control_state) =>
+      (fun '((inputs, st) : signal cipher_control_signals  * signal cipher_control_state) =>
 
         (* unpack inputs and state from Cava 'Pair's *)
-        let '(in_valid_i, out_valid_i) := unpair inputs in
+        let '(is_decrypt, in_valid_i, out_ready_i, initial_key, initial_state)
+          := unpacked_signal inputs in
         let '(last_idle, last_gen_dec_key, last_round, _, _, last_buffered_state, last_output_latch)
           := unpacked_signal st in
 
@@ -236,8 +245,8 @@ Section WithCava.
         buffered_state <- muxPair producing_output (st, last_buffered_state) ;;
 
         out_valid_o <- or2 (last_output_latch, producing_output) ;;
-        inv_out_valid_i <- inv out_valid_i ;;
-        output_latch <- and2 (out_valid_o, inv_out_valid_i) ;;
+        inv_out_ready_i <- inv out_ready_i ;;
+        output_latch <- and2 (out_valid_o, inv_out_ready_i) ;;
 
         ret (packed_signal cipher_control_state
           ( idle
@@ -248,7 +257,9 @@ Section WithCava.
           , buffered_state
           , output_latch
           ))
-      ) (mkpair in_valid_i out_ready_i) ;;
+      )
+      (packed_signal cipher_control_signals
+        (is_decrypt, in_valid_i, out_ready_i, initial_key, initial_state)) ;;
 
     let '(_, _, _, in_ready_o, out_valid_o, state_o, _) := unpacked_signal st in
     ret (in_ready_o, out_valid_o, state_o).
