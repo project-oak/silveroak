@@ -97,12 +97,24 @@ Ltac app_head t :=
   | ?f => f
   end.
 
+(* Helper tactic for pattern_out_args *)
+Ltac pattern_out_single_arg arg e :=
+  lazymatch arg with
+  | (?x, ?y) =>
+    let eF := pattern_out_single_arg y e in
+    let eF := pattern_out_single_arg x eF in
+    constr:(fun xy => eF (fst xy) (snd xy))
+  | ?x =>
+    let eF := match (eval pattern x in e) with
+              | ?f _ => f end in
+    constr:(eF)
+  end.
+
 (* Helper tactic for instantiate_lhs_app_by_reflexivity *)
 Ltac pattern_out_args term_with_args e :=
   lazymatch term_with_args with
   | ?f ?x =>
-    let eF := match (eval pattern x in e) with
-              | ?f _ => f end in
+    let eF := pattern_out_single_arg x e in
     let eF := pattern_out_args f eF in
     constr:(eF)
   | ?f => constr:(e)
@@ -169,6 +181,19 @@ Section InstantiateAppByReflexivityTests.
 
   (* two arguments, second ignored *)
   Goal (exists f : nat -> nat -> nat, forall x y, f x y = x + (2 * (x - 3) + x * x - x * 5)).
+    eexists; intros.
+    instantiate_app_by_reflexivity.
+  Qed.
+
+  (* Arguments paired on LHS and not on RHS *)
+  Goal (exists f : nat * nat -> nat, forall x y, f (x,y) = x + (y * (x - 3) + y * x - x * 5)).
+    eexists; intros.
+    instantiate_app_by_reflexivity.
+  Qed.
+
+  (* Complex pairing *)
+  Goal (exists f : nat * (nat * nat) * nat -> nat,
+           forall w x y z, f (w,(x,y),z) = x + (w * (x - z) + y * x - x * (w + z))).
     eexists; intros.
     instantiate_app_by_reflexivity.
   Qed.

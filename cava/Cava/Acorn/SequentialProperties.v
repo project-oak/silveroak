@@ -652,7 +652,7 @@ Section Evaluation.
     sequential (fork2 i) = (i, i).
   Proof. reflexivity. Qed.
 
-  Lemma unpair_single {A B} (p : combType (Pair A B)) :
+  Lemma unpair_single {A B} (p : combType A * combType B) :
     unpair (Cava:=CombinationalSemantics) [p] = ([fst p], [snd p]).
   Proof. destruct p; reflexivity. Qed.
 End Evaluation.
