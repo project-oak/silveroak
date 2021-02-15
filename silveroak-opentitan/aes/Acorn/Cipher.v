@@ -42,7 +42,6 @@ Section WithCava.
   Context (key_expand : signal Bit -> signal round_index ->
                         (signal key  * signal round_constant) ->
                         cava (signal key * signal round_constant)).
-
   Local Infix "==?" := eqb (at level 40).
   Local Infix "**" := Pair (at level 40, left associativity).
 
