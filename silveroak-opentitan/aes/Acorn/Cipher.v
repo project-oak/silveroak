@@ -162,17 +162,20 @@ Section WithCava.
              (input_and_state : signal cipher_signals * signal cipher_state)
     : cava (signal cipher_state) :=
     let '(input, feedback_state) := input_and_state in
-    let '(is_decrypt, num_rounds_regular, round_0, initial_state, idx) := unpacked_signal input in
+    let '(input, idx) := unpair input in
+    let '(input, initial_state) := unpair input in
+    let '(input, round_0) := unpair input in
+    let '(is_decrypt, num_rounds_regular) := unpair input in
     is_first_round <- idx ==? round_0 ;;
-    cipher_state' <- muxPair is_first_round (initial_state, feedback_state) ;;
-    let '(k, round, st) := unpacked_signal cipher_state' in
-    '(k, round, st) <- cipher_step num_rounds_regular round_0 is_decrypt
-                                   (k, round, st) idx ;;
-    ret (packed_signal cipher_state (k, round, st)).
+    cipher_state <- muxPair is_first_round (initial_state, feedback_state) ;;
+    let '(key_round, st) := unpair cipher_state in
+    let '(k, round) := unpair key_round in
+    '(key_round, st) <- cipher_step num_rounds_regular round_0 is_decrypt
+                                    (k, round, st) idx ;;
+    ret (mkpair (mkpair (fst key_round) (snd key_round)) st).
 
   Context {seqsemantics : CavaSeq semantics}.
-  Context (initial_rcon_forward: signal round_constant). (* #1 *)
-  Context (initial_rcon_backward: signal round_constant). (* #64 *)
+  Context (initial_rcon: signal Bit -> cava (signal round_constant)).
 
   Definition cipher_new
              (num_rounds_regular round_0 : signal (round_index))
@@ -180,18 +183,18 @@ Section WithCava.
              (initial_key : signal key)
              (round_i : signal round_index) (input : signal state)
     : cava (signal state) :=
-    initial_rcon <- muxPair is_decrypt (initial_rcon_forward, initial_rcon_backward) ;;
-    let initial_state := packed_signal cipher_state (initial_key, initial_rcon, input) in
+    initial_rcon <- initial_rcon is_decrypt ;;
+    let initial_state := mkpair (mkpair initial_key initial_rcon) input in
     (* join all signals that are needed inside the cipher loop *)
-    let loop_input := packed_signal cipher_signals
-      (is_decrypt, num_rounds_regular, round_0, initial_state, round_i) in
+    let loop_input :=
+        mkpair (mkpair (mkpair (mkpair is_decrypt num_rounds_regular)
+                                round_0) initial_state) round_i in
     loop_out <- loopDelayS cipher_inner_loop loop_input ;;
     let '(_, final_data) := unpair loop_out in
     ret final_data.
 
   Context (num_rounds_regular round_0 round_1 round_final: signal (round_index)).
   Context (inc_round: signal round_index -> cava (signal round_index)).
-
 
   (* Comparable to OpenTitan aes_cipher_core but with simplified signalling *)
   Definition aes_cipher_core_simplified
