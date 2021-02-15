@@ -388,7 +388,6 @@ Section WithSubroutines.
 
   Lemma cipher_equiv
         (Nr : nat)
-        (num_regular_rounds round0 : seqType (Vec Bit 4))
         (init_rcon : seqType (Vec Bit 8))
         (init_key init_state : seqType (Vec (Vec (Vec Bit 8) 4) 4))
         (round_indices : seqType (Vec Bit 4))
@@ -482,7 +481,7 @@ Section WithSubroutines.
   Qed.
 
   Lemma inverse_cipher_equiv
-        (Nr : nat) (num_regular_rounds round0 : seqType (Vec Bit 4))
+        (Nr : nat)
         (init_rcon : seqType (Vec Bit 8))
         (init_key init_state : seqType (Vec (Vec (Vec Bit 8) 4) 4))
         (round_indices : seqType (Vec Bit 4))
