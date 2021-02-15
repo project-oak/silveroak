@@ -181,7 +181,7 @@ Section WithCava.
              (round_i : signal round_index) (input : signal state)
     : cava (signal state) :=
     initial_rcon <- muxPair is_decrypt (initial_rcon_forward, initial_rcon_backward) ;;
-    let initial_state := mkpair (mkpair initial_key initial_rcon) input in
+    let initial_state := packed_signal cipher_state (initial_key, initial_rcon, input) in
     (* join all signals that are needed inside the cipher loop *)
     let loop_input := packed_signal cipher_signals
       (is_decrypt, num_rounds_regular, round_0, initial_state, round_i) in
