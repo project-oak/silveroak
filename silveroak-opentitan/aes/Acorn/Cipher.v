@@ -55,14 +55,6 @@ Section WithCava.
       ** cipher_state (* initial state, ignored for all rounds except first *)
       ** round_index (* current round_index *).
 
-  Definition cipher_round
-             (is_decrypt : signal Bit) (input: signal state) (key : signal key)
-    : cava (signal state) :=
-    (sub_bytes is_decrypt   >=>
-     shift_rows is_decrypt  >=>
-     mix_columns is_decrypt >=>
-     add_round_key key) input.
-
   Definition key_expand_and_round
              (is_decrypt : signal Bit)
              (key_rcon_data : signal cipher_state)
@@ -84,8 +76,8 @@ Section WithCava.
     (* Intermediate decryption rounds need to mix the key columns *)
     mixed_round_key <- inv_mix_columns_key round_key ;;
 
-    out <- add_round_key (pairSel round_key_sel (mkpair round_key mixed_round_key))
-                        add_round_key_in ;;
+    key_to_add <- muxPair round_key_sel (round_key, mixed_round_key) ;;
+    out <- add_round_key key_to_add add_round_key_in ;;
 
     (* Key expansion *)
     '(round_key, rcon) <- key_expand is_decrypt round_i (round_key, rcon) ;;
