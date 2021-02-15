@@ -42,9 +42,18 @@ Section WithCava.
   Context (key_expand : signal Bit -> signal round_index ->
                         (signal key  * signal round_constant) ->
                         cava (signal key * signal round_constant)).
-  Context (num_rounds_regular : signal (round_index))
-          (round_0 : signal (round_index)).
   Local Infix "==?" := eqb (at level 40).
+  Local Infix "**" := Pair (at level 40, left associativity).
+
+  (* State of the AES cipher (key, round constant, AES state vector) *)
+  Let cipher_state : SignalType := key ** round_constant ** state.
+  (* The non-state signals that each round of the cipher loop needs access to *)
+  Let cipher_signals : SignalType :=
+    round_index (* num_rounds_regular : round index of final round *)
+      ** round_index (* round_0 : round index of first round *)
+      ** Bit (* op_i/is_decrypt : true for decryption, false for encryption *)
+      ** cipher_state (* initial state, ignored for all rounds except first *)
+      ** round_index (* current round_index *).
 
   Definition cipher_round
              (is_decrypt : signal Bit) (input: signal state) (key : signal key)
@@ -83,6 +92,7 @@ Section WithCava.
     ret (round_key, rcon, out).
 
   Definition cipher_step
+             (num_rounds_regular round_0 : signal (round_index))
              (is_decrypt : signal Bit) (* called op_i in OpenTitan *)
              (key_rcon_data : signal key * signal round_constant * signal state)
              (round_i : signal round_index)
@@ -100,36 +110,45 @@ Section WithCava.
                          add_round_key_in_sel round_key_sel round_i.
 
   Definition cipher
+             (num_rounds_regular round_0 : signal (round_index))
              (is_decrypt : signal Bit) (* called op_i in OpenTitan *)
              (initial_key : signal key) (initial_rcon : signal round_constant)
              (round_indices : list (signal round_index)) (input : signal state)
     : cava (signal state) :=
-    '(_, _, out) <- foldLM (cipher_step is_decrypt) round_indices
+    '(_, _, out) <- foldLM (cipher_step num_rounds_regular round_0 is_decrypt) round_indices
                           (initial_key, initial_rcon, input) ;;
     ret out.
 
   Definition cipher_inner_loop
-             (is_decrypt : signal Bit) (* called op_i in OpenTitan *)
-             (initial_state : signal (Pair (Pair key round_constant) state))
-             (index_and_state : signal round_index * signal (Pair (Pair key round_constant) state))
-    : cava (signal (Pair (Pair key round_constant) state)) :=
-    let '(idx, feedback_state) := index_and_state in
+             (input_and_state : signal cipher_signals * signal cipher_state)
+    : cava (signal cipher_state) :=
+    let '(input, feedback_state) := input_and_state in
+    let '(input, idx) := unpair input in
+    let '(input, initial_state) := unpair input in
+    let '(input, is_decrypt) := unpair input in
+    let '(num_rounds_regular, round_0) := unpair input in
     is_first_round <- idx ==? round_0 ;;
     cipher_state <- muxPair is_first_round (initial_state, feedback_state) ;;
     let '(key_round, st) := unpair cipher_state in
     let '(k, round) := unpair key_round in
-    '(key_round, st) <- cipher_step is_decrypt (k, round, st) idx ;;
+    '(key_round, st) <- cipher_step num_rounds_regular round_0 is_decrypt
+                                   (k, round, st) idx ;;
     ret (mkpair (mkpair (fst key_round) (snd key_round)) st).
 
   Context {seqsemantics : CavaSeq semantics}.
 
   Definition cipher_new
+             (num_rounds_regular round_0 : signal (round_index))
              (is_decrypt : signal Bit) (* called op_i in OpenTitan *)
              (initial_key : signal key) (initial_rcon : signal round_constant)
              (round_i : signal round_index) (input : signal state)
     : cava (signal state) :=
     let initial_state := mkpair (mkpair initial_key initial_rcon) input in
-    loop_out <- loopDelayS (cipher_inner_loop is_decrypt initial_state) round_i ;;
+    (* join all signals that are needed inside the cipher loop *)
+    let loop_input :=
+        mkpair (mkpair (mkpair (mkpair num_rounds_regular round_0)
+                               is_decrypt) initial_state) round_i in
+    loop_out <- loopDelayS cipher_inner_loop loop_input ;;
     let '(_, final_data) := unpair loop_out in
     ret final_data.
 
