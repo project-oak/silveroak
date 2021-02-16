@@ -229,16 +229,6 @@ Section WithSubroutines.
              (input : state) : list state :=
     List.map snd (cipher_trace_with_keys Nr is_decrypt first_key init_rcon input).
 
-  (* TODO: move *)
-  Lemma in_combine_impl {A B} (a : A) (b : B) l1 l2 :
-    In (a,b) (combine l1 l2) -> In a l1 /\ In b l2.
-  Proof using Type.
-    clear. eauto using in_combine_l, in_combine_r.
-  Qed.
-  (* TODO: move *)
-  Hint Rewrite @combine_nth using solve [length_hammer] : push_nth.
-  Hint Rewrite @seq_nth using Lia.lia : push_nth.
-
   Lemma cipher_loop_equiv
         (Nr : nat) (num_regular_rounds round0 : round_index)
         (is_decrypt : bool) (init_rcon : round_constant)
@@ -304,24 +294,13 @@ Section WithSubroutines.
         repeat match goal with
                | H : length _ = Nr |- _ => clear H end.
 
-        (* TODO: factor into two tactics: invert_in and logical_simplify *)
-        repeat lazymatch goal with
-               | H : In _ (_ :: _) |- _ => cbn [In] in H
-               | H : In _ (map _ _) |- _ =>
-                 apply in_map_iff in H
-               | H : In _ (repeat _ _) |- _ =>
-                 apply repeat_spec in H; subst
-               | H : In (_,_) (combine _ _) |- _ =>
-                 apply in_combine_impl in H
-               | H : In _ (seq _ _) |- _ =>
-                 apply in_seq in H
-               | H : _ /\ _ |- _ => destruct H
-               | H : _ \/ _ |- _ => destruct H
-               | H : exists _, _ |- _ =>
-                 destruct H; destruct_products; cbn [fst snd] in *
-               | H : (_, _) = (_,_) |- _ =>
-                 inversion H; subst; clear H
-               end.
+        (* simplify information from [In] hypothesis *)
+        repeat first [ progress logical_simplify
+                     | progress invert_in
+                     | lazymatch goal with
+                       | H : _ \/ _ |- _ => destruct H
+                       | x : _ * _ |- _ => destruct x; cbn [fst snd] in *
+                       end ].
         all:simplify.
         all:rewrite cipher_step_equiv with (Nr:=Nr)
           by (try Lia.lia; repeat destruct_one_match;reflexivity).

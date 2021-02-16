@@ -47,6 +47,9 @@ Ltac length_hammer :=
 
 (* The push_nth database simplifies goals including [nth] *)
 Hint Rewrite @app_nth1 @app_nth2 @nth_overflow using length_hammer : push_nth.
+Hint Rewrite @combine_nth using solve [length_hammer] : push_nth.
+Hint Rewrite @seq_nth using lia : push_nth.
+
 
 (* Miscellaneous proofs about lists *)
 Section Misc.
@@ -101,6 +104,10 @@ Section Misc.
       rewrite <-!app_comm_cons. rewrite IHla1 by lia.
       reflexivity. }
   Qed.
+
+  Lemma in_combine_impl {A B} (a : A) (b : B) l1 l2 :
+    In (a,b) (combine l1 l2) -> In a l1 /\ In b l2.
+  Proof. eauto using in_combine_l, in_combine_r. Qed.
 
   Lemma tl_app {A} (l1 l2 : list A) :
     l1 <> nil -> tl (l1 ++ l2) = tl l1 ++ l2.
@@ -1210,6 +1217,20 @@ End MapInversionTests.
 Ltac fequal_list :=
   repeat match goal with
          | |- cons _ _ = cons _ _ => f_equal
+         end.
+
+(* infer information from hypotheses including [In] *)
+Ltac invert_in :=
+  repeat lazymatch goal with
+         | H : In _ (_ :: _) |- _ => cbn [In] in H
+         | H : In _ (map _ _) |- _ =>
+           apply in_map_iff in H
+         | H : In _ (repeat _ _) |- _ =>
+           apply repeat_spec in H; subst
+         | H : In (_,_) (combine _ _) |- _ =>
+           apply in_combine_impl in H
+         | H : In _ (seq _ _) |- _ =>
+           apply in_seq in H
          end.
 
 (* Factor out loops from a goal in preparation for using fold_left_invariant *)
