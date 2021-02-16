@@ -97,12 +97,24 @@ Ltac app_head t :=
   | ?f => f
   end.
 
+(* Helper tactic for pattern_out_args *)
+Ltac pattern_out_single_arg arg e :=
+  lazymatch arg with
+  | (?x, ?y) =>
+    let eF := pattern_out_single_arg y e in
+    let eF := pattern_out_single_arg x eF in
+    constr:(fun xy => eF (fst xy) (snd xy))
+  | ?x =>
+    let eF := match (eval pattern x in e) with
+              | ?f _ => f end in
+    constr:(eF)
+  end.
+
 (* Helper tactic for instantiate_lhs_app_by_reflexivity *)
 Ltac pattern_out_args term_with_args e :=
   lazymatch term_with_args with
   | ?f ?x =>
-    let eF := match (eval pattern x in e) with
-              | ?f _ => f end in
+    let eF := pattern_out_single_arg x e in
     let eF := pattern_out_args f eF in
     constr:(eF)
   | ?f => constr:(e)
@@ -172,7 +184,77 @@ Section InstantiateAppByReflexivityTests.
     eexists; intros.
     instantiate_app_by_reflexivity.
   Qed.
+
+  (* Arguments paired on LHS and not on RHS *)
+  Goal (exists f : nat * nat -> nat, forall x y, f (x,y) = x + (y * (x - 3) + y * x - x * 5)).
+    eexists; intros.
+    instantiate_app_by_reflexivity.
+  Qed.
+
+  (* Complex pairing *)
+  Goal (exists f : nat * (nat * nat) * nat -> nat,
+           forall w x y z, f (w,(x,y),z) = x + (w * (x - z) + y * x - x * (w + z))).
+    eexists; intros.
+    instantiate_app_by_reflexivity.
+  Qed.
 End InstantiateAppByReflexivityTests.
+
+(* separate ands, exists, and projection equalities, without generating multiple
+   goals *)
+Ltac logical_simplify_step :=
+  lazymatch goal with
+  | H : _ /\ _ |- _ => destruct H
+  | H : exists _, _ |- _ => destruct H
+  | H : Some _ = Some _ |- _ =>
+    inversion H; subst; clear H
+  | H : (_, _) = (_,_) |- _ =>
+    inversion H; subst; clear H
+  end.
+Ltac logical_simplify := repeat logical_simplify_step.
+
+Section LogicalSimplifyTests.
+
+  (* simple test: only and *)
+  Goal (forall P Q, P /\ Q -> P).
+    intros; logical_simplify. assumption.
+  Qed.
+
+  (* don't destruct ors (to avoid case explosion) *)
+  Goal (forall P Q, P \/ Q -> True).
+    intros.
+    (* we expect to NOT simplify this goal! *)
+    Fail progress logical_simplify.
+    tauto.
+  Qed.
+
+  (* nested exists + and *)
+  Goal (forall T P (Q : T -> Prop), (exists x, P x /\ Q x) -> exists x, Q x).
+    intros; logical_simplify. eexists. eassumption.
+  Qed.
+
+  (* nested tuples *)
+  Goal (forall T (a0 a1 a2 a3 b0 b1 b2 b3 : T),
+           (a0,a1,a2,a3) = (b0,b1,b2,b3) ->
+           a2 = b2).
+    intros; logical_simplify. reflexivity.
+  Qed.
+
+  (* nested tuples + Some *)
+  Goal (forall T (a0 a1 a2 a3 b0 b1 b2 b3 : T),
+           (a0,a1,Some a2,a3) = (b0,b1,Some b2,b3) ->
+           a2 = b2).
+    intros; logical_simplify. reflexivity.
+  Qed.
+
+  (* more complex expression *)
+  Goal (forall T (a0 a1 a2 a3 b0 b1 b2 b3 : T),
+           (exists x,
+               Some (a0, a1) = Some (b0, x)
+               /\ Some x = Some b3) ->
+           a1 = b3).
+    intros; logical_simplify. reflexivity.
+  Qed.
+End LogicalSimplifyTests.
 
 (* Import for boolsimpl tactic *)
 Require Coq.Bool.Bool.
