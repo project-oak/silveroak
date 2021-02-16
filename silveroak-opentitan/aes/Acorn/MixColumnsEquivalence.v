@@ -27,7 +27,8 @@ Require Import Cava.Acorn.MonadFacts.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
-Import ListNotations.
+Import ListNotations VectorNotations.
+Local Open Scope list_scope.
 
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
@@ -36,6 +37,7 @@ Require Import AcornAes.MixColumnsCircuit.
 Import StateTypeConversions.LittleEndian.
 
 Existing Instance CombinationalSemantics.
+Existing Instance MixColumns.byteops.
 
 Section Equivalence.
   Local Notation byte := (Vector.t bool 8).
@@ -67,6 +69,54 @@ Section Equivalence.
     auto using unpeel_peel.
   Qed.
 
+  Lemma poly_to_byte_to_bitvec p :
+    length p = 8 -> byte_to_bitvec (MixColumns.poly_to_byte p) = of_list_sized false 8 p.
+  Proof.
+    intros; destruct_lists_by_length.
+    repeat match goal with b : bool |- _ => destruct b end; reflexivity.
+  Qed.
+  Lemma bitvec_to_byte_to_poly bv :
+    MixColumns.byte_to_poly (bitvec_to_byte bv) = to_list bv.
+  Proof.
+    constant_bitvec_cases bv; reflexivity.
+  Qed.
+
+  Lemma xorV_is_add b1 b2 :
+    unIdent (xorV (n:=8) ([b1], [b2]))
+    = [byte_to_bitvec (Polynomial.fadd (bitvec_to_byte b1)
+                                       (bitvec_to_byte b2))].
+  Proof.
+    simpl_ident. fequal_list.
+    cbv [Polynomial.fadd MixColumns.byteops].
+    rewrite poly_to_byte_to_bitvec, !bitvec_to_byte_to_poly by length_hammer.
+    cbv [Polynomial.add_poly].
+    apply to_list_inj. autorewrite with push_to_list push_extend.
+    rewrite to_list_of_list_sized by length_hammer.
+    reflexivity.
+  Qed.
+
+  Lemma xorv_is_add b1 b2 :
+    unIdent (xorv (n:=8) [b1] [b2])
+    = [byte_to_bitvec (Polynomial.fadd (bitvec_to_byte b1)
+                                       (bitvec_to_byte b2))].
+  Proof. apply xorV_is_add. Qed.
+
+  Lemma aes_mul2_correct b :
+    unIdent (aes_mul2 [b])
+    = [byte_to_bitvec (Polynomial.fmul Byte.x02
+                                       (bitvec_to_byte b))].
+  Proof.
+    cbv [combType] in *. constant_bitvec_cases b; vm_compute; reflexivity.
+  Qed.
+
+  Lemma aes_mul4_correct b :
+    unIdent (aes_mul4 [b])
+    = [byte_to_bitvec (Polynomial.fmul Byte.x04
+                                       (bitvec_to_byte b))].
+  Proof.
+    cbv [combType] in *. constant_bitvec_cases b; vm_compute; reflexivity.
+  Qed.
+
   Lemma mix_single_column_equiv (is_decrypt : bool) (col : Vector.t byte 4) :
     unIdent (aes_mix_single_column [is_decrypt] [col])
     = [if is_decrypt
@@ -74,6 +124,34 @@ Section Equivalence.
                 (MixColumns.inv_mix_single_column (map bitvec_to_byte col))
        else map byte_to_bitvec
                 (MixColumns.mix_single_column (map bitvec_to_byte col))].
+  Proof.
+    (* simplify LHS *)
+    cbv [aes_mix_single_column]. simpl_ident.
+    constant_vector_simpl col.
+    repeat lazymatch goal with
+           | |- context [(@indexConst _ _ ?t ?n [?v])] =>
+             rewrite !(@indexConst_singleton t n); cbn [nth_default map]
+           | |- context [unIdent (@xorv _ _ 8 [?b1] [?b2])] =>
+             rewrite !xorv_is_add
+           | |- context [unIdent (xorV ([?b1], [?b2]))] =>
+             rewrite !xorV_is_add
+           | |- context [unIdent (aes_mul2 [?b])] =>
+             rewrite !aes_mul2_correct
+           | |- context [unIdent (aes_mul4 [?b])] =>
+             rewrite !aes_mul4_correct
+           | |- context [bitvec_to_byte (byte_to_bitvec _)] =>
+             rewrite !byte_to_bitvec_to_byte
+           | |- context [byte_to_bitvec (bitvec_to_byte _)] =>
+             rewrite !bitvec_to_byte_to_bitvec
+           | |- context [(@unpeel _ _ ?t ?n
+                                 [[?x0]%list;[?x1]%list;[?x2]%list;[?x3]%list
+                                 ]%vector)] =>
+             (* simplify an unpeel with 4 elements that are all singletons *)
+             change (@unpeel _ _ t n
+                             [[?x0]%list;[?x1]%list;[?x2]%list;[?x3]%list
+                             ]%vector)
+               with [[x0;x1;x2;x3]%vector]
+           end.
   Admitted.
 
   Lemma mix_columns_equiv (is_decrypt : bool) (st : state) :
