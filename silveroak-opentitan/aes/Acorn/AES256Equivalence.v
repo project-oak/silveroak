@@ -92,14 +92,17 @@ Hint Resolve add_round_key_equiv sub_bytes_equiv shift_rows_equiv
 
 Definition full_cipher {signal} {semantics : Cava signal}
            {seqsemantics : CavaSeq semantics}
+           (init_rcon_fwd init_rcon_inv : signal (Vec Bit 8))
            (num_rounds_regular round_0 : signal (Vec Bit 4))
-  : signal Bit -> signal key -> signal (Vec Bit 8) ->
-    signal state -> signal (Vec Bit 4) -> cava (signal state) :=
+  : signal Bit -> signal key -> signal state -> signal (Vec Bit 4) ->
+    cava (signal state) :=
   cipher
     (round_index:=Vec Bit 4) (round_constant:=Vec Bit 8)
     aes_sub_bytes aes_shift_rows aes_mix_columns aes_add_round_key
     (fun k => aes_mix_columns one k) (* Hard-wire is_decrypt to '1' *)
-    key_expand num_rounds_regular round_0.
+    key_expand
+    (fun sel => muxPair sel (init_rcon_fwd, init_rcon_inv))
+    num_rounds_regular round_0.
 
 Local Ltac solve_side_conditions :=
   cbv zeta; intros;
@@ -124,16 +127,15 @@ Local Ltac solve_side_conditions :=
   end.
 
 Lemma full_cipher_equiv
-      (is_decrypt : bool)
-      init_key_ignored init_rcon_ignored init_state_ignored
-      (init_rcon : t bool 8) (init_key last_key : combType key)
+      (is_decrypt : bool) init_key_ignored init_state_ignored
+      (init_rcon_fwd init_rcon_inv : t bool 8) (init_key last_key : combType key)
       middle_keys (init_state : combType state) d :
   let Nr := 14 in
   let all_keys_and_rcons :=
       all_keys (if is_decrypt
                 then (fun i k => unflatten_key (inv_key_expand_spec i (flatten_key k)))
                 else (fun i k => unflatten_key (key_expand_spec i (flatten_key k))))
-               Nr (init_key, init_rcon) in
+               Nr (init_key, if is_decrypt then init_rcon_inv else init_rcon_fwd) in
   let all_keys := List.map fst all_keys_and_rcons in
   let round_indices := map (nat_to_bitvec_sized 4) (List.seq 0 (S Nr)) in
   let middle_keys_flat :=
@@ -142,17 +144,17 @@ Lemma full_cipher_equiv
       else List.map to_flat middle_keys in
   all_keys = (init_key :: middle_keys ++ [last_key])%list ->
   length init_key_ignored = Nr ->
-  length init_rcon_ignored = Nr ->
   length init_state_ignored = Nr ->
   nth Nr
       (sequential
          (full_cipher
             (semantics:=CombinationalSemantics)
+            (repeat init_rcon_fwd (S Nr))
+            (repeat init_rcon_inv (S Nr))
             (repeat (nat_to_bitvec_sized _ Nr) (S Nr))
             (repeat (nat_to_bitvec_sized _ 0) (S Nr))
             (repeat is_decrypt (S Nr))
             (init_key :: init_key_ignored)
-            (init_rcon :: init_rcon_ignored)
             (init_state :: init_state_ignored)
             round_indices)) d
   = from_flat
@@ -228,11 +230,9 @@ Qed.
 
 Local Open Scope monad_scope.
 
-(* TODO: define a downto/upto loop combinator and then prove the cipher in terms of that *)
 Lemma full_cipher_inverse
       (is_decrypt : bool)
-      init_key_ignored1 init_rcon_ignored1 init_state_ignored1
-      init_key_ignored2 init_rcon_ignored2 init_state_ignored2
+      init_key_ignored1 init_state_ignored1 init_key_ignored2 init_state_ignored2
       (first_rcon last_rcon : t bool 8)
       (first_key last_key : combType key) (input : combType state) d :
   let Nr := 14 in
@@ -248,36 +248,33 @@ Lemma full_cipher_inverse
         (inv_key_expand_spec
            (Nr - S i) (key_expand_spec i (flatten_key kr))) = kr) ->
   length init_key_ignored1 = Nr ->
-  length init_rcon_ignored1 = Nr ->
   length init_state_ignored1 = Nr ->
   length init_key_ignored2 = Nr ->
-  length init_rcon_ignored2 = Nr ->
   length init_state_ignored2 = Nr ->
-  (* How can I feed the input back in? *)
-  (* The final circuit wouldn't be a loop *)
-  (* just fetch nth for each direction, I think *)
   let ciphertext :=
       nth Nr
           (sequential
              (full_cipher
                 (semantics:=CombinationalSemantics)
+                (repeat first_rcon (S Nr))
+                (repeat last_rcon (S Nr))
                 (repeat (nat_to_bitvec_sized _ Nr) (S Nr))
                 (repeat (nat_to_bitvec_sized _ 0) (S Nr))
                 (repeat false (S Nr))
                 (first_key :: init_key_ignored1)
-                (first_rcon :: init_rcon_ignored1)
                 (input :: init_state_ignored1)
                 round_indices)) d in
   nth Nr
       (sequential
          (full_cipher
             (semantics:=CombinationalSemantics)
-                (repeat (nat_to_bitvec_sized _ Nr) (S Nr))
-                (repeat (nat_to_bitvec_sized _ 0) (S Nr))
-                (repeat true (S Nr))
-                (last_key :: init_key_ignored2)
-                (last_rcon :: init_rcon_ignored2)
-                (ciphertext :: init_state_ignored2)
+            (repeat first_rcon (S Nr))
+            (repeat last_rcon (S Nr))
+            (repeat (nat_to_bitvec_sized _ Nr) (S Nr))
+            (repeat (nat_to_bitvec_sized _ 0) (S Nr))
+            (repeat true (S Nr))
+            (last_key :: init_key_ignored2)
+            (ciphertext :: init_state_ignored2)
             round_indices)) d
   = input.
 Proof.
