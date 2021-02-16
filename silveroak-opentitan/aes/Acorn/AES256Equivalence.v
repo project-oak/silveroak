@@ -91,14 +91,18 @@ Hint Resolve add_round_key_equiv sub_bytes_equiv shift_rows_equiv
      mix_columns_equiv : subroutines_equiv.
 
 Definition full_cipher {signal} {semantics : Cava signal}
+           {seqsemantics : CavaSeq semantics}
+           (init_rcon_fwd init_rcon_inv : signal (Vec Bit 8))
            (num_rounds_regular round_0 : signal (Vec Bit 4))
-  : signal Bit -> signal key -> signal (Vec Bit 8) ->
-    list (signal (Vec Bit 4)) -> signal state -> cava (signal state) :=
+  : signal Bit -> signal key -> signal state -> signal (Vec Bit 4) ->
+    cava (signal state) :=
   cipher
     (round_index:=Vec Bit 4) (round_constant:=Vec Bit 8)
     aes_sub_bytes aes_shift_rows aes_mix_columns aes_add_round_key
     (fun k => aes_mix_columns one k) (* Hard-wire is_decrypt to '1' *)
-    key_expand num_rounds_regular round_0.
+    key_expand
+    (fun sel => muxPair sel (init_rcon_fwd, init_rcon_inv))
+    num_rounds_regular round_0.
 
 Local Ltac solve_side_conditions :=
   cbv zeta; intros;
@@ -117,33 +121,46 @@ Local Ltac solve_side_conditions :=
     destruct is_decrypt; reflexivity
   | |- context [_ < 2 ^ 4] => change (2 ^ 4)%nat with 16; Lia.lia
   | |- map fst (all_keys _ _ _) = _ => solve [eauto]
+  | |- length _ = _ => length_hammer
+  | |- hd _ _ = _ => reflexivity
   | _ => idtac
   end.
 
 Lemma full_cipher_equiv
-      (is_decrypt : bool) (first_rcon : t bool 8)
-      (first_key last_key : combType key)
-      middle_keys (input : combType state) :
+      (is_decrypt : bool) init_key_ignored init_state_ignored
+      (init_rcon_fwd init_rcon_inv : t bool 8) (init_key last_key : combType key)
+      middle_keys (init_state : combType state) d :
   let Nr := 14 in
   let all_keys_and_rcons :=
       all_keys (if is_decrypt
                 then (fun i k => unflatten_key (inv_key_expand_spec i (flatten_key k)))
                 else (fun i k => unflatten_key (key_expand_spec i (flatten_key k))))
-               Nr (first_key, first_rcon) in
+               Nr (init_key, if is_decrypt then init_rcon_inv else init_rcon_fwd) in
   let all_keys := List.map fst all_keys_and_rcons in
-  let round_indices := map (fun i => [nat_to_bitvec_sized 4 i]) (List.seq 0 (S Nr)) in
+  let round_indices := map (nat_to_bitvec_sized 4) (List.seq 0 (S Nr)) in
   let middle_keys_flat :=
       if is_decrypt
       then List.map AES256.inv_mix_columns (List.map to_flat middle_keys)
       else List.map to_flat middle_keys in
-  all_keys = (first_key :: middle_keys ++ [last_key])%list ->
-  combinational
-    (full_cipher [nat_to_bitvec_sized _ Nr] [nat_to_bitvec_sized _ 0]
-                 [is_decrypt] [first_key] [first_rcon] round_indices [input])
-  = [from_flat
-       ((if is_decrypt then aes256_decrypt else aes256_encrypt)
-          (to_flat first_key) (to_flat last_key) middle_keys_flat
-          (to_flat input))].
+  all_keys = (init_key :: middle_keys ++ [last_key])%list ->
+  length init_key_ignored = Nr ->
+  length init_state_ignored = Nr ->
+  nth Nr
+      (sequential
+         (full_cipher
+            (semantics:=CombinationalSemantics)
+            (repeat init_rcon_fwd (S Nr))
+            (repeat init_rcon_inv (S Nr))
+            (repeat (nat_to_bitvec_sized _ Nr) (S Nr))
+            (repeat (nat_to_bitvec_sized _ 0) (S Nr))
+            (repeat is_decrypt (S Nr))
+            (init_key :: init_key_ignored)
+            (init_state :: init_state_ignored)
+            round_indices)) d
+  = from_flat
+      ((if is_decrypt then aes256_decrypt else aes256_encrypt)
+         (to_flat init_key) (to_flat last_key) middle_keys_flat
+         (to_flat init_state)).
 Proof.
   cbv [full_cipher]; intros.
 
@@ -168,7 +185,7 @@ Proof.
       with (projkey:=from_flat)
            (middle_keys_alt:=
               List.map inv_mix_columns (List.map to_flat middle_keys))
-           (first_key_alt:=to_flat first_key)
+           (first_key_alt:=to_flat init_key)
            (last_key_alt:=to_flat last_key)
       by (try apply from_flat_to_flat;
           rewrite !List.map_map; apply List.map_ext;
@@ -176,7 +193,7 @@ Proof.
 
     (* Prove that ciphers are equivalent because all subroutines are
        equivalent *)
-    f_equal. f_equal.
+    f_equal.
     eapply equivalent_inverse_cipher_subroutine_ext;
       intros; autounfold with circuit_specs;
         autorewrite with conversions; reflexivity. }
@@ -205,7 +222,7 @@ Proof.
 
     (* Prove that ciphers are equivalent because all subroutines are
        equivalent *)
-    f_equal. f_equal.
+    f_equal.
     eapply cipher_subroutine_ext;
       intros; autounfold with circuit_specs;
         autorewrite with conversions; reflexivity. }
@@ -213,15 +230,16 @@ Qed.
 
 Local Open Scope monad_scope.
 
-(* TODO: define a downto/upto loop combinator and then prove the cipher in terms of that *)
 Lemma full_cipher_inverse
-      (is_decrypt : bool) (first_rcon last_rcon : t bool 8)
-      (first_key last_key : combType key) (input : combType state) :
+      (is_decrypt : bool)
+      init_key_ignored1 init_state_ignored1 init_key_ignored2 init_state_ignored2
+      (first_rcon last_rcon : t bool 8)
+      (first_key last_key : combType key) (input : combType state) d :
   let Nr := 14 in
   let all_keys_and_rcons :=
       all_keys (fun i k => unflatten_key (key_expand_spec i (flatten_key k)))
                Nr (first_key, first_rcon) in
-  let round_indices := map (fun i => [nat_to_bitvec_sized 4 i]) (List.seq 0 (S Nr)) in
+  let round_indices := map (nat_to_bitvec_sized 4) (List.seq 0 (S Nr)) in
   (* last_key and last_rcon are correct *)
   (exists keys, all_keys_and_rcons = keys ++ [(last_key, last_rcon)]) ->
   (* inverse key expansion reverses key expansion *)
@@ -229,13 +247,39 @@ Lemma full_cipher_inverse
       unflatten_key
         (inv_key_expand_spec
            (Nr - S i) (key_expand_spec i (flatten_key kr))) = kr) ->
-  combinational
-    ((full_cipher [nat_to_bitvec_sized _ Nr] [nat_to_bitvec_sized _ 0]
-                  [false] [first_key] [first_rcon] round_indices >=>
-      full_cipher [nat_to_bitvec_sized _ Nr] [nat_to_bitvec_sized _ 0]
-                  [true] [last_key] [last_rcon] round_indices) [input]) = [input].
+  length init_key_ignored1 = Nr ->
+  length init_state_ignored1 = Nr ->
+  length init_key_ignored2 = Nr ->
+  length init_state_ignored2 = Nr ->
+  let ciphertext :=
+      nth Nr
+          (sequential
+             (full_cipher
+                (semantics:=CombinationalSemantics)
+                (repeat first_rcon (S Nr))
+                (repeat last_rcon (S Nr))
+                (repeat (nat_to_bitvec_sized _ Nr) (S Nr))
+                (repeat (nat_to_bitvec_sized _ 0) (S Nr))
+                (repeat false (S Nr))
+                (first_key :: init_key_ignored1)
+                (input :: init_state_ignored1)
+                round_indices)) d in
+  nth Nr
+      (sequential
+         (full_cipher
+            (semantics:=CombinationalSemantics)
+            (repeat first_rcon (S Nr))
+            (repeat last_rcon (S Nr))
+            (repeat (nat_to_bitvec_sized _ Nr) (S Nr))
+            (repeat (nat_to_bitvec_sized _ 0) (S Nr))
+            (repeat true (S Nr))
+            (last_key :: init_key_ignored2)
+            (ciphertext :: init_state_ignored2)
+            round_indices)) d
+  = input.
 Proof.
-  cbv [mcompose]. intros [keys Hkeys] ?. simpl_ident.
+  intros *. intros [keys Hkeys]. intros. simpl_ident.
+  subst_lets.
 
   (* extract the first key and middle keys to match full_cipher_equiv *)
   lazymatch type of Hkeys with
@@ -251,7 +295,10 @@ Proof.
 
   (* TODO(jadep): can ExpandAllKeys be improved to make this less awkward? *)
   cbv [combinational].
-  erewrite !full_cipher_equiv.
+  erewrite !full_cipher_equiv; try length_hammer.
+  2:{
+    rewrite Hkeys. cbn [map]. rewrite map_app. cbn [map fst].
+    reflexivity. }
   2:{
     erewrite all_keys_inv_eq
       by (intros; lazymatch goal with
@@ -260,9 +307,6 @@ Proof.
                   end).
     rewrite Hkeys. cbn [map rev]. rewrite map_app, rev_unit. cbn [map rev fst].
     rewrite <-app_comm_cons. reflexivity. }
-  2:{
-    rewrite Hkeys. cbn [map]. rewrite map_app. cbn [map fst].
-    reflexivity. }
 
   autorewrite with conversions.
   do 2 rewrite map_rev.

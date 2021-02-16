@@ -602,6 +602,10 @@ Proof.
   rewrite <-repeat_cons. reflexivity.
 Qed.
 
+Lemma mkpair_singleton {A B} (a : combType A) (b : combType B):
+  mkpair [a] [b] = [(a,b)].
+Proof. reflexivity. Qed.
+
 Lemma mkpair_one {t} (x : seqType t):
   length x <> 0 ->
   mkpair one x = mkpair (repeat true (length x)) x.
