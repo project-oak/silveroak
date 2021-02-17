@@ -18,14 +18,50 @@ Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import Coq.Vectors.Vector.
 Import ListNotations VectorNotations.
+Require Import ExtLib.Structures.Monads.
+Import MonadNotation.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 Require Import AcornAes.CipherControlCircuit.
+Require Import AcornAes.SubBytesCircuit.
+Require Import AcornAes.MixColumnsCircuit.
+Require Import AcornAes.ShiftRowsCircuit.
+Require Import AcornAes.AddRoundKeyCircuit.
 Require Import AcornAes.Pkg.
 Import Pkg.Notations.
 
 Let cipher_state : SignalType := Pair (Pair key round_constant) state.
+
+  Definition key_expand_and_round
+             (is_decrypt : Signal Bit)
+             (key_rcon_data : Signal cipher_state)
+             (add_round_key_in_sel : Signal (Vec Bit 2))
+             (round_key_sel : Signal Bit)
+             (round_i : Signal round_index)
+    : cava (Signal cipher_state) :=
+    let '(key_rcon, data) := unpair key_rcon_data in
+    let '(round_key, rcon) := unpair key_rcon in
+    sub_bytes_out <- aes_sub_bytes is_decrypt data ;;
+    (* shift_rows_out <- aes_shift_rows is_decrypt sub_bytes_out ;; *)
+    (* mix_columns_out <- aes_mix_columns is_decrypt shift_rows_out ;; *)
+
+    (* (1* Different rounds perform different operations on the state before adding *)
+    (*    the round key; select the appropriate wire based on add_round_key_in_sel *1) *)
+    (* let add_round_key_in := *)
+    (*     mux4 (mkpair (mkpair (mkpair mix_columns_out data) shift_rows_out) mix_columns_out) *)
+    (*          add_round_key_in_sel in *)
+
+    (* (1* Intermediate decryption rounds need to mix the key columns *1) *)
+    (* mixed_round_key <- inv_mix_columns_key round_key ;; *)
+
+    (* key_to_add <- muxPair round_key_sel (round_key, mixed_round_key) ;; *)
+    (* out <- aes_add_round_key key_to_add add_round_key_in ;; *)
+
+    (* (1* Key expansion *1) *)
+    (* '(round_key, rcon) <- key_expand is_decrypt round_i (round_key, rcon) ;; *)
+
+    ret (mkpair (mkpair round_key rcon) sub_bytes_out).
 
 Definition key_expand_and_round_Interface :=
   combinationalInterface "key_expand_and_round"
@@ -39,7 +75,7 @@ Definition key_expand_and_round_Interface :=
 
 Definition key_expand_and_round_Netlist
   := makeNetlist key_expand_and_round_Interface
-  (fun '(a, b, c, d, e ) => key_expand_and_round key_expand a b c d e).
+  (fun '(a, b, c, d, e ) => key_expand_and_round a b c d e).
 
 Definition cipher_Interface :=
   combinationalInterface "cipher"
