@@ -118,6 +118,10 @@ Section WithCava.
     (round_index:=round_index) (round_constant:=round_constant)
     aes_sub_bytes aes_shift_rows aes_mix_columns aes_add_round_key
     inv_mix_columns_key key_expand initial_rcon.
+  Definition key_expand_and_round := key_expand_and_round
+    (round_index:=round_index) (round_constant:=round_constant)
+    aes_sub_bytes aes_shift_rows aes_mix_columns aes_add_round_key
+    inv_mix_columns_key key_expand.
 
   (* Comparable to OpenTitan aes_cipher_core but with simplified signalling *)
   Definition aes_cipher_core_simplified

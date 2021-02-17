@@ -25,6 +25,22 @@ Require Import AcornAes.CipherControlCircuit.
 Require Import AcornAes.Pkg.
 Import Pkg.Notations.
 
+Let cipher_state : SignalType := Pair (Pair key round_constant) state.
+
+Definition key_expand_and_round_Interface :=
+  combinationalInterface "key_expand_and_round"
+  [ mkPort "is_decrypt" Bit
+  ; mkPort "key_rcon_data" cipher_state
+  ; mkPort "add_round_key_in_sel" (Vec Bit 2)
+  ; mkPort "round_key_sel" Bit
+  ; mkPort "round_i" (Vec Bit 4) ]
+  [ mkPort "state_o" cipher_state ]
+  [].
+
+Definition key_expand_and_round_Netlist
+  := makeNetlist key_expand_and_round_Interface
+  (fun '(a, b, c, d, e ) => key_expand_and_round key_expand a b c d e).
+
 Definition cipher_Interface :=
   combinationalInterface "cipher"
   [ mkPort "num_rounds_regular" (Vec Bit 4)
