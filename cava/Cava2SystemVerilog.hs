@@ -172,15 +172,26 @@ showSignal signal
       IndexAt _ _ _ v i -> showSignal v ++ "[" ++ showSignal i ++ "]"
       IndexConst _ _ v i -> showSignal v ++ "[" ++ show i ++ "]"
       Slice k _ start len v -> showSignal v ++ showSliceIndex k start len
-      SignalFst _ _ (SignalPair _ _ a _) -> showSignal a
-      SignalSnd _ _ (SignalPair _ _ _ b) -> showSignal b
+      SignalFst _ _ s -> showSignal (simplifySignal s)
+      SignalSnd _ _ s -> showSignal (simplifySignal s)
       -- SignalPair should never occur but added here to aid debugging.
       SignalPair _ _ a b -> "(" ++ showSignal a ++ ", " ++ showSignal b ++ ")"
       UnsignedAdd _ _ _ a b -> "(" ++ showSignal a ++ " + " ++ showSignal b ++ ")"
       UnsignedSubtract _ _ _ a b -> "(" ++ showSignal a ++ " - " ++ showSignal b ++ ")"
       UnsignedMultiply _ _ _ a b -> "(" ++ showSignal a ++ " * " ++ showSignal b ++ ")"
       GreaterThanOrEqual _ _ a b -> "(" ++ showSignal a ++ " >= " ++ showSignal b ++ ")"
-      other -> error ("showSignal: unsupported expresson: " ++ show other)
+
+simplifySignal :: Signal -> Signal
+simplifySignal (SignalFst _ _ s)
+  = case simplifySignal s of
+      SignalPair _ _ a _ -> simplifySignal a
+      other -> error ("Unable to simplfy SignalFst argument " ++ show other)
+simplifySignal (SignalSnd _ _ s)
+  = case simplifySignal s of
+      SignalPair _ _ _ b -> simplifySignal b
+      other -> error ("Unable to simplfy SignalSnd argument " ++ show other)
+-- TODO: Consider adding other compile time evaluations e.g. for IndexConst.
+simplifySignal s = s
 
 showSliceIndex :: SignalType -> Integer -> Integer -> String
 showSliceIndex k start len
