@@ -14,35 +14,31 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import AcornAes.Pkg.
-Require Import AcornAes.Cipher.
-Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.ShiftRowsCircuit.
-Require Import AcornAes.SubBytesCircuit.
-Require Import AcornAes.AddRoundKeyCircuit.
+Require Import Coq.Strings.String.
+Require Import Coq.Lists.List.
+Require Import Coq.Vectors.Vector.
+Import ListNotations VectorNotations.
+
+Require Import Cava.Cava.
+Require Import Cava.Acorn.Acorn.
 Require Import AcornAes.CipherControlCircuit.
-Require Import AcornAes.MixColumnsNetlist.
-Require Import AcornAes.ShiftRowsNetlist.
-Require Import AcornAes.SubBytesNetlist.
-Require Import AcornAes.AddRoundKeyNetlist.
-Require Import AcornAes.CipherControlNetlist.
-Require Import Coq.extraction.Extraction.
-Require Import Coq.extraction.ExtrHaskellZInteger.
-Require Import Coq.extraction.ExtrHaskellString.
-Require Import Coq.extraction.ExtrHaskellBasic.
-Require Import Coq.extraction.ExtrHaskellNatInteger.
+Require Import AcornAes.Pkg.
+Import Pkg.Notations.
 
-Extraction Language Haskell.
+Definition aes_cipher_core_simplified_Interface :=
+  combinationalInterface "aes_cipher_core_simplified"
+  [ mkPort "op_i" Bit
+  ; mkPort "in_valid_i" Bit
+  ; mkPort "out_ready_i" Bit
+  ; mkPort "key_init_i" key
+  ; mkPort "state_init_i" state ]
+  [ mkPort "in_ready_o" Bit
+  ; mkPort "out_valid_o" Bit
+  ; mkPort "state_o" state ]
+  [].
 
-Extraction Library Pkg.
-Extraction Library Cipher.
-Extraction Library MixColumnsCircuit.
-Extraction Library ShiftRowsCircuit.
-Extraction Library SubBytesCircuit.
-Extraction Library AddRoundKeyCircuit.
-Extraction Library CipherControlCircuit.
-Extraction Library MixColumnsNetlist.
-Extraction Library ShiftRowsNetlist.
-Extraction Library SubBytesNetlist.
-Extraction Library AddRoundKeyNetlist.
-Extraction Library CipherControlNetlist.
+Definition aes_cipher_core_simplified_Netlist
+  := makeNetlist aes_cipher_core_simplified_Interface
+  (fun '(op_i, in_valid_i, out_ready_i, key_init_i, state_init_i) =>
+    aes_cipher_core_simplified key_expand op_i in_valid_i out_ready_i key_init_i state_init_i).
+

@@ -212,7 +212,7 @@ generateInstance netlistState (Delay t d i o) _
                       NegativeEdge -> "negedge"
     negReset = case rstEdge of
                  PositiveEdge -> ""
-                 NegativeEdge -> "!"                 
+                 NegativeEdge -> "!"
 generateInstance netlistState (DelayEnable t d en i o) _
   = unlines [
     "  always_ff @(" ++ showEdge clkEdge ++ " " ++ showSignal clk ++ " or "
@@ -231,7 +231,7 @@ generateInstance netlistState (DelayEnable t d en i o) _
                       NegativeEdge -> "negedge"
     negReset = case rstEdge of
                  PositiveEdge -> ""
-                 NegativeEdge -> "!" 
+                 NegativeEdge -> "!"
 generateInstance _ (AssignSignal _ a b) _
    = "  assign " ++ showSignal a ++ " = " ++ showSignal b ++ ";"
 generateInstance _ (Not i o) instrNr = primitiveInstance "not" [o, i] instrNr
@@ -326,6 +326,10 @@ mapSignalsInInstanceM f inst
                        fi1 <- f i1
                        fo  <- f o
                        return (Or fi0 fi1 fo)
+      Nor i0 i1 o -> do fi0 <- f i0
+                        fi1 <- f i1
+                        fo  <- f o
+                        return (Nor fi0 fi1 fo)
       Xor i0 i1 o -> do fi0 <- f i0
                         fi1 <- f i1
                         fo  <- f o
