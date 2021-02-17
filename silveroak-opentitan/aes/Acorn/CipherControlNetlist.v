@@ -25,6 +25,22 @@ Require Import AcornAes.CipherControlCircuit.
 Require Import AcornAes.Pkg.
 Import Pkg.Notations.
 
+Definition cipher_Interface :=
+  combinationalInterface "cipher"
+  [ mkPort "num_rounds_regular" (Vec Bit 4)
+  ; mkPort "round_0" (Vec Bit 4)
+  ; mkPort "is_decrypt" Bit
+  ; mkPort "initial_key" key
+  ; mkPort "initial_state" state
+  ; mkPort "round_i" (Vec Bit 4) ]
+  [ mkPort "state_o" state ]
+  [].
+
+Definition cipher_Netlist
+  := makeNetlist cipher_Interface
+  (fun '(num_rounds_regular, round_0, is_decrypt, initial_key, initial_state, round_i) =>
+    cipher key_expand num_rounds_regular round_0 is_decrypt initial_key initial_state round_i).
+
 Definition aes_cipher_core_simplified_Interface :=
   combinationalInterface "aes_cipher_core_simplified"
   [ mkPort "op_i" Bit

@@ -144,7 +144,8 @@ Section WithCava.
 
         (* Are we still processing an input (or generating a decryption key) *)
         is_final_round <- last_round ==? round_final ;;
-        is_finishing <- and2 (is_final_round, last_gen_dec_key) ;;
+        inv_last_gen_dec_key <- inv last_gen_dec_key ;;
+        is_finishing <- and2 (is_final_round, inv_last_gen_dec_key) ;;
         becoming_idle <- or2 (last_idle, is_finishing) ;;
         inv_last_idle <- inv last_idle ;;
         (* If we weren't idle and we are about to finish,
@@ -152,22 +153,21 @@ Section WithCava.
         producing_output <- and2 (inv_last_idle, is_finishing) ;;
         (* Accept input if we are not busy next cycle *)
         accepted_input <- and2 (becoming_idle, in_valid_i) ;;
+        (* Are we generating decryption key?
+        * Decryption requires a full pass to generate decryption key *)
+        generating_decryption_key <- and2 (accepted_input, is_decrypt) ;;
         (* We are only truly idle if there was no incoming input *)
         inv_in_valid_i <- inv in_valid_i ;;
         idle <- and2 (becoming_idle, inv_in_valid_i) ;;
 
-        (* Are we generating decryption key?
-        * Decryption requires a full pass to generate decryption key
-        * Currently not implemented/supported *)
-        let generating_decryption_key := constant false in
-
         (* Update round, hold at 0 if idle. This is correct when accepting input
         * as acceptance requires becoming_idle is true *)
         next_round <- inc_round last_round ;;
+        next_round <- muxPair is_final_round (round_0, next_round) ;;
         round <- muxPair becoming_idle (round_0, next_round) ;;
 
         (* we only need to grab the state at the last round *)
-        st <- cipher round_final round_0 is_decrypt initial_key initial_state round ;;
+        st <- cipher round_final round_0 generating_decryption_key initial_key initial_state round ;;
         buffered_state <- muxPair producing_output (st, last_buffered_state) ;;
 
         out_valid_o <- or2 (last_output_latch, producing_output) ;;
