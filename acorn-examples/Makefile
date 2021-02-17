@@ -35,13 +35,13 @@ xilinx:		adder8.vcd
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt
 VLINT = $(VERILATOR) --lint-only
 
-_CoqProject:
+_CoqProject:    $(shell find . -name '*.v' -not -path "*/xilinx/*" | sort)
 		@echo "INSTALLDEFAULTROOT = AcornExamples" > _CoqProject
 		@echo "-R . AcornExamples" >> _CoqProject
 		@echo "-R ../cava/Cava Cava" >> _CoqProject
 		@echo "-R ../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
 		@echo "-R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
-		git ls-files | grep "\.v$$" | grep -v "^xilinx/" >> _CoqProject
+		@printf '%s\n' $^ >> _CoqProject
 
 Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
