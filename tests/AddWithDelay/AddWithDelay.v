@@ -69,6 +69,10 @@ Section WithCava.
 
   Definition addWithDelay : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))
     := loopDelayS (addN >=> delay).
+  
+  (* A version to test loopDelaySR *)
+  Definition addWithDelayAlt : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))
+    := loopDelaySRAlt (tupleInterfaceDefault [Vec Bit 8]) (addN >=> delay).
 
 End WithCava.
 
@@ -85,4 +89,15 @@ Example addWithDelay_ex2: sequential (addWithDelay (# [1;1;1;1;1;1;1;1;1])) = # 
 Proof. reflexivity. Qed.
 
 Example addWithDelay_ex3: sequential (addWithDelay (# [14; 7; 3; 250])) = # [0; 14; 7; 17; 1].
+Proof. reflexivity. Qed.
+
+(* Test the versions made with loopDelaySRAlt *)
+
+Example addWithDelayAlt_ex1: sequential (addWithDelayAlt (# [0;1;2;3;4;5;6;7;8])) = # [0;0;1;2;4;6;9;12;16;20].
+Proof. reflexivity. Qed.
+
+Example addWithDelayAlt_ex2: sequential (addWithDelayAlt (# [1;1;1;1;1;1;1;1;1])) = # [0;1;1;2;2;3;3;4;4;5].
+Proof. reflexivity. Qed.
+
+Example addWithDelayAlt_ex3: sequential (addWithDelayAlt (# [14; 7; 3; 250])) = # [0; 14; 7; 17; 1].
 Proof. reflexivity. Qed.

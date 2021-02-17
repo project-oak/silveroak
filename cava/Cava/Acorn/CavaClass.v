@@ -104,6 +104,13 @@ Class CavaSeq {signal : SignalType -> Type} (combinationalSemantics : Cava signa
                 (signal A * signal B -> cava (signal B)) ->
                 signal A ->
                 cava (signal B);
+  (* A version of loopDelaySRAlt that has a composite state value of a tuple-type computed
+     from the list B, or a scalar type when B is a singleton list. *)
+  loopDelaySRAlt : forall {A : SignalType} {B : list SignalType},
+                   tupleInterface combType B ->
+                   (signal A * tupleInterface signal B -> cava (tupleInterface signal B)) ->
+                   signal A ->
+                   cava (tupleInterface signal B); 
   (* A version of loopDelayEnable with a clock enable and current state at
      the output. *)
   loopDelaySEnableR : forall {A B: SignalType},

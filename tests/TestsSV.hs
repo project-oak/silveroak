@@ -1,4 +1,4 @@
-{- Copyright 2020 The Project Oak Authors
+{- Copyright 2021 The Project Oak Authors
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -42,6 +42,10 @@ main = do writeSystemVerilog mux2_1Netlist
           -- writeTestBench pipelinedNAND_tb
           writeSystemVerilog countBy_Netlist
           writeTestBench countBy_tb
+          writeSystemVerilog countByAlt_Netlist
+          writeTestBench countByAlt_tb
+          writeSystemVerilog countByInvAlt_Netlist
+          writeTestBench countByInvAlt_tb
           writeSystemVerilog accumulatingAdderEnable_Netlist
           writeSystemVerilog accumulatingAdderEnable2_Netlist
           writeSystemVerilog arrayTest_Netlist

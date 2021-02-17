@@ -277,6 +277,7 @@ Definition delayV (ticks : nat) (t : SignalType) (def : combType t) : seqVType t
      *)
      delayEnableWith k d en i := delayV ticks k d i;
      loopDelaySR A B := @loopSeqSV A B ticks;
+     loopDelaySRAlt A B r f i := ret (tupleInterfaceDefaultSV ticks B); (* dummy *)
      (* TODO(satnam6502, jadep): Placeholder definition for loopDelayEnable for
         now. Replace with actual definition that models clock enable behaviour.
      *)

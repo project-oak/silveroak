@@ -252,6 +252,61 @@ Definition loopNetS (A B : SignalType)
   assignSignal o oDelay ;;
   ret out.
 
+Fixpoint zipTupleMR {m} `{Monad m}
+                    (signal : SignalType -> Type)
+                    (ts : list SignalType)
+                    (f : forall (A : SignalType), signal A -> combType A -> m (signal A)) :
+                    tupleInterfaceR signal ts ->
+                    tupleInterfaceR combType ts ->
+                    m (tupleInterfaceR signal ts) :=
+  match ts  with
+  | [] => fun _ _ => ret tt
+  | x::xs => fun a b => v <- f x (fst a) (fst b) ;;
+                        vx <- zipTupleMR signal xs f (snd a) (snd b) ;;
+                        ret (v, vx)
+  end.
+
+Definition zipTupleM {m} `{Monad m}
+                     (signal : SignalType -> Type)
+                     (ts : list SignalType)
+                     (f : forall (A : SignalType), signal A -> combType A -> m (signal A)) 
+                     (a : tupleInterface signal ts)
+                     (b : tupleInterface combType ts)
+                     : m (tupleInterface signal ts) :=
+  v <- zipTupleMR signal ts f (unbalance signal ts a) (unbalance combType ts b) ;;
+  ret (rebalance signal ts v).
+
+Fixpoint zipTupleMR_ (signal : SignalType -> Type)
+                     (ts : list SignalType)
+                     (f : forall (A : SignalType), signal A -> signal A -> state CavaState unit) :
+                     tupleInterfaceR signal ts ->
+                     tupleInterfaceR signal ts ->
+                     state CavaState unit :=
+  match ts  with
+  | [] => fun _ _ => ret tt
+  | x::xs => fun a b => f x (fst a) (fst b) ;;
+                        zipTupleMR_ signal xs f (snd a) (snd b) ;;
+                        ret tt
+  end.
+
+Definition zipTupleM_ (signal : SignalType -> Type)
+                      (ts : list SignalType)
+                      (f : forall (A : SignalType), signal A -> signal A -> state CavaState unit)
+                      (a b : tupleInterface signal ts)
+                      : state CavaState unit :=
+  zipTupleMR_ signal ts f (unbalance signal ts a) (unbalance signal ts b).
+
+Definition loopNetSAlt (A : SignalType) (ts : list SignalType)
+                       (resetValue : tupleInterface combType ts)
+                       (f : Signal A * tupleInterface Signal ts -> state CavaState (tupleInterface Signal ts))
+                       (a : Signal A)
+                       : state CavaState (tupleInterface Signal ts) :=
+  o <- mapTuple_ Signal ts newSignal ;;
+  out <- f (a, o) ;;
+  oDelay <- zipTupleM Signal ts (fun A x r => delayNet A r x) out resetValue ;;
+  zipTupleM_ Signal ts (@assignSignal) o oDelay ;;
+  ret o.
+
 (* Create a loop circuit with a delay element with enable along the feedback
    path with the current state exposed at the output. *)
 Definition loopNetEnableS (A B : SignalType)
@@ -320,5 +375,6 @@ Instance CavaSequentialNet : CavaSeq CavaCombinationalNet :=
   { delayWith k d := delayNet k d;
     delayEnableWith k d := delayEnableNet k d;
     loopDelaySR a b := loopNetS a b;
+    loopDelaySRAlt a b := loopNetSAlt a b;
     loopDelaySEnableR en a b := loopNetEnableS en a b;
   }.

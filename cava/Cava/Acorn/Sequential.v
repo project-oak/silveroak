@@ -96,6 +96,31 @@ Definition loopSeqS {A B : SignalType}
                     (a : seqType A) : ident (seqType B) :=
   snd (fold_left (loopSeqS' resetValue f) a (0, ret [])).
 
+Definition overlap': nat -> forall (A : SignalType), seqType A -> seqType A -> seqType A :=
+  fun  t _ a b => overlap t a b.
+
+Definition loopSeqSAlt' {A : SignalType} {ts : list SignalType}
+                        (resetValue : tupleInterface combType ts)
+                        (f : seqType A * tupleInterface seqType ts -> ident (tupleInterface seqType ts))
+                        (state: nat * ident (tupleInterface seqType ts)) (a : combType A)
+  : nat * ident (tupleInterface seqType ts) :=
+  let t := fst state in
+  (S t,
+   out <- snd state ;; (* get the output accumulator *)
+   (* get the value of out at previous timestep (because of delay) *)
+   let outDelayed := match t with
+                     | 0 => resetValue
+                     | S t' => tupleAtIndex t' out
+                     end in
+   b <- f ([a], fromListOfTuples ts [outDelayed]) ;; (* Process one input *)
+   let out' := zipWithTuples seqType ts (overlap' t) out b in (* append new output, starting at timestep t *)
+   ret out').
+
+Definition loopSeqSAlt {A : SignalType} {ts : list SignalType}
+                       (resetValue : tupleInterface combType ts)
+                       (f : seqType A * tupleInterface seqType ts -> ident (tupleInterface seqType ts))
+                       (a : seqType A) : ident (tupleInterface seqType ts) :=
+  snd (fold_left (loopSeqSAlt' resetValue f) a (0, ret (emptyTuple ts))).
 
 Fixpoint delayEnableBoolList' (t: SignalType) (en: list bool) (i : seqType t)
                               (state: combType t) :
@@ -120,6 +145,7 @@ Instance SequentialSemantics : CavaSeq CombinationalSemantics :=
    { delayWith t d i := ret (d :: i);
      delayEnableWith t d en i := delayEnableBoolList t d en i;
      loopDelaySR _ _ := loopSeqS;
+     loopDelaySRAlt _ _ := loopSeqSAlt;
      loopDelaySEnableR A B resetValue en f input :=
        (* The semantics of loopDelaySEnable is defined in terms of loopDelayS and
           the circuitry required to model a clock enable with a multiplexor. *)

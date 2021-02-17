@@ -19,6 +19,10 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import Coq.ZArith.ZArith.
 
+Require Import ExtLib.Structures.Monads.
+Export MonadNotation.
+Local Open Scope monad_scope.
+
 (******************************************************************************)
 (* The types of signals that can flow over wires, used to index signal        *)
 (******************************************************************************)
@@ -170,6 +174,79 @@ Definition fromListOfTuples (ts: list SignalType)
                             (i : (list (tupleInterface combType ts)))
                             : tupleInterface seqType ts :=
   rebalance seqType ts (fromListOfTuplesR ts (map (unbalance combType ts) i)).
+
+(* Index a particular value in time. *)
+
+Fixpoint tupleAtIndexR (ts: list SignalType)
+                       (i : nat) :
+                       tupleInterfaceR seqType ts ->
+                       tupleInterfaceR combType ts :=
+  match ts return tupleInterfaceR seqType ts -> tupleInterfaceR combType ts with
+  | [] => fun _ => tt
+  | x::xs => fun ab => (nth i (fst ab) (defaultCombValue x), tupleAtIndexR xs i (snd ab))
+  end.
+
+Definition tupleAtIndex {ts: list SignalType}
+                        (i : nat)
+                        (v : tupleInterface seqType ts)
+                        : tupleInterface combType ts :=
+  rebalance combType ts (tupleAtIndexR ts i (unbalance seqType ts v)).
+
+(* Create an empty seq-tuple. *)
+
+Fixpoint emptyTupleR (ts: list SignalType)
+                     : tupleInterfaceR seqType ts :=
+  match ts with
+  | [] => tt
+  | x::xs => ([], emptyTupleR xs)
+  end.
+
+Definition emptyTuple (ts: list SignalType)
+                      : tupleInterface seqType ts :=
+  rebalance seqType ts (emptyTupleR ts).
+
+(* ZipWith two tuples. *)
+
+Fixpoint zipWithTuplesR (signal : SignalType -> Type)
+                        (ts : list SignalType)
+                        (f : forall (A : SignalType), signal A -> signal A -> signal A) :
+                        tupleInterfaceR signal ts ->
+                        tupleInterfaceR signal ts ->
+                        tupleInterfaceR signal ts :=
+  match ts with
+  | [] => fun _ _ => tt
+  | x::xs => fun a b =>  (f x (fst a) (fst b), zipWithTuplesR signal xs f (snd a) (snd b))
+  end.
+
+Definition zipWithTuples (signal : SignalType -> Type)
+                         (ts : list SignalType)
+                         (f : forall A, signal A -> signal A -> signal A)
+                         (a b : tupleInterface signal ts) :
+                         tupleInterface signal ts :=
+
+  rebalance signal ts (zipWithTuplesR signal ts f (unbalance signal ts a) (unbalance signal ts b)).
+
+(* Monadic mapping over tuples. *)
+
+Fixpoint mapTupleR_ {m} `{Monad m}
+                    (signal : SignalType -> Type)
+                    (ts : list SignalType)
+                    (f : forall (A : SignalType), m (signal A))
+                    : m (tupleInterfaceR signal ts) :=
+  match ts with
+  | [] => ret tt
+  | x::xs => v <- f x ;;
+             vx <- mapTupleR_ signal xs f ;;
+             ret (v, vx)
+  end.
+
+Definition mapTuple_ {m} `{Monad m}
+                     (signal : SignalType -> Type)
+                     (ts : list SignalType)
+                     (f : forall (A : SignalType), m (signal A))
+                     : m (tupleInterface signal ts) :=
+  vs <- mapTupleR_ signal ts f ;;
+  ret (rebalance signal ts vs).
 
 (******************************************************************************)
 (* Netlist AST representation for signal expressions.                         *)
