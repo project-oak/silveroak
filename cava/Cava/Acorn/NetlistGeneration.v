@@ -266,6 +266,13 @@ Definition loopNetEnableS (A B : SignalType)
   assignSignal o oDelay ;;
   ret out.
 
+Definition localSignalNet {A : SignalType}
+                          (v : Signal A)
+                          : state CavaState (Signal A) :=
+   localSig <- newSignal A ;;
+   assignSignal localSig v ;;
+   ret localSig.
+
 Definition instantiateNet (intf : CircuitInterface)
                           (circuit : tupleNetInterface (circuitInputs intf) ->
                                     state CavaState (tupleNetInterface (circuitOutputs intf)))
@@ -312,6 +319,7 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     unsignedAdd m n ab := @UnsignedAdd m n (1 + max m n) (fst ab) (snd ab);
     unsignedMult m n ab := @UnsignedMultiply m n (m + n) (fst ab) (snd ab);
     greaterThanOrEqual m n ab := @GreaterThanOrEqual m n (fst ab) (snd ab);
+    localSignal := @localSignalNet;
     instantiate := instantiateNet;
     blackBox := blackBoxNet;
 }.
