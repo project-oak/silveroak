@@ -20,7 +20,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.IdentityMonad.
-Import MonadNotation.
+Import ListNotations MonadNotation.
 
 Require Import Cava.Cava.
 Require Import Cava.ListUtils.
@@ -78,8 +78,13 @@ Instance CombinationalSemantics : Cava combType :=
 
 (* Run a circuit for many timesteps *)
 Definition multistep {i o} (c : Circuit i o) (resetvals : circuit_state c)
-           (dummy : o) (input : list i) : list o :=
-  let '(acc, _) := fold_left_accumulate
-                     (fun o_st i => unIdent (interp c (snd o_st) i))
-                     input (dummy, resetvals) in
-  map fst (tl acc).
+           (input : list i) : list o :=
+  match input with
+  | [] => []
+  | i :: input =>
+    let '(o,st) := unIdent (interp c resetvals i) in
+    let '(acc, _) := fold_left_accumulate
+                       (fun o_st i => unIdent (interp c (snd o_st) i))
+                       input (o,st) in
+    map fst acc
+  end.

@@ -28,6 +28,7 @@ Section WithCava.
   Context `{semantics:Cava}.
 
   (* TODO: change loop here to a loop with enable *)
+  (* TODO: maybe make loop have separate in/out types to reduce state info *)
   Inductive Circuit : Type -> Type -> Type :=
   | Comb : forall {i o}, (i -> cava o) -> Circuit i o
   | Compose : forall {i t o}, Circuit i t -> Circuit t o -> Circuit i o
