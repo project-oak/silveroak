@@ -88,7 +88,7 @@ Section WithCava.
                        cava (signal A * (signal B * signal C)) :=
    let '((a, b), c) := i in
    ret (a, (b, c)).
- 
+
   (* Use a circuit to zip together two vectors. *)
   Definition zipWith {A B C : SignalType} {n : nat}
            (f : signal A * signal B -> cava (signal C))
@@ -103,8 +103,8 @@ Section WithCava.
   (* A list-based left monadic-fold. *)
   Fixpoint foldLM {m} `{Monad m} {A B : Type}
                   (f : B -> A -> m B)
-                  (input : list A) 
-                  (accum : B) 
+                  (input : list A)
+                  (accum : B)
                   : m B :=
     match input with
     | [] => ret accum
@@ -344,7 +344,7 @@ Section WithCava.
   (****************************************************************************)
 
   Definition swap {A B}
-                  (i : signal A * signal B) 
+                  (i : signal A * signal B)
                   : cava (signal B * signal A) :=
     let (a, b) := i in
     ret (b, a).
@@ -656,7 +656,8 @@ Section WithCava.
   Definition mux4 {t} (input : signal (Pair (Pair (Pair t t) t) t))
              (sel : signal (Vec Bit 2)) :=
     let x := pairAssoc input in
-    pairSel (indexConst sel 0) (pairSel (indexConst sel 1) x).
+    s <- pairSel (indexConst sel 1) x ;;
+    pairSel (indexConst sel 0) s.
 
   Section Sequential.
     Context {seqsemantics : CavaSeq semantics}.
