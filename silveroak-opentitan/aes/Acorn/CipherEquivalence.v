@@ -365,30 +365,9 @@ Section WithSubroutines.
     erewrite Hnth by Lia.lia; reflexivity. }
   Qed.
 
-  (* TODO: either prove this lemma or remove the need for a round constant
-     selector circuit to be passed to cipher *)
-  Lemma muxPair_correct_strong {A} (i0 i1 : seqType A) (sel : seqType Bit) :
-    unIdent (muxPair sel (i0, i1)) = map
-                                       (fun sel_i0_i1 : bool * (combType A * combType A) =>
-                                          let '(sel, (i0, i1)) := sel_i0_i1 in
-                                          if sel then i1 else i0)
-                                       (pad_combine sel (pad_combine i0 i1)).
-  Proof using Type.
-  Admitted.
-  Lemma map_combine_drop_l {A B} (la : list A) (lb : list B) :
-    length la <= length lb ->
-    map (fun '(_,b) => b) (combine la lb) = lb.
-  Proof using Type.
-  Admitted.
-  Lemma map_combine_drop_r {A B} (la : list A) (lb : list B) :
-    length lb <= length la ->
-    map (fun '(a,_) => a) (combine la lb) =la.
-  Proof using Type.
-  Admitted.
-
   Lemma cipher_equiv
         (Nr : nat)
-        (init_rcon_fwd init_rcon_inv : seqType (Vec Bit 8))
+        (init_rcon : seqType (Vec Bit 8))
         (init_key init_state : seqType (Vec (Vec (Vec Bit 8) 4) 4))
         (round_indices : seqType (Vec Bit 4))
         (first_rcon : round_constant)
@@ -403,18 +382,16 @@ Section WithSubroutines.
     (* For the initial state signals, the values are ignored after the first
        round; we only care about the first value and the length *)
     hd (defaultCombValue _) init_key = first_key ->
-    hd (defaultCombValue _) init_rcon_fwd = first_rcon ->
+    hd (defaultCombValue _) init_rcon = first_rcon ->
     hd (defaultCombValue _) init_state = input ->
     length init_key = S Nr ->
-    length init_rcon_fwd = S Nr ->
-    length init_rcon_inv = S Nr ->
+    length init_rcon = S Nr ->
     length init_state = S Nr ->
     let num_regular_rounds : seqType (Vec Bit 4) :=
         repeat (nat_to_bitvec_sized _ Nr) (S Nr) in
     let round_0 : seqType (Vec Bit 4) :=
         repeat (nat_to_bitvec_sized _ 0) (S Nr) in
     let is_decrypt : seqType Bit := repeat false (S Nr) in
-    let rcon_selector := fun sel => muxPair sel (init_rcon_fwd, init_rcon_inv) in
     (* Nr must be at least two and small enough to fit in round_index size *)
     1 < Nr < 2 ^ 4 ->
     nth Nr
@@ -422,8 +399,8 @@ Section WithSubroutines.
            (cipher
               (round_index:=Vec Bit 4) (round_constant:=Vec Bit 8)
               sub_bytes shift_rows mix_columns add_round_key (mix_columns [true])
-              key_expand rcon_selector num_regular_rounds round_0
-              is_decrypt init_key init_state round_indices)) d
+              key_expand num_regular_rounds round_0
+              is_decrypt init_rcon init_key init_state round_indices)) d
     = AesSpec.Cipher.cipher
         _ _ add_round_key_spec sub_bytes_spec shift_rows_spec mix_columns_spec
         first_key last_key middle_keys input.
@@ -431,20 +408,9 @@ Section WithSubroutines.
     cbv zeta; intro Hall_keys; intros. subst.
     cbv [cipher]. simplify. simpl_ident.
 
-    (* simplify round-constant selection *)
-    rewrite muxPair_correct_strong.
-    rewrite (pad_combine_eq init_rcon_fwd) by length_hammer.
-    rewrite (@pad_combine_eq
-               Bit (Pair (Vec Bit 8) (Vec Bit 8))
-               _ (combine init_rcon_fwd _))
-      by (cbn [combType] in *; length_hammer).
-    rewrite combine_repeat_l, map_map
-      by (cbn [combType] in *; length_hammer).
-    cbn [combType] in *. rewrite map_combine_drop_r by length_hammer.
-
     (* extract first value of initial-state signals *)
     destruct init_key; [ cbn [length] in *; Lia.lia | ].
-    destruct init_rcon_fwd; [ cbn [length] in *; Lia.lia | ].
+    destruct init_rcon; [ cbn [length] in *; Lia.lia | ].
     destruct init_state; [ cbn [length] in *; Lia.lia | ].
     cbn [length hd] in *.
 
@@ -495,7 +461,7 @@ Section WithSubroutines.
 
   Lemma inverse_cipher_equiv
         (Nr : nat)
-        (init_rcon_fwd init_rcon_inv : seqType (Vec Bit 8))
+        (init_rcon : seqType (Vec Bit 8))
         (init_key init_state : seqType (Vec (Vec (Vec Bit 8) 4) 4))
         (round_indices : seqType (Vec Bit 4))
         (first_rcon : round_constant)
@@ -510,18 +476,16 @@ Section WithSubroutines.
     (* For the initial state signals, the values are ignored after the first
        round; we only care about the first value and the length *)
     hd (defaultCombValue _) init_key = first_key ->
-    hd (defaultCombValue _) init_rcon_inv = first_rcon ->
+    hd (defaultCombValue _) init_rcon = first_rcon ->
     hd (defaultCombValue _) init_state = input ->
     length init_key = S Nr ->
-    length init_rcon_fwd = S Nr ->
-    length init_rcon_inv = S Nr ->
+    length init_rcon = S Nr ->
     length init_state = S Nr ->
     let num_regular_rounds : seqType (Vec Bit 4) :=
         repeat (nat_to_bitvec_sized _ Nr) (S Nr) in
     let round_0 : seqType (Vec Bit 4) :=
         repeat (nat_to_bitvec_sized _ 0) (S Nr) in
     let is_decrypt : seqType Bit := repeat true (S Nr) in
-    let rcon_selector := fun sel => muxPair sel (init_rcon_fwd, init_rcon_inv) in
     (* Nr must be at least two and small enough to fit in round_index size *)
     1 < Nr < 2 ^ 4 ->
     nth Nr
@@ -529,8 +493,8 @@ Section WithSubroutines.
            (cipher
               (round_index:=Vec Bit 4) (round_constant:=Vec Bit 8)
               sub_bytes shift_rows mix_columns add_round_key (mix_columns [true])
-              key_expand rcon_selector num_regular_rounds round_0 is_decrypt
-              init_key init_state round_indices)) d
+              key_expand num_regular_rounds round_0 is_decrypt
+              init_rcon init_key init_state round_indices)) d
     = Cipher.equivalent_inverse_cipher
          _ _ add_round_key_spec inv_sub_bytes_spec inv_shift_rows_spec inv_mix_columns_spec
          first_key last_key (map inv_mix_columns_spec middle_keys) input.
@@ -538,20 +502,9 @@ Section WithSubroutines.
     cbv zeta; intro Hall_keys; intros. subst.
     cbv [cipher]. simplify. simpl_ident.
 
-    (* simplify round-constant selection *)
-    rewrite muxPair_correct_strong.
-    rewrite (pad_combine_eq init_rcon_fwd) by length_hammer.
-    rewrite (@pad_combine_eq
-               Bit (Pair (Vec Bit 8) (Vec Bit 8))
-               _ (combine init_rcon_fwd _))
-      by (cbn [combType] in *; length_hammer).
-    rewrite combine_repeat_l, map_map
-      by (cbn [combType] in *; length_hammer).
-    cbn [combType] in *. rewrite map_combine_drop_l by length_hammer.
-
     (* extract first value of initial-state signals *)
     destruct init_key; [ cbn [length] in *; Lia.lia | ].
-    destruct init_rcon_inv; [ cbn [length] in *; Lia.lia | ].
+    destruct init_rcon; [ cbn [length] in *; Lia.lia | ].
     destruct init_state; [ cbn [length] in *; Lia.lia | ].
     cbn [length hd] in *.
 
