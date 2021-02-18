@@ -81,16 +81,17 @@ Section WithCava.
     ret (unpeel (shiftout (peel xp1))).
 
   Definition count_by
-    : Circuit (signal (Vec Bit 8)) (signal (Vec Bit 8) * signal Bit)
-    := Loop (Comb (fun '(i,(s,_)) => addC (i, s))).
+    : Circuit (signal (Vec Bit 8)) (signal Bit)
+    := Loop (Comb (fun '(i,s) => addC (i, s))).
 
   Definition double_count_by
     : Circuit (signal (Vec Bit 8)) (signal (Vec Bit 8))
-    := Loop ((First count_by) (* acc1, carry1, acc2 *)
+    := Loop ((First count_by) (* carry1, acc2 *)
                >==>
-               Comb (fun '(acc1,carry1, acc2) =>
+               Comb (fun '(carry1, acc2) =>
                        acc2p1 <- incrN acc2 ;;
-                       muxPair carry1 (acc2, acc2p1))).
+                       out <- muxPair carry1 (acc2, acc2p1) ;;
+                       ret (out, out))).
 End WithCava.
 
 (* Convenience notations for certain bytes *)
@@ -121,13 +122,13 @@ Proof. vm_compute. reflexivity. Qed.
 
 Goal (multistep
         count_by
-        (tt, (defaultCombValue _, defaultCombValue _))
-        [b14; b7; b3; b250] = [(b14,false);(b21,false);(b24,false);(b18,true)]).
+        (tt, defaultCombValue _)
+        [b14; b7; b3; b250] = [false;false;false;true]).
 Proof. vm_compute. reflexivity. Qed.
 
 Goal (multistep
         double_count_by
-        (tt, (defaultCombValue _, defaultCombValue _), tt, defaultCombValue _)
+        (tt, (defaultCombValue _), tt, defaultCombValue _)
         [b14; b7; b3; b250]
       = [b0;b0;b0;b1]).
 Proof. reflexivity. Qed.

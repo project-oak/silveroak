@@ -38,9 +38,9 @@ Section WithCava.
   | First : forall {i o t}, Circuit i o -> Circuit (i * t) (o * t)
   | Second : forall {i o t}, Circuit i o -> Circuit (t * i) (t * o)
   | Loop :
-      forall {i s : Type},
-        Circuit (i * s) s ->
-        Circuit i s
+      forall {i s o : Type},
+        Circuit (i * s) (s * o) ->
+        Circuit i o
   | Delay : forall {t}, Circuit t t
   .
 
@@ -51,7 +51,7 @@ Section WithCava.
     | Compose f g => circuit_state f * circuit_state g
     | First f => circuit_state f
     | Second f => circuit_state f
-    | @Loop i s f => circuit_state f * s
+    | @Loop i s o f => circuit_state f * s
     | @Delay t => t
     end.
 
@@ -74,10 +74,10 @@ Section WithCava.
       fun cs input =>
         '(x, cs') <- interp f cs (snd input) ;;
         ret (fst input, x, cs')
-    | @Loop i s f =>
+    | @Loop i2 s2 o2 f =>
       fun cs input =>
-        '(x, cs') <- interp f (fst cs) (input, snd cs) ;;
-        ret (x, (cs', x))
+        '(st, out, cs') <- interp f (fst cs) (input, snd cs) ;;
+        ret (out, (cs', st))
     | Delay =>
       fun cs input =>
         ret (cs, input)

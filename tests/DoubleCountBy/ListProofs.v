@@ -97,14 +97,16 @@ Hint Rewrite @incrN_correct : simpl_ident.
 
 Lemma bvaddc_comm {n} (a b : Vector.t bool n) : bvaddc a b = bvaddc b a.
 Admitted.
+Local Opaque bvaddc.
 
 Lemma count_by_correct (input : list (combType (Vec Bit 8))) :
-  multistep count_by (tt, (defaultCombValue _, defaultCombValue _)) input
-  = count_by_spec input.
+  multistep count_by (tt, (defaultCombValue _)) input
+  = map snd (count_by_spec input).
 Proof.
   cbv [multistep count_by_spec count_by interp].
   destruct input as [|input0 input]; [ reflexivity | ]. cbn [fst snd].
   rewrite <-seq_shift, map_map. cbn [firstn].
+  repeat destruct_pair_let. simpl_ident.
   repeat destruct_pair_let. simpl_ident.
   erewrite fold_left_accumulate_ext_In.
   2:{ intros; repeat destruct_pair_let; simpl_ident.
@@ -112,27 +114,20 @@ Proof.
   rewrite fold_left_accumulate_to_seq with (default:=defaultCombValue _).
   cbv [fold_left_accumulate fold_left_accumulate']. cbn [app].
 
-  pose (statet := combType (Vec Bit 8) * combType Bit).
-  pose (to_out_and_state:=fun x : statet => (x, (tt, x))).
+  pose (statet := combType (Vec Bit 8)).
+  pose (outt := combType Bit).
+  pose (to_out_and_state:=fun (x : statet * outt) => (snd x, (tt, fst x))).
   (* Important: min_state should go *inside fold_left to avoid this complicated state type *)
   eapply fold_left_invariant_seq
-      with (I:=fun i (acc_st : list (combType (Vec Bit 8) * combType Bit
-                                   * (unit * (combType (Vec Bit 8) * combType Bit)))
-                             * (combType (Vec Bit 8) * combType Bit
-                                * (unit * (combType (Vec Bit 8) * combType Bit)))) =>
+      with (I:=fun i (acc_st : list (outt * (unit * statet)) * (outt * (unit * statet))) =>
                  acc_st = (map to_out_and_state (count_by_spec (firstn (S i) (input0 :: input))),
                            to_out_and_state (bvsumc (firstn (S i) (input0 :: input))))).
   { (* invariant holds at start *)
-    subst_lets. cbn.
+    subst_lets. cbn - [bvaddc].
     rewrite bvaddc_comm. reflexivity. }
   { (* invariant holds through loop *)
     intros. Tactics.destruct_products. subst_lets.
     logical_simplify. cbn [fst snd].
-    match goal with
-    | H : (_,_) = bvsumc ?l |- _ =>
-      rewrite (surjective_pairing (bvsumc l)) in H;
-        inversion H; subst; clear H
-    end.
     cbv [bvsumc]. cbn [fold_left].
     autorewrite with push_firstn push_length.
     rewrite !Min.min_l by (cbn [combType] in *; Lia.lia).
