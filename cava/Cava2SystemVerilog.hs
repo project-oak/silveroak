@@ -172,8 +172,8 @@ showSignal signal
       IndexAt _ _ _ v i -> showSignal v ++ "[" ++ showSignal i ++ "]"
       IndexConst _ _ v i -> showSignal v ++ "[" ++ show i ++ "]"
       Slice k _ start len v -> showSignal v ++ showSliceIndex k start len
-      SignalFst _ _ s -> showSignal (simplifySignal s)
-      SignalSnd _ _ s -> showSignal (simplifySignal s)
+      SignalFst _ _ _ -> showSignal (simplifySignal signal)
+      SignalSnd _ _ _ -> showSignal (simplifySignal signal)
       -- SignalPair should never occur but added here to aid debugging.
       SignalPair _ _ a b -> "(" ++ showSignal a ++ ", " ++ showSignal b ++ ")"
       UnsignedAdd _ _ _ a b -> "(" ++ showSignal a ++ " + " ++ showSignal b ++ ")"
@@ -223,7 +223,7 @@ generateInstance netlistState (Delay t d i o) _
                       NegativeEdge -> "negedge"
     negReset = case rstEdge of
                  PositiveEdge -> ""
-                 NegativeEdge -> "!"                 
+                 NegativeEdge -> "!"
 generateInstance netlistState (DelayEnable t d en i o) _
   = unlines [
     "  always_ff @(" ++ showEdge clkEdge ++ " " ++ showSignal clk ++ " or "
@@ -242,7 +242,7 @@ generateInstance netlistState (DelayEnable t d en i o) _
                       NegativeEdge -> "negedge"
     negReset = case rstEdge of
                  PositiveEdge -> ""
-                 NegativeEdge -> "!" 
+                 NegativeEdge -> "!"
 generateInstance _ (AssignSignal _ a b) _
    = "  assign " ++ showSignal a ++ " = " ++ showSignal b ++ ";"
 generateInstance _ (Not i o) instrNr = primitiveInstance "not" [o, i] instrNr
