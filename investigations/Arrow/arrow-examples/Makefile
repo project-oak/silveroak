@@ -31,13 +31,13 @@ all:		coq $(VCDS)
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt
 VLINT = $(VERILATOR) --lint-only
 
-_CoqProject:
+_CoqProject:    $(shell find . -name '*.v' | sort)
 		@echo "INSTALLDEFAULTROOT = ArrowExamples" > _CoqProject
 		@echo "-R . ArrowExamples" >> _CoqProject
 		@echo "-R ../cava/Cava Cava" >> _CoqProject
 		@echo "-R ../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
 		@echo "-R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
-		git ls-files | grep "\.v$$" >> _CoqProject
+		@printf '%s\n' $^ >> _CoqProject
 
 Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
