@@ -74,7 +74,7 @@ Section WithCava.
     ret (sum,carry).
 
   (* incrementer *)
-  Definition incrN' {n} (x : signal (Vec Bit (S n)))
+  Definition incrN {n} (x : signal (Vec Bit (S n)))
     : cava (signal (Vec Bit (S n))) :=
     let one : signal (Vec Bit 1) := unpeel [constant true]%vector in
     let xp1 : signal (Vec Bit (S (Nat.max 1 (S n)))) := unsignedAdd (one, x) in
@@ -132,4 +132,4 @@ Goal (multistep
       = [b0;b0;b0;b1]).
 Proof. reflexivity. Qed.
 
-(* TODO: netlist generation  -- use interp and get rid of unused state information *)
+(* TODO: netlist generation  -- define a recursive function on Circuit that wires up the netlist *)

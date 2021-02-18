@@ -38,14 +38,21 @@ Require Import DoubleCountBy.DoubleCountBy.
 
 Existing Instance CombinationalSemantics.
 
+(* redefine simpl_ident to simplify the new semantics class *)
+Ltac simpl_ident ::=
+  repeat (first
+            [ progress autorewrite with simpl_ident
+            | progress cbn[fst snd bind ret Monad_ident monad
+                               CombinationalSemantics unIdent] ]).
+
 Definition bvadd {n} (a b : Vector.t bool n) : Vector.t bool n :=
-  N2Bv_sized n (Bv2N a + Bv2N b).
+  N2Bv_sized n (Bv2N b + Bv2N a).
 
 Definition bvsum {n} (l : list (Vector.t bool n)) : Vector.t bool n :=
   fold_left bvadd l (N2Bv_sized n 0).
 
 Definition bvaddc {n} (a b : Vector.t bool n) : Vector.t bool n * bool :=
-  let sum := (Bv2N a + Bv2N b)%N in
+  let sum := (Bv2N b + Bv2N a)%N in
   let carry := (Bv2N a <? sum mod (2 ^ N.of_nat n))%N in
   (N2Bv_sized n sum, carry).
 
@@ -59,7 +66,7 @@ Definition double_count_by_spec (i : list (Vector.t bool 8)) : list (Vector.t bo
   map (fun t => bvsumc (firstn t i)) (seq 1 (length i)).
 
 Lemma addN_correct {n} (x y : combType (Vec Bit n)) :
-  unIdent (addN (x, y)) = N2Bv_sized n (Bv2N x + Bv2N y).
+  unIdent (addN (x, y)) = bvadd x y.
 Admitted.
 Hint Rewrite @addN_correct : simpl_ident.
 
@@ -69,31 +76,103 @@ Admitted.
 Hint Rewrite @ltV_correct : simpl_ident.
 
 Lemma addC_correct {n} (x y : combType (Vec Bit n)) :
-  unIdent (addC (x, y)) = (N2Bv_sized n (Bv2N x + Bv2N y),
-                           (Bv2N x <? (Bv2N x + Bv2N y) mod (2 ^ N.of_nat n)))%N.
+  unIdent (addC (x, y)) = bvaddc x y.
 Proof.
-  cbv [addC]. cbv [CombinationalSemantics].
-  simpl_ident. rewrite Bv2N_N2Bv_sized_modulo.
-  reflexivity.
+  cbv [addC bvaddc]. cbv [CombinationalSemantics].
+  simpl_ident. cbv [bvadd].
+  rewrite Bv2N_N2Bv_sized_modulo.
+  rewrite N.add_comm. reflexivity.
 Qed.
+Hint Rewrite @addC_correct : simpl_ident.
 
 Lemma incrN_correct {n} (x : combType (Vec Bit (S n))) :
   unIdent (incrN x) = N2Bv_sized (S n) (Bv2N x + 1).
 Proof.
   cbv [incrN].
-  cbv [CombinationalSemantics peel unpeel unsignedAdd unsignedAddBool constant].
+  cbn [CombinationalSemantics peel unpeel unsignedAdd unsignedAddBool constant].
   simpl_ident. cbn [Nat.max Nat.add Bv2N N.succ_double].
   (* just proof about shiftout from here *)
 Admitted.
+Hint Rewrite @incrN_correct : simpl_ident.
 
-Print count_by.
+Lemma bvaddc_comm {n} (a b : Vector.t bool n) : bvaddc a b = bvaddc b a.
+Admitted.
+
 Lemma count_by_correct (input : list (combType (Vec Bit 8))) :
   multistep count_by (tt, (defaultCombValue _, defaultCombValue _)) input
   = count_by_spec input.
+Proof.
+  cbv [multistep count_by_spec count_by interp].
+  destruct input as [|input0 input]; [ reflexivity | ]. cbn [fst snd].
+  rewrite <-seq_shift, map_map. cbn [firstn].
+  repeat destruct_pair_let. simpl_ident.
+  erewrite fold_left_accumulate_ext_In.
+  2:{ intros; repeat destruct_pair_let; simpl_ident.
+      instantiate_app_by_reflexivity. }
+  rewrite fold_left_accumulate_to_seq with (default:=defaultCombValue _).
+  cbv [fold_left_accumulate fold_left_accumulate']. cbn [app].
 
+  pose (statet := combType (Vec Bit 8) * combType Bit).
+  pose (to_out_and_state:=fun x : statet => (x, (tt, x))).
+  (* Important: min_state should go *inside fold_left to avoid this complicated state type *)
+  eapply fold_left_invariant_seq
+      with (I:=fun i (acc_st : list (combType (Vec Bit 8) * combType Bit
+                                   * (unit * (combType (Vec Bit 8) * combType Bit)))
+                             * (combType (Vec Bit 8) * combType Bit
+                                * (unit * (combType (Vec Bit 8) * combType Bit)))) =>
+                 acc_st = (map to_out_and_state (count_by_spec (firstn (S i) (input0 :: input))),
+                           to_out_and_state (bvsumc (firstn (S i) (input0 :: input))))).
+  { (* invariant holds at start *)
+    subst_lets. cbn.
+    rewrite bvaddc_comm. reflexivity. }
+  { (* invariant holds through loop *)
+    intros. Tactics.destruct_products. subst_lets.
+    logical_simplify. cbn [fst snd].
+    match goal with
+    | H : (_,_) = bvsumc ?l |- _ =>
+      rewrite (surjective_pairing (bvsumc l)) in H;
+        inversion H; subst; clear H
+    end.
+    cbv [bvsumc]. cbn [fold_left].
+    autorewrite with push_firstn push_length.
+    rewrite !Min.min_l by (cbn [combType] in *; Lia.lia).
+    cbn [seq map].
+    rewrite <-!seq_shift, !map_map. cbn [fold_left].
+    erewrite !firstn_succ_snoc with (d:=defaultCombValue _) by length_hammer.
+    autorewrite with pull_snoc. repeat destruct_pair_let.
+    f_equal; [ | rewrite bvaddc_comm; reflexivity ].
 
+    cbv [count_by_spec bvsumc].
+    autorewrite with push_length natsimpl.
+    rewrite PeanoNat.Nat.add_1_r.
+    rewrite <-seq_shift, !map_map.
+    rewrite seq_snoc. cbn [seq].
+    rewrite <-!app_comm_cons. cbn [map].
+    autorewrite with pull_snoc push_firstn.
+    cbn [fold_left].
+    apply f_equal.
+    apply f_equal2.
+    { rewrite <-seq_shift, !map_map.
+      apply map_ext_in; intros *.
+      rewrite in_seq. intros.
+      cbn [combType] in *.
+      autorewrite with push_firstn push_length natsimpl listsimpl.
+      reflexivity. }
+    { cbn [combType] in *.
+      autorewrite with push_length push_firstn natsimpl.
+      autorewrite with pull_snoc. repeat destruct_pair_let.
+      cbn [fst snd]. rewrite bvaddc_comm. reflexivity. }
+  }
+  { (* invariant implies postcondition *)
+    intros. Tactics.destruct_products. logical_simplify.
+    subst_lets. cbn [fst snd map seq].
+    cbv [bvsumc]. cbn [fold_left].
+    autorewrite with push_length natsimpl.
+    cbn [map seq firstn fold_left fst snd].
+    f_equal. rewrite <-!seq_shift, !map_map.
+    apply map_ext; intros. cbn [fst snd].
+    autorewrite with push_firstn. cbn [fold_left].
+    reflexivity. }
+Qed.
 
-Print multistep.
-Check addN.
-Check (multistep (Comb addN)).
 

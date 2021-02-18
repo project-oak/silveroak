@@ -14,11 +14,14 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Lists.List.
 Require Import ExtLib.Structures.Monads.
-Import MonadNotation.
+Import ListNotations MonadNotation.
 
 Require Import Cava.Cava.
+Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.Combinators.
 
 (******************************************************************************)
 (* Inductive to capture circuit's sequential structure                        *)
