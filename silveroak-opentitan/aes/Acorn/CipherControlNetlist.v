@@ -42,9 +42,9 @@ Let cipher_state : SignalType := Pair (Pair key round_constant) state.
     : cava (Signal cipher_state) :=
     let '(key_rcon, data) := unpair key_rcon_data in
     let '(round_key, rcon) := unpair key_rcon in
-    (* sub_bytes_out <- aes_sub_bytes is_decrypt data ;; *)
-    (* shift_rows_out <- aes_shift_rows is_decrypt sub_bytes_out ;; *)
-    (* mix_columns_out <- aes_mix_columns is_decrypt shift_rows_out ;; *)
+    sub_bytes_out <- aes_sub_bytes is_decrypt data ;;
+    shift_rows_out <- aes_shift_rows is_decrypt sub_bytes_out ;;
+    mix_columns_out <- aes_mix_columns is_decrypt shift_rows_out ;;
 
     (* (1* Different rounds perform different operations on the state before adding *)
     (*    the round key; select the appropriate wire based on add_round_key_in_sel *1) *)
@@ -61,7 +61,7 @@ Let cipher_state : SignalType := Pair (Pair key round_constant) state.
     (* (1* Key expansion *1) *)
     (* '(round_key, rcon) <- key_expand is_decrypt round_i (round_key, rcon) ;; *)
 
-    ret (mkpair (mkpair round_key rcon) data).
+    ret (mkpair (mkpair round_key rcon) mix_columns_out).
 
 Definition key_expand_and_round_Interface :=
   combinationalInterface "key_expand_and_round"
