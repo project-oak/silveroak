@@ -45,8 +45,8 @@ Section WithCava.
   Definition muxPair {A : SignalType}
                      (sel : signal Bit)
                      (ab : signal A * signal A) : cava (signal A) :=
-  let (a, b) := ab in
-  ret (indexAt (unpeel [a; b]) (unpeel [sel])).
+    let (a, b) := ab in
+    localSignal (indexAt (unpeel [a; b]) (unpeel [sel])).
 
   (* A variant of muxPair that works over a Cava pair. *)
   Definition pairSel {A : SignalType}
