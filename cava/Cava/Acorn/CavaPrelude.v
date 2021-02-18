@@ -24,6 +24,8 @@ Import MonadNotation.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Signal.
 
+Local Open Scope monad_scope.
+
 Section WithCava.
   Context {signal} `{Cava signal} `{CavaSeq signal}.
 
@@ -42,18 +44,25 @@ Section WithCava.
   (* A two to one multiplexer that takes its two arguments as a pair rather
      than as a 2 element vector which is what indexAt works over. *)
 
-  Definition muxPair {A : SignalType}
-                     (sel : signal Bit)
-                     (ab : signal A * signal A) : cava (signal A) :=
-  let (a, b) := ab in
-  ret (indexAt (unpeel [a; b]) (unpeel [sel])).
+  Fixpoint muxPair {A : SignalType}
+                     (sel : signal Bit):
+                     signal A * signal A -> cava (signal A) :=
+    match A with
+    | Pair _ _ => fun '(a,b) =>
+      let '(x1, y1) := unpair a in
+      let '(x2, y2) := unpair b in
+      x <- muxPair sel (x1, x2) ;;
+      y <- muxPair sel (y1, y2) ;;
+      ret (mkpair x y)
+    | _ => fun '(a, b) =>
+      ret (indexAt (unpeel [a; b]) (unpeel [sel]))
+    end.
 
   (* A variant of muxPair that works over a Cava pair. *)
   Definition pairSel {A : SignalType}
                      (sel : signal Bit)
-                     (ab : signal (Pair A A)) : signal A :=
-  let (a, b) := unpair ab in
-  indexAt (unpeel [a; b]) (unpeel [sel]).
+                     (ab : signal (Pair A A)) : cava (signal A) :=
+  muxPair sel (unpair ab).
 
   (* A unit delay with a default reset value. *)
   Definition delay {A : SignalType} (i : signal A) : cava (signal A) :=

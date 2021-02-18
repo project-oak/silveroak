@@ -4,6 +4,17 @@ muxPair_correct_strong
     unIdent (muxPair sel (i0, i1)) =
     map (fun '(sel0, (i2, i3)) => if sel0 then i3 else i2)
       (pad_combine sel (pad_combine i0 i1))
+CombinationalProperties.muxPair_correct
+  : forall (t : SignalType) (i0 i1 : combType t) (sel : combType Bit),
+    unIdent (muxPair [sel] ([i0] : seqType t, [i1] : seqType t)) =
+    [if sel then i1 else i0]
+CombinationalProperties.mux4_mkpair
+  : forall (t : SignalType) (i0 i1 i2 i3 : combType t)
+      (sel : combType (Vec Bit 2)),
+    unIdent (mux4 (mkpair (mkpair (mkpair [i0] [i1]) [i2]) [i3]) [sel]) =
+    [if Vector.hd (Vector.tl sel)
+     then if Vector.hd sel then i3 else i2
+     else if Vector.hd sel then i1 else i0]
 mix_columns_equiv
   : forall (is_decrypt : bool) (st : combType (Vec (Vec (Vec Bit 8) 4) 4)),
     unIdent (aes_mix_columns [is_decrypt] [st]) =
