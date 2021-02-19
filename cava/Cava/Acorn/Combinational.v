@@ -77,13 +77,12 @@ Instance CombinationalSemantics : Cava combType :=
 }.
 
 
-(* Run a circuit for many timesteps *)
-Definition multistep {i o} (c : Circuit i o) (resetvals : circuit_state c)
-           (input : list i) : list o :=
+(* Run a circuit for many timesteps, starting at the reset value *)
+Definition multistep {i o} (c : Circuit i o) (input : list i) : list o :=
   match input with
   | [] => []
   | i :: input =>
-    let '(o,st) := unIdent (interp c resetvals i) in
+    let '(o,st) := unIdent (interp c (reset_state c) i) in
     let '(acc, _) := fold_left_accumulate
                        (fun o_st i => unIdent (interp c (snd o_st) i))
                        input (o,st) in

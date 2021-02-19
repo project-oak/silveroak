@@ -100,11 +100,11 @@ Admitted.
 Local Opaque bvaddc.
 
 Lemma count_by_correct (input : list (combType (Vec Bit 8))) :
-  multistep count_by (tt, (defaultCombValue _)) input
+  multistep count_by input
   = map snd (count_by_spec input).
 Proof.
-  cbv [multistep count_by_spec count_by interp].
-  destruct input as [|input0 input]; [ reflexivity | ]. cbn [fst snd].
+  destruct input as [|input0 input]; [ reflexivity | ].
+  cbv [multistep count_by_spec count_by Loop interp].
   rewrite <-seq_shift, map_map. cbn [firstn].
   repeat destruct_pair_let. simpl_ident.
   repeat destruct_pair_let. simpl_ident.
@@ -169,5 +169,3 @@ Proof.
     autorewrite with push_firstn. cbn [fold_left].
     reflexivity. }
 Qed.
-
-
