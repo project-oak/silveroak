@@ -344,11 +344,11 @@ Fixpoint newCircuitStateSignals {i o} (c : Circuit i o)
     gs <- newCircuitStateSignals g ;;
     ret (fs, gs)
   | First f | Second f => newCircuitStateSignals f
-  | @Loop _ _ i o s f =>
+  | @LoopR _ _ i o s _ f =>
     fs <- newCircuitStateSignals f ;;
     ss <- newSignal s ;;
     ret (fs, ss)
-  | @Delay _ _ t => newSignal t
+  | @DelayR _ _ t _ => newSignal t
   end.
 
 (* "Close the loop" by adding delays to connect the output and input states *)
@@ -361,15 +361,15 @@ Fixpoint linkCircuitStateSignals {i o} (c : Circuit i o)
       fs <- linkCircuitStateSignals f (fst in_state) (fst out_state) ;;
       linkCircuitStateSignals g (snd in_state) (snd out_state)
   | First f | Second f => linkCircuitStateSignals f
-  | @Loop _ _ i o s f =>
+  | @LoopR _ _ i o s resetval f =>
     fun in_state out_state =>
       fs <- linkCircuitStateSignals f (fst in_state) (fst out_state) ;;
       let ins := snd in_state in
       let outs := snd out_state in
-      addInstance (Netlist.Delay s (defaultNetSignal _) ins outs)
-  | @Delay _ _ t =>
+      addInstance (Netlist.Delay s resetval ins outs)
+  | @DelayR _ _ t resetval =>
     fun ins outs =>
-      addInstance (Netlist.Delay t (defaultNetSignal _) ins outs)
+      addInstance (Netlist.Delay t resetval ins outs)
   end.
 
 Definition interpCircuit {i o} (c : Circuit i o) (input : i)

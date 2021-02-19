@@ -37,12 +37,21 @@ Section WithCava.
   | Compose : forall {i t o}, Circuit i t -> Circuit t o -> Circuit i o
   | First : forall {i o t}, Circuit i o -> Circuit (i * t) (o * t)
   | Second : forall {i o t}, Circuit i o -> Circuit (t * i) (t * o)
-  | Loop :
-      forall {i o : Type} {s : SignalType},
+  | LoopR :
+      forall {i o : Type} {s : SignalType} (resetval : signal s),
         Circuit (i * signal s) (o * signal s) ->
         Circuit i o
-  | Delay : forall {t}, Circuit (signal t) (signal t)
+  | DelayR : forall {t} (resetval : signal t), Circuit (signal t) (signal t)
   .
+
+  (* Loop with the default signal as its reset value *)
+  Definition Loop {i o s}
+    : Circuit (i * signal s) (o * signal s) -> Circuit i o :=
+    LoopR defaultSignal.
+  (* Delay with the default signal as its reset value *)
+  Definition Delay {t} : Circuit (signal t) (signal t) :=
+    DelayR defaultSignal.
+
 
   (* Internal state of the circuit (register values) *)
   Fixpoint circuit_state {i o} (c : Circuit i o) : Type :=
@@ -51,8 +60,18 @@ Section WithCava.
     | Compose f g => circuit_state f * circuit_state g
     | First f => circuit_state f
     | Second f => circuit_state f
-    | @Loop i o s f => circuit_state f * signal s
-    | @Delay t => signal t
+    | @LoopR i o s _ f => circuit_state f * signal s
+    | @DelayR t _ => signal t
+    end.
+
+  Fixpoint reset_state {i o} (c : Circuit i o) : circuit_state c :=
+    match c as c return circuit_state c with
+    | Comb _ => tt
+    | Compose f g => (reset_state f, reset_state g)
+    | First f => reset_state f
+    | Second f => reset_state f
+    | LoopR resetval f => (reset_state f, resetval)
+    | DelayR resetval => resetval
     end.
 
   (* Run circuit for a single step *)
@@ -74,11 +93,11 @@ Section WithCava.
       fun cs input =>
         '(x, cs') <- interp f cs (snd input) ;;
         ret (fst input, x, cs')
-    | Loop f =>
+    | LoopR _ f =>
       fun cs input =>
         '(out, st, cs') <- interp f (fst cs) (input, snd cs) ;;
         ret (out, (cs',st))
-    | Delay =>
+    | DelayR _ =>
       fun cs input =>
         ret (cs, input)
     end.

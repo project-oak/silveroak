@@ -112,25 +112,23 @@ Definition b250 := N2Bv_sized 8 250.
 Definition b251 := N2Bv_sized 8 251.
 
 Goal (multistep
-        (Comb addC) tt
+        (Comb addC)
         [(b14,b0); (b7,b14); (b3,b4); (b24,b250)]
       = [(b14,false);(b21,false);(b7,false);(b18,true)]).
 Proof. vm_compute. reflexivity. Qed.
 
 Goal (multistep
-        (Comb incrN) tt
+        (Comb incrN)
         [b14; b7; b3; b250] = [b15;b8;b4;b251]).
 Proof. vm_compute. reflexivity. Qed.
 
 Goal (multistep
         count_by
-        (tt, defaultCombValue _)
         [b14; b7; b3; b250] = [false;false;false;true]).
 Proof. vm_compute. reflexivity. Qed.
 
 Goal (multistep
         double_count_by
-        (tt, (defaultCombValue _), tt, defaultCombValue _)
         [b14; b7; b3; b250]
       = [b0;b0;b0;b1]).
 Proof. reflexivity. Qed.
