@@ -71,6 +71,7 @@ Instance CombinationalSemantics : Cava combType :=
     unsignedAdd m n := unsignedAddBool;
     unsignedMult m n := unsignedMultBool;
     greaterThanOrEqual m n := greaterThanOrEqualBool;
+    localSignal _ v := ret v;
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefault (map port_type (circuitOutputs intf)));
 }.
