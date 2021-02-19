@@ -330,3 +330,132 @@ Instance CavaSequentialNet : CavaSeq CavaCombinationalNet :=
     loopDelaySR a b := loopNetS a b;
     loopDelaySEnableR en a b := loopNetEnableS en a b;
   }.
+
+
+Require Import Cava.Acorn.Circuit.
+
+(* Create new signals for internal circuit signals *)
+Fixpoint newCircuitStateSignals {i o} (c : Circuit i o)
+  : state CavaState (circuit_state c) :=
+  match c with
+  | Comb _ => ret tt
+  | Compose f g =>
+    fs <- newCircuitStateSignals f ;;
+    gs <- newCircuitStateSignals g ;;
+    ret (fs, gs)
+  | First f | Second f => newCircuitStateSignals f
+  | @Loop _ _ i o s f =>
+    fs <- newCircuitStateSignals f ;;
+    ss <- newSignal s ;;
+    ret (fs, ss)
+  | @Delay _ _ t => newSignal t
+  end.
+
+(* "Close the loop" by adding delays to connect the output and input states *)
+Fixpoint linkCircuitStateSignals {i o} (c : Circuit i o)
+  : circuit_state c -> circuit_state c -> state CavaState unit :=
+  match c with
+  | Comb _ => fun _ _ => ret tt
+  | Compose f g =>
+    fun in_state out_state =>
+      fs <- linkCircuitStateSignals f (fst in_state) (fst out_state) ;;
+      linkCircuitStateSignals g (snd in_state) (snd out_state)
+  | First f | Second f => linkCircuitStateSignals f
+  | @Loop _ _ i o s f =>
+    fun in_state out_state =>
+      fs <- linkCircuitStateSignals f (fst in_state) (fst out_state) ;;
+      let ins := snd in_state in
+      let outs := snd out_state in
+      addInstance (Netlist.Delay s (defaultNetSignal _) ins outs)
+  | @Delay _ _ t =>
+    fun ins outs =>
+      addInstance (Netlist.Delay t (defaultNetSignal _) ins outs)
+  end.
+
+Definition interpCircuit {i o} (c : Circuit i o) (input : i)
+    : state CavaState o :=
+  in_state <- newCircuitStateSignals c ;; (* x : circuit_state c *)
+  '(out, out_state) <- interp c in_state input ;;
+  linkCircuitStateSignals c in_state out_state ;;
+  ret out.
+
+Definition makeCircuitNetlist (intf : CircuitInterface)
+           (c : Circuit (tupleNetInterface (circuitInputs intf))
+                        (tupleNetInterface (circuitOutputs intf))) : CavaState :=
+  makeNetlist intf (interpCircuit c).
+
+Module Tests.
+  Definition test `{Cava} : Circuit (signal (Vec Bit 2) * signal Bit) (signal Bit) :=
+    Compose (Comb (fun '(a,b) => ret b)) (Delay).
+
+  Definition test_Interface
+    := sequentialInterface "test"
+                           "clk" PositiveEdge "rst" PositiveEdge
+                           [mkPort "i0" (Vec Bit 2); mkPort "i1" (Bit)]
+                           [mkPort "o" Bit]
+                           [].
+
+  Compute (makeCircuitNetlist test_Interface test).
+  (*      = {| *)
+  (*   netNumber := 1; *)
+  (*   vectorNumber := 0; *)
+  (*   vectorDeclarations := []; *)
+  (*   externalDeclarations := []; *)
+  (*   clockNet := Some (NamedWire "clk"); *)
+  (*   clockEdge := PositiveEdge; *)
+  (*   resetNet := Some (NamedWire "rst"); *)
+  (*   resetEdge := PositiveEdge; *)
+  (*   module := {| *)
+  (*             moduleName := "test"; *)
+  (*             netlist := [AssignSignal (NamedWire "o") (Wire 0); *)
+  (*                        Netlist.Delay Bit Gnd (Wire 0) (NamedWire "i1")]; *)
+  (*             inputs := [{| port_name := "i1"; port_type := Bit |}; *)
+  (*                       {| port_name := "i0"; port_type := Vec Bit 2 |}; *)
+  (*                       {| port_name := "rst"; port_type := Bit |}; *)
+  (*                       {| port_name := "clk"; port_type := Bit |}]; *)
+  (*             outputs := [{| port_name := "o"; port_type := Bit |}] |}; *)
+  (*   libraryModules := [] |} *)
+  (* : CavaState *)
+
+
+  (* loop that xors input and feedback, for example :
+
+     input  1 1 1 0 0 0 1 0 0
+     state  0 1 0 1 1 1 1 0 0
+     output 1 0 1 1 1 1 0 0 0
+
+   *)
+  Definition loop_test `{Cava} : Circuit (signal Bit)
+                                         (signal Bit) :=
+    Loop (Comb (fun '(input, state) =>
+                  out <- xor2 (input, state) ;;
+                  ret (out, out))).
+
+  Definition loop_test_Interface
+    := sequentialInterface "loop_test"
+                           "clk" PositiveEdge "rst" PositiveEdge
+                           [mkPort "i" (Bit)]
+                           [mkPort "o" Bit]
+                           [].
+
+  Compute (makeCircuitNetlist loop_test_Interface loop_test).
+  (*      = {| *)
+  (*   netNumber := 2; *)
+  (*   vectorNumber := 0; *)
+  (*   vectorDeclarations := []; *)
+  (*   externalDeclarations := []; *)
+  (*   clockNet := Some (NamedWire "clk"); *)
+  (*   clockEdge := PositiveEdge; *)
+  (*   resetNet := Some (NamedWire "rst"); *)
+  (*   resetEdge := PositiveEdge; *)
+  (*   module := {| *)
+  (*             moduleName := "loop_test"; *)
+  (*             netlist := [AssignSignal (NamedWire "o") (Wire 1); Netlist.Delay Bit Gnd (Wire 0) (Wire 1); *)
+  (*                        Xor (NamedWire "i") (Wire 0) (Wire 1)]; *)
+  (*             inputs := [{| port_name := "i"; port_type := Bit |}; *)
+  (*                       {| port_name := "rst"; port_type := Bit |}; *)
+  (*                       {| port_name := "clk"; port_type := Bit |}]; *)
+  (*             outputs := [{| port_name := "o"; port_type := Bit |}] |}; *)
+  (*   libraryModules := [] |} *)
+  (* : CavaState *)
+End Tests.
