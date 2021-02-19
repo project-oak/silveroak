@@ -14,9 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Lists.List.
+Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
-Import ListNotations MonadNotation.
+Import VectorNotations MonadNotation.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.CavaPrelude.
@@ -37,21 +37,14 @@ Section WithCava.
   | Compose : forall {i t o}, Circuit i t -> Circuit t o -> Circuit i o
   | First : forall {i o t}, Circuit i o -> Circuit (i * t) (o * t)
   | Second : forall {i o t}, Circuit i o -> Circuit (t * i) (t * o)
-  | LoopInit :
-      forall {i o : Type} {s : SignalType} (resetval : signal s),
+  | LoopInitCE :
+      forall {i o : Type} {s : SignalType} (en : signal Bit) (resetval : signal s),
         Circuit (i * signal s) (o * signal s) ->
         Circuit i o
-  | DelayInit : forall {t} (resetval : signal t), Circuit (signal t) (signal t)
+  | DelayInitCE :
+      forall {t} (en : signal Bit) (resetval : signal t),
+        Circuit (signal t) (signal t)
   .
-
-  (* Loop with the default signal as its reset value *)
-  Definition Loop {i o s}
-    : Circuit (i * signal s) (o * signal s) -> Circuit i o :=
-    LoopInit defaultSignal.
-  (* Delay with the default signal as its reset value *)
-  Definition Delay {t} : Circuit (signal t) (signal t) :=
-    DelayInit defaultSignal.
-
 
   (* Internal state of the circuit (register values) *)
   Fixpoint circuit_state {i o} (c : Circuit i o) : Type :=
@@ -60,8 +53,8 @@ Section WithCava.
     | Compose f g => circuit_state f * circuit_state g
     | First f => circuit_state f
     | Second f => circuit_state f
-    | @LoopInit i o s _ f => circuit_state f * signal s
-    | @DelayInit t _ => signal t
+    | @LoopInitCE i o s _ _ f => circuit_state f * signal s
+    | @DelayInitCE t _ _ => signal t
     end.
 
   (* The state of the circuit after a reset *)
@@ -71,8 +64,8 @@ Section WithCava.
     | Compose f g => (reset_state f, reset_state g)
     | First f => reset_state f
     | Second f => reset_state f
-    | LoopInit resetval f => (reset_state f, resetval)
-    | DelayInit resetval => resetval
+    | LoopInitCE _ resetval f => (reset_state f, resetval)
+    | DelayInitCE _ resetval => resetval
     end.
 
   (* Run circuit for a single step *)
@@ -94,14 +87,44 @@ Section WithCava.
       fun cs input =>
         '(x, cs') <- interp f cs (snd input) ;;
         ret (fst input, x, cs')
-    | LoopInit _ f =>
-      fun cs input =>
-        '(out, st, cs') <- interp f (fst cs) (input, snd cs) ;;
-        ret (out, (cs',st))
-    | DelayInit _ =>
-      fun cs input =>
-        ret (cs, input)
+    | LoopInitCE en _ f =>
+      fun '(cs,st) input =>
+        '(out, st', cs') <- interp f cs (input, st) ;;
+        (* select the updated state only if the loop is enabled *)
+         let new_state := indexAt (unpeel [st;st']) (unpeel [en]) in
+        ret (out, (cs',new_state))
+    | DelayInitCE en _ =>
+      fun st input =>
+        (* select the updated state only if the delay is enabled *)
+        let new_state := indexAt (unpeel [st;input]) (unpeel [en]) in
+        ret (st, new_state)
     end.
+
+  (* Loop with no enable; set enable to always be true *)
+  Definition LoopInit {i o s} (resetval : signal s)
+    : Circuit (i * signal s) (o * signal s) -> Circuit i o :=
+    LoopInitCE (constant true) resetval.
+  (* Delay with no enable; set enable to always be true *)
+  Definition DelayInit {t} (resetval : signal t)
+    : Circuit (signal t) (signal t) :=
+    DelayInitCE (constant true) resetval.
+
+  (* Loop with the default signal as its reset value *)
+  Definition LoopCE {i o s} (en : signal Bit)
+    : Circuit (i * signal s) (o * signal s) -> Circuit i o :=
+    LoopInitCE en defaultSignal.
+  (* Delay with the default signal as its reset value *)
+  Definition DelayCE {t} (en : signal Bit)
+    : Circuit (signal t) (signal t) :=
+    DelayInitCE en defaultSignal.
+
+  (* Loop with the default signal as its reset value and no enable *)
+  Definition Loop {i o s}
+    : Circuit (i * signal s) (o * signal s) -> Circuit i o :=
+    LoopInitCE (constant true) defaultSignal.
+  (* Delay with the default signal as its reset value and no enable *)
+  Definition Delay {t} : Circuit (signal t) (signal t) :=
+    DelayInitCE (constant true) defaultSignal.
 End WithCava.
 
 Module Notations.
