@@ -121,13 +121,12 @@ Section WithCava.
                      cipher_state idx).
 
   Definition cipher
-             (initial_rcon_selector : signal Bit -> cava (signal round_constant))
              (num_rounds_regular round_0 : signal round_index)
              (is_decrypt : signal Bit) (* called op_i in OpenTitan *)
+             (initial_rcon : signal round_constant)
              (initial_key : signal key) (initial_state : signal state)
              (round_i : signal round_index)
     : cava (signal state) :=
-    initial_rcon <- initial_rcon_selector is_decrypt ;;
     (* combine all the input signals *)
     let initial_cipher_state : signal cipher_state :=
         mkpair (mkpair initial_key initial_rcon) initial_state in

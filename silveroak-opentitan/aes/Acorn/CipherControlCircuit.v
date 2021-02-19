@@ -54,7 +54,7 @@ Section WithCava.
   Definition rcon_bwd: signal round_constant :=
     unpeel (Vector.map constant (nat_to_bitvec_sized _ 64)).
 
-  Definition initial_rcon (is_decrypt: signal Bit): cava (signal round_constant) :=
+  Definition initial_rcon_selector (is_decrypt: signal Bit): cava (signal round_constant) :=
     muxPair is_decrypt (rcon_bwd, rcon_fwd).
 
   Definition round_0: signal round_index :=
@@ -117,7 +117,7 @@ Section WithCava.
   Definition cipher := cipher
     (round_index:=round_index) (round_constant:=round_constant)
     aes_sub_bytes aes_shift_rows aes_mix_columns aes_add_round_key
-    inv_mix_columns_key key_expand initial_rcon.
+    inv_mix_columns_key key_expand.
 
   (* Comparable to OpenTitan aes_cipher_core but with simplified signalling *)
   Definition aes_cipher_core_simplified
@@ -166,8 +166,12 @@ Section WithCava.
         next_round <- inc_round last_round ;;
         round <- muxPair becoming_idle (round_0, next_round) ;;
 
+        (* select the initial round constant *)
+        initial_rcon <- initial_rcon_selector is_decrypt ;;
+
         (* we only need to grab the state at the last round *)
-        st <- cipher round_final round_0 is_decrypt initial_key initial_state round ;;
+        st <- cipher round_final round_0 is_decrypt initial_rcon initial_key
+                    initial_state round ;;
         buffered_state <- muxPair producing_output (st, last_buffered_state) ;;
 
         out_valid_o <- or2 (last_output_latch, producing_output) ;;
