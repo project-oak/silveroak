@@ -42,13 +42,22 @@ Section MapT.
     cbn. rewrite IHv. reflexivity.
   Qed.
   (* Alternate form of the above with the Traversable wrapper not simplified *)
-  Lemma mapT_ident {A B n} (f : A -> ident B) (v : Vector.t A n) :
+  Lemma mapT_vident {A B n} (f : A -> ident B) (v : Vector.t A n) :
     unIdent (Traversable.mapT
                (Traversable:=Traversable_vector)
                f v) = map (fun a => unIdent (f a)) v.
   Proof. apply mapT_vector_ident. Qed.
+
+  Lemma mapT_lident {A B} (f : A -> ident B) (l : list A) :
+    unIdent (Traversable.mapT
+               (Traversable:=List.Traversable_list)
+               f l) = List.map (fun a => unIdent (f a)) l.
+  Proof.
+    simpl. induction l; [ reflexivity | ].
+    simpl. rewrite IHl. reflexivity.
+  Qed.
 End MapT.
-Hint Rewrite @mapT_vector_ident @mapT_ident using solve [eauto] : simpl_ident.
+Hint Rewrite @mapT_vector_ident @mapT_vident @mapT_lident using solve [eauto] : simpl_ident.
 
 Section PeelUnpeel.
   Lemma peelVecList_cons_cons {A n} (a : combType A) (v : combType (Vec A n)) :
