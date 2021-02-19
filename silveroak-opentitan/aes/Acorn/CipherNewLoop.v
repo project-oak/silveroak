@@ -57,7 +57,6 @@ Section WithCava.
       * cipher_state (* initial state, ignored for all rounds except first *)
       * signal round_index (* current round_index *).
 
-  Notation mkpair := (mkpair (Cava:=semantics)).
   Definition key_expand_and_round
              (is_decrypt : signal Bit)
              (key_rcon_data : cipher_state)
@@ -107,21 +106,24 @@ Section WithCava.
   Definition cipher_loop
     : Circuit cipher_signals cipher_state :=
     Loop
-      (Comb
-         (fun input_and_state : cipher_signals * cipher_state =>
-            let '(input, feedback_state) := input_and_state in
-            (* extract signals from the input tuple *)
-            let '(is_decrypt, num_rounds_regular,
-                  round_0, initial_state, idx) := input in
-            let '(fk, fr, fv) := feedback_state in
-            let '(ik, ir, iv) := initial_state in
-            is_first_round <- idx ==? round_0 ;;
-            k <- muxPair is_first_round (fk, ik) ;;
-            r <- muxPair is_first_round (fr, ir) ;;
-            v <- muxPair is_first_round (fv, iv) ;;
-            out <- cipher_step is_decrypt is_first_round num_rounds_regular
-                              (k,r,v) idx ;;
-            ret (out,out))).
+      (Loop
+         (Loop
+            (Comb
+               (fun input_and_state :
+                    cipher_signals * signal key * signal round_constant * signal state  =>
+                  let '(input, fk, fr, fv) := input_and_state in
+                  (* extract signals from the input tuple *)
+                  let '(is_decrypt, num_rounds_regular,
+                        round_0, initial_state, idx) := input in
+                  let '(ik, ir, iv) := initial_state in
+                  is_first_round <- idx ==? round_0 ;;
+                  k <- muxPair is_first_round (fk, ik) ;;
+                  r <- muxPair is_first_round (fr, ir) ;;
+                  v <- muxPair is_first_round (fv, iv) ;;
+                  '(k',r',v') <- cipher_step is_decrypt is_first_round
+                                            num_rounds_regular (k,r,v) idx ;;
+                  let out := (k',r',v') in
+                  ret (out,k',r',v'))))).
 
   Definition cipher
     : Circuit cipher_signals (signal state) :=

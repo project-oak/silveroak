@@ -82,7 +82,9 @@ Section WithCava.
 
   Definition count_by
     : Circuit (signal (Vec Bit 8)) (signal Bit)
-    := Loop (Comb (fun '(i,s) => addC (i, s))).
+    := Loop (Comb (fun '(i,s) =>
+                     '(s,c) <- addC (i, s) ;;
+                     ret (c,s))).
 
   Definition double_count_by
     : Circuit (signal (Vec Bit 8)) (signal (Vec Bit 8))
