@@ -82,6 +82,7 @@ library
                      BinNatDef
                      ByteVector
                      Byte
+                     Circuit
                      Compare_dec
                      Decimal
                      Functor
