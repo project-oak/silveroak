@@ -64,6 +64,7 @@ Section WithCava.
     | @DelayInit t _ => signal t
     end.
 
+  (* The state of the circuit after a reset *)
   Fixpoint reset_state {i o} (c : Circuit i o) : circuit_state c :=
     match c as c return circuit_state c with
     | Comb _ => tt
