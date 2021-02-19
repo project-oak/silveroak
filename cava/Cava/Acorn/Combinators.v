@@ -658,6 +658,12 @@ Section WithCava.
     let x := pairAssoc input in
     pairSel (indexConst sel 0) (pairSel (indexConst sel 1) x).
 
+  (* TODO: rename to mux4 once pairs are eliminated *)
+  Definition mux4Tuple {t} (input : signal t * signal t * signal t * signal t)
+             (sel : signal (Vec Bit 2)) : signal t :=
+    let '(i0,i1,i2,i3) := input in
+    indexAt (unpeel [i0;i1;i2;i3]%vector) sel.
+
   Section Sequential.
     Context {seqsemantics : CavaSeq semantics}.
 
