@@ -184,6 +184,7 @@ Instance CombinationalSemantics : Cava seqType :=
                                (@unsignedMultBool m n);
     greaterThanOrEqual m n := @liftP (Vec Bit _) (Vec Bit _) Bit
                                      (@greaterThanOrEqualBool m n);
+    localSignal _ v := ret v;
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefaultS (map port_type (circuitOutputs intf)));
 }.
