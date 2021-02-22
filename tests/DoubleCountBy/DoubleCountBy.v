@@ -30,6 +30,7 @@ Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Combinational.
 Require Import Cava.Acorn.Combinators.
+Require Import Cava.Acorn.Multistep.
 Require Import Cava.Lib.UnsignedAdders.
 Import Circuit.Notations.
 

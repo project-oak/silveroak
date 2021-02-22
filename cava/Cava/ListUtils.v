@@ -115,8 +115,16 @@ Section Misc.
     intros; destruct l1; [ congruence | ].
     cbn [tl app]. reflexivity.
   Qed.
+
+  Lemma Forall2_length_eq {A B} (R : A -> B -> Prop) ls1 ls2 :
+    Forall2 R ls1 ls2 -> length ls1 = length ls2.
+  Proof.
+    revert ls2; induction ls1; destruct ls2; auto;
+      inversion 1; subst; cbn [length]; auto.
+  Qed.
 End Misc.
 Hint Rewrite @seq_snoc using solve [eauto] : pull_snoc.
+Hint Resolve Forall2_length_eq : length.
 
 (* Definition and proofs of [extend], which pads a list to a specified length *)
 Section Extend.
@@ -990,6 +998,33 @@ Section FoldLeftAccumulate.
     induction ls; intros; [ reflexivity | ].
     rewrite fold_left_accumulate_cons.
     cbn [fold_left]. rewrite IHls.
+    reflexivity.
+  Qed.
+
+  Lemma fold_left_accumulate_fold_left_accumulate {A B C}
+        (f : B -> A -> B) (g : C -> B -> C) :
+    forall ls b c,
+      fst (fold_left_accumulate
+             g (fst (fold_left_accumulate f ls b)) c)
+      = c :: map snd (fst (fold_left_accumulate
+                            (fun '(b,c) a =>
+                               (f b a, g c (f b a)))
+                            ls (b, g c b))).
+  Proof.
+    induction ls; intros; [ reflexivity | ].
+    rewrite !fold_left_accumulate_cons.
+    cbn [map fst snd]. rewrite IHls.
+    reflexivity.
+  Qed.
+
+  Lemma fold_left_accumulate_to_map {A B} (f : A -> B) :
+    forall ls b,
+      fst (fold_left_accumulate (fun _ x => f x) ls b)
+      = b :: map f ls.
+  Proof.
+    induction ls; intros; [ reflexivity | ].
+    rewrite !fold_left_accumulate_cons.
+    cbn [map fst snd]. rewrite IHls.
     reflexivity.
   Qed.
 
