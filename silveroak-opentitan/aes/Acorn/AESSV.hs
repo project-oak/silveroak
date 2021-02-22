@@ -20,6 +20,7 @@ import MixColumnsNetlist
 import ShiftRowsNetlist
 import SubBytesNetlist
 import AddRoundKeyNetlist
+import CipherControlNetlist
 
 main :: IO ()
 main = do writeSystemVerilog aes_mix_columns_Netlist
@@ -31,3 +32,4 @@ main = do writeSystemVerilog aes_mix_columns_Netlist
           writeTestBench aes_sub_bytes_tb
           writeSystemVerilog aes_add_round_key_Netlist
           writeTestBench aes_add_round_key_tb
+          writeSystemVerilog key_expand_and_round_Netlist

@@ -51,6 +51,7 @@ library
                      CavaPrelude
                      Combinators
                      CombinationalMonad
+                     Circuit
                      Datatypes
                      FullAdder
                      HexString
@@ -82,7 +83,6 @@ library
                      BinNatDef
                      ByteVector
                      Byte
-                     Circuit
                      Compare_dec
                      Decimal
                      Functor

@@ -25,6 +25,7 @@ Require Import ExtLib.Structures.Monads.
 Import MonadNotation.
 
 Require Import Cava.Cava.
+Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Combinators.
 Require Import AcornAes.Pkg.
@@ -32,8 +33,12 @@ Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.AddRoundKeyCircuit.
 Require Import AcornAes.ShiftRowsCircuit.
 Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.Cipher.
+Require Import AcornAes.CipherNewLoop.
 Import Pkg.Notations.
+
+Require Import AcornAes.ShiftRowsNetlist.
+Require Import AcornAes.MixColumnsNetlist.
+Require Import AcornAes.SubBytesNetlist.
 
 Local Open Scope monad_scope.
 Local Open Scope vector_scope.
@@ -70,77 +75,59 @@ Section WithCava.
     ret (unpeel (Vector.tl (peel sum))).
 
   Local Infix "==?" := eqb (at level 40).
-  Local Infix "**" := Pair (at level 40, left associativity).
 
-  Let cipher_control_state : SignalType :=
-    Bit            (* idle *)
-    ** Bit         (* generating decryption key *)
-    ** round_index (* current round *)
-    ** Bit         (* in_ready_o *)
-    ** Bit         (* out_valid_o *)
-    ** state       (* state_o *)
-    ** Bit         (* out latch when not accepted *).
+  Let cipher_control_signals : Type :=
+    signal Bit (* is_decrypt *)
+    * signal Bit (* in_valid_i *)
+    * signal Bit (* out_ready_i *)
+    * signal key (* initial_key *)
+    * signal state (* initial_state *).
 
-  Let cipher_control_signals :=
-    Bit (* is_decrypt *)
-    ** Bit (* in_valid_i *)
-    ** Bit (* out_ready_i *)
-    ** key (* initial_key *)
-    ** state (* initial_state *).
+  (* aes_shift_rows' and aes_mix_columns' must be instantiated hierarchically
+     to prevent excessive code generation
+     *)
+  Definition aes_shift_rows' x y :=
+    instantiate aes_shift_rows_Interface (fun '(x,y) => aes_shift_rows x y) (x, y).
+  Definition aes_mix_columns' x y :=
+    instantiate aes_mix_columns_Interface (fun '(x,y) => aes_shift_rows x y) (x, y).
+  Definition aes_sbox_lut' x y :=
+    instantiate aes_sbox_lut_Interface (fun '(x,y) => aes_sbox_lut x y) (x, y).
+  Definition aes_sub_bytes' (is_decrypt : signal Bit) (b : signal state)
+    : cava (signal state) := state_map (aes_sbox_lut' is_decrypt) b.
 
-  Section Packing.
-    Fixpoint unpacked_left_type A: Type :=
-      match A with
-      | Pair a b => unpacked_left_type a * signal b
-      | x => signal x
-      end.
-
-    Fixpoint unpacked_signal {A}: signal A -> unpacked_left_type A :=
-      match A as A return signal A -> unpacked_left_type A with
-      | Pair a b => fun x =>
-        let '(y,z) := unpair x in
-        (unpacked_signal y, z)
-      | _ => fun x => x
-      end.
-
-    Fixpoint packed_signal A: unpacked_left_type A -> signal A :=
-      match A with
-      | Pair a b => fun '(x,y) =>
-        mkpair (packed_signal _ x) y
-      | _ => fun x => x
-      end.
-  End Packing.
-
-  Definition inv_mix_columns_key := aes_mix_columns (constant true).
+  Definition inv_mix_columns_key := aes_mix_columns' (constant true).
 
   (* Plug in our concrete components to the skeleton in Cipher.v *)
   Definition cipher := cipher
     (round_index:=round_index) (round_constant:=round_constant)
-    aes_sub_bytes aes_shift_rows aes_mix_columns aes_add_round_key
+    aes_sub_bytes' aes_shift_rows' aes_mix_columns' aes_add_round_key
     inv_mix_columns_key key_expand.
 
+  Definition cipher_control_output : Type :=
+      ( signal Bit (* in_ready_o *)
+      * signal Bit (* out_valid_o *)
+      * signal state (* state_o *)
+      ).
+
   (* Comparable to OpenTitan aes_cipher_core but with simplified signalling *)
-  Definition aes_cipher_core_simplified
-    (is_decrypt: signal Bit)
-    (in_valid_i out_ready_i: signal Bit)
-    (initial_key: signal key)
-    (initial_state: signal state)
-    : cava
-    ( signal Bit (* in_ready_o *)
-    * signal Bit (* out_valid_o *)
-    * signal state (* state_o *)
-    ) :=
-    st <- loopDelayS
+  Definition aes_cipher_core_simplified' : Circuit cipher_control_signals cipher_control_output
+    :=
+    Loop (Loop (Loop ( Loop (Loop (Loop (Loop (Comb
     (* state and key buffers are handled by `cipher_new` so we don't explicitly
     * register them here. There is an additional state buffer here for storing the output
     * until it is accepted via out_ready_i. *)
-      (fun '((inputs, st) : signal cipher_control_signals * signal cipher_control_state) =>
-
-        (* unpack inputs and state from Cava 'Pair's *)
-        let '(is_decrypt, in_valid_i, out_ready_i, initial_key, initial_state)
-          := unpacked_signal inputs in
-        let '(last_idle, last_gen_dec_key, last_round, _, _, last_buffered_state, last_output_latch)
-          := unpacked_signal st in
+      (fun input_and_state : cipher_control_signals *
+        signal Bit            (* idle *)
+        * signal Bit         (* generating decryption key *)
+        * signal round_index (* current round *)
+        * signal Bit         (* in_ready_o *)
+        * signal Bit         (* out_valid_o *)
+        * signal state       (* state_o *)
+        * signal Bit         (* out latch when not accepted *)
+        =>
+        let '(is_decrypt, in_valid_i, out_ready_i, initial_key, initial_state,
+             last_idle, last_gen_dec_key, last_round, _, _, last_buffered_state, last_output_latch)
+          := input_and_state in
 
         (* Are we still processing an input (or generating a decryption key) *)
         is_final_round <- last_round ==? round_final ;;
@@ -170,29 +157,31 @@ Section WithCava.
         initial_rcon <- initial_rcon_selector is_decrypt ;;
 
         (* we only need to grab the state at the last round *)
-        st <- cipher round_final round_0 is_decrypt initial_rcon initial_key
-                    initial_state round ;;
+        (* st <- cipher round_final round_0 is_decrypt initial_rcon initial_key *)
+        (*             initial_state round ;; *)
+        let st := initial_state in
         buffered_state <- muxPair producing_output (st, last_buffered_state) ;;
 
         out_valid_o <- or2 (last_output_latch, producing_output) ;;
         inv_out_ready_i <- inv out_ready_i ;;
         output_latch <- and2 (out_valid_o, inv_out_ready_i) ;;
 
-        ret (packed_signal cipher_control_state
-          ( idle
+        ret
+          (* outputs *)
+          ( (becoming_idle
+          , out_valid_o
+          , buffered_state )
+
+          (* state *)
+          , idle
           , generating_decryption_key
           , round
           , becoming_idle
           , out_valid_o
           , buffered_state
           , output_latch
-          ))
-      )
-      (packed_signal cipher_control_signals
-        (is_decrypt, in_valid_i, out_ready_i, initial_key, initial_state)) ;;
-
-    let '(_, _, _, in_ready_o, out_valid_o, state_o, _) := unpacked_signal st in
-    ret (in_ready_o, out_valid_o, state_o).
+          )
+      )))))))).
 
 End WithCava.
 

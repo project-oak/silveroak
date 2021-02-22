@@ -71,7 +71,7 @@ Section WithCava.
     (* Different rounds perform different operations on the state before adding
        the round key; select the appropriate wire based on add_round_key_in_sel *)
     let add_round_key_in :=
-        mux4 (mkpair (mkpair (mkpair mix_columns_out data) shift_rows_out) mix_columns_out)
+        mux4Tuple (mix_columns_out, data, shift_rows_out, mix_columns_out)
              add_round_key_in_sel in
 
     (* Intermediate decryption rounds need to mix the key columns *)
