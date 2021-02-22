@@ -75,16 +75,3 @@ Instance CombinationalSemantics : Cava combType :=
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefault (map port_type (circuitOutputs intf)));
 }.
-
-
-(* Run a circuit for many timesteps, starting at the reset value *)
-Definition multistep {i o} (c : Circuit i o) (input : list i) : list o :=
-  match input with
-  | [] => []
-  | i :: input =>
-    let '(o,st) := unIdent (interp c (reset_state c) i) in
-    let '(acc, _) := fold_left_accumulate
-                       (fun o_st i => unIdent (interp c (snd o_st) i))
-                       input (o,st) in
-    map fst acc
-  end.

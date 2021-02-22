@@ -32,6 +32,7 @@ Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.Combinational.
 Require Import Cava.Acorn.Combinators.
+Require Import Cava.Acorn.Multistep.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import DoubleCountBy.DoubleCountBy.

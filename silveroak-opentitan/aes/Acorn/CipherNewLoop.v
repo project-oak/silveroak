@@ -28,14 +28,12 @@ Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Combinators.
-Require Import AcornAes.Pkg.
-Import Pkg.Notations.
 
 Local Open Scope monad_scope.
 
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
-  Context {round_index round_constant : SignalType}.
+  Context {key round_constant state round_index : SignalType}.
 
   Context (sub_bytes:     signal Bit -> signal state -> cava (signal state))
           (shift_rows:    signal Bit -> signal state -> cava (signal state))
@@ -72,7 +70,7 @@ Section WithCava.
        the round key; select the appropriate wire based on add_round_key_in_sel *)
     let add_round_key_in :=
         mux4Tuple (mix_columns_out, data, shift_rows_out, mix_columns_out)
-             add_round_key_in_sel in
+                  add_round_key_in_sel in
 
     (* Intermediate decryption rounds need to mix the key columns *)
     mixed_round_key <- inv_mix_columns_key round_key ;;

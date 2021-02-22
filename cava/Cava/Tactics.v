@@ -90,6 +90,29 @@ Section DestructPairLetTests.
   Qed.
 End DestructPairLetTests.
 
+(* Helper for destruct_inner_pair_let *)
+Ltac destruct_inner_pair_let' t :=
+  lazymatch t with
+  | context [ match ?p with
+              | pair _ _ => _
+              end ] =>
+    first [ destruct_inner_pair_let' p
+          | rewrite (surjective_pairing p) ]
+  end.
+
+(* Like destruct_pair_let, but destructs innermost lets first *)
+Ltac destruct_inner_pair_let :=
+  lazymatch goal with |- ?g => destruct_inner_pair_let' g end.
+
+Section DestructInnerPairLetTests.
+  (* simple test *)
+  Goal (forall x : nat * nat, let '(n, m) := let (a,b) := x in (b,a) in n = snd x).
+    intros.
+    destruct_inner_pair_let. (* destructs x immediately *)
+    reflexivity.
+  Qed.
+End DestructInnerPairLetTests.
+
 (* Helper tactic for instantiate_lhs_app_by_reflexivity *)
 Ltac app_head t :=
   lazymatch t with

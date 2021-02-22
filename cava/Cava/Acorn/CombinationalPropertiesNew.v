@@ -163,6 +163,12 @@ Qed.
 Lemma muxPair_correct {t} (i0 i1 : combType t) (sel : combType Bit) :
   unIdent (muxPair sel (i0, i1)) = if sel then i1 else i0.
 Proof. destruct sel; reflexivity. Qed.
+Hint Rewrite @muxPair_correct using solve [eauto] : simpl_ident.
+
+Lemma indexAt2_correct {t} (i0 i1 : combType t) (sel : combType Bit) :
+  indexAt [i0; i1]%vector [sel]%vector = if sel then i1 else i0.
+Proof. destruct sel; reflexivity. Qed.
+Hint Rewrite @indexAt2_correct using solve [eauto] : simpl_ident.
 
 Lemma mux4_correct {t} (i0 i1 i2 i3 : combType t) (sel : combType (Vec Bit 2)) :
   mux4Tuple (i0,i1,i2,i3) sel =
@@ -172,7 +178,9 @@ Lemma mux4_correct {t} (i0 i1 i2 i3 : combType t) (sel : combType (Vec Bit 2)) :
 Proof.
   cbv in sel. constant_bitvec_cases sel; reflexivity.
 Qed.
+Hint Rewrite @mux4_correct using solve [eauto] : simpl_ident.
 
 Lemma indexConst_eq {A sz} (v : combType (Vec A sz)) (n : nat) :
   indexConst v n = nth_default (defaultCombValue _) n v.
 Proof. reflexivity. Qed.
+Hint Rewrite @indexConst_eq using solve [eauto] : simpl_ident.
