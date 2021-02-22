@@ -16,6 +16,7 @@
 
 Require Import AcornAes.Pkg.
 Require Import AcornAes.Cipher.
+Require Import AcornAes.CipherNewLoop.
 Require Import AcornAes.MixColumnsCircuit.
 Require Import AcornAes.ShiftRowsCircuit.
 Require Import AcornAes.SubBytesCircuit.
@@ -36,6 +37,7 @@ Extraction Language Haskell.
 
 Extraction Library Pkg.
 Extraction Library Cipher.
+Extraction Library CipherNewLoop.
 Extraction Library MixColumnsCircuit.
 Extraction Library ShiftRowsCircuit.
 Extraction Library SubBytesCircuit.

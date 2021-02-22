@@ -38,6 +38,7 @@ Import Pkg.Notations.
 
 Require Import AcornAes.ShiftRowsNetlist.
 Require Import AcornAes.MixColumnsNetlist.
+Require Import AcornAes.SubBytesNetlist.
 
 Local Open Scope monad_scope.
 Local Open Scope vector_scope.
@@ -166,11 +167,12 @@ Section WithCava.
         output_latch <- and2 (out_valid_o, inv_out_ready_i) ;;
 
         ret
-          (
-            (becoming_idle
+          (* outputs *)
+          ( (becoming_idle
           , out_valid_o
           , buffered_state )
 
+          (* state *)
           , idle
           , generating_decryption_key
           , round
@@ -178,7 +180,6 @@ Section WithCava.
           , out_valid_o
           , buffered_state
           , output_latch
-
           )
       )))))))).
 

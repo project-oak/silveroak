@@ -29,6 +29,7 @@ Require Import AcornAes.MixColumnsCircuit.
 Require Import AcornAes.ShiftRowsCircuit.
 Require Import AcornAes.AddRoundKeyCircuit.
 Require Import AcornAes.Pkg.
+Require AcornAes.CipherNewLoop.
 Import Pkg.Notations.
 
 Require Import AcornAes.ShiftRowsNetlist.
@@ -36,39 +37,10 @@ Require Import AcornAes.MixColumnsNetlist.
 
 Definition cipher_state : SignalType := Pair (Pair key round_constant) state.
 
-Definition aes_shift_rows' := instantiate aes_shift_rows_Interface (fun '(x,y) => aes_shift_rows x y).
-Definition aes_mix_columns' := instantiate aes_mix_columns_Interface (fun '(x,y) => aes_shift_rows x y).
-
-Definition key_expand_and_round
-           (is_decrypt : Signal Bit)
-           (round_key : Signal key)
-           (rcon : Signal round_constant)
-           (data : Signal state)
-           (add_round_key_in_sel : Signal (Vec Bit 2))
-           (round_key_sel : Signal Bit)
-           (round_i : Signal round_index)
-  : cava (Signal state) :=
-  sub_bytes_out <- aes_sub_bytes' is_decrypt data ;;
-  shift_rows_out <- aes_shift_rows' (is_decrypt, sub_bytes_out) ;;
-  mix_columns_out <- aes_mix_columns' (is_decrypt, shift_rows_out) ;;
-
-  (* Different rounds perform different operations on the state before adding
-     the round key; select the appropriate wire based on add_round_key_in_sel *)
-  let add_round_key_in :=
-      mux4Tuple (mix_columns_out, data, shift_rows_out, mix_columns_out)
-           add_round_key_in_sel in
-  add_round_key_in <- localSignal add_round_key_in ;;
-
-  (* Intermediate decryption rounds need to mix the key columns *)
-  mixed_round_key <- inv_mix_columns_key round_key ;;
-
-  key_to_add <- muxPair round_key_sel (round_key, mixed_round_key) ;;
-  out <- aes_add_round_key key_to_add add_round_key_in ;;
-
-  (* Key expansion *)
-  '(round_key, rcon) <- key_expand is_decrypt round_i (round_key, rcon) ;;
-
-  ret shift_rows_out.
+Definition key_expand_and_round := CipherNewLoop.key_expand_and_round
+  (round_index:=round_index) (round_constant:=round_constant)
+  aes_sub_bytes' aes_shift_rows' aes_mix_columns' aes_add_round_key
+  inv_mix_columns_key key_expand.
 
 Definition key_expand_and_round_Interface :=
   combinationalInterface "key_expand_and_round"
@@ -79,12 +51,12 @@ Definition key_expand_and_round_Interface :=
   ; mkPort "add_round_key_in_sel" (Vec Bit 2)
   ; mkPort "round_key_sel" Bit
   ; mkPort "round_i" (Vec Bit 4) ]
-  [ mkPort "state_o" state ]
+  [ mkPort "key_o" key; mkPort "round_o" round_constant; mkPort "state_o" state ]
   [].
 
 Definition key_expand_and_round_Netlist
   := makeNetlist key_expand_and_round_Interface
-  (fun '(a, b, c, d, e, f, g ) => key_expand_and_round a b c d e f g).
+  (fun '(a, b, c, d, e, f, g ) => key_expand_and_round a (b, c, d) e f g).
 
 Definition aes_cipher_core_simplified_Interface :=
   combinationalInterface "aes_cipher_core_simplified"
