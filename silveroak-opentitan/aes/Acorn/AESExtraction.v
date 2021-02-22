@@ -15,14 +15,17 @@
 (****************************************************************************)
 
 Require Import AcornAes.Pkg.
+Require Import AcornAes.Cipher.
 Require Import AcornAes.MixColumnsCircuit.
 Require Import AcornAes.ShiftRowsCircuit.
 Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.AddRoundKeyCircuit.
+Require Import AcornAes.CipherControlCircuit.
 Require Import AcornAes.MixColumnsNetlist.
 Require Import AcornAes.ShiftRowsNetlist.
 Require Import AcornAes.SubBytesNetlist.
 Require Import AcornAes.AddRoundKeyNetlist.
+Require Import AcornAes.CipherControlNetlist.
 Require Import Coq.extraction.Extraction.
 Require Import Coq.extraction.ExtrHaskellZInteger.
 Require Import Coq.extraction.ExtrHaskellString.
@@ -32,11 +35,14 @@ Require Import Coq.extraction.ExtrHaskellNatInteger.
 Extraction Language Haskell.
 
 Extraction Library Pkg.
+Extraction Library Cipher.
 Extraction Library MixColumnsCircuit.
 Extraction Library ShiftRowsCircuit.
 Extraction Library SubBytesCircuit.
 Extraction Library AddRoundKeyCircuit.
+Extraction Library CipherControlCircuit.
 Extraction Library MixColumnsNetlist.
 Extraction Library ShiftRowsNetlist.
 Extraction Library SubBytesNetlist.
 Extraction Library AddRoundKeyNetlist.
+Extraction Library CipherControlNetlist.

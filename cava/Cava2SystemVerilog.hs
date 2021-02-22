@@ -175,7 +175,7 @@ showSignal signal
       SignalFst _ _ _ -> showSignal (simplifySignal signal)
       SignalSnd _ _ _ -> showSignal (simplifySignal signal)
       -- SignalPair should never occur but added here to aid debugging.
-      SignalPair _ _ a b -> "(" ++ showSignal a ++ ", " ++ showSignal b ++ ")"
+      SignalPair _ _ a b -> error $ "(" ++ show a ++ ", " ++ show b ++ ")"
       UnsignedAdd _ _ _ a b -> "(" ++ showSignal a ++ " + " ++ showSignal b ++ ")"
       UnsignedSubtract _ _ _ a b -> "(" ++ showSignal a ++ " - " ++ showSignal b ++ ")"
       UnsignedMultiply _ _ _ a b -> "(" ++ showSignal a ++ " * " ++ showSignal b ++ ")"
@@ -309,7 +309,6 @@ deriving instance Eq Signal
 deriving instance Show Signal
 deriving instance Show (Vector.Coq_t Signal)
 deriving instance Show BinNums.N
-deriving instance Show SignalType
 
 unsmashSignalInstance :: Instance -> State CavaState Instance
 unsmashSignalInstance = mapSignalsInInstanceM unsmashSignal
@@ -337,6 +336,10 @@ mapSignalsInInstanceM f inst
                        fi1 <- f i1
                        fo  <- f o
                        return (Or fi0 fi1 fo)
+      Nor i0 i1 o -> do fi0 <- f i0
+                        fi1 <- f i1
+                        fo  <- f o
+                        return (Nor fi0 fi1 fo)
       Xor i0 i1 o -> do fi0 <- f i0
                         fi1 <- f i1
                         fo  <- f o

@@ -1,3 +1,4 @@
+{-# LANGUAGE StandaloneDeriving #-}
 {- Copyright 2021 The Project Oak Authors
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,11 +24,14 @@ insertCommas [] = []
 insertCommas [x] = [x]
 insertCommas (x:y:xs) = (x ++ ", ") : insertCommas (y:xs)
 
+deriving instance Show SignalType
+
 vectorDeclaration' ::  SignalType -> Integer -> String
 vectorDeclaration' k s
   = case k of
       Bit -> "[" ++ show (s - 1) ++ ":0]"
       Vec k2 s2 -> "[" ++ show (s - 1) ++ ":0]" ++  vectorDeclaration' k2 s2
+      _ -> error $ show k
 
 vectorDeclaration :: String -> SignalType -> Integer -> String
 vectorDeclaration name k s
