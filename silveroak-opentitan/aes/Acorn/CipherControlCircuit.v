@@ -173,8 +173,8 @@ Section WithCava.
           , ( is_decrypt
             , round_final
             , round_0
-            , (initial_key, initial_rcon, initial_state)
             , round
+            , (initial_key, initial_rcon, initial_state)
             )
           )
       ) >==> Second cipher >==>
