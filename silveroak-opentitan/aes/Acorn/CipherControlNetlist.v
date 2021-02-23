@@ -70,8 +70,8 @@ Definition aes_cipher_core_simplified_Interface :=
   ; mkPort "state_o" state ]
   [].
 
-(* Definition aes_cipher_core_simplified_Netlist *)
-(*   := makeNetlist aes_cipher_core_simplified_Interface *)
-(*   (fun '(op_i, in_valid_i, out_ready_i, key_init_i, state_init_i) => *)
-(*     aes_cipher_core_simplified key_expand op_i in_valid_i out_ready_i key_init_i state_init_i). *)
+Definition aes_cipher_core_simplified_Netlist :=
+  let aes := aes_cipher_core_simplified key_expand in
+  makeCircuitNetlist aes_cipher_core_simplified_Interface aes.
+
 
