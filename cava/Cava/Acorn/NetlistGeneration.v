@@ -366,10 +366,10 @@ Fixpoint linkCircuitStateSignals {i o} (c : Circuit i o)
       fs <- linkCircuitStateSignals f (fst in_state) (fst out_state) ;;
       let ins := snd in_state in
       let outs := snd out_state in
-      addInstance (DelayEnable s resetval en ins outs)
+      addInstance (DelayEnable s resetval en outs ins)
   | @DelayInitCE _ _ t en resetval =>
     fun ins outs =>
-      addInstance (DelayEnable t resetval en ins outs)
+      addInstance (DelayEnable t resetval en outs ins)
   end.
 
 Definition interpCircuit {i o} (c : Circuit i o) (input : i)

@@ -59,7 +59,8 @@ Definition key_expand_and_round_Netlist
   (fun '(a, b, c, d, e, f, g ) => key_expand_and_round a (b, c, d) e f g).
 
 Definition aes_cipher_core_simplified_Interface :=
-  combinationalInterface "aes_cipher_core_simplified"
+  sequentialInterface "aes_cipher_core_simplified"
+  "clk_i" PositiveEdge "rst_ni" NegativeEdge
   [ mkPort "op_i" Bit
   ; mkPort "in_valid_i" Bit
   ; mkPort "out_ready_i" Bit
@@ -73,5 +74,4 @@ Definition aes_cipher_core_simplified_Interface :=
 Definition aes_cipher_core_simplified_Netlist :=
   let aes := aes_cipher_core_simplified key_expand in
   makeCircuitNetlist aes_cipher_core_simplified_Interface aes.
-
 

@@ -72,7 +72,7 @@ Section WithCava.
     unpeel (Vector.map constant (nat_to_bitvec_sized _ 1)).
 
   Definition inc_round (current: signal round_index): cava (signal round_index) :=
-    let sum := (@unsignedAdd _ _ 4 4 (current, round_1)) in
+    sum <- localSignal (@unsignedAdd _ _ 4 4 (current, round_1)) ;;
     ret (unpeel (Vector.tl (peel sum))).
 
   Local Infix "==?" := eqb (at level 40).
