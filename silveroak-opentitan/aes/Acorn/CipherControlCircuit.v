@@ -35,6 +35,7 @@ Require Import AcornAes.ShiftRowsCircuit.
 Require Import AcornAes.MixColumnsCircuit.
 Require Import AcornAes.CipherNewLoop.
 Import Pkg.Notations.
+Import Circuit.Notations.
 
 Require Import AcornAes.ShiftRowsNetlist.
 Require Import AcornAes.MixColumnsNetlist.
@@ -98,7 +99,7 @@ Section WithCava.
   Definition inv_mix_columns_key := aes_mix_columns' (constant true).
 
   (* Plug in our concrete components to the skeleton in Cipher.v *)
-  Definition cipher := cipher
+  Definition cipher := CipherNewLoop.cipher
     (round_index:=round_index) (round_constant:=round_constant)
     aes_sub_bytes' aes_shift_rows' aes_mix_columns' aes_add_round_key
     inv_mix_columns_key key_expand.
@@ -110,9 +111,9 @@ Section WithCava.
       ).
 
   (* Comparable to OpenTitan aes_cipher_core but with simplified signalling *)
-  Definition aes_cipher_core_simplified' : Circuit cipher_control_signals cipher_control_output
+  Definition aes_cipher_core_simplified : Circuit cipher_control_signals cipher_control_output
     :=
-    Loop (Loop (Loop ( Loop (Loop (Loop (Loop (Comb
+    Loop ( Loop (Loop (Loop (Loop (Comb
     (* state and key buffers are handled by `cipher_new` so we don't explicitly
     * register them here. There is an additional state buffer here for storing the output
     * until it is accepted via out_ready_i. *)
@@ -120,13 +121,11 @@ Section WithCava.
         signal Bit            (* idle *)
         * signal Bit         (* generating decryption key *)
         * signal round_index (* current round *)
-        * signal Bit         (* in_ready_o *)
-        * signal Bit         (* out_valid_o *)
         * signal state       (* state_o *)
         * signal Bit         (* out latch when not accepted *)
         =>
         let '(is_decrypt, in_valid_i, out_ready_i, initial_key, initial_state,
-             last_idle, last_gen_dec_key, last_round, _, _, last_buffered_state, last_output_latch)
+             last_idle, last_gen_dec_key, last_round, last_buffered_state, last_output_latch)
           := input_and_state in
 
         (* Are we still processing an input (or generating a decryption key) *)
@@ -156,15 +155,44 @@ Section WithCava.
         (* select the initial round constant *)
         initial_rcon <- initial_rcon_selector is_decrypt ;;
 
-        (* we only need to grab the state at the last round *)
-        (* st <- cipher round_final round_0 is_decrypt initial_rcon initial_key *)
-        (*             initial_state round ;; *)
-        let st := initial_state in
-        buffered_state <- muxPair producing_output (st, last_buffered_state) ;;
-
         out_valid_o <- or2 (last_output_latch, producing_output) ;;
         inv_out_ready_i <- inv out_ready_i ;;
         output_latch <- and2 (out_valid_o, inv_out_ready_i) ;;
+
+        ret
+          ( ( becoming_idle
+            , out_valid_o
+
+            , idle
+            , generating_decryption_key
+            , round
+            , output_latch
+            , last_buffered_state
+            , producing_output
+            )
+          , ( is_decrypt
+            , round_final
+            , round_0
+            , round
+            , (initial_key, initial_rcon, initial_state)
+            )
+          )
+      ) >==> Second cipher >==>
+
+      ( Comb ( fun signals =>
+        let '( ( becoming_idle
+               , out_valid_o
+
+               , idle
+               , generating_decryption_key
+               , round
+               , output_latch
+               , last_buffered_state
+               , producing_output
+               ),
+             ( st )) := signals in
+        (* we only need to grab the state at the last round *)
+        buffered_state <- muxPair producing_output (st, last_buffered_state) ;;
 
         ret
           (* outputs *)
@@ -176,12 +204,11 @@ Section WithCava.
           , idle
           , generating_decryption_key
           , round
-          , becoming_idle
-          , out_valid_o
           , buffered_state
           , output_latch
-          )
-      )))))))).
+
+          ))
+      )))))).
 
 End WithCava.
 
