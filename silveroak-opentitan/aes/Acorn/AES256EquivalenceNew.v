@@ -102,9 +102,10 @@ Hint Resolve add_round_key_equiv sub_bytes_equiv shift_rows_equiv
      mix_columns_equiv : subroutines_equiv.
 
 Definition full_cipher {signal} {semantics : Cava signal}
+           key_expand
   : Circuit
       (signal Bit * signal round_index * signal round_index * signal round_index
-       * (signal key * signal round_constant * signal state))
+       * signal key * signal state)
       (signal state) :=
   cipher
     aes_sub_bytes aes_shift_rows aes_mix_columns aes_add_round_key
@@ -134,179 +135,122 @@ Local Ltac solve_side_conditions :=
   end.
 
 Lemma full_cipher_equiv
-      (is_decrypt : bool) init_cipher_state_ignored
-      (init_rcon : t bool 8) (init_key last_key : combType key)
+      (is_decrypt : bool) key_expand init_key_input init_state_ignored
+      (init_key last_key : combType key)
       (middle_keys : list (combType key)) (init_state : combType state)
       (cipher_input : list _):
   let Nr := 14 in
-  let all_keys_and_rcons :=
-      all_keys (if is_decrypt
-                then (fun i k => unflatten_key (inv_key_expand_spec i (flatten_key k)))
-                else (fun i k => unflatten_key (key_expand_spec i (flatten_key k))))
-               Nr (init_key, init_rcon) in
-  let all_keys := List.map fst all_keys_and_rcons in
   let middle_keys_flat :=
       if is_decrypt
       then List.map AES256.inv_mix_columns (List.map to_flat middle_keys)
       else List.map to_flat middle_keys in
-  (* precomputed keys match key expansion *)
-  all_keys = (init_key :: middle_keys ++ [last_key])%list ->
-  (* Nr must be at least two and small enough to fit in round_index size *)
-  1 < Nr < 2 ^ 4 ->
-  let init_cipher_state := (init_key, init_rcon, init_state) in
-  length init_cipher_state_ignored = Nr ->
+  length init_key_input = S Nr ->
+  length init_state_ignored = Nr ->
+  length middle_keys = Nr - 1 ->
   cipher_input = combine
-                   (map
-                      (fun i =>
-                         (is_decrypt, nat_to_bitvec_sized _ Nr,
-                          nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
-                      (seq 0 (S Nr)))
-                   (init_cipher_state :: init_cipher_state_ignored) ->
+                   (combine
+                      (map
+                         (fun i =>
+                            (is_decrypt, nat_to_bitvec_sized _ Nr,
+                             nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
+                         (seq 0 (S Nr)))
+                      init_key_input)
+                   (init_state :: init_state_ignored) ->
+  (* precomputed keys match key expansion *)
+  multistep key_expand cipher_input = init_key :: middle_keys ++ [last_key] ->
   forall d,
-    nth Nr (multistep full_cipher cipher_input) d
+    nth Nr (multistep (full_cipher key_expand) cipher_input) d
     = from_flat
         ((if is_decrypt then aes256_decrypt else aes256_encrypt)
            (to_flat init_key) (to_flat last_key) middle_keys_flat
            (to_flat init_state)).
 Proof.
   cbv [full_cipher]; intros.
-
+  erewrite cipher_equiv by solve_side_conditions.
+  cbv [aes256_decrypt aes256_encrypt].
   destruct is_decrypt.
-  { (* decryption *)
-    erewrite inverse_cipher_equiv with
-        (Nr:=14)
-        (add_round_key_spec:=
-           fun st k => AES256.aes_add_round_key_circuit_spec k st)
-        (key_expand_spec:=
-           fun i k_rcon => unflatten_key (key_expand_spec i (flatten_key k_rcon)))
-        (inv_key_expand_spec:=
-           fun i k_rcon => unflatten_key (inv_key_expand_spec i (flatten_key k_rcon)))
-      by solve_side_conditions.
-
-    cbv [aes256_decrypt].
-
-    (* Change key and state representations so they match *)
+  { (* make key/state representations match *)
     erewrite equivalent_inverse_cipher_change_state_rep
-      by eapply from_flat_to_flat.
+      by eapply from_flat_to_flat. apply f_equal.
+    rewrite <-map_map with (g:=from_flat).
     erewrite equivalent_inverse_cipher_change_key_rep
-      with (projkey:=from_flat)
-           (middle_keys_alt:=
-              List.map inv_mix_columns (List.map to_flat middle_keys))
-           (first_key_alt:=to_flat init_key)
-           (last_key_alt:=to_flat last_key)
-      by (try apply from_flat_to_flat;
-          rewrite !List.map_map; apply List.map_ext;
-          autorewrite with conversions; reflexivity).
-
-    (* Prove that ciphers are equivalent because all subroutines are
-       equivalent *)
-    f_equal.
+      by (eapply from_flat_to_flat || reflexivity).
+    rewrite !map_map.
+    (* equivalent because all subroutines are equivalent *)
     eapply equivalent_inverse_cipher_subroutine_ext;
       intros; autounfold with circuit_specs;
-        autorewrite with conversions; reflexivity. }
-  { (* encryption *)
-    erewrite cipher_equiv with
-        (Nr:=14)
-        (add_round_key_spec:=
-           fun st k => AES256.aes_add_round_key_circuit_spec k st)
-        (key_expand_spec:=
-           fun i k_rcon => unflatten_key (key_expand_spec i (flatten_key k_rcon)))
-        (inv_key_expand_spec:=
-           fun i k_rcon => unflatten_key (inv_key_expand_spec i (flatten_key k_rcon)))
-        by solve_side_conditions.
-
-    cbv [aes256_encrypt].
-
-    (* Change key and state representations so they match *)
+        autorewrite with conversions; try reflexivity. }
+  { (* make key/state representations match *)
     erewrite cipher_change_state_rep
-      by eapply from_flat_to_flat.
+      by eapply from_flat_to_flat. apply f_equal.
     erewrite cipher_change_key_rep
-      with (projkey:=from_flat)
-           (middle_keys_alt:=List.map to_flat middle_keys)
-      by (apply from_flat_to_flat ||
-          (rewrite List.map_map; apply ListUtils.map_id_ext;
-           intros; autorewrite with conversions; reflexivity)).
-
-    (* Prove that ciphers are equivalent because all subroutines are
-       equivalent *)
-    f_equal.
+      with (middle_keys_alt:=map to_flat middle_keys)
+      by (eapply from_flat_to_flat
+          || rewrite map_map; eapply ListUtils.map_id_ext; intros;
+          autorewrite with conversions; reflexivity).
+    (* equivalent because all subroutines are equivalent *)
     eapply cipher_subroutine_ext;
       intros; autounfold with circuit_specs;
-        autorewrite with conversions; reflexivity. }
+        autorewrite with conversions; try reflexivity. }
 Qed.
 
 Lemma full_cipher_inverse
-      (is_decrypt : bool)
-      init_cipher_state_ignored_fwd init_cipher_state_ignored_inv
+      (is_decrypt : bool) key_expand
+      init_key_input_fwd init_key_input_inv
+      init_state_ignored_fwd init_state_ignored_inv
       cipher_input_fwd cipher_input_inv
-      (init_rcon last_rcon : t bool 8)
       (init_key last_key : combType key) (init_state : combType state) d :
   let Nr := 14 in
-  let all_keys_and_rcons :=
-      all_keys (fun i k => unflatten_key (key_expand_spec i (flatten_key k)))
-               Nr (init_key, init_rcon) in
-  (* last_key and last_rcon are correct *)
-  (exists keys, all_keys_and_rcons = keys ++ [(last_key, last_rcon)]) ->
-  (* inverse key expansion reverses key expansion *)
-  (forall i kr,
-      unflatten_key
-        (inv_key_expand_spec
-           (Nr - S i) (key_expand_spec i (flatten_key kr))) = kr) ->
-  (* Nr must be at least two and small enough to fit in round_index size *)
-  1 < Nr < 2 ^ 4 ->
-  length init_cipher_state_ignored_fwd = Nr ->
-  length init_cipher_state_ignored_inv = Nr ->
-  let init_cipher_state_fwd := (init_key, init_rcon, init_state) in
+  length init_key_input_fwd = S Nr ->
+  length init_key_input_inv = S Nr ->
+  length init_state_ignored_fwd = Nr ->
+  length init_state_ignored_inv = Nr ->
   cipher_input_fwd = combine
-                       (map
-                          (fun i =>
-                             (false, nat_to_bitvec_sized _ Nr,
-                              nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
-                          (seq 0 (S Nr)))
-                       (init_cipher_state_fwd :: init_cipher_state_ignored_fwd) ->
-  let ciphertext := nth Nr (multistep full_cipher cipher_input_fwd) d in
-  let init_cipher_state_inv := (last_key, last_rcon, ciphertext) in
+                       (combine
+                          (map
+                             (fun i =>
+                                (false, nat_to_bitvec_sized _ Nr,
+                                 nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
+                             (seq 0 (S Nr)))
+                          init_key_input_fwd)
+                       (init_state :: init_state_ignored_fwd) ->
+  let ciphertext := nth Nr (multistep (full_cipher key_expand) cipher_input_fwd) d in
   cipher_input_inv = combine
-                       (map
-                          (fun i =>
-                             (true, nat_to_bitvec_sized _ Nr,
-                              nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
-                          (seq 0 (S Nr)))
-                       (init_cipher_state_inv :: init_cipher_state_ignored_inv) ->
-  nth Nr (multistep full_cipher cipher_input_inv) d = init_state.
+                       (combine
+                          (map
+                             (fun i =>
+                                (true, nat_to_bitvec_sized _ Nr,
+                                 nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
+                             (seq 0 (S Nr)))
+                          init_key_input_inv)
+                       (ciphertext :: init_state_ignored_inv) ->
+  (* inverse key expansion reverses key expansion *)
+  multistep key_expand cipher_input_fwd = rev (multistep key_expand cipher_input_inv) ->
+  nth Nr (multistep (full_cipher key_expand) cipher_input_inv) d = init_state.
 Proof.
-  intros *. intros [keys Hkeys]. intros. simpl_ident.
-  subst_lets.
+  intros. simpl_ident. subst_lets.
 
-  (* extract the first key and middle keys to match full_cipher_equiv *)
-  lazymatch type of Hkeys with
-    ?all_keys = _ =>
-    let H := fresh in
-    assert (1 < length all_keys) as H by length_hammer;
-      rewrite Hkeys in H
-  end.
-  destruct keys; autorewrite with push_length in *; [ Lia.lia | ].
-  rewrite <-app_comm_cons in *.
-  let H := fresh in pose proof Hkeys as H; apply hd_all_keys in H; [ | Lia.lia ].
-  subst.
-
-  (* TODO(jadep): can ExpandAllKeys be improved to make this less awkward? *)
-  erewrite full_cipher_equiv; try reflexivity; try Lia.lia;
-    [ erewrite full_cipher_equiv; try reflexivity; try Lia.lia | ].
-  2:{
-    cbn match. rewrite Hkeys. cbn [map]. rewrite map_app. cbn [map fst].
-    reflexivity. }
-  2:{
-    erewrite all_keys_inv_eq
-      by (intros; lazymatch goal with
-                  | |- _ = last _ _ => rewrite Hkeys, app_comm_cons, last_last; reflexivity
-                  | _ => cbv beta; autorewrite with conversions; auto
-                  end).
-    rewrite Hkeys. cbn [map rev]. rewrite map_app, rev_unit. cbn [map rev fst].
-    rewrite <-app_comm_cons. reflexivity. }
+  do 2
+     (erewrite full_cipher_equiv;
+      [ | lazymatch goal with
+          | |- _ = combine _ _ => eassumption
+          | |- _ = _ :: _ ++ [_] =>
+            eapply eta_list_cons_snoc with (d0:=init_key); subst; length_hammer
+          | _ => idtac
+          end .. ];
+      [ | subst; length_hammer .. ]).
 
   autorewrite with conversions.
-  do 2 rewrite map_rev.
+  cbv [combType Bvector.Bvector] in *.
+  lazymatch goal with H : multistep key_expand _ = _ |- _ =>
+                      rewrite H end.
+  let l := lazymatch goal with
+             |- context [map inv_mix_columns ?l] =>
+             l end in
+  rewrite <-(rev_involutive l).
+  autorewrite with pull_rev.
+  rewrite <-!map_rev with (f:=inv_mix_columns).
+  rewrite removelast_tl.
   rewrite aes256_decrypt_encrypt.
   autorewrite with conversions.
   reflexivity.

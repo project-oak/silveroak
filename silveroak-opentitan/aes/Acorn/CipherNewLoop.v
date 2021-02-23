@@ -43,24 +43,23 @@ Section WithCava.
           (inv_mix_columns_key : signal key -> cava (signal key)).
   Local Infix "==?" := eqb (at level 40).
 
-  (* State of the AES cipher (key, round constant, AES state vector) *)
-  Let cipher_state : Type := signal key * signal state.
   (* The non-state signals that each round of the cipher loop needs access to *)
   Let cipher_signals : Type :=
     signal Bit (* op_i/is_decrypt : true for decryption, false for encryption *)
       * signal round_index (* num_rounds_regular : round index of final round *)
       * signal round_index (* round_0 : round index of first round *)
       * signal round_index (* current round_index *)
-      * cipher_state (* initial state, ignored for all rounds except first *).
+      * signal key (* initial key, ignored for all rounds except first *)
+      * signal state (* initial state, ignored for all rounds except first *).
 
   Definition cipher_round
              (is_decrypt : signal Bit)
-             (key_data : cipher_state)
+             (round_key : signal key)
              (add_round_key_in_sel : signal (Vec Bit 2))
              (round_key_sel : signal Bit)
              (round_i : signal round_index)
+             (data : signal state)
     : cava (signal state) :=
-    let '(round_key, data) := key_data in
     shift_rows_out <- (sub_bytes is_decrypt >=> shift_rows is_decrypt) data ;;
     mix_columns_out <- mix_columns is_decrypt shift_rows_out ;;
 
@@ -82,10 +81,10 @@ Section WithCava.
              (is_decrypt : signal Bit) (* called op_i in OpenTitan *)
              (is_first_round : signal Bit)
              (num_rounds_regular : signal round_index)
-             (key_data : cipher_state)
+             (round_key : signal key)
              (round_i : signal round_index)
+             (data : signal state)
     : cava (signal state) :=
-    let '(round_key, data) := key_data in
     is_final_round <- round_i ==? num_rounds_regular;;
     (* add_round_key_in_sel :
        1 if round_i = 0, 2 if round_i = num_rounds_regular, 0 otherwise *)
@@ -93,8 +92,8 @@ Section WithCava.
     is_middle_round <- nor2 (is_first_round, is_final_round) ;;
     (* round_key_sel : 1 for a decryption middle round, 0 otherwise *)
     round_key_sel <- and2 (is_middle_round, is_decrypt) ;;
-    cipher_round is_decrypt key_data
-                 add_round_key_in_sel round_key_sel round_i.
+    cipher_round is_decrypt round_key
+                 add_round_key_in_sel round_key_sel round_i data.
 
   Definition cipher_loop
     : Circuit (cipher_signals * signal key) (signal state) :=
@@ -102,17 +101,15 @@ Section WithCava.
       (Comb
          (fun input_and_state :
               cipher_signals * signal key * signal state  =>
-            let '(input, fk, fv) := input_and_state in
+            let '(input, k, feedback_state) := input_and_state in
             (* extract signals from the input tuple *)
             let '(is_decrypt, num_rounds_regular,
-                  round_0, idx, initial_state) := input in
-            let '(ik, iv) := initial_state in
+                  round_0, idx, _, initial_state) := input in
             is_first_round <- idx ==? round_0 ;;
-            k <- muxPair is_first_round (fk, ik) ;;
-            v <- muxPair is_first_round (fv, iv) ;;
-            v' <- cipher_step is_decrypt is_first_round
-                             num_rounds_regular (k,v) idx ;;
-            ret (v',v'))).
+            st <- muxPair is_first_round (feedback_state, initial_state) ;;
+            st' <- cipher_step is_decrypt is_first_round
+                             num_rounds_regular k idx st ;;
+            ret (st',st'))).
 
   Definition cipher
              (key_expand : Circuit cipher_signals (signal key))

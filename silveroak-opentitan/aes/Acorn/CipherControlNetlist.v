@@ -35,28 +35,25 @@ Import Pkg.Notations.
 Require Import AcornAes.ShiftRowsNetlist.
 Require Import AcornAes.MixColumnsNetlist.
 
-Definition cipher_state : SignalType := Pair (Pair key round_constant) state.
-
-Definition key_expand_and_round := CipherNewLoop.key_expand_and_round
-  (round_index:=round_index) (round_constant:=round_constant)
+Definition cipher_round := CipherNewLoop.cipher_round
+  (round_index:=round_index)
   aes_sub_bytes' aes_shift_rows' aes_mix_columns' aes_add_round_key
-  inv_mix_columns_key key_expand.
+  inv_mix_columns_key.
 
-Definition key_expand_and_round_Interface :=
-  combinationalInterface "key_expand_and_round"
+Definition cipher_round_Interface :=
+  combinationalInterface "cipher_round"
   [ mkPort "is_decrypt" Bit
   ; mkPort "key" key
-  ; mkPort "rcon" round_constant
-  ; mkPort "data" state
   ; mkPort "add_round_key_in_sel" (Vec Bit 2)
   ; mkPort "round_key_sel" Bit
-  ; mkPort "round_i" (Vec Bit 4) ]
-  [ mkPort "key_o" key; mkPort "round_o" round_constant; mkPort "state_o" state ]
+  ; mkPort "round_i" (Vec Bit 4)
+  ; mkPort "data" state ]
+  [ mkPort "state_o" state ]
   [].
 
-Definition key_expand_and_round_Netlist
-  := makeNetlist key_expand_and_round_Interface
-  (fun '(a, b, c, d, e, f, g ) => key_expand_and_round a (b, c, d) e f g).
+Definition cipher_round_Netlist
+  := makeNetlist cipher_round_Interface
+  (fun '(a, b, c, d, e, f ) => cipher_round a b c d e f).
 
 Definition aes_cipher_core_simplified_Interface :=
   combinationalInterface "aes_cipher_core_simplified"
