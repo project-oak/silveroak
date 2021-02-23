@@ -91,12 +91,16 @@ Section WithCava.
       fun '(cs,st) input =>
         '(out, st', cs') <- interp f cs (input, st) ;;
         (* select the updated state only if the loop is enabled *)
-         let new_state := indexAt (unpeel [st;st']) (unpeel [en]) in
+        vst <- unpeel [st;st'] ;;
+        en' <- unpeel [en] ;;
+        new_state <- indexAt vst en' ;;
         ret (out, (cs',new_state))
     | DelayInitCE en _ =>
       fun st input =>
         (* select the updated state only if the delay is enabled *)
-        let new_state := indexAt (unpeel [st;input]) (unpeel [en]) in
+        vst <- unpeel [st;input] ;;
+        en' <- unpeel [en] ;;
+        new_state <- indexAt vst en' ;;
         ret (st, new_state)
     end.
 

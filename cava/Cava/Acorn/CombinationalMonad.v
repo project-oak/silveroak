@@ -54,9 +54,9 @@ Definition lift1 {A B} (f : combType A -> combType B) (a : seqType A)
 
 Definition liftP {A B C} (f : combType A * combType B -> combType C)
            (ab : seqType A * seqType B)
-  : seqType C :=
+  : ident (seqType C) :=
   let (a, b) := ab in
-  map f (pad_combine a b).
+  ret (map f (pad_combine a b)).
 
 Definition lift2 {A B C} (f : combType A -> combType B -> combType C)
            (a : seqType A) (b : seqType B)
@@ -109,35 +109,35 @@ Definition pairSelBool {t : SignalType}
 
 Definition indexConstBoolList {t: SignalType} {sz: nat}
            (v : seqType (Vec t sz)) (sel : nat)
-  : seqType t :=
-  map (nth_default (defaultCombValue t) sel) v.
+  : ident (seqType t) :=
+  ret (map (nth_default (defaultCombValue t) sel) v).
 
 Definition indexAtBoolList {t: SignalType} {sz isz: nat}
            (v : seqType (Vec t sz)) (sel : seqType (Vec Bit isz))
-  : seqType t :=
-  map (fun '(sel, v) =>
+  : ident (seqType t) :=
+  ret (map (fun '(sel, v) =>
          nth_default (defaultCombValue t) (N.to_nat (Bv2N sel)) v)
-      (pad_combine sel v).
+      (pad_combine sel v)).
 
 Definition peelVecList {t: SignalType} {s: nat}
                        (v: list (Vector.t (combType t) s))
-                       : Vector.t (list (combType t)) s :=
- Vector.map (indexConstBoolList v) (vseq 0 s).
+                       : ident (Vector.t (list (combType t)) s) :=
+ mapT_vector (indexConstBoolList v) (vseq 0 s).
 
 Definition unpeelVecList {t: SignalType} {s: nat}
                          (v: Vector.t (list (combType t)) s)
-                         : list (Vector.t (combType t) s) :=
+                         : ident (list (Vector.t (combType t) s)) :=
   let max_length := Vector.fold_left Nat.max 0 (Vector.map (@length _) v) in
-  map (fun ni => Vector.map (fun vi => nth ni vi (defaultCombValue t)) v)
-      (seq 0 max_length).
+  ret (map (fun ni => Vector.map (fun vi => nth ni vi (defaultCombValue t)) v)
+      (seq 0 max_length)).
 
 Definition sliceBoolList {t: SignalType}
                          {sz: nat}
                          (startAt len : nat)
                          (v: list (Vector.t (combType t) sz))
                          (H: startAt + len <= sz) :
-                         list (Vector.t (combType t) len) :=
-  map (fun v => sliceVector v startAt len H) v.
+                         ident (list (Vector.t (combType t) len)) :=
+  ret (map (fun v => sliceVector v startAt len H) v).
 
 Local Notation lift1Bool := (@lift1 Bit Bit).
 Local Notation lift2Bool := (@lift2 Bit Bit Bit).
@@ -180,10 +180,8 @@ Instance CombinationalSemantics : Cava seqType :=
     indexConst t sz := @indexConstBoolList t sz;
     slice t sz := @sliceBoolList t sz;
     unsignedAdd m n := @liftP (Vec Bit m) (Vec Bit n) (Vec Bit (1 + max m n)) (@unsignedAddBool m n);
-    unsignedMult m n := @liftP (Vec Bit _) (Vec Bit _) (Vec Bit _)
-                               (@unsignedMultBool m n);
-    greaterThanOrEqual m n := @liftP (Vec Bit _) (Vec Bit _) Bit
-                                     (@greaterThanOrEqualBool m n);
+    unsignedMult m n := @liftP (Vec Bit _) (Vec Bit _) (Vec Bit _) (@unsignedMultBool m n);
+    greaterThanOrEqual m n := @liftP (Vec Bit _) (Vec Bit _) Bit (@greaterThanOrEqualBool m n);
     localSignal _ v := ret v;
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefaultS (map port_type (circuitOutputs intf)));

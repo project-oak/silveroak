@@ -33,6 +33,13 @@ Require Import Cava.Acorn.CavaClass.
 (* Netlist implementations for the Cava class.                                *)
 (******************************************************************************)
 
+Definition localSignalNet {A : SignalType}
+                          (v : Signal A)
+                          : state CavaState (Signal A) :=
+   localSig <- newSignal A ;;
+   assignSignal localSig v ;;
+   ret localSig.
+
 Definition invNet (i : Signal Bit) : state CavaState (Signal Bit) :=
   o <- newWire ;;
   addInstance (Not i o) ;;
@@ -195,18 +202,21 @@ Definition unpairNet {t1 t2 : SignalType} (v : Signal (Pair t1 t2)) : Signal t1 
 Definition mkpairNet {t1 t2 : SignalType} (v1 : Signal t1) (v2 : Signal t2) : Signal (Pair t1 t2) :=
   SignalPair v1 v2.
 
-Definition peelNet {t : SignalType} {s : nat} (v : Signal (Vec t s)) : Vector.t (Signal t) s :=
-  Vector.map (IndexConst v) (vseq 0 s).
+Definition peelNet {t : SignalType} {s : nat} (v : Signal (Vec t s))
+  : state CavaState (Vector.t (Signal t) s) :=
+  mapT_vector (fun x => localSignalNet (IndexConst v x)) (vseq 0 s).
 
-Definition unpeelNet {t : SignalType} {s : nat} (v: Vector.t (Signal t) s) : Signal (Vec t s) :=
-  VecLit v.
+Definition unpeelNet {t : SignalType} {s : nat} (v: Vector.t (Signal t) s)
+  : state CavaState (Signal (Vec t s)) :=
+  localSignalNet (VecLit v).
 
 Definition sliceNet {t: SignalType} {sz: nat}
                     (startAt len: nat)
                     (v: Signal (Vec t sz))
                     (H: startAt + len <= sz) :
-                    Signal (Vec t len) :=
-  unpeelNet (sliceVector (peelNet v) startAt len H).
+                    state CavaState (Signal (Vec t len)) :=
+  v' <- peelNet v ;;
+  unpeelNet (sliceVector v' startAt len H).
 
 Fixpoint combToSignal (t : SignalType) (v : combType t) : Signal t :=
   match t, v with
@@ -266,13 +276,6 @@ Definition loopNetEnableS (A B : SignalType)
   assignSignal o oDelay ;;
   ret out.
 
-Definition localSignalNet {A : SignalType}
-                          (v : Signal A)
-                          : state CavaState (Signal A) :=
-   localSig <- newSignal A ;;
-   assignSignal localSig v ;;
-   ret localSig.
-
 Definition instantiateNet (intf : CircuitInterface)
                           (circuit : tupleNetInterface (circuitInputs intf) ->
                                     state CavaState (tupleNetInterface (circuitOutputs intf)))
@@ -313,12 +316,12 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     unpair := @unpairNet;
     peel := @peelNet;
     unpeel := @unpeelNet;
-    indexAt k sz isz := IndexAt;
-    indexConst k sz := IndexConst;
+    indexAt k sz isz v i := localSignalNet (IndexAt v i);
+    indexConst k sz v i := localSignalNet (IndexConst v i);
     slice k sz := @sliceNet k sz;
-    unsignedAdd m n ab := @UnsignedAdd m n (1 + max m n) (fst ab) (snd ab);
-    unsignedMult m n ab := @UnsignedMultiply m n (m + n) (fst ab) (snd ab);
-    greaterThanOrEqual m n ab := @GreaterThanOrEqual m n (fst ab) (snd ab);
+    unsignedAdd m n ab := localSignalNet (@UnsignedAdd m n (1 + max m n) (fst ab) (snd ab));
+    unsignedMult m n ab := localSignalNet (@UnsignedMultiply m n (m + n) (fst ab) (snd ab));
+    greaterThanOrEqual m n ab := localSignalNet (@GreaterThanOrEqual m n (fst ab) (snd ab));
     localSignal := @localSignalNet;
     instantiate := instantiateNet;
     blackBox := blackBoxNet;

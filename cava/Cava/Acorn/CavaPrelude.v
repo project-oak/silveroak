@@ -20,6 +20,7 @@ Import VectorNotations.
 
 Require Import ExtLib.Structures.Monads.
 Import MonadNotation.
+Local Open Scope monad_scope.
 
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Signal.
@@ -46,14 +47,9 @@ Section WithCava.
                      (sel : signal Bit)
                      (ab : signal A * signal A) : cava (signal A) :=
     let (a, b) := ab in
-    localSignal (indexAt (unpeel [a; b]) (unpeel [sel])).
-
-  (* A variant of muxPair that works over a Cava pair. *)
-  Definition pairSel {A : SignalType}
-                     (sel : signal Bit)
-                     (ab : signal (Pair A A)) : signal A :=
-  let (a, b) := unpair ab in
-  indexAt (unpeel [a; b]) (unpeel [sel]).
+    ab' <- unpeel [a; b] ;;
+    sel' <- unpeel [sel] ;;
+    indexAt ab' sel'.
 
   (* A unit delay with a default reset value. *)
   Definition delay {A : SignalType} (i : signal A) : cava (signal A) :=
