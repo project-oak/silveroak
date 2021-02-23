@@ -52,8 +52,8 @@ Section WithCava.
     signal Bit (* op_i/is_decrypt : true for decryption, false for encryption *)
       * signal round_index (* num_rounds_regular : round index of final round *)
       * signal round_index (* round_0 : round index of first round *)
-      * cipher_state (* initial state, ignored for all rounds except first *)
-      * signal round_index (* current round_index *).
+      * signal round_index (* current round_index *)
+      * cipher_state (* initial state, ignored for all rounds except first *).
 
   Definition key_expand_and_round
              (is_decrypt : signal Bit)
@@ -112,7 +112,7 @@ Section WithCava.
                   let '(input, fk, fr, fv) := input_and_state in
                   (* extract signals from the input tuple *)
                   let '(is_decrypt, num_rounds_regular,
-                        round_0, initial_state, idx) := input in
+                        round_0, idx, initial_state) := input in
                   let '(ik, ir, iv) := initial_state in
                   is_first_round <- idx ==? round_0 ;;
                   k <- muxPair is_first_round (fk, ik) ;;

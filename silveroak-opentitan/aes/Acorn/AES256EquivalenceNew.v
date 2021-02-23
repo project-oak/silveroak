@@ -103,9 +103,9 @@ Hint Resolve add_round_key_equiv sub_bytes_equiv shift_rows_equiv
 
 Definition full_cipher {signal} {semantics : Cava signal}
   : Circuit
-      (signal Bit * signal round_index * signal round_index
-       * (signal key * signal round_constant * signal state)
-       * signal round_index) (signal state) :=
+      (signal Bit * signal round_index * signal round_index * signal round_index
+       * (signal key * signal round_constant * signal state))
+      (signal state) :=
   cipher
     aes_sub_bytes aes_shift_rows aes_mix_columns aes_add_round_key
     (fun k => aes_mix_columns one k) (* Hard-wire is_decrypt to '1' *)
@@ -134,7 +134,8 @@ Local Ltac solve_side_conditions :=
   end.
 
 Lemma full_cipher_equiv
-      (is_decrypt : bool) (init_rcon : t bool 8) (init_key last_key : combType key)
+      (is_decrypt : bool) init_cipher_state_ignored
+      (init_rcon : t bool 8) (init_key last_key : combType key)
       (middle_keys : list (combType key)) (init_state : combType state)
       (cipher_input : list _):
   let Nr := 14 in
@@ -153,12 +154,14 @@ Lemma full_cipher_equiv
   (* Nr must be at least two and small enough to fit in round_index size *)
   1 < Nr < 2 ^ 4 ->
   let init_cipher_state := (init_key, init_rcon, init_state) in
-  cipher_input = map
-                   (fun i =>
-                      (is_decrypt, nat_to_bitvec_sized _ Nr,
-                       nat_to_bitvec_sized _ 0, init_cipher_state,
-                       nat_to_bitvec_sized _ i))
-                   (seq 0 (S Nr)) ->
+  length init_cipher_state_ignored = Nr ->
+  cipher_input = combine
+                   (map
+                      (fun i =>
+                         (is_decrypt, nat_to_bitvec_sized _ Nr,
+                          nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
+                      (seq 0 (S Nr)))
+                   (init_cipher_state :: init_cipher_state_ignored) ->
   forall d,
     nth Nr (multistep full_cipher cipher_input) d
     = from_flat
@@ -234,6 +237,7 @@ Qed.
 
 Lemma full_cipher_inverse
       (is_decrypt : bool)
+      init_cipher_state_ignored_fwd init_cipher_state_ignored_inv
       cipher_input_fwd cipher_input_inv
       (init_rcon last_rcon : t bool 8)
       (init_key last_key : combType key) (init_state : combType state) d :
@@ -250,21 +254,25 @@ Lemma full_cipher_inverse
            (Nr - S i) (key_expand_spec i (flatten_key kr))) = kr) ->
   (* Nr must be at least two and small enough to fit in round_index size *)
   1 < Nr < 2 ^ 4 ->
+  length init_cipher_state_ignored_fwd = Nr ->
+  length init_cipher_state_ignored_inv = Nr ->
   let init_cipher_state_fwd := (init_key, init_rcon, init_state) in
-  cipher_input_fwd = map
-                       (fun i =>
-                          (false, nat_to_bitvec_sized _ Nr,
-                           nat_to_bitvec_sized _ 0, init_cipher_state_fwd,
-                           nat_to_bitvec_sized _ i))
-                       (seq 0 (S Nr)) ->
+  cipher_input_fwd = combine
+                       (map
+                          (fun i =>
+                             (false, nat_to_bitvec_sized _ Nr,
+                              nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
+                          (seq 0 (S Nr)))
+                       (init_cipher_state_fwd :: init_cipher_state_ignored_fwd) ->
   let ciphertext := nth Nr (multistep full_cipher cipher_input_fwd) d in
   let init_cipher_state_inv := (last_key, last_rcon, ciphertext) in
-  cipher_input_inv = map
-                       (fun i =>
-                          (true, nat_to_bitvec_sized _ Nr,
-                           nat_to_bitvec_sized _ 0, init_cipher_state_inv,
-                           nat_to_bitvec_sized _ i))
-                       (seq 0 (S Nr)) ->
+  cipher_input_inv = combine
+                       (map
+                          (fun i =>
+                             (true, nat_to_bitvec_sized _ Nr,
+                              nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
+                          (seq 0 (S Nr)))
+                       (init_cipher_state_inv :: init_cipher_state_ignored_inv) ->
   nth Nr (multistep full_cipher cipher_input_inv) d = init_state.
 Proof.
   intros *. intros [keys Hkeys]. intros. simpl_ident.
@@ -283,8 +291,8 @@ Proof.
   subst.
 
   (* TODO(jadep): can ExpandAllKeys be improved to make this less awkward? *)
-  erewrite full_cipher_equiv; try length_hammer;
-    [ erewrite full_cipher_equiv; try length_hammer | ].
+  erewrite full_cipher_equiv; try reflexivity; try Lia.lia;
+    [ erewrite full_cipher_equiv; try reflexivity; try Lia.lia | ].
   2:{
     cbn match. rewrite Hkeys. cbn [map]. rewrite map_app. cbn [map fst].
     reflexivity. }
@@ -304,5 +312,8 @@ Proof.
   reflexivity.
 Qed.
 
+(* TODO:uncomment once old version of this file is removed *)
+(*
 Redirect "FullCipherEquiv_Assumptions" Print Assumptions full_cipher_equiv.
 Redirect "FullCipherInverse_Assumptions" Print Assumptions full_cipher_inverse.
+*)

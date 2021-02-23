@@ -201,8 +201,7 @@ Section WithSubroutines.
 
   Lemma cipher_loop_step
         (Nr : nat) (num_regular_rounds round0 : round_index)
-        (is_decrypt : bool) (init_rcon : round_constant)
-        (init_key : key) (init_state : state)
+        (is_decrypt : bool) (init_cipher_state : key * round_constant * state)
         (round_i : round_index) (i : nat) :
     (* Nr must be at least two and small enough to fit in round_index size *)
     1 < Nr < 2 ^ 4 ->
@@ -217,14 +216,15 @@ Section WithSubroutines.
                   (round_index:=Vec Bit 4)
                   sub_bytes shift_rows mix_columns add_round_key (mix_columns true)
                   key_expand in
-    forall current_state : circuit_state loop,
-      let key := snd current_state in
-      let rcon := snd (fst current_state) in
-      let state := snd (fst (fst current_state)) in
+    forall current_cipher_state : circuit_state loop,
+      let key := snd current_cipher_state in
+      let rcon := snd (fst current_cipher_state) in
+      let state := snd (fst (fst current_cipher_state)) in
       unIdent
-        (interp loop current_state
-                (is_decrypt, num_regular_rounds, round0, (init_key, init_rcon, init_state), round_i))
-      = let st := if i =? 0 then (init_key, init_rcon, init_state) else (key,rcon,state) in
+        (interp loop current_cipher_state
+                (is_decrypt, num_regular_rounds, round0, round_i,
+                 init_cipher_state))
+      = let st := if i =? 0 then init_cipher_state else (key,rcon,state) in
         let out := (if i =? Nr
                     then last_round_spec is_decrypt st i
                     else round_spec is_decrypt st i) in
@@ -266,16 +266,18 @@ Section WithSubroutines.
   Lemma cipher_loop_equiv
         (Nr : nat) (is_decrypt : bool)
         (init_rcon : round_constant) (init_key : key) (init_state : state)
-        (cipher_input : list _) :
+        (cipher_input : list _) init_cipher_state_ignored :
     (* Nr must be at least two and small enough to fit in round_index size *)
     1 < Nr < 2 ^ 4 ->
     let init_cipher_state := (init_key, init_rcon, init_state) in
-    cipher_input = map
-                     (fun i =>
-                        (is_decrypt, nat_to_bitvec_sized _ Nr,
-                         nat_to_bitvec_sized _ 0, init_cipher_state,
-                         nat_to_bitvec_sized _ i))
-                     (seq 0 (S Nr)) ->
+    length init_cipher_state_ignored = Nr ->
+    cipher_input = combine
+                     (map
+                        (fun i =>
+                           (is_decrypt, nat_to_bitvec_sized _ Nr,
+                            nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
+                        (seq 0 (S Nr)))
+                     (init_cipher_state :: init_cipher_state_ignored) ->
     let loop := cipher_loop
                   (key:=Vec (Vec (Vec Bit 8) 4) 4)
                   (round_constant:=Vec Bit 8)
@@ -288,7 +290,7 @@ Section WithSubroutines.
   Proof.
     cbv zeta; intros. subst cipher_input.
     cbv [multistep cipher_trace_with_keys].
-    cbn [seq map].
+    cbn [seq map combine].
     rewrite fold_left_accumulate_cons_full.
     cbn [tl].
 
@@ -300,28 +302,34 @@ Section WithSubroutines.
     repeat destruct_pair_let. cbn [fst snd].
 
     (* Use loop invariant *)
-    rewrite fold_left_accumulate_map.
+    rewrite fold_left_accumulate_to_seq
+      with (default := (defaultCombValue _, defaultCombValue _, defaultCombValue _,
+                        defaultCombValue _, (defaultCombValue _, defaultCombValue _,
+                                             defaultCombValue _))).
+    autorewrite with push_length natsimpl.
+    rewrite <-seq_shift, fold_left_accumulate_map.
     factor_out_loops.
     eapply fold_left_accumulate_double_invariant_seq
       with (I:=fun i st1 st2 => (st1 = (st2, (tt, snd st2, snd (fst st2), fst (fst st2))))).
     { (* invariant holds at start *)
       reflexivity. }
     { (* invariant holds through body *)
-      intro i; intros. subst. cbn [fst snd].
-      erewrite cipher_loop_step with (Nr:=Nr) (i:=i)
+      intros i x y; intros; subst x. cbn [fst snd].
+      rewrite map_map. autorewrite with push_nth.
+      erewrite cipher_loop_step with (Nr:=Nr) (i:=S i)
         by (reflexivity || Lia.lia).
       cbn zeta delta [fst snd]. repeat destruct_pair_let.
-      cbn [fst snd]. destr (i =? 0); [ Lia.lia | ].
+      cbn [fst snd]. change (S i =? 0) with false. cbn match.
       destruct_products. cbn [fst snd].
       destr (i =? Nr); reflexivity. }
     { (* invariant implies postcondition *)
-      intros; subst. cbn [fst snd].
+      intros *. intros Heq Hnth; intros.
+      rewrite Heq in *. cbn [fst snd].
       cbn [circuit_state Loop cipher_loop] in *.
       apply list_eq_elementwise; [ cbn; length_hammer | ].
-      intro j; autorewrite with push_length; intros.
-      rename H1 into Hnth. (* TODO:change *)
-      specialize (Hnth (S j)).
-      autorewrite with natsimpl in Hnth.
+      intro j; autorewrite with push_length.
+      specialize (Hnth j).
+      autorewrite with natsimpl in Hnth; intros.
 
       (* generate a new default element and use it to rewrite with map_nth_inbounds *)
       let d := fresh "d" in
@@ -341,7 +349,9 @@ Section WithSubroutines.
   Qed.
 
   Lemma cipher_equiv
-        (Nr : nat) (init_rcon : round_constant) (init_key : key) (init_state : state)
+        (Nr : nat)
+        init_cipher_state_ignored
+        (init_rcon : round_constant) (init_key : key) (init_state : state)
         (last_key : key) (middle_keys : list key)
         (cipher_input : list _) :
     (* precomputed keys match key expansion *)
@@ -351,12 +361,14 @@ Section WithSubroutines.
     (* Nr must be at least two and small enough to fit in round_index size *)
     1 < Nr < 2 ^ 4 ->
     let init_cipher_state := (init_key, init_rcon, init_state) in
-    cipher_input = map
-                     (fun i =>
-                        (false, nat_to_bitvec_sized _ Nr,
-                         nat_to_bitvec_sized _ 0, init_cipher_state,
-                         nat_to_bitvec_sized _ i))
-                     (seq 0 (S Nr)) ->
+    length init_cipher_state_ignored = Nr ->
+    cipher_input = combine
+                     (map
+                        (fun i =>
+                           (false, nat_to_bitvec_sized _ Nr,
+                            nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
+                        (seq 0 (S Nr)))
+                     (init_cipher_state :: init_cipher_state_ignored) ->
     let cipher := cipher
                     (key:=Vec (Vec (Vec Bit 8) 4) 4)
                     (round_constant:=Vec Bit 8)
@@ -370,10 +382,11 @@ Section WithSubroutines.
           _ _ add_round_key_spec sub_bytes_spec shift_rows_spec mix_columns_spec
           init_key last_key middle_keys init_state.
   Proof.
-    cbv zeta; intro Hall_keys; intros. subst.
+    cbv zeta; intro Hall_keys; intros. subst cipher_input.
     cbv [cipher]. rewrite multistep_compose, multistep_comb.
     erewrite map_ext with (g:=snd) by (intros; destruct_products; reflexivity).
-    erewrite cipher_loop_equiv with (Nr:=Nr) by (assumption||reflexivity).
+    erewrite cipher_loop_equiv with (Nr:=Nr)
+      by (eassumption||reflexivity).
     cbv [cipher_trace_with_keys]. simplify.
 
     (* simplify selection of last element *)
@@ -402,7 +415,7 @@ Section WithSubroutines.
     destruct_one_match; try Lia.lia; [ ].
 
     (* remove the last-round case from loop body *)
-    erewrite ListUtils.fold_left_ext_In with (f:= fun _ _ => if _ =? Nr then _ else _)
+    erewrite ListUtils.fold_left_ext_In with (f:= fun _ _ => if _ =? _ then _ else _)
       by (intros *; rewrite in_seq; intros; repeat destruct_one_match; try Lia.lia;
           reflexivity).
 
@@ -418,7 +431,8 @@ Section WithSubroutines.
   Qed.
 
   Lemma inverse_cipher_equiv
-        (Nr : nat) (init_rcon : round_constant) (init_key : key) (init_state : state)
+        (Nr : nat) init_cipher_state_ignored
+        (init_rcon : round_constant) (init_key : key) (init_state : state)
         (last_key : key) (middle_keys : list key)
         (cipher_input : list _) :
     (* precomputed keys match key expansion *)
@@ -428,12 +442,14 @@ Section WithSubroutines.
     (* Nr must be at least two and small enough to fit in round_index size *)
     1 < Nr < 2 ^ 4 ->
     let init_cipher_state := (init_key, init_rcon, init_state) in
-    cipher_input = map
-                     (fun i =>
-                        (true, nat_to_bitvec_sized _ Nr,
-                         nat_to_bitvec_sized _ 0, init_cipher_state,
-                         nat_to_bitvec_sized _ i))
-                     (seq 0 (S Nr)) ->
+    length init_cipher_state_ignored = Nr ->
+    cipher_input = combine
+                     (map
+                        (fun i =>
+                           (true, nat_to_bitvec_sized _ Nr,
+                            nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
+                        (seq 0 (S Nr)))
+                     (init_cipher_state :: init_cipher_state_ignored) ->
     let cipher := cipher
                     (key:=Vec (Vec (Vec Bit 8) 4) 4)
                     (round_constant:=Vec Bit 8)
@@ -447,10 +463,10 @@ Section WithSubroutines.
          _ _ add_round_key_spec inv_sub_bytes_spec inv_shift_rows_spec inv_mix_columns_spec
          init_key last_key (map inv_mix_columns_spec middle_keys) init_state.
   Proof.
-    cbv zeta; intro Hall_keys; intros. subst.
+    cbv zeta; intro Hall_keys; intros. subst cipher_input.
     cbv [cipher]. rewrite multistep_compose, multistep_comb.
     erewrite map_ext with (g:=snd) by (intros; destruct_products; reflexivity).
-    erewrite cipher_loop_equiv with (Nr:=Nr) by (assumption||reflexivity).
+    erewrite cipher_loop_equiv with (Nr:=Nr) by (eassumption||reflexivity).
     cbv [cipher_trace_with_keys]. simplify.
 
     (* simplify selection of last element *)
@@ -481,7 +497,7 @@ Section WithSubroutines.
     destruct_one_match; try Lia.lia; [ ].
 
     (* remove the last-round case from loop body *)
-    erewrite ListUtils.fold_left_ext_In with (f:= fun _ _ => if _ =? Nr then _ else _)
+    erewrite ListUtils.fold_left_ext_In with (f:= fun _ _ => if _ =? _ then _ else _)
       by (intros *; rewrite in_seq; intros; repeat destruct_one_match; try Lia.lia;
           reflexivity).
 
