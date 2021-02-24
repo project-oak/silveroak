@@ -51,6 +51,7 @@ library
                      CavaPrelude
                      Combinators
                      CombinationalMonad
+                     Combinational
                      Circuit
                      Datatypes
                      FullAdder
@@ -60,6 +61,7 @@ library
                      ListUtils
                      Logic
                      Monad
+                     Multistep
                      Netlist
                      NetlistGeneration
                      Nat
