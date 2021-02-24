@@ -193,17 +193,16 @@ Section WithSubroutines.
                   (round_index:=Vec Bit 4)
                   sub_bytes shift_rows mix_columns add_round_key (mix_columns true) in
     forall current_state : circuit_state loop,
-      unIdent
-        (interp loop current_state
-                (is_decrypt, num_regular_rounds, round0, round_i,
-                 init_key, init_state, round_key))
-      = let st := if i =? 0 then init_state else snd (current_state) in
+      step loop current_state
+           (is_decrypt, num_regular_rounds, round0, round_i,
+            init_key, init_state, round_key)
+      = let st := if i =? 0 then init_state else snd (snd (current_state)) in
         let st' := round_spec Nr is_decrypt round_key st i in
-        (st', (tt, st')).
+        (st', (tt, (tt, st'))).
   Proof.
     cbv zeta; intros.
     subst round0 num_regular_rounds round_i.
-    cbv [cipher_loop Loop] in *. cbn [interp circuit_state] in *.
+    cbv [cipher_loop Loop] in *. cbn [step circuit_state] in *.
     destruct_products. simplify.
     rewrite cipher_step_equiv with (Nr:=Nr)
       by (try Lia.lia; destruct i; reflexivity).
@@ -274,7 +273,7 @@ Section WithSubroutines.
     autorewrite with push_length natsimpl.
     factor_out_loops.
     eapply fold_left_accumulate_double_invariant_seq
-      with (I:=fun i st1 st2 => (st1 = (st2, (tt, st2)))).
+      with (I:=fun i st1 st2 => (st1 = (st2, (tt, (tt, st2))))).
     { (* invariant holds at start *)
       reflexivity. }
     { (* invariant holds through body *)

@@ -105,7 +105,7 @@ Lemma count_by_correct (input : list (combType (Vec Bit 8))) :
   = map snd (count_by_spec input).
 Proof.
   destruct input as [|input0 input]; [ reflexivity | ].
-  cbv [multistep count_by_spec count_by Loop interp].
+  cbv [multistep count_by_spec count_by Loop step].
   rewrite <-seq_shift, map_map. cbn [firstn].
   repeat destruct_pair_let. simpl_ident.
   repeat destruct_pair_let. simpl_ident.
@@ -117,10 +117,10 @@ Proof.
 
   pose (statet := combType (Vec Bit 8)).
   pose (outt := combType Bit).
-  pose (to_out_and_state:=fun (x : statet * outt) => (snd x, (tt, fst x))).
+  pose (to_out_and_state:=fun (x : statet * outt) => (snd x, (tt, (tt, fst x)))).
   (* Important: min_state should go *inside fold_left to avoid this complicated state type *)
   eapply fold_left_invariant_seq
-      with (I:=fun i (acc_st : list (outt * (unit * statet)) * (outt * (unit * statet))) =>
+      with (I:=fun i (acc_st : list (outt * (unit * (unit * statet))) * (outt * (unit * (unit * statet)))) =>
                  acc_st = (map to_out_and_state (count_by_spec (firstn (S i) (input0 :: input))),
                            to_out_and_state (bvsumc (firstn (S i) (input0 :: input))))).
   { (* invariant holds at start *)
