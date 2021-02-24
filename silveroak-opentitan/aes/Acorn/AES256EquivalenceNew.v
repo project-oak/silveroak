@@ -41,6 +41,7 @@ Require Import AcornAes.ShiftRowsEquivalenceNew.
 Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.SubBytesEquivalenceNew.
 Require Import AcornAes.MixColumnsCircuit.
+Require Import AcornAes.MixColumnsEquivalenceNew.
 Require Import AcornAes.CipherNewLoop.
 Require Import AcornAes.CipherEquivalenceNew.
 Import ListNotations.
@@ -73,11 +74,6 @@ Proof.
   autorewrite with conversions. reflexivity.
 Qed.
 Hint Rewrite @unflatten_flatten @flatten_unflatten using solve [eauto] : conversions.
-
-Axiom mix_columns_equiv :
-  forall (is_decrypt : bool) (st : combType state),
-    unIdent (aes_mix_columns is_decrypt st)
-    = AES256.aes_mix_columns_circuit_spec is_decrypt st.
 
 Axiom key_expand_equiv :
   forall (is_decrypt : bool) (round_i : t bool 4) (k : t (t (t bool 8) 4) 4) (rcon : t bool 8),
