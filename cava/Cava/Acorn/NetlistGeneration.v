@@ -334,50 +334,37 @@ Instance CavaSequentialNet : CavaSeq CavaCombinationalNet :=
 
 Require Import Cava.Acorn.Circuit.
 
-(* Create new signals for internal circuit signals *)
-Fixpoint newCircuitStateSignals {i o} (c : Circuit i o)
-  : state CavaState (circuit_state c) :=
-  match c with
-  | Comb _ => ret tt
+(* Run circuit for a single step *)
+Fixpoint interpCircuit {i o} (c : Circuit i o)
+    : i -> state CavaState o :=
+  match c in Circuit i o return i -> state CavaState o with
+  | Comb f => f
   | Compose f g =>
-    fs <- newCircuitStateSignals f ;;
-    gs <- newCircuitStateSignals g ;;
-    ret (fs, gs)
-  | First f | Second f => newCircuitStateSignals f
-  | @LoopInitCE _ _ i o s _ _ f =>
-    fs <- newCircuitStateSignals f ;;
-    ss <- newSignal s ;;
-    ret (fs, ss)
-  | @DelayInitCE _ _ t _ _ => newSignal t
+    fun input =>
+      x <- interpCircuit f input ;;
+      y <- interpCircuit g x ;;
+      ret y
+  | First f =>
+    fun input =>
+      x <- interpCircuit f (fst input) ;;
+      ret (x, snd input)
+  | Second f =>
+    fun input =>
+      x <- interpCircuit f (snd input) ;;
+      ret (fst input, x)
+  | @LoopInitCE _ _ i o s resetval f =>
+    fun '(input, en) =>
+      feedback_in <- newSignal s ;;
+      '(out, feedback_out) <- interpCircuit f (input, feedback_in) ;;
+      (* place a delay on the feedback wire *)
+      addInstance (DelayEnable s resetval en feedback_out feedback_in) ;;
+      ret out
+  | @DelayInitCE _ _ t resetval =>
+    fun '(input, en) =>
+      out <- newSignal t ;;
+      addInstance (DelayEnable t resetval en input out) ;;
+      ret out
   end.
-
-(* "Close the loop" by adding delays to connect the output and input states *)
-Fixpoint linkCircuitStateSignals {i o} (c : Circuit i o)
-  : circuit_state c -> circuit_state c -> state CavaState unit :=
-  match c with
-  | Comb _ => fun _ _ => ret tt
-  | Compose f g =>
-    fun in_state out_state =>
-      fs <- linkCircuitStateSignals f (fst in_state) (fst out_state) ;;
-      linkCircuitStateSignals g (snd in_state) (snd out_state)
-  | First f | Second f => linkCircuitStateSignals f
-  | @LoopInitCE _ _ i o s en resetval f =>
-    fun in_state out_state =>
-      fs <- linkCircuitStateSignals f (fst in_state) (fst out_state) ;;
-      let ins := snd in_state in
-      let outs := snd out_state in
-      addInstance (DelayEnable s resetval en ins outs)
-  | @DelayInitCE _ _ t en resetval =>
-    fun ins outs =>
-      addInstance (DelayEnable t resetval en ins outs)
-  end.
-
-Definition interpCircuit {i o} (c : Circuit i o) (input : i)
-    : state CavaState o :=
-  in_state <- newCircuitStateSignals c ;; (* x : circuit_state c *)
-  '(out, out_state) <- interp c in_state input ;;
-  linkCircuitStateSignals c in_state out_state ;;
-  ret out.
 
 Definition makeCircuitNetlist (intf : CircuitInterface)
            (c : Circuit (tupleNetInterface (circuitInputs intf))

@@ -75,3 +75,33 @@ Instance CombinationalSemantics : Cava combType :=
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefault (map port_type (circuitOutputs intf)));
 }.
+
+(* Run circuit for a single step *)
+Fixpoint step {i o} (c : Circuit i o)
+  : circuit_state c -> i -> o * circuit_state c :=
+  match c in Circuit i o return circuit_state c -> i
+                                -> o * circuit_state c with
+  | Comb f => fun _ i => (unIdent (f i), tt)
+  | Compose f g =>
+    fun cs input =>
+      let '(x, cs1) := step f (fst cs) input in
+      let '(y, cs2) := step g (snd cs) x in
+      (y, (cs1, cs2))
+  | First f =>
+    fun cs input =>
+      let '(x, cs') := step f cs (fst input) in
+      (x, snd input, cs')
+  | Second f =>
+    fun cs input =>
+      let '(x, cs') := step f cs (snd input) in
+      (fst input, x, cs')
+  | LoopInitCE _ f =>
+    fun '(cs,st) '(input, en) =>
+      let '(out, st', cs') := step f cs (input, st) in
+      let new_state := if en then st' else st in
+      (out, (cs',new_state))
+  | DelayInitCE _ =>
+    fun st '(input, en) =>
+      let new_state := if en then input else st in
+      (st, new_state)
+  end.

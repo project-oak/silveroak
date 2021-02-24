@@ -30,9 +30,9 @@ Definition multistep {i o} (c : Circuit i o) (input : list i) : list o :=
   match input with
   | [] => []
   | i :: input =>
-    let '(o,st) := unIdent (interp c (reset_state c) i) in
+    let '(o,st) := step c (reset_state c) i in
     let '(acc, _) := fold_left_accumulate
-                       (fun o_st i => unIdent (interp c (snd o_st) i))
+                       (fun o_st => step c (snd o_st))
                        input (o,st) in
     map fst acc
   end.
@@ -45,7 +45,7 @@ Proof.
   repeat destruct_pair_let; simpl_ident.
   destruct input as [|i1 input]; [ cbn; repeat destruct_pair_let; reflexivity | ].
   rewrite !fold_left_accumulate_cons_full.
-  cbn [fst snd map interp reset_state circuit_state].
+  cbn [fst snd map step reset_state circuit_state].
   repeat first [ destruct_pair_let | progress simpl_ident ].
   rewrite <-!surjective_pairing.
   rewrite fold_left_accumulate_map.
@@ -73,7 +73,7 @@ Proof.
   clear.
   cbv [multistep]. destruct input as [|i0 input]; [ reflexivity | ].
   repeat destruct_pair_let; simpl_ident.
-  cbn [fst snd map interp reset_state circuit_state].
+  cbn [fst snd map step reset_state circuit_state].
   simpl_ident. rewrite fold_left_accumulate_to_map.
   cbn [map fst]. rewrite map_map. cbn [fst].
   reflexivity.
@@ -87,7 +87,7 @@ Proof.
   clear.
   cbv [multistep]. destruct input as [|i0 input]; [ reflexivity | ].
   repeat destruct_pair_let; simpl_ident.
-  cbn [fst snd map interp reset_state circuit_state].
+  cbn [fst snd map step reset_state circuit_state].
   simpl_ident. repeat destruct_pair_let; simpl_ident.
   rewrite fold_left_accumulate_map.
   rewrite !fold_left_accumulate_to_seq with (default:=i0).
@@ -122,7 +122,7 @@ Proof.
   clear.
   cbv [multistep]. destruct input as [|i0 input]; [ reflexivity | ].
   repeat destruct_pair_let; simpl_ident.
-  cbn [fst snd map interp reset_state circuit_state].
+  cbn [fst snd map step reset_state circuit_state].
   simpl_ident. repeat destruct_pair_let; simpl_ident.
   rewrite fold_left_accumulate_map.
   rewrite !fold_left_accumulate_to_seq with (default:=i0).
@@ -157,4 +157,3 @@ Proof.
   destruct input; repeat destruct_pair_let; length_hammer.
 Qed.
 Hint Rewrite @multistep_length using solve [eauto] : push_length.
-
