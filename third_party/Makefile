@@ -16,7 +16,7 @@
 
 .PHONY:	all minimize-requires
 
-all: coqutil coqtools bedrock2 extlib
+all: coqutil coqtools bedrock2 extlib record-update
 
 update:
 	git submodule update --init --recursive
@@ -34,6 +34,9 @@ bedrock2: update coqutil
 
 extlib: update
 	$(MAKE) -C coq-ext-lib theories
+
+record-update: update
+	$(MAKE) -C coq-record-update
 
 install: update
 	cd bedrock2 && $(MAKE) install_coqutil && $(MAKE) install_bedrock2
