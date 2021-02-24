@@ -43,6 +43,7 @@ Local Open Scope type_scope.
 
 Section WithCava.
   Context {signal} {semantics: Cava signal}.
+  Existing Instance monad. (* make sure cava Monad instance takes precedence *)
 
   (****************************************************************************)
   (* Lava-style circuit combinators.                                          *)

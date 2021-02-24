@@ -15,6 +15,7 @@
 (****************************************************************************)
 
 Require Import Coq.Lists.List.
+Require Import coqutil.Tactics.Tactics.
 Import ListNotations.
 
 Require Import Cava.ListUtils.
@@ -58,15 +59,13 @@ Proof.
   { reflexivity. }
   { intros. repeat first [ destruct_pair_let | progress simpl_ident ].
     subst. cbn [fst snd]. reflexivity. }
-  { intros b d acc1 acc2; intros ? Hnth. cbn [fst snd].
-    assert (length acc1 = length acc2) by length_hammer.
-    rewrite <-Forall2_nth_iff in Hnth by length_hammer.
-    apply list_eq_elementwise; [ symmetry; length_hammer | ].
-    intros. autorewrite with push_length in *. rewrite map_map.
-    rewrite map_nth_inbounds with (d2:=d) by length_hammer.
-    erewrite map_nth_inbounds with (d2:=b) by length_hammer.
-    erewrite Hnth by Lia.lia. cbn [fst snd]. reflexivity. }
+  { intros. subst; destruct_products. cbn [fst snd] in *.
+    match goal with H : Forall2 _ _ _ |- _ =>
+                    apply Forall2_eq_map_l in H end.
+    subst. rewrite !map_map. apply map_ext; intros.
+    reflexivity. }
 Qed.
+Hint Rewrite @multistep_compose using solve [eauto] : push_multistep.
 
 Lemma multistep_comb {A B} (c : A -> ident B) (input : list A) :
   multistep (Comb c) input = map (fun a => unIdent (c a)) input.
@@ -79,3 +78,83 @@ Proof.
   cbn [map fst]. rewrite map_map. cbn [fst].
   reflexivity.
 Qed.
+Hint Rewrite @multistep_comb using solve [eauto] : push_multistep.
+
+Lemma multistep_first {A B C} (f : Circuit A C) (input : list (A * B)) :
+  multistep (First f) input = combine (multistep f (map fst input))
+                                      (map snd input).
+Proof.
+  clear.
+  cbv [multistep]. destruct input as [|i0 input]; [ reflexivity | ].
+  repeat destruct_pair_let; simpl_ident.
+  cbn [fst snd map interp reset_state circuit_state].
+  simpl_ident. repeat destruct_pair_let; simpl_ident.
+  rewrite fold_left_accumulate_map.
+  rewrite !fold_left_accumulate_to_seq with (default:=i0).
+  factor_out_loops.
+  eapply fold_left_accumulate_double_invariant_seq
+    with (I:=fun i x y => y = (fst x, snd (nth i (i0::input) i0), snd x)).
+  { reflexivity. }
+  { intros; subst. destruct_products. cbn [fst snd].
+    repeat destruct_pair_let; simpl_ident.
+    reflexivity. }
+  { intros *. intros ? Hnth; intros.
+    change (snd i0 :: map snd input) with (map snd (i0::input)).
+    subst. cbn [fst snd].
+    eapply list_eq_elementwise; [ length_hammer | ].
+    intros j [c b]; intros.
+    specialize (Hnth j).
+    autorewrite with natsimpl push_length in *.
+    autorewrite with push_nth. destruct_products.
+    let x := constr:(ltac:(eassumption):circuit_state f) in
+    erewrite map_nth_inbounds with (d2:=(c,b,x)) by length_hammer;
+      erewrite map_nth_inbounds with (d2:=(c,x)) by length_hammer.
+    erewrite Hnth by length_hammer. cbn [fst snd].
+    erewrite !map_nth_inbounds by length_hammer.
+    reflexivity. }
+Qed.
+Hint Rewrite @multistep_first using solve [eauto] : push_multistep.
+
+Lemma multistep_second {A B C} (f : Circuit B C) (input : list (A * B)) :
+  multistep (Second f) input = combine (map fst input)
+                                       (multistep f (map snd input)).
+Proof.
+  clear.
+  cbv [multistep]. destruct input as [|i0 input]; [ reflexivity | ].
+  repeat destruct_pair_let; simpl_ident.
+  cbn [fst snd map interp reset_state circuit_state].
+  simpl_ident. repeat destruct_pair_let; simpl_ident.
+  rewrite fold_left_accumulate_map.
+  rewrite !fold_left_accumulate_to_seq with (default:=i0).
+  factor_out_loops.
+  eapply fold_left_accumulate_double_invariant_seq
+    with (I:=fun i x y => y = (fst (nth i (i0::input) i0), fst x, snd x)).
+  { reflexivity. }
+  { intros; subst. destruct_products. cbn [fst snd].
+    repeat destruct_pair_let; simpl_ident.
+    reflexivity. }
+  { intros *. intros ? Hnth; intros.
+    change (fst i0 :: map fst input) with (map fst (i0::input)).
+    subst. cbn [fst snd].
+    eapply list_eq_elementwise; [ length_hammer | ].
+    intros j [a0 c]; intros.
+    specialize (Hnth j).
+    autorewrite with natsimpl push_length in *.
+    autorewrite with push_nth. destruct_products.
+    let x := constr:(ltac:(eassumption):circuit_state f) in
+    erewrite map_nth_inbounds with (d2:=(a0,c,x)) by length_hammer;
+      erewrite map_nth_inbounds with (d2:=(c,x)) by length_hammer.
+    erewrite Hnth by length_hammer. cbn [fst snd].
+    erewrite !map_nth_inbounds by length_hammer.
+    reflexivity. }
+Qed.
+Hint Rewrite @multistep_second using solve [eauto] : push_multistep.
+
+Lemma multistep_length {i o} (c : Circuit i o) input :
+  length (multistep c input) = length input.
+Proof.
+  cbv [multistep].
+  destruct input; repeat destruct_pair_let; length_hammer.
+Qed.
+Hint Rewrite @multistep_length using solve [eauto] : push_length.
+

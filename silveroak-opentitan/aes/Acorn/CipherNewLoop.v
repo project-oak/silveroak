@@ -28,41 +28,38 @@ Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Combinators.
+Import Circuit.Notations.
 
 Local Open Scope monad_scope.
 
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
-  Context {key round_constant state round_index : SignalType}.
+  Context {key state round_index : SignalType}.
 
   Context (sub_bytes:     signal Bit -> signal state -> cava (signal state))
           (shift_rows:    signal Bit -> signal state -> cava (signal state))
           (mix_columns:   signal Bit -> signal state -> cava (signal state))
           (add_round_key: signal key -> signal state -> cava (signal state))
           (inv_mix_columns_key : signal key -> cava (signal key)).
-  Context (key_expand : signal Bit -> signal round_index ->
-                        (signal key  * signal round_constant) ->
-                        cava (signal key * signal round_constant)).
   Local Infix "==?" := eqb (at level 40).
 
-  (* State of the AES cipher (key, round constant, AES state vector) *)
-  Let cipher_state : Type := signal key * signal round_constant * signal state.
   (* The non-state signals that each round of the cipher loop needs access to *)
   Let cipher_signals : Type :=
     signal Bit (* op_i/is_decrypt : true for decryption, false for encryption *)
       * signal round_index (* num_rounds_regular : round index of final round *)
       * signal round_index (* round_0 : round index of first round *)
       * signal round_index (* current round_index *)
-      * cipher_state (* initial state, ignored for all rounds except first *).
+      * signal key (* initial key, ignored for all rounds except first *)
+      * signal state (* initial state, ignored for all rounds except first *).
 
-  Definition key_expand_and_round
+  Definition cipher_round
              (is_decrypt : signal Bit)
-             (key_rcon_data : cipher_state)
+             (round_key : signal key)
              (add_round_key_in_sel : signal (Vec Bit 2))
              (round_key_sel : signal Bit)
              (round_i : signal round_index)
-    : cava (cipher_state) :=
-    let '(round_key, rcon, data) := key_rcon_data in
+             (data : signal state)
+    : cava (signal state) :=
     shift_rows_out <- (sub_bytes is_decrypt >=> shift_rows is_decrypt) data ;;
     mix_columns_out <- mix_columns is_decrypt shift_rows_out ;;
 
@@ -78,19 +75,16 @@ Section WithCava.
     key_to_add <- muxPair round_key_sel (round_key, mixed_round_key) ;;
     out <- add_round_key key_to_add add_round_key_in ;;
 
-    (* Key expansion *)
-    '(round_key, rcon) <- key_expand is_decrypt round_i (round_key, rcon) ;;
-
-    ret (round_key, rcon, out).
+    ret out.
 
   Definition cipher_step
              (is_decrypt : signal Bit) (* called op_i in OpenTitan *)
              (is_first_round : signal Bit)
              (num_rounds_regular : signal round_index)
-             (key_rcon_data : cipher_state)
+             (round_key : signal key)
              (round_i : signal round_index)
-    : cava (cipher_state) :=
-    let '(round_key, rcon, data) := key_rcon_data in
+             (data : signal state)
+    : cava (signal state) :=
     is_final_round <- round_i ==? num_rounds_regular;;
     (* add_round_key_in_sel :
        1 if round_i = 0, 2 if round_i = num_rounds_regular, 0 otherwise *)
@@ -98,33 +92,29 @@ Section WithCava.
     is_middle_round <- nor2 (is_first_round, is_final_round) ;;
     (* round_key_sel : 1 for a decryption middle round, 0 otherwise *)
     round_key_sel <- and2 (is_middle_round, is_decrypt) ;;
-    key_expand_and_round is_decrypt key_rcon_data
-                         add_round_key_in_sel round_key_sel round_i.
+    cipher_round is_decrypt round_key
+                 add_round_key_in_sel round_key_sel round_i data.
 
   Definition cipher_loop
-    : Circuit cipher_signals cipher_state :=
+    : Circuit (cipher_signals * signal key) (signal state) :=
     Loop
-      (Loop
-         (Loop
-            (Comb
-               (fun input_and_state :
-                    cipher_signals * signal key * signal round_constant * signal state  =>
-                  let '(input, fk, fr, fv) := input_and_state in
-                  (* extract signals from the input tuple *)
-                  let '(is_decrypt, num_rounds_regular,
-                        round_0, idx, initial_state) := input in
-                  let '(ik, ir, iv) := initial_state in
-                  is_first_round <- idx ==? round_0 ;;
-                  k <- muxPair is_first_round (fk, ik) ;;
-                  r <- muxPair is_first_round (fr, ir) ;;
-                  v <- muxPair is_first_round (fv, iv) ;;
-                  '(k',r',v') <- cipher_step is_decrypt is_first_round
-                                            num_rounds_regular (k,r,v) idx ;;
-                  let out := (k',r',v') in
-                  ret (out,k',r',v'))))).
+      (Comb
+         (fun input_and_state :
+              cipher_signals * signal key * signal state  =>
+            let '(input, k, feedback_state) := input_and_state in
+            (* extract signals from the input tuple *)
+            let '(is_decrypt, num_rounds_regular,
+                  round_0, idx, _, initial_state) := input in
+            is_first_round <- idx ==? round_0 ;;
+            st <- muxPair is_first_round (feedback_state, initial_state) ;;
+            st' <- cipher_step is_decrypt is_first_round
+                             num_rounds_regular k idx st ;;
+            ret (st',st'))).
 
   Definition cipher
+             (key_expand : Circuit cipher_signals (signal key))
     : Circuit cipher_signals (signal state) :=
-    Compose cipher_loop
-            (Comb (fun '(_,out) => ret out)).
+    (Comb fork2)
+      >==> Second key_expand
+      >==> cipher_loop.
 End WithCava.

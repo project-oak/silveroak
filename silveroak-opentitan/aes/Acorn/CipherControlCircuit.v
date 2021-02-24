@@ -45,23 +45,15 @@ Local Open Scope monad_scope.
 Local Open Scope vector_scope.
 
 Notation round_index := (Vec Bit 4) (only parsing).
-Notation round_constant := (Vec Bit 8) (only parsing).
 
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
   Context {seqsemantics : CavaSeq semantics}.
 
-  Context (key_expand : signal Bit -> signal round_index ->
-                        (signal key  * signal round_constant) ->
-                        cava (signal key * signal round_constant)).
-
-  Definition rcon_fwd: signal round_constant :=
-    unpeel (Vector.map constant (nat_to_bitvec_sized _ 1)).
-  Definition rcon_bwd: signal round_constant :=
-    unpeel (Vector.map constant (nat_to_bitvec_sized _ 64)).
-
-  Definition initial_rcon_selector (is_decrypt: signal Bit): cava (signal round_constant) :=
-    muxPair is_decrypt (rcon_bwd, rcon_fwd).
+  Context (key_expand :
+             Circuit (signal Bit * signal round_index * signal round_index
+                      * signal round_index * signal key * signal state)
+                     (signal key)).
 
   Definition round_0: signal round_index :=
     unpeel (Vector.map constant (nat_to_bitvec_sized _ 0)).
@@ -100,7 +92,6 @@ Section WithCava.
 
   (* Plug in our concrete components to the skeleton in Cipher.v *)
   Definition cipher := CipherNewLoop.cipher
-    (round_index:=round_index) (round_constant:=round_constant)
     aes_sub_bytes' aes_shift_rows' aes_mix_columns' aes_add_round_key
     inv_mix_columns_key key_expand.
 
@@ -152,9 +143,6 @@ Section WithCava.
         next_round <- inc_round last_round ;;
         round <- muxPair becoming_idle (round_0, next_round) ;;
 
-        (* select the initial round constant *)
-        initial_rcon <- initial_rcon_selector is_decrypt ;;
-
         out_valid_o <- or2 (last_output_latch, producing_output) ;;
         inv_out_ready_i <- inv out_ready_i ;;
         output_latch <- and2 (out_valid_o, inv_out_ready_i) ;;
@@ -174,7 +162,8 @@ Section WithCava.
             , round_final
             , round_0
             , round
-            , (initial_key, initial_rcon, initial_state)
+            , initial_key
+            , initial_state
             )
           )
       ) >==> Second cipher >==>
@@ -227,16 +216,18 @@ Definition aes_key_expand_Interface :=
    [ mkPort "key_o" key ]
    [].
 
-(* TODO(blaxill): our key_expand interface is simpler but also assumes rcon is
-* passed (rather than internally registered), change back to OT version or provide
-  a key_expand implementation ? *)
-Definition key_expand
-    (op_i: Signal Bit) (round: Signal round_index)
-    (key_rcon: Signal key * Signal round_constant):
-               cava (Signal key * Signal round_constant) :=
-  let '(k, _) := key_rcon in
-  let clear := constant false in
-  key_o <- blackBoxNet aes_key_expand_Interface
-    (op_i, constant true, clear, round, unpeel (Vector.map constant [true;false;false]), k) ;;
-  ret (key_o, rcon_fwd).
+(* TODO: provide a key expand implementation instead of using a black box here? *)
+Definition key_expand :
+  Circuit (Signal Bit * Signal round_index * Signal round_index
+           * Signal round_index * Signal key * Signal state)
+          (Signal key) :=
+  Loop
+    (Comb
+       (fun '(op_i, _, round_0, round_i, init_key, _, feedback_key) =>
+          is_first_round <- eqb round_i round_0 ;;
+          k <- muxPair is_first_round (feedback_key, init_key) ;;
+          key_o <- blackBoxNet aes_key_expand_Interface
+                              (op_i, constant true, constant false, round_i,
+                               unpeel (Vector.map constant [true;false;false]), k) ;;
+          ret (key_o, key_o))).
 
