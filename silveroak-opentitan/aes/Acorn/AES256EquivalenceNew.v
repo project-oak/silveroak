@@ -37,6 +37,7 @@ Require Import AesSpec.ExpandAllKeys.
 Require Import AcornAes.AddRoundKeyCircuit.
 Require Import AcornAes.AddRoundKeyEquivalenceNew.
 Require Import AcornAes.ShiftRowsCircuit.
+Require Import AcornAes.ShiftRowsEquivalenceNew.
 Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.SubBytesEquivalenceNew.
 Require Import AcornAes.MixColumnsCircuit.
@@ -72,11 +73,6 @@ Proof.
   autorewrite with conversions. reflexivity.
 Qed.
 Hint Rewrite @unflatten_flatten @flatten_unflatten using solve [eauto] : conversions.
-
-Axiom shift_rows_equiv :
-  forall (is_decrypt : bool) (st : combType state),
-    unIdent (aes_shift_rows is_decrypt st)
-    = AES256.aes_shift_rows_circuit_spec is_decrypt st.
 
 Axiom mix_columns_equiv :
   forall (is_decrypt : bool) (st : combType state),
