@@ -25,12 +25,7 @@ Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.CavaClass.
-Require Import Cava.Acorn.CavaPrelude.
-Require Import Cava.Acorn.Circuit.
-Require Import Cava.Acorn.Combinational.
-Require Import Cava.Acorn.Combinators.
-Require Import Cava.Acorn.Multistep.
+Require Import Cava.Acorn.AcornNew.
 Require Import Cava.Lib.UnsignedAdders.
 Import Circuit.Notations.
 

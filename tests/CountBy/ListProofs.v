@@ -26,11 +26,14 @@ Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Cava.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.SequentialProperties.
+Require Import Cava.Acorn.AcornNew.
+Require Import Cava.Acorn.IdentityNew.
+Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import Tests.CountBy.CountBy.
+
+Existing Instance CombinationalSemantics.
 
 Definition bvadd {n} (a b : Bvector n) : Bvector n :=
   N2Bv_sized n (Bv2N a + Bv2N b).
@@ -41,20 +44,15 @@ Definition bvsum {n} (l : list (Bvector n)) : Bvector n :=
 Definition countBySpec (i : list (Bvector 8)) : list (Bvector 8) :=
   map (fun t => bvsum (firstn t i)) (seq 1 (length i)).
 
-(* TODO: addN sequential seems to only return one result; shouldn't it be a map2? *)
-Definition addNSpec {n} (a b : list (Bvector n)) : list (Bvector n) :=
-  map2 bvadd a b.
-
-Lemma addNCorrect n (a b : list (Bvector n)) :
-  unIdent (addN (semantics:=CombinationalSemantics) (a, b)) = addNSpec a b.
+Lemma addNCorrect n (a b : Bvector n) :
+  unIdent (addN (a, b)) = bvadd a b.
 Admitted.
-Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
+Hint Rewrite addNCorrect using solve [eauto] : simpl_ident.
 
-Axiom magic : forall {t}, t.
-
+(*
 Lemma countForkCorrect:
   forall (i : Bvector 8) (s : Bvector 8),
-    sequential ((addN >=> fork2) ([i], [s]))
+     ((addN >=> fork2) ([i], [s]))
     = (addNSpec [i] [s], addNSpec [i] [s]).
 Proof.
   intros; cbv [mcompose].
@@ -64,11 +62,15 @@ Proof.
   reflexivity.
 Qed.
 Hint Rewrite countForkCorrect using solve [eauto] : seqsimpl.
-
+*)
 Lemma countByCorrect: forall (i : list (Bvector 8)),
-                      sequential (countBy i) = countBySpec i.
+    multistep countBy i = countBySpec i.
 Proof.
   intros; cbv [countBy].
+  cbv [countBySpec multistep].
+  destruct i; [ reflexivity | ].
+  cbn [interp reset_state Loop].
+  repeat first [ destruct_pair_let | progress simpl_ident ].
   eapply (loopDelayS_invariant (B:=Vec Bit 8)) with
       (I:=fun t acc => acc = countBySpec (firstn t i)).
   { (* invariant holds at start *)
