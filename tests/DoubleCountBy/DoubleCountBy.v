@@ -129,4 +129,21 @@ Goal (multistep
       = [b0;b0;b0;b1]).
 Proof. reflexivity. Qed.
 
-(* TODO: netlist generation  -- define a recursive function on Circuit that wires up the netlist *)
+Definition double_count_by_interface
+  := sequentialInterface "double_count_by"
+     "clk" PositiveEdge "rst" PositiveEdge
+     [mkPort "i" (Vec Bit 8)]
+     [mkPort "o" (Vec Bit 8)]
+     [].
+
+Definition double_count_by_Netlist :=
+  makeCircuitNetlist double_count_by_interface double_count_by.
+
+Definition double_count_by_tb_inputs := [b14; b7; b3; b250].
+
+Definition double_count_by_tb_expected_outputs :=
+  multistep double_count_by double_count_by_tb_inputs.
+
+Definition double_count_by_tb
+  := testBench "double_count_by_tb" double_count_by_interface
+     double_count_by_tb_inputs double_count_by_tb_expected_outputs.

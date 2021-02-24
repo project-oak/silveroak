@@ -682,12 +682,28 @@ Section FirstnSkipn.
     destruct lb; cbn [skipn combine]; [ rewrite combine_nil; reflexivity | ].
     rewrite IHn. reflexivity.
   Qed.
+
+  Lemma firstn_map {A B} (f : A -> B) n ls :
+    firstn n (map f ls) = map f (firstn n ls).
+  Proof.
+    revert ls; induction n; [ reflexivity | ].
+    destruct ls; [ reflexivity | ].
+    cbn [map firstn]. rewrite IHn; reflexivity.
+  Qed.
+
+  Lemma firstn_seq n start len :
+    firstn n (seq start len) = seq start (Nat.min n len).
+  Proof.
+    revert start len; induction n; [ reflexivity | ].
+    destruct len; [ reflexivity | ].
+    cbn [Nat.min seq firstn]. rewrite IHn; reflexivity.
+  Qed.
 End FirstnSkipn.
 Hint Rewrite @skipn_app @skipn_skipn @skipn_repeat @skipn_cons @skipn_O
      @skipn_nil @skipn_all @skipn_combine
      using solve [eauto] : push_skipn.
 Hint Rewrite @firstn_nil @firstn_cons @firstn_all @firstn_app @firstn_O
-     @firstn_firstn @combine_firstn
+     @firstn_firstn @combine_firstn @firstn_map @firstn_seq
      using solve [eauto] : push_firstn.
 
 (* Proofs about fold_right and fold_left *)
