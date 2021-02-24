@@ -147,15 +147,8 @@ Lemma full_cipher_equiv
   length init_key_input = S Nr ->
   length init_state_ignored = Nr ->
   length middle_keys = Nr - 1 ->
-  cipher_input = combine
-                   (combine
-                      (map
-                         (fun i =>
-                            (is_decrypt, nat_to_bitvec_sized _ Nr,
-                             nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
-                         (seq 0 (S Nr)))
-                      init_key_input)
-                   (init_state :: init_state_ignored) ->
+  cipher_input = make_cipher_signals Nr is_decrypt init_key_input
+                                     (init_state :: init_state_ignored) ->
   (* precomputed keys match key expansion *)
   multistep key_expand cipher_input = init_key :: middle_keys ++ [last_key] ->
   forall d,
@@ -199,43 +192,33 @@ Lemma full_cipher_inverse
       init_key_input_fwd init_key_input_inv
       init_state_ignored_fwd init_state_ignored_inv
       cipher_input_fwd cipher_input_inv
-      (init_key last_key : combType key) (init_state : combType state) d :
+      (plaintext : combType state) d :
   let Nr := 14 in
   length init_key_input_fwd = S Nr ->
   length init_key_input_inv = S Nr ->
   length init_state_ignored_fwd = Nr ->
   length init_state_ignored_inv = Nr ->
-  cipher_input_fwd = combine
-                       (combine
-                          (map
-                             (fun i =>
-                                (false, nat_to_bitvec_sized _ Nr,
-                                 nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
-                             (seq 0 (S Nr)))
-                          init_key_input_fwd)
-                       (init_state :: init_state_ignored_fwd) ->
+  cipher_input_fwd = make_cipher_signals Nr false init_key_input_fwd
+                                         (plaintext :: init_state_ignored_fwd) ->
   let ciphertext := nth Nr (multistep (full_cipher key_expand) cipher_input_fwd) d in
-  cipher_input_inv = combine
-                       (combine
-                          (map
-                             (fun i =>
-                                (true, nat_to_bitvec_sized _ Nr,
-                                 nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
-                             (seq 0 (S Nr)))
-                          init_key_input_inv)
-                       (ciphertext :: init_state_ignored_inv) ->
+  cipher_input_inv = make_cipher_signals Nr true init_key_input_inv
+                                         (ciphertext :: init_state_ignored_inv) ->
   (* inverse key expansion reverses key expansion *)
   multistep key_expand cipher_input_fwd = rev (multistep key_expand cipher_input_inv) ->
-  nth Nr (multistep (full_cipher key_expand) cipher_input_inv) d = init_state.
+  nth Nr (multistep (full_cipher key_expand) cipher_input_inv) d = plaintext.
 Proof.
   intros. simpl_ident. subst_lets.
+
+  (* we need a default value of key for some later rewrites *)
+  assert (combType key) as default_key
+      by (destruct init_key_input_fwd; [ cbn [length] in *; length_hammer | eassumption ]).
 
   do 2
      (erewrite full_cipher_equiv;
       [ | lazymatch goal with
-          | |- _ = combine _ _ => eassumption
+          | |- context [make_cipher_signals] => eassumption
           | |- _ = _ :: _ ++ [_] =>
-            eapply eta_list_cons_snoc with (d0:=init_key); subst; length_hammer
+            eapply eta_list_cons_snoc with (d0:=default_key); subst; length_hammer
           | _ => idtac
           end .. ];
       [ | subst; length_hammer .. ]).

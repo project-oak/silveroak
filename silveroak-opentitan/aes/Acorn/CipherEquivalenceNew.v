@@ -46,11 +46,33 @@ Require Import AcornAes.CipherNewLoop.
 
 Existing Instance Combinational.CombinationalSemantics.
 
+Local Notation byte := (Vector.t bool 8).
+Local Notation state := (Vector.t (Vector.t byte 4) 4) (only parsing).
+Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
+Local Notation round_index := (Vector.t bool 4) (only parsing).
+
+(* Helper definition to package the signals needed by the cipher loop *)
+Definition make_cipher_signals (Nr : nat) (is_decrypt : bool)
+           (init_key_input : list key)
+           (init_state_input : list state) :
+  list (bool * round_index * round_index * round_index * key * state) :=
+  (* assemble constant values + round index *)
+  let inner := map (fun i =>
+                      (is_decrypt, nat_to_bitvec_sized _ Nr,
+                       nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
+                   (seq 0 (S Nr)) in
+  (* combine with initial key and initial state *)
+  combine (combine inner init_key_input) init_state_input.
+
+Lemma make_cipher_signals_length Nr is_decrypt init_key_input init_state_input :
+  length init_key_input = S Nr ->
+  length init_state_input = S Nr ->
+  length (make_cipher_signals
+            Nr is_decrypt init_key_input init_state_input) = S Nr.
+Proof. intros; cbv [make_cipher_signals]. length_hammer. Qed.
+Hint Rewrite @make_cipher_signals_length using solve [length_hammer] : push_length.
+
 Section WithSubroutines.
-  Local Notation byte := (Vector.t bool 8).
-  Local Notation state := (Vector.t (Vector.t byte 4) 4) (only parsing).
-  Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
-  Local Notation round_index := (Vector.t bool 4) (only parsing).
   Context (sub_bytes:     bool -> state -> ident state)
           (shift_rows:    bool -> state -> ident state)
           (mix_columns:   bool -> state -> ident state)
@@ -215,14 +237,8 @@ Section WithSubroutines.
     length init_key_ignored = S Nr ->
     length init_state_ignored = Nr ->
     length round_keys = S Nr ->
-    cipher_input = combine
-                     (combine
-                        (map
-                           (fun i =>
-                              (is_decrypt, nat_to_bitvec_sized _ Nr,
-                               nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
-                           (seq 0 (S Nr)))
-                        init_key_ignored)
+    cipher_input = make_cipher_signals
+                     Nr is_decrypt init_key_ignored
                      (init_state :: init_state_ignored) ->
     let loop := cipher_loop
                   (key:=Vec (Vec (Vec Bit 8) 4) 4)
@@ -233,6 +249,7 @@ Section WithSubroutines.
     = cipher_trace_with_keys Nr is_decrypt init_state round_keys.
   Proof.
     cbv zeta; intros. subst cipher_input.
+    cbv [make_cipher_signals] in *.
     destruct round_keys; cbn [length] in *; [ length_hammer | ].
     destruct init_key_ignored; cbn [length] in *; [ length_hammer | ].
     cbv [multistep cipher_trace_with_keys].
@@ -358,15 +375,8 @@ Section WithSubroutines.
     length init_key_input = S Nr ->
     length init_state_ignored = Nr ->
     length middle_keys = Nr - 1 ->
-    cipher_input = combine
-                     (combine
-                        (map
-                           (fun i =>
-                              (is_decrypt, nat_to_bitvec_sized _ Nr,
-                               nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
-                           (seq 0 (S Nr)))
-                        init_key_input)
-                     (init_state :: init_state_ignored) ->
+    cipher_input = make_cipher_signals Nr is_decrypt init_key_input
+                                       (init_state :: init_state_ignored) ->
     (* precomputed keys match key expansion *)
     multistep key_expand cipher_input = init_key :: middle_keys ++ [last_key] ->
     let cipher := cipher
