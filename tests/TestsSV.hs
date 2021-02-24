@@ -23,6 +23,7 @@ import MuxTests
 import TestMultiply
 import Delay
 import CountBy
+import DoubleCountBy
 import Array
 
 main :: IO ()
@@ -42,8 +43,9 @@ main = do writeSystemVerilog mux2_1Netlist
           -- writeTestBench pipelinedNAND_tb
           writeSystemVerilog countBy_Netlist
           writeTestBench countBy_tb
+          writeSystemVerilog double_count_by_Netlist
+          writeTestBench double_count_by_tb
           writeSystemVerilog accumulatingAdderEnable_Netlist
-          writeSystemVerilog accumulatingAdderEnable2_Netlist
           writeSystemVerilog arrayTest_Netlist
           writeTestBench arrayTest_tb
           writeSystemVerilog multiDimArrayTest_Netlist

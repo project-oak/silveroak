@@ -184,3 +184,8 @@ Lemma indexConst_eq {A sz} (v : combType (Vec A sz)) (n : nat) :
   indexConst v n = nth_default (defaultCombValue _) n v.
 Proof. reflexivity. Qed.
 Hint Rewrite @indexConst_eq using solve [eauto] : simpl_ident.
+
+Lemma fork2Correct {A} (i : combType A) :
+ unIdent (fork2 i) = (i, i).
+Proof. reflexivity. Qed.
+Hint Rewrite @fork2Correct using solve [eauto] : simpl_ident.

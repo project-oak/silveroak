@@ -682,12 +682,28 @@ Section FirstnSkipn.
     destruct lb; cbn [skipn combine]; [ rewrite combine_nil; reflexivity | ].
     rewrite IHn. reflexivity.
   Qed.
+
+  Lemma firstn_map {A B} (f : A -> B) n ls :
+    firstn n (map f ls) = map f (firstn n ls).
+  Proof.
+    revert ls; induction n; [ reflexivity | ].
+    destruct ls; [ reflexivity | ].
+    cbn [map firstn]. rewrite IHn; reflexivity.
+  Qed.
+
+  Lemma firstn_seq n start len :
+    firstn n (seq start len) = seq start (Nat.min n len).
+  Proof.
+    revert start len; induction n; [ reflexivity | ].
+    destruct len; [ reflexivity | ].
+    cbn [Nat.min seq firstn]. rewrite IHn; reflexivity.
+  Qed.
 End FirstnSkipn.
 Hint Rewrite @skipn_app @skipn_skipn @skipn_repeat @skipn_cons @skipn_O
      @skipn_nil @skipn_all @skipn_combine
      using solve [eauto] : push_skipn.
 Hint Rewrite @firstn_nil @firstn_cons @firstn_all @firstn_app @firstn_O
-     @firstn_firstn @combine_firstn
+     @firstn_firstn @combine_firstn @firstn_map @firstn_seq
      using solve [eauto] : push_firstn.
 
 (* Proofs about fold_right and fold_left *)
@@ -1160,6 +1176,34 @@ Section FoldLeftAccumulate.
     reflexivity.
   Qed.
 
+  Lemma fold_left_accumulate_invariant_seq {A B}
+        (I : nat -> B -> list B -> Prop) (P : (list B * B) -> Prop)
+        (f : B -> A -> B) (ls : list A) b :
+    I 0 b [b] -> (* invariant holds at start *)
+  (* invariant holds through loop *)
+  (forall t st acc d,
+      I t st acc ->
+      0 <= t < length ls ->
+      let out := f st (nth t ls d) in
+      I (S t) out (acc ++ [out])) ->
+    (* invariant implies postcondition *)
+    (forall st acc,
+        I (length ls) st acc ->
+        P (acc, st)) ->
+    P (fold_left_accumulate f ls b).
+  Proof.
+    intros ? ? IimpliesP. cbv [fold_left_accumulate fold_left_accumulate'].
+    destruct ls as[|default ls]; [ cbn; solve [auto] | ].
+    erewrite fold_left_to_seq with (default0:=default).
+    eapply fold_left_invariant_seq
+          with (I0 := fun i '(acc,st) =>
+                        I i st acc).
+    { cbn. eauto. }
+    { intros ? [? ?]; intros.
+      cbn [Nat.add] in *; auto. }
+    { intros [? ?]; cbn [length Nat.add]; intros.
+      auto. }
+  Qed.
 
   Lemma fold_left_accumulate_double_invariant_In {A B C}
         (I : B -> C -> Prop) (P : (list B * B) -> (list C * C) -> Prop)
