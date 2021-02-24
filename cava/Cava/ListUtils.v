@@ -1160,6 +1160,34 @@ Section FoldLeftAccumulate.
     reflexivity.
   Qed.
 
+  Lemma fold_left_accumulate_invariant_seq {A B}
+        (I : nat -> B -> list B -> Prop) (P : (list B * B) -> Prop)
+        (f : B -> A -> B) (ls : list A) b :
+    I 0 b [b] -> (* invariant holds at start *)
+  (* invariant holds through loop *)
+  (forall t st acc d,
+      I t st acc ->
+      0 <= t < length ls ->
+      let out := f st (nth t ls d) in
+      I (S t) out (acc ++ [out])) ->
+    (* invariant implies postcondition *)
+    (forall st acc,
+        I (length ls) st acc ->
+        P (acc, st)) ->
+    P (fold_left_accumulate f ls b).
+  Proof.
+    intros ? ? IimpliesP. cbv [fold_left_accumulate fold_left_accumulate'].
+    destruct ls as[|default ls]; [ cbn; solve [auto] | ].
+    erewrite fold_left_to_seq with (default0:=default).
+    eapply fold_left_invariant_seq
+          with (I0 := fun i '(acc,st) =>
+                        I i st acc).
+    { cbn. eauto. }
+    { intros ? [? ?]; intros.
+      cbn [Nat.add] in *; auto. }
+    { intros [? ?]; cbn [length Nat.add]; intros.
+      auto. }
+  Qed.
 
   Lemma fold_left_accumulate_double_invariant_In {A B C}
         (I : B -> C -> Prop) (P : (list B * B) -> (list C * C) -> Prop)

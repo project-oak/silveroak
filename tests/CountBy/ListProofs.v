@@ -28,7 +28,7 @@ Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.Acorn.AcornNew.
 Require Import Cava.Acorn.IdentityNew.
-Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Acorn.CombinationalPropertiesNew.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import Tests.CountBy.CountBy.
@@ -49,53 +49,37 @@ Lemma addNCorrect n (a b : Bvector n) :
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : simpl_ident.
 
-(*
-Lemma countForkCorrect:
-  forall (i : Bvector 8) (s : Bvector 8),
-     ((addN >=> fork2) ([i], [s]))
-    = (addNSpec [i] [s], addNSpec [i] [s]).
-Proof.
-  intros; cbv [mcompose].
-  cbn [bind ret monad CombinationalSemantics
-            Monad_ident].
-  rewrite fork2Correct, !addNCorrect;
-  reflexivity.
-Qed.
-Hint Rewrite countForkCorrect using solve [eauto] : seqsimpl.
-*)
+Lemma bvadd_comm {n} a b : @bvadd n a b = bvadd b a.
+Proof. cbv [bvadd]. rewrite N.add_comm. reflexivity. Qed.
+
 Lemma countByCorrect: forall (i : list (Bvector 8)),
     multistep countBy i = countBySpec i.
 Proof.
   intros; cbv [countBy].
-  cbv [countBySpec multistep].
-  destruct i; [ reflexivity | ].
-  cbn [interp reset_state Loop].
-  repeat first [ destruct_pair_let | progress simpl_ident ].
-  eapply (loopDelayS_invariant (B:=Vec Bit 8)) with
-      (I:=fun t acc => acc = countBySpec (firstn t i)).
+  eapply (multistep_Loop_invariant (s:=Vec Bit 8)) with
+      (I:=fun t st _ acc =>
+            st = bvsum (firstn t i)
+            /\ acc = countBySpec (firstn t i)).
   { (* invariant holds at start *)
-    reflexivity. }
+    ssplit; reflexivity. }
   { (* invariant holds through body *)
-    cbv zeta. intros; subst. seqsimpl.
-    cbv [addNSpec countBySpec bvsum map2].
-    rewrite firstn_succ_snoc with (d:=N2Bv_sized 8 0) by length_hammer.
-    autorewrite with push_list_fold.
-    cbv [seqType Signal.combType Bvector] in *.
-    repeat first [ rewrite Nat.add_1_r
-                 | rewrite seq_S, map_app; cbn [map]
-                 | progress cbn [repeat app]
-                 | progress seqsimpl
-                 | progress autorewrite with push_length natsimpl
-                                             push_list_fold push_firstn ].
+    cbv zeta. intros ? ? ? ? d; intros; logical_simplify; subst.
+    cbv [step mcompose countBySpec]. simpl_ident.
+    rewrite firstn_succ_snoc with (d0:=d) by length_hammer.
+    cbv [combType Bvector] in *. autorewrite with push_length natsimpl.
+    cbv [bvsum]. autorewrite with pull_snoc.
+    split; [ apply bvadd_comm | ].
+    rewrite Nat.add_1_r.
+    autorewrite with pull_snoc.
     f_equal.
     { apply map_ext_in; intros.
       match goal with H : _ |- _ => apply in_seq in H end.
       autorewrite with push_length natsimpl push_firstn push_list_fold.
       reflexivity. }
-    { cbv [bvadd]. rewrite N.add_comm.
-      destruct t; autorewrite with push_nth push_firstn push_list_fold natsimpl;
-        reflexivity. } }
+    { cbn [Nat.add].
+      autorewrite with push_nth push_firstn push_length push_list_fold natsimpl.
+      rewrite bvadd_comm; reflexivity. } }
   { (* invariant implies postcondition *)
-    intros; seqsimpl; subst.
+    intros; logical_simplify; subst.
     rewrite firstn_all; reflexivity. }
 Qed.
