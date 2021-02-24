@@ -21,8 +21,9 @@ Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.AcornNew.
 Require Import Cava.Lib.UnsignedAdders.
+Import Circuit.Notations.
 
 (******************************************************************************)
 (* Add with delay                                                             *)
@@ -64,11 +65,10 @@ s   :  0 0 14  7 17 1
 *)
 
 Section WithCava.
-  Context {signal} {combsemantics: Cava signal}
-          {semantics: CavaSeq combsemantics}.
+  Context {signal} {semantics: Cava signal}.
 
-  Definition addWithDelay : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))
-    := loopDelayS (addN >=> delay).
+  Definition addWithDelay : Circuit (signal (Vec Bit 8)) (signal (Vec Bit 8))
+    := Loop (Comb addN >==> Delay >==> Comb fork2).
 
 End WithCava.
 
@@ -78,11 +78,11 @@ Local Notation "'#' l" := (map (fun i => N2Bv_sized 8 (N.of_nat i)) l)
 
 Local Open Scope list_scope.
 
-Example addWithDelay_ex1: sequential (addWithDelay (# [0;1;2;3;4;5;6;7;8])) = # [0;0;1;2;4;6;9;12;16;20].
+Example addWithDelay_ex1: multistep addWithDelay (# [0;1;2;3;4;5;6;7;8]) = # [0;0;1;2;4;6;9;12;16].
 Proof. reflexivity. Qed.
 
-Example addWithDelay_ex2: sequential (addWithDelay (# [1;1;1;1;1;1;1;1;1])) = # [0;1;1;2;2;3;3;4;4;5].
+Example addWithDelay_ex2: multistep addWithDelay (# [1;1;1;1;1;1;1;1;1]) = # [0;1;1;2;2;3;3;4;4].
 Proof. reflexivity. Qed.
 
-Example addWithDelay_ex3: sequential (addWithDelay (# [14; 7; 3; 250])) = # [0; 14; 7; 17; 1].
+Example addWithDelay_ex3: multistep addWithDelay (# [14; 7; 3; 250]) = # [0; 14; 7; 17].
 Proof. reflexivity. Qed.
