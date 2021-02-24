@@ -35,15 +35,15 @@ Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.CipherProperties.
 Require Import AesSpec.ExpandAllKeys.
 Require Import AcornAes.AddRoundKeyCircuit.
-Require Import AcornAes.AddRoundKeyEquivalenceNew.
+Require Import AcornAes.AddRoundKeyEquivalence.
 Require Import AcornAes.ShiftRowsCircuit.
-Require Import AcornAes.ShiftRowsEquivalenceNew.
+Require Import AcornAes.ShiftRowsEquivalence.
 Require Import AcornAes.SubBytesCircuit.
-Require Import AcornAes.SubBytesEquivalenceNew.
+Require Import AcornAes.SubBytesEquivalence.
 Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.MixColumnsEquivalenceNew.
+Require Import AcornAes.MixColumnsEquivalence.
 Require Import AcornAes.CipherNewLoop.
-Require Import AcornAes.CipherEquivalenceNew.
+Require Import AcornAes.CipherEquivalence.
 Import ListNotations.
 Import Pkg.Notations.
 Import StateTypeConversions.LittleEndian.
