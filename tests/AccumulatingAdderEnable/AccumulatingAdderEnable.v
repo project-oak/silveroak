@@ -22,7 +22,7 @@ Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.AcornNew.
 Require Import Cava.Lib.UnsignedAdders.
 Import VectorNotations.
 Local Open Scope vector_scope.
@@ -53,103 +53,51 @@ time   0  1  2  3  4  5  6  7
 -----------------------------
 valid  1  1  1  1  0  0  0  0
 in     1  1  1  1  1  1  1  1
-out    1  2  3  4  4  4  4  4
+out    1  2  3  4  5  5  5  5
 
 time   0  1  2  3  4  5  6  7
 -----------------------------
 valid  0  0  0  1  1  1  0  1
 in     0  1  2  3  4  5  6  7
-out    0  0  0  3  7 12 12 19
+out    0  1  2  3  7 12 18 19
 
 *)
 
 Section WithCava.
-  Context {signal} {combsemantics: Cava signal}
-          {semantics: CavaSeq combsemantics}.
+  Context {signal} {semantics: Cava signal}.
 
-  Definition mux2 {A} (sel : signal Bit) (f : signal A) (t : signal A)
-    : cava (signal A) :=
-    ret (pairSel sel (mkpair f t)).
-
-  Definition accumulatingAdderEnable : signal (Pair (Vec Bit 8) Bit) -> cava (signal (Vec Bit 8))
-    := loopDelayS (fun '(inp_and_valid, state) =>
-                    let '(inp, valid) := unpair inp_and_valid in
-                    (addN >=>
-                     mux2 valid state) (inp, state)).
+  Definition accumulatingAdderEnable
+    : Circuit (signal (Vec Bit 8) * signal Bit) (signal (Vec Bit 8))
+    := LoopCE (Comb (addN >=> fork2)).
 
 End WithCava.
 
 (* Convenience notation for turning a list of nats into a list of bitvectors *)
-Local Notation "'#' l" := (map (fun i => N2Bv_sized _ (N.of_nat i)) l)
+Local Notation "'#' l" := (map (fun i => N2Bv_sized 8 (N.of_nat i)) l)
                             (at level 40, only parsing).
 
 Local Open Scope list_scope.
 
 Example accumulatingAdderEnable_ex1:
-  sequential (accumulatingAdderEnable
-                (combine
-                   (# [1;1;1;1;1;1;1;1])
-                   (map nat2bool [1;1;1;1;0;0;0;0]))) = # [1;2;3;4;4;4;4;4].
+  multistep accumulatingAdderEnable
+            (combine
+               (# [1;1;1;1;1;1;1;1])
+               (map nat2bool [1;1;1;1;0;0;0;0])) = # [1;2;3;4;5;5;5;5].
 Proof. reflexivity. Qed.
 
 Example accumulatingAdderEnable_ex2:
-  sequential (accumulatingAdderEnable
-                (combine
-                   (# [0;1;2;3;4;5;6;7])
-                   (map nat2bool [0;0;0;1;1;1;0;1]))) = # [0;0;0;3;7;12;12;19].
+  multistep accumulatingAdderEnable
+            (combine
+               (# [0;1;2;3;4;5;6;7])
+               (map nat2bool [0;0;0;1;1;1;0;1])) = # [0;1;2;3;7;12;18;19].
 Proof. reflexivity. Qed.
 
 Definition accumulatingAdderEnable_Interface
   := sequentialInterface "accumulatingAdderEnable"
      "clk" PositiveEdge "rst" PositiveEdge
-     [mkPort "en" Bit; mkPort "i" (Vec Bit 8)]
+     [mkPort "i" (Vec Bit 8); mkPort "en" Bit]
      [mkPort "o" (Vec Bit 8)]
      [].
 
 Definition accumulatingAdderEnable_Netlist
-  := makeNetlist accumulatingAdderEnable_Interface
-                 (fun '(en, i) => accumulatingAdderEnable (mkpair i en)).
-
-(* Now re-do the accumulating adder with enable using a loop with a delay with
-   a clock-enable input. *)
-
-Section WithCava.
-  Context {signal} {combsemantics: Cava signal}
-          {semantics: CavaSeq combsemantics}.
-
-  Definition accumulatingAdderEnable2 (en : signal Bit) :
-                                       signal (Vec Bit 8) ->
-                                       cava (signal (Vec Bit 8)) :=
-    loopDelaySEnable en addN.
-
-
-  Definition accumulatingAdderEnableTop (i_en : signal (Pair (Vec Bit 8) Bit))
-                                        : cava (signal (Vec Bit 8)) :=
-  let '(i, en) := unpair i_en in
-  accumulatingAdderEnable2 en i.
-
-End WithCava.
-
-Example accumulatingAdderEnable2_ex1:
-  sequential (accumulatingAdderEnableTop
-                (combine
-                   (# [1;1;1;1;1;1;1;1])
-                   (map nat2bool [1;1;1;1;0;0;0;0]))) = # [1;2;3;4;4;4;4;4].
-Proof. reflexivity. Qed.
-
-Example accumulatingAdderEnable2_ex2:
-  sequential (accumulatingAdderEnable2
-                (map nat2bool [0;0;0;1;1;1;0;1])
-                (# [0;1;2;3;4;5;6;7]) ) = # [0;0;0;3;7;12;12;19].
-Proof. reflexivity. Qed.
-
-Definition accumulatingAdderEnable2_Interface
-  := sequentialInterface "accumulatingAdderEnable2"
-     "clk" PositiveEdge "rst" PositiveEdge
-     [mkPort "en" Bit; mkPort "i" (Vec Bit 8)]
-     [mkPort "o" (Vec Bit 8)]
-     [].
-
-Definition accumulatingAdderEnable2_Netlist
-  := makeNetlist accumulatingAdderEnable2_Interface
-                 (fun '(en, i) => accumulatingAdderEnableTop (mkpair i en)).
+  := makeCircuitNetlist accumulatingAdderEnable_Interface accumulatingAdderEnable.
