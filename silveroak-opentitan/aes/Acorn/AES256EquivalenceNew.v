@@ -35,6 +35,7 @@ Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.CipherProperties.
 Require Import AesSpec.ExpandAllKeys.
 Require Import AcornAes.AddRoundKeyCircuit.
+Require Import AcornAes.AddRoundKeyEquivalenceNew.
 Require Import AcornAes.ShiftRowsCircuit.
 Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.SubBytesEquivalenceNew.
@@ -71,11 +72,6 @@ Proof.
   autorewrite with conversions. reflexivity.
 Qed.
 Hint Rewrite @unflatten_flatten @flatten_unflatten using solve [eauto] : conversions.
-
-Axiom add_round_key_equiv :
-  forall (st : combType state) (k : combType key),
-    unIdent (aes_add_round_key k st)
-    = AES256.aes_add_round_key_circuit_spec k st.
 
 Axiom shift_rows_equiv :
   forall (is_decrypt : bool) (st : combType state),
