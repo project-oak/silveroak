@@ -34,7 +34,7 @@ From Coq Require Import Bool.Bvector.
 (******************************************************************************)
 
 Section WithCava.
-  Context `{CavaSeq}.
+  Context `{Cava}.
 
   Definition delayByte : Circuit (signal (Vec Bit 8)) (signal (Vec Bit 8)) :=
     Delay.
