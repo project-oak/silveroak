@@ -22,9 +22,9 @@ Require Import Cava.BitArithmetic.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
-Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Acorn.CombinationalPropertiesNew.
 Require Import Cava.Acorn.MonadFacts.
-Require Import Cava.Acorn.Identity.
+Require Import Cava.Acorn.IdentityNew.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Import ListNotations VectorNotations.
@@ -47,26 +47,13 @@ Section Equivalence.
   Lemma aes_transpose_correct n m (v : combType (Vec (Vec (Vec Bit 8) n) m)) :
     m <> 0 ->
     n <> 0 ->
-    aes_transpose [v] = [transpose v].
+    aes_transpose v = transpose v.
   Proof.
     intros Hm Hn.
     unfold aes_transpose.
-    setoid_rewrite peel_singleton.
-    rewrite map_map.
-    erewrite (@map_ext
-                (combType (Vec (Vec Bit 8) n)))
-      by apply (peel_singleton).
-    erewrite (transpose_map_map
-                (A := combType (Vec Bit 8))
-                (B := seqType (Vec Bit 8))).
-    rewrite map_map.
-    erewrite map_ext
-      by (intro;
-          rewrite <- (peel_singleton (A := (Vec Bit 8)));
-          eapply unpeel_peel;
-          auto).
-    rewrite <- (peel_singleton (A := Vec (Vec Bit 8) m)).
-    auto using unpeel_peel.
+    cbv [unpeel peel Combinational.CombinationalSemantics].
+    rewrite ! map_id.
+    reflexivity.
   Qed.
 
   Lemma poly_to_byte_to_bitvec p :
@@ -81,10 +68,10 @@ Section Equivalence.
     constant_bitvec_cases bv; reflexivity.
   Qed.
 
-  Lemma xorV_is_add b1 b2 :
-    unIdent (xorV (n:=8) ([b1], [b2]))
-    = [byte_to_bitvec (Polynomial.fadd (bitvec_to_byte b1)
-                                       (bitvec_to_byte b2))].
+  Lemma xorV_is_add (b1 b2 : byte) :
+    unIdent (xorV (n:=8) (b1, b2))
+    = byte_to_bitvec (Polynomial.fadd (bitvec_to_byte b1)
+                                      (bitvec_to_byte b2)).
   Proof.
     simpl_ident. fequal_list.
     cbv [Polynomial.fadd MixColumns.byteops].
@@ -95,35 +82,35 @@ Section Equivalence.
     reflexivity.
   Qed.
 
-  Lemma xorv_is_add b1 b2 :
-    unIdent (xorv (n:=8) [b1] [b2])
-    = [byte_to_bitvec (Polynomial.fadd (bitvec_to_byte b1)
-                                       (bitvec_to_byte b2))].
+  Lemma xorv_is_add (b1 b2 : byte) :
+    unIdent (xorv (n:=8) b1 b2)
+    = byte_to_bitvec (Polynomial.fadd (bitvec_to_byte b1)
+                                      (bitvec_to_byte b2)).
   Proof. apply xorV_is_add. Qed.
 
-  Lemma aes_mul2_correct b :
-    unIdent (aes_mul2 [b])
-    = [byte_to_bitvec (Polynomial.fmul Byte.x02
-                                       (bitvec_to_byte b))].
+  Lemma aes_mul2_correct (b : byte) :
+    unIdent (aes_mul2 b)
+    = byte_to_bitvec (Polynomial.fmul Byte.x02
+                                      (bitvec_to_byte b)).
   Proof.
-    cbv [combType] in *. constant_bitvec_cases b; vm_compute; reflexivity.
+    constant_bitvec_cases b; vm_compute; reflexivity.
   Qed.
 
-  Lemma aes_mul4_correct b :
-    unIdent (aes_mul4 [b])
-    = [byte_to_bitvec (Polynomial.fmul Byte.x04
-                                       (bitvec_to_byte b))].
+  Lemma aes_mul4_correct (b : byte) :
+    unIdent (aes_mul4 b)
+    = byte_to_bitvec (Polynomial.fmul Byte.x04
+                                      (bitvec_to_byte b)).
   Proof.
-    cbv [combType] in *. constant_bitvec_cases b; vm_compute; reflexivity.
+    constant_bitvec_cases b; vm_compute; reflexivity.
   Qed.
 
   Lemma mix_single_column_equiv (is_decrypt : bool) (col : Vector.t byte 4) :
-    unIdent (aes_mix_single_column [is_decrypt] [col])
-    = [if is_decrypt
+    unIdent (aes_mix_single_column is_decrypt col)
+    = if is_decrypt
        then map byte_to_bitvec
                 (MixColumns.inv_mix_single_column (map bitvec_to_byte col))
        else map byte_to_bitvec
-                (MixColumns.mix_single_column (map bitvec_to_byte col))].
+                (MixColumns.mix_single_column (map bitvec_to_byte col)).
   Proof.
     (* simplify LHS *)
     cbv [aes_mix_single_column]. simpl_ident.
@@ -155,16 +142,12 @@ Section Equivalence.
   Admitted.
 
   Lemma mix_columns_equiv (is_decrypt : bool) (st : state) :
-    combinational (aes_mix_columns [is_decrypt] [st])
-    = [AES256.aes_mix_columns_circuit_spec is_decrypt st].
+    combinational (aes_mix_columns is_decrypt st)
+    = AES256.aes_mix_columns_circuit_spec is_decrypt st.
   Proof.
     cbv [aes_mix_columns combinational]. simpl_ident.
-    rewrite aes_transpose_correct by lia.
-    rewrite (peel_singleton (A:=Vec (Vec Bit 8) 4)).
-    rewrite map_map.
+    rewrite ! aes_transpose_correct by lia.
     erewrite map_ext by apply mix_single_column_equiv.
-    rewrite (unpeel_singleton (B:=Vec (Vec Bit 8) 4)) by congruence.
-    rewrite aes_transpose_correct by lia.
     cbv [AES256.aes_mix_columns_circuit_spec
            AES256.mix_columns AES256.inv_mix_columns
            MixColumns.mix_columns MixColumns.inv_mix_columns].

@@ -21,9 +21,9 @@ Require Import Cava.BitArithmetic.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
-Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Acorn.CombinationalPropertiesNew.
 Require Import Cava.Acorn.MonadFacts.
-Require Import Cava.Acorn.Identity.
+Require Import Cava.Acorn.IdentityNew.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Import ListNotations VectorNotations.
@@ -43,22 +43,9 @@ Section Equivalence.
   Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
 
   Lemma shift_rows_equiv (is_decrypt : bool) (st : state) :
-    combinational (aes_shift_rows [is_decrypt] [st])
-    = [AES256.aes_shift_rows_circuit_spec is_decrypt st].
+    combinational (aes_shift_rows is_decrypt st)
+    = AES256.aes_shift_rows_circuit_spec is_decrypt st.
   Proof.
-    cbv [aes_shift_rows combinational]. simpl_ident.
-    rewrite !(@indexConst_singleton (Vec (Vec Bit 8) 4)).
-
-    (* break state vector into 16 bytes *)
-    constant_vector_simpl st.
-    repeat lazymatch goal with
-           | v := @hd (t byte 4) _ _ |- _ =>
-                  constant_vector_simpl v; subst v
-           | v := @tl (t byte 4) _ _ |- _ => subst v
-           | v := _ : t _ 0 |- _ => clear v
-           end.
-    cbn [nth_default].
-
     (* simplify RHS (specification) *)
     cbv [aes_shift_rows_circuit_spec
            AES256.shift_rows AES256.inv_shift_rows
@@ -70,6 +57,14 @@ Section Equivalence.
     autorewrite with push_length. cbn [seq map2].
     autorewrite with push_of_list_sized. cbn [map].
 
+    cbv [aes_shift_rows combinational]. simpl_ident.
+
+    (* break state vector into 16 bytes *)
+    constant_vector_simpl st.
+    repeat match goal with
+           | v := _ : t byte 4 |- _ => constant_vector_simpl v
+    end; clear.
+
     (* simplify LHS (implementation) *)
     cbv [aes_circ_byte_shift]. simpl_ident.
     repeat lazymatch goal with
@@ -80,8 +75,6 @@ Section Equivalence.
                    reflexivity)
            end.
     rewrite !map_map.
-    rewrite !(@unpeel_singleton _ (Vec Bit 8)) by congruence.
-    rewrite !(@muxPair_correct (Vec (Vec Bit 8) 4)).
     cbn [map].
     repeat match goal with
            | |- context [Nat.modulo ?n ?m] => compute_expr (Nat.modulo n m)
