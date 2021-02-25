@@ -3,5 +3,9 @@ mix_single_column_equiv
   : forall (is_decrypt : bool) (col : t (t bool 8) 4),
     unIdent (aes_mix_single_column is_decrypt col) =
     (if is_decrypt
-     then Vector.map byte_to_bitvec (MixColumns.inv_mix_single_column (Vector.map bitvec_to_byte col))
-     else Vector.map byte_to_bitvec (MixColumns.mix_single_column (Vector.map bitvec_to_byte col)))
+     then
+      Vector.map byte_to_bitvec
+        (MixColumns.inv_mix_single_column (Vector.map bitvec_to_byte col))
+     else
+      Vector.map byte_to_bitvec
+        (MixColumns.mix_single_column (Vector.map bitvec_to_byte col)))

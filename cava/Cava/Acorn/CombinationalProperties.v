@@ -44,9 +44,6 @@ Section DecidableEquality.
     | Void => fun _ _ => true
     | Bit => fun x y => Bool.eqb x y
     | Vec A n => fun x y => Vector.eqb _ combType_eqb x y
-    | Pair A B => fun x y =>
-                   (combType_eqb (fst x) (fst y) &&
-                    combType_eqb (snd x) (snd y))%bool
     | ExternalType s => fun x y => true
     end.
 
@@ -62,11 +59,7 @@ Section DecidableEquality.
              | _ => tauto
              | _ => solve [eauto using VectorEq.eqb_eq]
              | |- _ <-> _ => split; congruence
-             end; [ ].
-    (* only the pair case should be remaining *)
-    rewrite Bool.andb_true_iff, IHt1, IHt2.
-    split; [ destruct 1 | inversion 1; split ];
-      intros; subst; eauto.
+             end.
   Qed.
 End DecidableEquality.
 
@@ -107,7 +100,7 @@ Lemma eqb_correct {t} (x y : combType t) :
 Proof.
   revert x y.
   induction t;
-    cbn [eqb and2 xnor2 one unpair
+    cbn [eqb and2 xnor2 one
              CombinationalSemantics] in *;
     intros; simpl_ident; repeat destruct_pair_let;
     (* handle easy cases first *)
@@ -122,11 +115,6 @@ Proof.
     simpl_ident. cbn [combType_eqb].
     rewrite eqb_fold. apply f_equal.
     auto using map2_ext. }
-  { (* Pair case *)
-    simpl_ident. cbn [split]. repeat destruct_pair_let.
-    cbn [fst snd]. rewrite IHt1, IHt2.
-    cbn [combType_eqb].
-    reflexivity. }
 Qed.
 
 Lemma eqb_eq {t} (x y : combType t) :
@@ -171,7 +159,7 @@ Proof. destruct sel; reflexivity. Qed.
 Hint Rewrite @indexAt2_correct using solve [eauto] : simpl_ident.
 
 Lemma mux4_correct {t} (i0 i1 i2 i3 : combType t) (sel : combType (Vec Bit 2)) :
-  mux4Tuple (i0,i1,i2,i3) sel =
+  mux4 (i0,i1,i2,i3) sel =
   if Vector.hd (Vector.tl sel)
   then if Vector.hd sel then i3 else i2
   else if Vector.hd sel then i1 else i0.
