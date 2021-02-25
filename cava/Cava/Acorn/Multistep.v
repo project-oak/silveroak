@@ -199,6 +199,60 @@ Proof.
   { eapply IimpliesP. }
 Qed.
 
+Lemma multistep_LoopCE_invariant
+      {i s o} (body : Circuit (i * combType s) (o * combType s))
+      (I : nat -> combType s -> circuit_state body -> list o -> Prop ) (P : list o -> Prop)
+      (input : list (i * bool)) :
+  (* invariant holds at start *)
+  I 0 (defaultCombValue _) (reset_state body) [] ->
+  (* invariant holds through loop *)
+  (forall t acc st bodyst d,
+      I t st bodyst acc ->
+      0 <= t < length input ->
+      let input_en := nth t input d in
+      let out_st'_bodyst' := step body bodyst (fst input_en, st) in
+      let out := fst (fst out_st'_bodyst') in
+      let st' := snd (fst out_st'_bodyst') in
+      let bodyst' := snd out_st'_bodyst' in
+      let new_state := if snd input_en then st' else st in
+      I (S t) new_state bodyst' (acc ++ [out])) ->
+  (* invariant implies postcondition *)
+  (forall acc st bodyst, I (length input) st bodyst acc -> P acc) ->
+  P (multistep (LoopCE body) input).
+Proof. apply multistep_LoopInitICE_invariant. Qed.
+
+Lemma multistep_LoopInit_invariant
+      {i s o} resetval (body : Circuit (i * combType s) (o * combType s))
+      (I : nat -> combType s -> circuit_state body -> list o -> Prop ) (P : list o -> Prop)
+      (input : list i) :
+  (* invariant holds at start *)
+  I 0 resetval (reset_state body) [] ->
+  (* invariant holds through loop *)
+  (forall t acc st bodyst d,
+      I t st bodyst acc ->
+      0 <= t < length input ->
+      let out_st'_bodyst' := step body bodyst (nth t input d, st) in
+      let out := fst (fst out_st'_bodyst') in
+      let st' := snd (fst out_st'_bodyst') in
+      let bodyst' := snd out_st'_bodyst' in
+      I (S t) st' bodyst' (acc ++ [out])) ->
+  (* invariant implies postcondition *)
+  (forall acc st bodyst, I (length input) st bodyst acc -> P acc) ->
+  P (multistep (LoopInit resetval body) input).
+Proof.
+  intros? Ipres IimpliesP; cbv [LoopInit].
+  autorewrite with push_multistep. simpl_ident.
+  eapply multistep_LoopInitICE_invariant with (I0:=I).
+  { eassumption. }
+  { cbv zeta in *. intros *. destruct_products.
+    autorewrite with push_length. intros.
+    let d := lazymatch goal with x : i |- _ => x end in
+    rewrite map_nth_inbounds with (d2:=d) by length_hammer.
+    cbn [fst]. apply Ipres; auto. }
+  { intros *; autorewrite with push_length.
+    apply IimpliesP. }
+Qed.
+
 Lemma multistep_Loop_invariant
       {i s o} (body : Circuit (i * combType s) (o * combType s))
       (I : nat -> combType s -> circuit_state body -> list o -> Prop ) (P : list o -> Prop)
@@ -217,16 +271,4 @@ Lemma multistep_Loop_invariant
   (* invariant implies postcondition *)
   (forall acc st bodyst, I (length input) st bodyst acc -> P acc) ->
   P (multistep (Loop body) input).
-Proof.
-  intros? Ipres IimpliesP; cbv [Loop].
-  autorewrite with push_multistep. simpl_ident.
-  eapply multistep_LoopInitICE_invariant with (I0:=I).
-  { eassumption. }
-  { cbv zeta in *. intros *. destruct_products.
-    autorewrite with push_length. intros.
-    let d := lazymatch goal with x : i |- _ => x end in
-    rewrite map_nth_inbounds with (d2:=d) by length_hammer.
-    cbn [fst]. apply Ipres; auto. }
-  { intros *; autorewrite with push_length.
-    apply IimpliesP. }
-Qed.
+Proof. apply multistep_LoopInit_invariant. Qed.

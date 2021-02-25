@@ -79,6 +79,11 @@ Module N.
     rewrite !N.double_spec, !N.succ_double_spec. reflexivity.
   Qed.
 
+  Lemma succ_double_succ n : (N.succ_double n + 1 = N.double (n + 1))%N.
+  Proof.
+    rewrite !N.double_spec, !N.succ_double_spec. lia.
+  Qed.
+
   Lemma succ_double_double_neq n m : N.succ_double n <> N.double m.
   Proof.
     rewrite N.double_spec, N.succ_double_spec. nia.

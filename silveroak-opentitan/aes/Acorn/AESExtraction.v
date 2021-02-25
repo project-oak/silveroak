@@ -32,6 +32,7 @@ Require Import Coq.extraction.ExtrHaskellZInteger.
 Require Import Coq.extraction.ExtrHaskellString.
 Require Import Coq.extraction.ExtrHaskellBasic.
 Require Import Coq.extraction.ExtrHaskellNatInteger.
+Require Import RecordUpdate.RecordSet.
 
 Extraction Language Haskell.
 
@@ -48,3 +49,4 @@ Extraction Library ShiftRowsNetlist.
 Extraction Library SubBytesNetlist.
 Extraction Library AddRoundKeyNetlist.
 Extraction Library CipherControlNetlist.
+Extraction Library RecordSet.

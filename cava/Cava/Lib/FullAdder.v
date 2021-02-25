@@ -23,10 +23,10 @@ Open Scope monad_scope.
 Open Scope type_scope.
 
 Require Import Cava.ListUtils.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.AcornNew.
 
 Section WithCava.
-  Context {signal} `{Cava signal}.
+  Context `{semantics:Cava}.
 
   (****************************************************************************)
   (* Build a half-adder                                                       *)
@@ -40,7 +40,7 @@ Section WithCava.
   (****************************************************************************)
   (* Build a full-adder                                                       *)
   (****************************************************************************)
-  
+
   Definition fullAdder '(cin, (a, b))
                        : cava (signal Bit * signal Bit) :=
     '(abl, abh) <- halfAdder (a, b) ;;
@@ -49,25 +49,24 @@ Section WithCava.
     ret (abcl, cout).
 
  End WithCava.
- 
+
 Section Combinational.
 
   (* A proof that the half-adder is correct. *)
   Lemma halfAdder_behaviour :
     forall (a : bool) (b : bool),
-      unIdent (halfAdder ([a], [b])) = ([xorb a b], [a && b]).
+      unIdent (halfAdder (a, b)) = (xorb a b, a && b).
   Proof.
     auto.
   Qed.
 
   (* A proof that the the full-adder is correct. *)
   Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
-                              combinational (fullAdder ([cin], ([a], [b])))
-                                = ([xorb cin (xorb a b)],
-                                  [(a && b) || (b && cin) || (a && cin)]).
+                              unIdent (fullAdder (cin, (a, b)))
+                                = (xorb cin (xorb a b),
+                                  (a && b) || (b && cin) || (a && cin)).
   Proof.
     intros.
-    unfold combinational.
     unfold fst.
     simpl.
     case a, b, cin.

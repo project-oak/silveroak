@@ -55,20 +55,3 @@ Definition cipher_round_Netlist
   := makeNetlist cipher_round_Interface
   (fun '(a, b, c, d, e, f ) => cipher_round a b c d e f).
 
-Definition aes_cipher_core_simplified_Interface :=
-  combinationalInterface "aes_cipher_core_simplified"
-  [ mkPort "op_i" Bit
-  ; mkPort "in_valid_i" Bit
-  ; mkPort "out_ready_i" Bit
-  ; mkPort "key_init_i" key
-  ; mkPort "state_init_i" state ]
-  [ mkPort "in_ready_o" Bit
-  ; mkPort "out_valid_o" Bit
-  ; mkPort "state_o" state ]
-  [].
-
-Definition aes_cipher_core_simplified_Netlist :=
-  let aes := aes_cipher_core_simplified key_expand in
-  makeCircuitNetlist aes_cipher_core_simplified_Interface aes.
-
-

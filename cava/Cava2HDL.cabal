@@ -61,6 +61,7 @@ library
                      ListUtils
                      Logic
                      Monad
+                     MonadState
                      Multistep
                      Netlist
                      NetlistGeneration
@@ -95,7 +96,6 @@ library
                      MonadFix
                      MonadPlus
                      MonadReader
-                     MonadState
                      MonadTrans
                      MonadWriter
                      MonadZero
