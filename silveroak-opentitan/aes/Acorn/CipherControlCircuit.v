@@ -37,6 +37,7 @@ Require Import AcornAes.ShiftRowsCircuit.
 Require Import AcornAes.MixColumnsCircuit.
 Require Import AcornAes.CipherCircuit.
 Import Circuit.Notations.
+Existing Instance CavaCombinationalNet.
 
 Require Import AcornAes.ShiftRowsNetlist.
 Require Import AcornAes.MixColumnsNetlist.
@@ -49,7 +50,6 @@ Notation round_index := (Vec Bit 4) (only parsing).
 
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
-  Context {seqsemantics : CavaSeq semantics}.
 
   Local Infix "==?" := eqb (at level 40).
 

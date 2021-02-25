@@ -42,7 +42,7 @@ Section Equivalence.
   Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
 
   Lemma shift_rows_equiv (is_decrypt : bool) (st : state) :
-    combinational (aes_shift_rows is_decrypt st)
+    unIdent (aes_shift_rows is_decrypt st)
     = AES256.aes_shift_rows_circuit_spec is_decrypt st.
   Proof.
     (* simplify RHS (specification) *)
@@ -56,7 +56,7 @@ Section Equivalence.
     autorewrite with push_length. cbn [seq map2].
     autorewrite with push_of_list_sized. cbn [map].
 
-    cbv [aes_shift_rows combinational]. simpl_ident.
+    cbv [aes_shift_rows]. simpl_ident.
 
     (* break state vector into 16 bytes *)
     constant_vector_simpl st.
@@ -78,7 +78,6 @@ Section Equivalence.
     repeat match goal with
            | |- context [Nat.modulo ?n ?m] => compute_expr (Nat.modulo n m)
            end.
-    cbv [unpeel CombinationalSemantics unpeelVecList].
     cbn [map length fold_left PeanoNat.Nat.max seq List.nth
              List.map nth_default List.rev app].
 

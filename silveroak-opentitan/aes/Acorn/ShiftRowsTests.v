@@ -34,13 +34,13 @@ Section FIPSTests.
        | ShiftRows =>
          fun st =>
            let input := from_flat st in
-           let output := unIdent (aes_shift_rows [false] [input]) in
-           to_flat (List.hd (defaultCombValue _) output)
+           let output := unIdent (aes_shift_rows false input) in
+           to_flat output
        | InvShiftRows =>
          fun st =>
            let input := from_flat st in
-           let output := unIdent (aes_shift_rows [true] [input]) in
-           to_flat (List.hd (defaultCombValue _) output)
+           let output := unIdent (aes_shift_rows true input) in
+           to_flat output
        | _ => aes_impl step key
        end).
 
