@@ -28,6 +28,7 @@ Import ListNotations.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.Circuit.
 
 (******************************************************************************)
 (* Netlist implementations for the Cava class.                                *)
@@ -220,52 +221,6 @@ Fixpoint combToSignal (t : SignalType) (v : combType t) : Signal t :=
   | ExternalType typ, _ => UninterpretedSignal typ
   end.
 
-Definition delayNet (t: SignalType)
-                    (resetValue : combType t)
-                    (i : Signal t)
-                    : state CavaState (Signal t) :=
-  o <- newSignal t ;;
-  addInstance (Delay t (combToSignal t resetValue) i o) ;;
-  ret o.
-
-Definition delayEnableNet (t : SignalType)
-                          (resetValue : combType t)
-                          (en : Signal Bit)
-                          (i : Signal t)
-                          : state CavaState (Signal t) :=
-  o <- newSignal t ;;
-  addInstance (DelayEnable t (combToSignal t resetValue) en i o) ;;
-  ret o.
-
-Local Open Scope type_scope.
-
-(* Create a loop circuit with a delay element along the feedback path which
-   makes the current state available at the output. *)
-Definition loopNetS (A B : SignalType)
-                    (resetValue : combType B)
-                    (f : Signal A * Signal B -> state CavaState (Signal B))
-                    (a : Signal A)
-                    : state CavaState (Signal B) :=
-  o <- @newSignal B ;;
-  out <- f (a, o) ;;
-  oDelay <- delayNet B resetValue out ;;
-  assignSignal o oDelay ;;
-  ret out.
-
-(* Create a loop circuit with a delay element with enable along the feedback
-   path with the current state exposed at the output. *)
-Definition loopNetEnableS (A B : SignalType)
-                          (resetValue : combType B)
-                          (en : Signal Bit)
-                          (f : Signal A * Signal B -> state CavaState (Signal B))
-                          (a : Signal A)
-                         : state CavaState (Signal B) :=
-  o <- @newSignal B ;;
-  out <- f (a, o) ;;
-  oDelay <- delayEnableNet B resetValue en out ;;
-  assignSignal o oDelay ;;
-  ret out.
-
 Definition localSignalNet {A : SignalType}
                           (v : Signal A)
                           : state CavaState (Signal A) :=
@@ -323,16 +278,6 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     instantiate := instantiateNet;
     blackBox := blackBoxNet;
 }.
-
-Instance CavaSequentialNet : CavaSeq CavaCombinationalNet :=
-  { delayWith k d := delayNet k d;
-    delayEnableWith k d := delayEnableNet k d;
-    loopDelaySR a b := loopNetS a b;
-    loopDelaySEnableR en a b := loopNetEnableS en a b;
-  }.
-
-
-Require Import Cava.Acorn.Circuit.
 
 (* Run circuit for a single step *)
 Fixpoint interpCircuit {i o} (c : Circuit i o)
