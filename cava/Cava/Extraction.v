@@ -29,9 +29,7 @@ Require Import Cava.Cava.
 Require Import Cava.Signal.
 Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.CombinationalMonad.
-Require Import Cava.Acorn.Sequential.
+Require Import Cava.Acorn.Combinational.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Combinators.
 Require Import Cava.Acorn.NetlistGeneration.
@@ -47,9 +45,7 @@ Recursive Extraction Library BitArithmetic.
 Recursive Extraction Library Cava.
 Recursive Extraction Library Acorn.
 Recursive Extraction Library Circuit.
-Recursive Extraction Library CombinationalMonad.
 Recursive Extraction Library Combinational.
-Recursive Extraction Library Sequential.
 Recursive Extraction Library Combinators.
 Recursive Extraction Library Multistep.
 Recursive Extraction Library NetlistGeneration.

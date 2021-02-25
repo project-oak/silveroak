@@ -46,11 +46,11 @@ Definition bv5_30 := N2Bv_sized 5 30.
 (******************************************************************************)
 
 (* Check 0 + 0 = 0 *)
-Example add0_0 : unIdent (addN ([bv4_0], [bv4_0])) = [bv4_0].
+Example add0_0 : unIdent (addN (bv4_0, bv4_0)) = bv4_0.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 1 = 0 *)
-Example add15_1 : unIdent (addN ([bv4_15], [bv4_1])) = [bv4_0].
+Example add15_1 : unIdent (addN (bv4_15, bv4_1)) = bv4_0.
 Proof. reflexivity. Qed.
 
 Section WithCava.
@@ -81,19 +81,19 @@ Section WithCava.
 End WithCava.
 
 (* Check 0 + 0 = 0 *)
-Example add5_0_0 : unIdent (adderGrowth ([bv4_0], [bv4_0])) = [bv5_0].
+Example add5_0_0 : unIdent (adderGrowth (bv4_0, bv4_0)) = bv5_0.
 Proof. reflexivity. Qed.
 
 (* Check 1 + 2 = 3 *)
-Example add5_1_2 : unIdent (adderGrowth ([bv4_1], [bv4_2])) = [bv5_3].
+Example add5_1_2 : unIdent (adderGrowth (bv4_1, bv4_2)) = bv5_3.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 1 = 16 *)
-Example add5_15_1 : unIdent (adderGrowth ([bv4_15], [bv4_1])) = [bv5_16].
+Example add5_15_1 : unIdent (adderGrowth (bv4_15, bv4_1)) = bv5_16.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 15 = 30 *)
-Example add5_15_15 : unIdent (adderGrowth ([bv4_15], [bv4_15])) = [bv5_30].
+Example add5_15_15 : unIdent (adderGrowth (bv4_15, bv4_15)) = bv5_30.
 Proof. reflexivity. Qed.
 
 (******************************************************************************)
@@ -115,10 +115,8 @@ Definition adder4Netlist
 Definition adder4_tb_inputs
   := [(bv4_0, bv4_0); (bv4_1, bv4_2); (bv4_15, bv4_1); (bv4_15, bv4_15)].
 
-Definition adder4_tb_inputs' := fromListOfTuples [Vec Bit 4; Vec Bit 4] adder4_tb_inputs.  
-
 Definition adder4_tb_expected_outputs
-  := unIdent (unsignedAddCircuit adder4_tb_inputs').
+  := multistep (Comb unsignedAddCircuit) adder4_tb_inputs.
 
 Definition adder4_tb
   := testBench "adder4_tb" adder4Interface
@@ -144,9 +142,7 @@ Definition adder8_3input_tb_inputs :=
   [(17, 23, 95); (4, 200, 30); (255, 255, 200)].
 
 Definition adder8_3input_tb_expected_outputs :=
-  map (fun '(i0,i1,i2) => List.hd (defaultCombValue _)
-                               (unIdent (add3InputTuple 8 8 8 ([i0],[i1],[i2])%list)))
-      adder8_3input_tb_inputs.
+  multistep (Comb (add3InputTuple 8 8 8)) adder8_3input_tb_inputs.
 
 Definition adder8_3input_tb :=
   testBench "adder8_3input_tb" adder8_3inputInterface

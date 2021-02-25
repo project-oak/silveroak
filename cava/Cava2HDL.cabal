@@ -50,7 +50,6 @@ library
                      CavaClass
                      CavaPrelude
                      Combinators
-                     CombinationalMonad
                      Combinational
                      Circuit
                      Datatypes
