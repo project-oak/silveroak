@@ -17,19 +17,19 @@
 (* Experiments with the primitives that form the core of Cava. *)
 
 Require Import Coq.Lists.List.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.AcornNew.
 Import ListNotations.
 
 (* Experiments with the primitive Cava gates. *)
 
-Example inv_false : combinational (inv [false]) = [true].
+Example inv_false : unIdent (inv false) = true.
 Proof. reflexivity. Qed.
 
-Example inv_true  : combinational (inv [true]) = [false].
+Example inv_true  : unIdent (inv true) = false.
 Proof. reflexivity. Qed.
 
-Example and_00 : combinational (and2 ([false], [false])) = [false].
+Example and_00 : unIdent (and2 (false, false)) = false.
 Proof. reflexivity. Qed.
 
-Example and_11 : combinational (and2 ([true], [true])) = [true].
+Example and_11 : unIdent (and2 (true, true)) = true.
 Proof. reflexivity. Qed.

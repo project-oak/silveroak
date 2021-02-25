@@ -23,7 +23,7 @@ Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.AcornNew.
 Require Import Cava.Lib.UnsignedAdders.
 
 (******************************************************************************)
@@ -46,11 +46,11 @@ Definition bv5_30 := N2Bv_sized 5 30.
 (******************************************************************************)
 
 (* Check 0 + 0 = 0 *)
-Example add0_0 : combinational (addN ([bv4_0], [bv4_0])) = [bv4_0].
+Example add0_0 : unIdent (addN ([bv4_0], [bv4_0])) = [bv4_0].
 Proof. reflexivity. Qed.
 
 (* Check 15 + 1 = 0 *)
-Example add15_1 : combinational (addN ([bv4_15], [bv4_1])) = [bv4_0].
+Example add15_1 : unIdent (addN ([bv4_15], [bv4_1])) = [bv4_0].
 Proof. reflexivity. Qed.
 
 Section WithCava.
@@ -81,19 +81,19 @@ Section WithCava.
 End WithCava.
 
 (* Check 0 + 0 = 0 *)
-Example add5_0_0 : combinational (adderGrowth ([bv4_0], [bv4_0])) = [bv5_0].
+Example add5_0_0 : unIdent (adderGrowth ([bv4_0], [bv4_0])) = [bv5_0].
 Proof. reflexivity. Qed.
 
 (* Check 1 + 2 = 3 *)
-Example add5_1_2 : combinational (adderGrowth ([bv4_1], [bv4_2])) = [bv5_3].
+Example add5_1_2 : unIdent (adderGrowth ([bv4_1], [bv4_2])) = [bv5_3].
 Proof. reflexivity. Qed.
 
 (* Check 15 + 1 = 16 *)
-Example add5_15_1 : combinational (adderGrowth ([bv4_15], [bv4_1])) = [bv5_16].
+Example add5_15_1 : unIdent (adderGrowth ([bv4_15], [bv4_1])) = [bv5_16].
 Proof. reflexivity. Qed.
 
 (* Check 15 + 15 = 30 *)
-Example add5_15_15 : combinational (adderGrowth ([bv4_15], [bv4_15])) = [bv5_30].
+Example add5_15_15 : unIdent (adderGrowth ([bv4_15], [bv4_15])) = [bv5_30].
 Proof. reflexivity. Qed.
 
 (******************************************************************************)
@@ -101,6 +101,7 @@ Proof. reflexivity. Qed.
 (******************************************************************************)
 
 Local Open Scope nat_scope.
+Existing Instance CavaCombinationalNet.
 
 Definition adder4Interface
   := combinationalInterface "adder4"
@@ -117,7 +118,7 @@ Definition adder4_tb_inputs
 Definition adder4_tb_inputs' := fromListOfTuples [Vec Bit 4; Vec Bit 4] adder4_tb_inputs.  
 
 Definition adder4_tb_expected_outputs
-  := combinational (unsignedAddCircuit adder4_tb_inputs').
+  := unIdent (unsignedAddCircuit adder4_tb_inputs').
 
 Definition adder4_tb
   := testBench "adder4_tb" adder4Interface
@@ -144,7 +145,7 @@ Definition adder8_3input_tb_inputs :=
 
 Definition adder8_3input_tb_expected_outputs :=
   map (fun '(i0,i1,i2) => List.hd (defaultCombValue _)
-                               (combinational (add3InputTuple 8 8 8 ([i0],[i1],[i2])%list)))
+                               (unIdent (add3InputTuple 8 8 8 ([i0],[i1],[i2])%list)))
       adder8_3input_tb_inputs.
 
 Definition adder8_3input_tb :=

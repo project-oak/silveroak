@@ -24,16 +24,17 @@ Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.AcornNew.
 Require Import Cava.Lib.UnsignedAdders.
 Require Import Coq.Vectors.Vector.
 Require Import Cava.VectorUtils.
 Require Import Coq.Bool.Bvector.
 
 From Coq Require Import Bool.Bvector.
+Existing Instance CavaCombinationalNet.
 
 Section WithCava.
-  Context `{CavaSeq}.
+  Context `{Cava}.
 
   Definition bitvec_to_signal {n : nat} (lut : Vector.t bool n) : signal (Vec Bit n) :=
     unpeel (Vector.map constant lut).
@@ -78,9 +79,9 @@ Definition multiDimArrayTest_Netlist := makeNetlist multiDimArrayTest_Interface 
 Definition arrayTest_tb_inputs := List.repeat (nat_to_bitvec_sized 8 0) 2.
 
 Definition arrayTest_tb_expected_outputs
-  := sequential (arrayTest arrayTest_tb_inputs).
+  := multistep (Comb arrayTest) arrayTest_tb_inputs.
 Definition multiDimArrayTest_tb_expected_outputs
-  := sequential (multiDimArrayTest arrayTest_tb_inputs).
+  := multistep (Comb multiDimArrayTest) arrayTest_tb_inputs.
 
 Definition arrayTest_tb
   := testBench "arrayTest_tb" arrayTest_Interface

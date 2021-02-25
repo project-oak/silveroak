@@ -32,10 +32,8 @@ Require Import Coq.micromega.Lia.
 Require Import Cava.BitArithmetic Cava.ListUtils Cava.VectorUtils Cava.Tactics.
 Require Import Cava.Lib.FullAdder.
 Require Import Cava.Lib.UnsignedAdders.
-Require Import Cava.Acorn.CavaClass.
-Require Import Cava.Acorn.CombinationalMonad.
-Require Import Cava.Acorn.Combinators.
-Require Import Cava.Acorn.Identity.
+Require Import Cava.Acorn.AcornNew.
+Require Import Cava.Acorn.IdentityNew.
 Require Import Cava.Acorn.MonadFacts.
 
 Local Open Scope N_scope.
@@ -43,9 +41,9 @@ Local Open Scope N_scope.
 (* First prove the full-adder correct. *)
 
 Lemma fullAdder_correct (cin a b : bool) :
-  combinational (fullAdder ([cin], ([a], [b]))) =
+  unIdent (fullAdder (cin, (a, b))) =
   let sum := N.b2n a + N.b2n b + N.b2n cin in
-  ([N.testbit sum 0], [N.testbit sum 1]).
+  (N.testbit sum 0, N.testbit sum 1).
 Proof. destruct cin, a, b; reflexivity. Qed.
 
 (* Lemma about how to decompose a vector of bits. *)
@@ -66,26 +64,16 @@ Hint Rewrite @bind_of_return @bind_associativity
      using solve [typeclasses eauto] : monadlaws.
 
 (* Correctness of the list based adder. *)
-
-Lemma combinational_bind {A B} (f : ident A) (g : A -> ident B) :
-  combinational (x <- f;; g x) = combinational (g (combinational f)).
-Proof. reflexivity. Qed.
-
 Lemma addLCorrect (cin : bool) (a b : list bool) :
   length a = length b ->
-  match combinational (addLWithCinL [cin] [a] [b]) with
-    | [bitAddition] => list_bits_to_nat bitAddition =
-                      list_bits_to_nat a + list_bits_to_nat b + N.b2n cin
-    | _ => False
-  end.
+  list_bits_to_nat (unIdent (addLWithCinL cin a b)) =
+  list_bits_to_nat a + list_bits_to_nat b + N.b2n cin.
 Proof.
   cbv zeta. cbv [addLWithCinL adderWithGrowthL unsignedAdderL colL].
   cbn [fst snd].
   (* get rid of pair-let because it will cause problems in the inductive case *)
   simpl_ident. repeat destruct_pair_let.
 
-  (* TODO(jadep) : repair this proof *)
-(*
   (* start induction; eliminate cases where length b <> length a and solve base
      case immediately *)
   revert dependent cin. revert dependent b.
@@ -101,7 +89,7 @@ Proof.
   (cbn match beta). repeat destruct_pair_let; simpl_ident.
 
   (* Rearrange to match inductive hypothesis *)
-  rewrite <-app_comm_cons. cbv [combinational] in *.
+  rewrite <-app_comm_cons.
   cbn [unIdent] in *. rewrite list_bits_to_nat_cons.
 
   (* Finally we have the right expression to use IHa *)
@@ -116,8 +104,7 @@ Proof.
                    change (N.testbit x n) with b
              end; (cbn match).
   all:lia.
-*)
-Admitted.
+Qed.
 
 (* Correctness of the vector based adder. *)
 
@@ -158,7 +145,7 @@ Proof.
 Qed.
 
 Lemma colL_length {A B C} circuit a bs :
-  length (fst (combinational (@colL ident _ A B C circuit (a,bs))))
+  length (fst (unIdent (@colL ident _ A B C circuit (a,bs))))
   = length bs.
 Proof.
   cbv [colL]; cbn [fst snd].
@@ -181,21 +168,28 @@ Ltac simpl_monad :=
                | progress cbn [fst snd] ].
 
 Lemma addVCorrect (cin : bool) (n : nat) (a b : Vector.t bool n) :
-  combinational (addLWithCinV [cin] (peel [a]) (peel [b])) =
-  peel (Cava:=CombinationalSemantics) (t:= Signal.Bit)
-       [N2Bv_sized (n+1) (Bv2N a + Bv2N b + (N.b2n cin))].
+  unIdent (addLWithCinV cin a b) =
+  (N2Bv_sized (n+1) (Bv2N a + Bv2N b + (N.b2n cin))).
 Proof.
-  cbv zeta. rewrite !Bv2N_list_bits_to_nat.
-  (* TODO(jadep) : repair this proof *)
-  (*
+  apply Bv2N_inj. rewrite Bv2N_N2Bv_sized.
+  (* prove bounds side condition *)
+  2:{
+    pose proof (Bv2N_upper_bound _ a).
+    pose proof (Bv2N_upper_bound _ b).
+    rewrite <-!Nshiftl_equiv_nat in *.
+    rewrite N.shiftl_1_l in *.
+    rewrite PeanoNat.Nat.add_1_r.
+    rewrite Nat2N.inj_succ, N.pow_succ_r by lia.
+    destruct cin; cbv [N.b2n]; lia. }
+  rewrite !Bv2N_list_bits_to_nat.
   rewrite <-addLCorrect by (rewrite !to_list_length; reflexivity).
   cbv [addLWithCinV adderWithGrowthV unsignedAdderV
        addLWithCinL adderWithGrowthL unsignedAdderL].
-  rewrite colV_colL with (d:=false).
-  simpl_monad. autorewrite with push_to_list.
+  rewrite colV_colL with (d:=false). simpl_ident.
+  repeat destruct_pair_let. simpl_ident.
+  autorewrite with push_to_list.
   reflexivity.
-   *)
-Admitted.
+Qed.
 
 Local Close Scope N_scope.
 
