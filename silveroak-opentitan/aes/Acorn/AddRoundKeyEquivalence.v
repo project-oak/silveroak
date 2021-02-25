@@ -31,64 +31,6 @@ Require Import AesSpec.StateTypeConversions.
 Require Import AcornAes.AddRoundKeyCircuit.
 Import StateTypeConversions.LittleEndian.
 
-(*
-Require Import Psatz.
-
-Existing Instance CombinationalSemantics.
-Section Combinators.
-  Lemma zipWith_unIdent {A B C : SignalType} n
-        (f : seqType A * seqType B -> cava (seqType C))
-        (spec : combType A -> combType B -> combType C)
-        (va : combType (Vec A n)) (vb : combType (Vec B n)) :
-    n <> 0 ->
-    (forall a b, unIdent (f ([a], [b])) = [spec a b]) ->
-    unIdent (@zipWith _ _ A B C n f [va] [vb])
-    = [Vector.map2 spec va vb].
-  Proof.
-    cbv [zipWith Traversable.mapT Traversable_vector].
-    cbn [peel unpeel monad CombinationalSemantics].
-    cbn [bind ret Monad_ident unIdent] in *.
-    rewrite mapT_vector_ident.
-    revert va vb; induction n; intros; [ lia | ].
-    { rewrite (eta va), (eta vb).
-      autorewrite with push_vcombine push_vector_map vsimpl.
-      cbn [combType]  in *. rewrite !peelVecList_cons_cons.
-      autorewrite with push_vcombine push_vector_map vsimpl.
-      lazymatch goal with
-      | Hspec : context [unIdent (f _)] |- _ =>
-        rewrite Hspec
-      end.
-      fold combType.
-      destruct (PeanoNat.Nat.eq_dec n 0).
-      { subst n. eapply case0 with (v:=Vector.tl va).
-        eapply case0 with (v:=Vector.tl vb).
-        reflexivity. }
-      cbv [seqType].
-      erewrite unpeelVecList_cons_singleton; eauto; [ ].
-      intros *. rewrite InV_map_iff.
-      destruct 1 as [? [? ?]].
-      subst.
-      cbv [vcombine] in *.
-      repeat match goal with
-             | H : _ |- _ =>
-               apply InV_map2_impl in H; destruct H as [? [? [? [? ?]]]]; subst
-             | H : InV _ _ |- _ => apply peelVecList_length in H
-             end.
-      match goal with
-      | |- context [f (?l1, ?l2)] =>
-        destruct l1 as [| ? [|? ?] ];
-          destruct l2 as [| ? [|? ?] ];
-          cbn [length] in *; try lia
-      end.
-      lazymatch goal with
-      | Hspec : context [unIdent (f _)] |- _ =>
-        rewrite Hspec
-      end.
-      reflexivity. }
-  Qed.
-End Combinators.
- *)
-
 Section Equivalence.
   Local Notation byte := (Vector.t bool 8).
   Local Notation state := (Vector.t (Vector.t byte 4) 4) (only parsing).
