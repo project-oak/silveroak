@@ -21,9 +21,8 @@ Require Import Cava.BitArithmetic.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
-Require Import Cava.Acorn.CombinationalPropertiesNew.
-Require Import Cava.Acorn.MonadFacts.
-Require Import Cava.Acorn.IdentityNew.
+Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Import ListNotations VectorNotations.
