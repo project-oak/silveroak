@@ -41,7 +41,7 @@ Require Import Cava.Acorn.Multistep.
 
 Require Import AesSpec.Cipher.
 Require Import AesSpec.CipherProperties.
-Require Import AcornAes.CipherNewLoop.
+Require Import AcornAes.CipherCircuit.
 
 Existing Instance Combinational.CombinationalSemantics.
 

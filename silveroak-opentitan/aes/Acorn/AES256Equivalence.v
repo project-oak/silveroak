@@ -42,7 +42,7 @@ Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.SubBytesEquivalence.
 Require Import AcornAes.MixColumnsCircuit.
 Require Import AcornAes.MixColumnsEquivalence.
-Require Import AcornAes.CipherNewLoop.
+Require Import AcornAes.CipherCircuit.
 Require Import AcornAes.CipherEquivalence.
 Import ListNotations.
 Import Pkg.Notations.

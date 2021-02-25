@@ -35,7 +35,7 @@ Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.AddRoundKeyCircuit.
 Require Import AcornAes.ShiftRowsCircuit.
 Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.CipherNewLoop.
+Require Import AcornAes.CipherCircuit.
 Import Circuit.Notations.
 
 Require Import AcornAes.ShiftRowsNetlist.
@@ -91,7 +91,7 @@ Section WithCava.
     Definition inv_mix_columns_key := aes_mix_columns' (constant true).
 
     (* Plug in our concrete components to the skeleton in Cipher.v *)
-    Definition cipher := CipherNewLoop.cipher
+    Definition cipher := CipherCircuit.cipher
       aes_sub_bytes' aes_shift_rows' aes_mix_columns' aes_add_round_key
       inv_mix_columns_key key_expand.
   End PkgNotations.
