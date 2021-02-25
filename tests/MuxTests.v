@@ -28,6 +28,7 @@ Require Import Coq.Bool.Bvector.
 Import Vector.VectorNotations.
 
 Local Open Scope vector_scope.
+Existing Instance CavaCombinationalNet.
 
 Section WithCava.
   Context {signal} `{Cava signal}.
@@ -61,14 +62,11 @@ Definition mux2_1_tb_inputs :=
    (true,  false, true);
    (true,  true,  false)].
 
-(* Transpose test vectors for use in Coq simulation. *)
-(* Satnam asks: why can't [Bit; Bit; Bit] be inferred? *)
-Definition mux2_1_tb_inputs' := fromListOfTuples [Bit; Bit; Bit] mux2_1_tb_inputs.
-
 (* Enumerate the expected outputs. *)
 Definition muxManualExpectedOutputs := [false; true; true; false].
 
-Definition mux2_1_tb_expected_outputs := combinational (mux2_1_top mux2_1_tb_inputs').
+(* Compute the expected outputs from the semantics *)
+Definition mux2_1_tb_expected_outputs := multistep (Comb mux2_1_top) mux2_1_tb_inputs.
 
 Example m1_4: mux2_1_tb_expected_outputs = muxManualExpectedOutputs.
 Proof. reflexivity. Qed.
@@ -105,16 +103,16 @@ Definition v6 := N2Bv_sized 8 240.
 Definition v7 := N2Bv_sized 8  42.
 Definition v4to7 : Vector.t (Bvector 8) 4 := [v4; v5; v6; v7].
 
-Example m5: combinational (muxBus ([v0to3]%list, [[false; false]%vector]%list)) = [v0]%list.
+Example m5: unIdent (muxBus (v0to3, [false; false]%vector)) = v0.
 Proof. reflexivity. Qed.
 
-Example m6: combinational (muxBus ([v0to3]%list, [[true; false]%vector]%list)) = [v1]%list.
+Example m6: unIdent (muxBus (v0to3, [true; false]%vector)) = v1.
 Proof. reflexivity. Qed.
 
-Example m7: combinational (muxBus ([v0to3]%list, [[false; true]%vector]%list)) = [v2]%list.
+Example m7: unIdent (muxBus (v0to3, [false; true]%vector)) = v2.
 Proof. reflexivity. Qed.
 
-Example m8: combinational (muxBus ([v0to3]%list, [[true; true]%vector]%list)) = [v3]%list.
+Example m8: unIdent (muxBus (v0to3, [true; true]%vector)) = v3.
 Proof. reflexivity. Qed.
 
 Local Close Scope vector_scope.
@@ -135,9 +133,7 @@ Definition muxBus4_8_tb_inputs : list (Vector.t (Bvector 8) 4 * Vector.t bool 2)
   ].
 
 Definition muxBus4_8_tb_expected_outputs : list (Bvector 8)
-  := map (fun '(i0,i1) => List.hd (defaultCombValue _)
-                               (combinational (muxBus ([i0],[i1])%list)))
-         muxBus4_8_tb_inputs.
+  := multistep (Comb muxBus) muxBus4_8_tb_inputs.
 
 Definition muxBus4_8_tb
   := testBench "muxBus4_8_tb" muxBus4_8Interface

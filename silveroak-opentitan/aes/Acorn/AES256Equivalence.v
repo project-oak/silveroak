@@ -27,7 +27,7 @@ Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Combinational.
 Require Import Cava.Acorn.Circuit.
-Require Import Cava.Acorn.IdentityNew.
+Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.Multistep.
 
 Require Import AesSpec.AES256.
@@ -42,7 +42,7 @@ Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.SubBytesEquivalence.
 Require Import AcornAes.MixColumnsCircuit.
 Require Import AcornAes.MixColumnsEquivalence.
-Require Import AcornAes.CipherNewLoop.
+Require Import AcornAes.CipherCircuit.
 Require Import AcornAes.CipherEquivalence.
 Import ListNotations.
 Import Pkg.Notations.
@@ -50,12 +50,6 @@ Import StateTypeConversions.LittleEndian.
 
 Local Notation round_constant := (Vec Bit 8) (only parsing).
 Local Notation round_index := (Vec Bit 4) (only parsing).
-
-Axiom key_expand : forall {signal} {semantics : Cava signal},
-    signal Bit -> signal round_index -> signal key * signal round_constant ->
-    cava (signal key * signal round_constant).
-Axiom key_expand_spec : nat -> t bool 128 * t bool 8 -> t bool 128 * t bool 8.
-Axiom inv_key_expand_spec : nat -> t bool 128 * t bool 8 -> t bool 128 * t bool 8.
 
 (* convenience definition for converting to/from flat keys in key * round
    constant pairs *)
@@ -74,13 +68,6 @@ Proof.
   autorewrite with conversions. reflexivity.
 Qed.
 Hint Rewrite @unflatten_flatten @flatten_unflatten using solve [eauto] : conversions.
-
-Axiom key_expand_equiv :
-  forall (is_decrypt : bool) (round_i : t bool 4) (k : t (t (t bool 8) 4) 4) (rcon : t bool 8),
-    combinational (key_expand is_decrypt round_i (k, rcon))
-    = let spec := if is_decrypt then inv_key_expand_spec else key_expand_spec in
-      let kr := spec (N.to_nat (Bv2N round_i)) (flatten_key (k, rcon)) in
-      (from_flat (fst kr), snd kr).
 
 Hint Resolve add_round_key_equiv sub_bytes_equiv shift_rows_equiv
      mix_columns_equiv : subroutines_equiv.
@@ -108,9 +95,6 @@ Local Ltac solve_side_conditions :=
     eapply shift_rows_equiv
   | |- context [unIdent (aes_mix_columns _ _) = _] =>
     eapply mix_columns_equiv
-  | |- context [unIdent (key_expand ?is_decrypt _ _) = _] =>
-    rewrite key_expand_equiv; cbv zeta;
-    destruct is_decrypt; reflexivity
   | |- context [_ < 2 ^ 4] => change (2 ^ 4)%nat with 16; Lia.lia
   | |- map fst (all_keys _ _ _) = _ => solve [eauto]
   | |- length _ = _ => length_hammer
@@ -223,8 +207,5 @@ Proof.
   reflexivity.
 Qed.
 
-(* TODO:uncomment once old version of this file is removed *)
-(*
 Redirect "FullCipherEquiv_Assumptions" Print Assumptions full_cipher_equiv.
 Redirect "FullCipherInverse_Assumptions" Print Assumptions full_cipher_inverse.
-*)

@@ -32,17 +32,16 @@ Require Import Cava.ListUtils.
 Require Import Cava.VectorUtils.
 Require Import Cava.Tactics.
 
-Require Import Cava.Acorn.MonadFacts.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Combinational.
-Require Import Cava.Acorn.CombinationalPropertiesNew.
-Require Import Cava.Acorn.IdentityNew.
+Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.Multistep.
 
 Require Import AesSpec.Cipher.
 Require Import AesSpec.CipherProperties.
-Require Import AcornAes.CipherNewLoop.
+Require Import AcornAes.CipherCircuit.
 
 Existing Instance Combinational.CombinationalSemantics.
 

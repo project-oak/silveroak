@@ -29,13 +29,13 @@ Require Import AcornAes.MixColumnsCircuit.
 Require Import AcornAes.ShiftRowsCircuit.
 Require Import AcornAes.AddRoundKeyCircuit.
 Require Import AcornAes.Pkg.
-Require AcornAes.CipherNewLoop.
+Require AcornAes.CipherCircuit.
 Import Pkg.Notations.
 
 Require Import AcornAes.ShiftRowsNetlist.
 Require Import AcornAes.MixColumnsNetlist.
 
-Definition cipher_round := CipherNewLoop.cipher_round
+Definition cipher_round := CipherCircuit.cipher_round
   (round_index:=round_index)
   aes_sub_bytes' aes_shift_rows' aes_mix_columns' aes_add_round_key
   inv_mix_columns_key.

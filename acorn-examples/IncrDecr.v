@@ -20,9 +20,9 @@ Require Import Coq.NArith.NArith.
 Require Import Coq.Vectors.Vector.
 Require Import coqutil.Tactics.Tactics.
 Require Import ExtLib.Structures.Monad.
-Require Import Cava.Acorn.AcornNew.
-Require Import Cava.Acorn.CombinationalPropertiesNew.
-Require Import Cava.Acorn.IdentityNew.
+Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Acorn.Identity.
 Require Import Cava.BitArithmetic.
 Require Import Cava.NatUtils.
 Require Import Cava.Tactics.

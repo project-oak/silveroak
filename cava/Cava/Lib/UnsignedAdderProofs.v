@@ -32,9 +32,8 @@ Require Import Coq.micromega.Lia.
 Require Import Cava.BitArithmetic Cava.ListUtils Cava.VectorUtils Cava.Tactics.
 Require Import Cava.Lib.FullAdder.
 Require Import Cava.Lib.UnsignedAdders.
-Require Import Cava.Acorn.AcornNew.
-Require Import Cava.Acorn.IdentityNew.
-Require Import Cava.Acorn.MonadFacts.
+Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.Identity.
 
 Local Open Scope N_scope.
 
@@ -150,22 +149,12 @@ Lemma colL_length {A B C} circuit a bs :
 Proof.
   cbv [colL]; cbn [fst snd].
   revert a; induction bs; intros; [ reflexivity | ].
-  cbn [colL'].
-  repeat first [ rewrite combinational_bind
-               | rewrite combinational_ret
-               | destruct_pair_let ].
-  cbn [fst snd length].
+  cbn [colL']. simpl_ident. repeat destruct_pair_let.
+  simpl_ident. cbn [fst snd length].
   rewrite IHbs. reflexivity.
 Qed.
 
 Hint Rewrite @colL_length using solve [length_hammer] : push_length.
-
-Ltac simpl_monad :=
-  repeat first [ rewrite combinational_bind
-               | rewrite combinational_ret
-               | destruct_pair_let
-               | progress autorewrite with monadlaws
-               | progress cbn [fst snd] ].
 
 Lemma addVCorrect (cin : bool) (n : nat) (a b : Vector.t bool n) :
   unIdent (addLWithCinV cin a b) =

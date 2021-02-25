@@ -664,48 +664,4 @@ Section WithCava.
              (sel : signal (Vec Bit 2)) : signal t :=
     let '(i0,i1,i2,i3) := input in
     indexAt (unpeel [i0;i1;i2;i3]%vector) sel.
-
-  Section Sequential.
-    Context {seqsemantics : CavaSeq semantics}.
-
-    Definition loopDelayS {A B: SignalType}
-                          (body : signal A * signal B -> cava (signal B))
-                          (input : signal A)
-                          : cava (signal B) :=
-      loopDelaySR (defaultCombValue B) body input.
-
-    Definition loopDelaySEnable {A B: SignalType}
-                                (en : signal Bit)
-                                (body : signal A * signal B -> cava (signal B))
-                                (input : signal A)
-                                : cava (signal B) :=
-      loopDelaySEnableR (defaultCombValue B) en body input.
-
-    (* Alternate form of feedback loop with feedback and output types separated *)
-    Definition loopDelay {A B C: SignalType}
-               (body : signal A * signal C -> cava (signal B * signal C))
-               (input : signal A) : cava (signal B) :=
-      bc <- loopDelayS
-             (fun (a_bc : signal A * signal (Pair B C)) =>
-                let '(a, bc) := a_bc in
-                let '(b,c) := unpair bc in
-                '(b,c) <- body (a,c) ;;
-                ret (mkpair b c))
-             input ;;
-      ret (fst (unpair bc)).
-
-    (* Alternate form of enabled feedback loop with feedback and output types separated *)
-    Definition loopDelayEnable {A B C: SignalType} (enable : signal Bit)
-        (body : signal A * signal C -> cava (signal B * signal C))
-        (input : signal A) : cava (signal B) :=
-      bc <- loopDelaySEnable
-             enable
-             (fun (a_bc : signal A * signal (Pair B C)) =>
-                let '(a, bc) := a_bc in
-                let '(b,c) := unpair bc in
-                '(b,c) <- body (a,c) ;;
-                ret (mkpair b c))
-             input ;;
-      ret (fst (unpair bc)).
-  End Sequential.
  End WithCava.

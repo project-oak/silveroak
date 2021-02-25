@@ -22,9 +22,8 @@ Require Import Cava.BitArithmetic.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
-Require Import Cava.Acorn.CombinationalPropertiesNew.
-Require Import Cava.Acorn.MonadFacts.
-Require Import Cava.Acorn.IdentityNew.
+Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Import ListNotations VectorNotations.
@@ -142,10 +141,10 @@ Section Equivalence.
   Admitted.
 
   Lemma mix_columns_equiv (is_decrypt : bool) (st : state) :
-    combinational (aes_mix_columns is_decrypt st)
+    unIdent (aes_mix_columns is_decrypt st)
     = AES256.aes_mix_columns_circuit_spec is_decrypt st.
   Proof.
-    cbv [aes_mix_columns combinational]. simpl_ident.
+    cbv [aes_mix_columns]. simpl_ident.
     rewrite ! aes_transpose_correct by lia.
     erewrite map_ext by apply mix_single_column_equiv.
     cbv [AES256.aes_mix_columns_circuit_spec

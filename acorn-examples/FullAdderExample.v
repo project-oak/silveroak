@@ -21,7 +21,7 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.AcornNew.
+Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.FullAdder.
 Require Import Cava.Acorn.XilinxAdder.
 

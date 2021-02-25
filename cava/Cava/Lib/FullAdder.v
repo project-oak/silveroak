@@ -23,7 +23,7 @@ Open Scope monad_scope.
 Open Scope type_scope.
 
 Require Import Cava.ListUtils.
-Require Import Cava.Acorn.AcornNew.
+Require Import Cava.Acorn.Acorn.
 
 Section WithCava.
   Context `{semantics:Cava}.

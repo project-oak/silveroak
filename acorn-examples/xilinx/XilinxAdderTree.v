@@ -30,6 +30,7 @@ Require Import ExtLib.Structures.Monads.
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.XilinxAdder.
+Existing Instance CavaCombinationalNet.
 
 Section WithCava.
   Context {signal} `{Cava signal}.
@@ -74,16 +75,16 @@ Local Open Scope nat_scope.
 Local Open Scope vector_scope.
 
 Definition v0_v1 : Vector.t (Bvector 8) 2 := [v0; v1].
-Definition v0_plus_v1 : list (Bvector 8) := combinational (adderTree2 [v0_v1]%list).
-Example sum_vo_v1 : v0_plus_v1 = [N2Bv_sized 8 21]%list.
+Definition v0_plus_v1 : Bvector 8 := unIdent (adderTree2 v0_v1).
+Example sum_vo_v1 : v0_plus_v1 = N2Bv_sized 8 21.
 Proof. reflexivity. Qed.
 
 Local Open Scope N_scope.
 
 Definition v0_v1_v2_v3 := [v0; v1; v2; v3].
-Definition adderTree4_v0_v1_v2_v3 := combinational (adderTree4 [v0_v1_v2_v3]%list).
+Definition adderTree4_v0_v1_v2_v3 := unIdent (adderTree4 v0_v1_v2_v3).
 Example sum_v0_v1_v2_v3 :
-  List.map Bv2N (combinational (adderTree4 [v0_v1_v2_v3]%list)) = [30]%list.
+  Bv2N (unIdent (adderTree4 v0_v1_v2_v3)) = 30.
 Proof. reflexivity. Qed.
 
 Local Open Scope nat_scope.
@@ -110,9 +111,7 @@ Definition adder_tree4_8_tb_inputs
       [9; 56; 2; 87];   [14; 72; 90; 11]; [64; 12; 92; 13];    [88; 24; 107; 200]]).
 
 Definition adder_tree4_8_tb_expected_outputs
-  := map (fun i => List.hd (defaultCombValue _)
-                        (combinational (adderTree4 [i]%list)))
-         adder_tree4_8_tb_inputs.
+  := multistep (Comb adderTree4) adder_tree4_8_tb_inputs.
 
 Definition adder_tree4_8_tb :=
   testBench "xadder_tree4_8_tb" adder_tree4_8Interface
@@ -146,8 +145,7 @@ Definition adder_tree64_8_tb_inputs
      [vseq 0 64; vseq 64 64; vseq 128 64].
 
 Definition adder_tree64_8_tb_expected_outputs
-  := map (fun i => List.hd (defaultCombValue _) (combinational (adderTree 5 [i]%list)))
-         adder_tree64_8_tb_inputs.
+  := multistep (Comb (adderTree 5)) adder_tree64_8_tb_inputs.
 
 Definition adder_tree64_8_tb :=
   testBench "xadder_tree64_8_tb" adder_tree64_8Interface
@@ -168,9 +166,7 @@ Definition adder_tree64_128_tb_inputs
      [vseq 0 64; vseq 64 64; vseq 128 64]).
 
 Definition adder_tree64_128_tb_expected_outputs
-  := map (fun i => List.hd (defaultCombValue _)
-                        (combinational (adderTree 5 [i]%list)))
-         adder_tree64_128_tb_inputs.
+  := multistep (Comb (adderTree 5)) adder_tree64_128_tb_inputs.
 
 Definition adder_tree64_128_tb :=
   testBench "xadder_tree64_128_tb" adder_tree64_128Interface
@@ -192,8 +188,7 @@ Definition adder_tree128_256_tb_inputs : list (Vector.t (Bvector 256) 128)
 
 Definition adder_tree128_256_tb_expected_outputs
            : list (Bvector 256)
-  := map (fun i => List.hd (defaultCombValue _)
-                        (combinational (adderTree 6 [i]%list))) adder_tree128_256_tb_inputs.
+  := multistep (Comb (adderTree 6)) adder_tree128_256_tb_inputs.
 
 Definition adder_tree128_256_tb :=
   testBench "xadder_tree128_256_tb" adder_tree128_256Interface

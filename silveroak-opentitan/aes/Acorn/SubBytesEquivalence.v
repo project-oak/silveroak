@@ -15,9 +15,8 @@
 (****************************************************************************)
 
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.CombinationalPropertiesNew.
-Require Import Cava.Acorn.IdentityNew.
-Require Import Cava.Acorn.MonadFacts.
+Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Acorn.Identity.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.ListUtils.
