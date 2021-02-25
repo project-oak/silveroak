@@ -24,7 +24,7 @@ Export MonadNotation.
 Open Scope monad_scope.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.AcornNew.
+Require Import Cava.Acorn.Acorn.
 
 Local Open Scope list_scope.
 Local Open Scope monad_scope.

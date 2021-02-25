@@ -24,7 +24,7 @@ Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.Combinators.
 Require Import Cava.Acorn.Combinational.
-Require Import Cava.Acorn.IdentityNew.
+Require Import Cava.Acorn.Identity.
 Require Import Cava.BitArithmetic.
 Require Import Cava.ListUtils.
 Require Import Cava.NatUtils.

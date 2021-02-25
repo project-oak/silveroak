@@ -29,7 +29,7 @@ Require Import Cava.Cava.
 Require Import Cava.Signal.
 Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.AcornNew.
+Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.CombinationalMonad.
 Require Import Cava.Acorn.Sequential.
 Require Import Cava.Acorn.CavaClass.

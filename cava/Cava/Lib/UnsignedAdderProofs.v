@@ -32,8 +32,8 @@ Require Import Coq.micromega.Lia.
 Require Import Cava.BitArithmetic Cava.ListUtils Cava.VectorUtils Cava.Tactics.
 Require Import Cava.Lib.FullAdder.
 Require Import Cava.Lib.UnsignedAdders.
-Require Import Cava.Acorn.AcornNew.
-Require Import Cava.Acorn.IdentityNew.
+Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.MonadFacts.
 
 Local Open Scope N_scope.

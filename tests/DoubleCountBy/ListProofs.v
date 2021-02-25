@@ -28,9 +28,9 @@ Export MonadNotation.
 Require Import Cava.Cava.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
-Require Import Cava.Acorn.AcornNew.
-Require Import Cava.Acorn.IdentityNew.
-Require Import Cava.Acorn.CombinationalPropertiesNew.
+Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.Identity.
+Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import DoubleCountBy.DoubleCountBy.
