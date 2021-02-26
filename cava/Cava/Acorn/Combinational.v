@@ -63,12 +63,12 @@ Instance CombinationalSemantics : Cava combType :=
     muxcy := fun sel x y => ret (if sel then x else y);
     peel _ _ v := v;
     unpeel _ _ v := v;
-    indexAt t sz isz := fun v sel => nth_default (defaultCombValue _) (N.to_nat (Bv2N sel)) v;
-    indexConst t sz := fun v sel => nth_default (defaultCombValue _) sel v;
-    slice t sz startAt len v H := sliceVector v startAt len H;
-    unsignedAdd m n := unsignedAddBool;
-    unsignedMult m n := unsignedMultBool;
-    greaterThanOrEqual m n := greaterThanOrEqualBool;
+    indexAt t sz isz := fun v sel => ret (nth_default (defaultCombValue _) (N.to_nat (Bv2N sel)) v);
+    indexConst t sz := fun v sel => ret (nth_default (defaultCombValue _) sel v);
+    slice t sz startAt len v H := ret (sliceVector v startAt len H);
+    unsignedAdd m n a := ret (unsignedAddBool a);
+    unsignedMult m n a := ret (unsignedMultBool a);
+    greaterThanOrEqual m n a := ret (greaterThanOrEqualBool a);
     localSignal _ v := ret v;
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefault (map port_type (circuitOutputs intf)));

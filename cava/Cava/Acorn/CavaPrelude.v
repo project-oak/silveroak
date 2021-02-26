@@ -46,6 +46,6 @@ Section WithCava.
                      (sel : signal Bit)
                      (ab : signal A * signal A) : cava (signal A) :=
     let (a, b) := ab in
-    localSignal (indexAt (unpeel [a; b]) (unpeel [sel])).
+    indexAt (unpeel [a; b]) (unpeel [sel]).
 
 End WithCava.

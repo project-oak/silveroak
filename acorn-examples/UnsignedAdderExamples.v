@@ -63,7 +63,7 @@ Section WithCava.
   Definition unsignedAddCircuit {m n : nat}
                                 (ab : signal (Vec Bit m) * signal (Vec Bit n))
                                 : cava (signal (Vec Bit (1 + max m n))) :=
-    ret (unsignedAdd (fst ab, snd ab)).
+    unsignedAdd (fst ab, snd ab).
 
   Definition adderGrowth {aSize bSize: nat}
                         (ab: signal (Vec Bit aSize) * signal (Vec Bit bSize)) :

@@ -143,10 +143,9 @@ Section WithCava.
 
   Definition aes_sbox_lut (is_decrypt : signal Bit) (b : signal (Vec Bit 8))
     : cava (signal (Vec Bit 8)) :=
-    let encrypted := indexAt sbox_fwd_lut b in
-    let decrypted := indexAt sbox_inv_lut b in
-    let vec := unpeel [encrypted; decrypted] in
-    ret (indexAt vec (unpeel [is_decrypt])).
+    encrypted <- indexAt sbox_fwd_lut b ;;
+    decrypted <- indexAt sbox_inv_lut b ;;
+    muxPair is_decrypt (encrypted, decrypted).
 
   Definition aes_sub_bytes (is_decrypt : signal Bit) (b : signal state)
     : cava (signal state) :=
