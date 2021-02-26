@@ -28,6 +28,7 @@ Import VectorNotations.
 Require Import Coq.Arith.PeanoNat Coq.NArith.NArith.
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
+Existing Instance CavaCombinationalNet.
 
 Require Import Coq.micromega.Lia.
 
@@ -39,14 +40,13 @@ Section WithCava.
 Definition twoSorter {signal} `{Cava signal} {n}
                      (ab:  signal (Vec (Vec Bit n) 2)) :
                      cava (signal (Vec (Vec Bit n) 2)) :=
-   let a := indexConst ab 0 in
-   let b := indexConst ab 1 in
-   let comparison := greaterThanOrEqual (a, b) in
+   a <- indexConst ab 0 ;;
+   b <- indexConst ab 1 ;;
+   comparison <- greaterThanOrEqual (a, b) ;;
    negComparison <- inv comparison ;;
-   let sorted : Vector.t (signal (Vec Bit n)) 2 :=
-     [indexAt ab (unpeel [comparison]);
-      indexAt ab (unpeel [negComparison])] in
-   ret (unpeel sorted).
+   out0 <- indexAt ab (unpeel [comparison]) ;;
+   out1 <- indexAt ab (unpeel [negComparison]) ;;
+   ret (unpeel [out0;out1]).
 
 End WithCava.
 
@@ -74,8 +74,7 @@ Definition two_sorter_tb_inputs : list (Vector.t (Bvector 8) _) :=
   ].
 
 Definition adder_tree4_8_tb_expected_outputs : list (Vector.t (Bvector 8) _) :=
-  map (fun i => List.hd (defaultCombValue _) (combinational (twoSorter [i]%list)))
-      two_sorter_tb_inputs.
+  multistep (Comb twoSorter) two_sorter_tb_inputs.
 
 Definition two_sorter_tb :=
   testBench "two_sorter_tb" (two_sorter_Interface 8)

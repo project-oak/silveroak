@@ -61,17 +61,45 @@ Instance CombinationalSemantics : Cava combType :=
     lut6 := fun f '(a,b,c,d,e,g) => ret (f a b c d e g);
     xorcy := fun '(x,y) => ret (xorb x y);
     muxcy := fun sel x y => ret (if sel then x else y);
-    unpair _ _ v := v;
-    mkpair _ _ v1 v2 := (v1, v2);
     peel _ _ v := v;
     unpeel _ _ v := v;
-    indexAt t sz isz := fun v sel => nth_default (defaultCombValue _) (N.to_nat (Bv2N sel)) v;
-    indexConst t sz := fun v sel => nth_default (defaultCombValue _) sel v;
-    slice t sz startAt len v H := sliceVector v startAt len H;
-    unsignedAdd m n := unsignedAddBool;
-    unsignedMult m n := unsignedMultBool;
-    greaterThanOrEqual m n := greaterThanOrEqualBool;
+    indexAt t sz isz := fun v sel => ret (nth_default (defaultCombValue _) (N.to_nat (Bv2N sel)) v);
+    indexConst t sz := fun v sel => ret (nth_default (defaultCombValue _) sel v);
+    slice t sz startAt len v H := ret (sliceVector v startAt len H);
+    unsignedAdd m n a := ret (unsignedAddBool a);
+    unsignedMult m n a := ret (unsignedMultBool a);
+    greaterThanOrEqual m n a := ret (greaterThanOrEqualBool a);
     localSignal _ v := ret v;
     instantiate _ circuit := circuit;
     blackBox intf _ := ret (tupleInterfaceDefault (map port_type (circuitOutputs intf)));
 }.
+
+(* Run circuit for a single step *)
+Fixpoint step {i o} (c : Circuit i o)
+  : circuit_state c -> i -> o * circuit_state c :=
+  match c in Circuit i o return circuit_state c -> i
+                                -> o * circuit_state c with
+  | Comb f => fun _ i => (unIdent (f i), tt)
+  | Compose f g =>
+    fun cs input =>
+      let '(x, cs1) := step f (fst cs) input in
+      let '(y, cs2) := step g (snd cs) x in
+      (y, (cs1, cs2))
+  | First f =>
+    fun cs input =>
+      let '(x, cs') := step f cs (fst input) in
+      (x, snd input, cs')
+  | Second f =>
+    fun cs input =>
+      let '(x, cs') := step f cs (snd input) in
+      (fst input, x, cs')
+  | LoopInitCE _ f =>
+    fun '(cs,st) '(input, en) =>
+      let '(out, st', cs') := step f cs (input, st) in
+      let new_state := if en then st' else st in
+      (out, (cs',new_state))
+  | DelayInitCE _ =>
+    fun st '(input, en) =>
+      let new_state := if en then input else st in
+      (st, new_state)
+  end.

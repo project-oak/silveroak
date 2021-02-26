@@ -59,6 +59,15 @@ Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
+  Definition bitvec_to_signal {n : nat} (lut : t bool n) : signal (Vec Bit n) :=
+    unpeel (Vector.map constant lut).
+
+  Definition bitvecvec_to_signal {a b : nat} (lut : t (t bool b) a) : signal (Vec (Vec Bit b) a) :=
+    unpeel (Vector.map bitvec_to_signal lut).
+
+  Definition natvec_to_signal_sized {n : nat} (size : nat) (lut : t nat n) : signal (Vec (Vec Bit size) n) :=
+    bitvecvec_to_signal (Vector.map (nat_to_bitvec_sized size) lut).
+
   Definition aes_transpose {n m}
       (matrix : signal (Vec (Vec byte n) m))
       : (signal (Vec (Vec byte m) n)) :=
@@ -71,19 +80,28 @@ Section WithCava.
     (x : signal byte)
     : cava (signal byte) :=
 
-    a <- xor2 (x[@0], x[@7]) ;;
-    b <- xor2 (x[@2], x[@7]) ;;
-    c <- xor2 (x[@3], x[@7]) ;;
+    x0 <- x[@0] ;;
+    x1 <- x[@1] ;;
+    x2 <- x[@2] ;;
+    x3 <- x[@3] ;;
+    x4 <- x[@4] ;;
+    x5 <- x[@5] ;;
+    x6 <- x[@6] ;;
+    x7 <- x[@7] ;;
+
+    a <- xor2 (x0, x7) ;;
+    b <- xor2 (x2, x7) ;;
+    c <- xor2 (x3, x7) ;;
 
     ret (unpeel
-          [x[@7];
+          [x7;
            a;
-           x[@1];
+           x1;
            b;
            c;
-           x[@4];
-           x[@5];
-           x[@6]
+           x4;
+           x5;
+           x6
           ]
     ).
 
@@ -105,7 +123,46 @@ Section WithCava.
     cava (signal (Vec byte 4)) :=
     let indices := [4 - shift; 5 - shift; 6 - shift; 7 - shift] in
     let indices := map (fun x => Nat.modulo x 4) indices in
-    ret (unpeel (map (indexConst input) indices)).
+    out <- mapT (indexConst input) indices ;;
+    ret (unpeel out).
+
+  Definition IDLE_S := bitvec_to_signal (nat_to_bitvec_sized 3 0).
+  Definition INIT_S := bitvec_to_signal (nat_to_bitvec_sized 3 1).
+  Definition ROUND_S := bitvec_to_signal (nat_to_bitvec_sized 3 2).
+  Definition FINISH_S := bitvec_to_signal (nat_to_bitvec_sized 3 3).
+  Definition CLEAR_S_S := bitvec_to_signal (nat_to_bitvec_sized 3 4).
+  Definition CLEAR_KD_S := bitvec_to_signal (nat_to_bitvec_sized 3 5).
+
+  Definition STATE_INIT := bitvec_to_signal (nat_to_bitvec_sized 2 0).
+  Definition STATE_ROUND := bitvec_to_signal (nat_to_bitvec_sized 2 1).
+  Definition STATE_CLEAR := bitvec_to_signal (nat_to_bitvec_sized 2 2).
+
+  Definition KEY_FULL_ENC_INIT := bitvec_to_signal (nat_to_bitvec_sized 2 0).
+  Definition KEY_FULL_DEC_INIT := bitvec_to_signal (nat_to_bitvec_sized 2 1).
+  Definition KEY_FULL_ROUND := bitvec_to_signal (nat_to_bitvec_sized 2 2).
+  Definition KEY_FULL_CLEAR := bitvec_to_signal (nat_to_bitvec_sized 2 3).
+
+  Definition ADD_RK_INIT := bitvec_to_signal (nat_to_bitvec_sized 2 0).
+  Definition ADD_RK_ROUND := bitvec_to_signal (nat_to_bitvec_sized 2 1).
+  Definition ADD_RK_FINAL := bitvec_to_signal (nat_to_bitvec_sized 2 2).
+
+  Definition KEY_INIT_INPUT := constant false.
+  Definition KEY_INIT_CLEAR := constant true.
+
+  Definition KEY_DEC_EXPAND := constant false.
+  Definition KEY_DEC_CLEAR := constant true.
+
+  Definition KEY_WORDS_0123 := bitvec_to_signal (nat_to_bitvec_sized 2 0).
+  Definition KEY_WORDS_2345 := bitvec_to_signal (nat_to_bitvec_sized 2 1).
+  Definition KEY_WORDS_4567 := bitvec_to_signal (nat_to_bitvec_sized 2 3).
+  Definition KEY_WORDS_ZERO := bitvec_to_signal (nat_to_bitvec_sized 2 4).
+
+  Definition AES_128 := bitvec_to_signal (nat_to_bitvec_sized 3 1).
+  Definition AES_192 := bitvec_to_signal (nat_to_bitvec_sized 3 2).
+  Definition AES_256 := bitvec_to_signal (nat_to_bitvec_sized 3 4).
+
+  Definition ROUND_KEY_DIRECT := constant false.
+  Definition ROUND_KEY_MIXED := constant true.
 
 End WithCava.
 
@@ -125,3 +182,4 @@ Definition test_key
       [1; 1; 1; 1];
       [45; 38; 49; 76]
   ].
+

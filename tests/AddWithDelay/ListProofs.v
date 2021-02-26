@@ -29,8 +29,9 @@ Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Identity.
-Require Import Cava.Acorn.SequentialProperties.
+Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Lib.UnsignedAdders.
+Import Circuit.Notations.
 
 Require Import Tests.AddWithDelay.AddWithDelay.
 Local Open Scope nat_scope.
@@ -53,22 +54,23 @@ Definition addWithDelaySpecF
       bvadd (input (S t')) (out t')
     end.
 
-Definition addNSpec {n} (a b : seqType (Vec Bit n)) :=
-  map2 bvadd a b.
-
-Lemma addNCorrect n (a b : list (Bvector n)) :
-  sequential (addN (semantics:=CombinationalSemantics) (a, b)) = addNSpec a b.
+Lemma addNCorrect n (a b : combType (Vec Bit n)) :
+  unIdent (addN (a, b)) = bvadd a b.
 Admitted.
-Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
+Hint Rewrite addNCorrect using solve [eauto] : simpl_ident.
 
 Lemma addWithDelayStepCorrect :
-  forall (i : Bvector 8) (s : Bvector 8),
-    sequential ((addN >=> delay >=> fork2) ([i], [s]))
-    = ([bvzero; bvadd i s], [bvzero; bvadd i s]).
+  forall (i s : Bvector 8) (st : circuit_state _),
+    step (Comb addN >==> Delay >==> Comb fork2)
+         st
+         (i, s)
+    = (snd (snd (fst st)), snd (snd (fst st)),
+       (tt, (tt, bvadd i s), tt)).
 Proof.
-  intros. seqsimpl. reflexivity.
+  intros. cbv [mcompose step Delay].
+  repeat first [ destruct_pair_let | progress simpl_ident ].
+  reflexivity.
 Qed.
-Hint Rewrite addWithDelayStepCorrect using solve [eauto] : seqsimpl.
 
 Lemma Bv2N_bvzero n : Bv2N (@bvzero n) = 0%N.
 Proof.
@@ -86,33 +88,42 @@ Proof.
 Qed.
 
 Lemma addWithDelayCorrect (i : list (Bvector 8)) :
-  sequential (addWithDelay i) = map (fun t => addWithDelaySpecF (fun n => nth n i bvzero) t)
-                                    (seq 0 (if length i =? 0 then 0 else S (length i))).
+  multistep addWithDelay i = map (fun t => addWithDelaySpecF (fun n => nth n i bvzero) t)
+                                 (seq 0 (length i)).
 Proof.
   intros; cbv [addWithDelay].
-  eapply (loopDelayS_invariant_alt (B:=Vec Bit 8))
-    with (I:=fun t acc =>
-               0 < t /\
-               acc = map (fun t => addWithDelaySpecF
-                                  (fun n => nth n i bvzero) t)
-                         (seq 0  (S t))).
+  eapply multistep_Loop_invariant
+    with (body:=(Comb addN >==> Delay >==> Comb fork2))
+         (I := fun t st body_st acc =>
+                 st = match t with
+                      | 0 => bvzero
+                      | S t => addWithDelaySpecF (fun n => nth n i bvzero) t
+                      end
+                 /\ body_st = (tt, (tt, addWithDelaySpecF (fun n => nth n i bvzero) t), tt)
+                 /\ acc = map (fun t => addWithDelaySpecF
+                                      (fun n => nth n i bvzero) t)
+                             (seq 0 t)).
   { (* invariant is satisfied at start *)
-    destruct i; [ reflexivity | ]. split; [ lia | ].
-    seqsimpl. autorewrite with natsimpl.
-    cbn [nth map seq addWithDelaySpecF].
-    change (Signal.defaultCombValue (Vec Bit 8)) with (@bvzero 8).
-    cbv [addNSpec map2]. rewrite bvadd_bvzero_l; reflexivity. }
+    ssplit; reflexivity. }
   { (* invariant holds through loop *)
-    cbv zeta; intros *; intros [? ?].
-    intros;  subst; seqsimpl. split; [ lia | ].
-    autorewrite with pull_snoc.
-    rewrite !overlap_snoc_cons by length_hammer.
-    destruct t; [ lia | ].
-    autorewrite with push_nth push_length natsimpl push_length pull_snoc.
-    cbn [addWithDelaySpecF]. rewrite <-!app_assoc. cbn [app].
-    cbn [addNSpec map2]. reflexivity. }
+    cbv zeta; intros; logical_simplify. subst.
+    cbn [step mcompose Delay fst snd].
+    repeat first [ destruct_pair_let | progress simpl_ident ].
+    destruct t.
+    { destruct i; cbn [length] in *; [length_hammer | ].
+      ssplit; try reflexivity; [ ].
+      cbn [nth]. rewrite bvadd_bvzero_l.
+      reflexivity. }
+    { (* change default to bvzero *)
+      match goal with |- context [nth _ _ ?x] =>
+                      is_var x;
+                      rewrite nth_inbounds_change_default
+                        with (d1:=x) (d2:=bvzero)
+                        by length_hammer
+      end.
+      ssplit; try reflexivity; [ ].
+      autorewrite with pull_snoc natsimpl. reflexivity. } }
   { (* invariant implies postcondition *)
-    intros *; intros [? ?]; subst.
-    destruct i; autorewrite with push_length in *; [ lia | ].
+    intros; logical_simplify; subst.
     reflexivity. }
 Qed.

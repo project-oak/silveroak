@@ -25,12 +25,7 @@ Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.CavaClass.
-Require Import Cava.Acorn.CavaPrelude.
-Require Import Cava.Acorn.Circuit.
-Require Import Cava.Acorn.Combinational.
-Require Import Cava.Acorn.Combinators.
-Require Import Cava.Acorn.Multistep.
+Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.UnsignedAdders.
 Import Circuit.Notations.
 
@@ -65,7 +60,9 @@ Section WithCava.
   Context {signal} {semantics: Cava signal}.
 
   Definition ltV {m n} (xy : signal (Vec Bit n) * signal (Vec Bit m))
-    : cava (signal Bit) := inv (greaterThanOrEqual (snd xy, fst xy)).
+    : cava (signal Bit) :=
+    geV <- greaterThanOrEqual (snd xy, fst xy) ;;
+    inv geV.
 
   (* add-with-carry *)
   Definition addC {n} (xy : signal (Vec Bit n) * signal (Vec Bit n))
@@ -78,7 +75,7 @@ Section WithCava.
   Definition incrN {n} (x : signal (Vec Bit (S n)))
     : cava (signal (Vec Bit (S n))) :=
     let one : signal (Vec Bit 1) := unpeel [constant true]%vector in
-    let xp1 : signal (Vec Bit (S (Nat.max 1 (S n)))) := unsignedAdd (one, x) in
+    xp1 <- unsignedAdd (one, x) ;;
     ret (unpeel (shiftout (peel xp1))).
 
   Definition count_by
@@ -134,4 +131,21 @@ Goal (multistep
       = [b0;b0;b0;b1]).
 Proof. reflexivity. Qed.
 
-(* TODO: netlist generation  -- define a recursive function on Circuit that wires up the netlist *)
+Definition double_count_by_interface
+  := sequentialInterface "double_count_by"
+     "clk" PositiveEdge "rst" PositiveEdge
+     [mkPort "i" (Vec Bit 8)]
+     [mkPort "o" (Vec Bit 8)]
+     [].
+
+Definition double_count_by_Netlist :=
+  makeCircuitNetlist double_count_by_interface double_count_by.
+
+Definition double_count_by_tb_inputs := [b14; b7; b3; b250].
+
+Definition double_count_by_tb_expected_outputs :=
+  multistep double_count_by double_count_by_tb_inputs.
+
+Definition double_count_by_tb
+  := testBench "double_count_by_tb" double_count_by_interface
+     double_count_by_tb_inputs double_count_by_tb_expected_outputs.

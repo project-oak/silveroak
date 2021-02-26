@@ -25,6 +25,8 @@ Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.FullAdder.
 Require Import Cava.Acorn.XilinxAdder.
 
+Existing Instance CavaCombinationalNet.
+
 Section WithCava.
   Context {signal} `{Cava signal}.
 
@@ -32,7 +34,7 @@ Section WithCava.
   (* Build a full-adder that takes a flat-tuple for netlist generation.       *)
   (****************************************************************************)
 
-  Definition fullAdderTop '(cin, a, b) := fullAdder (cin, (a, b)).  
+  Definition fullAdderTop '(cin, a, b) := fullAdder (cin, (a, b)).
 
 End WithCava.
 
@@ -46,7 +48,7 @@ Definition halfAdderNetlist := makeNetlist halfAdderInterface halfAdder.
 
 (* A proof that the half-adder is correct. *)
 Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
-                            combinational (halfAdder ([a], [b])) = ([xorb a b], [a && b]).
+                            unIdent (halfAdder (a, b)) = (xorb a b, a && b).
 
 Proof.
   auto.
@@ -71,11 +73,8 @@ Definition fullAdder_tb_inputs :=
    (true,  true,  true)
 ].
 
-Definition fullAdder_tb_expected_outputs
-  := map (fun '(i0,i1,i2) =>
-            let '(r1, r2) := combinational (fullAdderTop ([i0],[i1],[i2])%list) in
-            (List.hd (defaultCombValue _) r1, List.hd (defaultCombValue _) r2))
-         fullAdder_tb_inputs.
+Definition fullAdder_tb_expected_outputs :=
+  multistep (Comb fullAdderTop) fullAdder_tb_inputs.
 
 Definition fullAdder_tb
   := testBench "fullAdder_tb" fullAdderInterface
@@ -83,12 +82,11 @@ Definition fullAdder_tb
 
 (* A proof that the the full-adder is correct. *)
 Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
-                            combinational (fullAdderTop ([cin], [a], [b]))
-                              = ([xorb cin (xorb a b)],
-                                 [(a && b) || (b && cin) || (a && cin)]).
+                            unIdent (fullAdderTop (cin, a, b))
+                              = (xorb cin (xorb a b),
+                                 (a && b) || (b && cin) || (a && cin)).
 Proof.
   intros.
-  unfold combinational.
   unfold fst.
   simpl.
   case a, b, cin.
@@ -97,11 +95,10 @@ Qed.
 
 (* Prove the generic full adder is equivalent to Xilinx fast adder. *)
 Lemma generic_vs_xilinx_adder : forall (a : bool) (b : bool) (cin : bool),
-                                combinational (fullAdderTop ([cin], [a], [b])) =
-                                combinational (xilinxFullAdder ([cin], ([a], [b]))).
+                                unIdent (fullAdderTop (cin, a, b)) =
+                                unIdent (xilinxFullAdder (cin, (a, b))).
 Proof.
-  intros.
-  unfold combinational. simpl.
+  intros. simpl.
   case a, b, cin.
   all : reflexivity.
 Qed.

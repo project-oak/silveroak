@@ -1,21 +1,11 @@
 Axioms:
-mix_columns_equiv
-  : forall (is_decrypt : bool) (st : combType (Vec (Vec (Vec Bit 8) 4) 4)),
-    unIdent (aes_mix_columns [is_decrypt] [st]) =
-    [aes_mix_columns_circuit_spec is_decrypt st]
-key_expand_spec : nat -> t bool 128 * t bool 8 -> t bool 128 * t bool 8
-key_expand_equiv
-  : forall (is_decrypt : bool) (round_i : t bool 4)
-      (k : t (t (t bool 8) 4) 4) (rcon : t bool 8),
-    combinational (key_expand [is_decrypt] [round_i] ([k], [rcon])) =
-    (let spec := if is_decrypt then inv_key_expand_spec else key_expand_spec
-       in
-     let kr := spec (N.to_nat (Bv2N round_i)) (flatten_key (k, rcon)) in
-     ([from_flat (fst kr)], [snd kr]))
-key_expand
-  : forall (signal : SignalType -> Type) (semantics : Cava signal),
-    signal Bit ->
-    signal (Vec Bit 4) ->
-    signal (Vec (Vec (Vec Bit 8) 4) 4) * signal (Vec Bit 8) ->
-    cava (signal (Vec (Vec (Vec Bit 8) 4) 4) * signal (Vec Bit 8))
-inv_key_expand_spec : nat -> t bool 128 * t bool 8 -> t bool 128 * t bool 8
+mix_single_column_equiv
+  : forall (is_decrypt : bool) (col : t (t bool 8) 4),
+    unIdent (aes_mix_single_column is_decrypt col) =
+    (if is_decrypt
+     then
+      Vector.map byte_to_bitvec
+        (MixColumns.inv_mix_single_column (Vector.map bitvec_to_byte col))
+     else
+      Vector.map byte_to_bitvec
+        (MixColumns.mix_single_column (Vector.map bitvec_to_byte col)))

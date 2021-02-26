@@ -14,25 +14,23 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.String.
+Require Import Coq.Arith.PeanoNat.
 Require Import Coq.NArith.NArith.
 Require Import Coq.Lists.List.
 Require Import Coq.Vectors.Vector.
 Import ListNotations VectorNotations.
 Local Open Scope list_scope.
 
+Require Import coqutil.Tactics.Tactics.
 Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
 Require Import Cava.Cava.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
-Require Import Cava.Acorn.CavaClass.
-Require Import Cava.Acorn.Circuit.
+Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Identity.
-Require Import Cava.Acorn.Combinational.
-Require Import Cava.Acorn.Combinators.
-Require Import Cava.Acorn.Multistep.
+Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import DoubleCountBy.DoubleCountBy.
@@ -40,17 +38,15 @@ Require Import DoubleCountBy.DoubleCountBy.
 Existing Instance CombinationalSemantics.
 
 (* redefine simpl_ident to simplify the new semantics class *)
-Ltac simpl_ident ::=
-  repeat (first
-            [ progress autorewrite with simpl_ident
-            | progress cbn[fst snd bind ret Monad_ident monad
-                               CombinationalSemantics unIdent] ]).
-
 Definition bvadd {n} (a b : Vector.t bool n) : Vector.t bool n :=
   N2Bv_sized n (Bv2N b + Bv2N a).
 
 Definition bvsum {n} (l : list (Vector.t bool n)) : Vector.t bool n :=
   fold_left bvadd l (N2Bv_sized n 0).
+
+Definition boolsum {n} (l : list bool) : Vector.t bool n :=
+  fold_left (fun acc (c : bool) => if c then N2Bv_sized n (Bv2N acc + 1) else acc)
+            l (N2Bv_sized n 0).
 
 Definition bvaddc {n} (a b : Vector.t bool n) : Vector.t bool n * bool :=
   let sum := (Bv2N b + Bv2N a)%N in
@@ -58,13 +54,13 @@ Definition bvaddc {n} (a b : Vector.t bool n) : Vector.t bool n * bool :=
   (N2Bv_sized n sum, carry).
 
 Definition bvsumc {n} (l : list (Vector.t bool n)) : Vector.t bool n * bool :=
-  fold_left (fun '(acc,_) => bvaddc acc) l (N2Bv_sized n 0, false).
+  fold_left (fun acc_c => bvaddc (fst acc_c)) l (N2Bv_sized n 0, false).
 
 Definition count_by_spec (i : list (Vector.t bool 8)) : list (Vector.t bool 8 * bool) :=
   map (fun t => bvsumc (firstn t i)) (seq 1 (length i)).
 
-Definition double_count_by_spec (i : list (Vector.t bool 8)) : list (Vector.t bool 8 * bool) :=
-  map (fun t => bvsumc (firstn t i)) (seq 1 (length i)).
+Definition double_count_by_spec (i : list (Vector.t bool 8)) : list (Vector.t bool 8) :=
+  map (fun t => boolsum (firstn t (map snd (count_by_spec i)))) (seq 1 (length i)).
 
 Lemma addN_correct {n} (x y : combType (Vec Bit n)) :
   unIdent (addN (x, y)) = bvadd x y.
@@ -100,73 +96,121 @@ Lemma bvaddc_comm {n} (a b : Vector.t bool n) : bvaddc a b = bvaddc b a.
 Admitted.
 Local Opaque bvaddc.
 
-Lemma count_by_correct (input : list (combType (Vec Bit 8))) :
-  multistep count_by input
-  = map snd (count_by_spec input).
+Lemma count_by_step (input st : combType (Vec Bit 8)) :
+  step count_by (tt, (tt, st)) input
+  = (snd (bvaddc input st), (tt, (tt, fst (bvaddc input st)))).
 Proof.
-  destruct input as [|input0 input]; [ reflexivity | ].
-  cbv [multistep count_by_spec count_by Loop interp].
-  rewrite <-seq_shift, map_map. cbn [firstn].
-  repeat destruct_pair_let. simpl_ident.
-  repeat destruct_pair_let. simpl_ident.
-  erewrite fold_left_accumulate_ext_In.
-  2:{ intros; repeat destruct_pair_let; simpl_ident.
-      instantiate_app_by_reflexivity. }
-  rewrite fold_left_accumulate_to_seq with (default:=defaultCombValue _).
-  cbv [fold_left_accumulate fold_left_accumulate']. cbn [app].
+  intros; cbv [count_by Loop step].
+  repeat first [ destruct_pair_let | progress simpl_ident].
+  reflexivity.
+Qed.
 
-  pose (statet := combType (Vec Bit 8)).
-  pose (outt := combType Bit).
-  pose (to_out_and_state:=fun (x : statet * outt) => (snd x, (tt, fst x))).
-  (* Important: min_state should go *inside fold_left to avoid this complicated state type *)
-  eapply fold_left_invariant_seq
-      with (I:=fun i (acc_st : list (outt * (unit * statet)) * (outt * (unit * statet))) =>
-                 acc_st = (map to_out_and_state (count_by_spec (firstn (S i) (input0 :: input))),
-                           to_out_and_state (bvsumc (firstn (S i) (input0 :: input))))).
+Lemma bvsumc_snoc {n} xs (x : t bool n) :
+  bvsumc (xs ++ [x]) = bvaddc x (fst (bvsumc xs)).
+Proof.
+  cbv [bvsumc].
+  autorewrite with pull_snoc.
+  apply bvaddc_comm.
+Qed.
+
+Lemma boolsum_snoc {n} xs (x : bool) :
+  boolsum (xs ++ [x]) = if x then N2Bv_sized n (Bv2N (n:=n) (boolsum xs) + 1) else boolsum xs.
+Proof.
+  cbv [boolsum]. autorewrite with pull_snoc.
+  reflexivity.
+Qed.
+
+Lemma count_by_correct (input : list (combType (Vec Bit 8))) :
+  multistep count_by input = map snd (count_by_spec input).
+Proof.
+  intros; cbv [count_by].
+  eapply (multistep_Loop_invariant (s:=Vec Bit 8)) with
+      (I:=fun t st _ acc =>
+            st = fst (bvsumc (firstn t input))
+            /\ acc = map snd (count_by_spec (firstn t input))).
   { (* invariant holds at start *)
-    subst_lets. cbn - [bvaddc].
-    rewrite bvaddc_comm. reflexivity. }
-  { (* invariant holds through loop *)
-    intros. Tactics.destruct_products. subst_lets.
-    logical_simplify. cbn [fst snd].
-    cbv [bvsumc]. cbn [fold_left].
-    autorewrite with push_firstn push_length.
-    rewrite !Min.min_l by (cbn [combType] in *; Lia.lia).
-    cbn [seq map].
-    rewrite <-!seq_shift, !map_map. cbn [fold_left].
-    erewrite !firstn_succ_snoc with (d:=defaultCombValue _) by length_hammer.
-    autorewrite with pull_snoc. repeat destruct_pair_let.
-    f_equal; [ | rewrite bvaddc_comm; reflexivity ].
-
-    cbv [count_by_spec bvsumc].
-    autorewrite with push_length natsimpl.
-    rewrite PeanoNat.Nat.add_1_r.
-    rewrite <-seq_shift, !map_map.
-    rewrite seq_snoc. cbn [seq].
-    rewrite <-!app_comm_cons. cbn [map].
-    autorewrite with pull_snoc push_firstn.
-    cbn [fold_left].
-    apply f_equal.
-    apply f_equal2.
-    { rewrite <-seq_shift, !map_map.
-      apply map_ext_in; intros *.
-      rewrite in_seq. intros.
-      cbn [combType] in *.
-      autorewrite with push_firstn push_length natsimpl listsimpl.
-      reflexivity. }
-    { cbn [combType] in *.
-      autorewrite with push_length push_firstn natsimpl.
-      autorewrite with pull_snoc. repeat destruct_pair_let.
-      cbn [fst snd]. rewrite bvaddc_comm. reflexivity. }
-  }
-  { (* invariant implies postcondition *)
-    intros. Tactics.destruct_products. logical_simplify.
-    subst_lets. cbn [fst snd map seq].
-    cbv [bvsumc]. cbn [fold_left].
-    autorewrite with push_length natsimpl.
-    cbn [map seq firstn fold_left fst snd].
-    f_equal. rewrite <-!seq_shift, !map_map.
-    apply map_ext; intros. cbn [fst snd].
-    autorewrite with push_firstn. cbn [fold_left].
+    split; reflexivity. }
+  { (* invariant holds through body *)
+    cbv zeta. intros ? ? ? ? d; intros; logical_simplify; subst.
+    cbv [step count_by_spec].
+    repeat first [ destruct_pair_let | progress simpl_ident].
+    rewrite firstn_succ_snoc with (d0:=d) by length_hammer.
+    autorewrite with push_length natsimpl pull_snoc.
+    rewrite Nat.add_1_r. autorewrite with pull_snoc.
+    rewrite firstn_succ_snoc with (d0:=d) by length_hammer.
+    cbv [combType] in *. rewrite !bvsumc_snoc.
+    autorewrite with push_nth push_firstn push_length natsimpl listsimpl.
+    ssplit; [ reflexivity | ].
+    f_equal; [ ]. apply f_equal.
+    apply map_ext_in; intros.
+    match goal with H : _ |- _ => apply in_seq in H end.
+    autorewrite with push_length natsimpl push_firstn push_list_fold listsimpl.
     reflexivity. }
+  { (* invariant implies postcondition *)
+    intros; logical_simplify; subst.
+    rewrite firstn_all; reflexivity. }
+Qed.
+
+Lemma count_by_spec_nth t input d :
+  t < length input ->
+  nth t (count_by_spec input) d = bvaddc (nth t input (fst d)) (fst (bvsumc (firstn t input))).
+Proof.
+  cbv [count_by_spec]. intros.
+  rewrite map_nth_inbounds with (d2:=0) by length_hammer.
+  autorewrite with push_nth. cbn [Nat.add].
+  rewrite firstn_succ_snoc with (d0:=fst d) by length_hammer.
+  rewrite bvsumc_snoc. reflexivity.
+Qed.
+
+Lemma count_by_spec_length input : length (count_by_spec input) = length input.
+Proof. cbv [count_by_spec]; length_hammer. Qed.
+Hint Rewrite @count_by_spec_length using solve [eauto] : push_length.
+
+Lemma firstn_count_by_spec t input :
+  firstn t (count_by_spec input) = count_by_spec (firstn t input).
+Proof.
+  cbv [count_by_spec]. intros.
+  autorewrite with push_firstn push_length natsimpl.
+  apply map_ext_in; intros.
+  match goal with H : _ |- _ => apply in_seq in H end.
+  autorewrite with push_firstn natsimpl.
+  reflexivity.
+Qed.
+Hint Rewrite @firstn_count_by_spec using solve [eauto] : push_firstn.
+
+Lemma double_count_by_correct (input : list (combType (Vec Bit 8))) :
+  multistep double_count_by input = double_count_by_spec input.
+Proof.
+  intros; cbv [double_count_by].
+  let f := lazymatch goal with |- context [Loop ?body] => body end in
+  eapply multistep_Loop_invariant
+    with (body:=f)
+         (I:= fun t st body_st acc =>
+                body_st = (tt, (tt, fst (bvsumc (firstn t input))), tt)
+                /\ st = boolsum (firstn t (map snd (count_by_spec input)))
+                /\ acc = double_count_by_spec (firstn t input)).
+  { (* invariant holds at start *)
+    ssplit; reflexivity. }
+  { (* invariant holds through body *)
+    cbv zeta. intros ? ? ? ? d; intros; logical_simplify; subst.
+    cbn [step]. cbv [double_count_by_spec].
+    repeat first [ destruct_pair_let | progress simpl_ident].
+    autorewrite with push_length natsimpl pull_snoc.
+    rewrite !count_by_step. cbn [fst snd].
+    cbv [combType] in *.
+    rewrite firstn_succ_snoc with (d0:=d) by length_hammer.
+    rewrite !firstn_succ_snoc with (d0:=false) by length_hammer.
+    cbv [combType] in *. rewrite !bvsumc_snoc, !boolsum_snoc.
+    rewrite !map_nth_inbounds with (d2:=(d,false)) by length_hammer.
+    rewrite !count_by_spec_nth by length_hammer.
+    ssplit; [ reflexivity .. | ].
+    autorewrite with push_nth push_firstn push_length natsimpl listsimpl.
+    f_equal; [ ].
+    apply map_ext_in; intros.
+    match goal with H : _ |- _ => apply in_seq in H end.
+    autorewrite with push_firstn push_length natsimpl listsimpl.
+    reflexivity. }
+  { (* invariant implies postcondition *)
+    intros; logical_simplify; subst.
+    rewrite firstn_all; reflexivity. }
 Qed.

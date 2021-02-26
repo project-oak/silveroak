@@ -50,7 +50,9 @@ Definition aes_sub_bytes_Netlist
   := makeNetlist aes_sub_bytes_Interface (fun '(op_i, data_i) => aes_sub_bytes op_i data_i).
 
 (* Compute the expected outputs from the Coq/Cava semantics. *)
-Definition aes_sub_bytes_expected_outputs := combinational (aes_sub_bytes [false] [fromNatVec test_state]).
+Definition aes_sub_bytes_expected_outputs :=
+  multistep (Comb (fun '(op_i, data_i) => aes_sub_bytes op_i data_i))
+            [(false, fromNatVec test_state)].
 
 Definition aes_sub_bytes_tb :=
   testBench "aes_sub_bytes_tb"

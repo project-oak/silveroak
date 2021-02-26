@@ -25,7 +25,7 @@ Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Signal.
 
 Section WithCava.
-  Context {signal} `{Cava signal} `{CavaSeq signal}.
+  Context `{semantics:Cava}.
 
   (* Constant signals. *)
 
@@ -46,21 +46,6 @@ Section WithCava.
                      (sel : signal Bit)
                      (ab : signal A * signal A) : cava (signal A) :=
     let (a, b) := ab in
-    localSignal (indexAt (unpeel [a; b]) (unpeel [sel])).
-
-  (* A variant of muxPair that works over a Cava pair. *)
-  Definition pairSel {A : SignalType}
-                     (sel : signal Bit)
-                     (ab : signal (Pair A A)) : signal A :=
-  let (a, b) := unpair ab in
-  indexAt (unpeel [a; b]) (unpeel [sel]).
-
-  (* A unit delay with a default reset value. *)
-  Definition delay {A : SignalType} (i : signal A) : cava (signal A) :=
-    delayWith (defaultCombValue A) i.
-
-  (* A unit delay with a clock-enable input and default reset value. *)
-  Definition delayEnable {A : SignalType} (en: signal Bit) (i : signal A) : cava (signal A) :=
-    delayEnableWith (defaultCombValue A) en i.
+    indexAt (unpeel [a; b]) (unpeel [sel]).
 
 End WithCava.

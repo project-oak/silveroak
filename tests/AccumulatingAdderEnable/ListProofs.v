@@ -30,7 +30,6 @@ Require Import Cava.Tactics.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.CombinationalProperties.
-Require Import Cava.Acorn.SequentialProperties.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import Tests.AccumulatingAdderEnable.AccumulatingAdderEnable.
@@ -40,71 +39,56 @@ Definition bvadd {n} (a b : Signal.combType (Vec Bit n)) : Signal.combType (Vec 
 
 Definition bvzero {n} : Signal.combType (Vec Bit n) := N2Bv_sized n 0.
 
-Fixpoint accumulatingCounterEnableSpec
-           (input : nat -> combType (Vec Bit 8) * combType Bit)
-           (t : nat) : combType (Vec Bit 8) :=
-  let feedback := match t with
-                  | 0 => bvzero
-                  | S t' => accumulatingCounterEnableSpec input t'
-                  end in
-  let (n, valid) := input t in
-  if valid
-  then bvadd n feedback
-  else feedback.
+Definition bvsum {n} (l : list (Bvector n)) : Bvector n :=
+  fold_left bvadd l (N2Bv_sized n 0).
 
-Definition addNSpec {n} (a b : seqType (Vec Bit n)) :=
-  map2 bvadd a b.
+Definition accumulatingAdderEnableSpec
+           (i : list (combType (Vec Bit 8) * combType Bit))
+  : list (combType (Vec Bit 8)) * combType (Vec Bit 8) :=
+  fold_left
+    (fun acc_st v_en =>
+       let sum := bvadd (snd acc_st) (fst v_en) in
+       (fst acc_st ++ [sum], if (snd v_en : bool) then sum else snd acc_st))
+    i ([], bvzero).
 
-Lemma addNCorrect n (a b : list (Bvector n)) :
-  sequential (addN (a, b)) = addNSpec a b.
+Lemma addNCorrect n (a b : Vector.t bool n) :
+  unIdent (addN (a, b)) = bvadd a b.
 Admitted.
-Hint Rewrite addNCorrect using solve [eauto] : seqsimpl.
+Hint Rewrite addNCorrect using solve [eauto] : simpl_ident.
 
-Lemma mux2Correct {A} (sel : seqType Bit) (f t : seqType A) :
-  sequential (mux2 sel f t) = map (fun (f_t_sel : combType A * combType A * bool) =>
-                                     let '(f, t, sel) := f_t_sel in
-                                     if sel then t else f)
-                                   (pad_combine (pad_combine f t) sel).
+Lemma bvadd_comm {n} a b : @bvadd n a b = bvadd b a.
+Proof. cbv [bvadd]. rewrite N.add_comm. reflexivity. Qed.
+
+Lemma accumulatingAdderEnableSpec_snoc xs x :
+  accumulatingAdderEnableSpec (xs ++ [x]) =
+  let acc_st := accumulatingAdderEnableSpec xs in
+  let sum := bvadd (snd acc_st) (fst x) in
+  (fst acc_st ++ [sum], if (snd x : bool) then sum else snd acc_st).
 Proof.
-  intros; cbv [mux2 sequential]. seqsimpl.
-  apply pairSel_mkpair.
+  cbv [accumulatingAdderEnableSpec].
+  autorewrite with pull_snoc. cbn [fst snd].
+  reflexivity.
 Qed.
-Hint Rewrite @mux2Correct using solve [eauto] : seqsimpl.
 
-Lemma accumulatingCounterEnableCorrect (i : list (Bvector 8 * bool)) :
-  sequential (accumulatingAdderEnable i) =
-  map (accumulatingCounterEnableSpec
-         (fun n => nth n i (bvzero, false)))
-      (seq 0 (length i)).
+Lemma accumulatingAdderEnableCorrect (i : list (Bvector 8 * bool)) :
+  multistep accumulatingAdderEnable i = fst (accumulatingAdderEnableSpec i).
 Proof.
   intros; cbv [accumulatingAdderEnable].
-  eapply loopDelayS_invariant
-    with (I:=fun t acc =>
-               acc = map (accumulatingCounterEnableSpec
-                            (fun n => nth n i (bvzero, false)))
-                         (seq 0 t)).
+  eapply multistep_LoopCE_invariant
+    with (I:=fun t st _ acc =>
+               st = snd (accumulatingAdderEnableSpec (firstn t i))
+               /\ acc = fst (accumulatingAdderEnableSpec (firstn t i))).
   { (* invariant holds after first step *)
-    reflexivity. }
-  { (* invariant holds through loop body *)
-    intros *; intros Hacc. subst.
-    cbv zeta; intros. seqsimpl. cbv [addNSpec].
-    autorewrite with push_length natsimpl push_nth.
-    cbn [repeat app].
-    match goal with
-    | |- context [defaultCombValue ?t] =>
-      change (defaultCombValue t) with (@bvzero 8, false)
-    end.
-    seqsimpl. cbn [combine map2 fst snd].
-    autorewrite with push_nth.
-    rewrite seq_S, map_app. cbn [map].
-    autorewrite with natsimpl push_nth.
-    cbn [accumulatingCounterEnableSpec].
-    destruct t;
-      [ cbn; repeat destruct_pair_let;
-        reflexivity | ].
-    autorewrite with natsimpl push_nth.
-    cbn [accumulatingCounterEnableSpec].
-    seqsimpl. reflexivity. }
+    split; reflexivity. }
+  { (* invariant holds through body *)
+    cbv zeta. intros ? ? ? ? d; intros; logical_simplify; subst.
+    cbv [step mcompose]. simpl_ident.
+    rewrite firstn_succ_snoc with (d0:=d) by length_hammer.
+    cbv [combType Bvector] in *. autorewrite with push_length natsimpl.
+    cbv [bvsum]. autorewrite with pull_snoc.
+    rewrite accumulatingAdderEnableSpec_snoc. cbn [fst snd].
+    rewrite bvadd_comm. split; reflexivity. }
   { (* invariant implies postcondition *)
-    intros; subst; reflexivity. }
+    intros; logical_simplify; subst.
+    rewrite firstn_all; reflexivity. }
 Qed.

@@ -50,7 +50,7 @@ library
                      CavaClass
                      CavaPrelude
                      Combinators
-                     CombinationalMonad
+                     Combinational
                      Circuit
                      Datatypes
                      FullAdder
@@ -60,12 +60,13 @@ library
                      ListUtils
                      Logic
                      Monad
+                     MonadState
+                     Multistep
                      Netlist
                      NetlistGeneration
                      Nat
                      Ndigits
                      PeanoNat
-                     Sequential
                      Signal
                      StateMonad
                      Traversable
@@ -93,7 +94,6 @@ library
                      MonadFix
                      MonadPlus
                      MonadReader
-                     MonadState
                      MonadTrans
                      MonadWriter
                      MonadZero

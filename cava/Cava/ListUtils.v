@@ -39,8 +39,10 @@ End Length.
 (* The push_length autorewrite database simplifies goals including [length] *)
 Hint Rewrite @nil_length @cons_length @seq_length @repeat_length @rev_length
      @map_length @firstn_length @skipn_length @app_length @combine_length
-     @tl_length
+     @tl_length @removelast_firstn_len
      using solve [eauto] : push_length.
+Hint Rewrite @removelast_firstn_len using solve [eauto] : push_length.
+
 Create HintDb length discriminated.
 Ltac length_hammer :=
   autorewrite with push_length; eauto with length; lia.
@@ -116,14 +118,73 @@ Section Misc.
     cbn [tl app]. reflexivity.
   Qed.
 
+  Lemma eta_list_cons_snoc {A} (l : list A) (d : A) :
+    2 < length l ->
+    l = hd d l :: (removelast (tl l)) ++ [last l d].
+  Proof.
+    intros.
+    destruct l; cbn [length] in *; [ Lia.lia | ].
+    destruct l using rev_ind; cbn [length] in *; [ Lia.lia | ].
+    cbn [hd tl]. rewrite !app_comm_cons, last_last.
+    rewrite removelast_last. reflexivity.
+  Qed.
+
+  Lemma removelast_tl {A} (l : list A) : removelast (tl l) = tl (removelast l).
+  Proof.
+    destruct l; [ reflexivity | ]. cbn [tl].
+    destruct l using rev_ind; [ reflexivity | ].
+    rewrite app_comm_cons, !removelast_last. reflexivity.
+  Qed.
+End Misc.
+Hint Rewrite @seq_snoc using solve [eauto] : pull_snoc.
+
+Section Rev.
+  Lemma last_rev {A} l (d : A) : last (rev l) d = hd d l.
+  Proof. destruct l; cbn [rev hd]; auto using last_last. Qed.
+
+  Lemma hd_rev {A} l (d : A) : hd d (rev l) = last l d.
+  Proof.
+    rewrite <-(rev_involutive l). rewrite (rev_involutive (rev l)).
+    rewrite last_rev. reflexivity.
+  Qed.
+
+  Lemma tl_rev {A} (l : list A) : tl (rev l) = rev (removelast l).
+  Proof.
+    destruct l using rev_ind; [ reflexivity | ].
+    rewrite rev_unit, removelast_last. reflexivity.
+  Qed.
+  Lemma removelast_rev {A} (l : list A) : removelast (rev l) = rev (tl l).
+  Proof.
+    rewrite <-(rev_involutive l). rewrite (rev_involutive (rev l)).
+    rewrite tl_rev, rev_involutive. reflexivity.
+  Qed.
+End Rev.
+Hint Rewrite @map_rev @last_rev @hd_rev @tl_rev @removelast_rev using solve [eauto] : pull_rev.
+
+Section Forall2.
   Lemma Forall2_length_eq {A B} (R : A -> B -> Prop) ls1 ls2 :
     Forall2 R ls1 ls2 -> length ls1 = length ls2.
   Proof.
     revert ls2; induction ls1; destruct ls2; auto;
       inversion 1; subst; cbn [length]; auto.
   Qed.
-End Misc.
-Hint Rewrite @seq_snoc using solve [eauto] : pull_snoc.
+
+  Lemma Forall2_eq_map_r {A B} (f : A -> B) ls1 ls2 :
+    Forall2 (fun a b => a = f b) ls1 ls2 ->
+    ls1 = map f ls2.
+  Proof.
+    revert ls2; induction ls1; destruct ls2; auto;
+      inversion 1; subst; cbn [map]; f_equal; eauto.
+  Qed.
+
+  Lemma Forall2_eq_map_l {A B} (f : A -> B) ls1 ls2 :
+    Forall2 (fun b a => a = f b) ls1 ls2 ->
+    ls2 = map f ls1.
+  Proof.
+    revert ls2; induction ls1; destruct ls2; auto;
+      inversion 1; subst; cbn [map]; f_equal; eauto.
+  Qed.
+End Forall2.
 Hint Resolve Forall2_length_eq : length.
 
 (* Definition and proofs of [extend], which pads a list to a specified length *)
@@ -621,12 +682,28 @@ Section FirstnSkipn.
     destruct lb; cbn [skipn combine]; [ rewrite combine_nil; reflexivity | ].
     rewrite IHn. reflexivity.
   Qed.
+
+  Lemma firstn_map {A B} (f : A -> B) n ls :
+    firstn n (map f ls) = map f (firstn n ls).
+  Proof.
+    revert ls; induction n; [ reflexivity | ].
+    destruct ls; [ reflexivity | ].
+    cbn [map firstn]. rewrite IHn; reflexivity.
+  Qed.
+
+  Lemma firstn_seq n start len :
+    firstn n (seq start len) = seq start (Nat.min n len).
+  Proof.
+    revert start len; induction n; [ reflexivity | ].
+    destruct len; [ reflexivity | ].
+    cbn [Nat.min seq firstn]. rewrite IHn; reflexivity.
+  Qed.
 End FirstnSkipn.
 Hint Rewrite @skipn_app @skipn_skipn @skipn_repeat @skipn_cons @skipn_O
      @skipn_nil @skipn_all @skipn_combine
      using solve [eauto] : push_skipn.
 Hint Rewrite @firstn_nil @firstn_cons @firstn_all @firstn_app @firstn_O
-     @firstn_firstn @combine_firstn
+     @firstn_firstn @combine_firstn @firstn_map @firstn_seq
      using solve [eauto] : push_firstn.
 
 (* Proofs about fold_right and fold_left *)
@@ -682,6 +759,17 @@ Section Folds.
   Proof.
     induction ls; intros; [ eassumption | ].
     cbn [fold_left]. eauto.
+  Qed.
+
+  Lemma fold_left_preserves_relation_In {A B C}
+        (R : B -> C -> Prop) (f : B -> A -> B) (g : C -> A -> C) :
+    forall ls b c,
+      R b c ->
+      (forall b c a, R b c -> In a ls -> R (f b a) (g c a)) ->
+      R (fold_left f ls b) (fold_left g ls c).
+  Proof.
+    induction ls; intros; [ eassumption | ].
+    cbn [fold_left In] in *. apply IHls; eauto.
   Qed.
 
   Lemma fold_left_preserves_relation_seq {B C}
@@ -774,6 +862,17 @@ Section Folds.
   Proof.
     intros ? ? IimpliesP. apply IimpliesP.
     apply fold_left_preserves_relation; eauto.
+  Qed.
+
+  Lemma fold_left_double_invariant_In {A B C} (I P : B -> C -> Prop)
+        (f : B -> A -> B) (g : C -> A -> C) (ls : list A) b c :
+    I b c -> (* invariant holds at start *)
+    (forall b c a, I b c -> In a ls -> I (f b a) (g c a)) -> (* invariant holds through loop body *)
+    (forall b c, I b c -> P b c) -> (* invariant implies postcondition *)
+    P (fold_left f ls b) (fold_left g ls c).
+  Proof.
+    intros ? ? IimpliesP. apply IimpliesP.
+    apply fold_left_preserves_relation_In; eauto.
   Qed.
 
   (* Similar to fold_left_double_invariant, except the invariant can depend on
@@ -1077,6 +1176,66 @@ Section FoldLeftAccumulate.
     reflexivity.
   Qed.
 
+  Lemma fold_left_accumulate_invariant_seq {A B}
+        (I : nat -> B -> list B -> Prop) (P : (list B * B) -> Prop)
+        (f : B -> A -> B) (ls : list A) b :
+    I 0 b [b] -> (* invariant holds at start *)
+  (* invariant holds through loop *)
+  (forall t st acc d,
+      I t st acc ->
+      0 <= t < length ls ->
+      let out := f st (nth t ls d) in
+      I (S t) out (acc ++ [out])) ->
+    (* invariant implies postcondition *)
+    (forall st acc,
+        I (length ls) st acc ->
+        P (acc, st)) ->
+    P (fold_left_accumulate f ls b).
+  Proof.
+    intros ? ? IimpliesP. cbv [fold_left_accumulate fold_left_accumulate'].
+    destruct ls as[|default ls]; [ cbn; solve [auto] | ].
+    erewrite fold_left_to_seq with (default0:=default).
+    eapply fold_left_invariant_seq
+          with (I0 := fun i '(acc,st) =>
+                        I i st acc).
+    { cbn. eauto. }
+    { intros ? [? ?]; intros.
+      cbn [Nat.add] in *; auto. }
+    { intros [? ?]; cbn [length Nat.add]; intros.
+      auto. }
+  Qed.
+
+  Lemma fold_left_accumulate_double_invariant_In {A B C}
+        (I : B -> C -> Prop) (P : (list B * B) -> (list C * C) -> Prop)
+        (f1 : B -> A -> B) (f2 : C -> A -> C)
+        (ls : list A) b d :
+    I b d -> (* invariant holds at start *)
+    (forall b d a, I b d -> In a ls -> I (f1 b a) (f2 d a)) -> (* invariant holds through loop body *)
+    (* invariant implies postcondition *)
+    (forall b d acc1 acc2,
+        I b d ->
+        Forall2 I acc1 acc2 ->
+        P (acc1, b) (acc2, d)) ->
+    P (fold_left_accumulate f1 ls b)
+      (fold_left_accumulate f2 ls d).
+  Proof.
+    intros ? ? IimpliesP. cbv [fold_left_accumulate fold_left_accumulate'].
+    eapply fold_left_double_invariant_In
+      with (I0 := fun '(acc1, a') '(acc2, b') =>
+                    Forall2 I acc1 acc2
+                    /\ I a' b');
+      intros;
+      repeat match goal with
+             | x : _ * _ |- _ => destruct x
+             | H : _ /\ _ |- _ => destruct H
+             | |- _ /\ _ => split; try length_hammer
+             | |- last _ _ = _ => apply last_last
+             end.
+    { cbn [app]; repeat constructor; auto. }
+    { apply Forall2_app; auto. }
+    { apply IimpliesP; auto. }
+  Qed.
+
   Lemma fold_left_accumulate_double_invariant_seq {A B}
         (I : nat -> A -> B -> Prop) (P : list A * A -> list B * B -> Prop)
         (f : A -> nat -> A) (g : B -> nat -> B) start len a b :
@@ -1144,21 +1303,7 @@ Section FoldLeftAccumulate.
     P (fold_left_accumulate f1 ls b)
       (fold_left_accumulate f2 ls d).
   Proof.
-    intros ? ? IimpliesP. cbv [fold_left_accumulate fold_left_accumulate'].
-    eapply fold_left_double_invariant
-      with (I0 := fun '(acc1, a') '(acc2, b') =>
-                    Forall2 I acc1 acc2
-                    /\ I a' b');
-      intros;
-      repeat match goal with
-             | x : _ * _ |- _ => destruct x
-             | H : _ /\ _ |- _ => destruct H
-             | |- _ /\ _ => split; try length_hammer
-             | |- last _ _ = _ => apply last_last
-             end.
-    { cbn [app]; repeat constructor; auto. }
-    { apply Forall2_app; auto. }
-    { apply IimpliesP; auto. }
+    intros. eapply fold_left_accumulate_double_invariant_In; eauto.
   Qed.
 
 End FoldLeftAccumulate.

@@ -40,44 +40,49 @@ Section WithCava.
     //
     // For details, see Equations 4-7 of:
     // Satoh et al., "A Compact Rijndael Hardware Architecture with S-Box Optimization"
-    *)
+     *)
+
+    (* Get separate bytes from the input column *)
+    data_i_0 <- data_i[@0] ;;
+    data_i_1 <- data_i[@1] ;;
+    data_i_2 <- data_i[@2] ;;
+    data_i_3 <- data_i[@3] ;;
 
     (* // Drive x *)
     (* assign x[0] = data_i[0] ^ data_i[3]; *)
     (* assign x[1] = data_i[3] ^ data_i[2]; *)
     (* assign x[2] = data_i[2] ^ data_i[1]; *)
     (* assign x[3] = data_i[1] ^ data_i[0]; *)
-    let x :=
-      [(data_i[@0], data_i[@3]);
-       (data_i[@3], data_i[@2]);
-       (data_i[@2], data_i[@1]);
-       (data_i[@1], data_i[@0])] in
-    x'' <- mapT xorV x ;;
+    x_0 <- xorV (data_i_0, data_i_3) ;;
+    x_1 <- xorV (data_i_3, data_i_2) ;;
+    x_2 <- xorV (data_i_2, data_i_1) ;;
+    x_3 <- xorV (data_i_1, data_i_0) ;;
 
 
     (* // Mul2(x) *)
     (*   for (genvar i = 0; i < 4; i++) begin : gen_x_mul2 *)
     (*     assign x_mul2[i] = aes_mul2(x[i]); *)
     (*   end *)
-    x_mul2 <- mapT aes_mul2 x'' ;;
-    x' <- localSignal (unpeel x'') ;;
-    let x_mul2 := unpeel x_mul2 in
+    x_mul2_0 <- aes_mul2 x_0 ;;
+    x_mul2_1 <- aes_mul2 x_1 ;;
+    x_mul2_2 <- aes_mul2 x_2 ;;
+    x_mul2_3 <- aes_mul2 x_3 ;;
 
     (* // Drive y_pre_mul4 *)
     (* assign y_pre_mul4[0] = data_i[3] ^ data_i[1]; *)
     (* assign y_pre_mul4[1] = data_i[2] ^ data_i[0]; *)
-    y_pre_mul4_0 <- xorv data_i[@3] data_i[@1] ;;
-    y_pre_mul4_1 <- xorv data_i[@2] data_i[@0] ;;
+    y_pre_mul4_0 <- xorv data_i_3 data_i_1 ;;
+    y_pre_mul4_1 <- xorv data_i_2 data_i_0 ;;
     (* // Mul4(y_pre_mul4) *)
     (* for (genvar i = 0; i < 2; i++) begin : gen_mul4 *)
     (*   assign y[i] = aes_mul4(y_pre_mul4[i]); *)
     (* end *)
-    y <- mapT aes_mul4 [y_pre_mul4_0; y_pre_mul4_1] ;;
-    y' <- localSignal (unpeel y) ;;
+    y_0 <- aes_mul4 y_pre_mul4_0 ;;
+    y_1 <- aes_mul4 y_pre_mul4_1 ;;
 
     (* // Drive y2_pre_mul2 *)
     (* assign y2_pre_mul2 = y[0] ^ y[1]; *)
-    y2_pre_mul2 <- xorv y'[@0] y'[@1] ;;
+    y2_pre_mul2 <- xorv y_0 y_1 ;;
     (* // Mul2(y) *)
     (* assign y2 = aes_mul2(y2_pre_mul2); *)
     y2 <- aes_mul2 y2_pre_mul2 ;;
@@ -85,24 +90,24 @@ Section WithCava.
     (* // Drive z *)
     (* assign z[0] = y2 ^ y[0]; *)
     (* assign z[1] = y2 ^ y[1]; *)
-    z_0 <- xorv y2 y'[@0] ;;
-    z_1 <- xorv y2 y'[@1] ;;
-    z <- localSignal (unpeel [z_0; z_1]) ;;
+    z_0 <- xorv y2 y_0 ;;
+    z_1 <- xorv y2 y_1 ;;
 
     (* // Mux z *)
     (* assign z_muxed[0] = (op_i == CIPH_FWD) ? 8'b0 : z[0]; *)
     (* assign z_muxed[1] = (op_i == CIPH_FWD) ? 8'b0 : z[1]; *)
-    z_muxed <- muxPair op_i (unpeel [zero_byte; zero_byte], z) ;;
+    z_muxed_0 <- muxPair op_i (zero_byte, z_0) ;;
+    z_muxed_1 <- muxPair op_i (zero_byte, z_1) ;;
 
     (* // Drive outputs *)
     (* assign data_o[0] = data_i[1] ^ x_mul2[3] ^ x[1] ^ z_muxed[1]; *)
     (* assign data_o[1] = data_i[0] ^ x_mul2[2] ^ x[1] ^ z_muxed[0]; *)
     (* assign data_o[2] = data_i[3] ^ x_mul2[1] ^ x[3] ^ z_muxed[1]; *)
     (* assign data_o[3] = data_i[2] ^ x_mul2[0] ^ x[3] ^ z_muxed[0]; *)
-    data_o0 <- (xorv data_i[@1] x_mul2[@3] >>= xorv x'[@1] >>= xorv z_muxed[@1]) ;;
-    data_o1 <- (xorv data_i[@0] x_mul2[@2] >>= xorv x'[@1] >>= xorv z_muxed[@0]) ;;
-    data_o2 <- (xorv data_i[@3] x_mul2[@1] >>= xorv x'[@3] >>= xorv z_muxed[@1]) ;;
-    data_o3 <- (xorv data_i[@2] x_mul2[@0] >>= xorv x'[@3] >>= xorv z_muxed[@0]) ;;
+    data_o0 <- (xorv data_i_1 x_mul2_3 >>= xorv x_1 >>= xorv z_muxed_1) ;;
+    data_o1 <- (xorv data_i_0 x_mul2_2 >>= xorv x_1 >>= xorv z_muxed_0) ;;
+    data_o2 <- (xorv data_i_3 x_mul2_1 >>= xorv x_3 >>= xorv z_muxed_1) ;;
+    data_o3 <- (xorv data_i_2 x_mul2_0 >>= xorv x_3 >>= xorv z_muxed_0) ;;
 
     ret (unpeel [data_o0; data_o1; data_o2; data_o3]).
 

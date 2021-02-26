@@ -25,6 +25,7 @@ Export MonadNotation.
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.UnsignedAdders.
+Import Circuit.Notations.
 
 From Coq Require Import Bool.Bvector.
 
@@ -33,11 +34,10 @@ From Coq Require Import Bool.Bvector.
 (******************************************************************************)
 
 Section WithCava.
-  Context `{CavaSeq}.
+  Context `{Cava}.
 
-  Definition delayByte (i : signal (Vec Bit 8))
-                       : cava (signal (Vec Bit 8)) :=
-  delay i.
+  Definition delayByte : Circuit (signal (Vec Bit 8)) (signal (Vec Bit 8)) :=
+    Delay.
 
 End WithCava.
 
@@ -52,14 +52,8 @@ Definition b250 := N2Bv_sized 8 250.
 
 Local Open Scope list_scope.
 
-Example delay_ex1: sequential (delayByte [b14; b7; b250]) = [b0; b14; b7; b250].
+Example delay_ex1: multistep delayByte [b14; b7; b250] = [b0; b14; b7].
 Proof. reflexivity. Qed.
-
-Lemma delayByteBehaviour: forall (i : list (Bvector 8)),
-                          sequential (delayByte i) =  b0 :: i.
-Proof.
-  reflexivity.
-Qed.
 
 Definition delayByte_Interface
   := sequentialInterface "delayByte"
@@ -68,12 +62,12 @@ Definition delayByte_Interface
      [mkPort "o" (Vec Bit 8)]
      [].
 
-Definition delayByte_Netlist := makeNetlist delayByte_Interface delayByte.
+Definition delayByte_Netlist := makeCircuitNetlist delayByte_Interface delayByte.
 
 Definition delayByte_tb_inputs := [b14; b7; b250].
 
 Definition delayByte_tb_expected_outputs
-  := sequential (delayByte delayByte_tb_inputs).
+  := multistep delayByte delayByte_tb_inputs.
 
 Definition delayByte_tb
   := testBench "delayByte_tb" delayByte_Interface
@@ -84,40 +78,23 @@ Definition delayByte_tb
 (******************************************************************************)
 
 Section WithCava.
-  Context `{CavaSeq}.
+  Context `{Cava}.
 
-  Definition delayEnableByte (en_i : signal Bit * signal (Vec Bit 8))
-                             : cava (signal (Vec Bit 8)) :=
-  let (en, i) := en_i in                           
-  delayEnable en i.
+  Definition delayEnableByte
+    : Circuit (signal (Vec Bit 8) * signal Bit) (signal (Vec Bit 8)) :=
+    DelayCE.
 
 End WithCava.
 
 Definition delayEnableByte_Interface
   := sequentialInterface "delayEnableByte"
      "clk" PositiveEdge "rst" PositiveEdge
-     [mkPort "en" Bit; mkPort "i" (Vec Bit 8)]
+     [mkPort "i" (Vec Bit 8); mkPort "en" Bit]
      [mkPort "o" (Vec Bit 8)]
      [].
 
 Definition delayEnableByte_Netlist
-  := makeNetlist delayEnableByte_Interface delayEnableByte.
-
-(* Ideally we want to provide this representation for the sequential test
-   inputs i.e. delayEnableByte_transposed_tb_inputs and then automatically
-   compute delayEnableByte_tb_inputs but for the moment we explicitly provide
-   both versions. Likewise for the output types.
-   TODO(satnam6502): Write appropriate transpose functions that maps:
-     list (tupleInterface combType [t1; t2; ... tN]])
-   to:
-     tupleInterface seqType [t1; t2; ... tN]
-*)
-Definition delayEnableByte_transposed_tb_inputs : list (tupleInterface combType [Bit; Vec Bit 8]) :=
-  [(true,  b14);
-   (false, b7);
-   (true,  b250);
-   (true,  b18)
-  ].
+  := makeCircuitNetlist delayEnableByte_Interface delayEnableByte.
 
 (* The first output should be the default initial/reset value of the
    register i.e. followed by the input values that arrive with enable=1,
@@ -125,31 +102,30 @@ Definition delayEnableByte_transposed_tb_inputs : list (tupleInterface combType 
    input value influences the internal state but does not appear in the output
    stream.
 *)
-Definition delayEnableByte_tb_inputs : tupleInterface seqType [Bit; Vec Bit 8]
-  := ([true; false; true; true],
-      [b14;  b7;    b250; b18]).
+Definition delayEnableByte_tb_inputs :=
+  [(b14, true); (b7, false); (b250, true); (b18, true)].
 
 Example delayEnableByte_test:
-  sequential (delayEnableByte delayEnableByte_tb_inputs) = [b0; b14; b14; b250].
+  multistep delayEnableByte delayEnableByte_tb_inputs = [b0; b14; b14; b250].
 Proof. reflexivity. Qed.
 
 Definition delayEnableByte_tb_expected_outputs
-  := sequential (delayEnableByte delayEnableByte_tb_inputs).
+  := multistep delayEnableByte delayEnableByte_tb_inputs.
 
 Definition delayEnableByte_tb
   := testBench "delayEnableByte_tb" delayEnableByte_Interface
-     delayEnableByte_transposed_tb_inputs [b0; b14; b14; b250].
+     delayEnableByte_tb_inputs delayEnableByte_tb_expected_outputs.
 
 (******************************************************************************)
 (* A pipelined NAND gate.                                                     *)
 (******************************************************************************)
 
 Section WithCava.
-  Context `{semantics: CavaSeq}.
+  Context `{semantics: Cava}.
 
  (* A nand-gate with registers after the AND gate and the INV gate. *)
-  Definition pipelinedNAND : signal Bit * signal Bit -> cava (signal Bit) :=
-    nand2 >=> delay >=> inv >=> delay.
+  Definition pipelinedNAND : Circuit (signal Bit * signal Bit) (signal Bit) :=
+    Comb nand2 >==> Delay >==> Comb inv >==> Delay.
 
 End WithCava.
 
@@ -161,20 +137,49 @@ Definition pipelinedNANDInterface
      [].
 
 Definition pipelinedNANDNetlist :=
-  makeNetlist pipelinedNANDInterface pipelinedNAND.
-
+  makeCircuitNetlist pipelinedNANDInterface pipelinedNAND.
 
 Definition pipelinedNAND_tb_inputs
-  := ([true; false;  true; false; true;  false; true; false],
-      [false; false; true; true;  false; false; true; true]
-     ).
+  := [(true, false);
+     (false, false);
+     (true,  true);
+     (false, true);
+     (true,  false);
+     (false, false);
+     (true,  true);
+     (false, true)].
+
+(*
+     _______    ______    _____    ______
+a --|       |  |      |  |     |  |      |
+    | nand2 |--| reg1 |--| inv |--| reg2 |-- out
+b --|_______|  |______|  |_____|  |______|
+
+
+reg1[0] = reg2[0] = 0
+reg1[t] = nand a[t] b[t]
+reg2[t] = inv reg1[t-1]
+out = reg2[t-1]
+
+Test:
+
+t    0  1  2  3  4  5  6  7
+---------------------------
+a    1  0  1  0  1  0  1  0
+b    0  0  1  1  0  0  1  1
+reg1 1  1  0  1  1  1  0  1
+reg2 1  0  0  1  0  0  0  1
+out  0  1  0  0  1  0  0  0
+ *)
+
+Example pipelinedNAND_test:
+  multistep pipelinedNAND pipelinedNAND_tb_inputs
+  = [false; true; false; false; true; false; false; false].
+Proof. reflexivity. Qed.
 
 Definition pipelinedNAND_tb_expected_outputs
-  := sequential (pipelinedNAND pipelinedNAND_tb_inputs).
+  := multistep pipelinedNAND pipelinedNAND_tb_inputs.
 
-(* TODO(satnam6502): Sequential interface for test-bench generation.
-Compute list (tupleSimInterface (circuitInputs pipelinedNANDInterface)).
 Definition pipelinedNAND_tb
   := testBench "pipelinedNAND_tb" pipelinedNANDInterface
      pipelinedNAND_tb_inputs pipelinedNAND_tb_expected_outputs.
-*)

@@ -20,7 +20,6 @@ Require Import ExtLib.Structures.Monads.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
-Require Import Cava.Acorn.MonadFacts.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
@@ -30,8 +29,6 @@ Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
 Require Import AcornAes.AddRoundKeyCircuit.
 Import StateTypeConversions.LittleEndian.
-
-Existing Instance CombinationalSemantics.
 
 Section Equivalence.
   Local Notation byte := (Vector.t bool 8).
@@ -56,29 +53,25 @@ Section Equivalence.
   Qed.
 
   Lemma add_round_key_equiv (k : key) (st : state) :
-    combinational (aes_add_round_key [k] [st])
-    = [AES256.aes_add_round_key_circuit_spec k st].
+    unIdent (aes_add_round_key k st)
+    = AES256.aes_add_round_key_circuit_spec k st.
   Proof.
     cbv [AES256.aes_add_round_key_circuit_spec
            AES256.add_round_key
            AddRoundKeyCircuit.aes_add_round_key
            AddRoundKey.add_round_key].
-    cbv [xor4x4V xor4xV]. cbv [Bvector.BVxor].
-    erewrite (zipWith_unIdent (A:=Vec (Vec Bit 8) 4)
-                              (B:=Vec (Vec Bit 8) 4)
-                              (C:=Vec (Vec Bit 8) 4));
-      [ | congruence | ].
-    2:{ cbn [fst snd]. intros.
-        erewrite (zipWith_unIdent (A:=Vec Bit 8)
-                                  (B:=Vec Bit 8)
-                                  (C:=Vec Bit 8))
-          by first [ congruence
-                   | intros; rewrite xorV_unIdent by congruence;
-                     reflexivity ].
-        reflexivity. }
-    f_equal. rewrite map2_to_cols_bits, map2_to_flat.
+    cbv [xor4x4V xor4xV].
+    cbv [Bvector.BVxor xorV].
+
+    rewrite map2_to_cols_bits, map2_to_flat.
     autorewrite with conversions.
-    do 3 (rewrite map2_swap; apply map2_ext; intros).
+
+    repeat (cbv [zipWith vcombine];
+            simpl_ident;
+            rewrite map_map2;
+            rewrite map2_swap;
+            apply map2_ext; intros).
+
     apply Bool.xorb_comm.
   Qed.
 End Equivalence.

@@ -78,17 +78,15 @@ Local Open Scope string_scope.
 Local Open Scope vector_scope.
 
 Definition v0_v1 := [v0; v1].
-Definition v0_plus_v1 : list (Bvector 8) := combinational (adderTree 0 [v0_v1]%list).
+Definition v0_plus_v1 : Bvector 8 := unIdent (adderTree 0 v0_v1).
 
-Example sum_vo_v1 : combinational (adderTree2 [v0_v1]%list) = [N2Bv_sized 8 21]%list.
+Example sum_vo_v1 : unIdent (adderTree2 v0_v1) = N2Bv_sized 8 21.
 Proof. reflexivity. Qed.
 
-
-
 Definition v0_3 := [v0; v1; v2; v3].
-Definition sum_v0_3 : list (Bvector 8) := combinational (adderTree4 [v0_3]%list).
+Definition sum_v0_3 : Bvector 8 := unIdent (adderTree4 v0_3).
 
-Example sum_v0_v1_v2_v3 : combinational (adderTree4 [v0_3]%list) = [N2Bv_sized 8 30]%list.
+Example sum_v0_v1_v2_v3 : unIdent (adderTree4 v0_3) = N2Bv_sized 8 30.
 Proof. reflexivity. Qed.
 
 Definition adder_tree_Interface name nrInputs bitSize
@@ -112,8 +110,7 @@ Definition adder_tree4_8_tb_inputs
      ].
 
 Definition adder_tree4_8_tb_expected_outputs
-  := map (fun i => List.hd (Vector.const false _) (combinational (adderTree4 [i]%list)))
-         adder_tree4_8_tb_inputs.
+  := multistep (Comb adderTree4) adder_tree4_8_tb_inputs.
 
 Definition adder_tree4_8_tb :=
   testBench "adder_tree4_8_tb" adder_tree4_8Interface
@@ -141,8 +138,7 @@ Definition adder_tree64_8_tb_inputs
      [vseq 0 64; vseq 64 64; vseq 128 64]).
 
 Definition adder_tree64_8_tb_expected_outputs
-  := map (fun i => List.hd (Vector.const false _)
-                        (combinational (adderTree 5 [i]%list))) adder_tree64_8_tb_inputs.
+  := multistep (Comb (adderTree 5)) adder_tree64_8_tb_inputs.
 
 Definition adder_tree64_8_tb :=
   testBench "adder_tree64_8_tb" adder_tree64_8Interface
@@ -161,8 +157,7 @@ Definition adder_tree64_128_tb_inputs
      [vseq 0 64; vseq 64 64; vseq 128 64]).
 
 Definition adder_tree64_128_tb_expected_outputs
-  := map (fun i => List.hd (Vector.const false _)
-                        (combinational (adderTree 5 [i]%list))) adder_tree64_128_tb_inputs.
+  := multistep (Comb (adderTree 5)) adder_tree64_128_tb_inputs.
 
 Definition adder_tree64_128_tb :=
   testBench "adder_tree64_128_tb" adder_tree64_128Interface

@@ -28,7 +28,7 @@ Require Import Cava.Lib.UnsignedAdders.
 
 (******************************************************************************)
 (* countBy                                                                    *)
-(******************************************************************************) 
+(******************************************************************************)
 
 (*
 
@@ -48,11 +48,10 @@ bit-growth i.e. it computes (a + b) mod 256.
 *)
 
 Section WithCava.
-  Context {signal} {combsemantics: Cava signal}
-          {semantics: CavaSeq combsemantics}.
+  Context {signal} {semantics: Cava signal}.
 
-  Definition countBy : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))
-    := loopDelayS addN.
+  Definition countBy : Circuit (signal (Vec Bit 8)) (signal (Vec Bit 8))
+    := Loop (Comb (addN >=> fork2)).
 
 End WithCava.
 
@@ -68,7 +67,7 @@ Definition b250 := N2Bv_sized 8 250.
 
 Local Open Scope list_scope.
 
-Example countBy_ex1: sequential (countBy [b14; b7; b3; b250]) = [b14; b21; b24; b18].
+Example countBy_ex1: multistep countBy [b14; b7; b3; b250] = [b14; b21; b24; b18].
 Proof. reflexivity. Qed.
 
 Definition countBy_Interface
@@ -78,13 +77,13 @@ Definition countBy_Interface
      [mkPort "o" (Vec Bit 8)]
      [].
 
-Definition countBy_Netlist := makeNetlist countBy_Interface countBy.
+Definition countBy_Netlist := makeCircuitNetlist countBy_Interface countBy.
 
 Definition countBy_tb_inputs
   := [b14; b7; b3; b250].
 
-Definition countBy_tb_expected_inputs := sequential (countBy countBy_tb_inputs).
+Definition countBy_tb_expected_outputs := multistep countBy countBy_tb_inputs.
 
 Definition countBy_tb
   := testBench "countBy_tb" countBy_Interface
-     countBy_tb_inputs countBy_tb_expected_inputs.
+     countBy_tb_inputs countBy_tb_expected_outputs.

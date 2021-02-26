@@ -28,6 +28,7 @@ Import ListNotations.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.Circuit.
 
 (******************************************************************************)
 (* Netlist implementations for the Cava class.                                *)
@@ -189,12 +190,6 @@ Definition muxcyNet (s ci di : Signal Bit) : state CavaState (Signal Bit) :=
   addInstance (Component "MUXCY" [] [("O", USignal o); ("S", USignal s); ("CI", USignal ci); ("DI", USignal di)]) ;;
   ret o.
 
-Definition unpairNet {t1 t2 : SignalType} (v : Signal (Pair t1 t2)) : Signal t1 * Signal t2 :=
-  (SignalFst v, SignalSnd v).
-
-Definition mkpairNet {t1 t2 : SignalType} (v1 : Signal t1) (v2 : Signal t2) : Signal (Pair t1 t2) :=
-  SignalPair v1 v2.
-
 Definition peelNet {t : SignalType} {s : nat} (v : Signal (Vec t s)) : Vector.t (Signal t) s :=
   Vector.map (IndexConst v) (vseq 0 s).
 
@@ -216,55 +211,8 @@ Fixpoint combToSignal (t : SignalType) (v : combType t) : Signal t :=
                | true => Vcc
                end
   | Vec vt s, v => VecLit (Vector.map (combToSignal vt) v)
-  | Pair ta tb, (a, b) => SignalPair (combToSignal ta a) (combToSignal tb b)
   | ExternalType typ, _ => UninterpretedSignal typ
   end.
-
-Definition delayNet (t: SignalType)
-                    (resetValue : combType t)
-                    (i : Signal t)
-                    : state CavaState (Signal t) :=
-  o <- newSignal t ;;
-  addInstance (Delay t (combToSignal t resetValue) i o) ;;
-  ret o.
-
-Definition delayEnableNet (t : SignalType)
-                          (resetValue : combType t)
-                          (en : Signal Bit)
-                          (i : Signal t)
-                          : state CavaState (Signal t) :=
-  o <- newSignal t ;;
-  addInstance (DelayEnable t (combToSignal t resetValue) en i o) ;;
-  ret o.
-
-Local Open Scope type_scope.
-
-(* Create a loop circuit with a delay element along the feedback path which
-   makes the current state available at the output. *)
-Definition loopNetS (A B : SignalType)
-                    (resetValue : combType B)
-                    (f : Signal A * Signal B -> state CavaState (Signal B))
-                    (a : Signal A)
-                    : state CavaState (Signal B) :=
-  o <- @newSignal B ;;
-  out <- f (a, o) ;;
-  oDelay <- delayNet B resetValue out ;;
-  assignSignal o oDelay ;;
-  ret out.
-
-(* Create a loop circuit with a delay element with enable along the feedback
-   path with the current state exposed at the output. *)
-Definition loopNetEnableS (A B : SignalType)
-                          (resetValue : combType B)
-                          (en : Signal Bit)
-                          (f : Signal A * Signal B -> state CavaState (Signal B))
-                          (a : Signal A)
-                         : state CavaState (Signal B) :=
-  o <- @newSignal B ;;
-  out <- f (a, o) ;;
-  oDelay <- delayEnableNet B resetValue en out ;;
-  assignSignal o oDelay ;;
-  ret out.
 
 Definition localSignalNet {A : SignalType}
                           (v : Signal A)
@@ -309,75 +257,53 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     lut6 := lut6Net;
     xorcy := xorcyNet;
     muxcy := muxcyNet;
-    mkpair := @mkpairNet;
-    unpair := @unpairNet;
     peel := @peelNet;
     unpeel := @unpeelNet;
-    indexAt k sz isz := IndexAt;
-    indexConst k sz := IndexConst;
-    slice k sz := @sliceNet k sz;
-    unsignedAdd m n ab := @UnsignedAdd m n (1 + max m n) (fst ab) (snd ab);
-    unsignedMult m n ab := @UnsignedMultiply m n (m + n) (fst ab) (snd ab);
-    greaterThanOrEqual m n ab := @GreaterThanOrEqual m n (fst ab) (snd ab);
+    indexAt k sz isz v i := localSignalNet (IndexAt v i);
+    indexConst k sz v i := localSignalNet (IndexConst v i);
+    slice k sz start len v H := localSignalNet (@sliceNet k sz start len v H);
+    unsignedAdd m n ab :=
+      localSignalNet (@UnsignedAdd m n (1 + max m n) (fst ab) (snd ab));
+    unsignedMult m n ab :=
+      localSignalNet (@UnsignedMultiply m n (m + n) (fst ab) (snd ab));
+    greaterThanOrEqual m n ab :=
+      localSignalNet (@GreaterThanOrEqual m n (fst ab) (snd ab));
     localSignal := @localSignalNet;
     instantiate := instantiateNet;
     blackBox := blackBoxNet;
 }.
 
-Instance CavaSequentialNet : CavaSeq CavaCombinationalNet :=
-  { delayWith k d := delayNet k d;
-    delayEnableWith k d := delayEnableNet k d;
-    loopDelaySR a b := loopNetS a b;
-    loopDelaySEnableR en a b := loopNetEnableS en a b;
-  }.
-
-
-Require Import Cava.Acorn.Circuit.
-
-(* Create new signals for internal circuit signals *)
-Fixpoint newCircuitStateSignals {i o} (c : Circuit i o)
-  : state CavaState (circuit_state c) :=
-  match c with
-  | Comb _ => ret tt
+(* Run circuit for a single step *)
+Fixpoint interpCircuit {i o} (c : Circuit i o)
+    : i -> state CavaState o :=
+  match c in Circuit i o return i -> state CavaState o with
+  | Comb f => f
   | Compose f g =>
-    fs <- newCircuitStateSignals f ;;
-    gs <- newCircuitStateSignals g ;;
-    ret (fs, gs)
-  | First f | Second f => newCircuitStateSignals f
-  | @LoopInitCE _ _ i o s _ _ f =>
-    fs <- newCircuitStateSignals f ;;
-    ss <- newSignal s ;;
-    ret (fs, ss)
-  | @DelayInitCE _ _ t _ _ => newSignal t
+    fun input =>
+      x <- interpCircuit f input ;;
+      y <- interpCircuit g x ;;
+      ret y
+  | First f =>
+    fun input =>
+      x <- interpCircuit f (fst input) ;;
+      ret (x, snd input)
+  | Second f =>
+    fun input =>
+      x <- interpCircuit f (snd input) ;;
+      ret (fst input, x)
+  | @LoopInitCE _ _ i o s resetval f =>
+    fun '(input, en) =>
+      feedback_in <- newSignal s ;;
+      '(out, feedback_out) <- interpCircuit f (input, feedback_in) ;;
+      (* place a delay on the feedback wire *)
+      addInstance (DelayEnable s resetval en feedback_out feedback_in) ;;
+      ret out
+  | @DelayInitCE _ _ t resetval =>
+    fun '(input, en) =>
+      out <- newSignal t ;;
+      addInstance (DelayEnable t resetval en input out) ;;
+      ret out
   end.
-
-(* "Close the loop" by adding delays to connect the output and input states *)
-Fixpoint linkCircuitStateSignals {i o} (c : Circuit i o)
-  : circuit_state c -> circuit_state c -> state CavaState unit :=
-  match c with
-  | Comb _ => fun _ _ => ret tt
-  | Compose f g =>
-    fun in_state out_state =>
-      fs <- linkCircuitStateSignals f (fst in_state) (fst out_state) ;;
-      linkCircuitStateSignals g (snd in_state) (snd out_state)
-  | First f | Second f => linkCircuitStateSignals f
-  | @LoopInitCE _ _ i o s en resetval f =>
-    fun in_state out_state =>
-      fs <- linkCircuitStateSignals f (fst in_state) (fst out_state) ;;
-      let ins := snd in_state in
-      let outs := snd out_state in
-      addInstance (DelayEnable s resetval en ins outs)
-  | @DelayInitCE _ _ t en resetval =>
-    fun ins outs =>
-      addInstance (DelayEnable t resetval en ins outs)
-  end.
-
-Definition interpCircuit {i o} (c : Circuit i o) (input : i)
-    : state CavaState o :=
-  in_state <- newCircuitStateSignals c ;; (* x : circuit_state c *)
-  '(out, out_state) <- interp c in_state input ;;
-  linkCircuitStateSignals c in_state out_state ;;
-  ret out.
 
 Definition makeCircuitNetlist (intf : CircuitInterface)
            (c : Circuit (tupleNetInterface (circuitInputs intf))

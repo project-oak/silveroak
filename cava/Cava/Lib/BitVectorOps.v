@@ -24,7 +24,8 @@ Export MonadNotation.
 Open Scope monad_scope.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.Combinators.
 
 Section WithCava.
   Context {signal} `{Cava signal}.

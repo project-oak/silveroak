@@ -22,6 +22,7 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
+Existing Instance CavaCombinationalNet.
 
 Definition lutNAND {signal} `{Cava signal}
            (i0i1 : signal Bit * signal Bit) : cava (signal Bit) :=
@@ -41,10 +42,7 @@ Definition lutNANDNetlist := makeNetlist lutNANDInterface lutNAND.
  [(false, false); (false, true); (true, false); (true, true)].
 
  Definition lutNAND_tb_expected_outputs : list bool :=
-   map (fun '(i0,i1) =>
-          List.hd (defaultCombValue _)
-                  (combinational (lutNAND ([i0],[i1])%list)))
-       lutNAND_tb_inputs.
+   multistep (Comb lutNAND) lutNAND_tb_inputs.
 
 Definition lutNAND_tb :=
   testBench "lutNAND_tb" lutNANDInterface

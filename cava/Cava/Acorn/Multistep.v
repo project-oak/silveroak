@@ -15,23 +15,27 @@
 (****************************************************************************)
 
 Require Import Coq.Lists.List.
+Require Import coqutil.Tactics.Tactics.
 Import ListNotations.
 
 Require Import Cava.ListUtils.
+Require Import Cava.Signal.
 Require Import Cava.Tactics.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Combinational.
-Require Import Cava.Acorn.IdentityNew.
+Require Import Cava.Acorn.Identity.
+
+Existing Instance CombinationalSemantics.
 
 (* Run a circuit for many timesteps, starting at the reset value *)
 Definition multistep {i o} (c : Circuit i o) (input : list i) : list o :=
   match input with
   | [] => []
   | i :: input =>
-    let '(o,st) := unIdent (interp c (reset_state c) i) in
+    let '(o,st) := step c (reset_state c) i in
     let '(acc, _) := fold_left_accumulate
-                       (fun o_st i => unIdent (interp c (snd o_st) i))
+                       (fun o_st => step c (snd o_st))
                        input (o,st) in
     map fst acc
   end.
@@ -44,7 +48,7 @@ Proof.
   repeat destruct_pair_let; simpl_ident.
   destruct input as [|i1 input]; [ cbn; repeat destruct_pair_let; reflexivity | ].
   rewrite !fold_left_accumulate_cons_full.
-  cbn [fst snd map interp reset_state circuit_state].
+  cbn [fst snd map step reset_state circuit_state].
   repeat first [ destruct_pair_let | progress simpl_ident ].
   rewrite <-!surjective_pairing.
   rewrite fold_left_accumulate_map.
@@ -58,15 +62,13 @@ Proof.
   { reflexivity. }
   { intros. repeat first [ destruct_pair_let | progress simpl_ident ].
     subst. cbn [fst snd]. reflexivity. }
-  { intros b d acc1 acc2; intros ? Hnth. cbn [fst snd].
-    assert (length acc1 = length acc2) by length_hammer.
-    rewrite <-Forall2_nth_iff in Hnth by length_hammer.
-    apply list_eq_elementwise; [ symmetry; length_hammer | ].
-    intros. autorewrite with push_length in *. rewrite map_map.
-    rewrite map_nth_inbounds with (d2:=d) by length_hammer.
-    erewrite map_nth_inbounds with (d2:=b) by length_hammer.
-    erewrite Hnth by Lia.lia. cbn [fst snd]. reflexivity. }
+  { intros. subst; destruct_products. cbn [fst snd] in *.
+    match goal with H : Forall2 _ _ _ |- _ =>
+                    apply Forall2_eq_map_l in H end.
+    subst. rewrite !map_map. apply map_ext; intros.
+    reflexivity. }
 Qed.
+Hint Rewrite @multistep_compose using solve [eauto] : push_multistep.
 
 Lemma multistep_comb {A B} (c : A -> ident B) (input : list A) :
   multistep (Comb c) input = map (fun a => unIdent (c a)) input.
@@ -74,8 +76,199 @@ Proof.
   clear.
   cbv [multistep]. destruct input as [|i0 input]; [ reflexivity | ].
   repeat destruct_pair_let; simpl_ident.
-  cbn [fst snd map interp reset_state circuit_state].
+  cbn [fst snd map step reset_state circuit_state].
   simpl_ident. rewrite fold_left_accumulate_to_map.
   cbn [map fst]. rewrite map_map. cbn [fst].
   reflexivity.
 Qed.
+Hint Rewrite @multistep_comb using solve [eauto] : push_multistep.
+
+Lemma multistep_first {A B C} (f : Circuit A C) (input : list (A * B)) :
+  multistep (First f) input = combine (multistep f (map fst input))
+                                      (map snd input).
+Proof.
+  clear.
+  cbv [multistep]. destruct input as [|i0 input]; [ reflexivity | ].
+  repeat destruct_pair_let; simpl_ident.
+  cbn [fst snd map step reset_state circuit_state].
+  simpl_ident. repeat destruct_pair_let; simpl_ident.
+  rewrite fold_left_accumulate_map.
+  rewrite !fold_left_accumulate_to_seq with (default:=i0).
+  factor_out_loops.
+  eapply fold_left_accumulate_double_invariant_seq
+    with (I:=fun i x y => y = (fst x, snd (nth i (i0::input) i0), snd x)).
+  { reflexivity. }
+  { intros; subst. destruct_products. cbn [fst snd].
+    repeat destruct_pair_let; simpl_ident.
+    reflexivity. }
+  { intros *. intros ? Hnth; intros.
+    change (snd i0 :: map snd input) with (map snd (i0::input)).
+    subst. cbn [fst snd].
+    eapply list_eq_elementwise; [ length_hammer | ].
+    intros j [c b]; intros.
+    specialize (Hnth j).
+    autorewrite with natsimpl push_length in *.
+    autorewrite with push_nth. destruct_products.
+    let x := constr:(ltac:(eassumption):circuit_state f) in
+    erewrite map_nth_inbounds with (d2:=(c,b,x)) by length_hammer;
+      erewrite map_nth_inbounds with (d2:=(c,x)) by length_hammer.
+    erewrite Hnth by length_hammer. cbn [fst snd].
+    erewrite !map_nth_inbounds by length_hammer.
+    reflexivity. }
+Qed.
+Hint Rewrite @multistep_first using solve [eauto] : push_multistep.
+
+Lemma multistep_second {A B C} (f : Circuit B C) (input : list (A * B)) :
+  multistep (Second f) input = combine (map fst input)
+                                       (multistep f (map snd input)).
+Proof.
+  clear.
+  cbv [multistep]. destruct input as [|i0 input]; [ reflexivity | ].
+  repeat destruct_pair_let; simpl_ident.
+  cbn [fst snd map step reset_state circuit_state].
+  simpl_ident. repeat destruct_pair_let; simpl_ident.
+  rewrite fold_left_accumulate_map.
+  rewrite !fold_left_accumulate_to_seq with (default:=i0).
+  factor_out_loops.
+  eapply fold_left_accumulate_double_invariant_seq
+    with (I:=fun i x y => y = (fst (nth i (i0::input) i0), fst x, snd x)).
+  { reflexivity. }
+  { intros; subst. destruct_products. cbn [fst snd].
+    repeat destruct_pair_let; simpl_ident.
+    reflexivity. }
+  { intros *. intros ? Hnth; intros.
+    change (fst i0 :: map fst input) with (map fst (i0::input)).
+    subst. cbn [fst snd].
+    eapply list_eq_elementwise; [ length_hammer | ].
+    intros j [a0 c]; intros.
+    specialize (Hnth j).
+    autorewrite with natsimpl push_length in *.
+    autorewrite with push_nth. destruct_products.
+    let x := constr:(ltac:(eassumption):circuit_state f) in
+    erewrite map_nth_inbounds with (d2:=(a0,c,x)) by length_hammer;
+      erewrite map_nth_inbounds with (d2:=(c,x)) by length_hammer.
+    erewrite Hnth by length_hammer. cbn [fst snd].
+    erewrite !map_nth_inbounds by length_hammer.
+    reflexivity. }
+Qed.
+Hint Rewrite @multistep_second using solve [eauto] : push_multistep.
+
+Lemma multistep_length {i o} (c : Circuit i o) input :
+  length (multistep c input) = length input.
+Proof.
+  cbv [multistep].
+  destruct input; repeat destruct_pair_let; length_hammer.
+Qed.
+Hint Rewrite @multistep_length using solve [eauto] : push_length.
+
+Lemma multistep_LoopInitICE_invariant
+      {i s o} resetval (body : Circuit (i * combType s) (o * combType s))
+      (I : nat -> combType s -> circuit_state body -> list o -> Prop ) (P : list o -> Prop)
+      (input : list (i * bool)) :
+  (* invariant holds at start *)
+  I 0 resetval (reset_state body) [] ->
+  (* invariant holds through loop *)
+  (forall t acc st bodyst d,
+      I t st bodyst acc ->
+      0 <= t < length input ->
+      let input_en := nth t input d in
+      let out_st'_bodyst' := step body bodyst (fst input_en, st) in
+      let out := fst (fst out_st'_bodyst') in
+      let st' := snd (fst out_st'_bodyst') in
+      let bodyst' := snd out_st'_bodyst' in
+      let new_state := if snd input_en then st' else st in
+      I (S t) new_state bodyst' (acc ++ [out])) ->
+  (* invariant implies postcondition *)
+  (forall acc st bodyst, I (length input) st bodyst acc -> P acc) ->
+  P (multistep (LoopInitCE resetval body) input).
+Proof.
+  intros ? Ipreserved IimpliesP. cbv [multistep].
+  destruct input; [ solve [eauto] | ].
+  repeat destruct_pair_let.
+  cbn [circuit_state reset_state step fst snd].
+  apply fold_left_accumulate_invariant_seq
+    with (I0:=fun t '(out,(bodyst,st)) acc =>
+                I (S t) st bodyst (map fst acc));
+    intros *; repeat destruct_pair_let; cbn [fst snd].
+  { specialize (Ipreserved 0 []). cbn [nth app length] in Ipreserved.
+    cbn [map fst snd]. eapply Ipreserved; eauto; [ ]. Lia.lia. }
+  { intros. specialize (Ipreserved (S t)).
+    autorewrite with pull_snoc.
+    eapply Ipreserved; eauto; [ ].
+    cbn [combType] in *; length_hammer. }
+  { eapply IimpliesP. }
+Qed.
+
+Lemma multistep_LoopCE_invariant
+      {i s o} (body : Circuit (i * combType s) (o * combType s))
+      (I : nat -> combType s -> circuit_state body -> list o -> Prop ) (P : list o -> Prop)
+      (input : list (i * bool)) :
+  (* invariant holds at start *)
+  I 0 (defaultCombValue _) (reset_state body) [] ->
+  (* invariant holds through loop *)
+  (forall t acc st bodyst d,
+      I t st bodyst acc ->
+      0 <= t < length input ->
+      let input_en := nth t input d in
+      let out_st'_bodyst' := step body bodyst (fst input_en, st) in
+      let out := fst (fst out_st'_bodyst') in
+      let st' := snd (fst out_st'_bodyst') in
+      let bodyst' := snd out_st'_bodyst' in
+      let new_state := if snd input_en then st' else st in
+      I (S t) new_state bodyst' (acc ++ [out])) ->
+  (* invariant implies postcondition *)
+  (forall acc st bodyst, I (length input) st bodyst acc -> P acc) ->
+  P (multistep (LoopCE body) input).
+Proof. apply multistep_LoopInitICE_invariant. Qed.
+
+Lemma multistep_LoopInit_invariant
+      {i s o} resetval (body : Circuit (i * combType s) (o * combType s))
+      (I : nat -> combType s -> circuit_state body -> list o -> Prop ) (P : list o -> Prop)
+      (input : list i) :
+  (* invariant holds at start *)
+  I 0 resetval (reset_state body) [] ->
+  (* invariant holds through loop *)
+  (forall t acc st bodyst d,
+      I t st bodyst acc ->
+      0 <= t < length input ->
+      let out_st'_bodyst' := step body bodyst (nth t input d, st) in
+      let out := fst (fst out_st'_bodyst') in
+      let st' := snd (fst out_st'_bodyst') in
+      let bodyst' := snd out_st'_bodyst' in
+      I (S t) st' bodyst' (acc ++ [out])) ->
+  (* invariant implies postcondition *)
+  (forall acc st bodyst, I (length input) st bodyst acc -> P acc) ->
+  P (multistep (LoopInit resetval body) input).
+Proof.
+  intros? Ipres IimpliesP; cbv [LoopInit].
+  autorewrite with push_multistep. simpl_ident.
+  eapply multistep_LoopInitICE_invariant with (I0:=I).
+  { eassumption. }
+  { cbv zeta in *. intros *. destruct_products.
+    autorewrite with push_length. intros.
+    let d := lazymatch goal with x : i |- _ => x end in
+    rewrite map_nth_inbounds with (d2:=d) by length_hammer.
+    cbn [fst]. apply Ipres; auto. }
+  { intros *; autorewrite with push_length.
+    apply IimpliesP. }
+Qed.
+
+Lemma multistep_Loop_invariant
+      {i s o} (body : Circuit (i * combType s) (o * combType s))
+      (I : nat -> combType s -> circuit_state body -> list o -> Prop ) (P : list o -> Prop)
+      (input : list i) :
+  (* invariant holds at start *)
+  I 0 (defaultCombValue _) (reset_state body) [] ->
+  (* invariant holds through loop *)
+  (forall t acc st bodyst d,
+      I t st bodyst acc ->
+      0 <= t < length input ->
+      let out_st'_bodyst' := step body bodyst (nth t input d, st) in
+      let out := fst (fst out_st'_bodyst') in
+      let st' := snd (fst out_st'_bodyst') in
+      let bodyst' := snd out_st'_bodyst' in
+      I (S t) st' bodyst' (acc ++ [out])) ->
+  (* invariant implies postcondition *)
+  (forall acc st bodyst, I (length input) st bodyst acc -> P acc) ->
+  P (multistep (Loop body) input).
+Proof. apply multistep_LoopInit_invariant. Qed.

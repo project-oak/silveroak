@@ -52,33 +52,30 @@ Class Cava (signal : SignalType -> Type) := {
          signal Bit * signal Bit * signal Bit * signal Bit * signal Bit * signal Bit -> cava (signal Bit); (* 6-input LUT *)
   xorcy : signal Bit * signal Bit -> cava (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
   muxcy : signal Bit -> signal  Bit -> signal Bit -> cava (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
-  (* Converting to/from pairs *)
-  mkpair : forall {t1 t2 : SignalType}, signal t1 -> signal t2 -> signal (Pair t1 t2);
-  unpair : forall {t1 t2 : SignalType}, signal (Pair t1 t2) -> signal t1 * signal t2;
   (* Converting to/from Vector.t *)
   peel : forall {t : SignalType} {s : nat}, signal (Vec t s) -> Vector.t (signal t) s;
   unpeel : forall {t : SignalType} {s : nat} , Vector.t (signal t) s -> signal (Vec t s);
   indexAt : forall {t : SignalType} {sz isz: nat},
             signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
             signal (Vec Bit isz) ->  (* A bit-vector index of size isz bits *)
-            signal t;                (* The indexed value of type signal t *)
+            cava (signal t);                (* The indexed value of type signal t *)
   (* Static indexing *)
   indexConst : forall {t: SignalType} {sz: nat},
                signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
                nat ->                   (* Static index *)
-               signal t;                (* The indexed bit of type signal bit *)
+               cava (signal t);                (* The indexed bit of type signal bit *)
   slice : forall {t: SignalType} {sz: nat} (startAt len: nat),
                  signal (Vec t sz) ->
                  (startAt + len <= sz) ->
-                 signal (Vec t len);
+                 cava (signal (Vec t len));
   (* Synthesizable arithmetic operations. *)
   unsignedAdd : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b) ->
-                signal (Vec Bit (1 + max a b));
+                cava (signal (Vec Bit (1 + max a b)));
   unsignedMult : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b)->
-                signal (Vec Bit (a + b));              
+                cava (signal (Vec Bit (a + b)));
   (* Synthesizable relational operators *)
   greaterThanOrEqual : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b) ->
-                      signal Bit;
+                      cava (signal Bit);
   (* Naming for sharing. *)
   localSignal : forall {t : SignalType}, signal t -> cava (signal t);
   (* Hierarchy *)
@@ -91,27 +88,4 @@ Class Cava (signal : SignalType -> Type) := {
   blackBox : forall (intf: CircuitInterface),
              tupleInterface signal (map port_type (circuitInputs intf)) ->
              cava (tupleInterface signal ((map port_type (circuitOutputs intf))));
-}.
-
-(* Sequential semantics -- assumes the sequential part of the interpretation is in [signal] *)
-Class CavaSeq {signal : SignalType -> Type} (combinationalSemantics : Cava signal) := {
-  (* A unit delay with a reset value. *)
-  delayWith : forall {t: SignalType}, combType t -> signal t -> cava (signal t);
-  (* A unit delay with a clock-enable input. *)
-  delayEnableWith : forall {t: SignalType}, combType t -> signal Bit -> signal t -> cava (signal t);
-  (* Feedback loop, with unit delay inserted into the feedback path and current
-     state available at output . *)
-  loopDelaySR : forall {A B: SignalType},
-                combType B ->
-                (signal A * signal B -> cava (signal B)) ->
-                signal A ->
-                cava (signal B);
-  (* A version of loopDelayEnable with a clock enable and current state at
-     the output. *)
-  loopDelaySEnableR : forall {A B: SignalType},
-                      combType B ->
-                      signal Bit -> (* Clock enable *)
-                      (signal A * signal B -> cava (signal B)) ->
-                      signal A ->
-                      cava (signal B);
 }.
