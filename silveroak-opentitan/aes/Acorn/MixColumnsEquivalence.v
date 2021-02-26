@@ -16,6 +16,7 @@
 
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
+Require Import Coq.setoid_ring.Ring.
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 Require Import Cava.BitArithmetic.
@@ -30,6 +31,7 @@ Import ListNotations VectorNotations.
 Local Open Scope list_scope.
 
 Require Import AesSpec.AES256.
+Require Import AesSpec.Polynomial.
 Require Import AesSpec.StateTypeConversions.
 Require Import AcornAes.Pkg.
 Require Import AcornAes.MixColumnsCircuit.
@@ -61,6 +63,7 @@ Section Equivalence.
     intros; destruct_lists_by_length.
     repeat match goal with b : bool |- _ => destruct b end; reflexivity.
   Qed.
+
   Lemma bitvec_to_byte_to_poly bv :
     MixColumns.byte_to_poly (bitvec_to_byte bv) = to_list bv.
   Proof.
@@ -103,6 +106,32 @@ Section Equivalence.
     constant_bitvec_cases b; vm_compute; reflexivity.
   Qed.
 
+  Hint Rewrite xorv_is_add using solve [eauto] : simpl_ident.
+  Hint Rewrite xorV_is_add using solve [eauto] : simpl_ident.
+  Hint Rewrite aes_mul2_correct using solve [eauto] : simpl_ident.
+  Hint Rewrite aes_mul4_correct using solve [eauto] : simpl_ident.
+
+  Local Open Scope poly_scope.
+
+  Ltac prering :=
+    change Byte.x03 with (Byte.x02 + Byte.x01);
+    change Byte.x04 with (Byte.x02 * Byte.x02);
+    change Byte.x05 with (Byte.x02 * Byte.x02 + Byte.x01);
+    change Byte.x06 with (Byte.x02 * (Byte.x02 + Byte.x01));
+    change Byte.x07 with (Byte.x02 * (Byte.x02 + Byte.x01) + Byte.x01);
+    change Byte.x08 with (Byte.x02 * (Byte.x02 * Byte.x02));
+    change Byte.x09 with (Byte.x02 * (Byte.x02 * Byte.x02) + Byte.x01);
+    change Byte.x0a with (Byte.x02 * (Byte.x02 * Byte.x02) + Byte.x02);
+    change Byte.x0b with (Byte.x02 * (Byte.x02 * Byte.x02) + Byte.x02 + Byte.x01);
+    change Byte.x0c with (Byte.x02 * (Byte.x02 * Byte.x02) + Byte.x02 * Byte.x02);
+    change Byte.x0d with (Byte.x02 * (Byte.x02 * Byte.x02) + Byte.x02 * Byte.x02 + Byte.x01);
+    change Byte.x0e with (Byte.x02 * (Byte.x02 * Byte.x02) + Byte.x02 * (Byte.x02 + Byte.x01));
+    change Byte.x0e with (Byte.x02 * (Byte.x02 * Byte.x02) + Byte.x02 * (Byte.x02 + Byte.x01) + Byte.x01);
+    change Byte.x01 with fone;
+    change (bitvec_to_byte zero_byte) with fzero.
+
+  Add Ring bytering : MixColumns.ByteTheory (preprocess [prering]).
+
   Lemma mix_single_column_equiv (is_decrypt : bool) (col : Vector.t byte 4) :
     unIdent (aes_mix_single_column is_decrypt col)
     = if is_decrypt
@@ -111,34 +140,29 @@ Section Equivalence.
        else map byte_to_bitvec
                 (MixColumns.mix_single_column (map bitvec_to_byte col)).
   Proof.
-    (* simplify LHS *)
-    cbv [aes_mix_single_column]. simpl_ident.
     constant_vector_simpl col.
+    unfold MixColumns.inv_mix_single_column, MixColumns.mix_single_column.
+    cbn [Vector.map].
+    autorewrite with push_vector_map vsimpl.
+    autorewrite with push_vector_fold vsimpl.
+
+    unfold aes_mix_single_column.
+    (* reduce size of term by simplifying indexConst for constant vectors immediately *)
     repeat lazymatch goal with
-           | |- context [(@indexConst _ _ ?t ?n [?v])] =>
-             rewrite !(@indexConst_singleton t n); cbn [nth_default map]
-           | |- context [unIdent (@xorv _ _ 8 [?b1] [?b2])] =>
-             rewrite !xorv_is_add
-           | |- context [unIdent (xorV ([?b1], [?b2]))] =>
-             rewrite !xorV_is_add
-           | |- context [unIdent (aes_mul2 [?b])] =>
-             rewrite !aes_mul2_correct
-           | |- context [unIdent (aes_mul4 [?b])] =>
-             rewrite !aes_mul4_correct
-           | |- context [bitvec_to_byte (byte_to_bitvec _)] =>
-             rewrite !byte_to_bitvec_to_byte
-           | |- context [byte_to_bitvec (bitvec_to_byte _)] =>
-             rewrite !bitvec_to_byte_to_bitvec
-           | |- context [(@unpeel _ _ ?t ?n
-                                 [[?x0]%list;[?x1]%list;[?x2]%list;[?x3]%list
-                                 ]%vector)] =>
-             (* simplify an unpeel with 4 elements that are all singletons *)
-             change (@unpeel _ _ t n
-                             [[?x0]%list;[?x1]%list;[?x2]%list;[?x3]%list
-                             ]%vector)
-               with [[x0;x1;x2;x3]%vector]
+           | |- context [(@indexConst _ ?cava ?t ?sz (Vector.cons ?A ?x ?n ?v) ?i)] =>
+             let y := constr:(@indexConst _ cava t sz (Vector.cons A x n v) i) in
+             let z := (eval cbn in y) in
+             change y with z
            end.
-  Admitted.
+    simpl_ident.
+    cbn [localSignal CombinationalSemantics].
+    simpl_ident.
+    destruct is_decrypt.
+    all: cbn [nth_default map]; simpl_ident.
+    all: repeat rewrite byte_to_bitvec_to_byte.
+    all: fequal_vector; f_equal.
+    all: ring.
+  Qed.
 
   Lemma mix_columns_equiv (is_decrypt : bool) (st : state) :
     unIdent (aes_mix_columns is_decrypt st)

@@ -547,9 +547,7 @@ Hint Rewrite @add_poly_length byte_to_poly_length
 Section Properties.
   Existing Instance byteops.
   Add Ring bytering : ByteTheory.
-  Local Infix "+" := fadd.
-  Local Infix "-" := fsub.
-  Local Infix "*" := fmul.
+  Local Open Scope poly_scope.
 
   Definition sum (p : poly byte) : byte := List.fold_left fadd p fzero.
   Definition prod (p q : poly byte) : poly byte := map2 fmul p q.

@@ -34,13 +34,18 @@ Class FieldOperations {T : Type} :=
   }.
 Global Arguments FieldOperations : clear implicits.
 
+Declare Scope poly_scope.
+Delimit Scope poly_scope with poly.
+Infix "+" := fadd : poly_scope.
+Infix "-" := fsub : poly_scope.
+Infix "*" := fmul : poly_scope.
+Infix "/" := fdiv : poly_scope.
+Infix "mod" := fmodulo : poly_scope.
+
 Section Polynomials.
+  Local Open Scope poly_scope.
+
   Context {coeff : Type} {ops : FieldOperations coeff}.
-  Local Infix "+" := fadd.
-  Local Infix "-" := fsub.
-  Local Infix "*" := fmul.
-  Local Infix "/" := fdiv.
-  Local Infix "mod" := fmodulo.
 
   (* Little-endian polynomial; x^3 + 3x^2 + 1 = [1; 0; 3; 1] *)
   Definition poly : Type := list coeff.
