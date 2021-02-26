@@ -61,8 +61,6 @@ Instance CombinationalSemantics : Cava combType :=
     lut6 := fun f '(a,b,c,d,e,g) => ret (f a b c d e g);
     xorcy := fun '(x,y) => ret (xorb x y);
     muxcy := fun sel x y => ret (if sel then x else y);
-    unpair _ _ v := v;
-    mkpair _ _ v1 v2 := (v1, v2);
     peel _ _ v := v;
     unpeel _ _ v := v;
     indexAt t sz isz := fun v sel => nth_default (defaultCombValue _) (N.to_nat (Bv2N sel)) v;

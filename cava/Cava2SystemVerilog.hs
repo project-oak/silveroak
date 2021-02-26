@@ -172,24 +172,12 @@ showSignal signal
       IndexAt _ _ _ v i -> showSignal v ++ "[" ++ showSignal i ++ "]"
       IndexConst _ _ v i -> showSignal v ++ "[" ++ show i ++ "]"
       Slice k _ start len v -> showSignal v ++ showSliceIndex k start len
-      SignalFst _ _ _ -> showSignal (simplifySignal signal)
-      SignalSnd _ _ _ -> showSignal (simplifySignal signal)
-      -- SignalPair should never occur but added here to aid debugging.
-      SignalPair _ _ a b -> error $ "(" ++ show a ++ ", " ++ show b ++ ")"
       UnsignedAdd _ _ _ a b -> "(" ++ showSignal a ++ " + " ++ showSignal b ++ ")"
       UnsignedSubtract _ _ _ a b -> "(" ++ showSignal a ++ " - " ++ showSignal b ++ ")"
       UnsignedMultiply _ _ _ a b -> "(" ++ showSignal a ++ " * " ++ showSignal b ++ ")"
       GreaterThanOrEqual _ _ a b -> "(" ++ showSignal a ++ " >= " ++ showSignal b ++ ")"
 
 simplifySignal :: Signal -> Signal
-simplifySignal (SignalFst _ _ s)
-  = case simplifySignal s of
-      SignalPair _ _ a _ -> simplifySignal a
-      other -> error ("Unable to simplfy SignalFst argument " ++ show other)
-simplifySignal (SignalSnd _ _ s)
-  = case simplifySignal s of
-      SignalPair _ _ _ b -> simplifySignal b
-      other -> error ("Unable to simplfy SignalSnd argument " ++ show other)
 -- TODO: Consider adding other compile time evaluations e.g. for IndexConst.
 simplifySignal s = s
 
@@ -424,13 +412,6 @@ unsmashSignal signal
                          case checkStem k s uv  of
                            Just stem -> return (fullSlice stem)
                            Nothing -> return (VecLit k s (Vector.of_list uv))
-      SignalPair t1 t2 v1 v2 -> do v1' <- unsmashSignal v1
-                                   v2' <- unsmashSignal v2
-                                   return (SignalPair t1 t2 v1' v2')
-      SignalFst t1 t2 p -> do p' <- unsmashSignal p
-                              return (SignalFst t1 t2 p')
-      SignalSnd t1 t2 p -> do p' <- unsmashSignal p
-                              return (SignalSnd t1 t2 p')
       IndexAt k sz isz v i -> do uv <- unsmashSignal v
                                  fv <- freshen uv -- The vector to be indexed can't be a vector literal
                                  ui <- unsmashSignal i

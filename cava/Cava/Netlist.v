@@ -190,16 +190,11 @@ Definition newExternal (t : string) : state CavaState (Signal (ExternalType t)) 
     ret newExt
   end.
 
-Fixpoint newSignal (t: SignalType) : state CavaState (Signal t) :=
+Definition newSignal (t: SignalType) : state CavaState (Signal t) :=
   match t with
   | Void => ret UndefinedSignal
   | Bit => newWire
   | Vec k s => newVector k s
-  | Pair t1 t2 =>
-    cs <- get ;;
-    v1 <- newSignal t1 ;;
-    v2 <- newSignal t2 ;;
-    ret (SignalPair v1 v2)
   | ExternalType typeName => newExternal typeName
   end.
 
@@ -333,16 +328,12 @@ Definition initState : CavaState
 (* Execute a monadic circuit description and return the generated netlist.    *)
 (******************************************************************************)
 
-Fixpoint instantiateInputPort' (name : string) (port_type : SignalType)
+Definition instantiateInputPort' (name : string) (port_type : SignalType)
   : state CavaState (Signal port_type) :=
   match port_type with
   | Void => ret UndefinedSignal
   | Bit => inputBit name
   | Vec k sz => inputVector k sz name
-  | Pair t1 t2 =>
-    p0 <- instantiateInputPort' (name ++ "_0") t1 ;;
-    p1 <- instantiateInputPort' (name ++ "_1") t2 ;;
-    ret (SignalPair p0 p1)
   | ExternalType t => addInputPort (mkPort name (ExternalType t)) ;;
                      ret (UninterpretedSignal name)
   end.
@@ -385,15 +376,12 @@ Definition instantiateInputPorts (inputs: list PortDeclaration)
   right_unit_tuple <- instantiateInputPortsR inputs ;;
   ret (rebalanceNet inputs right_unit_tuple).
 
-Fixpoint instantiateOutputPort' (name : string) (port_type : SignalType)
+Definition instantiateOutputPort' (name : string) (port_type : SignalType)
   : Signal port_type -> state CavaState unit :=
   match port_type as t0 return Signal t0 -> _ with
   | Void => fun _ => ret tt
   | Bit => fun s => outputBit name s
   | Vec k sz => fun s => outputVector k sz name s
-  | Pair t1 t2 => fun s =>
-                   instantiateOutputPort' (name ++ "_0") t1 (SignalFst s) ;;
-                   instantiateOutputPort' (name ++ "_1") t2 (SignalSnd s)
   | ExternalType t => fun s => addOutputPort (mkPort name (ExternalType t)) ;;
                            assignSignal (UninterpretedSignal name) s
   end.
@@ -476,11 +464,6 @@ Definition declareOutput (output : PortDeclaration) : state CavaState (Signal (p
   | Void => ret UndefinedSignal
   | Bit => newWire
   | Vec k sz => newVector k sz
-  | Pair t1 t2 =>
-    cs <- get ;;
-    v1 <- newSignal t1 ;;
-    v2 <- newSignal t2 ;;
-    ret (SignalPair v1 v2)
   | ExternalType t => newExternal t
   end.
 
@@ -539,7 +522,6 @@ Fixpoint toSignalExpr (t: SignalType) (v: combType t) : SignalExpr :=
   | Void, _ => NoSignal
   | Bit, v => BitVal v
   | Vec vt _, y => VecVal (map (toSignalExpr vt) (Vector.to_list y))
-  | Pair lt rt, y => VecVal [toSignalExpr lt (fst y); toSignalExpr rt (snd y)]
   | ExternalType t, zx => NoSignal
   end.
 

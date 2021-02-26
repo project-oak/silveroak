@@ -51,30 +51,7 @@ Section WithCava.
 
   (* Operations over the first or second element of a pair of inputs. *)
 
-  (* Apply a circuit f to the first element of a pair. *)
-  Definition fsT {A B C : SignalType}
-                 (f: signal A -> cava (signal C))
-                 (i: signal (Pair A B)) :
-                 cava (signal (Pair C B)) :=
-    let (a, b) := unpair i in
-    c <- f a ;;
-    ret (mkpair c b).
-
-  (* Apply a circuit f to the second element of a pair. *)
-  Definition snD {A B C : SignalType}
-                 (f: signal B -> cava (signal C))
-                 (i: signal (Pair A B)) :
-                 cava (signal (Pair A C)) :=
-    let (a, b) := unpair i in
-    c <- f b ;;
-    ret (mkpair a c).
-
-  (* A fork that returns a Pair SignalType. *)
-  Definition fork2S {A : SignalType}
-                    (i: signal A) : cava (signal (Pair A A)) :=
-    ret (mkpair i i).
-
-   (* pairLeft takes an input with shape (a, (b, c)) and re-organizes
+  (* pairLeft takes an input with shape (a, (b, c)) and re-organizes
       it as ((a, b), c) *)
    Definition pairLeft {A B C : SignalType}
                        (i : signal A * (signal B * signal C)) :
@@ -89,7 +66,7 @@ Section WithCava.
                        cava (signal A * (signal B * signal C)) :=
    let '((a, b), c) := i in
    ret (a, (b, c)).
- 
+
   (* Use a circuit to zip together two vectors. *)
   Definition zipWith {A B C : SignalType} {n : nat}
            (f : signal A * signal B -> cava (signal C))
@@ -104,8 +81,8 @@ Section WithCava.
   (* A list-based left monadic-fold. *)
   Fixpoint foldLM {m} `{Monad m} {A B : Type}
                   (f : B -> A -> m B)
-                  (input : list A) 
-                  (accum : B) 
+                  (input : list A)
+                  (accum : B)
                   : m B :=
     match input with
     | [] => ret accum
@@ -637,30 +614,12 @@ Section WithCava.
     | Void => fun _ _ => ret one
     | Bit => fun x y => xnor2 (x, y)
     | ExternalType s => fun x y => ret one
-    | Pair a b => fun x y : signal (Pair a b) =>
-                   let '(x1,x2) := unpair x in
-                   let '(y1, y2) := unpair y in
-                   eq1 <- eqb x1 y1 ;;
-                   eq2 <- eqb x2 y2 ;;
-                   and2 (eq1, eq2)
     | Vec a n => fun x y : signal (Vec a n) =>
                   eq_results <- zipWith (fun '(a, b) => eqb a b) x y ;;
                   all eq_results
     end.
 
-  Definition pairAssoc {A B C} (x : signal (Pair (Pair A B) C))
-    : signal (Pair A (Pair B C)) :=
-    let '(ab, c) := unpair x in
-    let '(a, b) := unpair ab in
-    mkpair a (mkpair b c).
-
-  Definition mux4 {t} (input : signal (Pair (Pair (Pair t t) t) t))
-             (sel : signal (Vec Bit 2)) :=
-    let x := pairAssoc input in
-    pairSel (indexConst sel 0) (pairSel (indexConst sel 1) x).
-
-  (* TODO: rename to mux4 once pairs are eliminated *)
-  Definition mux4Tuple {t} (input : signal t * signal t * signal t * signal t)
+  Definition mux4 {t} (input : signal t * signal t * signal t * signal t)
              (sel : signal (Vec Bit 2)) : signal t :=
     let '(i0,i1,i2,i3) := input in
     indexAt (unpeel [i0;i1;i2;i3]%vector) sel.
