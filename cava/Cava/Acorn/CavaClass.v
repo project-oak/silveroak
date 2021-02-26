@@ -58,24 +58,24 @@ Class Cava (signal : SignalType -> Type) := {
   indexAt : forall {t : SignalType} {sz isz: nat},
             signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
             signal (Vec Bit isz) ->  (* A bit-vector index of size isz bits *)
-            signal t;                (* The indexed value of type signal t *)
+            cava (signal t);                (* The indexed value of type signal t *)
   (* Static indexing *)
   indexConst : forall {t: SignalType} {sz: nat},
                signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
                nat ->                   (* Static index *)
-               signal t;                (* The indexed bit of type signal bit *)
+               cava (signal t);                (* The indexed bit of type signal bit *)
   slice : forall {t: SignalType} {sz: nat} (startAt len: nat),
                  signal (Vec t sz) ->
                  (startAt + len <= sz) ->
-                 signal (Vec t len);
+                 cava (signal (Vec t len));
   (* Synthesizable arithmetic operations. *)
   unsignedAdd : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b) ->
-                signal (Vec Bit (1 + max a b));
+                cava (signal (Vec Bit (1 + max a b)));
   unsignedMult : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b)->
-                signal (Vec Bit (a + b));              
+                cava (signal (Vec Bit (a + b)));
   (* Synthesizable relational operators *)
   greaterThanOrEqual : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b) ->
-                      signal Bit;
+                      cava (signal Bit);
   (* Naming for sharing. *)
   localSignal : forall {t : SignalType}, signal t -> cava (signal t);
   (* Hierarchy *)

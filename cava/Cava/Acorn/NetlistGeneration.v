@@ -259,12 +259,15 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     muxcy := muxcyNet;
     peel := @peelNet;
     unpeel := @unpeelNet;
-    indexAt k sz isz := IndexAt;
-    indexConst k sz := IndexConst;
-    slice k sz := @sliceNet k sz;
-    unsignedAdd m n ab := @UnsignedAdd m n (1 + max m n) (fst ab) (snd ab);
-    unsignedMult m n ab := @UnsignedMultiply m n (m + n) (fst ab) (snd ab);
-    greaterThanOrEqual m n ab := @GreaterThanOrEqual m n (fst ab) (snd ab);
+    indexAt k sz isz v i := localSignalNet (IndexAt v i);
+    indexConst k sz v i := localSignalNet (IndexConst v i);
+    slice k sz start len v H := localSignalNet (@sliceNet k sz start len v H);
+    unsignedAdd m n ab :=
+      localSignalNet (@UnsignedAdd m n (1 + max m n) (fst ab) (snd ab));
+    unsignedMult m n ab :=
+      localSignalNet (@UnsignedMultiply m n (m + n) (fst ab) (snd ab));
+    greaterThanOrEqual m n ab :=
+      localSignalNet (@GreaterThanOrEqual m n (fst ab) (snd ab));
     localSignal := @localSignalNet;
     instantiate := instantiateNet;
     blackBox := blackBoxNet;
