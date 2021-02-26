@@ -48,11 +48,11 @@ Section Equivalence.
   Lemma aes_transpose_correct n m (v : combType (Vec (Vec (Vec Bit 8) n) m)) :
     m <> 0 ->
     n <> 0 ->
-    aes_transpose v = transpose v.
+    unIdent (aes_transpose v) = transpose v.
   Proof.
     intros Hm Hn.
     unfold aes_transpose.
-    cbv [unpeel peel Combinational.CombinationalSemantics].
+    simpl_ident.
     rewrite ! map_id.
     reflexivity.
   Qed.
@@ -113,6 +113,10 @@ Section Equivalence.
 
   Local Open Scope poly_scope.
 
+  Lemma zero_byte_correct : bitvec_to_byte (unIdent zero_byte) = fzero.
+  Proof. reflexivity. Qed.
+  Hint Rewrite zero_byte_correct using solve [eauto] : simpl_ident.
+
   Ltac prering :=
     change Byte.x03 with (Byte.x02 + Byte.x01);
     change Byte.x04 with (Byte.x02 * Byte.x02);
@@ -127,8 +131,7 @@ Section Equivalence.
     change Byte.x0d with (Byte.x02 * (Byte.x02 * Byte.x02) + Byte.x02 * Byte.x02 + Byte.x01);
     change Byte.x0e with (Byte.x02 * (Byte.x02 * Byte.x02) + Byte.x02 * (Byte.x02 + Byte.x01));
     change Byte.x0e with (Byte.x02 * (Byte.x02 * Byte.x02) + Byte.x02 * (Byte.x02 + Byte.x01) + Byte.x01);
-    change Byte.x01 with fone;
-    change (bitvec_to_byte zero_byte) with fzero.
+    change Byte.x01 with fone.
 
   Add Ring bytering : MixColumns.ByteTheory (preprocess [prering]).
 
@@ -168,7 +171,7 @@ Section Equivalence.
     unIdent (aes_mix_columns is_decrypt st)
     = AES256.aes_mix_columns_circuit_spec is_decrypt st.
   Proof.
-    cbv [aes_mix_columns]. simpl_ident.
+    cbv [aes_mix_columns mcompose]. simpl_ident.
     rewrite ! aes_transpose_correct by lia.
     erewrite map_ext by apply mix_single_column_equiv.
     cbv [AES256.aes_mix_columns_circuit_spec

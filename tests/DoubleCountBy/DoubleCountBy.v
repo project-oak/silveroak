@@ -74,9 +74,10 @@ Section WithCava.
   (* incrementer *)
   Definition incrN {n} (x : signal (Vec Bit (S n)))
     : cava (signal (Vec Bit (S n))) :=
-    let one : signal (Vec Bit 1) := unpeel [constant true]%vector in
+    one <- unpeel [one]%vector ;;
     xp1 <- unsignedAdd (one, x) ;;
-    ret (unpeel (shiftout (peel xp1))).
+    xp1 <- peel xp1 ;;
+    unpeel (shiftout xp1).
 
   Definition count_by
     : Circuit (signal (Vec Bit 8)) (signal Bit)

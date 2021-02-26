@@ -21,6 +21,7 @@ Import ListNotations.
 Import VectorNotations.
 
 Require Import ExtLib.Structures.Monads.
+Require Import ExtLib.Structures.Traversable.
 Export MonadNotation.
 
 Require Import Cava.Cava.
@@ -36,23 +37,27 @@ Existing Instance CavaCombinationalNet.
 Section WithCava.
   Context `{Cava}.
 
-  Definition bitvec_to_signal {n : nat} (lut : Vector.t bool n) : signal (Vec Bit n) :=
+  Definition bitvec_to_signal {n : nat} (lut : Vector.t bool n) : cava (signal (Vec Bit n)) :=
     unpeel (Vector.map constant lut).
-  Search (nat -> Bvector _).
 
-  Definition array : signal (Vec (Vec Bit 8) 4) :=
-    unpeel (map (fun x => bitvec_to_signal (nat_to_bitvec_sized _ x)) [0;1;2;3]).
+  Definition array : cava (signal (Vec (Vec Bit 8) 4)) :=
+    v <- mapT (fun x => bitvec_to_signal (nat_to_bitvec_sized _ x)) [0;1;2;3] ;;
+    unpeel v.
 
-  Definition multiDimArray : signal (Vec (Vec (Vec Bit 8) 4) 2) :=
-    unpeel ([array; array]).
+  Definition multiDimArray : cava (signal (Vec (Vec (Vec Bit 8) 4) 2)) :=
+    arr1 <- array ;;
+    arr2 <- array ;;
+    unpeel [arr1; arr2].
 
   Definition arrayTest (i : signal (Vec Bit 8))
-                       : cava (signal (Vec Bit 8)) :=
-    indexConst array 0.
+    : cava (signal (Vec Bit 8)) :=
+    arr <- array ;;
+    indexConst arr 0.
 
   Definition multiDimArrayTest (i : signal (Vec Bit 8))
-                       : cava (signal (Vec Bit 8)) :=
-    v <- indexConst multiDimArray 0 ;;
+    : cava (signal (Vec Bit 8)) :=
+    arr <- multiDimArray ;;
+    v <- indexConst arr 0 ;;
     indexConst v 0.
 
 End WithCava.

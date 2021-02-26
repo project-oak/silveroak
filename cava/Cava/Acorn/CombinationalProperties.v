@@ -88,9 +88,10 @@ Lemma all_correct {n} v :
   unIdent (all (n:=n) v) = Vector.fold_left andb true v.
 Proof.
   destruct n; [ eapply case0 with (v:=v); reflexivity | ].
-  cbv [all]. cbn [one CombinationalSemantics].
-  erewrite tree_all_sizes_equiv with (op:=andb) (id:=true);
-    intros; simpl_ident; boolsimpl; try reflexivity; try lia;
+  cbv [all one]. simpl_ident.
+  erewrite (tree_all_sizes_equiv (semantics:=CombinationalSemantics))
+    with (op:=andb) (id:=true);
+    intros; boolsimpl; try reflexivity; try lia;
       auto using Bool.andb_assoc.
 Qed.
 Hint Rewrite @all_correct using solve [eauto] : simpl_ident.

@@ -83,6 +83,7 @@ Section Equivalence.
     intros.
     unfold state_map.
     unfold column_map.
+    unfold mcompose.
 
     do 2 (simpl_ident; apply map_ext; intros).
     reflexivity.

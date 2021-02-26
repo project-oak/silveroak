@@ -66,10 +66,11 @@ Section WithCava.
   (* Adder with a pair of inputs of the same size and no bit-growth, as signal. *)
   Definition addN {n : nat}
             (ab: signal (Vec Bit n) * signal (Vec Bit n)) :
-            cava (signal (Vec Bit n)) :=
-    let (a, b) := ab in
-    '(sum, _) <- unsignedAdderV (constant false, vcombine (peel a) (peel b)) ;;
-    ret (unpeel sum).
+    cava (signal (Vec Bit n)) :=
+    a <- peel (fst ab) ;;
+    b <- peel (snd ab) ;;
+    '(sum, _) <- unsignedAdderV (constant false, vcombine a b) ;;
+    unpeel sum.
 
   (****************************************************************************)
   (* A three input adder.                                                     *)

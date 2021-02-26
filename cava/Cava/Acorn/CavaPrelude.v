@@ -20,6 +20,7 @@ Import VectorNotations.
 
 Require Import ExtLib.Structures.Monads.
 Import MonadNotation.
+Local Open Scope monad_scope.
 
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Signal.
@@ -46,6 +47,8 @@ Section WithCava.
                      (sel : signal Bit)
                      (ab : signal A * signal A) : cava (signal A) :=
     let (a, b) := ab in
-    indexAt (unpeel [a; b]) (unpeel [sel]).
+    v <- unpeel [a;b] ;;
+    sel <- unpeel [sel] ;;
+    indexAt v sel.
 
 End WithCava.

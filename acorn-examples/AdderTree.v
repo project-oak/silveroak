@@ -45,9 +45,10 @@ Section WithCava.
 
   (* An adder-tree with no bit-growth. *)
   Definition adderTree {sz: nat}
-                       (n: nat) (v: signal (Vec (Vec Bit sz) (2^(S n)))):
-                       cava (signal (Vec Bit sz)) :=
-    treeS addN (peel v).
+             (n: nat)
+    : signal (Vec (Vec Bit sz) (2^(S n))) ->
+      cava (signal (Vec Bit sz)) :=
+    peel >=> treeS addN.
 
   (* An adder tree with 2 inputs. *)
   Definition adderTree2 {sz: nat}
