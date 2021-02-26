@@ -315,7 +315,6 @@ Section Equivalence.
   Hint Rewrite aes_mul2_correct using solve [eauto] : simpl_ident.
   Hint Rewrite aes_mul4_correct using solve [eauto] : simpl_ident.
 
-  Add Ring bytering : MixColumns.ByteTheory.
   Local Open Scope poly_scope.
 
   Ltac prering :=
@@ -335,6 +334,7 @@ Section Equivalence.
     change Byte.x01 with fone;
     change (bitvec_to_byte zero_byte) with fzero.
 
+  Add Ring bytering : MixColumns.ByteTheory (preprocess [prering]).
 
   Lemma mix_single_column_equiv (is_decrypt : bool) (col : Vector.t byte 4) :
     unIdent (aes_mix_single_column is_decrypt col)
@@ -346,25 +346,25 @@ Section Equivalence.
   Proof.
     constant_vector_simpl col.
     unfold MixColumns.inv_mix_single_column, MixColumns.mix_single_column.
-    autorewrite with push_vector_map vsimpl push_vector_fold.
+    cbn [Vector.map].
+    autorewrite with push_vector_map vsimpl.
+    autorewrite with push_vector_fold vsimpl.
 
     unfold aes_mix_single_column.
+    (* reduce size of term by simplifying indexConst for constant vectors immediately *)
+    repeat lazymatch goal with
+           | |- context [(@indexConst _ ?cava ?t ?sz (Vector.cons ?A ?x ?n ?v) ?i)] =>
+             let y := constr:(@indexConst _ cava t sz (Vector.cons A x n v) i) in
+             let z := (eval cbn in y) in
+             change y with z
+           end.
     simpl_ident.
-    cbv [localSignal CombinationalSemantics].
+    cbn [localSignal CombinationalSemantics].
     simpl_ident.
     destruct is_decrypt.
-    all: fequal_vector.
     all: cbn [nth_default map]; simpl_ident.
     all: repeat rewrite byte_to_bitvec_to_byte.
-    all: f_equal.
-    all: ring_simplify; prering.
-    all: repeat match goal with
-         | |- context [ bitvec_to_byte ?x ] =>
-           let y := fresh "x" in
-           generalize (bitvec_to_byte x); intro y
-         | x := _ |- _ => clear x
-         | x : _ |- _ => clear x
-                end.
+    all: fequal_vector; apply f_equal.
     all: ring.
   Qed.
 
