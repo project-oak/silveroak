@@ -130,15 +130,6 @@ End SboxLut.
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
-  Definition bitvec_to_signal {n : nat} (lut : t bool n) : signal (Vec Bit n) :=
-    unpeel (Vector.map constant lut).
-
-  Definition bitvecvec_to_signal {a b : nat} (lut : t (t bool b) a) : signal (Vec (Vec Bit b) a) :=
-    unpeel (Vector.map bitvec_to_signal lut).
-
-  Definition natvec_to_signal_sized {n : nat} (size : nat) (lut : t nat n) : signal (Vec (Vec Bit size) n) :=
-    bitvecvec_to_signal (Vector.map (nat_to_bitvec_sized size) lut).
-
   Definition sbox_fwd_lut := natvec_to_signal_sized 8 sbox_fwd.
   Definition sbox_inv_lut := natvec_to_signal_sized 8 sbox_inv.
 
