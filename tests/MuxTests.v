@@ -46,7 +46,7 @@ Section WithCava.
                            signal (Vec Bit isz)) :
                       cava (signal (Vec Bit dsz)) :=
     let (v, sel) := vsel in
-    ret (indexAt v sel).
+    indexAt v sel.
 
 End WithCava.
 

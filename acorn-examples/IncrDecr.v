@@ -51,19 +51,27 @@ Section WithCava.
   (* increment a 4-bit vector *)
   Definition incr4 (input : signal (Vec Bit 4))
     : cava (signal (Vec Bit 4)) :=
-    '(sum0, carry) <- half_adder (one, indexConst input 0) ;;
-    '(sum1, carry) <- half_adder (carry, indexConst input 1) ;;
-    '(sum2, carry) <- half_adder (carry, indexConst input 2) ;;
-    '(sum3, carry) <- half_adder (carry, indexConst input 3) ;;
+    i0 <- indexConst input 0 ;;
+    i1 <- indexConst input 1 ;;
+    i2 <- indexConst input 2 ;;
+    i3 <- indexConst input 3 ;;
+    '(sum0, carry) <- half_adder (one, i0) ;;
+    '(sum1, carry) <- half_adder (carry, i1) ;;
+    '(sum2, carry) <- half_adder (carry, i2) ;;
+    '(sum3, carry) <- half_adder (carry, i3) ;;
     ret (unpeel [sum0;sum1;sum2;sum3]%vector).
 
   (* decrement a 4-bit vector *)
   Definition decr4 (input : signal (Vec Bit 4))
     : cava (signal (Vec Bit 4)) :=
-    '(diff0, borrow) <- half_subtractor (indexConst input 0, one) ;;
-    '(diff1, borrow) <- half_subtractor (indexConst input 1, borrow) ;;
-    '(diff2, borrow) <- half_subtractor (indexConst input 2, borrow) ;;
-    '(diff3, borrow) <- half_subtractor (indexConst input 3, borrow) ;;
+    i0 <- indexConst input 0 ;;
+    i1 <- indexConst input 1 ;;
+    i2 <- indexConst input 2 ;;
+    i3 <- indexConst input 3 ;;
+    '(diff0, borrow) <- half_subtractor (i0, one) ;;
+    '(diff1, borrow) <- half_subtractor (i1, borrow) ;;
+    '(diff2, borrow) <- half_subtractor (i2, borrow) ;;
+    '(diff3, borrow) <- half_subtractor (i3, borrow) ;;
     ret (unpeel [diff0;diff1;diff2;diff3]%vector).
 
   Fixpoint incr' {sz} (carry : signal Bit)

@@ -60,7 +60,9 @@ Section WithCava.
   Context {signal} {semantics: Cava signal}.
 
   Definition ltV {m n} (xy : signal (Vec Bit n) * signal (Vec Bit m))
-    : cava (signal Bit) := inv (greaterThanOrEqual (snd xy, fst xy)).
+    : cava (signal Bit) :=
+    geV <- greaterThanOrEqual (snd xy, fst xy) ;;
+    inv geV.
 
   (* add-with-carry *)
   Definition addC {n} (xy : signal (Vec Bit n) * signal (Vec Bit n))
@@ -73,7 +75,7 @@ Section WithCava.
   Definition incrN {n} (x : signal (Vec Bit (S n)))
     : cava (signal (Vec Bit (S n))) :=
     let one : signal (Vec Bit 1) := unpeel [constant true]%vector in
-    let xp1 : signal (Vec Bit (S (Nat.max 1 (S n)))) := unsignedAdd (one, x) in
+    xp1 <- unsignedAdd (one, x) ;;
     ret (unpeel (shiftout (peel xp1))).
 
   Definition count_by

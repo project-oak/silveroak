@@ -80,19 +80,28 @@ Section WithCava.
     (x : signal byte)
     : cava (signal byte) :=
 
-    a <- xor2 (x[@0], x[@7]) ;;
-    b <- xor2 (x[@2], x[@7]) ;;
-    c <- xor2 (x[@3], x[@7]) ;;
+    x0 <- x[@0] ;;
+    x1 <- x[@1] ;;
+    x2 <- x[@2] ;;
+    x3 <- x[@3] ;;
+    x4 <- x[@4] ;;
+    x5 <- x[@5] ;;
+    x6 <- x[@6] ;;
+    x7 <- x[@7] ;;
+
+    a <- xor2 (x0, x7) ;;
+    b <- xor2 (x2, x7) ;;
+    c <- xor2 (x3, x7) ;;
 
     ret (unpeel
-          [x[@7];
+          [x7;
            a;
-           x[@1];
+           x1;
            b;
            c;
-           x[@4];
-           x[@5];
-           x[@6]
+           x4;
+           x5;
+           x6
           ]
     ).
 
@@ -114,7 +123,8 @@ Section WithCava.
     cava (signal (Vec byte 4)) :=
     let indices := [4 - shift; 5 - shift; 6 - shift; 7 - shift] in
     let indices := map (fun x => Nat.modulo x 4) indices in
-    ret (unpeel (map (indexConst input) indices)).
+    out <- mapT (indexConst input) indices ;;
+    ret (unpeel out).
 
   Definition IDLE_S := bitvec_to_signal (nat_to_bitvec_sized 3 0).
   Definition INIT_S := bitvec_to_signal (nat_to_bitvec_sized 3 1).

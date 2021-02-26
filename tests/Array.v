@@ -48,12 +48,12 @@ Section WithCava.
 
   Definition arrayTest (i : signal (Vec Bit 8))
                        : cava (signal (Vec Bit 8)) :=
-    ret (indexConst array 0).
+    indexConst array 0.
 
   Definition multiDimArrayTest (i : signal (Vec Bit 8))
                        : cava (signal (Vec Bit 8)) :=
-    let v := indexConst multiDimArray 0 in
-    ret (indexConst v 0).
+    v <- indexConst multiDimArray 0 ;;
+    indexConst v 0.
 
 End WithCava.
 

@@ -620,7 +620,7 @@ Section WithCava.
     end.
 
   Definition mux4 {t} (input : signal t * signal t * signal t * signal t)
-             (sel : signal (Vec Bit 2)) : signal t :=
+             (sel : signal (Vec Bit 2)) : cava (signal t) :=
     let '(i0,i1,i2,i3) := input in
     indexAt (unpeel [i0;i1;i2;i3]%vector) sel.
  End WithCava.

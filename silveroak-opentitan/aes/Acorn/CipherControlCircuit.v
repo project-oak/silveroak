@@ -73,7 +73,7 @@ Section WithCava.
       bitvec_to_signal (nat_to_bitvec_sized _ 14).
 
     Definition add_round (a b: signal round_index): cava (signal round_index) :=
-      let sum := (@unsignedAdd _ _ 4 4 (a, b)) in
+      sum <- (@unsignedAdd _ _ 4 4 (a, b)) ;;
       let '(trunc,_) := unsnoc (peel sum) in
       localSignal (unpeel trunc).
 
@@ -240,7 +240,7 @@ Section WithCava.
       v <- xs ;;
       v' <- localSignal (unpeel v) ;;
       sel' <- sel ;;
-      localSignal (indexAt v' sel')
+      indexAt v' sel'
     ).
 
   Definition signal_update := state (cipher_control_signals cava_signal) unit.
