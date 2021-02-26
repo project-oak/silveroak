@@ -52,22 +52,20 @@ Local Notation round_index := (Vector.t bool 4) (only parsing).
 
 (* Helper definition to package the signals needed by the cipher loop *)
 Definition make_cipher_signals (Nr : nat) (is_decrypt : bool)
-           (init_key_input : list key)
            (init_state_input : list state) :
-  list (bool * round_index * round_index * round_index * key * state) :=
+  list (bool * round_index * round_index * round_index * state) :=
   (* assemble constant values + round index *)
   let inner := map (fun i =>
                       (is_decrypt, nat_to_bitvec_sized _ Nr,
                        nat_to_bitvec_sized _ 0, nat_to_bitvec_sized _ i))
                    (seq 0 (S Nr)) in
   (* combine with initial key and initial state *)
-  combine (combine inner init_key_input) init_state_input.
+  combine inner init_state_input.
 
-Lemma make_cipher_signals_length Nr is_decrypt init_key_input init_state_input :
-  length init_key_input = S Nr ->
+Lemma make_cipher_signals_length Nr is_decrypt init_state_input :
   length init_state_input = S Nr ->
   length (make_cipher_signals
-            Nr is_decrypt init_key_input init_state_input) = S Nr.
+            Nr is_decrypt init_state_input) = S Nr.
 Proof. intros; cbv [make_cipher_signals]. length_hammer. Qed.
 Hint Rewrite @make_cipher_signals_length using solve [length_hammer] : push_length.
 
@@ -178,7 +176,7 @@ Section WithSubroutines.
 
   Lemma cipher_loop_step
         (Nr : nat) (num_regular_rounds round0 : round_index)
-        (is_decrypt : bool) (init_key : key) (init_state : state)
+        (is_decrypt : bool) (init_state : state)
         (round_key : key) (round_i : round_index) (i : nat) :
     (* Nr must be at least two and small enough to fit in round_index size *)
     1 < Nr < 2 ^ 4 ->
@@ -193,8 +191,7 @@ Section WithSubroutines.
                   sub_bytes shift_rows mix_columns add_round_key (mix_columns true) in
     forall current_state : circuit_state loop,
       step loop current_state
-           (is_decrypt, num_regular_rounds, round0, round_i,
-            init_key, init_state, round_key)
+           (is_decrypt, num_regular_rounds, round0, round_i, init_state, round_key)
       = let st := if i =? 0 then init_state else snd (snd (current_state)) in
         let st' := round_spec Nr is_decrypt round_key st i in
         (st', (tt, (tt, st'))).
@@ -227,16 +224,14 @@ Section WithSubroutines.
 
   Lemma cipher_loop_equiv
         (Nr : nat) (is_decrypt : bool)
-        init_key_ignored
         (init_state : state) init_state_ignored
         (round_keys : list key) (cipher_input : list _) :
     (* Nr must be at least two and small enough to fit in round_index size *)
     1 < Nr < 2 ^ 4 ->
-    length init_key_ignored = S Nr ->
     length init_state_ignored = Nr ->
     length round_keys = S Nr ->
     cipher_input = make_cipher_signals
-                     Nr is_decrypt init_key_ignored
+                     Nr is_decrypt
                      (init_state :: init_state_ignored) ->
     let loop := cipher_loop
                   (key:=Vec (Vec (Vec Bit 8) 4) 4)
@@ -249,7 +244,6 @@ Section WithSubroutines.
     cbv zeta; intros. subst cipher_input.
     cbv [make_cipher_signals] in *.
     destruct round_keys; cbn [length] in *; [ length_hammer | ].
-    destruct init_key_ignored; cbn [length] in *; [ length_hammer | ].
     cbv [multistep cipher_trace_with_keys].
     cbn [seq map combine].
     rewrite fold_left_accumulate_cons_full.
@@ -265,8 +259,7 @@ Section WithSubroutines.
     (* Use loop invariant *)
     rewrite fold_left_accumulate_to_seq
       with (default := (defaultCombValue _, defaultCombValue _, defaultCombValue _,
-                        defaultCombValue _, defaultCombValue _, defaultCombValue _,
-                        defaultCombValue _)).
+                        defaultCombValue _, defaultCombValue _, defaultCombValue _)).
     rewrite fold_left_accumulate_to_seq
       with (default:=(0,defaultCombValue (Vec (Vec (Vec Bit 8) 4) 4))).
     autorewrite with push_length natsimpl.
@@ -279,7 +272,7 @@ Section WithSubroutines.
       intros i x y; intros; subst x. cbn [fst snd].
       rewrite <-!seq_shift, !map_map.
       rewrite !combine_map_l.
-      erewrite map_nth_inbounds with (d2:=(0,init_state,init_state,init_state)) by length_hammer.
+      erewrite map_nth_inbounds with (d2:=(0,init_state,init_state)) by length_hammer.
       erewrite map_nth_inbounds with (d2:=(0,init_state)) by length_hammer.
       cbn [combType] in *.
       autorewrite with push_nth natsimpl. cbn [fst snd].
@@ -364,16 +357,15 @@ Section WithSubroutines.
 
   Lemma cipher_equiv
         (key_expand : Circuit _ _)
-        (Nr : nat) init_key_input init_state_ignored
+        (Nr : nat) init_state_ignored
         (is_decrypt : bool)
         (init_key : key) (init_state : state)
         (last_key : key) (middle_keys : list key)
         (cipher_input : list _) :(* Nr must be at least two and small enough to fit in round_index size *)
     1 < Nr < 2 ^ 4 ->
-    length init_key_input = S Nr ->
     length init_state_ignored = Nr ->
     length middle_keys = Nr - 1 ->
-    cipher_input = make_cipher_signals Nr is_decrypt init_key_input
+    cipher_input = make_cipher_signals Nr is_decrypt
                                        (init_state :: init_state_ignored) ->
     (* precomputed keys match key expansion *)
     multistep key_expand cipher_input = init_key :: middle_keys ++ [last_key] ->

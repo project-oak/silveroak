@@ -49,7 +49,6 @@ Section WithCava.
       * signal round_index (* num_rounds_regular : round index of final round *)
       * signal round_index (* round_0 : round index of first round *)
       * signal round_index (* current round_index *)
-      * signal key (* initial key, ignored for all rounds except first *)
       * signal state (* initial state, ignored for all rounds except first *).
 
   Definition cipher_round
@@ -104,7 +103,7 @@ Section WithCava.
             let '(input, k, feedback_state) := input_and_state in
             (* extract signals from the input tuple *)
             let '(is_decrypt, num_rounds_regular,
-                  round_0, idx, _, initial_state) := input in
+                  round_0, idx, initial_state) := input in
             is_first_round <- idx ==? round_0 ;;
             st <- muxPair is_first_round (feedback_state, initial_state) ;;
             st' <- cipher_step is_decrypt is_first_round
