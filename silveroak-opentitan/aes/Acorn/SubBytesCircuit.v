@@ -133,18 +133,20 @@ Section WithCava.
   Definition sbox_fwd_lut := natvec_to_signal_sized 8 sbox_fwd.
   Definition sbox_inv_lut := natvec_to_signal_sized 8 sbox_inv.
 
-  Definition column_map (f : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))) (s : signal (Vec (Vec Bit 8) 4)) : cava (signal (Vec (Vec Bit 8) 4)) :=
-    xs <- Traversable.mapT f (peel s) ;;
-    ret (unpeel xs).
+  Definition column_map (f : signal (Vec Bit 8) -> cava (signal (Vec Bit 8)))
+    : signal (Vec (Vec Bit 8) 4) -> cava (signal (Vec (Vec Bit 8) 4)) :=
+    peel >=> Traversable.mapT f >=> unpeel.
 
-  Definition state_map (f : signal (Vec Bit 8) -> cava (signal (Vec Bit 8))) (s : signal state) : cava (signal state) :=
-    xs <- Traversable.mapT (column_map f) (peel s) ;;
-    ret (unpeel xs).
+  Definition state_map (f : signal (Vec Bit 8) -> cava (signal (Vec Bit 8)))
+    : signal state -> cava (signal state) :=
+    peel >=> Traversable.mapT (column_map f) >=> unpeel.
 
   Definition aes_sbox_lut (is_decrypt : signal Bit) (b : signal (Vec Bit 8))
     : cava (signal (Vec Bit 8)) :=
-    encrypted <- indexAt sbox_fwd_lut b ;;
-    decrypted <- indexAt sbox_inv_lut b ;;
+    fwd_sbox <- sbox_fwd_lut ;;
+    inv_sbox <- sbox_inv_lut ;;
+    encrypted <- indexAt fwd_sbox b ;;
+    decrypted <- indexAt inv_sbox b ;;
     muxPair is_decrypt (encrypted, decrypted).
 
   Definition aes_sub_bytes (is_decrypt : signal Bit) (b : signal state)

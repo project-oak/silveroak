@@ -59,7 +59,7 @@ Section WithCava.
     '(sum1, carry) <- half_adder (carry, i1) ;;
     '(sum2, carry) <- half_adder (carry, i2) ;;
     '(sum3, carry) <- half_adder (carry, i3) ;;
-    ret (unpeel [sum0;sum1;sum2;sum3]%vector).
+    unpeel [sum0;sum1;sum2;sum3]%vector.
 
   (* decrement a 4-bit vector *)
   Definition decr4 (input : signal (Vec Bit 4))
@@ -72,7 +72,7 @@ Section WithCava.
     '(diff1, borrow) <- half_subtractor (i1, borrow) ;;
     '(diff2, borrow) <- half_subtractor (i2, borrow) ;;
     '(diff3, borrow) <- half_subtractor (i3, borrow) ;;
-    ret (unpeel [diff0;diff1;diff2;diff3]%vector).
+    unpeel [diff0;diff1;diff2;diff3]%vector.
 
   Fixpoint incr' {sz} (carry : signal Bit)
     : signal (Vec Bit sz) -> cava (signal (Vec Bit sz)) :=
@@ -80,10 +80,13 @@ Section WithCava.
           signal (Vec Bit sz0) -> cava (signal (Vec Bit sz0)) with
     | 0 => fun input => ret input
     | S sz' => fun input : signal (Vec Bit (S sz')) =>
-                let i0 := Vector.hd (peel input) in
+                i <- peel input ;;
+                let i0 := Vector.hd i in
                 '(sum0, carry) <- half_adder (carry, i0) ;;
-                sum <- incr' carry (unpeel (Vector.tl (peel input))) ;;
-                ret (unpeel (sum0 :: peel sum)%vector)
+                rem <- unpeel (Vector.tl i) ;;
+                sum' <- incr' carry rem ;;
+                sum <- peel sum' ;;
+                unpeel (sum0 :: sum)%vector
     end.
 
   (* increments a bit vector of any length *)
@@ -96,10 +99,13 @@ Section WithCava.
           signal (Vec Bit sz0) -> cava (signal (Vec Bit sz0)) with
     | 0 => fun input => ret input
     | S sz' => fun input : signal (Vec Bit (S sz')) =>
-                let i0 := Vector.hd (peel input) in
+                i <- peel input ;;
+                let i0 := Vector.hd i in
                 '(diff0, borrow) <- half_subtractor (i0, borrow) ;;
-                diff <- decr' borrow (unpeel (Vector.tl (peel input))) ;;
-                ret (unpeel (diff0 :: peel diff)%vector)
+                rem <- unpeel (Vector.tl i) ;;
+                diff' <- decr' borrow rem ;;
+                diff <- peel diff' ;;
+                unpeel (diff0 :: diff)%vector
     end.
 
   (* decrements a bit vector of any length *)

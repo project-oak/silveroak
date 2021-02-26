@@ -96,6 +96,7 @@ Section WithCava.
     (* // Mux z *)
     (* assign z_muxed[0] = (op_i == CIPH_FWD) ? 8'b0 : z[0]; *)
     (* assign z_muxed[1] = (op_i == CIPH_FWD) ? 8'b0 : z[1]; *)
+    zero_byte <- zero_byte ;;
     z_muxed_0 <- muxPair op_i (zero_byte, z_0) ;;
     z_muxed_1 <- muxPair op_i (zero_byte, z_1) ;;
 
@@ -109,11 +110,12 @@ Section WithCava.
     data_o2 <- (xorv data_i_3 x_mul2_1 >>= xorv x_3 >>= xorv z_muxed_1) ;;
     data_o3 <- (xorv data_i_2 x_mul2_0 >>= xorv x_3 >>= xorv z_muxed_0) ;;
 
-    ret (unpeel [data_o0; data_o1; data_o2; data_o3]).
+    unpeel [data_o0; data_o1; data_o2; data_o3].
 
   Definition aes_mix_columns
-    (op_i : signal Bit) (a: signal (Vec (Vec (Vec Bit 8) 4) 4))
-    : cava (signal (Vec (Vec (Vec Bit 8) 4) 4)) :=
+             (op_i : signal Bit)
+    : signal (Vec (Vec (Vec Bit 8) 4) 4)
+      -> cava (signal (Vec (Vec (Vec Bit 8) 4) 4)) :=
     (* // Transpose to operate on columns
     logic [3:0][3:0][7:0] data_i_transposed;
     logic [3:0][3:0][7:0] data_o_transposed;
@@ -130,8 +132,9 @@ Section WithCava.
     end
 
     assign data_o = aes_transpose(data_o_transposed); *)
-    let transposed := aes_transpose a in
-    mixed <- mapT (aes_mix_single_column op_i) (peel transposed) ;;
-    ret (aes_transpose (unpeel mixed)).
+    aes_transpose >=> peel
+                  >=> mapT (aes_mix_single_column op_i)
+                  >=> unpeel
+                  >=> aes_transpose.
 
 End WithCava.

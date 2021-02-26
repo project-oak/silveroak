@@ -37,16 +37,16 @@ Local Open Scope vector_scope.
 Section WithCava.
   Context {signal} `{Cava signal}.
 
-Definition twoSorter {signal} `{Cava signal} {n}
+  Definition twoSorter {signal} `{Cava signal} {n}
                      (ab:  signal (Vec (Vec Bit n) 2)) :
                      cava (signal (Vec (Vec Bit n) 2)) :=
    a <- indexConst ab 0 ;;
    b <- indexConst ab 1 ;;
    comparison <- greaterThanOrEqual (a, b) ;;
    negComparison <- inv comparison ;;
-   out0 <- indexAt ab (unpeel [comparison]) ;;
-   out1 <- indexAt ab (unpeel [negComparison]) ;;
-   ret (unpeel [out0;out1]).
+   out0 <- muxPair comparison (a, b) ;;
+   out1 <- muxPair negComparison (a, b) ;;
+   unpeel [out0; out1].
 
 End WithCava.
 

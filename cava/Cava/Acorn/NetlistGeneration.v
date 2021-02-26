@@ -190,18 +190,28 @@ Definition muxcyNet (s ci di : Signal Bit) : state CavaState (Signal Bit) :=
   addInstance (Component "MUXCY" [] [("O", USignal o); ("S", USignal s); ("CI", USignal ci); ("DI", USignal di)]) ;;
   ret o.
 
-Definition peelNet {t : SignalType} {s : nat} (v : Signal (Vec t s)) : Vector.t (Signal t) s :=
-  Vector.map (IndexConst v) (vseq 0 s).
+Definition localSignalNet {A : SignalType}
+                          (v : Signal A)
+                          : state CavaState (Signal A) :=
+   localSig <- newSignal A ;;
+   assignSignal localSig v ;;
+   ret localSig.
 
-Definition unpeelNet {t : SignalType} {s : nat} (v: Vector.t (Signal t) s) : Signal (Vec t s) :=
-  VecLit v.
+Definition peelNet {t : SignalType} {s : nat} (v : Signal (Vec t s))
+  : state CavaState (Vector.t (Signal t) s) :=
+  mapT_vector (fun x => localSignalNet (IndexConst v x)) (vseq 0 s).
+
+Definition unpeelNet {t : SignalType} {s : nat} (v: Vector.t (Signal t) s)
+  : state CavaState (Signal (Vec t s)) :=
+  localSignalNet (VecLit v).
 
 Definition sliceNet {t: SignalType} {sz: nat}
                     (startAt len: nat)
                     (v: Signal (Vec t sz))
                     (H: startAt + len <= sz) :
-                    Signal (Vec t len) :=
-  unpeelNet (sliceVector (peelNet v) startAt len H).
+                    state CavaState (Signal (Vec t len)) :=
+  v <- peelNet v ;;
+  unpeelNet (sliceVector v startAt len H).
 
 Fixpoint combToSignal (t : SignalType) (v : combType t) : Signal t :=
   match t, v with
@@ -213,13 +223,6 @@ Fixpoint combToSignal (t : SignalType) (v : combType t) : Signal t :=
   | Vec vt s, v => VecLit (Vector.map (combToSignal vt) v)
   | ExternalType typ, _ => UninterpretedSignal typ
   end.
-
-Definition localSignalNet {A : SignalType}
-                          (v : Signal A)
-                          : state CavaState (Signal A) :=
-   localSig <- newSignal A ;;
-   assignSignal localSig v ;;
-   ret localSig.
 
 Definition instantiateNet (intf : CircuitInterface)
                           (circuit : tupleNetInterface (circuitInputs intf) ->
@@ -261,7 +264,7 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     unpeel := @unpeelNet;
     indexAt k sz isz v i := localSignalNet (IndexAt v i);
     indexConst k sz v i := localSignalNet (IndexConst v i);
-    slice k sz start len v H := localSignalNet (@sliceNet k sz start len v H);
+    slice k sz start len v H := @sliceNet k sz start len v H;
     unsignedAdd m n ab :=
       localSignalNet (@UnsignedAdd m n (1 + max m n) (fst ab) (snd ab));
     unsignedMult m n ab :=

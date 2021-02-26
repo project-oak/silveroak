@@ -59,21 +59,23 @@ Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
-  Definition bitvec_to_signal {n : nat} (lut : t bool n) : signal (Vec Bit n) :=
+  Definition bitvec_to_signal {n : nat} (lut : t bool n) : cava (signal (Vec Bit n)) :=
     unpeel (Vector.map constant lut).
 
-  Definition bitvecvec_to_signal {a b : nat} (lut : t (t bool b) a) : signal (Vec (Vec Bit b) a) :=
-    unpeel (Vector.map bitvec_to_signal lut).
+  Definition bitvecvec_to_signal {a b : nat} (lut : t (t bool b) a) : cava (signal (Vec (Vec Bit b) a)) :=
+    v <- mapT bitvec_to_signal lut ;;
+    unpeel v.
 
-  Definition natvec_to_signal_sized {n : nat} (size : nat) (lut : t nat n) : signal (Vec (Vec Bit size) n) :=
+  Definition natvec_to_signal_sized {n : nat} (size : nat) (lut : t nat n)
+    : cava (signal (Vec (Vec Bit size) n)) :=
     bitvecvec_to_signal (Vector.map (nat_to_bitvec_sized size) lut).
 
   Definition aes_transpose {n m}
       (matrix : signal (Vec (Vec byte n) m))
-      : (signal (Vec (Vec byte m) n)) :=
-    let columns := peel matrix in
-    let items := map peel columns in
-    let columns := map unpeel (transpose items) in
+      : cava (signal (Vec (Vec byte m) n)) :=
+    columns <- peel matrix ;;
+    items <- mapT peel columns ;;
+    columns <- mapT unpeel (transpose items) ;;
     unpeel columns.
 
   Definition aes_mul2
@@ -93,23 +95,22 @@ Section WithCava.
     b <- xor2 (x2, x7) ;;
     c <- xor2 (x3, x7) ;;
 
-    ret (unpeel
-          [x7;
-           a;
-           x1;
-           b;
-           c;
-           x4;
-           x5;
-           x6
-          ]
-    ).
+    unpeel
+      [x7;
+      a;
+      x1;
+      b;
+      c;
+      x4;
+      x5;
+      x6
+      ].
 
   Definition aes_mul4
     : signal byte -> cava (signal byte) :=
     aes_mul2 >=> aes_mul2.
 
-  Definition zero_byte : signal byte := unpeel (Vector.const zero 8).
+  Definition zero_byte : cava (signal byte) := unpeel (Vector.const zero 8).
 
   (* function automatic logic [31:0] aes_circ_byte_shift(logic [31:0] in, logic [1:0] shift);
     logic [31:0] out;
@@ -124,7 +125,7 @@ Section WithCava.
     let indices := [4 - shift; 5 - shift; 6 - shift; 7 - shift] in
     let indices := map (fun x => Nat.modulo x 4) indices in
     out <- mapT (indexConst input) indices ;;
-    ret (unpeel out).
+    unpeel out.
 
   Definition IDLE_S := bitvec_to_signal (nat_to_bitvec_sized 3 0).
   Definition INIT_S := bitvec_to_signal (nat_to_bitvec_sized 3 1).

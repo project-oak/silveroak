@@ -73,10 +73,10 @@ Section WithCava.
            (a : signal (Vec A n))
            (b : signal (Vec B n))
            : cava (signal (Vec C n)) :=
-    let a' := peel a in
-    let b' := peel b in
+    a' <- peel a ;;
+    b' <- peel b ;;
     v <- mapT f (vcombine a' b') ;;
-    ret (unpeel v).
+    unpeel v.
 
   (* A list-based left monadic-fold. *)
   Fixpoint foldLM {m} `{Monad m} {A B : Type}
@@ -259,8 +259,10 @@ Section WithCava.
                (circuit : signal A * signal B -> cava (signal C * signal A))
                (aIn: signal A) (bIn: signal (Vec B n)) :
                cava (signal (Vec C n) * signal A) :=
-  '(c, a) <- colV circuit (aIn, (peel bIn)) ;;
-  ret (unpeel c, a).
+  b <- peel bIn ;;
+  '(c, a) <- colV circuit (aIn, b) ;;
+  cOut <- unpeel c ;;
+  ret (cOut, a).
 
   Local Close Scope vector_scope.
 
@@ -607,7 +609,8 @@ Section WithCava.
   Qed.
 
   Definition all {n} (v : signal (Vec Bit n)) : cava (signal Bit) :=
-    tree_all_sizes one (fun x y => and2 (x,y)) (peel v).
+    v <- peel v ;;
+    tree_all_sizes one (fun x y => and2 (x,y)) v.
 
   Fixpoint eqb {t : SignalType} : signal t -> signal t -> cava (signal Bit) :=
     match t as t0 return signal t0 -> signal t0 -> cava (signal Bit) with
@@ -622,5 +625,6 @@ Section WithCava.
   Definition mux4 {t} (input : signal t * signal t * signal t * signal t)
              (sel : signal (Vec Bit 2)) : cava (signal t) :=
     let '(i0,i1,i2,i3) := input in
-    indexAt (unpeel [i0;i1;i2;i3]%vector) sel.
+    v <- unpeel [i0;i1;i2;i3]%vector ;;
+    indexAt v sel.
  End WithCava.

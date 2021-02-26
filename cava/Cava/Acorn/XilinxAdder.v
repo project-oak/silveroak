@@ -53,10 +53,11 @@ Section WithCava.
               (cinab : signal Bit * (signal (Vec Bit n) * signal (Vec Bit n)))
             : cava (signal (Vec Bit n) * signal Bit)
     := let '(cin, (a, b)) := cinab in
-      let a0 := peel a in
-      let b0 := peel b in
+      a0 <- peel a ;;
+      b0 <- peel b ;;
       '(sum, cout) <- colV xilinxFullAdder (cin, vcombine a0 b0) ;;
-      ret (unpeel sum, cout).
+      sum <- unpeel sum ;;
+      ret (sum, cout).
 
   (******************************************************************************)
   (* An unsigned adder with no bit-growth and no carry in                       *)
