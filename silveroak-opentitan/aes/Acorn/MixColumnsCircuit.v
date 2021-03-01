@@ -23,6 +23,7 @@ Require Import ExtLib.Structures.Traversable.
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
+Require Import Cava.Lib.Multiplexers.
 Require Import AcornAes.Pkg.
 
 Local Notation byte := (Vec Bit 8) (only parsing).
@@ -97,8 +98,8 @@ Section WithCava.
     (* assign z_muxed[0] = (op_i == CIPH_FWD) ? 8'b0 : z[0]; *)
     (* assign z_muxed[1] = (op_i == CIPH_FWD) ? 8'b0 : z[1]; *)
     zero_byte <- zero_byte ;;
-    z_muxed_0 <- muxPair op_i (zero_byte, z_0) ;;
-    z_muxed_1 <- muxPair op_i (zero_byte, z_1) ;;
+    z_muxed_0 <- mux2 op_i (zero_byte, z_0) ;;
+    z_muxed_1 <- mux2 op_i (zero_byte, z_1) ;;
 
     (* // Drive outputs *)
     (* assign data_o[0] = data_i[1] ^ x_mul2[3] ^ x[1] ^ z_muxed[1]; *)

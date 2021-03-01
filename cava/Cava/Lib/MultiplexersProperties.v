@@ -15,25 +15,23 @@
 (****************************************************************************)
 
 Require Import Coq.Vectors.Vector.
-Local Open Scope vector_scope.
-Import VectorNotations.
 
-Require Import ExtLib.Structures.Monads.
-Import MonadNotation.
-Local Open Scope monad_scope.
+Require Import Cava.Acorn.Acorn.
+Require Import Cava.BitArithmetic.
+Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Lib.Multiplexers.
 
-Require Import Cava.Acorn.CavaClass.
-Require Import Cava.Signal.
+Lemma mux2_correct {t} (i0 i1 : combType t) (sel : combType Bit) :
+  unIdent (mux2 sel (i0, i1)) = if sel then i1 else i0.
+Proof. destruct sel; reflexivity. Qed.
+Hint Rewrite @mux2_correct using solve [eauto] : simpl_ident.
 
-Section WithCava.
-  Context `{semantics:Cava}.
-
-  (* Constant signals. *)
-
-  (* This component always returns the value 0. *)
-  Definition zero : signal Bit := constant false.
-
-  (* This component always returns the value 1. *)
-  Definition one : signal Bit := constant true.
-
-End WithCava.
+Lemma mux4_correct {t} (i0 i1 i2 i3 : combType t) (sel : combType (Vec Bit 2)) :
+  unIdent (mux4 (i0,i1,i2,i3) sel) =
+  if Vector.hd (Vector.tl sel)
+  then if Vector.hd sel then i3 else i2
+  else if Vector.hd sel then i1 else i0.
+Proof.
+  cbv in sel. constant_bitvec_cases sel; reflexivity.
+Qed.
+Hint Rewrite @mux4_correct using solve [eauto] : simpl_ident.

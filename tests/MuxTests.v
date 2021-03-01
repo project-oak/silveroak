@@ -23,6 +23,7 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
+Require Import Cava.Lib.Multiplexers.
 
 Require Import Coq.Bool.Bvector.
 Import Vector.VectorNotations.
@@ -33,9 +34,9 @@ Existing Instance CavaCombinationalNet.
 Section WithCava.
   Context {signal} `{Cava signal}.
 
-  (* muxPair specialized to single bit inputs *)
+  (* mux2 specialized to single bit inputs *)
   Definition mux2_1: signal Bit -> signal Bit * signal Bit -> cava (signal Bit)
-  := muxPair.
+  := mux2.
 
   Definition mux2_1_top '(sel, a, b) := mux2_1 sel (a, b).
 
@@ -53,7 +54,7 @@ End WithCava.
 Local Close Scope vector_scope.
 
 (******************************************************************************)
-(* muxPair tests                                                              *)
+(* mux2 tests                                                                 *)
 (******************************************************************************)
 
 Definition mux2_1_tb_inputs :=

@@ -38,6 +38,7 @@ Require Import Cava.Acorn.Combinational.
 Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.Multistep.
+Require Import Cava.Lib.MultiplexersProperties.
 
 Require Import AesSpec.Cipher.
 Require Import AesSpec.CipherProperties.

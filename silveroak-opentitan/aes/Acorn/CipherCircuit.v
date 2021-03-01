@@ -28,6 +28,7 @@ Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Combinators.
+Require Import Cava.Lib.Multiplexers.
 Import Circuit.Notations.
 
 Local Open Scope monad_scope.
@@ -72,7 +73,7 @@ Section WithCava.
     (* Intermediate decryption rounds need to mix the key columns *)
     mixed_round_key <- inv_mix_columns_key round_key ;;
 
-    key_to_add <- muxPair round_key_sel (round_key, mixed_round_key) ;;
+    key_to_add <- mux2 round_key_sel (round_key, mixed_round_key) ;;
     out <- add_round_key key_to_add add_round_key_in ;;
 
     ret out.
@@ -106,7 +107,7 @@ Section WithCava.
             let '(is_decrypt, num_rounds_regular,
                   round_0, idx, _, initial_state) := input in
             is_first_round <- idx ==? round_0 ;;
-            st <- muxPair is_first_round (feedback_state, initial_state) ;;
+            st <- mux2 is_first_round (feedback_state, initial_state) ;;
             st' <- cipher_step is_decrypt is_first_round
                              num_rounds_regular k idx st ;;
             ret (st',st'))).
