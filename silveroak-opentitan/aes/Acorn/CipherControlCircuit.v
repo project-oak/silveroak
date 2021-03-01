@@ -649,7 +649,8 @@ Section WithCava.
       * signal round_index (* round_0 : round index of first round *)
       * signal round_index (* current round_index *)
       * signal state (* initial state, ignored for all rounds except first *)
-      * signal key ) (signal state)).
+      * signal key
+      * signal key) (signal state)).
 
   Definition aes_cipher_core
     : Circuit
@@ -708,7 +709,7 @@ Section WithCava.
 
         r13 <- round_13 ;;
         r0 <- round_0 ;;
-        ret ( (op, r13, r0, current_round, st, k)
+        ret ( (op, r13, r0, current_round, st, k, k)
             , (in_ready, out_valid, crypt, dec_key_gen, key_clear))
 
       ) >==>

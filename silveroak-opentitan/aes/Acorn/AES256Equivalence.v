@@ -76,7 +76,7 @@ Definition full_cipher {signal} {semantics : Cava signal}
            key_expand
   : Circuit
       (signal Bit * signal round_index * signal round_index * signal round_index
-       * signal state)
+       * signal key * signal state)
       (signal state) :=
   cipher
     aes_sub_bytes aes_shift_rows aes_mix_columns aes_add_round_key
@@ -103,7 +103,7 @@ Local Ltac solve_side_conditions :=
   end.
 
 Lemma full_cipher_equiv
-      (is_decrypt : bool) key_expand init_state_ignored
+      (is_decrypt : bool) key_expand init_key_input init_state_ignored
       (init_key last_key : combType key)
       (middle_keys : list (combType key)) (init_state : combType state)
       (cipher_input : list _):
@@ -112,9 +112,10 @@ Lemma full_cipher_equiv
       if is_decrypt
       then List.map AES256.inv_mix_columns (List.map to_flat middle_keys)
       else List.map to_flat middle_keys in
+  length init_key_input = S Nr ->
   length init_state_ignored = Nr ->
   length middle_keys = Nr - 1 ->
-  cipher_input = make_cipher_signals Nr is_decrypt
+  cipher_input = make_cipher_signals Nr is_decrypt init_key_input
                                      (init_state :: init_state_ignored) ->
   (* precomputed keys match key expansion *)
   multistep key_expand cipher_input = init_key :: middle_keys ++ [last_key] ->
@@ -156,16 +157,19 @@ Qed.
 
 Lemma full_cipher_inverse
       (is_decrypt : bool) key_expand
+      init_key_input_fwd init_key_input_inv
       init_state_ignored_fwd init_state_ignored_inv
       cipher_input_fwd cipher_input_inv
       (plaintext : combType state) d :
   let Nr := 14 in
+  length init_key_input_fwd = S Nr ->
+  length init_key_input_inv = S Nr ->
   length init_state_ignored_fwd = Nr ->
   length init_state_ignored_inv = Nr ->
-  cipher_input_fwd = make_cipher_signals Nr false
+  cipher_input_fwd = make_cipher_signals Nr false init_key_input_fwd
                                          (plaintext :: init_state_ignored_fwd) ->
   let ciphertext := nth Nr (multistep (full_cipher key_expand) cipher_input_fwd) d in
-  cipher_input_inv = make_cipher_signals Nr true
+  cipher_input_inv = make_cipher_signals Nr true init_key_input_inv
                                          (ciphertext :: init_state_ignored_inv) ->
   (* inverse key expansion reverses key expansion *)
   multistep key_expand cipher_input_fwd = rev (multistep key_expand cipher_input_inv) ->
@@ -175,7 +179,7 @@ Proof.
 
   (* we need a default value of key for some later rewrites *)
   assert (combType key) as default_key
-      by (cbn [length] in *; length_hammer ).
+      by (destruct init_key_input_fwd; [ cbn [length] in *; length_hammer | eassumption ]).
 
   do 2
      (erewrite full_cipher_equiv;
