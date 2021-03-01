@@ -220,7 +220,7 @@ Section WithCava.
   Definition setSignal {T} F {_: Setter F} (x: cava_signal T) : signal_update :=
     s <- get ;;
     let s' := set F (fun _ => x) s in
-    put s.
+    put s'.
   Definition setSignal1 {T} F {_: Setter F} (x: signal T) : signal_update :=
     setSignal F (ret x).
   Definition getSignal {T} (f: cipher_control_signals cava_signal -> T)
@@ -230,7 +230,7 @@ Section WithCava.
   Definition updateSignal {T} F {_: Setter F} (f: signal T -> cava_signal T) : signal_update :=
     s <- get ;;
     let s' := set F (fun x => x >>= f) s in
-    put s.
+    put s'.
   Definition setEnSignal {T} F {_: Setter F} (en: cava_signal Bit) (x: cava_signal T)
     : signal_update :=
     s <- get ;;
@@ -239,7 +239,7 @@ Section WithCava.
       x' <- x ;;
       y' <- y ;;
       muxPair en' (y',x')) s in
-    put s.
+    put s'.
   Definition setEnSignal1 {T} F {_: Setter F} (en: cava_signal Bit) (x: signal T) : signal_update :=
     setEnSignal F en (ret x).
 
@@ -317,10 +317,11 @@ Section WithCava.
   (* mux idle states *)
   Definition transition_idle (inputs: control_inputs): signal_update :=
     s <- get ;;
+    let idle_default := execState transition_idle_pre s in
     let clear_transition := execState (transition_idle_clear inputs) s in
     let start_transition := execState (transition_idle_start inputs) s in
     let state_matrix :=
-      nondeterministic_state [s; clear_transition; start_transition] in
+      nondeterministic_state [idle_default; clear_transition; start_transition] in
     (* if (in_valid_i) begin *)
     let cond1 := ret (in_valid_i inputs) in
     (* if (key_clear_i || data_out_clear_i) begin *)
