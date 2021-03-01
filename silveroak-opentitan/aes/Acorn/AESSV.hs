@@ -33,3 +33,4 @@ main = do writeSystemVerilog aes_mix_columns_Netlist
           writeSystemVerilog aes_add_round_key_Netlist
           writeTestBench aes_add_round_key_tb
           writeSystemVerilog cipher_round_Netlist
+          writeSystemVerilog aes_cipher_core_Netlist

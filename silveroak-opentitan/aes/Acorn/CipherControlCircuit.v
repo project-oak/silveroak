@@ -53,53 +53,25 @@ Section WithCava.
 
   Local Infix "==?" := eqb (at level 40).
 
-  Section PkgNotations.
-    Import Pkg.Notations.
+  Definition round_0: cava (signal round_index) :=
+    bitvec_to_signal (nat_to_bitvec_sized _ 0).
+  Definition round_1: cava (signal round_index) :=
+    bitvec_to_signal (nat_to_bitvec_sized _ 1).
+  Definition round_2: cava (signal round_index) :=
+    bitvec_to_signal (nat_to_bitvec_sized _ 2).
+  Definition round_13: cava (signal round_index) :=
+    bitvec_to_signal (nat_to_bitvec_sized _ 13).
+  Definition round_14: cava (signal round_index) :=
+    bitvec_to_signal (nat_to_bitvec_sized _ 14).
 
-    Context (key_expand :
-               Circuit (signal Bit * signal round_index * signal round_index
-                        * signal round_index * signal key * signal state)
-                       (signal key)).
+  Definition add_round (a b: signal round_index): cava (signal round_index) :=
+    sum <- (@unsignedAdd _ _ 4 4 (a, b)) ;;
+    sum <- peel sum ;;
+    let '(trunc,_) := unsnoc sum in
+    unpeel trunc.
 
-    Definition round_0: cava (signal round_index) :=
-      bitvec_to_signal (nat_to_bitvec_sized _ 0).
-    Definition round_1: cava (signal round_index) :=
-      bitvec_to_signal (nat_to_bitvec_sized _ 1).
-    Definition round_2: cava (signal round_index) :=
-      bitvec_to_signal (nat_to_bitvec_sized _ 2).
-    Definition round_13: cava (signal round_index) :=
-      bitvec_to_signal (nat_to_bitvec_sized _ 13).
-    Definition round_14: cava (signal round_index) :=
-      bitvec_to_signal (nat_to_bitvec_sized _ 14).
-
-    Definition add_round (a b: signal round_index): cava (signal round_index) :=
-      sum <- (@unsignedAdd _ _ 4 4 (a, b)) ;;
-      sum <- peel sum ;;
-      let '(trunc,_) := unsnoc sum in
-      unpeel trunc.
-
-    Definition inc_round (current: signal round_index): cava (signal round_index)
-      := round_1 <- round_1 ;; add_round current round_1.
-
-    (* aes_shift_rows' and aes_mix_columns' must be instantiated hierarchically
-       to prevent excessive code generation
-       *)
-    Definition aes_shift_rows' x y :=
-      instantiate aes_shift_rows_Interface (fun '(x,y) => aes_shift_rows x y) (x, y).
-    Definition aes_mix_columns' x y :=
-      instantiate aes_mix_columns_Interface (fun '(x,y) => aes_shift_rows x y) (x, y).
-    Definition aes_sbox_lut' x y :=
-      instantiate aes_sbox_lut_Interface (fun '(x,y) => aes_sbox_lut x y) (x, y).
-    Definition aes_sub_bytes' (is_decrypt : signal Bit) (b : signal state)
-      : cava (signal state) := state_map (aes_sbox_lut' is_decrypt) b.
-
-    Definition inv_mix_columns_key := aes_mix_columns' (constant true).
-
-    (* Plug in our concrete components to the skeleton in Cipher.v *)
-    Definition cipher := CipherCircuit.cipher
-      aes_sub_bytes' aes_shift_rows' aes_mix_columns' aes_add_round_key
-      inv_mix_columns_key key_expand.
-  End PkgNotations.
+  Definition inc_round (current: signal round_index): cava (signal round_index)
+    := round_1 <- round_1 ;; add_round current round_1.
 
   Record cipher_control_signals {f: SignalType -> Type} :=
     { in_ready_o : f Bit
@@ -595,6 +567,7 @@ Section WithCava.
     * signal Bit (* dec_key_gen_o *)
     * signal Bit (* key_clear_o *)
     * signal Bit (* data_out_clear_o *)
+    * signal round_index
     .
 
   Definition aes_cipher_control_loop
@@ -655,6 +628,7 @@ Section WithCava.
         , dec_key_gen_d state
         , key_clear_d state
         , data_out_clear_d state
+        , round_d state
         )
       next_state
       ).
@@ -662,38 +636,96 @@ Section WithCava.
   Definition aes_cipher_control
     : Circuit control_inputs control_outputs :=
     Loop(Loop(Loop(Loop(Loop(Loop(Loop(Comb aes_cipher_control_loop))))))).
-End WithCava.
 
-Section PkgNotations.
   Import Pkg.Notations.
-  (* Interface of existing aes_key_expand
-  * https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_key_expand.sv *)
-  Definition aes_key_expand_Interface :=
-     sequentialInterface "aes_key_expand"
-     "clk_i" PositiveEdge "rst_ni" NegativeEdge
-     [ mkPort "op_i" Bit
-     ; mkPort "step_i" Bit
-     ; mkPort "clear_i" Bit
-     ; mkPort "round_i" (Vec Bit 4)
-     ; mkPort "key_len_i" (Vec Bit 3)
-     ; mkPort "key_i" key
-     ]
-     [ mkPort "key_o" key ]
-     [].
 
-  (* TODO: provide a key expand implementation instead of using a black box here? *)
-  Definition key_expand :
-    Circuit (Signal Bit * Signal round_index * Signal round_index
-             * Signal round_index * Signal key * Signal state)
-            (Signal key) :=
-    Loop
-      (Comb
-         (fun '(op_i, _, round_0, round_i, init_key, _, feedback_key) =>
-            is_first_round <- eqb round_i round_0 ;;
-            k <- muxPair is_first_round (feedback_key, init_key) ;;
-            key_len <- unpeel (Vector.map constant [true;false;false]) ;;
-            key_o <- blackBoxNet aes_key_expand_Interface
-                                (op_i, constant true, constant false, round_i,
-                                 key_len, k) ;;
-            ret (key_o, key_o))).
-End PkgNotations.
+  Context (key_expand :
+    Circuit (signal Bit * signal Bit * signal Bit * signal round_index * signal (Vec Bit 3) * signal key)
+            (signal key)).
+  Context (cipher_loop:
+    Circuit (
+    signal Bit (* op_i/is_decrypt : true for decryption, false for encryption *)
+      * signal round_index (* num_rounds_regular : round index of final round *)
+      * signal round_index (* round_0 : round index of first round *)
+      * signal round_index (* current round_index *)
+      * signal state (* initial state, ignored for all rounds except first *)
+      * signal key
+      * signal key) (signal state)).
+
+  Definition aes_cipher_core
+    : Circuit
+      ( _
+      * signal state (* prng data *)
+      * signal state
+      * signal key )
+      ( signal Bit (* in_ready_o *)
+      * signal Bit (* out_valid_o *)
+      * signal Bit (* crypt_o *)
+      * signal Bit (* dec_key_gen_o *)
+      * signal Bit (* key_clear_o *)
+      * signal Bit (* data_out_clear_o *)
+      * signal state (* state_o *)
+      ) :=
+    Loop (
+      (* 1. Run aes_cipher_control: Place cipher control signals into the right place *)
+      Comb ( fun inputs =>
+        let '(input_signals, prng, st, k, feedback_state) := inputs in
+        let '(a,b,c,d,e,f,op,key_len) := input_signals in
+        ret (Build_control_inputs a b c d e f op key_len, (op, key_len, prng, st, k, feedback_state))
+      ) >==>
+      First aes_cipher_control >==>
+
+      (* 2. Run key_expand: Place key_expand signals into the right place *)
+      Comb ( fun inputs =>
+        let '( control_signals
+             , (op, key_len, prng, st, k, feedback_state)) := inputs in
+
+        let '( _ , _ , _ , _ , _
+             , key_expand_step
+             , key_expand_clear
+             , _ , _ , _ , _ , _ , _
+             , key_expand_op
+             , key_expand_round
+             , _ , _ , _ , _ , _ ) := control_signals in
+        (*FIXME(blaxill): Fix k *)
+        ret ( ( key_expand_op, key_expand_step, key_expand_clear, key_expand_round, key_len, k)
+            , (control_signals, op, st, feedback_state) )
+      ) >==>
+      First key_expand >==>
+
+      (* 2. Run cipher_loop: Place cipher signals into the right place *)
+      Comb (fun inputs =>
+        let '(k, (control_signals, op, st, feedback_state)) := inputs in
+
+        let '( in_ready
+             , out_valid
+             , _ , _ , _ , _ , _ , _ , _
+             , _ , _ , _ , _ , _ , _
+             , crypt
+             , dec_key_gen
+             , key_clear
+             , data_out_clear
+             , current_round
+        ) := control_signals in
+
+        r13 <- round_13 ;;
+        r0 <- round_0 ;;
+        ret ( (op, r13, r0, current_round, st, k, k)
+            , (in_ready, out_valid, crypt, dec_key_gen, key_clear, data_out_clear))
+
+      ) >==>
+      First cipher_loop >==>
+
+      (* cleanup *)
+      Comb (fun inputs =>
+        let '(st, signals) := inputs in
+        ret
+          ( ( signals
+            , st
+            )
+          , st )
+          (* FIXME(blaxill): hold state when output not ready *)
+      )
+    ).
+
+End WithCava.
