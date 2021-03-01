@@ -208,6 +208,7 @@ Definition get_state_inputs_for_round {state} (step : AESStep)
   let default := state_before_round in (* for nth_default *)
   map (fun i => nth i (state_before_round :: map snd round) default)
       step_indices.
+
 Definition get_state_outputs_for_round {state} (step : AESStep)
            (round : list (AESStep * state))
   : list state :=

@@ -43,23 +43,20 @@ Definition aes_add_round_key_Netlist :=
   makeCircuitNetlist aes_add_round_key_Interface
                      (Comb (fun '(k,st) => aes_add_round_key k st)).
 
-(* Test bench checking that for a single add_round_key, the circuit and Coq
-   semantics return the same result *)
-Section SimpleTestBench.
+(* Test bench checking that for a single step, the circuit and Coq semantics
+   return the same result *)
+Section SimpleTest.
+  Definition aes_add_round_key_simple_inputs
+    : list _ := [(fromNatVec test_key, fromNatVec test_state)].
+
   (* Compute the expected outputs from the Coq/Cava semantics. *)
   Definition aes_add_round_key_simple_expected_outputs : seqType (Vec (Vec (Vec Bit 8) 4) 4)
     := simulate (Comb (fun '(key_i, data_i) => aes_add_round_key key_i data_i))
-                 [(fromNatVec test_key, fromNatVec test_state)].
-
-  Definition aes_add_round_key_simple_tb :=
-    testBench "aes_add_round_key_simple_tb"
-              aes_add_round_key_Interface
-              [(fromNatVec test_key, fromNatVec test_state)]
-              aes_add_round_key_simple_expected_outputs.
-End SimpleTestBench.
+                aes_add_round_key_simple_inputs.
+End SimpleTest.
 
 (* Test bench checking against full FIPS AES-256 encryption test vector *)
-Section FIPSEncryptTestBench.
+Section FIPSEncryptTests.
   Definition aes_add_round_key_enc_tb_inputs :=
     Eval vm_compute in
       (combine (map from_flat (round_ksch fips_c3_forward))
@@ -68,16 +65,11 @@ Section FIPSEncryptTestBench.
   Definition aes_add_round_key_enc_expected_outputs :=
     Eval vm_compute in
       (map from_flat (get_state_outputs AddRoundKey fips_c3_forward)).
-
-  Definition aes_add_round_key_enc_tb
-    := testBench "aes_add_round_key_enc_tb" aes_add_round_key_Interface
-                 aes_add_round_key_enc_tb_inputs
-                 aes_add_round_key_enc_expected_outputs.
-End FIPSEncryptTestBench.
+End FIPSEncryptTests.
 
 (* Test bench checking against full FIPS AES-256 decryption test vector (for
    equivalent inverse cipher) *)
-Section FIPSDecryptTestBench.
+Section FIPSDecryptTests.
   Definition aes_add_round_key_dec_tb_inputs :=
     Eval vm_compute in
       (combine (map from_flat (round_ksch fips_c3_equivalent_inverse))
@@ -86,9 +78,24 @@ Section FIPSDecryptTestBench.
   Definition aes_add_round_key_dec_expected_outputs :=
     Eval vm_compute in
       (map from_flat (get_state_outputs AddRoundKey fips_c3_equivalent_inverse)).
+End FIPSDecryptTests.
 
-  Definition aes_add_round_key_dec_tb
-    := testBench "aes_add_round_key_dec_tb" aes_add_round_key_Interface
-                 aes_add_round_key_dec_tb_inputs
-                 aes_add_round_key_dec_expected_outputs.
-End FIPSDecryptTestBench.
+(* Concatenate inputs from all tests *)
+Definition aes_add_round_key_tb_all_inputs :=
+  Eval vm_compute in
+    (aes_add_round_key_simple_inputs
+       ++ aes_add_round_key_enc_tb_inputs
+       ++ aes_add_round_key_dec_tb_inputs)%list.
+
+(* Concatenate expected outputs from all tests *)
+Definition aes_add_round_key_tb_all_expected_outputs :=
+  Eval vm_compute in
+    (aes_add_round_key_simple_expected_outputs
+       ++ aes_add_round_key_enc_expected_outputs
+       ++ aes_add_round_key_dec_expected_outputs)%list.
+
+Definition aes_add_round_key_tb :=
+  testBench "aes_add_round_key_tb"
+            aes_add_round_key_Interface
+            aes_add_round_key_tb_all_inputs
+            aes_add_round_key_tb_all_expected_outputs.
