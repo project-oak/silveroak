@@ -91,7 +91,7 @@ Section WithCava.
                >==>
                Comb (fun '(carry1, acc2) =>
                        acc2p1 <- incrN acc2 ;;
-                       out <- muxPair carry1 (acc2, acc2p1) ;;
+                       out <- mux2 carry1 (acc2, acc2p1) ;;
                        ret (out, out))).
 End WithCava.
 

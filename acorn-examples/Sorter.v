@@ -44,8 +44,8 @@ Section WithCava.
    b <- indexConst ab 1 ;;
    comparison <- greaterThanOrEqual (a, b) ;;
    negComparison <- inv comparison ;;
-   out0 <- muxPair comparison (a, b) ;;
-   out1 <- muxPair negComparison (a, b) ;;
+   out0 <- mux2 comparison (a, b) ;;
+   out1 <- mux2 negComparison (a, b) ;;
    unpeel [out0; out1].
 
 End WithCava.

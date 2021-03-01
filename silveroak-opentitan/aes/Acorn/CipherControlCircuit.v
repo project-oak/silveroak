@@ -238,7 +238,7 @@ Section WithCava.
       en' <- en ;;
       x' <- x ;;
       y' <- y ;;
-      muxPair en' (y',x')) s in
+      mux2 en' (y',x')) s in
     put s.
   Definition setEnSignal1 {T} F {_: Setter F} (en: cava_signal Bit) (x: signal T) : signal_update :=
     setEnSignal F en (ret x).
@@ -251,7 +251,7 @@ Section WithCava.
   Definition mux2Cond {t} (sel : signal Bit) (xy : cava_signal t * cava_signal t) : cava_signal t :=
     x' <- fst xy ;;
     y' <- snd xy ;;
-    muxPair sel (x',y').
+    mux2 sel (x',y').
 
   Definition transition_idle_pre: signal_update :=
     setSignal1 dec_key_gen_d (constant false) ;;
@@ -332,9 +332,9 @@ Section WithCava.
          sel1 <- bitvec_to_signal (nat_to_bitvec_sized 2 1) ;;
          sel2 <- bitvec_to_signal (nat_to_bitvec_sized 2 2) ;;
          cond3' <- cond3 ;;
-         x <- muxPair cond3' (sel0, sel2) ;;
+         x <- mux2 cond3' (sel0, sel2) ;;
          cond2' <- cond2 ;;
-         muxPair cond2' (x, sel1)) in
+         mux2 cond2' (x, sel1)) in
     put (select_state state_matrix sel).
 
   Definition transition_init (inputs: control_inputs): signal_update :=
@@ -401,7 +401,7 @@ Section WithCava.
 
     (* // Select round key: direct or mixed (equivalent inverse cipher) *)
     (* round_key_sel_o = (op_i == CIPH_FWD) ? ROUND_KEY_DIRECT : ROUND_KEY_MIXED; *)
-    setSignal round_key_sel_o (muxPair (op_i inputs) (ROUND_KEY_DIRECT, ROUND_KEY_MIXED)) ;;
+    setSignal round_key_sel_o (mux2 (op_i inputs) (ROUND_KEY_DIRECT, ROUND_KEY_MIXED)) ;;
 
     (* // Update round *)
     (* round_d = round_q + 4'b1; *)
@@ -619,7 +619,7 @@ Section WithCava.
     (* assign key_clear_o      = key_clear_q; *)
     (* assign data_out_clear_o = data_out_clear_q; *)
     key_gen <- or2 (dec_key_gen_d', dec_key_gen_d next_state) ;;
-    key_expand_op_o <- muxPair key_gen (op_i inputs, constant false) ;;
+    key_expand_op_o <- mux2 key_gen (op_i inputs, constant false) ;;
     ret
       ( extend_with_loop_state  ( extract_loop_outputs next_state
         , key_expand_op_o

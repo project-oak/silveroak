@@ -20,7 +20,6 @@ Import VectorNotations.
 
 Require Import ExtLib.Structures.Monads.
 Import MonadNotation.
-Local Open Scope monad_scope.
 
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Signal.
@@ -28,12 +27,17 @@ Require Import Cava.Signal.
 Section WithCava.
   Context `{semantics:Cava}.
 
-  (* Constant signals. *)
+  (* A two to one multiplexer that takes its two arguments as a pair rather
+     than as a 2 element vector which is what indexAt works over. *)
+  Definition mux2 {A : SignalType}
+             (sel : signal Bit)
+             (ab : signal A * signal A) : cava (signal A) :=
+    let (a, b) := ab in
+    indexAt (unpeel [a; b]) (unpeel [sel]).
 
-  (* This component always returns the value 0. *)
-  Definition zero : signal Bit := constant false.
-
-  (* This component always returns the value 1. *)
-  Definition one : signal Bit := constant true.
-
+  (* 4-element multiplexer *)
+  Definition mux4 {t} (input : signal t * signal t * signal t * signal t)
+             (sel : signal (Vec Bit 2)) : cava (signal t) :=
+    let '(i0,i1,i2,i3) := input in
+    indexAt (unpeel [i0;i1;i2;i3]%vector) sel.
 End WithCava.

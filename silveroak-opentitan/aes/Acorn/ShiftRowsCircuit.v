@@ -52,14 +52,14 @@ Section WithCava.
   (*                                       : aes_circ_byte_shift(data_i[1], 2'h1); *)
   data_o_1_0 <- aes_circ_byte_shift 3 data_i_1 ;;
   data_o_1_1 <- aes_circ_byte_shift 1 data_i_1 ;;
-  data_o_1 <- muxPair op_i (data_o_1_0, data_o_1_1) ;;
+  data_o_1 <- mux2 op_i (data_o_1_0, data_o_1_1) ;;
 
   (* // Row 3 *)
   (* assign data_o[3] = (op_i == CIPH_FWD) ? aes_circ_byte_shift(data_i[3], 2'h1) *)
   (*                                       : aes_circ_byte_shift(data_i[3], 2'h3); *)
   data_o_3_0 <- aes_circ_byte_shift 1 data_i_3 ;;
   data_o_3_1 <- aes_circ_byte_shift 3 data_i_3 ;;
-  data_o_3 <- muxPair op_i (data_o_3_0, data_o_3_1) ;;
+  data_o_3 <- mux2 op_i (data_o_3_0, data_o_3_1) ;;
 
   unpeel [data_o_0; data_o_1; data_o_2; data_o_3].
 
