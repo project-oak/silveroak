@@ -109,6 +109,7 @@ Definition aes_cipher_core_Interface :=
   ; mkPort "crypt_o" Bit
   ; mkPort "dec_key_gen_o" Bit
   ; mkPort "key_clear_o" Bit
+  ; mkPort "data_out_clear_o" Bit
   ; mkPort "state_o" state
   ]
   [].

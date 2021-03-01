@@ -663,6 +663,7 @@ Section WithCava.
       * signal Bit (* crypt_o *)
       * signal Bit (* dec_key_gen_o *)
       * signal Bit (* key_clear_o *)
+      * signal Bit (* data_out_clear_o *)
       * signal state (* state_o *)
       ) :=
     Loop (
@@ -703,14 +704,14 @@ Section WithCava.
              , crypt
              , dec_key_gen
              , key_clear
-             , _
+             , data_out_clear
              , current_round
         ) := control_signals in
 
         r13 <- round_13 ;;
         r0 <- round_0 ;;
         ret ( (op, r13, r0, current_round, st, k, k)
-            , (in_ready, out_valid, crypt, dec_key_gen, key_clear))
+            , (in_ready, out_valid, crypt, dec_key_gen, key_clear, data_out_clear))
 
       ) >==>
       First cipher_loop >==>
