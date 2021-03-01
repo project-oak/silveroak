@@ -29,7 +29,7 @@ From RecordUpdate Require Import RecordSet.
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.Combinators.
+Require Import Cava.Lib.Multiplexers.
 Require Import AcornAes.Pkg.
 Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.AddRoundKeyCircuit.

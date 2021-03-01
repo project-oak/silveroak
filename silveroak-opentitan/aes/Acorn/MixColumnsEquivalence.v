@@ -27,6 +27,7 @@ Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
+Require Import Cava.Lib.MultiplexersProperties.
 Import ListNotations VectorNotations.
 Local Open Scope list_scope.
 

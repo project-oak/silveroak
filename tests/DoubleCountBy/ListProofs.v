@@ -32,6 +32,7 @@ Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Lib.UnsignedAdders.
+Require Import Cava.Lib.MultiplexersProperties.
 
 Require Import DoubleCountBy.DoubleCountBy.
 

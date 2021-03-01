@@ -28,6 +28,7 @@ Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Combinators.
+Require Import Cava.Lib.Multiplexers.
 Import Circuit.Notations.
 
 Local Open Scope monad_scope.

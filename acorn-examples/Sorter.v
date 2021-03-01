@@ -28,6 +28,7 @@ Import VectorNotations.
 Require Import Coq.Arith.PeanoNat Coq.NArith.NArith.
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
+Require Import Cava.Lib.Multiplexers.
 Existing Instance CavaCombinationalNet.
 
 Require Import Coq.micromega.Lia.

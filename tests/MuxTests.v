@@ -23,6 +23,7 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
+Require Import Cava.Lib.Multiplexers.
 
 Require Import Coq.Bool.Bvector.
 Import Vector.VectorNotations.
