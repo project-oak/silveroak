@@ -22,6 +22,7 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
+Require Import Cava.Lib.Multiplexers.
 Require Import AcornAes.Pkg.
 Import Pkg.Notations.
 
@@ -147,7 +148,7 @@ Section WithCava.
     inv_sbox <- sbox_inv_lut ;;
     encrypted <- indexAt fwd_sbox b ;;
     decrypted <- indexAt inv_sbox b ;;
-    muxPair is_decrypt (encrypted, decrypted).
+    mux2 is_decrypt (encrypted, decrypted).
 
   Definition aes_sub_bytes (is_decrypt : signal Bit) (b : signal state)
     : cava (signal state) :=

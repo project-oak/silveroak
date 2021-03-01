@@ -27,6 +27,7 @@ Export MonadNotation.
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.UnsignedAdders.
+Require Import Cava.Lib.Multiplexers.
 Import Circuit.Notations.
 
 (******************************************************************************)
@@ -91,7 +92,7 @@ Section WithCava.
                >==>
                Comb (fun '(carry1, acc2) =>
                        acc2p1 <- incrN acc2 ;;
-                       out <- muxPair carry1 (acc2, acc2p1) ;;
+                       out <- mux2 carry1 (acc2, acc2p1) ;;
                        ret (out, out))).
 End WithCava.
 
