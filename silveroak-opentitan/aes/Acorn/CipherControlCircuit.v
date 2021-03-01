@@ -691,7 +691,7 @@ Section WithCava.
       ) >==>
       First key_expand >==>
 
-      (* 2. Run cipher_loop: Place key_expand signals into the right place *)
+      (* 2. Run cipher_loop: Place cipher signals into the right place *)
       Comb (fun inputs =>
         let '(k, (control_signals, op, st, feedback_state)) := inputs in
 
