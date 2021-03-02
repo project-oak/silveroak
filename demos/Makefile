@@ -57,7 +57,7 @@ clean:
 		git clean -Xfd
 
 # build demo webpages (requires alectryon -- set $ALECTRYON_PATH variable to local alectryon clone)
-html:	coq
+html:
 	$(ALECTRYON_PATH)/alectryon.py --backend webpage \
 	       	-o ../doc/demo/tutorial.html --output-directory ../doc/demo \
 	       	-R ../cava/Cava Cava \

@@ -24,16 +24,25 @@ Tutorial
 ========
 
 Welcome! This is a quick primer for designing circuits with Cava. We'll walk
-through a few small examples end-to-end.
+through a few small examples end-to-end. This tutorial assumes some familiarity
+with Coq syntax. Use Ctrl+down and Ctrl+up to step through the Coq code along with the tutorial.
 
 .. coq:: none
 |*)
 
+Require Import Coq.Lists.List.
+Require Import Coq.NArith.NArith.
+Require Import Coq.Strings.String.
 Require Import ExtLib.Structures.Monads.
-Import MonadNotation.
+Require Import ExtLib.Data.Monads.StateMonad.
+Import ListNotations MonadNotation.
 Open Scope monad_scope.
 
+Require Import Cava.Cava.
+Require Import Cava.ListUtils.
 Require Import Cava.Acorn.Acorn.
+Require Import Cava.Acorn.Identity.
+Import Circuit.Notations.
 
 (*|
 Example 1 : Inverter
@@ -103,100 +112,138 @@ wires for the first definition, and fork the same wire in the second. As circuit
 diagrams, this is the difference between::
 
          +-----+      +-----+
-  1 ---- | inv |------|     |
-         +-----+      | xor | ---- out
+  0 -----| inv |------|     |
+         +-----+      | xor |----- out
          +-----+      |     |
-  1 ---- | inv | ---- |     |
+  0 -----| inv |------|     |
          +-----+      +-----+
 
 and::
 
-                            +-----+
-                     +----- |     |
-                     |      | xor | ---- out
-         +-----+     |      |     |
-  1 ---- | inv | ----+----- |     |
-         +-----+            +-----+
+                        +-----+
+                    +---|     |
+                    |   | xor |---- out
+         +-----+    |   |     |
+  0 -----| inv |----+---|     |
+         +-----+        +-----+
 
 This difference isn't significant in determining what the value of ``out`` will
 be, but it can be very useful when trying to exercise fine-grained control over
-circuit layout and area!
+circuit layout and area! At a first approximation, you can think of a monadic
+bind (``_ <- _ ;; ...``) as *naming a wire* in the circuit graph.
 
 Parameterizing over the ``cava`` monad and primitive implementations allows us
 to use different instances of ``Cava`` to interpret the same circuit definition
-in different ways. For instance, one ``Cava`` instance creates a netlist from
-the circuit definition by using a state monad that adds and connects wires in
-the background. Defining a purely combinational circuit is simply defining a
-Gallina function in terms of the ``cava`` monad and ``SignalType``.
+in different ways. One ``Cava`` instance generates netlists by adding and
+connecting wires in the background using a state monad. For circuit simulations
+and proofs of functional correctness, on the other hand, we don't care about
+sharing at all; these use no-op identity monad that acts the same as a ``let``
+binder.
+
+Let's use our ``inverter`` definition to see these two interpretations in
+action.
 
 .. coq:: none
 |*)
 
-  Definition test1 : cava (signal Bit) :=
-    x <- inv one ;;
-    xor2 (x, x).
-  Definition test2 : cava (signal Bit) :=
-    x <- inv one ;;
-    y <- inv one ;;
-    xor2 (x, y).
-End WithCava.
+End WithCava. (* end the section so we can plug in signal and semantics *)
 
-Require Import Coq.Strings.String.
-Require Import Coq.Lists.List.
-Import ListNotations.
-Require Import Cava.Cava.
+(*|
+First, let's generate a netlist. We need to define an interface that describes the
+circuit's input and output ports and behavior relative to the (global) clock and
+reset signals. Then we can compute a netlist (type ``CavaState``), which
+describes the full layout of the circuit in a way that can be easily translated
+to SystemVerilog.
+|*)
 
-Definition test_interface
-  := sequentialInterface "test_interface"
+(* netlist-generating semantics *)
+Existing Instance CavaCombinationalNet.
+
+Definition inverter_interface
+  := sequentialInterface "inverter_interface"
      "clk" PositiveEdge "rst" PositiveEdge
-     [mkPort "i" Void]
+     [mkPort "i" Bit]
      [mkPort "o" Bit]
      [].
 
-(* does Circuit need an input type? or can it have just one type with function applications? *)
+Compute (makeCircuitNetlist inverter_interface inverter).
 
+(* A closer look at the circuit body *)
+Compute (makeCircuitNetlist inverter_interface inverter).(module).
 
-Require Import Coq.NArith.NArith.
+(*|
+Now, let's simulate the circuit, which can be useful for testing and proving
+functional correctness. Here, we use the identity-monad interpretation. The
+``signal`` for this ``Cava`` instance is ``combType``, which interprets a
+``Bit`` simply as a Coq ``bool``. If we provide the three inputs
+``[true; false; true]`` to the circuit simulation function ``multistep``, we'll
+get ``[false; true; false]``:
+|*)
 
-Compute (makeCircuitNetlist test_interface (Comb (fun _ => test1))).
-(*      = {| *)
-(*   netNumber := 2; *)
-(*   vectorNumber := 0; *)
-(*   vectorDeclarations := []; *)
-(*   externalDeclarations := []; *)
-(*   clockNet := Some (NamedWire "clk"); *)
-(*   clockEdge := PositiveEdge; *)
-(*   resetNet := Some (NamedWire "rst"); *)
-(*   resetEdge := PositiveEdge; *)
-(*   module := {| *)
-(*             moduleName := "test_interface"; *)
-(*             netlist := [AssignSignal (NamedWire "o") (Wire 1); *)
-(*                        Xor (Wire 0) (Wire 0) (Wire 1);  *)
-(*                        Not Vcc (Wire 0)]; *)
-(*             inputs := [{| port_name := "rst"; port_type := Bit |}; *)
-(*                       {| port_name := "clk"; port_type := Bit |}]; *)
-(*             outputs := [{| port_name := "o"; port_type := Bit |}] |}; *)
-(*   libraryModules := [] |} *)
-(* : CavaState *)
+(* identity-monad semantics *)
+Existing Instance CombinationalSemantics.
 
+Compute (multistep inverter [true; false; true]).
+Compute (multistep inverter [true; false; true; true; true; false]).
 
-Compute (makeCircuitNetlist test_interface (Comb (fun _ => test2))).
-(* = {| *)
-(*   netNumber := 3; *)
-(*   vectorNumber := 0; *)
-(*   vectorDeclarations := []; *)
-(*   externalDeclarations := []; *)
-(*   clockNet := Some (NamedWire "clk"); *)
-(*   clockEdge := PositiveEdge; *)
-(*   resetNet := Some (NamedWire "rst"); *)
-(*   resetEdge := PositiveEdge; *)
-(*   module := {| *)
-(*             moduleName := "test_interface"; *)
-(*             netlist := [AssignSignal (NamedWire "o") (Wire 2); *)
-(*                        Xor (Wire 0) (Wire 1) (Wire 2);  *)
-(*                        Not Vcc (Wire 1); Not Vcc (Wire 0)]; *)
-(*             inputs := [{| port_name := "rst"; port_type := Bit |}; *)
-(*                       {| port_name := "clk"; port_type := Bit |}]; *)
-(*             outputs := [{| port_name := "o"; port_type := Bit |}] |}; *)
-(*   libraryModules := [] |} *)
-(* : CavaState *)
+(*|
+We can use the simulation to write proofs about the circuit. For instance, we
+can prove that ``inverter`` obeys a natural Coq specification:
+|*)
+
+Lemma inverter_correct (input : list bool) :
+  multistep inverter input = map negb input.
+Proof.
+  (* inline the circuit definition *)
+  cbv [inverter].
+
+  (* simplify multistep to create an expression in terms of Coq lists *)
+  autorewrite with push_multistep.
+
+  (* assert that the two List.map functions are equivalent *)
+  apply map_ext. intros.
+
+  (* inline the inv primitive (fun x => ret (negb x)) *)
+  cbn [inv CombinationalSemantics].
+
+  (* simplify the identity monad expressions *)
+  simpl_ident.
+
+  reflexivity.
+Qed.
+
+(*|
+We can even prove that composing two inverters is the same as doing
+nothing. Here, ``>==>`` is circuit composition (a Kleisli arrow). The proof
+structure is pretty similar.
+|*)
+
+Lemma inverter_idempotent (input : list bool) :
+  multistep (inverter >==> inverter) input = input.
+Proof.
+  cbv [inverter].
+  autorewrite with push_multistep.
+  rewrite map_map.
+  apply map_id_ext. intros.
+  cbn [inv CombinationalSemantics].
+  simpl_ident.
+  apply Bool.negb_involutive.
+Qed.
+
+(*|
+To summarize, there are three things you can do with Cava circuits:
+
+1. Define them (parameterized over an abstract ``Cava`` instance)
+2. Generate netlists for them using the ``CavaCombinationalNet`` instance and
+   the ``makeCircuitNetlist`` function. These netlists can then be translated into
+   SystemVerilog.
+3. Simulate them using ``multistep``, and prove things about the simulations, by
+   plugging in the ``CombinationalSemantics`` instance.
+
+In the next example, we'll try a slightly more complex circuit.
+
+Example 2 : 8-Bit xor
+=====================
+
+To be continued!
+|*)
