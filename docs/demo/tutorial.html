@@ -17,8 +17,90 @@
 <div class="alectryon-root alectryon-centered"><div class="alectryon-banner">Built with <a href="https://github.com/cpitclaudel/alectryon/">Alectryon</a>, running Coq+SerAPI v8.12.0+0.12.0. Coq sources are in this panel; goals and messages will appear in the other. Bubbles (<span class="alectryon-bubble"></span>) indicate interactive fragments: hover for details, tap to reveal contents. Use <kbd>Ctrl+↑</kbd> <kbd>Ctrl+↓</kbd> to navigate, <kbd>Ctrl+🖱️</kbd> to focus.</div><div class="document" id="tutorial">
 <h1 class="title">Tutorial</h1>
 
-<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk0" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk0"><span class="highlight"><span class="kn">Check</span> nat.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">nat
-     : <span class="kt">Set</span></span></blockquote></div></div></small></span></pre>
+<p>Welcome! This is a quick primer for designing circuits with Cava. We'll walk through a few small examples end-to-end.</p>
+<div class="section" id="example-1-inverter">
+<h1>Example 1 : Inverter</h1>
+<p>To start, let's define a 1-bit inverter.</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">inverter</span>
+           {<span class="nv">signal</span> : SignalType -&gt; <span class="kt">Type</span>}
+           {<span class="nv">semantics</span> : Cava signal}
+  : Circuit (signal Bit) (signal Bit) :=
+  Comb inv.</span></span></span></pre><p>A few things to notice here:</p>
+<ul class="simple">
+<li><tt class="docutils literal">SignalType</tt> is Cava's type system. The inverter is parameterized over
+<tt class="docutils literal">signal</tt>, which converts <tt class="docutils literal">SignalType</tt>s to Coq types. <tt class="docutils literal">Bit</tt> is one
+example of a <tt class="docutils literal">SignalType</tt>; we'll see more examples later on.</li>
+<li><tt class="docutils literal">Comb</tt> is short for &quot;combinational&quot;; our inverter has no loops, registers,
+or timing requirements, so it is a purely combinational circuit.</li>
+<li>The inverter is also paramterized over <tt class="docutils literal">semantics</tt>, an instance of the
+typeclass <tt class="docutils literal">Cava</tt>. This instance provides implementations of circuit
+primitives, such as 1-bit logic gates. One primitive is a 1-bit inverter
+<tt class="docutils literal">inv</tt>, so our inverter is just a simple invocation of the primitive.</li>
+</ul>
+<p>Normally, we'd write circuit definitions a little more concisely by writing them
+inside a <tt class="docutils literal">Section</tt> that contains <tt class="docutils literal">signal</tt> and <tt class="docutils literal">semantics</tt> as context
+variables, like this:</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Section</span> <span class="nf">WithCava</span>.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Context</span> {<span class="nv">signal</span>} {<span class="nv">semantics</span> : Cava signal}.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">inverter_concise</span> : Circuit (signal Bit) (signal Bit)
+    := Comb inv.</span></span></span></pre><p>For the rest of the circuit definitions in this tutorial, you can assume that
+we're inside the section and that every definition is parameterized over the
+<tt class="docutils literal">signal</tt> and <tt class="docutils literal">semantics</tt> context variables.</p>
+<p>Back to our inverter. Let's take a closer look at the <tt class="docutils literal">inv</tt> primitive.</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight">  </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk0" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk0"><span class="highlight"><span class="kn">About</span> inv.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">inv :
+<span class="kr">forall</span> {<span class="nv">signal</span> : SignalType -&gt; <span class="kt">Type</span>}
+  {<span class="nv">Cava</span> : Cava signal},
+signal Bit -&gt; cava (signal Bit)
+
+inv <span class="kr">is</span> not universe polymorphic
+<span class="kn">Arguments</span> inv {signal}%function_scope {Cava}
+inv <span class="kr">is</span> transparent
+Expands to: Constant Cava.Acorn.CavaClass.inv</span></blockquote></div></div></small></span></pre><p>You can see in the type signature <tt class="docutils literal">signal Bit <span class="pre">-&gt;</span> cava (signal Bit)</tt> that
+<tt class="docutils literal">inv</tt> is defined as a pure Coq function in terms of a monad called
+<tt class="docutils literal">cava</tt>. The <tt class="docutils literal">cava</tt> monad, like <tt class="docutils literal">inv</tt>, is provided by <tt class="docutils literal">semantics</tt>. The
+monad is used to preserve sharing; it's semantically different in Cava to write:</p>
+<pre class="literal-block">
+x &lt;- inv zero ;;
+y &lt;- inv zero ;;
+xor2 x y
+</pre>
+<p>than it is to write:</p>
+<pre class="literal-block">
+x &lt;- inv zero ;;
+xor2 x x
+</pre>
+<p>Both expressions have the same meaning, and if we were using Gallina <tt class="docutils literal">let</tt>
+binders there would be no difference. But the generated circuit will use two
+wires for the first definition, and fork the same wire in the second. As circuit
+diagrams, this is the difference between:</p>
+<pre class="literal-block">
+       +-----+      +-----+
+1 ---- | inv |------|     |
+       +-----+      | xor | ---- out
+       +-----+      |     |
+1 ---- | inv | ---- |     |
+       +-----+      +-----+
+</pre>
+<p>and:</p>
+<pre class="literal-block">
+                          +-----+
+                   +----- |     |
+                   |      | xor | ---- out
+       +-----+     |      |     |
+1 ---- | inv | ----+----- |     |
+       +-----+            +-----+
+</pre>
+<p>This difference isn't significant in determining what the value of <tt class="docutils literal">out</tt> will
+be, but it can be very useful when trying to exercise fine-grained control over
+circuit layout and area!</p>
+<p>Parameterizing over the <tt class="docutils literal">cava</tt> monad and primitive implementations allows us
+to use different instances of <tt class="docutils literal">Cava</tt> to interpret the same circuit definition
+in different ways. For instance, one <tt class="docutils literal">Cava</tt> instance creates a netlist from
+the circuit definition by using a state monad that adds and connects wires in
+the background. Defining a purely combinational circuit is simply defining a
+Gallina function in terms of the <tt class="docutils literal">cava</tt> monad and <tt class="docutils literal">SignalType</tt>.</p>
+</div>
 </div>
 </div></body>
 </html>
