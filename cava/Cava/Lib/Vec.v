@@ -56,6 +56,28 @@ Section WithCava.
     v <- peel v ;;
     unpeel (Vector.rev v).
 
+  Definition last {A n} (v : signal (Vec A (S n)))
+    : cava (signal A) :=
+    v <- peel v ;;
+    ret (Vector.last v).
+
+  Definition shiftin {A n} (x : signal A) (v : signal (Vec A n))
+    : cava (signal (Vec A (S n))) :=
+    v <- peel v ;;
+    unpeel (Vector.shiftin x v).
+
+  Definition shiftout {A n} (v : signal (Vec A (S n)))
+    : cava (signal (Vec A n)) :=
+    v <- peel v ;;
+    unpeel (Vector.shiftout v).
+
+  Definition transpose {A n m} (v : signal (Vec (Vec A n) m))
+    : cava (signal (Vec (Vec A m) n)) :=
+    v <- peel v ;;
+    v <- Traversable.mapT peel v ;;
+    v <- Traversable.mapT unpeel (transpose v) ;;
+    unpeel v.
+
   Fixpoint fold_left {A B}
              (f : B * signal A -> cava B)
              {n}
@@ -84,21 +106,6 @@ Section WithCava.
               fold_left2 f va' vb' st'
     end.
 
-  Definition last {A n} (v : signal (Vec A (S n)))
-    : cava (signal A) :=
-    v <- peel v ;;
-    ret (Vector.last v).
-
-  Definition shiftin {A n} (x : signal A) (v : signal (Vec A n))
-    : cava (signal (Vec A (S n))) :=
-    v <- peel v ;;
-    unpeel (Vector.shiftin x v).
-
-  Definition shiftout {A n} (v : signal (Vec A (S n)))
-    : cava (signal (Vec A n)) :=
-    v <- peel v ;;
-    unpeel (Vector.shiftout v).
-
   Definition map {A B n} (f : signal A -> cava (signal B))
              (v : signal (Vec A n))
     : cava (signal (Vec B n)) :=
@@ -114,5 +121,4 @@ Section WithCava.
     vb <- peel vb ;;
     out <- Traversable.mapT f (vcombine va vb) ;;
     unpeel out.
-
 End WithCava.
