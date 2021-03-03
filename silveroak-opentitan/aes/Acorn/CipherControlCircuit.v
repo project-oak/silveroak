@@ -66,9 +66,7 @@ Section WithCava.
 
   Definition add_round (a b: signal round_index): cava (signal round_index) :=
     sum <- (@unsignedAdd _ _ 4 4 (a, b)) ;;
-    sum <- peel sum ;;
-    let '(trunc,_) := unsnoc sum in
-    unpeel trunc.
+    Vec.shiftout sum.
 
   Definition inc_round (current: signal round_index): cava (signal round_index)
     := round_1 <- round_1 ;; add_round current round_1.

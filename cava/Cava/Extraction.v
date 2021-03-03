@@ -41,6 +41,7 @@ Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.Lib.FullAdder.
 Require Import Cava.Lib.Multiplexers.
 Require Import Cava.Lib.UnsignedAdders.
+Require Import Cava.Lib.Vec.
 
 Recursive Extraction Library BitArithmetic.
 Recursive Extraction Library Cava.
@@ -62,3 +63,4 @@ Recursive Extraction Library BitVectorOps.
 Recursive Extraction Library FullAdder.
 Recursive Extraction Library Multiplexers.
 Recursive Extraction Library UnsignedAdders.
+Recursive Extraction Library Vec.

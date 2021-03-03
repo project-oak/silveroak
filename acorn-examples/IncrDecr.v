@@ -27,6 +27,8 @@ Require Import Cava.BitArithmetic.
 Require Import Cava.NatUtils.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
+Require Import Cava.Lib.VecProperties.
+Require Cava.Lib.Vec.
 Import VectorNotations ListNotations MonadNotation.
 Open Scope monad_scope.
 Open Scope list_scope.
@@ -80,13 +82,11 @@ Section WithCava.
           signal (Vec Bit sz0) -> cava (signal (Vec Bit sz0)) with
     | 0 => fun input => ret input
     | S sz' => fun input : signal (Vec Bit (S sz')) =>
-                i <- peel input ;;
-                let i0 := Vector.hd i in
+                i0 <- Vec.hd input ;;
+                rem <- Vec.tl input ;;
                 '(sum0, carry) <- half_adder (carry, i0) ;;
-                rem <- unpeel (Vector.tl i) ;;
-                sum' <- incr' carry rem ;;
-                sum <- peel sum' ;;
-                unpeel (sum0 :: sum)%vector
+                sum <- incr' carry rem ;;
+                Vec.cons sum0 sum
     end.
 
   (* increments a bit vector of any length *)
@@ -99,13 +99,11 @@ Section WithCava.
           signal (Vec Bit sz0) -> cava (signal (Vec Bit sz0)) with
     | 0 => fun input => ret input
     | S sz' => fun input : signal (Vec Bit (S sz')) =>
-                i <- peel input ;;
-                let i0 := Vector.hd i in
+                i0 <- Vec.hd input ;;
+                rem <- Vec.tl input ;;
                 '(diff0, borrow) <- half_subtractor (i0, borrow) ;;
-                rem <- unpeel (Vector.tl i) ;;
-                diff' <- decr' borrow rem ;;
-                diff <- peel diff' ;;
-                unpeel (diff0 :: diff)%vector
+                diff <- decr' borrow rem ;;
+                Vec.cons diff0 diff
     end.
 
   (* decrements a bit vector of any length *)

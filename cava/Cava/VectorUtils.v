@@ -29,6 +29,10 @@ Require Export ExtLib.Data.Monads.IdentityMonad.
 
 Require Cava.ListUtils.
 
+(* automatically interpret arguments expected to have type Vector.t in
+   vector_scope *)
+Bind Scope vector_scope with Vector.t.
+
 Section traversable.
   Universe u v vF.
   Context {F : Type@{v} -> Type@{vF}}.

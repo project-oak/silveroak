@@ -133,9 +133,7 @@ Section WithCava.
     end
 
     assign data_o = aes_transpose(data_o_transposed); *)
-    aes_transpose >=> peel
-                  >=> mapT (aes_mix_single_column op_i)
-                  >=> unpeel
+    aes_transpose >=> Vec.map (aes_mix_single_column op_i)
                   >=> aes_transpose.
 
 End WithCava.
