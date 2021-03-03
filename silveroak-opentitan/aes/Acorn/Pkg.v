@@ -108,7 +108,7 @@ Section WithCava.
     : signal byte -> cava (signal byte) :=
     aes_mul2 >=> aes_mul2.
 
-  Definition zero_byte : cava (signal byte) := Vec.const (constant false) 8.
+  Definition zero_byte : cava (signal byte) := Vec.const zero 8.
 
   (* function automatic logic [31:0] aes_circ_byte_shift(logic [31:0] in, logic [1:0] shift);
     logic [31:0] out;
