@@ -53,10 +53,10 @@ Section WithCava.
               (cinab : signal Bit * (signal (Vec Bit n) * signal (Vec Bit n)))
             : cava (signal (Vec Bit n) * signal Bit)
     := let '(cin, (a, b)) := cinab in
-      a0 <- peel a ;;
-      b0 <- peel b ;;
+      a0 <- unpackv a ;;
+      b0 <- unpackv b ;;
       '(sum, cout) <- colV xilinxFullAdder (cin, vcombine a0 b0) ;;
-      sum <- unpeel sum ;;
+      sum <- packv sum ;;
       ret (sum, cout).
 
   (******************************************************************************)

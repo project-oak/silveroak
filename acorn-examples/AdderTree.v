@@ -48,7 +48,7 @@ Section WithCava.
              (n: nat)
     : signal (Vec (Vec Bit sz) (2^(S n))) ->
       cava (signal (Vec Bit sz)) :=
-    peel >=> treeS addN.
+    unpackv >=> treeS addN.
 
   (* An adder tree with 2 inputs. *)
   Definition adderTree2 {sz: nat}

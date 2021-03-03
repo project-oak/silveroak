@@ -61,7 +61,7 @@ Section WithCava.
     '(sum1, carry) <- half_adder (carry, i1) ;;
     '(sum2, carry) <- half_adder (carry, i2) ;;
     '(sum3, carry) <- half_adder (carry, i3) ;;
-    unpeel [sum0;sum1;sum2;sum3]%vector.
+    packv [sum0;sum1;sum2;sum3]%vector.
 
   (* decrement a 4-bit vector *)
   Definition decr4 (input : signal (Vec Bit 4))
@@ -74,7 +74,7 @@ Section WithCava.
     '(diff1, borrow) <- half_subtractor (i1, borrow) ;;
     '(diff2, borrow) <- half_subtractor (i2, borrow) ;;
     '(diff3, borrow) <- half_subtractor (i3, borrow) ;;
-    unpeel [diff0;diff1;diff2;diff3]%vector.
+    packv [diff0;diff1;diff2;diff3]%vector.
 
   Fixpoint incr' {sz} (carry : signal Bit)
     : signal (Vec Bit sz) -> cava (signal (Vec Bit sz)) :=
@@ -126,7 +126,7 @@ Section Proofs.
     unIdent (incr4 input) = N2Bv_sized 4 (Bv2N input + 1).
   Proof.
     cbv [incr4]. simpl_ident. boolsimpl.
-    cbn [unpeel indexConst CombinationalSemantics].
+    cbn [packv indexConst CombinationalSemantics].
     cbn [combType] in input. constant_bitvec_cases input.
     all:reflexivity.
   Qed.

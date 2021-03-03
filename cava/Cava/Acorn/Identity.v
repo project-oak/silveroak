@@ -67,5 +67,5 @@ Ltac simpl_ident :=
   repeat
     first [ progress autorewrite with simpl_ident
           | progress cbn [fst snd bind ret Monad_ident monad
-                              peel unpeel constant
+                              unpackv packv constant
                               CombinationalSemantics unIdent] ].

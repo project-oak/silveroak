@@ -87,7 +87,7 @@ Lemma incrN_correct {n} (x : combType (Vec Bit (S n))) :
   unIdent (incrN x) = N2Bv_sized (S n) (Bv2N x + 1).
 Proof.
   cbv [incrN].
-  cbn [CombinationalSemantics peel unpeel unsignedAdd unsignedAddBool constant].
+  cbn [CombinationalSemantics unpackv packv unsignedAdd unsignedAddBool constant].
   simpl_ident. cbn [Nat.max Nat.add Bv2N N.succ_double].
   (* just proof about shiftout from here *)
 Admitted.

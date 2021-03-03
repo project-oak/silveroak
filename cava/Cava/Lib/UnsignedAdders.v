@@ -67,10 +67,10 @@ Section WithCava.
   Definition addN {n : nat}
             (ab: signal (Vec Bit n) * signal (Vec Bit n)) :
     cava (signal (Vec Bit n)) :=
-    a <- peel (fst ab) ;;
-    b <- peel (snd ab) ;;
+    a <- unpackv (fst ab) ;;
+    b <- unpackv (snd ab) ;;
     '(sum, _) <- unsignedAdderV (constant false, vcombine a b) ;;
-    unpeel sum.
+    packv sum.
 
   (****************************************************************************)
   (* A three input adder.                                                     *)

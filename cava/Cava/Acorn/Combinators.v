@@ -73,10 +73,10 @@ Section WithCava.
            (a : signal (Vec A n))
            (b : signal (Vec B n))
            : cava (signal (Vec C n)) :=
-    a' <- peel a ;;
-    b' <- peel b ;;
+    a' <- unpackv a ;;
+    b' <- unpackv b ;;
     v <- mapT f (vcombine a' b') ;;
-    unpeel v.
+    packv v.
 
   (* A list-based left monadic-fold. *)
   Fixpoint foldLM {m} `{Monad m} {A B : Type}
@@ -259,9 +259,9 @@ Section WithCava.
                (circuit : signal A * signal B -> cava (signal C * signal A))
                (aIn: signal A) (bIn: signal (Vec B n)) :
                cava (signal (Vec C n) * signal A) :=
-  b <- peel bIn ;;
+  b <- unpackv bIn ;;
   '(c, a) <- colV circuit (aIn, b) ;;
-  cOut <- unpeel c ;;
+  cOut <- packv c ;;
   ret (cOut, a).
 
   Local Close Scope vector_scope.
@@ -609,7 +609,7 @@ Section WithCava.
   Qed.
 
   Definition all {n} (v : signal (Vec Bit n)) : cava (signal Bit) :=
-    v <- peel v ;;
+    v <- unpackv v ;;
     tree_all_sizes one (fun x y => and2 (x,y)) v.
 
   Fixpoint eqb {t : SignalType} : signal t -> signal t -> cava (signal Bit) :=
