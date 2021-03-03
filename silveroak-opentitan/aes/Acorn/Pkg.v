@@ -25,6 +25,7 @@ Require Import ExtLib.Structures.Traversable.
 Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
+Require Cava.Lib.Vec.
 Require Import Cava.Signal.
 Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.Tests.CipherTest.
@@ -60,7 +61,7 @@ Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
   Definition bitvec_to_signal {n : nat} (lut : t bool n) : cava (signal (Vec Bit n)) :=
-    unpeel (Vector.map constant lut).
+    Vec.bitvec_literal lut.
 
   Definition bitvecvec_to_signal {a b : nat} (lut : t (t bool b) a) : cava (signal (Vec (Vec Bit b) a)) :=
     v <- mapT bitvec_to_signal lut ;;
@@ -72,11 +73,8 @@ Section WithCava.
 
   Definition aes_transpose {n m}
       (matrix : signal (Vec (Vec byte n) m))
-      : cava (signal (Vec (Vec byte m) n)) :=
-    columns <- peel matrix ;;
-    items <- mapT peel columns ;;
-    columns <- mapT unpeel (transpose items) ;;
-    unpeel columns.
+    : cava (signal (Vec (Vec byte m) n)) :=
+    Vec.transpose matrix.
 
   Definition aes_mul2
     (x : signal byte)
@@ -110,7 +108,7 @@ Section WithCava.
     : signal byte -> cava (signal byte) :=
     aes_mul2 >=> aes_mul2.
 
-  Definition zero_byte : cava (signal byte) := unpeel (Vector.const zero 8).
+  Definition zero_byte : cava (signal byte) := Vec.const (constant false) 8.
 
   (* function automatic logic [31:0] aes_circ_byte_shift(logic [31:0] in, logic [1:0] shift);
     logic [31:0] out;

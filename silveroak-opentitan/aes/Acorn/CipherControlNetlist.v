@@ -43,7 +43,7 @@ Definition aes_mix_columns' x y :=
 Definition aes_sbox_lut' x y :=
   blackBoxNet aes_sbox_lut_Interface (x, y).
 Definition aes_sub_bytes' (is_decrypt : Signal Bit) (b : Signal state)
-  : cava (Signal state) := state_map (aes_sbox_lut' is_decrypt) b.
+  : cava (Signal state) := Vec.map (Vec.map (aes_sbox_lut' is_decrypt)) b.
 
 Definition inv_mix_columns_key := aes_mix_columns' (constant true).
 

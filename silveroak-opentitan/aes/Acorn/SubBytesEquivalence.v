@@ -19,6 +19,7 @@ Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.BitArithmetic.
 Require Import Cava.Lib.BitVectorOps.
+Require Import Cava.Lib.VecProperties.
 Require Import Cava.ListUtils.
 Require Import Cava.Tactics.
 Require Import Cava.VectorUtils.
@@ -76,19 +77,6 @@ Section Equivalence.
     destruct is_decrypt; auto using sub_bytes_fwd_bytewise, sub_bytes_inv_bytewise.
   Qed.
 
-  Lemma map_interchange :
-    forall (st : state) (f : byte -> ident byte),
-    unIdent (@state_map combType _ f st) = map (map (fun b => unIdent (f b))) st.
-  Proof.
-    intros.
-    unfold state_map.
-    unfold column_map.
-    unfold mcompose.
-
-    do 2 (simpl_ident; apply map_ext; intros).
-    reflexivity.
-  Qed.
-
   Lemma sub_bytes_equiv :
     forall (is_decrypt : bool) (st : state),
       unIdent (aes_sub_bytes is_decrypt st)
@@ -103,9 +91,8 @@ Section Equivalence.
          AES256.sub_bytes
          AesSpec.SubBytes.sub_bytes].
 
-    rewrite (map_interchange
-                st
-                (@aes_sbox_lut combType Combinational.CombinationalSemantics is_decrypt)).
+    simpl_ident.
+    erewrite map_ext; [ | intros; simpl_ident; reflexivity ].
 
     cbv [from_flat
          to_flat

@@ -23,6 +23,7 @@ Require Import ExtLib.Structures.Monads.
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.Multiplexers.
+Require Cava.Lib.Vec.
 Require Import AcornAes.Pkg.
 Import Pkg.Notations.
 
@@ -134,14 +135,6 @@ Section WithCava.
   Definition sbox_fwd_lut := natvec_to_signal_sized 8 sbox_fwd.
   Definition sbox_inv_lut := natvec_to_signal_sized 8 sbox_inv.
 
-  Definition column_map (f : signal (Vec Bit 8) -> cava (signal (Vec Bit 8)))
-    : signal (Vec (Vec Bit 8) 4) -> cava (signal (Vec (Vec Bit 8) 4)) :=
-    peel >=> Traversable.mapT f >=> unpeel.
-
-  Definition state_map (f : signal (Vec Bit 8) -> cava (signal (Vec Bit 8)))
-    : signal state -> cava (signal state) :=
-    peel >=> Traversable.mapT (column_map f) >=> unpeel.
-
   Definition aes_sbox_lut (is_decrypt : signal Bit) (b : signal (Vec Bit 8))
     : cava (signal (Vec Bit 8)) :=
     fwd_sbox <- sbox_fwd_lut ;;
@@ -152,5 +145,5 @@ Section WithCava.
 
   Definition aes_sub_bytes (is_decrypt : signal Bit) (b : signal state)
     : cava (signal state) :=
-    state_map (aes_sbox_lut is_decrypt) b.
+    Vec.map (Vec.map (aes_sbox_lut is_decrypt)) b.
 End WithCava.

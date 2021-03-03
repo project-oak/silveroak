@@ -28,6 +28,7 @@ Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.UnsignedAdders.
 Require Import Cava.Lib.Multiplexers.
+Require Cava.Lib.Vec.
 Import Circuit.Notations.
 
 (******************************************************************************)
@@ -75,10 +76,9 @@ Section WithCava.
   (* incrementer *)
   Definition incrN {n} (x : signal (Vec Bit (S n)))
     : cava (signal (Vec Bit (S n))) :=
-    one <- unpeel [one]%vector ;;
-    xp1 <- unsignedAdd (one, x) ;;
-    xp1 <- peel xp1 ;;
-    unpeel (shiftout xp1).
+    onev <- Vec.bitvec_literal [true] ;;
+    xp1 <- unsignedAdd (onev, x) ;;
+    Vec.shiftout xp1.
 
   Definition count_by
     : Circuit (signal (Vec Bit 8)) (signal Bit)

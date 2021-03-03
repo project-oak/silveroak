@@ -28,6 +28,7 @@ Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.Lib.MultiplexersProperties.
+Require Import Cava.Lib.VecProperties.
 Import ListNotations VectorNotations.
 Local Open Scope list_scope.
 
@@ -47,16 +48,8 @@ Section Equivalence.
   Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
 
   Lemma aes_transpose_correct n m (v : combType (Vec (Vec (Vec Bit 8) n) m)) :
-    m <> 0 ->
-    n <> 0 ->
     unIdent (aes_transpose v) = transpose v.
-  Proof.
-    intros Hm Hn.
-    unfold aes_transpose.
-    simpl_ident.
-    rewrite ! map_id.
-    reflexivity.
-  Qed.
+  Proof. cbv [aes_transpose]; simpl_ident; reflexivity. Qed.
 
   Lemma poly_to_byte_to_bitvec p :
     length p = 8 -> byte_to_bitvec (MixColumns.poly_to_byte p) = of_list_sized false 8 p.
