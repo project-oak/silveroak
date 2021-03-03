@@ -74,12 +74,12 @@ Definition two_sorter_tb_inputs : list (Vector.t (Bvector 8) _) :=
    [v3; v2]
   ].
 
-Definition adder_tree4_8_tb_expected_outputs : list (Vector.t (Bvector 8) _) :=
+Definition two_sorter_tb_expected_outputs : list (Vector.t (Bvector 8) _) :=
   multistep (Comb twoSorter) two_sorter_tb_inputs.
 
 Definition two_sorter_tb :=
   testBench "two_sorter_tb" (two_sorter_Interface 8)
-  two_sorter_tb_inputs adder_tree4_8_tb_expected_outputs.
+  two_sorter_tb_inputs two_sorter_tb_expected_outputs.
 
 Definition twoSorterSpec {bw: nat} (ab : Vector.t (Bvector bw) 2) :
                                    Vector.t (Bvector bw) 2 :=
