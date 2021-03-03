@@ -1,5 +1,5 @@
 #
-# Copyright 2020 The Project Oak Authors
+# Copyright 2021 The Project Oak Authors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@
 # Clean:
 # make clean
 
-.PHONY: all coq html
+.PHONY: all coq miminize-requires clean html
 
 all: coq
 
