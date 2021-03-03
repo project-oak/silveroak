@@ -15,8 +15,8 @@
 #
 
 # This Makefile by default builds all targets that are part of the
-# Silver Oak system except those that require the invocation of the
-# Xilinx tools for simulation or FPGA implementation.
+# Silver Oak system except documentation and those targets that require the
+# invocation of the Xilinx tools for simulation or FPGA implementation.
 
 # Build everything (except Xilinx-specific targets):
 # make
@@ -25,7 +25,7 @@
 # make clean
 
 SUBDIRS = third_party cava tests acorn-examples silveroak-opentitan \
-	  acorn-examples/xilinx tests/xilinx
+	  acorn-examples/xilinx tests/xilinx demos
 
 .PHONY: all coq minimize-requires clean subdirs $(SUBDIRS)
 
@@ -79,6 +79,9 @@ tests/xilinx : cava tests
 
 # acorn-examples depends on cava
 acorn-examples : cava
+
+# demos depends on cava
+demos : cava
 
 # acorn-examples/xilinx depends on acorn-examples
 acorn-examples/xilinx : acorn-examples
