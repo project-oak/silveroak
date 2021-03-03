@@ -85,7 +85,16 @@ Definition twoSorterSpec {bw: nat} (ab : Vector.t (Bvector bw) 2) :
                                    Vector.t (Bvector bw) 2 :=
   let a := @Vector.nth_order _ 2 ab 0 (ltac:(lia)) in
   let b := @Vector.nth_order _ 2 ab 1 (ltac:(lia)) in
-  if N.to_nat (Bv2N b) <=? N.to_nat (Bv2N a) then
+  if (Bv2N b <=? Bv2N a)%N then
     [b; a]
   else
     [a; b].
+
+Lemma twoSorterCorrect {bw : nat} (v : Vector.t (Bvector bw) 2) :
+  unIdent (@twoSorter combType _ _ v) = twoSorterSpec v.
+Proof.
+  constant_vector_simpl v.
+  cbv [twoSorterSpec nth_order].
+  simpl.
+  destruct (Bv2N _ <=? Bv2N _)%N; reflexivity.
+Qed.
