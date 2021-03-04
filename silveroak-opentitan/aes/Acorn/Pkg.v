@@ -36,6 +36,7 @@ Import VectorNotations.
 Module Notations.
   Notation state := (Vec (Vec (Vec Bit 8) 4) 4) (only parsing).
   Notation key := (Vec (Vec (Vec Bit 8) 4) 4) (only parsing).
+  Notation keypair := (Vec (Vec (Vec (Vec Bit 8) 4) 4) 2) (only parsing).
 End Notations.
 
 (* A function to convert a matrix of nat values to a value of type state *)
@@ -153,8 +154,8 @@ Section WithCava.
 
   Definition KEY_WORDS_0123 := bitvec_to_signal (nat_to_bitvec_sized 2 0).
   Definition KEY_WORDS_2345 := bitvec_to_signal (nat_to_bitvec_sized 2 1).
-  Definition KEY_WORDS_4567 := bitvec_to_signal (nat_to_bitvec_sized 2 3).
-  Definition KEY_WORDS_ZERO := bitvec_to_signal (nat_to_bitvec_sized 2 4).
+  Definition KEY_WORDS_4567 := bitvec_to_signal (nat_to_bitvec_sized 2 2).
+  Definition KEY_WORDS_ZERO := bitvec_to_signal (nat_to_bitvec_sized 2 3).
 
   Definition AES_128 := bitvec_to_signal (nat_to_bitvec_sized 3 1).
   Definition AES_192 := bitvec_to_signal (nat_to_bitvec_sized 3 2).
