@@ -36,6 +36,7 @@ Import VectorNotations.
 Module Notations.
   Notation state := (Vec (Vec (Vec Bit 8) 4) 4) (only parsing).
   Notation key := (Vec (Vec (Vec Bit 8) 4) 4) (only parsing).
+  Notation keypair := (Vec (Vec (Vec (Vec Bit 8) 4) 4) 2) (only parsing).
 End Notations.
 
 (* A function to convert a matrix of nat values to a value of type state *)

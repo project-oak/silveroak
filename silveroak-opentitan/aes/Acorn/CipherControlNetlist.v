@@ -57,9 +57,9 @@ Definition aes_key_expand_Interface :=
    ; mkPort "clear_i" Bit
    ; mkPort "round_i" (Vec Bit 4)
    ; mkPort "key_len_i" (Vec Bit 3)
-   ; mkPort "key_i" key
+   ; mkPort "key_i" keypair
    ]
-   [ mkPort "key_o" key ]
+   [ mkPort "key_o" keypair ]
    [].
 
 Definition aes_key_expand :
@@ -101,7 +101,8 @@ Definition aes_cipher_core_Interface :=
 
   ; mkPort "prng_data_i" state
   ; mkPort "state_init_i" state
-  ; mkPort "key_init_i" key
+  ; mkPort "key_init_i" keypair
+
 
   ]
   [ mkPort "in_ready_o" Bit
@@ -110,6 +111,12 @@ Definition aes_cipher_core_Interface :=
   ; mkPort "dec_key_gen_o" Bit
   ; mkPort "key_clear_o" Bit
   ; mkPort "data_out_clear_o" Bit
+  ; mkPort "debug_key1" key
+  ; mkPort "debug_state" state
+  ; mkPort "debug_round" round_index
+  ; mkPort "debug_r0" round_index
+  ; mkPort "debug_is_r0" Bit
+
   ; mkPort "state_o" state
   ]
   [].
@@ -118,8 +125,41 @@ Definition cipher_loop := CipherCircuit.cipher_loop
   (round_index:=round_index)
   aes_sub_bytes' aes_shift_rows' aes_mix_columns' aes_add_round_key
   inv_mix_columns_key.
+
+Definition aes_cipher_loop_Interface :=
+  sequentialInterface "aes_cipher_loop"
+  "clk_i" PositiveEdge
+  "rst_ni" NegativeEdge
+  [ mkPort "op_i" Bit
+  ; mkPort "num_rounds" round_index
+  ; mkPort "round_0" round_index
+  ; mkPort "curr_round" round_index
+  ; mkPort "key1_i" key
+  ; mkPort "state_i" state
+  ; mkPort "key2_i" key
+  ]
+  [ mkPort "state_o" state
+  ]
+  [].
+
+Definition eqb_Interface :=
+   combinationalInterface "eqb_inst"
+   [ mkPort "a" (Vec Bit 4)
+   ; mkPort "b" (Vec Bit 4)
+   ]
+   [ mkPort "o" Bit ]
+   [].
+
+Definition eqb_Netlist :=
+  makeNetlist eqb_Interface (fun '(x,y) => eqb x y).
+Definition eqb_bb :=
+  blackBoxNet eqb_Interface .
+
+Definition aes_cipher_loop_Netlist :=
+  makeCircuitNetlist aes_cipher_loop_Interface cipher_loop.
+
 Definition aes_cipher_core := CipherControlCircuit.aes_cipher_core
-  aes_key_expand cipher_loop.
+  aes_key_expand cipher_loop eqb_bb.
 
 Definition aes_cipher_core_Netlist
   := makeCircuitNetlist aes_cipher_core_Interface aes_cipher_core.
