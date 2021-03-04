@@ -285,7 +285,7 @@ Definition setClockAndReset (clk_and_edge: Signal Bit * SignalEdge)
   let (rst, rstEdge) := rst_and_edge in
   cs <- get ;;
   match cs with
-  | mkCavaState o vecCount vecDefs ext _ _ _ _ m lm 
+  | mkCavaState o vecCount vecDefs ext _ _ _ _ m lm
      => put (mkCavaState o vecCount vecDefs ext (Some clk) clkEdge (Some rst) rstEdge m lm)
   end.
 
@@ -414,7 +414,7 @@ Fixpoint instantiateOutputPortsR (outputPorts: list PortDeclaration) :
 Definition instantiateOutputPorts (outputPorts: list PortDeclaration)
                                   (v: tupleNetInterface outputPorts) :
                                   state CavaState unit :=
-  instantiateOutputPortsR outputPorts (unbalanceNet outputPorts v).                                   
+  instantiateOutputPortsR outputPorts (unbalanceNet outputPorts v).
 
 
 Definition wireUpCircuit (intf : CircuitInterface)
@@ -503,11 +503,15 @@ Definition blackBoxNet (intf : CircuitInterface)
   let clkPort := wireUpClock optClk (clkName intf) in
   let rstPort := wireUpReset optRst (rstName intf) in
   let outputPorts : list (string * UntypedSignal) := driveArguments (circuitOutputs intf) outputSignals in
-  (* For the moment do not automatically insert clock or reset. *)
   (* TODO(satnam): Consider schemes where clock and rest can be threaded through
      in a consistent way. *)
-  (* addInstance (Component (circuitName intf) [] (clkPort ++ rstPort ++ inputPorts ++ outputPorts)) ;; *)
-  addInstance (Component (circuitName intf) [] (inputPorts ++ outputPorts)) ;;
+  (* This currently does not check that the clock/reset have the correct
+   * polarity *)
+  let prefix :=
+    (if String.eqb (clkName intf) "" then [] else clkPort) ++
+    (if String.eqb (rstName intf)  "" then [] else rstPort) in
+
+  addInstance (Component (circuitName intf) [] (prefix ++ inputPorts ++ outputPorts)) ;;
   ret outputSignals.
 
 Record TestBench : Type := mkTestBench {
@@ -550,7 +554,7 @@ Fixpoint tupleToSignalExprR (pd: list PortDeclaration) :
                   fun (ab : tupleSimInterfaceR (x::y::ys)) => toSignalExpr (port_type x) (fst ab) :: rec (snd ab)
               end) (tupleToSignalExprR xs)
   end.
-  
+
 Definition tupleToSignalExpr (pd: list PortDeclaration)
                              (v: tupleSimInterface pd) :
                              list SignalExpr :=
