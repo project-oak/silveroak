@@ -65,7 +65,7 @@ Section WithCava.
 
   Definition bitvecvec_to_signal {a b : nat} (lut : t (t bool b) a) : cava (signal (Vec (Vec Bit b) a)) :=
     v <- mapT bitvec_to_signal lut ;;
-    unpeel v.
+    packV v.
 
   Definition natvec_to_signal_sized {n : nat} (size : nat) (lut : t nat n)
     : cava (signal (Vec (Vec Bit size) n)) :=
@@ -93,7 +93,7 @@ Section WithCava.
     b <- xor2 (x2, x7) ;;
     c <- xor2 (x3, x7) ;;
 
-    unpeel
+    packV
       [x7;
       a;
       x1;
@@ -123,7 +123,7 @@ Section WithCava.
     let indices := [4 - shift; 5 - shift; 6 - shift; 7 - shift] in
     let indices := map (fun x => Nat.modulo x 4) indices in
     out <- mapT (indexConst input) indices ;;
-    unpeel out.
+    packV out.
 
   Definition IDLE_S := bitvec_to_signal (nat_to_bitvec_sized 3 0).
   Definition INIT_S := bitvec_to_signal (nat_to_bitvec_sized 3 1).
