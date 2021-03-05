@@ -38,7 +38,7 @@ Definition aes_shift_rows_Netlist
 
 (* Compute the expected outputs from the Coq/Cava semantics. *)
 Definition aes_shift_rows_expected_outputs :=
-  multistep (Comb (fun '(op_i, data_i) => aes_shift_rows op_i data_i))
+  simulate (Comb (fun '(op_i, data_i) => aes_shift_rows op_i data_i))
             [(false, fromNatVec test_state)].
 
 Definition aes_shift_rows_tb :=

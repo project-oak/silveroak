@@ -96,7 +96,7 @@ Definition adder8_tb_inputs :=
    (1, (255, 255))].
 
 Definition adder8_tb_expected_outputs :=
-  multistep (Comb xilinxAdderWithCarryFlat) adder8_tb_inputs.
+  simulate (Comb xilinxAdderWithCarryFlat) adder8_tb_inputs.
 
 Definition adder8_tb :=
   testBench "adder8_tb" adder8Interface

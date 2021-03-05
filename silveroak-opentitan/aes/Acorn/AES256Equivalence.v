@@ -28,7 +28,7 @@ Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Combinational.
 Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Identity.
-Require Import Cava.Acorn.Multistep.
+Require Import Cava.Acorn.Simulation.
 
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
@@ -118,9 +118,9 @@ Lemma full_cipher_equiv
   cipher_input = make_cipher_signals Nr is_decrypt init_key_input
                                      (init_state :: init_state_ignored) ->
   (* precomputed keys match key expansion *)
-  multistep key_expand cipher_input = init_key :: middle_keys ++ [last_key] ->
+  simulate key_expand cipher_input = init_key :: middle_keys ++ [last_key] ->
   forall d,
-    nth Nr (multistep (full_cipher key_expand) cipher_input) d
+    nth Nr (simulate (full_cipher key_expand) cipher_input) d
     = from_flat
         ((if is_decrypt then aes256_decrypt else aes256_encrypt)
            (to_flat init_key) (to_flat last_key) middle_keys_flat
@@ -168,12 +168,12 @@ Lemma full_cipher_inverse
   length init_state_ignored_inv = Nr ->
   cipher_input_fwd = make_cipher_signals Nr false init_key_input_fwd
                                          (plaintext :: init_state_ignored_fwd) ->
-  let ciphertext := nth Nr (multistep (full_cipher key_expand) cipher_input_fwd) d in
+  let ciphertext := nth Nr (simulate (full_cipher key_expand) cipher_input_fwd) d in
   cipher_input_inv = make_cipher_signals Nr true init_key_input_inv
                                          (ciphertext :: init_state_ignored_inv) ->
   (* inverse key expansion reverses key expansion *)
-  multistep key_expand cipher_input_fwd = rev (multistep key_expand cipher_input_inv) ->
-  nth Nr (multistep (full_cipher key_expand) cipher_input_inv) d = plaintext.
+  simulate key_expand cipher_input_fwd = rev (simulate key_expand cipher_input_inv) ->
+  nth Nr (simulate (full_cipher key_expand) cipher_input_inv) d = plaintext.
 Proof.
   intros. simpl_ident. subst_lets.
 
@@ -193,7 +193,7 @@ Proof.
 
   autorewrite with conversions.
   cbv [combType Bvector.Bvector] in *.
-  lazymatch goal with H : multistep key_expand _ = _ |- _ =>
+  lazymatch goal with H : simulate key_expand _ = _ |- _ =>
                       rewrite H end.
   let l := lazymatch goal with
              |- context [map inv_mix_columns ?l] =>

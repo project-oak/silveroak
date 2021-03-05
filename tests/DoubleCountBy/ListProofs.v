@@ -122,10 +122,10 @@ Proof.
 Qed.
 
 Lemma count_by_correct (input : list (combType (Vec Bit 8))) :
-  multistep count_by input = map snd (count_by_spec input).
+  simulate count_by input = map snd (count_by_spec input).
 Proof.
   intros; cbv [count_by].
-  eapply (multistep_Loop_invariant (s:=Vec Bit 8)) with
+  eapply (simulate_Loop_invariant (s:=Vec Bit 8)) with
       (I:=fun t st _ acc =>
             st = fst (bvsumc (firstn t input))
             /\ acc = map snd (count_by_spec (firstn t input))).
@@ -180,11 +180,11 @@ Qed.
 Hint Rewrite @firstn_count_by_spec using solve [eauto] : push_firstn.
 
 Lemma double_count_by_correct (input : list (combType (Vec Bit 8))) :
-  multistep double_count_by input = double_count_by_spec input.
+  simulate double_count_by input = double_count_by_spec input.
 Proof.
   intros; cbv [double_count_by].
   let f := lazymatch goal with |- context [Loop ?body] => body end in
-  eapply multistep_Loop_invariant
+  eapply simulate_Loop_invariant
     with (body:=f)
          (I:= fun t st body_st acc =>
                 body_st = (tt, (tt, fst (bvsumc (firstn t input))), tt)

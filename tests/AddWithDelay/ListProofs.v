@@ -88,11 +88,11 @@ Proof.
 Qed.
 
 Lemma addWithDelayCorrect (i : list (Bvector 8)) :
-  multistep addWithDelay i = map (fun t => addWithDelaySpecF (fun n => nth n i bvzero) t)
+  simulate addWithDelay i = map (fun t => addWithDelaySpecF (fun n => nth n i bvzero) t)
                                  (seq 0 (length i)).
 Proof.
   intros; cbv [addWithDelay].
-  eapply multistep_Loop_invariant
+  eapply simulate_Loop_invariant
     with (body:=(Comb addN >==> Delay >==> Comb fork2))
          (I := fun t st body_st acc =>
                  st = match t with

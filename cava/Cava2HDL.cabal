@@ -62,7 +62,7 @@ library
                      Monad
                      MonadState
                      Multiplexers
-                     Multistep
+                     Simulation
                      Netlist
                      NetlistGeneration
                      Nat

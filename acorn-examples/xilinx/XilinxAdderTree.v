@@ -112,7 +112,7 @@ Definition adder_tree4_8_tb_inputs
       [9; 56; 2; 87];   [14; 72; 90; 11]; [64; 12; 92; 13];    [88; 24; 107; 200]]).
 
 Definition adder_tree4_8_tb_expected_outputs
-  := multistep (Comb adderTree4) adder_tree4_8_tb_inputs.
+  := simulate (Comb adderTree4) adder_tree4_8_tb_inputs.
 
 Definition adder_tree4_8_tb :=
   testBench "xadder_tree4_8_tb" adder_tree4_8Interface
@@ -146,7 +146,7 @@ Definition adder_tree64_8_tb_inputs
      [vseq 0 64; vseq 64 64; vseq 128 64].
 
 Definition adder_tree64_8_tb_expected_outputs
-  := multistep (Comb (adderTree 5)) adder_tree64_8_tb_inputs.
+  := simulate (Comb (adderTree 5)) adder_tree64_8_tb_inputs.
 
 Definition adder_tree64_8_tb :=
   testBench "xadder_tree64_8_tb" adder_tree64_8Interface
@@ -167,7 +167,7 @@ Definition adder_tree64_128_tb_inputs
      [vseq 0 64; vseq 64 64; vseq 128 64]).
 
 Definition adder_tree64_128_tb_expected_outputs
-  := multistep (Comb (adderTree 5)) adder_tree64_128_tb_inputs.
+  := simulate (Comb (adderTree 5)) adder_tree64_128_tb_inputs.
 
 Definition adder_tree64_128_tb :=
   testBench "xadder_tree64_128_tb" adder_tree64_128Interface
@@ -189,7 +189,7 @@ Definition adder_tree128_256_tb_inputs : list (Vector.t (Bvector 256) 128)
 
 Definition adder_tree128_256_tb_expected_outputs
            : list (Bvector 256)
-  := multistep (Comb (adderTree 6)) adder_tree128_256_tb_inputs.
+  := simulate (Comb (adderTree 6)) adder_tree128_256_tb_inputs.
 
 Definition adder_tree128_256_tb :=
   testBench "xadder_tree128_256_tb" adder_tree128_256Interface
