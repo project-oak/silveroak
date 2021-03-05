@@ -26,6 +26,7 @@ Require Import Cava.Cava.
 Require Import Cava.ListUtils.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Circuit.
+Require Import Cava.Acorn.Identity.
 
 (******************************************************************************)
 (* A boolean combinational logic interpretation for the Cava class            *)
@@ -103,3 +104,13 @@ Fixpoint step {i o} (c : Circuit i o)
       let new_state := if en then input else st in
       (st, new_state)
   end.
+
+(* Automation to help simplify expressions using the identity monad *)
+Create HintDb simpl_ident discriminated.
+Hint Rewrite @mapT_vector_ident @mapT_vident @mapT_lident using solve [eauto] : simpl_ident.
+Ltac simpl_ident :=
+  repeat
+    first [ progress autorewrite with simpl_ident
+          | progress cbn [fst snd bind ret Monad_ident monad
+                              packV unpackV constant
+                              CombinationalSemantics unIdent] ].

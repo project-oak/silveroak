@@ -23,7 +23,6 @@ Import VectorNotations.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
-Open Scope monad_scope.
 
 Require Import coqutil.Tactics.Tactics.
 Require Import Cava.BitArithmetic.
@@ -44,7 +43,9 @@ Require Import AesSpec.Cipher.
 Require Import AesSpec.CipherProperties.
 Require Import AcornAes.CipherCircuit.
 
-Existing Instance Combinational.CombinationalSemantics.
+Local Open Scope list_scope.
+Local Open Scope monad_scope.
+Existing Instance CombinationalSemantics.
 
 Local Notation byte := (Vector.t bool 8).
 Local Notation state := (Vector.t (Vector.t byte 4) 4) (only parsing).
