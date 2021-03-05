@@ -33,14 +33,14 @@ Section WithCava.
              (sel : signal Bit)
              (ab : signal A * signal A) : cava (signal A) :=
     let '(a,b) := ab in
-    v <- unpeel [a;b] ;;
-    i <- unpeel [sel] ;;
+    v <- packV [a;b] ;;
+    i <- packV [sel] ;;
     indexAt v i.
 
   (* 4-element multiplexer *)
   Definition mux4 {t} (input : signal t * signal t * signal t * signal t)
              (sel : signal (Vec Bit 2)) : cava (signal t) :=
     let '(i0,i1,i2,i3) := input in
-    v <- unpeel [i0;i1;i2;i3]%vector ;;
+    v <- packV [i0;i1;i2;i3]%vector ;;
     indexAt v sel.
 End WithCava.

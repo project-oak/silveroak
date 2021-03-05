@@ -62,6 +62,6 @@ Section WithCava.
   data_o_3_1 <- aes_circ_byte_shift 3 data_i_3 ;;
   data_o_3 <- mux2 op_i (data_o_3_0, data_o_3_1) ;;
 
-  unpeel [data_o_0; data_o_1; data_o_2; data_o_3].
+  packV [data_o_0; data_o_1; data_o_2; data_o_3].
 
 End WithCava.
