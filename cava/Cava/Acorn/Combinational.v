@@ -19,7 +19,6 @@ Require Import Coq.Vectors.Vector.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import ExtLib.Structures.Monads.
-Require Export ExtLib.Data.Monads.IdentityMonad.
 Import ListNotations MonadNotation.
 
 Require Import Cava.Cava.
@@ -113,4 +112,4 @@ Ltac simpl_ident :=
     first [ progress autorewrite with simpl_ident
           | progress cbn [fst snd bind ret Monad_ident monad
                               packV unpackV constant
-                              CombinationalSemantics unIdent] ].
+                              CombinationalSemantics ] ].
