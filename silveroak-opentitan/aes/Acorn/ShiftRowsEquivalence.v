@@ -42,7 +42,7 @@ Section Equivalence.
   Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
 
   Lemma shift_rows_equiv (is_decrypt : bool) (st : state) :
-    unIdent (aes_shift_rows is_decrypt st)
+    aes_shift_rows is_decrypt st
     = AES256.aes_shift_rows_circuit_spec is_decrypt st.
   Proof.
     (* simplify RHS (specification) *)

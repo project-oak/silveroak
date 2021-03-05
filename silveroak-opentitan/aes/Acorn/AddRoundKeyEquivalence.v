@@ -53,7 +53,7 @@ Section Equivalence.
   Qed.
 
   Lemma add_round_key_equiv (k : key) (st : state) :
-    unIdent (aes_add_round_key k st)
+    aes_add_round_key k st
     = AES256.aes_add_round_key_circuit_spec k st.
   Proof.
     cbv [AES256.aes_add_round_key_circuit_spec

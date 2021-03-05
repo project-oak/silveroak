@@ -48,7 +48,7 @@ Section Equivalence.
   Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
 
   Lemma aes_transpose_correct n m (v : combType (Vec (Vec (Vec Bit 8) n) m)) :
-    unIdent (aes_transpose v) = transpose v.
+    aes_transpose v = transpose v.
   Proof. cbv [aes_transpose]; simpl_ident; reflexivity. Qed.
 
   Lemma poly_to_byte_to_bitvec p :
@@ -65,7 +65,7 @@ Section Equivalence.
   Qed.
 
   Lemma xorV_is_add (b1 b2 : byte) :
-    unIdent (xorV (n:=8) (b1, b2))
+    xorV (n:=8) (b1, b2)
     = byte_to_bitvec (Polynomial.fadd (bitvec_to_byte b1)
                                       (bitvec_to_byte b2)).
   Proof.
@@ -79,13 +79,13 @@ Section Equivalence.
   Qed.
 
   Lemma xorv_is_add (b1 b2 : byte) :
-    unIdent (xorv (n:=8) b1 b2)
+    xorv (n:=8) b1 b2
     = byte_to_bitvec (Polynomial.fadd (bitvec_to_byte b1)
                                       (bitvec_to_byte b2)).
   Proof. apply xorV_is_add. Qed.
 
   Lemma aes_mul2_correct (b : byte) :
-    unIdent (aes_mul2 b)
+    aes_mul2 b
     = byte_to_bitvec (Polynomial.fmul Byte.x02
                                       (bitvec_to_byte b)).
   Proof.
@@ -93,7 +93,7 @@ Section Equivalence.
   Qed.
 
   Lemma aes_mul4_correct (b : byte) :
-    unIdent (aes_mul4 b)
+    aes_mul4 b
     = byte_to_bitvec (Polynomial.fmul Byte.x04
                                       (bitvec_to_byte b)).
   Proof.
@@ -107,7 +107,7 @@ Section Equivalence.
 
   Local Open Scope poly_scope.
 
-  Lemma zero_byte_correct : bitvec_to_byte (unIdent zero_byte) = fzero.
+  Lemma zero_byte_correct : bitvec_to_byte zero_byte = fzero.
   Proof. reflexivity. Qed.
   Hint Rewrite zero_byte_correct using solve [eauto] : simpl_ident.
 
@@ -130,7 +130,7 @@ Section Equivalence.
   Add Ring bytering : MixColumns.ByteTheory (preprocess [prering]).
 
   Lemma mix_single_column_equiv (is_decrypt : bool) (col : Vector.t byte 4) :
-    unIdent (aes_mix_single_column is_decrypt col)
+    aes_mix_single_column is_decrypt col
     = if is_decrypt
        then map byte_to_bitvec
                 (MixColumns.inv_mix_single_column (map bitvec_to_byte col))
@@ -162,7 +162,7 @@ Section Equivalence.
   Qed.
 
   Lemma mix_columns_equiv (is_decrypt : bool) (st : state) :
-    unIdent (aes_mix_columns is_decrypt st)
+    aes_mix_columns is_decrypt st
     = AES256.aes_mix_columns_circuit_spec is_decrypt st.
   Proof.
     cbv [aes_mix_columns mcompose]. simpl_ident.

@@ -87,13 +87,13 @@ Local Ltac solve_side_conditions :=
   cbv zeta; intros;
   lazymatch goal with
   | |- ?x = ?x => reflexivity
-  | |- context [unIdent (aes_add_round_key _ _) = _] =>
+  | |- context [aes_add_round_key _ _ = _] =>
     eapply add_round_key_equiv
-  | |- context [unIdent (aes_sub_bytes _ _) = _] =>
+  | |- context [aes_sub_bytes _ _ = _] =>
     eapply sub_bytes_equiv
-  | |- context [unIdent (aes_shift_rows _ _) = _] =>
+  | |- context [aes_shift_rows _ _ = _] =>
     eapply shift_rows_equiv
-  | |- context [unIdent (aes_mix_columns _ _) = _] =>
+  | |- context [aes_mix_columns _ _ = _] =>
     eapply mix_columns_equiv
   | |- context [_ < 2 ^ 4] => change (2 ^ 4)%nat with 16; Lia.lia
   | |- map fst (all_keys _ _ _) = _ => solve [eauto]
