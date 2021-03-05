@@ -112,4 +112,14 @@ Ltac simpl_ident :=
   cbn [fst snd bind ret Monad_ident monad
            packV unpackV constant
            CombinationalSemantics ];
-  autorewrite with simpl_ident.
+  repeat lazymatch goal with
+         | |- context [(@Traversable.mapT
+                         _ (@Traversable_vector ?n)
+                         ?m (@Monad.Applicative_Monad ?m Monad_ident)
+                         ?A ?B ?f ?v)] =>
+           change (@Traversable.mapT
+                     _ (@Traversable_vector n)
+                     m (@Monad.Applicative_Monad m Monad_ident)
+                     A B f v) with (@Vector.map A B f n v)
+         | _ => progress autorewrite with simpl_ident
+         end.

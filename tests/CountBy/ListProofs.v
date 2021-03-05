@@ -45,7 +45,7 @@ Definition countBySpec (i : list (Bvector 8)) : list (Bvector 8) :=
   map (fun t => bvsum (firstn t i)) (seq 1 (length i)).
 
 Lemma addNCorrect n (a b : Bvector n) :
-  unIdent (addN (a, b)) = bvadd a b.
+  addN (a, b) = bvadd a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : simpl_ident.
 

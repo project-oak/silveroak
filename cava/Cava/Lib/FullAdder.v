@@ -55,14 +55,14 @@ Section Combinational.
   (* A proof that the half-adder is correct. *)
   Lemma halfAdder_behaviour :
     forall (a : bool) (b : bool),
-      unIdent (halfAdder (a, b)) = (xorb a b, a && b).
+      halfAdder (a, b) = (xorb a b, a && b).
   Proof.
     auto.
   Qed.
 
   (* A proof that the the full-adder is correct. *)
   Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
-                              unIdent (fullAdder (cin, (a, b)))
+                              fullAdder (cin, (a, b))
                                 = (xorb cin (xorb a b),
                                   (a && b) || (b && cin) || (a && cin)).
   Proof.

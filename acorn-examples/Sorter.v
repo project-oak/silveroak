@@ -91,10 +91,10 @@ Definition twoSorterSpec {bw: nat} (ab : Vector.t (Bvector bw) 2) :
     [a; b].
 
 Lemma twoSorterCorrect {bw : nat} (v : Vector.t (Bvector bw) 2) :
-  unIdent (@twoSorter combType _ _ v) = twoSorterSpec v.
+  @twoSorter combType _ _ v = twoSorterSpec v.
 Proof.
   constant_vector_simpl v.
-  cbv [twoSorterSpec nth_order].
+  cbv [twoSorterSpec twoSorter nth_order].
   simpl.
-  destruct (Bv2N _ <=? Bv2N _)%N; reflexivity.
+  destruct (Bv2N _ <=? Bv2N _)%N; try reflexivity.
 Qed.

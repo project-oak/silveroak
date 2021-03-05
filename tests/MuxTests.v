@@ -104,16 +104,16 @@ Definition v6 := N2Bv_sized 8 240.
 Definition v7 := N2Bv_sized 8  42.
 Definition v4to7 : Vector.t (Bvector 8) 4 := [v4; v5; v6; v7].
 
-Example m5: unIdent (muxBus (v0to3, [false; false]%vector)) = v0.
+Example m5: muxBus (v0to3, [false; false]%vector) = v0.
 Proof. reflexivity. Qed.
 
-Example m6: unIdent (muxBus (v0to3, [true; false]%vector)) = v1.
+Example m6: muxBus (v0to3, [true; false]%vector) = v1.
 Proof. reflexivity. Qed.
 
-Example m7: unIdent (muxBus (v0to3, [false; true]%vector)) = v2.
+Example m7: muxBus (v0to3, [false; true]%vector) = v2.
 Proof. reflexivity. Qed.
 
-Example m8: unIdent (muxBus (v0to3, [true; true]%vector)) = v3.
+Example m8: muxBus (v0to3, [true; true]%vector) = v3.
 Proof. reflexivity. Qed.
 
 Local Close Scope vector_scope.

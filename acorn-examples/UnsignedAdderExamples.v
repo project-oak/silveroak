@@ -46,11 +46,11 @@ Definition bv5_30 := N2Bv_sized 5 30.
 (******************************************************************************)
 
 (* Check 0 + 0 = 0 *)
-Example add0_0 : unIdent (addN (bv4_0, bv4_0)) = bv4_0.
+Example add0_0 : addN (bv4_0, bv4_0) = bv4_0.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 1 = 0 *)
-Example add15_1 : unIdent (addN (bv4_15, bv4_1)) = bv4_0.
+Example add15_1 : addN (bv4_15, bv4_1) = bv4_0.
 Proof. reflexivity. Qed.
 
 Section WithCava.
@@ -81,19 +81,19 @@ Section WithCava.
 End WithCava.
 
 (* Check 0 + 0 = 0 *)
-Example add5_0_0 : unIdent (adderGrowth (bv4_0, bv4_0)) = bv5_0.
+Example add5_0_0 : adderGrowth (bv4_0, bv4_0) = bv5_0.
 Proof. reflexivity. Qed.
 
 (* Check 1 + 2 = 3 *)
-Example add5_1_2 : unIdent (adderGrowth (bv4_1, bv4_2)) = bv5_3.
+Example add5_1_2 : adderGrowth (bv4_1, bv4_2) = bv5_3.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 1 = 16 *)
-Example add5_15_1 : unIdent (adderGrowth (bv4_15, bv4_1)) = bv5_16.
+Example add5_15_1 : adderGrowth (bv4_15, bv4_1) = bv5_16.
 Proof. reflexivity. Qed.
 
 (* Check 15 + 15 = 30 *)
-Example add5_15_15 : unIdent (adderGrowth (bv4_15, bv4_15)) = bv5_30.
+Example add5_15_15 : adderGrowth (bv4_15, bv4_15) = bv5_30.
 Proof. reflexivity. Qed.
 
 (******************************************************************************)

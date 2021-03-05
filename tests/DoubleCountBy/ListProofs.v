@@ -64,17 +64,17 @@ Definition double_count_by_spec (i : list (Vector.t bool 8)) : list (Vector.t bo
   map (fun t => boolsum (firstn t (map snd (count_by_spec i)))) (seq 1 (length i)).
 
 Lemma addN_correct {n} (x y : combType (Vec Bit n)) :
-  unIdent (addN (x, y)) = bvadd x y.
+  addN (x, y) = bvadd x y.
 Admitted.
 Hint Rewrite @addN_correct : simpl_ident.
 
 Lemma ltV_correct {n m} x y :
-  unIdent (ltV (n:=n) (m:=m) (x, y)) = (Bv2N x <? Bv2N y)%N.
+  ltV (n:=n) (m:=m) (x, y) = (Bv2N x <? Bv2N y)%N.
 Admitted.
 Hint Rewrite @ltV_correct : simpl_ident.
 
 Lemma addC_correct {n} (x y : combType (Vec Bit n)) :
-  unIdent (addC (x, y)) = bvaddc x y.
+  addC (x, y) = bvaddc x y.
 Proof.
   cbv [addC bvaddc]. cbv [CombinationalSemantics].
   simpl_ident. cbv [bvadd].
@@ -84,7 +84,7 @@ Qed.
 Hint Rewrite @addC_correct : simpl_ident.
 
 Lemma incrN_correct {n} (x : combType (Vec Bit (S n))) :
-  unIdent (incrN x) = N2Bv_sized (S n) (Bv2N x + 1).
+  incrN x = N2Bv_sized (S n) (Bv2N x + 1).
 Proof.
   cbv [incrN].
   cbn [CombinationalSemantics unpackV packV unsignedAdd unsignedAddBool constant].

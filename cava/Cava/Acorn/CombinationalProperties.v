@@ -66,8 +66,8 @@ End DecidableEquality.
 Lemma zipWith_correct {A B C : SignalType} n
       (f : combType A * combType B -> cava (combType C))
       (va : combType (Vec A n)) (vb : combType (Vec B n)) :
-  unIdent (@zipWith _ _ A B C n f va vb)
-  = Vector.map2 (fun a b => unIdent (f (a,b))) va vb.
+  @zipWith _ _ A B C n f va vb
+  = Vector.map2 (fun a b => f (a,b)) va vb.
 Proof.
   cbv [zipWith]; intros. simpl_ident.
   rewrite map_vcombine_map2. reflexivity.
@@ -75,7 +75,7 @@ Qed.
 Hint Rewrite @zipWith_correct using solve [eauto] : simpl_ident.
 
 Lemma xorV_correct n a b :
-  unIdent (@xorV _ _ n (a,b)) = Vector.map2 xorb a b.
+  @xorV _ _ n (a,b ) = Vector.map2 xorb a b.
 Proof.
   intros. cbv [xorV]. cbn [fst snd].
   simpl_ident. apply map2_ext; intros.
@@ -83,9 +83,8 @@ Proof.
 Qed.
 Hint Rewrite @xorV_correct using solve [eauto] : simpl_ident.
 
-
 Lemma all_correct {n} v :
-  unIdent (all (n:=n) v) = Vector.fold_left andb true v.
+  all (n:=n) v = Vector.fold_left andb true v.
 Proof.
   destruct n; [ eapply case0 with (v:=v); reflexivity | ].
   cbv [all one]. simpl_ident.
@@ -97,7 +96,7 @@ Qed.
 Hint Rewrite @all_correct using solve [eauto] : simpl_ident.
 
 Lemma eqb_correct {t} (x y : combType t) :
-  unIdent (eqb x y) = combType_eqb x y.
+  eqb x y = combType_eqb x y.
 Proof.
   revert x y.
   induction t;
@@ -119,7 +118,7 @@ Proof.
 Qed.
 
 Lemma eqb_eq {t} (x y : combType t) :
-  unIdent (eqb x y) = true <-> x = y.
+  eqb x y = true <-> x = y.
 Proof.
   rewrite eqb_correct. split.
   { inversion 1. apply combType_eqb_true_iff. auto. }
@@ -127,10 +126,10 @@ Proof.
     apply combType_eqb_true_iff. reflexivity. }
 Qed.
 
-Lemma eqb_refl {t} (x : combType t) : unIdent (eqb x x) = true.
+Lemma eqb_refl {t} (x : combType t) : eqb x x = true.
 Proof. apply eqb_eq. reflexivity. Qed.
 
-Lemma eqb_neq {t} (x y : combType t) : x <> y ->  unIdent (eqb x y) = false.
+Lemma eqb_neq {t} (x y : combType t) : x <> y ->  eqb x y = false.
 Proof.
   rewrite eqb_correct; intros. f_equal.
   apply Bool.not_true_is_false.
@@ -139,8 +138,8 @@ Qed.
 
 Lemma eqb_nat_to_bitvec_sized sz n m :
   n < 2 ^ sz -> m < 2 ^ sz ->
-  unIdent (eqb (t:=Vec Bit sz) (nat_to_bitvec_sized sz n)
-               (nat_to_bitvec_sized sz m))
+  eqb (t:=Vec Bit sz) (nat_to_bitvec_sized sz n)
+      (nat_to_bitvec_sized sz m)
   = if Nat.eqb n m then true else false.
 Proof.
   intros; destruct_one_match; subst; [ solve [apply (eqb_refl (t:=Vec Bit sz))] | ].
@@ -150,16 +149,16 @@ Proof.
 Qed.
 
 Lemma indexAt2_correct {t} (i0 i1 : combType t) (sel : combType Bit) :
-  unIdent (indexAt [i0; i1]%vector [sel]%vector) = if sel then i1 else i0.
+  indexAt [i0; i1]%vector [sel]%vector = if sel then i1 else i0.
 Proof. destruct sel; reflexivity. Qed.
 Hint Rewrite @indexAt2_correct using solve [eauto] : simpl_ident.
 
 Lemma indexConst_eq {A sz} (v : combType (Vec A sz)) (n : nat) :
-  unIdent (indexConst v n) = nth_default (defaultCombValue _) n v.
+  indexConst v n = nth_default (defaultCombValue _) n v.
 Proof. reflexivity. Qed.
 Hint Rewrite @indexConst_eq using solve [eauto] : simpl_ident.
 
 Lemma fork2Correct {A} (i : combType A) :
- unIdent (fork2 i) = (i, i).
+ fork2 i = (i, i).
 Proof. reflexivity. Qed.
 Hint Rewrite @fork2Correct using solve [eauto] : simpl_ident.
