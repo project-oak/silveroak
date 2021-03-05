@@ -37,7 +37,7 @@ Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Combinational.
 Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Acorn.Identity.
-Require Import Cava.Acorn.Multistep.
+Require Import Cava.Acorn.Simulation.
 Require Import Cava.Lib.MultiplexersProperties.
 
 Require Import AesSpec.Cipher.
@@ -244,14 +244,14 @@ Section WithSubroutines.
                   (state:=Vec (Vec (Vec Bit 8) 4) 4)
                   (round_index:=Vec Bit 4)
                   sub_bytes shift_rows mix_columns add_round_key (mix_columns true) in
-    multistep loop (combine cipher_input round_keys)
+    simulate loop (combine cipher_input round_keys)
     = cipher_trace_with_keys Nr is_decrypt init_state round_keys.
   Proof.
     cbv zeta; intros. subst cipher_input.
     cbv [make_cipher_signals] in *.
     destruct round_keys; cbn [length] in *; [ length_hammer | ].
     destruct init_key_ignored; cbn [length] in *; [ length_hammer | ].
-    cbv [multistep cipher_trace_with_keys].
+    cbv [simulate cipher_trace_with_keys].
     cbn [seq map combine].
     rewrite fold_left_accumulate_cons_full.
     cbn [tl].
@@ -377,7 +377,7 @@ Section WithSubroutines.
     cipher_input = make_cipher_signals Nr is_decrypt init_key_input
                                        (init_state :: init_state_ignored) ->
     (* precomputed keys match key expansion *)
-    multistep key_expand cipher_input = init_key :: middle_keys ++ [last_key] ->
+    simulate key_expand cipher_input = init_key :: middle_keys ++ [last_key] ->
     let cipher := cipher
                     (key:=Vec (Vec (Vec Bit 8) 4) 4)
                     (state:=Vec (Vec (Vec Bit 8) 4) 4)
@@ -385,7 +385,7 @@ Section WithSubroutines.
                     sub_bytes shift_rows mix_columns add_round_key (mix_columns true)
                     key_expand in
     forall d,
-      nth Nr (multistep cipher cipher_input) d
+      nth Nr (simulate cipher cipher_input) d
       = if is_decrypt
         then
           Cipher.equivalent_inverse_cipher
@@ -398,12 +398,12 @@ Section WithSubroutines.
             mix_columns_spec init_key last_key middle_keys init_state.
   Proof.
     cbv zeta; intros. subst cipher_input.
-    cbv [cipher]. autorewrite with push_multistep.
+    cbv [cipher]. autorewrite with push_simulate.
     rewrite !map_map.
     rewrite !ListUtils.map_id_ext by reflexivity.
     erewrite cipher_loop_equiv with (Nr:=Nr) (init_state_ignored:=init_state_ignored)
       by length_hammer.
-    match goal with Hkexp : multistep key_expand _ = _ |- _ =>
+    match goal with Hkexp : simulate key_expand _ = _ |- _ =>
                     cbv [combType Bvector.Bvector] in Hkexp |- *;
                       rewrite Hkexp; clear Hkexp end.
     cbv [cipher_trace_with_keys]. simplify.

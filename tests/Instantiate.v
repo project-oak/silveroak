@@ -67,7 +67,7 @@ Definition instantiate_tb_inputs : list (bool * bool * bool) :=
 
 (* Compute expected outputs. *)
 Definition instantiate_tb_expected_outputs : list bool :=
-  multistep (Comb nand3_gate) instantiate_tb_inputs.
+  simulate (Comb nand3_gate) instantiate_tb_inputs.
 
 Definition instantiate_tb :=
   testBench "instantiate_tb" nand3Interface instantiate_tb_inputs instantiate_tb_expected_outputs.

@@ -43,7 +43,7 @@ Local Open Scope list_scope.
 
 (* Compute the expected outputs from the Coq/Cava semantics. *)
 Definition aes_add_round_key_expected_outputs : seqType (Vec (Vec (Vec Bit 8) 4) 4)
-  := multistep (Comb (fun '(key_i, data_i) => aes_add_round_key key_i data_i))
+  := simulate (Comb (fun '(key_i, data_i) => aes_add_round_key key_i data_i))
                [(fromNatVec test_key, fromNatVec test_state)].
 
 Definition aes_add_round_key_tb :=

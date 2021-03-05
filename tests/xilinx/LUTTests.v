@@ -67,7 +67,7 @@ End WithCava.
   Definition lut1_inv_tb_inputs := [false; true].
 
   Definition lut1_inv_tb_expected_outputs : list bool :=
-    multistep (Comb lut1_inv) lut1_inv_tb_inputs.
+    simulate (Comb lut1_inv) lut1_inv_tb_inputs.
 
   Definition lut1_inv_tb :=
     testBench "lut1_inv_tb" lut1_inv_Interface
@@ -89,7 +89,7 @@ Definition lut2_and_tb_inputs : list (bool * bool) :=
  [(false, false); (false, true); (true, false); (true, true)].
 
 Definition lut2_and_tb_expected_outputs : list bool :=
-  multistep (Comb lut2_and) lut2_and_tb_inputs.
+  simulate (Comb lut2_and) lut2_and_tb_inputs.
 
 Definition lut2_and_tb :=
   testBench "lut2_and_tb" lut2_and_Interface
@@ -116,7 +116,7 @@ Definition lut3_mux_tb_inputs : list (bool * bool * bool) :=
   (true, true, true)].
 
 Definition lut3_mux_tb_expected_outputs : list bool :=
-  multistep (Comb lut3_mux) lut3_mux_tb_inputs.
+  simulate (Comb lut3_mux) lut3_mux_tb_inputs.
 
 Definition lut3_mux_tb :=
   testBench "lut3_mux_tb" lut3_mux_Interface
@@ -142,7 +142,7 @@ Definition lut4_and_tb_inputs : list (bool * bool * bool * bool) :=
   (true, true, true, true)].
 
 Definition lut4_and_tb_expected_outputs : list bool :=
-  multistep (Comb lut4_and) lut4_and_tb_inputs.
+  simulate (Comb lut4_and) lut4_and_tb_inputs.
 
 Definition lut4_and_tb :=
   testBench "lut4_and_tb" lut4_and_Interface
@@ -169,7 +169,7 @@ Definition lut5_and_tb_inputs : list (bool * bool * bool * bool * bool) :=
   (true, true, true, true, true)].
 
 Definition lut5_and_tb_expected_outputs : list bool :=
-  multistep (Comb lut5_and) lut5_and_tb_inputs.
+  simulate (Comb lut5_and) lut5_and_tb_inputs.
 
 Definition lut5_and_tb :=
   testBench "lut5_and_tb" lut5_and_Interface
@@ -198,7 +198,7 @@ Definition lut6_and_tb_inputs : list (bool * bool * bool * bool * bool * bool) :
 
 
 Definition lut6_and_tb_expected_outputs : list bool :=
-  multistep (Comb lut6_and) lut6_and_tb_inputs.
+  simulate (Comb lut6_and) lut6_and_tb_inputs.
 
 Definition lut6_and_tb :=
   testBench "lut6_and_tb" lut6_and_Interface

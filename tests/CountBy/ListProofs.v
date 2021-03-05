@@ -53,10 +53,10 @@ Lemma bvadd_comm {n} a b : @bvadd n a b = bvadd b a.
 Proof. cbv [bvadd]. rewrite N.add_comm. reflexivity. Qed.
 
 Lemma countByCorrect: forall (i : list (Bvector 8)),
-    multistep countBy i = countBySpec i.
+    simulate countBy i = countBySpec i.
 Proof.
   intros; cbv [countBy].
-  eapply (multistep_Loop_invariant (s:=Vec Bit 8)) with
+  eapply (simulate_Loop_invariant (s:=Vec Bit 8)) with
       (I:=fun t st _ acc =>
             st = bvsum (firstn t i)
             /\ acc = countBySpec (firstn t i)).

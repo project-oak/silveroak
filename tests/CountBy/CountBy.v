@@ -67,7 +67,7 @@ Definition b250 := N2Bv_sized 8 250.
 
 Local Open Scope list_scope.
 
-Example countBy_ex1: multistep countBy [b14; b7; b3; b250] = [b14; b21; b24; b18].
+Example countBy_ex1: simulate countBy [b14; b7; b3; b250] = [b14; b21; b24; b18].
 Proof. reflexivity. Qed.
 
 Definition countBy_Interface
@@ -82,7 +82,7 @@ Definition countBy_Netlist := makeCircuitNetlist countBy_Interface countBy.
 Definition countBy_tb_inputs
   := [b14; b7; b3; b250].
 
-Definition countBy_tb_expected_outputs := multistep countBy countBy_tb_inputs.
+Definition countBy_tb_expected_outputs := simulate countBy countBy_tb_inputs.
 
 Definition countBy_tb
   := testBench "countBy_tb" countBy_Interface

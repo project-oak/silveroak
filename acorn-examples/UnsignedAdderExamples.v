@@ -116,7 +116,7 @@ Definition adder4_tb_inputs
   := [(bv4_0, bv4_0); (bv4_1, bv4_2); (bv4_15, bv4_1); (bv4_15, bv4_15)].
 
 Definition adder4_tb_expected_outputs
-  := multistep (Comb unsignedAddCircuit) adder4_tb_inputs.
+  := simulate (Comb unsignedAddCircuit) adder4_tb_inputs.
 
 Definition adder4_tb
   := testBench "adder4_tb" adder4Interface
@@ -142,7 +142,7 @@ Definition adder8_3input_tb_inputs :=
   [(17, 23, 95); (4, 200, 30); (255, 255, 200)].
 
 Definition adder8_3input_tb_expected_outputs :=
-  multistep (Comb (add3InputTuple 8 8 8)) adder8_3input_tb_inputs.
+  simulate (Comb (add3InputTuple 8 8 8)) adder8_3input_tb_inputs.
 
 Definition adder8_3input_tb :=
   testBench "adder8_3input_tb" adder8_3inputInterface

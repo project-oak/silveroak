@@ -74,7 +74,7 @@ Definition fullAdder_tb_inputs :=
 ].
 
 Definition fullAdder_tb_expected_outputs :=
-  multistep (Comb fullAdderTop) fullAdder_tb_inputs.
+  simulate (Comb fullAdderTop) fullAdder_tb_inputs.
 
 Definition fullAdder_tb
   := testBench "fullAdder_tb" fullAdderInterface

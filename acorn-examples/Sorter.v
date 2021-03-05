@@ -75,7 +75,7 @@ Definition two_sorter_tb_inputs : list (Vector.t (Bvector 8) _) :=
   ].
 
 Definition two_sorter_tb_expected_outputs : list (Vector.t (Bvector 8) _) :=
-  multistep (Comb twoSorter) two_sorter_tb_inputs.
+  simulate (Comb twoSorter) two_sorter_tb_inputs.
 
 Definition two_sorter_tb :=
   testBench "two_sorter_tb" (two_sorter_Interface 8)

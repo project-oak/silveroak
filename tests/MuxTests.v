@@ -67,7 +67,7 @@ Definition mux2_1_tb_inputs :=
 Definition muxManualExpectedOutputs := [false; true; true; false].
 
 (* Compute the expected outputs from the semantics *)
-Definition mux2_1_tb_expected_outputs := multistep (Comb mux2_1_top) mux2_1_tb_inputs.
+Definition mux2_1_tb_expected_outputs := simulate (Comb mux2_1_top) mux2_1_tb_inputs.
 
 Example m1_4: mux2_1_tb_expected_outputs = muxManualExpectedOutputs.
 Proof. reflexivity. Qed.
@@ -134,7 +134,7 @@ Definition muxBus4_8_tb_inputs : list (Vector.t (Bvector 8) 4 * Vector.t bool 2)
   ].
 
 Definition muxBus4_8_tb_expected_outputs : list (Bvector 8)
-  := multistep (Comb muxBus) muxBus4_8_tb_inputs.
+  := simulate (Comb muxBus) muxBus4_8_tb_inputs.
 
 Definition muxBus4_8_tb
   := testBench "muxBus4_8_tb" muxBus4_8Interface
