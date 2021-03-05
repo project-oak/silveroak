@@ -660,10 +660,6 @@ Section WithCava.
       * signal key
       * signal key) (signal state)).
 
-
-  Context (eqb_bb: signal round_index * signal round_index -> cava (signal Bit)).
-  Context (dummy: signal (Vec Bit 2) -> cava (signal (Vec Bit 2))).
-
   Definition aes_cipher_core
     : Circuit
       ( _
