@@ -79,7 +79,7 @@ Fixpoint step {i o} (c : Circuit i o)
   : circuit_state c -> i -> o * circuit_state c :=
   match c in Circuit i o return circuit_state c -> i
                                 -> o * circuit_state c with
-  | Comb f => fun _ i => (unIdent (f i), tt)
+  | Comb f => fun _ i => (f i, tt)
   | Compose f g =>
     fun cs input =>
       let '(x, cs1) := step f (fst cs) input in
@@ -105,11 +105,11 @@ Fixpoint step {i o} (c : Circuit i o)
   end.
 
 (* Automation to help simplify expressions using the identity monad *)
-Create HintDb simpl_ident discriminated.
-Hint Rewrite @mapT_vector_ident @mapT_vident @mapT_lident using solve [eauto] : simpl_ident.
+Create HintDb simpl_ident.
+Hint Rewrite @Combinators.foldLM_ident_fold_left using solve [eauto]
+  : simpl_ident.
 Ltac simpl_ident :=
-  repeat
-    first [ progress autorewrite with simpl_ident
-          | progress cbn [fst snd bind ret Monad_ident monad
-                              packV unpackV constant
-                              CombinationalSemantics ] ].
+  cbn [fst snd bind ret Monad_ident monad
+           packV unpackV constant
+           CombinationalSemantics ];
+  autorewrite with simpl_ident.

@@ -30,24 +30,3 @@ Instance Monad_ident : Monad ident :=
 
 Instance MonadLaws_ident : MonadLaws Monad_ident.
 Proof. econstructor; intros; exact eq_refl. Defined.
-
-Section MapT.
-  Lemma mapT_vector_ident {A B n} (f : A -> ident B) (v : Vector.t A n) :
-    mapT_vector f v = Vector.map f v.
-  Proof.
-    induction v; intros; [ reflexivity | ].
-    cbn. rewrite IHv. reflexivity.
-  Qed.
-
-  (* Alternate form of the above with the Traversable wrapper not simplified *)
-  Lemma mapT_vident {A B n} (f : A -> ident B) (v : Vector.t A n) :
-    mapT (Traversable:=Traversable_vector) f v = Vector.map f v.
-  Proof. apply mapT_vector_ident. Qed.
-
-  Lemma mapT_lident {A B} (f : A -> ident B) (l : list A) :
-    mapT (Traversable:=Traversable_list) f l = List.map f l.
-  Proof.
-    simpl. induction l; [ reflexivity | ].
-    simpl. rewrite IHl. reflexivity.
-  Qed.
-End MapT.
