@@ -209,7 +209,7 @@ Section WithCava.
     : cipher_control_signals cava_signal :=
     map_natural_transform x (fun _ xs =>
       v <- xs ;;
-      v' <- packv v ;;
+      v' <- packV v ;;
       sel' <- sel ;;
       indexAt v' sel'
     ).

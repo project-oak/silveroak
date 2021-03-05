@@ -89,7 +89,7 @@ Section WithCava.
     is_final_round <- round_i ==? num_rounds_regular;;
     (* add_round_key_in_sel :
        1 if round_i = 0, 2 if round_i = num_rounds_regular, 0 otherwise *)
-    add_round_key_in_sel <- packv [is_first_round; is_final_round]%vector ;;
+    add_round_key_in_sel <- packV [is_first_round; is_final_round]%vector ;;
     is_middle_round <- nor2 (is_first_round, is_final_round) ;;
     (* round_key_sel : 1 for a decryption middle round, 0 otherwise *)
     round_key_sel <- and2 (is_middle_round, is_decrypt) ;;

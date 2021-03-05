@@ -43,7 +43,7 @@ Section WithCava.
              (n: nat)
     : signal (Vec (Vec Bit sz) (2^(S n))) ->
       cava (signal (Vec Bit sz)) :=
-    unpackv >=> tree defaultSignal n xilinxAdder.
+    unpackV >=> tree defaultSignal n xilinxAdder.
 
   (****************************************************************************)
   (* An adder tree with 2 inputs.                                             *)

@@ -29,54 +29,54 @@ Section WithCava.
 
   Definition bitvec_literal {n} (v : Vector.t bool n)
     : cava (signal (Vec Bit n)) :=
-    packv (Vector.map constant v).
+    packV (Vector.map constant v).
 
   Definition nil {A} : cava (signal (Vec A 0)) :=
-    packv [].
+    packV [].
 
   Definition cons {A n} (a : signal A) (v : signal (Vec A n))
     : cava (signal (Vec A (S n))) :=
-    v <- unpackv v ;;
-    packv (a :: v).
+    v <- unpackV v ;;
+    packV (a :: v).
 
   Definition tl {A n} (v : signal (Vec A (S n))) : cava (signal (Vec A n)) :=
-    v <- unpackv v ;;
-    packv (Vector.tl v).
+    v <- unpackV v ;;
+    packV (Vector.tl v).
 
   Definition hd {A n} (v : signal (Vec A (S n))) : cava (signal A) :=
-    v <- unpackv v ;;
+    v <- unpackV v ;;
     ret (Vector.hd v).
 
   Definition const {A} (x : signal A) n
     : cava (signal (Vec A n)) :=
-    packv (Vector.const x n).
+    packV (Vector.const x n).
 
   Definition rev {A n} (v : signal (Vec A n))
     : cava (signal (Vec A n)) :=
-    v <- unpackv v ;;
-    packv (Vector.rev v).
+    v <- unpackV v ;;
+    packV (Vector.rev v).
 
   Definition last {A n} (v : signal (Vec A (S n)))
     : cava (signal A) :=
-    v <- unpackv v ;;
+    v <- unpackV v ;;
     ret (Vector.last v).
 
   Definition shiftin {A n} (x : signal A) (v : signal (Vec A n))
     : cava (signal (Vec A (S n))) :=
-    v <- unpackv v ;;
-    packv (Vector.shiftin x v).
+    v <- unpackV v ;;
+    packV (Vector.shiftin x v).
 
   Definition shiftout {A n} (v : signal (Vec A (S n)))
     : cava (signal (Vec A n)) :=
-    v <- unpackv v ;;
-    packv (Vector.shiftout v).
+    v <- unpackV v ;;
+    packV (Vector.shiftout v).
 
   Definition transpose {A n m} (v : signal (Vec (Vec A n) m))
     : cava (signal (Vec (Vec A m) n)) :=
-    v <- unpackv v ;;
-    v <- Traversable.mapT unpackv v ;;
-    v <- Traversable.mapT packv (transpose v) ;;
-    packv v.
+    v <- unpackV v ;;
+    v <- Traversable.mapT unpackV v ;;
+    v <- Traversable.mapT packV (transpose v) ;;
+    packV v.
 
   Fixpoint fold_left {A B}
              (f : B * signal A -> cava B)
@@ -109,16 +109,16 @@ Section WithCava.
   Definition map {A B n} (f : signal A -> cava (signal B))
              (v : signal (Vec A n))
     : cava (signal (Vec B n)) :=
-    v <- unpackv v ;;
+    v <- unpackV v ;;
     out <- Traversable.mapT f v ;;
-    packv out.
+    packV out.
 
   Definition map2 {A B C n}
              (f : signal A * signal B -> cava (signal C))
              (va : signal (Vec A n)) (vb : signal (Vec B n))
     : cava (signal (Vec C n)) :=
-    va <- unpackv va ;;
-    vb <- unpackv vb ;;
+    va <- unpackV va ;;
+    vb <- unpackV vb ;;
     out <- Traversable.mapT f (vcombine va vb) ;;
-    packv out.
+    packV out.
 End WithCava.

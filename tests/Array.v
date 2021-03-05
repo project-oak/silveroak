@@ -38,16 +38,16 @@ Section WithCava.
   Context `{Cava}.
 
   Definition bitvec_to_signal {n : nat} (lut : Vector.t bool n) : cava (signal (Vec Bit n)) :=
-    packv (Vector.map constant lut).
+    packV (Vector.map constant lut).
 
   Definition array : cava (signal (Vec (Vec Bit 8) 4)) :=
     v <- mapT (fun x => bitvec_to_signal (nat_to_bitvec_sized _ x)) [0;1;2;3] ;;
-    packv v.
+    packV v.
 
   Definition multiDimArray : cava (signal (Vec (Vec (Vec Bit 8) 4) 2)) :=
     arr1 <- array ;;
     arr2 <- array ;;
-    packv [arr1; arr2].
+    packV [arr1; arr2].
 
   Definition arrayTest (i : signal (Vec Bit 8))
     : cava (signal (Vec Bit 8)) :=

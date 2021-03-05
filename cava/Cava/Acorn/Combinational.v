@@ -61,8 +61,8 @@ Instance CombinationalSemantics : Cava combType :=
     lut6 := fun f '(a,b,c,d,e,g) => ret (f a b c d e g);
     xorcy := fun '(x,y) => ret (xorb x y);
     muxcy := fun sel x y => ret (if sel then x else y);
-    unpackv _ _ v := ret v;
-    packv _ _ v := ret v;
+    unpackV _ _ v := ret v;
+    packV _ _ v := ret v;
     indexAt t sz isz := fun v sel => ret (nth_default (defaultCombValue _) (N.to_nat (Bv2N sel)) v);
     indexConst t sz := fun v sel => ret (nth_default (defaultCombValue _) sel v);
     slice t sz startAt len v H := ret (sliceVector v startAt len H);
