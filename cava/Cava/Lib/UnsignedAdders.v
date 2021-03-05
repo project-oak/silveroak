@@ -19,7 +19,6 @@ Import ListNotations.
 Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 Require Import ExtLib.Structures.Monads.
-Require Export ExtLib.Data.Monads.IdentityMonad.
 Import MonadNotation.
 Open Scope monad_scope.
 Open Scope type_scope.

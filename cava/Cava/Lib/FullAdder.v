@@ -17,7 +17,6 @@
 Require Import Coq.Lists.List.
 Require Import Coq.Bool.Bool.
 Require Import ExtLib.Structures.Monads.
-Require Export ExtLib.Data.Monads.IdentityMonad.
 Import ListNotations MonadNotation.
 Open Scope monad_scope.
 Open Scope type_scope.

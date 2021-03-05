@@ -20,7 +20,6 @@ Import ListNotations.
 Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 Require Import ExtLib.Structures.Monads.
-Require Export ExtLib.Data.Monads.IdentityMonad.
 Require Import ExtLib.Structures.MonadLaws.
 Import MonadNotation.
 Open Scope monad_scope.
@@ -89,7 +88,7 @@ Proof.
 
   (* Rearrange to match inductive hypothesis *)
   rewrite <-app_comm_cons.
-  cbn [unIdent] in *. rewrite list_bits_to_nat_cons.
+  rewrite list_bits_to_nat_cons.
 
   (* Finally we have the right expression to use IHa *)
   rewrite IHa by lia.
