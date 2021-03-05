@@ -19,7 +19,7 @@
 
 <p>Welcome! This is a quick primer for designing circuits with Cava. We'll walk
 through a few small examples end-to-end. This tutorial assumes some familiarity
-with Coq syntax.</p>
+with Coq syntax. Use Ctrl+down and Ctrl+up to step through the Coq code along with the tutorial.</p>
 <div class="section" id="example-1-inverter">
 <h1>Example 1 : Inverter</h1>
 <p>To start, let's define a 1-bit inverter.</p>
@@ -205,7 +205,8 @@ map negb input</span></div></blockquote></div></div></small><span class="alectry
 </span></span><span class="alectryon-wsp"><span class="highlight">
 </span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="bp">reflexivity</span>.</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Qed</span>.</span></span></span></pre><p>We can even prove that composing two inverters is the same as doing
-nothing. Here, <tt class="docutils literal"><span class="pre">&gt;==&gt;</span></tt> is circuit composition (a Kleisli arrow).</p>
+nothing. Here, <tt class="docutils literal"><span class="pre">&gt;==&gt;</span></tt> is circuit composition (a Kleisli arrow). The proof
+structure is pretty similar.</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkd" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkd"><span class="highlight"><span class="kn">Lemma</span> <span class="nf">inverter_idempotent</span> (<span class="nv">input</span> : list bool) :
   multistep (inverter &gt;==&gt; inverter) input = input.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">multistep (inverter &gt;==&gt; inverter) input = input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
 </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chke" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chke"><span class="highlight"><span class="kn">Proof</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">multistep (inverter &gt;==&gt; inverter) input = input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
