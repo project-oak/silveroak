@@ -25,7 +25,8 @@ Tutorial
 
 Welcome! This is a quick primer for designing circuits with Cava. We'll walk
 through a few small examples end-to-end. This tutorial assumes some familiarity
-with Coq syntax. Use Ctrl+down and Ctrl+up to step through the Coq code along with the tutorial.
+with Coq syntax. Use Ctrl+down and Ctrl+up to step through the Coq code along
+with the tutorial.
 
 .. coq:: none
 |*)
@@ -67,7 +68,7 @@ A few things to notice here:
   or timing requirements, so it is a purely combinational circuit.
 * The inverter is also paramterized over ``semantics``, an instance of the
   typeclass ``Cava``. This instance provides implementations of circuit
-  primitives, such as 1-bit logic gates. One primitive is a 1-bit inverter
+  primitives, such as 1-bit logic gates. One primitive gate is a 1-bit inverter
   ``inv``, so our inverter is just a simple invocation of the primitive.
 
 Normally, we'd write circuit definitions a little more concisely by writing them
@@ -95,7 +96,7 @@ Back to our inverter. Let's take a closer look at the ``inv`` primitive.
 You can see in the type signature ``signal Bit -> cava (signal Bit)`` that
 ``inv`` is defined as a pure Coq function in terms of a monad called
 ``cava``. The ``cava`` monad, like ``inv``, is provided by ``semantics``. The
-monad is used to preserve sharing; it's semantically different in Cava to write::
+monad is used to capture sharing; it's semantically different in Cava to write::
 
   x <- inv zero ;;
   y <- inv zero ;;
@@ -107,7 +108,7 @@ than it is to write::
   xor2 x x
 
 Both expressions have the same meaning, and if we were using Gallina ``let``
-binders there would be no difference. But the generated circuit will use two
+binders there would be no difference. But the generated circuit can use two
 wires for the first definition, and fork the same wire in the second. As circuit
 diagrams, this is the difference between::
 
@@ -131,6 +132,13 @@ This difference isn't significant in determining what the value of ``out`` will
 be, but it can be very useful when trying to exercise fine-grained control over
 circuit layout and area! At a first approximation, you can think of a monadic
 bind (``_ <- _ ;; ...``) as *naming a wire* in the circuit graph.
+
+We could have represented sharing by describing circuit graphs with a list of
+nodes and edges. However, this is essentially the "machine code" of structural
+hardware descriptions, and is far too tedious a representation for humans to
+work with. The monadic-function abstraction allows human engineers to think
+about the functional behavior and composition of circuits at a more intuitive
+level.
 
 Parameterizing over the ``cava`` monad and primitive implementations allows us
 to use different instances of ``Cava`` to interpret the same circuit definition
@@ -172,6 +180,12 @@ Compute (makeCircuitNetlist inverter_interface inverter).
 Compute (makeCircuitNetlist inverter_interface inverter).(module).
 
 (*|
+You may notice that we're using something called ``sequentialInterface`` here,
+and referring to clock and reset signals, even though our inverter is a purely
+combinational circuit. We introduce timing in the netlist interface here in
+order to drive the circuit with multiple inputs over time, and to plug it in as
+a subcomponent of circuits that are not combinational.
+
 Now, let's simulate the circuit, which can be useful for testing and proving
 functional correctness. Here, we use the identity-monad interpretation. The
 ``signal`` for this ``Cava`` instance is ``combType``, which interprets a
