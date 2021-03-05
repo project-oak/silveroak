@@ -55,7 +55,7 @@ Definition addWithDelaySpecF
     end.
 
 Lemma addNCorrect n (a b : combType (Vec Bit n)) :
-  unIdent (addN (a, b)) = bvadd a b.
+  addN (a, b) = bvadd a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : simpl_ident.
 

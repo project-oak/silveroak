@@ -115,7 +115,7 @@ Section Proofs.
   Existing Instance CombinationalSemantics.
 
   Lemma half_adder_correct (x y : combType Bit) :
-    unIdent (half_adder (x,y)) = (xorb x y, andb x y).
+    half_adder (x,y) = (xorb x y, andb x y).
   Proof.
     cbv [half_adder and2 xor2 CombinationalSemantics].
     simpl_ident. reflexivity.
@@ -123,7 +123,7 @@ Section Proofs.
   Hint Rewrite half_adder_correct using solve [eauto] : simpl_ident.
 
   Lemma incr4_correct (input : combType (Vec Bit 4)) :
-    unIdent (incr4 input) = N2Bv_sized 4 (Bv2N input + 1).
+    incr4 input = N2Bv_sized 4 (Bv2N input + 1).
   Proof.
     cbv [incr4]. simpl_ident. boolsimpl.
     cbn [packV indexConst CombinationalSemantics].
@@ -132,7 +132,7 @@ Section Proofs.
   Qed.
 
   Lemma half_subtractor_correct (x y : combType Bit) :
-    unIdent (half_subtractor (x,y)) = (xorb x y, andb (negb x) y).
+    half_subtractor (x,y) = (xorb x y, andb (negb x) y).
   Proof.
     cbv [half_subtractor and2 xor2 CombinationalSemantics].
     simpl_ident; reflexivity.
@@ -140,7 +140,7 @@ Section Proofs.
   Hint Rewrite half_subtractor_correct using solve [eauto] : simpl_ident.
 
   Lemma decr4_correct (input : combType (Vec Bit 4)) :
-    unIdent (decr4 input) = N2Bv_sized 4 (if (Bv2N input =? 0)%N then 15
+    decr4 input = N2Bv_sized 4 (if (Bv2N input =? 0)%N then 15
                                           else Bv2N input - 1).
   Proof.
     cbv [decr4]. simpl_ident. boolsimpl.
@@ -149,7 +149,7 @@ Section Proofs.
   Qed.
 
   Lemma incr'_correct {sz} carry (input : combType (Vec Bit sz)) :
-    unIdent (incr' carry input)
+    incr' carry input
     = N2Bv_sized _ (Bv2N input + if carry then 1 else 0)%N.
   Proof.
     revert carry input; induction sz; intros; [ cbn; f_equal; solve [apply nil_eq] | ].
@@ -163,11 +163,11 @@ Section Proofs.
   Qed.
 
   Lemma incr_correct {sz} (input : combType (Vec Bit sz)) :
-    unIdent (incr input) = N2Bv_sized _ (Bv2N input + 1).
+    incr input = N2Bv_sized _ (Bv2N input + 1).
   Proof. cbv [incr]. simpl_ident. apply incr'_correct. Qed.
 
   Lemma decr'_correct {sz} borrow (input : combType (Vec Bit sz)) :
-    unIdent (decr' borrow input)
+    decr' borrow input
     = N2Bv_sized _ (if borrow
                     then if (Bv2N input =? 0)%N
                          then N.ones (N.of_nat sz)
@@ -204,7 +204,7 @@ Section Proofs.
   Qed.
 
   Lemma decr_correct {sz} (input : combType (Vec Bit sz)) :
-    unIdent (decr input)
+    decr input
     = N2Bv_sized _ ( if (Bv2N input =? 0)%N
                      then 2 ^ (N.of_nat sz) - 1
                      else Bv2N input - 1)%N.

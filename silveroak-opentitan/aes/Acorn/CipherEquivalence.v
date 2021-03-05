@@ -23,7 +23,6 @@ Import VectorNotations.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
-Open Scope monad_scope.
 
 Require Import coqutil.Tactics.Tactics.
 Require Import Cava.BitArithmetic.
@@ -44,7 +43,9 @@ Require Import AesSpec.Cipher.
 Require Import AesSpec.CipherProperties.
 Require Import AcornAes.CipherCircuit.
 
-Existing Instance Combinational.CombinationalSemantics.
+Local Open Scope list_scope.
+Local Open Scope monad_scope.
+Existing Instance CombinationalSemantics.
 
 Local Notation byte := (Vector.t bool 8).
 Local Notation state := (Vector.t (Vector.t byte 4) 4) (only parsing).
@@ -82,16 +83,16 @@ Section WithSubroutines.
           (add_round_key_spec : state -> key -> state).
   Context
     (sub_bytes_correct : forall (is_decrypt : bool) (st : state),
-        unIdent (sub_bytes is_decrypt st)
+        sub_bytes is_decrypt st
         = if is_decrypt then inv_sub_bytes_spec st else sub_bytes_spec st)
     (shift_rows_correct : forall (is_decrypt : bool) (st : state),
-        unIdent (shift_rows is_decrypt st)
+        shift_rows is_decrypt st
         = if is_decrypt then inv_shift_rows_spec st else shift_rows_spec st)
     (mix_columns_correct : forall (is_decrypt : bool) (st : state),
-        unIdent (mix_columns is_decrypt st)
+        mix_columns is_decrypt st
         = if is_decrypt then inv_mix_columns_spec st else mix_columns_spec st)
     (add_round_key_correct :
-       forall k (st : state), unIdent (add_round_key k st) = add_round_key_spec st k).
+       forall k (st : state), add_round_key k st = add_round_key_spec st k).
 
   (* Formula for each round based on index *)
   Let round_spec (Nr : nat) (is_decrypt : bool) (k : key) (st : state) (i : nat) : state :=
@@ -132,13 +133,13 @@ Section WithSubroutines.
                      then if Nat.eqb i 0 then false
                           else if Nat.eqb i Nr then false else true
                      else false) ->
-    unIdent (cipher_round
-               (key:=Vec (Vec (Vec Bit 8) 4) 4)
-               (state:=Vec (Vec (Vec Bit 8) 4) 4)
-               (round_index:=Vec Bit 4)
-               sub_bytes shift_rows mix_columns add_round_key (mix_columns true)
-               is_decrypt k add_round_key_in_sel round_key_sel
-               (nat_to_bitvec_sized _ i) data)
+    cipher_round
+      (key:=Vec (Vec (Vec Bit 8) 4) 4)
+      (state:=Vec (Vec (Vec Bit 8) 4) 4)
+      (round_index:=Vec Bit 4)
+      sub_bytes shift_rows mix_columns add_round_key (mix_columns true)
+      is_decrypt k add_round_key_in_sel round_key_sel
+      (nat_to_bitvec_sized _ i) data
     = round_spec Nr is_decrypt k data i.
   Proof.
     cbv zeta; intros. subst_lets. subst. destruct_products.
@@ -155,14 +156,13 @@ Section WithSubroutines.
     1 < Nr < 2 ^ 4 -> i <= Nr ->
     num_regular_rounds = nat_to_bitvec_sized _ Nr ->
     is_first_round = (i =? 0)%nat ->
-    unIdent
-      (cipher_step
-         (key:=Vec (Vec (Vec Bit 8) 4) 4)
-         (state:=Vec (Vec (Vec Bit 8) 4) 4)
-         (round_index:=Vec Bit 4)
-         sub_bytes shift_rows mix_columns add_round_key (mix_columns true)
-         is_decrypt is_first_round num_regular_rounds
-         k (nat_to_bitvec_sized _ i) data)
+    cipher_step
+      (key:=Vec (Vec (Vec Bit 8) 4) 4)
+      (state:=Vec (Vec (Vec Bit 8) 4) 4)
+      (round_index:=Vec Bit 4)
+      sub_bytes shift_rows mix_columns add_round_key (mix_columns true)
+      is_decrypt is_first_round num_regular_rounds
+      k (nat_to_bitvec_sized _ i) data
     = round_spec Nr is_decrypt k data i.
   Proof.
     cbv zeta; intro Hall_keys; intros. subst.

@@ -45,11 +45,11 @@ Lemma simulate_compose {A B C} (c1 : Circuit A B) (c2 : Circuit B C) (input : li
 Proof.
   clear.
   cbv [simulate]. destruct input as [|i0 input]; [ reflexivity | ].
-  repeat destruct_pair_let; simpl_ident.
+  repeat destruct_pair_let.
   destruct input as [|i1 input]; [ cbn; repeat destruct_pair_let; reflexivity | ].
   rewrite !fold_left_accumulate_cons_full.
   cbn [fst snd map step reset_state circuit_state].
-  repeat first [ destruct_pair_let | progress simpl_ident ].
+  repeat destruct_pair_let. cbn [fst snd].
   rewrite <-!surjective_pairing.
   rewrite fold_left_accumulate_map.
   rewrite fold_left_accumulate_fold_left_accumulate.
@@ -60,7 +60,7 @@ Proof.
                (y : C * (circuit_state c1 * circuit_state c2)) =>
                y = (fst (snd x), (snd (fst x), snd (snd x)))).
   { reflexivity. }
-  { intros. repeat first [ destruct_pair_let | progress simpl_ident ].
+  { intros. repeat destruct_pair_let.
     subst. cbn [fst snd]. reflexivity. }
   { intros. subst; destruct_products. cbn [fst snd] in *.
     match goal with H : Forall2 _ _ _ |- _ =>
@@ -71,13 +71,13 @@ Qed.
 Hint Rewrite @simulate_compose using solve [eauto] : push_simulate.
 
 Lemma simulate_comb {A B} (c : A -> ident B) (input : list A) :
-  simulate (Comb c) input = map (fun a => unIdent (c a)) input.
+  simulate (Comb c) input = map c input.
 Proof.
   clear.
   cbv [simulate]. destruct input as [|i0 input]; [ reflexivity | ].
-  repeat destruct_pair_let; simpl_ident.
+  repeat destruct_pair_let.
   cbn [fst snd map step reset_state circuit_state].
-  simpl_ident. rewrite fold_left_accumulate_to_map.
+  rewrite fold_left_accumulate_to_map.
   cbn [map fst]. rewrite map_map. cbn [fst].
   reflexivity.
 Qed.

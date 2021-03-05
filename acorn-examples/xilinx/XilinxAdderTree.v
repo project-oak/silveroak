@@ -76,16 +76,15 @@ Local Open Scope nat_scope.
 Local Open Scope vector_scope.
 
 Definition v0_v1 : Vector.t (Bvector 8) 2 := [v0; v1].
-Definition v0_plus_v1 : Bvector 8 := unIdent (adderTree2 v0_v1).
+Definition v0_plus_v1 : Bvector 8 := adderTree2 v0_v1.
 Example sum_vo_v1 : v0_plus_v1 = N2Bv_sized 8 21.
 Proof. reflexivity. Qed.
 
 Local Open Scope N_scope.
 
 Definition v0_v1_v2_v3 := [v0; v1; v2; v3].
-Definition adderTree4_v0_v1_v2_v3 := unIdent (adderTree4 v0_v1_v2_v3).
 Example sum_v0_v1_v2_v3 :
-  Bv2N (unIdent (adderTree4 v0_v1_v2_v3)) = 30.
+  Bv2N (adderTree4 v0_v1_v2_v3) = 30.
 Proof. reflexivity. Qed.
 
 Local Open Scope nat_scope.

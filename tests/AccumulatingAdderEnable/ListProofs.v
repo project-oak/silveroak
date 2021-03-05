@@ -52,7 +52,7 @@ Definition accumulatingAdderEnableSpec
     i ([], bvzero).
 
 Lemma addNCorrect n (a b : Vector.t bool n) :
-  unIdent (addN (a, b)) = bvadd a b.
+  addN (a, b) = bvadd a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : simpl_ident.
 

@@ -198,7 +198,7 @@ Section WithCava.
     (xs: Vector.t (cipher_control_signals cava_signal) n)
     : cipher_control_signals (vector_cava_signal n) :=
     match xs with
-    | [] => Build_cipher_control_signals _
+    | [] => Build_cipher_control_signals (vector_cava_signal 0)
       (ret []) (ret []) (ret []) (ret []) (ret []) (ret []) (ret [])
       (ret []) (ret []) (ret []) (ret []) (ret []) (ret []) (ret [])
       (ret []) (ret []) (ret []) (ret []) (ret []) (ret [])

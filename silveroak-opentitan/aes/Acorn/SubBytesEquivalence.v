@@ -44,7 +44,7 @@ Section Equivalence.
 
   Lemma sub_bytes_fwd_bytewise:
     forall (b : byte),
-    unIdent (aes_sbox_lut false b) = byte_to_bitvec (Sbox.forward_sbox (bitvec_to_byte b)).
+    aes_sbox_lut false b = byte_to_bitvec (Sbox.forward_sbox (bitvec_to_byte b)).
   Proof.
     intros.
     repeat match goal with
@@ -57,7 +57,7 @@ Section Equivalence.
 
   Lemma sub_bytes_inv_bytewise:
     forall (b : byte),
-    unIdent (aes_sbox_lut true b) = byte_to_bitvec (Sbox.inverse_sbox (bitvec_to_byte b)).
+    aes_sbox_lut true b = byte_to_bitvec (Sbox.inverse_sbox (bitvec_to_byte b)).
   Proof.
     intros.
     repeat match goal with
@@ -68,8 +68,8 @@ Section Equivalence.
     end; vm_compute; reflexivity.
   Qed.
 
-  Lemma sub_bytes_bytewise is_decrypt (b : byte):
-    unIdent (aes_sbox_lut is_decrypt b)
+  Lemma sub_bytes_bytewise (is_decrypt : bool) (b : byte):
+    aes_sbox_lut is_decrypt b
     = byte_to_bitvec
          ((if is_decrypt then Sbox.inverse_sbox else Sbox.forward_sbox)
             (bitvec_to_byte b)).
@@ -79,8 +79,8 @@ Section Equivalence.
 
   Lemma sub_bytes_equiv :
     forall (is_decrypt : bool) (st : state),
-      unIdent (aes_sub_bytes is_decrypt st)
-    = AES256.aes_sub_bytes_circuit_spec is_decrypt st.
+      aes_sub_bytes is_decrypt st
+      = AES256.aes_sub_bytes_circuit_spec is_decrypt st.
   Proof.
     intros.
 

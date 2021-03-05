@@ -55,7 +55,6 @@ library
                      Datatypes
                      FullAdder
                      HexString
-                     IdentityMonad
                      List
                      ListUtils
                      Logic
@@ -90,6 +89,7 @@ library
                      Decimal
                      Functor
                      Hexadecimal
+                     Identity
                      Numeral
                      Specif
                      MonadExc

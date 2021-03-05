@@ -79,15 +79,15 @@ Local Open Scope string_scope.
 Local Open Scope vector_scope.
 
 Definition v0_v1 := [v0; v1].
-Definition v0_plus_v1 : Bvector 8 := unIdent (adderTree 0 v0_v1).
+Definition v0_plus_v1 : Bvector 8 := adderTree 0 v0_v1.
 
-Example sum_vo_v1 : unIdent (adderTree2 v0_v1) = N2Bv_sized 8 21.
+Example sum_vo_v1 : adderTree2 v0_v1 = N2Bv_sized 8 21.
 Proof. reflexivity. Qed.
 
 Definition v0_3 := [v0; v1; v2; v3].
-Definition sum_v0_3 : Bvector 8 := unIdent (adderTree4 v0_3).
+Definition sum_v0_3 : Bvector 8 := adderTree4 v0_3.
 
-Example sum_v0_v1_v2_v3 : unIdent (adderTree4 v0_3) = N2Bv_sized 8 30.
+Example sum_v0_v1_v2_v3 : adderTree4 v0_3 = N2Bv_sized 8 30.
 Proof. reflexivity. Qed.
 
 Definition adder_tree_Interface name nrInputs bitSize

@@ -28,6 +28,7 @@ Require Import Coq.Arith.PeanoNat.
 Export MonadNotation.
 
 Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.Identity.
 Require Import Cava.VectorUtils.
 Require Import Cava.ListUtils.
 Require Import Cava.Signal.
@@ -132,7 +133,7 @@ Section WithCava.
 
   Lemma foldLM_ident_fold_left
         {A B} (f : B -> A -> ident B) ls b :
-    unIdent (foldLM f ls b) = List.fold_left (fun b a => unIdent (f b a)) ls b.
+    foldLM f ls b = List.fold_left f ls b.
   Proof.
     revert b; induction ls; [ reflexivity | ].
     cbn [foldLM List.fold_left]. intros.

@@ -25,7 +25,6 @@ Require Import Coq.Init.Nat Coq.micromega.Lia.
 
 Require Import ExtLib.Structures.Applicative.
 Require Import ExtLib.Structures.Traversable.
-Require Export ExtLib.Data.Monads.IdentityMonad.
 
 Require Cava.ListUtils.
 

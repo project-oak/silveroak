@@ -48,7 +48,7 @@ Definition halfAdderNetlist := makeNetlist halfAdderInterface halfAdder.
 
 (* A proof that the half-adder is correct. *)
 Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
-                            unIdent (halfAdder (a, b)) = (xorb a b, a && b).
+                            halfAdder (a, b) = (xorb a b, a && b).
 
 Proof.
   auto.
@@ -82,7 +82,7 @@ Definition fullAdder_tb
 
 (* A proof that the the full-adder is correct. *)
 Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
-                            unIdent (fullAdderTop (cin, a, b))
+                            fullAdderTop (cin, a, b)
                               = (xorb cin (xorb a b),
                                  (a && b) || (b && cin) || (a && cin)).
 Proof.
@@ -95,8 +95,8 @@ Qed.
 
 (* Prove the generic full adder is equivalent to Xilinx fast adder. *)
 Lemma generic_vs_xilinx_adder : forall (a : bool) (b : bool) (cin : bool),
-                                unIdent (fullAdderTop (cin, a, b)) =
-                                unIdent (xilinxFullAdder (cin, (a, b))).
+                                fullAdderTop (cin, a, b) =
+                                xilinxFullAdder (cin, (a, b)).
 Proof.
   intros. simpl.
   case a, b, cin.

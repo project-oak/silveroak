@@ -19,13 +19,13 @@ Require Import Coq.Vectors.Vector.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import ExtLib.Structures.Monads.
-Require Export ExtLib.Data.Monads.IdentityMonad.
 Import ListNotations MonadNotation.
 
 Require Import Cava.Cava.
 Require Import Cava.ListUtils.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Circuit.
+Require Import Cava.Acorn.Identity.
 
 (******************************************************************************)
 (* A boolean combinational logic interpretation for the Cava class            *)
@@ -79,7 +79,7 @@ Fixpoint step {i o} (c : Circuit i o)
   : circuit_state c -> i -> o * circuit_state c :=
   match c in Circuit i o return circuit_state c -> i
                                 -> o * circuit_state c with
-  | Comb f => fun _ i => (unIdent (f i), tt)
+  | Comb f => fun _ i => (f i, tt)
   | Compose f g =>
     fun cs input =>
       let '(x, cs1) := step f (fst cs) input in
@@ -103,3 +103,23 @@ Fixpoint step {i o} (c : Circuit i o)
       let new_state := if en then input else st in
       (st, new_state)
   end.
+
+(* Automation to help simplify expressions using the identity monad *)
+Create HintDb simpl_ident.
+Hint Rewrite @Combinators.foldLM_ident_fold_left using solve [eauto]
+  : simpl_ident.
+Ltac simpl_ident :=
+  cbn [fst snd bind ret Monad_ident monad
+           packV unpackV constant
+           CombinationalSemantics ];
+  repeat lazymatch goal with
+         | |- context [(@Traversable.mapT
+                         _ (@Traversable_vector ?n)
+                         ?m (@Monad.Applicative_Monad ?m Monad_ident)
+                         ?A ?B ?f ?v)] =>
+           change (@Traversable.mapT
+                     _ (@Traversable_vector n)
+                     m (@Monad.Applicative_Monad m Monad_ident)
+                     A B f v) with (@Vector.map A B f n v)
+         | _ => progress autorewrite with simpl_ident
+         end.
