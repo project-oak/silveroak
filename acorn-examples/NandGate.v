@@ -80,7 +80,7 @@ Definition nand_tb_inputs : list (bool * bool) :=
 
 (* Compute expected outputs. *)
 Definition nand_tb_expected_outputs : list bool :=
-  multistep (Comb nand2_gate) nand_tb_inputs.
+  simulate (Comb nand2_gate) nand_tb_inputs.
 
 Definition nand2_tb :=
   testBench "nand2_tb" nand2Interface nand_tb_inputs nand_tb_expected_outputs.

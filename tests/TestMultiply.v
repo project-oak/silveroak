@@ -72,7 +72,7 @@ Definition mult2_3_5_tb_inputs
   := [(bv2_3, bv3_5); (bv2_3, bv3_7); (bv2_0, bv3_0)].
 
 Definition mult2_3_5_tb_expected_outputs
-  := multistep (Comb multiplier) mult2_3_5_tb_inputs.
+  := simulate (Comb multiplier) mult2_3_5_tb_inputs.
 
 Definition  mult2_3_5_tb
   := testBench "mult2_3_5_tb" mult2_3_5Interface

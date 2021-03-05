@@ -84,9 +84,9 @@ Definition multiDimArrayTest_Netlist := makeNetlist multiDimArrayTest_Interface 
 Definition arrayTest_tb_inputs := List.repeat (nat_to_bitvec_sized 8 0) 2.
 
 Definition arrayTest_tb_expected_outputs
-  := multistep (Comb arrayTest) arrayTest_tb_inputs.
+  := simulate (Comb arrayTest) arrayTest_tb_inputs.
 Definition multiDimArrayTest_tb_expected_outputs
-  := multistep (Comb multiDimArrayTest) arrayTest_tb_inputs.
+  := simulate (Comb multiDimArrayTest) arrayTest_tb_inputs.
 
 Definition arrayTest_tb
   := testBench "arrayTest_tb" arrayTest_Interface

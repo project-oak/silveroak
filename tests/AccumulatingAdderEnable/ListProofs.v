@@ -71,10 +71,10 @@ Proof.
 Qed.
 
 Lemma accumulatingAdderEnableCorrect (i : list (Bvector 8 * bool)) :
-  multistep accumulatingAdderEnable i = fst (accumulatingAdderEnableSpec i).
+  simulate accumulatingAdderEnable i = fst (accumulatingAdderEnableSpec i).
 Proof.
   intros; cbv [accumulatingAdderEnable].
-  eapply multistep_LoopCE_invariant
+  eapply simulate_LoopCE_invariant
     with (I:=fun t st _ acc =>
                st = snd (accumulatingAdderEnableSpec (firstn t i))
                /\ acc = fst (accumulatingAdderEnableSpec (firstn t i))).

@@ -44,7 +44,7 @@ Local Open Scope list_scope.
 
 (* Compute the expected outputs from the Coq/Cava semantics. *)
 Definition aes_mix_cols_expected_outputs :=
-  multistep (Comb (fun '(op_i, data_i) => aes_mix_columns op_i data_i))
+  simulate (Comb (fun '(op_i, data_i) => aes_mix_columns op_i data_i))
             [(false, fromNatVec test_state)].
 
 Definition aes_mix_columns_tb :=
