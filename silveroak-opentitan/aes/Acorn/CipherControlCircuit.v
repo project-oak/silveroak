@@ -699,7 +699,7 @@ Section WithCava.
              , key_expand_round
              , _ , _ , _ , _ ) := control_signals in
 
-        prngkey <- unpeel [prng;prng] ;;
+        prngkey <- unpackv [prng;prng] ;;
         ret ( ( key_expand_op, key_expand_step, key_expand_clear, key_expand_round, key_len, last_kp)
             , (control_signals, op, st, input_kp, prngkey, last_kp) )
       ) >==>
