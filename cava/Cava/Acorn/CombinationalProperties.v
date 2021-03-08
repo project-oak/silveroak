@@ -75,7 +75,7 @@ Qed.
 Hint Rewrite @zipWith_correct using solve [eauto] : simpl_ident.
 
 Lemma xorV_correct n a b :
-  @xorV _ _ n (a,b ) = Vector.map2 xorb a b.
+  @xorV _ _ n (a,b) = Vector.map2 xorb a b.
 Proof.
   intros. cbv [xorV]. cbn [fst snd].
   simpl_ident. apply map2_ext; intros.
@@ -83,13 +83,45 @@ Proof.
 Qed.
 Hint Rewrite @xorV_correct using solve [eauto] : simpl_ident.
 
+Lemma pow2tree_equiv
+      {t} (id : combType t) (op : combType t -> combType t -> combType t)
+      (op_id_left : forall a : combType t, op id a = a)
+      (op_id_right : forall a : combType t, op a id = a)
+      (op_assoc :
+         forall a b c : combType t,
+           op a (op b c) = op (op a b) c)
+      (circuit : combType t * combType t -> cava (combType t))
+      (circuit_equiv : forall a b, circuit (a, b) = op a b)
+      (n : nat) :
+  forall v,
+    pow2tree n circuit v = Vector.fold_left op id v.
+Proof.
+  cbv [pow2tree]; intros. simpl_ident.
+  erewrite pow2tree_generic_equiv with (circuit0 := (fun a b => circuit (a, b)));
+    eauto; intros; reflexivity.
+Qed.
+
+Lemma tree_equiv {t} :
+  forall (id : combType t) (op : combType t -> combType t -> combType t),
+    (forall a : combType t, op id a = a) ->
+    (forall a : combType t, op a id = a) ->
+    (forall a b c : combType t, op a (op b c) = op (op a b) c) ->
+    forall circuit : combType t * combType t -> cava (combType t),
+      (forall a b : combType t, circuit (a, b) = op a b) ->
+      forall (n : nat) (v : combType (Vec t n)),
+        n <> 0 ->
+        tree circuit v = Vector.fold_left op id v.
+Proof.
+  intros. cbv [tree]. simpl_ident.
+  eapply (tree_generic_equiv (semantics:=CombinationalSemantics)); eauto.
+Qed.
+
 Lemma all_correct {n} v :
   all (n:=n) v = Vector.fold_left andb true v.
 Proof.
   destruct n; [ eapply case0 with (v:=v); reflexivity | ].
-  cbv [all one]. simpl_ident.
-  erewrite (tree_all_sizes_equiv (semantics:=CombinationalSemantics))
-    with (op:=andb) (id:=true);
+  cbv [all]. simpl_ident.
+  eapply (tree_equiv (t:=Bit));
     intros; boolsimpl; try reflexivity; try lia;
       auto using Bool.andb_assoc.
 Qed.

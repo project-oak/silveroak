@@ -41,9 +41,9 @@ Section WithCava.
   (****************************************************************************)
   Definition adderTree {sz: nat}
              (n: nat)
-    : signal (Vec (Vec Bit sz) (2^(S n))) ->
+    : signal (Vec (Vec Bit sz) (2^n)) ->
       cava (signal (Vec Bit sz)) :=
-    unpackV >=> tree defaultSignal n xilinxAdder.
+    tree (fun '(x,y) => xilinxAdder x y).
 
   (****************************************************************************)
   (* An adder tree with 2 inputs.                                             *)
@@ -51,7 +51,7 @@ Section WithCava.
   Definition adderTree2 {sz: nat}
                         (v : signal (Vec (Vec Bit sz) 2))
                         : cava (signal (Vec Bit sz))
-    := adderTree 0 v.
+    := adderTree 1 v.
 
   (******************************************************************************)
   (* An adder tree with 4 inputs.                                               *)
@@ -59,7 +59,7 @@ Section WithCava.
   Definition adderTree4 {sz: nat}
                         (v : signal (Vec (Vec Bit sz) 4))
                         : cava (signal (Vec Bit sz))
-    := adderTree 1 v.
+    := adderTree 2 v.
 
 End WithCava.
 
@@ -131,21 +131,21 @@ Proof. reflexivity. Qed.
 Definition adder_tree32_8Interface := adder_tree_Interface "xadder_tree32_8" 32 8.
 
 Definition adder_tree32_8Netlist
-  := makeNetlist adder_tree32_8Interface (adderTree 4).
+  := makeNetlist adder_tree32_8Interface (adderTree 5).
 
 (* Create netlist and test-bench for a 64-input adder tree. *)
 
 Definition adder_tree64_8Interface := adder_tree_Interface "xadder_tree64_8" 64 8.
 
 Definition adder_tree64_8Netlist
-  := makeNetlist adder_tree64_8Interface (adderTree 5).
+  := makeNetlist adder_tree64_8Interface (adderTree 6).
 
 Definition adder_tree64_8_tb_inputs
   := map (fun i => Vector.map (N2Bv_sized 8) (Vector.map N.of_nat i))
      [vseq 0 64; vseq 64 64; vseq 128 64].
 
 Definition adder_tree64_8_tb_expected_outputs
-  := simulate (Comb (adderTree 5)) adder_tree64_8_tb_inputs.
+  := simulate (Comb (adderTree 6)) adder_tree64_8_tb_inputs.
 
 Definition adder_tree64_8_tb :=
   testBench "xadder_tree64_8_tb" adder_tree64_8Interface
@@ -158,7 +158,7 @@ Definition adder_tree64_8_tb :=
 Definition adder_tree64_128Interface := adder_tree_Interface "xadder_tree64_128" 64 128.
 
 Definition adder_tree64_128Netlist
-  := makeNetlist adder_tree64_128Interface (adderTree 5).
+  := makeNetlist adder_tree64_128Interface (adderTree 6).
 
 Definition adder_tree64_128_tb_inputs
   := map (fun i => Vector.map (N2Bv_sized 128) i)
@@ -166,7 +166,7 @@ Definition adder_tree64_128_tb_inputs
      [vseq 0 64; vseq 64 64; vseq 128 64]).
 
 Definition adder_tree64_128_tb_expected_outputs
-  := simulate (Comb (adderTree 5)) adder_tree64_128_tb_inputs.
+  := simulate (Comb (adderTree 6)) adder_tree64_128_tb_inputs.
 
 Definition adder_tree64_128_tb :=
   testBench "xadder_tree64_128_tb" adder_tree64_128Interface
@@ -179,7 +179,7 @@ Definition adder_tree64_128_tb :=
 Definition adder_tree128_256Interface := adder_tree_Interface "xadder_tree128_256" 128 256.
 
 Definition adder_tree128_256Netlist
-  := makeNetlist adder_tree128_256Interface (adderTree 6).
+  := makeNetlist adder_tree128_256Interface (adderTree 7).
 
 Definition adder_tree128_256_tb_inputs : list (Vector.t (Bvector 256) 128)
   := map (fun i => Vector.map (N2Bv_sized 256) i)
@@ -188,7 +188,7 @@ Definition adder_tree128_256_tb_inputs : list (Vector.t (Bvector 256) 128)
 
 Definition adder_tree128_256_tb_expected_outputs
            : list (Bvector 256)
-  := simulate (Comb (adderTree 6)) adder_tree128_256_tb_inputs.
+  := simulate (Comb (adderTree 7)) adder_tree128_256_tb_inputs.
 
 Definition adder_tree128_256_tb :=
   testBench "xadder_tree128_256_tb" adder_tree128_256Interface
