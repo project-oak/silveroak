@@ -159,3 +159,80 @@ Definition pretty_print_test_vector {key state}
     newline
     (List.map (pretty_print_step_data key_to_string state_to_string)
               (full_data_for_steps test)).
+
+(* Decidable equivalence test for AES steps *)
+Definition AESStep_eqb (step1 step2 : AESStep) : bool :=
+  match step1 with
+  | AddRoundKey => match step2 with
+                  | AddRoundKey => true
+                  | _ => false
+                  end
+  | MixColumns => match step2 with
+                  | MixColumns => true
+                  | _ => false
+                  end
+  | SubBytes => match step2 with
+                  | SubBytes => true
+                  | _ => false
+                  end
+  | ShiftRows => match step2 with
+                  | ShiftRows => true
+                  | _ => false
+                  end
+  | InvMixColumns => match step2 with
+                  | InvMixColumns => true
+                  | _ => false
+                  end
+  | InvSubBytes => match step2 with
+                  | InvSubBytes => true
+                  | _ => false
+                  end
+  | InvShiftRows => match step2 with
+                  | InvShiftRows => true
+                  | _ => false
+                   end
+  end.
+
+Definition get_state_inputs_for_round {state} (step : AESStep)
+           (state_before_round : state)
+           (round : list (AESStep * state))
+  : list state :=
+  (* Get the indices at which our desired step occurs *)
+  let step_indices := filter (fun i => match nth_error round i with
+                                    | None => false
+                                    | Some x => AESStep_eqb step (fst x)
+                                    end) (seq 0 (length round)) in
+  (* because the state listed for each step is the state *after* the step, we
+     need to find *previous* states to get the inputs to this AES step; shift
+     the list by adding state_before_round to the front *)
+  let default := state_before_round in (* for nth_default *)
+  map (fun i => nth i (state_before_round :: map snd round) default)
+      step_indices.
+
+Definition get_state_outputs_for_round {state} (step : AESStep)
+           (round : list (AESStep * state))
+  : list state :=
+  map snd (filter (fun x => AESStep_eqb step (fst x)) round).
+
+(* Get all output states of a particular step from FIPS test vector *)
+Definition get_state_outputs {key state} (step : AESStep) (test : @TestVector key state)
+  : list state :=
+  flat_map
+    (get_state_outputs_for_round step)
+    (test.(round_expected_states)).
+
+(* Get all input states of a particular step from FIPS test vector *)
+Definition get_state_inputs {key state} (step : AESStep) (test : @TestVector key state)
+  : list state :=
+  let default := test.(plaintext) in (* dummy value for last *)
+  (* get the final state of each round *)
+  let round_final_states :=
+      map (fun round_states => last round_states default)
+          (map (map snd) test.(round_expected_states)) in
+  (* get the initial state of each round by shifting the final-states list 1
+     place and adding the initial data *)
+  let round_input_states := test.(plaintext) :: removelast round_final_states in
+  flat_map
+    (fun '(start_state, round) =>
+       get_state_inputs_for_round step start_state round)
+    (combine round_input_states test.(round_expected_states)).
