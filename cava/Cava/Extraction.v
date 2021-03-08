@@ -32,6 +32,7 @@ Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Combinational.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Combinators.
+Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.NetlistGeneration.
 Require Import Cava.Acorn.XilinxAdder.
 Require Import Cava.Acorn.CavaPrelude.
@@ -49,6 +50,7 @@ Recursive Extraction Library Acorn.
 Recursive Extraction Library Circuit.
 Recursive Extraction Library Combinational.
 Recursive Extraction Library Combinators.
+Recursive Extraction Library Identity.
 Recursive Extraction Library Simulation.
 Recursive Extraction Library NetlistGeneration.
 
