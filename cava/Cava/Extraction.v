@@ -31,11 +31,11 @@ Require Import Cava.Util.Vector.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Core.CavaClass.
-Require Import Cava.Acorn.Combinators.
+Require Import Cava.Lib.Combinators.
 Require Import Cava.Util.Identity.
 Require Import Cava.NetlistGeneration.NetlistGeneration.
-Require Import Cava.Acorn.XilinxAdder.
-Require Import Cava.Acorn.CavaPrelude.
+Require Import Cava.Lib.XilinxAdder.
+Require Import Cava.Lib.CavaPrelude.
 Require Import Cava.Core.Circuit.
 
 Require Import Cava.Lib.BitVectorOps.

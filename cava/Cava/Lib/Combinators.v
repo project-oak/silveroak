@@ -33,7 +33,7 @@ Require Import Cava.Util.Vector.
 Require Import Cava.Util.List.
 Require Import Cava.Core.Signal.
 Require Import Cava.Util.Tactics.
-Require Import Cava.Acorn.CavaPrelude.
+Require Import Cava.Lib.CavaPrelude.
 
 Generalizable All Variables.
 

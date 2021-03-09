@@ -21,8 +21,8 @@ Require Import Coq.NArith.NArith.
 Require Import Coq.Vectors.Vector.
 Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Core.CavaClass.
-Require Import Cava.Acorn.CavaPrelude.
-Require Import Cava.Acorn.Combinators.
+Require Import Cava.Lib.CavaPrelude.
+Require Import Cava.Lib.Combinators.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Util.Identity.
 Require Import Cava.Util.BitArithmetic.

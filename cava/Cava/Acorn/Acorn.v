@@ -16,9 +16,9 @@
 
 Require Export Cava.Core.Signal.
 Require Export Cava.Core.CavaClass.
-Require Export Cava.Acorn.CavaPrelude.
+Require Export Cava.Lib.CavaPrelude.
 Require Export Cava.Core.Circuit.
 Require Export Cava.Semantics.Combinational.
-Require Export Cava.Acorn.Combinators.
+Require Export Cava.Lib.Combinators.
 Require Export Cava.NetlistGeneration.NetlistGeneration.
 Require Export Cava.Semantics.Simulation.
