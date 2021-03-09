@@ -28,7 +28,7 @@ Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Identity.
-Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Semantics.CombinationalProperties.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import Tests.CountBy.CountBy.

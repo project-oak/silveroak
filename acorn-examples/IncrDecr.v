@@ -21,7 +21,7 @@ Require Import Coq.Vectors.Vector.
 Require Import coqutil.Tactics.Tactics.
 Require Import ExtLib.Structures.Monad.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Semantics.CombinationalProperties.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Util.Nat.

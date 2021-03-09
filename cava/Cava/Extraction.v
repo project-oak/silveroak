@@ -29,7 +29,7 @@ Require Import Cava.Cava.
 Require Import Cava.Core.Signal.
 Require Import Cava.Util.Vector.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.Combinational.
+Require Import Cava.Semantics.Combinational.
 Require Import Cava.Core.CavaClass.
 Require Import Cava.Acorn.Combinators.
 Require Import Cava.Acorn.Identity.

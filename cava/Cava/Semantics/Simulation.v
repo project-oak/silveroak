@@ -23,7 +23,7 @@ Require Import Cava.Core.Signal.
 Require Import Cava.Util.Tactics.
 Require Import Cava.Core.CavaClass.
 Require Import Cava.Core.Circuit.
-Require Import Cava.Acorn.Combinational.
+Require Import Cava.Semantics.Combinational.
 Require Import Cava.Acorn.Identity.
 
 Existing Instance CombinationalSemantics.

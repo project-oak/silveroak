@@ -23,7 +23,7 @@ Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Core.CavaClass.
 Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.Combinators.
-Require Import Cava.Acorn.Combinational.
+Require Import Cava.Semantics.Combinational.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Util.List.
