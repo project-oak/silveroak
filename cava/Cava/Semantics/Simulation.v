@@ -24,7 +24,7 @@ Require Import Cava.Util.Tactics.
 Require Import Cava.Core.CavaClass.
 Require Import Cava.Core.Circuit.
 Require Import Cava.Semantics.Combinational.
-Require Import Cava.Acorn.Identity.
+Require Import Cava.Util.Identity.
 
 Existing Instance CombinationalSemantics.
 

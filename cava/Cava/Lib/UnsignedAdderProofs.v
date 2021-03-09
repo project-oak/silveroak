@@ -32,7 +32,7 @@ Require Import Cava.Util.BitArithmetic Cava.Util.List Cava.Util.Vector Cava.Util
 Require Import Cava.Lib.FullAdder.
 Require Import Cava.Lib.UnsignedAdders.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.Identity.
+Require Import Cava.Util.Identity.
 
 Local Open Scope N_scope.
 

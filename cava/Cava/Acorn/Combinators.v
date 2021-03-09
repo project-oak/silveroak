@@ -28,7 +28,7 @@ Require Import Coq.Arith.PeanoNat.
 Export MonadNotation.
 
 Require Import Cava.Core.CavaClass.
-Require Import Cava.Acorn.Identity.
+Require Import Cava.Util.Identity.
 Require Import Cava.Util.Vector.
 Require Import Cava.Util.List.
 Require Import Cava.Core.Signal.

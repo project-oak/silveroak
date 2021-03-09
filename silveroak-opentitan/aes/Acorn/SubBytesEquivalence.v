@@ -16,7 +16,7 @@
 
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Semantics.CombinationalProperties.
-Require Import Cava.Acorn.Identity.
+Require Import Cava.Util.Identity.
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.Lib.VecProperties.

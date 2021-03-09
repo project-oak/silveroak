@@ -35,7 +35,7 @@ Require Import Cava.Acorn.Acorn.
 Require Import Cava.Core.Circuit.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Semantics.CombinationalProperties.
-Require Import Cava.Acorn.Identity.
+Require Import Cava.Util.Identity.
 Require Import Cava.Semantics.Simulation.
 Require Import Cava.Lib.MultiplexersProperties.
 
