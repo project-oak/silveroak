@@ -22,7 +22,7 @@ Require Import ExtLib.Structures.Monads.
 Import ListNotations MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.ListUtils.
+Require Import Cava.Util.List.
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Identity.

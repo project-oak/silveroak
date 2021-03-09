@@ -28,7 +28,7 @@ Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.UnsignedAdders.
 Require Import Coq.Vectors.Vector.
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.Vector.
 Require Import Coq.Bool.Bvector.
 
 From Coq Require Import Bool.Bvector.

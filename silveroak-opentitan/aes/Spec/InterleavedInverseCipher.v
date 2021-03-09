@@ -20,8 +20,8 @@ Require Import Coq.micromega.Lia.
 Import ListNotations.
 Local Open Scope list_scope.
 
-Require Import Cava.ListUtils.
-Require Import Cava.Tactics.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Tactics.
 Require Import AesSpec.Cipher.
 Require Import AesSpec.ExpandAllKeys.
 

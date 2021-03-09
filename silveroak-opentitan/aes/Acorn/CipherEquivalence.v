@@ -25,11 +25,11 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 
 Require Import coqutil.Tactics.Tactics.
-Require Import Cava.BitArithmetic.
-Require Import Cava.NatUtils.
-Require Import Cava.ListUtils.
-Require Import Cava.VectorUtils.
-Require Import Cava.Tactics.
+Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.Nat.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Vector.
+Require Import Cava.Util.Tactics.
 
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Circuit.
@@ -400,7 +400,7 @@ Section WithSubroutines.
     cbv zeta; intros. subst cipher_input.
     cbv [cipher]. autorewrite with push_simulate.
     rewrite !map_map.
-    rewrite !ListUtils.map_id_ext by reflexivity.
+    rewrite !List.map_id_ext by reflexivity.
     erewrite cipher_loop_equiv with (Nr:=Nr) (init_state_ignored:=init_state_ignored)
       by length_hammer.
     match goal with Hkexp : simulate key_expand _ = _ |- _ =>

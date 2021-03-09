@@ -17,10 +17,10 @@
 Require Import Coq.Lists.List.
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
-Require Import Cava.BitArithmetic.
-Require Import Cava.ListUtils.
-Require Import Cava.Tactics.
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Tactics.
+Require Import Cava.Util.Vector.
 Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.Acorn.

@@ -25,12 +25,12 @@ Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.Combinators.
 Require Import Cava.Acorn.Combinational.
 Require Import Cava.Acorn.Identity.
-Require Import Cava.BitArithmetic.
-Require Import Cava.ListUtils.
-Require Import Cava.NatUtils.
+Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Nat.
 Require Import Cava.Signal.
-Require Import Cava.Tactics.
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.Tactics.
+Require Import Cava.Util.Vector.
 Require Import Cava.Lib.BitVectorOps.
 Import VectorNotations ListNotations.
 Local Open Scope list_scope.

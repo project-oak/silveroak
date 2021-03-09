@@ -17,7 +17,7 @@
 Require Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 Require Import Cava.Cava.
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.Vector.
 Require Import Cava.Acorn.Acorn.
 Import MonadNotation.
 Import Vector.VectorNotations.

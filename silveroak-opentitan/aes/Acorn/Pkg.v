@@ -17,12 +17,12 @@
 Require Import Coq.Vectors.Vector.
 Require Import Coq.NArith.BinNat.
 Require Import Coq.NArith.Ndigits.
-Require Import Cava.BitArithmetic.
+Require Import Cava.Util.BitArithmetic.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Traversable.
 
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.Vector.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Require Cava.Lib.Vec.

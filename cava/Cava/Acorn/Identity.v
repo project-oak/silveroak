@@ -20,7 +20,7 @@ Require Import ExtLib.Data.Vector.
 Require Import ExtLib.Structures.Monad.
 Require Import ExtLib.Structures.MonadLaws.
 Require Import ExtLib.Structures.Traversable.
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.Vector.
 
 (* Identity monad *)
 Definition ident (T : Type) := T.

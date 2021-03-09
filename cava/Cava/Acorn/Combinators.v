@@ -29,10 +29,10 @@ Export MonadNotation.
 
 Require Import Cava.Acorn.CavaClass.
 Require Import Cava.Acorn.Identity.
-Require Import Cava.VectorUtils.
-Require Import Cava.ListUtils.
+Require Import Cava.Util.Vector.
+Require Import Cava.Util.List.
 Require Import Cava.Signal.
-Require Import Cava.Tactics.
+Require Import Cava.Util.Tactics.
 Require Import Cava.Acorn.CavaPrelude.
 
 Generalizable All Variables.

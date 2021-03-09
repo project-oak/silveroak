@@ -15,8 +15,8 @@
 (****************************************************************************)
 
 Require Import Cava.Cava.
-Require Import Cava.Tactics.
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.Tactics.
+Require Import Cava.Util.Vector.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Identity.
 Require Coq.Vectors.Vector.

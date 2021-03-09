@@ -23,10 +23,10 @@ Require Import ExtLib.Structures.Monad.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Acorn.Identity.
-Require Import Cava.BitArithmetic.
-Require Import Cava.NatUtils.
-Require Import Cava.Tactics.
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.Nat.
+Require Import Cava.Util.Tactics.
+Require Import Cava.Util.Vector.
 Require Import Cava.Lib.VecProperties.
 Require Cava.Lib.Vec.
 Import VectorNotations ListNotations MonadNotation.

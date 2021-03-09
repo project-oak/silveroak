@@ -19,7 +19,7 @@
    Coq for the specification, implementaiton and formal verification of circuits.
 *)
 
-Require Export Cava.BitArithmetic.
+Require Export Cava.Util.BitArithmetic.
 Require Export Cava.Netlist.
 Require Export Cava.Signal.
-Require Export Cava.VectorUtils.
+Require Export Cava.Util.Vector.

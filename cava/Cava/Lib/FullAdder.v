@@ -21,7 +21,7 @@ Import ListNotations MonadNotation.
 Open Scope monad_scope.
 Open Scope type_scope.
 
-Require Import Cava.ListUtils.
+Require Import Cava.Util.List.
 Require Import Cava.Acorn.Acorn.
 
 Section WithCava.

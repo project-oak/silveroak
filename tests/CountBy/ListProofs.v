@@ -24,8 +24,8 @@ Export MonadNotation.
 Require Import coqutil.Tactics.Tactics.
 
 Require Import Cava.Cava.
-Require Import Cava.ListUtils.
-Require Import Cava.Tactics.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Tactics.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.CombinationalProperties.

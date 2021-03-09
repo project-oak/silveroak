@@ -27,8 +27,8 @@ Require Import Coq.omega.Omega.
 Require Import Coq.micromega.Lia.
 Require Coq.Strings.HexString.
 
-Require Import Cava.NatUtils.
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.Nat.
+Require Import Cava.Util.Vector.
 
 Import ListNotations.
 
