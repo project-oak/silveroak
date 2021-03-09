@@ -22,8 +22,8 @@ Require Import ExtLib.Structures.Monads.
 Import MonadNotation.
 Local Open Scope monad_scope.
 
-Require Import Cava.Acorn.CavaClass.
-Require Import Cava.Signal.
+Require Import Cava.Core.CavaClass.
+Require Import Cava.Core.Signal.
 
 Section WithCava.
   Context `{semantics:Cava}.

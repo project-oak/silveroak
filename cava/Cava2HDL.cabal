@@ -55,14 +55,14 @@ library
                      Datatypes
                      FullAdder
                      HexString
-                     IdentityMonad
+                     Identity
                      List
-                     ListUtils
+                     List0
                      Logic
                      Monad
                      MonadState
                      Multiplexers
-                     Multistep
+                     Simulation
                      Netlist
                      NetlistGeneration
                      Nat
@@ -75,7 +75,7 @@ library
                      Vec
                      VectorDef
                      Vector
-                     VectorUtils
+                     Vector0
                      XilinxAdder
                      Byte0
                      TestBench

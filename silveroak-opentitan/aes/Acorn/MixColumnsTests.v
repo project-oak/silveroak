@@ -37,12 +37,12 @@ Section FIPSTests.
        | MixColumns =>
          fun st =>
            let input := from_flat st in
-           let output := unIdent (aes_mix_columns false input) in
+           let output := aes_mix_columns false input in
            to_flat output
        | InvMixColumns =>
          fun st =>
            let input := from_flat st in
-           let output := unIdent (aes_mix_columns true input) in
+           let output := aes_mix_columns true input in
            to_flat output
        | _ => aes_impl step key
        end).
@@ -93,7 +93,7 @@ Proof. vm_compute. reflexivity. Qed.
 
 Local Open Scope list_scope.
 
-Definition o1 : Vector.t (Vector.t (Vector.t bool 8) 4) 4 := unIdent (aes_mix_columns false i1).
+Definition o1 : Vector.t (Vector.t (Vector.t bool 8) 4) 4 := aes_mix_columns false i1.
 
 Local Open Scope vector_scope.
 

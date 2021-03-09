@@ -23,7 +23,7 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.XilinxAdder.
+Require Import Cava.Lib.XilinxAdder.
 Existing Instance CavaCombinationalNet.
 
 (****************************************************************************)
@@ -43,23 +43,23 @@ Definition v44  := N2Bv_sized 8 44.
 
 (* Perform a few basic checks to make sure the adder works. *)
 
-Example xadd_17_52_0 : unIdent (xilinxAdderWithCarry (false, (v17, v52))) =
+Example xadd_17_52_0 : xilinxAdderWithCarry (false, (v17, v52)) =
                        (v69, false).
 Proof. reflexivity. Qed.
 
-Example xadd_17_52_1 : unIdent (xilinxAdderWithCarry (true, (v17, v52))) =
+Example xadd_17_52_1 : xilinxAdderWithCarry (true, (v17, v52)) =
                        (v70, false).
 Proof. reflexivity. Qed.
 
-Example xadd_1_255_1 : unIdent (xilinxAdderWithCarry (false, (v1, v255))) =
+Example xadd_1_255_1 : xilinxAdderWithCarry (false, (v1, v255)) =
                        (v0, true).
 Proof. reflexivity. Qed.
 
-Example xadd_0_255_1 : unIdent (xilinxAdderWithCarry (true, (v0, v255))) =
+Example xadd_0_255_1 : xilinxAdderWithCarry (true, (v0, v255)) =
                        (v0, true).
 Proof. reflexivity. Qed.
 
-Example xadd_200_100_0 : unIdent (xilinxAdderWithCarry (false, (v200, v100))) =
+Example xadd_200_100_0 : xilinxAdderWithCarry (false, (v200, v100)) =
                          (v44, true).
 Proof. reflexivity. Qed.
 
@@ -96,7 +96,7 @@ Definition adder8_tb_inputs :=
    (1, (255, 255))].
 
 Definition adder8_tb_expected_outputs :=
-  multistep (Comb xilinxAdderWithCarryFlat) adder8_tb_inputs.
+  simulate (Comb xilinxAdderWithCarryFlat) adder8_tb_inputs.
 
 Definition adder8_tb :=
   testBench "adder8_tb" adder8Interface

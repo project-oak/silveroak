@@ -47,7 +47,7 @@ Section WithCava.
    negComparison <- inv comparison ;;
    out0 <- mux2 comparison (a, b) ;;
    out1 <- mux2 negComparison (a, b) ;;
-   unpeel [out0; out1].
+   packV [out0; out1].
 
 End WithCava.
 
@@ -75,7 +75,7 @@ Definition two_sorter_tb_inputs : list (Vector.t (Bvector 8) _) :=
   ].
 
 Definition two_sorter_tb_expected_outputs : list (Vector.t (Bvector 8) _) :=
-  multistep (Comb twoSorter) two_sorter_tb_inputs.
+  simulate (Comb twoSorter) two_sorter_tb_inputs.
 
 Definition two_sorter_tb :=
   testBench "two_sorter_tb" (two_sorter_Interface 8)
@@ -91,10 +91,10 @@ Definition twoSorterSpec {bw: nat} (ab : Vector.t (Bvector bw) 2) :
     [a; b].
 
 Lemma twoSorterCorrect {bw : nat} (v : Vector.t (Bvector bw) 2) :
-  unIdent (@twoSorter combType _ _ v) = twoSorterSpec v.
+  @twoSorter combType _ _ v = twoSorterSpec v.
 Proof.
   constant_vector_simpl v.
-  cbv [twoSorterSpec nth_order].
+  cbv [twoSorterSpec twoSorter nth_order].
   simpl.
-  destruct (Bv2N _ <=? Bv2N _)%N; reflexivity.
+  destruct (Bv2N _ <=? Bv2N _)%N; try reflexivity.
 Qed.

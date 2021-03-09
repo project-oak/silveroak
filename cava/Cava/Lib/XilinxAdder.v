@@ -53,10 +53,10 @@ Section WithCava.
               (cinab : signal Bit * (signal (Vec Bit n) * signal (Vec Bit n)))
             : cava (signal (Vec Bit n) * signal Bit)
     := let '(cin, (a, b)) := cinab in
-      a0 <- peel a ;;
-      b0 <- peel b ;;
+      a0 <- unpackV a ;;
+      b0 <- unpackV b ;;
       '(sum, cout) <- colV xilinxFullAdder (cin, vcombine a0 b0) ;;
-      sum <- unpeel sum ;;
+      sum <- packV sum ;;
       ret (sum, cout).
 
   (******************************************************************************)
@@ -75,21 +75,21 @@ Section WithCombinational.
 
   (* A quick sanity check of the Xilinx adder with carry in and out *)
   Example xilinx_add_17_52:
-    unIdent (xilinxAdderWithCarry
-                  (false, (N2Bv_sized 8 17, N2Bv_sized 8 52))) =
-                  (N2Bv_sized 8 69, false).
+    xilinxAdderWithCarry
+      (false, (N2Bv_sized 8 17, N2Bv_sized 8 52)) =
+    (N2Bv_sized 8 69, false).
   Proof. vm_compute. reflexivity. Qed.
 
   (* A quick sanity check of the Xilinx adder with no bit-growth *)
   Example xilinx_no_growth_add_17_52:
-    unIdent (xilinxAdder (N2Bv_sized 8 17) (N2Bv_sized 8 52)) =
-                  (N2Bv_sized 8 69).
+    xilinxAdder (N2Bv_sized 8 17) (N2Bv_sized 8 52) =
+    (N2Bv_sized 8 69).
   Proof. reflexivity. Qed.
 
   (* A proof that the the full-adder is correct. *)
   Lemma xilinxFullAdder_behaviour :
     forall (a : bool) (b : bool) (cin : bool),
-          unIdent (xilinxFullAdder (cin, (a, b)))
+          xilinxFullAdder (cin, (a, b))
           = (xorb cin (xorb a b),
              (a && b) || (b && cin) || (a && cin)).
   Proof.

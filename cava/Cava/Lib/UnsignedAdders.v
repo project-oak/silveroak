@@ -19,7 +19,6 @@ Import ListNotations.
 Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 Require Import ExtLib.Structures.Monads.
-Require Export ExtLib.Data.Monads.IdentityMonad.
 Import MonadNotation.
 Open Scope monad_scope.
 Open Scope type_scope.
@@ -67,10 +66,10 @@ Section WithCava.
   Definition addN {n : nat}
             (ab: signal (Vec Bit n) * signal (Vec Bit n)) :
     cava (signal (Vec Bit n)) :=
-    a <- peel (fst ab) ;;
-    b <- peel (snd ab) ;;
+    a <- unpackV (fst ab) ;;
+    b <- unpackV (snd ab) ;;
     '(sum, _) <- unsignedAdderV (constant false, vcombine a b) ;;
-    unpeel sum.
+    packV sum.
 
   (****************************************************************************)
   (* A three input adder.                                                     *)

@@ -26,11 +26,11 @@ Require Import ExtLib.Structures.Monads.
 Export MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.ListUtils.
-Require Import Cava.Tactics.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Tactics.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.Identity.
-Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Util.Identity.
+Require Import Cava.Semantics.CombinationalProperties.
 Require Import Cava.Lib.UnsignedAdders.
 Require Import Cava.Lib.MultiplexersProperties.
 
@@ -64,17 +64,17 @@ Definition double_count_by_spec (i : list (Vector.t bool 8)) : list (Vector.t bo
   map (fun t => boolsum (firstn t (map snd (count_by_spec i)))) (seq 1 (length i)).
 
 Lemma addN_correct {n} (x y : combType (Vec Bit n)) :
-  unIdent (addN (x, y)) = bvadd x y.
+  addN (x, y) = bvadd x y.
 Admitted.
 Hint Rewrite @addN_correct : simpl_ident.
 
 Lemma ltV_correct {n m} x y :
-  unIdent (ltV (n:=n) (m:=m) (x, y)) = (Bv2N x <? Bv2N y)%N.
+  ltV (n:=n) (m:=m) (x, y) = (Bv2N x <? Bv2N y)%N.
 Admitted.
 Hint Rewrite @ltV_correct : simpl_ident.
 
 Lemma addC_correct {n} (x y : combType (Vec Bit n)) :
-  unIdent (addC (x, y)) = bvaddc x y.
+  addC (x, y) = bvaddc x y.
 Proof.
   cbv [addC bvaddc]. cbv [CombinationalSemantics].
   simpl_ident. cbv [bvadd].
@@ -84,10 +84,10 @@ Qed.
 Hint Rewrite @addC_correct : simpl_ident.
 
 Lemma incrN_correct {n} (x : combType (Vec Bit (S n))) :
-  unIdent (incrN x) = N2Bv_sized (S n) (Bv2N x + 1).
+  incrN x = N2Bv_sized (S n) (Bv2N x + 1).
 Proof.
   cbv [incrN].
-  cbn [CombinationalSemantics peel unpeel unsignedAdd unsignedAddBool constant].
+  cbn [CombinationalSemantics unpackV packV unsignedAdd unsignedAddBool constant].
   simpl_ident. cbn [Nat.max Nat.add Bv2N N.succ_double].
   (* just proof about shiftout from here *)
 Admitted.
@@ -122,10 +122,10 @@ Proof.
 Qed.
 
 Lemma count_by_correct (input : list (combType (Vec Bit 8))) :
-  multistep count_by input = map snd (count_by_spec input).
+  simulate count_by input = map snd (count_by_spec input).
 Proof.
   intros; cbv [count_by].
-  eapply (multistep_Loop_invariant (s:=Vec Bit 8)) with
+  eapply (simulate_Loop_invariant (s:=Vec Bit 8)) with
       (I:=fun t st _ acc =>
             st = fst (bvsumc (firstn t input))
             /\ acc = map snd (count_by_spec (firstn t input))).
@@ -180,11 +180,11 @@ Qed.
 Hint Rewrite @firstn_count_by_spec using solve [eauto] : push_firstn.
 
 Lemma double_count_by_correct (input : list (combType (Vec Bit 8))) :
-  multistep double_count_by input = double_count_by_spec input.
+  simulate double_count_by input = double_count_by_spec input.
 Proof.
   intros; cbv [double_count_by].
   let f := lazymatch goal with |- context [Loop ?body] => body end in
-  eapply multistep_Loop_invariant
+  eapply simulate_Loop_invariant
     with (body:=f)
          (I:= fun t st body_st acc =>
                 body_st = (tt, (tt, fst (bvsumc (firstn t input))), tt)

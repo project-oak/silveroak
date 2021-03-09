@@ -17,16 +17,16 @@
 Require Import Coq.Vectors.Vector.
 Require Import Coq.NArith.BinNat.
 Require Import Coq.NArith.Ndigits.
-Require Import Cava.BitArithmetic.
+Require Import Cava.Util.BitArithmetic.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Traversable.
 
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.Vector.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Require Cava.Lib.Vec.
-Require Import Cava.Signal.
+Require Import Cava.Core.Signal.
 Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AesSpec.Tests.Common.
@@ -36,6 +36,7 @@ Import VectorNotations.
 Module Notations.
   Notation state := (Vec (Vec (Vec Bit 8) 4) 4) (only parsing).
   Notation key := (Vec (Vec (Vec Bit 8) 4) 4) (only parsing).
+  Notation keypair := (Vec (Vec (Vec (Vec Bit 8) 4) 4) 2) (only parsing).
 End Notations.
 
 (* A function to convert a matrix of nat values to a value of type state *)
@@ -65,7 +66,7 @@ Section WithCava.
 
   Definition bitvecvec_to_signal {a b : nat} (lut : t (t bool b) a) : cava (signal (Vec (Vec Bit b) a)) :=
     v <- mapT bitvec_to_signal lut ;;
-    unpeel v.
+    packV v.
 
   Definition natvec_to_signal_sized {n : nat} (size : nat) (lut : t nat n)
     : cava (signal (Vec (Vec Bit size) n)) :=
@@ -93,7 +94,7 @@ Section WithCava.
     b <- xor2 (x2, x7) ;;
     c <- xor2 (x3, x7) ;;
 
-    unpeel
+    packV
       [x7;
       a;
       x1;
@@ -123,7 +124,7 @@ Section WithCava.
     let indices := [4 - shift; 5 - shift; 6 - shift; 7 - shift] in
     let indices := map (fun x => Nat.modulo x 4) indices in
     out <- mapT (indexConst input) indices ;;
-    unpeel out.
+    packV out.
 
   Definition IDLE_S := bitvec_to_signal (nat_to_bitvec_sized 3 0).
   Definition INIT_S := bitvec_to_signal (nat_to_bitvec_sized 3 1).
@@ -153,8 +154,8 @@ Section WithCava.
 
   Definition KEY_WORDS_0123 := bitvec_to_signal (nat_to_bitvec_sized 2 0).
   Definition KEY_WORDS_2345 := bitvec_to_signal (nat_to_bitvec_sized 2 1).
-  Definition KEY_WORDS_4567 := bitvec_to_signal (nat_to_bitvec_sized 2 3).
-  Definition KEY_WORDS_ZERO := bitvec_to_signal (nat_to_bitvec_sized 2 4).
+  Definition KEY_WORDS_4567 := bitvec_to_signal (nat_to_bitvec_sized 2 2).
+  Definition KEY_WORDS_ZERO := bitvec_to_signal (nat_to_bitvec_sized 2 3).
 
   Definition AES_128 := bitvec_to_signal (nat_to_bitvec_sized 3 1).
   Definition AES_192 := bitvec_to_signal (nat_to_bitvec_sized 3 2).

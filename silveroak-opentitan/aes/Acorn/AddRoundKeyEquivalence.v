@@ -17,10 +17,10 @@
 Require Import Coq.Lists.List.
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
-Require Import Cava.ListUtils.
-Require Import Cava.Tactics.
-Require Import Cava.VectorUtils.
-Require Import Cava.Acorn.Identity.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Tactics.
+Require Import Cava.Util.Vector.
+Require Import Cava.Util.Identity.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Import ListNotations.
@@ -53,7 +53,7 @@ Section Equivalence.
   Qed.
 
   Lemma add_round_key_equiv (k : key) (st : state) :
-    unIdent (aes_add_round_key k st)
+    aes_add_round_key k st
     = AES256.aes_add_round_key_circuit_spec k st.
   Proof.
     cbv [AES256.aes_add_round_key_circuit_spec
