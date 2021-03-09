@@ -16,8 +16,8 @@
 
 Require Import Coq.Vectors.Vector.
 Require Import Coq.Strings.String.
-Require Import Cava.BitArithmetic.
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.Vector.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.TestVectors.
 Require Import AesSpec.AES256.

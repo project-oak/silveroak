@@ -19,9 +19,9 @@ Require Import ExtLib.Structures.Monads.
 Import VectorNotations MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.CavaPrelude.
-Require Import Cava.Acorn.CavaClass.
-Require Import Cava.Acorn.Combinators.
+Require Import Cava.Lib.CavaPrelude.
+Require Import Cava.Core.CavaClass.
+Require Import Cava.Lib.Combinators.
 
 (******************************************************************************)
 (* Inductive to capture circuit's sequential structure                        *)

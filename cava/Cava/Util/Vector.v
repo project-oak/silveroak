@@ -25,9 +25,8 @@ Require Import Coq.Init.Nat Coq.micromega.Lia.
 
 Require Import ExtLib.Structures.Applicative.
 Require Import ExtLib.Structures.Traversable.
-Require Export ExtLib.Data.Monads.IdentityMonad.
 
-Require Cava.ListUtils.
+Require Cava.Util.List.
 
 (* automatically interpret arguments expected to have type Vector.t in
    vector_scope *)
@@ -816,7 +815,7 @@ Section VectorFacts.
 
   Lemma to_list_map2 {A B C} (f : A -> B -> C) n
         (va : Vector.t A n) (vb : Vector.t B n) :
-    to_list (map2 f va vb) = ListUtils.map2 f (to_list va) (to_list vb).
+    to_list (map2 f va vb) = List.map2 f (to_list va) (to_list vb).
   Proof.
     revert va vb; induction n; intros.
     { eapply case0 with (v:=va).
@@ -986,7 +985,7 @@ Hint Rewrite @to_list_nil @to_list_cons @to_list_append
      @to_list_splitat1 @to_list_splitat2 @to_list_snoc @to_list_map2
      using solve [eauto] : push_to_list.
 Hint Rewrite @to_list_resize_default
-     using solve [ListUtils.length_hammer] : push_to_list.
+     using solve [List.length_hammer] : push_to_list.
 Hint Rewrite @to_list_length using solve [eauto] : push_length.
 
 Section VcombineFacts.
@@ -1370,7 +1369,7 @@ Section AlgebraicFold.
       valid (Vector.fold_left f start v).
   Proof.
     intros. rewrite fold_left_to_list.
-    eapply ListUtils.fold_left_invariant with (I:=valid); eauto; [ ].
+    eapply List.fold_left_invariant with (I:=valid); eauto; [ ].
     intros *. rewrite InV_to_list_iff. intros.
     match goal with H : ForallV _ _ |- _ =>
                     eapply ForallV_forall in H; [ | solve [eauto] ] end.
@@ -1495,7 +1494,7 @@ Section Vector.
     { intros v1 v2. rewrite (Vector.eta v1), (Vector.eta v2). cbn [Vector.eqb].
       autorewrite with push_vector_fold push_vector_map vsimpl.
       rewrite Bool.andb_true_l, IHn.
-      symmetry; apply VectorUtils.fold_left_S_assoc;
+      symmetry; apply Vector.fold_left_S_assoc;
       auto using Bool.andb_true_r, Bool.andb_true_l, Bool.andb_assoc. }
   Qed.
 

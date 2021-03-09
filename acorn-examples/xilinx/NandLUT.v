@@ -42,7 +42,7 @@ Definition lutNANDNetlist := makeNetlist lutNANDInterface lutNAND.
  [(false, false); (false, true); (true, false); (true, true)].
 
  Definition lutNAND_tb_expected_outputs : list bool :=
-   multistep (Comb lutNAND) lutNAND_tb_inputs.
+   simulate (Comb lutNAND) lutNAND_tb_inputs.
 
 Definition lutNAND_tb :=
   testBench "lutNAND_tb" lutNANDInterface

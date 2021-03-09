@@ -18,12 +18,12 @@ Require Import Coq.Init.Byte.
 Require Import Coq.NArith.NArith.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
-Require Import Cava.Tactics.
+Require Import Cava.Util.Tactics.
 Require Coq.Vectors.Vector. (* not imported due to name collisions with List *)
 
-Require Import Cava.BitArithmetic.
-Require Import Cava.ListUtils.
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Vector.
 Require Import AesSpec.Polynomial.
 Require Import AesSpec.PolynomialProperties.
 Import Vector.VectorNotations.

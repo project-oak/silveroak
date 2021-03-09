@@ -15,32 +15,18 @@
 (****************************************************************************)
 
 Require Import Coq.Vectors.Vector.
-Import VectorNotations.
+Require Import ExtLib.Data.List.
+Require Import ExtLib.Data.Vector.
+Require Import ExtLib.Structures.Monad.
+Require Import ExtLib.Structures.MonadLaws.
+Require Import ExtLib.Structures.Traversable.
+Require Import Cava.Util.Vector.
 
-Require Import ExtLib.Structures.Monads.
-Import MonadNotation.
-Local Open Scope monad_scope.
+(* Identity monad *)
+Definition ident (T : Type) := T.
+Instance Monad_ident : Monad ident :=
+  { ret := fun _ t => t;
+    bind := fun _ _ x f => f x }.
 
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Core.Signal.
-
-Section WithCava.
-  Context `{semantics:Cava}.
-
-  (* A two to one multiplexer that takes its two arguments as a pair rather
-     than as a 2 element vector which is what indexAt works over. *)
-  Definition mux2 {A : SignalType}
-             (sel : signal Bit)
-             (ab : signal A * signal A) : cava (signal A) :=
-    let '(a,b) := ab in
-    v <- packV [a;b] ;;
-    i <- packV [sel] ;;
-    indexAt v i.
-
-  (* 4-element multiplexer *)
-  Definition mux4 {t} (input : signal t * signal t * signal t * signal t)
-             (sel : signal (Vec Bit 2)) : cava (signal t) :=
-    let '(i0,i1,i2,i3) := input in
-    v <- packV [i0;i1;i2;i3]%vector ;;
-    indexAt v sel.
-End WithCava.
+Instance MonadLaws_ident : MonadLaws Monad_ident.
+Proof. econstructor; intros; exact eq_refl. Defined.

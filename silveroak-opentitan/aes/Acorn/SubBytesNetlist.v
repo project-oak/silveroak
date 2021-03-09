@@ -21,6 +21,9 @@ Import ListNotations VectorNotations.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
+Require Import AesSpec.AES256.
+Require Import AesSpec.Tests.Common.
+Require Import AesSpec.Tests.TestVectors.
 Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.Pkg.
 Import Pkg.Notations.
@@ -49,13 +52,59 @@ Definition aes_sbox_lut_Netlist
 Definition aes_sub_bytes_Netlist
   := makeNetlist aes_sub_bytes_Interface (fun '(op_i, data_i) => aes_sub_bytes op_i data_i).
 
-(* Compute the expected outputs from the Coq/Cava semantics. *)
-Definition aes_sub_bytes_expected_outputs :=
-  multistep (Comb (fun '(op_i, data_i) => aes_sub_bytes op_i data_i))
-            [(false, fromNatVec test_state)].
+(* Test bench checking that for a single step, the circuit and Coq semantics
+   return the same result *)
+Section SimpleTestBench.
+  Definition aes_sub_bytes_simple_inputs : list _ :=
+    [(false, fromNatVec test_state)].
+
+  (* Compute the expected outputs from the Coq/Cava semantics. *)
+  Definition aes_sub_bytes_simple_expected_outputs :=
+    simulate (Comb (fun '(op_i, data_i) => aes_sub_bytes op_i data_i))
+             aes_sub_bytes_simple_inputs.
+End SimpleTestBench.
+
+(* Test bench checking against full FIPS AES-256 encryption test vector *)
+Section FIPSEncryptTestBench.
+  Definition aes_sub_bytes_enc_tb_inputs :=
+    Eval vm_compute in
+      (map (fun v => (false, from_flat v))
+           (get_state_inputs SubBytes fips_c3_forward)).
+
+  Definition aes_sub_bytes_enc_expected_outputs :=
+    Eval vm_compute in
+      (map from_flat (get_state_outputs SubBytes fips_c3_forward)).
+End FIPSEncryptTestBench.
+
+(* Test bench checking against full FIPS AES-256 decryption test vector (for
+   equivalent inverse cipher) *)
+Section FIPSDecryptTestBench.
+  Definition aes_sub_bytes_dec_tb_inputs :=
+    Eval vm_compute in
+      (map (fun v => (true, from_flat v))
+           (get_state_inputs InvSubBytes fips_c3_equivalent_inverse)).
+
+  Definition aes_sub_bytes_dec_expected_outputs :=
+    Eval vm_compute in
+      (map from_flat (get_state_outputs InvSubBytes fips_c3_equivalent_inverse)).
+End FIPSDecryptTestBench.
+
+(* Concatenate inputs from all tests *)
+Definition aes_sub_bytes_tb_all_inputs :=
+  Eval vm_compute in
+    (aes_sub_bytes_simple_inputs
+       ++ aes_sub_bytes_enc_tb_inputs
+       ++ aes_sub_bytes_dec_tb_inputs)%list.
+
+(* Concatenate expected outputs from all tests *)
+Definition aes_sub_bytes_tb_all_expected_outputs :=
+  Eval vm_compute in
+    (aes_sub_bytes_simple_expected_outputs
+       ++ aes_sub_bytes_enc_expected_outputs
+       ++ aes_sub_bytes_dec_expected_outputs)%list.
 
 Definition aes_sub_bytes_tb :=
   testBench "aes_sub_bytes_tb"
             aes_sub_bytes_Interface
-            [(false, fromNatVec test_state)]
-            aes_sub_bytes_expected_outputs.
+            aes_sub_bytes_tb_all_inputs
+            aes_sub_bytes_tb_all_expected_outputs.

@@ -17,7 +17,7 @@
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
-Require Import Cava.NatUtils.
+Require Import Cava.Util.Nat.
 Import ListNotations.
 Local Open Scope list_scope.
 
