@@ -20,7 +20,7 @@ Import VectorNotations MonadNotation.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.CavaPrelude.
-Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Core.CavaClass.
 Require Import Cava.Acorn.Combinators.
 
 (******************************************************************************)

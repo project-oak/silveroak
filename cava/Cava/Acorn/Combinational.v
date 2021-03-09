@@ -23,8 +23,8 @@ Import ListNotations MonadNotation.
 
 Require Import Cava.Cava.
 Require Import Cava.Util.List.
-Require Import Cava.Acorn.CavaClass.
-Require Import Cava.Acorn.Circuit.
+Require Import Cava.Core.CavaClass.
+Require Import Cava.Core.Circuit.
 Require Import Cava.Acorn.Identity.
 
 (******************************************************************************)

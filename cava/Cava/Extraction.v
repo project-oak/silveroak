@@ -26,17 +26,17 @@ Set Extraction File Comment "Auto-generated from Cava/Coq. Please do not hand ed
 
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Cava.
-Require Import Cava.Signal.
+Require Import Cava.Core.Signal.
 Require Import Cava.Util.Vector.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Combinational.
-Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Core.CavaClass.
 Require Import Cava.Acorn.Combinators.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.NetlistGeneration.
 Require Import Cava.Acorn.XilinxAdder.
 Require Import Cava.Acorn.CavaPrelude.
-Require Import Cava.Acorn.Circuit.
+Require Import Cava.Core.Circuit.
 
 Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.Lib.FullAdder.

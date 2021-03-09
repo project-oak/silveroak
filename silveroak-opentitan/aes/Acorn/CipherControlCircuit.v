@@ -27,7 +27,7 @@ Import MonadNotation.
 From RecordUpdate Require Import RecordSet.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Circuit.
+Require Import Cava.Core.Circuit.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.Multiplexers.
 Require Import AcornAes.Pkg.

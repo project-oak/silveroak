@@ -26,7 +26,7 @@ Require Import Cava.Util.Vector.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Require Cava.Lib.Vec.
-Require Import Cava.Signal.
+Require Import Cava.Core.Signal.
 Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AesSpec.Tests.Common.

@@ -20,6 +20,6 @@
 *)
 
 Require Export Cava.Util.BitArithmetic.
-Require Export Cava.Netlist.
-Require Export Cava.Signal.
+Require Export Cava.Core.Netlist.
+Require Export Cava.Core.Signal.
 Require Export Cava.Util.Vector.

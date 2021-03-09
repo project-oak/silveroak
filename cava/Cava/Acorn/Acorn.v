@@ -14,10 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Export Cava.Signal.
-Require Export Cava.Acorn.CavaClass.
+Require Export Cava.Core.Signal.
+Require Export Cava.Core.CavaClass.
 Require Export Cava.Acorn.CavaPrelude.
-Require Export Cava.Acorn.Circuit.
+Require Export Cava.Core.Circuit.
 Require Export Cava.Acorn.Combinational.
 Require Export Cava.Acorn.Combinators.
 Require Export Cava.Acorn.NetlistGeneration.

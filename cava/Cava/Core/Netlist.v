@@ -31,7 +31,7 @@ Open Scope string_scope.
 Open Scope list_scope.
 Open Scope monad_scope.
 
-Require Import Cava.Signal.
+Require Import Cava.Core.Signal.
 
 (******************************************************************************)
 (* Make it possible to convert certain types to bool shape values             *)

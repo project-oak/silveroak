@@ -26,7 +26,7 @@ Require Import Cava.Util.Tactics.
 Require Import Cava.Util.Vector.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Acorn.Combinational.
-Require Import Cava.Acorn.Circuit.
+Require Import Cava.Core.Circuit.
 Require Import Cava.Acorn.Identity.
 Require Import Cava.Acorn.Simulation.
 

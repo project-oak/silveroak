@@ -15,8 +15,8 @@
 (****************************************************************************)
 
 Require Import ExtLib.Structures.Monad.
-Require Import Cava.Netlist.
-Require Import Cava.Signal.
+Require Import Cava.Core.Netlist.
+Require Import Cava.Core.Signal.
 
 Local Open Scope type_scope.
 

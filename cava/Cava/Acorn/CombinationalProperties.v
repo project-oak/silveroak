@@ -20,7 +20,7 @@ Require Import Coq.micromega.Lia.
 Require Import Coq.NArith.NArith.
 Require Import Coq.Vectors.Vector.
 Require Import coqutil.Tactics.Tactics.
-Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Core.CavaClass.
 Require Import Cava.Acorn.CavaPrelude.
 Require Import Cava.Acorn.Combinators.
 Require Import Cava.Acorn.Combinational.
@@ -28,7 +28,7 @@ Require Import Cava.Acorn.Identity.
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Nat.
-Require Import Cava.Signal.
+Require Import Cava.Core.Signal.
 Require Import Cava.Util.Tactics.
 Require Import Cava.Util.Vector.
 Require Import Cava.Lib.BitVectorOps.
