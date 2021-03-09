@@ -17,8 +17,8 @@
 Require Import Coq.Vectors.Vector.
 
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.BitArithmetic.
-Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Semantics.CombinationalProperties.
 Require Import Cava.Lib.Multiplexers.
 
 Lemma mux2_correct {t} (i0 i1 : combType t) (sel : combType Bit) :

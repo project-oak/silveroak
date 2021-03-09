@@ -22,10 +22,10 @@ Require Import ExtLib.Structures.Monads.
 Import ListNotations MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.ListUtils.
-Require Import Cava.Acorn.CavaClass.
-Require Import Cava.Acorn.Circuit.
-Require Import Cava.Acorn.Identity.
+Require Import Cava.Util.List.
+Require Import Cava.Core.CavaClass.
+Require Import Cava.Core.Circuit.
+Require Import Cava.Util.Identity.
 
 (******************************************************************************)
 (* A boolean combinational logic interpretation for the Cava class            *)

@@ -57,7 +57,7 @@ library
                      HexString
                      Identity
                      List
-                     ListUtils
+                     List0
                      Logic
                      Monad
                      MonadState
@@ -75,7 +75,7 @@ library
                      Vec
                      VectorDef
                      Vector
-                     VectorUtils
+                     Vector0
                      XilinxAdder
                      Byte0
                      TestBench

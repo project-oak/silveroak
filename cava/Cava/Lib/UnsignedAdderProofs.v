@@ -28,11 +28,11 @@ Open Scope type_scope.
 Require Import coqutil.Tactics.Tactics.
 Require Import Coq.micromega.Lia.
 
-Require Import Cava.BitArithmetic Cava.ListUtils Cava.VectorUtils Cava.Tactics.
+Require Import Cava.Util.BitArithmetic Cava.Util.List Cava.Util.Vector Cava.Util.Tactics.
 Require Import Cava.Lib.FullAdder.
 Require Import Cava.Lib.UnsignedAdders.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.Identity.
+Require Import Cava.Util.Identity.
 
 Local Open Scope N_scope.
 
@@ -107,9 +107,9 @@ Qed.
 (* Correctness of the vector based adder. *)
 
 Lemma Bv2N_resize m n (Hmn : n = m) (v : t bool n) :
-  Bv2N v = Bv2N (VectorUtils.resize_default false m v).
+  Bv2N v = Bv2N (Vector.resize_default false m v).
 Proof.
-  subst. rewrite VectorUtils.resize_default_id.
+  subst. rewrite Vector.resize_default_id.
   reflexivity.
 Qed.
 
@@ -117,7 +117,7 @@ Lemma colV_colL {A B C} {n} circuit inputs d :
   @colV _ CombinationalSemantics A B C n circuit inputs =
   (let inputL := (fst inputs, to_list (snd inputs)) in
    rL <- colL circuit inputL ;;
-      let rV := VectorUtils.resize_default
+      let rV := Vector.resize_default
                   d _ (Vector.of_list (fst rL)) in
       ret (rV, snd rL)).
 Proof.
@@ -129,7 +129,7 @@ Proof.
     simpl_ident. repeat destruct_pair_let.
     simpl_ident. rewrite IHbs. clear IHbs.
     simpl_ident. cbn [fst snd of_list length].
-    cbn [VectorUtils.resize_default].
+    cbn [Vector.resize_default].
     autorewrite with vsimpl.
     reflexivity. }
 Qed.

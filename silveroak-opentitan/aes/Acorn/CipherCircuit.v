@@ -24,10 +24,10 @@ Require Import ExtLib.Structures.Monads.
 Import MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.CavaPrelude.
-Require Import Cava.Acorn.CavaClass.
-Require Import Cava.Acorn.Circuit.
-Require Import Cava.Acorn.Combinators.
+Require Import Cava.Lib.CavaPrelude.
+Require Import Cava.Core.CavaClass.
+Require Import Cava.Core.Circuit.
+Require Import Cava.Lib.Combinators.
 Require Import Cava.Lib.Multiplexers.
 Import Circuit.Notations.
 

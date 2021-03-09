@@ -20,15 +20,15 @@ Require Import Coq.Vectors.Vector.
 Require Import Coq.Lists.List.
 Require Import coqutil.Tactics.destr.
 Require Import ExtLib.Structures.Monads.
-Require Import Cava.BitArithmetic.
-Require Import Cava.ListUtils.
-Require Import Cava.Tactics.
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Tactics.
+Require Import Cava.Util.Vector.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.Combinational.
-Require Import Cava.Acorn.Circuit.
-Require Import Cava.Acorn.Identity.
-Require Import Cava.Acorn.Simulation.
+Require Import Cava.Semantics.Combinational.
+Require Import Cava.Core.Circuit.
+Require Import Cava.Util.Identity.
+Require Import Cava.Semantics.Simulation.
 
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
@@ -147,7 +147,7 @@ Proof.
     erewrite cipher_change_key_rep
       with (middle_keys_alt:=map to_flat middle_keys)
       by (eapply from_flat_to_flat
-          || rewrite map_map; eapply ListUtils.map_id_ext; intros;
+          || rewrite map_map; eapply List.map_id_ext; intros;
           autorewrite with conversions; reflexivity).
     (* equivalent because all subroutines are equivalent *)
     eapply cipher_subroutine_ext;

@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 Require Import Coq.Lists.List.
-Require Import Cava.ListUtils.
+Require Import Cava.Util.List.
 Require Import Coq.ZArith.ZArith.
 Import ListNotations.
 Local Open Scope Z_scope.

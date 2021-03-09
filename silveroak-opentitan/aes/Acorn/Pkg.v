@@ -17,16 +17,16 @@
 Require Import Coq.Vectors.Vector.
 Require Import Coq.NArith.BinNat.
 Require Import Coq.NArith.Ndigits.
-Require Import Cava.BitArithmetic.
+Require Import Cava.Util.BitArithmetic.
 
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Traversable.
 
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.Vector.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.BitVectorOps.
 Require Cava.Lib.Vec.
-Require Import Cava.Signal.
+Require Import Cava.Core.Signal.
 Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AesSpec.Tests.Common.

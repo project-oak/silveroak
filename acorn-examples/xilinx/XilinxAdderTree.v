@@ -29,7 +29,7 @@ Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.XilinxAdder.
+Require Import Cava.Lib.XilinxAdder.
 Existing Instance CavaCombinationalNet.
 
 Section WithCava.

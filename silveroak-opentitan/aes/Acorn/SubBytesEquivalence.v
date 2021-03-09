@@ -15,14 +15,14 @@
 (****************************************************************************)
 
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.CombinationalProperties.
-Require Import Cava.Acorn.Identity.
-Require Import Cava.BitArithmetic.
+Require Import Cava.Semantics.CombinationalProperties.
+Require Import Cava.Util.Identity.
+Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.Lib.VecProperties.
-Require Import Cava.ListUtils.
-Require Import Cava.Tactics.
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Tactics.
+Require Import Cava.Util.Vector.
 Require Import Coq.Lists.List.
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
