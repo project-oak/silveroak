@@ -14,21 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+(**** Import this file for everything you need to prove properties about Cava
+      circuits. ****)
 
-(**** Import this file for everything you need to define and test circuits with
-      Cava. ****)
-
-(* Basic infrastructure for defining circuits *)
-Require Export Cava.Core.Core.
-
-(* Cava instance + definitions for creating netlists from circuits *)
-Require Export Cava.NetlistGeneration.NetlistGeneration.
-
-(* Library of common small circuit components (multiplexers, adders, etc) *)
-Require Export Cava.Lib.Lib.
-
-(* Circuit simulation function *)
-Require Export Cava.Semantics.Simulation.
-
-(* Bit-arithmetic functions (useful for making small tests) *)
-Require Export Cava.Util.BitArithmetic.
+Require Export Cava.Cava.
+Require Export Cava.Lib.LibProperties.
+Require Export Cava.Semantics.Combinational.
+Require Export Cava.Semantics.CombinationalProperties.
