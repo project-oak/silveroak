@@ -14,23 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Bool.Bool Coq.Init.Nat.
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-Require Import Coq.NArith.NArith.
-
-Require Import Coq.Lists.List.
-Import ListNotations.
-
-Require Import Coq.Vectors.Vector.
-Require Import Coq.Bool.Bvector.
-Import VectorNotations.
-
-Require Import ExtLib.Structures.Monads.
-
 Require Import Cava.Cava.
-Require Import Cava.Cava.
-Require Import Cava.Lib.XilinxAdder.
-Existing Instance CavaCombinationalNet.
+Local Open Scope N_scope.
+Local Open Scope vector_scope.
 
 Section WithCava.
   Context {signal} `{Cava signal}.
@@ -72,22 +58,15 @@ Definition v1 := N2Bv_sized 8 17.
 Definition v2 := N2Bv_sized 8  6.
 Definition v3 := N2Bv_sized 8  3.
 
-Local Open Scope nat_scope.
-Local Open Scope vector_scope.
-
 Definition v0_v1 : Vector.t (Bvector 8) 2 := [v0; v1].
 Definition v0_plus_v1 : Bvector 8 := adderTree2 v0_v1.
 Example sum_vo_v1 : v0_plus_v1 = N2Bv_sized 8 21.
 Proof. reflexivity. Qed.
 
-Local Open Scope N_scope.
-
 Definition v0_v1_v2_v3 := [v0; v1; v2; v3].
 Example sum_v0_v1_v2_v3 :
   Bv2N (adderTree4 v0_v1_v2_v3) = 30.
 Proof. reflexivity. Qed.
-
-Local Open Scope nat_scope.
 
 Definition adder_tree_Interface name nrInputs bitSize
   := combinationalInterface name
@@ -101,8 +80,6 @@ Definition adder_tree4_8Interface := adder_tree_Interface "xadder_tree4_8" 4 8.
 
 Definition adder_tree4_8Netlist
   := makeNetlist adder_tree4_8Interface adderTree4.
-
-Local Open Scope N_scope.
 
 Definition adder_tree4_8_tb_inputs
   := map (fun i => Vector.map (N2Bv_sized 8) i)

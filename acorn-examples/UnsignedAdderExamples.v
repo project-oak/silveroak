@@ -14,17 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-Require Import Coq.NArith.NArith.
-Require Import Coq.Lists.List.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
 Require Import Cava.Cava.
-Require Import Cava.Cava.
-Require Import Cava.Lib.UnsignedAdders.
 
 (******************************************************************************)
 (* Some handy test vectors                                                   *)
@@ -99,9 +89,6 @@ Proof. reflexivity. Qed.
 (******************************************************************************)
 (* Generate a 4-bit unsigned adder with 5-bit output.                         *)
 (******************************************************************************)
-
-Local Open Scope nat_scope.
-Existing Instance CavaCombinationalNet.
 
 Definition adder4Interface
   := combinationalInterface "adder4"

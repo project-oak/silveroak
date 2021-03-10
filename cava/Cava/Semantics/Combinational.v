@@ -38,7 +38,7 @@ Definition xnorb b1 b2 : bool := negb (xorb b1 b2).
 (* interpretation.                                                            *)
 (******************************************************************************)
 
-Instance CombinationalSemantics : Cava combType :=
+Instance CombinationalSemantics : Cava combType | 10 :=
   { cava := ident;
     monad := Monad_ident;
     constant := fun x => x;

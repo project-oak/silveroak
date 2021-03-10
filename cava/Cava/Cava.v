@@ -18,6 +18,19 @@
 (**** Import this file for everything you need to define and test circuits with
       Cava. ****)
 
+(* Some pieces of the standard library that are helpful for defining circuits
+   and creating test cases *)
+Require Export Coq.Arith.PeanoNat.
+Require Export Coq.Bool.Bvector.
+Require Export Coq.NArith.NArith.
+Require Coq.Lists.List.
+Require Coq.Vectors.Vector.
+Export List.ListNotations Vector.VectorNotations.
+
+(* String definition + notation (for netlist port/interface names) *)
+Require Export Coq.Strings.String.
+Global Open Scope string_scope.
+
 (* Monad definition + notation *)
 Require Export ExtLib.Structures.Monad.
 Export MonadNotation.
@@ -32,9 +45,6 @@ Require Export Cava.NetlistGeneration.NetlistGeneration.
 (* Library of common small circuit components (multiplexers, adders, etc) *)
 Require Export Cava.Lib.Lib.
 
-(* Cava instance for Coq semantics *)
-Require Export Cava.Semantics.Combinational.
-
 (* Circuit simulation function *)
 Require Export Cava.Semantics.Simulation.
 
@@ -43,3 +53,10 @@ Require Export Cava.Util.BitArithmetic.
 
 (* Monadic fold definitions *)
 Require Export Cava.Util.MonadFold.
+
+(* Extra definitions for standard library vectors *)
+Require Export Cava.Util.Vector.
+
+(* Make sure the netlist Cava instance has priority over the Coq semantics to
+   avoid confusing error messages *)
+Existing Instance CavaCombinationalNet.

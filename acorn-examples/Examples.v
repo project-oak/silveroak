@@ -16,9 +16,7 @@
 
 (* Experiments with the primitives that form the core of Cava. *)
 
-Require Import Coq.Lists.List.
 Require Import Cava.Cava.
-Import ListNotations.
 
 (* Experiments with the primitive Cava gates. *)
 

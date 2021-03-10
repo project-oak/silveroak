@@ -19,6 +19,7 @@
 
 Require Export Cava.Cava.
 Require Export Cava.Lib.LibProperties.
+Require Export Cava.Semantics.Combinational.
 Require Export Cava.Semantics.CombinationalProperties.
 
 (* Proofs about the standard library datatypes that can come in useful *)
@@ -27,4 +28,10 @@ Require Export Cava.Util.Nat.
 Require Export Cava.Util.Vector.
 
 (* Generally useful tactics *)
+Require Export Coq.micromega.Lia.
+Require Export coqutil.Tactics.Tactics.
 Require Export Cava.Util.Tactics.
+
+(* Make sure the semantics Cava instance has priority over the
+netlist-generating one for proofs *)
+Existing Instance CombinationalSemantics.

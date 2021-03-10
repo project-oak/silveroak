@@ -15,21 +15,7 @@
 (****************************************************************************)
 
 
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-Require Import Coq.Lists.List.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-Open Scope monad_scope.
-
 Require Import Cava.Cava.
-Require Import Cava.Cava.
-
-Local Open Scope list_scope.
-Local Open Scope monad_scope.
-Local Open Scope string_scope.
-Existing Instance CavaCombinationalNet.
 
 Section WithCava.
   Context `{semantics:Cava}.

@@ -14,26 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Bool.Bool Coq.Init.Nat.
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-Require Import Coq.NArith.NArith.
-
-Require Import Coq.Vectors.Vector.
-Require Import Coq.Bool.Bvector.
-Import VectorNotations.
-
-Require Import Coq.Lists.List.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
 Require Import Cava.Cava.
-Require Import Cava.Cava.
-Require Import Cava.Lib.UnsignedAdders.
-
-Existing Instance CombinationalSemantics.
-Existing Instance CavaCombinationalNet.
+Local Open Scope N_scope.
+Local Open Scope vector_scope.
 
 (******************************************************************************)
 (* A generic description of all adder trees made from a syntheszable adder    *)
@@ -72,11 +55,6 @@ Definition v0 := N2Bv_sized 8  4.
 Definition v2 := N2Bv_sized 8  6.
 Definition v1 := N2Bv_sized 8 17.
 Definition v3 := N2Bv_sized 8  3.
-
-Local Open Scope N_scope.
-Local Open Scope string_scope.
-
-Local Open Scope vector_scope.
 
 Definition v0_v1 := [v0; v1].
 Definition v0_plus_v1 : Bvector 8 := adderTree 1 v0_v1.

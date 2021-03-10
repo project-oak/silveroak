@@ -14,17 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.NArith.NArith.
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-Require Import Coq.Lists.List.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-
 Require Import Cava.Cava.
-Require Import Cava.Cava.
-Require Import Cava.Lib.XilinxAdder.
-Existing Instance CavaCombinationalNet.
 
 (****************************************************************************)
 (* A few tests to check the unsigned adder.        *)

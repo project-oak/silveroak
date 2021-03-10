@@ -29,7 +29,6 @@ Require Import Cava.Core.Core.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Lib.Combinators.
 Require Import Cava.Util.Vector.
-Require Import Cava.Util.Vector.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.

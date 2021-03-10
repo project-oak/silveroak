@@ -19,18 +19,10 @@ Require Import Coq.micromega.Lia.
 Require Import Coq.Bool.Bvector.
 Import ListNotations.
 
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
 Require Import coqutil.Tactics.Tactics.
 
 Require Import Cava.Cava.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Cava.
-Require Import Cava.Util.Identity.
-Require Import Cava.Semantics.CombinationalProperties.
-Require Import Cava.Lib.UnsignedAdders.
+Require Import Cava.CavaProperties.
 Import Circuit.Notations.
 
 Require Import Tests.AddWithDelay.AddWithDelay.
