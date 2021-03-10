@@ -18,6 +18,11 @@
 (**** Import this file for everything you need to define and test circuits with
       Cava. ****)
 
+(* Monad definition + notation *)
+Require Export ExtLib.Structures.Monad.
+Export MonadNotation.
+Global Open Scope monad_scope.
+
 (* Basic infrastructure for defining circuits *)
 Require Export Cava.Core.Core.
 
@@ -35,3 +40,6 @@ Require Export Cava.Semantics.Simulation.
 
 (* Bit-arithmetic functions (useful for making small tests) *)
 Require Export Cava.Util.BitArithmetic.
+
+(* Monadic fold definitions *)
+Require Export Cava.Util.MonadFold.

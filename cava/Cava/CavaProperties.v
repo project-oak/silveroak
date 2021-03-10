@@ -20,3 +20,11 @@
 Require Export Cava.Cava.
 Require Export Cava.Lib.LibProperties.
 Require Export Cava.Semantics.CombinationalProperties.
+
+(* Proofs about the standard library datatypes that can come in useful *)
+Require Export Cava.Util.List.
+Require Export Cava.Util.Nat.
+Require Export Cava.Util.Vector.
+
+(* Generally useful tactics *)
+Require Export Cava.Util.Tactics.
