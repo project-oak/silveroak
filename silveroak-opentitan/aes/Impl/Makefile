@@ -46,8 +46,8 @@ VERILATOR = verilator +1800-2012ext+sv verilator.vlt
 VLINT = $(VERILATOR) --lint-only
 
 _CoqProject:    $(shell find . -name '*.v' | sort)
-		@echo "INSTALLDEFAULTROOT = AcornAes" > _CoqProject
-		@echo "-R . AcornAes" >> _CoqProject
+		@echo "INSTALLDEFAULTROOT = AesImpl" > _CoqProject
+		@echo "-R . AesImpl" >> _CoqProject
 		@echo "-R ../Spec AesSpec" >> _CoqProject
 		@echo "-R ../../../cava/Cava Cava" >> _CoqProject
 		@echo "-R ../../../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
