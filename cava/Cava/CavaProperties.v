@@ -19,5 +19,4 @@
 
 Require Export Cava.Cava.
 Require Export Cava.Lib.LibProperties.
-Require Export Cava.Semantics.Combinational.
 Require Export Cava.Semantics.CombinationalProperties.

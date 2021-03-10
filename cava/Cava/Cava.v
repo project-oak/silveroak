@@ -27,6 +27,9 @@ Require Export Cava.NetlistGeneration.NetlistGeneration.
 (* Library of common small circuit components (multiplexers, adders, etc) *)
 Require Export Cava.Lib.Lib.
 
+(* Cava instance for Coq semantics *)
+Require Export Cava.Semantics.Combinational.
+
 (* Circuit simulation function *)
 Require Export Cava.Semantics.Simulation.
 
