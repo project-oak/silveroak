@@ -28,5 +28,8 @@ Require Export Cava.NetlistGeneration.NetlistGeneration.
 (* Library of common small circuit components (multiplexers, adders, etc) *)
 Require Export Cava.Lib.Lib.
 
+(* Circuit simulation function *)
+Require Export Cava.Semantics.Simulation.
+
 (* Bit-arithmetic functions (useful for making small tests) *)
 Require Export Cava.Util.BitArithmetic.
