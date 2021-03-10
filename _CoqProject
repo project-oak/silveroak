@@ -6,9 +6,7 @@
 -Q third_party/bedrock2/deps/coqutil/src/coqutil coqutil
 -Q third_party/coq-record-update/src RecordUpdate
 -Q tests Tests
--Q monad-examples MonadExamples
--Q monad-examples/xilinx XilinxExamples
--Q arrow-examples ArrowExamples
--Q arrow-lib Arrow
--Q silveroak-opentitan/aes/Acorn AcornAes
+-Q examples Examples
+-Q examples/xilinx XilinxExamples
+-Q silveroak-opentitan/aes/Impl AesImpl
 -Q silveroak-opentitan/aes/Spec AesSpec
