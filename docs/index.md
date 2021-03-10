@@ -68,5 +68,5 @@ $ make clean
 ```
 
 ## Cava Examples
-See [Cava Examples](https://github.com/project-oak/silveroak/blob/main/acorn-examples/README.md) for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.
+See [Cava Examples](https://github.com/project-oak/silveroak/blob/main/examples/README.md) for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.
 
