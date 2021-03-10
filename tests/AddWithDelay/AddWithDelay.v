@@ -14,12 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import NArith.NArith Lists.List.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
 Require Import Cava.Cava.
 Import Circuit.Notations.
 
@@ -73,8 +67,6 @@ End WithCava.
 (* Convenience notation for turning a list of nats into a list of 8-bit bitvectors *)
 Local Notation "'#' l" := (map (fun i => N2Bv_sized 8 (N.of_nat i)) l)
                             (at level 40, only parsing).
-
-Local Open Scope list_scope.
 
 Example addWithDelay_ex1: simulate addWithDelay (# [0;1;2;3;4;5;6;7;8]) = # [0;0;1;2;4;6;9;12;16].
 Proof. reflexivity. Qed.

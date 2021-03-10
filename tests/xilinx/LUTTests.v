@@ -14,15 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-Require Import Coq.Lists.List.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-
 Require Import Cava.Cava.
-Require Import Cava.Cava.
-Existing Instance CavaCombinationalNet.
 
 Section WithCava.
   Context {signal} `{Cava signal}.

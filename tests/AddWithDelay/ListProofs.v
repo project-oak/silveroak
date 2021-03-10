@@ -14,19 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Arith.PeanoNat NArith.NArith Lists.List.
-Require Import Coq.micromega.Lia.
-Require Import Coq.Bool.Bvector.
-Import ListNotations.
-
-Require Import coqutil.Tactics.Tactics.
-
 Require Import Cava.Cava.
 Require Import Cava.CavaProperties.
-Import Circuit.Notations.
-
 Require Import Tests.AddWithDelay.AddWithDelay.
-Local Open Scope nat_scope.
+Import Circuit.Notations.
 
 Definition bvadd {n} (a b : Signal.combType (Vec Bit n)) : Signal.combType (Vec Bit n) :=
   N2Bv_sized n (Bv2N a + Bv2N b).

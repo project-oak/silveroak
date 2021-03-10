@@ -14,17 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-Require Import Coq.NArith.NArith.
-Require Import Coq.Lists.List.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
 Require Import Cava.Cava.
-Require Import Cava.Cava.
-Existing Instance CavaCombinationalNet.
 
 Section WithCava.
   Context {signal} `{Cava signal}.
@@ -57,8 +47,6 @@ Proof. reflexivity. Qed.
 (* Generate an unsigned multiplier with 2 and 3 bit inputs and 5-bit result.  *)
 (******************************************************************************)
 
-Local Open Scope nat_scope.
-
 Definition mult2_3_5Interface
   := combinationalInterface "mult2_3_5"
      [mkPort "a" (Vec Bit 2); mkPort "b" (Vec Bit 3)]
@@ -77,4 +65,3 @@ Definition mult2_3_5_tb_expected_outputs
 Definition  mult2_3_5_tb
   := testBench "mult2_3_5_tb" mult2_3_5Interface
      mult2_3_5_tb_inputs mult2_3_5_tb_expected_outputs.
-
