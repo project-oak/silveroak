@@ -24,8 +24,8 @@ Require Import ExtLib.Structures.MonadLaws.
 Require Import Cava.Core.Core.
 Require Import Cava.Lib.Adders.
 Require Import Cava.Lib.Combinators.
+Require Import Cava.Lib.CombinationalProperties.
 Require Import Cava.Semantics.Combinational.
-Require Import Cava.Semantics.CombinationalProperties.
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Util.BitArithmeticProperties.
 Require Import Cava.Util.Identity.
