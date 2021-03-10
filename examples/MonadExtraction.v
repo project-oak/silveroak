@@ -14,12 +14,12 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import AcornExamples.Examples.
-Require Import AcornExamples.NandGate.
-Require Import AcornExamples.FullAdderExample.
-Require Import AcornExamples.UnsignedAdderExamples.
-Require Import AcornExamples.AdderTree.
-Require Import AcornExamples.Sorter.
+Require Import Examples.Examples.
+Require Import Examples.NandGate.
+Require Import Examples.FullAdderExample.
+Require Import Examples.UnsignedAdderExamples.
+Require Import Examples.AdderTree.
+Require Import Examples.Sorter.
 Require Import Coq.extraction.Extraction.
 Require Import Coq.extraction.ExtrHaskellZInteger.
 Require Import Coq.extraction.ExtrHaskellString.

@@ -36,8 +36,8 @@ VERILATOR = verilator +1800-2012ext+sv verilator.vlt
 VLINT = $(VERILATOR) --lint-only
 
 _CoqProject:    $(shell find . -name '*.v' -not -path "*/xilinx/*" | sort)
-		@echo "INSTALLDEFAULTROOT = AcornExamples" > _CoqProject
-		@echo "-R . AcornExamples" >> _CoqProject
+		@echo "INSTALLDEFAULTROOT = Examples" > _CoqProject
+		@echo "-R . Examples" >> _CoqProject
 		@echo "-R ../cava/Cava Cava" >> _CoqProject
 		@echo "-R ../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
 		@echo "-R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
