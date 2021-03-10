@@ -14,19 +14,19 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import AcornAes.Pkg.
-Require Import AcornAes.CipherCircuit.
-Require Import AcornAes.CipherCircuit.
-Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.ShiftRowsCircuit.
-Require Import AcornAes.SubBytesCircuit.
-Require Import AcornAes.AddRoundKeyCircuit.
-Require Import AcornAes.CipherControlCircuit.
-Require Import AcornAes.MixColumnsNetlist.
-Require Import AcornAes.ShiftRowsNetlist.
-Require Import AcornAes.SubBytesNetlist.
-Require Import AcornAes.AddRoundKeyNetlist.
-Require Import AcornAes.CipherControlNetlist.
+Require Import AesImpl.Pkg.
+Require Import AesImpl.CipherCircuit.
+Require Import AesImpl.CipherCircuit.
+Require Import AesImpl.MixColumnsCircuit.
+Require Import AesImpl.ShiftRowsCircuit.
+Require Import AesImpl.SubBytesCircuit.
+Require Import AesImpl.AddRoundKeyCircuit.
+Require Import AesImpl.CipherControlCircuit.
+Require Import AesImpl.MixColumnsNetlist.
+Require Import AesImpl.ShiftRowsNetlist.
+Require Import AesImpl.SubBytesNetlist.
+Require Import AesImpl.AddRoundKeyNetlist.
+Require Import AesImpl.CipherControlNetlist.
 Require Import Coq.extraction.Extraction.
 Require Import Coq.extraction.ExtrHaskellZInteger.
 Require Import Coq.extraction.ExtrHaskellString.

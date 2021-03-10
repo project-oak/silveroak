@@ -18,8 +18,8 @@ Require Import Cava.Cava.
 Require Import Cava.CavaProperties.
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
-Require Import AcornAes.Pkg.
-Require Import AcornAes.ShiftRowsCircuit.
+Require Import AesImpl.Pkg.
+Require Import AesImpl.ShiftRowsCircuit.
 Import StateTypeConversions.LittleEndian.
 
 Section Equivalence.

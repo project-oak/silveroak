@@ -18,8 +18,8 @@ Require Import Cava.Cava.
 Require Import AesSpec.AES256.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.CipherTest.
-Require Import AcornAes.AddRoundKeyCircuit.
-Require Import AcornAes.Pkg.
+Require Import AesImpl.AddRoundKeyCircuit.
+Require Import AesImpl.Pkg.
 
 (* Test against FIPS test vectors *)
 Section FIPSTests.

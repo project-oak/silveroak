@@ -18,7 +18,7 @@ Require Import Cava.Cava.
 Require Import Cava.CavaProperties.
 Require Import AesSpec.Cipher.
 Require Import AesSpec.CipherProperties.
-Require Import AcornAes.CipherCircuit.
+Require Import AesImpl.CipherCircuit.
 Local Open Scope nat_scope.
 
 Local Notation byte := (Vector.t bool 8).

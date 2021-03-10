@@ -18,8 +18,8 @@ Require Import Cava.Cava.
 Require Import AesSpec.AES256.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.TestVectors.
-Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.Pkg.
+Require Import AesImpl.MixColumnsCircuit.
+Require Import AesImpl.Pkg.
 
 (* Interface designed to match interface of corresponding SystemVerilog component:
      https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_mix_columns.sv

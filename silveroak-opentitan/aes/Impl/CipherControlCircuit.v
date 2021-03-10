@@ -17,12 +17,12 @@
 Require Import Cava.Cava.
 Require Import ExtLib.Structures.MonadState.
 Require Import RecordUpdate.RecordSet.
-Require Import AcornAes.AddRoundKeyCircuit.
-Require Import AcornAes.CipherCircuit.
-Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.Pkg.
-Require Import AcornAes.ShiftRowsCircuit.
-Require Import AcornAes.SubBytesCircuit.
+Require Import AesImpl.AddRoundKeyCircuit.
+Require Import AesImpl.CipherCircuit.
+Require Import AesImpl.MixColumnsCircuit.
+Require Import AesImpl.Pkg.
+Require Import AesImpl.ShiftRowsCircuit.
+Require Import AesImpl.SubBytesCircuit.
 Import Circuit.Notations.
 Local Open Scope vector_scope.
 

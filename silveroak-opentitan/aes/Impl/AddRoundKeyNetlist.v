@@ -18,8 +18,8 @@ Require Import Cava.Cava.
 Require Import AesSpec.AES256.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.TestVectors.
-Require Import AcornAes.AddRoundKeyCircuit.
-Require Import AcornAes.Pkg.
+Require Import AesImpl.AddRoundKeyCircuit.
+Require Import AesImpl.Pkg.
 Local Open Scope vector_scope.
 
 (* add_round_key is internal to aes_cipher_core in OpenTitan and so does not have

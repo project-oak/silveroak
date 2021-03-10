@@ -20,8 +20,8 @@ Require Import Cava.CavaProperties.
 Require Import AesSpec.AES256.
 Require Import AesSpec.Polynomial.
 Require Import AesSpec.StateTypeConversions.
-Require Import AcornAes.Pkg.
-Require Import AcornAes.MixColumnsCircuit.
+Require Import AesImpl.Pkg.
+Require Import AesImpl.MixColumnsCircuit.
 Import StateTypeConversions.LittleEndian.
 
 Existing Instance MixColumns.byteops.

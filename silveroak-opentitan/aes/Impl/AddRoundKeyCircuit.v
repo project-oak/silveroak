@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 Require Import Cava.Cava.
-Require Import AcornAes.Pkg.
+Require Import AesImpl.Pkg.
 Import Pkg.Notations.
 
 Section WithCava.

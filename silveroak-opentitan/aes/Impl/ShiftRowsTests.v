@@ -18,7 +18,7 @@ Require Import Cava.Cava.
 Require Import AesSpec.AES256.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.CipherTest.
-Require Import AcornAes.ShiftRowsCircuit.
+Require Import AesImpl.ShiftRowsCircuit.
 
 (* Test against FIPS test vectors *)
 Section FIPSTests.
