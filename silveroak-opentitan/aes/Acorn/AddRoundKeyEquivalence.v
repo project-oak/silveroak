@@ -32,14 +32,14 @@ Section Equivalence.
   Proof.
     cbv [to_flat]. cbv [BigEndian.from_rows BigEndian.from_cols].
     cbv [BigEndian.from_big_endian_bytes].
-    cbv [BitArithmetic.bytevec_to_bitvec].
+    cbv [bytevec_to_bitvec].
     autorewrite with pull_vector_map.
     rewrite !Vector.map_map2, !Vector.map_map.
     rewrite !map_id_ext
-      by (intros; rewrite BitArithmetic.bitvec_to_byte_to_bitvec; reflexivity).
+      by (intros; rewrite bitvec_to_byte_to_bitvec; reflexivity).
     erewrite map2_ext with
-        (f0 := fun a b => BitArithmetic.byte_to_bitvec (BitArithmetic.bitvec_to_byte _))
-      by (intros; rewrite BitArithmetic.bitvec_to_byte_to_bitvec; reflexivity).
+        (f0 := fun a b => byte_to_bitvec (bitvec_to_byte _))
+      by (intros; rewrite bitvec_to_byte_to_bitvec; reflexivity).
     autorewrite with pull_vector_map. reflexivity.
   Qed.
 

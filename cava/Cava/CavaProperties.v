@@ -27,6 +27,9 @@ Require Export Cava.Util.List.
 Require Export Cava.Util.Nat.
 Require Export Cava.Util.Vector.
 
+(* Proofs about bit vectors *)
+Require Export Cava.Util.BitArithmeticProperties.
+
 (* Generally useful tactics *)
 Require Export Coq.micromega.Lia.
 Require Export coqutil.Tactics.Tactics.

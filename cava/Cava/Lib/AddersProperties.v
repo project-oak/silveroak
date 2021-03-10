@@ -27,6 +27,7 @@ Require Import Cava.Lib.Combinators.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Semantics.CombinationalProperties.
 Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.BitArithmeticProperties.
 Require Import Cava.Util.Identity.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
@@ -64,9 +65,9 @@ Proof. destruct cin, a, b; reflexivity. Qed.
 
 (* Lemma about how to decompose a list of bits. *)
 Lemma list_bits_to_nat_cons b bs :
-  list_bits_to_nat (b :: bs) = (N.b2n b + 2 * (list_bits_to_nat bs))%N.
+  N.of_list_bits (b :: bs) = (N.b2n b + 2 * (N.of_list_bits bs))%N.
 Proof.
-  cbv [list_bits_to_nat]. cbn [of_list length].
+  cbv [N.of_list_bits]. cbn [of_list length].
   rewrite Bv2N_cons.
   destruct_one_match; cbn [N.b2n];
     rewrite ?N.double_spec, ?N.succ_double_spec;
@@ -79,8 +80,8 @@ Hint Rewrite @bind_of_return @bind_associativity
 (* Correctness of the list based adder. *)
 Lemma addLCorrect (cin : bool) (a b : list bool) :
   length a = length b ->
-  list_bits_to_nat (addLWithCinL cin a b) =
-  list_bits_to_nat a + list_bits_to_nat b + N.b2n cin.
+  N.of_list_bits (addLWithCinL cin a b) =
+  N.of_list_bits a + N.of_list_bits b + N.b2n cin.
 Proof.
   cbv zeta. cbv [addLWithCinL adderWithGrowthL unsignedAdderL colL].
   cbn [fst snd].
@@ -150,7 +151,7 @@ Proof.
 Qed.
 
 Lemma Bv2N_list_bits_to_nat n (v : t bool n) :
-  Bv2N v = list_bits_to_nat (to_list v).
+  Bv2N v = N.of_list_bits (to_list v).
 Proof.
   induction v; intros; [ reflexivity | ].
   rewrite to_list_cons, Bv2N_cons, list_bits_to_nat_cons.

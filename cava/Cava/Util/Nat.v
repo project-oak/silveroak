@@ -130,6 +130,7 @@ Module N.
     assert (2 ^ N.of_nat sz <> 0)%N by (apply N.pow_nonzero; lia).
     lia.
   Qed.
+
 End N.
 Hint Rewrite N.clearbit_eq N.b2n_bit0 N.shiftr_spec'
      N.pow2_bits_true N.add_bit0 N.land_spec N.lor_spec

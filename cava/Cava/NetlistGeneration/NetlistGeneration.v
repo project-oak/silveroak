@@ -113,7 +113,7 @@ Definition f3List (f: bool -> bool -> bool -> bool) (l: list bool) : bool :=
 
 Definition lut3Net (f : bool -> bool -> bool -> bool)
                    (i : Signal Bit * Signal Bit * Signal Bit) : state CavaState (Signal Bit) :=
-  let powers := map (fun p => let bv := nat_to_list_bits_sized 3 (N.of_nat p) in
+  let powers := map (fun p => let bv := N.to_list_bits_sized 3 (N.of_nat p) in
                      2^(N.of_nat p) * N.b2n (f3List f bv)) (List.seq 0 8)  in
   let config := fold_left N.add powers 0 in
   let '(i0, i1, i2) := i in
@@ -132,7 +132,7 @@ Definition f4List (f: bool -> bool -> bool -> bool -> bool) (l: list bool) :
 Definition lut4Net (f : bool -> bool -> bool -> bool -> bool)
                    (i : Signal Bit * Signal Bit * Signal Bit * Signal Bit) :
                   state CavaState (Signal Bit) :=
-  let powers := map (fun p => let bv := nat_to_list_bits_sized 4 (N.of_nat p) in
+  let powers := map (fun p => let bv := N.to_list_bits_sized 4 (N.of_nat p) in
                      2^(N.of_nat p) * N.b2n (f4List f bv)) (seq 0 16)  in
   let config := fold_left N.add powers 0 in
   let '(i0, i1, i2, i3) := i in
@@ -150,7 +150,7 @@ Definition f5List (f: bool -> bool -> bool -> bool -> bool -> bool)
 
 Definition lut5Net (f : bool -> bool -> bool -> bool -> bool -> bool)
                   (i : Signal Bit * Signal Bit * Signal Bit * Signal Bit * Signal Bit) : state CavaState (Signal Bit) :=
-  let powers := map (fun p => let bv := nat_to_list_bits_sized 5 (N.of_nat p) in
+  let powers := map (fun p => let bv := N.to_list_bits_sized 5 (N.of_nat p) in
                      2^(N.of_nat p) * N.b2n (f5List f bv)) (seq 0 32)  in
   let config := fold_left N.add powers 0 in
   let '(i0, i1, i2, i3, i4) := i in
@@ -168,7 +168,7 @@ Definition f6List (fn: bool -> bool -> bool -> bool -> bool -> bool -> bool)
 
 Definition lut6Net (f : bool -> bool -> bool -> bool -> bool -> bool -> bool)
                   (i : Signal Bit * Signal Bit * Signal Bit * Signal Bit * Signal Bit * Signal Bit) : state CavaState (Signal Bit) :=
-  let powers := map (fun p => let bv := nat_to_list_bits_sized 6 (N.of_nat p) in
+  let powers := map (fun p => let bv := N.to_list_bits_sized 6 (N.of_nat p) in
                      2^(N.of_nat p) * N.b2n (f6List f bv)) (seq 0 64)  in
   let config := fold_left N.add powers 0 in
   let '(i0, i1, i2, i3, i4, i5) := i in

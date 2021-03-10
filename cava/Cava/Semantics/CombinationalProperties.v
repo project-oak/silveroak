@@ -26,6 +26,7 @@ Require Import Cava.Lib.Combinators.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Util.Identity.
 Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.BitArithmeticProperties.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Nat.
 Require Import Cava.Core.Signal.

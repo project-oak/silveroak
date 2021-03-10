@@ -84,7 +84,6 @@ library
                      BinNatDef
                      ByteVector
                      Byte
-                     Compare_dec
                      Decimal
                      Functor
                      Hexadecimal
@@ -104,6 +103,5 @@ library
                      Ascii
                      Basics
                      String
-                     Wf
 
   default-language:  Haskell2010

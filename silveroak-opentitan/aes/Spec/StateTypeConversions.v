@@ -16,6 +16,7 @@
 
 Require Import Coq.Vectors.Vector.
 Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.BitArithmeticProperties.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Vector.
 
