@@ -21,7 +21,7 @@ Import ListNotations VectorNotations.
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Cava.
 Require Import Cava.Lib.Multiplexers.
 Require Cava.Lib.Vec.
 Require Import AcornAes.Pkg.

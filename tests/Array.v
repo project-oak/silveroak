@@ -25,7 +25,7 @@ Require Import ExtLib.Structures.Traversable.
 Export MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Cava.
 Require Import Cava.Lib.UnsignedAdders.
 Require Import Coq.Vectors.Vector.
 Require Import Cava.Util.Vector.

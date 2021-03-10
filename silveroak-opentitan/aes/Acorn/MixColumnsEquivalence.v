@@ -25,7 +25,7 @@ Require Import Cava.Util.Tactics.
 Require Import Cava.Util.Vector.
 Require Import Cava.Semantics.CombinationalProperties.
 Require Import Cava.Util.Identity.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Cava.
 Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.Lib.MultiplexersProperties.
 Require Import Cava.Lib.VecProperties.

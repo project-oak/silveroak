@@ -21,7 +21,7 @@ Import ListNotations VectorNotations.
 
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Cava.
 Require Import AesSpec.AES256.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.CipherTest.

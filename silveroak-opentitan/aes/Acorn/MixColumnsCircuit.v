@@ -21,7 +21,7 @@ Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Traversable.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Cava.
 Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.Lib.Multiplexers.
 Require Import AcornAes.Pkg.

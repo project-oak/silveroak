@@ -31,7 +31,7 @@ Require Import Cava.Util.List.
 Require Import Cava.Util.Vector.
 Require Import Cava.Util.Tactics.
 
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Cava.
 Require Import Cava.Core.Circuit.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Semantics.CombinationalProperties.

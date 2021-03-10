@@ -22,7 +22,7 @@ Require Import ExtLib.Structures.Monads.
 Import MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Cava.
 Require Import AcornAes.CipherControlCircuit.
 Require Import AcornAes.SubBytesCircuit.
 Require Import AcornAes.MixColumnsCircuit.
