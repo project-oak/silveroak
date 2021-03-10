@@ -15,22 +15,32 @@
 (****************************************************************************)
 
 Require Import Cava.Cava.
-Require Import AcornAes.Pkg.
-Import Pkg.Notations.
+Require Import AesSpec.AES256.
+Require Import AesSpec.Tests.Common.
+Require Import AesSpec.Tests.CipherTest.
+Require Import AesImpl.AddRoundKeyCircuit.
+Require Import AesImpl.Pkg.
 
-Section WithCava.
-  Context {signal} {semantics : Cava signal}.
+(* Test against FIPS test vectors *)
+Section FIPSTests.
+  (* Create a version of AES with the add_round_key circuit plugged in *)
+  Let impl : AESStep -> Vector.t bool 128 -> Vector.t bool 128 -> Vector.t bool 128 :=
+    (fun step key =>
+       match step with
+       | AddRoundKey =>
+         fun st =>
+           let input := from_flat st in
+           let k := from_flat key in
+           let output := aes_add_round_key k input in
+           to_flat output
+       | _ => aes_impl step key
+       end).
 
-  (* Perform the bitwise XOR of two 4-element vectors of 8-bit values. *)
-  Definition xor4xV
-      (ab : signal (Vec (Vec Bit 8) 4) * signal (Vec (Vec Bit 8) 4))
-      : cava (signal (Vec (Vec Bit 8) 4)) :=
-    zipWith xorV (fst ab) (snd ab).
+  (* encryption test *)
+  Goal (aes_test_encrypt Matrix impl = Success).
+  Proof. vm_compute. reflexivity. Qed.
 
-  (* Perform the bitwise XOR of two 4x4 matrices of 8-bit values. *)
-  Definition xor4x4V (a b : signal state) : cava (signal state) :=
-    zipWith xor4xV a b.
-
-  Definition aes_add_round_key (k : signal key) (st : signal state)
-    : cava (signal state) := xor4x4V k st.
-End WithCava.
+  (* decryption test *)
+  Goal (aes_test_decrypt Matrix impl = Success).
+  Proof. vm_compute. reflexivity. Qed.
+End FIPSTests.

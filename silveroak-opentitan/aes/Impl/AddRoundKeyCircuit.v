@@ -14,23 +14,23 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import AcornExamples.Examples.
-Require Import AcornExamples.NandGate.
-Require Import AcornExamples.FullAdderExample.
-Require Import AcornExamples.UnsignedAdderExamples.
-Require Import AcornExamples.AdderTree.
-Require Import AcornExamples.Sorter.
-Require Import Coq.extraction.Extraction.
-Require Import Coq.extraction.ExtrHaskellZInteger.
-Require Import Coq.extraction.ExtrHaskellString.
-Require Import Coq.extraction.ExtrHaskellBasic.
-Require Import Coq.extraction.ExtrHaskellNatInteger.
+Require Import Cava.Cava.
+Require Import AesImpl.Pkg.
+Import Pkg.Notations.
 
-Extraction Language Haskell.
+Section WithCava.
+  Context {signal} {semantics : Cava signal}.
 
-Extraction Library Examples.
-Extraction Library NandGate.
-Extraction Library FullAdderExample.
-Extraction Library UnsignedAdderExamples.
-Extraction Library AdderTree.
-Extraction Library Sorter.
+  (* Perform the bitwise XOR of two 4-element vectors of 8-bit values. *)
+  Definition xor4xV
+      (ab : signal (Vec (Vec Bit 8) 4) * signal (Vec (Vec Bit 8) 4))
+      : cava (signal (Vec (Vec Bit 8) 4)) :=
+    zipWith xorV (fst ab) (snd ab).
+
+  (* Perform the bitwise XOR of two 4x4 matrices of 8-bit values. *)
+  Definition xor4x4V (a b : signal state) : cava (signal state) :=
+    zipWith xor4xV a b.
+
+  Definition aes_add_round_key (k : signal key) (st : signal state)
+    : cava (signal state) := xor4x4V k st.
+End WithCava.

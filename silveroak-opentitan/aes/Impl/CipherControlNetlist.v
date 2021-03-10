@@ -15,18 +15,18 @@
 (****************************************************************************)
 
 Require Import Cava.Cava.
-Require Import AcornAes.CipherControlCircuit.
-Require Import AcornAes.SubBytesCircuit.
-Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.ShiftRowsCircuit.
-Require Import AcornAes.AddRoundKeyCircuit.
-Require Import AcornAes.Pkg.
-Require AcornAes.CipherCircuit.
+Require Import AesImpl.CipherControlCircuit.
+Require Import AesImpl.SubBytesCircuit.
+Require Import AesImpl.MixColumnsCircuit.
+Require Import AesImpl.ShiftRowsCircuit.
+Require Import AesImpl.AddRoundKeyCircuit.
+Require Import AesImpl.Pkg.
+Require AesImpl.CipherCircuit.
 Import Pkg.Notations.
 
-Require Import AcornAes.ShiftRowsNetlist.
-Require Import AcornAes.MixColumnsNetlist.
-Require Import AcornAes.SubBytesNetlist.
+Require Import AesImpl.ShiftRowsNetlist.
+Require Import AesImpl.MixColumnsNetlist.
+Require Import AesImpl.SubBytesNetlist.
 
 Definition aes_shift_rows' x y :=
   blackBoxNet aes_shift_rows_Interface (x, y).

@@ -18,20 +18,23 @@ Require Import Cava.Cava.
 Require Import AesSpec.AES256.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.CipherTest.
-Require Import AcornAes.AddRoundKeyCircuit.
-Require Import AcornAes.Pkg.
+Require Import AesImpl.ShiftRowsCircuit.
 
 (* Test against FIPS test vectors *)
 Section FIPSTests.
-  (* Create a version of AES with the add_round_key circuit plugged in *)
+  (* Create a version of AES with the shift_rows circuit plugged in *)
   Let impl : AESStep -> Vector.t bool 128 -> Vector.t bool 128 -> Vector.t bool 128 :=
     (fun step key =>
        match step with
-       | AddRoundKey =>
+       | ShiftRows =>
          fun st =>
            let input := from_flat st in
-           let k := from_flat key in
-           let output := aes_add_round_key k input in
+           let output := aes_shift_rows false input in
+           to_flat output
+       | InvShiftRows =>
+         fun st =>
+           let input := from_flat st in
+           let output := aes_shift_rows true input in
            to_flat output
        | _ => aes_impl step key
        end).

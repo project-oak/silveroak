@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 Require Import Cava.Cava.
-Require Import AcornAes.Pkg.
+Require Import AesImpl.Pkg.
 
 Local Notation byte := (Vec Bit 8) (only parsing).
 Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").

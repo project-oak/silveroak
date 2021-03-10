@@ -18,8 +18,8 @@ Require Import Cava.Cava.
 Require Import AesSpec.AES256.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.TestVectors.
-Require Import AcornAes.SubBytesCircuit.
-Require Import AcornAes.Pkg.
+Require Import AesImpl.SubBytesCircuit.
+Require Import AesImpl.Pkg.
 Import Pkg.Notations.
 
 (* Interface designed to match interface of corresponding SystemVerilog component:

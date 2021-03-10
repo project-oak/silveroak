@@ -20,16 +20,16 @@ Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.CipherProperties.
 Require Import AesSpec.ExpandAllKeys.
-Require Import AcornAes.AddRoundKeyCircuit.
-Require Import AcornAes.AddRoundKeyEquivalence.
-Require Import AcornAes.ShiftRowsCircuit.
-Require Import AcornAes.ShiftRowsEquivalence.
-Require Import AcornAes.SubBytesCircuit.
-Require Import AcornAes.SubBytesEquivalence.
-Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.MixColumnsEquivalence.
-Require Import AcornAes.CipherCircuit.
-Require Import AcornAes.CipherEquivalence.
+Require Import AesImpl.AddRoundKeyCircuit.
+Require Import AesImpl.AddRoundKeyEquivalence.
+Require Import AesImpl.ShiftRowsCircuit.
+Require Import AesImpl.ShiftRowsEquivalence.
+Require Import AesImpl.SubBytesCircuit.
+Require Import AesImpl.SubBytesEquivalence.
+Require Import AesImpl.MixColumnsCircuit.
+Require Import AesImpl.MixColumnsEquivalence.
+Require Import AesImpl.CipherCircuit.
+Require Import AesImpl.CipherEquivalence.
 Import ListNotations.
 Import Pkg.Notations.
 Import StateTypeConversions.LittleEndian.

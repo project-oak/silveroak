@@ -14,36 +14,23 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Cava.Cava.
-Require Import AesSpec.AES256.
-Require Import AesSpec.Tests.Common.
-Require Import AesSpec.Tests.CipherTest.
-Require Import AcornAes.ShiftRowsCircuit.
+Require Import Examples.Examples.
+Require Import Examples.NandGate.
+Require Import Examples.FullAdderExample.
+Require Import Examples.UnsignedAdderExamples.
+Require Import Examples.AdderTree.
+Require Import Examples.Sorter.
+Require Import Coq.extraction.Extraction.
+Require Import Coq.extraction.ExtrHaskellZInteger.
+Require Import Coq.extraction.ExtrHaskellString.
+Require Import Coq.extraction.ExtrHaskellBasic.
+Require Import Coq.extraction.ExtrHaskellNatInteger.
 
-(* Test against FIPS test vectors *)
-Section FIPSTests.
-  (* Create a version of AES with the shift_rows circuit plugged in *)
-  Let impl : AESStep -> Vector.t bool 128 -> Vector.t bool 128 -> Vector.t bool 128 :=
-    (fun step key =>
-       match step with
-       | ShiftRows =>
-         fun st =>
-           let input := from_flat st in
-           let output := aes_shift_rows false input in
-           to_flat output
-       | InvShiftRows =>
-         fun st =>
-           let input := from_flat st in
-           let output := aes_shift_rows true input in
-           to_flat output
-       | _ => aes_impl step key
-       end).
+Extraction Language Haskell.
 
-  (* encryption test *)
-  Goal (aes_test_encrypt Matrix impl = Success).
-  Proof. vm_compute. reflexivity. Qed.
-
-  (* decryption test *)
-  Goal (aes_test_decrypt Matrix impl = Success).
-  Proof. vm_compute. reflexivity. Qed.
-End FIPSTests.
+Extraction Library Examples.
+Extraction Library NandGate.
+Extraction Library FullAdderExample.
+Extraction Library UnsignedAdderExamples.
+Extraction Library AdderTree.
+Extraction Library Sorter.

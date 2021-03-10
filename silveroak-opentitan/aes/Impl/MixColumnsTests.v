@@ -18,8 +18,8 @@ Require Import Cava.Cava.
 Require Import AesSpec.AES256.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.CipherTest.
-Require Import AcornAes.MixColumnsCircuit.
-Require Import AcornAes.Pkg.
+Require Import AesImpl.MixColumnsCircuit.
+Require Import AesImpl.Pkg.
 Import Pkg.Notations.
 
 (* Test against FIPS test vectors *)

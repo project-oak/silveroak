@@ -18,7 +18,7 @@ Require Import Cava.Cava.
 Require Import Cava.CavaProperties.
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
-Require Import AcornAes.SubBytesCircuit.
+Require Import AesImpl.SubBytesCircuit.
 Import StateTypeConversions.LittleEndian.
 
 Section Equivalence.
