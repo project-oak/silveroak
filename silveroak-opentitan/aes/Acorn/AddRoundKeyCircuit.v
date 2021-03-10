@@ -14,8 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.BitVectorOps.
+Require Import Cava.Cava.
 Require Import AcornAes.Pkg.
 Import Pkg.Notations.
 

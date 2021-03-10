@@ -26,9 +26,9 @@ Import VectorNotations.
 Require Import Coq.Lists.List.
 Import ListNotations.
 
-Require Import Cava.Cava.
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Core.Circuit.
+Require Import Cava.Core.Core.
+Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.Vector.
 
 (******************************************************************************)
 (* Netlist implementations for the Cava class.                                *)

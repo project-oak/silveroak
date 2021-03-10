@@ -14,17 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Strings.Ascii Strings.String.
-From Coq Require Import NArith.NArith Lists.List.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
 Require Import Cava.Cava.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.UnsignedAdders.
 
 (******************************************************************************)
 (* countBy                                                                    *)
@@ -64,8 +54,6 @@ Definition b18 := N2Bv_sized 8 18.
 Definition b21 := N2Bv_sized 8 21.
 Definition b24 := N2Bv_sized 8 24.
 Definition b250 := N2Bv_sized 8 250.
-
-Local Open Scope list_scope.
 
 Example countBy_ex1: simulate countBy [b14; b7; b3; b250] = [b14; b21; b24; b18].
 Proof. reflexivity. Qed.

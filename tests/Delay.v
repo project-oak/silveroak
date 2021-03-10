@@ -14,20 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Strings.Ascii Strings.String.
-From Coq Require Import NArith.
-From Coq Require Import Lists.List.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.UnsignedAdders.
 Import Circuit.Notations.
-
-From Coq Require Import Bool.Bvector.
 
 (******************************************************************************)
 (* A byte unit delay.                                                         *)

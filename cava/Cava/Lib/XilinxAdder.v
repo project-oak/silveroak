@@ -23,13 +23,17 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import ExtLib.Structures.Monads.
+Import MonadNotation.
 
-Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Core.Core.
+Require Import Cava.Semantics.Combinational.
+Require Import Cava.Lib.Combinators.
+Require Import Cava.Util.Vector.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
 Local Open Scope type_scope.
+Local Open Scope monad_scope.
 
 Section WithCava.
   Context {signal} {m : Cava signal}.

@@ -14,38 +14,12 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Arith.PeanoNat.
-Require Import Coq.Vectors.Vector.
-Require Import Coq.Lists.List.
-Require Import Coq.NArith.NArith.
-Require Import Coq.NArith.Ndigits.
-Import VectorNotations.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-
-Require Import coqutil.Tactics.Tactics.
-Require Import Cava.Util.BitArithmetic.
-Require Import Cava.Util.Nat.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Vector.
-Require Import Cava.Util.Tactics.
-
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Core.Circuit.
-Require Import Cava.Semantics.Combinational.
-Require Import Cava.Semantics.CombinationalProperties.
-Require Import Cava.Util.Identity.
-Require Import Cava.Semantics.Simulation.
-Require Import Cava.Lib.MultiplexersProperties.
-
+Require Import Cava.Cava.
+Require Import Cava.CavaProperties.
 Require Import AesSpec.Cipher.
 Require Import AesSpec.CipherProperties.
 Require Import AcornAes.CipherCircuit.
-
-Local Open Scope list_scope.
-Local Open Scope monad_scope.
-Existing Instance CombinationalSemantics.
+Local Open Scope nat_scope.
 
 Local Notation byte := (Vector.t bool 8).
 Local Notation state := (Vector.t (Vector.t byte 4) 4) (only parsing).
@@ -74,10 +48,10 @@ Proof. intros; cbv [make_cipher_signals]. length_hammer. Qed.
 Hint Rewrite @make_cipher_signals_length using solve [length_hammer] : push_length.
 
 Section WithSubroutines.
-  Context (sub_bytes:     bool -> state -> ident state)
-          (shift_rows:    bool -> state -> ident state)
-          (mix_columns:   bool -> state -> ident state)
-          (add_round_key : key -> state -> ident state).
+  Context (sub_bytes:     bool -> state -> state)
+          (shift_rows:    bool -> state -> state)
+          (mix_columns:   bool -> state -> state)
+          (add_round_key : key -> state -> state).
   Context (sub_bytes_spec shift_rows_spec mix_columns_spec inv_sub_bytes_spec
                           inv_shift_rows_spec inv_mix_columns_spec : state -> state)
           (add_round_key_spec : state -> key -> state).
@@ -319,7 +293,8 @@ Section WithSubroutines.
         init_key init_state middle_keys last_key :
     0 < Nr ->
     length middle_keys = Nr - 1 ->
-    fold_left (fun (st : t (t byte 4) 4) '(i, k) => round_spec Nr is_decrypt k st i)
+    fold_left (fun (st : Vector.t (Vector.t byte 4) 4) '(i, k) =>
+                 round_spec Nr is_decrypt k st i)
               (combine (seq 1 Nr) (middle_keys ++ [last_key]))
               (round_spec Nr is_decrypt init_key init_state 0) =
     if is_decrypt

@@ -14,29 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Arith.PeanoNat.
-Require Import Coq.NArith.NArith.
-Require Import Coq.Lists.List.
-Require Import Coq.Vectors.Vector.
-Import ListNotations VectorNotations.
-Local Open Scope list_scope.
-
-Require Import coqutil.Tactics.Tactics.
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
 Require Import Cava.Cava.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Util.Identity.
-Require Import Cava.Semantics.CombinationalProperties.
-Require Import Cava.Lib.UnsignedAdders.
-Require Import Cava.Lib.MultiplexersProperties.
-
-Require Import DoubleCountBy.DoubleCountBy.
-
-Existing Instance CombinationalSemantics.
+Require Import Cava.CavaProperties.
+Require Import Tests.DoubleCountBy.DoubleCountBy.
 
 (* redefine simpl_ident to simplify the new semantics class *)
 Definition bvadd {n} (a b : Vector.t bool n) : Vector.t bool n :=
@@ -106,7 +86,7 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma bvsumc_snoc {n} xs (x : t bool n) :
+Lemma bvsumc_snoc {n} xs (x : Vector.t bool n) :
   bvsumc (xs ++ [x]) = bvaddc x (fst (bvsumc xs)).
 Proof.
   cbv [bvsumc].

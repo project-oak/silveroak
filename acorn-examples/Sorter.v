@@ -14,25 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import ExtLib.Structures.Monads.
-
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-
-Require Import Coq.Lists.List.
-Import ListNotations.
-
-Require Import Coq.Vectors.Vector.
-Require Import Coq.Bool.Bvector.
-Import VectorNotations.
-
-Require Import Coq.Arith.PeanoNat Coq.NArith.NArith.
-Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.Multiplexers.
-Existing Instance CavaCombinationalNet.
-
 Require Import Coq.micromega.Lia.
-
+Require Import Cava.Cava.
 Local Open Scope vector_scope.
 
 Section WithCava.
@@ -94,7 +77,7 @@ Lemma twoSorterCorrect {bw : nat} (v : Vector.t (Bvector bw) 2) :
   @twoSorter combType _ _ v = twoSorterSpec v.
 Proof.
   constant_vector_simpl v.
-  cbv [twoSorterSpec twoSorter nth_order].
+  cbv [twoSorterSpec twoSorter Vector.nth_order].
   simpl.
   destruct (Bv2N _ <=? Bv2N _)%N; try reflexivity.
 Qed.

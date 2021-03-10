@@ -21,7 +21,7 @@ Import ListNotations.
 Require Import ExtLib.Structures.Monads.
 
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Cava.
 Existing Instance CavaCombinationalNet.
 
 Definition lutNAND {signal} `{Cava signal}

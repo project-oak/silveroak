@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2020 The Project Oak Authors                                   *)
+(* Copyright 2021 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,11 +14,14 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Export Cava.Core.Signal.
-Require Export Cava.Core.CavaClass.
+Require Export Cava.Lib.BitVectorOps.
 Require Export Cava.Lib.CavaPrelude.
-Require Export Cava.Core.Circuit.
-Require Export Cava.Semantics.Combinational.
 Require Export Cava.Lib.Combinators.
-Require Export Cava.NetlistGeneration.NetlistGeneration.
-Require Export Cava.Semantics.Simulation.
+Require Export Cava.Lib.FullAdder.
+Require Export Cava.Lib.Multiplexers.
+Require Export Cava.Lib.UnsignedAdders.
+Require Export Cava.Lib.XilinxAdder.
+
+(* Vec has a lot of name collisions with lists and standard library vectors;
+   don't import it, just require it so that e.g. map is still Vec.map. *)
+Require Cava.Lib.Vec.

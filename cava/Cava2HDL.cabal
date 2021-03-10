@@ -62,13 +62,13 @@ library
                      Monad
                      MonadState
                      Multiplexers
-                     Simulation
                      Netlist
                      NetlistGeneration
                      Nat
                      Ndigits
                      PeanoNat
                      Signal
+                     Simulation
                      StateMonad
                      Traversable
                      UnsignedAdders
@@ -94,6 +94,7 @@ library
                      Specif
                      MonadExc
                      MonadFix
+                     MonadFold
                      MonadPlus
                      MonadReader
                      MonadTrans

@@ -28,11 +28,16 @@ Open Scope type_scope.
 Require Import coqutil.Tactics.Tactics.
 Require Import Coq.micromega.Lia.
 
-Require Import Cava.Util.BitArithmetic Cava.Util.List Cava.Util.Vector Cava.Util.Tactics.
+Require Import Cava.Core.Core.
+Require Import Cava.Lib.Combinators.
 Require Import Cava.Lib.FullAdder.
 Require Import Cava.Lib.UnsignedAdders.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Semantics.Combinational.
+Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Util.Identity.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Tactics.
+Require Import Cava.Util.Vector.
 
 Local Open Scope N_scope.
 
@@ -44,19 +49,16 @@ Lemma fullAdder_correct (cin a b : bool) :
   (N.testbit sum 0, N.testbit sum 1).
 Proof. destruct cin, a, b; reflexivity. Qed.
 
-(* Lemma about how to decompose a vector of bits. *)
-Lemma Bv2N_cons n b (bs : t bool n) :
-  Bv2N (b :: bs)%vector = (N.b2n b + 2 * (Bv2N bs))%N.
-Proof.
-  cbn [Bv2N]. destruct b; cbn [N.b2n].
-  all: rewrite ?N.succ_double_spec, ?N.double_spec.
-  all:lia.
-Qed.
-
 (* Lemma about how to decompose a list of bits. *)
 Lemma list_bits_to_nat_cons b bs :
   list_bits_to_nat (b :: bs) = (N.b2n b + 2 * (list_bits_to_nat bs))%N.
-Proof. apply Bv2N_cons. Qed.
+Proof.
+  cbv [list_bits_to_nat]. cbn [of_list length].
+  rewrite Bv2N_cons.
+  destruct_one_match; cbn [N.b2n];
+    rewrite ?N.double_spec, ?N.succ_double_spec;
+    lia.
+Qed.
 
 Hint Rewrite @bind_of_return @bind_associativity
      using solve [typeclasses eauto] : monadlaws.
@@ -139,7 +141,9 @@ Lemma Bv2N_list_bits_to_nat n (v : t bool n) :
 Proof.
   induction v; intros; [ reflexivity | ].
   rewrite to_list_cons, Bv2N_cons, list_bits_to_nat_cons.
-  lia.
+  destruct_one_match; cbn [N.b2n];
+    rewrite ?N.double_spec, ?N.succ_double_spec;
+    lia.
 Qed.
 
 Lemma colL_length {A B C} circuit a bs :

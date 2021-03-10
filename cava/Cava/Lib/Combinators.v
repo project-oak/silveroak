@@ -31,6 +31,7 @@ Require Import Cava.Core.CavaClass.
 Require Import Cava.Util.Identity.
 Require Import Cava.Util.Vector.
 Require Import Cava.Util.List.
+Require Import Cava.Util.MonadFold.
 Require Import Cava.Core.Signal.
 Require Import Cava.Util.Tactics.
 Require Import Cava.Lib.CavaPrelude.
@@ -78,68 +79,6 @@ Section WithCava.
     b' <- unpackV b ;;
     v <- mapT f (vcombine a' b') ;;
     packV v.
-
-  (* A list-based left monadic-fold. *)
-  Fixpoint foldLM {m} `{Monad m} {A B : Type}
-                  (f : B -> A -> m B)
-                  (input : list A)
-                  (accum : B)
-                  : m B :=
-    match input with
-    | [] => ret accum
-    | k::ks => st' <- f accum k  ;;
-               foldLM f ks st'
-    end.
-
-  Lemma foldLM_fold_right {A B}
-        (bind_ext : forall {A B} x (f g : A -> cava B),
-            (forall y, f y = g y) -> bind x f = bind x g)
-        (f : B -> A -> cava B) (input : list A) (accum : B) :
-    foldLM f input accum =
-    List.fold_right
-      (fun k continuation v => bind (f v k) continuation)
-      ret input accum.
-  Proof.
-    revert accum; induction input; intros; [ reflexivity | ].
-    cbn [foldLM List.fold_right].
-    eapply bind_ext; intros.
-    rewrite IHinput. reflexivity.
-  Qed.
-
-  Lemma foldLM_of_ret_valid {m} `{Monad m} `{MonadLaws.MonadLaws m} {A B}
-        (validA : A -> Prop) (validB : B -> Prop)
-        (f : B -> A -> m B) (g : B -> A -> B) input accum :
-    (forall b a, validA a -> validB b -> f b a = ret (g b a)) ->
-    (forall b a, validA a -> validB b -> validB (g b a)) ->
-    validB accum -> Forall validA input ->
-    foldLM f input accum = ret (fold_left g input accum).
-  Proof.
-    intro Hfg; revert accum; induction input; intros; [ reflexivity | ].
-    cbn [foldLM fold_left].
-    match goal with H : Forall _ (_ :: _) |- _ => inversion H; subst; clear H end.
-    rewrite Hfg, MonadLaws.bind_of_return; auto.
-  Qed.
-
-
-  Lemma foldLM_of_ret {m} `{Monad m} `{MonadLaws.MonadLaws m} {A B}
-        (f : B -> A -> m B) (g : B -> A -> B) input accum :
-    (forall b a, f b a = ret (g b a)) ->
-    foldLM f input accum = ret (fold_left g input accum).
-  Proof.
-    intro Hfg; revert accum; induction input; intros; [ reflexivity | ].
-    cbn [foldLM fold_left]. rewrite Hfg, MonadLaws.bind_of_return by auto.
-    apply IHinput.
-  Qed.
-
-  Lemma foldLM_ident_fold_left
-        {A B} (f : B -> A -> ident B) ls b :
-    foldLM f ls b = List.fold_left f ls b.
-  Proof.
-    revert b; induction ls; [ reflexivity | ].
-    cbn [foldLM List.fold_left]. intros.
-    cbn [bind ret Monad_ident].
-    rewrite IHls. reflexivity.
-  Qed.
 
   (* Below combinator
 

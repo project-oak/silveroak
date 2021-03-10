@@ -14,13 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.String.
-Require Import Coq.Lists.List.
-Require Import Coq.Vectors.Vector.
-Import ListNotations VectorNotations.
-
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
 Require Import AesSpec.AES256.
 Require Import AesSpec.Tests.Common.
 Require Import AesSpec.Tests.TestVectors.

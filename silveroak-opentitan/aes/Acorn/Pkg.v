@@ -14,24 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Vectors.Vector.
-Require Import Coq.NArith.BinNat.
-Require Import Coq.NArith.Ndigits.
-Require Import Cava.Util.BitArithmetic.
-
-Require Import ExtLib.Structures.Monads.
-Require Import ExtLib.Structures.Traversable.
-
-Require Import Cava.Util.Vector.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.BitVectorOps.
-Require Cava.Lib.Vec.
-Require Import Cava.Core.Signal.
+Require Import Cava.Cava.
 Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AesSpec.Tests.Common.
-
-Import VectorNotations.
+Local Open Scope vector_scope.
 
 Module Notations.
   Notation state := (Vec (Vec (Vec Bit 8) 4) 4) (only parsing).
@@ -61,14 +48,15 @@ Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
-  Definition bitvec_to_signal {n : nat} (lut : t bool n) : cava (signal (Vec Bit n)) :=
+  Definition bitvec_to_signal {n : nat} (lut : Vector.t bool n) : cava (signal (Vec Bit n)) :=
     Vec.bitvec_literal lut.
 
-  Definition bitvecvec_to_signal {a b : nat} (lut : t (t bool b) a) : cava (signal (Vec (Vec Bit b) a)) :=
-    v <- mapT bitvec_to_signal lut ;;
+  Definition bitvecvec_to_signal {a b : nat} (lut : Vector.t (Vector.t bool b) a)
+    : cava (signal (Vec (Vec Bit b) a)) :=
+    v <- Traversable.mapT bitvec_to_signal lut ;;
     packV v.
 
-  Definition natvec_to_signal_sized {n : nat} (size : nat) (lut : t nat n)
+  Definition natvec_to_signal_sized {n : nat} (size : nat) (lut : Vector.t nat n)
     : cava (signal (Vec (Vec Bit size) n)) :=
     bitvecvec_to_signal (Vector.map (nat_to_bitvec_sized size) lut).
 
@@ -122,8 +110,8 @@ Section WithCava.
   Definition aes_circ_byte_shift (shift: nat) (input: signal (Vec byte 4)):
     cava (signal (Vec byte 4)) :=
     let indices := [4 - shift; 5 - shift; 6 - shift; 7 - shift] in
-    let indices := map (fun x => Nat.modulo x 4) indices in
-    out <- mapT (indexConst input) indices ;;
+    let indices := Vector.map (fun x => Nat.modulo x 4) indices in
+    out <- Traversable.mapT (indexConst input) indices ;;
     packV out.
 
   Definition IDLE_S := bitvec_to_signal (nat_to_bitvec_sized 3 0).
@@ -170,6 +158,7 @@ End WithCava.
   SystemVerilog testbenches. The expected output tested in the generated test bench is created
   from the Cava semantics for AES sub components on these arbitrary inputs. *)
 Definition test_state
+  : Vector.t (Vector.t nat 4) 4
   := [[219; 19; 83; 69];
       [242; 10; 34; 92];
       [1; 1; 1; 1];
@@ -177,6 +166,7 @@ Definition test_state
   ].
 
 Definition test_key
+  : Vector.t (Vector.t nat 4) 4
   := [[219; 19; 83; 69];
       [242; 10; 34; 92];
       [1; 1; 1; 1];

@@ -14,23 +14,13 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Lists.List.
-Require Import Coq.Vectors.Vector.
-Import ListNotations VectorNotations.
-
-Require Import ExtLib.Structures.Monads.
-
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.Multiplexers.
-Require Cava.Lib.Vec.
 Require Import AcornAes.Pkg.
 Import Pkg.Notations.
-
 Local Open Scope vector_scope.
 
 Section SboxLut.
-  Definition sbox_fwd : t nat _ :=
+  Definition sbox_fwd : Vector.t nat _ :=
     [ 99; 124; 119; 123; 242; 107; 111; 197;
       48; 1; 103; 43; 254; 215; 171; 118;
 
@@ -79,7 +69,7 @@ Section SboxLut.
       140; 161; 137; 13; 191; 230; 66; 104;
       65; 153; 45; 15; 176; 84; 187; 22 ].
 
-  Definition sbox_inv : t nat _ :=
+  Definition sbox_inv : Vector.t nat _ :=
     [ 82; 9; 106; 213; 48; 54; 165; 56;
       191; 64; 163; 158; 129; 243; 215; 251;
 

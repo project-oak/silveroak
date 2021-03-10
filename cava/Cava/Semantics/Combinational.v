@@ -16,16 +16,14 @@
 
 
 Require Import Coq.Vectors.Vector.
-Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import ExtLib.Structures.Monads.
-Import ListNotations MonadNotation.
+Import MonadNotation.
 
-Require Import Cava.Cava.
-Require Import Cava.Util.List.
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Core.Circuit.
+Require Import Cava.Core.Core.
+Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Util.Identity.
+Require Import Cava.Util.Vector.
 
 (******************************************************************************)
 (* A boolean combinational logic interpretation for the Cava class            *)
@@ -40,7 +38,7 @@ Definition xnorb b1 b2 : bool := negb (xorb b1 b2).
 (* interpretation.                                                            *)
 (******************************************************************************)
 
-Instance CombinationalSemantics : Cava combType :=
+Instance CombinationalSemantics : Cava combType | 10 :=
   { cava := ident;
     monad := Monad_ident;
     constant := fun x => x;
@@ -106,8 +104,7 @@ Fixpoint step {i o} (c : Circuit i o)
 
 (* Automation to help simplify expressions using the identity monad *)
 Create HintDb simpl_ident.
-Hint Rewrite @Combinators.foldLM_ident_fold_left using solve [eauto]
-  : simpl_ident.
+Hint Rewrite @foldLM_ident_fold_left using solve [eauto] : simpl_ident.
 Ltac simpl_ident :=
   cbn [fst snd bind ret Monad_ident monad
            packV unpackV constant

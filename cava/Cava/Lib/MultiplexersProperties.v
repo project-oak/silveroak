@@ -16,10 +16,11 @@
 
 Require Import Coq.Vectors.Vector.
 
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Util.BitArithmetic.
-Require Import Cava.Semantics.CombinationalProperties.
+Require Import Cava.Core.Core.
 Require Import Cava.Lib.Multiplexers.
+Require Import Cava.Semantics.Combinational.
+Require Import Cava.Semantics.CombinationalProperties.
+Require Import Cava.Util.BitArithmetic.
 
 Lemma mux2_correct {t} (i0 i1 : combType t) (sel : combType Bit) :
   mux2 sel (i0, i1) = if sel then i1 else i0.

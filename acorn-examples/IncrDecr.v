@@ -14,24 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Lists.List.
-Require Import Coq.micromega.Lia.
-Require Import Coq.NArith.NArith.
 Require Import Coq.Vectors.Vector.
-Require Import coqutil.Tactics.Tactics.
-Require Import ExtLib.Structures.Monad.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Semantics.CombinationalProperties.
-Require Import Cava.Util.Identity.
-Require Import Cava.Util.BitArithmetic.
-Require Import Cava.Util.Nat.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Util.Vector.
-Require Import Cava.Lib.VecProperties.
-Require Cava.Lib.Vec.
-Import VectorNotations ListNotations MonadNotation.
+Require Import Cava.Cava.
+Require Import Cava.CavaProperties.
 Open Scope monad_scope.
-Open Scope list_scope.
 
 Section WithCava.
   Context `{semantics: Cava}.
@@ -154,9 +140,9 @@ Section Proofs.
   Proof.
     revert carry input; induction sz; intros; [ cbn; f_equal; solve [apply nil_eq] | ].
     cbn [incr']. simpl_ident.
-    rewrite (eta input). autorewrite with vsimpl. repeat destruct_pair_let.
+    rewrite (Vector.eta input). autorewrite with vsimpl.
     rewrite IHsz. rewrite Bv2N_cons.
-    destruct carry, (hd input); boolsimpl;
+    destruct carry, (Vector.hd input); boolsimpl;
       rewrite ?N.add_0_r, ?N.double_succ_double, ?N.succ_double_succ;
       rewrite ?N2Bv_sized_double, ?N2Bv_sized_succ_double;
       reflexivity.

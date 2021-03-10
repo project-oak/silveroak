@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2019 The Project Oak Authors                                   *)
+(* Copyright 2021 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,20 +14,24 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* Experiments with the primitives that form the core of Cava. *)
+(**** Import this file for everything you need to prove properties about Cava
+      circuits. ****)
 
-Require Import Cava.Cava.
+Require Export Cava.Cava.
+Require Export Cava.Lib.LibProperties.
+Require Export Cava.Semantics.Combinational.
+Require Export Cava.Semantics.CombinationalProperties.
 
-(* Experiments with the primitive Cava gates. *)
+(* Proofs about the standard library datatypes that can come in useful *)
+Require Export Cava.Util.List.
+Require Export Cava.Util.Nat.
+Require Export Cava.Util.Vector.
 
-Example inv_false : inv false = true.
-Proof. reflexivity. Qed.
+(* Generally useful tactics *)
+Require Export Coq.micromega.Lia.
+Require Export coqutil.Tactics.Tactics.
+Require Export Cava.Util.Tactics.
 
-Example inv_true  : inv true = false.
-Proof. reflexivity. Qed.
-
-Example and_00 : and2 (false, false) = false.
-Proof. reflexivity. Qed.
-
-Example and_11 : and2 (true, true) = true.
-Proof. reflexivity. Qed.
+(* Make sure the semantics Cava instance has priority over the
+netlist-generating one for proofs *)
+Existing Instance CombinationalSemantics.

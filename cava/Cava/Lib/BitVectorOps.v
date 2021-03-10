@@ -23,7 +23,7 @@ Require Import ExtLib.Structures.Traversable.
 Export MonadNotation.
 Open Scope monad_scope.
 
-Require Import Cava.Cava.
+Require Import Cava.Core.Core.
 Require Import Cava.Core.CavaClass.
 Require Import Cava.Lib.Combinators.
 

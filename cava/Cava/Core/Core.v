@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2019 The Project Oak Authors                                   *)
+(* Copyright 2021 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,20 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* Experiments with the primitives that form the core of Cava. *)
-
-Require Import Cava.Cava.
-
-(* Experiments with the primitive Cava gates. *)
-
-Example inv_false : inv false = true.
-Proof. reflexivity. Qed.
-
-Example inv_true  : inv true = false.
-Proof. reflexivity. Qed.
-
-Example and_00 : and2 (false, false) = false.
-Proof. reflexivity. Qed.
-
-Example and_11 : and2 (true, true) = true.
-Proof. reflexivity. Qed.
+Require Export Cava.Core.CavaClass.
+Require Export Cava.Core.Netlist.
+Require Export Cava.Core.Signal.
+Require Export Cava.Core.Circuit.

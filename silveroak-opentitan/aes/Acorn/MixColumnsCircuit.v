@@ -14,16 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Vectors.Vector.
-Import VectorNotations.
-
-Require Import ExtLib.Structures.Monads.
-Require Import ExtLib.Structures.Traversable.
-
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.BitVectorOps.
-Require Import Cava.Lib.Multiplexers.
 Require Import AcornAes.Pkg.
 
 Local Notation byte := (Vec Bit 8) (only parsing).

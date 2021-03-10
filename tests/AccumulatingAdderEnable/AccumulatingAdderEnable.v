@@ -14,18 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Strings.Ascii Strings.String.
-From Coq Require Import NArith.NArith Lists.List Vectors.Vector.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.UnsignedAdders.
-Import VectorNotations.
-Local Open Scope vector_scope.
 
 (******************************************************************************)
 (* Accumulating adder with an enable.                                         *)
@@ -75,8 +64,6 @@ End WithCava.
 (* Convenience notation for turning a list of nats into a list of bitvectors *)
 Local Notation "'#' l" := (map (fun i => N2Bv_sized 8 (N.of_nat i)) l)
                             (at level 40, only parsing).
-
-Local Open Scope list_scope.
 
 Example accumulatingAdderEnable_ex1:
   simulate accumulatingAdderEnable

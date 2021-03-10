@@ -14,21 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.String.
-Require Import Coq.NArith.NArith.
-Require Import Coq.Lists.List.
-Require Import Coq.Vectors.Vector.
-Import ListNotations VectorNotations.
-Local Open Scope list_scope.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.UnsignedAdders.
-Require Import Cava.Lib.Multiplexers.
-Require Cava.Lib.Vec.
 Import Circuit.Notations.
 
 (******************************************************************************)

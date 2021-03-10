@@ -14,21 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Lists.List.
-Import ListNotations.
-
-Require Import Coq.Vectors.Vector.
-Import VectorNotations.
-
-Require Import ExtLib.Structures.Monads.
-Import MonadNotation.
-
 Require Import Cava.Cava.
-Require Import Cava.Lib.CavaPrelude.
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Core.Circuit.
-Require Import Cava.Lib.Combinators.
-Require Import Cava.Lib.Multiplexers.
 Import Circuit.Notations.
 
 Local Open Scope monad_scope.

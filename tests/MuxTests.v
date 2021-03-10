@@ -13,23 +13,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Bool.Bool Coq.NArith.NArith.
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-
-Require Import Coq.Lists.List.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.Multiplexers.
-
-Require Import Coq.Bool.Bvector.
-Import Vector.VectorNotations.
-
-Local Open Scope vector_scope.
-Existing Instance CavaCombinationalNet.
 
 Section WithCava.
   Context {signal} `{Cava signal}.
@@ -50,8 +34,6 @@ Section WithCava.
     indexAt v sel.
 
 End WithCava.
-
-Local Close Scope vector_scope.
 
 (******************************************************************************)
 (* mux2 tests                                                                 *)
@@ -91,7 +73,6 @@ Definition mux2_1_tb
 (* muxBus                                                                     *)
 (******************************************************************************)
 
-Local Open Scope vector_scope.
 Definition v0 := N2Bv_sized 8   5.
 Definition v1 := N2Bv_sized 8 157.
 Definition v2 := N2Bv_sized 8 255.
@@ -115,8 +96,6 @@ Proof. reflexivity. Qed.
 
 Example m8: muxBus (v0to3, [true; true]%vector) = v3.
 Proof. reflexivity. Qed.
-
-Local Close Scope vector_scope.
 
 Definition muxBus4_8Interface
   := combinationalInterface "muxBus4_8"

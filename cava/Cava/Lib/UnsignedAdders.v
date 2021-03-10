@@ -23,9 +23,11 @@ Import MonadNotation.
 Open Scope monad_scope.
 Open Scope type_scope.
 
-Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Core.Core.
+Require Import Cava.Lib.CavaPrelude.
+Require Import Cava.Lib.Combinators.
 Require Import Cava.Lib.FullAdder.
+Require Import Cava.Util.Vector.
 
 Local Open Scope vector_scope.
 
