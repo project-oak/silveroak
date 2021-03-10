@@ -15,7 +15,6 @@
 (****************************************************************************)
 
 Require Import Cava.Cava.
-Require Import Cava.Lib.BitVectorOps.
 Require Import AcornAes.Pkg.
 Import Pkg.Notations.
 

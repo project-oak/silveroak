@@ -14,14 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.String.
-Require Import Coq.Lists.List.
-Require Import Coq.Vectors.Vector.
-Import ListNotations VectorNotations.
-Require Import ExtLib.Structures.Monads.
-Import MonadNotation.
-
-Require Import Cava.Cava.
 Require Import Cava.Cava.
 Require Import AcornAes.CipherControlCircuit.
 Require Import AcornAes.SubBytesCircuit.
@@ -145,4 +137,3 @@ Definition aes_cipher_core := CipherControlCircuit.aes_cipher_core
 
 Definition aes_cipher_core_Netlist
   := makeCircuitNetlist aes_cipher_core_Interface aes_cipher_core.
-

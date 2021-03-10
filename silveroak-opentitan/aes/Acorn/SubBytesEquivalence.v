@@ -15,27 +15,11 @@
 (****************************************************************************)
 
 Require Import Cava.Cava.
-Require Import Cava.Semantics.CombinationalProperties.
-Require Import Cava.Util.Identity.
-Require Import Cava.Util.BitArithmetic.
-Require Import Cava.Lib.BitVectorOps.
-Require Import Cava.Lib.VecProperties.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Util.Vector.
-Require Import Coq.Lists.List.
-Require Import Coq.Vectors.Vector.
-Require Import ExtLib.Structures.Monads.
-Import VectorNotations.
-Close Scope vector_scope.
-Import ListNotations.
-
+Require Import Cava.CavaProperties.
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
 Require Import AcornAes.SubBytesCircuit.
 Import StateTypeConversions.LittleEndian.
-
-Existing Instance CombinationalSemantics.
 
 Section Equivalence.
   Local Notation byte := (Vector.t bool 8).
@@ -102,13 +86,14 @@ Section Equivalence.
 
     constant_vector_simpl st.
     repeat match goal with
-       | v : t byte 4 |- _ => constant_vector_simpl v
-    end; clear.
+       | v : Vector.t byte 4 |- _ => constant_vector_simpl v
+           end; clear.
 
-    repeat first [ progress cbn [List.map map]
+    repeat first [ progress cbn [List.map Vector.map]
+                 | progress simpl_ident
                  | progress autorewrite with push_to_list push_of_list_sized ].
     rewrite ! sub_bytes_bytewise.
     destruct is_decrypt; reflexivity.
-Qed.
+  Qed.
 
 End Equivalence.

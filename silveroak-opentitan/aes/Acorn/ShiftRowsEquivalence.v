@@ -14,27 +14,13 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Lists.List.
-Require Import Coq.Vectors.Vector.
-Require Import ExtLib.Structures.Monads.
-Require Import Cava.Util.BitArithmetic.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Util.Vector.
-Require Import Cava.Semantics.CombinationalProperties.
-Require Import Cava.Util.Identity.
 Require Import Cava.Cava.
-Require Import Cava.Lib.BitVectorOps.
-Import ListNotations VectorNotations.
-Local Open Scope list_scope.
-
+Require Import Cava.CavaProperties.
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
 Require Import AcornAes.Pkg.
 Require Import AcornAes.ShiftRowsCircuit.
 Import StateTypeConversions.LittleEndian.
-
-Existing Instance CombinationalSemantics.
 
 Section Equivalence.
   Local Notation byte := (Vector.t bool 8).
@@ -61,7 +47,7 @@ Section Equivalence.
     (* break state vector into 16 bytes *)
     constant_vector_simpl st.
     repeat match goal with
-           | v := _ : t byte 4 |- _ => constant_vector_simpl v
+           | v := _ : Vector.t byte 4 |- _ => constant_vector_simpl v
     end; clear.
 
     (* simplify LHS (implementation) *)

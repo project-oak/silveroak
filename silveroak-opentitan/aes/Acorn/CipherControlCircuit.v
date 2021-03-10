@@ -14,36 +14,16 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.String.
-Require Import Coq.Lists.List.
-Import ListNotations.
-
-Require Import Coq.Vectors.Vector.
-Import VectorNotations.
-
-Require Import ExtLib.Structures.Monads.
-Import MonadNotation.
-
-From RecordUpdate Require Import RecordSet.
-
 Require Import Cava.Cava.
-Require Import Cava.Core.Circuit.
-Require Import Cava.Cava.
-Require Import Cava.Lib.Multiplexers.
-Require Import AcornAes.Pkg.
-Require Import AcornAes.SubBytesCircuit.
+Require Import ExtLib.Structures.MonadState.
+Require Import RecordUpdate.RecordSet.
 Require Import AcornAes.AddRoundKeyCircuit.
-Require Import AcornAes.ShiftRowsCircuit.
-Require Import AcornAes.MixColumnsCircuit.
 Require Import AcornAes.CipherCircuit.
+Require Import AcornAes.MixColumnsCircuit.
+Require Import AcornAes.Pkg.
+Require Import AcornAes.ShiftRowsCircuit.
+Require Import AcornAes.SubBytesCircuit.
 Import Circuit.Notations.
-Existing Instance CavaCombinationalNet.
-
-Require Import AcornAes.ShiftRowsNetlist.
-Require Import AcornAes.MixColumnsNetlist.
-Require Import AcornAes.SubBytesNetlist.
-
-Local Open Scope monad_scope.
 Local Open Scope vector_scope.
 
 Notation round_index := (Vec Bit 4) (only parsing).

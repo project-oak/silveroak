@@ -14,22 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-
-Import List.ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
-Require Import Coq.Vectors.Vector.
-Import VectorNotations.
-
-Open Scope monad_scope.
-
 Require Import Cava.Cava.
-Require Import Cava.Cava.
-
-Local Open Scope type_scope.
 Local Open Scope vector_scope.
 
 Definition width := 32.

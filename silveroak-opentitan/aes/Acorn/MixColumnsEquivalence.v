@@ -14,24 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Lists.List.
-Require Import Coq.micromega.Lia.
 Require Import Coq.setoid_ring.Ring.
-Require Import Coq.Vectors.Vector.
-Require Import ExtLib.Structures.Monads.
-Require Import Cava.Util.BitArithmetic.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Util.Vector.
-Require Import Cava.Semantics.CombinationalProperties.
-Require Import Cava.Util.Identity.
 Require Import Cava.Cava.
-Require Import Cava.Lib.BitVectorOps.
-Require Import Cava.Lib.MultiplexersProperties.
-Require Import Cava.Lib.VecProperties.
-Import ListNotations VectorNotations.
-Local Open Scope list_scope.
-
+Require Import Cava.CavaProperties.
 Require Import AesSpec.AES256.
 Require Import AesSpec.Polynomial.
 Require Import AesSpec.StateTypeConversions.
@@ -39,7 +24,6 @@ Require Import AcornAes.Pkg.
 Require Import AcornAes.MixColumnsCircuit.
 Import StateTypeConversions.LittleEndian.
 
-Existing Instance CombinationalSemantics.
 Existing Instance MixColumns.byteops.
 
 Section Equivalence.
@@ -59,7 +43,7 @@ Section Equivalence.
   Qed.
 
   Lemma bitvec_to_byte_to_poly bv :
-    MixColumns.byte_to_poly (bitvec_to_byte bv) = to_list bv.
+    MixColumns.byte_to_poly (bitvec_to_byte bv) = Vector.to_list bv.
   Proof.
     constant_bitvec_cases bv; reflexivity.
   Qed.
@@ -132,10 +116,12 @@ Section Equivalence.
   Lemma mix_single_column_equiv (is_decrypt : bool) (col : Vector.t byte 4) :
     aes_mix_single_column is_decrypt col
     = if is_decrypt
-       then map byte_to_bitvec
-                (MixColumns.inv_mix_single_column (map bitvec_to_byte col))
-       else map byte_to_bitvec
-                (MixColumns.mix_single_column (map bitvec_to_byte col)).
+      then Vector.map
+             byte_to_bitvec
+             (MixColumns.inv_mix_single_column (Vector.map bitvec_to_byte col))
+      else Vector.map
+             byte_to_bitvec
+             (MixColumns.mix_single_column (Vector.map bitvec_to_byte col)).
   Proof.
     constant_vector_simpl col.
     unfold MixColumns.inv_mix_single_column, MixColumns.mix_single_column.
@@ -167,15 +153,15 @@ Section Equivalence.
   Proof.
     cbv [aes_mix_columns mcompose]. simpl_ident.
     rewrite ! aes_transpose_correct by lia.
-    erewrite map_ext by apply mix_single_column_equiv.
+    erewrite Vector.map_ext by apply mix_single_column_equiv.
     cbv [AES256.aes_mix_columns_circuit_spec
            AES256.mix_columns AES256.inv_mix_columns
            MixColumns.mix_columns MixColumns.inv_mix_columns].
     cbv [from_flat to_flat BigEndian.to_rows BigEndian.from_rows].
     autorewrite with conversions.
     (* consolidate all the repeated maps *)
-    rewrite !transpose_map_map, !map_map.
-    rewrite <-!transpose_map_map, !map_map.
+    rewrite !transpose_map_map, !Vector.map_map.
+    rewrite <-!transpose_map_map, !Vector.map_map.
     destruct is_decrypt;
       repeat lazymatch goal with
              | |- [_] = [_] => apply f_equal

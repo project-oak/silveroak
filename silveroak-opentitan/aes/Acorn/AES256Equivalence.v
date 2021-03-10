@@ -14,21 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Arith.PeanoNat.
-Require Import Coq.NArith.NArith.
-Require Import Coq.Vectors.Vector.
-Require Import Coq.Lists.List.
-Require Import coqutil.Tactics.destr.
-Require Import ExtLib.Structures.Monads.
-Require Import Cava.Util.BitArithmetic.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Util.Vector.
-Require Import Cava.Cava.
-Require Import Cava.Semantics.Combinational.
-Require Import Cava.Core.Circuit.
-Require Import Cava.Util.Identity.
-Require Import Cava.Semantics.Simulation.
+Require Import Cava.CavaProperties.
 
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
@@ -54,8 +40,8 @@ Local Notation round_index := (Vec Bit 4) (only parsing).
 (* convenience definition for converting to/from flat keys in key * round
    constant pairs *)
 Definition flatten_key (kr : combType key * combType round_constant)
-  : t bool 128 * combType round_constant := (to_flat (fst kr), snd kr).
-Definition unflatten_key (kr : t bool 128 * combType round_constant)
+  : Vector.t bool 128 * combType round_constant := (to_flat (fst kr), snd kr).
+Definition unflatten_key (kr : Vector.t bool 128 * combType round_constant)
   : combType key * combType round_constant := (from_flat (fst kr), snd kr).
 Lemma flatten_unflatten kr : flatten_key (unflatten_key kr) = kr.
 Proof.

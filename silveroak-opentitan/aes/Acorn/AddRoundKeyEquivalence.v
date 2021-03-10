@@ -14,17 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Lists.List.
-Require Import Coq.Vectors.Vector.
-Require Import ExtLib.Structures.Monads.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Util.Vector.
-Require Import Cava.Util.Identity.
 Require Import Cava.Cava.
-Require Import Cava.Lib.BitVectorOps.
-Import ListNotations.
-
+Require Import Cava.CavaProperties.
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
 Require Import AcornAes.AddRoundKeyCircuit.
@@ -43,7 +34,7 @@ Section Equivalence.
     cbv [BigEndian.from_big_endian_bytes].
     cbv [BitArithmetic.bytevec_to_bitvec].
     autorewrite with pull_vector_map.
-    rewrite !map_map2, !map_map.
+    rewrite !Vector.map_map2, !Vector.map_map.
     rewrite !map_id_ext
       by (intros; rewrite BitArithmetic.bitvec_to_byte_to_bitvec; reflexivity).
     erewrite map2_ext with
