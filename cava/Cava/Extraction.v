@@ -40,12 +40,9 @@ Recursive Extraction Library NetlistGeneration.
 Recursive Extraction Library Netlist.
 Recursive Extraction Library Signal.
 Recursive Extraction Library Vector.
-Recursive Extraction Library UnsignedAdders.
-Recursive Extraction Library XilinxAdder.
+Recursive Extraction Library Adders.
 Recursive Extraction Library CavaPrelude.
 
 Recursive Extraction Library BitVectorOps.
-Recursive Extraction Library FullAdder.
 Recursive Extraction Library Multiplexers.
-Recursive Extraction Library UnsignedAdders.
 Recursive Extraction Library Vec.

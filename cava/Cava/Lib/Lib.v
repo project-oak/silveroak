@@ -14,13 +14,11 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Export Cava.Lib.Adders.
 Require Export Cava.Lib.BitVectorOps.
 Require Export Cava.Lib.CavaPrelude.
 Require Export Cava.Lib.Combinators.
-Require Export Cava.Lib.FullAdder.
 Require Export Cava.Lib.Multiplexers.
-Require Export Cava.Lib.UnsignedAdders.
-Require Export Cava.Lib.XilinxAdder.
 
 (* Vec has a lot of name collisions with lists and standard library vectors;
    don't import it, just require it so that e.g. map is still Vec.map. *)

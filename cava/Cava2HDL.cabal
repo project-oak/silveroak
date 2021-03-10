@@ -40,6 +40,7 @@ cabal-version:        >= 1.10
 library
   build-Depends:     base >= 4, mtl >= 2
   exposed-Modules:   Cava2SystemVerilog
+                     Adders
                      BinNat
                      BinNums
                      BinInt
@@ -53,7 +54,6 @@ library
                      Combinational
                      Circuit
                      Datatypes
-                     FullAdder
                      HexString
                      Identity
                      List
@@ -71,12 +71,10 @@ library
                      Simulation
                      StateMonad
                      Traversable
-                     UnsignedAdders
                      Vec
                      VectorDef
                      Vector
                      Vector0
-                     XilinxAdder
                      Byte0
                      TestBench
                      SystemVerilogUtils
