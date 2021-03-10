@@ -34,6 +34,7 @@ Recursive Extraction Library Circuit.
 Recursive Extraction Library Combinational.
 Recursive Extraction Library Combinators.
 Recursive Extraction Library Identity.
+Recursive Extraction Library Simulation.
 Recursive Extraction Library NetlistGeneration.
 
 Recursive Extraction Library Netlist.

@@ -57,6 +57,7 @@ library
                      HexString
                      Identity
                      List
+                     List0
                      Logic
                      Monad
                      MonadState
@@ -67,6 +68,7 @@ library
                      Ndigits
                      PeanoNat
                      Signal
+                     Simulation
                      StateMonad
                      Traversable
                      UnsignedAdders
