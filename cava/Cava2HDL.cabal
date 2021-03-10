@@ -57,12 +57,10 @@ library
                      HexString
                      Identity
                      List
-                     List0
                      Logic
                      Monad
                      MonadState
                      Multiplexers
-                     Simulation
                      Netlist
                      NetlistGeneration
                      Nat

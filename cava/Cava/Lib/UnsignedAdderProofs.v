@@ -28,11 +28,16 @@ Open Scope type_scope.
 Require Import coqutil.Tactics.Tactics.
 Require Import Coq.micromega.Lia.
 
-Require Import Cava.Util.BitArithmetic Cava.Util.List Cava.Util.Vector Cava.Util.Tactics.
+Require Import Cava.Core.Core.
+Require Import Cava.Lib.Combinators.
 Require Import Cava.Lib.FullAdder.
 Require Import Cava.Lib.UnsignedAdders.
-Require Import Cava.Acorn.Acorn.
+Require Import Cava.Semantics.Combinational.
+Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Util.Identity.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Tactics.
+Require Import Cava.Util.Vector.
 
 Local Open Scope N_scope.
 

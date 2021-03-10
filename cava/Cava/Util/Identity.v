@@ -20,6 +20,7 @@ Require Import ExtLib.Data.Vector.
 Require Import ExtLib.Structures.Monad.
 Require Import ExtLib.Structures.MonadLaws.
 Require Import ExtLib.Structures.Traversable.
+Require Import Cava.Util.MonadFold.
 Require Import Cava.Util.Vector.
 
 (* Identity monad *)
@@ -30,3 +31,13 @@ Instance Monad_ident : Monad ident :=
 
 Instance MonadLaws_ident : MonadLaws Monad_ident.
 Proof. econstructor; intros; exact eq_refl. Defined.
+
+Lemma foldLM_ident_fold_left
+      {A B} (f : B -> A -> ident B) ls b :
+  foldLM f ls b = List.fold_left f ls b.
+Proof.
+  revert b; induction ls; [ reflexivity | ].
+  cbn [foldLM List.fold_left]. intros.
+  cbn [bind ret Monad_ident].
+  rewrite IHls. reflexivity.
+Qed.

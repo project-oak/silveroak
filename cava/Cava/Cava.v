@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2020 The Project Oak Authors                                   *)
+(* Copyright 2021 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -19,7 +19,14 @@
    Coq for the specification, implementaiton and formal verification of circuits.
 *)
 
+(* Basic infrastructure for defining circuits *)
+Require Export Cava.Core.Core.
+
+(* Cava instance + definitions for creating netlists from circuits *)
+Require Export Cava.NetlistGeneration.NetlistGeneration.
+
+(* Library of common small circuit components (multiplexers, adders, etc) *)
+Require Export Cava.Lib.Lib.
+
+(* Bit-arithmetic functions (useful for making small tests) *)
 Require Export Cava.Util.BitArithmetic.
-Require Export Cava.Core.Netlist.
-Require Export Cava.Core.Signal.
-Require Export Cava.Util.Vector.

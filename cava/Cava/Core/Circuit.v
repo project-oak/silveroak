@@ -18,10 +18,8 @@ Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
 Import VectorNotations MonadNotation.
 
-Require Import Cava.Cava.
-Require Import Cava.Lib.CavaPrelude.
 Require Import Cava.Core.CavaClass.
-Require Import Cava.Lib.Combinators.
+Require Import Cava.Core.Signal.
 
 (******************************************************************************)
 (* Inductive to capture circuit's sequential structure                        *)

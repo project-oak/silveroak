@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2020 The Project Oak Authors                                   *)
+(* Copyright 2021 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,28 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Vectors.Vector.
-Import VectorNotations.
-Local Open Scope vector_scope.
-
-Require Import ExtLib.Structures.Monads.
-Require Import ExtLib.Structures.Traversable.
-Export MonadNotation.
-Open Scope monad_scope.
-
-Require Import Cava.Core.Core.
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Lib.Combinators.
-
-Section WithCava.
-  Context {signal} `{Cava signal}.
-
-  (* A circuit to xor two bit-vectors *)
-  Definition xorV {n : nat} (ab: signal (Vec Bit n) * signal (Vec Bit n)) :
-    cava (signal (Vec Bit n)) :=
-    zipWith xor2 (fst ab) (snd ab).
-
-  (* Make a curried version of xorV *)
-  Definition xorv {n} (a b : signal (Vec Bit n)) : cava (signal (Vec Bit n)) := xorV (a, b).
-
-End WithCava.
+Require Export Cava.Lib.Lib.
+Require Export Cava.Lib.MultiplexersProperties.
+Require Export Cava.Lib.UnsignedAdderProofs.
+Require Export Cava.Lib.VecProperties.

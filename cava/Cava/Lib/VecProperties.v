@@ -14,10 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Cava.Cava.
+Require Import Cava.Core.Core.
+Require Import Cava.Semantics.Combinational.
 Require Import Cava.Util.Tactics.
 Require Import Cava.Util.Vector.
-Require Import Cava.Acorn.Acorn.
 Require Import Cava.Util.Identity.
 Require Coq.Vectors.Vector.
 Require Cava.Lib.Vec.

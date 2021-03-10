@@ -24,34 +24,16 @@ Extraction Language Haskell.
 Set Extraction KeepSingleton.
 Set Extraction File Comment "Auto-generated from Cava/Coq. Please do not hand edit.".
 
-Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Cava.
-Require Import Cava.Core.Signal.
 Require Import Cava.Util.Vector.
-Require Import Cava.Acorn.Acorn.
 Require Import Cava.Semantics.Combinational.
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Lib.Combinators.
-Require Import Cava.Util.Identity.
-Require Import Cava.NetlistGeneration.NetlistGeneration.
-Require Import Cava.Lib.XilinxAdder.
-Require Import Cava.Lib.CavaPrelude.
-Require Import Cava.Core.Circuit.
-
-Require Import Cava.Lib.BitVectorOps.
-Require Import Cava.Lib.FullAdder.
-Require Import Cava.Lib.Multiplexers.
-Require Import Cava.Lib.UnsignedAdders.
-Require Import Cava.Lib.Vec.
 
 Recursive Extraction Library BitArithmetic.
 Recursive Extraction Library Cava.
-Recursive Extraction Library Acorn.
 Recursive Extraction Library Circuit.
 Recursive Extraction Library Combinational.
 Recursive Extraction Library Combinators.
 Recursive Extraction Library Identity.
-Recursive Extraction Library Simulation.
 Recursive Extraction Library NetlistGeneration.
 
 Recursive Extraction Library Netlist.
