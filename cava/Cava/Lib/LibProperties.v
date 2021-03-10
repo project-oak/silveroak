@@ -15,6 +15,9 @@
 (****************************************************************************)
 
 Require Export Cava.Lib.Lib.
+Require Export Cava.Lib.AddersProperties.
+Require Export Cava.Lib.BitVectorOpsProperties.
+Require Export Cava.Lib.CombinationalProperties.
+Require Export Cava.Lib.CombinatorsProperties.
 Require Export Cava.Lib.MultiplexersProperties.
-Require Export Cava.Lib.UnsignedAdderProofs.
 Require Export Cava.Lib.VecProperties.

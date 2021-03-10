@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2020 The Project Oak Authors                                   *)
+(* Copyright 2021 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,32 +14,46 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.NArith.NArith.
-Require Import Coq.Lists.List.
-Import ListNotations.
-Require Import Coq.Vectors.Vector.
-Import VectorNotations.
-Require Import ExtLib.Structures.Monads.
-Require Import ExtLib.Structures.MonadLaws.
-Import MonadNotation.
-Open Scope monad_scope.
-Open Scope type_scope.
-
-Require Import coqutil.Tactics.Tactics.
+Require Import Coq.Bool.Bool.
 Require Import Coq.micromega.Lia.
-
+Require Import Coq.NArith.NArith.
+Require Import Coq.Vectors.Vector.
+Require Import coqutil.Tactics.Tactics.
+Require Import ExtLib.Structures.Monad.
+Require Import ExtLib.Structures.MonadLaws.
 Require Import Cava.Core.Core.
+Require Import Cava.Lib.Adders.
 Require Import Cava.Lib.Combinators.
-Require Import Cava.Lib.FullAdder.
-Require Import Cava.Lib.UnsignedAdders.
+Require Import Cava.Lib.CombinationalProperties.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.BitArithmeticProperties.
 Require Import Cava.Util.Identity.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Require Import Cava.Util.Vector.
-
 Local Open Scope N_scope.
+
+(* A proof that the half-adder is correct. *)
+Lemma halfAdder_behaviour :
+  forall (a : bool) (b : bool),
+    halfAdder (a, b) = (xorb a b, a && b).
+Proof.
+  auto.
+Qed.
+
+(* A proof that the the full-adder is correct. *)
+Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
+    fullAdder (cin, (a, b))
+    = (xorb cin (xorb a b),
+       (a && b) || (b && cin) || (a && cin)).
+Proof.
+  intros.
+  unfold fst.
+  simpl.
+  case a, b, cin.
+  all : reflexivity.
+Qed.
 
 (* First prove the full-adder correct. *)
 
@@ -51,9 +65,9 @@ Proof. destruct cin, a, b; reflexivity. Qed.
 
 (* Lemma about how to decompose a list of bits. *)
 Lemma list_bits_to_nat_cons b bs :
-  list_bits_to_nat (b :: bs) = (N.b2n b + 2 * (list_bits_to_nat bs))%N.
+  N.of_list_bits (b :: bs) = (N.b2n b + 2 * (N.of_list_bits bs))%N.
 Proof.
-  cbv [list_bits_to_nat]. cbn [of_list length].
+  cbv [N.of_list_bits]. cbn [of_list length].
   rewrite Bv2N_cons.
   destruct_one_match; cbn [N.b2n];
     rewrite ?N.double_spec, ?N.succ_double_spec;
@@ -66,8 +80,8 @@ Hint Rewrite @bind_of_return @bind_associativity
 (* Correctness of the list based adder. *)
 Lemma addLCorrect (cin : bool) (a b : list bool) :
   length a = length b ->
-  list_bits_to_nat (addLWithCinL cin a b) =
-  list_bits_to_nat a + list_bits_to_nat b + N.b2n cin.
+  N.of_list_bits (addLWithCinL cin a b) =
+  N.of_list_bits a + N.of_list_bits b + N.b2n cin.
 Proof.
   cbv zeta. cbv [addLWithCinL adderWithGrowthL unsignedAdderL colL].
   cbn [fst snd].
@@ -137,7 +151,7 @@ Proof.
 Qed.
 
 Lemma Bv2N_list_bits_to_nat n (v : t bool n) :
-  Bv2N v = list_bits_to_nat (to_list v).
+  Bv2N v = N.of_list_bits (to_list v).
 Proof.
   induction v; intros; [ reflexivity | ].
   rewrite to_list_cons, Bv2N_cons, list_bits_to_nat_cons.
@@ -183,5 +197,29 @@ Proof.
   reflexivity.
 Qed.
 
-Local Close Scope N_scope.
+(* A quick sanity check of the Xilinx adder with carry in and out *)
+Example xilinx_add_17_52:
+  xilinxAdderWithCarry
+    (false, (N2Bv_sized 8 17, N2Bv_sized 8 52)) =
+  (N2Bv_sized 8 69, false).
+Proof. vm_compute. reflexivity. Qed.
 
+(* A quick sanity check of the Xilinx adder with no bit-growth *)
+Example xilinx_no_growth_add_17_52:
+  xilinxAdder (N2Bv_sized 8 17) (N2Bv_sized 8 52) =
+  (N2Bv_sized 8 69).
+Proof. reflexivity. Qed.
+
+(* A proof that the the Xilinx full-adder is correct. *)
+Lemma xilinxFullAdder_behaviour :
+  forall (a : bool) (b : bool) (cin : bool),
+    xilinxFullAdder (cin, (a, b))
+    = (xorb cin (xorb a b),
+       (a && b) || (b && cin) || (a && cin)).
+Proof.
+  intros.
+  unfold fst.
+  simpl.
+  case a, b, cin.
+  all : reflexivity.
+Qed.

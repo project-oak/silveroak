@@ -22,6 +22,7 @@ Require Import Cava.Util.Tactics.
 Require Coq.Vectors.Vector. (* not imported due to name collisions with List *)
 
 Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.BitArithmeticProperties.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Vector.
 Require Import AesSpec.Polynomial.
@@ -36,7 +37,7 @@ Section ByteField.
   Definition byte_to_poly (b : byte) : poly bool :=
     Vector.to_list (N2Bv_sized 8 (Byte.to_N b)).
   Definition poly_to_byte (x : poly bool) : byte :=
-    match Byte.of_N (list_bits_to_nat x) with
+    match Byte.of_N (N.of_list_bits x) with
     | Some b => b
     | None => Byte.x00 (* error; should not get here! *)
     end.
@@ -256,7 +257,7 @@ Section ByteFieldProperties.
     byte_to_poly (poly_to_byte (p ++ repeat false n)) = p.
   Proof.
     cbv [poly_to_byte byte_to_poly]; intros.
-    rewrite list_bits_to_nat_app, list_bits_to_nat_zero.
+    rewrite N_of_list_bits_app, N_of_list_bits_zero.
     rewrite N.mul_0_r, N.add_0_r.
     apply poly_to_byte_to_poly; auto.
   Qed.

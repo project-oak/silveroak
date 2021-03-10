@@ -20,12 +20,14 @@
 Require Export Cava.Cava.
 Require Export Cava.Lib.LibProperties.
 Require Export Cava.Semantics.Combinational.
-Require Export Cava.Semantics.CombinationalProperties.
 
 (* Proofs about the standard library datatypes that can come in useful *)
 Require Export Cava.Util.List.
 Require Export Cava.Util.Nat.
 Require Export Cava.Util.Vector.
+
+(* Proofs about bit vectors *)
+Require Export Cava.Util.BitArithmeticProperties.
 
 (* Generally useful tactics *)
 Require Export Coq.micromega.Lia.

@@ -18,7 +18,6 @@ module Main where
 
 import Cava2SystemVerilog
 import NandLUT
-import XilinxAdder
 import XilinxAdderExamples
 import XilinxAdderTree
 

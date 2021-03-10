@@ -15,24 +15,17 @@
 (****************************************************************************)
 
 Require Import Coq.Vectors.Vector.
-
 Require Import Cava.Core.Core.
-Require Import Cava.Lib.Multiplexers.
 Require Import Cava.Semantics.Combinational.
-Require Import Cava.Util.BitArithmetic.
-Require Import Cava.Util.BitArithmeticProperties.
+Require Import Cava.Lib.CombinatorsProperties.
+Require Import Cava.Lib.BitVectorOps.
+Require Import Cava.Util.Vector.
 
-Lemma mux2_correct {t} (i0 i1 : combType t) (sel : combType Bit) :
-  mux2 sel (i0, i1) = if sel then i1 else i0.
-Proof. destruct sel; reflexivity. Qed.
-Hint Rewrite @mux2_correct using solve [eauto] : simpl_ident.
-
-Lemma mux4_correct {t} (i0 i1 i2 i3 : combType t) (sel : combType (Vec Bit 2)) :
-  mux4 (i0,i1,i2,i3) sel =
-  if Vector.hd (Vector.tl sel)
-  then if Vector.hd sel then i3 else i2
-  else if Vector.hd sel then i1 else i0.
+Lemma xorV_correct n a b :
+  @xorV _ _ n (a,b) = Vector.map2 xorb a b.
 Proof.
-  cbv in sel. constant_bitvec_cases sel; reflexivity.
+  intros. cbv [xorV]. cbn [fst snd].
+  simpl_ident. apply map2_ext; intros.
+  reflexivity.
 Qed.
-Hint Rewrite @mux4_correct using solve [eauto] : simpl_ident.
+Hint Rewrite @xorV_correct using solve [eauto] : simpl_ident.
