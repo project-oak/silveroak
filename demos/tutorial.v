@@ -180,7 +180,7 @@ Now, let's simulate the circuit, which can be useful for testing and proving
 functional correctness. Here, we use the identity-monad interpretation. The
 ``signal`` for this ``Cava`` instance is ``combType``, which interprets a
 ``Bit`` simply as a Coq ``bool``. If we provide the three inputs
-``[true; false; true]`` to the circuit simulation function ``multistep``, we'll
+``[true; false; true]`` to the circuit simulation function ``simulate``, we'll
 get ``[false; true; false]``:
 |*)
 
@@ -235,6 +235,11 @@ Proof.
 Qed.
 
 (*|
+A note about reading Coq proofs: in general, it's more important to understand
+the lemma statement (the part before ``Proof`` than it is to understand the
+proof body. The lemma statement shows what is being proven, and the proof body
+contains an "argument" to Coq that the statement is true.
+
 To summarize, there are three things you can do with Cava circuits:
 
 1. Define them (parameterized over an abstract ``Cava`` instance)
@@ -246,8 +251,143 @@ To summarize, there are three things you can do with Cava circuits:
 
 In the next example, we'll try a slightly more complex circuit.
 
-Example 2 : 8-Bit xor
-=====================
-
-To be continued!
+coq::none
 |*)
+
+Section WithCava.
+  Context {signal} {semantics : Cava signal}.
+
+(*|
+Example 2 : Bit-vector xor
+==========================
+More than 2?
+|*)
+
+  Definition xor_byte :
+    Circuit (signal (Vec Bit 8) * signal (Vec Bit 8))
+            (signal (Vec Bit 8)) :=
+    Comb (fun '(v1, v2) => Vec.map2 xor2 v1 v2).
+
+  Definition xor_bitvec {n : nat} :
+    Circuit (signal (Vec Bit n) * signal (Vec Bit n))
+            (signal (Vec Bit n)) :=
+    Comb (fun '(v1, v2) => Vec.map2 xor2 v1 v2).
+
+  Definition xor_tree {n m : nat} :
+    Circuit (signal (Vec (Vec Bit n) m))
+            (signal (Vec Bit n)) :=
+    Comb (tree (fun '(v1, v2) => Vec.map2 xor2 v1 v2)).
+
+(*|
+coq::none
+|*)
+
+End WithCava.
+
+(*|
+Simulations
+|*)
+
+Compute (simulate xor_byte [([true; true; true; false; false; false; false; false]%vector,
+                             [false; true; false; true; false; false; false; false]%vector)]).
+
+Compute (map Bv2N (simulate xor_byte [(N2Bv_sized 8 7, N2Bv_sized 8 10)])).
+
+Compute (map Bv2N (simulate xor_bitvec [(N2Bv_sized 8 7, N2Bv_sized 8 10)])).
+Compute (map Bv2N (simulate xor_bitvec [(N2Bv_sized 2 1, N2Bv_sized 2 3)])).
+Compute (map Bv2N (simulate xor_bitvec [(N2Bv_sized 10 1000, N2Bv_sized 10 3)])).
+
+Compute (map Bv2N (simulate xor_tree [[N2Bv_sized 8 7; N2Bv_sized 8 10]%vector])).
+Compute (map Bv2N (simulate xor_tree [[N2Bv_sized 2 1; N2Bv_sized 2 3]%vector])).
+Compute (map Bv2N (simulate xor_tree [[N2Bv_sized 10 1000; N2Bv_sized 10 3]%vector])).
+Compute (map Bv2N (simulate xor_tree
+                            [[ N2Bv_sized 8 1
+                               ; N2Bv_sized 8 2
+                               ; N2Bv_sized 8 4
+                               ; N2Bv_sized 8 8
+                               ; N2Bv_sized 8 16
+                               ; N2Bv_sized 8 32
+                               ; N2Bv_sized 8 64
+                               ; N2Bv_sized 8 128
+                             ]%vector])).
+
+(*|
+Proofs
+|*)
+
+Lemma xor_byte_correct (i : list (Vector.t bool 8 * Vector.t bool 8)) :
+  simulate xor_byte i = map (fun '(v1,v2) => Bvector.BVxor 8 v1 v2) i.
+Proof.
+  cbv [xor_byte]. autorewrite with push_simulate.
+  apply map_ext; intros.
+  repeat destruct_pair_let. (* get rid of let '(_,_) pattern *)
+  cbv [Bvector.BVxor]. simpl_ident.
+  apply Vector.map2_ext. reflexivity.
+Qed.
+
+Lemma xor_bitvec_correct n (i : list (Vector.t bool n * Vector.t bool n)) :
+  simulate xor_bitvec i = map (fun '(v1,v2) => Bvector.BVxor n v1 v2) i.
+Proof.
+  cbv [xor_bitvec]. autorewrite with push_simulate.
+  apply map_ext; intros. destruct_pair_let.
+  cbv [Bvector.BVxor]. simpl_ident.
+  apply Vector.map2_ext. reflexivity.
+Qed.
+
+Lemma xor_bitvec_xor_byte_equiv (i : list (Vector.t bool 8 * Vector.t bool 8)) :
+  simulate xor_bitvec i = simulate xor_byte i.
+Proof. reflexivity. Qed.
+
+(*|
+coq::none
+|*)
+Hint Rewrite Nxor_BVxor using solve [eauto] : push_Bv2N.
+
+(*|
+|*)
+
+Lemma xor_tree_correct n m (i : list (Vector.t (Vector.t bool n) m)) :
+  m <> 0 -> (* rule out size-0 tree *)
+  simulate xor_tree i = map (fun vs =>
+                               Vector.fold_left
+                                 (Bvector.BVxor n) (N2Bv_sized n 0) vs) i.
+Proof.
+  cbv [xor_tree]. intros.
+  autorewrite with push_simulate.
+  apply map_ext; intros.
+  apply (tree_equiv (t:=Vec Bit n)); intros; auto.
+  { (* 0 is a left identity *)
+    apply Bv2N_inj. autorewrite with push_Bv2N.
+    apply N.lxor_0_l. }
+  { (* 0 is a right identity *)
+    apply Bv2N_inj. autorewrite with push_Bv2N.
+    apply N.lxor_0_r. }
+  { (* xor is associative *)
+    apply Bv2N_inj. autorewrite with push_Bv2N.
+    symmetry. apply N.lxor_assoc. }
+  { (* xor circuit is equivalent to BVxor *)
+    cbv [Bvector.BVxor]. simpl_ident.
+    apply Vector.map2_ext. reflexivity. }
+Qed.
+
+Check xor_tree_correct 1000 1000.
+
+Lemma xor_bitvec_xor_tree_equiv n (i : list (Vector.t bool n * Vector.t bool n)) :
+  simulate xor_bitvec i = simulate xor_tree
+                                   (map (fun '(v1,v2) => [v1;v2]%vector) i).
+Proof.
+  cbv [xor_bitvec xor_tree]; autorewrite with push_simulate.
+  rewrite map_map.
+  apply map_ext; intros. destruct_pair_let.
+
+  (* The tree lemma produces the same side conditions as before, but we solve
+     them here in a more concise way *)
+  erewrite @tree_equiv with
+      (t:=Vec Bit n) (op:=Bvector.BVxor n) (id:=N2Bv_sized n 0)
+    by (intros; auto; simpl_ident; apply Bv2N_inj; autorewrite with push_Bv2N;
+        auto using N.lxor_0_r, N.lxor_0_l, N.lxor_assoc).
+
+  autorewrite with push_vector_fold vsimpl. simpl_ident.
+  apply Bv2N_inj. autorewrite with push_Bv2N.
+  rewrite N.lxor_0_l. reflexivity.
+Qed.
