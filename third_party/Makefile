@@ -21,22 +21,36 @@ all: coqutil coqtools bedrock2 extlib record-update
 update:
 	git submodule update --init --recursive
 
+no-update: build-coqutil build-bedrock2 build-extlib build-record-update
+
 minimize-requires: # noop
 
-# coq-tools is just python scripts; nothing to make
+build-coqutil:
+	$(MAKE) -C bedrock2/deps/coqutil all
+
+build-bedrock2: build-coqutil
+	$(MAKE) -C bedrock2 bedrock2_noex
+
+build-extlib:
+	$(MAKE) -C coq-ext-lib theories
+
+build-record-update:
+	$(MAKE) -C coq-record-update
+
+# coq-tools is just python scripts; nothing to build
 coqtools: update
 
 coqutil: update
-	$(MAKE) -C bedrock2/deps/coqutil all
+	$(MAKE) build-coqutil
 
-bedrock2: update coqutil
-	$(MAKE) -C bedrock2 bedrock2_noex
+bedrock2: update
+	$(MAKE) build-bedrock2
 
 extlib: update
-	$(MAKE) -C coq-ext-lib theories
+	$(MAKE) build-extlib
 
 record-update: update
-	$(MAKE) -C coq-record-update
+	$(MAKE) build-record-update
 
 install: update
 	cd bedrock2 && $(MAKE) install_coqutil && $(MAKE) install_bedrock2
