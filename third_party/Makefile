@@ -40,15 +40,20 @@ build-extlib:
 build-record-update:
 	$(MAKE) -C coq-record-update
 
-coqtools: update build-coqtools
+coqtools: update
+	$(MAKE) build-coqtools
 
-coqutil: update build-coqutil
+coqutil: update
+	$(MAKE) build-coqutil
 
-bedrock2: update build-bedrock2
+bedrock2: update
+	$(MAKE) build-bedrock2
 
-extlib: update build-extlib
+extlib: update
+	$(MAKE) build-extlib
 
-record-update: update build-record-update
+record-update: update
+	$(MAKE) build-record-update
 
 install: update
 	cd bedrock2 && $(MAKE) install_coqutil && $(MAKE) install_bedrock2
