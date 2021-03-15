@@ -451,16 +451,29 @@ need. The same principle can apply to more complicated structures as well.
 Example 4: Tree of xors
 =======================
 
-To take the last circuit a step further, let's consider xoring not just two
-``n``-length vectors, but an arbitrary number ``m`` of ``n``-length vectors!
-
-
-
 .. coq:: none
 |*)
 
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
+
+(*|
+To take the last circuit a step further, let's consider xoring not just two
+``n``-length vectors, but an arbitrary number ``m`` of ``n``-length vectors!
+
+We could write a definition that chains the xors together one by one::
+
+  xor (xor (xor (xor (xor a b) c) d) e f)
+
+
+However, since there are no data dependencies, the circuit will have better
+timing properties for possibly large ``m`` if it is a tree, e.g.::
+
+  xor (xor (xor a b) c) (xor (xor d e) f)
+
+Luckily, Cava's standard library (which you can import with ``Require Import
+Cava.Cava``) contains a ``tree`` combinator for exactly this kind of situation.
+|*)
 
   Definition xor_tree {n m : nat} :
     Circuit (signal (Vec (Vec Bit n) m))
@@ -474,12 +487,21 @@ Section WithCava.
 End WithCava.
 
 (*|
-Simulations
+Now, we can just plug in any sequence of same-size vectors and compute the
+results!
 |*)
 
+(* 7 xor 10 = 13 (n=8, m=2)*)
 Compute map Bv2N
         (simulate xor_tree
                   [[N2Bv_sized 8 7; N2Bv_sized 8 10]%vector]).
+
+(* 1000 xor 3 = 1003 (n=10, m=2) *)
+Compute map Bv2N
+        (simulate (xor_bitvec 10)
+                  [(N2Bv_sized 10 1000, N2Bv_sized 10 3)]).
+
+(* 1 xor 2 xor 4 xor 8 xor 16 xor 32 xor 64 xor 128 = 255 (n=8, m=8) *)
 Compute map Bv2N
         (simulate xor_tree
                   [[ N2Bv_sized 8 1
@@ -493,7 +515,10 @@ Compute map Bv2N
                    ]%vector]).
 
 (*|
-Proofs
+To prove the xor tree circuit correct, we prove that it's equivalent to a
+``fold_left``, which is a native Coq loop. Essentially, this proof says that the
+circuit, even with the tree structure, is equivalent to just chaining ``BVxor``
+over the input in order (starting with 0, which is the identity for xor).
 
 .. coq:: none
 |*)
@@ -511,7 +536,18 @@ Proof.
   cbv [xor_tree]. intros.
   autorewrite with push_simulate.
   apply map_ext; intros.
-  apply (tree_equiv (t:=Vec Bit n)); intros; auto.
+
+  (* this rewrite produces side conditions; we'll handle them later *)
+  rewrite @tree_equiv with (t:=Vec Bit n) (id:=N2Bv_sized n 0);
+    intros; auto; simpl_ident.
+
+  { (* xor circuit is equivalent to BVxor *)
+    cbv [BVxor].
+    apply Vector.fold_left_ext; intros; simpl_ident.
+    apply Vector.map2_ext. reflexivity. }
+
+  (* now, solve the tree_equiv side conditions *)
+
   { (* 0 is a left identity *)
     apply Bv2N_inj. autorewrite with push_Bv2N.
     apply N.lxor_0_l. }
@@ -521,10 +557,16 @@ Proof.
   { (* xor is associative *)
     apply Bv2N_inj. autorewrite with push_Bv2N.
     symmetry. apply N.lxor_assoc. }
-  { (* xor circuit is equivalent to BVxor *)
-    cbv [BVxor]. simpl_ident.
-    apply Vector.map2_ext. reflexivity. }
 Qed.
+
+(*|
+It's worth taking a moment here again to point out just how broad the proof of
+correctness is. This proof applies to a circuit that xors two bits, and also
+applies to a circuit that xors 1000 1000-bit bitvectors.
+
+As a final touch, we can also prove that, when applied to just two bitvectors
+(``m = 2``), ``xor_tree`` is equivalent to ``xor_bitvec``:
+|*)
 
 Lemma xor_bitvec_xor_tree_equiv
       n (i : list (Vector.t bool n * Vector.t bool n)) :
@@ -538,7 +580,7 @@ Proof.
   (* The tree lemma produces the same side conditions as before, but
      we solve them here in a more concise way *)
   erewrite @tree_equiv with
-      (t:=Vec Bit n) (op:=BVxor n) (id:=N2Bv_sized n 0)
+      (t:=Vec Bit n) (id:=N2Bv_sized n 0)
     by (intros; auto; simpl_ident; apply Bv2N_inj;
         autorewrite with push_Bv2N;
         auto using N.lxor_0_r, N.lxor_0_l, N.lxor_assoc).
@@ -547,3 +589,15 @@ Proof.
   apply Bv2N_inj. autorewrite with push_Bv2N.
   rewrite N.lxor_0_l. reflexivity.
 Qed.
+
+(*|
+At this point, we've covered pretty much everything you need to start building
+*combinational* circuits in Cava -- circuits that don't have any
+timing-dependent elements like loops or registers. In the next example, we'll
+show how to build *sequential* circuits.
+
+Example 5 : Counter
+===================
+
+To be continued!
+|*)
