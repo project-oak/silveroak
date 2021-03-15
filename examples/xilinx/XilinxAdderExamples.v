@@ -33,23 +33,23 @@ Definition v44  := N2Bv_sized 8 44.
 
 (* Perform a few basic checks to make sure the adder works. *)
 
-Example xadd_17_52_0 : xilinxAdderWithCarry (false, (v17, v52)) =
+Example xadd_17_52_0 : xilinxAdderWithCarry (v17, v52, false) =
                        (v69, false).
 Proof. reflexivity. Qed.
 
-Example xadd_17_52_1 : xilinxAdderWithCarry (true, (v17, v52)) =
+Example xadd_17_52_1 : xilinxAdderWithCarry (v17, v52, true) =
                        (v70, false).
 Proof. reflexivity. Qed.
 
-Example xadd_1_255_1 : xilinxAdderWithCarry (false, (v1, v255)) =
+Example xadd_1_255_1 : xilinxAdderWithCarry (v1, v255, false) =
                        (v0, true).
 Proof. reflexivity. Qed.
 
-Example xadd_0_255_1 : xilinxAdderWithCarry (true, (v0, v255)) =
+Example xadd_0_255_1 : xilinxAdderWithCarry (v0, v255, true) =
                        (v0, true).
 Proof. reflexivity. Qed.
 
-Example xadd_200_100_0 : xilinxAdderWithCarry (false, (v200, v100)) =
+Example xadd_200_100_0 : xilinxAdderWithCarry (v200, v100, false) =
                          (v44, true).
 Proof. reflexivity. Qed.
 
@@ -60,33 +60,27 @@ Proof. reflexivity. Qed.
 
 Definition adder8Interface
   := combinationalInterface "adder8"
-     [mkPort "cin" Bit; mkPort "a" (Vec Bit 8); mkPort "b" (Vec Bit 8)]
+     [mkPort "a" (Vec Bit 8); mkPort "b" (Vec Bit 8); mkPort "cin" Bit]
      [mkPort "sum" (Vec Bit 8); mkPort "cout" Bit]
      [].
 
-(* Produce a version of the xilinxAdderWithCarry with a flat-tuple input. *)
-Definition xilinxAdderWithCarryFlat {signal} `{Cava signal} {n}
-                                    '(cin, a, b)
-                                    : cava (signal (Vec Bit n) * signal Bit) :=
-  xilinxAdderWithCarry (cin, (a, b)).
-
 Definition adder8Netlist
-  := makeNetlist adder8Interface xilinxAdderWithCarryFlat.
+  := makeNetlist adder8Interface xilinxAdderWithCarry.
 
 Local Open Scope N_scope.
 
 Definition adder8_tb_inputs :=
-  map (fun '(cin, (a, b))
-       => (n2bool cin, N2Bv_sized 8 a, N2Bv_sized 8 b))
-  [(0, (7, 3));
-   (1, (115, 67));
-   (0, (92, 18));
-   (0, (50, 200));
-   (0, (255, 255));
-   (1, (255, 255))].
+  map (fun '(a, b, cin)
+       => (N2Bv_sized 8 a, N2Bv_sized 8 b, n2bool cin))
+  [(7, 3, 0);
+   (115, 67, 1);
+   (92, 18, 0);
+   (50, 200, 0);
+   (255, 255, 0);
+   (255, 255, 1)].
 
 Definition adder8_tb_expected_outputs :=
-  simulate (Comb xilinxAdderWithCarryFlat) adder8_tb_inputs.
+  simulate (Comb xilinxAdderWithCarry) adder8_tb_inputs.
 
 Definition adder8_tb :=
   testBench "adder8_tb" adder8Interface
