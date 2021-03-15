@@ -21,12 +21,12 @@ Require Import Coq.Vectors.Vector.
 Require Import coqutil.Tactics.Tactics.
 Require Import ExtLib.Structures.Monad.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Semantics.CombinationalProperties.
-Require Import Cava.Util.Identity.
-Require Import Cava.Util.BitArithmetic.
-Require Import Cava.Util.Nat.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Util.Vector.
+Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Acorn.Identity.
+Require Import Cava.BitArithmetic.
+Require Import Cava.NatUtils.
+Require Import Cava.Tactics.
+Require Import Cava.VectorUtils.
 Require Import Cava.Lib.VecProperties.
 Require Cava.Lib.Vec.
 Import VectorNotations ListNotations MonadNotation.
@@ -61,7 +61,7 @@ Section WithCava.
     '(sum1, carry) <- half_adder (carry, i1) ;;
     '(sum2, carry) <- half_adder (carry, i2) ;;
     '(sum3, carry) <- half_adder (carry, i3) ;;
-    packV [sum0;sum1;sum2;sum3]%vector.
+    unpeel [sum0;sum1;sum2;sum3]%vector.
 
   (* decrement a 4-bit vector *)
   Definition decr4 (input : signal (Vec Bit 4))
@@ -74,7 +74,7 @@ Section WithCava.
     '(diff1, borrow) <- half_subtractor (i1, borrow) ;;
     '(diff2, borrow) <- half_subtractor (i2, borrow) ;;
     '(diff3, borrow) <- half_subtractor (i3, borrow) ;;
-    packV [diff0;diff1;diff2;diff3]%vector.
+    unpeel [diff0;diff1;diff2;diff3]%vector.
 
   Fixpoint incr' {sz} (carry : signal Bit)
     : signal (Vec Bit sz) -> cava (signal (Vec Bit sz)) :=
@@ -115,7 +115,7 @@ Section Proofs.
   Existing Instance CombinationalSemantics.
 
   Lemma half_adder_correct (x y : combType Bit) :
-    half_adder (x,y) = (xorb x y, andb x y).
+    unIdent (half_adder (x,y)) = (xorb x y, andb x y).
   Proof.
     cbv [half_adder and2 xor2 CombinationalSemantics].
     simpl_ident. reflexivity.
@@ -123,16 +123,16 @@ Section Proofs.
   Hint Rewrite half_adder_correct using solve [eauto] : simpl_ident.
 
   Lemma incr4_correct (input : combType (Vec Bit 4)) :
-    incr4 input = N2Bv_sized 4 (Bv2N input + 1).
+    unIdent (incr4 input) = N2Bv_sized 4 (Bv2N input + 1).
   Proof.
     cbv [incr4]. simpl_ident. boolsimpl.
-    cbn [packV indexConst CombinationalSemantics].
+    cbn [unpeel indexConst CombinationalSemantics].
     cbn [combType] in input. constant_bitvec_cases input.
     all:reflexivity.
   Qed.
 
   Lemma half_subtractor_correct (x y : combType Bit) :
-    half_subtractor (x,y) = (xorb x y, andb (negb x) y).
+    unIdent (half_subtractor (x,y)) = (xorb x y, andb (negb x) y).
   Proof.
     cbv [half_subtractor and2 xor2 CombinationalSemantics].
     simpl_ident; reflexivity.
@@ -140,7 +140,7 @@ Section Proofs.
   Hint Rewrite half_subtractor_correct using solve [eauto] : simpl_ident.
 
   Lemma decr4_correct (input : combType (Vec Bit 4)) :
-    decr4 input = N2Bv_sized 4 (if (Bv2N input =? 0)%N then 15
+    unIdent (decr4 input) = N2Bv_sized 4 (if (Bv2N input =? 0)%N then 15
                                           else Bv2N input - 1).
   Proof.
     cbv [decr4]. simpl_ident. boolsimpl.
@@ -149,7 +149,7 @@ Section Proofs.
   Qed.
 
   Lemma incr'_correct {sz} carry (input : combType (Vec Bit sz)) :
-    incr' carry input
+    unIdent (incr' carry input)
     = N2Bv_sized _ (Bv2N input + if carry then 1 else 0)%N.
   Proof.
     revert carry input; induction sz; intros; [ cbn; f_equal; solve [apply nil_eq] | ].
@@ -163,11 +163,11 @@ Section Proofs.
   Qed.
 
   Lemma incr_correct {sz} (input : combType (Vec Bit sz)) :
-    incr input = N2Bv_sized _ (Bv2N input + 1).
+    unIdent (incr input) = N2Bv_sized _ (Bv2N input + 1).
   Proof. cbv [incr]. simpl_ident. apply incr'_correct. Qed.
 
   Lemma decr'_correct {sz} borrow (input : combType (Vec Bit sz)) :
-    decr' borrow input
+    unIdent (decr' borrow input)
     = N2Bv_sized _ (if borrow
                     then if (Bv2N input =? 0)%N
                          then N.ones (N.of_nat sz)
@@ -204,7 +204,7 @@ Section Proofs.
   Qed.
 
   Lemma decr_correct {sz} (input : combType (Vec Bit sz)) :
-    decr input
+    unIdent (decr input)
     = N2Bv_sized _ ( if (Bv2N input =? 0)%N
                      then 2 ^ (N.of_nat sz) - 1
                      else Bv2N input - 1)%N.

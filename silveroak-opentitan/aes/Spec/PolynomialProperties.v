@@ -19,7 +19,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 Require Import Coq.setoid_ring.Ring.
 Require Import coqutil.Tactics.Tactics.
-Require Import Cava.Util.List.
+Require Import Cava.ListUtils.
 Require Import AesSpec.Polynomial.
 Import ListNotations.
 Local Open Scope list_scope.

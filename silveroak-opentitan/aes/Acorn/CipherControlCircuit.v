@@ -27,7 +27,7 @@ Import MonadNotation.
 From RecordUpdate Require Import RecordSet.
 
 Require Import Cava.Cava.
-Require Import Cava.Core.Circuit.
+Require Import Cava.Acorn.Circuit.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.Multiplexers.
 Require Import AcornAes.Pkg.
@@ -59,8 +59,6 @@ Section WithCava.
     bitvec_to_signal (nat_to_bitvec_sized _ 1).
   Definition round_2: cava (signal round_index) :=
     bitvec_to_signal (nat_to_bitvec_sized _ 2).
-  Definition round_10: cava (signal round_index) :=
-    bitvec_to_signal (nat_to_bitvec_sized _ 10).
   Definition round_13: cava (signal round_index) :=
     bitvec_to_signal (nat_to_bitvec_sized _ 13).
   Definition round_14: cava (signal round_index) :=
@@ -198,7 +196,7 @@ Section WithCava.
     (xs: Vector.t (cipher_control_signals cava_signal) n)
     : cipher_control_signals (vector_cava_signal n) :=
     match xs with
-    | [] => Build_cipher_control_signals (vector_cava_signal 0)
+    | [] => Build_cipher_control_signals _
       (ret []) (ret []) (ret []) (ret []) (ret []) (ret []) (ret [])
       (ret []) (ret []) (ret []) (ret []) (ret []) (ret []) (ret [])
       (ret []) (ret []) (ret []) (ret []) (ret []) (ret [])
@@ -211,7 +209,7 @@ Section WithCava.
     : cipher_control_signals cava_signal :=
     map_natural_transform x (fun _ xs =>
       v <- xs ;;
-      v' <- packV v ;;
+      v' <- unpeel v ;;
       sel' <- sel ;;
       indexAt v' sel'
     ).
@@ -356,7 +354,7 @@ Section WithCava.
     setSignal key_words_sel_o (
       (* TODO(blaxill): support other key sizes *)
       dec_key_gen_q' <- dec_key_gen_q ;;
-      sel <- mux2Cond (op_i inputs) (KEY_WORDS_0123, KEY_WORDS_4567) ;;
+      sel <- mux2Cond (op_i inputs) (KEY_WORDS_4567, KEY_WORDS_0123) ;;
       mux2Cond dec_key_gen_q' (ret sel, KEY_WORDS_ZERO)
       ) ;;
 
@@ -411,12 +409,11 @@ Section WithCava.
     (* // Are we doing the last regular round? *)
     (* if (round_q == num_rounds_regular) begin *)
     let cond :=
-      num_rounds_q <- num_rounds_q ;;
-      r2 <- round_2 ;;
-      round_q <- round_q ;;
-      round_q <- add_round round_q r2 ;;
-      eqb round_q num_rounds_q in
-
+      num_rounds_q' <- num_rounds_q ;;
+      round_q' <- round_q ;;
+      round_2 <- round_2 ;;
+      round_q_2 <- add_round round_q' round_2 ;;
+      eqb round_q_2 num_rounds_q' in
     (*   aes_cipher_ctrl_ns = FINISH; *)
     setEnSignal aes_cipher_ctrl_ns cond FINISH_S ;;
 
@@ -434,16 +431,13 @@ Section WithCava.
     let cond3 := andCond cond2 (ret (out_ready_i inputs)) in
     (*       // Go to idle state directly. *)
     (*       dec_key_gen_d      = 1'b0; *)
-    setEnSignal1 dec_key_gen_d cond3 (constant false) ;;
+    setEnSignal1 out_valid_o cond3 (constant false) ;;
     (*       aes_cipher_ctrl_ns = IDLE; *)
     setEnSignal aes_cipher_ctrl_ns cond3 IDLE_S.
 
   Definition transition_finish (inputs: control_inputs): signal_update :=
     dec_key_gen_q <- getSignal dec_key_gen_d ;;
     round_q <- getSignal round_d ;;
-
-    (* NOTE(blaxill): this differs from aes_cipher_control but is currently required to trigger last round computation in cipher_loop *)
-    updateSignal round_d inc_round ;;
 
     (* // Select key words for add_round_key *)
     (* key_words_sel_o = dec_key_gen_q                ? KEY_WORDS_ZERO : *)
@@ -550,8 +544,6 @@ Section WithCava.
     * signal Bit (* data_out_clear_d *)
     )%type.
 
-  Import Pkg.Notations.
-
   Definition control_outputs : Type :=
     (* Outputs directly from cipher_control_signals *)
     signal Bit (* in_ready_o *)
@@ -574,6 +566,7 @@ Section WithCava.
     * signal Bit (* dec_key_gen_o *)
     * signal Bit (* key_clear_o *)
     * signal Bit (* data_out_clear_o *)
+    * signal round_index
     .
 
   Definition aes_cipher_control_loop
@@ -626,11 +619,6 @@ Section WithCava.
     (* assign data_out_clear_o = data_out_clear_q; *)
     key_gen <- or2 (dec_key_gen_d', dec_key_gen_d next_state) ;;
     key_expand_op_o <- mux2 key_gen (op_i inputs, constant false) ;;
-
-    r2 <- round_2 ;;
-    round_q <- add_round (round_d state) r2 ;;
-    transition <- eqb round_q (num_rounds_d state) ;;
-
     ret
       ( extend_with_loop_state  ( extract_loop_outputs next_state
         , key_expand_op_o
@@ -639,6 +627,7 @@ Section WithCava.
         , dec_key_gen_d state
         , key_clear_d state
         , data_out_clear_d state
+        , round_d state
         )
       next_state
       ).
@@ -647,9 +636,11 @@ Section WithCava.
     : Circuit control_inputs control_outputs :=
     Loop(Loop(Loop(Loop(Loop(Loop(Loop(Comb aes_cipher_control_loop))))))).
 
+  Import Pkg.Notations.
+
   Context (key_expand :
-    Circuit (signal Bit * signal Bit * signal Bit * signal round_index * signal (Vec Bit 3) * signal keypair)
-            (signal keypair)).
+    Circuit (signal Bit * signal Bit * signal Bit * signal round_index * signal (Vec Bit 3) * signal key)
+            (signal key)).
   Context (cipher_loop:
     Circuit (
     signal Bit (* op_i/is_decrypt : true for decryption, false for encryption *)
@@ -665,85 +656,74 @@ Section WithCava.
       ( _
       * signal state (* prng data *)
       * signal state
-      * signal keypair )
+      * signal key )
       ( signal Bit (* in_ready_o *)
       * signal Bit (* out_valid_o *)
       * signal Bit (* crypt_o *)
       * signal Bit (* dec_key_gen_o *)
       * signal Bit (* key_clear_o *)
       * signal Bit (* data_out_clear_o *)
-
       * signal state (* state_o *)
       ) :=
     Loop (
       (* 1. Run aes_cipher_control: Place cipher control signals into the right place *)
       Comb ( fun inputs =>
-        let '(input_signals, prng, state_init, kp, feedback) := inputs in
+        let '(input_signals, prng, st, k, feedback_state) := inputs in
         let '(a,b,c,d,e,f,op,key_len) := input_signals in
-        ret ((state_init, Build_control_inputs a b c d e f op key_len), (op, key_len, prng, kp, feedback))
+        ret (Build_control_inputs a b c d e f op key_len, (op, key_len, prng, st, k, feedback_state))
       ) >==>
-      First (First Delay) >==>
-      First (Second aes_cipher_control) >==>
+      First aes_cipher_control >==>
 
       (* 2. Run key_expand: Place key_expand signals into the right place *)
-      Comb ( fun inputs  =>
-        let '( st, control_signals
-             , (op, key_len, prng, input_kp, last_kp)) := inputs in
+      Comb ( fun inputs =>
+        let '( control_signals
+             , (op, key_len, prng, st, k, feedback_state)) := inputs in
 
         let '( _ , _ , _ , _ , _
              , key_expand_step
              , key_expand_clear
-             , _ , _
-             , key_full_sel, _ , _ , _
+             , _ , _ , _ , _ , _ , _
              , key_expand_op
              , key_expand_round
-             , _ , _ , _ , _ ) := control_signals in
-
-        prngkey <- packV [prng;prng] ;;
-        ret ( ( key_expand_op, key_expand_step, key_expand_clear, key_expand_round, key_len, last_kp)
-            , (control_signals, op, st, input_kp, prngkey, last_kp) )
+             , _ , _ , _ , _ , _ ) := control_signals in
+        (*FIXME(blaxill): Fix k *)
+        ret ( ( key_expand_op, key_expand_step, key_expand_clear, key_expand_round, key_len, k)
+            , (control_signals, op, st, feedback_state) )
       ) >==>
       First key_expand >==>
 
       (* 2. Run cipher_loop: Place cipher signals into the right place *)
       Comb (fun inputs =>
-        let '(kp, (control_signals, op, st, input_kp, prngkey, last_kp)) := inputs in
+        let '(k, (control_signals, op, st, feedback_state)) := inputs in
 
-        let '( in_ready, out_valid, _
-             , key_full_we_o , _ , _ , _ , _ , _
-             , key_full_sel , _
-             , key_words_sel, _, _
-             , round
+        let '( in_ready
+             , out_valid
+             , _ , _ , _ , _ , _ , _ , _
+             , _ , _ , _ , _ , _ , _
              , crypt
              , dec_key_gen
              , key_clear
              , data_out_clear
+             , current_round
         ) := control_signals in
 
-        key_full_mux <- mux4 (input_kp, last_kp, kp, input_kp) key_full_sel ;;
-        key_full_mux <- mux2 key_full_we_o (last_kp, key_full_mux);;
-
-        k0 <- indexConst last_kp 0 ;;
-        k1 <- indexConst last_kp 1 ;;
+        r13 <- round_13 ;;
         r0 <- round_0 ;;
-        r14 <- round_14 ;;
-
-        k' <- mux4 (k0, k0, k1, defaultSignal) key_words_sel ;;
-        k <- aes_transpose k' ;;
-
-        ret
-          ( (op, r14, r0, round, k, st, k)
-          , ( in_ready, out_valid, crypt, dec_key_gen, key_clear, data_out_clear, key_full_mux))
+        ret ( (op, r13, r0, current_round, st, k, k)
+            , (in_ready, out_valid, crypt, dec_key_gen, key_clear, data_out_clear))
 
       ) >==>
       First cipher_loop >==>
 
-      (* Move values to correct tuple locations *)
+      (* cleanup *)
       Comb (fun inputs =>
         let '(st, signals) := inputs in
-        let '(signals, kp) := signals in
-
-        ret ( signals, st, kp )
+        ret
+          ( ( signals
+            , st
+            )
+          , st )
+          (* FIXME(blaxill): hold state when output not ready *)
       )
     ).
 

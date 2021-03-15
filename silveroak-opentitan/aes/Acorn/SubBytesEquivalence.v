@@ -15,14 +15,14 @@
 (****************************************************************************)
 
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Semantics.CombinationalProperties.
-Require Import Cava.Util.Identity.
-Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Acorn.CombinationalProperties.
+Require Import Cava.Acorn.Identity.
+Require Import Cava.BitArithmetic.
 Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.Lib.VecProperties.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Util.Vector.
+Require Import Cava.ListUtils.
+Require Import Cava.Tactics.
+Require Import Cava.VectorUtils.
 Require Import Coq.Lists.List.
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
@@ -44,7 +44,7 @@ Section Equivalence.
 
   Lemma sub_bytes_fwd_bytewise:
     forall (b : byte),
-    aes_sbox_lut false b = byte_to_bitvec (Sbox.forward_sbox (bitvec_to_byte b)).
+    unIdent (aes_sbox_lut false b) = byte_to_bitvec (Sbox.forward_sbox (bitvec_to_byte b)).
   Proof.
     intros.
     repeat match goal with
@@ -57,7 +57,7 @@ Section Equivalence.
 
   Lemma sub_bytes_inv_bytewise:
     forall (b : byte),
-    aes_sbox_lut true b = byte_to_bitvec (Sbox.inverse_sbox (bitvec_to_byte b)).
+    unIdent (aes_sbox_lut true b) = byte_to_bitvec (Sbox.inverse_sbox (bitvec_to_byte b)).
   Proof.
     intros.
     repeat match goal with
@@ -68,8 +68,8 @@ Section Equivalence.
     end; vm_compute; reflexivity.
   Qed.
 
-  Lemma sub_bytes_bytewise (is_decrypt : bool) (b : byte):
-    aes_sbox_lut is_decrypt b
+  Lemma sub_bytes_bytewise is_decrypt (b : byte):
+    unIdent (aes_sbox_lut is_decrypt b)
     = byte_to_bitvec
          ((if is_decrypt then Sbox.inverse_sbox else Sbox.forward_sbox)
             (bitvec_to_byte b)).
@@ -79,8 +79,8 @@ Section Equivalence.
 
   Lemma sub_bytes_equiv :
     forall (is_decrypt : bool) (st : state),
-      aes_sub_bytes is_decrypt st
-      = AES256.aes_sub_bytes_circuit_spec is_decrypt st.
+      unIdent (aes_sub_bytes is_decrypt st)
+    = AES256.aes_sub_bytes_circuit_spec is_decrypt st.
   Proof.
     intros.
 

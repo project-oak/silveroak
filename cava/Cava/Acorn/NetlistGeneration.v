@@ -27,8 +27,8 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 
 Require Import Cava.Cava.
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Core.Circuit.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.Circuit.
 
 (******************************************************************************)
 (* Netlist implementations for the Cava class.                                *)
@@ -197,11 +197,11 @@ Definition localSignalNet {A : SignalType}
    assignSignal localSig v ;;
    ret localSig.
 
-Definition unpackVNet {t : SignalType} {s : nat} (v : Signal (Vec t s))
+Definition peelNet {t : SignalType} {s : nat} (v : Signal (Vec t s))
   : state CavaState (Vector.t (Signal t) s) :=
   mapT_vector (fun x => localSignalNet (IndexConst v x)) (vseq 0 s).
 
-Definition packVNet {t : SignalType} {s : nat} (v: Vector.t (Signal t) s)
+Definition unpeelNet {t : SignalType} {s : nat} (v: Vector.t (Signal t) s)
   : state CavaState (Signal (Vec t s)) :=
   localSignalNet (VecLit v).
 
@@ -210,8 +210,8 @@ Definition sliceNet {t: SignalType} {sz: nat}
                     (v: Signal (Vec t sz))
                     (H: startAt + len <= sz) :
                     state CavaState (Signal (Vec t len)) :=
-  v <- unpackVNet v ;;
-  packVNet (sliceVector v startAt len H).
+  v <- peelNet v ;;
+  unpeelNet (sliceVector v startAt len H).
 
 Fixpoint combToSignal (t : SignalType) (v : combType t) : Signal t :=
   match t, v with
@@ -260,8 +260,8 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     lut6 := lut6Net;
     xorcy := xorcyNet;
     muxcy := muxcyNet;
-    unpackV := @unpackVNet;
-    packV := @packVNet;
+    peel := @peelNet;
+    unpeel := @unpeelNet;
     indexAt k sz isz v i := localSignalNet (IndexAt v i);
     indexConst k sz v i := localSignalNet (IndexConst v i);
     slice k sz start len v H := @sliceNet k sz start len v H;

@@ -27,13 +27,12 @@ Require Import Coq.Arith.PeanoNat.
 
 Export MonadNotation.
 
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Util.Identity.
-Require Import Cava.Util.Vector.
-Require Import Cava.Util.List.
-Require Import Cava.Core.Signal.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Lib.CavaPrelude.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.VectorUtils.
+Require Import Cava.ListUtils.
+Require Import Cava.Signal.
+Require Import Cava.Tactics.
+Require Import Cava.Acorn.CavaPrelude.
 
 Generalizable All Variables.
 
@@ -74,10 +73,10 @@ Section WithCava.
            (a : signal (Vec A n))
            (b : signal (Vec B n))
            : cava (signal (Vec C n)) :=
-    a' <- unpackV a ;;
-    b' <- unpackV b ;;
+    a' <- peel a ;;
+    b' <- peel b ;;
     v <- mapT f (vcombine a' b') ;;
-    packV v.
+    unpeel v.
 
   (* A list-based left monadic-fold. *)
   Fixpoint foldLM {m} `{Monad m} {A B : Type}
@@ -133,7 +132,7 @@ Section WithCava.
 
   Lemma foldLM_ident_fold_left
         {A B} (f : B -> A -> ident B) ls b :
-    foldLM f ls b = List.fold_left f ls b.
+    unIdent (foldLM f ls b) = List.fold_left (fun b a => unIdent (f b a)) ls b.
   Proof.
     revert b; induction ls; [ reflexivity | ].
     cbn [foldLM List.fold_left]. intros.
@@ -260,9 +259,9 @@ Section WithCava.
                (circuit : signal A * signal B -> cava (signal C * signal A))
                (aIn: signal A) (bIn: signal (Vec B n)) :
                cava (signal (Vec C n) * signal A) :=
-  b <- unpackV bIn ;;
+  b <- peel bIn ;;
   '(c, a) <- colV circuit (aIn, b) ;;
-  cOut <- packV c ;;
+  cOut <- unpeel c ;;
   ret (cOut, a).
 
   Local Close Scope vector_scope.
@@ -402,18 +401,18 @@ Section WithCava.
     Vector.t A (2 ^ n) * Vector.t A (2 ^ n) :=
     splitat _ (@resize_default A (2 ^ (S n)) default (2 ^ n + 2 ^ n) v).
 
-  Fixpoint pow2tree_generic {T: Type} {m} `{Monad m}
-                         (default : T) (n : nat)
-                         (circuit: T -> T -> m T)
-                         : Vector.t T (2^n) -> m T :=
-    match n as n return Vector.t T (2^n) -> m T with
-    | O => fun v : Vector.t T 1 => ret (Vector.hd v)
-    | S n'=>
-      fun vR =>
-        let '(vL, vH) := divide default vR in
-        aS <- pow2tree_generic default n' circuit vL ;;
-        bS <- pow2tree_generic default n' circuit vH ;;
-        circuit aS bS
+  Fixpoint tree {T: Type} {m} `{Monad m}
+                          (default : T) (n : nat)
+                          (circuit: T -> T -> m T)
+                          (v : Vector.t T (2^(S n))) :
+                          m T :=
+    match n, v return m T with
+    | O, v2 => circuit (@Vector.nth_order _ 2 v2 0 (ltac:(lia)))
+                      (@Vector.nth_order _ 2 v2 1 (ltac:(lia)))
+    | S n', vR => let '(vL, vH) := divide default vR in
+                  aS <- tree default n' circuit vL ;;
+                  bS <- tree default n' circuit vH ;;
+                  circuit aS bS
     end.
 
   Lemma append_divide {A} d n H (v : t A (2 ^ (S n))) :
@@ -431,19 +430,18 @@ Section WithCava.
     reflexivity.
   Qed.
 
-  (* A specialization of pow2tree_generic that is constrained to take Cava
-    signal types i.e. only types that we support as values over wires for Cava
-    circuits. This allows the default value to be computed automatically. *)
-  Definition pow2tree {t: SignalType} n
+  (* A specialization of tree that is constrained to take Cava signal types
+    i.e. only types that we support as values over wires for Cava circuits.
+    This allows the default value to be computed automatically. *)
+  Definition treeS {t: SignalType} {n}
                    (circuit: signal t * signal t -> cava (signal t))
-                   (v : signal (Vec t (2^n))) :
+                   (v : Vector.t (signal t) (2^(S n))) :
                    cava (signal t) :=
-    v <- unpackV v ;;
-    pow2tree_generic defaultSignal n (fun a b => circuit (a, b)) v.
+  tree defaultSignal n (fun a b => circuit (a, b)) v.
 
   Local Open Scope nat_scope.
 
-  Lemma pow2tree_generic_equiv'
+  Lemma tree_equiv'
         {T}  {monad_laws : MonadLaws monad} (valid : T -> Prop)
         (id : T)
         (op : T -> T -> T)
@@ -461,15 +459,16 @@ Section WithCava.
         (default : T) (n : nat) :
     forall v,
       ForallV valid v ->
-      pow2tree_generic default n circuit v = ret (Vector.fold_left op id v).
+      tree default n circuit v = ret (Vector.fold_left op id v).
   Proof.
     induction n; intros.
-    { change (2 ^ 0) with 1 in *.
-      cbn [pow2tree_generic ForallV] in *.
-      autorewrite with push_vector_fold vsimpl.
-      rewrite op_id_left by tauto. reflexivity. }
-    { cbn [pow2tree_generic]. destruct_pair_let.
-      assert (2 ^ (S n) = 2 ^ n + 2 ^ n) as Heq
+    { change (2 ^ 1) with 2 in *.
+      cbn [tree]. autorewrite with push_vector_fold vsimpl.
+      rewrite hd_0. autorewrite with vsimpl. cbn [ForallV] in *.
+      rewrite circuit_equiv, op_id_left; try tauto; [ ].
+      constant_vector_simpl v. cbn; tauto. }
+    { cbn [tree]. destruct_pair_let.
+      assert (2 ^ (S (S n)) = 2 ^ (S n) + 2 ^ (S n)) as Heq
         by abstract (rewrite Nat.pow_succ_r by lia; lia).
       lazymatch goal with
       | _ : ForallV ?P ?v |- context [divide ?d ?v] =>
@@ -489,7 +488,7 @@ Section WithCava.
       rewrite fold_left_resize. reflexivity. }
   Qed.
 
-  Lemma pow2tree_generic_equiv
+  Lemma tree_equiv
         {T}  {monad_laws : MonadLaws monad}
         (id : T)
         (op : T -> T -> T)
@@ -503,9 +502,9 @@ Section WithCava.
           forall a b : T, circuit a b = ret (op a b))
         (default : T) (n : nat) :
     forall v,
-      pow2tree_generic default n circuit v = ret (Vector.fold_left op id v).
+      tree default n circuit v = ret (Vector.fold_left op id v).
   Proof.
-    intros. apply pow2tree_generic_equiv' with (valid:=fun _ => True); auto using ForallV_trivial.
+    intros. apply tree_equiv' with (valid:=fun _ => True); auto using ForallV_trivial.
   Qed.
 
   (* Version of tree combinator that accepts all sizes by creating a tree out of
@@ -520,24 +519,19 @@ Section WithCava.
 
      ...instead of &-ing i4 and i5 together before combining them with the
      tree. *)
-  Definition tree_generic {m} {monad : Monad m} {A}
+  Definition tree_all_sizes {m} {monad : Monad m} {A}
              (default : A) (circuit : A -> A -> m A) {n} (v : Vector.t A n) : m A :=
     let '(v1, v2) := Vector.splitat (2 ^ Nat.log2 n)
                                     (resize_default
                                        default (2 ^ Nat.log2 n + (n - 2 ^ Nat.log2 n))
                                        v) in
-    tree_result <- pow2tree_generic default (Nat.log2 n) circuit v1 ;;
+    tree_result <- (match Nat.log2 n as n0 return Vector.t A (2 ^ n0) -> m A with
+                   | 0 => fun v : Vector.t A 1 => ret (Vector.hd v)
+                   | S n' => fun v : Vector.t A (2 ^ S n') => tree default n' circuit v
+                   end) v1 ;;
     foldLM circuit (to_list v2) tree_result.
 
-  (* specialized to signal so default value can be automatically inferred *)
-  Definition tree {m} {monad : Monad m} {t n}
-                   (circuit: signal t * signal t -> cava (signal t))
-                   (v : signal (Vec t n)) :
-                   cava (signal t) :=
-    v <- unpackV v ;;
-    tree_generic defaultSignal (fun x y => circuit (x,y)) v.
-
-  Lemma tree_generic_equiv' {T} {monad_laws : MonadLaws.MonadLaws monad}:
+  Lemma tree_all_sizes_equiv' {T} {monad_laws : MonadLaws.MonadLaws monad}:
     forall (id : T) (op : T -> T -> T) (valid : T -> Prop),
       valid id ->
       (forall a b, valid a -> valid b -> valid (op a b)) ->
@@ -549,9 +543,9 @@ Section WithCava.
         (forall a b : T, valid a -> valid b -> circuit a b = ret (op a b)) ->
         forall (default : T) (n : nat) (v : t T n),
           n <> 0 -> ForallV valid v ->
-          tree_generic default circuit v = ret (Vector.fold_left op id v).
+          tree_all_sizes default circuit v = ret (Vector.fold_left op id v).
   Proof.
-    cbv [tree_generic]; intros. repeat destruct_pair_let.
+    cbv [tree_all_sizes]; intros. repeat destruct_pair_let.
     assert (n = 2 ^ Nat.log2 n + (n - 2 ^ Nat.log2 n))
       by (apply Minus.le_plus_minus, Nat.log2_spec; Lia.lia).
     (* change the vector expression on the RHS to match LHS *)
@@ -577,7 +571,8 @@ Section WithCava.
     repeat match goal with H : _ /\ _ |- _ => destruct H end.
     destruct n;[ subst; cbn in *; rewrite MonadLaws.bind_of_return by auto;
                  match goal with H : _ |- _ => rewrite H; solve [auto] end | ].
-    erewrite pow2tree_generic_equiv' with (valid0:=valid) (id0:=id); eauto; [ | ].
+    destruct_one_match; [ Lia.lia | ].
+    erewrite tree_equiv' with (valid0:=valid) (id0:=id); eauto; [ | ].
     { rewrite MonadLaws.bind_of_return by auto.
       rewrite !fold_left_to_list, to_list_resize_default, to_list_append by lia.
       autorewrite with push_list_fold.
@@ -599,7 +594,7 @@ Section WithCava.
       apply ForallV_resize. cbn [ForallV] in *; auto. }
   Qed.
 
-  Lemma tree_generic_equiv {T} {monad_laws : MonadLaws.MonadLaws monad}:
+  Lemma tree_all_sizes_equiv {T} {monad_laws : MonadLaws.MonadLaws monad}:
     forall (id : T) (op : T -> T -> T),
       (forall a : T, op id a = a) ->
       (forall a : T, op a id = a) ->
@@ -608,16 +603,14 @@ Section WithCava.
         (forall a b : T, circuit a b = ret (op a b)) ->
         forall (default : T) (n : nat) (v : t T n),
           n <> 0 ->
-          tree_generic default circuit v = ret (Vector.fold_left op id v).
+          tree_all_sizes default circuit v = ret (Vector.fold_left op id v).
   Proof.
-    intros. apply tree_generic_equiv' with (valid:=fun _ => True); auto using ForallV_trivial.
+    intros. apply tree_all_sizes_equiv' with (valid:=fun _ => True); auto using ForallV_trivial.
   Qed.
 
   Definition all {n} (v : signal (Vec Bit n)) : cava (signal Bit) :=
-    match n with
-    | 0 => ret one
-    | _ => tree and2 v
-    end.
+    v <- peel v ;;
+    tree_all_sizes one (fun x y => and2 (x,y)) v.
 
   Fixpoint eqb {t : SignalType} : signal t -> signal t -> cava (signal Bit) :=
     match t as t0 return signal t0 -> signal t0 -> cava (signal Bit) with

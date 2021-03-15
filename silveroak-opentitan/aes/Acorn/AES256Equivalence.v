@@ -20,15 +20,15 @@ Require Import Coq.Vectors.Vector.
 Require Import Coq.Lists.List.
 Require Import coqutil.Tactics.destr.
 Require Import ExtLib.Structures.Monads.
-Require Import Cava.Util.BitArithmetic.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Util.Vector.
+Require Import Cava.BitArithmetic.
+Require Import Cava.ListUtils.
+Require Import Cava.Tactics.
+Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Semantics.Combinational.
-Require Import Cava.Core.Circuit.
-Require Import Cava.Util.Identity.
-Require Import Cava.Semantics.Simulation.
+Require Import Cava.Acorn.Combinational.
+Require Import Cava.Acorn.Circuit.
+Require Import Cava.Acorn.Identity.
+Require Import Cava.Acorn.Multistep.
 
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
@@ -87,13 +87,13 @@ Local Ltac solve_side_conditions :=
   cbv zeta; intros;
   lazymatch goal with
   | |- ?x = ?x => reflexivity
-  | |- context [aes_add_round_key _ _ = _] =>
+  | |- context [unIdent (aes_add_round_key _ _) = _] =>
     eapply add_round_key_equiv
-  | |- context [aes_sub_bytes _ _ = _] =>
+  | |- context [unIdent (aes_sub_bytes _ _) = _] =>
     eapply sub_bytes_equiv
-  | |- context [aes_shift_rows _ _ = _] =>
+  | |- context [unIdent (aes_shift_rows _ _) = _] =>
     eapply shift_rows_equiv
-  | |- context [aes_mix_columns _ _ = _] =>
+  | |- context [unIdent (aes_mix_columns _ _) = _] =>
     eapply mix_columns_equiv
   | |- context [_ < 2 ^ 4] => change (2 ^ 4)%nat with 16; Lia.lia
   | |- map fst (all_keys _ _ _) = _ => solve [eauto]
@@ -118,9 +118,9 @@ Lemma full_cipher_equiv
   cipher_input = make_cipher_signals Nr is_decrypt init_key_input
                                      (init_state :: init_state_ignored) ->
   (* precomputed keys match key expansion *)
-  simulate key_expand cipher_input = init_key :: middle_keys ++ [last_key] ->
+  multistep key_expand cipher_input = init_key :: middle_keys ++ [last_key] ->
   forall d,
-    nth Nr (simulate (full_cipher key_expand) cipher_input) d
+    nth Nr (multistep (full_cipher key_expand) cipher_input) d
     = from_flat
         ((if is_decrypt then aes256_decrypt else aes256_encrypt)
            (to_flat init_key) (to_flat last_key) middle_keys_flat
@@ -147,7 +147,7 @@ Proof.
     erewrite cipher_change_key_rep
       with (middle_keys_alt:=map to_flat middle_keys)
       by (eapply from_flat_to_flat
-          || rewrite map_map; eapply List.map_id_ext; intros;
+          || rewrite map_map; eapply ListUtils.map_id_ext; intros;
           autorewrite with conversions; reflexivity).
     (* equivalent because all subroutines are equivalent *)
     eapply cipher_subroutine_ext;
@@ -168,12 +168,12 @@ Lemma full_cipher_inverse
   length init_state_ignored_inv = Nr ->
   cipher_input_fwd = make_cipher_signals Nr false init_key_input_fwd
                                          (plaintext :: init_state_ignored_fwd) ->
-  let ciphertext := nth Nr (simulate (full_cipher key_expand) cipher_input_fwd) d in
+  let ciphertext := nth Nr (multistep (full_cipher key_expand) cipher_input_fwd) d in
   cipher_input_inv = make_cipher_signals Nr true init_key_input_inv
                                          (ciphertext :: init_state_ignored_inv) ->
   (* inverse key expansion reverses key expansion *)
-  simulate key_expand cipher_input_fwd = rev (simulate key_expand cipher_input_inv) ->
-  nth Nr (simulate (full_cipher key_expand) cipher_input_inv) d = plaintext.
+  multistep key_expand cipher_input_fwd = rev (multistep key_expand cipher_input_inv) ->
+  nth Nr (multistep (full_cipher key_expand) cipher_input_inv) d = plaintext.
 Proof.
   intros. simpl_ident. subst_lets.
 
@@ -193,7 +193,7 @@ Proof.
 
   autorewrite with conversions.
   cbv [combType Bvector.Bvector] in *.
-  lazymatch goal with H : simulate key_expand _ = _ |- _ =>
+  lazymatch goal with H : multistep key_expand _ = _ |- _ =>
                       rewrite H end.
   let l := lazymatch goal with
              |- context [map inv_mix_columns ?l] =>

@@ -16,7 +16,7 @@
 
 Require Import Coq.Bool.Bvector.
 Require Import Coq.Vectors.Vector.
-Require Import Cava.Util.Vector.
+Require Import Cava.VectorUtils.
 
 Section Spec.
   (* FIPS 197, 2.1: Word A group of 32 bits that is treated either as a single

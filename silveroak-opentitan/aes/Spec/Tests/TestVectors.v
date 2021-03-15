@@ -16,7 +16,7 @@
 
 Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
-Require Import Cava.Util.BitArithmetic.
+Require Import Cava.BitArithmetic.
 Require Import AesSpec.Tests.Common.
 Import ListNotations.
 Local Open Scope string_scope.

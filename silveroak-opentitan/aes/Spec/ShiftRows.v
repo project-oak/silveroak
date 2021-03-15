@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 Require Import Coq.Lists.List Coq.Arith.Arith.
-Require Import Cava.Util.List.
+Require Import Cava.ListUtils.
 Require Import Psatz.
 
 Section Spec.

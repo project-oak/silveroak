@@ -17,8 +17,8 @@
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
+Require Import Cava.ListUtils.
+Require Import Cava.Tactics.
 Import ListNotations.
 
 Section Spec.

@@ -34,12 +34,12 @@ Section FIPSTests.
        | SubBytes =>
          fun st =>
            let input := from_flat st in
-           let output := aes_sub_bytes false input in
+           let output := unIdent (aes_sub_bytes false input) in
            to_flat output
        | InvSubBytes =>
          fun st =>
            let input := from_flat st in
-           let output := aes_sub_bytes true input in
+           let output := unIdent (aes_sub_bytes true input) in
            to_flat output
        | _ => aes_impl step key
        end).

@@ -46,11 +46,11 @@ Definition bv3_7  := N2Bv_sized 3  7.
 Definition bv5_15 := N2Bv_sized 5 15.
 
 (* Check 3 * 5 = 30 *)
-Example mult3_5 : multiplier (bv2_3, bv3_5) = bv5_15.
+Example mult3_5 : unIdent (multiplier (bv2_3, bv3_5)) = bv5_15.
 Proof. reflexivity. Qed.
 
 (* Check 3 * 5 = 30 *)
-Example mult3_5_top : multiplier (bv2_3, bv3_5) = bv5_15.
+Example mult3_5_top : unIdent (multiplier (bv2_3, bv3_5)) = bv5_15.
 Proof. reflexivity. Qed.
 
 (******************************************************************************)
@@ -72,7 +72,7 @@ Definition mult2_3_5_tb_inputs
   := [(bv2_3, bv3_5); (bv2_3, bv3_7); (bv2_0, bv3_0)].
 
 Definition mult2_3_5_tb_expected_outputs
-  := simulate (Comb multiplier) mult2_3_5_tb_inputs.
+  := multistep (Comb multiplier) mult2_3_5_tb_inputs.
 
 Definition  mult2_3_5_tb
   := testBench "mult2_3_5_tb" mult2_3_5Interface

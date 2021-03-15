@@ -24,10 +24,10 @@ Require Import ExtLib.Structures.Monads.
 Import MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.Lib.CavaPrelude.
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Core.Circuit.
-Require Import Cava.Lib.Combinators.
+Require Import Cava.Acorn.CavaPrelude.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.Circuit.
+Require Import Cava.Acorn.Combinators.
 Require Import Cava.Lib.Multiplexers.
 Import Circuit.Notations.
 
@@ -89,7 +89,7 @@ Section WithCava.
     is_final_round <- round_i ==? num_rounds_regular;;
     (* add_round_key_in_sel :
        1 if round_i = 0, 2 if round_i = num_rounds_regular, 0 otherwise *)
-    add_round_key_in_sel <- packV [is_first_round; is_final_round]%vector ;;
+    add_round_key_in_sel <- unpeel [is_first_round; is_final_round]%vector ;;
     is_middle_round <- nor2 (is_first_round, is_final_round) ;;
     (* round_key_sel : 1 for a decryption middle round, 0 otherwise *)
     round_key_sel <- and2 (is_middle_round, is_decrypt) ;;

@@ -18,9 +18,9 @@ Require Import Coq.Init.Byte.
 Require Import Coq.Lists.List.
 Require Coq.Vectors.Vector.
 
-Require Import Cava.Util.BitArithmetic.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Vector.
+Require Import Cava.BitArithmetic.
+Require Import Cava.ListUtils.
+Require Import Cava.VectorUtils.
 Require Import AesSpec.AddRoundKey.
 Require Import AesSpec.MixColumns.
 Require Import AesSpec.ShiftRows.
