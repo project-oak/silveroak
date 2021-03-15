@@ -56,22 +56,22 @@ Definition nand2Netlist := makeNetlist nand2Interface nand2_gate.
 
 (* A proof that the NAND gate implementation is correct. *)
 Lemma nand2_behaviour : forall (a : bool) (b : bool),
-                        nand2_gate (a, b) = negb (a && b).
+                        unIdent (nand2_gate (a, b)) = negb (a && b).
 Proof.
   auto.
 Qed.
 
 (* An exhuastive proof by analyzing all four cases. *)
-Example nand_00 : nand2_gate (false, false) = true.
+Example nand_00 : unIdent (nand2_gate (false, false)) = true.
 Proof. reflexivity. Qed.
 
-Example nand_01 : nand2_gate (false, true) = true.
+Example nand_01 : unIdent (nand2_gate (false, true)) = true.
 Proof. reflexivity. Qed.
 
-Example nand_10 : nand2_gate (true, false) = true.
+Example nand_10 : unIdent (nand2_gate (true, false)) = true.
 Proof. reflexivity. Qed.
 
-Example nand_11 : nand2_gate (true, true) = false.
+Example nand_11 : unIdent (nand2_gate (true, true)) = false.
 Proof. reflexivity. Qed.
 
 (* Test bench tables for generated SystemVerilog simulation test bench *)
@@ -80,7 +80,7 @@ Definition nand_tb_inputs : list (bool * bool) :=
 
 (* Compute expected outputs. *)
 Definition nand_tb_expected_outputs : list bool :=
-  simulate (Comb nand2_gate) nand_tb_inputs.
+  multistep (Comb nand2_gate) nand_tb_inputs.
 
 Definition nand2_tb :=
   testBench "nand2_tb" nand2Interface nand_tb_inputs nand_tb_expected_outputs.

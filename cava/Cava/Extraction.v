@@ -24,19 +24,18 @@ Extraction Language Haskell.
 Set Extraction KeepSingleton.
 Set Extraction File Comment "Auto-generated from Cava/Coq. Please do not hand edit.".
 
-Require Import Cava.Util.BitArithmetic.
+Require Import Cava.BitArithmetic.
 Require Import Cava.Cava.
-Require Import Cava.Core.Signal.
-Require Import Cava.Util.Vector.
+Require Import Cava.Signal.
+Require Import Cava.VectorUtils.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Semantics.Combinational.
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Lib.Combinators.
-Require Import Cava.Util.Identity.
-Require Import Cava.NetlistGeneration.NetlistGeneration.
-Require Import Cava.Lib.XilinxAdder.
-Require Import Cava.Lib.CavaPrelude.
-Require Import Cava.Core.Circuit.
+Require Import Cava.Acorn.Combinational.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.Combinators.
+Require Import Cava.Acorn.NetlistGeneration.
+Require Import Cava.Acorn.XilinxAdder.
+Require Import Cava.Acorn.CavaPrelude.
+Require Import Cava.Acorn.Circuit.
 
 Require Import Cava.Lib.BitVectorOps.
 Require Import Cava.Lib.FullAdder.
@@ -50,13 +49,12 @@ Recursive Extraction Library Acorn.
 Recursive Extraction Library Circuit.
 Recursive Extraction Library Combinational.
 Recursive Extraction Library Combinators.
-Recursive Extraction Library Identity.
-Recursive Extraction Library Simulation.
+Recursive Extraction Library Multistep.
 Recursive Extraction Library NetlistGeneration.
 
 Recursive Extraction Library Netlist.
 Recursive Extraction Library Signal.
-Recursive Extraction Library Vector.
+Recursive Extraction Library VectorUtils.
 Recursive Extraction Library UnsignedAdders.
 Recursive Extraction Library XilinxAdder.
 Recursive Extraction Library CavaPrelude.

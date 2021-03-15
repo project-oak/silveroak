@@ -46,21 +46,21 @@ Section WithCava.
   (* An adder-tree with no bit-growth. *)
   Definition adderTree {sz: nat}
              (n: nat)
-    : signal (Vec (Vec Bit sz) (2^n)) ->
+    : signal (Vec (Vec Bit sz) (2^(S n))) ->
       cava (signal (Vec Bit sz)) :=
-    tree addN.
+    peel >=> treeS addN.
 
   (* An adder tree with 2 inputs. *)
   Definition adderTree2 {sz: nat}
                         (v : signal (Vec (Vec Bit sz) 2))
                         : cava (signal (Vec Bit sz))
-    := adderTree 1 v.
+    := adderTree 0 v.
 
   (* An adder tree with 4 inputs. *)
   Definition adderTree4 {sz: nat}
                         (v : signal (Vec (Vec Bit sz) 4))
                         : cava (signal (Vec Bit sz))
-    := adderTree 2 v.
+    := adderTree 1 v.
 
 End WithCava.
 
@@ -79,15 +79,15 @@ Local Open Scope string_scope.
 Local Open Scope vector_scope.
 
 Definition v0_v1 := [v0; v1].
-Definition v0_plus_v1 : Bvector 8 := adderTree 1 v0_v1.
+Definition v0_plus_v1 : Bvector 8 := unIdent (adderTree 0 v0_v1).
 
-Example sum_vo_v1 : adderTree2 v0_v1 = N2Bv_sized 8 21.
+Example sum_vo_v1 : unIdent (adderTree2 v0_v1) = N2Bv_sized 8 21.
 Proof. reflexivity. Qed.
 
 Definition v0_3 := [v0; v1; v2; v3].
-Definition sum_v0_3 : Bvector 8 := adderTree4 v0_3.
+Definition sum_v0_3 : Bvector 8 := unIdent (adderTree4 v0_3).
 
-Example sum_v0_v1_v2_v3 : adderTree4 v0_3 = N2Bv_sized 8 30.
+Example sum_v0_v1_v2_v3 : unIdent (adderTree4 v0_3) = N2Bv_sized 8 30.
 Proof. reflexivity. Qed.
 
 Definition adder_tree_Interface name nrInputs bitSize
@@ -111,7 +111,7 @@ Definition adder_tree4_8_tb_inputs
      ].
 
 Definition adder_tree4_8_tb_expected_outputs
-  := simulate (Comb adderTree4) adder_tree4_8_tb_inputs.
+  := multistep (Comb adderTree4) adder_tree4_8_tb_inputs.
 
 Definition adder_tree4_8_tb :=
   testBench "adder_tree4_8_tb" adder_tree4_8Interface
@@ -123,7 +123,7 @@ Definition adder_tree32_8Interface
   := adder_tree_Interface "adder_tree32_8" 32 8.
 
 Definition adder_tree32_8Netlist
-  := makeNetlist adder_tree32_8Interface (adderTree 5).
+  := makeNetlist adder_tree32_8Interface (adderTree 4).
 
 (* Create netlist and test-bench for a 64-input adder tree. *)
 
@@ -131,7 +131,7 @@ Definition adder_tree64_8Interface
   := adder_tree_Interface "adder_tree64_8" 64 8.
 
 Definition adder_tree64_8Netlist
-  := makeNetlist adder_tree64_8Interface (adderTree 6).
+  := makeNetlist adder_tree64_8Interface (adderTree 5).
 
 Definition adder_tree64_8_tb_inputs
   := map (Vector.map (N2Bv_sized 8))
@@ -139,7 +139,7 @@ Definition adder_tree64_8_tb_inputs
      [vseq 0 64; vseq 64 64; vseq 128 64]).
 
 Definition adder_tree64_8_tb_expected_outputs
-  := simulate (Comb (adderTree 6)) adder_tree64_8_tb_inputs.
+  := multistep (Comb (adderTree 5)) adder_tree64_8_tb_inputs.
 
 Definition adder_tree64_8_tb :=
   testBench "adder_tree64_8_tb" adder_tree64_8Interface
@@ -150,7 +150,7 @@ Definition adder_tree64_8_tb :=
 Definition adder_tree64_128Interface := adder_tree_Interface "adder_tree64_128" 64 128.
 
 Definition adder_tree64_128Netlist
-  := makeNetlist adder_tree64_128Interface (adderTree 6).
+  := makeNetlist adder_tree64_128Interface (adderTree 5).
 
 Definition adder_tree64_128_tb_inputs
   := map (Vector.map (N2Bv_sized 128))
@@ -158,7 +158,7 @@ Definition adder_tree64_128_tb_inputs
      [vseq 0 64; vseq 64 64; vseq 128 64]).
 
 Definition adder_tree64_128_tb_expected_outputs
-  := simulate (Comb (adderTree 6)) adder_tree64_128_tb_inputs.
+  := multistep (Comb (adderTree 5)) adder_tree64_128_tb_inputs.
 
 Definition adder_tree64_128_tb :=
   testBench "adder_tree64_128_tb" adder_tree64_128Interface

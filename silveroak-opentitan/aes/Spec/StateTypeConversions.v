@@ -15,9 +15,9 @@
 (****************************************************************************)
 
 Require Import Coq.Vectors.Vector.
-Require Import Cava.Util.BitArithmetic.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Vector.
+Require Import Cava.BitArithmetic.
+Require Import Cava.ListUtils.
+Require Import Cava.VectorUtils.
 
 Local Notation byte := Byte.byte (only parsing).
 Local Notation state := (Vector.t bool 128) (only parsing).
@@ -150,7 +150,7 @@ Section Properties.
     erewrite List.map_ext_in
       by (intros; autorewrite with push_to_list;
           reflexivity).
-    apply List.map_id_ext; reflexivity.
+    apply ListUtils.map_id_ext; reflexivity.
   Qed.
   Hint Rewrite to_list_rows_from_list_rows : inverse.
 

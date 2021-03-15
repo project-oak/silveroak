@@ -20,6 +20,7 @@ Import ListNotations.
 Require Import Coq.Vectors.Vector.
 Import VectorNotations.
 Require Import ExtLib.Structures.Monads.
+Require Export ExtLib.Data.Monads.IdentityMonad.
 Require Import ExtLib.Structures.MonadLaws.
 Import MonadNotation.
 Open Scope monad_scope.
@@ -28,18 +29,18 @@ Open Scope type_scope.
 Require Import coqutil.Tactics.Tactics.
 Require Import Coq.micromega.Lia.
 
-Require Import Cava.Util.BitArithmetic Cava.Util.List Cava.Util.Vector Cava.Util.Tactics.
+Require Import Cava.BitArithmetic Cava.ListUtils Cava.VectorUtils Cava.Tactics.
 Require Import Cava.Lib.FullAdder.
 Require Import Cava.Lib.UnsignedAdders.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Util.Identity.
+Require Import Cava.Acorn.Identity.
 
 Local Open Scope N_scope.
 
 (* First prove the full-adder correct. *)
 
 Lemma fullAdder_correct (cin a b : bool) :
-  fullAdder (cin, (a, b)) =
+  unIdent (fullAdder (cin, (a, b))) =
   let sum := N.b2n a + N.b2n b + N.b2n cin in
   (N.testbit sum 0, N.testbit sum 1).
 Proof. destruct cin, a, b; reflexivity. Qed.
@@ -64,7 +65,7 @@ Hint Rewrite @bind_of_return @bind_associativity
 (* Correctness of the list based adder. *)
 Lemma addLCorrect (cin : bool) (a b : list bool) :
   length a = length b ->
-  list_bits_to_nat (addLWithCinL cin a b) =
+  list_bits_to_nat (unIdent (addLWithCinL cin a b)) =
   list_bits_to_nat a + list_bits_to_nat b + N.b2n cin.
 Proof.
   cbv zeta. cbv [addLWithCinL adderWithGrowthL unsignedAdderL colL].
@@ -88,7 +89,7 @@ Proof.
 
   (* Rearrange to match inductive hypothesis *)
   rewrite <-app_comm_cons.
-  rewrite list_bits_to_nat_cons.
+  cbn [unIdent] in *. rewrite list_bits_to_nat_cons.
 
   (* Finally we have the right expression to use IHa *)
   rewrite IHa by lia.
@@ -107,9 +108,9 @@ Qed.
 (* Correctness of the vector based adder. *)
 
 Lemma Bv2N_resize m n (Hmn : n = m) (v : t bool n) :
-  Bv2N v = Bv2N (Vector.resize_default false m v).
+  Bv2N v = Bv2N (VectorUtils.resize_default false m v).
 Proof.
-  subst. rewrite Vector.resize_default_id.
+  subst. rewrite VectorUtils.resize_default_id.
   reflexivity.
 Qed.
 
@@ -117,7 +118,7 @@ Lemma colV_colL {A B C} {n} circuit inputs d :
   @colV _ CombinationalSemantics A B C n circuit inputs =
   (let inputL := (fst inputs, to_list (snd inputs)) in
    rL <- colL circuit inputL ;;
-      let rV := Vector.resize_default
+      let rV := VectorUtils.resize_default
                   d _ (Vector.of_list (fst rL)) in
       ret (rV, snd rL)).
 Proof.
@@ -129,7 +130,7 @@ Proof.
     simpl_ident. repeat destruct_pair_let.
     simpl_ident. rewrite IHbs. clear IHbs.
     simpl_ident. cbn [fst snd of_list length].
-    cbn [Vector.resize_default].
+    cbn [VectorUtils.resize_default].
     autorewrite with vsimpl.
     reflexivity. }
 Qed.
@@ -143,7 +144,7 @@ Proof.
 Qed.
 
 Lemma colL_length {A B C} circuit a bs :
-  length (fst (@colL ident _ A B C circuit (a,bs)))
+  length (fst (unIdent (@colL ident _ A B C circuit (a,bs))))
   = length bs.
 Proof.
   cbv [colL]; cbn [fst snd].
@@ -156,7 +157,7 @@ Qed.
 Hint Rewrite @colL_length using solve [length_hammer] : push_length.
 
 Lemma addVCorrect (cin : bool) (n : nat) (a b : Vector.t bool n) :
-  addLWithCinV cin a b =
+  unIdent (addLWithCinV cin a b) =
   (N2Bv_sized (n+1) (Bv2N a + Bv2N b + (N.b2n cin))).
 Proof.
   apply Bv2N_inj. rewrite Bv2N_N2Bv_sized.

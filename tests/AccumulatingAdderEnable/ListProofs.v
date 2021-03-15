@@ -25,11 +25,11 @@ Export MonadNotation.
 Require Import coqutil.Tactics.Tactics.
 
 Require Import Cava.Cava.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
+Require Import Cava.ListUtils.
+Require Import Cava.Tactics.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Util.Identity.
-Require Import Cava.Semantics.CombinationalProperties.
+Require Import Cava.Acorn.Identity.
+Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import Tests.AccumulatingAdderEnable.AccumulatingAdderEnable.
@@ -52,7 +52,7 @@ Definition accumulatingAdderEnableSpec
     i ([], bvzero).
 
 Lemma addNCorrect n (a b : Vector.t bool n) :
-  addN (a, b) = bvadd a b.
+  unIdent (addN (a, b)) = bvadd a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : simpl_ident.
 
@@ -71,10 +71,10 @@ Proof.
 Qed.
 
 Lemma accumulatingAdderEnableCorrect (i : list (Bvector 8 * bool)) :
-  simulate accumulatingAdderEnable i = fst (accumulatingAdderEnableSpec i).
+  multistep accumulatingAdderEnable i = fst (accumulatingAdderEnableSpec i).
 Proof.
   intros; cbv [accumulatingAdderEnable].
-  eapply simulate_LoopCE_invariant
+  eapply multistep_LoopCE_invariant
     with (I:=fun t st _ acc =>
                st = snd (accumulatingAdderEnableSpec (firstn t i))
                /\ acc = fst (accumulatingAdderEnableSpec (firstn t i))).

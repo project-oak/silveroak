@@ -38,7 +38,7 @@ Section FIPSTests.
          fun st =>
            let input := from_flat st in
            let k := from_flat key in
-           let output := aes_add_round_key k input in
+           let output := unIdent (aes_add_round_key k input) in
            to_flat output
        | _ => aes_impl step key
        end).

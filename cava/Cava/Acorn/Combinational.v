@@ -19,13 +19,13 @@ Require Import Coq.Vectors.Vector.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import ExtLib.Structures.Monads.
+Require Export ExtLib.Data.Monads.IdentityMonad.
 Import ListNotations MonadNotation.
 
 Require Import Cava.Cava.
-Require Import Cava.Util.List.
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Core.Circuit.
-Require Import Cava.Util.Identity.
+Require Import Cava.ListUtils.
+Require Import Cava.Acorn.CavaClass.
+Require Import Cava.Acorn.Circuit.
 
 (******************************************************************************)
 (* A boolean combinational logic interpretation for the Cava class            *)
@@ -61,8 +61,8 @@ Instance CombinationalSemantics : Cava combType :=
     lut6 := fun f '(a,b,c,d,e,g) => ret (f a b c d e g);
     xorcy := fun '(x,y) => ret (xorb x y);
     muxcy := fun sel x y => ret (if sel then x else y);
-    unpackV _ _ v := ret v;
-    packV _ _ v := ret v;
+    peel _ _ v := ret v;
+    unpeel _ _ v := ret v;
     indexAt t sz isz := fun v sel => ret (nth_default (defaultCombValue _) (N.to_nat (Bv2N sel)) v);
     indexConst t sz := fun v sel => ret (nth_default (defaultCombValue _) sel v);
     slice t sz startAt len v H := ret (sliceVector v startAt len H);
@@ -79,7 +79,7 @@ Fixpoint step {i o} (c : Circuit i o)
   : circuit_state c -> i -> o * circuit_state c :=
   match c in Circuit i o return circuit_state c -> i
                                 -> o * circuit_state c with
-  | Comb f => fun _ i => (f i, tt)
+  | Comb f => fun _ i => (unIdent (f i), tt)
   | Compose f g =>
     fun cs input =>
       let '(x, cs1) := step f (fst cs) input in
@@ -103,23 +103,3 @@ Fixpoint step {i o} (c : Circuit i o)
       let new_state := if en then input else st in
       (st, new_state)
   end.
-
-(* Automation to help simplify expressions using the identity monad *)
-Create HintDb simpl_ident.
-Hint Rewrite @Combinators.foldLM_ident_fold_left using solve [eauto]
-  : simpl_ident.
-Ltac simpl_ident :=
-  cbn [fst snd bind ret Monad_ident monad
-           packV unpackV constant
-           CombinationalSemantics ];
-  repeat lazymatch goal with
-         | |- context [(@Traversable.mapT
-                         _ (@Traversable_vector ?n)
-                         ?m (@Monad.Applicative_Monad ?m Monad_ident)
-                         ?A ?B ?f ?v)] =>
-           change (@Traversable.mapT
-                     _ (@Traversable_vector n)
-                     m (@Monad.Applicative_Monad m Monad_ident)
-                     A B f v) with (@Vector.map A B f n v)
-         | _ => progress autorewrite with simpl_ident
-         end.

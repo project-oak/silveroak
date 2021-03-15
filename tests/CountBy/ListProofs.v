@@ -24,11 +24,11 @@ Export MonadNotation.
 Require Import coqutil.Tactics.Tactics.
 
 Require Import Cava.Cava.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
+Require Import Cava.ListUtils.
+Require Import Cava.Tactics.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Util.Identity.
-Require Import Cava.Semantics.CombinationalProperties.
+Require Import Cava.Acorn.Identity.
+Require Import Cava.Acorn.CombinationalProperties.
 Require Import Cava.Lib.UnsignedAdders.
 
 Require Import Tests.CountBy.CountBy.
@@ -45,7 +45,7 @@ Definition countBySpec (i : list (Bvector 8)) : list (Bvector 8) :=
   map (fun t => bvsum (firstn t i)) (seq 1 (length i)).
 
 Lemma addNCorrect n (a b : Bvector n) :
-  addN (a, b) = bvadd a b.
+  unIdent (addN (a, b)) = bvadd a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : simpl_ident.
 
@@ -53,10 +53,10 @@ Lemma bvadd_comm {n} a b : @bvadd n a b = bvadd b a.
 Proof. cbv [bvadd]. rewrite N.add_comm. reflexivity. Qed.
 
 Lemma countByCorrect: forall (i : list (Bvector 8)),
-    simulate countBy i = countBySpec i.
+    multistep countBy i = countBySpec i.
 Proof.
   intros; cbv [countBy].
-  eapply (simulate_Loop_invariant (s:=Vec Bit 8)) with
+  eapply (multistep_Loop_invariant (s:=Vec Bit 8)) with
       (I:=fun t st _ acc =>
             st = bvsum (firstn t i)
             /\ acc = countBySpec (firstn t i)).

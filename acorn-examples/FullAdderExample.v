@@ -23,7 +23,7 @@ Require Import ExtLib.Structures.Monads.
 Require Import Cava.Cava.
 Require Import Cava.Acorn.Acorn.
 Require Import Cava.Lib.FullAdder.
-Require Import Cava.Lib.XilinxAdder.
+Require Import Cava.Acorn.XilinxAdder.
 
 Existing Instance CavaCombinationalNet.
 
@@ -48,7 +48,7 @@ Definition halfAdderNetlist := makeNetlist halfAdderInterface halfAdder.
 
 (* A proof that the half-adder is correct. *)
 Lemma halfAdder_behaviour : forall (a : bool) (b : bool),
-                            halfAdder (a, b) = (xorb a b, a && b).
+                            unIdent (halfAdder (a, b)) = (xorb a b, a && b).
 
 Proof.
   auto.
@@ -74,7 +74,7 @@ Definition fullAdder_tb_inputs :=
 ].
 
 Definition fullAdder_tb_expected_outputs :=
-  simulate (Comb fullAdderTop) fullAdder_tb_inputs.
+  multistep (Comb fullAdderTop) fullAdder_tb_inputs.
 
 Definition fullAdder_tb
   := testBench "fullAdder_tb" fullAdderInterface
@@ -82,7 +82,7 @@ Definition fullAdder_tb
 
 (* A proof that the the full-adder is correct. *)
 Lemma fullAdder_behaviour : forall (a : bool) (b : bool) (cin : bool),
-                            fullAdderTop (cin, a, b)
+                            unIdent (fullAdderTop (cin, a, b))
                               = (xorb cin (xorb a b),
                                  (a && b) || (b && cin) || (a && cin)).
 Proof.
@@ -95,8 +95,8 @@ Qed.
 
 (* Prove the generic full adder is equivalent to Xilinx fast adder. *)
 Lemma generic_vs_xilinx_adder : forall (a : bool) (b : bool) (cin : bool),
-                                fullAdderTop (cin, a, b) =
-                                xilinxFullAdder (cin, (a, b)).
+                                unIdent (fullAdderTop (cin, a, b)) =
+                                unIdent (xilinxFullAdder (cin, (a, b))).
 Proof.
   intros. simpl.
   case a, b, cin.

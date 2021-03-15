@@ -111,7 +111,7 @@ Section WithCava.
     data_o2 <- (xorv data_i_3 x_mul2_1 >>= xorv x_3 >>= xorv z_muxed_1) ;;
     data_o3 <- (xorv data_i_2 x_mul2_0 >>= xorv x_3 >>= xorv z_muxed_0) ;;
 
-    packV [data_o0; data_o1; data_o2; data_o3].
+    unpeel [data_o0; data_o1; data_o2; data_o3].
 
   Definition aes_mix_columns
              (op_i : signal Bit)

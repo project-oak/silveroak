@@ -40,9 +40,9 @@ Import ListNotations MonadNotation.
 Open Scope monad_scope.
 
 Require Import Cava.Cava.
-Require Import Cava.Util.List.
+Require Import Cava.ListUtils.
 Require Import Cava.Acorn.Acorn.
-Require Import Cava.Util.Identity.
+Require Import Cava.Acorn.Identity.
 Import Circuit.Notations.
 
 (*|
@@ -190,15 +190,15 @@ Now, let's simulate the circuit, which can be useful for testing and proving
 functional correctness. Here, we use the identity-monad interpretation. The
 ``signal`` for this ``Cava`` instance is ``combType``, which interprets a
 ``Bit`` simply as a Coq ``bool``. If we provide the three inputs
-``[true; false; true]`` to the circuit simulation function ``simulate``, we'll
+``[true; false; true]`` to the circuit simulation function ``multistep``, we'll
 get ``[false; true; false]``:
 |*)
 
 (* identity-monad semantics *)
 Existing Instance CombinationalSemantics.
 
-Compute (simulate inverter [true; false; true]).
-Compute (simulate inverter [true; false; true; true; true; false]).
+Compute (multistep inverter [true; false; true]).
+Compute (multistep inverter [true; false; true; true; true; false]).
 
 (*|
 We can use the simulation to write proofs about the circuit. For instance, we
@@ -206,13 +206,13 @@ can prove that ``inverter`` obeys a natural Coq specification:
 |*)
 
 Lemma inverter_correct (input : list bool) :
-  simulate inverter input = map negb input.
+  multistep inverter input = map negb input.
 Proof.
   (* inline the circuit definition *)
   cbv [inverter].
 
-  (* simplify simulate to create an expression in terms of Coq lists *)
-  autorewrite with push_simulate.
+  (* simplify multistep to create an expression in terms of Coq lists *)
+  autorewrite with push_multistep.
 
   (* assert that the two List.map functions are equivalent *)
   apply map_ext. intros.
@@ -233,10 +233,10 @@ structure is pretty similar.
 |*)
 
 Lemma inverter_idempotent (input : list bool) :
-  simulate (inverter >==> inverter) input = input.
+  multistep (inverter >==> inverter) input = input.
 Proof.
   cbv [inverter].
-  autorewrite with push_simulate.
+  autorewrite with push_multistep.
   rewrite map_map.
   apply map_id_ext. intros.
   cbn [inv CombinationalSemantics].
@@ -251,7 +251,7 @@ To summarize, there are three things you can do with Cava circuits:
 2. Generate netlists for them using the ``CavaCombinationalNet`` instance and
    the ``makeCircuitNetlist`` function. These netlists can then be translated into
    SystemVerilog.
-3. Simulate them using ``simulate``, and prove things about the simulations, by
+3. Simulate them using ``multistep``, and prove things about the simulations, by
    plugging in the ``CombinationalSemantics`` instance.
 
 In the next example, we'll try a slightly more complex circuit.

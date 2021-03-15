@@ -18,7 +18,7 @@ Require Import Coq.Init.Byte.
 Require Import Coq.Lists.List.
 
 Require Import AesSpec.Sbox.
-Require Import Cava.Util.List.
+Require Import Cava.ListUtils.
 
 Section Spec.
   Variables bytes_per_word Nb : nat.

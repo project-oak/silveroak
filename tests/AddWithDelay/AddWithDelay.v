@@ -78,11 +78,11 @@ Local Notation "'#' l" := (map (fun i => N2Bv_sized 8 (N.of_nat i)) l)
 
 Local Open Scope list_scope.
 
-Example addWithDelay_ex1: simulate addWithDelay (# [0;1;2;3;4;5;6;7;8]) = # [0;0;1;2;4;6;9;12;16].
+Example addWithDelay_ex1: multistep addWithDelay (# [0;1;2;3;4;5;6;7;8]) = # [0;0;1;2;4;6;9;12;16].
 Proof. reflexivity. Qed.
 
-Example addWithDelay_ex2: simulate addWithDelay (# [1;1;1;1;1;1;1;1;1]) = # [0;1;1;2;2;3;3;4;4].
+Example addWithDelay_ex2: multistep addWithDelay (# [1;1;1;1;1;1;1;1;1]) = # [0;1;1;2;2;3;3;4;4].
 Proof. reflexivity. Qed.
 
-Example addWithDelay_ex3: simulate addWithDelay (# [14; 7; 3; 250]) = # [0; 14; 7; 17].
+Example addWithDelay_ex3: multistep addWithDelay (# [14; 7; 3; 250]) = # [0; 14; 7; 17].
 Proof. reflexivity. Qed.
