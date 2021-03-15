@@ -25,11 +25,11 @@ Section WithCava.
   Definition xor4xV
       (ab : signal (Vec (Vec Bit 8) 4) * signal (Vec (Vec Bit 8) 4))
       : cava (signal (Vec (Vec Bit 8) 4)) :=
-    zipWith xorV (fst ab) (snd ab).
+    Vec.map2 xorV (fst ab) (snd ab).
 
   (* Perform the bitwise XOR of two 4x4 matrices of 8-bit values. *)
   Definition xor4x4V (a b : signal state) : cava (signal state) :=
-    zipWith xor4xV a b.
+    Vec.map2 xor4xV a b.
 
   Definition aes_add_round_key (k : signal key) (st : signal state)
     : cava (signal state) := xor4x4V k st.

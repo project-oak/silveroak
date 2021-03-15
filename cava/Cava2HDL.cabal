@@ -91,7 +91,6 @@ library
                      Specif
                      MonadExc
                      MonadFix
-                     MonadFold
                      MonadPlus
                      MonadReader
                      MonadTrans

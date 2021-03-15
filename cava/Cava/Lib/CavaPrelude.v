@@ -22,8 +22,8 @@ Require Import ExtLib.Structures.Monads.
 Import MonadNotation.
 Local Open Scope monad_scope.
 
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Core.Signal.
+Require Import Cava.Core.Core.
+Require Import Cava.Lib.Combinators.
 
 Section WithCava.
   Context `{semantics:Cava}.
@@ -36,4 +36,19 @@ Section WithCava.
   (* This component always returns the value 1. *)
   Definition one : signal Bit := constant true.
 
+  Definition all {n} (v : signal (Vec Bit n)) : cava (signal Bit) :=
+    match n with
+    | 0 => ret one
+    | _ => tree and2 v
+    end.
+
+  Fixpoint eqb {t : SignalType} : signal t -> signal t -> cava (signal Bit) :=
+    match t as t0 return signal t0 -> signal t0 -> cava (signal Bit) with
+    | Void => fun _ _ => ret one
+    | Bit => fun x y => xnor2 (x, y)
+    | ExternalType s => fun x y => ret one
+    | Vec a n => fun x y : signal (Vec a n) =>
+                  eq_results <- Vec.map2 (fun '(a, b) => eqb a b) x y ;;
+                  all eq_results
+    end.
 End WithCava.
