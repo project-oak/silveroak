@@ -13,23 +13,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Bool.Bool Coq.NArith.NArith.
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-
-Require Import Coq.Lists.List.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.Multiplexers.
-
-Require Import Coq.Bool.Bvector.
-Import Vector.VectorNotations.
-
-Local Open Scope vector_scope.
-Existing Instance CavaCombinationalNet.
 
 Section WithCava.
   Context {signal} `{Cava signal}.
@@ -51,8 +35,6 @@ Section WithCava.
 
 End WithCava.
 
-Local Close Scope vector_scope.
-
 (******************************************************************************)
 (* mux2 tests                                                                 *)
 (******************************************************************************)
@@ -67,7 +49,7 @@ Definition mux2_1_tb_inputs :=
 Definition muxManualExpectedOutputs := [false; true; true; false].
 
 (* Compute the expected outputs from the semantics *)
-Definition mux2_1_tb_expected_outputs := multistep (Comb mux2_1_top) mux2_1_tb_inputs.
+Definition mux2_1_tb_expected_outputs := simulate (Comb mux2_1_top) mux2_1_tb_inputs.
 
 Example m1_4: mux2_1_tb_expected_outputs = muxManualExpectedOutputs.
 Proof. reflexivity. Qed.
@@ -91,7 +73,6 @@ Definition mux2_1_tb
 (* muxBus                                                                     *)
 (******************************************************************************)
 
-Local Open Scope vector_scope.
 Definition v0 := N2Bv_sized 8   5.
 Definition v1 := N2Bv_sized 8 157.
 Definition v2 := N2Bv_sized 8 255.
@@ -104,19 +85,17 @@ Definition v6 := N2Bv_sized 8 240.
 Definition v7 := N2Bv_sized 8  42.
 Definition v4to7 : Vector.t (Bvector 8) 4 := [v4; v5; v6; v7].
 
-Example m5: unIdent (muxBus (v0to3, [false; false]%vector)) = v0.
+Example m5: muxBus (v0to3, [false; false]%vector) = v0.
 Proof. reflexivity. Qed.
 
-Example m6: unIdent (muxBus (v0to3, [true; false]%vector)) = v1.
+Example m6: muxBus (v0to3, [true; false]%vector) = v1.
 Proof. reflexivity. Qed.
 
-Example m7: unIdent (muxBus (v0to3, [false; true]%vector)) = v2.
+Example m7: muxBus (v0to3, [false; true]%vector) = v2.
 Proof. reflexivity. Qed.
 
-Example m8: unIdent (muxBus (v0to3, [true; true]%vector)) = v3.
+Example m8: muxBus (v0to3, [true; true]%vector) = v3.
 Proof. reflexivity. Qed.
-
-Local Close Scope vector_scope.
 
 Definition muxBus4_8Interface
   := combinationalInterface "muxBus4_8"
@@ -134,7 +113,7 @@ Definition muxBus4_8_tb_inputs : list (Vector.t (Bvector 8) 4 * Vector.t bool 2)
   ].
 
 Definition muxBus4_8_tb_expected_outputs : list (Bvector 8)
-  := multistep (Comb muxBus) muxBus4_8_tb_inputs.
+  := simulate (Comb muxBus) muxBus4_8_tb_inputs.
 
 Definition muxBus4_8_tb
   := testBench "muxBus4_8_tb" muxBus4_8Interface

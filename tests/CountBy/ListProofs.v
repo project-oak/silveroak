@@ -14,23 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import NArith.NArith Arith.PeanoNat Lists.List.
-Require Import Coq.Bool.Bvector.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
-Require Import coqutil.Tactics.Tactics.
-
 Require Import Cava.Cava.
-Require Import Cava.ListUtils.
-Require Import Cava.Tactics.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.Identity.
-Require Import Cava.Acorn.CombinationalProperties.
-Require Import Cava.Lib.UnsignedAdders.
-
+Require Import Cava.CavaProperties.
 Require Import Tests.CountBy.CountBy.
 
 Existing Instance CombinationalSemantics.
@@ -45,7 +30,7 @@ Definition countBySpec (i : list (Bvector 8)) : list (Bvector 8) :=
   map (fun t => bvsum (firstn t i)) (seq 1 (length i)).
 
 Lemma addNCorrect n (a b : Bvector n) :
-  unIdent (addN (a, b)) = bvadd a b.
+  addN (a, b) = bvadd a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : simpl_ident.
 
@@ -53,10 +38,10 @@ Lemma bvadd_comm {n} a b : @bvadd n a b = bvadd b a.
 Proof. cbv [bvadd]. rewrite N.add_comm. reflexivity. Qed.
 
 Lemma countByCorrect: forall (i : list (Bvector 8)),
-    multistep countBy i = countBySpec i.
+    simulate countBy i = countBySpec i.
 Proof.
   intros; cbv [countBy].
-  eapply (multistep_Loop_invariant (s:=Vec Bit 8)) with
+  eapply (simulate_Loop_invariant (s:=Vec Bit 8)) with
       (I:=fun t st _ acc =>
             st = bvsum (firstn t i)
             /\ acc = countBySpec (firstn t i)).

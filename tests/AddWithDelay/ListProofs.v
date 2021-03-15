@@ -14,27 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Arith.PeanoNat NArith.NArith Lists.List.
-Require Import Coq.micromega.Lia.
-Require Import Coq.Bool.Bvector.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
-Require Import coqutil.Tactics.Tactics.
-
 Require Import Cava.Cava.
-Require Import Cava.ListUtils.
-Require Import Cava.Tactics.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.Identity.
-Require Import Cava.Acorn.CombinationalProperties.
-Require Import Cava.Lib.UnsignedAdders.
-Import Circuit.Notations.
-
+Require Import Cava.CavaProperties.
 Require Import Tests.AddWithDelay.AddWithDelay.
-Local Open Scope nat_scope.
+Import Circuit.Notations.
 
 Definition bvadd {n} (a b : Signal.combType (Vec Bit n)) : Signal.combType (Vec Bit n) :=
   N2Bv_sized n (Bv2N a + Bv2N b).
@@ -55,7 +38,7 @@ Definition addWithDelaySpecF
     end.
 
 Lemma addNCorrect n (a b : combType (Vec Bit n)) :
-  unIdent (addN (a, b)) = bvadd a b.
+  addN (a, b) = bvadd a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : simpl_ident.
 
@@ -88,11 +71,11 @@ Proof.
 Qed.
 
 Lemma addWithDelayCorrect (i : list (Bvector 8)) :
-  multistep addWithDelay i = map (fun t => addWithDelaySpecF (fun n => nth n i bvzero) t)
+  simulate addWithDelay i = map (fun t => addWithDelaySpecF (fun n => nth n i bvzero) t)
                                  (seq 0 (length i)).
 Proof.
   intros; cbv [addWithDelay].
-  eapply multistep_Loop_invariant
+  eapply simulate_Loop_invariant
     with (body:=(Comb addN >==> Delay >==> Comb fork2))
          (I := fun t st body_st acc =>
                  st = match t with

@@ -14,22 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-
-Import List.ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
-Require Import Coq.Vectors.Vector.
-Import VectorNotations.
-
-Open Scope monad_scope.
-
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
-
-Local Open Scope type_scope.
 Local Open Scope vector_scope.
 
 Definition width := 32.
@@ -118,14 +103,14 @@ Definition pinmux (inputs: Signal (ExternalType "tlul_pkg::tl_h2d_t") *
   let const1 := Vcc in
   '(tl_o, reg2hw) <- blackBoxNet pinmux_reg_top_Interface (tl_i, const1) ;;
   (* Input Mux *)
-  mio_in_i <- peelNet mio_in_i ;;
+  mio_in_i <- unpackVNet mio_in_i ;;
   let data_in_mux := VecLit ([const0; const1] ++ mio_in_i) in
   let mio_to_periph_o :=
     Vector.map (fun k => IndexAt data_in_mux (kq "periph_insel" reg2hw k))
                (vseq 0 NPeriphIn) in
   (* Output Mux *)
-  periph_to_mio_i <- peelNet periph_to_mio_i ;;
-  periph_to_mio_oe_i <- peelNet periph_to_mio_oe_i ;;
+  periph_to_mio_i <- unpackVNet periph_to_mio_i ;;
+  periph_to_mio_oe_i <- unpackVNet periph_to_mio_oe_i ;;
   let data_out_mux := VecLit ([const0; const1; const0] ++ periph_to_mio_i) in
   let oe_mux := VecLit ([const1; const1; const0] ++ periph_to_mio_oe_i) in
   let mio_out_o :=
@@ -134,9 +119,9 @@ Definition pinmux (inputs: Signal (ExternalType "tlul_pkg::tl_h2d_t") *
   let mio_oe_o :=
     Vector.map (fun k => IndexAt oe_mux (kq "mio_outsel" reg2hw k))
                (vseq 0 NPeriphIn) in
-  mio_to_periph_o <- unpeelNet mio_to_periph_o ;;
-  mio_out_o <- unpeelNet mio_out_o ;;
-  mio_oe_o <- unpeelNet mio_oe_o ;;
+  mio_to_periph_o <- packVNet mio_to_periph_o ;;
+  mio_out_o <- packVNet mio_out_o ;;
+  mio_oe_o <- packVNet mio_oe_o ;;
   ret (tl_o,
        mio_to_periph_o,
        mio_out_o,

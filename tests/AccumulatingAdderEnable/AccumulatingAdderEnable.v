@@ -14,18 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Strings.Ascii Strings.String.
-From Coq Require Import NArith.NArith Lists.List Vectors.Vector.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.UnsignedAdders.
-Import VectorNotations.
-Local Open Scope vector_scope.
 
 (******************************************************************************)
 (* Accumulating adder with an enable.                                         *)
@@ -76,17 +65,15 @@ End WithCava.
 Local Notation "'#' l" := (map (fun i => N2Bv_sized 8 (N.of_nat i)) l)
                             (at level 40, only parsing).
 
-Local Open Scope list_scope.
-
 Example accumulatingAdderEnable_ex1:
-  multistep accumulatingAdderEnable
+  simulate accumulatingAdderEnable
             (combine
                (# [1;1;1;1;1;1;1;1])
                (map nat2bool [1;1;1;1;0;0;0;0])) = # [1;2;3;4;5;5;5;5].
 Proof. reflexivity. Qed.
 
 Example accumulatingAdderEnable_ex2:
-  multistep accumulatingAdderEnable
+  simulate accumulatingAdderEnable
             (combine
                (# [0;1;2;3;4;5;6;7])
                (map nat2bool [0;0;0;1;1;1;0;1])) = # [0;1;2;3;7;12;18;19].

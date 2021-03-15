@@ -23,9 +23,9 @@ Require Import ExtLib.Structures.Traversable.
 Export MonadNotation.
 Open Scope monad_scope.
 
-Require Import Cava.Cava.
-Require Import Cava.Acorn.CavaClass.
-Require Import Cava.Acorn.Combinators.
+Require Import Cava.Core.Core.
+Require Import Cava.Core.CavaClass.
+Require Cava.Lib.Vec.
 
 Section WithCava.
   Context {signal} `{Cava signal}.
@@ -33,7 +33,7 @@ Section WithCava.
   (* A circuit to xor two bit-vectors *)
   Definition xorV {n : nat} (ab: signal (Vec Bit n) * signal (Vec Bit n)) :
     cava (signal (Vec Bit n)) :=
-    zipWith xor2 (fst ab) (snd ab).
+    Vec.map2 xor2 (fst ab) (snd ab).
 
   (* Make a curried version of xorV *)
   Definition xorv {n} (a b : signal (Vec Bit n)) : cava (signal (Vec Bit n)) := xorV (a, b).

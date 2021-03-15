@@ -14,20 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-Require Import Coq.Lists.List.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
-
-Local Open Scope list_scope.
-Local Open Scope monad_scope.
-Local Open Scope string_scope.
-Existing Instance CavaCombinationalNet.
 
 Section WithCava.
   Context {signal} `{Cava signal}.
@@ -67,7 +54,7 @@ Definition instantiate_tb_inputs : list (bool * bool * bool) :=
 
 (* Compute expected outputs. *)
 Definition instantiate_tb_expected_outputs : list bool :=
-  multistep (Comb nand3_gate) instantiate_tb_inputs.
+  simulate (Comb nand3_gate) instantiate_tb_inputs.
 
 Definition instantiate_tb :=
   testBench "instantiate_tb" nand3Interface instantiate_tb_inputs instantiate_tb_expected_outputs.

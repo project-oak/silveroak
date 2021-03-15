@@ -14,24 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Arith.PeanoNat NArith.NArith Lists.List.
-Require Import Coq.micromega.Lia.
-Require Import Coq.Bool.Bvector.
-Import ListNotations.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
-Require Import coqutil.Tactics.Tactics.
-
 Require Import Cava.Cava.
-Require Import Cava.ListUtils.
-Require Import Cava.Tactics.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Acorn.Identity.
-Require Import Cava.Acorn.CombinationalProperties.
-Require Import Cava.Lib.UnsignedAdders.
-
+Require Import Cava.CavaProperties.
 Require Import Tests.AccumulatingAdderEnable.AccumulatingAdderEnable.
 
 Definition bvadd {n} (a b : Signal.combType (Vec Bit n)) : Signal.combType (Vec Bit n) :=
@@ -52,7 +36,7 @@ Definition accumulatingAdderEnableSpec
     i ([], bvzero).
 
 Lemma addNCorrect n (a b : Vector.t bool n) :
-  unIdent (addN (a, b)) = bvadd a b.
+  addN (a, b) = bvadd a b.
 Admitted.
 Hint Rewrite addNCorrect using solve [eauto] : simpl_ident.
 
@@ -71,10 +55,10 @@ Proof.
 Qed.
 
 Lemma accumulatingAdderEnableCorrect (i : list (Bvector 8 * bool)) :
-  multistep accumulatingAdderEnable i = fst (accumulatingAdderEnableSpec i).
+  simulate accumulatingAdderEnable i = fst (accumulatingAdderEnableSpec i).
 Proof.
   intros; cbv [accumulatingAdderEnable].
-  eapply multistep_LoopCE_invariant
+  eapply simulate_LoopCE_invariant
     with (I:=fun t st _ acc =>
                st = snd (accumulatingAdderEnableSpec (firstn t i))
                /\ acc = fst (accumulatingAdderEnableSpec (firstn t i))).

@@ -22,17 +22,17 @@ OPENTITAN_AES_DIR=../../third_party/opentitan/hw/ip/aes/rtl
 VERILATOR_CONFIG=../../third_party/opentitan/hw/lint/tools/verilator/common.vlt
 
 # Comment out timing
-awk '{ if ($0 ~ /timeprecision/) { print "/*" $0 "*/" } else { print $0 } }' Acorn/aes_mix_columns.sv > aes_mix_columns.sv
-awk '{ if ($0 ~ /timeprecision/) { print "/*" $0 "*/" } else { print $0 } }' Acorn/aes_sbox_lut.sv > aes_sbox_lut.sv
-awk '{ if ($0 ~ /timeprecision/) { print "/*" $0 "*/" } else { print $0 } }' Acorn/aes_shift_rows.sv > aes_shift_rows.sv
-awk '{ if ($0 ~ /timeprecision/) { print "/*" $0 "*/" } else { print $0 } }' Acorn/aes_cipher_core.sv > aes_cipher_core.sv
+awk '{ if ($0 ~ /timeprecision/) { print "/*" $0 "*/" } else { print $0 } }' Impl/aes_mix_columns.sv > aes_mix_columns.sv
+awk '{ if ($0 ~ /timeprecision/) { print "/*" $0 "*/" } else { print $0 } }' Impl/aes_sbox_lut.sv > aes_sbox_lut.sv
+awk '{ if ($0 ~ /timeprecision/) { print "/*" $0 "*/" } else { print $0 } }' Impl/aes_shift_rows.sv > aes_shift_rows.sv
+awk '{ if ($0 ~ /timeprecision/) { print "/*" $0 "*/" } else { print $0 } }' Impl/aes_cipher_core.sv > aes_cipher_core.sv
 
 # For aes_sub_bytes additionally add a dummy parameter to module definition
 awk '{ \
   if ($0 ~ /module aes_sub_bytes/) {print "module aes_sub_bytes #( parameter SBoxImpl = \"lut\") ("} \
   else { \
     if ($0 ~ /timeprecision/) { print "/*" $0 "*/" } else { print $0 } \
-  } }' Acorn/aes_sub_bytes.sv > aes_sub_bytes.sv
+  } }' Impl/aes_sub_bytes.sv > aes_sub_bytes.sv
 
 cp aes_mix_columns.sv aes_sbox_lut.sv aes_sub_bytes.sv aes_shift_rows.sv aes_cipher_core.sv $OPENTITAN_AES_DIR
 

@@ -14,40 +14,20 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-From Coq Require Import Lists.List.
-From Coq Require Import Strings.Ascii Strings.String Vectors.Vector.
-From Coq Require Import NArith.
-Import ListNotations.
-Import VectorNotations.
-
-Require Import ExtLib.Structures.Monads.
-Require Import ExtLib.Structures.Traversable.
-Export MonadNotation.
-
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.UnsignedAdders.
-Require Import Coq.Vectors.Vector.
-Require Import Cava.VectorUtils.
-Require Import Coq.Bool.Bvector.
-
-From Coq Require Import Bool.Bvector.
-Existing Instance CavaCombinationalNet.
+Local Open Scope vector_scope.
 
 Section WithCava.
   Context `{Cava}.
 
-  Definition bitvec_to_signal {n : nat} (lut : Vector.t bool n) : cava (signal (Vec Bit n)) :=
-    unpeel (Vector.map constant lut).
-
   Definition array : cava (signal (Vec (Vec Bit 8) 4)) :=
-    v <- mapT (fun x => bitvec_to_signal (nat_to_bitvec_sized _ x)) [0;1;2;3] ;;
-    unpeel v.
+    v <- Traversable.mapT (fun x => Vec.bitvec_literal (nat_to_bitvec_sized _ x)) [0;1;2;3] ;;
+    packV v.
 
   Definition multiDimArray : cava (signal (Vec (Vec (Vec Bit 8) 4) 2)) :=
     arr1 <- array ;;
     arr2 <- array ;;
-    unpeel [arr1; arr2].
+    packV [arr1; arr2].
 
   Definition arrayTest (i : signal (Vec Bit 8))
     : cava (signal (Vec Bit 8)) :=
@@ -61,8 +41,6 @@ Section WithCava.
     indexConst v 0.
 
 End WithCava.
-
-Local Open Scope list_scope.
 
 Definition arrayTest_Interface
   := sequentialInterface "arrayTest"
@@ -84,9 +62,9 @@ Definition multiDimArrayTest_Netlist := makeNetlist multiDimArrayTest_Interface 
 Definition arrayTest_tb_inputs := List.repeat (nat_to_bitvec_sized 8 0) 2.
 
 Definition arrayTest_tb_expected_outputs
-  := multistep (Comb arrayTest) arrayTest_tb_inputs.
+  := simulate (Comb arrayTest) arrayTest_tb_inputs.
 Definition multiDimArrayTest_tb_expected_outputs
-  := multistep (Comb multiDimArrayTest) arrayTest_tb_inputs.
+  := simulate (Comb multiDimArrayTest) arrayTest_tb_inputs.
 
 Definition arrayTest_tb
   := testBench "arrayTest_tb" arrayTest_Interface

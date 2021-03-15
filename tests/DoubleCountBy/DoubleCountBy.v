@@ -14,21 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.String.
-Require Import Coq.NArith.NArith.
-Require Import Coq.Lists.List.
-Require Import Coq.Vectors.Vector.
-Import ListNotations VectorNotations.
-Local Open Scope list_scope.
-
-Require Import ExtLib.Structures.Monads.
-Export MonadNotation.
-
 Require Import Cava.Cava.
-Require Import Cava.Acorn.Acorn.
-Require Import Cava.Lib.UnsignedAdders.
-Require Import Cava.Lib.Multiplexers.
-Require Cava.Lib.Vec.
 Import Circuit.Notations.
 
 (******************************************************************************)
@@ -111,23 +97,23 @@ Definition b24 := N2Bv_sized 8 24.
 Definition b250 := N2Bv_sized 8 250.
 Definition b251 := N2Bv_sized 8 251.
 
-Goal (multistep
+Goal (simulate
         (Comb addC)
         [(b14,b0); (b7,b14); (b3,b4); (b24,b250)]
       = [(b14,false);(b21,false);(b7,false);(b18,true)]).
 Proof. vm_compute. reflexivity. Qed.
 
-Goal (multistep
+Goal (simulate
         (Comb incrN)
         [b14; b7; b3; b250] = [b15;b8;b4;b251]).
 Proof. vm_compute. reflexivity. Qed.
 
-Goal (multistep
+Goal (simulate
         count_by
         [b14; b7; b3; b250] = [false;false;false;true]).
 Proof. vm_compute. reflexivity. Qed.
 
-Goal (multistep
+Goal (simulate
         double_count_by
         [b14; b7; b3; b250]
       = [b0;b0;b0;b1]).
@@ -146,7 +132,7 @@ Definition double_count_by_Netlist :=
 Definition double_count_by_tb_inputs := [b14; b7; b3; b250].
 
 Definition double_count_by_tb_expected_outputs :=
-  multistep double_count_by double_count_by_tb_inputs.
+  simulate double_count_by double_count_by_tb_inputs.
 
 Definition double_count_by_tb
   := testBench "double_count_by_tb" double_count_by_interface

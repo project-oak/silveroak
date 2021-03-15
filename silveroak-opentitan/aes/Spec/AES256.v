@@ -18,9 +18,10 @@
    subroutines instantiated. *)
 
 Require Import Coq.Lists.List.
-Require Import Cava.BitArithmetic.
-Require Import Cava.ListUtils.
-Require Import Cava.VectorUtils.
+Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.BitArithmeticProperties.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Vector.
 Require Import AesSpec.AddRoundKey.
 Require Import AesSpec.MixColumns.
 Require Import AesSpec.ShiftRows.

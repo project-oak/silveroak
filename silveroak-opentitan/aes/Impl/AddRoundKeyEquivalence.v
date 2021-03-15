@@ -1,0 +1,68 @@
+(****************************************************************************)
+(* Copyright 2020 The Project Oak Authors                                   *)
+(*                                                                          *)
+(* Licensed under the Apache License, Version 2.0 (the "License")           *)
+(* you may not use this file except in compliance with the License.         *)
+(* You may obtain a copy of the License at                                  *)
+(*                                                                          *)
+(*     http://www.apache.org/licenses/LICENSE-2.0                           *)
+(*                                                                          *)
+(* Unless required by applicable law or agreed to in writing, software      *)
+(* distributed under the License is distributed on an "AS IS" BASIS,        *)
+(* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *)
+(* See the License for the specific language governing permissions and      *)
+(* limitations under the License.                                           *)
+(****************************************************************************)
+
+Require Import Cava.Cava.
+Require Import Cava.CavaProperties.
+Require Import AesSpec.AES256.
+Require Import AesSpec.StateTypeConversions.
+Require Import AesImpl.AddRoundKeyCircuit.
+Import StateTypeConversions.LittleEndian.
+
+Section Equivalence.
+  Local Notation byte := (Vector.t bool 8).
+  Local Notation state := (Vector.t (Vector.t byte 4) 4) (only parsing).
+  Local Notation key := (Vector.t (Vector.t byte 4) 4) (only parsing).
+
+  Lemma map2_to_flat (f : bool -> bool -> bool) (v1 v2 : state) :
+    Vector.map2 f (to_flat v1) (to_flat v2)
+    = to_flat (Vector.map2 (Vector.map2 (Vector.map2 f)) v1 v2).
+  Proof.
+    cbv [to_flat]. cbv [BigEndian.from_rows BigEndian.from_cols].
+    cbv [BigEndian.from_big_endian_bytes].
+    cbv [bytevec_to_bitvec].
+    autorewrite with pull_vector_map.
+    rewrite !Vector.map_map2, !Vector.map_map.
+    rewrite !map_id_ext
+      by (intros; rewrite bitvec_to_byte_to_bitvec; reflexivity).
+    erewrite map2_ext with
+        (f0 := fun a b => byte_to_bitvec (bitvec_to_byte _))
+      by (intros; rewrite bitvec_to_byte_to_bitvec; reflexivity).
+    autorewrite with pull_vector_map. reflexivity.
+  Qed.
+
+  Lemma add_round_key_equiv (k : key) (st : state) :
+    aes_add_round_key k st
+    = AES256.aes_add_round_key_circuit_spec k st.
+  Proof.
+    cbv [AES256.aes_add_round_key_circuit_spec
+           AES256.add_round_key
+           AddRoundKeyCircuit.aes_add_round_key
+           AddRoundKey.add_round_key].
+    cbv [xor4x4V xor4xV].
+    cbv [Bvector.BVxor xorV].
+
+    rewrite map2_to_cols_bits, map2_to_flat.
+    autorewrite with conversions.
+
+    repeat (cbv [Vec.map2 vcombine];
+            simpl_ident;
+            rewrite map_map2;
+            rewrite map2_swap;
+            apply map2_ext; intros).
+
+    apply Bool.xorb_comm.
+  Qed.
+End Equivalence.
