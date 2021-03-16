@@ -239,7 +239,7 @@ Qed.
 
 (*|
 A note about reading Coq proofs: in general, it's more important to understand
-the lemma statement (the part before ``Proof`` than it is to understand the
+the lemma statement (the part before ``Proof``) than it is to understand the
 proof body. The lemma statement shows what is being proven, and the proof body
 contains an "argument" to Coq that the statement is true.
 
@@ -291,6 +291,8 @@ bits).
 
 End WithCava.
 
+Local Open Scope vector_scope.
+
 (*|
 To generate a netlist for this circuit, we use mostly the same procedure as for
 the inverter, except that we change the input and output port types to match the
@@ -310,16 +312,16 @@ Compute (makeCircuitNetlist xor_byte_interface xor_byte).(module).
 Tuples in the input or output types become lists of ports for the netlist
 interface, so ``signal (Vec Bit 8) * signal (Vec Bit 8)`` becomes ``[mkPort "v1"
 (Vec Bit 8); mkPort "v2" (Vec Bit 8)]``. The names of the ports ("v1", "v2", and
-"o") are just for readability and potentially reference by other netlists; they
-can be named however you prefer.
+"o") are just for readability and potentially for reference by other netlists;
+they can be named however you prefer.
 
 We can also, as before, simulate the circuit.
 |*)
 
 Compute
   simulate xor_byte
-  [([true;  true; true;  false; false; false; false; false]%vector,
-    [false; true; false; true;  false; false; false; false]%vector)].
+  [([true;  true; true;  false; false; false; false; false],
+    [false; true; false; true;  false; false; false; false])].
 
 (*|
 Literal bit vectors are not especially readable, though; it's not immediately
@@ -494,7 +496,7 @@ results!
 (* 7 xor 10 = 13 (n=8, m=2)*)
 Compute map Bv2N
         (simulate xor_tree
-                  [[N2Bv_sized 8 7; N2Bv_sized 8 10]%vector]).
+                  [[N2Bv_sized 8 7; N2Bv_sized 8 10]]).
 
 (* 1000 xor 3 = 1003 (n=10, m=2) *)
 Compute map Bv2N
@@ -512,7 +514,7 @@ Compute map Bv2N
                      ; N2Bv_sized 8 32
                      ; N2Bv_sized 8 64
                      ; N2Bv_sized 8 128
-                   ]%vector]).
+                   ]]).
 
 (*|
 To prove the xor tree circuit correct, we prove that it's equivalent to a
@@ -571,7 +573,7 @@ As a final touch, we can also prove that, when applied to just two bitvectors
 Lemma xor_bitvec_xor_tree_equiv
       n (i : list (Vector.t bool n * Vector.t bool n)) :
   simulate (xor_bitvec n) i =
-  simulate xor_tree (map (fun '(v1,v2) => [v1;v2]%vector) i).
+  simulate xor_tree (map (fun '(v1,v2) => [v1;v2]) i).
 Proof.
   cbv [xor_bitvec xor_tree]; autorewrite with push_simulate.
   rewrite map_map.
