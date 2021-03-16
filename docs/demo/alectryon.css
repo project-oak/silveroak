@@ -354,7 +354,6 @@ In any case, make an exception for comments:
     align-items: baseline;
     display: inline-flex;
     margin: 0.15rem 0.25rem;
-    z-index: 1;
 }
 
 .alectryon-io .hyp-names {
@@ -539,6 +538,7 @@ In any case, make an exception for comments:
 
 .alectryon-standalone {
     font-family: 'IBM Plex Serif', 'PT Serif', 'Merriweather', 'DejaVu Serif', serif;
+    line-height: 1.5;
 }
 
 @media screen and (min-width: 50rem) {
