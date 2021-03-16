@@ -16,7 +16,6 @@
 
 Require Export Cava.Lib.Lib.
 Require Export Cava.Lib.AddersProperties.
-Require Export Cava.Lib.BitVectorOpsProperties.
 Require Export Cava.Lib.CavaPreludeProperties.
 Require Export Cava.Lib.CombinationalProperties.
 Require Export Cava.Lib.CombinatorsProperties.

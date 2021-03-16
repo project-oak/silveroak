@@ -42,13 +42,19 @@ Section WithCava.
     | _ => tree and2 v
     end.
 
+  Definition any {n} (v : signal (Vec Bit n)) : cava (signal Bit) :=
+    match n with
+    | 0 => ret zero
+    | _ => tree or2 v
+    end.
+
   Fixpoint eqb {t : SignalType} : signal t -> signal t -> cava (signal Bit) :=
     match t as t0 return signal t0 -> signal t0 -> cava (signal Bit) with
     | Void => fun _ _ => ret one
     | Bit => fun x y => xnor2 (x, y)
     | ExternalType s => fun x y => ret one
     | Vec a n => fun x y : signal (Vec a n) =>
-                  eq_results <- Vec.map2 (fun '(a, b) => eqb a b) x y ;;
+                  eq_results <- Vec.map2 (fun '(a, b) => eqb a b) (x, y) ;;
                   all eq_results
     end.
 End WithCava.

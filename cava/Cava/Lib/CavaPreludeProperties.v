@@ -30,6 +30,14 @@ Require Import Cava.Util.Nat.
 Require Import Cava.Util.Tactics.
 Require Import Cava.Util.Vector.
 
+Lemma zero_correct : zero = false.
+Proof. reflexivity. Qed.
+Hint Rewrite @zero_correct using solve [eauto] : simpl_ident.
+
+Lemma one_correct : one = true.
+Proof. reflexivity. Qed.
+Hint Rewrite @one_correct using solve [eauto] : simpl_ident.
+
 Lemma all_correct {n} v :
   all (n:=n) v = Vector.fold_left andb true v.
 Proof.
@@ -40,6 +48,17 @@ Proof.
       auto using Bool.andb_assoc.
 Qed.
 Hint Rewrite @all_correct using solve [eauto] : simpl_ident.
+
+Lemma any_correct {n} v :
+  any (n:=n) v = Vector.fold_left orb false v.
+Proof.
+  destruct n; [ eapply case0 with (v:=v); reflexivity | ].
+  cbv [any]. simpl_ident.
+  eapply (tree_equiv (t:=Bit));
+    intros; boolsimpl; try reflexivity; try lia;
+      auto using Bool.orb_assoc.
+Qed.
+Hint Rewrite @any_correct using solve [eauto] : simpl_ident.
 
 Lemma eqb_correct {t} (x y : combType t) :
   eqb x y = combType_eqb x y.

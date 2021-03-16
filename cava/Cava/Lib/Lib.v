@@ -15,7 +15,6 @@
 (****************************************************************************)
 
 Require Export Cava.Lib.Adders.
-Require Export Cava.Lib.BitVectorOps.
 Require Export Cava.Lib.CavaPrelude.
 Require Export Cava.Lib.Combinators.
 Require Export Cava.Lib.Multiplexers.

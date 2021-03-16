@@ -16,6 +16,8 @@
 
 Require Import Cava.Cava.
 Require Import AesImpl.Pkg.
+Import Vec.BitVecNotations.
+Open Scope bitvec_scope.
 
 Local Notation byte := (Vec Bit 8) (only parsing).
 Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").
@@ -45,10 +47,10 @@ Section WithCava.
     (* assign x[1] = data_i[3] ^ data_i[2]; *)
     (* assign x[2] = data_i[2] ^ data_i[1]; *)
     (* assign x[3] = data_i[1] ^ data_i[0]; *)
-    x_0 <- xorV (data_i_0, data_i_3) ;;
-    x_1 <- xorV (data_i_3, data_i_2) ;;
-    x_2 <- xorV (data_i_2, data_i_1) ;;
-    x_3 <- xorV (data_i_1, data_i_0) ;;
+    x_0 <- data_i_0 ⊕ data_i_3 ;;
+    x_1 <- data_i_3 ⊕ data_i_2 ;;
+    x_2 <- data_i_2 ⊕ data_i_1 ;;
+    x_3 <- data_i_1 ⊕ data_i_0 ;;
 
 
     (* // Mul2(x) *)
@@ -63,8 +65,8 @@ Section WithCava.
     (* // Drive y_pre_mul4 *)
     (* assign y_pre_mul4[0] = data_i[3] ^ data_i[1]; *)
     (* assign y_pre_mul4[1] = data_i[2] ^ data_i[0]; *)
-    y_pre_mul4_0 <- xorv data_i_3 data_i_1 ;;
-    y_pre_mul4_1 <- xorv data_i_2 data_i_0 ;;
+    y_pre_mul4_0 <- Vec.xor (data_i_3, data_i_1) ;;
+    y_pre_mul4_1 <- Vec.xor (data_i_2, data_i_0) ;;
     (* // Mul4(y_pre_mul4) *)
     (* for (genvar i = 0; i < 2; i++) begin : gen_mul4 *)
     (*   assign y[i] = aes_mul4(y_pre_mul4[i]); *)
@@ -74,7 +76,7 @@ Section WithCava.
 
     (* // Drive y2_pre_mul2 *)
     (* assign y2_pre_mul2 = y[0] ^ y[1]; *)
-    y2_pre_mul2 <- xorv y_0 y_1 ;;
+    y2_pre_mul2 <- Vec.xor (y_0, y_1) ;;
     (* // Mul2(y) *)
     (* assign y2 = aes_mul2(y2_pre_mul2); *)
     y2 <- aes_mul2 y2_pre_mul2 ;;
@@ -82,8 +84,8 @@ Section WithCava.
     (* // Drive z *)
     (* assign z[0] = y2 ^ y[0]; *)
     (* assign z[1] = y2 ^ y[1]; *)
-    z_0 <- xorv y2 y_0 ;;
-    z_1 <- xorv y2 y_1 ;;
+    z_0 <- y2 ⊕ y_0 ;;
+    z_1 <- y2 ⊕ y_1 ;;
 
     (* // Mux z *)
     (* assign z_muxed[0] = (op_i == CIPH_FWD) ? 8'b0 : z[0]; *)
@@ -97,10 +99,10 @@ Section WithCava.
     (* assign data_o[1] = data_i[0] ^ x_mul2[2] ^ x[1] ^ z_muxed[0]; *)
     (* assign data_o[2] = data_i[3] ^ x_mul2[1] ^ x[3] ^ z_muxed[1]; *)
     (* assign data_o[3] = data_i[2] ^ x_mul2[0] ^ x[3] ^ z_muxed[0]; *)
-    data_o0 <- (xorv data_i_1 x_mul2_3 >>= xorv x_1 >>= xorv z_muxed_1) ;;
-    data_o1 <- (xorv data_i_0 x_mul2_2 >>= xorv x_1 >>= xorv z_muxed_0) ;;
-    data_o2 <- (xorv data_i_3 x_mul2_1 >>= xorv x_3 >>= xorv z_muxed_1) ;;
-    data_o3 <- (xorv data_i_2 x_mul2_0 >>= xorv x_3 >>= xorv z_muxed_0) ;;
+    data_o0 <- (data_i_1 ⊕ x_mul2_3 ⊕ x_1 ⊕ z_muxed_1) ;;
+    data_o1 <- (data_i_0 ⊕ x_mul2_2 ⊕ x_1 ⊕ z_muxed_0) ;;
+    data_o2 <- (data_i_3 ⊕ x_mul2_1 ⊕ x_3 ⊕ z_muxed_1) ;;
+    data_o3 <- (data_i_2 ⊕ x_mul2_0 ⊕ x_3 ⊕ z_muxed_0) ;;
 
     packV [data_o0; data_o1; data_o2; data_o3].
 
