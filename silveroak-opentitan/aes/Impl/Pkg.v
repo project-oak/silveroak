@@ -53,8 +53,7 @@ Section WithCava.
 
   Definition bitvecvec_to_signal {a b : nat} (lut : Vector.t (Vector.t bool b) a)
     : cava (signal (Vec (Vec Bit b) a)) :=
-    v <- Traversable.mapT bitvec_to_signal lut ;;
-    packV v.
+    Vec.map_literal bitvec_to_signal lut.
 
   Definition natvec_to_signal_sized {n : nat} (size : nat) (lut : Vector.t nat n)
     : cava (signal (Vec (Vec Bit size) n)) :=
@@ -111,8 +110,7 @@ Section WithCava.
     cava (signal (Vec byte 4)) :=
     let indices := [4 - shift; 5 - shift; 6 - shift; 7 - shift] in
     let indices := Vector.map (fun x => Nat.modulo x 4) indices in
-    out <- Traversable.mapT (indexConst input) indices ;;
-    packV out.
+    Vec.map_literal (indexConst input) indices.
 
   Definition IDLE_S := bitvec_to_signal (nat_to_bitvec_sized 3 0).
   Definition INIT_S := bitvec_to_signal (nat_to_bitvec_sized 3 1).
