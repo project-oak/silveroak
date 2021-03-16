@@ -17,8 +17,233 @@
 <div class="alectryon-root alectryon-centered"><div class="alectryon-banner">Built with <a href="https://github.com/cpitclaudel/alectryon/">Alectryon</a>, running Coq+SerAPI v8.12.0+0.12.0. Coq sources are in this panel; goals and messages will appear in the other. Bubbles (<span class="alectryon-bubble"></span>) indicate interactive fragments: hover for details, tap to reveal contents. Use <kbd>Ctrl+↑</kbd> <kbd>Ctrl+↓</kbd> to navigate, <kbd>Ctrl+🖱️</kbd> to focus.</div><div class="document" id="tutorial">
 <h1 class="title">Tutorial</h1>
 
-<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk0" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk0"><span class="highlight"><span class="kn">Check</span> nat.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">nat
-     : <span class="kt">Set</span></span></blockquote></div></div></small></span></pre>
+<p>Welcome! This is a quick primer for designing circuits with Cava. We'll walk
+through a few small examples end-to-end. This tutorial assumes some familiarity
+with Coq syntax. Use Ctrl+down and Ctrl+up to step through the Coq code along
+with the tutorial.</p>
+<div class="section" id="example-1-inverter">
+<h1>Example 1 : Inverter</h1>
+<p>To start, let's define a 1-bit inverter.</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">inverter</span>
+           {<span class="nv">signal</span> : SignalType -&gt; <span class="kt">Type</span>}
+           {<span class="nv">semantics</span> : Cava signal}
+  : Circuit (signal Bit) (signal Bit) :=
+  Comb inv.</span></span></span></pre><p>A few things to notice here:</p>
+<ul class="simple">
+<li><tt class="docutils literal">SignalType</tt> is Cava's type system. The inverter is parameterized over
+<tt class="docutils literal">signal</tt>, which converts <tt class="docutils literal">SignalType</tt>s to Coq types. <tt class="docutils literal">Bit</tt> is one
+example of a <tt class="docutils literal">SignalType</tt>; we'll see more examples later on.</li>
+<li><tt class="docutils literal">Comb</tt> is short for &quot;combinational&quot;; our inverter has no loops, registers,
+or timing requirements, so it is a purely combinational circuit.</li>
+<li>The inverter is also paramterized over <tt class="docutils literal">semantics</tt>, an instance of the
+typeclass <tt class="docutils literal">Cava</tt>. This instance provides implementations of circuit
+primitives, such as 1-bit logic gates. One primitive gate is a 1-bit inverter
+<tt class="docutils literal">inv</tt>, so our inverter is just a simple invocation of the primitive.</li>
+</ul>
+<p>Normally, we'd write circuit definitions a little more concisely by writing them
+inside a <tt class="docutils literal">Section</tt> that contains <tt class="docutils literal">signal</tt> and <tt class="docutils literal">semantics</tt> as context
+variables, like this:</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Section</span> <span class="nf">WithCava</span>.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Context</span> {<span class="nv">signal</span>} {<span class="nv">semantics</span> : Cava signal}.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">inverter_concise</span> : Circuit (signal Bit) (signal Bit)
+    := Comb inv.</span></span></span></pre><p>For the rest of the circuit definitions in this tutorial, you can assume that
+we're inside the section and that every definition is parameterized over the
+<tt class="docutils literal">signal</tt> and <tt class="docutils literal">semantics</tt> context variables.</p>
+<p>Back to our inverter. Let's take a closer look at the <tt class="docutils literal">inv</tt> primitive.</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight">  </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk0" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk0"><span class="highlight"><span class="kn">About</span> inv.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">inv :
+<span class="kr">forall</span> {<span class="nv">signal</span> : SignalType -&gt; <span class="kt">Type</span>}
+  {<span class="nv">Cava</span> : Cava signal},
+signal Bit -&gt; cava (signal Bit)
+
+inv <span class="kr">is</span> not universe polymorphic
+<span class="kn">Arguments</span> inv {signal}%function_scope {Cava}
+inv <span class="kr">is</span> transparent
+Expands to: Constant Cava.Core.CavaClass.inv</span></blockquote></div></div></small></span></pre><p>You can see in the type signature <tt class="docutils literal">signal Bit <span class="pre">-&gt;</span> cava (signal Bit)</tt> that
+<tt class="docutils literal">inv</tt> is defined as a pure Coq function in terms of a monad called
+<tt class="docutils literal">cava</tt>. The <tt class="docutils literal">cava</tt> monad, like <tt class="docutils literal">inv</tt>, is provided by <tt class="docutils literal">semantics</tt>. The
+monad is used to capture sharing; it's semantically different in Cava to write:</p>
+<pre class="literal-block">
+x &lt;- inv zero ;;
+y &lt;- inv zero ;;
+xor2 x y
+</pre>
+<p>than it is to write:</p>
+<pre class="literal-block">
+x &lt;- inv zero ;;
+xor2 x x
+</pre>
+<p>Both expressions have the same meaning, and if we were using Gallina <tt class="docutils literal">let</tt>
+binders there would be no difference. But the generated circuit can use two
+wires for the first definition, and fork the same wire in the second. As circuit
+diagrams, this is the difference between:</p>
+<pre class="literal-block">
+       +-----+      +-----+
+0 -----| inv |------|     |
+       +-----+      | xor |----- out
+       +-----+      |     |
+0 -----| inv |------|     |
+       +-----+      +-----+
+</pre>
+<p>and:</p>
+<pre class="literal-block">
+                      +-----+
+                  +---|     |
+                  |   | xor |---- out
+       +-----+    |   |     |
+0 -----| inv |----+---|     |
+       +-----+        +-----+
+</pre>
+<p>This difference isn't significant in determining what the value of <tt class="docutils literal">out</tt> will
+be, but it can be very useful when trying to exercise fine-grained control over
+circuit layout and area! At a first approximation, you can think of a monadic
+bind (<tt class="docutils literal">_ &lt;- _ ;; ...</tt>) as <em>naming a wire</em> in the circuit graph.</p>
+<p>We could have represented sharing by describing circuit graphs with a list of
+nodes and edges. However, this is essentially the &quot;machine code&quot; of structural
+hardware descriptions, and is far too tedious a representation for humans to
+work with. The monadic-function abstraction allows human engineers to think
+about the functional behavior and composition of circuits at a more intuitive
+level.</p>
+<p>Parameterizing over the <tt class="docutils literal">cava</tt> monad and primitive implementations allows us
+to use different instances of <tt class="docutils literal">Cava</tt> to interpret the same circuit definition
+in different ways. One <tt class="docutils literal">Cava</tt> instance generates netlists by adding and
+connecting wires in the background using a state monad. For circuit simulations
+and proofs of functional correctness, on the other hand, we don't care about
+sharing at all; these use no-op identity monad that acts the same as a <tt class="docutils literal">let</tt>
+binder.</p>
+<p>Let's use our <tt class="docutils literal">inverter</tt> definition to see these two interpretations in
+action.</p>
+<p>First, let's generate a netlist. We need to define an interface that describes the
+circuit's input and output ports and behavior relative to the (global) clock and
+reset signals. Then we can compute a netlist (type <tt class="docutils literal">CavaState</tt>), which
+describes the full layout of the circuit in a way that can be easily translated
+to SystemVerilog.</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight"><span class="c">(* netlist-generating semantics *)</span>
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Existing Instance</span> <span class="nf">CavaCombinationalNet</span>.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">inverter_interface</span>
+  := sequentialInterface <span class="s2">&quot;inverter_interface&quot;</span>
+     <span class="s2">&quot;clk&quot;</span> PositiveEdge <span class="s2">&quot;rst&quot;</span> PositiveEdge
+     [mkPort <span class="s2">&quot;i&quot;</span> Bit]
+     [mkPort <span class="s2">&quot;o&quot;</span> Bit]
+     [].</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk1" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk1"><span class="highlight"><span class="kn">Compute</span> (makeCircuitNetlist inverter_interface inverter).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= {|
+  netNumber := <span class="mi">1</span>;
+  vectorNumber := <span class="mi">0</span>;
+  vectorDeclarations := [];
+  externalDeclarations := [];
+  clockNet := Some (NamedWire <span class="s2">&quot;clk&quot;</span>);
+  clockEdge := PositiveEdge;
+  resetNet := Some (NamedWire <span class="s2">&quot;rst&quot;</span>);
+  resetEdge := PositiveEdge;
+  module := {|
+            moduleName := <span class="s2">&quot;inverter_interface&quot;</span>;
+            netlist := [AssignSignal
+                          (NamedWire <span class="s2">&quot;o&quot;</span>)
+                          (Wire <span class="mi">0</span>);
+                       Not (NamedWire <span class="s2">&quot;i&quot;</span>)
+                         (Wire <span class="mi">0</span>)];
+            inputs := [{|
+                       port_name := <span class="s2">&quot;i&quot;</span>;
+                       port_type := Bit |};
+                      {|
+                      port_name := <span class="s2">&quot;rst&quot;</span>;
+                      port_type := Bit |};
+                      {|
+                      port_name := <span class="s2">&quot;clk&quot;</span>;
+                      port_type := Bit |}];
+            outputs := [{|
+                        port_name := <span class="s2">&quot;o&quot;</span>;
+                        port_type := Bit |}] |};
+  libraryModules := [] |}
+: CavaState</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+<span class="c">(* A closer look at the circuit body *)</span>
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk2" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk2"><span class="highlight"><span class="kn">Compute</span> (makeCircuitNetlist inverter_interface inverter).(module).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= {|
+  moduleName := <span class="s2">&quot;inverter_interface&quot;</span>;
+  netlist := [AssignSignal (NamedWire <span class="s2">&quot;o&quot;</span>)
+                (Wire <span class="mi">0</span>);
+             Not (NamedWire <span class="s2">&quot;i&quot;</span>) (Wire <span class="mi">0</span>)];
+  inputs := [{|
+             port_name := <span class="s2">&quot;i&quot;</span>;
+             port_type := Bit |};
+            {|
+            port_name := <span class="s2">&quot;rst&quot;</span>;
+            port_type := Bit |};
+            {|
+            port_name := <span class="s2">&quot;clk&quot;</span>;
+            port_type := Bit |}];
+  outputs := [{|
+              port_name := <span class="s2">&quot;o&quot;</span>;
+              port_type := Bit |}] |}
+: <span class="kn">Module</span></span></blockquote></div></div></small></span></pre><p>You may notice that we're using something called <tt class="docutils literal">sequentialInterface</tt> here,
+and referring to clock and reset signals, even though our inverter is a purely
+combinational circuit. We introduce timing in the netlist interface here in
+order to drive the circuit with multiple inputs over time, and to plug it in as
+a subcomponent of circuits that are not combinational.</p>
+<p>Now, let's simulate the circuit, which can be useful for testing and proving
+functional correctness. Here, we use the identity-monad interpretation. The
+<tt class="docutils literal">signal</tt> for this <tt class="docutils literal">Cava</tt> instance is <tt class="docutils literal">combType</tt>, which interprets a
+<tt class="docutils literal">Bit</tt> simply as a Coq <tt class="docutils literal">bool</tt>. If we provide the three inputs
+<tt class="docutils literal">[true; false; true]</tt> to the circuit simulation function <tt class="docutils literal">multistep</tt>, we'll
+get <tt class="docutils literal">[false; true; false]</tt>:</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight"><span class="c">(* identity-monad semantics *)</span>
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Existing Instance</span> <span class="nf">CombinationalSemantics</span>.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk3" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk3"><span class="highlight"><span class="kn">Compute</span> (simulate inverter [true; false; true]).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [false; true; false]
+: list (combType Bit)</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk4" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk4"><span class="highlight"><span class="kn">Compute</span> (simulate inverter [true; false; true; true; true; false]).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [false; true; false; false; false; true]
+: list (combType Bit)</span></blockquote></div></div></small></span></pre><p>We can use the simulation to write proofs about the circuit. For instance, we
+can prove that <tt class="docutils literal">inverter</tt> obeys a natural Coq specification:</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk5" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk5"><span class="highlight"><span class="kn">Lemma</span> <span class="nf">inverter_correct</span> (<span class="nv">input</span> : list bool) :
+  simulate inverter input = map negb input.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate inverter input = map negb input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk6" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk6"><span class="highlight"><span class="kn">Proof</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate inverter input = map negb input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">  <span class="c">(* inline the circuit definition *)</span>
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk7" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk7"><span class="highlight"><span class="nb">cbv</span> [inverter].</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate (Comb inv) input = map negb input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+  <span class="c">(* simplify simulate to create an expression in terms of Coq lists *)</span>
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk8" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk8"><span class="highlight"><span class="nb">autorewrite with</span> push_simulate.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">map inv input = map negb input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+  <span class="c">(* assert that the two List.map functions are equivalent *)</span>
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk9" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk9"><span class="highlight"><span class="nb">apply</span> map_ext.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight"><span class="kr">forall</span> <span class="nv">a</span> : bool, inv a = negb a</span></div></blockquote></div></div></small><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chka" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chka"><span class="highlight"><span class="nb">intros</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">a</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">inv a = negb a</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+  <span class="c">(* inline the inv primitive (fun x =&gt; ret (negb x)) *)</span>
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkb" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkb"><span class="highlight"><span class="nb">cbn</span> [inv CombinationalSemantics].</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">a</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">ret (negb a) = negb a</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+  <span class="c">(* simplify the identity monad expressions *)</span>
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkc" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkc"><span class="highlight">simpl_ident.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">a</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">negb a = negb a</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="bp">reflexivity</span>.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Qed</span>.</span></span></span></pre><p>We can even prove that composing two inverters is the same as doing
+nothing. Here, <tt class="docutils literal"><span class="pre">&gt;==&gt;</span></tt> is circuit composition (a Kleisli arrow). The proof
+structure is pretty similar.</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkd" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkd"><span class="highlight"><span class="kn">Lemma</span> <span class="nf">inverter_idempotent</span> (<span class="nv">input</span> : list bool) :
+  simulate (inverter &gt;==&gt; inverter) input = input.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate (inverter &gt;==&gt; inverter) input = input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chke" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chke"><span class="highlight"><span class="kn">Proof</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate (inverter &gt;==&gt; inverter) input = input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkf" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkf"><span class="highlight"><span class="nb">cbv</span> [inverter].</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate (Comb inv &gt;==&gt; Comb inv) input = input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk10" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk10"><span class="highlight"><span class="nb">autorewrite with</span> push_simulate.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">map inv (map inv input) = input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk11" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk11"><span class="highlight"><span class="nb">rewrite</span> map_map.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">map (<span class="kr">fun</span> <span class="nv">x</span> : combType Bit =&gt; inv (inv x)) input =
+input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk12" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk12"><span class="highlight"><span class="nb">apply</span> List.map_id_ext.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight"><span class="kr">forall</span> <span class="nv">a</span> : combType Bit, inv (inv a) = a</span></div></blockquote></div></div></small><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk13" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk13"><span class="highlight"><span class="nb">intros</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">a</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType Bit</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">inv (inv a) = a</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk14" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk14"><span class="highlight"><span class="nb">cbn</span> [inv CombinationalSemantics].</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">a</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType Bit</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">ret (negb (ret (negb a))) = a</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk15" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk15"><span class="highlight">simpl_ident.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">a</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType Bit</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">negb (negb a) = a</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="nb">apply</span> Bool.negb_involutive.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Qed</span>.</span></span></span></pre><p>To summarize, there are three things you can do with Cava circuits:</p>
+<ol class="arabic simple">
+<li>Define them (parameterized over an abstract <tt class="docutils literal">Cava</tt> instance)</li>
+<li>Generate netlists for them using the <tt class="docutils literal">CavaCombinationalNet</tt> instance and
+the <tt class="docutils literal">makeCircuitNetlist</tt> function. These netlists can then be translated into
+SystemVerilog.</li>
+<li>Simulate them using <tt class="docutils literal">simulate</tt>, and prove things about the simulations, by
+plugging in the <tt class="docutils literal">CombinationalSemantics</tt> instance.</li>
+</ol>
+<p>In the next example, we'll try a slightly more complex circuit.</p>
+</div>
+<div class="section" id="example-2-8-bit-xor">
+<h1>Example 2 : 8-Bit xor</h1>
+<p>To be continued!</p>
+</div>
 </div>
 </div></body>
 </html>
