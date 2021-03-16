@@ -36,44 +36,49 @@ Section WithCava.
   (* Forks in wires                                                           *)
   (****************************************************************************)
 
+  (* forks a wire into two *)
   Definition fork2 {A} (a:A) := ret (a, a).
 
   (****************************************************************************)
   (* Operations over pairs.                                                   *)
   (****************************************************************************)
 
+  (* applies f to the first element of a pair *)
   Definition first {A B C} (f : A -> cava C) (ab : A * B) : cava (C * B) :=
     let '(a, b) := ab in
     c <- f a ;;
     ret (c, b).
 
+  (* applies f to the second element of a pair *)
   Definition second {A B C} (f : B -> cava C) (ab : A * B) : cava (A * C) :=
     let '(a, b) := ab in
     c <- f b ;;
     ret (a, c).
 
-  Definition swap {A B}
-                  (i : signal A * signal B)
-                  : cava (signal B * signal A) :=
+  (* reverses elements of a pair *)
+  Definition swap {A B} (i : A * B) : cava (B * A) :=
     let (a, b) := i in
     ret (b, a).
 
-  (* pairLeft takes an input with shape (a, (b, c)) and re-organizes
+  (* drops right element of a pair *)
+  Definition dropr {A B} (i : A * B) : cava A :=
+    ret (fst i).
+
+  (* drops left element of a pair *)
+  Definition dropl {A B} (i : A * B) : cava B :=
+    ret (snd i).
+
+  (* pair_left takes an input with shape (a, (b, c)) and re-organizes
       it as ((a, b), c) *)
-   Definition pairLeft {A B C : SignalType}
-                       (i : signal A * (signal B * signal C)) :
-                       cava ((signal A * signal B) * signal C) :=
+  Definition pair_left {A B C} (i : A * (B * C)) : cava (A * B * C) :=
    let '(a, (b, c)) := i in
-   ret ((a, b), c).
+   ret (a, b, c).
 
-  (* pairRight takes an input with shape ((a, b), c) and re-organizes
+  (* pair_right takes an input with shape ((a, b), c) and re-organizes
      it as (a, (b, c)) *)
-  Definition pairRight {A B C : SignalType}
-                       (i : (signal A * signal B) * signal C) :
-                       cava (signal A * (signal B * signal C)) :=
-   let '((a, b), c) := i in
+  Definition pair_right {A B C} (i : A * B * C) : cava (A * (B * C)) :=
+   let '(a, b, c) := i in
    ret (a, (b, c)).
-
 
   (****************************************************************************)
   (* 4-sided tile combinators                                                 *)
