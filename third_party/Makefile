@@ -14,7 +14,9 @@
 # limitations under the License.
 #
 
-.PHONY:	all minimize-requires
+.PHONY:	all minimize-requires coqutil coqtools bedrock2 extlib record-update \
+	clean no-update update build-coqutil build-bedrock2 build-extlib \
+	build-record-update clean coq
 
 all: coqutil coqtools bedrock2 extlib record-update
 
