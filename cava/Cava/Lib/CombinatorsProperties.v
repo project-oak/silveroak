@@ -29,10 +29,57 @@ Require Import Cava.Util.Tactics.
 Require Import Cava.Util.Vector.
 Import ListNotations VectorNotations.
 
-Lemma fork2Correct {A} (i : combType A) :
+Lemma fork2_correct {A} (i : combType A) :
  fork2 i = (i, i).
 Proof. reflexivity. Qed.
-Hint Rewrite @fork2Correct using solve [eauto] : simpl_ident.
+Hint Rewrite @fork2_correct using solve [eauto] : simpl_ident.
+
+Lemma first_correct {A B C} (f : A -> C) (i : A * B) :
+ first f i = (f (fst i), snd i).
+Proof. destruct_products; reflexivity. Qed.
+Hint Rewrite @first_correct using solve [eauto] : simpl_ident.
+
+Lemma second_correct {A B C} (f : B -> C) (i : A * B) :
+ second f i = (fst i, f (snd i)).
+Proof. destruct_products; reflexivity. Qed.
+Hint Rewrite @second_correct using solve [eauto] : simpl_ident.
+
+Lemma swap_correct {A B} (i : A * B) :
+ swap i = (snd i, fst i).
+Proof. destruct_products; reflexivity. Qed.
+Hint Rewrite @swap_correct using solve [eauto] : simpl_ident.
+
+Lemma dropr_correct {A B} (i : A * B) :
+ dropr i = fst i.
+Proof. destruct_products; reflexivity. Qed.
+Hint Rewrite @dropr_correct using solve [eauto] : simpl_ident.
+
+Lemma dropl_correct {A B} (i : A * B) :
+ dropl i = snd i.
+Proof. destruct_products; reflexivity. Qed.
+Hint Rewrite @dropl_correct using solve [eauto] : simpl_ident.
+
+Lemma pair_left_correct {A B C} (i : A * (B * C)) :
+ pair_left i = (fst i, fst (snd i), snd (snd i)).
+Proof. destruct_products; reflexivity. Qed.
+Hint Rewrite @pair_left_correct using solve [eauto] : simpl_ident.
+
+Lemma pair_right_correct {A B C} (i : A * B * C) :
+ pair_right i = (fst (fst i), (snd (fst i), snd i)).
+Proof. destruct_products; reflexivity. Qed.
+Hint Rewrite @pair_right_correct using solve [eauto] : simpl_ident.
+
+Lemma below_correct {A B C D E F G}
+      (r : A * B -> D * G) (s : G * C -> E * F)
+      (i : A * (B * C)) :
+  below r s i = let dg := r (fst i, fst (snd i)) in
+                let ef := s (snd dg, snd (snd i)) in
+                (fst dg, fst ef, snd ef).
+Proof.
+  cbv [below]. simpl_ident. repeat destruct_pair_let.
+  destruct_products; reflexivity.
+Qed.
+Hint Rewrite @below_correct using solve [eauto] : simpl_ident.
 
 (* Full description of the behavior of col_generic *)
 Lemma col_generic_correct {A B C} (circuit : A * B -> C * A)
