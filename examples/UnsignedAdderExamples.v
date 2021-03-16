@@ -66,7 +66,9 @@ Section WithCava.
                                   signal (Vec Bit bSize)*
                                   signal (Vec Bit cSize)) :
                            cava (signal (Vec Bit (1 + max (1 + max aSize bSize) cSize))) :=
-  let '(a, b, c) := abc in adder_3input a b c.
+    let '(a, b, c) := abc in
+    ab <- unsignedAdd (a, b) ;;
+    unsignedAdd (ab, c).
 
 End WithCava.
 

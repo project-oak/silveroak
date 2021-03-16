@@ -57,7 +57,7 @@ Section Equivalence.
     rewrite map2_to_cols_bits, map2_to_flat.
     autorewrite with conversions.
 
-    repeat (cbv [zipWith vcombine];
+    repeat (cbv [Vec.map2 vcombine];
             simpl_ident;
             rewrite map_map2;
             rewrite map2_swap;

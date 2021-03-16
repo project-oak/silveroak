@@ -16,138 +16,137 @@
 
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
-Require Import Coq.micromega.Lia.
-Require Import Coq.NArith.NArith.
 Require Import Coq.Vectors.Vector.
+Require Import Coq.micromega.Lia.
 Require Import coqutil.Tactics.Tactics.
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Lib.CavaPrelude.
+Require Import Cava.Core.Core.
 Require Import Cava.Lib.Combinators.
-Require Import Cava.Lib.CombinationalProperties.
+Require Import Cava.Lib.VecProperties.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Util.Identity.
-Require Import Cava.Util.BitArithmetic.
-Require Import Cava.Util.BitArithmeticProperties.
 Require Import Cava.Util.List.
-Require Import Cava.Util.Nat.
-Require Import Cava.Core.Signal.
 Require Import Cava.Util.Tactics.
 Require Import Cava.Util.Vector.
-Require Import Cava.Lib.BitVectorOps.
-Import VectorNotations ListNotations.
-Local Open Scope list_scope.
-
-Existing Instance CombinationalSemantics.
-
-Lemma zipWith_correct {A B C : SignalType} n
-      (f : combType A * combType B -> cava (combType C))
-      (va : combType (Vec A n)) (vb : combType (Vec B n)) :
-  @zipWith _ _ A B C n f va vb
-  = Vector.map2 (fun a b => f (a,b)) va vb.
-Proof.
-  cbv [zipWith]; intros. simpl_ident.
-  rewrite map_vcombine_map2. reflexivity.
-Qed.
-Hint Rewrite @zipWith_correct using solve [eauto] : simpl_ident.
-
-Lemma pow2tree_equiv
-      {t} (id : combType t) (op : combType t -> combType t -> combType t)
-      (op_id_left : forall a : combType t, op id a = a)
-      (op_id_right : forall a : combType t, op a id = a)
-      (op_assoc :
-         forall a b c : combType t,
-           op a (op b c) = op (op a b) c)
-      (circuit : combType t * combType t -> cava (combType t))
-      (circuit_equiv : forall a b, circuit (a, b) = op a b)
-      (n : nat) :
-  forall v,
-    pow2tree n circuit v = Vector.fold_left op id v.
-Proof.
-  cbv [pow2tree]; intros. simpl_ident.
-  erewrite pow2tree_generic_equiv with (circuit0 := (fun a b => circuit (a, b)));
-    eauto; intros; reflexivity.
-Qed.
-
-Lemma tree_equiv {t} :
-  forall (id : combType t) (op : combType t -> combType t -> combType t),
-    (forall a : combType t, op id a = a) ->
-    (forall a : combType t, op a id = a) ->
-    (forall a b c : combType t, op a (op b c) = op (op a b) c) ->
-    forall circuit : combType t * combType t -> cava (combType t),
-      (forall a b : combType t, circuit (a, b) = op a b) ->
-      forall (n : nat) (v : combType (Vec t n)),
-        n <> 0 ->
-        tree circuit v = Vector.fold_left op id v.
-Proof.
-  intros. cbv [tree]. simpl_ident.
-  eapply (tree_generic_equiv (semantics:=CombinationalSemantics)); eauto.
-Qed.
-
-Lemma all_correct {n} v :
-  all (n:=n) v = Vector.fold_left andb true v.
-Proof.
-  destruct n; [ eapply case0 with (v:=v); reflexivity | ].
-  cbv [all]. simpl_ident.
-  eapply (tree_equiv (t:=Bit));
-    intros; boolsimpl; try reflexivity; try lia;
-      auto using Bool.andb_assoc.
-Qed.
-Hint Rewrite @all_correct using solve [eauto] : simpl_ident.
-
-Lemma eqb_correct {t} (x y : combType t) :
-  eqb x y = combType_eqb x y.
-Proof.
-  revert x y.
-  induction t;
-    cbn [eqb and2 xnor2 one
-             CombinationalSemantics] in *;
-    intros; simpl_ident; repeat destruct_pair_let;
-    (* handle easy cases first *)
-    repeat lazymatch goal with
-           | x : unit |- _ => destruct x
-           | x : combType Bit |- _ => destruct x
-           | |- (?x = ?x <-> ?y = ?y) => split; reflexivity
-           | _ => first [ progress cbn [List.map combine fst snd xnorb xorb negb]
-                       | split; (congruence || reflexivity) ]
-           end.
-  { (* Vector case *)
-    simpl_ident. cbn [combType_eqb].
-    rewrite eqb_fold. apply f_equal.
-    auto using map2_ext. }
-Qed.
-
-Lemma eqb_eq {t} (x y : combType t) :
-  eqb x y = true <-> x = y.
-Proof.
-  rewrite eqb_correct. split.
-  { inversion 1. apply combType_eqb_true_iff. auto. }
-  { intros; subst. f_equal.
-    apply combType_eqb_true_iff. reflexivity. }
-Qed.
-
-Lemma eqb_refl {t} (x : combType t) : eqb x x = true.
-Proof. apply eqb_eq. reflexivity. Qed.
-
-Lemma eqb_neq {t} (x y : combType t) : x <> y ->  eqb x y = false.
-Proof.
-  rewrite eqb_correct; intros. f_equal.
-  apply Bool.not_true_is_false.
-  rewrite combType_eqb_true_iff. auto.
-Qed.
-
-Lemma eqb_nat_to_bitvec_sized sz n m :
-  n < 2 ^ sz -> m < 2 ^ sz ->
-  eqb (t:=Vec Bit sz) (nat_to_bitvec_sized sz n)
-      (nat_to_bitvec_sized sz m)
-  = if Nat.eqb n m then true else false.
-Proof.
-  intros; destruct_one_match; subst; [ solve [apply (eqb_refl (t:=Vec Bit sz))] | ].
-  apply (eqb_neq (t:=Vec Bit sz)). cbv [nat_to_bitvec_sized].
-  rewrite N2Bv_sized_eq_iff with (n:=sz) by auto using N.size_nat_le_nat.
-  lia.
-Qed.
+Import ListNotations VectorNotations.
 
 Lemma fork2Correct {A} (i : combType A) :
  fork2 i = (i, i).
 Proof. reflexivity. Qed.
 Hint Rewrite @fork2Correct using solve [eauto] : simpl_ident.
+
+(* Full description of the behavior of col_generic *)
+Lemma col_generic_correct {A B C} (circuit : A * B -> C * A)
+      (a : A) (b : list B) (c : C) :
+  let loop := fold_left_accumulate
+                (fun ca b => circuit (snd ca, b))
+                b (c, a) in
+  col_generic circuit a b = (tl (map fst (fst loop)), snd (snd loop)).
+Proof.
+  cbv zeta; revert a c; induction b; intros; [ reflexivity | ].
+  cbn [col_generic]. simpl_ident. repeat destruct_pair_let.
+  rewrite fold_left_accumulate_cons_full.
+  erewrite IHb by auto. cbn [fst snd map tl].
+  apply f_equal2; [ | rewrite <-surjective_pairing; reflexivity ].
+  destruct b; autorewrite with push_fold_acc; reflexivity.
+Qed.
+
+(* Stepwise description of the behavior of col_generic *)
+Lemma col_generic_step {A B C} (circuit : A * B -> combType C * A)
+      (a : A) b0 (b : list B) :
+  let ca := circuit (a, b0) in
+  let rem := col_generic circuit (snd ca) b in
+  col_generic circuit a (b0 :: b) = ((fst ca :: fst rem)%list, snd rem).
+Proof.
+  cbn [col_generic]. simpl_ident.
+  repeat destruct_pair_let. reflexivity.
+Qed.
+
+(* Full description of the behavior of col *)
+Lemma col_correct {A B C} (circuit : A * B -> combType C * A)
+      (a : A) {n} (b : Vector.t B n) :
+  let loop := fold_left_accumulate
+                (fun ca b => circuit (snd ca, b))
+                (to_list b) (defaultSignal , a) in
+  col circuit a b = (of_list_sized defaultSignal n (tl (map fst (fst loop))),
+                     snd (snd loop)).
+Proof.
+  cbv [col]. simpl_ident. repeat destruct_pair_let.
+  erewrite col_generic_correct; reflexivity.
+Qed.
+
+(* Stepwise description of the behavior of col *)
+Lemma col_step {A B C} (circuit : A * B -> combType C * A)
+      (a : A) {n} (b : Vector.t B (S n)) :
+  let ca := circuit (a, Vector.hd b) in
+  let rem := col circuit (snd ca) (Vector.tl b) in
+  col circuit a b = (fst ca :: fst rem, snd rem).
+Proof.
+  cbv [col]. simpl_ident. repeat destruct_pair_let.
+  rewrite (Vector.eta b). cbn [fst snd].
+  autorewrite with push_to_list push_of_list_sized vsimpl.
+  rewrite col_generic_step. cbn [fst snd].
+  autorewrite with push_to_list push_of_list_sized vsimpl.
+  reflexivity.
+Qed.
+
+(* Helper lemma for bounds of right child trees *)
+Lemma tree_generic_bounds_helper n u l :
+  2 * l < n <= 2 * u ->
+  l < n - n / 2 <= u.
+Proof.
+  intros [Hlower Hupper].
+  pose proof (Nat.div_mod n 2 ltac:(lia)) as ndivmod.
+  rewrite <-Nat.bit0_mod in ndivmod.
+  rewrite ndivmod in Hupper, Hlower.
+  destruct (Nat.testbit n 0); cbn [Nat.b2n] in *; lia.
+Qed.
+
+Lemma tree_generic_equiv
+      {T} (id : T) (op : T -> T -> T)
+      (op_id_left : forall a : T, op id a = a)
+      (op_id_right : forall a : T, op a id = a)
+      (op_assoc :
+         forall a b c : T,
+           op a (op b c) = op (op a b) c)
+      (def : T) (n : nat) :
+  forall inputs,
+    0 < length inputs <= 2 ^ n ->
+    tree_generic op def n inputs = List.fold_left op inputs id.
+Proof.
+  induction n; intros.
+  { (* depth = 0; input must be a singleton list *)
+    subst. autorewrite with natsimpl in *.
+    change (2 ^ 0) with 1 in *.
+    assert (length inputs = 1) by lia.
+    destruct_lists_by_length. cbn [tree_generic fold_left].
+    rewrite op_id_left. reflexivity. }
+  { (* 0 < depth *)
+    cbn [tree_generic]. rewrite Nat.pow_succ_r in * by lia.
+    destruct_one_match;
+      [ | assert (length inputs = 1) by lia;
+          destruct_lists_by_length; cbn [fold_left];
+          rewrite op_id_left; reflexivity ].
+    pose proof (Nat.div_le_upper_bound (length inputs) 2 (2^n) ltac:(lia) ltac:(lia)).
+    pose proof (Nat.div_le_upper_bound (length inputs) 2 (length inputs) ltac:(lia) ltac:(lia)).
+    rewrite !IHn by (autorewrite with push_length natsimpl; try apply tree_generic_bounds_helper;
+                     auto; split; auto using Nat.div_str_pos).
+    simpl_ident.
+    rewrite <-fold_left_assoc, <-fold_left_app by eauto.
+    rewrite firstn_skipn. reflexivity. }
+Qed.
+
+Lemma tree_equiv {t} :
+  forall (id : combType t) (op : combType t * combType t -> combType t),
+    (forall a : combType t, op (id, a) = a) ->
+    (forall a : combType t, op (a, id) = a) ->
+    (forall a b c : combType t, op (a, op (b, c)) = op (op (a, b), c)) ->
+    forall (n : nat) (v : combType (Vec t n)),
+      n <> 0 ->
+      tree op v = Vector.fold_left (fun a b => op (a,b)) id v.
+Proof.
+  intros. cbv [tree]. simpl_ident.
+  pose proof Nat.log2_log2_up_spec n ltac:(lia).
+  erewrite tree_generic_equiv; eauto; simpl_ident;
+    autorewrite with push_length push_to_list;
+    reflexivity || lia.
+Qed.
