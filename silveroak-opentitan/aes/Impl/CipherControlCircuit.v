@@ -31,7 +31,7 @@ Notation round_index := (Vec Bit 4) (only parsing).
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
-  Local Infix "==?" := eqb (at level 40).
+  Local Infix "==?" := (fun a b => eqb (a,b)) (at level 40).
 
   Definition round_0: cava (signal round_index) :=
     bitvec_to_signal (nat_to_bitvec_sized _ 0).
@@ -345,7 +345,7 @@ Section WithCava.
     (*   key_expand_step_o = 1'b1; *)
     (*   key_full_we_o     = 1'b1; *)
     (* end *)
-    let cond := (AES_256 <- AES_256 ;; (eqb (key_len_i inputs) AES_256 >>= inv)) in
+    let cond := (AES_256 <- AES_256 ;; (eqb (key_len_i inputs, AES_256) >>= inv)) in
     setEnSignal1 key_expand_step_o cond (constant true) ;;
     setEnSignal1 key_full_we_o cond (constant true) ;;
 
@@ -395,7 +395,7 @@ Section WithCava.
       r2 <- round_2 ;;
       round_q <- round_q ;;
       round_q <- add_round round_q r2 ;;
-      eqb round_q num_rounds_q in
+      round_q ==? num_rounds_q in
 
     (*   aes_cipher_ctrl_ns = FINISH; *)
     setEnSignal aes_cipher_ctrl_ns cond FINISH_S ;;
@@ -609,7 +609,7 @@ Section WithCava.
 
     r2 <- round_2 ;;
     round_q <- add_round (round_d state) r2 ;;
-    transition <- eqb round_q (num_rounds_d state) ;;
+    transition <- round_q ==? num_rounds_d state ;;
 
     ret
       ( extend_with_loop_state  ( extract_loop_outputs next_state

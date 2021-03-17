@@ -30,6 +30,14 @@ Require Import Cava.Util.Nat.
 Require Import Cava.Util.Tactics.
 Require Import Cava.Util.Vector.
 
+Lemma zero_correct : zero = false.
+Proof. reflexivity. Qed.
+Hint Rewrite @zero_correct using solve [eauto] : simpl_ident.
+
+Lemma one_correct : one = true.
+Proof. reflexivity. Qed.
+Hint Rewrite @one_correct using solve [eauto] : simpl_ident.
+
 Lemma all_correct {n} v :
   all (n:=n) v = Vector.fold_left andb true v.
 Proof.
@@ -41,10 +49,21 @@ Proof.
 Qed.
 Hint Rewrite @all_correct using solve [eauto] : simpl_ident.
 
-Lemma eqb_correct {t} (x y : combType t) :
-  eqb x y = combType_eqb x y.
+Lemma any_correct {n} v :
+  any (n:=n) v = Vector.fold_left orb false v.
 Proof.
-  revert x y.
+  destruct n; [ eapply case0 with (v:=v); reflexivity | ].
+  cbv [any]. simpl_ident.
+  eapply (tree_equiv (t:=Bit));
+    intros; boolsimpl; try reflexivity; try lia;
+      auto using Bool.orb_assoc.
+Qed.
+Hint Rewrite @any_correct using solve [eauto] : simpl_ident.
+
+Lemma eqb_correct {t} (i : combType t * combType t) :
+  eqb i = combType_eqb (fst i) (snd i).
+Proof.
+  destruct i as [x y]; revert x y.
   induction t;
     cbn [eqb and2 xnor2 one
              CombinationalSemantics] in *;
@@ -64,7 +83,7 @@ Proof.
 Qed.
 
 Lemma eqb_eq {t} (x y : combType t) :
-  eqb x y = true <-> x = y.
+  eqb (x,y) = true <-> x = y.
 Proof.
   rewrite eqb_correct. split.
   { inversion 1. apply combType_eqb_true_iff. auto. }
@@ -72,10 +91,10 @@ Proof.
     apply combType_eqb_true_iff. reflexivity. }
 Qed.
 
-Lemma eqb_refl {t} (x : combType t) : eqb x x = true.
+Lemma eqb_refl {t} (x : combType t) : eqb (x, x) = true.
 Proof. apply eqb_eq. reflexivity. Qed.
 
-Lemma eqb_neq {t} (x y : combType t) : x <> y ->  eqb x y = false.
+Lemma eqb_neq {t} (x y : combType t) : x <> y ->  eqb (x, y) = false.
 Proof.
   rewrite eqb_correct; intros. f_equal.
   apply Bool.not_true_is_false.
@@ -84,8 +103,7 @@ Qed.
 
 Lemma eqb_nat_to_bitvec_sized sz n m :
   n < 2 ^ sz -> m < 2 ^ sz ->
-  eqb (t:=Vec Bit sz) (nat_to_bitvec_sized sz n)
-      (nat_to_bitvec_sized sz m)
+  eqb (t:=Vec Bit sz) (nat_to_bitvec_sized sz n, nat_to_bitvec_sized sz m)
   = if Nat.eqb n m then true else false.
 Proof.
   intros; destruct_one_match; subst; [ solve [apply (eqb_refl (t:=Vec Bit sz))] | ].

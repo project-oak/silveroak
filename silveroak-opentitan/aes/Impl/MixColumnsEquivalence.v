@@ -49,7 +49,7 @@ Section Equivalence.
   Qed.
 
   Lemma xorV_is_add (b1 b2 : byte) :
-    xorV (n:=8) (b1, b2)
+    Vec.xor (n:=8) (b1, b2)
     = byte_to_bitvec (Polynomial.fadd (bitvec_to_byte b1)
                                       (bitvec_to_byte b2)).
   Proof.
@@ -61,12 +61,6 @@ Section Equivalence.
     rewrite to_list_of_list_sized by length_hammer.
     reflexivity.
   Qed.
-
-  Lemma xorv_is_add (b1 b2 : byte) :
-    xorv (n:=8) b1 b2
-    = byte_to_bitvec (Polynomial.fadd (bitvec_to_byte b1)
-                                      (bitvec_to_byte b2)).
-  Proof. apply xorV_is_add. Qed.
 
   Lemma aes_mul2_correct (b : byte) :
     aes_mul2 b
@@ -84,7 +78,6 @@ Section Equivalence.
     constant_bitvec_cases b; vm_compute; reflexivity.
   Qed.
 
-  Hint Rewrite xorv_is_add using solve [eauto] : simpl_ident.
   Hint Rewrite xorV_is_add using solve [eauto] : simpl_ident.
   Hint Rewrite aes_mul2_correct using solve [eauto] : simpl_ident.
   Hint Rewrite aes_mul4_correct using solve [eauto] : simpl_ident.

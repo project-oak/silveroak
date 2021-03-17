@@ -45,7 +45,6 @@ library
                      BinNums
                      BinInt
                      BitArithmetic
-                     BitVectorOps
                      Bool
                      Bvector
                      CavaClass

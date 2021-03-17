@@ -28,7 +28,7 @@ Section WithCava.
           (mix_columns:   signal Bit -> signal state -> cava (signal state))
           (add_round_key: signal key -> signal state -> cava (signal state))
           (inv_mix_columns_key : signal key -> cava (signal key)).
-  Local Infix "==?" := eqb (at level 40).
+  Local Infix "==?" := (fun a b => eqb (a,b)) (at level 40).
 
   (* The non-state signals that each round of the cipher loop needs access to *)
   Let cipher_signals : Type :=

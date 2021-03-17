@@ -271,7 +271,7 @@ Our next example is a circuit that xors two bytes:
   Definition xor_byte :
     Circuit (signal (Vec Bit 8) * signal (Vec Bit 8))
             (signal (Vec Bit 8)) :=
-    Comb (fun '(v1, v2) => Vec.map2 xor2 v1 v2).
+    Comb (Vec.map2 xor2).
 
 (*|
 This circuit maps a 1-bit xor (``xor2``) over the two input vectors. ``xor2`` is
@@ -373,7 +373,7 @@ Section WithCava.
   Definition xor_bitvec (n : nat) :
     Circuit (signal (Vec Bit n) * signal (Vec Bit n))
             (signal (Vec Bit n)) :=
-    Comb (fun '(v1, v2) => Vec.map2 xor2 v1 v2).
+    Comb (Vec.map2 xor2).
 
 (*|
 .. coq:: none
@@ -480,7 +480,7 @@ Cava.Cava``) contains a ``tree`` combinator for exactly this kind of situation.
   Definition xor_tree {n m : nat} :
     Circuit (signal (Vec (Vec Bit n) m))
             (signal (Vec Bit n)) :=
-    Comb (tree (fun '(v1, v2) => Vec.map2 xor2 v1 v2)).
+    Comb (tree (Vec.map2 xor2)).
 
 (*|
 .. coq:: none
@@ -558,7 +558,7 @@ Proof.
     apply N.lxor_0_r. }
   { (* xor is associative *)
     apply Bv2N_inj. autorewrite with push_Bv2N.
-    symmetry. apply N.lxor_assoc. }
+    symmetry. cbn. apply N.lxor_assoc. }
 Qed.
 
 (*|

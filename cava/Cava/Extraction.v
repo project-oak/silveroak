@@ -43,6 +43,5 @@ Recursive Extraction Library Vector.
 Recursive Extraction Library Adders.
 Recursive Extraction Library CavaPrelude.
 
-Recursive Extraction Library BitVectorOps.
 Recursive Extraction Library Multiplexers.
 Recursive Extraction Library Vec.

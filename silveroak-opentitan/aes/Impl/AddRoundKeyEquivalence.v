@@ -51,18 +51,14 @@ Section Equivalence.
            AES256.add_round_key
            AddRoundKeyCircuit.aes_add_round_key
            AddRoundKey.add_round_key].
-    cbv [xor4x4V xor4xV].
-    cbv [Bvector.BVxor xorV].
+    cbv [xor4x4V Bvector.BVxor].
+    simpl_ident.
 
     rewrite map2_to_cols_bits, map2_to_flat.
-    autorewrite with conversions.
+    autorewrite with conversions. cbn [fst snd].
 
-    repeat (cbv [Vec.map2 vcombine];
-            simpl_ident;
-            rewrite map_map2;
-            rewrite map2_swap;
-            apply map2_ext; intros).
-
+    do 3 (rewrite map2_swap; apply map2_ext;
+          intros; simpl_ident; cbn [fst snd]).
     apply Bool.xorb_comm.
   Qed.
 End Equivalence.
