@@ -65,8 +65,8 @@ Section WithCava.
     (* // Drive y_pre_mul4 *)
     (* assign y_pre_mul4[0] = data_i[3] ^ data_i[1]; *)
     (* assign y_pre_mul4[1] = data_i[2] ^ data_i[0]; *)
-    y_pre_mul4_0 <- Vec.xor (data_i_3, data_i_1) ;;
-    y_pre_mul4_1 <- Vec.xor (data_i_2, data_i_0) ;;
+    y_pre_mul4_0 <- data_i_3 ⊕ data_i_1 ;;
+    y_pre_mul4_1 <- data_i_2 ⊕ data_i_0 ;;
     (* // Mul4(y_pre_mul4) *)
     (* for (genvar i = 0; i < 2; i++) begin : gen_mul4 *)
     (*   assign y[i] = aes_mul4(y_pre_mul4[i]); *)
@@ -76,7 +76,7 @@ Section WithCava.
 
     (* // Drive y2_pre_mul2 *)
     (* assign y2_pre_mul2 = y[0] ^ y[1]; *)
-    y2_pre_mul2 <- Vec.xor (y_0, y_1) ;;
+    y2_pre_mul2 <- y_0 ⊕ y_1 ;;
     (* // Mul2(y) *)
     (* assign y2 = aes_mul2(y2_pre_mul2); *)
     y2 <- aes_mul2 y2_pre_mul2 ;;
