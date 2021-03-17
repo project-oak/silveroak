@@ -27,8 +27,7 @@ Section WithCava.
   := combinationalInterface
      "nand2"
      [mkPort "a" Bit; mkPort "b" Bit]
-     [mkPort "c" Bit]
-     [].
+     [mkPort "c" Bit].
 
   Definition nand3_gate '(a, b, c) :=
       n1 <- instantiate nand2Interface nand2_gate (a, b) ;;
@@ -40,8 +39,7 @@ Definition nand3Interface
   := combinationalInterface
      "instantiate"
      [mkPort "a" Bit; mkPort "b" Bit; mkPort "c" Bit]
-     [mkPort "d" Bit]
-     [].
+     [mkPort "d" Bit].
 
 Definition instantiateNetlist := makeNetlist nand3Interface nand3_gate.
 

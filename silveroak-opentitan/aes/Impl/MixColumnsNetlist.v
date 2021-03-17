@@ -27,8 +27,7 @@ Require Import AesImpl.Pkg.
 Definition aes_mix_columns_Interface :=
   combinationalInterface "aes_mix_columns"
   [mkPort "op_i" Bit; mkPort "data_i" (Vec (Vec (Vec Bit 8) 4) 4)]
-  [mkPort "data_o" (Vec (Vec (Vec Bit 8) 4) 4)]
-  [].
+  [mkPort "data_o" (Vec (Vec (Vec Bit 8) 4) 4)].
 
 (* Create a netlist for the aes_mix_columns_Netlist block. The block is written with
    curried inputs but netlist extraction for top-level blocks requires they are

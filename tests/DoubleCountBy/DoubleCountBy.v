@@ -123,8 +123,7 @@ Definition double_count_by_interface
   := sequentialInterface "double_count_by"
      "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "i" (Vec Bit 8)]
-     [mkPort "o" (Vec Bit 8)]
-     [].
+     [mkPort "o" (Vec Bit 8)].
 
 Definition double_count_by_Netlist :=
   makeCircuitNetlist double_count_by_interface double_count_by.

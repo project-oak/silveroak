@@ -95,8 +95,7 @@ Proof. reflexivity. Qed.
 Definition adder4Interface
   := combinationalInterface "adder4"
      [mkPort "a" (Vec Bit 4); mkPort "b" (Vec Bit 4)]
-     [mkPort "sum" (Vec Bit 5)]
-     [].
+     [mkPort "sum" (Vec Bit 5)].
 
 Definition adder4Netlist
   := makeNetlist adder4Interface adderGrowth.
@@ -118,8 +117,7 @@ Definition adder4_tb
 Definition adder8_3inputInterface
   := combinationalInterface "adder8_3input"
      [mkPort "a" (Vec Bit 8); mkPort "b" (Vec Bit 8); mkPort "c" (Vec Bit 8)]
-     [mkPort "sum" (Vec Bit 10)]
-     [].
+     [mkPort "sum" (Vec Bit 10)].
 
 Definition adder8_3inputNetlist
   := makeNetlist adder8_3inputInterface (add3InputTuple 8 8 8).

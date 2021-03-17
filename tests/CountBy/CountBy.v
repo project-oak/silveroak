@@ -62,8 +62,7 @@ Definition countBy_Interface
   := sequentialInterface "countBy"
      "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "i" (Vec Bit 8)]
-     [mkPort "o" (Vec Bit 8)]
-     [].
+     [mkPort "o" (Vec Bit 8)].
 
 Definition countBy_Netlist := makeCircuitNetlist countBy_Interface countBy.
 

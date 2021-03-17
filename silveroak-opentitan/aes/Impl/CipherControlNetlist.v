@@ -51,8 +51,7 @@ Definition aes_key_expand_Interface :=
    ; mkPort "key_len_i" (Vec Bit 3)
    ; mkPort "key_i" keypair
    ]
-   [ mkPort "key_o" keypair ]
-   [].
+   [ mkPort "key_o" keypair ].
 
 Definition aes_key_expand :
   Circuit _ _ :=
@@ -71,8 +70,7 @@ Definition cipher_round_Interface :=
   ; mkPort "round_key_sel" Bit
   ; mkPort "round_i" (Vec Bit 4)
   ; mkPort "data" state ]
-  [ mkPort "state_o" state ]
-  [].
+  [ mkPort "state_o" state ].
 
 Definition cipher_round_Netlist
   := makeNetlist cipher_round_Interface
@@ -105,8 +103,7 @@ Definition aes_cipher_core_Interface :=
   ; mkPort "data_out_clear_o" Bit
 
   ; mkPort "state_o" state
-  ]
-  [].
+  ].
 
 Definition cipher_loop := CipherCircuit.cipher_loop
   (round_index:=round_index)
@@ -126,8 +123,7 @@ Definition aes_cipher_loop_Interface :=
   ; mkPort "key2_i" key
   ]
   [ mkPort "state_o" state
-  ]
-  [].
+  ].
 
 Definition aes_cipher_loop_Netlist :=
   makeCircuitNetlist aes_cipher_loop_Interface cipher_loop.

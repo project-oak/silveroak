@@ -29,8 +29,7 @@ End WithCava.
 Definition halfAdderInterface
   := combinationalInterface "halfadder"
      [mkPort "a" Bit; mkPort "b" Bit]
-     [mkPort "partial_sum" Bit; mkPort "carry" Bit]
-     [].
+     [mkPort "partial_sum" Bit; mkPort "carry" Bit].
 
 Definition halfAdderNetlist := makeNetlist halfAdderInterface halfAdder.
 
@@ -45,8 +44,7 @@ Qed.
 Definition fullAdderInterface
   := combinationalInterface "fullAdder"
      [mkPort "cin" Bit; mkPort "a" Bit; mkPort "b" Bit]
-     [mkPort "sum" Bit; mkPort "carry" Bit]
-     [].
+     [mkPort "sum" Bit; mkPort "carry" Bit].
 
 Definition fullAdderNetlist := makeNetlist fullAdderInterface fullAdderTop.
 

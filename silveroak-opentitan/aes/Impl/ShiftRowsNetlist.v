@@ -27,8 +27,7 @@ Require Import AesImpl.Pkg.
 Definition aes_shift_rows_Interface :=
   combinationalInterface "aes_shift_rows"
   [mkPort "op_i" Bit; mkPort "data_i" (Vec (Vec (Vec Bit 8) 4) 4)]
-  [mkPort "data_o" (Vec (Vec (Vec Bit 8) 4) 4)]
-  [].
+  [mkPort "data_o" (Vec (Vec (Vec Bit 8) 4) 4)].
 
 Definition aes_shift_rows_Netlist
   := makeNetlist aes_shift_rows_Interface (fun '(op_i, data_i) => aes_shift_rows op_i data_i).

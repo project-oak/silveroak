@@ -37,8 +37,7 @@ End WithCava.
 Definition two_sorter_Interface bitSize
   := combinationalInterface "two_sorter"
      [mkPort "inputs" (Vec (Vec Bit bitSize) 2)]
-     [mkPort "sorted" (Vec (Vec Bit bitSize) 2)]
-     [].
+     [mkPort "sorted" (Vec (Vec Bit bitSize) 2)].
 
 Definition two_sorter_Netlist
   := makeNetlist (two_sorter_Interface 8) twoSorter.
