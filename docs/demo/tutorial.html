@@ -278,6 +278,7 @@ forth between <tt class="docutils literal">Vec</tt> and <tt class="docutils lite
 available for Coq standard library vectors, so it's usually best to use those
 definitions instead: use <tt class="docutils literal">Vec.map2</tt> instead of <tt class="docutils literal">unpackV</tt>, <tt class="docutils literal">Vector.map2</tt>,
 and <tt class="docutils literal">packV</tt>.</p>
+<p>To see more definitions from Cava's core library, check out the Cava <a class="reference external" href="/reference">reference</a>.</p>
 <p>To generate a netlist for this circuit, we use mostly the same procedure as for
 the inverter, except that we change the input and output port types to match the
 circuit's type signature.</p>
@@ -1482,7 +1483,165 @@ show how to build <em>sequential</em> circuits.</p>
 <div class="section" id="example-5-counter">
 <h1>Example 5 : Counter</h1>
 <p>To be continued!</p>
-</div>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight">  </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">delay</span> (<span class="nv">t</span> : SignalType)
+    : Circuit (signal t) (signal t) :=
+    Delay.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">three_delays</span> (<span class="nv">t</span> : SignalType)
+    : Circuit (signal t) (signal t) :=
+    Delay &gt;==&gt; Delay &gt;==&gt; Delay.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk60" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk60"><span class="highlight"><span class="kn">Locate</span> <span class="s2">&quot;&gt;==&gt;&quot;</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight"><span class="kn">Notation</span>
+<span class="s2">&quot;x &gt;==&gt; y&quot;</span> := Compose x y (default interpretation)</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+  <span class="c">(* Means exactly the same thing as three_delays, just without the notation *)</span>
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">three_delays_verbose</span> (<span class="nv">t</span> : SignalType)
+    : Circuit (signal t) (signal t) :=
+    Compose (Compose Delay Delay) Delay.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk61" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk61"><span class="highlight"><span class="kn">Print</span> Circuit.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight"><span class="kn">Inductive</span>
+<span class="nf">Circuit</span> (<span class="nv">signal</span> : SignalType -&gt; <span class="kt">Type</span>)
+(<span class="nv">semantics</span> : Cava signal) : <span class="kt">Type</span> -&gt; <span class="kt">Type</span> -&gt; <span class="kt">Type</span> :=
+    Comb : <span class="kr">forall</span> <span class="nv">i</span> <span class="nv">o</span> : <span class="kt">Type</span>,
+           (i -&gt; cava o) -&gt; Circuit i o
+  | Compose : <span class="kr">forall</span> <span class="nv">i</span> <span class="nv">t</span> <span class="nv">o</span> : <span class="kt">Type</span>,
+              Circuit i t -&gt;
+              Circuit t o -&gt; Circuit i o
+  | First : <span class="kr">forall</span> <span class="nv">i</span> <span class="nv">o</span> <span class="nv">t</span> : <span class="kt">Type</span>,
+            Circuit i o -&gt; Circuit (i * t) (o * t)
+  | Second : <span class="kr">forall</span> <span class="nv">i</span> <span class="nv">o</span> <span class="nv">t</span> : <span class="kt">Type</span>,
+             Circuit i o -&gt; Circuit (t * i) (t * o)
+  | LoopInitCE : <span class="kr">forall</span> (<span class="nv">i</span> <span class="nv">o</span> : <span class="kt">Type</span>) (<span class="nv">s</span> : SignalType),
+                 signal s -&gt;
+                 Circuit (i * signal s) (o * signal s) -&gt;
+                 Circuit (i * signal Bit) o
+  | DelayInitCE : <span class="kr">forall</span> <span class="nv">t</span> : SignalType,
+                  signal t -&gt;
+                  Circuit (signal t * signal Bit)
+                    (signal t)
+
+<span class="kn">Arguments</span> Circuit {signal}%function_scope {semantics}
+  (_ _)%type_scope
+<span class="kn">Arguments</span> Comb {signal}%function_scope {semantics} {i
+  o}%type_scope _%function_scope
+<span class="kn">Arguments</span> Compose {signal}%function_scope {semantics}
+  {i t o}%type_scope
+<span class="kn">Arguments</span> First {signal}%function_scope {semantics} {i
+  o t}%type_scope
+<span class="kn">Arguments</span> Second {signal}%function_scope {semantics}
+  {i o t}%type_scope
+<span class="kn">Arguments</span> LoopInitCE {signal}%function_scope
+  {semantics} {i o}%type_scope {s}
+<span class="kn">Arguments</span> DelayInitCE {signal}%function_scope
+  {semantics t}</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk62" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk62"><span class="highlight"><span class="kn">Check</span> DelayInitCE. <span class="c">(* takes in an initial value and a clock enable (1-bit input) *)</span></span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">DelayInitCE
+     : signal <span class="nl">?t</span> -&gt;
+       Circuit (signal <span class="nl">?t</span> * signal Bit) (signal <span class="nl">?t</span>)
+<span class="kn">where</span>
+<span class="nl">?t</span> : [signal : SignalType -&gt; <span class="kt">Type</span>
+      semantics : Cava signal |- SignalType]</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk63" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk63"><span class="highlight"><span class="kn">Check</span> DelayInit. <span class="c">(* takes an initial value, no clock enable *)</span></span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">DelayInit
+     : signal <span class="nl">?t</span> -&gt; Circuit (signal <span class="nl">?t</span>) (signal <span class="nl">?t</span>)
+<span class="kn">where</span>
+<span class="nl">?t</span> : [signal : SignalType -&gt; <span class="kt">Type</span>
+      semantics : Cava signal |- SignalType]</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk64" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk64"><span class="highlight"><span class="kn">Check</span> DelayCE. <span class="c">(* uses defaultSignal as initial value, has clock enable *)</span></span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">DelayCE
+     : Circuit (signal <span class="nl">?t</span> * signal Bit) (signal <span class="nl">?t</span>)
+<span class="kn">where</span>
+<span class="nl">?t</span> : [signal : SignalType -&gt; <span class="kt">Type</span>
+      semantics : Cava signal |- SignalType]</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk65" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk65"><span class="highlight"><span class="kn">Check</span> Delay. <span class="c">(* uses defaultSignal as initial value, no clock enable *)</span></span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">Delay
+     : Circuit (signal <span class="nl">?t</span>) (signal <span class="nl">?t</span>)
+<span class="kn">where</span>
+<span class="nl">?t</span> : [signal : SignalType -&gt; <span class="kt">Type</span>
+      semantics : Cava signal |- SignalType]</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">counter</span> {<span class="nv">n</span> : nat}
+    : Circuit (signal (Vec Bit n)) (signal (Vec Bit n)) :=
+    Loop (Comb
+            <span class="c">(* The combinational function that makes up the loop body *)</span>
+            (<span class="kr">fun</span> &#39;(input, state) =&gt;
+               sum &lt;- addN (input, state) ;;
+               <span class="c">(* return output and new state -- in this case, the same thing *)</span>
+               ret (sum, sum))
+         ).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+  <span class="c">(* Means exactly the same thing as counter *)</span>
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">counter_concise</span> {<span class="nv">n</span> : nat}
+    : Circuit (signal (Vec Bit n)) (signal (Vec Bit n)) :=
+    Loop (Comb (addN &gt;=&gt; fork2)).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">double_counter</span> {<span class="nv">n</span> : nat}
+    : Circuit (signal (Vec Bit n)) (signal (Vec Bit n)) :=
+    counter &gt;==&gt; counter.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">double_counter_mealy</span> {<span class="nv">n</span> : nat}
+    : Circuit (signal (Vec Bit n)) (signal (Vec Bit n)) :=
+    Loop
+      (Loop
+         (Comb (<span class="kr">fun</span> &#39;(v, c1, c2) =&gt;
+                  c1&#39; &lt;- addN (c1, v) ;;
+                  c2&#39; &lt;- addN (c2, c1&#39;) ;;
+                  ret (c2&#39;, c1&#39;, c2&#39;)
+      ))).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">double_counter_mealy_chaining</span> {<span class="nv">n</span> : nat}
+    : Circuit (signal (Vec Bit n)) (signal (Vec Bit n)) :=
+    Loop
+      (Loop
+         (Comb
+            (                <span class="c">(* start: (v, c1), c2     *)</span>
+              <span class="kp">first</span> addN &gt;=&gt;        <span class="c">(* c1&#39;, c2         *)</span>
+                    <span class="kp">first</span> fork2 &gt;=&gt; <span class="c">(* (c1&#39;, c1&#39;), c2  *)</span>
+                    pair_right &gt;=&gt;  <span class="c">(* c1&#39;, (c1&#39;, c2)  *)</span>
+                    second addN &gt;=&gt; <span class="c">(* c1&#39;, c2&#39;        *)</span>
+                    <span class="nb">swap</span> &gt;=&gt;        <span class="c">(* c2&#39;, c1&#39;        *)</span>
+                    <span class="kp">first</span> fork2 &gt;=&gt; <span class="c">(* (c2&#39;, c2&#39;), c1&#39; *)</span>
+                    pair_right &gt;=&gt;  <span class="c">(* c2&#39;, (c2&#39;, c1&#39;) *)</span>
+                    <span class="nb">swap</span>            <span class="c">(* (c2&#39;, c1&#39;), c2&#39; *)</span>
+      ))).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">End</span> <span class="nf">WithCava</span>.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">bvseq</span> <span class="nv">sz</span> <span class="nv">start</span> <span class="nv">len</span> : list (Vector.t bool sz) :=
+  map (<span class="kr">fun</span> <span class="nv">i</span> =&gt; N2Bv_sized sz (N.of_nat i)) (seq start len).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk66" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk66"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+        (simulate counter (<span class="kp">repeat</span> (N2Bv_sized <span class="mi">8</span> <span class="mi">1</span>) <span class="mi">10</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">1</span>%N; <span class="mi">2</span>%N; <span class="mi">3</span>%N; <span class="mi">4</span>%N; <span class="mi">5</span>%N; <span class="mi">6</span>%N; <span class="mi">7</span>%N; <span class="mi">8</span>%N; <span class="mi">9</span>%N;
+  <span class="mi">10</span>%N]%list
+: list N</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk67" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk67"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+        (simulate counter_delayed (<span class="kp">repeat</span> (N2Bv_sized <span class="mi">8</span> <span class="mi">1</span>) <span class="mi">10</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">The reference counter_delayed was not found
+<span class="kr">in</span> the current environment.</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+        (simulate double_counter (<span class="kp">repeat</span> (N2Bv_sized <span class="mi">8</span> <span class="mi">1</span>) <span class="mi">10</span>)).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+        (simulate double_counter_again (<span class="kp">repeat</span> (N2Bv_sized <span class="mi">8</span> <span class="mi">1</span>) <span class="mi">10</span>)).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">double_counter</span> (<span class="nv">n</span> : nat)
+    : Circuit (signal (Vec Bit n)) (signal (Vec Bit n)) :=
+    Loop
+      ( <span class="c">(* i, c2 ==&gt; c1&#39;, c1&#39; *)</span>
+        Comb addN &gt;==&gt; <span class="c">(* c2&#39; *)</span>
+             counter &gt;==&gt; <span class="c">(* c1&#39; *)</span>
+             Comb fork2).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">counter_with_carry</span> (<span class="nv">n</span> : nat)
+    : Circuit (signal (Vec Bit n) * signal Bit) (signal Bit) :=
+    Loop (Comb (<span class="kr">fun</span> &#39;(v, cin, st) =&gt;
+                  &#39;(st&#39;, cout) &lt;- addC (st, v, cin) ;;
+                  ret (cout, st&#39;))).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">counter_with_carry_again</span> (<span class="nv">n</span> : nat)
+    : Circuit (signal (Vec Bit n) * signal Bit) (signal Bit) :=
+    Loop (Comb (<span class="nb">swap</span> &gt;=&gt; pair_left &gt;=&gt; addC &gt;=&gt; <span class="nb">swap</span>)).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+  <span class="kn">Definition</span> <span class="nf">double_counter</span> (<span class="nv">n</span> : nat)
+    : Circuit (signal (Vec Bit n)) (signal (Vec Bit n)) :=</span></span></pre></div>
 </div>
 </div></body>
 </html>
