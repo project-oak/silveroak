@@ -45,7 +45,7 @@ coqtools: update
 coqutil: update
 	$(MAKE) build-coqutil
 
-bedrock2: update
+bedrock2: update coqutil
 	$(MAKE) build-bedrock2
 
 extlib: update
