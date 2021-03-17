@@ -47,8 +47,7 @@ Definition delayByte_Interface
   := sequentialInterface "delayByte"
      "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "i" (Vec Bit 8)]
-     [mkPort "o" (Vec Bit 8)]
-     [].
+     [mkPort "o" (Vec Bit 8)].
 
 Definition delayByte_Netlist := makeCircuitNetlist delayByte_Interface delayByte.
 
@@ -78,8 +77,7 @@ Definition delayEnableByte_Interface
   := sequentialInterface "delayEnableByte"
      "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "i" (Vec Bit 8); mkPort "en" Bit]
-     [mkPort "o" (Vec Bit 8)]
-     [].
+     [mkPort "o" (Vec Bit 8)].
 
 Definition delayEnableByte_Netlist
   := makeCircuitNetlist delayEnableByte_Interface delayEnableByte.
@@ -121,8 +119,7 @@ Definition pipelinedNANDInterface
   := sequentialInterface "pipelinedNAND"
      "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "a" Bit; mkPort "b" Bit]
-     [mkPort "c"  Bit]
-     [].
+     [mkPort "c"  Bit].
 
 Definition pipelinedNANDNetlist :=
   makeCircuitNetlist pipelinedNANDInterface pipelinedNAND.

@@ -50,8 +50,7 @@ Proof. reflexivity. Qed.
 Definition mult2_3_5Interface
   := combinationalInterface "mult2_3_5"
      [mkPort "a" (Vec Bit 2); mkPort "b" (Vec Bit 3)]
-     [mkPort "product" (Vec Bit 5)]
-     [].
+     [mkPort "product" (Vec Bit 5)].
 
 Definition mult2_3_5Netlist
   := makeNetlist mult2_3_5Interface multiplier.

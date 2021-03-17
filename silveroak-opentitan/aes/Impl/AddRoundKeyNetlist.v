@@ -30,8 +30,7 @@ Definition aes_add_round_key_Interface :=
   combinationalInterface "aes_add_round_key"
   [ mkPort "key_i" (Vec (Vec (Vec Bit 8) 4) 4);
     mkPort "data_i" (Vec (Vec (Vec Bit 8) 4) 4)]
-  [mkPort "data_o" (Vec (Vec (Vec Bit 8) 4) 4)]
-  [].
+  [mkPort "data_o" (Vec (Vec (Vec Bit 8) 4) 4)].
 
 Definition aes_add_round_key_Netlist :=
   makeCircuitNetlist aes_add_round_key_Interface

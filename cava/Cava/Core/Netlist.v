@@ -119,18 +119,16 @@ Definition sequentialInterface (circuitName: string)
                                (clkName: string) (clkEdge: SignalEdge)
                                (rstName: string) (rstEdge: SignalEdge)
                                (circuitInputs: list PortDeclaration)
-                               (circuitOutputs: list PortDeclaration)
-                               (attributes: list CircuitAttribute) :=
+                               (circuitOutputs: list PortDeclaration) :=
   mkCircuitInterface circuitName clkName clkEdge rstName rstEdge
-                     circuitInputs circuitOutputs attributes.
+                     circuitInputs circuitOutputs [].
 
 Definition combinationalInterface (circuitName: string)
                                   (circuitInputs: list PortDeclaration)
-                                  (circuitOutputs: list PortDeclaration)
-                                  (attributes: list CircuitAttribute) :=
+                                  (circuitOutputs: list PortDeclaration) :=
   sequentialInterface circuitName "" PositiveEdge
                                   "" PositiveEdge
-                                  circuitInputs circuitOutputs attributes.
+                                  circuitInputs circuitOutputs.
 
 (******************************************************************************)
 (* The CavaState data structure is what is computed bu the the netlist        *)

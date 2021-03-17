@@ -28,8 +28,7 @@ Import Pkg.Notations.
 Definition aes_sbox_lut_Interface :=
   combinationalInterface "aes_sbox_lut"
   [mkPort "op_i" Bit; mkPort "data_i" (Vec Bit 8)]
-  [mkPort "data_o" (Vec Bit 8)]
-  [].
+  [mkPort "data_o" (Vec Bit 8)].
 
 (* Interface designed to match interface of corresponding SystemVerilog component:
      https://github.com/lowRISC/opentitan/blob/783edaf444eb0d9eaf9df71c785089bffcda574e/hw/ip/aes/rtl/aes_sub_bytes.sv
@@ -37,8 +36,7 @@ Definition aes_sbox_lut_Interface :=
 Definition aes_sub_bytes_Interface :=
   combinationalInterface "aes_sub_bytes"
   [mkPort "op_i" Bit; mkPort "data_i" state]
-  [mkPort "data_o" state]
-  [].
+  [mkPort "data_o" state].
 
 Definition aes_sbox_lut_Netlist
   := makeNetlist aes_sbox_lut_Interface (fun '(op_i, data_i) => aes_sbox_lut op_i data_i).

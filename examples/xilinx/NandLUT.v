@@ -33,8 +33,7 @@ Definition lutNAND {signal} `{Cava signal}
 Definition lutNANDInterface
   := combinationalInterface "lutNAND"
      [mkPort "a"  Bit; mkPort "b" Bit]
-     [mkPort "c" Bit]
-     [].
+     [mkPort "c" Bit].
 
 Definition lutNANDNetlist := makeNetlist lutNANDInterface lutNAND.
 

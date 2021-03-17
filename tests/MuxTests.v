@@ -57,8 +57,7 @@ Proof. reflexivity. Qed.
 Definition mux2_1_Interface
   := combinationalInterface "mux2_1"
      [mkPort "sel" Bit; mkPort "i0" Bit; mkPort "i1" Bit]
-     [mkPort "o" Bit]
-     [].
+     [mkPort "o" Bit].
 
 Definition mux2_1Netlist
   := makeNetlist mux2_1_Interface (fun '(sel, a, b) => mux2_1 sel (a, b)).
@@ -100,8 +99,7 @@ Proof. reflexivity. Qed.
 Definition muxBus4_8Interface
   := combinationalInterface "muxBus4_8"
      [mkPort "i" (Vec (Vec Bit 8) 4); mkPort "sel" (Vec Bit 2)]
-     [mkPort "o" (Vec Bit 8)]
-     [].
+     [mkPort "o" (Vec Bit 8)].
 
 Definition muxBus4_8Netlist := makeNetlist muxBus4_8Interface muxBus.
 

@@ -35,8 +35,7 @@ Definition nand2Interface
   := combinationalInterface
     "nand2"
     [mkPort "a" Bit; mkPort "b" Bit]
-    [mkPort "c" Bit]
-    [].
+    [mkPort "c" Bit].
 
 Definition nand2Netlist := makeNetlist nand2Interface nand2_gate.
 

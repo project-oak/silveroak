@@ -164,8 +164,7 @@ Definition inverter_interface
   := sequentialInterface "inverter_interface"
      "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "i" Bit]
-     [mkPort "o" Bit]
-     [].
+     [mkPort "o" Bit].
 
 Compute makeCircuitNetlist inverter_interface inverter.
 
@@ -303,8 +302,7 @@ Definition xor_byte_interface
   := sequentialInterface "xor_byte_interface"
      "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "v1" (Vec Bit 8); mkPort "v2" (Vec Bit 8)]
-     [mkPort "o" (Vec Bit 8)]
-     [].
+     [mkPort "o" (Vec Bit 8)].
 
 Compute (makeCircuitNetlist xor_byte_interface xor_byte).(module).
 
@@ -390,8 +388,7 @@ Definition xor_bitvec_interface {n : nat}
   := sequentialInterface "xor_bitvec_interface"
      "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "v1" (Vec Bit n); mkPort "v2" (Vec Bit n)]
-     [mkPort "o" (Vec Bit n)]
-     [].
+     [mkPort "o" (Vec Bit n)].
 
 (* Netlist for a 2-bit xor *)
 Compute

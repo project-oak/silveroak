@@ -52,7 +52,7 @@ End WithCava.
 (******************************************************************************)
 
   Definition lut1_inv_Interface
-    := combinationalInterface "lut1_inv" [mkPort "a" Bit] [mkPort "b" Bit] [].
+    := combinationalInterface "lut1_inv" [mkPort "a" Bit] [mkPort "b" Bit].
 
   Definition lut1_inv_netlist := makeNetlist lut1_inv_Interface lut1_inv.
 
@@ -72,8 +72,7 @@ End WithCava.
 Definition lut2_and_Interface
   := combinationalInterface "lut2_and"
      [mkPort "a" Bit; mkPort "b" Bit]
-     [mkPort "c" Bit]
-     [].
+     [mkPort "c" Bit].
 
 Definition lut2_and_nelist := makeNetlist lut2_and_Interface lut2_and.
 
@@ -94,8 +93,7 @@ Definition lut2_and_tb :=
 Definition lut3_mux_Interface
   := combinationalInterface "lut3_mux"
      [mkPort "s" Bit; mkPort "i0" Bit; mkPort "i1" Bit]
-     [mkPort "o" Bit]
-     [].
+     [mkPort "o" Bit].
 
 Definition lut3_mux_nelist := makeNetlist lut3_mux_Interface lut3_mux.
 
@@ -124,8 +122,7 @@ Definition lut4_and_Interface
       mkPort "i1" Bit;
       mkPort "i2" Bit;
       mkPort "i3" Bit]
-     [mkPort "o" Bit]
-     [].
+     [mkPort "o" Bit].
 
 Definition lut4_and_nelist := makeNetlist lut4_and_Interface lut4_and.
 
@@ -151,8 +148,7 @@ Definition lut5_and_Interface
       mkPort "i2" Bit;
       mkPort "i3" Bit;
       mkPort "i4" Bit]
-     [mkPort "o" Bit]
-     [].
+     [mkPort "o" Bit].
 
 Definition lut5_and_nelist := makeNetlist lut5_and_Interface lut5_and.
 
@@ -179,8 +175,7 @@ Definition lut6_and_Interface
       mkPort "i3" Bit;
       mkPort "i4" Bit;
       mkPort "i5" Bit]
-     [mkPort "o" Bit]
-     [].
+     [mkPort "o" Bit].
 
 Definition lut6_and_nelist := makeNetlist lut6_and_Interface lut6_and.
 

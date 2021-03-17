@@ -83,8 +83,7 @@ Definition accumulatingAdderEnable_Interface
   := sequentialInterface "accumulatingAdderEnable"
      "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "i" (Vec Bit 8); mkPort "en" Bit]
-     [mkPort "o" (Vec Bit 8)]
-     [].
+     [mkPort "o" (Vec Bit 8)].
 
 Definition accumulatingAdderEnable_Netlist
   := makeCircuitNetlist accumulatingAdderEnable_Interface accumulatingAdderEnable.

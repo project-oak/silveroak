@@ -51,8 +51,7 @@ Definition pinmuxInterface :=
      [mkPort "tl_o" (ExternalType "tlul_pkg::tl_d2h_t");
       mkPort "mio_to_periph_o" (Vec Bit NPeriphIn);
       mkPort "mio_out_o" (Vec Bit NMioPads);
-      mkPort "mio_oe_o" (Vec Bit NMioPads)]
-     [].
+      mkPort "mio_oe_o" (Vec Bit NMioPads)].
 
 
 (* The SystemVerilog declaration for pinmux_reg_pkg::pinmux_reg2hw_t:
@@ -76,8 +75,7 @@ Definition pinmux_reg_top_Interface :=
    [mkPort "tl_i" (ExternalType "tlul_pkg::tl_h2d_t");
     mkPort "devmode_i" Bit]
    [mkPort "tl_o" (ExternalType "tlul_pkg::tl_d2h_t");
-    mkPort "reg2hw" pinmux_reg2hw_t]
-   [].
+    mkPort "reg2hw" pinmux_reg2hw_t].
 
 Definition pinmux_reg2hw_periph_insel_mreg_t
   := ExternalType "pinmux_reg2hw_periph_insel_mreg_t".

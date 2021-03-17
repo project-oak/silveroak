@@ -46,15 +46,13 @@ Definition arrayTest_Interface
   := sequentialInterface "arrayTest"
      "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "i" (Vec Bit 8)]
-     [mkPort "o" (Vec Bit 8)]
-     [].
+     [mkPort "o" (Vec Bit 8)].
 
 Definition multiDimArrayTest_Interface
   := sequentialInterface "multiDimArrayTest"
      "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "i" (Vec Bit 8)]
-     [mkPort "o" (Vec Bit 8)]
-     [].
+     [mkPort "o" (Vec Bit 8)].
 
 Definition arrayTest_Netlist := makeNetlist arrayTest_Interface arrayTest.
 Definition multiDimArrayTest_Netlist := makeNetlist multiDimArrayTest_Interface multiDimArrayTest.
