@@ -236,17 +236,17 @@ Module BitVecNotations.
     ((fun a =>
         bind (and (a,y))
              .. (fun a => bind (and (a,z)) ret) .. ) x)
-      (at level 40, left associativity, z at next level, only parsing) : bitvec_scope.
+      (at level 25, left associativity, z at next level, only parsing) : bitvec_scope.
 
   Notation "x | y | .. | z" :=
     ((fun a =>
         bind (or (a,y))
              .. (fun a => bind (or (a,z)) ret) .. ) x)
-      (at level 40, left associativity, z at next level, only parsing) : bitvec_scope.
+      (at level 25, left associativity, z at next level, only parsing) : bitvec_scope.
 
-  Notation "x ⊕ y ⊕ .. ⊕ z" :=
+  Notation "x ^ y ^ .. ^ z" :=
     ((fun a =>
         bind (xor (a,y))
              .. (fun a => bind (xor (a,z)) ret) .. ) x)
-      (at level 40, left associativity, z at next level, only parsing) : bitvec_scope.
+      (at level 25, left associativity, z at next level, only parsing) : bitvec_scope.
 End BitVecNotations.
