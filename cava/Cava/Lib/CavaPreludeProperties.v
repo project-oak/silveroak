@@ -60,10 +60,10 @@ Proof.
 Qed.
 Hint Rewrite @any_correct using solve [eauto] : simpl_ident.
 
-Lemma eqb_correct {t} (x y : combType t) :
-  eqb x y = combType_eqb x y.
+Lemma eqb_correct {t} (i : combType t * combType t) :
+  eqb i = combType_eqb (fst i) (snd i).
 Proof.
-  revert x y.
+  destruct i as [x y]; revert x y.
   induction t;
     cbn [eqb and2 xnor2 one
              CombinationalSemantics] in *;
@@ -83,7 +83,7 @@ Proof.
 Qed.
 
 Lemma eqb_eq {t} (x y : combType t) :
-  eqb x y = true <-> x = y.
+  eqb (x,y) = true <-> x = y.
 Proof.
   rewrite eqb_correct. split.
   { inversion 1. apply combType_eqb_true_iff. auto. }
@@ -91,10 +91,10 @@ Proof.
     apply combType_eqb_true_iff. reflexivity. }
 Qed.
 
-Lemma eqb_refl {t} (x : combType t) : eqb x x = true.
+Lemma eqb_refl {t} (x : combType t) : eqb (x, x) = true.
 Proof. apply eqb_eq. reflexivity. Qed.
 
-Lemma eqb_neq {t} (x y : combType t) : x <> y ->  eqb x y = false.
+Lemma eqb_neq {t} (x y : combType t) : x <> y ->  eqb (x, y) = false.
 Proof.
   rewrite eqb_correct; intros. f_equal.
   apply Bool.not_true_is_false.
@@ -103,8 +103,7 @@ Qed.
 
 Lemma eqb_nat_to_bitvec_sized sz n m :
   n < 2 ^ sz -> m < 2 ^ sz ->
-  eqb (t:=Vec Bit sz) (nat_to_bitvec_sized sz n)
-      (nat_to_bitvec_sized sz m)
+  eqb (t:=Vec Bit sz) (nat_to_bitvec_sized sz n, nat_to_bitvec_sized sz m)
   = if Nat.eqb n m then true else false.
 Proof.
   intros; destruct_one_match; subst; [ solve [apply (eqb_refl (t:=Vec Bit sz))] | ].
