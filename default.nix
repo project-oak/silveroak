@@ -1,13 +1,13 @@
 { sources ? import ./nix/sources.nix
 , pkgs ? import ./nix/packages.nix { inherit sources; }
-, buildVerilator ? true
 }:
 
 let
-  tools = with pkgs; [
+  coq-tools = with pkgs; [
     # Building
     coq_8_12
     (haskell.packages.ghc865.ghcWithPackages (pkgs: with pkgs; [Cabal]))
+    # (haskell.packages.ghc865.ghcWithPackages (pkgs: with pkgs; [Cabal ShellCheck]))
 
     # Common tools
     gcc
@@ -18,23 +18,23 @@ let
     findutils
     bash
     binutils.bintools
-  ] ++
-    # Verilator optional for parallel building
-    # TODO(blaxill): Perhaps build verilator separately and don't make optional
-    # here
-    (if buildVerilator then [verilator] else [])
-  ;
+    ocaml
+  ] ;
 in
 rec {
-  cava-shell = pkgs.mkShell {
-      name = "cava-shell";
-      buildInputs = tools;
+  coq-shell = pkgs.mkShell {
+      name = "coq-shell";
+      buildInputs = coq-tools;
+    };
+  verilator-shell = pkgs.mkShell {
+      name = "verilator";
+      buildInputs = [pkgs.verilator];
     };
 
   docker-image-build = pkgs.dockerTools.buildLayeredImage {
     name = "gcr.io/oak-ci/oak-hardware";
     tag = "latest";
-    contents = tools;
+    contents = coq-tools;
     config = {
       WorkingDir = "/workspace";
       Volumes = {
