@@ -1,4 +1,4 @@
-// 1 Cava auto-generated SystemVerilog. Do not hand edit.
+// Cava auto-generated SystemVerilog. Do not hand edit.
 module aes_shift_rows(
   input logic [3:0][3:0][7:0]data_i, 
   input logic op_i, 

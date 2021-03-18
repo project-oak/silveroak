@@ -1,4 +1,4 @@
-// 1 Cava auto-generated SystemVerilog. Do not hand edit.
+// Cava auto-generated SystemVerilog. Do not hand edit.
 module aes_sbox_lut(
   input logic [7:0]data_i, 
   input logic op_i, 
