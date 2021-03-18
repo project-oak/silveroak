@@ -16,6 +16,7 @@
 
 Require Import Cava.Cava.
 
+
 Section WithCava.
   Context {signal} `{Cava signal}.
 
@@ -30,18 +31,18 @@ Section WithCava.
 End WithCava.
 
 
-Example ex1 : vecConstEq 8 42 =<< Vec.bitvec_literal (N2Bv_sized 8 42) = ret true.
+Example ex1 : vecConstEq 8 42 (N2Bv_sized 8 42) = ret true.
 Proof. trivial. Qed.
 
-Example ex2 : vecConstEq 8 43 =<< Vec.bitvec_literal (N2Bv_sized 8 42) = ret false.
+Example ex2 : vecConstEq 8 43 (N2Bv_sized 8 42) = ret false.
 Proof. trivial. Qed.
 
-Example ex3 : vecConstEq 1 1 =<< Vec.bitvec_literal (N2Bv_sized 1 1) = ret true.
+Example ex3 : vecConstEq 1 1 (N2Bv_sized 1 1) = ret true.
 Proof. trivial. Qed.
 
-Example ex4 : vecConstEq 1 1 =<< Vec.bitvec_literal (N2Bv_sized 1 0) = ret false.
+Example ex4 : vecConstEq 1 1 (N2Bv_sized 1 0) = ret false.
 Proof. trivial. Qed.
 
-Example ex5 : vecConstEq 1 3 =<< Vec.bitvec_literal (N2Bv_sized 1 1) = ret true.
+Example ex5 : vecConstEq 1 3 (N2Bv_sized 1 1) = ret true.
 Proof. trivial. Qed.
 
