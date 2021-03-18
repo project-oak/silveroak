@@ -34,7 +34,7 @@ Example ex5 : vecConstEq 1 3 (N2Bv_sized 1 1) = ret true.
 Proof. trivial. Qed.
 
 Definition vecConstEqInterface {n: nat}
-  := combinationalInterface "vecConstEqInterface"
+  := combinationalInterface "vecConstEq"
      [mkPort "v" (Vec Bit n)]
      [mkPort "o" Bit].
 
@@ -48,6 +48,6 @@ Definition vecConstEq8_42_tb_expected_outputs : list bool
   := simulate (Comb (vecConstEq 8 42)) vecConstEq8_42_tb_inputs.
 
 Definition vecConstEq8_42_tb
-  := testBench "vecConstEq8_42_tb"
+  := testBench "vecConstEq_tb"
      vecConstEqInterface vecConstEq8_42_tb_inputs
      vecConstEq8_42_tb_expected_outputs.
