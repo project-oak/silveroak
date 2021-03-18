@@ -10,16 +10,6 @@ steps:
       '[ ! -d ".git" ] && echo "Recreating .git folder" && git clone -v https://github.com/project-oak/silveroak.git --no-checkout oak-hardware-git && mv oak-hardware-git/.git . && git fetch -v origin $COMMIT_SHA && git checkout -f $COMMIT_SHA && git submodule update --init --recursive || true']
 
   - name: 'nixos/nix:2.3.4'
-    id: cache_dependencies
-    waitFor: ['recover_git_folder']
-    timeout: 20m
-    entrypoint: 'nix-shell'
-    args: ['--run', 'echo "Done."']
-    volumes:
-    - name: nix-store
-      path: /nix/
-
-  - name: 'nixos/nix:2.3.4'
     id: build_third_party
     waitFor: ['recover_git_folder']
     timeout: 20m
