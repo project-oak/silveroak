@@ -14,50 +14,34 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Vectors.Vector.
-Require Import Coq.ZArith.ZArith.
-Require Import ExtLib.Structures.Monads.
-Import VectorNotations.
-Import MonadNotation.
-Local Open Scope vector_scope.
-Local Open Scope monad_scope.
-Local Open Scope N_scope.
-
 Require Import Cava.Cava.
-Require Import Cava.Lib.Vec.
-
 
 Section WithCava.
   Context {signal} `{Cava signal}.
 
   (* Check if [inp] is bit-equal to the first [n] bits of [v] *)
   (* TODO(atondwal): use [Fin] to disallow numbers larger than [2^n]. c.f. [ex5] *)
-  Definition vecConstEq {n v: nat}
+  Definition vecConstEq (n v: nat)
                         (inp: signal (Vec Bit n)) :
                         cava (signal Bit) :=
-    const <- bitvec_literal (N2Bv_sized n (N.of_nat v)) ;;
-    eq_results <- Vec.map2 (fun '(a, b) => xnor2 (a, b)) (inp, const) ;;
-    match n with
-    | 0%nat => ret one
-    | S _ => tree and2 eq_results
-    end.
-
-  Definition vecConstEq_combinator (n v: nat):= Comb (@vecConstEq n v).
+    const <- Vec.bitvec_literal (N2Bv_sized n (N.of_nat v)) ;;
+    eqb (inp, const).
 
 End WithCava.
 
 
-Example ex1 : simulate (vecConstEq_combinator 8 42) [N2Bv_sized 8 42] = [true].
+Example ex1 : vecConstEq 8 42 =<< Vec.bitvec_literal (N2Bv_sized 8 42) = ret true.
 Proof. trivial. Qed.
 
-Example ex2 : simulate (vecConstEq_combinator 8 43) [N2Bv_sized 8 42] = [false].
+Example ex2 : vecConstEq 8 43 =<< Vec.bitvec_literal (N2Bv_sized 8 42) = ret false.
 Proof. trivial. Qed.
 
-Example ex3 : simulate (vecConstEq_combinator 1 1) [N2Bv_sized 1 1] = [true].
+Example ex3 : vecConstEq 1 1 =<< Vec.bitvec_literal (N2Bv_sized 1 1) = ret true.
 Proof. trivial. Qed.
 
-Example ex4 : simulate (vecConstEq_combinator 1 1) [N2Bv_sized 1 0] = [false].
+Example ex4 : vecConstEq 1 1 =<< Vec.bitvec_literal (N2Bv_sized 1 0) = ret false.
 Proof. trivial. Qed.
 
-Example ex5 : simulate (vecConstEq_combinator 1 3) [N2Bv_sized 1 1] = [true].
+Example ex5 : vecConstEq 1 3 =<< Vec.bitvec_literal (N2Bv_sized 1 1) = ret true.
 Proof. trivial. Qed.
+
