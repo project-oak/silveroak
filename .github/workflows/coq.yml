@@ -1,0 +1,24 @@
+name: Coq
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '**.v'
+      - '**_CoqProject'
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.v'
+      - '**_CoqProject'
+
+jobs:
+  build_third_party:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run nix build
+      uses: docker://nixos/nix:latest
+      with:
+        entrypoint: nix-shell
+        args: ['--run', 'make -j32 third_party']
