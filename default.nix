@@ -28,7 +28,7 @@ rec {
     };
   verilator-shell = pkgs.mkShell {
       name = "verilator";
-      buildInputs = [pkgs.verilator];
+      buildInputs = coq-tools ++ [pkgs.verilator];
     };
 
   docker-image-build = pkgs.dockerTools.buildLayeredImage {
