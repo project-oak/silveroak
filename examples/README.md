@@ -64,7 +64,7 @@ endmodule
 ```
 
 The Makefile compiles the generated SystemVerilog and runs it with
-a checked in testnench [nand2_tb.vs](https://github.com/project-oak/oak-hardware/blob/master/cava-examples/nand2_tb.sv)
+a checked in testbench [nand2_tb.sv](https://github.com/project-oak/oak-hardware/blob/master/cava-examples/nand2_tb.sv)
 which produces a VCD waveform file which can be viewed with a VCD viewer like
 [gtkwave](http://gtkwave.sourceforge.net/):
 
