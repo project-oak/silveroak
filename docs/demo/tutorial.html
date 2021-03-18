@@ -128,8 +128,7 @@ to SystemVerilog.</p>
   := sequentialInterface <span class="s2">&quot;inverter_interface&quot;</span>
      <span class="s2">&quot;clk&quot;</span> PositiveEdge <span class="s2">&quot;rst&quot;</span> PositiveEdge
      [mkPort <span class="s2">&quot;i&quot;</span> Bit]
-     [mkPort <span class="s2">&quot;o&quot;</span> Bit]
-     [].</span></span><span class="alectryon-wsp">
+     [mkPort <span class="s2">&quot;o&quot;</span> Bit].</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
 </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk1" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk1"><span class="highlight"><span class="kn">Compute</span> makeCircuitNetlist inverter_interface inverter.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= {|
   netNumber := <span class="mi">1</span>;
@@ -271,8 +270,7 @@ circuit's type signature.</p>
   := sequentialInterface <span class="s2">&quot;xor_byte_interface&quot;</span>
      <span class="s2">&quot;clk&quot;</span> PositiveEdge <span class="s2">&quot;rst&quot;</span> PositiveEdge
      [mkPort <span class="s2">&quot;v1&quot;</span> (Vec Bit <span class="mi">8</span>); mkPort <span class="s2">&quot;v2&quot;</span> (Vec Bit <span class="mi">8</span>)]
-     [mkPort <span class="s2">&quot;o&quot;</span> (Vec Bit <span class="mi">8</span>)]
-     [].</span></span><span class="alectryon-wsp">
+     [mkPort <span class="s2">&quot;o&quot;</span> (Vec Bit <span class="mi">8</span>)].</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
 </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk16" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk16"><span class="highlight"><span class="kn">Compute</span> (makeCircuitNetlist xor_byte_interface xor_byte).(module).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= {|
   moduleName := <span class="s2">&quot;xor_byte_interface&quot;</span>;
@@ -409,8 +407,7 @@ argument, and then compute a netlist for any number of gates we want.</p>
   := sequentialInterface <span class="s2">&quot;xor_bitvec_interface&quot;</span>
      <span class="s2">&quot;clk&quot;</span> PositiveEdge <span class="s2">&quot;rst&quot;</span> PositiveEdge
      [mkPort <span class="s2">&quot;v1&quot;</span> (Vec Bit n); mkPort <span class="s2">&quot;v2&quot;</span> (Vec Bit n)]
-     [mkPort <span class="s2">&quot;o&quot;</span> (Vec Bit n)]
-     [].</span></span><span class="alectryon-wsp">
+     [mkPort <span class="s2">&quot;o&quot;</span> (Vec Bit n)].</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
 <span class="c">(* Netlist for a 2-bit xor *)</span>
 </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk22" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk22"><span class="highlight"><span class="kn">Compute</span>
