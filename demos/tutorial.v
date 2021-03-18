@@ -31,12 +31,21 @@ need to know Coq to follow along.
 Use Ctrl+down and Ctrl+up to step through the Coq code along with the
 tutorial. Use Ctrl+click to focus on a particular line.
 
-.. coq:: none
+
+Preliminaries
+=============
+
+To import the core Cava library you need to define and simulate circuits, just:
 |*)
 
 Require Import Cava.Cava.
-Require Import Cava.CavaProperties.
 Import Circuit.Notations.
+
+(*|
+If you also want to do proofs about circuits, this import should have everything you need:
+|*)
+
+Require Import Cava.CavaProperties.
 
 (*|
 Example 1 : Inverter
@@ -284,6 +293,16 @@ byte. Vectors can be formed from any other ``SignalType``, including other
 vectors; ``Vec (Vec (Vec Bit 8) 4) 2)`` is a valid construction representing a
 two-dimensional array of bytes (equivalently, a three-dimensional array of
 bits).
+
+The ``Vec.map2`` definition is from Cava's vector library. It's important not to
+confuse ``Vec``, the ``SignalType`` in Cava's type system, with ``Vector.t``,
+Coq's standard library vector type. In simulation, ``Vec`` is translated into
+``Vector.t``, so you may see both in the codebase. You can also convert back and
+forth between ``Vec`` and ``Vector.t`` using the Cava primitives ``packV`` and
+``unpackV``. However, Cava's vector library mirrors most of the definitions
+available for Coq standard library vectors, so it's usually best to use those
+definitions instead: use ``Vec.map2`` instead of ``unpackV``, ``Vector.map2``,
+and ``packV``.
 
 .. coq:: none
 |*)
