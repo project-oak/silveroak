@@ -268,11 +268,20 @@ The diagrams below illustrate the `below` and `col` combinators visually.
 
 ### Netlist-specific
 
-- `buf_gate : signal Bit -> cava (signal Bit)` TODO: describe
-- `localSignal : forall t, signal t -> cava (signal t)` TODO: describe
-- `instantiate` TODO: describe
+These operations affect the generated SystemVerilog but not generally the
+functional behavior of the circuit, but can be used for fine-grained control
+over resource usage.
+
+- `buf_gate : signal Bit -> cava (signal Bit)` : generate a `buf` primitive in
+  SystemVerilog
+- `localSignal : forall t, signal t -> cava (signal t)` : ensures that the given
+  signal has an explicit numbering in the netlist, rather than being an
+  expression, which can help prevent duplicated logic
 - `blackBox` : create a black box circuit with a given interface (for instance,
   for externally defined components)
+- `instantiate` : create a module in `SystemVerilog` with the provided
+  circuit. This produces a hierarchical design which may be useful for tooling
+  that consumes the SystemVerilog.
 
 ## Circuit Constructors
 
