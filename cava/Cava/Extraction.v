@@ -25,6 +25,7 @@ Set Extraction KeepSingleton.
 Set Extraction File Comment "Auto-generated from Cava/Coq. Please do not hand edit.".
 
 Require Import Cava.Cava.
+Require Import Cava.Lib.VecConstEq.
 Require Import Cava.Util.Vector.
 Require Import Cava.Semantics.Combinational.
 
@@ -40,6 +41,7 @@ Recursive Extraction Library NetlistGeneration.
 Recursive Extraction Library Netlist.
 Recursive Extraction Library Signal.
 Recursive Extraction Library Vector.
+Recursive Extraction Library VecConstEq.
 Recursive Extraction Library Adders.
 Recursive Extraction Library CavaPrelude.
 

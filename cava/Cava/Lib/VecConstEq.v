@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2020 The Project Oak Authors                                   *)
+(* Copyright 2021 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,30 +14,18 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.extraction.Extraction.
-Require Import Coq.extraction.ExtrHaskellZInteger.
-Require Import Coq.extraction.ExtrHaskellString.
-Require Import Coq.extraction.ExtrHaskellBasic.
-Require Import Coq.extraction.ExtrHaskellNatInteger.
+Require Import Cava.Cava.
 
-Extraction Language Haskell.
 
-Require Import Tests.Instantiate.
-Require Import Tests.MuxTests.
-Require Import Tests.TestMultiply.
-Require Import Tests.Delay.
-Require Import Tests.CountBy.CountBy.
-Require Import Tests.DoubleCountBy.DoubleCountBy.
-Require Import Tests.AccumulatingAdderEnable.AccumulatingAdderEnable.
-Require Import Tests.Array.
-Require Import Tests.TestVecConstEq.
+Section WithCava.
+  Context {signal} `{Cava signal}.
 
-Extraction Library Instantiate.
-Extraction Library MuxTests.
-Extraction Library TestMultiply.
-Extraction Library Delay.
-Extraction Library AccumulatingAdderEnable.
-Extraction Library CountBy.
-Extraction Library DoubleCountBy.
-Extraction Library Array.
-Extraction Library TestVecConstEq.
+  (* Check if [inp] is bit-equal to the first [n] bits of [v] *)
+  (* TODO(atondwal): use [Fin] to disallow numbers larger than [2^n]. c.f. [ex5] *)
+  Definition vecConstEq (n v: nat)
+                        (inp: signal (Vec Bit n)) :
+                        cava (signal Bit) :=
+    const <- Vec.bitvec_literal (N2Bv_sized n (N.of_nat v)) ;;
+    eqb (inp, const).
+
+End WithCava.
