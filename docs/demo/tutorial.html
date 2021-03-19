@@ -24,6 +24,12 @@ syntax in depth, but will use the same few patterns throughout; you shouldn't
 need to know Coq to follow along.</p>
 <p>Use Ctrl+down and Ctrl+up to step through the Coq code along with the
 tutorial. Use Ctrl+click to focus on a particular line.</p>
+<div class="section" id="preliminaries">
+<h1>Preliminaries</h1>
+<p>To import the core Cava library you need to define and simulate circuits, just:</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Require Import</span> Cava.Cava.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Import</span> Circuit.Notations.</span></span></span></pre><p>If you also want to do proofs about circuits, this import should have everything you need:</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Require Import</span> Cava.CavaProperties.</span></span></span></pre></div>
 <div class="section" id="example-1-inverter">
 <h1>Example 1 : Inverter</h1>
 <p>To start, let's define a 1-bit inverter.</p>
@@ -128,8 +134,7 @@ to SystemVerilog.</p>
   := sequentialInterface <span class="s2">&quot;inverter_interface&quot;</span>
      <span class="s2">&quot;clk&quot;</span> PositiveEdge <span class="s2">&quot;rst&quot;</span> PositiveEdge
      [mkPort <span class="s2">&quot;i&quot;</span> Bit]
-     [mkPort <span class="s2">&quot;o&quot;</span> Bit]
-     [].</span></span><span class="alectryon-wsp">
+     [mkPort <span class="s2">&quot;o&quot;</span> Bit].</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
 </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk1" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk1"><span class="highlight"><span class="kn">Compute</span> makeCircuitNetlist inverter_interface inverter.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= {|
   netNumber := <span class="mi">1</span>;
@@ -264,6 +269,15 @@ byte. Vectors can be formed from any other <tt class="docutils literal">SignalTy
 vectors; <tt class="docutils literal">Vec (Vec (Vec Bit 8) 4) 2)</tt> is a valid construction representing a
 two-dimensional array of bytes (equivalently, a three-dimensional array of
 bits).</p>
+<p>The <tt class="docutils literal">Vec.map2</tt> definition is from Cava's vector library. It's important not to
+confuse <tt class="docutils literal">Vec</tt>, the <tt class="docutils literal">SignalType</tt> in Cava's type system, with <tt class="docutils literal">Vector.t</tt>,
+Coq's standard library vector type. In simulation, <tt class="docutils literal">Vec</tt> is translated into
+<tt class="docutils literal">Vector.t</tt>, so you may see both in the codebase. You can also convert back and
+forth between <tt class="docutils literal">Vec</tt> and <tt class="docutils literal">Vector.t</tt> using the Cava primitives <tt class="docutils literal">packV</tt> and
+<tt class="docutils literal">unpackV</tt>. However, Cava's vector library mirrors most of the definitions
+available for Coq standard library vectors, so it's usually best to use those
+definitions instead: use <tt class="docutils literal">Vec.map2</tt> instead of <tt class="docutils literal">unpackV</tt>, <tt class="docutils literal">Vector.map2</tt>,
+and <tt class="docutils literal">packV</tt>.</p>
 <p>To generate a netlist for this circuit, we use mostly the same procedure as for
 the inverter, except that we change the input and output port types to match the
 circuit's type signature.</p>
@@ -271,8 +285,7 @@ circuit's type signature.</p>
   := sequentialInterface <span class="s2">&quot;xor_byte_interface&quot;</span>
      <span class="s2">&quot;clk&quot;</span> PositiveEdge <span class="s2">&quot;rst&quot;</span> PositiveEdge
      [mkPort <span class="s2">&quot;v1&quot;</span> (Vec Bit <span class="mi">8</span>); mkPort <span class="s2">&quot;v2&quot;</span> (Vec Bit <span class="mi">8</span>)]
-     [mkPort <span class="s2">&quot;o&quot;</span> (Vec Bit <span class="mi">8</span>)]
-     [].</span></span><span class="alectryon-wsp">
+     [mkPort <span class="s2">&quot;o&quot;</span> (Vec Bit <span class="mi">8</span>)].</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
 </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk16" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk16"><span class="highlight"><span class="kn">Compute</span> (makeCircuitNetlist xor_byte_interface xor_byte).(module).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= {|
   moduleName := <span class="s2">&quot;xor_byte_interface&quot;</span>;
@@ -409,8 +422,7 @@ argument, and then compute a netlist for any number of gates we want.</p>
   := sequentialInterface <span class="s2">&quot;xor_bitvec_interface&quot;</span>
      <span class="s2">&quot;clk&quot;</span> PositiveEdge <span class="s2">&quot;rst&quot;</span> PositiveEdge
      [mkPort <span class="s2">&quot;v1&quot;</span> (Vec Bit n); mkPort <span class="s2">&quot;v2&quot;</span> (Vec Bit n)]
-     [mkPort <span class="s2">&quot;o&quot;</span> (Vec Bit n)]
-     [].</span></span><span class="alectryon-wsp">
+     [mkPort <span class="s2">&quot;o&quot;</span> (Vec Bit n)].</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
 <span class="c">(* Netlist for a 2-bit xor *)</span>
 </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk22" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk22"><span class="highlight"><span class="kn">Compute</span>
