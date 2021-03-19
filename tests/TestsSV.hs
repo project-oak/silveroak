@@ -25,6 +25,7 @@ import Delay
 import CountBy
 import DoubleCountBy
 import Array
+import TestVecConstEq
 
 main :: IO ()
 main = do writeSystemVerilog mux2_1Netlist
@@ -50,3 +51,5 @@ main = do writeSystemVerilog mux2_1Netlist
           writeTestBench arrayTest_tb
           writeSystemVerilog multiDimArrayTest_Netlist
           writeTestBench multiDimArrayTest_tb
+          writeSystemVerilog vecConstEq8_42Netlist
+          writeTestBench vecConstEq8_42_tb

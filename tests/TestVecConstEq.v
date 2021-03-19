@@ -15,17 +15,39 @@
 (****************************************************************************)
 
 Require Import Cava.Cava.
+Require Import Cava.Lib.VecConstEq.
 
 
-Section WithCava.
-  Context {signal} `{Cava signal}.
+Example ex1 : vecConstEq 8 42 (N2Bv_sized 8 42) = ret true.
+Proof. trivial. Qed.
 
-  (* Check if [inp] is bit-equal to the first [n] bits of [v] *)
-  (* TODO(atondwal): use [Fin] to disallow numbers larger than [2^n]. c.f. [ex5] *)
-  Definition vecConstEq (n v: nat)
-                        (inp: signal (Vec Bit n)) :
-                        cava (signal Bit) :=
-    const <- Vec.bitvec_literal (N2Bv_sized n (N.of_nat v)) ;;
-    eqb (inp, const).
+Example ex2 : vecConstEq 8 42 (N2Bv_sized 8 43) = ret false.
+Proof. trivial. Qed.
 
-End WithCava.
+Example ex3 : vecConstEq 1 1 (N2Bv_sized 1 1) = ret true.
+Proof. trivial. Qed.
+
+Example ex4 : vecConstEq 1 1 (N2Bv_sized 1 0) = ret false.
+Proof. trivial. Qed.
+
+Example ex5 : vecConstEq 1 3 (N2Bv_sized 1 1) = ret true.
+Proof. trivial. Qed.
+
+Definition vecConstEqInterface {n: nat}
+  := combinationalInterface "vecConstEq"
+     [mkPort "v" (Vec Bit n)]
+     [mkPort "o" Bit].
+
+Definition vecConstEq8_42Netlist
+  := makeNetlist vecConstEqInterface (vecConstEq 8 42).
+
+Definition vecConstEq8_42_tb_inputs : list (Bvector 8) :=
+  [N2Bv_sized 8 42; N2Bv_sized 8 254; N2Bv_sized 8 0].
+
+Definition vecConstEq8_42_tb_expected_outputs : list bool
+  := simulate (Comb (vecConstEq 8 42)) vecConstEq8_42_tb_inputs.
+
+Definition vecConstEq8_42_tb
+  := testBench "vecConstEq_tb"
+     vecConstEqInterface vecConstEq8_42_tb_inputs
+     vecConstEq8_42_tb_expected_outputs.
