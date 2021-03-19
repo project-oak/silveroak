@@ -24,6 +24,9 @@ Require Cava.Lib.Vec.
 Import ListNotations MonadNotation.
 Local Open Scope monad_scope.
 
+(**** IMPORTANT: if you make changes to the API of these definitions, or add new
+      ones, make sure you update the reference at docs/reference.md! ****)
+
 (****************************************************************************)
 (* Lava-style circuit combinators.                                          *)
 (****************************************************************************)

@@ -25,6 +25,9 @@ Local Open Scope monad_scope.
 Require Import Cava.Core.Core.
 Require Import Cava.Lib.Combinators.
 
+(**** IMPORTANT: if you make changes to the API of these definitions, or add new
+      ones, make sure you update the reference at docs/reference.md! ****)
+
 Section WithCava.
   Context `{semantics:Cava}.
 
