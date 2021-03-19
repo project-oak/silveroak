@@ -25,6 +25,9 @@ Require Import Cava.Lib.CavaPrelude.
 Require Import Cava.Lib.Combinators.
 Require Import Cava.Util.Vector.
 
+(**** IMPORTANT: if you make changes to the API of these definitions, or add new
+      ones, make sure you update the reference at docs/reference.md! ****)
+
 Section WithCava.
   Context `{semantics:Cava}.
 

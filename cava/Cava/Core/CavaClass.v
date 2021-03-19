@@ -20,6 +20,9 @@ Require Import Cava.Core.Signal.
 
 Local Open Scope type_scope.
 
+(**** IMPORTANT: if you make changes to the API of these definitions, or add new
+      ones, make sure you update the reference at docs/reference.md! ****)
+
 (* The Cava class represents circuit graphs with Coq-level inputs and
    outputs, but does not represent the IO ports of circuits. This allows
    us to define both circuit netlist interpretations for the Cava class
