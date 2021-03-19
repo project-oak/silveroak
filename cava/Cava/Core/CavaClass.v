@@ -67,10 +67,6 @@ Class Cava (signal : SignalType -> Type) := {
                signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
                nat ->                   (* Static index *)
                cava (signal t);                (* The indexed bit of type signal bit *)
-  slice : forall {t: SignalType} {sz: nat} (startAt len: nat),
-                 signal (Vec t sz) ->
-                 (startAt + len <= sz) ->
-                 cava (signal (Vec t len));
   (* Synthesizable arithmetic operations. *)
   unsignedAdd : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b) ->
                 cava (signal (Vec Bit (1 + max a b)));

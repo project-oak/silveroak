@@ -205,14 +205,6 @@ Definition packVNet {t : SignalType} {s : nat} (v: Vector.t (Signal t) s)
   : state CavaState (Signal (Vec t s)) :=
   localSignalNet (VecLit v).
 
-Definition sliceNet {t: SignalType} {sz: nat}
-                    (startAt len: nat)
-                    (v: Signal (Vec t sz))
-                    (H: startAt + len <= sz) :
-                    state CavaState (Signal (Vec t len)) :=
-  v <- unpackVNet v ;;
-  packVNet (sliceVector v startAt len H).
-
 Fixpoint combToSignal (t : SignalType) (v : combType t) : Signal t :=
   match t, v with
   | Void, _ => UndefinedSignal
@@ -264,7 +256,6 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     packV := @packVNet;
     indexAt k sz isz v i := localSignalNet (IndexAt v i);
     indexConst k sz v i := localSignalNet (IndexConst v i);
-    slice k sz start len v H := @sliceNet k sz start len v H;
     unsignedAdd m n ab :=
       localSignalNet (@UnsignedAdd m n (1 + max m n) (fst ab) (snd ab));
     unsignedMult m n ab :=
