@@ -61,7 +61,8 @@ Section WithCava.
 
   (* Use a higher kinded data definition of 'cipher_control_signals' so that
    * we can reuse the structure for multiple representations include plain
-   * signals and nondeterministic set of future states represented by a list *)
+   * signals and nondeterministic set of future states represented by a vector
+   * of possible states *)
   Record cipher_control_signals {f: SignalType -> Type} :=
     { in_ready_o : f Bit
     ; out_valid_o : f Bit
@@ -143,8 +144,8 @@ Section WithCava.
   (* 'vector_cava_signal' is the representation we use to model a set of
    * possible states for a signal to be in. We defer the choice of current state
    * so that we can build each transition individually and then choose the correct
-   * transition later. This allows us to construct the result by follow the structure
-   * of the existing imperative case statement. *)
+   * transition later. This allows us to construct the result by following the
+   * structure of the existing imperative case statement. *)
   Definition vector_cava_signal n x := cava (Vector.t (signal x) n).
   Definition empty_state_set :=
     Build_cipher_control_signals (vector_cava_signal 0)
