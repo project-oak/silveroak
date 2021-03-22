@@ -374,6 +374,17 @@ Section VectorFacts.
 
   Hint Rewrite @tl_cons @hd_cons using solve [eauto] : vsimpl.
 
+  Lemma const_cons {A n} (a : A) :
+    const a (S n) = Vector.cons _ a _ (const a n).
+  Proof. reflexivity. Qed.
+
+  Lemma const_nil {A n} (v : t (t A 0) n) : v = const (nil _) _.
+  Proof.
+    revert v; induction n; [ solve [vnil] | ].
+    intro v; rewrite (eta v). eapply case0 with (v:=hd v).
+    rewrite (IHn (tl v)); reflexivity.
+  Qed.
+
   Lemma eta_snoc {A n} (v : t A (S n)) :
     v = snoc (fst (unsnoc v)) (snd (unsnoc v)).
   Proof.
@@ -419,6 +430,30 @@ Section VectorFacts.
   Lemma unsnoc_tl {A} n (v : t A (S (S n))) :
     unsnoc (tl v) = (tl (fst (unsnoc v)), snd (unsnoc v)).
   Proof. destruct n; reflexivity. Qed.
+
+  Lemma shiftout_cons {A} n x (v : Vector.t A (S n)) :
+    shiftout (x :: v) = x :: shiftout v.
+  Proof. reflexivity. Qed.
+
+  Lemma shiftout_const {A} n (x : A) :
+    shiftout (const x (S n)) = const x n.
+  Proof.
+    induction n; [ reflexivity | ].
+    rewrite const_cons, shiftout_cons.
+    rewrite IHn; reflexivity.
+  Qed.
+
+  Lemma last_cons {A} n x (v : Vector.t A (S n)) :
+    Vector.last (x :: v) = Vector.last v.
+  Proof. reflexivity. Qed.
+
+  Lemma last_const {A} n (x : A) :
+    Vector.last (const x (S n)) = x.
+  Proof.
+    induction n; [ reflexivity | ].
+    rewrite const_cons, last_cons, IHn.
+    reflexivity.
+  Qed.
 
   Lemma map_0 A B (f : A -> B) (v : t A 0) :
     map f v = nil B.
@@ -832,17 +867,6 @@ Section VectorFacts.
     revert b; induction v; intros; [ reflexivity | ].
     autorewrite with vsimpl. cbn [List.fold_left].
     rewrite IHv; reflexivity.
-  Qed.
-
-  Lemma const_cons {A n} (a : A) :
-    const a (S n) = Vector.cons _ a _ (const a n).
-  Proof. reflexivity. Qed.
-
-  Lemma const_nil {A n} (v : t (t A 0) n) : v = const (nil _) _.
-  Proof.
-    revert v; induction n; [ solve [vnil] | ].
-    intro v; rewrite (eta v). eapply case0 with (v:=hd v).
-    rewrite (IHn (tl v)); reflexivity.
   Qed.
 
   Lemma reshape_flatten {A n m} (v : t (t A n) m) :

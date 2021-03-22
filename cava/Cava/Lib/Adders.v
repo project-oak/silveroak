@@ -61,6 +61,29 @@ Section WithCava.
     '(sum, _) <- addC (xy, zero) ;;
     ret sum.
 
+  (* Increment an n-bit vector, representing result as an n-bit vector and a
+     carry bit *)
+  Definition incrC {n : nat} : signal (Vec Bit n) -> cava (signal (Vec Bit n) * signal Bit) :=
+    match n with
+    | 0 => fun input => ret (input, one) (* incrementing a 0-length vector always overflows *)
+    | S m =>
+      fun input : signal (Vec Bit (S m)) =>
+        (* use synthesizable adder to add 1 *)
+        onev <- packV [one] ;;
+        sum <- unsignedAdd (input, onev) ;;
+        (* resize (1 + Nat.max (S m) 1) to S (S m) *)
+        sum <- Vec.resize_default (S (S m)) sum ;;
+        (* separate highest bit from rest of sum *)
+        sum_low <- Vec.shiftout sum ;;
+        sum_high <- Vec.last sum ;;
+        ret (sum_low, sum_high)
+    end.
+
+  (* Increment an n-bit vector with no bit-growth *)
+  Definition incrN {n : nat} (input : signal (Vec Bit n)) : cava (signal (Vec Bit n)) :=
+    '(out, _) <- incrC input ;;
+    ret out.
+
   Section XilinxAdders.
     (* Build a full-adder with explicit use of Xilinx FPGA fast carry logic *)
     Definition xilinxFullAdder '(cin, (x, y))
