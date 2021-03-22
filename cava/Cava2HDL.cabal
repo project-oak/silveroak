@@ -54,6 +54,7 @@ library
                      Combinational
                      Circuit
                      Datatypes
+                     Functor
                      HexString
                      Identity
                      List
@@ -85,7 +86,6 @@ library
                      ByteVector
                      Byte
                      Decimal
-                     Functor
                      Hexadecimal
                      Numeral
                      Specif
