@@ -374,3 +374,49 @@ Proof.
   rewrite map_map, map_id_ext by (intros; apply bitvec_to_byte_to_bitvec).
   autorewrite with vsimpl; reflexivity.
 Qed.
+
+Lemma P2Bv_sized_cons n p :
+  P2Bv_sized (S n) p = (match p with
+                        | (p0~1)%positive => true :: P2Bv_sized n p0
+                        | (p0~0)%positive => false :: P2Bv_sized n p0
+                        | 1%positive => true :: Bvector.Bvect_false n
+                        end)%vector.
+Proof. reflexivity. Qed.
+
+Lemma P2Bv_sized_shiftout n p :
+  Vector.shiftout (P2Bv_sized (S n) p) = P2Bv_sized n p.
+Proof.
+  revert p; induction n; [ destruct p; reflexivity | ].
+  intros. destruct p.
+  all:rewrite P2Bv_sized_cons with (n:=S n).
+  all:cbv [Bvector.Bvect_false].
+  all:rewrite !shiftout_cons, ?shiftout_const.
+  all:rewrite ?IHn.
+  all:reflexivity.
+Qed.
+
+Lemma N2Bv_sized_shiftout n x :
+  Vector.shiftout (N2Bv_sized (S n) x) = N2Bv_sized n x.
+Proof.
+  destruct x; [ apply shiftout_const | ].
+  apply P2Bv_sized_shiftout.
+Qed.
+
+Lemma P2Bv_sized_last n p :
+  Vector.last (P2Bv_sized (S n) p) = Pos.testbit_nat p n.
+Proof.
+  revert p; induction n; [ destruct p; reflexivity | ].
+  intros. rewrite P2Bv_sized_cons with (n:=S n).
+  destruct p.
+  all:cbv [Bvector.Bvect_false].
+  all:rewrite !last_cons, ?last_const.
+  all:rewrite ?IHn.
+  all:reflexivity.
+Qed.
+
+Lemma N2Bv_sized_last n x :
+  Vector.last (N2Bv_sized (S n) x) = N.testbit_nat x n.
+Proof.
+  destruct x; [ apply last_const | ].
+  apply P2Bv_sized_last.
+Qed.
