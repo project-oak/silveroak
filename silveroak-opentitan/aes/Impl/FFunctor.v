@@ -19,6 +19,7 @@ Require Import ExtLib.Structures.Applicative.
 
 (* There are multiple ways to generalize ExtLib.Functor, this is particular one
    is useful for working with "higher kinded data". *)
+(* TODO(blaxill): see if coq-ext-lib has interest in adding these definitions *)
 
 Class FFunctor {k} (F: (k -> Type) -> Type) :=
 { ffmap : forall {A B : (k -> Type)}, (forall x, A x -> B x) -> F A -> F B }.
@@ -33,7 +34,3 @@ Definition sequence {k} {T : (k -> Type) -> Type}
 
 Class FZip {k} (T: (k -> Type) -> Type): Type :=
 { fzip : forall {A B C: (k -> Type)}, (forall {x}, A x -> B x -> C x) -> T A -> T B -> T C }.
-
-(* Class FApplicative {k} (T: (k -> Type) -> Type): Type := *)
-(* { fzip : forall {A B C: (k -> Type)}, (forall {x}, A x -> B x -> C x) -> T A -> T B -> T C }. *)
-
