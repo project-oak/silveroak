@@ -33,17 +33,17 @@ Section WithCava.
 
   Local Infix "==?" := (fun a b => eqb (a,b)) (at level 40).
 
-  Definition round_0: cava (signal round_index) :=
+  Definition round_0: signal round_index :=
     bitvec_to_signal (nat_to_bitvec_sized _ 0).
-  Definition round_1: cava (signal round_index) :=
+  Definition round_1: signal round_index :=
     bitvec_to_signal (nat_to_bitvec_sized _ 1).
-  Definition round_2: cava (signal round_index) :=
+  Definition round_2: signal round_index :=
     bitvec_to_signal (nat_to_bitvec_sized _ 2).
-  Definition round_10: cava (signal round_index) :=
+  Definition round_10: signal round_index :=
     bitvec_to_signal (nat_to_bitvec_sized _ 10).
-  Definition round_13: cava (signal round_index) :=
+  Definition round_13: signal round_index :=
     bitvec_to_signal (nat_to_bitvec_sized _ 13).
-  Definition round_14: cava (signal round_index) :=
+  Definition round_14: signal round_index :=
     bitvec_to_signal (nat_to_bitvec_sized _ 14).
 
   Definition add_round (a b: signal round_index): cava (signal round_index) :=
@@ -228,11 +228,6 @@ Section WithCava.
     y' <- y;;
     and2 (x', y').
 
-  Definition mux2Cond {t} (sel : signal Bit) (xy : cava_signal t * cava_signal t) : cava_signal t :=
-    x' <- fst xy ;;
-    y' <- snd xy ;;
-    mux2 sel (x',y').
-
   Definition transition_idle_pre: signal_update :=
     setSignal1 dec_key_gen_d (constant false) ;;
     setSignal1 in_ready_o (constant true).
@@ -249,7 +244,7 @@ Section WithCava.
     setSignal1 key_clear_d (key_clear_i inputs) ;;
     setSignal1 data_out_clear_d (data_out_clear_i inputs) ;;
     setSignal aes_cipher_ctrl_ns
-              (mux2Cond (data_out_clear_i inputs) (CLEAR_KD_S, CLEAR_S_S)).
+              (mux2 (data_out_clear_i inputs) (CLEAR_KD_S, CLEAR_S_S)).
 
   Definition transition_idle_start (inputs: control_inputs): signal_update :=
     transition_idle_pre ;;
@@ -267,7 +262,7 @@ Section WithCava.
     (* state_sel_o = dec_key_gen_d ? STATE_CLEAR : STATE_INIT; *)
     (* state_we_o  = 1'b1; *)
     setSignal state_sel_o
-              (mux2Cond dec_key_gen_i' (STATE_INIT, STATE_CLEAR)) ;;
+              (mux2 dec_key_gen_i' (STATE_INIT, STATE_CLEAR)) ;;
     setSignal1 state_we_o (constant true) ;;
 
     (* // Init key expand *)
@@ -279,20 +274,20 @@ Section WithCava.
     (*             (op_i == CIPH_FWD) ? KEY_FULL_ENC_INIT : *)
     (*                                  KEY_FULL_DEC_INIT; *)
     setSignal key_full_sel_o (
-      temp <- mux2Cond op_i' (KEY_FULL_ENC_INIT, KEY_FULL_DEC_INIT) ;;
-      mux2Cond dec_key_gen_i' (ret temp, KEY_FULL_ENC_INIT)) ;;
+      temp <- mux2 op_i' (KEY_FULL_ENC_INIT, KEY_FULL_DEC_INIT) ;;
+      mux2 dec_key_gen_i' (temp, KEY_FULL_ENC_INIT)) ;;
     (* key_full_we_o  = 1'b1; *)
     setSignal1 key_full_we_o (constant true) ;;
 
     (* // Load num_rounds, clear round *)
     (* round_d      = '0; *)
-    setSignal round_d round_0 ;;
+    setSignal1 round_d round_0 ;;
     (* num_rounds_d = (key_len_i == AES_128) ? 4'd10 : *)
     (*                (key_len_i == AES_192) ? 4'd12 : *)
     (*                                         4'd14; *)
-    setSignal num_rounds_d round_14 ;;
+    setSignal1 num_rounds_d round_14 ;;
     (* aes_cipher_ctrl_ns = INIT; *)
-    setSignal aes_cipher_ctrl_ns INIT_S.
+    setSignal1 aes_cipher_ctrl_ns INIT_S.
 
   (* mux idle states *)
   Definition transition_idle (inputs: control_inputs): signal_update :=
@@ -324,7 +319,7 @@ Section WithCava.
     (* state_we_o   = ~dec_key_gen_q; *)
     (* add_rk_sel_o = ADD_RK_INIT; *)
     setSignal state_we_o (dec_key_gen_q >>= inv) ;;
-    setSignal add_rk_sel_o ADD_RK_INIT;;
+    setSignal1 add_rk_sel_o ADD_RK_INIT;;
 
     (* // Select key words for initial add_round_key *)
     (* key_words_sel_o = dec_key_gen_q                ? KEY_WORDS_ZERO : *)
@@ -336,8 +331,8 @@ Section WithCava.
     setSignal key_words_sel_o (
       (* TODO(blaxill): support other key sizes *)
       dec_key_gen_q' <- dec_key_gen_q ;;
-      sel <- mux2Cond (op_i inputs) (KEY_WORDS_0123, KEY_WORDS_4567) ;;
-      mux2Cond dec_key_gen_q' (ret sel, KEY_WORDS_ZERO)
+      sel <- mux2 (op_i inputs) (KEY_WORDS_0123, KEY_WORDS_4567) ;;
+      mux2 dec_key_gen_q' (sel, KEY_WORDS_ZERO)
       ) ;;
 
     (* // Make key expand advance - AES-256 has two round keys available right from beginning. *)
@@ -350,12 +345,13 @@ Section WithCava.
     setEnSignal1 key_full_we_o cond (constant true) ;;
 
     (* aes_cipher_ctrl_ns = ROUND; *)
-    setSignal aes_cipher_ctrl_ns ROUND_S.
+    setSignal1 aes_cipher_ctrl_ns ROUND_S.
 
   Definition transition_round (inputs: control_inputs): signal_update :=
     dec_key_gen_q <- getSignal dec_key_gen_d ;;
     round_q <- getSignal round_d ;;
     num_rounds_q <- getSignal num_rounds_d ;;
+
     (* // Normal rounds *)
     (* state_we_o = ~dec_key_gen_q; *)
     setSignal state_we_o (dec_key_gen_q >>= inv) ;;
@@ -370,8 +366,8 @@ Section WithCava.
     setSignal key_words_sel_o (
       (* TODO(blaxill): support other key sizes *)
       dec_key_gen_q' <- dec_key_gen_q ;;
-      sel <- mux2Cond (op_i inputs) (KEY_WORDS_4567, KEY_WORDS_0123) ;;
-      mux2Cond dec_key_gen_q' (ret sel, KEY_WORDS_ZERO)
+      sel <- mux2 (op_i inputs) (KEY_WORDS_4567, KEY_WORDS_0123) ;;
+      mux2 dec_key_gen_q' (sel, KEY_WORDS_ZERO)
       ) ;;
 
     (* // Make key expand advance *)
@@ -390,15 +386,14 @@ Section WithCava.
 
     (* // Are we doing the last regular round? *)
     (* if (round_q == num_rounds_regular) begin *)
-    let cond :=
+    let cond : cava_signal Bit :=
       num_rounds_q <- num_rounds_q ;;
-      r2 <- round_2 ;;
       round_q <- round_q ;;
-      round_q <- add_round round_q r2 ;;
+      round_q <- add_round round_q round_2 ;;
       round_q ==? num_rounds_q in
 
     (*   aes_cipher_ctrl_ns = FINISH; *)
-    setEnSignal aes_cipher_ctrl_ns cond FINISH_S ;;
+    setEnSignal1 aes_cipher_ctrl_ns cond FINISH_S ;;
 
     (*   if (dec_key_gen_q) begin *)
     let cond2 := andCond cond dec_key_gen_q in
@@ -416,7 +411,7 @@ Section WithCava.
     (*       dec_key_gen_d      = 1'b0; *)
     setEnSignal1 dec_key_gen_d cond3 (constant false) ;;
     (*       aes_cipher_ctrl_ns = IDLE; *)
-    setEnSignal aes_cipher_ctrl_ns cond3 IDLE_S.
+    setEnSignal1 aes_cipher_ctrl_ns cond3 IDLE_S.
 
   Definition transition_finish (inputs: control_inputs): signal_update :=
     dec_key_gen_q <- getSignal dec_key_gen_d ;;
@@ -435,13 +430,13 @@ Section WithCava.
     setSignal key_words_sel_o (
       (* TODO(blaxill): support other key sizes *)
       dec_key_gen_q' <- dec_key_gen_q ;;
-      sel <- mux2Cond (op_i inputs) (KEY_WORDS_4567, KEY_WORDS_0123) ;;
-      mux2Cond dec_key_gen_q' (ret sel, KEY_WORDS_ZERO)
+      sel <- mux2 (op_i inputs) (KEY_WORDS_4567, KEY_WORDS_0123) ;;
+      mux2 dec_key_gen_q' (ret sel, KEY_WORDS_ZERO)
       ) ;;
 
     (* // Skip mix_columns *)
     (* add_rk_sel_o = ADD_RK_FINAL; *)
-    setSignal add_rk_sel_o ADD_RK_FINAL ;;
+    setSignal1 add_rk_sel_o ADD_RK_FINAL ;;
 
     (* // Indicate that we are done, wait for handshake. *)
     (* out_valid_o = 1'b1; *)
@@ -452,7 +447,7 @@ Section WithCava.
     (*   state_we_o         = 1'b1; *)
     setEnSignal1 state_we_o cond (constant true) ;;
     (*   state_sel_o        = STATE_CLEAR; *)
-    setEnSignal state_sel_o cond STATE_CLEAR ;;
+    setEnSignal1 state_sel_o cond STATE_CLEAR ;;
     (*   crypt_d            = 1'b0; *)
     setEnSignal1 crypt_d cond (constant false) ;;
     (*   // If we were generating the decryption key and didn't get the handshake in the last *)
@@ -460,23 +455,23 @@ Section WithCava.
     (*   dec_key_gen_d      = 1'b0; *)
     setEnSignal1 dec_key_gen_d cond (constant false) ;;
     (*   aes_cipher_ctrl_ns = IDLE; *)
-    setEnSignal aes_cipher_ctrl_ns cond IDLE_S.
+    setEnSignal1 aes_cipher_ctrl_ns cond IDLE_S.
 
   Definition transition_clear (inputs: control_inputs): signal_update :=
     (* // Clear the state with pseudo-random data. *)
     (* state_we_o         = 1'b1; *)
     setSignal1 state_we_o (constant true) ;;
     (* state_sel_o        = STATE_CLEAR; *)
-    setSignal state_sel_o STATE_CLEAR ;;
+    setSignal1 state_sel_o STATE_CLEAR ;;
     (* aes_cipher_ctrl_ns = CLEAR_KD; *)
-    setSignal aes_cipher_ctrl_ns CLEAR_KD_S.
+    setSignal1 aes_cipher_ctrl_ns CLEAR_KD_S.
 
   Definition transition_clear_kd (inputs: control_inputs): signal_update :=
     (* // Clear internal key registers and/or external data output registers. *)
     (* if (key_clear_q) begin *)
     key_clear_q <- getSignal key_clear_d ;;
     (*   key_full_sel_o = KEY_FULL_CLEAR; *)
-    setEnSignal key_full_sel_o key_clear_q KEY_FULL_CLEAR ;;
+    setEnSignal1 key_full_sel_o key_clear_q KEY_FULL_CLEAR ;;
     (*   key_full_we_o  = 1'b1; *)
     setEnSignal1 key_full_we_o key_clear_q (constant true) ;;
     (*   key_dec_sel_o  = KEY_DEC_CLEAR; *)
@@ -488,9 +483,9 @@ Section WithCava.
     data_out_clear_q <- getSignal data_out_clear_d ;;
     (*   // Forward the state (previously cleared with psuedo-random data). *)
     (*   add_rk_sel_o    = ADD_RK_INIT; *)
-    setEnSignal add_rk_sel_o data_out_clear_q ADD_RK_INIT ;;
+    setEnSignal1 add_rk_sel_o data_out_clear_q ADD_RK_INIT ;;
     (*   key_words_sel_o = KEY_WORDS_ZERO; *)
-    setEnSignal key_words_sel_o data_out_clear_q KEY_WORDS_ZERO ;;
+    setEnSignal1 key_words_sel_o data_out_clear_q KEY_WORDS_ZERO ;;
     (*   round_key_sel_o = ROUND_KEY_DIRECT; *)
     setEnSignal1 round_key_sel_o data_out_clear_q ROUND_KEY_DIRECT ;;
     (* end *)
@@ -504,7 +499,7 @@ Section WithCava.
     (*   data_out_clear_d   = 1'b0; *)
     setEnSignal1 data_out_clear_d out_ready_i' (constant false) ;;
     (*   aes_cipher_ctrl_ns = IDLE; *)
-    setEnSignal aes_cipher_ctrl_ns out_ready_i' IDLE_S.
+    setEnSignal1 aes_cipher_ctrl_ns out_ready_i' IDLE_S.
 
   Definition next_transition (inputs: control_inputs): signal_update :=
     current_state <- getSignal aes_cipher_ctrl_ns ;;

@@ -235,6 +235,7 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     cava := state CavaState;
     monad := Monad_state _;
     constant b := if b then Vcc else Gnd;
+    constantV A n v := VecLit v;
     defaultSignal := defaultNetSignal;
     inv := invNet;
     and2 := andNet;
