@@ -41,6 +41,7 @@ library
   build-Depends:     base >= 4, mtl >= 2
   exposed-Modules:   Cava2SystemVerilog
                      Adders
+                     Applicative
                      BinNat
                      BinNums
                      BinInt
@@ -79,8 +80,7 @@ library
                      TestBench
                      SystemVerilogUtils
 
-  other-Modules:     Applicative
-                     BinPos
+  other-Modules:     BinPos
                      BinNatDef
                      ByteVector
                      Byte
