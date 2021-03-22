@@ -16,6 +16,8 @@
 
 Require Import Cava.Cava.
 Require Import ExtLib.Structures.MonadState.
+Require Import ExtLib.Structures.Functor.
+Require Import ExtLib.Structures.Applicative.
 Require Import RecordUpdate.RecordSet.
 Require Import AesImpl.AddRoundKeyCircuit.
 Require Import AesImpl.CipherCircuit.
@@ -23,8 +25,12 @@ Require Import AesImpl.MixColumnsCircuit.
 Require Import AesImpl.Pkg.
 Require Import AesImpl.ShiftRowsCircuit.
 Require Import AesImpl.SubBytesCircuit.
+Require Import AesImpl.FFunctor.
 Import Circuit.Notations.
 Local Open Scope vector_scope.
+
+Import FunctorNotation.
+Import ApplicativeNotation.
 
 Notation round_index := (Vec Bit 4) (only parsing).
 
@@ -39,10 +45,6 @@ Section WithCava.
     bitvec_to_signal (nat_to_bitvec_sized _ 1).
   Definition round_2: cava (signal round_index) :=
     bitvec_to_signal (nat_to_bitvec_sized _ 2).
-  Definition round_10: cava (signal round_index) :=
-    bitvec_to_signal (nat_to_bitvec_sized _ 10).
-  Definition round_13: cava (signal round_index) :=
-    bitvec_to_signal (nat_to_bitvec_sized _ 13).
   Definition round_14: cava (signal round_index) :=
     bitvec_to_signal (nat_to_bitvec_sized _ 14).
 
@@ -53,6 +55,13 @@ Section WithCava.
   Definition inc_round (current: signal round_index): cava (signal round_index)
     := round_1 <- round_1 ;; add_round current round_1.
 
+  (****************************************************************************)
+  (* aes_cipher_control signals                                               *)
+  (****************************************************************************)
+
+  (* Use a higher kinded data definition of 'cipher_control_signals' so that
+   * we can reuse the structure for multiple representations include plain
+   * signals and nondeterministic set of future states represented by a list *)
   Record cipher_control_signals {f: SignalType -> Type} :=
     { in_ready_o : f Bit
     ; out_valid_o : f Bit
@@ -90,112 +99,89 @@ Section WithCava.
     num_rounds_d; crypt_d; dec_key_gen_d; key_clear_d;
     data_out_clear_d >.
 
-  Record control_inputs :=
-    { in_valid_i : signal Bit
-    ; out_ready_i : signal Bit
-    ; crypt_i : signal Bit
-    ; dec_key_gen_i : signal Bit
-    ; key_clear_i : signal Bit
-    ; data_out_clear_i : signal Bit
-    ; op_i : signal Bit
-    ; key_len_i : signal (Vec Bit 3)
-    }.
-
-  Definition map_natural_transform {F G}
-    (x: cipher_control_signals F)
-    (ret: forall {x}, F x -> G x) : cipher_control_signals G :=
-    match x with
-    | Build_cipher_control_signals _ a b c d e f g h i j k l m n o p q r s t =>
-      Build_cipher_control_signals _
-      (ret a) (ret b) (ret c) (ret d) (ret e) (ret f) (ret g)
-      (ret h) (ret i) (ret j) (ret k) (ret l) (ret m) (ret n)
-      (ret o) (ret p) (ret q) (ret r) (ret s) (ret t)
-    end.
-
-  Definition sequence
-    (x: cipher_control_signals cava_signal)
-    : cava (cipher_control_signals signal) :=
-    match x with
-    | Build_cipher_control_signals _ a b c d e f g h i j k l m n o p q r s t =>
-      a' <- a ;; b' <- b ;; c' <- c ;;
-      d' <- d ;; e' <- e ;; f' <- f ;;
-      g' <- g ;; h' <- h ;; i' <- i ;;
-      j' <- j ;; k' <- k ;; l' <- l ;;
-      m' <- m ;; n' <- n ;; o' <- o ;;
-      p' <- p ;; q' <- q ;; r' <- r ;;
-      s' <- s ;; t' <- t ;;
-      ret (
+  Instance FFunctor_cipher_control_signals : FFunctor cipher_control_signals := {
+    ffmap F G (ret: forall {x}, F x -> G x) x :=
+      match x with
+      | Build_cipher_control_signals _ a b c d e f g h i j k l m n o p q r s t =>
         Build_cipher_control_signals _
-        a' b' c' d' e' f' g'
-        h' i' j' k' l' m' n'
-        o' p' q' r' s' t')
-    end.
+        (ret a) (ret b) (ret c) (ret d) (ret e) (ret f) (ret g)
+        (ret h) (ret i) (ret j) (ret k) (ret l) (ret m) (ret n)
+        (ret o) (ret p) (ret q) (ret r) (ret s) (ret t)
+      end;
+  }.
 
-  Definition extend_with_loop_state {T} (tup: T)
-    (x: cipher_control_signals signal) :=
-    match x with
-    | Build_cipher_control_signals _ a b c d e f g h i j k l m n o p q r s t =>
-        ( tup, n, o, p, q, r, s, t )
-    end.
-  Definition extract_loop_outputs
-    (x: cipher_control_signals signal) :=
-    match x with
-    | Build_cipher_control_signals _ a b c d e f g h i j k l m n o p q r s t =>
-        ( a, b, c, d, e, f, g, h, i, j, k, l, m )
-    end.
+  Instance FTraversable_cipher_control_signals : FTraversable cipher_control_signals := {
+    fmapT A B F F_ap (ret: forall {x}, A x -> F (B x)) (x: cipher_control_signals A) :=
+      match x with
+      | Build_cipher_control_signals _ a b c d e f g h i j k l m n o p q r s t =>
+        Build_cipher_control_signals B
+          <$> ret a <*> ret b <*> ret c <*> ret d <*> ret e
+          <*> ret f <*> ret g <*> ret h <*> ret i <*> ret j
+          <*> ret k <*> ret l <*> ret m <*> ret n <*> ret o
+          <*> ret p <*> ret q <*> ret r <*> ret s <*> ret t
+      end;
+  }.
 
-  Definition convolution {F G H}
-    (x: cipher_control_signals F)
-    (y: cipher_control_signals G)
-    (ap: forall {x}, F x -> G x -> H x) : cipher_control_signals H :=
-    match x, y with
-    | Build_cipher_control_signals _
-      a1 b1 c1 d1 e1 f1 g1 h1 i1 j1 k1 l1 m1 n1 o1 p1 q1 r1 s1 t1,
-      Build_cipher_control_signals _
-      a2 b2 c2 d2 e2 f2 g2 h2 i2 j2 k2 l2 m2 n2 o2 p2 q2 r2 s2 t2 =>
-      Build_cipher_control_signals _
-      (ap a1 a2) (ap b1 b2) (ap c1 c2) (ap d1 d2) (ap e1 e2) (ap f1 f2) (ap g1 g2)
-      (ap h1 h2) (ap i1 i2) (ap j1 j2) (ap k1 k2) (ap l1 l2) (ap m1 m2) (ap n1 n2)
-      (ap o1 o2) (ap p1 p2) (ap q1 q2) (ap r1 r2) (ap s1 s2) (ap t1 t2)
-    end.
+  Instance FZip_cipher_control_signals : FZip cipher_control_signals := {
+    fzip A B C zipWith x y :=
+      let ap {x} := zipWith x in
+      match x, y with
+      | Build_cipher_control_signals _
+        a1 b1 c1 d1 e1 f1 g1 h1 i1 j1 k1 l1 m1 n1 o1 p1 q1 r1 s1 t1,
+        Build_cipher_control_signals _
+        a2 b2 c2 d2 e2 f2 g2 h2 i2 j2 k2 l2 m2 n2 o2 p2 q2 r2 s2 t2 =>
+        Build_cipher_control_signals _
+        (ap a1 a2) (ap b1 b2) (ap c1 c2) (ap d1 d2) (ap e1 e2) (ap f1 f2) (ap g1 g2)
+        (ap h1 h2) (ap i1 i2) (ap j1 j2) (ap k1 k2) (ap l1 l2) (ap m1 m2) (ap n1 n2)
+        (ap o1 o2) (ap p1 p2) (ap q1 q2) (ap r1 r2) (ap s1 s2) (ap t1 t2)
+      end;
+  }.
 
-  Definition lift_to_circuit (x: cipher_control_signals signal): cipher_control_signals cava_signal
-    := map_natural_transform x (fun _ x => ret x).
+  (****************************************************************************)
+  (* Handling of nondeterministic state                                       *)
+  (****************************************************************************)
+  (* 'vector_cava_signal' is the representation we use to model a set of
+   * possible states for a signal to be in. We defer the choice of current state
+   * so that we can build each transition individually and then choose the correct
+   * transition later. This allows us to construct the result by follow the structure
+   * of the existing imperative case statement. *)
+  Definition vector_cava_signal n x := cava (Vector.t (signal x) n).
+  Definition empty_state_set :=
+    Build_cipher_control_signals (vector_cava_signal 0)
+      (ret []) (ret []) (ret []) (ret []) (ret []) (ret []) (ret [])
+      (ret []) (ret []) (ret []) (ret []) (ret []) (ret []) (ret [])
+      (ret []) (ret []) (ret []) (ret []) (ret []) (ret []).
 
-  Definition vector_cava_signal n := (fun x => cava (Vector.t (signal x) n)).
-
-  Definition extend_nondeterministic_state  {n}
-    (x: cipher_control_signals cava_signal)
-    (xs: cipher_control_signals (vector_cava_signal n))
-    : cipher_control_signals (vector_cava_signal (S n)) :=
-    convolution x xs (
+  Definition prepend_state {n} :=
+    fzip (T:=cipher_control_signals) (B:=vector_cava_signal n) (
       fun _ x xs =>
       s <- x ;;
       v <- xs ;;
-      ret (s :: v)).
+      ret (s :: v)) .
 
-  Fixpoint nondeterministic_state {n}
-    (xs: Vector.t (cipher_control_signals cava_signal) n)
-    : cipher_control_signals (vector_cava_signal n) :=
+  Fixpoint to_nondeterministic_state {n}
+    (xs: Vector.t (cipher_control_signals cava_signal) n) :=
     match xs with
-    | [] => Build_cipher_control_signals (vector_cava_signal 0)
-      (ret []) (ret []) (ret []) (ret []) (ret []) (ret []) (ret [])
-      (ret []) (ret []) (ret []) (ret []) (ret []) (ret []) (ret [])
-      (ret []) (ret []) (ret []) (ret []) (ret []) (ret [])
-    | x :: xs' => extend_nondeterministic_state x (nondeterministic_state xs')
+    | [] => empty_state_set
+    | x :: xs' => prepend_state x (to_nondeterministic_state xs')
     end.
 
   Definition select_state {n sel_sz}
-    (x: cipher_control_signals (vector_cava_signal n))
-    (sel: cava (signal (Vec Bit sel_sz)))
-    : cipher_control_signals cava_signal :=
-    map_natural_transform x (fun _ xs =>
+    (sel: cava (signal (Vec Bit sel_sz))) :=
+    ffmap (A:= vector_cava_signal n) (fun _ xs =>
       v <- xs ;;
       v' <- packV v ;;
       sel' <- sel ;;
       indexAt v' sel'
     ).
 
+  (****************************************************************************)
+  (* Individual signal helpers                                                *)
+  (****************************************************************************)
+  (* The functions defined above work on the entire state/bundles of signals.
+   * To be able to map the imperative operations on individual signals from
+   * aes_cipher_control we use a state monad and the Settable class from
+   * coq-record-update *)
   Definition signal_update := state (cipher_control_signals cava_signal) unit.
   Definition setSignal {T} F {_: Setter F} (x: cava_signal T) : signal_update :=
     s <- get ;;
@@ -232,6 +218,23 @@ Section WithCava.
     x' <- fst xy ;;
     y' <- snd xy ;;
     mux2 sel (x',y').
+
+  (****************************************************************************)
+  (* State machine transitions                                                *)
+  (****************************************************************************)
+  (* The 'transition_' functions below  are translations of the parts of the
+   * branches of the case statement from OpenTitan aes_cipher_control. *)
+
+  Record control_inputs :=
+    { in_valid_i : signal Bit
+    ; out_ready_i : signal Bit
+    ; crypt_i : signal Bit
+    ; dec_key_gen_i : signal Bit
+    ; key_clear_i : signal Bit
+    ; data_out_clear_i : signal Bit
+    ; op_i : signal Bit
+    ; key_len_i : signal (Vec Bit 3)
+    }.
 
   Definition transition_idle_pre: signal_update :=
     setSignal1 dec_key_gen_d (constant false) ;;
@@ -301,7 +304,7 @@ Section WithCava.
     let clear_transition := execState (transition_idle_clear inputs) s in
     let start_transition := execState (transition_idle_start inputs) s in
     let state_matrix :=
-      nondeterministic_state [idle_default; clear_transition; start_transition] in
+      to_nondeterministic_state [idle_default; clear_transition; start_transition] in
     (* if (in_valid_i) begin *)
     let cond1 := ret (in_valid_i inputs) in
     (* if (key_clear_i || data_out_clear_i) begin *)
@@ -316,7 +319,7 @@ Section WithCava.
          x <- mux2 cond3' (sel0, sel2) ;;
          cond2' <- cond2 ;;
          mux2 cond2' (x, sel1)) in
-    put (select_state state_matrix sel).
+    put (select_state sel state_matrix).
 
   Definition transition_init (inputs: control_inputs): signal_update :=
     dec_key_gen_q <- getSignal dec_key_gen_d ;;
@@ -509,7 +512,7 @@ Section WithCava.
   Definition next_transition (inputs: control_inputs): signal_update :=
     current_state <- getSignal aes_cipher_ctrl_ns ;;
     st <- get ;;
-    let state_matrix := nondeterministic_state (
+    let state_matrix := to_nondeterministic_state (
       Vector.map (fun f => execState (f inputs) st)
         [ transition_idle
         ; transition_init
@@ -517,49 +520,24 @@ Section WithCava.
         ; transition_finish
         ; transition_clear
         ; transition_clear_kd]) in
-    put (select_state state_matrix current_state).
-
-  Definition extend_with_control_loop_state T :=
-    ( T
-    * signal (Vec Bit 3) (* aes_cipher_ctrl_ns *)
-    * signal (Vec Bit 4) (* round_d *)
-    * signal (Vec Bit 4) (* num_rounds_d *)
-    * signal Bit (* crypt_d *)
-    * signal Bit (* dec_key_gen_d *)
-    * signal Bit (* key_clear_d *)
-    * signal Bit (* data_out_clear_d *)
-    )%type.
+    put (select_state current_state state_matrix).
 
   Import Pkg.Notations.
 
-  Definition control_outputs : Type :=
-    (* Outputs directly from cipher_control_signals *)
-    signal Bit (* in_ready_o *)
-    * signal Bit (* out_valid_o *)
-    * signal Bit (* state_we_o *)
-    * signal Bit (* key_full_we_o *)
-    * signal Bit (* key_dec_we_o *)
-    * signal Bit (* key_expand_step_o *)
-    * signal Bit (* key_expand_clear_o *)
-    * signal (Vec Bit 2) (* state_sel_o *)
-    * signal (Vec Bit 2) (* add_rk_sel_o *)
-    * signal (Vec Bit 2) (* key_full_sel_o*)
-    * signal Bit (* key_dec_sel_o *)
-    * signal (Vec Bit 2) (* key_words_sel_o *)
-    * signal Bit (* round_key_sel_o *)
-    (* Outputs not coming from cipher_control_signals: *)
-    * signal Bit (* key_expand_op_o *)
-    * signal (Vec Bit 4) (* key_expand_round_o *)
-    * signal Bit (* crypt_o *)
-    * signal Bit (* dec_key_gen_o *)
-    * signal Bit (* key_clear_o *)
-    * signal Bit (* data_out_clear_o *)
-    .
+  (****************************************************************************)
+  (* Top level loop structures                                                *)
+  (****************************************************************************)
 
-  Definition aes_cipher_control_loop
-    (input_and_state: extend_with_control_loop_state control_inputs):
-    cava (extend_with_control_loop_state control_outputs ) :=
+  (* 'tuplize' breaks down 'cipher_control_signals' into a representation that
+   * is compatible with our loop combinators. *)
+  Definition tuplize {T} (x: cipher_control_signals signal) (ret: _ -> T)
+    :=
+    match x with
+    | Build_cipher_control_signals _ a b c d e f g h i j k l m n o p q r s t =>
+        ( ret ( a, b, c, d, e, f, g, h, i, j, k, l, m ), n, o, p, q, r, s, t )
+    end.
 
+  Definition aes_cipher_control_loop input_and_state: cava _ :=
     let '(inputs,
            aes_cipher_ctrl_ns'
            , round_d'
@@ -595,7 +573,7 @@ Section WithCava.
       key_clear_d'
       data_out_clear_d' in
     let next_state' :=
-      execState (next_transition inputs) (lift_to_circuit state) in
+      execState (next_transition inputs) (ffmap (B:=cava_signal) (fun _ x => ret x) state) in
     next_state <- sequence next_state' ;;
     (* assign key_expand_op_o    = (dec_key_gen_d || dec_key_gen_q) ? CIPH_FWD : op_i; *)
     (* assign key_expand_round_o = round_d; *)
@@ -611,8 +589,9 @@ Section WithCava.
     round_q <- add_round (round_d state) r2 ;;
     transition <- round_q ==? num_rounds_d state ;;
 
-    ret
-      ( extend_with_loop_state  ( extract_loop_outputs next_state
+    ret (tuplize next_state
+      (fun prefix =>
+        ( prefix
         , key_expand_op_o
         , round_d next_state
         , crypt_d state
@@ -620,8 +599,31 @@ Section WithCava.
         , key_clear_d state
         , data_out_clear_d state
         )
-      next_state
-      ).
+      )).
+
+  Definition control_outputs : Type :=
+    (* Outputs directly from cipher_control_signals *)
+    signal Bit (* in_ready_o *)
+    * signal Bit (* out_valid_o *)
+    * signal Bit (* state_we_o *)
+    * signal Bit (* key_full_we_o *)
+    * signal Bit (* key_dec_we_o *)
+    * signal Bit (* key_expand_step_o *)
+    * signal Bit (* key_expand_clear_o *)
+    * signal (Vec Bit 2) (* state_sel_o *)
+    * signal (Vec Bit 2) (* add_rk_sel_o *)
+    * signal (Vec Bit 2) (* key_full_sel_o*)
+    * signal Bit (* key_dec_sel_o *)
+    * signal (Vec Bit 2) (* key_words_sel_o *)
+    * signal Bit (* round_key_sel_o *)
+    (* Outputs not coming from cipher_control_signals: *)
+    * signal Bit (* key_expand_op_o *)
+    * signal (Vec Bit 4) (* key_expand_round_o *)
+    * signal Bit (* crypt_o *)
+    * signal Bit (* dec_key_gen_o *)
+    * signal Bit (* key_clear_o *)
+    * signal Bit (* data_out_clear_o *)
+    .
 
   Definition aes_cipher_control
     : Circuit control_inputs control_outputs :=
@@ -640,6 +642,10 @@ Section WithCava.
       * signal key
       * signal key) (signal state)).
 
+  (* This definition adds logic from the OpenTitan aes_cipher_core that we have
+   * not yet defined. Note that some of the logic in OpenTitan aes_cipher_core
+   * is already present in add_round_key/cipher_loop/etc and so we don't need
+   * the full logic from OpenTitan aes_cipher_core *)
   Definition aes_cipher_core
     : Circuit
       ( _
