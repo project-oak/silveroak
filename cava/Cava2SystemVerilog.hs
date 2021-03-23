@@ -25,6 +25,8 @@ import Control.Monad.State.Lazy
 import Numeric
 import qualified Vector
 
+import GHC.Types (Any)
+
 import qualified BinNums
 import Netlist
 import Signal
@@ -194,14 +196,14 @@ showSliceIndex k start len
 --------------------------------------------------------------------------------
 
 generateInstance :: NetlistGenerationState -> Instance -> Int -> String
-generateInstance netlistState (Delay t d i o) _
+generateInstance netlistState (Delay t initV d o) _
   = unlines [
     "  always_ff @(" ++ showEdge clkEdge ++ " " ++ showSignal clk ++ " or "
                      ++ showEdge rstEdge ++ " " ++ showSignal rst ++ ") begin",
     "    if (" ++ negReset ++ showSignal rst ++ ") begin",
-    "      " ++ showSignal o ++ " <= " ++ showSignal d ++ ";",
+    "      " ++ showSignal o ++ " <= " ++ showCombExpr t initV ++ ";",
     "    end else begin",
-    "      " ++ showSignal o ++ " <= " ++ showSignal i ++ ";",
+    "      " ++ showSignal o ++ " <= " ++ showSignal d ++ ";",
     "    end",
     "  end"]
     where
@@ -212,15 +214,15 @@ generateInstance netlistState (Delay t d i o) _
     negReset = case rstEdge of
                  PositiveEdge -> ""
                  NegativeEdge -> "!"
-generateInstance netlistState (DelayEnable t d en i o) _
+generateInstance netlistState (DelayEnable t initV en d o) _
   = unlines [
     "  always_ff @(" ++ showEdge clkEdge ++ " " ++ showSignal clk ++ " or "
                      ++ showEdge rstEdge ++ " " ++ showSignal rst ++ ") begin",
     "    if (" ++ negReset ++ showSignal rst ++ ") begin",
-    "      " ++ showSignal o ++ " <= " ++ showSignal d ++ ";",
+    "      " ++ showSignal o ++ " <= " ++ showCombExpr t initV ++ ";",
     "    end else",
     "      if (" ++ showSignal en ++ ") begin",
-    "        " ++ showSignal o ++ " <= " ++ showSignal i ++ ";",
+    "        " ++ showSignal o ++ " <= " ++ showSignal d ++ ";",
     "    end",
     "  end"]
     where
@@ -284,6 +286,20 @@ showConstExpr constExpr =
     HexLiteral w v -> show w ++ "'h" ++ showHex (fromN v) ""
     StringLiteral s -> "\"" ++ s ++ "\""
 
+showCombExpr :: SignalType -> GHC.Types.Any -> String
+showCombExpr t expr
+  = case t of
+      Bit -> showBool ((Signal.unsafeCoerce expr)::Bool)
+      Vec t2 s -> showCVec t2 (Vector.to_list s ((Signal.unsafeCoerce expr)::Vector.Coq_t t))
+
+showBool :: Bool -> String
+showBool False = "1'b0"
+showBool True = "1'b1"
+
+showCVec :: SignalType -> [GHC.Types.Any] -> String
+showCVec t x
+  = "{" ++ concat (insertCommas (map (showCombExpr t) x)) ++ "}"
+
 --------------------------------------------------------------------------------
 -- unsmashSignaling vector literals.
 --------------------------------------------------------------------------------
@@ -339,15 +355,13 @@ mapSignalsInInstanceM f inst
       Buf i o -> do fi <- f i
                     fo <- f o
                     return (Buf fi fo)
-      Delay t d i o -> do fd <- f d
-                          fi <- f i
-                          fo <- f o
-                          return (Delay t fd fi fo)
-      DelayEnable t d en i o -> do fd <- f d
-                                   fen <- f en
-                                   fi <- f i
-                                   fo <- f o
-                                   return (DelayEnable t fd fen fi fo)
+      Delay t initV d o -> do fd <- f d
+                              fo <- f o
+                              return (Delay t initV fd fo)
+      DelayEnable t initV en d o -> do fd <- f d
+                                       fen <- f en
+                                       fo <- f o
+                                       return (DelayEnable t initV fen fd fo)
       AssignSignal k t v -> do ft <- f t
                                fv <- f v
                                return (AssignSignal k ft fv)
