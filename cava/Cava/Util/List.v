@@ -705,6 +705,7 @@ Hint Rewrite @skipn_app @skipn_skipn @skipn_repeat @skipn_cons @skipn_O
 Hint Rewrite @firstn_nil @firstn_cons @firstn_all @firstn_app @firstn_O
      @firstn_firstn @combine_firstn @firstn_map @firstn_seq
      using solve [eauto] : push_firstn.
+Hint Rewrite @firstn_all2 using solve [length_hammer] : push_firstn.
 
 (* Proofs about fold_right and fold_left *)
 Section Folds.
