@@ -42,7 +42,7 @@ haskell:	coq FixupHaskell
 Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
 
-_CoqProject:    $(shell find . -name '*.v' | sort)
+_CoqProject:    $(shell find . -name '[^\.]*.v' | sort)
 		@echo "INSTALLDEFAULTROOT = Cava" > _CoqProject
 		@echo "-R Cava Cava" >> _CoqProject
 		@echo "-R ../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
