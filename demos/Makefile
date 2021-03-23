@@ -45,6 +45,7 @@ Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
 
 _CoqProject:    $(shell find . -name '*.v' | sort)
+		rm -f _CoqProject
 		@echo "INSTALLDEFAULTROOT = Demos" >> _CoqProject
 		@echo "-R ../cava/Cava Cava" >> _CoqProject
 		@echo "-R ../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject

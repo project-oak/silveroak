@@ -513,6 +513,14 @@ End WithCava.
 (*|
 Now, we can just plug in any sequence of same-size vectors and compute the
 results!
+
+One note for those less familiar with Coq: the curly braces ``{}`` around the
+``n`` and ``m`` arguments are standard Coq syntax for "implicit" arguments; Coq
+will try to guess their values rather than requiring them to be passed
+explicitly. So we can actually write ``xor_tree vec`` instead of e.g. ``xor_tree
+2 3 vec``, and Coq will try to infer ``n`` and ``m`` from the type of
+``vec``. If Coq struggles to infer them, we can also plug in these arguments
+manually by referencing their names, e.g. ``xor_tree (m:=3) vec``.
 |*)
 
 (* 7 xor 10 = 13 (n=8, m=2)*)
@@ -522,8 +530,8 @@ Compute map Bv2N
 
 (* 1000 xor 3 = 1003 (n=10, m=2) *)
 Compute map Bv2N
-        (simulate (xor_bitvec 10)
-                  [(N2Bv_sized 10 1000, N2Bv_sized 10 3)]).
+        (simulate xor_tree
+                  [[N2Bv_sized 10 1000; N2Bv_sized 10 3]]).
 
 (* 1 xor 2 xor 4 xor 8 xor 16 xor 32 xor 64 xor 128 = 255 (n=8, m=8) *)
 Compute map Bv2N
@@ -620,8 +628,8 @@ At this point, we've covered pretty much everything you need to start building
 timing-dependent elements like loops or registers. In the next example, we'll
 show how to build *sequential* circuits.
 
-Example 5 : Counter
-===================
+Example 5 : Delay for Three Timesteps
+=====================================
 
 .. coq:: none
 |*)
@@ -630,38 +638,200 @@ Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
 (*|
-To be continued!
+The simplest sequential element is a delay (register). The delay takes in a
+value at the end of the clock cycle, and then outputs the same value at the
+start of the next clock cycle. So if we want to write a circuit that delays the
+input stream by three timesteps, we can write three delays in a row:
 |*)
 
-  Definition three_delays (t : SignalType)
+  Definition three_delays {t : SignalType}
     : Circuit (signal t) (signal t) :=
     Delay >==> Delay >==> Delay.
 
-  Locate ">==>".
+(*|
+Note that this circuit definition will delay a signal *of any type*. The ``t``
+argument can be anything, although to generate a concrete netlist or simulation
+it will need to be plugged in. We'll do simulations and netlist generations with
+a few different types.
 
-  (* Means exactly the same thing as three_delays, just without the notation *)
-  Definition three_delays_verbose (t : SignalType)
+The ``>==>`` notation means "compose these circuits", i.e connect the output
+ports of the left-hand circuit to the input ports of the second. It's short for
+``Compose``, which can also be used directly.
+|*)
+
+  Locate ">==>". (* print the definition of the notation *)
+
+  (* Exactly the same thing as three_delays, just without notation *)
+  Definition three_delays_verbose {t : SignalType}
     : Circuit (signal t) (signal t) :=
     Compose (Compose Delay Delay) Delay.
 
-  (* you can find a full list of Circuit constructors in the reference *)
+(*|
+.. coq:: none
+|*)
+
+End WithCava.
+
+Local Open Scope list_scope.
+
+(*|
+``Compose`` and ``Delay`` are like ``Comb``; they are definitions that create
+``Circuit``\ s. You can find a full list of ``Circuit`` constructors in the
+reference_, but the gist is that there's a few configurations of delay elements
+and loops (which we'll cover soon), and then exactly four other constructors:
+``Compose``, ``Comb``, ``First`` (run a subcircuit on only the first element of
+a tuple), and ``Second`` (like ``First``, but for the second element of the
+tuple). These provide everything necessary to string together the
+timing-dependent structure of a circuit.
+
+Here's the netlist for ``three_delays``, generated for two different signal
+types:
+|*)
+
+Definition three_delays_interface {t : SignalType}
+  := sequentialInterface "three_delays_interface"
+     "clk" PositiveEdge "rst" PositiveEdge
+     [mkPort "i" t]
+     [mkPort "o" t].
+
+(* delay a stream of bits *)
+Compute
+  (makeCircuitNetlist three_delays_interface
+                      (three_delays (t:=Bit))).(module).
+
+(* delay a stream of bytes *)
+Compute
+  (makeCircuitNetlist three_delays_interface
+                      (three_delays (t:=Vec Bit 8))).(module).
+
+(*|
+Let's simulate the circuit, first using a sequence of 1s:
+|*)
+
+Compute simulate (three_delays (t:=Bit)) (repeat true 10).
+
+(*|
+You can see that we get three ``false`` outputs before getting the stream of
+``true`` values. The initial state of ``Delay`` is always "zeroed out"; for a
+custom initial state, you can use the alternative constructor ``DelayInit``,
+which takes an initial value.
+
+We can also simulate the circuit with bytes. To make the simulations a little
+more interesting, we'll use a small convenience definition that creates a
+list of bytes counting up in sequence.
+|*)
+
+(* convenience definition for a sequence of numbers as bytes *)
+Definition byte_seq start len : list (combType (Vec Bit 8)) :=
+  map (nat_to_bitvec_sized 8) (seq start len).
+
+Compute map Bv2N (byte_seq 1 10). (* bytes from 1..10 *)
+
+(*|
+Now, when we run the simulations, it's easier to follow the timesteps:
+|*)
+
+Compute map Bv2N
+        (simulate three_delays (byte_seq 1 10)).
+
+(*|
+We can also compose ``three_delays`` with itself to get six delays:
+|*)
+
+Compute map Bv2N
+        (simulate (three_delays >==> three_delays) (byte_seq 1 10)).
+
+(*|
+Finally, the correctness proof for ``three_delays`` says that it prepends three
+``defaultSignal`` values (the generic name for "a zeroed-out value of the
+correct signal type") to the input, then truncates the new list to the length of
+the original input.
+|*)
+
+Lemma three_delays_correct t (input : list (combType t)) :
+  simulate three_delays input
+  = firstn (length input)
+           (defaultSignal :: defaultSignal :: defaultSignal :: input).
+Proof.
+  cbv [three_delays]; autorewrite with push_simulate.
+  autorewrite with push_length natsimpl.
+  rewrite <-!firstn_cons. rewrite !firstn_firstn.
+  autorewrite with natsimpl. reflexivity.
+Qed.
+
+(*|
+Example 6 : Sum the Input Stream
+================================
+
+.. coq:: none
+|*)
+
+Section WithCava.
+  Context {signal} {semantics : Cava signal}.
+
+(*|
+This example will introduce ``Loop``, a circuit constructor that connects the
+output port of a circuit to its own input port with a delay in the middle. This
+creates *internal state* values, which can be referenced from inside the loop
+but are not visible outside it. Visually, a loop looks like this:
+
+.. image:: loop.png
+   :scale: 70%
+   :alt: Circuit diagram showing a loop.
+
+The following circuit gets a stream of bit-vectors as input, and uses ``Loop``
+to provides the rolling sum as output:
+|*)
 
   Definition sum {n : nat}
     : Circuit (signal (Vec Bit n)) (signal (Vec Bit n)) :=
-    Loop (Comb
-            (* The combinational function that makes up the loop body *)
-            (fun '(input, state) =>
-               sum <- addN (input, state) ;;
-               (* return output and new state -- in this case, the same thing *)
-               ret (sum, sum))).
+    Loop
+      (* The combinational circuit that makes up the loop body *)
+      (Comb
+         (fun '(input, state) =>
+            sum <- addN (input, state) ;;
+            (* return output and new state (the same in our case) *)
+            ret (sum, sum))).
+
+(*|
+The body of this loop is a combinational circuit whose input is the loop input
+signal and the internal state, and whose output is the loop output signal and
+the new state.
+
+The ``_ <- _ ;; _`` notation is a monadic bind; it's like a ``let`` binder or
+variable assignment, except that it helps Cava track resource sharing. ``ret``
+means "return". You can read in much more detail about monad notations in the
+reference_ if they're unfamiliar.
+
+For the purposes of the tutorial, we'll introduce just one more monad notation:
+monad composition, represented by ``>=>``. Assuming ``f`` and ``g`` are monadic
+functions, writing ``f >=> g`` is the same as writing ``fun x => y <- f x ;; g
+y``. This is very similar to the notation for ``Compose`` (``>==>``) shown
+earlier, except that it works for the bodies of combinational circuits rather
+than for sequential circuits.
+
+Using ``>=>``, we can rewrite ``sum`` as:
+|*)
 
   (* Means exactly the same thing as sum *)
   Definition sum_concise {n : nat}
     : Circuit (signal (Vec Bit n)) (signal (Vec Bit n)) :=
     Loop (Comb (addN >=> fork2)).
 
-  Definition sum_init {n : nat} (init : signal (Vec Bit n)) :=
+(*|
+The ``fork2`` combinator simply duplicates its input (like a fork in a wire).
+
+As written, the ``sum`` and ``sum_concise`` circuits will start with an initial
+state of zero (or ``defaultSignal``). If we want to pull in a specific initial
+value, we can use ``LoopInit`` instead and plug in a compile-time constant:
+|*)
+
+  Definition sum_init {n : nat} (init : combType (Vec Bit n)) :=
     LoopInit init (Comb (addN >=> fork2)).
+
+(*|
+.. coq:: none
+|*)
 
   Definition double_sum {n : nat}
     : Circuit (signal (Vec Bit n)) (signal (Vec Bit n)) :=
@@ -696,8 +866,84 @@ To be continued!
                     swap            (* (ctr2', ctr1'), ctr2' *)
       ))).
 
-  (* ooh, problem! Can't construct a Vec without cava, and literals require it, so for loops is no go *)
+(*|
+.. coq:: none
+|*)
 
+End WithCava.
+
+(* same as sum of 1..10 *)
+Compute map Bv2N
+        (simulate double_sum (repeat (N2Bv_sized 8 1) 10)).
+
+(*|
+Here's the netlist for ``sum``. You can see that no "loop" appears in the final
+version, just a delay connecting the loop's output to its own input.
+|*)
+
+Definition sum_interface {n : nat}
+  := sequentialInterface "sum_interface"
+     "clk" PositiveEdge "rst" PositiveEdge
+     [mkPort "i" (Vec Bit n)]
+     [mkPort "o" (Vec Bit n)].
+
+Compute
+  (makeCircuitNetlist sum_interface (sum (n:=8))).(module).
+
+(*|
+The netlist for ``sum_init`` can use the same interface, but needs an extra
+argument for the initial value:
+|*)
+
+Compute
+  (makeCircuitNetlist sum_interface (sum_init (N2Bv_sized 8 10))).(module).
+
+(*|
+Let's run a few simulations to see the circuit in action:
+|*)
+
+(* sum of 10 1s = 1,2,3,...10 *)
+Compute map Bv2N
+        (simulate sum (repeat (N2Bv_sized 8 1) 10)).
+
+(* sum of 1..10 = 1, 3, 6, 10, 15, 21, 28, 36, 45, 55 *)
+Compute map Bv2N
+        (simulate sum (byte_seq 1 10)).
+
+(* sum of 10 1s starting at 10 = 11,12,13,...20 *)
+Compute map Bv2N
+        (simulate (sum_init (N2Bv_sized 8 10))
+                  (repeat (N2Bv_sized 8 1) 10)).
+
+(*|
+To write a correctness proof for ``sum``, we first need to describe its
+behavior. There are many ways to do this, but one way is shown below.
+|*)
+
+(* computes the sum of a list of numbers (as a single number, not the rolling
+   sum) *)
+Definition sum_list_N (input : list N) : N :=
+  fold_left N.add input 0%N.
+
+Definition rolling_sum (input : list N) : list N :=
+  fst (fold_left_accumulate N.add input 0%N).
+Compute rolling_sum [0;5;6;7]%N.
+
+Lemma sum_correct n (input : list (combType (Vec Bit n))):
+  simulate sum input = fst (fold_left_accumula
+
+(*|
+.. coq:: none
+|*)
+
+Section WithCava.
+  Context {signal} {semantics : Cava signal}.
+
+(*|
+Fibonacci!
+|*)
+
+  (* TODO: remove one and init once constantV is added *)
   Definition fibonacci {sz} (one init : signal (Vec Bit sz))
     : Circuit (signal Void) (signal (Vec Bit sz)) :=
     LoopInit one
@@ -715,13 +961,58 @@ To be continued!
                       sum <- addN (r1, r2) ;;
                       ret (sum, sum, r1)))).
 
+(*|
+.. coq:: none
+|*)
+
+End WithCava.
+
+(*|
+TODO: netlist
+|*)
+
+Compute map Bv2N
+        (simulate (fibonacci (N2Bv_sized 8 1) (Vector.const true 8)) (repeat tt 10)).
+
+Compute map Bv2N
+        (simulate (fibonacci_mealy (N2Bv_sized 8 1) (Vector.const true 8)) (repeat tt 10)).
+
+(*|
+TODO: proofs
+|*)
+
+Fixpoint fibonacci_spec (n : nat) :=
+  match n with
+  | 0 => 0
+  | S m =>
+    let f_m := fibonacci_spec m in
+    match m with
+    | 0 => 1
+    | S p => fibonacci_spec p + f_m
+    end
+  end.
+
+Compute (map fibonacci_spec (seq 0 20)).
+
+(*|
+.. coq:: none
+|*)
+
+Section WithCava.
+  Context {signal} {semantics : Cava signal}.
+
   (* TODO: fix mux currying *)
   Definition mux2 {A} (i : signal Bit * (signal A * signal A)) :=
     mux2 (fst i) (snd i).
+
+(*|
+Exponentiation by squaring!
+|*)
+
   (* sliding window with table? *)
 
   (* exponentiation by squaring, no trailing 0s *)
-  Definition binexp_naive {A} (init : signal A)
+  Definition exp_by_squaring_naive {A} (init : signal A)
              (square : Circuit (signal A) (signal A))
              (multiply : Circuit (signal A) (signal A))
     : Circuit (signal Bit) (signal A) :=
@@ -734,7 +1025,7 @@ To be continued!
                       Comb (mux2 >=> fork2) (* acc, acc *)).
 
   (* exponentiation by squaring *)
-  Definition binexp {A} (init : signal A)
+  Definition exp_by_squaring {A} (init : signal A)
              (square : Circuit (signal A) (signal A))
              (multiply : Circuit (signal A) (signal A))
     : Circuit (signal Bit) (signal A) :=
@@ -754,75 +1045,38 @@ To be continued!
                                                     mux2 >=> (* out' *)
                                                     fork2))) (* out', acc *)).
 
-  Definition count_occurrences {n}
-             (incrCE : Circuit (signal (Vec Bit n) * signal Bit)
-                             (signal (Vec Bit n)))
-             (x : signal (Vec Bit n))
-    : Circuit (signal (Vec Bit n)) (signal (Vec Bit n)) :=
-    Loop
-      ( (* start : (in, ctr) *)
-        Comb (swap >=> second (fun y => eqb (y, x))) >==> (* ctr, in == x *)
-             incrCE >==> (* if in == x then ctr + 1 else ctr *)
-             Comb fork2).
+(*|
+.. coq:: none
+|*)
+
 End WithCava.
 
-(* convenience definition for a sequence of numbers as bytes *)
-Definition byte_seq start len : list (Vector.t bool 8) :=
-  map (fun i => N2Bv_sized 8 (N.of_nat i)) (seq start len).
+(*|
+TODO: netlist
+|*)
 
-Compute map Bv2N (byte_seq 1 10).
-
-Compute map Bv2N
-        (simulate (three_delays (Vec Bit 8)) (byte_seq 1 10)).
-
-(* sum of 10 1s *)
-Compute map Bv2N
-        (simulate sum (repeat (N2Bv_sized 8 1) 10)).
-
-(* sum of 1..10 *)
-Compute map Bv2N
-        (simulate sum (byte_seq 1 10)).
-
-(* same as sum of 1..10 *)
-Compute map Bv2N
-        (simulate double_sum (repeat (N2Bv_sized 8 1) 10)).
-
-Compute map Bv2N
-        (simulate (sum_init (N2Bv_sized 8 0)) (repeat (N2Bv_sized 8 1) 10)).
-
-Compute map Bv2N
-        (simulate (sum_init (N2Bv_sized 8 10)) (repeat (N2Bv_sized 8 1) 10))
-
-Compute map Bv2N
-        (simulate double_sum (repeat (N2Bv_sized 8 1) 10)).
-
-Compute map Bv2N
-        (simulate double_sum_mealy (repeat (N2Bv_sized 8 1) 10)).
-
-Compute map Bv2N
-        (simulate (fibonacci (N2Bv_sized 8 1) (Vector.const true 8)) (repeat tt 10)).
-
-Compute map Bv2N
-        (simulate (fibonacci_mealy (N2Bv_sized 8 1) (Vector.const true 8)) (repeat tt 10)).
-
-(* Compute 3 * 5 = 15 *)
+(* Compute 3 * 9 = 27 using exponentiation by squaring to save operations (9 = 1001):
+   let w := 0 + 0 + 3 in
+   let x := w + w in
+   let y := x + x in
+   let z := y + y + x in
+   z *)
 Compute map Bv2N
         (let double := Comb (fork2 >=> addN) in
          let add := Comb (fun v => addN (N2Bv_sized 8 3, v)) in
-         simulate (binexp_naive (A:=Vec Bit 8)
-                                (N2Bv_sized 8 0)
-                                double add
+         simulate (exp_by_squaring_naive (A:=Vec Bit 8) (N2Bv_sized 8 0) double add)
+                  (Vector.to_list (N2Bv_sized 3 5))).
+
 Compute map Bv2N
-        (simulate (binexp_naive (A:=Vec Bit 8)
-                                (N2Bv_sized 8 1)
-                                fake_square
-                                (fake_mul 3))
+        (let double := Comb (fork2 >=> addN) in
+         let add := Comb (fun v => addN (N2Bv_sized 8 3, v)) in
+         simulate (exp_by_squaring_naive (A:=Vec Bit 8) (N2Bv_sized 8 0) double add)
                   (Vector.to_list (N2Bv_sized 8 5))).
+
 Compute map Bv2N
-        (simulate (binexp (A:=Vec Bit 8)
-                          (N2Bv_sized 8 1)
-                          fake_square
-                          (fake_mul 3))
+        (let double := Comb (fork2 >=> addN) in
+         let add := Comb (fun v => addN (N2Bv_sized 8 3, v)) in
+         simulate (exp_by_squaring (A:=Vec Bit 8) (N2Bv_sized 8 0) double add)
                   (Vector.to_list (N2Bv_sized 8 5))).
 
 Definition fake_mul {n} x : Circuit (combType (Vec Bit n)) (combType (Vec Bit n)) :=
@@ -832,38 +1086,14 @@ Definition fake_square {n} : Circuit (combType (Vec Bit n)) (combType (Vec Bit n
 
 (* Compute 3 ^ 5 = 243 *)
 Compute map Bv2N
-        (simulate (binexp_naive (A:=Vec Bit 8)
-                                (N2Bv_sized 8 1)
-                                fake_square
-                                (fake_mul 3))
-                  (Vector.to_list (N2Bv_sized 3 5))).
-Compute map Bv2N
-        (simulate (binexp_naive (A:=Vec Bit 8)
-                                (N2Bv_sized 8 1)
-                                fake_square
-                                (fake_mul 3))
-                  (Vector.to_list (N2Bv_sized 8 5))).
-Compute map Bv2N
-        (simulate (binexp (A:=Vec Bit 8)
+        (simulate (exp_by_squaring (A:=Vec Bit 8)
                           (N2Bv_sized 8 1)
                           fake_square
                           (fake_mul 3))
                   (Vector.to_list (N2Bv_sized 8 5))).
 
-Fixpoint fibonacci_spec (n : nat) :=
-  match n with
-  | 0 => 0
-  | S m =>
-    let f_m := fibonacci_spec m in
-    match m with
-    | 0 => 1
-    | S p => fibonacci_spec p + f_m
-    end
-  end.
-
-Compute (map fibonacci_spec (seq 0 20)).
-
-
 (*|
+TODO: proofs
+
 .. _reference: /reference
 |*)
