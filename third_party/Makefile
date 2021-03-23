@@ -40,21 +40,21 @@ build-record-update:
 	$(MAKE) -C coq-record-update
 
 # coq-tools is just python scripts; nothing to build
-coqtools: update
+coqtools:
 
-coqutil: update
+coqutil:
 	$(MAKE) build-coqutil
 
-bedrock2: update coqutil
+bedrock2: coqutil
 	$(MAKE) build-bedrock2
 
-extlib: update
+extlib:
 	$(MAKE) build-extlib
 
-record-update: update
+record-update:
 	$(MAKE) build-record-update
 
-install: update
+install:
 	cd bedrock2 && $(MAKE) install_coqutil && $(MAKE) install_bedrock2
 	cd coq-ext-lib && $(MAKE) install
 
