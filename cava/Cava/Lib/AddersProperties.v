@@ -106,6 +106,32 @@ Proof.
   rewrite N.add_0_r. reflexivity.
 Qed.
 
+Lemma incrC_correct n input :
+  let sum := Bv2N input + 1 in
+  incrC input = (N2Bv_sized n sum, N.testbit_nat sum n).
+Proof.
+  cbv [incrC].
+  destruct n;
+    [ cbv [Bvector.Bvector] in *; constant_vector_simpl input;
+      reflexivity | ].
+  simpl_ident. cbn [unsignedAdd CombinationalSemantics].
+  cbv [unsignedAddBool one]. simpl_ident.
+  change (Bv2N [true]) with 1.
+
+  (* remove resize by proving lengths are equal *)
+  assert ((1 + Nat.max (S n) 1)%nat = S (S n)) as Hresize by lia.
+  generalize dependent (1 + Nat.max (S n) 1)%nat; intros; subst.
+  rewrite resize_default_id.
+
+  rewrite N2Bv_sized_shiftout, N2Bv_sized_last.
+  reflexivity.
+Qed.
+Hint Rewrite @incrC_correct using solve [eauto] : simpl_ident.
+
+Lemma incrN_correct n input :
+  incrN input = N2Bv_sized n (Bv2N input + 1).
+Proof. cbv [incrN]. simpl_ident. reflexivity. Qed.
+
 (* A quick sanity check of the Xilinx adder with carry in and out *)
 Example xilinx_add_17_52:
   xilinxAdderWithCarry

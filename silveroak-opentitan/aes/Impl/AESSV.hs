@@ -21,6 +21,7 @@ import ShiftRowsNetlist
 import SubBytesNetlist
 import AddRoundKeyNetlist
 import CipherControlNetlist
+import FFunctor
 
 main :: IO ()
 main = do writeSystemVerilog aes_mix_columns_Netlist

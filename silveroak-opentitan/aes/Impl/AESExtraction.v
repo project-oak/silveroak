@@ -27,6 +27,7 @@ Require Import AesImpl.ShiftRowsNetlist.
 Require Import AesImpl.SubBytesNetlist.
 Require Import AesImpl.AddRoundKeyNetlist.
 Require Import AesImpl.CipherControlNetlist.
+Require Import AesImpl.FFunctor.
 Require Import Coq.extraction.Extraction.
 Require Import Coq.extraction.ExtrHaskellZInteger.
 Require Import Coq.extraction.ExtrHaskellString.
@@ -49,3 +50,4 @@ Extraction Library SubBytesNetlist.
 Extraction Library AddRoundKeyNetlist.
 Extraction Library CipherControlNetlist.
 Extraction Library RecordSet.
+Extraction Library FFunctor.
