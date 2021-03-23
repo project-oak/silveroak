@@ -84,3 +84,34 @@ Definition encoder2_tb
   := testBench "encoder_tb"
      (encoderInterface 2) encoder2_tb_inputs
      encoder2_expected_outputs.
+
+Definition encoderdecoderInterface (n: nat)
+  := combinationalInterface "encoderdecoder"
+     [mkPort "v" (Vec Bit n)]
+     [mkPort "o" (Vec Bit n)].
+
+Definition encoderdecoderNetlist
+  := makeNetlist (encoderdecoderInterface 4) (decoder >=> encoder).
+
+Definition encoderdecoder_tb_inputs : list (Bvector 4) :=
+  [N2Bv_sized 4 0;
+   N2Bv_sized 4 1;
+   N2Bv_sized 4 2;
+   N2Bv_sized 4 3;
+   N2Bv_sized 4 4;
+   N2Bv_sized 4 5;
+   N2Bv_sized 4 6;
+   N2Bv_sized 4 7;
+   N2Bv_sized 4 8;
+   N2Bv_sized 4 9;
+   N2Bv_sized 4 10;
+   N2Bv_sized 4 11;
+   N2Bv_sized 4 12;
+   N2Bv_sized 4 13;
+   N2Bv_sized 4 14;
+   N2Bv_sized 4 15;
+   N2Bv_sized 4 16].
+
+Definition encoderdecoder_tb
+  := testBench "encoderdecoder_tb"
+     (encoderdecoderInterface 4) encoderdecoder_tb_inputs encoderdecoder_tb_inputs.

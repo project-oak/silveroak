@@ -58,3 +58,5 @@ main = do writeSystemVerilog mux2_1Netlist
           writeTestBench decoder2_tb
           writeSystemVerilog encoder2Netlist
           writeTestBench encoder2_tb
+          writeSystemVerilog encoderdecoderNetlist
+          writeTestBench encoderdecoder_tb

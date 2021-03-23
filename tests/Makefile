@@ -22,7 +22,7 @@
 
 SV = instantiate.sv mux2_1.sv muxBus4_8.sv mult2_3_5.sv \
      delayByte.sv delayEnableByte.sv countBy.sv arrayTest.sv \
-     multiDimArrayTest.sv vecConstEq.sv decoder.sv
+     multiDimArrayTest.sv vecConstEq.sv decoder.sv encoderdecoder.sv
 
 BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)
