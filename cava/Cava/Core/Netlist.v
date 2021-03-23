@@ -70,10 +70,10 @@ Inductive Instance : Type :=
   | Xnor:      Signal Bit -> Signal Bit -> Signal Bit -> Instance
   | Buf:       Signal Bit -> Signal Bit -> Instance
   (* Composite delay component i.e. a register *)
-  | Delay:     forall (t : SignalType), Signal t -> Signal t -> Signal t -> Instance
+  | Delay:     forall (t : SignalType), combType t -> Signal t -> Signal t -> Instance
   (* Composite delay component with enable i.e. a register with clock enable *)
   | DelayEnable: forall (t : SignalType),
-                 Signal t -> Signal Bit -> Signal t -> Signal t -> Instance
+                 combType t -> Signal Bit -> Signal t -> Signal t -> Instance
   (* Assignment *)
   | AssignSignal: forall {k: SignalType}, Signal k -> Signal k -> Instance
   (* TODO(satnam): Switch to using tupleInterface instead of UntypedSignal *)
