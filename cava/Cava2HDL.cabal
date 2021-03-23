@@ -54,6 +54,7 @@ library
                      Combinational
                      Circuit
                      Datatypes
+                     Decoder
                      Functor
                      HexString
                      Identity
