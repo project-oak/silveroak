@@ -42,6 +42,7 @@ Instance CombinationalSemantics : Cava combType | 10 :=
   { cava := ident;
     monad := Monad_ident;
     constant := fun x => x;
+    constantV := fun _ _ v => v;
     defaultSignal t := defaultCombValue t;
     inv := fun x => ret (negb x);
     and2 :=  fun '(x,y) => ret (andb x y);
@@ -107,7 +108,7 @@ Hint Rewrite @foldLM_ident_fold_left using solve [eauto] : simpl_ident.
 Ltac simpl_ident :=
   (* simplify identity monad and most projections from Cava *)
   cbn [fst snd bind ret Monad_ident monad
-           packV unpackV constant buf_gate
+           constantV packV unpackV constant buf_gate
            inv and2 nand2 or2 nor2 xor2 xnor2
            lut1 lut2 lut3 lut4 lut5 lut6
            xorcy muxcy

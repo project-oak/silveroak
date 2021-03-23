@@ -34,9 +34,8 @@ Section WithCava.
   (* Convert back and forth from Cava and Coq vectors                         *)
   (****************************************************************************)
 
-  Definition bitvec_literal {n} (v : Vector.t bool n)
-    : cava (signal (Vec Bit n)) :=
-    packV (Vector.map constant v).
+  Definition bitvec_literal {n} (v : Vector.t bool n) : signal (Vec Bit n) :=
+    constantV (Vector.map constant v).
 
   Definition map_literal {A B n} (f : A -> cava (signal B)) (v : Vector.t A n)
     : cava (signal (Vec B n)) :=

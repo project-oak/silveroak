@@ -32,6 +32,7 @@ Class Cava (signal : SignalType -> Type) := {
   monad :> Monad cava;
   (* Constant values. *)
   constant : bool -> signal Bit;
+  constantV : forall {A} {n : nat}, Vector.t (signal A) n -> signal (Vec A n);
   (* Default values. *)
   defaultSignal : forall {t: SignalType}, signal t;
   (* SystemVerilog primitive gates *)
@@ -58,6 +59,7 @@ Class Cava (signal : SignalType -> Type) := {
   (* Converting to/from Vector.t *)
   unpackV : forall {t : SignalType} {s : nat}, signal (Vec t s) -> cava (Vector.t (signal t) s);
   packV : forall {t : SignalType} {s : nat} , Vector.t (signal t) s -> cava (signal (Vec t s));
+  (* Dynamic indexing *)
   indexAt : forall {t : SignalType} {sz isz: nat},
             signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
             signal (Vec Bit isz) ->  (* A bit-vector index of size isz bits *)

@@ -126,7 +126,11 @@ unless stated otherwise. For a more thorough introduction to Cava, check out the
 
 #### Convert to and from Vector.t
 
-- `Vec.packV : forall {A n}, Vector.t (signal A) n -> cava (signal (Vec A n))` :
+- `constantV : forall {A n}, Vector.t (signal A) n -> signal (Vec A n)` :
+  Convert a compile-time constant vector to a signal. To prevent duplication of
+  resources, use for literal constants only.
+
+- `packV : forall {A n}, Vector.t (signal A) n -> cava (signal (Vec A n))` :
   convert a Coq `Vector.t` to a Cava `Vec`
 - `Vec.packV2 : forall {A n0 n1}, Vector.t (Vector. (signal A) n0) n1 -> cava
   (signal (Vec (Vec A n0) n1))` : convert a two-dimensional Coq `Vector.t` to a
@@ -136,8 +140,8 @@ unless stated otherwise. For a more thorough introduction to Cava, check out the
 - `Vec.packV4` : convert a four-dimensional Coq `Vector.t` to a four-dimensional
   Cava`Vec`
 
-- `Vec.unpackV : forall {A n}, signal (Vec A n) -> cava (Vector.t (signal A)
-  n)` : convert a Cava `Vec` to a Coq `Vector.t`
+- `unpackV : forall {A n}, signal (Vec A n) -> cava (Vector.t (signal A) n)` :
+  convert a Cava `Vec` to a Coq `Vector.t`
 - `Vec.unpackV2 : forall {A n0 n1}, signal (Vec (Vec A n0) n1) -> cava (Vector.t
   (Vector.t (signal A) n0) n1)` : convert a two-dimensional Cava `Vec` to a
   two-dimensional Coq `Vector.t`
