@@ -7,7 +7,7 @@ let
   tools = with pkgs; [
     # Building
     coq_8_12
-    (haskell.packages.ghc865.ghcWithPackages (pkgs: with pkgs; [Cabal]))
+    (haskell.packages.ghc8104.ghcWithPackages (pkgs: with pkgs; [Cabal]))
 
     # Common tools
     gcc
@@ -22,7 +22,7 @@ let
     # Verilator optional for parallel building
     # TODO(blaxill): Perhaps build verilator separately and don't make optional
     # here
-    (if buildVerilator then [verilator] else [])
+    (if buildVerilator then [pkgs.verilator] else [])
   ;
 in
 rec {

@@ -16,18 +16,11 @@
         "description": "A read-only mirror of NixOS/nixpkgs tracking the released channels. Send issues and PRs to",
         "homepage": "https://github.com/NixOS/nixpkgs",
         "owner": "NixOS",
-        "repo": "nixpkgs-channels",
-        "rev": "a332da8588aeea4feb9359d23f58d95520899e3c",
-        "sha256": "18hlja5syv3xpi14c07h9lrn1cchq2azmj06fyalq52vl064nx75",
+        "repo": "nixpkgs",
+        "rev": "4e0d3868c679da20108db402785f924daa1a7fb5",
+        "sha256": "17ypsp6fmyywck1ad6fn77msg2xjlkgwv9ipzb4nw9hpca40hlss",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs-channels/archive/a332da8588aeea4feb9359d23f58d95520899e3c.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/4e0d3868c679da20108db402785f924daa1a7fb5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
-    },
-    "verilator": {
-        "sha256": "1rl92jnayhc1j47gjxdz2zf1by9vzlawbyw9mf1d7d2y22dqak1l",
-        "type": "file",
-        "url": "https://www.veripool.org/ftp/verilator-4.028.tgz",
-        "url_template": "https://www.veripool.org/ftp/verilator-<version>.tgz",
-        "version": "4.028"
     }
 }
