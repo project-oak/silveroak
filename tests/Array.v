@@ -21,8 +21,7 @@ Section WithCava.
   Context `{Cava}.
 
   Definition array : cava (signal (Vec (Vec Bit 8) 4)) :=
-    v <- Traversable.mapT (fun x => Vec.bitvec_literal (nat_to_bitvec_sized _ x)) [0;1;2;3] ;;
-    packV v.
+    packV (Vector.map (fun x => Vec.bitvec_literal (nat_to_bitvec_sized _ x)) [0;1;2;3]).
 
   Definition multiDimArray : cava (signal (Vec (Vec (Vec Bit 8) 4) 2)) :=
     arr1 <- array ;;

@@ -48,12 +48,12 @@ Local Notation "v [@ n ]" := (indexConst v n) (at level 1, format "v [@ n ]").
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
-  Definition bitvec_to_signal {n : nat} (lut : Vector.t bool n) : cava (signal (Vec Bit n)) :=
+  Definition bitvec_to_signal {n : nat} (lut : Vector.t bool n) : signal (Vec Bit n) :=
     Vec.bitvec_literal lut.
 
   Definition bitvecvec_to_signal {a b : nat} (lut : Vector.t (Vector.t bool b) a)
     : cava (signal (Vec (Vec Bit b) a)) :=
-    Vec.map_literal bitvec_to_signal lut.
+    packV (Vector.map bitvec_to_signal lut).
 
   Definition natvec_to_signal_sized {n : nat} (size : nat) (lut : Vector.t nat n)
     : cava (signal (Vec (Vec Bit size) n)) :=

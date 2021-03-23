@@ -15,15 +15,14 @@
 (****************************************************************************)
 
 Require Import Coq.Lists.List.
+Require Import Coq.micromega.Lia.
 Require Import coqutil.Tactics.Tactics.
 Import ListNotations.
 
-Require Import Cava.Util.List.
-Require Import Cava.Core.Signal.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Core.CavaClass.
-Require Import Cava.Core.Circuit.
+Require Import Cava.Core.Core.
 Require Import Cava.Semantics.Combinational.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Tactics.
 Require Import Cava.Util.Identity.
 
 Existing Instance CombinationalSemantics.
@@ -152,6 +151,88 @@ Proof.
     reflexivity. }
 Qed.
 Hint Rewrite @simulate_second using solve [eauto] : push_simulate.
+
+Lemma simulate_DelayInitCE {t} (init : combType t) input :
+  simulate (DelayInitCE init) input = firstn (length input)
+                                             (fst (fold_left_accumulate
+                                                     (fun st i_en =>
+                                                        if (snd i_en : bool)
+                                                        then fst i_en
+                                                        else st)
+                                                     input init)).
+Proof.
+  cbv [simulate]. destruct input as [|i0 input]; [ reflexivity | ].
+  repeat destruct_pair_let; simpl_ident.
+  rewrite <-surjective_pairing.
+  autorewrite with push_length push_firstn.
+  rewrite !fold_left_accumulate_to_seq with (default:=i0).
+  cbn [step reset_state]. repeat destruct_pair_let.
+  autorewrite with push_length pull_snoc natsimpl.
+  rewrite fold_left_accumulate_snoc.
+  autorewrite with push_firstn push_length natsimpl listsimpl.
+  factor_out_loops.
+  eapply fold_left_accumulate_double_invariant_seq
+      with (I:=fun i x y => y = (x, if snd (nth i (i0::input) i0)
+                                 then fst (nth i (i0::input) i0)
+                                 else x)).
+  { ssplit; reflexivity. }
+  { cbv zeta; intro i; intros.
+    repeat destruct_pair_let; simpl_ident.
+    destruct_products; cbn [fst snd] in *.
+    logical_simplify; subst. cbn [fst snd].
+    destruct i; autorewrite with push_firstn push_nth listsimpl; reflexivity. }
+  { intros * ?. intro Hnth; intros. subst.
+    cbn [fst snd circuit_state].
+    apply list_eq_elementwise; [ length_hammer | ].
+    intros j d; intros.
+    specialize (Hnth j).
+    autorewrite with natsimpl push_length in *.
+    rewrite !map_nth_inbounds with (d2:=(d,d)) by length_hammer.
+    rewrite Hnth with (da:=d) by length_hammer. cbn [fst snd].
+    reflexivity. }
+Qed.
+Hint Rewrite @simulate_DelayInitCE using solve [eauto] : push_simulate.
+
+Lemma simulate_DelayCE {t} (input : list (combType t * bool)) :
+  simulate DelayCE input = firstn (length input)
+                                  (fst (fold_left_accumulate
+                                          (fun st i_en =>
+                                             if (snd i_en : bool)
+                                             then fst i_en
+                                             else st)
+                                          input defaultSignal)).
+Proof. apply simulate_DelayInitCE. Qed.
+Hint Rewrite @simulate_DelayCE using solve [eauto] : push_simulate.
+
+Lemma simulate_DelayInit {t} init (input : list (combType t)) :
+  simulate (DelayInit init) input = firstn (length input) (init :: input).
+Proof.
+  cbv [DelayInit]. simpl_ident. autorewrite with push_simulate push_length.
+  erewrite fold_left_accumulate_to_seq with (default:=(defaultSignal,false)).
+  eapply fold_left_accumulate_invariant_seq
+    with (I:=fun i (st : combType t) acc =>
+               acc = init :: firstn i input
+               /\ st = nth i (init :: input) defaultSignal).
+  { ssplit; reflexivity. }
+  { cbv zeta; intro i; intros. subst.
+    destruct_products; cbn [fst snd] in *.
+    logical_simplify; subst. cbn [fst snd].
+    autorewrite with push_length in *.
+    autorewrite with push_firstn push_nth pull_snoc natsimpl.
+    rewrite !map_nth_inbounds with (d2:=defaultSignal) by length_hammer.
+    erewrite firstn_succ_snoc by lia. cbn [fst snd].
+    rewrite <-app_comm_cons.
+    ssplit; reflexivity. }
+  { intros. logical_simplify; subst. cbn [fst snd].
+    autorewrite with push_length push_firstn.
+    reflexivity. }
+Qed.
+Hint Rewrite @simulate_DelayInit using solve [eauto] : push_simulate.
+
+Lemma simulate_Delay {t} (input : list (combType t)) :
+  simulate Delay input = firstn (length input) (defaultSignal :: input).
+Proof. apply simulate_DelayInit. Qed.
+Hint Rewrite @simulate_Delay using solve [eauto] : push_simulate.
 
 Lemma simulate_length {i o} (c : Circuit i o) input :
   length (simulate c input) = length input.
