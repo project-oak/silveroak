@@ -17,17 +17,16 @@
 Require Import Cava.Cava.
 Require Import Cava.Lib.VecConstEq.
 Require Import Coq.Arith.PeanoNat.
+Require Import Cava.Util.Vector.
 
 Section WithCava.
   Context `{semantics:Cava}.
 
   (* A decoder from binary to one-hot. Both are big endian *)
   Definition decoder {n : nat} (bv : signal (Vec Bit n))
-    : cava (signal (Vec Bit (2^n)))
     := Vec.map_literal
-        (fun (f: signal (Vec Bit n) -> cava (signal Bit)) => f bv)
-        (Vector.unfold 0 (fun (k:nat) => (vecConstEq n k, S k))).
-
+        (fun f => f bv)
+        (Vector.map (vecConstEq n) (Vector.vseq 0 (2^n))).
 
   Definition encoder {n: nat} (one_hot : signal (Vec Bit (2^n)))
     : cava (signal (Vec Bit n))
