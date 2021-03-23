@@ -22,7 +22,7 @@ let
     # Verilator optional for parallel building
     # TODO(blaxill): Perhaps build verilator separately and don't make optional
     # here
-    (if buildVerilator then [verilator] else [])
+    (if buildVerilator then [pkgs.verilator] else [])
   ;
 in
 rec {
