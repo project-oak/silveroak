@@ -793,10 +793,10 @@ The body of this loop is a combinational circuit whose input is the loop input
 signal and the internal state, and whose output is the loop output signal and
 the new state.
 
-The ``_ <- _ ;; _`` notation is a monadic bind; it's like a ``let`` binder or
-variable assignment, except that it helps Cava track resource sharing. ``ret``
-means "return". You can read in much more detail about monad notations in the
-reference_ if they're unfamiliar.
+As discussed in the very first example, the ``_ <- _ ;; _`` notation is a
+monadic bind; it's like a ``let`` binder or variable assignment, except that it
+helps Cava track resource sharing. ``ret`` means "return". You can read in much
+more detail about monad notations in the reference_.
 
 For the purposes of the tutorial, we'll introduce just one more monad notation:
 monad composition, represented by ``>=>``. Assuming ``f`` and ``g`` are monadic
@@ -948,7 +948,7 @@ the timestep (a ``nat``), the current loop state (i.e. the value held by the
 delay at this timestep), the state of the loop-body circuit, and the output
 accumulator (a list of the outputs generated so far). Because the ``sum``
 circuit has a purely combinational body, it has no internal state, so the body
-state` in our case is just Coq's ``unit`` type. Here's the invariant statement:
+state in our case is just Coq's ``unit`` type. Here's the invariant statement:
 |*)
 
 Definition sum_invariant {n} (input : list (combType (Vec Bit n)))
@@ -971,11 +971,17 @@ explicit here for those who are curious to follow the reasoning in detail.
 |*)
 
 (* This lemma is helpful for sum_correct *)
-Lemma sum_list_N_snoc l x :
-  sum_list_N (l ++ [x]) = (x + sum_list_N l)%N.
+Lemma sum_list_N_snoc_bitvec n l (v : Vector.t bool n) :
+  N2Bv_sized n (sum_list_N (l ++ [Bv2N v]))
+  = N2Bv_sized n (Bv2N v + Bv2N (N2Bv_sized n (sum_list_N l)))%N.
 Proof.
   cbv [sum_list_N]. autorewrite with pull_snoc.
-  lia.
+  (* use Bv2N to bring the goal into the N realm, where it's
+     easier to solve using modular arithmetic rules *)
+  apply Bv2N_inj. rewrite !Bv2N_N2Bv_sized_modulo.
+  rewrite N.add_mod_idemp_r by (apply N.pow_nonzero; lia).
+  rewrite N.add_comm.
+  reflexivity.
 Qed.
 
 (* Correctness lemma for sum *)
@@ -983,7 +989,6 @@ Lemma sum_correct n (input : list (combType (Vec Bit n))):
   simulate sum input = spec_of_sum input.
 Proof.
   cbv [sum].
-
   (* apply loop invariant lemma using sum_invariant; generates three
      side conditions *)
   apply simulate_Loop_invariant with
@@ -992,26 +997,16 @@ Proof.
   { (* prove that invariant holds at the start of the loop *)
     cbv [sum_invariant]. cbn.
     split; reflexivity. }
+
   { (* prove that, if the invariant holds at the beginning of the loop
        body for timestep t, it holds at the end of the loop body for
        timestep t + 1 *)
-    cbv [sum_invariant]. intros.
-    cbn [step]. simpl_ident.
+    cbv [sum_invariant step]. intros. simpl_ident.
     logical_simplify; subst.
     split. (* separate the two invariant clauses *)
-    { (* prove that the loop_state matches sum_list_N on inputs so
-         far *)
-      rewrite firstn_succ_snoc with (d0:=d) by lia.
+    { rewrite firstn_succ_snoc with (d0:=d) by lia.
       autorewrite with pull_snoc.
-      rewrite sum_list_N_snoc.
-      (* use Bv2N to bring the goal into the N realm, where it's
-         easier to solve using arithmetic rules *)
-      apply Bv2N_inj.
-      (* change "convert to bit-vector and then back to N" into
-         N.modulo *)
-      rewrite !Bv2N_N2Bv_sized_modulo.
-      (* use modular arithmetic lemmas to solve *)
-      rewrite N.add_mod_idemp_r by (apply N.pow_nonzero; lia).
+      rewrite sum_list_N_snoc_bitvec.
       reflexivity. }
     { cbv [spec_of_sum rolling_sum].
       (* simplify expression using list lemmas *)
@@ -1019,18 +1014,14 @@ Proof.
       autorewrite with push_length natsimpl.
       rewrite firstn_succ_snoc with (d0:=d) by lia.
       autorewrite with pull_snoc natsimpl.
-      apply f_equal2.
+      apply f_equal2. (* split front of lists from last elements *)
       { apply map_ext_in; intro.
         rewrite in_seq; intros.
         autorewrite with push_firstn push_length natsimpl listsimpl.
         reflexivity. }
       { autorewrite with push_firstn push_length natsimpl listsimpl.
-        rewrite sum_list_N_snoc. f_equal.
-        (* use the same modular-arithmetic strategy as before *)
-        apply Bv2N_inj.
-        rewrite !Bv2N_N2Bv_sized_modulo.
-        rewrite N.add_mod_idemp_r by (apply N.pow_nonzero; lia).
-        reflexivity. } } }
+        rewrite sum_list_N_snoc_bitvec. reflexivity. } } }
+
   { (* prove that the invariant implies the postcondition *)
     cbv [sum_invariant]; intros.
     logical_simplify; subst.
@@ -1039,14 +1030,14 @@ Proof.
 Qed.
 
 (*|
-To wrap up our ``sum`` proofs, a quick demonstration that ``sum_concise`` is
-equivalent to ``sum``:
+To wrap up our ``sum`` proofs, here's a quick demonstration that ``sum_concise``
+is equivalent to ``sum``:
 |*)
 
 Lemma sum_concise_correct n (input : list (combType (Vec Bit n))):
   simulate sum_concise input = simulate sum input.
 Proof. reflexivity. Qed.
-(*|
 
+(*|
 .. _reference: /reference
 |*)
