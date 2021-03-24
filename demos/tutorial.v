@@ -1043,5 +1043,5 @@ Lemma sum_concise_correct n (input : list (combType (Vec Bit n))):
 Proof. reflexivity. Qed.
 
 (*|
-.. _reference: /reference
+.. _reference: /../reference
 |*)
