@@ -65,6 +65,7 @@ Lemma fullAdder_correct inputs :
   let sum := N.b2n a + N.b2n b + N.b2n cin in
   fullAdder inputs = (N.testbit sum 0, N.testbit sum 1).
 Proof. destruct inputs as [cin [a b]]; destruct cin, a, b; reflexivity. Qed.
+Hint Rewrite @fullAdder_correct using solve [eauto] : simpl_ident.
 
 Lemma addC_correct n inputs :
   let x := fst (fst inputs) in
@@ -96,15 +97,16 @@ Proof.
   all:first [ apply N.div_unique with (r:=0); lia
             | apply N.div_unique with (r:=1); lia ].
 Qed.
+Hint Rewrite @addC_correct using solve [eauto] : simpl_ident.
 
 Lemma addN_correct n inputs :
   let sum := Bv2N (fst inputs) + Bv2N (snd inputs) in
   addN (n:=n) inputs = N2Bv_sized n sum.
 Proof.
   cbv [addN zero]. simpl_ident. repeat destruct_pair_let.
-  rewrite addC_correct. cbn [fst snd N.b2n].
-  rewrite N.add_0_r. reflexivity.
+  cbn [N.b2n]. rewrite N.add_0_r. reflexivity.
 Qed.
+Hint Rewrite @addN_correct using solve [eauto] : simpl_ident.
 
 Lemma incrC_correct n input :
   let sum := Bv2N input + 1 in
@@ -131,6 +133,7 @@ Hint Rewrite @incrC_correct using solve [eauto] : simpl_ident.
 Lemma incrN_correct n input :
   incrN input = N2Bv_sized n (Bv2N input + 1).
 Proof. cbv [incrN]. simpl_ident. reflexivity. Qed.
+Hint Rewrite @incrN_correct using solve [eauto] : simpl_ident.
 
 (* A quick sanity check of the Xilinx adder with carry in and out *)
 Example xilinx_add_17_52:

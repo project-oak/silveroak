@@ -677,12 +677,7 @@ Local Open Scope list_scope.
 (*|
 ``Compose`` and ``Delay`` are like ``Comb``; they are definitions that create
 ``Circuit``\ s. You can find a full list of ``Circuit`` constructors in the
-reference_, but the gist is that there's a few configurations of delay elements
-and loops (which we'll cover soon), and then exactly four other constructors:
-``Compose``, ``Comb``, ``First`` (run a subcircuit on only the first element of
-a tuple), and ``Second`` (like ``First``, but for the second element of the
-tuple). These provide everything necessary to string together the
-timing-dependent structure of a circuit.
+reference_.
 
 Here's the netlist for ``three_delays``, generated for two different signal
 types:
@@ -896,7 +891,8 @@ argument for the initial value:
 |*)
 
 Compute
-  (makeCircuitNetlist sum_interface (sum_init (N2Bv_sized 8 10))).(module).
+  (makeCircuitNetlist sum_interface
+                      (sum_init (N2Bv_sized 8 10))).(module).
 
 (*|
 Let's run a few simulations to see the circuit in action:
@@ -920,17 +916,136 @@ To write a correctness proof for ``sum``, we first need to describe its
 behavior. There are many ways to do this, but one way is shown below.
 |*)
 
-(* computes the sum of a list of numbers (as a single number, not the rolling
-   sum) *)
+(* computes the sum of a list of numbers (as a single number, not the
+   rolling sum) *)
 Definition sum_list_N (input : list N) : N :=
   fold_left N.add input 0%N.
 
+(* computes the *rolling* sum; the nth element of the output represents
+   the sum of the input up to index n *)
 Definition rolling_sum (input : list N) : list N :=
-  fst (fold_left_accumulate N.add input 0%N).
-Compute rolling_sum [0;5;6;7]%N.
+  map (fun i => sum_list_N (firstn (S i) input)) (seq 0 (length input)).
 
+(* example to show the behavior of rolling_sum *)
+Compute rolling_sum [5;6;7]%N.
+
+(* specification for the sum circuit : convert to N, get rolling_sum,
+   convert back to bit-vectors *)
+Definition spec_of_sum {n} (input : list (combType (Vec Bit n)))
+  : list (combType (Vec Bit n))
+  := map (N2Bv_sized n) (rolling_sum (map Bv2N input)).
+
+(*|
+To reason about loops, we can use loop-invariant lemmas like this one:
+|*)
+
+Check simulate_Loop_invariant.
+
+(*|
+To use the loop-invariant lemma, though, we need to figure out what the
+invariant of ``sum`` should be. The invariant of a loop takes four arguments:
+the timestep (a ``nat``), the current loop state (i.e. the value held by the
+delay at this timestep), the state of the loop-body circuit, and the output
+accumulator (a list of the outputs generated so far). Because the ``sum``
+circuit has a purely combinational body, it has no internal state, so the body
+state` in our case is just Coq's ``unit`` type. Here's the invariant statement:
+|*)
+
+Definition sum_invariant {n} (input : list (combType (Vec Bit n)))
+           (t : nat)
+           (loop_state : combType (Vec Bit n))
+           (body_circuit_state : unit)
+           (output_accumulator : list (combType (Vec Bit n))) : Prop :=
+  (* at timestep t... *)
+  (* ...the loop state holds the sum of the inputs so far (that is,
+     the first t inputs) *)
+  loop_state = N2Bv_sized n (sum_list_N (map Bv2N (firstn t input)))
+  (* ... and the output accumulator matches the rolling-sum spec
+     applied to the inputs so far *)
+  /\ output_accumulator = spec_of_sum (firstn t input).
+
+(*|
+Now, we can use the invariant to prove a correctness lemma. This proof could
+certainly be a little more elegant and automated, but the steps are left
+explicit here for those who are curious to follow the reasoning in detail.
+|*)
+
+(* This lemma is helpful for sum_correct *)
+Lemma sum_list_N_snoc l x :
+  sum_list_N (l ++ [x]) = (x + sum_list_N l)%N.
+Proof.
+  cbv [sum_list_N]. autorewrite with pull_snoc.
+  lia.
+Qed.
+
+(* Correctness lemma for sum *)
 Lemma sum_correct n (input : list (combType (Vec Bit n))):
-  simulate sum input = fst (fold_left_accumula
+  simulate sum input = spec_of_sum input.
+Proof.
+  cbv [sum].
+
+  (* apply loop invariant lemma using sum_invariant; generates three
+     side conditions *)
+  apply simulate_Loop_invariant with
+      (body:=Comb _) (I:=sum_invariant input).
+
+  { (* prove that invariant holds at the start of the loop *)
+    cbv [sum_invariant]. cbn.
+    split; reflexivity. }
+  { (* prove that, if the invariant holds at the beginning of the loop
+       body for timestep t, it holds at the end of the loop body for
+       timestep t + 1 *)
+    cbv [sum_invariant]. intros.
+    cbn [step]. simpl_ident.
+    logical_simplify; subst.
+    split. (* separate the two invariant clauses *)
+    { (* prove that the loop_state matches sum_list_N on inputs so
+         far *)
+      rewrite firstn_succ_snoc with (d0:=d) by lia.
+      autorewrite with pull_snoc.
+      rewrite sum_list_N_snoc.
+      (* use Bv2N to bring the goal into the N realm, where it's
+         easier to solve using arithmetic rules *)
+      apply Bv2N_inj.
+      (* change "convert to bit-vector and then back to N" into
+         N.modulo *)
+      rewrite !Bv2N_N2Bv_sized_modulo.
+      (* use modular arithmetic lemmas to solve *)
+      rewrite N.add_mod_idemp_r by (apply N.pow_nonzero; lia).
+      reflexivity. }
+    { cbv [spec_of_sum rolling_sum].
+      (* simplify expression using list lemmas *)
+      rewrite !map_map.
+      autorewrite with push_length natsimpl.
+      rewrite firstn_succ_snoc with (d0:=d) by lia.
+      autorewrite with pull_snoc natsimpl.
+      apply f_equal2.
+      { apply map_ext_in; intro.
+        rewrite in_seq; intros.
+        autorewrite with push_firstn push_length natsimpl listsimpl.
+        reflexivity. }
+      { autorewrite with push_firstn push_length natsimpl listsimpl.
+        rewrite sum_list_N_snoc. f_equal.
+        (* use the same modular-arithmetic strategy as before *)
+        apply Bv2N_inj.
+        rewrite !Bv2N_N2Bv_sized_modulo.
+        rewrite N.add_mod_idemp_r by (apply N.pow_nonzero; lia).
+        reflexivity. } } }
+  { (* prove that the invariant implies the postcondition *)
+    cbv [sum_invariant]; intros.
+    logical_simplify; subst.
+    autorewrite with push_firstn.
+    reflexivity. }
+Qed.
+
+(*|
+To wrap up our ``sum`` proofs, a quick demonstration that ``sum_concise`` is
+equivalent to ``sum``:
+|*)
+
+Lemma sum_concise_correct n (input : list (combType (Vec Bit n))):
+  simulate sum_concise input = simulate sum input.
+Proof. reflexivity. Qed.
 
 (*|
 .. coq:: none
@@ -943,19 +1058,22 @@ Section WithCava.
 Fibonacci!
 |*)
 
-  (* TODO: remove one and init once constantV is added *)
-  Definition fibonacci {sz} (one init : signal (Vec Bit sz))
+  Definition fibonacci {sz}
     : Circuit (signal Void) (signal (Vec Bit sz)) :=
-    LoopInit one
+    let v1 : combType (Vec Bit sz) := N2Bv_sized sz 1 in
+    let v_negative1 : combType (Vec Bit sz) := Vector.const one sz in
+    LoopInit v1
              ( (* start: (in, r1) *)
                Comb (dropl >=> fork2) >==> (* r1, r1 *)
-                    Second (DelayInit init) >==> (* r1, r2 *)
+                    Second (DelayInit v_negative1) >==> (* r1, r2 *)
                     Comb (addN >=> fork2) (* r1 + r2, r1 + r2 *)).
 
-  Definition fibonacci_mealy {sz} (one init : signal (Vec Bit sz))
+  Definition fibonacci_mealy {sz}
     : Circuit (signal Void) (signal (Vec Bit sz)) :=
-    LoopInit one
-      (LoopInit init
+    let v1 : combType (Vec Bit sz) := N2Bv_sized sz 1 in
+    let v_negative1 : combType (Vec Bit sz) := Vector.const one sz in
+    LoopInit v1
+      (LoopInit v_negative1
                 (Comb
                    (fun '(_,r1,r2) =>
                       sum <- addN (r1, r2) ;;
@@ -972,10 +1090,10 @@ TODO: netlist
 |*)
 
 Compute map Bv2N
-        (simulate (fibonacci (N2Bv_sized 8 1) (Vector.const true 8)) (repeat tt 10)).
+        (simulate (fibonacci (sz:=8)) (repeat tt 10)).
 
 Compute map Bv2N
-        (simulate (fibonacci_mealy (N2Bv_sized 8 1) (Vector.const true 8)) (repeat tt 10)).
+        (simulate (fibonacci_mealy (sz:=8)) (repeat tt 10)).
 
 (*|
 TODO: proofs
@@ -1012,7 +1130,7 @@ Exponentiation by squaring!
   (* sliding window with table? *)
 
   (* exponentiation by squaring, no trailing 0s *)
-  Definition exp_by_squaring_naive {A} (init : signal A)
+  Definition exp_by_squaring_naive {A} (init : combType A)
              (square : Circuit (signal A) (signal A))
              (multiply : Circuit (signal A) (signal A))
     : Circuit (signal Bit) (signal A) :=
@@ -1025,7 +1143,7 @@ Exponentiation by squaring!
                       Comb (mux2 >=> fork2) (* acc, acc *)).
 
   (* exponentiation by squaring *)
-  Definition exp_by_squaring {A} (init : signal A)
+  Definition exp_by_squaring {A} (init : combType A)
              (square : Circuit (signal A) (signal A))
              (multiply : Circuit (signal A) (signal A))
     : Circuit (signal Bit) (signal A) :=

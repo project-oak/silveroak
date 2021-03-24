@@ -1513,12 +1513,7 @@ ports of the left-hand circuit to the input ports of the second. It's short for
     : Circuit (signal t) (signal t) :=
     Compose (Compose Delay Delay) Delay.</span></span></span></pre><p><tt class="docutils literal">Compose</tt> and <tt class="docutils literal">Delay</tt> are like <tt class="docutils literal">Comb</tt>; they are definitions that create
 <tt class="docutils literal">Circuit</tt>s. You can find a full list of <tt class="docutils literal">Circuit</tt> constructors in the
-<a class="reference external" href="/reference">reference</a>, but the gist is that there's a few configurations of delay elements
-and loops (which we'll cover soon), and then exactly four other constructors:
-<tt class="docutils literal">Compose</tt>, <tt class="docutils literal">Comb</tt>, <tt class="docutils literal">First</tt> (run a subcircuit on only the first element of
-a tuple), and <tt class="docutils literal">Second</tt> (like <tt class="docutils literal">First</tt>, but for the second element of the
-tuple). These provide everything necessary to string together the
-timing-dependent structure of a circuit.</p>
+<a class="reference external" href="/reference">reference</a>.</p>
 <p>Here's the netlist for <tt class="docutils literal">three_delays</tt>, generated for two different signal
 types:</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">three_delays_interface</span> {<span class="nv">t</span> : SignalType}
@@ -1534,11 +1529,11 @@ types:</p>
   moduleName := <span class="s2">&quot;three_delays_interface&quot;</span>;
   netlist := [AssignSignal (NamedWire <span class="s2">&quot;o&quot;</span>)
                 (Wire <span class="mi">2</span>);
-             DelayEnable Bit Gnd Vcc (Wire <span class="mi">1</span>)
+             DelayEnable Bit false Vcc (Wire <span class="mi">1</span>)
                (Wire <span class="mi">2</span>);
-             DelayEnable Bit Gnd Vcc (Wire <span class="mi">0</span>)
+             DelayEnable Bit false Vcc (Wire <span class="mi">0</span>)
                (Wire <span class="mi">1</span>);
-             DelayEnable Bit Gnd Vcc
+             DelayEnable Bit false Vcc
                (NamedWire <span class="s2">&quot;i&quot;</span>) (Wire <span class="mi">0</span>)];
   inputs := [{|
              port_name := <span class="s2">&quot;i&quot;</span>;
@@ -1563,22 +1558,19 @@ types:</p>
                 (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;o&quot;</span>)
                 (LocalVec Bit <span class="mi">8</span> <span class="mi">2</span>);
              DelayEnable (Vec Bit <span class="mi">8</span>)
-               (VecLit
-                  [Gnd; Gnd; Gnd; Gnd; Gnd; Gnd;
-                  Gnd; Gnd]) Vcc
-               (LocalVec Bit <span class="mi">8</span> <span class="mi">1</span>)
+               [false; false; false; false;
+               false; false; false; false]%vector
+               Vcc (LocalVec Bit <span class="mi">8</span> <span class="mi">1</span>)
                (LocalVec Bit <span class="mi">8</span> <span class="mi">2</span>);
              DelayEnable (Vec Bit <span class="mi">8</span>)
-               (VecLit
-                  [Gnd; Gnd; Gnd; Gnd; Gnd; Gnd;
-                  Gnd; Gnd]) Vcc
-               (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>)
+               [false; false; false; false;
+               false; false; false; false]%vector
+               Vcc (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>)
                (LocalVec Bit <span class="mi">8</span> <span class="mi">1</span>);
              DelayEnable (Vec Bit <span class="mi">8</span>)
-               (VecLit
-                  [Gnd; Gnd; Gnd; Gnd; Gnd; Gnd;
-                  Gnd; Gnd]) Vcc
-               (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>)
+               [false; false; false; false;
+               false; false; false; false]%vector
+               Vcc (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>)
                (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>)];
   inputs := [{|
              port_name := <span class="s2">&quot;i&quot;</span>;
@@ -1721,52 +1713,1058 @@ than for sequential circuits.</p>
     Loop (Comb (addN &gt;=&gt; fork2)).</span></span></span></pre><p>The <tt class="docutils literal">fork2</tt> combinator simply duplicates its input (like a fork in a wire).</p>
 <p>As written, the <tt class="docutils literal">sum</tt> and <tt class="docutils literal">sum_concise</tt> circuits will start with an initial
 state of zero (or <tt class="docutils literal">defaultSignal</tt>). If we want to pull in a specific initial
-value, we can use <tt class="docutils literal">LoopInit</tt> instead:</p>
-<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight">  </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">sum_init</span> {<span class="nv">n</span> : nat} (<span class="nv">init</span> : signal (Vec Bit n)) :=
-    LoopInit init (Comb (addN &gt;=&gt; fork2)).</span></span></span></pre><p>TODO: netlist</p>
+value, we can use <tt class="docutils literal">LoopInit</tt> instead and plug in a compile-time constant:</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight">  </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">sum_init</span> {<span class="nv">n</span> : nat} (<span class="nv">init</span> : combType (Vec Bit n)) :=
+    LoopInit init (Comb (addN &gt;=&gt; fork2)).</span></span></span></pre><p>Here's the netlist for <tt class="docutils literal">sum</tt>. You can see that no &quot;loop&quot; appears in the final
+version, just a delay connecting the loop's output to its own input.</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">sum_interface</span> {<span class="nv">n</span> : nat}
+  := sequentialInterface <span class="s2">&quot;sum_interface&quot;</span>
+     <span class="s2">&quot;clk&quot;</span> PositiveEdge <span class="s2">&quot;rst&quot;</span> PositiveEdge
+     [mkPort <span class="s2">&quot;i&quot;</span> (Vec Bit n)]
+     [mkPort <span class="s2">&quot;o&quot;</span> (Vec Bit n)].</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk6e" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk6e"><span class="highlight"><span class="kn">Compute</span>
+  (makeCircuitNetlist sum_interface (sum (n:=<span class="mi">8</span>))).(module).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= {|
+  moduleName := <span class="s2">&quot;sum_interface&quot;</span>;
+  netlist := [AssignSignal
+                (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;o&quot;</span>)
+                (LocalVec Bit <span class="mi">8</span> <span class="mi">1</span>);
+             DelayEnable (Vec Bit <span class="mi">8</span>)
+               [false; false; false; false;
+               false; false; false; false]%vector
+               Vcc (LocalVec Bit <span class="mi">8</span> <span class="mi">1</span>)
+               (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>);
+             AssignSignal (LocalVec Bit <span class="mi">8</span> <span class="mi">1</span>)
+               (VecLit
+                  [Wire <span class="mi">18</span>; Wire <span class="mi">23</span>; Wire <span class="mi">28</span>;
+                  Wire <span class="mi">33</span>; Wire <span class="mi">38</span>; Wire <span class="mi">43</span>;
+                  Wire <span class="mi">48</span>; Wire <span class="mi">53</span>]);
+             Or (Wire <span class="mi">52</span>) (Wire <span class="mi">54</span>) (Wire <span class="mi">55</span>);
+             And (Wire <span class="mi">51</span>) (Wire <span class="mi">50</span>) (Wire <span class="mi">54</span>);
+             Xor (Wire <span class="mi">51</span>) (Wire <span class="mi">50</span>) (Wire <span class="mi">53</span>);
+             And (Wire <span class="mi">7</span>) (Wire <span class="mi">15</span>) (Wire <span class="mi">52</span>);
+             Xor (Wire <span class="mi">7</span>) (Wire <span class="mi">15</span>) (Wire <span class="mi">51</span>);
+             Or (Wire <span class="mi">47</span>) (Wire <span class="mi">49</span>) (Wire <span class="mi">50</span>);
+             And (Wire <span class="mi">46</span>) (Wire <span class="mi">45</span>) (Wire <span class="mi">49</span>);
+             Xor (Wire <span class="mi">46</span>) (Wire <span class="mi">45</span>) (Wire <span class="mi">48</span>);
+             And (Wire <span class="mi">6</span>) (Wire <span class="mi">14</span>) (Wire <span class="mi">47</span>);
+             Xor (Wire <span class="mi">6</span>) (Wire <span class="mi">14</span>) (Wire <span class="mi">46</span>);
+             Or (Wire <span class="mi">42</span>) (Wire <span class="mi">44</span>) (Wire <span class="mi">45</span>);
+             And (Wire <span class="mi">41</span>) (Wire <span class="mi">40</span>) (Wire <span class="mi">44</span>);
+             Xor (Wire <span class="mi">41</span>) (Wire <span class="mi">40</span>) (Wire <span class="mi">43</span>);
+             And (Wire <span class="mi">5</span>) (Wire <span class="mi">13</span>) (Wire <span class="mi">42</span>);
+             Xor (Wire <span class="mi">5</span>) (Wire <span class="mi">13</span>) (Wire <span class="mi">41</span>);
+             Or (Wire <span class="mi">37</span>) (Wire <span class="mi">39</span>) (Wire <span class="mi">40</span>);
+             And (Wire <span class="mi">36</span>) (Wire <span class="mi">35</span>) (Wire <span class="mi">39</span>);
+             Xor (Wire <span class="mi">36</span>) (Wire <span class="mi">35</span>) (Wire <span class="mi">38</span>);
+             And (Wire <span class="mi">4</span>) (Wire <span class="mi">12</span>) (Wire <span class="mi">37</span>);
+             Xor (Wire <span class="mi">4</span>) (Wire <span class="mi">12</span>) (Wire <span class="mi">36</span>);
+             Or (Wire <span class="mi">32</span>) (Wire <span class="mi">34</span>) (Wire <span class="mi">35</span>);
+             And (Wire <span class="mi">31</span>) (Wire <span class="mi">30</span>) (Wire <span class="mi">34</span>);
+             Xor (Wire <span class="mi">31</span>) (Wire <span class="mi">30</span>) (Wire <span class="mi">33</span>);
+             And (Wire <span class="mi">3</span>) (Wire <span class="mi">11</span>) (Wire <span class="mi">32</span>);
+             Xor (Wire <span class="mi">3</span>) (Wire <span class="mi">11</span>) (Wire <span class="mi">31</span>);
+             Or (Wire <span class="mi">27</span>) (Wire <span class="mi">29</span>) (Wire <span class="mi">30</span>);
+             And (Wire <span class="mi">26</span>) (Wire <span class="mi">25</span>) (Wire <span class="mi">29</span>);
+             Xor (Wire <span class="mi">26</span>) (Wire <span class="mi">25</span>) (Wire <span class="mi">28</span>);
+             And (Wire <span class="mi">2</span>) (Wire <span class="mi">10</span>) (Wire <span class="mi">27</span>);
+             Xor (Wire <span class="mi">2</span>) (Wire <span class="mi">10</span>) (Wire <span class="mi">26</span>);
+             Or (Wire <span class="mi">22</span>) (Wire <span class="mi">24</span>) (Wire <span class="mi">25</span>);
+             And (Wire <span class="mi">21</span>) (Wire <span class="mi">20</span>) (Wire <span class="mi">24</span>);
+             Xor (Wire <span class="mi">21</span>) (Wire <span class="mi">20</span>) (Wire <span class="mi">23</span>);
+             And (Wire <span class="mi">1</span>) (Wire <span class="mi">9</span>) (Wire <span class="mi">22</span>);
+             Xor (Wire <span class="mi">1</span>) (Wire <span class="mi">9</span>) (Wire <span class="mi">21</span>);
+             Or (Wire <span class="mi">17</span>) (Wire <span class="mi">19</span>) (Wire <span class="mi">20</span>);
+             And (Wire <span class="mi">16</span>) Gnd (Wire <span class="mi">19</span>);
+             Xor (Wire <span class="mi">16</span>) Gnd (Wire <span class="mi">18</span>);
+             And (Wire <span class="mi">0</span>) (Wire <span class="mi">8</span>) (Wire <span class="mi">17</span>);
+             Xor (Wire <span class="mi">0</span>) (Wire <span class="mi">8</span>) (Wire <span class="mi">16</span>);
+             AssignSignal (Wire <span class="mi">15</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">7</span>);
+             AssignSignal (Wire <span class="mi">14</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">6</span>);
+             AssignSignal (Wire <span class="mi">13</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">5</span>);
+             AssignSignal (Wire <span class="mi">12</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">4</span>);
+             AssignSignal (Wire <span class="mi">11</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">3</span>);
+             AssignSignal (Wire <span class="mi">10</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">2</span>);
+             AssignSignal (Wire <span class="mi">9</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">1</span>);
+             AssignSignal (Wire <span class="mi">8</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">0</span>);
+             AssignSignal (Wire <span class="mi">7</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">7</span>);
+             AssignSignal (Wire <span class="mi">6</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">6</span>);
+             AssignSignal (Wire <span class="mi">5</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">5</span>);
+             AssignSignal (Wire <span class="mi">4</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">4</span>);
+             AssignSignal (Wire <span class="mi">3</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">3</span>);
+             AssignSignal (Wire <span class="mi">2</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">2</span>);
+             AssignSignal (Wire <span class="mi">1</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">1</span>);
+             AssignSignal (Wire <span class="mi">0</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">0</span>)];
+  inputs := [{|
+             port_name := <span class="s2">&quot;i&quot;</span>;
+             port_type := Vec Bit <span class="mi">8</span> |};
+            {|
+            port_name := <span class="s2">&quot;rst&quot;</span>;
+            port_type := Bit |};
+            {|
+            port_name := <span class="s2">&quot;clk&quot;</span>;
+            port_type := Bit |}];
+  outputs := [{|
+              port_name := <span class="s2">&quot;o&quot;</span>;
+              port_type := Vec Bit <span class="mi">8</span> |}] |}
+: <span class="kn">Module</span></span></blockquote></div></div></small></span></pre><p>The netlist for <tt class="docutils literal">sum_init</tt> can use the same interface, but needs an extra
+argument for the initial value:</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk6f" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk6f"><span class="highlight"><span class="kn">Compute</span>
+  (makeCircuitNetlist sum_interface
+                      (sum_init (N2Bv_sized <span class="mi">8</span> <span class="mi">10</span>))).(module).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= {|
+  moduleName := <span class="s2">&quot;sum_interface&quot;</span>;
+  netlist := [AssignSignal
+                (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;o&quot;</span>)
+                (LocalVec Bit <span class="mi">8</span> <span class="mi">1</span>);
+             DelayEnable (Vec Bit <span class="mi">8</span>)
+               [false; true; false; true; false;
+               false; false; false]%vector Vcc
+               (LocalVec Bit <span class="mi">8</span> <span class="mi">1</span>)
+               (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>);
+             AssignSignal (LocalVec Bit <span class="mi">8</span> <span class="mi">1</span>)
+               (VecLit
+                  [Wire <span class="mi">18</span>; Wire <span class="mi">23</span>; Wire <span class="mi">28</span>;
+                  Wire <span class="mi">33</span>; Wire <span class="mi">38</span>; Wire <span class="mi">43</span>;
+                  Wire <span class="mi">48</span>; Wire <span class="mi">53</span>]);
+             Or (Wire <span class="mi">52</span>) (Wire <span class="mi">54</span>) (Wire <span class="mi">55</span>);
+             And (Wire <span class="mi">51</span>) (Wire <span class="mi">50</span>) (Wire <span class="mi">54</span>);
+             Xor (Wire <span class="mi">51</span>) (Wire <span class="mi">50</span>) (Wire <span class="mi">53</span>);
+             And (Wire <span class="mi">7</span>) (Wire <span class="mi">15</span>) (Wire <span class="mi">52</span>);
+             Xor (Wire <span class="mi">7</span>) (Wire <span class="mi">15</span>) (Wire <span class="mi">51</span>);
+             Or (Wire <span class="mi">47</span>) (Wire <span class="mi">49</span>) (Wire <span class="mi">50</span>);
+             And (Wire <span class="mi">46</span>) (Wire <span class="mi">45</span>) (Wire <span class="mi">49</span>);
+             Xor (Wire <span class="mi">46</span>) (Wire <span class="mi">45</span>) (Wire <span class="mi">48</span>);
+             And (Wire <span class="mi">6</span>) (Wire <span class="mi">14</span>) (Wire <span class="mi">47</span>);
+             Xor (Wire <span class="mi">6</span>) (Wire <span class="mi">14</span>) (Wire <span class="mi">46</span>);
+             Or (Wire <span class="mi">42</span>) (Wire <span class="mi">44</span>) (Wire <span class="mi">45</span>);
+             And (Wire <span class="mi">41</span>) (Wire <span class="mi">40</span>) (Wire <span class="mi">44</span>);
+             Xor (Wire <span class="mi">41</span>) (Wire <span class="mi">40</span>) (Wire <span class="mi">43</span>);
+             And (Wire <span class="mi">5</span>) (Wire <span class="mi">13</span>) (Wire <span class="mi">42</span>);
+             Xor (Wire <span class="mi">5</span>) (Wire <span class="mi">13</span>) (Wire <span class="mi">41</span>);
+             Or (Wire <span class="mi">37</span>) (Wire <span class="mi">39</span>) (Wire <span class="mi">40</span>);
+             And (Wire <span class="mi">36</span>) (Wire <span class="mi">35</span>) (Wire <span class="mi">39</span>);
+             Xor (Wire <span class="mi">36</span>) (Wire <span class="mi">35</span>) (Wire <span class="mi">38</span>);
+             And (Wire <span class="mi">4</span>) (Wire <span class="mi">12</span>) (Wire <span class="mi">37</span>);
+             Xor (Wire <span class="mi">4</span>) (Wire <span class="mi">12</span>) (Wire <span class="mi">36</span>);
+             Or (Wire <span class="mi">32</span>) (Wire <span class="mi">34</span>) (Wire <span class="mi">35</span>);
+             And (Wire <span class="mi">31</span>) (Wire <span class="mi">30</span>) (Wire <span class="mi">34</span>);
+             Xor (Wire <span class="mi">31</span>) (Wire <span class="mi">30</span>) (Wire <span class="mi">33</span>);
+             And (Wire <span class="mi">3</span>) (Wire <span class="mi">11</span>) (Wire <span class="mi">32</span>);
+             Xor (Wire <span class="mi">3</span>) (Wire <span class="mi">11</span>) (Wire <span class="mi">31</span>);
+             Or (Wire <span class="mi">27</span>) (Wire <span class="mi">29</span>) (Wire <span class="mi">30</span>);
+             And (Wire <span class="mi">26</span>) (Wire <span class="mi">25</span>) (Wire <span class="mi">29</span>);
+             Xor (Wire <span class="mi">26</span>) (Wire <span class="mi">25</span>) (Wire <span class="mi">28</span>);
+             And (Wire <span class="mi">2</span>) (Wire <span class="mi">10</span>) (Wire <span class="mi">27</span>);
+             Xor (Wire <span class="mi">2</span>) (Wire <span class="mi">10</span>) (Wire <span class="mi">26</span>);
+             Or (Wire <span class="mi">22</span>) (Wire <span class="mi">24</span>) (Wire <span class="mi">25</span>);
+             And (Wire <span class="mi">21</span>) (Wire <span class="mi">20</span>) (Wire <span class="mi">24</span>);
+             Xor (Wire <span class="mi">21</span>) (Wire <span class="mi">20</span>) (Wire <span class="mi">23</span>);
+             And (Wire <span class="mi">1</span>) (Wire <span class="mi">9</span>) (Wire <span class="mi">22</span>);
+             Xor (Wire <span class="mi">1</span>) (Wire <span class="mi">9</span>) (Wire <span class="mi">21</span>);
+             Or (Wire <span class="mi">17</span>) (Wire <span class="mi">19</span>) (Wire <span class="mi">20</span>);
+             And (Wire <span class="mi">16</span>) Gnd (Wire <span class="mi">19</span>);
+             Xor (Wire <span class="mi">16</span>) Gnd (Wire <span class="mi">18</span>);
+             And (Wire <span class="mi">0</span>) (Wire <span class="mi">8</span>) (Wire <span class="mi">17</span>);
+             Xor (Wire <span class="mi">0</span>) (Wire <span class="mi">8</span>) (Wire <span class="mi">16</span>);
+             AssignSignal (Wire <span class="mi">15</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">7</span>);
+             AssignSignal (Wire <span class="mi">14</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">6</span>);
+             AssignSignal (Wire <span class="mi">13</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">5</span>);
+             AssignSignal (Wire <span class="mi">12</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">4</span>);
+             AssignSignal (Wire <span class="mi">11</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">3</span>);
+             AssignSignal (Wire <span class="mi">10</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">2</span>);
+             AssignSignal (Wire <span class="mi">9</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">1</span>);
+             AssignSignal (Wire <span class="mi">8</span>)
+               (IndexConst (LocalVec Bit <span class="mi">8</span> <span class="mi">0</span>) <span class="mi">0</span>);
+             AssignSignal (Wire <span class="mi">7</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">7</span>);
+             AssignSignal (Wire <span class="mi">6</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">6</span>);
+             AssignSignal (Wire <span class="mi">5</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">5</span>);
+             AssignSignal (Wire <span class="mi">4</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">4</span>);
+             AssignSignal (Wire <span class="mi">3</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">3</span>);
+             AssignSignal (Wire <span class="mi">2</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">2</span>);
+             AssignSignal (Wire <span class="mi">1</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">1</span>);
+             AssignSignal (Wire <span class="mi">0</span>)
+               (IndexConst
+                  (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;i&quot;</span>) <span class="mi">0</span>)];
+  inputs := [{|
+             port_name := <span class="s2">&quot;i&quot;</span>;
+             port_type := Vec Bit <span class="mi">8</span> |};
+            {|
+            port_name := <span class="s2">&quot;rst&quot;</span>;
+            port_type := Bit |};
+            {|
+            port_name := <span class="s2">&quot;clk&quot;</span>;
+            port_type := Bit |}];
+  outputs := [{|
+              port_name := <span class="s2">&quot;o&quot;</span>;
+              port_type := Vec Bit <span class="mi">8</span> |}] |}
+: <span class="kn">Module</span></span></blockquote></div></div></small></span></pre><p>Let's run a few simulations to see the circuit in action:</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight"><span class="c">(* sum of 10 1s = 1,2,3,...10 *)</span>
-</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk6e" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk6e"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk70" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk70"><span class="highlight"><span class="kn">Compute</span> map Bv2N
         (simulate sum (<span class="kp">repeat</span> (N2Bv_sized <span class="mi">8</span> <span class="mi">1</span>) <span class="mi">10</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">1</span>%N; <span class="mi">2</span>%N; <span class="mi">3</span>%N; <span class="mi">4</span>%N; <span class="mi">5</span>%N; <span class="mi">6</span>%N; <span class="mi">7</span>%N; <span class="mi">8</span>%N; <span class="mi">9</span>%N;
   <span class="mi">10</span>%N]
 : list N</span></blockquote></div></div></small><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
 <span class="c">(* sum of 1..10 = 1, 3, 6, 10, 15, 21, 28, 36, 45, 55 *)</span>
-</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk6f" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk6f"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk71" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk71"><span class="highlight"><span class="kn">Compute</span> map Bv2N
         (simulate sum (byte_seq <span class="mi">1</span> <span class="mi">10</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">1</span>%N; <span class="mi">3</span>%N; <span class="mi">6</span>%N; <span class="mi">10</span>%N; <span class="mi">15</span>%N; <span class="mi">21</span>%N; <span class="mi">28</span>%N; <span class="mi">36</span>%N;
   <span class="mi">45</span>%N; <span class="mi">55</span>%N]
 : list N</span></blockquote></div></div></small><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
 <span class="c">(* sum of 10 1s starting at 10 = 11,12,13,...20 *)</span>
-</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk70" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk70"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk72" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk72"><span class="highlight"><span class="kn">Compute</span> map Bv2N
         (simulate (sum_init (N2Bv_sized <span class="mi">8</span> <span class="mi">10</span>))
                   (<span class="kp">repeat</span> (N2Bv_sized <span class="mi">8</span> <span class="mi">1</span>) <span class="mi">10</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">11</span>%N; <span class="mi">12</span>%N; <span class="mi">13</span>%N; <span class="mi">14</span>%N; <span class="mi">15</span>%N; <span class="mi">16</span>%N; <span class="mi">17</span>%N;
   <span class="mi">18</span>%N; <span class="mi">19</span>%N; <span class="mi">20</span>%N]
-: list N</span></blockquote></div></div></small></span></pre><p>TODO: proofs</p>
-<p>Fibonacci!</p>
-<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight">  <span class="c">(* TODO: remove one and init once constantV is added *)</span>
-</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">fibonacci</span> {<span class="nv">sz</span>} (<span class="nv">one</span> <span class="nv">init</span> : signal (Vec Bit sz))
+: list N</span></blockquote></div></div></small></span></pre><p>To write a correctness proof for <tt class="docutils literal">sum</tt>, we first need to describe its
+behavior. There are many ways to do this, but one way is shown below.</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight"><span class="c">(* computes the sum of a list of numbers (as a single number, not the</span>
+<span class="c">   rolling sum) *)</span>
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">sum_list_N</span> (<span class="nv">input</span> : list N) : N :=
+  fold_left N.add input <span class="mi">0</span>%N.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+<span class="c">(* computes the *rolling* sum; the nth element of the output represents</span>
+<span class="c">   the sum of the input up to index n *)</span>
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">rolling_sum</span> (<span class="nv">input</span> : list N) : list N :=
+  map (<span class="kr">fun</span> <span class="nv">i</span> =&gt; sum_list_N (firstn (S i) input)) (seq <span class="mi">0</span> (length input)).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+<span class="c">(* example to show the behavior of rolling_sum *)</span>
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk73" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk73"><span class="highlight"><span class="kn">Compute</span> rolling_sum [<span class="mi">5</span>;<span class="mi">6</span>;<span class="mi">7</span>]%N.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">5</span>%N; <span class="mi">11</span>%N; <span class="mi">18</span>%N]
+: list N</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+<span class="c">(* specification for the sum circuit : convert to N, get rolling_sum,</span>
+<span class="c">   convert back to bit-vectors *)</span>
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">spec_of_sum</span> {<span class="nv">n</span>} (<span class="nv">input</span> : list (combType (Vec Bit n)))
+  : list (combType (Vec Bit n))
+  := map (N2Bv_sized n) (rolling_sum (map Bv2N input)).</span></span></span></pre><p>To reason about loops, we can use loop-invariant lemmas like this one:</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk74" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk74"><span class="highlight"><span class="kn">Check</span> simulate_Loop_invariant.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">simulate_Loop_invariant
+     : <span class="kr">forall</span>
+         (<span class="nv">body</span> : Circuit (<span class="nl">?i</span> * combType <span class="nl">?s</span>)
+                   (<span class="nl">?o</span> * combType <span class="nl">?s</span>))
+         (<span class="nv">I</span> : nat -&gt;
+              combType <span class="nl">?s</span> -&gt;
+              circuit_state body -&gt; list <span class="nl">?o</span> -&gt; <span class="kt">Prop</span>)
+         (<span class="nv">P</span> : list <span class="nl">?o</span> -&gt; <span class="kt">Prop</span>) (<span class="nv">input</span> : list <span class="nl">?i</span>),
+       I <span class="mi">0</span> (defaultCombValue <span class="nl">?s</span>) (reset_state body) [] -&gt;
+       (<span class="kr">forall</span> (<span class="nv">t</span> : nat) (<span class="nv">acc</span> : list <span class="nl">?o</span>)
+          (<span class="nv">st</span> : combType <span class="nl">?s</span>)
+          (<span class="nv">bodyst</span> : circuit_state body) (<span class="nv">d</span> : <span class="nl">?i</span>),
+        I t st bodyst acc -&gt;
+        <span class="mi">0</span> &lt;= t &lt; Datatypes.length input -&gt;
+        <span class="kr">let</span> <span class="nv">out_st&#39;_bodyst&#39;</span> :=
+          step body bodyst (nth t input d, st) <span class="kr">in</span>
+        <span class="kr">let</span> <span class="nv">out</span> := fst (fst out_st&#39;_bodyst&#39;) <span class="kr">in</span>
+        <span class="kr">let</span> <span class="nv">st&#39;</span> := snd (fst out_st&#39;_bodyst&#39;) <span class="kr">in</span>
+        <span class="kr">let</span> <span class="nv">bodyst&#39;</span> := snd out_st&#39;_bodyst&#39; <span class="kr">in</span>
+        I (S t) st&#39; bodyst&#39; (acc ++ [out])) -&gt;
+       (<span class="kr">forall</span> (<span class="nv">acc</span> : list <span class="nl">?o</span>) (<span class="nv">st</span> : combType <span class="nl">?s</span>)
+          (<span class="nv">bodyst</span> : circuit_state body),
+        I (Datatypes.length input) st bodyst acc -&gt;
+        P acc) -&gt; P (simulate (Loop body) input)
+<span class="kn">where</span>
+<span class="nl">?i</span> : [ |- <span class="kt">Type</span>]
+<span class="nl">?s</span> : [ |- SignalType]
+<span class="nl">?o</span> : [ |- <span class="kt">Type</span>]</span></blockquote></div></div></small></span></pre><p>To use the loop-invariant lemma, though, we need to figure out what the
+invariant of <tt class="docutils literal">sum</tt> should be. The invariant of a loop takes four arguments:
+the timestep (a <tt class="docutils literal">nat</tt>), the current loop state (i.e. the value held by the
+delay at this timestep), the state of the loop-body circuit, and the output
+accumulator (a list of the outputs generated so far). Because the <tt class="docutils literal">sum</tt>
+circuit has a purely combinational body, it has no internal state, so the body
+state` in our case is just Coq's <tt class="docutils literal">unit</tt> type. Here's the invariant statement:</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">sum_invariant</span> {<span class="nv">n</span>} (<span class="nv">input</span> : list (combType (Vec Bit n)))
+           (<span class="nv">t</span> : nat)
+           (<span class="nv">loop_state</span> : combType (Vec Bit n))
+           (<span class="nv">body_circuit_state</span> : unit)
+           (<span class="nv">output_accumulator</span> : list (combType (Vec Bit n))) : <span class="kt">Prop</span> :=
+  <span class="c">(* at timestep t... *)</span>
+  <span class="c">(* ...the loop state holds the sum of the inputs so far (that is,</span>
+<span class="c">     the first t inputs) *)</span>
+  loop_state = N2Bv_sized n (sum_list_N (map Bv2N (firstn t input)))
+  <span class="c">(* ... and the output accumulator matches the rolling-sum spec</span>
+<span class="c">     applied to the inputs so far *)</span>
+  /\ output_accumulator = spec_of_sum (firstn t input).</span></span></span></pre><p>Now, we can use the invariant to prove a correctness lemma. This proof could
+certainly be a little more elegant and automated, but the steps are left
+explicit here for those who are curious to follow the reasoning in detail.</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight"><span class="c">(* This lemma is helpful for sum_correct *)</span>
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk75" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk75"><span class="highlight"><span class="kn">Lemma</span> <span class="nf">sum_list_N_snoc</span> <span class="nv">l</span> <span class="nv">x</span> :
+  sum_list_N (l ++ [x]) = (x + sum_list_N l)%N.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">l</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list N</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">x</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">N</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">sum_list_N (l ++ [x]) = (x + sum_list_N l)%N</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk76" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk76"><span class="highlight"><span class="kn">Proof</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">l</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list N</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">x</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">N</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">sum_list_N (l ++ [x]) = (x + sum_list_N l)%N</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk77" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk77"><span class="highlight"><span class="nb">cbv</span> [sum_list_N].</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">l</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list N</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">x</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">N</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">fold_left N.add (l ++ [x]) <span class="mi">0</span>%N =
+(x + fold_left N.add l <span class="mi">0</span>)%N</span></div></blockquote></div></div></small><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk78" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk78"><span class="highlight"><span class="nb">autorewrite with</span> pull_snoc.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">l</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list N</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">x</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">N</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">(fold_left N.add l <span class="mi">0</span> + x)%N =
+(x + fold_left N.add l <span class="mi">0</span>)%N</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="bp">lia</span>.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Qed</span>.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+<span class="c">(* Correctness lemma for sum *)</span>
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk79" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk79"><span class="highlight"><span class="kn">Lemma</span> <span class="nf">sum_correct</span> <span class="nv">n</span> (<span class="nv">input</span> : list (combType (Vec Bit n))):
+  simulate sum input = spec_of_sum input.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate sum input = spec_of_sum input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk7a" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk7a"><span class="highlight"><span class="kn">Proof</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate sum input = spec_of_sum input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk7b" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk7b"><span class="highlight"><span class="nb">cbv</span> [sum].</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate
+  (Loop
+     (Comb
+        (<span class="kr">fun</span> &#39;(input, state) =&gt;
+         sum &lt;- addN (input, state);; ret (sum, sum))))
+  input = spec_of_sum input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+  <span class="c">(* apply loop invariant lemma using sum_invariant; generates three</span>
+<span class="c">     side conditions *)</span>
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk7c" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk7c"><span class="highlight"><span class="nb">apply</span> simulate_Loop_invariant <span class="kr">with</span>
+      (body:=Comb _) (I:=sum_invariant input).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">sum_invariant input <span class="mi">0</span> (defaultCombValue (Vec Bit n))
+  (reset_state
+     (Comb
+        (<span class="kr">fun</span> &#39;(input, state) =&gt;
+         sum &lt;- addN (input, state);; ret (sum, sum))))
+  []</span></div></blockquote><div class="alectryon-extra-goals"><input class="alectryon-extra-goal-toggle" id="tutorial-v-chk7d" style="display: none" type="checkbox"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><label class="goal-separator alectryon-extra-goal-label" for="tutorial-v-chk7d"><hr></label><div class="goal-conclusion"><span class="highlight"><span class="kr">forall</span> (<span class="nv">t</span> : nat) (<span class="nv">acc</span> : list (combType (Vec Bit n)))
+  (<span class="nv">st</span> : combType (Vec Bit n))
+  (<span class="nv">bodyst</span> : circuit_state
+              (Comb
+                 (<span class="kr">fun</span> &#39;(input, state) =&gt;
+                  sum &lt;- 
+                  addN (input, state);; 
+                  ret (sum, sum))))
+  (<span class="nv">d</span> : combType (Vec Bit n)),
+sum_invariant input t st bodyst acc -&gt;
+<span class="mi">0</span> &lt;= t &lt; Datatypes.length input -&gt;
+<span class="kr">let</span> <span class="nv">out_st&#39;_bodyst&#39;</span> :=
+  step
+    (Comb
+       (<span class="kr">fun</span> &#39;(input, state) =&gt;
+        sum &lt;- addN (input, state);; ret (sum, sum)))
+    bodyst (nth t input d, st) <span class="kr">in</span>
+<span class="kr">let</span> <span class="nv">out</span> := fst (fst out_st&#39;_bodyst&#39;) <span class="kr">in</span>
+<span class="kr">let</span> <span class="nv">st&#39;</span> := snd (fst out_st&#39;_bodyst&#39;) <span class="kr">in</span>
+<span class="kr">let</span> <span class="nv">bodyst&#39;</span> := snd out_st&#39;_bodyst&#39; <span class="kr">in</span>
+sum_invariant input (S t) st&#39; bodyst&#39; (acc ++ [out])</span></div></blockquote><input class="alectryon-extra-goal-toggle" id="tutorial-v-chk7e" style="display: none" type="checkbox"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><label class="goal-separator alectryon-extra-goal-label" for="tutorial-v-chk7e"><hr></label><div class="goal-conclusion"><span class="highlight"><span class="kr">forall</span> (<span class="nv">acc</span> : list (combType (Vec Bit n)))
+  (<span class="nv">st</span> : combType (Vec Bit n))
+  (<span class="nv">bodyst</span> : circuit_state
+              (Comb
+                 (<span class="kr">fun</span> &#39;(input, state) =&gt;
+                  sum &lt;- 
+                  addN (input, state);; 
+                  ret (sum, sum)))),
+sum_invariant input (Datatypes.length input) st bodyst
+  acc -&gt; acc = spec_of_sum input</span></div></blockquote></div></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk7f" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk7f"><span class="highlight">{ <span class="c">(* prove that invariant holds at the start of the loop *)</span></span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">sum_invariant input <span class="mi">0</span> (defaultCombValue (Vec Bit n))
+  (reset_state
+     (Comb
+        (<span class="kr">fun</span> &#39;(input, state) =&gt;
+         sum &lt;- addN (input, state);; ret (sum, sum))))
+  []</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">    </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk80" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk80"><span class="highlight"><span class="nb">cbv</span> [sum_invariant].</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">defaultCombValue (Vec Bit n) =
+N2Bv_sized n (sum_list_N (map Bv2N (firstn <span class="mi">0</span> input))) /\
+[] = spec_of_sum (firstn <span class="mi">0</span> input)</span></div></blockquote></div></div></small><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk81" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk81"><span class="highlight"><span class="nb">cbn</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">Vector.const false n = Bvect_false n /\ [] = []</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">    </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="nb">split</span>; <span class="bp">reflexivity</span>.</span></span><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk82" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk82"><span class="highlight">}</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight"><span class="kr">forall</span> (<span class="nv">t</span> : nat) (<span class="nv">acc</span> : list (combType (Vec Bit n)))
+  (<span class="nv">st</span> : combType (Vec Bit n))
+  (<span class="nv">bodyst</span> : circuit_state
+              (Comb
+                 (<span class="kr">fun</span> &#39;(input, state) =&gt;
+                  sum &lt;- 
+                  addN (input, state);; 
+                  ret (sum, sum))))
+  (<span class="nv">d</span> : combType (Vec Bit n)),
+sum_invariant input t st bodyst acc -&gt;
+<span class="mi">0</span> &lt;= t &lt; Datatypes.length input -&gt;
+<span class="kr">let</span> <span class="nv">out_st&#39;_bodyst&#39;</span> :=
+  step
+    (Comb
+       (<span class="kr">fun</span> &#39;(input, state) =&gt;
+        sum &lt;- addN (input, state);; ret (sum, sum)))
+    bodyst (nth t input d, st) <span class="kr">in</span>
+<span class="kr">let</span> <span class="nv">out</span> := fst (fst out_st&#39;_bodyst&#39;) <span class="kr">in</span>
+<span class="kr">let</span> <span class="nv">st&#39;</span> := snd (fst out_st&#39;_bodyst&#39;) <span class="kr">in</span>
+<span class="kr">let</span> <span class="nv">bodyst&#39;</span> := snd out_st&#39;_bodyst&#39; <span class="kr">in</span>
+sum_invariant input (S t) st&#39; bodyst&#39; (acc ++ [out])</span></div></blockquote><div class="alectryon-extra-goals"><input class="alectryon-extra-goal-toggle" id="tutorial-v-chk83" style="display: none" type="checkbox"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><label class="goal-separator alectryon-extra-goal-label" for="tutorial-v-chk83"><hr></label><div class="goal-conclusion"><span class="highlight"><span class="kr">forall</span> (<span class="nv">acc</span> : list (combType (Vec Bit n)))
+  (<span class="nv">st</span> : combType (Vec Bit n))
+  (<span class="nv">bodyst</span> : circuit_state
+              (Comb
+                 (<span class="kr">fun</span> &#39;(input, state) =&gt;
+                  sum &lt;- 
+                  addN (input, state);; 
+                  ret (sum, sum)))),
+sum_invariant input (Datatypes.length input) st bodyst
+  acc -&gt; acc = spec_of_sum input</span></div></blockquote></div></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk84" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk84"><span class="highlight">{</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight"><span class="kr">forall</span> (<span class="nv">t</span> : nat) (<span class="nv">acc</span> : list (combType (Vec Bit n)))
+  (<span class="nv">st</span> : combType (Vec Bit n))
+  (<span class="nv">bodyst</span> : circuit_state
+              (Comb
+                 (<span class="kr">fun</span> &#39;(input, state) =&gt;
+                  sum &lt;- 
+                  addN (input, state);; 
+                  ret (sum, sum))))
+  (<span class="nv">d</span> : combType (Vec Bit n)),
+sum_invariant input t st bodyst acc -&gt;
+<span class="mi">0</span> &lt;= t &lt; Datatypes.length input -&gt;
+<span class="kr">let</span> <span class="nv">out_st&#39;_bodyst&#39;</span> :=
+  step
+    (Comb
+       (<span class="kr">fun</span> &#39;(input, state) =&gt;
+        sum &lt;- addN (input, state);; ret (sum, sum)))
+    bodyst (nth t input d, st) <span class="kr">in</span>
+<span class="kr">let</span> <span class="nv">out</span> := fst (fst out_st&#39;_bodyst&#39;) <span class="kr">in</span>
+<span class="kr">let</span> <span class="nv">st&#39;</span> := snd (fst out_st&#39;_bodyst&#39;) <span class="kr">in</span>
+<span class="kr">let</span> <span class="nv">bodyst&#39;</span> := snd out_st&#39;_bodyst&#39; <span class="kr">in</span>
+sum_invariant input (S t) st&#39; bodyst&#39; (acc ++ [out])</span></div></blockquote></div></div></small></span><span class="alectryon-wsp"><span class="highlight"> <span class="c">(* prove that, if the invariant holds at the beginning of the loop</span>
+<span class="c">       body for timestep t, it holds at the end of the loop body for</span>
+<span class="c">       timestep t + 1 *)</span>
+</span></span><span class="alectryon-wsp">    </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk85" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk85"><span class="highlight"><span class="nb">cbv</span> [sum_invariant].</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight"><span class="kr">forall</span> (<span class="nv">t</span> : nat) (<span class="nv">acc</span> : list (combType (Vec Bit n)))
+  (<span class="nv">st</span> : combType (Vec Bit n))
+  (<span class="nv">bodyst</span> : circuit_state
+              (Comb
+                 (<span class="kr">fun</span> &#39;(input, state) =&gt;
+                  sum &lt;- 
+                  addN (input, state);; 
+                  ret (sum, sum))))
+  (<span class="nv">d</span> : combType (Vec Bit n)),
+st =
+N2Bv_sized n (sum_list_N (map Bv2N (firstn t input))) /\
+acc = spec_of_sum (firstn t input) -&gt;
+<span class="mi">0</span> &lt;= t &lt; Datatypes.length input -&gt;
+snd
+  (fst
+     (step
+        (Comb
+           (<span class="kr">fun</span> &#39;(input, state) =&gt;
+            sum &lt;- addN (input, state);;
+            ret (sum, sum))) bodyst
+        (nth t input d, st))) =
+N2Bv_sized n
+  (sum_list_N (map Bv2N (firstn (S t) input))) /\
+acc ++
+[fst
+   (fst
+      (step
+         (Comb
+            (<span class="kr">fun</span> &#39;(input, state) =&gt;
+             sum &lt;- addN (input, state);;
+             ret (sum, sum))) bodyst
+         (nth t input d, st)))] =
+spec_of_sum (firstn (S t) input)</span></div></blockquote></div></div></small><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk86" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk86"><span class="highlight"><span class="nb">intros</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">acc</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">st</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">st =
+N2Bv_sized n
+  (sum_list_N (map Bv2N (firstn t input))) /\
+acc = spec_of_sum (firstn t input)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">snd
+  (fst
+     (step
+        (Comb
+           (<span class="kr">fun</span> &#39;(input, state) =&gt;
+            sum &lt;- addN (input, state);;
+            ret (sum, sum))) bodyst
+        (nth t input d, st))) =
+N2Bv_sized n
+  (sum_list_N (map Bv2N (firstn (S t) input))) /\
+acc ++
+[fst
+   (fst
+      (step
+         (Comb
+            (<span class="kr">fun</span> &#39;(input, state) =&gt;
+             sum &lt;- addN (input, state);;
+             ret (sum, sum))) bodyst
+         (nth t input d, st)))] =
+spec_of_sum (firstn (S t) input)</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">    </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk87" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk87"><span class="highlight"><span class="nb">cbn</span> [step].</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">acc</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">st</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">st =
+N2Bv_sized n
+  (sum_list_N (map Bv2N (firstn t input))) /\
+acc = spec_of_sum (firstn t input)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">snd
+  (fst
+     (sum &lt;- addN (nth t input d, st);; ret (sum, sum),
+     tt)) =
+N2Bv_sized n
+  (sum_list_N (map Bv2N (firstn (S t) input))) /\
+acc ++
+[fst
+   (fst
+      (sum &lt;- addN (nth t input d, st);;
+       ret (sum, sum), tt))] =
+spec_of_sum (firstn (S t) input)</span></div></blockquote></div></div></small><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk88" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk88"><span class="highlight">simpl_ident.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">acc</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">st</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">st =
+N2Bv_sized n
+  (sum_list_N (map Bv2N (firstn t input))) /\
+acc = spec_of_sum (firstn t input)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">N2Bv_sized n (Bv2N (nth t input d) + Bv2N st) =
+N2Bv_sized n
+  (sum_list_N (map Bv2N (firstn (S t) input))) /\
+acc ++ [N2Bv_sized n (Bv2N (nth t input d) + Bv2N st)] =
+spec_of_sum (firstn (S t) input)</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">    </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk89" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk89"><span class="highlight">logical_simplify; <span class="nb">subst</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">N2Bv_sized n
+  (Bv2N (nth t input d) +
+   Bv2N
+     (N2Bv_sized n
+        (sum_list_N (map Bv2N (firstn t input))))) =
+N2Bv_sized n
+  (sum_list_N (map Bv2N (firstn (S t) input))) /\
+spec_of_sum (firstn t input) ++
+[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+spec_of_sum (firstn (S t) input)</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">    </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk8a" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk8a"><span class="highlight"><span class="nb">split</span>. <span class="c">(* separate the two invariant clauses *)</span></span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">N2Bv_sized n
+  (Bv2N (nth t input d) +
+   Bv2N
+     (N2Bv_sized n
+        (sum_list_N (map Bv2N (firstn t input))))) =
+N2Bv_sized n
+  (sum_list_N (map Bv2N (firstn (S t) input)))</span></div></blockquote><div class="alectryon-extra-goals"><input class="alectryon-extra-goal-toggle" id="tutorial-v-chk8b" style="display: none" type="checkbox"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><label class="goal-separator alectryon-extra-goal-label" for="tutorial-v-chk8b"><hr></label><div class="goal-conclusion"><span class="highlight">spec_of_sum (firstn t input) ++
+[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+spec_of_sum (firstn (S t) input)</span></div></blockquote></div></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">    </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk8c" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk8c"><span class="highlight">{</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">N2Bv_sized n
+  (Bv2N (nth t input d) +
+   Bv2N
+     (N2Bv_sized n
+        (sum_list_N (map Bv2N (firstn t input))))) =
+N2Bv_sized n
+  (sum_list_N (map Bv2N (firstn (S t) input)))</span></div></blockquote></div></div></small></span><span class="alectryon-wsp"><span class="highlight"> <span class="c">(* prove that the loop_state matches sum_list_N on inputs so</span>
+<span class="c">         far *)</span>
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk8d" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk8d"><span class="highlight"><span class="nb">rewrite</span> firstn_succ_snoc <span class="kr">with</span> (d0:=d) <span class="bp">by</span> <span class="bp">lia</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">N2Bv_sized n
+  (Bv2N (nth t input d) +
+   Bv2N
+     (N2Bv_sized n
+        (sum_list_N (map Bv2N (firstn t input))))) =
+N2Bv_sized n
+  (sum_list_N
+     (map Bv2N (firstn t input ++ [nth t input d])))</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk8e" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk8e"><span class="highlight"><span class="nb">autorewrite with</span> pull_snoc.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">N2Bv_sized n
+  (Bv2N (nth t input d) +
+   Bv2N
+     (N2Bv_sized n
+        (sum_list_N (map Bv2N (firstn t input))))) =
+N2Bv_sized n
+  (sum_list_N
+     (map Bv2N (firstn t input) ++
+      [Bv2N (nth t input d)]))</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk8f" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk8f"><span class="highlight"><span class="nb">rewrite</span> sum_list_N_snoc.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">N2Bv_sized n
+  (Bv2N (nth t input d) +
+   Bv2N
+     (N2Bv_sized n
+        (sum_list_N (map Bv2N (firstn t input))))) =
+N2Bv_sized n
+  (Bv2N (nth t input d) +
+   sum_list_N (map Bv2N (firstn t input)))</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">      <span class="c">(* use Bv2N to bring the goal into the N realm, where it&#39;s</span>
+<span class="c">         easier to solve using arithmetic rules *)</span>
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk90" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk90"><span class="highlight"><span class="nb">apply</span> Bv2N_inj.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">Bv2N
+  (N2Bv_sized n
+     (Bv2N (nth t input d) +
+      Bv2N
+        (N2Bv_sized n
+           (sum_list_N (map Bv2N (firstn t input)))))) =
+Bv2N
+  (N2Bv_sized n
+     (Bv2N (nth t input d) +
+      sum_list_N (map Bv2N (firstn t input))))</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">      <span class="c">(* change &quot;convert to bit-vector and then back to N&quot; into</span>
+<span class="c">         N.modulo *)</span>
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk91" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk91"><span class="highlight"><span class="nb">rewrite</span> !Bv2N_N2Bv_sized_modulo.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">((Bv2N (nth t input d) +
+  sum_list_N (map Bv2N (firstn t input))
+  mod <span class="mi">2</span> ^ N.of_nat n) mod 
+ <span class="mi">2</span> ^ N.of_nat n)%N =
+((Bv2N (nth t input d) +
+  sum_list_N (map Bv2N (firstn t input)))
+ mod <span class="mi">2</span> ^ N.of_nat n)%N</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">      <span class="c">(* use modular arithmetic lemmas to solve *)</span>
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk92" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk92"><span class="highlight"><span class="nb">rewrite</span> N.add_mod_idemp_r <span class="bp">by</span> (<span class="nb">apply</span> N.pow_nonzero; <span class="bp">lia</span>).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">((Bv2N (nth t input d) +
+  sum_list_N (map Bv2N (firstn t input)))
+ mod <span class="mi">2</span> ^ N.of_nat n)%N =
+((Bv2N (nth t input d) +
+  sum_list_N (map Bv2N (firstn t input)))
+ mod <span class="mi">2</span> ^ N.of_nat n)%N</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="bp">reflexivity</span>.</span></span><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk93" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk93"><span class="highlight">}</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">spec_of_sum (firstn t input) ++
+[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+spec_of_sum (firstn (S t) input)</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">    </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk94" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk94"><span class="highlight">{</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">spec_of_sum (firstn t input) ++
+[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+spec_of_sum (firstn (S t) input)</span></div></blockquote></div></div></small><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk95" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk95"><span class="highlight"><span class="nb">cbv</span> [spec_of_sum rolling_sum].</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">map (N2Bv_sized n)
+  (map
+     (<span class="kr">fun</span> <span class="nv">i</span> : nat =&gt;
+      sum_list_N
+        (firstn (S i) (map Bv2N (firstn t input))))
+     (seq <span class="mi">0</span>
+        (Datatypes.length (map Bv2N (firstn t input))))) ++
+[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+map (N2Bv_sized n)
+  (map
+     (<span class="kr">fun</span> <span class="nv">i</span> : nat =&gt;
+      sum_list_N
+        (firstn (S i) (map Bv2N (firstn (S t) input))))
+     (seq <span class="mi">0</span>
+        (Datatypes.length
+           (map Bv2N (firstn (S t) input)))))</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">      <span class="c">(* simplify expression using list lemmas *)</span>
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk96" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk96"><span class="highlight"><span class="nb">rewrite</span> !map_map.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">map
+  (<span class="kr">fun</span> <span class="nv">x</span> : nat =&gt;
+   N2Bv_sized n
+     (sum_list_N
+        (firstn (S x) (map Bv2N (firstn t input)))))
+  (seq <span class="mi">0</span>
+     (Datatypes.length (map Bv2N (firstn t input)))) ++
+[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+map
+  (<span class="kr">fun</span> <span class="nv">x</span> : nat =&gt;
+   N2Bv_sized n
+     (sum_list_N
+        (firstn (S x) (map Bv2N (firstn (S t) input)))))
+  (seq <span class="mi">0</span>
+     (Datatypes.length (map Bv2N (firstn (S t) input))))</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk97" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk97"><span class="highlight"><span class="nb">autorewrite with</span> push_length natsimpl.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">map
+  (<span class="kr">fun</span> <span class="nv">x</span> : nat =&gt;
+   N2Bv_sized n
+     (sum_list_N
+        (firstn (S x) (map Bv2N (firstn t input)))))
+  (seq <span class="mi">0</span> t) ++
+[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+map
+  (<span class="kr">fun</span> <span class="nv">x</span> : nat =&gt;
+   N2Bv_sized n
+     (sum_list_N
+        (firstn (S x) (map Bv2N (firstn (S t) input)))))
+  (seq <span class="mi">0</span> (S t))</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk98" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk98"><span class="highlight"><span class="nb">rewrite</span> firstn_succ_snoc <span class="kr">with</span> (d0:=d) <span class="bp">by</span> <span class="bp">lia</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">map
+  (<span class="kr">fun</span> <span class="nv">x</span> : nat =&gt;
+   N2Bv_sized n
+     (sum_list_N
+        (firstn (S x) (map Bv2N (firstn t input)))))
+  (seq <span class="mi">0</span> t) ++
+[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+map
+  (<span class="kr">fun</span> <span class="nv">x</span> : nat =&gt;
+   N2Bv_sized n
+     (sum_list_N
+        (firstn (S x)
+           (map Bv2N
+              (firstn t input ++ [nth t input d])))))
+  (seq <span class="mi">0</span> (S t))</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk99" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk99"><span class="highlight"><span class="nb">autorewrite with</span> pull_snoc natsimpl.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">map
+  (<span class="kr">fun</span> <span class="nv">x</span> : nat =&gt;
+   N2Bv_sized n
+     (sum_list_N
+        (firstn (S x) (map Bv2N (firstn t input)))))
+  (seq <span class="mi">0</span> t) ++
+[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+map
+  (<span class="kr">fun</span> <span class="nv">x</span> : nat =&gt;
+   N2Bv_sized n
+     (sum_list_N
+        (firstn (S x)
+           (map Bv2N (firstn t input) ++
+            [Bv2N (nth t input d)])))) 
+  (seq <span class="mi">0</span> t) ++
+[N2Bv_sized n
+   (sum_list_N
+      (firstn (S t)
+         (map Bv2N (firstn t input) ++
+          [Bv2N (nth t input d)])))]</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk9a" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk9a"><span class="highlight"><span class="nb">apply</span> f_equal2.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">map
+  (<span class="kr">fun</span> <span class="nv">x</span> : nat =&gt;
+   N2Bv_sized n
+     (sum_list_N
+        (firstn (S x) (map Bv2N (firstn t input)))))
+  (seq <span class="mi">0</span> t) =
+map
+  (<span class="kr">fun</span> <span class="nv">x</span> : nat =&gt;
+   N2Bv_sized n
+     (sum_list_N
+        (firstn (S x)
+           (map Bv2N (firstn t input) ++
+            [Bv2N (nth t input d)])))) 
+  (seq <span class="mi">0</span> t)</span></div></blockquote><div class="alectryon-extra-goals"><input class="alectryon-extra-goal-toggle" id="tutorial-v-chk9b" style="display: none" type="checkbox"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><label class="goal-separator alectryon-extra-goal-label" for="tutorial-v-chk9b"><hr></label><div class="goal-conclusion"><span class="highlight">[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+[N2Bv_sized n
+   (sum_list_N
+      (firstn (S t)
+         (map Bv2N (firstn t input) ++
+          [Bv2N (nth t input d)])))]</span></div></blockquote></div></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk9c" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk9c"><span class="highlight">{</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">map
+  (<span class="kr">fun</span> <span class="nv">x</span> : nat =&gt;
+   N2Bv_sized n
+     (sum_list_N
+        (firstn (S x) (map Bv2N (firstn t input)))))
+  (seq <span class="mi">0</span> t) =
+map
+  (<span class="kr">fun</span> <span class="nv">x</span> : nat =&gt;
+   N2Bv_sized n
+     (sum_list_N
+        (firstn (S x)
+           (map Bv2N (firstn t input) ++
+            [Bv2N (nth t input d)])))) 
+  (seq <span class="mi">0</span> t)</span></div></blockquote></div></div></small><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk9d" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk9d"><span class="highlight"><span class="nb">apply</span> map_ext_in; <span class="nb">intro</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">a</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">In a (seq <span class="mi">0</span> t) -&gt;
+N2Bv_sized n
+  (sum_list_N
+     (firstn (S a) (map Bv2N (firstn t input)))) =
+N2Bv_sized n
+  (sum_list_N
+     (firstn (S a)
+        (map Bv2N (firstn t input) ++
+         [Bv2N (nth t input d)])))</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">        </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk9e" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk9e"><span class="highlight"><span class="nb">rewrite</span> in_seq; <span class="nb">intros</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">a</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= a &lt; <span class="mi">0</span> + t</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">N2Bv_sized n
+  (sum_list_N
+     (firstn (S a) (map Bv2N (firstn t input)))) =
+N2Bv_sized n
+  (sum_list_N
+     (firstn (S a)
+        (map Bv2N (firstn t input) ++
+         [Bv2N (nth t input d)])))</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">        </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk9f" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk9f"><span class="highlight"><span class="nb">autorewrite with</span> push_firstn push_length natsimpl listsimpl.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">a</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= a &lt; <span class="mi">0</span> + t</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">N2Bv_sized n
+  (sum_list_N (map Bv2N (firstn (S a) input))) =
+N2Bv_sized n
+  (sum_list_N (map Bv2N (firstn (S a) input)))</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">        </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="bp">reflexivity</span>.</span></span><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chka0" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chka0"><span class="highlight">}</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+[N2Bv_sized n
+   (sum_list_N
+      (firstn (S t)
+         (map Bv2N (firstn t input) ++
+          [Bv2N (nth t input d)])))]</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">      </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chka1" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chka1"><span class="highlight">{</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+[N2Bv_sized n
+   (sum_list_N
+      (firstn (S t)
+         (map Bv2N (firstn t input) ++
+          [Bv2N (nth t input d)])))]</span></div></blockquote></div></div></small><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chka2" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chka2"><span class="highlight"><span class="nb">autorewrite with</span> push_firstn push_length natsimpl listsimpl.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+[N2Bv_sized n
+   (sum_list_N
+      (map Bv2N (firstn t input) ++
+       [Bv2N (nth t input d)]))]</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">        </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chka3" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chka3"><span class="highlight"><span class="nb">rewrite</span> sum_list_N_snoc.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    Bv2N
+      (N2Bv_sized n
+         (sum_list_N (map Bv2N (firstn t input)))))] =
+[N2Bv_sized n
+   (Bv2N (nth t input d) +
+    sum_list_N (map Bv2N (firstn t input)))]</span></div></blockquote></div></div></small><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chka4" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chka4"><span class="highlight"><span class="nb">f_equal</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">N2Bv_sized n
+  (Bv2N (nth t input d) +
+   Bv2N
+     (N2Bv_sized n
+        (sum_list_N (map Bv2N (firstn t input))))) =
+N2Bv_sized n
+  (Bv2N (nth t input d) +
+   sum_list_N (map Bv2N (firstn t input)))</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">        <span class="c">(* use the same modular-arithmetic strategy as before *)</span>
+</span></span><span class="alectryon-wsp">        </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chka5" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chka5"><span class="highlight"><span class="nb">apply</span> Bv2N_inj.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">Bv2N
+  (N2Bv_sized n
+     (Bv2N (nth t input d) +
+      Bv2N
+        (N2Bv_sized n
+           (sum_list_N (map Bv2N (firstn t input)))))) =
+Bv2N
+  (N2Bv_sized n
+     (Bv2N (nth t input d) +
+      sum_list_N (map Bv2N (firstn t input))))</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">        </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chka6" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chka6"><span class="highlight"><span class="nb">rewrite</span> !Bv2N_N2Bv_sized_modulo.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">((Bv2N (nth t input d) +
+  sum_list_N (map Bv2N (firstn t input))
+  mod <span class="mi">2</span> ^ N.of_nat n) mod 
+ <span class="mi">2</span> ^ N.of_nat n)%N =
+((Bv2N (nth t input d) +
+  sum_list_N (map Bv2N (firstn t input)))
+ mod <span class="mi">2</span> ^ N.of_nat n)%N</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">        </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chka7" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chka7"><span class="highlight"><span class="nb">rewrite</span> N.add_mod_idemp_r <span class="bp">by</span> (<span class="nb">apply</span> N.pow_nonzero; <span class="bp">lia</span>).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">t</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">d</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H0</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight"><span class="mi">0</span> &lt;= t</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H1</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">t &lt; Datatypes.length input</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">((Bv2N (nth t input d) +
+  sum_list_N (map Bv2N (firstn t input)))
+ mod <span class="mi">2</span> ^ N.of_nat n)%N =
+((Bv2N (nth t input d) +
+  sum_list_N (map Bv2N (firstn t input)))
+ mod <span class="mi">2</span> ^ N.of_nat n)%N</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">        </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="bp">reflexivity</span>.</span></span><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight">}</span></span><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight">}</span></span><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chka8" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chka8"><span class="highlight">}</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight"><span class="kr">forall</span> (<span class="nv">acc</span> : list (combType (Vec Bit n)))
+  (<span class="nv">st</span> : combType (Vec Bit n))
+  (<span class="nv">bodyst</span> : circuit_state
+              (Comb
+                 (<span class="kr">fun</span> &#39;(input, state) =&gt;
+                  sum &lt;- 
+                  addN (input, state);; 
+                  ret (sum, sum)))),
+sum_invariant input (Datatypes.length input) st bodyst
+  acc -&gt; acc = spec_of_sum input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chka9" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chka9"><span class="highlight">{ <span class="c">(* prove that the invariant implies the postcondition *)</span></span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight"><span class="kr">forall</span> (<span class="nv">acc</span> : list (combType (Vec Bit n)))
+  (<span class="nv">st</span> : combType (Vec Bit n))
+  (<span class="nv">bodyst</span> : circuit_state
+              (Comb
+                 (<span class="kr">fun</span> &#39;(input, state) =&gt;
+                  sum &lt;- 
+                  addN (input, state);; 
+                  ret (sum, sum)))),
+sum_invariant input (Datatypes.length input) st bodyst
+  acc -&gt; acc = spec_of_sum input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">    </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkaa" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkaa"><span class="highlight"><span class="nb">cbv</span> [sum_invariant]; <span class="nb">intros</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input, acc</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">st</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">combType (Vec Bit n)</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">H</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">st =
+N2Bv_sized n
+  (sum_list_N
+     (map Bv2N
+        (firstn (Datatypes.length input) input))) /\
+acc =
+spec_of_sum
+  (firstn (Datatypes.length input) input)</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">acc = spec_of_sum input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">    </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkab" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkab"><span class="highlight">logical_simplify; <span class="nb">subst</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">spec_of_sum (firstn (Datatypes.length input) input) =
+spec_of_sum input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">    </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkac" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkac"><span class="highlight"><span class="nb">autorewrite with</span> push_firstn.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">bodyst</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">circuit_state
+  (Comb
+     (<span class="kr">fun</span> &#39;(input, state) =&gt;
+      sum &lt;- addN (input, state);;
+      ret (sum, sum)))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">spec_of_sum input = spec_of_sum input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp">    </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="bp">reflexivity</span>.</span></span><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight">}</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Qed</span>.</span></span></span></pre><p>To wrap up our <tt class="docutils literal">sum</tt> proofs, a quick demonstration that <tt class="docutils literal">sum_concise</tt> is
+equivalent to <tt class="docutils literal">sum</tt>:</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkad" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkad"><span class="highlight"><span class="kn">Lemma</span> <span class="nf">sum_concise_correct</span> <span class="nv">n</span> (<span class="nv">input</span> : list (combType (Vec Bit n))):
+  simulate sum_concise input = simulate sum input.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate sum_concise input = simulate sum input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkae" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkae"><span class="highlight"><span class="kn">Proof</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate sum_concise input = simulate sum input</span></div></blockquote></div></div></small><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="bp">reflexivity</span>.</span></span><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Qed</span>.</span></span></span></pre><p>Fibonacci!</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight">  </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">fibonacci</span> {<span class="nv">sz</span>}
     : Circuit (signal Void) (signal (Vec Bit sz)) :=
-    LoopInit one
+    <span class="kr">let</span> <span class="nv">v1</span> : combType (Vec Bit sz) := N2Bv_sized sz <span class="mi">1</span> <span class="kr">in</span>
+    <span class="kr">let</span> <span class="nv">v_negative1</span> : combType (Vec Bit sz) := Vector.const one sz <span class="kr">in</span>
+    LoopInit v1
              ( <span class="c">(* start: (in, r1) *)</span>
                Comb (dropl &gt;=&gt; fork2) &gt;==&gt; <span class="c">(* r1, r1 *)</span>
-                    Second (DelayInit init) &gt;==&gt; <span class="c">(* r1, r2 *)</span>
+                    Second (DelayInit v_negative1) &gt;==&gt; <span class="c">(* r1, r2 *)</span>
                     Comb (addN &gt;=&gt; fork2) <span class="c">(* r1 + r2, r1 + r2 *)</span>).</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
-</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">fibonacci_mealy</span> {<span class="nv">sz</span>} (<span class="nv">one</span> <span class="nv">init</span> : signal (Vec Bit sz))
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">fibonacci_mealy</span> {<span class="nv">sz</span>}
     : Circuit (signal Void) (signal (Vec Bit sz)) :=
-    LoopInit one
-      (LoopInit init
+    <span class="kr">let</span> <span class="nv">v1</span> : combType (Vec Bit sz) := N2Bv_sized sz <span class="mi">1</span> <span class="kr">in</span>
+    <span class="kr">let</span> <span class="nv">v_negative1</span> : combType (Vec Bit sz) := Vector.const one sz <span class="kr">in</span>
+    LoopInit v1
+      (LoopInit v_negative1
                 (Comb
                    (<span class="kr">fun</span> &#39;(_,r1,r2) =&gt;
                       sum &lt;- addN (r1, r2) ;;
                       ret (sum, sum, r1)))).</span></span></span></pre><p>TODO: netlist</p>
-<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk71" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk71"><span class="highlight"><span class="kn">Compute</span> map Bv2N
-        (simulate (fibonacci (N2Bv_sized <span class="mi">8</span> <span class="mi">1</span>) (Vector.const true <span class="mi">8</span>)) (<span class="kp">repeat</span> tt <span class="mi">10</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">0</span>%N; <span class="mi">1</span>%N; <span class="mi">1</span>%N; <span class="mi">2</span>%N; <span class="mi">3</span>%N; <span class="mi">5</span>%N; <span class="mi">8</span>%N; <span class="mi">13</span>%N; <span class="mi">21</span>%N;
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkaf" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkaf"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+        (simulate (fibonacci (sz:=<span class="mi">8</span>)) (<span class="kp">repeat</span> tt <span class="mi">10</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">0</span>%N; <span class="mi">1</span>%N; <span class="mi">1</span>%N; <span class="mi">2</span>%N; <span class="mi">3</span>%N; <span class="mi">5</span>%N; <span class="mi">8</span>%N; <span class="mi">13</span>%N; <span class="mi">21</span>%N;
   <span class="mi">34</span>%N]
 : list N</span></blockquote></div></div></small><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
-</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk72" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk72"><span class="highlight"><span class="kn">Compute</span> map Bv2N
-        (simulate (fibonacci_mealy (N2Bv_sized <span class="mi">8</span> <span class="mi">1</span>) (Vector.const true <span class="mi">8</span>)) (<span class="kp">repeat</span> tt <span class="mi">10</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">0</span>%N; <span class="mi">1</span>%N; <span class="mi">1</span>%N; <span class="mi">2</span>%N; <span class="mi">3</span>%N; <span class="mi">5</span>%N; <span class="mi">8</span>%N; <span class="mi">13</span>%N; <span class="mi">21</span>%N;
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkb0" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkb0"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+        (simulate (fibonacci_mealy (sz:=<span class="mi">8</span>)) (<span class="kp">repeat</span> tt <span class="mi">10</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">0</span>%N; <span class="mi">1</span>%N; <span class="mi">1</span>%N; <span class="mi">2</span>%N; <span class="mi">3</span>%N; <span class="mi">5</span>%N; <span class="mi">8</span>%N; <span class="mi">13</span>%N; <span class="mi">21</span>%N;
   <span class="mi">34</span>%N]
 : list N</span></blockquote></div></div></small></span></pre><p>TODO: proofs</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Fixpoint</span> <span class="nf">fibonacci_spec</span> (<span class="nv">n</span> : nat) :=
@@ -1780,13 +2778,13 @@ value, we can use <tt class="docutils literal">LoopInit</tt> instead:</p>
     <span class="kr">end</span>
   <span class="kr">end</span>.</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
-</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk73" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk73"><span class="highlight"><span class="kn">Compute</span> (map fibonacci_spec (seq <span class="mi">0</span> <span class="mi">20</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">0</span>; <span class="mi">1</span>; <span class="mi">1</span>; <span class="mi">2</span>; <span class="mi">3</span>; <span class="mi">5</span>; <span class="mi">8</span>; <span class="mi">13</span>; <span class="mi">21</span>; <span class="mi">34</span>; <span class="mi">55</span>; <span class="mi">89</span>; <span class="mi">144</span>;
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkb1" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkb1"><span class="highlight"><span class="kn">Compute</span> (map fibonacci_spec (seq <span class="mi">0</span> <span class="mi">20</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">0</span>; <span class="mi">1</span>; <span class="mi">1</span>; <span class="mi">2</span>; <span class="mi">3</span>; <span class="mi">5</span>; <span class="mi">8</span>; <span class="mi">13</span>; <span class="mi">21</span>; <span class="mi">34</span>; <span class="mi">55</span>; <span class="mi">89</span>; <span class="mi">144</span>;
   <span class="mi">233</span>; <span class="mi">377</span>; <span class="mi">610</span>; <span class="mi">987</span>; <span class="mi">1597</span>; <span class="mi">2584</span>; <span class="mi">4181</span>]
 : list nat</span></blockquote></div></div></small></span></pre><p>Exponentiation by squaring!</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight">  <span class="c">(* sliding window with table? *)</span>
 
   <span class="c">(* exponentiation by squaring, no trailing 0s *)</span>
-</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">exp_by_squaring_naive</span> {<span class="nv">A</span>} (<span class="nv">init</span> : signal A)
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">exp_by_squaring_naive</span> {<span class="nv">A</span>} (<span class="nv">init</span> : combType A)
              (<span class="nv">square</span> : Circuit (signal A) (signal A))
              (<span class="nv">multiply</span> : Circuit (signal A) (signal A))
     : Circuit (signal Bit) (signal A) :=
@@ -1799,7 +2797,7 @@ value, we can use <tt class="docutils literal">LoopInit</tt> instead:</p>
                       Comb (mux2 &gt;=&gt; fork2) <span class="c">(* acc, acc *)</span>).</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
   <span class="c">(* exponentiation by squaring *)</span>
-</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">exp_by_squaring</span> {<span class="nv">A</span>} (<span class="nv">init</span> : signal A)
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">exp_by_squaring</span> {<span class="nv">A</span>} (<span class="nv">init</span> : combType A)
              (<span class="nv">square</span> : Circuit (signal A) (signal A))
              (<span class="nv">multiply</span> : Circuit (signal A) (signal A))
     : Circuit (signal Bit) (signal A) :=
@@ -1824,14 +2822,14 @@ value, we can use <tt class="docutils literal">LoopInit</tt> instead:</p>
 <span class="c">   let y := x + x in</span>
 <span class="c">   let z := y + y + x in</span>
 <span class="c">   z *)</span>
-</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk74" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk74"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkb2" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkb2"><span class="highlight"><span class="kn">Compute</span> map Bv2N
         (<span class="kr">let</span> <span class="nv">double</span> := Comb (fork2 &gt;=&gt; addN) <span class="kr">in</span>
          <span class="kr">let</span> <span class="nv">add</span> := Comb (<span class="kr">fun</span> <span class="nv">v</span> =&gt; addN (N2Bv_sized <span class="mi">8</span> <span class="mi">3</span>, v)) <span class="kr">in</span>
          simulate (exp_by_squaring_naive (A:=Vec Bit <span class="mi">8</span>) (N2Bv_sized <span class="mi">8</span> <span class="mi">0</span>) double add)
                   (Vector.to_list (N2Bv_sized <span class="mi">3</span> <span class="mi">5</span>))).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">3</span>%N; <span class="mi">6</span>%N; <span class="mi">15</span>%N]
 : list N</span></blockquote></div></div></small><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
-</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk75" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk75"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkb3" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkb3"><span class="highlight"><span class="kn">Compute</span> map Bv2N
         (<span class="kr">let</span> <span class="nv">double</span> := Comb (fork2 &gt;=&gt; addN) <span class="kr">in</span>
          <span class="kr">let</span> <span class="nv">add</span> := Comb (<span class="kr">fun</span> <span class="nv">v</span> =&gt; addN (N2Bv_sized <span class="mi">8</span> <span class="mi">3</span>, v)) <span class="kr">in</span>
          simulate (exp_by_squaring_naive (A:=Vec Bit <span class="mi">8</span>) (N2Bv_sized <span class="mi">8</span> <span class="mi">0</span>) double add)
@@ -1839,7 +2837,7 @@ value, we can use <tt class="docutils literal">LoopInit</tt> instead:</p>
   <span class="mi">224</span>%N]
 : list N</span></blockquote></div></div></small><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
-</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk76" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk76"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkb4" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkb4"><span class="highlight"><span class="kn">Compute</span> map Bv2N
         (<span class="kr">let</span> <span class="nv">double</span> := Comb (fork2 &gt;=&gt; addN) <span class="kr">in</span>
          <span class="kr">let</span> <span class="nv">add</span> := Comb (<span class="kr">fun</span> <span class="nv">v</span> =&gt; addN (N2Bv_sized <span class="mi">8</span> <span class="mi">3</span>, v)) <span class="kr">in</span>
          simulate (exp_by_squaring (A:=Vec Bit <span class="mi">8</span>) (N2Bv_sized <span class="mi">8</span> <span class="mi">0</span>) double add)
@@ -1852,7 +2850,7 @@ value, we can use <tt class="docutils literal">LoopInit</tt> instead:</p>
   Comb (<span class="kr">fun</span> <span class="nv">v</span> =&gt; ret (N2Bv_sized n (Bv2N v * Bv2N v))).</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
 <span class="c">(* Compute 3 ^ 5 = 243 *)</span>
-</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk77" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk77"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkb5" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkb5"><span class="highlight"><span class="kn">Compute</span> map Bv2N
         (simulate (exp_by_squaring (A:=Vec Bit <span class="mi">8</span>)
                           (N2Bv_sized <span class="mi">8</span> <span class="mi">1</span>)
                           fake_square
