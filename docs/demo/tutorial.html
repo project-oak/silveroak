@@ -107,7 +107,7 @@ diagrams, this is the difference between:</p>
 be, but it can be very useful when trying to exercise fine-grained control over
 circuit layout and area! At a first approximation, you can think of a monadic
 bind (<tt class="docutils literal">_ &lt;- _ ;; ...</tt>) as <em>naming a wire</em> in the circuit graph.</p>
-<p>If the monad notations are unfamiliar, the <a class="reference external" href="/reference">reference</a> has more information on
+<p>If the monad notations are unfamiliar, the <a class="reference external" href="/../reference">reference</a> has more information on
 those.</p>
 <p>We could have represented sharing by describing circuit graphs with a list of
 nodes and edges. However, this is essentially the &quot;machine code&quot; of structural
@@ -281,7 +281,7 @@ available for Coq standard library vectors, so it's usually best to use those
 definitions instead: use <tt class="docutils literal">Vec.map2</tt> instead of <tt class="docutils literal">unpackV</tt>, <tt class="docutils literal">Vector.map2</tt>,
 and <tt class="docutils literal">packV</tt>.</p>
 <p>To see more definitions from Cava's core library, try taking a look at the Cava
-<a class="reference external" href="/reference">reference</a>, which documents its contents.</p>
+<a class="reference external" href="/../reference">reference</a>, which documents its contents.</p>
 <p>To generate a netlist for this circuit, we use mostly the same procedure as for
 the inverter, except that we change the input and output port types to match the
 circuit's type signature.</p>
@@ -1513,7 +1513,7 @@ ports of the left-hand circuit to the input ports of the second. It's short for
     : Circuit (signal t) (signal t) :=
     Compose (Compose Delay Delay) Delay.</span></span></span></pre><p><tt class="docutils literal">Compose</tt> and <tt class="docutils literal">Delay</tt> are like <tt class="docutils literal">Comb</tt>; they are definitions that create
 <tt class="docutils literal">Circuit</tt>s. You can find a full list of <tt class="docutils literal">Circuit</tt> constructors in the
-<a class="reference external" href="/reference">reference</a>.</p>
+<a class="reference external" href="/../reference">reference</a>.</p>
 <p>Here's the netlist for <tt class="docutils literal">three_delays</tt>, generated for two different signal
 types:</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">three_delays_interface</span> {<span class="nv">t</span> : SignalType}
@@ -1699,7 +1699,7 @@ the new state.</p>
 <p>As discussed in the very first example, the <tt class="docutils literal">_ &lt;- _ ;; _</tt> notation is a
 monadic bind; it's like a <tt class="docutils literal">let</tt> binder or variable assignment, except that it
 helps Cava track resource sharing. <tt class="docutils literal">ret</tt> means &quot;return&quot;. You can read in much
-more detail about monad notations in the <a class="reference external" href="/reference">reference</a>.</p>
+more detail about monad notations in the <a class="reference external" href="/../reference">reference</a>.</p>
 <p>For the purposes of the tutorial, we'll introduce just one more monad notation:
 monad composition, represented by <tt class="docutils literal">&gt;=&gt;</tt>. Assuming <tt class="docutils literal">f</tt> and <tt class="docutils literal">g</tt> are monadic
 functions, writing <tt class="docutils literal">f &gt;=&gt; g</tt> is the same as writing <tt class="docutils literal">fun x =&gt; y &lt;- f x ;; g
