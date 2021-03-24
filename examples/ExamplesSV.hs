@@ -21,7 +21,7 @@ import NandGate
 import FullAdderExample
 import UnsignedAdderExamples
 import AdderTree
-import Sorter
+import TwoSorter
 
 main :: IO ()
 main = do writeSystemVerilog nand2Netlist
