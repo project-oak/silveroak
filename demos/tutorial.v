@@ -1,4 +1,8 @@
 (*|
+.. raw:: html
+
+   <link rel="stylesheet" href="tutorial.css" type="text/css" />
+
 .. coq:: none
 |*)
 
