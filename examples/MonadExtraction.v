@@ -19,7 +19,7 @@ Require Import Examples.NandGate.
 Require Import Examples.FullAdderExample.
 Require Import Examples.UnsignedAdderExamples.
 Require Import Examples.AdderTree.
-Require Import Examples.Sorter.
+Require Import Examples.TwoSorter.
 Require Import Coq.extraction.Extraction.
 Require Import Coq.extraction.ExtrHaskellZInteger.
 Require Import Coq.extraction.ExtrHaskellString.
@@ -33,4 +33,4 @@ Extraction Library NandGate.
 Extraction Library FullAdderExample.
 Extraction Library UnsignedAdderExamples.
 Extraction Library AdderTree.
-Extraction Library Sorter.
+Extraction Library TwoSorter.
