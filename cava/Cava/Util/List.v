@@ -909,13 +909,13 @@ Section FoldLeftAccumulate.
   Definition fold_left_accumulate' {A B}
              (f : B -> A -> B) acc0 ls b : list B * B :=
     fold_left (fun '(acc, b) a => (acc ++ [f b a], f b a))
-              ls (acc0 ++ [b], b).
+              ls (acc0, b).
   Definition fold_left_accumulate {A B} (f : B -> A -> B) :=
     fold_left_accumulate' f nil.
 
   Lemma fold_left_accumulate'_nil {A B}
         (f : B -> A -> B) b acc0 :
-    fst (fold_left_accumulate' f acc0 [] b) = (acc0 ++ [b]).
+    fst (fold_left_accumulate' f acc0 [] b) = acc0.
   Proof. reflexivity. Qed.
 
   Hint Rewrite @fold_left_accumulate'_nil : push_fold_acc.
@@ -923,7 +923,7 @@ Section FoldLeftAccumulate.
   Lemma fold_left_accumulate'_cons {A B}
         (f : B -> A -> B) b a acc0 ls :
     fst (fold_left_accumulate' f acc0 (a::ls) b)
-    = fst (fold_left_accumulate' f (acc0 ++ [b]) ls (f b a)).
+    = fst (fold_left_accumulate' f (acc0 ++ [f b a]) ls (f b a)).
   Proof. reflexivity. Qed.
 
   Hint Rewrite @fold_left_accumulate'_cons : push_fold_acc.
@@ -942,9 +942,9 @@ Section FoldLeftAccumulate.
         (f : B -> A -> B) b a acc0 ls :
     fold_left_accumulate' f acc0 (a::ls) b
     = (fst (fold_left_accumulate'
-              f (acc0 ++ [b]) ls (f b a)),
+              f (acc0 ++ [f b a]) ls (f b a)),
        snd (fold_left_accumulate'
-              f (acc0 ++ [b]) ls (f b a))).
+              f (acc0 ++ [f b a]) ls (f b a))).
   Proof.
     rewrite <-surjective_pairing; reflexivity.
   Qed.
@@ -978,6 +978,7 @@ Section FoldLeftAccumulate.
 
   Lemma fold_left_accumulate'_last {A B}
         (f : B -> A -> B) b d acc0 ls :
+    last acc0 d = b ->
     last (fst (fold_left_accumulate' f acc0 ls b)) d = fold_left f ls b.
   Proof.
     revert acc0 b; induction ls; intros; cbn [fold_left];
@@ -987,7 +988,7 @@ Section FoldLeftAccumulate.
   Lemma fold_left_accumulate'_length {A B} (f : B -> A -> B) :
     forall ls acc0 b,
       length (fst (fold_left_accumulate'
-                     f acc0 ls b)) = length acc0 + S (length ls).
+                     f acc0 ls b)) = length acc0 + length ls.
   Proof.
     induction ls; intros; autorewrite with push_fold_acc;
       rewrite ?IHls; length_hammer.
@@ -1016,12 +1017,12 @@ Section FoldLeftAccumulate.
   Qed.
 
   Lemma fold_left_accumulate_nil {A B} (f : B -> A -> B) b :
-    fst (fold_left_accumulate f [] b) = [b].
+    fst (fold_left_accumulate f [] b) = [].
   Proof. reflexivity. Qed.
 
   Lemma fold_left_accumulate_cons {A B} (f : B -> A -> B) b a ls :
     fst (fold_left_accumulate f (a::ls) b)
-    = (b :: fst (fold_left_accumulate f ls (f b a))).
+    = f b a :: fst (fold_left_accumulate f ls (f b a)).
   Proof.
     cbv [fold_left_accumulate].
     autorewrite with push_fold_acc listsimpl.
@@ -1037,7 +1038,7 @@ Section FoldLeftAccumulate.
   Lemma fold_left_accumulate_cons_full {A B}
         (f : B -> A -> B) b a ls :
     fold_left_accumulate f (a::ls) b
-    = (b :: fst (fold_left_accumulate f ls (f b a)),
+    = (f b a :: fst (fold_left_accumulate f ls (f b a)),
        snd (fold_left_accumulate f ls (f b a))).
   Proof.
     rewrite (surjective_pairing (fold_left_accumulate _ (_ :: _) _)).
@@ -1055,14 +1056,15 @@ Section FoldLeftAccumulate.
     reflexivity.
   Qed.
 
-  Lemma fold_left_accumulate_last {A B} (f : B -> A -> B) b c ls :
-    last (fst (fold_left_accumulate f ls b)) c = fold_left f ls b.
+  Lemma fold_left_accumulate_last {A B} (f : B -> A -> B) b ls :
+    last (fst (fold_left_accumulate f ls b)) b = fold_left f ls b.
   Proof.
     cbv [fold_left_accumulate]. apply fold_left_accumulate'_last.
+    reflexivity.
   Qed.
 
   Lemma fold_left_accumulate_length {A B} (f : B -> A -> B) ls b :
-    length (fst (fold_left_accumulate f ls b)) = S (length ls).
+    length (fst (fold_left_accumulate f ls b)) = length ls.
   Proof.
     cbv [fold_left_accumulate].
     rewrite fold_left_accumulate'_length.
@@ -1094,30 +1096,15 @@ Section FoldLeftAccumulate.
     rewrite IHls. reflexivity.
   Qed.
 
-  Lemma fold_left_fold_left_accumulate {A B C}
-        (f : B -> A -> B) (g : C -> B -> C) :
-    forall ls b c,
-      fold_left
-        g (fst (fold_left_accumulate f ls b)) c =
-      snd (fold_left
-             (fun '(b,c) a => (f b a, g c (f b a)))
-             ls (b, g c b)).
-  Proof.
-    induction ls; intros; [ reflexivity | ].
-    rewrite fold_left_accumulate_cons.
-    cbn [fold_left]. rewrite IHls.
-    reflexivity.
-  Qed.
-
   Lemma fold_left_accumulate_fold_left_accumulate {A B C}
         (f : B -> A -> B) (g : C -> B -> C) :
     forall ls b c,
       fst (fold_left_accumulate
              g (fst (fold_left_accumulate f ls b)) c)
-      = c :: map snd (fst (fold_left_accumulate
-                            (fun '(b,c) a =>
-                               (f b a, g c (f b a)))
-                            ls (b, g c b))).
+      = map snd (fst (fold_left_accumulate
+                        (fun '(b,c) a =>
+                           (f b a, g c (f b a)))
+                        ls (b, c))).
   Proof.
     induction ls; intros; [ reflexivity | ].
     rewrite !fold_left_accumulate_cons.
@@ -1127,8 +1114,7 @@ Section FoldLeftAccumulate.
 
   Lemma fold_left_accumulate_to_map {A B} (f : A -> B) :
     forall ls b,
-      fst (fold_left_accumulate (fun _ x => f x) ls b)
-      = b :: map f ls.
+      fst (fold_left_accumulate (fun _ x => f x) ls b) = map f ls.
   Proof.
     induction ls; intros; [ reflexivity | ].
     rewrite !fold_left_accumulate_cons.
@@ -1139,34 +1125,27 @@ Section FoldLeftAccumulate.
   Lemma nth_fold_left_accumulate' {A B}
         (f : B -> A -> B) :
     forall ls acc0 b d i,
-      length acc0 <= i <= length acc0 + length ls ->
+      length acc0 <= i < length acc0 + length ls ->
       nth i (fst (fold_left_accumulate' f acc0 ls b)) d =
-      fold_left f (firstn (i-length acc0) ls) b.
+      fold_left f (firstn (S (i-length acc0)) ls) b.
   Proof.
-    induction ls; cbn [length]; intros.
-    { rewrite firstn_all2 by (cbn [length]; lia).
-      cbn [fold_left_accumulate' fold_left fst].
-      rewrite app_nth2 by lia.
-      replace (i-length acc0) with 0 by lia.
+    induction ls; cbn [length]; intros; [ lia | ].
+    rewrite fold_left_accumulate'_cons.
+    destruct (Nat.eq_dec (length acc0) i).
+    { subst. rewrite fold_left_accumulate'_equiv.
+      autorewrite with push_nth natsimpl push_firstn.
       reflexivity. }
-    { rewrite fold_left_accumulate'_cons.
-      destruct (Nat.eq_dec (length acc0) i).
-      { subst. rewrite fold_left_accumulate'_equiv.
-        rewrite app_nth1, app_nth2 by length_hammer.
-        rewrite Nat.sub_diag; reflexivity. }
-      { rewrite IHls by length_hammer.
-        rewrite <-(Nat.succ_pred_pos (i-length acc0)) by lia.
-        autorewrite with push_length. rewrite Nat.add_1_r.
-        cbn [fold_left firstn]. repeat (f_equal; [ ]).
-        lia. } }
+    { rewrite IHls by length_hammer.
+      autorewrite with push_length natsimpl push_firstn.
+      cbn [fold_left]. repeat (f_equal; [ ]). lia. }
   Qed.
 
   Lemma nth_fold_left_accumulate {A B}
         (f : B -> A -> B) :
     forall ls b d i,
-      i <= length ls ->
+      i < length ls ->
       nth i (fst (fold_left_accumulate f ls b)) d =
-      fold_left f (firstn i ls) b.
+      fold_left f (firstn (S i) ls) b.
   Proof.
     cbv [fold_left_accumulate]; intros.
     rewrite nth_fold_left_accumulate' by (cbn [length]; lia).
@@ -1188,7 +1167,7 @@ Section FoldLeftAccumulate.
   Lemma fold_left_accumulate_invariant_seq {A B}
         (I : nat -> B -> list B -> Prop) (P : (list B * B) -> Prop)
         (f : B -> A -> B) (ls : list A) b :
-    I 0 b [b] -> (* invariant holds at start *)
+    I 0 b [] -> (* invariant holds at start *)
   (* invariant holds through loop *)
   (forall t st acc d,
       I t st acc ->
@@ -1239,8 +1218,7 @@ Section FoldLeftAccumulate.
              | H : _ /\ _ |- _ => destruct H
              | |- _ /\ _ => split; try length_hammer
              | |- last _ _ = _ => apply last_last
-             end.
-    { cbn [app]; repeat constructor; auto. }
+             end; [ | ].
     { apply Forall2_app; auto. }
     { apply IimpliesP; auto. }
   Qed.
@@ -1256,11 +1234,11 @@ Section FoldLeftAccumulate.
     (forall a b acc1 acc2,
         I (start + len) a b ->
         (forall i da db,
-            start <= i <= start + len ->
-            I i (nth (i - start) acc1 da)
+            start <= i < start + len ->
+            I (S i) (nth (i - start) acc1 da)
               (nth (i - start) acc2 db)) ->
-        length acc1 = S len ->
-        length acc2 = S len ->
+        length acc1 = len ->
+        length acc2 = len ->
         P (acc1, a) (acc2, b)) ->
     P (fold_left_accumulate f (seq start len) a)
       (fold_left_accumulate g (seq start len) b).
@@ -1269,15 +1247,15 @@ Section FoldLeftAccumulate.
     eapply fold_left_double_invariant_seq
       with (I0 := fun i '(acc1, a') '(acc2, b') =>
                     (forall j d1 d2,
-                        start <= j <= i ->
-                        I j
+                        start <= j < i ->
+                        I (S j)
                           (nth (j - start) acc1 d1)
                           (nth (j - start) acc2 d2))
                     /\ I i a' b'
                     /\ last acc1 a = a'
                     /\ last acc2 b = b'
-                    /\ length acc1 = S i - start
-                    /\ length acc2 = S i - start);
+                    /\ length acc1 = i - start
+                    /\ length acc2 = i - start);
       intros;
       repeat match goal with
              | x : _ * _ |- _ => destruct x
@@ -1285,13 +1263,11 @@ Section FoldLeftAccumulate.
              | |- _ /\ _ => split; try length_hammer
              | |- last _ _ = _ => apply last_last
              end.
-    { intros j; intros. assert (j = start) by lia; subst.
-      autorewrite with natsimpl push_nth.
-      assumption. }
-    { intros j ? ? [? jupper].
+    { intros j ? ? ?.
+      assert (j <= i) as jupper by lia.
       apply Lt.le_lt_or_eq in jupper.
       destruct jupper; subst;
-        [ assert (start <= j <= i) by lia | ];
+        [ assert (start <= j < i) by lia | ];
         autorewrite with natsimpl push_nth; auto. }
     { subst; auto.
       apply IimpliesP; length_hammer. }
