@@ -141,9 +141,8 @@ Section WithCava.
 End WithCava.
 
 Section Test.
-  Definition bw := 8. (* only test numbers < 2**8 *)
-
   Definition run_sort (n : nat) (v : Vector.t N (two_pow n)) : Vector.t N (two_pow n) :=
+    let bw := 8 in
     Vector.map Bv2N (@bitonicSorter combType _ _ n
                        (N2Bv_sized bw 0)
                        (Vector.map (N2Bv_sized bw) v)).
@@ -159,3 +158,78 @@ Section Test.
   Proof. reflexivity. Qed.
   Close Scope N.
 End Test.
+
+Section Properties.
+  Fixpoint inorder {bw n} (v : Vector.t (Bvector bw) n) : Prop :=
+    match v with
+    | a :: v' =>
+        match v' with
+        | b :: v'' => (Bv2N a <=? Bv2N b = true)%N /\ inorder v'
+        | [] => True
+        end
+    | _ => True
+    end.
+
+  Lemma butterflySortedReverseInOrder :
+    forall n bw : nat,
+    forall d : Bvector bw,
+    forall v1 v2 : Vector.t (Bvector bw) (two_pow n),
+    inorder v1 -> inorder v2 ->
+    inorder (@butterfly combType _ (Vec Bit bw) _ d (@twoSorter combType _ _) (v1 ++ (reverse v2))).
+  Proof.
+    induction n; intros.
+    { simpl in v1, v2.
+      constant_vector_simpl v1.
+      constant_vector_simpl v2.
+      simpl.
+
+      unfold N.leb.
+      destruct (Bv2N x0 ?= Bv2N x)%N eqn:e.
+      { simpl. rewrite e. tauto. }
+      { simpl. rewrite e. tauto. }
+      { simpl.
+        rewrite N.compare_antisym.
+        rewrite e.
+        tauto. } }
+    { simpl.
+      cbv [interleave
+           parl
+           packV
+           unpackV
+           Combinational.CombinationalSemantics
+           unriffle
+           riffle
+           vec_riffle
+           vec_unriffle].
+      simpl.
+      do 2 rewrite VectorSpec.splitat_append.
+  Admitted.
+
+  Theorem bitonicSorterInOrder :
+    forall n bw : nat,
+    forall d : Bvector bw,
+    forall v : Vector.t (Bvector bw) (two_pow n),
+    inorder (@bitonicSorter combType _ _ _ d v).
+  Proof.
+    induction n.
+    { simpl.
+      intros.
+      constant_vector_simpl v.
+      simpl.
+      trivial. }
+    { simpl.
+      intros.
+      cbv [parl
+           packV
+           unpackV
+           Combinational.CombinationalSemantics
+           Vec.rev].
+      simpl.
+      destruct (@Vector.splitat (Vector.t bool bw) (two_pow n) (two_pow n) v) as [ifst isnd] eqn:e.
+      apply butterflySortedReverseInOrder.
+      { apply IHn. }
+      { apply IHn. } }
+  Qed.
+
+  (* TODO: proof that the sorter is a permutation *)
+End Properties.
