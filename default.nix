@@ -1,6 +1,5 @@
 { sources ? import ./nix/sources.nix
 , pkgs ? import ./nix/packages.nix { inherit sources; }
-, buildVerilator ? true
 }:
 
 let
@@ -8,22 +7,19 @@ let
     # Building
     coq_8_12
     (haskell.packages.ghc8104.ghcWithPackages (pkgs: with pkgs; [Cabal]))
+    gcc
+    verilator
 
     # Common tools
-    gcc
     git
     gnumake
+    bash
     stdenv
     coreutils
     findutils
-    bash
+    diffutils
     binutils.bintools
-  ] ++
-    # Verilator optional for parallel building
-    # TODO(blaxill): Perhaps build verilator separately and don't make optional
-    # here
-    (if buildVerilator then [pkgs.verilator] else [])
-  ;
+  ];
 in
 rec {
   cava-shell = pkgs.mkShell {
@@ -31,8 +27,8 @@ rec {
       buildInputs = tools;
     };
 
-  docker-image-build = pkgs.dockerTools.buildLayeredImage {
-    name = "gcr.io/oak-ci/oak-hardware";
+  silveroak-image = pkgs.dockerTools.buildLayeredImage {
+    name = "gcr.io/oak-ci/silveroak";
     tag = "latest";
     contents = tools;
     config = {
