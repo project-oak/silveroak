@@ -638,7 +638,7 @@ Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
 (*|
-The simplest sequential element is a delay (register). The delay takes in a
+The simplest sequential element is a unit delay (register). The delay takes in a
 value at the end of the clock cycle, and then outputs the same value at the
 start of the next clock cycle. So if we want to write a circuit that delays the
 input stream by three timesteps, we can write three delays in a row:
