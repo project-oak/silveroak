@@ -35,6 +35,8 @@ need to know Coq to follow along.
 Use Ctrl+down and Ctrl+up to step through the Coq code along with the
 tutorial. Use Ctrl+click to focus on a particular line.
 
+.. contents:: Table of Contents
+   :depth: 2
 
 Preliminaries
 =============
@@ -1041,6 +1043,215 @@ is equivalent to ``sum``:
 Lemma sum_concise_correct n (input : list (combType (Vec Bit n))):
   simulate sum_concise input = simulate sum input.
 Proof. reflexivity. Qed.
+
+(*|
+Example 7 : Fibonacci Sequence
+==============================
+
+.. coq:: none
+|*)
+
+Section WithCava.
+  Context {signal} {semantics : Cava signal}.
+
+(*|
+In this example, we'll write a circuit that computes the Fibonacci
+sequence. Here's the circuit diagram:
+|*)
+
+  Definition fibonacci {sz}
+    : Circuit (signal Void) (signal (Vec Bit sz)) :=
+    (* initial state of r1 = 1 *)
+    let r1_init : combType (Vec Bit sz) := N2Bv_sized sz 1 in
+    (* initial state of r2 = 2^sz-1 *)
+    let r2_init : combType (Vec Bit sz) := Vector.const one sz in
+
+    LoopInit r1_init
+             ( (* start: (in, r1) *)
+               Comb (dropl >=> fork2) >==> (* r1, r1 *)
+                    Second (DelayInit r2_init) >==> (* r1, r2 *)
+                    Comb (addN >=> fork2) (* r1 + r2, r1 + r2 *)).
+
+  Definition fibonacci_mealy {sz}
+    : Circuit (signal Void) (signal (Vec Bit sz)) :=
+    let v1 : combType (Vec Bit sz) := N2Bv_sized sz 1 in
+    let v_negative1 : combType (Vec Bit sz) := Vector.const one sz in
+    LoopInit v1
+      (LoopInit v_negative1
+                (Comb
+                   (fun '(_,r1,r2) =>
+                      sum <- addN (r1, r2) ;;
+                      ret (sum, sum, r1)))).
+
+(*|
+.. coq:: none
+|*)
+
+End WithCava.
+
+(*|
+TODO: netlist
+|*)
+
+Compute map Bv2N
+        (simulate (fibonacci (sz:=8)) (repeat tt 10)).
+
+Compute map Bv2N
+        (simulate (fibonacci_mealy (sz:=8)) (repeat tt 10)).
+
+(*|
+TODO: proofs
+|*)
+
+Fixpoint fibonacci_spec (n : nat) :=
+  match n with
+  | 0 => 0
+  | S m =>
+    let f_m := fibonacci_spec m in
+    match m with
+    | 0 => 1
+    | S p => fibonacci_spec p + f_m
+    end
+  end.
+
+Compute (map fibonacci_spec (seq 0 10)).
+
+Compute circuit_state
+( (* start: (in, r1) *)
+               Comb (dropl >=> fork2) >==> (* r1, r1 *)
+                    Second (DelayInit _) >==> (* r1, r2 *)
+                    Comb (addN >=> fork2)).
+
+Check tupleInterface.
+Compute tupleInterface combType [Void; Vec Bit _].
+
+Definition fibonacci_invariant {sz}
+           (t : nat)
+           (loop_state : combType (Vec Bit sz))
+           (body_circuit_state : combType (Vec Bit sz))
+           (output_accumulator : list (combType (Vec Bit n))) : Prop :=
+  (* at timestep t... *)
+  (* ...the loop state holds the sum of the inputs so far (that is,
+     the first t inputs) *)
+  loop_state = N2Bv_sized n (sum_list_N (map Bv2N (firstn t input)))
+  (* ... and the output accumulator matches the rolling-sum spec
+     applied to the inputs so far *)
+  /\ output_accumulator = spec_of_sum (firstn t input).
+
+(* the nth element of the simulation output is the bit-vector version of (fibonacci_spec n) *)
+Lemma fibonacci_correct sz (input : list unit) :
+  simulate (fibonacci (sz:=sz)) input
+  = map (fun n => nat_to_bitvec_sized sz (fibonacci_spec n))
+        (seq 0 (length input)).
+Proof.
+  cbv [fibonacci]. autorewrite with simpl_ident.
+  Search LoopInit.
+  eapply simulate_LoopInit_invariant
+Qed.
+
+(*|
+.. coq:: none
+|*)
+
+Section WithCava.
+  Context {signal} {semantics : Cava signal}.
+
+  (* TODO: fix mux currying *)
+  Definition mux2 {A} (i : signal Bit * (signal A * signal A)) :=
+    mux2 (fst i) (snd i).
+
+(*|
+Exponentiation by squaring!
+|*)
+
+  (* sliding window with table? *)
+
+  (* exponentiation by squaring, no trailing 0s *)
+  Definition exp_by_squaring_naive {A} (init : combType A)
+             (square : Circuit (signal A) (signal A))
+             (multiply : Circuit (signal A) (signal A))
+    : Circuit (signal Bit) (signal A) :=
+    LoopInit init
+             ((* start: exp[i], r1, r2 *)
+               Second (square >==> (* r^2 *)
+                              Comb fork2 >==> (* r^2, r^2 *)
+                              Second multiply (* r^2, r^2*x *))
+                      >==> (* exp[i], (r^2, r^2*x) *)
+                      Comb (mux2 >=> fork2) (* acc, acc *)).
+
+  (* exponentiation by squaring *)
+  Definition exp_by_squaring {A} (init : combType A)
+             (square : Circuit (signal A) (signal A))
+             (multiply : Circuit (signal A) (signal A))
+    : Circuit (signal Bit) (signal A) :=
+    LoopInit (i:=signal Bit) (o:=signal A) (s:=A) init
+             ((* start: exp[i], r *)
+               Second (square >==> (* r^2 *)
+                              Comb fork2 >==> (* r^2, r^2 *)
+                              Second multiply (* r^2, r^2*x *))
+                      >==> (* exp[i], (r^2, r^2*x) *)
+                      Comb (first fork2 >=> (* (exp[i], exp[i]), (r^2, r^2*x) *)
+                                  pair_right >=> (* exp[i], (exp[i], (r^2, r^2*x)) *)
+                                  second mux2 >=> (* exp[i], acc *)
+                                  second fork2 >=> (* exp[i], (acc, acc) *)
+                                  pair_left) >==> (* (exp[i], acc), acc *)
+                      First (Loop (Comb (pair_right >=> (* exp[i], (acc, out) *)
+                                                    second swap >=> (* exp[i], (out, acc) *)
+                                                    mux2 >=> (* out' *)
+                                                    fork2))) (* out', acc *)).
+
+(*|
+.. coq:: none
+|*)
+
+End WithCava.
+
+(*|
+TODO: netlist
+|*)
+
+(* Compute 3 * 9 = 27 using exponentiation by squaring to save operations (9 = 1001):
+   let w := 0 + 0 + 3 in
+   let x := w + w in
+   let y := x + x in
+   let z := y + y + x in
+   z *)
+Compute map Bv2N
+        (let double := Comb (fork2 >=> addN) in
+         let add := Comb (fun v => addN (N2Bv_sized 8 3, v)) in
+         simulate (exp_by_squaring_naive (A:=Vec Bit 8) (N2Bv_sized 8 0) double add)
+                  (Vector.to_list (N2Bv_sized 3 5))).
+
+Compute map Bv2N
+        (let double := Comb (fork2 >=> addN) in
+         let add := Comb (fun v => addN (N2Bv_sized 8 3, v)) in
+         simulate (exp_by_squaring_naive (A:=Vec Bit 8) (N2Bv_sized 8 0) double add)
+                  (Vector.to_list (N2Bv_sized 8 5))).
+
+Compute map Bv2N
+        (let double := Comb (fork2 >=> addN) in
+         let add := Comb (fun v => addN (N2Bv_sized 8 3, v)) in
+         simulate (exp_by_squaring (A:=Vec Bit 8) (N2Bv_sized 8 0) double add)
+                  (Vector.to_list (N2Bv_sized 8 5))).
+
+Definition fake_mul {n} x : Circuit (combType (Vec Bit n)) (combType (Vec Bit n)) :=
+  Comb (fun v => ret (N2Bv_sized n (Bv2N v * x))).
+Definition fake_square {n} : Circuit (combType (Vec Bit n)) (combType (Vec Bit n)) :=
+  Comb (fun v => ret (N2Bv_sized n (Bv2N v * Bv2N v))).
+
+(* Compute 3 ^ 5 = 243 *)
+Compute map Bv2N
+        (simulate (exp_by_squaring (A:=Vec Bit 8)
+                          (N2Bv_sized 8 1)
+                          fake_square
+                          (fake_mul 3))
+                  (Vector.to_list (N2Bv_sized 8 5))).
+
+(*|
+TODO: proofs
+|*)
+
+(* proof of binexp in general *)
 
 (*|
 .. _reference: /../reference

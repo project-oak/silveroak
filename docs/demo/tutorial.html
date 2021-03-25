@@ -24,14 +24,27 @@ syntax in depth, but will use the same few patterns throughout; you shouldn't
 need to know Coq to follow along.</p>
 <p>Use Ctrl+down and Ctrl+up to step through the Coq code along with the
 tutorial. Use Ctrl+click to focus on a particular line.</p>
+<div class="contents topic" id="table-of-contents">
+<p class="topic-title">Table of Contents</p>
+<ul class="simple">
+<li><a class="reference internal" href="#preliminaries" id="id1">Preliminaries</a></li>
+<li><a class="reference internal" href="#example-1-inverter" id="id2">Example 1 : Inverter</a></li>
+<li><a class="reference internal" href="#example-2-byte-xor" id="id3">Example 2 : Byte xor</a></li>
+<li><a class="reference internal" href="#example-3-bit-vector-xor" id="id4">Example 3: Bit-vector xor</a></li>
+<li><a class="reference internal" href="#example-4-tree-of-xors" id="id5">Example 4: Tree of xors</a></li>
+<li><a class="reference internal" href="#example-5-delay-for-three-timesteps" id="id6">Example 5 : Delay for Three Timesteps</a></li>
+<li><a class="reference internal" href="#example-6-sum-the-input-stream" id="id7">Example 6 : Sum the Input Stream</a></li>
+<li><a class="reference internal" href="#example-7-fibonacci-sequence" id="id8">Example 7 : Fibonacci Sequence</a></li>
+</ul>
+</div>
 <div class="section" id="preliminaries">
-<h1>Preliminaries</h1>
+<h1><a class="toc-backref" href="#id1">Preliminaries</a></h1>
 <p>To import the core Cava library you need to define and simulate circuits, just:</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Require Import</span> Cava.Cava.</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Import</span> Circuit.Notations.</span></span></span></pre><p>If you also want to do proofs about circuits, this import should have everything you need:</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Require Import</span> Cava.CavaProperties.</span></span></span></pre></div>
 <div class="section" id="example-1-inverter">
-<h1>Example 1 : Inverter</h1>
+<h1><a class="toc-backref" href="#id2">Example 1 : Inverter</a></h1>
 <p>To start, let's define a 1-bit inverter.</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">inverter</span>
            {<span class="nv">signal</span> : SignalType -&gt; <span class="kt">Type</span>}
@@ -256,7 +269,7 @@ plugging in the <tt class="docutils literal">CombinationalSemantics</tt> instanc
 explore more complex circuits.</p>
 </div>
 <div class="section" id="example-2-byte-xor">
-<h1>Example 2 : Byte xor</h1>
+<h1><a class="toc-backref" href="#id3">Example 2 : Byte xor</a></h1>
 <p>Our next example is a circuit that xors two bytes:</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight">  </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">xor_byte</span> :
     Circuit (signal (Vec Bit <span class="mi">8</span>) * signal (Vec Bit <span class="mi">8</span>))
@@ -413,7 +426,7 @@ possibile inputs separately. In fact, we never destruct the vectors or refer to
 the length at all, which leads us to our next example.</p>
 </div>
 <div class="section" id="example-3-bit-vector-xor">
-<h1>Example 3: Bit-vector xor</h1>
+<h1><a class="toc-backref" href="#id4">Example 3: Bit-vector xor</a></h1>
 <p>As it turns out, we can define <tt class="docutils literal">xor_byte</tt> over <em>arbitrary-length</em> bitvectors
 with very little modification. The circuit is virtually identical, except that
 it takes a length argument <tt class="docutils literal">n</tt> and all the <tt class="docutils literal">8</tt>s are replaced with <tt class="docutils literal">n</tt>:</p>
@@ -1270,7 +1283,7 @@ one proof, you have defined every single length of bit-vector xor you'll ever
 need. The same principle can apply to more complicated structures as well.</p>
 </div>
 <div class="section" id="example-4-tree-of-xors">
-<h1>Example 4: Tree of xors</h1>
+<h1><a class="toc-backref" href="#id5">Example 4: Tree of xors</a></h1>
 <p>To take the last circuit a step further, let's consider xoring not just two
 <tt class="docutils literal">n</tt>-length vectors, but an arbitrary number <tt class="docutils literal">m</tt> of <tt class="docutils literal">n</tt>-length vectors!</p>
 <p>We could write a definition that chains the xors together one by one:</p>
@@ -1491,7 +1504,7 @@ timing-dependent elements like loops or registers. In the next example, we'll
 show how to build <em>sequential</em> circuits.</p>
 </div>
 <div class="section" id="example-5-delay-for-three-timesteps">
-<h1>Example 5 : Delay for Three Timesteps</h1>
+<h1><a class="toc-backref" href="#id6">Example 5 : Delay for Three Timesteps</a></h1>
 <p>The simplest sequential element is a unit delay (register). The delay takes in a
 value at the end of the clock cycle, and then outputs the same value at the
 start of the next clock cycle. So if we want to write a circuit that delays the
@@ -1677,7 +1690,7 @@ firstn (Datatypes.length input)
    :: defaultSignal :: defaultSignal :: input)</span></div></blockquote></div></div></small><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="bp">reflexivity</span>.</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Qed</span>.</span></span></span></pre></div>
 <div class="section" id="example-6-sum-the-input-stream">
-<h1>Example 6 : Sum the Input Stream</h1>
+<h1><a class="toc-backref" href="#id7">Example 6 : Sum the Input Stream</a></h1>
 <p>This example will introduce <tt class="docutils literal">Loop</tt>, a circuit constructor that connects the
 output port of a circuit to its own input port with a delay in the middle. This
 creates <em>internal state</em> values, which can be referenced from inside the loop
@@ -2638,6 +2651,133 @@ is equivalent to <tt class="docutils literal">sum</tt>:</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chka9" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chka9"><span class="highlight"><span class="kn">Lemma</span> <span class="nf">sum_concise_correct</span> <span class="nv">n</span> (<span class="nv">input</span> : list (combType (Vec Bit n))):
   simulate sum_concise input = simulate sum input.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate sum_concise input = simulate sum input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
 </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkaa" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkaa"><span class="highlight"><span class="kn">Proof</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">n</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">nat</span></span></span></span></div><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list (combType (Vec Bit n))</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate sum_concise input = simulate sum input</span></div></blockquote></div></div></small><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="bp">reflexivity</span>.</span></span><span class="alectryon-wsp"> </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Qed</span>.</span></span></span></pre></div>
+<div class="section" id="example-7-fibonacci-sequence">
+<h1><a class="toc-backref" href="#id8">Example 7 : Fibonacci Sequence</a></h1>
+<p>Fibonacci!</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight">  </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">fibonacci</span> {<span class="nv">sz</span>}
+    : Circuit (signal Void) (signal (Vec Bit sz)) :=
+    <span class="c">(* initial state of r1 = 1 *)</span>
+    <span class="kr">let</span> <span class="nv">r1_init</span> : combType (Vec Bit sz) := N2Bv_sized sz <span class="mi">1</span> <span class="kr">in</span>
+    <span class="c">(* initial state of r2 = 2^sz-1 *)</span>
+    <span class="kr">let</span> <span class="nv">r2_init</span> : combType (Vec Bit sz) := Vector.const one sz <span class="kr">in</span>
+
+    LoopInit r1_init
+             ( <span class="c">(* start: (in, r1) *)</span>
+               Comb (dropl &gt;=&gt; fork2) &gt;==&gt; <span class="c">(* r1, r1 *)</span>
+                    Second (DelayInit r2_init) &gt;==&gt; <span class="c">(* r1, r2 *)</span>
+                    Comb (addN &gt;=&gt; fork2) <span class="c">(* r1 + r2, r1 + r2 *)</span>).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">fibonacci_mealy</span> {<span class="nv">sz</span>}
+    : Circuit (signal Void) (signal (Vec Bit sz)) :=
+    <span class="kr">let</span> <span class="nv">v1</span> : combType (Vec Bit sz) := N2Bv_sized sz <span class="mi">1</span> <span class="kr">in</span>
+    <span class="kr">let</span> <span class="nv">v_negative1</span> : combType (Vec Bit sz) := Vector.const one sz <span class="kr">in</span>
+    LoopInit v1
+      (LoopInit v_negative1
+                (Comb
+                   (<span class="kr">fun</span> &#39;(_,r1,r2) =&gt;
+                      sum &lt;- addN (r1, r2) ;;
+                      ret (sum, sum, r1)))).</span></span></span></pre><p>TODO: netlist</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkab" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkab"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+        (simulate (fibonacci (sz:=<span class="mi">8</span>)) (<span class="kp">repeat</span> tt <span class="mi">10</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">0</span>%N; <span class="mi">1</span>%N; <span class="mi">1</span>%N; <span class="mi">2</span>%N; <span class="mi">3</span>%N; <span class="mi">5</span>%N; <span class="mi">8</span>%N; <span class="mi">13</span>%N; <span class="mi">21</span>%N;
+  <span class="mi">34</span>%N]
+: list N</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkac" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkac"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+        (simulate (fibonacci_mealy (sz:=<span class="mi">8</span>)) (<span class="kp">repeat</span> tt <span class="mi">10</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">0</span>%N; <span class="mi">1</span>%N; <span class="mi">1</span>%N; <span class="mi">2</span>%N; <span class="mi">3</span>%N; <span class="mi">5</span>%N; <span class="mi">8</span>%N; <span class="mi">13</span>%N; <span class="mi">21</span>%N;
+  <span class="mi">34</span>%N]
+: list N</span></blockquote></div></div></small></span></pre><p>TODO: proofs</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Fixpoint</span> <span class="nf">fibonacci_spec</span> (<span class="nv">n</span> : nat) :=
+  <span class="kr">match</span> n <span class="kr">with</span>
+  | <span class="mi">0</span> =&gt; <span class="mi">0</span>
+  | S m =&gt;
+    <span class="kr">let</span> <span class="nv">f_m</span> := fibonacci_spec m <span class="kr">in</span>
+    <span class="kr">match</span> m <span class="kr">with</span>
+    | <span class="mi">0</span> =&gt; <span class="mi">1</span>
+    | S p =&gt; fibonacci_spec p + f_m
+    <span class="kr">end</span>
+  <span class="kr">end</span>.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkad" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkad"><span class="highlight"><span class="kn">Compute</span> (map fibonacci_spec (seq <span class="mi">0</span> <span class="mi">20</span>)).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">0</span>; <span class="mi">1</span>; <span class="mi">1</span>; <span class="mi">2</span>; <span class="mi">3</span>; <span class="mi">5</span>; <span class="mi">8</span>; <span class="mi">13</span>; <span class="mi">21</span>; <span class="mi">34</span>; <span class="mi">55</span>; <span class="mi">89</span>; <span class="mi">144</span>;
+  <span class="mi">233</span>; <span class="mi">377</span>; <span class="mi">610</span>; <span class="mi">987</span>; <span class="mi">1597</span>; <span class="mi">2584</span>; <span class="mi">4181</span>]
+: list nat</span></blockquote></div></div></small></span></pre><p>Exponentiation by squaring!</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight">  <span class="c">(* sliding window with table? *)</span>
+
+  <span class="c">(* exponentiation by squaring, no trailing 0s *)</span>
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">exp_by_squaring_naive</span> {<span class="nv">A</span>} (<span class="nv">init</span> : combType A)
+             (<span class="nv">square</span> : Circuit (signal A) (signal A))
+             (<span class="nv">multiply</span> : Circuit (signal A) (signal A))
+    : Circuit (signal Bit) (signal A) :=
+    LoopInit init
+             (<span class="c">(* start: exp[i], r1, r2 *)</span>
+               Second (square &gt;==&gt; <span class="c">(* r^2 *)</span>
+                              Comb fork2 &gt;==&gt; <span class="c">(* r^2, r^2 *)</span>
+                              Second multiply <span class="c">(* r^2, r^2*x *)</span>)
+                      &gt;==&gt; <span class="c">(* exp[i], (r^2, r^2*x) *)</span>
+                      Comb (mux2 &gt;=&gt; fork2) <span class="c">(* acc, acc *)</span>).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+  <span class="c">(* exponentiation by squaring *)</span>
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">exp_by_squaring</span> {<span class="nv">A</span>} (<span class="nv">init</span> : combType A)
+             (<span class="nv">square</span> : Circuit (signal A) (signal A))
+             (<span class="nv">multiply</span> : Circuit (signal A) (signal A))
+    : Circuit (signal Bit) (signal A) :=
+    LoopInit (i:=signal Bit) (o:=signal A) (s:=A) init
+             (<span class="c">(* start: exp[i], r *)</span>
+               Second (square &gt;==&gt; <span class="c">(* r^2 *)</span>
+                              Comb fork2 &gt;==&gt; <span class="c">(* r^2, r^2 *)</span>
+                              Second multiply <span class="c">(* r^2, r^2*x *)</span>)
+                      &gt;==&gt; <span class="c">(* exp[i], (r^2, r^2*x) *)</span>
+                      Comb (<span class="kp">first</span> fork2 &gt;=&gt; <span class="c">(* (exp[i], exp[i]), (r^2, r^2*x) *)</span>
+                                  pair_right &gt;=&gt; <span class="c">(* exp[i], (exp[i], (r^2, r^2*x)) *)</span>
+                                  second mux2 &gt;=&gt; <span class="c">(* exp[i], acc *)</span>
+                                  second fork2 &gt;=&gt; <span class="c">(* exp[i], (acc, acc) *)</span>
+                                  pair_left) &gt;==&gt; <span class="c">(* (exp[i], acc), acc *)</span>
+                      First (Loop (Comb (pair_right &gt;=&gt; <span class="c">(* exp[i], (acc, out) *)</span>
+                                                    second <span class="nb">swap</span> &gt;=&gt; <span class="c">(* exp[i], (out, acc) *)</span>
+                                                    mux2 &gt;=&gt; <span class="c">(* out&#39; *)</span>
+                                                    fork2))) <span class="c">(* out&#39;, acc *)</span>).</span></span></span></pre><p>TODO: netlist</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight"><span class="c">(* Compute 3 * 9 = 27 using exponentiation by squaring to save operations (9 = 1001):</span>
+<span class="c">   let w := 0 + 0 + 3 in</span>
+<span class="c">   let x := w + w in</span>
+<span class="c">   let y := x + x in</span>
+<span class="c">   let z := y + y + x in</span>
+<span class="c">   z *)</span>
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkae" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkae"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+        (<span class="kr">let</span> <span class="nv">double</span> := Comb (fork2 &gt;=&gt; addN) <span class="kr">in</span>
+         <span class="kr">let</span> <span class="nv">add</span> := Comb (<span class="kr">fun</span> <span class="nv">v</span> =&gt; addN (N2Bv_sized <span class="mi">8</span> <span class="mi">3</span>, v)) <span class="kr">in</span>
+         simulate (exp_by_squaring_naive (A:=Vec Bit <span class="mi">8</span>) (N2Bv_sized <span class="mi">8</span> <span class="mi">0</span>) double add)
+                  (Vector.to_list (N2Bv_sized <span class="mi">3</span> <span class="mi">5</span>))).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">3</span>%N; <span class="mi">6</span>%N; <span class="mi">15</span>%N]
+: list N</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkaf" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkaf"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+        (<span class="kr">let</span> <span class="nv">double</span> := Comb (fork2 &gt;=&gt; addN) <span class="kr">in</span>
+         <span class="kr">let</span> <span class="nv">add</span> := Comb (<span class="kr">fun</span> <span class="nv">v</span> =&gt; addN (N2Bv_sized <span class="mi">8</span> <span class="mi">3</span>, v)) <span class="kr">in</span>
+         simulate (exp_by_squaring_naive (A:=Vec Bit <span class="mi">8</span>) (N2Bv_sized <span class="mi">8</span> <span class="mi">0</span>) double add)
+                  (Vector.to_list (N2Bv_sized <span class="mi">8</span> <span class="mi">5</span>))).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">3</span>%N; <span class="mi">6</span>%N; <span class="mi">15</span>%N; <span class="mi">30</span>%N; <span class="mi">60</span>%N; <span class="mi">120</span>%N; <span class="mi">240</span>%N;
+  <span class="mi">224</span>%N]
+: list N</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkb0" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkb0"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+        (<span class="kr">let</span> <span class="nv">double</span> := Comb (fork2 &gt;=&gt; addN) <span class="kr">in</span>
+         <span class="kr">let</span> <span class="nv">add</span> := Comb (<span class="kr">fun</span> <span class="nv">v</span> =&gt; addN (N2Bv_sized <span class="mi">8</span> <span class="mi">3</span>, v)) <span class="kr">in</span>
+         simulate (exp_by_squaring (A:=Vec Bit <span class="mi">8</span>) (N2Bv_sized <span class="mi">8</span> <span class="mi">0</span>) double add)
+                  (Vector.to_list (N2Bv_sized <span class="mi">8</span> <span class="mi">5</span>))).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">3</span>%N; <span class="mi">3</span>%N; <span class="mi">15</span>%N; <span class="mi">15</span>%N; <span class="mi">15</span>%N; <span class="mi">15</span>%N; <span class="mi">15</span>%N; <span class="mi">15</span>%N]
+: list N</span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">fake_mul</span> {<span class="nv">n</span>} <span class="nv">x</span> : Circuit (combType (Vec Bit n)) (combType (Vec Bit n)) :=
+  Comb (<span class="kr">fun</span> <span class="nv">v</span> =&gt; ret (N2Bv_sized n (Bv2N v * x))).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">fake_square</span> {<span class="nv">n</span>} : Circuit (combType (Vec Bit n)) (combType (Vec Bit n)) :=
+  Comb (<span class="kr">fun</span> <span class="nv">v</span> =&gt; ret (N2Bv_sized n (Bv2N v * Bv2N v))).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+<span class="c">(* Compute 3 ^ 5 = 243 *)</span>
+</span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chkb1" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chkb1"><span class="highlight"><span class="kn">Compute</span> map Bv2N
+        (simulate (exp_by_squaring (A:=Vec Bit <span class="mi">8</span>)
+                          (N2Bv_sized <span class="mi">8</span> <span class="mi">1</span>)
+                          fake_square
+                          (fake_mul <span class="mi">3</span>))
+                  (Vector.to_list (N2Bv_sized <span class="mi">8</span> <span class="mi">5</span>))).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= [<span class="mi">3</span>%N; <span class="mi">3</span>%N; <span class="mi">243</span>%N; <span class="mi">243</span>%N; <span class="mi">243</span>%N; <span class="mi">243</span>%N; <span class="mi">243</span>%N;
+  <span class="mi">243</span>%N]
+: list N</span></blockquote></div></div></small></span></pre><p>TODO: proofs</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight"><span class="c">(* proof of binexp in general *)</span></span></span></pre></div>
 </div>
 </div></body>
 </html>
