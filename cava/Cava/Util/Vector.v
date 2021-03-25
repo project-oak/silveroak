@@ -93,6 +93,17 @@ Section Vector.
     | 0 => fun _ => []
     | S n' => fun xs => snoc (reverse (tl xs)) (hd xs)
     end.
+
+  Fixpoint unfold {n A B} (b:B) (f : B -> A*B) : t A n
+    := match n with
+       | 0 => []
+       | S n' => let (a,b) := f b in a :: unfold b f end.
+
+  Fixpoint unfold_ix {n A B} (b:B) (f : nat -> B -> A*B) : t A n
+    := match n with
+       | 0 => []
+       | S n' => let (a,b) := f n' b in a :: unfold_ix b f end.
+
 End Vector.
 
 Section Transpose.
