@@ -90,28 +90,24 @@ Definition encoderdecoderInterface (n: nat)
      [mkPort "v" (Vec Bit n)]
      [mkPort "o" (Vec Bit n)].
 
+(*
+ * Verilator overflows when I make this 3 into a 4, since 16*16 = 265, which is
+ * wide a wire for it
+ *)
 Definition encoderdecoderNetlist
-  := makeNetlist (encoderdecoderInterface 4) (decoder >=> encoder).
+  := makeNetlist (encoderdecoderInterface 3) (decoder >=> encoder).
 
-Definition encoderdecoder_tb_inputs : list (Bvector 4) :=
-  [N2Bv_sized 4 0;
-   N2Bv_sized 4 1;
-   N2Bv_sized 4 2;
-   N2Bv_sized 4 3;
-   N2Bv_sized 4 4;
-   N2Bv_sized 4 5;
-   N2Bv_sized 4 6;
-   N2Bv_sized 4 7;
-   N2Bv_sized 4 8;
-   N2Bv_sized 4 9;
-   N2Bv_sized 4 10;
-   N2Bv_sized 4 11;
-   N2Bv_sized 4 12;
-   N2Bv_sized 4 13;
-   N2Bv_sized 4 14;
-   N2Bv_sized 4 15;
-   N2Bv_sized 4 16].
+Definition encoderdecoder_tb_inputs : list (Bvector 3) :=
+  [N2Bv_sized 3 0;
+   N2Bv_sized 3 1;
+   N2Bv_sized 3 2;
+   N2Bv_sized 3 3;
+   N2Bv_sized 3 4;
+   N2Bv_sized 3 5;
+   N2Bv_sized 3 6;
+   N2Bv_sized 3 7;
+   N2Bv_sized 3 8].
 
 Definition encoderdecoder_tb
   := testBench "encoderdecoder_tb"
-     (encoderdecoderInterface 4) encoderdecoder_tb_inputs encoderdecoder_tb_inputs.
+     (encoderdecoderInterface 3) encoderdecoder_tb_inputs encoderdecoder_tb_inputs.
