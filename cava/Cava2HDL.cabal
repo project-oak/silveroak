@@ -38,7 +38,7 @@ stability:           Experimental
 cabal-version:        >= 1.10
 
 library
-  build-Depends:     base >= 4, mtl >= 2
+  build-Depends:     base >= 4, mtl >= 2, ghc-prim >= 0.5.3
   exposed-Modules:   Cava2SystemVerilog
                      Adders
                      Applicative
