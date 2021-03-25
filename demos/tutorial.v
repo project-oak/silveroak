@@ -27,13 +27,20 @@
 Tutorial
 ========
 
-Welcome! This is a quick primer for designing circuits with Cava. We'll walk
-through a few small examples end-to-end. This tutorial will not explain Coq
-syntax in depth, but will use the same few patterns throughout; you shouldn't
-need to know Coq to follow along.
+Welcome! This is a quick primer for designing circuits with the Cava DSL. This
+tutorial will not explain Coq syntax in depth, but will use the same few
+patterns throughout; you shouldn't need to be a Coq expert to follow
+along. We'll walk through a few small examples end-to-end, showing you how to
+define, simulate, and generate netlists for circuits in Cava.
 
-Use Ctrl+down and Ctrl+up to step through the Coq code along with the
-tutorial. Use Ctrl+click to focus on a particular line.
+This page allows you to see the Coq output for each line that has output. Try
+hovering over the following line:
+|*)
+
+Compute (1 + 2).
+
+(*|
+See the banner at the top of the page for instructions on how to navigate the proofs.
 
 .. contents:: Table of Contents
    :depth: 2
@@ -1296,9 +1303,11 @@ Qed.
 
 (*|
 That concludes our tutorial! If you want to explore further, take a look at the
-``examples`` directory in our GitHub repo_.
+``examples`` directory in our GitHub repo_. You can also view the full source_
+for this page if you want to experiment with these examples yourself.
 
 .. _reference: /../reference
 .. _mealy: https://en.wikipedia.org/wiki/Mealy_machine
 .. _repo: https://github.com/project-oak/silveroak
+.. _source: https://github.com/project-oak/silveroak/blob/main/demos/tutorial.v
 |*)
