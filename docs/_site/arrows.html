@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>Arrow References Recommended | Silver Oak</title>
+<meta name="generator" content="Jekyll v3.9.0" />
+<meta property="og:title" content="Arrow References Recommended" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Formal specification and verification of hardware, especially for security and privacy." />
+<meta property="og:description" content="Formal specification and verification of hardware, especially for security and privacy." />
+<link rel="canonical" href="http://localhost:4000/arrows.html" />
+<meta property="og:url" content="http://localhost:4000/arrows.html" />
+<meta property="og:site_name" content="Silver Oak" />
+<script type="application/ld+json">
+{"description":"Formal specification and verification of hardware, especially for security and privacy.","url":"http://localhost:4000/arrows.html","headline":"Arrow References Recommended","@type":"WebPage","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="stylesheet" href="/assets/css/style.css?v=3aa1caaa0df6000871c556fb7d00b33f1601db7e">
+    <!--[if lt IE 9]>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.min.js"></script>
+<![endif]-->
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;400&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Roboto', sans-serif;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+
+      <h3 id="arrow-references-recommended">Arrow References Recommended</h3>
+
+<ul>
+  <li>
+    <p><a href="http://www.cse.chalmers.se/~rjmh/Papers/arrows.pdf">Generalising Monads to Arrows - John Huges</a></p>
+
+    <p>The original Arrows paper</p>
+  </li>
+  <li>
+    <p><a href="https://www2.eecs.berkeley.edu/Pubs/TechRpts/2014/EECS-2014-130.pdf">Generalized Arrows - Adam Megacz Joseph</a></p>
+
+    <p>The original Arrows formulation requires a function <code class="language-plaintext highlighter-rouge">arr : (x-&gt;y) -&gt; a x y</code>,
+this thesis shows a formulation of arrows that doesn’t require this function.
+Additionally it:</p>
+
+    <ul>
+      <li>Proves a categoral foundation for these Generalized Arrows</li>
+      <li>Proves that programming languages can be represented as Generalized Arrows
+  (not used in Cava work)</li>
+      <li>Argues Kappa Calculus, which is an object language lacking first-class
+  functions, is more appropriate for modeling computation with arrows than other
+  approaches.</li>
+    </ul>
+
+    <p>Recommended sections:</p>
+
+    <ul>
+      <li>2.1 - Arrows in Haskell</li>
+      <li>2.1.1 - The pow Function using Arrows</li>
+      <li>2.1.3 - Circuits using Arrows</li>
+      <li>2.2 Generalized Arrows in Haskell</li>
+      <li>2.2.1 The pow Function using Generalized Arrows</li>
+    </ul>
+
+    <p>Optional sections:</p>
+
+    <ul>
+      <li>2.3 - Circuits using a Two-Level Language</li>
+      <li>4.3 - Kappa Calculus as the Minimal Object Language</li>
+    </ul>
+  </li>
+</ul>
+
+<h3 id="arrow-references-additional">Arrow References Additional</h3>
+
+<ul>
+  <li><a href="http://www.cse.chalmers.se/~rjmh/afp-arrows.pdf">Programming with Arrows - John Hughes</a></li>
+  <li><a href="http://homepages.inf.ed.ac.uk/slindley/papers/arrow-calculus.pdf">The arrow calculus - Sam Lindley, Philip Wadler, and Jeremy Yallop</a></li>
+</ul>
+
+<h3 id="optional-kappa-calculus-references">Optional Kappa Calculus References</h3>
+
+<p>The following are the foundational work of Kappa Calculus but Adam Megacz thesis
+sections are enough information on Kappa Calculus for this project.</p>
+
+<ul>
+  <li>
+    <p><a href="https://link.springer.com/chapter/10.1007%2F3-540-60164-3_28">Decomposing typed lambda calculus into a couple of categorical programming
+languages - Masahito Hasegawa</a></p>
+
+    <p>“He showed that just as the 𝜆-calculus can be used as a “syntax” for
+specifying morphisms in a cartesian closed category, so too can the 𝜅-calculus
+– roughly the 𝜆-calculus without first-class functions – be used as a
+“syntax” for specifying morphisms. I recommend studying the figure immediately
+after the first paragraph of section 3 in his paper (very carefully). It
+conveys both the essence of these categories and their relevance to the study
+of programming languages.” - https://mathoverflow.net/questions/36866/what-are-%ce%baappa-categories/37180#37180</p>
+  </li>
+  <li>
+    <p><a href="https://www.sciencedirect.com/science/article/pii/0003484374900035?via%3Dihub">Functional completeness of cartesian categories</a></p>
+
+    <p>First formulation of ideas</p>
+  </li>
+</ul>
+
+<h2 id="arrow-usage-in-this-project">Arrow usage in this project</h2>
+
+<p>This project currently uses the generalized arrows described by Adam Megacz
+work with some notable differences:</p>
+
+<ul>
+  <li>Currently the Arrow sub classes are not broken out into their own classes (e.g
+  ArrowDrop)</li>
+  <li>Arrows are used “directly” and we don’t represent lanuages as generalized
+  arrows. Adam’s construction of multilevel languages makes heavy use of the
+  category theory form.</li>
+  <li>Conversion between Kappa Calculus and Arrows does not follow the paper and is
+currently performed via a lambda-closure-conversion-like method. This is as
+the paper method requires encoding the source and target languages as
+generalized arrows or through the papers custom typing tree method.</li>
+  <li>
+    <p>Additional forms of equivalence are specified to allow circuit equivalence
+  without equality. Currently there is one form of equivalence per Arrow instance,
+  although this could change. Each instance equivalence is related to the
+  instance:</p>
+
+    <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>- Evaluation equivalence is pointwise equivalence (e.g. `f~g if f(x)~g(x)`)
+- The constructive instance equivalence is structural equivalence with
+    some allowed transforms such as `f &gt;&gt;&gt; drop ~ drop`, that is, dropping
+    all outputs from some component is equivalent to immediately dropping.
+- Netlist equivalence is not implemented but should perhaps be if the hdl is
+    equivalent up to reordering.
+</code></pre></div>    </div>
+  </li>
+</ul>
+
+<h2 id="phoas">PHOAS</h2>
+
+<p>Kappa Calculus is encoded as an inductive type as detailed by 
+<a href="http://adam.chlipala.net/papers/PhoasICFP08/">Adam Chlipala in Parametric Higher-Order Abstract Syntax (PHOAS) for Mechanized Semantics</a>.</p>
+
+<pre><code class="language-Coq">Variable var: object -&gt; object -&gt; Type.
+
+Inductive kappa_sugared : object -&gt; object -&gt; Type :=
+| Var: forall x y,    var x y -&gt; kappa_sugared x y
+| Abs: forall x y z,  (var unit x -&gt; kappa_sugared y z) -&gt; kappa_sugared (x ** y) z
+| App: forall x y z,  kappa_sugared (x ** y) z -&gt; kappa_sugared unit x -&gt; kappa_sugared y z
+| Com: forall x y z,  kappa_sugared y z -&gt; kappa_sugared x y -&gt; kappa_sugared x z
+| Arr: forall x y,    morphism x y -&gt; kappa_sugared x y
+| Let: forall x y z,  kappa_sugared unit x -&gt; (var unit x -&gt; kappa_sugared y z) -&gt; kappa_sugared y z.
+
+Inductive kappa : object -&gt; object -&gt; Type :=
+| DVar : forall x y,   var x y -&gt; kappa x y
+| DAbs : forall x y z, (var unit x -&gt; kappa y z) -&gt; kappa (x**y) z
+| DApp : forall x y z, kappa (x**y) z -&gt; kappa unit x -&gt; kappa y z
+| DCompose : forall x y z, kappa y z -&gt; kappa x y -&gt; kappa x z
+| DArr : forall x y,   morphism x y -&gt; kappa x y.
+
+Fixpoint desugar {var i o} (e: kappa_sugared var i o) : kappa var i o := ...
+</code></pre>
+
+<p>Lambda-like notation is provided, but it is possible to directly construct
+terms:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>Definition delay : kappa (bit**unit) bit := desugar (
+  Abs (fun input_wire =&gt;
+    App (Arr (delay_gate)) (Var input_wire)
+  )).
+
+Definition fork_then_xor_and : kappa (bit ** unit) (bit ** bit ** unit) :=
+desugar (
+  Abs (fun input_wire =&gt;
+    Let (App (Arr xor_gate) (Var input_wire)) (fun x =&gt;
+    Let (App (Arr and_gate) (Var input_wire)) (fun y =&gt;
+    App (App (App (Arr id) (Var x) (Var y)
+    ))))
+  )).
+</code></pre></div></div>
+
+<h2 id="finite-binary-tree-with-a-rightmost-unit">Finite binary tree with a rightmost unit</h2>
+
+<p><code class="language-plaintext highlighter-rouge">Tree a = () | a | (Tree a, Tree a)</code></p>
+
+<p>Without a class such as Haskell’s <code class="language-plaintext highlighter-rouge">ArrowApply</code>, curried functions are not available.
+Adam Megacz (or prior work?) shows that we can still have parital application by requiring
+the input representation is a finite binary tree with a rightmost unit. The
+rightmost unit is required for the case of applying the final argument. For
+example (note this is psuedo kappa calculus, so all terms have an input and
+output type):</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>f: (a, (b, ())) ~&gt; c
+A: () ~&gt; a
+B: () ~&gt; b
+
+f A: (b, ()) ~&gt; c
+f A B: () ~&gt; c
+</code></pre></div></div>
+
+<p>Without the rightmost unit, <code class="language-plaintext highlighter-rouge">f A B</code> either must be treated as a special case, or
+has no legal representation.</p>
+
+
+      <footer>
+        
+        <p>This project is maintained by <a href="https://github.com/satnam6502">satnam6502</a></p>
+        
+        <p><small>Hosted on GitHub Pages &mdash; Theme based on <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    <script src="/assets/js/scale.fix.js"></script>
+  </body>
+</html>
+

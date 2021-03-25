@@ -21,7 +21,7 @@
 ################################################################################
 
 SV = nand2.sv adder4.sv fullAdder.sv \
-     adder_tree4_8.sv two_sorter.sv
+     adder_tree4_8.sv two_sorter.sv bsort4_8.sv
 
 BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)

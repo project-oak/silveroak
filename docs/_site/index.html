@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>Silver Oak | Formal specification and verification of hardware, especially for security and privacy.</title>
+<meta name="generator" content="Jekyll v3.9.0" />
+<meta property="og:title" content="Silver Oak" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Formal specification and verification of hardware, especially for security and privacy." />
+<meta property="og:description" content="Formal specification and verification of hardware, especially for security and privacy." />
+<link rel="canonical" href="http://localhost:4000/" />
+<meta property="og:url" content="http://localhost:4000/" />
+<meta property="og:site_name" content="Silver Oak" />
+<script type="application/ld+json">
+{"description":"Formal specification and verification of hardware, especially for security and privacy.","url":"http://localhost:4000/","headline":"Silver Oak","@type":"WebSite","name":"Silver Oak","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="stylesheet" href="/assets/css/style.css?v=3aa1caaa0df6000871c556fb7d00b33f1601db7e">
+    <!--[if lt IE 9]>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.min.js"></script>
+<![endif]-->
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;400&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Roboto', sans-serif;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+
+      <h1 id="silver-oak">Silver Oak</h1>
+
+<p>Silver Oak is a research project at Google Research exploring alternative
+techniques for producing high assurance circuits and systems based on an
+approach that unifies specification, implementation and formal verification
+in a single system, specifically the <a href="https://coq.inria.fr/">Coq</a> interactive
+theorem prover. We follow an approach inspired by the vision set out by
+<a href="http://adam.chlipala.net/">Adam Chlipala</a> at MIT in his book
+<a href="http://adam.chlipala.net/cpdt/">Certified Programming with Dependent Types</a>.</p>
+
+<p>The Silver Oak project focuses on the design and verification of high assurance variants
+of some of the peripherals used in the <a href="https://opentitan.org/">OpenTitan</a> silicon root of trust e.g.
+the AES crypto-accelerator block. We focus on the specification, implementation
+and verification of low-level structural circuits built bottom up by composing
+basic circuit elements (gates, registers, wires) using powerful higher order
+combinators in the style of <a href="https://dl.acm.org/doi/abs/10.1145/291251.289440">Lava</a>.
+Another Coq-based approache for producing hardware is
+<a href="https://plv.csail.mit.edu/kami/">Kami</a> which encodes aspects of the
+<a href="http://wiki.bluespec.com/">Bluespec</a> hardware description language as a EDSL in Coq.
+Kami and Bluespec are powerful tools for designing processor-style control-orientated
+circuits. We focus instead on “network-style” and “daatpath” low level circuits
+e.g. hardware accelerators for AES.</p>
+
+<p>A key design goal for our project is to produce hardware which are just as
+efficient as the existing blocks written by hardware engineers in SystemVerilog.
+Consequently our design decisions focus on giving the designer a lot of
+control over the generated circuit netlist by using high level combinators
+to make low level circuit design more productive and more ameanble to
+formal verification. The EDSL we are developing for this task is called
+Cava (Coq + Lava).</p>
+
+<p>Our verification work is focused on specification and verification of
+circuit designs (i.e. “programs”) and not currently on the “compiler” i.e.
+the infrastructure that maps form Cava EDSL in Coq to SystemVerilog. Complementary
+work is under way at other research groups that tackle the compiler
+verification challenge for hardware RTL sythesis to gates e.g.
+<a href="https://ts.data61.csiro.au/publications/csiro_full_text/Loeoew_KTMNAF_19.pdf">Verified Compilation on a Verified Processor</a>.</p>
+
+<h2 id="the-code">The Code</h2>
+
+<p>The code is currently very experimental and in constant flux! Please see the <a href="CONTRIBUTING.md">contributing guide</a> for how to submit push
+requests.</p>
+
+<h2 id="pre-requisites">Pre-requisites</h2>
+
+<p>Please install the following components:</p>
+
+<ul>
+  <li>The <a href="https://coq.inria.fr/">Coq proof assistant</a> version 8.12.0.</li>
+  <li>The <a href="https://www.haskell.org/ghc/">GHC Haskell compiler</a> version 8.6.5 or later</li>
+  <li><a href="https://www.veripool.org/wiki/verilator">Verilator</a> version 4.028 (as specified by the
+<a href="https://docs.opentitan.org/doc/ug/install_instructions/#verilator">OpenTitan</a> documentation).</li>
+</ul>
+
+<p>To re-build the OpenTitan system with the Cava versions of the high assurance
+peripherals you will also need to install <a href="https://github.com/lowRISC/opentitan/blob/master/README.md">OpenTitan</a>.</p>
+
+<h2 id="building">Building</h2>
+
+<p>To build the Cava system and its examples and run tests, type <code class="language-plaintext highlighter-rouge">make</code> in the root directory of the repo.</p>
+
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span><span class="nb">cd </span>silveroak
+<span class="gp">$</span><span class="w"> </span>make
+</code></pre></div></div>
+
+<p>To remove all automatically generated files:</p>
+<div class="language-console highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="gp">$</span><span class="w"> </span>make clean
+</code></pre></div></div>
+
+<h2 id="web-based-examples-of-proofs">Web-based examples of proofs</h2>
+<p>See this <a href="/demo/tutorial.html">tutorial</a> which shows some introductory
+examples and allows you to explore the proofs interactively through a
+browser without having to install any software locally. Try hovering
+over the <code class="language-plaintext highlighter-rouge">Check nat.</code> line.</p>
+
+<h2 id="cava-examples">Cava Examples</h2>
+<p>See <a href="https://github.com/project-oak/silveroak/blob/main/acorn-examples/README.md">Cava Examples</a> for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.</p>
+
+
+
+      <footer>
+        
+        <p>This project is maintained by <a href="https://github.com/satnam6502">satnam6502</a></p>
+        
+        <p><small>Hosted on GitHub Pages &mdash; Theme based on <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    <script src="/assets/js/scale.fix.js"></script>
+  </body>
+</html>
+

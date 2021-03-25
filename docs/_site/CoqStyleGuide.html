@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Begin Jekyll SEO tag v2.6.1 -->
+<title>Coq Style Guide | Silver Oak</title>
+<meta name="generator" content="Jekyll v3.9.0" />
+<meta property="og:title" content="Coq Style Guide" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="Formal specification and verification of hardware, especially for security and privacy." />
+<meta property="og:description" content="Formal specification and verification of hardware, especially for security and privacy." />
+<link rel="canonical" href="http://localhost:4000/CoqStyleGuide.html" />
+<meta property="og:url" content="http://localhost:4000/CoqStyleGuide.html" />
+<meta property="og:site_name" content="Silver Oak" />
+<script type="application/ld+json">
+{"description":"Formal specification and verification of hardware, especially for security and privacy.","url":"http://localhost:4000/CoqStyleGuide.html","headline":"Coq Style Guide","@type":"WebPage","@context":"https://schema.org"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="stylesheet" href="/assets/css/style.css?v=3aa1caaa0df6000871c556fb7d00b33f1601db7e">
+    <!--[if lt IE 9]>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.min.js"></script>
+<![endif]-->
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;400&display=swap" rel="stylesheet">
+    <style>
+      body {
+        font-family: 'Roboto', sans-serif;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+
+      <h1 id="coq-style-guide">Coq Style Guide</h1>
+
+<p>This guide outlines code style for Coq code in this repository. There are
+certainly other valid strategies and opinions on Coq code style; this is laid
+out purely in the name of consistency. For a visual example of the style, see
+the <a href="#Example">example</a> at the bottom of this file.</p>
+
+<h2 id="code-organization">Code organization</h2>
+
+<h3 id="legal-banner">Legal banner</h3>
+
+<ul>
+  <li>Files should begin with a copyright/license banner, as shown in the example
+above.</li>
+</ul>
+
+<h3 id="import-statements">Import statements</h3>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">Require Import</code> statements should all go at the top of the file, followed by
+file-wide <code class="language-plaintext highlighter-rouge">Import</code> statements.
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">Import</code>s often contain notations or typeclass instances that might
+ override notations or instances from another library, so it’s nice to
+ highlight them separately.</li>
+    </ul>
+  </li>
+  <li>One <code class="language-plaintext highlighter-rouge">Require Import</code> statement per line; it’s easier to scan that way.</li>
+  <li><code class="language-plaintext highlighter-rouge">Require Import</code> statements should use “fully-qualified” names (e.g. <code class="language-plaintext highlighter-rouge">Require
+Import Coq.ZArith.ZArith</code> instead of <code class="language-plaintext highlighter-rouge">Require Import ZArith</code>).
+    <ul>
+      <li>Use the <code class="language-plaintext highlighter-rouge">Locate</code> command to find the fully-qualified name!</li>
+    </ul>
+  </li>
+  <li><code class="language-plaintext highlighter-rouge">Require Import</code>s should go in the following order:
+    <ol>
+      <li>Standard library dependencies (start with <code class="language-plaintext highlighter-rouge">Coq.</code>)</li>
+      <li>External dependencies (anything outside the current project)</li>
+      <li>Same-project dependencies</li>
+    </ol>
+  </li>
+  <li><code class="language-plaintext highlighter-rouge">Require Import</code>s with the same root library (the name before the first <code class="language-plaintext highlighter-rouge">.</code>)
+should be grouped together. Within each root-library group, they should be in
+alphabetical order (so <code class="language-plaintext highlighter-rouge">Coq.Lists.List</code> before <code class="language-plaintext highlighter-rouge">Coq.ZArith.ZArith</code>).</li>
+</ul>
+
+<h3 id="notations-and-scopes">Notations and scopes</h3>
+
+<ul>
+  <li>Any file-wide <code class="language-plaintext highlighter-rouge">Local Open Scope</code>s should come immediately after the <code class="language-plaintext highlighter-rouge">Import</code>s
+(see example).
+    <ul>
+      <li>Always use <code class="language-plaintext highlighter-rouge">Local Open Scope</code>; just <code class="language-plaintext highlighter-rouge">Open Scope</code> will sneakily
+open the scope for those who import your file.</li>
+    </ul>
+  </li>
+  <li>Put notations in their own separate modules or files, so that those who
+import your file can choose whether or not they want the notations.
+    <ul>
+      <li>Conflicting notations can cause a lot of headache, so it comes in very
+handy to leave this flexibility!</li>
+    </ul>
+  </li>
+</ul>
+
+<h2 id="formatting">Formatting</h2>
+
+<h3 id="line-length">Line length</h3>
+
+<ul>
+  <li>Maximum line length 80 characters.
+    <ul>
+      <li>Many Coq IDE setups divide the screen in half vertically and use only half
+to display source code, so more than 80 characters can be genuinely hard to
+read on a laptop.</li>
+    </ul>
+  </li>
+</ul>
+
+<h3 id="whitespace-and-indentation">Whitespace and indentation</h3>
+
+<ul>
+  <li>No trailing whitespace.</li>
+  <li>Spaces, not tabs.</li>
+  <li>Files should end with a newline.
+    <ul>
+      <li>Many editors do this automatically on save.</li>
+    </ul>
+  </li>
+  <li>Colons may be either “English-spaced”, with no space before the colon and one
+space after (<code class="language-plaintext highlighter-rouge">x: nat</code>) or “French-spaced”, with one space before and after
+(<code class="language-plaintext highlighter-rouge">x : nat</code>).</li>
+  <li>Default indentation is 2 spaces.
+    <ul>
+      <li>Keeping this small prevents complex proofs from being indented ridiculously
+far, and matches IDE defaults.</li>
+    </ul>
+  </li>
+  <li>Use 2-space indents if inserting a line break immediately after:
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">Proof.</code></li>
+      <li><code class="language-plaintext highlighter-rouge">fun &lt;...&gt; =&gt;</code></li>
+      <li><code class="language-plaintext highlighter-rouge">forall &lt;...&gt;,</code></li>
+      <li><code class="language-plaintext highlighter-rouge">exists &lt;....&gt;,</code></li>
+    </ul>
+  </li>
+  <li>The style for indenting arguments in function application depends on where
+you make a line break.  If you make the line break immediately after the
+function name, use a 2-space indent.  However, if you make it after one or more
+arguments, align the next line with the first argument:
+    <div class="language-coq highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="o">(</span><span class="nn">Z</span><span class="p">.</span><span class="no">pow</span><span class="w">
+   </span><span class="mi">1</span><span class="w"> </span><span class="mi">2</span><span class="o">)</span><span class="w">
+</span><span class="o">(</span><span class="nn">Z</span><span class="p">.</span><span class="no">pow</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="mi">3</span><span class="w">
+       </span><span class="mi">4</span><span class="w"> </span><span class="mi">5</span><span class="w"> </span><span class="mi">6</span><span class="o">)</span><span class="w">
+</span></code></pre></div>    </div>
+  </li>
+  <li><code class="language-plaintext highlighter-rouge">Inductive</code> cases should not be indented. Example:
+    <div class="language-coq highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">Inductive</span><span class="w"> </span><span class="no">Foo</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="kr">Type</span><span class="w"> </span><span class="p">:</span><span class="o">=</span><span class="w">
+</span><span class="o">|</span><span class="w"> </span><span class="no">FooA</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="no">Foo</span><span class="w">
+</span><span class="o">|</span><span class="w"> </span><span class="no">FooB</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="no">Foo</span><span class="w">
+</span><span class="o">.</span><span class="w">
+</span></code></pre></div>    </div>
+  </li>
+  <li><code class="language-plaintext highlighter-rouge">match</code> or <code class="language-plaintext highlighter-rouge">lazymatch</code> cases should line up with the “m” in <code class="language-plaintext highlighter-rouge">match</code> or “l” in
+<code class="language-plaintext highlighter-rouge">lazymatch</code>, as in the following examples:
+    <div class="language-coq highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kr">match</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="kp">with</span><span class="w">
+</span><span class="o">|</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="no">true</span><span class="w">
+</span><span class="o">|</span><span class="w"> </span><span class="p">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="no">false</span><span class="w">
+</span><span class="kr">end</span><span class="pi">.</span><span class="w">
+
+</span><span class="no">lazymatch</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="kp">with</span><span class="w">
+</span><span class="o">|</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="no">idtac</span><span class="w">
+</span><span class="o">|</span><span class="w"> </span><span class="p">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="no">fail</span><span class="w"> </span><span class="s2">"Not equal to 3:"</span><span class="w"> </span><span class="no">x</span><span class="w">
+</span><span class="kr">end</span><span class="pi">.</span><span class="w">
+
+</span><span class="kp">repeat</span><span class="w"> </span><span class="kr">match</span><span class="w"> </span><span class="no">goal</span><span class="w"> </span><span class="kp">with</span><span class="w">
+       </span><span class="o">|</span><span class="w"> </span><span class="p">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="no">progress</span><span class="w"> </span><span class="kp">subst</span><span class="w">
+       </span><span class="o">|</span><span class="w"> </span><span class="p">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="ne">reflexivity</span><span class="w">
+       </span><span class="kr">end</span><span class="pi">.</span><span class="w">
+
+</span><span class="no">do</span><span class="w"> </span><span class="mi">2</span><span class="w"> </span><span class="no">lazymatch</span><span class="w"> </span><span class="no">goal</span><span class="w"> </span><span class="kp">with</span><span class="w">
+     </span><span class="o">|</span><span class="w"> </span><span class="o">|-</span><span class="w"> </span><span class="no">context</span><span class="w"> </span><span class="o">[</span><span class="no">eq</span><span class="o">]</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="no">idtac</span><span class="w">
+     </span><span class="kr">end</span><span class="pi">.</span><span class="w">
+</span></code></pre></div>    </div>
+  </li>
+</ul>
+
+<h2 id="definitions-and-fixpoints">Definitions and Fixpoints</h2>
+
+<ul>
+  <li>It’s okay to leave the return type of <code class="language-plaintext highlighter-rouge">Definition</code>s and <code class="language-plaintext highlighter-rouge">Fixpoint</code>s implicit
+(e.g. <code class="language-plaintext highlighter-rouge">Definition x := 5</code> instead of <code class="language-plaintext highlighter-rouge">Definition x : nat := 5</code>) when the type
+is very simple or obvious (for instance, the definition is in a file which deals
+exclusively with operations on <code class="language-plaintext highlighter-rouge">Z</code>).</li>
+</ul>
+
+<h2 id="inductives">Inductives</h2>
+
+<ul>
+  <li>The <code class="language-plaintext highlighter-rouge">.</code> ending an <code class="language-plaintext highlighter-rouge">Inductive</code> can be either on the same line as the last case
+or on its own line immediately below. That is, both of the following are
+acceptable:
+    <div class="language-coq highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">Inductive</span><span class="w"> </span><span class="no">Foo</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="kr">Type</span><span class="w"> </span><span class="p">:</span><span class="o">=</span><span class="w">
+</span><span class="o">|</span><span class="w"> </span><span class="no">FooA</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="no">Foo</span><span class="w">
+</span><span class="o">|</span><span class="w"> </span><span class="no">FooB</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="no">Foo</span><span class="w">
+</span><span class="o">.</span><span class="w">
+</span><span class="k">Inductive</span><span class="w"> </span><span class="no">Foo</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="kr">Type</span><span class="w"> </span><span class="p">:</span><span class="o">=</span><span class="w">
+</span><span class="o">|</span><span class="w"> </span><span class="no">FooA</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="no">Foo</span><span class="w">
+</span><span class="o">|</span><span class="w"> </span><span class="no">FooB</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="no">Foo</span><span class="pi">.</span><span class="w">
+</span></code></pre></div>    </div>
+  </li>
+</ul>
+
+<h2 id="lemmatheorem-statements">Lemma/Theorem statements</h2>
+
+<ul>
+  <li>Generally, use <code class="language-plaintext highlighter-rouge">Theorem</code> for the most important, top-level facts you prove
+and <code class="language-plaintext highlighter-rouge">Lemma</code> for everything else.</li>
+  <li>Insert a line break after the colon in the lemma statement.</li>
+  <li>Insert a line break after the comma for <code class="language-plaintext highlighter-rouge">forall</code> or <code class="language-plaintext highlighter-rouge">exist</code> quantifiers.</li>
+  <li>Implication arrows (<code class="language-plaintext highlighter-rouge">-&gt;</code>) should share a line with the previous hypothesis,
+not the following one.</li>
+  <li>There is no need to make a line break after every <code class="language-plaintext highlighter-rouge">-&gt;</code>; short preconditions
+may share a line.</li>
+</ul>
+
+<h2 id="proofs-and-tactics">Proofs and tactics</h2>
+
+<ul>
+  <li>Use the <code class="language-plaintext highlighter-rouge">Proof</code> command (lined up vertically with <code class="language-plaintext highlighter-rouge">Lemma</code> or <code class="language-plaintext highlighter-rouge">Theorem</code> it
+corresponds to) to open a proof, and indent the first line after it 2 spaces.</li>
+  <li>Very small proofs (where <code class="language-plaintext highlighter-rouge">Proof. &lt;tactics&gt; Qed.</code> is &lt;= 80 characters) can go
+all in one line.</li>
+  <li>When ending a proof, align the ending statement (<code class="language-plaintext highlighter-rouge">Qed</code>, <code class="language-plaintext highlighter-rouge">Admitted</code>, etc.)
+with <code class="language-plaintext highlighter-rouge">Proof</code>.</li>
+  <li>Avoid referring to autogenerated names (e.g. <code class="language-plaintext highlighter-rouge">H0</code>, <code class="language-plaintext highlighter-rouge">n0</code>). It’s okay to let
+Coq generate these names, but you should not explicitly refer to them in your
+proof. So <code class="language-plaintext highlighter-rouge">intros; my_solver</code> is fine, but <code class="language-plaintext highlighter-rouge">intros; apply H1; my_solver</code> is not
+fine.
+    <ul>
+      <li>You can force a non-autogenerated name by either putting the variable
+before the colon in the lemma statement (<code class="language-plaintext highlighter-rouge">Lemma foo x : ...</code> instead of
+<code class="language-plaintext highlighter-rouge">Lemma foo : forall x, ...</code>), or by passing arguments to <code class="language-plaintext highlighter-rouge">intros</code> (e.g. <code class="language-plaintext highlighter-rouge">intros
+? x</code> to name the second argument <code class="language-plaintext highlighter-rouge">x</code>)</li>
+    </ul>
+  </li>
+  <li>This way, the proof won’t break when new hypotheses are added or
+autogenerated variable names change.</li>
+  <li>Use curly braces <code class="language-plaintext highlighter-rouge">{}</code> for subgoals, instead of bullets.</li>
+  <li><em>Never write tactics with more than one subgoal focused.</em> This can make the
+proof very confusing to step through! If you have more than one subgoal, use
+curly braces.</li>
+  <li>Consider adding a comment after the opening curly brace that explains what
+case you’re in (see example).
+    <ul>
+      <li>This is not necessary for small subgoals but can help show the major lines
+of reasoning in large proofs.</li>
+    </ul>
+  </li>
+  <li>If invoking a tactic that is expected to return multiple subgoals, use <code class="language-plaintext highlighter-rouge">[ |
+... | ]</code> before the <code class="language-plaintext highlighter-rouge">.</code> to explicitly specify how many subgoals you expect.
+    <ul>
+      <li>Examples: <code class="language-plaintext highlighter-rouge">split; [ | ].</code> <code class="language-plaintext highlighter-rouge">induction z; [ | | ].</code></li>
+      <li>This helps make code more maintainable, because it fails immediately if
+your tactic no longer solves as many subgoals as expected (or unexpectedly
+solves more).</li>
+    </ul>
+  </li>
+  <li>If invoking a string of tactics (composed by <code class="language-plaintext highlighter-rouge">;</code>) that will break the goal
+into multiple subgoals and then solve all but one, still use <code class="language-plaintext highlighter-rouge">[ ]</code> to enforce
+that all but one goal is solved.
+    <ul>
+      <li>Example: <code class="language-plaintext highlighter-rouge">split; try lia; [ ]</code>.</li>
+    </ul>
+  </li>
+  <li>Tactics that consist only of <code class="language-plaintext highlighter-rouge">repeat</code>ing a procedure (e.g. <code class="language-plaintext highlighter-rouge">repeat match</code>,
+<code class="language-plaintext highlighter-rouge">repeat first</code>) should factor out a single step of that procedure a separate
+tactic called <code class="language-plaintext highlighter-rouge">&lt;tactic name&gt;_step</code>, because the single-step version is much
+easier to debug. For instance:
+    <div class="language-coq highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="k">Ltac</span><span class="w"> </span><span class="no">crush_step</span><span class="w"> </span><span class="p">:</span><span class="o">=</span><span class="w">
+  </span><span class="kr">match</span><span class="w"> </span><span class="no">goal</span><span class="w"> </span><span class="kp">with</span><span class="w">
+  </span><span class="o">|</span><span class="w"> </span><span class="p">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="no">progress</span><span class="w"> </span><span class="kp">subst</span><span class="w">
+  </span><span class="o">|</span><span class="w"> </span><span class="p">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="ne">reflexivity</span><span class="w">
+  </span><span class="kr">end</span><span class="pi">.</span><span class="w">
+</span><span class="k">Ltac</span><span class="w"> </span><span class="no">crush</span><span class="w"> </span><span class="p">:</span><span class="o">=</span><span class="w"> </span><span class="kp">repeat</span><span class="w"> </span><span class="no">crush_step</span><span class="pi">.</span><span class="w">
+</span></code></pre></div>    </div>
+  </li>
+</ul>
+
+<h2 id="naming">Naming</h2>
+
+<ul>
+  <li>Helper proofs about standard library datatypes should go in a module that is
+named to match the standard library module (see example).
+    <ul>
+      <li>This makes the helper proofs look like standard-library ones, which is
+helpful for categorizing them if they’re genuinely at the standard-library
+level of abstraction.</li>
+    </ul>
+  </li>
+  <li>Names of modules should start with capital letters.</li>
+  <li>Names of inductives and their constructors should start with capital letters.</li>
+  <li>Names of other definitions/lemmas should be snake case.</li>
+</ul>
+
+<h2 id="example">Example</h2>
+
+<p>A small standalone Coq file that exhibits many of the style points.</p>
+
+<div class="language-coq highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c">(****************************************************************************)</span><span class="w">
+</span><span class="c">(* Copyright 2020 The Project Oak Authors                                   *)</span><span class="w">
+</span><span class="c">(*                                                                          *)</span><span class="w">
+</span><span class="c">(* &lt;License blurb..................................&gt;                        *)</span><span class="w">
+</span><span class="c">(* &lt;...............................................&gt;                        *)</span><span class="w">
+</span><span class="c">(****************************************************************************)</span><span class="w">
+
+</span><span class="k">Require</span><span class="w"> </span><span class="k">Import</span><span class="w"> </span><span class="nn">Coq</span><span class="p">.</span><span class="nn">Lists</span><span class="p">.</span><span class="no">List</span><span class="pi">.</span><span class="w">
+</span><span class="k">Require</span><span class="w"> </span><span class="k">Import</span><span class="w"> </span><span class="nn">Coq</span><span class="p">.</span><span class="nn">micromega</span><span class="p">.</span><span class="no">Lia</span><span class="pi">.</span><span class="w">
+</span><span class="k">Require</span><span class="w"> </span><span class="k">Import</span><span class="w"> </span><span class="nn">Coq</span><span class="p">.</span><span class="nn">ZArith</span><span class="p">.</span><span class="no">ZArith</span><span class="pi">.</span><span class="w">
+</span><span class="k">Import</span><span class="w"> </span><span class="no">ListNotations</span><span class="pi">.</span><span class="w">
+</span><span class="k">Local</span><span class="w"> </span><span class="no">Open</span><span class="w"> </span><span class="no">Scope</span><span class="w"> </span><span class="no">Z_scope</span><span class="pi">.</span><span class="w">
+
+</span><span class="c">(* Helper proofs about standard library integers (Z) go within [Module Z] so
+   that they match standard-library Z lemmas when used. *)</span><span class="w">
+</span><span class="k">Module</span><span class="w"> </span><span class="no">Z</span><span class="pi">.</span><span class="w">
+  </span><span class="k">Lemma</span><span class="w"> </span><span class="no">pow_3_r</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="mi">3</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="no">x</span><span class="pi">.</span><span class="w">
+  </span><span class="k">Proof</span><span class="pi">.</span><span class="w"> </span><span class="no">lia</span><span class="pi">.</span><span class="w"> </span><span class="k">Qed</span><span class="pi">.</span><span class="w"> </span><span class="c">(* very short proofs can go all on one line *)</span><span class="w">
+
+  </span><span class="k">Lemma</span><span class="w"> </span><span class="no">pow_4_r</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="no">x</span><span class="pi">.</span><span class="w">
+  </span><span class="k">Proof</span><span class="pi">.</span><span class="w">
+    </span><span class="no">change</span><span class="w"> </span><span class="mi">4</span><span class="w"> </span><span class="kp">with</span><span class="w"> </span><span class="o">(</span><span class="nn">Z</span><span class="p">.</span><span class="no">succ</span><span class="w"> </span><span class="o">(</span><span class="nn">Z</span><span class="p">.</span><span class="no">succ</span><span class="w"> </span><span class="o">(</span><span class="nn">Z</span><span class="p">.</span><span class="no">succ</span><span class="w"> </span><span class="o">(</span><span class="nn">Z</span><span class="p">.</span><span class="no">succ</span><span class="w"> </span><span class="mi">0</span><span class="o">)))).</span><span class="w">
+    </span><span class="kp">repeat</span><span class="w"> </span><span class="kr">match</span><span class="w"> </span><span class="no">goal</span><span class="w"> </span><span class="kp">with</span><span class="w">
+           </span><span class="o">|</span><span class="w"> </span><span class="p">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kp">rewrite</span><span class="w"> </span><span class="nn">Z</span><span class="p">.</span><span class="no">pow_1_r</span><span class="w">
+           </span><span class="o">|</span><span class="w"> </span><span class="p">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kp">rewrite</span><span class="w"> </span><span class="nn">Z</span><span class="p">.</span><span class="no">pow_succ_r</span><span class="w"> </span><span class="no">by</span><span class="w"> </span><span class="no">lia</span><span class="w">
+           </span><span class="o">|</span><span class="w"> </span><span class="o">|-</span><span class="w"> </span><span class="no">context</span><span class="w"> </span><span class="o">[</span><span class="no">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">(</span><span class="nv">?a</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nv">?b</span><span class="o">)]</span><span class="w"> </span><span class="o">=&gt;</span><span class="w">
+             </span><span class="no">replace</span><span class="w"> </span><span class="o">(</span><span class="no">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="o">(</span><span class="no">a</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="no">b</span><span class="o">))</span><span class="w"> </span><span class="kp">with</span><span class="w"> </span><span class="o">(</span><span class="no">a</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="no">b</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="no">x</span><span class="o">)</span><span class="w"> </span><span class="no">by</span><span class="w"> </span><span class="no">lia</span><span class="w">
+           </span><span class="o">|</span><span class="w"> </span><span class="p">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="ne">reflexivity</span><span class="w">
+           </span><span class="kr">end</span><span class="pi">.</span><span class="w">
+  </span><span class="k">Qed</span><span class="pi">.</span><span class="w">
+</span><span class="k">End</span><span class="w"> </span><span class="no">Z</span><span class="pi">.</span><span class="w">
+</span><span class="c">(* Now we can access the lemmas above as Z.pow_3_r and Z.pow_4_r, as if they
+   were in the ZArith library! *)</span><span class="w">
+
+</span><span class="k">Definition</span><span class="w"> </span><span class="no">bar</span><span class="w"> </span><span class="o">(</span><span class="no">x</span><span class="w"> </span><span class="no">y</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="no">Z</span><span class="o">)</span><span class="w"> </span><span class="p">:</span><span class="o">=</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="o">(</span><span class="no">y</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="o">).</span><span class="w">
+
+</span><span class="c">(* example with a painfully manual proof to show case formatting *)</span><span class="w">
+</span><span class="k">Lemma</span><span class="w"> </span><span class="no">bar_upper_bound</span><span class="w"> </span><span class="p">:</span><span class="w">
+  </span><span class="kr">forall</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="no">y</span><span class="w"> </span><span class="no">a</span><span class="o">,</span><span class="w">
+    </span><span class="mi">0</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="no">a</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="no">y</span><span class="w"> </span><span class="o">-&gt;</span><span class="w">
+    </span><span class="mi">0</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="no">bar</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="no">y</span><span class="w"> </span><span class="o">&lt;=</span><span class="w"> </span><span class="no">a</span><span class="w"> </span><span class="o">^</span><span class="w"> </span><span class="o">(</span><span class="no">y</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="o">).</span><span class="w">
+</span><span class="k">Proof</span><span class="pi">.</span><span class="w">
+  </span><span class="c">(* avoid referencing autogenerated names by explicitly naming variables *)</span><span class="w">
+  </span><span class="kp">intros</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="no">y</span><span class="w"> </span><span class="no">a</span><span class="w"> </span><span class="no">Hx</span><span class="w"> </span><span class="no">Hy</span><span class="pi">.</span><span class="w"> </span><span class="kp">revert</span><span class="w"> </span><span class="no">y</span><span class="w"> </span><span class="no">Hy</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="no">a</span><span class="w"> </span><span class="no">Hx</span><span class="pi">.</span><span class="w">
+  </span><span class="c">(* explicitly indicate # subgoals with [ | ... | ] if &gt; 1 *)</span><span class="w">
+  </span><span class="kp">cbv</span><span class="w"> </span><span class="o">[</span><span class="no">bar</span><span class="o">]</span><span class="p">;</span><span class="w"> </span><span class="kp">refine</span><span class="w"> </span><span class="o">(</span><span class="no">natlike_ind</span><span class="w"> </span><span class="p">_</span><span class="w"> </span><span class="p">_</span><span class="w"> </span><span class="p">_</span><span class="o">)</span><span class="p">;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="o">].</span><span class="w">
+  </span><span class="o">{</span><span class="w"> </span><span class="c">(* y = 0 *)</span><span class="w">
+    </span><span class="kp">intros</span><span class="p">;</span><span class="w"> </span><span class="no">lia</span><span class="pi">.</span><span class="w"> </span><span class="o">}</span><span class="w">
+  </span><span class="o">{</span><span class="w"> </span><span class="c">(* y = Z.succ _ *)</span><span class="w">
+    </span><span class="kp">intros</span><span class="pi">.</span><span class="w">
+    </span><span class="kp">rewrite</span><span class="w"> </span><span class="nn">Z</span><span class="p">.</span><span class="no">add_succ_l</span><span class="o">,</span><span class="w"> </span><span class="nn">Z</span><span class="p">.</span><span class="no">pow_succ_r</span><span class="w"> </span><span class="no">by</span><span class="w"> </span><span class="no">lia</span><span class="pi">.</span><span class="w">
+    </span><span class="kp">split</span><span class="pi">.</span><span class="w">
+    </span><span class="o">{</span><span class="w"> </span><span class="c">(* 0 &lt;= bar x y *)</span><span class="w">
+      </span><span class="kp">apply</span><span class="w"> </span><span class="nn">Z</span><span class="p">.</span><span class="no">mul_nonneg_nonneg</span><span class="p">;</span><span class="w"> </span><span class="o">[</span><span class="w"> </span><span class="no">lia</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="o">].</span><span class="w">
+      </span><span class="kp">apply</span><span class="w"> </span><span class="nn">Z</span><span class="p">.</span><span class="no">pow_nonneg</span><span class="p">;</span><span class="w"> </span><span class="no">lia</span><span class="pi">.</span><span class="w"> </span><span class="o">}</span><span class="w">
+    </span><span class="o">{</span><span class="w"> </span><span class="c">(* bar x y &lt; a ^ y *)</span><span class="w">
+      </span><span class="kp">rewrite</span><span class="w"> </span><span class="nn">Z</span><span class="p">.</span><span class="no">pow_succ_r</span><span class="w"> </span><span class="no">by</span><span class="w"> </span><span class="no">lia</span><span class="pi">.</span><span class="w">
+      </span><span class="kp">apply</span><span class="w"> </span><span class="nn">Z</span><span class="p">.</span><span class="no">mul_le_mono_nonneg</span><span class="p">;</span><span class="w"> </span><span class="kp">try</span><span class="w"> </span><span class="no">lia</span><span class="p">;</span><span class="w">
+        </span><span class="o">[</span><span class="w"> </span><span class="kp">apply</span><span class="w"> </span><span class="nn">Z</span><span class="p">.</span><span class="no">pow_nonneg</span><span class="p">;</span><span class="w"> </span><span class="no">lia</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="o">].</span><span class="w">
+      </span><span class="c">(* For more flexible proofs, use match statements to find hypotheses
+         rather than referring to them by autogenerated names like H0. In this
+         case, we'll take any hypothesis that applies to and then solves the
+         goal. *)</span><span class="w">
+      </span><span class="kr">match</span><span class="w"> </span><span class="no">goal</span><span class="w"> </span><span class="kp">with</span><span class="w"> </span><span class="no">H</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="p">_</span><span class="w"> </span><span class="o">|-</span><span class="w"> </span><span class="p">_</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="kp">apply</span><span class="w"> </span><span class="no">H</span><span class="p">;</span><span class="w"> </span><span class="ne">solve</span><span class="w"> </span><span class="o">[</span><span class="kp">auto</span><span class="o">]</span><span class="w"> </span><span class="kr">end</span><span class="pi">.</span><span class="w"> </span><span class="o">}</span><span class="w"> </span><span class="o">}</span><span class="w">
+</span><span class="k">Qed</span><span class="pi">.</span><span class="w">
+
+</span><span class="c">(* Put notations in a separate module or file so that importers can
+   decide whether or not to use them. *)</span><span class="w">
+</span><span class="k">Module</span><span class="w"> </span><span class="no">BarNotations</span><span class="pi">.</span><span class="w">
+  </span><span class="k">Infix</span><span class="w"> </span><span class="s2">"#"</span><span class="w"> </span><span class="p">:</span><span class="o">=</span><span class="w"> </span><span class="no">bar</span><span class="w"> </span><span class="o">(</span><span class="kp">at</span><span class="w"> </span><span class="no">level</span><span class="w"> </span><span class="mi">40</span><span class="o">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="no">Z_scope</span><span class="pi">.</span><span class="w">
+  </span><span class="k">Notation</span><span class="w"> </span><span class="s2">"x '##'"</span><span class="w"> </span><span class="p">:</span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="no">bar</span><span class="w"> </span><span class="no">x</span><span class="w"> </span><span class="no">x</span><span class="o">)</span><span class="w"> </span><span class="o">(</span><span class="kp">at</span><span class="w"> </span><span class="no">level</span><span class="w"> </span><span class="mi">40</span><span class="o">)</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="no">Z_scope</span><span class="pi">.</span><span class="w">
+</span><span class="k">End</span><span class="w"> </span><span class="no">BarNotations</span><span class="pi">.</span><span class="w">
+</span></code></pre></div></div>
+
+
+      <footer>
+        
+        <p>This project is maintained by <a href="https://github.com/satnam6502">satnam6502</a></p>
+        
+        <p><small>Hosted on GitHub Pages &mdash; Theme based on <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    <script src="/assets/js/scale.fix.js"></script>
+  </body>
+</html>
+

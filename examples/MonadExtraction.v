@@ -20,6 +20,7 @@ Require Import Examples.FullAdderExample.
 Require Import Examples.UnsignedAdderExamples.
 Require Import Examples.AdderTree.
 Require Import Examples.TwoSorter.
+Require Import Examples.BitonicSorter.
 Require Import Coq.extraction.Extraction.
 Require Import Coq.extraction.ExtrHaskellZInteger.
 Require Import Coq.extraction.ExtrHaskellString.
@@ -34,3 +35,4 @@ Extraction Library FullAdderExample.
 Extraction Library UnsignedAdderExamples.
 Extraction Library AdderTree.
 Extraction Library TwoSorter.
+Extraction Library BitonicSorter.

@@ -159,3 +159,25 @@ Section Test.
   Proof. reflexivity. Qed.
   Close Scope N.
 End Test.
+
+Definition bsort_Interface name n bw
+  := combinationalInterface name
+     [mkPort "inputs" (Vec (Vec Bit bw) (two_pow n))]
+     [mkPort "sorted" (Vec (Vec Bit bw) (two_pow n))].
+
+Definition bsort4_8_Netlist
+  := makeNetlist (bsort_Interface "bsort4_8" 4 8) (bitonicSorter defaultSignal).
+
+Local Open Scope N_scope.
+
+Definition bsort4_8_tb_inputs := map (Vector.map (N2Bv_sized 8))
+  [ [12; 2; 11; 10; 16; 14; 6; 3; 5; 1; 7; 15; 9; 13; 4; 8]%vector
+  ]%list.
+
+Definition bsort4_8_tb_expectedOutputs := map (Vector.map (N2Bv_sized 8))
+  [ [1; 2; 3; 4; 5; 6; 7; 8; 9; 10; 11; 12; 13; 14; 15; 16]%vector
+  ]%list.
+
+Definition bsort4_8_tb :=
+  testBench "bsort4_8_tb" (bsort_Interface "bsort4_8" 4 8)
+  bsort4_8_tb_inputs bsort4_8_tb_expectedOutputs.
