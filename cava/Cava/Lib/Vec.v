@@ -177,24 +177,6 @@ Section WithCava.
               fold_left2 f (va', vb') st'
     end.
 
-  Definition fold_ix {n}: forall [A B],
-             (cava B) ->
-             (nat -> signal A -> cava B -> cava B) ->
-             (signal (Vec A n)) ->
-             cava B.
-  (* Defined in Ltac because the type annotations in Gallina get ugly *)
-  Proof.
-    induction n.
-     { intros A B b f v. exact b. }
-     { intros A B b f v.
-       refine (head <- _ ;;
-               tail <- _ ;;
-               f n head (IHn _ _ b f tail)).
-       { exact (hd v). }
-       { exact (tl v). }
-     }
-  Defined.
-
   Definition map {A B n} (f : signal A -> cava (signal B))
              (v : signal (Vec A n))
     : cava (signal (Vec B n)) :=
@@ -210,39 +192,6 @@ Section WithCava.
     vb <- unpackV (snd i) ;;
     out <- mapT f (vcombine va vb) ;;
     packV out.
-
-  Definition map_ix {n}: forall [A B],
-             (nat -> signal A -> cava (signal B)) ->
-             (signal (Vec A n)) ->
-             cava (signal (Vec B n)).
-  (* Defined in Ltac because the type annotations in Gallina get ugly *)
-  Proof.
-    induction n; intros A B f vec.
-    { exact (packV []). }
-    { exact (tail <- tl vec ;;
-             head <- hd vec ;;
-             newhead <- f n head ;;
-             newtail <- (IHn _ _ f tail) ;;
-             cons newhead newtail). }
-  Defined.
-
-  Definition map_acc_l {n}: forall [A B C],
-     C ->
-    (C -> signal A -> cava ((signal B) * C)) ->
-    (signal (Vec A n)) ->
-    cava (signal (Vec B n) * C).
-  (* Defined in Ltac because the type annotations in Gallina get ugly *)
-  Proof.
-    induction n; intros A B C c f vec.
-    { exact (packV [] >>= fun v => ret (v,c)). }
-    { refine (tail <- tl vec ;;
-             head <- hd vec ;;
-             '(newhead, c) <- f c head ;;
-             '(newtail, c) <- (IHn _ _ _ c f tail) ;;
-             _).
-      refine (_ >>= fun v => ret (v,c)).
-      exact (cons newhead newtail). }
-  Defined.
 
   (****************************************************************************)
   (* Boolean operations on bit vectors                                        *)
