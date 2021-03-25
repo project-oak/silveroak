@@ -1103,51 +1103,62 @@ Compute map Bv2N
 TODO: proofs
 |*)
 
-Fixpoint fibonacci_spec (n : nat) :=
+Fixpoint fibonacci_nat (n : nat) :=
   match n with
   | 0 => 0
   | S m =>
-    let f_m := fibonacci_spec m in
+    let f_m := fibonacci_nat m in
     match m with
     | 0 => 1
-    | S p => fibonacci_spec p + f_m
+    | S p => fibonacci_nat p + f_m
     end
   end.
 
-Compute (map fibonacci_spec (seq 0 10)).
+Compute (map fibonacci_nat (seq 0 10)).
 
-Compute circuit_state
-( (* start: (in, r1) *)
-               Comb (dropl >=> fork2) >==> (* r1, r1 *)
-                    Second (DelayInit _) >==> (* r1, r2 *)
-                    Comb (addN >=> fork2)).
+Definition spec_of_fibonacci {sz} (input : list unit)
+  : list (combType (Vec Bit sz))
+  := map (fun n => nat_to_bitvec_sized sz (fibonacci_nat n))
+         (seq 0 (length input)).
 
-Check tupleInterface.
-Compute tupleInterface combType [Void; Vec Bit _].
+Compute circuit_state_alt
+        ( (* start: (in, r1) *)
+          Comb (dropl >=> fork2) >==> (* r1, r1 *)
+               Second (DelayInit _) >==> (* r1, r2 *)
+               Comb (addN >=> fork2)).
+Compute circuit_state_alt fibonacci.
 
 Definition fibonacci_invariant {sz}
            (t : nat)
            (loop_state : combType (Vec Bit sz))
-           (body_circuit_state : combType (Vec Bit sz))
-           (output_accumulator : list (combType (Vec Bit n))) : Prop :=
+           (* TODO(jadep) : make circuit state types lose the extra units *)
+           (body_circuit_state : unit * (unit * combType (Vec Bit sz)) * unit)
+           (output_accumulator : list (combType (Vec Bit sz))) : Prop :=
+  let r1 := loop_state in
+  let r2 := snd (snd (fst body_circuit_state)) in
   (* at timestep t... *)
-  (* ...the loop state holds the sum of the inputs so far (that is,
-     the first t inputs) *)
-  loop_state = N2Bv_sized n (sum_list_N (map Bv2N (firstn t input)))
-  (* ... and the output accumulator matches the rolling-sum spec
-     applied to the inputs so far *)
-  /\ output_accumulator = spec_of_sum (firstn t input).
+  (* ...r1 holds fibonacci_nat (t-1), or 1 if t=0 *)
+  r1 = match t with
+       | 0 => N2Bv_sized sz 1
+       | S t_minus1 => nat_to_bitvec_sized sz (fibonacci_nat t_minus1)
+       end
+  (* ... and r2 holds fibonacci_nat (t-2), or 1 if t=1, 2^sz-1 if t=0 *)
+  /\ r2 = match t with
+         | 0 => Vector.const true sz (* all ones *)
+         | 1 => N2Bv_sized sz 1
+         | S (S t_minus2) => nat_to_bitvec_sized sz (fibonacci_nat t_minus2)
+         end
+  (* ... and the output accumulator matches the circuit spec for the
+     inputs so far *)
+  /\ output_accumulator = spec_of_fibonacci (repeat tt t).
 
 (* the nth element of the simulation output is the bit-vector version of (fibonacci_spec n) *)
 Lemma fibonacci_correct sz (input : list unit) :
-  simulate (fibonacci (sz:=sz)) input
-  = map (fun n => nat_to_bitvec_sized sz (fibonacci_spec n))
-        (seq 0 (length input)).
+  simulate (fibonacci (sz:=sz)) input = spec_of_fibonacci input.
 Proof.
   cbv [fibonacci]. autorewrite with simpl_ident.
   Search LoopInit.
-  eapply simulate_LoopInit_invariant
-Qed.
+Abort.
 
 (*|
 .. coq:: none
@@ -1239,6 +1250,10 @@ Definition fake_mul {n} x : Circuit (combType (Vec Bit n)) (combType (Vec Bit n)
 Definition fake_square {n} : Circuit (combType (Vec Bit n)) (combType (Vec Bit n)) :=
   Comb (fun v => ret (N2Bv_sized n (Bv2N v * Bv2N v))).
 
+Compute circuit_state_alt (exp_by_squaring (A:=Vec Bit 8)
+                          (N2Bv_sized 8 1)
+                          fake_square
+                          (fake_mul 3)).
 (* Compute 3 ^ 5 = 243 *)
 Compute map Bv2N
         (simulate (exp_by_squaring (A:=Vec Bit 8)
