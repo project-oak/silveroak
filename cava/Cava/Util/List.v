@@ -135,6 +135,14 @@ Section Misc.
     destruct l using rev_ind; [ reflexivity | ].
     rewrite app_comm_cons, !removelast_last. reflexivity.
   Qed.
+
+  Lemma list_unit_equiv (l : list unit) : l = repeat tt (length l).
+  Proof.
+    induction l; [ reflexivity | ].
+    match goal with x : unit |- _ => destruct x end.
+    cbn [length repeat]. congruence.
+  Qed.
+
 End Misc.
 Hint Rewrite @seq_snoc using solve [eauto] : pull_snoc.
 
