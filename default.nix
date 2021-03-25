@@ -18,7 +18,7 @@ let
     coreutils
     findutils
     diffutils
-    binutils.bintools
+    # binutils.bintools
   ];
 in
 rec {
