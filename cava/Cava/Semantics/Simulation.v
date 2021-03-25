@@ -29,13 +29,13 @@ Require Import Cava.Util.Identity.
 Existing Instance CombinationalSemantics.
 
 Fixpoint simulate_with_state {i o} (c : Circuit i o) (st : circuit_state c) (input : list i)
-  : list o * list (circuit_state c) :=
+  : list o * circuit_state c :=
   match input with
-  | [] => ([], [])
+  | [] => ([], st)
   | i :: input =>
     let o_st := step c st i in
-    let out_states := simulate_with_state c (snd o_st) input in
-    (fst o_st :: fst out_states, snd o_st :: snd out_states)
+    let out_state := simulate_with_state c (snd o_st) input in
+    (fst o_st :: fst out_state, snd out_state)
   end.
 
 (*
@@ -163,10 +163,44 @@ Proof.
 Qed.
 Hint Rewrite @simulate_length using solve [eauto] : push_length.
 
-(* simulate_with_state really SHOULD be fold_left_acc, but we need o for it... any way around this? *)
-Lemma simulate_with_state_snoc i o (c : Circuit i o) st input i0 :
-  simulate_with_state c s (input ++ [i0]) =
-Check simulate_with_state (LoopInitCE _ _).
+Check simulate_with_state.
+Lemma simulate_with_state_LoopInitCE
+      {i s o} resetval (body : Circuit (i * combType s) (o * combType s))
+      (init_state : circuit_state body * combType s)
+      (input : list (i * bool)) (acc : list o) :
+  simulate_with_state (LoopInitCE resetval body) init_state input
+  = fold_left
+      (fun '(out, (body_st, st)) '(i, en) =>
+         let '(o, (body_st', st')) := step body body_st (i, st) in
+         let new_st := if (en : bool) then st' else st in
+         (out ++ [o], (body_st', new_st)))
+      input (acc, init_state).
+Proof.
+  simsimpl. generalize resetval at 1.
+  generalize (reset_state body), resetval.
+  induction input; intros; [ reflexivity | ].
+  cbn [fold_left]. simsimpl.
+  repeat destruct_pair_
+Qed.
+
+Lemma simulate_LoopInitCE
+      {i s o} resetval (body : Circuit (i * combType s) (o * combType s))
+      (input : list (i * bool)) :
+  simulate (LoopInitCE resetval body) input =
+  snd (fold_left
+         (fun '(body_st, st, out) '(i, en) =>
+            let '(o, st', body_st') := step body body_st (i, st) in
+            let new_st := if (en : bool) then st' else st in
+            (body_st', new_st, out ++ [o]))
+         input (reset_state body, resetval, [])).
+Proof.
+  simsimpl. generalize resetval at 1.
+  generalize (reset_state body), resetval.
+  induction input; intros; [ reflexivity | ].
+  cbn [fold_left]. simsimpl.
+  repeat destruct_pair_
+Qed.
+
 Lemma simulate_LoopInitICE_invariant_helper
       {i s o} resetval (body : Circuit (i * combType s) (o * combType s))
       (I : nat -> combType s -> circuit_state body ->
