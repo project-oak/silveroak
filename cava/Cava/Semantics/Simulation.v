@@ -28,59 +28,57 @@ Require Import Cava.Util.Identity.
 
 Existing Instance CombinationalSemantics.
 
-Fixpoint simulate_with_state {i o} (c : Circuit i o) (st : circuit_state c) (input : list i)
-  : list o * circuit_state c :=
-  match input with
-  | [] => ([], st)
-  | i :: input =>
-    let o_st := step c st i in
-    let out_state := simulate_with_state c (snd o_st) input in
-    (fst o_st :: fst out_state, snd out_state)
-  end.
-
-(*
-Fixpoint simulate_init {i o} (c : Circuit i o) (st : circuit_state c) (input : list i) : list o :=
-  match input with
-  | [] => []
-  | i :: input =>
-    let o_st := step c st i in
-    fst o_st :: simulate_init c (snd o_st) input
-  end.*)
-
 (* Run a circuit for many timesteps, starting at the reset value *)
 Definition simulate {i o} (c : Circuit i o) (input : list i) : list o :=
-  fst (simulate_with_state c (reset_state c) input).
+  fold_left_accumulate (step c) input (reset_state c).
 
 Local Ltac simsimpl :=
   repeat first [ progress cbv [simulate]
-               | progress cbn [reset_state circuit_state simulate_with_state step fst snd]
+               | progress cbn [reset_state circuit_state step fst snd]
                | destruct_pair_let
                | progress simpl_ident ].
 
 Lemma simulate_compose {A B C} (c1 : Circuit A B) (c2 : Circuit B C) (input : list A) :
   simulate (Compose c1 c2) input = simulate c2 (simulate c1 input).
 Proof.
-  simsimpl. generalize (reset_state c2), (reset_state c1).
-  induction input; intros; [ reflexivity | ].
-  simsimpl. rewrite IHinput. reflexivity.
+  simsimpl.
+  rewrite fold_left_accumulate_fold_left_accumulate.
+  apply fold_left_accumulate_ext; intros.
+  simsimpl. reflexivity.
 Qed.
 Hint Rewrite @simulate_compose using solve [eauto] : push_simulate.
 
 Lemma simulate_comb {A B} (c : A -> ident B) (input : list A) :
   simulate (Comb c) input = map c input.
-Proof.
-  simsimpl. induction input; [ reflexivity | ].
-  simsimpl. rewrite IHinput; reflexivity.
-Qed.
+Proof. apply fold_left_accumulate_to_map. Qed.
 Hint Rewrite @simulate_comb using solve [eauto] : push_simulate.
 
 Lemma simulate_first {A B C} (f : Circuit A C) (input : list (A * B)) :
   simulate (First f) input = combine (simulate f (map fst input))
                                       (map snd input).
 Proof.
-  simsimpl. generalize (reset_state f).
-  induction input; intros; [ reflexivity | ].
-  simsimpl. rewrite IHinput. reflexivity.
+  simsimpl. rewrite !fold_left_accumulate_map.
+  destruct input as [|i0 ?]; [ reflexivity | ].
+  rewrite !fold_left_accumulate_to_seq with (default:=i0).
+  factor_out_loops.
+  eapply fold_left_accumulate_double_invariant_seq
+    with (I:= fun i st1 st2 acc1 acc2 =>
+                st1 = st2 /\
+                length acc2 = i /\
+                length acc1 = i /\
+                acc2 = combine acc1 (map snd (firstn i (i0 :: input)))).
+  { ssplit; reflexivity. }
+  { intros; logical_simplify.
+    subst acc2; subst.
+    autorewrite with push_length natsimpl in *.
+    repeat destruct_pair_let; cbn [fst snd].
+    ssplit; try reflexivity; try lia; [ ].
+    rewrite firstn_succ_snoc with (d:=i0) by length_hammer.
+    autorewrite with pull_snoc. rewrite combine_append by length_hammer.
+    reflexivity. }
+  { intros; logical_simplify; subst.
+    autorewrite with push_firstn natsimpl.
+    reflexivity. }
 Qed.
 Hint Rewrite @simulate_first using solve [eauto] : push_simulate.
 
@@ -96,31 +94,31 @@ Hint Rewrite @simulate_second using solve [eauto] : push_simulate.
 
 Lemma simulate_DelayInitCE {t} (init : combType t) input :
   simulate (DelayInitCE init) input = firstn (length input)
-                                             (init :: fst (fold_left_accumulate
-                                                            (fun st i_en =>
-                                                               if (snd i_en : bool)
-                                                               then fst i_en
-                                                               else st)
-                                                            input init)).
+                                             (init :: (fold_left_accumulate
+                                                        (fun st i_en =>
+                                                           if (snd i_en : bool)
+                                                           then (fst i_en, fst i_en)
+                                                           else (st, st))
+                                                        input init)).
 Proof.
   simsimpl. generalize init at 1. generalize init.
   induction input; intros; [ reflexivity | ].
   simsimpl. rewrite IHinput.
   autorewrite with push_length push_firstn push_fold_acc.
   destruct_products; cbn [fst snd].
-  reflexivity.
+  destruct_one_match; reflexivity.
 Qed.
 Hint Rewrite @simulate_DelayInitCE using solve [eauto] : push_simulate.
 
 Lemma simulate_DelayCE {t} (input : list (combType t * bool)) :
   simulate DelayCE input = firstn (length input)
                                   (defaultSignal
-                                     :: fst (fold_left_accumulate
-                                              (fun st i_en =>
-                                                 if (snd i_en : bool)
-                                                 then fst i_en
-                                                 else st)
-                                              input defaultSignal)).
+                                     :: (fold_left_accumulate
+                                          (fun st i_en =>
+                                             if (snd i_en : bool)
+                                             then (fst i_en, fst i_en)
+                                             else (st, st))
+                                          input defaultSignal)).
 Proof. apply simulate_DelayInitCE. Qed.
 Hint Rewrite @simulate_DelayCE using solve [eauto] : push_simulate.
 

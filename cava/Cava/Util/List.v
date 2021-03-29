@@ -1057,6 +1057,37 @@ Section FoldLeftAccumulate.
     fold_left_accumulate f1 ls b = fold_left_accumulate f2 ls b.
   Proof. eauto using fold_left_accumulate_ext_In. Qed.
 
+  Lemma fold_left_accumulate_fold_left_accumulate {A B C D E}
+        (f : B -> A -> B * D) (g : C -> D -> C * E) :
+    forall ls b c,
+      fold_left_accumulate
+        g (fold_left_accumulate f ls b) c
+      = fold_left_accumulate
+          (fun '(b,c) a =>
+             let '(b', d) := f b a in
+             let '(c', e) := g c d in
+             (b', c', e))
+          ls (b, c).
+  Proof.
+    induction ls; intros; [ reflexivity | ].
+    rewrite !fold_left_accumulate_cons.
+    rewrite IHls.
+    progress destruct (f _ _).
+    progress destruct (g _ _).
+    reflexivity.
+  Qed.
+
+  Lemma fold_left_accumulate_to_map {A B C} (f : A -> B) :
+    forall ls b (c : C),
+      fold_left_accumulate (fun _ x => (c, f x)) ls b
+      = map f ls.
+  Proof.
+    induction ls; intros; [ reflexivity | ].
+    rewrite !fold_left_accumulate_cons.
+    cbn [map fst snd]. rewrite IHls.
+    reflexivity.
+ Qed.
+
   Lemma fold_left_accumulate_map {A B C D}
         (f : C -> B -> C * D) (g : A -> B) ls b :
     fold_left_accumulate f (map g ls) b =
@@ -1070,10 +1101,11 @@ Section FoldLeftAccumulate.
 
   Lemma nth_fold_left_accumulate' {A B C}
         (f : B -> A -> B * C) :
-    forall ls acc0 b d i,
+    forall ls acc0 b c d i,
       length acc0 <= i < length acc0 + length ls ->
       nth i (fst (fold_left_accumulate' f acc0 ls b)) d =
-      fold_left (fun b a => fst (f b a)) (firstn (S (i-length acc0)) ls) b.
+      snd (fold_left (fun bc a => f (fst bc) a)
+                      (firstn (S (i-length acc0)) ls) (b,c)).
   Proof.
     induction ls; cbn [length]; intros; [ lia | ].
     rewrite fold_left_accumulate'_cons.
@@ -1081,53 +1113,55 @@ Section FoldLeftAccumulate.
     { subst. rewrite fold_left_accumulate'_equiv.
       autorewrite with push_nth natsimpl push_firstn.
       reflexivity. }
-    { rewrite IHls by length_hammer.
+    { erewrite IHls by length_hammer.
       autorewrite with push_length natsimpl push_firstn.
-      cbn [fold_left]. repeat (f_equal; [ ]). lia. }
+      rewrite <-surjective_pairing. cbn [fst snd fold_left].
+      repeat (f_equal; [ ]). lia. }
   Qed.
 
-  Lemma nth_fold_left_accumulate {A B}
-        (f : B -> A -> B) :
-    forall ls b d i,
+  Lemma nth_fold_left_accumulate {A B C}
+        (f : B -> A -> B * C) :
+    forall ls b c d i,
       i < length ls ->
-      nth i (fst (fold_left_accumulate f ls b)) d =
-      fold_left f (firstn (S i) ls) b.
+      nth i (fold_left_accumulate f ls b) d =
+      snd (fold_left (fun bc => f (fst bc)) (firstn (S i) ls) (b, c)).
   Proof.
     cbv [fold_left_accumulate]; intros.
-    rewrite nth_fold_left_accumulate' by (cbn [length]; lia).
+    erewrite nth_fold_left_accumulate' by (cbn [length]; lia).
     rewrite Nat.sub_0_r. reflexivity.
   Qed.
 
   Lemma fold_left_accumulate_to_seq
-        {A B} (f : A -> B -> A) ls b default :
+        {A B C} (f : B -> A -> B * C) ls b default :
     fold_left_accumulate f ls b =
     fold_left_accumulate
       (fun x i => f x (nth i ls default)) (seq 0 (length ls)) b.
   Proof.
     cbv [fold_left_accumulate fold_left_accumulate'].
     rewrite fold_left_to_seq with (default0:=default).
+    apply f_equal.
     apply fold_left_ext; intros [? ?] ?.
     reflexivity.
   Qed.
 
-  Lemma fold_left_accumulate_invariant_seq {A B}
-        (I : nat -> B -> list B -> Prop) (P : (list B * B) -> Prop)
-        (f : B -> A -> B) (ls : list A) b :
+  Lemma fold_left_accumulate_invariant_seq {A B C}
+        (I : nat -> B -> list C -> Prop) (P : list C -> Prop)
+        (f : B -> A -> B * C) (ls : list A) b :
     I 0 b [] -> (* invariant holds at start *)
   (* invariant holds through loop *)
   (forall t st acc d,
       I t st acc ->
       0 <= t < length ls ->
       let out := f st (nth t ls d) in
-      I (S t) out (acc ++ [out])) ->
+      I (S t) (fst out) (acc ++ [snd out])) ->
     (* invariant implies postcondition *)
     (forall st acc,
         I (length ls) st acc ->
-        P (acc, st)) ->
+        P acc) ->
     P (fold_left_accumulate f ls b).
   Proof.
     intros ? ? IimpliesP. cbv [fold_left_accumulate fold_left_accumulate'].
-    destruct ls as[|default ls]; [ cbn; solve [auto] | ].
+    destruct ls as[|default ls]; [ cbn; solve [eauto] | ].
     erewrite fold_left_to_seq with (default0:=default).
     eapply fold_left_invariant_seq
           with (I0 := fun i '(acc,st) =>
@@ -1136,107 +1170,69 @@ Section FoldLeftAccumulate.
     { intros ? [? ?]; intros.
       cbn [Nat.add] in *; auto. }
     { intros [? ?]; cbn [length Nat.add]; intros.
-      auto. }
+      eauto. }
   Qed.
 
-  Lemma fold_left_accumulate_double_invariant_In {A B C}
-        (I : B -> C -> Prop) (P : (list B * B) -> (list C * C) -> Prop)
-        (f1 : B -> A -> B) (f2 : C -> A -> C)
+  Lemma fold_left_accumulate_double_invariant_In {A B C D E}
+        (I : B -> D -> list C -> list E -> Prop)
+        (P : list C -> list E -> Prop)
+        (f1 : B -> A -> B * C) (f2 : D -> A -> D * E)
         (ls : list A) b d :
-    I b d -> (* invariant holds at start *)
-    (forall b d a, I b d -> In a ls -> I (f1 b a) (f2 d a)) -> (* invariant holds through loop body *)
+    I b d [] [] -> (* invariant holds at start *)
+    (* invariant holds through loop body *)
+    (forall b d acc1 acc2 a,
+        I b d acc1 acc2 -> In a ls ->
+        I (fst (f1 b a)) (fst (f2 d a))
+          (acc1 ++ [snd (f1 b a)]) (acc2 ++ [snd (f2 d a)])) ->
     (* invariant implies postcondition *)
     (forall b d acc1 acc2,
-        I b d ->
-        Forall2 I acc1 acc2 ->
-        P (acc1, b) (acc2, d)) ->
+        I b d acc1 acc2 ->
+        P acc1 acc2) ->
     P (fold_left_accumulate f1 ls b)
       (fold_left_accumulate f2 ls d).
   Proof.
     intros ? ? IimpliesP. cbv [fold_left_accumulate fold_left_accumulate'].
     eapply fold_left_double_invariant_In
       with (I0 := fun '(acc1, a') '(acc2, b') =>
-                    Forall2 I acc1 acc2
-                    /\ I a' b');
+                    I a' b' acc1 acc2);
       intros;
-      repeat match goal with
-             | x : _ * _ |- _ => destruct x
+      repeat lazymatch goal with
+             | x : _ * _ |- _ => destruct x; cbn [fst snd]
              | H : _ /\ _ |- _ => destruct H
              | |- _ /\ _ => split; try length_hammer
              | |- last _ _ = _ => apply last_last
-             end; [ | ].
-    { apply Forall2_app; auto. }
-    { apply IimpliesP; auto. }
+             end; eauto.
   Qed.
 
-  Lemma fold_left_accumulate_double_invariant_seq {A B}
-        (I : nat -> A -> B -> Prop) (P : list A * A -> list B * B -> Prop)
-        (f : A -> nat -> A) (g : B -> nat -> B) start len a b :
-    I start a b -> (* invariant holds at start *)
+  Lemma fold_left_accumulate_double_invariant_seq {A B C D}
+        (I : nat -> A -> B -> list C -> list D -> Prop)
+        (P : list C -> list D -> Prop)
+        (f : A -> nat -> A * C) (g : B -> nat -> B * D) start len a b :
+    I start a b [] [] -> (* invariant holds at start *)
     (* invariant holds through loop body *)
-    (forall i a b, I i a b -> start <= i < start + len ->
-              I (S i) (f a i) (g b i)) ->
+    (forall i a b acc1 acc2,
+        I i a b acc1 acc2 -> start <= i < start + len ->
+        I (S i) (fst (f a i)) (fst (g b i))
+          (acc1 ++ [snd (f a i)]) (acc2 ++ [snd (g b i)])) ->
     (* invariant implies postcondition *)
     (forall a b acc1 acc2,
-        I (start + len) a b ->
-        (forall i da db,
-            start <= i < start + len ->
-            I (S i) (nth (i - start) acc1 da)
-              (nth (i - start) acc2 db)) ->
-        length acc1 = len ->
-        length acc2 = len ->
-        P (acc1, a) (acc2, b)) ->
+        I (start + len) a b acc1 acc2 ->
+        P acc1 acc2) ->
     P (fold_left_accumulate f (seq start len) a)
       (fold_left_accumulate g (seq start len) b).
   Proof.
     intros ? ? IimpliesP. cbv [fold_left_accumulate fold_left_accumulate'].
     eapply fold_left_double_invariant_seq
       with (I0 := fun i '(acc1, a') '(acc2, b') =>
-                    (forall j d1 d2,
-                        start <= j < i ->
-                        I (S j)
-                          (nth (j - start) acc1 d1)
-                          (nth (j - start) acc2 d2))
-                    /\ I i a' b'
-                    /\ last acc1 a = a'
-                    /\ last acc2 b = b'
-                    /\ length acc1 = i - start
-                    /\ length acc2 = i - start);
+                    I i a' b' acc1 acc2);
       intros;
-      repeat match goal with
+      repeat lazymatch goal with
              | x : _ * _ |- _ => destruct x
              | H : _ /\ _ |- _ => destruct H
              | |- _ /\ _ => split; try length_hammer
              | |- last _ _ = _ => apply last_last
-             end.
-    { intros j ? ? ?.
-      assert (j <= i) as jupper by lia.
-      apply Lt.le_lt_or_eq in jupper.
-      destruct jupper; subst;
-        [ assert (start <= j < i) by lia | ];
-        autorewrite with natsimpl push_nth; auto. }
-    { subst; auto.
-      apply IimpliesP; length_hammer. }
+             end; eauto.
   Qed.
-
-  (* Uses an invariant to relate two loops to each other *)
-  Lemma fold_left_accumulate_double_invariant {A B C}
-        (I : B -> C -> Prop) (P : (list B * B) -> (list C * C) -> Prop)
-        (f1 : B -> A -> B) (f2 : C -> A -> C)
-        (ls : list A) b d :
-    I b d -> (* invariant holds at start *)
-    (forall b d a, I b d -> I (f1 b a) (f2 d a)) -> (* invariant holds through loop body *)
-    (* invariant implies postcondition *)
-    (forall b d acc1 acc2,
-        I b d ->
-        Forall2 I acc1 acc2 ->
-        P (acc1, b) (acc2, d)) ->
-    P (fold_left_accumulate f1 ls b)
-      (fold_left_accumulate f2 ls d).
-  Proof.
-    intros. eapply fold_left_accumulate_double_invariant_In; eauto.
-  Qed.
-
 End FoldLeftAccumulate.
 
 Hint Rewrite @fold_left_accumulate_cons @fold_left_accumulate_nil
@@ -1345,29 +1341,40 @@ Ltac invert_in :=
          end.
 
 (* Factor out loops from a goal in preparation for using fold_left_invariant *)
-Ltac factor_out_loops' loop_defn :=
+Ltac factor_out_loops :=
   lazymatch goal with
   | |- ?G =>
     lazymatch G with
-    | context [(loop_defn ?A1 ?B1 ?f1 ?ls1 ?b1)] =>
+    | context [(@fold_left ?A1 ?B1 ?f1 ?ls1 ?b1)] =>
       let F1 :=
-          lazymatch (eval pattern (loop_defn A1 B1 f1 ls1 b1) in G) with
+          lazymatch (eval pattern (@fold_left A1 B1 f1 ls1 b1) in G) with
           | ?F _ => F end in
       lazymatch F1 with
-      | context [(loop_defn ?A2 ?B2 ?f2 ?ls2 ?b2)] =>
+      | context [(@fold_left ?A2 ?B2 ?f2 ?ls2 ?b2)] =>
         (unify ls1 ls2 + fail "Failed to unify loop lists:" ls1 ls2);
         let F2 :=
-            lazymatch (eval pattern (loop_defn A2 B2 f2 ls2 b2) in F1) with
+            lazymatch (eval pattern (@fold_left A2 B2 f2 ls2 b2) in F1) with
             | ?F _ => F end in
-        (change (F2 (loop_defn A2 B2 f2 ls2 b2) (loop_defn A1 B1 f1 ls1 b1))
-         || let loop1 := constr:(loop_defn A1 B1 f1 ls1 b1) in
-           let loop2 := constr:(loop_defn A2 B2 f2 ls2 b2) in
+        (change (F2 (@fold_left A2 B2 f2 ls2 b2) (@fold_left A1 B1 f1 ls1 b1))
+         || let loop1 := constr:(@fold_left A1 B1 f1 ls1 b1) in
+           let loop2 := constr:(@fold_left A2 B2 f2 ls2 b2) in
+           fail "Failed to change goal with:" F2 loop2 loop1)
+      end
+    | context [(@fold_left_accumulate ?A1 ?B1 ?C1 ?f1 ?ls1 ?b1)] =>
+      let F1 :=
+          lazymatch (eval pattern (@fold_left_accumulate A1 B1 C1 f1 ls1 b1) in G) with
+          | ?F _ => F end in
+      lazymatch F1 with
+      | context [(@fold_left_accumulate ?A2 ?B2 ?C2 ?f2 ?ls2 ?b2)] =>
+        (unify ls1 ls2 + fail "Failed to unify loop lists:" ls1 ls2);
+        let F2 :=
+            lazymatch (eval pattern (@fold_left_accumulate A2 B2 C2 f2 ls2 b2) in F1) with
+            | ?F _ => F end in
+        (change (F2 (@fold_left_accumulate A2 B2 C2 f2 ls2 b2)
+                    (@fold_left_accumulate A1 B1 C1 f1 ls1 b1))
+         || let loop1 := constr:(@fold_left_accumulate A1 B1 C1 f1 ls1 b1) in
+           let loop2 := constr:(@fold_left_accumulate A2 B2 C2 f2 ls2 b2) in
            fail "Failed to change goal with:" F2 loop2 loop1)
       end
     end
-  end.
-Ltac factor_out_loops :=
-  lazymatch goal with
-  | |- context [fold_left] => factor_out_loops' constr:(@fold_left)
-  | |- context [fold_left_accumulate] => factor_out_loops' constr:(@fold_left_accumulate)
   end.
