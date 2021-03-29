@@ -44,7 +44,6 @@ library
                      Applicative
                      BinNat
                      BinNums
-                     BinInt
                      BitArithmetic
                      Bool
                      Bvector
