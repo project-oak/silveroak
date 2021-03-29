@@ -19,38 +19,33 @@ Require Import Cava.Lib.VecConstEq.
 Require Import Coq.Arith.PeanoNat.
 Require Import Cava.Util.Vector.
 Require Import ExtLib.Structures.Traversable.
+Require Import ExtLib.Structures.Monad.
+Require Import ExtLib.Structures.Functor.
+
+Import FunctorNotation.
 
 Section WithCava.
   Context `{semantics:Cava}.
 
-  (* Fork a wire into N branches. *)
-  Definition forkN {t : SignalType} (n : nat) (v : signal t)
-    : cava (signal (Vec t n)) :=
-    packV (Vector.const v n).
-
-  Definition map2VC {n a b c}
-    (f: a -> signal b -> cava (signal c))
-    (v1: Vector.t a n)
-    : signal (Vec b n)
-    -> cava (signal (Vec c n))
-    :=  unpackV
-    >=> Vector.map2 (fun f v => f v) (Vector.map f v1)
-    >=> mapT_vector id
-    >=> packV.
-
-
   (* A decoder from binary to one-hot. Both are big endian *)
-  Definition decoder {n : nat}
-    : signal (Vec Bit n) -> cava (signal (Vec Bit (2^n)))
-    := forkN (2^n) >=> map2VC (vecConstEq n) (Vector.vseq 0 (2^n)).
+  Definition decoder {n : nat} (bv : signal (Vec Bit n))
+    := Vec.map_literal
+        (fun f => f bv)
+        (Vector.map (vecConstEq n) (Vector.vseq 0 (2^n))).
 
-  Definition encoder {n: nat} : signal (Vec Bit (2^n)) -> cava (signal (Vec Bit n))
-    := map2VC
-         (fun k hot_sig =>
-           packV (Vector.map
-             (fun bit : bool => if bit then hot_sig else zero)
-             (N2Bv_sized n (N.of_nat k))))
-         (Vector.vseq 0 (2^n))
-    >=> tree (Vec.map2 or2).
+  Definition encoder {n: nat}
+    (hot : signal (Vec Bit (2^n)))
+    : cava (signal (Vec Bit n))
+    :=         (* Go from Vector of Bvector to Vec of Vec *)
+    consts <- Vec.map_literal ret
+      (mapT_vector
+        (@Vec.bitvec_literal signal semantics  _)
+        (* build a Vector.t of constant bitvecs 0...2^n *)
+        (Vector.map (fun k => N2Bv_sized n (N.of_nat k))
+                    (Vector.vseq 0 (2^n)))) ;;
+    Vec.map2
+      (fun '(k, hot_sig) => mux2 hot_sig (defaultSignal, k))
+      (consts, hot)
+    >>= tree (Vec.map2 or2).
 
 End WithCava.
