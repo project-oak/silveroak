@@ -284,16 +284,8 @@ Fixpoint take {T: Type} {m} (n : nat): Vector.t T (n+m) -> Vector.t T n :=
   match n with
   | O => fun v => []
   | S n' =>
-    fun v =>
-      match v in (Vector.t _ x) return
-        match x with
-        | 0 => unit
-        | S _ => Vector.t T (S n')
-        end
-          with
-      | x :: xs => x :: take n' (tl v)
-      | _ => tt
-      end
+    fun v : Vector.t _ (S (n' + m)) =>
+      Vector.hd v :: take n' (Vector.tl v)
   end.
 
 Definition slice_default {T: Type} {s: nat} (d: T) (v: Vector.t T s) (startAt len : nat) : Vector.t T len :=
