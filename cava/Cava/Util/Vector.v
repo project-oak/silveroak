@@ -143,28 +143,7 @@ Fixpoint vseq (start len: nat) : Vector.t nat len :=
   | S n' => start :: vseq (start + 1) n'
   end%vector.
 
-
-(******************************************************************************)
-(* Slicing a Vector.t                                                         *)
-(******************************************************************************)
-
-Import EqNotations.
-
-Definition sliceVector {T: Type} {s: nat} (v: Vector.t T s) (startAt len : nat)
-                     (H: startAt + len <= s) : Vector.t T len :=
-  match Nat.eq_dec s (startAt + (s - startAt)) with
-    | left Heq =>
-      let '(_, v) := Vector.splitat startAt (rew [fun x => Vector.t T x] Heq in v)
-      in
-        match Nat.eq_dec (s-startAt) (len + ((s-startAt) - len)) with
-        | left Heq => fst (Vector.splitat len (rew [fun x => Vector.t T x] Heq in v))
-        | right Hneq => (ltac:(abstract lia))
-        end
-    | right Hneq => (ltac:(abstract lia))
-    end.
-
 (* An experimental alternative vector representation *)
-
 Fixpoint AltVector (A: Type) (n: nat) : Type :=
   match n with
   | 0 => unit
@@ -289,6 +268,29 @@ Section resize.
     intros; subst; rewrite resize_default_id. reflexivity.
   Qed.
 End resize.
+
+
+(******************************************************************************)
+(* Slicing a Vector.t                                                         *)
+(******************************************************************************)
+
+Fixpoint drop {T: Type} {m} (n : nat): Vector.t T (n+m) -> Vector.t T m :=
+  match n with
+  | O => fun v => v
+  | S n' => fun v => drop n' (tl v)
+  end.
+
+Fixpoint take {T: Type} {m} (n : nat): Vector.t T (n+m) -> Vector.t T n :=
+  match n with
+  | O => fun v => []
+  | S n' =>
+    fun v : Vector.t _ (S (n' + m)) =>
+      Vector.hd v :: take n' (Vector.tl v)
+  end.
+
+Definition slice_default {T: Type} {s: nat} (d: T) (v: Vector.t T s) (startAt len : nat) : Vector.t T len :=
+  let v' := drop (m:=s - startAt) startAt (resize_default d _ v) in
+  take (m:=s - startAt - len) len (resize_default d _ v').
 
 (* Miscellaneous facts about vectors *)
 Section VectorFacts.
