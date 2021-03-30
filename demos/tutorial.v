@@ -27,14 +27,23 @@
 Tutorial
 ========
 
-Welcome! This is a quick primer for designing circuits with Cava. We'll walk
-through a few small examples end-to-end. This tutorial will not explain Coq
-syntax in depth, but will use the same few patterns throughout; you shouldn't
-need to know Coq to follow along.
+Welcome! This is a quick primer for designing circuits with the Cava DSL. This
+tutorial will not explain Coq syntax in depth, but will use the same few
+patterns throughout; you shouldn't need to be a Coq expert to follow
+along. We'll walk through a few small examples end-to-end, showing you how to
+define, simulate, and generate netlists for circuits in Cava.
 
-Use Ctrl+down and Ctrl+up to step through the Coq code along with the
-tutorial. Use Ctrl+click to focus on a particular line.
+This page allows you to see the Coq output for each line that has output. Try
+hovering over the following line:
+|*)
 
+Compute (1 + 2).
+
+(*|
+See the banner at the top of the page for instructions on how to navigate the proofs.
+
+.. contents:: Table of Contents
+   :depth: 2
 
 Preliminaries
 =============
@@ -775,7 +784,7 @@ creates *internal state* values, which can be referenced from inside the loop
 but are not visible outside it. Visually, a loop looks like this:
 
 .. image:: loop.png
-   :scale: 70%
+   :width: 70%
    :alt: Circuit diagram showing a loop.
 
 The following circuit gets a stream of bit-vectors as input, and uses ``Loop``
@@ -982,7 +991,7 @@ Proof.
   cbv [sum_list_N]. autorewrite with pull_snoc.
   (* use Bv2N to bring the goal into the N realm, where it's
      easier to solve using modular arithmetic rules *)
-  apply Bv2N_inj. rewrite !Bv2N_N2Bv_sized_modulo.
+  bitvec_to_N.
   rewrite N.add_mod_idemp_r by (apply N.pow_nonzero; lia).
   rewrite N.add_comm.
   reflexivity.
@@ -1008,11 +1017,15 @@ Proof.
     cbv [sum_invariant step]. intros. simpl_ident.
     logical_simplify; subst.
     split. (* separate the two invariant clauses *)
-    { rewrite firstn_succ_snoc with (d0:=d) by lia.
+
+    { (* prove loop_state has the correct value *)
+      rewrite firstn_succ_snoc with (d0:=d) by lia.
       autorewrite with pull_snoc.
       rewrite sum_list_N_snoc_bitvec.
       reflexivity. }
-    { cbv [spec_of_sum rolling_sum].
+
+    { (* prove the output accumulator has the correct value *)
+      cbv [spec_of_sum rolling_sum].
       (* simplify expression using list lemmas *)
       rewrite !map_map.
       autorewrite with push_length natsimpl.
@@ -1043,5 +1056,258 @@ Lemma sum_concise_correct n (input : list (combType (Vec Bit n))):
 Proof. reflexivity. Qed.
 
 (*|
+Example 7 : Fibonacci Sequence
+==============================
+
+.. coq:: none
+|*)
+
+Section WithCava.
+  Context {signal} {semantics : Cava signal}.
+
+(*|
+In this example, we'll write a circuit that computes the Fibonacci
+sequence. Here's the circuit diagram:
+
+.. image:: fibonacci.png
+   :width: 70%
+   :alt: Circuit diagram for the fibonacci circuit
+
+In the diagram, ``r1`` and ``r2`` are registers. Because of the delay a register
+introduces, the ``addN`` in the middle of the circuit will, at timestep ``t``,
+add together the output from timestep ``t-1`` and the output from timestep
+``t-2``. In Cava, the circuit description looks like:
+|*)
+
+  Definition fibonacci {sz}
+    : Circuit (signal Void) (signal (Vec Bit sz)) :=
+    (* initial state of r1 = 1 *)
+    let r1_init : combType (Vec Bit sz) := N2Bv_sized sz 1 in
+    (* initial state of r2 = 2^sz-1 *)
+    let r2_init : combType (Vec Bit sz) :=
+        N2Bv_sized sz (2^N.of_nat sz - 1) in
+
+    LoopInit r1_init
+             ( (* start: (in, r1) *)
+               Comb (dropl >=> fork2) >==> (* r1, r1 *)
+                    Second (DelayInit r2_init) >==> (* r1, r2 *)
+                    Comb (addN >=> fork2) (* r1 + r2, r1 + r2 *)).
+
+(*|
+Note the initial values. In order to get the correct output for the first two
+timesteps (0 and 1), we set ``r1 = 1`` and ``r2 = 2^sz-1``, where ``sz`` is the
+size of the bit vector. Since ``addN`` performs truncating bit-vector addition,
+the two initial values will sum to zero.
+
+The circuit input is a ``Void`` signal, another ``SignalType``. It's an empty
+type that's interpreted as a ``unit`` in Coq, and only serves to tell the
+circuit how many timesteps it should run for.
+
+It's also possible to write the ``fibonacci`` circuit as two nested loops with a
+combinational body (essentially a mealy_ machine).
+|*)
+
+  Definition fibonacci_mealy {sz}
+    : Circuit (signal Void) (signal (Vec Bit sz)) :=
+    let v1 : combType (Vec Bit sz) := N2Bv_sized sz 1 in
+    let v_negative1 : combType (Vec Bit sz) := Vector.const one sz in
+    LoopInit v1
+      (LoopInit v_negative1
+                (Comb
+                   (fun '(_,r1,r2) =>
+                      sum <- addN (r1, r2) ;;
+                      ret (sum, sum, r1)))).
+
+(*|
+.. coq:: none
+|*)
+
+End WithCava.
+
+(*|
+As always, we can generate a netlist:
+|*)
+
+Definition fibonacci_interface {n : nat}
+  := sequentialInterface "sum_interface"
+     "clk" PositiveEdge "rst" PositiveEdge
+     [mkPort "i" Void]
+     [mkPort "o" (Vec Bit n)].
+
+Compute
+  (makeCircuitNetlist fibonacci_interface
+                      (fibonacci (sz:=4))).(module).
+
+Compute
+  (makeCircuitNetlist fibonacci_interface
+                      (fibonacci_mealy (sz:=4))).(module).
+
+(*|
+We can run some simulations to make sure the circuit produces the expected
+outputs:
+|*)
+
+Compute map Bv2N
+        (simulate (fibonacci (sz:=8)) (repeat tt 10)).
+
+Compute map Bv2N
+        (simulate (fibonacci_mealy (sz:=8)) (repeat tt 10)).
+
+(*|
+Let's now try to prove that the circuit is correct. As with ``sum``, we first
+need to first describe the behavior we expect. Here's a natural-number function
+that computes the nth element of the Fibonacci sequence:
+|*)
+
+Fixpoint fibonacci_nat (n : nat) :=
+  match n with
+  | 0 => 0
+  | S m =>
+    let f_m := fibonacci_nat m in
+    match m with
+    | 0 => 1
+    | S p => fibonacci_nat p + f_m
+    end
+  end.
+
+(*|
+So, the specification of our ``fibonacci`` circuit is that, given ``n`` of its
+empty inputs, the circuit produces (the bit-vector versions of) the first ``n``
+elements of the Fibonacci sequence:
+|*)
+
+Definition spec_of_fibonacci {sz} (input : list unit)
+  : list (combType (Vec Bit sz))
+  := map (fun n => N2Bv_sized sz (N.of_nat (fibonacci_nat n)))
+         (seq 0 (length input)).
+
+(*|
+We'll need a loop invariant, which just says that the output accumulator matches
+the spec and that the values in ``r1`` and ``r2`` are the right numbers from the
+Fibonacci sequence.
+|*)
+
+Definition fibonacci_invariant {sz}
+           (t : nat)
+           (loop_state : combType (Vec Bit sz))
+           (body_circuit_state :
+              unit * (unit * combType (Vec Bit sz)) * unit)
+           (output_accumulator : list (combType (Vec Bit sz))) : Prop :=
+  let r1 := loop_state in
+  let r2 := snd (snd (fst body_circuit_state)) in
+  (* at timestep t... *)
+  (* ...r1 holds fibonacci_nat (t-1), or 1 if t=0 *)
+  r1 = match t with
+       | 0 => N2Bv_sized sz 1
+       | S t_minus1 => N2Bv_sized sz (N.of_nat (fibonacci_nat t_minus1))
+       end
+  (* ... and r2 holds fibonacci_nat (t-2), or 1 if t=1, 2^sz-1 if t=0 *)
+  /\ r2 = match t with
+         | 0 => N2Bv_sized sz (2^N.of_nat sz - 1)
+         | 1 => N2Bv_sized sz 1
+         | S (S t_minus2) =>
+           N2Bv_sized sz (N.of_nat (fibonacci_nat t_minus2))
+         end
+  (* ... and the output accumulator matches the circuit spec for the
+     inputs so far *)
+  /\ output_accumulator = spec_of_fibonacci (repeat tt t).
+
+(*|
+Note that, unlike for ``sum``, there's actually a bit-vector
+in the loop body state from the ``DelayInit`` element.
+
+The extra ``unit`` types are an unfortunate feature of the current setup and
+we're working on removing them. For now, just know that you can figure out what
+the loop body's type should be by computing its ``circuit_state``, like this:
+|*)
+
+Compute (circuit_state
+           (* body of fibonacci loop: *)
+           (Comb (dropl >=> fork2) >==>
+                 Second (DelayInit _) >==>
+                 Comb (addN >=> fork2))).
+
+(*|
+Here's the proof of correctness, with the help of a couple of small
+helper lemmas:
+|*)
+
+(* Helper lemma for fibonacci_correct *)
+Lemma bitvec_negative_one_plus_one sz :
+  N2Bv_sized sz (1 + (2^N.of_nat sz - 1)) = N2Bv_sized sz 0.
+Proof.
+  bitvec_to_N.
+  assert (2^N.of_nat sz <> 0)%N by (apply N.pow_nonzero; lia).
+  transitivity ((2^N.of_nat sz) mod (2 ^ N.of_nat sz))%N;
+    [ f_equal; lia | ].
+  rewrite N.mod_same, N.mod_0_l by lia.
+  reflexivity.
+Qed.
+
+(* Helper lemma for fibonacci_correct *)
+Lemma fibonacci_nat_step n :
+  fibonacci_nat (S (S n)) = fibonacci_nat (S n) + fibonacci_nat n.
+Proof. cbn [fibonacci_nat]. lia. Qed.
+
+(* the nth element of the simulation output is the bit-vector version of
+   (fibonacci_spec n) *)
+Lemma fibonacci_correct sz (input : list unit) :
+  simulate (fibonacci (sz:=sz)) input = spec_of_fibonacci input.
+Proof.
+  cbv [fibonacci]. autorewrite with simpl_ident.
+
+  (* TODO(jadep): shouldn't need to specify body:= here *)
+  eapply simulate_LoopInit_invariant
+    with
+      (body:=Comb _ >==>
+                  Second (DelayInit (t:=Vec Bit sz) _) >==> Comb _)
+      (I:=fibonacci_invariant).
+
+  { (* prove loop invariant holds at start *)
+    cbv [fibonacci_invariant]. cbn.
+    ssplit; reflexivity. }
+
+  { (* prove that, if the invariant holds at the beginning of the loop
+       body for timestep t, it holds at the end of the loop body for
+       timestep t + 1 *)
+    cbv [fibonacci_invariant DelayInit mcompose].
+    cbn [circuit_state step]. intros; simpl_ident.
+    destruct_products. cbn [fst snd] in *.
+    logical_simplify; subst.
+    cbv [spec_of_fibonacci].
+    autorewrite with push_length.
+    destruct t; [ | destruct t ].
+
+    { (* t = 0 case *)
+      cbn [seq map fibonacci_nat].
+      autorewrite with pull_N2Bv_sized.
+      rewrite bitvec_negative_one_plus_one.
+      ssplit; reflexivity. }
+
+    { (* t = 1 case *)
+      cbn [seq map fibonacci_nat].
+      autorewrite with pull_N2Bv_sized.
+      ssplit; reflexivity. }
+
+    { (* t >= 2 *)
+      autorewrite with pull_snoc natsimpl pull_N2Bv_sized.
+      rewrite fibonacci_nat_step.
+      ssplit; repeat (f_equal; try lia). } }
+
+  { (* prove that the invariant implies the postcondition *)
+    cbv [fibonacci_invariant]; intros.
+    logical_simplify; subst. cbn [combType].
+    rewrite <-(list_unit_equiv input).
+    reflexivity. }
+Qed.
+
+(*|
+That concludes our tutorial! If you want to explore further, take a look at the
+``examples`` directory in our GitHub repo_. You can also view the full source_
+for this page if you want to experiment with these examples yourself.
+
 .. _reference: /../reference
+.. _mealy: https://en.wikipedia.org/wiki/Mealy_machine
+.. _repo: https://github.com/project-oak/silveroak
+.. _source: https://github.com/project-oak/silveroak/blob/main/demos/tutorial.v
 |*)

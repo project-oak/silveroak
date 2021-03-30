@@ -420,3 +420,27 @@ Proof.
   destruct x; [ apply last_const | ].
   apply P2Bv_sized_last.
 Qed.
+
+Hint Rewrite @N2Bv_sized_Bv2N using solve [eauto] : push_N2Bv_sized.
+Hint Rewrite @N2Bv_sized_Bv2N using solve [eauto] : pull_N2Bv_sized.
+
+Ltac bitvec_to_N :=
+  apply Bv2N_inj; rewrite ?Bv2N_N2Bv_sized_modulo.
+
+Lemma N2Bv_sized_add_idemp_r sz x y :
+  N2Bv_sized sz (x + Bv2N (N2Bv_sized sz y)) = N2Bv_sized sz (x + y).
+Proof.
+  bitvec_to_N.
+  rewrite N.add_mod_idemp_r by (apply N.pow_nonzero; lia).
+  reflexivity.
+Qed.
+Hint Rewrite @N2Bv_sized_add_idemp_r using solve [eauto] : pull_N2Bv_sized.
+
+Lemma N2Bv_sized_add_idemp_l sz x y :
+  N2Bv_sized sz (Bv2N (N2Bv_sized sz x) + y) = N2Bv_sized sz (x + y).
+Proof.
+  bitvec_to_N.
+  rewrite N.add_mod_idemp_l by (apply N.pow_nonzero; lia).
+  reflexivity.
+Qed.
+Hint Rewrite @N2Bv_sized_add_idemp_l using solve [eauto] : pull_N2Bv_sized.

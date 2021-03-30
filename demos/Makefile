@@ -59,7 +59,7 @@ clean:
 
 # build demo webpages (requires alectryon -- set $ALECTRYON_PATH variable to local alectryon clone)
 html:
-	$(ALECTRYON_PATH)/alectryon.py --backend webpage \
+	$(ALECTRYON_PATH)/alectryon.py --backend webpage --webpage-style floating \
 	       	-o ../docs/demo/tutorial.html --output-directory ../docs/demo \
 	       	-R ../cava/Cava Cava \
 		-R ../third_party/coq-ext-lib/theories ExtLib \
