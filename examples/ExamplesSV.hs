@@ -22,6 +22,7 @@ import FullAdderExample
 import UnsignedAdderExamples
 import AdderTree
 import TwoSorter
+import BitonicSorter
 
 main :: IO ()
 main = do writeSystemVerilog nand2Netlist
@@ -36,3 +37,6 @@ main = do writeSystemVerilog nand2Netlist
           writeTestBench fullAdder_tb
           writeSystemVerilog two_sorter_Netlist
           writeTestBench two_sorter_tb
+          writeSystemVerilog bsort4_8_Netlist
+          writeTestBench bsort4_8_tb
+

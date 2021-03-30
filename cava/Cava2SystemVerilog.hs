@@ -81,7 +81,7 @@ cava2SystemVerilog cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs' e
      "  timeunit 1ns; timeprecision 1ns;",
      ""] ++
     declareLocalNets (fromN netNumber) ++
-    [vectorDeclaration ("v" ++ show i) k s ++ ";" | ((k, s), i) <- zip vDefs [0..]] ++
+    [vectorDeclaration ("v" ++ show i) k s ++ ";" | ((k, s), i) <- zip vDefs [0..], s > 0] ++
     [ "  " ++ t ++ " ext_" ++ show i ++ ";" | (t, i) <- zip ext [0..]] ++
     [""] ++
     [generateInstance genState inst i | (inst, i) <- zip instances [0..]] ++
@@ -233,6 +233,7 @@ generateInstance netlistState (DelayEnable t initV en d o) _
     negReset = case rstEdge of
                  PositiveEdge -> ""
                  NegativeEdge -> "!"
+generateInstance _ (AssignSignal (Vec _ 0) a b) _ = ""
 generateInstance _ (AssignSignal _ a b) _
    = "  assign " ++ showSignal a ++ " = " ++ showSignal b ++ ";"
 generateInstance _ (Not i o) instrNr = primitiveInstance "not" [o, i] instrNr

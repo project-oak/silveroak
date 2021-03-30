@@ -26,6 +26,7 @@ import CountBy
 import DoubleCountBy
 import Array
 import TestVecConstEq
+import TestDecoder
 
 main :: IO ()
 main = do writeSystemVerilog mux2_1Netlist
@@ -53,3 +54,9 @@ main = do writeSystemVerilog mux2_1Netlist
           writeTestBench multiDimArrayTest_tb
           writeSystemVerilog vecConstEq8_42Netlist
           writeTestBench vecConstEq8_42_tb
+          writeSystemVerilog decoder2Netlist
+          writeTestBench decoder2_tb
+          writeSystemVerilog encoder2Netlist
+          writeTestBench encoder2_tb
+          writeSystemVerilog encoderdecoderNetlist
+          writeTestBench encoderdecoder_tb
