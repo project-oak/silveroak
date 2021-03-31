@@ -64,11 +64,6 @@ Class Cava (signal : SignalType -> Type) := {
             signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
             signal (Vec Bit isz) ->  (* A bit-vector index of size isz bits *)
             cava (signal t);                (* The indexed value of type signal t *)
-  (* Static indexing *)
-  indexConst : forall {t: SignalType} {sz: nat},
-               signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
-               nat ->                   (* Static index *)
-               cava (signal t);                (* The indexed bit of type signal bit *)
   (* Synthesizable arithmetic operations. *)
   unsignedAdd : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b) ->
                 cava (signal (Vec Bit (1 + max a b)));
@@ -90,3 +85,15 @@ Class Cava (signal : SignalType -> Type) := {
              tupleInterface signal (map port_type (circuitInputs intf)) ->
              cava (tupleInterface signal ((map port_type (circuitOutputs intf))));
 }.
+
+Require Import Cava.Util.Vector.
+Require Import ExtLib.Structures.Monads.
+Import MonadNotation.
+
+Section Derivative.
+  Context {signal} `{Cava signal}.
+
+  Definition indexConst {t : SignalType} {sz : nat} (v : signal (Vec t sz)) (i : nat) : cava (signal t)
+    := v' <- unpackV v ;;
+       ret (nth_default defaultSignal i v').
+End Derivative.
