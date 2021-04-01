@@ -1,0 +1,17 @@
+run:
+  using: "composite"
+  steps:
+    - run: |
+        mkdir nix-cache
+        nix-build package.nix > nix-cache/packages.txt
+        cat nix-cache/packages.txt | cut -d '/' -f 4 | xargs -I '{}' -n 1 bash -c 'nix-store --dump /nix/store/{} > nix-cache/{}.nar'
+
+      shell: bash
+
+    - name: Cache third_party
+      uses: actions/cache@v2
+      with:
+        path: third_party
+        key: ${{ runner.os }}-build-${{ github.run_id }}-third_party
+    - run: ${{ github.action_path }}/cache.sh
+      shell: bash

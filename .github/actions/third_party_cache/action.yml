@@ -1,0 +1,25 @@
+name: 'Load third_party cache'
+description: 'Load third_party caches'
+inputs:
+outputs:
+runs:
+  using: "composite"
+  steps:
+    - name: Use record-update cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          third_party
+        key: ${{ runner.os }}-build-${{ github.run_id }}-third_party-record-update
+    - name: Use extlib cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          third_party
+        key: ${{ runner.os }}-build-${{ github.run_id }}-third_party-extlib
+    - name: Use bedrock2 cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          third_party
+        key: ${{ runner.os }}-build-${{ github.run_id }}-third_party-bedrock2

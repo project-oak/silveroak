@@ -1,44 +1,47 @@
 { sources ? import ./nix/sources.nix
 , pkgs ? import ./nix/packages.nix { inherit sources; }
+, shell ? true
+, coq ? false
+, haskell ? false
+, verilator ? false
 }:
 
-let
-  tools = with pkgs; [
-    # Building
-    coq_8_12
-    (haskell.packages.ghc8104.ghcWithPackages (pkgs: with pkgs; [Cabal]))
-    gcc
-    verilator
+with pkgs;
+with pkgs.lib;
 
-    # Common tools
-    git
-    gnumake
-    bash
-    stdenv
-    coreutils
-    findutils
-    diffutils
-    # binutils.bintools
-  ];
-in
-rec {
-  cava-shell = pkgs.mkShell {
-      name = "cava-shell";
-      buildInputs = tools;
-    };
+stdenv.mkDerivation rec {
+  name = "silveroak";
 
-  silveroak-image = pkgs.dockerTools.buildLayeredImage {
-    name = "gcr.io/oak-ci/silveroak";
-    tag = "latest";
-    contents = tools;
-    config = {
-      WorkingDir = "/workspace";
-      Volumes = {
-        "/workspace" = {};
-        "/tmp" = {};
-      };
-    };
-    maxLayers = 120;
+  buildInputs = [] ++
+    optionals coq [
+        coq_8_13
+        dune_2
+        opam
+        # ocamlPackages.findlib
+      ] ++
+    optionals haskell [
+        (haskell.packages.ghc8104.ghcWithPackages (pkgs: with pkgs; [Cabal]))
+      ] ++
+    optionals verilator [
+        gcc
+        boost.dev
+        verilator
+      ] ;
+
+  # propagatedBuildInputs = with ocamlPackages; [ ocaml findlib zarith ];
+  # propagatedUserEnvPkgs = with ocamlPackages; [ ocaml findlib ];
+
+  # src = null;
+
+  preInstallCheck = ''
+    export OCAMLPATH=$OCAMLFIND_DESTDIR:$OCAMLPATH
+  '';
+
+
+  meta = {
+    description = "The SilverOak Project";
+    longDescription = '' '';
+    homepage = https://github.com/project-oak/silveroak;
   };
 }
 

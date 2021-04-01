@@ -1,0 +1,15 @@
+name: 'Use cava cache'
+description: 'Use cava cache'
+inputs:
+outputs:
+runs:
+  using: "composite"
+  steps:
+  - name: Use cava cache
+    uses: actions/cache@v2
+    with:
+      path: |
+        cava
+        /home/runner/.ghc/
+        /home/runner/.cabal/
+      key: ${{ runner.os }}-build-${{ github.run_id }}-cava-haskell

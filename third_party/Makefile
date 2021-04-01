@@ -22,6 +22,7 @@ all: coqutil coqtools bedrock2 extlib record-update
 
 update:
 	git submodule update --init --recursive
+	-cat coqutil.patch | patch -d bedrock2/deps/coqutil -p1 --forward --force
 
 no-update: build-coqutil build-bedrock2 build-extlib build-record-update
 

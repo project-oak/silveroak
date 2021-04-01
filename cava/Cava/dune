@@ -1,0 +1,14 @@
+(include_subdirs qualified)
+
+(coq.theory
+ (package cava)
+ (name Cava)
+ (theories coqutil)
+ (modules :standard))
+
+;;(coq.extraction
+;; (prelude Extraction)
+;; (extracted_modules Byte )
+;; ;;(theories Cava )
+;; ;;(modules _extraction)
+;; )

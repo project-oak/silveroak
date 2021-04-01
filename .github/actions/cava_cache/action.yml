@@ -1,0 +1,13 @@
+name: 'Use cava cache (before Haskell compilation)'
+description: 'Use cava cache (before Haskell compilation)'
+inputs:
+outputs:
+runs:
+  using: "composite"
+  steps:
+  - name: Use cava cache
+    uses: actions/cache@v2
+    with:
+      path: |
+        cava
+      key: ${{ runner.os }}-build-${{ github.run_id }}-cava
