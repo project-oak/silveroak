@@ -20,11 +20,13 @@ Require Import Cava.CavaProperties.
 
 Import Circuit.Notations.
 
-Lemma add_zero : forall a b, a + b = 0 -> a = 0.
-Proof. lia. Qed.
-
 (* follows from parametricity... *)
-Lemma map2_assoc : forall A f n, (forall (a b c :A), f a (f b c) = f (f a b) c) -> forall a b c, Vector.map2 (n:=n) f a (Vector.map2 f b c) = Vector.map2 f (Vector.map2 f a b) c.
+Lemma map2_assoc : forall A f n,
+  (forall (a b c :A),
+    f a (f b c) = f (f a b) c) ->
+    forall a b c,
+      Vector.map2 (n:=n) f a (Vector.map2 f b c)
+      = Vector.map2 f (Vector.map2 f a b) c.
 Proof.
   intros.
   induction n.
@@ -63,7 +65,7 @@ Proof.
   apply vec_const_eq_correct'.
 Qed.
 
-Lemma vec_destruct : forall n A (a h:A) (v : Vector.t A n),
+Lemma In_destruct : forall n A (a h:A) (v : Vector.t A n),
   Vector.In a (h :: v) -> a = h \/ Vector.In a v.
 Proof.
   intros.
@@ -120,7 +122,7 @@ induction vec.
     { intros. apply iffb.  apply dec_correct. }
     rewrite dec_rev_correct in H.
     apply IHvec.
-    apply vec_destruct in guard.
+    apply In_destruct in guard.
     inversion guard.
     { exfalso. apply H. apply H0. }
     { apply H0. } } }
@@ -250,7 +252,7 @@ Proof.
          apply IHn.
          rewrite NPeano.Nat.add_assoc in H.
          rewrite Nat.add_0_r in H.
-         apply add_zero with (b:=2^n).
+         apply Nat.eq_add_0 with (m:=2^n).
          assumption. } }
   2 :{ intros.
        repeat rewrite map2_correct.
