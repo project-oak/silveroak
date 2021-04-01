@@ -1306,7 +1306,7 @@ That concludes our tutorial! If you want to explore further, take a look at the
 ``examples`` directory in our GitHub repo_. You can also view the full source_
 for this page if you want to experiment with these examples yourself.
 
-.. _reference: /../reference
+.. _reference: ../reference
 .. _mealy: https://en.wikipedia.org/wiki/Mealy_machine
 .. _repo: https://github.com/project-oak/silveroak
 .. _source: https://github.com/project-oak/silveroak/blob/main/demos/tutorial.v
