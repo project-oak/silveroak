@@ -28,10 +28,8 @@ Section WithCava.
   Context `{semantics:Cava}.
 
   (* A decoder from binary to one-hot. Both are big endian *)
-  Definition decoder {n : nat} (bv : signal (Vec Bit n))
-    := Vec.map_literal
-        (fun f => f bv)
-        (Vector.map (vecConstEq n) (Vector.vseq 0 (2^n))).
+  Definition decoder {n : nat} (bv : signal (Vec Bit n)) : cava (signal (Vec Bit (2^n)))
+    := Vec.map_literal (fun k => vecConstEq n k bv) (Vector.vseq 0 (2^n)).
 
   Definition encoder {n: nat}
     (hot : signal (Vec Bit (2^n)))
