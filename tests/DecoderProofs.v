@@ -43,16 +43,14 @@ Lemma vec_const_eq_correct' : forall n k v,
 Proof.
   intros.
   cbv [VecConstEq.vecConstEq eqb].
-  simpl.
-  repeat rewrite map2_correct.
-  simpl.
-  rewrite Vector.map_id.
+  simpl_ident.
   rewrite Vector.map2_swap.
   apply f_equal.
   apply Vector.map2_ext.
   intros.
   destruct a; destruct b; trivial.
 Qed.
+Hint Rewrite @vec_const_eq_correct' using solve [eauto] : simpl_ident.
 
 Lemma vec_const_eq_correct : forall n k v,
   VecConstEq.vecConstEq n k v = combType_eqb (t:=Vec Bit n) (N2Bv_sized n (N.of_nat k)) v.
@@ -65,6 +63,7 @@ Proof.
   rewrite <- @eqb_correct with (t:=Vec Bit n).
   apply vec_const_eq_correct'.
 Qed.
+Hint Rewrite @vec_const_eq_correct using solve [eauto] : simpl_ident.
 
 Lemma In_destruct : forall n A (a h:A) (v : Vector.t A n),
   Vector.In a (h :: v) -> a = h \/ Vector.In a v.
@@ -89,13 +88,19 @@ Proof.
   intros.
   induction vec; trivial.
   cbn.
-  case_eq (decider a h); intros; [rewrite neutral| rewrite left]; apply IHvec.
+  case_eq (decider a h);
+    intros;
+    [rewrite neutral | rewrite left];
+    apply IHvec.
 Qed.
 
 Lemma iffb : forall P Q, (P = true <-> Q) ->  P = false <-> (not Q).
 Proof.
   split.
-  { cbv. intros notP yesQ. apply H in yesQ. destruct P; easy. }
+  { cbv.
+    intros notP yesQ.
+    apply H in yesQ.
+    destruct P; easy. }
   { destruct P; trivial.
     intro notQ.
     exfalso.
@@ -245,135 +250,124 @@ Proof.
   clear input.
   intros.
 
-  cbv [decoder encoder Basics.compose].
-  repeat rewrite map_literal_correct.
+  cbv [decoder encoder].
+  simpl_ident.
   repeat rewrite Vector.map_map.
-  simpl.
-  rewrite map2_correct.
-  simpl.
   rewrite map2_map.
   rewrite map2_drop_same.
   rewrite @tree_equiv with (t:=Vec Bit n) (id:=Vector.const false n).
   (* Main branch *)
   { simpl.
     cbv in a.
-    rewrite Vector.map_ext with (g:= fun k => if combType_eqb (t:=Vec Bit n) (N2Bv_sized n (N.of_nat k)) a then N2Bv_sized  n (N.of_nat k) else Vector.const false n).
+    rewrite Vector.map_ext with
+      (g := fun k =>
+              if combType_eqb (t:=Vec Bit n) (N2Bv_sized n (N.of_nat k)) a
+                 then N2Bv_sized n (N.of_nat k)
+                 else Vector.const false n).
     2 :{ generalize (mux2_correct (t:=Vec Bit n)).
          intros.
-         rewrite vec_const_eq_correct.
+         simpl_ident.
          simpl in H.
          rewrite H.
          rewrite Vector.map_id.
          trivial. }
-    rewrite fold_left_ext with (g:=fun a0 b : Vector.t bool n => Vector.map2 (fun   x  y  => x || y)  a0  b ).
-    2 :{ intros. rewrite map2_correct. apply map2_ext. auto. }
- replace (Vector.map
-     (fun k : nat =>
-      if combType_eqb (t:=Vec Bit n)(N2Bv_sized n (N.of_nat k)) a
-      then N2Bv_sized n (N.of_nat k)
-      else Vector.const false n) (vseq 0 (2 ^ n))) with (Vector.map
-     (fun k =>
-      if combType_eqb (t:=Vec Bit n) k a
-      then k
-      else Vector.const false n) (Vector.map (fun k => (N2Bv_sized n (N.of_nat k))) (vseq 0 (2 ^ n)))).
-      2 :{ rewrite Vector.map_map. trivial. }
-    apply fold_units' with (decider := (combType_eqb (t:=Vec Bit n)))
-                           (vec:=(Vector.map (fun k : nat => N2Bv_sized n (N.of_nat k)) (vseq 0 (2 ^ n)))).
-   { apply combType_eqb_true_iff. }
-   { induction b; trivial.
-     cbn. rewrite IHb; trivial.  }
-   { induction b; trivial.
-     cbn. rewrite IHb; trivial.
-     destruct h; trivial.  }
-   { induction b; trivial.
-     cbn. rewrite IHb; trivial.
-     destruct h; trivial.  }
-   { apply Vector.map_ext. intros. cbn in a0.
-    assert (forall a b, combType_eqb (t:=Vec Bit n) a b = false <-> a <> b) as combType_eqb_false_iff.
-    { intros. apply iffb.  apply combType_eqb_true_iff. }
-     case_eq (combType_eqb (t:=Vec Bit n) a0 a);
-     case_eq (combType_eqb (t:=Vec Bit n) a a0);
-     repeat rewrite combType_eqb_true_iff;
-     repeat rewrite combType_eqb_false_iff; trivial; intros.
-     { exfalso. apply H. auto. }
-     { exfalso. apply H0. auto. } }
-     { apply Bv_span. } }
+    rewrite fold_left_ext with
+      (g := fun a b : Vector.t bool n =>
+              Vector.map2 (fun x y => x || y) a b).
+    2 :{ intros.
+         simpl_ident.
+         apply map2_ext.
+         trivial. }
+    replace (Vector.map
+              (fun k : nat =>
+                if combType_eqb (t := Vec Bit n) (N2Bv_sized n (N.of_nat k)) a
+                  then N2Bv_sized n (N.of_nat k)
+                  else Vector.const false n) (vseq 0 (2 ^ n)))
+      with
+           (Vector.map
+             (fun k =>
+               if combType_eqb (t:=Vec Bit n) k a
+                 then k
+                 else Vector.const false n)
+             (Vector.map
+               (fun k => (N2Bv_sized n (N.of_nat k)))
+               (vseq 0 (2 ^ n)))).
+    2 :{ rewrite Vector.map_map.
+         trivial. }
+    apply fold_units' with
+      (decider := combType_eqb (t := Vec Bit n))
+      (vec := Vector.map
+                (fun k => N2Bv_sized n (N.of_nat k))
+                (vseq 0 (2 ^ n))).
+    { apply combType_eqb_true_iff. }
+    { induction b; trivial.
+      cbn.
+      rewrite IHb; trivial.  }
+    { induction b; trivial.
+      cbn.
+      rewrite IHb; trivial.
+      destruct h; trivial.  }
+    { induction b; trivial.
+      cbn.
+      rewrite IHb; trivial.
+      destruct h; trivial.  }
+    { apply Vector.map_ext.
+      intros.
+      cbn in a0.
+      assert
+        (forall a b,
+          combType_eqb (t:=Vec Bit n) a b = false <-> a <> b)
+        as combType_eqb_false_iff.
+      { intros.
+        apply iffb.
+        apply combType_eqb_true_iff. }
+      case_eq (combType_eqb (t:=Vec Bit n) a0 a);
+        case_eq (combType_eqb (t:=Vec Bit n) a a0);
+        repeat rewrite combType_eqb_true_iff;
+        repeat rewrite combType_eqb_false_iff;
+        trivial;
+        intros.
+      { exfalso.
+        apply H.
+        easy. }
+      { exfalso.
+        apply H0.
+        easy. }
+    }
+    { apply Bv_span. }
+  }
 
   (* side conditions *)
   { intros.
-    rewrite map2_correct.
-    simpl.
+    simpl_ident.
     rewrite map2_const.
-    simpl.
     rewrite Vector.map_id.
     trivial. }
   { intros.
-    rewrite map2_correct.
-    simpl.
+    simpl_ident.
     rewrite map2_swap.
     rewrite map2_const.
     simpl.
-    rewrite Vector.map_ext with (g:= id).
+    rewrite Vector.map_ext with (g := id).
     { apply Vector.map_id. }
     { intros. apply orb_comm. }
   }
   { intros.
-    repeat rewrite map2_correct.
-    simpl.
+    simpl_ident.
     apply map2_assoc.
     intros.
     apply orb_assoc. }
   { clear a.
     induction n.
-    { compute.
-      intros.
-      inversion H. }
+    { easy. }
     { cbn.
-      cbv ["<>"].
-      intros.
-      cbv ["<>"] in IHn.
-      apply IHn.
-      rewrite NPeano.Nat.add_assoc in H.
-      rewrite Nat.add_0_r in H.
-      apply Nat.eq_add_0 with (m:=2^n).
-      assumption. }
+      remember (2^n) as x.
+      lia. }
   }
 Qed.
 
+(*
 Definition N2hotv {n} k : Bvector n := Vector.reverse (unfold_ix tt (fun ix tt => (Nat.eqb k ix, tt))).
 
-  (*
 Theorem dec_correct : forall n k, k < 2^n -> decoder (N2Bv_sized n (N.of_nat k)) = N2hotv k.
-Proof.
-  intros.
-  cbv [decoder].
-  rewrite map_literal_correct.
-  rewrite Vector.map_map.
-  cbv [N2hotv].
-  induction n; induction k; trivial.
-  { inversion H. inversion H1. }
-
-  rewrite map2_correct.
-
-  rewrite map_literal_correct.
-  induction a.
-  {  trivial.  }
-  { compute.
-
-
-
-  cbv [decoder].
-  cbv [encoder].
-
-
-  intros.
-  (* strategy: for the n -> S n case we (1) bash out the new k's (2) transport the old k s from the smaller n *)
-  induction n.
-  { inversion H.
-    { trivial. }
-    { inversion H1. }
-  }
-  { induction k.
-    { Abort.
-
-     *)
+ *)
