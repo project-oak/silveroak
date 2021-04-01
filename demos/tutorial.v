@@ -48,6 +48,8 @@ See the banner at the top of the page for instructions on how to navigate the pr
 Preliminaries
 =============
 
+First you need to install Cava, see https://github.com/project-oak/silveroak/blob/main/README.md.
+
 To import the core Cava library you need to define and simulate circuits, just:
 |*)
 

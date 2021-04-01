@@ -59,6 +59,7 @@ To build the Cava system and its examples and run tests, type `make` in the root
 
 ```console
 $ cd silveroak
+$ git submodule update --init --recursive
 $ make
 ```
 
