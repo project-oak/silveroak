@@ -159,23 +159,34 @@ Proof.
       rewrite <- H4. trivial. }}
 Qed.
 
+Theorem In_list:
+  forall n len start : nat, Vector.In n (vseq start len) <-> List.In n (seq start len).
+Proof.
+  induction len.
+  { compute. split; intros; inversion H. }
+  { split.
+    { intros. inversion H.
+      { left. trivial. }
+      { apply Eqdep.EqdepTheory.inj_pair2 in H3.
+        subst.
+        right.
+        apply IHlen.
+        rewrite Nat.add_comm in H2.
+        assumption. }}
+    { cbn [In seq].
+      intros [Hl | Hr].
+      { subst. apply Vector.In_cons_hd. }
+      { simpl. apply Vector.In_cons_tl. apply IHlen.  rewrite Nat.add_comm. apply Hr. } } }
+Qed.
+
 Theorem In_seq:
   forall n start len : nat, Vector.In n (vseq start len) <-> start <= n < start + len.
 Proof.
-  induction start; induction len; try easy.
-  { split.
-    { intros.
-      (*
-  { intros. rewrite <- plus_n_O. split.
-    { easy. }
-    { intros. exfalso. destruct H. assert (start<start).
-      { apply Lt.le_lt_trans with (m:= n); assumption. }
-      apply Lt.lt_irrefl with (x:=start); assumption. } }
-  { induction start.
-    { split.
-
-      *)
-Admitted.
+  intros.
+  rewrite In_list.
+  Search seq.
+  apply in_seq.
+Qed.
 
 Theorem Bv_span :
 forall (n : nat) (a : Vector.t bool n),
@@ -309,7 +320,6 @@ Qed.
 Definition N2hotv {n} k : Bvector n := Vector.reverse (unfold_ix tt (fun ix tt => (Nat.eqb k ix, tt))).
 
   (*
-  (*
 Theorem dec_correct : forall n k, k < 2^n -> decoder (N2Bv_sized n (N.of_nat k)) = N2hotv k.
 Proof.
   intros.
@@ -319,7 +329,6 @@ Proof.
   cbv [N2hotv].
   induction n; induction k; trivial.
   { inversion H. inversion H1. }
-  { compute. *) Admitted.
 
   rewrite map2_correct.
 
