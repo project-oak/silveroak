@@ -1,0 +1,11 @@
+(coq.extraction
+ (prelude Extraction)
+ (extracted_modules ) ;; dune doesn't support haskell extraction
+ (theories Cava)
+ (flags
+   "-R" "../../../../third_party/coq-ext-lib/theories" "ExtLib"
+   "-R" "../../../../third_party/bedrock2/bedrock2/src/bedrock2" "bedrock2"
+   "-R" "../../../../third_party/bedrock2/deps/coqutil/src/coqutil" "coqutil"
+   "-R" "../../../../third_party/coq-record-update/src" "RecordUpdate"
+ )
+ )
