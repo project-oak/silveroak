@@ -16,7 +16,13 @@
 
 Require Import Cava.Cava.
 Require Import Cava.Lib.VecConstEq.
-Require Import Cava.CavaProperties.
+
+Require Import Cava.Semantics.Combinational.
+Require Import Cava.Util.Tactics.
+
+Require Import Cava.Lib.CavaPreludeProperties.
+Require Import Cava.Lib.CombinationalProperties.
+
 
 Lemma vec_const_eq_correct' : forall n k v,
   VecConstEq.vecConstEq n k v = eqb (N2Bv_sized n (N.of_nat k), v).
