@@ -16,34 +16,31 @@
 
 Require Import Cava.Cava.
 Require Import Cava.Lib.VecConstEq.
-Require Import Coq.Arith.PeanoNat.
-Require Import Cava.Util.Vector.
-Require Import ExtLib.Structures.Traversable.
-Require Import ExtLib.Structures.Monad.
-Require Import ExtLib.Structures.Functor.
+Require Import Cava.CavaProperties.
 
-Import FunctorNotation.
+Lemma vec_const_eq_correct' : forall n k v,
+  VecConstEq.vecConstEq n k v = eqb (N2Bv_sized n (N.of_nat k), v).
+Proof.
+  intros.
+  cbv [VecConstEq.vecConstEq eqb].
+  simpl_ident.
+  rewrite Vector.map2_swap.
+  apply f_equal.
+  apply Vector.map2_ext.
+  intros.
+  destruct a; destruct b; trivial.
+Qed.
+Hint Rewrite @vec_const_eq_correct' using solve [eauto] : simpl_ident.
 
-Section WithCava.
-  Context `{semantics:Cava}.
-
-  (* A decoder from binary to one-hot. Both are big endian *)
-  Definition decoder {n : nat} (bv : signal (Vec Bit n)) : cava (signal (Vec Bit (2^n)))
-    := Vec.map_literal (fun k => vecConstEq n k bv) (Vector.vseq 0 (2^n)).
-
-  Definition encoder {n: nat}
-    (hot : signal (Vec Bit (2^n)))
-    : cava (signal (Vec Bit n))
-    :=         (* Go from Vector of Bvector to Vec of Vec *)
-    consts <- Vec.map_literal ret
-      (mapT_vector
-        (@Vec.bitvec_literal signal semantics  _)
-        (* build a Vector.t of constant bitvecs 0...2^n *)
-        (Vector.map (fun k => N2Bv_sized n (N.of_nat k))
-                    (Vector.vseq 0 (2^n)))) ;;
-    Vec.map2
-      (fun '(k, hot_sig) => mux2 hot_sig (defaultSignal, k))
-      (consts, hot)
-    >>= tree (Vec.map2 or2).
-
-End WithCava.
+Lemma vec_const_eq_correct : forall n k v,
+  VecConstEq.vecConstEq n k v = combType_eqb (t:=Vec Bit n) (N2Bv_sized n (N.of_nat k)) v.
+Proof.
+  intros.
+  replace (N2Bv_sized n (N.of_nat k)) with (fst ((N2Bv_sized n (N.of_nat k)),v)).
+  2:trivial.
+  replace v with (snd ((N2Bv_sized n (N.of_nat k)),v)) at 3.
+  2:trivial.
+  rewrite <- @eqb_correct with (t:=Vec Bit n).
+  apply vec_const_eq_correct'.
+Qed.
+Hint Rewrite @vec_const_eq_correct using solve [eauto] : simpl_ident.
