@@ -29,7 +29,17 @@
 
 .PHONY: all coq miminize-requires clean html
 
-all: coq
+SV = sum8.sv
+
+BENCHES = $(SV:.sv=_tb.sv)
+CPPS = $(SV:.sv=_tb.cpp)
+VCDS = $(SV:.sv=_tb.vcd)
+
+.PRECIOUS: $(VCDS)
+
+all: coq $(VCDS)
+
+VERILATOR = verilator +1800-2012ext+sv verilator.vlt
 
 coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq >/dev/null # don't show the printed output; the tutorial has long print statements
@@ -51,6 +61,20 @@ _CoqProject:    $(shell find . -name '*.v' | sort)
 		@echo "-R ../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
 		@echo "-R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
 		@printf '%s\n' $^ >> _CoqProject
+
+TutorialSV:	coq TutorialSV.hs
+		ghc --make TutorialSV.hs
+		./TutorialSV
+
+$(SV) $(BENCHES) $(CPPS):	coq TutorialSV
+
+obj_dir/V%_tb:	%.sv %_tb.sv %_tb.cpp
+		$(VERILATOR) --trace --cc --top-module $*_tb $*_tb.sv $*.sv --exe $*_tb.cpp
+		make -C obj_dir -f V$*_tb.mk V$*_tb
+
+%_tb.vcd:	obj_dir/V%_tb
+		$<
+
 
 clean:
 		-@$(MAKE) -f Makefile.coq clean

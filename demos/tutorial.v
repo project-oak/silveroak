@@ -256,6 +256,7 @@ can prove that ``inverter`` obeys a natural Coq specification:
 Lemma inverter_correct (input : list bool) :
   simulate inverter input = map negb input.
 Proof.
+
   (* inline the circuit definition *)
   cbv [inverter].
 
@@ -921,7 +922,7 @@ version, just a delay connecting the loop's output to its own input.
 |*)
 
 Definition sum_interface {n : nat}
-  := sequentialInterface "sum_interface"
+  := sequentialInterface "sum8"
      "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "i" (Vec Bit n)]
      [mkPort "o" (Vec Bit n)].
@@ -929,6 +930,17 @@ Definition sum_interface {n : nat}
 Compute
   (makeCircuitNetlist sum_interface (sum (n:=8))).(module).
 
+Local Open Scope N_scope.  
+
+Definition sum8Netlist := makeCircuitNetlist (sum_interface (n := 8)) sum.
+Definition sum8_tb_inputs := map (N2Bv_sized 8) [3; 5; 7; 2; 4; 6].
+Definition sum8_tb_expected_outputs :=  (simulate sum sum8_tb_inputs).
+
+Definition sum8_tb :=
+  testBench "sum8_tb" (sum_interface (n := 8)) sum8_tb_inputs sum8_tb_expected_outputs.
+
+
+Local Close Scope N_scope.
 (*|
 The netlist for ``sum_init`` can use the same interface, but needs an extra
 argument for the initial value:
