@@ -939,6 +939,41 @@ Definition sum8_tb_expected_outputs :=  (simulate sum sum8_tb_inputs).
 Definition sum8_tb :=
   testBench "sum8_tb" (sum_interface (n := 8)) sum8_tb_inputs sum8_tb_expected_outputs.
 
+(*|
+The circuit netlist and testbench can be converted in SystemVerilog and
+simulated using a SystemVerilog simulator like Verilator:
+
+clang++ -L/usr/local/opt/sqlite/lib    sum8_tb.o verilated.o verilated_vcd_c.o Vsum8_tb__ALL.a    -o Vsum8_tb -lm -lstdc++
+obj_dir/Vsum8_tb
+                  10: tick = 0,  i = 3,  o = 3
+                  20: tick = 1,  i = 5,  o = 8
+                  30: tick = 2,  i = 7,  o = 15
+                  40: tick = 3,  i = 2,  o = 17
+                  50: tick = 4,  i = 4,  o = 21
+                  60: tick = 5,  i = 6,  o = 27
+
+which produces the expected results that were predicted by the model in Coq.
+The testbench generates a VCD waveform that we can use to observe graphically
+using a VCD waveform viewer like gtkwave:
+
+.. image:: sum8_sim.png
+   :width: 70%
+   :alt: Simulation waveform for the sum8 circuit.
+
+We can also synthesize a version of this testbench and the sum8 circuit
+into gates using the Xilinx Vivado FPGA tools to produce a bitstream
+that can be usd to program an FPGA chip. We can hook up this circuit
+with another circuit that acts as a logic analyzer (ILA) then then
+run and observe this actually running on an FPGA and capture its output:
+
+.. image:: sum8_ila.png
+   :width: 70%
+   :alt: Logic analyzer trace capture for the sum8 circuit.
+
+Reassuring the actual circuit behaves as predicted by the Cava model
+in Coq and the SystemVerilog simulation.
+|*)
+
 
 Local Close Scope N_scope.
 (*|
