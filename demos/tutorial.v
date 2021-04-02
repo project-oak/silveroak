@@ -48,6 +48,8 @@ See the banner at the top of the page for instructions on how to navigate the pr
 Preliminaries
 =============
 
+First you need to install Cava, see https://github.com/project-oak/silveroak/blob/main/README.md.
+
 To import the core Cava library you need to define and simulate circuits, just:
 |*)
 
@@ -1306,7 +1308,7 @@ That concludes our tutorial! If you want to explore further, take a look at the
 ``examples`` directory in our GitHub repo_. You can also view the full source_
 for this page if you want to experiment with these examples yourself.
 
-.. _reference: /../reference
+.. _reference: ../reference
 .. _mealy: https://en.wikipedia.org/wiki/Mealy_machine
 .. _repo: https://github.com/project-oak/silveroak
 .. _source: https://github.com/project-oak/silveroak/blob/main/demos/tutorial.v
