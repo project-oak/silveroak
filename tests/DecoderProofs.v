@@ -115,7 +115,7 @@ Lemma fold_units : forall A n (a:A) f unit decider
   (right : forall b, f b unit = b)
   (neutral : forall b, f b b = b)
   (vec : Vector.t A n)
-  (guard : Vector.In a vec),
+  (guard : Vector.InV a vec),
   Vector.fold_left f unit (Vector.map (fun v => if decider a v then a else unit) vec) = a.
 Proof.
   intros.
@@ -129,7 +129,6 @@ Proof.
       { intros. apply iffb. apply dec_correct. }
       rewrite dec_rev_correct in H.
       apply IHvec.
-      apply In_destruct in guard.
       inversion guard.
       { exfalso. apply H. apply H0. }
       { apply H0. }
@@ -144,7 +143,7 @@ Lemma fold_units' : forall A n (a:A) f unit decider,
   (forall b, f b b = b) ->
   forall (vec : Vector.t A n) vec'
   (eq : vec' = Vector.map (fun v => if decider a v then a else unit) vec),
-  Vector.In a vec ->
+  Vector.InV a vec ->
   Vector.fold_left f unit vec' = a.
 Proof. intros. rewrite eq. apply fold_units; assumption. Qed.
 
@@ -206,17 +205,26 @@ Proof.
   apply in_seq.
 Qed.
 
+Theorem InV_seq:
+  forall n start len : nat, Vector.InV n (vseq start len) <-> start <= n < start + len.
+Proof.
+  intros.
+  rewrite <- InV_to_list_iff.
+  rewrite to_list_vseq.
+  apply in_seq.
+Qed.
+
 Theorem Bv_span :
   forall (n : nat) (a : Vector.t bool n),
-    Vector.In a
+    Vector.InV a
       (Vector.map (fun k : nat => N2Bv_sized n (N.of_nat k)) (vseq 0 (2 ^ n))).
 Proof.
   intros.
-  apply In_map.
+  apply InV_map_iff.
   induction a.
   { apply ex_intro with (x:=0).
     split; trivial.
-    apply Vector.In_cons_hd. }
+    left. trivial. }
   { inversion IHa.
     destruct h.
     { apply ex_intro with (x:=S(2*x)).
@@ -225,7 +233,8 @@ Proof.
         rewrite N2Bv_sized_succ_double.
         rewrite H.
         trivial. }
-      { apply In_seq. apply In_seq in H0. cbn in H0. cbn.
+      { Search InV.
+        apply In_seq. apply In_seq in H0. cbn in H0. cbn.
         lia. }
     }
     { apply ex_intro with (x:=2*x).
