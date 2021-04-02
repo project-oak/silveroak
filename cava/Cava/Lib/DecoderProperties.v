@@ -16,65 +16,64 @@
 
 Require Import Cava.Cava.
 Require Import Cava.Lib.Decoder.
+Require Import Cava.Lib.VecConstEqProperties.
 Require Import Cava.CavaProperties.
 
 Import Circuit.Notations.
 
-(* follows from parametricity... *)
-Lemma map2_assoc : forall A f n
-  (f_assoc : forall (a b c :A), f a (f b c) = f (f a b) c)
-  a b c,
-    Vector.map2 (n:=n) f a (Vector.map2 f b c)
-    = Vector.map2 f (Vector.map2 f a b) c.
+Theorem Bv_span :
+  forall (n : nat) (a : Vector.t bool n),
+    InV a
+      (Vector.map (fun k : nat => N2Bv_sized n (N.of_nat k)) (vseq 0 (2 ^ n))).
 Proof.
   intros.
-  induction n.
-  { repeat rewrite map2_0.
+  apply InV_map_iff.
+  induction a.
+  { apply ex_intro with (x:=0).
+    split; trivial.
+    left. trivial. }
+  { inversion IHa.
+    destruct h.
+    { apply ex_intro with (x:=S(2*x)).
+      split; destruct H.
+      { rewrite Nat2N.inj_succ_double.
+        rewrite N2Bv_sized_succ_double.
+        rewrite H.
+        trivial. }
+      { apply InV_seq.
+        apply InV_seq in H0.
+        cbn in H0.
+        cbn.
+        lia. }
+    }
+    { apply ex_intro with (x:=2*x).
+      split; destruct H.
+      { rewrite Nat2N.inj_double.
+        rewrite N2Bv_sized_double.
+        rewrite H.
+        trivial. }
+      { apply InV_seq.
+        apply InV_seq in H0.
+        cbn in H0.
+        cbn.
+        lia. }
+    }
+  }
+Qed.
+
+Lemma iffb : forall P Q, (P = true <-> Q) ->  P = false <-> (not Q).
+Proof.
+  split.
+  { cbv.
+    intros notP yesQ.
+    apply H in yesQ.
+    destruct P; easy. }
+  { destruct P; trivial.
+    intro notQ.
+    exfalso.
+    apply notQ.
+    apply H.
     trivial. }
-  { repeat rewrite map2_cons.
-    simpl.
-    repeat rewrite IHn.
-    rewrite f_assoc.
-    trivial. }
-Qed.
-
-Lemma vec_const_eq_correct' : forall n k v,
-  VecConstEq.vecConstEq n k v = eqb (N2Bv_sized n (N.of_nat k), v).
-Proof.
-  intros.
-  cbv [VecConstEq.vecConstEq eqb].
-  simpl_ident.
-  rewrite Vector.map2_swap.
-  apply f_equal.
-  apply Vector.map2_ext.
-  intros.
-  destruct a; destruct b; trivial.
-Qed.
-Hint Rewrite @vec_const_eq_correct' using solve [eauto] : simpl_ident.
-
-Lemma vec_const_eq_correct : forall n k v,
-  VecConstEq.vecConstEq n k v = combType_eqb (t:=Vec Bit n) (N2Bv_sized n (N.of_nat k)) v.
-Proof.
-  intros.
-  replace (N2Bv_sized n (N.of_nat k)) with (fst ((N2Bv_sized n (N.of_nat k)),v)).
-  2:trivial.
-  replace v with (snd ((N2Bv_sized n (N.of_nat k)),v)) at 3.
-  2:trivial.
-  rewrite <- @eqb_correct with (t:=Vec Bit n).
-  apply vec_const_eq_correct'.
-Qed.
-Hint Rewrite @vec_const_eq_correct using solve [eauto] : simpl_ident.
-
-Lemma In_destruct : forall n A (a h:A) (v : Vector.t A n),
-  Vector.In a (h :: v) -> a = h \/ Vector.In a v.
-Proof.
-  intros.
-  inversion H.
-  { left. trivial. }
-  { apply Eqdep.EqdepTheory.inj_pair2 in H3.
-    subst.
-    right.
-    assumption. }
 Qed.
 
 Lemma fold_mono : forall [A n] [a:A] [f unit decider]
@@ -92,21 +91,6 @@ Proof.
     intros;
     [rewrite neutral | rewrite left];
     apply IHvec.
-Qed.
-
-Lemma iffb : forall P Q, (P = true <-> Q) ->  P = false <-> (not Q).
-Proof.
-  split.
-  { cbv.
-    intros notP yesQ.
-    apply H in yesQ.
-    destruct P; easy. }
-  { destruct P; trivial.
-    intro notQ.
-    exfalso.
-    apply notQ.
-    apply H.
-    trivial. }
 Qed.
 
 Lemma fold_units : forall A n (a:A) f unit decider
@@ -136,7 +120,7 @@ Proof.
   }
 Qed.
 
-Lemma fold_units' : forall A n (a:A) f unit decider,
+Theorem fold_units' : forall A n (a:A) f unit decider,
   (forall a b, decider a b = true <-> a = b) ->
   (forall b, f unit b = b) ->
   (forall b, f b unit = b) ->
@@ -147,107 +131,6 @@ Lemma fold_units' : forall A n (a:A) f unit decider,
   Vector.fold_left f unit vec' = a.
 Proof. intros. rewrite eq. apply fold_units; assumption. Qed.
 
-
-Theorem In_map :
-forall A B (n : nat) (a : A) f (v : Vector.t B n),
-(exists x, f x = a /\ Vector.In x v) ->  Vector.In a (Vector.map f v).
-Proof.
-  intros.
-  destruct H.
-  destruct H.
-  induction v.
-  { inversion H0. }
-  { inversion H0.
-    { cbn. subst. apply Vector.In_cons_hd. }
-    { cbn.
-      apply Eqdep.EqdepTheory.inj_pair2 in H4.
-      apply Vector.In_cons_tl.
-      apply IHv.
-      subst.
-      trivial. }
-  }
-Qed.
-
-Theorem In_list:
-  forall n len start : nat, Vector.In n (vseq start len) <-> List.In n (seq start len).
-Proof.
-  induction len.
-  { compute.
-    split; intros; inversion H. }
-  { split.
-    { intros.
-      inversion H.
-      { left. trivial. }
-      { apply Eqdep.EqdepTheory.inj_pair2 in H3.
-        subst.
-        right.
-        apply IHlen.
-        rewrite Nat.add_comm in H2.
-        assumption. }
-    }
-    { cbn [In seq].
-      intros [Hl | Hr].
-      { subst. apply Vector.In_cons_hd. }
-      { simpl.
-        apply Vector.In_cons_tl.
-        apply IHlen.
-        rewrite Nat.add_comm.
-        apply Hr. }
-    }
-  }
-Qed.
-
-Theorem In_seq:
-  forall n start len : nat, Vector.In n (vseq start len) <-> start <= n < start + len.
-Proof.
-  intros.
-  rewrite In_list.
-  apply in_seq.
-Qed.
-
-Theorem InV_seq:
-  forall n start len : nat, Vector.InV n (vseq start len) <-> start <= n < start + len.
-Proof.
-  intros.
-  rewrite <- InV_to_list_iff.
-  rewrite to_list_vseq.
-  apply in_seq.
-Qed.
-
-Theorem Bv_span :
-  forall (n : nat) (a : Vector.t bool n),
-    Vector.InV a
-      (Vector.map (fun k : nat => N2Bv_sized n (N.of_nat k)) (vseq 0 (2 ^ n))).
-Proof.
-  intros.
-  apply InV_map_iff.
-  induction a.
-  { apply ex_intro with (x:=0).
-    split; trivial.
-    left. trivial. }
-  { inversion IHa.
-    destruct h.
-    { apply ex_intro with (x:=S(2*x)).
-      split; destruct H.
-      { rewrite Nat2N.inj_succ_double.
-        rewrite N2Bv_sized_succ_double.
-        rewrite H.
-        trivial. }
-      { Search InV.
-        apply In_seq. apply In_seq in H0. cbn in H0. cbn.
-        lia. }
-    }
-    { apply ex_intro with (x:=2*x).
-      split; destruct H.
-      { rewrite Nat2N.inj_double.
-        rewrite N2Bv_sized_double.
-        rewrite H.
-        trivial. }
-      { apply In_seq. apply In_seq in H0. cbn in H0. cbn.
-        lia. }
-    }
-  }
-Qed.
 
 Theorem enc_dev_inv (n:nat) input : simulate ((Comb (decoder (n:=n))) >==>
   (Comb (encoder (n:=n)))) input = input.
@@ -374,9 +257,3 @@ Proof.
       lia. }
   }
 Qed.
-
-(*
-Definition N2hotv {n} k : Bvector n := Vector.reverse (unfold_ix tt (fun ix tt => (Nat.eqb k ix, tt))).
-
-Theorem dec_correct : forall n k, k < 2^n -> decoder (N2Bv_sized n (N.of_nat k)) = N2hotv k.
- *)
