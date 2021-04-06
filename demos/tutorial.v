@@ -33,8 +33,9 @@ patterns throughout; you shouldn't need to be a Coq expert to follow
 along. We'll walk through a few small examples end-to-end, showing you how to
 define, simulate, and generate netlists for circuits in Cava.
 
-This page allows you to see the Coq output for each line that has output. Try
-hovering over the following line:
+This page (thanks to the Alectryon_ system) allows you to see the Coq output for
+each line that has output. Try hovering over the following line (if on mobile,
+tap the line):
 |*)
 
 Compute (1 + 2).
@@ -107,7 +108,7 @@ we're inside the section and that every definition is parameterized over the
 Back to our inverter. Let's take a closer look at the ``inv`` primitive.
 |*)
 
-  About inv.
+  Check inv.
 
 (*|
 You can see in the type signature ``signal Bit -> cava (signal Bit)`` that
@@ -1308,6 +1309,7 @@ That concludes our tutorial! If you want to explore further, take a look at the
 ``examples`` directory in our GitHub repo_. You can also view the full source_
 for this page if you want to experiment with these examples yourself.
 
+.. _Alectryon: https://github.com/cpitclaudel/alectryon
 .. _reference: ../reference
 .. _mealy: https://en.wikipedia.org/wiki/Mealy_machine
 .. _repo: https://github.com/project-oak/silveroak
