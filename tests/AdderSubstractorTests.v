@@ -33,8 +33,8 @@ Proof. trivial. Qed.
 
 Definition adderInterface
   := combinationalInterface "c_addsub_0"
-     [mkPort "x" (Vec Bit 8); mkPort "y" (Vec Bit 8)]
-     [mkPort "z" (Vec Bit 9)].
+     [mkPort "A" (Vec Bit 8); mkPort "B" (Vec Bit 8)]
+     [mkPort "S" (Vec Bit 9)].
 
 Definition adderNetlist := makeNetlist adderInterface c_addsub_0.
 
