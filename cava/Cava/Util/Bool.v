@@ -14,39 +14,12 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Cava.Cava.
-Require Import Cava.Lib.VecConstEq.
-
-Require Import Cava.Semantics.Combinational.
-Require Import Cava.Util.Tactics.
-
-Require Import Cava.Lib.CavaPreludeProperties.
-Require Import Cava.Lib.CombinationalProperties.
-
-
-Lemma vec_const_eq_correct' : forall n k v,
-  VecConstEq.vecConstEq n k v = eqb (N2Bv_sized n (N.of_nat k), v).
+Lemma iffb P Q (H : P = true <-> Q) : P = false <-> (not Q).
 Proof.
-  intros.
-  cbv [VecConstEq.vecConstEq eqb].
-  simpl_ident.
-  rewrite Vector.map2_swap.
-  apply f_equal.
-  apply Vector.map2_ext.
-  intros.
-  destruct a; destruct b; trivial.
+  split ; [ | ].
+  { cbv. intros notP yesQ. apply H in yesQ. destruct P; easy. }
+  { destruct P; [ | trivial ].
+    intro notQ.
+    exfalso.
+    apply notQ. apply H. trivial. }
 Qed.
-Hint Rewrite @vec_const_eq_correct' using solve [eauto] : simpl_ident.
-
-Lemma vec_const_eq_correct : forall n k v,
-  VecConstEq.vecConstEq n k v = combType_eqb (t:=Vec Bit n) (N2Bv_sized n (N.of_nat k)) v.
-Proof.
-  intros.
-  replace (N2Bv_sized n (N.of_nat k)) with (fst ((N2Bv_sized n (N.of_nat k)),v)).
-  2:trivial.
-  replace v with (snd ((N2Bv_sized n (N.of_nat k)),v)) at 3.
-  2:trivial.
-  rewrite <- @eqb_correct with (t:=Vec Bit n).
-  apply vec_const_eq_correct'.
-Qed.
-Hint Rewrite @vec_const_eq_correct using solve [eauto] : simpl_ident.
