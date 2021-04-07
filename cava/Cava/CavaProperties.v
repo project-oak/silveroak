@@ -22,6 +22,7 @@ Require Export Cava.Lib.LibProperties.
 Require Export Cava.Semantics.Combinational.
 
 (* Proofs about the standard library datatypes that can come in useful *)
+Require Export Cava.Util.Bool.
 Require Export Cava.Util.List.
 Require Export Cava.Util.Nat.
 Require Export Cava.Util.Vector.

@@ -73,7 +73,6 @@ library
                      StateMonad
                      Traversable
                      Vec
-                     VecConstEq
                      VectorDef
                      Vector
                      Vector0
