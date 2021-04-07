@@ -16,8 +16,24 @@
 
 Require Import Cava.Cava.
 Require Import Cava.Lib.Decoder.
+
+Require Import Cava.Lib.Lib.
+Require Import Cava.Lib.CombinationalProperties.
+Require Import Cava.Lib.CombinatorsProperties.
+Require Import Cava.Lib.MultiplexersProperties.
 Require Import Cava.Lib.VecConstEqProperties.
-Require Import Cava.CavaProperties.
+
+Require Import Cava.Semantics.Combinational.
+
+Require Import Cava.Util.List.
+Require Import Cava.Util.Nat.
+Require Import Cava.Util.Vector.
+
+Require Import Cava.Util.BitArithmeticProperties.
+Require Import Coq.micromega.Lia.
+Require Import Cava.Util.Tactics.
+
+Existing Instance CombinationalSemantics.
 
 Import Circuit.Notations.
 
