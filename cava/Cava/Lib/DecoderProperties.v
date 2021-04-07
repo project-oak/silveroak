@@ -167,9 +167,9 @@ Proof.
         case_eq (combType_eqb (t:=Vec Bit n) a a0);
         repeat rewrite combType_eqb_true_iff;
         repeat rewrite combType_eqb_false_iff;
-        trivial; intros; [ | ].
-      { exfalso. apply H. easy. }
-      { exfalso. apply H0. easy. }
+        trivial; [ | ].
+      { intros neq eq. exfalso. apply neq. easy. }
+      { intros eq neq. exfalso. apply neq. easy. }
     }
     { apply Bv_span. }
   }
