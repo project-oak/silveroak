@@ -49,7 +49,11 @@ Add '-D_FTDI_DISABLE_DEPRECATED' to the c_args list:
 
 1. Make sure the SilverOak AES components were built by the first step.
 1. Then whilst in the `silveroak-opentitan/aes` directory run
-   `./copy_silveroak_files.sh`
+   ```
+   ./configure_opentitan_verilator.sh # Not strictly necessary
+   ./prepare_silveroak_items.sh
+   ./copy_silveroak_files.sh
+   ```
 1. The SilverOak components should now be in `third_party/opentitan/hw/ip/aes/rtl/`
 
 ## Build the OpenTitan Verilator model
