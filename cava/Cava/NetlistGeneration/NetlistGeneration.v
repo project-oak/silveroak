@@ -256,7 +256,6 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     unpackV := @unpackVNet;
     packV := @packVNet;
     indexAt k sz isz v i := localSignalNet (IndexAt v i);
-    indexConst k sz v i := localSignalNet (IndexConst v i);
     unsignedAdd m n ab :=
       localSignalNet (@UnsignedAdd m n (1 + max m n) (fst ab) (snd ab));
     unsignedMult m n ab :=
