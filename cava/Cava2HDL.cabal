@@ -41,6 +41,7 @@ library
   build-Depends:     base >= 4, mtl >= 2, ghc-prim >= 0.5.3
   exposed-Modules:   Cava2SystemVerilog
                      Adders
+                     AdderSubtractor
                      Applicative
                      BinNat
                      BinNums
