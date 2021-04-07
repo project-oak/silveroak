@@ -22,7 +22,7 @@
 
 SV = instantiate.sv mux2_1.sv muxBus4_8.sv mult2_3_5.sv \
      delayByte.sv delayEnableByte.sv countBy.sv arrayTest.sv \
-     multiDimArrayTest.sv decoder.sv encoderdecoder.sv
+     multiDimArrayTest.sv c_addsub_0.sv decoder.sv encoderdecoder.sv
 
 BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)
@@ -38,6 +38,7 @@ _CoqProject:    $(shell find . -name '*.v' -not -path "*/xilinx/*" | sort)
 		@echo "INSTALLDEFAULTROOT = Tests" > _CoqProject
 		@echo "-R . Tests" >> _CoqProject
 		@echo "-R ../cava/Cava Cava" >> _CoqProject
+		@echo "-R ../cava/Cava/ip Cava.IP" >> _CoqProject
 		@echo "-R ../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
 		@echo "-R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
 		@printf '%s\n' $^ >> _CoqProject

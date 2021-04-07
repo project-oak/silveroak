@@ -25,6 +25,7 @@ import Delay
 import CountBy
 import DoubleCountBy
 import Array
+import AdderSubtractorTests
 import TestDecoder
 
 main :: IO ()
@@ -51,6 +52,8 @@ main = do writeSystemVerilog mux2_1Netlist
           writeTestBench arrayTest_tb
           writeSystemVerilog multiDimArrayTest_Netlist
           writeTestBench multiDimArrayTest_tb
+          writeSystemVerilog adderNetlist
+          writeTestBench adder_tb
           writeSystemVerilog decoder2Netlist
           writeTestBench decoder2_tb
           writeSystemVerilog encoder2Netlist

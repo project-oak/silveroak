@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2020 The Project Oak Authors                                   *)
+(* Copyright 2021 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,32 +14,41 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.extraction.Extraction.
-Require Import Coq.extraction.ExtrHaskellZInteger.
-Require Import Coq.extraction.ExtrHaskellString.
-Require Import Coq.extraction.ExtrHaskellBasic.
-Require Import Coq.extraction.ExtrHaskellNatInteger.
+Require Import Cava.Cava.
+Require Import Cava.IP.AdderSubtractor.
 
-Extraction Language Haskell.
+Definition bv_0   := N2Bv_sized 8  0.
+Definition bv_5   := N2Bv_sized 8  5.
+Definition bv_7   := N2Bv_sized 8  7.
+Definition bv_15  := N2Bv_sized 8 15.
+Definition bv_511 := N2Bv_sized 8 511.
 
-Require Import Tests.Instantiate.
-Require Import Tests.MuxTests.
-Require Import Tests.TestMultiply.
-Require Import Tests.Delay.
-Require Import Tests.CountBy.CountBy.
-Require Import Tests.DoubleCountBy.DoubleCountBy.
-Require Import Tests.AccumulatingAdderEnable.AccumulatingAdderEnable.
-Require Import Tests.Array.
-Require Import Tests.AdderSubtractorTests.
-Require Import Tests.TestDecoder.
+Example ex1 :
+  c_addsub_0 (bv_5, bv_7) = N2Bv_sized 9 12.
+Proof. trivial. Qed.
 
-Extraction Library Instantiate.
-Extraction Library MuxTests.
-Extraction Library TestMultiply.
-Extraction Library Delay.
-Extraction Library AccumulatingAdderEnable.
-Extraction Library CountBy.
-Extraction Library DoubleCountBy.
-Extraction Library Array.
-Extraction Library AdderSubtractorTests.
-Extraction Library TestDecoder.
+Example ex2 :
+  c_addsub_0 (bv_511, bv_511) = N2Bv_sized 9 1022.
+Proof. trivial. Qed.
+
+Definition adderInterface
+  := combinationalInterface "c_addsub_0"
+     [mkPort "B" (Vec Bit 8); mkPort "A" (Vec Bit 8)]
+     [mkPort "S" (Vec Bit 9)].
+
+Definition adderNetlist := makeNetlist adderInterface c_addsub_0.
+
+Definition adder_tb_inputs : list (Bvector 8 * Bvector 8) :=
+  [(bv_0, bv_5);
+   (bv_7, bv_0);
+   (bv_5, bv_7);
+   (bv_511, bv_5);
+   (bv_7, bv_511);
+   (bv_511, bv_511)].
+
+Definition adder_tb_expected_outputs
+  := simulate (Comb c_addsub_0) adder_tb_inputs.
+
+Definition adder_tb
+  := testBench "c_addsub_0_tb" adderInterface
+     adder_tb_inputs adder_tb_expected_outputs.

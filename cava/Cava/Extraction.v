@@ -29,6 +29,8 @@ Require Import Cava.Lib.Decoder.
 Require Import Cava.Util.Vector.
 Require Import Cava.Semantics.Combinational.
 
+Require Import Cava.IP.AdderSubtractor.
+
 Recursive Extraction Library BitArithmetic.
 Recursive Extraction Library Cava.
 Recursive Extraction Library Circuit.
@@ -47,3 +49,5 @@ Recursive Extraction Library CavaPrelude.
 
 Recursive Extraction Library Multiplexers.
 Recursive Extraction Library Vec.
+
+Recursive Extraction Library AdderSubtractor.

@@ -1,5 +1,5 @@
 (****************************************************************************)
-(* Copyright 2020 The Project Oak Authors                                   *)
+(* Copyright 2021 The Project Oak Authors                                   *)
 (*                                                                          *)
 (* Licensed under the Apache License, Version 2.0 (the "License")           *)
 (* you may not use this file except in compliance with the License.         *)
@@ -14,32 +14,15 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.extraction.Extraction.
-Require Import Coq.extraction.ExtrHaskellZInteger.
-Require Import Coq.extraction.ExtrHaskellString.
-Require Import Coq.extraction.ExtrHaskellBasic.
-Require Import Coq.extraction.ExtrHaskellNatInteger.
+Require Import Cava.Cava.
 
-Extraction Language Haskell.
+Section WithCava.
+  Context `{semantics:Cava}.
 
-Require Import Tests.Instantiate.
-Require Import Tests.MuxTests.
-Require Import Tests.TestMultiply.
-Require Import Tests.Delay.
-Require Import Tests.CountBy.CountBy.
-Require Import Tests.DoubleCountBy.DoubleCountBy.
-Require Import Tests.AccumulatingAdderEnable.AccumulatingAdderEnable.
-Require Import Tests.Array.
-Require Import Tests.AdderSubtractorTests.
-Require Import Tests.TestDecoder.
+  Definition c_addsub_0 (input : signal (Vec Bit 8) * signal (Vec Bit 8))
+    : cava (signal (Vec Bit 9))
+    := let '(x,y) := input in
+       '(sum, carry) <- addC (x,y,zero) ;;
+       Vec.shiftin carry sum.
 
-Extraction Library Instantiate.
-Extraction Library MuxTests.
-Extraction Library TestMultiply.
-Extraction Library Delay.
-Extraction Library AccumulatingAdderEnable.
-Extraction Library CountBy.
-Extraction Library DoubleCountBy.
-Extraction Library Array.
-Extraction Library AdderSubtractorTests.
-Extraction Library TestDecoder.
+End WithCava.
