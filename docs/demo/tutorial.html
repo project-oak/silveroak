@@ -23,8 +23,9 @@ tutorial will not explain Coq syntax in depth, but will use the same few
 patterns throughout; you shouldn't need to be a Coq expert to follow
 along. We'll walk through a few small examples end-to-end, showing you how to
 define, simulate, and generate netlists for circuits in Cava.</p>
-<p>This page allows you to see the Coq output for each line that has output. Try
-hovering over the following line:</p>
+<p>This page (thanks to the <a class="reference external" href="https://github.com/cpitclaudel/alectryon">Alectryon</a> system) allows you to see the Coq output for
+each line that has output. Try hovering over the following line (if on mobile,
+tap the line):</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk0" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk0"><span class="highlight"><span class="kn">Compute</span> (<span class="mi">1</span> + <span class="mi">2</span>).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= <span class="mi">3</span>
 : nat</span></blockquote></div></div></small></span></pre><p>See the banner at the top of the page for instructions on how to navigate the proofs.</p>
 <div class="contents topic" id="table-of-contents">
@@ -42,6 +43,7 @@ hovering over the following line:</p>
 </div>
 <div class="section" id="preliminaries">
 <h1><a class="toc-backref" href="#id1">Preliminaries</a></h1>
+<p>First you need to install Cava, see <a class="reference external" href="https://github.com/project-oak/silveroak/blob/main/README.md">https://github.com/project-oak/silveroak/blob/main/README.md</a>.</p>
 <p>To import the core Cava library you need to define and simulate circuits, just:</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Require Import</span> Cava.Cava.</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Import</span> Circuit.Notations.</span></span></span></pre><p>If you also want to do proofs about circuits, this import should have everything you need:</p>
@@ -76,15 +78,8 @@ variables, like this:</p>
 we're inside the section and that every definition is parameterized over the
 <tt class="docutils literal">signal</tt> and <tt class="docutils literal">semantics</tt> context variables.</p>
 <p>Back to our inverter. Let's take a closer look at the <tt class="docutils literal">inv</tt> primitive.</p>
-<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight">  </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk1" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk1"><span class="highlight"><span class="kn">About</span> inv.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">inv :
-<span class="kr">forall</span> {<span class="nv">signal</span> : SignalType -&gt; <span class="kt">Type</span>}
-  {<span class="nv">Cava</span> : Cava signal},
-signal Bit -&gt; cava (signal Bit)
-
-inv <span class="kr">is</span> not universe polymorphic
-<span class="kn">Arguments</span> inv {signal}%function_scope {Cava}
-inv <span class="kr">is</span> transparent
-Expands to: Constant Cava.Core.CavaClass.inv</span></blockquote></div></div></small></span></pre><p>You can see in the type signature <tt class="docutils literal">signal Bit <span class="pre">-&gt;</span> cava (signal Bit)</tt> that
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight">  </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk1" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk1"><span class="highlight"><span class="kn">Check</span> inv.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">inv
+     : signal Bit -&gt; cava (signal Bit)</span></blockquote></div></div></small></span></pre><p>You can see in the type signature <tt class="docutils literal">signal Bit <span class="pre">-&gt;</span> cava (signal Bit)</tt> that
 <tt class="docutils literal">inv</tt> is defined as a pure Coq function in terms of a monad called
 <tt class="docutils literal">cava</tt>. The <tt class="docutils literal">cava</tt> monad, like <tt class="docutils literal">inv</tt>, is provided by <tt class="docutils literal">semantics</tt>. The
 monad is used to capture sharing; it's semantically different in Cava to write:</p>
@@ -123,7 +118,7 @@ diagrams, this is the difference between:</p>
 be, but it can be very useful when trying to exercise fine-grained control over
 circuit layout and area! At a first approximation, you can think of a monadic
 bind (<tt class="docutils literal">_ &lt;- _ ;; ...</tt>) as <em>naming a wire</em> in the circuit graph.</p>
-<p>If the monad notations are unfamiliar, the <a class="reference external" href="/../reference">reference</a> has more information on
+<p>If the monad notations are unfamiliar, the <a class="reference external" href="../reference">reference</a> has more information on
 those.</p>
 <p>We could have represented sharing by describing circuit graphs with a list of
 nodes and edges. However, this is essentially the &quot;machine code&quot; of structural
@@ -297,7 +292,7 @@ available for Coq standard library vectors, so it's usually best to use those
 definitions instead: use <tt class="docutils literal">Vec.map2</tt> instead of <tt class="docutils literal">unpackV</tt>, <tt class="docutils literal">Vector.map2</tt>,
 and <tt class="docutils literal">packV</tt>.</p>
 <p>To see more definitions from Cava's core library, try taking a look at the Cava
-<a class="reference external" href="/../reference">reference</a>, which documents its contents.</p>
+<a class="reference external" href="../reference">reference</a>, which documents its contents.</p>
 <p>To generate a netlist for this circuit, we use mostly the same procedure as for
 the inverter, except that we change the input and output port types to match the
 circuit's type signature.</p>
@@ -1529,7 +1524,7 @@ ports of the left-hand circuit to the input ports of the second. It's short for
     : Circuit (signal t) (signal t) :=
     Compose (Compose Delay Delay) Delay.</span></span></span></pre><p><tt class="docutils literal">Compose</tt> and <tt class="docutils literal">Delay</tt> are like <tt class="docutils literal">Comb</tt>; they are definitions that create
 <tt class="docutils literal">Circuit</tt>s. You can find a full list of <tt class="docutils literal">Circuit</tt> constructors in the
-<a class="reference external" href="/../reference">reference</a>.</p>
+<a class="reference external" href="../reference">reference</a>.</p>
 <p>Here's the netlist for <tt class="docutils literal">three_delays</tt>, generated for two different signal
 types:</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">three_delays_interface</span> {<span class="nv">t</span> : SignalType}
@@ -1715,7 +1710,7 @@ the new state.</p>
 <p>As discussed in the very first example, the <tt class="docutils literal">_ &lt;- _ ;; _</tt> notation is a
 monadic bind; it's like a <tt class="docutils literal">let</tt> binder or variable assignment, except that it
 helps Cava track resource sharing. <tt class="docutils literal">ret</tt> means &quot;return&quot;. You can read in much
-more detail about monad notations in the <a class="reference external" href="/../reference">reference</a>.</p>
+more detail about monad notations in the <a class="reference external" href="../reference">reference</a>.</p>
 <p>For the purposes of the tutorial, we'll introduce just one more monad notation:
 monad composition, represented by <tt class="docutils literal">&gt;=&gt;</tt>. Assuming <tt class="docutils literal">f</tt> and <tt class="docutils literal">g</tt> are monadic
 functions, writing <tt class="docutils literal">f &gt;=&gt; g</tt> is the same as writing <tt class="docutils literal">fun x =&gt; y &lt;- f x ;; g

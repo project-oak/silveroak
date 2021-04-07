@@ -16,7 +16,7 @@
 
 SUBDIRS = Spec Impl
 
-.PHONY: all coq minimize-requires clean subdirs $(SUBDIRS)
+.PHONY: all coq minimize-requires clean subdirs $(SUBDIRS) diff_opentitan
 
 all: subdirs
 
@@ -51,3 +51,9 @@ clean: SUBDIRTARGET=clean
 
 # Impl depends on Spec
 Impl: Spec
+
+diff_opentitan: all
+	./configure_opentitan_verilator.sh # Not strictly necessary
+	./prepare_silveroak_items.sh
+	./diff_opentitan_silveroak.sh
+

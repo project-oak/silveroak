@@ -601,6 +601,23 @@ Section VectorFacts.
       rewrite IHn. reflexivity. }
   Qed.
 
+  Lemma map2_assoc : forall A f n
+      (f_assoc : forall (a b c:A), f a (f b c) = f (f a b) c)
+      a b c,
+    Vector.map2 (n:=n) f a (Vector.map2 f b c)
+    = Vector.map2 f (Vector.map2 f a b) c.
+  Proof.
+    intros.
+    induction n.
+    { repeat rewrite map2_0.
+      trivial. }
+    { repeat rewrite map2_cons.
+      simpl.
+      repeat rewrite IHn.
+      rewrite f_assoc.
+      trivial. }
+  Qed.
+
   Lemma map2_flatten {A B C} (f : A -> B -> C) n m
         (va : t (t A n) m) (vb : t (t B n) m) :
     map2 f (flatten va) (flatten vb) = flatten (map2 (map2 f) va vb).
@@ -1287,6 +1304,15 @@ Section InV.
     rewrite (eta va), (eta vb) in *; cbn [InV] in *.
     autorewrite with push_vector_map vsimpl in *.
     f_equal; auto.
+  Qed.
+
+  Theorem InV_seq:
+    forall n start len : nat, InV n (vseq start len) <-> start <= n < start + len.
+  Proof.
+    intros.
+    rewrite <- InV_to_list_iff.
+    rewrite to_list_vseq.
+    apply in_seq.
   Qed.
 End InV.
 
