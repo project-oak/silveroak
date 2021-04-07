@@ -14,30 +14,37 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Cava.Cava.
-Require Import Cava.Lib.VecConstEq.
 Require Import Coq.Arith.PeanoNat.
-Require Import Cava.Util.Vector.
+Require Import Coq.NArith.NArith.
+
 Require Import ExtLib.Structures.Traversable.
 Require Import ExtLib.Structures.Monad.
 Require Import ExtLib.Structures.Functor.
 
-Import FunctorNotation.
+Require Import Cava.Core.Core.
+Require Import Cava.Lib.CavaPrelude.
+Require Import Cava.Lib.Combinators.
+Require Import Cava.Lib.Multiplexers.
+Require Import Cava.Util.Vector.
+
+Import FunctorNotation MonadNotation.
 
 Section WithCava.
   Context `{semantics:Cava}.
 
   (* A decoder from binary to one-hot. Both are big endian *)
   Definition decoder {n : nat} (bv : signal (Vec Bit n)) : cava (signal (Vec Bit (2^n)))
-    := Vec.map_literal (fun k => vecConstEq n k bv) (Vector.vseq 0 (2^n)).
+    := Vec.map_literal
+        (fun k => eqb (bv, Vec.bitvec_literal (N2Bv_sized n (N.of_nat k))))
+        (Vector.vseq 0 (2^n)).
 
   Definition encoder {n: nat}
     (hot : signal (Vec Bit (2^n)))
     : cava (signal (Vec Bit n))
     :=         (* Go from Vector of Bvector to Vec of Vec *)
     consts <- Vec.map_literal ret
-      (mapT_vector
-        (@Vec.bitvec_literal signal semantics  _)
+      (Vector.map
+        Vec.bitvec_literal
         (* build a Vector.t of constant bitvecs 0...2^n *)
         (Vector.map (fun k => N2Bv_sized n (N.of_nat k))
                     (Vector.vseq 0 (2^n)))) ;;
