@@ -30,7 +30,6 @@ Require Import Tests.CountBy.CountBy.
 Require Import Tests.DoubleCountBy.DoubleCountBy.
 Require Import Tests.AccumulatingAdderEnable.AccumulatingAdderEnable.
 Require Import Tests.Array.
-Require Import Tests.TestVecConstEq.
 Require Import Tests.AdderSubtractorTests.
 Require Import Tests.TestDecoder.
 
@@ -42,6 +41,5 @@ Extraction Library AccumulatingAdderEnable.
 Extraction Library CountBy.
 Extraction Library DoubleCountBy.
 Extraction Library Array.
-Extraction Library TestVecConstEq.
 Extraction Library AdderSubtractorTests.
 Extraction Library TestDecoder.

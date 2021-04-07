@@ -444,3 +444,32 @@ Proof.
   reflexivity.
 Qed.
 Hint Rewrite @N2Bv_sized_add_idemp_l using solve [eauto] : pull_N2Bv_sized.
+
+Theorem Bv_span {n} (a : Vector.t bool n) :
+  InV a (Vector.map (fun k => N2Bv_sized n (N.of_nat k)) (vseq 0 (2 ^ n))).
+Proof.
+  apply InV_map_iff.
+  induction a; [ | ].
+  { apply ex_intro with (x:=0).
+    split; [trivial | ].
+    left. trivial. }
+  { inversion IHa as [ x H ].
+    destruct h; [ | ].
+    { apply ex_intro with (x:=S(2*x)).
+      split; destruct H as [H0]; [ | ].
+      { rewrite Nat2N.inj_succ_double.
+        rewrite N2Bv_sized_succ_double.
+        rewrite H0.  trivial. }
+      { apply InV_seq. apply InV_seq in H.
+        cbn in H. cbn. lia. }
+    }
+    { apply ex_intro with (x:=2*x).
+      split; destruct H ; [ | ].
+      { rewrite Nat2N.inj_double.
+        rewrite N2Bv_sized_double.
+        rewrite H. trivial. }
+      { apply InV_seq. apply InV_seq in H0.
+        cbn. lia. }
+    }
+  }
+Qed.

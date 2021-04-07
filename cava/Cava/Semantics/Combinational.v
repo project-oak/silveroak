@@ -63,7 +63,6 @@ Instance CombinationalSemantics : Cava combType | 10 :=
     unpackV _ _ v := ret v;
     packV _ _ v := ret v;
     indexAt t sz isz := fun v sel => ret (nth_default (defaultCombValue _) (N.to_nat (Bv2N sel)) v);
-    indexConst t sz := fun v sel => ret (nth_default (defaultCombValue _) sel v);
     unsignedAdd m n a := ret (unsignedAddBool a);
     unsignedMult m n a := ret (unsignedMultBool a);
     greaterThanOrEqual m n a := ret (greaterThanOrEqualBool a);
