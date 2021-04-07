@@ -23,8 +23,8 @@ echo "** Please make sure third_party/opentitan does not contain modified RTL fi
 rm -rf opentitan_gold
 rm -rf opentitan_silveroak
 
-cp -r ../../third_party/opentitan opentitan_gold
-cp -r ../../third_party/opentitan opentitan_silveroak
+rsync -r --exclude=.git --copy-links ../../third_party/opentitan/ opentitan_gold
+rsync -r --exclude=.git --copy-links ../../third_party/opentitan/ opentitan_silveroak
 ./copy_silveroak_files.sh ./opentitan_silveroak
 
 echo "** Sanity check: diff should report changes to files replaced by silveroak below:"
