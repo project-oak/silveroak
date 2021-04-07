@@ -16,10 +16,9 @@
 # limitations under the License.
 #
 
-set -eu
+# Prepare generated files for OpenTitan compatiblity
 
-OPENTITAN_AES_DIR=../../third_party/opentitan/hw/ip/aes/rtl
-VERILATOR_CONFIG=../../third_party/opentitan/hw/lint/tools/verilator/common.vlt
+set -eu
 
 # Remove timing as OpenTitan modules do not have them and Verilator raises
 # errors with mixed usage
@@ -41,14 +40,4 @@ awk '
     case /timeprecision/: break
     default: print; break
   } } ' Impl/aes_cipher_core.sv > aes_cipher_core.sv
-
-cp aes_mix_columns.sv aes_sbox_lut.sv aes_sub_bytes.sv aes_shift_rows.sv aes_cipher_core.sv $OPENTITAN_AES_DIR
-
-# OpenTitan Verilator config is empty, we need to turn off "DETECTARRAYS" as we
-# generate large arrays that choke Verilator. Alternatively we could
-# rebuild Verilator with larger inbuilt DETECTARRAYS constant
-cat <<EOS > $VERILATOR_CONFIG
-\`verilator_config
-lint_off -rule DETECTARRAY
-EOS
 
