@@ -35,7 +35,10 @@ case $rebuild in
   * ) ;;
 esac
 
+./configure_opentitan_verilator.sh
+./prepare_silveroak_items.sh
 ./copy_to_opentitan.sh
+
 cd ../../third_party/opentitan
 fusesoc --cores-root . run --flag=fileset_top --target=sim --setup --build lowrisc:systems:top_earlgrey_verilator
 
