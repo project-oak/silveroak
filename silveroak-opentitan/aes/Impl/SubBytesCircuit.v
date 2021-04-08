@@ -20,7 +20,8 @@ Import Pkg.Notations.
 Local Open Scope vector_scope.
 
 Section SboxLut.
-  Definition sbox_fwd : Vector.t nat _ :=
+  Open Scope N.
+  Definition sbox_fwd : list N :=
     [ 99; 124; 119; 123; 242; 107; 111; 197;
       48; 1; 103; 43; 254; 215; 171; 118;
 
@@ -69,7 +70,7 @@ Section SboxLut.
       140; 161; 137; 13; 191; 230; 66; 104;
       65; 153; 45; 15; 176; 84; 187; 22 ].
 
-  Definition sbox_inv : Vector.t nat _ :=
+  Definition sbox_inv : list N :=
     [ 82; 9; 106; 213; 48; 54; 165; 56;
       191; 64; 163; 158; 129; 243; 215; 251;
 
@@ -122,8 +123,8 @@ End SboxLut.
 Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
-  Definition sbox_fwd_lut := natvec_to_signal_sized 8 sbox_fwd.
-  Definition sbox_inv_lut := natvec_to_signal_sized 8 sbox_inv.
+  Definition sbox_fwd_lut := natvec_to_signal_sized 8 (Vector.of_list (map N.to_nat sbox_fwd)).
+  Definition sbox_inv_lut := natvec_to_signal_sized 8 (Vector.of_list (map N.to_nat sbox_inv)).
 
   Definition aes_sbox_lut (is_decrypt : signal Bit) (b : signal (Vec Bit 8))
     : cava (signal (Vec Bit 8)) :=
