@@ -224,8 +224,6 @@ Section WithCava.
     d_lo' <- unpackV d_lo ;;
     packV (d_lo' ++ d_hi').
 
-  Context (aes_mvm: signal (Vec Bit 8) -> signal (Vec (Vec Bit 8) 8) -> cava (signal (Vec Bit 8))).
-
   (* module aes_sbox_canright (
     input  aes_pkg::ciph_op_e op_i,
     input  logic [7:0]        data_i,
