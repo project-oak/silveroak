@@ -62,7 +62,7 @@ coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
 AESSV:		coq AESSV.hs
-		ghc --make AESSV.hs
+		ghc --make -j AESSV.hs
 		./AESSV
 
 minimize-requires: coq
