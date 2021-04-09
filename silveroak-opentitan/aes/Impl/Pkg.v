@@ -15,6 +15,7 @@
 (****************************************************************************)
 
 Require Import Cava.Cava.
+Require Import Cava.Lib.Vec.
 Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.Tests.CipherTest.
 Require Import AesSpec.Tests.Common.
@@ -149,6 +150,26 @@ Section WithCava.
 
   Definition ROUND_KEY_DIRECT := constant false.
   Definition ROUND_KEY_MIXED := constant true.
+
+  Import BitVecNotations.
+  Open Scope bitvec_scope.
+
+  Definition aes_mvm_acc (acc: signal (Vec Bit 8)) (mat: cava (signal (Vec Bit 8))) (vec: cava (signal Bit))
+    : cava (signal (Vec Bit 8)) :=
+    vec <- vec ;;
+    mat <- mat >>= Vec.map (fun x => and2 (x, vec)) ;;
+    acc ^ mat.
+
+  Definition aes_mvm (vec_b: signal (Vec Bit 8)) (mat_a: signal (Vec (Vec Bit 8) 8))
+    : cava (signal (Vec Bit 8)) :=
+    _1 <- aes_mvm_acc (bitvec_to_signal(nat_to_bitvec_sized 8 0)) mat_a[@0] vec_b[@7] ;;
+    _2 <- aes_mvm_acc _1 mat_a[@1] vec_b[@6] ;;
+    _3 <- aes_mvm_acc _2 mat_a[@2] vec_b[@5] ;;
+    _4 <- aes_mvm_acc _3 mat_a[@3] vec_b[@4] ;;
+    _5 <- aes_mvm_acc _4 mat_a[@4] vec_b[@3] ;;
+    _6 <- aes_mvm_acc _5 mat_a[@5] vec_b[@2] ;;
+    _7 <- aes_mvm_acc _6 mat_a[@6] vec_b[@1] ;;
+    aes_mvm_acc _7 mat_a[@7] vec_b[@0] .
 
 End WithCava.
 
