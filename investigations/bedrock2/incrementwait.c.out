@@ -1,0 +1,42 @@
+     = "#include <stdint.h>
+#include <memory.h>
+
+// LITTLE-ENDIAN memory access is REQUIRED
+// the following two functions are required to work around -fstrict-aliasing
+static inline uintptr_t _br2_load(uintptr_t a, size_t sz) {
+  uintptr_t r = 0;
+  memcpy(&r, (void*)a, sz);
+  return r;
+}
+
+static inline void _br2_store(uintptr_t a, uintptr_t v, size_t sz) {
+  memcpy((void*)a, &v, sz);
+}
+
+
+uintptr_t put_wait_get(uintptr_t input, uintptr_t timeout, uintptr_t* _out) {
+  uintptr_t status, out, success;
+  status = REG32_GET((uintptr_t)4096ULL);
+  success = (uintptr_t)0ULL;
+  out = (uintptr_t)0ULL;
+  if ((status)&(((uintptr_t)1ULL)<<((uintptr_t)0ULL))) {
+    REG32_SET((uintptr_t)4100ULL, input);
+    while (timeout) {
+      status = REG32_GET((uintptr_t)4096ULL);
+      if ((status)&(((uintptr_t)1ULL)<<((uintptr_t)2ULL))) {
+        out = REG32_GET((uintptr_t)4100ULL);
+        success = (uintptr_t)1ULL;
+        timeout = (uintptr_t)0ULL;
+      } else {
+        timeout = (timeout)-((uintptr_t)1ULL);
+      }
+    }
+  } else {
+    /*skip*/
+  }
+  *_out = out;
+  return success;
+}
+
+"%string
+     : string
