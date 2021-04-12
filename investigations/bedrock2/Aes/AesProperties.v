@@ -10,7 +10,7 @@ Require Import coqutil.Word.Interface.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Tactics.Tactics.
 Require Import coqutil.Tactics.letexists.
-Require Import Bedrock2Experiments.Aes.
+Require Import Bedrock2Experiments.Aes.Aes.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope Z_scope.
 
