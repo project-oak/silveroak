@@ -43,6 +43,12 @@ Module constants.
 End constants.
 Notation constants := constants.constants.
 
+(* Circuit timing properties *)
+Module timing.
+  Class timing := { ncycles_processing : nat }.
+End timing.
+Notation timing := timing.timing.
+
 Module parameters.
   Class parameters :=
     { word :> Interface.word.word 32;
@@ -61,7 +67,7 @@ Definition WRITE := "REG32_SET".
 
 Section WithParameters.
   Context {p : parameters} {p_ok : parameters.ok p}.
-  Context {consts : constants}.
+  Context {consts : constants} {timing : timing}.
   Import constants parameters.
 
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
@@ -72,7 +78,7 @@ Section WithParameters.
   (* state *from the perspective of the software* *)
   Inductive state :=
   | IDLE
-  | BUSY (input : word)
+  | BUSY (input : word) (max_cycles_until_done : nat)
   | DONE (answer : word)
   .
 
@@ -84,7 +90,7 @@ Section WithParameters.
   Definition status_flag (s : state) : Z :=
     match s with
     | IDLE => STATUS_IDLE
-    | BUSY _ => STATUS_BUSY
+    | BUSY _ _ => STATUS_BUSY
     | DONE _ => STATUS_DONE
     end.
 
@@ -95,14 +101,24 @@ Section WithParameters.
   Definition proc : word -> word := word.add (word.of_Z 1).
 
   Inductive read_step : state -> Register -> word -> state -> Prop :=
-  | ReadStatusIdle :
-      forall s val,
-        val = status_value (status_flag s) ->
-        read_step s STATUS val s
-  | ReadStatusFinish :
-      forall input val,
+  | ReadStatusStayIdle :
+      forall val,
+        val = status_value STATUS_IDLE ->
+        read_step IDLE STATUS val IDLE
+  | ReadStatusStayBusy :
+      forall val input n,
+        val = status_value STATUS_BUSY ->
+        (* Since a read takes one cycle, the maximum number of cycles before the
+           status is DONE decreases by one *)
+        read_step (BUSY input (S n)) STATUS val (BUSY input n)
+  | ReadStatusStayDone :
+      forall val answer,
         val = status_value STATUS_DONE ->
-        read_step (BUSY input) STATUS val (DONE (proc input))
+        read_step (DONE answer) STATUS val (DONE answer)
+  | ReadStatusFinish :
+      forall input val n,
+        val = status_value STATUS_DONE ->
+        read_step (BUSY input n) STATUS val (DONE (proc input))
   | ReadOutput :
       forall val,
         read_step (DONE val) VALUE val IDLE
@@ -111,7 +127,7 @@ Section WithParameters.
   Inductive write_step : state -> Register -> word -> state -> Prop :=
   | WriteInput :
       forall val,
-        write_step IDLE VALUE val (BUSY val)
+        write_step IDLE VALUE val (BUSY val timing.ncycles_processing)
   .
 
   Inductive step : string -> state -> list word -> list word -> state -> Prop :=
@@ -152,8 +168,8 @@ Section WithParameters.
   Global Instance semantics_parameters  : Semantics.parameters :=
     {|
     Semantics.width := 32;
-    Semantics.word := word;
-    Semantics.mem := mem;
+    Semantics.word := parameters.word;
+    Semantics.mem := parameters.mem;
     Semantics.locals := SortedListString.map _;
     Semantics.env := SortedListString.map _;
     Semantics.ext_spec := ext_spec;
