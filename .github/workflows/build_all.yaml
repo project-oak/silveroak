@@ -10,6 +10,13 @@ on:
 
 jobs:
 
+  package-share:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+
+    - uses: ./.github/actions/base
   make_bedrock2:
     runs-on: ubuntu-latest
     steps:

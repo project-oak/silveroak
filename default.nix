@@ -14,7 +14,7 @@ stdenv.mkDerivation rec {
 
   buildInputs = [] ++
     optionals coq [
-        coq_8_13
+        coq_8_12
         dune_2
         opam
         # ocamlPackages.findlib
