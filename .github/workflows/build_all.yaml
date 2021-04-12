@@ -19,7 +19,7 @@ jobs:
     - uses: cachix/install-nix-action@v12
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-    - run: nix-shell --arg coq true --run 'cd third_party; make -j1 build-bedrock2'
+    - run: nix-shell --arg coq true --run 'cd third_party; make -j1 build-bedrock2' default.nix
     - name: Cache bedrock2 and coqutil
       uses: actions/cache@v2
       with:
@@ -35,7 +35,7 @@ jobs:
     - uses: cachix/install-nix-action@v12
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-    - run: nix-shell --arg coq true --run 'cd third_party; make -j1 build-extlib'
+    - run: nix-shell --arg coq true --run 'cd third_party; make -j1 build-extlib' default.nix
     - name: Cache extlib
       uses: actions/cache@v2
       with:
@@ -51,7 +51,7 @@ jobs:
     - uses: cachix/install-nix-action@v12
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-    - run: nix-shell --arg coq true --run 'cd third_party; make -j1 build-record-update'
+    - run: nix-shell --arg coq true --run 'cd third_party; make -j1 build-record-update' default.nix
     - name: Cache coq-record-update
       uses: actions/cache@v2
       with:
@@ -70,7 +70,7 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-unstable
     - uses: ./.github/actions/third_party_cache
-    - run: nix-shell --arg coq true --run 'cd cava; make -j1 coq'
+    - run: nix-shell --arg coq true --run 'cd cava; make -j1 coq' default.nix
     - name: Cache cava
       uses: actions/cache@v2
       with:
@@ -89,7 +89,7 @@ jobs:
     - uses: cachix/install-nix-action@v12
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-    - run: nix-shell --arg haskell true --run 'cd cava; make -j1 haskell'
+    - run: nix-shell --arg haskell true --run 'cd cava; make -j1 haskell' default.nix
     - name: Cache cava after Haskell step
       uses: actions/cache@v2
       with:
@@ -111,7 +111,7 @@ jobs:
         nix_path: nixpkgs=channel:nixos-unstable
     - uses: ./.github/actions/third_party_cache
     - uses: ./.github/actions/cava_cache
-    - run: nix-shell --arg coq true --run 'cd examples; make -j1 coq'
+    - run: nix-shell --arg coq true --run 'cd examples; make -j1 coq' default.nix
     - name: Cache examples
       uses: actions/cache@v2
       with:
@@ -137,7 +137,7 @@ jobs:
         path: |
           examples
         key: ${{ runner.os }}-build-${{ github.run_id }}-cava-examples
-    - run: nix-shell --arg haskell true --arg verilator true --run 'cd examples; make -j1'
+    - run: nix-shell --arg haskell true --arg verilator true --run 'cd examples; make -j1' default.nix
 
   make_tests:
     needs: make_cava_haskell
@@ -151,7 +151,7 @@ jobs:
         nix_path: nixpkgs=channel:nixos-unstable
     - uses: ./.github/actions/third_party_cache
     - uses: ./.github/actions/cava_haskell_cache
-    - run: nix-shell --arg coq true --arg haskell true --arg verilator true --run 'cd tests; make -j1'
+    - run: nix-shell --arg coq true --arg haskell true --arg verilator true --run 'cd tests; make -j1' default.nix
 
   make_silveroak_pinmux:
     needs: make_cava_haskell
@@ -165,7 +165,7 @@ jobs:
         nix_path: nixpkgs=channel:nixos-unstable
     - uses: ./.github/actions/third_party_cache
     - uses: ./.github/actions/cava_haskell_cache
-    - run: nix-shell --arg coq true --arg haskell true --arg verilator true --run 'cd silveroak-opentitan/pinmux; make -j1'
+    - run: nix-shell --arg coq true --arg haskell true --arg verilator true --run 'cd silveroak-opentitan/pinmux; make -j1' default.nix
 
   make_silveroak_aes:
     needs: make_cava_haskell
@@ -179,4 +179,4 @@ jobs:
         nix_path: nixpkgs=channel:nixos-unstable
     - uses: ./.github/actions/third_party_cache
     - uses: ./.github/actions/cava_haskell_cache
-    - run: nix-shell --arg coq true --arg haskell true --arg verilator true --run 'cd silveroak-opentitan/aes; make -j1'
+    - run: nix-shell --arg coq true --arg haskell true --arg verilator true --run 'cd silveroak-opentitan/aes; make -j1' default.nix
