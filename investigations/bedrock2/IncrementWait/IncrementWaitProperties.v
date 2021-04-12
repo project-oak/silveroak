@@ -19,16 +19,10 @@ Import Syntax.Coercions List.ListNotations.
 Local Open Scope Z_scope.
 
 Section Proofs.
-  Context {p : parameters} {p_ok : parameters.ok p}.
-  Context {consts : constants} {consts_ok : constants.ok consts}.
-  Context {timing : timing}.
+  Context {p : parameters} {p_ok : parameters.ok p}
+          {consts : constants} {consts_ok : constants.ok consts}
+          {timing : timing}.
   Import constants parameters.
-
-  (* COPY-PASTE this *)
-  Add Ring wring : (Properties.word.ring_theory (word := Semantics.word))
-        (preprocess [autorewrite with rew_word_morphism],
-         morphism (Properties.word.ring_morph (word := Semantics.word)),
-         constants [Properties.word_cst]).
 
   (* plug in implicits *)
   Definition put_wait_get := put_wait_get.
@@ -88,6 +82,7 @@ Section Proofs.
              first [ rewrite map.get_put_diff by congruence
                    | apply map.get_put_same ]
            end.
+
   (* if these aren't opaque, initial call to straightline computes them *)
   Opaque STATUS_ADDR VALUE_ADDR STATUS_IDLE STATUS_BUSY STATUS_DONE.
 
@@ -177,26 +172,6 @@ Section Proofs.
        word.unsigned_or word.unsigned_xor word.unsigned_sru word.unsigned_slu
        word.unsigned_ltu @word.unsigned_of_Z_0 @word.unsigned_of_Z_1
        using solve [typeclasses eauto] : push_unsigned.
-
-  Lemma nonzero_impl (v : word) :
-    word.xor
-      (if word.eqb v (word.of_Z 0)
-       then word.of_Z 1
-       else word.of_Z 0) (word.of_Z 1)
-    = if word.eqb v (word.of_Z 0) then word.of_Z 0 else word.of_Z 1.
-  Proof.
-    apply word.unsigned_inj.
-    repeat lazymatch goal with
-           | |- context [word.eqb] => rewrite word.unsigned_eqb
-           | |- @eq word.rep _ _ => apply word.unsigned_inj
-           | |- context [Z.lxor 1 1] => change (Z.lxor 1 1) with 0
-           | |- context [Z.lxor 0 1] => change (Z.lxor 0 1) with 1
-           | |- context [word.wrap 0] => change (word.wrap 0) with 0
-           | |- context [word.wrap 1] => change (word.wrap 1) with 1
-           | _ => first [ progress autorewrite with push_unsigned
-                       | destruct_one_match | reflexivity ]
-           end.
-  Qed.
 
   (* (status value STATUS_DONE) & (1 << STATUS_DONE) = 0 *)
   Lemma check_done_flag :
