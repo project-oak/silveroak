@@ -38,36 +38,40 @@ Existing Instance CombinationalSemantics.
 
 Import Circuit.Notations.
 
-Lemma fold_mono {A n} {a:A} {f unit decider}
-  (dec_true : forall a b, decider a b = true <-> a = b)
-  (right_id : forall b, f b unit = b)
-  (neutral : forall b, f b b = b)
+Lemma fold_mono {A B n} {a:A} {b: A-> B} {f unit decider}
+  (dec_true : forall c d, decider c d = true <-> c = d)
+  (right_id : forall c, f c unit = c)
+  (neutral : forall c, f c c = c)
   (vec : Vector.t A n) :
-  Vector.fold_left f a (Vector.map (fun v => if decider a v then a else unit) vec) = a.
+  Vector.fold_left f (b a) (Vector.map (fun v => if decider a v then b v else unit) vec) = b a.
 Proof.
   induction vec; [ trivial | ].
   cbn.
-  case_eq (decider a h);
-    intros;
-    [rewrite neutral | rewrite right_id];
-    apply IHvec.
+  case_eq (decider a h); intro H.
+  { rewrite dec_true in H. subst.
+    rewrite neutral.
+    apply IHvec. }
+  { remember (dec_contrapositive dec_true) as dec_false.
+    rewrite dec_false in H. subst.
+    rewrite right_id.
+    apply IHvec. }
 Qed.
 
-Lemma fold_units {A n} {a:A} {f unit decider}
-  (dec_correct : forall a b, decider a b = true <-> a = b)
-  (left_id : forall b, f unit b = b)
-  (right_id : forall b, f b unit = b)
-  (neutral : forall b, f b b = b)
+Lemma fold_units {A B n} {a:A} {b: A -> B} f unit decider
+  (dec_correct : forall c d, decider c d = true <-> c = d)
+  (left_id : forall c, f unit c = c)
+  (right_id : forall c, f c unit = c)
+  (neutral : forall c, f c c = c)
   (vec : Vector.t A n)
   (guard : Vector.InV a vec) :
-  Vector.fold_left f unit (Vector.map (fun v => if decider a v then a else unit) vec) = a.
+  Vector.fold_left f unit (Vector.map (fun v => if decider a v then b v else unit) vec) = b a.
 Proof.
   induction vec; [ inversion guard | ]. cbn.
   rewrite left_id.
   case_eq (decider a h); intro a_is_h; [ | ].
-  { apply (@fold_mono A n a f unit decider dec_correct right_id neutral). }
-  { assert (forall a b : A, decider a b = false <-> a <> b) as dec_rev_correct.
-    { intros. apply iffb. apply dec_correct. }
+  { apply dec_correct in a_is_h. destruct a_is_h.
+    apply (@fold_mono A B n a b f unit decider dec_correct right_id neutral). }
+  { remember (dec_contrapositive dec_correct) as dec_rev_correct.
     rewrite dec_rev_correct in a_is_h.
     apply IHvec.
     inversion guard; [ | ].
@@ -77,15 +81,15 @@ Proof.
 Qed.
 
 Theorem fold_units' : forall A n (a:A) f unit decider,
-  (forall a b, decider a b = true <-> a = b) ->
-  (forall b, f unit b = b) ->
-  (forall b, f b unit = b) ->
-  (forall b, f b b = b) ->
+  (forall c d, decider c d = true <-> c = d) ->
+  (forall c, f unit c = c) ->
+  (forall c, f c unit = c) ->
+  (forall c, f c c = c) ->
   forall (vec : Vector.t A n) vec'
   (eq : vec' = Vector.map (fun v => if decider a v then a else unit) vec),
   Vector.InV a vec ->
   Vector.fold_left f unit vec' = a.
-Proof. intros. rewrite eq. apply fold_units; assumption. Qed.
+Proof. intros. rewrite eq. apply @fold_units with (b:= fun x => a); assumption. Qed.
 
 Theorem enc_dev_inv (n:nat) input : simulate ((Comb (decoder (n:=n))) >==>
   (Comb (encoder (n:=n)))) input = input.
@@ -146,16 +150,16 @@ Proof.
                 (fun k => N2Bv_sized n (N.of_nat k))
                 (vseq 0 (2 ^ n))) ; [ | | | | | ].
     { apply combType_eqb_true_iff. }
-    { induction b; trivial; [].
+    { induction c; trivial; [].
       cbn.
-      rewrite IHb; trivial. }
-    { induction b; trivial; [].
+      rewrite IHc; trivial. }
+    { induction c; trivial; [].
       cbn.
-      rewrite IHb; trivial; [].
+      rewrite IHc; trivial; [].
       destruct h; trivial. }
-    { induction b; trivial; [].
+    { induction c; trivial; [].
       cbn.
-      rewrite IHb; trivial; [].
+      rewrite IHc; trivial; [].
       destruct h; trivial. }
     { apply Vector.map_ext.
       intros a0. cbn in a0.
@@ -192,4 +196,196 @@ Proof.
   { clear a. induction n; [ easy | ]. cbn.
     remember (2^n) as x.
     lia. }
+Qed.
+
+Definition N2hotv {n} k : Bvector n := Vector.map (fun m => if Nat.eqb k m then one else zero) (vseq 0 n).
+
+Lemma map_id_guard : forall A f (g : A -> Prop) l
+  (ext : forall (a : A),  g a -> f a = a)
+  (guard : Forall g l),
+  map f l = l.
+Proof.
+  intros.
+  induction l.
+  { trivial. }
+  { simpl. rewrite ext.
+    { rewrite IHl; trivial.
+      inversion guard. trivial. }
+    { inversion guard. trivial. }
+  }
+Qed.
+
+Theorem map_ext_guard
+  (A B : Type) (f g : A -> B)
+  (P : A -> Prop)
+  (ext : forall a : A, P a ->  f a = g a)
+  (n : nat) (v : VectorDef.t A n)
+  (Guard: forall a : A, InV a v -> P a)
+  : VectorDef.map f v = VectorDef.map g v.
+Proof.
+  intros.
+  induction v; [ trivial | ].
+  cbn.
+  rewrite IHv.
+  { assert (f h = g h) as H.
+    { apply ext. apply Guard. compute. left. reflexivity. }
+    inversion H.
+    reflexivity.
+    }
+  { intros. apply Guard.
+    cbn. right.  assumption. }
+Qed.
+
+Lemma N_lt_step a : (N.of_nat a < N.of_nat (S a))%N.
+Proof. rewrite Nat2N.inj_succ. apply N.lt_succ_diag_r. Qed.
+
+Lemma N_lt_inj a b : a < b -> (N.of_nat a < N.of_nat b)%N.
+Proof.
+  induction b.
+  { intro H. inversion H. }
+  { destruct a.
+    { cbv. trivial. }
+    { intro SaSb.
+      inversion SaSb as [Sab | m SSab mb].
+      { subst. apply N_lt_step. }
+      { subst. inversion SSab as [ | m SSam Smb].
+        { clear. eapply N.lt_trans.
+          { apply N_lt_step. }
+          { apply N_lt_step. } }
+        { subst. eapply N.lt_trans.
+          { apply IHb. apply Nat.le_lteq in SSab.
+            destruct SSab as [ | eq].
+            { eapply Nat.lt_trans.
+              { apply Nat.lt_succ_diag_r. }
+              { assumption. }
+            }
+            { rewrite <- eq. apply Nat.lt_succ_diag_r. }
+          }
+          { apply N_lt_step. }
+        }
+      }
+    }
+  }
+Qed.
+
+Theorem dec_enc_inv (n:nat) (k : {i: nat | i < 2^n}):
+  @decoder combType Combinational.CombinationalSemantics n (encoder (N2hotv (proj1_sig k))) = N2hotv (proj1_sig k).
+Proof.
+  cbv [decoder encoder].
+  simpl_ident.
+  autorewrite with vsimpl.
+  cbv [combType].
+  rewrite @tree_equiv with (t:=Vec Bit (n)) (id := Vector.const false (n));
+   [ | | | | ].
+  2:{ intros. simpl_ident. clear. induction n.
+      { autorewrite with vsimpl. apply Vector.case0. trivial. }
+      { rewrite const_cons. rewrite map2_cons. simpl. rewrite IHn.
+        rewrite Vector.eta. trivial. }
+  }
+  2:{ intros. simpl_ident. clear. induction n.
+      { autorewrite with vsimpl. apply Vector.case0. trivial. }
+      { rewrite const_cons. rewrite map2_cons. simpl. rewrite IHn.
+        rewrite orb_false_r.
+        rewrite Vector.eta. trivial. }
+  }
+  2:{ intros. simpl_ident. apply map2_assoc.
+      intros. apply orb_assoc. }
+  2:{ clear. induction n.
+      { easy. }
+      { simpl. remember (2^n) as x. lia. }
+  }
+  { cbv [N2hotv].
+    apply map_ext_guard with (P := fun i => i < 2^n );
+      [ | intros a H; apply InV_seq in H; lia ].
+    intros a.
+    cbv [combType].
+    rewrite Vector.map_map.
+    rewrite map2_map.
+    rewrite map2_drop_same.
+    erewrite fold_left_ext;
+      [ | intros ; simpl_ident; trivial ].
+    rewrite Vector.map_ext with
+      (f:= fun x =>
+        mux2 (if (proj1_sig k =? x)%nat then one else zero)
+          (defaultSignal,
+           @Vec.bitvec_literal combType _ _ (N2Bv_sized n (N.of_nat x))))
+      (g := fun x =>
+        (if (proj1_sig k =? x)%nat
+         then @Vec.bitvec_literal combType _ _ (N2Bv_sized n (N.of_nat x))
+         else Vector.const false n)).
+    2:{ intro a0. rewrite mux2_correct.
+        case_eq(proj1_sig k=?a0)%nat; trivial. }
+    rewrite fold_units; [ | | | | | ].
+    { intros H. case_eq (proj1_sig k=?a)%nat.
+      { intros H0.
+        apply eq_sym in H0. apply EqNat.beq_nat_eq in H0. subst. simpl.
+        simpl_ident.
+        rewrite Vector.map2_map.
+        rewrite map2_drop_same.
+        rewrite Vector.map_ext with (g := fun x => true).
+        2: { intros. cbv [xnorb]. rewrite xorb_nilpotent. trivial. }
+        rewrite map_to_const.
+        apply fold_left_andb_true. }
+      { intros H0. apply EqNat.beq_nat_false in H0.
+        rewrite eqb_correct.
+        simpl.
+        rewrite Vector.map_id.
+        rewrite Vector.map_id.
+        assert(
+          Vector.eqb bool
+            (fun x y : bool => Bool.eqb x y)
+            (N2Bv_sized n (N.of_nat (proj1_sig k)))
+            (N2Bv_sized n (N.of_nat a))
+          = true
+          -> False).
+        { intros H1. apply H0. apply Vector.eqb_eq in H1.
+          { apply f_equal with (f:=Bv2N) in H1. rewrite Bv2N_N2Bv_sized in H1.
+            { rewrite Bv2N_N2Bv_sized in H1.
+              { apply Nat2N.inj.  assumption. }
+              { assert (N.of_nat 2 = 2%N) as H2; trivial.
+                rewrite <- H2.
+                rewrite Nat2N.inj_pow. 
+                apply  N_lt_inj.
+                assumption. }
+            }
+            { assert (N.of_nat 2 = 2%N) as H2; trivial.
+              rewrite <- H2.
+              rewrite Nat2N.inj_pow. 
+              apply  N_lt_inj.
+              destruct k.
+              cbn.
+              assumption. }
+          }
+          { intros. split.
+            { apply Bool.eqb_prop. }
+            { intros. subst. destruct y; auto. }
+          }
+        }
+        { case_eq(Vector.eqb bool
+            (fun x y : bool => Bool.eqb x y)
+            (N2Bv_sized n (N.of_nat (proj1_sig k)))
+            (N2Bv_sized n (N.of_nat a))).
+          { intros. exfalso. auto. }
+          { trivial. }
+        }
+      }
+    }
+    { intros. split.
+      { intros.
+        apply EqNat.beq_nat_true.
+        assumption. }
+      { intros. subst. apply Nat.eqb_refl. }
+    }
+    { intros. rewrite Vector.map2_const. simpl. apply Vector.map_id. }
+    { intros. rewrite Vector.map2_swap. rewrite Vector.map2_const.
+      erewrite Vector.map_ext.
+      2: { intros. apply orb_comm. }
+      {  apply Vector.map_id. }
+    }
+    { intros. rewrite Vector.map2_drop_same. erewrite Vector.map_ext.
+      2:{ intros. apply orb_diag. }
+      { apply Vector.map_id. }
+    }
+    { apply InV_seq. destruct k. cbn. lia. }
+  }
 Qed.
