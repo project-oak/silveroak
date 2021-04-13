@@ -19,8 +19,9 @@ Import Syntax.Coercions List.ListNotations.
 Local Open Scope Z_scope.
 
 Section Proofs.
-  Context {p : parameters} {p_ok : parameters.ok p}.
-  Context {consts : constants} {consts_ok : constants.ok consts}.
+  Context {p : parameters} {p_ok : parameters.ok p}
+          {consts : constants} {consts_ok : constants.ok consts}
+          {timing : timing}.
   Import constants parameters.
 
   (* plug in implicits *)
@@ -28,23 +29,20 @@ Section Proofs.
 
   Instance spec_of_put_wait_get : spec_of put_wait_get :=
     fun function_env =>
-      forall tr mem (R : _ -> Prop) input timeout s,
-        R mem ->
-        execution tr s ->
-        word.unsigned timeout <> 0 ->
-        let args := [input; timeout] in
-        call function_env put_wait_get tr mem args
-             (fun tr' mem' rets =>
-                (* the trace can be executed *)
-                (exists s', execution tr' s')
-                (* all the same properties hold on the memory state *)
-                /\ R mem'
-                /\ exists out success,
-                    rets = [out; success]
-                    /\ ((* either success = 1 and output matches spec *)
-                      (success = word.of_Z 1 /\ out = proc input)
-                      (* ... or success = 0 and output is 0 *)
-                      \/ (success = word.of_Z 0 /\ out = word.of_Z 0))).
+      forall (tr : trace) (m : mem) (R : _ -> Prop) input,
+        (* no special requirements of the memory *)
+        R m ->
+        (* circuit must start in IDLE state *)
+        execution tr IDLE ->
+        let args := [input] in
+        call function_env put_wait_get tr m args
+             (fun tr' m' rets =>
+                (* the circuit is back in IDLE state *)
+                execution tr' IDLE
+                (* ...and the same properties as before hold on the memory *)
+                /\ R m'
+                (* ...and output matches spec *)
+                /\ rets = [proc input]).
 
   Lemma interact_mmio call action binds arges t m l (post : trace -> mem -> locals -> Prop) args :
     dexprs m l arges args ->
@@ -84,12 +82,15 @@ Section Proofs.
              first [ rewrite map.get_put_diff by congruence
                    | apply map.get_put_same ]
            end.
+
   (* if these aren't opaque, initial call to straightline computes them *)
   Opaque STATUS_ADDR VALUE_ADDR STATUS_IDLE STATUS_BUSY STATUS_DONE.
 
   Hint Extern 4 (step _ ?s _ _ _) => eapply (ReadStep s) : step.
   Hint Extern 4 (step _ ?s _ _ _) => eapply (WriteStep s) : step.
   Hint Constructors reg_addr : step.
+  Hint Constructors read_step : step.
+  Hint Constructors write_step : step.
 
   Local Ltac simplify_unique_words_in H :=
     lazymatch type of H with
@@ -156,12 +157,56 @@ Section Proofs.
     repeat match goal with
            | H : reg_addr _ _ |- _ => invert_nobranch H
            | H : read_step _ _ _ _ |- _ => invert_nobranch H
+           | H : write_step _ _ _ _ |- _ => invert_nobranch H
            | H : execution _ (DONE _) |- _ => invert_nobranch H; destruct_products
            | H : step _ _ _ _ (DONE _) |- _ => invert_nobranch H
            | H1 : execution ?t _, H2 : execution ?t _ |- _ =>
              pose proof execution_unique _ _ _ H1 H2; subst;
              clear H2; one_goal_or_solved ltac:(try congruence)
+           | H : BUSY _ _ = BUSY _ _ |- _ => invert_nobranch H
+           | H : ?x = ?x |- _ => clear H
            end.
+
+  Hint Rewrite word.unsigned_add word.unsigned_sub word.unsigned_mul
+       word.unsigned_mulhuu word.unsigned_divu word.unsigned_and
+       word.unsigned_or word.unsigned_xor word.unsigned_sru word.unsigned_slu
+       word.unsigned_ltu @word.unsigned_of_Z_0 @word.unsigned_of_Z_1
+       using solve [typeclasses eauto] : push_unsigned.
+
+  (* (status value STATUS_DONE) & (1 << STATUS_DONE) = 0 *)
+  Lemma check_done_flag :
+    word.unsigned
+      (if
+          word.eqb (word.and (status_value STATUS_DONE)
+                             (word.slu (word.of_Z 1) (word.of_Z STATUS_DONE)))
+                   (word.of_Z 0)
+        then word.of_Z 1
+        else word.of_Z 0) = 0.
+  Proof.
+    rewrite @word.unsigned_eqb by typeclasses eauto.
+    autorewrite with push_unsigned.
+    cbv [status_value]. rewrite Z.land_diag.
+    destruct_one_match; autorewrite with push_unsigned;
+      try congruence; [ ].
+    rewrite word_wrap_unsigned in *.
+    (* get rid of word.unsigned to match flags_unique_and_nonzero *)
+    match goal with H : word.unsigned _ = 0 |- _ =>
+                    rewrite <-word.unsigned_of_Z_0 in H;
+                      apply word.unsigned_inj in H
+    end.
+    (* pose the proofs that all the flags are unique and nonzero *)
+    pose proof flags_unique_and_nonzero as Hflags.
+    cbv [map] in Hflags. simplify_unique_words_in Hflags.
+    (* simplify implicit arguments *)
+    cbn [width Semantics.word semantics_parameters] in *.
+    (* contradiction *)
+    congruence.
+  Qed.
+
+  Lemma execution_step action args rets t s s':
+    execution t s -> step action s args rets s' ->
+    execution ((map.empty, action, args, (map.empty, rets)) :: t) s'.
+  Proof. intros; cbn [execution]; eauto. Qed.
 
   Lemma put_wait_get_correct :
     program_logic_goal_for_function! put_wait_get.
@@ -171,62 +216,35 @@ Section Proofs.
     (* initial processing *)
     repeat straightline.
 
-    (* read status *)
-    interaction. repeat straightline.
-
-    (* handle branch *)
-    unfold1_cmd_goal. cbv [cmd_body].
-    repeat straightline.
-    split; repeat straightline.
-    2:{
-      (* first handle the easy case where STATUS <> IDLE *)
-      (* done; prove postcondition *)
-      cbv [list_map list_map_body].
-      repeat straightline.
-      cbn [execution].
-      ssplit; eauto with step; [ ].
-      do 2 eexists; ssplit; [ reflexivity | ].
-      right; ssplit; reflexivity. }
-
     (* write input *)
     interaction. repeat straightline.
 
     (* begin while loop *)
     apply atleastonce_localsmap
-      with (v2:=word.unsigned timeout)
-           (lt:=fun n m => 0 <= n < m)
+      with (v0:=timing.ncycles_processing)
+           (lt:=lt)
            (invariant:=
               fun i tr m l =>
-                execution tr (BUSY input)
-                /\ R m
-                /\ 0 < i < 2 ^ width
-                /\ map.get l "out"%string = Some (word.of_Z 0)
-                /\ map.get l "success"%string = Some (word.of_Z 0)
-                /\ map.get l "timeout"%string = Some (word.of_Z i)).
-    1:apply Z.lt_wf.
-    all:cbv [Markers.split].
-    { (* case where timeout = 0; loop break *)
-      exists timeout.
-      ssplit; repeat straightline.
-      cbv [list_map list_map_body].
+                execution tr (BUSY input i)
+                /\ R m).
+    { apply lt_wf. }
+    { (* case in which the loop breaks immediately (cannot happen) *)
       repeat straightline.
-      cbn [execution].
-      ssplit; eauto with step; [ ].
-      do 2 eexists; ssplit; [ reflexivity | ].
-      right; ssplit; reflexivity. }
-    { (* invariant holds at start of loop *)
-      pose proof (word.unsigned_range timeout).
-      ssplit; [ | assumption
-                | lia
-                | lia
-                | map_lookup
-                | map_lookup
-                | rewrite word.of_Z_unsigned; map_lookup ].
-      eexists; ssplit; eauto with step.
-      lazymatch goal with
-      | H : write_step _ _ _ _ |- _ =>
-        inversion H; subst
-      end.
+      exfalso. (* proof by contradiction *)
+
+      (* in the loop break case, it must be that the status is DONE (which is
+         not the case at the start of the loop) *)
+      repeat lazymatch goal with
+             | v := word.of_Z 0 |- _ => subst v
+             | br := if word.eqb _ (word.of_Z 0) then _ else _ |- _ => subst br
+             end.
+      rewrite @word.unsigned_eqb in * by typeclasses eauto.
+      autorewrite with push_unsigned in *.
+      congruence. }
+    { (* proof that invariant holds at loop start *)
+      ssplit; [ | assumption ].
+      cbn [execution]. eexists; ssplit; [ eassumption | ].
+      match goal with H : write_step _ _ _ _ |- _ => inversion H; subst end.
       eauto with step. }
     { (* invariant holds through loop (or postcondition holds, if loop breaks) *)
       repeat straightline.
@@ -234,111 +252,42 @@ Section Proofs.
       (* get status *)
       interaction. repeat straightline.
 
-      (* branch on whether status is DONE *)
-      unfold1_cmd_goal. cbv [cmd_body].
-      repeat straightline.
-      eexists; ssplit.
-      { (* get value of status (straightline should handle this, but assumes
-           word is not abstract) *)
-        repeat straightline.
-        eexists; split; repeat straightline.
-        map_lookup. }
-      { (* case where status is DONE *)
-        repeat straightline.
+      eexists; repeat straightline.
+      { eexists; split; [ map_lookup | ].
+        repeat straightline. }
+      { (* continuation case -- invariant holds *)
+        (* find the current measure and handle the case where it's 0 *)
+        let i := lazymatch goal with H : execution _ (BUSY _ ?i) |- _ => i end in
+        destruct i as [ | i' ].
+        { (* i = 0 case *)
+          (* contradiction; i=0 guarantees that next status read, but we got a
+             non-DONE status *)
+          infer. exfalso. eauto using check_done_flag. }
+        { (* i = S i' case *)
+          exists i'; split; [ | lia ].
+          ssplit; [ | assumption ].
+          cbn [execution]. eexists; ssplit; [ eassumption | ].
+          (* break into two possible read cases : DONE and BUSY *)
+          match goal with H : read_step _ _ _ _ |- _ => inversion H; subst end;
+            try solve [infer]; [ | ].
+          { (* BUSY case *)
+            econstructor; eauto; [ ].
+            infer. econstructor; eauto. }
+          { (* DONE case -- contradiction because we already checked that status <> DONE *)
+            exfalso. infer. eauto using check_done_flag. } } }
+      { (* break case -- postcondition holds *)
+
+        (* get value *)
         interaction. repeat straightline.
-        eexists; ssplit; repeat straightline.
-        { eexists; ssplit; eauto.
-          map_lookup. }
-        { (* continuation case is irrelevant here; the timeout was reset to 0,
-             so break *)
-          match goal with
-          | H : word.unsigned ?v <> 0 |- _ =>
-            change v with (word.of_Z 0) in H;
-            rewrite word.unsigned_of_Z_0 in H;
-            contradiction H; trivial
-          end. }
-        { (* break case; prove postcondition holds *)
-          eexists.
-          split; repeat straightline; [ map_lookup | ].
-          cbv [list_map list_map_body].
-          eexists; repeat straightline; ssplit; eauto.
-          { map_lookup. }
-          { do 2 eexists.
-            split; eauto with step. }
-          { do 2 eexists; ssplit; [ reflexivity | ].
-            left; ssplit; try reflexivity.
 
-            infer. } } }
-      { (* case where status != DONE *)
-        repeat straightline.
-
-        (* timeout = timeout - 1 (annoying because straightline assumes it can
-           compute maps *)
-        eexists; ssplit; repeat straightline.
-        { eexists; ssplit; repeat straightline.
-          map_lookup. eassumption. }
-        eexists; ssplit; repeat straightline.
-        { eexists; ssplit; repeat straightline.
-          map_lookup. }
-        { (* continuation case; prove the invariant holds *)
-          lazymatch goal with
-          | |- exists ctr', _ /\ (0 <= ctr' < ?ctr) =>
-            let c' := constr:(word.sub (word.of_Z ctr) (word.of_Z 1)) in
-            (exists (word.unsigned c'));
-            set (i:=ctr) in *;
-            assert (0 <= word.unsigned c' < i)
-          end.
-          { (* annoying modulo proof; prove that even with word-truncation,
-               0 <= i-1 < i *)
-            rewrite word.unsigned_sub in *.
-            rewrite word.unsigned_of_Z_1, word.unsigned_of_Z in *.
-            cbv [word.wrap] in *. pose proof word.modulus_pos.
-            rewrite (Z.mod_small i) in * by lia.
-            rewrite (Z.mod_small (i - 1)) in * by lia.
-            lia. }
-          subst i.
-          ssplit; [ | assumption
-                    | lia
-                    | lia
-                    | map_lookup; assumption
-                    | map_lookup; assumption
-                    | rewrite word.of_Z_unsigned; map_lookup
-                    | lia
-                    | lia ].
-          cbn [execution].
-          eexists; ssplit; eauto.
-          econstructor; eauto.
-          infer.
-          let H := lazymatch goal with H : read_step ?s ?r ?v _
-                                       |- read_step ?s ?r ?v _ => H end in
-          inversion H; clear H; subst; [ constructor; reflexivity | ].
-          (* contradiction case in which the status read was DONE (we have
-             already checked that it wasn't) *)
-          (* pose the proofs that all the flags are unique and nonzero *)
-          pose proof flags_unique_and_nonzero as Hflags.
-          cbv [map] in Hflags.
-          simplify_unique_words_in Hflags.
-          cbv [status_value] in *.
-          lazymatch goal with
-          | H : word.unsigned (word.and ?x ?y) = 0 |- _ =>
-            unify x y; (* x = y; this is a contradiction *)
-              rewrite word.unsigned_and, Z.land_diag in H;
-              rewrite word_wrap_unsigned in H;
-              rewrite <-word.unsigned_of_Z_0 in H;
-              apply word.unsigned_inj in H
-          end.
-          (* simplify implicit arguments *)
-          cbn [width Semantics.word semantics_parameters] in *.
-          congruence. }
-        { (* break case -- timeout exceeded *)
-          eexists.
-          split; repeat straightline; [ map_lookup; eassumption | ].
-          cbv [list_map list_map_body].
-          eexists; repeat straightline; ssplit; eauto.
-          { map_lookup; eassumption. }
-          { do 2 eexists.
-            split; eauto with step. }
-          { do 2 eexists; ssplit; [ reflexivity | ].
-            right; ssplit; reflexivity. } } } }
+        eexists; split; [ map_lookup | ].
+        cbv [list_map list_map_body].
+        ssplit.
+        { eapply execution_step; [ eassumption | ].
+          let s := lazymatch goal with |- step _ ?s _ _ _ => s end in
+          eapply (ReadStep s); eauto; [ ].
+          infer. eauto with step. }
+        { eassumption. }
+        { infer. reflexivity. } } }
   Qed.
 End Proofs.
