@@ -13,6 +13,7 @@ Require Import coqutil.Word.Properties.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Tactics.Tactics.
 Require Import coqutil.Tactics.letexists.
+Require Import Bedrock2Experiments.Constants.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWait.
 Import Syntax.Coercions List.ListNotations.
@@ -20,9 +21,13 @@ Local Open Scope Z_scope.
 
 Section Proofs.
   Context {p : parameters} {p_ok : parameters.ok p}
-          {consts : constants} {consts_ok : constants.ok consts}
+          {env : global_env} {env_ok : global_env.ok env}
           {timing : timing}.
-  Import constants parameters.
+  Import global_env parameters.
+
+  (* bedrock2 does not support proof logic for global constants, so for proofs
+     interpret constants as literals *)
+  Local Existing Instance constant.literal_interp.
 
   (* plug in implicits *)
   Definition put_wait_get := put_wait_get.
@@ -122,8 +127,8 @@ Section Proofs.
     execution t s2 ->
     s1 = s2.
   Proof.
-    pose proof addrs_unique (ok:=consts_ok).
-    pose proof flags_unique_and_nonzero (ok:=consts_ok) as Hflags.
+    pose proof addrs_unique (ok:=env_ok).
+    pose proof flags_unique_and_nonzero (ok:=env_ok) as Hflags.
     cbv [map] in Hflags.
     simplify_unique_words_in Hflags.
     revert s1 s2.

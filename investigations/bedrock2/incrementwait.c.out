@@ -15,13 +15,13 @@ static inline void _br2_store(uintptr_t a, uintptr_t v, size_t sz) {
 
 
 uintptr_t put_wait_get(uintptr_t input) {
-  uintptr_t status, out;
-  REG32_SET((uintptr_t)4100ULL, input);
+  uintptr_t STATUS_DONE, status, STATUS_ADDR, out, VALUE_ADDR;
+  REG32_SET(VALUE_ADDR, input);
   status = (uintptr_t)0ULL;
-  while (((status)&(((uintptr_t)1ULL)<<((uintptr_t)2ULL)))==((uintptr_t)0ULL)) {
-    status = REG32_GET((uintptr_t)4096ULL);
+  while (((status)&(((uintptr_t)1ULL)<<(STATUS_DONE)))==((uintptr_t)0ULL)) {
+    status = REG32_GET(STATUS_ADDR);
   }
-  out = REG32_GET((uintptr_t)4100ULL);
+  out = REG32_GET(VALUE_ADDR);
   return out;
 }
 

@@ -8,6 +8,7 @@ Require Import coqutil.Map.Interface.
 Require Import coqutil.Word.Interface.
 Require Import coqutil.Z.HexNotation.
 Require Import coqutil.Decidable.
+Require Import Bedrock2Experiments.Constants.
 
 Import String List.ListNotations.
 Local Open Scope string_scope. Local Open Scope Z_scope. Local Open Scope list_scope.
@@ -19,20 +20,20 @@ Definition unique_words
            (l : list word.rep) : Prop :=
   List.dedup word.eqb l = l.
 
-Module constants.
-  Class constants :=
+Module global_env.
+  Class global_env :=
     { (* compile-time constants *)
-      VALUE_ADDR : Z;
-      STATUS_ADDR : Z;
+      VALUE_ADDR : constant "VALUE_ADDR";
+      STATUS_ADDR : constant "STATUS_ADDR";
 
       (* positions of status flags *)
-      STATUS_IDLE : Z;
-      STATUS_BUSY : Z;
-      STATUS_DONE : Z;
+      STATUS_IDLE : constant "STATUS_IDLE";
+      STATUS_BUSY : constant "STATUS_BUSY";
+      STATUS_DONE : constant "STATUS_DONE";
     }.
 
   Class ok {word : word.word 32} {word_ok : word.ok word}
-        (consts : constants) :=
+        (env : global_env) :=
     { addrs_unique : word.of_Z VALUE_ADDR <> word.of_Z STATUS_ADDR;
       flags_unique_and_nonzero :
         unique_words
@@ -40,8 +41,8 @@ Module constants.
              :: (map (fun flag_position => word.slu (word.of_Z 1) (word.of_Z flag_position))
                     [STATUS_IDLE; STATUS_BUSY; STATUS_DONE]));
     }.
-End constants.
-Notation constants := constants.constants.
+End global_env.
+Notation global_env := global_env.global_env.
 
 (* Circuit timing properties *)
 Module timing.
@@ -67,8 +68,8 @@ Definition WRITE := "REG32_SET".
 
 Section WithParameters.
   Context {p : parameters} {p_ok : parameters.ok p}.
-  Context {consts : constants} {timing : timing}.
-  Import constants parameters.
+  Context {env : global_env} {timing : timing}.
+  Import global_env parameters.
 
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
   Local Notation bedrock2_trace := (list bedrock2_event).
@@ -194,7 +195,7 @@ Section WithParameters.
 
   Global Instance ok : Semantics.parameters_ok semantics_parameters.
   Proof.
-    split; cbv [env locals mem semantics_parameters]; try exact _.
+    split; cbv [Semantics.env locals mem semantics_parameters]; try exact _.
     { cbv; auto. }
     { exact (SortedListString.ok _). }
     { exact (SortedListString.ok _). }

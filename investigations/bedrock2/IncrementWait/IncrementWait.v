@@ -6,6 +6,7 @@ Require Import bedrock2.Syntax.
 Require Import bedrock2.NotationsCustomEntry.
 Require Import bedrock2.ToCString.
 Require Import coqutil.Word.Interface.
+Require Import Bedrock2Experiments.Constants.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
@@ -13,8 +14,13 @@ Local Open Scope Z_scope.
 Local Open Scope list_scope.
 
 Section Impl.
-  Context {consts : constants}.
-  Import constants.
+  Context {env : global_env} {interp : constant.interp}.
+  Import global_env.
+
+  (* To get around the Uniform Inheritance Condition, we need to redefine interp
+     for the coercion *)
+  Local Definition to_expr {name} (c : constant name) : expr := interp _ c.
+  Local Coercion to_expr : constant >-> expr.expr.
 
   (* Notations for small constants *)
   Local Notation "0" := (expr.literal 0) (in custom bedrock_expr).
