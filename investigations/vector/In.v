@@ -17,8 +17,8 @@
 Require Import Cava.CavaProperties.
 
 Theorem In_map :
-forall A B (n : nat) (a : A) f (v : Vector.t B n),
-(exists x, f x = a /\ Vector.In x v) ->  Vector.In a (Vector.map f v).
+  forall A B (n : nat) (a : A) f (v : Vector.t B n),
+    (exists x, f x = a /\ Vector.In x v) ->  Vector.In a (Vector.map f v).
 Proof.
   intros.
   destruct H.
@@ -28,7 +28,8 @@ Proof.
   { inversion H0.
     { cbn. subst. apply Vector.In_cons_hd. }
     { cbn.
-      apply Eqdep.EqdepTheory.inj_pair2 in H4.
+      apply Eqdep_dec.inj_pair2_eq_dec in H4.
+      2:apply Nat.eq_dec.
       apply Vector.In_cons_tl.
       apply IHv.
       subst.
@@ -46,7 +47,8 @@ Proof.
     { intros.
       inversion H.
       { left. trivial. }
-      { apply Eqdep.EqdepTheory.inj_pair2 in H3.
+      { apply Eqdep_dec.inj_pair2_eq_dec in H3.
+        2: apply Nat.eq_dec.
         subst.
         right.
         apply IHlen.
@@ -71,7 +73,8 @@ Proof.
   intros.
   inversion H.
   { left. trivial. }
-  { apply Eqdep.EqdepTheory.inj_pair2 in H3.
+  { apply Eqdep_dec.inj_pair2_eq_dec in H3.
+    2: apply Nat.eq_dec.
     subst.
     right.
     assumption. }
