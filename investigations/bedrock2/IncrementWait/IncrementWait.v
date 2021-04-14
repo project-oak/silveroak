@@ -13,8 +13,9 @@ Local Open Scope Z_scope.
 Local Open Scope list_scope.
 
 Section Impl.
-  Context {consts : constants}.
   Import constants.
+  Local Existing Instance constant_names.
+  Local Existing Instance constant_vars.
 
   (* Notations for small constants *)
   Local Notation "0" := (expr.literal 0) (in custom bedrock_expr).
@@ -30,7 +31,7 @@ Section Impl.
     (* temporary variables *)
     let status := "status" in
     ("put_wait_get",
-     ([input], [out], bedrock_func_body:(
+     (globals ++ [input], [out], bedrock_func_body:(
         (* write input value *)
         output! WRITE (VALUE_ADDR, input) ;
         (* initialize status to 0 *)
