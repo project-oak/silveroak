@@ -57,8 +57,8 @@ minimize-requires: coq
 		$(MAKE) -f Makefile.coq $@
 
 TestsSV:	coq TestsSV.hs
-		ghc --make TestsSV
-		./TestsSV
+		cabal build cava-tests
+		cabal run tests
 
 $(SV) $(BENCHES) $(CPPS):	coq TestsSV
 

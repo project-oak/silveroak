@@ -20,11 +20,13 @@ Local Open Scope Z_scope.
 
 Section Proofs.
   Context {p : parameters} {p_ok : parameters.ok p}
-          {consts : constants} {consts_ok : constants.ok consts}
+          {consts : constants word.rep} {consts_ok : constants.ok consts}
           {timing : timing}.
   Import constants parameters.
 
-  (* plug in implicits *)
+  Existing Instance constants.constant_names | 10.
+
+  (* plug in implicits (otherwise [straightline] fails) *)
   Definition put_wait_get := put_wait_get.
 
   Instance spec_of_put_wait_get : spec_of put_wait_get :=
@@ -35,7 +37,7 @@ Section Proofs.
         (* circuit must start in IDLE state *)
         execution tr IDLE ->
         let args := [input] in
-        call function_env put_wait_get tr m args
+        call function_env put_wait_get tr m (globals ++ args)
              (fun tr' m' rets =>
                 (* the circuit is back in IDLE state *)
                 execution tr' IDLE
@@ -62,13 +64,6 @@ Section Proofs.
     eauto.
   Qed.
 
-  Local Ltac interaction :=
-    eapply interact_mmio; [ solve [repeat straightline] | ];
-    repeat straightline;
-    lazymatch goal with
-    | H : step _ _ _ _ _ |- _ => inversion H; clear H; subst
-    end.
-
   Local Ltac subst1_map m :=
     match m with
     | map.put ?m _ _ => subst1_map m
@@ -78,13 +73,24 @@ Section Proofs.
   Local Ltac map_lookup :=
     repeat lazymatch goal with
            | |- context [map.get ?l] =>
+             try apply map.get_put_same; try eassumption;
              subst1_map l;
-             first [ rewrite map.get_put_diff by congruence
-                   | apply map.get_put_same ]
+             rewrite ?map.get_put_diff by congruence
            end.
 
-  (* if these aren't opaque, initial call to straightline computes them *)
-  Opaque STATUS_ADDR VALUE_ADDR STATUS_IDLE STATUS_BUSY STATUS_DONE.
+  Local Ltac straightline_with_map_lookup :=
+    lazymatch goal with
+    | |- exists v, map.get _ _ = Some v /\ _ =>
+      eexists; split; [ solve [map_lookup] | ]
+    | _ => straightline
+    end.
+
+  Local Ltac interaction :=
+    eapply interact_mmio; [ solve [repeat straightline_with_map_lookup] | ];
+    repeat straightline;
+    lazymatch goal with
+    | H : step _ _ _ _ _ |- _ => inversion H; clear H; subst
+    end.
 
   Hint Extern 4 (step _ ?s _ _ _) => eapply (ReadStep s) : step.
   Hint Extern 4 (step _ ?s _ _ _) => eapply (WriteStep s) : step.
@@ -178,7 +184,7 @@ Section Proofs.
     word.unsigned
       (if
           word.eqb (word.and (status_value STATUS_DONE)
-                             (word.slu (word.of_Z 1) (word.of_Z STATUS_DONE)))
+                             (word.slu (word.of_Z 1) STATUS_DONE))
                    (word.of_Z 0)
         then word.of_Z 1
         else word.of_Z 0) = 0.
@@ -226,6 +232,9 @@ Section Proofs.
            (invariant:=
               fun i tr m l =>
                 execution tr (BUSY input i)
+                /\ map.get l "STATUS_ADDR"%string = Some STATUS_ADDR
+                /\ map.get l "VALUE_ADDR"%string = Some VALUE_ADDR
+                /\ map.get l "STATUS_DONE"%string = Some STATUS_DONE
                 /\ R m).
     { apply lt_wf. }
     { (* case in which the loop breaks immediately (cannot happen) *)
@@ -242,7 +251,7 @@ Section Proofs.
       autorewrite with push_unsigned in *.
       congruence. }
     { (* proof that invariant holds at loop start *)
-      ssplit; [ | assumption ].
+      ssplit; [ | map_lookup .. | assumption ].
       cbn [execution]. eexists; ssplit; [ eassumption | ].
       match goal with H : write_step _ _ _ _ |- _ => inversion H; subst end.
       eauto with step. }
@@ -252,9 +261,7 @@ Section Proofs.
       (* get status *)
       interaction. repeat straightline.
 
-      eexists; repeat straightline.
-      { eexists; split; [ map_lookup | ].
-        repeat straightline. }
+      eexists; repeat straightline_with_map_lookup.
       { (* continuation case -- invariant holds *)
         (* find the current measure and handle the case where it's 0 *)
         let i := lazymatch goal with H : execution _ (BUSY _ ?i) |- _ => i end in
@@ -265,7 +272,7 @@ Section Proofs.
           infer. exfalso. eauto using check_done_flag. }
         { (* i = S i' case *)
           exists i'; split; [ | lia ].
-          ssplit; [ | assumption ].
+          ssplit; [ | map_lookup .. | assumption ].
           cbn [execution]. eexists; ssplit; [ eassumption | ].
           (* break into two possible read cases : DONE and BUSY *)
           match goal with H : read_step _ _ _ _ |- _ => inversion H; subst end;

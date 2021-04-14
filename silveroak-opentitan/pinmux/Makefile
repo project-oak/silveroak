@@ -43,15 +43,15 @@ minimize-requires: coq
 		$(MAKE) -f Makefile.coq $@
 
 PinmuxSV:	coq PinmuxSV.hs
-		ghc --make PinmuxSV.hs
+		cabal build pinmux
 
 pinmux.sv:	coq PinmuxSV
-		./PinmuxSV
+		cabal run pinmux
 
 compile_pinmux:	pinmux.sv
 		cd snapshot && $(MAKE)
 
-clean:		
+clean:
 		-@$(MAKE) -f Makefile.coq clean
 		rm -rf PinmuxSV.hi PinmuxSV.o PinmuxSV \
 		       Pinmux.vo Pinmux.o Pinmux.hs Pinmux.hi pinmux.sv

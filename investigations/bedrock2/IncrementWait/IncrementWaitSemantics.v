@@ -20,24 +20,40 @@ Definition unique_words
   List.dedup word.eqb l = l.
 
 Module constants.
-  Class constants :=
-    { (* compile-time constants *)
-      VALUE_ADDR : Z;
-      STATUS_ADDR : Z;
+  Class constants T :=
+    { VALUE_ADDR : T;
+      STATUS_ADDR : T;
+      STATUS_IDLE : T;
+      STATUS_BUSY : T;
+      STATUS_DONE : T }.
 
-      (* positions of status flags *)
-      STATUS_IDLE : Z;
-      STATUS_BUSY : Z;
-      STATUS_DONE : Z;
-    }.
+  Definition constant_vars
+           {names : constants string}
+    : constants expr :=
+    {| VALUE_ADDR := expr.var VALUE_ADDR;
+       STATUS_ADDR := expr.var STATUS_ADDR;
+       STATUS_IDLE := expr.var STATUS_IDLE;
+       STATUS_BUSY := expr.var STATUS_BUSY;
+       STATUS_DONE := expr.var STATUS_DONE |}.
 
-  Class ok {word : word.word 32} {word_ok : word.ok word}
-        (consts : constants) :=
-    { addrs_unique : word.of_Z VALUE_ADDR <> word.of_Z STATUS_ADDR;
+  Definition constant_names : constants string :=
+    {| VALUE_ADDR := "VALUE_ADDR";
+       STATUS_ADDR := "STATUS_ADDR";
+       STATUS_IDLE := "STATUS_IDLE";
+       STATUS_BUSY := "STATUS_BUSY";
+       STATUS_DONE := "STATUS_DONE" |}.
+
+  Definition globals {T} {consts : constants T} : list T :=
+    [VALUE_ADDR; STATUS_ADDR; STATUS_IDLE; STATUS_BUSY; STATUS_DONE].
+
+  Class ok
+        {word : word.word 32} {word_ok : word.ok word}
+        (global_values : constants word.rep) :=
+    { addrs_unique : VALUE_ADDR <> STATUS_ADDR;
       flags_unique_and_nonzero :
         unique_words
           ((word.of_Z 0)
-             :: (map (fun flag_position => word.slu (word.of_Z 1) (word.of_Z flag_position))
+             :: (map (fun flag_position => word.slu (word.of_Z 1) flag_position)
                     [STATUS_IDLE; STATUS_BUSY; STATUS_DONE]));
     }.
 End constants.
@@ -67,7 +83,7 @@ Definition WRITE := "REG32_SET".
 
 Section WithParameters.
   Context {p : parameters} {p_ok : parameters.ok p}.
-  Context {consts : constants} {timing : timing}.
+  Context {consts : constants word.rep} {timing : timing}.
   Import constants parameters.
 
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
@@ -83,19 +99,19 @@ Section WithParameters.
   .
 
   Inductive reg_addr : Register -> word -> Prop :=
-  | addr_value : reg_addr VALUE (word.of_Z VALUE_ADDR)
-  | addr_status : reg_addr STATUS (word.of_Z STATUS_ADDR)
+  | addr_value : reg_addr VALUE VALUE_ADDR
+  | addr_status : reg_addr STATUS STATUS_ADDR
   .
 
-  Definition status_flag (s : state) : Z :=
+  Definition status_flag (s : state) : word :=
     match s with
     | IDLE => STATUS_IDLE
     | BUSY _ _ => STATUS_BUSY
     | DONE _ => STATUS_DONE
     end.
 
-  Definition status_value (flag : Z) : word :=
-    word.slu (word.of_Z 1) (word.of_Z flag).
+  Definition status_value (flag : word) : word :=
+    word.slu (word.of_Z 1) flag.
 
   (* circuit spec *)
   Definition proc : word -> word := word.add (word.of_Z 1).
