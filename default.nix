@@ -6,7 +6,7 @@ let
   tools = with pkgs; [
     # Building
     coq_8_13
-    (haskell.packages.ghc8104.ghcWithPackages (pkgs: with pkgs; [Cabal]))
+    (haskell.packages.ghc8104.ghcWithPackages (pkgs: with pkgs; [cabal-install]))
     gcc
     verilator
 
