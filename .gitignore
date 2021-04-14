@@ -24,4 +24,7 @@
 **/obj_dir
 **/*.vcd
 **/*/_CoqProject
+**/dist/
+**/dist-newstyle/
+_build/
 cava.code-workspace

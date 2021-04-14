@@ -30,7 +30,7 @@
 
 .PHONY: all coq minimize-requires clean _CoqProject
 
-SV = aes_mix_columns.sv aes_shift_rows.sv aes_sub_bytes.sv
+SV = aes_mix_columns.sv aes_shift_rows.sv aes_sub_bytes.sv aes_add_round_key.sv
 
 BENCHES = $(SV:.sv=_tb.sv)
 CPPS = $(SV:.sv=_tb.cpp)
@@ -62,8 +62,7 @@ coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
 AESSV:		coq AESSV.hs
-		ghc --make -j AESSV.hs
-		./AESSV
+		cabal build aes
 
 minimize-requires: coq
 	../../../tools/minimize-requires.sh
@@ -73,6 +72,7 @@ minimize-requires: coq
 		$(MAKE) -f Makefile.coq $@
 
 $(SV) $(BENCHES) $(CPPS):	coq AESSV
+		cabal run aes
 
 obj_dir/V%_tb:	%.sv %_tb.sv %_tb.cpp
 		$(VERILATOR) --trace --cc --top-module $*_tb $*_tb.sv $*.sv --exe $*_tb.cpp

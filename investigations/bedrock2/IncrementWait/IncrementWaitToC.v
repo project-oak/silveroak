@@ -5,17 +5,10 @@ Require Import coqutil.Z.HexNotation.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWait.
 Import ListNotations.
+Local Open Scope string_scope.
+Local Open Scope Z_scope.
 
-Definition BASE_ADDR : Z := Ox"1000".
-
-Instance consts : constants :=
-  {| constants.STATUS_IDLE := 0;
-     constants.STATUS_BUSY := 1;
-     constants.STATUS_DONE := 2;
-     constants.STATUS_ADDR := BASE_ADDR + Ox"0";
-     constants.VALUE_ADDR := BASE_ADDR + Ox"4";
-  |}.
+Existing Instance constants.constant_names.
 
 Definition funcs := [put_wait_get].
-
 Redirect "incrementwait.c" Compute c_module funcs.

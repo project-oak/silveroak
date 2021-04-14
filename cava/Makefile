@@ -35,9 +35,7 @@ haskell:	coq FixupHaskell
 		./FixupHaskell
 		mv Ascii2.hs Ascii.hs
 		mv ByteVector2.hs ByteVector.hs
-		runhaskell Setup.hs configure --user
-		runhaskell Setup.hs build
-		runhaskell Setup.hs install
+		cabal build
 
 Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
