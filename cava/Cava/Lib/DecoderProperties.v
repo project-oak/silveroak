@@ -219,9 +219,9 @@ Theorem map_ext_guard
   (A B : Type) (f g : A -> B)
   (P : A -> Prop)
   (ext : forall a : A, P a ->  f a = g a)
-  (n : nat) (v : VectorDef.t A n)
+  (n : nat) (v : Vector.t A n)
   (Guard: forall a : A, InV a v -> P a)
-  : VectorDef.map f v = VectorDef.map g v.
+  : Vector.map f v = Vector.map g v.
 Proof.
   intros.
   induction v; [ trivial | ].
@@ -241,36 +241,16 @@ Proof. rewrite Nat2N.inj_succ. apply N.lt_succ_diag_r. Qed.
 
 Lemma N_lt_inj a b : a < b -> (N.of_nat a < N.of_nat b)%N.
 Proof.
-  induction b.
-  { intro H. inversion H. }
-  { destruct a.
-    { cbv. trivial. }
-    { intro SaSb.
-      inversion SaSb as [Sab | m SSab mb].
-      { subst. apply N_lt_step. }
-      { subst. inversion SSab as [ | m SSam Smb].
-        { clear. eapply N.lt_trans.
-          { apply N_lt_step. }
-          { apply N_lt_step. } }
-        { subst. eapply N.lt_trans.
-          { apply IHb. apply Nat.le_lteq in SSab.
-            destruct SSab as [ | eq].
-            { eapply Nat.lt_trans.
-              { apply Nat.lt_succ_diag_r. }
-              { assumption. }
-            }
-            { rewrite <- eq. apply Nat.lt_succ_diag_r. }
-          }
-          { apply N_lt_step. }
-        }
-      }
-    }
-  }
+  rewrite <- N.compare_lt_iff.
+  rewrite <- Nat.compare_lt_iff.
+  rewrite Nat2N.inj_compare.
+  trivial.
 Qed.
 
-Theorem dec_enc_inv (n:nat) (k : {i: nat | i < 2^n}):
-  @decoder combType Combinational.CombinationalSemantics n (encoder (N2hotv (proj1_sig k))) = N2hotv (proj1_sig k).
+Theorem dec_enc_inv (n:nat) (k : nat): k < 2^n ->
+  @decoder combType Combinational.CombinationalSemantics n (encoder (N2hotv k)) = N2hotv k.
 Proof.
+  intro guard.
   cbv [decoder encoder].
   simpl_ident.
   autorewrite with vsimpl.
@@ -306,17 +286,17 @@ Proof.
       [ | intros ; simpl_ident; trivial ].
     rewrite Vector.map_ext with
       (f:= fun x =>
-        mux2 (if (proj1_sig k =? x)%nat then one else zero)
+        mux2 (if (k =? x)%nat then one else zero)
           (defaultSignal,
            @Vec.bitvec_literal combType _ _ (N2Bv_sized n (N.of_nat x))))
       (g := fun x =>
-        (if (proj1_sig k =? x)%nat
+        (if (k =? x)%nat
          then @Vec.bitvec_literal combType _ _ (N2Bv_sized n (N.of_nat x))
          else Vector.const false n)).
     2:{ intro a0. rewrite mux2_correct.
-        case_eq(proj1_sig k=?a0)%nat; trivial. }
+        case_eq(k=?a0)%nat; trivial. }
     rewrite fold_units; [ | | | | | ].
-    { intros H. case_eq (proj1_sig k=?a)%nat.
+    { intros H. case_eq (k=?a)%nat.
       { intros H0.
         apply eq_sym in H0. apply EqNat.beq_nat_eq in H0. subst. simpl.
         simpl_ident.
@@ -334,7 +314,7 @@ Proof.
         assert(
           Vector.eqb bool
             (fun x y : bool => Bool.eqb x y)
-            (N2Bv_sized n (N.of_nat (proj1_sig k)))
+            (N2Bv_sized n (N.of_nat k))
             (N2Bv_sized n (N.of_nat a))
           = true
           -> False).
@@ -352,8 +332,6 @@ Proof.
               rewrite <- H2.
               rewrite Nat2N.inj_pow. 
               apply  N_lt_inj.
-              destruct k.
-              cbn.
               assumption. }
           }
           { intros. split.
@@ -363,7 +341,7 @@ Proof.
         }
         { case_eq(Vector.eqb bool
             (fun x y : bool => Bool.eqb x y)
-            (N2Bv_sized n (N.of_nat (proj1_sig k)))
+            (N2Bv_sized n (N.of_nat k))
             (N2Bv_sized n (N.of_nat a))).
           { intros. exfalso. auto. }
           { trivial. }
@@ -386,6 +364,6 @@ Proof.
       2:{ intros. apply orb_diag. }
       { apply Vector.map_id. }
     }
-    { apply InV_seq. destruct k. cbn. lia. }
+    { apply InV_seq. lia. }
   }
 Qed.
