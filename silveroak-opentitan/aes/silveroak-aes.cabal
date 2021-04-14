@@ -1,0 +1,38 @@
+cabal-version:       >=1.10
+
+name:                silveroak-aes
+version:             0.1.0.0
+-- synopsis:
+-- description:
+-- bug-reports:
+-- license:
+license-file:        ../LICENSE
+author:              The SilverOak Team
+maintainer:          benblaxill@google.com
+-- copyright:
+-- category:
+build-type:          Simple
+
+executable aes
+  main-is:             AESSV.hs
+  hs-source-dirs: Impl
+  other-modules:
+        AddRoundKeyCircuit
+        AddRoundKeyNetlist
+        CipherCircuit
+        CipherControlCircuit
+        CipherControlNetlist
+        FFunctor
+        MixColumnsCircuit
+        MixColumnsNetlist
+        Pkg
+        RecordSet
+        ShiftRowsCircuit
+        ShiftRowsNetlist
+        SubBytesCircuit
+        SubBytesNetlist
+  -- other-extensions:
+  build-depends:       base >=4.14 && <4.15, Cava2HDL
+
+  -- hs-source-dirs:
+  default-language:    Haskell2010
