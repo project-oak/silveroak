@@ -14,8 +14,7 @@ static inline void _br2_store(uintptr_t a, uintptr_t v, size_t sz) {
 }
 
 
-void b2_aes_init(uintptr_t AES_KEY0, uintptr_t AES_IV0, uintptr_t AES_DATA_IN0, uintptr_t AES_DATA_OUT0, uintptr_t AES_CTRL, uintptr_t AES_CTRL_OPERATION, uintptr_t AES_CTRL_MODE_MASK, uintptr_t AES_CTRL_MODE_OFFSET, uintptr_t AES_CTRL_KEY_LEN_MASK, uintptr_t AES_CTRL_KEY_LEN_OFFSET, uintptr_t AES_CTRL_MANUAL_OPERATION, uintptr_t AES_STATUS, uintptr_t AES_STATUS_IDLE, uintptr_t AES_STATUS_STALL, uintptr_t AES_STATUS_OUTPUT_VALID, uintptr_t AES_STATUS_INPUT_READY, uintptr_t AES_NUM_REGS_KEY, uintptr_t AES_NUM_REGS_IV, uintptr_t AES_NUM_REGS_DATA, uintptr_t aes_cfg_operation, uintptr_t aes_cfg_mode, uintptr_t aes_cfg_key_len) {
-  uintptr_t aes_cfg_manual_operation;
+void b2_aes_init(uintptr_t AES_KEY0, uintptr_t AES_IV0, uintptr_t AES_DATA_IN0, uintptr_t AES_DATA_OUT0, uintptr_t AES_CTRL, uintptr_t AES_CTRL_OPERATION, uintptr_t AES_CTRL_MODE_MASK, uintptr_t AES_CTRL_MODE_OFFSET, uintptr_t AES_CTRL_KEY_LEN_MASK, uintptr_t AES_CTRL_KEY_LEN_OFFSET, uintptr_t AES_CTRL_MANUAL_OPERATION, uintptr_t AES_STATUS, uintptr_t AES_STATUS_IDLE, uintptr_t AES_STATUS_STALL, uintptr_t AES_STATUS_OUTPUT_VALID, uintptr_t AES_STATUS_INPUT_READY, uintptr_t AES_NUM_REGS_KEY, uintptr_t AES_NUM_REGS_IV, uintptr_t AES_NUM_REGS_DATA, uintptr_t aes_cfg_operation, uintptr_t aes_cfg_mode, uintptr_t aes_cfg_key_len, uintptr_t aes_cfg_manual_operation) {
   REG32_SET(AES_CTRL, ((((aes_cfg_operation)<<(AES_CTRL_OPERATION))|(((aes_cfg_mode)&(AES_CTRL_MODE_MASK))<<(AES_CTRL_MODE_OFFSET)))|(((aes_cfg_key_len)&(AES_CTRL_KEY_LEN_MASK))<<(AES_CTRL_KEY_LEN_OFFSET)))|((aes_cfg_manual_operation)<<(AES_CTRL_MANUAL_OPERATION)));
   return;
 }
