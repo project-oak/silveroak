@@ -47,7 +47,7 @@ clean:
 	done
 
 # clean everything *including* third_party
-cleanall:
+clean_all:
 	for dir in $(SUBDIRS); do \
 		$(MAKE) -C $$dir clean; \
 	done
