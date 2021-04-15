@@ -2,15 +2,8 @@ cabal-version:       >=1.10
 
 name:                cava-tests
 version:             0.1.0.0
--- synopsis:
--- description:
--- bug-reports:
--- license:
-license-file:        ../LICENSE
 author:              The SilverOak Team
 maintainer:          benblaxill@google.com
--- copyright:
--- category:
 build-type:          Simple
 
 executable tests
@@ -27,7 +20,7 @@ executable tests
         TestDecoder
         TestMultiply
   -- other-extensions:
-  build-depends:       base >=4.14 && <4.15, Cava2HDL
+  build-depends:       base >=4.12 && <4.15, Cava2HDL
 
   -- hs-source-dirs:
   default-language:    Haskell2010
