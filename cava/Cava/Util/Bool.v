@@ -23,3 +23,8 @@ Proof.
     exfalso.
     apply notQ. apply H. trivial. }
 Qed.
+
+Lemma dec_contrapositive {A decider}
+  (H: forall a b : A, decider a b = true <-> a = b) :
+    (forall a b : A, decider a b = false <-> a <> b).
+Proof. intros. apply iffb. apply H. Qed.

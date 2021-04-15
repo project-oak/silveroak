@@ -473,3 +473,18 @@ Proof.
     }
   }
 Qed.
+
+Theorem Bv_orthonormal {n} i j :
+  (i < 2^ (N.of_nat n))%N ->
+  (j < 2^ (N.of_nat n))%N ->
+  (N2Bv_sized n i) = (N2Bv_sized n j)
+  <-> i = j.
+Proof.
+  split; [ | ].
+  { intros vec_eq.
+    apply f_equal with (f:=Bv2N) in vec_eq.
+    rewrite Bv2N_N2Bv_sized in vec_eq; [ | assumption ].
+    rewrite Bv2N_N2Bv_sized in vec_eq; [ assumption | assumption ].
+  }
+  { intros. apply f_equal. assumption. }
+Qed.
