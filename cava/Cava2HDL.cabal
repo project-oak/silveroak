@@ -87,7 +87,7 @@ library
                      Byte
                      Decimal
                      Hexadecimal
-                     Numeral
+                     Number
                      Specif
                      MonadExc
                      MonadFix

@@ -63,3 +63,4 @@ coq: all
 clean:
 	-cd bedrock2 && $(MAKE) clean_all
 	-cd coq-ext-lib && $(MAKE) clean
+	-cd coq-record-update && $(MAKE) clean
