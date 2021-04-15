@@ -23,6 +23,7 @@ Section Proofs.
           {consts : constants word.rep} {consts_ok : constants.ok consts}
           {timing : timing}.
   Import constants parameters.
+  Existing Instance consts_ok.
 
   (***** General-purpose lemmas/tactics and setup *****)
 
@@ -192,7 +193,9 @@ Section Proofs.
             | H : write_step _ _ _ _ |- _ =>
               inversion H; clear H; subst
             | _ => first [ invert_bool
-                        | progress cbn [status_matches_state is_output_reg] in *]
+                        | progress cbn [status_matches_state
+                                          is_input_reg
+                                          is_output_reg] in *]
             end; try congruence).
   Qed.
 
@@ -217,20 +220,95 @@ Section Proofs.
            end.
 
   Hint Rewrite word.unsigned_add word.unsigned_sub word.unsigned_mul
-       word.unsigned_mulhuu word.unsigned_divu word.unsigned_and
-       word.unsigned_or word.unsigned_xor word.unsigned_sru word.unsigned_slu
+       word.unsigned_mulhuu word.unsigned_divu word.unsigned_and_nowrap
+       word.unsigned_or_nowrap word.unsigned_xor word.unsigned_sru_nowrap
+       word.unsigned_slu
        word.unsigned_ltu @word.unsigned_of_Z_0 @word.unsigned_of_Z_1
-       using solve [typeclasses eauto] : push_unsigned.
+       using solve [eauto; (typeclasses eauto || lia) ] : push_unsigned.
 
   Lemma execution_step action args rets t s s':
     execution t s -> step action s args rets s' ->
     execution ((map.empty, action, args, (map.empty, rets)) :: t) s'.
   Proof. intros; cbn [execution]; eauto. Qed.
 
-  (***** Proofs for specific functions *****)
+  Definition boolean (w : word) : Prop := (w = word.of_Z 0 \/ w = word.of_Z 1).
 
-  (* plug in implicits (otherwise [straightline] fails) *)
-  Definition aes_init := aes_init.
+  Lemma boolean_and_1_r w :
+    boolean w ->
+    Z.land (word.unsigned w) 1 = if word.eqb w (word.of_Z 0)
+                                 then 0
+                                 else 1.
+  Proof.
+    rewrite word.unsigned_eqb.
+    destruct 1; subst; autorewrite with push_unsigned.
+    all:destruct_one_match; (reflexivity || congruence).
+  Qed.
+
+  Lemma is_flag_set_shift w (flag : Semantics.word) :
+    boolean w ->
+    word.unsigned flag < width ->
+    is_flag_set (word.slu w flag) flag = word.eqb w (word.of_Z 0).
+  Proof.
+    intro Hbool; intros; cbv [is_flag_set].
+    pose proof word.width_pos.
+    pose proof word.unsigned_range flag.
+    assert (0 < 2 ^ word.unsigned flag < 2 ^ width)
+      by (split; [ apply Z.pow_pos_nonneg
+                 | apply Z.pow_lt_mono_r]; lia).
+    rewrite !word.unsigned_eqb.
+    autorewrite with push_unsigned.
+    cbv [word.wrap].
+    rewrite !Z.mod_small by
+        (rewrite Z.shiftl_mul_pow2 by lia;
+         destruct Hbool; subst; autorewrite with push_unsigned; lia).
+    rewrite <-Z.shiftl_land. rewrite Z.shiftl_mul_pow2 by lia.
+    rewrite boolean_and_1_r by auto.
+    rewrite word.unsigned_eqb.
+    destruct Hbool; subst; autorewrite with push_unsigned.
+    all:first [ apply Z.eqb_eq | apply Z.eqb_neq ].
+    all:repeat destruct_one_match; try congruence.
+    all:lia.
+  Qed.
+
+  Lemma is_flag_set_or_shift_l w1 w2 (i flag : Semantics.word) :
+    word.unsigned flag <= word.unsigned i < width ->
+    is_flag_set (word.or w1 (word.slu w2 i)) flag = is_flag_set w1 flag.
+  Proof.
+    intros; cbv [is_flag_set].
+    pose proof word.width_pos.
+    pose proof word.unsigned_range flag.
+    assert (0 < 2 ^ word.unsigned flag < 2 ^ width)
+      by (split; [ apply Z.pow_pos_nonneg
+                 | apply Z.pow_lt_mono_r]; lia).
+    rewrite !word.unsigned_eqb.
+    autorewrite with push_unsigned.
+    cbv [word.wrap].
+    rewrite !Z.mod_small.
+    3:{
+      rewrite Z.shiftl_mul_pow2 by lia.
+      destruct Hbool; subst; autorewrite with push_unsigned; lia).
+  Qed.
+
+  Lemma is_flag_set_or_shift_r w1 w2 i flag :
+    boolean w2 ->
+    is_flag_set (word.or w1 (word.slu w2 flag)) flag
+    = word.eqb w2 (word.of_Z 0).
+  Admitted.
+
+  Definition aes_op_t : word -> Prop := enum_member aes_op.
+  Definition aes_mode_t : word -> Prop := enum_member aes_mode.
+  Definition aes_key_len_t : word -> Prop := enum_member aes_key_len.
+
+  Definition ctrl_operation (ctrl : word) : bool :=
+    is_flag_set ctrl AES_CTRL_OPERATION.
+  Definition ctrl_mode (ctrl : word) : word :=
+    select_bits ctrl AES_CTRL_MODE_OFFSET AES_CTRL_MODE_MASK.
+  Definition ctrl_key_len (ctrl : word) : word :=
+    select_bits ctrl AES_CTRL_KEY_LEN_OFFSET AES_CTRL_KEY_LEN_MASK.
+  Definition ctrl_manual_operation (ctrl : word) : bool :=
+    is_flag_set ctrl AES_CTRL_MANUAL_OPERATION.
+
+  (***** Proofs for specific functions *****)
 
   Definition ctrl_value
              (cfg_operation cfg_mode cfg_key_len cfg_manual_operation : word) :=
@@ -250,18 +328,27 @@ Section Proofs.
         R m ->
         (* circuit must start in UNINITIALIZED state *)
         execution tr UNINITIALIZED ->
+        (* operation must be in the aes_op enum *)
+        aes_op_t aes_cfg_operation ->
+        (* mode must be in the aes_mode enum *)
+        aes_mode_t aes_cfg_mode ->
+        (* key length must be in the aes_key_len enum *)
+        aes_key_len_t aes_cfg_key_len ->
+        (* manual_operation is a boolean *)
+        boolean aes_cfg_manual_operation ->
         let args := [aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
                     aes_cfg_manual_operation] in
         call function_env aes_init tr m (globals ++ args)
              (fun tr' m' rets =>
                 (* the circuit is in IDLE state with the correct control
                    register value and no other known register values *)
-                execution tr'
-                          (IDLE (map.put
-                                   map.empty AES_CTRL
-                                   (ctrl_value aes_cfg_operation aes_cfg_mode
-                                               aes_cfg_key_len
-                                               aes_cfg_manual_operation)))
+                (exists ctrl,
+                    execution tr' (IDLE (map.put map.empty AES_CTRL ctrl))
+                    /\ ctrl_operation ctrl = word.eqb aes_cfg_operation (word.of_Z 0)
+                    /\ ctrl_mode ctrl = aes_cfg_mode
+                    /\ ctrl_key_len ctrl = aes_cfg_key_len
+                    /\ ctrl_manual_operation ctrl
+                      = word.eqb aes_cfg_manual_operation (word.of_Z 0))
                 (* ...and the same properties as before hold on the memory *)
                 /\ R m'
                 (* ...and there is no output *)
@@ -278,6 +365,17 @@ Section Proofs.
 
     (* done; prove postcondition *)
     ssplit; auto; [ ].
-    infer. eapply execution_step; eauto with step.
+    eexists; ssplit.
+    { infer. eapply execution_step; eauto with step. }
+    { cbv [ctrl_operation].
+      pose proof operation_eq.
+      pose proof mode_offset_ok.
+      pose proof key_len_offset_ok.
+      pose proof manual_operation_ok.
+      rewrite !is_flag_set_or_shift_l by lia.
+      Search word.rep.
+      rewrite operation_eq.
+      rewrite word.unsigned_eqb.
+      autorewrite with push_unsigned.
   Qed.
 End Proofs.
