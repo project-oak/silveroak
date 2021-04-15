@@ -22,8 +22,10 @@
 Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import Coq.ZArith.ZArith.
 Require Import ExtLib.Structures.Monads.
+Require Import ExtLib.Structures.Functor.
 Require Export ExtLib.Data.Monads.StateMonad.
 Require Export ExtLib.Data.List.
+Require Import ExtLib.Data.Option.
 
 Import ListNotations.
 Import MonadNotation.
@@ -100,19 +102,25 @@ Record Module : Type := mkModule {
   outputs : list PortDeclaration;
 }.
 
-Inductive CircuitAttribute :=
-  | ClockName : string -> CircuitAttribute
-  | ResetName : string -> CircuitAttribute.
+Inductive TaggedEdge (T: Type) :=
+  | mkTaggedEdge: T -> SignalEdge -> TaggedEdge T.
+Arguments mkTaggedEdge {T}.
+
+Global Instance Functor_TaggedEdge : Functor TaggedEdge :=
+{| fmap := fun _ _ f x =>
+    match x with
+    | mkTaggedEdge x edge => mkTaggedEdge (f x) edge
+    end
+|}.
+
+Definition getTag {T} '((mkTaggedEdge x _): TaggedEdge T) := x.
 
 Record CircuitInterface : Type := mkCircuitInterface {
   circuitName           : string;
-  clkName                : string;
-  clkEdge                : SignalEdge;
-  rstName                : string;
-  rstEdge                : SignalEdge;
+  clk : option (TaggedEdge string);
+  rst : option (TaggedEdge string);
   circuitInputs          : list PortDeclaration;
   circuitOutputs         : list PortDeclaration;
-  attributes             : list CircuitAttribute;
 }.
 
 Definition sequentialInterface (circuitName: string)
@@ -120,15 +128,13 @@ Definition sequentialInterface (circuitName: string)
                                (rstName: string) (rstEdge: SignalEdge)
                                (circuitInputs: list PortDeclaration)
                                (circuitOutputs: list PortDeclaration) :=
-  mkCircuitInterface circuitName clkName clkEdge rstName rstEdge
-                     circuitInputs circuitOutputs [].
+  mkCircuitInterface circuitName (Some (mkTaggedEdge clkName clkEdge)) (Some (mkTaggedEdge rstName rstEdge))
+                     circuitInputs circuitOutputs.
 
 Definition combinationalInterface (circuitName: string)
                                   (circuitInputs: list PortDeclaration)
                                   (circuitOutputs: list PortDeclaration) :=
-  sequentialInterface circuitName "" PositiveEdge
-                                  "" PositiveEdge
-                                  circuitInputs circuitOutputs.
+  mkCircuitInterface circuitName None None circuitInputs circuitOutputs.
 
 (******************************************************************************)
 (* The CavaState data structure is what is computed bu the the netlist        *)
@@ -142,10 +148,8 @@ Record CavaState : Type := mkCavaState {
   vectorNumber : N;
   vectorDeclarations : list (SignalType * nat);
   externalDeclarations : list string;
-  clockNet : option (Signal Bit);
-  clockEdge: SignalEdge;
-  resetNet : option (Signal Bit);
-  resetEdge : SignalEdge;
+  clock : option (TaggedEdge (Signal Bit));
+  reset : option (TaggedEdge (Signal Bit));
   module : Module; (* The top level module. *)
   libraryModules : list (CircuitInterface * Module);
                    (* Dependent modules of the root module. *)
@@ -157,34 +161,34 @@ Definition incN (n: N) : N := n + 1.
 Definition newWire : state CavaState (Signal Bit) :=
   cs <- get;;
   match cs with
-  | mkCavaState o vCount vDefs ext clk clkEdge rst rstEdge m lm
-      => put (mkCavaState (o+1) vCount vDefs ext clk clkEdge rst rstEdge m lm) ;;
+  | mkCavaState o vCount vDefs ext clk rst m lm
+      => put (mkCavaState (o+1) vCount vDefs ext clk rst m lm) ;;
          ret (Wire o)
   end.
 
 Definition newWires (width : nat) : state CavaState (list (Signal Bit)) :=
   cs <- get ;;
   match cs with
-  | mkCavaState o vCount vDefs ext clk clkEdge rst rstEdge m lm =>
+  | mkCavaState o vCount vDefs ext clk rst m lm =>
       let outv := map N.of_nat (seq (N.to_nat o) width) in
-      put (mkCavaState (o + N.of_nat width) vCount vDefs ext clk clkEdge rst rstEdge m lm) ;;
+      put (mkCavaState (o + N.of_nat width) vCount vDefs ext clk rst m lm) ;;
       ret (map Wire outv)
   end.
 
 Definition newVector (t : SignalType) (s: nat) : state CavaState (Signal (Vec t s)) :=
   cs <- get ;;
   match cs with
-  | mkCavaState o vCount vDefs ext clk clkEdge rst rstEdge m ml =>
-      put (mkCavaState o (vCount + 1) (vDefs ++ [(t, s)]) ext clk clkEdge rst rstEdge m ml) ;;
+  | mkCavaState o vCount vDefs ext clk rst m ml =>
+      put (mkCavaState o (vCount + 1) (vDefs ++ [(t, s)]) ext clk rst m ml) ;;
       ret (LocalVec t s vCount)
   end.
 
 Definition newExternal (t : string) : state CavaState (Signal (ExternalType t)) :=
   cs <- get ;;
   match cs with
-  | mkCavaState o vCount vDefs ext clk clkEdge rst rstEdge m ml =>
+  | mkCavaState o vCount vDefs ext clk rst m ml =>
     let newExt := UninterpretedSignalIndex t (N.of_nat (length ext)) in
-    put (mkCavaState o vCount vDefs (ext ++ [t]) clk clkEdge rst rstEdge m ml) ;;
+    put (mkCavaState o vCount vDefs (ext ++ [t]) clk rst m ml) ;;
     ret newExt
   end.
 
@@ -199,8 +203,8 @@ Definition newSignal (t: SignalType) : state CavaState (Signal t) :=
 Definition addInstance (newInst: Instance) : state CavaState unit :=
   cs <- get;;
   match cs with
-  | mkCavaState o vecCount vecDefs ext clk clkEdge rst rstEdge (mkModule name insts inputs outputs) lm
-    => put (mkCavaState o vecCount vecDefs ext clk clkEdge rst rstEdge (mkModule name (newInst::insts) inputs outputs) lm)
+  | mkCavaState o vecCount vecDefs ext clk rst (mkModule name insts inputs outputs) lm
+    => put (mkCavaState o vecCount vecDefs ext clk rst (mkModule name (newInst::insts) inputs outputs) lm)
   end.
 
 Fixpoint addInstances (insts: list Instance) : state CavaState unit :=
@@ -214,15 +218,15 @@ Fixpoint addInstances (insts: list Instance) : state CavaState unit :=
 Definition getInstances : state CavaState (list Instance) :=
 cs <- get;;
   match cs with
-  | mkCavaState o vecCount vecDefs ext clk clkEdge rst rstEdge (mkModule name insts inputs outputs) lm
+  | mkCavaState o vecCount vecDefs ext clk rst (mkModule name insts inputs outputs) lm
     => ret insts
   end.
 
 Definition setInstances (insts: list Instance) : state CavaState unit :=
 cs <- get;;
   match cs with
-  | mkCavaState o vecCount vecDefs ext clk clkEdge rst rstEdge (mkModule name _ inputs outputs) lm
-    => put (mkCavaState o vecCount vecDefs ext clk clkEdge rst rstEdge (mkModule name insts inputs outputs) lm)
+  | mkCavaState o vecCount vecDefs ext clk rst (mkModule name _ inputs outputs) lm
+    => put (mkCavaState o vecCount vecDefs ext clk rst (mkModule name insts inputs outputs) lm)
   end.
 
 Definition assignSignal {k} (s1: Signal k) (s2: Signal k) :=
@@ -233,16 +237,16 @@ Definition addInputPort (newPort: PortDeclaration) : state CavaState unit :=
   match newPort with
   | mkPort "" _ => ret tt (* Clock or reset not used *)
   | _ => match cs with
-         | mkCavaState o vecCount vecDefs ext clk clkEdge rst rstEdge (mkModule n insts inputs outputs) lm =>
-           put (mkCavaState o vecCount vecDefs ext clk clkEdge rst rstEdge (mkModule n insts (cons newPort inputs) outputs) lm)
+         | mkCavaState o vecCount vecDefs ext clk rst (mkModule n insts inputs outputs) lm =>
+           put (mkCavaState o vecCount vecDefs ext clk rst (mkModule n insts (cons newPort inputs) outputs) lm)
          end
   end.
 
 Definition addOutputPort (newPort: PortDeclaration) : state CavaState unit :=
   cs <- get ;;
   match cs with
-  | mkCavaState o vecCount vecDefs ext clk clkEdge rst rstEdge (mkModule n insts inputs outputs) lm =>
-      put (mkCavaState o vecCount vecDefs ext clk clkEdge rst rstEdge (mkModule n insts inputs (cons newPort outputs)) lm)
+  | mkCavaState o vecCount vecDefs ext clk rst (mkModule n insts inputs outputs) lm =>
+      put (mkCavaState o vecCount vecDefs ext clk rst (mkModule n insts inputs (cons newPort outputs)) lm)
   end.
 
 Fixpoint findModule (name : string) (libs : list (CircuitInterface * Module)) : bool :=
@@ -257,11 +261,11 @@ Fixpoint findModule (name : string) (libs : list (CircuitInterface * Module)) : 
 Definition addModule (intf : CircuitInterface) (newModule : Module) : state CavaState unit :=
     cs <- get ;;
     match cs with
-    | mkCavaState o vecCount vecDefs ext clk clkEdge rst rstEdge m lm =>
+    | mkCavaState o vecCount vecDefs ext clk rst m lm =>
         if findModule (circuitName intf) lm then
           ret tt
         else
-          put (mkCavaState o vecCount vecDefs ext clk clkEdge rst rstEdge m
+          put (mkCavaState o vecCount vecDefs ext clk rst m
                (lm ++ [(intf, newModule)]))
     end.
 
@@ -272,27 +276,25 @@ Definition addModule (intf : CircuitInterface) (newModule : Module) : state Cava
 Definition setModuleName (name : string) : state CavaState unit :=
   cs <- get ;;
   match cs with
-  | mkCavaState o vecCount vecDefs ext clk clkEdge rst rstEdge (mkModule _ insts inputs outputs) lm
-     => put (mkCavaState o vecCount vecDefs ext clk clkEdge rst rstEdge (mkModule name insts inputs outputs) lm)
+  | mkCavaState o vecCount vecDefs ext clk rst (mkModule _ insts inputs outputs) lm
+     => put (mkCavaState o vecCount vecDefs ext clk rst (mkModule name insts inputs outputs) lm)
   end.
 
-Definition setClockAndReset (clk_and_edge: Signal Bit * SignalEdge)
-                            (rst_and_edge: Signal Bit* SignalEdge)
+Definition setClockAndReset (clk: option (TaggedEdge (Signal Bit)))
+                            (rst: option (TaggedEdge (Signal Bit)))
                             : state CavaState unit :=
-  let (clk, clkEdge) := clk_and_edge in
-  let (rst, rstEdge) := rst_and_edge in
   cs <- get ;;
   match cs with
-  | mkCavaState o vecCount vecDefs ext _ _ _ _ m lm
-     => put (mkCavaState o vecCount vecDefs ext (Some clk) clkEdge (Some rst) rstEdge m lm)
+  | mkCavaState o vecCount vecDefs ext _ _ m lm
+     => put (mkCavaState o vecCount vecDefs ext clk rst m lm)
   end.
 
-Definition getClockAndReset : state CavaState ((option (Signal Bit) * SignalEdge) *
-                                               (option (Signal Bit) * SignalEdge)) :=
+Definition getClockAndReset : state CavaState ((option (TaggedEdge (Signal Bit))) *
+                                               (option (TaggedEdge (Signal Bit)))) :=
   cs <- get ;;
   match cs with
-  | mkCavaState _ vecCount vecDefs ext clk clkEdge rst rstEdge _ _=>
-     ret ((clk, clkEdge), (rst, rstEdge))
+  | mkCavaState _ vecCount vecDefs ext clk rst _ _ =>
+     ret (clk, rst)
   end.
 
 Definition inputBit (name : string) : state CavaState (Signal Bit) :=
@@ -316,7 +318,7 @@ Definition outputVector (t: SignalType) (sz : nat) (name : string) (v : Signal (
 (******************************************************************************)
 
 Definition initStateFrom (startAt : N) : CavaState
-  := mkCavaState startAt 0 [] [] None PositiveEdge None PositiveEdge
+  := mkCavaState startAt 0 [] [] None None
                  (mkModule "noname" [] [] []) [].
 
 Definition initState : CavaState
@@ -414,15 +416,20 @@ Definition instantiateOutputPorts (outputPorts: list PortDeclaration)
                                   state CavaState unit :=
   instantiateOutputPortsR outputPorts (unbalanceNet outputPorts v).
 
+Definition addOptional o :=
+  match o with
+  | Some x => addInputPort (mkPort (getTag x) Bit)
+  | None => ret tt
+  end.
 
 Definition wireUpCircuit (intf : CircuitInterface)
                          (circuit : tupleNetInterface (circuitInputs intf) ->
                                     state CavaState (tupleNetInterface (circuitOutputs intf)))
-                         : state CavaState unit  :=
+                         : state CavaState unit :=
   setModuleName (circuitName intf) ;;
-  setClockAndReset (NamedWire (clkName intf), clkEdge intf) (NamedWire (rstName intf), rstEdge intf) ;;
-  addInputPort (mkPort (clkName intf) Bit) ;;
-  addInputPort (mkPort (rstName intf) Bit) ;;
+  setClockAndReset (fmap (fmap NamedWire) (clk intf)) (fmap (fmap NamedWire) (rst intf)) ;;
+  addOptional (clk intf) ;;
+  addOptional (rst intf) ;;
   i <- instantiateInputPorts (circuitInputs intf) ;;
   o <- circuit i ;;
   let outType := circuitOutputs intf in
@@ -480,36 +487,30 @@ Definition declareOutputs (outputs: list PortDeclaration)
   o <- declareOutputsR outputs ;;
   ret (rebalanceNet outputs o).
 
-Definition wireUpClock (c : option (Signal Bit)) (clkArgName: string) : list (string * UntypedSignal) :=
-  match c with
-  | None => []
-  | Some clk => [(clkArgName, USignal clk)]
-  end.
+Definition rewire (c : Signal Bit) (newName: string) : (string * UntypedSignal) :=
+  (newName, USignal c).
 
-Definition wireUpReset (c : option (Signal Bit)) (rstArgName: string) : list (string * UntypedSignal) :=
-  match c with
-  | None => []
-  | Some rst => [(rstArgName, USignal rst)]
-  end.
+Definition optionToList {A} (o: option A): list A :=
+  match o with Some x => [x] | None => [] end.
+
+Import FunctorNotation.
+Require Import ExtLib.Structures.Applicative.
+Import ApplicativeNotation.
 
 Definition blackBoxNet (intf : CircuitInterface)
                        (inputs: tupleNetInterface (circuitInputs intf)) :
                        state CavaState (tupleNetInterface (circuitOutputs intf)) :=
   let inputPorts : list (string * UntypedSignal) := driveArguments (circuitInputs intf) inputs in
-  '((optClk, _), (optRst, _)) <- getClockAndReset ;;
+  '(optClk, optRst) <- getClockAndReset ;;
   outputSignals <- declareOutputs (circuitOutputs intf) ;;
-  let clkPort := wireUpClock optClk (clkName intf) in
-  let rstPort := wireUpReset optRst (rstName intf) in
+  let clkPort := rewire <$> (fmap getTag optClk) <*> (fmap getTag (clk intf)) in
+  let rstPort := rewire <$> (fmap getTag optRst) <*> (fmap getTag (rst intf)) in
   let outputPorts : list (string * UntypedSignal) := driveArguments (circuitOutputs intf) outputSignals in
   (* TODO(satnam): Consider schemes where clock and rest can be threaded through
      in a consistent way. *)
   (* This currently does not check that the clock/reset have the correct
    * polarity *)
-  let prefix :=
-    (if String.eqb (clkName intf) "" then [] else clkPort) ++
-    (if String.eqb (rstName intf)  "" then [] else rstPort) in
-
-  addInstance (Component (circuitName intf) [] (prefix ++ inputPorts ++ outputPorts)) ;;
+  addInstance (Component (circuitName intf) [] (optionToList clkPort ++ optionToList rstPort ++ inputPorts ++ outputPorts)) ;;
   ret outputSignals.
 
 Record TestBench : Type := mkTestBench {
