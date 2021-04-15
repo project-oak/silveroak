@@ -293,11 +293,9 @@ Section WithParameters.
   Inductive state : Type :=
   | UNINITIALIZED (* CTRL register not yet written *)
   | IDLE (rs : known_register_state)
-  | BUSY (rs : known_register_state)
-         (exp_output : aes_output)
+  | BUSY (exp_output : aes_output)
          (max_cycles_until_done : nat)
   | DONE (rs : known_register_state)
-         (out_regs_left_to_read : nat)
   (* TODO: add CLEAR state for aes_clear *)
   .
 
@@ -318,12 +316,12 @@ Section WithParameters.
        && negb (is_flag_set status AES_STATUS_STALL)
        && negb (is_flag_set status AES_STATUS_OUTPUT_VALID)
        && is_flag_set status AES_STATUS_INPUT_READY)
-    | BUSY _ _ _ =>
+    | BUSY _ _ =>
       (negb (is_flag_set status AES_STATUS_IDLE)
        && negb (is_flag_set status AES_STATUS_STALL)
        && negb (is_flag_set status AES_STATUS_OUTPUT_VALID)
        && negb (is_flag_set status AES_STATUS_INPUT_READY))
-    | DONE _ _ =>
+    | DONE _ =>
       (* STALL can be either true or false here *)
       (negb (is_flag_set status AES_STATUS_IDLE)
        && is_flag_set status AES_STATUS_OUTPUT_VALID
@@ -358,7 +356,7 @@ Section WithParameters.
 
   Definition is_busy (s : state) : bool :=
     match s with
-    | BUSY _ _ _ => true
+    | BUSY _ _ => true
     | _ => false
     end.
 
@@ -371,6 +369,19 @@ Section WithParameters.
     | _ => false
     end.
 
+  Definition out_regs_empty (rs : known_register_state) : Prop :=
+    reg_lookup rs DATA_OUT0 = None
+    /\ reg_lookup rs DATA_OUT1 = None
+    /\ reg_lookup rs DATA_OUT2 = None
+    /\ reg_lookup rs DATA_OUT3 = None.
+
+  Definition set_out_regs
+             (rs : known_register_state) (out : aes_output) : known_register_state :=
+    let rs := map.put rs (reg_addr DATA_OUT0) out.(data_out0) in
+    let rs := map.put rs (reg_addr DATA_OUT1) out.(data_out1) in
+    let rs := map.put rs (reg_addr DATA_OUT2) out.(data_out2) in
+    map.put rs (reg_addr DATA_OUT3) out.(data_out3).
+
   Inductive read_step : state -> Register -> word -> state -> Prop :=
   | ReadStatusNoChange :
       forall s val,
@@ -378,26 +389,29 @@ Section WithParameters.
         status_matches_state s val = true ->
         read_step s STATUS val s
   | ReadStatusStillBusy :
-      forall rs out n val,
-        status_matches_state (BUSY rs out n) val = true ->
+      forall out n val,
+        status_matches_state (BUSY out n) val = true ->
         (* max #cycles until done decreases once every read *)
-        read_step (BUSY rs out (S n)) STATUS val (BUSY rs out n)
+        read_step (BUSY out (S n)) STATUS val (BUSY out n)
   | ReadStatusFinish :
       forall rs out val n,
-        status_matches_state (DONE rs 4) val = true ->
-        read_step (BUSY rs out n) STATUS val (DONE rs 4)
+        status_matches_state (DONE rs) val = true ->
+        rs = set_out_regs map.empty out ->
+        read_step (BUSY out n) STATUS val (DONE rs)
   | ReadOutputReg :
-      forall rs r val n,
+      forall rs rs' r val,
         is_output_reg r = true ->
         reg_lookup rs r = Some val ->
-        read_step (DONE rs (S (S n))) r val
-                  (DONE (map.remove rs (reg_addr r)) (S n))
+        rs' = map.remove rs (reg_addr r) ->
+        not (out_regs_empty rs') -> (* still not done reading output *)
+        read_step (DONE rs) r val (DONE rs')
   | ReadLastOutputReg :
-      forall rs r val,
+      forall rs rs' r val,
         is_output_reg r = true ->
         reg_lookup rs r = Some val ->
-        read_step (DONE rs 1) r val
-                  (IDLE (map.remove rs (reg_addr r)))
+        rs' = map.remove rs (reg_addr r) ->
+        out_regs_empty rs' -> (* done reading output *)
+        read_step (DONE rs) r val (IDLE rs')
   .
 
   Definition is_input_reg (r : Register) : bool :=
@@ -427,10 +441,10 @@ Section WithParameters.
         write_step UNINITIALIZED CTRL val
                    (IDLE (map.put map.empty AES_CTRL val))
   | WriteInput :
-      forall rs r val,
+      forall rs rs' r val,
         is_input_reg r = true ->
         reg_lookup rs r = None ->
-        let rs' := map.put rs (reg_addr r) val in
+        rs' = map.put rs (reg_addr r) val ->
         aes_expected_output rs' = None ->
         write_step (IDLE rs) r val
                    (IDLE (map.put rs (reg_addr r) val))
@@ -451,7 +465,7 @@ Section WithParameters.
         let rs' := map.put rs (reg_addr r) val in
         aes_expected_output rs' = Some out ->
         write_step (IDLE rs) r val
-                   (BUSY rs out timing.ndelays_core)
+                   (BUSY out timing.ndelays_core)
   .
 
   Inductive step : string -> state -> list word -> list word -> state -> Prop :=
