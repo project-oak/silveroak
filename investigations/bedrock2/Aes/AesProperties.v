@@ -602,16 +602,15 @@ Section Proofs.
     (* pose all the control-register formatting proofs *)
     pose proof operation_eq.
     pose proof mode_mask_eq.
-    pose proof mode_size_pos.
     pose proof mode_offset_ok.
     pose proof key_len_mask_eq.
-    pose proof key_len_size_pos.
     pose proof key_len_offset_ok.
     pose proof manual_operation_ok.
     cbv [op_size] in *.
     repeat lazymatch goal with
            | H : enum_member _ _ |- _ =>
-             apply enum_member_size in H
+             apply enum_member_size in H;
+               pose proof has_size_pos _ _ H
            end.
 
     (* split cases *)
