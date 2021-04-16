@@ -18,12 +18,18 @@
 Require Import Coq.Vectors.Vector.
 Require Import Coq.NArith.NArith.
 Require Import ExtLib.Structures.Monads.
+Require Import ExtLib.Structures.Functor.
+Require Import ExtLib.Data.List.
 Import MonadNotation.
 
 Require Import Cava.Core.Core.
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Util.Identity.
 Require Import Cava.Util.Vector.
+Require Import Cava.Util.Tuple.
+
+Import ListNotations.
+Import FunctorNotation.
 
 (******************************************************************************)
 (* A boolean combinational logic interpretation for the Cava class            *)
@@ -37,6 +43,14 @@ Definition xnorb b1 b2 : bool := negb (xorb b1 b2).
 (* Instantiate the Cava class for a boolean combinational logic               *)
 (* interpretation.                                                            *)
 (******************************************************************************)
+
+Definition port_signal p := combType (port_type p).
+
+Local Fixpoint default_helper (xs: list PortDeclaration): tupledR (port_signal <$> xs) :=
+  match xs with
+  | [] => tt
+  | x::xs => (defaultCombValue (port_type x), default_helper xs)
+  end.
 
 Instance CombinationalSemantics : Cava combType | 10 :=
   { cava := ident;
@@ -67,8 +81,10 @@ Instance CombinationalSemantics : Cava combType | 10 :=
     unsignedMult m n a := ret (unsignedMultBool a);
     greaterThanOrEqual m n a := ret (greaterThanOrEqualBool a);
     localSignal _ v := ret v;
-    instantiate _ circuit := circuit;
-    blackBox intf _ := ret (tupleInterfaceDefault (map port_type (circuitOutputs intf)));
+    instantiate intf circuit args :=
+      uncurry (port_signal <$> circuitInputs intf) _ circuit (unbalance' _ args);
+    blackBox intf _ :=
+      rebalance' (port_signal <$> circuitOutputs intf) (default_helper (circuitOutputs intf));
 }.
 
 (* Run circuit for a single step *)
@@ -106,12 +122,14 @@ Create HintDb simpl_ident.
 Hint Rewrite @foldLM_ident_fold_left using solve [eauto] : simpl_ident.
 Ltac simpl_ident :=
   (* simplify identity monad and most projections from Cava *)
-  cbn [fst snd bind ret Monad_ident monad
+  cbn [fst snd bind ret Monad_ident monad mcompose
            constantV packV unpackV constant buf_gate
            inv and2 nand2 or2 nor2 xor2 xnor2
            lut1 lut2 lut3 lut4 lut5 lut6
            xorcy muxcy
-           CombinationalSemantics ];
+           CombinationalSemantics
+           port_signal
+           ];
   repeat lazymatch goal with
          | |- context [(@Traversable.mapT
                          _ (@Traversable_vector ?n)

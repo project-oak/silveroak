@@ -15,10 +15,14 @@
 (****************************************************************************)
 
 Require Import ExtLib.Structures.Monad.
+Require Import ExtLib.Structures.Functor.
 Require Import Cava.Core.Netlist.
 Require Import Cava.Core.Signal.
+Require Import Cava.Util.Tuple.
 
 Local Open Scope type_scope.
+
+Import FunctorNotation.
 
 (**** IMPORTANT: if you make changes to the API of these definitions, or add new
       ones, make sure you update the reference at docs/reference.md! ****)
@@ -29,6 +33,7 @@ Local Open Scope type_scope.
    as well as behavioural interpretations for attributing semantics. *)
 Class Cava (signal : SignalType -> Type) := {
   cava : Type -> Type;
+  port_signal := (fun p => signal (port_type p));
   monad :> Monad cava;
   (* Constant values. *)
   constant : bool -> signal Bit;
@@ -76,14 +81,15 @@ Class Cava (signal : SignalType -> Type) := {
   localSignal : forall {t : SignalType}, signal t -> cava (signal t);
   (* Hierarchy *)
   instantiate : forall (intf: CircuitInterface),
-                 (tupleInterface signal (map port_type (circuitInputs intf)) ->
-                  cava (tupleInterface signal (map port_type (circuitOutputs intf)))) ->
-                 tupleInterface signal (map port_type (circuitInputs intf)) ->
-                 cava (tupleInterface signal ((map port_type (circuitOutputs intf))));
+                ( let inputs := port_signal <$> circuitInputs intf in
+                  let outputs := port_signal <$> circuitOutputs intf in
+                  curried inputs (cava (tupled' outputs))) ->
+                 tupled' (port_signal <$> (circuitInputs intf)) ->
+                 cava (tupled' ((port_signal <$> (circuitOutputs intf))));
   (* Instantiation of black-box components which return default values. *)
   blackBox : forall (intf: CircuitInterface),
-             tupleInterface signal (map port_type (circuitInputs intf)) ->
-             cava (tupleInterface signal ((map port_type (circuitOutputs intf))));
+             tupled' (port_signal <$> (circuitInputs intf)) ->
+             cava (tupled' ((port_signal <$> (circuitOutputs intf))));
 }.
 
 Require Import Cava.Util.Vector.

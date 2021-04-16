@@ -21,19 +21,24 @@
 
 Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import Coq.ZArith.ZArith.
-Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Functor.
+Require Import ExtLib.Structures.Applicative.
+Require Import ExtLib.Structures.Monads.
 Require Export ExtLib.Data.Monads.StateMonad.
 Require Export ExtLib.Data.List.
 Require Import ExtLib.Data.Option.
+Require Import coqutil.Datatypes.HList.
 
 Import ListNotations.
 Import MonadNotation.
+Import FunctorNotation.
+Import ApplicativeNotation.
 Open Scope string_scope.
 Open Scope list_scope.
 Open Scope monad_scope.
 
 Require Import Cava.Core.Signal.
+Require Import Cava.Util.Tuple.
 
 (******************************************************************************)
 (* Make it possible to convert certain types to bool shape values             *)
@@ -94,6 +99,9 @@ Record PortDeclaration : Type := mkPort {
   port_name : string;
   port_type : SignalType;
 }.
+
+Definition port_netlistsignal (x: PortDeclaration) : Type := Signal (port_type x).
+Definition port_value (x: PortDeclaration) : Type := combType (port_type x).
 
 Record Module : Type := mkModule {
   moduleName : string;
@@ -328,116 +336,73 @@ Definition initState : CavaState
 (* Execute a monadic circuit description and return the generated netlist.    *)
 (******************************************************************************)
 
-Definition instantiateInputPort' (name : string) (port_type : SignalType)
-  : state CavaState (Signal port_type) :=
-  match port_type with
-  | Void => ret UndefinedSignal
-  | Bit => inputBit name
-  | Vec k sz => inputVector k sz name
-  | ExternalType t => addInputPort (mkPort name (ExternalType t)) ;;
-                     ret (UninterpretedSignal name)
-  end.
-Definition instantiateInputPort (input : PortDeclaration)
-  : state CavaState (Signal (port_type input)) :=
-  instantiateInputPort' (port_name input) (port_type input).
-
-Local Open Scope list_scope.
-
-(* Specialized versions of tuple-operations for signal nets. *)
-
-Definition tupleNetInterface (pds : list PortDeclaration)
-  := tupleInterface denoteSignal (map port_type pds).
-
-
-Definition tupleNetInterfaceR (pds : list PortDeclaration)
-  := tupleInterfaceR denoteSignal (map port_type pds).
-
-Definition rebalanceNet (pds : list PortDeclaration)
-  := rebalance denoteSignal (map port_type pds).
-
-Definition unbalanceNet (pds : list PortDeclaration)
-  := unbalance denoteSignal (map port_type pds).
-
-(* Instantiate input ports, producing a right associative tuple terminated
-   with a unit. *)
-Fixpoint instantiateInputPortsR (inputs: list PortDeclaration)
-  : state CavaState (tupleNetInterfaceR inputs) :=
-  match inputs with
-  | [] => ret tt
-  | x::xs =>
-    xi <- instantiateInputPort x ;;
-    xr <- instantiateInputPortsR xs ;;
-    ret (xi, xr)
-  end.
-
-(* Instantiate input ports with a left associative tuple and no unit. *)
-Definition instantiateInputPorts (inputs: list PortDeclaration)
-  : state CavaState (tupleNetInterface inputs) :=
-  right_unit_tuple <- instantiateInputPortsR inputs ;;
-  ret (rebalanceNet inputs right_unit_tuple).
-
-Definition instantiateOutputPort' (name : string) (port_type : SignalType)
-  : Signal port_type -> state CavaState unit :=
-  match port_type as t0 return Signal t0 -> _ with
-  | Void => fun _ => ret tt
-  | Bit => fun s => outputBit name s
-  | Vec k sz => fun s => outputVector k sz name s
-  | ExternalType t => fun s => addOutputPort (mkPort name (ExternalType t)) ;;
-                           assignSignal (UninterpretedSignal name) s
-  end.
-Definition instantiateOutputPort (pd : PortDeclaration)
-                                 (o : Signal (port_type pd))
-  : state CavaState unit :=
-  instantiateOutputPort' (port_name pd) (port_type pd) o.
-
-(* instantiateOutputPorts will take a list of port declarations and a bunch
-   of signals which are right-associated and match up the elements of the
-  port declarations in the list outputPorts with the corresponding driver
-  signal and wire up the appropriate port. This function can't be used
-  directly by the netlist functions because they expect the top-level
-  circuit tuples to use left-associative tuples that match denoteInterfaceL.
-*)
-
-Fixpoint instantiateOutputPortsR (outputPorts: list PortDeclaration) :
-                                 tupleNetInterfaceR outputPorts ->
-                                 state CavaState unit :=
-  match outputPorts with
-  | [] => fun _ => ret tt
-  | x::xs => (match xs as xs0 return ((tupleNetInterfaceR xs0 -> state CavaState unit) -> tupleNetInterfaceR (x::xs0) -> state CavaState unit) with
-              | [] => fun _ => fun ab => instantiateOutputPort x (fst ab) (* Discard unit value in second element. *)
-              | y::ys => fun (rec: tupleNetInterfaceR (y::ys) -> state CavaState unit) =>
-                           fun (ab : tupleNetInterfaceR (x::y::ys)) => instantiateOutputPort x (fst ab);;
-                                                                       rec (snd ab)
-              end) (instantiateOutputPortsR xs)
-  end.
-
-Definition instantiateOutputPorts (outputPorts: list PortDeclaration)
-                                  (v: tupleNetInterface outputPorts) :
-                                  state CavaState unit :=
-  instantiateOutputPortsR outputPorts (unbalanceNet outputPorts v).
-
-Definition addOptional o :=
+Definition addOptionalInputPort o :=
   match o with
   | Some x => addInputPort (mkPort (getTag x) Bit)
   | None => ret tt
   end.
 
-Definition wireUpCircuit (intf : CircuitInterface)
-                         (circuit : tupleNetInterface (circuitInputs intf) ->
-                                    state CavaState (tupleNetInterface (circuitOutputs intf)))
-                         : state CavaState unit :=
-  setModuleName (circuitName intf) ;;
-  setClockAndReset (fmap (fmap NamedWire) (clk intf)) (fmap (fmap NamedWire) (rst intf)) ;;
-  addOptional (clk intf) ;;
-  addOptional (rst intf) ;;
-  i <- instantiateInputPorts (circuitInputs intf) ;;
-  o <- circuit i ;;
-  let outType := circuitOutputs intf in
-  instantiateOutputPorts outType o.
+Definition instantiateInputPort
+  (port : PortDeclaration)
+  : state CavaState (port_netlistsignal port) :=
+  let name := port_name port in
+  match port_type port as s return state CavaState (Signal s) with
+  | Void => ret UndefinedSignal
+  | Bit => inputBit name
+  | Vec k sz => inputVector k sz name
+  | ExternalType t =>
+    addInputPort (mkPort name (ExternalType t)) ;;
+    ret (UninterpretedSignal name)
+  end.
 
-Definition makeNetlist (intf : CircuitInterface)
-                        (circuit : tupleNetInterface (circuitInputs intf) ->
-                                    state CavaState (tupleNetInterface (circuitOutputs intf))) : CavaState
+Fixpoint instantiateInputPorts {o}
+  (ports : list PortDeclaration):
+  curried (port_netlistsignal <$> ports) (state CavaState o) -> state CavaState o :=
+  match ports with
+  | [] => fun circuit => circuit
+  | x::xs => fun circuit =>
+    i <- instantiateInputPort x ;;
+    instantiateInputPorts xs (circuit i)
+  end.
+
+Definition instantiateOutputPort
+  (port : PortDeclaration)
+  : port_netlistsignal port -> state CavaState unit :=
+  let name := port_name port in
+  match port_type port as s return Signal s -> state CavaState unit with
+  | Void => fun _ => ret tt
+  | Bit => fun port => outputBit name port
+  | Vec k sz => fun port => outputVector k sz name port
+  | ExternalType t => fun s =>
+    addOutputPort (mkPort name (ExternalType t)) ;;
+    assignSignal (UninterpretedSignal name) s
+  end.
+
+Fixpoint instantiateOutputPorts
+  (ports : list PortDeclaration):
+  tupledR (port_netlistsignal <$> ports) -> state CavaState unit :=
+  match ports with
+  | [] => ret
+  | x::xs =>
+      fun '( (y,ys) : tupledR (port_netlistsignal <$> (x :: xs))) =>
+      instantiateOutputPort x y;; instantiateOutputPorts xs ys
+  end.
+
+Definition wireUpCircuit
+  (intf : CircuitInterface)
+  (circuit :
+    let inputs := port_netlistsignal <$> (circuitInputs intf) in
+    let outputs := port_netlistsignal <$> (circuitOutputs intf) in
+    curried inputs (state CavaState (tupled' outputs)))
+  : state CavaState unit :=
+  setModuleName (circuitName intf) ;;
+  setClockAndReset (fmap NamedWire <$> clk intf) (fmap NamedWire <$> rst intf) ;;
+  addOptionalInputPort (clk intf) ;;
+  addOptionalInputPort (rst intf) ;;
+  o <- instantiateInputPorts (circuitInputs intf) circuit ;;
+  instantiateOutputPorts _ (unbalance' _ o).
+
+Definition makeNetlist (intf : CircuitInterface) circuit : CavaState
   := execState (wireUpCircuit intf circuit) initState.
 
 (* driveArguments produces a list of pairs where each element is a name and
@@ -447,25 +412,17 @@ Definition makeNetlist (intf : CircuitInterface)
    and driver signals. *)
 
 Fixpoint driveArgumentsR (inputPorts: list PortDeclaration) :
-                          tupleNetInterfaceR inputPorts ->
+                          tupledR (port_netlistsignal <$> inputPorts) ->
                           list (string * UntypedSignal) :=
   match inputPorts with
   | [] => fun _ => []
-  | x::xs => (match xs as xs0 return ((tupleNetInterfaceR xs0 -> list (string * UntypedSignal)) -> tupleNetInterfaceR (x::xs0) -> list (string * UntypedSignal)) with
-              | [] => fun _ => fun (ab : Signal (port_type x) * unit) => [(port_name x, USignal (fst ab))]
-              | y::ys => fun (rec: tupleNetInterfaceR (y::ys) -> list (string * UntypedSignal)) =>
-                           fun (ab : tupleNetInterfaceR (x::y::ys)) =>
-                              (port_name x, USignal (fst ab)) :: rec (snd ab)
-              end) (driveArgumentsR xs)
+  | x::xs =>
+      fun '( (y,ys) : tupledR (port_netlistsignal <$> (x :: xs))) =>
+      (port_name x, USignal y) :: driveArgumentsR xs ys
   end.
 
-Definition driveArguments (inputPorts: list PortDeclaration)
-                         (v: tupleNetInterface inputPorts)
-                         : list (string * UntypedSignal) :=
-  driveArgumentsR inputPorts (unbalanceNet inputPorts v).
-
-Definition declareOutput (output : PortDeclaration) : state CavaState (Signal (port_type output)) :=
-  match port_type output with
+Definition declareOutput (output : PortDeclaration) : state CavaState (port_netlistsignal output) :=
+  match port_type output as s return state CavaState (Signal s) with
   | Void => ret UndefinedSignal
   | Bit => newWire
   | Vec k sz => newVector k sz
@@ -473,7 +430,7 @@ Definition declareOutput (output : PortDeclaration) : state CavaState (Signal (p
   end.
 
 Fixpoint declareOutputsR (outputs: list PortDeclaration)
-  : state CavaState (tupleNetInterfaceR outputs) :=
+  : state CavaState (tupledR (port_netlistsignal <$> outputs)) :=
   match outputs with
   | [] => ret tt
   | x::xs =>
@@ -482,36 +439,33 @@ Fixpoint declareOutputsR (outputs: list PortDeclaration)
     ret (xi, xr)
   end.
 
-Definition declareOutputs (outputs: list PortDeclaration)
-  : state CavaState (tupleNetInterface outputs) :=
-  o <- declareOutputsR outputs ;;
-  ret (rebalanceNet outputs o).
-
 Definition rewire (c : Signal Bit) (newName: string) : (string * UntypedSignal) :=
   (newName, USignal c).
 
 Definition optionToList {A} (o: option A): list A :=
   match o with Some x => [x] | None => [] end.
 
-Import FunctorNotation.
-Require Import ExtLib.Structures.Applicative.
-Import ApplicativeNotation.
-
-Definition blackBoxNet (intf : CircuitInterface)
-                       (inputs: tupleNetInterface (circuitInputs intf)) :
-                       state CavaState (tupleNetInterface (circuitOutputs intf)) :=
-  let inputPorts : list (string * UntypedSignal) := driveArguments (circuitInputs intf) inputs in
+Definition blackBoxNet' (intf : CircuitInterface)
+                       (inputs: tupledR (port_netlistsignal <$> circuitInputs intf)) :
+                       state CavaState (tupledR (port_netlistsignal <$> circuitOutputs intf)) :=
+  let inputPorts : list (string * UntypedSignal) := driveArgumentsR (circuitInputs intf) inputs in
   '(optClk, optRst) <- getClockAndReset ;;
-  outputSignals <- declareOutputs (circuitOutputs intf) ;;
+  outputSignals <- declareOutputsR (circuitOutputs intf) ;;
   let clkPort := rewire <$> (fmap getTag optClk) <*> (fmap getTag (clk intf)) in
   let rstPort := rewire <$> (fmap getTag optRst) <*> (fmap getTag (rst intf)) in
-  let outputPorts : list (string * UntypedSignal) := driveArguments (circuitOutputs intf) outputSignals in
+  let outputPorts : list (string * UntypedSignal) := driveArgumentsR (circuitOutputs intf) outputSignals in
   (* TODO(satnam): Consider schemes where clock and rest can be threaded through
      in a consistent way. *)
   (* This currently does not check that the clock/reset have the correct
    * polarity *)
   addInstance (Component (circuitName intf) [] (optionToList clkPort ++ optionToList rstPort ++ inputPorts ++ outputPorts)) ;;
   ret outputSignals.
+
+Definition blackBoxNet (intf : CircuitInterface)
+                       (inputs: tupled' (port_netlistsignal <$> circuitInputs intf)) :
+                       state CavaState (tupled' (port_netlistsignal <$> circuitOutputs intf)) :=
+  o <- blackBoxNet' intf (unbalance' _ inputs) ;;
+  ret (rebalance' _ o).
 
 Record TestBench : Type := mkTestBench {
   testBenchName            : string;
@@ -528,40 +482,23 @@ Fixpoint toSignalExpr (t: SignalType) (v: combType t) : SignalExpr :=
   | ExternalType t, zx => NoSignal
   end.
 
-(* Specialize the tuple operations to work over signal values. *)
-
-Definition tupleSimInterface (pds : list PortDeclaration)
-  := tupleInterface combType (map port_type pds).
-
-Definition tupleSimInterfaceR (pds : list PortDeclaration)
-  := tupleInterfaceR combType (map port_type pds).
-
-Definition rebalanceSim (pds : list PortDeclaration)
-  := rebalance combType (map port_type pds).
-
-Definition unbalanceSim (pds : list PortDeclaration)
-  := unbalance combType (map port_type pds).
-
 Fixpoint tupleToSignalExprR (pd: list PortDeclaration) :
-                            tupleSimInterfaceR pd ->
+                            tupledR (port_value <$> pd) ->
                             list SignalExpr :=
   match pd with
   | [] => fun _ => []
-  | x::xs => (match xs as xs0 return ((tupleSimInterfaceR xs0 -> list SignalExpr) -> tupleSimInterfaceR (x::xs0) ->  list SignalExpr) with
-              | [] => fun _ => fun (ab : combType (port_type x) * unit) => [toSignalExpr (port_type x) (fst ab)]
-              | y::ys => fun (rec: tupleSimInterfaceR (y::ys) -> list SignalExpr) =>
-                  fun (ab : tupleSimInterfaceR (x::y::ys)) => toSignalExpr (port_type x) (fst ab) :: rec (snd ab)
-              end) (tupleToSignalExprR xs)
+  | x::xs =>
+      fun '( (y,ys) : tupledR (port_value <$> (x :: xs))) =>
+      toSignalExpr (port_type x) y :: tupleToSignalExprR xs ys
   end.
-
-Definition tupleToSignalExpr (pd: list PortDeclaration)
-                             (v: tupleSimInterface pd) :
-                             list SignalExpr :=
-  tupleToSignalExprR pd (unbalanceSim pd v).
 
 Definition testBench (name : string)
                      (intf : CircuitInterface)
-                     (testInputs : list ((tupleSimInterface (circuitInputs intf))))
-                     (testExpectedOutputs : list (tupleSimInterface (circuitOutputs intf)))
-  := mkTestBench name intf (map (tupleToSignalExpr (circuitInputs intf)) testInputs)
-                           (map (tupleToSignalExpr (circuitOutputs intf)) testExpectedOutputs).
+                     (testInputs : list (tupled' (port_value <$> circuitInputs intf)))
+                     (testExpectedOutputs : list (tupled' (port_value <$> circuitOutputs intf)))
+  :=
+  let inputs := unbalance' (port_value <$> circuitInputs intf) <$> testInputs in
+  let outputs := unbalance' (port_value <$> circuitOutputs intf) <$> testExpectedOutputs in
+  mkTestBench name intf
+    (map (tupleToSignalExprR (circuitInputs intf)) inputs)
+    (map (tupleToSignalExprR (circuitOutputs intf)) outputs).

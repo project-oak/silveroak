@@ -16,6 +16,8 @@
 
 Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import ExtLib.Structures.Monads.
+Require Import ExtLib.Structures.Functor.
+Require Export ExtLib.Data.List.
 Export MonadNotation.
 
 Require Import Coq.ZArith.ZArith.
@@ -25,10 +27,12 @@ Import VectorNotations.
 
 Require Import Coq.Lists.List.
 Import ListNotations.
+Import FunctorNotation.
 
 Require Import Cava.Core.Core.
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Util.Vector.
+Require Import Cava.Util.Tuple.
 
 (******************************************************************************)
 (* Netlist implementations for the Cava class.                                *)
@@ -216,16 +220,6 @@ Fixpoint combToSignal (t : SignalType) (v : combType t) : Signal t :=
   | ExternalType typ, _ => UninterpretedSignal typ
   end.
 
-Definition instantiateNet (intf : CircuitInterface)
-                          (circuit : tupleNetInterface (circuitInputs intf) ->
-                                    state CavaState (tupleNetInterface (circuitOutputs intf)))
-                          (a : tupleNetInterface (circuitInputs intf))
-                          : state CavaState (tupleNetInterface (circuitOutputs intf)) :=
-  let cs := makeNetlist intf circuit in
-  addModule intf (module cs) ;;
-  x <- blackBoxNet intf a ;;
-  ret x.
-
 (******************************************************************************)
 (* Instantiate the Cava class for CavaNet which describes circuits without    *)
 (* any top-level pins or other module-level data                              *)
@@ -263,7 +257,12 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     greaterThanOrEqual m n ab :=
       localSignalNet (@GreaterThanOrEqual m n (fst ab) (snd ab));
     localSignal := @localSignalNet;
-    instantiate := instantiateNet;
+    instantiate intf circuit a :=
+      let cs := makeNetlist intf circuit in
+      addModule intf (module cs) ;;
+      blackBoxNet intf a;
+
+    (* instantiateNet; *)
     blackBox := blackBoxNet;
 }.
 
@@ -300,6 +299,7 @@ Fixpoint interpCircuit {i o} (c : Circuit i o)
   end.
 
 Definition makeCircuitNetlist (intf : CircuitInterface)
-           (c : Circuit (tupleNetInterface (circuitInputs intf))
-                        (tupleNetInterface (circuitOutputs intf))) : CavaState :=
-  makeNetlist intf (interpCircuit c).
+           (c : Circuit (tupled' (port_signal <$> circuitInputs intf))
+                        (tupled' (port_signal <$> circuitOutputs intf))) : CavaState :=
+                        makeNetlist intf (curry _ _ (curry_helper _ _ (interpCircuit c))).
+
