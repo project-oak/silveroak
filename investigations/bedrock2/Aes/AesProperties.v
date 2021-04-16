@@ -16,6 +16,7 @@ Require Import coqutil.Tactics.letexists.
 Require Import Cava.Util.Tactics.
 Require Import Bedrock2Experiments.Aes.AesSemantics.
 Require Import Bedrock2Experiments.Aes.Aes.
+Require Import Bedrock2Experiments.Aes.Constants.
 Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.Word.
 Require Import Bedrock2Experiments.WordProperties.
@@ -23,11 +24,10 @@ Import Syntax.Coercions List.ListNotations.
 Local Open Scope Z_scope.
 
 Section Proofs.
-  Import constants.
   Context {p : parameters} {p_ok : parameters.ok p}
-          {consts : constants Z} {timing : timing}.
+          {consts : aes_constants Z} {timing : timing}.
   Existing Instances semantics_parameters AesSemantics.ok constant_words.
-  Context {consts_ok : constants.ok constant_words}.
+  Context {consts_ok : aes_constants_ok constant_words}.
 
   (***** General-purpose lemmas/tactics and setup *****)
 
@@ -36,7 +36,7 @@ Section Proofs.
          morphism (Properties.word.ring_morph (word := Semantics.word)),
          constants [Properties.word_cst]).
 
-  Existing Instance constants.constant_names | 10.
+  Existing Instance constant_names | 10.
 
   Lemma interact_mmio call action binds arges t m l (post : trace -> mem -> locals -> Prop) args :
     dexprs m l arges args ->
@@ -73,7 +73,7 @@ Section Proofs.
     assert (forall w, word.add w (word.of_Z 0) = w) as word_add_0
         by (intros; ring).
     pose proof addrs_unique as Huniq.
-    cbv [all_reg_addrs list_reg_addrs] in *.
+    cbv [aes_reg_addrs list_reg_addrs] in *.
     rewrite nregs_key_eq, nregs_iv_eq, nregs_data_eq in Huniq.
     repeat lazymatch type of Huniq with
            | context [Z.to_nat ?n] =>
@@ -110,7 +110,7 @@ Section Proofs.
     execution t s2 ->
     s1 = s2.
   Proof.
-    pose proof status_flags_unique_and_nonzero (ok:=consts_ok) as Hflags.
+    pose proof status_flags_unique_and_nonzero as Hflags.
     cbv [map] in Hflags.
     simplify_unique_words_in Hflags.
     revert s1 s2.
@@ -193,7 +193,7 @@ Section Proofs.
         boolean aes_cfg_manual_operation ->
         let args := [aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
                     aes_cfg_manual_operation] in
-        call function_env aes_init tr m (globals ++ args)
+        call function_env aes_init tr m (aes_globals ++ args)
              (fun tr' m' rets =>
                 (* the circuit is in IDLE state with the correct control
                    register value and no other known register values *)
