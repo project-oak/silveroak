@@ -542,15 +542,6 @@ Section Proofs.
 
   (***** Proofs for specific functions *****)
 
-  Definition ctrl_value
-             (cfg_operation cfg_mode cfg_key_len cfg_manual_operation : Semantics.word) :=
-    word.or
-      (word.or
-         (word.or (word.slu cfg_operation AES_CTRL_OPERATION)
-                  (word.slu (word.and cfg_mode AES_CTRL_MODE_MASK) AES_CTRL_MODE_OFFSET))
-         (word.slu (word.and cfg_key_len AES_CTRL_KEY_LEN_MASK) AES_CTRL_KEY_LEN_OFFSET))
-      (word.slu cfg_manual_operation AES_CTRL_MANUAL_OPERATION).
-
   Instance spec_of_aes_init : spec_of aes_init :=
     fun function_env =>
       forall (tr : trace) (m : mem) (R : _ -> Prop)
