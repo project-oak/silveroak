@@ -69,9 +69,9 @@ Section Proofs.
 
   Local Ltac straightline_with_map_lookup :=
     lazymatch goal with
+    | _ => straightline
     | |- exists v, map.get _ _ = Some v /\ _ =>
       eexists; split; [ solve [map_lookup] | ]
-    | _ => straightline
     end.
 
   Local Ltac interaction :=
@@ -594,10 +594,12 @@ Section Proofs.
     repeat straightline.
 
     (* write CTRL *)
-    interaction; repeat straightline.
+    interaction. repeat straightline.
 
     (* done; prove postcondition *)
     ssplit; auto; [ ].
+
+    (* pose all the control-register formatting proofs *)
     pose proof operation_eq.
     pose proof mode_mask_eq.
     pose proof mode_size_pos.
@@ -611,6 +613,8 @@ Section Proofs.
            | H : enum_member _ _ |- _ =>
              apply enum_member_size in H
            end.
+
+    (* split cases *)
     eexists; ssplit.
     { infer. eapply execution_step; eauto with step. }
     { cbv [ctrl_operation].
