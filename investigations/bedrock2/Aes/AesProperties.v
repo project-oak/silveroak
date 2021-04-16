@@ -13,17 +13,18 @@ Require Import coqutil.Word.Properties.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Tactics.Tactics.
 Require Import coqutil.Tactics.letexists.
+Require Import Cava.Util.Tactics.
 Require Import Bedrock2Experiments.Aes.AesSemantics.
 Require Import Bedrock2Experiments.Aes.Aes.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope Z_scope.
 
 Section Proofs.
+  Import constants.
   Context {p : parameters} {p_ok : parameters.ok p}
-          {consts : constants word.rep} {consts_ok : constants.ok consts}
-          {timing : timing}.
-  Import constants parameters.
-  Existing Instance consts_ok.
+          {consts : constants Z} {timing : timing}.
+  Existing Instances semantics_parameters AesSemantics.ok constant_words.
+  Context {consts_ok : constants.ok constant_words}.
 
   (***** General-purpose lemmas/tactics and setup *****)
 
@@ -110,6 +111,30 @@ Section Proofs.
   Local Ltac invert_nobranch H :=
     invert_nobranch' H ltac:(try congruence).
 
+  Lemma all_reg_addrs_complete r :
+    In (reg_addr r) (all_reg_addrs : list Semantics.word).
+  Proof.
+    assert (forall w, word.add w (word.of_Z 0) = w) as word_add_0
+        by (intros; ring).
+    cbv [all_reg_addrs list_reg_addrs].
+    rewrite nregs_key_eq, nregs_iv_eq, nregs_data_eq.
+    repeat lazymatch goal with
+           | |- context [Z.to_nat ?n] =>
+             let x := constr:(Z.to_nat n) in
+             let y := (eval vm_compute in x) in
+             change x with y
+           end.
+    cbn [map seq app].
+    repeat lazymatch goal with
+           | |- context [word.add _ (word.of_Z (?n * ?m))] =>
+             let x := constr:(n * m) in
+             let y := (eval vm_compute in x) in
+             change x with y
+           end.
+    rewrite !word_add_0.
+    destruct r; cbv [reg_addr In]; tauto.
+  Qed.
+
   (* TODO: implement register naming with separation logic? e.g.
 
      (Register addr val * Register addr2 val2 * ...) regs
@@ -120,7 +145,7 @@ Section Proofs.
   Proof.
     assert (forall w, word.add w (word.of_Z 0) = w) as word_add_0
         by (intros; ring).
-    pose proof addrs_unique (ok:=consts_ok) as Huniq.
+    pose proof addrs_unique as Huniq.
     cbv [all_reg_addrs list_reg_addrs] in *.
     rewrite nregs_key_eq, nregs_iv_eq, nregs_data_eq in Huniq.
     repeat lazymatch type of Huniq with
@@ -128,10 +153,11 @@ Section Proofs.
              let x := constr:(Z.to_nat n) in
              let y := (eval vm_compute in x) in
              change x with y in Huniq
+           | _ => progress cbn [seq map app] in Huniq
            end.
-    cbn in Huniq. simplify_unique_words_in Huniq.
+    simplify_unique_words_in Huniq.
     rewrite !word_add_0 in *. clear word_add_0.
-    cbv [reg_addr]; intro Heqaddr.
+    cbv [reg_addr]; cbn; intro Heqaddr.
     destruct r1.
     (* clear all hypothesis that don't have to do with r1 (makes proof
        faster) *)
@@ -149,7 +175,7 @@ Section Proofs.
                    end
                  end
         end.
-    all:destruct r2; first [ exact eq_refl | congruence ].
+    all:destruct r2; try first [ exact eq_refl | congruence ].
   Qed.
 
   Local Ltac invert_bool :=
@@ -231,7 +257,7 @@ Section Proofs.
     execution ((map.empty, action, args, (map.empty, rets)) :: t) s'.
   Proof. intros; cbn [execution]; eauto. Qed.
 
-  Definition boolean (w : word) : Prop := (w = word.of_Z 0 \/ w = word.of_Z 1).
+  Definition boolean (w : Semantics.word) : Prop := (w = word.of_Z 0 \/ w = word.of_Z 1).
 
   Lemma boolean_and_1_r w :
     boolean w ->
@@ -244,7 +270,66 @@ Section Proofs.
     all:destruct_one_match; (reflexivity || congruence).
   Qed.
 
-  Lemma is_flag_set_shift w (flag : Semantics.word) :
+  Lemma has_size_slu w i n :
+    has_size w n ->
+    has_size (word.slu w i) (Z.min width (n + word.unsigned i)).
+  Admitted.
+
+  Lemma has_size_and w1 w2 n1 n2 :
+    has_size w1 n1 ->
+    has_size w2 n2 ->
+    has_size (word.and w1 w2) (Z.min n1 n2).
+  Admitted.
+
+  Lemma has_size_or w1 w2 n1 n2 :
+    has_size w1 n1 ->
+    has_size w2 n2 ->
+    has_size (word.or w1 w2) (Z.min n1 n2).
+  Admitted.
+
+  Lemma has_size_bool w :
+    boolean w -> has_size w 1.
+  Admitted.
+
+  Lemma has_size_weaken w n m :
+    has_size w n -> n <= m ->
+    has_size w m.
+  Admitted.
+
+  Lemma has_size_ones w n :
+    word.unsigned w = Z.ones n ->
+    has_size w n.
+  Admitted.
+
+  Lemma has_size_pos w n : has_size w n -> 0 <= n.
+  Proof.
+    cbv [has_size]. intros.
+    destr (0 <=? n); [ lia | exfalso ].
+    rewrite Z.pow_neg_r in * by lia.
+    lia.
+  Qed.
+
+  Hint Resolve has_size_slu has_size_and has_size_or has_size_ones has_size_bool : has_size.
+  Local Ltac prove_has_size :=
+    lazymatch goal with
+    | |- has_size _ ?sz =>
+      tryif is_evar sz
+      then eauto 10 with nocore has_size
+      else (eapply has_size_weaken;
+            [ solve [prove_has_size] | ];
+            lia)
+    | |- ?g => fail "Unexpected goal for prove_has_size:" g
+    end.
+
+  Lemma size1_boolean w :
+    has_size w 1 -> boolean w.
+  Admitted.
+
+  Lemma has_size_range w n :
+    has_size w n -> 0 <= word.unsigned w < 2 ^ n.
+  Proof. cbv [has_size]. tauto. Qed.
+
+  Lemma is_flag_set_shift w flag :
     boolean w ->
     word.unsigned flag < width ->
     is_flag_set (word.slu w flag) flag = word.eqb w (word.of_Z 0).
@@ -270,48 +355,195 @@ Section Proofs.
     all:lia.
   Qed.
 
-  Lemma is_flag_set_or_shift_l w1 w2 (i flag : Semantics.word) :
-    word.unsigned flag <= word.unsigned i < width ->
+  Hint Rewrite Z.land_spec Z.lor_spec Z.lxor_spec Z.ldiff_spec Z.testbit_0_l
+       using solve [eauto] : push_Ztestbit.
+  Hint Rewrite Z.shiftl_spec Z.shiftr_spec Z.lnot_spec Z.ones_spec_high
+       Z.ones_spec_low Z.testbit_neg_r using lia : push_Ztestbit.
+
+  Lemma word_wrap_testbit n i :
+    Z.testbit (word.wrap n) i = if i <? width then Z.testbit n i else false.
+  Proof.
+    cbv [word.wrap]. pose proof word.width_pos.
+    rewrite Z.testbit_mod_pow2 by lia.
+    destruct_one_match; reflexivity.
+  Qed.
+  Hint Rewrite @word_wrap_testbit using solve [eauto] : push_Ztestbit.
+
+  Lemma word_testbit_inj w1 w2 :
+    (forall i, 0 <= i < width ->
+          Z.testbit (word.unsigned w1) i = Z.testbit (word.unsigned w2) i) ->
+    w1 = w2.
+  Proof.
+    intro Hbits. apply word.unsigned_inj.
+    apply Z.bits_inj; intro i.
+    destr (0 <=? i); [ | rewrite !Z.testbit_neg_r by lia; reflexivity ].
+    destr (i <? width); [ apply Hbits; lia | ].
+    rewrite <-(word_wrap_unsigned w1).
+    rewrite <-(word_wrap_unsigned w2).
+    rewrite !word_wrap_testbit.
+    destruct_one_match; (reflexivity || lia).
+  Qed.
+
+  Lemma Z_testbit_1_l i : Z.testbit 1 i = (i =? 0).
+  Proof.
+    change 1 with (Z.ones 1).
+    destr (i =? 0); subst;
+      [ autorewrite with push_Ztestbit; reflexivity | ].
+    destr (i <? 0); autorewrite with push_Ztestbit; reflexivity.
+  Qed.
+  Hint Rewrite @Z_testbit_1_l using solve [eauto] : push_Ztestbit.
+
+  Lemma testbit_has_size_high w i :
+    has_size w i ->
+    Z.testbit (word.unsigned w) i = false.
+  Proof.
+    cbv [has_size]; intros.
+    destr (word.unsigned w =? 0);
+      [ replace (word.unsigned w) with 0;
+        autorewrite with push_Ztestbit; reflexivity | ].
+    apply Z.bits_above_log2; [ lia | ].
+    apply Z.log2_lt_pow2; lia.
+  Qed.
+  Hint Rewrite testbit_has_size_high using prove_has_size : push_Ztestbit.
+
+  Lemma is_flag_set_or_shiftl_low w1 w2 (i flag : Semantics.word) :
+    word.unsigned flag < word.unsigned i < width ->
     is_flag_set (word.or w1 (word.slu w2 i)) flag = is_flag_set w1 flag.
   Proof.
     intros; cbv [is_flag_set].
+    f_equal. apply word_testbit_inj. intro n; intros.
+    autorewrite with push_unsigned push_Ztestbit.
+    destruct_one_match; boolsimpl; try reflexivity; [ ].
+    lazymatch goal with
+    | |- context [?x =? 0] => destr (x =? 0)
+    end; boolsimpl; try reflexivity; [ ].
+    destr (Z.testbit (word.unsigned w1) n);
+      boolsimpl; try reflexivity.
+    apply Z.testbit_neg_r; lia.
+  Qed.
+
+  Lemma boolean_shift_nonzero w i :
+    boolean w ->
+    word.unsigned i < width ->
+    word.eqb (word.slu w i) (word.of_Z 0) = word.eqb w (word.of_Z 0).
+  Proof.
+    intro Hbool; intros.
     pose proof word.width_pos.
-    pose proof word.unsigned_range flag.
-    assert (0 < 2 ^ word.unsigned flag < 2 ^ width)
+    pose proof word.unsigned_range i.
+    assert (0 < 2 ^ word.unsigned i < 2 ^ width)
       by (split; [ apply Z.pow_pos_nonneg
                  | apply Z.pow_lt_mono_r]; lia).
     rewrite !word.unsigned_eqb.
     autorewrite with push_unsigned.
+    rewrite Z.shiftl_mul_pow2 by lia.
     cbv [word.wrap].
-    rewrite !Z.mod_small.
-    3:{
-      rewrite Z.shiftl_mul_pow2 by lia.
-      destruct Hbool; subst; autorewrite with push_unsigned; lia).
+    destruct Hbool; subst; autorewrite with push_unsigned;
+      rewrite Z.mod_small by lia;
+        first [ apply Z.eqb_neq | apply Z.eqb_eq ]; lia.
   Qed.
 
-  Lemma is_flag_set_or_shift_r w1 w2 i flag :
+  Lemma is_flag_set_or_shiftl_high w1 w2 flag :
     boolean w2 ->
+    word.unsigned flag < width ->
+    has_size w1 (word.unsigned flag) ->
     is_flag_set (word.or w1 (word.slu w2 flag)) flag
     = word.eqb w2 (word.of_Z 0).
-  Admitted.
+  Proof.
+    intros; cbv [is_flag_set].
+    rewrite <-(boolean_shift_nonzero w2 flag) by auto.
+    f_equal. apply word_testbit_inj. intro n; intros.
+    autorewrite with push_unsigned push_Ztestbit.
+    destruct_one_match; try lia; [ ].
+    repeat lazymatch goal with
+           | |- ?x = ?x => reflexivity
+           | |- context [?x =? 0] => destr (x =? 0); boolsimpl
+           | H : boolean _ |- _ =>
+             destruct H; subst; autorewrite with push_unsigned push_Ztestbit;
+               boolsimpl
+           | _ => congruence
+           end.
+  Qed.
 
-  Definition aes_op_t : word -> Prop := enum_member aes_op.
-  Definition aes_mode_t : word -> Prop := enum_member aes_mode.
-  Definition aes_key_len_t : word -> Prop := enum_member aes_key_len.
+  Lemma select_bits_id w offset mask size :
+    has_size w size ->
+    word.unsigned offset + size < width ->
+    word.unsigned mask = Z.ones size ->
+    select_bits (word.slu (word.and w mask) offset) offset mask = w.
+  Proof.
+    intros. cbv [select_bits].
+    pose proof has_size_pos _ size ltac:(eassumption).
+    pose proof word.unsigned_range offset.
+    apply word_testbit_inj; intros.
+    autorewrite with push_unsigned push_Ztestbit.
+    rewrite Z.add_simpl_r.
+    lazymatch goal with H : _ = Z.ones _ |- _ => rewrite H end.
+    destr (i <? size); autorewrite with push_Ztestbit;
+      boolsimpl; try reflexivity; [ ].
+    destruct_one_match; boolsimpl;
+      autorewrite with push_Ztestbit; reflexivity.
+  Qed.
 
-  Definition ctrl_operation (ctrl : word) : bool :=
+  Lemma select_bits_or_shiftl_low w1 w2 offset mask i size :
+    word.unsigned mask = Z.ones size ->
+    word.unsigned offset + size <= word.unsigned i < width ->
+    select_bits (word.or w1 (word.slu w2 i)) offset mask
+    = select_bits w1 offset mask.
+  Proof.
+    intros. cbv [select_bits].
+    pose proof has_size_pos mask size ltac:(prove_has_size).
+    pose proof word.unsigned_range offset.
+    apply word_testbit_inj; intro n; intros.
+    autorewrite with push_unsigned push_Ztestbit.
+    lazymatch goal with H : _ = Z.ones _ |- _ => rewrite H end.
+    destr (n <? size); autorewrite with push_Ztestbit;
+      boolsimpl; try reflexivity; [ ].
+    destruct_one_match; boolsimpl;
+      autorewrite with push_Ztestbit; try reflexivity; [ ].
+    rewrite (Z.testbit_neg_r (word.unsigned w2)) by lia.
+    boolsimpl; reflexivity.
+  Qed.
+
+  Lemma select_bits_or_shiftl_high w1 w2 offset mask i size :
+    has_size w1 (word.unsigned offset) ->
+    has_size mask size ->
+    word.unsigned i <= word.unsigned offset ->
+    word.unsigned offset + size < width ->
+    select_bits (word.or w1 (word.slu w2 i)) offset mask
+    = select_bits (word.slu w2 i) offset mask.
+  Proof.
+    intros. cbv [select_bits].
+    pose proof has_size_pos mask size ltac:(prove_has_size).
+    pose proof word.unsigned_range offset.
+    apply word_testbit_inj; intro n; intros.
+    autorewrite with push_unsigned push_Ztestbit.
+    boolsimpl. reflexivity.
+  Qed.
+
+  Lemma enum_member_size {elts size} (e : enum elts size) w :
+    enum_member e w -> has_size w size.
+  Proof.
+    pose proof enum_size_ok e as size_ok.
+    rewrite Forall_forall in size_ok.
+    apply size_ok.
+  Qed.
+
+  Local Notation aes_op_t := (enum_member aes_op) (only parsing).
+  Local Notation aes_mode_t := (enum_member aes_mode) (only parsing).
+  Local Notation aes_key_len_t := (enum_member aes_key_len) (only parsing).
+
+  Definition ctrl_operation (ctrl : Semantics.word) : bool :=
     is_flag_set ctrl AES_CTRL_OPERATION.
-  Definition ctrl_mode (ctrl : word) : word :=
+  Definition ctrl_mode (ctrl : Semantics.word) : Semantics.word :=
     select_bits ctrl AES_CTRL_MODE_OFFSET AES_CTRL_MODE_MASK.
-  Definition ctrl_key_len (ctrl : word) : word :=
+  Definition ctrl_key_len (ctrl : Semantics.word) : Semantics.word :=
     select_bits ctrl AES_CTRL_KEY_LEN_OFFSET AES_CTRL_KEY_LEN_MASK.
-  Definition ctrl_manual_operation (ctrl : word) : bool :=
+  Definition ctrl_manual_operation (ctrl : Semantics.word) : bool :=
     is_flag_set ctrl AES_CTRL_MANUAL_OPERATION.
 
   (***** Proofs for specific functions *****)
 
   Definition ctrl_value
-             (cfg_operation cfg_mode cfg_key_len cfg_manual_operation : word) :=
+             (cfg_operation cfg_mode cfg_key_len cfg_manual_operation : Semantics.word) :=
     word.or
       (word.or
          (word.or (word.slu cfg_operation AES_CTRL_OPERATION)
@@ -343,7 +575,8 @@ Section Proofs.
                 (* the circuit is in IDLE state with the correct control
                    register value and no other known register values *)
                 (exists ctrl,
-                    execution tr' (IDLE (map.put map.empty AES_CTRL ctrl))
+                    execution tr' (IDLE (map.put (map:=parameters.regs)
+                                                 map.empty (AES_CTRL : Semantics.word) ctrl))
                     /\ ctrl_operation ctrl = word.eqb aes_cfg_operation (word.of_Z 0)
                     /\ ctrl_mode ctrl = aes_cfg_mode
                     /\ ctrl_key_len ctrl = aes_cfg_key_len
@@ -365,17 +598,35 @@ Section Proofs.
 
     (* done; prove postcondition *)
     ssplit; auto; [ ].
+    pose proof operation_eq.
+    pose proof mode_mask_eq.
+    pose proof mode_size_pos.
+    pose proof mode_offset_ok.
+    pose proof key_len_mask_eq.
+    pose proof key_len_size_pos.
+    pose proof key_len_offset_ok.
+    pose proof manual_operation_ok.
+    cbv [op_size] in *.
+    repeat lazymatch goal with
+           | H : enum_member _ _ |- _ =>
+             apply enum_member_size in H
+           end.
     eexists; ssplit.
     { infer. eapply execution_step; eauto with step. }
     { cbv [ctrl_operation].
-      pose proof operation_eq.
-      pose proof mode_offset_ok.
-      pose proof key_len_offset_ok.
-      pose proof manual_operation_ok.
-      rewrite !is_flag_set_or_shift_l by lia.
-      Search word.rep.
-      rewrite operation_eq.
-      rewrite word.unsigned_eqb.
-      autorewrite with push_unsigned.
+      rewrite !is_flag_set_or_shiftl_low by lia.
+      apply is_flag_set_shift; eauto using size1_boolean.
+      lia. }
+    { cbv [ctrl_mode].
+      erewrite !select_bits_or_shiftl_low, select_bits_or_shiftl_high
+        by (first [ eassumption | prove_has_size | lia]).
+      eapply select_bits_id; [ prove_has_size | .. ]; lia. }
+    { cbv [ctrl_key_len].
+      erewrite !select_bits_or_shiftl_low, select_bits_or_shiftl_high
+        by (first [ eassumption | prove_has_size | lia]).
+      eapply select_bits_id; [ prove_has_size | .. ]; lia. }
+    { cbv [ctrl_manual_operation].
+      apply is_flag_set_or_shiftl_high;
+        (eassumption || prove_has_size || lia). }
   Qed.
 End Proofs.
