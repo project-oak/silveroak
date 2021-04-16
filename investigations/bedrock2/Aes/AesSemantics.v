@@ -8,35 +8,12 @@ Require Import coqutil.Map.Interface.
 Require Import coqutil.Word.Interface.
 Require Import coqutil.Z.HexNotation.
 Require Import coqutil.Decidable.
+Require Import Bedrock2Experiments.Word.
 
 Import String List.ListNotations.
 Local Open Scope string_scope. Local Open Scope Z_scope. Local Open Scope list_scope.
 
 (* Loosely based on bedrock2/FE310CSemantics.v *)
-
-Section WithWord.
-  Context {width} {word : word.word width} {word_ok : word.ok word}.
-
-  Definition unique_words (l : list word.rep) : Prop :=
-    List.dedup word.eqb l = l.
-
-  (* Compute sequential register addresses given a start address and a number of
-   registers *)
-  Definition list_reg_addrs (start : word.rep) (nregs size_in_bytes : nat)
-    : list word.rep :=
-    map (fun i => word.add start (word.of_Z (Z.of_nat i * Z.of_nat size_in_bytes)))
-        (seq 0 nregs).
-
-  Definition select_bits (w : word) (offset mask : word) : word :=
-    word.and (word.sru w offset) mask.
-
-  (* the flag is set if ((val & (1 << flag)) != 0) *)
-  Definition is_flag_set (val : word) (flag : word) : bool :=
-    word.eqb (word.and val (word.slu (word.of_Z 1) flag)) (word.of_Z 0).
-
-  Definition has_size w (n : Z) : Prop :=
-    0 <= word.unsigned w < 2 ^ n.
-End WithWord.
 
 Definition option_bind {A B} (x : option A) (f : A -> option B) : option B :=
   match x with
@@ -45,18 +22,6 @@ Definition option_bind {A B} (x : option A) (f : A -> option B) : option B :=
   end.
 Local Notation "y <- x ;; f" := (option_bind x (fun y => f))
                                   (at level 61, right associativity).
-
-Section Enum.
-  Context {width} {word : word.word width} {ok : word.ok word}.
-
-  Record enum {elts : list word} {size : Z} :=
-    { enum_size_ok :
-        Forall (fun w => has_size w size) elts;
-      enum_unique : unique_words elts;
-      enum_member (w : word) := In w elts;
-    }.
-  Global Arguments enum : clear implicits.
-End Enum.
 
 Module constants.
   Class constants T :=
