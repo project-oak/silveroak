@@ -9,6 +9,7 @@ Require Import coqutil.Word.Interface.
 Require Import coqutil.Z.HexNotation.
 Require Import coqutil.Decidable.
 Require Import Bedrock2Experiments.Aes.Constants.
+Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.Word.
 
 Import String List.ListNotations.
@@ -46,9 +47,9 @@ Module parameters.
     }.
 
   Class ok (p : parameters) :=
-    { word_ok : word.ok word; (* for impl of mem below *)
-      mem_ok : Interface.map.ok mem; (* for impl of mem below *)
-      regs_ok : Interface.map.ok regs;
+    { word_ok :> word.ok word; (* for impl of mem below *)
+      mem_ok :> Interface.map.ok mem; (* for impl of mem below *)
+      regs_ok :> Interface.map.ok regs;
     }.
 End parameters.
 Notation parameters := parameters.parameters.
@@ -60,7 +61,6 @@ Section WithParameters.
   Import parameters.
   Context {p : parameters} {p_ok : parameters.ok p}.
   Context {consts : aes_constants Z} {timing : timing}.
-  Existing Instances word_ok.
   Existing Instance constant_words.
 
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
@@ -326,80 +326,26 @@ Section WithParameters.
                    (BUSY rs' out timing.ndelays_core)
   .
 
-  Inductive step : string -> state -> list word -> list word -> state -> Prop :=
-  | ReadStep :
-      forall s s' r addr val,
-        reg_addr r = addr ->
-        read_step s r val s' ->
-        step READ s [addr] [val] s'
-  | WriteStep :
-      forall s s' r addr val,
-        reg_addr r = addr ->
-        write_step s r val s' ->
-        step WRITE s [addr;val] [] s'
-  .
+  Global Instance state_machine_parameters
+    : StateMachineSemantics.parameters 32 word :=
+    {| StateMachineSemantics.parameters.state := state ;
+       StateMachineSemantics.parameters.register := Register ;
+       StateMachineSemantics.parameters.mem := mem ;
+       StateMachineSemantics.parameters.READ := READ ;
+       StateMachineSemantics.parameters.WRITE := WRITE ;
+       StateMachineSemantics.parameters.initial_state := UNINITIALIZED ;
+       StateMachineSemantics.parameters.read_step := read_step ;
+       StateMachineSemantics.parameters.write_step := write_step ;
+       StateMachineSemantics.parameters.reg_addr := reg_addr ;
+    |}.
 
-  (* Computes the Prop that must hold for this state to be accurate after the
-     trace *)
-  Fixpoint execution (t : bedrock2_trace) (s : state) : Prop :=
-    match t with
-    | [] => s = UNINITIALIZED
-    | (_,action,args,(_,rets)) :: t =>
-      exists prev_state,
-      execution t prev_state
-      /\ step action prev_state args rets s
-    end.
-
-  Definition ext_spec (t : bedrock2_trace)
-             (mGive : mem)
-             (action : string)
-             (args: list word)
-             (post: mem -> list word -> Prop) :=
-    (* no memory ever given away *)
-    mGive = Interface.map.empty
-    /\ forall st rets,
-      execution ((map.empty,action,args,(map.empty,rets)) :: t) st ->
-      post Interface.map.empty rets.
-
-  Global Instance semantics_parameters  : Semantics.parameters :=
-    {|
-    Semantics.width := 32;
-    Semantics.word := parameters.word;
-    Semantics.mem := parameters.mem;
-    Semantics.locals := SortedListString.map _;
-    Semantics.env := SortedListString.map _;
-    Semantics.ext_spec := ext_spec;
-  |}.
-
-  Global Instance ext_spec_ok : ext_spec.ok _.
+  Global Instance state_machine_parameters_ok
+    : StateMachineSemantics.parameters.ok state_machine_parameters.
   Proof.
     constructor.
-    all:cbv [ext_spec Semantics.ext_spec semantics_parameters].
-    all:cbv [Morphisms.pointwise_relation Basics.impl].
-    all:cbn [execution].
-    all:repeat intro.
-    all:repeat lazymatch goal with
-               | H: _ /\ _ |- _ => destruct H
-               | H: exists _, _ |- _ => destruct H
-               | |- map.same_domain ?x ?x => apply Properties.map.same_domain_refl
-               |  |- ?x = ?x /\ _ => split; [ reflexivity | ]
-               | _ => progress subst
-               end.
-    all:eauto.
-  Qed.
-
-  Global Instance ok : Semantics.parameters_ok semantics_parameters.
-  Proof.
-    split; cbv [env locals mem semantics_parameters]; try exact _.
-    { cbv; auto. }
+    { left; exact eq_refl. }
+    { exact word_ok. }
     { exact mem_ok. }
-    { exact (SortedListString.ok _). }
-    { exact (SortedListString.ok _). }
-  Qed.
+  Defined.
 
-  (* COPY-PASTE this *)
-  Add Ring wring : (Properties.word.ring_theory (word := Semantics.word))
-        (preprocess [autorewrite with rew_word_morphism],
-         morphism (Properties.word.ring_morph (word := Semantics.word)),
-         constants [Properties.word_cst]).
 End WithParameters.

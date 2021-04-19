@@ -14,20 +14,22 @@ Require Import coqutil.Map.Interface.
 Require Import coqutil.Tactics.Tactics.
 Require Import coqutil.Tactics.letexists.
 Require Import Cava.Util.Tactics.
-Require Import Bedrock2Experiments.Aes.AesSemantics.
-Require Import Bedrock2Experiments.Aes.Aes.
-Require Import Bedrock2Experiments.Aes.Constants.
+Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.Word.
 Require Import Bedrock2Experiments.WordProperties.
+Require Import Bedrock2Experiments.Aes.AesSemantics.
+Require Import Bedrock2Experiments.Aes.Aes.
+Require Import Bedrock2Experiments.Aes.Constants.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope Z_scope.
 
 Section Proofs.
-  Context {p : parameters} {p_ok : parameters.ok p}
+  Context {p : AesSemantics.parameters} {p_ok : parameters.ok p}
           {consts : aes_constants Z} {timing : timing}.
-  Existing Instances semantics_parameters AesSemantics.ok constant_words.
   Context {consts_ok : aes_constants_ok constant_words}.
+  Existing Instance constant_words.
+  Existing Instance state_machine_parameters.
 
   (***** General-purpose lemmas/tactics and setup *****)
 
@@ -38,9 +40,10 @@ Section Proofs.
 
   Existing Instance constant_names | 10.
 
-  Lemma interact_mmio call action binds arges t m l (post : trace -> mem -> locals -> Prop) args :
+  Lemma interact_mmio call action binds arges t m l
+        (post : trace -> mem -> locals -> Prop) (args : list Semantics.word) :
     dexprs m l arges args ->
-    (forall s s' rets,
+    (forall s s' (rets : list Semantics.word),
         execution t s ->
         step action s args rets s' ->
         (exists l0 : locals,
@@ -63,8 +66,10 @@ Section Proofs.
     | H : step _ _ _ _ _ |- _ => inversion H; clear H; subst
     end.
 
-  Hint Extern 4 (step _ ?s _ _ _) => eapply (ReadStep s) : step.
-  Hint Extern 4 (step _ ?s _ _ _) => eapply (WriteStep s) : step.
+  Hint Extern 4 (step _ ?s _ _ _) =>
+  eapply (ReadStep (p:=state_machine_parameters) s) : step.
+  Hint Extern 4 (step _ ?s _ _ _) =>
+  eapply (WriteStep (p:=state_machine_parameters) s) : step.
   Hint Constructors read_step : step.
   Hint Constructors write_step : step.
 
@@ -125,13 +130,13 @@ Section Proofs.
             | |- ?x = ?x => reflexivity
             | H : is_busy (BUSY _ _ _) = false |- _ =>
               cbv [is_busy] in H; exfalso; congruence
-            | H : reg_addr _ = reg_addr _ |- _ =>
+            | H : parameters.reg_addr _ = reg_addr _ |- _ =>
               apply reg_addr_unique in H; subst
             | H : step _ _ _ _ _ |- _ =>
               inversion H; clear H; subst
-            | H : read_step _ _ _ _ |- _ =>
+            | H : parameters.read_step _ _ _ _ |- _ =>
               inversion H; clear H; subst
-            | H : write_step _ _ _ _ |- _ =>
+            | H : parameters.write_step _ _ _ _ |- _ =>
               inversion H; clear H; subst
             | _ => first [ invert_bool
                         | progress cbn [status_matches_state
@@ -140,18 +145,11 @@ Section Proofs.
             end; try congruence).
   Qed.
 
-  Local Ltac infer :=
+  Local Ltac infer_states_equal :=
     repeat match goal with
-           | H : reg_addr _ _ |- _ => invert_nobranch H
-           | H : read_step _ _ _ _ |- _ => invert_nobranch H
-           | H : write_step _ _ _ _ |- _ => invert_nobranch H
-           | H : execution _ (DONE _) |- _ => invert_nobranch H; destruct_products
-           | H : step _ _ _ _ (DONE _) |- _ => invert_nobranch H
            | H1 : execution ?t _, H2 : execution ?t _ |- _ =>
              pose proof execution_unique _ _ _ H1 H2; subst;
              clear H2; one_goal_or_solved ltac:(try congruence)
-           | H : BUSY _ _ = BUSY _ _ |- _ => invert_nobranch H
-           | H : ?x = ?x |- _ => clear H
            end.
 
   Lemma execution_step action args rets t s s':
@@ -163,13 +161,13 @@ Section Proofs.
   Local Notation aes_mode_t := (enum_member aes_mode) (only parsing).
   Local Notation aes_key_len_t := (enum_member aes_key_len) (only parsing).
 
-  Definition ctrl_operation (ctrl : Semantics.word) : bool :=
+  Definition ctrl_operation (ctrl : parameters.word) : bool :=
     is_flag_set ctrl AES_CTRL_OPERATION.
-  Definition ctrl_mode (ctrl : Semantics.word) : Semantics.word :=
+  Definition ctrl_mode (ctrl : parameters.word) : parameters.word :=
     select_bits ctrl AES_CTRL_MODE_OFFSET AES_CTRL_MODE_MASK.
-  Definition ctrl_key_len (ctrl : Semantics.word) : Semantics.word :=
+  Definition ctrl_key_len (ctrl : parameters.word) : parameters.word :=
     select_bits ctrl AES_CTRL_KEY_LEN_OFFSET AES_CTRL_KEY_LEN_MASK.
-  Definition ctrl_manual_operation (ctrl : Semantics.word) : bool :=
+  Definition ctrl_manual_operation (ctrl : parameters.word) : bool :=
     is_flag_set ctrl AES_CTRL_MANUAL_OPERATION.
 
   (***** Proofs for specific functions *****)
@@ -210,6 +208,9 @@ Section Proofs.
                 (* ...and there is no output *)
                 /\ rets = []).
 
+  (* prevent [inversion] from exposing word.of_Z in constants *)
+  Opaque constant_words.
+
   Lemma aes_init_correct :
     program_logic_goal_for_function! aes_init.
   Proof.
@@ -217,7 +218,8 @@ Section Proofs.
     repeat straightline.
 
     (* write CTRL *)
-    interaction. repeat straightline.
+    interaction.
+    repeat straightline.
 
     (* done; prove postcondition *)
     ssplit; auto; [ ].
@@ -236,10 +238,25 @@ Section Proofs.
                pose proof has_size_pos _ _ H
            end.
 
+    (* infer information from the last step *)
+    infer_states_equal.
+    cbn [parameters.write_step state_machine_parameters] in *.
+    lazymatch goal with
+    | H : write_step _ ?r ?v _ |- _ =>
+      inversion H; subst
+    end; [ ].
+
+    (* make sure implicit types all agree *)
+    change Semantics.word with parameters.word in *.
+    change Semantics.width with 32 in *.
+    change Semantics.word_ok with parameters.word_ok in *.
+
     (* split cases *)
     eexists; ssplit.
-    { infer. eapply execution_step; eauto with step. }
-    { cbv [ctrl_operation].
+    { (* prove that the execution trace is OK *)
+      eapply execution_step; eauto with step. }
+    { (* prove that the "operation" flag is correct *)
+      cbv [ctrl_operation]. clear H11.
       rewrite !is_flag_set_or_shiftl_low by lia.
       apply is_flag_set_shift; eauto using size1_boolean.
       lia. }
