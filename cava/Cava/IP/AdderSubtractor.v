@@ -81,18 +81,21 @@ Section WithCava.
            Comb (fun '(c, (cs, a)) => cs <- Vec.cons c cs;; ret (cs, a))
        end.
 
-  Definition c_addsub_0 := 
-    (Comb (fun asdf => x <- Vec.map2 (fun '(a,b) => Vec.map_literal ret [a;b]%vector) asdf;;
-        ret (x, defaultSignal)))
-    >==>
-    pipeline (n:=7) (Comb (fun '(xy,cin) =>
-    x <- indexConst xy 0 (sz:=2);;
-    y <- indexConst xy 1 (sz:=2);;
-    fullAdder (cin, (x,y))))
-    >==>
-    (Comb (fun '(vs,v) => Vec.cons v vs))
-    .
-  Print c_addsub_0.
+  Definition c_addsub_0
+    : Circuit (signal (Vec Bit 8) * signal (Vec Bit 8)) (signal (Vec Bit 9))
+    := Comb (fun inp =>
+         zipped <- Vec.map2
+                     (fun '(a,b) => Vec.map_literal ret [a;b]%vector)
+                     inp ;;
+         ret (zipped, defaultSignal))
+       >==>
+       pipeline (Comb (fun '(xy,cin) =>
+         x <- indexConst xy 0 ;;
+         y <- indexConst xy 1 ;;
+         fullAdder (cin, (x,y))))
+       >==>
+       Comb (fun '(vs,v) => Vec.cons v vs)
+       .
 
   (*
     Definition c_addsub_0 (input : signal (Vec Bit 8) * signal (Vec Bit 8))
