@@ -15,14 +15,91 @@
 (****************************************************************************)
 
 Require Import Cava.Cava.
+Import Circuit.Notations.
 
 Section WithCava.
-  Context `{semantics:Cava}.
+  Context {signal} {semantics:Cava signal}.
 
-  Definition c_addsub_0 (input : signal (Vec Bit 8) * signal (Vec Bit 8))
-    : cava (signal (Vec Bit 9))
-    := let '(x,y) := input in
-       '(sum, carry) <- addC (x,y,zero) ;;
-       Vec.shiftin carry sum.
+(* PIPELINE
+                                  a
+                                  ^
+                                  |
+         -----      -----       -----
+        |     |    |     |     |     |
+   b -->|Delay|--->|Delay|---->|  r  |----> c
+        |     |    |     |     |     |
+         -----      -----       -----
+                                 ^
+                                 |
+                      +--- a ----+
+                      ^
+                      |
+         -----      -----       -----
+        |     |    |     |     |     |
+   b -->|Delay|--->|  r  |---->|Delay|----> c
+        |     |    |     |     |     |
+         -----      -----       -----
+                      ^
+                      |
+          +---- a ----+
+          ^
+          |
+        -----       -----        -----
+       |     |     |     |      |     |
+   b ->|  r  |---->|Delay|----->|Delay|---> c
+       |     |     |     |      |     |
+        -----       -----        -----
+          ^
+          |
+          a
+ *)
+
+  Definition below {A B C D E}
+    (lower : Circuit (B * A) (C * A)) (upper : Circuit (D * A) (E * A))
+    := First lower
+       >==> Comb (fun '((c, a), d) => ret (c, (d,a))) >==>
+       Second upper.
+
+  Definition delayN {A} n
+    := Vector.fold_left Compose (Delay (t:=A)) (Vector.const Delay n).
+
+  Fixpoint pipeline {A B C n} (r : Circuit (signal B * A) (signal C * A))
+    : Circuit (signal (Vec B (S n)) * A) (signal (Vec C (S n)) * A)
+    := match n with
+       | 0 => First (Comb Vec.hd)
+              >==> r >==>
+              First (Comb (fun c => Vec.const c 1))
+       | S n' =>
+           Comb (fun '(bs,a) =>
+             b <- Vec.hd bs ;;
+             bs <- Vec.tl bs ;;
+             ret ((b, a),bs))
+           >==>
+           below (r >==> First (delayN n'))
+                 (First Delay >==> pipeline r)
+           >==>
+           Comb (fun '(c, (cs, a)) => cs <- Vec.cons c cs;; ret (cs, a))
+       end.
+
+  Definition c_addsub_0 := 
+    (Comb (fun asdf => x <- Vec.map2 (fun '(a,b) => Vec.map_literal ret [a;b]%vector) asdf;;
+        ret (x, defaultSignal)))
+    >==>
+    pipeline (n:=7) (Comb (fun '(xy,cin) =>
+    x <- indexConst xy 0 (sz:=2);;
+    y <- indexConst xy 1 (sz:=2);;
+    fullAdder (cin, (x,y))))
+    >==>
+    (Comb (fun '(vs,v) => Vec.cons v vs))
+    .
+  Print c_addsub_0.
+
+  (*
+    Definition c_addsub_0 (input : signal (Vec Bit 8) * signal (Vec Bit 8))
+      : cava (signal (Vec Bit 9))
+      := let '(x,y) := input in
+      '(sum, carry) <- addC (x,y,zero) ;;
+      Vec.shiftin carry sum.
+    *)
 
 End WithCava.

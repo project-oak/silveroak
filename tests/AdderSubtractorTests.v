@@ -23,12 +23,14 @@ Definition bv_7   := N2Bv_sized 8  7.
 Definition bv_15  := N2Bv_sized 8 15.
 Definition bv_511 := N2Bv_sized 8 511.
 
+Compute simulate c_addsub_0 [(bv_5, bv_7); (bv_0,bv_0); (bv_0,bv_0); (bv_0,bv_0); (bv_0,bv_0); (bv_0,bv_0); (bv_0,bv_0); (bv_0,bv_0)].
+Compute N2Bv_sized 9 12.
 Example ex1 :
-  c_addsub_0 (bv_5, bv_7) = N2Bv_sized 9 12.
+  simulate c_addsub_0 [(bv_5, bv_7)] = [N2Bv_sized 9 12].
 Proof. trivial. Qed.
 
 Example ex2 :
-  c_addsub_0 (bv_511, bv_511) = N2Bv_sized 9 1022.
+  simulate c_addsub_0 [(bv_511, bv_511)] = N2Bv_sized 9 1022.
 Proof. trivial. Qed.
 
 Definition adderInterface
