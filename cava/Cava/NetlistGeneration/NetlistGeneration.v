@@ -299,7 +299,7 @@ Fixpoint interpCircuit {i o} (c : Circuit i o)
   end.
 
 Definition makeCircuitNetlist (intf : CircuitInterface)
-           (c : Circuit (tupled' (port_signal <$> circuitInputs intf))
-                        (tupled' (port_signal <$> circuitOutputs intf))) : CavaState :=
+           (c : Circuit (tupled' (port_signal Signal <$> circuitInputs intf))
+                        (tupled' (port_signal Signal <$> circuitOutputs intf))) : CavaState :=
                         makeNetlist intf (curry _ _ (curry_helper _ _ (interpCircuit c))).
 

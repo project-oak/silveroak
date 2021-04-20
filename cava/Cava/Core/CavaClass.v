@@ -27,13 +27,13 @@ Import FunctorNotation.
 (**** IMPORTANT: if you make changes to the API of these definitions, or add new
       ones, make sure you update the reference at docs/reference.md! ****)
 
+Definition port_signal signal port : Type := signal (port_type port).
 (* The Cava class represents circuit graphs with Coq-level inputs and
    outputs, but does not represent the IO ports of circuits. This allows
    us to define both circuit netlist interpretations for the Cava class
    as well as behavioural interpretations for attributing semantics. *)
 Class Cava (signal : SignalType -> Type) := {
   cava : Type -> Type;
-  port_signal := (fun p => signal (port_type p));
   monad :> Monad cava;
   (* Constant values. *)
   constant : bool -> signal Bit;
@@ -81,15 +81,15 @@ Class Cava (signal : SignalType -> Type) := {
   localSignal : forall {t : SignalType}, signal t -> cava (signal t);
   (* Hierarchy *)
   instantiate : forall (intf: CircuitInterface),
-                ( let inputs := port_signal <$> circuitInputs intf in
-                  let outputs := port_signal <$> circuitOutputs intf in
+                ( let inputs := port_signal signal <$> circuitInputs intf in
+                  let outputs := port_signal signal <$> circuitOutputs intf in
                   curried inputs (cava (tupled' outputs))) ->
-                 tupled' (port_signal <$> (circuitInputs intf)) ->
-                 cava (tupled' ((port_signal <$> (circuitOutputs intf))));
+                 tupled' (port_signal signal <$> (circuitInputs intf)) ->
+                 cava (tupled' ((port_signal signal <$> (circuitOutputs intf))));
   (* Instantiation of black-box components which return default values. *)
   blackBox : forall (intf: CircuitInterface),
-             tupled' (port_signal <$> (circuitInputs intf)) ->
-             cava (tupled' ((port_signal <$> (circuitOutputs intf))));
+             tupled' (port_signal signal <$> (circuitInputs intf)) ->
+             cava (tupled' ((port_signal signal <$> (circuitOutputs intf))));
 }.
 
 Require Import Cava.Util.Vector.

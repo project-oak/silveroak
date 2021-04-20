@@ -122,7 +122,7 @@ Create HintDb simpl_ident.
 Hint Rewrite @foldLM_ident_fold_left using solve [eauto] : simpl_ident.
 Ltac simpl_ident :=
   (* simplify identity monad and most projections from Cava *)
-  cbn [fst snd bind ret Monad_ident monad mcompose
+  cbn [fst snd bind ret Monad_ident monad
            constantV packV unpackV constant buf_gate
            inv and2 nand2 or2 nor2 xor2 xnor2
            lut1 lut2 lut3 lut4 lut5 lut6
