@@ -21,35 +21,38 @@ Definition bv_0   := N2Bv_sized 8  0.
 Definition bv_5   := N2Bv_sized 8  5.
 Definition bv_7   := N2Bv_sized 8  7.
 Definition bv_15  := N2Bv_sized 8 15.
-Definition bv_511 := N2Bv_sized 8 511.
+Definition bv_255 := N2Bv_sized 8 255.
 
-Compute simulate c_addsub_0 [(bv_5, bv_7); (bv_0,bv_0); (bv_0,bv_0); (bv_0,bv_0); (bv_0,bv_0); (bv_0,bv_0); (bv_0,bv_0); (bv_0,bv_0)].
-Compute N2Bv_sized 9 12.
 Example ex1 :
-  simulate c_addsub_0 [(bv_5, bv_7)] = [N2Bv_sized 9 12].
+map Bv2N (simulate c_addsub_0 ((bv_5, bv_7) :: repeat (bv_0, bv_0) 7))
+= [0%N; 0%N; 0%N; 0%N; 0%N; 0%N; 0%N; 12%N].
 Proof. trivial. Qed.
 
 Example ex2 :
-  simulate c_addsub_0 [(bv_511, bv_511)] = N2Bv_sized 9 1022.
+map Bv2N (simulate c_addsub_0 ((bv_255, bv_255) :: repeat (bv_0, bv_0) 7))
+= [0%N; 0%N; 0%N; 0%N; 0%N; 0%N; 0%N; 510%N].
 Proof. trivial. Qed.
 
 Definition adderInterface
-  := combinationalInterface "c_addsub_0"
+  := sequentialInterface "c_addsub_0"
+  (* is SSET the right reset port? *)
+     "clk" PositiveEdge "rst" PositiveEdge
      [mkPort "B" (Vec Bit 8); mkPort "A" (Vec Bit 8)]
      [mkPort "S" (Vec Bit 9)].
 
-Definition adderNetlist := makeNetlist adderInterface c_addsub_0.
+Definition adderNetlist := makeCircuitNetlist adderInterface c_addsub_0.
 
 Definition adder_tb_inputs : list (Bvector 8 * Bvector 8) :=
   [(bv_0, bv_5);
    (bv_7, bv_0);
    (bv_5, bv_7);
-   (bv_511, bv_5);
-   (bv_7, bv_511);
-   (bv_511, bv_511)].
+   (bv_255, bv_5);
+   (bv_7, bv_255);
+   (bv_255, bv_255)]
+  ++ repeat (bv_0, bv_0) 7.
 
 Definition adder_tb_expected_outputs
-  := simulate (Comb c_addsub_0) adder_tb_inputs.
+  := simulate c_addsub_0 adder_tb_inputs.
 
 Definition adder_tb
   := testBench "c_addsub_0_tb" adderInterface

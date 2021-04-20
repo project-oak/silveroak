@@ -53,6 +53,11 @@ Section WithCava.
           |
           a
  *)
+(*
+-  Pseudocode:
+   pipeline 1 (r, a, (b:bs)) = r
+   pipeline n (r, a, (b:bs)) = below (Delay >==> pipeline r a bs) (r >==> repeat (n-1) Delay)
+-*)
 
   Definition below {A B C D E}
     (lower : Circuit (B * A) (C * A)) (upper : Circuit (D * A) (E * A))
@@ -61,10 +66,10 @@ Section WithCava.
        Second upper.
 
   Definition delayN {A} n
-    := Vector.fold_left Compose (Delay (t:=A)) (Vector.const Delay n).
+    := Vector.fold_left Compose (Comb (ret (t:=signal A))) (Vector.const Delay n).
 
-  Fixpoint pipeline {A B C n} (r : Circuit (signal B * A) (signal C * A))
-    : Circuit (signal (Vec B (S n)) * A) (signal (Vec C (S n)) * A)
+  Fixpoint pipeline {A B C n} (r : Circuit (signal B * signal A) (signal C * signal A))
+    : Circuit (signal (Vec B (S n)) * signal A) (signal (Vec C (S n)) * signal A)
     := match n with
        | 0 => First (Comb Vec.hd)
               >==> r >==>
@@ -75,7 +80,7 @@ Section WithCava.
              bs <- Vec.tl bs ;;
              ret ((b, a),bs))
            >==>
-           below (r >==> First (delayN n'))
+           below (r >==> First (delayN n) >==> Second Delay)
                  (First Delay >==> pipeline r)
            >==>
            Comb (fun '(c, (cs, a)) => cs <- Vec.cons c cs;; ret (cs, a))
@@ -94,10 +99,12 @@ Section WithCava.
          y <- indexConst xy 1 ;;
          fullAdder (cin, (x,y))))
        >==>
-       Comb (fun '(vs,v) => Vec.cons v vs)
+       Comb (fun '(vs,v) => Vec.shiftin v vs)
        .
 
   (*
+  Eval cbv [pipeline below] in (fun A B C D (c : Circuit (signal (Vec B 2) * A) (signal (Vec C 2)* A)) => pipeline c (n:=1)).
+
     Definition c_addsub_0 (input : signal (Vec Bit 8) * signal (Vec Bit 8))
       : cava (signal (Vec Bit 9))
       := let '(x,y) := input in
