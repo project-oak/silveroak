@@ -14,18 +14,29 @@ Local Open Scope string_scope. Local Open Scope Z_scope. Local Open Scope list_s
 
 (* Loosely based on bedrock2/FE310CSemantics.v *)
 
-Definition unique_words
-           {width} {word: word.word width} {word_ok:word.ok word}
-           (l : list word.rep) : Prop :=
-  List.dedup word.eqb l = l.
+Section WithWord.
+  Context {width} {word : word.word width} {word_ok : word.ok word}.
 
-(* Compute sequential 32-bit register addresses given a start address and a
-   number of registers *)
-Definition list_reg_addrs {word : word.word 32}
-           (start : word.rep) (nregs : nat)
-  : list word.rep :=
-  map (fun i => word.add start (word.of_Z (Z.of_nat i * 4)))
-      (seq 0 nregs).
+  Definition unique_words (l : list word.rep) : Prop :=
+    List.dedup word.eqb l = l.
+
+  (* Compute sequential register addresses given a start address and a number of
+   registers *)
+  Definition list_reg_addrs (start : word.rep) (nregs size_in_bytes : nat)
+    : list word.rep :=
+    map (fun i => word.add start (word.of_Z (Z.of_nat i * Z.of_nat size_in_bytes)))
+        (seq 0 nregs).
+
+  Definition select_bits (w : word) (offset mask : word) : word :=
+    word.and (word.sru w offset) mask.
+
+  (* the flag is set if ((val & (1 << flag)) != 0) *)
+  Definition is_flag_set (val : word) (flag : word) : bool :=
+    word.eqb (word.and val (word.slu (word.of_Z 1) flag)) (word.of_Z 0).
+
+  Definition has_size w (n : Z) : Prop :=
+    0 <= word.unsigned w < 2 ^ n.
+End WithWord.
 
 Definition option_bind {A B} (x : option A) (f : A -> option B) : option B :=
   match x with
@@ -34,6 +45,18 @@ Definition option_bind {A B} (x : option A) (f : A -> option B) : option B :=
   end.
 Local Notation "y <- x ;; f" := (option_bind x (fun y => f))
                                   (at level 61, right associativity).
+
+Section Enum.
+  Context {width} {word : word.word width} {ok : word.ok word}.
+
+  Record enum {elts : list word} {size : Z} :=
+    { enum_size_ok :
+        Forall (fun w => has_size w size) elts;
+      enum_unique : unique_words elts;
+      enum_member (w : word) := In w elts;
+    }.
+  Global Arguments enum : clear implicits.
+End Enum.
 
 Module constants.
   Class constants T :=
@@ -59,6 +82,16 @@ Module constants.
       AES_NUM_REGS_KEY : T; (* number of key registers *)
       AES_NUM_REGS_IV : T; (* number of initialization vector registers *)
       AES_NUM_REGS_DATA : T; (* number of in/out data registers *)
+
+      (* Enum option definitions from aes.h *)
+      kAesEnc : T;
+      kAesDec : T;
+      kAesEcb : T;
+      kAesCbc : T;
+      kAesCtr : T;
+      kAes128 : T;
+      kAes192 : T;
+      kAes256 : T;
     }.
 
   Definition constant_vars
@@ -83,6 +116,47 @@ Module constants.
        AES_NUM_REGS_KEY := expr.var AES_NUM_REGS_KEY;
        AES_NUM_REGS_IV := expr.var AES_NUM_REGS_IV;
        AES_NUM_REGS_DATA := expr.var AES_NUM_REGS_DATA;
+       kAesEnc := expr.var kAesEnc;
+       kAesDec := expr.var kAesDec;
+       kAesEcb := expr.var kAesEcb;
+       kAesCbc := expr.var kAesCbc;
+       kAesCtr := expr.var kAesCtr;
+       kAes128 := expr.var kAes128;
+       kAes192 := expr.var kAes192;
+       kAes256 := expr.var kAes256;
+    |}.
+
+  Definition constant_words
+           {width} {word : word width} {word_ok : word.ok word}
+           {vals : constants Z}
+    : constants word :=
+    {| AES_KEY0 := word.of_Z AES_KEY0;
+       AES_IV0 := word.of_Z AES_IV0;
+       AES_DATA_IN0 := word.of_Z AES_DATA_IN0;
+       AES_DATA_OUT0 := word.of_Z AES_DATA_OUT0;
+       AES_CTRL := word.of_Z AES_CTRL;
+       AES_CTRL_OPERATION := word.of_Z AES_CTRL_OPERATION;
+       AES_CTRL_MODE_MASK := word.of_Z AES_CTRL_MODE_MASK;
+       AES_CTRL_MODE_OFFSET := word.of_Z AES_CTRL_MODE_OFFSET;
+       AES_CTRL_KEY_LEN_MASK := word.of_Z AES_CTRL_KEY_LEN_MASK;
+       AES_CTRL_KEY_LEN_OFFSET := word.of_Z AES_CTRL_KEY_LEN_OFFSET;
+       AES_CTRL_MANUAL_OPERATION := word.of_Z AES_CTRL_MANUAL_OPERATION;
+       AES_STATUS := word.of_Z AES_STATUS;
+       AES_STATUS_IDLE := word.of_Z AES_STATUS_IDLE;
+       AES_STATUS_STALL := word.of_Z AES_STATUS_STALL;
+       AES_STATUS_OUTPUT_VALID := word.of_Z AES_STATUS_OUTPUT_VALID;
+       AES_STATUS_INPUT_READY := word.of_Z AES_STATUS_INPUT_READY;
+       AES_NUM_REGS_KEY := word.of_Z AES_NUM_REGS_KEY;
+       AES_NUM_REGS_IV := word.of_Z AES_NUM_REGS_IV;
+       AES_NUM_REGS_DATA := word.of_Z AES_NUM_REGS_DATA;
+       kAesEnc := word.of_Z kAesEnc;
+       kAesDec := word.of_Z kAesDec;
+       kAesEcb := word.of_Z kAesEcb;
+       kAesCbc := word.of_Z kAesCbc;
+       kAesCtr := word.of_Z kAesCtr;
+       kAes128 := word.of_Z kAes128;
+       kAes192 := word.of_Z kAes192;
+       kAes256 := word.of_Z kAes256;
     |}.
 
   Definition constant_names : constants string :=
@@ -105,6 +179,14 @@ Module constants.
        AES_NUM_REGS_KEY := "AES_NUM_REGS_KEY";
        AES_NUM_REGS_IV := "AES_NUM_REGS_IV";
        AES_NUM_REGS_DATA := "AES_NUM_REGS_DATA";
+       kAesEnc := "kAesEnc";
+       kAesDec := "kAesDec";
+       kAesEcb := "kAesEcb";
+       kAesCbc := "kAesCbc";
+       kAesCtr := "kAesCtr";
+       kAes128 := "kAes128";
+       kAes192 := "kAes192";
+       kAes256 := "kAes256";
     |}.
 
   Definition globals {T} {consts : constants T} : list T :=
@@ -127,24 +209,29 @@ Module constants.
       ; AES_NUM_REGS_KEY
       ; AES_NUM_REGS_IV
       ; AES_NUM_REGS_DATA
+      ; kAesEnc
+      ; kAesDec
+      ; kAesEcb
+      ; kAesCbc
+      ; kAesCtr
+      ; kAes128
+      ; kAes192
+      ; kAes256
     ].
 
-  Definition all_reg_addrs {word : word.word 32}
+  Definition all_reg_addrs {width} {word : word.word width}
              {global_values : constants word.rep}
     : list word.rep :=
     AES_CTRL :: AES_STATUS ::
-    (list_reg_addrs AES_KEY0 (Z.to_nat (word.unsigned AES_NUM_REGS_KEY)))
-      ++ (list_reg_addrs AES_IV0 (Z.to_nat (word.unsigned AES_NUM_REGS_IV)))
-      ++ (list_reg_addrs AES_DATA_IN0 (Z.to_nat (word.unsigned AES_NUM_REGS_DATA)))
-      ++ (list_reg_addrs AES_DATA_OUT0 (Z.to_nat (word.unsigned AES_NUM_REGS_DATA))).
+    (list_reg_addrs AES_KEY0 (Z.to_nat (word.unsigned AES_NUM_REGS_KEY)) 4)
+      ++ (list_reg_addrs AES_IV0 (Z.to_nat (word.unsigned AES_NUM_REGS_IV)) 4)
+      ++ (list_reg_addrs AES_DATA_IN0 (Z.to_nat (word.unsigned AES_NUM_REGS_DATA)) 4)
+      ++ (list_reg_addrs AES_DATA_OUT0 (Z.to_nat (word.unsigned AES_NUM_REGS_DATA)) 4).
 
   Class ok
-        {word : word.word 32} {word_ok : word.ok word}
-        (global_values : constants word.rep) :=
+        {p : Semantics.parameters} {p_ok : Semantics.parameters_ok p}
+        (global_values : constants Semantics.word) :=
     { addrs_unique : unique_words all_reg_addrs;
-      nregs_key_eq : word.unsigned AES_NUM_REGS_KEY = 8;
-      nregs_iv_eq : word.unsigned AES_NUM_REGS_IV = 4;
-      nregs_data_eq : word.unsigned AES_NUM_REGS_DATA = 4;
       status_flags_unique_and_nonzero :
         unique_words
           ((word.of_Z 0)
@@ -153,6 +240,36 @@ Module constants.
                      ; AES_STATUS_STALL
                      ; AES_STATUS_OUTPUT_VALID
                      ; AES_STATUS_INPUT_READY]));
+
+      (* control register needs to be properly formatted *)
+      op_size := 1;
+      mode_offset_ok :
+        op_size <= word.unsigned AES_CTRL_MODE_OFFSET;
+      mode_size : Z;
+      key_len_offset_ok :
+        word.unsigned AES_CTRL_MODE_OFFSET + mode_size
+        <= word.unsigned AES_CTRL_KEY_LEN_OFFSET;
+      key_len_size : Z;
+      manual_operation_ok :
+        word.unsigned AES_CTRL_KEY_LEN_OFFSET + key_len_size
+        <= word.unsigned AES_CTRL_MANUAL_OPERATION < width;
+
+      (* Some constants are required to have certain values *)
+      nregs_key_eq : word.unsigned AES_NUM_REGS_KEY = 8;
+      nregs_iv_eq : word.unsigned AES_NUM_REGS_IV = 4;
+      nregs_data_eq : word.unsigned AES_NUM_REGS_DATA = 4;
+      kAesEnc_eq : word.unsigned kAesEnc = 0;
+      kAesDec_eq : word.unsigned kAesDec = 1;
+      operation_eq : word.unsigned AES_CTRL_OPERATION = 0;
+      mode_mask_eq :
+        word.unsigned AES_CTRL_MODE_MASK = Z.ones mode_size;
+      key_len_mask_eq :
+        word.unsigned AES_CTRL_KEY_LEN_MASK = Z.ones key_len_size;
+
+      (* Enum definitions *)
+      aes_op : enum [kAesEnc; kAesDec] op_size;
+      aes_mode : enum [kAesEcb; kAesCbc; kAesCtr] mode_size;
+      aes_key_len : enum [kAes128; kAes192; kAes256] key_len_size;
     }.
 End constants.
 Notation constants := constants.constants.
@@ -172,15 +289,16 @@ Module parameters.
       regs :> Interface.map.map word.rep word.rep; (* register values *)
       (* TODO: mode is currently ignored *)
       aes_spec :
-        forall (key : word * word * word * word * word * word * word * word)
+        forall (is_decrypt : bool)
+          (key : word * word * word * word * word * word * word * word)
           (iv data : word * word * word * word),
           word * word * word * word
     }.
 
   Class ok (p : parameters) :=
-    { word_ok :> word.ok word; (* for impl of mem below *)
-      mem_ok :> Interface.map.ok mem; (* for impl of mem below *)
-      regs_ok :> Interface.map.ok regs;
+    { word_ok : word.ok word; (* for impl of mem below *)
+      mem_ok : Interface.map.ok mem; (* for impl of mem below *)
+      regs_ok : Interface.map.ok regs;
     }.
 End parameters.
 Notation parameters := parameters.parameters.
@@ -191,7 +309,9 @@ Definition WRITE := "REG32_SET".
 Section WithParameters.
   Import constants parameters.
   Context {p : parameters} {p_ok : parameters.ok p}.
-  Context {consts : constants word.rep} {timing : timing}.
+  Context {consts : constants Z} {timing : timing}.
+  Existing Instances word_ok.
+  Existing Instance constant_words.
 
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
   Local Notation bedrock2_trace := (list bedrock2_event).
@@ -221,17 +341,6 @@ Section WithParameters.
   | DATA_OUT3
   .
 
-  (* define reg_addr : Register -> word
-
-     for reg_lookup : rs[reg_addr]
-
-     in step : forall addr r, reg_addr r = addr
-     in proofs: reg_addr ?r = <some addr expression>
-
-     prove a proof for each reg and add them as hints to reg_addrs (or even step)
-
-
- *)
   Definition reg_addr (r : Register) : word :=
     match r with
     | CTRL => AES_CTRL
@@ -280,10 +389,6 @@ Section WithParameters.
   (* TODO: add CLEAR state for aes_clear *)
   .
 
-  (* the flag is set if ((val & (1 << flag)) != 0) *)
-  Definition is_flag_set (val : word) (flag : word) : bool :=
-    word.eqb (word.and val (word.slu (word.of_Z 1) flag)) (word.of_Z 0).
-
   (* Flags: IDLE, STALL, OUTPUT_VALID, INPUT_READY *)
   Definition status_matches_state (s : state) (status : word) : bool :=
     match s with
@@ -310,6 +415,7 @@ Section WithParameters.
     end.
 
   Definition aes_expected_output (rs : known_register_state) : option aes_output :=
+    ctrl <- reg_lookup rs CTRL ;;
     key0 <- reg_lookup rs KEY0 ;;
     key1 <- reg_lookup rs KEY1 ;;
     key2 <- reg_lookup rs KEY2 ;;
@@ -326,8 +432,10 @@ Section WithParameters.
     data_in1 <- reg_lookup rs DATA_IN1 ;;
     data_in2 <- reg_lookup rs DATA_IN2 ;;
     data_in3 <- reg_lookup rs DATA_IN3 ;;
+    let is_decrypt := is_flag_set ctrl AES_CTRL_OPERATION in
     let '(out0, out1, out2, out3) :=
-        aes_spec (key0, key1, key2, key3, key4, key5, key6, key7)
+        aes_spec is_decrypt
+                 (key0, key1, key2, key3, key4, key5, key6, key7)
                  (iv0, iv1, iv2, iv3)
                  (data_in0, data_in1, data_in2, data_in3) in
     Some {| data_out0 := out0 ;
@@ -441,6 +549,10 @@ Section WithParameters.
       forall rs val,
         rs = map.put map.empty AES_CTRL val ->
         write_step UNINITIALIZED CTRL val (IDLE rs)
+  | WriteChangeCtrl :
+      forall rs val,
+        write_step (IDLE rs) CTRL val
+                   (IDLE (map.put rs AES_CTRL val))
   | WriteInput :
       forall rs rs' r val,
         is_input_reg r = true ->
@@ -449,10 +561,6 @@ Section WithParameters.
         aes_expected_output rs' = None ->
         write_step (IDLE rs) r val (IDLE rs')
   (* TODO: add the below rules?
-  | WriteChangeCtrl :
-      forall rs val,
-        write_step (IDLE rs) CTRL val
-                   (IDLE (map.put rs AES_CTRL val))
   | WriteChangeInput :
       forall rs r old_val val n,
         is_input_reg rs r ->
@@ -534,6 +642,7 @@ Section WithParameters.
   Proof.
     split; cbv [env locals mem semantics_parameters]; try exact _.
     { cbv; auto. }
+    { exact mem_ok. }
     { exact (SortedListString.ok _). }
     { exact (SortedListString.ok _). }
   Qed.
