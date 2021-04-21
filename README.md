@@ -69,6 +69,12 @@ To remove all automatically generated files:
 $ make clean
 ```
 
+## Updating to a new Coq version
+
+If you have updated your installation of Coq, please make sure to clean the built files
+by running `make cleanall` from the project root, or `make clean` within the
+`third_party` directory.
+
 ## Cava Examples
 See [Cava Examples](https://github.com/project-oak/silveroak/blob/main/examples/README.md) for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.
 
