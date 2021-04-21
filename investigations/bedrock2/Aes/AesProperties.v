@@ -185,17 +185,6 @@ Section Proofs.
                  | progress invert_write_step_nobranch
                  | progress invert_step ].
 
-  (* Remove [execution] hypotheses that are superceded by later ones; improves
-     proof performance *)
-  (* Warning: be careful not to remove useful information with this tactic! *)
-  Local Ltac clear_old_executions :=
-    (* first call [infer] to help guard against losing information *)
-    infer;
-    repeat lazymatch goal with
-           | H1 : execution ?t _, H2 : execution (_ :: ?t) _ |- _ =>
-             clear H1
-           end.
-
   Local Notation aes_op_t := (enum_member aes_op) (only parsing).
   Local Notation aes_mode_t := (enum_member aes_mode) (only parsing).
   Local Notation aes_key_len_t := (enum_member aes_key_len) (only parsing).
@@ -213,6 +202,128 @@ Section Proofs.
   Local Opaque constant_words.
 
   (***** Proofs for specific functions *****)
+
+  Instance spec_of_aes_data_ready : spec_of aes_data_ready :=
+    fun function_env =>
+      forall (tr : trace) (m : mem) (R : _ -> Prop) (s : state),
+        (* no special requirements of the memory *)
+        R m ->
+        (* no constraints on current state *)
+        execution tr s ->
+        let args := [] in
+        call function_env aes_data_ready tr m (aes_globals ++ args)
+             (fun tr' m' rets =>
+                exists (status out : Semantics.word) (s' : state),
+                  (* trace has exactly one new read value *)
+                  tr' = (map.empty, READ, [AES_STATUS],(map.empty,[status])) :: tr
+                  (* ...and there is a new state matching the new trace *)
+                  /\ execution tr' s'
+                  (* ...and all the same properties as before hold on the memory *)
+                  /\ R m'
+                  (* ...and there is one output value *)
+                  /\ rets = [out]
+                  (* ...and the output value is zero if and only if the
+                     input_ready flag is unset *)
+                  /\ word.eqb out (word.of_Z 0)
+                    = negb (is_flag_set status AES_STATUS_INPUT_READY)).
+
+  Lemma aes_data_ready_correct :
+    program_logic_goal_for_function! aes_data_ready.
+  Proof.
+    (* initial processing *)
+    repeat straightline.
+
+    (* read STATUS *)
+    interaction_with_reg STATUS.
+    repeat straightline.
+
+    (* done; prove postcondition *)
+    do 3 eexists. ssplit; eauto; [ ].
+    subst_lets. cbv [is_flag_set].
+    boolsimpl. reflexivity.
+  Qed.
+
+  Instance spec_of_aes_data_valid : spec_of aes_data_valid :=
+    fun function_env =>
+      forall (tr : trace) (m : mem) (R : _ -> Prop) (s : state),
+        (* no special requirements of the memory *)
+        R m ->
+        (* no constraints on current state *)
+        execution tr s ->
+        let args := [] in
+        call function_env aes_data_valid tr m (aes_globals ++ args)
+             (fun tr' m' rets =>
+                exists (status out : Semantics.word) (s' : state),
+                  (* trace has exactly one new read value *)
+                  tr' = (map.empty, READ, [AES_STATUS],(map.empty,[status])) :: tr
+                  (* ...and there is a new state matching the new trace *)
+                  /\ execution tr' s'
+                  (* ...and all the same properties as before hold on the memory *)
+                  /\ R m'
+                  (* ...and there is one output value *)
+                  /\ rets = [out]
+                  (* ...and the output value is zero if and only if the
+                     output_valid flag is unset *)
+                  /\ word.eqb out (word.of_Z 0)
+                    = negb (is_flag_set status AES_STATUS_OUTPUT_VALID)).
+
+
+  Lemma aes_data_valid_correct :
+    program_logic_goal_for_function! aes_data_valid.
+  Proof.
+    (* initial processing *)
+    repeat straightline.
+
+    (* read STATUS *)
+    interaction_with_reg STATUS.
+    repeat straightline.
+
+    (* done; prove postcondition *)
+    do 3 eexists. ssplit; eauto; [ ].
+    subst_lets. cbv [is_flag_set].
+    boolsimpl. reflexivity.
+  Qed.
+
+  Instance spec_of_aes_idle : spec_of aes_idle :=
+    fun function_env =>
+      forall (tr : trace) (m : mem) (R : _ -> Prop) (s : state),
+        (* no special requirements of the memory *)
+        R m ->
+        (* no constraints on current state *)
+        execution tr s ->
+        let args := [] in
+        call function_env aes_idle tr m (aes_globals ++ args)
+             (fun tr' m' rets =>
+                exists (status out : Semantics.word) (s' : state),
+                  (* trace has exactly one new read value *)
+                  tr' = (map.empty, READ, [AES_STATUS],(map.empty,[status])) :: tr
+                  (* ...and there is a new state matching the new trace *)
+                  /\ execution tr' s'
+                  (* ...and all the same properties as before hold on the memory *)
+                  /\ R m'
+                  (* ...and there is one output value *)
+                  /\ rets = [out]
+                  (* ...and the output value is zero if and only if the idle
+                     flag is unset *)
+                  /\ word.eqb out (word.of_Z 0)
+                    = negb (is_flag_set status AES_STATUS_IDLE)).
+
+
+  Lemma aes_idle_correct :
+    program_logic_goal_for_function! aes_idle.
+  Proof.
+    (* initial processing *)
+    repeat straightline.
+
+    (* read STATUS *)
+    interaction_with_reg STATUS.
+    repeat straightline.
+
+    (* done; prove postcondition *)
+    do 3 eexists. ssplit; eauto; [ ].
+    subst_lets. cbv [is_flag_set].
+    boolsimpl. reflexivity.
+  Qed.
 
   Instance spec_of_aes_init : spec_of aes_init :=
     fun function_env =>
@@ -240,11 +351,11 @@ Section Proofs.
                 (exists ctrl,
                     execution tr' (IDLE (map.put (map:=parameters.regs)
                                                  map.empty AES_CTRL ctrl))
-                    /\ ctrl_operation ctrl = word.eqb aes_cfg_operation (word.of_Z 0)
+                    /\ ctrl_operation ctrl = negb (word.eqb aes_cfg_operation (word.of_Z 0))
                     /\ ctrl_mode ctrl = aes_cfg_mode
                     /\ ctrl_key_len ctrl = aes_cfg_key_len
                     /\ ctrl_manual_operation ctrl
-                      = word.eqb aes_cfg_manual_operation (word.of_Z 0))
+                      = negb (word.eqb aes_cfg_manual_operation (word.of_Z 0)))
                 (* ...and the same properties as before hold on the memory *)
                 /\ R m'
                 (* ...and there is no output *)

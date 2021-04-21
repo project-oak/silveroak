@@ -29,7 +29,7 @@ Section WithWord.
 
   (* the flag is set if ((val & (1 << flag)) != 0) *)
   Definition is_flag_set (val : word) (flag : word) : bool :=
-    word.eqb (word.and val (word.slu (word.of_Z 1) flag)) (word.of_Z 0).
+    negb (word.eqb (word.and val (word.slu (word.of_Z 1) flag)) (word.of_Z 0)).
 
   Definition has_size w (n : Z) : Prop :=
     0 <= word.unsigned w < 2 ^ n.
