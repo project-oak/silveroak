@@ -163,9 +163,6 @@ Record CavaState : Type := mkCavaState {
                    (* Dependent modules of the root module. *)
 }.
 
-(* Only used in the Haskell back end *)
-Definition incN (n: N) : N := n + 1.
-
 Definition newWire : state CavaState (Signal Bit) :=
   cs <- get;;
   match cs with
@@ -402,7 +399,15 @@ Definition wireUpCircuit
   o <- instantiateInputPorts (circuitInputs intf) circuit ;;
   instantiateOutputPorts _ (unbalance' _ o).
 
-Definition makeNetlist (intf : CircuitInterface) circuit : CavaState
+Definition makeNetlist (intf : CircuitInterface) circuit : CavaState :=
+  let inputs := port_netlistsignal <$> (circuitInputs intf) in
+  let outputs := tupled' (port_netlistsignal <$> (circuitOutputs intf)) in
+  execState (wireUpCircuit intf (curry inputs _ (uncurried_to_uncurriedR _ _ circuit))) initState.
+
+Check makeNetlist.
+
+                        (* makeNetlist intf (curry _ _ (curry_helper _ _ (interpCircuit c))). *)
+Definition makeNetlist' (intf : CircuitInterface) circuit : CavaState
   := execState (wireUpCircuit intf circuit) initState.
 
 (* driveArguments produces a list of pairs where each element is a name and
@@ -502,3 +507,8 @@ Definition testBench (name : string)
   mkTestBench name intf
     (map (tupleToSignalExprR (circuitInputs intf)) inputs)
     (map (tupleToSignalExprR (circuitOutputs intf)) outputs).
+
+
+(* Haskell helper functions *)
+Definition incN (n: N) : N := n + 1.
+

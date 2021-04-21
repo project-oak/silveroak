@@ -42,12 +42,11 @@ Fixpoint tupledR (l : list Type) : Type :=
   | x :: xs => x * tupledR xs
   end.
 
-Definition uncurried' (l: list Type) ret: Type :=
+Definition uncurriedR (l: list Type) ret: Type :=
   tupledR l -> ret.
-  (* match l with *)
-  (* | [] => ret *)
-  (* | x::xs => uncurried xs x ret *)
-  (* end. *)
+
+Definition uncurried (l: list Type) ret: Type :=
+  tupled' l -> ret.
 
 Fixpoint unbalance (ts: list Type) {accumT : Type}
   : tupled ts accumT -> accumT * tupledR ts :=
@@ -80,21 +79,31 @@ Definition rebalance' (ts : list Type)
   | x::xs => fun ab => rebalance xs (fst ab) (snd ab)
   end.
 
-Fixpoint curry (l : list Type) ret {struct l}: uncurried' l ret -> curried l ret :=
+Fixpoint curry (l : list Type) ret {struct l}: uncurriedR l ret -> curried l ret :=
   match l with
   | [] => fun f => f tt
   | X :: XS => fun f x =>
       curry XS ret (fun txs => f (x, txs))
   end.
 
-Fixpoint curry_helper l ret {struct l}: (tupled' l -> ret) -> uncurried' l ret :=
+Fixpoint curry_helper l ret {struct l}: (tupled' l -> ret) -> uncurriedR l ret :=
   match l with
   | [] => fun f => f
   | X::XS => fun f '(y,ys) => f (rebalance XS y ys)
   end.
 
-Fixpoint uncurry (l : list Type) ret {struct l}: curried l ret -> uncurried' l ret :=
+Fixpoint uncurry (l : list Type) ret {struct l}: curried l ret -> uncurriedR l ret :=
   match l with
   | [] => fun f _ => f
   | X :: XS => fun f '(y,ys) => uncurry XS ret (f y) ys
   end.
+
+Definition uncurriedR_to_uncurried l ret (f: uncurriedR l ret): uncurried l ret :=
+  fun x => f (unbalance' l x).
+
+Definition uncurried_to_uncurriedR l ret: uncurried l ret -> uncurriedR l ret :=
+  match l with
+  | [] => fun f _ => f tt
+  | X::XS => fun f '((x,xs):tupledR (X::XS)) => f (rebalance XS x xs)
+  end.
+

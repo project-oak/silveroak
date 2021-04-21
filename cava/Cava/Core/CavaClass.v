@@ -81,11 +81,10 @@ Class Cava (signal : SignalType -> Type) := {
   localSignal : forall {t : SignalType}, signal t -> cava (signal t);
   (* Hierarchy *)
   instantiate : forall (intf: CircuitInterface),
-                ( let inputs := port_signal signal <$> circuitInputs intf in
-                  let outputs := port_signal signal <$> circuitOutputs intf in
-                  curried inputs (cava (tupled' outputs))) ->
-                 tupled' (port_signal signal <$> (circuitInputs intf)) ->
-                 cava (tupled' ((port_signal signal <$> (circuitOutputs intf))));
+                let inputs := map (port_signal signal) (circuitInputs intf) in
+                let outputs := map (port_signal signal) (circuitOutputs intf) in
+                curried inputs (cava (tupled' outputs)) ->
+                 tupled' inputs -> cava (tupled' outputs);
   (* Instantiation of black-box components which return default values. *)
   blackBox : forall (intf: CircuitInterface),
              tupled' (port_signal signal <$> (circuitInputs intf)) ->

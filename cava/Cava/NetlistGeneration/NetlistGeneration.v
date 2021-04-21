@@ -258,11 +258,9 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
       localSignalNet (@GreaterThanOrEqual m n (fst ab) (snd ab));
     localSignal := @localSignalNet;
     instantiate intf circuit a :=
-      let cs := makeNetlist intf circuit in
+      let cs := makeNetlist' intf circuit in
       addModule intf (module cs) ;;
       blackBoxNet intf a;
-
-    (* instantiateNet; *)
     blackBox := blackBoxNet;
 }.
 
@@ -301,5 +299,5 @@ Fixpoint interpCircuit {i o} (c : Circuit i o)
 Definition makeCircuitNetlist (intf : CircuitInterface)
            (c : Circuit (tupled' (port_signal Signal <$> circuitInputs intf))
                         (tupled' (port_signal Signal <$> circuitOutputs intf))) : CavaState :=
-                        makeNetlist intf (curry _ _ (curry_helper _ _ (interpCircuit c))).
+                        makeNetlist intf (interpCircuit c).
 
