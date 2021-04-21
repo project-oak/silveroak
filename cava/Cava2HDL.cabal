@@ -60,6 +60,7 @@ library
                      Identity
                      List
                      List0
+                     List1
                      Logic
                      Monad
                      MonadState
@@ -72,6 +73,7 @@ library
                      Signal
                      Simulation
                      StateMonad
+                     Tuple
                      Traversable
                      Vec
                      VectorDef
@@ -81,14 +83,17 @@ library
                      TestBench
                      SystemVerilogUtils
 
-  other-Modules:     BinPos
+  other-Modules:     Ascii
+                     Basics
                      BinNatDef
-                     ByteVector
+                     BinPos
                      Byte
+                     ByteVector
                      Decimal
+                     EquivDec
+                     Fin
                      Hexadecimal
-                     Number
-                     Specif
+                     Injection
                      MonadExc
                      MonadFix
                      MonadPlus
@@ -97,10 +102,11 @@ library
                      MonadWriter
                      MonadZero
                      Monoid
-                     Fin
+                     Number
+                     Option
                      Plus
-                     Ascii
-                     Basics
+                     RelDec
+                     Specif
                      String
 
   default-language:  Haskell2010
