@@ -275,6 +275,17 @@ Section Proofs.
                  | progress invert_write_step_nobranch
                  | progress invert_step ].
 
+  (* Remove [execution] hypotheses that are superceded by later ones; improves
+     proof performance *)
+  (* Warning: be careful not to remove useful information with this tactic! *)
+  Local Ltac clear_old_executions :=
+    (* first call [infer] to help guard against losing information *)
+    infer;
+    repeat lazymatch goal with
+           | H1 : execution ?t _, H2 : execution (_ :: ?t) _ |- _ =>
+             clear H1
+           end.
+
   Local Notation aes_op_t := (enum_member aes_op) (only parsing).
   Local Notation aes_mode_t := (enum_member aes_mode) (only parsing).
   Local Notation aes_key_len_t := (enum_member aes_key_len) (only parsing).
@@ -490,35 +501,43 @@ Section Proofs.
 
       (* i = 0 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY0. infer; subst.
+      interaction_with_reg KEY0.
+      infer; subst; clear_old_executions.
 
       (* i = 1 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY1. infer; subst.
+      interaction_with_reg KEY1.
+      infer; subst; clear_old_executions.
 
       (* i = 2 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY2. infer; subst.
+      interaction_with_reg KEY2.
+      infer; subst; clear_old_executions.
 
       (* i = 3 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY3. infer; subst.
+      interaction_with_reg KEY3.
+      infer; subst; clear_old_executions.
 
       (* i = 4 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY4. infer; subst.
+      interaction_with_reg KEY4.
+      infer; subst; clear_old_executions.
 
       (* i = 5 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY5. infer; subst.
+      interaction_with_reg KEY5.
+      infer; subst; clear_old_executions.
 
       (* i = 6 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY6. infer; subst.
+      interaction_with_reg KEY6.
+      infer; subst; clear_old_executions.
 
       (* i = 7 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY7. infer; subst.
+      interaction_with_reg KEY7.
+      infer; subst; clear_old_executions.
 
       (* i = 8; loop done *)
       ssplit; repeat straightline; [ dexpr_hammer | ].
@@ -551,27 +570,33 @@ Section Proofs.
 
       (* i = 0 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY0. infer; subst.
+      interaction_with_reg KEY0.
+      infer; subst; clear_old_executions.
 
       (* i = 1 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY1. infer; subst.
+      interaction_with_reg KEY1.
+      infer; subst; clear_old_executions.
 
       (* i = 2 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY2. infer; subst.
+      interaction_with_reg KEY2.
+      infer; subst; clear_old_executions.
 
       (* i = 3 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY3. infer; subst.
+      interaction_with_reg KEY3.
+      infer; subst; clear_old_executions.
 
       (* i = 4 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY4. infer; subst.
+      interaction_with_reg KEY4.
+      infer; subst; clear_old_executions.
 
       (* i = 5 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY5. infer; subst.
+      interaction_with_reg KEY5.
+      infer; subst; clear_old_executions.
 
       (* i = 6; loop done *)
       ssplit; repeat straightline; [ dexpr_hammer | ].
@@ -582,11 +607,13 @@ Section Proofs.
 
       (* i = 6 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY6. infer; subst.
+      interaction_with_reg KEY6.
+      infer; subst; clear_old_executions.
 
       (* i = 7 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY7. infer; subst.
+      interaction_with_reg KEY7.
+      infer; subst; clear_old_executions.
 
       (* i = 8; loop done *)
       ssplit; repeat straightline; [ dexpr_hammer | ].
@@ -615,19 +642,23 @@ Section Proofs.
 
       (* i = 0 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY0. infer; subst.
+      interaction_with_reg KEY0.
+      infer; subst; clear_old_executions.
 
       (* i = 1 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY1. infer; subst.
+      interaction_with_reg KEY1.
+      infer; subst; clear_old_executions.
 
       (* i = 2 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY2. infer; subst.
+      interaction_with_reg KEY2.
+      infer; subst; clear_old_executions.
 
       (* i = 3 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY3. infer; subst.
+      interaction_with_reg KEY3.
+      infer; subst; clear_old_executions.
 
       (* i = 4; loop done *)
       ssplit; repeat straightline; [ dexpr_hammer | ].
@@ -638,19 +669,23 @@ Section Proofs.
 
       (* i = 4 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY4. infer; subst.
+      interaction_with_reg KEY4.
+      infer; subst; clear_old_executions.
 
       (* i = 5 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY5. infer; subst.
+      interaction_with_reg KEY5.
+      infer; subst; clear_old_executions.
 
       (* i = 6 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY6. infer; subst.
+      interaction_with_reg KEY6.
+      infer; subst; clear_old_executions.
 
       (* i = 7 *)
       split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY7. infer; subst.
+      interaction_with_reg KEY7.
+      infer; subst; clear_old_executions.
 
       (* i = 8; loop done *)
       ssplit; repeat straightline; [ dexpr_hammer | ].
