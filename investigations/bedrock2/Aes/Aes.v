@@ -99,13 +99,13 @@ Section Impl.
 
       i = 0 ;
       while (i < num_regs_key_used) {
-        output! WRITE (AES_KEY0 + i * 4, load4(key + i ));
+        output! WRITE (AES_KEY0 + (i * 4), load4(key + (i * 4)));
         i = i + 1
       };
 
       i = num_regs_key_used ;
       while (i < AES_NUM_REGS_KEY) {
-        output! WRITE (AES_KEY0 + i * 4, 0);
+        output! WRITE (AES_KEY0 + (i * 4), 0);
         i = i + 1
       }
     ))).
