@@ -1,11 +1,30 @@
 Require Import Coq.Strings.String.
 Require Import bedrock2.ProgramLogic.
 Require Import coqutil.Map.Interface.
+Require Import Coq.setoid_ring.Ring.
 
 Ltac subst1_map m :=
   match m with
   | map.put ?m _ _ => subst1_map m
   | ?m => is_var m; subst m
+  end.
+
+Ltac subst_lets_in t :=
+  repeat match goal with
+         | x := _ |- _ =>
+                lazymatch t with
+                | context [x] => subst x
+                end
+         end.
+
+Ltac ring_simplify_load_addr :=
+  repeat lazymatch goal with
+         | |- Memory.load _ _ ?addr = _ =>
+           progress subst_lets_in addr
+         end;
+  lazymatch goal with
+  | |- Memory.load _ _ ?addr = _ =>
+    ring_simplify addr
   end.
 
 Ltac map_lookup :=
@@ -17,10 +36,13 @@ Ltac map_lookup :=
          end.
 
 Ltac straightline_with_map_lookup :=
-  lazymatch goal with
+  match goal with
   | _ => straightline
   | |- exists v, map.get _ _ = Some v /\ _ =>
     eexists; split; [ solve [map_lookup] | ]
+  | |- exists v, Memory.load _ _ _ = Some v /\ _ =>
+    eexists; split; [ solve [try ring_simplify_load_addr;
+                             repeat straightline] | ]
   end.
 
 Ltac one_goal_or_solved t :=
