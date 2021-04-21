@@ -21,7 +21,9 @@ Require Import coqutil.Tactics.letexists.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Require Import Bedrock2Experiments.StateMachineSemantics.
+Require Import Bedrock2Experiments.StateMachineProperties.
 Require Import Bedrock2Experiments.Tactics.
+Require Import Bedrock2Experiments.WhileProperties.
 Require Import Bedrock2Experiments.Word.
 Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.Aes.AesSemantics.
@@ -55,96 +57,6 @@ Section Proofs.
     change Semantics.width with 32 in *;
     change Semantics.word_ok with parameters.word_ok in *;
     change Semantics.mem_ok with parameters.mem_ok in *.
-
-  Local Ltac invert_step :=
-    lazymatch goal with
-    | H : step _ _ _ _ _ |- _ => inversion H; clear H; subst
-    end.
-
-  Lemma execution_step action args rets t s s':
-    execution t s -> step action s args rets s' ->
-    execution ((map.empty, action, args, (map.empty, rets)) :: t) s'.
-  Proof. intros; cbn [execution]; eauto. Qed.
-  Lemma invert1_execution action args rets t s':
-    execution ((map.empty, action, args, (map.empty, rets)) :: t) s' ->
-    exists s, execution t s /\ step action s args rets s'.
-  Proof. intros; cbn [execution]; eauto. Qed.
-
-  Lemma interact_mmio call action binds arges t m l
-        (post : trace -> mem -> locals -> Prop) (args : list Semantics.word) :
-    dexprs m l arges args ->
-    (forall s' (rets : list Semantics.word),
-        execution ((map.empty, action, args, (map.empty, rets)) :: t) s' ->
-        (exists l0 : locals,
-            map.putmany_of_list_zip binds rets l = Some l0 /\
-            post ((map.empty, action, args, (map.empty, rets)) :: t) m l0)) ->
-    cmd call (cmd.interact binds action arges) t m l post.
-  Proof.
-    intros. eapply interact_nomem; [ eassumption | ].
-    cbn [Semantics.ext_spec semantics_parameters].
-    cbv [ext_spec]. split; [reflexivity | ].
-    intros. split; [ reflexivity | ].
-    cbn [execution] in *; destruct_products.
-    eauto.
-  Qed.
-
-  Local Ltac interaction :=
-    (* get trace *)
-    let t := lazymatch goal with
-             | |- cmd _ (cmd.interact _ _ _) ?t _ _ _ => t end in
-    eapply interact_mmio;
-    [ solve [repeat straightline_with_map_lookup;
-             simplify_implicits; repeat straightline_with_map_lookup] | ];
-    simplify_implicits; intros;
-    lazymatch goal with
-    | H : execution (_ :: t) _ |- _ =>
-      pose proof H; apply invert1_execution in H; destruct H as [? [? ?]]
-    end; invert_step; repeat straightline.
-
-  Fixpoint repeat_logic_step
-           (logic : Semantics.trace -> Semantics.mem -> Semantics.locals ->
-                    (Semantics.trace -> Semantics.mem -> Semantics.locals -> Prop) -> Prop)
-           (n : nat) post : Semantics.trace -> Semantics.mem -> locals -> Prop :=
-    match n with
-    | O => post
-    | S n => fun t m l => logic t m l (repeat_logic_step logic n post)
-    end.
-
-  Lemma unroll_while functions conde body t m l
-        (iterations : nat)
-        (post : trace -> mem -> locals -> Prop) (cond : Semantics.word) :
-    repeat_logic_step
-      (fun t m l post =>
-         exists cond,
-           dexpr m l conde cond
-           /\ word.unsigned cond <> 0
-           /\ cmd (call functions) body t m l post)
-      iterations (fun t m l =>
-                    dexpr m l conde cond
-                    /\ word.unsigned cond = 0
-                    /\ post t m l) t m l ->
-    cmd (call functions) (cmd.while conde body) t m l post.
-  Proof.
-    lazymatch goal with
-      |- repeat_logic_step ?logic _ ?post _ _ _ -> _ =>
-      set (step:=logic);
-        set (P:=post)
-    end.
-    intros. exists nat, lt, (fun i => repeat_logic_step step i P).
-    ssplit.
-    { exact lt_wf. }
-    { eauto. }
-    { intro i. destruct i; cbn [repeat_logic_step].
-      { (* i=0 case (contradiction) *)
-        subst P. repeat straightline.
-        eexists; ssplit; eauto; congruence. }
-      { (* i <> 0 case *)
-        subst step. repeat straightline.
-        eexists; ssplit; eauto; try congruence; [ ].
-        repeat straightline.
-        eapply Proper_cmd; [ apply Proper_call | | eassumption ].
-        repeat intro. exists i. ssplit; eauto. } }
-  Qed.
 
   Hint Extern 4 (step _ ?s _ _ _) =>
   eapply (ReadStep (p:=state_machine_parameters) s) : step.
@@ -189,13 +101,21 @@ Section Proofs.
     all:destruct r2; try first [ exact eq_refl | congruence ].
   Qed.
 
+  (* tactic to feed to [interaction] which will solve the side conditions of
+     interact_mmio *)
+  Local Ltac solve_dexprs :=
+    repeat straightline_with_map_lookup;
+    simplify_implicits; repeat straightline_with_map_lookup.
+
   (* run [interaction] and then assert the register's identity *)
   Local Ltac interaction_with_reg R :=
     (* this simplification step ensures that the parameters.reg_addr hypothesis
        we see is a new one *)
     cbn [parameters.reg_addr parameters.write_step parameters.read_step
                              state_machine_parameters] in *;
-    interaction;
+    interaction solve_dexprs;
+    simplify_implicits;
+    (* assert that the register address matches R *)
     lazymatch goal with
     | H : parameters.reg_addr ?r = ?addr |- _ =>
       replace addr with (reg_addr R) in H
@@ -242,15 +162,6 @@ Section Proofs.
              clear H2; one_goal_or_solved ltac:(try congruence)
            end.
 
-  Lemma ControlReg_is_CTRL r : reg_category r = ControlReg -> r = CTRL.
-  Proof. destruct r; cbn [reg_category]; congruence. Qed.
-
-  Local Ltac infer_registers_equal :=
-    repeat lazymatch goal with
-           | H : reg_category _ = ControlReg |- _ =>
-             apply ControlReg_is_CTRL in H; subst
-           end.
-
   Local Ltac infer_state_data_equal :=
     repeat lazymatch goal with
            | H : IDLE _ = IDLE _ |- _ => inversion H; clear H; subst
@@ -269,8 +180,7 @@ Section Proofs.
            end; [ ].
 
   Local Ltac infer :=
-    repeat first [ progress infer_registers_equal
-                 | progress infer_states_equal
+    repeat first [ progress infer_states_equal
                  | progress infer_state_data_equal
                  | progress invert_write_step_nobranch
                  | progress invert_step ].
@@ -348,7 +258,8 @@ Section Proofs.
     repeat straightline.
 
     (* write CTRL *)
-    interaction.
+    interaction_with_reg CTRL.
+    repeat straightline.
 
     (* done; prove postcondition *)
     ssplit; auto; [ ].
@@ -369,15 +280,14 @@ Section Proofs.
 
     (* infer information from the last step *)
     cbn [parameters.write_step state_machine_parameters] in *.
-    infer.
+    infer; subst.
 
     simplify_implicits.
 
     (* split cases *)
     eexists; ssplit.
     { (* prove that the execution trace is OK *)
-      eapply execution_step; eauto; [ ].
-      econstructor; eauto; reflexivity. }
+      eassumption. }
     { (* prove that the "operation" flag is correct *)
       cbv [ctrl_operation].
       rewrite !is_flag_set_or_shiftl_low by lia.
@@ -426,16 +336,6 @@ Section Proofs.
                 /\ (array scalar32 (word.of_Z 4) key_arr_ptr key_arr * R)%sep m'
                 (* ...and there is no output *)
                 /\ rets = []).
-
-  (* tactic copied from bedrock2Examples/lightbulb.v *)
-  Local Ltac split_if :=
-    lazymatch goal with
-      |- WeakestPrecondition.cmd _ ?c _ _ _ ?post =>
-      let c := eval hnf in c in
-          lazymatch c with
-          | cmd.cond _ _ _ => letexists; split; [solve[repeat straightline]|split]
-          end
-    end.
 
   Local Ltac dexpr_hammer :=
     subst_lets; simplify_implicits;
@@ -503,41 +403,49 @@ Section Proofs.
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY0.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 1 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY1.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 2 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY2.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 3 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY3.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 4 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY4.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 5 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY5.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 6 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY6.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 7 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY7.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 8; loop done *)
       ssplit; repeat straightline; [ dexpr_hammer | ].
@@ -572,31 +480,37 @@ Section Proofs.
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY0.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 1 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY1.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 2 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY2.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 3 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY3.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 4 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY4.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 5 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY5.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 6; loop done *)
       ssplit; repeat straightline; [ dexpr_hammer | ].
@@ -609,11 +523,13 @@ Section Proofs.
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY6.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 7 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY7.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 8; loop done *)
       ssplit; repeat straightline; [ dexpr_hammer | ].
@@ -644,21 +560,25 @@ Section Proofs.
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY0.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 1 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY1.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 2 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY2.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 3 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY3.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 4; loop done *)
       ssplit; repeat straightline; [ dexpr_hammer | ].
@@ -671,21 +591,25 @@ Section Proofs.
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY4.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 5 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY5.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 6 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY6.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 7 *)
       split; repeat straightline; [ dexpr_hammer | ].
       interaction_with_reg KEY7.
       infer; subst; clear_old_executions.
+      repeat straightline.
 
       (* i = 8; loop done *)
       ssplit; repeat straightline; [ dexpr_hammer | ].
@@ -755,18 +679,22 @@ Section Proofs.
     (* i = 0 *)
     split; repeat straightline; [ dexpr_hammer | ].
     interaction_with_reg IV0. infer; subst.
+    repeat straightline.
 
     (* i = 1 *)
     split; repeat straightline; [ dexpr_hammer | ].
     interaction_with_reg IV1. infer; subst.
+    repeat straightline.
 
     (* i = 2 *)
     split; repeat straightline; [ dexpr_hammer | ].
     interaction_with_reg IV2. infer; subst.
+    repeat straightline.
 
     (* i = 3 *)
     split; repeat straightline; [ dexpr_hammer | ].
     interaction_with_reg IV3. infer; subst.
+    repeat straightline.
 
     (* i = 4; loop done *)
     ssplit; repeat straightline; [ dexpr_hammer | ].
