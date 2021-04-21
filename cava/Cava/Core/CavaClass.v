@@ -15,14 +15,11 @@
 (****************************************************************************)
 
 Require Import ExtLib.Structures.Monad.
-Require Import ExtLib.Structures.Functor.
 Require Import Cava.Core.Netlist.
 Require Import Cava.Core.Signal.
 Require Import Cava.Util.Tuple.
 
 Local Open Scope type_scope.
-
-Import FunctorNotation.
 
 (**** IMPORTANT: if you make changes to the API of these definitions, or add new
       ones, make sure you update the reference at docs/reference.md! ****)
@@ -87,8 +84,8 @@ Class Cava (signal : SignalType -> Type) := {
                  tupled' inputs -> cava (tupled' outputs);
   (* Instantiation of black-box components which return default values. *)
   blackBox : forall (intf: CircuitInterface),
-             tupled' (port_signal signal <$> (circuitInputs intf)) ->
-             cava (tupled' ((port_signal signal <$> (circuitOutputs intf))));
+             tupled' (map (port_signal signal) (circuitInputs intf)) ->
+             cava (tupled' (map (port_signal signal) (circuitOutputs intf)));
 }.
 
 Require Import Cava.Util.Vector.

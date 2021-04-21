@@ -404,9 +404,6 @@ Definition makeNetlist (intf : CircuitInterface) circuit : CavaState :=
   let outputs := tupled' (port_netlistsignal <$> (circuitOutputs intf)) in
   execState (wireUpCircuit intf (curry inputs _ (uncurried_to_uncurriedR _ _ circuit))) initState.
 
-Check makeNetlist.
-
-                        (* makeNetlist intf (curry _ _ (curry_helper _ _ (interpCircuit c))). *)
 Definition makeNetlist' (intf : CircuitInterface) circuit : CavaState
   := execState (wireUpCircuit intf circuit) initState.
 

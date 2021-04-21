@@ -44,9 +44,7 @@ Definition xnorb b1 b2 : bool := negb (xorb b1 b2).
 (* interpretation.                                                            *)
 (******************************************************************************)
 
-Definition port_signal p := combType (port_type p).
-
-Local Fixpoint default_helper (xs: list PortDeclaration): tupledR (port_signal <$> xs) :=
+Local Fixpoint default_helper (xs: list PortDeclaration): tupledR (port_signal combType <$> xs) :=
   match xs with
   | [] => tt
   | x::xs => (defaultCombValue (port_type x), default_helper xs)
@@ -82,9 +80,9 @@ Instance CombinationalSemantics : Cava combType | 10 :=
     greaterThanOrEqual m n a := ret (greaterThanOrEqualBool a);
     localSignal _ v := ret v;
     instantiate intf circuit args :=
-      uncurry (port_signal <$> circuitInputs intf) _ circuit (unbalance' _ args);
+      uncurry (port_signal combType <$> circuitInputs intf) _ circuit (unbalance' _ args);
     blackBox intf _ :=
-      rebalance' (port_signal <$> circuitOutputs intf) (default_helper (circuitOutputs intf));
+      rebalance' (port_signal combType <$> circuitOutputs intf) (default_helper (circuitOutputs intf));
 }.
 
 (* Run circuit for a single step *)
