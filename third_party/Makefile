@@ -39,9 +39,6 @@ build-extlib:
 build-record-update:
 	$(MAKE) -C coq-record-update
 
-build-koika:
-	$(MAKE) -C koika
-
 # coq-tools is just python scripts; nothing to build
 coqtools:
 
