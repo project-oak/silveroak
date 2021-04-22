@@ -11,25 +11,67 @@ Require Import Bedrock2Experiments.Word.
 Import ListNotations.
 Local Open Scope Z_scope.
 
+Module word.
+  Section WithWord.
+    Context {width} {word : word.word width} {word_ok : word.ok word}.
+
+    Lemma wrap_small z : 0 <= z < 2 ^ width ->  word.wrap (word:=word) z = z.
+    Proof. apply Z.mod_small. Qed.
+
+  End WithWord.
+End word.
+
+Ltac rewrite_word_wrap_small :=
+  match goal with
+  | |- context [word.wrap ?z] =>
+    (* only do the rewrite if this is the *innermost* word.wrap *)
+    lazymatch z with
+    | context [word.wrap] => fail
+    | _ => rewrite (word.wrap_small z) by lia
+    end
+  end.
+
 (* Hint database for Z.testbit *)
 Hint Rewrite Z.land_spec Z.lor_spec Z.lxor_spec Z.ldiff_spec Z.testbit_0_l
      using solve [eauto] : push_Ztestbit.
 Hint Rewrite Z.shiftl_spec Z.shiftr_spec Z.lnot_spec Z.ones_spec_high
      Z.ones_spec_low Z.testbit_neg_r using lia : push_Ztestbit.
 
+(* Hint Database for simplifying expressions with word.unsigned *)
+Hint Rewrite @word.unsigned_mulhuu @word.unsigned_and_nowrap
+     @word.unsigned_or_nowrap @word.unsigned_xor_nowrap @word.unsigned_of_Z_0
+     @word.unsigned_of_Z_1 @word.unsigned_if @word.unsigned_ltu
+     using solve [eauto || typeclasses eauto] : push_unsigned.
+Hint Rewrite @word.unsigned_sru_nowrap
+     using solve [lia || typeclasses eauto] : push_unsigned.
+
+(* Tactic that finds word.ok instances for rewrites that require them *)
+Ltac push_unsigned :=
+  repeat lazymatch goal with
+         | |- context [@word.unsigned _ ?word (word.add ?x ?y)] =>
+           let ok := constr:(_:word.ok word) in
+           rewrite (@word.unsigned_add _ word ok x y) by eauto
+         | |- context [@word.unsigned _ ?word (word.sub ?x ?y)] =>
+           let ok := constr:(_:word.ok word) in
+           rewrite (@word.unsigned_sub _ word ok x y) by eauto
+         | |- context [@word.unsigned _ ?word (word.mul ?x ?y)] =>
+           let ok := constr:(_:word.ok word) in
+           rewrite (@word.unsigned_mul _ word ok x y) by eauto
+         | |- context [@word.unsigned _ ?word (word.mulhuu ?x ?y)] =>
+           let ok := constr:(_:word.ok word) in
+           rewrite (@word.unsigned_mulhuu _ word ok x y) by eauto
+         | |- context [@word.unsigned _ ?word (word.divu ?x ?y)] =>
+           let ok := constr:(_:word.ok word) in
+           rewrite (@word.unsigned_divu _ word ok x y) by lia
+         | |- context [@word.unsigned _ ?word (word.slu ?x ?y)] =>
+           let ok := constr:(_:word.ok word) in
+           rewrite (@word.unsigned_slu _ word ok x y) by lia
+         | _ => first [ rewrite_word_wrap_small
+                     | progress autorewrite with push_unsigned ]
+         end.
+
 Section WithWord.
   Context {width} {word : word.word width} {word_ok : word.ok word}.
-
-  (* Hint Database for simplifying expressions with word.unsigned *)
-  (* N.B. Ideally this hint db would be more globally available, but word lemmas
-     including [word.wrap] require a word.ok instance (although it's unused) and
-     don't work properly in a global context *)
-  Hint Rewrite word.unsigned_add word.unsigned_sub word.unsigned_mul
-       word.unsigned_mulhuu word.unsigned_and_nowrap word.unsigned_or_nowrap
-       word.unsigned_xor_nowrap word.unsigned_of_Z_0 word.unsigned_of_Z_1
-       using solve [eauto] : push_unsigned.
-  Hint Rewrite word.unsigned_divu word.unsigned_sru_nowrap word.unsigned_slu
-       using lia : push_unsigned.
 
   Lemma boolean_and_1_r w :
     boolean w ->
@@ -101,15 +143,15 @@ Section WithWord.
       by (split; [ apply Z.pow_pos_nonneg
                  | apply Z.pow_lt_mono_r]; lia).
     rewrite !word.unsigned_eqb.
-    autorewrite with push_unsigned.
+    push_unsigned.
     cbv [word.wrap].
     rewrite !Z.mod_small by
         (rewrite Z.shiftl_mul_pow2 by lia;
-         destruct Hbool; subst; autorewrite with push_unsigned; lia).
+         destruct Hbool; subst; push_unsigned; lia).
     rewrite <-Z.shiftl_land. rewrite Z.shiftl_mul_pow2 by lia.
     rewrite boolean_and_1_r by auto.
     rewrite word.unsigned_eqb.
-    destruct Hbool; subst; autorewrite with push_unsigned.
+    destruct Hbool; subst; push_unsigned.
     all:first [ apply Z.eqb_eq | apply Z.eqb_neq ].
     all:repeat destruct_one_match; try congruence.
     all:lia.
@@ -174,7 +216,7 @@ Section WithWord.
   Proof.
     intros; cbv [is_flag_set].
     f_equal. apply word_testbit_inj. intro n; intros.
-    autorewrite with push_unsigned push_Ztestbit.
+    push_unsigned. autorewrite with push_Ztestbit.
     destruct_one_match; boolsimpl; try reflexivity; [ ].
     lazymatch goal with
     | |- context [?x =? 0] => destr (x =? 0)
@@ -196,10 +238,10 @@ Section WithWord.
       by (split; [ apply Z.pow_pos_nonneg
                  | apply Z.pow_lt_mono_r]; lia).
     rewrite !word.unsigned_eqb.
-    autorewrite with push_unsigned.
+    push_unsigned.
     rewrite Z.shiftl_mul_pow2 by lia.
     cbv [word.wrap].
-    destruct Hbool; subst; autorewrite with push_unsigned;
+    destruct Hbool; subst; push_unsigned;
       rewrite Z.mod_small by lia;
       first [ apply Z.eqb_neq | apply Z.eqb_eq ]; lia.
   Qed.
@@ -214,7 +256,7 @@ Section WithWord.
     intros; cbv [is_flag_set].
     rewrite <-(boolean_shift_nonzero w2 flag) by auto.
     f_equal. apply word_testbit_inj. intro n; intros.
-    autorewrite with push_unsigned push_Ztestbit.
+    push_unsigned. autorewrite with push_Ztestbit.
     destruct_one_match; try lia; [ ].
     repeat lazymatch goal with
            | |- ?x = ?x => reflexivity
@@ -236,7 +278,7 @@ Section WithWord.
     pose proof has_size_pos _ size ltac:(eassumption).
     pose proof word.unsigned_range offset.
     apply word_testbit_inj; intros.
-    autorewrite with push_unsigned push_Ztestbit.
+    push_unsigned. autorewrite with push_Ztestbit.
     rewrite Z.add_simpl_r.
     lazymatch goal with H : _ = Z.ones _ |- _ => rewrite H end.
     destr (i <? size); autorewrite with push_Ztestbit;
@@ -255,7 +297,7 @@ Section WithWord.
     pose proof has_size_pos mask size (has_size_ones mask size ltac:(eassumption)).
     pose proof word.unsigned_range offset.
     apply word_testbit_inj; intro n; intros.
-    autorewrite with push_unsigned push_Ztestbit.
+    push_unsigned. autorewrite with push_Ztestbit.
     lazymatch goal with H : _ = Z.ones _ |- _ => rewrite H end.
     destr (n <? size); autorewrite with push_Ztestbit;
       boolsimpl; try reflexivity; [ ].
@@ -276,7 +318,7 @@ Section WithWord.
     pose proof has_size_pos mask size ltac:(eassumption).
     pose proof word.unsigned_range offset.
     apply word_testbit_inj; intro n; intros.
-    autorewrite with push_unsigned push_Ztestbit.
+    push_unsigned; autorewrite with push_Ztestbit.
     boolsimpl. reflexivity.
   Qed.
 
@@ -287,7 +329,6 @@ Section WithWord.
     rewrite Forall_forall in size_ok.
     apply size_ok.
   Qed.
-
 End WithWord.
 
 (* Hint database for proving goals in the form of [has_size _ _] *)

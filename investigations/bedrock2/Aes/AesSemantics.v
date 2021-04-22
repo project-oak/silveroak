@@ -91,6 +91,16 @@ Section WithParameters.
   | DATA_OUT3
   .
 
+  Definition all_regs : list Register :=
+    [ CTRL ; STATUS
+      ; KEY0 ; KEY1 ; KEY2 ; KEY3 ; KEY4 ; KEY5 ; KEY6 ; KEY7
+      ; IV0 ; IV1 ; IV2 ; IV3
+      ; DATA_IN0 ; DATA_IN1 ; DATA_IN2 ; DATA_IN3
+      ; DATA_OUT0 ; DATA_OUT1 ; DATA_OUT2 ; DATA_OUT3 ].
+
+  Lemma all_regs_complete r : In r all_regs.
+  Proof. cbv [all_regs In]. destruct r; tauto. Qed.
+
   Definition reg_addr (r : Register) : word :=
     match r with
     | CTRL => AES_CTRL
@@ -199,20 +209,68 @@ Section WithParameters.
     | _ => false
     end.
 
-  Definition is_output_reg (r : Register) : bool :=
+  Inductive RegisterCategory : Set :=
+  | ControlReg
+  | StatusReg
+  | KeyReg
+  | IVReg
+  | DataInReg
+  | DataOutReg
+  .
+
+  Definition reg_category (r : Register) : RegisterCategory :=
     match r with
-    | DATA_OUT0 => true
-    | DATA_OUT1 => true
-    | DATA_OUT2 => true
-    | DATA_OUT3 => true
-    | _ => false
+    | CTRL => ControlReg
+    | STATUS => StatusReg
+    | KEY0 => KeyReg
+    | KEY1 => KeyReg
+    | KEY2 => KeyReg
+    | KEY3 => KeyReg
+    | KEY4 => KeyReg
+    | KEY5 => KeyReg
+    | KEY6 => KeyReg
+    | KEY7 => KeyReg
+    | IV0 => IVReg
+    | IV1 => IVReg
+    | IV2 => IVReg
+    | IV3 => IVReg
+    | DATA_IN0 => DataInReg
+    | DATA_IN1 => DataInReg
+    | DATA_IN2 => DataInReg
+    | DATA_IN3 => DataInReg
+    | DATA_OUT0 => DataOutReg
+    | DATA_OUT1 => DataOutReg
+    | DATA_OUT2 => DataOutReg
+    | DATA_OUT3 => DataOutReg
     end.
 
-  Definition out_regs_empty (rs : known_register_state) : Prop :=
-    reg_lookup rs DATA_OUT0 = None
-    /\ reg_lookup rs DATA_OUT1 = None
-    /\ reg_lookup rs DATA_OUT2 = None
-    /\ reg_lookup rs DATA_OUT3 = None.
+  Definition reg_category_eqb (c1 c2 : RegisterCategory) : bool :=
+    match c1, c2 with
+    | ControlReg, ControlReg
+    | StatusReg, StatusReg
+    | KeyReg, KeyReg
+    | IVReg, IVReg
+    | DataInReg, DataInReg
+    | DataOutReg, DataOutReg => true
+    | _,_ => false
+    end.
+
+  Lemma reg_category_eqb_spec : EqDecider reg_category_eqb.
+  Proof. intros x y. destruct x,y; constructor; congruence. Qed.
+
+  Definition regs_empty
+             (rs : known_register_state)
+             (cat : RegisterCategory) : bool :=
+    forallb (fun r => match reg_lookup rs r with
+                   | Some _ => false | None => true end)
+            (filter (fun r => reg_category_eqb cat (reg_category r)) all_regs).
+
+  Definition regs_populated
+             (rs : known_register_state)
+             (cat : RegisterCategory) : bool :=
+    forallb (fun r => match reg_lookup rs r with
+                   | Some _ => true | None => false end)
+            (filter (fun r => reg_category_eqb cat (reg_category r)) all_regs).
 
   Definition set_out_regs
              (rs : known_register_state) (out : aes_output) : known_register_state :=
@@ -241,90 +299,87 @@ Section WithParameters.
     let rs := map.remove rs (reg_addr DATA_IN3) in
     rs.
 
-  Inductive read_step : state -> Register -> word -> state -> Prop :=
-  | ReadStatusNoChange :
-      forall s val,
-        is_busy s = false ->
-        status_matches_state s val = true ->
-        read_step s STATUS val s
-  | ReadStatusStillBusy :
-      forall rs out n val,
-        status_matches_state (BUSY rs out n) val = true ->
-        (* max #cycles until done decreases once every read *)
-        read_step (BUSY rs out (S n)) STATUS val (BUSY rs out n)
-  | ReadStatusFinish :
-      forall rs rs' out val n,
-        status_matches_state (DONE rs) val = true ->
-        rs' = set_out_regs rs out ->
-        read_step (BUSY rs out n) STATUS val (DONE rs')
-  | ReadOutputReg :
-      forall rs rs' r val,
-        is_output_reg r = true ->
-        reg_lookup rs r = Some val ->
-        rs' = map.remove rs (reg_addr r) ->
-        not (out_regs_empty rs') -> (* still not done reading output *)
-        read_step (DONE rs) r val (DONE rs')
-  | ReadLastOutputReg :
-      forall rs rs' r val,
-        is_output_reg r = true ->
-        reg_lookup rs r = Some val ->
-        rs' = map.remove rs (reg_addr r) ->
-        out_regs_empty rs' -> (* done reading output *)
-        read_step (DONE rs) r val (IDLE rs')
-  .
-
-  Definition is_input_reg (r : Register) : bool :=
-    match r with
-    | KEY0 => true
-    | KEY1 => true
-    | KEY2 => true
-    | KEY3 => true
-    | KEY4 => true
-    | KEY5 => true
-    | KEY6 => true
-    | KEY7 => true
-    | IV0 => true
-    | IV1 => true
-    | IV2 => true
-    | IV3 => true
-    | DATA_IN0 => true
-    | DATA_IN1 => true
-    | DATA_IN2 => true
-    | DATA_IN3 => true
-    | _ => false
+  Definition read_step
+             (s : state) (r : Register) (val : word) (s' : state) : Prop :=
+    match reg_category r with
+    | StatusReg =>
+      (* status register read *)
+      match s with
+      | BUSY rs out n =>
+        if status_matches_state (DONE rs) val
+        then
+          (* transition to DONE state *)
+          s' = DONE (set_out_regs rs out)
+        else
+          (* decrement max #cycles until done *)
+          status_matches_state s val = true (* we must have read BUSY status *)
+          /\ match n with
+            | O => False (* exceeded max #cycles *)
+            | S n' => s' = BUSY rs out n'
+            end
+      | _ =>
+        (* if the status is not busy, reading the status causes no change *)
+        status_matches_state s val = true /\ s' = s
+      end
+    | DataOutReg =>
+      (* output data register read *)
+      match s with
+      | DONE rs =>
+        reg_lookup rs r = Some val
+        /\ let rs' := map.remove rs (reg_addr r) in
+          if regs_empty rs' DataOutReg
+          then
+            (* all output registers have been read; transition to IDLE state *)
+            s' = IDLE rs'
+          else
+            (* stay in DONE state *)
+            s' = DONE rs'
+      | _ => False (* cannot read from output registers unless DONE *)
+      end
+    | _ => False (* no guarantees about the values of other registers *)
     end.
 
-  Inductive write_step : state -> Register -> word -> state -> Prop :=
-  | WriteCtrl :
-      forall rs val,
-        rs = map.put map.empty AES_CTRL val ->
-        write_step UNINITIALIZED CTRL val (IDLE rs)
-  | WriteChangeCtrl :
-      forall rs val,
-        write_step (IDLE rs) CTRL val
-                   (IDLE (map.put rs AES_CTRL val))
-  | WriteInput :
-      forall rs rs' r val,
-        is_input_reg r = true ->
-        reg_lookup rs r = None ->
-        rs' = map.put rs (reg_addr r) val ->
-        aes_expected_output rs' = None ->
-        write_step (IDLE rs) r val (IDLE rs')
-  (* TODO: add the below rules?
-  | WriteChangeInput :
-      forall rs r old_val val n,
-        is_input_reg rs r ->
-        reg_lookup rs r = Some old_val ->
-        write_step (IDLE rs n) r val (IDLE (map.put rs r val) n) *)
-  | WriteLastInput :
-      forall rs rs' r val out,
-        is_input_reg r = true ->
-        reg_lookup rs r = None ->
-        aes_expected_output (map.put rs (reg_addr r) val) = Some out ->
-        rs' = unset_inp_regs rs ->
-        write_step (IDLE rs) r val
-                   (BUSY rs' out timing.ndelays_core)
-  .
+  Definition write_step
+             (s : state) (r : Register) (val : word) (s' : state) : Prop :=
+    match reg_category r with
+    | ControlReg =>
+      match s with
+      | UNINITIALIZED =>
+        (* transition to IDLE state *)
+        s' = IDLE (map.put map.empty AES_CTRL val)
+      | IDLE rs =>
+        (* stay IDLE, update ctrl value *)
+        s' = IDLE (map.put rs AES_CTRL val)
+      | _ => False (* ctrl register is not writeable in other states *)
+      end
+    | KeyReg | IVReg =>
+      match s with
+      | IDLE rs =>
+        s' = IDLE (map.put rs (reg_addr r) val)
+      | _ => False (* key/iv registers are not writeable in other states *)
+      end
+    | DataInReg =>
+      match s with
+      | IDLE rs =>
+        (* can only provide input once key/iv regs have been written *)
+        regs_populated rs KeyReg = true
+        /\ regs_populated rs IVReg = true
+        /\ regs_populated rs DataInReg = false
+        /\ let rs' := map.put rs (reg_addr r) val in
+          if regs_populated rs' DataInReg
+          then
+            (* wrote to last input register; transition to BUSY state *)
+            match aes_expected_output (map.put rs (reg_addr r) val) with
+            | Some out => s' = BUSY rs' out timing.ndelays_core
+            | None => False (* should not be possible *)
+            end
+          else
+            (* more input registers needed; stay in IDLE state *)
+            s' = IDLE rs'
+      | _ => False (* input data registers are not writeable in other states *)
+      end
+    | StatusReg | DataOutReg => False (* not writeable *)
+    end.
 
   Global Instance state_machine_parameters
     : StateMachineSemantics.parameters 32 word :=
