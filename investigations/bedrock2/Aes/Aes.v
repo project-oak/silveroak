@@ -151,6 +151,28 @@ Section Impl.
     ))).
 
   (**** aes.c
+    void aes_data_get(void *data) {
+      // Read the four output data registers.
+      for (int i = 0; i < AES_NUM_REGS_DATA; ++i) {
+        ((uint32_t * )data)[i] = REG32(AES_DATA_OUT0(0) + i * sizeof(uint32_t));
+      }
+    }
+   ***)
+  Definition aes_data_get : func :=
+    let data := "data" in
+    let val := "val" in
+    let i := "i" in
+    ("b2_data_get",
+     (aes_globals ++ [data], [], bedrock_func_body:(
+      i = 0 ;
+      while (i < AES_NUM_REGS_DATA) {
+        io! val = READ ( AES_DATA_OUT0 + (i * 4) ) ;
+        store4( data + (i * 4), val ) ; (* data[i] = val *)
+        i = i + 1
+      }
+    ))).
+
+  (**** aes.c
     bool aes_data_ready(void) {
       return (REG32(AES_STATUS(0)) & (0x1u << AES_STATUS_INPUT_READY));
     }
@@ -213,5 +235,29 @@ Section Impl.
       };
 
       aes_data_put coq:(aes_globals ++ [expr.var data])
+    ))).
+
+  (**** aes.c
+
+    void aes_data_get_wait(void *data) {
+      // Wait for AES unit to have valid output data.
+      while (!aes_data_valid()) {
+      }
+
+      // Get the data.
+      aes_data_get(data);
+    }
+   ***)
+  Definition aes_data_get_wait : func :=
+    let data := "data" in
+    let is_valid := "is_valid" in
+    ("b2_data_get_wait",
+     (aes_globals ++ [data], [], bedrock_func_body:(
+      is_valid = 0 ;
+      while (is_valid == 0) {
+        unpack! is_valid = aes_data_valid coq:(aes_globals)
+      };
+
+      aes_data_get coq:(aes_globals ++ [expr.var data])
     ))).
 End Impl.

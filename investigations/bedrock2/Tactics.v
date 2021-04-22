@@ -1,6 +1,7 @@
 Require Import Coq.Strings.String.
 Require Import bedrock2.ProgramLogic.
 Require Import bedrock2.Syntax.
+Require Import bedrock2.WeakestPrecondition.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Tactics.letexists.
 Require Import Coq.setoid_ring.Ring.
@@ -29,6 +30,14 @@ Ltac ring_simplify_load_addr :=
     ring_simplify addr
   end.
 
+Ltac ring_simplify_store_addr :=
+  repeat lazymatch goal with
+         | |- store _ _ ?addr _ _ => progress subst_lets_in addr
+         end;
+  lazymatch goal with
+  | |- store _ _ ?addr _ _ => ring_simplify addr
+  end.
+
 Ltac map_lookup :=
   repeat lazymatch goal with
          | |- context [map.get ?l] =>
@@ -40,6 +49,7 @@ Ltac map_lookup :=
 Ltac straightline_with_map_lookup :=
   match goal with
   | _ => straightline
+  | |- store _ _ _ _ _ => ring_simplify_store_addr
   | |- exists v, map.get _ _ = Some v /\ _ =>
     eexists; split; [ solve [map_lookup] | ]
   | |- exists v, Memory.load _ _ _ = Some v /\ _ =>

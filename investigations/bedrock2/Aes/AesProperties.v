@@ -152,6 +152,20 @@ Section Proofs.
     { intros. repeat destruct_one_match; reflexivity. }
   Qed.
 
+  Lemma nregs_populated_remove rs r cat v :
+    reg_lookup rs r = Some v ->
+    nregs_populated (map.remove rs (reg_addr r)) cat =
+    if reg_category_eqb cat (reg_category r)
+    then (nregs_populated rs cat - 1)%nat
+    else nregs_populated rs cat.
+  Proof.
+    cbv [nregs_populated reg_lookup]. intros.
+    erewrite Properties.map.fold_remove with (m:=rs); eauto; [ | ].
+    { rewrite addr_in_category_reg_addr.
+      destruct_one_match; try reflexivity. lia. }
+    { intros. repeat destruct_one_match; reflexivity. }
+  Qed.
+
   Lemma regs_empty_impl rs c r :
     nregs_populated rs c = 0%nat ->
     reg_category_eqb c (reg_category r) = true ->
@@ -277,8 +291,16 @@ Section Proofs.
     | H : read_step _ _ _ _ |- _ =>
       cbv [read_step] in H; cbn [reg_category] in H
     end;
+    logical_simplify; simplify_implicits;
     repeat lazymatch goal with
            | H : False |- _ => contradiction H
+           | Heq : nregs_populated _ ?c = _,
+                   H : context [nregs_populated (map.remove ?m _) ?c] |- _ =>
+             erewrite !nregs_populated_remove in H by eauto;
+               simplify_implicits; rewrite Heq in H;
+                 cbn [reg_category reg_category_eqb Nat.sub] in H
+           | H : S _ = O |- _ => lia
+           | H : O <> O |- _ => lia
            | _ => first [ destruct_one_match_hyp
                        | progress logical_simplify ]
            end; [ ].
@@ -889,7 +911,7 @@ Section Proofs.
   Lemma aes_iv_put_correct :
     program_logic_goal_for_function! aes_iv_put.
   Proof.
-    (* initial processing *)
+    (* intial processing *)
     repeat straightline.
     simplify_implicits.
 
@@ -1133,5 +1155,153 @@ Section Proofs.
 
     (* done; prove postcondition *)
     repeat straightline. eauto.
+  Qed.
+
+  Instance spec_of_aes_data_get : spec_of aes_data_get :=
+    fun function_env =>
+      forall (tr : trace) (m : mem) R
+        (rs : known_register_state)
+        (data_ptr data0 data1 data2 data3 : Semantics.word),
+        (* data array is in memory, with arbitrary values *)
+        (array scalar32 (word.of_Z 4) data_ptr [data0;data1;data2;data3] * R)%sep m ->
+        (* circuit must be in the DONE state *)
+        execution tr (DONE rs) ->
+        (* the output data registers must be populated *)
+        nregs_populated rs DataOutReg = 4%nat ->
+        let args := [data_ptr] in
+        call function_env aes_data_get tr m (aes_globals ++ args)
+             (fun tr' m' rets =>
+                exists out0 out1 out2 out3,
+                  (* the circuit is now in the IDLE state with output registers unset *)
+                  execution tr' (IDLE (map.remove
+                                         (map.remove
+                                            (map.remove
+                                               (map.remove rs
+                                                           (reg_addr DATA_OUT0))
+                                               (reg_addr DATA_OUT1))
+                                            (reg_addr DATA_OUT2))
+                                         (reg_addr DATA_OUT3)))
+                  (* ...and the array now holds the values from the output registers *)
+                  /\ (array scalar32 (word.of_Z 4) data_ptr [out0;out1;out2;out3] * R)%sep m'
+                  /\ reg_lookup rs DATA_OUT0 = Some out0
+                  /\ reg_lookup rs DATA_OUT1 = Some out1
+                  /\ reg_lookup rs DATA_OUT2 = Some out2
+                  /\ reg_lookup rs DATA_OUT3 = Some out3
+                  (* ...and there are no return values *)
+                  /\ rets = []).
+
+  Lemma aes_data_get_correct :
+    program_logic_goal_for_function! aes_data_get.
+  Proof.
+    (* initial processing *)
+    repeat straightline.
+    simplify_implicits.
+
+    (* simplify array predicate *)
+    cbn [array] in *.
+    repeat match goal with
+           | H : context [scalar32 ?addr] |- _ =>
+             progress ring_simplify addr in H
+           end.
+
+    (* this assertion helps prove that i does not get truncated *)
+    assert (4 < 2 ^ Semantics.width) by (cbn; lia).
+    pose proof nregs_data_eq.
+
+    (* unroll while loop *)
+    eapply unroll_while with (iterations:=4%nat). cbn [repeat_logic_step].
+    repeat straightline.
+
+    (* process each iteration of the while loop *)
+
+    (* i = 0 *)
+    split; repeat straightline; [ dexpr_hammer | ].
+
+    (* read register *)
+    interaction_with_reg DATA_OUT0.
+    infer; subst; clear_old_executions.
+    repeat straightline.
+
+    (* store result in memory *)
+    simplify_implicits.
+    ring_simplify_store_addr.
+    (* the following line is in [straightline] but needs simplify_implicits for
+       it to work *)
+    eapply store_four_of_sep_32bit;
+      [ reflexivity | simplify_implicits; solve [ ecancel_assumption ] |  ].
+    repeat straightline.
+
+    (* i = 1 *)
+    split; repeat straightline; [ dexpr_hammer | ].
+
+    (* read register *)
+    interaction_with_reg DATA_OUT1.
+    infer; subst; clear_old_executions.
+    repeat straightline.
+
+    (* store result in memory *)
+    simplify_implicits.
+    ring_simplify_store_addr.
+    (* the following line is in [straightline] but needs simplify_implicits for
+       it to work *)
+    eapply store_four_of_sep_32bit;
+      [ reflexivity | simplify_implicits; solve [ ecancel_assumption ] |  ].
+    repeat straightline.
+
+    (* i = 2 *)
+    split; repeat straightline; [ dexpr_hammer | ].
+
+    (* read register *)
+    interaction_with_reg DATA_OUT2.
+    infer; subst; clear_old_executions.
+    repeat straightline.
+
+    (* store result in memory *)
+    simplify_implicits.
+    ring_simplify_store_addr.
+    (* the following line is in [straightline] but needs simplify_implicits for
+       it to work *)
+    eapply store_four_of_sep_32bit;
+      [ reflexivity | simplify_implicits; solve [ ecancel_assumption ] |  ].
+    repeat straightline.
+
+    (* i = 3 *)
+    split; repeat straightline; [ dexpr_hammer | ].
+
+    (* read register *)
+    interaction_with_reg DATA_OUT3.
+    infer; subst; clear_old_executions.
+    repeat straightline.
+
+    (* store result in memory *)
+    simplify_implicits.
+    ring_simplify_store_addr.
+    (* the following line is in [straightline] but needs simplify_implicits for
+       it to work *)
+    eapply store_four_of_sep_32bit;
+      [ reflexivity | simplify_implicits; solve [ ecancel_assumption ] |  ].
+    repeat straightline.
+
+    (* i = 4; loop done *)
+    ssplit; repeat straightline; [ dexpr_hammer | ].
+
+    (* done; prove postcondition *)
+    cbn [array].
+    repeat match goal with
+           | |- context [scalar32 ?addr] =>
+             progress ring_simplify addr
+           end.
+
+    (* change register lookups to refer to original register state *)
+    repeat lazymatch goal with
+           | H : reg_lookup (map.remove _ _) _ = Some _ |- _ =>
+             cbv [reg_lookup] in H;
+               rewrite !Properties.map.get_remove_dec in H;
+               rewrite !word.eqb_ne in H by (apply reg_addr_neq; congruence)
+           end.
+
+    do 4 eexists; ssplit; eauto; [ ].
+    simplify_implicits.
+    ecancel_assumption.
   Qed.
 End Proofs.
