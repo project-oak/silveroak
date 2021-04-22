@@ -29,7 +29,7 @@ writeTestBench :: TestBench -> IO ()
 writeTestBench testBench
   = do putStr ("Generating test bench " ++ filename ++ " " ++ driver ++ "...")
        writeFile filename (unlines (generateTestBench testBench))
-       writeFile driver (unlines (cppDriver name clk ticks))
+       writeFile driver (unlines (cppDriver name (getTag clk') ticks))
        writeFile (name ++ ".tcl") (unlines (tclScript name ticks))
        putStrLn (" [done]")
     where
@@ -37,12 +37,7 @@ writeTestBench testBench
     filename = name ++ ".sv"
     driver = name ++ ".cpp"
     ticks = length (testBenchInputs testBench)
-    clk' = clkName (testBenchInterface testBench)
-    clk = if clk' == "" then
-            "clk" -- This is a combinational circuit, use make up a clock
-                  -- name for the test bench ticks.
-          else
-            clk'
+    clk' = maybe (Coq_mkTaggedEdge "clk" PositiveEdge) id $ clk (testBenchInterface testBench)
 
 generateTestBench :: TestBench -> [String]
 generateTestBench testBench

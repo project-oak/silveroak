@@ -193,7 +193,7 @@ Section Forall2.
       inversion 1; subst; cbn [map]; f_equal; eauto.
   Qed.
 End Forall2.
-Hint Resolve Forall2_length_eq : length.
+#[export] Hint Resolve Forall2_length_eq : length.
 
 (* Definition and proofs of [extend], which pads a list to a specified length *)
 Section Extend.

@@ -19,8 +19,8 @@ Require Import Cava.Cava.
 Section WithCava.
   Context {signal} `{Cava signal}.
 
-  Definition nand2_gate (ab : signal Bit * signal Bit) : cava (signal Bit) :=
-    x <- and2 ab ;;
+  Definition nand2_gate (a b : signal Bit) : cava (signal Bit) :=
+    x <- and2 (a,b) ;;
     inv x.
 
   Definition nand2Interface
