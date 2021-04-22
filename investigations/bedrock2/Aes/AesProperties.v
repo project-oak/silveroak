@@ -272,6 +272,17 @@ Section Proofs.
            | H : DONE _ = DONE _ |- _ => inversion H; clear H; subst
            end.
 
+  Local Ltac invert_read_step_nobranch :=
+    lazymatch goal with
+    | H : read_step _ _ _ _ |- _ =>
+      cbv [read_step] in H; cbn [reg_category] in H
+    end;
+    repeat lazymatch goal with
+           | H : False |- _ => contradiction H
+           | _ => first [ destruct_one_match_hyp
+                       | progress logical_simplify ]
+           end; [ ].
+
   Local Ltac invert_write_step_nobranch :=
     lazymatch goal with
     | H : write_step _ _ _ _ |- _ =>
@@ -293,6 +304,7 @@ Section Proofs.
   Local Ltac infer :=
     repeat first [ progress infer_states_equal
                  | progress infer_state_data_equal
+                 | progress invert_read_step_nobranch
                  | progress invert_write_step_nobranch
                  | progress invert_step ].
 
@@ -1029,5 +1041,97 @@ Section Proofs.
                         assert (s2 = s1) as H'; [ | rewrite H'; apply H ]
     end.
     rewrite !unset_inp_regs_put. reflexivity.
+  Qed.
+
+  (* TODO: the real state machine is slightly more complex; AES block can get
+     input while BUSY and stalls in BUSY state until output is read. The spec
+     should be modified to account for this behavior. For now, this spec is
+     exactly the same as aes_data_put. *)
+  Instance spec_of_aes_data_put_wait : spec_of aes_data_put_wait :=
+    fun function_env =>
+      forall (tr : trace) (m : mem) R
+        (rs : known_register_state)
+        (data_ptr data0 data1 data2 data3 : Semantics.word),
+        (* data array is in memory *)
+        (array scalar32 (word.of_Z 4) data_ptr [data0;data1;data2;data3] * R)%sep m ->
+        (* circuit must be in IDLE state *)
+        execution tr (IDLE rs) ->
+        (* the key and iv registers must be populated *)
+        nregs_populated rs KeyReg = 8%nat ->
+        nregs_populated rs IVReg = 4%nat ->
+        (* the data registers must *not* be populated *)
+        nregs_populated rs DataInReg = 0%nat ->
+        let args := [data_ptr] in
+        call function_env aes_data_put_wait tr m (aes_globals ++ args)
+             (fun tr' m' rets =>
+                exists exp_out,
+                  (* the circuit is now in the BUSY state *)
+                  execution tr' (BUSY (unset_inp_regs rs) exp_out
+                                      timing.ndelays_core)
+                  (* ...and the expected output matches the AES spec for this data *)
+                  /\ aes_expected_output
+                      (map.putmany_of_list
+                         [(reg_addr DATA_IN0, data0)
+                          ; (reg_addr DATA_IN1, data1)
+                          ; (reg_addr DATA_IN2, data2)
+                          ; (reg_addr DATA_IN3, data3)] rs) = Some exp_out
+                  (* ...and the same properties as before hold on the memory *)
+                  /\ (array scalar32 (word.of_Z 4) data_ptr [data0;data1;data2;data3] * R)%sep m'
+                  (* ...and there is no output *)
+                  /\ rets = []).
+
+  Lemma aes_data_put_wait_correct :
+    program_logic_goal_for_function! aes_data_put_wait.
+  Proof.
+    (* initial processing *)
+    repeat straightline.
+    simplify_implicits.
+
+    (* we know the circuit is in IDLE state, so loop has exactly 1 iteration *)
+    eapply unroll_while with (iterations:=1%nat). cbn [repeat_logic_step].
+    repeat straightline.
+
+    split; repeat straightline; [ dexpr_hammer; congruence | ].
+
+    (* Call aes_idle *)
+    straightline_call; eauto; [ ].
+
+    (* simplify guarantees *)
+    logical_simplify; subst.
+    lazymatch goal with
+    | H : execution (_ :: _) _ |- _ =>
+      pose proof H; cbn [execution] in H; logical_simplify
+    end.
+    infer; subst.
+    (* assert that the register address we just read is STATUS *)
+    lazymatch goal with
+    | H : parameters.reg_addr ?r = AES_STATUS |- _ =>
+      replace AES_STATUS with (reg_addr STATUS) in H
+        by (cbn [reg_addr]; subst_lets; ring);
+      apply reg_addr_unique in H; try subst r
+    end.
+    cbn [parameters.reg_addr parameters.write_step parameters.read_step
+                             state_machine_parameters] in *.
+    infer; subst.
+    cbv [status_matches_state] in *. simplify_implicits.
+    repeat match goal with
+           | H : (_ && _)%bool = true |- _ => apply Bool.andb_true_iff in H; destruct H
+           | H : word.eqb _ _ = _ |- _ => apply word.eqb_false in H
+           | H : is_flag_set _ _  = _ |- _ => progress rewrite H in *
+           end.
+
+    (* loop done *)
+    repeat straightline.
+    split; repeat straightline; [ dexpr_hammer; try congruence; reflexivity | ].
+    split; repeat straightline; [ dexpr_hammer | ].
+
+    (* call aes_data_put *)
+    straightline_call; eauto; [ ].
+
+    (* simplify guarantees *)
+    logical_simplify; subst.
+
+    (* done; prove postcondition *)
+    repeat straightline. eauto.
   Qed.
 End Proofs.
