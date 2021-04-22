@@ -1,0 +1,13 @@
+(dirs xilinx)
+
+(coq.theory
+ (package cava-examples)
+ (name Examples)
+ (flags
+   "-R" "../../third_party/coq-ext-lib/theories" "ExtLib"
+   "-R" "../../third_party/bedrock2/bedrock2/src/bedrock2" "bedrock2"
+   "-R" "../../third_party/bedrock2/deps/coqutil/src/coqutil" "coqutil"
+   "-R" "../../third_party/coq-record-update/src" "RecordUpdate"
+ )
+ (theories Cava)
+ (modules :standard))

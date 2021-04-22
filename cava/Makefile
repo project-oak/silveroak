@@ -35,7 +35,8 @@ haskell:	coq FixupHaskell
 		./FixupHaskell
 		mv Ascii2.hs Ascii.hs
 		mv ByteVector2.hs ByteVector.hs
-		cabal build
+		$(MAKE) -C Cava2HDL
+
 
 Makefile.coq:	_CoqProject
 		coq_makefile -f _CoqProject -o Makefile.coq
