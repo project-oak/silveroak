@@ -131,6 +131,27 @@ Section Impl.
     ))).
 
   (**** aes.c
+    void aes_data_put(const void *data) {
+      // Write the four input data registers.
+      for (int i = 0; i < AES_NUM_REGS_DATA; ++i) {
+        REG32(AES_DATA_IN0(0) + i * sizeof(uint32_t)) = ((uint32_t * )data)[i];
+      }
+    }
+   ***)
+  Definition aes_data_put : func :=
+    let data := "data" in
+    let i := "i" in
+    ("b2_data_put",
+     (aes_globals ++ [data], [], bedrock_func_body:(
+      i = 0 ;
+      while (i < AES_NUM_REGS_DATA) {
+        output! WRITE (AES_DATA_IN0 + (i * 4), load4( data + (i * 4) ));
+        i = i + 1
+      }
+    ))).
+
+
+  (**** aes.c
     bool aes_data_ready(void) {
       return (REG32(AES_STATUS(0)) & (0x1u << AES_STATUS_INPUT_READY));
     }

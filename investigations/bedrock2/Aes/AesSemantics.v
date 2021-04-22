@@ -258,19 +258,20 @@ Section WithParameters.
   Lemma reg_category_eqb_spec : EqDecider reg_category_eqb.
   Proof. intros x y. destruct x,y; constructor; congruence. Qed.
 
-  Definition regs_empty
-             (rs : known_register_state)
-             (cat : RegisterCategory) : bool :=
-    forallb (fun r => match reg_lookup rs r with
-                   | Some _ => false | None => true end)
-            (filter (fun r => reg_category_eqb cat (reg_category r)) all_regs).
+  Definition addr_in_category (addr : word) (c : RegisterCategory) : bool :=
+    existsb (fun r => (word.eqb (reg_addr r) addr
+                    && reg_category_eqb c (reg_category r))%bool)
+            all_regs.
 
-  Definition regs_populated
+  (* gives the number of populated registers in the given category *)
+  Definition nregs_populated
              (rs : known_register_state)
-             (cat : RegisterCategory) : bool :=
-    forallb (fun r => match reg_lookup rs r with
-                   | Some _ => true | None => false end)
-            (filter (fun r => reg_category_eqb cat (reg_category r)) all_regs).
+             (cat : RegisterCategory) : nat :=
+    map.fold
+      (map:=regs)
+      (fun acc addr _ => if addr_in_category addr cat
+                      then S acc
+                      else acc) 0%nat rs.
 
   Definition set_out_regs
              (rs : known_register_state) (out : aes_output) : known_register_state :=
@@ -327,7 +328,7 @@ Section WithParameters.
       | DONE rs =>
         reg_lookup rs r = Some val
         /\ let rs' := map.remove rs (reg_addr r) in
-          if regs_empty rs' DataOutReg
+          if (nregs_populated rs' DataOutReg =? 0)%nat
           then
             (* all output registers have been read; transition to IDLE state *)
             s' = IDLE rs'
@@ -362,15 +363,15 @@ Section WithParameters.
       match s with
       | IDLE rs =>
         (* can only provide input once key/iv regs have been written *)
-        regs_populated rs KeyReg = true
-        /\ regs_populated rs IVReg = true
-        /\ regs_populated rs DataInReg = false
+        nregs_populated rs KeyReg = 8%nat
+        /\ nregs_populated rs IVReg = 4%nat
+        /\ (nregs_populated rs DataInReg < 4)%nat
         /\ let rs' := map.put rs (reg_addr r) val in
-          if regs_populated rs' DataInReg
+          if (nregs_populated rs' DataInReg =? 4)%nat
           then
             (* wrote to last input register; transition to BUSY state *)
             match aes_expected_output (map.put rs (reg_addr r) val) with
-            | Some out => s' = BUSY rs' out timing.ndelays_core
+            | Some out => s' = BUSY (unset_inp_regs rs') out timing.ndelays_core
             | None => False (* should not be possible *)
             end
           else
