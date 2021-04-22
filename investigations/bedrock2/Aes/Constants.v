@@ -194,8 +194,8 @@ Definition aes_reg_addrs {width} {word : word.word width}
 
 (* This class includes all the properties the AES constants must satisfy *)
 Class aes_constants_ok
-      {p : Semantics.parameters} {p_ok : Semantics.parameters_ok p}
-      (global_values : aes_constants Semantics.word) :=
+      {width} {word : word width} {word_ok : word.ok word}
+      (global_values : aes_constants word.rep) :=
   { addrs_unique : unique_words aes_reg_addrs;
     status_flags_unique_and_nonzero :
       unique_words

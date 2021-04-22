@@ -83,7 +83,7 @@ Section WithParameters.
     Semantics.locals := SortedListString.map _;
     Semantics.env := SortedListString.map _;
     Semantics.ext_spec := ext_spec;
-  |}.
+    |}.
 
   Global Instance ext_spec_ok : ext_spec.ok _.
   Proof.
