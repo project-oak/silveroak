@@ -3,6 +3,7 @@ Require Import Coq.micromega.Lia.
 Require Import Coq.ZArith.ZArith.
 Require Import coqutil.Datatypes.List.
 Require Import coqutil.Decidable.
+Require Import coqutil.Z.bitblast.
 Require Import coqutil.Tactics.Tactics.
 Require Import coqutil.Word.Interface.
 Require Import coqutil.Word.Properties.
@@ -84,38 +85,7 @@ Section WithWord.
     all:destruct_one_match; (reflexivity || congruence).
   Qed.
 
-  Lemma has_size_slu w i n :
-    has_size w n ->
-    has_size (word.slu w i) (Z.min width (n + word.unsigned i)).
-  Admitted.
-
-  Lemma has_size_and w1 w2 n1 n2 :
-    has_size w1 n1 ->
-    has_size w2 n2 ->
-    has_size (word.and w1 w2) (Z.min n1 n2).
-  Admitted.
-
-  Lemma has_size_or w1 w2 n1 n2 :
-    has_size w1 n1 ->
-    has_size w2 n2 ->
-    has_size (word.or w1 w2) (Z.min n1 n2).
-  Admitted.
-
-  Lemma has_size_bool w :
-    boolean w -> has_size w 1.
-  Admitted.
-
-  Lemma has_size_weaken w n m :
-    has_size w n -> n <= m ->
-    has_size w m.
-  Admitted.
-
-  Lemma has_size_ones w n :
-    word.unsigned w = Z.ones n ->
-    has_size w n.
-  Admitted.
-
-  Lemma has_size_pos w n : has_size w n -> 0 <= n.
+  Lemma has_size_nonneg w n : has_size w n -> 0 <= n.
   Proof.
     cbv [has_size]. intros.
     destr (0 <=? n); [ lia | exfalso ].
@@ -123,9 +93,96 @@ Section WithWord.
     lia.
   Qed.
 
-  Lemma size1_boolean w :
-    has_size w 1 -> boolean w.
-  Admitted.
+  Lemma has_size_testbit w n :
+    (0 <= n /\ (forall i, n <= i -> Z.testbit (word.unsigned w) i = false)) <->
+    has_size w n.
+  Proof.
+    split; intros.
+    { cbv [has_size]. assert (0 < 2 ^ n) by (apply Z.pow_pos_nonneg; lia).
+      pose proof word.unsigned_range w.
+      destruct (proj1 (Z.mod_small_iff (word.unsigned w) (2 ^ n)
+                                       ltac:(lia)));
+        [ | assumption | lia ].
+      logical_simplify. rewrite <-Z.land_ones by lia.
+      Z.bitblast.
+      match goal with H : _ |- _ => rewrite H by lia; reflexivity end. }
+    { split; [ eapply has_size_nonneg; eassumption | ].
+      intros. cbv [has_size] in *.
+      destr (word.unsigned w =? 0);
+        [ replace (word.unsigned w) with 0 by congruence;
+          apply Z.testbit_0_l | ].
+      apply Z.bits_above_log2; [ lia | ].
+      apply Z.log2_lt_pow2; [ lia | ].
+      eapply Z.lt_le_trans with (m:=2^n); [ lia | ].
+      apply Z.pow_le_mono_r; lia. }
+  Qed.
+
+  Lemma has_size_slu w i n :
+    has_size w n ->
+    word.unsigned i < width ->
+    has_size (word.slu w i) (Z.min width (n + word.unsigned i)).
+  Proof.
+    intros. assert (0 <= n) by eauto using has_size_nonneg.
+    apply Z.min_case_strong; intros; [ apply word.unsigned_range | ].
+    pose proof word.unsigned_range i.
+    rewrite <-has_size_testbit in *. split; [ lia | ].
+    logical_simplify. intros.
+    push_unsigned. rewrite word.testbit_wrap.
+    Z.bitblast_core. boolsimpl. auto with zarith.
+  Qed.
+
+  Lemma has_size_and w1 w2 n1 n2 :
+    has_size w1 n1 ->
+    has_size w2 n2 ->
+    has_size (word.and w1 w2) (Z.min n1 n2).
+  Proof.
+    rewrite <-!has_size_testbit; intros.
+    logical_simplify. split; [ lia | intros ].
+    push_unsigned. Z.bitblast_core.
+    destr (n1 <? n2);
+      repeat match goal with H : _ |- _ => rewrite H by lia end;
+      boolsimpl; reflexivity.
+  Qed.
+
+  Lemma has_size_or w1 w2 n1 n2 :
+    has_size w1 n1 ->
+    has_size w2 n2 ->
+    has_size (word.or w1 w2) (Z.max n1 n2).
+  Proof.
+    rewrite <-!has_size_testbit; intros.
+    logical_simplify. split; [ lia | intros ].
+    push_unsigned. Z.bitblast_core.
+    repeat match goal with H : _ |- _ => rewrite H by lia end.
+    boolsimpl; reflexivity.
+  Qed.
+
+  Lemma has_size_bool w : boolean w -> has_size w 1.
+  Proof.
+    destruct 1; subst; cbv [has_size]; push_unsigned; lia.
+  Qed.
+
+  Lemma has_size_weaken w n m : has_size w n -> n <= m -> has_size w m.
+  Proof.
+    cbv [has_size]. intros.
+    assert (2 ^ n <= 2 ^ m); [ | lia ].
+    apply Z.pow_le_mono_r; lia.
+  Qed.
+
+  Lemma has_size_ones w n : word.unsigned w = Z.ones n -> has_size w n.
+  Proof.
+    rewrite Z.ones_equiv; intros.
+    pose proof word.unsigned_range w.
+    cbv [has_size]. lia.
+  Qed.
+
+  Lemma size1_boolean w : has_size w 1 -> boolean w.
+  Proof.
+    cbv [has_size boolean]. change (2 ^ 1) with 2. intros.
+    assert (word.unsigned w = 0 \/ word.unsigned w = 1) as cases by lia.
+    destruct cases; [ left | right ].
+    { apply word.unsigned_inj. push_unsigned. lia. }
+    { apply word.unsigned_inj. push_unsigned. lia. }
+  Qed.
 
   Lemma has_size_range w n :
     has_size w n -> 0 <= word.unsigned w < 2 ^ n.
@@ -276,7 +333,7 @@ Section WithWord.
     select_bits (word.slu (word.and w mask) offset) offset mask = w.
   Proof.
     intros. cbv [select_bits].
-    pose proof has_size_pos _ size ltac:(eassumption).
+    pose proof has_size_nonneg _ size ltac:(eassumption).
     pose proof word.unsigned_range offset.
     apply word_testbit_inj; intros.
     push_unsigned. autorewrite with push_Ztestbit.
@@ -295,7 +352,7 @@ Section WithWord.
     = select_bits w1 offset mask.
   Proof.
     intros. cbv [select_bits].
-    pose proof has_size_pos mask size (has_size_ones mask size ltac:(eassumption)).
+    pose proof has_size_nonneg mask size (has_size_ones mask size ltac:(eassumption)).
     pose proof word.unsigned_range offset.
     apply word_testbit_inj; intro n; intros.
     push_unsigned. autorewrite with push_Ztestbit.
@@ -316,7 +373,7 @@ Section WithWord.
     = select_bits (word.slu w2 i) offset mask.
   Proof.
     intros. cbv [select_bits].
-    pose proof has_size_pos mask size ltac:(eassumption).
+    pose proof has_size_nonneg mask size ltac:(eassumption).
     pose proof word.unsigned_range offset.
     apply word_testbit_inj; intro n; intros.
     push_unsigned; autorewrite with push_Ztestbit.
@@ -333,7 +390,8 @@ Section WithWord.
 End WithWord.
 
 (* Hint database for proving goals in the form of [has_size _ _] *)
-Global Hint Resolve has_size_slu has_size_and has_size_or has_size_ones has_size_bool : has_size.
+#[export] Hint Resolve has_size_slu has_size_and has_size_or has_size_ones has_size_bool : has_size.
+#[export] Hint Extern 4 (word.unsigned _ < _) => (auto with zarith; lia) : has_size.
 
 (* Tactic for proving has_size goals *)
 Ltac prove_has_size :=

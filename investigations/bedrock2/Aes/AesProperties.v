@@ -537,7 +537,7 @@ Section Proofs.
     repeat lazymatch goal with
            | H : enum_member _ _ |- _ =>
              apply enum_member_size in H;
-               pose proof has_size_pos _ _ H
+               pose proof has_size_nonneg _ _ H
            end.
 
     (* infer information from the last step *)
