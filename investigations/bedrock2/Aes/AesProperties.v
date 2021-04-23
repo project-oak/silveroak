@@ -18,6 +18,7 @@ Require Import coqutil.Map.Interface.
 Require Import coqutil.Tactics.Tactics.
 Require Import coqutil.Tactics.syntactic_unify.
 Require Import coqutil.Tactics.letexists.
+Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.Tactics.
@@ -274,6 +275,17 @@ Section Proofs.
                  | progress invert_write_step_nobranch
                  | progress invert_step ].
 
+  (* Remove [execution] hypotheses that are superceded by later ones; improves
+     proof performance *)
+  (* Warning: be careful not to remove useful information with this tactic! *)
+  Local Ltac clear_old_executions :=
+    (* first call [infer] to help guard against losing information *)
+    infer;
+    repeat lazymatch goal with
+           | H1 : execution ?t _, H2 : execution (_ :: ?t) _ |- _ =>
+             clear H1
+           end.
+
   Local Notation aes_op_t := (enum_member aes_op) (only parsing).
   Local Notation aes_mode_t := (enum_member aes_mode) (only parsing).
   Local Notation aes_key_len_t := (enum_member aes_key_len) (only parsing).
@@ -384,6 +396,314 @@ Section Proofs.
         (eassumption || prove_has_size || lia). }
   Qed.
 
+  Instance spec_of_aes_key_put : spec_of aes_key_put :=
+    fun function_env =>
+      forall (tr : trace) (m : mem) R
+        (rs : known_register_state)
+        (key_len key_arr_ptr : Semantics.word) (key_arr : list Semantics.word),
+        (* key_len is a member of the aes_key_len enum *)
+        aes_key_len_t key_len ->
+        (* key array is in memory *)
+        (array scalar32 (word.of_Z 4) key_arr_ptr key_arr * R)%sep m ->
+        (* key array length matches the key_len argument *)
+         length key_arr = (if word.eqb key_len kAes128
+                           then 4%nat else if word.eqb key_len kAes192
+                                       then 6%nat else 8%nat) ->
+        (* circuit must be in IDLE state *)
+        execution tr (IDLE rs) ->
+        let args := [key_arr_ptr; key_len] in
+        call function_env aes_key_put tr m (aes_globals ++ args)
+             (fun tr' m' rets =>
+                (* the circuit is in IDLE state with the key registers updated *)
+                (exists rs',
+                    map.putmany_of_list_zip
+                      [reg_addr KEY0; reg_addr KEY1; reg_addr KEY2; reg_addr KEY3;
+                      reg_addr KEY4; reg_addr KEY5; reg_addr KEY6; reg_addr KEY7]
+                      (key_arr ++ repeat (word.of_Z 0) (8 - length key_arr)) rs
+                    = Some rs'
+                    /\ execution tr' (IDLE rs'))
+                (* ...and the same properties as before hold on the memory *)
+                /\ (array scalar32 (word.of_Z 4) key_arr_ptr key_arr * R)%sep m'
+                (* ...and there is no output *)
+                /\ rets = []).
+
+  (* tactic copied from bedrock2Examples/lightbulb.v *)
+  Local Ltac split_if :=
+    lazymatch goal with
+      |- WeakestPrecondition.cmd _ ?c _ _ _ ?post =>
+      let c := eval hnf in c in
+          lazymatch c with
+          | cmd.cond _ _ _ => letexists; split; [solve[repeat straightline]|split]
+          end
+    end.
+
+  Local Ltac dexpr_hammer :=
+    subst_lets; simplify_implicits;
+    repeat first [ progress push_unsigned
+                 | rewrite word.unsigned_of_Z in *
+                 | rewrite word.wrap_small in * by lia
+                 | destruct_one_match
+                 | lia ].
+
+  Lemma aes_key_put_correct :
+    program_logic_goal_for_function! aes_key_put.
+  Proof.
+    (* initial processing *)
+    repeat straightline.
+    simplify_implicits.
+
+    (* assert that key length enum members are unique *)
+    pose proof enum_unique aes_key_len as key_len_unique.
+    simplify_unique_words_in key_len_unique.
+
+    (* key_len must be one of the members of the aes_key_len enum *)
+    lazymatch goal with
+    | H : enum_member aes_key_len ?len |- _ =>
+      cbn [enum_member aes_key_len In] in H
+    end.
+
+    (* this assertion helps prove that i does not get truncated *)
+    assert (8 < 2 ^ Semantics.width) by (cbn; lia).
+    pose proof nregs_key_eq.
+
+    (* destruct branches *)
+    split_if; [ | intros; split_if ]; intros;
+      repeat lazymatch goal with
+             | H : word.unsigned _ <> 0 |- _ =>
+               apply word.if_nonzero, word.eqb_true in H
+             | H : word.unsigned _ = 0 |- _ =>
+               apply word.if_zero, word.eqb_false in H
+             end; subst.
+
+    (* use key_len information to destruct cases in preconditions and get
+       individual keys *)
+    all:(repeat (destruct_one_match_hyp_of_type bool; try congruence);
+         repeat lazymatch goal with
+                | H : _ \/ _ |- _ => destruct H; try congruence
+                end; [ ]).
+    all:destruct_lists_by_length.
+
+    (* simplify array predicate *)
+    all:cbn [array] in *.
+    all:repeat match goal with
+               | H : context [scalar32 ?addr] |- _ =>
+                 progress ring_simplify addr in H
+               end.
+
+    { (* key_len = kAes256 case *)
+      repeat straightline.
+
+      (* unroll first while loop *)
+      eapply unroll_while with (iterations:=8%nat). cbn [repeat_logic_step].
+      repeat straightline.
+
+      (* process each iteration of the while loop *)
+
+      (* i = 0 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY0.
+      infer; subst; clear_old_executions.
+
+      (* i = 1 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY1.
+      infer; subst; clear_old_executions.
+
+      (* i = 2 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY2.
+      infer; subst; clear_old_executions.
+
+      (* i = 3 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY3.
+      infer; subst; clear_old_executions.
+
+      (* i = 4 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY4.
+      infer; subst; clear_old_executions.
+
+      (* i = 5 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY5.
+      infer; subst; clear_old_executions.
+
+      (* i = 6 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY6.
+      infer; subst; clear_old_executions.
+
+      (* i = 7 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY7.
+      infer; subst; clear_old_executions.
+
+      (* i = 8; loop done *)
+      ssplit; repeat straightline; [ dexpr_hammer | ].
+
+      (* second while loop is a no-op *)
+      eapply unroll_while with (iterations:=0%nat). cbn [repeat_logic_step].
+      ssplit; repeat straightline; [ dexpr_hammer | ].
+
+      (* done; prove postcondition *)
+      ssplit; eauto; [ | ].
+      { (* trace postcondition *)
+        eexists; split; [ reflexivity | ].
+        eassumption. }
+      { (* memory postcondition *)
+        cbn [array].
+        repeat match goal with
+               | |- context [scalar32 ?addr] =>
+                 progress ring_simplify addr
+               end.
+        ecancel_assumption. } }
+
+    { (* key_len = kAes192 case *)
+      repeat straightline.
+
+      (* unroll first while loop *)
+      eapply unroll_while with (iterations:=6%nat). cbn [repeat_logic_step].
+      repeat straightline.
+
+      (* process each iteration of the while loop *)
+
+      (* i = 0 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY0.
+      infer; subst; clear_old_executions.
+
+      (* i = 1 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY1.
+      infer; subst; clear_old_executions.
+
+      (* i = 2 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY2.
+      infer; subst; clear_old_executions.
+
+      (* i = 3 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY3.
+      infer; subst; clear_old_executions.
+
+      (* i = 4 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY4.
+      infer; subst; clear_old_executions.
+
+      (* i = 5 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY5.
+      infer; subst; clear_old_executions.
+
+      (* i = 6; loop done *)
+      ssplit; repeat straightline; [ dexpr_hammer | ].
+
+      (* second while loop has 8 - 6 = 2 iterations *)
+      eapply unroll_while with (iterations:=2%nat). cbn [repeat_logic_step].
+      repeat straightline.
+
+      (* i = 6 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY6.
+      infer; subst; clear_old_executions.
+
+      (* i = 7 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY7.
+      infer; subst; clear_old_executions.
+
+      (* i = 8; loop done *)
+      ssplit; repeat straightline; [ dexpr_hammer | ].
+
+      (* done; prove postcondition *)
+      ssplit; eauto; [ | ].
+      { (* trace postcondition *)
+        eexists; split; [ reflexivity | ].
+        eassumption. }
+      { (* memory postcondition *)
+        cbn [array].
+        repeat match goal with
+               | |- context [scalar32 ?addr] =>
+                 progress ring_simplify addr
+               end.
+        ecancel_assumption. } }
+
+    { (* key_len = kAes128 case *)
+      repeat straightline.
+
+      (* unroll first while loop *)
+      eapply unroll_while with (iterations:=4%nat). cbn [repeat_logic_step].
+      repeat straightline.
+
+      (* process each iteration of the while loop *)
+
+      (* i = 0 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY0.
+      infer; subst; clear_old_executions.
+
+      (* i = 1 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY1.
+      infer; subst; clear_old_executions.
+
+      (* i = 2 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY2.
+      infer; subst; clear_old_executions.
+
+      (* i = 3 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY3.
+      infer; subst; clear_old_executions.
+
+      (* i = 4; loop done *)
+      ssplit; repeat straightline; [ dexpr_hammer | ].
+
+      (* second while loop has 8 - 4 = 4 iterations *)
+      eapply unroll_while with (iterations:=4%nat). cbn [repeat_logic_step].
+      repeat straightline.
+
+      (* i = 4 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY4.
+      infer; subst; clear_old_executions.
+
+      (* i = 5 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY5.
+      infer; subst; clear_old_executions.
+
+      (* i = 6 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY6.
+      infer; subst; clear_old_executions.
+
+      (* i = 7 *)
+      split; repeat straightline; [ dexpr_hammer | ].
+      interaction_with_reg KEY7.
+      infer; subst; clear_old_executions.
+
+      (* i = 8; loop done *)
+      ssplit; repeat straightline; [ dexpr_hammer | ].
+
+      (* done; prove postcondition *)
+      ssplit; eauto; [ | ].
+      { (* trace postcondition *)
+        eexists; split; [ reflexivity | ].
+        eassumption. }
+      { (* memory postcondition *)
+        cbn [array].
+        repeat match goal with
+               | |- context [scalar32 ?addr] =>
+                 progress ring_simplify addr
+               end.
+        ecancel_assumption. } }
+  Qed.
+
   Instance spec_of_aes_iv_put : spec_of aes_iv_put :=
     fun function_env =>
       forall (tr : trace) (m : mem) R
@@ -398,13 +718,11 @@ Section Proofs.
              (fun tr' m' rets =>
                 (* the circuit is in IDLE state with the iv registers updated *)
                 execution tr'
-                          (IDLE (map.put
-                                   (map.put
-                                      (map.put
-                                         (map.put rs (reg_addr IV0) iv0)
-                                         (reg_addr IV1) iv1)
-                                      (reg_addr IV2) iv2)
-                                   (reg_addr IV3) iv3))
+                          (IDLE (map.putmany_of_list
+                                   [(reg_addr IV0, iv0)
+                                    ; (reg_addr IV1, iv1)
+                                    ; (reg_addr IV2, iv2)
+                                    ; (reg_addr IV3, iv3)] rs))
                 (* ...and the same properties as before hold on the memory *)
                 /\ (array scalar32 (word.of_Z 4) iv_ptr [iv0;iv1;iv2;iv3] * R)%sep m'
                 (* ...and there is no output *)
@@ -426,6 +744,7 @@ Section Proofs.
 
     (* this assertion helps prove that i does not get truncated *)
     assert (4 < 2 ^ Semantics.width) by (cbn; lia).
+    pose proof nregs_iv_eq.
 
     (* unroll while loop *)
     eapply unroll_while with (iterations:=4%nat). cbn [repeat_logic_step].
@@ -434,33 +753,23 @@ Section Proofs.
     (* process each iteration of the while loop *)
 
     (* i = 0 *)
-    split; repeat straightline.
-    { subst_lets. simplify_implicits. push_unsigned.
-      rewrite nregs_iv_eq. destruct_one_match; lia. }
+    split; repeat straightline; [ dexpr_hammer | ].
     interaction_with_reg IV0. infer; subst.
 
     (* i = 1 *)
-    split; repeat straightline.
-    { subst_lets. simplify_implicits. push_unsigned.
-      rewrite nregs_iv_eq. destruct_one_match; lia. }
+    split; repeat straightline; [ dexpr_hammer | ].
     interaction_with_reg IV1. infer; subst.
 
     (* i = 2 *)
-    split; repeat straightline.
-    { subst_lets. simplify_implicits. push_unsigned.
-      rewrite nregs_iv_eq. destruct_one_match; lia. }
+    split; repeat straightline; [ dexpr_hammer | ].
     interaction_with_reg IV2. infer; subst.
 
     (* i = 3 *)
-    split; repeat straightline.
-    { subst_lets. simplify_implicits. push_unsigned.
-      rewrite nregs_iv_eq. destruct_one_match; lia. }
+    split; repeat straightline; [ dexpr_hammer | ].
     interaction_with_reg IV3. infer; subst.
 
     (* i = 4; loop done *)
-    ssplit; repeat straightline; [ | ].
-    { subst_lets. simplify_implicits. push_unsigned.
-      rewrite nregs_iv_eq. destruct_one_match; lia. }
+    ssplit; repeat straightline; [ dexpr_hammer | ].
 
     (* done; prove postcondition *)
     cbn [array].
