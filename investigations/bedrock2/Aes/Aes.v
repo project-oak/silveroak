@@ -118,23 +118,57 @@ Section Impl.
       }
     }
    ***)
-  (* N.B. *)
   Definition aes_iv_put : func :=
     let iv := "iv" in
     let i := "i" in
     ("b2_iv_put",
      (aes_globals ++ [iv], [], bedrock_func_body:(
       i = 0 ;
-                                                    (*
-      output! WRITE (AES_IV0, load4( iv ));
-      output! WRITE (AES_IV0 + 4, load4( iv + 1 ));
-      output! WRITE (AES_IV0 + 8, load4( iv + 2 ));
-      output! WRITE (AES_IV0 + 12, load4( iv + 3 ))
-      *)
       while (i < AES_NUM_REGS_IV) {
         output! WRITE (AES_IV0 + (i * 4), load4( iv + (i * 4) ));
         i = i + 1
       }
     ))).
 
+  (**** aes.c
+    bool aes_data_ready(void) {
+      return (REG32(AES_STATUS(0)) & (0x1u << AES_STATUS_INPUT_READY));
+    }
+   ***)
+  Definition aes_data_ready : func :=
+    let status := "status" in
+    let out := "out" in
+    ("b2_data_ready",
+     (aes_globals ++ [], [out], bedrock_func_body:(
+      io! status = READ (AES_STATUS) ;
+      out = status & (1 << AES_STATUS_INPUT_READY)
+    ))).
+
+  (**** aes.c
+    bool aes_data_valid(void) {
+      return (REG32(AES_STATUS(0)) & (0x1u << AES_STATUS_OUTPUT_VALID));
+    }
+   ***)
+  Definition aes_data_valid : func :=
+    let status := "status" in
+    let out := "out" in
+    ("b2_data_valid",
+     (aes_globals ++ [], [out], bedrock_func_body:(
+      io! status = READ (AES_STATUS) ;
+      out = status & (1 << AES_STATUS_OUTPUT_VALID)
+    ))).
+
+  (**** aes.c
+    bool aes_idle(void) {
+      return (REG32(AES_STATUS(0)) & (0x1u << AES_STATUS_IDLE));
+    }
+   ***)
+  Definition aes_idle : func :=
+    let status := "status" in
+    let out := "out" in
+    ("b2_idle",
+     (aes_globals ++ [], [out], bedrock_func_body:(
+      io! status = READ (AES_STATUS) ;
+      out = status & (1 << AES_STATUS_IDLE)
+    ))).
 End Impl.

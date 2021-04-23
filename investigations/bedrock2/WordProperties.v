@@ -134,7 +134,7 @@ Section WithWord.
   Lemma is_flag_set_shift w flag :
     boolean w ->
     word.unsigned flag < width ->
-    is_flag_set (word.slu w flag) flag = word.eqb w (word.of_Z 0).
+    is_flag_set (word.slu w flag) flag = negb (word.eqb w (word.of_Z 0)).
   Proof.
     intro Hbool; intros; cbv [is_flag_set].
     pose proof word.width_pos.
@@ -152,6 +152,7 @@ Section WithWord.
     rewrite boolean_and_1_r by auto.
     rewrite word.unsigned_eqb.
     destruct Hbool; subst; push_unsigned.
+    all:apply Bool.negb_true_iff; boolsimpl.
     all:first [ apply Z.eqb_eq | apply Z.eqb_neq ].
     all:repeat destruct_one_match; try congruence.
     all:lia.
@@ -215,7 +216,7 @@ Section WithWord.
     is_flag_set (word.or w1 (word.slu w2 i)) flag = is_flag_set w1 flag.
   Proof.
     intros; cbv [is_flag_set].
-    f_equal. apply word_testbit_inj. intro n; intros.
+    do 2 f_equal. apply word_testbit_inj. intro n; intros.
     push_unsigned. autorewrite with push_Ztestbit.
     destruct_one_match; boolsimpl; try reflexivity; [ ].
     lazymatch goal with
@@ -251,11 +252,11 @@ Section WithWord.
     word.unsigned flag < width ->
     has_size w1 (word.unsigned flag) ->
     is_flag_set (word.or w1 (word.slu w2 flag)) flag
-    = word.eqb w2 (word.of_Z 0).
+    = negb (word.eqb w2 (word.of_Z 0)).
   Proof.
     intros; cbv [is_flag_set].
     rewrite <-(boolean_shift_nonzero w2 flag) by auto.
-    f_equal. apply word_testbit_inj. intro n; intros.
+    do 2 f_equal. apply word_testbit_inj. intro n; intros.
     push_unsigned. autorewrite with push_Ztestbit.
     destruct_one_match; try lia; [ ].
     repeat lazymatch goal with

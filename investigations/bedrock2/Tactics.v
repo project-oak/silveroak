@@ -1,6 +1,8 @@
 Require Import Coq.Strings.String.
 Require Import bedrock2.ProgramLogic.
+Require Import bedrock2.Syntax.
 Require Import coqutil.Map.Interface.
+Require Import coqutil.Tactics.letexists.
 Require Import Coq.setoid_ring.Ring.
 
 Ltac subst1_map m :=
@@ -64,4 +66,14 @@ Ltac invert_bool :=
     apply Bool.negb_true_iff in H
   | H : negb _ = false |- _ =>
     apply Bool.negb_false_iff in H
+  end.
+
+(* tactic copied from bedrock2Examples/lightbulb.v *)
+Ltac split_if :=
+  lazymatch goal with
+    |- WeakestPrecondition.cmd _ ?c _ _ _ ?post =>
+    let c := eval hnf in c in
+        lazymatch c with
+        | cmd.cond _ _ _ => letexists; split; [solve[repeat straightline]|split]
+        end
   end.
