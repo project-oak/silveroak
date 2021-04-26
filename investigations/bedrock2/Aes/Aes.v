@@ -131,6 +131,26 @@ Section Impl.
     ))).
 
   (**** aes.c
+    void aes_data_put(const void *data) {
+      // Write the four input data registers.
+      for (int i = 0; i < AES_NUM_REGS_DATA; ++i) {
+        REG32(AES_DATA_IN0(0) + i * sizeof(uint32_t)) = ((uint32_t * )data)[i];
+      }
+    }
+   ***)
+  Definition aes_data_put : func :=
+    let data := "data" in
+    let i := "i" in
+    ("b2_data_put",
+     (aes_globals ++ [data], [], bedrock_func_body:(
+      i = 0 ;
+      while (i < AES_NUM_REGS_DATA) {
+        output! WRITE (AES_DATA_IN0 + (i * 4), load4( data + (i * 4) ));
+        i = i + 1
+      }
+    ))).
+
+  (**** aes.c
     bool aes_data_ready(void) {
       return (REG32(AES_STATUS(0)) & (0x1u << AES_STATUS_INPUT_READY));
     }
@@ -170,5 +190,28 @@ Section Impl.
      (aes_globals ++ [], [out], bedrock_func_body:(
       io! status = READ (AES_STATUS) ;
       out = status & (1 << AES_STATUS_IDLE)
+    ))).
+
+  (**** aes.c
+    void aes_data_put_wait(const void *data) {
+      // Wait for AES unit to be ready for new input data.
+      while (!aes_data_ready()) {
+      }
+
+      // Provide the input data.
+      aes_data_put(data);
+    }
+   ***)
+  Definition aes_data_put_wait : func :=
+    let data := "data" in
+    let is_ready := "is_ready" in
+    ("b2_data_put_wait",
+     (aes_globals ++ [data], [], bedrock_func_body:(
+      is_ready = 0 ;
+      while (is_ready == 0) {
+        unpack! is_ready = aes_data_ready coq:(aes_globals)
+      };
+
+      aes_data_put coq:(aes_globals ++ [expr.var data])
     ))).
 End Impl.
