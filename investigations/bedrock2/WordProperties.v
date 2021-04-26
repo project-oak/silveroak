@@ -19,6 +19,10 @@ Module word.
     Lemma wrap_small z : 0 <= z < 2 ^ width ->  word.wrap (word:=word) z = z.
     Proof. apply Z.mod_small. Qed.
 
+    Lemma unsigned_of_Z_small z :
+      0 <= z < 2 ^ width -> word.unsigned (word.of_Z z) = z.
+    Proof. intros; rewrite word.unsigned_of_Z; auto using wrap_small. Qed.
+
   End WithWord.
 End word.
 
@@ -43,7 +47,7 @@ Hint Rewrite @word.unsigned_mulhuu @word.unsigned_and_nowrap
      @word.unsigned_or_nowrap @word.unsigned_xor_nowrap @word.unsigned_of_Z_0
      @word.unsigned_of_Z_1 @word.unsigned_if @word.unsigned_ltu
      using solve [eauto || typeclasses eauto] : push_unsigned.
-Hint Rewrite @word.unsigned_sru_nowrap
+Hint Rewrite @word.unsigned_sru_nowrap @word.unsigned_of_Z_small
      using solve [lia || typeclasses eauto] : push_unsigned.
 
 (* Tactic that finds word.ok instances for rewrites that require them *)
@@ -64,6 +68,9 @@ Ltac push_unsigned :=
          | |- context [@word.unsigned _ ?word (word.divu ?x ?y)] =>
            let ok := constr:(_:word.ok word) in
            rewrite (@word.unsigned_divu _ word ok x y) by lia
+         | |- context [@word.unsigned _ ?word (word.slu ?x ?y)] =>
+           let ok := constr:(_:word.ok word) in
+           rewrite (@word.unsigned_slu _ word ok x y) by lia
          | |- context [@word.unsigned _ ?word (word.slu ?x ?y)] =>
            let ok := constr:(_:word.ok word) in
            rewrite (@word.unsigned_slu _ word ok x y) by lia
