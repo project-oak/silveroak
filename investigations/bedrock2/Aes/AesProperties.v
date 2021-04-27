@@ -15,6 +15,7 @@ Require Import bedrock2.WeakestPreconditionProperties.
 Require Import coqutil.Word.Interface.
 Require Import coqutil.Word.Properties.
 Require Import coqutil.Map.Interface.
+Require Import coqutil.Map.Properties.
 Require Import coqutil.Tactics.Tactics.
 Require Import coqutil.Tactics.syntactic_unify.
 Require Import coqutil.Tactics.letexists.
@@ -38,6 +39,11 @@ Section Proofs.
   Context {consts_ok : aes_constants_ok constant_words}.
   Existing Instance constant_words.
   Existing Instance state_machine_parameters.
+
+  (* this duplicate of locals_ok helps when Semantics.word has been changed to
+     parameters.word *)
+  Local Instance localsok : @map.ok string parameters.word Semantics.locals
+    := Semantics.locals_ok.
 
   (***** General-purpose lemmas/tactics and setup *****)
 
@@ -125,7 +131,7 @@ Section Proofs.
     addr_in_category (reg_addr r) c = reg_category_eqb c (reg_category r).
   Proof.
     cbv [addr_in_category].
-    destr (reg_category_eqb c (reg_category r)).
+    case_eq (reg_category_eqb c (reg_category r)); intros.
     { apply existsb_exists; exists r.
       split; [ apply all_regs_complete | ].
       apply Bool.andb_true_iff; split; [ apply word.eqb_eq; reflexivity | ].
@@ -147,8 +153,22 @@ Section Proofs.
     else nregs_populated rs cat.
   Proof.
     cbv [nregs_populated reg_lookup]. intros.
-    rewrite Properties.map.fold_put; auto.
+    rewrite map.fold_put; auto.
     { rewrite addr_in_category_reg_addr. reflexivity. }
+    { intros. repeat destruct_one_match; reflexivity. }
+  Qed.
+
+  Lemma nregs_populated_remove rs r cat v :
+    reg_lookup rs r = Some v ->
+    nregs_populated (map.remove rs (reg_addr r)) cat =
+    if reg_category_eqb cat (reg_category r)
+    then (nregs_populated rs cat - 1)%nat
+    else nregs_populated rs cat.
+  Proof.
+    cbv [nregs_populated reg_lookup]. intros.
+    erewrite map.fold_remove with (m:=rs); eauto; [ | ].
+    { rewrite addr_in_category_reg_addr.
+      destruct_one_match; try reflexivity. lia. }
     { intros. repeat destruct_one_match; reflexivity. }
   Qed.
 
@@ -163,7 +183,7 @@ Section Proofs.
       intros; [ apply map.get_empty | ].
     cbv [reg_lookup] in *.
     destruct_one_match_hyp; try congruence; [ ].
-    rewrite Properties.map.get_put_dec.
+    rewrite map.get_put_dec.
     destruct_one_match; subst; [ | tauto ].
     rewrite addr_in_category_reg_addr in *.
     congruence.
@@ -188,15 +208,15 @@ Section Proofs.
   Proof.
     cbv [unset_inp_regs]. apply map.map_ext; intros.
     destruct_one_match.
-    { rewrite !Properties.map.get_remove_dec.
+    { rewrite !map.get_remove_dec.
       repeat (destruct_one_match; try reflexivity); [ ].
       apply map.get_put_diff.
       destruct r; cbn [reg_category reg_category_eqb orb] in *; congruence. }
     { repeat lazymatch goal with H : (_ || _)%bool = false |- _ =>
                                  apply Bool.orb_false_iff in H; destruct H end.
       repeat lazymatch goal with
-               | |- context [map.get (map.put _ _ _) _] => rewrite Properties.map.get_put_dec
-               | |- context [map.get (map.remove _ _) _] => rewrite Properties.map.get_remove_dec
+               | |- context [map.get (map.put _ _ _) _] => rewrite map.get_put_dec
+               | |- context [map.get (map.remove _ _) _] => rewrite map.get_remove_dec
                | H : reg_addr _ = reg_addr _ |- _ =>
                  apply reg_addr_unique in H; subst;
                    cbn [reg_category reg_category_eqb] in *; try congruence
@@ -272,18 +292,26 @@ Section Proofs.
            | H : DONE _ = DONE _ |- _ => inversion H; clear H; subst
            end.
 
-  Local Ltac invert_read_step_nobranch :=
+  Local Ltac invert_read_step :=
     lazymatch goal with
     | H : read_step _ _ _ _ |- _ =>
       cbv [read_step] in H; cbn [reg_category] in H
     end;
+    logical_simplify; simplify_implicits;
     repeat lazymatch goal with
            | H : False |- _ => contradiction H
+           | Heq : nregs_populated _ ?c = _,
+                   H : context [nregs_populated (map.remove ?m _) ?c] |- _ =>
+             erewrite !nregs_populated_remove in H by eauto;
+               simplify_implicits; rewrite Heq in H;
+                 cbn [reg_category reg_category_eqb Nat.sub] in H
+           | H : S _ = O |- _ => lia
+           | H : O <> O |- _ => lia
            | _ => first [ destruct_one_match_hyp
                        | progress logical_simplify ]
-           end; [ ].
+           end.
 
-  Local Ltac invert_write_step_nobranch :=
+  Local Ltac invert_write_step :=
     lazymatch goal with
     | H : write_step _ _ _ _ |- _ =>
       cbv [write_step] in H; cbn [reg_category] in H
@@ -299,13 +327,13 @@ Section Proofs.
            | H : False |- _ => contradiction H
            | _ => first [ destruct_one_match_hyp
                        | progress logical_simplify ]
-           end; [ ].
+           end.
 
   Local Ltac infer :=
     repeat first [ progress infer_states_equal
                  | progress infer_state_data_equal
-                 | progress invert_read_step_nobranch
-                 | progress invert_write_step_nobranch
+                 | progress invert_read_step; [ ]
+                 | progress invert_write_step; [ ]
                  | progress invert_step ].
 
   Local Notation aes_op_t := (enum_member aes_op) (only parsing).
@@ -889,7 +917,7 @@ Section Proofs.
   Lemma aes_iv_put_correct :
     program_logic_goal_for_function! aes_iv_put.
   Proof.
-    (* initial processing *)
+    (* intial processing *)
     repeat straightline.
     simplify_implicits.
 
@@ -1093,7 +1121,7 @@ Section Proofs.
 
     split; repeat straightline; [ dexpr_hammer; congruence | ].
 
-    (* Call aes_idle *)
+    (* Call aes_data_ready *)
     straightline_call; eauto; [ ].
 
     (* simplify guarantees *)
@@ -1133,5 +1161,583 @@ Section Proofs.
 
     (* done; prove postcondition *)
     repeat straightline. eauto.
+  Qed.
+
+  Instance spec_of_aes_data_get : spec_of aes_data_get :=
+    fun function_env =>
+      forall (tr : trace) (m : mem) R
+        (rs : known_register_state)
+        (data_ptr data0 data1 data2 data3 : Semantics.word),
+        (* data array is in memory, with arbitrary values *)
+        (array scalar32 (word.of_Z 4) data_ptr [data0;data1;data2;data3] * R)%sep m ->
+        (* circuit must be in the DONE state *)
+        execution tr (DONE rs) ->
+        (* the output data registers must be populated *)
+        nregs_populated rs DataOutReg = 4%nat ->
+        let args := [data_ptr] in
+        call function_env aes_data_get tr m (aes_globals ++ args)
+             (fun tr' m' rets =>
+                exists out0 out1 out2 out3,
+                  (* the circuit is now in the IDLE state with output registers unset *)
+                  execution tr' (IDLE (map.remove
+                                         (map.remove
+                                            (map.remove
+                                               (map.remove rs
+                                                           (reg_addr DATA_OUT0))
+                                               (reg_addr DATA_OUT1))
+                                            (reg_addr DATA_OUT2))
+                                         (reg_addr DATA_OUT3)))
+                  (* ...and the array now holds the values from the output registers *)
+                  /\ (array scalar32 (word.of_Z 4) data_ptr [out0;out1;out2;out3] * R)%sep m'
+                  /\ reg_lookup rs DATA_OUT0 = Some out0
+                  /\ reg_lookup rs DATA_OUT1 = Some out1
+                  /\ reg_lookup rs DATA_OUT2 = Some out2
+                  /\ reg_lookup rs DATA_OUT3 = Some out3
+                  (* ...and there are no return values *)
+                  /\ rets = []).
+
+  Lemma aes_data_get_correct :
+    program_logic_goal_for_function! aes_data_get.
+  Proof.
+    (* initial processing *)
+    repeat straightline.
+    simplify_implicits.
+
+    (* simplify array predicate *)
+    cbn [array] in *.
+    repeat match goal with
+           | H : context [scalar32 ?addr] |- _ =>
+             progress ring_simplify addr in H
+           end.
+
+    (* this assertion helps prove that i does not get truncated *)
+    assert (4 < 2 ^ Semantics.width) by (cbn; lia).
+    pose proof nregs_data_eq.
+
+    (* unroll while loop *)
+    eapply unroll_while with (iterations:=4%nat). cbn [repeat_logic_step].
+    repeat straightline.
+
+    (* process each iteration of the while loop *)
+
+    (* i = 0 *)
+    split; repeat straightline; [ dexpr_hammer | ].
+
+    (* read register *)
+    interaction_with_reg DATA_OUT0.
+    infer; subst; clear_old_executions.
+    repeat straightline.
+
+    (* store result in memory *)
+    simplify_implicits.
+    ring_simplify_store_addr.
+    (* the following line is in [straightline] but needs simplify_implicits for
+       it to work *)
+    eapply store_four_of_sep_32bit;
+      [ reflexivity | simplify_implicits; solve [ ecancel_assumption ] |  ].
+    repeat straightline.
+
+    (* i = 1 *)
+    split; repeat straightline; [ dexpr_hammer | ].
+
+    (* read register *)
+    interaction_with_reg DATA_OUT1.
+    infer; subst; clear_old_executions.
+    repeat straightline.
+
+    (* store result in memory *)
+    simplify_implicits.
+    ring_simplify_store_addr.
+    (* the following line is in [straightline] but needs simplify_implicits for
+       it to work *)
+    eapply store_four_of_sep_32bit;
+      [ reflexivity | simplify_implicits; solve [ ecancel_assumption ] |  ].
+    repeat straightline.
+
+    (* i = 2 *)
+    split; repeat straightline; [ dexpr_hammer | ].
+
+    (* read register *)
+    interaction_with_reg DATA_OUT2.
+    infer; subst; clear_old_executions.
+    repeat straightline.
+
+    (* store result in memory *)
+    simplify_implicits.
+    ring_simplify_store_addr.
+    (* the following line is in [straightline] but needs simplify_implicits for
+       it to work *)
+    eapply store_four_of_sep_32bit;
+      [ reflexivity | simplify_implicits; solve [ ecancel_assumption ] |  ].
+    repeat straightline.
+
+    (* i = 3 *)
+    split; repeat straightline; [ dexpr_hammer | ].
+
+    (* read register *)
+    interaction_with_reg DATA_OUT3.
+    infer; subst; clear_old_executions.
+    repeat straightline.
+
+    (* store result in memory *)
+    simplify_implicits.
+    ring_simplify_store_addr.
+    (* the following line is in [straightline] but needs simplify_implicits for
+       it to work *)
+    eapply store_four_of_sep_32bit;
+      [ reflexivity | simplify_implicits; solve [ ecancel_assumption ] |  ].
+    repeat straightline.
+
+    (* i = 4; loop done *)
+    ssplit; repeat straightline; [ dexpr_hammer | ].
+
+    (* done; prove postcondition *)
+    cbn [array].
+    repeat match goal with
+           | |- context [scalar32 ?addr] =>
+             progress ring_simplify addr
+           end.
+
+    (* change register lookups to refer to original register state *)
+    repeat lazymatch goal with
+           | H : reg_lookup (map.remove _ _) _ = Some _ |- _ =>
+             cbv [reg_lookup] in H;
+               rewrite !map.get_remove_dec in H;
+               rewrite !word.eqb_ne in H by (apply reg_addr_neq; congruence)
+           end.
+
+    do 4 eexists; ssplit; eauto; [ ].
+    simplify_implicits.
+    ecancel_assumption.
+  Qed.
+
+  Definition output_matches_state out s :=
+    match s with
+    | DONE rs =>
+      reg_lookup rs DATA_OUT0 = Some out.(data_out0)
+      /\ reg_lookup rs DATA_OUT1 = Some out.(data_out1)
+      /\ reg_lookup rs DATA_OUT2 = Some out.(data_out2)
+      /\ reg_lookup rs DATA_OUT3 = Some out.(data_out3)
+    | BUSY _ exp_output _ => exp_output = out
+    | _ => False
+    end.
+
+  Definition get_register_state s : known_register_state :=
+    match s with
+    | DONE rs => rs
+    | BUSY rs _ _ => rs
+    | IDLE rs => rs
+    | UNINITIALIZED => map.empty
+    end.
+
+  Instance spec_of_aes_data_get_wait : spec_of aes_data_get_wait :=
+    fun function_env =>
+      forall (tr : trace) (m : mem) R
+        (out : aes_output)
+        (data_ptr data0 data1 data2 data3 : Semantics.word) (s : state),
+        (* data array is in memory, with arbitrary values *)
+        (array scalar32 (word.of_Z 4) data_ptr [data0;data1;data2;data3] * R)%sep m ->
+        (* circuit must be in the DONE or BUSY state (otherwise we can't prove
+           termination) and expected or already-written output matches out *)
+        execution tr s ->
+        output_matches_state out s ->
+        let args := [data_ptr] in
+        call function_env aes_data_get_wait tr m (aes_globals ++ args)
+             (fun tr' m' rets =>
+                (* the circuit is now in the IDLE state with output registers unset *)
+                execution tr' (IDLE (map.remove
+                                       (map.remove
+                                          (map.remove
+                                             (map.remove (get_register_state s)
+                                                         (reg_addr DATA_OUT0))
+                                             (reg_addr DATA_OUT1))
+                                          (reg_addr DATA_OUT2))
+                                       (reg_addr DATA_OUT3)))
+                (* ...and the array now holds the values from the expected output *)
+                /\ (array scalar32 (word.of_Z 4) data_ptr
+                         [out.(data_out0)
+                          ; out.(data_out1)
+                          ; out.(data_out2)
+                          ; out.(data_out3)] * R)%sep m'
+                (* ...and there are no return values *)
+                /\ rets = []).
+
+  Lemma unset_inp_regs_ignores_outregs rs out :
+    aes_expected_output rs = Some out ->
+    nregs_populated (unset_inp_regs rs) DataOutReg = nregs_populated rs DataOutReg.
+  Proof.
+    cbv [unset_inp_regs]. cbv [aes_expected_output option_bind].
+    repeat (destruct_one_match; try congruence); [ ]. intros.
+    repeat (erewrite nregs_populated_remove
+             by (cbv [reg_lookup];
+                 rewrite ?map.get_remove_diff by (apply reg_addr_neq; congruence);
+                 eassumption);
+            cbn [reg_category reg_category_eqb]).
+    reflexivity.
+  Qed.
+
+  Lemma map_remove_put_same m k v :
+    map.remove (map.put m k v) k = map.remove m k.
+  Proof.
+    apply map.map_ext; intros.
+    rewrite ?map.get_remove_dec, ?map.get_put_dec;
+      destruct_one_match; subst; reflexivity.
+  Qed.
+
+  Lemma map_remove_put_diff m k1 k2 v :
+    k1 <> k2 ->
+    map.remove (map.put m k1 v) k2 = map.put (map.remove m k2) k1 v.
+  Proof.
+    intros. apply map.map_ext; intros.
+    rewrite ?map.get_remove_dec, ?map.get_put_dec, ?map.get_remove_dec;
+      repeat destruct_one_match; subst; congruence.
+  Qed.
+
+  (* if a put causes more registers to be populated, then the put must set a
+     register that was not previously set *)
+  Lemma nregs_populated_increase rs r v c :
+    (nregs_populated rs c
+     < nregs_populated (map.put rs (reg_addr r) v) c)%nat ->
+    reg_lookup rs r = None.
+  Proof.
+    cbv [nregs_populated reg_lookup]. intros.
+    destr (map.get rs (reg_addr r)); [ exfalso | reflexivity ].
+    erewrite map.fold_remove with (m:=rs) (k:=reg_addr r) in H;
+      [ | intros; repeat destruct_one_match; reflexivity | eassumption ].
+    erewrite map.fold_remove
+      with (m:=map.put rs _ _) (k:=reg_addr r) in H;
+      [ | intros; repeat destruct_one_match; reflexivity
+        | apply map.get_put_same ].
+    rewrite map_remove_put_same in *.
+    destruct_one_match_hyp; lia.
+  Qed.
+
+  Lemma nregs_populated_set_out_regs rs out :
+    nregs_populated (set_out_regs rs out) DataOutReg = 4%nat.
+  Proof.
+    cbv [set_out_regs nregs_populated].
+    repeat match goal with
+           | |- context [map.put _ ?key] =>
+             erewrite map.fold_remove with (k:=key);
+               [ | intros; repeat destruct_one_match; reflexivity
+                 | rewrite ?map.get_remove_diff, ?map.get_put_diff
+                   by (apply reg_addr_neq; congruence);
+                   apply map.get_put_same ];
+               rewrite addr_in_category_reg_addr; cbn [reg_category reg_category_eqb];
+                 rewrite ?map_remove_put_diff by (apply reg_addr_neq; congruence);
+                 rewrite map_remove_put_same
+           end.
+    repeat apply (f_equal S).
+    lazymatch goal with
+    | |- map.fold ?f ?r0 ?m = _ =>
+      let H' := fresh in
+      pose proof map.fold_to_list f r0 m as H';
+        destruct H' as [l [Heq Hin] ]; rewrite Heq;
+          rewrite <-(rev_involutive l)
+    end.
+    rewrite fold_left_rev_right.
+    eapply fold_left_invariant with (I:= eq 0%nat); auto; [ ].
+    intros. destruct_products; subst.
+    repeat lazymatch goal with
+           | H : In _ (rev _) |- _ => rewrite <-in_rev in H
+           | H : In (?k,?v) ?l |- _ => apply Hin in H
+           | H : context [map.get (map.remove _ _)] |- _ =>
+             rewrite map.get_remove_dec in H
+           end.
+    repeat (destruct_one_match_hyp; try congruence).
+    cbv [addr_in_category].
+    cbn [all_regs existsb reg_category reg_category_eqb].
+    boolsimpl. destruct_one_match; try reflexivity; [ ].
+    repeat lazymatch goal with
+           | H : (_ || _)%bool = true |- _ => apply Bool.orb_true_iff in H; destruct H
+           | H : word.eqb _ _ = true |- _ => apply word.eqb_true in H
+           | _ => congruence
+           end.
+  Qed.
+
+  Lemma output_matches_state_set_out_regs rs out :
+    output_matches_state out (DONE rs) ->
+    set_out_regs rs out = rs.
+  Proof.
+    cbv [output_matches_state reg_lookup].
+    intros; logical_simplify.
+    cbv [set_out_regs]. apply map.map_ext; intros.
+    rewrite !map.get_put_dec.
+    repeat destruct_one_match; congruence.
+  Qed.
+
+  Lemma aes_data_get_wait_correct :
+    program_logic_goal_for_function! aes_data_get_wait.
+  Proof.
+    (* initial processing *)
+    repeat straightline.
+    simplify_implicits.
+
+    set (max_iterations:=fun s : parameters.state =>
+                           match s with
+                           | BUSY _ _ n => n
+                           | DONE _ => 1%nat
+                           | _ => 0%nat
+                           end).
+
+    (* begin while loop *)
+    let l := lazymatch goal with |- cmd _ _ _ _ ?l _ => l end in
+    apply atleastonce_localsmap
+      with (v0:=max_iterations s)
+           (lt:=lt)
+           (invariant:=
+              fun i tr' m' l' =>
+                exists (s' : parameters.state) is_valid,
+                  (* s' is the state for the new trace *)
+                  execution tr' s'
+                  (* the remaining maximum iterations match the "measure" i *)
+                  /\ max_iterations s' = i
+                  (* as long as the loop continues, we keep setting is_valid to
+                     0, so locals are unchanged until the loop breaks *)
+                  /\ l' = map.put l "is_valid"%string is_valid
+                  (* expected output still matches *)
+                  /\ output_matches_state out s'
+                  (* s' is related to s either by decrementing counter or being equal *)
+                  /\ match s with
+                    | BUSY rs out n => exists n', s' = BUSY rs out n'
+                    | DONE rs => s' = s
+                    | _ => False
+                    end
+                  (* memory is unaffected *)
+                  /\ (array scalar32 (word.of_Z 4) data_ptr [data0; data1; data2; data3] ⋆ R)%sep m').
+    { apply lt_wf. }
+
+    { (* case in which the loop breaks immediately (cannot happen) *)
+      repeat straightline.
+      exfalso. (* proof by contradiction *)
+
+      repeat lazymatch goal with
+             | v := word.of_Z 0 |- _ => subst v
+             | br := if word.eqb _ (word.of_Z 0) then _ else _ |- _ => subst br
+             end.
+      rewrite @word.unsigned_eqb in * by typeclasses eauto.
+      autorewrite with push_unsigned in *.
+      destruct_one_match_hyp_of_type bool; congruence. }
+
+    { (* proof that invariant holds at loop start *)
+      do 2 eexists; ssplit;
+      lazymatch goal with
+      | |- execution _ _ => eassumption
+      | |- (?x <= ?x)%nat => reflexivity
+      | |- ?x = ?x => reflexivity
+      | |- sep _ _ _ => eassumption
+      | |- _ = map.put _ _ _ => symmetry; solve [apply map.put_put_same]
+      | |- output_matches_state _ _ =>
+        cbv [output_matches_state] in *;
+        destruct_one_match; solve [eauto]
+      | _ => idtac
+      end; [ ].
+      destruct_one_match; eauto. }
+
+    { (* invariant holds through loop (or postcondition holds, if loop breaks) *)
+      repeat straightline.
+
+      (* Call aes_data_valid *)
+      straightline_call; eauto; [ ].
+
+      (* simplify guarantees *)
+      logical_simplify; subst.
+      lazymatch goal with
+      | H : execution (_ :: _) _ |- _ =>
+        pose proof H;
+        apply invert1_execution in H; logical_simplify
+      end.
+      infer; subst.
+      (* assert that the register address we just read is STATUS *)
+      lazymatch goal with
+      | H : parameters.reg_addr ?r = AES_STATUS |- _ =>
+        replace AES_STATUS with (reg_addr STATUS) in H
+          by (cbn [reg_addr]; subst_lets; ring);
+          apply reg_addr_unique in H; try subst r
+      end.
+      cbn [parameters.reg_addr parameters.write_step parameters.read_step
+                               state_machine_parameters] in *.
+      invert_read_step; infer; subst; try discriminate;
+        (* get rid of cases that are not BUSY or DONE *)
+        try lazymatch goal with
+            | H : output_matches_state _ _ |- _ =>
+              cbv [output_matches_state] in H; contradiction H
+            end;
+        (* three cases left : BUSY -> DONE, BUSY -> BUSY, DONE -> DONE *)
+        [ | | ].
+
+      { (* case in which the state was BUSY, but is now DONE *)
+        repeat straightline.
+        { (* continuation case -- contradiction *)
+          exfalso.
+          cbv [status_matches_state] in *.
+          repeat invert_bool.
+          simplify_implicits.
+          lazymatch goal with
+          | br := if word.eqb _ (word.of_Z 0) then _ else _,
+                  H : word.unsigned br <> 0 |- _ =>
+                  subst br; apply H
+          end.
+          push_unsigned.
+          destruct_one_match; subst; try reflexivity; [ ].
+          (* TODO: add to invert_bool *)
+          lazymatch goal with
+          | H:true = negb _ |- _ => symmetry in H; apply Bool.negb_true_iff in H
+          end.
+          congruence. }
+        { (* break case *)
+
+          (* Call aes_data_get *)
+          straightline_call; eauto using nregs_populated_set_out_regs; [ ].
+          repeat straightline.
+          logical_simplify; subst.
+          lazymatch goal with
+          | H : execution (_ :: _) _ |- _ =>
+            apply invert1_execution in H; logical_simplify
+          end.
+          infer; subst.
+          (* assert that the register address we just read is STATUS *)
+          lazymatch goal with
+          | H : parameters.reg_addr ?r = AES_STATUS |- _ =>
+            replace AES_STATUS with (reg_addr STATUS) in H
+              by (cbn [reg_addr]; subst_lets; ring);
+              apply reg_addr_unique in H; try subst r
+          end.
+          cbn [parameters.reg_addr parameters.write_step parameters.read_step
+                                   state_machine_parameters] in *.
+          invert_read_step; subst; try discriminate; [ ].
+          infer.
+
+          (* postcondition *)
+          lazymatch goal with
+          | H : output_matches_state ?out _ |- context [?out] =>
+            cbv [output_matches_state] in H; subst
+          end.
+          cbv [reg_lookup set_out_regs] in *.
+          repeat lazymatch goal with
+                 | H : map.get (map.put _ ?k _) ?k = _ |- _ => rewrite map.get_put_same in H
+                 | H : map.get (map.put _ _ _) _ = _ |- _ =>
+                   rewrite map.get_put_diff in H by (apply reg_addr_neq; congruence)
+                 | H : context [map.remove (map.put _ ?k _) ?k] |- _ =>
+                   rewrite map_remove_put_same in H
+                 | H : context [map.remove (map.put _ _ _) _] |- _ =>
+                   rewrite map_remove_put_diff in H by (apply reg_addr_neq; congruence)
+                 | H : Some _ = Some _ |- _ => inversion H; clear H; subst
+                 end.
+          cbn [get_register_state].
+          ssplit; eauto. } }
+
+      { (* case in which the state was BUSY and is still BUSY *)
+        repeat straightline.
+        { (* continuation case *)
+          cbn [max_iterations]. cbv [Markers.split].
+          match goal with |- exists v, _ /\ (v < S ?n)%nat => exists n end.
+          split; [ | lia ].
+
+          (* invariant still holds *)
+          do 2 eexists; ssplit;
+            lazymatch goal with
+            | |- execution _ _ => eassumption
+            | |- max_iterations _ = _ => reflexivity
+            | |- sep _ _ _ => eassumption
+            | |- @eq map.rep ?l1 ?l2 =>
+              subst1_map l1;
+                lazymatch goal with
+                | |- @eq map.rep ?l1 ?l2 =>
+                  subst1_map l1
+                end;
+                apply map.put_put_same
+            | |- exists n, ?f ?x = ?f n => exists x; reflexivity
+            | |- output_matches_state _ _ =>
+              cbv [output_matches_state] in *; solve [eauto]
+            | _ => idtac
+            end. }
+        { (* break case -- contradiction *)
+          exfalso.
+          cbv [status_matches_state] in *.
+          repeat invert_bool; try congruence; [ ].
+          lazymatch goal with
+          | H : word.eqb _ _ = negb (is_flag_set ?x ?flag),
+                H' : is_flag_set ?x ?flag = _ |- _ =>
+            rewrite H' in H; cbn [negb] in H
+          end.
+          simplify_implicits.
+          lazymatch goal with
+          | br := if word.eqb ?x (word.of_Z 0) then _ else _,
+                  Heq : word.eqb ?x (word.of_Z 0) = _,
+                  Hz : word.unsigned br = 0 |- _ =>
+                  subst br; rewrite Heq in Hz;
+                    autorewrite with push_unsigned in Hz
+          end.
+          discriminate. } }
+
+      { (* case in which the state was DONE to begin with *)
+        repeat straightline.
+        { (* continuation case -- contradiction *)
+          exfalso.
+          cbv [status_matches_state] in *.
+          repeat invert_bool.
+          simplify_implicits.
+          lazymatch goal with
+          | br := if word.eqb _ (word.of_Z 0) then _ else _,
+                  H : word.unsigned br <> 0 |- _ =>
+                  subst br; apply H
+          end.
+          push_unsigned.
+          destruct_one_match; subst; try reflexivity; [ ].
+          (* TODO: add to invert_bool *)
+          lazymatch goal with
+          | H:true = negb _ |- _ => symmetry in H; apply Bool.negb_true_iff in H
+          end.
+          congruence. }
+        { (* break case *)
+
+          (* Call aes_data_get *)
+          straightline_call; eauto;
+          lazymatch goal with
+          | |- nregs_populated ?rs DataOutReg = _ =>
+            erewrite <-(output_matches_state_set_out_regs rs) by eassumption;
+            solve [eapply nregs_populated_set_out_regs]
+          | _ => idtac
+          end; [ ].
+          repeat straightline.
+          logical_simplify; subst.
+          lazymatch goal with
+          | H : execution (_ :: _) _ |- _ =>
+            apply invert1_execution in H; logical_simplify
+          end.
+          infer; subst.
+          (* assert that the register address we just read is STATUS *)
+          lazymatch goal with
+          | H : parameters.reg_addr ?r = AES_STATUS |- _ =>
+            replace AES_STATUS with (reg_addr STATUS) in H
+              by (cbn [reg_addr]; subst_lets; ring);
+              apply reg_addr_unique in H; try subst r
+          end.
+          cbn [parameters.reg_addr parameters.write_step parameters.read_step
+                                   state_machine_parameters] in *.
+          invert_read_step; subst; try discriminate; [ ].
+          infer.
+
+          (* postcondition *)
+          lazymatch goal with
+          | H : output_matches_state ?out _ |- context [?out] =>
+            cbv [output_matches_state] in H; subst
+          end.
+          cbv [reg_lookup set_out_regs] in *. logical_simplify.
+          repeat lazymatch goal with
+                 | H : map.get (map.put _ ?k _) ?k = _ |- _ => rewrite map.get_put_same in H
+                 | H : map.get (map.put _ _ _) _ = _ |- _ =>
+                   rewrite map.get_put_diff in H by (apply reg_addr_neq; congruence)
+                 | H : context [map.remove (map.put _ ?k _) ?k] |- _ =>
+                   rewrite map_remove_put_same in H
+                 | H : context [map.remove (map.put _ _ _) _] |- _ =>
+                   rewrite map_remove_put_diff in H by (apply reg_addr_neq; congruence)
+                 | H1 : map.get ?m ?k = Some _, H2 : map.get ?m ?k = Some _ |- _ =>
+                   rewrite H1 in H2
+                 | H : Some _ = Some _ |- _ => inversion H; clear H; subst
+                 end.
+          cbn [get_register_state].
+          ssplit; eauto. } } }
   Qed.
 End Proofs.

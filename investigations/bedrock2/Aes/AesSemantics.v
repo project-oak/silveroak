@@ -255,7 +255,7 @@ Section WithParameters.
     | _,_ => false
     end.
 
-  Lemma reg_category_eqb_spec : EqDecider reg_category_eqb.
+  Global Instance reg_category_eqb_spec : EqDecider reg_category_eqb.
   Proof. intros x y. destruct x,y; constructor; congruence. Qed.
 
   Definition addr_in_category (addr : word) (c : RegisterCategory) : bool :=
