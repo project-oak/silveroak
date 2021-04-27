@@ -85,7 +85,7 @@ Section Impl.
     let key_len := "key_len" in
     let num_regs_key_used := "num_regs_key_used" in
     let i := "i" in
-    ("b2_iv_put",
+    ("b2_key_put",
      (aes_globals ++ [key; key_len], [], bedrock_func_body:(
       if (key_len == kAes256) {
         num_regs_key_used = 8

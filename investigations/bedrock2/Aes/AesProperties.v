@@ -354,7 +354,7 @@ Section Proofs.
 
   (***** Proofs for specific functions *****)
 
-  Instance spec_of_aes_data_ready : spec_of aes_data_ready :=
+  Global Instance spec_of_aes_data_ready : spec_of aes_data_ready :=
     fun function_env =>
       forall (tr : trace) (m : mem) (R : _ -> Prop) (s : state),
         (* no special requirements of the memory *)
@@ -394,7 +394,7 @@ Section Proofs.
     boolsimpl. reflexivity.
   Qed.
 
-  Instance spec_of_aes_data_valid : spec_of aes_data_valid :=
+  Global Instance spec_of_aes_data_valid : spec_of aes_data_valid :=
     fun function_env =>
       forall (tr : trace) (m : mem) (R : _ -> Prop) (s : state),
         (* no special requirements of the memory *)
@@ -435,7 +435,7 @@ Section Proofs.
     boolsimpl. reflexivity.
   Qed.
 
-  Instance spec_of_aes_idle : spec_of aes_idle :=
+  Global Instance spec_of_aes_idle : spec_of aes_idle :=
     fun function_env =>
       forall (tr : trace) (m : mem) (R : _ -> Prop) (s : state),
         (* no special requirements of the memory *)
@@ -476,7 +476,7 @@ Section Proofs.
     boolsimpl. reflexivity.
   Qed.
 
-  Instance spec_of_aes_init : spec_of aes_init :=
+  Global Instance spec_of_aes_init : spec_of aes_init :=
     fun function_env =>
       forall (tr : trace) (m : mem) (R : _ -> Prop)
         aes_cfg_operation aes_cfg_mode aes_cfg_key_len
@@ -568,7 +568,7 @@ Section Proofs.
         (eassumption || prove_has_size || lia). }
   Qed.
 
-  Instance spec_of_aes_key_put : spec_of aes_key_put :=
+  Global Instance spec_of_aes_key_put : spec_of aes_key_put :=
     fun function_env =>
       forall (tr : trace) (m : mem) R
         (rs : known_register_state)
@@ -890,7 +890,7 @@ Section Proofs.
         ecancel_assumption. } }
   Qed.
 
-  Instance spec_of_aes_iv_put : spec_of aes_iv_put :=
+  Global Instance spec_of_aes_iv_put : spec_of aes_iv_put :=
     fun function_env =>
       forall (tr : trace) (m : mem) R
         (rs : known_register_state)
@@ -970,7 +970,7 @@ Section Proofs.
     ssplit; eauto.
   Qed.
 
-  Instance spec_of_aes_data_put : spec_of aes_data_put :=
+  Global Instance spec_of_aes_data_put : spec_of aes_data_put :=
     fun function_env =>
       forall (tr : trace) (m : mem) R
         (rs : known_register_state)
@@ -1075,7 +1075,7 @@ Section Proofs.
      input while BUSY and stalls in BUSY state until output is read. The spec
      should be modified to account for this behavior. For now, this spec is
      exactly the same as aes_data_put. *)
-  Instance spec_of_aes_data_put_wait : spec_of aes_data_put_wait :=
+  Global Instance spec_of_aes_data_put_wait : spec_of aes_data_put_wait :=
     fun function_env =>
       forall (tr : trace) (m : mem) R
         (rs : known_register_state)
@@ -1163,7 +1163,7 @@ Section Proofs.
     repeat straightline. eauto.
   Qed.
 
-  Instance spec_of_aes_data_get : spec_of aes_data_get :=
+  Global Instance spec_of_aes_data_get : spec_of aes_data_get :=
     fun function_env =>
       forall (tr : trace) (m : mem) R
         (rs : known_register_state)
@@ -1330,7 +1330,7 @@ Section Proofs.
     | UNINITIALIZED => map.empty
     end.
 
-  Instance spec_of_aes_data_get_wait : spec_of aes_data_get_wait :=
+  Global Instance spec_of_aes_data_get_wait : spec_of aes_data_get_wait :=
     fun function_env =>
       forall (tr : trace) (m : mem) R
         (out : aes_output)
