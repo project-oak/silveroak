@@ -8,7 +8,9 @@ Require Import bedrock2.WeakestPreconditionProperties.
 Require Import coqutil.Word.Interface.
 Require Import coqutil.Word.Properties.
 Require Import coqutil.Map.Interface.
+Require Import coqutil.Tactics.letexists.
 Require Import coqutil.Tactics.Tactics.
+Require Import Cava.Util.Tactics.
 Local Open Scope Z_scope.
 
 (* Proofs about cmd.while *)
@@ -59,5 +61,21 @@ Section Proofs.
         repeat straightline.
         eapply Proper_cmd; [ apply Proper_call | | eassumption ].
         repeat intro. exists i. ssplit; eauto. } }
+  Qed.
+
+  (* This lemma handles conditional statements without breaking the entire
+     remainder of the function into two goals *)
+  Lemma cond_nosplit functions conde ct cf cnext t m l
+        (post post_cond : trace -> mem -> locals -> Prop) :
+    cmd (call functions) (cmd.cond conde ct cf) t m l post_cond ->
+    (forall t m l, post_cond t m l -> cmd (call functions) cnext t m l post) ->
+    cmd (call functions) (cmd.seq (cmd.cond conde ct cf) cnext) t m l post.
+  Proof.
+    cbn [cmd cmd_body]. intros; logical_simplify.
+    eexists; ssplit; intros; eauto; [ | ].
+    { eapply Proper_cmd; [ apply Proper_call | | solve [eauto] ].
+      repeat intro. eauto. }
+    { eapply Proper_cmd; [ apply Proper_call | | solve [eauto] ].
+      repeat intro. eauto. }
   Qed.
 End Proofs.
