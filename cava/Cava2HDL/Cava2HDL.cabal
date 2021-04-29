@@ -39,6 +39,8 @@ cabal-version:        >= 1.10
 
 library
   build-Depends:     base >= 4.12, mtl >= 2, ghc-prim >= 0.5.3
+  build-Depends:     base >= 4, mtl >= 2, ghc-prim >= 0.5.3
+  hs-source-dirs: ./.. .
   exposed-Modules:   Cava2SystemVerilog
                      Adders
                      AdderSubtractor
@@ -60,6 +62,7 @@ library
                      Identity
                      List
                      List0
+                     List1
                      Logic
                      Monad
                      MonadState
@@ -72,6 +75,7 @@ library
                      Signal
                      Simulation
                      StateMonad
+                     Tuple
                      Traversable
                      Vec
                      VectorDef
@@ -81,14 +85,17 @@ library
                      TestBench
                      SystemVerilogUtils
 
-  other-Modules:     BinPos
+  other-Modules:     Ascii
+                     Basics
                      BinNatDef
-                     ByteVector
+                     BinPos
                      Byte
+                     ByteVector
                      Decimal
+                     EquivDec
+                     Fin
                      Hexadecimal
-                     Number
-                     Specif
+                     Injection
                      MonadExc
                      MonadFix
                      MonadPlus
@@ -97,10 +104,11 @@ library
                      MonadWriter
                      MonadZero
                      Monoid
-                     Fin
+                     Number
+                     Option
                      Plus
-                     Ascii
-                     Basics
+                     RelDec
+                     Specif
                      String
 
   default-language:  Haskell2010

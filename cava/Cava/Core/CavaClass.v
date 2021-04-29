@@ -17,12 +17,14 @@
 Require Import ExtLib.Structures.Monad.
 Require Import Cava.Core.Netlist.
 Require Import Cava.Core.Signal.
+Require Import Cava.Util.Tuple.
 
 Local Open Scope type_scope.
 
 (**** IMPORTANT: if you make changes to the API of these definitions, or add new
       ones, make sure you update the reference at docs/reference.md! ****)
 
+Definition port_signal signal port : Type := signal (port_type port).
 (* The Cava class represents circuit graphs with Coq-level inputs and
    outputs, but does not represent the IO ports of circuits. This allows
    us to define both circuit netlist interpretations for the Cava class
@@ -76,14 +78,14 @@ Class Cava (signal : SignalType -> Type) := {
   localSignal : forall {t : SignalType}, signal t -> cava (signal t);
   (* Hierarchy *)
   instantiate : forall (intf: CircuitInterface),
-                 (tupleInterface signal (map port_type (circuitInputs intf)) ->
-                  cava (tupleInterface signal (map port_type (circuitOutputs intf)))) ->
-                 tupleInterface signal (map port_type (circuitInputs intf)) ->
-                 cava (tupleInterface signal ((map port_type (circuitOutputs intf))));
+                let inputs := map (port_signal signal) (circuitInputs intf) in
+                let outputs := map (port_signal signal) (circuitOutputs intf) in
+                curried inputs (cava (tupled' outputs)) ->
+                 tupled' inputs -> cava (tupled' outputs);
   (* Instantiation of black-box components which return default values. *)
   blackBox : forall (intf: CircuitInterface),
-             tupleInterface signal (map port_type (circuitInputs intf)) ->
-             cava (tupleInterface signal ((map port_type (circuitOutputs intf))));
+             tupled' (map (port_signal signal) (circuitInputs intf)) ->
+             cava (tupled' (map (port_signal signal) (circuitOutputs intf)));
 }.
 
 Require Import Cava.Util.Vector.

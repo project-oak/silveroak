@@ -36,6 +36,9 @@ import SystemVerilogUtils
 
 import TestBench
 
+data NetlistGenerationState
+  = NetlistGenerationState (Maybe (TaggedEdge Signal)) (Maybe (TaggedEdge Signal))
+
 {-
 NOTES.
 ======
@@ -45,22 +48,19 @@ An attempt is made to unsmash literals to recover stems of arrays.
 -}
 
 writeSystemVerilog :: CavaState -> IO ()
-writeSystemVerilog cavastate@(Netlist.Coq_mkCavaState _ _ _ _
-                    _ _ _ _ _ libs)
+writeSystemVerilog cavastate
   = do putStr ("Generating " ++ filename ++ "...")
-       writeFile filename ("// Cava auto-generated SystemVerilog. Do not hand edit.\n")
-       sequence_ [appendFile filename (unlines (cava2SystemVerilog (swapIn m cavastate))) | (_, m) <- libs]
+       writeFile filename "// Cava auto-generated SystemVerilog. Do not hand edit.\n"
+       sequence_ [appendFile filename (unlines (cava2SystemVerilog (swapIn m cavastate))) | (_, m) <- libraryModules cavastate]
        appendFile filename (unlines (cava2SystemVerilog cavastate))
-       putStrLn (" [done]")
+       putStrLn " [done]"
     where
     filename = Netlist.moduleName (Netlist.coq_module cavastate) ++ ".sv"
 
 
 swapIn :: Netlist.Module -> CavaState -> CavaState
-swapIn m cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext'
-                    clk clkEdge rst rstEdge _ _)
-  = Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext'
-                    clk clkEdge rst rstEdge m []
+swapIn m cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext' clk rst _ _)
+  = Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext' clk rst m []
 
 fromN :: BinNums.N -> Integer
 fromN bn
@@ -69,10 +69,10 @@ fromN bn
       BinNums.Npos n -> n
 
 cava2SystemVerilog :: Netlist.CavaState -> [String]
-cava2SystemVerilog cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext'
-                    clk clkEdge rst rstEdge
-                    (Netlist.Coq_mkModule moduleName instances'
-                    inputs outputs) libs)
+cava2SystemVerilog
+  cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext' clk rst
+                    (Netlist.Coq_mkModule moduleName instances' inputs outputs)
+                    libs)
   = ["module " ++ moduleName ++ "("] ++
 
     insertCommas (inputPorts inputs ++ outputPorts outputs) ++
@@ -89,14 +89,12 @@ cava2SystemVerilog cavaState@(Netlist.Coq_mkCavaState netNumber vCount' vDefs' e
     ["endmodule",
      ""]
     where
-    genState = NetlistGenerationState clk clkEdge rst rstEdge
-    (instances'', Netlist.Coq_mkCavaState _ vCount vDefs ext
-                  _ _ _ _
+    genState = NetlistGenerationState clk rst
+    (instances'', Netlist.Coq_mkCavaState _ vCount vDefs ext _ _
                   (Netlist.Coq_mkModule _ assignInstances
                   _ _) _)
       = runState (unsmashSignalInstances instances')
-          (Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext'
-                    clk clkEdge rst rstEdge
+          (Netlist.Coq_mkCavaState netNumber vCount' vDefs' ext' clk rst
                     (Netlist.Coq_mkModule moduleName []
                     inputs outputs) libs)
     instances = instances'' ++ assignInstances
@@ -107,9 +105,6 @@ declareLocalNets n
       []
     else
       ["  logic net[0:" ++ show (n-1) ++ "];"]
-
-data NetlistGenerationState
-  = NetlistGenerationState (Maybe Signal) SignalEdge (Maybe Signal) SignalEdge
 
 inputPorts :: [Netlist.PortDeclaration] -> [String]
 inputPorts = map inputPort
@@ -198,27 +193,25 @@ showSliceIndex k start len
 generateInstance :: NetlistGenerationState -> Instance -> Int -> String
 generateInstance netlistState (Delay t initV d o) _
   = unlines [
-    "  always_ff @(" ++ showEdge clkEdge ++ " " ++ showSignal clk ++ " or "
-                     ++ showEdge rstEdge ++ " " ++ showSignal rst ++ ") begin",
-    "    if (" ++ negReset ++ showSignal rst ++ ") begin",
+    "  always_ff @(" ++ alwaysCondition clk ++ " or "
+                     ++ alwaysCondition rst ++ ") begin",
+    "    if (" ++ resetCondition rst ++ ") begin",
     "      " ++ showSignal o ++ " <= " ++ showCombExpr t initV ++ ";",
     "    end else begin",
     "      " ++ showSignal o ++ " <= " ++ showSignal d ++ ";",
     "    end",
     "  end"]
     where
-    NetlistGenerationState (Just clk) clkEdge (Just rst) rstEdge = netlistState
-    showEdge edge = case edge of
-                      PositiveEdge -> "posedge"
-                      NegativeEdge -> "negedge"
-    negReset = case rstEdge of
-                 PositiveEdge -> ""
-                 NegativeEdge -> "!"
+    NetlistGenerationState (Just clk) (Just rst) = netlistState
+    alwaysCondition (Coq_mkTaggedEdge signal PositiveEdge) = "posedge " ++ showSignal signal
+    alwaysCondition (Coq_mkTaggedEdge signal NegativeEdge) = "negedge " ++ showSignal signal
+    resetCondition (Coq_mkTaggedEdge signal PositiveEdge) = showSignal signal
+    resetCondition (Coq_mkTaggedEdge signal NegativeEdge) = "!" ++ showSignal signal
 generateInstance netlistState (DelayEnable t initV en d o) _
   = unlines [
-    "  always_ff @(" ++ showEdge clkEdge ++ " " ++ showSignal clk ++ " or "
-                     ++ showEdge rstEdge ++ " " ++ showSignal rst ++ ") begin",
-    "    if (" ++ negReset ++ showSignal rst ++ ") begin",
+    "  always_ff @(" ++ alwaysCondition clk ++ " or "
+                     ++ alwaysCondition rst ++ ") begin",
+    "    if (" ++ resetCondition rst ++ ") begin",
     "      " ++ showSignal o ++ " <= " ++ showCombExpr t initV ++ ";",
     "    end else",
     "      if (" ++ showSignal en ++ ") begin",
@@ -226,13 +219,11 @@ generateInstance netlistState (DelayEnable t initV en d o) _
     "    end",
     "  end"]
     where
-    NetlistGenerationState (Just clk) clkEdge (Just rst) rstEdge = netlistState
-    showEdge edge = case edge of
-                      PositiveEdge -> "posedge"
-                      NegativeEdge -> "negedge"
-    negReset = case rstEdge of
-                 PositiveEdge -> ""
-                 NegativeEdge -> "!"
+    NetlistGenerationState (Just clk) (Just rst) = netlistState
+    alwaysCondition (Coq_mkTaggedEdge signal PositiveEdge) = "posedge " ++ showSignal signal
+    alwaysCondition (Coq_mkTaggedEdge signal NegativeEdge) = "negedge " ++ showSignal signal
+    resetCondition (Coq_mkTaggedEdge signal PositiveEdge) = showSignal signal
+    resetCondition (Coq_mkTaggedEdge signal NegativeEdge) = "!" ++ showSignal signal
 generateInstance _ (AssignSignal (Vec _ 0) a b) _ = ""
 generateInstance _ (AssignSignal _ a b) _
    = "  assign " ++ showSignal a ++ " = " ++ showSignal b ++ ";"
@@ -458,24 +449,21 @@ freshen signal
 -- the fresh transformation.
 addAssignment :: SignalType -> Signal -> Signal -> State CavaState ()
 addAssignment k a b
-  = do Netlist.Coq_mkCavaState netNumber vCount vDefs ext
-                    clk clkEdge rst rstEdge
+  = do Netlist.Coq_mkCavaState netNumber vCount vDefs ext clk rst
                     (Netlist.Coq_mkModule moduleName instances
                     inputs outputs) libs <- get
-       put (Netlist.Coq_mkCavaState netNumber vCount vDefs ext
-                    clk clkEdge rst rstEdge
-                    (Netlist.Coq_mkModule moduleName ((AssignSignal k a b):instances)
+       put (Netlist.Coq_mkCavaState netNumber vCount vDefs ext clk rst
+                    (Netlist.Coq_mkModule moduleName (AssignSignal k a b:instances)
                     inputs outputs) libs)
 
 -- Declare a new local vector and return it as a signal.
 freshVector :: SignalType -> Integer -> State CavaState Signal
 freshVector k s
-  = do Netlist.Coq_mkCavaState netNumber vCount vDefs ext
-                    clk clkEdge rst rstEdge
+  = do Netlist.Coq_mkCavaState netNumber vCount vDefs ext clk rst
                     (Netlist.Coq_mkModule moduleName instances
                     inputs outputs) libs <- get
        put (Netlist.Coq_mkCavaState netNumber (incN vCount) (vDefs++[(k, s)]) ext
-                    clk clkEdge rst rstEdge
+                    clk rst
                     (Netlist.Coq_mkModule moduleName instances
                     inputs outputs) libs)
        return (LocalVec k s vCount)

@@ -1,5 +1,5 @@
 packages:
-  cava/Cava2HDL.cabal
+  cava/Cava2HDL/Cava2HDL.cabal
   examples/cava-examples.cabal
   tests/cava-tests.cabal
   silveroak-opentitan/pinmux/silveroak-pinmux.cabal
