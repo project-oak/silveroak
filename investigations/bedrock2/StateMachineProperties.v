@@ -11,6 +11,8 @@ Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.Word.
 Require Import Bedrock2Experiments.WordProperties.
+Require Import Cava.Util.Tactics.
+Import ListNotations.
 Local Open Scope Z_scope.
 
 Section Proofs.
@@ -26,6 +28,41 @@ Section Proofs.
     execution ((map.empty, action, args, (map.empty, rets)) :: t) s' ->
     exists s, execution t s /\ step action s args rets s'.
   Proof. intros; cbn [execution]; eauto. Qed.
+
+  Lemma invert1_step action args rets s s':
+    step action s args rets s' ->
+    (exists r addr val,
+        args = [addr]
+        /\ rets = [val]
+        /\ parameters.reg_addr r = addr
+        /\ parameters.read_step s r val s')
+    \/ (exists r addr val,
+        args = [addr; val]
+        /\ rets = []
+        /\ parameters.reg_addr r = addr
+        /\ parameters.write_step s r val s').
+  Proof.
+    inversion 1; subst; [ left | right ];
+      do 3 eexists; ssplit; try reflexivity;
+        assumption.
+  Qed.
+
+
+  Lemma invert1_step_read addr rets s s':
+    step parameters.READ s [addr] rets s' ->
+    (exists r val,
+        parameters.reg_addr r = addr
+        /\ rets = [val]
+        /\ parameters.read_step s r val s').
+  Proof. inversion 1; subst. eexists; eauto. Qed.
+
+  Lemma invert1_step_write addr val rets s s':
+    step parameters.WRITE s [addr; val] rets s' ->
+    (exists r,
+        parameters.reg_addr r = addr
+        /\ rets = []
+        /\ parameters.write_step s r val s').
+  Proof. inversion 1; subst. eexists; eauto. Qed.
 
   Lemma interact_mmio call action binds arges t m l
         (post : trace -> mem -> locals -> Prop) (args : list Semantics.word) :
@@ -50,7 +87,12 @@ End Proofs.
 
 Ltac invert_step :=
   lazymatch goal with
-  | H : step _ _ _ _ _ |- _ => inversion H; clear H; subst
+  | H : step _ _ _ _ _ |- _ =>
+    first [ apply @invert1_step_read in H; destruct H as [? [? [? [? ?]]]]
+          | apply @invert1_step_write in H; destruct H as [? [? [? ?]]]
+          | inversion H; clear H ]; subst;
+    repeat lazymatch goal with
+           | H : _ :: _ = _ :: _ |- _ => inversion H; clear H; subst end
   end.
 
 (* shorthand for applying [interact_mmio] and then doing some simplification

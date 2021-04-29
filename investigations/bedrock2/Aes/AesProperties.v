@@ -31,6 +31,8 @@ Require Import Bedrock2Experiments.Aes.AesSemantics.
 Require Import Bedrock2Experiments.Aes.Aes.
 Require Import Bedrock2Experiments.Aes.Constants.
 Import Syntax.Coercions List.ListNotations.
+Local Open Scope string_scope.
+Local Open Scope list_scope.
 Local Open Scope Z_scope.
 
 Section Proofs.
@@ -264,8 +266,12 @@ Section Proofs.
     | H1 : execution t ?s1, H2 : execution t ?s2 |- _ =>
       specialize (IHt _ _ H1 H2); subst
     end.
-    repeat invert_step;
+    repeat invert_step; subst;
+      repeat lazymatch goal with
+             | H : _ :: _ = _ :: _ |- _ => inversion H; clear H; subst
+             end;
       cbn [parameters.read_step parameters.write_step
+                                parameters.reg_addr
                                 state_machine_parameters] in *;
       cbv [read_step write_step] in *.
     all: repeat lazymatch goal with
@@ -537,7 +543,7 @@ Section Proofs.
     repeat lazymatch goal with
            | H : enum_member _ _ |- _ =>
              apply enum_member_size in H;
-               pose proof has_size_pos _ _ H
+               pose proof has_size_nonneg _ _ H
            end.
 
     (* infer information from the last step *)
@@ -607,13 +613,38 @@ Section Proofs.
                  | destruct_one_match
                  | lia ].
 
+  (* TODO: move *)
+  Lemma map_putmany_of_list_zip_snoc {key value} {map : map.map key value}
+        ks vs k v m m' :
+    map.putmany_of_list_zip ks vs m = Some m' ->
+    map.putmany_of_list_zip (ks ++ [k]) (vs ++ [v]) m = Some (map.put m' k v).
+  Proof.
+    revert vs k v m m'; induction ks; destruct vs;
+      [ cbn; congruence | discriminate | discriminate | ].
+    intros. rewrite <-!app_comm_cons. cbn [map.putmany_of_list_zip].
+    auto.
+  Qed.
+
+  (* TODO: move *)
+  Lemma nth_firstn {A} (l : list A) i n d :
+    (i < n)%nat -> nth i (firstn n l) d = nth i l d.
+  Proof.
+    revert l i d. induction n; [ lia | ].
+    destruct l; [ reflexivity | ].
+    destruct i; [ reflexivity | ].
+    cbn [firstn nth]; intros.
+    apply IHn. lia.
+  Qed.
+
   Lemma aes_key_put_correct :
     program_logic_goal_for_function! aes_key_put.
   Proof.
-    (* initial processing *)
-    repeat straightline.
+    (* we want to avoid letting [straightline] go too far here, so we can apply
+       [cond_nobreak], which requires a [seq] in front of [cond] *)
+    do 2 straightline. repeat straightline_cleanup.
     simplify_implicits.
 
+    (* setup: assert useful facts and simplify hypotheses *)
     (* assert that key length enum members are unique *)
     pose proof enum_unique aes_key_len as key_len_unique.
     simplify_unique_words_in key_len_unique.
@@ -625,269 +656,436 @@ Section Proofs.
     end.
 
     (* this assertion helps prove that i does not get truncated *)
-    assert (8 < 2 ^ Semantics.width) by (cbn; lia).
+    assert (9 < 2 ^ Semantics.width) by (cbn; lia).
     pose proof nregs_key_eq.
 
-    (* destruct branches *)
-    split_if; [ | intros; split_if ]; intros;
+    (* upper bound key_len *)
+    assert (4 <= length key_arr <= 8)%nat.
+    { lazymatch goal with H : length key_arr = _ |- _ => rewrite H end.
+      repeat destruct_one_match; lia. }
+
+    (* helper assertion indicating that MMIO addresses in the range we access
+       here are all for key registers *)
+    assert (forall i r,
+               parameters.reg_addr r
+               = word.add AES_KEY0
+                          (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
+               (i < 8)%nat ->
+               reg_category r = KeyReg)
+      as HKeyReg.
+    { intros i; intros.
+      let H := fresh in
+      assert (i = 0 \/ i = 1 \/ i = 2 \/ i = 3 \/ i = 4 \/ i = 5 \/ i = 6 \/ i = 7)%nat
+        as H by lia;
+        repeat match type of H with _ \/ _ => destruct H as [H | H]; subst end.
+      all:lazymatch goal with
+          | H : parameters.reg_addr _ = ?addr |- _ =>
+            ring_simplify addr in H;
+              first [ apply (reg_addr_unique _ KEY0) in H
+                    | apply (reg_addr_unique _ KEY1) in H
+                    | apply (reg_addr_unique _ KEY2) in H
+                    | apply (reg_addr_unique _ KEY3) in H
+                    | apply (reg_addr_unique _ KEY4) in H
+                    | apply (reg_addr_unique _ KEY5) in H
+                    | apply (reg_addr_unique _ KEY6) in H
+                    | apply (reg_addr_unique _ KEY7) in H ]
+          end.
+      all:subst; reflexivity. }
+
+    (* helper assertion for indexing into list of addresses *)
+    assert (forall i d,
+               (i < 8)%nat ->
+               nth i
+                   [reg_addr KEY0; reg_addr KEY1; reg_addr KEY2;
+                    reg_addr KEY3; reg_addr KEY4; reg_addr KEY5;
+                    reg_addr KEY6; reg_addr KEY7] d
+               = word.add AES_KEY0
+                          (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)))
+      as Hnth_addrs.
+    { intros i ? ?.
+      let H := fresh in
+      assert (i = 0 \/ i = 1 \/ i = 2 \/ i = 3 \/ i = 4 \/ i = 5 \/ i = 6 \/ i = 7)%nat
+        as H by lia;
+        repeat match type of H with _ \/ _ => destruct H as [H | H] end.
+      all:subst i; cbn [nth reg_addr].
+      all:ring. }
+
+    (* setup done; now we can proceed with the program logic *)
+
+    (* after the conditional, num_regs_key_used is set *)
+    apply cond_nosplit with
+        (post_cond :=
+           fun tr' m' l' =>
+             tr' = tr /\ m' = m
+             /\ l' = map.put l "num_regs_key_used"
+                            (word.of_Z (Z.of_nat (length key_arr)))).
+
+    { (* prove that the conditional statement fulfills its postcondition *)
+      (* destruct branches *)
+      split_if; [ | intros; split_if ]; intros;
+        repeat lazymatch goal with
+               | H : word.unsigned _ <> 0 |- _ =>
+                 apply word.if_nonzero, word.eqb_true in H
+               | H : word.unsigned _ = 0 |- _ =>
+                 apply word.if_zero, word.eqb_false in H
+               end; subst.
+      (* destruct nonsensical cases *)
+      all:repeat (destruct_one_match_hyp_of_type bool; try congruence);
+        repeat lazymatch goal with
+               | H : _ \/ _ |- _ => destruct H; try congruence
+               end; [ ].
+      all:repeat straightline.
+      all:ssplit; [ reflexivity .. | ].
+      all:apply f_equal; subst_lets; apply f_equal.
+      all:lia. }
+
+    repeat straightline.
+
+    (* begin first while loop *)
+    let l := lazymatch goal with |- cmd _ _ _ _ ?l _ => l end in
+    apply atleastonce_localsmap
+      with (v0:=length key_arr)
+           (lt:=lt)
+           (invariant:=
+              fun v tr' m' l' =>
+                (* the new state is the old one plus the first i keys *)
+                (exists rs',
+                    map.putmany_of_list_zip
+                      (firstn (length key_arr - v)
+                              [reg_addr KEY0; reg_addr KEY1;
+                               reg_addr KEY2; reg_addr KEY3;
+                               reg_addr KEY4; reg_addr KEY5;
+                               reg_addr KEY6; reg_addr KEY7])
+                      (firstn (length key_arr - v) key_arr) rs = Some rs'
+                    /\ execution (p:=state_machine_parameters) tr' (IDLE rs'))
+                (* array accesses in bounds *)
+                /\ (0 < v <= length key_arr)%nat
+                (* locals are unaffected except for i *)
+                /\ l' = map.put l "i" (word.of_Z (Z.of_nat (length key_arr - v)))
+                (* memory is unaffected *)
+                /\ (array scalar32 (word.of_Z 4) key_arr_ptr key_arr ⋆ R)%sep m').
+    { apply lt_wf. }
+
+    { (* case in which the loop breaks immediately (cannot happen) *)
+      repeat straightline.
+      exfalso.
+
       repeat lazymatch goal with
-             | H : word.unsigned _ <> 0 |- _ =>
-               apply word.if_nonzero, word.eqb_true in H
-             | H : word.unsigned _ = 0 |- _ =>
-               apply word.if_zero, word.eqb_false in H
-             end; subst.
+             | br := if word.ltu _ _ then _ else _,
+                     H : word.unsigned br = 0 |- _ =>
+                     assert (word.unsigned br <> 0);
+                       [ subst br | congruence ]
+             | H : length key_arr = _ |- context [length key_arr] =>
+               rewrite H
+             | |- context [word.eqb ?x ?y] => destr (word.eqb x y)
+             | _ => progress push_unsigned
+             end.
+      all:destruct_one_match; lia. }
 
-    (* use key_len information to destruct cases in preconditions and get
-       individual keys *)
-    all:(repeat (destruct_one_match_hyp_of_type bool; try congruence);
-         repeat lazymatch goal with
-                | H : _ \/ _ |- _ => destruct H; try congruence
-                end; [ ]).
-    all:destruct_lists_by_length.
+    { (* invariant holds at start of loop *)
+      rewrite Nat.sub_diag.
+      ssplit;
+      lazymatch goal with
+      | |- ?m = map.put ?m _ _ =>
+        subst1_map m; rewrite map.put_put_same; reflexivity
+      | |- sep _ _ _ => ecancel_assumption
+      | |- (_ < _)%nat => lia
+      | |- (_ <= _)%nat => lia
+      | _ => idtac
+      end.
+      cbn [firstn]. eexists; split; [ reflexivity | ].
+      eassumption. }
 
-    (* simplify array predicate *)
-    all:cbn [array] in *.
-    all:repeat match goal with
-               | H : context [scalar32 ?addr] |- _ =>
-                 progress ring_simplify addr in H
-               end.
-
-    { (* key_len = kAes256 case *)
+    { (* the body of the loop proves the invariant if it continues and the
+         postcondition if it breaks *)
       repeat straightline.
 
-      (* unroll first while loop *)
-      eapply unroll_while with (iterations:=8%nat). cbn [repeat_logic_step].
+      (* first, we need to find the separation-logic condition and isolate the
+         key we will be loading *)
+
+      (* assertion that matches one of the array_address_inbounds side
+         conditions *)
+      let i := lazymatch goal with
+               | _ := map.put _ "i" (word.of_Z (Z.of_nat ?i)) |- _ => i end in
+      let a := constr:(word.add key_arr_ptr (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4))) in
+      let offset := constr:(word.sub a key_arr_ptr) in
+      assert (i = Z.to_nat (word.unsigned offset / word.unsigned (word.of_Z 4))) as Hindex;
+        [ ring_simplify offset | ].
+      { push_unsigned. rewrite (Z.mul_comm 4), Z.div_mul by lia. lia. }
+
+      (* rearrangement of Hindex for other side conditions  *)
+      lazymatch type of Hindex with
+      | ?i = Z.to_nat (word.unsigned ?offset / ?size) =>
+        assert (word.unsigned offset = Z.of_nat i * size) as Hoffset;
+          [ ring_simplify offset; push_unsigned; lia | ]
+      end.
+
+      let Hsep :=
+          lazymatch goal with H : sep _ _ ?m |- cmd _ _ _ ?m _ _ => H end in
+      pose proof Hsep;
+      seprewrite_in @array_address_inbounds Hsep; [ | | exact Hindex | ];
+        [ rewrite Hoffset; push_unsigned; lia
+        | rewrite Hoffset; push_unsigned; apply Z.mod_mul; lia
+        | ].
+
+      (* seprewrite leaves an evar for a default key; fill it in *)
+      match goal with
+      | H : context [List.hd ?d ?l] |- _ =>
+        is_evar d; unify (List.hd d l) (List.hd (word.of_Z 0) l)
+      end.
+
+      (* now, finally, we can process the loop body *)
+
+      (* set key register *)
+      interaction ltac:(solve_dexprs).
+      cbn [parameters.write_step state_machine_parameters] in *.
+      infer.
+      match goal with
+      | H : write_step _ _ _ _ |- _ =>
+        rewrite hd_skipn in H;
+          cbv [write_step] in H;
+          erewrite HKeyReg in H by (eassumption || lia)
+      end.
+      infer.
+
+      (* rest of loop body *)
       repeat straightline.
 
-      (* process each iteration of the while loop *)
+      { (* "continue" case; prove invariant still holds *)
+        cbv [Markers.split].
+        lazymatch goal with
+        | |- exists v, _ /\ (v < ?oldv)%nat => exists (oldv - 1)%nat; split; [ | lia ]
+        end.
 
-      (* i = 0 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY0.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+        (* simplify the loop-continue condition (i < length key_arr) *)
+        match goal with
+        | H : word.unsigned _ <> 0 |- _ =>
+          apply word.if_nonzero in H;
+            rewrite word.unsigned_ltu in H;
+            apply Z.ltb_lt in H;
+            rewrite word.unsigned_of_Z, word.wrap_small in H by lia
+        end.
+        lazymatch goal with
+        | i := word.add _ (word.of_Z 1),
+               H : word.unsigned i < _ |- _ =>
+               subst i;
+                 rewrite word.unsigned_add, word.unsigned_of_Z_1 in H;
+                 rewrite ?word.unsigned_of_Z, ?word.wrap_small in H
+                   by (rewrite ?word.wrap_small; lia)
+        end.
+        ssplit;
+          lazymatch goal with
+          | |- ?l' = map.put ?l _ _ =>
+            subst1_map l';
+              lazymatch goal with
+              | |- map.put ?l' _ _ = _ =>
+                subst1_map l'
+              end;
+              rewrite map.put_put_same;
+              f_equal; apply word.unsigned_inj;
+                push_unsigned; lia
+          | |- sep _ _ _ => ecancel_assumption
+          | |- (_ < _)%nat => lia
+          | |- (_ <= _)%nat => lia
+          | _ => idtac
+          end.
 
-      (* i = 1 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY1.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+        lazymatch goal with
+        | |- context [(length key_arr - (?v - 1))%nat] =>
+          replace (length key_arr - (v - 1))%nat
+            with (S (length key_arr - v))%nat by lia
+        end.
+        rewrite !firstn_succ_snoc with (d:=word.of_Z 0) by length_hammer.
+        eexists; ssplit; [ | eassumption ].
+        rewrite Hnth_addrs by lia.
+        lazymatch goal with
+        | H : parameters.reg_addr ?r = ?addr |- context [?addr] =>
+          rewrite <-H end.
+        auto using map_putmany_of_list_zip_snoc. }
 
-      (* i = 2 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY2.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+      { (* "break" case; prove postcondition holds after the rest of the function *)
 
-      (* i = 3 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY3.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+        (* simplify the loop-break condition (length key_arr <= i) *)
+        match goal with
+        | H : word.unsigned _ = 0 |- _ =>
+          apply word.if_zero in H;
+          rewrite word.unsigned_ltu in H;
+            apply Z.ltb_ge in H;
+            rewrite word.unsigned_of_Z, word.wrap_small in H by lia
+        end.
+        lazymatch goal with
+        | H : Z.of_nat (length key_arr) <= word.unsigned ?i |- _ =>
+          subst i; rewrite word.unsigned_add in H;
+            autorewrite with push_unsigned in H;
+            rewrite word.wrap_small in H by lia
+        end.
 
-      (* i = 4 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY4.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+        (* begin second while loop *)
+        let l := lazymatch goal with |- cmd _ _ _ _ ?l _ => l end in
+        unfold1_cmd_goal; cbn [cmd_body]; exists nat, lt;
+        (* invariant *)
+        exists (fun v tr' m' l' =>
+             (* the new state is the old one plus the first i keys *)
+             (exists rs',
+                 map.putmany_of_list_zip
+                   (firstn (8 - v)
+                           [reg_addr KEY0; reg_addr KEY1;
+                            reg_addr KEY2; reg_addr KEY3;
+                            reg_addr KEY4; reg_addr KEY5;
+                            reg_addr KEY6; reg_addr KEY7])
+                   (key_arr ++ repeat (word.of_Z 0) (8 - v - length key_arr))
+                   rs = Some rs'
+                 /\ execution (p:=state_machine_parameters) tr' (IDLE rs'))
+             (* bounds for # iterations *)
+             /\ (v <= 8 - length key_arr)%nat
+             (* locals are unaffected except for i *)
+             /\ l' = map.put l "i" (word.of_Z (Z.of_nat (8 - v)))
+             (* memory is unaffected *)
+             /\ (array scalar32 (word.of_Z 4) key_arr_ptr key_arr ⋆ R)%sep m').
+        ssplit.
+        { apply lt_wf. }
+        { (* invariant holds at loop start *)
+          exists (8 - length key_arr)%nat. (* total # iterations *)
+          replace (8 - (8 - length key_arr))%nat with (length key_arr) by lia.
+          rewrite Nat.sub_diag. cbn [repeat]. rewrite app_nil_r.
+          ssplit;
+          lazymatch goal with
+            | |- ?m = map.put ?m _ _ =>
+              subst1_map m; rewrite map.put_put_same; reflexivity
+            | |- sep _ _ _ => ecancel_assumption
+            | |- (_ < _)%nat => lia
+            | |- (_ <= _)%nat => lia
+            | _ => idtac
+          end.
 
-      (* i = 5 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY5.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+          eexists; ssplit; [ | eassumption ].
 
-      (* i = 6 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY6.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+          (* rewrite postcondition to be firstn ++ last *)
+          lazymatch goal with
+          | H : map.putmany_of_list_zip (firstn ?n _) (firstn ?n ?vs) _ = Some _
+            |- context [map.putmany_of_list_zip ?ks ?vs ?m] =>
+            replace (map.putmany_of_list_zip ks vs m)
+              with (map.putmany_of_list_zip
+                      (firstn (S n) ks) (firstn (S n) vs) m)
+              by (rewrite !firstn_all2 by length_hammer;
+                  f_equal; apply firstn_all2; lia);
+              rewrite !firstn_succ_snoc with (d:=word.of_Z 0) by length_hammer
+          end.
+          rewrite firstn_firstn, Nat.min_l, nth_firstn by lia.
+          erewrite map_putmany_of_list_zip_snoc by eassumption.
+          rewrite Hnth_addrs by lia.
+          lazymatch goal with
+          | H : parameters.reg_addr ?r = ?addr |- context [?addr] =>
+            rewrite <-H end.
+          reflexivity. }
 
-      (* i = 7 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY7.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+        { (* the body of the loop proves the invariant if it continues and the
+             postcondition if it breaks *)
+          repeat straightline.
+          split; intros.
 
-      (* i = 8; loop done *)
-      ssplit; repeat straightline; [ dexpr_hammer | ].
+          { (* prove that the invariant holds after the loop body *)
 
-      (* second while loop is a no-op *)
-      eapply unroll_while with (iterations:=0%nat). cbn [repeat_logic_step].
-      ssplit; repeat straightline; [ dexpr_hammer | ].
+            (* simplify the loop-continue condition (i < 8) *)
+            match goal with
+            | H : word.unsigned _ <> 0 |- _ =>
+              apply word.if_nonzero in H;
+                rewrite word.unsigned_ltu in H;
+                apply Z.ltb_lt in H;
+                rewrite nregs_key_eq in H;
+                autorewrite with push_unsigned in H
+            end.
 
-      (* done; prove postcondition *)
-      ssplit; eauto; [ | ].
-      { (* trace postcondition *)
-        eexists; split; [ reflexivity | ].
-        eassumption. }
-      { (* memory postcondition *)
-        cbn [array].
-        repeat match goal with
-               | |- context [scalar32 ?addr] =>
-                 progress ring_simplify addr
-               end.
-        ecancel_assumption. } }
+            repeat straightline.
 
-    { (* key_len = kAes192 case *)
-      repeat straightline.
+            (* set key register *)
+            interaction ltac:(solve_dexprs).
+            cbn [parameters.write_step state_machine_parameters] in *.
+            infer.
+            match goal with
+            | H : write_step _ _ _ _ |- _ =>
+              cbv [write_step] in H;
+                erewrite HKeyReg in H
+                by (eassumption || lia)
+            end.
+            infer. subst.
 
-      (* unroll first while loop *)
-      eapply unroll_while with (iterations:=6%nat). cbn [repeat_logic_step].
-      repeat straightline.
+          (* rest of loop body *)
+          repeat straightline.
 
-      (* process each iteration of the while loop *)
+          (* loop body done; prove invariant still holds *)
 
-      (* i = 0 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY0.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+          (* provide new measure *)
+          lazymatch goal with
+          | |- exists v, _ /\ (v < ?oldv)%nat => exists (oldv - 1)%nat; split; [ | lia ]
+          end.
 
-      (* i = 1 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY1.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+          (* handle most invariant cases *)
+          ssplit;
+            lazymatch goal with
+            | |- ?l' = map.put ?l _ _ =>
+              subst1_map l';
+                lazymatch goal with
+                | |- map.put ?l' _ _ = _ =>
+                  subst1_map l'
+                end;
+                rewrite map.put_put_same;
+                f_equal; apply word.unsigned_inj;
+                  subst_lets; push_unsigned; lia
+            | |- sep _ _ _ => ecancel_assumption
+            | |- (_ < _)%nat => lia
+            | |- (_ <= _)%nat => lia
+            | _ => idtac
+            end.
 
-      (* i = 2 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY2.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+          (* final invariant case: new register state *)
 
-      (* i = 3 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY3.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+          (* arithmetic simplification *)
+          lazymatch goal with
+          | |- context [(8 - (?v - 1))%nat] =>
+            replace (8 - (v - 1))%nat
+              with (S (8 - v))%nat by lia
+          end.
+          rewrite (Nat.sub_succ_l (length key_arr) (8 - _)%nat) by lia.
 
-      (* i = 4 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY4.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+          (* list simplifications *)
+          cbn [repeat]. rewrite repeat_cons, app_assoc.
+          rewrite !firstn_succ_snoc with (d:=word.of_Z 0) by length_hammer.
 
-      (* i = 5 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY5.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+          (* solve *)
+          simplify_implicits.
+          eexists; ssplit; [ | eassumption ].
+          rewrite Hnth_addrs by lia.
+          lazymatch goal with
+          | H : parameters.reg_addr ?r = ?addr |- context [?addr] =>
+            rewrite <-H end.
+          auto using map_putmany_of_list_zip_snoc. }
 
-      (* i = 6; loop done *)
-      ssplit; repeat straightline; [ dexpr_hammer | ].
+          { (* post-loop; given invariant and loop-break condition, prove
+               postcondition holds after the rest of the function *)
 
-      (* second while loop has 8 - 6 = 2 iterations *)
-      eapply unroll_while with (iterations:=2%nat). cbn [repeat_logic_step].
-      repeat straightline.
+            repeat straightline.
 
-      (* i = 6 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY6.
-      infer; subst; clear_old_executions.
-      repeat straightline.
+            (* simplify the loop-break condition (8 <= i) *)
+            match goal with
+            | H : word.unsigned _ = 0 |- _ =>
+              apply word.if_zero in H;
+              rewrite word.unsigned_ltu in H;
+              apply Z.ltb_ge in H;
+              rewrite nregs_key_eq in H;
+              autorewrite with push_unsigned in H
+            end.
 
-      (* i = 7 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY7.
-      infer; subst; clear_old_executions.
-      repeat straightline.
-
-      (* i = 8; loop done *)
-      ssplit; repeat straightline; [ dexpr_hammer | ].
-
-      (* done; prove postcondition *)
-      ssplit; eauto; [ | ].
-      { (* trace postcondition *)
-        eexists; split; [ reflexivity | ].
-        eassumption. }
-      { (* memory postcondition *)
-        cbn [array].
-        repeat match goal with
-               | |- context [scalar32 ?addr] =>
-                 progress ring_simplify addr
-               end.
-        ecancel_assumption. } }
-
-    { (* key_len = kAes128 case *)
-      repeat straightline.
-
-      (* unroll first while loop *)
-      eapply unroll_while with (iterations:=4%nat). cbn [repeat_logic_step].
-      repeat straightline.
-
-      (* process each iteration of the while loop *)
-
-      (* i = 0 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY0.
-      infer; subst; clear_old_executions.
-      repeat straightline.
-
-      (* i = 1 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY1.
-      infer; subst; clear_old_executions.
-      repeat straightline.
-
-      (* i = 2 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY2.
-      infer; subst; clear_old_executions.
-      repeat straightline.
-
-      (* i = 3 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY3.
-      infer; subst; clear_old_executions.
-      repeat straightline.
-
-      (* i = 4; loop done *)
-      ssplit; repeat straightline; [ dexpr_hammer | ].
-
-      (* second while loop has 8 - 4 = 4 iterations *)
-      eapply unroll_while with (iterations:=4%nat). cbn [repeat_logic_step].
-      repeat straightline.
-
-      (* i = 4 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY4.
-      infer; subst; clear_old_executions.
-      repeat straightline.
-
-      (* i = 5 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY5.
-      infer; subst; clear_old_executions.
-      repeat straightline.
-
-      (* i = 6 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY6.
-      infer; subst; clear_old_executions.
-      repeat straightline.
-
-      (* i = 7 *)
-      split; repeat straightline; [ dexpr_hammer | ].
-      interaction_with_reg KEY7.
-      infer; subst; clear_old_executions.
-      repeat straightline.
-
-      (* i = 8; loop done *)
-      ssplit; repeat straightline; [ dexpr_hammer | ].
-
-      (* done; prove postcondition *)
-      ssplit; eauto; [ | ].
-      { (* trace postcondition *)
-        eexists; split; [ reflexivity | ].
-        eassumption. }
-      { (* memory postcondition *)
-        cbn [array].
-        repeat match goal with
-               | |- context [scalar32 ?addr] =>
-                 progress ring_simplify addr
-               end.
-        ecancel_assumption. } }
+            eexists; ssplit; eauto; [ ].
+            eexists; ssplit; eauto; [ ].
+            lazymatch goal with
+            | H : map.putmany_of_list_zip ?ks1 ?vs1 ?m = Some ?m'
+              |- map.putmany_of_list_zip ?ks2 ?vs2 ?m = Some ?m' =>
+              replace ks2 with ks1;
+                [ replace vs2 with vs1; [ exact H | ] | ]
+            end.
+            { repeat (f_equal; try lia). }
+            { apply firstn_all2. length_hammer. } } } } }
   Qed.
 
   Global Instance spec_of_aes_iv_put : spec_of aes_iv_put :=
@@ -1128,19 +1326,17 @@ Section Proofs.
     logical_simplify; subst.
     lazymatch goal with
     | H : execution (_ :: _) _ |- _ =>
-      pose proof H; cbn [execution] in H; logical_simplify
+      pose proof H; apply invert1_execution in H; logical_simplify
     end.
-    infer; subst.
-    (* assert that the register address we just read is STATUS *)
-    lazymatch goal with
-    | H : parameters.reg_addr ?r = AES_STATUS |- _ =>
-      replace AES_STATUS with (reg_addr STATUS) in H
-        by (cbn [reg_addr]; subst_lets; ring);
-      apply reg_addr_unique in H; try subst r
-    end.
+    invert_step; subst.
     cbn [parameters.reg_addr parameters.write_step parameters.read_step
                              state_machine_parameters] in *.
     infer; subst.
+    (* assert that the register address we just read is STATUS *)
+    lazymatch goal with
+    | H : reg_addr ?r = AES_STATUS |- _ =>
+      apply (reg_addr_unique r STATUS) in H; subst
+    end.
     cbv [status_matches_state] in *. simplify_implicits.
     repeat match goal with
            | H : (_ && _)%bool = true |- _ => apply Bool.andb_true_iff in H; destruct H
@@ -1494,7 +1690,7 @@ Section Proofs.
                   /\ max_iterations s' = i
                   (* as long as the loop continues, we keep setting is_valid to
                      0, so locals are unchanged until the loop breaks *)
-                  /\ l' = map.put l "is_valid"%string is_valid
+                  /\ l' = map.put l "is_valid" is_valid
                   (* expected output still matches *)
                   /\ output_matches_state out s'
                   (* s' is related to s either by decrementing counter or being equal *)
@@ -1547,16 +1743,15 @@ Section Proofs.
         pose proof H;
         apply invert1_execution in H; logical_simplify
       end.
+      invert_step; subst.
+      cbn [parameters.reg_addr parameters.write_step parameters.read_step
+                               state_machine_parameters] in *.
       infer; subst.
       (* assert that the register address we just read is STATUS *)
       lazymatch goal with
-      | H : parameters.reg_addr ?r = AES_STATUS |- _ =>
-        replace AES_STATUS with (reg_addr STATUS) in H
-          by (cbn [reg_addr]; subst_lets; ring);
-          apply reg_addr_unique in H; try subst r
+      | H : reg_addr ?r = AES_STATUS |- _ =>
+        apply (reg_addr_unique r STATUS) in H; subst
       end.
-      cbn [parameters.reg_addr parameters.write_step parameters.read_step
-                               state_machine_parameters] in *.
       invert_read_step; infer; subst; try discriminate;
         (* get rid of cases that are not BUSY or DONE *)
         try lazymatch goal with

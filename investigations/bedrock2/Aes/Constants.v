@@ -121,18 +121,18 @@ Definition constant_words
 
 (* This instance provide the string name for each constant *)
 Definition constant_names : aes_constants string :=
-  {| AES_KEY0 := "AES_KEY0";
-     AES_IV0 := "AES_IV0";
-     AES_DATA_IN0 := "AES_DATA_IN0";
-     AES_DATA_OUT0 := "AES_DATA_OUT0";
-     AES_CTRL := "AES_CTRL";
+  {| AES_KEY0 := "AES_KEY0(0)";
+     AES_IV0 := "AES_IV0(0)";
+     AES_DATA_IN0 := "AES_DATA_IN0(0)";
+     AES_DATA_OUT0 := "AES_DATA_OUT0(0)";
+     AES_CTRL := "AES_CTRL(0)";
      AES_CTRL_OPERATION := "AES_CTRL_OPERATION";
      AES_CTRL_MODE_MASK := "AES_CTRL_MODE_MASK";
      AES_CTRL_MODE_OFFSET := "AES_CTRL_MODE_OFFSET";
      AES_CTRL_KEY_LEN_MASK := "AES_CTRL_KEY_LEN_MASK";
      AES_CTRL_KEY_LEN_OFFSET := "AES_CTRL_KEY_LEN_OFFSET";
      AES_CTRL_MANUAL_OPERATION := "AES_CTRL_MANUAL_OPERATION";
-     AES_STATUS := "AES_STATUS";
+     AES_STATUS := "AES_STATUS(0)";
      AES_STATUS_IDLE := "AES_STATUS_IDLE";
      AES_STATUS_STALL := "AES_STATUS_STALL";
      AES_STATUS_OUTPUT_VALID := "AES_STATUS_OUTPUT_VALID";
