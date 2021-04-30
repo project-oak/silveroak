@@ -64,7 +64,7 @@ $ git submodule update --init --recursive
 $ make
 ```
 
-To remove all automatically generated files:
+To remove all automatically generated files (this may be needed after upgrading Coq, for example):
 ```console
 $ make cleanall
 ```
