@@ -49,9 +49,10 @@ See the banner at the top of the page for instructions on how to navigate the pr
 Setup
 =====
 
-If you are using this tutorial to just get a general idea of how Cava works,
-skip to the next section. If you are trying to write your own circuits or step
-through this tutorial locally, here are the quick-start instructions::
+If you are viewing this tutorial on the web and just trying to get a general
+idea of how Cava works, skip to the next section. If you are trying to write
+your own circuits or step through this tutorial locally, here are the
+quick-start instructions for installing Cava::
 
   $ git clone https://github.com/project-oak/silveroak.git
   $ cd silveroak
