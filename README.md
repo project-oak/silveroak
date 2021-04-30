@@ -46,9 +46,9 @@ requests.
 Please install the following components:
 
 * The [Coq proof assistant](https://coq.inria.fr/) version 8.13.0.
-* The [GHC Haskell compiler](https://www.haskell.org/ghc/) version 8.6 or later
-* [Cabal](https://www.haskell.org/cabal/) version 3.0.0.0 or later
-* [Verilator](https://www.veripool.org/wiki/verilator) version 4.028 (as specified by the
+* The [GHC Haskell compiler](https://www.haskell.org/ghc/) version 8.6 or later (note that if you install the [Haskell Platform](https://www.haskell.org/platform/) then you get Cabal, too).
+* [Cabal](https://www.haskell.org/cabal/) version 3.0.0.0 or later.
+* [Verilator](https://www.veripool.org/wiki/verilator) version 4.104 (as specified by the
   [OpenTitan](https://docs.opentitan.org/doc/ug/install_instructions/#verilator) documentation).
 
 To re-build the OpenTitan system with the Cava versions of the high assurance
@@ -64,7 +64,7 @@ $ git submodule update --init --recursive
 $ make
 ```
 
-To remove all automatically generated files:
+To remove all automatically generated files (this may be needed after upgrading Coq, for example):
 ```console
 $ make cleanall
 ```
