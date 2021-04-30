@@ -1,0 +1,17 @@
+cabal-version:       >=1.10
+
+name:                cava-xilinx-tests
+version:             0.1.0.0
+author:              The SilverOak Team
+maintainer:          benblaxill@google.com
+build-type:          Simple
+
+executable xilinx-tests
+  main-is:             VivadoTestsSV.hs
+  other-modules:
+    LUTTests
+  -- other-extensions:
+  build-depends:       base >=4.12 && <4.15, Cava2HDL
+
+  -- hs-source-dirs:
+  default-language:    Haskell2010
