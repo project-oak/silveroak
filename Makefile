@@ -45,6 +45,7 @@ clean:
 	for dir in $(filter-out third_party,$(SUBDIRS)); do \
 		$(MAKE) -C $$dir clean; \
 	done
+	echo "Note: to clean all dependencies (e.g. after a Coq upgrade) do 'make cleanall'"
 
 # clean everything *including* third_party
 cleanall:
