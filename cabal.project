@@ -1,7 +1,9 @@
 packages:
   cava/Cava2HDL/Cava2HDL.cabal
   examples/cava-examples.cabal
+  examples/xilinx/cava-xilinx-examples.cabal
   tests/cava-tests.cabal
+  tests/xilinx/cava-xilinx-tests.cabal
   silveroak-opentitan/pinmux/silveroak-pinmux.cabal
   silveroak-opentitan/aes/silveroak-aes.cabal
 

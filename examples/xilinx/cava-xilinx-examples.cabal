@@ -1,0 +1,16 @@
+cabal-version:       >=1.10
+
+name:                cava-xilinx-examples
+version:             0.1.0.0
+author:              The SilverOak Team
+maintainer:          benblaxill@google.com
+build-type:          Simple
+
+executable xilinx-examples
+  main-is:             ExamplesSV.hs
+  other-modules:
+    NandLUT XilinxAdderExamples XilinxAdderTree
+  -- other-extensions:
+  build-depends:       base >=4.12 && <4.15, Cava2HDL
+  -- hs-source-dirs:
+  default-language:    Haskell2010
