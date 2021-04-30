@@ -59,8 +59,7 @@ minimize-requires: coq
 		$(MAKE) -f Makefile.coq $@
 
 VivadoTestsSV:	coq VivadoTestsSV.hs
-		ghc -O2 --make VivadoTestsSV.hs
-		./VivadoTestsSV
+		cabal run xilinx-tests
 
 $(SV) $(BENCHES) $(CPPS):	VivadoTestsSV
 
