@@ -46,8 +46,8 @@ requests.
 Please install the following components:
 
 * The [Coq proof assistant](https://coq.inria.fr/) version 8.13.0.
-* The [GHC Haskell compiler](https://www.haskell.org/ghc/) version 8.6 or later
-* [Cabal](https://www.haskell.org/cabal/) version 3.0.0.0 or later
+* The [GHC Haskell compiler](https://www.haskell.org/ghc/) version 8.6 or later (note that if you install the [Haskell Platform](https://www.haskell.org/platform/) then you get Cabal, too).
+* [Cabal](https://www.haskell.org/cabal/) version 3.0.0.0 or later.
 * [Verilator](https://www.veripool.org/wiki/verilator) version 4.028 (as specified by the
   [OpenTitan](https://docs.opentitan.org/doc/ug/install_instructions/#verilator) documentation).
 
