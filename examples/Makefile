@@ -57,7 +57,6 @@ minimize-requires: coq
 		$(MAKE) -f Makefile.coq $@
 
 ExamplesSV:	coq ExamplesSV.hs
-		cabal build examples
 		cabal run examples
 
 $(SV) $(BENCHES) $(CPPS):	ExamplesSV

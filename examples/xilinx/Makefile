@@ -65,8 +65,7 @@ minimize-requires: coq
 		$(MAKE) -f Makefile.coq $@
 
 ExamplesSV:	coq ExamplesSV.hs
-		ghc -O2 --make ExamplesSV.hs
-		./ExamplesSV
+		cabal run xilinx-examples
 
 $(SV) $(BENCHES) $(CPPS):	ExamplesSV
 
