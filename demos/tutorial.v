@@ -46,19 +46,47 @@ See the banner at the top of the page for instructions on how to navigate the pr
 .. contents:: Table of Contents
    :depth: 2
 
-Preliminaries
-=============
+Setup
+=====
 
-First you need to install Cava, see https://github.com/project-oak/silveroak/blob/main/README.md.
+If you are viewing this tutorial on the web and just trying to get a general
+idea of how Cava works, skip to the next section. If you are trying to write
+your own circuits or step through this tutorial locally, here are the
+quick-start instructions for installing Cava::
 
-To import the core Cava library you need to define and simulate circuits, just:
+  $ git clone https://github.com/project-oak/silveroak.git
+  $ cd silveroak
+  $ git submodule update --init --recursive # initialize submodules
+  $ make -j4 cava-coq
+
+You can now make the Cava libraries visible to your project by adding the
+following lines to your project's ``_CoqProject`` file::
+
+  -R path/to/silveroak/cava/Cava Cava
+  -R path/to/silveroak/third_party/coq-ext-lib/theories ExtLib
+  -R path/to/silveroak/third_party/bedrock2/deps/coqutil/src/coqutil coqutil
+
+If you don't have an existing project, you can set up a minimal one as follows:
+
+1. Create a new directory
+2. Create a file called ``_CoqProject`` in the new directory containing the
+   three lines above, with ``path/to/silveroak`` replaced with the path to
+   your clone of ``silveroak``
+3. Create a new file with a ``.v`` extension and open it with your favorite
+   Coq IDE option (``coqide``, Emacs's Proof General, Vim's ``coqtail``, or VS
+   Code, among others). The ``_CoqProject`` file should be detected
+   automatically; try writing the imports below into the ``.v`` file, and step
+   through them to check that everything's working.
+
+The following lines import everything you need to *define* and *simulate* circuits,
+as well as some convenience notations:
 |*)
 
 Require Import Cava.Cava.
 Import Circuit.Notations.
 
 (*|
-If you also want to do proofs about circuits, this import should have everything you need:
+If you also want to do *proofs* about circuits, you'll need this import also:
 |*)
 
 Require Import Cava.CavaProperties.
