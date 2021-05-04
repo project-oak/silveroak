@@ -38,6 +38,10 @@ $(SUBDIRS):
 
 coq: $(SUBDIRS)
 
+# special target to make only the core Coq library
+cava-coq : third_party
+	$(MAKE) -C cava coq
+
 minimize-requires: $(SUBDIRS)
 
 # clean everything *except for* third_party
@@ -67,7 +71,6 @@ minimize-requires: SUBDIRTARGET=minimize-requires
 %.vo: DIR=$(firstword $(subst /, , $@))
 
 %.vo: TARGET=$(subst $(DIR)/,,$@)
-
 
 # cava depends on third_party
 cava : third_party
