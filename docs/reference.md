@@ -18,7 +18,7 @@ unless stated otherwise. For a more thorough introduction to Cava, check out the
   monadic functions using the `cava` monad.
 - `Circuit : forall {i o : Type}, Type` : Inductive structure that represents a
   circuit with input type `i` and output type `o`. See the section on [circuit
-  constructors](#circuit-constructors). for more details.
+  constructors](#circuit-constructors) for more details.
 
 #### Simulation
 
@@ -30,12 +30,9 @@ unless stated otherwise. For a more thorough introduction to Cava, check out the
 
 - `CircuitInterface` : Record containing the interface for a circuit (e.g. input
   and output port names and types, name of clock signal) for netlist generation.
-- `makeCircuitNetlist : forall intf : CircuitInterface, Circuit
-  (tupleNetInterface (circuitInputs intf)) (tupleNetInterface (circuitOutputs
-  intf)) -> CavaState` : Generate a netlist from a `CircuitInterface` and a
-  `Circuit`. Note that `tupleNetInterface` converts a list to a flat tuple. For
-  instance, if the interface specifies two input ports with type `Vec Bit 8`,
-  `tupleNetInterface intf` will be `signal (Vec Bit 8) * signal (Vec Bit 8)`.
+- `makeCircuitNetlist` : Generate a netlist from a `CircuitInterface` and a
+  `Circuit`. Note that `tupleNetInterface`, which appears in the type
+signature, converts a list of types to a flat tuple type.
 
 ## Circuit Subcomponents and Signals
 
@@ -339,9 +336,99 @@ non-combinational parts.
 
 ![Circuit diagram for Loop constructor](loop.svg){: width="700px"}
 
-## Notations
+## Proof Automation
 
-In all notation descriptions, three dots `...` indicate a repeated pattern.
+These tactics and rewrite databases will greatly simplify Cava proofs; they're
+not mandatory, but it's a good idea to know that they exist and roughly what
+they do. This list is not exhaustive.
+
+For more detail on a particular tactic, try searching the codebase for
+other places where it's used, or for the tactic's test cases.
+
+## Tactics
+
+`simpl_ident`: transforms an expression in terms of the identity monad (this
+will be practically all circuit proofs) and/or circuit simulations into a
+non-monadic expression, which will be easier to reason about.
+
+`length_hammer` : solves most goals relating to list lengths (e.g. `length
+(firstn n (a ++ b)) < 4`).
+
+`destruct_pair_let` : Coq's `let '(x,y) := _ in` syntax is convenient but
+doesn't simplify away easily in proofs. This tactic simplifies it for you, so
+that an expression like `foo (let '(x,y,z) := p in z)` becomes `foo (snd p)`.
+
+`logical_simplify` : performs a few commonly-needed simplifications to the
+hypotheses in context. For instance, if you have `H : exists x, P x /\ exists
+y, Q x y`, this tactic will give you a context with new variables for `x` and
+`y`, and the two hypotheses `P x` and `Q x y`.
+
+`constant_vector_simpl v`: if `v` is a constant-length vector in the current
+context, destructs it into its elements (so instead of `Vector.t nat 4`, you
+have 4 variables of type `nat`)
+
+`constant_bitvec_cases v`: if `v` is a boolean vector of constant length in the
+current context, creates a subgoal for each possible value of `v`. For
+instance, if `v` has the type `Vector.t bool 3`, you will get 8 subgoals (one
+for `v = [false;false;false]`, one for `v=[true;false;false]`, etc.). Useful
+for situations in which you have a limited number of cases and want to prove
+each one by computation.
+
+## Autorewrite databases
+
+Autorewrite databases in Coq (see the manual entries on
+[autorewrite](https://coq.inria.fr/distrib/current/refman/proofs/automatic-tactics/auto.html?highlight=autorewrite#coq:tacn.autorewrite)
+and [Hint
+Rewrite](https://coq.inria.fr/distrib/current/refman/proofs/automatic-tactics/auto.html?highlight=autorewrite#coq:cmd.Hint-Rewrite)
+are powerful and often underused tools for automatic reasoning in Coq. For
+those new to the idea, it works like this:
+
+```
+Hint Rewrite @app_length using solve [eauto] : push_length.
+Hint Rewrite @nil_length using solve [eauto] : push_length.
+Hint Rewrite @repeat_length using solve [eauto] : push_length.
+
+Goal (forall T (x : T) n m, length (repeat x n ++ [] ++ repeat x m) = n + mw).
+intros.
+(* Goal: length (repeat x n ++ [] ++ repeat x m) = n + m *)
+autorewrite with push_length.
+(* Goal : n + (0 + m) = n + m *)
+Abort.
+```
+
+Basically, you can add a whole bunch of lemmas to the hint database, and then
+use `autorewrite` to rewrite with them in whatever order works. The `solve
+[eauto]` can be replaced with any tactic that you want to apply to the
+rewrite's side conditions; for a lemma with an arithmetic side condition, you
+might want `lia`. It's good practice to make sure that the tactic won't leave
+unsolved goals (hence `solve [eauto]` even though none of the lemmas above
+actually generate side conditions).
+
+Cava defines a number of autorewrite databases that you can use and add to,
+including the `push_length` one in the example.  Some of the tactics mentioned
+above actually use autorewrite databases, too; if you add a lemma to the
+`push_length` hint database, for instance, the `length_hammer` tactic will know
+about your lemma and use it to solve list-length goals.
+
+One final note: many autorewrite databases are named `push_foo`, for some
+definition `foo`. This means that lemmas added to that database "push" the
+`foo` definition further into the expression, or eliminate it. For instance, the lemma
+`app_length`, which has the type `forall {A} (l l' : list A), length (l ++ l')
+= length l + length l'`, has `length` as the outermost expression on the
+left-hand side, but has `add` as the outermost expression on the right-hand
+side, with `length` deeper in the expression tree. The lemma `nil_length`,
+which has the type `length [] = 0`, removes a `length` invocation.
+
+The most useful autorewrite databases defined by Cava are:
+
+- `push_simulate` : simplifies expressions with the circuit simulation definition `simulate`
+- `simpl_ident` : contains lemmas proving that circuits obey their
+  specifications; used by the `simpl_ident` tactic
+- `push_length` : simplifies expressions with list `length`
+- `vsimpl` : general-purpose simplification of vector expressions
+- `natsimpl` : general-purpose simplification of natural-number expressions
+
+## Notations
 
 ### Monad Notations
 
