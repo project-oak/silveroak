@@ -235,5 +235,5 @@ Hint Rewrite to_list_rows_from_list_rows
      using solve [length_hammer] : conversions.
 Hint Rewrite @map2_to_cols_bits using solve [eauto] : push_vector_map.
 Hint Rewrite <- @map2_to_cols_bits using solve [eauto] : pull_vector_map.
-Hint Resolve to_list_rows_length_outer
-     to_list_rows_length_inner : length.
+#[export] Hint Resolve to_list_rows_length_outer to_list_rows_length_inner
+  : length.

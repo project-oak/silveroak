@@ -55,8 +55,8 @@ Proof.
 Qed.
 Hint Rewrite @unflatten_flatten @flatten_unflatten using solve [eauto] : conversions.
 
-Hint Resolve add_round_key_equiv sub_bytes_equiv shift_rows_equiv
-     mix_columns_equiv : subroutines_equiv.
+Local Hint Resolve add_round_key_equiv sub_bytes_equiv shift_rows_equiv
+      mix_columns_equiv : subroutines_equiv.
 
 Definition full_cipher {signal} {semantics : Cava signal}
            key_expand

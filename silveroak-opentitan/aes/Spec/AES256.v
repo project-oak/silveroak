@@ -149,5 +149,5 @@ Section CircuitSpec.
     else from_flat (mix_columns (to_flat state)).
 End CircuitSpec.
 Hint Rewrite from_flat_to_flat to_flat_from_flat using solve [eauto] : conversions.
-Hint Unfold aes_add_round_key_circuit_spec aes_sub_bytes_circuit_spec
-     aes_shift_rows_circuit_spec aes_mix_columns_circuit_spec : circuit_specs.
+#[export] Hint Unfold aes_add_round_key_circuit_spec aes_sub_bytes_circuit_spec
+ aes_shift_rows_circuit_spec aes_mix_columns_circuit_spec : circuit_specs.

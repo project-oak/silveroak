@@ -81,7 +81,7 @@ Section WithCava.
   Fixpoint list_evens {A} (a : list A) :=
     match a with
     | a1 :: a2 :: atl => a2 :: list_evens atl
-    | empty_or_single => []
+    | _ => []
     end%list.
   Definition vec_evens {A n} (default : A) (a : Vector.t A (n + n)) : Vector.t A n :=
     resize_default default n (Vector.of_list (list_evens (Vector.to_list a))).
@@ -116,7 +116,7 @@ Section WithCava.
     | O => ret
     | S n' => match n' with
               | O => ret
-              | S n'' => parl default f (evens default f)
+              | S _ => parl default f (evens default f)
               end
     end.
 
