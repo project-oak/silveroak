@@ -74,6 +74,24 @@ To remove files generated as part of `silveroak`, but leave dependencies' in-tre
 $ make clean
 ```
 
+## Updating git submodules
+
+Although infrequent, commits may update the git submodules used by this project.
+Git does not automatically update submodules, and so to cleanly update submodule
+depdendencies run the `make update-third_party` rule.
+
+```console
+$ cd silveroak
+$ make update-third_party
+```
+
+or equivalently
+
+```console
+$ cd silveroak
+$ git submodule update --init --recursive
+$ make cleanall
+```
 
 ## Cava Examples
 See [Cava Examples](https://github.com/project-oak/silveroak/blob/main/examples/README.md) for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.
