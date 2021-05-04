@@ -86,7 +86,7 @@ Fixpoint curry (l : list Type) ret {struct l}: uncurriedR l ret -> curried l ret
       curry XS ret (fun txs => f (x, txs))
   end.
 
-Fixpoint curry_helper l ret {struct l}: (tupled' l -> ret) -> uncurriedR l ret :=
+Definition curry_helper l ret : (tupled' l -> ret) -> uncurriedR l ret :=
   match l with
   | [] => fun f => f
   | X::XS => fun f '(y,ys) => f (rebalance XS y ys)

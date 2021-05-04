@@ -32,7 +32,7 @@
 all: coq
 
 coq:		Makefile.coq
-		$(MAKE) -f Makefile.coq
+		$(MAKE) -f Makefile.coq >/dev/null # don't show the printed output; the tutorial has long print statements
 
 minimize-requires: coq
 	../tools/minimize-requires.sh

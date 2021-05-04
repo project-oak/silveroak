@@ -166,7 +166,7 @@ Section Spec.
 
   End Properties.
 End Spec.
-Hint Resolve shift_rows_length_inner shift_rows_length_outer : length.
+#[export] Hint Resolve shift_rows_length_inner shift_rows_length_outer : length.
 
 Section BasicTests.
   Import ListNotations.

@@ -73,4 +73,4 @@ Section Spec.
 
   End Properties.
 End Spec.
-Hint Resolve sub_bytes_length_inner sub_bytes_length_outer : length.
+#[export] Hint Resolve sub_bytes_length_inner sub_bytes_length_outer : length.
