@@ -27,7 +27,7 @@
 SUBDIRS = third_party cava tests examples silveroak-opentitan \
 	  examples/xilinx tests/xilinx demos
 
-.PHONY: all coq minimize-requires clean subdirs $(SUBDIRS)
+.PHONY: all coq minimize-requires clean update-third_party subdirs $(SUBDIRS)
 
 all: subdirs
 
@@ -37,6 +37,11 @@ $(SUBDIRS):
 	$(MAKE) -C $@ $(SUBDIRTARGET)
 
 coq: $(SUBDIRS)
+
+# Call cleanall after updating as the sub modules may not currently exist
+update-third_party:
+	$(MAKE) -C third_party update
+	$(MAKE) cleanall
 
 # special target to make only the core Coq library
 cava-coq : third_party
