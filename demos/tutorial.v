@@ -56,7 +56,7 @@ quick-start instructions for installing Cava::
 
   $ git clone https://github.com/project-oak/silveroak.git
   $ cd silveroak
-  $ git submodule update --init --recursive # initialize submodules
+  $ git submodule update --init --recursive
   $ make -j4 cava-coq
 
 You can now make the Cava libraries visible to your project by adding the
