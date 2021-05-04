@@ -4,7 +4,7 @@
 -Q third_party/coq-ext-lib/theories ExtLib
 -Q third_party/bedrock2/bedrock2/src/bedrock2 bedrock2
 -Q third_party/bedrock2/deps/coqutil/src/coqutil coqutil
--Q third_party/coq-record-update/src RecordUpdate
+-Q third_party/bedrock2/deps/coq-record-update/src RecordUpdate
 -Q tests Tests
 -Q examples Examples
 -Q examples/xilinx XilinxExamples

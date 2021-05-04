@@ -52,7 +52,7 @@ _CoqProject:    $(shell find . -name '*.v' | sort)
 		@echo "-R ../../../cava/Cava Cava" >> _CoqProject
 		@echo "-R ../../../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
 		@echo "-R ../../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
-		@echo "-R ../../../third_party/coq-record-update/src RecordUpdate" >> _CoqProject
+		@echo "-R ../../../third_party/bedrock2/deps/coq-record-update/src RecordUpdate" >> _CoqProject
 		@printf '%s\n' $^ >> _CoqProject
 
 Makefile.coq:	_CoqProject
