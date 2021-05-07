@@ -450,7 +450,7 @@ End WithCava.
 
 (*|
 We can define an interface for this circuit that also takes ``n`` as an
-argument, and then compute a netlist for any number of gates we want.
+argument, and then compute a netlist for any number of bits we want.
 |*)
 
 Definition xor_bitvec_interface {n : nat}
@@ -655,7 +655,7 @@ Proof.
 
   (* The tree lemma produces the same side conditions as before, but
      we solve them here in a more concise way *)
-  erewrite @tree_equiv with
+  rewrite @tree_equiv with
       (t:=Vec Bit n) (id:=N2Bv_sized n 0)
     by (intros; auto; simpl_ident; apply Bv2N_inj;
         autorewrite with push_Bv2N;
