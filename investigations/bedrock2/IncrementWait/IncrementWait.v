@@ -6,16 +6,14 @@ Require Import bedrock2.Syntax.
 Require Import bedrock2.NotationsCustomEntry.
 Require Import bedrock2.ToCString.
 Require Import coqutil.Word.Interface.
-Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
+Require Import Bedrock2Experiments.IncrementWait.Constants.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
 Local Open Scope Z_scope.
 Local Open Scope list_scope.
 
 Section Impl.
-  Import constants.
-  Local Existing Instance constant_names.
-  Local Existing Instance constant_vars.
+  Local Existing Instances constant_names constant_vars.
 
   (* Notations for small constants *)
   Local Notation "0" := (expr.literal 0) (in custom bedrock_expr).
