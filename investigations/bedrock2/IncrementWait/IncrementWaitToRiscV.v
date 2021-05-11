@@ -148,6 +148,12 @@ Section MMIO1.
          fun w =>
            Exists (fun addr => word.unsigned addr <= word.unsigned w <= word.unsigned addr + 4) reg_addrs;
        isMMIOAligned := fun n addr => n = 4%nat /\ (word.unsigned addr) mod 4 = 0;
+       MMIOReadOK :=
+         fun n log addr val =>
+           exists s s' r,
+             execution log s
+             /\ reg_addr r = addr
+             /\ read_step s r val s'
     |}.
 
   Instance FlatToRiscv_params: FlatToRiscvCommon.parameters := {
@@ -364,7 +370,7 @@ Section MMIO1.
       end.
       match goal with
       | HO : forall _ _ :  state, _ |- _ =>
-        especialize HO; [ solve [eauto] .. | ]
+        specialize (HO _ _ ltac:(eassumption) ltac:(eassumption))
       end.
       match goal with
       | HO: outcome _ _, H: _ |- _ => specialize (H _ HO); rename H into HP
@@ -574,6 +580,17 @@ Section MMIO1.
       cbv [MinimalMMIO.nonmem_load IncrementWaitMMIOSpec].
       split; [apply reg_addr_is_mmio|].
       split; [red; auto using reg_addr_is_aligned|].
+      split.
+      { cbv [MMIOReadOK].
+        let val := lazymatch goal with
+                   | H : read_step _ _ ?val _ |- _ => val end in
+        (exists (LittleEndian.split 4 (word.unsigned val))).
+        cbv [signedByteTupleToReg].
+        rewrite LittleEndian.combine_split.
+        rewrite Z.mod_small by apply word.unsigned_range.
+        rewrite sextend_width_nop by reflexivity.
+        rewrite word.of_Z_unsigned.
+        eauto 10. }
       intros.
 
       repeat fwd.
@@ -582,11 +599,22 @@ Section MMIO1.
       simpl_MetricRiscvMachine_get_set.
       simpl_word_exprs word_ok.
 
-      unfold mmioLoadEvent, signedByteTupleToReg.
-      match goal with
-      | HO : forall (_ _ :  state), _ |- _ =>
-        especialize HO; [ solve [eauto] .. | ]
+      (* simplify MMIOReadOK precondition *)
+      lazymatch goal with
+      | H : MMIOReadOK _ _ _ _ |- _ =>
+        cbv [MMIOReadOK] in H; cbn [getLog] in H
       end.
+      logical_simplify; subst.
+      lazymatch goal with
+      | H : reg_addr _ = reg_addr _ |- _ =>
+        apply reg_addrs_unique in H; subst
+      end.
+      lazymatch goal with
+      | HO : forall _ _ v, _ -> read_step _ _ v _ -> _ |- _ =>
+        specialize (HO _ _ (signedByteTupleToReg _) ltac:(eassumption) ltac:(eassumption))
+      end.
+
+      unfold mmioLoadEvent, signedByteTupleToReg.
       match goal with
       | HO: outcome _ _, H: _ |- _ => specialize (H _ HO); rename H into P
       end.
@@ -605,16 +633,14 @@ Section MMIO1.
         destruct_one_match; auto.
       }
       split. {
-        Search z0.
-        (* I think the combine here is combining 4 bytes -- v is the 4 bytes *)
-        (* Need to prove that value read = v = x3*)
-        Search map.extends.
-        Search v.
         eapply map.put_extends. eassumption.
       }
       split. {
         intros.
-        rewrite map.get_put_dec in H.
+        match goal with
+        | H : context [map.get _ ?x] |- _ <= ?x < _ =>
+          rewrite map.get_put_dec in H
+        end.
         destruct_one_match_hyp. 1: blia. eauto.
       }
       split. {
