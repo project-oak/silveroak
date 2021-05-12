@@ -43,7 +43,8 @@ Definition ml: MemoryLayout := {|
   MemoryLayout.stack_pastend := word.of_Z (16*2^10);
                               |}.
 
-Definition base_addr := word.add (MemoryLayout.stack_pastend ml) (word.of_Z 400).
+(* dummy base address -- just end of stack *)
+Definition base_addr := MemoryLayout.stack_pastend ml.
 Instance consts : constants MMIO.word :=
   {| VALUE_ADDR := base_addr;
      STATUS_ADDR := word.add base_addr (word.of_Z 4);
@@ -90,4 +91,51 @@ Module PrintAssembly.
   Import riscv.Utility.InstructionNotations.
   (* Uncomment to see assembly code *)
   (* Print put_wait_get_asm. *)
+  (*   addi    x2, x2, -80   // decrease stack pointer
+       sw      x2, x1, 48    // save ra
+       sw      x2, x11, 0    // save registers that will be used for temporaries
+       sw      x2, x12, 4
+       sw      x2, x13, 8
+       sw      x2, x14, 12
+       sw      x2, x10, 16
+       sw      x2, x9, 20
+       sw      x2, x3, 24    // save registers that will be used for arguments
+       sw      x2, x4, 28
+       sw      x2, x5, 32
+       sw      x2, x6, 36
+       sw      x2, x7, 40
+       sw      x2, x8, 44
+       lw      x3, x2, 56    // load arguments
+       lw      x4, x2, 60
+       lw      x5, x2, 64
+       lw      x6, x2, 68
+       lw      x7, x2, 72
+       lw      x8, x2, 76
+       sw      x3, x8, 0     // MMIO write : write input
+       addi    x10, x0, 0    // x10 = 0
+       addi    x11, x0, 1    // x11 = 1
+       sll     x12, x11, x7  // x12 = 1 << x7 = 1 << STATUS_DONE
+       and     x13, x10, x12 // x13 = x10 & x12
+       addi    x14, x0, 0    // x14 = 0
+       bne     x13, x14, 12  // while loop condition
+       lw      x10, x4, 0    // MMIO read : read status
+       jal     x0, -24       // jump back to loop start
+       lw      x9, x3, 0     // MMIO read : read value
+       sw      x2, x9, 52    // store return value
+       lw      x11, x2, 0    // restore values of temp registers
+       lw      x12, x2, 4
+       lw      x13, x2, 8
+       lw      x14, x2, 12
+       lw      x10, x2, 16
+       lw      x9, x2, 20
+       lw      x3, x2, 24    // restore values of arg registers
+       lw      x4, x2, 28
+       lw      x5, x2, 32
+       lw      x6, x2, 36
+       lw      x7, x2, 40
+       lw      x8, x2, 44
+       lw      x1, x2, 48    // load ra
+       addi    x2, x2, 80    // increase stack pointer
+       jalr    x0, x1, 0     // return
+  *)
 End PrintAssembly.
