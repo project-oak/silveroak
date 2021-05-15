@@ -941,10 +941,9 @@ Definition sum8_tb :=
 
 (*|
 The circuit netlist and testbench can be converted in SystemVerilog and
-simulated using a SystemVerilog simulator like Verilator:
+simulated using a SystemVerilog simulator like Verilator::
 
-clang++ -L/usr/local/opt/sqlite/lib    sum8_tb.o verilated.o verilated_vcd_c.o Vsum8_tb__ALL.a    -o Vsum8_tb -lm -lstdc++
-obj_dir/Vsum8_tb
+  clang++ -L/usr/local/opt/sqlite/lib    sum8_tb.o verilated.o verilated_vcd_c.o Vsum8_tb__ALL.a    -o Vsum8_tb -lm -lstdc++ obj_dir/Vsum8_tb
                   10: tick = 0,  i = 3,  o = 3
                   20: tick = 1,  i = 5,  o = 8
                   30: tick = 2,  i = 7,  o = 15
@@ -970,7 +969,7 @@ run and observe this actually running on an FPGA and capture its output:
    :width: 70%
    :alt: Logic analyzer trace capture for the sum8 circuit.
 
-Reassuring the actual circuit behaves as predicted by the Cava model
+Reassuringly the actual circuit behaves as predicted by the Cava model
 in Coq and the SystemVerilog simulation.
 |*)
 
