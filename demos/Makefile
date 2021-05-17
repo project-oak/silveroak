@@ -89,3 +89,9 @@ html:
 		-R ../third_party/coq-ext-lib/theories ExtLib \
 		-R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil \
 		tutorial.v
+	$(ALECTRYON_PATH)/alectryon.py --backend webpage --webpage-style floating \
+	       	-o ../docs/demo/expbysquaring.html --output-directory ../docs/demo \
+	       	-R ../cava/Cava Cava \
+		-R ../third_party/coq-ext-lib/theories ExtLib \
+		-R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil \
+		ExpBySquaring.v

@@ -899,6 +899,17 @@ Section VectorFacts.
     rewrite IHv; reflexivity.
   Qed.
 
+  Lemma of_list_snoc {A} (a : A) l :
+    of_list (l ++ [a]) = resize_default a _ (of_list l ++ [a]).
+  Proof.
+    apply to_list_inj.
+    rewrite to_list_of_list_opp.
+    rewrite to_list_resize_default
+      by (rewrite app_length; cbn [length]; Lia.lia).
+    rewrite to_list_append, to_list_of_list_opp.
+    reflexivity.
+  Qed.
+
   Lemma reshape_flatten {A n m} (v : t (t A n) m) :
     reshape (flatten v) = v.
   Proof.
