@@ -19,6 +19,7 @@ Require Export Cava.Lib.CavaPrelude.
 Require Export Cava.Lib.Combinators.
 Require Export Cava.Lib.Decoder.
 Require Export Cava.Lib.Multiplexers.
+Require Export Cava.Lib.Multipliers.
 
 (* Vec has a lot of name collisions with lists and standard library vectors;
    don't import it, just require it so that e.g. map is still Vec.map. *)

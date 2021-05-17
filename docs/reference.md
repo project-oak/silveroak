@@ -203,6 +203,8 @@ All bit vector arithmetic treats the bit vectors as unsigned and little-endian.
 - `addN : forall {n}, signal (Vec Bit n) * signal (Vec Bit n) -> cava (signal
   (Vec Bit n))`: Unsigned adder for n-bit vectors with bit-growth and carry
   bits neither in nor out
+- `squareN : forall {n}, signal (Vec Bit n) -> cava (signal (Vec Bit n))` :
+  square an unsigned bit vector, truncating to the input size
 - `unsignedAdd : forall a b : nat, signal (Vec Bit a) * signal (Vec Bit b) ->
   cava (signal (Vec Bit (1 + Init.Nat.max a b)))` : Synthesizable adder with
   bit-growth
