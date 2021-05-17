@@ -50,7 +50,7 @@ quick-start instructions for installing Cava:</p>
 <pre class="literal-block">
 $ git clone https://github.com/project-oak/silveroak.git
 $ cd silveroak
-$ git submodule update --init --recursive # initialize submodules
+$ make update-third_party
 $ make -j4 cava-coq
 </pre>
 <p>You can now make the Cava libraries visible to your project by adding the
@@ -251,7 +251,8 @@ can prove that <tt class="docutils literal">inverter</tt> obeys a natural Coq sp
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk6" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk6"><span class="highlight"><span class="kn">Lemma</span> <span class="nf">inverter_correct</span> (<span class="nv">input</span> : list bool) :
   simulate inverter input = map negb input.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate inverter input = map negb input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
 </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk7" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk7"><span class="highlight"><span class="kn">Proof</span>.</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate inverter input = map negb input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
-</span></span><span class="alectryon-wsp"><span class="highlight">  <span class="c">(* inline the circuit definition *)</span>
+</span></span><span class="alectryon-wsp"><span class="highlight">
+  <span class="c">(* inline the circuit definition *)</span>
 </span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk8" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk8"><span class="highlight"><span class="nb">cbv</span> [inverter].</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-goals"><blockquote class="alectryon-goal"><div class="goal-hyps"><div class="goal-hyp"><span class="hyp-names">input</span><span><span class="hyp-type-block"><span class="hyp-punct">:</span><span class="hyp-type"><span class="highlight">list bool</span></span></span></span></div></div><span class="goal-separator"><hr></span><div class="goal-conclusion"><span class="highlight">simulate (Comb inv) input = map negb input</span></div></blockquote></div></div></small><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
   <span class="c">(* simplify simulate to create an expression in terms of Coq lists *)</span>
@@ -446,7 +447,7 @@ it takes a length argument <tt class="docutils literal">n</tt> and all the <tt c
     Circuit (signal (Vec Bit n) * signal (Vec Bit n))
             (signal (Vec Bit n)) :=
     Comb (Vec.map2 xor2).</span></span></span></pre><p>We can define an interface for this circuit that also takes <tt class="docutils literal">n</tt> as an
-argument, and then compute a netlist for any number of gates we want.</p>
+argument, and then compute a netlist for any number of bits we want.</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">xor_bitvec_interface</span> {<span class="nv">n</span> : nat}
   := sequentialInterface <span class="s2">&quot;xor_bitvec_interface&quot;</span>
      <span class="s2">&quot;clk&quot;</span> PositiveEdge <span class="s2">&quot;rst&quot;</span> PositiveEdge
@@ -1281,7 +1282,7 @@ tree (Vec.map2 xor2) [fst a; snd a]</span></div></blockquote></div></div></small
 </span></span><span class="alectryon-wsp"><span class="highlight">
   <span class="c">(* The tree lemma produces the same side conditions as before, but</span>
 <span class="c">     we solve them here in a more concise way *)</span>
-</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk5b" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk5b"><span class="highlight"><span class="nb">erewrite</span> @tree_equiv <span class="kr">with</span>
+</span></span><span class="alectryon-wsp">  </span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk5b" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk5b"><span class="highlight"><span class="nb">rewrite</span> @tree_equiv <span class="kr">with</span>
       (t:=Vec Bit n) (id:=N2Bv_sized n <span class="mi">0</span>)
     <span class="bp">by</span> (<span class="nb">intros</span>; <span class="nb">auto</span>; simpl_ident; <span class="nb">apply</span> Bv2N_inj;
         <span class="nb">autorewrite with</span> push_Bv2N;
@@ -1531,14 +1532,14 @@ value, we can use <tt class="docutils literal">LoopInit</tt> instead and plug in
     LoopInit init (Comb (addN &gt;=&gt; fork2)).</span></span></span></pre><p>Here's the netlist for <tt class="docutils literal">sum</tt>. You can see that no &quot;loop&quot; appears in the final
 version, just a delay connecting the loop's output to its own input.</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">sum_interface</span> {<span class="nv">n</span> : nat}
-  := sequentialInterface <span class="s2">&quot;sum_interface&quot;</span>
+  := sequentialInterface <span class="s2">&quot;sum8&quot;</span>
      <span class="s2">&quot;clk&quot;</span> PositiveEdge <span class="s2">&quot;rst&quot;</span> PositiveEdge
      [mkPort <span class="s2">&quot;i&quot;</span> (Vec Bit n)]
      [mkPort <span class="s2">&quot;o&quot;</span> (Vec Bit n)].</span></span><span class="alectryon-wsp">
 </span></span><span class="alectryon-wsp"><span class="highlight">
 </span></span><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk6f" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk6f"><span class="highlight"><span class="kn">Compute</span>
   (makeCircuitNetlist sum_interface (sum (n:=<span class="mi">8</span>))).(module).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= {|
-    moduleName := <span class="s2">&quot;sum_interface&quot;</span>;
+    moduleName := <span class="s2">&quot;sum8&quot;</span>;
     netlist :=
       [AssignSignal (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;o&quot;</span>)
          (LocalVec Bit <span class="mi">8</span> <span class="mi">1</span>);
@@ -1633,12 +1634,44 @@ version, just a delay connecting the loop's output to its own input.</p>
          port_name := <span class="s2">&quot;o&quot;</span>; port_type := Vec Bit <span class="mi">8</span>
        |}]
   |}
-: <span class="kn">Module</span></span></blockquote></div></div></small></span></pre><p>The netlist for <tt class="docutils literal">sum_init</tt> can use the same interface, but needs an extra
+: <span class="kn">Module</span></span></blockquote></div></div></small><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Local Open Scope</span> N_scope.</span></span><span class="alectryon-wsp">  
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">sum8Netlist</span> := makeCircuitNetlist (sum_interface (n := <span class="mi">8</span>)) sum.</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">sum8_tb_inputs</span> := map (N2Bv_sized <span class="mi">8</span>) [<span class="mi">3</span>; <span class="mi">5</span>; <span class="mi">7</span>; <span class="mi">2</span>; <span class="mi">4</span>; <span class="mi">6</span>].</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">sum8_tb_expected_outputs</span> :=  (simulate sum sum8_tb_inputs).</span></span><span class="alectryon-wsp">
+</span></span><span class="alectryon-wsp"><span class="highlight">
+</span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">sum8_tb</span> :=
+  testBench <span class="s2">&quot;sum8_tb&quot;</span> (sum_interface (n := <span class="mi">8</span>)) sum8_tb_inputs sum8_tb_expected_outputs.</span></span></span></pre><p>The circuit netlist and testbench can be converted in SystemVerilog and
+simulated using a SystemVerilog simulator like Verilator:</p>
+<pre class="literal-block">
+clang++ -L/usr/local/opt/sqlite/lib    sum8_tb.o verilated.o verilated_vcd_c.o Vsum8_tb__ALL.a    -o Vsum8_tb -lm -lstdc++ obj_dir/Vsum8_tb
+                10: tick = 0,  i = 3,  o = 3
+                20: tick = 1,  i = 5,  o = 8
+                30: tick = 2,  i = 7,  o = 15
+                40: tick = 3,  i = 2,  o = 17
+                50: tick = 4,  i = 4,  o = 21
+                60: tick = 5,  i = 6,  o = 27
+</pre>
+<p>which produces the expected results that were predicted by the model in Coq.
+The testbench generates a VCD waveform that we can use to observe graphically
+using a VCD waveform viewer like gtkwave:</p>
+<img alt="Simulation waveform for the sum8 circuit." src="sum8_sim.png" style="width: 70%;" />
+<p>We can also synthesize a version of this testbench and the sum8 circuit
+into gates using the Xilinx Vivado FPGA tools to produce a bitstream
+that can be usd to program an FPGA chip. We can hook up this circuit
+with another circuit that acts as a logic analyzer (ILA) then then
+run and observe this actually running on an FPGA and capture its output:</p>
+<img alt="Logic analyzer trace capture for the sum8 circuit." src="sum8_ila.png" style="width: 70%;" />
+<p>Reassuring the actual circuit behaves as predicted by the Cava model
+in Coq and the SystemVerilog simulation.</p>
+<pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Local Close Scope</span> N_scope.</span></span></span></pre><p>The netlist for <tt class="docutils literal">sum_init</tt> can use the same interface, but needs an extra
 argument for the initial value:</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="tutorial-v-chk70" style="display: none" type="checkbox"><label class="alectryon-input" for="tutorial-v-chk70"><span class="highlight"><span class="kn">Compute</span>
   (makeCircuitNetlist sum_interface
                       (sum_init (N2Bv_sized <span class="mi">8</span> <span class="mi">10</span>))).(module).</span></label><small class="alectryon-output"><div class="alectryon-output-sticky-wrapper"><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="highlight">= {|
-    moduleName := <span class="s2">&quot;sum_interface&quot;</span>;
+    moduleName := <span class="s2">&quot;sum8&quot;</span>;
     netlist :=
       [AssignSignal (NamedVector Bit <span class="mi">8</span> <span class="s2">&quot;o&quot;</span>)
          (LocalVec Bit <span class="mi">8</span> <span class="mi">1</span>);
