@@ -30,7 +30,11 @@ Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
 (*|
-This example goes a bit further than Cava's tutorial_ and showcases some
+==================
+Advanced Cava Demo
+==================
+
+This set of examples goes a bit further than Cava's tutorial_ and showcases some
 advanced features. For a more gentle introduction or setup instructions, the
 tutorial is the best place to start.
 
