@@ -402,6 +402,23 @@ Proof.
   apply P2Bv_sized_shiftout.
 Qed.
 
+Lemma shiftout_N2Bv_sized_Bv2N n (v : Vector.t bool (S n)) :
+  shiftout v = N2Bv_sized n (Bv2N v).
+Proof.
+  induction n; [ apply nil_eq | ].
+  rewrite (eta v). cbn [shiftout rectS].
+  rewrite IHn. autorewrite with push_Bv2N.
+  destruct (Vector.hd v);
+    autorewrite with push_N2Bv_sized;
+    reflexivity.
+Qed.
+
+Lemma shiftout_cons0 n (input : Vector.t bool n) :
+  shiftout (false :: input) = N2Bv_sized n (2 * Bv2N input).
+Proof.
+  rewrite shiftout_N2Bv_sized_Bv2N, Bv2N_cons. reflexivity.
+Qed.
+
 Lemma P2Bv_sized_last n p :
   Vector.last (P2Bv_sized (S n) p) = Pos.testbit_nat p n.
 Proof.
@@ -444,6 +461,22 @@ Proof.
   reflexivity.
 Qed.
 Hint Rewrite @N2Bv_sized_add_idemp_l using solve [eauto] : pull_N2Bv_sized.
+
+Lemma N2Bv_sized_mul_idemp_l sz x y :
+  N2Bv_sized sz (Bv2N (N2Bv_sized sz x) * y) = N2Bv_sized sz (x * y).
+Proof.
+  bitvec_to_N. rewrite N.mul_mod_idemp_l by (apply N.pow_nonzero; lia).
+  reflexivity.
+Qed.
+Hint Rewrite @N2Bv_sized_mul_idemp_l using solve [eauto] : pull_N2Bv_sized.
+
+Lemma N2Bv_sized_mul_idemp_r sz x y :
+  N2Bv_sized sz (x * Bv2N (N2Bv_sized sz y)) = N2Bv_sized sz (x * y).
+Proof.
+  bitvec_to_N. rewrite N.mul_mod_idemp_r by (apply N.pow_nonzero; lia).
+  reflexivity.
+Qed.
+Hint Rewrite @N2Bv_sized_mul_idemp_r using solve [eauto] : pull_N2Bv_sized.
 
 Theorem Bv_span {n} (a : Vector.t bool n) :
   InV a (Vector.map (fun k => N2Bv_sized n (N.of_nat k)) (vseq 0 (2 ^ n))).
