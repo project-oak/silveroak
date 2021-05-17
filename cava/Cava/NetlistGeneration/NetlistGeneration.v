@@ -18,7 +18,7 @@ Require Import Coq.Strings.Ascii Coq.Strings.String.
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Functor.
 Require Export ExtLib.Data.List.
-Export MonadNotation.
+Import MonadNotation.
 
 Require Import Coq.ZArith.ZArith.
 
@@ -220,14 +220,29 @@ Fixpoint combToSignal (t : SignalType) (v : combType t) : Signal t :=
   | ExternalType typ, _ => UninterpretedSignal typ
   end.
 
+Definition loopInitNet (i o: Type) (s: SignalType) rst
+  (f: (i * Signal s) -> state CavaState (o * Signal s)) input : state CavaState o :=
+  feedback_in <- newSignal s ;;
+  '(out, feedback_out) <- f (input, feedback_in) ;;
+  (* place a delay on the feedback wire *)
+  addInstance (DelayEnable s rst Vcc feedback_out feedback_in) ;;
+  ret out.
+
+Definition delayInitNet (t: SignalType) rst input : state CavaState (Signal t) :=
+  out <- newSignal t ;;
+  addInstance (DelayEnable t rst Vcc input out) ;;
+  ret out.
+
 (******************************************************************************)
 (* Instantiate the Cava class for CavaNet which describes circuits without    *)
 (* any top-level pins or other module-level data                              *)
 (******************************************************************************)
 
+Require Import Cava.Util.IxMonad.
+
 Instance CavaCombinationalNet : Cava denoteSignal := {
-    cava := state CavaState;
-    monad := Monad_state _;
+    cava := fun st => state CavaState;
+    monad := monad_IxMonad (state CavaState);
     constant b := if b then Vcc else Gnd;
     constantV A n v := VecLit v;
     defaultSignal := defaultNetSignal;
@@ -257,47 +272,14 @@ Instance CavaCombinationalNet : Cava denoteSignal := {
     greaterThanOrEqual m n ab :=
       localSignalNet (@GreaterThanOrEqual m n (fst ab) (snd ab));
     localSignal := @localSignalNet;
-    instantiate intf circuit a :=
+    instantiate intf _ circuit a :=
       let cs := makeNetlist' intf circuit in
       addModule intf (module cs) ;;
       blackBoxNet intf a;
-    blackBox := blackBoxNet;
+    blackBox intf _ := blackBoxNet intf;
+
+  loop_init i s o body_regs rst bdy input := loopInitNet i o s rst bdy input;
+
+  delay_init := delayInitNet;
 }.
-
-(* Run circuit for a single step *)
-Fixpoint interpCircuit {i o} (c : Circuit i o)
-    : i -> state CavaState o :=
-  match c in Circuit i o return i -> state CavaState o with
-  | Comb f => f
-  | Compose f g =>
-    fun input =>
-      x <- interpCircuit f input ;;
-      y <- interpCircuit g x ;;
-      ret y
-  | First f =>
-    fun input =>
-      x <- interpCircuit f (fst input) ;;
-      ret (x, snd input)
-  | Second f =>
-    fun input =>
-      x <- interpCircuit f (snd input) ;;
-      ret (fst input, x)
-  | @LoopInitCE _ _ i o s resetval f =>
-    fun '(input, en) =>
-      feedback_in <- newSignal s ;;
-      '(out, feedback_out) <- interpCircuit f (input, feedback_in) ;;
-      (* place a delay on the feedback wire *)
-      addInstance (DelayEnable s resetval en feedback_out feedback_in) ;;
-      ret out
-  | @DelayInitCE _ _ t resetval =>
-    fun '(input, en) =>
-      out <- newSignal t ;;
-      addInstance (DelayEnable t resetval en input out) ;;
-      ret out
-  end.
-
-Definition makeCircuitNetlist (intf : CircuitInterface)
-           (c : Circuit (tupled' (port_signal Signal <$> circuitInputs intf))
-                        (tupled' (port_signal Signal <$> circuitOutputs intf))) : CavaState :=
-                        makeNetlist intf (interpCircuit c).
 

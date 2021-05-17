@@ -31,6 +31,55 @@ Require Import Cava.Util.Tuple.
 Import ListNotations.
 Import FunctorNotation.
 
+Section WithCava.
+  Context `{semantics:Cava}.
+
+  Inductive CavaSpine : list SignalType -> Type -> Type :=
+  | Ret : forall {t} (x : t), CavaSpine [] t
+  | LoopInit :
+      forall {i s o body_state}
+        (resetval : combType s)
+        (body : i * signal s -> CavaSpine body_state (o * signal s))
+        (input : i),
+        CavaSpine (s :: body_state) o
+  | DelayInit : forall {s} (resetval : combType s) (x : signal s), CavaSpine [s] (signal s)
+  | Bind :
+      forall {t u xs fs} (x : CavaSpine xs t) (f : t -> CavaSpine fs u),
+        CavaSpine (xs ++ fs) u
+  .
+
+  Instance cava_IxMonad : IxMonad Monoid_list_app CavaSpine :=
+  { ret _ x := Ret x;
+    bind _ _ _ _ x f := Bind x f;
+  }.
+
+  (* simulation helpers *)
+  Fixpoint signal_values (ts : list SignalType) : Type :=
+    match ts with
+    | [] => unit
+    | t :: ts' => signal t * signal_values ts'
+    end.
+  Fixpoint split_values {ts1 ts2 : list SignalType}
+    : signal_values (ts1 ++ ts2) -> signal_values ts1 * signal_values ts2 :=
+    match ts1 with
+    | [] => fun x => (tt, x)
+    | t1 :: ts1 =>
+      fun x =>
+        let rec := split_values (snd x) in
+        (fst x, fst rec, snd rec)
+    end.
+  Fixpoint combine_values {ts1 ts2 : list SignalType}
+    : signal_values ts1 -> signal_values ts2 -> signal_values (ts1 ++ ts2) :=
+    match ts1 with
+    | [] => fun _ y => y
+    | t1 :: ts1 =>
+      fun x y =>
+        let rec := combine_values (snd x) y in
+        (fst x, rec)
+    end.
+
+End WithCava.
+
 (******************************************************************************)
 (* A boolean combinational logic interpretation for the Cava class            *)
 (******************************************************************************)

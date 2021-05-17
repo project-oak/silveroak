@@ -1,6 +1,7 @@
 Require Import ExtLib.Structures.Monoid.
+Require Import ExtLib.Data.List.
 
-(* Set Universe Polymorphism. *)
+Set Universe Polymorphism.
 
 (* Dominic Orchard style indexed monad *)
 (* TODO(blaxill): switch to Atkey or McBride ? *)
@@ -16,6 +17,14 @@ Definition mcompose {x} {eff: Monoid x} {m} {M: IxMonad eff m}
            {T U V:Type} {a b}
            (f: T -> m a U) (g: U -> m b V): (T -> m (monoid_plus eff a b) V) :=
   fun x => bind (f x) g.
+
+Section MonadIsIxMonad.
+  Instance monad_IxMonad {T} (m: Type -> Type) {M: ExtLib.Structures.Monad.Monad m}
+    : IxMonad (Monoid_list_app (T:=T)) (fun _ => m) :=
+  { ret := @ExtLib.Structures.Monad.ret m M
+  ; bind a b s t := @ExtLib.Structures.Monad.bind m M a b
+  }.
+End MonadIsIxMonad.
 
 Module IxMonadNotation.
   Declare Scope ix_monad_scope.

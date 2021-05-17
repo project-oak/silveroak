@@ -15,13 +15,16 @@
 (****************************************************************************)
 
 Require Coq.Vectors.Vector.
-Require Import ExtLib.Structures.Monads.
-Require Import ExtLib.Structures.Traversable.
 Require Import Cava.Core.Core.
 Require Import Cava.Util.Vector.
-Import MonadNotation.
+Require Import Cava.Util.IxMonad.
+
+Require Import ExtLib.Structures.Traversable. (* ! *)
+(* Require Import Cava.Util.IxTraversable. *)
+
+Import IxMonadNotation.
 Import Vector.VectorNotations.
-Local Open Scope monad_scope.
+Local Open Scope ix_monad_scope.
 Local Open Scope vector_scope.
 
 (**** IMPORTANT: if you make changes to the API of these definitions, or add new
@@ -37,9 +40,11 @@ Section WithCava.
   Definition bitvec_literal {n} (v : Vector.t bool n) : signal (Vec Bit n) :=
     constantV (Vector.map constant v).
 
-  Definition map_literal {A B n} (f : A -> cava (signal B)) (v : Vector.t A n)
-    : cava (signal (Vec B n)) :=
-    out <- mapT f v ;;
+  (* TODO(blaxill): Make Cava.Util.IxTraversable to gather states ? *)
+  Definition map_literal {A B n st} (f : A -> cava st (signal B)) (v : Vector.t A n)
+    : cava (concat (repeat st n)) (signal (Vec B n)) :=
+    (* : cava st (signal (Vec B n)) := *)
+    out <- Cava.Util.IxTraversable.mapT f v ;;
     packV out.
 
   Definition unpackV2 {A n0 n1}

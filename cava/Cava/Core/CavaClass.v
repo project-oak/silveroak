@@ -14,15 +14,36 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import ExtLib.Structures.Monad.
+Require Import Coq.Lists.List.
+
 Require Import Cava.Core.Netlist.
 Require Import Cava.Core.Signal.
 Require Import Cava.Util.Tuple.
+Require Import Cava.Util.IxMonad.
 
+Import IxMonadNotation.
+Import ListNotations.
 Local Open Scope type_scope.
+Local Open Scope ix_monad_scope.
 
 (**** IMPORTANT: if you make changes to the API of these definitions, or add new
       ones, make sure you update the reference at docs/reference.md! ****)
+
+  (* Class Cava := *)
+  (*   { cava : list SignalType -> Type -> Type; *)
+  (*     monad :> IxMonad Monoid_list_app cava; *)
+  (*     xor2  : signal Bit * signal Bit -> cava [] (signal Bit); *)
+  (*     inv : signal Bit -> cava [] (signal Bit); *)
+  (*     loop_init : forall {i s o body_state} *)
+  (*       (resetval : combType s) *)
+  (*       (body : i * signal s -> cava body_state (o * signal s)) *)
+  (*       (input : i), *)
+  (*       cava (s :: body_state) o; *)
+  (*     delay_init : forall {s} *)
+  (*       (resetval : combType s) *)
+  (*       (x : signal s), *)
+  (*       cava [s] (signal s); *)
+  (*  }. *)
 
 Definition port_signal signal port : Type := signal (port_type port).
 (* The Cava class represents circuit graphs with Coq-level inputs and
@@ -30,72 +51,85 @@ Definition port_signal signal port : Type := signal (port_type port).
    us to define both circuit netlist interpretations for the Cava class
    as well as behavioural interpretations for attributing semantics. *)
 Class Cava (signal : SignalType -> Type) := {
-  cava : Type -> Type;
-  monad :> Monad cava;
+  cava : list SignalType -> Type -> Type;
+  monad :> IxMonad Monoid_list_app cava;
   (* Constant values. *)
   constant : bool -> signal Bit;
   constantV : forall {A} {n : nat}, Vector.t (signal A) n -> signal (Vec A n);
   (* Default values. *)
   defaultSignal : forall {t: SignalType}, signal t;
   (* SystemVerilog primitive gates *)
-  inv : signal Bit -> cava (signal Bit);
-  and2 : signal Bit * signal Bit -> cava (signal Bit);
-  nand2 : signal Bit * signal Bit -> cava (signal Bit);
-  or2 : signal Bit * signal Bit -> cava (signal Bit);
-  nor2 : signal Bit * signal Bit -> cava (signal Bit);
-  xor2 : signal Bit * signal Bit -> cava (signal Bit);
-  xnor2 : signal Bit * signal Bit -> cava (signal Bit);
-  buf_gate : signal Bit -> cava (signal Bit); (* Corresponds to the SystemVerilog primitive gate 'buf' *)
+  inv : signal Bit -> cava [] (signal Bit);
+  and2 : signal Bit * signal Bit -> cava [] (signal Bit);
+  nand2 : signal Bit * signal Bit -> cava [] (signal Bit);
+  or2 : signal Bit * signal Bit -> cava [] (signal Bit);
+  nor2 : signal Bit * signal Bit -> cava [] (signal Bit);
+  xor2 : signal Bit * signal Bit -> cava [] (signal Bit);
+  xnor2 : signal Bit * signal Bit -> cava [] (signal Bit);
+  buf_gate : signal Bit -> cava [] (signal Bit); (* Corresponds to the SystemVerilog primitive gate 'buf' *)
   (* Xilinx UNISIM FPGA gates *)
-  lut1 : (bool -> bool) -> signal Bit -> cava (signal Bit); (* 1-input LUT *)
-  lut2 : (bool -> bool -> bool) -> (signal Bit * signal Bit) -> cava (signal Bit); (* 2-input LUT *)
-  lut3 : (bool -> bool -> bool -> bool) -> signal Bit * signal Bit * signal Bit -> cava (signal Bit); (* 3-input LUT *)
+  lut1 : (bool -> bool) -> signal Bit -> cava [] (signal Bit); (* 1-input LUT *)
+  lut2 : (bool -> bool -> bool) -> (signal Bit * signal Bit) -> cava [] (signal Bit); (* 2-input LUT *)
+  lut3 : (bool -> bool -> bool -> bool) -> signal Bit * signal Bit * signal Bit -> cava [] (signal Bit); (* 3-input LUT *)
   lut4 : (bool -> bool -> bool -> bool -> bool) -> (signal Bit * signal Bit * signal Bit * signal Bit) ->
-         cava (signal Bit); (* 4-input LUT *)
+         cava [] (signal Bit); (* 4-input LUT *)
   lut5 : (bool -> bool -> bool -> bool -> bool -> bool) ->
-         (signal Bit * signal Bit * signal Bit * signal Bit * signal Bit) -> cava (signal Bit); (* 5-input LUT *)
+         (signal Bit * signal Bit * signal Bit * signal Bit * signal Bit) -> cava [] (signal Bit); (* 5-input LUT *)
   lut6 : (bool -> bool -> bool -> bool -> bool -> bool -> bool) ->
-         signal Bit * signal Bit * signal Bit * signal Bit * signal Bit * signal Bit -> cava (signal Bit); (* 6-input LUT *)
-  xorcy : signal Bit * signal Bit -> cava (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
-  muxcy : signal Bit -> signal  Bit -> signal Bit -> cava (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
+         signal Bit * signal Bit * signal Bit * signal Bit * signal Bit * signal Bit -> cava [] (signal Bit); (* 6-input LUT *)
+  xorcy : signal Bit * signal Bit -> cava [] (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
+  muxcy : signal Bit -> signal  Bit -> signal Bit -> cava [] (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
   (* Converting to/from Vector.t *)
-  unpackV : forall {t : SignalType} {s : nat}, signal (Vec t s) -> cava (Vector.t (signal t) s);
-  packV : forall {t : SignalType} {s : nat} , Vector.t (signal t) s -> cava (signal (Vec t s));
+  unpackV : forall {t : SignalType} {s : nat}, signal (Vec t s) -> cava [] (Vector.t (signal t) s);
+  packV : forall {t : SignalType} {s : nat} , Vector.t (signal t) s -> cava [] (signal (Vec t s));
   (* Dynamic indexing *)
   indexAt : forall {t : SignalType} {sz isz: nat},
             signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
             signal (Vec Bit isz) ->  (* A bit-vector index of size isz bits *)
-            cava (signal t);                (* The indexed value of type signal t *)
+            cava [] (signal t);                (* The indexed value of type signal t *)
   (* Synthesizable arithmetic operations. *)
   unsignedAdd : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b) ->
-                cava (signal (Vec Bit (1 + max a b)));
+                cava [] (signal (Vec Bit (1 + max a b)));
   unsignedMult : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b)->
-                cava (signal (Vec Bit (a + b)));
+                cava [] (signal (Vec Bit (a + b)));
   (* Synthesizable relational operators *)
   greaterThanOrEqual : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b) ->
-                      cava (signal Bit);
+                      cava [] (signal Bit);
   (* Naming for sharing. *)
-  localSignal : forall {t : SignalType}, signal t -> cava (signal t);
+  localSignal : forall {t : SignalType}, signal t -> cava [] (signal t);
   (* Hierarchy *)
-  instantiate : forall (intf: CircuitInterface),
+  instantiate : forall (intf: CircuitInterface) st,
                 let inputs := map (port_signal signal) (circuitInputs intf) in
                 let outputs := map (port_signal signal) (circuitOutputs intf) in
-                curried inputs (cava (tupled' outputs)) ->
-                 tupled' inputs -> cava (tupled' outputs);
+                curried inputs (cava st (tupled' outputs)) ->
+                 tupled' inputs -> cava st (tupled' outputs);
   (* Instantiation of black-box components which return default values. *)
-  blackBox : forall (intf: CircuitInterface),
+  blackBox : forall (intf: CircuitInterface) st,
              tupled' (map (port_signal signal) (circuitInputs intf)) ->
-             cava (tupled' (map (port_signal signal) (circuitOutputs intf)));
+             cava st (tupled' (map (port_signal signal) (circuitOutputs intf)));
+
+  loop_init : forall {i s o body_regs}
+    (resetval : combType s)
+    (body : i * signal s -> cava body_regs (o * signal s))
+    (input : i),
+    cava (s :: body_regs) o;
+  delay_init : forall {s}
+    (resetval : combType s)
+    (x : signal s),
+    cava [s] (signal s);
 }.
 
 Require Import Cava.Util.Vector.
-Require Import ExtLib.Structures.Monads.
-Import MonadNotation.
 
 Section Derivative.
   Context {signal} `{Cava signal}.
 
-  Definition indexConst {t : SignalType} {sz : nat} (v : signal (Vec t sz)) (i : nat) : cava (signal t)
+  Definition delay {s} (x : signal s) := delay_init (defaultCombValue _) x.
+  Definition loop {i s o body_regs} body input :=
+    @loop_init _ _ i s o body_regs (defaultCombValue _) body input.
+  Definition fork2 {t} (x : t) : cava [] (t * t) := ret (x,x).
+
+  Definition indexConst {t : SignalType} {sz : nat} (v : signal (Vec t sz)) (i : nat) : cava [] (signal t)
     := v' <- unpackV v ;;
        ret (nth_default defaultSignal i v').
 End Derivative.

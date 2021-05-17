@@ -17,4 +17,3 @@
 Require Export Cava.Core.CavaClass.
 Require Export Cava.Core.Netlist.
 Require Export Cava.Core.Signal.
-Require Export Cava.Core.Circuit.
