@@ -20,9 +20,6 @@ all:		haskell
 
 haskell:
 		cabal build
-		runhaskell Setup.hs configure --user
-		runhaskell Setup.hs build
-		runhaskell Setup.hs install
 
 clean:
 		-@$(MAKE) -f Makefile.coq clean
