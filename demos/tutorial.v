@@ -969,7 +969,7 @@ run and observe this actually running on an FPGA and capture its output:
    :width: 70%
    :alt: Logic analyzer trace capture for the sum8 circuit.
 
-Reassuringly the actual circuit behaves as predicted by the Cava model
+Reassuringly, the actual circuit behaves as predicted by the Cava model
 in Coq and the SystemVerilog simulation.
 |*)
 
