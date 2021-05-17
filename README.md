@@ -93,6 +93,19 @@ $ git submodule update --init --recursive
 $ make cleanall
 ```
 
+## Building documentation
+
+Documentation is either in automatically-built `.md` files under `docs/`, or in
+Coq files under `demos/` that are converted to HTML using the Alectryon tool.
+To build these Alectryon files, you need to install Alectryon as an optional
+dependency. The procedure is:
+
+- Install [alectryon](https://github.com/cpitclaudel/alectryon) dependencies
+  following their README
+- Clone alectryon
+- Set an enviroment variable `ALECTRYON_PATH` to the path to your clone
+- Call `make html` from the `demos/` directory
+
 ## Cava Examples
 See [Cava Examples](https://github.com/project-oak/silveroak/blob/main/examples/README.md) for a few examples of circuits described in Cava, proofs about their behaviour and extraction to SystemVerilog circuits for simulation and FPGA implementation.
 
