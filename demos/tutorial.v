@@ -206,11 +206,11 @@ action.
 End WithCava. (* end the section so we can plug in signal and semantics *)
 
 (*|
-First, let's generate a netlist. We need to define an interface that describes the
-circuit's input and output ports and behavior relative to the (global) clock and
-reset signals. Then we can compute a netlist (type ``CavaState``), which
+First, let's generate a netlist. We need to define an interface that describes
+the circuit's input and output ports and behavior relative to the (global) clock
+and reset signals. Then we can compute a netlist (type ``CavaState``), which
 describes the full layout of the circuit in a way that can be easily translated
-to SystemVerilog.
+to SystemVerilog (we do this using an unverified but small Haskell program).
 |*)
 
 (* netlist-generating semantics *)
@@ -249,6 +249,11 @@ Compute simulate inverter [true; false; true].
 Compute simulate inverter [true; false; true; true; true; false].
 
 (*|
+In a later example_, we will demonstrate how to additionally validate the
+SystemVerilog output by creating a test and checking that a Verilog simulation
+or even a running FPGA implementation of the circuit agrees with the Coq
+simulation above.
+
 We can use the simulation to write proofs about the circuit. For instance, we
 can prove that ``inverter`` obeys a natural Coq specification:
 |*)
@@ -930,17 +935,38 @@ Definition sum_interface {n : nat}
 Compute
   (makeCircuitNetlist sum_interface (sum (n:=8))).(module).
 
-Local Open Scope N_scope.  
+(*|
+Since this circuit has more complex timing behavior than previous examples, it's
+a good model for introducing a new technique: validating the SystemVerilog
+output by creating test cases based on the Coq semantics. This serves as an
+extra layer of assurance that nothing went wrong in the unverified translation
+from our netlist layer to SystemVerilog, and that our semantics are correct.
 
-Definition sum8Netlist := makeCircuitNetlist (sum_interface (n := 8)) sum.
-Definition sum8_tb_inputs := map (N2Bv_sized 8) [3; 5; 7; 2; 4; 6].
-Definition sum8_tb_expected_outputs :=  (simulate sum sum8_tb_inputs).
+.. coq:: none
+|*)
 
-Definition sum8_tb :=
-  testBench "sum8_tb" (sum_interface (n := 8)) sum8_tb_inputs sum8_tb_expected_outputs.
+Local Open Scope N_scope.
 
 (*|
-The circuit netlist and testbench can be converted in SystemVerilog and
+First, we create a definition for the netlist, as well as the inputs and
+expected outputs for our test. We generate the expected outputs using
+``simulate``, to see what the Coq semantics expect the output to be. Then we can
+use ``testBench`` to automatically create an extractable test.
+|*)
+
+Definition sum8Netlist := makeCircuitNetlist (sum_interface (n:=8)) sum.
+Definition sum8_tb_inputs := map (N2Bv_sized 8) [3; 5; 7; 2; 4; 6].
+Definition sum8_tb_expected_outputs := simulate sum sum8_tb_inputs.
+
+(* print out the expected outputs according to the Coq semantics *)
+Compute map Bv2N (sum8_tb_expected_outputs).
+
+Definition sum8_tb :=
+  testBench "sum8_tb" (sum_interface (n := 8)) sum8_tb_inputs
+            sum8_tb_expected_outputs.
+
+(*|
+The circuit netlist and testbench can then be converted in SystemVerilog and
 simulated using a SystemVerilog simulator like Verilator::
 
   clang++ -L/usr/local/opt/sqlite/lib    sum8_tb.o verilated.o verilated_vcd_c.o Vsum8_tb__ALL.a    -o Vsum8_tb -lm -lstdc++ obj_dir/Vsum8_tb
@@ -971,13 +997,15 @@ run and observe this actually running on an FPGA and capture its output:
 
 Reassuringly, the actual circuit behaves as predicted by the Cava model
 in Coq and the SystemVerilog simulation.
+
+.. coq:: none
 |*)
 
 Local Close Scope N_scope.
 
 (*|
-The netlist for ``sum_init`` can use the same interface, but needs an extra
-argument for the initial value:
+The netlist for ``sum_init`` can use the same interface as ``sum``, but needs an
+extra argument for the initial value:
 |*)
 
 Compute
@@ -1386,6 +1414,7 @@ experiment with these examples yourself.
 
 .. _Alectryon: https://github.com/cpitclaudel/alectryon
 .. _demo: expbysquaring
+.. _example: #example-6-sum-the-input-stream
 .. _reference: ../reference
 .. _mealy: https://en.wikipedia.org/wiki/Mealy_machine
 .. _repo: https://github.com/project-oak/silveroak
