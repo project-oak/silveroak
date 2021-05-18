@@ -62,3 +62,4 @@ Proof.
     change N.double with (N.mul 2).
     repeat (f_equal; try lia). }
 Qed.
+Hint Rewrite @squareN_correct using solve [eauto] : simpl_ident.
