@@ -14,11 +14,12 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Coq.Vectors.Vector.
+Require Import Coq.NArith.NArith.
 Require Import ExtLib.Structures.Monads.
 Require Import ExtLib.Structures.Traversable.
 Require Import Cava.Core.Core.
 Require Import Cava.Util.Vector.
+Require Coq.Vectors.Vector.
 Import MonadNotation.
 Import Vector.VectorNotations.
 Local Open Scope monad_scope.
@@ -36,6 +37,9 @@ Section WithCava.
 
   Definition bitvec_literal {n} (v : Vector.t bool n) : signal (Vec Bit n) :=
     constantV (Vector.map constant v).
+
+  Definition of_N {n} (x : N) : signal (Vec Bit n)
+    := bitvec_literal (N2Bv_sized n x).
 
   Definition map_literal {A B n} (f : A -> cava (signal B)) (v : Vector.t A n)
     : cava (signal (Vec B n)) :=

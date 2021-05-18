@@ -279,6 +279,20 @@ Lemma Bv2N_cons {n : nat} (b : bool) (v : Bvector.Bvector n) :
   Bv2N (b :: v)%vector = (if b then N.succ_double (Bv2N v) else N.double (Bv2N v))%N.
 Proof. reflexivity. Qed.
 
+Lemma Bv2N_snoc {n : nat} (b : bool) (v : Bvector.Bvector n) :
+  Bv2N (v ++ [b])%vector = ((if b then 2 ^ N.of_nat n else 0) + Bv2N v)%N.
+Proof.
+  induction n; [ apply case0 with (v:=v); cbn; lia | ].
+  rewrite (eta v). rewrite <-append_comm_cons.
+  cbn [Nat.add]. rewrite !Bv2N_cons, IHn.
+  rewrite !N.succ_double_spec.
+  repeat lazymatch goal with
+         | |- context [N.double ?x] => change (N.double x) with (2 * x)%N
+         end.
+  rewrite !Nat2N.inj_succ, N.pow_succ_r'.
+  destruct b, (Vector.hd v); lia.
+Qed.
+
 Lemma Bv2N_inj {n} (x y : Bvector.Bvector n) : Bv2N x = Bv2N y -> x = y.
 Proof.
   cbv [Bvector.Bvector] in *.
@@ -298,7 +312,7 @@ Proof.
   all:reflexivity.
 Qed.
 
-Hint Rewrite @Bv2N_N2Bv @Bv2N_cons @Bv2N_Bvect_false @Bv2N_append
+Hint Rewrite @Bv2N_N2Bv @Bv2N_cons @Bv2N_Bvect_false @Bv2N_append @Bv2N_snoc
      using solve [eauto] : push_Bv2N.
 Hint Rewrite @Bv2N_N2Bv_sized using lia : push_Bv2N.
 
@@ -477,6 +491,18 @@ Proof.
   reflexivity.
 Qed.
 Hint Rewrite @N2Bv_sized_mul_idemp_r using solve [eauto] : pull_N2Bv_sized.
+
+Lemma N2Bv_sized_pow_idemp_l sz x y :
+  N2Bv_sized sz (Bv2N (N2Bv_sized sz x) ^ y) = N2Bv_sized sz (x ^ y).
+Proof.
+  revert x; induction y using N.peano_ind; intros;
+    [ rewrite !N.pow_0_r; reflexivity | ].
+  rewrite !N.pow_succ_r by lia.
+  rewrite <-N2Bv_sized_mul_idemp_r, IHy.
+  rewrite N2Bv_sized_mul_idemp_l, N2Bv_sized_mul_idemp_r.
+  reflexivity.
+Qed.
+Hint Rewrite @N2Bv_sized_pow_idemp_l using solve [eauto] : pull_N2Bv_sized.
 
 Theorem Bv_span {n} (a : Vector.t bool n) :
   InV a (Vector.map (fun k => N2Bv_sized n (N.of_nat k)) (vseq 0 (2 ^ n))).

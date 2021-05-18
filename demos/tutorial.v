@@ -973,8 +973,8 @@ Reassuringly, the actual circuit behaves as predicted by the Cava model
 in Coq and the SystemVerilog simulation.
 |*)
 
-
 Local Close Scope N_scope.
+
 (*|
 The netlist for ``sum_init`` can use the same interface, but needs an extra
 argument for the initial value:
@@ -1380,10 +1380,12 @@ Qed.
 
 (*|
 That concludes our tutorial! If you want to explore further, take a look at the
-``examples`` directory in our GitHub repo_. You can also view the full source_
-for this page if you want to experiment with these examples yourself.
+``examples`` directory in our GitHub repo_, or check out our advanced-fetures
+demo_. You can also view the full source_ for this page if you want to
+experiment with these examples yourself.
 
 .. _Alectryon: https://github.com/cpitclaudel/alectryon
+.. _demo: expbysquaring
 .. _reference: ../reference
 .. _mealy: https://en.wikipedia.org/wiki/Mealy_machine
 .. _repo: https://github.com/project-oak/silveroak
