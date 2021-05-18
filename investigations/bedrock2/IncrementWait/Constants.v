@@ -69,13 +69,13 @@ Definition globals {T} {consts : constants T} : list T :=
 
 (* All register addresses *)
 Definition reg_addrs {width} {word : word.word width}
-           {global_values : constants word.rep}
+           {global_values : constants word}
   : list word.rep := [VALUE_ADDR; STATUS_ADDR].
 
 (* This class includes all the properties the constants must satisfy *)
 Class constants_ok
       {width} {word : word width} {word_ok : word.ok word}
-      (global_values : constants word.rep) :=
+      (global_values : constants word) :=
   { addrs_unique : unique_words reg_addrs;
     addrs_aligned :
       Forall (fun w => word.unsigned w mod 4 = 0) reg_addrs;

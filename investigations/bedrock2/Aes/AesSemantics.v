@@ -36,8 +36,8 @@ Notation timing := timing.timing.
 Module parameters.
   Class parameters :=
     { word :> Interface.word.word 32;
-      mem :> Interface.map.map word.rep Byte.byte;
-      regs :> Interface.map.map word.rep word.rep; (* register values *)
+      mem :> Interface.map.map word Byte.byte;
+      regs :> Interface.map.map word word; (* register values *)
       (* TODO: mode is currently ignored *)
       aes_spec :
         forall (is_decrypt : bool)

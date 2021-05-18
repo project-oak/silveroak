@@ -616,7 +616,7 @@ Section Proofs.
   (* TODO: move *)
   Lemma map_putmany_of_list_zip_snoc {key value} {map : map.map key value}
         ks vs k v m m' :
-    map.putmany_of_list_zip ks vs m = Some m' ->
+    map.putmany_of_list_zip (map:=map) ks vs m = Some m' ->
     map.putmany_of_list_zip (ks ++ [k]) (vs ++ [v]) m = Some (map.put m' k v).
   Proof.
     revert vs k v m m'; induction ks; destruct vs;
@@ -809,7 +809,7 @@ Section Proofs.
                | _ := map.put _ "i" (word.of_Z (Z.of_nat ?i)) |- _ => i end in
       let a := constr:(word.add key_arr_ptr (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4))) in
       let offset := constr:(word.sub a key_arr_ptr) in
-      assert (i = Z.to_nat (word.unsigned offset / word.unsigned (word.of_Z 4))) as Hindex;
+      assert (i = Z.to_nat (word.unsigned offset / word.unsigned (width:=width) (word.of_Z 4))) as Hindex;
         [ ring_simplify offset | ].
       { push_unsigned. rewrite (Z.mul_comm 4), Z.div_mul by lia. lia. }
 
@@ -1573,7 +1573,7 @@ Section Proofs.
   Qed.
 
   Lemma map_remove_put_same m k v :
-    map.remove (map.put m k v) k = map.remove m k.
+    map.remove (map:=parameters.regs) (map.put m k v) k = map.remove m k.
   Proof.
     apply map.map_ext; intros.
     rewrite ?map.get_remove_dec, ?map.get_put_dec;
@@ -1582,7 +1582,7 @@ Section Proofs.
 
   Lemma map_remove_put_diff m k1 k2 v :
     k1 <> k2 ->
-    map.remove (map.put m k1 v) k2 = map.put (map.remove m k2) k1 v.
+    map.remove (map:=parameters.regs) (map.put m k1 v) k2 = map.put (map.remove m k2) k1 v.
   Proof.
     intros. apply map.map_ext; intros.
     rewrite ?map.get_remove_dec, ?map.get_put_dec, ?map.get_remove_dec;

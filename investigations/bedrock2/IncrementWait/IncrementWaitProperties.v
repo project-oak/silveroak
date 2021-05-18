@@ -186,10 +186,10 @@ Section Proofs.
   Lemma word_and_shiftl_1_diff n m :
     word.unsigned n < width ->
     word.unsigned m < width ->
-    word.slu (word.of_Z 1) n <> word.slu (word.of_Z 1) m ->
+    word.slu (word.of_Z 1) n <> word.slu (word.of_Z (word:=word) 1) m ->
     word.and (word.slu (word.of_Z 1) n) (word.slu (word.of_Z 1) m) = word.of_Z 0.
   Proof.
-    pose proof word.width_pos.
+    pose proof word.width_pos. simplify_implicits.
     intros. apply word.unsigned_inj. push_unsigned.
     cbv [word.wrap]. rewrite <-Z.land_ones by lia.
     Z.bitblast.
@@ -220,6 +220,7 @@ Section Proofs.
 
   Lemma check_done_flag :
     word.unsigned
+      (word:=word)
       (if
           word.eqb (word.and (status_value STATUS_DONE)
                              (word.slu (word.of_Z 1) STATUS_DONE))

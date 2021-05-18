@@ -184,7 +184,7 @@ Definition aes_globals {T} {consts : aes_constants T} : list T :=
 
 (* All register addresses for the AES block *)
 Definition aes_reg_addrs {width} {word : word.word width}
-           {global_values : aes_constants word.rep}
+           {global_values : aes_constants word}
   : list word.rep :=
   AES_CTRL :: AES_STATUS ::
            (list_reg_addrs AES_KEY0 (Z.to_nat (word.unsigned AES_NUM_REGS_KEY)) 4)

@@ -3,7 +3,7 @@ Require Import Coq.micromega.Lia.
 Require Import Coq.derive.Derive.
 Require Import compiler.FlatToRiscvDef.
 Require Import compiler.MemoryLayout.
-Require Import compiler.PipelineWithRename.
+Require Import compiler.Pipeline.
 Require Import compiler.RiscvWordProperties.
 Require Import coqutil.Word.Interface.
 Require Import coqutil.Map.Z_keyed_SortedListMap.
@@ -34,17 +34,8 @@ Instance p : MMIO.parameters :=
 
 Existing Instances Words32 semantics_params semantics_params_ok compilation_params IncrementWaitMMIOSpec FlatToRiscv_params.
 
-Definition ml: MemoryLayout := {|
-  MemoryLayout.code_start    := word.of_Z 0;
-  MemoryLayout.code_pastend  := word.of_Z (4*2^10);
-  MemoryLayout.heap_start    := word.of_Z (4*2^10);
-  MemoryLayout.heap_pastend  := word.of_Z (8*2^10);
-  MemoryLayout.stack_start   := word.of_Z (8*2^10);
-  MemoryLayout.stack_pastend := word.of_Z (16*2^10);
-                              |}.
-
-(* dummy base address -- just end of stack *)
-Definition base_addr := MemoryLayout.stack_pastend ml.
+(* dummy base address *)
+Definition base_addr : MMIO.word := word.of_Z (2^10).
 Instance consts : constants MMIO.word :=
   {| VALUE_ADDR := base_addr;
      STATUS_ADDR := word.add base_addr (word.of_Z 4);
@@ -73,7 +64,7 @@ Instance pipeline_params : Pipeline.parameters :=
 Definition funcs := [put_wait_get].
 Derive put_wait_get_asm
        SuchThat (exists env,
-                    compile ml (map.putmany_of_list funcs map.empty) = Some (put_wait_get_asm,env))
+                    compile (map.putmany_of_list funcs map.empty) = Some (put_wait_get_asm,env))
        As compile_put_wait_get.
 Proof.
   eexists.
@@ -91,51 +82,54 @@ Module PrintAssembly.
   Import riscv.Utility.InstructionNotations.
   (* Uncomment to see assembly code *)
   (* Print put_wait_get_asm. *)
-  (*   addi    x2, x2, -80   // decrease stack pointer
-       sw      x2, x1, 48    // save ra
-       sw      x2, x11, 0    // save registers that will be used for temporaries
-       sw      x2, x12, 4
-       sw      x2, x13, 8
-       sw      x2, x14, 12
-       sw      x2, x10, 16
-       sw      x2, x9, 20
-       sw      x2, x3, 24    // save registers that will be used for arguments
-       sw      x2, x4, 28
-       sw      x2, x5, 32
-       sw      x2, x6, 36
-       sw      x2, x7, 40
-       sw      x2, x8, 44
-       lw      x3, x2, 56    // load arguments
-       lw      x4, x2, 60
-       lw      x5, x2, 64
-       lw      x6, x2, 68
-       lw      x7, x2, 72
-       lw      x8, x2, 76
-       sw      x3, x8, 0     // MMIO write : write input
-       addi    x10, x0, 0    // x10 = 0
-       addi    x11, x0, 1    // x11 = 1
-       sll     x12, x11, x7  // x12 = 1 << x7 = 1 << STATUS_DONE
-       and     x13, x10, x12 // x13 = x10 & x12
-       addi    x14, x0, 0    // x14 = 0
-       bne     x13, x14, 12  // while loop condition
-       lw      x10, x4, 0    // MMIO read : read status
-       jal     x0, -24       // jump back to loop start
-       lw      x9, x3, 0     // MMIO read : read value
-       sw      x2, x9, 52    // store return value
-       lw      x11, x2, 0    // restore values of temp registers
-       lw      x12, x2, 4
-       lw      x13, x2, 8
-       lw      x14, x2, 12
-       lw      x10, x2, 16
-       lw      x9, x2, 20
-       lw      x3, x2, 24    // restore values of arg registers
-       lw      x4, x2, 28
-       lw      x5, x2, 32
-       lw      x6, x2, 36
-       lw      x7, x2, 40
-       lw      x8, x2, 44
-       lw      x1, x2, 48    // load ra
-       addi    x2, x2, 80    // increase stack pointer
-       jalr    x0, x1, 0     // return
-  *)
+  (* addi    x2, x2, -84   // decrease stack pointer
+     sw      x2, x1, 52    // save ra
+     sw      x2, x5, 0     // save registers that will be used for temporaries
+     sw      x2, x14, 4
+     sw      x2, x15, 8
+     sw      x2, x16, 12
+     sw      x2, x17, 16
+     sw      x2, x13, 20
+     sw      x2, x12, 24
+     sw      x2, x6, 28    // save registers that will be used for arguments
+     sw      x2, x7, 32
+     sw      x2, x8, 36
+     sw      x2, x9, 40
+     sw      x2, x10, 44
+     sw      x2, x11, 48
+     lw      x6, x2, 60    // load arguments
+     lw      x7, x2, 64
+     lw      x8, x2, 68
+     lw      x9, x2, 72
+     lw      x10, x2, 76
+     lw      x11, x2, 80
+     addi    x5, x2, 0     // save stack pointer in register?
+     sw      x6, x11, 0    // MMIO write : write value
+     addi    x13, x0, 0    // x13 = 0
+     addi    x14, x0, 1    // loop start
+     sll     x15, x14, x10 // 1 << STATUS_DONE
+     and     x16, x13, x15 // x13 & (1 << STATUS_DONE)
+     addi    x17, x0, 0
+     bne     x16, x17, 12  // if x16 != 0 then break loop
+     lw      x13, x7, 0    // MMIO read : read status
+     jal     x0, -24       // jump back to loop start
+     lw      x12, x6, 0    // MMIO read : read value
+     sw      x2, x12, 56   // store return value
+     lw      x5, x2, 0     // restore values of temporary registers
+     lw      x14, x2, 4
+     lw      x15, x2, 8
+     lw      x16, x2, 12
+     lw      x17, x2, 16
+     lw      x13, x2, 20
+     lw      x12, x2, 24
+     lw      x6, x2, 28    // restore values of argument registers
+     lw      x7, x2, 32
+     lw      x8, x2, 36
+     lw      x9, x2, 40
+     lw      x10, x2, 44
+     lw      x11, x2, 48
+     lw      x1, x2, 52    // load ra
+     addi    x2, x2, 84    // increase stack pointer
+     jalr    x0, x1, 0     // return
+   *)
 End PrintAssembly.

@@ -27,7 +27,7 @@ Class circuit_behavior :=
 Module parameters.
   Class parameters :=
     { word :> Interface.word.word 32;
-      mem :> Interface.map.map word.rep Byte.byte;
+      mem :> Interface.map.map word Byte.byte;
     }.
 
   Class ok (p : parameters) :=
