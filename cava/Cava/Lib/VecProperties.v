@@ -14,6 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.NArith.NArith.
 Require Import Cava.Core.Core.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Util.Tactics.
@@ -42,6 +43,11 @@ Lemma bitvec_literal_correct n (v : Vector.t bool n) :
 Proof. crush. Qed.
 Hint Rewrite @bitvec_literal_correct using solve [eauto] : simpl_ident.
 
+Lemma of_N_correct n (x : N) : Vec.of_N x = N2Bv_sized n x.
+Proof. crush. Qed.
+Hint Rewrite @of_N_correct using solve [eauto] : simpl_ident.
+
+Hint Rewrite @bitvec_literal_correct using solve [eauto] : simpl_ident.
 Lemma map_literal_correct {A B} n (f : A -> cava (combType B)) (v : Vector.t A n) :
   Vec.map_literal f v = Vector.map f v.
 Proof. crush. Qed.
