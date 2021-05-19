@@ -1,4 +1,5 @@
 Require Import Coq.ZArith.ZArith.
+Require Import Coq.micromega.Lia.
 Require Import Coq.Lists.List.
 Require Import Coq.Numbers.DecimalString.
 Require Import bedrock2.Syntax bedrock2.Semantics.
@@ -6,69 +7,27 @@ Require coqutil.Datatypes.String coqutil.Map.SortedList.
 Require coqutil.Map.SortedListString coqutil.Map.SortedListWord.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Word.Interface.
+Require Import coqutil.Word.Properties.
 Require Import coqutil.Z.HexNotation.
 Require Import coqutil.Decidable.
+Require Import Bedrock2Experiments.Word.
+Require Import Bedrock2Experiments.WordProperties.
+Require Import Bedrock2Experiments.IncrementWait.Constants.
 
 Import String List.ListNotations.
 Local Open Scope string_scope. Local Open Scope Z_scope. Local Open Scope list_scope.
 
 (* Loosely based on bedrock2/FE310CSemantics.v *)
 
-Definition unique_words
-           {width} {word: word.word width} {word_ok:word.ok word}
-           (l : list word.rep) : Prop :=
-  List.dedup word.eqb l = l.
-
-Module constants.
-  Class constants T :=
-    { VALUE_ADDR : T;
-      STATUS_ADDR : T;
-      STATUS_IDLE : T;
-      STATUS_BUSY : T;
-      STATUS_DONE : T }.
-
-  Definition constant_vars
-           {names : constants string}
-    : constants expr :=
-    {| VALUE_ADDR := expr.var VALUE_ADDR;
-       STATUS_ADDR := expr.var STATUS_ADDR;
-       STATUS_IDLE := expr.var STATUS_IDLE;
-       STATUS_BUSY := expr.var STATUS_BUSY;
-       STATUS_DONE := expr.var STATUS_DONE |}.
-
-  Definition constant_names : constants string :=
-    {| VALUE_ADDR := "VALUE_ADDR";
-       STATUS_ADDR := "STATUS_ADDR";
-       STATUS_IDLE := "STATUS_IDLE";
-       STATUS_BUSY := "STATUS_BUSY";
-       STATUS_DONE := "STATUS_DONE" |}.
-
-  Definition globals {T} {consts : constants T} : list T :=
-    [VALUE_ADDR; STATUS_ADDR; STATUS_IDLE; STATUS_BUSY; STATUS_DONE].
-
-  Class ok
-        {word : word.word 32} {word_ok : word.ok word}
-        (global_values : constants word.rep) :=
-    { addrs_unique : VALUE_ADDR <> STATUS_ADDR;
-      flags_unique_and_nonzero :
-        unique_words
-          ((word.of_Z 0)
-             :: (map (fun flag_position => word.slu (word.of_Z 1) flag_position)
-                    [STATUS_IDLE; STATUS_BUSY; STATUS_DONE]));
-    }.
-End constants.
-Notation constants := constants.constants.
-
-(* Circuit timing properties *)
-Module timing.
-  Class timing := { ncycles_processing : nat }.
-End timing.
-Notation timing := timing.timing.
+(* Circuit specification *)
+Class circuit_behavior :=
+  { ncycles_processing : nat
+  }.
 
 Module parameters.
   Class parameters :=
     { word :> Interface.word.word 32;
-      mem :> Interface.map.map word.rep Byte.byte;
+      mem :> Interface.map.map word Byte.byte;
     }.
 
   Class ok (p : parameters) :=
@@ -78,13 +37,11 @@ Module parameters.
 End parameters.
 Notation parameters := parameters.parameters.
 
-Definition READ := "REG32_GET".
-Definition WRITE := "REG32_SET".
-
 Section WithParameters.
   Context {p : parameters} {p_ok : parameters.ok p}.
-  Context {consts : constants word.rep} {timing : timing}.
-  Import constants parameters.
+  Context {consts : constants word.rep} {consts_ok : constants_ok consts}
+          {circuit_spec : circuit_behavior}.
+  Import parameters.
 
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
   Local Notation bedrock2_trace := (list bedrock2_event).
@@ -98,10 +55,18 @@ Section WithParameters.
   | DONE (answer : word)
   .
 
-  Inductive reg_addr : Register -> word -> Prop :=
-  | addr_value : reg_addr VALUE VALUE_ADDR
-  | addr_status : reg_addr STATUS STATUS_ADDR
-  .
+  Definition reg_addr (r : Register) : word :=
+    match r with
+    | VALUE => VALUE_ADDR
+    | STATUS => STATUS_ADDR
+    end.
+
+  Lemma reg_addrs_unique r1 r2 : reg_addr r1 = reg_addr r2 -> r1 = r2.
+  Proof.
+    pose proof addrs_unique as Haddrs.
+    cbv [reg_addrs] in Haddrs. simplify_unique_words_in Haddrs.
+    destruct r1, r2; cbv [reg_addr]; congruence.
+  Qed.
 
   Definition status_flag (s : state) : word :=
     match s with
@@ -116,48 +81,52 @@ Section WithParameters.
   (* circuit spec *)
   Definition proc : word -> word := word.add (word.of_Z 1).
 
-  Inductive read_step : state -> Register -> word -> state -> Prop :=
-  | ReadStatusStayIdle :
-      forall val,
-        val = status_value STATUS_IDLE ->
-        read_step IDLE STATUS val IDLE
-  | ReadStatusStayBusy :
-      forall val input n,
-        val = status_value STATUS_BUSY ->
-        (* Since a read takes one cycle, the maximum number of cycles before the
-           status is DONE decreases by one *)
-        read_step (BUSY input (S n)) STATUS val (BUSY input n)
-  | ReadStatusStayDone :
-      forall val answer,
-        val = status_value STATUS_DONE ->
-        read_step (DONE answer) STATUS val (DONE answer)
-  | ReadStatusFinish :
-      forall input val n,
-        val = status_value STATUS_DONE ->
-        read_step (BUSY input n) STATUS val (DONE (proc input))
-  | ReadOutput :
-      forall val,
-        read_step (DONE val) VALUE val IDLE
-  .
+  Definition read_step (s : state) (r : Register) (val : word) (s' : state)
+    : Prop :=
+    match r with
+    | STATUS =>
+      match s with
+      | IDLE => val = status_value STATUS_IDLE /\ s' = IDLE
+      | DONE answer => val = status_value STATUS_DONE /\ s' = DONE answer
+      | BUSY input n =>
+        (* either the status is DONE and we transition to the DONE state *)
+        (val = status_value STATUS_DONE /\ s' = DONE (proc input))
+        (* ...or the status is BUSY and we stay in the BUSY state *)
+        \/ (exists n', n = S n' /\ val = status_value STATUS_BUSY /\ s' = BUSY input n')
+      end
+    | VALUE =>
+      match s with
+      | DONE answer => val = answer /\ s' = IDLE
+      | _ => False (* cannot read VALUE in any state other than DONE *)
+      end
+    end.
 
-  Inductive write_step : state -> Register -> word -> state -> Prop :=
-  | WriteInput :
-      forall val,
-        write_step IDLE VALUE val (BUSY val timing.ncycles_processing)
-  .
+  Definition write_step (s : state) (r : Register) (val : word) (s' : state)
+    : Prop :=
+    match r with
+    | STATUS => False (* not writeable *)
+    | VALUE =>
+      match s with
+      | IDLE => s' = BUSY val ncycles_processing
+      | _ => False (* cannot write VALUE in any state other than IDLE *)
+      end
+    end.
 
-  Inductive step : string -> state -> list word -> list word -> state -> Prop :=
-  | ReadStep :
-      forall s s' r addr val,
-        reg_addr r addr ->
-        read_step s r val s' ->
-        step READ s [addr] [val] s'
-  | WriteStep :
-      forall s s' r addr val,
-        reg_addr r addr ->
-        write_step s r val s' ->
-        step WRITE s [addr;val] [] s'
-  .
+  Definition step
+             (action : string) (s : state) (args rets : list word) (s' : state)
+    : Prop :=
+    if String.eqb action WRITE
+    then match args with
+         | [addr;val] =>
+           (exists r, reg_addr r = addr /\ rets = [] /\ write_step s r val s')
+         | _ => False
+         end
+    else if String.eqb action READ
+         then match args with
+              | [addr] => (exists r val, reg_addr r = addr /\ rets = [val] /\ read_step s r val s')
+              | _ => False
+              end
+         else False.
 
   (* Computes the Prop that must hold for this state to be accurate after the
      trace *)
@@ -175,11 +144,35 @@ Section WithParameters.
              (action : string)
              (args: list word)
              (post: mem -> list word -> Prop) :=
-    (* no memory ever given away *)
-    mGive = Interface.map.empty
-    /\ forall st rets,
-      execution ((map.empty,action,args,(map.empty,rets)) :: t) st ->
-      post Interface.map.empty rets.
+    if String.eqb action WRITE
+    then
+      (exists r addr val,
+          args = [addr;val]
+          /\ mGive = map.empty
+          /\ reg_addr r = addr
+          (* there must exist *at least one* possible state given this trace,
+             and one possible transition given these arguments *)
+          /\ (exists s s', execution t s /\ write_step s r val s')
+          (* postcondition must hold for *all* possible states/transitions *)
+          /\ (forall s s',
+                execution t s ->
+                write_step s r val s' ->
+                post Interface.map.empty []))
+       else if String.eqb action READ
+            then
+              (exists r addr,
+                  args = [addr]
+                  /\ mGive = map.empty
+                  /\ reg_addr r = addr
+                  (* there must exist *at least one* possible state given this
+                     trace, and one possible transition given these arguments *)
+                  /\ (exists s s' val, execution t s /\ read_step s r val s')
+                  (* postcondition must hold for *all* possible states/transitions *)
+                  /\ (forall s s' val,
+                        execution t s ->
+                        read_step s r val s' ->
+                        post Interface.map.empty [val]))
+               else False.
 
   Global Instance semantics_parameters  : Semantics.parameters :=
     {|
@@ -193,19 +186,22 @@ Section WithParameters.
 
   Global Instance ext_spec_ok : ext_spec.ok _.
   Proof.
-    constructor.
-    all:cbv [ext_spec Semantics.ext_spec semantics_parameters].
-    all:cbv [Morphisms.pointwise_relation Basics.impl].
-    all:cbn [execution].
-    all:repeat intro.
-    all:repeat lazymatch goal with
-               | H: _ /\ _ |- _ => destruct H
-               | H: exists _, _ |- _ => destruct H
-               | |- map.same_domain ?x ?x => apply Properties.map.same_domain_refl
-               |  |- ?x = ?x /\ _ => split; [ reflexivity | ]
-               | _ => progress subst
-               end.
-    all:eauto.
+    split;
+    cbv [ext_spec Semantics.ext_spec semantics_parameters
+    Morphisms.Proper Morphisms.respectful Morphisms.pointwise_relation Basics.impl
+    ];
+    intros.
+    all :
+    repeat match goal with
+           | H : context[(?x =? ?y)%string] |- _ =>
+             destruct (x =? y)%string in *
+           | H: exists _, _ |- _ => destruct H
+           | H: _ /\ _ |- _ => destruct H
+           | H : _ :: _  = _ :: _ |- _ => inversion H; clear H; subst
+           | H: False |- _ => destruct H
+           | H : reg_addr _ = reg_addr _ |- _ => apply reg_addrs_unique in H
+           | _ => progress subst
+           end; eauto 20 using Properties.map.same_domain_refl.
   Qed.
 
   Global Instance ok : Semantics.parameters_ok semantics_parameters.

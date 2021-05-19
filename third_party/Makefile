@@ -32,12 +32,13 @@ build-coqutil:
 
 build-bedrock2: build-coqutil
 	$(MAKE) -C bedrock2 bedrock2_noex
+	$(MAKE) -C bedrock2 compiler_noex
 
 build-extlib:
 	$(MAKE) -C coq-ext-lib theories
 
 build-record-update:
-	$(MAKE) -C coq-record-update
+	$(MAKE) -C bedrock2/deps/coq-record-update
 
 # coq-tools is just python scripts; nothing to build
 coqtools:
@@ -63,4 +64,3 @@ coq: all
 clean:
 	-cd bedrock2 && $(MAKE) clean_all
 	-cd coq-ext-lib && $(MAKE) clean
-	-cd coq-record-update && $(MAKE) clean

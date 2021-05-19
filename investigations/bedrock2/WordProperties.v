@@ -20,7 +20,7 @@ Module word.
     Proof. apply Z.mod_small. Qed.
 
     Lemma unsigned_of_Z_small z :
-      0 <= z < 2 ^ width -> word.unsigned (word.of_Z z) = z.
+      0 <= z < 2 ^ width -> word.unsigned (word:=word) (word.of_Z z) = z.
     Proof. intros; rewrite word.unsigned_of_Z; auto using wrap_small. Qed.
 
   End WithWord.
@@ -80,6 +80,7 @@ Ltac push_unsigned :=
 
 Section WithWord.
   Context {width} {word : word.word width} {word_ok : word.ok word}.
+  Local Hint Mode word.word - : typeclass_instances.
 
   Lemma boolean_and_1_r w :
     boolean w ->

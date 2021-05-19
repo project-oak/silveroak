@@ -20,7 +20,7 @@ Section WithWord.
    registers *)
   Definition list_reg_addrs (start : word.rep)
              (nregs : nat) (size_in_bytes : Z)
-    : list word.rep :=
+    : list word :=
     map (fun i => word.add start (word.of_Z (Z.of_nat i * size_in_bytes)))
         (seq 0 nregs).
 
@@ -31,7 +31,7 @@ Section WithWord.
   Definition is_flag_set (val : word) (flag : word) : bool :=
     negb (word.eqb (word.and val (word.slu (word.of_Z 1) flag)) (word.of_Z 0)).
 
-  Definition has_size w (n : Z) : Prop :=
+  Definition has_size (w : word) (n : Z) : Prop :=
     0 <= word.unsigned w < 2 ^ n.
 
   Record enum {elts : list word} {size : Z} :=

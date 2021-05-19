@@ -14,7 +14,7 @@ Module parameters.
   Class parameters {width} {word : Interface.word.word width} :=
     { state : Type;
       register : Type;
-      mem : Interface.map.map word.rep Byte.byte;
+      mem : Interface.map.map word Byte.byte;
       READ : string;
       WRITE : string;
       initial_state : state;
