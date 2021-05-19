@@ -92,7 +92,7 @@ case, you would compute ``x*19`` as::
 
 For our hardware implementation, we'll assume that ``x`` is a fixed constant
 known before we build the circuit, and that we get the exponent as a stream of
-bits in big-endian order. As a circuit diagram, it looks like:
+bits (most significant bit first). As a circuit diagram, it looks like:
 
 .. image:: expbysquaring.png
    :width: 90%
@@ -168,12 +168,11 @@ Section WithCava.
   Context {signal} {semantics : Cava signal}.
 
 (*|
-The ``incrN`` subcircuit adds 1 to the input (unsigned, little-endian) bitvector
-without growing the size of the vector. This component is part of Cava's core
-library; check out the reference_ to browse the various verified circuit
-components that are included.  ``Vec.of_N`` is also part of this library; it
-converts a number of Coq's ``N`` (binary natural numbers) type into a constant
-Cava bit-vector.
+The ``incrN`` subcircuit adds 1 to the input bitvector without growing the size
+of the vector. This component is part of Cava's core library; check out the
+reference_ to browse the various verified circuit components that are included.
+``Vec.of_N`` is also part of this library; it converts a number of Coq's ``N``
+(binary natural numbers) type into a constant Cava bit-vector.
 
 Next, let's try to define multiplication-by-doubling. We'll need to have
 subcircuits for addition of a constant and for doubling. For addition, we can
@@ -206,9 +205,8 @@ the input stream:
 End WithCava.
 
 (*|
-Let's simulate it to see if it works. ``[true;false;false;true]`` is a
-big-endian stream that represents the number 9, so this simulation computes
-``3*9``.
+Let's simulate it to see if it works. ``[true;false;false;true]`` is an input
+stream that represents the number 9, so this simulation computes ``3*9``.
 |*)
 
 (* 3 * 9 = 27 *)
@@ -217,26 +215,26 @@ Compute map Bv2N (simulate (stream_multiply (n:=8) 3)
 
 (*|
 The test becomes more readable if we write a quick helper function to convert
-numbers into big-endian streams:
+numbers into streams:
 |*)
 
-(* Helper for simulation: convert a number into a big-endian list of
-   bits *)
-Definition to_big_endian_stream (x : N) : list bool :=
-  let little_endian := Vector.to_list (N2Bv x) in
-  rev (little_endian).
+(* Helper for simulation: convert a number into a list of bits with the most
+   signficant bit first *)
+Definition to_stream (x : N) : list bool :=
+  (* reverse because N2Bv puts the least significant bit first *)
+  rev (Vector.to_list (N2Bv x)).
 
 (* 3 * 9 = 27 *)
 Compute map Bv2N (simulate (stream_multiply (n:=8) 3)
-                           (to_big_endian_stream 9)).
+                           (to_stream 9)).
 
 (* 5 * 6 = 30 *)
 Compute map Bv2N (simulate (stream_multiply (n:=8) 5)
-                           (to_big_endian_stream 6)).
+                           (to_stream 6)).
 
 (* 5 * 60 = 300 (bit vector size increased to 16) *)
 Compute map Bv2N (simulate (stream_multiply (n:=16) 5)
-                           (to_big_endian_stream 60)).
+                           (to_stream 60)).
 
 (*|
 .. coq:: none
@@ -380,18 +378,18 @@ It works!
 (* Compute 3 ^ 5 = 243 *)
 Compute map Bv2N
         (simulate (stream_exponentiate (n:=8) 3)
-                  (to_big_endian_stream 5)).
+                  (to_stream 5)).
 
 (* Compute 5 ^ 6 = 15625 *)
 Compute map Bv2N
         (simulate (stream_exponentiate (n:=16) 5)
-                  (to_big_endian_stream 6)).
+                  (to_stream 6)).
 
 (* Compute 3 ^ 123
    = 48519278097689642681155855396759336072749841943521979872827 *)
 Compute map Bv2N
         (simulate (stream_exponentiate (n:=200) 3)
-                  (to_big_endian_stream 123)).
+                  (to_stream 123)).
 
 (*|
 Now that we've defined all our circuits and tested them a little bit to make
@@ -552,20 +550,19 @@ Proof.
 Qed.
 
 (*|
-It's useful to write the inverse operation of ``to_big_endian_stream`` so that
+It's useful to write the inverse operation of ``to_stream`` so that
 we can talk about the numeric value that the input represents:
 |*)
 
-Definition from_big_endian_stream (l : list bool) : N :=
-  let little_endian := rev l in
-  Bv2N (Vector.of_list little_endian).
+Definition from_stream (l : list bool) : N :=
+  Bv2N (Vector.of_list (rev l)).
 
-Lemma from_big_endian_stream_cons bit l :
-  from_big_endian_stream (bit :: l)
+Lemma from_stream_cons bit l :
+  from_stream (bit :: l)
   = ((if bit then 2 ^ (N.of_nat (length l)) else 0)
-     + from_big_endian_stream l)%N.
+     + from_stream l)%N.
 Proof.
-  cbv [from_big_endian_stream]. cbn [rev].
+  cbv [from_stream]. cbn [rev].
   rewrite of_list_snoc.
   rewrite app_length; cbn [length].
   rewrite resize_default_id.
@@ -589,7 +586,7 @@ Lemma multiply_is_exp_by_squaring' n x l start :
     (fun v => N2Bv_sized n (Bv2N v + Bv2N v))
     start l
   = N2Bv_sized n (Bv2N start * 2 ^ N.of_nat (length l)
-                  + x * from_big_endian_stream l).
+                  + x * from_stream l).
 Proof.
   cbv [exp_by_squaring_spec].
   revert start; induction l.
@@ -597,7 +594,7 @@ Proof.
     rewrite N.mul_0_r, N.add_0_r, N.mul_1_r.
     rewrite N2Bv_sized_Bv2N; reflexivity. }
   { intros. cbn [fold_left]. rewrite IHl.
-    rewrite from_big_endian_stream_cons.
+    rewrite from_stream_cons.
     cbn [length]. rewrite Nat2N.inj_succ, N.pow_succ_r'.
     destruct_one_match;
       autorewrite with pull_N2Bv_sized;
@@ -615,7 +612,7 @@ Lemma multiply_is_exp_by_squaring n x l :
     (fun v => N2Bv_sized n (Bv2N v + x))
     (fun v => N2Bv_sized n (Bv2N v + Bv2N v))
     (N2Bv_sized n 0) l
-  = N2Bv_sized n (x * from_big_endian_stream l).
+  = N2Bv_sized n (x * from_stream l).
 Proof.
   rewrite multiply_is_exp_by_squaring'.
   rewrite Bv2N_N2Bv_sized_modulo, N.mod_0_l
@@ -630,7 +627,7 @@ With that, we have all we need to prove ``stream_multiply`` is always correct!
 Lemma stream_multiply_correct n x (input : list bool) :
   simulate (stream_multiply (n:=n) x) input
   = map_stream
-      (fun i => N2Bv_sized n (x * (from_big_endian_stream i)))
+      (fun i => N2Bv_sized n (x * (from_stream i)))
       input.
 Proof.
   intros; cbv [stream_multiply].
@@ -707,7 +704,7 @@ Lemma exponentiate_is_exp_by_squaring' n x l start :
     (fun v => N2Bv_sized n (Bv2N v * Bv2N v))
     start l
   = N2Bv_sized n (Bv2N start ^ (2 ^ N.of_nat (length l))
-                  * x ^ from_big_endian_stream l).
+                  * x ^ from_stream l).
 Proof.
   cbv [exp_by_squaring_spec].
   revert start; induction l.
@@ -715,7 +712,7 @@ Proof.
     rewrite !N.pow_0_r, N.pow_1_r, N.mul_1_r.
     rewrite N2Bv_sized_Bv2N; reflexivity. }
   { intros. cbn [fold_left]. rewrite IHl.
-    rewrite from_big_endian_stream_cons.
+    rewrite from_stream_cons.
     cbn [length]. rewrite Nat2N.inj_succ, N.pow_succ_r'.
     destruct_one_match;
       rewrite ?N.add_0_l;
@@ -736,7 +733,7 @@ Lemma exponentiation_is_exp_by_squaring n x l :
     (fun v => N2Bv_sized n (Bv2N v * x))
     (fun v => N2Bv_sized n (Bv2N v * Bv2N v))
     (N2Bv_sized n 1) l
-  = N2Bv_sized n (x ^ from_big_endian_stream l).
+  = N2Bv_sized n (x ^ from_stream l).
 Proof.
   rewrite exponentiate_is_exp_by_squaring'.
   assert (2 ^ N.of_nat (length l) <> 0)%N
@@ -755,7 +752,7 @@ And now we can prove ``stream_exponentiate`` is always correct!
 Lemma stream_exponentiate_correct n x (input : list bool) :
   simulate (stream_exponentiate (n:=n) x) input
   = map_stream
-      (fun i => N2Bv_sized n (x ^ (from_big_endian_stream i)))
+      (fun i => N2Bv_sized n (x ^ (from_stream i)))
       input.
 Proof.
   intros; cbv [stream_exponentiate].
