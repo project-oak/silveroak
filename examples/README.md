@@ -34,7 +34,7 @@ Proof.
 Qed.
 ```
 
-This generates the following SysteVerilog code:
+This generates the following SystemVerilog code:
 
 ```verilog
 module nand2(
