@@ -119,8 +119,7 @@ Definition put_wait_get_asm := Eval compute in fst (fst put_wait_get_compile_res
 
 Module PrintAssembly.
   Import riscv.Utility.InstructionNotations.
-  (* Uncomment to see assembly code *)
-  (* Print put_wait_get_asm. *)
+  Redirect "put_wait_get.s" Print put_wait_get_asm.
   (*
     put_wait_get:
      addi    x2, x2, -84   // decrease stack pointer
