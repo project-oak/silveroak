@@ -63,8 +63,8 @@ _CoqProject:    $(shell find . -name '*.v' | sort)
 		@printf '%s\n' $^ >> _CoqProject
 
 TutorialSV:	coq TutorialSV.hs
-		ghc --make TutorialSV.hs
-		./TutorialSV
+		cabal build cava-tutorial
+		cabal run cava-tutorial
 
 $(SV) $(BENCHES) $(CPPS):	coq TutorialSV
 
