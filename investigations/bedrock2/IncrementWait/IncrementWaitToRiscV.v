@@ -1,6 +1,8 @@
 Require Import Coq.ZArith.ZArith.
+Require Import Coq.Strings.String.
 Require Import Coq.micromega.Lia.
 Require Import Coq.derive.Derive.
+Require Import bedrock2.Syntax.
 Require Import compiler.FlatToRiscvDef.
 Require Import compiler.MemoryLayout.
 Require Import compiler.Pipeline.
@@ -15,6 +17,8 @@ Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
 Require coqutil.Word.Naive.
 Require coqutil.Map.SortedListWord.
 Require riscv.Utility.InstructionNotations.
+Import Syntax.Coercions.
+Local Open Scope string_scope.
 
 (* TODO: we actually need a different word implementation than Naive here; in
    corner cases such as a shift argument greater than the width of the word,
@@ -34,15 +38,25 @@ Instance p : MMIO.parameters :=
 
 Existing Instances Words32 semantics_params semantics_params_ok compilation_params IncrementWaitMMIOSpec FlatToRiscv_params.
 
-(* dummy base address *)
-Definition base_addr : MMIO.word := word.of_Z (2^10).
-Instance consts : constants MMIO.word :=
+Definition ml: MemoryLayout := {|
+  MemoryLayout.code_start    := word.of_Z 0;
+  MemoryLayout.code_pastend  := word.of_Z (4*2^10);
+  MemoryLayout.heap_start    := word.of_Z (4*2^10);
+  MemoryLayout.heap_pastend  := word.of_Z (8*2^10);
+  MemoryLayout.stack_start   := word.of_Z (8*2^10);
+  MemoryLayout.stack_pastend := word.of_Z (16*2^10);
+                              |}.
+
+(* dummy base address -- just past end of stack *)
+Definition base_addr : Z := 16 * 2^10.
+Instance consts : constants Z :=
   {| VALUE_ADDR := base_addr;
-     STATUS_ADDR := word.add base_addr (word.of_Z 4);
-     STATUS_IDLE := word.of_Z 1;
-     STATUS_BUSY := word.of_Z 2;
-     STATUS_DONE := word.of_Z 3
+     STATUS_ADDR := base_addr + 4;
+     STATUS_IDLE := 1;
+     STATUS_BUSY := 2;
+     STATUS_DONE := 3
   |}.
+Existing Instance constant_words.
 
 Instance circuit_spec : circuit_behavior :=
   {| ncycles_processing := 15%nat |}.
@@ -61,13 +75,36 @@ Instance pipeline_params : Pipeline.parameters :=
   Pipeline.PRParams := @FlatToRiscvCommon.PRParams FlatToRiscv_params
   |}.
 
-Definition funcs := [put_wait_get].
-Derive put_wait_get_asm
-       SuchThat (exists env,
-                    compile (map.putmany_of_list funcs map.empty) = Some (put_wait_get_asm,env))
-       As compile_put_wait_get.
+(* use literals for the main function *)
+Existing Instance constant_literals.
+
+(* pointers to input and output memory locations *)
+Definition input_ptr := base_addr + 8.
+Definition output_ptr := base_addr + 12.
+
+(* read input from memory, call put_wait_get, write output to memory *)
+Definition main_body : cmd :=
+  (* allocate a temporary variable to store output *)
+  cmd.stackalloc
+    "out" 4
+    (cmd.seq
+       (* call put_wait_get *)
+       (cmd.call ["out"] put_wait_get
+                 (globals
+                    ++ [expr.load access_size.word (expr.literal input_ptr)]))
+       (* store result *)
+       (cmd.store access_size.word (expr.literal output_ptr) (expr.var "out"))).
+
+Definition main : func :=
+  ("main", ([], [], main_body)).
+
+Definition funcs := [main; put_wait_get].
+
+Derive put_wait_get_compile_result
+       SuchThat (compile (map.of_list funcs)
+                 = Some put_wait_get_compile_result)
+       As put_wait_get_compile_result_eq.
 Proof.
-  eexists.
   (* doing a more surgical vm_compute in the lhs only avoids fully computing the map
      type, which would slow eq_refl and Qed dramatically *)
   lazymatch goal with
@@ -78,11 +115,15 @@ Proof.
   exact eq_refl.
 Qed.
 
+Definition put_wait_get_asm := Eval compute in fst (fst put_wait_get_compile_result).
+
 Module PrintAssembly.
   Import riscv.Utility.InstructionNotations.
   (* Uncomment to see assembly code *)
   (* Print put_wait_get_asm. *)
-  (* addi    x2, x2, -84   // decrease stack pointer
+  (*
+    put_wait_get:
+     addi    x2, x2, -84   // decrease stack pointer
      sw      x2, x1, 52    // save ra
      sw      x2, x5, 0     // save registers that will be used for temporaries
      sw      x2, x14, 4
@@ -130,6 +171,57 @@ Module PrintAssembly.
      lw      x11, x2, 48
      lw      x1, x2, 52    // load ra
      addi    x2, x2, 84    // increase stack pointer
+     jalr    x0, x1, 0     // return
+
+
+    main:
+     addi    x2, x2, -48   // decrease stack pointer
+     sw      x2, x1, 44    // save ra
+     sw      x2, x5, 4     // save registers that will be used for temporaries
+     sw      x2, x7, 8
+     sw      x2, x8, 12
+     sw      x2, x9, 16
+     sw      x2, x10, 20
+     sw      x2, x11, 24
+     sw      x2, x12, 28
+     sw      x2, x13, 32
+     sw      x2, x6, 36
+     sw      x2, x14, 40
+     addi    x5, x2, 4     // save stack pointer+4 in register x5
+     addi    x6, x2, 0     // save stack pointer in register x6
+     lui     x7, 16384     // compute global constants
+     xori    x7, x7, 0
+     lui     x8, 16384
+     xori    x8, x8, 4
+     addi    x9, x0, 1
+     addi    x10, x0, 2
+     addi    x11, x0, 3
+     lui     x12, 16384    // compute input ptr
+     xori    x12, x12, 8
+     lw      x13, x12, 0   // load input
+     sw      x2, x7, -24   // put arguments on stack
+     sw      x2, x8, -20
+     sw      x2, x9, -16
+     sw      x2, x10, -12
+     sw      x2, x11, -8
+     sw      x2, x13, -4
+     jal     x1, -316      // call put_wait_get
+     lw      x6, x2, -28   // fetch return value
+     lui     x14, 16384    // compute output ptr
+     xori    x14, x14, 12
+     sw      x14, x6, 0    // store output
+     lw      x5, x2, 4     // restore values of temorary registers
+     lw      x7, x2, 8
+     lw      x8, x2, 12
+     lw      x9, x2, 16
+     lw      x10, x2, 20
+     lw      x11, x2, 24
+     lw      x12, x2, 28
+     lw      x13, x2, 32
+     lw      x6, x2, 36
+     lw      x14, x2, 40
+     lw      x1, x2, 44    // load ra
+     addi    x2, x2, 48    // increase stack pointer
      jalr    x0, x1, 0     // return
    *)
 End PrintAssembly.

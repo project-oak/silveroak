@@ -35,6 +35,18 @@ Definition constant_vars
      STATUS_DONE := expr.var STATUS_DONE;
   |}.
 
+(* Given the Z values of all the constants, convert them to exprs with
+   expr.literal *)
+Definition constant_literals
+           {vals : constants Z}
+  : constants expr :=
+  {| VALUE_ADDR := expr.literal VALUE_ADDR;
+     STATUS_ADDR := expr.literal STATUS_ADDR;
+     STATUS_IDLE := expr.literal STATUS_IDLE;
+     STATUS_BUSY := expr.literal STATUS_BUSY;
+     STATUS_DONE := expr.literal STATUS_DONE;
+  |}.
+
 (* Given the Z values of all the constants, convert them to words with
    word.of_Z *)
 Definition constant_words
