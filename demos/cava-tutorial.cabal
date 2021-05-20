@@ -1,0 +1,15 @@
+cabal-version:       >=1.10
+
+name:                cava-tutorial
+version:             0.1.0.0
+author:              The SilverOak Team
+maintainer:          benblaxill@google.com
+build-type:          Simple
+
+executable examples
+  main-is:             TutorialSV.hs
+  other-modules: Tutorial
+  -- other-extensions:
+  build-depends:       base >=4.12 && <4.15, Cava2HDL
+  -- hs-source-dirs:
+  default-language:    Haskell2010
