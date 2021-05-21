@@ -19,6 +19,7 @@ Require Import coqutil.Map.Properties.
 Require Import coqutil.Tactics.Tactics.
 Require Import coqutil.Tactics.syntactic_unify.
 Require Import coqutil.Tactics.letexists.
+Require Import coqutil.Z.Lia.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Require Import Bedrock2Experiments.StateMachineSemantics.
@@ -66,49 +67,6 @@ Section Proofs.
     change Semantics.word_ok with parameters.word_ok in *;
     change Semantics.mem_ok with parameters.mem_ok in *.
 
-  Hint Extern 4 (step _ ?s _ _ _) =>
-  eapply (ReadStep (p:=state_machine_parameters) s) : step.
-  Hint Extern 4 (step _ ?s _ _ _) =>
-  eapply (WriteStep (p:=state_machine_parameters) s) : step.
-
-  Lemma word_add_0_r (w : parameters.word) : word.add w (word.of_Z 0) = w.
-  Proof. ring. Qed.
-
-  Lemma reg_addr_unique r1 r2 : reg_addr r1 = reg_addr r2 -> r1 = r2.
-  Proof.
-    pose proof addrs_unique as Huniq.
-    cbv [aes_reg_addrs list_reg_addrs] in *.
-    rewrite nregs_key_eq, nregs_iv_eq, nregs_data_eq in Huniq.
-    repeat lazymatch type of Huniq with
-           | context [Z.to_nat ?n] =>
-             let x := constr:(Z.to_nat n) in
-             let y := (eval vm_compute in x) in
-             change x with y in Huniq
-           | _ => progress cbn [seq map app] in Huniq
-           end.
-    simplify_unique_words_in Huniq.
-    rewrite !word_add_0_r in *.
-    cbv [reg_addr]; cbn; intro Heqaddr.
-    destruct r1.
-    (* clear all hypothesis that don't have to do with r1 (makes proof
-       faster) *)
-    all:lazymatch type of Heqaddr with
-        | ?r = _ =>
-          repeat match goal with
-                 | H : ?x <> ?y |- _ =>
-                   lazymatch x with
-                   | context [r] => fail
-                   | _ =>
-                     lazymatch y with
-                     | context [r] => fail
-                     | _ => clear H
-                     end
-                   end
-                 end
-        end.
-    all:destruct r2; try first [ exact eq_refl | congruence ].
-  Qed.
-
   (* alternate form of reg_addr_unique *)
   Lemma reg_addr_neq r1 r2 : r1 <> r2 -> reg_addr r1 <> reg_addr r2.
   Proof.
@@ -129,6 +87,7 @@ Section Proofs.
       rewrite IHl by auto. rewrite Bool.orb_false_r. eauto. }
   Qed.
 
+  (*
   Lemma addr_in_category_reg_addr r c :
     addr_in_category (reg_addr r) c = reg_category_eqb c (reg_category r).
   Proof.
@@ -225,31 +184,11 @@ Section Proofs.
                | _ => destruct_one_match; subst; try reflexivity
                end. }
   Qed.
-
-  (* tactic to feed to [interaction] which will solve the side conditions of
-     interact_mmio *)
-  Local Ltac solve_dexprs :=
+   *)
+  (* tactic to solve the side conditions of interact_read and interact_write *)
+  Local Ltac solve_dexprs ::=
     repeat straightline_with_map_lookup;
     simplify_implicits; repeat straightline_with_map_lookup.
-
-  (* run [interaction] and then assert the register's identity *)
-  Local Ltac interaction_with_reg R :=
-    (* this simplification step ensures that the parameters.reg_addr hypothesis
-       we see is a new one *)
-    cbn [parameters.reg_addr parameters.write_step parameters.read_step
-                             state_machine_parameters] in *;
-    interaction solve_dexprs;
-    simplify_implicits;
-    (* assert that the register address matches R *)
-    lazymatch goal with
-    | H : parameters.reg_addr ?r = ?addr |- _ =>
-      replace addr with (reg_addr R) in H
-        by (cbn [reg_addr]; subst_lets; ring);
-      apply reg_addr_unique in H; try subst r
-    end;
-    (* simplify again *)
-    cbn [parameters.reg_addr parameters.write_step parameters.read_step
-                             state_machine_parameters] in *.
 
   Lemma execution_unique (t : trace) s1 s2 :
     execution t s1 ->
@@ -266,22 +205,23 @@ Section Proofs.
     | H1 : execution t ?s1, H2 : execution t ?s2 |- _ =>
       specialize (IHt _ _ H1 H2); subst
     end.
-    repeat invert_step; subst;
-      repeat lazymatch goal with
-             | H : _ :: _ = _ :: _ |- _ => inversion H; clear H; subst
-             end;
-      cbn [parameters.read_step parameters.write_step
-                                parameters.reg_addr
-                                state_machine_parameters] in *;
-      cbv [read_step write_step] in *.
-    all: repeat lazymatch goal with
-                | H : False |- _ => contradiction H
-                | H : _ /\ _ |- _ => destruct H
-                | H : _ = reg_addr _ |- _ => apply reg_addr_unique in H; subst
-                | |- ?x = ?x => reflexivity
-                | _ => first [ progress subst
-                            | destruct_one_match_hyp ]
-                end.
+    cbv [step] in *. cbn [ parameters.read_step
+                             parameters.write_step
+                             state_machine_parameters] in *.
+    repeat destruct_one_match_hyp; try congruence; [ | ].
+    all:logical_simplify; subst.
+    all: lazymatch goal with
+         | H : parameters.reg_addr ?x = parameters.reg_addr ?y |- _ =>
+           eapply (parameters.reg_addr_unique
+                     (ok:=state_machine_parameters_ok) x y) in H
+         end.
+    all:cbv [write_step read_step] in *; subst.
+    all:repeat destruct_one_match_hyp; try congruence.
+    all:logical_simplify; subst.
+    all:lazymatch goal with
+        | H : False |- _ => contradiction H
+        | _ => reflexivity
+        end.
   Qed.
 
   Local Ltac infer_states_equal :=
@@ -298,6 +238,161 @@ Section Proofs.
            | H : DONE _ = DONE _ |- _ => inversion H; clear H; subst
            end.
 
+  Local Ltac infer :=
+    repeat first [ progress infer_states_equal
+                 | progress infer_state_data_equal ].
+
+  Lemma status_read_always_ok s :
+    exists val s', read_step s STATUS val s'.
+  Proof.
+    destruct s; cbn [read_step reg_category].
+    all:do 2 eexists.
+  Admitted. (* TODO *)
+
+  (* solve common side conditions from interactions *)
+  Local Ltac post_interaction :=
+    lazymatch goal with
+    | |- dexprs _ _ _ _ => solve_dexprs; reflexivity
+    | |- reg_addr _ = _ => reflexivity
+    | |- execution _ _ => eassumption
+    | |- ?G => tryif is_lia G then lia else eauto
+    end.
+
+  Lemma interact_read_status s call bind addre t m l
+        (post : trace -> mem -> locals -> Prop) addr :
+    dexprs m l [addre] [addr] ->
+    reg_addr STATUS = addr ->
+    execution t s ->
+    (forall s' val,
+        read_step s STATUS val s' ->
+        (* implied by other preconditions but convenient to have separately *)
+        execution ((map.empty, READ, [addr], (map.empty, [val])) :: t) s' ->
+        post ((map.empty, READ, [addr], (map.empty, [val])) :: t)
+             m (map.put l bind val)) ->
+    cmd call (cmd.interact [bind] READ [addre]) t m l post.
+  Proof.
+    intros; eapply interact_read; intros; infer;
+      cbv [parameters.read_step state_machine_parameters] in *;
+      eauto.
+    pose proof status_read_always_ok s. logical_simplify.
+    do 3 eexists; eauto.
+  Qed.
+
+  Lemma interact_write_control s call addre vale t m l
+        (post : trace -> mem -> locals -> Prop) addr val :
+    dexprs m l [addre; vale] [addr; val] ->
+    reg_addr CTRL = addr ->
+    execution t s ->
+    match s with
+    | IDLE _ => True
+    | UNINITIALIZED => True
+    | _ => False
+    end ->
+    (forall s',
+        write_step s CTRL val s' ->
+        (* implied by other preconditions but convenient to have separately *)
+        execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s' ->
+        post ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t)
+             m l) ->
+    cmd call (cmd.interact [] WRITE [addre;vale]) t m l post.
+  Proof.
+    intros; eapply interact_write; intros; infer;
+      cbv [parameters.write_step state_machine_parameters] in *;
+      eauto.
+    cbv [write_step]. cbn [reg_category].
+    exists s; destruct s; try contradiction;
+      eexists; ssplit; (assumption || reflexivity).
+  Qed.
+
+  Definition key_from_index (i : nat) : Register :=
+    nth i [KEY0;KEY1;KEY2;KEY3;KEY4;KEY5;KEY6;KEY7] CTRL.
+
+  Lemma key_from_index_category i :
+    (i < 8)%nat -> reg_category (key_from_index i) = KeyReg.
+  Proof.
+    intros. cbv [key_from_index].
+    apply Forall_nth; [ |  length_hammer ].
+    repeat constructor.
+  Qed.
+
+  Lemma interact_write_key i call addre vale t m l
+        (post : trace -> mem -> locals -> Prop) rs addr val :
+    dexprs m l [addre; vale] [addr; val] ->
+    addr = word.add AES_KEY0 (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
+    (i < 8)%nat ->
+    execution t (IDLE rs) ->
+    (forall s',
+        write_step (IDLE rs) (key_from_index i) val s' ->
+        (* implied by other preconditions but convenient to have separately *)
+        execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s' ->
+        post ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t)
+             m l) ->
+    cmd call (cmd.interact [] WRITE [addre;vale]) t m l post.
+  Proof.
+    intros; eapply interact_write; intros; infer;
+      cbv [parameters.write_step state_machine_parameters] in *;
+      eauto.
+    { repeat (destruct i; try lia); subst; cbn; ring. }
+    { cbv [write_step]. rewrite key_from_index_category by lia.
+      exists (IDLE rs). eexists; ssplit; eauto. }
+  Qed.
+
+  Definition iv_from_index (i : nat) : Register :=
+    nth i [IV0;IV1;IV2;IV3] CTRL.
+
+  Lemma iv_from_index_category i :
+    (i < 4)%nat -> reg_category (iv_from_index i) = IVReg.
+  Proof.
+    intros. cbv [iv_from_index].
+    apply Forall_nth; [ | length_hammer ].
+    repeat constructor.
+  Qed.
+
+  Lemma interact_write_iv i call addre vale t m l
+        (post : trace -> mem -> locals -> Prop) rs addr val :
+    dexprs m l [addre; vale] [addr; val] ->
+    addr = word.add AES_IV0 (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
+    (i < 4)%nat ->
+    execution t (IDLE rs) ->
+    (forall s',
+        write_step (IDLE rs) (iv_from_index i) val s' ->
+        (* implied by other preconditions but convenient to have separately *)
+        execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s' ->
+        post ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t)
+             m l) ->
+    cmd call (cmd.interact [] WRITE [addre;vale]) t m l post.
+  Proof.
+    intros; eapply interact_write; intros; infer;
+      cbv [parameters.write_step state_machine_parameters] in *;
+      eauto.
+    { repeat (destruct i; try lia); subst; cbn; ring. }
+    { cbv [write_step]. rewrite iv_from_index_category by lia.
+      exists (IDLE rs). eexists; ssplit; eauto. }
+  Qed.
+
+  Local Ltac read_status :=
+    eapply interact_read_status; [ try post_interaction .. | ].
+  Local Ltac write_control :=
+    eapply interact_write_control; [ try post_interaction .. | ].
+  Local Ltac write_key :=
+    eapply interact_write_key;
+    [ try post_interaction ..
+    | intros;
+      try lazymatch goal with
+          | H : write_step _ _ _ _ |- _ =>
+            cbv [write_step] in H;
+            rewrite key_from_index_category in H by lia; subst
+          end ].
+  Local Ltac write_iv_n n :=
+    eapply interact_write_iv with (i:=n);
+    [ try post_interaction ..
+    | intros;
+      try lazymatch goal with
+          | H : write_step _ _ _ _ |- _ =>
+            cbv [write_step] in H;
+            rewrite iv_from_index_category in H by lia; subst
+          end ].
+  (*
   Local Ltac invert_read_step :=
     lazymatch goal with
     | H : read_step _ _ _ _ |- _ =>
@@ -334,13 +429,7 @@ Section Proofs.
            | _ => first [ destruct_one_match_hyp
                        | progress logical_simplify ]
            end.
-
-  Local Ltac infer :=
-    repeat first [ progress infer_states_equal
-                 | progress infer_state_data_equal
-                 | progress invert_read_step; [ ]
-                 | progress invert_write_step; [ ]
-                 | progress invert_step ].
+   *)
 
   Local Notation aes_op_t := (enum_member aes_op) (only parsing).
   Local Notation aes_mode_t := (enum_member aes_mode) (only parsing).
@@ -354,6 +443,14 @@ Section Proofs.
     select_bits ctrl AES_CTRL_KEY_LEN_OFFSET AES_CTRL_KEY_LEN_MASK.
   Definition ctrl_manual_operation (ctrl : parameters.word) : bool :=
     is_flag_set ctrl AES_CTRL_MANUAL_OPERATION.
+
+  Definition get_known_regs (s : state) : known_register_state :=
+    match s with
+    | UNINITIALIZED => map.empty
+    | IDLE rs => rs
+    | BUSY rs _ _ => rs
+    | DONE rs => rs
+    end.
 
   (* prevent [inversion] from exposing word.of_Z in constants *)
   Local Opaque constant_words.
@@ -390,8 +487,7 @@ Section Proofs.
     (* initial processing *)
     repeat straightline.
 
-    (* read STATUS *)
-    interaction_with_reg STATUS.
+    read_status.
     repeat straightline.
 
     (* done; prove postcondition *)
@@ -431,8 +527,7 @@ Section Proofs.
     (* initial processing *)
     repeat straightline.
 
-    (* read STATUS *)
-    interaction_with_reg STATUS.
+    read_status.
     repeat straightline.
 
     (* done; prove postcondition *)
@@ -472,8 +567,7 @@ Section Proofs.
     (* initial processing *)
     repeat straightline.
 
-    (* read STATUS *)
-    interaction_with_reg STATUS.
+    read_status.
     repeat straightline.
 
     (* done; prove postcondition *)
@@ -484,13 +578,18 @@ Section Proofs.
 
   Global Instance spec_of_aes_init : spec_of aes_init :=
     fun function_env =>
-      forall (tr : trace) (m : mem) (R : _ -> Prop)
+      forall s (tr : trace) (m : mem) (R : _ -> Prop)
         aes_cfg_operation aes_cfg_mode aes_cfg_key_len
         aes_cfg_manual_operation,
         (* no special requirements of the memory *)
         R m ->
-        (* circuit must start in UNINITIALIZED state *)
-        execution tr UNINITIALIZED ->
+        (* circuit must start in UNINITIALIZED or IDLE state *)
+        execution tr s ->
+        match s with
+        | UNINITIALIZED => True
+        | IDLE _ => True
+        | _ => False
+        end ->
         (* operation must be in the aes_op enum *)
         aes_op_t aes_cfg_operation ->
         (* mode must be in the aes_mode enum *)
@@ -506,8 +605,7 @@ Section Proofs.
                 (* the circuit is in IDLE state with the correct control
                    register value and no other known register values *)
                 (exists ctrl,
-                    execution tr' (IDLE (map.put (map:=parameters.regs)
-                                                 map.empty AES_CTRL ctrl))
+                    execution tr' (IDLE (map.put (get_known_regs s) AES_CTRL ctrl))
                     /\ ctrl_operation ctrl = negb (word.eqb aes_cfg_operation (word.of_Z 0))
                     /\ ctrl_mode ctrl = aes_cfg_mode
                     /\ ctrl_key_len ctrl = aes_cfg_key_len
@@ -525,9 +623,11 @@ Section Proofs.
     (* initial processing *)
     repeat straightline.
 
-    (* write CTRL *)
-    interaction_with_reg CTRL.
+    write_control.
     repeat straightline.
+
+    (* simplify post-write guarantees *)
+    cbn [write_step reg_category] in *.
 
     (* done; prove postcondition *)
     ssplit; auto; [ ].
@@ -546,16 +646,13 @@ Section Proofs.
                pose proof has_size_nonneg _ _ H
            end.
 
-    (* infer information from the last step *)
-    cbn [parameters.write_step state_machine_parameters] in *.
-    infer; subst.
-
     simplify_implicits.
 
     (* split cases *)
     eexists; ssplit.
     { (* prove that the execution trace is OK *)
-      eassumption. }
+      destruct_one_match_hyp; try contradiction;
+        subst; eassumption. }
     { (* prove that the "operation" flag is correct *)
       cbv [ctrl_operation].
       rewrite !is_flag_set_or_shiftl_low by lia.
@@ -664,52 +761,6 @@ Section Proofs.
     { lazymatch goal with H : length key_arr = _ |- _ => rewrite H end.
       repeat destruct_one_match; lia. }
 
-    (* helper assertion indicating that MMIO addresses in the range we access
-       here are all for key registers *)
-    assert (forall i r,
-               parameters.reg_addr r
-               = word.add AES_KEY0
-                          (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
-               (i < 8)%nat ->
-               reg_category r = KeyReg)
-      as HKeyReg.
-    { intros i; intros.
-      let H := fresh in
-      assert (i = 0 \/ i = 1 \/ i = 2 \/ i = 3 \/ i = 4 \/ i = 5 \/ i = 6 \/ i = 7)%nat
-        as H by lia;
-        repeat match type of H with _ \/ _ => destruct H as [H | H]; subst end.
-      all:lazymatch goal with
-          | H : parameters.reg_addr _ = ?addr |- _ =>
-            ring_simplify addr in H;
-              first [ apply (reg_addr_unique _ KEY0) in H
-                    | apply (reg_addr_unique _ KEY1) in H
-                    | apply (reg_addr_unique _ KEY2) in H
-                    | apply (reg_addr_unique _ KEY3) in H
-                    | apply (reg_addr_unique _ KEY4) in H
-                    | apply (reg_addr_unique _ KEY5) in H
-                    | apply (reg_addr_unique _ KEY6) in H
-                    | apply (reg_addr_unique _ KEY7) in H ]
-          end.
-      all:subst; reflexivity. }
-
-    (* helper assertion for indexing into list of addresses *)
-    assert (forall i d,
-               (i < 8)%nat ->
-               nth i
-                   [reg_addr KEY0; reg_addr KEY1; reg_addr KEY2;
-                    reg_addr KEY3; reg_addr KEY4; reg_addr KEY5;
-                    reg_addr KEY6; reg_addr KEY7] d
-               = word.add AES_KEY0
-                          (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)))
-      as Hnth_addrs.
-    { intros i ? ?.
-      let H := fresh in
-      assert (i = 0 \/ i = 1 \/ i = 2 \/ i = 3 \/ i = 4 \/ i = 5 \/ i = 6 \/ i = 7)%nat
-        as H by lia;
-        repeat match type of H with _ \/ _ => destruct H as [H | H] end.
-      all:subst i; cbn [nth reg_addr].
-      all:ring. }
-
     (* setup done; now we can proceed with the program logic *)
 
     (* after the conditional, num_regs_key_used is set *)
@@ -751,11 +802,8 @@ Section Proofs.
                 (* the new state is the old one plus the first i keys *)
                 (exists rs',
                     map.putmany_of_list_zip
-                      (firstn (length key_arr - v)
-                              [reg_addr KEY0; reg_addr KEY1;
-                               reg_addr KEY2; reg_addr KEY3;
-                               reg_addr KEY4; reg_addr KEY5;
-                               reg_addr KEY6; reg_addr KEY7])
+                      (map (fun i => reg_addr (key_from_index i))
+                           (seq 0 (length key_arr - v)))
                       (firstn (length key_arr - v) key_arr) rs = Some rs'
                     /\ execution (p:=state_machine_parameters) tr' (IDLE rs'))
                 (* array accesses in bounds *)
@@ -837,16 +885,7 @@ Section Proofs.
       (* now, finally, we can process the loop body *)
 
       (* set key register *)
-      interaction ltac:(solve_dexprs).
-      cbn [parameters.write_step state_machine_parameters] in *.
-      infer.
-      match goal with
-      | H : write_step _ _ _ _ |- _ =>
-        rewrite hd_skipn in H;
-          cbv [write_step] in H;
-          erewrite HKeyReg in H by (eassumption || lia)
-      end.
-      infer.
+      write_key.
 
       (* rest of loop body *)
       repeat straightline.
@@ -897,10 +936,8 @@ Section Proofs.
         end.
         rewrite !firstn_succ_snoc with (d:=word.of_Z 0) by length_hammer.
         eexists; ssplit; [ | eassumption ].
-        rewrite Hnth_addrs by lia.
-        lazymatch goal with
-        | H : parameters.reg_addr ?r = ?addr |- context [?addr] =>
-          rewrite <-H end.
+        autorewrite with pull_snoc natsimpl.
+        rewrite !hd_skipn.
         auto using map_putmany_of_list_zip_snoc. }
 
       { (* "break" case; prove postcondition holds after the rest of the function *)
@@ -928,11 +965,8 @@ Section Proofs.
              (* the new state is the old one plus the first i keys *)
              (exists rs',
                  map.putmany_of_list_zip
-                   (firstn (8 - v)
-                           [reg_addr KEY0; reg_addr KEY1;
-                            reg_addr KEY2; reg_addr KEY3;
-                            reg_addr KEY4; reg_addr KEY5;
-                            reg_addr KEY6; reg_addr KEY7])
+                   (map (fun i => reg_addr (key_from_index i))
+                        (seq 0 (8 - v)))
                    (key_arr ++ repeat (word.of_Z 0) (8 - v - length key_arr))
                    rs = Some rs'
                  /\ execution (p:=state_machine_parameters) tr' (IDLE rs'))
@@ -960,24 +994,20 @@ Section Proofs.
 
           eexists; ssplit; [ | eassumption ].
 
-          (* rewrite postcondition to be firstn ++ last *)
+          assert (v = 1)%nat by lia.
           lazymatch goal with
-          | H : map.putmany_of_list_zip (firstn ?n _) (firstn ?n ?vs) _ = Some _
+          | H : map.putmany_of_list_zip (map ?f (seq 0 ?n)) (firstn ?n ?vs) _ = Some _
             |- context [map.putmany_of_list_zip ?ks ?vs ?m] =>
             replace (map.putmany_of_list_zip ks vs m)
               with (map.putmany_of_list_zip
-                      (firstn (S n) ks) (firstn (S n) vs) m)
-              by (rewrite !firstn_all2 by length_hammer;
-                  f_equal; apply firstn_all2; lia);
-              rewrite !firstn_succ_snoc with (d:=word.of_Z 0) by length_hammer
+                      (map f (seq 0 (S n))) (firstn (S n) vs) m)
+                   by (autorewrite with push_firstn;
+                       repeat (f_equal; try lia))
           end.
-          rewrite firstn_firstn, Nat.min_l, nth_firstn by lia.
-          erewrite map_putmany_of_list_zip_snoc by eassumption.
-          rewrite Hnth_addrs by lia.
-          lazymatch goal with
-          | H : parameters.reg_addr ?r = ?addr |- context [?addr] =>
-            rewrite <-H end.
-          reflexivity. }
+          autorewrite with pull_snoc natsimpl.
+          rewrite firstn_succ_snoc with (d:=word.of_Z 0) by length_hammer.
+          rewrite hd_skipn.
+          eauto using map_putmany_of_list_zip_snoc. }
 
         { (* the body of the loop proves the invariant if it continues and the
              postcondition if it breaks *)
@@ -999,16 +1029,7 @@ Section Proofs.
             repeat straightline.
 
             (* set key register *)
-            interaction ltac:(solve_dexprs).
-            cbn [parameters.write_step state_machine_parameters] in *.
-            infer.
-            match goal with
-            | H : write_step _ _ _ _ |- _ =>
-              cbv [write_step] in H;
-                erewrite HKeyReg in H
-                by (eassumption || lia)
-            end.
-            infer. subst.
+            write_key.
 
           (* rest of loop body *)
           repeat straightline.
@@ -1033,9 +1054,7 @@ Section Proofs.
                 f_equal; apply word.unsigned_inj;
                   subst_lets; push_unsigned; lia
             | |- sep _ _ _ => ecancel_assumption
-            | |- (_ < _)%nat => lia
-            | |- (_ <= _)%nat => lia
-            | _ => idtac
+            | |- ?G => tryif is_lia G then lia else idtac
             end.
 
           (* final invariant case: new register state *)
@@ -1050,16 +1069,12 @@ Section Proofs.
 
           (* list simplifications *)
           cbn [repeat]. rewrite repeat_cons, app_assoc.
-          rewrite !firstn_succ_snoc with (d:=word.of_Z 0) by length_hammer.
+          autorewrite with pull_snoc.
 
           (* solve *)
           simplify_implicits.
           eexists; ssplit; [ | eassumption ].
-          rewrite Hnth_addrs by lia.
-          lazymatch goal with
-          | H : parameters.reg_addr ?r = ?addr |- context [?addr] =>
-            rewrite <-H end.
-          auto using map_putmany_of_list_zip_snoc. }
+          eauto using map_putmany_of_list_zip_snoc. }
 
           { (* post-loop; given invariant and loop-break condition, prove
                postcondition holds after the rest of the function *)
@@ -1085,7 +1100,9 @@ Section Proofs.
                 [ replace vs2 with vs1; [ exact H | ] | ]
             end.
             { repeat (f_equal; try lia). }
-            { apply firstn_all2. length_hammer. } } } } }
+            { lazymatch goal with |- context [(8-?v)%nat] =>
+                                  assert (v = 0)%nat by lia end.
+              subst. reflexivity. } } } } }
   Qed.
 
   Global Instance spec_of_aes_iv_put : spec_of aes_iv_put :=
@@ -1138,22 +1155,21 @@ Section Proofs.
 
     (* i = 0 *)
     split; repeat straightline; [ dexpr_hammer | ].
-    interaction_with_reg IV0. infer; subst.
-    repeat straightline.
+    write_iv_n 0%nat. repeat straightline.
 
     (* i = 1 *)
     split; repeat straightline; [ dexpr_hammer | ].
-    interaction_with_reg IV1. infer; subst.
+    write_iv_n 1%nat; [ simplify_implicits; subst_lets; ring | ].
     repeat straightline.
 
     (* i = 2 *)
     split; repeat straightline; [ dexpr_hammer | ].
-    interaction_with_reg IV2. infer; subst.
+    write_iv_n 2%nat; [ simplify_implicits; subst_lets; ring | ].
     repeat straightline.
 
     (* i = 3 *)
     split; repeat straightline; [ dexpr_hammer | ].
-    interaction_with_reg IV3. infer; subst.
+    write_iv_n 3%nat; [ simplify_implicits; subst_lets; ring | ].
     repeat straightline.
 
     (* i = 4; loop done *)
@@ -1200,6 +1216,214 @@ Section Proofs.
                   /\ (array scalar32 (word.of_Z 4) data_ptr [data0;data1;data2;data3] * R)%sep m'
                   (* ...and there is no output *)
                   /\ rets = []).
+
+  Definition data_in_from_index (i : nat) : Register :=
+    nth i [DATA_IN0;DATA_IN1;DATA_IN2;DATA_IN3] CTRL.
+
+  Lemma data_in_from_index_category i :
+    (i < 4)%nat -> reg_category (data_in_from_index i) = DataInReg.
+  Proof.
+    intros. cbv [data_in_from_index].
+    apply Forall_nth; [ | length_hammer ].
+    repeat constructor.
+  Qed.
+
+  Lemma all_regs_in_category_complete c r :
+    reg_category r = c -> In r (all_regs_in_category c).
+  Proof.
+    destruct c, r; cbn [reg_category]; try discriminate; intros;
+      cbn; tauto.
+  Qed.
+
+  (* TODO: move *)
+  Lemma length_filter_le {A} (f : A -> bool) l :
+    (length (filter f l) <= length l)%nat.
+  Proof.
+    induction l; cbn [filter length]; [ lia | ].
+    destruct_one_match; length_hammer.
+  Qed.
+
+  (* TODO: move *)
+  Lemma filter_noop_forallb {A} (f : A -> bool) l :
+    length (filter f l) = length l <-> forallb f l = true.
+  Proof.
+    induction l; intros; [ cbn; tauto | ].
+    cbn [filter forallb].
+    destruct_one_match; cbn [andb length];
+      [ rewrite <-IHl; lia | ].
+    split; try discriminate; [ ].
+    pose proof (length_filter_le f l).
+    lia.
+  Qed.
+
+  Lemma nregs_populated_full rs c :
+    nregs_populated rs c = length (all_regs_in_category c) ->
+    forall r, reg_category r = c -> reg_lookup rs r <> None.
+  Proof.
+    cbv [nregs_populated]. rewrite filter_noop_forallb.
+    rewrite forallb_forall. intros Hlookup; intros.
+    specialize (Hlookup _ ltac:(eauto using all_regs_in_category_complete)).
+    destruct_one_match_hyp; congruence.
+  Qed.
+
+  Lemma aes_expected_output_exists rs :
+    nregs_populated rs ControlReg = 1%nat ->
+    nregs_populated rs KeyReg = 8%nat ->
+    nregs_populated rs IVReg = 4%nat ->
+    nregs_populated rs DataInReg = 4%nat ->
+    aes_expected_output rs <> None.
+  Proof.
+    intros.
+    cbv [aes_expected_output option_bind].
+    repeat
+      (destruct_one_match;
+       [ | repeat
+             lazymatch goal with
+             | H : reg_lookup _ _ = None |- None <> None =>
+               exfalso; eapply nregs_populated_full;
+               [ | solve [eauto] .. ]; cbn [reg_category]
+             | H : nregs_populated ?rs ?c = _
+               |- context [nregs_populated ?rs ?c] =>
+               rewrite H; reflexivity
+             end ]).
+    repeat destruct_pair_let. congruence.
+  Qed.
+
+  Lemma nregs_populated_put rs r v cat :
+    nregs_populated (map.put rs (reg_addr r) v) cat =
+    if reg_category_eqb cat (reg_category r)
+    then match reg_lookup rs r with
+         | None => S (nregs_populated rs cat)
+         | Some _ => nregs_populated rs cat
+         end
+    else nregs_populated rs cat.
+  Proof.
+    cbv [nregs_populated reg_lookup].
+    destruct cat.
+    all:cbn.
+    { destruct r; cbn [reg_category reg_addr].
+      { rewrite map.get_put_same.
+        destruct_one_match; reflexivity. }
+
+      destr (reg_category r);
+        lazymatch goal with
+          | H : reg_category _ = _ |- _ =>
+            apply all_regs_in_category_complete in H;
+              cbn in H
+        end.
+      2:{
+        rewrite map.get_put_diff.
+        Check all_regs_in_category_complete.
+        2:{
+      destruct r; cbn [reg_category reg_addr].
+      { rewrite map.get_put_dec.
+        rewrite word.eqb_refl.
+    cbv [nregs_populated reg_lookup]. intros.
+    rewrite map.fold_put; auto.
+    { rewrite addr_in_category_reg_addr. reflexivity. }
+    { intros. repeat destruct_one_match; reflexivity. }
+  Qed.
+
+  (* if the circuit is in any state except UNINITIALIZED, the control register
+     must exist *)
+  Lemma control_register_exists t s :
+    s <> UNINITIALIZED ->
+    execution t s ->
+    nregs_populated (get_known_regs s) ControlReg = 1%nat.
+  Proof.
+    revert s; induction t; [ cbn; congruence | ].
+    intros. cbn [execution] in *. destruct_products.
+    cbv [step] in *.
+    cbn [parameters.write_step
+           parameters.read_step state_machine_parameters] in *.
+    cbv [read_step write_step] in *.
+    repeat lazymatch goal with
+           | H : False |- _ => contradiction H
+           | _ => destruct_one_match_hyp;
+                   logical_simplify; subst
+           end.
+    all:cbn [get_known_regs].
+  Qed.
+
+  Lemma interact_write_data_in i call addre vale t m l
+        (post : trace -> mem -> locals -> Prop) rs addr val :
+    dexprs m l [addre; vale] [addr; val] ->
+    addr = word.add AES_DATA_IN0 (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
+    (i < 4)%nat ->
+    nregs_populated rs KeyReg = 8%nat ->
+    nregs_populated rs IVReg = 4%nat ->
+    (nregs_populated rs DataInReg < 4)%nat ->
+    execution t (IDLE rs) ->
+    (forall s',
+        write_step (IDLE rs) (data_in_from_index i) val s' ->
+        (* implied by other preconditions but convenient to have separately *)
+        execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s' ->
+        post ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t)
+             m l) ->
+    cmd call (cmd.interact [] WRITE [addre;vale]) t m l post.
+  Proof.
+    intros; eapply interact_write; intros; infer;
+      cbv [parameters.write_step state_machine_parameters] in *;
+      eauto.
+    { repeat (destruct i; try lia); subst; cbn; ring. }
+    { cbv [write_step]. rewrite data_in_from_index_category by lia.
+      exists (IDLE rs). destruct_one_match.
+      1:{ rewrite nregs_populated_put. lia.
+      destruct_one_match; [ | solve [eexists; eauto] ].
+      eexists.
+      Search nregs_populated.
+      2: eauto 10.
+      Search aes_expected_output.
+      exists (match s with
+      do 2 eexists; ssplit; eauto.
+      cbn beta iota. ssplit; try eauto.
+      destruct_one_match.
+      2:reflexivity.
+      exists (IDLE rs). eexists; ssplit; eauto. }
+  Qed.
+  Lemma interact_write_data_in i call addre vale t m l
+        (post : trace -> mem -> locals -> Prop) rs addr val :
+    dexprs m l [addre; vale] [addr; val] ->
+    addr = word.add AES_DATA_IN0 (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
+    (i < 4)%nat ->
+    nregs_populated rs KeyReg = 8%nat ->
+    nregs_populated rs IVReg = 4%nat ->
+    (nregs_populated rs DataInReg < 4)%nat ->
+    execution t (IDLE rs) ->
+    (forall s',
+        write_step (IDLE rs) (data_in_from_index i) val s' ->
+        (* implied by other preconditions but convenient to have separately *)
+        execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s' ->
+        post ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t)
+             m l) ->
+    cmd call (cmd.interact [] WRITE [addre;vale]) t m l post.
+  Proof.
+    intros; eapply interact_write; intros; infer;
+      cbv [parameters.write_step state_machine_parameters] in *;
+      eauto.
+    { repeat (destruct i; try lia); subst; cbn; ring. }
+    { cbv [write_step]. rewrite data_in_from_index_category by lia.
+      exists (IDLE rs). destruct_one_match; [ | solve [eexists; eauto] ].
+      eexists.
+      Search nregs_populated.
+      2: eauto 10.
+      Search aes_expected_output.
+      exists (match s with
+      do 2 eexists; ssplit; eauto.
+      cbn beta iota. ssplit; try eauto.
+      destruct_one_match.
+      2:reflexivity.
+      exists (IDLE rs). eexists; ssplit; eauto. }
+  Qed.
+  Local Ltac write_data_in_n n :=
+    eapply interact_write_data_in with (i:=n);
+    [ try post_interaction ..
+    | intros;
+      try lazymatch goal with
+          | H : write_step _ _ _ _ |- _ =>
+            cbv [write_step] in H;
+            rewrite data_in_from_index_category in H by lia; subst
+          end ].
 
   Lemma aes_data_put_correct :
     program_logic_goal_for_function! aes_data_put.

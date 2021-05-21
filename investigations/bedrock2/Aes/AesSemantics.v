@@ -15,8 +15,6 @@ Require Import Bedrock2Experiments.Word.
 Import String List.ListNotations.
 Local Open Scope string_scope. Local Open Scope Z_scope. Local Open Scope list_scope.
 
-(* Loosely based on bedrock2/FE310CSemantics.v *)
-
 Definition option_bind {A B} (x : option A) (f : A -> option B) : option B :=
   match x with
   | Some a => f a
@@ -54,14 +52,18 @@ Module parameters.
 End parameters.
 Notation parameters := parameters.parameters.
 
-Definition READ := "REG32_GET".
-Definition WRITE := "REG32_SET".
-
 Section WithParameters.
   Import parameters.
   Context {p : parameters} {p_ok : parameters.ok p}.
-  Context {consts : aes_constants Z} {timing : timing}.
+  Context {consts : aes_constants Z}
+          {consts_ok : aes_constants_ok constant_words}
+          {timing : timing}.
   Existing Instance constant_words.
+
+  Add Ring wring : (Properties.word.ring_theory (word := parameters.word))
+        (preprocess [autorewrite with rew_word_morphism],
+         morphism (Properties.word.ring_morph (word := parameters.word)),
+         constants [Properties.word_cst]).
 
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
   Local Notation bedrock2_trace := (list bedrock2_event).
@@ -126,6 +128,45 @@ Section WithParameters.
     | DATA_OUT2 => word.add AES_DATA_OUT0 (word.of_Z 8)
     | DATA_OUT3 => word.add AES_DATA_OUT0 (word.of_Z 12)
     end.
+
+  Lemma reg_addr_unique r1 r2 :
+    reg_addr r1 = reg_addr r2 -> r1 = r2.
+  Proof.
+    pose proof addrs_unique as Huniq.
+    cbv [aes_reg_addrs list_reg_addrs] in *.
+    rewrite nregs_key_eq, nregs_iv_eq, nregs_data_eq in Huniq.
+    repeat lazymatch type of Huniq with
+           | context [Z.to_nat ?n] =>
+             let x := constr:(Z.to_nat n) in
+             let y := (eval vm_compute in x) in
+             change x with y in Huniq
+           | _ => progress cbn [seq map app] in Huniq
+           end.
+    simplify_unique_words_in Huniq.
+    repeat lazymatch goal with
+           | H : context [word.add ?x (word.of_Z 0)] |- _ =>
+             ring_simplify (word.add x (word.of_Z 0)) in H
+           end.
+    cbv [reg_addr]; cbn; intro Heqaddr.
+    destruct r1.
+    (* clear all hypothesis that don't have to do with r1 (makes proof
+       faster) *)
+    all:lazymatch type of Heqaddr with
+        | ?r = _ =>
+          repeat match goal with
+                 | H : ?x <> ?y |- _ =>
+                   lazymatch x with
+                   | context [r] => fail
+                   | _ =>
+                     lazymatch y with
+                     | context [r] => fail
+                     | _ => clear H
+                     end
+                   end
+                 end
+        end.
+    all:destruct r2; try first [ exact eq_refl | congruence ].
+  Qed.
 
   Definition known_register_state : Type := map.rep (map:=regs).
 
@@ -258,20 +299,21 @@ Section WithParameters.
   Global Instance reg_category_eqb_spec : EqDecider reg_category_eqb.
   Proof. intros x y. destruct x,y; constructor; congruence. Qed.
 
-  Definition addr_in_category (addr : word) (c : RegisterCategory) : bool :=
-    existsb (fun r => (word.eqb (reg_addr r) addr
-                    && reg_category_eqb c (reg_category r))%bool)
-            all_regs.
+  Definition all_regs_in_category (c : RegisterCategory) : list Register :=
+    filter (fun r => reg_category_eqb c (reg_category r)) all_regs.
 
   (* gives the number of populated registers in the given category *)
   Definition nregs_populated
              (rs : known_register_state)
              (cat : RegisterCategory) : nat :=
-    map.fold
-      (map:=regs)
-      (fun acc addr _ => if addr_in_category addr cat
-                      then S acc
-                      else acc) 0%nat rs.
+    List.length
+      (filter
+         (fun r =>
+            match reg_lookup rs r with
+            | None => false
+            | Some _ => true
+            end)
+         (all_regs_in_category cat)).
 
   Definition set_out_regs
              (rs : known_register_state) (out : aes_output) : known_register_state :=
@@ -387,8 +429,6 @@ Section WithParameters.
     {| StateMachineSemantics.parameters.state := state ;
        StateMachineSemantics.parameters.register := Register ;
        StateMachineSemantics.parameters.mem := mem ;
-       StateMachineSemantics.parameters.READ := READ ;
-       StateMachineSemantics.parameters.WRITE := WRITE ;
        StateMachineSemantics.parameters.initial_state := UNINITIALIZED ;
        StateMachineSemantics.parameters.read_step := read_step ;
        StateMachineSemantics.parameters.write_step := write_step ;
@@ -402,6 +442,7 @@ Section WithParameters.
     { left; exact eq_refl. }
     { exact word_ok. }
     { exact mem_ok. }
+    { exact reg_addr_unique. }
   Defined.
 
 End WithParameters.

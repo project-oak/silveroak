@@ -15,8 +15,6 @@ Module parameters.
     { state : Type;
       register : Type;
       mem : Interface.map.map word Byte.byte;
-      READ : string;
-      WRITE : string;
       initial_state : state;
       read_step : state -> register -> word -> state -> Prop;
       write_step : state -> register -> word -> state -> Prop;
@@ -28,9 +26,14 @@ Module parameters.
     { width_ok : width = 32 \/ width = 64;
       word_ok : word.ok word; (* for impl of mem below *)
       mem_ok : Interface.map.ok mem; (* for impl of mem below *)
+      reg_addr_unique : forall r1 r2, reg_addr r1 = reg_addr r2 -> r1 = r2;
     }.
 End parameters.
 Notation parameters := parameters.parameters.
+
+(* read and write interaction names *)
+Definition READ := "MMIOREAD".
+Definition WRITE := "MMIOWRITE".
 
 Section WithParameters.
   Import parameters.
@@ -40,18 +43,21 @@ Section WithParameters.
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
   Local Notation bedrock2_trace := (list bedrock2_event).
 
-  Inductive step : string -> state -> list word -> list word -> state -> Prop :=
-  | ReadStep :
-      forall (s s' : state) r addr val,
-        reg_addr r = addr ->
-        read_step s r val s' ->
-        step READ s [addr] [val] s'
-  | WriteStep :
-      forall s s' r addr val,
-        reg_addr r = addr ->
-        write_step s r val s' ->
-        step WRITE s [addr;val] [] s'
-  .
+  Definition step
+             (action : string) (s : state) (args rets : list word) (s' : state)
+    : Prop :=
+    if String.eqb action WRITE
+    then match args with
+         | [addr;val] =>
+           (exists r, reg_addr r = addr /\ rets = [] /\ write_step s r val s')
+         | _ => False
+         end
+    else if String.eqb action READ
+         then match args with
+              | [addr] => (exists r val, reg_addr r = addr /\ rets = [val] /\ read_step s r val s')
+              | _ => False
+              end
+         else False.
 
   (* Computes the Prop that must hold for this state to be accurate after the
      trace *)
@@ -69,11 +75,35 @@ Section WithParameters.
              (action : string)
              (args: list word)
              (post: mem -> list word -> Prop) :=
-    (* no memory ever given away *)
-    mGive = Interface.map.empty
-    /\ forall st rets,
-      execution ((map.empty,action,args,(map.empty,rets)) :: t) st ->
-      post Interface.map.empty rets.
+    if String.eqb action WRITE
+    then
+      (exists r addr val,
+          args = [addr;val]
+          /\ mGive = map.empty
+          /\ reg_addr r = addr
+          (* there must exist *at least one* possible state given this trace,
+             and one possible transition given these arguments *)
+          /\ (exists s s', execution t s /\ write_step s r val s')
+          (* postcondition must hold for *all* possible states/transitions *)
+          /\ (forall s s',
+                execution t s ->
+                write_step s r val s' ->
+                post Interface.map.empty []))
+       else if String.eqb action READ
+            then
+              (exists r addr,
+                  args = [addr]
+                  /\ mGive = map.empty
+                  /\ reg_addr r = addr
+                  (* there must exist *at least one* possible state given this
+                     trace, and one possible transition given these arguments *)
+                  /\ (exists s s' val, execution t s /\ read_step s r val s')
+                  (* postcondition must hold for *all* possible states/transitions *)
+                  /\ (forall s s' val,
+                        execution t s ->
+                        read_step s r val s' ->
+                        post Interface.map.empty [val]))
+               else False.
 
   Global Instance semantics_parameters  : Semantics.parameters :=
     {|
@@ -87,19 +117,22 @@ Section WithParameters.
 
   Global Instance ext_spec_ok : ext_spec.ok _.
   Proof.
-    constructor.
-    all:cbv [ext_spec Semantics.ext_spec semantics_parameters].
-    all:cbv [Morphisms.pointwise_relation Basics.impl].
-    all:cbn [execution].
-    all:repeat intro.
-    all:repeat lazymatch goal with
-               | H: _ /\ _ |- _ => destruct H
-               | H: exists _, _ |- _ => destruct H
-               | |- map.same_domain ?x ?x => apply Properties.map.same_domain_refl
-               |  |- ?x = ?x /\ _ => split; [ reflexivity | ]
-               | _ => progress subst
-               end.
-    all:eauto.
+    split;
+    cbv [ext_spec Semantics.ext_spec semantics_parameters
+    Morphisms.Proper Morphisms.respectful Morphisms.pointwise_relation Basics.impl
+    ];
+    intros.
+    all :
+    repeat match goal with
+           | H : context[(?x =? ?y)%string] |- _ =>
+             destruct (x =? y)%string in *
+           | H: exists _, _ |- _ => destruct H
+           | H: _ /\ _ |- _ => destruct H
+           | H : _ :: _  = _ :: _ |- _ => inversion H; clear H; subst
+           | H: False |- _ => destruct H
+           | H : reg_addr _ = reg_addr _ |- _ => apply reg_addr_unique in H
+           | _ => progress subst
+           end; eauto 20 using Properties.map.same_domain_refl.
   Qed.
 
   Global Instance ok : Semantics.parameters_ok semantics_parameters.
