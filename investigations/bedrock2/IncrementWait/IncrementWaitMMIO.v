@@ -54,19 +54,6 @@ Definition compile_ext_call(results: list Z) a (args: list Z):
     | _, _ => [[]] (* invalid, excluded by ext_spec *)
     end.
 
-Lemma compile_ext_call_length: forall binds f args,
-    Z.of_nat (List.length (compile_ext_call binds f args)) <= 1.
-Proof.
-  intros. unfold compile_ext_call.
-  destruct (String.eqb _ _); destruct binds; try destruct binds;
-  try destruct args; try destruct args; try destruct args;
-  cbv; intros; discriminate.
-Qed.
-
-Lemma compile_ext_call_length': forall binds f args,
-    Z.of_nat (List.length (compile_ext_call binds f args)) <= 7.
-Proof. intros. rewrite compile_ext_call_length. blia. Qed.
-
 Lemma compile_ext_call_emits_valid: forall iset binds a args,
     Forall valid_FlatImp_var binds ->
     Forall valid_FlatImp_var args ->
