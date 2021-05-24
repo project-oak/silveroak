@@ -223,6 +223,50 @@ Section WithWord.
     all:lia.
   Qed.
 
+  Lemma Z_testbit_1_l i : Z.testbit 1 i = (i =? 0).
+  Proof.
+    change 1 with (Z.ones 1).
+    destr (i =? 0); subst;
+      [ autorewrite with push_Ztestbit; reflexivity | ].
+    destr (i <? 0); autorewrite with push_Ztestbit; reflexivity.
+  Qed.
+  Hint Rewrite Z_testbit_1_l using solve [eauto] : push_Ztestbit.
+
+  Lemma is_flag_set_shift_neq w flag1 flag2 :
+    boolean w ->
+    word.unsigned flag1 < width ->
+    word.unsigned flag2 < width ->
+    flag1 <> flag2 ->
+    is_flag_set (word.slu w flag1) flag2 = false.
+  Proof.
+    intro Hbool; intros; cbv [is_flag_set].
+    pose proof word.width_pos.
+    pose proof word.unsigned_range flag1.
+    pose proof word.unsigned_range flag2.
+    assert (0 < 2 ^ word.unsigned flag1 < 2 ^ width)
+      by (split; [ apply Z.pow_pos_nonneg
+                 | apply Z.pow_lt_mono_r]; lia).
+    assert (0 < 2 ^ word.unsigned flag2 < 2 ^ width)
+      by (split; [ apply Z.pow_pos_nonneg
+                 | apply Z.pow_lt_mono_r]; lia).
+    assert (word.unsigned flag1 <> word.unsigned flag2)
+      by (intro Heq; apply word.unsigned_inj in Heq; congruence).
+    rewrite !word.unsigned_eqb.
+    push_unsigned. cbv [word.wrap].
+    rewrite !Z.mod_small by
+        (rewrite Z.shiftl_mul_pow2 by lia;
+         destruct Hbool; subst; push_unsigned; lia).
+    apply Bool.negb_false_iff. apply Z.eqb_eq.
+    Z.bitblast. autorewrite with push_Ztestbit.
+    lazymatch goal with
+    | |- context [?x =? 0] => destr (x =? 0)
+    end; boolsimpl; try reflexivity; [ ].
+    destruct Hbool; subst;
+      push_unsigned; autorewrite with push_Ztestbit;
+        try reflexivity; [ ].
+    apply Z.eqb_neq. lia.
+  Qed.
+
   Lemma word_wrap_testbit n i :
     Z.testbit (word.wrap n) i = if i <? width then Z.testbit n i else false.
   Proof.
@@ -252,15 +296,6 @@ Section WithWord.
     rewrite !word_wrap_testbit.
     destruct_one_match; (reflexivity || lia).
   Qed.
-
-  Lemma Z_testbit_1_l i : Z.testbit 1 i = (i =? 0).
-  Proof.
-    change 1 with (Z.ones 1).
-    destr (i =? 0); subst;
-      [ autorewrite with push_Ztestbit; reflexivity | ].
-    destr (i <? 0); autorewrite with push_Ztestbit; reflexivity.
-  Qed.
-  Hint Rewrite Z_testbit_1_l using solve [eauto] : push_Ztestbit.
 
   Lemma testbit_has_size_high w i :
     has_size w i ->

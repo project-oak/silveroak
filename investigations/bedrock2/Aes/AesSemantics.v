@@ -211,9 +211,9 @@ Section WithParameters.
       idle_data_in3 : option word;
     }.
   Record busy_data :=
-    { ctrl : word;
-      exp_output : aes_output;
-      max_cycles_until_done : nat;
+    { busy_ctrl : word;
+      busy_exp_output : aes_output;
+      busy_max_cycles_until_done : nat;
     }.
   Record done_data :=
     { done_ctrl : word;
@@ -236,7 +236,7 @@ Section WithParameters.
   Definition status_matches_state (s : state) (status : word) : bool :=
     match s with
     | UNINITIALIZED =>
-      (is_flag_set status AES_STATUS_IDLE
+      (negb (is_flag_set status AES_STATUS_IDLE)
        && negb (is_flag_set status AES_STATUS_STALL)
        && negb (is_flag_set status AES_STATUS_OUTPUT_VALID)
        && negb (is_flag_set status AES_STATUS_INPUT_READY))
@@ -341,7 +341,11 @@ Section WithParameters.
 
   Definition read_output_reg (r : Register) (data : done_data)
     : option (word * done_data) :=
-    let (ctrl, o0, o1, o2, o3) := data in
+    let ctrl := done_ctrl data in
+    let o0 := done_data_out0 data in
+    let o1 := done_data_out1 data in
+    let o2 := done_data_out2 data in
+    let o3 := done_data_out3 data in
     match r with
     | DATA_OUT0 =>
       match o0 with
@@ -411,9 +415,23 @@ Section WithParameters.
 
   Definition write_input_reg (r : Register) (data : idle_data) (val : word)
     : idle_data :=
-    let (ctrl, iv0, iv1, iv2, iv3,
-         key0, key1, key2, key3, key4, key5, key6, key7,
-         data_in0, data_in1, data_in2, data_in3) := data in
+    let ctrl := idle_ctrl data in
+    let iv0 := idle_iv0 data in
+    let iv1 := idle_iv1 data in
+    let iv2 := idle_iv2 data in
+    let iv3 := idle_iv3 data in
+    let key0 := idle_key0 data in
+    let key1 := idle_key1 data in
+    let key2 := idle_key2 data in
+    let key3 := idle_key3 data in
+    let key4 := idle_key4 data in
+    let key5 := idle_key5 data in
+    let key6 := idle_key6 data in
+    let key7 := idle_key7 data in
+    let data_in0 := idle_data_in0 data in
+    let data_in1 := idle_data_in1 data in
+    let data_in2 := idle_data_in2 data in
+    let data_in3 := idle_data_in3 data in
     match r with
     | IV0 => Build_idle_data
               ctrl (Some val) iv1 iv2 iv3 key0 key1 key2 key3 key4 key5 key6 key7

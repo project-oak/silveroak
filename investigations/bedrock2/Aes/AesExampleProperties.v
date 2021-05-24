@@ -75,7 +75,7 @@ Section Proofs.
              (fun tr' m' rets =>
                 let '(out0, out1, out2, out3) := expected_output in
                 (* the circuit is back in the IDLE state *)
-                (exists rs, execution tr' (IDLE rs))
+                (exists data, execution tr' (IDLE data))
                 (* ...and the input arrays are unchanged, while the ciphertext
                      array now holds the values from the expected output *)
                 /\ (array scalar32 (word.of_Z 4) plaintext_ptr plaintext_arr
@@ -86,29 +86,14 @@ Section Proofs.
                 (* ...and there are no return values *)
                 /\ rets = []).
 
-
-  (* TODO: the nregs_populated preconditions are annoying; replace with
-       reg_lookup = Some everywhere? *)
-  Local Ltac solve_nregs_populated :=
-    change Semantics.width with 32;
-    change Semantics.word with parameters.word;
-    repeat
-      (rewrite nregs_populated_put
-        by (cbv [reg_lookup];
-            rewrite ?map.get_put_diff by (apply reg_addr_neq; congruence);
-            apply map.get_empty);
-       cbn [reg_category reg_category_eqb]);
-    cbv [nregs_populated]; rewrite map.fold_empty; reflexivity.
-
   Local Ltac precondition_hammer :=
     lazymatch goal with
     | |- enum_member ?e _ => cbv [enum_member]; cbn [In]; tauto
     | |- boolean _ => cbv [boolean]; tauto
     | |- execution _ _ => eassumption
     | |- output_matches_state _ _ => reflexivity
-    | |- nregs_populated _ _ = _ => solve_nregs_populated
     | H : sep _ _ ?m |- _ ?m => ecancel_assumption
-    | _ => idtac
+    | _ => try reflexivity
     end.
 
   Lemma aes_encrypt_correct :
@@ -134,26 +119,32 @@ Section Proofs.
       change Semantics.word with parameters.word.
       repeat destruct_one_match; subst; try congruence; [ ].
       reflexivity. }
-    (* get known registers*)
-    logical_simplify.
-    lazymatch goal with
-    | H : map.putmany_of_list_zip _ ?vals _ = Some _ |- _ =>
-      let vals' := (eval cbn in vals) in
-      change vals with vals' in H;
-        cbn [map.putmany_of_list_zip] in H;
-        apply Option.eq_of_eq_Some in H; subst
-    end.
+
     repeat straightline.
+    lazymatch goal with
+    | H : execution ?t _ |- context [?t] =>
+      cbn in H
+    end.
 
     (* call aes_iv_put *)
     straightline_call; precondition_hammer; [ ].
-    cbn [map.putmany_of_list] in *.
     repeat straightline.
+    lazymatch goal with
+    | H : execution ?t _ |- context [?t] =>
+      cbn in H
+    end.
 
     (* call aes_data_put_wait *)
     straightline_call; precondition_hammer; [ ].
-    cbn [map.putmany_of_list] in *.
     repeat straightline.
+    lazymatch goal with
+    | H : execution ?t _ |- context [?t] =>
+      cbn in H
+    end.
+    repeat lazymatch goal with
+           | H : context [match ?p with pair _ _ => _ end] |- _ =>
+             rewrite (surjective_pairing p) in H
+           end.
 
     (* call aes_data_get_wait *)
     straightline_call; precondition_hammer; [ ].
@@ -162,30 +153,25 @@ Section Proofs.
     (* done; prove postcondition *)
     repeat destruct_pair_let.
     ssplit; eauto; [ ].
-
-    (* get the expected output elements *)
+    repeat lazymatch goal with H : execution _ _ |- _ => clear H end.
+    cbn [busy_exp_output data_out0 data_out1 data_out2 data_out3] in *.
     lazymatch goal with
-    | H : aes_expected_output _ = Some ?out |- _ =>
-      assert (out = {| data_out0 := fst (fst (fst expected_output));
-                       data_out1 := snd (fst (fst expected_output));
-                       data_out2 := snd (fst expected_output);
-                       data_out3 := snd expected_output |});
-        [ apply Option.eq_of_eq_Some; rewrite <-H | ]
+    | Hsep : sep _ _ ?m |- sep _ _ ?m =>
+      lazymatch type of Hsep with
+        context [parameters.aes_spec ?op ?keys ?iv ?plaintext] =>
+        replace (parameters.aes_spec op keys iv plaintext)
+        with expected_output in Hsep
+      end
+    end; [ ecancel_assumption | ].
+    subst_lets. f_equal; [ ].
+    lazymatch goal with
+    | H : ctrl_operation _ = _ |- _ =>
+      cbv [ctrl_operation] in H;
+        cbn [AES_CTRL_OPERATION constant_words] in H;
+        rewrite H
     end.
-    { cbv [aes_expected_output option_bind reg_lookup].
-      (* TODO: replace with getmany to make this less annoying? *)
-      repeat first [ rewrite map.get_put_diff by (apply reg_addr_neq; congruence)
-                   | rewrite map.get_put_same ].
-      repeat destruct_pair_let. subst_lets. subst.
-      lazymatch goal with
-      | H : ctrl_operation _ = _ |- _ =>
-        cbv [ctrl_operation] in H; rewrite H
-      end.
-      rewrite word.unsigned_eqb.
-      rewrite kAesEnc_eq. push_unsigned.
-      cbn [Z.eqb negb]. reflexivity. }
-
-    subst. cbn [data_out0 data_out1 data_out2 data_out3] in *.
-    ecancel_assumption.
+    rewrite word.unsigned_eqb.
+    rewrite kAesEnc_eq. push_unsigned.
+    cbn [Z.eqb negb]. reflexivity.
   Qed.
 End Proofs.

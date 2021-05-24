@@ -29,7 +29,7 @@ Section Proofs.
 
   Lemma unroll_while functions conde body t m l
         (iterations : nat)
-        (post : trace -> mem -> locals -> Prop) (cond : Semantics.word) :
+        (post : trace -> mem -> locals -> Prop) :
     repeat_logic_step
       (fun t m l post =>
          exists cond,
@@ -37,9 +37,10 @@ Section Proofs.
            /\ word.unsigned cond <> 0
            /\ cmd (call functions) body t m l post)
       iterations (fun t m l =>
-                    dexpr m l conde cond
-                    /\ word.unsigned cond = 0
-                    /\ post t m l) t m l ->
+                    exists cond,
+                      dexpr m l conde cond
+                      /\ word.unsigned cond = 0
+                      /\ post t m l) t m l ->
     cmd (call functions) (cmd.while conde body) t m l post.
   Proof.
     lazymatch goal with
