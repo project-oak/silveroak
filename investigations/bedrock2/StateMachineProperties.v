@@ -18,7 +18,7 @@ Import ListNotations.
 Local Open Scope Z_scope.
 
 Section Proofs.
-  Context {width word} {p : StateMachineSemantics.parameters width word}
+  Context {width word mem} {p : StateMachineSemantics.parameters width word mem}
           {p_ok : parameters.ok p}.
   Import parameters.
 

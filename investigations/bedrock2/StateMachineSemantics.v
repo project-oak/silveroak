@@ -11,22 +11,29 @@ Local Open Scope string_scope. Local Open Scope Z_scope. Local Open Scope list_s
 (* Loosely based on bedrock2/FE310CSemantics.v *)
 
 Module parameters.
-  Class parameters {width} {word : Interface.word.word width} :=
+  Class parameters
+        {width} {word : Interface.word.word width}
+        {mem : Interface.map.map word Byte.byte} :=
     { state : Type;
       register : Type;
-      mem : Interface.map.map word Byte.byte;
       initial_state : state;
       read_step : state -> register -> word -> state -> Prop;
       write_step : state -> register -> word -> state -> Prop;
       reg_addr : register -> word;
+      all_regs : list register;
     }.
   Global Arguments parameters : clear implicits.
 
-  Class ok {width word} (p : parameters width word) :=
+  Class ok {width word mem} (p : parameters width word mem) :=
     { width_ok : width = 32 \/ width = 64;
       word_ok : word.ok word; (* for impl of mem below *)
       mem_ok : Interface.map.ok mem; (* for impl of mem below *)
       reg_addr_unique : forall r1 r2, reg_addr r1 = reg_addr r2 -> r1 = r2;
+      all_regs_complete : forall r, List.In r all_regs;
+      reg_addrs_aligned :
+        forall r, word.unsigned (reg_addr r) mod (bytes_per_word width) = 0;
+      reg_addrs_small :
+        forall r, word.unsigned (reg_addr r) + bytes_per_word width <= 2 ^ width;
     }.
 End parameters.
 Notation parameters := parameters.parameters.
@@ -37,7 +44,7 @@ Definition WRITE := "MMIOWRITE".
 
 Section WithParameters.
   Import parameters.
-  Context {width word} {p : parameters width word}
+  Context {width word mem} {p : parameters width word mem}
           {p_ok : parameters.ok p}.
 
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
@@ -109,7 +116,7 @@ Section WithParameters.
     {|
     Semantics.width := width;
     Semantics.word := word;
-    Semantics.mem := parameters.mem;
+    Semantics.mem := mem;
     Semantics.locals := SortedListString.map _;
     Semantics.env := SortedListString.map _;
     Semantics.ext_spec := ext_spec;
@@ -137,7 +144,7 @@ Section WithParameters.
 
   Global Instance ok : Semantics.parameters_ok semantics_parameters.
   Proof.
-    split; cbv [env locals mem semantics_parameters]; try exact _.
+    split; cbv [env locals semantics_parameters]; try exact _.
     { exact width_ok. }
     { exact word_ok. }
     { exact mem_ok. }

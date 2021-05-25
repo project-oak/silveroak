@@ -116,10 +116,10 @@ Definition aes_c_template_top : list string :=
     ; "}"
     ; ""
     ; "// bedrock2 MMIO aliases"
-    ; "void REG32_SET(uintptr_t addr, uintptr_t value) {"
+    ; "void MMIOWRITE(uintptr_t addr, uintptr_t value) {"
     ; "  REG32(addr) = value;"
     ; "}"
-    ; "uintptr_t REG32_GET(uintptr_t addr) {"
+    ; "uintptr_t MMIOREAD(uintptr_t addr) {"
     ; "  return REG32(addr);"
     ; "}"
     ; ""].
