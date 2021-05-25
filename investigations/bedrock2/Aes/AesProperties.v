@@ -48,6 +48,9 @@ Section Proofs.
   Local Instance localsok : @map.ok string parameters.word Semantics.locals
     := Semantics.locals_ok.
 
+  (* Plug in the right state machine parameters; typeclass inference struggles here *)
+  Local Notation execution := (execution (p:=state_machine_parameters)).
+
   (***** General-purpose lemmas/tactics and setup *****)
 
   Add Ring wring : (Properties.word.ring_theory (word := parameters.word))
@@ -380,7 +383,7 @@ Section Proofs.
     repeat constructor.
   Qed.
 
-  Lemma interact_read_data_out i call addre bind t m l
+  Lemma interact_read_data_out i call addre bind (t : trace) m l
         (post : trace -> mem -> locals -> Prop) data addr val :
     dexprs m l [addre] [addr] ->
     addr = word.add AES_DATA_OUT0 (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
@@ -851,7 +854,7 @@ Section Proofs.
               fun v tr' m' l' =>
                 (* the new state is the old one plus the first i keys *)
                 execution
-                  (p:=state_machine_parameters) tr'
+                  tr'
                   (IDLE
                      (fold_left
                         (fun data i =>
@@ -1015,7 +1018,7 @@ Section Proofs.
         exists (fun v tr' m' l' =>
              (* the new state is the old one plus the first i keys *)
              execution
-               (p:=state_machine_parameters) tr'
+               tr'
                (IDLE
                   (fold_left
                      (fun data i =>
@@ -1610,7 +1613,7 @@ Section Proofs.
                 fun i tr' m' l' =>
                   exists (s' : state) is_valid,
                     (* s' is the state for the new trace *)
-                    execution (p:=state_machine_parameters) tr' s'
+                    execution tr' s'
                     (* as long as the loop continues, we keep setting is_valid to
                        0, so locals are unchanged until the loop breaks *)
                     /\ l' = map.put l "is_valid" is_valid

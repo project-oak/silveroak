@@ -197,6 +197,8 @@ Class aes_constants_ok
       {width} {word : word width} {word_ok : word.ok word}
       (global_values : aes_constants word.rep) :=
   { addrs_unique : unique_words aes_reg_addrs;
+    addrs_aligned : Forall (fun addr => word.unsigned addr mod 4 = 0) aes_reg_addrs;
+    addrs_small : Forall (fun addr => word.unsigned addr + 4 <= 2 ^ width) aes_reg_addrs;
     status_flags_unique_and_nonzero :
       unique_words
         ((word.of_Z 0)

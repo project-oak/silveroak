@@ -61,7 +61,7 @@ Section Proofs.
         (* output array has the right length *)
         length ciphertext_arr = 4%nat ->
         (* circuit must start in the UNINITIALIZED state *)
-        execution tr UNINITIALIZED ->
+        execution (p:=state_machine_parameters) tr UNINITIALIZED ->
         (* determine expected output using aes_spec *)
         let is_decrypt := false in
         let expected_output :=
@@ -75,7 +75,7 @@ Section Proofs.
              (fun tr' m' rets =>
                 let '(out0, out1, out2, out3) := expected_output in
                 (* the circuit is back in the IDLE state *)
-                (exists data, execution tr' (IDLE data))
+                (exists data, execution (p:=state_machine_parameters) tr' (IDLE data))
                 (* ...and the input arrays are unchanged, while the ciphertext
                      array now holds the values from the expected output *)
                 /\ (array scalar32 (word.of_Z 4) plaintext_ptr plaintext_arr

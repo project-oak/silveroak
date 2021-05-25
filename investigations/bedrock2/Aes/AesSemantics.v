@@ -127,24 +127,21 @@ Section WithParameters.
     | DATA_OUT3 => word.add AES_DATA_OUT0 (word.of_Z 12)
     end.
 
+  Lemma aes_reg_addrs_eq : aes_reg_addrs = map reg_addr all_regs.
+  Proof.
+    cbv [aes_reg_addrs].
+    rewrite nregs_key_eq, nregs_iv_eq, nregs_data_eq.
+    cbv [Z.to_nat Pos.to_nat Pos.iter_op Nat.add]. cbn.
+    repeat (f_equal; try ring).
+  Qed.
+
   Lemma reg_addr_unique r1 r2 :
     reg_addr r1 = reg_addr r2 -> r1 = r2.
   Proof.
     pose proof addrs_unique as Huniq.
-    cbv [aes_reg_addrs list_reg_addrs] in *.
-    rewrite nregs_key_eq, nregs_iv_eq, nregs_data_eq in Huniq.
-    repeat lazymatch type of Huniq with
-           | context [Z.to_nat ?n] =>
-             let x := constr:(Z.to_nat n) in
-             let y := (eval vm_compute in x) in
-             change x with y in Huniq
-           | _ => progress cbn [seq map app] in Huniq
-           end.
+    rewrite aes_reg_addrs_eq in Huniq.
+    cbv [all_regs map reg_addr] in Huniq.
     simplify_unique_words_in Huniq.
-    repeat lazymatch goal with
-           | H : context [word.add ?x (word.of_Z 0)] |- _ =>
-             ring_simplify (word.add x (word.of_Z 0)) in H
-           end.
     cbv [reg_addr]; cbn; intro Heqaddr.
     destruct r1.
     (* clear all hypothesis that don't have to do with r1 (makes proof
@@ -164,6 +161,24 @@ Section WithParameters.
                  end
         end.
     all:destruct r2; try first [ exact eq_refl | congruence ].
+  Qed.
+
+  Lemma reg_addr_aligned r : word.unsigned (reg_addr r) mod 4 = 0.
+  Proof.
+    pose proof addrs_aligned as Haligned.
+    rewrite aes_reg_addrs_eq in Haligned.
+    rewrite Forall_forall in Haligned.
+    apply Haligned. apply in_map_iff.
+    eexists; eauto using all_regs_complete.
+  Qed.
+
+  Lemma reg_addr_small r : word.unsigned (reg_addr r) + 4 <= 2 ^ 32.
+  Proof.
+    pose proof addrs_small as Hsmall.
+    rewrite aes_reg_addrs_eq in Hsmall.
+    rewrite Forall_forall in Hsmall.
+    apply Hsmall. apply in_map_iff.
+    eexists; eauto using all_regs_complete.
   Qed.
 
   Record aes_input :=
@@ -530,14 +545,14 @@ Section WithParameters.
     end.
 
   Global Instance state_machine_parameters
-    : StateMachineSemantics.parameters 32 word :=
+    : StateMachineSemantics.parameters 32 word mem :=
     {| StateMachineSemantics.parameters.state := state ;
        StateMachineSemantics.parameters.register := Register ;
-       StateMachineSemantics.parameters.mem := mem ;
        StateMachineSemantics.parameters.initial_state := UNINITIALIZED ;
        StateMachineSemantics.parameters.read_step := read_step ;
        StateMachineSemantics.parameters.write_step := write_step ;
        StateMachineSemantics.parameters.reg_addr := reg_addr ;
+       StateMachineSemantics.parameters.all_regs := all_regs;
     |}.
 
   Global Instance state_machine_parameters_ok
@@ -548,6 +563,9 @@ Section WithParameters.
     { exact word_ok. }
     { exact mem_ok. }
     { exact reg_addr_unique. }
+    { exact all_regs_complete. }
+    { exact reg_addr_aligned. }
+    { exact reg_addr_small. }
   Defined.
 
 End WithParameters.
