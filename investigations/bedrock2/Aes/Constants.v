@@ -205,6 +205,12 @@ Class aes_constants_ok
                    ; AES_STATUS_STALL
                    ; AES_STATUS_OUTPUT_VALID
                    ; AES_STATUS_INPUT_READY]));
+    status_flags_inbounds :
+      Forall (fun flag => word.unsigned flag < 32)
+             [AES_STATUS_IDLE
+              ; AES_STATUS_STALL
+              ; AES_STATUS_OUTPUT_VALID
+              ; AES_STATUS_INPUT_READY];
 
     (* control register needs to be properly formatted *)
     op_size := 1;

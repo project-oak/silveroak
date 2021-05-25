@@ -6,6 +6,7 @@ Require Import bedrock2.Syntax.
 Require Import bedrock2.NotationsCustomEntry.
 Require Import bedrock2.ToCString.
 Require Import coqutil.Word.Interface.
+Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.Aes.Constants.
 Require Import Bedrock2Experiments.Aes.AesSemantics.
 Import Syntax.Coercions List.ListNotations.

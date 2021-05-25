@@ -15,8 +15,6 @@ Require Import Bedrock2Experiments.Word.
 Import String List.ListNotations.
 Local Open Scope string_scope. Local Open Scope Z_scope. Local Open Scope list_scope.
 
-(* Loosely based on bedrock2/FE310CSemantics.v *)
-
 Definition option_bind {A B} (x : option A) (f : A -> option B) : option B :=
   match x with
   | Some a => f a
@@ -37,7 +35,6 @@ Module parameters.
   Class parameters :=
     { word :> Interface.word.word 32;
       mem :> Interface.map.map word Byte.byte;
-      regs :> Interface.map.map word word; (* register values *)
       (* TODO: mode is currently ignored *)
       aes_spec :
         forall (is_decrypt : bool)
@@ -49,19 +46,22 @@ Module parameters.
   Class ok (p : parameters) :=
     { word_ok :> word.ok word; (* for impl of mem below *)
       mem_ok :> Interface.map.ok mem; (* for impl of mem below *)
-      regs_ok :> Interface.map.ok regs;
     }.
 End parameters.
 Notation parameters := parameters.parameters.
 
-Definition READ := "REG32_GET".
-Definition WRITE := "REG32_SET".
-
 Section WithParameters.
   Import parameters.
   Context {p : parameters} {p_ok : parameters.ok p}.
-  Context {consts : aes_constants Z} {timing : timing}.
+  Context {consts : aes_constants Z}
+          {consts_ok : aes_constants_ok constant_words}
+          {timing : timing}.
   Existing Instance constant_words.
+
+  Add Ring wring : (Properties.word.ring_theory (word := parameters.word))
+        (preprocess [autorewrite with rew_word_morphism],
+         morphism (Properties.word.ring_morph (word := parameters.word)),
+         constants [Properties.word_cst]).
 
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
   Local Notation bedrock2_trace := (list bedrock2_event).
@@ -127,25 +127,108 @@ Section WithParameters.
     | DATA_OUT3 => word.add AES_DATA_OUT0 (word.of_Z 12)
     end.
 
-  Definition known_register_state : Type := map.rep (map:=regs).
+  Lemma reg_addr_unique r1 r2 :
+    reg_addr r1 = reg_addr r2 -> r1 = r2.
+  Proof.
+    pose proof addrs_unique as Huniq.
+    cbv [aes_reg_addrs list_reg_addrs] in *.
+    rewrite nregs_key_eq, nregs_iv_eq, nregs_data_eq in Huniq.
+    repeat lazymatch type of Huniq with
+           | context [Z.to_nat ?n] =>
+             let x := constr:(Z.to_nat n) in
+             let y := (eval vm_compute in x) in
+             change x with y in Huniq
+           | _ => progress cbn [seq map app] in Huniq
+           end.
+    simplify_unique_words_in Huniq.
+    repeat lazymatch goal with
+           | H : context [word.add ?x (word.of_Z 0)] |- _ =>
+             ring_simplify (word.add x (word.of_Z 0)) in H
+           end.
+    cbv [reg_addr]; cbn; intro Heqaddr.
+    destruct r1.
+    (* clear all hypothesis that don't have to do with r1 (makes proof
+       faster) *)
+    all:lazymatch type of Heqaddr with
+        | ?r = _ =>
+          repeat match goal with
+                 | H : ?x <> ?y |- _ =>
+                   lazymatch x with
+                   | context [r] => fail
+                   | _ =>
+                     lazymatch y with
+                     | context [r] => fail
+                     | _ => clear H
+                     end
+                   end
+                 end
+        end.
+    all:destruct r2; try first [ exact eq_refl | congruence ].
+  Qed.
 
-  Definition reg_lookup (rs : known_register_state) (r : Register) : option word :=
-    map.get rs (reg_addr r).
-
+  Record aes_input :=
+    { is_decrypt : bool;
+      iv0 : word;
+      iv1 : word;
+      iv2 : word;
+      iv3 : word;
+      key0 : word;
+      key1 : word;
+      key2 : word;
+      key3 : word;
+      key4 : word;
+      key5 : word;
+      key6 : word;
+      key7 : word;
+      data_in0 : word;
+      data_in1 : word;
+      data_in2 : word;
+      data_in3 : word;
+    }.
   Record aes_output :=
     { data_out0 : word;
       data_out1 : word;
       data_out2 : word;
       data_out3 : word; }.
 
+  Record idle_data :=
+    { idle_ctrl : word;
+      idle_iv0 : option word;
+      idle_iv1 : option word;
+      idle_iv2 : option word;
+      idle_iv3 : option word;
+      idle_key0 : option word;
+      idle_key1 : option word;
+      idle_key2 : option word;
+      idle_key3 : option word;
+      idle_key4 : option word;
+      idle_key5 : option word;
+      idle_key6 : option word;
+      idle_key7 : option word;
+      idle_data_in0 : option word;
+      idle_data_in1 : option word;
+      idle_data_in2 : option word;
+      idle_data_in3 : option word;
+    }.
+  Record busy_data :=
+    { busy_ctrl : word;
+      busy_exp_output : aes_output;
+      busy_max_cycles_until_done : nat;
+    }.
+  Record done_data :=
+    { done_ctrl : word;
+      done_data_out0 : option word;
+      done_data_out1 : option word;
+      done_data_out2 : option word;
+      done_data_out3 : option word;
+    }.
+
   (* state *from the perspective of the software* *)
   Inductive state : Type :=
-  | UNINITIALIZED (* CTRL register not yet written *)
-  | IDLE (rs : known_register_state)
-  | BUSY (rs : known_register_state)
-         (exp_output : aes_output)
-         (max_cycles_until_done : nat)
-  | DONE (rs : known_register_state)
+  | UNINITIALIZED
+  | IDLE (data : idle_data)
+  | BUSY (data : busy_data)
+  | DONE (data : done_data)
   (* TODO: add CLEAR state for aes_clear *)
   .
 
@@ -153,7 +236,7 @@ Section WithParameters.
   Definition status_matches_state (s : state) (status : word) : bool :=
     match s with
     | UNINITIALIZED =>
-      (is_flag_set status AES_STATUS_IDLE
+      (negb (is_flag_set status AES_STATUS_IDLE)
        && negb (is_flag_set status AES_STATUS_STALL)
        && negb (is_flag_set status AES_STATUS_OUTPUT_VALID)
        && negb (is_flag_set status AES_STATUS_INPUT_READY))
@@ -162,7 +245,7 @@ Section WithParameters.
        && negb (is_flag_set status AES_STATUS_STALL)
        && negb (is_flag_set status AES_STATUS_OUTPUT_VALID)
        && is_flag_set status AES_STATUS_INPUT_READY)
-    | BUSY _ _ _ =>
+    | BUSY _ =>
       (negb (is_flag_set status AES_STATUS_IDLE)
        && negb (is_flag_set status AES_STATUS_STALL)
        && negb (is_flag_set status AES_STATUS_OUTPUT_VALID)
@@ -174,39 +257,33 @@ Section WithParameters.
        && negb (is_flag_set status AES_STATUS_INPUT_READY))
     end.
 
-  Definition aes_expected_output (rs : known_register_state) : option aes_output :=
-    ctrl <- reg_lookup rs CTRL ;;
-    key0 <- reg_lookup rs KEY0 ;;
-    key1 <- reg_lookup rs KEY1 ;;
-    key2 <- reg_lookup rs KEY2 ;;
-    key3 <- reg_lookup rs KEY3 ;;
-    key4 <- reg_lookup rs KEY4 ;;
-    key5 <- reg_lookup rs KEY5 ;;
-    key6 <- reg_lookup rs KEY6 ;;
-    key7 <- reg_lookup rs KEY7 ;;
-    iv0 <- reg_lookup rs IV0 ;;
-    iv1 <- reg_lookup rs IV1 ;;
-    iv2 <- reg_lookup rs IV2 ;;
-    iv3 <- reg_lookup rs IV3 ;;
-    data_in0 <- reg_lookup rs DATA_IN0 ;;
-    data_in1 <- reg_lookup rs DATA_IN1 ;;
-    data_in2 <- reg_lookup rs DATA_IN2 ;;
-    data_in3 <- reg_lookup rs DATA_IN3 ;;
-    let is_decrypt := is_flag_set ctrl AES_CTRL_OPERATION in
+  Definition aes_expected_output (input : aes_input) : aes_output :=
+    let (is_decrypt, iv0, iv1, iv2, iv3,
+         key0, key1, key2, key3, key4, key5, key6, key7,
+         data_in0, data_in1, data_in2, data_in3) := input in
     let '(out0, out1, out2, out3) :=
         aes_spec is_decrypt
                  (key0, key1, key2, key3, key4, key5, key6, key7)
                  (iv0, iv1, iv2, iv3)
                  (data_in0, data_in1, data_in2, data_in3) in
-    Some {| data_out0 := out0 ;
-            data_out1 := out1 ;
-            data_out2 := out2 ;
-            data_out3 := out3 ; |}.
+    {| data_out0 := out0 ;
+       data_out1 := out1 ;
+       data_out2 := out2 ;
+       data_out3 := out3 ; |}.
 
-  Definition is_busy (s : state) : bool :=
-    match s with
-    | BUSY _ _ _ => true
-    | _ => false
+  Definition get_aes_input (data : idle_data) : option aes_input :=
+    match data with
+    | Build_idle_data
+        ctrl (Some iv0) (Some iv1) (Some iv2) (Some iv3)
+        (Some key0) (Some key1) (Some key2) (Some key3)
+        (Some key4) (Some key5) (Some key6) (Some key7)
+        (Some data_in0) (Some data_in1) (Some data_in2) (Some data_in3) =>
+      Some (Build_aes_input
+              (is_flag_set ctrl AES_CTRL_OPERATION)
+              iv0 iv1 iv2 iv3
+              key0 key1 key2 key3 key4 key5 key6 key7
+              data_in0 data_in1 data_in2 data_in3)
+    | _ => None
     end.
 
   Inductive RegisterCategory : Set :=
@@ -258,47 +335,40 @@ Section WithParameters.
   Global Instance reg_category_eqb_spec : EqDecider reg_category_eqb.
   Proof. intros x y. destruct x,y; constructor; congruence. Qed.
 
-  Definition addr_in_category (addr : word) (c : RegisterCategory) : bool :=
-    existsb (fun r => (word.eqb (reg_addr r) addr
-                    && reg_category_eqb c (reg_category r))%bool)
-            all_regs.
+  Definition done_data_from_output (ctrl : word) (out : aes_output) : done_data :=
+    Build_done_data ctrl (Some (data_out0 out)) (Some (data_out1 out))
+                    (Some (data_out2 out)) (Some (data_out3 out)).
 
-  (* gives the number of populated registers in the given category *)
-  Definition nregs_populated
-             (rs : known_register_state)
-             (cat : RegisterCategory) : nat :=
-    map.fold
-      (map:=regs)
-      (fun acc addr _ => if addr_in_category addr cat
-                      then S acc
-                      else acc) 0%nat rs.
-
-  Definition set_out_regs
-             (rs : known_register_state) (out : aes_output) : known_register_state :=
-    let rs := map.put rs (reg_addr DATA_OUT0) out.(data_out0) in
-    let rs := map.put rs (reg_addr DATA_OUT1) out.(data_out1) in
-    let rs := map.put rs (reg_addr DATA_OUT2) out.(data_out2) in
-    map.put rs (reg_addr DATA_OUT3) out.(data_out3).
-
-  Definition unset_inp_regs
-             (rs : known_register_state) : known_register_state :=
-    let rs := map.remove rs (reg_addr KEY0) in
-    let rs := map.remove rs (reg_addr KEY1) in
-    let rs := map.remove rs (reg_addr KEY2) in
-    let rs := map.remove rs (reg_addr KEY3) in
-    let rs := map.remove rs (reg_addr KEY4) in
-    let rs := map.remove rs (reg_addr KEY5) in
-    let rs := map.remove rs (reg_addr KEY6) in
-    let rs := map.remove rs (reg_addr KEY7) in
-    let rs := map.remove rs (reg_addr IV0) in
-    let rs := map.remove rs (reg_addr IV1) in
-    let rs := map.remove rs (reg_addr IV2) in
-    let rs := map.remove rs (reg_addr IV3) in
-    let rs := map.remove rs (reg_addr DATA_IN0) in
-    let rs := map.remove rs (reg_addr DATA_IN1) in
-    let rs := map.remove rs (reg_addr DATA_IN2) in
-    let rs := map.remove rs (reg_addr DATA_IN3) in
-    rs.
+  Definition read_output_reg (r : Register) (data : done_data)
+    : option (word * done_data) :=
+    let ctrl := done_ctrl data in
+    let o0 := done_data_out0 data in
+    let o1 := done_data_out1 data in
+    let o2 := done_data_out2 data in
+    let o3 := done_data_out3 data in
+    match r with
+    | DATA_OUT0 =>
+      match o0 with
+      | Some o0 => Some (o0, Build_done_data ctrl None o1 o2 o3)
+      | None => None
+      end
+    | DATA_OUT1 =>
+      match o1 with
+      | Some o1 => Some (o1, Build_done_data ctrl o0 None o2 o3)
+      | None => None
+      end
+    | DATA_OUT2 =>
+      match o2 with
+      | Some o2 => Some (o2, Build_done_data ctrl o0 o1 None o3)
+      | None => None
+      end
+    | DATA_OUT3 =>
+      match o3 with
+      | Some o3 => Some (o3, Build_done_data ctrl o0 o1 o2 None)
+      | None => None
+      end
+    | _ => None
+    end.
 
   Definition read_step
              (s : state) (r : Register) (val : word) (s' : state) : Prop :=
@@ -306,17 +376,17 @@ Section WithParameters.
     | StatusReg =>
       (* status register read *)
       match s with
-      | BUSY rs out n =>
-        if status_matches_state (DONE rs) val
+      | BUSY (Build_busy_data ctrl out n) =>
+        if is_flag_set val AES_STATUS_OUTPUT_VALID
         then
           (* transition to DONE state *)
-          s' = DONE (set_out_regs rs out)
+          s' = DONE (done_data_from_output ctrl out)
         else
           (* decrement max #cycles until done *)
           status_matches_state s val = true (* we must have read BUSY status *)
           /\ match n with
             | O => False (* exceeded max #cycles *)
-            | S n' => s' = BUSY rs out n'
+            | S n' => s' = BUSY (Build_busy_data ctrl out n')
             end
       | _ =>
         (* if the status is not busy, reading the status causes no change *)
@@ -325,19 +395,95 @@ Section WithParameters.
     | DataOutReg =>
       (* output data register read *)
       match s with
-      | DONE rs =>
-        reg_lookup rs r = Some val
-        /\ let rs' := map.remove rs (reg_addr r) in
-          if (nregs_populated rs' DataOutReg =? 0)%nat
-          then
-            (* all output registers have been read; transition to IDLE state *)
-            s' = IDLE rs'
-          else
-            (* stay in DONE state *)
-            s' = DONE rs'
-      | _ => False (* cannot read from output registers unless DONE *)
+      | DONE data =>
+        exists data',
+        read_output_reg r data = Some (val, data')
+        /\ s' = match data' with
+               | Build_done_data ctrl None None None None =>
+                 (* all output registers read; transition to IDLE state *)
+                 IDLE (Build_idle_data
+                         ctrl None None None None None None None None
+                         None None None None None None None None)
+               | _ =>
+                 (* some registers have not been read; stay in DONE state *)
+                 DONE data'
+               end
+      | _ => False (* read is not permitted from other states *)
       end
-    | _ => False (* no guarantees about the values of other registers *)
+    | ControlReg | DataInReg | KeyReg | IVReg => False (* not readable *)
+    end.
+
+  Definition write_input_reg (r : Register) (data : idle_data) (val : word)
+    : idle_data :=
+    let ctrl := idle_ctrl data in
+    let iv0 := idle_iv0 data in
+    let iv1 := idle_iv1 data in
+    let iv2 := idle_iv2 data in
+    let iv3 := idle_iv3 data in
+    let key0 := idle_key0 data in
+    let key1 := idle_key1 data in
+    let key2 := idle_key2 data in
+    let key3 := idle_key3 data in
+    let key4 := idle_key4 data in
+    let key5 := idle_key5 data in
+    let key6 := idle_key6 data in
+    let key7 := idle_key7 data in
+    let data_in0 := idle_data_in0 data in
+    let data_in1 := idle_data_in1 data in
+    let data_in2 := idle_data_in2 data in
+    let data_in3 := idle_data_in3 data in
+    match r with
+    | IV0 => Build_idle_data
+              ctrl (Some val) iv1 iv2 iv3 key0 key1 key2 key3 key4 key5 key6 key7
+              data_in0 data_in1 data_in2 data_in3
+    | IV1 => Build_idle_data
+              ctrl iv0 (Some val) iv2 iv3 key0 key1 key2 key3 key4 key5 key6 key7
+              data_in0 data_in1 data_in2 data_in3
+    | IV2 => Build_idle_data
+              ctrl iv0 iv1 (Some val) iv3 key0 key1 key2 key3 key4 key5 key6 key7
+              data_in0 data_in1 data_in2 data_in3
+    | IV3 => Build_idle_data
+              ctrl iv0 iv1 iv2 (Some val) key0 key1 key2 key3 key4 key5 key6 key7
+              data_in0 data_in1 data_in2 data_in3
+    | KEY0 => Build_idle_data
+               ctrl iv0 iv1 iv2 iv3 (Some val) key1 key2 key3 key4 key5 key6 key7
+               data_in0 data_in1 data_in2 data_in3
+    | KEY1 => Build_idle_data
+               ctrl iv0 iv1 iv2 iv3 key0 (Some val) key2 key3 key4 key5 key6 key7
+               data_in0 data_in1 data_in2 data_in3
+    | KEY2 => Build_idle_data
+               ctrl iv0 iv1 iv2 iv3 key0 key1 (Some val) key3 key4 key5 key6 key7
+               data_in0 data_in1 data_in2 data_in3
+    | KEY3 => Build_idle_data
+               ctrl iv0 iv1 iv2 iv3 key0 key1 key2 (Some val) key4 key5 key6 key7
+               data_in0 data_in1 data_in2 data_in3
+    | KEY4 => Build_idle_data
+               ctrl iv0 iv1 iv2 iv3 key0 key1 key2 key3 (Some val) key5 key6 key7
+               data_in0 data_in1 data_in2 data_in3
+    | KEY5 => Build_idle_data
+               ctrl iv0 iv1 iv2 iv3 key0 key1 key2 key3 key4 (Some val) key6 key7
+               data_in0 data_in1 data_in2 data_in3
+    | KEY6 => Build_idle_data
+               ctrl iv0 iv1 iv2 iv3 key0 key1 key2 key3 key4 key5 (Some val) key7
+               data_in0 data_in1 data_in2 data_in3
+    | KEY7 => Build_idle_data
+               ctrl iv0 iv1 iv2 iv3 key0 key1 key2 key3 key4 key5 key6 (Some val)
+               data_in0 data_in1 data_in2 data_in3
+    | DATA_IN0 => Build_idle_data
+                   ctrl iv0 iv1 iv2 iv3 key0 key1 key2 key3 key4 key5 key6 key7
+                   (Some val) data_in1 data_in2 data_in3
+    | DATA_IN1 => Build_idle_data
+                   ctrl iv0 iv1 iv2 iv3 key0 key1 key2 key3 key4 key5 key6 key7
+                   data_in0 (Some val) data_in2 data_in3
+    | DATA_IN2 => Build_idle_data
+                   ctrl iv0 iv1 iv2 iv3 key0 key1 key2 key3 key4 key5 key6 key7
+                   data_in0 data_in1 (Some val) data_in3
+    | DATA_IN3 => Build_idle_data
+                   ctrl iv0 iv1 iv2 iv3 key0 key1 key2 key3 key4 key5 key6 key7
+                   data_in0 data_in1 data_in2 (Some val)
+    | _ => Build_idle_data
+            ctrl iv0 iv1 iv2 iv3 key0 key1 key2 key3 key4 key5 key6 key7
+            data_in0 data_in1 data_in2 data_in3
     end.
 
   Definition write_step
@@ -347,39 +493,40 @@ Section WithParameters.
       match s with
       | UNINITIALIZED =>
         (* transition to IDLE state *)
-        s' = IDLE (map.put map.empty AES_CTRL val)
-      | IDLE rs =>
+        s' = IDLE (Build_idle_data
+                     val None None None None None None None None
+                     None None None None None None None None)
+      | IDLE (Build_idle_data
+                _ iv0 iv1 iv2 iv3 key0 key1 key2 key3 key4 key5 key6 key7
+                data_in0 data_in1 data_in2 data_in3) =>
         (* stay IDLE, update ctrl value *)
-        s' = IDLE (map.put rs AES_CTRL val)
+        s' = IDLE (Build_idle_data
+                     val iv0 iv1 iv2 iv3 key0 key1 key2 key3 key4 key5 key6 key7
+                     data_in0 data_in1 data_in2 data_in3)
       | _ => False (* ctrl register is not writeable in other states *)
       end
     | KeyReg | IVReg =>
       match s with
-      | IDLE rs =>
-        s' = IDLE (map.put rs (reg_addr r) val)
+      | IDLE data => s' = IDLE (write_input_reg r data val)
       | _ => False (* key/iv registers are not writeable in other states *)
       end
     | DataInReg =>
       match s with
-      | IDLE rs =>
-        (* can only provide input once key/iv regs have been written *)
-        nregs_populated rs KeyReg = 8%nat
-        /\ nregs_populated rs IVReg = 4%nat
-        /\ (nregs_populated rs DataInReg < 4)%nat
-        /\ let rs' := map.put rs (reg_addr r) val in
-          if (nregs_populated rs' DataInReg =? 4)%nat
-          then
-            (* wrote to last input register; transition to BUSY state *)
-            match aes_expected_output (map.put rs (reg_addr r) val) with
-            | Some out => s' = BUSY (unset_inp_regs rs') out timing.ndelays_core
-            | None => False (* should not be possible *)
-            end
-          else
-            (* more input registers needed; stay in IDLE state *)
-            s' = IDLE rs'
-      | _ => False (* input data registers are not writeable in other states *)
+      | IDLE data =>
+        let data' := write_input_reg r data val in
+        s' = match get_aes_input data' with
+             | Some input =>
+               (* input registers are fully populated; encryption begins *)
+               BUSY (Build_busy_data
+                       (idle_ctrl data')
+                       (aes_expected_output input) timing.ndelays_core)
+             | None =>
+               (* more input registers needed; stay in IDLE state *)
+               IDLE data'
+             end
+      | _ => False (* input data registers not writeable in other states *)
       end
-    | StatusReg | DataOutReg => False (* not writeable *)
+    | DataOutReg | StatusReg => False (* not writeable *)
     end.
 
   Global Instance state_machine_parameters
@@ -387,8 +534,6 @@ Section WithParameters.
     {| StateMachineSemantics.parameters.state := state ;
        StateMachineSemantics.parameters.register := Register ;
        StateMachineSemantics.parameters.mem := mem ;
-       StateMachineSemantics.parameters.READ := READ ;
-       StateMachineSemantics.parameters.WRITE := WRITE ;
        StateMachineSemantics.parameters.initial_state := UNINITIALIZED ;
        StateMachineSemantics.parameters.read_step := read_step ;
        StateMachineSemantics.parameters.write_step := write_step ;
@@ -402,6 +547,7 @@ Section WithParameters.
     { left; exact eq_refl. }
     { exact word_ok. }
     { exact mem_ok. }
+    { exact reg_addr_unique. }
   Defined.
 
 End WithParameters.
