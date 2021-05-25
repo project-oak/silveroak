@@ -46,8 +46,12 @@ Section Impl.
     let aes_cfg_manual_operation := "aes_cfg_manual_operation" in
     let cfg_val := "cfg_val" in
     ("b2_aes_init",
-     (aes_globals ++ [aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
-                     aes_cfg_manual_operation],
+     ([AES_CTRL; AES_CTRL_OPERATION;
+      AES_CTRL_MODE_MASK; AES_CTRL_MODE_OFFSET;
+      AES_CTRL_KEY_LEN_MASK; AES_CTRL_KEY_LEN_OFFSET;
+      AES_CTRL_MANUAL_OPERATION;
+      aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
+      aes_cfg_manual_operation],
       [], bedrock_func_body:(
       output! WRITE (AES_CTRL,
                      ((aes_cfg_operation << AES_CTRL_OPERATION) |
@@ -87,7 +91,8 @@ Section Impl.
     let num_regs_key_used := "num_regs_key_used" in
     let i := "i" in
     ("b2_key_put",
-     (aes_globals ++ [key; key_len], [], bedrock_func_body:(
+     ([AES_KEY0; AES_NUM_REGS_KEY; kAes256; kAes192; key; key_len],
+      [], bedrock_func_body:(
       if (key_len == kAes256) {
         num_regs_key_used = 8
       } else {
@@ -123,7 +128,7 @@ Section Impl.
     let iv := "iv" in
     let i := "i" in
     ("b2_iv_put",
-     (aes_globals ++ [iv], [], bedrock_func_body:(
+     ([AES_IV0; AES_NUM_REGS_IV; iv], [], bedrock_func_body:(
       i = 0 ;
       while (i < AES_NUM_REGS_IV) {
         output! WRITE (AES_IV0 + (i * 4), load4( iv + (i * 4) ));
@@ -143,7 +148,8 @@ Section Impl.
     let data := "data" in
     let i := "i" in
     ("b2_data_put",
-     (aes_globals ++ [data], [], bedrock_func_body:(
+     ([AES_DATA_IN0; AES_NUM_REGS_DATA; data], [],
+      bedrock_func_body:(
       i = 0 ;
       while (i < AES_NUM_REGS_DATA) {
         output! WRITE (AES_DATA_IN0 + (i * 4), load4( data + (i * 4) ));
@@ -164,7 +170,8 @@ Section Impl.
     let val := "val" in
     let i := "i" in
     ("b2_data_get",
-     (aes_globals ++ [data], [], bedrock_func_body:(
+     ([AES_DATA_OUT0; AES_NUM_REGS_DATA; data], [],
+      bedrock_func_body:(
       i = 0 ;
       while (i < AES_NUM_REGS_DATA) {
         io! val = READ ( AES_DATA_OUT0 + (i * 4) ) ;
@@ -182,7 +189,8 @@ Section Impl.
     let status := "status" in
     let out := "out" in
     ("b2_data_ready",
-     (aes_globals ++ [], [out], bedrock_func_body:(
+     ([AES_STATUS; AES_STATUS_INPUT_READY], [out],
+      bedrock_func_body:(
       io! status = READ (AES_STATUS) ;
       out = status & (1 << AES_STATUS_INPUT_READY)
     ))).
@@ -196,7 +204,8 @@ Section Impl.
     let status := "status" in
     let out := "out" in
     ("b2_data_valid",
-     (aes_globals ++ [], [out], bedrock_func_body:(
+     ([AES_STATUS; AES_STATUS_OUTPUT_VALID], [out],
+      bedrock_func_body:(
       io! status = READ (AES_STATUS) ;
       out = status & (1 << AES_STATUS_OUTPUT_VALID)
     ))).
@@ -210,7 +219,8 @@ Section Impl.
     let status := "status" in
     let out := "out" in
     ("b2_idle",
-     (aes_globals ++ [], [out], bedrock_func_body:(
+     ([AES_STATUS; AES_STATUS_IDLE], [out],
+      bedrock_func_body:(
       io! status = READ (AES_STATUS) ;
       out = status & (1 << AES_STATUS_IDLE)
     ))).
@@ -229,13 +239,15 @@ Section Impl.
     let data := "data" in
     let is_ready := "is_ready" in
     ("b2_data_put_wait",
-     (aes_globals ++ [data], [], bedrock_func_body:(
+     ([AES_DATA_IN0; AES_NUM_REGS_DATA;
+      AES_STATUS; AES_STATUS_INPUT_READY; data], [],
+      bedrock_func_body:(
       is_ready = 0 ;
       while (is_ready == 0) {
-        unpack! is_ready = aes_data_ready coq:(aes_globals)
+        unpack! is_ready = aes_data_ready (AES_STATUS, AES_STATUS_INPUT_READY)
       };
 
-      aes_data_put coq:(aes_globals ++ [expr.var data])
+      aes_data_put (AES_DATA_IN0, AES_NUM_REGS_DATA, data)
     ))).
 
   (**** aes.c
@@ -253,12 +265,14 @@ Section Impl.
     let data := "data" in
     let is_valid := "is_valid" in
     ("b2_data_get_wait",
-     (aes_globals ++ [data], [], bedrock_func_body:(
+     ([AES_DATA_OUT0; AES_NUM_REGS_DATA;
+      AES_STATUS; AES_STATUS_OUTPUT_VALID; data], [],
+      bedrock_func_body:(
       is_valid = 0 ;
       while (is_valid == 0) {
-        unpack! is_valid = aes_data_valid coq:(aes_globals)
+        unpack! is_valid = aes_data_valid (AES_STATUS, AES_STATUS_OUTPUT_VALID)
       };
 
-      aes_data_get coq:(aes_globals ++ [expr.var data])
+      aes_data_get (AES_DATA_OUT0, AES_NUM_REGS_DATA, data)
     ))).
 End Impl.

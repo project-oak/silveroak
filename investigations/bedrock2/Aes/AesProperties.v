@@ -551,8 +551,8 @@ Section Proofs.
         R m ->
         (* no constraints on current state *)
         execution tr s ->
-        let args := [] in
-        call function_env aes_data_ready tr m (aes_globals ++ args)
+        let args := [AES_STATUS; AES_STATUS_INPUT_READY] in
+        call function_env aes_data_ready tr m args
              (fun tr' m' rets =>
                 exists (status out : Semantics.word) (s' : state),
                   (* the new state matches the new trace *)
@@ -591,8 +591,8 @@ Section Proofs.
         R m ->
         (* no constraints on current state *)
         execution tr s ->
-        let args := [] in
-        call function_env aes_data_valid tr m (aes_globals ++ args)
+        let args := [AES_STATUS; AES_STATUS_OUTPUT_VALID] in
+        call function_env aes_data_valid tr m args
              (fun tr' m' rets =>
                 exists (status out : Semantics.word) (s' : state),
                   (* the new state matches the new trace *)
@@ -632,8 +632,8 @@ Section Proofs.
         R m ->
         (* no constraints on current state *)
         execution tr s ->
-        let args := [] in
-        call function_env aes_idle tr m (aes_globals ++ args)
+        let args := [AES_STATUS; AES_STATUS_IDLE] in
+        call function_env aes_idle tr m args
              (fun tr' m' rets =>
                 exists (status out : Semantics.word) (s' : state),
                   (* the new state matches the new trace *)
@@ -683,9 +683,13 @@ Section Proofs.
         aes_key_len_t aes_cfg_key_len ->
         (* manual_operation is a boolean *)
         boolean aes_cfg_manual_operation ->
-        let args := [aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
+        let args := [AES_CTRL; AES_CTRL_OPERATION;
+                    AES_CTRL_MODE_MASK; AES_CTRL_MODE_OFFSET;
+                    AES_CTRL_KEY_LEN_MASK; AES_CTRL_KEY_LEN_OFFSET;
+                    AES_CTRL_MANUAL_OPERATION;
+                    aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
                     aes_cfg_manual_operation] in
-        call function_env aes_init tr m (aes_globals ++ args)
+        call function_env aes_init tr m args
              (fun tr' m' rets =>
                 (* the circuit is in IDLE state with the correct control
                    register value and no other known register values *)
@@ -772,8 +776,8 @@ Section Proofs.
                                        then 6%nat else 8%nat) ->
         (* circuit must be in IDLE state *)
         execution tr (IDLE data) ->
-        let args := [key_arr_ptr; key_len] in
-        call function_env aes_key_put tr m (aes_globals ++ args)
+        let args := [AES_KEY0; AES_NUM_REGS_KEY; kAes256; kAes192; key_arr_ptr; key_len] in
+        call function_env aes_key_put tr m args
              (fun tr' m' rets =>
                 (* the circuit is in IDLE state with the key registers updated *)
                 execution tr'
@@ -1157,8 +1161,8 @@ Section Proofs.
         length iv_arr = 4%nat ->
         (* circuit must be in IDLE state *)
         execution tr (IDLE data) ->
-        let args := [iv_ptr] in
-        call function_env aes_iv_put tr m (aes_globals ++ args)
+        let args := [AES_IV0; AES_NUM_REGS_IV; iv_ptr] in
+        call function_env aes_iv_put tr m args
              (fun tr' m' rets =>
                 (* the circuit is in IDLE state with the iv registers updated *)
                 execution tr'
@@ -1251,8 +1255,8 @@ Section Proofs.
                 write_input_reg (data_in_from_index i) data
                                 (nth i input_arr (word.of_Z 0)))
              (seq 0 4) data) = Some all_aes_input ->
-        let args := [input_ptr] in
-        call function_env aes_data_put tr m (aes_globals ++ args)
+        let args := [AES_DATA_IN0; AES_NUM_REGS_DATA; input_ptr] in
+        call function_env aes_data_put tr m args
              (fun tr' m' rets =>
                 (* the circuit is now in the BUSY state *)
                 execution tr' (BUSY (Build_busy_data
@@ -1351,8 +1355,9 @@ Section Proofs.
                 write_input_reg (data_in_from_index i) data
                                 (nth i input_arr (word.of_Z 0)))
              (seq 0 4) data) = Some all_aes_input ->
-        let args := [input_ptr] in
-        call function_env aes_data_put_wait tr m (aes_globals ++ args)
+        let args := [AES_DATA_IN0; AES_NUM_REGS_DATA;
+                    AES_STATUS; AES_STATUS_INPUT_READY; input_ptr] in
+        call function_env aes_data_put_wait tr m args
              (fun tr' m' rets =>
                 (* the circuit is now in the BUSY state *)
                 execution tr' (BUSY (Build_busy_data
@@ -1421,8 +1426,8 @@ Section Proofs.
         data.(done_data_out1) = Some out1 ->
         data.(done_data_out2) = Some out2 ->
         data.(done_data_out3) = Some out3 ->
-        let args := [data_ptr] in
-        call function_env aes_data_get tr m (aes_globals ++ args)
+        let args := [AES_DATA_OUT0; AES_NUM_REGS_DATA; data_ptr] in
+        call function_env aes_data_get tr m args
              (fun tr' m' rets =>
                 (* the circuit is now in the IDLE state with output registers unset *)
                 execution tr' (IDLE (Build_idle_data
@@ -1568,8 +1573,9 @@ Section Proofs.
            termination) and expected or already-written output matches out *)
         execution tr s ->
         output_matches_state out s ->
-        let args := [data_ptr] in
-        call function_env aes_data_get_wait tr m (aes_globals ++ args)
+        let args := [AES_DATA_OUT0; AES_NUM_REGS_DATA; AES_STATUS;
+                    AES_STATUS_OUTPUT_VALID; data_ptr] in
+        call function_env aes_data_get_wait tr m args
              (fun tr' m' rets =>
                 (* the circuit is now in the IDLE state with output registers unset *)
                 execution tr' (IDLE (Build_idle_data (get_ctrl s) None None None None
