@@ -70,8 +70,17 @@ Section Proofs.
               (key0, key1, key2, key3, key4, key5, key6, key7)
               (iv0, iv1, iv2, iv3)
               (plaintext0, plaintext1, plaintext2, plaintext3) in
-        let args := [plaintext_ptr; key_ptr; iv_ptr; ciphertext_ptr] in
-        call function_env aes_encrypt tr m (aes_globals ++ args)
+        let args :=
+            [AES_CTRL; AES_CTRL_OPERATION;
+            AES_CTRL_MODE_MASK; AES_CTRL_MODE_OFFSET; AES_CTRL_KEY_LEN_MASK;
+            AES_CTRL_KEY_LEN_OFFSET; AES_CTRL_MANUAL_OPERATION; kAesEnc; kAesEcb;
+            AES_KEY0; AES_NUM_REGS_KEY; kAes256; kAes192;
+            AES_IV0; AES_NUM_REGS_IV;
+            AES_DATA_IN0; AES_NUM_REGS_DATA;
+            AES_STATUS; AES_STATUS_INPUT_READY;
+            AES_DATA_OUT0; AES_STATUS_OUTPUT_VALID;
+            plaintext_ptr; key_ptr; iv_ptr; ciphertext_ptr] in
+        call function_env aes_encrypt tr m args
              (fun tr' m' rets =>
                 let '(out0, out1, out2, out3) := expected_output in
                 (* the circuit is back in the IDLE state *)
