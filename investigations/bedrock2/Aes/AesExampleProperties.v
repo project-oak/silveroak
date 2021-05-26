@@ -47,8 +47,7 @@ Section Proofs.
                     key0 key1 key2 key3 key4 key5 key6 key7
                     iv0 iv1 iv2 iv3 : Semantics.word)
         (* initial values of output array (used only for determining length) *)
-        (ciphertext_arr : list Semantics.word)
-        (s : state),
+        (ciphertext_arr : list Semantics.word),
         let plaintext_arr := [plaintext0; plaintext1; plaintext2; plaintext3] in
         let key_arr := [key0; key1; key2; key3; key4; key5; key6; key7] in
         let iv_arr := [iv0; iv1; iv2; iv3] in
