@@ -168,16 +168,16 @@ Instance pipeline_params : Pipeline.parameters :=
   Pipeline.PRParams := @FlatToRiscvCommon.PRParams FlatToRiscv_params
   |}.
 
-Definition funcs := [aes_init
+Definition funcs := [aes_data_put_wait
+                     ; aes_data_get_wait
+                     ; aes_init
                      ; aes_key_put
                      ; aes_iv_put
                      ; aes_data_put
                      ; aes_data_get
                      ; aes_data_ready
                      ; aes_data_valid
-                     ; aes_idle
-                     ; aes_data_put_wait
-                     ; aes_data_get_wait].
+                     ; aes_idle].
 
 Derive aes_compile_result
        SuchThat (compile (map.of_list funcs)
