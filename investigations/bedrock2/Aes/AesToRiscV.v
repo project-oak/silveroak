@@ -136,10 +136,17 @@ Instance consts : aes_constants Z :=
 
 Instance aes_timing : timing := {| timing.ndelays_core := 14%nat |}.
 
+(* TODO: fill in with real circuit spec *)
+Axiom aes_spec
+  : bool ->
+    MMIO.word * MMIO.word * MMIO.word * MMIO.word * MMIO.word * MMIO.word * MMIO.word * MMIO.word ->
+    MMIO.word * MMIO.word * MMIO.word * MMIO.word -> MMIO.word * MMIO.word * MMIO.word * MMIO.word ->
+    MMIO.word * MMIO.word * MMIO.word * MMIO.word.
+
 Instance aes_parameters : AesSemantics.parameters.parameters :=
   {| AesSemantics.parameters.word := MMIO.word;
      AesSemantics.parameters.mem := MMIO.mem;
-     AesSemantics.parameters.aes_spec := fun _ _ _ x => x (* TODO: replace with real AES spec *);
+     AesSemantics.parameters.aes_spec := aes_spec;
   |}.
 
 Instance aes_parameters_ok : AesSemantics.parameters.ok aes_parameters :=
