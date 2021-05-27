@@ -136,10 +136,17 @@ Instance consts : aes_constants Z :=
 
 Instance aes_timing : timing := {| timing.ndelays_core := 14%nat |}.
 
+(* TODO: fill in with real circuit spec *)
+Axiom aes_spec
+  : bool ->
+    MMIO.word * MMIO.word * MMIO.word * MMIO.word * MMIO.word * MMIO.word * MMIO.word * MMIO.word ->
+    MMIO.word * MMIO.word * MMIO.word * MMIO.word -> MMIO.word * MMIO.word * MMIO.word * MMIO.word ->
+    MMIO.word * MMIO.word * MMIO.word * MMIO.word.
+
 Instance aes_parameters : AesSemantics.parameters.parameters :=
   {| AesSemantics.parameters.word := MMIO.word;
      AesSemantics.parameters.mem := MMIO.mem;
-     AesSemantics.parameters.aes_spec := fun _ _ _ x => x (* TODO: replace with real AES spec *);
+     AesSemantics.parameters.aes_spec := aes_spec;
   |}.
 
 Instance aes_parameters_ok : AesSemantics.parameters.ok aes_parameters :=
@@ -168,16 +175,16 @@ Instance pipeline_params : Pipeline.parameters :=
   Pipeline.PRParams := @FlatToRiscvCommon.PRParams FlatToRiscv_params
   |}.
 
-Definition funcs := [aes_init
+Definition funcs := [aes_data_put_wait
+                     ; aes_data_get_wait
+                     ; aes_init
                      ; aes_key_put
                      ; aes_iv_put
                      ; aes_data_put
                      ; aes_data_get
                      ; aes_data_ready
                      ; aes_data_valid
-                     ; aes_idle
-                     ; aes_data_put_wait
-                     ; aes_data_get_wait].
+                     ; aes_idle].
 
 Derive aes_compile_result
        SuchThat (compile (map.of_list funcs)
