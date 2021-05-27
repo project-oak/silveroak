@@ -86,27 +86,46 @@ Lemma simulate_second {A B C} (f : Circuit B C) (input : list (A * B)) :
   simulate (Second f) input = combine (map fst input)
                                        (simulate f (map snd input)).
 Proof.
-  simsimpl. generalize (reset_state f).
-  induction input; intros; [ reflexivity | ].
-  simsimpl. rewrite IHinput. reflexivity.
+  simsimpl. rewrite !fold_left_accumulate_map.
+  destruct input as [|i0 ?]; [ reflexivity | ].
+  rewrite !fold_left_accumulate_to_seq with (default:=i0).
+  factor_out_loops.
+  eapply fold_left_accumulate_double_invariant_seq
+    with (I:= fun i st1 st2 acc1 acc2 =>
+                st1 = st2 /\
+                length acc2 = i /\
+                length acc1 = i /\
+                acc2 = combine (map fst (firstn i (i0 :: input))) acc1).
+  { ssplit; reflexivity. }
+  { intros; logical_simplify.
+    subst acc2; subst.
+    autorewrite with push_length natsimpl in *.
+    repeat destruct_pair_let; cbn [fst snd].
+    ssplit; try reflexivity; try lia; [ ].
+    rewrite firstn_succ_snoc with (d:=i0) by length_hammer.
+    autorewrite with pull_snoc. rewrite combine_append by length_hammer.
+    reflexivity. }
+  { intros; logical_simplify; subst.
+    autorewrite with push_firstn natsimpl.
+    reflexivity. }
 Qed.
 Hint Rewrite @simulate_second using solve [eauto] : push_simulate.
 
 Lemma simulate_DelayInitCE {t} (init : combType t) input :
-  simulate (DelayInitCE init) input = firstn (length input)
-                                             (init :: (fold_left_accumulate
-                                                        (fun st i_en =>
-                                                           if (snd i_en : bool)
-                                                           then (fst i_en, fst i_en)
-                                                           else (st, st))
-                                                        input init)).
+  simulate (DelayInitCE init) input
+  = firstn (length input)
+           (init :: (fold_left_accumulate
+                      (fun st i_en =>
+                         if (snd i_en : bool)
+                         then (fst i_en, fst i_en)
+                         else (st, st))
+                      input init)).
 Proof.
-  simsimpl. generalize init at 1. generalize init.
+  simsimpl. generalize init.
   induction input; intros; [ reflexivity | ].
-  simsimpl. rewrite IHinput.
   autorewrite with push_length push_firstn push_fold_acc.
-  destruct_products; cbn [fst snd].
-  destruct_one_match; reflexivity.
+  destruct_products; cbn [fst snd]. erewrite IHinput.
+  destruct_one_match;  reflexivity.
 Qed.
 Hint Rewrite @simulate_DelayInitCE using solve [eauto] : push_simulate.
 
@@ -157,240 +176,61 @@ Proof.
   simsimpl. generalize (reset_state c).
   induction input; intros; [ reflexivity | ].
   simsimpl. autorewrite with push_length.
-  rewrite IHinput; reflexivity.
+  reflexivity.
 Qed.
 Hint Rewrite @simulate_length using solve [eauto] : push_length.
-
-Check simulate_with_state.
-Lemma simulate_with_state_LoopInitCE
-      {i s o} resetval (body : Circuit (i * combType s) (o * combType s))
-      (init_state : circuit_state body * combType s)
-      (input : list (i * bool)) (acc : list o) :
-  simulate_with_state (LoopInitCE resetval body) init_state input
-  = fold_left
-      (fun '(out, (body_st, st)) '(i, en) =>
-         let '(o, (body_st', st')) := step body body_st (i, st) in
-         let new_st := if (en : bool) then st' else st in
-         (out ++ [o], (body_st', new_st)))
-      input (acc, init_state).
-Proof.
-  simsimpl. generalize resetval at 1.
-  generalize (reset_state body), resetval.
-  induction input; intros; [ reflexivity | ].
-  cbn [fold_left]. simsimpl.
-  repeat destruct_pair_
-Qed.
 
 Lemma simulate_LoopInitCE
       {i s o} resetval (body : Circuit (i * combType s) (o * combType s))
       (input : list (i * bool)) :
   simulate (LoopInitCE resetval body) input =
-  snd (fold_left
-         (fun '(body_st, st, out) '(i, en) =>
-            let '(o, st', body_st') := step body body_st (i, st) in
-            let new_st := if (en : bool) then st' else st in
-            (body_st', new_st, out ++ [o]))
-         input (reset_state body, resetval, [])).
-Proof.
-  simsimpl. generalize resetval at 1.
-  generalize (reset_state body), resetval.
-  induction input; intros; [ reflexivity | ].
-  cbn [fold_left]. simsimpl.
-  repeat destruct_pair_
-Qed.
+  fold_left_accumulate
+    (fun '(cs, st) '(i, en) =>
+       let '(cs', (o, st')) := step body cs (i, st) in
+       let new_state := if (en : bool) then st' else st in
+       (cs', new_state, o))
+    input (reset_state body, resetval).
+Proof. reflexivity. Qed.
+Hint Rewrite @simulate_LoopInitCE using solve [eauto] : push_simulate.
 
-Lemma simulate_LoopInitICE_invariant_helper
-      {i s o} resetval (body : Circuit (i * combType s) (o * combType s))
-      (I : nat -> combType s -> circuit_state body ->
-           list o -> list (circuit_state body * combType s) -> Prop)
-      (P : list o * list (circuit_state body * combType s) -> Prop)
-      (start_state : circuit_state body * combType s)
-      (input : list (i * bool)) :
-  (* invariant holds at start *)
-  I 0 (snd start_state) (fst start_state) [] [] ->
-  (* invariant holds through loop *)
-  (forall t out_acc state_acc st bodyst d,
-      I t st bodyst out_acc state_acc ->
-      0 <= t < length input ->
-      let input_en := nth t input d in
-      let out_st'_bodyst' := step body bodyst (fst input_en, st) in
-      let out := fst (fst out_st'_bodyst') in
-      let st' := snd (fst out_st'_bodyst') in
-      let bodyst' := snd out_st'_bodyst' in
-      let new_state := if snd input_en then st' else st in
-      I (S t) new_state bodyst'
-        (out_acc ++ [out])
-        (state_acc ++ [(bodyst', new_state)])) ->
-  (* invariant implies postcondition *)
-  (forall out_acc state_acc st bodyst,
-      I (length input) st bodyst out_acc state_acc ->
-      P (out_acc, state_acc)) ->
-  P (simulate_with_state (LoopInitCE resetval body) start_state input).
-Proof.
-  intros Istart Ipreserved IimpliesP.
-  let sim_result := lazymatch goal with
-                      |- P ?x => x end in
-  rewrite (surjective_pairing sim_result);
-    pose (final_state := last (snd sim_result) start_state).
-  eapply IimpliesP with (st:=snd final_state) (bodyst:=fst final_state).
-  induction input using rev_ind; [ eassumption | ].
-  autorewrite with push_length. rewrite Nat.add_1_r.
-  apply Ipreserved.
-  simsimpl.
-Qed.
-
-Lemma simulate_LoopInitICE_invariant
-      {i s o} resetval (body : Circuit (i * combType s) (o * combType s))
-      (I : nat -> combType s -> circuit_state body -> list o -> Prop ) (P : list o -> Prop)
-      (input : list (i * bool)) :
-  (* invariant holds at start *)
-  I 0 resetval (reset_state body) [] ->
-  (* invariant holds through loop *)
-  (forall t acc st bodyst d,
-      I t st bodyst acc ->
-      0 <= t < length input ->
-      let input_en := nth t input d in
-      let out_st'_bodyst' := step body bodyst (fst input_en, st) in
-      let out := fst (fst out_st'_bodyst') in
-      let st' := snd (fst out_st'_bodyst') in
-      let bodyst' := snd out_st'_bodyst' in
-      let new_state := if snd input_en then st' else st in
-      I (S t) new_state bodyst' (acc ++ [out])) ->
-  (* invariant implies postcondition *)
-  (forall acc st bodyst, I (length input) st bodyst acc -> P acc) ->
-  P (simulate (LoopInitCE resetval body) input).
-Proof.
-  intros Istart Ipreserved IimpliesP.
-  simsimpl.
-  (* get the list of states *)
-  lazymatch goal with
-  | |- context [simulate-
-  pose (snd 
-  pose (fold_left (fun st i_en =>
-                     let x := step body (fst st) (fst i_en, snd st) in
-                     (snd x, if (snd i_en : bool) then snd (fst x) else snd st))
-                  input (reset_state body, resetval)) as final_state.
-  apply IimpliesP with (st:=snd final_state) (bodyst:=fst final_state).
-  subst final_state.
-  generalize resetval at 3.
-  generalize dependent (reset_state body).
-  generalize dependent resetval.
-  induction input; intros; [ eassumption | ].
-  simsimpl. autorewrite with push_length.
-  destruct_products. cbn [fst snd fold_left].
-  eapply Ipreserved.
-  rewrite IHinput.
-  generalize resetval at 1.
-  generalize (reset_state body), resetval.
-  induction input; intros; [ solve [eauto] | ].
-  simsimpl.
-  1:cbn.
-  1:eauto.
-  destruct input; [ solve [eauto] | ].
-  repeat destruct_pair_let.
-  cbn [circuit_state reset_state step fst snd].
-  apply fold_left_accumulate_invariant_seq
-    with (I0:=fun t '(out,(bodyst,st)) acc =>
-                I (S t) st bodyst (map fst acc));
-    intros *; repeat destruct_pair_let; cbn [fst snd].
-  { specialize (Ipreserved 0 []). cbn [nth app length] in Ipreserved.
-    cbn [map fst snd]. eapply Ipreserved; eauto; [ ]. Lia.lia. }
-  { intros. specialize (Ipreserved (S t)).
-    autorewrite with pull_snoc.
-    eapply Ipreserved; eauto; [ ].
-    cbn [combType] in *; length_hammer. }
-  { eapply IimpliesP. }
-
-
-
-  
-  intros ? Ipreserved IimpliesP. cbv [simulate].
-  destruct input; [ solve [eauto] | ].
-  repeat destruct_pair_let.
-  cbn [circuit_state reset_state step fst snd].
-  apply fold_left_accumulate_invariant_seq
-    with (I0:=fun t '(out,(bodyst,st)) acc =>
-                I (S t) st bodyst (map fst acc));
-    intros *; repeat destruct_pair_let; cbn [fst snd].
-  { specialize (Ipreserved 0 []). cbn [nth app length] in Ipreserved.
-    cbn [map fst snd]. eapply Ipreserved; eauto; [ ]. Lia.lia. }
-  { intros. specialize (Ipreserved (S t)).
-    autorewrite with pull_snoc.
-    eapply Ipreserved; eauto; [ ].
-    cbn [combType] in *; length_hammer. }
-  { eapply IimpliesP. }
-Qed.
-
-Lemma simulate_LoopCE_invariant
+Lemma simulate_LoopCE
       {i s o} (body : Circuit (i * combType s) (o * combType s))
-      (I : nat -> combType s -> circuit_state body -> list o -> Prop ) (P : list o -> Prop)
       (input : list (i * bool)) :
-  (* invariant holds at start *)
-  I 0 (defaultCombValue _) (reset_state body) [] ->
-  (* invariant holds through loop *)
-  (forall t acc st bodyst d,
-      I t st bodyst acc ->
-      0 <= t < length input ->
-      let input_en := nth t input d in
-      let out_st'_bodyst' := step body bodyst (fst input_en, st) in
-      let out := fst (fst out_st'_bodyst') in
-      let st' := snd (fst out_st'_bodyst') in
-      let bodyst' := snd out_st'_bodyst' in
-      let new_state := if snd input_en then st' else st in
-      I (S t) new_state bodyst' (acc ++ [out])) ->
-  (* invariant implies postcondition *)
-  (forall acc st bodyst, I (length input) st bodyst acc -> P acc) ->
-  P (simulate (LoopCE body) input).
-Proof. apply simulate_LoopInitICE_invariant. Qed.
+  simulate (LoopCE body) input =
+  fold_left_accumulate
+    (fun '(cs, st) '(i, en) =>
+       let '(cs', (o, st')) := step body cs (i, st) in
+       let new_state := if (en : bool) then st' else st in
+       (cs', new_state, o))
+    input (reset_state body, defaultCombValue s).
+Proof. apply simulate_LoopInitCE. Qed.
+Hint Rewrite @simulate_LoopCE using solve [eauto] : push_simulate.
 
-Lemma simulate_LoopInit_invariant
+Lemma simulate_LoopInit
       {i s o} resetval (body : Circuit (i * combType s) (o * combType s))
-      (I : nat -> combType s -> circuit_state body -> list o -> Prop ) (P : list o -> Prop)
       (input : list i) :
-  (* invariant holds at start *)
-  I 0 resetval (reset_state body) [] ->
-  (* invariant holds through loop *)
-  (forall t acc st bodyst d,
-      I t st bodyst acc ->
-      0 <= t < length input ->
-      let out_st'_bodyst' := step body bodyst (nth t input d, st) in
-      let out := fst (fst out_st'_bodyst') in
-      let st' := snd (fst out_st'_bodyst') in
-      let bodyst' := snd out_st'_bodyst' in
-      I (S t) st' bodyst' (acc ++ [out])) ->
-  (* invariant implies postcondition *)
-  (forall acc st bodyst, I (length input) st bodyst acc -> P acc) ->
-  P (simulate (LoopInit resetval body) input).
+  simulate (LoopInit resetval body) input =
+  fold_left_accumulate
+    (fun '(cs, st) i =>
+       let '(cs', (o, st')) := step body cs (i, st) in
+       (cs', st', o))
+    input (reset_state body, resetval).
 Proof.
-  intros? Ipres IimpliesP; cbv [LoopInit].
-  autorewrite with push_simulate. simpl_ident.
-  eapply simulate_LoopInitICE_invariant with (I0:=I).
-  { eassumption. }
-  { cbv zeta in *. intros *. destruct_products.
-    autorewrite with push_length. intros.
-    let d := lazymatch goal with x : i |- _ => x end in
-    rewrite map_nth_inbounds with (d2:=d) by length_hammer.
-    cbn [fst]. apply Ipres; auto. }
-  { intros *; autorewrite with push_length.
-    apply IimpliesP. }
+  cbv [LoopInit]. simpl_ident. autorewrite with push_simulate.
+  rewrite fold_left_accumulate_map.
+  apply fold_left_accumulate_ext; intros.
+  repeat destruct_pair_let. reflexivity.
 Qed.
+Hint Rewrite @simulate_LoopInit using solve [eauto] : push_simulate.
 
-Lemma simulate_Loop_invariant
+Lemma simulate_Loop
       {i s o} (body : Circuit (i * combType s) (o * combType s))
-      (I : nat -> combType s -> circuit_state body -> list o -> Prop ) (P : list o -> Prop)
       (input : list i) :
-  (* invariant holds at start *)
-  I 0 (defaultCombValue _) (reset_state body) [] ->
-  (* invariant holds through loop *)
-  (forall t acc st bodyst d,
-      I t st bodyst acc ->
-      0 <= t < length input ->
-      let out_st'_bodyst' := step body bodyst (nth t input d, st) in
-      let out := fst (fst out_st'_bodyst') in
-      let st' := snd (fst out_st'_bodyst') in
-      let bodyst' := snd out_st'_bodyst' in
-      I (S t) st' bodyst' (acc ++ [out])) ->
-  (* invariant implies postcondition *)
-  (forall acc st bodyst, I (length input) st bodyst acc -> P acc) ->
-  P (simulate (Loop body) input).
-Proof. apply simulate_LoopInit_invariant. Qed.
+  simulate (Loop body) input =
+  fold_left_accumulate
+    (fun '(cs, st) i =>
+       let '(cs', (o, st')) := step body cs (i, st) in
+       (cs', st', o))
+    input (reset_state body, defaultCombValue s).
+Proof. apply simulate_LoopInit. Qed.
+Hint Rewrite @simulate_Loop using solve [eauto] : push_simulate.

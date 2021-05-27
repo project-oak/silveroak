@@ -57,20 +57,22 @@ Qed.
 Lemma accumulatingAdderEnableCorrect (i : list (Bvector 8 * bool)) :
   simulate accumulatingAdderEnable i = fst (accumulatingAdderEnableSpec i).
 Proof.
-  intros; cbv [accumulatingAdderEnable].
-  eapply simulate_LoopCE_invariant
-    with (I:=fun t st _ acc =>
-               st = snd (accumulatingAdderEnableSpec (firstn t i))
-               /\ acc = fst (accumulatingAdderEnableSpec (firstn t i))).
+  intros; cbv [accumulatingAdderEnable]. autorewrite with push_simulate.
+  cbn [step reset_state]. cbv [mcompose]. simpl_ident.
+  eapply fold_left_accumulate_invariant_seq
+    with (I:=fun t st acc =>
+               snd st = snd (accumulatingAdderEnableSpec (firstn t i))
+               /\ acc = fst (accumulatingAdderEnableSpec (firstn t i)))
+         (P:=fun x => x = fst (accumulatingAdderEnableSpec i)).
   { (* invariant holds after first step *)
     split; reflexivity. }
   { (* invariant holds through body *)
-    cbv zeta. intros ? ? ? ? d; intros; logical_simplify; subst.
-    cbv [step mcompose]. simpl_ident.
+    cbv zeta. intros ? ? ? d; intros; logical_simplify; subst.
+    repeat destruct_pair_let; cbn [fst snd]. simpl_ident.
     rewrite firstn_succ_snoc with (d0:=d) by length_hammer.
-    cbv [combType Bvector] in *. autorewrite with push_length natsimpl.
-    cbv [bvsum]. autorewrite with pull_snoc.
     rewrite accumulatingAdderEnableSpec_snoc. cbn [fst snd].
+    lazymatch goal with H : _ = snd (accumulatingAdderEnableSpec _) |- _ =>
+                        rewrite H end.
     rewrite bvadd_comm. split; reflexivity. }
   { (* invariant implies postcondition *)
     intros; logical_simplify; subst.
