@@ -442,27 +442,31 @@ Lemma exp_by_squaring_correct {A}
       (identity : combType A)
       (square multiply : Circuit (combType A) (combType A))
       (square_correct :
-         forall st i, step square st i = (square_spec i, st))
+         forall st i, step square st i = (st, square_spec i))
       (multiply_correct :
-         forall st i, step multiply st i = (mul_spec i, st))
+         forall st i, step multiply st i = (st, mul_spec i))
       (input : list bool) :
   simulate (exp_by_squaring identity square multiply) input
   = map_stream (exp_by_squaring_spec mul_spec square_spec identity)
                input.
 Proof.
   cbv [exp_by_squaring map_stream].
-  eapply simulate_LoopInit_invariant
-    with (I:=fun i r _ out =>
+  autorewrite with push_simulate.
+
+  (* apply loop invariant lemma *)
+  eapply fold_left_accumulate_invariant_seq
+    with (I:=fun i st out =>
                out = map (fun n => exp_by_squaring_spec
                                   mul_spec square_spec
                                   identity (firstn (S n) input))
                          (seq 0 i)
-               /\ r = exp_by_squaring_spec
+               /\ snd st = exp_by_squaring_spec
                        mul_spec square_spec identity (firstn i input)).
   { (* invariant holds in reset state *)
     split; reflexivity. }
   { (* invariant holds through one timestep *)
     cbv zeta; intros. logical_simplify; subst.
+    destruct_products. cbn [fst snd] in *. subst.
     cbv [mcompose uncurry]. simpl_ident.
     (* simplify step, rewrite with square/multiply correctness lemmas *)
     repeat first [ progress cbn [fst snd step]
@@ -541,11 +545,11 @@ precondition of ``exp_by_squaring_correct``). That proof is pretty quick:
 |*)
 
 Lemma double_step n st i :
-  step double st i = (N2Bv_sized n (Bv2N i + Bv2N i), st).
+  step double st i = (st, N2Bv_sized n (Bv2N i + Bv2N i)).
 Proof.
   cbv [double step mcompose].
   simpl_ident. rewrite shiftout_cons0.
-  apply f_equal2; [ | destruct st; reflexivity ].
+  apply f_equal2; [ destruct st; reflexivity | ].
   f_equal. lia.
 Qed.
 
@@ -650,7 +654,7 @@ Now, let's move on to ``stream_exponentiate``. We'll need to prove that
 |*)
 
 Lemma mul_const_pos_step n x st i :
-  step (mul_const_pos x) st i = (N2Bv_sized n (Bv2N i * Npos x), st).
+  step (mul_const_pos x) st i = (st, N2Bv_sized n (Bv2N i * Npos x)).
 Proof.
   revert st i.
   induction x; cbn [mul_const_pos circuit_state];
@@ -682,7 +686,7 @@ Proof.
 Qed.
 
 Lemma mul_constN_step n x st i :
-  step (mul_constN x) st i = (N2Bv_sized n (Bv2N i * x), st).
+  step (mul_constN x) st i = (st, N2Bv_sized n (Bv2N i * x)).
 Proof.
   cbv [mul_constN].
   destruct x; [ | apply mul_const_pos_step ].

@@ -79,7 +79,7 @@ Local Opaque bvaddc.
 
 Lemma count_by_step (input st : combType (Vec Bit 8)) :
   step count_by (tt, (tt, st)) input
-  = (snd (bvaddc input st), (tt, (tt, fst (bvaddc input st)))).
+  = (tt, (tt, fst (bvaddc input st)), snd (bvaddc input st)).
 Proof.
   intros; cbv [count_by Loop step].
   repeat first [ destruct_pair_let | progress simpl_ident].
@@ -104,15 +104,16 @@ Qed.
 Lemma count_by_correct (input : list (combType (Vec Bit 8))) :
   simulate count_by input = map snd (count_by_spec input).
 Proof.
-  intros; cbv [count_by].
-  eapply (simulate_Loop_invariant (s:=Vec Bit 8)) with
-      (I:=fun t st _ acc =>
-            st = fst (bvsumc (firstn t input))
+  intros; cbv [count_by mcompose]. autorewrite with push_simulate.
+  cbn [step]. simpl_ident.
+  eapply fold_left_accumulate_invariant_seq
+    with (I:=fun t st acc =>
+            st = (tt, fst (bvsumc (firstn t input)))
             /\ acc = map snd (count_by_spec (firstn t input))).
   { (* invariant holds at start *)
     split; reflexivity. }
   { (* invariant holds through body *)
-    cbv zeta. intros ? ? ? ? d; intros; logical_simplify; subst.
+    cbv zeta. intros ? ? ? d; intros; logical_simplify; subst.
     cbv [step count_by_spec].
     repeat first [ destruct_pair_let | progress simpl_ident].
     rewrite firstn_succ_snoc with (d0:=d) by length_hammer.
@@ -162,18 +163,17 @@ Hint Rewrite @firstn_count_by_spec using solve [eauto] : push_firstn.
 Lemma double_count_by_correct (input : list (combType (Vec Bit 8))) :
   simulate double_count_by input = double_count_by_spec input.
 Proof.
-  intros; cbv [double_count_by].
-  let f := lazymatch goal with |- context [Loop ?body] => body end in
-  eapply simulate_Loop_invariant
-    with (body:=f)
-         (I:= fun t st body_st acc =>
-                body_st = (tt, (tt, fst (bvsumc (firstn t input))), tt)
-                /\ st = boolsum (firstn t (map snd (count_by_spec input)))
+  intros; cbv [double_count_by]. autorewrite with push_simulate.
+  cbn [step]. simpl_ident.
+  eapply fold_left_accumulate_invariant_seq
+    with (I:= fun t (st : unit * (unit * Vector.t bool 8) * unit * Vector.t bool 8) acc =>
+                st = (tt, (tt, fst (bvsumc (firstn t input))), tt,
+                      boolsum (firstn t (map snd (count_by_spec input))))
                 /\ acc = double_count_by_spec (firstn t input)).
   { (* invariant holds at start *)
     ssplit; reflexivity. }
   { (* invariant holds through body *)
-    cbv zeta. intros ? ? ? ? d; intros; logical_simplify; subst.
+    cbv zeta. intros ? ? ? d; intros; logical_simplify; subst.
     cbn [step]. cbv [double_count_by_spec].
     repeat first [ destruct_pair_let | progress simpl_ident].
     autorewrite with push_length natsimpl pull_snoc.

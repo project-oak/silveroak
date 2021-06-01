@@ -40,20 +40,21 @@ Proof. cbv [bvadd]. rewrite N.add_comm. reflexivity. Qed.
 Lemma countByCorrect: forall (i : list (Bvector 8)),
     simulate countBy i = countBySpec i.
 Proof.
-  intros; cbv [countBy].
-  eapply (simulate_Loop_invariant (s:=Vec Bit 8)) with
-      (I:=fun t st _ acc =>
-            st = bvsum (firstn t i)
-            /\ acc = countBySpec (firstn t i)).
+  intros; cbv [countBy mcompose]. autorewrite with push_simulate.
+  cbn [step]. simpl_ident.
+  eapply fold_left_accumulate_invariant_seq
+    with (I:=fun t st acc =>
+               st = (tt, bvsum (firstn t i))
+               /\ acc = countBySpec (firstn t i)).
   { (* invariant holds at start *)
     ssplit; reflexivity. }
   { (* invariant holds through body *)
-    cbv zeta. intros ? ? ? ? d; intros; logical_simplify; subst.
+    cbv zeta. intros ? ? ? d; intros; logical_simplify; subst.
     cbv [step mcompose countBySpec]. simpl_ident.
     rewrite firstn_succ_snoc with (d0:=d) by length_hammer.
     cbv [combType Bvector] in *. autorewrite with push_length natsimpl.
     cbv [bvsum]. autorewrite with pull_snoc.
-    split; [ apply bvadd_comm | ].
+    rewrite bvadd_comm. split; [ reflexivity | ].
     rewrite Nat.add_1_r.
     autorewrite with pull_snoc.
     f_equal.
@@ -63,7 +64,7 @@ Proof.
       reflexivity. }
     { cbn [Nat.add].
       autorewrite with push_nth push_firstn push_length push_list_fold natsimpl.
-      rewrite bvadd_comm; reflexivity. } }
+      reflexivity. } }
   { (* invariant implies postcondition *)
     intros; logical_simplify; subst.
     rewrite firstn_all; reflexivity. }

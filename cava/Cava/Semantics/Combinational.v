@@ -87,32 +87,32 @@ Instance CombinationalSemantics : Cava combType | 10 :=
 
 (* Run circuit for a single step *)
 Fixpoint step {i o} (c : Circuit i o)
-  : circuit_state c -> i -> o * circuit_state c :=
+  : circuit_state c -> i -> circuit_state c * o :=
   match c in Circuit i o return circuit_state c -> i
-                                -> o * circuit_state c with
-  | Comb f => fun _ i => (f i, tt)
+                                -> circuit_state c * o with
+  | Comb f => fun _ i => (tt, f i)
   | Compose f g =>
     fun cs input =>
-      let '(x, cs1) := step f (fst cs) input in
-      let '(y, cs2) := step g (snd cs) x in
-      (y, (cs1, cs2))
+      let '(cs1, x) := step f (fst cs) input in
+      let '(cs2, y) := step g (snd cs) x in
+      (cs1, cs2, y)
   | First f =>
     fun cs input =>
-      let '(x, cs') := step f cs (fst input) in
-      (x, snd input, cs')
+      let '(cs', x) := step f cs (fst input) in
+      (cs', (x, snd input))
   | Second f =>
     fun cs input =>
-      let '(x, cs') := step f cs (snd input) in
-      (fst input, x, cs')
+      let '(cs', x) := step f cs (snd input) in
+      (cs', (fst input, x))
   | LoopInitCE _ f =>
     fun '(cs,st) '(input, en) =>
-      let '(out, st', cs') := step f cs (input, st) in
+      let '(cs', (out, st')) := step f cs (input, st) in
       let new_state := if en then st' else st in
-      (out, (cs',new_state))
+      (cs', new_state, out)
   | DelayInitCE _ =>
     fun st '(input, en) =>
       let new_state := if en then input else st in
-      (st, new_state)
+      (new_state, st)
   end.
 
 (* Automation to help simplify expressions using the identity monad *)
