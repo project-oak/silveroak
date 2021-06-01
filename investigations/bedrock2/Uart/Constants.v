@@ -14,100 +14,98 @@ Local Open Scope list_scope.
 (* Core class : defines all the constants *)
 Class uart_constants T :=
   {
+    (* generated uart_regs.h *)
+    UART_CTRL_NCO_MASK            : T;
+    UART_CTRL_NCO_FIELD           : T;
+    UART_CTRL_TX_BIT              : T;
+    UART_CTRL_PARITY_EN_BIT       : T;
+    UART_CTRL_REG_OFFSET          : T;
+    UART_FIFO_CTRL_RXRST_BIT      : T;
+    UART_FIFO_CTRL_TXRST_BIT      : T;
+    UART_FIFO_CTRL_REG_OFFSET     : T;
+    UART_OVRD_REG_OFFSET          : T;
+    UART_TIMEOUT_CTRL_REG_OFFSET  : T;
+    UART_INTR_ENABLE_REG_OFFSET   : T;
+    UART_INTR_STATE_REG_OFFSET    : T;
+    UART_STATUS_REG_OFFSET        : T;
+    UART_STATUS_TXFULL_BIT        : T;
+    UART_STATUS_TXIDLE_BIT        : T;
+    UART_WDATA_WDATA_FIELD        : T;
+    UART_WDATA_REG_OFFSET         : T;
 
-  (* Enum option definitions from dif_uart.h *)
-  kDifUartInterruptTxWatermark  : T; (* dif_uart_interrupt enum value *)
-  kDifUartInterruptRxWatermark  : T; (* dif_uart_interrupt enum value *)
-  kDifUartInterruptTxEmpty      : T; (* dif_uart_interrupt enum value *)
-  kDifUartInterruptRxOverflow   : T; (* dif_uart_interrupt enum value *)
-  kDifUartInterruptRxFrameErr   : T; (* dif_uart_interrupt enum value *)
-  kDifUartInterruptRxBreakErr   : T; (* dif_uart_interrupt enum value *)
-  kDifUartInterruptRxTimeout    : T; (* dif_uart_interrupt enum value *)
-  kDifUartInterruptRxParityErr  : T; (* dif_uart_interrupt enum value *)
-  kDifUartInterruptLast         : T; (* dif_uart_interrupt enum value *)
-  kDifUartWatermarkByte1        : T; (* dif_uart_watermark enum value *)
-  kDifUartWatermarkByte4        : T; (* dif_uart_watermark enum value *)
-  kDifUartWatermarkByte8        : T; (* dif_uart_watermark enum value *)
-  kDifUartWatermarkByte16       : T; (* dif_uart_watermark enum value *)
-  kDifUartWatermarkByte30       : T; (* dif_uart_watermark enum value *)
-  kDifUartWatermarkLast         : T; (* dif_uart_watermark enum value *)
-  kDifUartEnable                : T; (* dif_uart_enable enum value *)
-  kDifUartDisable               : T; (* dif_uart_enable enum value *)
-  kDifUartParityOdd             : T; (* dif_uart_parity enum value *)
-  kDifUartParityEven            : T; (* dif_uart_parity enum value *)
-  kDifUartOk                    : T; (* dif_uart_result enum value *)
-  kDifUartError                 : T; (* dif_uart_result enum value *)
-  kDifUartBadArg                : T; (* dif_uart_result enum value *)
-  kDifUartConfigOk              : T; (* dif_uart_config_result enum value *)
-  kDifUartConfigError           : T; (* dif_uart_config_result enum value *)
-  kDifUartConfigBadArg          : T; (* dif_uart_config_result enum value *)
-  kDifUartConfigBadConfig       : T; (* dif_uart_config_result enum value *)
-  kDifUartConfigBadNco          : T; (* dif_uart_config_result enum value *)
+    (* sw/device/silicon_creator/lib/drivers/uart.c *)
+    NCO_WIDTH                    : T;
+
+    (* sw/device/silicon_creator/lib/error.h *)
+    kModuleUart                   : T; (* enum module_ *)
+    kErrorOk                      : T; (* DEFINE_ERRORS *)
+    kErrorUartInvalidArgument     : T; (* DEFINE_ERRORS *)
+    kErrorUartBadBaudRate         : T; (* DEFINE_ERRORS *)
   }.
 
 (* Given the string names of all constants, coerce them to bedroc2
    expressions with expr.var *)
 Definition constant_vars
-           {names : uart_constants string}
+  {names : uart_constants string}
   : uart_constants expr :=
   {|
-    kDifUartInterruptTxWatermark   := expr.var kDifUartInterruptTxWatermark;
-    kDifUartInterruptRxWatermark   := expr.var kDifUartInterruptRxWatermark;
-    kDifUartInterruptTxEmpty       := expr.var kDifUartInterruptTxEmpty;
-    kDifUartInterruptRxOverflow    := expr.var kDifUartInterruptRxOverflow;
-    kDifUartInterruptRxFrameErr    := expr.var kDifUartInterruptRxFrameErr;
-    kDifUartInterruptRxBreakErr    := expr.var kDifUartInterruptRxBreakErr;
-    kDifUartInterruptRxTimeout     := expr.var kDifUartInterruptRxTimeout;
-    kDifUartInterruptRxParityErr   := expr.var kDifUartInterruptRxParityErr;
-    kDifUartInterruptLast          := expr.var kDifUartInterruptLast;
-    kDifUartWatermarkByte1         := expr.var kDifUartWatermarkByte1;
-    kDifUartWatermarkByte4         := expr.var kDifUartWatermarkByte4;
-    kDifUartWatermarkByte8         := expr.var kDifUartWatermarkByte8;
-    kDifUartWatermarkByte16        := expr.var kDifUartWatermarkByte16;
-    kDifUartWatermarkByte30        := expr.var kDifUartWatermarkByte30;
-    kDifUartWatermarkLast          := expr.var kDifUartWatermarkLast;
-    kDifUartEnable                 := expr.var kDifUartEnable;
-    kDifUartDisable                := expr.var kDifUartDisable;
-    kDifUartParityOdd              := expr.var kDifUartParityOdd;
-    kDifUartParityEven             := expr.var kDifUartParityEven;
-    kDifUartOk                     := expr.var kDifUartOk;
-    kDifUartError                  := expr.var kDifUartError;
-    kDifUartBadArg                 := expr.var kDifUartBadArg;
-    kDifUartConfigOk               := expr.var kDifUartConfigOk;
-    kDifUartConfigError            := expr.var kDifUartConfigError;
-    kDifUartConfigBadArg           := expr.var kDifUartConfigBadArg;
-    kDifUartConfigBadConfig        := expr.var kDifUartConfigBadConfig;
-    kDifUartConfigBadNco           := expr.var kDifUartConfigBadNco;
+    (* generated uart_regs.h *)
+    UART_CTRL_NCO_MASK := expr.var UART_CTRL_NCO_MASK;
+    UART_CTRL_NCO_FIELD := expr.var UART_CTRL_NCO_FIELD;
+    UART_CTRL_TX_BIT := expr.var UART_CTRL_TX_BIT;
+    UART_CTRL_PARITY_EN_BIT := expr.var UART_CTRL_PARITY_EN_BIT;
+    UART_CTRL_REG_OFFSET := expr.var UART_CTRL_REG_OFFSET;
+    UART_FIFO_CTRL_RXRST_BIT := expr.var UART_FIFO_CTRL_RXRST_BIT;
+    UART_FIFO_CTRL_TXRST_BIT := expr.var UART_FIFO_CTRL_TXRST_BIT;
+    UART_FIFO_CTRL_REG_OFFSET := expr.var UART_FIFO_CTRL_REG_OFFSET;
+    UART_OVRD_REG_OFFSET := expr.var UART_OVRD_REG_OFFSET;
+    UART_TIMEOUT_CTRL_REG_OFFSET := expr.var UART_TIMEOUT_CTRL_REG_OFFSET;
+    UART_INTR_ENABLE_REG_OFFSET := expr.var UART_INTR_ENABLE_REG_OFFSET;
+    UART_INTR_STATE_REG_OFFSET := expr.var UART_INTR_STATE_REG_OFFSET;
+    UART_STATUS_REG_OFFSET := expr.var UART_STATUS_REG_OFFSET;
+    UART_STATUS_TXFULL_BIT := expr.var UART_STATUS_TXFULL_BIT;
+    UART_STATUS_TXIDLE_BIT := expr.var UART_STATUS_TXIDLE_BIT;
+    UART_WDATA_WDATA_FIELD := expr.var UART_WDATA_WDATA_FIELD;
+    UART_WDATA_REG_OFFSET := expr.var UART_WDATA_REG_OFFSET;
+
+    (* sw/device/silicon_creator/lib/drivers/uart.c *)
+    NCO_WIDTH := expr.var NCO_WIDTH;
+
+    (* sw/device/silicon_creator/lib/error.h *)
+    kModuleUart := expr.var kModuleUart;
+    kErrorOk := expr.var kErrorOk;
+    kErrorUartInvalidArgument := expr.var kErrorUartInvalidArgument;
+    kErrorUartBadBaudRate := expr.var kErrorUartBadBaudRate;
   |}.
 
 (* This instance provide the string name for each constant *)
 Definition constant_names : uart_constants string :=
   {|
-    kDifUartInterruptTxWatermark := "kDifUartInterruptTxWatermark";
-    kDifUartInterruptRxWatermark := "kDifUartInterruptRxWatermark";
-    kDifUartInterruptTxEmpty := "kDifUartInterruptTxEmpty";
-    kDifUartInterruptRxOverflow := "kDifUartInterruptRxOverflow";
-    kDifUartInterruptRxFrameErr := "kDifUartInterruptRxFrameErr";
-    kDifUartInterruptRxBreakErr := "kDifUartInterruptRxBreakErr";
-    kDifUartInterruptRxTimeout := "kDifUartInterruptRxTimeout";
-    kDifUartInterruptRxParityErr := "kDifUartInterruptRxParityErr";
-    kDifUartInterruptLast := "kDifUartInterruptLast";
-    kDifUartWatermarkByte1 := "kDifUartWatermarkByte1";
-    kDifUartWatermarkByte4 := "kDifUartWatermarkByte4";
-    kDifUartWatermarkByte8 := "kDifUartWatermarkByte8";
-    kDifUartWatermarkByte16 := "kDifUartWatermarkByte16";
-    kDifUartWatermarkByte30 := "kDifUartWatermarkByte30";
-    kDifUartWatermarkLast := "kDifUartWatermarkLast";
-    kDifUartEnable := "kDifUartEnable";
-    kDifUartDisable := "kDifUartDisable";
-    kDifUartParityOdd := "kDifUartParityOdd";
-    kDifUartParityEven := "kDifUartParityEven";
-    kDifUartOk := "kDifUartOk";
-    kDifUartError := "kDifUartError";
-    kDifUartBadArg := "kDifUartBadArg";
-    kDifUartConfigOk := "kDifUartConfigOk";
-    kDifUartConfigError := "kDifUartConfigError";
-    kDifUartConfigBadArg := "kDifUartConfigBadArg";
-    kDifUartConfigBadConfig := "kDifUartConfigBadConfig";
-    kDifUartConfigBadNco := "kDifUartConfigBadNco";
- |}.
+    (* generated uart_regs.h *)
+    UART_CTRL_NCO_MASK := "UART_CTRL_NCO_MASK";
+    UART_CTRL_NCO_FIELD := "UART_CTRL_NCO_FIELD";
+    UART_CTRL_TX_BIT := "UART_CTRL_TX_BIT";
+    UART_CTRL_PARITY_EN_BIT := "UART_CTRL_PARITY_EN_BIT";
+    UART_CTRL_REG_OFFSET := "UART_CTRL_REG_OFFSET";
+    UART_FIFO_CTRL_RXRST_BIT := "UART_FIFO_CTRL_RXRST_BIT";
+    UART_FIFO_CTRL_TXRST_BIT := "UART_FIFO_CTRL_TXRST_BIT";
+    UART_FIFO_CTRL_REG_OFFSET := "UART_FIFO_CTRL_REG_OFFSET";
+    UART_OVRD_REG_OFFSET := "UART_OVRD_REG_OFFSET";
+    UART_TIMEOUT_CTRL_REG_OFFSET := "UART_TIMEOUT_CTRL_REG_OFFSET";
+    UART_INTR_ENABLE_REG_OFFSET := "UART_INTR_ENABLE_REG_OFFSET";
+    UART_INTR_STATE_REG_OFFSET := "UART_INTR_STATE_REG_OFFSET";
+    UART_STATUS_REG_OFFSET := "UART_STATUS_REG_OFFSET";
+    UART_STATUS_TXFULL_BIT := "UART_STATUS_TXFULL_BIT";
+    UART_STATUS_TXIDLE_BIT := "UART_STATUS_TXIDLE_BIT";
+    UART_WDATA_WDATA_FIELD := "UART_WDATA_WDATA_FIELD";
+    UART_WDATA_REG_OFFSET := "UART_WDATA_REG_OFFSET";
+
+    (* sw/device/silicon_creator/lib/drivers/uart.c *)
+    NCO_WIDTH := "NCO_WIDTH";
+
+    (* sw/device/silicon_creator/lib/error.h *)
+    kModuleUart := "kModuleUart";
+    kErrorOk := "kErrorOk";
+    kErrorUartInvalidArgument := "kErrorUartInvalidArgument";
+    kErrorUartBadBaudRate := "kErrorUartBadBaudRate";
+  |}.
