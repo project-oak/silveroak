@@ -161,9 +161,25 @@ Compute netlist "nandGate" nandGate.
 
 Local Open Scope string_scope.
 
+Fixpoint insertCommas (lines : list string) : string :=
+  match lines with
+  | [] => ""
+  | [x] => x
+  | x::xs => x ++ ", " ++ insertCommas xs
+  end.
+
+Fixpoint portDeclarations (nl : list Instance) : list string :=
+  match nl with
+  | InputBit name _ :: rest => ("input logic " ++ name) :: portDeclarations rest
+  | OutputBit _ name :: rest => ("output logic " ++ name) :: portDeclarations rest
+  | _ :: rest => portDeclarations rest
+  | [] => []
+  end.
+
 Definition systemVerilog (nl : Netlist) : list string :=
-  ["module " ++ netlistName nl ++ "();";
+  ["module " ++ netlistName nl ++ " (" ++ insertCommas (portDeclarations (instances nl)) ++ ");";
    "endmodule"].
+
 
 Compute (systemVerilog (netlist "nandGate" nandGate)).
 
