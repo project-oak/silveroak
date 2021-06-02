@@ -7,6 +7,7 @@ Require Import bedrock2.Variables.
 Require Import coqutil.Z.HexNotation.
 Require Import Bedrock2Experiments.Uart.Uart.
 Require Import Bedrock2Experiments.Uart.Bitfield.
+Require Import Bedrock2Experiments.Uart.Mmio.
 Require Import Bedrock2Experiments.Uart.Constants.
 Import ListNotations.
 Local Open Scope string_scope.
@@ -16,8 +17,12 @@ Existing Instance constant_names.
 
 Definition funcs := [
   bitfield_field32_write
+  ;bitfield_field32_read
   ;bitfield_bit32_read
-  ;bitfield_bit32_write].
+  ;bitfield_bit32_write
+  ;mmio_region_write32
+  ;mmio_region_read32
+  ].
 
 Definition make_uart_c :=
   concat LF (map (fun f => "static " ++ c_func f) funcs).
