@@ -17,6 +17,7 @@ Section Impl.
   (* Notations for small constants *)
   Local Notation "0" := (expr.literal 0) (in custom bedrock_expr).
   Local Notation "1" := (expr.literal 1) (in custom bedrock_expr).
+  Local Notation "-1" := (expr.literal (- 1)) (in custom bedrock_expr).
 
   (* sw/device/lib/base/bitfield.h *)
 
@@ -37,8 +38,7 @@ Section Impl.
     let out := "out" in
     ("b2_bitfield_field32_write", ([bitfield; field_mask; field_index; value],[out],
     bedrock_func_body:(
-      (* FIXME no ~ operator *)
-      bitfield = bitfield & (field_mask << field_index);
+      bitfield = bitfield & ((field_mask << field_index)^(-1));
       bitfield = bitfield | ((value & field_mask) << field_index);
       out = bitfield
     ))).
@@ -74,7 +74,6 @@ Section Impl.
     let out := "out" in
     ("b2_bitfield_bit32_write", ([bitfield; bit_index; value],[out],
     bedrock_func_body:(
-      (* FIXME value is boolean, how to handle that? *)
       unpack! out = bitfield_field32_write(bitfield, 1, bit_index, (value==1))
     ))).
 
@@ -91,7 +90,6 @@ Section Impl.
     let out := "out" in
     ("b2_bitfield_bit32_read", ([bitfield; bit_index],[out],
     bedrock_func_body:(
-      (* FIXME returns boolean *)
       unpack! out = bitfield_field32_read(bitfield, 1, bit_index)
     ))).
 
