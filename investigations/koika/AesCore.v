@@ -263,6 +263,7 @@ Module CoSimulation.
     |> done.
 
   Definition rules :=
+    (* forcing vm_compute here doesn't help the test lemma performance *)
     (* Eval vm_compute in *)
     tc_rules R Sigma
              (fun r => match r with
@@ -301,6 +302,7 @@ Module CoSimulation.
 
   Instance FiniteType_reg_t : FiniteType reg_t := _.
 
+  (* tlp_o is an argument to allow passing a different tlp_o each cycle *)
   Definition σ tlp_o fn : Sig_denote (Sigma fn) :=
     match fn with
     | aes_cipher_step => id
