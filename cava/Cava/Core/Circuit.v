@@ -14,9 +14,10 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Lists.List.
 Require Import Coq.Vectors.Vector.
 Require Import ExtLib.Structures.Monads.
-Import VectorNotations MonadNotation.
+Import ListNotations VectorNotations MonadNotation.
 
 Require Import Cava.Core.CavaClass.
 Require Import Cava.Core.Signal.
@@ -28,8 +29,18 @@ Require Import Cava.Core.Signal.
 Section WithCava.
   Context `{semantics:Cava}.
 
+  Definition flat_signals
+             (l : list SignalType) : Type :=
+    (match l with
+     | [] => unit
+     | [x] => signal x
+     | x :: y :: l =>
+       List.fold_left (fun x y => (x * signal y)%type)
+                      l (signal x * signal y)%type
+     end)%list.
+
   Inductive Circuit : Type -> Type -> Type :=
-  | Comb : forall {i o}, (i -> cava o) -> Circuit i o
+  | Comb : forall {i} ty, (i -> cava (flat_signals ty)) -> Circuit i (flat_signals ty)
   | Compose : forall {i t o}, Circuit i t -> Circuit t o -> Circuit i o
   | First : forall {i o t}, Circuit i o -> Circuit (i * t) (o * t)
   | Second : forall {i o t}, Circuit i o -> Circuit (t * i) (t * o)
@@ -41,6 +52,16 @@ Section WithCava.
       forall {t} (resetval : combType t),
         Circuit (signal t * signal Bit) (signal t)
   .
+
+  Fixpoint out_interface {i o} (c : Circuit i o) : list SignalType :=
+    match c with
+    | Comb ty _ => ty
+    | Compose f g => out_interface g
+    | First f => firstn (length (out_interface f) - 1) (out_interface f)
+    | Second f => skipn (length (out_interface f) - 1) (out_interface f)
+    | @LoopInitCE i o s _ f => out_interface f ++ [s]
+    | @DelayInitCE t _ => [t]
+    end.
 
   (* Internal state of the circuit (register values) *)
   Fixpoint circuit_state {i o} (c : Circuit i o) : Type :=
@@ -91,6 +112,18 @@ Section WithCava.
   (* Delay with the default signal as its reset value and no enable *)
   Definition Delay {t} : Circuit (signal t) (signal t) :=
     Compose (Comb (fun i => ret (i, constant true))) (DelayInitCE (defaultCombValue t)).
+
+  (* Internal state of the circuit (register values) *)
+  Fixpoint mkdelays {i o} (c : Circuit i o) : Circuit o o :=
+    match c with
+    | Comb ty _ => fold_left (fun t => 
+    | Compose f g => circuit_state f * circuit_state g
+    | First f => circuit_state f
+    | Second f => circuit_state f
+    | @LoopInitCE i o s _ f => circuit_state f * combType s
+    | @DelayInitCE t _ => combType t
+    end.
+
 End WithCava.
 
 Module Notations.
