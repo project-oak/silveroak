@@ -22,6 +22,7 @@ Definition funcs := [
   ;bitfield_bit32_write
   ;mmio_region_write32
   ;mmio_region_read32
+  ;uart_reset
   ].
 
 Definition make_uart_c :=
