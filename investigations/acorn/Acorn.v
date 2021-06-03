@@ -235,17 +235,14 @@ Definition declareBitNets (bc : N) : list string :=
   end.
 
 Definition declareNatNets (nc : N) : list string :=
-  match nc with
-  | N0 => []
-  | Npos nc' => ["  int unsigned nat[0:" ++ showN (nc - 1) ++ "];"]
-  end.
+  map (fun i => "  int unsigned nat" ++ showN (N.of_nat i) ++ ";") (seq 0 (N.to_nat nc)).
 
 Definition declareLocalNets (nl : Netlist) : list string :=
   declareBitNets (bitCount nl) ++ declareNatNets (natCount nl).
 
 Definition netS (n : N) : string := "net[" ++ showN n ++ "]".
 
-Definition natS (n : N) : string := "nat[" ++ showN n ++ "]".
+Definition natS (n : N) : string := "nat" ++ showN n.
 
 
 Definition instantiateComponent (component : Instance) : string :=

@@ -15,10 +15,10 @@ module pipe2_tb ();
   clk = 1'b0 ;
   rst = 1'b1;
   #10 rst = 1'b0;
-      a = 17;
+  #5  a = 17;
   #10 a = 92;
   #10 a = 51;
-  #10;
+  #20;
   $finish;
   end
 
