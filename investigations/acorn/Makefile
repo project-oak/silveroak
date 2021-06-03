@@ -14,14 +14,21 @@
 # limitations under the License.
 #
 
-all:	Makefile.coq nandgate.sv nandgate
+all:	Makefile.coq nandgate.sv nandgate addmod.sv
 	$(MAKE) -f Makefile.coq
 
 nandgate.sv.out:	Acorn.v Makefile.coq
 			$(MAKE) -f Makefile.coq
 
+addmod.sv.out:	Acorn.v Makefile.coq
+		$(MAKE) -f Makefile.coq
+
+addmod.sv:	addmod.sv.out
+		./ExtractSystemVerilog addmod.sv
+		
+
 nandgate.sv:	nandgate.sv.out ExtractSystemVerilog
-				./ExtractSystemVerilog "nandgate.sv"
+		./ExtractSystemVerilog nandgate.sv
 
 Makefile.coq:	
 		coq_makefile -f _CoqProject -o Makefile.coq
@@ -30,8 +37,8 @@ nandgate:	nandgate.sv
 		iverilog -g2012 -o nandgate nandgate.sv
 
 ExtractSystemVerilog:	ExtractSystemVerilog.hs
-						ghc ExtractSystemVerilog.hs
+			ghc ExtractSystemVerilog.hs
 
 clean:	
 		 -$(MAKE) -f Makefile.coq clean
-		 rm -rf Makefile.coq ExtractSystemVerilog nandgate
+		 rm -rf Makefile.coq ExtractSystemVerilog nandgate* addmod*

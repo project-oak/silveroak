@@ -150,12 +150,13 @@ Definition inputBit (name : string) : state Netlist (Signal Bit) :=
 Definition outputBit (driver : Signal Bit) (name : string) : state Netlist unit :=
   addPort (OutputBit (wireNr driver) name).
 
-Definition nandGate : state Netlist unit :=
-  i0 <- inputBit "i0" ;;
-  i1 <- inputBit "i1" ;;
-  o1 <- and2 (i0, i1) ;;
-  o <- inv o1 ;;
-  outputBit o "o".
+Definition inputNat (name : string) : state Netlist (Signal Nat) :=
+  o <- newNat ;;
+  addPort (InputNat name (natWireNr o)) ;;
+  ret o.
+
+Definition outputNat (driver : Signal Nat) (name : string) : state Netlist unit :=
+  addPort (OutputNat (natWireNr driver) name).
 
 Definition setCircuitName (name : string) : state Netlist unit :=
   ns <- get ;;
@@ -166,8 +167,6 @@ Definition setCircuitName (name : string) : state Netlist unit :=
 
 Definition netlist (name : string) (circuit : state Netlist unit) : Netlist :=
   execState (setCircuitName name ;; circuit) emptyNetist.
-
-Compute netlist "nandGate" nandGate.
 
 Local Open Scope string_scope.
 
@@ -254,13 +253,11 @@ Definition instantiateComponent (component : Instance) : string :=
 Definition instantiateComponents := map instantiateComponent.
   
 
-Definition systemVerilog (nl : Netlist) : list string :=
+Definition systemVerilogLines (nl : Netlist) : list string :=
   ["module " ++ netlistName nl ++ " (" ++ insertCommas (portDeclarations (ports nl)) ++ ");"] ++
   declareLocalNets nl ++
   instantiateComponents (instances nl) ++
   ["endmodule"].
-
-Compute (systemVerilog (netlist "nandGate" nandGate)).
 
 Fixpoint unlines (lines : list string) : string :=
   match lines with
@@ -268,4 +265,22 @@ Fixpoint unlines (lines : list string) : string :=
   | x::xs => x ++ "\n" ++ unlines xs
   end.
 
-Redirect "nandgate.sv" Eval compute in (unlines (systemVerilog (netlist "nandGate" nandGate))).
+Definition systemVerilog (name : string) (nl : state Netlist unit ) : string :=
+  unlines (systemVerilogLines (netlist name nl)).
+
+Definition nandGate : state Netlist unit :=
+  i0 <- inputBit "i0" ;;
+  i1 <- inputBit "i1" ;;
+  o1 <- and2 (i0, i1) ;;
+  o <- inv o1 ;;
+  outputBit o "o".
+
+Redirect "nandgate.sv" Eval compute in (systemVerilog "nandGate" nandGate).
+
+Definition addmod : state Netlist unit :=
+  a <- inputNat "a" ;;
+  b <- inputNat "b" ;;
+  c <- addMod 6 (a, b) ;;
+  outputNat c "c".
+
+Redirect "addmod.sv" Eval compute in (systemVerilog "addmod" addmod).
