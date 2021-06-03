@@ -41,11 +41,13 @@ Class Acorn (signal : SignalType -> Type) := {
 Inductive Instance :=
 | Inv : N -> N -> N -> Instance
 | And2 : N -> N -> N -> N -> Instance
-| AddMod : N -> nat -> N -> N -> N -> Instance
-| InputBit : string -> N -> Instance
-| OutputBit : N -> string -> Instance
-| InputNat : string -> N -> Instance
-| OutputNat : N -> string -> Instance.
+| AddMod : nat -> N -> N -> N -> Instance.
+
+Inductive Port :=
+| InputBit : string -> N -> Port
+| OutputBit : N -> string -> Port
+| InputNat : string -> N -> Port
+| OutputNat : N -> string -> Port.
 
 Record Netlist := mkNetlist {
   netlistName : string;
@@ -53,10 +55,11 @@ Record Netlist := mkNetlist {
   bitCount : N;
   natCount : N;
   instances : list Instance;
+  ports : list Port;
 }.
 
 Definition emptyNetist : Netlist :=
-  mkNetlist "" 0 0 0 [].
+  mkNetlist "" 0 0 0 [] [].
 
 Inductive Signal : SignalType -> Type :=
 | BitNet : N -> Signal Bit
@@ -67,32 +70,39 @@ Definition denoteSignal (t: SignalType) : Type := Signal t.
 Definition newWire : state Netlist (Signal Bit) :=
   ns <- get ;;
   match ns with
-  | mkNetlist name ic bc nc is =>
-      put (mkNetlist name ic (bc + 1) nc is) ;;
+  | mkNetlist name ic bc nc is ps =>
+      put (mkNetlist name ic (bc + 1) nc is ps) ;;
       ret (BitNet bc)
   end.
 
 Definition newNat : state Netlist (Signal Nat) :=
   ns <- get ;;
   match ns with
-  | mkNetlist name ic bc nc is =>
-      put (mkNetlist name ic bc (nc + 1) is) ;;
+  | mkNetlist name ic bc nc is ps =>
+      put (mkNetlist name ic bc (nc + 1) is ps) ;;
       ret (NatNet nc)
   end.
 
 Definition newInstNr : state Netlist N :=
   ns <- get ;;
   match ns with
-  | mkNetlist name ic bc nc is =>
-      put (mkNetlist name (ic + 1) bc nc is) ;;
+  | mkNetlist name ic bc nc is ps =>
+      put (mkNetlist name (ic + 1) bc nc is ps) ;;
       ret ic
   end.
 
 Definition addInstance (inst : Instance) : state Netlist unit :=
   ns <- get ;;
   match ns with
-  | mkNetlist name ic bc nc is =>
-      put (mkNetlist name ic bc nc (inst::is))
+  | mkNetlist name ic bc nc is ps =>
+      put (mkNetlist name ic bc nc (inst::is) ps)
+  end.
+
+Definition addPort (p : Port) : state Netlist unit :=
+  ns <- get ;;
+  match ns with
+  | mkNetlist name ic bc nc is ps =>
+      put (mkNetlist name ic bc nc is (p::ps))
   end.
 
 Definition wireNr (w : Signal Bit) : N :=
@@ -120,9 +130,8 @@ Definition natWireNr (w : Signal Nat) : N :=
 
 Definition addModCircuit (modBy : nat) (i0i1 : Signal Nat * Signal Nat) : state Netlist (Signal Nat) :=
   o <- newNat ;;
-  instNr <- newInstNr ;;
   let (i0, i1) := i0i1 in
-  addInstance (AddMod instNr modBy (natWireNr i0) (natWireNr i1) (natWireNr o)) ;;
+  addInstance (AddMod modBy (natWireNr i0) (natWireNr i1) (natWireNr o)) ;;
   ret o.
 
 Instance AcornNetlist : Acorn denoteSignal := {
@@ -135,11 +144,11 @@ Instance AcornNetlist : Acorn denoteSignal := {
 
 Definition inputBit (name : string) : state Netlist (Signal Bit) :=
   o <- newWire ;;
-  addInstance (InputBit name (wireNr o)) ;;
+  addPort (InputBit name (wireNr o)) ;;
   ret o.
 
 Definition outputBit (driver : Signal Bit) (name : string) : state Netlist unit :=
-  addInstance (OutputBit (wireNr driver) name).
+  addPort (OutputBit (wireNr driver) name).
 
 Definition nandGate : state Netlist unit :=
   i0 <- inputBit "i0" ;;
@@ -151,8 +160,8 @@ Definition nandGate : state Netlist unit :=
 Definition setCircuitName (name : string) : state Netlist unit :=
   ns <- get ;;
   match ns with
-  | mkNetlist _ ic bc nc is =>
-      put (mkNetlist name ic bc nc is)
+  | mkNetlist _ ic bc nc is ps =>
+      put (mkNetlist name ic bc nc is ps)
   end.
 
 Definition netlist (name : string) (circuit : state Netlist unit) : Netlist :=
@@ -169,15 +178,15 @@ Fixpoint insertCommas (lines : list string) : string :=
   | x::xs => x ++ ", " ++ insertCommas xs
   end.
 
-Fixpoint portDeclarations (nl : list Instance) : list string :=
-  match nl with
-  | InputBit name _ :: rest => ("input logic " ++ name) :: portDeclarations rest
-  | OutputBit _ name :: rest => ("output logic " ++ name) :: portDeclarations rest
-  | InputNat name _ :: rest => ("input int unsigned " ++ name) :: portDeclarations rest
-  | OutputNat _ name :: rest => ("output int unsigned " ++ name) :: portDeclarations rest
-  | _ :: rest => portDeclarations rest
-  | [] => []
+Definition portDeclaration (p : Port) : string :=
+  match p with
+  | InputBit name _ => "input logic " ++ name
+  | OutputBit _ name => "output logic " ++ name
+  | InputNat name _ => "input int unsigned " ++ name
+  | OutputNat _ name => "output int unsigned " ++ name
   end.
+
+Definition portDeclarations := map portDeclaration.
 
 Open Scope char_scope.
 Open Scope N_scope.
@@ -215,21 +224,40 @@ Definition showN (n : N) : string :=
 Definition declareBitNets (bc : N) : list string :=
   match bc with
   | N0 => []
-  | Npos bc' => [" logic net[0:" ++ showN (bc - 1) ++ "];"]
+  | Npos bc' => ["  logic net[0:" ++ showN (bc - 1) ++ "];"]
   end.
 
 Definition declareNatNets (nc : N) : list string :=
   match nc with
   | N0 => []
-  | Npos nc' => [" logic nat[0:" ++ showN (nc - 1) ++ "];"]
+  | Npos nc' => ["  logic nat[0:" ++ showN (nc - 1) ++ "];"]
   end.
 
 Definition declareLocalNets (nl : Netlist) : list string :=
   declareBitNets (bitCount nl) ++ declareNatNets (natCount nl).
 
+Definition netS (n : N) : string := "net[" ++ showN n ++ "]".
+
+Definition natS (n : N) : string := "nat[" ++ showN n ++ "]".
+
+
+Definition instantiateComponent (component : Instance) : string :=
+  match component with
+  | Inv instNr i o => "  not not_" ++ showN instNr ++ " (" ++
+                      netS i ++ ", " ++ netS o ++ ");"
+  | And2 instNr i0 i1 o => "  and and_" ++ showN instNr ++ " (" ++ netS i0 ++ ", " ++  netS i1 ++
+                          ", " ++ netS o ++ ");"
+  | AddMod modVal i0 i1 o => "  assign " ++ natS o ++ " = (" ++ natS i0 ++ " + " ++
+                             natS i1 ++ ") % " ++ showN (N.of_nat modVal) ++ ";"
+  end.
+
+Definition instantiateComponents := map instantiateComponent.
+  
+
 Definition systemVerilog (nl : Netlist) : list string :=
-  ["module " ++ netlistName nl ++ " (" ++ insertCommas (portDeclarations (instances nl)) ++ ");"] ++
+  ["module " ++ netlistName nl ++ " (" ++ insertCommas (portDeclarations (ports nl)) ++ ");"] ++
   declareLocalNets nl ++
+  instantiateComponents (instances nl) ++
   ["endmodule"].
 
 Compute (systemVerilog (netlist "nandGate" nandGate)).
