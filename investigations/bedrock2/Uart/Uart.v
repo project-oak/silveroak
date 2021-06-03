@@ -111,4 +111,110 @@ Section Impl.
       }
     ))).
 
+  (****
+    static bool uart_tx_full(void) {
+      uint32_t reg =
+          abs_mmio_read32(TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET);
+      return bitfield_bit32_read(reg, UART_STATUS_TXFULL_BIT);
+    }
+   ***)
+  Definition uart_tx_full : func :=
+    let reg := "reg" in
+    let out := "out" in
+    ("br2_uart_tx_full", ([], [out],
+    bedrock_func_body:(
+      unpack! reg = abs_mmio_read32(TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET);
+      unpack! out = bitfield_bit32_read(reg, UART_STATUS_TXFULL_BIT)
+    ))).
+
+  (****
+    static bool uart_tx_idle(void) {
+      uint32_t reg =
+          abs_mmio_read32(TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET);
+      return bitfield_bit32_read(reg, UART_STATUS_TXIDLE_BIT);
+    }
+   ***)
+  Definition uart_tx_idle : func :=
+    let reg := "reg" in
+    let out := "out" in
+    ("br2_uart_tx_idle", ([], [out],
+    bedrock_func_body:(
+      unpack! reg = abs_mmio_read32(TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET);
+      unpack! out = bitfield_bit32_read(reg, UART_STATUS_TXIDLE_BIT)
+    ))).
+
+  (****
+    void uart_putchar(uint8_t byte) {
+      // If the transmit FIFO is full, wait.
+      while (uart_tx_full()) {
+      }
+      uint32_t reg = bitfield_field32_write(0, UART_WDATA_WDATA_FIELD, byte);
+      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_WDATA_REG_OFFSET, reg);
+
+      // If the transmitter is active, wait.
+      while (!uart_tx_idle()) {
+      }
+    }
+   ***)
+  Definition uart_putchar : func :=
+    let byte := "byte" in
+    let reg := "reg" in
+    let cond := "cond" in
+    ("br2_uart_putchar", ([byte], [],
+    bedrock_func_body:(
+      unpack! cond = uart_tx_full();
+      while (cond == 1) {
+        unpack! cond = uart_tx_full()
+      };
+      unpack! reg = bitfield_field32_write(0, UART_WDATA_WDATA_FIELD, byte);
+      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_WDATA_REG_OFFSET, reg);
+      unpack! cond = uart_tx_idle();
+      while (cond == 0) {
+        unpack! cond = uart_tx_idle()
+      }
+    ))).
+
+  (****
+    size_t uart_write(const uint8_t *data, size_t len) {
+      size_t total = len;
+      while (len) {
+        uart_putchar( *data);
+        data++;
+        len--;
+      }
+      return total;
+    }
+   ***)
+  Definition uart_write : func :=
+    let data := "data" in
+    let len := "len" in
+    let total := "total" in
+    let out := "out" in
+    ("br2_uart_write", ([data; len], [out],
+    bedrock_func_body:(
+      total = len;
+      while (0 < len) {
+        uart_putchar( load4(data) );
+        data = data + 1;
+        len = len - 1
+      };
+      out = total
+    ))).
+
+  (***
+    size_t uart_sink(void *uart, const char *data, size_t len) {
+      (void)uart;
+      return uart_write((const uint8_t * )data, len);
+    }
+   ***)
+  Definition uart_sink : func :=
+    let uart := "uart" in
+    let data := "data" in
+    let len := "len" in
+    let out := "out" in
+    ("br2_uart_sink", ([uart; data; len], [out],
+    bedrock_func_body:(
+      unpack! out = uart_write(data, len)
+    ))).
+
 End Impl.

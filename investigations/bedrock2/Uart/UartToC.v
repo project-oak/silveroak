@@ -24,6 +24,11 @@ Definition funcs := [
   ;abs_mmio_read32
   ;uart_reset
   ;uart_init
+  ;uart_tx_full
+  ;uart_tx_idle
+  ;uart_putchar
+  ;uart_write
+  ;uart_sink
   ].
 
 Definition make_uart_c :=
