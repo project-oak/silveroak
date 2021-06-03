@@ -14,31 +14,32 @@
 # limitations under the License.
 #
 
-all:	Makefile.coq nandgate.sv nandgate addmod.sv
+.PHONY: all clean
+
+CIRCUITS = nandgate addmod pipe2
+SV =  $(CIRCUITS:=.sv)
+
+all:	Makefile.coq $(SV) pipe2tb.vcd
 	$(MAKE) -f Makefile.coq
 
-nandgate.sv.out:	Acorn.v Makefile.coq
-			$(MAKE) -f Makefile.coq
+pipe2tb.vcd:	pipe2.sv 
+		iverilog -g2012 -o pipe2_tb pipe2.sv pipe2_tb.sv && vvp pipe2_tb
 
-addmod.sv.out:	Acorn.v Makefile.coq
+%.sv.out:	Acorn.v Makefile.coq
 		$(MAKE) -f Makefile.coq
 
-addmod.sv:	addmod.sv.out
-		./ExtractSystemVerilog addmod.sv
+%.sv:	%.sv.out ExtractSystemVerilog
+	./ExtractSystemVerilog $*.sv
+	iverilog -g2012 -o $* $*.sv
 		
-
-nandgate.sv:	nandgate.sv.out ExtractSystemVerilog
-		./ExtractSystemVerilog nandgate.sv
 
 Makefile.coq:	
 		coq_makefile -f _CoqProject -o Makefile.coq
 
-nandgate:	nandgate.sv
-		iverilog -g2012 -o nandgate nandgate.sv
-
 ExtractSystemVerilog:	ExtractSystemVerilog.hs
 			ghc ExtractSystemVerilog.hs
 
+
 clean:	
 		 -$(MAKE) -f Makefile.coq clean
-		 rm -rf Makefile.coq ExtractSystemVerilog nandgate* addmod*
+		 rm -rf Makefile.coq ExtractSystemVerilog $(CIRCUITS) $(SV) pipe2_tb *.vcd *.out

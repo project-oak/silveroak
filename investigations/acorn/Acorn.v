@@ -36,12 +36,14 @@ Class Acorn (signal : SignalType -> Type) := {
   inv : signal Bit -> acorn (signal Bit);
   and2 : signal Bit * signal Bit -> acorn (signal Bit);
   addMod : nat -> signal Nat * signal Nat -> acorn (signal Nat);
+  natDelay : signal Nat -> acorn (signal Nat);
 }.
 
 Inductive Instance :=
 | Inv : N -> N -> N -> Instance
 | And2 : N -> N -> N -> N -> Instance
-| AddMod : nat -> N -> N -> N -> Instance.
+| AddMod : nat -> N -> N -> N -> Instance
+| NatDelay : N -> N -> Instance.
 
 Inductive Port :=
 | InputBit : string -> N -> Port
@@ -128,6 +130,11 @@ Definition natWireNr (w : Signal Nat) : N :=
   | NatNet n => n
   end.
 
+Definition natDelayDef (i : Signal Nat) : state Netlist (Signal Nat) :=
+  o <- newNat ;;
+  addInstance (NatDelay (natWireNr i) (natWireNr o)) ;;
+  ret o.
+
 Definition addModCircuit (modBy : nat) (i0i1 : Signal Nat * Signal Nat) : state Netlist (Signal Nat) :=
   o <- newNat ;;
   let (i0, i1) := i0i1 in
@@ -140,6 +147,7 @@ Instance AcornNetlist : Acorn denoteSignal := {
   inv := invGate;
   and2 := and2Gate;
   addMod := addModCircuit;
+  natDelay := natDelayDef;
 }.
 
 Definition inputBit (name : string) : state Netlist (Signal Bit) :=
@@ -229,7 +237,7 @@ Definition declareBitNets (bc : N) : list string :=
 Definition declareNatNets (nc : N) : list string :=
   match nc with
   | N0 => []
-  | Npos nc' => ["  logic nat[0:" ++ showN (nc - 1) ++ "];"]
+  | Npos nc' => ["  int unsigned nat[0:" ++ showN (nc - 1) ++ "];"]
   end.
 
 Definition declareLocalNets (nl : Netlist) : list string :=
@@ -243,19 +251,35 @@ Definition natS (n : N) : string := "nat[" ++ showN n ++ "]".
 Definition instantiateComponent (component : Instance) : string :=
   match component with
   | Inv instNr i o => "  not not_" ++ showN instNr ++ " (" ++
-                      netS i ++ ", " ++ netS o ++ ");"
-  | And2 instNr i0 i1 o => "  and and_" ++ showN instNr ++ " (" ++ netS i0 ++ ", " ++  netS i1 ++
-                          ", " ++ netS o ++ ");"
+                      netS o ++ ", " ++ netS i ++ ");"
+  | And2 instNr i0 i1 o => "  and and_" ++ showN instNr ++ " (" ++ netS o ++ ", " ++  netS i0 ++
+                          ", " ++ netS i1 ++ ");"
   | AddMod modVal i0 i1 o => "  assign " ++ natS o ++ " = (" ++ natS i0 ++ " + " ++
                              natS i1 ++ ") % " ++ showN (N.of_nat modVal) ++ ";"
+  | NatDelay i o => "  always_ff @(posedge clk) "
+                    ++ natS o ++ " <= rst ? 0 : " ++ natS i ++ ";"
   end.
 
 Definition instantiateComponents := map instantiateComponent.
   
+Definition declarePorts (pl : list Port) : string :=
+  " (input logic clk, input logic rst, " ++ insertCommas (portDeclarations pl) ++ ")".
+
+Definition wireUpPort (p : Port) : string :=
+  match p with
+  | InputBit name i => "  assign " ++ netS i ++ " = " ++ name ++ ";"
+  | OutputBit i name => "  assign " ++ name ++ " = " ++ netS i ++ ";"
+  | InputNat name i => "  assign " ++ natS i ++ " = " ++ name ++ ";"
+  | OutputNat i name => "  assign " ++ name ++ " = " ++ natS i ++ ";"
+  end.
+
+Definition wireUpPorts := map wireUpPort.
 
 Definition systemVerilogLines (nl : Netlist) : list string :=
-  ["module " ++ netlistName nl ++ " (" ++ insertCommas (portDeclarations (ports nl)) ++ ");"] ++
+  ["module " ++ netlistName nl ++ declarePorts (ports nl) ++ ";";
+   "timeunit 1ns; timeprecision 1ns;"] ++
   declareLocalNets nl ++
+  wireUpPorts (ports nl) ++
   instantiateComponents (instances nl) ++
   ["endmodule"].
 
@@ -275,7 +299,7 @@ Definition nandGate : state Netlist unit :=
   o <- inv o1 ;;
   outputBit o "o".
 
-Redirect "nandgate.sv" Eval compute in (systemVerilog "nandGate" nandGate).
+Redirect "nandgate.sv" Compute (systemVerilog "nandGate" nandGate).
 
 Definition addmod : state Netlist unit :=
   a <- inputNat "a" ;;
@@ -283,4 +307,12 @@ Definition addmod : state Netlist unit :=
   c <- addMod 6 (a, b) ;;
   outputNat c "c".
 
-Redirect "addmod.sv" Eval compute in (systemVerilog "addmod" addmod).
+Redirect "addmod.sv" Compute (systemVerilog "addmod" addmod).
+
+Definition pipe2 : state Netlist unit :=
+  a <- inputNat "a" ;;
+  a1 <- natDelay a ;;
+  a2 <- natDelay a1 ;;
+  outputNat a2 "a2".
+
+Redirect "pipe2.sv" Compute (systemVerilog "pipe2" pipe2).
