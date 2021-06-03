@@ -7,8 +7,8 @@ Require Import bedrock2.NotationsCustomEntry.
 Require Import bedrock2.ToCString.
 Require Import coqutil.Word.Interface.
 Require Import Bedrock2Experiments.Uart.Constants.
-Require Import Bedrock2Experiments.Uart.Mmio.
-Require Import Bedrock2Experiments.Uart.Bitfield.
+Require Import Bedrock2Experiments.LibBase.AbsMMIO.
+Require Import Bedrock2Experiments.LibBase.Bitfield.
 
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
@@ -26,27 +26,42 @@ Section Impl.
 
   (* sw/device/silicon_creator/lib/drivers/uart.c *)
 
-  (* static void uart_reset(const uart_t *uart) *)
+  (****
+     static void uart_reset(void) {
+       abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET, 0u);
+
+       // Write to the relevant bits clears the FIFOs.
+       uint32_t reg = 0;
+       reg = bitfield_bit32_write(reg, UART_FIFO_CTRL_RXRST_BIT, true);
+       reg = bitfield_bit32_write(reg, UART_FIFO_CTRL_TXRST_BIT, true);
+       abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_FIFO_CTRL_REG_OFFSET,
+     reg);
+
+       abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_OVRD_REG_OFFSET, 0u);
+       abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_TIMEOUT_CTRL_REG_OFFSET,
+     0u);
+       abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_INTR_ENABLE_REG_OFFSET,
+     0u);
+       abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_INTR_STATE_REG_OFFSET,
+     UINT32_MAX);
+     }
+   ***)
   Definition uart_reset : func :=
-    let uart := "uart" in
-    let uart_base_addr := "uart_base_addr" in
     let reg := "reg" in
     ("br2_uart_reset", ([], [],
     bedrock_func_body:(
-      (* uart->base_addr *)
-      uart_base_addr = load4(uart);
-      mmio_region_write32(uart_base_addr, UART_CTRL_REG_OFFSET, 0);
+      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET, 0);
 
       reg = 0;
       unpack! reg = bitfield_bit32_write(reg, UART_FIFO_CTRL_RXRST_BIT, 1);
       unpack! reg = bitfield_bit32_write(reg, UART_FIFO_CTRL_TXRST_BIT, 1);
-      mmio_region_write32(uart_base_addr, UART_FIFO_CTRL_REG_OFFSET, reg);
+      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_FIFO_CTRL_REG_OFFSET, reg);
 
-      mmio_region_write32(uart_base_addr, UART_OVRD_REG_OFFSET, 0);
-      mmio_region_write32(uart_base_addr, UART_TIMEOUT_CTRL_REG_OFFSET, 0);
-      mmio_region_write32(uart_base_addr, UART_INTR_ENABLE_REG_OFFSET, 0);
+      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_OVRD_REG_OFFSET, 0);
+      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_TIMEOUT_CTRL_REG_OFFSET, 0);
+      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_INTR_ENABLE_REG_OFFSET, 0);
       (* -1ULL instead of UINT32_MAX *)
-      mmio_region_write32(uart_base_addr, UART_INTR_STATE_REG_OFFSET, -1)
+      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_INTR_STATE_REG_OFFSET, -1)
     ))).
 
 End Impl.

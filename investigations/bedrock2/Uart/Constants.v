@@ -14,6 +14,9 @@ Local Open Scope list_scope.
 (* Core class : defines all the constants *)
 Class uart_constants T :=
   {
+    (* generated hw/top_earlgrey/sw/autogen/top_earlgrey.h *)
+    TOP_EARLGREY_UART0_BASE_ADDR  : T;
+
     (* generated uart_regs.h *)
     UART_CTRL_NCO_MASK            : T;
     UART_CTRL_NCO_FIELD           : T;
@@ -49,6 +52,9 @@ Definition constant_vars
   {names : uart_constants string}
   : uart_constants expr :=
   {|
+    (* generated hw/top_earlgrey/sw/autogen/top_earlgrey.h *)
+    TOP_EARLGREY_UART0_BASE_ADDR := expr.var TOP_EARLGREY_UART0_BASE_ADDR;
+
     (* generated uart_regs.h *)
     UART_CTRL_NCO_MASK := expr.var UART_CTRL_NCO_MASK;
     UART_CTRL_NCO_FIELD := expr.var UART_CTRL_NCO_FIELD;
@@ -81,6 +87,9 @@ Definition constant_vars
 (* This instance provide the string name for each constant *)
 Definition constant_names : uart_constants string :=
   {|
+    (* generated hw/top_earlgrey/sw/autogen/top_earlgrey.h *)
+    TOP_EARLGREY_UART0_BASE_ADDR := "TOP_EARLGREY_UART0_BASE_ADDR";
+
     (* generated uart_regs.h *)
     UART_CTRL_NCO_MASK := "UART_CTRL_NCO_MASK";
     UART_CTRL_NCO_FIELD := "UART_CTRL_NCO_FIELD";
