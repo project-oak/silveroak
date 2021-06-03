@@ -23,6 +23,7 @@ Definition funcs := [
   ;abs_mmio_write32
   ;abs_mmio_read32
   ;uart_reset
+  ;uart_init
   ].
 
 Definition make_uart_c :=
