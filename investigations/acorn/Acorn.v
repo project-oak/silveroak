@@ -15,6 +15,7 @@
 (****************************************************************************)
 
 Require Import Coq.Strings.Ascii Coq.Strings.String.
+Require Import Coq.Strings.Ascii.
 Require Import Coq.Lists.List.
 Require Import Coq.ZArith.ZArith.
 Require Import ExtLib.Structures.Monad.
@@ -43,8 +44,8 @@ Inductive Instance :=
 | AddMod : N -> nat -> N -> N -> N -> Instance
 | InputBit : string -> N -> Instance
 | OutputBit : N -> string -> Instance
-| InputNet : string -> N -> Instance
-| OutputNet : N -> string -> Instance.
+| InputNat : string -> N -> Instance
+| OutputNat : N -> string -> Instance.
 
 Record Netlist := mkNetlist {
   netlistName : string;
@@ -151,7 +152,7 @@ Definition setCircuitName (name : string) : state Netlist unit :=
   ns <- get ;;
   match ns with
   | mkNetlist _ ic bc nc is =>
-      put (mkNetlist name ic bc (nc + 1) is)
+      put (mkNetlist name ic bc nc is)
   end.
 
 Definition netlist (name : string) (circuit : state Netlist unit) : Netlist :=
@@ -172,14 +173,64 @@ Fixpoint portDeclarations (nl : list Instance) : list string :=
   match nl with
   | InputBit name _ :: rest => ("input logic " ++ name) :: portDeclarations rest
   | OutputBit _ name :: rest => ("output logic " ++ name) :: portDeclarations rest
+  | InputNat name _ :: rest => ("input int unsigned " ++ name) :: portDeclarations rest
+  | OutputNat _ name :: rest => ("output int unsigned " ++ name) :: portDeclarations rest
   | _ :: rest => portDeclarations rest
   | [] => []
   end.
 
-Definition systemVerilog (nl : Netlist) : list string :=
-  ["module " ++ netlistName nl ++ " (" ++ insertCommas (portDeclarations (instances nl)) ++ ");";
-   "endmodule"].
+Open Scope char_scope.
+Open Scope N_scope.
 
+Definition NToDigit (n : N) : ascii :=
+  match n with
+    | 0 => "0"
+    | 1 => "1"
+    | 2 => "2"
+    | 3 => "3"
+    | 4 => "4"
+    | 5 => "5"
+    | 6 => "6"
+    | 7 => "7"
+    | 8 => "8"
+    | _ => "9"
+  end.
+
+Fixpoint showNAux (time : nat) (n : N) (acc : string) : string :=
+  let acc' := String (NToDigit (n mod 10)) acc in
+  match time with
+    | 0%nat => acc'
+    | S time' =>
+      match n / 10 with
+        | 0 => acc'
+        | n' => showNAux time' n' acc'
+      end
+  end.
+
+Open Scope string_scope.
+
+Definition showN (n : N) : string :=
+  showNAux (N.to_nat n) n "".
+
+Definition declareBitNets (bc : N) : list string :=
+  match bc with
+  | N0 => []
+  | Npos bc' => [" logic net[0:" ++ showN (bc - 1) ++ "];"]
+  end.
+
+Definition declareNatNets (nc : N) : list string :=
+  match nc with
+  | N0 => []
+  | Npos nc' => [" logic nat[0:" ++ showN (nc - 1) ++ "];"]
+  end.
+
+Definition declareLocalNets (nl : Netlist) : list string :=
+  declareBitNets (bitCount nl) ++ declareNatNets (natCount nl).
+
+Definition systemVerilog (nl : Netlist) : list string :=
+  ["module " ++ netlistName nl ++ " (" ++ insertCommas (portDeclarations (instances nl)) ++ ");"] ++
+  declareLocalNets nl ++
+  ["endmodule"].
 
 Compute (systemVerilog (netlist "nandGate" nandGate)).
 

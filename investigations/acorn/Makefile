@@ -18,7 +18,7 @@ all:	Makefile.coq nandgate.sv nandgate
 	$(MAKE) -f Makefile.coq
 
 nandgate.sv.out:	Acorn.v Makefile.coq
-					$(MAKE) -f Makefile.coq
+			$(MAKE) -f Makefile.coq
 
 nandgate.sv:	nandgate.sv.out ExtractSystemVerilog
 				./ExtractSystemVerilog "nandgate.sv"
@@ -27,7 +27,7 @@ Makefile.coq:
 		coq_makefile -f _CoqProject -o Makefile.coq
 
 nandgate:	nandgate.sv
-		iverilog -o nandgate nandgate.sv
+		iverilog -g2012 -o nandgate nandgate.sv
 
 ExtractSystemVerilog:	ExtractSystemVerilog.hs
 						ghc ExtractSystemVerilog.hs
