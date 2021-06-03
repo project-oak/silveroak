@@ -19,7 +19,6 @@ Require Import Cava.CavaProperties.
 Require Import AesSpec.AES256.
 Require Import AesSpec.StateTypeConversions.
 Require Import AesSpec.CipherProperties.
-Require Import AesSpec.ExpandAllKeys.
 Require Import AesImpl.AddRoundKeyCircuit.
 Require Import AesImpl.AddRoundKeyEquivalence.
 Require Import AesImpl.ShiftRowsCircuit.
@@ -82,7 +81,6 @@ Local Ltac solve_side_conditions :=
   | |- context [aes_mix_columns _ _ = _] =>
     eapply mix_columns_equiv
   | |- context [_ < 2 ^ 4] => change (2 ^ 4)%nat with 16; Lia.lia
-  | |- map fst (all_keys _ _ _) = _ => solve [eauto]
   | |- length _ = _ => length_hammer
   | |- hd _ _ = _ => reflexivity
   | _ => solve [eauto]

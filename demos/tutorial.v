@@ -1054,30 +1054,23 @@ Definition spec_of_sum {n} (input : list (combType (Vec Bit n)))
   := map (N2Bv_sized n) (rolling_sum (map Bv2N input)).
 
 (*|
-To reason about loops, we can use loop-invariant lemmas like this one:
-|*)
-
-Check simulate_Loop_invariant.
-
-(*|
-To use the loop-invariant lemma, though, we need to figure out what the
-invariant of ``sum`` should be. The invariant of a loop takes four arguments:
-the timestep (a ``nat``), the current loop state (i.e. the value held by the
-delay at this timestep), the state of the loop-body circuit, and the output
-accumulator (a list of the outputs generated so far). Because the ``sum``
-circuit has a purely combinational body, it has no internal state, so the body
-state in our case is just Coq's ``unit`` type. Here's the invariant statement:
+To reason about loops, it's often helpful to use loop invariants. The invariant
+of a circuit loop takes three arguments: the timestep (a ``nat``), the current
+circuit state (any state information needed for the loop body, plus the value
+held by the delay at this timestep), and the output accumulator (a list of the
+outputs generated so far). Because the ``sum`` circuit has a purely
+combinational body, it has no internal state, so the body state in our case is
+just Coq's ``unit`` type. Here's the invariant statement:
 |*)
 
 Definition sum_invariant {n} (input : list (combType (Vec Bit n)))
            (t : nat)
-           (loop_state : combType (Vec Bit n))
-           (body_circuit_state : unit)
+           (loop_state : unit * combType (Vec Bit n))
            (output_accumulator : list (combType (Vec Bit n))) : Prop :=
   (* at timestep t... *)
   (* ...the loop state holds the sum of the inputs so far (that is,
      the first t inputs) *)
-  loop_state = N2Bv_sized n (sum_list_N (map Bv2N (firstn t input)))
+  loop_state = (tt, N2Bv_sized n (sum_list_N (map Bv2N (firstn t input))))
   (* ... and the output accumulator matches the rolling-sum spec
      applied to the inputs so far *)
   /\ output_accumulator = spec_of_sum (firstn t input).
@@ -1106,11 +1099,12 @@ Qed.
 Lemma sum_correct n (input : list (combType (Vec Bit n))):
   simulate sum input = spec_of_sum input.
 Proof.
-  cbv [sum].
+  cbv [sum]. autorewrite with push_simulate. simpl_ident.
+
   (* apply loop invariant lemma using sum_invariant; generates three
      side conditions *)
-  apply simulate_Loop_invariant with
-      (body:=Comb _) (I:=sum_invariant input).
+  eapply fold_left_accumulate_invariant_seq
+    with (I:=sum_invariant input).
 
   { (* prove that invariant holds at the start of the loop *)
     cbv [sum_invariant]. cbn.
@@ -1125,12 +1119,12 @@ Proof.
 
     { (* prove loop_state has the correct value *)
       rewrite firstn_succ_snoc with (d0:=d) by lia.
-      autorewrite with pull_snoc.
+      autorewrite with pull_snoc. simpl_ident.
       rewrite sum_list_N_snoc_bitvec.
       reflexivity. }
 
     { (* prove the output accumulator has the correct value *)
-      cbv [spec_of_sum rolling_sum].
+      cbv [spec_of_sum rolling_sum]. simpl_ident.
       (* simplify expression using list lemmas *)
       rewrite !map_map.
       autorewrite with push_length natsimpl.
@@ -1294,12 +1288,12 @@ Fibonacci sequence.
 
 Definition fibonacci_invariant {sz}
            (t : nat)
-           (loop_state : combType (Vec Bit sz))
-           (body_circuit_state :
-              unit * (unit * combType (Vec Bit sz)) * unit)
+           (loop_state :
+              unit * (unit * combType (Vec Bit sz)) * unit
+              * combType (Vec Bit sz))
            (output_accumulator : list (combType (Vec Bit sz))) : Prop :=
-  let r1 := loop_state in
-  let r2 := snd (snd (fst body_circuit_state)) in
+  let r1 := snd loop_state in
+  let r2 := snd (snd (fst (fst loop_state))) in
   (* at timestep t... *)
   (* ...r1 holds fibonacci_nat (t-1), or 1 if t=0 *)
   r1 = match t with
@@ -1359,14 +1353,11 @@ Proof. cbn [fibonacci_nat]. lia. Qed.
 Lemma fibonacci_correct sz (input : list unit) :
   simulate (fibonacci (sz:=sz)) input = spec_of_fibonacci input.
 Proof.
-  cbv [fibonacci]. autorewrite with simpl_ident.
+  cbv [fibonacci]. autorewrite with push_simulate.
+  simpl_ident. cbn [circuit_state DelayInit].
 
-  (* TODO(jadep): shouldn't need to specify body:= here *)
-  eapply simulate_LoopInit_invariant
-    with
-      (body:=Comb _ >==>
-                  Second (DelayInit (t:=Vec Bit sz) _) >==> Comb _)
-      (I:=fibonacci_invariant).
+  eapply fold_left_accumulate_invariant_seq
+    with (I:=fibonacci_invariant).
 
   { (* prove loop invariant holds at start *)
     cbv [fibonacci_invariant]. cbn.
@@ -1378,7 +1369,7 @@ Proof.
     cbv [fibonacci_invariant DelayInit mcompose].
     cbn [circuit_state step]. intros; simpl_ident.
     destruct_products. cbn [fst snd] in *.
-    logical_simplify; subst.
+    logical_simplify; subst. simpl_ident.
     cbv [spec_of_fibonacci].
     autorewrite with push_length.
     destruct t; [ | destruct t ].

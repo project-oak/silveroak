@@ -44,11 +44,9 @@ Hint Rewrite addNCorrect using solve [eauto] : simpl_ident.
 
 Lemma addWithDelayStepCorrect :
   forall (i s : Bvector 8) (st : circuit_state _),
-    step (Comb addN >==> Delay >==> Comb fork2)
-         st
-         (i, s)
-    = (snd (snd (fst st)), snd (snd (fst st)),
-       (tt, (tt, bvadd i s), tt)).
+    step (Comb addN >==> Delay >==> Comb fork2) st (i, s)
+    = (tt, (tt, bvadd i s), tt,
+       (snd (snd (fst st)), snd (snd (fst st)))).
 Proof.
   intros. cbv [mcompose step Delay].
   repeat first [ destruct_pair_let | progress simpl_ident ].
@@ -74,15 +72,15 @@ Lemma addWithDelayCorrect (i : list (Bvector 8)) :
   simulate addWithDelay i = map (fun t => addWithDelaySpecF (fun n => nth n i bvzero) t)
                                  (seq 0 (length i)).
 Proof.
-  intros; cbv [addWithDelay].
-  eapply simulate_Loop_invariant
-    with (body:=(Comb addN >==> Delay >==> Comb fork2))
-         (I := fun t st body_st acc =>
-                 st = match t with
-                      | 0 => bvzero
-                      | S t => addWithDelaySpecF (fun n => nth n i bvzero) t
-                      end
-                 /\ body_st = (tt, (tt, addWithDelaySpecF (fun n => nth n i bvzero) t), tt)
+  intros; cbv [addWithDelay]. autorewrite with push_simulate.
+  cbn [step Delay]. simpl_ident.
+  eapply fold_left_accumulate_invariant_seq
+      with (I := fun t (st : unit * (unit * Vector.t bool 8) * unit * Vector.t bool 8) acc =>
+                 st = (tt, (tt, addWithDelaySpecF (fun n => nth n i bvzero) t), tt,
+                       match t with
+                       | 0 => bvzero
+                       | S t => addWithDelaySpecF (fun n => nth n i bvzero) t
+                       end)
                  /\ acc = map (fun t => addWithDelaySpecF
                                       (fun n => nth n i bvzero) t)
                              (seq 0 t)).

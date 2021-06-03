@@ -172,7 +172,7 @@ Section WithSubroutines.
             init_key, init_state, round_key)
       = let st := if i =? 0 then init_state else snd (snd (current_state)) in
         let st' := round_spec Nr is_decrypt round_key st i in
-        (st', (tt, (tt, st'))).
+        (tt, (tt, st'), st').
   Proof.
     cbv zeta; intros.
     subst round0 num_regular_rounds round_i.
@@ -192,13 +192,11 @@ Section WithSubroutines.
              (Nr : nat) (is_decrypt : bool)
              (init_state : state) (round_keys : list key) : list state :=
     (* Run all rounds except the last *)
-    let '(acc, state) :=
-        fold_left_accumulate
-          (fun st '(i,k) =>
-             round_spec Nr is_decrypt k st i)
-          (combine (List.seq 0 (S Nr)) round_keys)
-          init_state in
-    tl acc.
+    fold_left_accumulate
+      (fun st '(i,k) =>
+         fork2 (round_spec Nr is_decrypt k st i))
+      (combine (List.seq 0 (S Nr)) round_keys)
+      init_state.
 
   Lemma cipher_loop_equiv
         (Nr : nat) (is_decrypt : bool)
@@ -227,8 +225,7 @@ Section WithSubroutines.
     destruct init_key_ignored; cbn [length] in *; [ length_hammer | ].
     cbv [simulate cipher_trace_with_keys].
     cbn [seq map combine].
-    rewrite fold_left_accumulate_cons_full.
-    cbn [tl].
+    rewrite !fold_left_accumulate_cons.
 
     (* simplify first step *)
     rewrite cipher_loop_step with (Nr:=Nr) (i:=0)
@@ -247,11 +244,13 @@ Section WithSubroutines.
     autorewrite with push_length natsimpl.
     factor_out_loops.
     eapply fold_left_accumulate_double_invariant_seq
-      with (I:=fun i st1 st2 => (st1 = (st2, (tt, (tt, st2))))).
+      with (I:=fun i st1 st2 acc1 acc2 =>
+                 st1 = (tt, (tt, st2))
+                 /\ acc1 = acc2).
     { (* invariant holds at start *)
-      reflexivity. }
+      split; reflexivity. }
     { (* invariant holds through body *)
-      intros i x y; intros; subst x. cbn [fst snd].
+      intros i x ? acc1; intros. logical_simplify; subst x acc1.
       rewrite <-!seq_shift, !map_map.
       rewrite !combine_map_l.
       erewrite map_nth_inbounds with (d2:=(0,init_state,init_state,init_state)) by length_hammer.
@@ -262,30 +261,9 @@ Section WithSubroutines.
         by (reflexivity || Lia.lia).
       cbn [fst snd]. repeat destruct_pair_let.
       cbn [fst snd]. change (S i =? 0) with false. cbn match.
-      destruct_products. reflexivity. }
+      destruct_products. split; reflexivity. }
     { (* invariant implies postcondition *)
-      intros *. intros Heq Hnth; intros.
-      rewrite Heq in *. cbn [fst snd].
-      cbn [circuit_state Loop cipher_loop] in *.
-      apply list_eq_elementwise; [ cbn; length_hammer | ].
-      intro j; autorewrite with push_length.
-      specialize (Hnth j).
-      autorewrite with natsimpl in Hnth; intros.
-
-      (* generate a new default element and use it to rewrite with map_nth_inbounds *)
-      let d := fresh "d" in
-      lazymatch goal with
-      | |- context [nth _ (@map ?A _ _ _) _] =>
-        assert A as d
-            by (destruct_products;
-                repeat lazymatch goal with
-                       | |- (_ * _)%type => refine (_,_)
-                       | |- unit => exact tt
-                       | _ => eassumption
-                       end)
-      end;
-        rewrite map_nth_inbounds with (d2:=d) by Lia.lia.
-      erewrite Hnth by (cbn [combType] in *; Lia.lia).
+      intros; logical_simplify; subst.
       reflexivity. }
   Qed.
 
@@ -383,11 +361,11 @@ Section WithSubroutines.
                       rewrite Hkexp; clear Hkexp end.
     cbv [cipher_trace_with_keys]. simplify.
 
-    cbn [seq combine]. rewrite fold_left_accumulate_cons.
-    cbn [tl]. rewrite nth_fold_left_accumulate by length_hammer.
-    rewrite !firstn_all2 by length_hammer.
-
+    rewrite nth_fold_left_accumulate with (c:=init_state) by length_hammer.
     erewrite <-fold_round_spec_equiv with (Nr:=Nr) by length_hammer.
-    reflexivity.
+    rewrite !firstn_all2 by length_hammer.
+    cbn [seq combine fold_left]. factor_out_loops.
+    eapply fold_left_double_invariant with (I:=fun x y => y = (x,x));
+      intros; subst; destruct_products; reflexivity.
   Qed.
 End WithSubroutines.

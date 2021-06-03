@@ -84,15 +84,19 @@ Hint Rewrite @below_correct using solve [eauto] : simpl_ident.
 (* Full description of the behavior of col_generic *)
 Lemma col_generic_correct {A B C} (circuit : A * B -> C * A)
       (a : A) (b : list B) (c : C) :
-  let loop := fold_left_accumulate
-                (fun ca b => circuit (snd ca, b))
-                b (c, a) in
-  col_generic circuit a b = (tl (map fst (fst loop)), snd (snd loop)).
+  let loop := fold_left_accumulate'
+                (fun ca b =>
+                   let out := circuit (snd ca, b) in
+                   (out, out))
+                [] b (c, a) in
+  col_generic circuit a b = (map fst (fst loop), snd (snd loop)).
 Proof.
   cbv zeta; revert a c; induction b; intros; [ reflexivity | ].
   cbn [col_generic]. simpl_ident. repeat destruct_pair_let.
-  rewrite fold_left_accumulate_cons_full.
+  rewrite fold_left_accumulate'_cons_full. cbn [fst snd List.app].
   erewrite IHb by auto. cbn [fst snd map tl].
+  rewrite !fold_left_accumulate'_snd.
+  rewrite !fold_left_accumulate'_equiv with (acc0:=(_ :: _)%list).
   apply f_equal2; [ | rewrite <-surjective_pairing; reflexivity ].
   destruct b; autorewrite with push_fold_acc; reflexivity.
 Qed.
@@ -111,10 +115,12 @@ Qed.
 (* Full description of the behavior of col *)
 Lemma col_correct {A B C} (circuit : A * B -> combType C * A)
       (a : A) {n} (b : Vector.t B n) :
-  let loop := fold_left_accumulate
-                (fun ca b => circuit (snd ca, b))
-                (to_list b) (defaultSignal , a) in
-  col circuit a b = (of_list_sized defaultSignal n (tl (map fst (fst loop))),
+  let loop := fold_left_accumulate'
+                (fun ca b =>
+                   let out := circuit (snd ca, b) in
+                   (out, out))
+                [] (to_list b) (defaultSignal , a) in
+  col circuit a b = (of_list_sized defaultSignal n (map fst (fst loop)),
                      snd (snd loop)).
 Proof.
   cbv [col]. simpl_ident. repeat destruct_pair_let.
