@@ -111,3 +111,11 @@ Lemma Loop_First_r A B C (s : SignalType)
   cequiv (Loop (body >==> First f)) (Loop body >==> f).
 Proof. apply LoopInit_First_r. Qed.
 Hint Rewrite @Loop_First_r using solve [eauto] : push_loop.
+
+Global Instance Proper_Par {A B C D} :
+  Proper (cequiv ==> cequiv ==> cequiv) (@Par _ _ A B C D).
+Proof.
+  cbv [Par]. repeat intro.
+  repeat match goal with H : cequiv _ _ |- _ => rewrite H end.
+  reflexivity.
+Qed.

@@ -15,10 +15,15 @@
 (****************************************************************************)
 
 Require Import Cava.Core.Core.
+Import Circuit.Notations.
 
 Section WithCava.
   Context `{semantics : Cava}.
 
   (* identity circuit *)
   Definition Id {t} : Circuit t t := Comb Monad.ret.
+
+  Definition Par {i1 i2 o1 o2} (c1 : Circuit i1 o1) (c2 : Circuit i2 o2)
+    : Circuit (i1 * i2) (o1 * o2) :=
+    First c1 >==> Second c2.
 End WithCava.
