@@ -43,7 +43,7 @@ Section Impl.
     let base := "base" in
     let offset := "offset" in
     let out := "out" in
-    ("br2_mmio_region_read32", ([base; offset],[out],
+    ("b2_mmio_region_read32", ([base; offset],[out],
     bedrock_func_body:(
       out = load4(base + offset)
     ))).

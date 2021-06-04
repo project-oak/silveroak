@@ -48,7 +48,7 @@ Section Impl.
    ***)
   Definition uart_reset : func :=
     let reg := "reg" in
-    ("br2_uart_reset", ([], [],
+    ("b2_uart_reset", ([], [],
     bedrock_func_body:(
       abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET, 0);
 
@@ -90,7 +90,7 @@ Section Impl.
     let precalculated_nco := "precalculated_nco" in
     let reg := "reg" in
     let out := "out" in
-    ("br2_uart_init", ([precalculated_nco], [out],
+    ("b2_uart_init", ([precalculated_nco], [out],
     bedrock_func_body:(
       if (precalculated_nco == 0) {
         out = kErrorUartInvalidArgument
@@ -121,7 +121,7 @@ Section Impl.
   Definition uart_tx_full : func :=
     let reg := "reg" in
     let out := "out" in
-    ("br2_uart_tx_full", ([], [out],
+    ("b2_uart_tx_full", ([], [out],
     bedrock_func_body:(
       unpack! reg = abs_mmio_read32(TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET);
       unpack! out = bitfield_bit32_read(reg, UART_STATUS_TXFULL_BIT)
@@ -137,7 +137,7 @@ Section Impl.
   Definition uart_tx_idle : func :=
     let reg := "reg" in
     let out := "out" in
-    ("br2_uart_tx_idle", ([], [out],
+    ("b2_uart_tx_idle", ([], [out],
     bedrock_func_body:(
       unpack! reg = abs_mmio_read32(TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET);
       unpack! out = bitfield_bit32_read(reg, UART_STATUS_TXIDLE_BIT)
@@ -160,7 +160,7 @@ Section Impl.
     let byte := "byte" in
     let reg := "reg" in
     let cond := "cond" in
-    ("br2_uart_putchar", ([byte], [],
+    ("b2_uart_putchar", ([byte], [],
     bedrock_func_body:(
       unpack! cond = uart_tx_full();
       while (cond == 1) {
@@ -190,7 +190,7 @@ Section Impl.
     let len := "len" in
     let total := "total" in
     let out := "out" in
-    ("br2_uart_write", ([data; len], [out],
+    ("b2_uart_write", ([data; len], [out],
     bedrock_func_body:(
       total = len;
       while (0 < len) {
@@ -212,7 +212,7 @@ Section Impl.
     let data := "data" in
     let len := "len" in
     let out := "out" in
-    ("br2_uart_sink", ([uart; data; len], [out],
+    ("b2_uart_sink", ([uart; data; len], [out],
     bedrock_func_body:(
       unpack! out = uart_write(data, len)
     ))).
