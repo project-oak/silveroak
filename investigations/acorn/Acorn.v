@@ -37,13 +37,18 @@ Class Acorn (signal : SignalType -> Type) := {
   and2 : signal Bit * signal Bit -> acorn (signal Bit);
   addMod : nat -> signal Nat * signal Nat -> acorn (signal Nat);
   natDelay : signal Nat -> acorn (signal Nat);
+  loop : (signal Nat * signal Nat -> acorn (signal Nat * signal Nat)) ->
+         signal Nat -> acorn (signal Nat);
+  constNat : N -> acorn (signal Nat);
 }.
 
 Inductive Instance :=
 | Inv : N -> N -> N -> Instance
 | And2 : N -> N -> N -> N -> Instance
 | AddMod : nat -> N -> N -> N -> Instance
-| NatDelay : N -> N -> Instance.
+| NatDelay : N -> N -> Instance
+| AssignNat : N -> N -> Instance
+| ConstNat : N -> N -> Instance.
 
 Inductive Port :=
 | InputBit : string -> N -> Port
@@ -141,6 +146,19 @@ Definition addModCircuit (modBy : nat) (i0i1 : Signal Nat * Signal Nat) : state 
   addInstance (AddMod modBy (natWireNr i0) (natWireNr i1) (natWireNr o)) ;;
   ret o.
 
+Definition loopNet (body : Signal Nat * Signal Nat -> state Netlist (Signal Nat * Signal Nat))
+                   (a : Signal Nat) : state Netlist (Signal Nat) :=
+  b <- newNat ;;
+  cd <- body (a, b) ;;
+  let '(c, d) := cd in
+  addInstance (AssignNat (natWireNr b) (natWireNr d)) ;;
+  ret c.
+
+Definition constNatNet (n : N) : state Netlist (Signal Nat) :=
+  x <- newNat ;;
+  addInstance (ConstNat (natWireNr x) n) ;;
+  ret x.
+
 Instance AcornNetlist : Acorn denoteSignal := {
   acorn := state Netlist;
   monad := Monad_state _;
@@ -148,7 +166,17 @@ Instance AcornNetlist : Acorn denoteSignal := {
   and2 := and2Gate;
   addMod := addModCircuit;
   natDelay := natDelayDef;
+  loop  := loopNet;
+  constNat := constNatNet;
 }.
+
+Definition injR {t1 t2 : SignalType} {signal}
+            (a : signal t1) (b : signal t2) : acorn (signal t1 * signal t2) :=
+  ret (a, b).
+
+Definition fork2 {t : SignalType} {signal}
+            (a : signal t) : acorn (signal t * signal t) :=
+  ret (a, a).
 
 Definition inputBit (name : string) : state Netlist (Signal Bit) :=
   o <- newWire ;;
@@ -255,6 +283,8 @@ Definition instantiateComponent (component : Instance) : string :=
                              natS i1 ++ ") % " ++ showN (N.of_nat modVal) ++ ";"
   | NatDelay i o => "  always_ff @(posedge clk) "
                     ++ natS o ++ " <= rst ? 0 : " ++ natS i ++ ";"
+  | AssignNat n v => "  assign " ++ natS n ++ " = " ++ natS v  ++ ";"
+  | ConstNat n v => "  assign " ++ natS n ++ " = " ++ showN v ++ ";"
   end.
 
 Definition instantiateComponents := map instantiateComponent.
@@ -320,3 +350,10 @@ Definition pipe2 : state Netlist unit :=
   outputNat a2 "a2".
 
 Redirect "pipe2.sv" Compute (systemVerilog "pipe2" pipe2).
+
+Definition counter6 : state Netlist unit :=
+  one <- constNat 1 ;;
+  count6 <- loop (addMod 6 >=> natDelay >=> fork2) one ;;
+  outputNat count6 "count6".
+
+Redirect "counter6.sv" Compute (systemVerilog "counter6" counter6).  
