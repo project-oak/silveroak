@@ -197,6 +197,13 @@ Definition fork2 {t : SignalType} {signal}
             (a : signal t) : acorn (signal t * signal t) :=
   ret (a, a).
 
+Definition fsT {t1 t2 t3 : SignalType} {signal}
+           (f : signal t1 -> acorn (signal t3))
+           (ab : signal t1 * signal t2) : acorn (signal t3 * signal t2) :=
+  let (a, b) := ab in
+  o <- f a ;;
+  ret (o, b).
+
 Definition inputBit (name : string) : state Netlist (Signal Bit) :=
   o <- newWire ;;
   addPort (InputBit name (wireNr o)) ;;
@@ -390,3 +397,11 @@ Definition counter6by4 : state Netlist unit :=
   outputNat count6by4 "count6by4".
 
 Redirect "counter6by4.sv" Compute (systemVerilog "counter6by4" counter6by4). 
+
+Definition nestedloop : state Netlist unit :=
+  one <- constNat 1 ;;
+  o <- loop (addMod 512 >=> loop (addMod 512 >=> natDelay >=> fork2) >=> fork2) one ;;
+  outputNat o "o".
+
+Redirect "nestedloop.sv" Compute (systemVerilog "nestedloop" nestedloop).
+
