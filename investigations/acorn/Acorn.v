@@ -22,6 +22,8 @@ Require Import ExtLib.Structures.Monad.
 Require Import ExtLib.Data.Monads.StateMonad.
 Require Import ExtLib.Structures.MonadState.
 
+Require Import Coq.Numbers.DecimalString.
+
 Import ListNotations.
 Import MonadNotation.
 Local Open Scope monad_scope.
@@ -256,38 +258,7 @@ Definition portDeclaration (p : Port) : string :=
 
 Definition portDeclarations := map portDeclaration.
 
-Open Scope char_scope.
-Open Scope N_scope.
-
-Definition NToDigit (n : N) : ascii :=
-  match n with
-    | 0 => "0"
-    | 1 => "1"
-    | 2 => "2"
-    | 3 => "3"
-    | 4 => "4"
-    | 5 => "5"
-    | 6 => "6"
-    | 7 => "7"
-    | 8 => "8"
-    | _ => "9"
-  end.
-
-Fixpoint showNAux (time : nat) (n : N) (acc : string) : string :=
-  let acc' := String (NToDigit (n mod 10)) acc in
-  match time with
-    | 0%nat => acc'
-    | S time' =>
-      match n / 10 with
-        | 0 => acc'
-        | n' => showNAux time' n' acc'
-      end
-  end.
-
-Open Scope string_scope.
-
-Definition showN (n : N) : string :=
-  showNAux (N.to_nat n) n "".
+Definition showN (n : N) : string := NilEmpty.string_of_uint (N.to_uint n).
 
 Definition declareBitNets (bc : N) : list string :=
   match bc with
