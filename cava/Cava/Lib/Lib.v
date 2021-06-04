@@ -16,6 +16,7 @@
 
 Require Export Cava.Lib.Adders.
 Require Export Cava.Lib.CavaPrelude.
+Require Export Cava.Lib.CircuitTransforms.
 Require Export Cava.Lib.Combinators.
 Require Export Cava.Lib.Decoder.
 Require Export Cava.Lib.Multiplexers.
