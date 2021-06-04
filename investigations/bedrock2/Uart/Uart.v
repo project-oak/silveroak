@@ -48,7 +48,10 @@ Section Impl.
    ***)
   Definition uart_reset : func :=
     let reg := "reg" in
-    ("b2_uart_reset", ([], [],
+    ("b2_uart_reset", ([TOP_EARLGREY_UART0_BASE_ADDR; UART_CTRL_REG_OFFSET;
+    UART_FIFO_CTRL_RXRST_BIT;UART_FIFO_CTRL_TXRST_BIT;UART_FIFO_CTRL_REG_OFFSET;
+    UART_OVRD_REG_OFFSET;UART_TIMEOUT_CTRL_REG_OFFSET;UART_INTR_ENABLE_REG_OFFSET;
+    UART_INTR_STATE_REG_OFFSET], [],
     bedrock_func_body:(
       abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET, 0);
 
@@ -90,7 +93,9 @@ Section Impl.
     let precalculated_nco := "precalculated_nco" in
     let reg := "reg" in
     let out := "out" in
-    ("b2_uart_init", ([precalculated_nco], [out],
+    ("b2_uart_init", ([UART_CTRL_NCO_MASK; UART_CTRL_NCO_OFFSET; UART_CTRL_TX_BIT;
+    UART_CTRL_PARITY_EN_BIT; UART_CTRL_REG_OFFSET; UART_INTR_ENABLE_REG_OFFSET;
+    kErrorOk; kErrorUartInvalidArgument; TOP_EARLGREY_UART0_BASE_ADDR; precalculated_nco], [out],
     bedrock_func_body:(
       if (precalculated_nco == 0) {
         out = kErrorUartInvalidArgument
@@ -121,7 +126,8 @@ Section Impl.
   Definition uart_tx_full : func :=
     let reg := "reg" in
     let out := "out" in
-    ("b2_uart_tx_full", ([], [out],
+    ("b2_uart_tx_full", ([TOP_EARLGREY_UART0_BASE_ADDR; UART_STATUS_REG_OFFSET;
+    UART_STATUS_TXFULL_BIT], [out],
     bedrock_func_body:(
       unpack! reg = abs_mmio_read32(TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET);
       unpack! out = bitfield_bit32_read(reg, UART_STATUS_TXFULL_BIT)
@@ -137,7 +143,8 @@ Section Impl.
   Definition uart_tx_idle : func :=
     let reg := "reg" in
     let out := "out" in
-    ("b2_uart_tx_idle", ([], [out],
+    ("b2_uart_tx_idle", ([TOP_EARLGREY_UART0_BASE_ADDR; UART_STATUS_REG_OFFSET;
+    UART_STATUS_TXIDLE_BIT], [out],
     bedrock_func_body:(
       unpack! reg = abs_mmio_read32(TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET);
       unpack! out = bitfield_bit32_read(reg, UART_STATUS_TXIDLE_BIT)
@@ -160,7 +167,8 @@ Section Impl.
     let byte := "byte" in
     let reg := "reg" in
     let cond := "cond" in
-    ("b2_uart_putchar", ([byte], [],
+    ("b2_uart_putchar", ([UART_WDATA_WDATA_MASK; UART_WDATA_WDATA_OFFSET;
+    TOP_EARLGREY_UART0_BASE_ADDR; UART_WDATA_REG_OFFSET; byte], [],
     bedrock_func_body:(
       unpack! cond = uart_tx_full();
       while (cond == 1) {
