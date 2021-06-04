@@ -41,7 +41,10 @@ coq:		Makefile.coq
 aes.c:		coq
 		cat aes.c.out | sed 's/""/"/g' | sed 's/\s*= "//' | sed 's/}"/}/' | sed 's/\s*: string//' > aes.c
 
+uart.c: coq
+		cat uart.c.out | sed 's/""/"/g' | sed 's/\s*= "//' | sed 's/}"/}/' | sed 's/\s*: string//' > uart.c
+
 clean:
 	-@$(MAKE) -f Makefile.coq clean
 	rm -f _CoqProject Makefile.coq
-	rm -f aes.c aes.c.out
+	rm -f aes.c aes.c.out uart.c uart.c.out
