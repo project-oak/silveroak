@@ -138,29 +138,16 @@ Section WithParameters.
   Lemma reg_addr_unique r1 r2 :
     reg_addr r1 = reg_addr r2 -> r1 = r2.
   Proof.
-    pose proof addrs_unique as Huniq.
-    rewrite aes_reg_addrs_eq in Huniq.
-    cbv [all_regs map reg_addr] in Huniq.
-    simplify_unique_words_in Huniq.
-    cbv [reg_addr]; cbn; intro Heqaddr.
-    destruct r1.
-    (* clear all hypothesis that don't have to do with r1 (makes proof
-       faster) *)
-    all:lazymatch type of Heqaddr with
-        | ?r = _ =>
-          repeat match goal with
-                 | H : ?x <> ?y |- _ =>
-                   lazymatch x with
-                   | context [r] => fail
-                   | _ =>
-                     lazymatch y with
-                     | context [r] => fail
-                     | _ => clear H
-                     end
-                   end
-                 end
-        end.
-    all:destruct r2; try first [ exact eq_refl | congruence ].
+    assert (NoDup (map reg_addr all_regs)) as N. {
+      rewrite <-aes_reg_addrs_eq.
+      pose proof addrs_unique as U. unfold unique_words in U. rewrite <- U.
+      eapply List.NoDup_dedup.
+    }
+    eapply FinFun.Injective_carac.
+    - unfold FinFun.Listing. split.
+      + eapply NoDup_map_inv. exact N.
+      + unfold FinFun.Full. eapply all_regs_complete.
+    - exact N.
   Qed.
 
   Lemma reg_addr_aligned r : word.unsigned (reg_addr r) mod 4 = 0.

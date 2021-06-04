@@ -11,8 +11,8 @@ buildDunePackage rec {
   src = fetchFromGitHub {
     owner = "mit-plv";
     repo = "koika";
-    rev = "61c3587b5b5ee46b39ef1723e816fe7f6b6a609e";
-    sha256 = "0iq39qbqyxc9giqsfjx7b2jxyf5pn0y58x7y00s70k3acaj697kq";
+    rev = "da0ba135fbaf772d98f93d5f1ebc6a7b971f9042";
+    sha256 = "0cc35walqsqc4q8jr14r2x9v71nvzzmlqjf7fiabk13ann5kab25";
     fetchSubmodules = true;
   };
   useDune2 = true;

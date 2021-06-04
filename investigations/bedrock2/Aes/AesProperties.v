@@ -91,9 +91,6 @@ Section Proofs.
     execution t s2 ->
     s1 = s2.
   Proof.
-    pose proof status_flags_unique_and_nonzero as Hflags.
-    cbv [map] in Hflags.
-    simplify_unique_words_in Hflags.
     revert s1 s2.
     induction t; cbn [execution]; [ congruence | ].
     intros; destruct_products.
@@ -104,7 +101,7 @@ Section Proofs.
     cbv [step] in *. cbn [ parameters.read_step
                              parameters.write_step
                              state_machine_parameters] in *.
-    repeat destruct_one_match_hyp; try congruence; [ | ].
+    repeat destruct_one_match_hyp; try contradiction; [ | ].
     all:logical_simplify; subst.
     all: lazymatch goal with
          | H : parameters.reg_addr ?x = parameters.reg_addr ?y |- _ =>
