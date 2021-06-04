@@ -19,6 +19,7 @@ Class uart_constants T :=
 
     (* generated uart_regs.h *)
     UART_CTRL_NCO_MASK            : T;
+    UART_CTRL_NCO_OFFSET          : T;
     UART_CTRL_NCO_FIELD           : T;
     UART_CTRL_TX_BIT              : T;
     UART_CTRL_PARITY_EN_BIT       : T;
@@ -33,6 +34,8 @@ Class uart_constants T :=
     UART_STATUS_REG_OFFSET        : T;
     UART_STATUS_TXFULL_BIT        : T;
     UART_STATUS_TXIDLE_BIT        : T;
+    UART_WDATA_WDATA_MASK         : T;
+    UART_WDATA_WDATA_OFFSET       : T;
     UART_WDATA_WDATA_FIELD        : T;
     UART_WDATA_REG_OFFSET         : T;
 
@@ -57,6 +60,7 @@ Definition constant_vars
 
     (* generated uart_regs.h *)
     UART_CTRL_NCO_MASK := expr.var UART_CTRL_NCO_MASK;
+    UART_CTRL_NCO_OFFSET := expr.var UART_CTRL_NCO_OFFSET;
     UART_CTRL_NCO_FIELD := expr.var UART_CTRL_NCO_FIELD;
     UART_CTRL_TX_BIT := expr.var UART_CTRL_TX_BIT;
     UART_CTRL_PARITY_EN_BIT := expr.var UART_CTRL_PARITY_EN_BIT;
@@ -71,6 +75,8 @@ Definition constant_vars
     UART_STATUS_REG_OFFSET := expr.var UART_STATUS_REG_OFFSET;
     UART_STATUS_TXFULL_BIT := expr.var UART_STATUS_TXFULL_BIT;
     UART_STATUS_TXIDLE_BIT := expr.var UART_STATUS_TXIDLE_BIT;
+    UART_WDATA_WDATA_MASK := expr.var UART_WDATA_WDATA_MASK;
+    UART_WDATA_WDATA_OFFSET := expr.var UART_WDATA_WDATA_OFFSET;
     UART_WDATA_WDATA_FIELD := expr.var UART_WDATA_WDATA_FIELD;
     UART_WDATA_REG_OFFSET := expr.var UART_WDATA_REG_OFFSET;
 
@@ -92,6 +98,7 @@ Definition constant_names : uart_constants string :=
 
     (* generated uart_regs.h *)
     UART_CTRL_NCO_MASK := "UART_CTRL_NCO_MASK";
+    UART_CTRL_NCO_OFFSET := "UART_CTRL_NCO_OFFSET";
     UART_CTRL_NCO_FIELD := "UART_CTRL_NCO_FIELD";
     UART_CTRL_TX_BIT := "UART_CTRL_TX_BIT";
     UART_CTRL_PARITY_EN_BIT := "UART_CTRL_PARITY_EN_BIT";
@@ -106,6 +113,8 @@ Definition constant_names : uart_constants string :=
     UART_STATUS_REG_OFFSET := "UART_STATUS_REG_OFFSET";
     UART_STATUS_TXFULL_BIT := "UART_STATUS_TXFULL_BIT";
     UART_STATUS_TXIDLE_BIT := "UART_STATUS_TXIDLE_BIT";
+    UART_WDATA_WDATA_MASK := "UART_WDATA_WDATA_MASK";
+    UART_WDATA_WDATA_OFFSET := "UART_WDATA_WDATA_OFFSET";
     UART_WDATA_WDATA_FIELD := "UART_WDATA_WDATA_FIELD";
     UART_WDATA_REG_OFFSET := "UART_WDATA_REG_OFFSET";
 

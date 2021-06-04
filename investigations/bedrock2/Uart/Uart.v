@@ -22,7 +22,7 @@ Section Impl.
   (* Notations for small constants *)
   Local Notation "0" := (expr.literal 0) (in custom bedrock_expr).
   Local Notation "1" := (expr.literal 1) (in custom bedrock_expr).
-  Local Notation "-1" := (expr.literal (- 1)) (in custom bedrock_expr).
+  Local Notation "-1" := (expr.literal 4294967295) (in custom bedrock_expr).
 
   (* sw/device/silicon_creator/lib/drivers/uart.c *)
 
@@ -99,7 +99,7 @@ Section Impl.
           uart_reset();
 
           reg = 0;
-          unpack! reg = bitfield_field32_write(reg, UART_CTRL_NCO_FIELD, precalculated_nco);
+          unpack! reg = bitfield_field32_write(reg, UART_CTRL_NCO_MASK, UART_CTRL_NCO_OFFSET, precalculated_nco);
           unpack! reg = bitfield_bit32_write(reg, UART_CTRL_TX_BIT, 1);
           unpack! reg = bitfield_bit32_write(reg, UART_CTRL_PARITY_EN_BIT, 0);
           abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET, reg);
@@ -166,7 +166,7 @@ Section Impl.
       while (cond == 1) {
         unpack! cond = uart_tx_full()
       };
-      unpack! reg = bitfield_field32_write(0, UART_WDATA_WDATA_FIELD, byte);
+      unpack! reg = bitfield_field32_write(0, UART_WDATA_WDATA_MASK, UART_WDATA_WDATA_OFFSET, byte);
       abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_WDATA_REG_OFFSET, reg);
       unpack! cond = uart_tx_idle();
       while (cond == 0) {
