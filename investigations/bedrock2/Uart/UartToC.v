@@ -55,20 +55,17 @@ Fixpoint c_cmd (indent : string) (c : cmd) : string :=
     indent ++ c_act binds action (List.map c_expr es)
   end.
 
-(* Redefinition from bedrock2's ToCString; to avoid function definition not prototype error,
-   we put (void) if args is nil *)
+(* Redefinition to avoid -Werror=strict-prototypes. Can be removed once mit-plv/bedrock2#188 lands *)
 Definition fmt_c_decl (rett : string) (args : list String.string) (name : String.string) (retptrs : list String.string) : string :=
-  let argstring :=
-    (match args with
-    | nil => ["void"]
-    | _ => List.map (fun a => "uintptr_t "++c_var a) args
-    end)
+  let argstring : String.string :=
+    (match args, retptrs with
+     | nil, nil => "void"
+     | _, _ => concat ", " (
+         List.map (fun a => "uintptr_t "++c_var a) args ++
+         List.map (fun r => "uintptr_t* "++c_var r) retptrs)
+     end)
   in
-  (rett ++ " " ++ c_fun name ++ "(" ++ concat ", " (
-  argstring ++
-  List.map (fun r => "uintptr_t* "++c_var r) retptrs) ++
-  ")").
-
+  (rett ++ " " ++ c_fun name ++ "(" ++ argstring ++ ")").
 
 (* Redefinition from bedrock2's ToCString; the only difference is that globals
    are stripped out of the arguments list in function declarations *)
