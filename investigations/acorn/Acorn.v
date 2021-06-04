@@ -40,6 +40,8 @@ Class Acorn (signal : SignalType -> Type) := {
   loop : (signal Nat * signal Nat -> acorn (signal Nat * signal Nat)) ->
          signal Nat -> acorn (signal Nat);
   constNat : N -> acorn (signal Nat);
+  comparator : signal Nat * signal Nat -> acorn (signal Bit);
+  mux2 : signal Bit * (signal Nat * signal Nat) -> acorn (signal Nat);
 }.
 
 Inductive Instance :=
@@ -48,7 +50,9 @@ Inductive Instance :=
 | AddMod : nat -> N -> N -> N -> Instance
 | NatDelay : N -> N -> Instance
 | AssignNat : N -> N -> Instance
-| ConstNat : N -> N -> Instance.
+| ConstNat : N -> N -> Instance
+| Comparator : N -> N -> N -> Instance
+| Mux2 : N -> N -> N -> N -> Instance.
 
 Inductive Port :=
 | InputBit : string -> N -> Port
@@ -159,6 +163,19 @@ Definition constNatNet (n : N) : state Netlist (Signal Nat) :=
   addInstance (ConstNat (natWireNr x) n) ;;
   ret x.
 
+Definition comparatorNet (ab : Signal Nat * Signal Nat) : state Netlist (Signal Bit) :=
+  cf <- newWire ;;
+  let (a, b) := ab in
+  addInstance (Comparator (natWireNr a) (natWireNr b) (wireNr cf)) ;;
+  ret cf.
+
+Definition mux2Net (selab : Signal Bit * (Signal Nat * Signal Nat)) : state Netlist (Signal Nat) :=
+   let (sel, ab) := selab in
+   let (a, b) := ab in
+   o <- newNat ;;
+   addInstance (Mux2 (wireNr sel) (natWireNr a) (natWireNr b) (natWireNr o)) ;;
+   ret o.
+
 Instance AcornNetlist : Acorn denoteSignal := {
   acorn := state Netlist;
   monad := Monad_state _;
@@ -168,6 +185,8 @@ Instance AcornNetlist : Acorn denoteSignal := {
   natDelay := natDelayDef;
   loop  := loopNet;
   constNat := constNatNet;
+  comparator := comparatorNet;
+  mux2 := mux2Net;
 }.
 
 Definition injR {t1 t2 : SignalType} {signal}
@@ -285,6 +304,8 @@ Definition instantiateComponent (component : Instance) : string :=
                     ++ natS o ++ " <= rst ? 0 : " ++ natS i ++ ";"
   | AssignNat n v => "  assign " ++ natS n ++ " = " ++ natS v  ++ ";"
   | ConstNat n v => "  assign " ++ natS n ++ " = " ++ showN v ++ ";"
+  | Comparator a b cf => "  assign " ++ netS cf ++ " = " ++ natS a ++ " == " ++ natS b ++ ";"
+  | Mux2 sel a b o => "  assign " ++ natS o ++ " = " ++ netS sel ++ " ? " ++ natS a ++ " : " ++ natS b ++ ";"
   end.
 
 Definition instantiateComponents := map instantiateComponent.
@@ -357,3 +378,15 @@ Definition counter6 : state Netlist unit :=
   outputNat count6 "count6".
 
 Redirect "counter6.sv" Compute (systemVerilog "counter6" counter6).  
+
+Definition counter6by4 : state Netlist unit :=
+  zero <- constNat 0 ;;
+  one <- constNat 1 ;;
+  three <- constNat 3 ;;
+  count4 <- loop (addMod 4 >=> natDelay >=> fork2) one ;;
+  is3 <- comparator (count4, three) ;;
+  incVal <- mux2 (is3, (one, zero)) ;;
+  count6by4 <- loop (addMod 6 >=> natDelay >=> fork2) incVal ;;
+  outputNat count6by4 "count6by4".
+
+Redirect "counter6by4.sv" Compute (systemVerilog "counter6by4" counter6by4). 

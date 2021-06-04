@@ -16,10 +16,10 @@
 
 .PHONY: all clean
 
-CIRCUITS = nandgate addmod pipe2 delay1 counter6
+CIRCUITS = nandgate addmod pipe2 delay1 counter6 counter6by4
 SV =  $(CIRCUITS:=.sv)
 
-all:	Makefile.coq $(SV) pipe2_tb.vcd delay1_tb.vcd counter6_tb.vcd
+all:	Makefile.coq $(SV) pipe2_tb.vcd delay1_tb.vcd counter6_tb.vcd counter6by4_tb.vcd
 	$(MAKE) -f Makefile.coq
 
 %_tb.vcd:	%.sv 
