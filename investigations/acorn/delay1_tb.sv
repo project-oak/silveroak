@@ -1,17 +1,17 @@
-module pipe2_tb ();
+module delay1_tb ();
 
   timeunit 1ns; timeprecision 1ns;
 
   logic clk;
   logic rst;
 
-  int unsigned a, a2;
+  int unsigned a, a1;
 
-  pipe2 pipe2_inst (.clk(clk), .rst(rst), .a(a), .a2(a2));
+  delay1 delay_inst (.clk(clk), .rst(rst), .a(a), .a1(a1));
 
   initial begin
-  $dumpfile("pipe2_tb.vcd");
-  $dumpvars(0, pipe2_tb);
+  $dumpfile("delay1_tb.vcd");
+  $dumpvars(0, delay1_tb);
   clk <= 1'b0 ;
   rst <= 1'b1;
   #10 rst <= 1'b0;

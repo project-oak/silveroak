@@ -311,7 +311,7 @@ Definition delay1 : state Netlist unit :=
   a1 <- natDelay a ;;
   outputNat a1 "a1".
 
-Redirect "delay1.sv" Compute (systemVerilog "delay1" pidelay1pe2).
+Redirect "delay1.sv" Compute (systemVerilog "delay1" delay1).
 
 Definition pipe2 : state Netlist unit :=
   a <- inputNat "a" ;;

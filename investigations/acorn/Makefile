@@ -16,14 +16,14 @@
 
 .PHONY: all clean
 
-CIRCUITS = nandgate addmod pipe2
+CIRCUITS = nandgate addmod pipe2 delay1
 SV =  $(CIRCUITS:=.sv)
 
-all:	Makefile.coq $(SV) pipe2tb.vcd
+all:	Makefile.coq $(SV) pipe2_tb.vcd delay1_tb.vcd
 	$(MAKE) -f Makefile.coq
 
-pipe2tb.vcd:	pipe2.sv 
-		iverilog -g2012 -o pipe2_tb pipe2.sv pipe2_tb.sv && vvp pipe2_tb
+%_tb.vcd:	%.sv 
+		iverilog -g2012 -o $*_tb $*.sv $*_tb.sv && vvp $*_tb
 
 %.sv.out:	Acorn.v Makefile.coq
 		$(MAKE) -f Makefile.coq
