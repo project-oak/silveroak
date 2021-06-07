@@ -271,6 +271,32 @@ Section Combine.
     cbn [combine length Nat.min]. rewrite IHla.
     lia.
   Qed.
+  Lemma map_fst_combine {A B} (la : list A) (lb : list B) :
+    length la = length lb ->
+    map fst (combine la lb) = la.
+  Proof.
+    revert lb; induction la; [ reflexivity | ].
+    destruct lb; [ length_hammer | ].
+    cbn [combine map length]; intros.
+    rewrite IHla by lia. reflexivity.
+  Qed.
+
+  Lemma map_snd_combine {A B} (la : list A) (lb : list B) :
+    length la = length lb ->
+    map snd (combine la lb) = lb.
+  Proof.
+    revert lb; induction la; destruct lb;
+      try length_hammer; [ ].
+    cbn [combine map length]; intros.
+    rewrite IHla by lia. reflexivity.
+  Qed.
+
+  Lemma combine_same {A} (l : list A) :
+    combine l l = map (fun x => (x,x)) l.
+  Proof.
+    induction l; [ reflexivity | ].
+    cbn [combine map]. congruence.
+  Qed.
 End Combine.
 Hint Rewrite @combine_length : push_length.
 
