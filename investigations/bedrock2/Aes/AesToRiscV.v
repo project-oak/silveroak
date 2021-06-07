@@ -51,7 +51,7 @@ Definition ml: MemoryLayout := {|
    third_party/opentitan/hw/top_earlgrey/sw/autogen/top_earlgrey.h:
 
    #define TOP_EARLGREY_AES_BASE_ADDR 0x40110000u *)
-Definition AES_BASE_ADDR : Z := Ox"40110000".
+Definition AES_BASE_ADDR : Z := 0x40110000.
 
 Local Infix "<<" := Z.shiftl (at level 40) : Z_scope.
 Instance consts : aes_constants Z :=
@@ -59,19 +59,19 @@ Instance consts : aes_constants Z :=
   (**** Constants from aes_regs.h ****)
 
   (* #define AES_KEY0(id) (AES##id##_BASE_ADDR + 0x0) *)
-  AES_KEY0 := AES_BASE_ADDR + Ox"0";
+  AES_KEY0 := AES_BASE_ADDR + 0x0;
 
   (* #define AES_IV0(id) (AES##id##_BASE_ADDR + 0x20) *)
-  AES_IV0 := AES_BASE_ADDR + Ox"20";
+  AES_IV0 := AES_BASE_ADDR + 0x20;
 
   (* #define AES_DATA_IN0(id) (AES##id##_BASE_ADDR + 0x30) *)
-  AES_DATA_IN0 := AES_BASE_ADDR + Ox"30";
+  AES_DATA_IN0 := AES_BASE_ADDR + 0x30;
 
   (* #define AES_DATA_OUT0(id) (AES##id##_BASE_ADDR + 0x40) *)
-  AES_DATA_OUT0 := AES_BASE_ADDR + Ox"40";
+  AES_DATA_OUT0 := AES_BASE_ADDR + 0x40;
 
   (* #define AES_CTRL(id) (AES##id##_BASE_ADDR + 0x50) *)
-  AES_CTRL := AES_BASE_ADDR + Ox"50";
+  AES_CTRL := AES_BASE_ADDR + 0x50;
 
   (* #define AES_CTRL_REG_OFFSET 0x50
      #define AES_CTRL_OPERATION 0
@@ -81,14 +81,14 @@ Instance consts : aes_constants Z :=
      #define AES_CTRL_KEY_LEN_OFFSET 4
      #define AES_CTRL_MANUAL_OPERATION 7 *)
   AES_CTRL_OPERATION := 0;
-  AES_CTRL_MODE_MASK := Ox"7";
+  AES_CTRL_MODE_MASK := 0x7;
   AES_CTRL_MODE_OFFSET := 1;
-  AES_CTRL_KEY_LEN_MASK := Ox"7";
+  AES_CTRL_KEY_LEN_MASK := 0x7;
   AES_CTRL_KEY_LEN_OFFSET := 4;
   AES_CTRL_MANUAL_OPERATION := 7;
 
   (* #define AES_STATUS(id) (AES##id##_BASE_ADDR + 0x58) *)
-  AES_STATUS := AES_BASE_ADDR + Ox"58";
+  AES_STATUS := AES_BASE_ADDR + 0x58;
 
   (* #define AES_STATUS_IDLE 0
      #define AES_STATUS_STALL 1

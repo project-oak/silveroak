@@ -28,10 +28,10 @@ Local Open Scope string_scope.
 Existing Instance constant_literals.
 
 (* pointers to input and output memory locations (these are dummy values) *)
-Definition input_data_ptr := AES_BASE_ADDR + Ox"70".
-Definition input_iv_ptr := AES_BASE_ADDR + Ox"80".
-Definition input_key_ptr := AES_BASE_ADDR + Ox"90".
-Definition output_ptr := AES_BASE_ADDR + Ox"70".
+Definition input_data_ptr := AES_BASE_ADDR + 0x70.
+Definition input_iv_ptr := AES_BASE_ADDR + 0x80.
+Definition input_key_ptr := AES_BASE_ADDR + 0x90.
+Definition output_ptr := AES_BASE_ADDR + 0x70.
 
 (* main function: simply call aes_encrypt with literal constants and pointers *)
 Definition main_body : cmd :=
