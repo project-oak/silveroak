@@ -6,6 +6,7 @@ Require Import bedrock2.Semantics.
 Require Import bedrock2.Syntax.
 Require Import coqutil.Word.Interface.
 Require Import Bedrock2Experiments.Word.
+Require Import Bedrock2Experiments.ConstantFields.
 
 Import ListNotations.
 Local Open Scope string_scope.
@@ -118,6 +119,7 @@ Definition constant_literals
      kAes256 := expr.literal kAes256;
   |}.
 
+
 (* Given the Z values of all the constants, convert them to words with
    word.of_Z *)
 Definition constant_words
@@ -152,6 +154,18 @@ Definition constant_words
      kAes192 := word.of_Z kAes192;
      kAes256 := word.of_Z kAes256;
   |}.
+
+(* The record
+{|
+  AES_KEY0 := expr.var "AES_KEY0";
+  AES_IV0 := expr.var "AES_IV0";
+  etc...
+|}
+Note: does not generate "AES_KEY(0)" for AES_KEY0, but just "AES_KEY0".
+*)
+Definition constant_names_try0 : aes_constants string.
+  instantiate_record_with_fieldname_vars.
+Defined.
 
 (* This instance provide the string name for each constant *)
 Definition constant_names : aes_constants string :=
