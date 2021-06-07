@@ -19,7 +19,9 @@ Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Core.Core.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Semantics.Equivalence.
+Require Import Cava.Semantics.Simulation.
 Require Import Cava.Lib.CircuitTransforms.
+Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Import Circuit.Notations.
 
@@ -111,6 +113,25 @@ Lemma Loop_First_r A B C (s : SignalType)
   cequiv (Loop (body >==> First f)) (Loop body >==> f).
 Proof. apply LoopInit_First_r. Qed.
 Hint Rewrite @Loop_First_r using solve [eauto] : push_loop.
+
+Lemma simulate_Id t input : simulate (i:=t) Id input = input.
+Proof.
+  cbv [Id]; autorewrite with push_simulate.
+  apply List.map_id_ext; intros.
+  reflexivity.
+Qed.
+Hint Rewrite @simulate_Id using solve [eauto] : push_simulate.
+
+Lemma simulate_Par A B C D c1 c2 input :
+  simulate (@Par _ _ A B C D c1 c2) input
+  = combine (simulate c1 (map fst input))
+            (simulate c2 (map snd input)).
+Proof.
+  cbv [Par]; autorewrite with push_simulate.
+  rewrite map_fst_combine, map_snd_combine by length_hammer.
+  reflexivity.
+Qed.
+Hint Rewrite @simulate_Par using solve [eauto] : push_simulate.
 
 Global Instance Proper_Par {A B C D} :
   Proper (cequiv ==> cequiv ==> cequiv) (@Par _ _ A B C D).

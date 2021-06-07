@@ -14,6 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Classes.Morphisms.
 Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Core.Core.
