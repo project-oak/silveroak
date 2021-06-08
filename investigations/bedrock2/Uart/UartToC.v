@@ -45,11 +45,10 @@ Fixpoint c_cmd (indent : string) (c : cmd) : string :=
     indent ++ "/*skip*/" ++ LF
   | cmd.call binds f arges =>
     (* the below line filters out globals from arguments in the declaration *)
-  (*let arges := filter (fun e => match e with
+    let arges := filter (fun e => match e with
                                | expr.var s => negb (existsb (String.eqb s) uart_globals)
                                | _ => true
                                end) arges in
-     indent ++ c_call (List.map c_var binds) (c_fun f) (List.map c_expr arges) *)
      indent ++ c_call (List.map c_var binds) (c_fun f) (List.map c_expr arges)
   | cmd.interact binds action es =>
     indent ++ c_act binds action (List.map c_expr es)

@@ -48,23 +48,32 @@ Section Impl.
    ***)
   Definition uart_reset : func :=
     let reg := "reg" in
+    let temp := "temp" in
     ("b2_uart_reset", ([TOP_EARLGREY_UART0_BASE_ADDR; UART_CTRL_REG_OFFSET;
     UART_FIFO_CTRL_RXRST_BIT;UART_FIFO_CTRL_TXRST_BIT;UART_FIFO_CTRL_REG_OFFSET;
     UART_OVRD_REG_OFFSET;UART_TIMEOUT_CTRL_REG_OFFSET;UART_INTR_ENABLE_REG_OFFSET;
     UART_INTR_STATE_REG_OFFSET], [],
     bedrock_func_body:(
-      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET, 0);
+      temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET;
+      abs_mmio_write32(temp, 0);
 
       reg = 0;
-      unpack! reg = bitfield_bit32_write(reg, UART_FIFO_CTRL_RXRST_BIT, 1);
-      unpack! reg = bitfield_bit32_write(reg, UART_FIFO_CTRL_TXRST_BIT, 1);
-      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_FIFO_CTRL_REG_OFFSET, reg);
+      temp = UART_FIFO_CTRL_RXRST_BIT;
+      unpack! reg = bitfield_bit32_write(reg, temp, 1);
+      temp = UART_FIFO_CTRL_TXRST_BIT;
+      unpack! reg = bitfield_bit32_write(reg, temp, 1);
+      temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_FIFO_CTRL_REG_OFFSET;
+      abs_mmio_write32(temp, reg);
 
-      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_OVRD_REG_OFFSET, 0);
-      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_TIMEOUT_CTRL_REG_OFFSET, 0);
-      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_INTR_ENABLE_REG_OFFSET, 0);
-      (* -1ULL instead of UINT32_MAX *)
-      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_INTR_STATE_REG_OFFSET, -1)
+      temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_OVRD_REG_OFFSET;
+      abs_mmio_write32(temp, 0);
+      temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_TIMEOUT_CTRL_REG_OFFSET;
+      abs_mmio_write32(temp, 0);
+      temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_INTR_ENABLE_REG_OFFSET;
+      abs_mmio_write32(temp, 0);
+      (* -1 instead of UINT32_MAX *)
+      temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_INTR_STATE_REG_OFFSET;
+      abs_mmio_write32(temp, -1)
     ))).
 
   (****
@@ -92,23 +101,37 @@ Section Impl.
   Definition uart_init : func :=
     let precalculated_nco := "precalculated_nco" in
     let reg := "reg" in
+    let temp1 := "temp1" in
+    let temp2 := "temp2" in
     let out := "out" in
     ("b2_uart_init", ([UART_CTRL_NCO_MASK; UART_CTRL_NCO_OFFSET; UART_CTRL_TX_BIT;
     UART_CTRL_PARITY_EN_BIT; UART_CTRL_REG_OFFSET; UART_INTR_ENABLE_REG_OFFSET;
-    kErrorOk; kErrorUartInvalidArgument; TOP_EARLGREY_UART0_BASE_ADDR; precalculated_nco], [out],
+    kErrorOk; kErrorUartInvalidArgument; TOP_EARLGREY_UART0_BASE_ADDR;
+    UART_FIFO_CTRL_RXRST_BIT; UART_FIFO_CTRL_TXRST_BIT; UART_FIFO_CTRL_REG_OFFSET;
+    UART_OVRD_REG_OFFSET; UART_TIMEOUT_CTRL_REG_OFFSET; UART_INTR_STATE_REG_OFFSET;
+    precalculated_nco], [out],
     bedrock_func_body:(
       if (precalculated_nco == 0) {
         out = kErrorUartInvalidArgument
       } else {
         if ((precalculated_nco & (UART_CTRL_NCO_MASK^(-1))) == 0) {
-          uart_reset();
+          uart_reset(TOP_EARLGREY_UART0_BASE_ADDR, UART_CTRL_REG_OFFSET,
+            UART_FIFO_CTRL_RXRST_BIT, UART_FIFO_CTRL_TXRST_BIT, UART_FIFO_CTRL_REG_OFFSET,
+            UART_OVRD_REG_OFFSET, UART_TIMEOUT_CTRL_REG_OFFSET, UART_INTR_ENABLE_REG_OFFSET,
+            UART_INTR_STATE_REG_OFFSET);
 
           reg = 0;
-          unpack! reg = bitfield_field32_write(reg, UART_CTRL_NCO_MASK, UART_CTRL_NCO_OFFSET, precalculated_nco);
-          unpack! reg = bitfield_bit32_write(reg, UART_CTRL_TX_BIT, 1);
-          unpack! reg = bitfield_bit32_write(reg, UART_CTRL_PARITY_EN_BIT, 0);
-          abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET, reg);
-          abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_INTR_ENABLE_REG_OFFSET, 0);
+          temp1 = UART_CTRL_NCO_MASK;
+          temp2 = UART_CTRL_NCO_OFFSET;
+          unpack! reg = bitfield_field32_write(reg, temp1, temp2, precalculated_nco);
+          temp1 = UART_CTRL_TX_BIT;
+          unpack! reg = bitfield_bit32_write(reg, temp1, 1);
+          temp1 = UART_CTRL_PARITY_EN_BIT;
+          unpack! reg = bitfield_bit32_write(reg, temp1, 0);
+          temp1 = TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET;
+          abs_mmio_write32(temp1, reg);
+          temp1 = TOP_EARLGREY_UART0_BASE_ADDR + UART_INTR_ENABLE_REG_OFFSET;
+          abs_mmio_write32(temp1, 0);
           out = kErrorOk
         } else {
           out = kErrorUartInvalidArgument
@@ -125,12 +148,15 @@ Section Impl.
    ***)
   Definition uart_tx_full : func :=
     let reg := "reg" in
+    let temp := "temp" in
     let out := "out" in
     ("b2_uart_tx_full", ([TOP_EARLGREY_UART0_BASE_ADDR; UART_STATUS_REG_OFFSET;
     UART_STATUS_TXFULL_BIT], [out],
     bedrock_func_body:(
-      unpack! reg = abs_mmio_read32(TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET);
-      unpack! out = bitfield_bit32_read(reg, UART_STATUS_TXFULL_BIT)
+      temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET;
+      unpack! reg = abs_mmio_read32(temp);
+      temp = UART_STATUS_TXFULL_BIT;
+      unpack! out = bitfield_bit32_read(reg, temp)
     ))).
 
   (****
@@ -142,12 +168,15 @@ Section Impl.
    ***)
   Definition uart_tx_idle : func :=
     let reg := "reg" in
+    let temp := "temp" in
     let out := "out" in
     ("b2_uart_tx_idle", ([TOP_EARLGREY_UART0_BASE_ADDR; UART_STATUS_REG_OFFSET;
     UART_STATUS_TXIDLE_BIT], [out],
     bedrock_func_body:(
-      unpack! reg = abs_mmio_read32(TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET);
-      unpack! out = bitfield_bit32_read(reg, UART_STATUS_TXIDLE_BIT)
+      temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET;
+      unpack! reg = abs_mmio_read32(temp);
+      temp = UART_STATUS_TXIDLE_BIT;
+      unpack! out = bitfield_bit32_read(reg, temp)
     ))).
 
   (****
@@ -166,19 +195,29 @@ Section Impl.
   Definition uart_putchar : func :=
     let byte := "byte" in
     let reg := "reg" in
+    let temp1 := "temp1" in
+    let temp2 := "temp2" in
     let cond := "cond" in
     ("b2_uart_putchar", ([UART_WDATA_WDATA_MASK; UART_WDATA_WDATA_OFFSET;
-    TOP_EARLGREY_UART0_BASE_ADDR; UART_WDATA_REG_OFFSET; byte], [],
+    TOP_EARLGREY_UART0_BASE_ADDR; UART_WDATA_REG_OFFSET; UART_STATUS_REG_OFFSET;
+    UART_STATUS_TXIDLE_BIT; UART_STATUS_TXFULL_BIT; byte], [],
     bedrock_func_body:(
-      unpack! cond = uart_tx_full();
+      unpack! cond = uart_tx_full(TOP_EARLGREY_UART0_BASE_ADDR, UART_STATUS_REG_OFFSET,
+                                  UART_STATUS_TXFULL_BIT);
       while (cond == 1) {
-        unpack! cond = uart_tx_full()
+        unpack! cond = uart_tx_full(TOP_EARLGREY_UART0_BASE_ADDR, UART_STATUS_REG_OFFSET,
+                                    UART_STATUS_TXFULL_BIT)
       };
-      unpack! reg = bitfield_field32_write(0, UART_WDATA_WDATA_MASK, UART_WDATA_WDATA_OFFSET, byte);
-      abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_WDATA_REG_OFFSET, reg);
-      unpack! cond = uart_tx_idle();
+      temp1 = UART_WDATA_WDATA_MASK;
+      temp2 = UART_WDATA_WDATA_OFFSET;
+      unpack! reg = bitfield_field32_write(0, temp1, temp2, byte);
+      temp1 = TOP_EARLGREY_UART0_BASE_ADDR + UART_WDATA_REG_OFFSET;
+      abs_mmio_write32(temp1, reg);
+      unpack! cond = uart_tx_idle(TOP_EARLGREY_UART0_BASE_ADDR, UART_STATUS_REG_OFFSET,
+                                  UART_STATUS_TXIDLE_BIT);
       while (cond == 0) {
-        unpack! cond = uart_tx_idle()
+        unpack! cond = uart_tx_idle(TOP_EARLGREY_UART0_BASE_ADDR, UART_STATUS_REG_OFFSET,
+                                    UART_STATUS_TXIDLE_BIT)
       }
     ))).
 
@@ -198,11 +237,17 @@ Section Impl.
     let len := "len" in
     let total := "total" in
     let out := "out" in
-    ("b2_uart_write", ([data; len], [out],
+    ("b2_uart_write", ([UART_WDATA_WDATA_MASK; UART_WDATA_WDATA_OFFSET;
+                        TOP_EARLGREY_UART0_BASE_ADDR; UART_WDATA_REG_OFFSET; UART_STATUS_REG_OFFSET;
+                        UART_STATUS_TXIDLE_BIT; UART_STATUS_TXFULL_BIT;
+                        data; len], [out],
     bedrock_func_body:(
       total = len;
       while (0 < len) {
-        uart_putchar( load4(data) );
+        uart_putchar(UART_WDATA_WDATA_MASK, UART_WDATA_WDATA_OFFSET,
+                     TOP_EARLGREY_UART0_BASE_ADDR, UART_WDATA_REG_OFFSET,
+                     UART_STATUS_REG_OFFSET, UART_STATUS_TXIDLE_BIT, UART_STATUS_TXFULL_BIT,
+                     load4(data));
         data = data + 1;
         len = len - 1
       };
@@ -220,9 +265,13 @@ Section Impl.
     let data := "data" in
     let len := "len" in
     let out := "out" in
-    ("b2_uart_sink", ([uart; data; len], [out],
+    ("b2_uart_sink", ([UART_WDATA_WDATA_MASK; UART_WDATA_WDATA_OFFSET;
+                       TOP_EARLGREY_UART0_BASE_ADDR; UART_WDATA_REG_OFFSET;
+                       uart; data; len], [out],
     bedrock_func_body:(
-      unpack! out = uart_write(data, len)
+      unpack! out = uart_write(UART_WDATA_WDATA_MASK, UART_WDATA_WDATA_OFFSET,
+                               TOP_EARLGREY_UART0_BASE_ADDR, UART_WDATA_REG_OFFSET,
+                               data, len)
     ))).
 
 End Impl.
