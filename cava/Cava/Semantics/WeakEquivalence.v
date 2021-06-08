@@ -15,6 +15,7 @@
 (****************************************************************************)
 
 Require Import Coq.Arith.PeanoNat.
+Require Import Coq.micromega.Lia.
 Require Import Coq.Classes.Morphisms.
 Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Core.Core.
@@ -23,52 +24,22 @@ Require Import Cava.Semantics.Equivalence.
 Require Import Cava.Semantics.Simulation.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
+Import Circuit.Notations.
 
-Definition mealy {i o} (c : Circuit i o)
-  : Circuit (i * circuit_state c) (o * circuit_state c) :=
-  Comb (fun '(input, st) =>
-          let st_out := step c st input in
-          (snd st_out, fst st_out)).
-
-(* Weaker notion of circuit equivalence that allows circuits to have equal
-   behavior only for certain timesteps
-
-   If weak_cequiv n m c1 c2 holds, then after the first n timesteps from a
-   reset, c1 will compute the same values as c2 but take m additional timesteps
-   for each step taken by c2.
- *)
-Definition cequivn {i o} (n m : nat) (c1 c2 : Circuit i o) : Prop :=
-  
-  (* there exists some relation between the circuit states and a counter value... *)
-  exists (R : nat -> circuit_state c1 -> circuit_state c2 -> Prop),
-    (* ...and the relation holds after the first n timesteps for all inputs *)
-    (forall input,
-        length input = n ->
-        R 0 (fold_left (fun st i => fst (step c1 st i)) input (reset_state c1))
-          (fold_left (fun st i => fst (step c2 st i)) input (reset_state c2)))
-    (* ... and if the relation holds for a 0 counter, then the outputs must
-       match if the inputs are the same *)
-    /\ (forall s1 s2 input,
-          R 0 s1 s2 ->
-          snd (step c1 s1 input) = snd (step c2 s2 input))
-          
-    (* ...and if the relation holds, stepping each circuit on the same input
-         results in the same output as well as new states on which the relation
-         continues to hold *)
-    /\ (forall s1 s2 input,
-          R s1 s2 ->
-          snd (step c1 s1 input) = snd (step c2 s2 input)
-          /\ R (fst (step c1 s1 input)) (fst (step c2 s2 input))).
+(* get the state of a circuit after running it on the specified input from the
+   specified start state *)
+Definition repeat_step {i o} (c : Circuit i o) input st : circuit_state c :=
+  fold_left (fun st i => fst (step c st i)) input st.
 
 (* Circuit equivalence relation that allows the first n timesteps to differ *)
 Definition cequivn {i o} (n : nat) (c1 c2 : Circuit i o) : Prop :=
   (* there exists some relation between the circuit states... *)
   exists (R : circuit_state c1 -> circuit_state c2 -> Prop),
-    (* ...and the relation holds after the first n timesteps for all inputs *)
-    (forall input,
+    (* ...and the relation holds after n timesteps of equal input for all inputs
+       and all initial states *)
+    (forall input st1 st2,
         length input = n ->
-        R (fold_left (fun st i => fst (step c1 st i)) input (reset_state c1))
-          (fold_left (fun st i => fst (step c2 st i)) input (reset_state c2)))
+        R (repeat_step c1 input st1) (repeat_step c2 input st2))
     (* ...and if the relation holds, stepping each circuit on the same input
          results in the same output as well as new states on which the relation
          continues to hold *)
@@ -93,25 +64,16 @@ Proof.
     logical_simplify. ssplit; [ congruence | ]. eauto. }
 Qed.
 
-(* cequivn is reflexive *)
-Global Instance Reflexive_cequivn {i o} n : Reflexive (@cequivn i o n) | 10.
-Proof.
-  repeat intro. exists eq. ssplit; [ reflexivity | ].
-  intros; subst. ssplit; reflexivity.
-Qed.
-
 (* cequivn is symmetric *)
 Global Instance Symmetric_cequivn {i o} n : Symmetric (@cequivn i o n) | 10.
 Proof.
   intros x y [R [? HR]]. logical_simplify.
-  exists (fun st1 st2 => R st2 st1). ssplit; [ assumption | ].
+  exists (fun st1 st2 => R st2 st1). ssplit; [ solve [eauto] | ].
   intros. specialize (HR _ _ ltac:(eassumption) ltac:(eassumption)).
   logical_simplify. eauto.
 Qed.
 
-(* cequivn is an equivalence relation *)
-Global Instance Equivalence_cequivn {i o} n : Equivalence (@cequivn i o n) | 10.
-Proof. constructor; typeclasses eauto. Qed.
+(* Note: cequivn is NOT reflexive in general. *)
 
 Lemma skipn_fold_left_accumulate {A B C} (f : B -> A -> B * C) n ls b :
   skipn n (fold_left_accumulate f ls b)
@@ -144,90 +106,159 @@ Proof.
   { intros; logical_simplify; subst. reflexivity. }
 Qed.
 
-Lemma cequivn_cequiv_iff {i o} (c1 c2 : Circuit i o) :
-  cequivn 0 c1 c2 <-> cequiv c1 c2.
+Lemma cequivn_cequiv {i o} (c1 c2 : Circuit i o) :
+  cequivn 0 c1 c2 -> cequiv c1 c2.
 Proof.
-  split.
-  { intros [R [Hstart Hstep]].
-    specialize (Hstart nil eq_refl). cbn [fold_left] in Hstart.
-    exists R; eauto. }
-  { intros [R [Hstart Hstep]].
-    exists R; ssplit; [ | solve [eauto] ].
-    intro input; destruct input; [ | length_hammer ].
-    intros; cbn [fold_left]. assumption. }
+  intros [R [Hstart Hstep]].
+  specialize (Hstart nil (reset_state c1) (reset_state c2) eq_refl).
+  cbn [fold_left] in Hstart. exists R; eauto.
 Qed.
 
 (* 0-equivalent circuits produce exactly the same output on the same input *)
 Lemma simulate_cequivn0 {i o} (c1 c2 : Circuit i o) :
   cequivn 0 c1 c2 -> forall input, simulate c1 input = simulate c2 input.
-Proof.
-  rewrite cequivn_cequiv_iff.
-  apply simulate_cequiv.
-Qed.
+Proof. auto using simulate_cequiv, cequivn_cequiv. Qed.
 
 (* Proper instance allows rewriting under simulate *)
 Global Instance Proper_simulate i o :
   Proper (cequivn 0 ==> eq ==> eq) (@simulate i o).
 Proof. repeat intro; subst. eapply simulate_cequivn0; auto. Qed.
 
-Global Instance Proper_Compose {i t o} :
-  Proper (cequivn n ==> cequivn ==> cequivn) (@Compose _ _ i t o).
+Lemma state_relation_fold_left_accumulate_step
+      i o (c1 c2 : Circuit i o) (R : _ -> _ -> Prop) :
+  (forall s1 s2 input,
+      R s1 s2 ->
+      snd (step c1 s1 input) = snd (step c2 s2 input)
+      /\ R (fst (step c1 s1 input)) (fst (step c2 s2 input))) ->
+  forall input s1 s2,
+    R s1 s2 ->
+    fold_left_accumulate (step c1) input s1
+    = fold_left_accumulate (step c2) input s2.
 Proof.
-  intros a b [Rab [? Hab]].
-  intros c d [Rcd [? Hcd]].
-  exists (fun st1 st2 => Rab (fst st1) (fst st2) /\ Rcd (snd st1) (snd st2)).
-  ssplit; [ assumption .. | ].
-  cbn [circuit_state step]. intros; logical_simplify.
-  pose proof (fun i => proj1 (Hab _ _ i ltac:(eassumption))) as Hab1.
-  pose proof (fun i => proj2 (Hab _ _ i ltac:(eassumption))) as Hab2.
-  pose proof (fun i => proj1 (Hcd _ _ i ltac:(eassumption))) as Hcd1.
-  pose proof (fun i => proj2 (Hcd _ _ i ltac:(eassumption))) as Hcd2.
-  clear Hab Hcd. logical_simplify.
+  intro HR. intros.
+  apply fold_left_accumulate_double_invariant_In
+    with (I:=fun s1 s2 acc1 acc2 =>
+               R s1 s2 /\ acc1 = acc2).
+  { eauto. }
+  { intros s1' s2'; intros.
+    logical_simplify; subst.
+    specialize (HR s1' s2' ltac:(eassumption) ltac:(eassumption)).
+    logical_simplify; subst. ssplit; [ assumption | congruence ]. }
+  { intros; logical_simplify; subst; reflexivity. }
+Qed.
+
+Lemma state_relation_repeat_step
+      i o (c1 c2 : Circuit i o) (R : _ -> _ -> Prop) :
+  (forall s1 s2 input,
+      R s1 s2 ->
+      snd (step c1 s1 input) = snd (step c2 s2 input)
+      /\ R (fst (step c1 s1 input)) (fst (step c2 s2 input))) ->
+  forall input s1 s2,
+    R s1 s2 -> R (repeat_step c1 input s1) (repeat_step c2 input s2).
+Proof.
+  intro HR. intros. cbv [repeat_step].
+  eapply fold_left_double_invariant with (I:=R).
+  { eauto. }
+  { intros s1' s2'; intros.
+    logical_simplify; subst.
+    specialize (HR s1' s2' ltac:(eassumption) ltac:(eassumption)).
+    logical_simplify; subst; auto. }
+  { intros; logical_simplify; auto. }
+Qed.
+
+Lemma repeat_step_app {i o} (c : Circuit i o) input1 input2 st :
+  repeat_step c (input1 ++ input2) st
+  = repeat_step c input2 (repeat_step c input1 st).
+Proof. apply fold_left_app. Qed.
+
+Lemma repeat_step_compose {i t o} c1 c2 input st :
+  repeat_step (@Compose _ _ i t o c1 c2) input st
+  = (repeat_step c1 input (fst st),
+     repeat_step c2 (fold_left_accumulate (step c1) input (fst st)) (snd st)).
+Proof.
+  cbv [repeat_step]. revert st.
+  induction input; [ destruct st; reflexivity | ].
+  intros; cbn [circuit_state] in *. destruct_products; cbn [fst snd].
+  autorewrite with push_list_fold push_fold_acc.
+  rewrite IHinput. cbn [step].
   repeat (destruct_pair_let; cbn [fst snd]).
-  rewrite ?Hab1, ?Hcd1. ssplit; eauto.
-Qed.
-
-(* cequivn c1 c2 -> cequivn (First c1) (First c2) *)
-Global Instance Proper_First {i o t} :
-  Proper (cequivn ==> cequivn) (@First _ _ i o t).
-Proof.
-  intros x y [Rxy [? Hxy]].
-  exists Rxy; ssplit; [ assumption | ].
-  cbn [circuit_state step]. intros; logical_simplify.
-  pose proof (fun i => proj1 (Hxy _ _ i ltac:(eassumption))) as Hxy1.
-  pose proof (fun i => proj2 (Hxy _ _ i ltac:(eassumption))) as Hxy2.
-  clear Hxy. logical_simplify. repeat (destruct_pair_let; cbn [fst snd]).
-  rewrite Hxy1. ssplit; eauto.
-Qed.
-
-(* cequivn c1 c2 -> cequivn (Second c1) (Second c2) *)
-Global Instance Proper_Second {i o t} :
-  Proper (cequivn ==> cequivn) (@Second _ _ i o t).
-Proof.
-  intros x y [Rxy [? Hxy]].
-  exists Rxy; ssplit; [ assumption | ].
-  cbn [circuit_state step]. intros; logical_simplify.
-  pose proof (fun i => proj1 (Hxy _ _ i ltac:(eassumption))) as Hxy1.
-  pose proof (fun i => proj2 (Hxy _ _ i ltac:(eassumption))) as Hxy2.
-  clear Hxy. logical_simplify. repeat (destruct_pair_let; cbn [fst snd]).
-  rewrite Hxy1. ssplit; eauto.
-Qed.
-
-(* r1 = r2 -> cequivn c1 c2 -> cequivn (LoopInit r1 c1) (LoopInit r2 c2) *)
-Global Instance Proper_LoopInit {i s o} :
-  Proper (eq ==> cequivn ==> cequivn) (@LoopInit _ _ i o s).
-Proof.
-  cbv [LoopInit]. simpl_ident. repeat intro; subst.
-  lazymatch goal with H : cequivn _ _ |- _ => rewrite H end.
   reflexivity.
 Qed.
 
-(* cequivn c1 c2 -> cequivn (LoopCE c1) (LoopCE c2) *)
-Global Instance Proper_LoopCE {i s o} :
-  Proper (cequivn ==> cequivn) (@LoopCE _ _ i o s).
-Proof. apply Proper_LoopInitCE. reflexivity. Qed.
+Lemma repeat_step_First {i t o} (c : Circuit i o) input st :
+  repeat_step (First (t:=t) c) input st = repeat_step c (map fst input) st.
+Proof.
+  cbv [repeat_step]. revert st.
+  induction input; [ reflexivity | ].
+  intros; cbn [circuit_state] in *. destruct_products; cbn [fst snd].
+  autorewrite with push_list_fold push_fold_acc.
+  rewrite IHinput. cbn [step].
+  repeat (destruct_pair_let; cbn [fst snd]).
+  reflexivity.
+Qed.
 
-(* cequivn c1 c2 -> cequivn (Loop c1) (Loop c2) *)
-Global Instance Proper_Loop {i s o} :
-  Proper (cequivn ==> cequivn) (@Loop _ _ i o s).
-Proof. apply Proper_LoopInit. reflexivity. Qed.
+Lemma repeat_step_Second {i t o} (c : Circuit i o) input st :
+  repeat_step (Second (t:=t) c) input st = repeat_step c (map snd input) st.
+Proof.
+  cbv [repeat_step]. revert st.
+  induction input; [ reflexivity | ].
+  intros; cbn [circuit_state] in *. destruct_products; cbn [fst snd].
+  autorewrite with push_list_fold push_fold_acc.
+  rewrite IHinput. cbn [step].
+  repeat (destruct_pair_let; cbn [fst snd]).
+  reflexivity.
+Qed.
+
+Lemma cequivn_compose {i t o} n m (a b : Circuit i t) (c d : Circuit t o) :
+  cequivn n a b -> cequivn m c d ->
+  cequivn (n + m) (a >==> c) (b >==> d).
+Proof.
+  intros [Rab [? Hab]] [Rcd [? Hcd]].
+  exists (fun st1 st2 => Rab (fst st1) (fst st2) /\ Rcd (snd st1) (snd st2)).
+  ssplit.
+  { intro input; intros. rewrite <-(firstn_skipn n input).
+    rewrite !repeat_step_app, !repeat_step_compose.
+    cbn [fst snd]. assert (length (firstn n input) = n) by length_hammer.
+    assert (length (skipn n input) = m) by length_hammer.
+    ssplit; [ apply state_relation_repeat_step; solve [eauto] | ].
+    erewrite state_relation_fold_left_accumulate_step by eauto.
+    match goal with H : _ |- _ => apply H; length_hammer end. }
+  { cbn [circuit_state step]. intros; logical_simplify.
+    pose proof (fun i => proj1 (Hab _ _ i ltac:(eassumption))) as Hab1.
+    pose proof (fun i => proj2 (Hab _ _ i ltac:(eassumption))) as Hab2.
+    pose proof (fun i => proj1 (Hcd _ _ i ltac:(eassumption))) as Hcd1.
+    pose proof (fun i => proj2 (Hcd _ _ i ltac:(eassumption))) as Hcd2.
+    clear Hab Hcd. logical_simplify.
+    repeat (destruct_pair_let; cbn [fst snd]).
+    rewrite ?Hab1, ?Hcd1. ssplit; eauto. }
+Qed.
+
+(* cequivn n c1 c2 -> cequivn n (First c1) (First c2) *)
+Global Instance Proper_First {i o t} n :
+  Proper (cequivn n ==> cequivn n) (@First _ _ i o t).
+Proof.
+  intros x y [Rxy [? Hxy]].
+  exists Rxy; ssplit.
+  { intros. rewrite !repeat_step_First.
+    match goal with H : _ |- _ => apply H; length_hammer end. }
+  { cbn [circuit_state step]. intros; logical_simplify.
+    pose proof (fun i => proj1 (Hxy _ _ i ltac:(eassumption))) as Hxy1.
+    pose proof (fun i => proj2 (Hxy _ _ i ltac:(eassumption))) as Hxy2.
+    clear Hxy. logical_simplify. repeat (destruct_pair_let; cbn [fst snd]).
+    rewrite Hxy1. ssplit; eauto. }
+Qed.
+
+(* cequivn n c1 c2 -> cequivn n (Second c1) (Second c2) *)
+Global Instance Proper_Second {i o t} n :
+  Proper (cequivn n ==> cequivn n) (@Second _ _ i o t).
+Proof.
+  intros x y [Rxy [? Hxy]].
+  exists Rxy; ssplit.
+  { intros. rewrite !repeat_step_Second.
+    match goal with H : _ |- _ => apply H; length_hammer end. }
+  { cbn [circuit_state step]. intros; logical_simplify.
+    pose proof (fun i => proj1 (Hxy _ _ i ltac:(eassumption))) as Hxy1.
+    pose proof (fun i => proj2 (Hxy _ _ i ltac:(eassumption))) as Hxy2.
+    clear Hxy. logical_simplify. repeat (destruct_pair_let; cbn [fst snd]).
+    rewrite Hxy1. ssplit; eauto. }
+Qed.
