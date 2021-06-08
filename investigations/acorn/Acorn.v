@@ -20,6 +20,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.ZArith.ZArith.
 Require Import ExtLib.Structures.Monad.
 Require Import ExtLib.Data.Monads.StateMonad.
+Require Import ExtLib.Data.Monads.IdentityMonad.
 Require Import ExtLib.Structures.MonadState.
 
 Require Import Coq.Numbers.DecimalString.
@@ -41,9 +42,41 @@ Class Acorn (signal : SignalType -> Type) := {
   natDelay : signal Nat -> acorn (signal Nat);
   loop : (signal Nat * signal Nat -> acorn (signal Nat * signal Nat)) ->
          signal Nat -> acorn (signal Nat);
-  constNat : N -> acorn (signal Nat);
+  constNat : nat -> acorn (signal Nat);
   comparator : signal Nat * signal Nat -> acorn (signal Bit);
   mux2 : signal Bit * (signal Nat * signal Nat) -> acorn (signal Nat);
+}.
+
+Definition simulationSignal (t: SignalType) : Type :=
+  match t with
+  | Bit => list bool
+  | Nat => list nat
+  end.
+
+Definition addModSim (modBy : nat) (ab : list nat * list nat) : ident (list nat) :=
+  let (a, b) := ab in
+  ret (map (fun '(x, y) => (x + y) mod modBy) (combine a b)).
+
+Definition comparatorSim (ab : list nat * list nat) : ident (list bool) :=
+  let (a, b) := ab in
+  ret (map (fun '(x, y) => y <=? x) (combine a b)).
+
+Definition mux2' (sxy : bool * (nat * nat)) : nat :=
+  let (s, xy) := sxy in
+  let (x, y) := xy in
+  if s then x else y.
+
+Instance AcornSimulation : Acorn simulationSignal := {
+  acorn := ident;
+  monad := Monad_ident;
+  inv i := ret (map negb i);
+  and2 '(a, b) := ret (map (fun '(x, y) => andb x y) (combine a b));
+  addMod := addModSim;
+  natDelay i := ret (0 :: i);
+  loop f i := ret i; (* Dummy Definition *)
+  constNat n := ret (repeat n 100); (* Hack, just repeat n 100 times. *)
+  comparator := comparatorSim;
+  mux2 '(sel, (a, b)) := ret (map mux2' (combine sel (combine a b)));
 }.
 
 Inductive Instance :=
@@ -160,9 +193,9 @@ Definition loopNet (body : Signal Nat * Signal Nat -> state Netlist (Signal Nat 
   addInstance (AssignNat (natWireNr b) (natWireNr d)) ;;
   ret c.
 
-Definition constNatNet (n : N) : state Netlist (Signal Nat) :=
+Definition constNatNet (n : nat) : state Netlist (Signal Nat) :=
   x <- newNat ;;
-  addInstance (ConstNat (natWireNr x) n) ;;
+  addInstance (ConstNat (natWireNr x) (N.of_nat n)) ;;
   ret x.
 
 Definition comparatorNet (ab : Signal Nat * Signal Nat) : state Netlist (Signal Bit) :=
