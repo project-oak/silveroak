@@ -40,7 +40,7 @@ Section Impl.
   Definition abs_mmio_read32 : func :=
     let addr := "addr" in
     let out := "out" in
-    ("br2_abs_mmio_read32", ([addr],[out],
+    ("b2_abs_mmio_read32", ([addr],[out],
     bedrock_func_body:(
       out = load4(addr)
     ))).
