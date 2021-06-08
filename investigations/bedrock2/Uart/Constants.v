@@ -128,8 +128,7 @@ Definition constant_names : uart_constants string :=
     kErrorUartBadBaudRate := "kErrorUartBadBaudRate";
   |}.
 
-(* This list includes all the constants and is prepended to functions' argument
-   lists to initialize their environment *)
+(* This list includes all the constants *)
 Definition uart_globals {T} {consts : uart_constants T} : list T :=
   [  TOP_EARLGREY_UART0_BASE_ADDR
     ;UART_CTRL_NCO_MASK
