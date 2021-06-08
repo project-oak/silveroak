@@ -23,6 +23,7 @@ Require Import Cava.Core.Core.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Semantics.Equivalence.
 Require Import Cava.Semantics.Simulation.
+Require Import Cava.Semantics.WeakEquivalence.
 Require Import Cava.Lib.CircuitTransforms.
 Require Import Cava.Lib.CircuitTransformsProperties.
 Require Import Cava.Lib.Retiming.
@@ -30,9 +31,20 @@ Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Import ListNotations Circuit.Notations.
 
-Lemma retimed0_cequiv_iff {i o} (c1 c2 : Circuit i (ivalue o)) :
-  retimed 0 c1 c2 <-> cequiv c1 c2.
+Lemma retimed_cequiv_iff {i o} n (c1 c2 : Circuit i (ivalue o)) :
+  retimed n c1 c2 <-> (exists d, cequivn n d (ndelays n o)
+                          /\ cequiv c1 (c2 >==> d)).
 Proof.
+  (* do we need this lemma? *)
+Admitted.
+
+(*
+Lemma retimed0_cequiv_iff {i o} (c1 c2 : Circuit i (ivalue o)) :
+  retimed 0 c1 c2 -> cequiv c1 c2.
+Proof.
+  cbv [retimed ndelays]. autorewrite with circuitsimpl.
+  intros.
+  apply cequivn_cequiv.
   split.
   { intros [resetvals ?]. logical_simplify.
     destruct resetvals; [ | cbn [length] in *; lia ].
@@ -50,16 +62,15 @@ Lemma retimed_cequiv {i o} n (c1 c2 : Circuit i (ivalue o)) resetvals :
   length resetvals = n ->
   retimed n c1 c2.
 Proof. cbv [retimed]; intros; eauto. Qed.
+ *)
 
-Lemma simulate_delays t resetvals input :
-  simulate (delays t resetvals) input
-  = firstn (length input) (resetvals :: input).
+Lemma simulate_delays t input :
+  simulate (delays t) input = firstn (length input) (idefault t :: input).
 Proof.
-  revert input; induction t; intros; cbn [delays ivalue];
+  revert input; induction t; intros; cbn [delays ivalue idefault];
     autorewrite with push_simulate; [ reflexivity | ].
   rewrite !IHt1, IHt2. autorewrite with push_length.
   rewrite <-combine_firstn. cbn [combine].
-  rewrite <-surjective_pairing.
   rewrite combine_map_r, combine_map_l, combine_same.
   rewrite !map_map. cbn [fst snd].
   rewrite List.map_id_ext by (intros; symmetry; apply surjective_pairing).
@@ -67,17 +78,16 @@ Proof.
 Qed.
 Hint Rewrite @simulate_delays using solve [eauto] : push_simulate.
 
-Lemma delays_get_reset t resetvals :
-  delays_get (reset_state (delays t resetvals)) = resetvals.
+Lemma delays_get_reset t  :
+  delays_get (reset_state (delays t)) = idefault t.
 Proof.
   induction t; [ reflexivity | ].
   cbn [delays delays_get Par reset_state fst snd].
-  rewrite IHt1, IHt2, <-surjective_pairing.
-  reflexivity.
+  rewrite IHt1, IHt2. reflexivity.
 Qed.
 
-Lemma delays_get_step t resetvals st input :
-  delays_get (fst (step (delays t resetvals) st input)) = input.
+Lemma delays_get_step t st input :
+  delays_get (fst (step (delays t) st input)) = input.
 Proof.
   induction t; [ reflexivity | ].
   cbn [delays delays_get Par step fst snd].
@@ -86,13 +96,61 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma step_delays t resetvals st input :
-  snd (step (delays t resetvals) st input) = delays_get st.
+Lemma step_delays t st input :
+  snd (step (delays t) st input) = delays_get st.
 Proof.
   induction t; [ reflexivity | ].
   cbn [delays delays_get Par step fst snd].
   repeat (destruct_pair_let; cbn [fst snd]).
   rewrite IHt1, IHt2. reflexivity.
+Qed.
+
+Lemma retimed_cequivn i o n (c1 c2 c3 : Circuit i (ivalue o)) :
+  retimed n c1 c2 -> retimed n c1 c3 -> cequivn n c2 c3.
+Proof.
+  cbv [retimed]; intros.
+  etransitivity.
+  { symmetry.
+  Search cequivn.
+Qed.
+
+Lemma move_delays i o n (c1 c2 : Circuit (ivalue i) (ivalue o)) :
+  cequivn n c1 c2 ->
+  cequivn (S n) (delays i >==> c1) (c2 >==> delays o).
+Proof.
+  intros.
+  etransitivity.
+  (* transitivity, replace delays with some delays that have the reset values for c1 (defaults) *)
+  (* OR transitivity, then use cequivn compose-delay lemmas *)
+  eapply cequivn_compose with (n0:=1) (m:=n).
+  
+  intros [R [? ?]].
+  exists (fun (st1 : circuit_state (delays i) * circuit_state c1)
+       (st2 : circuit_state c2 * circuit_state (delays o)) =>
+       exists st1',
+         step c1 (snd st1) (delays_get (fst st1)) = (st1', delays_get (snd st2))).
+  ssplit.
+  { cbn [circuit_state]. intro input; intros.
+    destruct input using rev_ind; [ cbn [length] in *; lia | ].
+    clear IHinput. autorewrite with push_repeat_step.
+    rewrite !fold_left_accumulate_snoc. cbn [fst snd].
+    autorewrite with push_repeat_step push_fold_acc.
+    destruct_products; cbn [fst snd] in *.
+    rewrite !step_delays, !delays_get_step.
+    rewrite H0.
+    eexists.
+    
+    repeat (destruct_pair_let; cbn [fst snd]).
+    rewrite !delays_get_step, !step_delays.
+  { cbn. rewrite !delays_get_reset.
+    destruct (step c (reset_state c) resetvalsi); cbn [fst snd] in *.
+    logical_simplify; subst. reflexivity. }
+  { cbn [circuit_state step]; intros *. intro Hstep.
+    destruct_products; cbn [fst snd] in *.
+    repeat (destruct_pair_let; cbn [fst snd]).
+    logical_simplify. rewrite !delays_get_step, !step_delays.
+    rewrite Hstep. cbn [fst snd]. rewrite <-surjective_pairing.
+    ssplit; reflexivity. }
 Qed.
 
 Lemma move_delays i o (c : Circuit (ivalue i) (ivalue o)) resetvalsi resetvalso :
