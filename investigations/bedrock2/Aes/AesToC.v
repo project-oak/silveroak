@@ -14,9 +14,31 @@ Local Open Scope Z_scope.
 
 Existing Instances constant_names constant_vars.
 
+Require Import coqutil.Datatypes.ListSet.
+
+(* TODO move to bedrock2/bedrock2 or compiler.ExprImp *)
+Fixpoint modVars_as_list(c : cmd): list string :=
+  match c with
+  | cmd.set v _ | cmd.unset v => [v]
+  | cmd.stackalloc x _ body =>
+      list_union String.eqb [x] (modVars_as_list body)
+  | cmd.cond _ s1 s2 | cmd.seq s1 s2 =>
+      list_union String.eqb (modVars_as_list s1) (modVars_as_list s2)
+  | cmd.while _ body => modVars_as_list body
+  | cmd.call binds _ _ | cmd.interact binds _ _ => binds
+  | cmd.skip | cmd.store _ _ _ => []
+  end.
+
 (* Redefinition from bedrock2's ToCString; the only difference is that globals
-   are passed in as an extra argument and removed from the list of local decls *)
+   are passed in as an extra argument and removed from the list of local decls,
+   and it is checked that they don't clash with local names *)
 Definition c_func globals '(name, (args, rets, body)) :=
+  let name_clashes := list_intersect String.eqb
+    globals (name :: args ++ rets ++ modVars_as_list body) in
+  match name_clashes with
+  | _ :: _ => "ERROR: In " ++ name ++ ", locals clash with globals (" ++
+              String.concat ", " name_clashes ++ ")" ++ LF
+  | _ =>
   let decl_retvar_retrenames : string * option String.string * list (String.string * String.string) :=
   match rets with
   | nil => (fmt_c_decl "void" args name nil, None, nil)
@@ -38,7 +60,9 @@ Definition c_func globals '(name, (args, rets, body)) :=
     c_cmd indent body ++
     concat "" (List.map (fun '(o, optr) => indent ++ "*" ++ c_var optr ++ " = " ++ c_var o ++ ";" ++ LF) retrenames) ++
     indent ++ "return" ++ (match retvar with None => "" | Some rv => " "++c_var rv end) ++ ";" ++ LF ++
-    "}" ++ LF.
+    "}" ++ LF
+  end.
+
 
 (* TODO: How does bedrock2 do ToCString.prelude with real newlines? *)
 Definition dquote : string := String (Ascii.ascii_of_nat 34) EmptyString.
