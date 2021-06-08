@@ -73,11 +73,45 @@ Instance AcornSimulation : Acorn simulationSignal := {
   and2 '(a, b) := ret (map (fun '(x, y) => andb x y) (combine a b));
   addMod := addModSim;
   natDelay i := ret (0 :: i);
-  loop f i := ret i; (* Dummy Definition *)
-  constNat n := ret (repeat n 100); (* Hack, just repeat n 100 times. *)
+  loop f i := ret i; (* Dummy Definition. QUESTION: How to do this in Coq? *)
+  constNat n := ret (repeat n 100); (* Hack, just repeat n 100 times. How to get an infinite list in Coq? *)
   comparator := comparatorSim;
   mux2 '(sel, (a, b)) := ret (map mux2' (combine sel (combine a b)));
 }.
+
+Definition injR {t1 t2 : SignalType} {signal}
+            (a : signal t1) (b : signal t2) : acorn (signal t1 * signal t2) :=
+  ret (a, b).
+
+Definition fork2 {t : SignalType} {signal}
+            (a : signal t) : acorn (signal t * signal t) :=
+  ret (a, a).
+
+Definition fsT {t1 t2 t3 : SignalType} {signal}
+           (f : signal t1 -> acorn (signal t3))
+           (ab : signal t1 * signal t2) : acorn (signal t3 * signal t2) :=
+  let (a, b) := ab in
+  o <- f a ;;
+  ret (o, b).
+
+Definition snD {t1 t2 t3 : SignalType} {signal}
+           (f : signal t2 -> acorn (signal t3))
+           (ab : signal t1 * signal t2) : acorn (signal t1 * signal t3) :=
+  let (a, b) := ab in
+  o <- f b ;;
+  ret (a, o).
+
+(* We can easily simulate circuits without loops, even if they contain delay elements. *)
+Definition circuit1 {signal} `{semantics:Acorn} : signal Nat * signal Nat -> acorn (signal Nat) :=
+  snD natDelay >=> addMod 256.
+
+Compute (unIdent (circuit1 ([17; 78; 12], [42; 62; 5]))).
+(*
+	 = [17; 120; 74]
+*)
+
+(* What's we can't do is simulate circuits with loop. *)
+(* We can create circuit netlists for circuits with loops. *)
 
 Inductive Instance :=
 | Inv : N -> N -> N -> Instance
@@ -223,28 +257,6 @@ Instance AcornNetlist : Acorn denoteSignal := {
   comparator := comparatorNet;
   mux2 := mux2Net;
 }.
-
-Definition injR {t1 t2 : SignalType} {signal}
-            (a : signal t1) (b : signal t2) : acorn (signal t1 * signal t2) :=
-  ret (a, b).
-
-Definition fork2 {t : SignalType} {signal}
-            (a : signal t) : acorn (signal t * signal t) :=
-  ret (a, a).
-
-Definition fsT {t1 t2 t3 : SignalType} {signal}
-           (f : signal t1 -> acorn (signal t3))
-           (ab : signal t1 * signal t2) : acorn (signal t3 * signal t2) :=
-  let (a, b) := ab in
-  o <- f a ;;
-  ret (o, b).
-
-Definition snD {t1 t2 t3 : SignalType} {signal}
-           (f : signal t2 -> acorn (signal t3))
-           (ab : signal t1 * signal t2) : acorn (signal t1 * signal t3) :=
-  let (a, b) := ab in
-  o <- f b ;;
-  ret (a, o).
 
 Definition inputBit (name : string) : state Netlist (Signal Bit) :=
   o <- newWire ;;
