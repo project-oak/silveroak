@@ -155,7 +155,7 @@ Instance aes_parameters_ok : AesSemantics.parameters.ok aes_parameters :=
   |}.
 
 Existing Instances Words32 semantics_parameters StateMachineSemantics.ok state_machine_parameters
-         compilation_params StateMachineMMIOSpec FlatToRiscv_params constant_words.
+         compilation_params StateMachineMMIOSpec FlatToRiscv_params constant_literals.
 
 (* add a stronger hint for state_machine_parameters *)
 Local Hint Extern 1 (StateMachineSemantics.parameters _ _ _) =>

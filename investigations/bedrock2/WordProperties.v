@@ -67,13 +67,16 @@ Ltac push_unsigned :=
            rewrite (@word.unsigned_mulhuu _ word ok x y) by eauto
          | |- context [@word.unsigned _ ?word (word.divu ?x ?y)] =>
            let ok := constr:(_:word.ok word) in
-           rewrite (@word.unsigned_divu _ word ok x y) by lia
+           rewrite (@word.unsigned_divu _ word ok x y)
+             by (rewrite ?word.unsigned_of_Z_nowrap by lia; lia)
          | |- context [@word.unsigned _ ?word (word.slu ?x ?y)] =>
            let ok := constr:(_:word.ok word) in
-           rewrite (@word.unsigned_slu _ word ok x y) by lia
+           rewrite (@word.unsigned_slu _ word ok x y)
+             by (rewrite ?word.unsigned_of_Z_nowrap by lia; lia)
          | |- context [@word.unsigned _ ?word (word.slu ?x ?y)] =>
            let ok := constr:(_:word.ok word) in
-           rewrite (@word.unsigned_slu _ word ok x y) by lia
+           rewrite (@word.unsigned_slu _ word ok x y)
+             by (rewrite ?word.unsigned_of_Z_nowrap by lia; lia)
          | _ => first [ rewrite_word_wrap_small
                      | progress autorewrite with push_unsigned ]
          end.
@@ -198,16 +201,20 @@ Section WithWord.
 
   Lemma is_flag_set_shift w flag :
     boolean w ->
-    word.unsigned flag < width ->
-    is_flag_set (word.slu w flag) flag = negb (word.eqb w (word.of_Z 0)).
+    0 <= flag < width ->
+    is_flag_set (word.slu w (word.of_Z flag)) flag = negb (word.eqb w (word.of_Z 0)).
   Proof.
     intro Hbool; intros; cbv [is_flag_set].
     pose proof word.width_pos.
-    pose proof word.unsigned_range flag.
-    assert (0 < 2 ^ word.unsigned flag < 2 ^ width)
+    assert (0 < 2 ^ flag < 2 ^ width)
       by (split; [ apply Z.pow_pos_nonneg
                  | apply Z.pow_lt_mono_r]; lia).
     rewrite !word.unsigned_eqb.
+    assert (width < 2 ^ width). {
+      apply Zpow_facts.Zpower2_lt_lin.
+      pose proof word.width_pos.
+      lia.
+    }
     push_unsigned.
     cbv [word.wrap].
     rewrite !Z.mod_small by
@@ -234,24 +241,25 @@ Section WithWord.
 
   Lemma is_flag_set_shift_neq w flag1 flag2 :
     boolean w ->
-    word.unsigned flag1 < width ->
-    word.unsigned flag2 < width ->
+    0 <= flag1 < width ->
+    0 <= flag2 < width ->
     flag1 <> flag2 ->
-    is_flag_set (word.slu w flag1) flag2 = false.
+    is_flag_set (word.slu w (word.of_Z flag1)) flag2 = false.
   Proof.
     intro Hbool; intros; cbv [is_flag_set].
     pose proof word.width_pos.
-    pose proof word.unsigned_range flag1.
-    pose proof word.unsigned_range flag2.
-    assert (0 < 2 ^ word.unsigned flag1 < 2 ^ width)
+    assert (0 < 2 ^ flag1 < 2 ^ width)
       by (split; [ apply Z.pow_pos_nonneg
                  | apply Z.pow_lt_mono_r]; lia).
-    assert (0 < 2 ^ word.unsigned flag2 < 2 ^ width)
+    assert (0 < 2 ^ flag2 < 2 ^ width)
       by (split; [ apply Z.pow_pos_nonneg
                  | apply Z.pow_lt_mono_r]; lia).
-    assert (word.unsigned flag1 <> word.unsigned flag2)
-      by (intro Heq; apply word.unsigned_inj in Heq; congruence).
     rewrite !word.unsigned_eqb.
+    assert (width < 2 ^ width). {
+      apply Zpow_facts.Zpower2_lt_lin.
+      pose proof word.width_pos.
+      lia.
+    }
     push_unsigned. cbv [word.wrap].
     rewrite !Z.mod_small by
         (rewrite Z.shiftl_mul_pow2 by lia;
@@ -311,12 +319,18 @@ Section WithWord.
   Hint Rewrite testbit_has_size_high
        using solve [eapply has_size_weaken; [ eauto | ]; lia] : push_Ztestbit.
 
-  Lemma is_flag_set_or_shiftl_low w1 w2 (i flag : word) :
-    word.unsigned flag < word.unsigned i < width ->
-    is_flag_set (word.or w1 (word.slu w2 i)) flag = is_flag_set w1 flag.
+  Lemma is_flag_set_or_shiftl_low w1 w2 i flag :
+    0 <= flag ->
+    flag < i < width ->
+    is_flag_set (word.or w1 (word.slu w2 (word.of_Z i))) flag = is_flag_set w1 flag.
   Proof.
     intros; cbv [is_flag_set].
     do 2 f_equal. apply word_testbit_inj. intro n; intros.
+    assert (width < 2 ^ width). {
+      apply Zpow_facts.Zpower2_lt_lin.
+      pose proof word.width_pos.
+      lia.
+    }
     push_unsigned. autorewrite with push_Ztestbit.
     destruct_one_match; boolsimpl; try reflexivity; [ ].
     lazymatch goal with
@@ -349,13 +363,21 @@ Section WithWord.
 
   Lemma is_flag_set_or_shiftl_high w1 w2 flag :
     boolean w2 ->
-    word.unsigned flag < width ->
-    has_size w1 (word.unsigned flag) ->
-    is_flag_set (word.or w1 (word.slu w2 flag)) flag
+    0 <= flag < width ->
+    has_size w1 flag ->
+    is_flag_set (word.or w1 (word.slu w2 (word.of_Z flag))) flag
     = negb (word.eqb w2 (word.of_Z 0)).
   Proof.
     intros; cbv [is_flag_set].
-    rewrite <-(boolean_shift_nonzero w2 flag) by auto.
+    assert (width < 2 ^ width). {
+      apply Zpow_facts.Zpower2_lt_lin.
+      pose proof word.width_pos.
+      lia.
+    }
+    assert (word.unsigned (word.of_Z flag) < width). {
+      rewrite word.unsigned_of_Z_nowrap; lia.
+    }
+    rewrite <-(boolean_shift_nonzero w2 (word.of_Z flag)) by auto.
     do 2 f_equal. apply word_testbit_inj. intro n; intros.
     push_unsigned. autorewrite with push_Ztestbit.
     destruct_one_match; try lia; [ ].

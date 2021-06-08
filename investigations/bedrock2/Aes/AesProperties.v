@@ -39,8 +39,7 @@ Local Open Scope Z_scope.
 Section Proofs.
   Context {p : AesSemantics.parameters} {p_ok : parameters.ok p}
           {consts : aes_constants Z} {timing : timing}.
-  Context {consts_ok : aes_constants_ok constant_words}.
-  Existing Instance constant_words.
+  Context {consts_ok : aes_constants_ok consts}.
   Existing Instance state_machine_parameters.
 
   (* this duplicate of locals_ok helps when Semantics.word has been changed to
@@ -58,7 +57,7 @@ Section Proofs.
          morphism (Properties.word.ring_morph (word := parameters.word)),
          constants [Properties.word_cst]).
 
-  Existing Instance constant_names | 10.
+  Existing Instance constant_literals | 10.
 
   (* This tactic simplifies implicit types so that they all agree; otherwise
      tactic has trouble connecting, for instance, a word of type parameters.word
@@ -163,8 +162,8 @@ Section Proofs.
       cbv [is_flag_set]. boolsimpl.
       rewrite !word.eqb_eq; [ reflexivity | apply word.unsigned_inj .. ].
       all:push_unsigned; rewrite Z.land_0_l; reflexivity. }
-    { exists (word.or (word.slu (word.of_Z 1) AES_STATUS_IDLE)
-                 (word.slu (word.of_Z 1) AES_STATUS_INPUT_READY)).
+    { exists (word.or (word.slu (word.of_Z 1) (word.of_Z AES_STATUS_IDLE))
+                 (word.slu (word.of_Z 1) (word.of_Z AES_STATUS_INPUT_READY))).
       eexists; ssplit; [ | reflexivity ].
       cbv [is_flag_set]. boolsimpl.
       repeat lazymatch goal with
@@ -191,17 +190,17 @@ Section Proofs.
       all:boolsimpl; try reflexivity.
       all:subst.
       all:lazymatch goal with
-          | H1 : ?i - word.unsigned ?x = 0,
-                 H2 : ?i - word.unsigned ?y = 0 |- _ =>
-            assert (x = y) by (apply word.unsigned_inj; lia)
+          | H1 : ?i - ?x = 0,
+            H2 : ?i - ?y = 0 |- _ =>
+            assert (word.of_Z x = word.of_Z y) by (f_equal; lia)
           end.
       all:simplify_implicits; cbn in *; congruence. }
-    { exists (word.slu (word.of_Z 1) AES_STATUS_OUTPUT_VALID).
+    { exists (word.slu (word.of_Z 1) (word.of_Z AES_STATUS_OUTPUT_VALID)).
       destruct data. rewrite is_flag_set_shift by (cbv [boolean]; tauto || lia).
       rewrite word.eqb_ne by
           (intro Heq; apply word.of_Z_inj_small in Heq; lia).
       cbn [negb]. eauto. }
-    { exists (word.slu (word.of_Z 1) AES_STATUS_OUTPUT_VALID).
+    { exists (word.slu (word.of_Z 1) (word.of_Z AES_STATUS_OUTPUT_VALID)).
       eexists; split; [ | reflexivity ].
       rewrite is_flag_set_shift by (cbv [boolean]; tauto || lia).
       rewrite word.eqb_ne by
@@ -281,9 +280,9 @@ Section Proofs.
   Qed.
 
   Lemma interact_write_key i call addre vale t m l
-        (post : trace -> mem -> locals -> Prop) rs addr val :
+        (post : trace -> mem -> locals -> Prop) rs (addr val: Semantics.word) :
     dexprs m l [addre; vale] [addr; val] ->
-    addr = word.add AES_KEY0 (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
+    addr = word.add (word.of_Z AES_KEY0) (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
     (i < 8)%nat ->
     execution t (IDLE rs) ->
     (forall s',
@@ -316,7 +315,7 @@ Section Proofs.
   Lemma interact_write_iv i call addre vale t m l
         (post : trace -> mem -> locals -> Prop) rs addr val :
     dexprs m l [addre; vale] [addr; val] ->
-    addr = word.add AES_IV0 (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
+    addr = word.add (word.of_Z AES_IV0) (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
     (i < 4)%nat ->
     execution t (IDLE rs) ->
     (forall s',
@@ -349,7 +348,7 @@ Section Proofs.
   Lemma interact_write_data_in i call addre vale t m l
         (post : trace -> mem -> locals -> Prop) rs addr val :
     dexprs m l [addre; vale] [addr; val] ->
-    addr = word.add AES_DATA_IN0 (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
+    addr = word.add (word.of_Z AES_DATA_IN0) (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
     (i < 4)%nat ->
     execution t (IDLE rs) ->
     (forall s',
@@ -383,7 +382,7 @@ Section Proofs.
   Lemma interact_read_data_out i call addre bind (t : trace) m l
         (post : trace -> mem -> locals -> Prop) data addr val :
     dexprs m l [addre] [addr] ->
-    addr = word.add AES_DATA_OUT0 (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
+    addr = word.add (word.of_Z AES_DATA_OUT0) (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
     (i < 4)%nat ->
     match data_out_from_index i with
     | DATA_OUT0 => done_data_out0 data
@@ -530,14 +529,11 @@ Section Proofs.
   Definition ctrl_operation (ctrl : parameters.word) : bool :=
     is_flag_set ctrl AES_CTRL_OPERATION.
   Definition ctrl_mode (ctrl : parameters.word) : parameters.word :=
-    select_bits ctrl AES_CTRL_MODE_OFFSET AES_CTRL_MODE_MASK.
+    select_bits ctrl (word.of_Z AES_CTRL_MODE_OFFSET) (word.of_Z AES_CTRL_MODE_MASK).
   Definition ctrl_key_len (ctrl : parameters.word) : parameters.word :=
-    select_bits ctrl AES_CTRL_KEY_LEN_OFFSET AES_CTRL_KEY_LEN_MASK.
+    select_bits ctrl (word.of_Z AES_CTRL_KEY_LEN_OFFSET) (word.of_Z AES_CTRL_KEY_LEN_MASK).
   Definition ctrl_manual_operation (ctrl : parameters.word) : bool :=
     is_flag_set ctrl AES_CTRL_MANUAL_OPERATION.
-
-  (* prevent [inversion] from exposing word.of_Z in constants *)
-  Local Opaque constant_words.
 
   (***** Proofs for specific functions *****)
 
@@ -548,8 +544,7 @@ Section Proofs.
         R m ->
         (* no constraints on current state *)
         execution tr s ->
-        let args := [AES_STATUS; AES_STATUS_INPUT_READY] in
-        call function_env aes_data_ready tr m args
+        call function_env aes_data_ready tr m []
              (fun tr' m' rets =>
                 exists (status out : Semantics.word) (s' : state),
                   (* the new state matches the new trace *)
@@ -565,6 +560,40 @@ Section Proofs.
                      input_ready flag is unset *)
                   /\ word.eqb out (word.of_Z 0)
                     = negb (is_flag_set status AES_STATUS_INPUT_READY)).
+
+(* BEGIN TODO integrate into bedrock2.ProgramLogic *)
+
+Ltac bind_body_of_function f_ ::=
+  let f := Tactics.rdelta.rdelta f_ in
+  let fname := open_constr:(_) in
+  let fargs := open_constr:(_) in
+  let frets := open_constr:(_) in
+  let fbody := open_constr:(_) in
+  let funif := open_constr:((fname, (fargs, frets, fbody))) in
+  unify f funif;
+  let G := lazymatch goal with |- ?G => G end in
+  let P := lazymatch eval pattern f_ in G with ?P _ => P end in
+  change (bindcmd fbody (fun c : Syntax.cmd => P (fname, (fargs, frets, c))));
+  cbv beta iota delta [bindcmd]; intros.
+
+Ltac app_head e :=
+  match e with
+  | ?f ?a => app_head f
+  | _ => e
+  end.
+
+(* note: f might have some implicit parameters (eg a record of constants) *)
+Ltac enter f ::=
+  let fname := app_head f in
+  cbv beta delta [program_logic_goal_for]; intros;
+  bind_body_of_function f;
+  let fdefn := eval cbv delta [fname] in f in
+  let ctx := string2ident.learn fdefn in
+  let H := fresh "_string_to_ident" in
+  pose ctx as H;
+  lazymatch goal with |- ?s _ => cbv beta delta [s] end.
+
+(* END TODO *)
 
   Lemma aes_data_ready_correct :
     program_logic_goal_for_function! aes_data_ready.
@@ -588,8 +617,7 @@ Section Proofs.
         R m ->
         (* no constraints on current state *)
         execution tr s ->
-        let args := [AES_STATUS; AES_STATUS_OUTPUT_VALID] in
-        call function_env aes_data_valid tr m args
+        call function_env aes_data_valid tr m []
              (fun tr' m' rets =>
                 exists (status out : Semantics.word) (s' : state),
                   (* the new state matches the new trace *)
@@ -629,8 +657,7 @@ Section Proofs.
         R m ->
         (* no constraints on current state *)
         execution tr s ->
-        let args := [AES_STATUS; AES_STATUS_IDLE] in
-        call function_env aes_idle tr m args
+        call function_env aes_idle tr m []
              (fun tr' m' rets =>
                 exists (status out : Semantics.word) (s' : state),
                   (* the new state matches the new trace *)
@@ -680,11 +707,7 @@ Section Proofs.
         aes_key_len_t aes_cfg_key_len ->
         (* manual_operation is a boolean *)
         boolean aes_cfg_manual_operation ->
-        let args := [AES_CTRL; AES_CTRL_OPERATION;
-                    AES_CTRL_MODE_MASK; AES_CTRL_MODE_OFFSET;
-                    AES_CTRL_KEY_LEN_MASK; AES_CTRL_KEY_LEN_OFFSET;
-                    AES_CTRL_MANUAL_OPERATION;
-                    aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
+        let args := [aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
                     aes_cfg_manual_operation] in
         call function_env aes_init tr m args
              (fun tr' m' rets =>
@@ -704,7 +727,6 @@ Section Proofs.
                 /\ R m'
                 (* ...and there is no output *)
                 /\ rets = []).
-
 
   Lemma aes_init_correct :
     program_logic_goal_for_function! aes_init.
@@ -737,6 +759,21 @@ Section Proofs.
 
     simplify_implicits.
 
+    assert (0 <= AES_CTRL_MODE_MASK < 2 ^ 32). {
+      rewrite mode_mask_eq.
+      rewrite Z.ones_equiv.
+      pose proof Z.pow_lt_mono_r 2 mode_size 32.
+      pose proof Z.pow_pos_nonneg 2 mode_size.
+      cbn in *. lia.
+    }
+    assert (0 <= AES_CTRL_KEY_LEN_MASK < 2 ^ 32). {
+      rewrite key_len_mask_eq.
+      rewrite Z.ones_equiv.
+      pose proof Z.pow_lt_mono_r 2 key_len_size 32.
+      pose proof Z.pow_pos_nonneg 2 key_len_size.
+      cbn in *. lia.
+    }
+
     (* split cases *)
     eexists; ssplit.
     { (* prove that the execution trace is OK *)
@@ -746,17 +783,110 @@ Section Proofs.
       rewrite !is_flag_set_or_shiftl_low by lia.
       apply is_flag_set_shift; eauto using size1_boolean.
       lia. }
+    (* TODO automate in a *robust* way... *)
     { cbv [ctrl_mode].
-      erewrite !select_bits_or_shiftl_low, select_bits_or_shiftl_high
-        by (first [ eassumption | prove_has_size | lia]).
-      eapply select_bits_id; [ prove_has_size | .. ]; lia. }
+      etransitivity. {
+        eapply select_bits_or_shiftl_low.
+        all: rewrite ?word.unsigned_of_Z_nowrap.
+        1: eassumption.
+        all: try lia.
+      }
+      etransitivity. {
+        eapply select_bits_or_shiftl_low.
+        all: rewrite ?word.unsigned_of_Z_nowrap.
+        1: eassumption.
+        all: try lia.
+      }
+      etransitivity. {
+        rewrite mode_mask_eq in *.
+        eapply select_bits_or_shiftl_high.
+        all: rewrite ?word.unsigned_of_Z_nowrap.
+        3: {
+          eapply has_size_ones.
+          rewrite word.unsigned_of_Z_nowrap; trivial.
+        }
+        all: try (cbn in *; lia).
+        eapply has_size_weaken.
+        1: eapply has_size_slu.
+        1: eassumption.
+        all: rewrite ?word.unsigned_of_Z_nowrap.
+        all: try (cbn -[Z.add] in *; lia).
+      }
+      etransitivity. {
+        eapply select_bits_id.
+        1: eassumption.
+        all: rewrite ?word.unsigned_of_Z_nowrap.
+        all: try (cbn in *; lia).
+      }
+      reflexivity.
+    }
     { cbv [ctrl_key_len].
-      erewrite !select_bits_or_shiftl_low, select_bits_or_shiftl_high
-        by (first [ eassumption | prove_has_size | lia]).
-      eapply select_bits_id; [ prove_has_size | .. ]; lia. }
+      etransitivity. {
+        eapply select_bits_or_shiftl_low.
+        all: rewrite ?word.unsigned_of_Z_nowrap.
+        1: eassumption.
+        all: try lia.
+      }
+      etransitivity. {
+        rewrite key_len_mask_eq in *.
+        eapply select_bits_or_shiftl_high.
+        all: rewrite ?word.unsigned_of_Z_nowrap.
+        3: {
+          eapply has_size_ones.
+          rewrite word.unsigned_of_Z_nowrap; trivial.
+        }
+        all: try (cbn in *; lia).
+        eapply has_size_weaken.
+        { eapply has_size_or.
+          { eapply has_size_slu. 1: eassumption.
+            rewrite word.unsigned_of_Z_nowrap.
+            all: try (cbn -[Z.add] in *; lia). }
+          { eapply has_size_slu.
+            { eapply has_size_and. 1: eassumption.
+              rewrite mode_mask_eq. eapply has_size_ones.
+              rewrite word.unsigned_of_Z_nowrap. 1: reflexivity.
+              cbn in *; lia.
+              all: try (cbn -[Z.add] in *; lia). }
+            rewrite word.unsigned_of_Z_nowrap; lia. }
+        }
+        rewrite ?word.unsigned_of_Z_nowrap.
+        all: cbn -[Z.add] in *; try lia.
+      }
+      eapply select_bits_id.
+      1: eassumption.
+      all: rewrite ?word.unsigned_of_Z_nowrap.
+      all: try (cbn in *; lia).
+    }
     { cbv [ctrl_manual_operation].
-      apply is_flag_set_or_shiftl_high;
-        (eassumption || prove_has_size || lia). }
+      apply is_flag_set_or_shiftl_high.
+      1: eassumption.
+      1: cbn in *; lia.
+      eapply has_size_weaken.
+      { eapply has_size_or.
+        { eapply has_size_or.
+          { eapply has_size_slu. 1: eassumption.
+            rewrite word.unsigned_of_Z_nowrap.
+            all: try (cbn -[Z.add] in *; lia). }
+          { eapply has_size_slu.
+            { eapply has_size_and. 1: eassumption.
+              rewrite mode_mask_eq. eapply has_size_ones.
+              rewrite word.unsigned_of_Z_nowrap. 1: reflexivity.
+              cbn in *; lia.
+              all: try (cbn -[Z.add] in *; lia). }
+            rewrite word.unsigned_of_Z_nowrap; lia. }
+        }
+        eapply has_size_slu.
+        { eapply has_size_and. 1: eassumption. rewrite key_len_mask_eq.
+          eapply has_size_ones.
+          rewrite ?word.unsigned_of_Z_nowrap. 1: reflexivity.
+          all: cbn -[Z.add] in *; try lia.
+        }
+        rewrite ?word.unsigned_of_Z_nowrap.
+        all: try (cbn in *; lia).
+      }
+      rewrite ?word.unsigned_of_Z_nowrap.
+      all: cbn -[Z.add] in *; try lia.
+    }
   Qed.
 
   Global Instance spec_of_aes_key_put : spec_of aes_key_put :=
@@ -768,12 +898,12 @@ Section Proofs.
         (* key array is in memory *)
         (array scalar32 (word.of_Z 4) key_arr_ptr key_arr * R)%sep m ->
         (* key array length matches the key_len argument *)
-         length key_arr = (if word.eqb key_len kAes128
-                           then 4%nat else if word.eqb key_len kAes192
+         length key_arr = (if word.eqb key_len (word.of_Z kAes128)
+                           then 4%nat else if word.eqb key_len (word.of_Z kAes192)
                                        then 6%nat else 8%nat) ->
         (* circuit must be in IDLE state *)
         execution tr (IDLE data) ->
-        let args := [AES_KEY0; AES_NUM_REGS_KEY; kAes256; kAes192; key_arr_ptr; key_len] in
+        let args := [key_arr_ptr; key_len] in
         call function_env aes_key_put tr m args
              (fun tr' m' rets =>
                 (* the circuit is in IDLE state with the key registers updated *)
@@ -801,9 +931,10 @@ Section Proofs.
     simplify_unique_words_in key_len_unique.
 
     (* key_len must be one of the members of the aes_key_len enum *)
+    move H at bottom.
     lazymatch goal with
     | H : enum_member aes_key_len ?len |- _ =>
-      cbn [enum_member aes_key_len In] in H
+      cbn in H
     end.
 
     (* this assertion helps prove that i does not get truncated *)
@@ -835,7 +966,9 @@ Section Proofs.
                  apply word.if_zero, word.eqb_false in H
                end; subst.
       (* destruct nonsensical cases *)
-      all:repeat (destruct_one_match_hyp_of_type bool; try congruence);
+      all:repeat (destruct_one_match_hyp_of_type bool;
+                  (* TODO don't use cbn so aggressively *)
+                  cbn -[map.put map.empty] in *; try congruence);
         repeat lazymatch goal with
                | H : _ \/ _ |- _ => destruct H; try congruence
                end; [ ].
@@ -962,8 +1095,8 @@ Section Proofs.
             rewrite word.unsigned_of_Z, word.wrap_small in H by lia
         end.
         lazymatch goal with
-        | i := word.add _ (word.of_Z 1),
-               H : word.unsigned i < _ |- _ =>
+        | l := map.put _ "i" ?i,
+               H : word.unsigned ?i < _ |- _ =>
                subst i;
                  rewrite word.unsigned_add, word.unsigned_of_Z_1 in H;
                  rewrite ?word.unsigned_of_Z, ?word.wrap_small in H
@@ -1158,8 +1291,7 @@ Section Proofs.
         length iv_arr = 4%nat ->
         (* circuit must be in IDLE state *)
         execution tr (IDLE data) ->
-        let args := [AES_IV0; AES_NUM_REGS_IV; iv_ptr] in
-        call function_env aes_iv_put tr m args
+        call function_env aes_iv_put tr m [iv_ptr]
              (fun tr' m' rets =>
                 (* the circuit is in IDLE state with the iv registers updated *)
                 execution tr'
@@ -1252,8 +1384,7 @@ Section Proofs.
                 write_input_reg (data_in_from_index i) data
                                 (nth i input_arr (word.of_Z 0)))
              (seq 0 4) data) = Some all_aes_input ->
-        let args := [AES_DATA_IN0; AES_NUM_REGS_DATA; input_ptr] in
-        call function_env aes_data_put tr m args
+        call function_env aes_data_put tr m [input_ptr]
              (fun tr' m' rets =>
                 (* the circuit is now in the BUSY state *)
                 execution tr' (BUSY (Build_busy_data
@@ -1352,9 +1483,7 @@ Section Proofs.
                 write_input_reg (data_in_from_index i) data
                                 (nth i input_arr (word.of_Z 0)))
              (seq 0 4) data) = Some all_aes_input ->
-        let args := [AES_DATA_IN0; AES_NUM_REGS_DATA;
-                    AES_STATUS; AES_STATUS_INPUT_READY; input_ptr] in
-        call function_env aes_data_put_wait tr m args
+        call function_env aes_data_put_wait tr m [input_ptr]
              (fun tr' m' rets =>
                 (* the circuit is now in the BUSY state *)
                 execution tr' (BUSY (Build_busy_data
@@ -1423,8 +1552,7 @@ Section Proofs.
         data.(done_data_out1) = Some out1 ->
         data.(done_data_out2) = Some out2 ->
         data.(done_data_out3) = Some out3 ->
-        let args := [AES_DATA_OUT0; AES_NUM_REGS_DATA; data_ptr] in
-        call function_env aes_data_get tr m args
+        call function_env aes_data_get tr m [data_ptr]
              (fun tr' m' rets =>
                 (* the circuit is now in the IDLE state with output registers unset *)
                 execution tr' (IDLE (Build_idle_data
@@ -1570,9 +1698,7 @@ Section Proofs.
            termination) and expected or already-written output matches out *)
         execution tr s ->
         output_matches_state out s ->
-        let args := [AES_DATA_OUT0; AES_NUM_REGS_DATA; AES_STATUS;
-                    AES_STATUS_OUTPUT_VALID; data_ptr] in
-        call function_env aes_data_get_wait tr m args
+        call function_env aes_data_get_wait tr m [data_ptr]
              (fun tr' m' rets =>
                 (* the circuit is now in the IDLE state with output registers unset *)
                 execution tr' (IDLE (Build_idle_data (get_ctrl s) None None None None

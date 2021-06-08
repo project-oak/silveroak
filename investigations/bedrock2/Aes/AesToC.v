@@ -12,67 +12,26 @@ Import ListNotations.
 Local Open Scope string_scope.
 Local Open Scope Z_scope.
 
-Existing Instance constant_names.
+Existing Instances constant_names constant_vars.
 
 (* Redefinition from bedrock2's ToCString; the only difference is that globals
-   are stripped out of the arguments list in function calls *)
-Fixpoint c_cmd (indent : string) (c : cmd) : string :=
-  match c with
-  | cmd.store s ea ev
-    => indent ++ "_br2_store(" ++ c_expr ea ++ ", " ++ c_expr ev ++ ", " ++ c_size s ++ ");" ++ LF
-  | cmd.stackalloc x n body =>
-    indent ++ c_var x ++ " = alloca(" ++ c_lit n ++ "); // TODO untested" ++ LF ++
-    c_cmd indent body
-  | cmd.set x ev =>
-    indent ++ c_var x ++ " = " ++ c_expr ev ++ ";" ++ LF
-  | cmd.unset x =>
-    indent ++ "// unset " ++ c_var x ++ LF
-  | cmd.cond eb t f =>
-    indent ++ "if (" ++ c_expr eb ++ ") {" ++ LF ++
-      c_cmd ("  "++indent) t ++
-    indent ++ "} else {" ++ LF ++
-      c_cmd ("  "++indent) f ++
-    indent ++ "}" ++ LF
-  | cmd.while eb c =>
-    indent ++ "while (" ++ c_expr eb ++ ") {" ++ LF ++
-      c_cmd ("  "++indent) c ++
-    indent ++ "}" ++ LF
-  | cmd.seq c1 c2 =>
-    c_cmd indent c1 ++
-    c_cmd indent c2
-  | cmd.skip =>
-    indent ++ "/*skip*/" ++ LF
-  | cmd.call binds f arges =>
-    (* the below line filters out globals from arguments in the declaration *)
-    let arges := filter (fun e => match e with
-                               | expr.var s => negb (existsb (String.eqb s) aes_globals)
-                               | _ => true
-                               end) arges in
-    indent ++ c_call (List.map c_var binds) (c_fun f) (List.map c_expr arges)
-  | cmd.interact binds action es =>
-    indent ++ c_act binds action (List.map c_expr es)
-  end.
-
-(* Redefinition from bedrock2's ToCString; the only difference is that globals
-   are stripped out of the arguments list in function declarations *)
-Definition c_func '(name, (args, rets, body)) :=
+   are passed in as an extra argument and removed from the list of local decls *)
+Definition c_func globals '(name, (args, rets, body)) :=
   let decl_retvar_retrenames : string * option String.string * list (String.string * String.string) :=
-      (* the below line filters out globals from arguments in the declaration *)
-      let args := List_minus String.eqb args aes_globals in
-      match rets with
-      | nil => (fmt_c_decl "void" args name nil, None, nil)
-      | cons r0 _ =>
-        let r0 := List.last rets r0 in
-        let rets' := List.removelast rets in
-        let retrenames := fst (rename_outs rets' (cmd.vars body)) in
-        (fmt_c_decl "uintptr_t" args name (List.map snd retrenames), Some r0, retrenames)
-      end in
+  match rets with
+  | nil => (fmt_c_decl "void" args name nil, None, nil)
+  | cons r0 _ =>
+    let r0 := List.last rets r0 in
+    let rets' := List.removelast rets in
+    let retrenames := fst (rename_outs rets' (cmd.vars body)) in
+    (fmt_c_decl "uintptr_t" args name (List.map snd retrenames), Some r0, retrenames)
+  end in
   let decl := fst (fst decl_retvar_retrenames) in
   let retvar := snd (fst decl_retvar_retrenames) in
   let retrenames := snd decl_retvar_retrenames in
   let localvars : list String.string := List_uniq String.eqb (
       let allvars := (List.app (match retvar with None => nil | Some v => cons v nil end) (cmd.vars body)) in
-      (List_minus String.eqb allvars args)) in
+      (List_minus String.eqb allvars (List.app args globals))) in
   decl ++ " {" ++ LF ++
     let indent := "  " in
     (match localvars with nil => "" | _ => indent ++ "uintptr_t " ++ concat ", " (List.map c_var localvars) ++ ";" ++ LF end) ++
@@ -198,8 +157,7 @@ Definition funcs := [aes_init
 
 Definition make_aes_c :=
   concat LF (aes_c_template_top
-               ++ map (fun f => "static " ++ c_func f) funcs
+               ++ map (fun f => "static " ++ c_func aes_globals f) funcs
                ++ aes_c_template_bottom).
 
 Redirect "aes.c" Compute make_aes_c.
-

@@ -37,16 +37,7 @@ Definition output_ptr := AES_BASE_ADDR + 0x70.
 Definition main_body : cmd :=
   cmd.call []
            aes_encrypt
-           [AES_CTRL; AES_CTRL_OPERATION;
-           AES_CTRL_MODE_MASK; AES_CTRL_MODE_OFFSET;
-           AES_CTRL_KEY_LEN_MASK; AES_CTRL_KEY_LEN_OFFSET;
-           AES_CTRL_MANUAL_OPERATION; kAesEnc; kAesEcb;
-           AES_KEY0; AES_NUM_REGS_KEY; kAes256; kAes192;
-           AES_IV0; AES_NUM_REGS_IV;
-           AES_DATA_IN0; AES_NUM_REGS_DATA;
-           AES_STATUS; AES_STATUS_INPUT_READY;
-           AES_DATA_OUT0; AES_STATUS_OUTPUT_VALID;
-           expr.literal input_data_ptr;
+           [expr.literal input_data_ptr;
            expr.literal input_key_ptr;
            expr.literal input_iv_ptr;
            expr.literal output_ptr].
