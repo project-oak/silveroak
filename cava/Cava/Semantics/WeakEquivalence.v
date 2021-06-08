@@ -73,7 +73,7 @@ Proof.
   logical_simplify. eauto.
 Qed.
 
-(* Note: cequivn is NOT reflexive in general. *)
+(* Note: cequivn is NOT reflexive in general! *)
 
 Lemma skipn_fold_left_accumulate {A B C} (f : B -> A -> B * C) n ls b :
   skipn n (fold_left_accumulate f ls b)
@@ -113,16 +113,6 @@ Proof.
   specialize (Hstart nil (reset_state c1) (reset_state c2) eq_refl).
   cbn [fold_left] in Hstart. exists R; eauto.
 Qed.
-
-(* 0-equivalent circuits produce exactly the same output on the same input *)
-Lemma simulate_cequivn0 {i o} (c1 c2 : Circuit i o) :
-  cequivn 0 c1 c2 -> forall input, simulate c1 input = simulate c2 input.
-Proof. auto using simulate_cequiv, cequivn_cequiv. Qed.
-
-(* Proper instance allows rewriting under simulate *)
-Global Instance Proper_simulate i o :
-  Proper (cequivn 0 ==> eq ==> eq) (@simulate i o).
-Proof. repeat intro; subst. eapply simulate_cequivn0; auto. Qed.
 
 Lemma state_relation_fold_left_accumulate_step
       i o (c1 c2 : Circuit i o) (R : _ -> _ -> Prop) :
@@ -166,10 +156,36 @@ Proof.
   { intros; logical_simplify; auto. }
 Qed.
 
+(*
+Global Instance Proper_cequivn i o n :
+  Proper (cequiv ==> cequiv ==> (fun A B => forall _ : A, B)) (@cequivn i o n).
+Proof.
+  intros a b [Rab [? Hab]] c d [Rcd [? Hcd]].
+  split.
+  { intros [Rac [? Hac]].
+    exists (fun sb sd =>
+         exists sa sc, Rab sa sb /\ Rcd sc sd /\ Rac sa sc).
+    ssplit.
+    { intros; cbn. do 2 eexists; ssplit; eauto.
+      {
+        apply state_relation_repeat_step; eauto.
+Qed.
+*)
+
+Lemma repeat_step_nil {i o} (c : Circuit i o) st : repeat_step c nil st = st.
+Proof. reflexivity. Qed.
+Hint Rewrite @repeat_step_nil using solve [eauto] : push_repeat_step.
+
+Lemma repeat_step_cons {i o} (c : Circuit i o) i0 input st :
+  repeat_step c (i0 :: input) st = repeat_step c input (fst (step c st i0)).
+Proof. reflexivity. Qed.
+Hint Rewrite @repeat_step_cons using solve [eauto] : push_repeat_step.
+
 Lemma repeat_step_app {i o} (c : Circuit i o) input1 input2 st :
   repeat_step c (input1 ++ input2) st
   = repeat_step c input2 (repeat_step c input1 st).
 Proof. apply fold_left_app. Qed.
+Hint Rewrite @repeat_step_app using solve [eauto] : push_repeat_step.
 
 Lemma repeat_step_compose {i t o} c1 c2 input st :
   repeat_step (@Compose _ _ i t o c1 c2) input st
@@ -184,6 +200,7 @@ Proof.
   repeat (destruct_pair_let; cbn [fst snd]).
   reflexivity.
 Qed.
+Hint Rewrite @repeat_step_compose using solve [eauto] : push_repeat_step.
 
 Lemma repeat_step_First {i t o} (c : Circuit i o) input st :
   repeat_step (First (t:=t) c) input st = repeat_step c (map fst input) st.
@@ -196,6 +213,7 @@ Proof.
   repeat (destruct_pair_let; cbn [fst snd]).
   reflexivity.
 Qed.
+Hint Rewrite @repeat_step_First using solve [eauto] : push_repeat_step.
 
 Lemma repeat_step_Second {i t o} (c : Circuit i o) input st :
   repeat_step (Second (t:=t) c) input st = repeat_step c (map snd input) st.
@@ -208,6 +226,7 @@ Proof.
   repeat (destruct_pair_let; cbn [fst snd]).
   reflexivity.
 Qed.
+Hint Rewrite @repeat_step_Second using solve [eauto] : push_repeat_step.
 
 Lemma cequivn_compose {i t o} n m (a b : Circuit i t) (c d : Circuit t o) :
   cequivn n a b -> cequivn m c d ->

@@ -18,7 +18,7 @@ Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Cava.Core.Core.
 Require Import Cava.Semantics.Combinational.
-Require Import Cava.Semantics.Equivalence.
+Require Import Cava.Semantics.WeakEquivalence.
 Require Import Cava.Semantics.Simulation.
 Require Import Cava.Lib.CircuitTransforms.
 Import ListNotations Circuit.Notations.
@@ -38,6 +38,12 @@ Section WithCava.
     | ione t => signal t
     | ipair a b => ivalue a * ivalue b
     end.
+
+  Fixpoint idefault (i : itype) : ivalue i :=
+    match i with
+    | ione t => defaultSignal
+    | ipair a b => (idefault a, idefault b)
+    end.
 End WithCava.
 
 Section WithCava.
@@ -45,42 +51,44 @@ Section WithCava.
 
   (* make a circuit with one delay for each signal, given the delays' reset
      values *)
-  Fixpoint delays (t : itype)
-    : ivalue (signal:=combType) t -> Circuit (ivalue t) (ivalue t) :=
+  Fixpoint delays (t : itype) : Circuit (ivalue t) (ivalue t) :=
     match t with
-    | ione t => DelayInit
-    | ipair a b =>
-      fun resetvals =>
-        Par (delays a (fst resetvals)) (delays b (snd resetvals))
+    | ione t => Delay (t:=t)
+    | ipair a b => Par (delays a) (delays b)
     end.
 
   (* get the value stored in the 1-delay circuit *)
   Fixpoint delays_get {t : itype}
-    : forall {resetvals}, circuit_state (delays t resetvals) -> ivalue t :=
+    : circuit_state (delays t) -> ivalue t :=
     match t with
-    | ione _ => fun _ => snd
-    | ipair _ _ => fun _ st => (delays_get (fst st), delays_get (snd st))
+    | ione _ => snd
+    | ipair _ _ => fun st => (delays_get (fst st), delays_get (snd st))
     end.
 
   (* make a circuit with repeated delays for each signal, given the delays'
      reset values for each layer *)
-  Fixpoint ndelays (t : itype) (resetvals : list (ivalue (signal:=combType) t))
-    : Circuit (ivalue t) (ivalue t) :=
-    match resetvals with
-    | [] => Id
-    | r0 :: resetvals => ndelays t resetvals >==> delays t r0
+  Fixpoint ndelays (n : nat) (t : itype) : Circuit (ivalue t) (ivalue t) :=
+    match n with
+    | 0 => Id
+    | S m => ndelays m t >==> delays t
     end.
 
   (* get all the values stored in the n-delay circuit *)
-  Fixpoint ndelays_get {t : itype} {resetvals}
-    : circuit_state (ndelays t resetvals) -> list (ivalue t) :=
-    match resetvals with
-    | [] => fun _ => []
-    | _ :: _ => fun st => delays_get (snd st) :: ndelays_get (fst st)
+  Fixpoint ndelays_get {n t} : circuit_state (ndelays n t) -> list (ivalue t) :=
+    match n with
+    | 0 => fun _ => []
+    | S _ => fun st => delays_get (snd st) :: ndelays_get (fst st)
     end.
 End WithCava.
 
 Definition retimed {i o} (n : nat) (c1 c2 : Circuit i (ivalue o)) : Prop :=
-  exists resetvals,
-    length resetvals = n
-    /\ cequiv c1 (c2 >==> ndelays o resetvals).
+  cequivn n c1 (c2 >==> ndelays n o).
+
+Definition mealy {i o} (c : Circuit i o)
+  : Circuit (i * circuit_state c) (o * circuit_state c) :=
+  Comb (fun '(input, st) =>
+          let st_out := step c st input in
+          (snd st_out, fst st_out)).
+
+Definition phase_retimed {i o} (n m : nat) (c1 c2 : Circuit i o) : Prop :=
+  cequiv (mealy c1) (Par (ndelays n t)
