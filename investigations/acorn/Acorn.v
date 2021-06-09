@@ -28,91 +28,153 @@ Require Import Coq.Numbers.DecimalString.
 Import ListNotations.
 Import MonadNotation.
 Local Open Scope monad_scope.
+Local Open Scope type_scope.
 
+(* 
+This is an experimental version of Cava which illustrates the
+type of API I would ideally like to have for Cava for describing
+circuits with feedback.
+*)
+
+(*
+There are two types of wires: single wires that carry one bit of
+information which are represented by Bit and a 32-bit unsigned
+wire which is represented by Nat.
+*)
 Inductive SignalType :=
   | Bit : SignalType 
   | Nat : SignalType.
 
-Class Acorn (signal : SignalType -> Type) := {
-  acorn : Type -> Type;
-  monad :> Monad acorn;
-  inv : signal Bit -> acorn (signal Bit);
-  and2 : signal Bit * signal Bit -> acorn (signal Bit);
+
+(*
+A typeclass let's us write over-loaded circuit descriptions which
+can have many instantiations e.g. one for circuit semantics (by way
+of similation) and another for generating a circuit netlist. A circuit
+will always be a Gallina function which returns its output result
+in some instance of a Monad type. We can then compose overloaded
+circuit descriptions using the Kleisli arrow >=> and all the other monad
+combinators. A very partial API, just enough to make some illustrative examples.
+*)
+Class Acorn acorn `{Monad acorn} (signal : SignalType -> Type) := {
+  (* An invertor gate. *)
+  inv : signal Bit -> acorn (signal Bit); 
+  (* A NAND gate *)
+  and2 : signal Bit * signal Bit -> acorn (signal Bit); 
+  (* Add two nat values and then mod by a nat *)
   addMod : nat -> signal Nat * signal Nat -> acorn (signal Nat);
+  (* Delay a wire of nat values by one clock cycle. *)
   natDelay : signal Nat -> acorn (signal Nat);
-  loop : (signal Nat * signal Nat -> acorn (signal Nat * signal Nat)) ->
+  (* Lava type loop combinator for feedback *)
+  loop : (signal Nat * signal Nat -> acorn (signal Nat * signal Nat)) -> 
          signal Nat -> acorn (signal Nat);
+  (* Ideally an infinite source of some nat value *)
   constNat : nat -> acorn (signal Nat);
-  comparator : signal Nat * signal Nat -> acorn (signal Bit);
-  mux2 : signal Bit * (signal Nat * signal Nat) -> acorn (signal Nat);
+  (* True if the first value is > to the second value. *)
+  comparator : signal Nat * signal Nat -> acorn (signal Bit); 
+  (* If bool select signal is true then mux2 the first value in the pair, otherwise second element is returned *)
+  mux2 : signal Bit * (signal Nat * signal Nat) -> acorn (signal Nat); 
 }.
 
+(* Some useful circuit combinators and an example circuit. *)
+
+Section WithAcorn.
+  Context  {acorn} {signal} `{Acorn acorn signal}.
+
+  (* Take a wire and fork it into two branches. *)
+  Definition fork2 {t : SignalType}
+              (a : signal t) : acorn (signal t * signal t) :=
+    ret (a, a).
+
+  (* Take a pair input and apply the circuit r to just the first element. *)
+  Definition fsT {t1 t2 t3 : SignalType}
+            (f : signal t1 -> acorn (signal t3))
+            (ab : signal t1 * signal t2) : acorn (signal t3 * signal t2) :=
+    let (a, b) := ab in
+    o <- f a ;;
+    ret (o, b).
+
+  (* Take a pair input and apply the circuit r to just the second element. *)
+  Definition snD {t1 t2 t3 : SignalType}
+            (f : signal t2 -> acorn (signal t3))
+            (ab : signal t1 * signal t2) : acorn (signal t1 * signal t3) :=
+    let (a, b) := ab in
+    o <- f b ;;
+    ret (a, o).
+
+  (* A circuit which delays the second element of a pair and then performs
+     a 256-bit addition of the two values in the pair. *)
+  Definition circuit1 : signal Nat * signal Nat -> acorn (signal Nat) :=
+    snD natDelay >=> addMod 256.
+
+End WithAcorn.
+
+(*
+So far we have overloaded circuit descriptions and combinators, but we can't
+yet do anything with them until we define some instances of the Acorn class.
+Let's create an instance for the simulation of these overloaded circuit descriptions,
+which acts as the semantics for these circuits.
+*)
+
+(*
+We need to explain how to map a SignalType to the types we use to represent the
+types of the values that flow over wires. For simulation, Bit will be represented
+by a list of bool values, Nat will be represented by a list of nat values.
+*)
 Definition simulationSignal (t: SignalType) : Type :=
   match t with
   | Bit => list bool
   | Nat => list nat
   end.
 
+(*
+Semantics of addition followed by mod. The modBy value is a compile
+time constant.
+*)
 Definition addModSim (modBy : nat) (ab : list nat * list nat) : ident (list nat) :=
   let (a, b) := ab in
   ret (map (fun '(x, y) => (x + y) mod modBy) (combine a b)).
 
+(* Semantics of the two-input comparator. *)
 Definition comparatorSim (ab : list nat * list nat) : ident (list bool) :=
   let (a, b) := ab in
   ret (map (fun '(x, y) => y <=? x) (combine a b)).
 
+(* Core semantics of a 2-input multiplexor. *)
 Definition mux2' (sxy : bool * (nat * nat)) : nat :=
   let (s, xy) := sxy in
   let (x, y) := xy in
   if s then x else y.
 
-Instance AcornSimulation : Acorn simulationSignal := {
-  acorn := ident;
-  monad := Monad_ident;
+(*
+An instance of the Acorn class for circuit simulation, with a dummy value
+for loop (since I don't know how to define it) and a hacky definition for
+constNat because I don't know how to make an infinite list.
+*)
+Instance AcornSimulation : Acorn ident simulationSignal := {
   inv i := ret (map negb i);
   and2 '(a, b) := ret (map (fun '(x, y) => andb x y) (combine a b));
   addMod := addModSim;
   natDelay i := ret (0 :: i);
-  loop f i := ret i; (* Dummy Definition. QUESTION: How to do this in Coq? *)
+  loop f i := ret i; (* Dummy Definition. QUESTION: How to do this in Coq? cd. how it is done in Lava in Haskell *)
   constNat n := ret (repeat n 100); (* Hack, just repeat n 100 times. How to get an infinite list in Coq? *)
   comparator := comparatorSim;
   mux2 '(sel, (a, b)) := ret (map mux2' (combine sel (combine a b)));
 }.
 
-Definition injR {t1 t2 : SignalType} {signal}
-            (a : signal t1) (b : signal t2) : acorn (signal t1 * signal t2) :=
-  ret (a, b).
-
-Definition fork2 {t : SignalType} {signal}
-            (a : signal t) : acorn (signal t * signal t) :=
-  ret (a, a).
-
-Definition fsT {t1 t2 t3 : SignalType} {signal}
-           (f : signal t1 -> acorn (signal t3))
-           (ab : signal t1 * signal t2) : acorn (signal t3 * signal t2) :=
-  let (a, b) := ab in
-  o <- f a ;;
-  ret (o, b).
-
-Definition snD {t1 t2 t3 : SignalType} {signal}
-           (f : signal t2 -> acorn (signal t3))
-           (ab : signal t1 * signal t2) : acorn (signal t1 * signal t3) :=
-  let (a, b) := ab in
-  o <- f b ;;
-  ret (a, o).
-
 (* We can easily simulate circuits without loops, even if they contain delay elements. *)
-Definition circuit1 {signal} `{semantics:Acorn} : signal Nat * signal Nat -> acorn (signal Nat) :=
-  snD natDelay >=> addMod 256.
-
 Compute (unIdent (circuit1 ([17; 78; 12], [42; 62; 5]))).
 (*
 	 = [17; 120; 74]
 *)
 
 (* What's we can't do is simulate circuits with loop. *)
-(* We can create circuit netlists for circuits with loops. *)
 
+(*
+We can create circuit netlists for circuits with loops. To make a circuit
+netlist we first define some types for representing a circuit netlist.
+*)
+
+(* The nodes of the circuit graph. *)
 Inductive Instance :=
 | Inv : N -> N -> N -> Instance
 | And2 : N -> N -> N -> N -> Instance
@@ -123,29 +185,40 @@ Inductive Instance :=
 | Comparator : N -> N -> N -> Instance
 | Mux2 : N -> N -> N -> N -> Instance.
 
+(* The I/O interface of the circuit. *)
 Inductive Port :=
 | InputBit : string -> N -> Port
 | OutputBit : N -> string -> Port
 | InputNat : string -> N -> Port
 | OutputNat : N -> string -> Port.
 
+(* The complete netlist type. *)
 Record Netlist := mkNetlist {
-  netlistName : string;
-  instCount : N;
-  bitCount : N;
-  natCount : N;
-  instances : list Instance;
-  ports : list Port;
+  netlistName : string; (* Name of the module to be generated. *)
+  instCount : N; (* A count of the number of nodes. *)
+  bitCount : N; (* A count of the number of local bit-type wires. *)
+  natCount : N; (* A count of the number of nat-type wires. *)
+  instances : list Instance; (* A list of the circuit graph nodes. *)
+  ports : list Port; (* The I/O interface of the circuit. *)
 }.
 
+(* An empty netlist. *)
 Definition emptyNetist : Netlist :=
   mkNetlist "" 0 0 0 [] [].
 
+(*
+The types of the values that flow over wires for the netlist
+representation is the Signal type which is a symbolic representation
+for the value on that wire (the name of a net).
+*)
 Inductive Signal : SignalType -> Type :=
 | BitNet : N -> Signal Bit
 | NatNet : N -> Signal Nat.
 
+(* The denotion of a SignalType for netlist generation is just the Signal type. *)
 Definition denoteSignal (t: SignalType) : Type := Signal t.
+
+(* Some useful functions for working over netlists. *)
 
 Definition newWire : state Netlist (Signal Bit) :=
   ns <- get ;;
@@ -219,6 +292,12 @@ Definition addModCircuit (modBy : nat) (i0i1 : Signal Nat * Signal Nat) : state 
   addInstance (AddMod modBy (natWireNr i0) (natWireNr i1) (natWireNr o)) ;;
   ret o.
 
+(* 
+Note that loop is no problem for the netlist instance. We can "bend the wire" to create
+a loop by creating a new wire b, using this to drive the input of the body circuit, and then
+connect the second output of the body pair result, and fuse it with b to create a feedback loop
+i.e. assign b := d.
+*)
 Definition loopNet (body : Signal Nat * Signal Nat -> state Netlist (Signal Nat * Signal Nat))
                    (a : Signal Nat) : state Netlist (Signal Nat) :=
   b <- newNat ;;
@@ -245,9 +324,11 @@ Definition mux2Net (selab : Signal Bit * (Signal Nat * Signal Nat)) : state Netl
    addInstance (Mux2 (wireNr sel) (natWireNr a) (natWireNr b) (natWireNr o)) ;;
    ret o.
 
-Instance AcornNetlist : Acorn denoteSignal := {
-  acorn := state Netlist;
-  monad := Monad_state _;
+(*
+The netlist instance for Acorn plugs in the definitons above for creating
+a circuit netlist using the stat monad as we go along.
+*)
+Instance AcornNetlist : Acorn (state Netlist) denoteSignal := {
   inv := invGate;
   and2 := and2Gate;
   addMod := addModCircuit;
@@ -257,6 +338,11 @@ Instance AcornNetlist : Acorn denoteSignal := {
   comparator := comparatorNet;
   mux2 := mux2Net;
 }.
+
+(*
+Netlist functions for I/O ports which are only available for the
+netlist interpretation.
+*)
 
 Definition inputBit (name : string) : state Netlist (Signal Bit) :=
   o <- newWire ;;
@@ -274,6 +360,7 @@ Definition inputNat (name : string) : state Netlist (Signal Nat) :=
 Definition outputNat (driver : Signal Nat) (name : string) : state Netlist unit :=
   addPort (OutputNat (natWireNr driver) name).
 
+(* Declare the name of a circuit. *)
 Definition setCircuitName (name : string) : state Netlist unit :=
   ns <- get ;;
   match ns with
@@ -281,9 +368,11 @@ Definition setCircuitName (name : string) : state Netlist unit :=
       put (mkNetlist name ic bc nc is ps)
   end.
 
+(* Generate a netlist from a circuit name and a circuit graph. *)
 Definition netlist (name : string) (circuit : state Netlist unit) : Netlist :=
   execState (setCircuitName name ;; circuit) emptyNetist.
 
+(* Generate the SystemVerilog string from the netlist data-type. *)
 Local Open Scope string_scope.
 
 Fixpoint insertCommas (lines : list string) : string :=
@@ -370,6 +459,7 @@ Fixpoint unlines (lines : list string) : string :=
 Definition systemVerilog (name : string) (nl : state Netlist unit ) : string :=
   unlines (systemVerilogLines (netlist name nl)).
 
+(* A nandGate netlist generation example. *)
 Definition nandGate : state Netlist unit :=
   i0 <- inputBit "i0" ;;
   i1 <- inputBit "i1" ;;
@@ -402,12 +492,15 @@ Definition pipe2 : state Netlist unit :=
 
 Redirect "pipe2.sv" Compute (systemVerilog "pipe2" pipe2).
 
-Definition counter6 : state Netlist unit :=
+Definition counter6 {acorn} {signal} `{Acorn acorn signal} : signal Nat -> acorn (signal Nat) :=
+  loop (addMod 6 >=> natDelay >=> fork2).
+
+Definition counter6Top : state Netlist unit :=
   one <- constNat 1 ;;
-  count6 <- loop (addMod 6 >=> natDelay >=> fork2) one ;;
+  count6 <- counter6 one ;;
   outputNat count6 "count6".
 
-Redirect "counter6.sv" Compute (systemVerilog "counter6" counter6).  
+Redirect "counter6.sv" Compute (systemVerilog "counter6" counter6Top).  
 
 Definition counter6by4 : state Netlist unit :=
   zero <- constNat 0 ;;
@@ -421,6 +514,7 @@ Definition counter6by4 : state Netlist unit :=
 
 Redirect "counter6by4.sv" Compute (systemVerilog "counter6by4" counter6by4). 
 
+(* An example of a neted loop. *)
 Definition nestedloop : state Netlist unit :=
   one <- constNat 1 ;;
   o <- loop (snD natDelay >=> addMod 512 >=> loop (addMod 512 >=> natDelay >=> fork2) >=> fork2) one ;;
