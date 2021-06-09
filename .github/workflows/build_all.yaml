@@ -20,7 +20,7 @@ jobs:
       run: |
         git submodule status > ./third_party/submodules.lock
       shell: bash
-    - name: Try load third_party cache
+    - name: Cache third_party
       id: third_party-cache
       uses: actions/cache@v2
       with:
@@ -58,7 +58,7 @@ jobs:
       run: |
         git submodule status > ./third_party/submodules.lock
       shell: bash
-    - name: Try load third_party cache
+    - name: Cache third_party
       id: third_party-cache
       uses: actions/cache@v2
       with:
@@ -91,7 +91,7 @@ jobs:
       run: |
         git submodule status > ./third_party/submodules.lock
       shell: bash
-    - name: Try load third_party cache
+    - name: Cache third_party
       id: third_party-cache
       uses: actions/cache@v2
       with:
@@ -124,7 +124,7 @@ jobs:
       run: |
         git submodule status > ./third_party/submodules.lock
       shell: bash
-    - name: Try load third_party cache
+    - name: Cache third_party
       id: third_party-cache
       uses: actions/cache@v2
       with:
@@ -157,7 +157,7 @@ jobs:
       run: |
         git submodule status > ./third_party/submodules.lock
       shell: bash
-    - name: Try load third_party cache
+    - name: Cache third_party
       id: third_party-cache
       uses: actions/cache@v2
       with:
@@ -189,7 +189,7 @@ jobs:
       run: |
         git submodule status > ./third_party/submodules.lock
       shell: bash
-    - name: Try load third_party cache
+    - name: Cache third_party
       id: third_party-cache
       uses: actions/cache@v2
       with:
@@ -221,7 +221,7 @@ jobs:
       run: |
         git submodule status > ./third_party/submodules.lock
       shell: bash
-    - name: Try load third_party cache
+    - name: Cache third_party
       id: third_party-cache
       uses: actions/cache@v2
       with:
@@ -254,7 +254,7 @@ jobs:
       run: |
         git submodule status > ./third_party/submodules.lock
       shell: bash
-    - name: Try load third_party cache
+    - name: Cache third_party
       id: third_party-cache
       uses: actions/cache@v2
       with:
