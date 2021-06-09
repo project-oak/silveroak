@@ -514,7 +514,7 @@ Definition counter6by4 : state Netlist unit :=
 
 Redirect "counter6by4.sv" Compute (systemVerilog "counter6by4" counter6by4). 
 
-(* An example of a neted loop. *)
+(* An example of a nested loop. *)
 Definition nestedloop : state Netlist unit :=
   one <- constNat 1 ;;
   o <- loop (snD natDelay >=> addMod 512 >=> loop (addMod 512 >=> natDelay >=> fork2) >=> fork2) one ;;
