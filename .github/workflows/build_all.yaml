@@ -25,7 +25,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock' }}
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
 
     - name: Build third party
       if: steps.third_party-cache.outputs.cache-hit != 'true'
@@ -63,7 +63,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock' }}
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
 
     - name: Use cava cache
       uses: actions/cache@v2
@@ -96,7 +96,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock' }}
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
 
     - name: Use cava cache
       uses: actions/cache@v2
@@ -129,7 +129,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock' }}
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
 
     - name: Use cava cache
       uses: actions/cache@v2
@@ -162,7 +162,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock' }}
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
     - name: Use cava cache
       uses: actions/cache@v2
       with:
@@ -194,7 +194,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock' }}
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
     - name: Use cava cache
       uses: actions/cache@v2
       with:
@@ -226,7 +226,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock' }}
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
 
     - name: Use cava cache
       uses: actions/cache@v2
@@ -259,7 +259,7 @@ jobs:
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock' }}
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
 
     - name: Use cava cache
       uses: actions/cache@v2
