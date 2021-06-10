@@ -286,7 +286,7 @@ Section Proofs.
   Lemma interact_write_key i call addre vale t m l
         (post : trace -> mem -> locals -> Prop) rs (addr val: Semantics.word) :
     dexprs m l [addre; vale] [addr; val] ->
-    addr = word.add (word.of_Z AES_KEY0) (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
+    addr = word.add (word.of_Z AES_KEY00) (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
     (i < 8)%nat ->
     execution t (IDLE rs) ->
     (forall s',
@@ -319,7 +319,7 @@ Section Proofs.
   Lemma interact_write_iv i call addre vale t m l
         (post : trace -> mem -> locals -> Prop) rs addr val :
     dexprs m l [addre; vale] [addr; val] ->
-    addr = word.add (word.of_Z AES_IV0) (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
+    addr = word.add (word.of_Z AES_IV00) (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
     (i < 4)%nat ->
     execution t (IDLE rs) ->
     (forall s',
@@ -352,7 +352,7 @@ Section Proofs.
   Lemma interact_write_data_in i call addre vale t m l
         (post : trace -> mem -> locals -> Prop) rs addr val :
     dexprs m l [addre; vale] [addr; val] ->
-    addr = word.add (word.of_Z AES_DATA_IN0) (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
+    addr = word.add (word.of_Z AES_DATA_IN00) (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
     (i < 4)%nat ->
     execution t (IDLE rs) ->
     (forall s',
@@ -386,7 +386,7 @@ Section Proofs.
   Lemma interact_read_data_out i call addre bind (t : trace) m l
         (post : trace -> mem -> locals -> Prop) data addr val :
     dexprs m l [addre] [addr] ->
-    addr = word.add (word.of_Z AES_DATA_OUT0) (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
+    addr = word.add (word.of_Z AES_DATA_OUT00) (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
     (i < 4)%nat ->
     match data_out_from_index i with
     | DATA_OUT0 => done_data_out0 data

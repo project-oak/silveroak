@@ -102,28 +102,28 @@ Section WithParameters.
 
   Definition reg_addr (r : Register) : word :=
     match r with
-    | CTRL => word.of_Z AES_CTRL
-    | STATUS => word.of_Z AES_STATUS
-    | KEY0 => word.of_Z AES_KEY0
-    | KEY1 => word.of_Z (AES_KEY0 + 4)
-    | KEY2 => word.of_Z (AES_KEY0 + 8)
-    | KEY3 => word.of_Z (AES_KEY0 + 12)
-    | KEY4 => word.of_Z (AES_KEY0 + 16)
-    | KEY5 => word.of_Z (AES_KEY0 + 20)
-    | KEY6 => word.of_Z (AES_KEY0 + 24)
-    | KEY7 => word.of_Z (AES_KEY0 + 28)
-    | IV0 => word.of_Z AES_IV0
-    | IV1 => word.of_Z (AES_IV0 + 4)
-    | IV2 => word.of_Z (AES_IV0 + 8)
-    | IV3 => word.of_Z (AES_IV0 + 12)
-    | DATA_IN0 => word.of_Z AES_DATA_IN0
-    | DATA_IN1 => word.of_Z (AES_DATA_IN0 + 4)
-    | DATA_IN2 => word.of_Z (AES_DATA_IN0 + 8)
-    | DATA_IN3 => word.of_Z (AES_DATA_IN0 + 12)
-    | DATA_OUT0 => word.of_Z AES_DATA_OUT0
-    | DATA_OUT1 => word.of_Z (AES_DATA_OUT0 + 4)
-    | DATA_OUT2 => word.of_Z (AES_DATA_OUT0 + 8)
-    | DATA_OUT3 => word.of_Z (AES_DATA_OUT0 + 12)
+    | CTRL => word.of_Z AES_CTRL0
+    | STATUS => word.of_Z AES_STATUS0
+    | KEY0 => word.of_Z AES_KEY00
+    | KEY1 => word.of_Z (AES_KEY00 + 4)
+    | KEY2 => word.of_Z (AES_KEY00 + 8)
+    | KEY3 => word.of_Z (AES_KEY00 + 12)
+    | KEY4 => word.of_Z (AES_KEY00 + 16)
+    | KEY5 => word.of_Z (AES_KEY00 + 20)
+    | KEY6 => word.of_Z (AES_KEY00 + 24)
+    | KEY7 => word.of_Z (AES_KEY00 + 28)
+    | IV0 => word.of_Z AES_IV00
+    | IV1 => word.of_Z (AES_IV00 + 4)
+    | IV2 => word.of_Z (AES_IV00 + 8)
+    | IV3 => word.of_Z (AES_IV00 + 12)
+    | DATA_IN0 => word.of_Z AES_DATA_IN00
+    | DATA_IN1 => word.of_Z (AES_DATA_IN00 + 4)
+    | DATA_IN2 => word.of_Z (AES_DATA_IN00 + 8)
+    | DATA_IN3 => word.of_Z (AES_DATA_IN00 + 12)
+    | DATA_OUT0 => word.of_Z AES_DATA_OUT00
+    | DATA_OUT1 => word.of_Z (AES_DATA_OUT00 + 4)
+    | DATA_OUT2 => word.of_Z (AES_DATA_OUT00 + 8)
+    | DATA_OUT3 => word.of_Z (AES_DATA_OUT00 + 12)
     end.
 
   Lemma aes_reg_addrs_eq : aes_reg_addrs = map reg_addr all_regs.

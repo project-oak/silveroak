@@ -51,7 +51,7 @@ Section Impl.
      ([aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
       aes_cfg_manual_operation],
       [], bedrock_func_body:(
-      output! WRITE (AES_CTRL,
+      output! WRITE (AES_CTRL0,
                      ((aes_cfg_operation << AES_CTRL_OPERATION) |
                       ((aes_cfg_mode & AES_CTRL_MODE_MASK)
                          << AES_CTRL_MODE_OFFSET) |
@@ -103,13 +103,13 @@ Section Impl.
 
       i = 0 ;
       while (i < num_regs_key_used) {
-        output! WRITE (AES_KEY0 + (i * 4), load4(key + (i * 4)));
+        output! WRITE (AES_KEY00 + (i * 4), load4(key + (i * 4)));
         i = i + 1
       };
 
       i = num_regs_key_used ;
       while (i < AES_NUM_REGS_KEY) {
-        output! WRITE (AES_KEY0 + (i * 4), 0);
+        output! WRITE (AES_KEY00 + (i * 4), 0);
         i = i + 1
       }
     ))).
@@ -129,7 +129,7 @@ Section Impl.
      ([iv], [], bedrock_func_body:(
       i = 0 ;
       while (i < AES_NUM_REGS_IV) {
-        output! WRITE (AES_IV0 + (i * 4), load4( iv + (i * 4) ));
+        output! WRITE (AES_IV00 + (i * 4), load4( iv + (i * 4) ));
         i = i + 1
       }
     ))).
@@ -150,7 +150,7 @@ Section Impl.
       bedrock_func_body:(
       i = 0 ;
       while (i < AES_NUM_REGS_DATA) {
-        output! WRITE (AES_DATA_IN0 + (i * 4), load4( data + (i * 4) ));
+        output! WRITE (AES_DATA_IN00 + (i * 4), load4( data + (i * 4) ));
         i = i + 1
       }
     ))).
@@ -172,7 +172,7 @@ Section Impl.
       bedrock_func_body:(
       i = 0 ;
       while (i < AES_NUM_REGS_DATA) {
-        io! val = READ ( AES_DATA_OUT0 + (i * 4) ) ;
+        io! val = READ ( AES_DATA_OUT00 + (i * 4) ) ;
         store4( data + (i * 4), val ) ; (* data[i] = val *)
         i = i + 1
       }
@@ -189,7 +189,7 @@ Section Impl.
     ("b2_data_ready",
      ([], [out],
       bedrock_func_body:(
-      io! status = READ (AES_STATUS) ;
+      io! status = READ (AES_STATUS0) ;
       out = status & (1 << AES_STATUS_INPUT_READY)
     ))).
 
@@ -204,7 +204,7 @@ Section Impl.
     ("b2_data_valid",
      ([], [out],
       bedrock_func_body:(
-      io! status = READ (AES_STATUS) ;
+      io! status = READ (AES_STATUS0) ;
       out = status & (1 << AES_STATUS_OUTPUT_VALID)
     ))).
 
@@ -219,7 +219,7 @@ Section Impl.
     ("b2_idle",
      ([], [out],
       bedrock_func_body:(
-      io! status = READ (AES_STATUS) ;
+      io! status = READ (AES_STATUS0) ;
       out = status & (1 << AES_STATUS_IDLE)
     ))).
 

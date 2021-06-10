@@ -59,19 +59,19 @@ Instance consts : aes_constants Z :=
   (**** Constants from aes_regs.h ****)
 
   (* #define AES_KEY0(id) (AES##id##_BASE_ADDR + 0x0) *)
-  AES_KEY0 := AES_BASE_ADDR + 0x0;
+  AES_KEY00 := AES_BASE_ADDR + 0x0;
 
   (* #define AES_IV0(id) (AES##id##_BASE_ADDR + 0x20) *)
-  AES_IV0 := AES_BASE_ADDR + 0x20;
+  AES_IV00 := AES_BASE_ADDR + 0x20;
 
   (* #define AES_DATA_IN0(id) (AES##id##_BASE_ADDR + 0x30) *)
-  AES_DATA_IN0 := AES_BASE_ADDR + 0x30;
+  AES_DATA_IN00 := AES_BASE_ADDR + 0x30;
 
   (* #define AES_DATA_OUT0(id) (AES##id##_BASE_ADDR + 0x40) *)
-  AES_DATA_OUT0 := AES_BASE_ADDR + 0x40;
+  AES_DATA_OUT00 := AES_BASE_ADDR + 0x40;
 
   (* #define AES_CTRL(id) (AES##id##_BASE_ADDR + 0x50) *)
-  AES_CTRL := AES_BASE_ADDR + 0x50;
+  AES_CTRL0 := AES_BASE_ADDR + 0x50;
 
   (* #define AES_CTRL_REG_OFFSET 0x50
      #define AES_CTRL_OPERATION 0
@@ -88,7 +88,7 @@ Instance consts : aes_constants Z :=
   AES_CTRL_MANUAL_OPERATION := 7;
 
   (* #define AES_STATUS(id) (AES##id##_BASE_ADDR + 0x58) *)
-  AES_STATUS := AES_BASE_ADDR + 0x58;
+  AES_STATUS0 := AES_BASE_ADDR + 0x58;
 
   (* #define AES_STATUS_IDLE 0
      #define AES_STATUS_STALL 1
