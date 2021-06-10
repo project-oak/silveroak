@@ -34,6 +34,7 @@ Section WithCava.
   | ione (t : SignalType)
   | ipair (i1 i2 : itype)
   .
+  Scheme Equality for itype.
 
   (* gives the Gallina tuple for the collection of signals specified *)
   Fixpoint ivalue (i : itype) : Type :=
@@ -84,11 +85,18 @@ Section WithCava.
     end.
 End WithCava.
 
-Inductive is_delays : forall {t}, Circuit t t -> Prop :=
-| is_delays_delay : forall t resetval, is_delays (DelayInit (t:=t) resetval)
-| is_delays_par :
+(* it's possible to define is_delays directly without using itype, but then
+   inversion can't handle the type mismatches if the types are not just plain
+   identifiers, and you get nonsensical cases where e.g. unit = t1 * t2 *)
+Inductive is_delays' : forall t, Circuit (ivalue t) (ivalue t) -> Prop :=
+| is_delays'_delay : forall t resetval, is_delays' (ione t) (DelayInit (t:=t) resetval)
+| is_delays'_par :
     forall t1 t2 c1 c2,
-      is_delays (t:=t1) c1 -> is_delays (t:=t2) c2 -> is_delays (Par c1 c2)
+      is_delays' t1 c1 -> is_delays' t2 c2 ->
+      is_delays' (ipair t1 t2) (Par c1 c2)
+.
+Inductive is_delays : forall {t}, Circuit t t -> Prop :=
+| is_delays_is_delays' : forall t c, is_delays' t c -> is_delays c
 .
 
 Inductive is_ndelays : forall {t}, nat -> Circuit t t -> Prop :=
@@ -102,7 +110,7 @@ Inductive is_ndelays : forall {t}, nat -> Circuit t t -> Prop :=
 Definition retimed {i o} (n : nat) (c1 c2 : Circuit i o) : Prop :=
   exists delay_circuit,
     is_ndelays n delay_circuit
-    /\ cequiv c1 (c2 >==> delay_circuit).
+    /\ cequiv c1 (delay_circuit >==> c2).
 
 Definition mealy {i o} (c : Circuit i o)
   : Circuit (i * circuit_state c) (o * circuit_state c) :=

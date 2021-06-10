@@ -19,6 +19,7 @@ Require Import Coq.Classes.Morphisms.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 Require Import coqutil.Tactics.Tactics.
+Require Import ExtLib.Structures.Monad.
 Require Import Cava.Core.Core.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Semantics.Equivalence.
@@ -30,6 +31,282 @@ Require Import Cava.Lib.Retiming.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Import ListNotations Circuit.Notations.
+
+(* starting from scratch with retiming lemmas! Might not even need cequivn now. *)
+
+Fixpoint multi_loop {i o s}
+  : Circuit (i * ivalue s) (o * ivalue s) -> ivalue s -> Circuit i o :=
+  match s with
+  | ione t => fun c resetval => LoopInit resetval c
+  | ipair t1 t2 =>
+    fun (c : Circuit (i * (ivalue t1 * ivalue t2))
+                   (o * (ivalue t1 * ivalue t2)))
+      (resetvals : ivalue t1 * ivalue t2) =>
+      multi_loop
+        (multi_loop
+           (Comb (fun '(i,s1,s2) => ret (i,(s1,s2)))
+                 >==> c
+                 >==> Comb (fun '(o,(s1,s2)) => ret (o,s1,s2)))
+           (snd resetvals))
+        (fst resetvals)
+  end.
+
+Fixpoint loops_reset_state {i o} (c : Circuit i o)
+  : ivalue (signal:=combType) (loops_state c) :=
+  match c as c in Circuit i o return ivalue (loops_state c) with
+  | Comb _ => tt
+  | First f => loops_reset_state f
+  | Second f => loops_reset_state f
+  | Compose f g => (loops_reset_state f, loops_reset_state g)
+  | DelayInitCE r => tt
+  | LoopInitCE r body => (loops_reset_state body, r)
+  end.
+
+(* counts # delays on the critical path *)
+Fixpoint cpath_delay {i o} (c : Circuit i o) : nat :=
+  match c with
+  | Comb _ => 0
+  | First f => cpath_delay f
+  | Second f => cpath_delay f
+  | Compose f g => cpath_delay f + cpath_delay g
+  | DelayInitCE r => 1
+  | LoopInitCE r body => cpath_delay body
+  end.
+
+Inductive is_loop_free : forall {i o}, Circuit i o -> Prop :=
+| is_loop_free_comb : forall {i o} (f : i -> cava o), is_loop_free (Comb f)
+| is_loop_free_first :
+    forall {i t o} f, is_loop_free f -> is_loop_free (@First _ _ i t o f)
+| is_loop_free_second :
+    forall {i t o} f, is_loop_free f -> is_loop_free (@Second _ _ i t o f)
+| is_loop_free_compose :
+    forall {i t o} f g, is_loop_free f -> is_loop_free g ->
+                   is_loop_free (@Compose _ _ i t o f g)
+| is_loop_free_delay : forall {t} r, is_loop_free (@DelayInitCE _ _ t r)
+.
+
+Definition extract_loops {i o} (c : Circuit i o) : Circuit i o :=
+  multi_loop (loopless c) (loops_reset_state c).
+
+Lemma is_loop_free_loopless {i o} (c : Circuit i o) : is_loop_free (loopless c).
+Proof. induction c; cbn [loopless]; repeat constructor; eauto. Qed.
+
+Lemma extract_loops_equiv {i o} (c : Circuit i o) : cequiv (extract_loops c) c.
+Proof.
+Admitted.
+
+Lemma cequivn_reflexive_loop_free i o (c : Circuit i o) :
+  is_loop_free c -> cequivn (cpath_delay c) c c.
+Proof.
+  induction 1; cbn [cpath_delay].
+  { exists eq. cbn [circuit_state]. ssplit; intros.
+    all:destruct_lists_by_length; subst.
+    all:repeat lazymatch goal with x : unit |- _ => destruct x end.
+    all:ssplit; reflexivity. }
+  { lazymatch goal with
+    | H : cequivn _ _ _ |- _ => destruct H as [R [Hstart HR]]
+    end.
+    exists R; cbn [circuit_state]; ssplit; intros;
+      [ autorewrite with push_repeat_step; apply Hstart; length_hammer | ].
+    cbn [step]. repeat (destruct_pair_let; cbn [fst snd]).
+    destruct_products; cbn [fst snd].
+    specialize (HR _ _ ltac:(eassumption) ltac:(eassumption)).
+    logical_simplify. ssplit; congruence. }
+  { lazymatch goal with
+    | H : cequivn _ _ _ |- _ => destruct H as [R [Hstart HR]]
+    end.
+    exists R; cbn [circuit_state]; ssplit; intros;
+      [ autorewrite with push_repeat_step; apply Hstart; length_hammer | ].
+    cbn [step]. repeat (destruct_pair_let; cbn [fst snd]).
+    destruct_products; cbn [fst snd].
+    specialize (HR _ _ ltac:(eassumption) ltac:(eassumption)).
+    logical_simplify. ssplit; congruence. }
+  { lazymatch goal with
+    | H : cequivn _ _ f |- _ => destruct H as [R1 [Hstart1 HR1]]
+    end.
+    lazymatch goal with
+    | H : cequivn _ _ g |- _ => destruct H as [R2 [Hstart2 HR2]]
+    end.
+    exists (fun st1 st2 => R1 (fst st1) (fst st2) /\ R2 (snd st1) (snd st2)).
+    cbn [circuit_state]; ssplit; intros.
+    { ssplit.
+      { autorewrite with push_repeat_step. cbn [fst snd].
+        eapply state_relation_repeat_step_longer; eauto;
+        length_hammer. }
+      { erewrite <-(firstn_skipn (cpath_delay f) input).
+        rewrite !repeat_step_app.
+        autorewrite with push_repeat_step. cbn [fst snd].
+        erewrite state_relation_fold_left_accumulate_step
+          by (eauto; eapply Hstart1; length_hammer).
+        eapply Hstart2. length_hammer. } }
+    { cbn [step]. repeat (destruct_pair_let; cbn [fst snd]).
+      destruct_products; cbn [fst snd] in *.
+      specialize (HR1 _ _ ltac:(eassumption) ltac:(eassumption)).
+      lazymatch goal with
+      | |- context [step g _ ?i] =>
+        specialize (HR2 _ _ i ltac:(eassumption))
+      end.
+      logical_simplify. ssplit; congruence. } }
+  { exists eq. cbn [circuit_state].
+    ssplit; intros; [ | subst; ssplit; reflexivity ].
+    destruct_lists_by_length; subst.
+    autorewrite with push_repeat_step.
+    cbn [step]. repeat (destruct_pair_let; cbn [fst snd]).
+    (* damn it, doesn't work because delay might be disabled *)
+Abort.
+
+Lemma ndelays0_is_id {t} (c : Circuit t t) : is_ndelays 0 c -> c = Id.
+Proof. inversion 1; subst; reflexivity. Qed.
+
+Lemma phase_retimed_retimed_iff {i o} m (c1 c2 : Circuit i o) :
+  phase_retimed 0 m c1 c2 <-> retimed m c1 c2.
+Admitted.
+
+(*
+Lemma invert_delays'_par {t1 t2} (c : Circuit (ivalue (ipair t1 t2)) (ivalue (ipair t1 t2))) :
+  is_delays' _ c ->
+  exists d1 d2, is_delays' t1 d1 /\ is_delays' t2 d2 /\ c = Par d1 d2.
+Proof.
+  inversion 1. inversion_sigma; subst.
+  do 2 eexists; ssplit; eauto.
+  rewrite <-Eqdep_dec.eq_rect_eq_dec by apply itype_eq_dec.
+  reflexivity.
+Qed.
+
+Lemma invert_delays'_delay {t} (c : Circuit (ivalue (ione t)) (ivalue (ione t))) :
+  is_delays' _ c -> exists r, c = DelayInit r.
+Proof.
+  inversion 1. inversion_sigma; subst.
+  rewrite <-Eqdep_dec.eq_rect_eq_dec by apply itype_eq_dec.
+  eexists; reflexivity.
+Qed.
+
+Lemma split_delays {t1 t2} (c : Circuit (t1 * t2) (t1 * t2)) :
+  is_delays c ->
+  exists (d1 : Circuit t1 t1) (d2 : Circuit t2 t2),
+    is_delays d1 /\ is_delays d2 /\ c = Par d1 d2.
+Proof.
+  inversion 1. inversion_sigma; subst.
+  destruct t.
+  { eapply invert_delays'_delay in H2.
+    logical_simplify; subst.
+    Search unit.
+    inversion H. inversion_sigma.
+    cbn [ivalue] in *. subst.
+    rewrite H4 in *.
+    do 2 eexists.
+    rewrite f_equal_dep.
+  eapply split_delays' in H2.
+  rewrite H4 in *.
+  do 2 eexists.
+  rewrite <-Eqdep_dec.eq_rect_eq_dec by apply itype_eq_dec.
+Qed.
+
+
+Lemma split_ndelays {t1 t2} n (c : Circuit (t1 * t2) (t1 * t2)) :
+  is_ndelays n c ->
+  exists (d1 : Circuit t1 t1) (d2 : Circuit t2 t2),
+    is_ndelays n d1 /\ is_ndelays n d2 /\ cequiv c (Par d1 d2).
+Proof.
+  inversion 1.
+  induction 1.
+Qed.
+*)
+
+Lemma phase_retimed_LoopInit
+      {i o s} n m (c1 c2 : Circuit (i * combType s) (o * combType s)) r :
+  phase_retimed n m c1 c2 ->
+  phase_retimed (S n) m (LoopInit r (Second Delay >==> c1)) (LoopInit r c2).
+Proof.
+  intros [state_delays [input_delays [proj ?]]].
+  logical_simplify.
+  exists (Par Delay (Par state_delays Delay)).
+  exists (Comb (fun i => ret (i, defaultCombValue s))
+          >==> input_delays
+          >==> Comb (fun '(i,s) => ret i)).
+  cbn [loops_state LoopInit ivalue].
+Qed.
+
+(* phase_retimed n m c1 c2 -> is_ndelays m d ->
+   phase_retimed n m (Loop (Second d >==> c1)) (Loop c2) *)
+Print retimed.
+Print phase_retimed.
+(* retimed is NOT related to cequivn as stated, because cequivn says everything
+   will always stabilize after a certain number of inputs and that's just not
+   true within loops. equiv is actually weaker because it says they must be in
+   the same start state.
+
+   What about phase_retimed? That one *is* related, because we have the
+   guarantee that the circuit is loopless.
+
+   Actually, no it's not, because we could have *disabled* delays inside the
+   circuit and that would mean state could linger longer.
+
+
+   What we really need for loops is not quite cequivn; we need a guarantee that
+   after an equal input, N cycles later the circuits will produce an equal output.
+
+ *)
+
+(* forall c, cequivn (ncycles c) c c *)
+(* forall c1 c2, cequiv c1 c2 -> ncycles c1 = ncycles c2 /\ cequivn (ncycles c1) c1 c2*)
+(* cequiv c1 c2 -> cequivn c1 c3 -> cequivn n c2 c3? *)
+
+
+(* is_delays c1 -> is_delays c2 -> cequivn 1 c1 c2 *)
+(* cequivn n c2 -> is_delays d1 -> is_delays d2 -> cequivn (S n) (c1 >==> d) (c2 >==> d) *)
+(* is_ndelays n c1 -> is_ndelays n c2 -> cequivn n c1 c2 *)
+
+(* retimed n c1 c2 -> is_delays d -> retimed (S n) (c1 >==> d) c2 *)
+(* retimed 0 c1 c2 <-> cequiv c1 c2 *)
+(* cequiv c1 c2 -> retimed n c1 c3 -> retimed n c2 c3 *)
+(* cequiv c1 c2 -> retimed n c3 c1 -> retimed n c3 c2 *)
+(* is_delays d -> exists d', is_delays d' /\ cequiv (d >==> c) (c >==> d') *)
+(* is_delays d1 -> is_delays d2  -> cequivn (c >==> d1) (c >==> d2) *)
+(* is_delays d -> is_delays d' -> cequivn 1 (d >==> c) (c >==> d') *)
+(* is_ndelays n d -> is_ndelays n d' -> cequivn n (d >==> c) (c >==> d') *)
+
+(* cequiv n c1 c2 -> retimed n c1 c3 -> retimed n c2 c3 *)
+
+(* is_delays d -> retimed n (c >==> d) *)
+(* is_delays d -> exists d', is_delays d' /\ cequiv (d >==> c) (c >==> d') *)
+
+(* retimed n c1 c2 <-> phase_retimed n 0 c1 c2 *)
+(* phase_retimed n m c1 c2 -> is_ndelays m d ->
+   phase_retimed n m (Loop (Second d >==> c1)) (Loop c2) *)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Lemma retimed_cequiv_iff {i o} n (c1 c2 : Circuit i (ivalue o)) :
   retimed n c1 c2 <-> (exists d, cequivn n d (ndelays n o)
@@ -105,10 +382,92 @@ Proof.
   rewrite IHt1, IHt2. reflexivity.
 Qed.
 
-Lemma retimed_cequivn i o n (c1 c2 c3 : Circuit i (ivalue o)) :
+Lemma is_delays_cequivn t (c1 c2 : Circuit t t) :
+  is_delays c1 -> is_delays c2 -> cequivn 1 c1 c2.
+Admitted.
+
+Lemma is_ndelays_cequivn t n (c1 c2 : Circuit t t) :
+  is_ndelays n c1 -> is_ndelays n c2 -> cequivn n c1 c2.
+Admitted.
+
+Lemma fold_left_accumulate_step_DelayInit t (resetval : combType t) input st :
+  fold_left_accumulate (step (DelayInit resetval)) input st
+  = firstn (length input) (snd st :: input).
+Proof.
+  revert st. cbv [DelayInit]. simpl_ident. cbn [circuit_state step].
+  induction input; intros; [ reflexivity | ].
+  autorewrite with push_length push_firstn push_fold_acc.
+  destruct_products; cbn [fst snd]. erewrite IHinput.
+  reflexivity.
+Qed.
+
+Lemma move_DelayInit i o n (c1 c2 : Circuit (combType i) (combType o))
+      resetvali resetvalo :
+  cequivn n c1 c2 ->
+  cequivn (S n) (c1 >==> DelayInit resetvalo) (DelayInit resetvali >==> c2).
+Proof.
+  intros [R [? HR]].
+  exists (fun (st1 : circuit_state c1 * (unit * combType o))
+       (st2 : unit * combType i * circuit_state c2) =>
+       R (fst st1) (fst (step c2 (snd st2) (snd (fst st2))))
+       /\ snd (step c2 (snd st2) (snd (fst st2))) = snd (snd st1)).
+  ssplit.
+  { cbn [circuit_state]; intro input; intros.
+    destruct input using rev_ind; [ cbn [length] in *; lia | ].
+    clear IHinput.
+    autorewrite with push_repeat_step push_fold_acc; cbn [fst snd].
+    rewrite fold_left_accumulate_step_DelayInit.
+    autorewrite with push_length. rewrite ?Nat.add_1_r.
+    autorewrite with push_firstn natsimpl listsimpl.
+    cbn [step DelayInit]. simpl_ident.
+    autorewrite with push_repeat_step.
+    ssplit.
+    { lazymatch goal with
+      | |- R (fst (step c1 ?s1 ?x)) (fst (step c2 ?s2 ?x)) =>
+        assert (R s1 s2)
+      end.
+      { Search repeat_step.
+        apply state_relation_repeat_step.
+      eapply HR.
+      rewrite fold_left_accumulate_step_DelayInit.
+      autorewrite with push_length. rewrite Nat.add_1_r.
+      autorewrite with push_firstn natsimpl listsimpl.
+      Search fold_left_accumulate.
+      Search repeat_step.
+      eapply H.
+    cbv [DelayInit]. cbn [step circuit_state]. simpl_ident.
+    ssplit.
+    { Search repeat_step.
+      eapply state_relation_repeat_step.
+    rewrite <-surjective_pairing.
+Qed.
+
+
+Lemma move_delays i o (c1 : Circuit i o) c2 c3 :
+  is_delays c2 -> is_delays c3 ->
+  cequivn 1 (c1 >==> c2) (c3 >==> c1).
+Proof.
+  revert c3; induction 1.
+  { destruct 1.
+    { 
+Qed.
+
+Lemma is_delays_cequivn_compose t n (c1 c2 c3 : Circuit t t) :
+  is_delays n c1 -> is_delays n c2 ->
+  cequivn d (c3 >==> c1) (c3 >==> c2) = cequivn (m - n).
+Admitted.
+
+Search cequivn.
+Lemma is_ndelays_cequivn_compose t n (c1 c2 c3 : Circuit t t) :
+  is_ndelays n c1 -> is_ndelays n c2 ->
+  cequivn n (c3 >==> c1) (c3 >==> c2) = cequivn (m - n).
+Admitted.
+
+Lemma retimed_cequivn i o n (c1 c2 c3 : Circuit i o) :
   retimed n c1 c2 -> retimed n c1 c3 -> cequivn n c2 c3.
 Proof.
-  cbv [retimed]; intros.
+  cbv [retimed]; intros. logical_simplify.
+  rewrite H2 in H1.
   etransitivity.
   { symmetry.
   Search cequivn.

@@ -252,6 +252,27 @@ Proof.
     rewrite ?Hab1, ?Hcd1. ssplit; eauto. }
 Qed.
 
+
+Lemma state_relation_repeat_step_longer
+      i o n (c1 c2 : Circuit i o) (R : _ -> _ -> Prop) :
+  (forall input s1 s2,
+      length input = n ->
+      R (repeat_step c1 input s1) (repeat_step c2 input s2)) ->
+  (forall s1 s2 input,
+      R s1 s2 ->
+      snd (step c1 s1 input) = snd (step c2 s2 input)
+      /\ R (fst (step c1 s1 input)) (fst (step c2 s2 input))) ->
+  forall input s1 s2,
+    n <= length input ->
+    R (repeat_step c1 input s1) (repeat_step c2 input s2).
+Proof.
+  intros Hstart HR. intros.
+  rewrite <-(firstn_skipn n input).
+  rewrite !repeat_step_app.
+  eapply state_relation_repeat_step; [ solve [eauto] | ].
+  eapply Hstart. length_hammer.
+Qed.
+
 (* cequivn n c1 c2 -> cequivn n (First c1) (First c2) *)
 Global Instance Proper_First {i o t} n :
   Proper (cequivn n ==> cequivn n) (@First _ _ i o t).
