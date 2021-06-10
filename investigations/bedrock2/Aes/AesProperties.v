@@ -36,6 +36,10 @@ Local Open Scope string_scope.
 Local Open Scope list_scope.
 Local Open Scope Z_scope.
 
+(* bedrock2.ProgramLogic does cbv, which unfolds the getters of aes_constants,
+   resulting in large ugly ASTs *)
+Ltac normalize_body_of_function f ::= Tactics.rdelta.rdelta f.
+
 Section Proofs.
   Context {p : AesSemantics.parameters} {p_ok : parameters.ok p}
           {consts : aes_constants Z} {timing : timing}.
@@ -560,40 +564,6 @@ Section Proofs.
                      input_ready flag is unset *)
                   /\ word.eqb out (word.of_Z 0)
                     = negb (is_flag_set status AES_STATUS_INPUT_READY)).
-
-(* BEGIN TODO integrate into bedrock2.ProgramLogic *)
-
-Ltac bind_body_of_function f_ ::=
-  let f := Tactics.rdelta.rdelta f_ in
-  let fname := open_constr:(_) in
-  let fargs := open_constr:(_) in
-  let frets := open_constr:(_) in
-  let fbody := open_constr:(_) in
-  let funif := open_constr:((fname, (fargs, frets, fbody))) in
-  unify f funif;
-  let G := lazymatch goal with |- ?G => G end in
-  let P := lazymatch eval pattern f_ in G with ?P _ => P end in
-  change (bindcmd fbody (fun c : Syntax.cmd => P (fname, (fargs, frets, c))));
-  cbv beta iota delta [bindcmd]; intros.
-
-Ltac app_head e :=
-  match e with
-  | ?f ?a => app_head f
-  | _ => e
-  end.
-
-(* note: f might have some implicit parameters (eg a record of constants) *)
-Ltac enter f ::=
-  let fname := app_head f in
-  cbv beta delta [program_logic_goal_for]; intros;
-  bind_body_of_function f;
-  let fdefn := eval cbv delta [fname] in f in
-  let ctx := string2ident.learn fdefn in
-  let H := fresh "_string_to_ident" in
-  pose ctx as H;
-  lazymatch goal with |- ?s _ => cbv beta delta [s] end.
-
-(* END TODO *)
 
   Lemma aes_data_ready_correct :
     program_logic_goal_for_function! aes_data_ready.
@@ -1607,8 +1577,8 @@ Ltac enter f ::=
     ring_simplify_store_addr.
     (* the following line is in [straightline] but needs simplify_implicits for
        it to work *)
-    eapply store_four_of_sep_32bit;
-      [ reflexivity | simplify_implicits; solve [ ecancel_assumption ] |  ].
+    eapply store_four_of_sep;
+      [ simplify_implicits; solve [ ecancel_assumption ] |  ].
     repeat straightline.
 
     (* i = 1 *)
@@ -1622,8 +1592,8 @@ Ltac enter f ::=
     ring_simplify_store_addr.
     (* the following line is in [straightline] but needs simplify_implicits for
        it to work *)
-    eapply store_four_of_sep_32bit;
-      [ reflexivity | simplify_implicits; solve [ ecancel_assumption ] |  ].
+    eapply store_four_of_sep;
+      [ simplify_implicits; solve [ ecancel_assumption ] |  ].
     repeat straightline.
 
     (* i = 3 *)
@@ -1637,8 +1607,8 @@ Ltac enter f ::=
     ring_simplify_store_addr.
     (* the following line is in [straightline] but needs simplify_implicits for
        it to work *)
-    eapply store_four_of_sep_32bit;
-      [ reflexivity | simplify_implicits; solve [ ecancel_assumption ] |  ].
+    eapply store_four_of_sep;
+      [ simplify_implicits; solve [ ecancel_assumption ] |  ].
     repeat straightline.
 
     (* i = 3 *)
@@ -1652,8 +1622,8 @@ Ltac enter f ::=
     ring_simplify_store_addr.
     (* the following line is in [straightline] but needs simplify_implicits for
        it to work *)
-    eapply store_four_of_sep_32bit;
-      [ reflexivity | simplify_implicits; solve [ ecancel_assumption ] |  ].
+    eapply store_four_of_sep;
+      [ simplify_implicits; solve [ ecancel_assumption ] |  ].
     repeat straightline.
 
     (* i = 4; loop done *)

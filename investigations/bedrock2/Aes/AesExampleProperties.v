@@ -95,41 +95,6 @@ Section Proofs.
     | _ => try reflexivity
     end.
 
-
-(* BEGIN TODO integrate into bedrock2.ProgramLogic *)
-
-Ltac bind_body_of_function f_ ::=
-  let f := Tactics.rdelta.rdelta f_ in
-  let fname := open_constr:(_) in
-  let fargs := open_constr:(_) in
-  let frets := open_constr:(_) in
-  let fbody := open_constr:(_) in
-  let funif := open_constr:((fname, (fargs, frets, fbody))) in
-  unify f funif;
-  let G := lazymatch goal with |- ?G => G end in
-  let P := lazymatch eval pattern f_ in G with ?P _ => P end in
-  change (bindcmd fbody (fun c : Syntax.cmd => P (fname, (fargs, frets, c))));
-  cbv beta iota delta [bindcmd]; intros.
-
-Ltac app_head e :=
-  match e with
-  | ?f ?a => app_head f
-  | _ => e
-  end.
-
-(* note: f might have some implicit parameters (eg a record of constants) *)
-Ltac enter f ::=
-  let fname := app_head f in
-  cbv beta delta [program_logic_goal_for]; intros;
-  bind_body_of_function f;
-  let fdefn := eval cbv delta [fname] in f in
-  let ctx := string2ident.learn fdefn in
-  let H := fresh "_string_to_ident" in
-  pose ctx as H;
-  lazymatch goal with |- ?s _ => cbv beta delta [s] end.
-
-(* END TODO *)
-
   Eval compute in (name_of_func aes_iv_put).
 
   (* TODO why is this needed? *)
