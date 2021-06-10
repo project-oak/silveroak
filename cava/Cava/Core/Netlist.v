@@ -77,10 +77,10 @@ Inductive Instance : Type :=
   | Xnor:      Signal Bit -> Signal Bit -> Signal Bit -> Instance
   | Buf:       Signal Bit -> Signal Bit -> Instance
   (* Composite delay component i.e. a register *)
-  | Delay:     forall (t : SignalType), combType t -> Signal t -> Signal t -> Instance
+  | Delay:     forall (t : SignalType), signal t -> Signal t -> Signal t -> Instance
   (* Composite delay component with enable i.e. a register with clock enable *)
   | DelayEnable: forall (t : SignalType),
-                 combType t -> Signal Bit -> Signal t -> Signal t -> Instance
+                 signal t -> Signal Bit -> Signal t -> Signal t -> Instance
   (* Assignment *)
   | AssignSignal: forall {k: SignalType}, Signal k -> Signal k -> Instance
   (* TODO(satnam): Switch to using tupleInterface instead of UntypedSignal *)
@@ -101,7 +101,7 @@ Record PortDeclaration : Type := mkPort {
 }.
 
 Definition port_netlistsignal (x: PortDeclaration) : Type := Signal (port_type x).
-Definition port_value (x: PortDeclaration) : Type := combType (port_type x).
+Definition port_value (x: PortDeclaration) : Type := signal (port_type x).
 
 Record Module : Type := mkModule {
   moduleName : string;
@@ -476,7 +476,7 @@ Record TestBench : Type := mkTestBench {
   testBenchExpectedOutputs : list (list SignalExpr);
 }.
 
-Fixpoint toSignalExpr (t: SignalType) (v: combType t) : SignalExpr :=
+Fixpoint toSignalExpr (t: SignalType) (v: signal t) : SignalExpr :=
   match t, v with
   | Void, _ => NoSignal
   | Bit, v => BitVal v

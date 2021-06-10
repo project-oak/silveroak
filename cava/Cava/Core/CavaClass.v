@@ -14,7 +14,6 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import ExtLib.Structures.Monad.
 Require Import Cava.Core.Netlist.
 Require Import Cava.Core.Signal.
 Require Import Cava.Util.Tuple.
@@ -25,6 +24,7 @@ Local Open Scope type_scope.
       ones, make sure you update the reference at docs/reference.md! ****)
 
 Definition port_signal signal port : Type := signal (port_type port).
+
 (* The Cava class represents circuit graphs with Coq-level inputs and
    outputs, but does not represent the IO ports of circuits. This allows
    us to define both circuit netlist interpretations for the Cava class

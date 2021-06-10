@@ -14,10 +14,9 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-Require Import Coq.Strings.Ascii Coq.Strings.String.
-Require Import Coq.Lists.List.
-Import ListNotations.
-Require Import Coq.ZArith.ZArith.
+Require Import Coq.Strings.String.
+Require Import Coq.NArith.NArith.
+Require Import Coq.Vectors.Vector.
 
 (******************************************************************************)
 (* The types of signals that can flow over wires, used to index signal        *)
@@ -29,34 +28,36 @@ Inductive SignalType :=
   | Vec : SignalType -> nat -> SignalType              (* Vectors, possibly nested *)
   | ExternalType : string -> SignalType.            (* An uninterpreted type *)
 
+Inductive interface : Type :=
+| ione (t : SignalType)
+| ipair (t1 t2 : interface)
+.
+
 (******************************************************************************)
 (* Combinational denotion of the SignalType and default values.               *)
 (******************************************************************************)
 
-Fixpoint combType (t: SignalType) : Type :=
+Fixpoint signal (t: SignalType) : Type :=
   match t with
   | Void => unit
   | Bit => bool
-  | Vec vt sz => Vector.t (combType vt) sz
+  | Vec vt sz => Vector.t (signal vt) sz
   | ExternalType _ => unit (* No semantics for combinational interpretation. *)
   end.
 
-Fixpoint defaultCombValue (t: SignalType) : combType t :=
+Fixpoint ivalue (i : interface) : Type :=
+  match i with
+  | ione t => signal t
+  | ipair t1 t2 => ivalue t1 * ivalue t2
+  end.
+
+Fixpoint defaultValue (t: SignalType) : signal t :=
   match t  with
   | Void => tt
   | Bit => false
-  | Vec t2 sz => Vector.const (defaultCombValue t2) sz
+  | Vec t2 sz => Vector.const (defaultValue t2) sz
   | ExternalType _ => tt
   end.
-
-(******************************************************************************)
-(* Sequential denotion of the SignalType and default values.                  *)
-(******************************************************************************)
-
-Definition seqType t := list (combType t).
-Definition seqVType ticks t := Vector.t (combType t) ticks.
-Definition defaultSeqValue t := [defaultCombValue t].
-Definition defaultSeqVValue ticks t := Vector.const (defaultCombValue t) ticks.
 
 (******************************************************************************)
 (* Netlist AST representation for signal expressions.                         *)
