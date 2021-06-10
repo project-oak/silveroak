@@ -541,7 +541,7 @@ Section Proofs.
 
   (***** Proofs for specific functions *****)
 
-  Global Instance spec_of_aes_data_ready : spec_of aes_data_ready :=
+  Global Instance spec_of_aes_data_ready : spec_of "b2_data_ready" :=
     fun function_env =>
       forall (tr : trace) (m : mem) (R : _ -> Prop) (s : state),
         (* no special requirements of the memory *)
@@ -580,7 +580,7 @@ Section Proofs.
     boolsimpl. reflexivity.
   Qed.
 
-  Global Instance spec_of_aes_data_valid : spec_of aes_data_valid :=
+  Global Instance spec_of_aes_data_valid : spec_of "b2_data_valid" :=
     fun function_env =>
       forall (tr : trace) (m : mem) (R : _ -> Prop) (s : state),
         (* no special requirements of the memory *)
@@ -620,7 +620,7 @@ Section Proofs.
     boolsimpl. reflexivity.
   Qed.
 
-  Global Instance spec_of_aes_idle : spec_of aes_idle :=
+  Global Instance spec_of_aes_idle : spec_of "b2_idle" :=
     fun function_env =>
       forall (tr : trace) (m : mem) (R : _ -> Prop) (s : state),
         (* no special requirements of the memory *)
@@ -660,7 +660,7 @@ Section Proofs.
     boolsimpl. reflexivity.
   Qed.
 
-  Global Instance spec_of_aes_init : spec_of aes_init :=
+  Global Instance spec_of_aes_init : spec_of "b2_aes_init" :=
     fun function_env =>
       forall (tr : trace) (m : mem) (R : _ -> Prop)
         aes_cfg_operation aes_cfg_mode aes_cfg_key_len
@@ -859,7 +859,7 @@ Section Proofs.
     }
   Qed.
 
-  Global Instance spec_of_aes_key_put : spec_of aes_key_put :=
+  Global Instance spec_of_aes_key_put : spec_of "b2_key_put" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R (data : idle_data)
         (key_len key_arr_ptr : Semantics.word) (key_arr : list Semantics.word),
@@ -1251,7 +1251,7 @@ Section Proofs.
             eassumption. } } } }
   Qed.
 
-  Global Instance spec_of_aes_iv_put : spec_of aes_iv_put :=
+  Global Instance spec_of_aes_iv_put : spec_of "b2_iv_put" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R (data : idle_data)
         (iv_ptr : Semantics.word) (iv_arr : list Semantics.word),
@@ -1331,7 +1331,7 @@ Section Proofs.
     ssplit; eauto.
   Qed.
 
-  Global Instance spec_of_aes_data_put : spec_of aes_data_put :=
+  Global Instance spec_of_aes_data_put : spec_of "b2_data_put" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R (data : idle_data) all_aes_input
         (input_ptr : Semantics.word) (input_arr : list Semantics.word),
@@ -1430,7 +1430,7 @@ Section Proofs.
      input while BUSY and stalls in BUSY state until output is read. The spec
      should be modified to account for this behavior. For now, this spec is
      exactly the same as aes_data_put. *)
-  Global Instance spec_of_aes_data_put_wait : spec_of aes_data_put_wait :=
+  Global Instance spec_of_aes_data_put_wait : spec_of "b2_data_put_wait" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R (data : idle_data) all_aes_input
         (input_ptr : Semantics.word) (input_arr : list Semantics.word),
@@ -1507,7 +1507,7 @@ Section Proofs.
     repeat straightline. eauto.
   Qed.
 
-  Global Instance spec_of_aes_data_get : spec_of aes_data_get :=
+  Global Instance spec_of_aes_data_get : spec_of "b2_data_get" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R (data : done_data)
         (data_ptr out0 out1 out2 out3 : Semantics.word)
@@ -1657,7 +1657,7 @@ Section Proofs.
     | DONE data => done_ctrl data
     end.
 
-  Global Instance spec_of_aes_data_get_wait : spec_of aes_data_get_wait :=
+  Global Instance spec_of_aes_data_get_wait : spec_of "b2_data_get_wait" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R (out : aes_output)
         (data_ptr : Semantics.word) (data_arr : list Semantics.word) (s : state),

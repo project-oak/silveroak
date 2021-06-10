@@ -38,7 +38,7 @@ Section Proofs.
   Existing Instance state_machine_parameters.
   Existing Instance constant_literals.
 
-  Instance spec_of_aes_encrypt : spec_of aes_encrypt :=
+  Instance spec_of_aes_encrypt : spec_of "b2_aes_encrypt" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R
         (plaintext_ptr key_ptr iv_ptr ciphertext_ptr : Semantics.word)
@@ -94,13 +94,6 @@ Section Proofs.
     | H : sep _ _ ?m |- _ ?m => ecancel_assumption
     | _ => try reflexivity
     end.
-
-  Eval compute in (name_of_func aes_iv_put).
-
-  (* TODO why is this needed? *)
-  Instance spec_of_aes_iv_put': spec_of "b2_iv_put" := spec_of_aes_iv_put.
-  Instance spec_of_aes_data_put_wait': spec_of "b2_data_put_wait" := spec_of_aes_data_put_wait.
-  Instance spec_of_aes_data_get_wait': spec_of "b2_data_get_wait" := spec_of_aes_data_get_wait.
 
   Lemma aes_encrypt_correct :
     program_logic_goal_for_function! aes_encrypt.
