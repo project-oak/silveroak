@@ -53,76 +53,17 @@ Class aes_constants T :=
 
 (* Given the string names of all the constants, coerce them to bedrock2
    expressions with expr.var *)
-Definition constant_vars
-           {names : aes_constants string}
-  : aes_constants expr :=
-  {| AES_KEY00 := expr.var AES_KEY00;
-     AES_IV00 := expr.var AES_IV00;
-     AES_DATA_IN00 := expr.var AES_DATA_IN00;
-     AES_DATA_OUT00:= expr.var AES_DATA_OUT00;
-     AES_CTRL0 := expr.var AES_CTRL0;
-     AES_CTRL_OPERATION := expr.var AES_CTRL_OPERATION;
-     AES_CTRL_MODE_MASK := expr.var AES_CTRL_MODE_MASK;
-     AES_CTRL_MODE_OFFSET := expr.var AES_CTRL_MODE_OFFSET;
-     AES_CTRL_KEY_LEN_MASK := expr.var AES_CTRL_KEY_LEN_MASK;
-     AES_CTRL_KEY_LEN_OFFSET := expr.var AES_CTRL_KEY_LEN_OFFSET;
-     AES_CTRL_MANUAL_OPERATION := expr.var AES_CTRL_MANUAL_OPERATION;
-     AES_STATUS0 := expr.var AES_STATUS0;
-     AES_STATUS_IDLE := expr.var AES_STATUS_IDLE;
-     AES_STATUS_STALL := expr.var AES_STATUS_STALL;
-     AES_STATUS_OUTPUT_VALID := expr.var AES_STATUS_OUTPUT_VALID;
-     AES_STATUS_INPUT_READY := expr.var AES_STATUS_INPUT_READY;
-     AES_NUM_REGS_KEY := expr.var AES_NUM_REGS_KEY;
-     AES_NUM_REGS_IV := expr.var AES_NUM_REGS_IV;
-     AES_NUM_REGS_DATA := expr.var AES_NUM_REGS_DATA;
-     kAesEnc := expr.var kAesEnc;
-     kAesDec := expr.var kAesDec;
-     kAesEcb := expr.var kAesEcb;
-     kAesCbc := expr.var kAesCbc;
-     kAesCtr := expr.var kAesCtr;
-     kAes128 := expr.var kAes128;
-     kAes192 := expr.var kAes192;
-     kAes256 := expr.var kAes256;
-  |}.
+Definition constant_vars {names : aes_constants string} : aes_constants expr :=
+  ltac:(map_record_fields expr.var).
 
 (* Given the Z values of all the constants, coerce them to bedrock2
    expressions with expr.literal *)
-Definition constant_literals
-           {vals : aes_constants Z}
-  : aes_constants expr :=
-  {| AES_KEY00 := expr.literal AES_KEY00;
-     AES_IV00 := expr.literal AES_IV00;
-     AES_DATA_IN00 := expr.literal AES_DATA_IN00;
-     AES_DATA_OUT00 := expr.literal AES_DATA_OUT00;
-     AES_CTRL0 := expr.literal AES_CTRL0;
-     AES_CTRL_OPERATION := expr.literal AES_CTRL_OPERATION;
-     AES_CTRL_MODE_MASK := expr.literal AES_CTRL_MODE_MASK;
-     AES_CTRL_MODE_OFFSET := expr.literal AES_CTRL_MODE_OFFSET;
-     AES_CTRL_KEY_LEN_MASK := expr.literal AES_CTRL_KEY_LEN_MASK;
-     AES_CTRL_KEY_LEN_OFFSET := expr.literal AES_CTRL_KEY_LEN_OFFSET;
-     AES_CTRL_MANUAL_OPERATION := expr.literal AES_CTRL_MANUAL_OPERATION;
-     AES_STATUS0 := expr.literal AES_STATUS0;
-     AES_STATUS_IDLE := expr.literal AES_STATUS_IDLE;
-     AES_STATUS_STALL := expr.literal AES_STATUS_STALL;
-     AES_STATUS_OUTPUT_VALID := expr.literal AES_STATUS_OUTPUT_VALID;
-     AES_STATUS_INPUT_READY := expr.literal AES_STATUS_INPUT_READY;
-     AES_NUM_REGS_KEY := expr.literal AES_NUM_REGS_KEY;
-     AES_NUM_REGS_IV := expr.literal AES_NUM_REGS_IV;
-     AES_NUM_REGS_DATA := expr.literal AES_NUM_REGS_DATA;
-     kAesEnc := expr.literal kAesEnc;
-     kAesDec := expr.literal kAesDec;
-     kAesEcb := expr.literal kAesEcb;
-     kAesCbc := expr.literal kAesCbc;
-     kAesCtr := expr.literal kAesCtr;
-     kAes128 := expr.literal kAes128;
-     kAes192 := expr.literal kAes192;
-     kAes256 := expr.literal kAes256;
-  |}.
+Definition constant_literals {vals : aes_constants Z} : aes_constants expr :=
+  ltac:(map_record_fields expr.literal).
 
 (* maps each field name to its name as a Coq string, replacing trailing `0` by `(0)` *)
-Definition constant_names : aes_constants string.
-  instantiate_record_with_fieldname_vars.
-Defined.
+Definition constant_names : aes_constants string :=
+  ltac:(instantiate_record_with_fieldname_vars).
 
 Ltac app_to_string_list a :=
   match a with

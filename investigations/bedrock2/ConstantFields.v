@@ -18,25 +18,32 @@ Ltac2 rec parenthesize_trailing_0(s: constr) :=
 Ltac2 rec binder_names(t: constr) :=
   match Constr.Unsafe.kind t with
   | Constr.Unsafe.Prod b body =>
-    Ident.to_string (Option.get (Constr.Binder.name b)) :: binder_names body
+    Option.get (Constr.Binder.name b) :: binder_names body
   | _ => []
   end.
 
-(* given a goal which is a record whose fields all are of type expr,
-   instantiate each field with (expr.var NAME), where NAME is the
-   name of that field *)
-Ltac2 instantiate_record_with_fieldname_vars () :=
+Ltac2 unapp(c: constr) :=
+  match Constr.Unsafe.kind c with
+  | Constr.Unsafe.App f a => (f, a)
+  | _ => (c, Array.empty ())
+  end.
+
+(* given a goal which is a record, instantiate each field with (f QUALI NAME),
+   where NAME is the name of that field, and QUALI is the qualification (list of
+   idents) needed in front of NAME to get a fully qualified name *)
+Ltac2 instantiate_record_based_on_fieldnames(f: ident list -> ident -> constr) :=
   lazy_match! goal with
-  | [ |- ?r ?t ] =>
+  | [ |- ?g ] =>
+    let (r, rargs) := unapp g in
     match Constr.Unsafe.kind r with
     | Constr.Unsafe.Ind ind inst =>
       let ctor_ref := Std.ConstructRef (Constr.Unsafe.constructor ind 0) in
       let ctor_trm := Env.instantiate ctor_ref in
       let ctor_type := Constr.type ctor_trm in
-      let field_names := List.tl (binder_names ctor_type) in
-      let args := constr:(String.string) ::
-        List.map (fun s => parenthesize_trailing_0 (string_to_coq s)) field_names in
-      let res := mkApp ctor_trm (Array.of_list args) in
+      let field_names := List.skipn (Array.length rargs) (binder_names ctor_type) in
+      let qualification := List.removelast (Env.path ctor_ref) in
+      let args := List.map (f qualification) field_names in
+      let res := mkApp ctor_trm (Array.append rargs (Array.of_list args)) in
       exact $res
     | _ => Control.throw
              (Tactic_failure (Some (Message.of_string "goal is not an inductive")))
@@ -44,4 +51,14 @@ Ltac2 instantiate_record_with_fieldname_vars () :=
   end.
 
 Ltac instantiate_record_with_fieldname_vars :=
-  ltac2:(instantiate_record_with_fieldname_vars ()).
+  ltac2:(instantiate_record_based_on_fieldnames
+           (fun q i => parenthesize_trailing_0 (string_to_coq (Ident.to_string i)))).
+
+(* instantiate the goal with a record where each field is instantiated by applying f *)
+Ltac2 map_record_fields(f: constr) :=
+  instantiate_record_based_on_fieldnames (fun q i =>
+     let getter := Env.instantiate (Option.get (Env.get (List.append q [i]))) in
+     constr:($f ($getter _ _))).
+
+Ltac map_record_fields :=
+  ltac2:(f |- map_record_fields (Option.get (Ltac1.to_constr f))).
