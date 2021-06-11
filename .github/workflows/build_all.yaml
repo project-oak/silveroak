@@ -15,12 +15,22 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-unstable
 
-    - run: nix-shell --run 'cd third_party; make -j1'
+    - name: Create a "lockfile" from git submodule commits
+      id: get-submodule-ver
+      run: |
+        git submodule status > ./third_party/submodules.lock
+      shell: bash
     - name: Cache third_party
+      id: third_party-cache
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-build-${{ github.run_id }}-third_party
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
+
+    - name: Build third party
+      if: steps.third_party-cache.outputs.cache-hit != 'true'
+      run: nix-shell --run 'cd third_party; make -j1'
+
     - run: nix-shell --run 'cd cava; make -j1'
     - name: Cache cava
       uses: actions/cache@v2
@@ -42,11 +52,19 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-unstable
 
-    - name: Use third_party cache
+
+    - name: Create a "lockfile" from git submodule commits
+      id: get-submodule-ver
+      run: |
+        git submodule status > ./third_party/submodules.lock
+      shell: bash
+    - name: Cache third_party
+      id: third_party-cache
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-build-${{ github.run_id }}-third_party
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
+
     - name: Use cava cache
       uses: actions/cache@v2
       with:
@@ -68,11 +86,18 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-unstable
 
-    - name: Use third_party cache
+    - name: Create a "lockfile" from git submodule commits
+      id: get-submodule-ver
+      run: |
+        git submodule status > ./third_party/submodules.lock
+      shell: bash
+    - name: Cache third_party
+      id: third_party-cache
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-build-${{ github.run_id }}-third_party
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
+
     - name: Use cava cache
       uses: actions/cache@v2
       with:
@@ -94,11 +119,18 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-unstable
 
-    - name: Use third_party cache
+    - name: Create a "lockfile" from git submodule commits
+      id: get-submodule-ver
+      run: |
+        git submodule status > ./third_party/submodules.lock
+      shell: bash
+    - name: Cache third_party
+      id: third_party-cache
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-build-${{ github.run_id }}-third_party
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
+
     - name: Use cava cache
       uses: actions/cache@v2
       with:
@@ -120,11 +152,17 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-unstable
 
-    - name: Use third_party cache
+    - name: Create a "lockfile" from git submodule commits
+      id: get-submodule-ver
+      run: |
+        git submodule status > ./third_party/submodules.lock
+      shell: bash
+    - name: Cache third_party
+      id: third_party-cache
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-build-${{ github.run_id }}-third_party
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
     - name: Use cava cache
       uses: actions/cache@v2
       with:
@@ -146,11 +184,17 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-unstable
 
-    - name: Use third_party cache
+    - name: Create a "lockfile" from git submodule commits
+      id: get-submodule-ver
+      run: |
+        git submodule status > ./third_party/submodules.lock
+      shell: bash
+    - name: Cache third_party
+      id: third_party-cache
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-build-${{ github.run_id }}-third_party
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
     - name: Use cava cache
       uses: actions/cache@v2
       with:
@@ -172,11 +216,18 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-unstable
 
-    - name: Use third_party cache
+    - name: Create a "lockfile" from git submodule commits
+      id: get-submodule-ver
+      run: |
+        git submodule status > ./third_party/submodules.lock
+      shell: bash
+    - name: Cache third_party
+      id: third_party-cache
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-build-${{ github.run_id }}-third_party
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
+
     - name: Use cava cache
       uses: actions/cache@v2
       with:
@@ -198,11 +249,18 @@ jobs:
       with:
         nix_path: nixpkgs=channel:nixos-unstable
 
-    - name: Use third_party cache
+    - name: Create a "lockfile" from git submodule commits
+      id: get-submodule-ver
+      run: |
+        git submodule status > ./third_party/submodules.lock
+      shell: bash
+    - name: Cache third_party
+      id: third_party-cache
       uses: actions/cache@v2
       with:
         path: third_party
-        key: ${{ runner.os }}-build-${{ github.run_id }}-third_party
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
+
     - name: Use cava cache
       uses: actions/cache@v2
       with:

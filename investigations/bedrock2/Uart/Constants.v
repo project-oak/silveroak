@@ -127,3 +127,33 @@ Definition constant_names : uart_constants string :=
     kErrorUartInvalidArgument := "kErrorUartInvalidArgument";
     kErrorUartBadBaudRate := "kErrorUartBadBaudRate";
   |}.
+
+(* This list includes all the constants *)
+Definition uart_globals {T} {consts : uart_constants T} : list T :=
+  [  TOP_EARLGREY_UART0_BASE_ADDR
+    ;UART_CTRL_NCO_MASK
+    ;UART_CTRL_NCO_OFFSET
+    ;UART_CTRL_NCO_FIELD
+    ;UART_CTRL_TX_BIT
+    ;UART_CTRL_PARITY_EN_BIT
+    ;UART_CTRL_REG_OFFSET
+    ;UART_FIFO_CTRL_RXRST_BIT
+    ;UART_FIFO_CTRL_TXRST_BIT
+    ;UART_FIFO_CTRL_REG_OFFSET
+    ;UART_OVRD_REG_OFFSET
+    ;UART_TIMEOUT_CTRL_REG_OFFSET
+    ;UART_INTR_ENABLE_REG_OFFSET
+    ;UART_INTR_STATE_REG_OFFSET
+    ;UART_STATUS_REG_OFFSET
+    ;UART_STATUS_TXFULL_BIT
+    ;UART_STATUS_TXIDLE_BIT
+    ;UART_WDATA_WDATA_MASK
+    ;UART_WDATA_WDATA_OFFSET
+    ;UART_WDATA_WDATA_FIELD
+    ;UART_WDATA_REG_OFFSET
+    ;NCO_WIDTH
+    ;kModuleUart
+    ;kErrorOk
+    ;kErrorUartInvalidArgument
+    ;kErrorUartBadBaudRate
+  ].
