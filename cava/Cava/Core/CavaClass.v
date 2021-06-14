@@ -42,182 +42,91 @@ Definition tsplit {t1 t2 : type} : value (t1 ** t2) -> value t1 * value t2 :=
   end.
 
 (* A PHOAS-style expression representing a circuit *)
-Inductive CircuitExpr {var : type -> Type} : type -> type -> Type :=
+Inductive CircuitExpr {var : type -> Type} : type -> type -> type -> Type :=
 (* Name and reference wires *)
-| Var : forall {t}, var t -> CircuitExpr Void t
-| Bind : forall {t u s1 s2}, CircuitExpr s1 t -> (var t -> CircuitExpr s2 u) -> CircuitExpr (s1 ** s2) u
+| Var : forall {t}, var t -> CircuitExpr Void Void t
+| Input : forall t, CircuitExpr t Void t
+| Bind : forall {t u i1 i2 s1 s2},
+    CircuitExpr i1 s1 t -> (var t -> CircuitExpr i2 s2 u) -> CircuitExpr (i1 ** i2) (s1 ** s2) u
 (* Constants *)
-| Constant : bool -> CircuitExpr Void Bit
-| ConstantV : forall {A n}, Vector.t (signal A) n -> CircuitExpr Void (Vec A n)
-| DefaultSignal : forall t, CircuitExpr Void t
+| Constant : bool -> CircuitExpr Void Void Bit
+| ConstantV : forall {A n}, Vector.t (signal A) n -> CircuitExpr Void Void (Vec A n)
+| DefaultSignal : forall t, CircuitExpr Void Void t
 (* Tuples *)
-| Prod : forall {t u s1 s2}, CircuitExpr s1 t -> CircuitExpr s2 u -> CircuitExpr (s1 ** s2) (t * u)
-| Fst : forall {t u s}, CircuitExpr s (t ** u) -> CircuitExpr s t
-| Snd : forall {t u s}, CircuitExpr s (t ** u) -> CircuitExpr s u
+| Prod : forall {t u i1 i2 s1 s2},
+    CircuitExpr i1 s1 t -> CircuitExpr i2 s2 u -> CircuitExpr (i1 ** i2) (s1 ** s2) (t * u)
+| Fst : forall {t u i s}, CircuitExpr i s (t ** u) -> CircuitExpr i s t
+| Snd : forall {t u i s}, CircuitExpr i s (t ** u) -> CircuitExpr i s u
 (* Registers *)
-| Delay : forall {t s}, value t -> CircuitExpr s t -> CircuitExpr (t ** s) t
-| LoopDelay : forall {o s t}, value t -> (var t -> CircuitExpr s (t ** o)) -> CircuitExpr (t ** s) o
+| Delay : forall {t i s}, value t -> CircuitExpr i s t -> CircuitExpr i (t ** s) t
+| LoopDelay : forall {i o s t}, value t -> (var t -> CircuitExpr i s (t ** o)) -> CircuitExpr i (t ** s) o
 .
 Global Arguments CircuitExpr : clear implicits.
 
-(*
-  (* Default values. *)
-  defaultSignal : forall {t: SignalType}, signal t;
-  (* SystemVerilog primitive gates *)
-  inv : signal Bit -> cava (signal Bit);
-  and2 : signal Bit * signal Bit -> cava (signal Bit);
-  nand2 : signal Bit * signal Bit -> cava (signal Bit);
-  or2 : signal Bit * signal Bit -> cava (signal Bit);
-  nor2 : signal Bit * signal Bit -> cava (signal Bit);
-  xor2 : signal Bit * signal Bit -> cava (signal Bit);
-  xnor2 : signal Bit * signal Bit -> cava (signal Bit);
-  buf_gate : signal Bit -> cava (signal Bit); (* Corresponds to the SystemVerilog primitive gate 'buf' *)
-  (* Xilinx UNISIM FPGA gates *)
-  lut1 : (bool -> bool) -> signal Bit -> cava (signal Bit); (* 1-input LUT *)
-  lut2 : (bool -> bool -> bool) -> (signal Bit * signal Bit) -> cava (signal Bit); (* 2-input LUT *)
-  lut3 : (bool -> bool -> bool -> bool) -> signal Bit * signal Bit * signal Bit -> cava (signal Bit); (* 3-input LUT *)
-  lut4 : (bool -> bool -> bool -> bool -> bool) -> (signal Bit * signal Bit * signal Bit * signal Bit) ->
-         cava (signal Bit); (* 4-input LUT *)
-  lut5 : (bool -> bool -> bool -> bool -> bool -> bool) ->
-         (signal Bit * signal Bit * signal Bit * signal Bit * signal Bit) -> cava (signal Bit); (* 5-input LUT *)
-  lut6 : (bool -> bool -> bool -> bool -> bool -> bool -> bool) ->
-         signal Bit * signal Bit * signal Bit * signal Bit * signal Bit * signal Bit -> cava (signal Bit); (* 6-input LUT *)
-  xorcy : signal Bit * signal Bit -> cava (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, LI *)
-  muxcy : signal Bit -> signal  Bit -> signal Bit -> cava (signal Bit); (* Xilinx fast-carry UNISIM with arguments O, CI, DI, S *)
-  (* Converting to/from Vector.t *)
-  unpackV : forall {t : SignalType} {s : nat}, signal (Vec t s) -> cava (Vector.t (signal t) s);
-  packV : forall {t : SignalType} {s : nat} , Vector.t (signal t) s -> cava (signal (Vec t s));
-  (* Dynamic indexing *)
-  indexAt : forall {t : SignalType} {sz isz: nat},
-            signal (Vec t sz) ->     (* A vector of n elements of type signal t *)
-            signal (Vec Bit isz) ->  (* A bit-vector index of size isz bits *)
-            cava (signal t);                (* The indexed value of type signal t *)
-  (* Synthesizable arithmetic operations. *)
-  unsignedAdd : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b) ->
-                cava (signal (Vec Bit (1 + max a b)));
-  unsignedMult : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b)->
-                cava (signal (Vec Bit (a + b)));
-  (* Synthesizable relational operators *)
-  greaterThanOrEqual : forall {a b : nat}, signal (Vec Bit a) * signal (Vec Bit b) ->
-                      cava (signal Bit);
-  (* Naming for sharing. *)
-  localSignal : forall {t : SignalType}, signal t -> cava (signal t);
-  (* Hierarchy *)
-  instantiate : forall (intf: CircuitInterface),
-                let inputs := map (port_signal signal) (circuitInputs intf) in
-                let outputs := map (port_signal signal) (circuitOutputs intf) in
-                curried inputs (cava (tupled' outputs)) ->
-                 tupled' inputs -> cava (tupled' outputs);
-  (* Instantiation of black-box components which return default values. *)
-  blackBox : forall (intf: CircuitInterface),
-             tupled' (map (port_signal signal) (circuitInputs intf)) ->
-             cava (tupled' (map (port_signal signal) (circuitOutputs intf)));
-}.
-*)
-Definition Circuit i o s : Type := forall var, var i -> CircuitExpr var s o.
+Definition Circuit i o s : Type := forall var, CircuitExpr var i s o.
 
-Fixpoint step {t s} (c : CircuitExpr value s t)
-  : value s -> value s * value t :=
-  match c in CircuitExpr _ s t return value s -> value s * value t with
-  | Var x => fun s => (s, x)
+Fixpoint step {i s o} (c : CircuitExpr value i s o)
+  : value s -> value i -> value s * value o :=
+  match c in CircuitExpr _ i s o return value s -> value i -> value s * value o with
+  | Var x => fun s _ => (s, x)
+  | Input t => fun _ i => (tt, i)
   | Bind x f =>
-    fun s =>
+    fun s i =>
       let '(xs, fs) := tsplit s in
-      let '(xs, xo) := step x xs in
-      let '(fs, fo) := step (f xo) fs in
+      let '(xi, fi) := tsplit i in
+      let '(xs, xo) := step x xs xi in
+      let '(fs, fo) := step (f xo) fs fi in
       (tprod_min xs fs, fo)
-  | Constant x => fun _ => (tt, x)
-  | ConstantV x => fun _ => (tt, x)
-  | DefaultSignal t => fun _ => (tt, default_value t)
+  | Constant x => fun _ _ => (tt, x)
+  | ConstantV x => fun _ _ => (tt, x)
+  | DefaultSignal t => fun _ _ => (tt, default_value t)
   | Prod x y =>
-    fun s =>
+    fun s i =>
       let '(xs, ys) := tsplit s in
-      let '(xs, xo) := step x xs in
-      let '(ys, yo) := step y ys in
+      let '(xi, yi) := tsplit i in
+      let '(xs, xo) := step x xs xi in
+      let '(ys, yo) := step y ys yi in
       (tprod_min xs ys, (xo, yo))
   | Fst x =>
-    fun s =>
-      let '(s, xo) := step x s in
+    fun s i =>
+      let '(s, xo) := step x s i in
       (s, fst (tsplit xo))
   | Snd x =>
-    fun s =>
-      let '(s, xo) := step x s in
+    fun s i =>
+      let '(s, xo) := step x s i in
       (s, snd (tsplit xo))
   | Delay _ x =>
-    fun s =>
+    fun s i =>
       let '(s, xs) := tsplit s in
-      let '(xs, xo) := step x xs in
+      let '(xs, xo) := step x xs i in
       (tprod_min xo xs, s)
   | LoopDelay _ x =>
-    fun s =>
+    fun s i =>
       let '(r, xs) := tsplit s in
-      let '(xs, xo) := step (x r) xs in
+      let '(xs, xo) := step (x r) xs i in
       let '(r, o) := tsplit xo in
       (tprod_min r xs, o)
   end.
 
-Fixpoint reset_state {t s} (c : CircuitExpr value s t) : value s :=
-  match c in CircuitExpr _ s t return value s with
-  | Var x => tt
+Fixpoint reset_state {i s o} (c : CircuitExpr value i s o) : value s :=
+  match c in CircuitExpr _ i s o return value s with
   | Bind x f => tprod_min (reset_state x) (reset_state (f (default_value _)))
-  | Constant x => tt
-  | ConstantV x => tt
-  | DefaultSignal t => tt
   | Prod x y => tprod_min (reset_state x) (reset_state y)
   | Fst x => reset_state x
   | Snd x => reset_state x
   | Delay r x => tprod_min r (reset_state x)
   | LoopDelay r x => tprod_min r (reset_state (x (default_value _)))
+  | _ => tt
   end.
 
-
-Print CircuitExpr.
-(* Says that two circuit expressions are constructed in exactly the same way *)
-Inductive expr_equiv : forall {s t}, CircuitExpr value s t -> CircuitExpr value s t -> Prop :=
-| equiv_Var : forall t (x : value t), expr_equiv (Var x) (Var x)
-| equiv_Bind :
-    forall t u s1 s2 (x : CircuitExpr value s1 t) (f g : value t -> CircuitExpr value s2 u),
-      (forall y, expr_equiv (f y) (g y)) ->
-      expr_equiv (Bind x f) (Bind x g)
-| equiv_Constant : forall b, expr_equiv (Constant b) (Constant b)
-| equiv_ConstantV : forall A n (v : Vector.t (signal A) n), expr_equiv (ConstantV v) (ConstantV v)
-| equiv_DefaultSignal : forall t, expr_equiv (DefaultSignal t) (DefaultSignal t)
-| equiv_Prod :
-    forall t u s1 s2 (x1 x2 : CircuitExpr value s1 t) (y1 y2 : CircuitExpr value s2 u),
-      expr_equiv x1 x2 ->
-      expr_equiv y1 y2 ->
-      expr_equiv (Prod x1 y1) (Prod x2 y2)
-| equiv_Fst :
-    forall t u s (x1 x2 : CircuitExpr value s (t ** u)),
-      expr_equiv x1 x2 ->
-      expr_equiv (Fst x1) (Fst x2)
-| equiv_Snd :
-    forall t u s (x1 x2 : CircuitExpr value s (t ** u)),
-      expr_equiv x1 x2 ->
-      expr_equiv (Snd x1) (Snd x2)
-| equiv_Delay :
-    forall t s r (x1 x2 : CircuitExpr value s t),
-      expr_equiv x1 x2 ->
-      expr_equiv (Delay r x1) (Delay r x2)
-| equiv_LoopDelay :
-    forall o s t r (x1 x2 : value t -> CircuitExpr value s (t ** o)),
-      (forall y, expr_equiv (x1 y) (x2 y)) ->
-      expr_equiv (LoopDelay r x1) (LoopDelay r x2)
-.
-
-Lemma reset_state_ext {i o s} (c : value i -> CircuitExpr value s o) x y :
-  (
-  reset_state (c x) = reset_state (c y).
-Proof.
-  induction (c x).
-  all:cbn.
-Qed.
-
 Definition test : Circuit (Vec Bit 4) (Vec Bit 4 * Vec Bit 4) Void :=
-  fun var x => Prod (Var x) (Var x).
+  fun var => Bind (Input (Vec Bit 4)) (fun x => Prod (Var x) (Var x)).
 Definition test2 : Circuit (Vec Bit 4) (Vec Bit 4 * Vec Bit 4) (Vec Bit 4) :=
-  fun var x => Bind (Delay (t:=Vec Bit 4) (Vector.const false 4) (Var x))
-                 (fun y => Prod (Var x) (Var y)).
+  fun var =>
+    Bind (Input (Vec Bit 4))
+         (fun x =>
+            Bind (Delay (t:=Vec Bit 4) (Vector.const false 4) (Var x))
+                 (fun y => Prod (Var x) (Var y))).
 
 Require Import Cava.Util.List.
 Definition simulate {i o s} (c : Circuit i o s) (input : list (value i)) : list (value o) :=

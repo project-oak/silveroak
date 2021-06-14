@@ -1,0 +1,2 @@
+     = "module nandGate (input logic clk, input logic rst, output logic o, input logic i1, input logic i0);\ntimeunit 1ns; timeprecision 1ns;\n  logic net[0:3];\n  assign o = net[3];\n  assign net[1] = i1;\n  assign net[0] = i0;\n  not not_1 (net[3], net[2]);\n  and and_0 (net[2], net[0], net[1]);\nendmodule\n"
+     : string
