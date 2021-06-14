@@ -28,10 +28,18 @@ Inductive SignalType :=
   | Vec : SignalType -> nat -> SignalType              (* Vectors, possibly nested *)
   | ExternalType : string -> SignalType.            (* An uninterpreted type *)
 
-Inductive interface : Type :=
-| ione (t : SignalType)
-| ipair (t1 t2 : interface)
+(* one or more signals *)
+Inductive type : Type :=
+| tone (t : SignalType)
+| tpair (t1 t2 : type)
 .
+
+(* Notation for signals and collections of signals *)
+Declare Scope signal_scope.
+Delimit Scope signal_scope with signal.
+Bind Scope signal_scope with type.
+Coercion tone : SignalType >-> type.
+Infix "*" := tpair : signal_scope.
 
 (******************************************************************************)
 (* Combinational denotion of the SignalType and default values.               *)
@@ -45,18 +53,24 @@ Fixpoint signal (t: SignalType) : Type :=
   | ExternalType _ => unit (* No semantics for combinational interpretation. *)
   end.
 
-Fixpoint ivalue (i : interface) : Type :=
-  match i with
-  | ione t => signal t
-  | ipair t1 t2 => ivalue t1 * ivalue t2
+Fixpoint value (t : type) : Type :=
+  match t with
+  | tone t => signal t
+  | tpair t1 t2 => value t1 * value t2
   end.
 
-Fixpoint defaultValue (t: SignalType) : signal t :=
+Fixpoint default_signal (t: SignalType) : signal t :=
   match t  with
   | Void => tt
   | Bit => false
-  | Vec t2 sz => Vector.const (defaultValue t2) sz
+  | Vec t2 sz => Vector.const (default_signal t2) sz
   | ExternalType _ => tt
+  end.
+
+Fixpoint default_value (t: type) : value t :=
+  match t with
+  | tone t => default_signal t
+  | tpair t1 t2 => (default_value t1, default_value t2)
   end.
 
 (******************************************************************************)
