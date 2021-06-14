@@ -18,18 +18,20 @@ Notation "x <- c1 ;; c2" := (bind c1 (fun x => c2))
   (at level 61, c1 at next level, right associativity).
 Notation "f >=> g" := (mcompose f g) (at level 61, right associativity).
 
-Inductive SignalType := Bit | Nat.
+Inductive SignalType := Bit | Nat | Pair(A1 A2: SignalType).
 
-Definition combType(A: SignalType) :=
+Fixpoint combType(A: SignalType) :=
   match A with
   | Bit => bool
   | Nat => nat
+  | Pair A1 A2 => (combType A1 * combType A2)%type
   end.
 
-Definition defaultCombValue(A: SignalType): combType A :=
+Fixpoint defaultCombValue(A: SignalType): combType A :=
   match A with
   | Bit => false
   | Nat => 0
+  | Pair A1 A2 => (defaultCombValue A1, defaultCombValue A2)
   end.
 
 Definition delayWithInit{A}(init: combType A)(x: timed (combType A)): timed (combType A) :=
@@ -79,19 +81,39 @@ Definition power_fun{A: Type}(f: A -> A): nat -> A -> A :=
 Definition loop{B: SignalType}(f: timed (combType B) -> timed (combType B)): timed (combType B) :=
   fun t => power_fun f (S t) (fun _ => defaultCombValue B) t.
 
-(* will be used with A, B, C instantiated to `timed Something` *)
+(* will be used with A, B, C instantiated to `timed (combType Something)` *)
 Definition compose{A B C}(f: A -> B)(g: B -> C): A -> C := fun a => g (f a).
 Infix ">>" := compose (at level 40).
-Definition fork2{A B}(f: A -> B): A -> B * B := fun a => let b := f a in (b, b).
-(* Take a pair input and apply the f to just the first element. *)
-Definition fsT{A1 A2 B}(f: A1 -> A2)(ab: A1 * B): A2 * B := let (a1, b) := ab in (f a1, b).
-(* Take a pair input and apply the f to just the second element. *)
-Definition snD{A B1 B2}(f: B1 -> B2)(ab: A * B1): A * B2 := let (a, b1) := ab in (a, f b1).
 
-Definition adder: timed (combType Nat) * timed (combType Nat) -> timed (combType Nat) :=
-  fun '(x, y) => v1 <- x;; v2 <- y;; add v1 v2.
+Definition lift{A B}(f: combType A -> combType B): timed (combType A) -> timed (combType B) :=
+  fun a t => f (a t).
 
-Eval cbv -[Nat.add] in adder.
+Definition fork2{A B}(f: timed (combType A) -> timed (combType B)):
+  timed (combType A) -> timed (combType (Pair B B)) := fun a t => let b := f a t in (b, b).
+
+Definition proj_fst{A1 A2}: timed (combType (Pair A1 A2)) -> timed (combType A1) :=
+  @lift (Pair A1 A2) A1 (@fst (combType A1) (combType A2)).
+
+Definition proj_snd{A1 A2}: timed (combType (Pair A1 A2)) -> timed (combType A2) :=
+  @lift (Pair A1 A2) A2 (@snd (combType A1) (combType A2)).
+
+Definition zip{A1 A2}(x: timed (combType A1))(y: timed (combType A2)): timed (combType (Pair A1 A2)) :=
+  fun t => (x t, y t).
+
+(* Take a pair input and apply f to just the first element. *)
+Definition fsT{A1 A2 B}(f: timed (combType A1) -> timed (combType A2))
+           (ab: timed (combType (Pair A1 B))): timed (combType (Pair A2 B)) :=
+  zip (f (proj_fst ab)) (proj_snd ab).
+
+(* Take a pair input and apply f to just the second element. *)
+Definition snD{A B1 B2}(f: timed (combType B1) -> timed (combType B2))
+           (ab: timed (combType (Pair A B1))): timed (combType (Pair A B2)) :=
+  zip (proj_fst ab) (f (proj_snd ab)).
+
+Definition adder(input: timed (combType (Pair Nat Nat))): timed (combType Nat) :=
+  p <- input;; add (fst p) (snd p).
+
+Eval cbv -[Nat.add fst snd] in adder.
 
 Definition const(A: SignalType)(v: combType A): combType A := v.
 
@@ -266,6 +288,7 @@ Lemma compose_delaysAtLeast{A B C}(f: timed A -> timed B)(g: timed B -> timed C)
 Proof.
   unfold compose, delaysAtLeast. intros. rewrite Nat.add_assoc. eauto.
 Qed.
+#[export] Hint Resolve compose_delaysAtLeast : delaysAtLeast.
 
 Lemma weaken_delaysAtLeast{A B}(f: timed A -> timed B)(d1 d2: nat):
   delaysAtLeast f d2 ->
@@ -276,11 +299,65 @@ Proof.
   eapply weaken_equalUpTo. 2: eauto. lia.
 Qed.
 
+Lemma fork2_delaysAtLeast{A B}(f: timed (combType A) -> timed (combType B))(d: nat):
+  delaysAtLeast f d ->
+  delaysAtLeast (fork2 f) d.
+Proof.
+  unfold fork2, delaysAtLeast, equalUpTo. intros.
+  erewrite H. 1: reflexivity. all: eassumption.
+Qed.
+#[export] Hint Resolve fork2_delaysAtLeast : delaysAtLeast.
+
+Lemma delayWithInit_delaysAtLeast{A}(init: combType A): delaysAtLeast (delayWithInit init) 1.
+Proof.
+  unfold delaysAtLeast, delayWithInit, equalUpTo. intros.
+  destruct u. 1: reflexivity. apply H. lia.
+Qed.
+#[export] Hint Resolve delayWithInit_delaysAtLeast : delaysAtLeast.
+
+Lemma fstT_delaysAtLeast{A1 A2 B}(f : timed (combType A1) -> timed (combType A2))(d: nat):
+  delaysAtLeast f d ->
+  delaysAtLeast (fsT (B := B) f) 0.
+Proof.
+  unfold delaysAtLeast, fsT, equalUpTo, zip, proj_fst, proj_snd, lift. intros.
+  f_equal. 2: {
+    erewrite H0 by lia. reflexivity.
+  }
+  eapply H with (t := t). 2: lia.
+  intros. f_equal. eauto.
+Qed.
+#[export] Hint Resolve fstT_delaysAtLeast : delaysAtLeast.
+
+Lemma adder_delaysAtLeast: delaysAtLeast adder 0.
+Proof.
+  unfold adder. cbv -[Nat.add fst snd]. intros. rewrite Nat.add_0_r in H0. f_equal; f_equal; eauto.
+Qed.
+#[export] Hint Resolve adder_delaysAtLeast : delaysAtLeast.
+
+(* Computing a lower bound for the delay of a circuit can be completely automated with
+   an eauto database containing a hint for each component that might occur in the circuit *)
 Lemma fib_body_delaysAtLeast: delaysAtLeast fib_body 1.
 Proof.
-  unfold fib_body.
-  eapply weaken_delaysAtLeast. {
-    match goal with
-    | |- delaysAtLeast (?f >> ?g) _ => eapply (compose_delaysAtLeast f g)
-    end.
-    (* requires changing signature of fork2 *)
+  unfold fib_body. eapply weaken_delaysAtLeast. 1: eauto with delaysAtLeast. lia.
+Qed.
+
+Lemma fib_fix: loop fib_body = fib_body (loop fib_body).
+Proof.
+  unfold fib. eapply loop_fix. 2: eapply fib_body_delaysAtLeast. lia.
+Qed.
+
+Theorem fib_correct: fib = fib_spec.
+Proof.
+  eapply equalUpTo_eq.
+  unfold equalUpTo.
+  induction t; intros.
+  - exfalso. lia.
+  - destruct u as [|u]. 1: reflexivity.
+    unfold fib. rewrite fib_fix. fold fib.
+    simpl.
+    destruct u as [|u]. 1: reflexivity.
+    do 2 rewrite <- IHt by lia.
+    cbn -[fib].
+    (* the fact that the result of cbn perfectly lines up with the RHS involves some luck... *)
+    reflexivity.
+Qed.
