@@ -34,11 +34,11 @@ Local Open Scope Z_scope.
 Section Proofs.
   Context {p : AesSemantics.parameters} {p_ok : parameters.ok p}
           {consts : aes_constants Z} {timing : timing}.
-  Context {consts_ok : aes_constants_ok constant_words}.
-  Existing Instance constant_words.
+  Context {consts_ok : aes_constants_ok consts}.
   Existing Instance state_machine_parameters.
+  Existing Instance constant_literals.
 
-  Instance spec_of_aes_encrypt : spec_of aes_encrypt :=
+  Instance spec_of_aes_encrypt : spec_of "b2_aes_encrypt" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R
         (plaintext_ptr key_ptr iv_ptr ciphertext_ptr : Semantics.word)
@@ -69,17 +69,8 @@ Section Proofs.
               (key0, key1, key2, key3, key4, key5, key6, key7)
               (iv0, iv1, iv2, iv3)
               (plaintext0, plaintext1, plaintext2, plaintext3) in
-        let args :=
-            [AES_CTRL; AES_CTRL_OPERATION;
-            AES_CTRL_MODE_MASK; AES_CTRL_MODE_OFFSET; AES_CTRL_KEY_LEN_MASK;
-            AES_CTRL_KEY_LEN_OFFSET; AES_CTRL_MANUAL_OPERATION; kAesEnc; kAesEcb;
-            AES_KEY0; AES_NUM_REGS_KEY; kAes256; kAes192;
-            AES_IV0; AES_NUM_REGS_IV;
-            AES_DATA_IN0; AES_NUM_REGS_DATA;
-            AES_STATUS; AES_STATUS_INPUT_READY;
-            AES_DATA_OUT0; AES_STATUS_OUTPUT_VALID;
-            plaintext_ptr; key_ptr; iv_ptr; ciphertext_ptr] in
-        call function_env aes_encrypt tr m args
+        call function_env aes_encrypt tr m
+             [plaintext_ptr; key_ptr; iv_ptr; ciphertext_ptr]
              (fun tr' m' rets =>
                 let '(out0, out1, out2, out3) := expected_output in
                 (* the circuit is back in the IDLE state *)
@@ -96,7 +87,7 @@ Section Proofs.
 
   Local Ltac precondition_hammer :=
     lazymatch goal with
-    | |- enum_member ?e _ => cbv [enum_member]; cbn [In]; tauto
+    | |- enum_member ?e _ => cbv [enum_member]; try apply in_map; cbn [In]; tauto
     | |- boolean _ => cbv [boolean]; tauto
     | |- execution _ _ => eassumption
     | |- output_matches_state _ _ => reflexivity
@@ -107,14 +98,12 @@ Section Proofs.
   Lemma aes_encrypt_correct :
     program_logic_goal_for_function! aes_encrypt.
   Proof.
-
     (* initial processing *)
     repeat straightline.
     destruct_lists_by_length.
 
     (* call aes_init *)
     straightline_call; precondition_hammer; [ ].
-    change AES_CTRL with (reg_addr CTRL) in *.
     repeat straightline.
 
     (* call aes_key_put *)
@@ -122,7 +111,7 @@ Section Proofs.
     { (* prove key array has the correct length *)
       pose proof (enum_unique aes_key_len) as Hunique.
       simplify_unique_words_in Hunique.
-      cbn [constant_words kAes256 kAes128 kAes192].
+      cbn [kAes256 kAes128 kAes192].
       change Semantics.width with 32.
       change Semantics.word with parameters.word.
       repeat destruct_one_match; subst; try congruence; [ ].
@@ -175,7 +164,7 @@ Section Proofs.
     lazymatch goal with
     | H : ctrl_operation _ = _ |- _ =>
       cbv [ctrl_operation] in H;
-        cbn [AES_CTRL_OPERATION constant_words] in H;
+        cbn [AES_CTRL_OPERATION] in H;
         rewrite H
     end.
     rewrite word.unsigned_eqb.

@@ -154,7 +154,7 @@ Section MMIO1.
   }.
 
   Section CompilationTest.
-    Definition magicMMIOAddrLit: Z := Ox"10024000".
+    Definition magicMMIOAddrLit: Z := 0x10024000.
     Variable addr: Z.
     Variable i: Z.
     Variable s: Z.

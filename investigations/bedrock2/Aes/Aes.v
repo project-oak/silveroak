@@ -15,8 +15,10 @@ Local Open Scope Z_scope.
 Local Open Scope list_scope.
 
 Section Impl.
-  Local Existing Instance constant_names.
-  Local Existing Instance constant_vars.
+  (* instantiated to `expr.literal SOME_Z_CONST` for proving and
+     compilation using the bedrock2 compiler, instantiated to
+     `expr.var STRING_NAME_OF_CONST` for pretty-printing to C code *)
+  Context {constant_vars : aes_constants expr}.
 
   (* Notations for small constants *)
   Local Notation "0" := (expr.literal 0) (in custom bedrock_expr).
@@ -46,14 +48,10 @@ Section Impl.
     let aes_cfg_manual_operation := "aes_cfg_manual_operation" in
     let cfg_val := "cfg_val" in
     ("b2_aes_init",
-     ([AES_CTRL; AES_CTRL_OPERATION;
-      AES_CTRL_MODE_MASK; AES_CTRL_MODE_OFFSET;
-      AES_CTRL_KEY_LEN_MASK; AES_CTRL_KEY_LEN_OFFSET;
-      AES_CTRL_MANUAL_OPERATION;
-      aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
+     ([aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
       aes_cfg_manual_operation],
       [], bedrock_func_body:(
-      output! WRITE (AES_CTRL,
+      output! WRITE (AES_CTRL0,
                      ((aes_cfg_operation << AES_CTRL_OPERATION) |
                       ((aes_cfg_mode & AES_CTRL_MODE_MASK)
                          << AES_CTRL_MODE_OFFSET) |
@@ -91,7 +89,7 @@ Section Impl.
     let num_regs_key_used := "num_regs_key_used" in
     let i := "i" in
     ("b2_key_put",
-     ([AES_KEY0; AES_NUM_REGS_KEY; kAes256; kAes192; key; key_len],
+     ([key; key_len],
       [], bedrock_func_body:(
       if (key_len == kAes256) {
         num_regs_key_used = 8
@@ -105,13 +103,13 @@ Section Impl.
 
       i = 0 ;
       while (i < num_regs_key_used) {
-        output! WRITE (AES_KEY0 + (i * 4), load4(key + (i * 4)));
+        output! WRITE (AES_KEY00 + (i * 4), load4(key + (i * 4)));
         i = i + 1
       };
 
       i = num_regs_key_used ;
       while (i < AES_NUM_REGS_KEY) {
-        output! WRITE (AES_KEY0 + (i * 4), 0);
+        output! WRITE (AES_KEY00 + (i * 4), 0);
         i = i + 1
       }
     ))).
@@ -128,10 +126,10 @@ Section Impl.
     let iv := "iv" in
     let i := "i" in
     ("b2_iv_put",
-     ([AES_IV0; AES_NUM_REGS_IV; iv], [], bedrock_func_body:(
+     ([iv], [], bedrock_func_body:(
       i = 0 ;
       while (i < AES_NUM_REGS_IV) {
-        output! WRITE (AES_IV0 + (i * 4), load4( iv + (i * 4) ));
+        output! WRITE (AES_IV00 + (i * 4), load4( iv + (i * 4) ));
         i = i + 1
       }
     ))).
@@ -148,11 +146,11 @@ Section Impl.
     let data := "data" in
     let i := "i" in
     ("b2_data_put",
-     ([AES_DATA_IN0; AES_NUM_REGS_DATA; data], [],
+     ([data], [],
       bedrock_func_body:(
       i = 0 ;
       while (i < AES_NUM_REGS_DATA) {
-        output! WRITE (AES_DATA_IN0 + (i * 4), load4( data + (i * 4) ));
+        output! WRITE (AES_DATA_IN00 + (i * 4), load4( data + (i * 4) ));
         i = i + 1
       }
     ))).
@@ -170,11 +168,11 @@ Section Impl.
     let val := "val" in
     let i := "i" in
     ("b2_data_get",
-     ([AES_DATA_OUT0; AES_NUM_REGS_DATA; data], [],
+     ([data], [],
       bedrock_func_body:(
       i = 0 ;
       while (i < AES_NUM_REGS_DATA) {
-        io! val = READ ( AES_DATA_OUT0 + (i * 4) ) ;
+        io! val = READ ( AES_DATA_OUT00 + (i * 4) ) ;
         store4( data + (i * 4), val ) ; (* data[i] = val *)
         i = i + 1
       }
@@ -189,9 +187,9 @@ Section Impl.
     let status := "status" in
     let out := "out" in
     ("b2_data_ready",
-     ([AES_STATUS; AES_STATUS_INPUT_READY], [out],
+     ([], [out],
       bedrock_func_body:(
-      io! status = READ (AES_STATUS) ;
+      io! status = READ (AES_STATUS0) ;
       out = status & (1 << AES_STATUS_INPUT_READY)
     ))).
 
@@ -204,9 +202,9 @@ Section Impl.
     let status := "status" in
     let out := "out" in
     ("b2_data_valid",
-     ([AES_STATUS; AES_STATUS_OUTPUT_VALID], [out],
+     ([], [out],
       bedrock_func_body:(
-      io! status = READ (AES_STATUS) ;
+      io! status = READ (AES_STATUS0) ;
       out = status & (1 << AES_STATUS_OUTPUT_VALID)
     ))).
 
@@ -219,9 +217,9 @@ Section Impl.
     let status := "status" in
     let out := "out" in
     ("b2_idle",
-     ([AES_STATUS; AES_STATUS_IDLE], [out],
+     ([], [out],
       bedrock_func_body:(
-      io! status = READ (AES_STATUS) ;
+      io! status = READ (AES_STATUS0) ;
       out = status & (1 << AES_STATUS_IDLE)
     ))).
 
@@ -239,15 +237,14 @@ Section Impl.
     let data := "data" in
     let is_ready := "is_ready" in
     ("b2_data_put_wait",
-     ([AES_DATA_IN0; AES_NUM_REGS_DATA;
-      AES_STATUS; AES_STATUS_INPUT_READY; data], [],
+     ([data], [],
       bedrock_func_body:(
       is_ready = 0 ;
       while (is_ready == 0) {
-        unpack! is_ready = aes_data_ready (AES_STATUS, AES_STATUS_INPUT_READY)
+        unpack! is_ready = aes_data_ready ()
       };
 
-      aes_data_put (AES_DATA_IN0, AES_NUM_REGS_DATA, data)
+      aes_data_put (data)
     ))).
 
   (**** aes.c
@@ -265,14 +262,13 @@ Section Impl.
     let data := "data" in
     let is_valid := "is_valid" in
     ("b2_data_get_wait",
-     ([AES_DATA_OUT0; AES_NUM_REGS_DATA;
-      AES_STATUS; AES_STATUS_OUTPUT_VALID; data], [],
+     ([data], [],
       bedrock_func_body:(
       is_valid = 0 ;
       while (is_valid == 0) {
-        unpack! is_valid = aes_data_valid (AES_STATUS, AES_STATUS_OUTPUT_VALID)
+        unpack! is_valid = aes_data_valid ()
       };
 
-      aes_data_get (AES_DATA_OUT0, AES_NUM_REGS_DATA, data)
+      aes_data_get (data)
     ))).
 End Impl.

@@ -28,10 +28,10 @@ Existing Instances constant_words spec_of_put_wait_get.
 Instance consts_ok : constants_ok (constant_words (word_ok:=parameters.word_ok)).
 Proof.
   constructor.
-  { reflexivity. }
+  { eapply dedup_NoDup_iff. reflexivity. }
   { repeat constructor. }
   { repeat constructor. }
-  { reflexivity. }
+  { eapply dedup_NoDup_iff. reflexivity. }
   { repeat constructor. }
 Qed.
 
