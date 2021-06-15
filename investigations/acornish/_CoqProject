@@ -1,0 +1,9 @@
+INSTALLDEFAULTROOT = ./
+-R ../../third_party/coq-ext-lib/theories ExtLib
+-R ../../cava/Cava Cava
+-R . Acornish
+
+AcornEffMonad.v
+AcornEffMonad2.v
+EffMonad.v
+ListUtils.v
