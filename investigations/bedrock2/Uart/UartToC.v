@@ -115,17 +115,21 @@ Definition uart_c_template_top : list string :=
     ; "#include " ++ dquote ++ "hw/top_earlgrey/sw/autogen/top_earlgrey.h" ++ dquote
     ; "#include " ++ dquote ++ "uart_regs.h" ++ dquote ++ "  // Generated."
     ; ""
-    ; "// bedrock2 memory-access functions"
     ; "static inline uintptr_t _br2_load(uintptr_t a, size_t sz) {"
     ; "  uintptr_t r = 0;"
-    ; "  r = *((volatile uintptr_t *)a);"
-    ; "  //memcpy(&r, (void*)a, sz);"
+    ; "  memcpy(&r, (void*)a, sz);"
     ; "  return r;"
     ; "}"
     ; ""
-    ; "static inline void _br2_store(uintptr_t a, uintptr_t v, size_t sz) {"
+    ; "// bedrock2 memory-access functions"
+    ; "uintptr_t MMIOREAD(uintptr_t a) {"
+    ; "  uintptr_t r = 0;"
+    ; "  r = *((volatile uintptr_t *)a);"
+    ; "  return r;"
+    ; "}"
+    ; ""
+    ; "void MMIOWRITE(uintptr_t a, uintptr_t v) {"
     ; "  *((volatile uintptr_t *) a) = v;"
-    ; "  //memcpy((void*)a, &v, sz);"
     ; "}"].
 
 Definition uart_c_template_bottom : list string :=
@@ -150,8 +154,6 @@ Definition funcs := [
   ;bitfield_field32_read
   ;bitfield_bit32_read
   ;bitfield_bit32_write
-  ;abs_mmio_write32
-  ;abs_mmio_read32
   ;uart_reset
   ;uart_init
   ;uart_tx_full

@@ -6,6 +6,7 @@ Require Import bedrock2.Syntax.
 Require Import bedrock2.NotationsCustomEntry.
 Require Import bedrock2.ToCString.
 Require Import coqutil.Word.Interface.
+Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.Uart.Constants.
 Require Import Bedrock2Experiments.LibBase.AbsMMIO.
 Require Import Bedrock2Experiments.LibBase.Bitfield.
@@ -55,7 +56,7 @@ Section Impl.
     UART_INTR_STATE_REG_OFFSET], [],
     bedrock_func_body:(
       temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET;
-      abs_mmio_write32(temp, 0);
+      WRITE(temp, 0);
 
       reg = 0;
       temp = UART_FIFO_CTRL_RXRST_BIT;
@@ -63,17 +64,17 @@ Section Impl.
       temp = UART_FIFO_CTRL_TXRST_BIT;
       unpack! reg = bitfield_bit32_write(reg, temp, 1);
       temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_FIFO_CTRL_REG_OFFSET;
-      abs_mmio_write32(temp, reg);
+      WRITE(temp, reg);
 
       temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_OVRD_REG_OFFSET;
-      abs_mmio_write32(temp, 0);
+      WRITE(temp, 0);
       temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_TIMEOUT_CTRL_REG_OFFSET;
-      abs_mmio_write32(temp, 0);
+      WRITE(temp, 0);
       temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_INTR_ENABLE_REG_OFFSET;
-      abs_mmio_write32(temp, 0);
+      WRITE(temp, 0);
       (* -1 instead of UINT32_MAX *)
       temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_INTR_STATE_REG_OFFSET;
-      abs_mmio_write32(temp, -1)
+      WRITE(temp, -1)
     ))).
 
   (****
@@ -129,9 +130,9 @@ Section Impl.
           temp1 = UART_CTRL_PARITY_EN_BIT;
           unpack! reg = bitfield_bit32_write(reg, temp1, 0);
           temp1 = TOP_EARLGREY_UART0_BASE_ADDR + UART_CTRL_REG_OFFSET;
-          abs_mmio_write32(temp1, reg);
+          WRITE(temp1, reg);
           temp1 = TOP_EARLGREY_UART0_BASE_ADDR + UART_INTR_ENABLE_REG_OFFSET;
-          abs_mmio_write32(temp1, 0);
+          WRITE(temp1, 0);
           out = kErrorOk
         } else {
           out = kErrorUartInvalidArgument
@@ -154,7 +155,7 @@ Section Impl.
     UART_STATUS_TXFULL_BIT], [out],
     bedrock_func_body:(
       temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET;
-      unpack! reg = abs_mmio_read32(temp);
+      unpack! reg = READ(temp);
       temp = UART_STATUS_TXFULL_BIT;
       unpack! out = bitfield_bit32_read(reg, temp)
     ))).
@@ -174,7 +175,7 @@ Section Impl.
     UART_STATUS_TXIDLE_BIT], [out],
     bedrock_func_body:(
       temp = TOP_EARLGREY_UART0_BASE_ADDR + UART_STATUS_REG_OFFSET;
-      unpack! reg = abs_mmio_read32(temp);
+      unpack! reg = READ(temp);
       temp = UART_STATUS_TXIDLE_BIT;
       unpack! out = bitfield_bit32_read(reg, temp)
     ))).
@@ -212,7 +213,7 @@ Section Impl.
       temp2 = UART_WDATA_WDATA_OFFSET;
       unpack! reg = bitfield_field32_write(0, temp1, temp2, byte);
       temp1 = TOP_EARLGREY_UART0_BASE_ADDR + UART_WDATA_REG_OFFSET;
-      abs_mmio_write32(temp1, reg);
+      WRITE(temp1, reg);
       unpack! cond = uart_tx_idle(TOP_EARLGREY_UART0_BASE_ADDR, UART_STATUS_REG_OFFSET,
                                   UART_STATUS_TXIDLE_BIT);
       while (cond == 0) {
