@@ -86,4 +86,10 @@ Definition make_uart_c :=
   concat LF (map (fun f => "static " ++ c_func_with_globals uart_globals f) funcs) ++
   uart_c_template_bottom.
 
-Redirect "uart.c" Compute make_uart_c.
+Require Import bedrock2.Bytedump.
+Local Open Scope bytedump_scope.
+Goal True.
+  (* Note: run using make/coqc to avoid IDE bugs causing missing newlines or spurious <infomsg>*)
+  Redirect "uart.c"
+    let c_code := eval compute in (byte_list_of_string make_uart_c) in idtac c_code.
+Abort.

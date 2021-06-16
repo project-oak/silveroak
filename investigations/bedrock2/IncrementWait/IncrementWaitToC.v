@@ -11,5 +11,10 @@ Local Open Scope Z_scope.
 
 Existing Instance constant_names.
 
-Definition funcs := [put_wait_get].
-Redirect "incrementwait.c" Compute c_module funcs.
+Require Import bedrock2.Bytedump.
+Local Open Scope bytedump_scope.
+Goal True.
+  (* Note: run using make/coqc to avoid IDE bugs causing missing newlines or spurious <infomsg>*)
+  Redirect "incrementwait.c"
+    let c_code := eval compute in (byte_list_of_string (c_module [put_wait_get])) in idtac c_code.
+Abort.
