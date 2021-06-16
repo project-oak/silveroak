@@ -35,9 +35,8 @@ Notation parameters := parameters.parameters.
 Section WithParameters.
   Import parameters.
   Context {p : parameters} {p_ok : parameters.ok p}.
-  Context {consts : uart_constants word.rep} {consts_ok : uart_constants_ok consts}
+  Context {consts : uart_constants Z} {consts_ok : uart_constants_ok consts}
           {circuit_spec : circuit_behavior}.
 
-Existing Instance constant_words.
 
 End WithParameters.
