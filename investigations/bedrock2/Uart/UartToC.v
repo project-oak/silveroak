@@ -70,8 +70,6 @@ Definition funcs := [
   ;bitfield_field32_read
   ;bitfield_bit32_read
   ;bitfield_bit32_write
-  ;abs_mmio_write32
-  ;abs_mmio_read32
   ;uart_reset
   ;uart_init
   ;uart_tx_full

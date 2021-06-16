@@ -12,6 +12,10 @@ Local Open Scope string_scope.
 Local Open Scope Z_scope.
 Local Open Scope list_scope.
 
+(* Note: these functions are *not* exported to C, because they only
+   contain one MMIO call, which is modeled differently in C and bedrock2:
+   In C, it's a volatile memory access, whereas in bedrock2, it's an
+   external call. *)
 Section Impl.
   (* Notations for small constants *)
   Local Notation "0" := (expr.literal 0) (in custom bedrock_expr).
@@ -27,7 +31,7 @@ Section Impl.
   Definition abs_mmio_write8 : func :=
     let addr := "addr" in
     let value := "value" in
-    ("b2_abs_mmio_write8", ([addr; value],[],
+    ("abs_mmio_write8", ([addr; value],[],
     bedrock_func_body:(
       output! WRITE8 (addr, value)
     ))).
@@ -40,7 +44,7 @@ Section Impl.
   Definition abs_mmio_read8 : func :=
     let addr := "addr" in
     let out := "out" in
-    ("b2_abs_mmio_read8", ([addr],[out],
+    ("abs_mmio_read8", ([addr],[out],
     bedrock_func_body:(
       io! out = READ8 (addr)
     ))).
@@ -53,7 +57,7 @@ Section Impl.
   Definition abs_mmio_write32 : func :=
     let addr := "addr" in
     let value := "value" in
-    ("b2_abs_mmio_write32", ([addr; value],[],
+    ("abs_mmio_write32", ([addr; value],[],
     bedrock_func_body:(
       output! WRITE32 (addr, value)
     ))).
@@ -66,7 +70,7 @@ Section Impl.
   Definition abs_mmio_read32 : func :=
     let addr := "addr" in
     let out := "out" in
-    ("b2_abs_mmio_read32", ([addr],[out],
+    ("abs_mmio_read32", ([addr],[out],
     bedrock_func_body:(
       io! out = READ32 (addr)
     ))).
