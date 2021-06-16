@@ -38,4 +38,89 @@ Section WithParameters.
   Context {consts : uart_constants Z} {consts_ok : uart_constants_ok consts}
           {circuit_spec : circuit_behavior}.
 
+  Add Ring wring : (Properties.word.ring_theory (word := parameters.word))
+        (preprocess [autorewrite with rew_word_morphism],
+         morphism (Properties.word.ring_morph (word := parameters.word)),
+         constants [Properties.word_cst]).
+
+  Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
+  Local Notation bedrock2_trace := (list bedrock2_event).
+
+  Inductive Register : Set :=
+  | INTR_STATE
+  | INTR_ENABLE
+  | INTR_TEST
+  | CTRL
+  | STATUS
+  | RDATA
+  | WDATA
+  | FIFO_CTRL
+  | FIFO_STATUS
+  | OVRD
+  | VAL
+  | TIMEOUT_CTRL
+  .
+
+  Definition all_regs : list Register :=
+    [ INTR_STATE ; INTR_ENABLE ; INTR_TEST
+      ; CTRL ; STATUS ; RDATA ; WDATA ; FIFO_CTRL ; FIFO_STATUS
+      ; OVRD ; VAL ; TIMEOUT_CTRL ].
+
+  Lemma all_regs_complete r : In r all_regs.
+  Proof. cbv [all_regs In]. destruct r; tauto. Qed.
+
+  Definition reg_addr (r : Register) : word :=
+    let base := TOP_EARLGREY_UART0_BASE_ADDR in
+    match r with
+    | INTR_STATE => word.of_Z (base + UART_INTR_STATE_REG_OFFSET)
+    | INTR_ENABLE => word.of_Z (base + UART_INTR_ENABLE_REG_OFFSET)
+    | INTR_TEST => word.of_Z (base + UART_INTR_TEST_REG_OFFSET)
+    | CTRL => word.of_Z (base + UART_CTRL_REG_OFFSET)
+    | STATUS => word.of_Z (base + UART_STATUS_REG_OFFSET)
+    | RDATA => word.of_Z (base + UART_RDATA_REG_OFFSET)
+    | WDATA => word.of_Z (base + UART_WDATA_REG_OFFSET)
+    | FIFO_CTRL => word.of_Z (base + UART_FIFO_CTRL_REG_OFFSET)
+    | FIFO_STATUS => word.of_Z (base + UART_FIFO_STATUS_REG_OFFSET)
+    | OVRD => word.of_Z (base + UART_OVRD_REG_OFFSET)
+    | VAL => word.of_Z (base + UART_VAL_REG_OFFSET)
+    | TIMEOUT_CTRL => word.of_Z (base + UART_TIMEOUT_CTRL_REG_OFFSET)
+    end.
+
+  Lemma uart_reg_addrs_eq : uart_reg_addrs = map reg_addr all_regs.
+  Proof.
+    cbv [uart_reg_addrs]. simpl. repeat (f_equal; try ring).
+  Qed.
+
+  Lemma reg_addr_unique r1 r2 :
+    reg_addr r1 = reg_addr r2 -> r1 = r2.
+  Proof.
+    assert (NoDup (map reg_addr all_regs)) as N. {
+      rewrite <- uart_reg_addrs_eq.
+      apply addrs_unique.
+    }
+    eapply FinFun.Injective_carac.
+    - unfold FinFun.Listing. split.
+      + eapply NoDup_map_inv. exact N.
+      + unfold FinFun.Full. eapply all_regs_complete.
+    - exact N.
+  Qed.
+
+  Lemma reg_addr_aligned r : word.unsigned (reg_addr r) mod 4 = 0.
+  Proof.
+    pose proof addrs_aligned as Haligned.
+    rewrite uart_reg_addrs_eq in Haligned.
+    rewrite Forall_forall in Haligned.
+    apply Haligned. apply in_map_iff.
+    eexists; eauto using all_regs_complete.
+  Qed.
+
+  Lemma reg_addr_small r : word.unsigned (reg_addr r) + 4 <= 2 ^ 32.
+  Proof.
+    pose proof addrs_small as Hsmall.
+    rewrite uart_reg_addrs_eq in Hsmall.
+    rewrite Forall_forall in Hsmall.
+    apply Hsmall. apply in_map_iff.
+    eexists; eauto using all_regs_complete.
+  Qed.
+
 End WithParameters.

@@ -32,6 +32,7 @@ Class uart_constants T :=
     UART_TIMEOUT_CTRL_REG_OFFSET  : T;
     UART_INTR_ENABLE_REG_OFFSET   : T;
     UART_INTR_STATE_REG_OFFSET    : T;
+    UART_INTR_TEST_REG_OFFSET     : T;
     UART_STATUS_REG_OFFSET        : T;
     UART_STATUS_TXFULL_BIT        : T;
     UART_STATUS_TXIDLE_BIT        : T;
@@ -39,6 +40,9 @@ Class uart_constants T :=
     UART_WDATA_WDATA_OFFSET       : T;
     UART_WDATA_WDATA_FIELD        : T;
     UART_WDATA_REG_OFFSET         : T;
+    UART_RDATA_REG_OFFSET         : T;
+    UART_VAL_REG_OFFSET           : T;
+    UART_FIFO_STATUS_REG_OFFSET   : T;
 
     (* sw/device/silicon_creator/lib/drivers/uart.c *)
     NCO_WIDTH                    : T;
@@ -82,10 +86,21 @@ Defined.
 Definition uart_reg_addrs {width} {word : word.word width}
            {global_values : uart_constants Z}
   : list word :=
-  map (fun var => word.of_Z var) (UART_CTRL_REG_OFFSET :: UART_STATUS_REG_OFFSET ::
-  UART_FIFO_CTRL_REG_OFFSET :: UART_INTR_ENABLE_REG_OFFSET ::
-  UART_INTR_STATE_REG_OFFSET :: UART_WDATA_REG_OFFSET ::
-  UART_OVRD_REG_OFFSET :: UART_TIMEOUT_CTRL_REG_OFFSET :: nil).
+  let base := TOP_EARLGREY_UART0_BASE_ADDR in
+  map (fun var => word.of_Z (base + var)) [
+    UART_INTR_STATE_REG_OFFSET
+    ; UART_INTR_ENABLE_REG_OFFSET
+    ; UART_INTR_TEST_REG_OFFSET
+    ; UART_CTRL_REG_OFFSET
+    ; UART_STATUS_REG_OFFSET
+    ; UART_RDATA_REG_OFFSET
+    ; UART_WDATA_REG_OFFSET
+    ; UART_FIFO_CTRL_REG_OFFSET
+    ; UART_FIFO_STATUS_REG_OFFSET
+    ; UART_OVRD_REG_OFFSET
+    ; UART_VAL_REG_OFFSET
+    ; UART_TIMEOUT_CTRL_REG_OFFSET
+  ].
 
 (* see https://github.com/mit-plv/bedrock2/pull/180 *)
 #[export] Hint Mode word.word - : typeclass_instances.
@@ -96,6 +111,8 @@ Class uart_constants_ok
       (global_values : uart_constants Z) :=
   { addrs_unique : NoDup uart_reg_addrs;
     addrs_aligned : Forall (fun addr => word.unsigned addr mod 4 = 0) uart_reg_addrs;
+    addrs_small : Forall (fun addr => word.unsigned addr + 4 <= 2 ^ width) uart_reg_addrs;
+
     status_flags_unique_and_nonzero :
       NoDup
         ((word.of_Z 0)
