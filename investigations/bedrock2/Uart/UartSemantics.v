@@ -38,5 +38,4 @@ Section WithParameters.
   Context {consts : uart_constants Z} {consts_ok : uart_constants_ok consts}
           {circuit_spec : circuit_behavior}.
 
-
 End WithParameters.
