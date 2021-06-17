@@ -36,6 +36,10 @@ Class uart_constants T :=
     UART_STATUS_REG_OFFSET        : T;
     UART_STATUS_TXFULL_BIT        : T;
     UART_STATUS_TXIDLE_BIT        : T;
+    UART_STATUS_TXEMPTY_BIT       : T;
+    UART_STATUS_RXFULL_BIT        : T;
+    UART_STATUS_RXIDLE_BIT        : T;
+    UART_STATUS_RXEMPTY_BIT       : T;
     UART_WDATA_WDATA_MASK         : T;
     UART_WDATA_WDATA_OFFSET       : T;
     UART_WDATA_WDATA_FIELD        : T;
@@ -118,5 +122,9 @@ Class uart_constants_ok
         ((word.of_Z 0)
             :: (map (fun flag_position => word.slu (word.of_Z 1) (word.of_Z flag_position))
                 [UART_STATUS_TXFULL_BIT
-                ; UART_STATUS_TXIDLE_BIT]));
+                ; UART_STATUS_RXFULL_BIT
+                ; UART_STATUS_TXEMPTY_BIT
+                ; UART_STATUS_TXIDLE_BIT
+                ; UART_STATUS_RXIDLE_BIT
+                ; UART_STATUS_RXEMPTY_BIT]));
   }.

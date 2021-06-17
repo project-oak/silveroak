@@ -123,4 +123,67 @@ Section WithParameters.
     eexists; eauto using all_regs_complete.
   Qed.
 
+  Inductive state : Type :=
+  | UNINITIALIZED
+  | AVAILABLE (txlvl : Z) (rxlvl : Z).
+
+  Definition status_matches_state (s : state) (status : word) : bool :=
+    match s with
+    | UNINITIALIZED =>
+      (negb (is_flag_set status UART_STATUS_TXFULL_BIT)
+       && negb (is_flag_set status UART_STATUS_RXFULL_BIT)
+       && negb (is_flag_set status UART_STATUS_TXEMPTY_BIT)
+       && negb (is_flag_set status UART_STATUS_TXIDLE_BIT)
+       && negb (is_flag_set status UART_STATUS_RXIDLE_BIT)
+       && negb (is_flag_set status UART_STATUS_RXEMPTY_BIT))
+    | AVAILABLE t r =>
+      if Z.eqb t 0 then
+        is_flag_set status UART_STATUS_TXEMPTY_BIT &&
+        is_flag_set status UART_STATUS_TXIDLE_BIT &&
+        negb (is_flag_set status UART_STATUS_TXFULL_BIT)
+      else if Z.eqb t 32  then
+        is_flag_set status UART_STATUS_TXFULL_BIT &&
+        negb (is_flag_set status UART_STATUS_TXIDLE_BIT) &&
+        negb (is_flag_set status UART_STATUS_TXEMPTY_BIT)
+      else
+        negb (is_flag_set status UART_STATUS_TXFULL_BIT) &&
+        is_flag_set status UART_STATUS_TXIDLE_BIT &&
+        negb (is_flag_set status UART_STATUS_TXEMPTY_BIT)
+    end.
+
+  Definition read_step
+    (s : state) (r : Register) (val : word) (s' : state) : Prop :=
+    match s with
+    | _ => 1 = 1 (* placeholder *)
+    end.
+
+  Definition write_step
+    (s : state) (r : Register) (val : word) (s' : state) : Prop :=
+    match s with
+    | _ => 1 = 1 (* placeholder *)
+    end.
+
+  Global Instance state_machine_parameters
+    : StateMachineSemantics.parameters 32 word mem :=
+    {| StateMachineSemantics.parameters.state := state ;
+       StateMachineSemantics.parameters.register := Register ;
+       StateMachineSemantics.parameters.initial_state := UNINITIALIZED ;
+       StateMachineSemantics.parameters.read_step := read_step ;
+       StateMachineSemantics.parameters.write_step := write_step ;
+       StateMachineSemantics.parameters.reg_addr := reg_addr ;
+       StateMachineSemantics.parameters.all_regs := all_regs;
+    |}.
+  Global Instance state_machine_parameters_ok
+    : StateMachineSemantics.parameters.ok state_machine_parameters.
+  Proof.
+    constructor.
+    { left; exact eq_refl. }
+    { exact word_ok. }
+    { exact mem_ok. }
+    { exact reg_addr_unique. }
+    { exact all_regs_complete. }
+    { exact reg_addr_aligned. }
+    { exact reg_addr_small. }
+  Defined.
+
 End WithParameters.
