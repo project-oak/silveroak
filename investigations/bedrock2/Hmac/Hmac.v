@@ -107,6 +107,10 @@ rom_error_t hmac_sha256_update(const void *data, size_t len) {
   return kErrorOk;
 }
 *)
+(* Note: only works if x is 0 or 1! *)
+Local Notation "'NOT' ( x ) " := (expr.op bopname.sub 1 x)
+  (x custom bedrock_expr, in custom bedrock_expr at level 0).
+
 Definition b2_hmac_sha256_update: func :=
   let data := "data" in
   let len := "len" in
@@ -121,7 +125,8 @@ Definition b2_hmac_sha256_update: func :=
        data_sent = data;
 
        (* Individual byte writes are needed if the buffer isn't word aligned. *)
-       while (len & data_sent & 3) {
+       (* TODO support for negation and != *)
+       while (NOT(len == 0) & NOT((data_sent & 3) == 0)) {
          abs_mmio_write8(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_MSG_FIFO_REG_OFFSET, load1(data_sent));
          data_sent = data_sent + 1;
          len = len - 1
@@ -190,7 +195,7 @@ Definition b2_hmac_sha256_final: func :=
        abs_mmio_write32(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET, reg);
 
        done = 0;
-       while (done ^ done) { (* <-- TODO support boolean negation *)
+       while (NOT(done)) { (* <-- TODO support boolean negation *)
          unpack! reg = abs_mmio_read32(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET);
          unpack! done = bitfield_bit32_read(reg, HMAC_INTR_STATE_HMAC_DONE_BIT)
        };
