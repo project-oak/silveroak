@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* Single monad structure, loop with fused delay *)
+(* Operational monad style *)
 
 Require Import Coq.Lists.List.
 Require Import Coq.ZArith.ZArith.
@@ -38,41 +38,74 @@ Class Acorn acorn `{EffMonad (list SignalType) Monoid_list_app acorn} (signal : 
   addMod : nat -> signal Nat * signal Nat -> acorn [] (signal Nat);
   natDelay : signal Nat -> acorn [Nat] (signal Nat);
   loop : forall {s}, (signal Nat * signal Nat -> acorn s (signal Nat * signal Nat)) ->
-         signal Nat -> acorn (Nat::s) (signal Nat);
+         signal Nat -> acorn s (signal Nat);
   constNat : nat -> acorn [] (signal Nat);
   comparator : signal Nat * signal Nat -> acorn [] (signal Bit);
   mux2 : signal Bit * (signal Nat * signal Nat) -> acorn [] (signal Nat);
 }.
 
-Definition step (s: list SignalType) T := denote_list denoteSignal s -> denote_list denoteSignal s*T.
+Inductive Spine: list SignalType -> Type -> Type :=
+  | Return : forall {t} (x : t), Spine [] t
+  | Delay : forall (reset : nat) (x : nat), Spine [Nat] nat
+  | Bind : forall {t u xs fs} (x : Spine xs t) (f : t -> Spine fs u),
+        Spine (xs ++ fs) u
+  | Loop : forall {fs} (x : nat) (f : nat*nat -> Spine fs (nat * nat)), Spine fs nat
+  .
 
-Instance step_eff_monad: EffMonad (x:=list SignalType) (eff:=Monoid_list_app) step :=
-{ ret _ x := fun _ => (tt, x)
-; bind _ _ _ _ x f := fun s =>
-  let '(sx,sf) := split_denotation _ s in
-  let '(nsx,x') := x sx in
-  let '(nsf,y) := (f x' sf) in
-  (combine_denotation _ nsx nsf, y)
+Instance spine_eff_monad: EffMonad (x:=list SignalType) (eff:=Monoid_list_app) Spine :=
+{ ret _ x := Return x
+; bind _ _ _ _ := Bind
 }.
 
-Instance AcornSimulation : Acorn step denoteSignal := {
-  inv i := fun _ => (tt, negb i);
-  and2 '(a, b) := fun _ => (tt, andb a b);
-  addMod modBy '(a, b) := fun _ => (tt, (a + b) mod modBy);
-  natDelay i := fun '(s, tt) => (i, tt, s);
-  loop s f i := fun '(s,s_inner) =>
-    let '(ns,(o,s')) := f (i,s) s_inner in
-    (s',ns,o);
-  constNat n := fun _ => (tt, n);
-  comparator '(a,b) := fun _ => (tt, b <=? a);
-  mux2 '(sel, (a, b)) := fun _ => (tt, if sel then a else b);
+Instance AcornSimulation : Acorn Spine denoteSignal := {
+  inv i := Return (negb i);
+  and2 '(a, b) := Return (andb a b);
+  addMod modBy '(a, b) := Return( (a + b) mod modBy);
+  natDelay i := Delay 0 (i);
+  loop _ f i := Loop i f;
+  constNat n := Return (n);
+  comparator '(a,b) := Return (b <=? a);
+  mux2 '(sel, (a, b)) := Return (if sel then a else b);
 }.
 
-Definition flipper {i o s} (f: i -> s -> s * o) x y := f y x.
+Definition power_fun{I O A S}(f: I*A -> O*A*S): nat -> I*A -> O*A*S :=
+  fix rec n :=
+    match n with
+    | O => f
+    | S n' =>
+      fun '(i,a) =>
+      let '(_, a', _) := rec n' (i,a) in
+      f (i,a')
+    end.
 
-(* Run a circuit for many timesteps, starting at the reset value *)
-Definition simulate {i o st} (c : i -> step st o) (input : list i) : list o :=
-  fold_left_accumulate (flipper c) input (resetVals st).
+Fixpoint step_with_gas {o ts} (gas: nat) (c : Spine ts o)
+  : denote_list denoteSignal ts -> o * denote_list denoteSignal ts :=
+  match c in Spine ts o
+  return denote_list denoteSignal ts -> o * denote_list denoteSignal ts
+  with
+  | Return x => fun _ => (x,tt)
+  | Bind x f =>
+    fun s =>
+      let '(s1,s2) := split_values s in
+      let '(y,s1') := step_with_gas gas x s1 in
+      let '(z,s2') := step_with_gas gas (f y) s2 in
+      (z, combine_values s1' s2')
+  | Delay resetval x => fun '(s,tt) => (s, (x, tt))
+  | Loop input f => fun s =>
+    let f' := fun '(i,a) => step_with_gas gas (f (i,a)) s in
+    let '(o,_,s) := power_fun f' gas (input, resetVal Nat) in
+    (o,s)
+  end.
+
+(* Is this actually useful? *)
+Definition circuit_converges {I ts O} (c: I -> Spine ts O) (N:nat):=
+  forall i state, exists converged, forall n, n >= N -> step_with_gas n (c i) state = converged.
+
+Definition simulate {i o st} n (c : i -> Spine st o) (input : list i) : list o :=
+  fold_left_accumulate (
+    fun state input =>
+    let '(o,s) := step_with_gas n (c input) state in (s,o)
+  ) input (resetVals st).
 
 Section WithAcorn.
   Context {acorn} {signal} `{Acorn acorn signal}.
@@ -104,31 +137,29 @@ Section WithAcorn.
     snD natDelay >=> addMod 256.
 
   Definition counter6 : signal Nat -> acorn _ (signal Nat) :=
-    (* loop (addMod 6 >=> natDelay >=> fork2). *)
-    loop (addMod 6 >=> fork2).
-
+    loop (addMod 6 >=> natDelay >=> fork2).
+  Print counter6.
   Definition nestedloop : signal Nat -> acorn _ (signal Nat) :=
-    loop (addMod 512 >=> loop (addMod 512 >=> fork2) >=> fork2).
-    (* loop (snD natDelay >=> addMod 512 >=> loop (addMod 512 >=> natDelay >=> fork2) >=> fork2). *)
+    loop (snD natDelay >=> addMod 512 >=> loop (addMod 512 >=> natDelay >=> fork2) >=> fork2).
 
 End WithAcorn.
 
 (* We can easily simulate circuits without loops, even if they contain delay elements. *)
-Compute (simulate circuit1 (combine [17; 78; 12] [42; 62; 5])).
+Compute (simulate 1 circuit1 (combine [17; 78; 12] [42; 62; 5])).
 (*
 	 = [17; 120; 74]
 *)
 
-Compute (simulate counter6 [1; 1; 1; 1; 1; 1] ).
+Compute (simulate 1 counter6 [1; 1; 1; 1; 1; 1] ).
 (*
-> = [1; 2; 3; 4; 5; 0]
+> = [0; 1; 2; 3; 4; 5]
 *)
-Compute (simulate counter6 [1; 2; 3; 4; 5; 6] ).
+Compute (simulate 1 counter6 [1; 2; 3; 4; 5; 6] ).
 (*
-> = [1; 3; 0; 4; 3; 3]
+> = [0; 1; 3; 0; 4; 3]
 *)
 
-Compute (simulate nestedloop [1; 1; 1; 1; 1; 1] ).
+Compute (simulate 1 nestedloop [1; 1; 1; 1; 1; 1] ).
 (*
-> = [1; 3; 7; 15; 31; 63]
+> = [0; 1; 2; 4; 7; 12]
 *)

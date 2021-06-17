@@ -5,5 +5,8 @@ INSTALLDEFAULTROOT = ./
 
 AcornEffMonad.v
 AcornEffMonad2.v
+AcornEffMonad3.v
+AcornEffMonad4.v
 EffMonad.v
 ListUtils.v
+Common.v

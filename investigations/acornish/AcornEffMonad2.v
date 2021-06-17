@@ -23,6 +23,7 @@ Require Import ExtLib.Data.List.
 
 Require Import Acornish.EffMonad.
 Require Import Acornish.ListUtils.
+Require Import Acornish.Common.
 
 Require Import Cava.Util.List.
 
@@ -30,10 +31,6 @@ Import ListNotations.
 Import EffMonadNotation.
 Local Open Scope eff_monad_scope.
 Local Open Scope type_scope.
-
-Inductive SignalType :=
-  | Bit : SignalType
-  | Nat : SignalType.
 
 Class Acorn acorn `{EffMonad (list SignalType) Monoid_list_app acorn} (signal : SignalType -> Type) := {
   inv : signal Bit -> acorn [] (signal Bit);
@@ -46,61 +43,6 @@ Class Acorn acorn `{EffMonad (list SignalType) Monoid_list_app acorn} (signal : 
   comparator : signal Nat * signal Nat -> acorn [] (signal Bit);
   mux2 : signal Bit * (signal Nat * signal Nat) -> acorn [] (signal Nat);
 }.
-
-Section WithAcorn.
-  Context {acorn} {signal} `{Acorn acorn signal}.
-
-  (* Take a wire and fork it into two branches. *)
-  Definition fork2 {t : SignalType}
-              (a : signal t) : acorn [] (signal t * signal t) :=
-    ret (a, a).
-
-  (* Take a pair input and apply the circuit r to just the first element. *)
-  Definition fsT {t1 t2 t3 : SignalType} {s}
-            (f : signal t1 -> acorn s (signal t3))
-            (ab : signal t1 * signal t2) : acorn _ (signal t3 * signal t2) :=
-    let (a, b) := ab in
-    o <- f a ;;
-    ret (o, b).
-
-  (* Take a pair input and apply the circuit r to just the second element. *)
-  Definition snD {t1 t2 t3 : SignalType} {s}
-            (f : signal t2 -> acorn s (signal t3))
-            (ab : signal t1 * signal t2) : acorn _ (signal t1 * signal t3) :=
-    let (a, b) := ab in
-    o <- f b ;;
-    ret (a, o).
-
-  (* A circuit which delays the second element of a pair and then performs
-     a 256-bit addition of the two values in the pair. *)
-  Definition circuit1 : signal Nat * signal Nat -> acorn _ (signal Nat) :=
-    snD natDelay >=> addMod 256.
-
-  Definition counter6 : signal Nat -> acorn _ (signal Nat) :=
-    loop (addMod 6 >=> natDelay >=> fork2).
-
-  Definition nestedloop : signal Nat -> acorn _ (signal Nat) :=
-    loop (snD natDelay >=> addMod 512 >=> loop (addMod 512 >=> natDelay >=> fork2) >=> fork2).
-
-End WithAcorn.
-
-Definition denoteSignal (t: SignalType) : Type :=
-  match t with
-  | Bit => bool
-  | Nat => nat
-  end.
-
-Definition resetVal (t: SignalType) : denoteSignal t :=
-  match t with
-  | Bit => false
-  | Nat => 0
-  end.
-
-Fixpoint resetVals (t: list SignalType) : denote_list denoteSignal t :=
-  match t with
-  | [] => tt
-  | x :: xs => (resetVal x, resetVals xs)
-  end.
 
 (* Inductive FixResult: Type -> Type := *)
 (* | Thunk : forall {a}, a -> FixResult a *)
@@ -180,6 +122,43 @@ Definition flipper {i o s} (f: i -> s -> nat -> s * o) n x y := f y x n.
 (* Run a circuit for many timesteps, starting at the reset value *)
 Definition simulate {i o st} (c : i -> step st o) (input : list i) : list o :=
   fold_left_accumulate (flipper c 10) input (resetVals st).
+
+Section WithAcorn.
+  Context {acorn} {signal} `{Acorn acorn signal}.
+
+  (* Take a wire and fork it into two branches. *)
+  Definition fork2 {t : SignalType}
+              (a : signal t) : acorn [] (signal t * signal t) :=
+    ret (a, a).
+
+  (* Take a pair input and apply the circuit r to just the first element. *)
+  Definition fsT {t1 t2 t3 : SignalType} {s}
+            (f : signal t1 -> acorn s (signal t3))
+            (ab : signal t1 * signal t2) : acorn _ (signal t3 * signal t2) :=
+    let (a, b) := ab in
+    o <- f a ;;
+    ret (o, b).
+
+  (* Take a pair input and apply the circuit r to just the second element. *)
+  Definition snD {t1 t2 t3 : SignalType} {s}
+            (f : signal t2 -> acorn s (signal t3))
+            (ab : signal t1 * signal t2) : acorn _ (signal t1 * signal t3) :=
+    let (a, b) := ab in
+    o <- f b ;;
+    ret (a, o).
+
+  (* A circuit which delays the second element of a pair and then performs
+     a 256-bit addition of the two values in the pair. *)
+  Definition circuit1 : signal Nat * signal Nat -> acorn _ (signal Nat) :=
+    snD natDelay >=> addMod 256.
+
+  Definition counter6 : signal Nat -> acorn _ (signal Nat) :=
+    loop (addMod 6 >=> natDelay >=> fork2).
+
+  Definition nestedloop : signal Nat -> acorn _ (signal Nat) :=
+    loop (snD natDelay >=> addMod 512 >=> loop (addMod 512 >=> natDelay >=> fork2) >=> fork2).
+
+End WithAcorn.
 
 (* We can easily simulate circuits without loops, even if they contain delay elements. *)
 Compute (simulate circuit1 (combine [17; 78; 12] [42; 62; 5])).
