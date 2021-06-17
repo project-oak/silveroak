@@ -45,13 +45,11 @@ static inline uintptr_t _br2_load(uintptr_t a, size_t sz) {
 
 // bedrock2 memory-access functions
 uintptr_t MMIOREAD(uintptr_t a) {
-  uintptr_t r = 0;
-  r = *((volatile uintptr_t *)a);
-  return r;
+  return abs_mmio_read32(a);
 }
 
 void MMIOWRITE(uintptr_t a, uintptr_t v) {
-  *((volatile uintptr_t *) a) = v;
+  abs_mmio_write32(a, v);
 }".
 
 Definition uart_c_template_bottom : string :=
