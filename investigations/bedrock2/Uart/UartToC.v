@@ -7,7 +7,6 @@ Require Import bedrock2.Variables.
 Require Import coqutil.Z.HexNotation.
 Require Import Bedrock2Experiments.Uart.Uart.
 Require Import Bedrock2Experiments.LibBase.Bitfield.
-Require Import Bedrock2Experiments.LibBase.AbsMMIO.
 Require Import Bedrock2Experiments.Uart.Constants.
 Import ListNotations.
 Local Open Scope string_scope.
