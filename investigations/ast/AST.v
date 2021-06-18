@@ -175,12 +175,11 @@ Inductive Wires {var : sdenote} : type -> Type :=
 (* A PHOAS-style expression representing a circuit *)
 Inductive Circuit {var : sdenote} : type -> type -> type -> Type :=
 (* Name and reference wires *)
-| Input : forall t, Circuit t Void t
-| Bind : forall {t u i1 i2 s1 s2},
-    Circuit i1 s1 t -> (denote_type t -> Circuit i2 s2 u) -> Circuit (i1 ** i2) (s1 ** s2) u
+| Abs : forall {i s t}, (denote_type i -> Circuit Void s t) -> Circuit i s t
+| Bind : forall {t u i s1 s2},
+    Circuit Void s1 t -> (denote_type t -> Circuit i s2 u) -> Circuit i (s1 ** s2) u
 | Ret : forall {t}, Wires t -> Circuit Void Void t
-(* TODO: this *could* be written to represent partial applications also *)
-| Apply : forall {s t u}, Circuit t s u -> Wires t -> Circuit Void s u
+| Apply : forall {s t u}, Circuit t s u -> Wires t -> Circuit Void s u (* TODO: partial application? *)
 (* Primitives *)
 | Inv : Circuit Bit Void Bit
 | And2 : Circuit (Bit * Bit) Void Bit
@@ -211,13 +210,12 @@ Fixpoint wvalue {t} (w : @Wires signal t) : value t :=
 Fixpoint step {i s o} (c : @Circuit signal i s o)
   : value s -> value i -> value s * value o :=
   match c in Circuit i s o return value s -> value i -> value s * value o with
-  | Input t => fun _ i => (tt, i)
+  | Abs f => fun s i => step (f i) s tt
   | Bind x f =>
     fun s i =>
       let '(xs, fs) := tsplit s in
-      let '(xi, fi) := tsplit i in
-      let '(xs, xo) := step x xs xi in
-      let '(fs, fo) := step (f xo) fs fi in
+      let '(xs, xo) := step x xs tt in
+      let '(fs, fo) := step (f xo) fs i in
       (tprod_min xs fs, fo)
   | Ret x => fun _ _ => (tt, wvalue x)
   | Apply f x => fun s _ => step f s (wvalue x)
@@ -241,6 +239,7 @@ Fixpoint step {i s o} (c : @Circuit signal i s o)
 
 Fixpoint reset_state {i s o} (c : @Circuit signal i s o) : value s :=
   match c in Circuit i s o return value s with
+  | Abs f => reset_state (f (default_value _))
   | Bind x f => tprod_min (reset_state x) (reset_state (f (default_value _)))
   | Apply f x => reset_state f
   | @Cast _ _ _ _ _ _ _ _ suncast x => suncast _ (reset_state x)
@@ -353,12 +352,11 @@ Module Netlist.
            (c : @Circuit denoteSignal i s o)
     : denoteType i -> Netlist * denoteType o :=
     match c in Circuit i s o return denoteType i -> Netlist * denoteType o with
-    | Input t => fun x => (net, x)
+    | Abs f => fun i => to_netlist' net (f i) tt
     | Bind x f =>
       fun i =>
-        let '(xi, fi) := tsplit i in
-        let '(net, xo) := to_netlist' net x xi in
-        to_netlist' net (f xo) fi
+        let '(net, xo) := to_netlist' net x tt in
+        to_netlist' net (f xo) i
     | Ret x => fun _ => wnet net x
     | Apply f x =>
       fun i =>
@@ -578,9 +576,8 @@ End SystemVerilog.
 Definition Compose {denote_signal : sdenote} {i1 s1 o1 s2 o2}
            (f : Circuit i1 s1 o1) (g : Circuit o1 s2 o2)
   : Circuit i1 (s1 ** s2) o2 :=
-  Cast (Bind (Input i1)
-             (fun x => Bind (Apply f (Var x))
-                         (fun y => Apply g (Var y)))).
+  Cast (Abs (fun x => Bind (Apply f (Var x))
+                        (fun y => Apply g (Var y)))).
 
 Declare Scope expr_scope.
 Delimit Scope expr_scope with expr.
@@ -590,6 +587,7 @@ Notation "x <- e1 ;; e2" :=
 Notation "f @ x" := (Apply f x) (at level 40, left associativity) : expr_scope.
 Notation "f >=> g" :=(Compose f g) (at level 60, right associativity) : expr_scope.
 Notation "( x , y , .. , z )" := (Prod .. (Prod x y) .. z) (at level 0) : expr_scope.
+Notation "'abs!' x => e" := (Abs (fun y => let x := Var y in e%expr)) (x binder, e constr, at level 199).
 
 (**** Combinators ****)
 
@@ -597,19 +595,16 @@ Section WithDenoteSignal.
   Context {denote_signal : sdenote}.
 
   Definition fork2 {A} : Circuit A Void (A * A) :=
-    Cast (a <- Input A ;;
-          Ret (a,a))%expr.
+    Cast (abs! a => Ret (a,a)).
 
   Definition fsT {A B C s} (f : Circuit A s C) : Circuit (A * B) s (C * B) :=
-    Cast (a <- Input A ;;
-          b <- Input B ;;
-          c <- f @ a ;;
-          Ret (c, b))%expr.
+    Cast (abs! ab =>
+          c <- f @ (Fst ab) ;;
+          Ret (c, Snd ab)).
   Definition snD {A B C s} (f : Circuit B s C) : Circuit (A * B) s (A * C) :=
-    Cast (a <- Input A ;;
-          b <- Input B ;;
-          c <- f @ b ;;
-          Ret (a, c))%expr.
+    Cast (abs! ab =>
+          c <- f @ (Snd ab) ;;
+          Ret (Fst ab, c))%expr.
 End WithDenoteSignal.
 
 (**** Examples ****)
@@ -617,10 +612,7 @@ End WithDenoteSignal.
 Local Open Scope string_scope.
 
 Definition nandGate {denote_signal : sdenote} : Circuit (Bit * Bit) Void Bit :=
-    (i0 <- Input Bit ;;
-     i1 <- Input Bit ;;
-     o1 <- And2 @ (i0, i1) ;;
-     Inv @ o1)%expr.
+  (And2 >=> Inv)%expr.
 
 Compute simulate nandGate [(true,true);(true,false);(false,true);(false,false)].
 
@@ -629,18 +621,14 @@ Definition nandGate_interface : Netlist.interface nandGate :=
 
 Redirect "nandgate.sv" Compute (SystemVerilog.print nandGate nandGate_interface).
 
-Definition addmod6 {denote_signal : sdenote} : Circuit (Nat * Nat) Void Nat :=
-    (a <- Input Nat ;;
-     b <- Input Nat ;;
-     AddMod 6 @ (a, b))%expr.
+Definition addmod6 {denote_signal : sdenote} : Circuit (Nat * Nat) Void Nat := AddMod 6.
 
 Definition addmod6_interface : Netlist.interface addmod6 :=
   Netlist.Build_interface addmod6 "addmod6" ("a", "b") "c".
 
 Redirect "addmod6.sv" Compute (SystemVerilog.print addmod6 addmod6_interface).
 
-Definition delay1 {denote_signal : sdenote} : Circuit Nat Nat Nat :=
-  (Delay 0)%expr.
+Definition delay1 {denote_signal : sdenote} : Circuit Nat Nat Nat := Delay 0.
 
 Definition delay1_interface : Netlist.interface delay1 :=
   Netlist.Build_interface delay1 "delay1" "a" "a1".
@@ -691,10 +679,11 @@ Redirect "nestedloop.sv" Compute (SystemVerilog.print nestedloop nestedloop_inte
 (* inputs can be placed inside loop expressions instead of fed in separately *)
 Definition input_in_loop {denote_signal : sdenote}
   : Circuit (Bit * Nat) Nat Nat :=
-  (LoopDelay 0 (x <- Input Nat ;;
-                sel <- Input Bit ;;
+  (LoopDelay 0 (abs! (input : Wires (Nat * (Bit * Nat))) =>
+                let x := Fst input in
+                let sel := Fst (Snd input) in
+                let y := Snd (Snd input) in
                 sel <- (Inv >=> Inv) @ sel ;;
-                y <- Input Nat ;;
                 x' <- Mux2 @ (sel, (y, x)) ;;
                 fork2 @ x'))%expr.
 
@@ -704,3 +693,6 @@ Definition input_in_loop_interface : Netlist.interface input_in_loop :=
   Netlist.Build_interface input_in_loop "input_in_loop" ("sel", "y") "x".
 
 Redirect "input_in_loop.sv" Compute (SystemVerilog.print input_in_loop input_in_loop_interface).
+
+
+(**** Proofs ****)
