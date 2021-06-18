@@ -30,22 +30,22 @@ Import ListNotations.
 Local Open Scope string_scope.
 
 Local Hint Resolve FlattenExpr.mk_Semantics_params_ok FlattenExpr_hyps : typeclass_instances.
-Existing Instances constant_words spec_of_aes_encrypt.
+Existing Instances constant_literals spec_of_aes_encrypt.
 
 (* add a stronger hint for state_machine_parameters *)
 Local Hint Extern 1 (StateMachineSemantics.parameters _ _ _) =>
 exact state_machine_parameters : typeclass_instances.
 
-Instance consts_ok : aes_constants_ok (constant_words (word_ok:=parameters.word_ok)).
+Instance consts_ok : aes_constants_ok consts.
 Proof.
   apply Build_aes_constants_ok with (mode_size:=3) (key_len_size:=3).
-  { reflexivity. }
+  { eapply dedup_NoDup_iff. reflexivity. }
   { repeat constructor. }
   { repeat constructor.
     all:vm_compute; congruence. }
+  { eapply dedup_NoDup_iff. reflexivity. }
+  { repeat constructor. all: vm_compute. all: congruence. }
   { reflexivity. }
-  { repeat constructor. }
-  { reflexivity. }
   { vm_compute; ssplit; congruence. }
   { vm_compute; ssplit; congruence. }
   { vm_compute; ssplit; congruence. }
@@ -57,11 +57,11 @@ Proof.
   { vm_compute; ssplit; congruence. }
   { vm_compute; ssplit; congruence. }
   { repeat constructor;
-    vm_compute; ssplit; congruence. }
+    vm_compute; ssplit; intuition congruence. }
   { repeat constructor;
-    vm_compute; ssplit; congruence. }
+    vm_compute; ssplit; intuition congruence. }
   { repeat constructor;
-    vm_compute; ssplit; congruence. }
+    vm_compute; ssplit; intuition congruence. }
 Qed.
 
 Instance Pipeline_assumptions : Pipeline.assumptions.
@@ -72,7 +72,11 @@ Proof.
   { exact MMIO.locals_ok. }
   { exact PR. }
   { exact FlatToRiscv_hyps. }
-  { exact (ext_spec_ok (p:=state_machine_parameters)). }
+  { pose proof state_machine_parameters_ok.
+    (* TODO why does
+    Existing Instance state_machine_parameters_ok.
+    not work? *)
+    exact (ext_spec_ok (p := @state_machine_parameters aes_parameters consts aes_timing)). }
   { exact (compile_ext_call_correct (state_machine_parameters_ok:=state_machine_parameters_ok)). }
   { reflexivity. }
 Qed.
@@ -125,12 +129,23 @@ Lemma main_correct
                  R t' m').
 Proof.
   intros. repeat straightline.
-  straightline_call; [ simplify_implicits; ecancel_assumption | assumption .. | ].
+  straightline_call. 1,2,3: eassumption.
+  (* `ecancel_assumption` gets severely stuck in PARAMRECORDS problems, but
+     fortunately `eassumption` just works. *)
   cbv [post_main]. simplify_implicits.
   repeat destruct_one_match_hyp.
   repeat straightline.
   ssplit; [ solve [eauto] | ].
-  ecancel_assumption.
+  (* TODO fix PARAMRECORDS issues so that ecancel_assumption works again *)
+  use_sep_assumption.
+  cancel.
+  cancel_seps_at_indices 0%nat 0%nat; [reflexivity|].
+  cancel_seps_at_indices 0%nat 1%nat; [reflexivity|].
+  cancel_seps_at_indices 0%nat 0%nat; [reflexivity|].
+  cancel_seps_at_indices 0%nat 0%nat; [reflexivity|].
+  reflexivity.
+  Unshelve.
+  all: pose proof state_machine_parameters_ok; exact ok.
 Qed.
 
 Lemma exec_main

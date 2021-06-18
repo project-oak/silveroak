@@ -13,9 +13,6 @@ Local Open Scope Z_scope.
 Section WithWord.
   Context {width} {word : word.word width} {word_ok : word.ok word}.
 
-  Definition unique_words (l : list word.rep) : Prop :=
-    List.dedup word.eqb l = l.
-
   (* Compute sequential register addresses given a start address and a number of
    registers *)
   Definition list_reg_addrs (start : word.rep)
@@ -28,8 +25,8 @@ Section WithWord.
     word.and (word.sru w offset) mask.
 
   (* the flag is set if ((val & (1 << flag)) != 0) *)
-  Definition is_flag_set (val : word) (flag : word) : bool :=
-    negb (word.eqb (word.and val (word.slu (word.of_Z 1) flag)) (word.of_Z 0)).
+  Definition is_flag_set (val : word) (flag : Z) : bool :=
+    negb (word.eqb (word.and val (word.slu (word.of_Z 1) (word.of_Z flag))) (word.of_Z 0)).
 
   Definition has_size (w : word) (n : Z) : Prop :=
     0 <= word.unsigned w < 2 ^ n.
@@ -37,7 +34,7 @@ Section WithWord.
   Record enum {elts : list word} {size : Z} :=
     { enum_size_ok :
         Forall (fun w => has_size w size) elts;
-      enum_unique : unique_words elts;
+      enum_unique : NoDup elts;
       enum_member (w : word) := In w elts;
     }.
   Global Arguments enum : clear implicits.
@@ -48,11 +45,8 @@ End WithWord.
 (* changes H : unique_words [a;b;c] into a <> b, a <> c, b <> c *)
 Ltac simplify_unique_words_in H :=
   lazymatch type of H with
-  | unique_words ?words =>
-    let H' := fresh in
-    cbv [unique_words] in H;
-    pose proof (List.NoDup_dedup word.eqb words) as H';
-    rewrite H in H'; clear H;
+  | NoDup ?words =>
+    cbn [List.map] in H;
     repeat lazymatch goal with
            | H : List.NoDup [] |- _ => clear H
            | H : List.NoDup (_ :: _) |- _ => inversion H; clear H; subst; cbv [List.In] in *

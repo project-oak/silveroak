@@ -54,9 +54,8 @@ Section WithParameters.
   Import parameters.
   Context {p : parameters} {p_ok : parameters.ok p}.
   Context {consts : aes_constants Z}
-          {consts_ok : aes_constants_ok constant_words}
+          {consts_ok : aes_constants_ok consts}
           {timing : timing}.
-  Existing Instance constant_words.
 
   Add Ring wring : (Properties.word.ring_theory (word := parameters.word))
         (preprocess [autorewrite with rew_word_morphism],
@@ -103,28 +102,28 @@ Section WithParameters.
 
   Definition reg_addr (r : Register) : word :=
     match r with
-    | CTRL => AES_CTRL
-    | STATUS => AES_STATUS
-    | KEY0 => AES_KEY0
-    | KEY1 => word.add AES_KEY0 (word.of_Z 4)
-    | KEY2 => word.add AES_KEY0 (word.of_Z 8)
-    | KEY3 => word.add AES_KEY0 (word.of_Z 12)
-    | KEY4 => word.add AES_KEY0 (word.of_Z 16)
-    | KEY5 => word.add AES_KEY0 (word.of_Z 20)
-    | KEY6 => word.add AES_KEY0 (word.of_Z 24)
-    | KEY7 => word.add AES_KEY0 (word.of_Z 28)
-    | IV0 => AES_IV0
-    | IV1 => word.add AES_IV0 (word.of_Z 4)
-    | IV2 => word.add AES_IV0 (word.of_Z 8)
-    | IV3 => word.add AES_IV0 (word.of_Z 12)
-    | DATA_IN0 => AES_DATA_IN0
-    | DATA_IN1 => word.add AES_DATA_IN0 (word.of_Z 4)
-    | DATA_IN2 => word.add AES_DATA_IN0 (word.of_Z 8)
-    | DATA_IN3 => word.add AES_DATA_IN0 (word.of_Z 12)
-    | DATA_OUT0 => AES_DATA_OUT0
-    | DATA_OUT1 => word.add AES_DATA_OUT0 (word.of_Z 4)
-    | DATA_OUT2 => word.add AES_DATA_OUT0 (word.of_Z 8)
-    | DATA_OUT3 => word.add AES_DATA_OUT0 (word.of_Z 12)
+    | CTRL => word.of_Z AES_CTRL0
+    | STATUS => word.of_Z AES_STATUS0
+    | KEY0 => word.of_Z AES_KEY00
+    | KEY1 => word.of_Z (AES_KEY00 + 4)
+    | KEY2 => word.of_Z (AES_KEY00 + 8)
+    | KEY3 => word.of_Z (AES_KEY00 + 12)
+    | KEY4 => word.of_Z (AES_KEY00 + 16)
+    | KEY5 => word.of_Z (AES_KEY00 + 20)
+    | KEY6 => word.of_Z (AES_KEY00 + 24)
+    | KEY7 => word.of_Z (AES_KEY00 + 28)
+    | IV0 => word.of_Z AES_IV00
+    | IV1 => word.of_Z (AES_IV00 + 4)
+    | IV2 => word.of_Z (AES_IV00 + 8)
+    | IV3 => word.of_Z (AES_IV00 + 12)
+    | DATA_IN0 => word.of_Z AES_DATA_IN00
+    | DATA_IN1 => word.of_Z (AES_DATA_IN00 + 4)
+    | DATA_IN2 => word.of_Z (AES_DATA_IN00 + 8)
+    | DATA_IN3 => word.of_Z (AES_DATA_IN00 + 12)
+    | DATA_OUT0 => word.of_Z AES_DATA_OUT00
+    | DATA_OUT1 => word.of_Z (AES_DATA_OUT00 + 4)
+    | DATA_OUT2 => word.of_Z (AES_DATA_OUT00 + 8)
+    | DATA_OUT3 => word.of_Z (AES_DATA_OUT00 + 12)
     end.
 
   Lemma aes_reg_addrs_eq : aes_reg_addrs = map reg_addr all_regs.
@@ -140,8 +139,7 @@ Section WithParameters.
   Proof.
     assert (NoDup (map reg_addr all_regs)) as N. {
       rewrite <-aes_reg_addrs_eq.
-      pose proof addrs_unique as U. unfold unique_words in U. rewrite <- U.
-      eapply List.NoDup_dedup.
+      apply addrs_unique.
     }
     eapply FinFun.Injective_carac.
     - unfold FinFun.Listing. split.

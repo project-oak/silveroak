@@ -28,25 +28,16 @@ Local Open Scope string_scope.
 Existing Instance constant_literals.
 
 (* pointers to input and output memory locations (these are dummy values) *)
-Definition input_data_ptr := AES_BASE_ADDR + Ox"70".
-Definition input_iv_ptr := AES_BASE_ADDR + Ox"80".
-Definition input_key_ptr := AES_BASE_ADDR + Ox"90".
-Definition output_ptr := AES_BASE_ADDR + Ox"70".
+Definition input_data_ptr := AES_BASE_ADDR + 0x70.
+Definition input_iv_ptr := AES_BASE_ADDR + 0x80.
+Definition input_key_ptr := AES_BASE_ADDR + 0x90.
+Definition output_ptr := AES_BASE_ADDR + 0x70.
 
 (* main function: simply call aes_encrypt with literal constants and pointers *)
 Definition main_body : cmd :=
   cmd.call []
            aes_encrypt
-           [AES_CTRL; AES_CTRL_OPERATION;
-           AES_CTRL_MODE_MASK; AES_CTRL_MODE_OFFSET;
-           AES_CTRL_KEY_LEN_MASK; AES_CTRL_KEY_LEN_OFFSET;
-           AES_CTRL_MANUAL_OPERATION; kAesEnc; kAesEcb;
-           AES_KEY0; AES_NUM_REGS_KEY; kAes256; kAes192;
-           AES_IV0; AES_NUM_REGS_IV;
-           AES_DATA_IN0; AES_NUM_REGS_DATA;
-           AES_STATUS; AES_STATUS_INPUT_READY;
-           AES_DATA_OUT0; AES_STATUS_OUTPUT_VALID;
-           expr.literal input_data_ptr;
+           [expr.literal input_data_ptr;
            expr.literal input_key_ptr;
            expr.literal input_iv_ptr;
            expr.literal output_ptr].
