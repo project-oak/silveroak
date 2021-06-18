@@ -58,6 +58,8 @@ Definition b2_hmac_sha256_init: func :=
   ("b2_hmac_sha256_init",
    ([], [], bedrock_func_body:(
      (* Clear the config, stopping the SHA engine. *)
+     (* Note: the above comment might be misleading: if the SHA engine is running,
+        writes to the CFG register are discarded, says the doc *)
      abs_mmio_write32(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CFG_REG_OFFSET, 0);
 
      (* Disable and clear interrupts. INTR_STATE register is rw1c. *)
