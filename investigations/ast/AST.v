@@ -53,34 +53,39 @@ Infix "*" := tpair : signal_scope.
 Infix "**" := tpair_min (at level 40) : signal_scope. (* use ** for a pair with no extra Voids *)
 Local Notation Void := tzero.
 
+Definition sdenote : Type := SignalType -> Type.
+Existing Class sdenote.
+
 (* denotation of a type based on the interpretation of a SignalType *)
-Fixpoint denote_type (denote_signal : SignalType -> Type) (t : type) : Type :=
+Fixpoint denote_type {denote_signal : sdenote} (t : type) : Type :=
   match t with
   | tzero => unit
   | tone t => denote_signal t
-  | tpair t1 t2 => denote_type denote_signal t1 * denote_type denote_signal t2
+  | tpair t1 t2 => denote_type t1 * denote_type t2
   end.
 
 (* type interpretation for Coq semantics *)
-Definition signal (t: SignalType) : Type :=
-  match t with
-  | Bit => bool
-  | Nat => nat
-  end.
-Definition value : type -> Type := denote_type signal.
+Instance signal : sdenote :=
+  fun (t: SignalType) =>
+    match t with
+    | Bit => bool
+    | Nat => nat
+    end.
+Definition value : type -> Type := @denote_type signal.
 
 (* type interpretation for netlist semantics *)
 Inductive Signal : SignalType -> Type :=
 | BitNet : N -> Signal Bit
 | NatNet : N -> Signal Nat
 .
-Definition denoteType : type -> Type := denote_type Signal.
+Instance denoteSignal : sdenote := Signal.
+Definition denoteType : type -> Type := @denote_type Signal.
 
 (* get default values based on default signals *)
-Fixpoint default {denote_signal : SignalType -> Type}
+Fixpoint default {denote_signal : sdenote}
          (default_signal : forall t, denote_signal t) (t: type)
-  : denote_type denote_signal t :=
-  match t as t return denote_type denote_signal t with
+  : denote_type t :=
+  match t as t return denote_type t with
   | tzero => tt
   | tone t => default_signal t
   | tpair t1 t2 => (default default_signal t1, default default_signal t2)
@@ -103,17 +108,15 @@ Definition default_Signal (t: SignalType) : Signal t :=
 Definition default_Value (t : type) : denoteType t := default default_Signal t.
 
 (* Create and destruct ** pairs (= pairs without extra Void types) *)
-Definition tprod_min {t1 t2 : type} {denote_signal}
-  : denote_type denote_signal t1 -> denote_type denote_signal t2
-    -> denote_type denote_signal (t1 ** t2) :=
+Definition tprod_min {t1 t2 : type} {denote_signal : sdenote}
+  : denote_type t1 -> denote_type t2 -> denote_type (t1 ** t2) :=
   match t1, t2 with
   | tzero, _ => fun _ y => y
   | _, tzero => fun x _ => x
   | _,_ => fun x y => (x,y)
   end.
-Definition tsplit {t1 t2 : type} {denote_signal}
-  : denote_type denote_signal (t1 ** t2)
-    -> denote_type denote_signal t1 * denote_type denote_signal t2 :=
+Definition tsplit {t1 t2 : type} {denote_signal : sdenote}
+  : denote_type (t1 ** t2) -> denote_type t1 * denote_type t2 :=
   match t1, t2 with
   | tzero, _ => fun x => (tt, x)
   | _, tzero => fun x => (x, tt)
@@ -123,7 +126,7 @@ Definition tsplit {t1 t2 : type} {denote_signal}
 (**** Type casting ****)
 
 Definition typecast (s d : type) :=
-  forall denote_signal : SignalType -> Type, denote_type denote_signal s -> denote_type denote_signal d.
+  forall denote_signal : sdenote, denote_type s -> denote_type d.
 Existing Class typecast.
 
 (* this is an identity function but makes the typechecker happy *)
@@ -159,44 +162,41 @@ Instance tsplit_cast_l {t1 t2 t3 : type} {c:typecast t1 t3} : typecast (t1 ** t2
 (* TODO: use the Abs trick here to get nicer input types *)
 
 (* A PHOAS-style expression representing a circuit *)
-Inductive CircuitExpr {var : type -> Type} : type -> type -> type -> Type :=
+Inductive Circuit {var : sdenote} : type -> type -> type -> Type :=
 (* Name and reference wires *)
-| Var : forall {t}, var t -> CircuitExpr Void Void t
-| Input : forall t, CircuitExpr t Void t
+| Var : forall {t}, denote_type t -> Circuit Void Void t
+| Input : forall t, Circuit t Void t
 | Bind : forall {t u i1 i2 s1 s2},
-    CircuitExpr i1 s1 t -> (var t -> CircuitExpr i2 s2 u) -> CircuitExpr (i1 ** i2) (s1 ** s2) u
-| Apply : forall {i s1 s2 t u}, CircuitExpr t s2 u -> CircuitExpr i s1 t -> CircuitExpr i (s1 ** s2) u
+    Circuit i1 s1 t -> (denote_type t -> Circuit i2 s2 u) -> Circuit (i1 ** i2) (s1 ** s2) u
+| Apply : forall {i s1 s2 t u}, Circuit t s2 u -> Circuit i s1 t -> Circuit i (s1 ** s2) u
 (* Constants *)
-| ConstNat : nat -> CircuitExpr Void Void Nat
+| ConstNat : nat -> Circuit Void Void Nat
 (* Primitives *)
-| Inv : CircuitExpr Bit Void Bit
-| And2 : CircuitExpr (Bit * Bit) Void Bit
-| AddMod : nat -> CircuitExpr (Nat * Nat) Void Nat
-| Comparator : CircuitExpr (Nat * Nat) Void Bit
-| Mux2 : CircuitExpr (Bit * (Nat * Nat)) Void Nat
-(* type bookkeeping helpers -- only needed for abstract types *)
+| Inv : Circuit Bit Void Bit
+| And2 : Circuit (Bit * Bit) Void Bit
+| AddMod : nat -> Circuit (Nat * Nat) Void Nat
+| Comparator : Circuit (Nat * Nat) Void Bit
+| Mux2 : Circuit (Bit * (Nat * Nat)) Void Nat
+(* type bookkeeping -- only needed for abstract types *)
 | Cast :
     forall {i1 i2 s1 s2 t} {icast : typecast i2 i1} {scast : typecast s2 s1} {suncast : typecast s1 s2},
-      CircuitExpr i1 s1 t -> CircuitExpr i2 s2 t
+      Circuit i1 s1 t -> Circuit i2 s2 t
 (* Tuples *)
 | Prod : forall {t u i1 i2 s1 s2},
-    CircuitExpr i1 s1 t -> CircuitExpr i2 s2 u -> CircuitExpr (i1 ** i2) (s1 ** s2) (t * u)
-| Fst : forall {t u i s}, CircuitExpr i s (t ** u) -> CircuitExpr i s t
-| Snd : forall {t u i s}, CircuitExpr i s (t ** u) -> CircuitExpr i s u
+    Circuit i1 s1 t -> Circuit i2 s2 u -> Circuit (i1 ** i2) (s1 ** s2) (t * u)
+| Fst : forall {t u i s}, Circuit i s (t ** u) -> Circuit i s t
+| Snd : forall {t u i s}, Circuit i s (t ** u) -> Circuit i s u
 (* Registers *)
-| Delay : value Nat -> CircuitExpr Nat Nat Nat
-| LoopDelay : forall {i o s}, value Nat -> CircuitExpr (Nat * i) s (Nat * o) -> CircuitExpr i (Nat ** s) o
+| Delay : value Nat -> Circuit Nat Nat Nat
+| LoopDelay : forall {i o s}, value Nat -> Circuit (Nat * i) s (Nat * o) -> Circuit i (Nat ** s) o
 .
-Global Arguments CircuitExpr : clear implicits.
-
-Definition Circuit i s o : Type := forall var, CircuitExpr (denote_type var) i s o.
 
 (**** Coq semantics and simulation ****)
 
 (* single-step semantics *)
-Fixpoint step {i s o} (c : CircuitExpr value i s o)
+Fixpoint step {i s o} (c : @Circuit signal i s o)
   : value s -> value i -> value s * value o :=
-  match c in CircuitExpr _ i s o return value s -> value i -> value s * value o with
+  match c in Circuit i s o return value s -> value i -> value s * value o with
   | Var x => fun s _ => (s, x)
   | Input t => fun _ i => (tt, i)
   | Bind x f =>
@@ -246,8 +246,8 @@ Fixpoint step {i s o} (c : CircuitExpr value i s o)
       (tprod_min (t1:=Nat) r xs, o)
   end.
 
-Fixpoint reset_state {i s o} (c : CircuitExpr value i s o) : value s :=
-  match c in CircuitExpr _ i s o return value s with
+Fixpoint reset_state {i s o} (c : @Circuit signal i s o) : value s :=
+  match c in Circuit i s o return value s with
   | Bind x f => tprod_min (reset_state x) (reset_state (f (default_value _)))
   | Apply f x => tprod_min (reset_state x) (reset_state f)
   | @Cast _ _ _ _ _ _ _ _ suncast x => suncast _ (reset_state x)
@@ -259,7 +259,7 @@ Fixpoint reset_state {i s o} (c : CircuitExpr value i s o) : value s :=
   | _ => tt
   end.
 
-Definition simulate {i s o} (c : CircuitExpr value i s o) (input : list (value i)) : list (value o) :=
+Definition simulate {i s o} (c : @Circuit signal i s o) (input : list (value i)) : list (value o) :=
   fold_left_accumulate (step c) input (reset_state c).
 
 (**** Netlist interpretation ****)
@@ -301,7 +301,8 @@ Module Netlist.
     | BitNet n => n
     | NatNet n => n
     end.
-  Definition indices : type -> Type := denote_type (fun _ => N).
+  Instance sindex : sdenote := (fun _ => N).
+  Definition indices : type -> Type := @denote_type sindex.
   Fixpoint as_indices {t : type} : denoteType t -> indices t :=
     match t as t return denoteType t -> indices t with
     | tzero => fun x => x
@@ -340,9 +341,9 @@ Module Netlist.
      numbers for the output ports *)
   Fixpoint to_netlist' {i s o}
            (net : Netlist)
-           (c : CircuitExpr denoteType i s o)
+           (c : @Circuit denoteSignal i s o)
     : denoteType i -> Netlist * denoteType o :=
-    match c in CircuitExpr _ i s o return denoteType i -> Netlist * denoteType o with
+    match c in Circuit i s o return denoteType i -> Netlist * denoteType o with
     | Var x => fun _ => (net, x)
     | Input t => fun x => (net, x)
     | Bind x f =>
@@ -428,7 +429,8 @@ Module Netlist.
         (net, out)
     end.
 
-  Definition port_names : type -> Type := denote_type (fun _ => string).
+  Instance sname : sdenote := (fun _ => string).
+  Definition port_names : type -> Type := @denote_type sname.
 
   Definition addInput (net : Netlist) (t : SignalType) (name : string)
     : Netlist * Signal t :=
@@ -474,18 +476,18 @@ Module Netlist.
         net
     end.
 
-  Record interface {i s o} {c : Circuit i s o} :=
+  Record interface {i s o} {c : @Circuit denoteSignal i s o} :=
     { netlist_name : string;
       input_names : port_names i;
       output_names : port_names o }.
   Global Arguments interface {_ _ _} _.
   Global Arguments Build_interface {_ _ _} _.
 
-  Definition to_netlist {i s o} (c : Circuit i s o) (intf : interface c)
+  Definition to_netlist {i s o} (c : @Circuit denoteSignal i s o) (intf : interface c)
     : Netlist :=
     let net := empty intf.(netlist_name) in
     let '(net, inputs) := addInputs net intf.(input_names) in
-    let '(net, outputs) := to_netlist' net (c _) inputs in
+    let '(net, outputs) := to_netlist' net c inputs in
     let net := addOutputs net intf.(output_names) outputs in
     net.
 End Netlist.
@@ -576,7 +578,7 @@ Module SystemVerilog.
     | x::xs => x ++ "\n" ++ unlines xs
     end.
 
-  Definition print {i s o} (c : Circuit i s o) (intf : interface c) : string :=
+  Definition print {i s o} (c : @Circuit denoteSignal i s o) (intf : interface c) : string :=
     unlines (systemVerilogLines (to_netlist c intf)).
 End SystemVerilog.
 
@@ -588,149 +590,135 @@ Delimit Scope expr_scope with expr.
 Notation "x <- e1 ;; e2" :=
   (Bind e1 (fun x => let x := Var x in e2))
     (at level 60, e1 at next level, right associativity) : expr_scope.
-Notation "f @ x" := (Apply (f _) x) (at level 40, left associativity) : expr_scope.
-Definition Compose {i s1 s2 o1 o2}
-           (c1 : Circuit i s1 o1)
-           (c2 : Circuit o1 s2 o2)
-  : Circuit i (s1 ** s2) o2 :=
-  fun var => Apply (c2 var) (c1 var).
-Notation "f >=> g" :=(Compose f g) (at level 60, right associativity) : expr_scope.
+Notation "f @ x" := (Apply f x) (at level 40, left associativity) : expr_scope.
+Notation "f >=> g" :=(Apply g f) (at level 60, right associativity) : expr_scope.
 Notation "( x , y , .. , z )" :=
   (Prod .. (Prod x y) .. z) (at level 0) : expr_scope.
-Notation "'circuit' x" := (fun var => x%expr) (at level 40, only parsing).
-
-(* To make primitives behave the same as user-defined circuits, define a Circuit
-   wrapper for each *)
-Definition inv : Circuit Bit Void Bit := fun _ => Inv.
-Definition and2 : Circuit (Bit * Bit) Void Bit := fun _ => And2.
-Definition addmod (n : nat) : Circuit (Nat * Nat) Void Nat := fun _ => AddMod n.
-Definition comparator : Circuit (Nat * Nat) Void Bit := fun _ => Comparator.
-Definition mux2 : Circuit (Bit * (Nat * Nat)) Void Nat := fun _ => Mux2.
-Definition delay (n : nat) : Circuit Nat Nat Nat := fun _ => Delay n.
-Definition loopdelay {i s o} (n : nat) (body : Circuit (Nat * i) s (Nat * o)) : Circuit i (Nat ** s) o :=
-  fun var => LoopDelay n (body var).
-
-(* test notations *)
-Check (fun foo : Circuit Nat Void Nat =>
-         loopdelay 0 ((addmod 6)
-                        >=> delay 0
-                        >=> foo
-                        >=> circuit (a <- Input Nat ;; (a,a))))%expr.
 
 (**** Combinators ****)
 
-Definition fork2 {A} : Circuit A Void (A * A) :=
-  circuit
-    (Cast
-       (a <- Input A ;;
-        (a,a))).
+Section WithDenoteSignal.
+  Context {denote_signal : sdenote}.
 
-Definition fsT {A B C s} (f : Circuit A s C) : Circuit (A * B) s (C * B) :=
-  circuit (Cast (f @ (Input A), Input B)).
-Definition snD {A B C s} (f : Circuit B s C) : Circuit (A * B) s (A * C) :=
-  circuit (Cast (Input A, f @ Input B)).
+  Definition fork2 {A} : Circuit A Void (A * A) :=
+    Cast (a <- Input A ;; (a,a))%expr.
+
+  Definition fsT {A B C s} (f : Circuit A s C) : Circuit (A * B) s (C * B) :=
+    Cast (f @ (Input A), Input B)%expr.
+  Definition snD {A B C s} (f : Circuit B s C) : Circuit (A * B) s (A * C) :=
+    Cast (Input A, f @ (Input B))%expr.
+End WithDenoteSignal.
 
 (**** Examples ****)
 
 Local Open Scope string_scope.
 
-(* simple tests *)
-Definition test : Circuit Nat Void (Nat * Nat) :=
-  fun var => Bind (Input Nat) (fun x => Prod (Var x) (Var x)).
-Definition test2 : Circuit Nat Nat (Nat * Nat) :=
-  fun var =>
+
+Section WithDenoteSignal.
+  Context {denote_signal : sdenote}.
+
+  (* simple tests *)
+  Definition test : Circuit Nat Void (Nat * Nat) :=
+    Bind (Input Nat) (fun x => Prod (Var x) (Var x)).
+  Definition test2 : Circuit Nat Nat (Nat * Nat) :=
     Bind (Input Nat)
          (fun x =>
             Bind (Apply (Delay 0) (Var x))
                  (fun y => Prod (Var x) (Var y))).
+End WithDenoteSignal.
 Definition test2_interface : Netlist.interface test2 :=
   Netlist.Build_interface test2 "test2" "i0" ("o0", "o1").
-Compute simulate (test2 _) (seq 0 3).
+Compute simulate test2 (seq 0 3).
 
 
-Definition nandGate : Circuit (Bit * Bit) Void Bit :=
-  circuit
+Definition nandGate {denote_signal : sdenote} : Circuit (Bit * Bit) Void Bit :=
     (i0 <- Input Bit ;;
      i1 <- Input Bit ;;
-     o1 <- and2 @ (i0, i1) ;;
-     inv @ o1).
+     o1 <- And2 @ (i0, i1) ;;
+     Inv @ o1)%expr.
 
-Compute simulate (nandGate _) [(true,true);(true,false);(false,true);(false,false)].
+Compute simulate nandGate [(true,true);(true,false);(false,true);(false,false)].
 
 Definition nandGate_interface : Netlist.interface nandGate :=
   Netlist.Build_interface nandGate "nandGate" ("i0", "i1") "o".
 
 Redirect "nandgate.sv" Compute (SystemVerilog.print nandGate nandGate_interface).
 
-Definition addmod6 : Circuit (Nat * Nat) Void Nat :=
-  circuit
+Definition addmod6 {denote_signal : sdenote} : Circuit (Nat * Nat) Void Nat :=
     (a <- Input Nat ;;
      b <- Input Nat ;;
-     addmod 6 @ (a, b)).
+     (a, b) >=> AddMod 6)%expr.
 
 Definition addmod6_interface : Netlist.interface addmod6 :=
   Netlist.Build_interface addmod6 "addmod6" ("a", "b") "c".
 
 Redirect "addmod6.sv" Compute (SystemVerilog.print addmod6 addmod6_interface).
 
-Definition delay1 : Circuit Nat Nat Nat :=
-  circuit
-    (a <- Input Nat ;;
-     a1 <- delay 0 @ a ;;
-     a1).
+Definition delay1 {denote_signal : sdenote} : Circuit Nat Nat Nat :=
+  (Delay 0)%expr.
 
 Definition delay1_interface : Netlist.interface delay1 :=
   Netlist.Build_interface delay1 "delay1" "a" "a1".
 
 Redirect "delay1.sv" Compute (SystemVerilog.print delay1 delay1_interface).
 
-Definition pipe2 : Circuit Nat (Nat * Nat) Nat :=
-  circuit
-    (a <- Input Nat ;;
-     a1 <- delay 0 @ a ;;
-     a2 <- delay 0 @ a1 ;;
-     a2).
+Definition pipe2 {denote_signal : sdenote} : Circuit Nat (Nat * Nat) Nat :=
+  (Delay 0 >=> Delay 0)%expr.
 
 Definition pipe2_interface : Netlist.interface pipe2 :=
   Netlist.Build_interface pipe2 "pipe2" "a" "a2".
 
 Redirect "pipe2.sv" Compute (SystemVerilog.print pipe2 pipe2_interface).
 
-Definition counter6 : Circuit Void (Nat * Nat) Nat  :=
-  circuit
-    (one <- ConstNat 1 ;;
-     count6 <- loopdelay 0 (addmod 6 >=> delay 0 >=> fork2) @ one ;;
-     count6).
+Definition counter6 {denote_signal : sdenote} : Circuit Void (Nat * Nat) Nat  :=
+  (one <- ConstNat 1 ;;
+   count6 <- LoopDelay 0 (AddMod 6 >=> Delay 0 >=> fork2) @ one ;;
+   count6)%expr.
 
 Definition counter6_interface : Netlist.interface counter6 :=
   Netlist.Build_interface counter6 "counter6" tt "count6".
 
 Redirect "counter6.sv" Compute (SystemVerilog.print counter6 counter6_interface).
 
-Definition counter6by4 : Circuit Void (Nat * Nat * (Nat * Nat)) Nat :=
-  circuit
-    (zero <- ConstNat 0 ;;
-     one <- ConstNat 1 ;;
-     three <- ConstNat 3 ;;
-     count4 <- loopdelay 0 (addmod 4 >=> delay 0 >=> fork2) @ one ;;
-     is3 <- comparator @ (count4, three) ;;
-     incVal <- mux2 @ (is3, (one, zero)) ;;
-     count6by4 <- loopdelay 0 (addmod 6 >=> delay 0 >=> fork2) @ incVal ;;
-     count6by4).
+Definition counter6by4 {denote_signal : sdenote}
+  : Circuit Void (Nat * Nat * (Nat * Nat)) Nat :=
+  (zero <- ConstNat 0 ;;
+   one <- ConstNat 1 ;;
+   three <- ConstNat 3 ;;
+   count4 <- LoopDelay 0 (AddMod 4 >=> Delay 0 >=> fork2) @ one ;;
+   is3 <- Comparator @ (count4, three) ;;
+   incVal <- Mux2 @ (is3, (one, zero)) ;;
+   count6by4 <- LoopDelay 0 (AddMod 6 >=> Delay 0 >=> fork2) @ incVal ;;
+   count6by4)%expr.
 
 Definition counter6by4_interface : Netlist.interface counter6by4 :=
   Netlist.Build_interface counter6by4 "counter6by4" tt "count6by4".
 
 Redirect "counter6by4.sv" Compute (SystemVerilog.print counter6by4 counter6by4_interface).
 
-Definition nestedloop : Circuit Void (Nat * (Nat * (Nat * Nat))) Nat :=
-  circuit
-    (one <- ConstNat 1 ;;
-     o <- loopdelay 0 (snD (delay 0) >=> addmod 512
-                          >=> loopdelay 0 (addmod 512 >=> delay 0 >=> fork2) >=> fork2) @ one ;;
-     o).
+Definition nestedloop {denote_signal : sdenote}
+  : Circuit Void (Nat * (Nat * (Nat * Nat))) Nat :=
+  (one <- ConstNat 1 ;;
+   o <- LoopDelay 0 (snD (Delay 0) >=> AddMod 512
+                        >=> LoopDelay 0 (AddMod 512 >=> Delay 0 >=> fork2) >=> fork2) @ one ;;
+   o)%expr.
 
 Definition nestedloop_interface : Netlist.interface nestedloop :=
   Netlist.Build_interface nestedloop "nestedloop" tt "count6by4".
 
 Redirect "nestedloop.sv" Compute (SystemVerilog.print nestedloop nestedloop_interface).
+
+(* inputs can be placed inside loop expressions instead of fed in separately *)
+Definition input_in_loop {denote_signal : sdenote}
+  : Circuit (Bit * Nat) Nat Nat :=
+  (LoopDelay 0 (x <- Input Nat ;;
+                sel <- Input Bit ;;
+                y <- Input Nat ;;
+                fork2 @ (Mux2 @ (sel,(y,x)))))%expr.
+
+Compute simulate input_in_loop (combine [true;false;true;false] (seq 0 4)).
+
+Definition input_in_loop_interface : Netlist.interface input_in_loop :=
+  Netlist.Build_interface input_in_loop "input_in_loop" ("sel", "y") "x".
+
+Redirect "input_in_loop.sv" Compute (SystemVerilog.print input_in_loop input_in_loop_interface).
