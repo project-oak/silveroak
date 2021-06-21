@@ -29,7 +29,7 @@ Inductive SignalType :=
 | Nat : SignalType
 .
 
-(* one or more signals *)
+(* zero or more signals *)
 Inductive type : Type :=
 | tzero
 | tone (t : SignalType)
@@ -50,8 +50,7 @@ Delimit Scope signal_scope with signal.
 Bind Scope signal_scope with type.
 Coercion tone : SignalType >-> type.
 Infix "*" := tpair : signal_scope.
-Infix "**" := tpair_min (at level 40) : signal_scope. (* use ** for a pair with no extra Voids *)
-Local Notation Void := tzero.
+Infix "**" := tpair_min (at level 40) : signal_scope. (* use ** for a pair with no extra tzeros *)
 
 Definition sdenote : Type := SignalType -> Type.
 Existing Class sdenote.
@@ -130,14 +129,14 @@ Definition typecast (s d : type) :=
 Existing Class typecast.
 
 (* this is an identity function but makes the typechecker happy *)
-Instance drop_void_r {t : type} : typecast (t ** Void) t :=
+Instance drop_void_r {t : type} : typecast (t ** tzero) t :=
   fun _ =>
     match t with
     | tzero => fun x => x
     | _ => fun x => x
     end.
 (* this is an identity function but makes the typechecker happy *)
-Instance add_void_r {t : type} : typecast t (t ** Void) :=
+Instance add_void_r {t : type} : typecast t (t ** tzero) :=
   fun _ =>
     match t with
     | tzero => fun x => x
@@ -159,33 +158,22 @@ Instance tsplit_cast_l {t1 t2 t3 : type} {c:typecast t1 t3} : typecast (t1 ** t2
 
 (**** Generic Circuit Expressions ****)
 
-(* TODO: use the Abs trick here to get nicer input types *)
-
-Inductive Wires {var : sdenote} : type -> Type :=
-(* Reference named wires *)
-| Var : forall {t}, denote_type t -> Wires t
-(* Constants *)
-| ConstNat : nat -> Wires Nat
-(* Tuples *)
-| Prod : forall {t u}, Wires t -> Wires u -> Wires (t * u)
-| Fst : forall {t u}, Wires (t * u) -> Wires t
-| Snd : forall {t u}, Wires (t * u) -> Wires u
-.
-
 (* A PHOAS-style expression representing a circuit *)
 Inductive Circuit {var : sdenote} : type -> type -> type -> Type :=
 (* Name and reference wires *)
-| Abs : forall {i s t}, (denote_type i -> Circuit Void s t) -> Circuit i s t
+| Abs : forall {i s t}, (denote_type i -> Circuit tzero s t) -> Circuit i s t
 | Bind : forall {t u i s1 s2},
-    Circuit Void s1 t -> (denote_type t -> Circuit i s2 u) -> Circuit i (s1 ** s2) u
-| Ret : forall {t}, Wires t -> Circuit Void Void t
-| Apply : forall {s t u}, Circuit t s u -> Wires t -> Circuit Void s u (* TODO: partial application? *)
+    Circuit tzero s1 t -> (denote_type t -> Circuit i s2 u) -> Circuit i (s1 ** s2) u
+| Var : forall {t}, denote_type t -> Circuit tzero tzero t
+| Apply : forall {s t u}, Circuit t s u -> denote_type t -> Circuit tzero s u (* TODO: partial application? *)
+(* Constants *)
+| ConstNat : nat -> Circuit tzero tzero Nat
 (* Primitives *)
-| Inv : Circuit Bit Void Bit
-| And2 : Circuit (Bit * Bit) Void Bit
-| AddMod : nat -> Circuit (Nat * Nat) Void Nat
-| Comparator : Circuit (Nat * Nat) Void Bit
-| Mux2 : Circuit (Bit * (Nat * Nat)) Void Nat
+| Inv : Circuit Bit tzero Bit
+| And2 : Circuit (Bit * Bit) tzero Bit
+| AddMod : nat -> Circuit (Nat * Nat) tzero Nat
+| Comparator : Circuit (Nat * Nat) tzero Bit
+| Mux2 : Circuit (Bit * (Nat * Nat)) tzero Nat
 (* type bookkeeping -- only needed for abstract types *)
 | Cast :
     forall {i1 i2 s1 s2 t} {icast : typecast i2 i1} {scast : typecast s2 s1} {suncast : typecast s1 s2},
@@ -196,15 +184,6 @@ Inductive Circuit {var : sdenote} : type -> type -> type -> Type :=
 .
 
 (**** Coq semantics and simulation ****)
-
-Fixpoint wvalue {t} (w : @Wires signal t) : value t :=
-  match w with
-  | Var x => x
-  | ConstNat n => n
-  | Prod x y => (wvalue x, wvalue y)
-  | Fst xy => fst (wvalue xy)
-  | Snd xy => snd (wvalue xy)
-  end.
 
 (* single-step semantics *)
 Fixpoint step {i s o} (c : @Circuit signal i s o)
@@ -217,8 +196,9 @@ Fixpoint step {i s o} (c : @Circuit signal i s o)
       let '(xs, xo) := step x xs tt in
       let '(fs, fo) := step (f xo) fs i in
       (tprod_min xs fs, fo)
-  | Ret x => fun _ _ => (tt, wvalue x)
-  | Apply f x => fun s _ => step f s (wvalue x)
+  | Var x => fun _ _ => (tt, x)
+  | Apply f x => fun s _ => step f s x
+  | ConstNat n => fun _ _ => (tt, n)
   | Inv => fun _ i => (tt, negb i)
   | And2 => fun _ '(a,b) => (tt, andb a b)
   | AddMod n => fun _ '(a,b) => (tt, (a + b) mod (2 ^ n))
@@ -325,25 +305,6 @@ Module Netlist.
     | mkNetlist name ic bc nc insts ports => mkNetlist name ic bc nc insts (p :: ports)
     end.
 
-  Fixpoint wnet {t} (net : Netlist) (w : @Wires denoteSignal t) : Netlist * denoteType t :=
-    match w with
-    | Var x => (net, x)
-    | AST.ConstNat n =>
-      let '(net, i) := newNat net in
-      let net := addInstance net (ConstNat i (N.of_nat n)) in
-      (net, NatNet i)
-    | Prod x y =>
-      let '(net, x) := wnet net x in
-      let '(net, y) := wnet net y in
-      (net, (x, y))
-    | Fst xy =>
-      let '(net, xy) := wnet net xy in
-      (net, fst xy)
-    | Snd xy =>
-      let '(net, xy) := wnet net xy in
-      (net, snd xy)
-    end.
-
   (* interpret the circuit as a collection of netlist instances; given the
      instance numbers of the input ports, produce a list of instances and the
      numbers for the output ports *)
@@ -357,11 +318,13 @@ Module Netlist.
       fun i =>
         let '(net, xo) := to_netlist' net x tt in
         to_netlist' net (f xo) i
-    | Ret x => fun _ => wnet net x
-    | Apply f x =>
-      fun i =>
-        let '(net, x) := wnet net x in
-        to_netlist' net f x
+    | Var x => fun _ => (net, x)
+    | Apply f x => fun _ => to_netlist' net f x
+    | AST.ConstNat n =>
+      fun _ =>
+        let '(net, i) := newNat net in
+        let net := addInstance net (ConstNat i (N.of_nat n)) in
+        (net, NatNet i)
     | AST.Inv =>
       fun i =>
         let in_wire := as_indices i in
@@ -576,42 +539,49 @@ End SystemVerilog.
 Definition Compose {denote_signal : sdenote} {i1 s1 o1 s2 o2}
            (f : Circuit i1 s1 o1) (g : Circuit o1 s2 o2)
   : Circuit i1 (s1 ** s2) o2 :=
-  Cast (Abs (fun x => Bind (Apply f (Var x))
-                        (fun y => Apply g (Var y)))).
+  Cast (Abs (fun x => Bind (Apply f x)
+                        (fun y => Apply g y))).
 
 Declare Scope expr_scope.
 Delimit Scope expr_scope with expr.
 Notation "x <- e1 ;; e2" :=
-  (Bind e1 (fun x => let x := Var x in e2))
+  (Bind e1 (fun x => e2))
     (at level 60, e1 at next level, right associativity) : expr_scope.
+(* TODO: the below does not work because denote_type is not unfolded enough *)
+(*
+Notation "' pat <- e1 ;; e2" :=
+  (Bind e1 (fun x => match x with pat => e2 end))
+    (at level 60, pat pattern, e1 at next level, right associativity) : expr_scope.
+*)
 Notation "f @ x" := (Apply f x) (at level 40, left associativity) : expr_scope.
 Notation "f >=> g" :=(Compose f g) (at level 60, right associativity) : expr_scope.
-Notation "( x , y , .. , z )" := (Prod .. (Prod x y) .. z) (at level 0) : expr_scope.
-Notation "'abs!' x => e" := (Abs (fun y => let x := Var y in e%expr)) (x binder, e constr, at level 199).
+Notation "'abs!' x => e" := (Abs (fun x => e%expr)) (x binder, e constr, at level 199).
 
 (**** Combinators ****)
 
 Section WithDenoteSignal.
   Context {denote_signal : sdenote}.
 
-  Definition fork2 {A} : Circuit A Void (A * A) :=
-    Cast (abs! a => Ret (a,a)).
+  Definition fork2 {A} : Circuit A tzero (A * A) :=
+    Cast (abs! a => Var (t:=_*_) (a, a)).
 
   Definition fsT {A B C s} (f : Circuit A s C) : Circuit (A * B) s (C * B) :=
-    Cast (abs! ab =>
-          c <- f @ (Fst ab) ;;
-          Ret (c, Snd ab)).
+    Cast (abs! (ab : denote_type (A * B)) =>
+          let '(a,b) := ab in
+          c <- f @ a ;;
+          Var (t:=_ * _) (c, b)).
   Definition snD {A B C s} (f : Circuit B s C) : Circuit (A * B) s (A * C) :=
-    Cast (abs! ab =>
-          c <- f @ (Snd ab) ;;
-          Ret (Fst ab, c))%expr.
+    Cast (abs! (ab : denote_type (A * B)) =>
+          let '(a,b) := ab in
+          c <- f @ b ;;
+          Var (t:=_*_) (a, c))%expr.
 End WithDenoteSignal.
 
 (**** Examples ****)
 
 Local Open Scope string_scope.
 
-Definition nandGate {denote_signal : sdenote} : Circuit (Bit * Bit) Void Bit :=
+Definition nandGate {denote_signal : sdenote} : Circuit (Bit * Bit) tzero Bit :=
   (And2 >=> Inv)%expr.
 
 Compute simulate nandGate [(true,true);(true,false);(false,true);(false,false)].
@@ -621,7 +591,7 @@ Definition nandGate_interface : Netlist.interface nandGate :=
 
 Redirect "nandgate.sv" Compute (SystemVerilog.print nandGate nandGate_interface).
 
-Definition addmod6 {denote_signal : sdenote} : Circuit (Nat * Nat) Void Nat := AddMod 6.
+Definition addmod6 {denote_signal : sdenote} : Circuit (Nat * Nat) tzero Nat := AddMod 6.
 
 Definition addmod6_interface : Netlist.interface addmod6 :=
   Netlist.Build_interface addmod6 "addmod6" ("a", "b") "c".
@@ -643,9 +613,10 @@ Definition pipe2_interface : Netlist.interface pipe2 :=
 
 Redirect "pipe2.sv" Compute (SystemVerilog.print pipe2 pipe2_interface).
 
-Definition counter6 {denote_signal : sdenote} : Circuit Void (Nat * Nat) Nat  :=
-  (count6 <- LoopDelay 0 (AddMod 6 >=> Delay 0 >=> fork2) @ (ConstNat 1) ;;
-   Ret count6)%expr.
+Definition counter6 {denote_signal : sdenote} : Circuit tzero (Nat * Nat) Nat  :=
+  (one <- ConstNat 1 ;;
+   count6 <- LoopDelay 0 (AddMod 6 >=> Delay 0 >=> fork2) @ one ;;
+   Var count6)%expr.
 
 Definition counter6_interface : Netlist.interface counter6 :=
   Netlist.Build_interface counter6 "counter6" tt "count6".
@@ -653,12 +624,15 @@ Definition counter6_interface : Netlist.interface counter6 :=
 Redirect "counter6.sv" Compute (SystemVerilog.print counter6 counter6_interface).
 
 Definition counter6by4 {denote_signal : sdenote}
-  : Circuit Void (Nat * Nat * (Nat * Nat)) Nat :=
-  (count4 <- LoopDelay 0 (AddMod 4 >=> Delay 0 >=> fork2) @ (ConstNat 1) ;;
-   is3 <- Comparator @ (count4, ConstNat 3) ;;
-   incVal <- Mux2 @ (is3, (ConstNat 1, ConstNat 0)) ;;
+  : Circuit tzero (Nat * Nat * (Nat * Nat)) Nat :=
+  (one <- ConstNat 1 ;;
+   three <- ConstNat 3 ;;
+   zero <- ConstNat 0 ;;
+   count4 <- LoopDelay 0 (AddMod 4 >=> Delay 0 >=> fork2) @ one ;;
+   is3 <- Comparator @ (count4, three) ;;
+   incVal <- Mux2 @ (is3, (one, zero)) ;;
    count6by4 <- LoopDelay 0 (AddMod 6 >=> Delay 0 >=> fork2) @ incVal ;;
-   Ret count6by4)%expr.
+   Var count6by4)%expr.
 
 Definition counter6by4_interface : Netlist.interface counter6by4 :=
   Netlist.Build_interface counter6by4 "counter6by4" tt "count6by4".
@@ -666,33 +640,15 @@ Definition counter6by4_interface : Netlist.interface counter6by4 :=
 Redirect "counter6by4.sv" Compute (SystemVerilog.print counter6by4 counter6by4_interface).
 
 Definition nestedloop {denote_signal : sdenote}
-  : Circuit Void (Nat * (Nat * (Nat * Nat))) Nat :=
-  (o <- LoopDelay 0 (snD (Delay 0) >=> AddMod 512
-                        >=> LoopDelay 0 (AddMod 512 >=> Delay 0 >=> fork2) >=> fork2) @ ConstNat 1 ;;
-   Ret o)%expr.
+  : Circuit tzero (Nat * (Nat * (Nat * Nat))) Nat :=
+  (one <- ConstNat 1 ;;
+   o <- LoopDelay 0 (snD (Delay 0) >=> AddMod 512
+                        >=> LoopDelay 0 (AddMod 512 >=> Delay 0 >=> fork2) >=> fork2) @ one ;;
+   Var o)%expr.
 
 Definition nestedloop_interface : Netlist.interface nestedloop :=
   Netlist.Build_interface nestedloop "nestedloop" tt "count6by4".
 
 Redirect "nestedloop.sv" Compute (SystemVerilog.print nestedloop nestedloop_interface).
-
-(* inputs can be placed inside loop expressions instead of fed in separately *)
-Definition input_in_loop {denote_signal : sdenote}
-  : Circuit (Bit * Nat) Nat Nat :=
-  (LoopDelay 0 (abs! (input : Wires (Nat * (Bit * Nat))) =>
-                let x := Fst input in
-                let sel := Fst (Snd input) in
-                let y := Snd (Snd input) in
-                sel <- (Inv >=> Inv) @ sel ;;
-                x' <- Mux2 @ (sel, (y, x)) ;;
-                fork2 @ x'))%expr.
-
-Compute simulate input_in_loop (combine [true;false;true;false;true;false;true;false] (seq 0 8)).
-
-Definition input_in_loop_interface : Netlist.interface input_in_loop :=
-  Netlist.Build_interface input_in_loop "input_in_loop" ("sel", "y") "x".
-
-Redirect "input_in_loop.sv" Compute (SystemVerilog.print input_in_loop input_in_loop_interface).
-
 
 (**** Proofs ****)
