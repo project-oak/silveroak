@@ -9,6 +9,7 @@ Require Import coqutil.Word.Interface.
 Require Import Bedrock2Experiments.Uart.Constants.
 Require Import Bedrock2Experiments.LibBase.AbsMMIO.
 Require Import Bedrock2Experiments.LibBase.Bitfield.
+Require Import Bedrock2Experiments.LibBase.Constants.
 
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
@@ -16,11 +17,6 @@ Local Open Scope Z_scope.
 Local Open Scope list_scope.
 
 Section Impl.
-  (* instantiated to `expr.literal SOME_Z_CONST` for proving and
-     compilation using the bedrock2 compiler, instantiated to
-     `expr.var STRING_NAME_OF_CONST` for pretty-printing to C code *)
-  Context {constant_vars : uart_constants expr}.
-
   (* Notations for small constants *)
   Local Notation "0" := (expr.literal 0) (in custom bedrock_expr).
   Local Notation "1" := (expr.literal 1) (in custom bedrock_expr).
