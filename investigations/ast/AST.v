@@ -164,7 +164,7 @@ Inductive Circuit {var : sdenote} : type -> type -> type -> Type :=
 | Abs : forall {i s t}, (denote_type i -> Circuit tzero s t) -> Circuit i s t
 | Bind : forall {t u i s1 s2},
     Circuit tzero s1 t -> (denote_type t -> Circuit i s2 u) -> Circuit i (s1 ** s2) u
-| Var : forall {t}, denote_type t -> Circuit tzero tzero t
+| Ret : forall {t}, denote_type t -> Circuit tzero tzero t
 | Apply : forall {s t u}, Circuit t s u -> denote_type t -> Circuit tzero s u (* TODO: partial application? *)
 (* Constants *)
 | ConstNat : nat -> Circuit tzero tzero Nat
@@ -196,7 +196,7 @@ Fixpoint step {i s o} (c : @Circuit signal i s o)
       let '(xs, xo) := step x xs tt in
       let '(fs, fo) := step (f xo) fs i in
       (tprod_min xs fs, fo)
-  | Var x => fun _ _ => (tt, x)
+  | Ret x => fun _ _ => (tt, x)
   | Apply f x => fun s _ => step f s x
   | ConstNat n => fun _ _ => (tt, n)
   | Inv => fun _ i => (tt, negb i)
@@ -318,7 +318,7 @@ Module Netlist.
       fun i =>
         let '(net, xo) := to_netlist' net x tt in
         to_netlist' net (f xo) i
-    | Var x => fun _ => (net, x)
+    | Ret x => fun _ => (net, x)
     | Apply f x => fun _ => to_netlist' net f x
     | AST.ConstNat n =>
       fun _ =>
@@ -563,18 +563,18 @@ Section WithDenoteSignal.
   Context {denote_signal : sdenote}.
 
   Definition fork2 {A} : Circuit A tzero (A * A) :=
-    Cast (abs! a => Var (t:=_*_) (a, a)).
+    Cast (abs! a => Ret (t:=_*_) (a, a)).
 
   Definition fsT {A B C s} (f : Circuit A s C) : Circuit (A * B) s (C * B) :=
     Cast (abs! (ab : denote_type (A * B)) =>
           let '(a,b) := ab in
           c <- f @ a ;;
-          Var (t:=_ * _) (c, b)).
+          Ret (t:=_ * _) (c, b)).
   Definition snD {A B C s} (f : Circuit B s C) : Circuit (A * B) s (A * C) :=
     Cast (abs! (ab : denote_type (A * B)) =>
           let '(a,b) := ab in
           c <- f @ b ;;
-          Var (t:=_*_) (a, c))%expr.
+          Ret (t:=_*_) (a, c))%expr.
 End WithDenoteSignal.
 
 (**** Examples ****)
@@ -616,7 +616,7 @@ Redirect "pipe2.sv" Compute (SystemVerilog.print pipe2 pipe2_interface).
 Definition counter6 {denote_signal : sdenote} : Circuit tzero (Nat * Nat) Nat  :=
   (one <- ConstNat 1 ;;
    count6 <- LoopDelay 0 (AddMod 6 >=> Delay 0 >=> fork2) @ one ;;
-   Var count6)%expr.
+   Ret count6)%expr.
 
 Definition counter6_interface : Netlist.interface counter6 :=
   Netlist.Build_interface counter6 "counter6" tt "count6".
@@ -632,7 +632,7 @@ Definition counter6by4 {denote_signal : sdenote}
    is3 <- Comparator @ (count4, three) ;;
    incVal <- Mux2 @ (is3, (one, zero)) ;;
    count6by4 <- LoopDelay 0 (AddMod 6 >=> Delay 0 >=> fork2) @ incVal ;;
-   Var count6by4)%expr.
+   Ret count6by4)%expr.
 
 Definition counter6by4_interface : Netlist.interface counter6by4 :=
   Netlist.Build_interface counter6by4 "counter6by4" tt "count6by4".
@@ -644,11 +644,114 @@ Definition nestedloop {denote_signal : sdenote}
   (one <- ConstNat 1 ;;
    o <- LoopDelay 0 (snD (Delay 0) >=> AddMod 512
                         >=> LoopDelay 0 (AddMod 512 >=> Delay 0 >=> fork2) >=> fork2) @ one ;;
-   Var o)%expr.
+   Ret o)%expr.
 
 Definition nestedloop_interface : Netlist.interface nestedloop :=
   Netlist.Build_interface nestedloop "nestedloop" tt "count6by4".
 
 Redirect "nestedloop.sv" Compute (SystemVerilog.print nestedloop nestedloop_interface).
 
+(* Fibonacci sequence *)
+Definition fibonacci {denote_signal : sdenote} {sz}
+  : Circuit tzero (Nat * Nat) Nat :=
+  LoopDelay 1
+            (abs! (input : denote_type (Nat * tzero)) =>
+             let '(r1,_) := input in
+             r2 <- Delay (2^sz-1) @ r1 ;;
+             sum <- AddMod sz @ (r1, r2) ;;
+             fork2 @ sum).
+
 (**** Proofs ****)
+
+Require Import Coq.micromega.Lia.
+Require Import coqutil.Tactics.Tactics.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Tactics.
+
+Fixpoint fibonacci_nat (n : nat) :=
+  match n with
+  | 0 => 0
+  | S m =>
+    let f_m := fibonacci_nat m in
+    match m with
+    | 0 => 1
+    | S p => fibonacci_nat p + f_m
+    end
+  end.
+
+Definition spec_of_fibonacci (sz : nat) (input : list unit) : list nat
+  := map (fun n => fibonacci_nat n mod (2 ^ sz)) (seq 0 (List.length input)).
+
+Lemma fork2_step A state input : step (fork2 (A:=A)) state input = (tt, (input, input)).
+Proof. reflexivity. Qed.
+
+Lemma fibonacci_step sz state input :
+  step (fibonacci (sz:=sz)) state input
+  = let sum := (fst state + snd state) mod (2 ^ sz) in
+    (sum, fst state, sum).
+Proof.
+  intros; cbn [step fibonacci].
+  repeat (destruct_pair_let; cbn [tsplit tpair_min tprod_min fst snd]).
+  rewrite fork2_step. cbn [fst snd]. reflexivity.
+Qed.
+
+Definition fibonacci_invariant {sz}
+           (t : nat) (loop_state : nat * nat)
+           (output_accumulator : list nat) : Prop :=
+  let r1 := fst loop_state in
+  let r2 := snd loop_state in
+  (* at timestep t... *)
+  (* ...r1 holds fibonacci_nat (t-1), or 1 if t=0 *)
+  r1 = match t with
+       | 0 => 1
+       | S t_minus1 => (fibonacci_nat t_minus1) mod (2 ^ sz)
+       end
+  (* ... and r2 holds fibonacci_nat (t-2), or 1 if t=1, 2^sz-1 if t=0 *)
+  /\ r2 = match t with
+         | 0 => 2 ^ sz - 1
+         | 1 => 1
+         | S (S t_minus2) =>(fibonacci_nat t_minus2) mod (2 ^ sz)
+         end
+  (* ... and the output accumulator matches the circuit spec for the
+     inputs so far *)
+  /\ output_accumulator = spec_of_fibonacci sz (repeat tt t).
+
+(* Helper lemma for fibonacci_correct *)
+Lemma fibonacci_nat_step n :
+  fibonacci_nat (S (S n)) = fibonacci_nat (S n) + fibonacci_nat n.
+Proof. cbn [fibonacci_nat]. lia. Qed.
+
+Lemma fibonacci_correct sz input :
+  simulate (fibonacci (sz:=sz)) input = spec_of_fibonacci sz input.
+Proof.
+  cbv [simulate]. rewrite fold_left_accumulate_to_seq with (default:=tt).
+  assert (2 ^ sz <> 0) by (apply Nat.pow_nonzero; lia).
+  apply fold_left_accumulate_invariant_seq with (I:=fibonacci_invariant (sz:=sz)).
+  { cbv [fibonacci_invariant]. ssplit; reflexivity. }
+  { cbv [fibonacci_invariant].
+    intros; destruct_products; cbn [fst snd] in *; subst; cbn [fst snd].
+    rewrite fibonacci_step. cbn [fst snd].
+    repeat destruct_one_match.
+    { (* t = 0 case *)
+      cbn. rewrite Nat.sub_1_r, Nat.succ_pred by lia.
+      rewrite Nat.mod_same, Nat.mod_0_l by lia.
+      ssplit; reflexivity. }
+    { (* t = 1 case *)
+      cbn. rewrite Nat.mod_0_l by lia.
+      ssplit; reflexivity. }
+    { (* t > 1 case *)
+      rewrite Nat.add_mod_idemp_r, Nat.add_mod_idemp_l by lia.
+      ssplit.
+      { cbn [fibonacci_nat]. f_equal; lia. }
+      { reflexivity. }
+      { cbv [spec_of_fibonacci].
+        autorewrite with push_length.
+        rewrite seq_S with (len:=S (S _)).
+        autorewrite with natsimpl. rewrite map_app.
+        cbn [map]. rewrite fibonacci_nat_step.
+        reflexivity. } } }
+  { cbv [fibonacci_invariant]. intros.
+    logical_simplify; subst.
+    autorewrite with push_length.
+    erewrite <-list_unit_equiv. reflexivity. }
+Qed.
