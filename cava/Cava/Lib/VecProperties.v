@@ -25,8 +25,9 @@ Require Cava.Lib.Vec.
 Import Vector.VectorNotations.
 Local Open Scope vector_scope.
 
-Existing Instance CombinationalSemantics.
+Existing Instances combType CombinationalSemantics.
 
+Set Printing All.
 Local Ltac crush :=
   (* inline Vec definition *)
   lazymatch goal with
@@ -47,9 +48,12 @@ Lemma of_N_correct n (x : N) : Vec.of_N x = N2Bv_sized n x.
 Proof. crush. Qed.
 Hint Rewrite @of_N_correct using solve [eauto] : simpl_ident.
 
-Hint Rewrite @bitvec_literal_correct using solve [eauto] : simpl_ident.
+About Vec.map_literal.
+Hint Transparent CombinationalSemantics.
 Lemma map_literal_correct {A B} n (f : A -> cava (combType B)) (v : Vector.t A n) :
+  Vector.map f v = Vec.map_literal f v.
   Vec.map_literal f v = Vector.map f v.
+  @eq (Vector.t (combType B) n) (Vec.map_literal f v) (Vector.map f v).
 Proof. crush. Qed.
 Hint Rewrite @map_literal_correct using solve [eauto] : simpl_ident.
 
@@ -70,18 +74,18 @@ Proof. crush. Qed.
 Hint Rewrite @unpackV4_correct using solve [eauto] : simpl_ident.
 
 Lemma packV2_correct {A n0 n1} (v : combType (Vec (Vec A n0) n1)) :
-  Vec.packV2 v = v.
+  Vec.packV2 (signal:=combType) v = v.
 Proof. crush. Qed.
 Hint Rewrite @packV2_correct using solve [eauto] : simpl_ident.
 
 Lemma packV3_correct {A n0 n1 n2} (v : combType (Vec (Vec (Vec A n0) n1) n2)) :
-  Vec.packV3 v = v.
+  Vec.packV3 (signal:=combType)  v = v.
 Proof. crush. Qed.
 Hint Rewrite @packV3_correct using solve [eauto] : simpl_ident.
 
 Lemma packV4_correct {A n0 n1 n2 n3}
       (v : combType (Vec (Vec (Vec (Vec A n0) n1) n2) n3)) :
-  Vec.packV4 v = v.
+  Vec.packV4 (signal:=combType)  v = v.
 Proof. crush. Qed.
 Hint Rewrite @packV4_correct using solve [eauto] : simpl_ident.
 
@@ -131,18 +135,18 @@ Proof. crush. Qed.
 Hint Rewrite @shiftout_correct using solve [eauto] : simpl_ident.
 
 Lemma transpose_correct A n m (v : combType (Vec (Vec A n) m)) :
-  Vec.transpose v = transpose v.
-Proof. crush. Qed.
+  Vec.transpose v = transpose (A:=combType A) v.
+Proof. crush. rewrite packV2_correct, unpackV2_correct. reflexivity. Qed.
 Hint Rewrite @transpose_correct using solve [eauto] : simpl_ident.
 
 Lemma reshape_correct A n m (v : combType (Vec A (n * m))) :
   Vec.reshape v = reshape v.
-Proof. crush. Qed.
+Proof. crush. rewrite packV2_correct; reflexivity. Qed.
 Hint Rewrite @reshape_correct using solve [eauto] : simpl_ident.
 
 Lemma flatten_correct A n m (v : combType (Vec (Vec A m) n)) :
   Vec.flatten v = flatten v.
-Proof. crush. Qed.
+Proof. crush. rewrite unpackV2_correct; reflexivity. Qed.
 Hint Rewrite @flatten_correct using solve [eauto] : simpl_ident.
 
 Lemma resize_default_correct A n m (v : combType (Vec A n)) :
@@ -200,35 +204,35 @@ Hint Rewrite @inv_correct using solve [eauto] : simpl_ident.
 
 Lemma and_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.and i = Vector.map2 andb (fst i) (snd i).
-Proof. crush. Qed.
+Proof. crush. apply map2_correct. Qed.
 Hint Rewrite @and_correct using solve [eauto] : simpl_ident.
 
 Lemma nand_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.nand i = Vector.map2 nandb (fst i) (snd i).
-Proof. crush. Qed.
+Proof. crush. apply map2_correct. Qed.
 Hint Rewrite @nand_correct using solve [eauto] : simpl_ident.
 
 Lemma or_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.or i = Vector.map2 orb (fst i) (snd i).
-Proof. crush. Qed.
+Proof. crush. apply map2_correct. Qed.
 Hint Rewrite @or_correct using solve [eauto] : simpl_ident.
 
 Lemma nor_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.nor i = Vector.map2 norb (fst i) (snd i).
-Proof. crush. Qed.
+Proof. crush. apply map2_correct. Qed.
 Hint Rewrite @nor_correct using solve [eauto] : simpl_ident.
 
 Lemma xor_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.xor i = Vector.map2 xorb (fst i) (snd i).
-Proof. crush. Qed.
+Proof. crush. apply map2_correct. Qed.
 Hint Rewrite @xor_correct using solve [eauto] : simpl_ident.
 
 Lemma xnor_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.xnor i = Vector.map2 xnorb (fst i) (snd i).
-Proof. crush. Qed.
+Proof. crush. apply map2_correct. Qed.
 Hint Rewrite @xnor_correct using solve [eauto] : simpl_ident.
 
 Lemma xorcy_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.xorcy i = Vector.map2 xorb (fst i) (snd i).
-Proof. crush. Qed.
+Proof. crush. apply map2_correct. Qed.
 Hint Rewrite @xorcy_correct using solve [eauto] : simpl_ident.

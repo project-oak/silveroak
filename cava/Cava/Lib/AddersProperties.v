@@ -78,7 +78,8 @@ Proof.
   revert x y cin; induction n; intros;
     [ apply case0 with (v:=x); apply case0 with (v:=y);
       destruct cin; reflexivity | ].
-  rewrite col_step, fullAdder_correct. cbn [fst snd].
+  rewrite col_step with (n0:=n).
+  rewrite fullAdder_correct. cbn [fst snd].
   rewrite (Vector.eta x), (Vector.eta y).
   rewrite vcombine_cons. autorewrite with vsimpl.
   rewrite !Bv2N_cons. cbn [fst snd]. rewrite IHn.
@@ -104,11 +105,11 @@ Lemma addN_correct n inputs :
   addN (n:=n) inputs = N2Bv_sized n sum.
 Proof.
   cbv [addN zero]. simpl_ident. repeat destruct_pair_let.
-  cbn [N.b2n]. rewrite N.add_0_r. reflexivity.
+  cbn [N.b2n]. rewrite (addC_correct n), N.add_0_r. reflexivity.
 Qed.
 Hint Rewrite @addN_correct using solve [eauto] : simpl_ident.
 
-Lemma incrC_correct n input :
+Lemma incrC_correct n (input : Vector.t bool n) :
   let sum := Bv2N input + 1 in
   incrC input = (N2Bv_sized n sum, N.testbit_nat sum n).
 Proof.
@@ -118,11 +119,21 @@ Proof.
       reflexivity | ].
   simpl_ident. cbn [unsignedAdd CombinationalSemantics].
   cbv [unsignedAddBool one]. simpl_ident.
+  Set Printing All.
+  Fail rewrite VecProperties.resize_default_correct.
+  cbv [Bvector.Bvector] in *. cbn [value combType] in *.
+  Set Printing All.
+  Print combType.
+  About VecProperties.resize_default_correct.
+  rewrite VecProperties.resize_default_correct with (A:=Bit) (n:=(1 + Nat.max (S n) 1)%nat).
   change (Bv2N [true]) with 1.
 
   (* remove resize by proving lengths are equal *)
   assert ((1 + Nat.max (S n) 1)%nat = S (S n)) as Hresize by lia.
   generalize dependent (1 + Nat.max (S n) 1)%nat; intros; subst.
+  Search Vec.shiftout.
+  rewrite VecProperties.shiftout_correct.
+  rewrite shiftout_correct.
   rewrite resize_default_id.
 
   rewrite N2Bv_sized_shiftout, N2Bv_sized_last.

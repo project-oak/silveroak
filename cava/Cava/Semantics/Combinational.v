@@ -18,18 +18,15 @@
 Require Import Coq.Vectors.Vector.
 Require Import Coq.NArith.NArith.
 Require Import ExtLib.Structures.Monads.
-Require Import ExtLib.Structures.Functor.
-Require Import ExtLib.Data.List.
 Import MonadNotation.
 
 Require Import Cava.Core.Core.
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Util.Identity.
 Require Import Cava.Util.Vector.
-Require Import Cava.Util.Tuple.
 
 Import ListNotations.
-Import FunctorNotation.
+Existing Instance combType.
 
 (******************************************************************************)
 (* A boolean combinational logic interpretation for the Cava class            *)
@@ -43,12 +40,6 @@ Definition xnorb b1 b2 : bool := negb (xorb b1 b2).
 (* Instantiate the Cava class for a boolean combinational logic               *)
 (* interpretation.                                                            *)
 (******************************************************************************)
-
-Local Fixpoint default_helper (xs: list PortDeclaration): tupledR (port_signal combType <$> xs) :=
-  match xs with
-  | [] => tt
-  | x::xs => (defaultCombValue (port_type x), default_helper xs)
-  end.
 
 Instance CombinationalSemantics : Cava combType | 10 :=
   { cava := ident;
@@ -74,22 +65,20 @@ Instance CombinationalSemantics : Cava combType | 10 :=
     muxcy := fun sel x y => ret (if sel then x else y);
     unpackV _ _ v := ret v;
     packV _ _ v := ret v;
-    indexAt t sz isz := fun v sel => ret (nth_default (defaultCombValue _) (N.to_nat (Bv2N sel)) v);
+    indexAt t sz isz := fun v sel => ret (nth_default (defaultCombSignal _) (N.to_nat (Bv2N sel)) v);
     unsignedAdd m n a := ret (unsignedAddBool a);
     unsignedMult m n a := ret (unsignedMultBool a);
     greaterThanOrEqual m n a := ret (greaterThanOrEqualBool a);
     localSignal _ v := ret v;
-    instantiate intf circuit args :=
-      uncurry (port_signal combType <$> circuitInputs intf) _ circuit (unbalance' _ args);
-    blackBox intf _ :=
-      rebalance' (port_signal combType <$> circuitOutputs intf) (default_helper (circuitOutputs intf));
-}.
+    instantiate intf circuit args := circuit args;
+    blackBox intf _ := defaultCombValue _
+  }.
 
 (* Run circuit for a single step *)
 Fixpoint step {i o} (c : Circuit i o)
-  : circuit_state c -> i -> circuit_state c * o :=
-  match c in Circuit i o return circuit_state c -> i
-                                -> circuit_state c * o with
+  : value (circuit_state c) -> value i -> value (circuit_state c) * value o :=
+  match c in Circuit i o return value (circuit_state c) -> value i
+                                -> value (circuit_state c) * value o with
   | Comb f => fun _ i => (tt, f i)
   | Compose f g =>
     fun cs input =>
@@ -126,7 +115,6 @@ Ltac simpl_ident :=
            lut1 lut2 lut3 lut4 lut5 lut6
            xorcy muxcy
            CombinationalSemantics
-           port_signal
            ];
   repeat lazymatch goal with
          | |- context [(@Traversable.mapT

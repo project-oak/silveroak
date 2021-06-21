@@ -29,54 +29,33 @@ Require Import Cava.Core.Signal.
 Section WithCava.
   Context `{semantics:Cava}.
 
-  Definition flat_signals
-             (l : list SignalType) : Type :=
-    (match l with
-     | [] => unit
-     | [x] => signal x
-     | x :: y :: l =>
-       List.fold_left (fun x y => (x * signal y)%type)
-                      l (signal x * signal y)%type
-     end)%list.
-
-  Inductive Circuit : Type -> Type -> Type :=
-  | Comb : forall {i} ty, (i -> cava (flat_signals ty)) -> Circuit i (flat_signals ty)
+  Inductive Circuit : type -> type -> Type :=
+  | Comb : forall {i o}, (value i -> cava (value o)) -> Circuit i o
   | Compose : forall {i t o}, Circuit i t -> Circuit t o -> Circuit i o
   | First : forall {i o t}, Circuit i o -> Circuit (i * t) (o * t)
   | Second : forall {i o t}, Circuit i o -> Circuit (t * i) (t * o)
   | LoopInitCE :
-      forall {i o : Type} {s : SignalType} (resetval : combType s),
-        Circuit (i * signal s) (o * signal s) ->
-        Circuit (i * signal Bit) o
+      forall {i o : type} {s : SignalType} (resetval : combType s),
+        Circuit (i * s) (o * s) -> Circuit (i * Bit) o
   | DelayInitCE :
-      forall {t} (resetval : combType t),
-        Circuit (signal t * signal Bit) (signal t)
+      forall {t} (resetval : combType t), Circuit (t * Bit) t
   .
 
-  Fixpoint out_interface {i o} (c : Circuit i o) : list SignalType :=
-    match c with
-    | Comb ty _ => ty
-    | Compose f g => out_interface g
-    | First f => firstn (length (out_interface f) - 1) (out_interface f)
-    | Second f => skipn (length (out_interface f) - 1) (out_interface f)
-    | @LoopInitCE i o s _ f => out_interface f ++ [s]
-    | @DelayInitCE t _ => [t]
-    end.
-
   (* Internal state of the circuit (register values) *)
-  Fixpoint circuit_state {i o} (c : Circuit i o) : Type :=
+  Fixpoint circuit_state {i o} (c : Circuit i o) : type :=
     match c with
-    | Comb _ => unit
+    | Comb _ => tzero
     | Compose f g => circuit_state f * circuit_state g
     | First f => circuit_state f
     | Second f => circuit_state f
-    | @LoopInitCE i o s _ f => circuit_state f * combType s
-    | @DelayInitCE t _ => combType t
+    | @LoopInitCE i o s _ f => circuit_state f * s
+    | @DelayInitCE t _ => t
     end.
 
   (* The state of the circuit after a reset *)
-  Fixpoint reset_state {i o} (c : Circuit i o) : circuit_state c :=
-    match c as c return circuit_state c with
+  Fixpoint reset_state {i o} (c : Circuit i o)
+    : value (signal:=combType) (circuit_state c) :=
+    match c as c return value (circuit_state c) with
     | Comb _ => tt
     | Compose f g => (reset_state f, reset_state g)
     | First f => reset_state f
@@ -87,42 +66,30 @@ Section WithCava.
 
   (* Loop with no enable; set enable to always be true *)
   Definition LoopInit {i o s} (resetval : combType s)
-             (body : Circuit (i * signal s) (o * signal s))
+             (body : Circuit (i * s) (o * s))
     : Circuit i o :=
-    Compose (Comb (fun i => ret (i, constant true))) (LoopInitCE resetval body).
+    Compose (Comb (fun i => ret (i, constant true)))
+            (LoopInitCE resetval body).
   (* Delay with no enable; set enable to always be true *)
   Definition DelayInit {t} (resetval : combType t)
-    : Circuit (signal t) (signal t) :=
+    : Circuit t t :=
     Compose (Comb (fun i => ret (i, constant true))) (DelayInitCE resetval).
 
   (* Loop with the default signal as its reset value *)
-  Definition LoopCE {i o s}
-    : Circuit (i * signal s) (o * signal s) -> Circuit (i * signal Bit) o :=
+  Definition LoopCE {i o} {s : SignalType}
+    : Circuit (i * s) (o * s) -> Circuit (i * Bit) o :=
     LoopInitCE (defaultCombValue s).
   (* Delay with the default signal as its reset value *)
-  Definition DelayCE {t}
-    : Circuit (signal t * signal Bit) (signal t) :=
+  Definition DelayCE {t : SignalType} : Circuit (t * Bit) t :=
     DelayInitCE (defaultCombValue t).
 
   (* Loop with the default signal as its reset value and no enable *)
-  Definition Loop {i o s}
-             (body : Circuit (i * signal s) (o * signal s))
+  Definition Loop {i o} {s : SignalType} (body : Circuit (i * s) (o * s))
     : Circuit i o :=
     Compose (Comb (fun i => ret (i, constant true))) (LoopInitCE (defaultCombValue s) body).
   (* Delay with the default signal as its reset value and no enable *)
-  Definition Delay {t} : Circuit (signal t) (signal t) :=
+  Definition Delay {t : SignalType} : Circuit t t :=
     Compose (Comb (fun i => ret (i, constant true))) (DelayInitCE (defaultCombValue t)).
-
-  (* Internal state of the circuit (register values) *)
-  Fixpoint mkdelays {i o} (c : Circuit i o) : Circuit o o :=
-    match c with
-    | Comb ty _ => fold_left (fun t => 
-    | Compose f g => circuit_state f * circuit_state g
-    | First f => circuit_state f
-    | Second f => circuit_state f
-    | @LoopInitCE i o s _ f => circuit_state f * combType s
-    | @DelayInitCE t _ => combType t
-    end.
 
 End WithCava.
 
