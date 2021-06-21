@@ -129,7 +129,7 @@ Section MMIO1.
            Exists
              (fun r => word.unsigned (parameters.reg_addr r)
                     <= word.unsigned w
-                    <= word.unsigned (parameters.reg_addr r) + 4)
+                    < word.unsigned (parameters.reg_addr r) + 4)
              parameters.all_regs;
        isMMIOAligned := fun n addr => n = 4%nat /\ (word.unsigned addr) mod 4 = 0;
        MMIOReadOK :=
