@@ -29,7 +29,7 @@ Require Import Cava.Util.Identity.
 Existing Instance CombinationalSemantics.
 
 (* Run a circuit for many timesteps, starting at the reset value *)
-Definition simulate {i o} (c : Circuit i o) (input : list i) : list o :=
+Definition simulate {i o} (c : Circuit i o) (input : list (value i)) : list (value o) :=
   fold_left_accumulate (step c) input (reset_state c).
 
 Local Ltac simsimpl :=
@@ -38,7 +38,7 @@ Local Ltac simsimpl :=
                | destruct_pair_let
                | progress simpl_ident ].
 
-Lemma simulate_compose {A B C} (c1 : Circuit A B) (c2 : Circuit B C) (input : list A) :
+Lemma simulate_compose {A B C} (c1 : Circuit A B) (c2 : Circuit B C) (input : list (value A)) :
   simulate (Compose c1 c2) input = simulate c2 (simulate c1 input).
 Proof.
   simsimpl.
@@ -48,12 +48,12 @@ Proof.
 Qed.
 Hint Rewrite @simulate_compose using solve [eauto] : push_simulate.
 
-Lemma simulate_comb {A B} (c : A -> ident B) (input : list A) :
+Lemma simulate_comb {A B} (c : value A -> ident (value B)) (input : list (value A)) :
   simulate (Comb c) input = map c input.
 Proof. apply fold_left_accumulate_to_map. Qed.
 Hint Rewrite @simulate_comb using solve [eauto] : push_simulate.
 
-Lemma simulate_first {A B C} (f : Circuit A C) (input : list (A * B)) :
+Lemma simulate_first {A B C} (f : Circuit A C) (input : list (value (A * B))) :
   simulate (First f) input = combine (simulate f (map fst input))
                                       (map snd input).
 Proof.
@@ -82,7 +82,7 @@ Proof.
 Qed.
 Hint Rewrite @simulate_first using solve [eauto] : push_simulate.
 
-Lemma simulate_second {A B C} (f : Circuit B C) (input : list (A * B)) :
+Lemma simulate_second {A B C} (f : Circuit B C) (input : list (value (A * B))) :
   simulate (Second f) input = combine (map fst input)
                                        (simulate f (map snd input)).
 Proof.
@@ -125,7 +125,7 @@ Proof.
   induction input; intros; [ reflexivity | ].
   autorewrite with push_length push_firstn push_fold_acc.
   destruct_products; cbn [fst snd]. erewrite IHinput.
-  destruct_one_match;  reflexivity.
+  simsimpl. destruct_one_match; reflexivity.
 Qed.
 Hint Rewrite @simulate_DelayInitCE using solve [eauto] : push_simulate.
 
@@ -156,8 +156,8 @@ Proof.
     logical_simplify; subst. cbn [fst snd].
     autorewrite with push_length in *.
     autorewrite with push_firstn push_nth pull_snoc natsimpl.
-    rewrite !map_nth_inbounds with (d2:=defaultSignal) by length_hammer.
-    erewrite firstn_succ_snoc by lia. cbn [fst snd].
+    erewrite !map_nth_inbounds with (d2:=defaultValue) by length_hammer.
+    cbn [value] in *.  erewrite firstn_succ_snoc by lia. cbn [fst snd].
     ssplit; reflexivity. }
   { intros. logical_simplify; subst. cbn [fst snd].
     autorewrite with push_length push_firstn.
@@ -181,8 +181,9 @@ Qed.
 Hint Rewrite @simulate_length using solve [eauto] : push_length.
 
 Lemma simulate_LoopInitCE
-      {i s o} resetval (body : Circuit (i * combType s) (o * combType s))
-      (input : list (i * bool)) :
+      {i o} {s : SignalType}
+      resetval (body : Circuit (i * s) (o * s))
+      (input : list (value i * bool)) :
   simulate (LoopInitCE resetval body) input =
   fold_left_accumulate
     (fun '(cs, st) '(i, en) =>
@@ -194,8 +195,8 @@ Proof. reflexivity. Qed.
 Hint Rewrite @simulate_LoopInitCE using solve [eauto] : push_simulate.
 
 Lemma simulate_LoopCE
-      {i s o} (body : Circuit (i * combType s) (o * combType s))
-      (input : list (i * bool)) :
+      {i o} {s : SignalType} (body : Circuit (i * s) (o * s))
+      (input : list (value i * bool)) :
   simulate (LoopCE body) input =
   fold_left_accumulate
     (fun '(cs, st) '(i, en) =>
@@ -207,8 +208,8 @@ Proof. apply simulate_LoopInitCE. Qed.
 Hint Rewrite @simulate_LoopCE using solve [eauto] : push_simulate.
 
 Lemma simulate_LoopInit
-      {i s o} resetval (body : Circuit (i * combType s) (o * combType s))
-      (input : list i) :
+      {i o} {s : SignalType} resetval (body : Circuit (i * s) (o * s))
+      (input : list (value i)) :
   simulate (LoopInit resetval body) input =
   fold_left_accumulate
     (fun '(cs, st) i =>
@@ -224,8 +225,8 @@ Qed.
 Hint Rewrite @simulate_LoopInit using solve [eauto] : push_simulate.
 
 Lemma simulate_Loop
-      {i s o} (body : Circuit (i * combType s) (o * combType s))
-      (input : list i) :
+      {i o} {s : SignalType} (body : Circuit (i * s) (o * s))
+      (input : list (value i)) :
   simulate (Loop body) input =
   fold_left_accumulate
     (fun '(cs, st) i =>

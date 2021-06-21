@@ -24,12 +24,11 @@ Local Open Scope type_scope.
 (**** IMPORTANT: if you make changes to the API of these definitions, or add new
       ones, make sure you update the reference at docs/reference.md! ****)
 
-Definition port_signal signal port : Type := signal (port_type port).
 (* The Cava class represents circuit graphs with Coq-level inputs and
    outputs, but does not represent the IO ports of circuits. This allows
    us to define both circuit netlist interpretations for the Cava class
    as well as behavioural interpretations for attributing semantics. *)
-Class Cava (signal : SignalType -> Type) := {
+Class Cava {signal : sdenote} := {
   cava : Type -> Type;
   monad :> Monad cava;
   (* Constant values. *)
@@ -37,6 +36,7 @@ Class Cava (signal : SignalType -> Type) := {
   constantV : forall {A} {n : nat}, Vector.t (signal A) n -> signal (Vec A n);
   (* Default values. *)
   defaultSignal : forall {t: SignalType}, signal t;
+  defaultValue : forall {t : type}, value t := fun t => default_value (@defaultSignal) t;
   (* SystemVerilog primitive gates *)
   inv : signal Bit -> cava (signal Bit);
   and2 : signal Bit * signal Bit -> cava (signal Bit);
@@ -78,22 +78,20 @@ Class Cava (signal : SignalType -> Type) := {
   localSignal : forall {t : SignalType}, signal t -> cava (signal t);
   (* Hierarchy *)
   instantiate : forall (intf: CircuitInterface),
-                let inputs := map (port_signal signal) (circuitInputs intf) in
-                let outputs := map (port_signal signal) (circuitOutputs intf) in
-                curried inputs (cava (tupled' outputs)) ->
-                 tupled' inputs -> cava (tupled' outputs);
+      (value (circuitInputs intf) -> cava (value (circuitOutputs intf))) ->
+      value (circuitInputs intf) -> cava (value (circuitOutputs intf));
   (* Instantiation of black-box components which return default values. *)
   blackBox : forall (intf: CircuitInterface),
-             tupled' (map (port_signal signal) (circuitInputs intf)) ->
-             cava (tupled' (map (port_signal signal) (circuitOutputs intf)));
+      value (circuitInputs intf) -> cava (value (circuitOutputs intf));
 }.
+Global Arguments Cava : clear implicits.
 
 Require Import Cava.Util.Vector.
 Require Import ExtLib.Structures.Monads.
 Import MonadNotation.
 
 Section Derivative.
-  Context {signal} `{Cava signal}.
+  Context `{semantics:Cava}.
 
   Definition indexConst {t : SignalType} {sz : nat} (v : signal (Vec t sz)) (i : nat) : cava (signal t)
     := v' <- unpackV v ;;

@@ -95,19 +95,15 @@ Inductive Instance : Type :=
 
 Notation Netlist := (list Instance).
 
-Record PortDeclaration : Type := mkPort {
-  port_name : string;
-  port_type : SignalType;
-}.
-
-Definition port_netlistsignal (x: PortDeclaration) : Type := Signal (port_type x).
-Definition port_value (x: PortDeclaration) : Type := combType (port_type x).
+Definition signal_name : sdenote := fun _ => string.
 
 Record Module : Type := mkModule {
   moduleName : string;
   netlist : Netlist;
-  inputs :  list PortDeclaration;
-  outputs : list PortDeclaration;
+  inputs : type;
+  outputs : type;
+  input_names : @value signal_name inputs;
+  output_names : @value signal_name outputs;
 }.
 
 Inductive TaggedEdge (T: Type) :=
@@ -127,22 +123,27 @@ Record CircuitInterface : Type := mkCircuitInterface {
   circuitName           : string;
   clk : option (TaggedEdge string);
   rst : option (TaggedEdge string);
-  circuitInputs          : list PortDeclaration;
-  circuitOutputs         : list PortDeclaration;
+  circuitInputs          : type;
+  circuitOutputs         : type;
+  circuitInputNames      : @value signal_name circuitInputs;
+  circuitOutputNames     : @value signal_name circuitOutputs;
 }.
 
 Definition sequentialInterface (circuitName: string)
                                (clkName: string) (clkEdge: SignalEdge)
                                (rstName: string) (rstEdge: SignalEdge)
-                               (circuitInputs: list PortDeclaration)
-                               (circuitOutputs: list PortDeclaration) :=
+                               (circuitInputs circuitOutputs : type)
+                               (circuitInputNames: @value signal_name circuitInputs)
+                               (circuitOutputNames: @value signal_name circuitOutputs) :=
   mkCircuitInterface circuitName (Some (mkTaggedEdge clkName clkEdge)) (Some (mkTaggedEdge rstName rstEdge))
-                     circuitInputs circuitOutputs.
+                     circuitInputs circuitOutputs circuitInputNames circuitOutputNames.
 
 Definition combinationalInterface (circuitName: string)
-                                  (circuitInputs: list PortDeclaration)
-                                  (circuitOutputs: list PortDeclaration) :=
-  mkCircuitInterface circuitName None None circuitInputs circuitOutputs.
+                               (circuitInputs circuitOutputs : type)
+                               (circuitInputNames: @value signal_name circuitInputs)
+                               (circuitOutputNames: @value signal_name circuitOutputs) :=
+  mkCircuitInterface circuitName None None
+                     circuitInputs circuitOutputs circuitInputNames circuitOutputNames.
 
 (******************************************************************************)
 (* The CavaState data structure is what is computed bu the the netlist        *)
@@ -208,8 +209,8 @@ Definition newSignal (t: SignalType) : state CavaState (Signal t) :=
 Definition addInstance (newInst: Instance) : state CavaState unit :=
   cs <- get;;
   match cs with
-  | mkCavaState o vecCount vecDefs ext clk rst (mkModule name insts inputs outputs) lm
-    => put (mkCavaState o vecCount vecDefs ext clk rst (mkModule name (newInst::insts) inputs outputs) lm)
+  | mkCavaState o vecCount vecDefs ext clk rst (mkModule name insts inputs outputs innames outnames) lm
+    => put (mkCavaState o vecCount vecDefs ext clk rst (mkModule name (newInst::insts) inputs outputs innames outnames) lm)
   end.
 
 Fixpoint addInstances (insts: list Instance) : state CavaState unit :=
@@ -223,35 +224,35 @@ Fixpoint addInstances (insts: list Instance) : state CavaState unit :=
 Definition getInstances : state CavaState (list Instance) :=
 cs <- get;;
   match cs with
-  | mkCavaState o vecCount vecDefs ext clk rst (mkModule name insts inputs outputs) lm
+  | mkCavaState o vecCount vecDefs ext clk rst (mkModule name insts inputs outputs innames outnames) lm
     => ret insts
   end.
 
 Definition setInstances (insts: list Instance) : state CavaState unit :=
 cs <- get;;
   match cs with
-  | mkCavaState o vecCount vecDefs ext clk rst (mkModule name _ inputs outputs) lm
-    => put (mkCavaState o vecCount vecDefs ext clk rst (mkModule name insts inputs outputs) lm)
+  | mkCavaState o vecCount vecDefs ext clk rst (mkModule name _ inputs outputs innames outnames) lm
+    => put (mkCavaState o vecCount vecDefs ext clk rst (mkModule name insts inputs outputs innames outnames) lm)
   end.
 
 Definition assignSignal {k} (s1: Signal k) (s2: Signal k) :=
   addInstance (AssignSignal s1 s2).
 
-Definition addInputPort (newPort: PortDeclaration) : state CavaState unit :=
+Definition addInputPort (t : SignalType) (newPortName: string) : state CavaState unit :=
   cs <- get ;;
-  match newPort with
-  | mkPort "" _ => ret tt (* Clock or reset not used *)
-  | _ => match cs with
-         | mkCavaState o vecCount vecDefs ext clk rst (mkModule n insts inputs outputs) lm =>
-           put (mkCavaState o vecCount vecDefs ext clk rst (mkModule n insts (cons newPort inputs) outputs) lm)
-         end
-  end.
+  if (newPortName =? "")
+  then ret tt
+  else
+    match cs with
+    | mkCavaState o vecCount vecDefs ext clk rst (mkModule n insts inputs outputs innames outnames) lm =>
+      put (mkCavaState o vecCount vecDefs ext clk rst (mkModule n insts (inputs * t) outputs (innames, newPortName) outnames) lm)
+    end.
 
-Definition addOutputPort (newPort: PortDeclaration) : state CavaState unit :=
+Definition addOutputPort (t : SignalType) (newPortName: string) : state CavaState unit :=
   cs <- get ;;
   match cs with
-  | mkCavaState o vecCount vecDefs ext clk rst (mkModule n insts inputs outputs) lm =>
-      put (mkCavaState o vecCount vecDefs ext clk rst (mkModule n insts inputs (cons newPort outputs)) lm)
+  | mkCavaState o vecCount vecDefs ext clk rst (mkModule n insts inputs outputs innames outnames) lm =>
+      put (mkCavaState o vecCount vecDefs ext clk rst (mkModule n insts inputs (outputs * t) innames (outnames, newPortName)) lm)
   end.
 
 Fixpoint findModule (name : string) (libs : list (CircuitInterface * Module)) : bool :=
@@ -281,8 +282,8 @@ Definition addModule (intf : CircuitInterface) (newModule : Module) : state Cava
 Definition setModuleName (name : string) : state CavaState unit :=
   cs <- get ;;
   match cs with
-  | mkCavaState o vecCount vecDefs ext clk rst (mkModule _ insts inputs outputs) lm
-     => put (mkCavaState o vecCount vecDefs ext clk rst (mkModule name insts inputs outputs) lm)
+  | mkCavaState o vecCount vecDefs ext clk rst (mkModule _ insts inputs outputs innames outnames) lm
+     => put (mkCavaState o vecCount vecDefs ext clk rst (mkModule name insts inputs outputs innames outnames) lm)
   end.
 
 Definition setClockAndReset (clk: option (TaggedEdge (Signal Bit)))
@@ -303,19 +304,19 @@ Definition getClockAndReset : state CavaState ((option (TaggedEdge (Signal Bit))
   end.
 
 Definition inputBit (name : string) : state CavaState (Signal Bit) :=
-  addInputPort (mkPort name Bit) ;;
+  addInputPort Bit name ;;
   ret (NamedWire name).
 
 Definition inputVector (t: SignalType) (sz: nat) (name : string) : state CavaState (Signal (Vec t sz)) :=
-  addInputPort (mkPort name (Vec t sz)) ;;
+  addInputPort (Vec t sz) name ;;
   ret (NamedVector t sz name).
 
 Definition outputBit (name : string) (i : Signal Bit) : state CavaState unit :=
-  addOutputPort (mkPort name Bit) ;;
+  addOutputPort Bit name ;;
   assignSignal (NamedWire name) i.
 
 Definition outputVector (t: SignalType) (sz : nat) (name : string) (v : Signal (Vec t sz)) : state CavaState unit :=
-  addOutputPort (mkPort name (Vec t sz)) ;;
+  addOutputPort (Vec t sz) name ;;
   assignSignal (NamedVector t sz name) v.
 
 (******************************************************************************)
@@ -324,7 +325,7 @@ Definition outputVector (t: SignalType) (sz : nat) (name : string) (v : Signal (
 
 Definition initStateFrom (startAt : N) : CavaState
   := mkCavaState startAt 0 [] [] None None
-                 (mkModule "noname" [] [] []) [].
+                 (mkModule "noname" [] Void Void "" "") [].
 
 Definition initState : CavaState
   := initStateFrom 0.
@@ -335,77 +336,70 @@ Definition initState : CavaState
 
 Definition addOptionalInputPort o :=
   match o with
-  | Some x => addInputPort (mkPort (getTag x) Bit)
+  | Some x => addInputPort Bit (getTag x)
   | None => ret tt
   end.
 
-Definition instantiateInputPort
-  (port : PortDeclaration)
-  : state CavaState (port_netlistsignal port) :=
-  let name := port_name port in
-  match port_type port as s return state CavaState (Signal s) with
+Definition instantiateInputPort (t : SignalType) (name : string)
+  : state CavaState (Signal t) :=
+  match t as s return state CavaState (Signal s) with
   | Void => ret UndefinedSignal
   | Bit => inputBit name
   | Vec k sz => inputVector k sz name
   | ExternalType t =>
-    addInputPort (mkPort name (ExternalType t)) ;;
+    addInputPort (ExternalType t) name ;;
     ret (UninterpretedSignal name)
   end.
 
-Fixpoint instantiateInputPorts {o}
-  (ports : list PortDeclaration):
-  curried (port_netlistsignal <$> ports) (state CavaState o) -> state CavaState o :=
-  match ports with
-  | [] => fun circuit => circuit
-  | x::xs => fun circuit =>
-    i <- instantiateInputPort x ;;
-    instantiateInputPorts xs (circuit i)
+Fixpoint instantiateInputPorts {t}
+  : @value signal_name t -> state CavaState (@value denoteSignal t) :=
+  match t with
+  | tzero => fun _ => ret tt
+  | tone t => instantiateInputPort t
+  | tpair t1 t2 =>
+    fun '(names1, names2) =>
+      x1 <- instantiateInputPorts names1 ;;
+      x2 <- instantiateInputPorts names2 ;;
+      ret (x1, x2)
   end.
 
-Definition instantiateOutputPort
-  (port : PortDeclaration)
-  : port_netlistsignal port -> state CavaState unit :=
-  let name := port_name port in
-  match port_type port as s return Signal s -> state CavaState unit with
+Definition instantiateOutputPort (t : SignalType) (name : string)
+  : Signal t -> state CavaState unit :=
+  match t as s return Signal s -> state CavaState unit with
   | Void => fun _ => ret tt
   | Bit => fun port => outputBit name port
   | Vec k sz => fun port => outputVector k sz name port
   | ExternalType t => fun s =>
-    addOutputPort (mkPort name (ExternalType t)) ;;
+    addOutputPort (ExternalType t) name ;;
     assignSignal (UninterpretedSignal name) s
   end.
 
-Fixpoint instantiateOutputPorts
-  (ports : list PortDeclaration):
-  tupledR (port_netlistsignal <$> ports) -> state CavaState unit :=
-  match ports with
-  | [] => ret
-  | x::xs =>
-      fun '( (y,ys) : tupledR (port_netlistsignal <$> (x :: xs))) =>
-      instantiateOutputPort x y;; instantiateOutputPorts xs ys
+Fixpoint instantiateOutputPorts {t}
+  : @value signal_name t -> @value denoteSignal t -> state CavaState unit :=
+  match t with
+  | tzero => fun _ _ => ret tt
+  | tone t => instantiateOutputPort t
+  | tpair t1 t2 =>
+    fun '(names1, names2) '(x1, x2) =>
+      instantiateOutputPorts names1 x1 ;;
+      instantiateOutputPorts names2 x2
   end.
 
 Definition wireUpCircuit
   (intf : CircuitInterface)
-  (circuit :
-    let inputs := port_netlistsignal <$> (circuitInputs intf) in
-    let outputs := port_netlistsignal <$> (circuitOutputs intf) in
-    curried inputs (state CavaState (tupled' outputs)))
+  (circuit : @value denoteSignal (circuitInputs intf)
+             -> state CavaState (@value denoteSignal (circuitOutputs intf)))
   : state CavaState unit :=
   setModuleName (circuitName intf) ;;
   setClockAndReset (fmap NamedWire <$> clk intf) (fmap NamedWire <$> rst intf) ;;
   addOptionalInputPort (clk intf) ;;
   addOptionalInputPort (rst intf) ;;
-  o <- instantiateInputPorts (circuitInputs intf) circuit ;;
-  instantiateOutputPorts _ (unbalance' _ o).
+  i <- instantiateInputPorts (circuitInputNames intf) ;;
+  o <- circuit i ;;
+  instantiateOutputPorts (circuitOutputNames intf) o.
 
 Definition makeNetlist (intf : CircuitInterface) circuit : CavaState :=
-  let inputs := port_netlistsignal <$> (circuitInputs intf) in
-  let outputs := tupled' (port_netlistsignal <$> (circuitOutputs intf)) in
-  execState (wireUpCircuit intf (curry inputs _ (uncurried_to_uncurriedR _ _ circuit))) initState.
-
-Definition makeNetlist' (intf : CircuitInterface) circuit : CavaState
-  := execState (wireUpCircuit intf circuit) initState.
+  execState (wireUpCircuit intf circuit) initState.
 
 (* driveArguments produces a list of pairs where each element is a name and
    a Signal which is wrapped with UntypedSignal so we can make a list of these
@@ -413,32 +407,37 @@ Definition makeNetlist' (intf : CircuitInterface) circuit : CavaState
    for the named port. This is made by flattening a shape of port declarations
    and driver signals. *)
 
-Fixpoint driveArgumentsR (inputPorts: list PortDeclaration) :
-                          tupledR (port_netlistsignal <$> inputPorts) ->
-                          list (string * UntypedSignal) :=
-  match inputPorts with
-  | [] => fun _ => []
-  | x::xs =>
-      fun '( (y,ys) : tupledR (port_netlistsignal <$> (x :: xs))) =>
-      (port_name x, USignal y) :: driveArgumentsR xs ys
+Fixpoint driveArgumentsR {t : type}
+  : @value denoteSignal t -> @value signal_name t
+    -> list (string * UntypedSignal) :=
+  match t as t return
+        @value denoteSignal t -> @value signal_name t
+        -> list (string * UntypedSignal) with
+  | tzero => fun _ _ => []
+  | tone t => fun (x : Signal t) name => [(name, USignal x)]
+  | tpair t1 t2 =>
+    fun '(x1, x2) '(name1, name2) =>
+      driveArgumentsR x1 name1 ++ driveArgumentsR x2 name2
   end.
 
-Definition declareOutput (output : PortDeclaration) : state CavaState (port_netlistsignal output) :=
-  match port_type output as s return state CavaState (Signal s) with
+Definition declareOutput {t} (name : string) : state CavaState (Signal t) :=
+  match t as s return state CavaState (Signal s) with
   | Void => ret UndefinedSignal
   | Bit => newWire
   | Vec k sz => newVector k sz
   | ExternalType t => newExternal t
   end.
 
-Fixpoint declareOutputsR (outputs: list PortDeclaration)
-  : state CavaState (tupledR (port_netlistsignal <$> outputs)) :=
-  match outputs with
-  | [] => ret tt
-  | x::xs =>
-    xi <- declareOutput x ;;
-    xr <- declareOutputsR xs ;;
-    ret (xi, xr)
+Fixpoint declareOutputs {t}
+  : @value signal_name t -> state CavaState (value t) :=
+  match t with
+  | tzero => ret
+  | tone _ => declareOutput
+  | tpair _ _ =>
+    fun '(name1, name2) =>
+      x1 <- declareOutputs name1 ;;
+      x2 <- declareOutputs name2 ;;
+      ret (x1, x2)
   end.
 
 Definition rewire (c : Signal Bit) (newName: string) : (string * UntypedSignal) :=
@@ -447,27 +446,21 @@ Definition rewire (c : Signal Bit) (newName: string) : (string * UntypedSignal) 
 Definition optionToList {A} (o: option A): list A :=
   match o with Some x => [x] | None => [] end.
 
-Definition blackBoxNet' (intf : CircuitInterface)
-                       (inputs: tupledR (port_netlistsignal <$> circuitInputs intf)) :
-                       state CavaState (tupledR (port_netlistsignal <$> circuitOutputs intf)) :=
-  let inputPorts : list (string * UntypedSignal) := driveArgumentsR (circuitInputs intf) inputs in
+Definition blackBoxNet (intf : CircuitInterface)
+           (inputs: value (circuitInputs intf)) :
+  state CavaState (value (circuitOutputs intf)) :=
+  let inputPorts : list (string * UntypedSignal) := driveArgumentsR inputs (circuitInputNames intf) in
   '(optClk, optRst) <- getClockAndReset ;;
-  outputSignals <- declareOutputsR (circuitOutputs intf) ;;
+  outputSignals <- declareOutputs (circuitOutputNames intf) ;;
   let clkPort := rewire <$> (fmap getTag optClk) <*> (fmap getTag (clk intf)) in
   let rstPort := rewire <$> (fmap getTag optRst) <*> (fmap getTag (rst intf)) in
-  let outputPorts : list (string * UntypedSignal) := driveArgumentsR (circuitOutputs intf) outputSignals in
+  let outputPorts : list (string * UntypedSignal) := driveArgumentsR outputSignals (circuitOutputNames intf) in
   (* TODO(satnam): Consider schemes where clock and rest can be threaded through
      in a consistent way. *)
   (* This currently does not check that the clock/reset have the correct
    * polarity *)
   addInstance (Component (circuitName intf) [] (optionToList clkPort ++ optionToList rstPort ++ inputPorts ++ outputPorts)) ;;
   ret outputSignals.
-
-Definition blackBoxNet (intf : CircuitInterface)
-                       (inputs: tupled' (port_netlistsignal <$> circuitInputs intf)) :
-                       state CavaState (tupled' (port_netlistsignal <$> circuitOutputs intf)) :=
-  o <- blackBoxNet' intf (unbalance' _ inputs) ;;
-  ret (rebalance' _ o).
 
 Record TestBench : Type := mkTestBench {
   testBenchName            : string;
@@ -484,27 +477,21 @@ Fixpoint toSignalExpr (t: SignalType) (v: combType t) : SignalExpr :=
   | ExternalType t, zx => NoSignal
   end.
 
-Fixpoint tupleToSignalExprR (pd: list PortDeclaration) :
-                            tupledR (port_value <$> pd) ->
-                            list SignalExpr :=
-  match pd with
-  | [] => fun _ => []
-  | x::xs =>
-      fun '( (y,ys) : tupledR (port_value <$> (x :: xs))) =>
-      toSignalExpr (port_type x) y :: tupleToSignalExprR xs ys
+Fixpoint tupleToSignalExpr {t : type} : @value combType t -> list SignalExpr :=
+  match t with
+  | tzero => fun _ => []
+  | tone t => fun x => [toSignalExpr t x]
+  | tpair t1 t2 => fun '(x1, x2) => tupleToSignalExpr x1 ++ tupleToSignalExpr x2
   end.
 
 Definition testBench (name : string)
                      (intf : CircuitInterface)
-                     (testInputs : list (tupled' (port_value <$> circuitInputs intf)))
-                     (testExpectedOutputs : list (tupled' (port_value <$> circuitOutputs intf)))
+                     (testInputs : list (@value combType (circuitInputs intf)))
+                     (testExpectedOutputs : list (@value combType (circuitOutputs intf)))
   :=
-  let inputs := unbalance' (port_value <$> circuitInputs intf) <$> testInputs in
-  let outputs := unbalance' (port_value <$> circuitOutputs intf) <$> testExpectedOutputs in
   mkTestBench name intf
-    (map (tupleToSignalExprR (circuitInputs intf)) inputs)
-    (map (tupleToSignalExprR (circuitOutputs intf)) outputs).
-
+    (map tupleToSignalExpr testInputs)
+    (map tupleToSignalExpr testExpectedOutputs).
 
 (* Haskell helper functions *)
 Definition incN (n: N) : N := n + 1.

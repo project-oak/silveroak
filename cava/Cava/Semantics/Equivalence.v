@@ -25,7 +25,7 @@ Require Import Cava.Util.Tactics.
 (* Circuit equivalence relation *)
 Definition cequiv {i o} (c1 c2 : Circuit i o) : Prop :=
   (* there exists some relation between the circuit states... *)
-  exists (R : circuit_state c1 -> circuit_state c2 -> Prop),
+  exists (R : value (circuit_state c1) -> value (circuit_state c2) -> Prop),
     (* ...and the relation holds on the reset states *)
     R (reset_state c1) (reset_state c2)
     (* ...and if the relation holds, stepping each circuit on the same input
@@ -40,8 +40,8 @@ Definition cequiv {i o} (c1 c2 : Circuit i o) : Prop :=
 Global Instance Transitive_cequiv {i o} : Transitive (@cequiv i o) | 10.
 Proof.
   intros x y z [Rxy [? Hxy]] [Ryz [? Hyz]]. logical_simplify.
-  exists (fun (st1 : circuit_state x) (st2 : circuit_state z) =>
-       exists st3 : circuit_state y, Rxy st1 st3 /\ Ryz st3 st2).
+  exists (fun (st1 : value (circuit_state x)) (st2 : value (circuit_state z)) =>
+       exists st3 : value (circuit_state y), Rxy st1 st3 /\ Ryz st3 st2).
   ssplit; [ exists (reset_state y); tauto | ].
   intros; logical_simplify.
   specialize (Hxy _ _ ltac:(eassumption) ltac:(eassumption)).
@@ -105,9 +105,9 @@ Proof.
   exists (fun st1 st2 => R (fst st1) (fst st2) /\ snd st1 = snd st2).
   cbn [reset_state circuit_state fst snd] in *.
   ssplit; [ solve [auto] .. | ]. intros; logical_simplify.
-  destruct_products; cbn [fst snd] in *; subst.
+  cbn [value] in *. destruct_products; cbn [fst snd] in *; subst.
   cbn [step]. simpl_ident.
-  repeat destruct_pair_let; cbn [fst snd].
+  repeat destruct_pair_let; cbn [fst snd]. cbn [value]. fold @value combType.
   lazymatch goal with
   | H : forall _ _ _, R _ _ -> _ /\ _, HR : R _ _ |- context [step _ _ ?i] =>
   let H1 := fresh in

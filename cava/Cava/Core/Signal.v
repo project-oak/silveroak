@@ -29,34 +29,62 @@ Inductive SignalType :=
   | Vec : SignalType -> nat -> SignalType              (* Vectors, possibly nested *)
   | ExternalType : string -> SignalType.            (* An uninterpreted type *)
 
+Inductive type : Type :=
+| tzero
+| tone (t : SignalType)
+| tpair (t1 t2 : type)
+.
+(* Notation for signals and collections of signals *)
+Declare Scope signal_scope.
+Delimit Scope signal_scope with signal.
+Bind Scope signal_scope with type.
+Coercion tone : SignalType >-> type.
+Infix "*" := tpair : signal_scope.
+
 (******************************************************************************)
-(* Combinational denotion of the SignalType and default values.               *)
+(* Interpretations of SignalTypes                                             *)
 (******************************************************************************)
 
-Fixpoint combType (t: SignalType) : Type :=
+Definition sdenote : Type := SignalType -> Type.
+Existing Class sdenote.
+
+Fixpoint value {signal: sdenote} (t : type) : Type :=
   match t with
-  | Void => unit
-  | Bit => bool
-  | Vec vt sz => Vector.t (combType vt) sz
-  | ExternalType _ => unit (* No semantics for combinational interpretation. *)
+  | tzero => unit
+  | tone t => signal t
+  | tpair t1 t2 => value t1 * value t2
   end.
 
-Fixpoint defaultCombValue (t: SignalType) : combType t :=
+Fixpoint default_value {signal : sdenote} (default_signal : forall t, signal t)
+         (t: type) : value t :=
+  match t  with
+  | tzero => tt
+  | tone t => default_signal t
+  | tpair t1 t2 => (default_value default_signal t1, default_value default_signal t2)
+  end.
+
+(******************************************************************************)
+(* Coq semantics for signal expressions.                                      *)
+(******************************************************************************)
+
+Instance combType : sdenote :=
+  fix combType t : Type :=
+    match t with
+    | Void => unit
+    | Bit => bool
+    | Vec vt sz => Vector.t (combType vt) sz
+    | ExternalType _ => unit (* No semantics for combinational interpretation. *)
+    end.
+
+Fixpoint defaultCombSignal (t: SignalType) : combType t :=
   match t  with
   | Void => tt
   | Bit => false
-  | Vec t2 sz => Vector.const (defaultCombValue t2) sz
+  | Vec t2 sz => Vector.const (defaultCombSignal t2) sz
   | ExternalType _ => tt
   end.
 
-(******************************************************************************)
-(* Sequential denotion of the SignalType and default values.                  *)
-(******************************************************************************)
-
-Definition seqType t := list (combType t).
-Definition seqVType ticks t := Vector.t (combType t) ticks.
-Definition defaultSeqValue t := [defaultCombValue t].
-Definition defaultSeqVValue ticks t := Vector.const (defaultCombValue t) ticks.
+Definition defaultCombValue := default_value defaultCombSignal.
 
 (******************************************************************************)
 (* Netlist AST representation for signal expressions.                         *)
@@ -95,7 +123,7 @@ Inductive Signal : SignalType -> Type :=
                                             Signal (Vec Bit b) ->
                                             Signal Bit.
 
-Definition denoteSignal (t : SignalType) : Type := Signal t.
+Instance denoteSignal : sdenote := Signal.
 
 (* A default netlist value for a given SignalType. *)
 Fixpoint defaultNetSignal (t: SignalType) : Signal t :=
@@ -105,6 +133,7 @@ Fixpoint defaultNetSignal (t: SignalType) : Signal t :=
   | Vec vt s => VecLit (Vector.const (defaultNetSignal vt) s)
   | ExternalType s => UninterpretedSignal "default-defaultSignal"
   end.
+Definition defaultNetValue := default_value defaultNetSignal.
 
 (* To allow us to represent a heterogenous list of Signal t values where
    the Signal t varies we make a wrapper that erase the Kind index type.

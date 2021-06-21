@@ -24,7 +24,7 @@ Require Import Cava.Util.Tactics.
 Import Circuit.Notations.
 
 Local Ltac simplify :=
-  cbn [circuit_state step Id]; intros;
+  cbn [circuit_state step Id value]; intros;
   destruct_products; cbn [fst snd] in *;
   repeat (destruct_pair_let; cbn [fst snd]);
   logical_simplify; simpl_ident; subst.
@@ -43,14 +43,16 @@ Hint Rewrite @Second_Id using solve [eauto] : circuitsimpl.
 
 Lemma Compose_Id_l i o c : @cequiv i o (Id >==> c) c.
 Proof.
-  exists (fun (st1 : unit * circuit_state c) (st2 : circuit_state c) => st1 = (tt, st2)).
+  exists (fun (st1 : unit * value (circuit_state c))
+       (st2 : value (circuit_state c)) => st1 = (tt, st2)).
   ssplit; [ reflexivity | ]. simplify. ssplit; reflexivity.
 Qed.
 Hint Rewrite @Compose_Id_l using solve [eauto] : circuitsimpl.
 
 Lemma Compose_Id_r i o c : @cequiv i o (c >==> Id) c.
 Proof.
-  exists (fun (st1 : circuit_state c * unit) (st2 : circuit_state c) => st1 = (st2, tt)).
+  exists (fun (st1 : value (circuit_state c) * unit)
+       (st2 : value (circuit_state c)) => st1 = (st2, tt)).
   ssplit; [ reflexivity | ]. simplify. ssplit; reflexivity.
 Qed.
 Hint Rewrite @Compose_Id_r using solve [eauto] : circuitsimpl.
@@ -59,8 +61,8 @@ Lemma Compose_assoc A B C D
       (f : Circuit A B) (g : Circuit B C) (h : Circuit C D) :
   cequiv (f >==> (g >==> h)) (f >==> g >==> h).
 Proof.
-  exists (fun (st1 : circuit_state f * (circuit_state g * circuit_state h))
-       (st2 : circuit_state f * circuit_state g * circuit_state h) =>
+  exists (fun (st1 : value (circuit_state f) * (value (circuit_state g) * value (circuit_state h)))
+       (st2 : value (circuit_state f) * value (circuit_state g) * value (circuit_state h)) =>
        st1 = (fst (fst st2), (snd (fst st2), snd st2))).
   ssplit; [ reflexivity | ]. simplify. ssplit; reflexivity.
 Qed.
@@ -79,37 +81,33 @@ Proof.
 Qed.
 Hint Rewrite @Second_Compose using solve [eauto] : circuitsimpl.
 
-Lemma LoopInitCE_First_r A B C s reset
-      (body : Circuit (A * combType s) (B * combType s))
-      (f : Circuit B C) :
+Lemma LoopInitCE_First_r A B C (s : SignalType) reset
+      (body : Circuit (A * s) (B * s)) (f : Circuit B C) :
   cequiv (LoopInitCE reset (body >==> First f)) (LoopInitCE reset body >==> f).
 Proof.
-  exists (fun (st1 : circuit_state body * circuit_state f * combType s)
-       (st2 : circuit_state body * combType s * circuit_state f) =>
+  exists (fun (st1 : value (circuit_state body) * value (circuit_state f) * combType s)
+       (st2 : value (circuit_state body) * combType s * value (circuit_state f)) =>
        st1 = (fst (fst st2), snd st2, snd (fst st2))).
   ssplit; [ reflexivity | ]. simplify. ssplit; reflexivity.
 Qed.
 Hint Rewrite @LoopInitCE_First_r using solve [eauto] : push_loop.
 
-Lemma LoopInit_First_r A B C s reset
-      (body : Circuit (A * combType s) (B * combType s))
-      (f : Circuit B C) :
+Lemma LoopInit_First_r A B C (s : SignalType) reset
+      (body : Circuit (A * s) (B * s)) (f : Circuit B C) :
   cequiv (LoopInit reset (body >==> First f)) (LoopInit reset body >==> f).
 Proof.
   cbv [LoopInit]. simpl_ident. rewrite <-Compose_assoc, LoopInitCE_First_r. reflexivity.
 Qed.
 Hint Rewrite @LoopInit_First_r using solve [eauto] : push_loop.
 
-Lemma LoopCE_First_r A B C s
-      (body : Circuit (A * combType s) (B * combType s))
-      (f : Circuit B C) :
+Lemma LoopCE_First_r A B C (s : SignalType)
+      (body : Circuit (A * s) (B * s)) (f : Circuit B C) :
   cequiv (LoopCE (body >==> First f)) (LoopCE body >==> f).
 Proof. apply LoopInitCE_First_r. Qed.
 Hint Rewrite @LoopCE_First_r using solve [eauto] : push_loop.
 
-Lemma Loop_First_r A B C s
-      (body : Circuit (A * combType s) (B * combType s))
-      (f : Circuit B C) :
+Lemma Loop_First_r A B C (s : SignalType)
+      (body : Circuit (A * s) (B * s)) (f : Circuit B C) :
   cequiv (Loop (body >==> First f)) (Loop body >==> f).
 Proof. apply LoopInit_First_r. Qed.
 Hint Rewrite @Loop_First_r using solve [eauto] : push_loop.

@@ -55,7 +55,7 @@ Section Indexing.
   Hint Rewrite @indexAt2_correct using solve [eauto] : simpl_ident.
 
   Lemma indexConst_eq {A sz} (v : combType (Vec A sz)) (n : nat) :
-    indexConst v n = nth_default (defaultCombValue _) n v.
+    indexConst v n = nth_default (defaultCombSignal _) n v.
   Proof. reflexivity. Qed.
   Hint Rewrite @indexConst_eq using solve [eauto] : simpl_ident.
 End Indexing.
