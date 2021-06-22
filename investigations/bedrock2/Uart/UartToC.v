@@ -7,12 +7,9 @@ Require Import bedrock2.Variables.
 Require Import coqutil.Z.HexNotation.
 Require Import Bedrock2Experiments.Uart.Uart.
 Require Import Bedrock2Experiments.LibBase.Bitfield.
-Require Import Bedrock2Experiments.Uart.Constants.
 Import ListNotations.
 Local Open Scope string_scope.
 Local Open Scope Z_scope.
-
-Existing Instances constant_names constant_vars.
 
 Definition dquote : string := String (Ascii.ascii_of_nat 34) EmptyString.
 Definition uart_c_template_top : string :=
@@ -80,7 +77,7 @@ Definition funcs := [
 
 Definition make_uart_c :=
   uart_c_template_top ++
-  concat LF (map (fun f => "static " ++ c_func_with_globals uart_globals f) funcs) ++
+  concat LF (map (fun f => "static " ++ c_func f) funcs) ++
   uart_c_template_bottom.
 
 Require Import bedrock2.Bytedump.
