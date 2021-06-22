@@ -27,7 +27,6 @@ Local Open Scope vector_scope.
 
 Existing Instances combType CombinationalSemantics.
 
-Set Printing All.
 Local Ltac crush :=
   (* inline Vec definition *)
   lazymatch goal with
@@ -48,12 +47,8 @@ Lemma of_N_correct n (x : N) : Vec.of_N x = N2Bv_sized n x.
 Proof. crush. Qed.
 Hint Rewrite @of_N_correct using solve [eauto] : simpl_ident.
 
-About Vec.map_literal.
-Hint Transparent CombinationalSemantics.
 Lemma map_literal_correct {A B} n (f : A -> cava (combType B)) (v : Vector.t A n) :
-  Vector.map f v = Vec.map_literal f v.
   Vec.map_literal f v = Vector.map f v.
-  @eq (Vector.t (combType B) n) (Vec.map_literal f v) (Vector.map f v).
 Proof. crush. Qed.
 Hint Rewrite @map_literal_correct using solve [eauto] : simpl_ident.
 

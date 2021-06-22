@@ -37,8 +37,7 @@ Section WithCava.
   | LoopInitCE :
       forall {i o : type} {s : SignalType} (resetval : combType s),
         Circuit (i * s) (o * s) -> Circuit (i * Bit) o
-  | DelayInitCE :
-      forall {t} (resetval : combType t), Circuit (t * Bit) t
+  | DelayInitCE : forall {t} (resetval : combType t), Circuit (t * Bit) t
   .
 
   (* Internal state of the circuit (register values) *)

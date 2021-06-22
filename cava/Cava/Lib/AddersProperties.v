@@ -119,13 +119,17 @@ Proof.
       reflexivity | ].
   simpl_ident. cbn [unsignedAdd CombinationalSemantics].
   cbv [unsignedAddBool one]. simpl_ident.
+  rewrite VecProperties.resize_default_correct with (A:=Bit) (m:=S (S n)).
   Set Printing All.
-  Fail rewrite VecProperties.resize_default_correct.
-  cbv [Bvector.Bvector] in *. cbn [value combType] in *.
-  Set Printing All.
-  Print combType.
-  About VecProperties.resize_default_correct.
-  rewrite VecProperties.resize_default_correct with (A:=Bit) (n:=(1 + Nat.max (S n) 1)%nat).
+  About VecProperties.shiftout_correct.
+  About Vec.shiftout.
+  rewrite VecProperties.shiftout_correct.
+  pose proof VecProperties.shiftout_correct.
+  cbn [cava CombinationalSemantics ident] in *.
+  Print ident.
+  About Vec.shiftout.
+  rewrite H.
+  simpl_ident.
   change (Bv2N [true]) with 1.
 
   (* remove resize by proving lengths are equal *)
