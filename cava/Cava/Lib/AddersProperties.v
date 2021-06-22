@@ -119,12 +119,19 @@ Proof.
       reflexivity | ].
   simpl_ident. cbn [unsignedAdd CombinationalSemantics].
   cbv [unsignedAddBool one]. simpl_ident.
-  rewrite VecProperties.resize_default_correct with (A:=Bit) (m:=S (S n)).
   Set Printing All.
+  pose proof VecProperties.shiftout_correct.
+  fold combType in *. cbn [combType] in *.
+  rewrite H.
+  rewrite VecProperties.shiftout_correct.
+  rewrite VecProperties.resize_default_correct with (A:=Bit) (m:=S (S n)).
   About VecProperties.shiftout_correct.
   About Vec.shiftout.
-  rewrite VecProperties.shiftout_correct.
   pose proof VecProperties.shiftout_correct.
+  fold combType in *. cbn [combType] in *.
+  Hint Transparent CombinationalSemantics.
+  rewrite H.
+  rewrite VecProperties.shiftout_correct.
   cbn [cava CombinationalSemantics ident] in *.
   Print ident.
   About Vec.shiftout.
