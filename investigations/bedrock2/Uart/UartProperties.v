@@ -36,14 +36,12 @@ Local Open Scope string_scope.
 Local Open Scope list_scope.
 Local Open Scope Z_scope.
 
-(* bedrock2.ProgramLogic does cbv, which unfolds the getters of aes_constants,
+(* bedrock2.ProgramLogic does cbv, which unfolds the getters of uart_constants,
    resulting in large ugly ASTs *)
 Ltac normalize_body_of_function f ::= Tactics.rdelta.rdelta f.
 
 Section Proofs.
-  Context {p : UartSemantics.parameters} {p_ok : parameters.ok p}
-          {consts : uart_constants Z}.
-  Context {consts_ok : uart_constants_ok consts}.
+  Context {p : UartSemantics.parameters} {p_ok : parameters.ok p}.
   Existing Instance state_machine_parameters.
 
   (* this duplicate of locals_ok helps when Semantics.word has been changed to
@@ -60,8 +58,6 @@ Section Proofs.
         (preprocess [autorewrite with rew_word_morphism],
          morphism (Properties.word.ring_morph (word := parameters.word)),
          constants [Properties.word_cst]).
-
-  Existing Instance constant_literals | 10.
 
   (***** Proofs for specific functions *****)
 

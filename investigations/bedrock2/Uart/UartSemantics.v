@@ -6,11 +6,13 @@ Require coqutil.Datatypes.String coqutil.Map.SortedList.
 Require coqutil.Map.SortedListString coqutil.Map.SortedListWord.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Word.Interface.
+Require Import coqutil.Word.Properties.
 Require Import coqutil.Z.HexNotation.
 Require Import coqutil.Decidable.
 Require Import Bedrock2Experiments.Uart.Constants.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.Word.
+Require Import Bedrock2Experiments.List.
 
 Import String List.ListNotations.
 Local Open Scope string_scope. Local Open Scope Z_scope. Local Open Scope list_scope.
@@ -35,13 +37,12 @@ Notation parameters := parameters.parameters.
 Section WithParameters.
   Import parameters.
   Context {p : parameters} {p_ok : parameters.ok p}.
-  Context {consts : uart_constants Z} {consts_ok : uart_constants_ok consts}
-          {circuit_spec : circuit_behavior}.
+  Context {circuit_spec : circuit_behavior}.
 
   Add Ring wring : (Properties.word.ring_theory (word := parameters.word))
-        (preprocess [autorewrite with rew_word_morphism],
-         morphism (Properties.word.ring_morph (word := parameters.word)),
-         constants [Properties.word_cst]).
+    (preprocess [autorewrite with rew_word_morphism],
+    morphism (Properties.word.ring_morph (word := parameters.word)),
+    constants [Properties.word_cst]).
 
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
   Local Notation bedrock2_trace := (list bedrock2_event).
@@ -86,43 +87,6 @@ Section WithParameters.
     | TIMEOUT_CTRL => word.of_Z (base + UART_TIMEOUT_CTRL_REG_OFFSET)
     end.
 
-  Lemma uart_reg_addrs_eq : uart_reg_addrs = map reg_addr all_regs.
-  Proof.
-    cbv [uart_reg_addrs]. simpl. repeat (f_equal; try ring).
-  Qed.
-
-  Lemma reg_addr_unique r1 r2 :
-    reg_addr r1 = reg_addr r2 -> r1 = r2.
-  Proof.
-    assert (NoDup (map reg_addr all_regs)) as N. {
-      rewrite <- uart_reg_addrs_eq.
-      apply addrs_unique.
-    }
-    eapply FinFun.Injective_carac.
-    - unfold FinFun.Listing. split.
-      + eapply NoDup_map_inv. exact N.
-      + unfold FinFun.Full. eapply all_regs_complete.
-    - exact N.
-  Qed.
-
-  Lemma reg_addr_aligned r : word.unsigned (reg_addr r) mod 4 = 0.
-  Proof.
-    pose proof addrs_aligned as Haligned.
-    rewrite uart_reg_addrs_eq in Haligned.
-    rewrite Forall_forall in Haligned.
-    apply Haligned. apply in_map_iff.
-    eexists; eauto using all_regs_complete.
-  Qed.
-
-  Lemma reg_addr_small r : word.unsigned (reg_addr r) + 4 <= 2 ^ 32.
-  Proof.
-    pose proof addrs_small as Hsmall.
-    rewrite uart_reg_addrs_eq in Hsmall.
-    rewrite Forall_forall in Hsmall.
-    apply Hsmall. apply in_map_iff.
-    eexists; eauto using all_regs_complete.
-  Qed.
-
   Inductive state : Type :=
   | UNINITIALIZED
   | AVAILABLE (txlvl : Z) (rxlvl : Z).
@@ -163,10 +127,17 @@ Section WithParameters.
     | _ => 1 = 1 (* placeholder *)
     end.
 
+  Lemma reg_addr_unique r1 r2 :
+    reg_addr r1 = reg_addr r2 -> r1 = r2.
+  Proof.
+    destruct r1; destruct r2; cbn; intros H; try reflexivity.
+    all:apply word.of_Z_inj_small in H; cbv; intuition discriminate.
+  Qed.
+
   Global Instance state_machine_parameters
     : StateMachineSemantics.parameters 32 word mem :=
     {| StateMachineSemantics.parameters.state := state ;
-       StateMachineSemantics.parameters.register := Register ;
+       StateMachineSemantics.parameters.register := Register;
        StateMachineSemantics.parameters.initial_state := UNINITIALIZED ;
        StateMachineSemantics.parameters.read_step := read_step ;
        StateMachineSemantics.parameters.write_step := write_step ;
@@ -182,8 +153,8 @@ Section WithParameters.
     { exact mem_ok. }
     { exact reg_addr_unique. }
     { exact all_regs_complete. }
-    { exact reg_addr_aligned. }
-    { exact reg_addr_small. }
+    { cbn. unfold reg_addr. destruct r; cbn; rewrite word.unsigned_of_Z; cbv; reflexivity. }
+    { cbn. unfold reg_addr. destruct r; cbn; rewrite word.unsigned_of_Z; cbv; intuition discriminate. }
   Defined.
 
 End WithParameters.
