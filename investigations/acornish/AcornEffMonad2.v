@@ -81,7 +81,6 @@ Class Acorn acorn `{EffMonad (list SignalType) Monoid_list_app acorn} (signal : 
 (*   mux2 '(sel, (a, b)) := fun _ _ => Thunk (tt, if sel then a else b); *)
 
 (*   loop l s f i :=  (1* Some crazy loop impl *1) *)
-
 (* }. *)
 
 Definition step (s: list SignalType) T :=
@@ -115,7 +114,6 @@ Instance AcornSimulation : Acorn step denoteSignal := {
       end) gn
     in (ns,fst z)
 }.
-
 
 Definition flipper {i o s} (f: i -> s -> nat -> s * o) n x y := f y x n.
 

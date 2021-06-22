@@ -37,8 +37,8 @@ Class Acorn acorn `{Monad acorn} (signal : SignalType -> Type) := {
   and2 : signal Bit * signal Bit -> acorn (signal Bit);
   addMod : nat -> signal Nat * signal Nat -> acorn (signal Nat);
   natDelay : signal Nat -> acorn (signal Nat);
-  (* loop : (signal Nat * signal Nat -> acorn (signal Nat * signal Nat)) -> *)
-  (*        signal Nat -> acorn (signal Nat); *)
+  loop : (signal Nat * signal Nat -> acorn (signal Nat * signal Nat)) ->
+         signal Nat -> acorn (signal Nat);
   constNat : nat -> acorn (signal Nat);
   comparator : signal Nat * signal Nat -> acorn (signal Bit);
   mux2 : signal Bit * (signal Nat * signal Nat) -> acorn (signal Nat);
@@ -46,33 +46,57 @@ Class Acorn acorn `{Monad acorn} (signal : SignalType -> Type) := {
 
 Inductive CavaDeep: SignalType -> Type :=
 | I : forall {a}, nat -> CavaDeep a
+| X : forall {a}, CavaDeep a
 
 | Inv : CavaDeep Bit -> CavaDeep Bit
 | And2 : CavaDeep Bit * CavaDeep Bit -> CavaDeep Bit
 | AddMod : nat -> CavaDeep Nat * CavaDeep Nat -> CavaDeep Nat
 | NatDelay : CavaDeep Nat -> CavaDeep Nat
-(* | Loop : (CavaDeep Nat * CavaDeep Nat -> ident (CavaDeep Nat * CavaDeep Nat)) -> *)
-(*          CavaDeep Nat -> CavaDeep Nat *)
 | ConstNat : nat -> CavaDeep Nat
 | Comparator : CavaDeep Nat * CavaDeep Nat -> CavaDeep Bit
-| Mux2 : CavaDeep Bit * (CavaDeep Nat * CavaDeep Nat) -> CavaDeep Nat.
+| Mux2 : CavaDeep Bit * (CavaDeep Nat * CavaDeep Nat) -> CavaDeep Nat
+.
 
-Instance AcornSimulation : Acorn ident CavaDeep := {
+Inductive Spine: Type -> Type :=
+  | Return : forall {t} (x : t), Spine t
+  | Bind : forall {t u} (x : Spine t) (f : t -> Spine u), Spine u
+  | Fix : forall {t} (reset: t) (f : t -> Spine t), Spine t
+  .
+
+Instance MonadSpine : Monad Spine :=
+{ ret x := Return
+; bind _ _ := Bind
+}.
+
+Instance AcornSimulation : Acorn Spine CavaDeep := {
   inv i := ret (Inv i);
   and2 i := ret (And2 i);
   addMod modBy i := ret (AddMod modBy i);
   natDelay i := ret (NatDelay i);
-  (* loop s f i := fun '(s,s_inner) => *)
-  (*   let '(ns,(o,s')) := f (i,s) s_inner in *)
-  (*   (s',ns,o); *)
+  loop f i :=
+    s' <- Fix X (fun s => x <- f (i,s);; ret (snd x)  ) ;;
+    o' <- f (i,s') ;;
+    ret (fst o');
   constNat n := ret (ConstNat n);
   comparator i := ret (Comparator i);
   mux2 i := ret (Mux2 i)
 }.
 
+Fixpoint flatten' {o} (c: Spine o) : o :=
+  match c in Spine o return o with
+  | Return x => x
+  | Bind x f => flatten' (f (flatten' x))
+  | Fix reset f =>
+    let v := flatten' (f reset) in
+    let v := flatten' (f v) in
+    let v := flatten' (f v) in
+    v
+  end.
+
 Fixpoint state_shape {o} (c: CavaDeep o): list SignalType :=
 match c with
 | I _ => []
+| X => []
 | Inv x => state_shape x
 | And2 x => state_shape (fst x) ++ state_shape (snd x)
 | AddMod _ x => state_shape (fst x) ++ state_shape (snd x)
@@ -101,6 +125,7 @@ Definition input_map := nat -> {t&denoteSignal t}.
 Fixpoint step {o} (c: CavaDeep o) (input: input_map)
   : denote_list denoteSignal (state_shape c) -> denote_list denoteSignal (state_shape c) * denoteSignal o :=
 match c with
+| X => fun _ => (tt, resetVal _)
 | @I x n => fun _ =>
   let v := input n in
   (tt, (get (projT1 v) x (projT2 v)))
@@ -138,9 +163,8 @@ match c with
 end.
 
 (* Run a circuit for many timesteps, starting at the reset value *)
-Definition simulate {o} (c : ident (CavaDeep o)) (input : list input_map) : list (denoteSignal o) :=
-  let c' := unIdent c in
-  fold_left_accumulate (fun i s => step c' s i) input (resetVals (state_shape c')).
+Definition simulate {o} (c : CavaDeep o) (input : list input_map) : list (denoteSignal o) :=
+  fold_left_accumulate (fun i s => step c s i) input (resetVals (state_shape c)).
 
 Section WithAcorn.
   Context {acorn} {signal} `{Acorn acorn signal}.
@@ -171,18 +195,29 @@ Section WithAcorn.
   Definition circuit1 : signal Nat * signal Nat -> acorn (signal Nat) :=
     snD natDelay >=> addMod 256.
 
-  (* Definition counter6 : signal Nat -> acorn (signal Nat) := *)
-  (*   (1* loop (addMod 6 >=> natDelay >=> fork2). *1) *)
+  Definition counter6 : signal Nat -> acorn (signal Nat) :=
+    loop (addMod 6 >=> natDelay >=> fork2).
   (*   loop (addMod 6 >=> fork2). *)
 
-  (* Definition nestedloop : signal Nat -> acorn _ (signal Nat) := *)
-  (*   loop (addMod 512 >=> loop (addMod 512 >=> fork2) >=> fork2). *)
-  (*   (1* loop (snD natDelay >=> addMod 512 >=> loop (addMod 512 >=> natDelay >=> fork2) >=> fork2). *1) *)
+  Definition nestedloop : signal Nat -> acorn (signal Nat) :=
+    (* loop (addMod 512 >=> loop (addMod 512 >=> fork2) >=> fork2). *)
+    loop (snD natDelay >=> addMod 512 >=> loop (snD natDelay >=> addMod 512 >=> fork2) >=> fork2).
+
+(*   1 _ 1 _ 1 => 1 *)
+(*   1 (1) 2 (1) 3 => 3 *)
+(*   1 (3) 4 (3) 7 => 7 *)
+(*   1 (7) 8 (7) 15 => 15 *)
+
+
 
 End WithAcorn.
 
-(* We can easily simulate circuits without loops, even if they contain delay elements. *)
-Compute (simulate (circuit1 (I 0, I 1)) (
+Compute circuit1.
+Compute (flatten' (circuit1 (I 0, I 1))).
+Compute (flatten' (counter6 (I 0))).
+Compute (flatten' (nestedloop (I 0))).
+
+Compute (simulate (flatten' (circuit1 (I 0, I 1))) (
   [ fun i => existT _ Nat (if Nat.eqb i 0 then 17 else 42)
   ; fun i => existT _ Nat (if Nat.eqb i 0 then 78 else 62)
   ; fun i => existT _ Nat (if Nat.eqb i 0 then 12 else 5)
@@ -191,3 +226,27 @@ Compute (simulate (circuit1 (I 0, I 1)) (
 (*
 	 = [17; 120; 74]
 *)
+
+Compute (simulate (flatten' (counter6 (I 0))) (
+  [ fun i => existT _ Nat 1
+  ; fun i => existT _ Nat 1
+  ; fun i => existT _ Nat 1
+  ; fun i => existT _ Nat 1
+  ; fun i => existT _ Nat 1
+  ])).
+
+Compute (simulate (flatten' (nestedloop (I 0))) (
+  [ fun i => existT _ Nat 1
+  ; fun i => existT _ Nat 1
+  ; fun i => existT _ Nat 1
+  ; fun i => existT _ Nat 1
+  ; fun i => existT _ Nat 1
+  ; fun i => existT _ Nat 1
+  ; fun i => existT _ Nat 1
+  ])).
+
+
+
+(* = [0; 1; 2; 3; 5; 6; 6] *)
+(* = [0; 1; 2; 4; 6; 10; 15] *)
+(* = [0; 1; 2; 4; 7; 11; 18] *)

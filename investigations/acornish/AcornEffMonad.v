@@ -111,6 +111,18 @@ Section WithAcorn.
     loop (addMod 512 >=> loop (addMod 512 >=> fork2) >=> fork2).
     (* loop (snD natDelay >=> addMod 512 >=> loop (addMod 512 >=> natDelay >=> fork2) >=> fork2). *)
 
+  Definition twoSorter
+    (ab: signal Nat * signal Nat) :
+    acorn _ (signal Nat*signal Nat) :=
+    let a := fst ab in
+    let b := snd ab in
+    comparison <- comparator (a, b) ;;
+    negComparison <- inv comparison ;;
+    out0 <- mux2 (comparison, (b, a)) ;;
+    out1 <- mux2 (negComparison, (b, a)) ;;
+    ret (out0, out1).
+  Check twoSorter.
+
 End WithAcorn.
 
 (* We can easily simulate circuits without loops, even if they contain delay elements. *)
@@ -132,3 +144,29 @@ Compute (simulate nestedloop [1; 1; 1; 1; 1; 1] ).
 (*
 > = [1; 3; 7; 15; 31; 63]
 *)
+
+Compute (simulate twoSorter [(1,1); (0,1); (1,0); (1,9); (99,9); (9,0)] ).
+(*
+> = [(1, 1); (0, 1); (0, 1); (1, 9); (9, 99); (0, 9)]
+*)
+
+
+Definition twoSorterSpec (ab : nat * nat) : nat * nat :=
+  let a := fst ab in
+  let b := snd ab in
+  if (b <=? a) then
+    (b, a)
+  else
+    (a, b).
+
+Compute (twoSorterSpec (1,9)).
+
+Lemma twoSorterCorrect (v : nat * nat) : forall s,
+  snd (twoSorter (acorn:=step) v s) = twoSorterSpec v.
+Proof.
+  intros. cbn in s.
+  cbv [twoSorterSpec twoSorter]; cbn.
+  destruct (_ <=? _); try reflexivity.
+Qed.
+
+
