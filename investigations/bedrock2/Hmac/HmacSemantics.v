@@ -8,10 +8,7 @@ Require Import coqutil.Word.LittleEndianList.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.Hmac.Constants.
 
-(* Note: AesSemantics.v seems to completely ignore its control register,
-   which results in a wrong specification in the sense that the specification
-   might say that a transition is possible even though it isn't.
-   In HmacSemantics.v, we don't attempt to model all features of the Hmac module either,
+(* In HmacSemantics.v, we don't attempt to model all features of the Hmac module,
    but we do try to reveal a correct subset of the full functionality of the
    Hmac module. We only say that a transition is possible if the module has
    been configured to use the mode that we're modeling, and disallow transitions
