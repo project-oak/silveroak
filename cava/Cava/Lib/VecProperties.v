@@ -131,17 +131,17 @@ Hint Rewrite @shiftout_correct using solve [eauto] : simpl_ident.
 
 Lemma transpose_correct A n m (v : combType (Vec (Vec A n) m)) :
   Vec.transpose v = transpose (A:=combType A) v.
-Proof. crush. rewrite packV2_correct, unpackV2_correct. reflexivity. Qed.
+Proof. crush. Qed.
 Hint Rewrite @transpose_correct using solve [eauto] : simpl_ident.
 
 Lemma reshape_correct A n m (v : combType (Vec A (n * m))) :
   Vec.reshape v = reshape v.
-Proof. crush. rewrite packV2_correct; reflexivity. Qed.
+Proof. crush. Qed.
 Hint Rewrite @reshape_correct using solve [eauto] : simpl_ident.
 
 Lemma flatten_correct A n m (v : combType (Vec (Vec A m) n)) :
   Vec.flatten v = flatten v.
-Proof. crush. rewrite unpackV2_correct; reflexivity. Qed.
+Proof. crush. Qed.
 Hint Rewrite @flatten_correct using solve [eauto] : simpl_ident.
 
 Lemma resize_default_correct A n m (v : combType (Vec A n)) :
@@ -199,35 +199,35 @@ Hint Rewrite @inv_correct using solve [eauto] : simpl_ident.
 
 Lemma and_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.and i = Vector.map2 andb (fst i) (snd i).
-Proof. crush. apply map2_correct. Qed.
+Proof. crush. Qed.
 Hint Rewrite @and_correct using solve [eauto] : simpl_ident.
 
 Lemma nand_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.nand i = Vector.map2 nandb (fst i) (snd i).
-Proof. crush. apply map2_correct. Qed.
+Proof. crush. Qed.
 Hint Rewrite @nand_correct using solve [eauto] : simpl_ident.
 
 Lemma or_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.or i = Vector.map2 orb (fst i) (snd i).
-Proof. crush. apply map2_correct. Qed.
+Proof. crush. Qed.
 Hint Rewrite @or_correct using solve [eauto] : simpl_ident.
 
 Lemma nor_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.nor i = Vector.map2 norb (fst i) (snd i).
-Proof. crush. apply map2_correct. Qed.
+Proof. crush. Qed.
 Hint Rewrite @nor_correct using solve [eauto] : simpl_ident.
 
 Lemma xor_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.xor i = Vector.map2 xorb (fst i) (snd i).
-Proof. crush. apply map2_correct. Qed.
+Proof. crush. Qed.
 Hint Rewrite @xor_correct using solve [eauto] : simpl_ident.
 
 Lemma xnor_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.xnor i = Vector.map2 xnorb (fst i) (snd i).
-Proof. crush. apply map2_correct. Qed.
+Proof. crush. Qed.
 Hint Rewrite @xnor_correct using solve [eauto] : simpl_ident.
 
 Lemma xorcy_correct n (i : Vector.t bool n * Vector.t bool n) :
   Vec.xorcy i = Vector.map2 xorb (fst i) (snd i).
-Proof. crush. apply map2_correct. Qed.
+Proof. crush. Qed.
 Hint Rewrite @xorcy_correct using solve [eauto] : simpl_ident.

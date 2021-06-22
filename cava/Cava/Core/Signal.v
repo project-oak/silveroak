@@ -76,15 +76,13 @@ Instance combType : sdenote :=
     | ExternalType _ => unit (* No semantics for combinational interpretation. *)
     end.
 
-Fixpoint defaultCombSignal (t: SignalType) : combType t :=
+Fixpoint defaultCombValue (t: SignalType) : combType t :=
   match t  with
   | Void => tt
   | Bit => false
-  | Vec t2 sz => Vector.const (defaultCombSignal t2) sz
+  | Vec t2 sz => Vector.const (defaultCombValue t2) sz
   | ExternalType _ => tt
   end.
-
-Definition defaultCombValue := default_value defaultCombSignal.
 
 (******************************************************************************)
 (* Netlist AST representation for signal expressions.                         *)
@@ -133,7 +131,6 @@ Fixpoint defaultNetSignal (t: SignalType) : Signal t :=
   | Vec vt s => VecLit (Vector.const (defaultNetSignal vt) s)
   | ExternalType s => UninterpretedSignal "default-defaultSignal"
   end.
-Definition defaultNetValue := default_value defaultNetSignal.
 
 (* To allow us to represent a heterogenous list of Signal t values where
    the Signal t varies we make a wrapper that erase the Kind index type.

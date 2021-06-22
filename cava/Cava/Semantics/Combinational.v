@@ -65,13 +65,13 @@ Instance CombinationalSemantics : Cava combType :=
     muxcy := fun sel x y => ret (if sel then x else y);
     unpackV _ _ v := ret v;
     packV _ _ v := ret v;
-    indexAt t sz isz := fun v sel => ret (nth_default (defaultCombSignal _) (N.to_nat (Bv2N sel)) v);
+    indexAt t sz isz := fun v sel => ret (nth_default (defaultCombValue _) (N.to_nat (Bv2N sel)) v);
     unsignedAdd m n a := ret (unsignedAddBool a);
     unsignedMult m n a := ret (unsignedMultBool a);
     greaterThanOrEqual m n a := ret (greaterThanOrEqualBool a);
     localSignal _ v := ret v;
     instantiate intf circuit args := circuit args;
-    blackBox intf _ := defaultCombValue _
+    blackBox intf _ := default_value defaultCombValue _
   }.
 
 (* Run circuit for a single step *)

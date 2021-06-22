@@ -105,7 +105,7 @@ Lemma addN_correct n inputs :
   addN (n:=n) inputs = N2Bv_sized n sum.
 Proof.
   cbv [addN zero]. simpl_ident. repeat destruct_pair_let.
-  cbn [N.b2n]. rewrite (addC_correct n), N.add_0_r. reflexivity.
+  cbn [N.b2n]. rewrite N.add_0_r. reflexivity.
 Qed.
 Hint Rewrite @addN_correct using solve [eauto] : simpl_ident.
 
@@ -119,34 +119,12 @@ Proof.
       reflexivity | ].
   simpl_ident. cbn [unsignedAdd CombinationalSemantics].
   cbv [unsignedAddBool one]. simpl_ident.
-  Set Printing All.
-  pose proof VecProperties.shiftout_correct.
-  fold combType in *. cbn [combType] in *.
-  rewrite H.
-  rewrite VecProperties.shiftout_correct.
-  rewrite VecProperties.resize_default_correct with (A:=Bit) (m:=S (S n)).
-  About VecProperties.shiftout_correct.
-  About Vec.shiftout.
-  pose proof VecProperties.shiftout_correct.
-  fold combType in *. cbn [combType] in *.
-  Hint Transparent CombinationalSemantics.
-  rewrite H.
-  rewrite VecProperties.shiftout_correct.
-  cbn [cava CombinationalSemantics ident] in *.
-  Print ident.
-  About Vec.shiftout.
-  rewrite H.
-  simpl_ident.
   change (Bv2N [true]) with 1.
 
   (* remove resize by proving lengths are equal *)
   assert ((1 + Nat.max (S n) 1)%nat = S (S n)) as Hresize by lia.
   generalize dependent (1 + Nat.max (S n) 1)%nat; intros; subst.
-  Search Vec.shiftout.
-  rewrite VecProperties.shiftout_correct.
-  rewrite shiftout_correct.
   rewrite resize_default_id.
-
   rewrite N2Bv_sized_shiftout, N2Bv_sized_last.
   reflexivity.
 Qed.
