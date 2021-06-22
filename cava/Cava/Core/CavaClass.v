@@ -36,7 +36,6 @@ Class Cava {signal : sdenote} := {
   constantV : forall {A} {n : nat}, Vector.t (signal A) n -> signal (Vec A n);
   (* Default values. *)
   defaultSignal : forall {t: SignalType}, signal t;
-  defaultValue : forall {t : type}, value t := fun t => default_value (@defaultSignal) t;
   (* SystemVerilog primitive gates *)
   inv : signal Bit -> cava (signal Bit);
   and2 : signal Bit * signal Bit -> cava (signal Bit);
@@ -85,6 +84,9 @@ Class Cava {signal : sdenote} := {
       value (circuitInputs intf) -> cava (value (circuitOutputs intf));
 }.
 Global Arguments Cava : clear implicits.
+
+Definition defaultValue `{semantics : Cava} {t : type} : value t :=
+  default_value (@defaultSignal _ _) t.
 
 Require Import Cava.Util.Vector.
 Require Import ExtLib.Structures.Monads.

@@ -91,8 +91,8 @@ Theorem fold_units' : forall A n (a:A) f unit decider,
   Vector.fold_left f unit vec' = a.
 Proof. intros. rewrite eq. apply @fold_units with (b:= fun x => a); assumption. Qed.
 
-Theorem enc_dev_inv (n:nat) input : simulate ((Comb (decoder (n:=n))) >==>
-  (Comb (encoder (n:=n)))) input = input.
+Theorem enc_dev_inv (n:nat) input : simulate ((Comb (i:=Vec Bit _) (o:=Vec Bit _) (decoder (n:=n))) >==>
+  (Comb (o:=Vec Bit _) (encoder (n:=n)))) input = input.
 Proof.
   (* Rewrite to [encoder ( decoder ) = id] *)
   autorewrite with push_simulate.
