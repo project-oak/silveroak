@@ -1,79 +1,103 @@
-Require Import Coq.Lists.List.
-Require Import Coq.Strings.String.
 Require Import Coq.ZArith.ZArith.
-Require Import Coq.Lists.List.
-Require Import bedrock2.Semantics.
-Require Import bedrock2.Syntax.
-Require Import coqutil.Word.Interface.
-Require Import Bedrock2Experiments.Word.
-Require Import Bedrock2Experiments.ConstantFields.
+Local Open Scope Z_scope.
 
-Import ListNotations.
-Local Open Scope string_scope.
-Local Open Scope list_scope.
+(* from opentitan/hw/top_earlgrey/sw/autogen/top_earlgrey.h *)
+Definition TOP_EARLGREY_UART0_BASE_ADDR := 0x40000000.
 
-(* Core class : defines all the constants *)
-Class uart_constants T :=
-  {
-    (* generated hw/top_earlgrey/sw/autogen/top_earlgrey.h *)
-    TOP_EARLGREY_UART0_BASE_ADDR  : T;
-
-    (* generated uart_regs.h *)
-    UART_CTRL_NCO_MASK            : T;
-    UART_CTRL_NCO_OFFSET          : T;
-    UART_CTRL_NCO_FIELD           : T;
-    UART_CTRL_TX_BIT              : T;
-    UART_CTRL_PARITY_EN_BIT       : T;
-    UART_CTRL_REG_OFFSET          : T;
-    UART_FIFO_CTRL_RXRST_BIT      : T;
-    UART_FIFO_CTRL_TXRST_BIT      : T;
-    UART_FIFO_CTRL_REG_OFFSET     : T;
-    UART_OVRD_REG_OFFSET          : T;
-    UART_TIMEOUT_CTRL_REG_OFFSET  : T;
-    UART_INTR_ENABLE_REG_OFFSET   : T;
-    UART_INTR_STATE_REG_OFFSET    : T;
-    UART_STATUS_REG_OFFSET        : T;
-    UART_STATUS_TXFULL_BIT        : T;
-    UART_STATUS_TXIDLE_BIT        : T;
-    UART_WDATA_WDATA_MASK         : T;
-    UART_WDATA_WDATA_OFFSET       : T;
-    UART_WDATA_WDATA_FIELD        : T;
-    UART_WDATA_REG_OFFSET         : T;
-
-    (* sw/device/silicon_creator/lib/drivers/uart.c *)
-    NCO_WIDTH                    : T;
-
-    (* sw/device/silicon_creator/lib/error.h *)
-    kModuleUart                   : T; (* enum module_ *)
-    kErrorOk                      : T; (* DEFINE_ERRORS *)
-    kErrorUartInvalidArgument     : T; (* DEFINE_ERRORS *)
-    kErrorUartBadBaudRate         : T; (* DEFINE_ERRORS *)
-  }.
-
-(* Given the string names of all constants, coerce them to bedroc2
-   expressions with expr.var *)
-Definition constant_vars {names : uart_constants string} : uart_constants expr :=
-  ltac:(map_record_fields expr.var).
-
-(* Given the Z values of all the constants, coerce them to bedrock2
-   expressionswith expr.literal *)
-Definition constant_literals {vals : uart_constants Z} : uart_constants expr :=
-  ltac:(map_record_fields expr.literal).
-
-(* This instance provide the string name for each constant *)
-Definition constant_names : uart_constants string :=
-  ltac:(instantiate_record_with_fieldname_vars).
-
-Ltac app_to_string_list a :=
-  match a with
-  | ?f ?x => match type of x with
-             | string => let r := app_to_string_list f in constr:(x :: r)
-             end
-  | _ => constr:(@nil string)
-  end.
-
-(* This list includes all the constants *)
-Definition uart_globals: list string.
-  let a := eval unfold constant_names in constant_names in
-  let r := app_to_string_list a in exact r.
-Defined.
+(* from opentitan/build-out/sw/device/lib/dif/5fb29ed@@uart_ot@sta/uart_regs.h *)
+Definition UART_PARAM_REG_WIDTH := 32.
+Definition UART_INTR_COMMON_TX_WATERMARK_BIT := 0.
+Definition UART_INTR_COMMON_RX_WATERMARK_BIT := 1.
+Definition UART_INTR_COMMON_TX_EMPTY_BIT := 2.
+Definition UART_INTR_COMMON_RX_OVERFLOW_BIT := 3.
+Definition UART_INTR_COMMON_RX_FRAME_ERR_BIT := 4.
+Definition UART_INTR_COMMON_RX_BREAK_ERR_BIT := 5.
+Definition UART_INTR_COMMON_RX_TIMEOUT_BIT := 6.
+Definition UART_INTR_COMMON_RX_PARITY_ERR_BIT := 7.
+Definition UART_INTR_STATE_REG_OFFSET := 0x0.
+Definition UART_INTR_STATE_TX_WATERMARK_BIT := 0.
+Definition UART_INTR_STATE_RX_WATERMARK_BIT := 1.
+Definition UART_INTR_STATE_TX_EMPTY_BIT := 2.
+Definition UART_INTR_STATE_RX_OVERFLOW_BIT := 3.
+Definition UART_INTR_STATE_RX_FRAME_ERR_BIT := 4.
+Definition UART_INTR_STATE_RX_BREAK_ERR_BIT := 5.
+Definition UART_INTR_STATE_RX_TIMEOUT_BIT := 6.
+Definition UART_INTR_STATE_RX_PARITY_ERR_BIT := 7.
+Definition UART_INTR_ENABLE_REG_OFFSET := 0x4.
+Definition UART_INTR_ENABLE_TX_WATERMARK_BIT := 0.
+Definition UART_INTR_ENABLE_RX_WATERMARK_BIT := 1.
+Definition UART_INTR_ENABLE_TX_EMPTY_BIT := 2.
+Definition UART_INTR_ENABLE_RX_OVERFLOW_BIT := 3.
+Definition UART_INTR_ENABLE_RX_FRAME_ERR_BIT := 4.
+Definition UART_INTR_ENABLE_RX_BREAK_ERR_BIT := 5.
+Definition UART_INTR_ENABLE_RX_TIMEOUT_BIT := 6.
+Definition UART_INTR_ENABLE_RX_PARITY_ERR_BIT := 7.
+Definition UART_INTR_TEST_REG_OFFSET := 0x8.
+Definition UART_INTR_TEST_TX_WATERMARK_BIT := 0.
+Definition UART_INTR_TEST_RX_WATERMARK_BIT := 1.
+Definition UART_INTR_TEST_TX_EMPTY_BIT := 2.
+Definition UART_INTR_TEST_RX_OVERFLOW_BIT := 3.
+Definition UART_INTR_TEST_RX_FRAME_ERR_BIT := 4.
+Definition UART_INTR_TEST_RX_BREAK_ERR_BIT := 5.
+Definition UART_INTR_TEST_RX_TIMEOUT_BIT := 6.
+Definition UART_INTR_TEST_RX_PARITY_ERR_BIT := 7.
+Definition UART_CTRL_REG_OFFSET := 0xc.
+Definition UART_CTRL_TX_BIT := 0.
+Definition UART_CTRL_RX_BIT := 1.
+Definition UART_CTRL_NF_BIT := 2.
+Definition UART_CTRL_SLPBK_BIT := 4.
+Definition UART_CTRL_LLPBK_BIT := 5.
+Definition UART_CTRL_PARITY_EN_BIT := 6.
+Definition UART_CTRL_PARITY_ODD_BIT := 7.
+Definition UART_CTRL_RXBLVL_MASK := 0x3.
+Definition UART_CTRL_RXBLVL_OFFSET := 8.
+Definition UART_CTRL_RXBLVL_VALUE_BREAK2 := 0x0.
+Definition UART_CTRL_RXBLVL_VALUE_BREAK4 := 0x1.
+Definition UART_CTRL_RXBLVL_VALUE_BREAK8 := 0x2.
+Definition UART_CTRL_RXBLVL_VALUE_BREAK16 := 0x3.
+Definition UART_CTRL_NCO_MASK := 0xffff.
+Definition UART_CTRL_NCO_OFFSET := 16.
+Definition UART_STATUS_REG_OFFSET := 0x10.
+Definition UART_STATUS_TXFULL_BIT := 0.
+Definition UART_STATUS_RXFULL_BIT := 1.
+Definition UART_STATUS_TXEMPTY_BIT := 2.
+Definition UART_STATUS_TXIDLE_BIT := 3.
+Definition UART_STATUS_RXIDLE_BIT := 4.
+Definition UART_STATUS_RXEMPTY_BIT := 5.
+Definition UART_RDATA_REG_OFFSET := 0x14.
+Definition UART_RDATA_RDATA_MASK := 0xff.
+Definition UART_RDATA_RDATA_OFFSET := 0.
+Definition UART_WDATA_REG_OFFSET := 0x18.
+Definition UART_WDATA_WDATA_MASK := 0xff.
+Definition UART_WDATA_WDATA_OFFSET := 0.
+Definition UART_FIFO_CTRL_REG_OFFSET := 0x1c.
+Definition UART_FIFO_CTRL_RXRST_BIT := 0.
+Definition UART_FIFO_CTRL_TXRST_BIT := 1.
+Definition UART_FIFO_CTRL_RXILVL_MASK := 0x7.
+Definition UART_FIFO_CTRL_RXILVL_OFFSET := 2.
+Definition UART_FIFO_CTRL_RXILVL_VALUE_RXLVL1 := 0x0.
+Definition UART_FIFO_CTRL_RXILVL_VALUE_RXLVL4 := 0x1.
+Definition UART_FIFO_CTRL_RXILVL_VALUE_RXLVL8 := 0x2.
+Definition UART_FIFO_CTRL_RXILVL_VALUE_RXLVL16 := 0x3.
+Definition UART_FIFO_CTRL_RXILVL_VALUE_RXLVL30 := 0x4.
+Definition UART_FIFO_CTRL_TXILVL_MASK := 0x3.
+Definition UART_FIFO_CTRL_TXILVL_OFFSET := 5.
+Definition UART_FIFO_CTRL_TXILVL_VALUE_TXLVL1 := 0x0.
+Definition UART_FIFO_CTRL_TXILVL_VALUE_TXLVL4 := 0x1.
+Definition UART_FIFO_CTRL_TXILVL_VALUE_TXLVL8 := 0x2.
+Definition UART_FIFO_CTRL_TXILVL_VALUE_TXLVL16 := 0x3.
+Definition UART_FIFO_STATUS_REG_OFFSET := 0x20.
+Definition UART_FIFO_STATUS_TXLVL_MASK := 0x3f.
+Definition UART_FIFO_STATUS_TXLVL_OFFSET := 0.
+Definition UART_FIFO_STATUS_RXLVL_MASK := 0x3f.
+Definition UART_FIFO_STATUS_RXLVL_OFFSET := 16.
+Definition UART_OVRD_REG_OFFSET := 0x24.
+Definition UART_OVRD_TXEN_BIT := 0.
+Definition UART_OVRD_TXVAL_BIT := 1.
+Definition UART_VAL_REG_OFFSET := 0x28.
+Definition UART_VAL_RX_MASK := 0xffff.
+Definition UART_VAL_RX_OFFSET := 0.
+Definition UART_TIMEOUT_CTRL_REG_OFFSET := 0x2c.
+Definition UART_TIMEOUT_CTRL_VAL_MASK := 0xffffff.
+Definition UART_TIMEOUT_CTRL_VAL_OFFSET := 0.
+Definition UART_TIMEOUT_CTRL_EN_BIT := 31.

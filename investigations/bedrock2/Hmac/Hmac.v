@@ -11,6 +11,7 @@ Local Open Scope string_scope.
 Local Open Scope Z_scope.
 Require Import Bedrock2Experiments.LibBase.AbsMMIO.
 Require Import Bedrock2Experiments.LibBase.Bitfield.
+Require Import Bedrock2Experiments.LibBase.Constants.
 Require Import Bedrock2Experiments.Hmac.Constants.
 
 Local Notation "0" := (expr.literal 0) (in custom bedrock_expr).
