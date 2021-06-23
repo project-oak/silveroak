@@ -153,12 +153,6 @@ Section WithAcorn.
          sum <- addMod (2^sz) (r1, r2) ;;
          fork2 sum) tt.
 
-  (* Check fibonacci. *)
-
-  (* Definition ty {x} (_:x) := x. *)
-
-  (* Eval cbv in (ty fibonacci). *)
-
 End WithAcorn.
 
 (* We can easily simulate circuits without loops, even if they contain delay elements. *)
