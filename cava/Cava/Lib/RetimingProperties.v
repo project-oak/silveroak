@@ -23,13 +23,13 @@ Require Import ExtLib.Structures.Monad.
 Require Import Cava.Core.Core.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Semantics.Equivalence.
+Require Import Cava.Semantics.Loopless.
+Require Import Cava.Semantics.LooplessProperties.
 Require Import Cava.Semantics.Simulation.
 Require Import Cava.Semantics.WeakEquivalence.
 Require Import Cava.Lib.CircuitTransforms.
 Require Import Cava.Lib.CircuitTransformsProperties.
 Require Import Cava.Lib.Retiming.
-Require Import Cava.Lib.Multiplexers.
-Require Import Cava.Lib.MultiplexersProperties.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Import ListNotations Circuit.Notations MonadNotation.
@@ -47,190 +47,35 @@ All should be based on phase_retimed!
 
  *)
 
-Lemma LoopInit_ignore_state {i o s} resetval (c : Circuit i o) :
-  cequiv (LoopInit (s:=s) resetval (First c)) c.
-Proof.
-  exists (fun s1 s2 => fst (snd s1) = s2). cbn [circuit_state LoopInit value].
-  split; [ reflexivity | ].
-  intros; destruct_products; cbn [fst snd] in *; subst.
-  cbn [step LoopInit]. simpl_ident.
-  repeat (destruct_pair_let; cbn [fst snd]).
-  split; reflexivity.
-Qed.
-
-Lemma LoopInit_merge {i1 o1 o2 s1 s2} r1 r2
-      (c1 : Circuit (i1 * s1) (o1 * s1))
-      (c2 : Circuit (o1 * s2) (o2 * s2)) :
-  cequiv (LoopInit r1 c1 >==> LoopInit r2 c2)
-         (LoopInit (s:=s1*s2)
-                   (r1, r2)
-                   ((Comb (i:=_*(_*_))
-                          (fun '(i,(s1,s2)) =>
-                             ret (i, s1, s2)))
-                      >==> First c1
-                      >==> (Comb (i:=_*_*_)
-                                 (fun '(o1,s1',s2) =>
-                                    ret (o1, s2, s1')))
-                      >==> First c2
-                      >==> (Comb (i:=_*_*_)
-                                 (fun '(o2,s2',s1') =>
-                                    ret (o2, (s1', s2')))))).
-Proof.
-  exists (fun s1 s2 =>
-       s2 = (tt, (tt, fst (snd (fst s1)), tt, fst (snd (snd s1)),
-                  tt, (snd (snd (fst s1)), snd (snd (snd s1)))))).
-  cbn [circuit_state reset_state LoopInit value].
-  split; [ reflexivity | ].
-  intros; destruct_products; cbn [fst snd] in *; subst.
-  simpl_ident. logical_simplify.
-  cbn [step LoopInit fst snd]. simpl_ident.
-  repeat (destruct_pair_let; cbn [fst snd]).
-  ssplit; reflexivity.
-Qed.
-
-Lemma First_LoopInit {i o s t} r
-      (c : Circuit (i * s) (o * s)) :
-  cequiv (First (t:=t) (LoopInit r c))
-         (LoopInit r
-                   ((Comb (i:=_*_*_)
-                          (fun '(i,t,s) => ret (i,s,t)))
-                      >==> First c
-                      >==> (Comb (i:=_*_*_)
-                                 (fun '(o,s,t) => ret (o,t,s))))).
-Proof.
-  exists (fun s1 s2 =>
-       s2 = (tt, (tt, fst (snd s1), tt, snd (snd s1)))).
-  cbn [circuit_state reset_state LoopInit value].
-  split; [ reflexivity | ].
-  intros; destruct_products; cbn [fst snd] in *; subst.
-  simpl_ident. logical_simplify.
-  cbn [step LoopInit fst snd]. simpl_ident.
-  repeat (destruct_pair_let; cbn [fst snd]).
-  ssplit; reflexivity.
-Qed.
-
-Lemma Second_LoopInit {i o s t} r
-      (c : Circuit (i * s) (o * s)) :
-  cequiv (Second (t:=t) (LoopInit r c))
-         (LoopInit r
-                   ((Comb (i:=_*_*_)
-                          (fun '(t,i,s) => ret (t,(i,s))))
-                      >==> Second c
-                      >==> (Comb (i:=_*(_*_))
-                                 (fun '(t,(o,s)) => ret (t,o,s))))).
-Proof.
-  exists (fun s1 s2 =>
-       s2 = (tt, (tt, fst (snd s1), tt, snd (snd s1)))).
-  cbn [circuit_state reset_state LoopInit value].
-  split; [ reflexivity | ].
-  intros; destruct_products; cbn [fst snd] in *; subst.
-  simpl_ident. logical_simplify.
-  cbn [step LoopInit fst snd]. simpl_ident.
-  repeat (destruct_pair_let; cbn [fst snd]).
-  ssplit; reflexivity.
-Qed.
-
-Lemma LoopInit_LoopInit {i o s1 s2} r1 r2
-      (c : Circuit (i * s1 * s2) (o * s1 * s2)) :
-  cequiv (LoopInit r1 (LoopInit r2 c))
-         (LoopInit (s:=s1*s2)
-                   (r1, r2)
-                   ((Comb (i:=_*(_*_))
-                          (fun '(i,(s1,s2)) =>
-                             ret (i, s1, s2)))
-                      >==> c
-                      >==> (Comb (i:=_*_*_)
-                                 (fun '(o,s1,s2) =>
-                                    ret (o, (s1, s2)))))).
-Proof.
-  exists (fun s1 s2 =>
-       s2 = (tt, (tt, fst (snd (fst (snd s1))), tt,
-                  (snd (snd s1), snd (snd (fst (snd s1))))))).
-  cbn [circuit_state reset_state LoopInit value].
-  split; [ reflexivity | ].
-  intros; destruct_products; cbn [fst snd] in *; subst.
-  simpl_ident. logical_simplify.
-  cbn [step LoopInit fst snd]. simpl_ident.
-  repeat (destruct_pair_let; cbn [fst snd]).
-  ssplit; reflexivity.
-Qed.
-
-Lemma LoopInitCE_LoopInit {i o s1 s2} r1 r2 (c : Circuit (i * s1 * s2) (o * s1 * s2)) :
-  cequiv (LoopInitCE r1 (LoopInit r2 c))
-         (LoopInit (s:=s2*s1)
-                   (r2, r1)
-                   ((Comb (i:=_*_*(_*_))
-                          (fun '(x, en, (s2, s1)) =>
-                             ret (en, s1, (x, s1, s2)))
-                          >==> Second c
-                          >==> (Comb (i:=Bit*s1*(o*s1*s2))
-                                     (o:=o*(s2*s1))
-                                     (fun '(en, s1, (y, s1', s2')) =>
-                                        s <- mux2 en (s1, s1') ;;
-                                        ret (y, (s2', s))))))).
-Proof.
-  exists (fun s1 s2 =>
-       s2 = (tt, (tt, fst (snd (fst s1)), tt,
-                  (snd (snd (fst s1)), snd s1)))).
-  cbn [circuit_state reset_state LoopInit value].
-  split; [ reflexivity | ].
-  intros; destruct_products; cbn [fst snd] in *; subst.
-  simpl_ident. logical_simplify.
-  cbn [step LoopInit fst snd]. simpl_ident.
-  repeat (destruct_pair_let; cbn [fst snd]).
-  simpl_ident. ssplit; reflexivity.
-Qed.
-
-Lemma extract_loops {i o} (c : Circuit i o) :
-  cequiv c (LoopInit (loops_reset_state c) (loopless c)).
-Proof.
-  induction c; cbn [loopless].
-  { rewrite LoopInit_ignore_state. reflexivity. }
-  { rewrite IHc1 at 1. rewrite IHc2 at 1.
-    apply LoopInit_merge. }
-  { rewrite IHc at 1. apply First_LoopInit. }
-  { rewrite IHc at 1. apply Second_LoopInit. }
-  { simpl_ident. rewrite IHc at 1.
-    apply LoopInitCE_LoopInit. }
-  { rewrite LoopInit_ignore_state. reflexivity. }
-Qed.
-
-Fixpoint is_loop_free {i o} (c : Circuit i o) : bool :=
-  match c with
-  | Comb _ => true
-  | Compose f g => (is_loop_free f && is_loop_free g)%bool
-  | First f => is_loop_free f
-  | Second f => is_loop_free f
-  | DelayInitCE _ => true
-  | LoopInitCE _ _ => false
-  end.
-
-Lemma move_delays {i o} (iresets : value i) (oresets : value o) (c : Circuit i o) :
-  is_loop_free c = true ->
-  oresets = snd (step c (reset_state c) iresets) ->
-  cequiv (delays iresets >==> c) (c >==> delays oresets).
+Lemma move_delays {i o} (c : Circuit i o) :
+  is_loop_free c = true -> wequiv (delays >==> c) (c >==> delays).
 Admitted.
 
-Lemma delay_input {i o} n m (c1 c2 : Circuit i o) resets :
-  phase_retimed n m c1 (delays resets >==> c2) ->
+Lemma split_ndelays {t1 t2} n :
+  wequiv (ndelays (t:=t1 * t2) n) (Par (ndelays n) (ndelays n)).
+Admitted.
+
+Lemma ndelays_First {t1 t2 o1} (f : Circuit _ o1) n :
+  wequiv (ndelays (t:=t1 * t2) n >==> First f)
+         (Par (ndelays n >==> f) (ndelays n)).
+Admitted.
+
+Lemma delay1_input {i o} n m (c1 c2 : Circuit i o) :
+  phase_retimed n m c1 (delays >==> c2) ->
   phase_retimed n (S m) c1 c2.
 Admitted.
 
-Lemma ndelay_state {i o} n m (c1 c2 : Circuit i o) resets :
-  phase_retimed n m c1 (delays resets >==> c2) ->
+Lemma delayn_input {i o} n m (c1 c2 : Circuit i o) :
+  phase_retimed n 0 c1 (ndelays m >==> c2) ->
   phase_retimed n m c1 c2.
 Admitted.
 
-Lemma phase_retimed_cequiv_iff {i o} (c1 c2 : Circuit i o) :
-  phase_retimed 0 0 c1 c2 <-> cequiv c1 c2.
+Instance phase_retimed_0_refl {i o} : Reflexive (@phase_retimed i o 0 0) | 10.
 Proof.
-  cbv [phase_retimed]. split; intros; logical_simplify.
-  { destruct_lists_by_length. cbn [ndelays] in *.
-    cbv [Par] in *. autorewrite with circuitsimpl in *.
-    rewrite <-(extract_loops c2) in *. assumption. }
-  { exists [], []. ssplit; [ reflexivity .. | ].
-    cbn [ndelays]. cbv [Par]. autorewrite with circuitsimpl.
-    rewrite <-extract_loops. assumption. }
+  intro c. cbv [phase_retimed]. exists id, id. split; [ reflexivity | ].
+  change (Comb (semantics:=CombinationalSemantics) (@id (value (loops_state c))))
+    with (Id (t:=loops_state c)).
+  autorewrite with circuitsimplw. reflexivity.
 Qed.
 
 Axiom reassemble_state :
@@ -240,33 +85,10 @@ Axiom loops_state_from_circuit_state :
   forall {i o} (c : Circuit i o), value (circuit_state c) -> value (loops_state c).
 
 Global Instance Proper_phase_retimed {i o} :
-  Proper (eq ==> eq ==> cequiv ==> cequiv ==> iff) (@phase_retimed i o).
+  Proper (eq ==> eq ==> wequiv ==> wequiv ==> iff) (@phase_retimed i o).
 Proof.
   repeat intro. subst.
   split; cbv [phase_retimed]; intros; logical_simplify.
-  { lazymatch goal with
-    | Heq : cequiv ?c1 ?c2, H : context [loopless ?c1] |- context [loopless ?c2] =>
-      destruct Heq as [R [Hstart Hpres]]
-    end.
-    do 2 eexists; ssplit.
-    3:{
-      rewrite <-H1. rewrite H3.
-      exists (fun (s1 : unit * (value (circuit_state (ndelays _))
-                         * value (circuit_state (ndelays _))
-                         * value (circuit_state (loopless _))
-                         * value (loops_state _)))
-           (s2 : unit * (value (circuit_state (ndelays _))
-                         * value (circuit_state (ndelays _))
-                         * value (circuit_state (loopless _))
-                         * value (loops_state _))) =>
-           R (reassemble_state _ (snd (fst (snd s1))) (snd (snd s1)))
-             (reassemble_state _ (snd (fst (snd s2))) (snd (snd s2)))
-           /\ ndelays_get (fst (fst (fst (snd s1)))) = ndelays_get (fst (fst (fst (snd s2))))
-           /\ (Forall2
-                (fun v1 v2 =>
-                   exists u1 u2, R (reassemble_state _ u1 v1) (reassemble_state _ u2 v2))
-                (ndelays_get (snd (fst (fst (snd s1)))))
-                (ndelays_get (snd (fst (fst (snd s2))))))).
 Admitted.
 
 Require Import Coq.derive.Derive.
@@ -283,17 +105,16 @@ Derive pipelined_nand
        As pipelined_nand_correct.
 Proof.
   (* insert a delay *)
-  eapply delay_input with (resets:=defaultValue).
+  apply delay1_input.
   (* move the delay to the end of the circuit *)
-  erewrite move_delays with (oresets:=true : value Bit) by reflexivity.
+  rewrite move_delays by reflexivity.
   (* insert another delay *)
-  eapply delay_input with (resets:=defaultValue).
+  apply delay1_input.
   (* move the delay in between the and2 and inv *)
-  rewrite !Compose_assoc.
-  erewrite move_delays with (oresets:=false : value Bit) by reflexivity.
+  rewrite !Compose_assoc_w.
+  rewrite move_delays by reflexivity.
   (* reflexivity *)
-  apply phase_retimed_cequiv_iff.
-  subst pipelined_nand; reflexivity.
+  subst pipelined_nand. reflexivity.
 Qed.
 Print pipelined_nand.
 Check pipelined_nand_correct.
@@ -314,33 +135,20 @@ Derive retimed_cipher_middle_round
           (add_rk : Circuit (state * key) state),
            phase_retimed 0 n retimed_sbytes sbytes ->
            phase_retimed
-             n 0
+             0 n
              (retimed_cipher_middle_round
                 state key retimed_sbytes shrows mxcols add_rk)
              (cipher_middle_round sbytes shrows mxcols add_rk))
        As retimed_cipher_middle_round_correct.
 Proof.
   intros. cbv [cipher_middle_round].
-  autorewrite with circuitsimpl.
+  autorewrite with circuitsimplw.
+  eapply delayn_input.
   cbv [phase_retimed] in * |- . logical_simplify.
   destruct_lists_by_length. cbn [ndelays] in *.
-  cbv [Par] in *; autorewrite with circuitsimpl in *.
-  
+  cbv [Par] in *; autorewrite with circuitsimplw in *.
+  rewrite ndelays_First.
 
-
-  
-  (* insert a delay *)
-  eapply delay_input with (resets:=defaultValue).
-  (* move the delay to the end of the circuit *)
-  erewrite move_delays with (oresets:=true : value Bit) by reflexivity.
-  (* insert another delay *)
-  eapply delay_input with (resets:=defaultValue).
-  (* move the delay in between the and2 and inv *)
-  rewrite !Compose_assoc.
-  erewrite move_delays with (oresets:=false : value Bit) by reflexivity.
-  (* reflexivity *)
-  apply phase_retimed_cequiv_iff.
-  subst pipelined_nand; reflexivity.
-Qed.
-Print pipelined_nand.
-Check pipelined_nand_correct.
+  (* TODO: not quite working right now, how to properly incorporate retimed
+     subcomponents? *)
+Abort.

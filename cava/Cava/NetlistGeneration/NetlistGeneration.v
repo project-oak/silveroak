@@ -289,10 +289,10 @@ Fixpoint interpCircuit {i o} (c : Circuit i o)
       (* place a delay on each of the feedback wires *)
       addDelays resetval en feedback_out feedback_in ;;
       ret out
-  | @DelayInitCE _ _ t resetval =>
-    fun '(input, en) =>
+  | @DelayInit _ _ t resetval =>
+    fun input =>
       out <- newSignals t ;;
-      addDelays resetval en input out ;;
+      addDelays resetval Vcc input out ;;
       ret out
   end.
 

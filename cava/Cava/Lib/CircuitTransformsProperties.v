@@ -19,6 +19,9 @@ Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Core.Core.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Semantics.Equivalence.
+Require Import Cava.Semantics.Loopless.
+Require Import Cava.Semantics.LooplessProperties.
+Require Import Cava.Semantics.WeakEquivalence.
 Require Import Cava.Semantics.Simulation.
 Require Import Cava.Lib.CircuitTransforms.
 Require Import Cava.Util.List.
@@ -138,5 +141,63 @@ Global Instance Proper_Par {A B C D} :
 Proof.
   cbv [Par]. repeat intro.
   repeat match goal with H : cequiv _ _ |- _ => rewrite H end.
+  reflexivity.
+Qed.
+
+Lemma First_Id_w t1 t2 : @wequiv (t1 * t2) (t1 * t2) (First Id) Id.
+Proof.
+  split; [ reflexivity | ]; intros.
+  cbn [cpath Id].
+  exists (fun i s1 s2 => i = 0 /\ s1 = s2); cbn [step circuit_state value Id fst snd].
+  simpl_ident. ssplit; intros; destruct_products;
+                 subst; ssplit; try reflexivity; discriminate.
+Qed.
+Hint Rewrite @First_Id_w using solve [eauto] : circuitsimplw.
+
+Lemma Second_Id_w t1 t2 : @wequiv (t1 * t2) (t1 * t2) (Second Id) Id.
+Proof.
+  split; [ reflexivity | ]; intros.
+  cbn [cpath Id].
+  exists (fun i s1 s2 => i = 0 /\ s1 = s2); cbn [step circuit_state value Id fst snd].
+  simpl_ident. ssplit; intros; destruct_products;
+                 subst; ssplit; try reflexivity; discriminate.
+Qed.
+Hint Rewrite @Second_Id_w using solve [eauto] : circuitsimplw.
+
+Lemma Compose_Id_l_w i o c : @wequiv i o (Id >==> c) c.
+Admitted.
+Hint Rewrite @Compose_Id_l_w using solve [eauto] : circuitsimplw.
+
+Lemma Compose_Id_r_w i o c : @wequiv i o (c >==> Id) c.
+Admitted.
+Hint Rewrite @Compose_Id_r_w using solve [eauto] : circuitsimplw.
+
+Lemma Par_Id_w t1 t2 : @wequiv (t1 * t2) (t1 * t2) (Par Id Id) Id.
+Proof.
+  cbv [Par]. autorewrite with circuitsimplw. reflexivity.
+Qed.
+Hint Rewrite @Par_Id_w using solve [eauto] : circuitsimplw.
+
+Lemma Compose_assoc_w A B C D
+      (f : Circuit A B) (g : Circuit B C) (h : Circuit C D) :
+  wequiv (f >==> (g >==> h)) (f >==> g >==> h).
+Admitted.
+Hint Rewrite @Compose_assoc_w using solve [eauto] : circuitsimplw.
+
+Lemma First_Compose_w A B C D (f : Circuit A B) (g : Circuit B C) :
+  @wequiv (A * D) (C * D) (First (f >==> g)) (First f >==> First g).
+Admitted.
+Hint Rewrite @First_Compose_w using solve [eauto] : circuitsimplw.
+
+Lemma Second_Compose_w A B C D (f : Circuit A B) (g : Circuit B C) :
+  @wequiv (D * A) (D * C) (Second (f >==> g)) (Second f >==> Second g).
+Admitted.
+Hint Rewrite @Second_Compose_w using solve [eauto] : circuitsimplw.
+
+Global Instance Proper_Par_w {A B C D} :
+  Proper (wequiv ==> wequiv ==> wequiv) (@Par _ _ A B C D).
+Proof.
+  cbv [Par]. repeat intro.
+  repeat match goal with H : wequiv _ _ |- _ => rewrite H end.
   reflexivity.
 Qed.
