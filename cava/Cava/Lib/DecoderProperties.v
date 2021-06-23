@@ -286,14 +286,14 @@ Proof.
       [ | intros ; simpl_ident; trivial ].
     rewrite Vector.map_ext with
       (f:= fun x =>
-        mux2 (if (k =? x)%nat then one else zero)
+        mux2_signal (if (k =? x)%nat then one else zero)
           (defaultSignal,
            @Vec.bitvec_literal combType _ _ (N2Bv_sized n (N.of_nat x))))
       (g := fun x =>
         (if (k =? x)%nat
          then @Vec.bitvec_literal combType _ _ (N2Bv_sized n (N.of_nat x))
          else Vector.const false n)).
-    2:{ intro a0. rewrite mux2_correct.
+    2:{ intro a0. rewrite mux2_signal_correct.
         case_eq(k=?a0)%nat; trivial. }
     rewrite fold_units; [ | | | | | ].
     { intros H. case_eq (k=?a)%nat.

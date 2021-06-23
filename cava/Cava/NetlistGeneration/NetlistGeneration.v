@@ -284,15 +284,15 @@ Fixpoint interpCircuit {i o} (c : Circuit i o)
       ret (fst input, x)
   | @LoopInitCE _ _ i o s resetval f =>
     fun '(input, en) =>
-      feedback_in <- newSignal s ;;
+      feedback_in <- newSignals s ;;
       '(out, feedback_out) <- interpCircuit f (input, feedback_in) ;;
-      (* place a delay on the feedback wire *)
-      addInstance (DelayEnable s resetval en feedback_out feedback_in) ;;
+      (* place a delay on each of the feedback wires *)
+      addDelays resetval en feedback_out feedback_in ;;
       ret out
   | @DelayInitCE _ _ t resetval =>
     fun '(input, en) =>
-      out <- newSignal t ;;
-      addInstance (DelayEnable t resetval en input out) ;;
+      out <- newSignals t ;;
+      addDelays resetval en input out ;;
       ret out
   end.
 

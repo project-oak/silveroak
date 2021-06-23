@@ -134,7 +134,8 @@ Proof.
   pose proof (fun i => proj2 (Hcd _ _ i ltac:(eassumption))) as Hcd2.
   clear Hab Hcd. logical_simplify.
   repeat (destruct_pair_let; cbn [fst snd]).
-  rewrite ?Hab1, ?Hcd1. ssplit; eauto.
+  rewrite ?Hab1, ?Hcd1.
+  ssplit; eauto; [ apply Hab2 | apply Hcd2 ].
 Qed.
 
 (* cequiv c1 c2 -> cequiv (First c1) (First c2) *)

@@ -28,13 +28,13 @@ Import Circuit.Notations.
 
 (* get the state of a circuit after running it on the specified input from the
    specified start state *)
-Definition repeat_step {i o} (c : Circuit i o) input st : circuit_state c :=
+Definition repeat_step {i o} (c : Circuit i o) input st : value (circuit_state c) :=
   fold_left (fun st i => fst (step c st i)) input st.
 
 (* Circuit equivalence relation that allows the first n timesteps to differ *)
 Definition cequivn {i o} (n : nat) (c1 c2 : Circuit i o) : Prop :=
   (* there exists some relation between the circuit states... *)
-  exists (R : circuit_state c1 -> circuit_state c2 -> Prop),
+  exists (R : value (circuit_state c1) -> value (circuit_state c2) -> Prop),
     (* ...and the relation holds after n timesteps of equal input for all inputs
        and all initial states *)
     (forall input st1 st2,
@@ -52,8 +52,8 @@ Definition cequivn {i o} (n : nat) (c1 c2 : Circuit i o) : Prop :=
 Global Instance Transitive_cequivn {i o} n : Transitive (@cequivn i o n) | 10.
 Proof.
   intros x y z [Rxy [? Hxy]] [Ryz [? Hyz]]. logical_simplify.
-  exists (fun (st1 : circuit_state x) (st2 : circuit_state z) =>
-       exists st3 : circuit_state y, Rxy st1 st3 /\ Ryz st3 st2).
+  exists (fun (st1 : value (circuit_state x)) (st2 : value (circuit_state z)) =>
+       exists st3 : value (circuit_state y), Rxy st1 st3 /\ Ryz st3 st2).
   ssplit.
   { intro input; intros.
     exists (fold_left (fun st i => fst (step y st i)) input (reset_state y)).
@@ -249,7 +249,7 @@ Proof.
     pose proof (fun i => proj2 (Hcd _ _ i ltac:(eassumption))) as Hcd2.
     clear Hab Hcd. logical_simplify.
     repeat (destruct_pair_let; cbn [fst snd]).
-    rewrite ?Hab1, ?Hcd1. ssplit; eauto. }
+    rewrite ?Hab1, ?Hcd1. ssplit; eauto; [ apply Hab2 | apply Hcd2 ]. }
 Qed.
 
 

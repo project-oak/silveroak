@@ -82,25 +82,26 @@ Fixpoint step {i o} (c : Circuit i o)
   | Comb f => fun _ i => (tt, f i)
   | Compose f g =>
     fun cs input =>
-      let '(cs1, x) := step f (fst cs) input in
-      let '(cs2, y) := step g (snd cs) x in
-      (cs1, cs2, y)
+      let cs1_x := step f (fst cs) input in
+      let cs2_y := step g (snd cs) (snd cs1_x) in
+      (fst cs1_x, fst cs2_y, snd cs2_y)
   | First f =>
     fun cs input =>
-      let '(cs', x) := step f cs (fst input) in
-      (cs', (x, snd input))
+      let cs_x := step f cs (fst input) in
+      (fst cs_x, (snd cs_x, snd input))
   | Second f =>
     fun cs input =>
-      let '(cs', x) := step f cs (snd input) in
-      (cs', (fst input, x))
+      let cs_x := step f cs (snd input) in
+      (fst cs_x, (fst input, snd cs_x))
   | LoopInitCE _ f =>
-    fun '(cs,st) '(input, en) =>
-      let '(cs', (out, st')) := step f cs (input, st) in
-      let new_state := if en then st' else st in
-      (cs', new_state, out)
+    fun cs_st input_en =>
+      let cs_out_st := step f (fst cs_st) (fst input_en, snd cs_st) in
+      let new_state := if snd input_en
+                       then snd (snd cs_out_st) else snd cs_st in
+      (fst cs_out_st, new_state, fst (snd cs_out_st))
   | DelayInitCE _ =>
-    fun st '(input, en) =>
-      let new_state := if en then input else st in
+    fun st input_en =>
+      let new_state := if snd input_en then fst input_en else st in
       (new_state, st)
   end.
 

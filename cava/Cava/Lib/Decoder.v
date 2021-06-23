@@ -49,7 +49,7 @@ Section WithCava.
         (Vector.map (fun k => N2Bv_sized n (N.of_nat k))
                     (Vector.vseq 0 (2^n)))) ;;
     Vec.map2
-      (fun '(k, hot_sig) => mux2 hot_sig (defaultSignal, k))
+      (fun '(k, hot_sig) => mux2_signal hot_sig (defaultSignal, k))
       (consts, hot)
     >>= tree (Vec.map2 or2).
 

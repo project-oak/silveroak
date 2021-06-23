@@ -32,13 +32,24 @@ Section WithCava.
 
   (* A two to one multiplexer that takes its two arguments as a pair rather
      than as a 2 element vector which is what indexAt works over. *)
-  Definition mux2 {A : SignalType}
+  Definition mux2_signal {A : SignalType}
              (sel : signal Bit)
              (ab : signal A * signal A) : cava (signal A) :=
     let '(a,b) := ab in
     v <- packV [a;b] ;;
     i <- packV [sel] ;;
     indexAt v i.
+  Fixpoint mux2 {A : type} (sel : signal Bit)
+    : value A * value A -> cava (value A) :=
+    match A with
+    | tzero => fun _ => ret tt
+    | tone t => mux2_signal sel
+    | tpair t1 t2 =>
+      fun '(x,y) =>
+        o1 <- mux2 sel (fst x, fst y) ;;
+        o2 <- mux2 sel (snd x, snd y) ;;
+        ret (o1, o2)
+    end.
 
   (* 4-element multiplexer *)
   Definition mux4 {t} (input : signal t * signal t * signal t * signal t)
