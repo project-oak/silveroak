@@ -32,13 +32,8 @@ Import EffMonadNotation.
 Local Open Scope eff_monad_scope.
 Local Open Scope type_scope.
 
-(* Definition state_of_type (t: SignalType) : list SignalType := *)
-(*   match t with *)
-(*   | Bit => [Bit] *)
-(*   | Nat => [Nat] *)
-(*   | Unit => [] *)
-(*   end. *)
-
+(* Match a SignalType with a reset value to be passed statically around.
+   This could also be achieved through other means. *)
 Inductive ResetValue : Type :=
   | ResetVal : forall s, denoteSignal s -> ResetValue.
 
