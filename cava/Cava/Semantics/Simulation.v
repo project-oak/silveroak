@@ -111,7 +111,7 @@ Proof.
 Qed.
 Hint Rewrite @simulate_second using solve [eauto] : push_simulate.
 
-Lemma simulate_DelayInitCE {t} (init : combType t) input :
+Lemma simulate_DelayInitCE {t} (init : value t) input :
   simulate (DelayInitCE init) input
   = firstn (length input)
            (init :: (fold_left_accumulate
@@ -124,32 +124,32 @@ Proof.
   simsimpl. generalize init.
   induction input; intros; [ reflexivity | ].
   autorewrite with push_length push_firstn push_fold_acc.
-  destruct_products; cbn [fst snd]. erewrite IHinput.
+  cbn [value] in *. destruct_products; cbn [fst snd]. erewrite IHinput.
   simsimpl. destruct_one_match; reflexivity.
 Qed.
 Hint Rewrite @simulate_DelayInitCE using solve [eauto] : push_simulate.
 
-Lemma simulate_DelayCE {t} (input : list (combType t * bool)) :
+Lemma simulate_DelayCE {t} (input : list (value t * bool)) :
   simulate DelayCE input = firstn (length input)
-                                  (defaultSignal
+                                  (defaultValue
                                      :: (fold_left_accumulate
                                           (fun st i_en =>
                                              if (snd i_en : bool)
                                              then (fst i_en, fst i_en)
                                              else (st, st))
-                                          input defaultSignal)).
+                                          input defaultValue)).
 Proof. apply simulate_DelayInitCE. Qed.
 Hint Rewrite @simulate_DelayCE using solve [eauto] : push_simulate.
 
-Lemma simulate_DelayInit {t} init (input : list (combType t)) :
+Lemma simulate_DelayInit {t} init (input : list (value t)) :
   simulate (DelayInit init) input = firstn (length input) (init :: input).
 Proof.
   cbv [DelayInit]. simpl_ident. autorewrite with push_simulate push_length.
-  erewrite fold_left_accumulate_to_seq with (default:=(defaultSignal,false)).
+  erewrite fold_left_accumulate_to_seq with (default:=(defaultValue,false)).
   eapply fold_left_accumulate_invariant_seq
-    with (I:=fun i (st : combType t) acc =>
+    with (I:=fun i (st : value t) acc =>
                acc = firstn i input
-               /\ st = nth i (init :: input) defaultSignal).
+               /\ st = nth i (init :: input) defaultValue).
   {  ssplit; reflexivity. }
   { cbv zeta; intro i; intros. subst.
     destruct_products; cbn [fst snd] in *.
@@ -165,8 +165,8 @@ Proof.
 Qed.
 Hint Rewrite @simulate_DelayInit using solve [eauto] : push_simulate.
 
-Lemma simulate_Delay {t} (input : list (combType t)) :
-  simulate Delay input = firstn (length input) (defaultSignal :: input).
+Lemma simulate_Delay {t} (input : list (value t)) :
+  simulate Delay input = firstn (length input) (defaultValue :: input).
 Proof. apply simulate_DelayInit. Qed.
 Hint Rewrite @simulate_Delay using solve [eauto] : push_simulate.
 
@@ -180,8 +180,7 @@ Proof.
 Qed.
 Hint Rewrite @simulate_length using solve [eauto] : push_length.
 
-Lemma simulate_LoopInitCE
-      {i o} {s : SignalType}
+Lemma simulate_LoopInitCE {i o s}
       resetval (body : Circuit (i * s) (o * s))
       (input : list (value i * bool)) :
   simulate (LoopInitCE resetval body) input =
@@ -191,11 +190,16 @@ Lemma simulate_LoopInitCE
        let new_state := if (en : bool) then st' else st in
        (cs', new_state, o))
     input (reset_state body, resetval).
-Proof. reflexivity. Qed.
+Proof.
+  eapply fold_left_accumulate_ext.
+  cbn [circuit_state value]; intros.
+  destruct_products. repeat destruct_pair_let.
+  reflexivity.
+Qed.
 Hint Rewrite @simulate_LoopInitCE using solve [eauto] : push_simulate.
 
-Lemma simulate_LoopCE
-      {i o} {s : SignalType} (body : Circuit (i * s) (o * s))
+Lemma simulate_LoopCE {i o s}
+      (body : Circuit (i * s) (o * s))
       (input : list (value i * bool)) :
   simulate (LoopCE body) input =
   fold_left_accumulate
@@ -203,12 +207,12 @@ Lemma simulate_LoopCE
        let '(cs', (o, st')) := step body cs (i, st) in
        let new_state := if (en : bool) then st' else st in
        (cs', new_state, o))
-    input (reset_state body, defaultCombValue s).
+    input (reset_state body, defaultValue).
 Proof. apply simulate_LoopInitCE. Qed.
 Hint Rewrite @simulate_LoopCE using solve [eauto] : push_simulate.
 
-Lemma simulate_LoopInit
-      {i o} {s : SignalType} resetval (body : Circuit (i * s) (o * s))
+Lemma simulate_LoopInit {i o s}
+      resetval (body : Circuit (i * s) (o * s))
       (input : list (value i)) :
   simulate (LoopInit resetval body) input =
   fold_left_accumulate
@@ -224,14 +228,14 @@ Proof.
 Qed.
 Hint Rewrite @simulate_LoopInit using solve [eauto] : push_simulate.
 
-Lemma simulate_Loop
-      {i o} {s : SignalType} (body : Circuit (i * s) (o * s))
+Lemma simulate_Loop {i o s}
+      (body : Circuit (i * s) (o * s))
       (input : list (value i)) :
   simulate (Loop body) input =
   fold_left_accumulate
     (fun '(cs, st) i =>
        let '(cs', (o, st')) := step body cs (i, st) in
        (cs', st', o))
-    input (reset_state body, defaultCombValue s).
+    input (reset_state body, defaultValue).
 Proof. apply simulate_LoopInit. Qed.
 Hint Rewrite @simulate_Loop using solve [eauto] : push_simulate.

@@ -65,6 +65,6 @@ Section WithCava.
         odd_case <- addN (r_times4, y_times4_plus1) ;;
         (* based on bit 0 of input, select the odd or even case *)
         x0 <- Vec.hd x ;;
-        mux2 x0 (r_times4, odd_case)
+        mux2_signal x0 (r_times4, odd_case)
     end.
 End WithCava.

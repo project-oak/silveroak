@@ -35,9 +35,9 @@ Section WithCava.
   | First : forall {i o t}, Circuit i o -> Circuit (i * t) (o * t)
   | Second : forall {i o t}, Circuit i o -> Circuit (t * i) (t * o)
   | LoopInitCE :
-      forall {i o : type} {s : SignalType} (resetval : combType s),
+      forall {i o s : type} (resetval : value (signal:=combType) s),
         Circuit (i * s) (o * s) -> Circuit (i * Bit) o
-  | DelayInitCE : forall {t} (resetval : combType t), Circuit (t * Bit) t
+  | DelayInitCE : forall {t} (resetval : value (signal:=combType) t), Circuit (t * Bit) t
   .
 
   (* Internal state of the circuit (register values) *)
@@ -64,31 +64,32 @@ Section WithCava.
     end.
 
   (* Loop with no enable; set enable to always be true *)
-  Definition LoopInit {i o s} (resetval : combType s)
+  Definition LoopInit {i o s} (resetval : value (signal:=combType) s)
              (body : Circuit (i * s) (o * s))
     : Circuit i o :=
     Compose (Comb (fun i => ret (i, constant true)))
             (LoopInitCE resetval body).
   (* Delay with no enable; set enable to always be true *)
-  Definition DelayInit {t} (resetval : combType t)
+  Definition DelayInit {t} (resetval : value (signal:=combType) t)
     : Circuit t t :=
     Compose (Comb (fun i => ret (i, constant true))) (DelayInitCE resetval).
 
   (* Loop with the default signal as its reset value *)
-  Definition LoopCE {i o} {s : SignalType}
+  Definition LoopCE {i o s}
     : Circuit (i * s) (o * s) -> Circuit (i * Bit) o :=
-    LoopInitCE (defaultCombValue s).
+    LoopInitCE (default_value defaultCombValue s).
   (* Delay with the default signal as its reset value *)
-  Definition DelayCE {t : SignalType} : Circuit (t * Bit) t :=
-    DelayInitCE (defaultCombValue t).
+  Definition DelayCE {t} : Circuit (t * Bit) t :=
+    DelayInitCE (default_value defaultCombValue t).
 
   (* Loop with the default signal as its reset value and no enable *)
-  Definition Loop {i o} {s : SignalType} (body : Circuit (i * s) (o * s))
-    : Circuit i o :=
-    Compose (Comb (fun i => ret (i, constant true))) (LoopInitCE (defaultCombValue s) body).
+  Definition Loop {i o s} (body : Circuit (i * s) (o * s)) : Circuit i o :=
+    Compose (Comb (fun i => ret (i, constant true)))
+            (LoopInitCE (default_value defaultCombValue s) body).
   (* Delay with the default signal as its reset value and no enable *)
-  Definition Delay {t : SignalType} : Circuit t t :=
-    Compose (Comb (fun i => ret (i, constant true))) (DelayInitCE (defaultCombValue t)).
+  Definition Delay {t} : Circuit t t :=
+    Compose (Comb (fun i => ret (i, constant true)))
+            (DelayInitCE (default_value defaultCombValue t)).
 
 End WithCava.
 

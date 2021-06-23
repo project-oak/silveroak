@@ -206,6 +206,16 @@ Definition newSignal (t: SignalType) : state CavaState (Signal t) :=
   | ExternalType typeName => newExternal typeName
   end.
 
+Fixpoint newSignals (t: type) : state CavaState (value (signal:=denoteSignal) t) :=
+  match t with
+  | tzero => ret tt
+  | tone t => newSignal t
+  | tpair t1 t2 =>
+    x1 <- newSignals t1 ;;
+    x2 <- newSignals t2 ;;
+    ret (x1, x2)
+  end.
+
 Definition addInstance (newInst: Instance) : state CavaState unit :=
   cs <- get;;
   match cs with
@@ -219,6 +229,17 @@ Fixpoint addInstances (insts: list Instance) : state CavaState unit :=
   | x :: xs =>
     addInstance x ;;
     addInstances xs
+  end.
+
+Fixpoint addDelays {t}
+  : value (signal:=combType) t -> value Bit -> value t -> value t -> state CavaState unit :=
+  match t with
+  | tzero => fun _ _ _ _ => ret tt
+  | tone t => fun resetvals en in_wire out_wire =>
+                addInstance (DelayEnable t resetvals en in_wire out_wire)
+  | tpair t1 t2 => fun resetvals en in_wire out_wire =>
+                    addDelays (fst resetvals) en (fst in_wire) (fst out_wire) ;;
+                    addDelays (snd resetvals) en (snd in_wire) (snd out_wire)
   end.
 
 Definition getInstances : state CavaState (list Instance) :=

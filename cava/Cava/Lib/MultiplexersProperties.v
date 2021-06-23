@@ -15,16 +15,26 @@
 (****************************************************************************)
 
 Require Import Coq.Vectors.Vector.
-
+Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Core.Core.
 Require Import Cava.Lib.Multiplexers.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Util.BitArithmeticProperties.
 
-Lemma mux2_correct {t} (i0 i1 : combType t) (sel : combType Bit) :
-  mux2 sel (i0, i1) = if sel then i1 else i0.
+Lemma mux2_signal_correct {t} (i0 i1 : combType t) (sel : combType Bit) :
+  mux2_signal sel (i0, i1) = if sel then i1 else i0.
 Proof. destruct sel; reflexivity. Qed.
+Hint Rewrite @mux2_signal_correct using solve [eauto] : simpl_ident.
+
+Lemma mux2_correct {t} (i0 i1 : value t) (sel : combType Bit) :
+  mux2 sel (i0, i1) = if sel then i1 else i0.
+Proof.
+  induction t; cbn [mux2 value] in *; intros; simpl_ident;
+    repeat lazymatch goal with x : unit |- _ => destruct x end;
+      [ repeat destruct_one_match; reflexivity .. | ].
+  rewrite IHt1, IHt2. destruct_one_match; destruct_products; reflexivity.
+Qed.
 Hint Rewrite @mux2_correct using solve [eauto] : simpl_ident.
 
 Lemma mux4_correct {t} (i0 i1 i2 i3 : combType t) (sel : combType (Vec Bit 2)) :
