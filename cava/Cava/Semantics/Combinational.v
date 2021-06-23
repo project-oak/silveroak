@@ -99,10 +99,7 @@ Fixpoint step {i o} (c : Circuit i o)
       let new_state := if snd input_en
                        then snd (snd cs_out_st) else snd cs_st in
       (fst cs_out_st, new_state, fst (snd cs_out_st))
-  | DelayInitCE _ =>
-    fun st input_en =>
-      let new_state := if snd input_en then fst input_en else st in
-      (new_state, st)
+  | DelayInit _ => fun st input => (input, st)
   end.
 
 (* Automation to help simplify expressions using the identity monad *)
