@@ -1,2 +1,0 @@
-     = "module addmod (input logic clk, input logic rst, output int unsigned c, input int unsigned b, input int unsigned a);\ntimeunit 1ns; timeprecision 1ns;\n  int unsigned nat0;\n  int unsigned nat1;\n  int unsigned nat2;\n  assign c = nat2;\n  assign nat1 = b;\n  assign nat0 = a;\n  assign nat2 = (nat0 + nat1) % 6;\nendmodule\n"
-     : string
