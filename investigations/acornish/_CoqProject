@@ -1,12 +1,13 @@
 INSTALLDEFAULTROOT = ./
 -R ../../third_party/coq-ext-lib/theories ExtLib
+-R ../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
 -R ../../cava/Cava Cava
 -R . Acornish
 
 AcornEffMonad.v
 AcornEffMonad2.v
 AcornEffMonad3.v
-AcornEffMonad4.v
+AcornMonadDeep.v
 EffMonad.v
 ListUtils.v
 Common.v

@@ -23,18 +23,21 @@ Import ListNotations.
 
 Inductive SignalType :=
   | Bit : SignalType
-  | Nat : SignalType.
+  | Nat : SignalType
+  | Unit : SignalType.
 
 Definition denoteSignal (t: SignalType) : Type :=
   match t with
   | Bit => bool
   | Nat => nat
+  | Unit => unit
   end.
 
 Definition resetVal (t: SignalType) : denoteSignal t :=
   match t with
   | Bit => false
   | Nat => 0
+  | Unit => tt
   end.
 
 Fixpoint resetVals (t: list SignalType) : denote_list denoteSignal t :=
