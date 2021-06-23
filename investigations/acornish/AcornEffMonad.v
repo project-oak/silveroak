@@ -268,9 +268,6 @@ Lemma fibonacci_correct sz input :
 Proof.
   destruct input; try reflexivity.
   cbv [simulate simulate].
-  cbn [monoid_plus Monoid_list_app resetVals resetVal app].
-
-  Set Printing Implicit.
   rewrite fold_left_accumulate_to_seq with (default:=tt).
   assert (2 ^ sz <> 0) by (apply Nat.pow_nonzero; lia).
   cbv [unpack].
