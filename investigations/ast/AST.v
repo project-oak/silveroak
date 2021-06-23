@@ -174,10 +174,10 @@ Inductive Circuit {var : sdenote} : type -> type -> type -> Type :=
 | AddMod : nat -> Circuit (Nat * Nat) tzero Nat
 | Comparator : Circuit (Nat * Nat) tzero Bit
 | Mux2 : Circuit (Bit * (Nat * Nat)) tzero Nat
-(* type bookkeeping -- only needed for abstract types *)
+(* state type bookkeeping -- only needed for abstract types *)
 | Cast :
-    forall {i1 i2 s1 s2 t} {icast : typecast i2 i1} {scast : typecast s2 s1} {suncast : typecast s1 s2},
-      Circuit i1 s1 t -> Circuit i2 s2 t
+    forall {i s1 s2 t} {scast : typecast s2 s1} {suncast : typecast s1 s2},
+      Circuit i s1 t -> Circuit i s2 t
 (* Registers *)
 | Delay : value Nat -> Circuit Nat Nat Nat
 | LoopDelay : forall {i o s}, value Nat -> Circuit (Nat * i) s (Nat * o) -> Circuit i (Nat ** s) o
@@ -204,9 +204,9 @@ Fixpoint step {i s o} (c : @Circuit signal i s o)
   | AddMod n => fun _ '(a,b) => (tt, (a + b) mod (2 ^ n))
   | Comparator => fun _ '(a,b) => (tt, a <? b)
   | Mux2 => fun _ '(sel,(a,b)) => (tt, if sel then b else a)
-  | @Cast _ _ _ _ _ _ icast scast suncast x =>
+  | @Cast _ _ _ _ _ scast suncast x =>
     fun s i =>
-      let '(s, o) := step x (scast _ s) (icast _ i) in
+      let '(s, o) := step x (scast _ s) i in
       (suncast _ s, o)
   | Delay _ => fun s i => (i, s)
   | LoopDelay _ x =>
@@ -222,7 +222,7 @@ Fixpoint reset_state {i s o} (c : @Circuit signal i s o) : value s :=
   | Abs f => reset_state (f (default_value _))
   | Bind x f => tprod_min (reset_state x) (reset_state (f (default_value _)))
   | Apply f x => reset_state f
-  | @Cast _ _ _ _ _ _ _ _ suncast x => suncast _ (reset_state x)
+  | @Cast _ _ _ _ _ _ suncast x => suncast _ (reset_state x)
   | Delay r => r
   | LoopDelay r x => tprod_min r (reset_state x)
   | _ => tt
@@ -362,7 +362,7 @@ Module Netlist.
         let '(net, out_wire) := newNat net in
         let net := addInstance net (Mux2 sel_wire a_wire b_wire out_wire) in
         (net, NatNet out_wire)
-    | @Cast _ _ _ _ _ _ icast _ _ x => fun i => to_netlist' net x (icast _ i)
+    | @Cast _ _ _ _ _ _ _ x => fun i => to_netlist' net x i
     | Delay r =>
       fun i =>
         let in_wire := as_indices i in
@@ -563,7 +563,7 @@ Section WithDenoteSignal.
   Context {denote_signal : sdenote}.
 
   Definition fork2 {A} : Circuit A tzero (A * A) :=
-    Cast (abs! a => Ret (t:=_*_) (a, a)).
+    (abs! a => Ret (t:=_*_) (a, a)).
 
   Definition fsT {A B C s} (f : Circuit A s C) : Circuit (A * B) s (C * B) :=
     Cast (abs! (ab : denote_type (A * B)) =>
