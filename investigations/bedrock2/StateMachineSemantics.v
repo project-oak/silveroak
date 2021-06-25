@@ -4,6 +4,7 @@ Require coqutil.Datatypes.String coqutil.Map.SortedList.
 Require coqutil.Map.SortedListString coqutil.Map.SortedListWord.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Word.Interface.
+Require Import Bedrock2Experiments.LibBase.MMIOLabels.
 
 Import String List.ListNotations.
 Local Open Scope string_scope. Local Open Scope Z_scope. Local Open Scope list_scope.
@@ -17,10 +18,10 @@ Module parameters.
     { state : Type;
       register : Type;
       is_initial_state : state -> Prop;
-      read_step : state -> register -> word -> state -> Prop;
-      write_step : state -> register -> word -> state -> Prop;
+      read_step : access_size -> state -> register -> word -> state -> Prop;
+      write_step : access_size -> state -> register -> word -> state -> Prop;
       reg_addr : register -> word;
-      is_reg_addr : word -> Prop;
+      isMMIOAddr : word -> Prop;
     }.
   Global Arguments parameters : clear implicits.
 
@@ -29,19 +30,21 @@ Module parameters.
       word_ok : word.ok word; (* for impl of mem below *)
       mem_ok : Interface.map.ok mem; (* for impl of mem below *)
       reg_addr_unique : forall r1 r2, reg_addr r1 = reg_addr r2 -> r1 = r2;
-      reg_addrs_aligned :
-        forall a, is_reg_addr a -> word.unsigned a mod (bytes_per_word width) = 0;
-      reg_addrs_small :
-        forall a, is_reg_addr a -> word.unsigned a + bytes_per_word width <= 2 ^ width;
-      read_step_is_reg_addr : forall s a v s', read_step s a v s' -> is_reg_addr (reg_addr a);
-      write_step_is_reg_addr : forall s a v s', write_step s a v s' -> is_reg_addr (reg_addr a);
+      read_step_isMMIOAddr : forall sz s a v s',
+          read_step sz s a v s' ->
+          isMMIOAddr (reg_addr a);
+      write_step_isMMIOAddr : forall sz s a v s',
+          write_step sz s a v s' ->
+          isMMIOAddr (reg_addr a);
+      read_step_is_aligned : forall sz s a v s',
+          read_step sz s a v s' ->
+          word.unsigned (reg_addr a) mod (Z.of_nat (Memory.bytes_per (width := width) sz)) = 0;
+      write_step_is_aligned : forall sz s a v s',
+          write_step sz s a v s' ->
+          word.unsigned (reg_addr a) mod (Z.of_nat (Memory.bytes_per (width := width) sz)) = 0;
     }.
 End parameters.
 Notation parameters := parameters.parameters.
-
-(* read and write interaction names *)
-Definition READ := "MMIOREAD".
-Definition WRITE := "MMIOWRITE".
 
 Section WithParameters.
   Import parameters.
@@ -54,15 +57,18 @@ Section WithParameters.
   Definition step
              (action : string) (s : state) (args rets : list word) (s' : state)
     : Prop :=
-    if String.eqb action WRITE
+    if String.prefix WRITE_PREFIX action
     then match args with
          | [addr;val] =>
-           (exists r, reg_addr r = addr /\ rets = [] /\ write_step s r val s')
+           (exists r sz, reg_addr r = addr /\ rets = [] /\
+                         access_size_to_MMIO_write sz = action /\ write_step sz s r val s')
          | _ => False
          end
-    else if String.eqb action READ
+    else if String.prefix READ_PREFIX action
          then match args with
-              | [addr] => (exists r val, reg_addr r = addr /\ rets = [val] /\ read_step s r val s')
+              | [addr] => (exists r val sz, reg_addr r = addr /\ rets = [val] /\
+                                            access_size_to_MMIO_read sz = action /\
+                                            read_step sz s r val s')
               | _ => False
               end
          else False.
@@ -83,33 +89,35 @@ Section WithParameters.
              (action : string)
              (args: list word)
              (post: mem -> list word -> Prop) :=
-    if String.eqb action WRITE
+    if String.prefix WRITE_PREFIX action
     then
-      (exists r addr val,
+      (exists r addr val sz,
           args = [addr;val]
           /\ mGive = map.empty
           /\ reg_addr r = addr
+          /\ access_size_to_MMIO_write sz = action
           (* there must exist *at least one* possible state given this trace,
              and one possible transition given these arguments *)
-          /\ (exists s s', execution t s /\ write_step s r val s')
+          /\ (exists s s', execution t s /\ write_step sz s r val s')
           (* postcondition must hold for *all* possible states/transitions *)
           /\ (forall s s',
                 execution t s ->
-                write_step s r val s' ->
+                write_step sz s r val s' ->
                 post Interface.map.empty []))
-       else if String.eqb action READ
+       else if String.prefix READ_PREFIX action
             then
-              (exists r addr,
+              (exists r addr sz,
                   args = [addr]
                   /\ mGive = map.empty
                   /\ reg_addr r = addr
+                  /\ access_size_to_MMIO_read sz = action
                   (* there must exist *at least one* possible state given this
                      trace, and one possible transition given these arguments *)
-                  /\ (exists s s' val, execution t s /\ read_step s r val s')
+                  /\ (exists s s' val, execution t s /\ read_step sz s r val s')
                   (* postcondition must hold for *all* possible states/transitions *)
                   /\ (forall s s' val,
                         execution t s ->
-                        read_step s r val s' ->
+                        read_step sz s r val s' ->
                         post Interface.map.empty [val]))
                else False.
 
@@ -132,11 +140,13 @@ Section WithParameters.
     intros.
     all :
     repeat match goal with
-           | H : context[(?x =? ?y)%string] |- _ =>
-             destruct (x =? y)%string in *
+           | H : context[String.prefix ?x ?y] |- _ =>
+             destruct (String.prefix x y)
            | H: exists _, _ |- _ => destruct H
            | H: _ /\ _ |- _ => destruct H
            | H : _ :: _  = _ :: _ |- _ => inversion H; clear H; subst
+           | H : access_size_to_MMIO_read ?sz1 = access_size_to_MMIO_read ?sz2 |- _ =>
+             apply access_size_to_MMIO_read_inj in H; subst sz1
            | H: False |- _ => destruct H
            | H : reg_addr _ = reg_addr _ |- _ => apply reg_addr_unique in H
            | _ => progress subst

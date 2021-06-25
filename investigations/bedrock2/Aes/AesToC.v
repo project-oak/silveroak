@@ -49,10 +49,10 @@ static inline void _br2_store(uintptr_t a, uintptr_t v, size_t sz) {
 }
 
 // bedrock2 MMIO aliases
-void MMIOWRITE(uintptr_t addr, uintptr_t value) {
+void WRITE32(uintptr_t addr, uintptr_t value) {
   REG32(addr) = value;
 }
-uintptr_t MMIOREAD(uintptr_t addr) {
+uintptr_t READ32(uintptr_t addr) {
   return REG32(addr);
 }
 

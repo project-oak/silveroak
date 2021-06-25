@@ -9,6 +9,7 @@ Require Import coqutil.Word.Interface.
 Require Import coqutil.Word.Properties.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Tactics.Tactics.
+Require Import Bedrock2Experiments.LibBase.MMIOLabels.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.Word.
@@ -27,64 +28,80 @@ Section Proofs.
     execution ((map.empty, action, args, (map.empty, rets)) :: t) s'.
   Proof. intros; cbn [execution]; eauto. Qed.
 
-  Lemma execution_step_read r addr val t s s':
-    execution t s -> reg_addr r = addr -> read_step s r val s' ->
-    execution ((map.empty, READ, [addr], (map.empty, [val])) :: t) s'.
+  Lemma execution_step_read r addr val t sz s s':
+    execution t s -> reg_addr r = addr -> read_step sz s r val s' ->
+    execution ((map.empty, access_size_to_MMIO_read sz, [addr], (map.empty, [val])) :: t) s'.
   Proof.
     intros. eapply execution_step; [ eassumption | ].
-    cbv [step]. change (READ =? WRITE)%string with false.
-    rewrite String.eqb_refl. eauto.
+    cbv [step].
+    destruct sz;
+      change (if _: bool then False else if _: bool then ?x else False) with x;
+      eauto 10.
   Qed.
 
-  Lemma execution_step_write r addr val t s s':
-    execution t s -> reg_addr r = addr -> write_step s r val s' ->
-    execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s'.
+  Lemma execution_step_write r addr val t sz s s':
+    execution t s -> reg_addr r = addr -> write_step sz s r val s' ->
+    execution ((map.empty, access_size_to_MMIO_write sz, [addr;val], (map.empty, [])) :: t) s'.
   Proof.
     intros. eapply execution_step; [ eassumption | ].
-    cbv [step]. rewrite String.eqb_refl. eauto.
+    cbv [step].
+    destruct sz;
+      change (if _: bool then ?x else _) with x;
+      eauto 10.
   Qed.
 
-  Lemma interact_read r call bind addre t m l (post : trace -> mem -> locals -> Prop) addr :
+  Lemma interact_read sz r call bind addre t m l (post : trace -> mem -> locals -> Prop) addr :
     dexprs m l [addre] [addr] ->
     reg_addr r = addr ->
-    (exists s s' val, execution t s /\ read_step s r val s') ->
+    (exists s s' val, execution t s /\ read_step sz s r val s') ->
     (forall s s' val,
         execution t s ->
-        read_step s r val s' ->
+        read_step sz s r val s' ->
         (* implied by other preconditions but convenient to have separately *)
-        execution ((map.empty, READ, [addr], (map.empty, [val])) :: t) s' ->
-        post ((map.empty, READ, [addr], (map.empty, [val])) :: t)
+        execution ((map.empty, access_size_to_MMIO_read sz, [addr], (map.empty, [val])) :: t) s' ->
+        post ((map.empty, access_size_to_MMIO_read sz, [addr], (map.empty, [val])) :: t)
              m (map.put l bind val)) ->
-    cmd call (cmd.interact [bind] READ [addre]) t m l post.
+    cmd call (cmd.interact [bind] (access_size_to_MMIO_read sz) [addre]) t m l post.
   Proof.
     intros. eapply interact_nomem; [ eassumption | ].
     cbn [Semantics.ext_spec semantics_parameters].
-    cbv [ext_spec]. change (READ =? WRITE)%string with false.
-    rewrite String.eqb_refl.
-    do 2 eexists; ssplit; [ reflexivity || eassumption .. | ].
-    intros; ssplit; [ reflexivity | ].
-    repeat straightline. eauto using execution_step_read.
+    cbv [ext_spec].
+    destruct sz;
+      change (if _: bool then _ else if _: bool then ?x else False) with x;
+      repeat match goal with
+             | |- _ => straightline
+             | |- exists _, _ => eexists
+             | |- _ => eassumption
+             | |- _ /\ _ => split
+             | |- _ => solve [eauto using execution_step_read]
+             end.
   Qed.
 
-  Lemma interact_write r call addre vale t m l
+  Lemma interact_write sz r call addre vale t m l
         (post : trace -> mem -> locals -> Prop)  addr val :
     dexprs m l [addre;vale] [addr;val] ->
     reg_addr r = addr ->
-    (exists s s', execution t s /\ write_step s r val s') ->
+    (exists s s', execution t s /\ write_step sz s r val s') ->
     (forall s s',
         execution t s ->
-        write_step s r val s' ->
+        write_step sz s r val s' ->
         (* implied by other preconditions but convenient to have separately *)
-        execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s' ->
-        post ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) m l) ->
-    cmd call (cmd.interact [] WRITE [addre; vale]) t m l post.
+        execution ((map.empty, access_size_to_MMIO_write sz, [addr;val], (map.empty, [])) :: t) s' ->
+        post ((map.empty, access_size_to_MMIO_write sz, [addr;val], (map.empty, [])) :: t) m l) ->
+    cmd call (cmd.interact [] (access_size_to_MMIO_write sz) [addre; vale]) t m l post.
   Proof.
     intros. eapply interact_nomem; [ eassumption | ].
     cbn [Semantics.ext_spec semantics_parameters].
-    cbv [ext_spec]. rewrite String.eqb_refl.
-    do 3 eexists; ssplit; [ reflexivity || eassumption .. | ].
-    intros; ssplit; [ reflexivity | ].
-    repeat straightline. eauto using execution_step_write.
+    cbv [ext_spec].
+    destruct sz;
+      change (if _: bool then ?x else _) with x;
+      repeat match goal with
+             | |- _ => straightline
+             | |- exists _, _ => eexists
+             | |- _ => eassumption
+             | |- _ /\ _ => split
+             | |- _ => solve [eauto using execution_step_write]
+             end.
   Qed.
 End Proofs.
 

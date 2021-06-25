@@ -534,11 +534,15 @@ Section WithParameters.
     {| StateMachineSemantics.parameters.state := state ;
        StateMachineSemantics.parameters.register := Register ;
        StateMachineSemantics.parameters.is_initial_state := eq UNINITIALIZED ;
-       StateMachineSemantics.parameters.read_step := read_step ;
-       StateMachineSemantics.parameters.write_step := write_step ;
+       StateMachineSemantics.parameters.read_step sz s a v s' :=
+         sz = access_size.four /\ read_step s a v s';
+       StateMachineSemantics.parameters.write_step sz s a v s' :=
+         sz = access_size.four /\ write_step s a v s' ;
        StateMachineSemantics.parameters.reg_addr := reg_addr ;
-       StateMachineSemantics.parameters.is_reg_addr a :=
-         List.Exists (fun r => a = reg_addr r) all_regs;
+       StateMachineSemantics.parameters.isMMIOAddr a :=
+         List.Exists (fun r =>
+           word.unsigned (reg_addr r) <= word.unsigned a < word.unsigned (reg_addr r) + 4
+         ) all_regs;
     |}.
 
   Global Instance state_machine_parameters_ok
@@ -549,16 +553,12 @@ Section WithParameters.
     { exact word_ok. }
     { exact mem_ok. }
     { exact reg_addr_unique. }
-    { unfold parameters.is_reg_addr. cbn. intros.
-      eapply Exists_exists in H. destruct H as (r & rI & ?). subst a.
-      eapply reg_addr_aligned. }
-    { unfold parameters.is_reg_addr. cbn. intros.
-      eapply Exists_exists in H. destruct H as (r & rI & ?). subst a.
-      eapply reg_addr_small. }
-    { unfold parameters.is_reg_addr. cbn. intros.
-      eapply Exists_exists. eauto using all_regs_complete. }
-    { unfold parameters.is_reg_addr. cbn. intros.
-      eapply Exists_exists. eauto using all_regs_complete. }
-  Defined.
+    { unfold parameters.isMMIOAddr. cbn. intros.
+      eapply Exists_exists. eauto using all_regs_complete with zarith. }
+    { unfold parameters.isMMIOAddr. cbn. intros.
+      eapply Exists_exists. eauto using all_regs_complete with zarith. }
+    { intros. apply proj1 in H. subst sz. cbn. apply reg_addr_aligned. }
+    { intros. apply proj1 in H. subst sz. cbn. apply reg_addr_aligned. }
+  Qed.
 
 End WithParameters.
