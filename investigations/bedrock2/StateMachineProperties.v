@@ -34,9 +34,9 @@ Section Proofs.
   Proof.
     intros. eapply execution_step; [ eassumption | ].
     cbv [step].
-    destruct sz;
-      change (if _: bool then False else if _: bool then ?x else False) with x;
-      eauto 10.
+    change (if _: bool then False else ?x) with x.
+    unfold access_size_to_MMIO_read at 1.
+    destruct (natToStr (sz * 8)); change (if _: bool then ?x else False) with x; eauto 10.
   Qed.
 
   Lemma execution_step_write r addr val t sz s s':
@@ -45,9 +45,8 @@ Section Proofs.
   Proof.
     intros. eapply execution_step; [ eassumption | ].
     cbv [step].
-    destruct sz;
-      change (if _: bool then ?x else _) with x;
-      eauto 10.
+    unfold access_size_to_MMIO_write at 1.
+    destruct (natToStr (sz * 8)); change (if _: bool then ?x else _) with x; eauto 10.
   Qed.
 
   Lemma interact_read sz r call bind addre t m l (post : trace -> mem -> locals -> Prop) addr :
@@ -66,8 +65,9 @@ Section Proofs.
     intros. eapply interact_nomem; [ eassumption | ].
     cbn [Semantics.ext_spec semantics_parameters].
     cbv [ext_spec].
-    destruct sz;
-      change (if _: bool then _ else if _: bool then ?x else False) with x;
+    change (if _: bool then _ else ?x) with x.
+    unfold access_size_to_MMIO_read at 1.
+    destruct (natToStr (sz * 8)); change (if _: bool then ?x else False) with x;
       repeat match goal with
              | |- _ => straightline
              | |- exists _, _ => eexists
@@ -93,8 +93,8 @@ Section Proofs.
     intros. eapply interact_nomem; [ eassumption | ].
     cbn [Semantics.ext_spec semantics_parameters].
     cbv [ext_spec].
-    destruct sz;
-      change (if _: bool then ?x else _) with x;
+    unfold access_size_to_MMIO_write at 1.
+    destruct (natToStr (sz * 8)); change (if _: bool then ?x else _) with x;
       repeat match goal with
              | |- _ => straightline
              | |- exists _, _ => eexists

@@ -44,18 +44,18 @@ Class MMIOSpec{W: Words} {Mem : map.map word byte} := {
   MMIOReadOK : nat -> list LogItem -> word -> word -> Prop;
 }.
 
-Definition natToStr(n: nat): string := DecimalString.NilZero.string_of_uint (Nat.to_uint n).
+Definition natToStr(n: nat): string := DecimalString.NilEmpty.string_of_uint (Nat.to_uint n).
 
 Section Riscv.
   Import free.
   Context {W: Words} {Mem: map.map word byte} {Registers: map.map Register word}.
 
   Definition mmioLoadEvent(addr: word){n: nat}(v: HList.tuple byte n): LogItem :=
-    ((map.empty, ("MMIOREAD" ++ natToStr (8 * n))%string, [addr]),
+    ((map.empty, ("MMIOREAD" ++ natToStr (n * 8))%string, [addr]),
      (map.empty, [word.of_Z (LittleEndian.combine n v)])).
 
   Definition mmioStoreEvent(addr: word){n: nat}(v: HList.tuple byte n): LogItem :=
-    ((map.empty, ("MMIOWRITE" ++ natToStr (8 * n))%string,
+    ((map.empty, ("MMIOWRITE" ++ natToStr (n * 8))%string,
       [addr; word.of_Z (LittleEndian.combine n v)]), (map.empty, [])).
 
   Context {mmio_spec: MMIOSpec}.
