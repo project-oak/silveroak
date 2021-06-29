@@ -42,6 +42,19 @@ Module parameters.
       write_step_is_aligned : forall sz s a v s',
           write_step sz s a v s' ->
           word.unsigned (reg_addr a) mod (Z.of_nat (Memory.bytes_per (width := width) sz)) = 0;
+      read_step_bounded : forall sz s a v s',
+          read_step sz s a v s' ->
+          word.unsigned v < 2 ^ (8 * Z.of_nat (Memory.bytes_per (width := width) sz));
+      (* Note: It would be nice if we could allow too big writes and just ignore the upper
+         bytes, but then we run into a specification issue: bedrock2 semantics of external
+         calls (exec.interact) puts the whole unmodified word into the trace, and we want
+         the trace of the risc-v machine to match the bedrock2 trace exactly (rather than
+         introducing a notion of trace equivalence), but riscv-coq cannot put the upper
+         ignored bits into the trace, because riscv.Spec.ExecuteI does not pass them
+         to nonmem_store *)
+      write_step_bounded : forall sz s a v s',
+          write_step sz s a v s' ->
+          word.unsigned v < 2 ^ (Z.of_nat (Memory.bytes_per (width := width) sz) * 8);
     }.
 End parameters.
 Notation parameters := parameters.parameters.

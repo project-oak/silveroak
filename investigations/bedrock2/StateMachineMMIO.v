@@ -14,8 +14,8 @@ Require Import riscv.Spec.Machine.
 Require Import compiler.FlatToRiscvDef.
 Require Import compiler.FlatToRiscvFunctions.
 Require Import riscv.Platform.RiscvMachine.
-Require Import riscv.Platform.MinimalMMIO.
-Require Import riscv.Platform.MetricMinimalMMIO.
+Require Import Bedrock2Experiments.Riscv.MinimalMMIO.
+Require Import Bedrock2Experiments.Riscv.MetricMinimalMMIO.
 Require Import riscv.Spec.Primitives.
 Require Import riscv.Spec.MetricPrimitives.
 Require Import compiler.MetricsToRiscv.
@@ -48,8 +48,10 @@ Definition compile_write(action: string): Z -> Z -> Z -> Instruction :=
 
 Definition compile_read(action: string): Z -> Z -> Z -> Instruction :=
   (* this file assumes a 32-bit architecture, so READW is the same as READ32, and all
-     other action strings are excluded by ext_spec, so we can return Lw in all these cases *)
-  if String.eqb action READ8 then Lb else if String.eqb action READ16 then Lh else Lw.
+     other action strings are excluded by ext_spec, so we can return Lw in all these cases.
+     Also, note that Lwu is only available on 64-bit machines, because whether a 32-bit
+     load is signed or not makes no difference on a 32-bit machine. *)
+  if String.eqb action READ8 then Lbu else if String.eqb action READ16 then Lhu else Lw.
 
 Definition compile_ext_call(results: list Z) a (args: list Z):
   list Instruction :=
@@ -253,25 +255,33 @@ Section MMIO1.
              end.
   Qed.
 
-  Lemma execute_compile_read sz rd rs a initial (post: unit -> MetricRiscvMachine -> Prop):
+  Lemma execute_compile_read sz rd rs a s s' r (v1: HList.tuple byte (bytes_per (width := width) sz))
+        initial (post: unit -> MetricRiscvMachine -> Prop):
       valid_FlatImp_var rd ->
       valid_FlatImp_var rs ->
       map.get (getRegs (getMachine initial)) rs = Some a ->
-      isMMIOAddr a ->
-      word.unsigned a mod Z.of_nat (bytes_per (width := width) sz) = 0 ->
+      execution (getLog initial) s ->
+      parameters.reg_addr r = a ->
+      parameters.read_step sz s r (word.of_Z (LittleEndian.combine _ v1)) s' ->
       map.undef_on (getMem (getMachine initial)) isMMIOAddr ->
-      (forall v,
-          post tt (withLogItem (mmioLoadEvent a v)
+      (forall v: HList.tuple byte (bytes_per (width := width) sz),
+          post tt (withRegs
+                     (map.put (getRegs initial) rd (word.of_Z (LittleEndian.combine _ v)))
+                  (withLogItem (mmioLoadEvent a v)
                   (updateMetrics (addMetricLoads 1)
-                  (withRegs
-                     (map.put (getRegs initial) rd
-                              (word.of_Z (signExtend 32 (LittleEndian.combine 4 v))))
-                     initial)))) ->
+                  initial)))) ->
       free.interp interp_action (Execute.execute
-                                   (compile_read (access_size_to_MMIO_write sz) rd rs 0))
+                                   (compile_read (access_size_to_MMIO_read sz) rd rs 0))
                   initial post.
   Proof.
-    intros.
+    intros. subst.
+    (* more robust against PARAMRECORDS differences than eauto *)
+    assert (isMMIOAddr (parameters.reg_addr r)). {
+      eapply parameters.read_step_isMMIOAddr. eassumption.
+    }
+    assert (word.unsigned (parameters.reg_addr r) mod Z.of_nat (bytes_per (width := width) sz) = 0). {
+      eapply parameters.read_step_is_aligned. eassumption.
+    }
     destruct sz; repeat fwd;
       repeat match goal with
              | |- context [Z.eq_dec ?r 0] => destruct (Z.eq_dec r 0);
@@ -282,12 +292,16 @@ Section MMIO1.
                                  rewrite load_bytes_in_MMIO_is_None by assumption)
              | |- _ => progress cbv [MinimalMMIO.nonmem_load StateMachineMMIOSpec]
              | |- _ => progress cbn -[invalidateWrittenXAddrs HList.tuple] in *
-             | |- _ /\ _ => split; auto
              | |- Execute = Fetch -> _ => discriminate
-             | |- _ => destruct initial; solve [eauto]
+             | |- _ => solve [eauto]
              | |- _ => progress (intros; simp)
-             end.
-  Admitted.
+             | |- _ /\ _ => split; auto
+             | |- exists _, _ => eexists
+             end;
+      try reflexivity.
+    3-4: rewrite sextend_width_nop by reflexivity.
+    all: destruct initial as [ [? ?] ? ]; eapply H6.
+  Qed.
 
   Axiom TODO: False.
 
@@ -391,17 +405,13 @@ Section MMIO1.
       eapply runsToNonDet.runsToDone.
       simpl_MetricRiscvMachine_get_set.
       simpl_word_exprs word_ok.
-      unfold mmioStoreEvent, signedByteTupleToReg in *.
+      unfold mmioStoreEvent in *.
       unfold regToInt32.
       rewrite LittleEndian.combine_split.
-      match goal with
-      | |- context [signExtend ?w (?x mod ?y)] =>
-        replace (signExtend w (x mod y)) with x
-      end. 2: {
-        (* mismatch: bedrock2.Semantics and compiler.FlatImp semantics put values of external calls
-           into trace without signExtending (they don't get any access_size param that would allow
-           them to do so), whereas the RISC-V machine does sign extend them! *)
-        case TODO.
+      rewrite Z.mod_small. 2: {
+        split.
+        - apply (word.unsigned_range x1).
+        - eapply parameters.write_step_bounded. eassumption.
       }
       rewrite word.of_Z_unsigned.
       cbn -[invalidateWrittenXAddrs String.append] in *.
@@ -453,10 +463,9 @@ Section MMIO1.
         all:push_unsigned.
         all:auto with zarith. }
         *) }
-      replace "MMIOWRITE"%string with (access_size_to_MMIO_write x2). 2: {
-        case TODO. (* needs update in riscv-coq *)
-      }
       ssplit; eauto.
+      {
+        f_equal. f_equal. f_equal. f_equal. destruct x2; reflexivity.
       destruct x2; change (bytes_per Syntax.access_size.word) with 4%nat; cbn.
       all:change removeXAddr with (@List.removeb word word.eqb _).
       all:rewrite ?ListSet.of_list_removeb.
@@ -524,6 +533,11 @@ Section MMIO1.
                    by (symmetry; unfold map.extends in Hext; eauto)
                end;
         try reflexivity.
+
+(*
+require that read/write_step only accept words in the right range?
+no, they can accept all words, but just truncate *)
+
       { eauto using parameters.write_step_isMMIOAddr. }
       { eauto using parameters.write_step_is_aligned. }
 
