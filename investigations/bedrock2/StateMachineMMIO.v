@@ -124,13 +124,8 @@ Section MMIO1.
   |}.
 
   Instance StateMachineMMIOSpec : MMIOSpec :=
-    {| isMMIOAddr :=
-         fun w =>
-           Exists
-             (fun r => word.unsigned (parameters.reg_addr r)
-                    <= word.unsigned w
-                    <= word.unsigned (parameters.reg_addr r) + 4)
-             parameters.all_regs;
+    {| isMMIOAddr w := exists a, parameters.is_reg_addr a /\
+                                 word.unsigned a <= word.unsigned w < word.unsigned a + 4;
        isMMIOAligned := fun n addr => n = 4%nat /\ (word.unsigned addr) mod 4 = 0;
        MMIOReadOK :=
          fun n log addr val =>
@@ -218,14 +213,7 @@ Section MMIO1.
       ~ isMMIOAddr y ->
       x <> y.
   Proof.
-    unfold isMMIOAddr, StateMachineMMIOSpec in *.
-    intros *. rewrite <-Forall_Exists_neg.
-    rewrite Forall_forall, Exists_exists.
-    intros; logical_simplify.
-    intro; subst.
-    match goal with
-    | H : _ |- _ => eapply H; solve [eauto]
-    end.
+    intros x y Hx Hy C. subst. apply Hy. apply Hx.
   Qed.
 
   Instance FlatToRiscv_hyps: FlatToRiscvCommon.assumptions.
@@ -245,15 +233,6 @@ Section MMIO1.
     change (@FlatToRiscvCommon.mem FlatToRiscv_params) with (@mem p) in *;
     change (@width Words32) with 32 in *;
     change (@Utility.word Words32) with (@word p) in *.
-
-  Lemma reg_addr_is_mmio r : isMMIOAddr (parameters.reg_addr r).
-  Proof.
-    pose proof word.unsigned_range (parameters.reg_addr r).
-    cbv [isMMIOAddr StateMachineMMIOSpec].
-    apply Exists_exists. exists r.
-    split; [ apply parameters.all_regs_complete | ].
-    simpl_paramrecords. auto with zarith.
-  Qed.
 
   Lemma compile_ext_call_correct: forall resvars extcall argvars,
       FlatToRiscvCommon.compiles_FlatToRiscv_correctly
@@ -366,11 +345,16 @@ Section MMIO1.
              end.
 
       cbv [Utility.add Utility.ZToReg MachineWidth_XLEN]; rewrite add_0_r.
-      unshelve erewrite (_ : _ = None); [eapply storeWord_in_MMIO_is_None; eauto using reg_addr_is_mmio |].
+      unshelve erewrite (_ : _ = None). {
+        eapply storeWord_in_MMIO_is_None. 1: eassumption.
+        cbn. eexists. split; [eauto using parameters.write_step_is_reg_addr|blia].
+      }
 
       cbv [MinimalMMIO.nonmem_store StateMachineMMIOSpec].
-      split; [eauto using reg_addr_is_mmio|].
-      split; [red; auto using parameters.reg_addrs_aligned|].
+      split. {
+        cbn. eexists. split; [eauto using parameters.write_step_is_reg_addr|blia].
+      }
+      split; [red; eauto using parameters.write_step_is_reg_addr, parameters.reg_addrs_aligned|].
 
       repeat fwd.
 
@@ -410,7 +394,10 @@ Section MMIO1.
           clear. unfold subset, PropSet.elem_of. intros. firstorder idtac.
         }
         eapply subset_trans. 1: eassumption.
-        clear -(*D4 M0*) D state_machine_parameters_ok.
+        assert (parameters.is_reg_addr (parameters.reg_addr x)) as IR. {
+          eauto using parameters.write_step_is_reg_addr.
+        }
+        clear -(*D4 M0*) IR D state_machine_parameters_ok.
         unfold invalidateWrittenXAddrs.
         change removeXAddr with (@List.removeb word word.eqb _).
         rewrite ?ListSet.of_list_removeb.
@@ -420,13 +407,13 @@ Section MMIO1.
         specialize (D y). destruct D; [contradiction|].
         rewrite ?and_assoc.
         split; [exact HIn|clear HIn].
-        pose proof (parameters.reg_addrs_small x).
+        pose proof (parameters.reg_addrs_small (parameters.reg_addr x) IR).
         change (Memory.bytes_per_word 32) with 4 in *.
         pose proof (word.unsigned_range (parameters.reg_addr x)).
         ssplit; eapply disjoint_MMIO_goal; eauto.
         all:cbv [isMMIOAddr StateMachineMMIOSpec].
-        all:eapply Exists_exists; exists x.
-        all:split; [ apply parameters.all_regs_complete | ].
+        all:exists (parameters.reg_addr x).
+        all:split; [ exact IR | ].
         all:simpl_paramrecords.
         all:push_unsigned.
         all:auto with zarith. }
@@ -516,11 +503,16 @@ Section MMIO1.
 
       split; try discriminate.
       cbv [Utility.add Utility.ZToReg MachineWidth_XLEN]; rewrite add_0_r.
-      unshelve erewrite (_ : _ = None); [eapply loadWord_in_MMIO_is_None|]; eauto using reg_addr_is_mmio.
+      unshelve erewrite (_ : _ = None). {
+        eapply loadWord_in_MMIO_is_None. 1: eassumption.
+        cbn. eexists. split; [eauto using parameters.read_step_is_reg_addr|blia].
+      }
 
       cbv [MinimalMMIO.nonmem_load StateMachineMMIOSpec].
-      split; [apply reg_addr_is_mmio|].
-      split; [red; auto using parameters.reg_addrs_aligned|].
+      split. {
+        cbn. eexists. split; [eauto using parameters.read_step_is_reg_addr|blia].
+      }
+      split; [red; eauto using parameters.read_step_is_reg_addr, parameters.reg_addrs_aligned|].
       split.
       { cbv [MMIOReadOK].
         let val := lazymatch goal with

@@ -88,13 +88,13 @@ Definition reg_addrs {width} {word : word.word width}
 Class constants_ok
       {width} {word : word width} {word_ok : word.ok word}
       (global_values : constants word) :=
-  { addrs_unique : unique_words reg_addrs;
+  { addrs_unique : NoDup reg_addrs;
     addrs_aligned :
       Forall (fun w => word.unsigned w mod 4 = 0) reg_addrs;
     addrs_small :
       Forall (fun w => word.unsigned w + 4 < 2 ^ 32) reg_addrs;
     status_flags_unique_and_nonzero :
-      unique_words
+      NoDup
         ((word.of_Z 0)
            :: (map (fun flag_position => word.slu (word.of_Z 1) flag_position)
                   [STATUS_IDLE;STATUS_BUSY;STATUS_DONE]));

@@ -14,7 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
-(* A codification of the Lava embedded DSL develope for Haskell into
+(* A codification of the Lava embedded DSL developed for Haskell into
    Coq for the specification, implementaiton and formal verification of circuits.
    Experimental work, very much in flux, as Satnam learns Coq!
 *)

@@ -54,9 +54,8 @@ Section WithParameters.
   Import parameters.
   Context {p : parameters} {p_ok : parameters.ok p}.
   Context {consts : aes_constants Z}
-          {consts_ok : aes_constants_ok constant_words}
+          {consts_ok : aes_constants_ok consts}
           {timing : timing}.
-  Existing Instance constant_words.
 
   Add Ring wring : (Properties.word.ring_theory (word := parameters.word))
         (preprocess [autorewrite with rew_word_morphism],
@@ -103,28 +102,28 @@ Section WithParameters.
 
   Definition reg_addr (r : Register) : word :=
     match r with
-    | CTRL => AES_CTRL
-    | STATUS => AES_STATUS
-    | KEY0 => AES_KEY0
-    | KEY1 => word.add AES_KEY0 (word.of_Z 4)
-    | KEY2 => word.add AES_KEY0 (word.of_Z 8)
-    | KEY3 => word.add AES_KEY0 (word.of_Z 12)
-    | KEY4 => word.add AES_KEY0 (word.of_Z 16)
-    | KEY5 => word.add AES_KEY0 (word.of_Z 20)
-    | KEY6 => word.add AES_KEY0 (word.of_Z 24)
-    | KEY7 => word.add AES_KEY0 (word.of_Z 28)
-    | IV0 => AES_IV0
-    | IV1 => word.add AES_IV0 (word.of_Z 4)
-    | IV2 => word.add AES_IV0 (word.of_Z 8)
-    | IV3 => word.add AES_IV0 (word.of_Z 12)
-    | DATA_IN0 => AES_DATA_IN0
-    | DATA_IN1 => word.add AES_DATA_IN0 (word.of_Z 4)
-    | DATA_IN2 => word.add AES_DATA_IN0 (word.of_Z 8)
-    | DATA_IN3 => word.add AES_DATA_IN0 (word.of_Z 12)
-    | DATA_OUT0 => AES_DATA_OUT0
-    | DATA_OUT1 => word.add AES_DATA_OUT0 (word.of_Z 4)
-    | DATA_OUT2 => word.add AES_DATA_OUT0 (word.of_Z 8)
-    | DATA_OUT3 => word.add AES_DATA_OUT0 (word.of_Z 12)
+    | CTRL => word.of_Z AES_CTRL0
+    | STATUS => word.of_Z AES_STATUS0
+    | KEY0 => word.of_Z AES_KEY00
+    | KEY1 => word.of_Z (AES_KEY00 + 4)
+    | KEY2 => word.of_Z (AES_KEY00 + 8)
+    | KEY3 => word.of_Z (AES_KEY00 + 12)
+    | KEY4 => word.of_Z (AES_KEY00 + 16)
+    | KEY5 => word.of_Z (AES_KEY00 + 20)
+    | KEY6 => word.of_Z (AES_KEY00 + 24)
+    | KEY7 => word.of_Z (AES_KEY00 + 28)
+    | IV0 => word.of_Z AES_IV00
+    | IV1 => word.of_Z (AES_IV00 + 4)
+    | IV2 => word.of_Z (AES_IV00 + 8)
+    | IV3 => word.of_Z (AES_IV00 + 12)
+    | DATA_IN0 => word.of_Z AES_DATA_IN00
+    | DATA_IN1 => word.of_Z (AES_DATA_IN00 + 4)
+    | DATA_IN2 => word.of_Z (AES_DATA_IN00 + 8)
+    | DATA_IN3 => word.of_Z (AES_DATA_IN00 + 12)
+    | DATA_OUT0 => word.of_Z AES_DATA_OUT00
+    | DATA_OUT1 => word.of_Z (AES_DATA_OUT00 + 4)
+    | DATA_OUT2 => word.of_Z (AES_DATA_OUT00 + 8)
+    | DATA_OUT3 => word.of_Z (AES_DATA_OUT00 + 12)
     end.
 
   Lemma aes_reg_addrs_eq : aes_reg_addrs = map reg_addr all_regs.
@@ -138,29 +137,15 @@ Section WithParameters.
   Lemma reg_addr_unique r1 r2 :
     reg_addr r1 = reg_addr r2 -> r1 = r2.
   Proof.
-    pose proof addrs_unique as Huniq.
-    rewrite aes_reg_addrs_eq in Huniq.
-    cbv [all_regs map reg_addr] in Huniq.
-    simplify_unique_words_in Huniq.
-    cbv [reg_addr]; cbn; intro Heqaddr.
-    destruct r1.
-    (* clear all hypothesis that don't have to do with r1 (makes proof
-       faster) *)
-    all:lazymatch type of Heqaddr with
-        | ?r = _ =>
-          repeat match goal with
-                 | H : ?x <> ?y |- _ =>
-                   lazymatch x with
-                   | context [r] => fail
-                   | _ =>
-                     lazymatch y with
-                     | context [r] => fail
-                     | _ => clear H
-                     end
-                   end
-                 end
-        end.
-    all:destruct r2; try first [ exact eq_refl | congruence ].
+    assert (NoDup (map reg_addr all_regs)) as N. {
+      rewrite <-aes_reg_addrs_eq.
+      apply addrs_unique.
+    }
+    eapply FinFun.Injective_carac.
+    - unfold FinFun.Listing. split.
+      + eapply NoDup_map_inv. exact N.
+      + unfold FinFun.Full. eapply all_regs_complete.
+    - exact N.
   Qed.
 
   Lemma reg_addr_aligned r : word.unsigned (reg_addr r) mod 4 = 0.
@@ -548,11 +533,12 @@ Section WithParameters.
     : StateMachineSemantics.parameters 32 word mem :=
     {| StateMachineSemantics.parameters.state := state ;
        StateMachineSemantics.parameters.register := Register ;
-       StateMachineSemantics.parameters.initial_state := UNINITIALIZED ;
+       StateMachineSemantics.parameters.is_initial_state := eq UNINITIALIZED ;
        StateMachineSemantics.parameters.read_step := read_step ;
        StateMachineSemantics.parameters.write_step := write_step ;
        StateMachineSemantics.parameters.reg_addr := reg_addr ;
-       StateMachineSemantics.parameters.all_regs := all_regs;
+       StateMachineSemantics.parameters.is_reg_addr a :=
+         List.Exists (fun r => a = reg_addr r) all_regs;
     |}.
 
   Global Instance state_machine_parameters_ok
@@ -563,9 +549,16 @@ Section WithParameters.
     { exact word_ok. }
     { exact mem_ok. }
     { exact reg_addr_unique. }
-    { exact all_regs_complete. }
-    { exact reg_addr_aligned. }
-    { exact reg_addr_small. }
+    { unfold parameters.is_reg_addr. cbn. intros.
+      eapply Exists_exists in H. destruct H as (r & rI & ?). subst a.
+      eapply reg_addr_aligned. }
+    { unfold parameters.is_reg_addr. cbn. intros.
+      eapply Exists_exists in H. destruct H as (r & rI & ?). subst a.
+      eapply reg_addr_small. }
+    { unfold parameters.is_reg_addr. cbn. intros.
+      eapply Exists_exists. eauto using all_regs_complete. }
+    { unfold parameters.is_reg_addr. cbn. intros.
+      eapply Exists_exists. eauto using all_regs_complete. }
   Defined.
 
 End WithParameters.
