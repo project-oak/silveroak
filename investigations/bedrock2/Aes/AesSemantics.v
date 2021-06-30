@@ -2,6 +2,7 @@ Require Import Coq.ZArith.ZArith.
 Require Import Coq.Lists.List.
 Require Import Coq.Numbers.DecimalString.
 Require Import bedrock2.Syntax bedrock2.Semantics.
+Require Import bedrock2.ZnWords.
 Require coqutil.Datatypes.String coqutil.Map.SortedList.
 Require coqutil.Map.SortedListString coqutil.Map.SortedListWord.
 Require Import coqutil.Map.Interface.
@@ -535,9 +536,9 @@ Section WithParameters.
        StateMachineSemantics.parameters.register := Register ;
        StateMachineSemantics.parameters.is_initial_state := eq UNINITIALIZED ;
        StateMachineSemantics.parameters.read_step sz s a v s' :=
-         sz = access_size.four /\ read_step s a v s';
+         sz = 4%nat /\ read_step s a v s';
        StateMachineSemantics.parameters.write_step sz s a v s' :=
-         sz = access_size.four /\ write_step s a v s' ;
+         sz = 4%nat /\ write_step s a v s' ;
        StateMachineSemantics.parameters.reg_addr := reg_addr ;
        StateMachineSemantics.parameters.isMMIOAddr a :=
          List.Exists (fun r =>
@@ -548,17 +549,17 @@ Section WithParameters.
   Global Instance state_machine_parameters_ok
     : StateMachineSemantics.parameters.ok state_machine_parameters.
   Proof.
-    constructor.
-    { left; exact eq_refl. }
-    { exact word_ok. }
-    { exact mem_ok. }
-    { exact reg_addr_unique. }
-    { unfold parameters.isMMIOAddr. cbn. intros.
-      eapply Exists_exists. eauto using all_regs_complete with zarith. }
-    { unfold parameters.isMMIOAddr. cbn. intros.
-      eapply Exists_exists. eauto using all_regs_complete with zarith. }
-    { intros. apply proj1 in H. subst sz. cbn. apply reg_addr_aligned. }
-    { intros. apply proj1 in H. subst sz. cbn. apply reg_addr_aligned. }
+    constructor;
+      unfold parameters.isMMIOAddr; cbn;
+      intros;
+      try exact _;
+      repeat match goal with
+             | H: _ /\ _ |- _ => destruct H
+             end;
+      subst;
+      try eapply Exists_exists;
+      eauto using all_regs_complete, reg_addr_aligned, reg_addr_unique with zarith;
+      try ZnWords.
   Qed.
 
 End WithParameters.

@@ -243,7 +243,7 @@ Section Proofs.
              m (map.put l bind val)) ->
     cmd call (cmd.interact [bind] READ32 [addre]) t m l post.
   Proof.
-    intros; eapply (interact_read access_size.four); intros; infer;
+    intros; eapply (interact_read 4); intros; infer;
       cbv [parameters.read_step state_machine_parameters] in *;
       eauto.
     pose proof status_read_always_ok s. logical_simplify.
@@ -267,7 +267,7 @@ Section Proofs.
         post ((map.empty, WRITE32, [addr;val], (map.empty, [])) :: t) m l) ->
     cmd call (cmd.interact [] WRITE32 [addre;vale]) t m l post.
   Proof.
-    intros; eapply (interact_write access_size.four); intros; infer;
+    intros; eapply (interact_write 4); intros; infer;
       cbv [parameters.write_step state_machine_parameters] in *;
       eauto.
     cbv [write_step]. cbn [reg_category].
@@ -300,7 +300,7 @@ Section Proofs.
         post ((map.empty, WRITE32, [addr;val], (map.empty, [])) :: t) m l) ->
     cmd call (cmd.interact [] WRITE32 [addre;vale]) t m l post.
   Proof.
-    intros; eapply (interact_write access_size.four); intros; infer;
+    intros; eapply (interact_write 4); intros; infer;
       cbv [parameters.write_step state_machine_parameters] in *;
       eauto.
     { repeat (destruct i; try lia); subst; cbn; ring. }
@@ -332,7 +332,7 @@ Section Proofs.
         post ((map.empty, WRITE32, [addr;val], (map.empty, [])) :: t) m l) ->
     cmd call (cmd.interact [] WRITE32 [addre;vale]) t m l post.
   Proof.
-    intros; eapply (interact_write access_size.four); intros; infer;
+    intros; eapply (interact_write 4); intros; infer;
       cbv [parameters.write_step state_machine_parameters] in *;
       eauto.
     { repeat (destruct i; try lia); subst; cbn; ring. }
@@ -364,7 +364,7 @@ Section Proofs.
         post ((map.empty, WRITE32, [addr;val], (map.empty, [])) :: t) m l) ->
     cmd call (cmd.interact [] WRITE32 [addre;vale]) t m l post.
   Proof.
-    intros; eapply (interact_write access_size.four); intros; infer;
+    intros; eapply (interact_write 4); intros; infer;
       cbv [parameters.write_step state_machine_parameters] in *;
       eauto.
     { repeat (destruct i; try lia); subst; cbn; ring. }
@@ -405,7 +405,7 @@ Section Proofs.
              m (map.put l bind val)) ->
     cmd call (cmd.interact [bind] READ32 [addre]) t m l post.
   Proof.
-    intros; eapply (interact_read access_size.four) with (r:=data_out_from_index i);
+    intros; eapply (interact_read 4) with (r:=data_out_from_index i);
       intros; infer;
         cbv [parameters.read_step state_machine_parameters] in *;
         eauto.
