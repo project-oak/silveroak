@@ -43,15 +43,11 @@ Open Scope ilist_scope.
 (* Based on bedrock2's compilerExamples/MMIO.v *)
 
 Definition compile_write(action: string): Z -> Z -> Z -> Instruction :=
-  (* this file assumes a 32-bit architecture, so WRITEW is the same as WRITE32, and all
-     other action strings are excluded by ext_spec, so we can return Sw in all these cases *)
   if String.eqb action WRITE8 then Sb else if String.eqb action WRITE16 then Sh else Sw.
 
 Definition compile_read(action: string): Z -> Z -> Z -> Instruction :=
-  (* this file assumes a 32-bit architecture, so READW is the same as READ32, and all
-     other action strings are excluded by ext_spec, so we can return Lw in all these cases.
-     Also, note that Lwu is only available on 64-bit machines, because whether a 32-bit
-     load is signed or not makes no difference on a 32-bit machine. *)
+  (* This file assumes a 32-bit architecture, which means it has no Lwu instruction, because
+     whether a 32-bit load is signed or unsigned makes no difference on a 32-bit machine. *)
   if String.eqb action READ8 then Lbu else if String.eqb action READ16 then Lhu else Lw.
 
 Definition compile_ext_call(results: list Z) a (args: list Z):
