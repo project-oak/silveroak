@@ -18,8 +18,8 @@ Module parameters.
     { state : Type;
       register : Type;
       is_initial_state : state -> Prop;
-      read_step : nat(*how many bytes (1,2,4,8)*) -> state -> register -> word -> state -> Prop;
-      write_step : nat(*how many bytes (1,2,4,8)*) -> state -> register -> word -> state -> Prop;
+      read_step (byte_count : nat) : state -> register -> word -> state -> Prop;
+      write_step (byte_count : nat) : state -> register -> word -> state -> Prop;
       reg_addr : register -> word;
       isMMIOAddr : word -> Prop;
     }.
