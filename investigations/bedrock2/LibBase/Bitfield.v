@@ -17,7 +17,7 @@ Section Impl.
   (* Notations for small constants *)
   Local Notation "0" := (expr.literal 0) (in custom bedrock_expr).
   Local Notation "1" := (expr.literal 1) (in custom bedrock_expr).
-  Local Notation "-1" := (expr.literal (- 1)) (in custom bedrock_expr).
+  Local Notation "-1" := (expr.literal 4294967295) (in custom bedrock_expr).
 
   (* sw/device/lib/base/bitfield.h *)
 
