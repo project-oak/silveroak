@@ -162,7 +162,44 @@ Section Impl.
       return kErrorOk;
     }
    ***)
-      (* Definition keymgr_state_advance_to_creator : func := *)
+  (* Note: unrolling the loop/array might be easier to reason *)
+  Definition keymgr_state_advance_to_creator : func :=
+    let err := "err" in
+    let binding_value_0 := "binding_value_0" in
+    let binding_value_1 := "binding_value_1" in
+    let binding_value_2 := "binding_value_2" in
+    let binding_value_3 := "binding_value_3" in
+    let binding_value_4 := "binding_value_4" in
+    let binding_value_5 := "binding_value_5" in
+    let binding_value_6 := "binding_value_6" in
+    let binding_value_7 := "binding_value_7" in
+    let max_key_ver := "max_key_ver" in
+    let out := "out" in
+    ("b2_keymgr_state_advance_to_creator", ([binding_value_0; binding_value_1;
+    binding_value_2; binding_value_3; binding_value_4; binding_value_5;
+    binding_value_6; binding_value_7; max_key_ver], [out],
+    bedrock_func_body:(
+      unpack! err = check_expected_state(KEYMGR_WORKING_STATE_STATE_VALUE_INIT,
+                                         KEYMGR_OP_STATUS_STATUS_VALUE_DONE_SUCCESS);
+      if (err == kErrorOk) {
+        abs_mmio_write32(TOP_EARLGREY_KEYMGR_BASE_ADDR+KEYMGR_SW_BINDING_0_REG_OFFSET, binding_value_0);
+        abs_mmio_write32(TOP_EARLGREY_KEYMGR_BASE_ADDR+KEYMGR_SW_BINDING_1_REG_OFFSET, binding_value_1);
+        abs_mmio_write32(TOP_EARLGREY_KEYMGR_BASE_ADDR+KEYMGR_SW_BINDING_2_REG_OFFSET, binding_value_2);
+        abs_mmio_write32(TOP_EARLGREY_KEYMGR_BASE_ADDR+KEYMGR_SW_BINDING_3_REG_OFFSET, binding_value_3);
+        abs_mmio_write32(TOP_EARLGREY_KEYMGR_BASE_ADDR+KEYMGR_SW_BINDING_4_REG_OFFSET, binding_value_4);
+        abs_mmio_write32(TOP_EARLGREY_KEYMGR_BASE_ADDR+KEYMGR_SW_BINDING_5_REG_OFFSET, binding_value_5);
+        abs_mmio_write32(TOP_EARLGREY_KEYMGR_BASE_ADDR+KEYMGR_SW_BINDING_6_REG_OFFSET, binding_value_6);
+        abs_mmio_write32(TOP_EARLGREY_KEYMGR_BASE_ADDR+KEYMGR_SW_BINDING_7_REG_OFFSET, binding_value_7);
+
+        abs_mmio_write32(TOP_EARLGREY_KEYMGR_BASE_ADDR+KEYMGR_SW_BINDING_REGWEN_REG_OFFSET, 0);
+        abs_mmio_write32(TOP_EARLGREY_KEYMGR_BASE_ADDR+KEYMGR_MAX_CREATOR_KEY_VER_REG_OFFSET, max_key_ver);
+        abs_mmio_write32(TOP_EARLGREY_KEYMGR_BASE_ADDR+KEYMGR_MAX_CREATOR_KEY_VER_REGWEN_REG_OFFSET, 0);
+        advance_state();
+        out = kErrorOk
+      } else {
+        out = err
+      }
+    ))).
 
   (****
     rom_error_t keymgr_state_creator_check() {

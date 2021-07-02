@@ -25,23 +25,10 @@ Definition keymgr_c_template_top : string :=
 
 #include ""hw/top_earlgrey/sw/autogen/top_earlgrey.h""
 #include ""keymgr_regs.h""  // Generated.
-
-enum {
-  kBase = TOP_EARLGREY_KEYMGR_BASE_ADDR,
-};".
+".
 
 Definition keymgr_c_template_bottom : string :=
-  "static rom_error_t check_expected_state(uint32_t expected_state,
-                                      uint32_t expected_status) {
-  return b2_check_expected_state((uintptr_t) expected_state,
-                                 (uintptr_t) expected_status);
-}
-
-static void advance_state(void) {
-  b2_advance_state();
-}
-
-rom_error_t keymgr_init(uint16_t entropy_reseed_interval) {
+  "rom_error_t keymgr_init(uint16_t entropy_reseed_interval) {
   return b2_keymgr_init((uintptr_t) entropy_reseed_interval);
 }
 
@@ -51,27 +38,10 @@ rom_error_t keymgr_state_creator_check() {
 
 rom_error_t keymgr_state_advance_to_creator(const uint32_t binding_value[8],
                                             uint32_t max_key_ver) {
-  RETURN_IF_ERROR(
-      check_expected_state(KEYMGR_WORKING_STATE_STATE_VALUE_INIT,
-                           KEYMGR_OP_STATUS_STATUS_VALUE_DONE_SUCCESS));
-
-  // Write and lock (rw0c) the software binding value. This register is unlocked
-  // by hardware upon a successful state transition.
-  // FIXME: Consider using sec_mmio module for the following register writes.
-  for (size_t i = 0; i < 8; ++i) {
-    abs_mmio_write32(
-        kBase + KEYMGR_SW_BINDING_0_REG_OFFSET + i * sizeof(uint32_t),
-        binding_value[i]);
-  }
-  abs_mmio_write32(kBase + KEYMGR_SW_BINDING_REGWEN_REG_OFFSET, 0);
-
-  // Write and lock (rw0c) the max key version.
-  abs_mmio_write32(kBase + KEYMGR_MAX_CREATOR_KEY_VER_REG_OFFSET, max_key_ver);
-  abs_mmio_write32(kBase + KEYMGR_MAX_CREATOR_KEY_VER_REGWEN_REG_OFFSET, 0);
-
-  // Advance to CREATOR_ROOT_KEY state.
-  advance_state();
-  return kErrorOk;
+  return b2_keymgr_state_advance_to_creator(
+    binding_value[0], binding_value[1], binding_value[2], binding_value[3],
+    binding_value[4], binding_value[5], binding_value[6], binding_value[7],
+    (uintptr_t) max_key_ver);
 }".
 
 Definition funcs := [
@@ -82,6 +52,7 @@ Definition funcs := [
   ;advance_state
   ;keymgr_init
   ;keymgr_state_creator_check
+  ;keymgr_state_advance_to_creator
   ].
 
 Definition make_keymgr_c :=
