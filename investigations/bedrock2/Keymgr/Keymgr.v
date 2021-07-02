@@ -67,12 +67,12 @@ Section Impl.
       unpack! error_code = abs_mmio_read32(TOP_EARLGREY_KEYMGR_BASE_ADDR + KEYMGR_ERR_CODE_REG_OFFSET);
       abs_mmio_write32(TOP_EARLGREY_KEYMGR_BASE_ADDR + KEYMGR_ERR_CODE_REG_OFFSET, error_code);
       unpack! got_state = abs_mmio_read32(TOP_EARLGREY_KEYMGR_BASE_ADDR + KEYMGR_WORKING_STATE_REG_OFFSET);
-     if (op_status_field == expected_status
-         & error_code == 0
-         & got_state == expected_state) {
+    if ((op_status_field == expected_status)
+         & (error_code == 0)
+         & (got_state == expected_state)) {
        out = kErrorOk
      } else {
-       out = kErrorOk
+       out = kErrorKeymgrInternal
      }
     ))).
 
@@ -116,10 +116,65 @@ Section Impl.
    ***)
   Definition keymgr_init : func :=
     let reg := "reg" in
+    let err := "err" in
     let entropy_reseed_interval := "entropy_reseed_interval" in
-    ("b2_keymgr_init", ([], [],
+    let out := "out" in
+    ("b2_keymgr_init", ([entropy_reseed_interval], [out],
     bedrock_func_body:(
+      unpack! err = check_expected_state(KEYMGR_WORKING_STATE_STATE_VALUE_RESET,
+                                         KEYMGR_OP_STATUS_STATUS_VALUE_IDLE);
+      if (err == kErrorOk) {
+        unpack! reg = bitfield_field32_write(0, KEYMGR_RESEED_INTERVAL_VAL_MASK,
+                                             KEYMGR_RESEED_INTERVAL_VAL_OFFSET,
+                                             entropy_reseed_interval);
+        abs_mmio_write32(TOP_EARLGREY_KEYMGR_BASE_ADDR + KEYMGR_RESEED_INTERVAL_REG_OFFSET, reg);
+        advance_state();
+        out = kErrorOk
 
+      } else {
+        out = err
+             }
     ))).
 
+  (****
+    rom_error_t keymgr_state_advance_to_creator(const uint32_t binding_value[8],
+                                                uint32_t max_key_ver) {
+      RETURN_IF_ERROR(
+          check_expected_state(KEYMGR_WORKING_STATE_STATE_VALUE_INIT,
+                               KEYMGR_OP_STATUS_STATUS_VALUE_DONE_SUCCESS));
+
+      // Write and lock (rw0c) the software binding value. This register is unlocked
+      // by hardware upon a successful state transition.
+      // FIXME: Consider using sec_mmio module for the following register writes.
+      for (size_t i = 0; i < 8; ++i) {
+        abs_mmio_write32(
+            kBase + KEYMGR_SW_BINDING_0_REG_OFFSET + i * sizeof(uint32_t),
+            binding_value[i]);
+      }
+      abs_mmio_write32(kBase + KEYMGR_SW_BINDING_REGWEN_REG_OFFSET, 0);
+
+      // Write and lock (rw0c) the max key version.
+      abs_mmio_write32(kBase + KEYMGR_MAX_CREATOR_KEY_VER_REG_OFFSET, max_key_ver);
+      abs_mmio_write32(kBase + KEYMGR_MAX_CREATOR_KEY_VER_REGWEN_REG_OFFSET, 0);
+
+      // Advance to CREATOR_ROOT_KEY state.
+      advance_state();
+      return kErrorOk;
+    }
+   ***)
+      (* Definition keymgr_state_advance_to_creator : func := *)
+
+  (****
+    rom_error_t keymgr_state_creator_check() {
+      return check_expected_state(KEYMGR_WORKING_STATE_STATE_VALUE_CREATOR_ROOT_KEY,
+                                  KEYMGR_OP_STATUS_STATUS_VALUE_DONE_SUCCESS);
+    }
+   ***)
+  Definition keymgr_state_creator_check : func :=
+    let out := "out" in
+    ("b2_keymgr_state_creator_check", ([], [out],
+    bedrock_func_body:(
+      unpack! out = check_expected_state(KEYMGR_WORKING_STATE_STATE_VALUE_CREATOR_ROOT_KEY,
+                                 KEYMGR_OP_STATUS_STATUS_VALUE_DONE_SUCCESS)
+    ))).
 End Impl.
