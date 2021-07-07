@@ -19,8 +19,6 @@ Definition WRITE := "MMIOWRITE".
 Class constants T :=
   { VALUE_ADDR : T;
     STATUS_ADDR : T;
-    STATUS_IDLE : T;
-    STATUS_BUSY : T;
     STATUS_DONE : T }.
 
 (* Given the string names of all the constants, coerce them to bedrock2
@@ -30,8 +28,6 @@ Definition constant_vars
   : constants expr :=
   {| VALUE_ADDR := expr.var VALUE_ADDR;
      STATUS_ADDR := expr.var STATUS_ADDR;
-     STATUS_IDLE := expr.var STATUS_IDLE;
-     STATUS_BUSY := expr.var STATUS_BUSY;
      STATUS_DONE := expr.var STATUS_DONE;
   |}.
 
@@ -42,8 +38,6 @@ Definition constant_literals
   : constants expr :=
   {| VALUE_ADDR := expr.literal VALUE_ADDR;
      STATUS_ADDR := expr.literal STATUS_ADDR;
-     STATUS_IDLE := expr.literal STATUS_IDLE;
-     STATUS_BUSY := expr.literal STATUS_BUSY;
      STATUS_DONE := expr.literal STATUS_DONE;
   |}.
 
@@ -55,8 +49,6 @@ Definition constant_words
   : constants word :=
   {| VALUE_ADDR := word.of_Z VALUE_ADDR;
      STATUS_ADDR := word.of_Z STATUS_ADDR;
-     STATUS_IDLE := word.of_Z STATUS_IDLE;
-     STATUS_BUSY := word.of_Z STATUS_BUSY;
      STATUS_DONE := word.of_Z STATUS_DONE;
   |}.
 
@@ -64,8 +56,6 @@ Definition constant_words
 Definition constant_names : constants string :=
   {| VALUE_ADDR := "VALUE_ADDR";
      STATUS_ADDR := "STATUS_ADDR";
-     STATUS_IDLE := "STATUS_IDLE";
-     STATUS_BUSY := "STATUS_BUSY";
      STATUS_DONE := "STATUS_DONE";
   |}.
 
@@ -74,15 +64,13 @@ Definition constant_names : constants string :=
 Definition globals {T} {consts : constants T} : list T :=
   [ VALUE_ADDR
     ; STATUS_ADDR
-    ; STATUS_IDLE
-    ; STATUS_BUSY
     ; STATUS_DONE
   ].
 
 (* All register addresses *)
 Definition reg_addrs {width} {word : word.word width}
            {global_values : constants word}
-  : list word.rep := [VALUE_ADDR; STATUS_ADDR].
+  : list word.rep := [VALUE_ADDR (*; STATUS_ADDR <-- same addr as VALUE_ADDR, using bit 31 *)].
 
 (* This class includes all the properties the constants must satisfy *)
 Class constants_ok
@@ -97,7 +85,7 @@ Class constants_ok
       NoDup
         ((word.of_Z 0)
            :: (map (fun flag_position => word.slu (word.of_Z 1) flag_position)
-                  [STATUS_IDLE;STATUS_BUSY;STATUS_DONE]));
+                  [STATUS_DONE]));
     flags_lt_width : Forall (fun w => word.unsigned w < width)
-                            [STATUS_IDLE;STATUS_BUSY;STATUS_DONE]
+                            [STATUS_DONE]
   }.

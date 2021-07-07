@@ -22,6 +22,7 @@ Module device.
   (* a deterministic device *)
   Class device{word: word.word 32} := {
     state: Type;
+    reset_state: state;
     run1: state -> state;
     addr_range_start: word;
     addr_range_pastend: word;
@@ -108,7 +109,7 @@ Section WithParams.
       | _ => Return v
       end
     | None => if word.leu device.addr_range_start a
-                 && word.ltu (word.add a (word.of_Z (Z.of_nat n))) device.addr_range_pastend
+                 && word.leu (word.add a (word.of_Z (Z.of_nat n))) device.addr_range_pastend
               then mmioLoad n a
               else fail_hard
     end.
@@ -118,7 +119,7 @@ Section WithParams.
     match Memory.store_bytes n mach.(getMachine).(getMem) a v with
     | Some m => update (withMem m)
     | None => if word.leu device.addr_range_start a
-                 && word.ltu (word.add a (word.of_Z (Z.of_nat n))) device.addr_range_pastend
+                 && word.leu (word.add a (word.of_Z (Z.of_nat n))) device.addr_range_pastend
               then mmioStore n a v
               else fail_hard
     end;;
@@ -191,10 +192,13 @@ Section WithParams.
   Section WithSchedule.
     Context (sched: schedule).
 
+    Definition nth_step(n: nat): OState (ExtraRiscvMachine D) unit :=
+      device_steps (sched n);; Run.run1 RV32I.
+
     Fixpoint run(nsteps: nat): OState (ExtraRiscvMachine D) unit :=
       match nsteps with
       | O => Return tt
-      | S n => run n;; device_steps (sched n);; Run.run1 RV32I
+      | S n => run n;; nth_step n
       end.
   End WithSchedule.
 

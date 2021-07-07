@@ -38,7 +38,9 @@ Section Impl.
         while ((status & (1 << STATUS_DONE)) == 0) {
           io! status = READ ( STATUS_ADDR )
         };
-        (* read the value and exit *)
-        io! out = READ ( VALUE_ADDR )
+        (* read the value *)
+        io! out = READ ( VALUE_ADDR );
+        (* ignore msb (DONE bit) *)
+        out = out & coq:(2^31-1)
     ))).
 End Impl.

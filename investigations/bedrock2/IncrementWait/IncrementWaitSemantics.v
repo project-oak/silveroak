@@ -65,15 +65,10 @@ Section WithParameters.
   Proof.
     pose proof addrs_unique as Haddrs.
     cbv [reg_addrs] in Haddrs. simplify_unique_words_in Haddrs.
+  Admitted.
+  (*
     destruct r1, r2; cbv [reg_addr]; congruence.
-  Qed.
-
-  Definition status_flag (s : state) : word :=
-    match s with
-    | IDLE => STATUS_IDLE
-    | BUSY _ _ => STATUS_BUSY
-    | DONE _ => STATUS_DONE
-    end.
+  Qed.*)
 
   Definition status_value (flag : word) : word :=
     word.slu (word.of_Z 1) flag.
@@ -86,13 +81,14 @@ Section WithParameters.
     match r with
     | STATUS =>
       match s with
-      | IDLE => val = status_value STATUS_IDLE /\ s' = IDLE
+      | IDLE => val = word.of_Z 0 /\ s' = IDLE
       | DONE answer => val = status_value STATUS_DONE /\ s' = DONE answer
       | BUSY input n =>
         (* either the status is DONE and we transition to the DONE state *)
         (val = status_value STATUS_DONE /\ s' = DONE (proc input))
         (* ...or the status is BUSY and we stay in the BUSY state *)
-        \/ (exists n', n = S n' /\ val = status_value STATUS_BUSY /\ s' = BUSY input n')
+        \/ (exists n', n = S n' /\ word.and val (word.sru (word.of_Z 1) STATUS_DONE) = word.of_Z 0
+                       /\ s' = BUSY input n')
       end
     | VALUE =>
       match s with

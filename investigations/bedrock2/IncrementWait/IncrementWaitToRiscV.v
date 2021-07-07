@@ -51,10 +51,8 @@ Definition ml: MemoryLayout := {|
 Definition base_addr : Z := 16 * 2^10.
 Instance consts : constants Z :=
   {| VALUE_ADDR := base_addr;
-     STATUS_ADDR := base_addr + 4;
-     STATUS_IDLE := 1;
-     STATUS_BUSY := 2;
-     STATUS_DONE := 3
+     STATUS_ADDR := base_addr;
+     STATUS_DONE := 31;
   |}.
 Existing Instance constant_words.
 
@@ -79,8 +77,8 @@ Instance pipeline_params : Pipeline.parameters :=
 Existing Instance constant_literals.
 
 (* pointers to input and output memory locations *)
-Definition input_ptr := base_addr + 8.
-Definition output_ptr := base_addr + 12.
+Definition input_ptr := word.unsigned ml.(heap_start).
+Definition output_ptr := word.unsigned ml.(heap_start) + 4.
 
 (* read input from memory, call put_wait_get, write output to memory *)
 Definition main_body : cmd :=
