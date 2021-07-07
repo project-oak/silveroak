@@ -5,6 +5,7 @@ Require Import coqutil.Byte.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Word.Interface.
 Require Import coqutil.Word.LittleEndianList.
+Require Import bedrock2.ZnWords.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.Hmac.Constants.
 
@@ -19,40 +20,6 @@ Class timing := {
      needed to prove termination of bedrock2 code. *)
   max_negative_done_polls: Z;
 }.
-
-(* TODO integrate upstream *)
-Require Import bedrock2.ZnWords.
-Require Import coqutil.Tactics.Tactics.
-Require Import Coq.Program.Tactics.
-Require Import coqutil.Z.Lia.
-(* use old version of canonicalize_word_width_and_instance because newer version
-   calls simpl_param_projections, which doesn't support parameter records with
-   more than 3 parameters in the *type* *)
-Ltac canonicalize_word_width_and_instance ::=
-  repeat so fun hyporgoal => match hyporgoal with
-     | context [@word.unsigned ?wi ?inst] =>
-       let wi' := eval cbn in wi in let inst' := eval cbn in inst in
-       progress ( change wi with wi' in *; change inst with inst' in * )
-     | context [@word.signed ?wi ?inst] =>
-       let wi' := eval cbn in wi in let inst' := eval cbn in inst in
-       progress ( change wi with wi' in *; change inst with inst' in * )
-     | context[2 ^ ?wi] =>
-       let wi' := eval cbn in wi in (* <-- will blow up as soon as we have 2^bigExpression... *)
-       progress ( change wi with wi' in * )
-     end.
-(* Fix cleanup_for_ZModArith to not clear word_ok (wasn't a problem until now because
-   there was always an instance of bedrock2.Semantics.parameters_ok depending on word_ok,
-   preventing word_ok from being cleared). *)
-Ltac cleanup_for_ZModArith ::=
-  subst*; (* <-- substituting `@eq word _ _` might create opportunities for wordOps_to_ZModArith_step *)
-  repeat match goal with
-         | a := _ |- _ => subst a
-         | H: ?T |- _ => lazymatch T with
-                         | @word.ok _ _ => fail
-                         | _ => tryif is_lia T then fail else clear H
-                         end
-         end.
-
 
 Section WithParams.
   Context {word: word 32} {mem: map.map word byte}
@@ -89,16 +56,16 @@ Section WithParams.
   | CONSUMING(sha_buffer: list byte)
   | PROCESSING(sha_buffer: list byte)(max_cycles_until_done: Z).
 
-  Inductive read_step: state -> word -> word -> state -> Prop :=
+  Inductive read_step: nat -> state -> word -> word -> state -> Prop :=
   | read_done_bit_not_done: forall b v n,
       0 < n ->
       Z.testbit (word.unsigned v) HMAC_INTR_STATE_HMAC_DONE_BIT = false ->
-      read_step (PROCESSING b n)
+      read_step 4 (PROCESSING b n)
                 (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET)) v
                 (PROCESSING b (n-1))
   | read_done_bit_done: forall b v n,
       Z.testbit (word.unsigned v) HMAC_INTR_STATE_HMAC_DONE_BIT = true ->
-      read_step (PROCESSING b n)
+      read_step 4 (PROCESSING b n)
                 (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET)) v
                 (IDLE (sha256 b)
                       {| (* flag in INTR_STATE is set (even though interrupts are disabled) *)
@@ -116,13 +83,13 @@ Section WithParams.
       swap_digest s = false ->
       0 <= i < 8 ->
       List.nth_error d (Z.to_nat i) = Some v ->
-      read_step (IDLE d s)
+      read_step 4 (IDLE d s)
                 (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET - (i * 4))) v
                 (IDLE d s).
 
-  Inductive write_step: state -> word -> word -> state -> Prop :=
+  Inductive write_step: nat -> state -> word -> word -> state -> Prop :=
   | write_cfg: forall v d s,
-      write_step (IDLE d s) (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CFG_REG_OFFSET)) v
+      write_step 4 (IDLE d s) (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CFG_REG_OFFSET)) v
                  (IDLE d {| intr_enable := intr_enable s;
                             hmac_done := hmac_done s;
                             hmac_en := Z.testbit 0 (word.unsigned v);
@@ -130,7 +97,7 @@ Section WithParams.
                             swap_endian := Z.testbit 2 (word.unsigned v);
                             swap_digest := Z.testbit 3 (word.unsigned v); |})
   | write_intr_enable: forall v d s,
-      write_step (IDLE d s) (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_ENABLE_REG_OFFSET)) v
+      write_step 4 (IDLE d s) (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_ENABLE_REG_OFFSET)) v
                  (IDLE d {| intr_enable := word.and v (word.of_Z 7);
                             hmac_done := hmac_done s;
                             hmac_en := hmac_en s;
@@ -138,7 +105,7 @@ Section WithParams.
                             swap_endian := swap_endian s;
                             swap_digest := swap_digest s; |})
   | write_intr_state: forall v d s,
-      write_step (IDLE d s) (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET)) v
+      write_step 4 (IDLE d s) (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET)) v
                  (IDLE d {| (* hmac_done is rw1c (clear on write-1) *)
                             hmac_done := if Z.testbit (word.unsigned v) HMAC_INTR_STATE_HMAC_DONE_BIT
                                          then false else hmac_done s;
@@ -148,7 +115,7 @@ Section WithParams.
                             swap_endian := swap_endian s;
                             swap_digest := swap_digest s; |})
   | write_hash_start: forall d,
-      write_step (IDLE d (* Here one can see that we only model a subset of the features of
+      write_step 4 (IDLE d (* Here one can see that we only model a subset of the features of
                             the HMAC module: in our model, starting the computation is only
                             possible from the specific configuration below.
                             But using an HMAC module with more features than what we expose
@@ -163,15 +130,16 @@ Section WithParams.
                  (word.of_Z (Z.shiftl 1 HMAC_CMD_HASH_START_BIT))
                  (CONSUMING [])
   | write_byte: forall b v,
-      write_step (CONSUMING b)
+      0 <= word.unsigned v < 2 ^ 8 ->
+      write_step 1 (CONSUMING b)
                  (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_MSG_FIFO_REG_OFFSET)) v
                  (CONSUMING (b ++ [byte.of_Z (word.unsigned v)]))
   | write_word: forall b v,
-      write_step (CONSUMING b)
+      write_step 4 (CONSUMING b)
                  (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_MSG_FIFO_REG_OFFSET)) v
                  (CONSUMING (b ++ le_split 4 (word.unsigned v)))
   | write_hash_process: forall b,
-      write_step (CONSUMING b)
+      write_step 4 (CONSUMING b)
                  (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET))
                  (word.of_Z (Z.shiftl 1 HMAC_CMD_HASH_PROCESS_BIT))
                  (PROCESSING b max_negative_done_polls).
@@ -205,22 +173,21 @@ Section WithParams.
     StateMachineSemantics.parameters.read_step := read_step;
     StateMachineSemantics.parameters.write_step := write_step;
     StateMachineSemantics.parameters.reg_addr := id;
-    StateMachineSemantics.parameters.is_reg_addr a :=
-      HMAC_MMIO_START <= word.unsigned a < HMAC_MMIO_PAST_END /\ word.unsigned a mod 4 = 0;
+    StateMachineSemantics.parameters.isMMIOAddr a :=
+      HMAC_MMIO_START <= word.unsigned a < HMAC_MMIO_PAST_END;
   |}.
 
   Global Instance state_machine_parameters_ok
     : StateMachineSemantics.parameters.ok state_machine_parameters.
   Proof.
-    constructor.
-    { left; exact eq_refl. }
-    { exact word_ok. }
-    { exact mem_ok. }
-    { cbn. unfold id. auto. }
-    { cbn. intuition auto. }
-    { cbn. lia. }
-    { cbn. unfold id. intros. inversion H; ZnWords. }
-    { cbn. unfold id. intros. inversion H; ZnWords. }
+    constructor; cbn; unfold id; intros; try exact _;
+      match goal with
+      | H: read_step _ _ _ _ _ |- _ => inversion H
+      | H: write_step _ _ _ _ _ |- _ => inversion H
+      | |- _ => idtac
+      end;
+      subst;
+      try ZnWords.
   Qed.
 
 End WithParams.

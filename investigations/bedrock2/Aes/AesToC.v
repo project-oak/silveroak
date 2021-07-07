@@ -5,6 +5,7 @@ Require Import bedrock2.Syntax.
 Require Import bedrock2.ToCString.
 Require Import bedrock2.Variables.
 Require Import coqutil.Z.HexNotation.
+Require Import Bedrock2Experiments.LibBase.MMIOLabels.
 Require Import Bedrock2Experiments.Aes.AesSemantics.
 Require Import Bedrock2Experiments.Aes.Aes.
 Require Import Bedrock2Experiments.Aes.Constants.
@@ -49,10 +50,10 @@ static inline void _br2_store(uintptr_t a, uintptr_t v, size_t sz) {
 }
 
 // bedrock2 MMIO aliases
-void MMIOWRITE(uintptr_t addr, uintptr_t value) {
+void " ++ MMIOLabels.WRITE32 ++ "(uintptr_t addr, uintptr_t value) {
   REG32(addr) = value;
 }
-uintptr_t MMIOREAD(uintptr_t addr) {
+uintptr_t " ++ MMIOLabels.READ32 ++ "(uintptr_t addr) {
   return REG32(addr);
 }
 
