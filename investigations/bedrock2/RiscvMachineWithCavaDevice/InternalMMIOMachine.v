@@ -196,11 +196,13 @@ Section WithParams.
     Definition nth_step(n: nat): OState (ExtraRiscvMachine D) unit :=
       device_steps (sched n);; Run.run1 RV32I.
 
-    Fixpoint run(nsteps: nat): OState (ExtraRiscvMachine D) unit :=
-      match nsteps with
+    Fixpoint run_rec(steps_done steps_remaining: nat): OState (ExtraRiscvMachine D) unit :=
+      match steps_remaining with
       | O => Return tt
-      | S n => run n;; nth_step n
+      | S n => nth_step steps_done;; run_rec (S steps_done) n
       end.
+
+    Definition run := run_rec 0.
   End WithSchedule.
 
 End WithParams.
