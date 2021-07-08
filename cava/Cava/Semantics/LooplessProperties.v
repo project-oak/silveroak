@@ -27,7 +27,8 @@ Fixpoint is_loop_free {i o} (c : Circuit i o) : bool :=
   match c with
   | Comb _ => true
   | Compose f g => (is_loop_free f && is_loop_free g)%bool
-  | Par f g => (is_loop_free f && is_loop_free g)%bool
+  | First f => is_loop_free f
+  | Second f => is_loop_free f
   | DelayInit _ => true
   | LoopInitCE _ _ => false
   end.
@@ -35,19 +36,19 @@ Fixpoint is_loop_free {i o} (c : Circuit i o) : bool :=
 Lemma is_loop_free_loopless {i o} (c : Circuit i o) :
   is_loop_free (loopless c) = true.
 Proof.
-  induction c; cbn [loopless is_loop_free First Second];
-    boolsimpl; auto;
-      repeat match goal with H : _ = true |- _ => rewrite H end;
-      reflexivity.
+  induction c; cbn [loopless is_loop_free];
+    boolsimpl; auto; [ ].
+  rewrite IHc1, IHc2; reflexivity.
 Qed.
 
 Lemma LoopInit_ignore_state {i o s} resetval (c : Circuit i o) :
   cequiv (LoopInit (s:=s) resetval (First c)) c.
 Proof.
-  exists (fun s1 s2 => fst (fst (snd s1)) = s2). cbn [circuit_state LoopInit value].
+  exists (fun s1 s2 => fst (snd s1) = s2). cbn [circuit_state LoopInit value].
   split; [ reflexivity | ].
   intros; destruct_products; cbn [fst snd] in *; subst.
-  cbn [step LoopInit First fst snd]. simpl_ident.
+  cbn [step LoopInit]. simpl_ident.
+  repeat (destruct_pair_let; cbn [fst snd]).
   split; reflexivity.
 Qed.
 
@@ -67,10 +68,9 @@ Lemma LoopInit_merge {i1 o1 o2 s1 s2} r1 r2
                                  (fun '(o2,s2',s1') => (o2, (s1', s2')))))).
 Proof.
   exists (fun s1 s2 =>
-       s2 = (tt, (tt, (fst (snd (fst s1)), tt), tt,
-             (fst (snd (snd s1)), tt), tt,
-             (snd (snd (fst s1)), snd (snd (snd s1)))))).
-  cbn [circuit_state reset_state LoopInit value fst snd First Id].
+       s2 = (tt, (tt, fst (snd (fst s1)), tt, fst (snd (snd s1)),
+                  tt, (snd (snd (fst s1)), snd (snd (snd s1)))))).
+  cbn [circuit_state reset_state LoopInit value].
   split; [ reflexivity | ].
   intros; destruct_products; cbn [fst snd] in *; subst.
   simpl_ident. logical_simplify.

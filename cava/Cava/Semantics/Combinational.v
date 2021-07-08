@@ -85,11 +85,14 @@ Fixpoint step {i o} (c : Circuit i o)
       let cs1_x := step f (fst cs) input in
       let cs2_y := step g (snd cs) (snd cs1_x) in
       (fst cs1_x, fst cs2_y, snd cs2_y)
-  | Par f g =>
+  | First f =>
     fun cs input =>
-      let cs1_x := step f (fst cs) (fst input) in
-      let cs2_y := step g (snd cs) (snd input) in
-      (fst cs1_x, fst cs2_y, (snd cs1_x, snd cs2_y))
+      let cs_x := step f cs (fst input) in
+      (fst cs_x, (snd cs_x, snd input))
+  | Second f =>
+    fun cs input =>
+      let cs_x := step f cs (snd input) in
+      (fst cs_x, (fst input, snd cs_x))
   | LoopInitCE _ f =>
     fun cs_st input_en =>
       let cs_out_st := step f (fst cs_st) (fst input_en, snd cs_st) in
