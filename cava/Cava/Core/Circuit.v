@@ -32,8 +32,7 @@ Section WithCava.
   Inductive Circuit : type -> type -> Type :=
   | Comb : forall {i o}, (value i -> cava (value o)) -> Circuit i o
   | Compose : forall {i t o}, Circuit i t -> Circuit t o -> Circuit i o
-  | First : forall {i o t}, Circuit i o -> Circuit (i * t) (o * t)
-  | Second : forall {i o t}, Circuit i o -> Circuit (t * i) (t * o)
+  | Par : forall {i1 i2 o1 o2}, Circuit i1 o1 -> Circuit i2 o2 -> Circuit (i1 * i2) (o1 * o2)
   | LoopInitCE :
       forall {i o s : type} (resetval : value (signal:=combType) s),
         Circuit (i * s) (o * s) -> Circuit (i * Bit) o
@@ -45,8 +44,7 @@ Section WithCava.
     match c with
     | Comb _ => tzero
     | Compose f g => circuit_state f * circuit_state g
-    | First f => circuit_state f
-    | Second f => circuit_state f
+    | Par f g => circuit_state f * circuit_state g
     | @LoopInitCE i o s _ f => circuit_state f * s
     | @DelayInit t _ => t
     end.
@@ -57,8 +55,7 @@ Section WithCava.
     match c as c return value (circuit_state c) with
     | Comb _ => tt
     | Compose f g => (reset_state f, reset_state g)
-    | First f => reset_state f
-    | Second f => reset_state f
+    | Par f g => (reset_state f, reset_state g)
     | LoopInitCE resetval f => (reset_state f, resetval)
     | DelayInit resetval => resetval
     end.
@@ -89,6 +86,10 @@ Section WithCava.
             (LoopInitCE (default_value defaultCombValue s) body).
   (* Delay with the default signal as its reset value and no enable *)
   Definition Delay {t} : Circuit t t := DelayInit (default_value defaultCombValue t).
+
+  Definition Id {t} : Circuit t t := Comb ret.
+  Definition First {i o t} (f : Circuit i o) : Circuit (i * t) (o * t) := Par f Id.
+  Definition Second {i o t} (f : Circuit i o) : Circuit (t * i) (t * o) := Par Id f.
 
 End WithCava.
 

@@ -33,7 +33,7 @@ Section WithCava.
   (* make a circuit with one delay for each signal, given reset values *)
   Fixpoint delays {t : type} : Circuit t t :=
     match t with
-    | tzero => Id
+    | tzero => Delay
     | tone t => Delay
     | tpair t1 t2 => Par delays delays
     end.
@@ -51,5 +51,8 @@ Definition phase_retimed {i o} (n m : nat) (c1 c2 : Circuit i o) : Prop :=
   exists (proj21 : value (loops_state c2) -> value (loops_state c1))
     (proj12 : value (loops_state c1) -> value (loops_state c2)),
     (forall x, proj12 (proj21 x) = x)
-    /\ wequiv (Second (Comb proj21) >==> loopless c1 >==> Second (Comb proj12))
-             (Par (ndelays m) (ndelays n)  >==> loopless c2).
+    /\ wequiv (loopless c1)
+             (Second (Comb proj12)
+                   >==> Par (ndelays m) (ndelays n)
+                   >==> loopless c2
+                   >==> Second (Comb proj21)).

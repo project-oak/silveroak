@@ -53,62 +53,51 @@ Lemma simulate_comb {A B} (c : value A -> ident (value B)) (input : list (value 
 Proof. apply fold_left_accumulate_to_map. Qed.
 Hint Rewrite @simulate_comb using solve [eauto] : push_simulate.
 
-Lemma simulate_first {A B C} (f : Circuit A C) (input : list (value (A * B))) :
-  simulate (First f) input = combine (simulate f (map fst input))
-                                      (map snd input).
+Lemma simulate_par {A B C D} (f : Circuit A C) (g : Circuit B D)
+      (input : list (value (A * B))) :
+  simulate (Par f g) input = combine
+                               (simulate f (map fst input))
+                               (simulate g (map snd input)).
 Proof.
-  simsimpl. rewrite !fold_left_accumulate_map.
+  simsimpl. rewrite !fold_left_accumulate_map. fold value.
   destruct input as [|i0 ?]; [ reflexivity | ].
   rewrite !fold_left_accumulate_to_seq with (default:=i0).
+  rewrite combine_fold_left_accumulate.
   factor_out_loops.
   eapply fold_left_accumulate_double_invariant_seq
     with (I:= fun i st1 st2 acc1 acc2 =>
                 st1 = st2 /\
                 length acc2 = i /\
                 length acc1 = i /\
-                acc2 = combine acc1 (map snd (firstn i (i0 :: input)))).
+                acc1 = acc2).
   { ssplit; reflexivity. }
   { intros; logical_simplify.
     subst acc2; subst.
     autorewrite with push_length natsimpl in *.
     repeat destruct_pair_let; cbn [fst snd].
-    ssplit; try reflexivity; try lia; [ ].
-    rewrite firstn_succ_snoc with (d:=i0) by length_hammer.
-    autorewrite with pull_snoc. rewrite combine_append by length_hammer.
-    reflexivity. }
-  { intros; logical_simplify; subst.
-    autorewrite with push_firstn natsimpl.
-    reflexivity. }
+    ssplit; try reflexivity; lia. }
+  { intros; logical_simplify; subst. reflexivity. }
 Qed.
+Hint Rewrite @simulate_par using solve [eauto] : push_simulate.
+
+Lemma simulate_id {t} (input : list (value t)) :
+  simulate Id input = input.
+Proof.
+  cbv [Id]. autorewrite with push_simulate.
+  apply map_id_ext; intros; reflexivity.
+Qed.
+Hint Rewrite @simulate_id using solve [eauto] : push_simulate.
+
+Lemma simulate_first {A B C} (f : Circuit A C) (input : list (value (A * B))) :
+  simulate (First f) input = combine (simulate f (map fst input))
+                                     (map snd input).
+Proof. cbv [First]. autorewrite with push_simulate. reflexivity. Qed.
 Hint Rewrite @simulate_first using solve [eauto] : push_simulate.
 
 Lemma simulate_second {A B C} (f : Circuit B C) (input : list (value (A * B))) :
   simulate (Second f) input = combine (map fst input)
-                                       (simulate f (map snd input)).
-Proof.
-  simsimpl. rewrite !fold_left_accumulate_map.
-  destruct input as [|i0 ?]; [ reflexivity | ].
-  rewrite !fold_left_accumulate_to_seq with (default:=i0).
-  factor_out_loops.
-  eapply fold_left_accumulate_double_invariant_seq
-    with (I:= fun i st1 st2 acc1 acc2 =>
-                st1 = st2 /\
-                length acc2 = i /\
-                length acc1 = i /\
-                acc2 = combine (map fst (firstn i (i0 :: input))) acc1).
-  { ssplit; reflexivity. }
-  { intros; logical_simplify.
-    subst acc2; subst.
-    autorewrite with push_length natsimpl in *.
-    repeat destruct_pair_let; cbn [fst snd].
-    ssplit; try reflexivity; try lia; [ ].
-    rewrite firstn_succ_snoc with (d:=i0) by length_hammer.
-    autorewrite with pull_snoc. rewrite combine_append by length_hammer.
-    reflexivity. }
-  { intros; logical_simplify; subst.
-    autorewrite with push_firstn natsimpl.
-    reflexivity. }
-Qed.
+                                      (simulate f (map snd input)).
+Proof. cbv [Second]. autorewrite with push_simulate. reflexivity. Qed.
 Hint Rewrite @simulate_second using solve [eauto] : push_simulate.
 
 Lemma simulate_LoopInitCE {i o s}
