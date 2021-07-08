@@ -35,6 +35,7 @@ Require Import coqutil.Datatypes.ListSet.
 Require Import Cava.Util.Tactics.
 Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.StateMachineSemantics.
+Require Export Bedrock2Experiments.StateMachineMMIOSpec.
 Require Import Bedrock2Experiments.LibBase.MMIOLabels.
 Import ListNotations.
 
@@ -124,17 +125,6 @@ Section MMIO1.
       | _ => []
       end;
   |}.
-
-  Instance StateMachineMMIOSpec : MMIOSpec :=
-    {| isMMIOAddr := parameters.isMMIOAddr;
-       isMMIOAligned n a := word.unsigned a mod (Z.of_nat n) = 0;
-       MMIOReadOK :=
-         fun sz log addr val =>
-           exists s s' r,
-             execution log s
-             /\ parameters.reg_addr r = addr
-             /\ parameters.read_step sz s r val s'
-    |}.
 
   Instance FlatToRiscv_params: FlatToRiscvCommon.parameters := {
     FlatToRiscvCommon.def_params := compilation_params;
