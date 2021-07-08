@@ -37,7 +37,8 @@ Notation device := device.device.
 Global Coercion device.state: device >-> Sortclass.
 
 (* Needed because of https://github.com/coq/coq/issues/14031 *)
-#[export] Hint Extern 1 => exact MkMachineWidth.MachineWidth_XLEN : typeclass_instances.
+#[export] Hint Extern 1 (MachineWidth _) => exact MkMachineWidth.MachineWidth_XLEN
+  : typeclass_instances.
 
 (* TODO move to coqutil *)
 Module word. Section WithParams.
