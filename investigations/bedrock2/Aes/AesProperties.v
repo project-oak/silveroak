@@ -22,6 +22,7 @@ Require Import coqutil.Tactics.letexists.
 Require Import coqutil.Z.Lia.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
+Require Import Bedrock2Experiments.LibBase.MMIOLabels.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.StateMachineProperties.
 Require Import Bedrock2Experiments.Tactics.
@@ -139,7 +140,11 @@ Section Proofs.
 
   Local Ltac infer :=
     repeat first [ progress infer_states_equal
-                 | progress infer_state_data_equal ].
+                 | progress infer_state_data_equal
+                 | match goal with
+                   | H: parameters.read_step _ _ _ _ _ |- _ => apply proj2 in H
+                   | H: parameters.write_step _ _ _ _ _ |- _ => apply proj2 in H
+                   end ].
 
   (* TODO: lots of annoying bit arithmetic here, maybe try to clean it up *)
   Lemma status_read_always_ok s :
@@ -161,14 +166,14 @@ Section Proofs.
            | H : Forall _ [] |- _ => clear H
            end.
     cbv beta in *.
-    destruct s; cbn [read_step reg_category status_matches_state].
-    { exists (word.of_Z 0). eexists; ssplit; [ | reflexivity ].
+    destruct s; unfold read_step; cbn [read_step reg_category status_matches_state].
+    { exists (word.of_Z 0). eexists; ssplit; try reflexivity; [].
       cbv [is_flag_set]. boolsimpl.
       rewrite !word.eqb_eq; [ reflexivity | apply word.unsigned_inj .. ].
       all:push_unsigned; rewrite Z.land_0_l; reflexivity. }
     { exists (word.or (word.slu (word.of_Z 1) (word.of_Z AES_STATUS_IDLE))
                  (word.slu (word.of_Z 1) (word.of_Z AES_STATUS_INPUT_READY))).
-      eexists; ssplit; [ | reflexivity ].
+      eexists; ssplit; try reflexivity; [].
       cbv [is_flag_set]. boolsimpl.
       repeat lazymatch goal with
              | |- (_ && _)%bool = true => apply Bool.andb_true_iff; split
@@ -205,7 +210,7 @@ Section Proofs.
           (intro Heq; apply word.of_Z_inj_small in Heq; lia).
       cbn [negb]. eauto. }
     { exists (word.slu (word.of_Z 1) (word.of_Z AES_STATUS_OUTPUT_VALID)).
-      eexists; split; [ | reflexivity ].
+      eexists; ssplit; try reflexivity; [].
       rewrite is_flag_set_shift by (cbv [boolean]; tauto || lia).
       rewrite word.eqb_ne by
           (intro Heq; apply word.of_Z_inj_small in Heq; lia).
@@ -233,12 +238,12 @@ Section Proofs.
     (forall s' val,
         read_step s STATUS val s' ->
         (* implied by other preconditions but convenient to have separately *)
-        execution ((map.empty, READ, [addr], (map.empty, [val])) :: t) s' ->
-        post ((map.empty, READ, [addr], (map.empty, [val])) :: t)
+        execution ((map.empty, READ32, [addr], (map.empty, [val])) :: t) s' ->
+        post ((map.empty, READ32, [addr], (map.empty, [val])) :: t)
              m (map.put l bind val)) ->
-    cmd call (cmd.interact [bind] READ [addre]) t m l post.
+    cmd call (cmd.interact [bind] READ32 [addre]) t m l post.
   Proof.
-    intros; eapply interact_read; intros; infer;
+    intros; eapply (interact_read 4); intros; infer;
       cbv [parameters.read_step state_machine_parameters] in *;
       eauto.
     pose proof status_read_always_ok s. logical_simplify.
@@ -258,12 +263,11 @@ Section Proofs.
     (forall s',
         write_step s CTRL val s' ->
         (* implied by other preconditions but convenient to have separately *)
-        execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s' ->
-        post ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t)
-             m l) ->
-    cmd call (cmd.interact [] WRITE [addre;vale]) t m l post.
+        execution ((map.empty, WRITE32, [addr;val], (map.empty, [])) :: t) s' ->
+        post ((map.empty, WRITE32, [addr;val], (map.empty, [])) :: t) m l) ->
+    cmd call (cmd.interact [] WRITE32 [addre;vale]) t m l post.
   Proof.
-    intros; eapply interact_write; intros; infer;
+    intros; eapply (interact_write 4); intros; infer;
       cbv [parameters.write_step state_machine_parameters] in *;
       eauto.
     cbv [write_step]. cbn [reg_category].
@@ -292,12 +296,11 @@ Section Proofs.
     (forall s',
         write_step (IDLE rs) (key_from_index i) val s' ->
         (* implied by other preconditions but convenient to have separately *)
-        execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s' ->
-        post ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t)
-             m l) ->
-    cmd call (cmd.interact [] WRITE [addre;vale]) t m l post.
+        execution ((map.empty, WRITE32, [addr;val], (map.empty, [])) :: t) s' ->
+        post ((map.empty, WRITE32, [addr;val], (map.empty, [])) :: t) m l) ->
+    cmd call (cmd.interact [] WRITE32 [addre;vale]) t m l post.
   Proof.
-    intros; eapply interact_write; intros; infer;
+    intros; eapply (interact_write 4); intros; infer;
       cbv [parameters.write_step state_machine_parameters] in *;
       eauto.
     { repeat (destruct i; try lia); subst; cbn; ring. }
@@ -325,12 +328,11 @@ Section Proofs.
     (forall s',
         write_step (IDLE rs) (iv_from_index i) val s' ->
         (* implied by other preconditions but convenient to have separately *)
-        execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s' ->
-        post ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t)
-             m l) ->
-    cmd call (cmd.interact [] WRITE [addre;vale]) t m l post.
+        execution ((map.empty, WRITE32, [addr;val], (map.empty, [])) :: t) s' ->
+        post ((map.empty, WRITE32, [addr;val], (map.empty, [])) :: t) m l) ->
+    cmd call (cmd.interact [] WRITE32 [addre;vale]) t m l post.
   Proof.
-    intros; eapply interact_write; intros; infer;
+    intros; eapply (interact_write 4); intros; infer;
       cbv [parameters.write_step state_machine_parameters] in *;
       eauto.
     { repeat (destruct i; try lia); subst; cbn; ring. }
@@ -358,12 +360,11 @@ Section Proofs.
     (forall s',
         write_step (IDLE rs) (data_in_from_index i) val s' ->
         (* implied by other preconditions but convenient to have separately *)
-        execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s' ->
-        post ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t)
-             m l) ->
-    cmd call (cmd.interact [] WRITE [addre;vale]) t m l post.
+        execution ((map.empty, WRITE32, [addr;val], (map.empty, [])) :: t) s' ->
+        post ((map.empty, WRITE32, [addr;val], (map.empty, [])) :: t) m l) ->
+    cmd call (cmd.interact [] WRITE32 [addre;vale]) t m l post.
   Proof.
-    intros; eapply interact_write; intros; infer;
+    intros; eapply (interact_write 4); intros; infer;
       cbv [parameters.write_step state_machine_parameters] in *;
       eauto.
     { repeat (destruct i; try lia); subst; cbn; ring. }
@@ -399,12 +400,12 @@ Section Proofs.
     (forall s' val,
         read_step (DONE data) (data_out_from_index i) val s' ->
         (* implied by other preconditions but convenient to have separately *)
-        execution ((map.empty, READ, [addr], (map.empty, [val])) :: t) s' ->
-        post ((map.empty, READ, [addr], (map.empty, [val])) :: t)
+        execution ((map.empty, READ32, [addr], (map.empty, [val])) :: t) s' ->
+        post ((map.empty, READ32, [addr], (map.empty, [val])) :: t)
              m (map.put l bind val)) ->
-    cmd call (cmd.interact [bind] READ [addre]) t m l post.
+    cmd call (cmd.interact [bind] READ32 [addre]) t m l post.
   Proof.
-    intros; eapply interact_read with (r:=data_out_from_index i);
+    intros; eapply (interact_read 4) with (r:=data_out_from_index i);
       intros; infer;
         cbv [parameters.read_step state_machine_parameters] in *;
         eauto.
@@ -526,9 +527,9 @@ Section Proofs.
                                done_data_out2 done_data_out3];
       eauto .. | ].
 
-  Local Notation aes_op_t := (enum_member aes_op) (only parsing).
-  Local Notation aes_mode_t := (enum_member aes_mode) (only parsing).
-  Local Notation aes_key_len_t := (enum_member aes_key_len) (only parsing).
+  Local Notation aes_op_t := (enum_member (aes_op (aes_constants_ok := consts_ok))) (only parsing).
+  Local Notation aes_mode_t := (enum_member (aes_mode (aes_constants_ok := consts_ok))) (only parsing).
+  Local Notation aes_key_len_t := (enum_member (aes_key_len (aes_constants_ok := consts_ok))) (only parsing).
 
   Definition ctrl_operation (ctrl : parameters.word) : bool :=
     is_flag_set ctrl AES_CTRL_OPERATION.

@@ -3,6 +3,7 @@ Require Import coqutil.Z.Lia.
 Require Import coqutil.Macros.unique.
 Require Import compiler.util.Common.
 Require Import bedrock2.Semantics.
+Require Import bedrock2.ZnWords.
 Require Import riscv.Utility.Monads.
 Require Import compiler.FlatImp.
 Require Import riscv.Spec.Decode.
@@ -14,8 +15,8 @@ Require Import riscv.Spec.Machine.
 Require Import compiler.FlatToRiscvDef.
 Require Import compiler.FlatToRiscvFunctions.
 Require Import riscv.Platform.RiscvMachine.
-Require Import riscv.Platform.MinimalMMIO.
-Require Import riscv.Platform.MetricMinimalMMIO.
+Require Import Bedrock2Experiments.Riscv.MinimalMMIO.
+Require Import Bedrock2Experiments.Riscv.MetricMinimalMMIO.
 Require Import riscv.Spec.Primitives.
 Require Import riscv.Spec.MetricPrimitives.
 Require Import compiler.MetricsToRiscv.
@@ -34,53 +35,54 @@ Require Import coqutil.Datatypes.ListSet.
 Require Import Cava.Util.Tactics.
 Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.StateMachineSemantics.
+Require Import Bedrock2Experiments.LibBase.MMIOLabels.
 Import ListNotations.
 
 Open Scope ilist_scope.
 
 (* Based on bedrock2's compilerExamples/MMIO.v *)
 
+Definition compile_write(action: string): Z -> Z -> Z -> Instruction :=
+  if String.eqb action WRITE8 then Sb else if String.eqb action WRITE16 then Sh else Sw.
+
+Definition compile_read(action: string): Z -> Z -> Z -> Instruction :=
+  (* This file assumes a 32-bit architecture, which means it has no Lwu instruction, because
+     whether a 32-bit load is signed or unsigned makes no difference on a 32-bit machine. *)
+  if String.eqb action READ8 then Lbu else if String.eqb action READ16 then Lhu else Lw.
+
 Definition compile_ext_call(results: list Z) a (args: list Z):
   list Instruction :=
-  if String.eqb a WRITE then
+  if String.prefix WRITE_PREFIX a then
     match results, args with
-    | [], [addr; val] => [[ Sw addr val 0 ]]
+    | [], [addr; val] => [[ compile_write a addr val 0 ]]
     | _, _ => [[]] (* invalid, excluded by ext_spec *)
     end
   else
     match results, args with
-    | [res], [addr] => [[ Lw res addr 0 ]]
+    | [res], [addr] => [[ compile_read a res addr 0 ]]
     | _, _ => [[]] (* invalid, excluded by ext_spec *)
     end.
 
-Lemma compile_ext_call_emits_valid: forall iset binds a args,
-    Forall valid_FlatImp_var binds ->
-    Forall valid_FlatImp_var args ->
-    valid_instructions iset (compile_ext_call binds a args).
+Lemma compile_write_not_Invalid: forall action rd rs ofs,
+  not_InvalidInstruction (compile_write action rd rs ofs).
 Proof.
+  unfold not_InvalidInstruction, compile_write.
   intros.
-  unfold compile_ext_call.
-  destruct (String.eqb _ _); destruct args; try destruct args; try destruct args;
-    destruct binds; try destruct binds;
-    intros instr HIn; cbn -[String.eqb] in *; intuition idtac; try contradiction.
-  - rewrite <- H1.
-    simp_step.
-    simp_step.
-    (* try simp_step. (* TODO this should not fail fatally *) *)
-    split; [|cbv;auto].
-    unfold Encode.respects_bounds. simpl.
-    unfold Encode.verify_S, valid_FlatImp_var, opcode_STORE, funct3_SW in *.
-    repeat split; (blia || assumption).
-  - rewrite <- H1.
-    simp_step.
-    simp_step.
-    simp_step.
-    simp_step.
-    (* try simp_step. (* TODO this should not fail fatally *) *)
-    split; [|cbv;auto].
-    unfold Encode.respects_bounds. simpl.
-    unfold Encode.verify_I, valid_FlatImp_var, opcode_LOAD, funct3_LW in *.
-    repeat split; (blia || assumption).
+  repeat match goal with
+         | |- context[String.eqb ?a ?b] => destr (String.eqb a b)
+         end;
+    exact I.
+Qed.
+
+Lemma compile_read_not_Invalid: forall action rd rs ofs,
+  not_InvalidInstruction (compile_read action rd rs ofs).
+Proof.
+  unfold not_InvalidInstruction, compile_read.
+  intros.
+  repeat match goal with
+         | |- context[String.eqb ?a ?b] => destr (String.eqb a b)
+         end;
+    exact I.
 Qed.
 
 Module Import MMIO.
@@ -124,15 +126,14 @@ Section MMIO1.
   |}.
 
   Instance StateMachineMMIOSpec : MMIOSpec :=
-    {| isMMIOAddr w := exists a, parameters.is_reg_addr a /\
-                                 word.unsigned a <= word.unsigned w < word.unsigned a + 4;
-       isMMIOAligned := fun n addr => n = 4%nat /\ (word.unsigned addr) mod 4 = 0;
+    {| isMMIOAddr := parameters.isMMIOAddr;
+       isMMIOAligned n a := word.unsigned a mod (Z.of_nat n) = 0;
        MMIOReadOK :=
-         fun n log addr val =>
+         fun sz log addr val =>
            exists s s' r,
              execution log s
              /\ parameters.reg_addr r = addr
-             /\ parameters.read_step s r val s'
+             /\ parameters.read_step sz s r val s'
     |}.
 
   Instance FlatToRiscv_params: FlatToRiscvCommon.parameters := {
@@ -145,34 +146,16 @@ Section MMIO1.
     FlatToRiscvCommon.ext_spec := StateMachineSemantics.ext_spec;
   }.
 
-  Lemma load4bytes_in_MMIO_is_None: forall (m: mem) (addr: word),
+  Lemma load_bytes_in_MMIO_is_None: forall n (m: mem) (addr: word),
       map.undef_on m isMMIOAddr ->
       isMMIOAddr addr ->
-      Memory.load_bytes 4 m addr = None.
+      Memory.load_bytes (S n) m addr = None.
   Proof.
     intros. unfold Memory.load_bytes, map.undef_on, map.agree_on, map.getmany_of_tuple in *.
     simpl.
     rewrite H by assumption.
     rewrite map.get_empty.
     reflexivity.
-  Qed.
-
-  Lemma loadWord_in_MMIO_is_None: forall (m: mem) (addr: word),
-      map.undef_on m isMMIOAddr ->
-      isMMIOAddr addr ->
-      Memory.loadWord m addr = None.
-  Proof.
-    intros. unfold Memory.loadWord.
-    apply load4bytes_in_MMIO_is_None; assumption.
-  Qed.
-
-  Lemma storeWord_in_MMIO_is_None: forall (m: mem) (addr: word) v,
-      map.undef_on m isMMIOAddr ->
-      isMMIOAddr addr ->
-      Memory.storeWord m addr v = None.
-  Proof.
-    unfold Memory.storeWord. intros. unfold Memory.store_bytes.
-    rewrite load4bytes_in_MMIO_is_None; auto.
   Qed.
 
   Ltac contrad := contradiction || discriminate || congruence.
@@ -234,6 +217,100 @@ Section MMIO1.
     change (@width Words32) with 32 in *;
     change (@Utility.word Words32) with (@word p) in *.
 
+  Ltac execute_step :=
+    match goal with
+    | |- context [Z.eq_dec ?r 0] => destruct (Z.eq_dec r 0);
+                                    cbv [valid_FlatImp_var] in *; [exfalso; blia|]
+    | H: ?m = Some _ |- context [match ?m with _ => _ end] => rewrite H
+    | |- _ => progress (cbv [Utility.add Utility.ZToReg MachineWidth_XLEN]; rewrite add_0_r)
+    | |- _ => progress (unfold Memory.store_bytes;
+                        rewrite load_bytes_in_MMIO_is_None by assumption)
+    | |- _ => progress cbv [MinimalMMIO.nonmem_store MinimalMMIO.nonmem_load StateMachineMMIOSpec]
+    | |- Execute = Fetch -> _ => discriminate
+    | |- _ => progress intros
+    | |- _ /\ _ => split; auto
+    | |- _ => progress cbn -[HList.tuple]
+    | |- _ => progress cbn -[MMIOReadOK HList.tuple] in *
+    | |- _ => solve [eauto]
+    | |- exists _, _ => eexists
+    end.
+
+  Lemma execute_compile_write sz rs1 rs2 a s r v s' initial (post: unit -> MetricRiscvMachine -> Prop):
+      valid_FlatImp_var rs1 ->
+      valid_FlatImp_var rs2 ->
+      map.get (getRegs (getMachine initial)) rs1 = Some a ->
+      map.get (getRegs (getMachine initial)) rs2 = Some v ->
+      parameters.reg_addr r = a ->
+      parameters.write_step sz s r v s' ->
+      map.undef_on (getMem (getMachine initial)) isMMIOAddr ->
+      post tt (withXAddrs (invalidateWrittenXAddrs sz a (getXAddrs initial))
+              (withLogItem (mmioStoreEvent a
+                    (LittleEndian.split sz (word.unsigned v)))
+              (updateMetrics (addMetricStores 1)
+              initial))) ->
+      free.interp interp_action (Execute.execute
+                                   (compile_write (access_size_to_MMIO_write sz) rs1 rs2 0))
+                  initial post.
+  Proof.
+    intros. subst.
+    (* more robust against PARAMRECORDS differences than eauto *)
+    assert (isMMIOAddr (parameters.reg_addr r)). {
+      eapply write_step_isMMIOAddr0. eassumption.
+    }
+    assert (word.unsigned (parameters.reg_addr r) mod Z.of_nat sz = 0). {
+      eapply parameters.write_step_is_aligned. eassumption.
+    }
+    assert (List.In sz [1; 2; 4]%nat) as P. {
+      eapply parameters.write_step_size_valid. eassumption.
+    }
+    simpl in P. destruct P as [? | [? | [? | ?] ] ]; [subst sz..|contradiction];
+      repeat fwd; repeat execute_step.
+    all: destruct initial; assumption.
+  Qed.
+
+  Lemma execute_compile_read sz rd rs a s s' r v1 initial (post: unit -> MetricRiscvMachine -> Prop):
+      valid_FlatImp_var rd ->
+      valid_FlatImp_var rs ->
+      map.get (getRegs (getMachine initial)) rs = Some a ->
+      execution (getLog initial) s ->
+      parameters.reg_addr r = a ->
+      parameters.read_step sz s r v1 s' ->
+      map.undef_on (getMem (getMachine initial)) isMMIOAddr ->
+      (forall v: HList.tuple byte sz,
+          MMIOReadOK sz (getLog initial) a (word.of_Z (LittleEndian.combine sz v)) ->
+          post tt (withRegs
+                     (map.put (getRegs initial) rd (word.of_Z (LittleEndian.combine _ v)))
+                  (withLogItem (mmioLoadEvent a v)
+                  (updateMetrics (addMetricLoads 1)
+                  initial)))) ->
+      free.interp interp_action (Execute.execute
+                                   (compile_read (access_size_to_MMIO_read sz) rd rs 0))
+                  initial post.
+  Proof.
+    intros. subst.
+    (* more robust against PARAMRECORDS differences than eauto *)
+    assert (isMMIOAddr (parameters.reg_addr r)). {
+      eapply read_step_isMMIOAddr0. eassumption.
+    }
+    assert (word.unsigned (parameters.reg_addr r) mod Z.of_nat sz = 0). {
+      eapply parameters.read_step_is_aligned. eassumption.
+    }
+    assert (List.In sz [1; 2; 4]%nat) as P. {
+      eapply parameters.read_step_size_valid. eassumption.
+    }
+    assert (0 <= word.unsigned v1 < 2 ^ (Z.of_nat sz * 8)) as v1R. {
+      split. 1: apply word.unsigned_range.
+      eapply parameters.read_step_bounded. eassumption.
+    }
+    rewrite <- (word.of_Z_unsigned v1) in H4.
+    rewrite <- (Z.mod_small (word.unsigned v1) (2 ^ (Z.of_nat sz * 8))) in H4 by exact v1R.
+    rewrite <- LittleEndian.combine_split in H4.
+    simpl in P. destruct P as [? | [? | [? | ?] ] ]; [subst sz..|contradiction];
+    repeat fwd; repeat execute_step.
+    3: rewrite sextend_width_nop by reflexivity.
+    all: destruct initial as [ [? ?] ? ]; eapply H6; eassumption.
+  Qed.
+
   Lemma compile_ext_call_correct: forall resvars extcall argvars,
       FlatToRiscvCommon.compiles_FlatToRiscv_correctly
         (@FlatToRiscvDef.compile_ext_call compilation_params)
@@ -243,14 +320,13 @@ Section MMIO1.
     simpl. intros.
     destruct H5 as [V_resvars V_argvars].
     rename extcall into action.
-    pose proof (compile_ext_call_emits_valid FlatToRiscvDef.iset _ action _ V_resvars V_argvars).
     simp.
     destruct_RiscvMachine initialL.
     unfold compile_ext_call, FlatToRiscvCommon.goodMachine in *.
     match goal with
     | H: forall _ _, outcome _ _ -> _ |- _ => specialize H with (mReceive := map.empty)
     end.
-    destruct (String.eqb action WRITE) eqn: E;
+    destruct (String.prefix WRITE_PREFIX action) eqn: E;
       cbn [getRegs getPc getNextPc getMem getLog getMachine getMetrics getXAddrs] in *.
     + (* MMOutput *)
       progress simpl in *|-.
@@ -284,7 +360,7 @@ Section MMIO1.
           clear -A; cbn in *; simp; destruct_one_match_hyp; congruence
         end.
       }
-      cbn in *|-.
+      cbn -[String.append] in *|-.
       match goal with
       | H: map.split _ _ map.empty |- _ => rewrite map.split_empty_r in H; subst
       end.
@@ -308,67 +384,41 @@ Section MMIO1.
            FlatToRiscvCommon.xframe ] in *.
       simp.
       subst.
-      cbn in *.
+      cbn -[String.append] in *.
       simp.
       eapply runsToNonDet.runsToStep_cps.
-      split; simpl_MetricRiscvMachine_get_set. {
-        intros _.
-        eapply ptsto_instr_subset_to_isXAddr4.
-        eapply shrink_footpr_subset. 1: eassumption.
-        cbn in *. wwcancel.
-      }
 
-      erewrite ptsto_bytes.load_bytes_of_sep; cycle 1.
-      { cbv [program ptsto_instr Scalars.truncated_scalar Scalars.littleendian] in *.
-        cbn [array bytes_per] in *.
-        simpl_MetricRiscvMachine_get_set.
-        wcancel_assumption. }
+      eapply go_fetch_inst with (inst := (compile_write (access_size_to_MMIO_write x2) z z0 0));
+        simpl_MetricRiscvMachine_get_set; cbn -[String.append] in *.
+      1: reflexivity.
+      { eapply rearrange_footpr_subset. 1: eassumption. wwcancel. }
+      { wcancel_assumption. }
+      { eapply compile_write_not_Invalid. }
+      unfold mcomp_sat, Primitives.mcomp_sat, MetricMinimalMMIOPrimitivesParams.
 
-      change (@Bind (@FlatToRiscvCommon.M FlatToRiscv_params) (@FlatToRiscvCommon.MM FlatToRiscv_params))
-        with (@free.bind MetricMinimalMMIO.action result) in *.
-      unfold free.bind at 1.
-
-      rewrite LittleEndian.combine_split.
-      rewrite Z.mod_small by eapply EncodeBound.encode_range.
-      rewrite DecodeEncode.decode_encode; cycle 1. {
-        unfold valid_instructions in *. cbn in *. eauto.
-      }
-      repeat fwd.
-
-      destruct (Z.eq_dec z 0); cbv [valid_FlatImp_var] in *; [exfalso; blia|].
-      destruct (Z.eq_dec z0 0); cbv [valid_FlatImp_var] in *; [exfalso; blia|].
-      simpl_paramrecords.
-      repeat lazymatch goal with
-             | Hext : map.extends initialL_regs ?l, Hget : map.get ?l ?k = Some ?x
-               |- context [map.get initialL_regs ?k] =>
-               replace (map.get initialL_regs k) with (Some x) by (symmetry; unfold map.extends in Hext; eauto)
-             end.
-
-      cbv [Utility.add Utility.ZToReg MachineWidth_XLEN]; rewrite add_0_r.
-      unshelve erewrite (_ : _ = None). {
-        eapply storeWord_in_MMIO_is_None. 1: eassumption.
-        cbn. eexists. split; [eauto using parameters.write_step_is_reg_addr|blia].
-      }
-
-      cbv [MinimalMMIO.nonmem_store StateMachineMMIOSpec].
-      split. {
-        cbn. eexists. split; [eauto using parameters.write_step_is_reg_addr|blia].
-      }
-      split; [red; eauto using parameters.write_step_is_reg_addr, parameters.reg_addrs_aligned|].
-
-      repeat fwd.
+      eapply free.interp_bind. 1: eapply interp_action_weaken_post.
+      eapply execute_compile_write; cbn -[String.append]; try eassumption;
+        repeat lazymatch goal with
+               | Hext : map.extends initialL_regs ?l, Hget : map.get ?l ?k = Some ?x
+                 |- context [map.get initialL_regs ?k] =>
+                 replace (map.get initialL_regs k) with (Some x)
+                   by (symmetry; unfold map.extends in Hext; eauto)
+               end;
+        try reflexivity.
 
       eapply runsToNonDet.runsToDone.
       simpl_MetricRiscvMachine_get_set.
       simpl_word_exprs word_ok.
-      unfold mmioStoreEvent, signedByteTupleToReg in *.
+      unfold mmioStoreEvent in *.
       unfold regToInt32.
       rewrite LittleEndian.combine_split.
-      rewrite sextend_width_nop by reflexivity.
-      rewrite Z.mod_small by apply word.unsigned_range.
+      rewrite Z.mod_small. 2: {
+        split.
+        - apply (word.unsigned_range x1).
+        - eapply parameters.write_step_bounded. eassumption.
+      }
       rewrite word.of_Z_unsigned.
-      apply eqb_eq in E. subst action.
-      cbn -[invalidateWrittenXAddrs] in *.
+      cbn -[invalidateWrittenXAddrs String.append] in *.
       specialize (HPp1 mKeep). rewrite map.split_empty_r in HPp1. specialize (HPp1 eq_refl).
       do 4 eexists.
       split; eauto.
@@ -379,6 +429,12 @@ Section MMIO1.
       split; eauto.
       split; eauto.
       split; eauto.
+      match goal with
+      | H: parameters.write_step ?SZ _ ?R _ _ |- _ => rename H into WS, SZ into sz, R into r
+      end.
+      pose proof (parameters.write_step_is_aligned _ _ _ _ _ WS) as A.
+      pose proof (parameters.write_step_size_valid _ _ _ _ _ WS) as P.
+      simpl in P.
       split. {
         lazymatch goal with
         | H: map.undef_on initialL_mem ?A |- _ =>
@@ -394,35 +450,28 @@ Section MMIO1.
           clear. unfold subset, PropSet.elem_of. intros. firstorder idtac.
         }
         eapply subset_trans. 1: eassumption.
-        assert (parameters.is_reg_addr (parameters.reg_addr x)) as IR. {
-          eauto using parameters.write_step_is_reg_addr.
-        }
-        clear -(*D4 M0*) IR D state_machine_parameters_ok.
-        unfold invalidateWrittenXAddrs.
-        change removeXAddr with (@List.removeb word word.eqb _).
-        rewrite ?ListSet.of_list_removeb.
-        unfold map.undef_on, map.agree_on, disjoint in *.
-        unfold subset, diff, singleton_set, of_list, PropSet.elem_of in *.
-        intros y HIn.
-        specialize (D y). destruct D; [contradiction|].
-        rewrite ?and_assoc.
-        split; [exact HIn|clear HIn].
-        pose proof (parameters.reg_addrs_small (parameters.reg_addr x) IR).
-        change (Memory.bytes_per_word 32) with 4 in *.
-        pose proof (word.unsigned_range (parameters.reg_addr x)).
-        ssplit; eapply disjoint_MMIO_goal; eauto.
+        clear -(*D4 M0*) A P WS D state_machine_parameters_ok.
+        destruct P as [? | [? | [? | ?] ] ]; [subst..|contradiction]; cbn.
+        all:change removeXAddr with (@List.removeb word word.eqb _).
+        all:rewrite ?ListSet.of_list_removeb.
+        all:unfold map.undef_on, map.agree_on, disjoint in *.
+        all:unfold subset, diff, singleton_set, of_list, PropSet.elem_of in *.
+        all:intros y HIn.
+        all:specialize (D y); destruct D; [contradiction|].
+        all:rewrite ?and_assoc.
+        all:split; [exact HIn|clear HIn].
+        all:pose proof (word.unsigned_range (parameters.reg_addr r)).
+        all:ssplit; eapply disjoint_MMIO_goal; eauto.
         all:cbv [isMMIOAddr StateMachineMMIOSpec].
-        all:exists (parameters.reg_addr x).
-        all:split; [ exact IR | ].
-        all:simpl_paramrecords.
-        all:push_unsigned.
-        all:auto with zarith. }
+        all:eapply parameters.write_step_isMMIOAddr; [exact WS|].
+        all:ZnWords.
+      }
       ssplit; eauto.
-      unfold invalidateWrittenXAddrs.
-      change removeXAddr with (@List.removeb word word.eqb _).
-      rewrite ?ListSet.of_list_removeb.
-      repeat apply disjoint_diff_l.
-      assumption.
+      destruct P as [? | [? | [? | ?] ] ]; [subst..|contradiction]; cbn.
+      all:change removeXAddr with (@List.removeb word word.eqb _).
+      all:rewrite ?ListSet.of_list_removeb.
+      all:repeat apply disjoint_diff_l.
+      all:assumption.
 
     + (* MMInput *)
       simpl in *|-.
@@ -435,7 +484,7 @@ Section MMIO1.
       simpl in *|-.
 
       rewrite E in *.
-      destruct (action =? READ)%string eqn:EE in Ex; try contradiction.
+      destruct (String.prefix READ_PREFIX action) eqn: EE; try contradiction.
       logical_simplify; subst.
       repeat match goal with
              | l: list _ |- _ => destruct l;
@@ -445,10 +494,10 @@ Section MMIO1.
         exfalso.
         match goal with
         | A: map.getmany_of_list _ ?L1 = Some ?L2 |- _ =>
-          clear -A; cbn in *; simp; destruct_one_match_hyp; congruence
+          clear -A; cbn -[String.append] in *; simp; destruct_one_match_hyp; congruence
         end.
       }
-      cbn in *|-.
+      cbn -[String.append] in *|-.
       match goal with
       | H: map.split _ _ map.empty |- _ => rewrite map.split_empty_r in H; subst
       end.
@@ -465,98 +514,52 @@ Section MMIO1.
            FlatToRiscvCommon.xframe ] in *.
       simp.
       subst.
-      cbn in *.
+      cbn -[String.append] in *.
       eapply runsToNonDet.runsToStep_cps.
-      split; simpl_MetricRiscvMachine_get_set. {
-        intros _.
-        eapply ptsto_instr_subset_to_isXAddr4.
-        eapply shrink_footpr_subset. 1: eassumption.
-        unfold program.
-        cbn in *. wwcancel.
-      }
-      erewrite ptsto_bytes.load_bytes_of_sep; cycle 1.
-      { cbv [program ptsto_instr Scalars.truncated_scalar Scalars.littleendian] in *.
-        cbn [array bytes_per] in *.
-        simpl_MetricRiscvMachine_get_set.
-        wcancel_assumption. }
 
-      change (@Bind (@FlatToRiscvCommon.M FlatToRiscv_params) (@FlatToRiscvCommon.MM FlatToRiscv_params))
-        with (@free.bind MetricMinimalMMIO.action result) in *.
-      unfold free.bind at 1.
+      eapply go_fetch_inst with (inst := (compile_read (access_size_to_MMIO_read x1) z0 z 0));
+        simpl_MetricRiscvMachine_get_set; cbn -[String.append] in *.
+      1: reflexivity.
+      { eapply rearrange_footpr_subset. 1: eassumption. wwcancel. }
+      { wcancel_assumption. }
+      { eapply compile_read_not_Invalid. }
+      unfold mcomp_sat, Primitives.mcomp_sat, MetricMinimalMMIOPrimitivesParams.
 
-      rewrite LittleEndian.combine_split.
-      rewrite Z.mod_small by (eapply EncodeBound.encode_range).
-      rewrite DecodeEncode.decode_encode; cycle 1. {
-        unfold valid_instructions, FlatToRiscvDef.iset in *. cbn in *. eauto.
-      }
-
-      repeat fwd.
-
+      eapply free.interp_bind. 1: eapply interp_action_weaken_post.
+      eapply execute_compile_read; cbn -[String.append MMIOReadOK]; try eassumption;
+        repeat lazymatch goal with
+               | Hext : map.extends initialL_regs ?l, Hget : map.get ?l ?k = Some ?x
+                 |- context [map.get initialL_regs ?k] =>
+                 replace (map.get initialL_regs k) with (Some x)
+                   by (symmetry; unfold map.extends in Hext; eauto)
+               end;
+        try reflexivity.
       destruct (Z.eq_dec z 0); cbv [valid_FlatImp_var] in *; [exfalso; blia|].
       destruct (Z.eq_dec z0 0); cbv [valid_FlatImp_var] in *; [exfalso; blia|].
-      simpl_paramrecords.
-      repeat lazymatch goal with
-             | Hext : map.extends initialL_regs ?l, Hget : map.get ?l ?k = Some ?x
-               |- context [map.get initialL_regs ?k] =>
-               replace (map.get initialL_regs k) with (Some x) by (symmetry; unfold map.extends in Hext; eauto)
-             end.
 
-      split; try discriminate.
-      cbv [Utility.add Utility.ZToReg MachineWidth_XLEN]; rewrite add_0_r.
-      unshelve erewrite (_ : _ = None). {
-        eapply loadWord_in_MMIO_is_None. 1: eassumption.
-        cbn. eexists. split; [eauto using parameters.read_step_is_reg_addr|blia].
-      }
-
-      cbv [MinimalMMIO.nonmem_load StateMachineMMIOSpec].
-      split. {
-        cbn. eexists. split; [eauto using parameters.read_step_is_reg_addr|blia].
-      }
-      split; [red; eauto using parameters.read_step_is_reg_addr, parameters.reg_addrs_aligned|].
-      split.
-      { cbv [MMIOReadOK].
-        let val := lazymatch goal with
-                   | H : parameters.read_step _ _ ?val _ |- _ => val end in
-        (exists (LittleEndian.split 4 (word.unsigned val))).
-        cbv [signedByteTupleToReg].
-        rewrite LittleEndian.combine_split.
-        rewrite Z.mod_small by apply word.unsigned_range.
-        rewrite sextend_width_nop by reflexivity.
-        rewrite word.of_Z_unsigned.
-        eauto 10. }
       intros.
-
-      repeat fwd.
-
       eapply runsToNonDet.runsToDone.
       simpl_MetricRiscvMachine_get_set.
       simpl_word_exprs word_ok.
 
-      (* simplify MMIOReadOK precondition *)
       lazymatch goal with
-      | H : MMIOReadOK _ _ _ _ |- _ =>
-        cbv [MMIOReadOK] in H; cbn [getLog] in H
+      | H: MMIOReadOK _ _ _ _ |- _ => destruct H as (s & s' & r' & Ex & Eq & RS)
       end.
-      logical_simplify; subst.
+      apply parameters.reg_addr_unique in Eq. subst.
       lazymatch goal with
-      | H : parameters.reg_addr _ = parameters.reg_addr _ |- _ =>
-        apply parameters.reg_addr_unique in H; subst
+      | H : forall _ _ _, _ -> parameters.read_step _ _ _ _ _ -> _ |- _ => rename H into HO
       end.
       lazymatch goal with
-      | HO : forall _ _ v, _ -> parameters.read_step _ _ v _ -> _ |- _ =>
-        specialize (HO _ _ (signedByteTupleToReg _) ltac:(eassumption) ltac:(eassumption))
+      | HO : forall _ _ _, _ -> parameters.read_step _ _ _ _ _ -> _ |- _ =>
+        specialize (HO _ _ _ ltac:(eassumption) ltac:(eassumption))
       end.
-
-      unfold mmioLoadEvent, signedByteTupleToReg.
+      unfold mmioLoadEvent.
       match goal with
       | HO: outcome _ _, H: _ |- _ => specialize (H _ HO); rename H into P
       end.
-      cbn in P.
+      cbn -[String.append] in P.
       simp.
-      apply eqb_eq in EE. subst action.
-      cbn in *.
       specialize (Pp1 mKeep). rewrite map.split_empty_r in Pp1. specialize (Pp1 eq_refl).
-      destruct (Z.eq_dec z0 0); try contradiction.
       do 4 eexists.
       split; eauto.
       split; eauto.
