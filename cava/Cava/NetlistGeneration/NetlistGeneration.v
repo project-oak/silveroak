@@ -274,14 +274,11 @@ Fixpoint interpCircuit {i o} (c : Circuit i o)
       x <- interpCircuit f input ;;
       y <- interpCircuit g x ;;
       ret y
-  | First f =>
+  | Par f g =>
     fun input =>
       x <- interpCircuit f (fst input) ;;
-      ret (x, snd input)
-  | Second f =>
-    fun input =>
-      x <- interpCircuit f (snd input) ;;
-      ret (fst input, x)
+      y <- interpCircuit g (snd input) ;;
+      ret (x, y)
   | @LoopInitCE _ _ i o s resetval f =>
     fun '(input, en) =>
       feedback_in <- newSignals s ;;
