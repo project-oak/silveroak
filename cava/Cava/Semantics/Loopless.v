@@ -22,7 +22,8 @@ Import Circuit.Notations MonadNotation.
 Fixpoint loops_state {i o} (c : Circuit i o) : type :=
   match c with
   | Comb _ => tzero
-  | Par f g => loops_state f * loops_state g
+  | First f => loops_state f
+  | Second f => loops_state f
   | Compose f g => loops_state f * loops_state g
   | @DelayInit _ _ t _ => tzero
   | @LoopInitCE _ _ _ _ t _ body => loops_state body * t
@@ -32,7 +33,8 @@ Fixpoint loops_reset_state {i o} (c : Circuit i o)
   : value (signal:=combType) (loops_state c) :=
   match c with
   | Comb _ => tt
-  | Par f g => (loops_reset_state f, loops_reset_state g)
+  | First f => loops_reset_state f
+  | Second f => loops_reset_state f
   | Compose f g => (loops_reset_state f, loops_reset_state g)
   | DelayInit _=> tt
   | LoopInitCE resetval body => (loops_reset_state body, resetval)
@@ -53,12 +55,18 @@ Fixpoint loopless {i o} (c : Circuit i o)
          >==> First (loopless g) (* recursive call *)
          >==> (Comb (i:=(_*_*_)) (o:=_*(_*_))
                     (fun '(z,st2,st1) => (z,(st1,st2)))) (* rearrange *)
-  | Par f g =>
-    Comb (i:=(_*_*(_*_))) (o:=_*_*(_*_))
-         (fun '(x1,x2,(st1,st2)) => (x1,st1,(x2,st2))) (* rearrange *)
-         >==> Par (loopless f) (loopless g) (* recursive call *)
-         >==> (Comb (i:=(_*_*(_*_))) (o:=_*_*(_*_))
-                    (fun '(y1,st1,(y2,st2)) => (y1,y2,(st1,st2)))) (* rearrange *)
+  | First f =>
+    Comb (i:=(_*_*_)) (o:=_*_*_)
+         (fun '(x1,x2,st) => (x1,st,x2)) (* rearrange *)
+         >==> First (loopless f) (* recursive call *)
+         >==> (Comb (i:=(_*_*_)) (o:=_*_*_)
+                    (fun '(y1,st,y2) => (y1,y2,st))) (* rearrange *)
+  | Second f =>
+    Comb (i:=(_*_*_)) (o:=_*(_*_))
+         (fun '(x1,x2,st) => (x1,(x2,st))) (* rearrange *)
+         >==> Second (loopless f) (* recursive call *)
+         >==> (Comb (i:=(_*(_*_))) (o:=_*_*_)
+                    (fun '(y1,(y2,st)) => (y1,y2,st))) (* rearrange *)
   | DelayInit resetval => First (DelayInit resetval)
   | @LoopInitCE _ _ _ _ s resetval body =>
     (Comb (i:=(_*_*(_*_))) (o:=_*_*(_*_*_))

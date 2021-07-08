@@ -1157,20 +1157,6 @@ Section FoldLeftAccumulate.
     rewrite Nat.sub_0_r. reflexivity.
   Qed.
 
-  Lemma combine_fold_left_accumulate
-        {A B C D E} (f : B -> A -> B * C) (g : D -> A -> D * E) ls b d :
-    combine (fold_left_accumulate f ls b) (fold_left_accumulate g ls d)
-    = fold_left_accumulate
-        (fun bd a =>
-           let bc := f (fst bd) a in
-           let de := g (snd bd) a in
-           (fst bc, fst de, (snd bc, snd de))) ls (b,d).
-  Proof.
-    revert b d. induction ls; intros; [ reflexivity | ].
-    rewrite !fold_left_accumulate_cons. cbn [combine fst snd].
-    rewrite IHls; reflexivity.
-  Qed.
-
   Lemma fold_left_accumulate_to_seq
         {A B C} (f : B -> A -> B * C) ls b default :
     fold_left_accumulate f ls b =

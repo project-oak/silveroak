@@ -138,37 +138,30 @@ Proof.
   ssplit; eauto; [ apply Hab2 | apply Hcd2 ].
 Qed.
 
-(* cequiv c1 c3 -> cequiv c2 c4 -> cequiv (Par c1 c2) (Par c3 c4) *)
-Global Instance Proper_Par {i1 i2 o1 o2} :
-  Proper (cequiv ==> cequiv ==> cequiv) (@Par _ _ i1 i2 o1 o2).
-Proof.
-  intros a b [Rab [? Hab]].
-  intros c d [Rcd [? Hcd]].
-  exists (fun st1 st2 => Rab (fst st1) (fst st2) /\ Rcd (snd st1) (snd st2)).
-  ssplit; [ assumption .. | ].
-  cbn [circuit_state step]. intros; logical_simplify.
-  pose proof (fun i => proj1 (Hab _ _ i ltac:(eassumption))) as Hab1.
-  pose proof (fun i => proj2 (Hab _ _ i ltac:(eassumption))) as Hab2.
-  pose proof (fun i => proj1 (Hcd _ _ i ltac:(eassumption))) as Hcd1.
-  pose proof (fun i => proj2 (Hcd _ _ i ltac:(eassumption))) as Hcd2.
-  clear Hab Hcd. logical_simplify.
-  repeat (destruct_pair_let; cbn [fst snd]).
-  rewrite ?Hab1, ?Hcd1.
-  ssplit; eauto; [ apply Hab2 | apply Hcd2 ].
-Qed.
-
 (* cequiv c1 c2 -> cequiv (First c1) (First c2) *)
 Global Instance Proper_First {i o t} :
   Proper (cequiv ==> cequiv) (@First _ _ i o t).
 Proof.
-  repeat intro. eapply Proper_Par; [ assumption | reflexivity ].
+  intros x y [Rxy [? Hxy]].
+  exists Rxy; ssplit; [ assumption | ].
+  cbn [circuit_state step]. intros; logical_simplify.
+  pose proof (fun i => proj1 (Hxy _ _ i ltac:(eassumption))) as Hxy1.
+  pose proof (fun i => proj2 (Hxy _ _ i ltac:(eassumption))) as Hxy2.
+  clear Hxy. logical_simplify. repeat (destruct_pair_let; cbn [fst snd]).
+  rewrite Hxy1. ssplit; eauto.
 Qed.
 
 (* cequiv c1 c2 -> cequiv (Second c1) (Second c2) *)
 Global Instance Proper_Second {i o t} :
   Proper (cequiv ==> cequiv) (@Second _ _ i o t).
 Proof.
-  repeat intro. eapply Proper_Par; [ reflexivity | assumption ].
+  intros x y [Rxy [? Hxy]].
+  exists Rxy; ssplit; [ assumption | ].
+  cbn [circuit_state step]. intros; logical_simplify.
+  pose proof (fun i => proj1 (Hxy _ _ i ltac:(eassumption))) as Hxy1.
+  pose proof (fun i => proj2 (Hxy _ _ i ltac:(eassumption))) as Hxy2.
+  clear Hxy. logical_simplify. repeat (destruct_pair_let; cbn [fst snd]).
+  rewrite Hxy1. ssplit; eauto.
 Qed.
 
 (* r1 = r2 -> cequiv c1 c2 -> cequiv (LoopInit r1 c1) (LoopInit r2 c2) *)
