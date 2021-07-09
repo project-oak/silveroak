@@ -21,20 +21,20 @@ Section WithParams.
           {D: device}
           (device_state_related: StateMachineSemantics.parameters.state -> D -> Prop).
 
-  Inductive related: MetricRiscvMachine -> ExtraRiscvMachine D -> Prop :=
+  Inductive related(t0: list LogItem): MetricRiscvMachine -> ExtraRiscvMachine D -> Prop :=
     mkRelated: forall regs pc npc m xAddrs (t: list LogItem) mc s d,
       execution t s ->
       device_state_related s d ->
       map.undef_on m StateMachineSemantics.parameters.isMMIOAddr ->
       disjoint (of_list xAddrs) StateMachineSemantics.parameters.isMMIOAddr ->
-      related
+      related t0
         {| MetricRiscvMachine.getMachine :=
              {| getRegs := regs;
                 getPc := pc;
                 getNextPc := npc;
                 getMem := m;
                 getXAddrs := xAddrs;
-                getLog := t; |};
+                getLog := t ++ t0; |};
            getMetrics := mc; |}
         {| ExtraRiscvMachine.getMachine :=
              {| getRegs := regs;
@@ -42,7 +42,7 @@ Section WithParams.
                 getNextPc := npc;
                 getMem := m;
                 getXAddrs := xAddrs;
-                getLog := []; |};
+                getLog := t0; |};
            getExtraState := d |}.
 
   Definition stepH(initialL: MetricRiscvMachine)(post: MetricRiscvMachine -> Prop): Prop :=
@@ -51,12 +51,12 @@ Section WithParams.
 
   Variable sched: schedule.
 
-  Lemma stateMachine_to_cava_1: forall (initialH: MetricRiscvMachine) (initialL: ExtraRiscvMachine D)
+  Lemma stateMachine_to_cava_1: forall t0 (initialH: MetricRiscvMachine) (initialL: ExtraRiscvMachine D)
                                        steps_done post,
-      related initialH initialL ->
+      related t0 initialH initialL ->
       stepH initialH post ->
       exists finalL finalH, nth_step sched steps_done initialL = (Some tt, finalL) /\
-                            related finalH finalL /\
+                            related t0 finalH finalL /\
                             post finalH.
   Proof.
     intros.
@@ -83,13 +83,14 @@ Section WithParams.
 
   Admitted.
 
-  Lemma stateMachine_to_cava: forall (initialH: MetricRiscvMachine) (initialL: ExtraRiscvMachine D)
+  Lemma stateMachine_to_cava: forall t_initial
+                                     (initialH: MetricRiscvMachine) (initialL: ExtraRiscvMachine D)
                                      steps_done post,
-      related initialH initialL ->
+      related t_initial initialH initialL ->
       runsTo stepH initialH post ->
       exists steps_remaining finalL finalH,
         run_rec sched steps_done steps_remaining initialL = (Some tt, finalL) /\
-        related finalH finalL /\
+        related t_initial finalH finalL /\
         post finalH.
   Proof.
     intros. revert initialL steps_done H. induction H0; intros.
