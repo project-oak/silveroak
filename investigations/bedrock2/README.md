@@ -17,7 +17,7 @@ You may need to install prerequisites and software tools before starting the sim
 
 **SilverOak**
 
-Follow the [SilverOak README](https://github.com/project-oak/silveroak) to setup silveroak repository.
+Follow the [SilverOak README](https://github.com/project-oak/silveroak) to setup the silveroak repository.
 
 **Important Directories:**
 
@@ -93,4 +93,3 @@ Missing operators that might be very helpful if added:
 ### Proofs
 
 * here are a lot of bitfield operations in the firmware. Sam mentioned that there will be some updates in bedrock2 that makes bit operations much easier to handle.
-
