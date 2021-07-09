@@ -11,6 +11,15 @@ Require Import riscv.Utility.InstructionCoercions.
 Open Scope ilist_scope.
 Require Import compiler.MemoryLayout.
 
+Definition ml: MemoryLayout := {|
+  MemoryLayout.code_start    := word.of_Z 0;
+  MemoryLayout.code_pastend  := word.of_Z (4*2^10);
+  MemoryLayout.heap_start    := word.of_Z (4*2^10);
+  MemoryLayout.heap_pastend  := word.of_Z (8*2^10);
+  MemoryLayout.stack_start   := word.of_Z (8*2^10);
+  MemoryLayout.stack_pastend := word.of_Z (16*2^10);
+|}.
+
 Definition main_relative_pos :=
   match map.get (snd (fst put_wait_get_compile_result)) (fst main) with
   | Some p => p
@@ -122,5 +131,5 @@ Definition res(nsteps: nat): (bool * Z * Z) := outcomeToLogElem (run sched nstep
 (* We can vm_compute through the execution of the IncrementWait program,
    riscv-coq's processor model, and Cava's reaction to the IncrementWait program: *)
 Goal exists nsteps, res nsteps = (true, word.unsigned p_call + 4, 43).
-  exists 94%nat. vm_compute. reflexivity.
+  exists 87%nat. vm_compute. reflexivity.
 Qed.

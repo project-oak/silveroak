@@ -9,8 +9,6 @@ Import ListNotations.
 Local Open Scope string_scope.
 Local Open Scope Z_scope.
 
-Existing Instance constant_names.
-
 Require Import bedrock2.Bytedump.
 Local Open Scope bytedump_scope.
 Goal True.

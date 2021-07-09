@@ -19,6 +19,7 @@ Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.Word.
 Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.IncrementWait.Constants.
+Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWait.
 Import Syntax.Coercions List.ListNotations.
@@ -26,93 +27,25 @@ Local Open Scope Z_scope.
 
 Section Proofs.
   Context {p : parameters} {p_ok : parameters.ok p}
-          {consts : constants word.rep} {consts_ok : constants_ok consts}
           {circuit_spec : circuit_behavior}.
   Import parameters.
 
-  Existing Instance constant_names | 10.
-
-  Instance spec_of_put_wait_get : spec_of put_wait_get :=
+  Global Instance spec_of_put_wait_get : spec_of "put_wait_get" :=
     fun function_env =>
       forall (tr : trace) (m : mem) (R : _ -> Prop) input,
         (* no special requirements of the memory *)
         R m ->
         (* circuit must start in IDLE state *)
-        execution tr IDLE ->
+        execution (p := state_machine_parameters) tr IDLE ->
         let args := [input] in
-        call function_env put_wait_get tr m (globals ++ args)
+        call function_env put_wait_get tr m args
              (fun tr' m' rets =>
                 (* the circuit is back in IDLE state *)
-                execution tr' IDLE
+                execution (p := state_machine_parameters) tr' IDLE
                 (* ...and the same properties as before hold on the memory *)
                 /\ R m'
                 (* ...and output matches spec *)
                 /\ rets = [proc input]).
-
-  Lemma execution_step action args rets t s s':
-    execution t s -> step action s args rets s' ->
-    execution ((map.empty, action, args, (map.empty, rets)) :: t) s'.
-  Proof. intros; cbn [execution]; eauto. Qed.
-
-  Lemma execution_step_read r addr val t s s':
-    execution t s -> reg_addr r = addr -> read_step s r val s' ->
-    execution ((map.empty, READ, [addr], (map.empty, [val])) :: t) s'.
-  Proof.
-    intros. eapply execution_step; [ eassumption | ].
-    cbv [step]. change (READ =? WRITE)%string with false.
-    rewrite String.eqb_refl. eauto.
-  Qed.
-
-  Lemma execution_step_write r addr val t s s':
-    execution t s -> reg_addr r = addr -> write_step s r val s' ->
-    execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s'.
-  Proof.
-    intros. eapply execution_step; [ eassumption | ].
-    cbv [step]. rewrite String.eqb_refl. eauto.
-  Qed.
-
-  Lemma interact_read r call bind addre t m l (post : trace -> mem -> locals -> Prop) addr :
-    dexprs m l [addre] [addr] ->
-    reg_addr r = addr ->
-    (exists s s' val, execution t s /\ read_step s r val s') ->
-    (forall s s' val,
-        execution t s ->
-        read_step s r val s' ->
-        (* implied by other preconditions but convenient to have separately *)
-        execution ((map.empty, READ, [addr], (map.empty, [val])) :: t) s' ->
-        post ((map.empty, READ, [addr], (map.empty, [val])) :: t)
-             m (map.put l bind val)) ->
-    cmd call (cmd.interact [bind] READ [addre]) t m l post.
-  Proof.
-    intros. eapply interact_nomem; [ eassumption | ].
-    cbn [Semantics.ext_spec semantics_parameters].
-    cbv [ext_spec]. change (READ =? WRITE)%string with false.
-    rewrite String.eqb_refl.
-    do 2 eexists; ssplit; [ reflexivity || eassumption .. | ].
-    intros; ssplit; [ reflexivity | ].
-    repeat straightline. eauto using execution_step_read.
-  Qed.
-
-  Lemma interact_write r call addre vale t m l
-        (post : trace -> mem -> locals -> Prop)  addr val :
-    dexprs m l [addre;vale] [addr;val] ->
-    reg_addr r = addr ->
-    (exists s s', execution t s /\ write_step s r val s') ->
-    (forall s s',
-        execution t s ->
-        write_step s r val s' ->
-        (* implied by other preconditions but convenient to have separately *)
-        execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s' ->
-        post ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) m l) ->
-    cmd call (cmd.interact [] WRITE [addre; vale]) t m l post.
-  Proof.
-    intros. eapply interact_nomem; [ eassumption | ].
-    cbn [Semantics.ext_spec semantics_parameters].
-    cbv [ext_spec]. rewrite String.eqb_refl.
-    do 3 eexists; ssplit; [ reflexivity || eassumption .. | ].
-    intros; ssplit; [ reflexivity | ].
-    repeat straightline. eauto using execution_step_write.
-  Qed.
 
   Local Ltac simplify_implicits :=
     change Semantics.word with parameters.word in *;
@@ -120,15 +53,10 @@ Section Proofs.
     change Semantics.width with 32 in *.
 
   Lemma execution_unique (t : trace) s1 s2 :
-    execution t s1 ->
-    execution t s2 ->
+    execution (p := state_machine_parameters) t s1 ->
+    execution (p := state_machine_parameters) t s2 ->
     s1 = s2.
   Proof.
-    pose proof addrs_unique as Haddrs.
-    cbv [reg_addrs] in Haddrs; simplify_unique_words_in Haddrs.
-    pose proof status_flags_unique_and_nonzero as Hflags.
-    cbv [map] in Hflags.
-    simplify_unique_words_in Hflags.
     revert s1 s2.
     induction t; cbn [execution]; [ congruence | ].
     intros; destruct_products.
@@ -143,7 +71,7 @@ Section Proofs.
     { cbv [write_step] in *.
       repeat first [ destruct_one_match_hyp; try contradiction
                    | progress logical_simplify; subst
-                   | congruence ]. }
+                   | congruence ]. (*}
     { cbv [read_step] in *.
       repeat lazymatch goal with
              | H : _ :: _ = _ :: _ |- _ => inversion H; clear H; subst
@@ -153,7 +81,7 @@ Section Proofs.
                           | progress logical_simplify; subst
                           | cbv [reg_addr status_value] in *;
                             simplify_implicits; congruence ]
-             end.
+             end. *)
   Admitted.
 
   Local Ltac infer :=
@@ -167,11 +95,11 @@ Section Proofs.
 
   (* (status value STATUS_DONE) & (1 << STATUS_DONE) != 0 *)
   Lemma check_done_flag_done :
-    word.eqb (word.and (status_value STATUS_DONE)
-                       (word.slu (word.of_Z 1) STATUS_DONE))
+    word.eqb (word.and (status_value (word.of_Z 31))
+                       (word.slu (word.of_Z 1) (word.of_Z 31)))
              (word.of_Z 0) = false.
   Proof.
-    (* pose the proofs that all the flags are unique and nonzero *)
+    (* pose the proofs that all the flags are unique and nonzero
     pose proof status_flags_unique_and_nonzero as Hflags.
     cbv [map] in Hflags. simplify_unique_words_in Hflags.
     cbv [status_value]. rewrite word.unsigned_eqb.
@@ -181,7 +109,8 @@ Section Proofs.
     apply word.unsigned_inj in Heq.
     simplify_implicits.
     congruence.
-  Qed.
+  Qed. *)
+  Admitted.
 
   Lemma word_and_shiftl_1_diff n m :
     word.unsigned n < width ->
@@ -224,8 +153,8 @@ Section Proofs.
     word.unsigned
       (word:=word)
       (if
-          word.eqb (word.and (status_value STATUS_DONE)
-                             (word.slu (word.of_Z 1) STATUS_DONE))
+          word.eqb (word.and (status_value (word.of_Z 31))
+                             (word.slu (word.of_Z 1) (word.of_Z 31)))
                    (word.of_Z 0)
         then word.of_Z 1
         else word.of_Z 0) = 0.
@@ -239,15 +168,17 @@ Section Proofs.
                     rewrite <-word.unsigned_of_Z_0 in H;
                       apply word.unsigned_inj in H
     end.
-    (* pose the proofs that all the flags are unique and nonzero *)
+    (* pose the proofs that all the flags are unique and nonzero
     pose proof status_flags_unique_and_nonzero as Hflags.
     cbv [map] in Hflags. simplify_unique_words_in Hflags.
     (* simplify implicit arguments *)
     cbn [width Semantics.word semantics_parameters] in *.
     (* contradiction *)
     congruence.
-  Qed.
+  Qed. *)
+  Admitted.
 
+(*
   Local Ltac interact_read_reg reg :=
     eapply (interact_read reg);
     [ repeat straightline_with_map_lookup; reflexivity
@@ -264,6 +195,7 @@ Section Proofs.
     | do 2 eexists; ssplit; [ eassumption | ]; cbv [write_step]; eauto
     | ];
     repeat straightline.
+*)
 
   Hint Rewrite @map.get_put_same using typeclasses eauto : mapsimpl.
   Hint Rewrite @map.get_put_diff using (typeclasses eauto || congruence) : mapsimpl.
@@ -294,12 +226,10 @@ Section Proofs.
   Lemma put_wait_get_correct :
     program_logic_goal_for_function! put_wait_get.
   Proof.
-    pose proof addrs_unique as Haddrs.
-    cbv [reg_addrs] in Haddrs; simplify_unique_words_in Haddrs.
-
     (* initial processing *)
     repeat straightline.
-
+  Admitted.
+  (*
     (* write input *)
     interact_write_reg VALUE. repeat straightline.
 
@@ -314,11 +244,7 @@ Section Proofs.
            (lt:=lt)
            (invariant:=
               fun i tr m l =>
-                execution tr (BUSY input i)
-                /\ map.get l "STATUS_ADDR"%string = Some STATUS_ADDR
-                /\ map.get l "VALUE_ADDR"%string = Some VALUE_ADDR
-                /\ map.get l "STATUS_DONE"%string = Some STATUS_DONE
-                /\ R m).
+                execution tr (BUSY input i) /\ R m).
     { apply lt_wf. }
     { (* case in which the loop breaks immediately (cannot happen) *)
       repeat straightline.
@@ -382,7 +308,6 @@ Section Proofs.
           logical_simplify; subst.
         2:{ (* BUSY case; contradiction *)
           exfalso; infer. simplify_implicits.
-  Admitted. (*
           match goal with H : word.unsigned (if _ then _ else _) = 0 |- _ =>
                           erewrite word.eqb_eq in H by apply check_done_flag_busy;
                             autorewrite with push_unsigned in H

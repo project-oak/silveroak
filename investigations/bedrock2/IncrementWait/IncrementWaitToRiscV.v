@@ -4,7 +4,6 @@ Require Import Coq.micromega.Lia.
 Require Import Coq.derive.Derive.
 Require Import bedrock2.Syntax.
 Require Import compiler.FlatToRiscvDef.
-Require Export compiler.MemoryLayout.
 Require Import compiler.Pipeline.
 Require Import compiler.RiscvWordProperties.
 Require Import coqutil.Word.Interface.
@@ -12,7 +11,8 @@ Require Import coqutil.Map.Z_keyed_SortedListMap.
 Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.IncrementWait.Constants.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWait.
-Require Import Bedrock2Experiments.IncrementWait.IncrementWaitMMIO.
+Require Import Bedrock2Experiments.StateMachineMMIO.
+Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.Bedrock2ToCava.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
 Require coqutil.Word.Naive.
 Require coqutil.Map.SortedListWord.
@@ -36,49 +36,27 @@ Instance p : MMIO.parameters :=
      MMIO.funname_env_ok := SortedListString.ok;
   |}.
 
-Existing Instances Words32 semantics_params semantics_params_ok compilation_params IncrementWaitMMIOSpec FlatToRiscv_params.
+Instance semantics_params : IncrementWaitSemantics.parameters := {|
+  IncrementWaitSemantics.parameters.word := MMIO.word;
+  IncrementWaitSemantics.parameters.mem := MMIO.mem |}.
 
-Definition ml: MemoryLayout := {|
-  MemoryLayout.code_start    := word.of_Z 0;
-  MemoryLayout.code_pastend  := word.of_Z (4*2^10);
-  MemoryLayout.heap_start    := word.of_Z (4*2^10);
-  MemoryLayout.heap_pastend  := word.of_Z (8*2^10);
-  MemoryLayout.stack_start   := word.of_Z (8*2^10);
-  MemoryLayout.stack_pastend := word.of_Z (16*2^10);
-                              |}.
+Instance semantics_params_ok : IncrementWaitSemantics.parameters.ok _ := {|
+  IncrementWaitSemantics.parameters.word_ok := _;
+  IncrementWaitSemantics.parameters.mem_ok := _ |}.
+
+Existing Instances Words32 compilation_params FlatToRiscv_params.
+
+Definition heap_start: Utility.word := word.of_Z (4*2^10).
 
 (* dummy base address -- just past end of stack *)
 Definition base_addr : Z := 16 * 2^10.
-Instance consts : constants Z :=
-  {| VALUE_ADDR := base_addr;
-     STATUS_ADDR := base_addr;
-     STATUS_DONE := 31;
-  |}.
-Existing Instance constant_words.
 
 Instance circuit_spec : circuit_behavior :=
   {| ncycles_processing := 15%nat |}.
 
-Instance pipeline_params : Pipeline.parameters :=
-  {|
-  Pipeline.W := Words32;
-  Pipeline.mem := _;
-  Pipeline.Registers := _;
-  Pipeline.string_keyed_map := _;
-  Pipeline.ext_spec := @FlatToRiscvCommon.ext_spec FlatToRiscv_params;
-  Pipeline.compile_ext_call := (@FlatToRiscvDef.compile_ext_call compilation_params);
-  Pipeline.M := _;
-  Pipeline.MM := _;
-  Pipeline.RVM := MetricMinimalMMIO.IsRiscvMachine;
-  Pipeline.PRParams := @FlatToRiscvCommon.PRParams FlatToRiscv_params
-  |}.
-
-(* use literals for the main function *)
-Existing Instance constant_literals.
-
 (* pointers to input and output memory locations *)
-Definition input_ptr := word.unsigned ml.(heap_start).
-Definition output_ptr := word.unsigned ml.(heap_start) + 4.
+Definition input_ptr := word.unsigned heap_start.
+Definition output_ptr := word.unsigned heap_start + 4.
 
 (* read input from memory, call put_wait_get, write output to memory *)
 Definition main_body : cmd :=
@@ -88,8 +66,7 @@ Definition main_body : cmd :=
     (cmd.seq
        (* call put_wait_get *)
        (cmd.call ["out"] put_wait_get
-                 (globals
-                    ++ [expr.load access_size.word (expr.literal input_ptr)]))
+                 ([expr.load access_size.word (expr.literal input_ptr)]))
        (* store result *)
        (cmd.store access_size.word (expr.literal output_ptr) (expr.var "out"))).
 
@@ -98,20 +75,17 @@ Definition main : func :=
 
 Definition funcs := [main; put_wait_get].
 
-Derive put_wait_get_compile_result
-       SuchThat (compile (map.of_list funcs)
-                 = Some put_wait_get_compile_result)
-       As put_wait_get_compile_result_eq.
-Proof.
-  (* doing a more surgical vm_compute in the lhs only avoids fully computing the map
-     type, which would slow eq_refl and Qed dramatically *)
-  lazymatch goal with
-    |- ?lhs = _ =>
-    let x := (eval vm_compute in lhs) in
-    change lhs with x
-  end.
-  exact eq_refl.
-Qed.
+Definition put_wait_get_compile_result_o := Eval compute in compile (map.of_list funcs).
+
+Definition put_wait_get_compile_result: list Decode.Instruction * FlatToRiscvDef.funname_env Z * Z.
+  let r := eval unfold put_wait_get_compile_result_o in put_wait_get_compile_result_o in
+      match r with
+      | Some ?x => exact x
+      end.
+Defined.
+
+Lemma put_wait_get_compile_result_eq: compile (map.of_list funcs) = Some put_wait_get_compile_result.
+Proof. reflexivity. Qed.
 
 Definition put_wait_get_asm := Eval compute in fst (fst put_wait_get_compile_result).
 

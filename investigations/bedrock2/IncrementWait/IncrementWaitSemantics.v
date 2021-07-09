@@ -12,6 +12,7 @@ Require Import coqutil.Z.HexNotation.
 Require Import coqutil.Decidable.
 Require Import Bedrock2Experiments.Word.
 Require Import Bedrock2Experiments.WordProperties.
+Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.IncrementWait.Constants.
 
 Import String List.ListNotations.
@@ -39,8 +40,7 @@ Notation parameters := parameters.parameters.
 
 Section WithParameters.
   Context {p : parameters} {p_ok : parameters.ok p}.
-  Context {consts : constants word.rep} {consts_ok : constants_ok consts}
-          {circuit_spec : circuit_behavior}.
+  Context {circuit_spec : circuit_behavior}.
   Import parameters.
 
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
@@ -57,18 +57,9 @@ Section WithParameters.
 
   Definition reg_addr (r : Register) : word :=
     match r with
-    | VALUE => VALUE_ADDR
-    | STATUS => STATUS_ADDR
+    | VALUE => word.of_Z VALUE_ADDR
+    | STATUS => word.of_Z STATUS_ADDR
     end.
-
-  Lemma reg_addrs_unique r1 r2 : reg_addr r1 = reg_addr r2 -> r1 = r2.
-  Proof.
-    pose proof addrs_unique as Haddrs.
-    cbv [reg_addrs] in Haddrs. simplify_unique_words_in Haddrs.
-  Admitted.
-  (*
-    destruct r1, r2; cbv [reg_addr]; congruence.
-  Qed.*)
 
   Definition status_value (flag : word) : word :=
     word.slu (word.of_Z 1) flag.
@@ -82,12 +73,12 @@ Section WithParameters.
     | STATUS =>
       match s with
       | IDLE => val = word.of_Z 0 /\ s' = IDLE
-      | DONE answer => val = status_value STATUS_DONE /\ s' = DONE answer
+      | DONE answer => val = status_value (word.of_Z 31) /\ s' = DONE answer
       | BUSY input n =>
         (* either the status is DONE and we transition to the DONE state *)
-        (val = status_value STATUS_DONE /\ s' = DONE (proc input))
+        (val = status_value (word.of_Z 31) /\ s' = DONE (proc input))
         (* ...or the status is BUSY and we stay in the BUSY state *)
-        \/ (exists n', n = S n' /\ word.and val (word.sru (word.of_Z 1) STATUS_DONE) = word.of_Z 0
+        \/ (exists n', n = S n' /\ word.and val (word.sru (word.of_Z 1) (word.of_Z 31)) = word.of_Z 0
                        /\ s' = BUSY input n')
       end
     | VALUE =>
@@ -108,105 +99,35 @@ Section WithParameters.
       end
     end.
 
-  Definition step
-             (action : string) (s : state) (args rets : list word) (s' : state)
-    : Prop :=
-    if String.eqb action WRITE
-    then match args with
-         | [addr;val] =>
-           (exists r, reg_addr r = addr /\ rets = [] /\ write_step s r val s')
-         | _ => False
-         end
-    else if String.eqb action READ
-         then match args with
-              | [addr] => (exists r val, reg_addr r = addr /\ rets = [val] /\ read_step s r val s')
-              | _ => False
-              end
-         else False.
+  Global Instance state_machine_parameters
+    : StateMachineSemantics.parameters 32 word mem :=
+    {| StateMachineSemantics.parameters.state := state ;
+       StateMachineSemantics.parameters.register := Register ;
+       StateMachineSemantics.parameters.is_initial_state := eq IDLE ;
+       StateMachineSemantics.parameters.read_step sz s a v s' :=
+         sz = 4%nat /\ read_step s a v s';
+       StateMachineSemantics.parameters.write_step sz s a v s' :=
+         sz = 4%nat /\ write_step s a v s' ;
+       StateMachineSemantics.parameters.reg_addr := reg_addr ;
+       StateMachineSemantics.parameters.isMMIOAddr a :=
+           VALUE_ADDR <= word.unsigned a < STATUS_ADDR + 4;
+    |}.
 
-  (* Computes the Prop that must hold for this state to be accurate after the
-     trace *)
-  Fixpoint execution (t : bedrock2_trace) (s : state) : Prop :=
-    match t with
-    | [] => s = IDLE
-    | (_,action,args,(_,rets)) :: t =>
-      exists prev_state,
-      execution t prev_state
-      /\ step action prev_state args rets s
-    end.
-
-  Definition ext_spec (t : bedrock2_trace)
-             (mGive : mem)
-             (action : string)
-             (args: list word)
-             (post: mem -> list word -> Prop) :=
-    if String.eqb action WRITE
-    then
-      (exists r addr val,
-          args = [addr;val]
-          /\ mGive = map.empty
-          /\ reg_addr r = addr
-          (* there must exist *at least one* possible state given this trace,
-             and one possible transition given these arguments *)
-          /\ (exists s s', execution t s /\ write_step s r val s')
-          (* postcondition must hold for *all* possible states/transitions *)
-          /\ (forall s s',
-                execution t s ->
-                write_step s r val s' ->
-                post Interface.map.empty []))
-       else if String.eqb action READ
-            then
-              (exists r addr,
-                  args = [addr]
-                  /\ mGive = map.empty
-                  /\ reg_addr r = addr
-                  (* there must exist *at least one* possible state given this
-                     trace, and one possible transition given these arguments *)
-                  /\ (exists s s' val, execution t s /\ read_step s r val s')
-                  (* postcondition must hold for *all* possible states/transitions *)
-                  /\ (forall s s' val,
-                        execution t s ->
-                        read_step s r val s' ->
-                        post Interface.map.empty [val]))
-               else False.
-
-  Global Instance semantics_parameters  : Semantics.parameters :=
-    {|
-    Semantics.width := 32;
-    Semantics.word := parameters.word;
-    Semantics.mem := parameters.mem;
-    Semantics.locals := SortedListString.map _;
-    Semantics.env := SortedListString.map _;
-    Semantics.ext_spec := ext_spec;
-  |}.
-
-  Global Instance ext_spec_ok : ext_spec.ok _.
+  Global Instance state_machine_parameters_ok
+    : StateMachineSemantics.parameters.ok state_machine_parameters.
   Proof.
-    split;
-    cbv [ext_spec Semantics.ext_spec semantics_parameters
-    Morphisms.Proper Morphisms.respectful Morphisms.pointwise_relation Basics.impl
-    ];
-    intros.
-    all :
-    repeat match goal with
-           | H : context[(?x =? ?y)%string] |- _ =>
-             destruct (x =? y)%string in *
-           | H: exists _, _ |- _ => destruct H
-           | H: _ /\ _ |- _ => destruct H
-           | H : _ :: _  = _ :: _ |- _ => inversion H; clear H; subst
-           | H: False |- _ => destruct H
-           | H : reg_addr _ = reg_addr _ |- _ => apply reg_addrs_unique in H
-           | _ => progress subst
-           end; eauto 20 using Properties.map.same_domain_refl.
-  Qed.
-
-  Global Instance ok : Semantics.parameters_ok semantics_parameters.
-  Proof.
-    split; cbv [env locals mem semantics_parameters]; try exact _.
-    { cbv; auto. }
-    { exact (SortedListString.ok _). }
-    { exact (SortedListString.ok _). }
-  Qed.
+    constructor;
+      unfold parameters.isMMIOAddr; cbn;
+      intros;
+      try exact _;
+      repeat match goal with
+             | H: _ /\ _ |- _ => destruct H
+             end;
+      subst.
+  Admitted. (*
+      eauto using reg_addrs_unique with zarith.
+      try ZnWords.
+  Qed. *)
 
   (* COPY-PASTE this *)
   Add Ring wring : (Properties.word.ring_theory (word := Semantics.word))
