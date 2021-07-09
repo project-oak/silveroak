@@ -4,7 +4,7 @@ Require Import Coq.micromega.Lia.
 Require Import Coq.derive.Derive.
 Require Import bedrock2.Syntax.
 Require Import compiler.FlatToRiscvDef.
-Require Import compiler.MemoryLayout.
+Require Export compiler.MemoryLayout.
 Require Import compiler.Pipeline.
 Require Import compiler.RiscvWordProperties.
 Require Import coqutil.Word.Interface.

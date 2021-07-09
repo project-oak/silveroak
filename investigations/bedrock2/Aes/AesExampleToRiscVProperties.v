@@ -234,7 +234,6 @@ Proof.
          (postH:=post_main
                    in0 in1 in2 in3 iv0 iv1 iv2 iv3
                    key0 key1 key2 key3 key4 key5 key6 key7 R).
-  { constructor; vm_compute; congruence. }
   { cbv [ExprImp.valid_funs]. intros *.
     cbv [map.of_list
            List.app
@@ -264,6 +263,7 @@ Proof.
     rewrite String.eqb_refl. reflexivity. }
   { reflexivity. }
   { vm_compute. congruence. }
+  { reflexivity. }
   { eapply exec_main; eauto.
     { apply aes_encrypt_correct.
       { apply aes_init_correct. }

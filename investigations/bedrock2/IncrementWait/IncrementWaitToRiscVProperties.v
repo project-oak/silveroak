@@ -162,7 +162,6 @@ Proof.
          (mc:=bedrock2.MetricLogging.EmptyMetricLog)
          (f_entry_name := main)
          (postH:=post_main input output_placeholder R).
-  { constructor; vm_compute; congruence. }
   { cbv [ExprImp.valid_funs]. intros *.
     rewrite !map.get_put_dec, map.get_empty.
     repeat destruct_one_match; inversion 1; cbv [ExprImp.valid_fun].
@@ -174,6 +173,7 @@ Proof.
     rewrite String.eqb_refl. reflexivity. }
   { reflexivity. }
   { vm_compute. congruence. }
+  { reflexivity. }
   { apply exec_put_wait_get with (fs:=[]); eauto.
     apply dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec).
     reflexivity. }
