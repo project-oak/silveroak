@@ -29,30 +29,30 @@ Import ListNotations Circuit.Notations.
 
 Section WithCava.
   Context `{semantics : Cava}.
-
-  (* make a circuit with one delay for each signal, given reset values *)
-  Fixpoint delays {t : type} : Circuit t t :=
-    match t with
-    | tzero => Delay
-    | tone t => Delay
-    | tpair t1 t2 => Par delays delays
-    end.
-
   (* make a circuit with repeated delays for each signal *)
-  Fixpoint ndelays {t : type} (n : nat) : Circuit t t :=
-    match n with
-    | 0 => Id
-    | S m => ndelays m >==> delays
+  Fixpoint ndelays {t : type} (r : list (@value combType t)) : Circuit t t :=
+    match r with
+    | [] => Id
+    | r0 :: r => ndelays r >==> DelayInit r0
     end.
 End WithCava.
 
-(* n is delays on state; m is delays on input *)
-Definition phase_retimed {i o} (n m : nat) (c1 c2 : Circuit i o) : Prop :=
+Definition retimed {i o} (n m : nat) (c1 c2 : Circuit i o) : Prop :=
+  (* there exists some way of converting between the loop states of c1 and c2 *)
   exists (proj21 : value (loops_state c2) -> value (loops_state c1))
     (proj12 : value (loops_state c1) -> value (loops_state c2)),
     (forall x, proj12 (proj21 x) = x)
-    /\ wequiv (loopless c1)
+    (* ..and there exist two sets of delay values, one for the state and one for
+       the outputs *)
+    /\ exists (or : list (value o)) (sr : list (value (loops_state c2))),
+      (* ...and loopless c1 is equivalent to loopless c2 composed with the delay
+         circuits and the state projections *)
+      cequiv (loopless c1)
              (Second (Comb proj12)
-                   >==> Par (ndelays m) (ndelays n)
-                   >==> loopless c2
-                   >==> Second (Comb proj21)).
+                     >==> loopless c2
+                     >==> Par (ndelays or) (ndelays sr)
+                     >==> Second (Comb proj21))
+      (* ...and the number of output delays is n *)
+      /\ length or = n
+      (* ...and the number of loop state delays is m *)
+      /\ length sr = m.

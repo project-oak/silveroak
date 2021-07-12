@@ -47,16 +47,105 @@ All should be based on phase_retimed!
 
  *)
 
-Lemma cpath_delays {t} : cpath (@delays _ _ t) = 1.
+Fixpoint get_ndelays {t r} : value (circuit_state (ndelays (t:=t) r)) -> list (value t) :=
+  match r with
+  | [] => fun _ => []
+  | _ :: _ => fun x => snd x :: get_ndelays (fst x)
+  end.
+
+Lemma reset_ndelays {t} r : get_ndelays (reset_state (ndelays (t:=t) r)) = r.
 Proof.
-  induction t; cbn [delays cpath Delay Par]; [ reflexivity .. | ].
+  induction r; [ reflexivity .. | ].
+  cbn [get_ndelays reset_state ndelays fst snd].
+  rewrite IHr; reflexivity.
 Qed.
 
-Lemma move_delays {i o} (c : Circuit i o) :
-  is_loop_free c = true -> wequiv (delays >==> c) (c >==> delays).
+Lemma step_ndelays2 {t} r s i :
+  snd (step (ndelays (t:=t) r) s i) = hd i (get_ndelays s).
 Proof.
-  intros. cbv [wequiv]. ssplit; [ cbn [cpath]; try lia | ].
-  { Set Printing All.
+  induction r; [ reflexivity | ].
+  cbn [ndelays circuit_state value] in *; destruct_products.
+  reflexivity.
+Qed.
+
+Lemma step_ndelays1 {t} r s i :
+  get_ndelays (fst (step (ndelays (t:=t) r) s i)) = tl (get_ndelays s ++ [i]).
+Proof.
+  induction r; [ reflexivity .. | ].
+  cbn [ndelays circuit_state value] in *; destruct_products.
+  cbn [get_ndelays ndelays fst snd step app tl].
+  rewrite IHr, step_ndelays2.
+  destruct (get_ndelays _); reflexivity.
+Qed.
+
+Lemma split_delay {t1 t2} (r1 : value t1) (r2 : value t2) :
+  cequiv (DelayInit (t:=t1*t2) (r1, r2)) (Par (DelayInit r1) (DelayInit r2)).
+Proof.
+  exists eq. ssplit; [ reflexivity | ]. cbn [value circuit_state Par].
+  intros; subst; destruct_products. ssplit; reflexivity.
+Qed.
+
+Lemma move_delay {i o} (c : Circuit i o) r :
+  is_loop_free c = true ->
+  cequiv (DelayInit r >==> c) (c >==> DelayInit (snd (step c (reset_state c) r))).
+Proof.
+  revert r; induction c; intros.
+  { (* Comb case *)
+    exists (fun s1 s2 => snd s2 = c (fst s1)).
+    cbn [value circuit_state reset_state step fst snd].
+    ssplit; [ reflexivity | ].
+    intros. destruct_products. cbn [fst snd] in *.
+    ssplit; congruence. }
+  { (* Compose case *)
+    cbn [is_loop_free] in *.
+    lazymatch goal with H : (_ && _)%bool = true |- _ => apply Bool.andb_true_iff in H end.
+    logical_simplify. autorewrite with circuitsimpl.
+    rewrite IHc1 by auto. rewrite <-(Compose_assoc _ _ c2).
+    rewrite IHc2 by auto. autorewrite with circuitsimpl.
+    cbn [step reset_state fst snd]. reflexivity. }
+  { (* First case *)
+    cbn [is_loop_free value] in *. destruct_products.
+    cbn [reset_state fst snd step]. rewrite !split_delay.
+    cbv [Par]. rewrite First_Second_comm.
+    rewrite <-(Compose_assoc _ _ (First c)), <-First_Compose.
+    rewrite IHc by auto.
+    autorewrite with circuitsimpl; reflexivity. }
+  { (* Second case *)
+    cbn [is_loop_free value] in *. destruct_products.
+    cbn [reset_state fst snd step]. rewrite !split_delay.
+    cbv [Par]. autorewrite with circuitsimpl.
+    rewrite <-(Compose_assoc _ _ (Second c)). rewrite <-Second_Compose.
+    rewrite IHc by auto.
+    autorewrite with circuitsimpl; reflexivity. }
+  { (* LoopInitCE case *)
+    cbn [is_loop_free] in *. discriminate. }
+  { (* DelayInit case *)
+    cbn [reset_state step fst snd].
+
+
+
+                 
+  intros.
+  exists (fun s1 s2 =>
+       step c (snd s1) (get_delays (fst s1)) = (fst s2, get_delays (snd s2))).
+  cbn [value circuit_state reset_state fst snd]. ssplit.
+  { rewrite !reset_delays.
+    eexists.
+    Unshelve. 2:cbn.
+
+    2:exact (fun s1 s2 =>
+         step c (snd s1) (get_delays (fst s1)) = (fst s2, get_delays (snd s2))).
+    
+  revert r; induction c; intros.
+  { cbn [reset_state step fst snd].
+    eexists.
+    Unshelve. 2:cbn.
+    exists (fun s1 s2 => s1 = 
+
+
+  
+  intros. cbv [cequiv].
+  cbn [circuit_state value delays reset_state].
 Qed.
 
 Lemma split_ndelays {t1 t2} n :
