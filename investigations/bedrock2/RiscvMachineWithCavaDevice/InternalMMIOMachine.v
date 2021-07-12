@@ -19,19 +19,46 @@ Local Open Scope bool_scope.
 Import ListNotations.
 
 Module device.
-  (* a deterministic device *)
+  (* A deterministic device, to be instantiated with a Cava device *)
   Class device{word: word.word 32} := {
+    (* circuit state, will be instantiated with result of Cava.Core.Circuit.circuit_state *)
     state: Type;
+
+    (* initial state, will be instantiated with result of Cava.Core.Circuit.reset_state *)
     reset_state: state;
+
+    (* run one simulation step, will be instantiated with Cava.Semantics.Combinational.step *)
     run1: state -> state;
+
+    (* lowest address of the MMIO address range used to communicate with this device *)
     addr_range_start: word;
+
+    (* one past the highest MMIO address *)
     addr_range_pastend: word;
+
+    (* make an read request *)
     readReq(num_bytes: nat)(addr: word): state -> state;
+
+    (* poll whether the previous read request has been answered, if None,
+       we'll have to wait, ie call run1 again and again until we get Some *)
     readResp: state -> option word;
+
+    (* make a write request *)
     writeReq(num_bytes: nat)(addr value: word): state -> state;
+
+    (* poll whether the previous write request has been answered *)
     writeResp: state -> option unit;
+
+    (* max number of device cycles (ie calls of run1) this device takes to
+       serve read/write requests, could be 0 *)
     maxRespDelay: nat;
   }.
+  (* Note: there are two levels of "polling until a response is available":
+     - on the hardware level, using readResp/writeResp, which appears as
+       blocking I/O for the software
+     - on the software level, using MMIO reads on some status register,
+       where the MMIO read immediately gives a "busy" response, and the
+       software keeps polling until the MMIO read returns a "done" response *)
 End device.
 Notation device := device.device.
 Global Coercion device.state: device >-> Sortclass.
