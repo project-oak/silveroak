@@ -17,7 +17,6 @@ Section Impl.
   (* Notations for small constants *)
   Local Notation "0" := (expr.literal 0) (in custom bedrock_expr).
   Local Notation "1" := (expr.literal 1) (in custom bedrock_expr).
-  Local Notation "31" := (expr.literal 31) (in custom bedrock_expr).
 
   (* Sets the VALUE register, waits for a DONE status, reads the result, and
      returns it. Assumes the circuit is in IDLE state at the start. *)
@@ -35,12 +34,10 @@ Section Impl.
         (* initialize status to 0 *)
         status = 0 ;
         (* wait for status to be DONE *)
-        while ((status & (1 << 31)) == 0) {
+        while ((status & (1 << STATUS_DONE)) == 0) {
           io! status = READ ( STATUS_ADDR )
         };
-        (* read the value *)
-        io! out = READ ( VALUE_ADDR );
-        (* ignore msb (DONE bit) *)
-        out = out & coq:(2^31-1)
+        (* read the value and exit *)
+        io! out = READ ( VALUE_ADDR )
     ))).
 End Impl.

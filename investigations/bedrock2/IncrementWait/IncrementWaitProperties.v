@@ -95,8 +95,8 @@ Section Proofs.
 
   (* (status value STATUS_DONE) & (1 << STATUS_DONE) != 0 *)
   Lemma check_done_flag_done :
-    word.eqb (word.and (status_value (word.of_Z 31))
-                       (word.slu (word.of_Z 1) (word.of_Z 31)))
+    word.eqb (word.and (status_value STATUS_DONE)
+                       (word.slu (word.of_Z 1) (word.of_Z STATUS_DONE)))
              (word.of_Z 0) = false.
   Proof.
     (* pose the proofs that all the flags are unique and nonzero
@@ -153,8 +153,8 @@ Section Proofs.
     word.unsigned
       (word:=word)
       (if
-          word.eqb (word.and (status_value (word.of_Z 31))
-                             (word.slu (word.of_Z 1) (word.of_Z 31)))
+          word.eqb (word.and (status_value STATUS_DONE)
+                             (word.slu (word.of_Z 1) (word.of_Z STATUS_DONE)))
                    (word.of_Z 0)
         then word.of_Z 1
         else word.of_Z 0) = 0.
