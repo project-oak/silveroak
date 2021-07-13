@@ -10,6 +10,7 @@ Require Import riscv.Utility.runsToNonDet.
 Require Import riscv.Spec.Decode.
 Require Import riscv.Utility.InstructionCoercions.
 Require Import riscv.Platform.MetricSane.
+Require Import bedrock2.WeakestPreconditionProperties.
 Require Import compiler.SeparationLogic.
 Require Import compiler.Pipeline.
 Require Import compiler.LowerPipeline.
@@ -115,16 +116,16 @@ Section WithParams.
   (* similar to compiler.LowerPipeline.machine_ok, but takes an `ExtraRiscvMachine D` instead of
      a `MetricRiscvMachine` *)
   Definition machine_ok(p_functions: word)(f_entry_rel_pos: Z)(stack_start stack_pastend: word)
-             (finstrs: list Instruction)
+             (finstrs: list byte)
              (p_call pc: word)(mH: mem)(Rdata Rexec: mem -> Prop)(mach: ExtraRiscvMachine D): Prop :=
       let CallInst := Jal RegisterNames.ra
                           (f_entry_rel_pos + word.signed (word.sub p_functions p_call)) : Instruction in
-      (ptsto_bytes p_functions (instrencode finstrs) *
+      (ptsto_bytes p_functions finstrs *
        ptsto_bytes p_call (instrencode [CallInst]) *
        mem_available stack_start stack_pastend *
        Rdata * Rexec * eq mH
       )%sep mach.(getMem) /\
-      subset (footpr (ptsto_bytes p_functions (instrencode finstrs) *
+      subset (footpr (ptsto_bytes p_functions finstrs *
                       ptsto_bytes p_call (instrencode [CallInst]) *
                       Rexec)%sep)
              (of_list (getXAddrs mach)) /\
@@ -133,38 +134,41 @@ Section WithParams.
       mach.(getNextPc) = word.add mach.(getPc) (word.of_Z 4) /\
       regs_initialized mach.(getRegs) /\
       map.get mach.(getRegs) RegisterNames.sp = Some stack_pastend /\
-      (* Note: the concept of isMMIOAddr appears in the bedrock2 program specs, so it's
-         fine if it also appears in the combined theorem *)
+      (* Note: Even though we cancel out the fact that communication between the processor
+         and the Cava device happens via MMIO, we still have to expose the fact that we
+         need a reserved address range for MMIO which cannot be used as regular memory: *)
       map.undef_on mach.(getMem) StateMachineSemantics.parameters.isMMIOAddr /\
       disjoint (of_list mach.(getXAddrs)) StateMachineSemantics.parameters.isMMIOAddr.
 
   Lemma mod4_to_mod2: forall x, x mod 4 = 0 -> x mod 2 = 0.
   Proof. intros. Z.div_mod_to_equations. Lia.lia. Qed.
 
-  Lemma bedrock2_and_cava_system_correct: forall functions instrs pos_map required_stack_space
-        f_entry_name fbody mc p_functions f_entry_rel_pos stack_start stack_pastend
+  Lemma bedrock2_and_cava_system_correct: forall fs instrs pos_map required_stack_space
+        f_entry_name fbody p_functions f_entry_rel_pos stack_start stack_pastend
         p_call mH Rdata Rexec (initialL: ExtraRiscvMachine D) steps_done postH,
-      ExprImp.valid_funs functions ->
-      compile functions = Some (instrs, pos_map, required_stack_space) ->
+      ExprImp.valid_funs (map.of_list fs) ->
+      NoDup (map fst fs) ->
+      compile (map.of_list fs) = Some (instrs, pos_map, required_stack_space) ->
       Forall (fun i : Instruction => verify i RV32I) instrs ->
       -2^20 <= f_entry_rel_pos + word.signed (word.sub p_functions p_call) < 2^20 ->
-      map.get functions f_entry_name = Some ([], [], fbody) ->
+      map.get (map.of_list fs) f_entry_name = Some ([], [], fbody) ->
       map.get pos_map f_entry_name = Some f_entry_rel_pos ->
-      required_stack_space <= word.unsigned (word.sub stack_pastend stack_start) / bytes_per_word ->
-      word.unsigned (word.sub stack_pastend stack_start) mod bytes_per_word = 0 ->
+      required_stack_space <= word.unsigned (word.sub stack_pastend stack_start) / 4 ->
+      word.unsigned (word.sub stack_pastend stack_start) mod 4 = 0 ->
       word.unsigned p_functions mod 4 = 0 ->
       word.unsigned p_call mod 4 = 0 ->
       f_entry_rel_pos mod 4 = 0 ->
       (exists s, StateMachineSemantics.parameters.is_initial_state s /\
                  device_state_related s initialL.(getExtraState)) ->
-      Semantics.exec.exec functions fbody initialL.(getLog) mH map.empty mc
-           (fun t' m' l' mc' => postH m' /\ exists s' tnew, t' = tnew ++ initialL.(getLog)
-                                                            /\ execution tnew s') ->
-      machine_ok p_functions f_entry_rel_pos stack_start stack_pastend instrs p_call
+      WeakestPrecondition.cmd (p := FlattenExpr.mk_Semantics_params _) (WeakestPrecondition.call fs)
+           fbody initialL.(getLog) mH map.empty
+           (fun t' m' l' => postH m' /\ exists s' tnew, t' = tnew ++ initialL.(getLog)
+                                                        /\ execution tnew s') ->
+      machine_ok p_functions f_entry_rel_pos stack_start stack_pastend (instrencode instrs) p_call
                  p_call mH Rdata Rexec initialL ->
       exists steps_remaining finalL mH',
         run_rec sched steps_done steps_remaining initialL = (Some tt, finalL) /\
-        machine_ok p_functions f_entry_rel_pos stack_start stack_pastend instrs p_call
+        machine_ok p_functions f_entry_rel_pos stack_start stack_pastend (instrencode instrs) p_call
                    (word.add p_call (word.of_Z 4)) mH' Rdata Rexec finalL /\
         postH mH' /\
         finalL.(getLog) = initialL.(getLog) (* no external interactions happened *).
@@ -182,9 +186,12 @@ Section WithParams.
       specialize P with (p_call := p_call) (p_functions := p_functions).
       eapply P with (initial := {| MetricRiscvMachine.getMachine := {| getPc := _ |} |});
         clear P; cbn -[map.get map.empty instrencode]; try eassumption.
-      1: match goal with
-         | H: Semantics.exec.exec _ _ _ _ _ _ _ |- _ => exact H
-         end.
+      { refine (sound_cmd _ _ _ _ _ _ _ _ _).
+        - exact StateMachineSemantics.ok.
+        - assumption.
+        - match goal with
+          | H: WeakestPrecondition.cmd _ _ _ _ _ _ |- _ => exact H
+          end. }
       unfold LowerPipeline.machine_ok; cbn -[map.get map.empty instrencode program].
       pose proof ptsto_bytes_to_program as P. cbn in P.
       match goal with
@@ -205,12 +212,7 @@ Section WithParams.
         split; [|trivial].
         split; [Lia.lia|].
         split; [Lia.lia|].
-        split. {
-          split. {
-            move H2p0 at bottom. exact H2p0.
-          }
-          eassumption.
-        }
+        ssplit; try eassumption.
         eapply mod4_to_mod2.
         repeat match goal with
                | H: word.unsigned _ mod 4 = 0 |- _ => unique pose proof (divisibleBy4Signed _ H)
@@ -244,12 +246,7 @@ Section WithParams.
         split; [|trivial].
         split; [Lia.lia|].
         split; [Lia.lia|].
-        split. {
-          split. {
-            move H2p0 at bottom. exact H2p0.
-          }
-          eassumption.
-        }
+        ssplit; try eassumption.
         eapply mod4_to_mod2.
         repeat match goal with
                | H: word.unsigned _ mod 4 = 0 |- _ => unique pose proof (divisibleBy4Signed _ H)
