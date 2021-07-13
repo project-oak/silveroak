@@ -232,6 +232,7 @@ Ltac logical_simplify_step :=
     inversion H; subst; clear H
   | H : (_, _) = (_,_) |- _ =>
     inversion H; subst; clear H
+  | x : unit |- _ => destruct x
   end.
 Ltac logical_simplify := repeat logical_simplify_step.
 
@@ -255,6 +256,11 @@ Section LogicalSimplifyTests.
     intros; logical_simplify. eexists. eassumption.
   Qed.
 
+  (* prove units are equal *)
+  Goal (forall x y : unit, x = y).
+    intros; logical_simplify. reflexivity.
+  Qed.
+
   (* nested tuples *)
   Goal (forall T (a0 a1 a2 a3 b0 b1 b2 b3 : T),
            (a0,a1,a2,a3) = (b0,b1,b2,b3) ->
@@ -270,11 +276,11 @@ Section LogicalSimplifyTests.
   Qed.
 
   (* more complex expression *)
-  Goal (forall T (a0 a1 a2 a3 b0 b1 b2 b3 : T),
+  Goal (forall T (a0 a1 a2 a3 b0 b1 b2 b3 : T) (u0 u1 : unit),
            (exists x,
                Some (a0, a1) = Some (b0, x)
                /\ Some x = Some b3) ->
-           a1 = b3).
+           (a1, u0) = (b3, u1)).
     intros; logical_simplify. reflexivity.
   Qed.
 End LogicalSimplifyTests.
