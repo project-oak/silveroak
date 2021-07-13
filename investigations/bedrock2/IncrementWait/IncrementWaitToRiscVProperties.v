@@ -84,17 +84,22 @@ Lemma exec_put_wait_get fs input output_placeholder R
        (fun t' m' _ _ => post_main input output_placeholder R t' m').
 Proof.
   intros. apply sound_cmd; [ assumption | ].
-  epose proof (main_correct _ _ _ _ _ _ _ _ _) as P.
-  match goal with
-  | |- ?G => let T := type of P in replace G with T
-  end.
-  1: exact P.
-  cbn.
-  reflexivity.
-  Unshelve.
+  assert (main_correct': forall
+      fs input output_placeholder
+      R (t : @trace semantics_parameters) m l,
+  (scalar (word.of_Z input_ptr) input
+   * scalar (word.of_Z output_ptr) output_placeholder
+   * R)%sep m ->
+  execution (p := state_machine_parameters) t IDLE ->
+  WeakestPrecondition.cmd
+    (WeakestPrecondition.call (main :: put_wait_get :: fs))
+    main_body t m l
+    (fun t' m' _ => post_main input output_placeholder R t' m')). {
+    eapply main_correct. (* relying on conversion to prepend `main` to list of functions *)
+  }
+  eapply main_correct'.
   all: eauto.
-  all: fail.
-Admitted. (* long Qed because a lot of unfolding is needed to see that main is never called *)
+Qed.
 
 (* Location in the instructions that marks the start of the [main] routine *)
 Definition main_relative_pos : Z.
