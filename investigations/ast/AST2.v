@@ -26,10 +26,6 @@ Inductive type :=
 | Pair : type -> type -> type
 .
 
-Definition type_eq_dec : forall x y : type, {x = y} + {x <> y}.
-  decide equality.
-Defined.
-
 Fixpoint denote_type (t: type) :=
   match t with
   | Unit => unit
@@ -167,7 +163,6 @@ Delimit Scope expr_scope with expr.
 Notation "{{ x }}" := (x)%expr  (at level 1, x custom expr at level 99).
 Notation "f x" := (App f x) (in custom expr at level 3, left associativity) : expr_scope.
 Notation "x" := (Var x) (in custom expr, x ident) : expr_scope.
-(* Notation "( x )" := x (in custom expr, x at level 4) : expr_scope. *)
 Notation "[[ x ]]" := (x)(in custom expr at level 2, x constr at level 99) : expr_scope.
 Notation "'fun' x .. y => e" := ( (Abs (fun x => .. (Abs (fun y => e)) ..) )%expr
  ) (in custom expr at level 1, x binder, y binder, e custom expr at level 1) : expr_scope.
@@ -179,11 +174,11 @@ Notation "'let/delay' x := a 'initially' v 'in' b" := (LetDelay v (fun x => a) (
 Notation "'delay' x 'initially' v" := (App (Delay v) x)
   (in custom expr at level 1, x at level 4, v constr at level 7) : expr_scope.
 
+(* Custom entry means we either need to add primitives as explicit notation or
+ * provide escaping *)
 Notation "'addmod' v" := (AddMod v)
   (in custom expr at level 1, v constr at level 7) : expr_scope.
 
-(* Notation "( x , y , .. , z )" := (pair .. (pair x y : denote_type (_*_)) .. z: denote_type (_*_)) *)
-(*   (in custom expr, x at level 4, y at level 4, z at level 4) : expr_scope. *)
 Notation "( x , y )" := (App (App MakeTuple x) y)
   (in custom expr, x at level 4, y at level 4) : expr_scope.
 
@@ -198,10 +193,14 @@ Section Var.
     fun a => (a, a)
   }}.
 
+  (* I've used 'initially' to separate initial values that aren't part of the
+   * bind/app phoas structure. e.g.*)
+  (* delay _ initialy _ *)
+  (* (self referenceing binder equivalent to loop) =*)
+  (* let/delay _ := _ initialy _ *)
   Definition fibonacci {sz: nat}: Circuit (Nat ** Nat) [] Nat := {{
     let/delay r1 :=
-      let r2 :=
-        delay r1 initially (2^sz-1:denote_type Nat) in
+      let r2 := delay r1 initially (2^sz-1:denote_type Nat) in
       addmod sz r1 r2
       initially (1:denote_type Nat) in
     r1
