@@ -8,14 +8,22 @@
 # ./meson_init.sh
 # fusesoc --cores-root . run --flag=fileset_top --target=sim --setup --build lowrisc:systems:chip_earlgrey_verilator # "top" has been renamed to "chip"
 #
-set -eux
+set -eu
+
+if [ $# -eq 0 ]
+then
+	echo "Provide the name of the driver (e.g., uart) to test"
+	exit
+fi
+
+DEVICE_NAME=$1
 
 # this script lives in silveroak/investigations/bedrock2, so we can rely on ${BASH_SOURCE[0]} to find that directory
 BEDROCK2_EXPERIMENTS="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 make -C $BEDROCK2_EXPERIMENTS
 
-cp $BEDROCK2_EXPERIMENTS/hmac.c.out sw/device/silicon_creator/lib/drivers/hmac.c
+cp $BEDROCK2_EXPERIMENTS/${DEVICE_NAME}.c.out sw/device/silicon_creator/lib/drivers/${DEVICE_NAME}.c
 
 ninja -C build-out all
 
@@ -23,7 +31,16 @@ ninja -C build-out all
 ninja -C build-out test
 
 # functional test:
+# skip if functional test does not exist
+FUNCTEST=build-bin/sw/device/silicon_creator/testing/sw_silicon_creator_lib_driver_${DEVICE_NAME}_functest_sim_verilator.elf
+
+if [ ! -f ${FUNCTEST} ]
+then
+	echo "No functional test for ${DEVICE_NAME}. Skipping"
+	exit
+fi
+
 build/lowrisc_systems_chip_earlgrey_verilator_0.1/sim-verilator/Vchip_earlgrey_verilator \
     --meminit=rom,build-bin/sw/device/boot_rom/boot_rom_sim_verilator.scr.40.vmem \
     --meminit=otp,build-bin/sw/device/otp_img/otp_img_sim_verilator.vmem \
-    --meminit=flash,build-bin/sw/device/silicon_creator/testing/sw_silicon_creator_lib_driver_hmac_functest_sim_verilator.elf
+    --meminit=flash,${FUNCTEST}
