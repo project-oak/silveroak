@@ -3,6 +3,7 @@ Require Import Coq.micromega.Lia.
 Require Import Coq.Lists.List.
 Require Import Coq.Numbers.DecimalString.
 Require Import bedrock2.Syntax bedrock2.Semantics.
+Require Import bedrock2.ZnWords.
 Require coqutil.Datatypes.String coqutil.Map.SortedList.
 Require coqutil.Map.SortedListString coqutil.Map.SortedListWord.
 Require Import coqutil.Map.Interface.
@@ -60,6 +61,12 @@ Section WithParameters.
     | VALUE => word.of_Z VALUE_ADDR
     | STATUS => word.of_Z STATUS_ADDR
     end.
+
+  Lemma reg_addrs_unique r1 r2 : reg_addr r1 = reg_addr r2 -> r1 = r2.
+  Proof.
+    destruct r1, r2; cbv [reg_addr]; intros; try reflexivity;
+      exfalso; unfold VALUE_ADDR, STATUS_ADDR, INCR_BASE_ADDR in *; ZnWords.
+  Qed.
 
   Definition status_flag (s : state) : word :=
     match s with
@@ -128,12 +135,14 @@ Section WithParameters.
       try exact _;
       repeat match goal with
              | H: _ /\ _ |- _ => destruct H
+             | r: Register |- _ =>
+               destruct r; cbn [reg_addr] in *; unfold VALUE_ADDR, STATUS_ADDR, INCR_BASE_ADDR in *
              end;
-      subst.
-  Admitted. (*
-      eauto using reg_addrs_unique with zarith.
-      try ZnWords.
-  Qed. *)
+      subst;
+      eauto.
+    all: try ZnWords.
+    all: exfalso; ZnWords.
+  Qed.
 
   (* COPY-PASTE this *)
   Add Ring wring : (Properties.word.ring_theory (word := Semantics.word))
