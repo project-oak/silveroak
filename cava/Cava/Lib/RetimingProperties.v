@@ -47,6 +47,67 @@ All should be based on phase_retimed!
 
  *)
 
+Lemma split_delay {t1 t2} (r1 : value t1) (r2 : value t2) :
+  cequiv (DelayInit (t:=t1*t2) (r1, r2)) (Par (DelayInit r1) (DelayInit r2)).
+Proof.
+  exists eq. ssplit; [ solve_is_total | reflexivity | ].
+  cbn [value circuit_state Par].
+  intros; subst; destruct_products. ssplit; reflexivity.
+Qed.
+
+(* This admit is not provable! *)
+Lemma Comb_invertible {i o} (f : value i -> cava (value o)) x :
+  exists y, f y = x.
+Admitted.
+
+Lemma move_delay {i o} (c : Circuit i o) r :
+  is_loop_free c = true ->
+  cequiv (DelayInit r >==> c)
+         (chreset c (fst (step c (reset_state c) r))
+                  >==> DelayInit (snd (step c (reset_state c) r))).
+Proof.
+  revert r; induction c; intros.
+  { (* Comb case *)
+    eexists.
+    Unshelve. 2:cbn.
+    exists (fun s1 s2 => snd s2 = c (fst s1)).
+    cbn [value circuit_state reset_state chreset step fst snd]. simpl_ident.
+    ssplit.
+    { split; [ solve_is_total | ].
+      intros; destruct_products; cbn[fst snd] in *; logical_simplify.
+      lazymatch goal with |- context [?x = c _] => pose proof (Comb_invertible c x) end.
+      logical_simplify; subst; eexists_destruct; cbn [fst snd]; eauto. }
+    { reflexivity. }
+    { intros; logical_simplify. destruct_products; cbn [fst snd] in *; subst.
+      ssplit; reflexivity. } }
+  { (* Compose case *)
+    cbn [is_loop_free] in *.
+    lazymatch goal with H : (_ && _)%bool = true |- _ => apply Bool.andb_true_iff in H end.
+    logical_simplify. autorewrite with circuitsimpl.
+    rewrite IHc1 by auto. rewrite <-(Compose_assoc _ _ c2).
+    rewrite IHc2 by auto. autorewrite with circuitsimpl.
+    cbn [step reset_state fst snd]. reflexivity. }
+  { (* First case *)
+    cbn [is_loop_free value] in *. destruct_products.
+    cbn [reset_state fst snd step]. rewrite !split_delay.
+    cbv [Par]. rewrite First_Second_comm.
+    rewrite <-(Compose_assoc _ _ (First c)), <-First_Compose.
+    rewrite IHc by auto.
+    autorewrite with circuitsimpl; reflexivity. }
+  { (* Second case *)
+    cbn [is_loop_free value] in *. destruct_products.
+    cbn [reset_state fst snd step]. rewrite !split_delay.
+    cbv [Par]. autorewrite with circuitsimpl.
+    rewrite <-(Compose_assoc _ _ (Second c)). rewrite <-Second_Compose.
+    rewrite IHc by auto. cbn [chreset].
+    autorewrite with circuitsimpl; reflexivity. }
+  { (* LoopInitCE case *)
+    cbn [is_loop_free] in *. discriminate. }
+  { (* DelayInit case *)
+    reflexivity. }
+Qed.
+
+(*
 Fixpoint get_ndelays {t r} : value (circuit_state (ndelays (t:=t) r)) -> list (value t) :=
   match r with
   | [] => fun _ => []
@@ -85,69 +146,6 @@ Proof.
   intros; subst; destruct_products. ssplit; reflexivity.
 Qed.
 
-Lemma move_delay {i o} (c : Circuit i o) r :
-  is_loop_free c = true ->
-  cequiv (DelayInit r >==> c) (c >==> DelayInit (snd (step c (reset_state c) r))).
-Proof.
-  revert r; induction c; intros.
-  { (* Comb case *)
-    exists (fun s1 s2 => snd s2 = c (fst s1)).
-    cbn [value circuit_state reset_state step fst snd].
-    ssplit; [ reflexivity | ].
-    intros. destruct_products. cbn [fst snd] in *.
-    ssplit; congruence. }
-  { (* Compose case *)
-    cbn [is_loop_free] in *.
-    lazymatch goal with H : (_ && _)%bool = true |- _ => apply Bool.andb_true_iff in H end.
-    logical_simplify. autorewrite with circuitsimpl.
-    rewrite IHc1 by auto. rewrite <-(Compose_assoc _ _ c2).
-    rewrite IHc2 by auto. autorewrite with circuitsimpl.
-    cbn [step reset_state fst snd]. reflexivity. }
-  { (* First case *)
-    cbn [is_loop_free value] in *. destruct_products.
-    cbn [reset_state fst snd step]. rewrite !split_delay.
-    cbv [Par]. rewrite First_Second_comm.
-    rewrite <-(Compose_assoc _ _ (First c)), <-First_Compose.
-    rewrite IHc by auto.
-    autorewrite with circuitsimpl; reflexivity. }
-  { (* Second case *)
-    cbn [is_loop_free value] in *. destruct_products.
-    cbn [reset_state fst snd step]. rewrite !split_delay.
-    cbv [Par]. autorewrite with circuitsimpl.
-    rewrite <-(Compose_assoc _ _ (Second c)). rewrite <-Second_Compose.
-    rewrite IHc by auto.
-    autorewrite with circuitsimpl; reflexivity. }
-  { (* LoopInitCE case *)
-    cbn [is_loop_free] in *. discriminate. }
-  { (* DelayInit case *)
-    cbn [reset_state step fst snd].
-
-
-
-                 
-  intros.
-  exists (fun s1 s2 =>
-       step c (snd s1) (get_delays (fst s1)) = (fst s2, get_delays (snd s2))).
-  cbn [value circuit_state reset_state fst snd]. ssplit.
-  { rewrite !reset_delays.
-    eexists.
-    Unshelve. 2:cbn.
-
-    2:exact (fun s1 s2 =>
-         step c (snd s1) (get_delays (fst s1)) = (fst s2, get_delays (snd s2))).
-    
-  revert r; induction c; intros.
-  { cbn [reset_state step fst snd].
-    eexists.
-    Unshelve. 2:cbn.
-    exists (fun s1 s2 => s1 = 
-
-
-  
-  intros. cbv [cequiv].
-  cbn [circuit_state value delays reset_state].
-Qed.
-
 Lemma split_ndelays {t1 t2} n :
   wequiv (ndelays (t:=t1 * t2) n) (Par (ndelays n) (ndelays n)).
 Admitted.
@@ -166,50 +164,49 @@ Lemma delayn_input {i o} n m (c1 c2 : Circuit i o) :
   phase_retimed n 0 c1 (ndelays m >==> c2) ->
   phase_retimed n m c1 c2.
 Admitted.
+ *)
 
-Lemma Par_Id_l_w {i o t} (f : Circuit i o) : wequiv (Par f (Id (t:=t))) (First f).
-Proof. cbv [Par]. autorewrite with circuitsimplw. reflexivity. Qed.
-Hint Rewrite @Par_Id_l_w using solve [eauto] : circuitsimplw.
+Lemma Par_Id_l {i o t} (f : Circuit i o) : cequiv (Par f (Id (t:=t))) (First f).
+Proof. cbv [Par]. autorewrite with circuitsimpl. reflexivity. Qed.
+Hint Rewrite @Par_Id_l using solve [eauto] : circuitsimpl.
 
-Lemma Par_Id_r_w {i o t} (f : Circuit i o) : wequiv (Par (Id (t:=t)) f) (Second f).
-Proof. cbv [Par]. autorewrite with circuitsimplw. reflexivity. Qed.
-Hint Rewrite @Par_Id_r_w using solve [eauto] : circuitsimplw.
+Lemma Par_Id_r {i o t} (f : Circuit i o) : cequiv (Par (Id (t:=t)) f) (Second f).
+Proof. cbv [Par]. autorewrite with circuitsimpl. reflexivity. Qed.
+Hint Rewrite @Par_Id_r using solve [eauto] : circuitsimpl.
 
-Lemma Second_Comb_w {i o t} f :
-  wequiv (Second (Comb f)) (Comb (i:=t*i) (o:=t*o) (fun x => (fst x, f (snd x)))).
+Print Cava.
+Lemma Second_Comb {i o t} f :
+  cequiv (Second (Comb f)) (Comb (i:=t*i) (o:=t*o) (fun x => (fst x, f (snd x)))).
 Proof.
-  cbv [wequiv]. cbn. ssplit; intros; [ reflexivity | ].
+  cbv [cequiv]. cbn. ssplit; intros; [ solve_is_total | reflexivity | ].
   exists (fun i _ _ => i = 0); ssplit; intros; cbn [step fst snd]; try tauto; lia.
 Qed.
-Hint Rewrite @Second_Comb_w using solve [eauto] : pull_comb.
+Hint Rewrite @Second_Comb using solve [eauto] : pull_comb.
 
-Lemma First_Comb_w {i o t} f :
-  wequiv (First (Comb f)) (Comb (i:=i*t) (o:=o*t) (fun x => (f (fst x), snd x))).
+Lemma First_Comb {i o t} f :
+  cequiv (First (Comb f)) (Comb (i:=i*t) (o:=o*t) (fun x => (f (fst x), snd x))).
 Proof.
-  cbv [wequiv]. cbn. ssplit; intros; [ reflexivity | ].
+  cbv [cequiv]. cbn. ssplit; intros; [ reflexivity | ].
   exists (fun i _ _ => i = 0); ssplit; intros; cbn [step fst snd]; try tauto; lia.
 Qed.
-Hint Rewrite @First_Comb_w using solve [eauto] : pull_comb.
+Hint Rewrite @First_Comb using solve [eauto] : pull_comb.
 
-Lemma Compose_Comb_w {i t o} f g :
-  wequiv (@Compose _ _ i t o (Comb f) (Comb g)) (Comb (f >=> g)).
+Lemma Compose_Comb {i t o} f g :
+  cequiv (@Compose _ _ i t o (Comb f) (Comb g)) (Comb (f >=> g)).
 Proof.
-  cbv [wequiv]. cbn. ssplit; intros; [ reflexivity | ].
+  cbv [cequiv]. cbn. ssplit; intros; [ reflexivity | ].
   exists (fun i _ _ => i = 0); ssplit; intros; cbn [step fst snd]; try tauto; lia.
 Qed.
-Hint Rewrite @Compose_Comb_w using solve [eauto] : pull_comb.
+Hint Rewrite @Compose_Comb using solve [eauto] : pull_comb.
 
-Lemma Compose_Comb_r_w {i t1 t2 o} c f g :
-  wequiv (@Compose _ _ i t2 o (@Compose _ _ i t1 t2 c (Comb f)) (Comb g))
+Lemma Compose_Comb_r {i t1 t2 o} c f g :
+  cequiv (@Compose _ _ i t2 o (@Compose _ _ i t1 t2 c (Comb f)) (Comb g))
          (c >==> Comb (f >=> g)).
 Proof.
-  rewrite <-Compose_Comb_w. autorewrite with circuitsimplw. reflexivity.
+  rewrite <-Compose_Comb. autorewrite with circuitsimpl. reflexivity.
 Qed.
-Hint Rewrite @Compose_Comb_r_w using solve [eauto] : pull_comb.
+Hint Rewrite @Compose_Comb_r using solve [eauto] : pull_comb.
 
-Lemma First_Second_comm {i1 i2 o1 o2} (c1 : Circuit i1 o1) (c2 : Circuit i2 o2) :
-  wequiv (First c1 >==> Second c2) (Second c2 >==> First c1).
-Admitted.
 
 Lemma delays_Comb_comm {i o} (f : value i -> cava (value o)) :
   wequiv (delays >==> Comb f) (Comb f >==> delays).
