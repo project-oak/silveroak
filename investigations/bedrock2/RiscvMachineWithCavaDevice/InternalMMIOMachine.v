@@ -1,5 +1,6 @@
 (* based on riscv.Platform.Minimal *)
 Require Import Coq.ZArith.ZArith.
+Require Import Coq.Bool.Bvector.
 Require Import Coq.Lists.List.
 Require Import Coq.Logic.FunctionalExtensionality.
 Require Import Coq.Logic.PropExtensionality.
@@ -20,7 +21,7 @@ Import ListNotations.
 
 Module device.
   (* A deterministic device, to be instantiated with a Cava device *)
-  Class device{word: word.word 32} := {
+  Class device := {
     (* circuit state, will be instantiated with result of Cava.Core.Circuit.circuit_state *)
     state: Type;
 
@@ -28,29 +29,18 @@ Module device.
     reset_state: state;
 
     (* run one simulation step, will be instantiated with Cava.Semantics.Combinational.step *)
-    run1: state -> state;
+    run1: (* input: current state, is_read_req, is_write_req, req_addr, req_value *)
+      state -> bool * bool * Bvector 32 * Bvector 32 ->
+      (* output: next state, is_resp, resp *)
+      state * (bool * Bvector 32);
 
     (* lowest address of the MMIO address range used to communicate with this device *)
-    addr_range_start: word;
+    addr_range_start: Z;
 
     (* one past the highest MMIO address *)
-    addr_range_pastend: word;
+    addr_range_pastend: Z;
 
-    (* make an read request *)
-    readReq(num_bytes: nat)(addr: word): state -> state;
-
-    (* poll whether the previous read request has been answered, if None,
-       we'll have to wait, ie call run1 again and again until we get Some *)
-    readResp: state -> option word;
-
-    (* make a write request *)
-    writeReq(num_bytes: nat)(addr value: word): state -> state;
-
-    (* poll whether the previous write request has been answered *)
-    writeResp: state -> option unit;
-
-    (* max number of device cycles (ie calls of run1) this device takes to
-       serve read/write requests, could be 0 *)
+    (* max number of device cycles (ie calls of run1) this device takes to serve read/write requests *)
     maxRespDelay: nat;
   }.
   (* Note: there are two levels of "polling until a response is available":
@@ -107,25 +97,33 @@ Section WithParams.
     | None => fail_hard
     end.
 
-  Definition waitFor{T: Type}(resp: D -> option T): nat -> OState (ExtraRiscvMachine D) T :=
-    fix rec fuel :=
+  Definition bv_to_word(v: Bvector 32): word :=
+    word.of_Z (Z.of_N (Ndigits.Bv2N v)).
+
+  Definition word_to_bv(w: word): Bvector 32 :=
+    Ndigits.N2Bv_sized 32 (Z.to_N (word.unsigned w)).
+
+  Definition runUntilResp(is_read_req is_write_req: bool)(req_addr req_value: word) :=
+    let req_addr := word_to_bv req_addr in
+    let req_value := word_to_bv req_value in
+    fix rec(fuel: nat): OState (ExtraRiscvMachine D) word :=
       mach <- get;
-      match resp mach.(getExtraState) with
-      | Some t => Return t
-      | None => match fuel with
-                | O => fail_hard
-                | S fuel' => updateExtra device.run1;; rec fuel'
-                end
-      end.
+      let '(next, (is_resp, resp)) :=
+          device.run1 mach.(getExtraState) (is_read_req, is_write_req, req_addr, req_value) in
+      put (withExtraState next mach);;
+      if is_resp then Return (bv_to_word resp) else
+        match fuel with
+        | O => fail_hard
+        | S fuel' => rec fuel'
+        end.
 
   Definition mmioLoad(n: nat)(addr: word): OState (ExtraRiscvMachine D) (HList.tuple byte n) :=
-    updateExtra (device.readReq n addr);;
-    v <- waitFor device.readResp device.maxRespDelay;
+    v <- runUntilResp true false addr (word.of_Z 0) device.maxRespDelay;
     Return (LittleEndian.split n (word.unsigned v)).
 
   Definition mmioStore(n: nat)(addr: word)(v: HList.tuple byte n): OState (ExtraRiscvMachine D) unit :=
-    updateExtra (device.writeReq n addr (word.of_Z (LittleEndian.combine n v)));;
-    waitFor device.writeResp device.maxRespDelay.
+    ignored <- runUntilResp false true addr (word.of_Z (LittleEndian.combine n v)) device.maxRespDelay;
+    Return tt.
 
   Definition loadN(n: nat)(kind: SourceType)(a: word):
     OState (ExtraRiscvMachine D) (HList.tuple byte n) :=
@@ -136,8 +134,8 @@ Section WithParams.
       | Fetch => if isXAddr4B a mach.(getMachine).(getXAddrs) then Return v else fail_hard
       | _ => Return v
       end
-    | None => if word.leu device.addr_range_start a
-                 && word.leu (word.add a (word.of_Z (Z.of_nat n))) device.addr_range_pastend
+    | None => if (device.addr_range_start <=? word.unsigned a) &&
+                 (word.unsigned a + Z.of_nat n <=? device.addr_range_pastend)
               then mmioLoad n a
               else fail_hard
     end.
@@ -146,8 +144,8 @@ Section WithParams.
     mach <- get;
     match Memory.store_bytes n mach.(getMachine).(getMem) a v with
     | Some m => update (withMem m)
-    | None => if word.leu device.addr_range_start a
-                 && word.leu (word.add a (word.of_Z (Z.of_nat n))) device.addr_range_pastend
+    | None => if (device.addr_range_start <=? word.unsigned a) &&
+                 (word.unsigned a + Z.of_nat n <=? device.addr_range_pastend)
               then mmioStore n a v
               else fail_hard
     end;;
@@ -207,10 +205,13 @@ Section WithParams.
       endCycleEarly{A: Type} := fail_hard;
   }.
 
+  Definition device_step_without_IO(d: D): D :=
+    fst (device.run1 d (false, false, word_to_bv (word.of_Z 0), word_to_bv (word.of_Z 0))).
+
   Fixpoint device_steps(n: nat): OState (ExtraRiscvMachine D) unit :=
     match n with
     | O => Return tt
-    | S n' => updateExtra device.run1;; device_steps n'
+    | S n' => updateExtra device_step_without_IO;; device_steps n'
     end.
 
   (* In the time that the riscv core needs to execute the i-th instruction, how many

@@ -116,7 +116,7 @@ Section WithParams.
     forall r : Z, 0 < r < 32 -> exists v : word, map.get regs r = Some v.
 
   Definition mmioAddrs: word -> Prop := fun a =>
-    word.unsigned device.addr_range_start <= word.unsigned a < word.unsigned device.addr_range_pastend.
+    device.addr_range_start <= word.unsigned a < device.addr_range_pastend.
 
   Hypothesis mmioAddrs_match: sameset StateMachineSemantics.parameters.isMMIOAddr mmioAddrs.
 

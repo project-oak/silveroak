@@ -48,11 +48,7 @@ Proof.
             _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
     try eassumption.
   { exact IncrementWaitSemantics.state_machine_parameters_ok. }
-  { unfold sameset, subset, elem_of, StateMachineSemantics.parameters.isMMIOAddr, mmioAddrs,
-           IncrementWaitSemantics.state_machine_parameters,
-           device.addr_range_start, device.addr_range_pastend, counter_device.
-    rewrite !word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
-    eauto. }
+  { apply sameset_ref. }
   { exact funcs_valid. }
   { apply List.dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec). reflexivity. }
   { exact put_wait_get_compile_result_eq. }
