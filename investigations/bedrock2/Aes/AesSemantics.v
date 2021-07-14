@@ -533,11 +533,12 @@ Section WithParameters.
     : StateMachineSemantics.parameters 32 word mem :=
     {| StateMachineSemantics.parameters.state := state ;
        StateMachineSemantics.parameters.register := Register ;
-       StateMachineSemantics.parameters.initial_state := UNINITIALIZED ;
+       StateMachineSemantics.parameters.is_initial_state := eq UNINITIALIZED ;
        StateMachineSemantics.parameters.read_step := read_step ;
        StateMachineSemantics.parameters.write_step := write_step ;
        StateMachineSemantics.parameters.reg_addr := reg_addr ;
-       StateMachineSemantics.parameters.all_regs := all_regs;
+       StateMachineSemantics.parameters.is_reg_addr a :=
+         List.Exists (fun r => a = reg_addr r) all_regs;
     |}.
 
   Global Instance state_machine_parameters_ok
@@ -548,9 +549,16 @@ Section WithParameters.
     { exact word_ok. }
     { exact mem_ok. }
     { exact reg_addr_unique. }
-    { exact all_regs_complete. }
-    { exact reg_addr_aligned. }
-    { exact reg_addr_small. }
+    { unfold parameters.is_reg_addr. cbn. intros.
+      eapply Exists_exists in H. destruct H as (r & rI & ?). subst a.
+      eapply reg_addr_aligned. }
+    { unfold parameters.is_reg_addr. cbn. intros.
+      eapply Exists_exists in H. destruct H as (r & rI & ?). subst a.
+      eapply reg_addr_small. }
+    { unfold parameters.is_reg_addr. cbn. intros.
+      eapply Exists_exists. eauto using all_regs_complete. }
+    { unfold parameters.is_reg_addr. cbn. intros.
+      eapply Exists_exists. eauto using all_regs_complete. }
   Defined.
 
 End WithParameters.

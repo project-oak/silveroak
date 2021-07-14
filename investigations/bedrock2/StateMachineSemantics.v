@@ -16,11 +16,11 @@ Module parameters.
         {mem : Interface.map.map word Byte.byte} :=
     { state : Type;
       register : Type;
-      initial_state : state;
+      is_initial_state : state -> Prop;
       read_step : state -> register -> word -> state -> Prop;
       write_step : state -> register -> word -> state -> Prop;
       reg_addr : register -> word;
-      all_regs : list register;
+      is_reg_addr : word -> Prop;
     }.
   Global Arguments parameters : clear implicits.
 
@@ -29,11 +29,12 @@ Module parameters.
       word_ok : word.ok word; (* for impl of mem below *)
       mem_ok : Interface.map.ok mem; (* for impl of mem below *)
       reg_addr_unique : forall r1 r2, reg_addr r1 = reg_addr r2 -> r1 = r2;
-      all_regs_complete : forall r, List.In r all_regs;
       reg_addrs_aligned :
-        forall r, word.unsigned (reg_addr r) mod (bytes_per_word width) = 0;
+        forall a, is_reg_addr a -> word.unsigned a mod (bytes_per_word width) = 0;
       reg_addrs_small :
-        forall r, word.unsigned (reg_addr r) + bytes_per_word width <= 2 ^ width;
+        forall a, is_reg_addr a -> word.unsigned a + bytes_per_word width <= 2 ^ width;
+      read_step_is_reg_addr : forall s a v s', read_step s a v s' -> is_reg_addr (reg_addr a);
+      write_step_is_reg_addr : forall s a v s', write_step s a v s' -> is_reg_addr (reg_addr a);
     }.
 End parameters.
 Notation parameters := parameters.parameters.
@@ -70,7 +71,7 @@ Section WithParameters.
      trace *)
   Fixpoint execution (t : bedrock2_trace) (s : state) : Prop :=
     match t with
-    | [] => s = initial_state
+    | [] => is_initial_state s
     | (_,action,args,(_,rets)) :: t =>
       exists prev_state,
       execution t prev_state
