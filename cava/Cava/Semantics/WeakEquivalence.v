@@ -28,162 +28,127 @@ Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Import Circuit.Notations.
 
-(*
-(* Circuit equivalence relation that stipulates an equal output after n timesteps *)
-Definition cequivn {i o} (n : nat) (c1 c2 : Circuit i o) : Prop :=
-  (* there exists some relation between the circuit states and a counter... *)
-  exists (R : nat -> value (circuit_state c1) -> value (circuit_state c2) -> Prop),
-    (* ...and after an equal input, R holds with a full counter (if n=0, then
-       the output is also equal) *)
-    (forall s1 s2 v, R n (fst (step c1 s1 v)) (fst (step c2 s2 v)))
-    (* ...and if n happens to be 0, then the outputs are equal on equal input *)
-    /\ (n = 0 -> forall s1 s2 v, snd (step c1 s1 v) = snd (step c2 s2 v))
-    (* ...and if the relation holds for a one counter, outputs are equal
-       regardless of input *)
-    /\ (forall s1 s2 v1 v2, R 1 s1 s2 -> snd (step c1 s1 v1) = snd (step c2 s2 v2))
-    (* ...and if the relation holds for a nonzero counter, it holds on new
-       states with a decremented counter regardless of input *)
-    /\ (forall m s1 s2 v1 v2,
-          0 < m ->
-          R (S m) s1 s2 ->
-          R m (fst (step c1 s1 v1)) (fst (step c2 s2 v2))).
+(* Change the reset state of a circuit *)
+Fixpoint chreset {i o} (c : Circuit i o) : @value combType (circuit_state c) -> Circuit i o :=
+  match c with
+  | Comb f => fun _ => Comb f
+  | Compose f g => fun r => Compose (chreset f (fst r)) (chreset g (snd r))
+  | First f => fun r => First (chreset f r)
+  | Second f => fun r => Second (chreset f r)
+  | LoopInitCE _ body => fun r => LoopInitCE (snd r) (chreset body (fst r))
+  | DelayInit _ => DelayInit
+  end.
 
+(* This is the identity function because it's always the case that circuit_state
+   (chreset c r) = circuit_state c, but the explicit conversion helps with
+   typechecking *)
+Fixpoint from_chreset_state {i o} {c : Circuit i o} {struct c}
+  : forall {r}, @value combType (circuit_state (chreset c r)) -> @value combType (circuit_state c) :=
+  match c with
+  | Comb f => fun _ x => x
+  | Compose f g =>
+    fun (r : value (circuit_state f) * value (circuit_state g))
+      (x : value (circuit_state (chreset f (fst r))) * value (circuit_state (chreset g (snd r)))) =>
+      (from_chreset_state (fst x), from_chreset_state (snd x))
+  | First f => fun _ => from_chreset_state (c:=f)
+  | Second f => fun _ => from_chreset_state (c:=f)
+  | LoopInitCE _ body =>
+    fun (r : value (circuit_state body) * value _)
+      (x : value (circuit_state (chreset body (fst r))) * value _) =>
+      (from_chreset_state (fst x), snd x)
+  | DelayInit _ => fun r x => x
+  end.
 
-Lemma cequivn_compose {i t o} n m (a b : Circuit i t) (c d : Circuit t o) :
-  cequivn n a b -> cequivn m c d -> cequivn (n + m) (a >==> c) (b >==> d).
+(* This is the identity function because it's always the case that circuit_state
+   (chreset c r) = circuit_state c, but the explicit conversion helps with
+   typechecking *)
+Fixpoint to_chreset_state {i o} {c : Circuit i o} {struct c}
+  : forall {r}, @value combType (circuit_state c) -> @value combType (circuit_state (chreset c r)) :=
+  match c with
+  | Comb f => fun _ x => x
+  | Compose f g =>
+    fun (r x : value (circuit_state f) * value (circuit_state g)) =>
+      (to_chreset_state (fst x), to_chreset_state (snd x))
+  | First f => fun _ => to_chreset_state (c:=f)
+  | Second f => fun _ => to_chreset_state (c:=f)
+  | LoopInitCE _ body =>
+    fun (r x : value (circuit_state body) * value _) => (to_chreset_state (fst x), snd x)
+  | DelayInit _ => fun r x => x
+  end.
+
+Lemma to_from_chreset_state {i o} (c : Circuit i o) r v:
+  to_chreset_state (from_chreset_state (c:=c) (r:=r) v) = v.
 Proof.
-  intros [Rab [Hab1 [Hab2 [Hab3 Hab4]]]].
-  intros [Rcd [Hcd1 [Hcd2 [Hcd3 Hcd4]]]].
-  exists (fun i s1 s2 =>
-       (m < i -> Rab (i - m) (fst s1) (fst s2))
-       /\ (i <= m -> Rcd i (snd s1) (snd s2))).
-  cbn [value circuit_state].
-  ssplit; intros; destruct_products; cbn [fst snd step] in *;
-    repeat
-      lazymatch goal with
-      | H : ?x + ?y <= ?y |- _ =>
-        destruct x; [ | lia ]; autorewrite with natsimpl in *
-      | H : ?x < 1 |- _ =>
-        destruct x; [ clear H | lia ]; autorewrite with natsimpl in *
-      | H1 : ?y < ?x -> _, H2 : ?x <= ?y -> _ |- _ =>
-        destr (x <=? y); [ specialize (H2 ltac:(lia)); clear H1
-                         | specialize (H1 ltac:(lia)); clear H2 ]
-      | H : Rab 1 ?s1 ?s2 |- context [step a ?s1] => erewrite Hab3 by eassumption
-      | H1 : ?x <= ?y, H2 : ?y < S ?x |- _ =>
-        assert (x = y) by lia; subst; clear H1
-      | _ => first
-              [ progress (ssplit; intros)
-              | erewrite Hab2 by lia
-              | apply Hcd2; lia
-              | apply Hab4; [ lia | solve [auto] ]
-              | solve [auto]
-              | lia
-              | rewrite Nat.sub_succ_l in * by lia
-              | progress autorewrite with natsimpl in * ]
-      end.
+  induction c;
+    cbn [to_chreset_state from_chreset_state value chreset circuit_state fst snd] in *.
+  all: destruct_products; cbn [fst snd] in *; congruence || (f_equal; congruence).
 Qed.
 
-Lemma cequivn_delays {t} (r1 r2 : value t) : cequivn 1 (DelayInit r1) (DelayInit r2).
+Lemma from_to_chreset_state {i o} (c : Circuit i o) r v:
+  from_chreset_state (to_chreset_state (c:=c) (r:=r) v) = v.
 Proof.
-  exists (fun i s1 s2 => i <= 1 /\ s1 = s2). cbn [value step circuit_state].
-  ssplit; intros; logical_simplify; subst; ssplit; try reflexivity; lia.
+  induction c;
+    cbn [to_chreset_state from_chreset_state value chreset circuit_state fst snd] in *.
+  all: destruct_products; cbn [fst snd] in *; congruence || (f_equal; congruence).
 Qed.
 
-Lemma cequivn_comb {i o} (f g : value i -> cava (value o)) :
-  (forall x, f x = g x) -> cequivn 0 (Comb f) (Comb g).
+Lemma chreset_chreset {i o} (c : Circuit i o) r1 r2:
+  chreset (chreset c r1) r2 = chreset c (from_chreset_state r2).
 Proof.
-  intro Hfg. exists (fun i s1 s2 => i = 0). cbn [value step circuit_state].
-  ssplit; intros; logical_simplify; subst; ssplit;
-    repeat lazymatch goal with x : unit |- _ => destruct x end;
-    rewrite ?Hfg; try reflexivity; lia.
+  induction c; cbn [chreset circuit_state from_chreset_state value] in *;
+    repeat match goal with H : _ |- _ => rewrite H end;
+    reflexivity.
 Qed.
 
-Instance Symmetric_cequivn {i o} n : Symmetric (@cequivn i o n) | 10.
+Lemma chreset_noop {i o} (c : Circuit i o) : chreset c (reset_state c) = c.
 Proof.
-  intros x y [R ?]. logical_simplify. exists (fun i sx sy => R i sy sx).
-  ssplit; intros; auto; symmetry; auto.
+  induction c; cbn [chreset circuit_state reset_state value fst snd] in *;
+    repeat match goal with H : _ |- _ => rewrite H end; reflexivity.
 Qed.
 
-(* Restriction that states a circuit is cequivn-equivalent to itself for some n;
-   that is, the number of delays betweeen the inputs and each of the outputs is
-   the same. This will not include most circuits with loops. *)
-Definition uniformly_timed {i o} n (c : Circuit i o) : Prop := cequivn n c c.
-
-Definition wequiv {i o} (c1 c2 : Circuit i o) : Prop :=
-  (* either both circuits are non-uniformly timed *)
-  ((forall n, ~ uniformly_timed n c1)
-   /\ (forall n, ~ uniformly_timed n c2))
-  (* ...or both are uniformly timed with the same timing, and they are
-     cequivn-equivalent with respect to that timing *)
-  \/ (exists n, uniformly_timed n c1
-          /\ uniformly_timed n c2
-          /\ cequivn n c1 c2).
-
-Instance Reflexive_wequiv {i o} : Reflexive (@wequiv i o) | 10.
+Lemma chreset_reset {i o} (c : Circuit i o) r :
+  reset_state (chreset c r) = to_chreset_state r.
 Proof.
-  repeat intro. cbv [wequiv].
-  (* here's where we need to *decide* if c is uniformly timed or not *)
-
-  (* thing that returns value nat i -> value nat o
-     Compose f g := fun is => match time f is with
-                              | Some ns => utime g ns
-
-   *)
-Qed.
-Instance Symmetric_wequiv {i o} : Symmetric (@wequiv i o) | 10.
-Proof.
-  repeat intro. cbv [wequiv] in *. logical_simplify.
-  symmetry; auto.
-Qed.
-Instance Transitive_wequiv {i o} : Transitive (@wequiv i o) | 10.
-Proof.
-  repeat intro. cbv [wequiv] in *. logical_simplify.
-  (* This relation is not transitive; a non-uniform y could make both preconditions vacuous *)
-  symmetry; auto.
+  induction c; cbn [chreset circuit_state reset_state value fst snd] in *;
+    repeat match goal with H : _ |- _ => rewrite H end; reflexivity.
 Qed.
 
-Print Circuit.
 
-(* Circuits with uniform timing characteristics; all outputs have the same
-   number of delays between them and the circuit inputs *)
-Inductive UCircuit `{semantics:Cava} : nat -> type -> type -> Type :=
-| Comb : forall {i o : type}, (value i -> cava (value o)) -> UCircuit 0 i o
-| Compose : forall {i t o n m}, UCircuit n i t -> UCircuit m t o -> UCircuit (n + m) i o
-| Par : forall {i1 i2 o1 o2 n}, UCircuit n i1 o1 -> UCircuit n i2 o2 -> UCircuit n (i1 * i2) (o1 * o2)
-| LoopInitCE : forall {i o s n}, @value combType s -> UCircuit n (i * s) (o * s) -> UCircuit 0 (i * Bit) o
-| DelayInitCE
-
-
-
-
-(* Circuit equivalence relation that declares the circuits produce equivalent
-   outputs for equivalent inputs after a certain number of delays *)
-Definition wequiv {i o} (c1 c2 : Circuit i o) : Prop :=
-  exists n, cequivn n c1 c2.
-
-Global Instance Transitive_wequiv {i o : type} : Transitive (@wequiv i o) | 10.
-Admitted.
-
-Global Instance Symmetric_wequiv {i o : type} : Symmetric (@wequiv i o) | 10.
-Admitted.
-
-Global Instance Proper_Second {i o t : type} :
-  Proper (@wequiv i o ==> @wequiv (t * i) (t * o)) Second.
-Admitted.
-
-Global Instance Proper_First {i o t : type} :
-  Proper (@wequiv i o ==> @wequiv (i * t) (o * t)) First.
-Admitted.
-
-Global Instance Proper_Compose {i o t : type} :
-  Proper (@wequiv i t ==> @wequiv t o ==> wequiv) Compose.
-Admitted.
-
-Lemma wequiv_delays {t} (r1 r2 : value t) : wequiv (DelayInit r1) (DelayInit r2).
+Lemma step_chreset {i o} (c : Circuit i o) r s input :
+  step (chreset c r) s input
+  = (to_chreset_state (fst (step c (from_chreset_state s) input)),
+     snd (step c (from_chreset_state s) input)).
 Proof.
-  cbv [wequiv]. exists 1. exists (fun i s1 s2 => i <= 1 /\ s1 = s2).
-  cbn [value step circuit_state].
-  ssplit; intros; logical_simplify; subst; ssplit;
-    try reflexivity; lia.
+  induction c;
+    cbn [circuit_state value chreset step fst snd
+                       from_chreset_state to_chreset_state] in *;
+    destruct_products; cbn [fst snd] in *;
+      repeat match goal with H : _ |- _ => rewrite H end;
+      reflexivity.
 Qed.
-*)
+
+Lemma chreset_cequiv {i o} (c1 c2 : Circuit i o) :
+  cequiv c1 c2 -> forall r1, exists r2, cequiv (chreset c1 r1) (chreset c2 r2).
+Proof.
+  intros [R ?] r1. logical_simplify.
+  lazymatch goal with HR : is_total R |- _ =>
+                      pose proof (proj1 HR r1) as [r2 ?] end.
+  logical_simplify. exists r2.
+  exists (fun s1 s2 => R (from_chreset_state s1) (from_chreset_state s2)).
+  ssplit.
+  { lazymatch goal with H : is_total R |- _ =>
+                        destruct H as [Hl Hr] end.
+    cbv [is_total]. ssplit; intro x; [ specialize (Hl (from_chreset_state x))
+                                     | specialize (Hr (from_chreset_state x)) ].
+    all:logical_simplify; eexists (to_chreset_state _);
+      rewrite from_to_chreset_state; eassumption. }
+  { rewrite !chreset_reset, !from_to_chreset_state. eauto. }
+  { intros.
+    lazymatch goal with
+      H : forall _ _ _, R _ _ -> _ |- _ =>
+      specialize (H _ _ ltac:(eassumption) ltac:(eassumption))
+    end. logical_simplify.
+    rewrite !step_chreset; cbn [fst snd].
+    rewrite !from_to_chreset_state.
+    ssplit; eauto. }
+Qed.
