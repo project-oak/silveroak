@@ -126,29 +126,3 @@ Proof.
       repeat match goal with H : _ |- _ => rewrite H end;
       reflexivity.
 Qed.
-
-Lemma chreset_cequiv {i o} (c1 c2 : Circuit i o) :
-  cequiv c1 c2 -> forall r1, exists r2, cequiv (chreset c1 r1) (chreset c2 r2).
-Proof.
-  intros [R ?] r1. logical_simplify.
-  lazymatch goal with HR : is_total R |- _ =>
-                      pose proof (proj1 HR r1) as [r2 ?] end.
-  logical_simplify. exists r2.
-  exists (fun s1 s2 => R (from_chreset_state s1) (from_chreset_state s2)).
-  ssplit.
-  { lazymatch goal with H : is_total R |- _ =>
-                        destruct H as [Hl Hr] end.
-    cbv [is_total]. ssplit; intro x; [ specialize (Hl (from_chreset_state x))
-                                     | specialize (Hr (from_chreset_state x)) ].
-    all:logical_simplify; eexists (to_chreset_state _);
-      rewrite from_to_chreset_state; eassumption. }
-  { rewrite !chreset_reset, !from_to_chreset_state. eauto. }
-  { intros.
-    lazymatch goal with
-      H : forall _ _ _, R _ _ -> _ |- _ =>
-      specialize (H _ _ ltac:(eassumption) ltac:(eassumption))
-    end. logical_simplify.
-    rewrite !step_chreset; cbn [fst snd].
-    rewrite !from_to_chreset_state.
-    ssplit; eauto. }
-Qed.

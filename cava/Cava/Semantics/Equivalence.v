@@ -23,18 +23,12 @@ Require Import Cava.Semantics.Simulation.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 
-(* states that a relation is total *)
-Definition is_total {A B} (R : A -> B -> Prop) : Prop :=
-  (forall a, exists b, R a b) /\ (forall b, exists a, R a b).
-
 (* Circuit equivalence relation *)
 Definition cequiv {i o} (c1 c2 : Circuit i o) : Prop :=
   (* there exists some relation between the circuit states... *)
   exists (R : value (circuit_state c1) -> value (circuit_state c2) -> Prop),
-    (* ...and the relation is total *)
-    is_total R
     (* ...and the reset states are related *)
-    /\ R (reset_state c1) (reset_state c2)
+    R (reset_state c1) (reset_state c2)
     (* ...and if the states are related, stepping each circuit on the same input
          results in the same output as well as new related states *)
     /\ (forall s1 s2 input,
@@ -55,26 +49,6 @@ Ltac eexists_destruct :=
          | |- exists _, _ => eexists
          end.
 
-(* solve is_total side conditions *)
-Ltac solve_is_total :=
-  cbv [is_total] in *; intros; logical_simplify;
-  ssplit; intros;
-  destruct_products; cbn [fst snd] in *;
-  logical_simplify;
-  repeat lazymatch goal with
-         | H : (forall x : ?T, exists _, _), x :?T |- _ =>
-           specialize (H x); logical_simplify
-         end;
-  (* the eexists/eauto might produce shelved existential variables if some
-     pieces of state appear in one circuit's state but not the other's; try to plug
-     in default values for the unused variables, and fail if we can't *)
-  unshelve (eexists_destruct; cbn[fst snd]; (solve [ eauto ]));
-  lazymatch goal with
-  | |- unit => exact tt
-  | |- value _ => exact defaultValue
-  | |- ?x => fail "could not infer default value for unused state value with type" x
-  end.
-
 (* find the hypothesis saying circuit state equivalence is preserved over
    [step], and specialize it to the current arguments *)
 Local Ltac use_preserved :=
@@ -90,9 +64,9 @@ end.
 (* cequiv is transitive *)
 Global Instance Transitive_cequiv {i o} : Transitive (@cequiv i o) | 10.
 Proof.
-  intros x y z [Rxy [? [? Hxy]]] [Ryz [? [? Hyz]]].
+  intros x y z [Rxy [? Hxy]] [Ryz [? Hyz]].
   logical_simplify. exists (fun x z => exists y, Rxy x y /\ Ryz y z).
-  ssplit; [ solve_is_total | solve [eauto] | ].
+  ssplit; [ solve [eauto] | ].
   intros; logical_simplify; subst.
   repeat use_preserved. ssplit; eauto.
 Qed.
@@ -100,15 +74,15 @@ Qed.
 (* cequiv is reflexive *)
 Global Instance Reflexive_cequiv {i o} : Reflexive (@cequiv i o) | 10.
 Proof.
-  repeat intro. exists eq. ssplit; [ solve_is_total | reflexivity | ].
+  repeat intro. exists eq. ssplit; [ reflexivity | ].
   intros; subst. ssplit; reflexivity.
 Qed.
 
 (* cequiv is symmetric *)
 Global Instance Symmetric_cequiv {i o} : Symmetric (@cequiv i o) | 10.
 Proof.
-  intros x y [Rxy [? [? Hxy]]]. logical_simplify. exists (fun y x => Rxy x y).
-  ssplit; [ solve_is_total | solve [eauto] | ].
+  intros x y [Rxy [? Hxy]]. logical_simplify. exists (fun y x => Rxy x y).
+  ssplit; [ solve [eauto] | ].
   intros; logical_simplify; subst.
   repeat use_preserved. ssplit; eauto.
 Qed.
@@ -121,7 +95,7 @@ Proof. constructor; typeclasses eauto. Qed.
 Local Ltac proper_hammer :=
   cbn [reset_state circuit_state fst snd value] in *; fold @value combType in *;
   ssplit; intros; destruct_products; cbn [fst snd] in *;
-    [ solve_is_total | solve [eauto] .. | ];
+    [ solve [eauto] .. | ];
   cbn [circuit_state step fst snd]; intros; logical_simplify; subst;
   cbn [value]; fold @value combType in *;
   repeat use_preserved; ssplit; try congruence.

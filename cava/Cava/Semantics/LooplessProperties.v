@@ -47,7 +47,7 @@ Proof.
   exists (fun (s1 : unit * (value (circuit_state c) * value s)) s2 =>
        fst (snd s1) = s2).
   cbn [circuit_state LoopInit value].
-  ssplit; [ solve_is_total | reflexivity | ].
+  ssplit; [ reflexivity | ].
   intros; destruct_products; cbn [fst snd] in *; subst.
   cbn [step LoopInit]. simpl_ident.
   repeat (destruct_pair_let; cbn [fst snd]).
@@ -74,7 +74,7 @@ Proof.
        s2 = (tt, (tt, fst (snd (fst s1)), tt, fst (snd (snd s1)),
                   tt, (snd (snd (fst s1)), snd (snd (snd s1)))))).
   cbn [circuit_state reset_state LoopInit value].
-  ssplit; [ solve_is_total | reflexivity | ].
+  ssplit; [ reflexivity | ].
   intros; destruct_products; cbn [fst snd] in *; subst.
   simpl_ident. logical_simplify.
   cbn [step LoopInit fst snd]. simpl_ident.
@@ -95,7 +95,7 @@ Proof.
   exists (fun s1 s2 =>
        s2 = (tt, (tt, fst (snd s1), tt, snd (snd s1)))).
   cbn [circuit_state reset_state LoopInit value].
-  ssplit; [ solve_is_total | reflexivity | ].
+  ssplit; [ reflexivity | ].
   intros; destruct_products; cbn [fst snd] in *; subst.
   simpl_ident. logical_simplify.
   cbn [step LoopInit fst snd]. simpl_ident.
@@ -116,7 +116,7 @@ Proof.
   exists (fun s1 s2 =>
        s2 = (tt, (tt, fst (snd s1), tt, snd (snd s1)))).
   cbn [circuit_state reset_state LoopInit value].
-  ssplit; [ solve_is_total | reflexivity | ].
+  ssplit; [ reflexivity | ].
   intros; destruct_products; cbn [fst snd] in *; subst.
   simpl_ident. logical_simplify.
   cbn [step LoopInit fst snd]. simpl_ident.
@@ -139,7 +139,7 @@ Proof.
        s2 = (tt, (tt, fst (snd (fst (snd s1))), tt,
                   (snd (snd s1), snd (snd (fst (snd s1))))))).
   cbn [circuit_state reset_state LoopInit value].
-  ssplit; [ solve_is_total | reflexivity | ].
+  ssplit; [ reflexivity | ].
   intros; destruct_products; cbn [fst snd] in *; subst.
   simpl_ident. logical_simplify.
   cbn [step LoopInit fst snd]. simpl_ident.
@@ -164,7 +164,7 @@ Proof.
        s2 = (tt, (tt, fst (snd (fst s1)), tt,
                   (snd (snd (fst s1)), snd s1)))).
   cbn [circuit_state reset_state LoopInit value].
-  ssplit; [ solve_is_total | reflexivity | ].
+  ssplit; [ reflexivity | ].
   intros; destruct_products; cbn [fst snd] in *; subst.
   simpl_ident. logical_simplify.
   cbn [step LoopInit fst snd]. simpl_ident.
