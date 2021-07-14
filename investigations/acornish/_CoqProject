@@ -4,10 +4,13 @@ INSTALLDEFAULTROOT = ./
 -R ../../cava/Cava Cava
 -R . Acornish
 
+EffMonad.v
+IxMonad.v
+ListUtils.v
+Common.v
+
 AcornEffMonad.v
 AcornEffMonad2.v
 AcornEffMonad3.v
 AcornMonadDeep.v
-EffMonad.v
-ListUtils.v
-Common.v
+AcornIxMonad.v
