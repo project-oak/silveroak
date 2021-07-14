@@ -123,7 +123,7 @@ Section WithParameters.
          sz = 4%nat /\ write_step s a v s' ;
        StateMachineSemantics.parameters.reg_addr := reg_addr ;
        StateMachineSemantics.parameters.isMMIOAddr a :=
-           VALUE_ADDR <= word.unsigned a < STATUS_ADDR + 4;
+           INCR_BASE_ADDR <= word.unsigned a < INCR_END_ADDR;
     |}.
 
   Global Instance state_machine_parameters_ok

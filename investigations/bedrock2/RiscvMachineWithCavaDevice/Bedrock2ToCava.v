@@ -116,8 +116,8 @@ Section WithParams.
   (* similar to compiler.LowerPipeline.machine_ok, but takes an `ExtraRiscvMachine D` instead of
      a `MetricRiscvMachine` *)
   Definition machine_ok(p_functions: word)(f_entry_rel_pos: Z)(stack_start stack_pastend: word)
-             (finstrs: list byte)
-             (p_call pc: word)(mH: mem)(Rdata Rexec: mem -> Prop)(mach: ExtraRiscvMachine D): Prop :=
+             (finstrs: list byte)(p_call pc: word)(mH: mem)(Rdata Rexec: mem -> Prop)
+             (mmioAddrs: word -> Prop)(mach: ExtraRiscvMachine D): Prop :=
       let CallInst := Jal RegisterNames.ra
                           (f_entry_rel_pos + word.signed (word.sub p_functions p_call)) : Instruction in
       (ptsto_bytes p_functions finstrs *
@@ -137,8 +137,8 @@ Section WithParams.
       (* Note: Even though we cancel out the fact that communication between the processor
          and the Cava device happens via MMIO, we still have to expose the fact that we
          need a reserved address range for MMIO which cannot be used as regular memory: *)
-      map.undef_on mach.(getMem) StateMachineSemantics.parameters.isMMIOAddr /\
-      disjoint (of_list mach.(getXAddrs)) StateMachineSemantics.parameters.isMMIOAddr.
+      map.undef_on mach.(getMem) mmioAddrs /\
+      disjoint (of_list mach.(getXAddrs)) mmioAddrs.
 
   Lemma mod4_to_mod2: forall x, x mod 4 = 0 -> x mod 2 = 0.
   Proof. intros. Z.div_mod_to_equations. Lia.lia. Qed.
@@ -165,11 +165,11 @@ Section WithParams.
            (fun t' m' l' => postH m' /\ exists s' tnew, t' = tnew ++ initialL.(getLog)
                                                         /\ execution tnew s') ->
       machine_ok p_functions f_entry_rel_pos stack_start stack_pastend (instrencode instrs) p_call
-                 p_call mH Rdata Rexec initialL ->
+                 p_call mH Rdata Rexec parameters.isMMIOAddr initialL ->
       exists steps_remaining finalL mH',
         run_rec sched steps_done steps_remaining initialL = (Some tt, finalL) /\
         machine_ok p_functions f_entry_rel_pos stack_start stack_pastend (instrencode instrs) p_call
-                   (word.add p_call (word.of_Z 4)) mH' Rdata Rexec finalL /\
+                   (word.add p_call (word.of_Z 4)) mH' Rdata Rexec parameters.isMMIOAddr finalL /\
         postH mH' /\
         finalL.(getLog) = initialL.(getLog) (* no external interactions happened *).
   Proof.

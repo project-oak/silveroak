@@ -115,6 +115,16 @@ Defined.
 Definition stack_start: Utility.word := word.of_Z (8*2^10).
 Definition stack_pastend: Utility.word := word.of_Z (16*2^10).
 
+Lemma funcs_valid: ExprImp.valid_funs (map.of_list funcs).
+Proof.
+  cbv [funcs map.of_list ExprImp.valid_funs main put_wait_get]. intros *.
+  rewrite !map.get_put_dec, map.get_empty.
+  repeat destruct_one_match; inversion 1; cbv [ExprImp.valid_fun].
+  all:ssplit.
+  all:apply dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec).
+  all:reflexivity.
+Qed.
+
 Lemma put_wait_get_asm_correct
       input output_placeholder R Rdata Rexec
       (p_functions p_call : Utility.word)
@@ -161,12 +171,7 @@ Proof.
   end.
   eapply P.
   1: typeclasses eauto.
-  { cbv [ExprImp.valid_funs]. intros *.
-    rewrite !map.get_put_dec, map.get_empty.
-    repeat destruct_one_match; inversion 1; cbv [ExprImp.valid_fun].
-    all:ssplit.
-    all:apply dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec).
-    all:reflexivity. }
+  { exact funcs_valid. }
   { apply put_wait_get_compile_result_eq. }
   { rewrite !map.get_put_dec, map.get_empty.
     rewrite String.eqb_refl. reflexivity. }
