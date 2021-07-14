@@ -1,5 +1,7 @@
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.Lists.List. Import ListNotations.
+Require Import Coq.Logic.FunctionalExtensionality.
+Require Import Coq.Logic.PropExtensionality.
 Require Import coqutil.Word.Interface coqutil.Map.Interface.
 Require Import coqutil.Map.OfListWord.
 Require Import coqutil.Datatypes.PropSet.
@@ -113,11 +115,16 @@ Section WithParams.
   Definition regs_initialized(regs: Registers): Prop :=
     forall r : Z, 0 < r < 32 -> exists v : word, map.get regs r = Some v.
 
+  Definition mmioAddrs: word -> Prop := fun a =>
+    word.unsigned device.addr_range_start <= word.unsigned a < word.unsigned device.addr_range_pastend.
+
+  Hypothesis mmioAddrs_match: sameset StateMachineSemantics.parameters.isMMIOAddr mmioAddrs.
+
   (* similar to compiler.LowerPipeline.machine_ok, but takes an `ExtraRiscvMachine D` instead of
      a `MetricRiscvMachine` *)
   Definition machine_ok(p_functions: word)(f_entry_rel_pos: Z)(stack_start stack_pastend: word)
              (finstrs: list byte)(p_call pc: word)(mH: mem)(Rdata Rexec: mem -> Prop)
-             (mmioAddrs: word -> Prop)(mach: ExtraRiscvMachine D): Prop :=
+             (mach: ExtraRiscvMachine D): Prop :=
       let CallInst := Jal RegisterNames.ra
                           (f_entry_rel_pos + word.signed (word.sub p_functions p_call)) : Instruction in
       (ptsto_bytes p_functions finstrs *
@@ -165,17 +172,22 @@ Section WithParams.
            (fun t' m' l' => postH m' /\ exists s' tnew, t' = tnew ++ initialL.(getLog)
                                                         /\ execution tnew s') ->
       machine_ok p_functions f_entry_rel_pos stack_start stack_pastend (instrencode instrs) p_call
-                 p_call mH Rdata Rexec parameters.isMMIOAddr initialL ->
+                 p_call mH Rdata Rexec initialL ->
       exists steps_remaining finalL mH',
         run_rec sched steps_done steps_remaining initialL = (Some tt, finalL) /\
         machine_ok p_functions f_entry_rel_pos stack_start stack_pastend (instrencode instrs) p_call
-                   (word.add p_call (word.of_Z 4)) mH' Rdata Rexec parameters.isMMIOAddr finalL /\
+                   (word.add p_call (word.of_Z 4)) mH' Rdata Rexec finalL /\
         postH mH' /\
         finalL.(getLog) = initialL.(getLog) (* no external interactions happened *).
   Proof.
     intros.
     destruct initialL as (mach & d). destruct mach as [r pc npc m xAddrs t].
     unfold machine_ok in *; cbn -[map.get map.empty instrencode] in *. simp.
+    replace mmioAddrs with parameters.isMMIOAddr in *. 2: {
+      symmetry. extensionality x. apply propositional_extensionality. unfold iff.
+      move mmioAddrs_match at bottom. unfold sameset, subset in mmioAddrs_match.
+      clear -mmioAddrs_match. unfold elem_of in *. destruct mmioAddrs_match. eauto.
+    }
     edestruct (stateMachine_to_cava device_state_related)
       as (steps_remaining & finalL & finalH & Rn & Rfinal & Pf).
     2: {

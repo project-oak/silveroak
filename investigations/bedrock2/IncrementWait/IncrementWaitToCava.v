@@ -14,9 +14,6 @@ Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.Bedrock2ToCava.
 
 Definition binary: list byte := Eval compute in Pipeline.instrencode put_wait_get_asm.
 
-Definition mmioRange: word -> Prop :=
-  fun a => Constants.INCR_BASE_ADDR <= word.unsigned a < Constants.INCR_END_ADDR.
-
 Definition incr_device_state_related: IncrementWaitSemantics.state -> counter_device -> Prop.
 Admitted.
 
@@ -35,12 +32,12 @@ Theorem IncrementWait_end2end_correct: forall p_functions p_call mH Rdata Rexec 
     word.unsigned p_call mod 4 = 0 ->
     initialL.(getLog) = [] ->
     machine_ok p_functions main_relative_pos stack_start stack_pastend binary p_call
-               p_call mH Rdata Rexec mmioRange initialL ->
+               p_call mH Rdata Rexec initialL ->
     (scalar (word.of_Z input_ptr) input * scalar (word.of_Z output_ptr) output_placeholder * R)%sep mH ->
     exists steps_remaining finalL mH',
       run sched steps_remaining initialL = (Some tt, finalL) /\
       machine_ok p_functions main_relative_pos stack_start stack_pastend binary p_call
-                 (word.add p_call (word.of_Z 4)) mH' Rdata Rexec mmioRange finalL /\
+                 (word.add p_call (word.of_Z 4)) mH' Rdata Rexec finalL /\
       (scalar (word.of_Z input_ptr) input *
        scalar (word.of_Z output_ptr) (word.add (word.of_Z 1) input) * R)%sep mH' /\
       finalL.(getLog) = initialL.(getLog) (* no external interactions happened *).
@@ -48,8 +45,14 @@ Proof.
   intros.
   change binary with (Pipeline.instrencode put_wait_get_asm).
   refine (bedrock2_and_cava_system_correct
-            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
+            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
     try eassumption.
+  { exact IncrementWaitSemantics.state_machine_parameters_ok. }
+  { unfold sameset, subset, elem_of, StateMachineSemantics.parameters.isMMIOAddr, mmioAddrs,
+           IncrementWaitSemantics.state_machine_parameters,
+           device.addr_range_start, device.addr_range_pastend, counter_device.
+    rewrite !word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
+    eauto. }
   { exact funcs_valid. }
   { apply List.dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec). reflexivity. }
   { exact put_wait_get_compile_result_eq. }
@@ -72,6 +75,7 @@ Proof.
        and make sure that the IncrementWait program puts the device back into a ready state *)
     exact initial_device_states_related. }
   { refine (@WeakestPreconditionProperties.Proper_cmd _ StateMachineSemantics.ok _ _ _ _ _ _ _ _ _ _ _).
+    1: exact IncrementWaitSemantics.state_machine_parameters_ok.
     1: eapply WeakestPreconditionProperties.Proper_call.
     2: {
       eapply main_correct. 1: eassumption.
@@ -86,6 +90,9 @@ Proof.
     | H: ?t = ?t' |- _ = _ ++ ?t'' /\ _ => replace t'' with t' by exact H
     end.
     rewrite List.app_nil_r. split; [reflexivity|]. eassumption. }
+  Unshelve.
+  all: unshelve eapply StateMachineSemantics.ok;
+    exact IncrementWaitSemantics.state_machine_parameters_ok.
 Qed.
 
 (* Goal: bring this list down to only standard axioms like functional and propositional extensionality
