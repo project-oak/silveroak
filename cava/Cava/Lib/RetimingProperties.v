@@ -191,6 +191,22 @@ Proof.
   rewrite <-IHn. reflexivity.
 Qed.
 
+Lemma simulate_retimed {i o} (c1 c2 : Circuit i o) n :
+  retimed n c1 c2 ->
+  forall input1 input2 : list (value i),
+    (forall i, nth i input2 defaultValue = nth (i*(n+1)) input1 defaultValue) ->
+    forall i,
+      0 < i ->
+      nth i (simulate c2 input2) defaultValue
+      = nth (i*n) (simulate c1 input1) defaultValue.
+Proof.
+  intros [r Hr]. intros.
+  erewrite (simulate_cequiv c1) by eauto.
+  cbv [simulate].
+  (* separate input1 into (length input2) lists of multiple inputs, prove that
+     executing each list is equivalent to one execution of c2 *)
+Admitted.
+
 Fixpoint Forall_ndelays {t1 t2 n} (R : value t1 -> value t2 -> Prop)
   : value (circuit_state (ndelays t1 n))
     -> value (circuit_state (ndelays t2 n)) -> Prop :=
@@ -480,10 +496,8 @@ Proof.
   (* cancel out combinational components *)
   apply retimed_cancel_r.
   apply retimed_cancel_l.
-  (* use retimed middle round *)
-  pose proof (retimed_cipher_middle_round_correct state) as Hmiddle.
-  cbv [retimed_cipher_middle_round] in Hmiddle.
-  apply Hmiddle.
+  (*  use the retimed middle round lemma *)
+  apply (retimed_cipher_middle_round_correct state).
   (* done! *)
   eassumption.
 Qed.
