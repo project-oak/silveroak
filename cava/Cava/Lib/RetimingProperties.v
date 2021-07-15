@@ -90,6 +90,12 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma move_delay {i o} (c : Circuit i o) :
+  cequiv (Delay >==> c)
+         (chreset c (fst (step c (reset_state c) defaultValue))
+                  >==> DelayInit (snd (step c (reset_state c) defaultValue))).
+Proof. apply move_delay_init. Qed.
+
 Lemma split_ndelays {t1 t2} n :
   cequiv (ndelays (t1*t2) n) (Par (ndelays t1 n) (ndelays t2 n)).
 Proof.
@@ -317,59 +323,209 @@ Lemma reassemble_reset_state {i o} (c : Circuit i o) :
   reassemble_state c (reset_state (loopless c)) (loops_reset_state c) = reset_state c.
 Admitted.
 
-(* TODO: this should be cequiv ==> cequiv ==> iff *)
 Instance Proper_retimed {i o} n m :
-  Proper (cequiv ==> eq ==> iff) (@retimed i o n m).
-Proof.
-  intros a b Hab c d Hcd. subst. cbv [retimed].
-  split.
-  { intros [r Hac]; logical_simplify.
-    exists r. rewrite <-Hab, Hac. reflexivity. }
-  { intros [r Hbd]; logical_simplify.
-    exists r. rewrite Hab, Hbd. reflexivity. }
-Qed.
+  Proper (cequiv ==> cequiv ==> iff) (@retimed i o n m).
+Admitted.
 
 Lemma retimed_trans {i o} n m n' m' (c1 c2 c3 : Circuit i o) :
   retimed n m c1 c2 -> retimed n' m' c2 c3 ->
   retimed (n + n') (m + m') c1 c3.
 Admitted.
 
+
+Lemma retimed_delay_r {i o} (c : Circuit i o) :
+  retimed 1 0 (c >==> Delay) c.
+Proof.
+  cbv [retimed]. cbn [Par circuit_state chreset value ndelays Id Delay].
+  exists (tt, defaultValue, tt). cbn [fst snd].
+  autorewrite with circuitsimpl.
+  rewrite LoopInit_First_r, <-extract_loops.
+  reflexivity.
+Qed.
+
+Lemma retimed_delay_l {i o} (c : Circuit i o) :
+  retimed 1 0 (Delay >==> c) (chreset c (fst (step c (reset_state c) defaultValue))).
+Proof.
+  cbv [Delay]. rewrite move_delay_init.
+  cbv [retimed]. cbn [Par circuit_state chreset value ndelays Id Delay].
+  exists (tt, snd (step c (reset_state c) defaultValue), tt). cbn [fst snd].
+  autorewrite with circuitsimpl.
+  rewrite LoopInit_First_r, <-extract_loops.
+  reflexivity.
+Qed.
+
+Lemma delay1_input' {i o} n m (c1 c2 : Circuit i o) :
+  retimed n m c1 (Delay >==> c2) ->
+  retimed (S n) m c1 (chreset c2 (fst (step c2 (reset_state c2) defaultValue))).
+Proof.
+  intros. replace (S n) with (n + 1) by lia.
+  replace m with (m + 0) by lia.
+  eapply retimed_trans; [ eassumption | ].
+  eapply retimed_delay_l.
+Qed.
+
+Fixpoint is_combinational {i o} (c : Circuit i o) : bool :=
+  match c with
+  | Comb f => true
+  | Compose f g => (is_combinational f && is_combinational g)
+  | First f => is_combinational f
+  | Second f => is_combinational f
+  | LoopInitCE _ _ => false
+  | DelayInit _ => false
+  end.
+
+Lemma chreset_comb {i o} (c : Circuit i o) r :
+  is_combinational c = true -> chreset c r = c.
+Admitted.
+
+Lemma delay1_input {i o} n m (c1 c2 : Circuit i o) :
+  is_combinational c2 = true ->
+  retimed n m c1 (Delay >==> c2) ->
+  retimed (S n) m c1 c2.
+Proof.
+  intros. erewrite <-(chreset_comb c2) by auto.
+  apply delay1_input'. assumption.
+Qed.
+
 Lemma delay1_output {i o} n m (c1 c2 : Circuit i o) :
   retimed n m c1 (c2 >==> Delay) ->
   retimed (S n) m c1 c2.
 Proof.
-  intros.
-  replace (S n) with (n + 1) by lia. replace m with (m + 0) by lia.
-  eapply retimed_trans; [ eassumption | ].
-  cbv [retimed]. cbn [Par circuit_state chreset value ndelays Id].
-  exists (tt, defaultValue, tt). cbn [fst snd].
-  autorewrite with circuitsimpl.
-  change defaultValue with (reset_state (Delay (t:=o))).
-  rewrite chreset_noop, LoopInit_First_r.
-  rewrite <-extract_loops. reflexivity.
-Qed.
-
-Lemma delay1_input {i o} n m (c1 c2 : Circuit i o) :
-  retimed n m c1 (Delay >==> c2) ->
-  retimed (S n) m c1 (chreset c2 (fst (step c2 (reset_state c2) defaultValue))).
-Proof.
-  intros.
-  replace (S n) with (n + 1) by lia.
+  intros. replace (S n) with (n + 1) by lia.
   replace m with (m + 0) by lia.
   eapply retimed_trans; [ eassumption | ].
-  cbv [Delay]. rewrite move_delay_init.
-  cbv [retimed]. cbn [Par circuit_state chreset value ndelays Id Delay].
-  exists (tt, snd (step c2 (reset_state c2) defaultValue), tt). cbn [fst snd].
-  autorewrite with circuitsimpl.
-  rewrite LoopInit_First_r. rewrite <-extract_loops.
-  reflexivity.
+  eapply retimed_delay_r.
 Qed.
 
-Require Import Coq.derive.Derive.
+Lemma retimed_cequiv {i o} (c1 c2 : Circuit i o) :
+  retimed 0 0 c1 c2 <-> cequiv c1 c2.
+Proof.
+  cbv [retimed]. cbn [ndelays Par circuit_state value chreset Id].
+  split.
+  { intros [? Heq]. rewrite Heq.
+    autorewrite with circuitsimpl.
+    rewrite <-extract_loops. reflexivity. }
+  { intros Heq. eexists_destruct.
+    autorewrite with circuitsimpl.
+    rewrite <-extract_loops. auto. }
+Qed.
 
-Local Ltac simpl_resets :=
-  cbn [step fst snd defaultValue default_value
-            CombinationalSemantics defaultSignal defaultCombValue].
+Global Instance Reflexive_retimed {i o} : Reflexive (@retimed i o 0 0) | 10.
+Proof. repeat intro. apply retimed_cequiv; reflexivity. Qed.
+
+Lemma retimed_cancel_r {i o t} n m (c1 c2 : Circuit i t) (c3 : Circuit t o) :
+  retimed n m c1 c2 -> retimed n m (c1 >==> c3) (c2 >==> c3).
+Admitted.
+Lemma retimed_cancel_l {i o t} n m (c1 c2 : Circuit t o) (c3 : Circuit i t) :
+  retimed n m c1 c2 -> retimed n m (c3 >==> c1) (c3 >==> c2).
+Admitted.
+
+Lemma LoopInit_ignore_input {t s} r (c : Circuit s s) :
+  cequiv (LoopInit r (Second c)) (Id (t:=t)).
+Proof.
+  exists (fun _ _ => True). ssplit; [ tauto | ].
+  cbn [LoopInit circuit_state value Id].
+  intros; destruct_products; cbn [fst snd] in *. logical_simplify.
+  cbn [step LoopInit Id fst snd]. ssplit; auto.
+Qed.
+Hint Rewrite @LoopInit_ignore_input using solve [eauto] : circuitsimpl.
+
+(* if c2 is loop-free, then the loop retiming argument is irrelevant *)
+Lemma loop_free_loop_retime {i o} (c1 c2 : Circuit i o) n m m' :
+  is_loop_free c2 = true -> retimed n m c1 c2 -> retimed n m' c1 c2.
+Proof.
+  cbv [retimed]. intros ? [r Hr]. exists (fst r, defaultValue).
+  rewrite Hr; clear Hr. rewrite loopless_loop_free by auto.
+  cbv [Par]. cbn [chreset]. rewrite <-!LoopInit_Compose_l.
+  autorewrite with circuitsimpl. reflexivity.
+Qed.
+
+Lemma loopless_par {i1 i2 o1 o2} (c1 : Circuit i1 o1) (c2 : Circuit i2 o2) :
+  cequiv (loopless (Par c1 c2))
+         (Comb (i:=_*_*(_*_)) (o:=_*_*(_*_))
+               (fun '(x1,x2,(s1,s2)) => (x1,s1,(x2,s2)))
+               >==> Par (loopless c1) (loopless c2)
+               >==> (Comb (i:=_*_*(_*_)) (o:=_*_*(_*_))
+                          (fun '(x1,s1,(x2,s2)) => (x1,x2,(s1,s2))))).
+Admitted.
+
+(* LHS : x1,s1 / x2,s2*)
+(* RHS : x1,x2,(s1,s2) *)
+Lemma Par_LoopInit {i1 o1 s1 i2 o2 s2} (c1 : Circuit (i1 * s1) (o1 * s1))
+      (c2 : Circuit (i2 * s2) (o2 * s2)) r1 r2 :
+  cequiv (Par (LoopInit r1 c1) (LoopInit r2 c2))
+         (LoopInit
+            (s:=s1*s2) (r1,r2)
+            (Comb (i:=_*_*(_*_)) (o:=_*_*(_*_))
+                  (fun '(x1,x2,(s1,s2)) => (x1,s1,(x2,s2)))
+                  >==> Par c1 c2
+                  >==> (Comb (i:=_*_*(_*_)) (o:=_*_*(_*_))
+                             (fun '(x1,s1,(x2,s2)) => (x1,x2,(s1,s2)))))).
+Proof.
+Admitted.
+
+Lemma retimed_par {i1 i2 o1 o2}
+      (c1 c2 : Circuit i1 o1) (c3 c4 : Circuit i2 o2) n m :
+  retimed n m c1 c2 -> retimed n m c3 c4 -> retimed n m (Par c1 c3) (Par c2 c4).
+Proof.
+  cbv [retimed]. cbn [circuit_state Par value]. intros.
+  logical_simplify. eexists.
+  repeat match goal with H : cequiv _ _ |- _ => rewrite H end.
+  rewrite loopless_par. rewrite Par_LoopInit.
+  eapply Proper_LoopInit; [ reflexivity | ].
+  exists (fun (s1 : unit * (value (circuit_state (loopless c2))
+                     * (value (circuit_state (chreset (ndelays o1 n) _))
+                        * value (circuit_state (chreset (ndelays (loops_state c2) m) _)))
+                     * (value (circuit_state (loopless c4))
+                        * (value (circuit_state (chreset (ndelays o2 n) _))
+                           * value (circuit_state (chreset (ndelays (loops_state c4) m) _)))))
+             * unit)
+       (s2 : unit * (value (circuit_state (loopless c2)) * value (circuit_state (loopless c4)))
+             * unit * (value (circuit_state (chreset (ndelays (o1 * o2) n) _))
+                       * value (circuit_state (chreset (ndelays (loops_state c2 * loops_state c4) m) _)))) =>
+       let '(_,(ls2,(do1,dls2),(ls4,(do2,dls4))),_) := s1 in
+       let '(_,(ls2,ls4),_,(do12,dls24)) := s2 in
+       True).
+Admitted.
+
+Lemma retimed_ndelays {t} n : retimed n 0 (ndelays t n) Id.
+Proof.
+  induction n; [ reflexivity | ].
+  cbn [ndelays]. replace 0 with (0 + 0) by lia.
+  replace (S n) with (1 + n) by lia.
+  eapply retimed_trans; [ | eassumption ].
+  apply retimed_delay_r.
+Qed.
+
+Lemma retimed_first {i o t} (c1 c2 : Circuit i o) n m :
+  retimed n m c1 c2 -> retimed n m (Par c1 (ndelays t n)) (First c2).
+Proof.
+  intros. rewrite <-Par_Id_l.
+  apply retimed_par; [ assumption | ].
+  eapply loop_free_loop_retime; [ reflexivity | ].
+  apply retimed_ndelays.
+Qed.
+
+Lemma retimed_second {i o t} (c1 c2 : Circuit i o) n m :
+  retimed n m c1 c2 -> retimed n m (Par (ndelays t n) c1) (Second c2).
+Proof.
+  intros. rewrite <-Par_Id_r.
+  apply retimed_par; [ | assumption ].
+  eapply loop_free_loop_retime; [ reflexivity | ].
+  apply retimed_ndelays.
+Qed.
+
+Lemma retimed_LoopInit {i o s} (c1 c2 : Circuit (i * s) (o * s)) n r :
+  retimed n n c1 c2 -> retimed n n (LoopInit r c1) (LoopInit r c2).
+Admitted.
+
+Lemma retimed_Loop {i o s} (c1 c2 : Circuit (i * s) (o * s)) n :
+  retimed n n c1 c2 -> retimed n n (Loop c1) (Loop c2).
+Proof. apply retimed_LoopInit. Qed.
+
+Require Import Coq.derive.Derive.
+Require Import Cava.Lib.Combinators.
+Require Import Cava.Lib.CombinatorsProperties.
 
 Derive pipelined_nand
        SuchThat (retimed
@@ -378,186 +534,84 @@ Derive pipelined_nand
                          >==> Comb (o:=Bit) inv))
        As pipelined_nand_correct.
 Proof.
-  (* insert a delay *)
-  apply delay1_input.
-  (* move the delay to the end of the circuit *)
-  rewrite move_delays by reflexivity.
+  (* insert a delay at the end *)
+  apply delay1_output.
+  (* add the delay to the pipelined circuit *)
+  apply retimed_cancel_r.
+  (* add the inv to the pipelined circuit *)
+  apply retimed_cancel_r.
   (* insert another delay *)
-  apply delay1_input.
-  (* move the delay in between the and2 and inv *)
-  rewrite !Compose_assoc_w.
-  rewrite move_delays by reflexivity.
+  apply delay1_output.
   (* reflexivity *)
-  subst pipelined_nand. reflexivity.
+  reflexivity.
 Qed.
 Print pipelined_nand.
 Check pipelined_nand_correct.
 
-Definition cipher_middle_round
-           {state key : type}
-           (sbytes : Circuit state state)
-           (shrows : Circuit state state)
-           (mxcols : Circuit state state)
-           (add_rk : Circuit (state * key) state)
-  : Circuit (state * key) state :=
-  First (sbytes >==> shrows >==> mxcols) >==> add_rk.
+
+Section WithSubroutines.
+  Context {state key : type}
+          (sbytes : Circuit state state)
+          (shrows : Circuit state state)
+          (mxcols : Circuit state state)
+          (add_rk : Circuit (state * key) state).
+
+  Definition cipher_middle_round : Circuit (state * key) state :=
+    First (sbytes >==> shrows >==> mxcols) >==> add_rk.
+
+  Definition cipher : Circuit key state :=
+    Loop (Comb (i:=_*_) (o:=_*_) swap
+               >==> cipher_middle_round
+               >==> Comb (o:=_*_) fork2).
+End WithSubroutines.
 
 Derive retimed_cipher_middle_round
        SuchThat
        (forall {state key} n
           (sbytes retimed_sbytes shrows mxcols : Circuit state state)
           (add_rk : Circuit (state * key) state),
-           phase_retimed 0 n retimed_sbytes sbytes ->
-           phase_retimed
-             0 n
+           retimed n n retimed_sbytes sbytes ->
+           retimed
+             n n
              (retimed_cipher_middle_round
-                state key retimed_sbytes shrows mxcols add_rk)
+                state key n retimed_sbytes shrows mxcols add_rk)
              (cipher_middle_round sbytes shrows mxcols add_rk))
        As retimed_cipher_middle_round_correct.
 Proof.
   intros. cbv [cipher_middle_round].
-  autorewrite with circuitsimplw.
-  eapply delayn_input.
-  cbv [phase_retimed] in * |- . logical_simplify.
-  destruct_lists_by_length. cbn [ndelays] in *.
-  cbv [Par] in *; autorewrite with circuitsimplw in *.
-  rewrite ndelays_First.
-  Print phase_retimed.
-
-  (* TODO: not quite working right now, how to properly incorporate retimed
-     subcomponents? *)
-Abort.
-
-Lemma loopless_LoopInit {i o s} (body : Circuit (i * s) (o * s)) r :
-  wequiv (loopless (LoopInit r body))
-         (Comb (i:=(_*(_*(_*_)))) (o:=_*_*_)
-               (fun '(x, (_, (body_st, loop_st))) => (x, loop_st, body_st))
-               >==> loopless body
-               >==> (Comb (i:=_*_*_) (o:=(_*(tzero*(_*_))))
-                          (fun '(x, loop_st, body_st) => (x, (tt, (body_st, loop_st)))))).
-Proof.
-  cbv [wequiv]. ssplit; intros; [ cbn; lia | ].
-  cbn [cpath loopless LoopInit]. autorewrite with natsimpl. simpl_ident.
-  cbv [cequivn]. cbn [value loops_state LoopInit circuit_state].
-  destruct (cequivn_reflexive (loopless body) ltac:(apply is_loop_free_loopless))
-    as [Rb ?]. logical_simplify.
-  exists (fun i s1 s2 => Rb i (snd (fst (snd (fst s1)))) (snd (fst s2))).
-  ssplit.
-  { intros; destruct_products. cbn. auto. }
-  { intros; destruct_products. cbn.
-    repeat lazymatch goal with x : unit |- _ => destruct x end.
-    repeat destruct_pair_let. cbn [fst snd].
-    lazymatch goal with H : cpath _ = 0 -> _ |- _ => erewrite H by auto end.
-    reflexivity. }
-  { intros; destruct_products; cbn.
-    repeat lazymatch goal with x : unit |- _ => destruct x end.
-    repeat destruct_pair_let. cbn [fst snd] in *.
-    lazymatch goal with H : forall _ _ _ _, Rb 1 _ _ -> _ |- _ =>
-                        erewrite H by eauto end.
-    reflexivity. }
-  { intros; destruct_products; cbn.
-    repeat lazymatch goal with x : unit |- _ => destruct x end.
-    repeat destruct_pair_let. cbn [fst snd] in *. eauto. }
+  autorewrite with circuitsimpl.
+  apply retimed_cancel_r.
+  apply retimed_cancel_r.
+  apply retimed_cancel_r.
+  apply retimed_first.
+  eassumption.
 Qed.
+Print retimed_cipher_middle_round.
+Check retimed_cipher_middle_round_correct.
 
-Lemma retime_loop {i o s} (f g : Circuit (i * s) (o * s)) n r :
-  phase_retimed n n f g ->
-  phase_retimed n n (LoopInit r f) (LoopInit r g).
-Proof.
-  cbv [phase_retimed]. intros [proj_gf [proj_fg [Hproj Hequiv]]].
-  cbn [loops_state value LoopInit].
-  exists (fun x => (fst x, (proj_gf (fst (snd x)), snd (snd x)))).
-  exists (fun x => (fst x, (proj_fg (fst (snd x)), snd (snd x)))).
-  rewrite !loopless_LoopInit. rewrite Hequiv.
-  split; [ intros; destruct_products; cbn [fst snd]; rewrite Hproj;
-           reflexivity | ].
-  autorewrite with circuitsimplw pull_comb.
-  cbv [mcompose]; simpl_ident.
-  (* RHS has delays and Comb flipped around *)
-  repeat eapply Proper_Compose.
-  (* need Proper_comb with funext *)
-  (* each subcircuit should now be equiivalent *)
-  eapply Proper_Comb.
-  Print phase_retimed.
-  (* objective: get to Second (Par (ndelays n) (ndelays n)) >==> loopless g) and rewrite *)
-  
-  Search LoopInitCE.
-Qed.
-
-Instance phase_retimed_0_refl {i o} : Reflexive (@phase_retimed i o 0 0) | 10.
-Proof.
-  intro c. cbv [phase_retimed]. exists id, id. split; [ reflexivity | ].
-  change (Comb (semantics:=CombinationalSemantics) (@id (value (loops_state c))))
-    with (Id (t:=loops_state c)).
-  autorewrite with circuitsimplw. reflexivity.
-Qed.
-
-Global Instance Proper_phase_retimed {i o} :
-  Proper (eq ==> eq ==> wequiv ==> wequiv ==> iff) (@phase_retimed i o).
-Proof.
-  repeat intro. subst.
-  split; cbv [phase_retimed]; intros; logical_simplify.
-Admitted.
-
-Require Import Coq.derive.Derive.
-
-Local Ltac simpl_resets :=
-  cbn [step fst snd defaultValue default_value
-            CombinationalSemantics defaultSignal defaultCombValue].
-
-Derive pipelined_nand
-       SuchThat (phase_retimed
-                   0 2 pipelined_nand
-                   (Comb (i:=Bit*Bit) (o:=Bit) and2
-                         >==> Comb (o:=Bit) inv))
-       As pipelined_nand_correct.
-Proof.
-  (* insert a delay *)
-  apply delay1_input.
-  (* move the delay to the end of the circuit *)
-  rewrite move_delays by reflexivity.
-  (* insert another delay *)
-  apply delay1_input.
-  (* move the delay in between the and2 and inv *)
-  rewrite !Compose_assoc_w.
-  rewrite move_delays by reflexivity.
-  (* reflexivity *)
-  subst pipelined_nand. reflexivity.
-Qed.
-Print pipelined_nand.
-Check pipelined_nand_correct.
-
-Definition cipher_middle_round
-           {state key : type}
-           (sbytes : Circuit state state)
-           (shrows : Circuit state state)
-           (mxcols : Circuit state state)
-           (add_rk : Circuit (state * key) state)
-  : Circuit (state * key) state :=
-  First (sbytes >==> shrows >==> mxcols) >==> add_rk.
-
-Derive retimed_cipher_middle_round
+Derive retimed_cipher
        SuchThat
        (forall {state key} n
           (sbytes retimed_sbytes shrows mxcols : Circuit state state)
           (add_rk : Circuit (state * key) state),
-           phase_retimed 0 n retimed_sbytes sbytes ->
-           phase_retimed
-             0 n
-             (retimed_cipher_middle_round
-                state key retimed_sbytes shrows mxcols add_rk)
-             (cipher_middle_round sbytes shrows mxcols add_rk))
-       As retimed_cipher_middle_round_correct.
+           retimed n n retimed_sbytes sbytes ->
+           retimed
+             n n
+             (retimed_cipher
+                state key n retimed_sbytes shrows mxcols add_rk)
+             (cipher sbytes shrows mxcols add_rk))
+       As retimed_cipher_correct.
 Proof.
-  intros. cbv [cipher_middle_round].
-  autorewrite with circuitsimplw.
-  eapply delayn_input.
-  cbv [phase_retimed] in * |- . logical_simplify.
-  destruct_lists_by_length. cbn [ndelays] in *.
-  cbv [Par] in *; autorewrite with circuitsimplw in *.
-  rewrite ndelays_First.
-  Print phase_retimed.
-
-  (* TODO: not quite working right now, how to properly incorporate retimed
-     subcomponents? *)
-Abort.
+  intros. cbv [cipher].
+  autorewrite with circuitsimpl.
+  (* lift loop onto retimed circuit *)
+  apply retimed_Loop.
+  (* cancel out combinational components *)
+  apply retimed_cancel_r.
+  apply retimed_cancel_l.
+  (* use retimed middle round *)
+  apply (retimed_cipher_middle_round_correct state).
+  eassumption.
+Qed.
+Print retimed_cipher.
+Check retimed_cipher_correct.

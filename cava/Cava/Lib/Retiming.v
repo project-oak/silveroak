@@ -44,5 +44,6 @@ Definition retimed {i o} (n m : nat) (c1 c2 : Circuit i o) : Prop :=
     cequiv c1
            (LoopInit (loops_reset_state c2)
                      ((loopless c2)
-                        >==> chreset (Par (ndelays o n)
-                                          (ndelays (loops_state c2) m)) rvals)).
+                        >==> (chreset (Par (ndelays o n)
+                                           (ndelays (loops_state c2) m))
+                                      rvals))).
