@@ -39,11 +39,19 @@ End WithCava.
 
 (* n is the number of delays on the output, m is the number of delays on the
    loop state *)
-Definition retimed {i o} (n m : nat) (c1 c2 : Circuit i o) : Prop :=
+Definition retimed {i o} (n : nat) (c1 c2 : Circuit i o) : Prop :=
   exists rvals,
     cequiv c1
            (LoopInit (loops_reset_state c2)
                      ((loopless c2)
-                        >==> (chreset (Par (ndelays o n)
-                                           (ndelays (loops_state c2) m))
-                                      rvals))).
+                        >==> chreset (ndelays (o * loops_state c2) n) rvals)).
+
+Fixpoint retime_loops {i o} (c : Circuit i o) : Circuit i o :=
+  match c with
+  | Comb f => Comb f
+  | Compose f g => Compose (retime_loops f) (retime_loops g)
+  | First f => First (retime_loops f)
+  | Second f => Second (retime_loops f)
+  | LoopInitCE r f => LoopInitCE r (f >==> Second Delay)
+  | DelayInit r => DelayInit r
+  end.
