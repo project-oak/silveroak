@@ -34,19 +34,6 @@ Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Import ListNotations Circuit.Notations MonadNotation.
 
-(* Start from scratch again. What do we really need? *)
-
-(*
-All should be based on phase_retimed!
-- Move input delays over compose
-- Move state delays over feedback
-- Add delays to one end or the other, increment retiming number
-- retimed 0 0 <-> cequiv
-- Move delays over compose for loop-free circuits in general?
-- Move delays in/out of loops?
-
- *)
-
 Lemma split_delay_init {t1 t2} (r1 : value t1) (r2 : value t2) :
   cequiv (DelayInit (t:=t1*t2) (r1, r2)) (Par (DelayInit r1) (DelayInit r2)).
 Proof.
@@ -106,65 +93,6 @@ Proof.
   rewrite <-!First_Second_comm. autorewrite with circuitsimpl.
   reflexivity.
 Qed.
-
-(*
-Fixpoint get_ndelays {t r} : value (circuit_state (ndelays (t:=t) r)) -> list (value t) :=
-  match r with
-  | [] => fun _ => []
-  | _ :: _ => fun x => snd x :: get_ndelays (fst x)
-  end.
-
-Lemma reset_ndelays {t} r : get_ndelays (reset_state (ndelays (t:=t) r)) = r.
-Proof.
-  induction r; [ reflexivity .. | ].
-  cbn [get_ndelays reset_state ndelays fst snd].
-  rewrite IHr; reflexivity.
-Qed.
-
-Lemma step_ndelays2 {t} r s i :
-  snd (step (ndelays (t:=t) r) s i) = hd i (get_ndelays s).
-Proof.
-  induction r; [ reflexivity | ].
-  cbn [ndelays circuit_state value] in *; destruct_products.
-  reflexivity.
-Qed.
-
-Lemma step_ndelays1 {t} r s i :
-  get_ndelays (fst (step (ndelays (t:=t) r) s i)) = tl (get_ndelays s ++ [i]).
-Proof.
-  induction r; [ reflexivity .. | ].
-  cbn [ndelays circuit_state value] in *; destruct_products.
-  cbn [get_ndelays ndelays fst snd step app tl].
-  rewrite IHr, step_ndelays2.
-  destruct (get_ndelays _); reflexivity.
-Qed.
-
-Lemma split_delay {t1 t2} (r1 : value t1) (r2 : value t2) :
-  cequiv (DelayInit (t:=t1*t2) (r1, r2)) (Par (DelayInit r1) (DelayInit r2)).
-Proof.
-  exists eq. ssplit; [ reflexivity | ]. cbn [value circuit_state Par].
-  intros; subst; destruct_products. ssplit; reflexivity.
-Qed.
-
-Lemma split_ndelays {t1 t2} n :
-  wequiv (ndelays (t:=t1 * t2) n) (Par (ndelays n) (ndelays n)).
-Admitted.
-
-Lemma ndelays_First {t1 t2 o1} (f : Circuit _ o1) n :
-  wequiv (ndelays (t:=t1 * t2) n >==> First f)
-         (Par (ndelays n >==> f) (ndelays n)).
-Admitted.
-
-Lemma delay1_input {i o} n m (c1 c2 : Circuit i o) :
-  phase_retimed n m c1 (delays >==> c2) ->
-  phase_retimed n (S m) c1 c2.
-Admitted.
-
-Lemma delayn_input {i o} n m (c1 c2 : Circuit i o) :
-  phase_retimed n 0 c1 (ndelays m >==> c2) ->
-  phase_retimed n m c1 c2.
-Admitted.
- *)
 
 Lemma Par_Id_l {i o t} (f : Circuit i o) : cequiv (Par f (Id (t:=t))) (First f).
 Proof. cbv [Par]. autorewrite with circuitsimpl. reflexivity. Qed.
@@ -244,8 +172,6 @@ Proof.
     reflexivity. }
 Qed.
 
-About to_chreset_state.
-
 Axiom reassemble_state :
   forall {i o} (c : Circuit i o), value (circuit_state (loopless c)) -> value (loops_state c) -> value (circuit_state c).
 
@@ -258,50 +184,6 @@ Axiom to_chreset_loops_state :
   forall {i o} {c : Circuit i o} {r : value (circuit_state c)}, value (loops_state c) -> value (loops_state (chreset c r)).
 Axiom from_chreset_loops_state :
   forall {i o} {c : Circuit i o} {r : value (circuit_state c)}, value (loops_state (chreset c r)) -> value (loops_state c).
-
-Eval simpl in (fun r c => loops_state (DelayInit r >==> c)).
-Locate swap.
-Eval simpl in
-    (fun i o r c =>
-       Circuit (i * loops_state (DelayInit r >==> c)) (o * loops_state (DelayInit r >==> c))).
-Eval simpl in (fun i o r c =>
- Circuit (i * loops_state (chreset c (fst (step c (reset_state c) r)) >==> DelayInit (snd (step c (reset_state c) r))))
-         (o * loops_state (chreset c (fst (step c (reset_state c) r)) >==> DelayInit (snd (step c (reset_state c) r))))).
-
-Lemma move_delay_loopless {i o} (c : Circuit i o) r :
-  cequiv (loopless (DelayInit r >==> c))
-         (Second (Comb (i:=(tzero*loops_state c))
-                       (o:=(loops_state (chreset c _)*tzero))
-                       (fun x => (to_chreset_loops_state (snd x), tt)))
-            >==> (loopless
-                    (chreset c (fst (step c (reset_state c) r))
-                             >==> DelayInit (snd (step c (reset_state c) r))))
-            >==> Second (Comb (i:=(loops_state (chreset c _)*tzero))
-                              (o:=(tzero * loops_state c))
-                              (fun x => (tt, from_chreset_loops_state (fst x))))).
-Admitted.
-(*
-(* i, (s1, s2)
-
-   == First c1 >==> Second (Comb (fun s => snd s)) >==> loopless c2
-*)
-Lemma loopless_Compose_loop_free_l {i o t} (c1 : Circuit i t) (c2 : Circuit t o) :
-  is_loop_free c1 = true ->
-  cequiv (loopless (c1 >==> c2))
-         ((First c1)
-            >==> (Comb (i:=t*(loops_state c1*loops_state c2)) (o:=_*_*_) (fun '(t,s1,s2) => (t,s2,s1)
-            (fun 
-         ) >==> loopless c2).
- (Second c1 >==> loopless c2).
-  
-  loopless (Delay >==> c2)
-*)
-Lemma loopless_chreset {i o} (c : Circuit i o) r :
-  cequiv (loopless (chreset c r))
-         (Second (Comb from_chreset_loops_state)
-                 >==> chreset (loopless c) (loopless_state_from_circuit_state c r)
-                 >==> Second (Comb to_chreset_loops_state)).
-Admitted.
 
 Lemma ndelays_succ_l {t} n : cequiv (ndelays t (S n)) (Delay >==> ndelays t n).
 Proof.
@@ -319,10 +201,9 @@ Fixpoint Forall_ndelays {t1 t2 n} (R : value t1 -> value t2 -> Prop)
       Forall_ndelays R (fst d1) (fst d2) /\ R (snd d1) (snd d2)
   end.
 
-Lemma reassemble_reset_state {i o} (c : Circuit i o) :
-  reassemble_state c (reset_state (loopless c)) (loops_reset_state c) = reset_state c.
-Admitted.
-
+(* TODO: the definition of cequiv might need to change to make this provable; in
+   particular, the loop and non-loop states need to be able to vary
+   independently *)
 Instance Proper_retimed {i o} n :
   Proper (cequiv ==> cequiv ==> iff) (@retimed i o n).
 Admitted.
@@ -377,13 +258,38 @@ Qed.
 Global Instance Reflexive_retimed {i o} : Reflexive (@retimed i o 0) | 10.
 Proof. repeat intro. apply retimed_cequiv; reflexivity. Qed.
 
+Lemma DelayInit_Comb_comm {i o} (f : value i -> cava (value o)) r :
+  cequiv (DelayInit r >==> Comb f) (Comb f >==> DelayInit (f r)).
+Proof.
+  rewrite move_delay_init. cbn [chreset step fst snd].
+  reflexivity.
+Qed.
+
+Fixpoint map_ndelays {t1 t2 n} (f : value t1 -> value t2)
+  : @value combType (circuit_state (ndelays t1 n))
+    -> @value combType (circuit_state (ndelays t2 n)) :=
+  match n with
+  | 0 => fun x => x
+  | S _ => fun x => (map_ndelays f (fst x), f (snd x))
+  end.
+
+Lemma ndelays_Comb_comm {i o} (f : value i -> cava (value o)) n :
+  cequiv (ndelays i n >==> Comb f)
+         (Comb f >==> chreset (ndelays o n) (map_ndelays f defaultValue)).
+Proof.
+  induction n; cbn [ndelays]; autorewrite with circuitsimpl; [ reflexivity | ].
+  cbv [Delay]. rewrite <-Compose_assoc. rewrite DelayInit_Comb_comm.
+  cbn [chreset map_ndelays fst snd]. autorewrite with circuitsimpl.
+  rewrite IHn. reflexivity.
+Qed.
+
 Lemma retimed_cancel_r {i o t} n (c1 c2 : Circuit i t) (c3 : Circuit t o) :
   retimed n c1 c2 -> retimed n (c1 >==> c3) (c2 >==> c3).
 Admitted.
+
 Lemma retimed_cancel_l {i o t} n (c1 c2 : Circuit t o) (c3 : Circuit i t) :
   retimed n c1 c2 -> retimed n (c3 >==> c1) (c3 >==> c2).
 Admitted.
-
 
 Lemma loopless_par {i1 i2 o1 o2} (c1 : Circuit i1 o1) (c2 : Circuit i2 o2) :
   cequiv (loopless (Par c1 c2))
@@ -418,6 +324,7 @@ Proof.
   repeat match goal with H : cequiv _ _ |- _ => rewrite H end.
   rewrite loopless_par. rewrite Par_LoopInit.
   eapply Proper_LoopInit; [ reflexivity | ].
+  (* need to be able to move the delays over Comb *)
 Admitted.
 
 Lemma loop_free_ndelays {t} n : is_loop_free (ndelays t n) = true.
@@ -452,6 +359,35 @@ Qed.
 
 Lemma retimed_LoopInit {i o s} (c1 c2 : Circuit (i * s) (o * s)) n r :
   retimed n c1 c2 -> retimed n (LoopInit r c1) (LoopInit r c2).
+Proof.
+  intros [v Hv]. rewrite Hv. clear Hv.
+  rewrite LoopInit_LoopInit.
+  autorewrite with circuitsimpl.
+  cbv [retimed]. eexists.
+  cbn [loops_reset_state LoopInit].
+  exists (fun (s1 : unit * (unit * value (circuit_state (loopless c2))
+                     * value (circuit_state (chreset (ndelays (o * s * loops_state c2) n) v))
+                     * unit *  (value s * value (loops_state c2))))
+       (s2 : unit * (unit * unit * unit
+                     * (unit * value (circuit_state (loopless c2)) * unit)
+                     * unit
+                     * value (circuit_state (chreset (ndelays (o * (tzero * (loops_state c2 * s))) n) _))
+                     * (unit * (value (loops_state c2) * value s)))) =>
+       let '(_,(_,ll1,d1,_,(s1,ls1))) := s1 in
+       let '(_,(_,_,_,(_,ll2,_),_,d2,(_,(ls2,s2)))) := s2 in
+       ll1 = ll2
+       /\ ls1 = ls2
+       /\ s1 = s2
+       /\ Forall_ndelays
+           (t1:=o * s * loops_state c2)
+           (t2:= o * (tzero * (loops_state c2 * s)))
+           (fun (s1 : value o * value s * value (loops_state c2))
+              (s2 : value o * (unit * (value (loops_state c2) * value s))) =>
+              s2 = (fst (fst s1), (tt, (snd s1, snd (fst s1)))))
+           (from_chreset_state d1) (from_chreset_state d2)).
+  cbn [LoopInit reset_state circuit_state value loops_state loopless].
+  ssplit; [ reflexivity .. | | ].
+  (* Instantiate rvals with a mapping from v, then this works *)
 Admitted.
 
 Lemma retimed_Loop {i o s} (c1 c2 : Circuit (i * s) (o * s)) n :
