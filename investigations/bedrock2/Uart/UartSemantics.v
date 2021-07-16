@@ -2,6 +2,7 @@ Require Import Coq.ZArith.ZArith.
 Require Import Coq.Lists.List.
 Require Import Coq.Numbers.DecimalString.
 Require Import bedrock2.Syntax bedrock2.Semantics.
+Require Import bedrock2.ZnWords.
 Require coqutil.Datatypes.String coqutil.Map.SortedList.
 Require coqutil.Map.SortedListString coqutil.Map.SortedListWord.
 Require Import coqutil.Map.Interface.
@@ -89,7 +90,7 @@ Section WithParameters.
 
   Inductive state : Type :=
   | UNINITIALIZED
-  | AVAILABLE (txlvl : Z) (rxlvl : Z).
+  | AVAILABLE (txlvl : nat) (rxlvl : nat).
 
   Definition status_matches_state (s : state) (status : word) : bool :=
     match s with
@@ -101,11 +102,11 @@ Section WithParameters.
        && negb (is_flag_set status UART_STATUS_RXIDLE_BIT)
        && negb (is_flag_set status UART_STATUS_RXEMPTY_BIT))
     | AVAILABLE t r =>
-      if Z.eqb t 0 then
+      if Nat.eqb t 0 then
         is_flag_set status UART_STATUS_TXEMPTY_BIT &&
         is_flag_set status UART_STATUS_TXIDLE_BIT &&
         negb (is_flag_set status UART_STATUS_TXFULL_BIT)
-      else if Z.eqb t 32  then
+      else if Nat.eqb t 32  then
         is_flag_set status UART_STATUS_TXFULL_BIT &&
         negb (is_flag_set status UART_STATUS_TXIDLE_BIT) &&
         negb (is_flag_set status UART_STATUS_TXEMPTY_BIT)
@@ -117,13 +118,18 @@ Section WithParameters.
 
   Definition read_step
     (s : state) (r : Register) (val : word) (s' : state) : Prop :=
-    match s with
-    | _ => 1 = 1 (* placeholder *)
+    match r with
+    | STATUS => s = s' /\ status_matches_state s val = true
+    | _ => False
     end.
 
   Definition write_step
     (s : state) (r : Register) (val : word) (s' : state) : Prop :=
-    match s with
+    match r with
+    | WDATA => match s with
+               | UNINITIALIZED => s' = UNINITIALIZED
+               | AVAILABLE tx rx => s' = AVAILABLE (tx + 1) (rx + 1)
+               end
     | _ => 1 = 1 (* placeholder *)
     end.
 
@@ -134,27 +140,39 @@ Section WithParameters.
     all:apply word.of_Z_inj_small in H; cbv; intuition discriminate.
   Qed.
 
+  Lemma reg_addr_aligned r : word.unsigned (reg_addr r) mod 4 = 0.
+  Proof.
+    destruct r; cbv [reg_addr]; rewrite word.unsigned_of_Z; eauto.
+  Qed.
+
   Global Instance state_machine_parameters
     : StateMachineSemantics.parameters 32 word mem :=
     {| StateMachineSemantics.parameters.state := state ;
        StateMachineSemantics.parameters.register := Register;
-       StateMachineSemantics.parameters.initial_state := UNINITIALIZED ;
-       StateMachineSemantics.parameters.read_step := read_step ;
-       StateMachineSemantics.parameters.write_step := write_step ;
+       StateMachineSemantics.parameters.is_initial_state := eq UNINITIALIZED ;
+       StateMachineSemantics.parameters.read_step sz s a v s' :=
+         sz = 4%nat /\ read_step s a v s' ;
+       StateMachineSemantics.parameters.write_step sz s a v s' :=
+         sz = 4%nat /\ write_step s a v s' ;
        StateMachineSemantics.parameters.reg_addr := reg_addr ;
-       StateMachineSemantics.parameters.all_regs := all_regs;
+       StateMachineSemantics.parameters.isMMIOAddr a :=
+         List.Exists (fun r =>
+           word.unsigned (reg_addr r) <= word.unsigned a < word.unsigned (reg_addr r) + 4
+         ) all_regs;
     |}.
   Global Instance state_machine_parameters_ok
     : StateMachineSemantics.parameters.ok state_machine_parameters.
   Proof.
-    constructor.
-    { left; exact eq_refl. }
-    { exact word_ok. }
-    { exact mem_ok. }
-    { exact reg_addr_unique. }
-    { exact all_regs_complete. }
-    { cbn. unfold reg_addr. destruct r; cbn; rewrite word.unsigned_of_Z; cbv; reflexivity. }
-    { cbn. unfold reg_addr. destruct r; cbn; rewrite word.unsigned_of_Z; cbv; intuition discriminate. }
-  Defined.
-
+    constructor;
+      unfold parameters.isMMIOAddr; cbn;
+      intros;
+      try exact _;
+      repeat match goal with
+             | H: _ /\ _ |- _ => destruct H
+             end;
+      subst;
+      try eapply Exists_exists;
+      eauto using all_regs_complete, reg_addr_aligned, reg_addr_unique with zarith;
+      try ZnWords.
+  Qed.
 End WithParameters.

@@ -31,6 +31,8 @@ Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.Uart.UartSemantics.
 Require Import Bedrock2Experiments.Uart.Uart.
 Require Import Bedrock2Experiments.Uart.Constants.
+Require Import Bedrock2Experiments.LibBase.AbsMMIO.
+Require Import Bedrock2Experiments.MMIOLabels.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
 Local Open Scope list_scope.

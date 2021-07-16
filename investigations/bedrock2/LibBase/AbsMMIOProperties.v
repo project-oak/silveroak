@@ -29,7 +29,8 @@ Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.LibBase.AbsMMIO.
 Require Import Bedrock2Experiments.LibBase.LibBaseSemantics.
 Require Import coqutil.Map.SortedListString.
-
+Require Import Bedrock2Experiments.StateMachineSemantics.
+Require Import Bedrock2Experiments.StateMachineProperties.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -39,16 +40,5 @@ Section Proof.
   Import LibBaseSemantics.
   Context {p : parameters} {p_ok : parameters_ok p}.
 
-  Instance spec_of_abs_mmio_read32 : spec_of "abs_mmio_read32" :=
-    fun function_env =>
-      forall (addr : word) (R : mem -> Prop) (m : mem) (t : trace),
-        call function_env abs_mmio_read32 t m [addr]
-        (fun t' m' rets => t = t' /\ m = m').
-
-  Check ( _ : spec_of abs_mmio_read32).
-  Lemma abs_mmio_read32_correct :
-    program_logic_goal_for_function! abs_mmio_read32.
-  Proof.
-  Admitted.
 
 End Proof.

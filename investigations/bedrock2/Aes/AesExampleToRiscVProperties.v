@@ -18,6 +18,7 @@ Require Import Bedrock2Experiments.List.
 Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.StateMachineMMIO.
 Require Import Bedrock2Experiments.StateMachineSemantics.
+Require Import Bedrock2Experiments.LibBase.AbsMMIO.
 Require Import Bedrock2Experiments.Aes.Constants.
 Require Import Bedrock2Experiments.Aes.AesExample.
 Require Import Bedrock2Experiments.Aes.AesExampleProperties.
@@ -238,6 +239,7 @@ Proof.
   { cbv [ExprImp.valid_funs]. intros *.
     cbv [map.of_list
            List.app
+           abs_mmio_read32
            aes_encrypt main
            Aes.aes_init Aes.aes_key_put
            Aes.aes_iv_put Aes.aes_data_put
@@ -253,6 +255,7 @@ Proof.
   { exact aes_example_compile_result_eq. }
   { cbv [map.of_list
            List.app
+           abs_mmio_read32
            aes_encrypt main
            Aes.aes_init Aes.aes_key_put
            Aes.aes_iv_put Aes.aes_data_put
@@ -266,14 +269,17 @@ Proof.
   { vm_compute. congruence. }
   { eapply exec_main; eauto.
     { apply aes_encrypt_correct.
-      { apply aes_init_correct. }
+      {
+        apply aes_init_correct. }
       { apply aes_key_put_correct. }
       { apply aes_iv_put_correct. }
       { apply aes_data_put_wait_correct.
-        { apply aes_data_ready_correct. }
+        { apply aes_data_ready_correct.
+          apply abs_mmio_read32_correct. }
         { apply aes_data_put_correct. } }
       { apply aes_data_get_wait_correct.
-        { apply aes_data_valid_correct. }
+        { apply aes_data_valid_correct.
+          apply abs_mmio_read32_correct. }
         { apply aes_data_get_correct. } } }
     { apply dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec).
       reflexivity. } }

@@ -52,6 +52,25 @@ Derive aes_example_compile_result
                  = Some aes_example_compile_result)
        As aes_example_compile_result_eq.
 Proof.
+  unfold compile.
+  Set Printing All.
+  let x := constr:(
+      @UpperPipeline.upper_compiler
+      (@Utility.width (@Pipeline.W pipeline_params))
+      (@Utility.word (@Pipeline.W pipeline_params))
+      (@Pipeline.mem pipeline_params)
+      (@Pipeline.string_keyed_map pipeline_params)
+      (@Pipeline.ext_spec pipeline_params)
+      (@Utility.width_cases (@Pipeline.W pipeline_params))
+      (@Utility.word_ok (@Pipeline.W pipeline_params))
+      (@map.of_list string (prod (prod (list string) (list string)) cmd.cmd)
+      (@Pipeline.string_keyed_map pipeline_params
+            (prod (prod (list string) (list string)) cmd.cmd))
+      (@app func funcs AesToRiscV.funcs))
+     ) in
+  let x' := (eval vm_compute in x) in
+  change x with x'.
+
   (* doing a more surgical vm_compute in the lhs only avoids fully computing the map
      type, which would slow eq_refl and Qed dramatically *)
   lazymatch goal with
