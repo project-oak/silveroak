@@ -302,3 +302,65 @@ Proof.
     erewrite <-list_unit_equiv. reflexivity. }
 Qed.
 
+Inductive FCircuit : nat -> type -> type -> Type :=
+| FVar : forall {s x}, nat -> FCircuit s [] x
+| FAbs : forall {s x y z}, FCircuit (S s) y z -> FCircuit s (x ** y) z
+| FApp : forall {s x y z}, FCircuit s (x ** y) z -> FCircuit s [] x -> FCircuit s y z
+
+| FLet: forall {s x y z }, FCircuit s [] x -> FCircuit (S s) y z -> FCircuit s y z
+| FLetDelay : forall {s x y z}, denote_type x
+  -> FCircuit (S s) [] x
+  -> FCircuit (S s) y z
+  -> FCircuit s y z
+
+| FDelay: forall {s x}, denote_type x -> FCircuit s [x] x
+
+| FAddMod : forall {s}, nat -> FCircuit s [Nat; Nat] Nat
+
+| FDestructTuple: forall {s x y z}, FCircuit s [] (x**y) -> FCircuit (S (S s)) y z -> FCircuit s y z
+| FMakeTuple: forall {s x y}, FCircuit s [x;y] (x**y)
+.
+
+Fixpoint to_first_order {i s o} n (c : Circuit (var:=fun _ => nat) s i o)
+  : FCircuit n i o :=
+  match c in Circuit _ i o return FCircuit n i o with
+  | Var x => FVar x
+  | Abs f => FAbs (to_first_order (S n) (f n))
+  | App f x => FApp (to_first_order n f) (to_first_order n x)
+  | Delay v => FDelay v
+  | AddMod n => FAddMod n
+  | Let x f => FLet (to_first_order n x) (to_first_order (S n) (f n))
+  | LetDelay v x f => FLetDelay v (to_first_order (S n) (x n)) (to_first_order (S n) (f n))
+  | DestructTuple tup f =>
+    FDestructTuple (to_first_order n tup)
+    (to_first_order (S (S n)) (f n (S n)))
+  | MakeTuple => FMakeTuple
+  end.
+
+Close Scope list_scope.
+
+Fixpoint fo_state {n i o} (c: FCircuit n i o) : type :=
+  match c with
+  | FVar _ => Unit
+  | FAbs f => fo_state f
+  | FApp f x => (fo_state f ++ fo_state x)
+  | FLet x f => (fo_state f ++ fo_state x)
+  | @FLetDelay _ X _ _ t x f => X ++ (fo_state f ++ fo_state x)
+  | @FDelay _ X _ => X
+  | FAddMod _ => Unit
+  | FDestructTuple tup f => (fo_state tup ++ fo_state f)
+  | FMakeTuple => Unit
+  end.
+
+Definition fib_fo {sz} := to_first_order 0 (fibonacci (sz:=sz)).
+
+Definition get_phoas_state {i o s var} (_: Circuit (var:=var) s i o) := s.
+
+Compute (fib_fo (sz:=12)).
+Compute fo_state (fib_fo (sz:=12)).
+
+Goal forall sz, get_phoas_state (var:=fun _ => nat) (fibonacci (sz:=sz)) = fo_state (fib_fo (sz:=sz)).
+  intros.
+  cbn [ fo_state fib_fo to_first_order fibonacci absorb_any].
+  reflexivity.
+Qed.
