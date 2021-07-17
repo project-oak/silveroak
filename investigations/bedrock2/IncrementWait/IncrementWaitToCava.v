@@ -14,14 +14,12 @@ Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.Bedrock2ToCava.
 
 Definition binary: list byte := Eval compute in Pipeline.instrencode put_wait_get_asm.
 
-Definition incr_device_state_related: IncrementWaitSemantics.state -> counter_device -> Prop.
-Admitted.
-
-Lemma initial_device_states_related:
-  incr_device_state_related IncrementWaitSemantics.IDLE device.reset_state.
-Admitted.
-
 Axiom TODO: False.
+
+Instance DI:  MMIOToCava.device_implements_state_machine
+             counter_device
+             IncrementWaitSemantics.state_machine_parameters.
+Admitted.
 
 Theorem IncrementWait_end2end_correct: forall p_functions p_call mH Rdata Rexec R (* <-? *)
           (initialL: ExtraRiscvMachine counter_device) input output_placeholder sched,
@@ -69,7 +67,8 @@ Proof.
     end.
     (* TODO put in machine_ok, but maybe require a "ready predicate" instead of reset state,
        and make sure that the IncrementWait program puts the device back into a ready state *)
-    exact initial_device_states_related. }
+    eapply MMIOToCava.initial_state_is_reset_state.
+    reflexivity. }
   { refine (@WeakestPreconditionProperties.Proper_cmd _ StateMachineSemantics.ok _ _ _ _ _ _ _ _ _ _ _).
     1: exact IncrementWaitSemantics.state_machine_parameters_ok.
     1: eapply WeakestPreconditionProperties.Proper_call.
@@ -81,11 +80,9 @@ Proof.
       reflexivity. }
     unfold post_main.
     repeat intro. Tactics.logical_simplify. Tactics.ssplit. 1: eassumption.
-    do 2 eexists.
-    match goal with
-    | H: ?t = ?t' |- _ = _ ++ ?t'' /\ _ => replace t'' with t' by exact H
-    end.
-    rewrite List.app_nil_r. split; [reflexivity|]. eassumption. }
+    eexists.
+    eassumption.
+  }
   Unshelve.
   all: unshelve eapply StateMachineSemantics.ok;
     exact IncrementWaitSemantics.state_machine_parameters_ok.

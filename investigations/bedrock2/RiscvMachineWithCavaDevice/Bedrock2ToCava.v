@@ -67,7 +67,7 @@ Section WithParams.
           {state_machine_params: StateMachineSemantics.parameters.parameters 32 word mem}
           {state_machine_params_ok: StateMachineSemantics.parameters.ok state_machine_params}
           {D: device}
-          (device_state_related: StateMachineSemantics.parameters.state -> D -> Prop)
+          {DI: device_implements_state_machine D state_machine_params}
           (sched: schedule).
 
   Open Scope ilist_scope.
@@ -167,10 +167,10 @@ Section WithParams.
       f_entry_rel_pos mod 4 = 0 ->
       (exists s, StateMachineSemantics.parameters.is_initial_state s /\
                  device_state_related s initialL.(getExtraState)) ->
+      initialL.(getLog) = [] ->
       WeakestPrecondition.cmd (p := FlattenExpr.mk_Semantics_params _) (WeakestPrecondition.call fs)
            fbody initialL.(getLog) mH map.empty
-           (fun t' m' l' => postH m' /\ exists s' tnew, t' = tnew ++ initialL.(getLog)
-                                                        /\ execution tnew s') ->
+           (fun t' m' l' => postH m' /\ exists s',  execution t' s') ->
       machine_ok p_functions f_entry_rel_pos stack_start stack_pastend (instrencode instrs) p_call
                  p_call mH Rdata Rexec initialL ->
       exists steps_remaining finalL mH',
@@ -188,7 +188,7 @@ Section WithParams.
       move mmioAddrs_match at bottom. unfold sameset, subset in mmioAddrs_match.
       clear -mmioAddrs_match. unfold elem_of in *. destruct mmioAddrs_match. eauto.
     }
-    edestruct (stateMachine_to_cava device_state_related)
+    edestruct stateMachine_to_cava
       as (steps_remaining & finalL & finalH & Rn & Rfinal & Pf).
     2: {
       pose proof Pipeline.compiler_correct as P.
@@ -237,7 +237,7 @@ Section WithParams.
       inversion Rfinal. subst; clear Rfinal.
       unfold LowerPipeline.machine_ok in *. cbn -[map.get map.empty instrencode] in *.
       simp.
-      eexists _, {| getMachine := {| getLog := t |} |}, _; cbn -[map.get map.empty instrencode].
+      eexists _, {| getMachine := {| getLog := [] |} |}, _; cbn -[map.get map.empty instrencode].
       split. 1: exact Rn.
       pose proof ptsto_bytes_to_program as P. cbn in P.
       match goal with
@@ -271,8 +271,7 @@ Section WithParams.
       all: try reflexivity.
     }
     (* `related` holds at beginning: *)
-    change t with ([] ++ t) at 2.
-    econstructor. 1: unfold execution. all: try eassumption.
+    subst t. econstructor. 1: unfold execution. all: try eassumption.
     Unshelve.
     all: do 2 constructor.
   Qed.
