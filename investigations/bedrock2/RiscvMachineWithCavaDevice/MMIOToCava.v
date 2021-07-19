@@ -22,10 +22,15 @@ Require Import Bedrock2Experiments.StateMachineMMIOSpec.
 Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte.byte}
       (D: device)(sp: StateMachineSemantics.parameters.parameters 32 word mem) :=
 {
+  (* the high-level (StateMachineSemantics) layer agrees with the low-level (Cava device)
+     layer on what the set of MMIO addresses is *)
   mmioAddrs_match: sameset StateMachineSemantics.parameters.isMMIOAddr device.isMMIOAddr;
 
+  (* simulation relation between high-level states sH and low-level states sL *)
   device_state_related: StateMachineSemantics.parameters.state -> D -> Prop;
 
+  (* "high-level states marked as an initial state"
+     = "high-level states related to the device reset state" *)
   initial_state_is_reset_state: forall sH,
       parameters.is_initial_state sH <-> device_state_related sH device.reset_state;
 
@@ -35,6 +40,16 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       device_state_related sH2 sL ->
       sH1 = sH2;
 
+  (* transitions that are not responding to MMIO cannot change the state as seen by the software: *)
+  nonMMIO_device_step_preserves_state_machine_state:
+    forall sL1 sL2 sH ignored_addr ignored_val ignored_resp,
+      device_state_related sH sL1 ->
+      device.run1 sL1 (false, false, ignored_addr, ignored_val) = (sL2, ignored_resp) ->
+      device_state_related sH sL2;
+
+  (* for each high-level read step, if we run the low-level device with the read step's
+     address on the input wires, we will get a response after at most device.maxRespDelay
+     device cycles, and the response will match the high-level read step's response *)
   state_machine_read_to_device_read: forall n r v sH sH' sL,
       parameters.read_step n sH r v sH' ->
       device_state_related sH sL ->
@@ -43,6 +58,9 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
                             device.maxRespDelay sL = (Some (word_to_bv v), sL') /\
         device_state_related sH' sL';
 
+  (* for each high-level write step, if we run the low-level device with the write step's
+     address and value on the input wires, we will get an ack response after at most
+     device.maxRespDelay device cycles *)
   state_machine_write_to_device_write: forall n r v sH sH' sL,
       parameters.write_step n sH r v sH' ->
       device_state_related sH sL ->
@@ -377,6 +395,27 @@ Section WithParams.
     - simpl in *. eauto 10.
   Qed.
 
+  Lemma nonMMIO_device_steps_preserve_state_machine_state: forall n initialH initialL,
+      related initialH initialL ->
+      exists finalL, device_steps n initialL = (Some tt, finalL) /\
+                     related initialH finalL.
+  Proof.
+    induction n; simpl; intros.
+    - eauto.
+    - eapply IHn. inversion H. subst. clear H. cbn.
+      unfold device_step_without_IO.
+      econstructor.
+      + eassumption.
+      + match goal with
+        | |- context[fst ?p] => destruct p eqn: E
+        end.
+        eapply nonMMIO_device_step_preserves_state_machine_state. 1: eassumption.
+        simpl.
+        exact E.
+      + assumption.
+      + assumption.
+  Qed.
+
   Lemma stateMachine_to_cava_1: forall (initialH: MetricRiscvMachine) (initialL: ExtraRiscvMachine D)
                                        steps_done post,
       related initialH initialL ->
@@ -388,11 +427,13 @@ Section WithParams.
     intros.
     unfold stepH in H0.
     unfold nth_step.
-    eapply stateMachine_free_to_cava in H0. 2: eassumption.
-
-  Admitted.
-
-  Axiom TODO: False.
+    unfold Monads.Bind, Monads.OState_Monad.
+    destruct (nonMMIO_device_steps_preserve_state_machine_state (sched steps_done) _ _ H)
+      as (initialL' & E & R').
+    rewrite E.
+    eapply stateMachine_free_to_cava in H0. 2: exact R'.
+    simp. destruct res. eauto.
+  Qed.
 
   Lemma stateMachine_to_cava: forall (initialH: MetricRiscvMachine) (initialL: ExtraRiscvMachine D)
                                      steps_done post,
