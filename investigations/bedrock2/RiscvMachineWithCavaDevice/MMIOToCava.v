@@ -275,9 +275,8 @@ Section WithParams.
   Qed.
 
   Lemma stateMachine_primitive_to_cava: forall (initialH: MetricRiscvMachine) (p: riscv_primitive)
-      (metricsUpdater: MetricLogging.MetricLog -> MetricLogging.MetricLog)
       (postH: primitive_result p -> MetricRiscvMachine -> Prop),
-      MetricMinimalMMIO.interp_action (metricsUpdater, p) initialH postH ->
+      MetricMinimalMMIO.interp_action p initialH postH ->
       forall (initialL: ExtraRiscvMachine D),
         related initialH initialL ->
         exists finalH res finalL,
@@ -360,28 +359,20 @@ Section WithParams.
     { unfold Monads.OStateOperations.put. eauto 10 using mkRelated. }
   Qed.
 
-  Fixpoint discard_metrics{A: Type}(p: free MetricMinimalMMIO.action MetricMinimalMMIO.result A)
-    : free riscv_primitive primitive_result A :=
-    match p with
-    | free.act (u, a) k => free.act a (fun r => discard_metrics (k r))
-    | free.ret v => free.ret v
-    end.
-
   Lemma stateMachine_free_to_cava{A: Type}:
-    forall (p: free MetricMinimalMMIO.action MetricMinimalMMIO.result A) (initialH: MetricRiscvMachine)
+    forall (p: free riscv_primitive primitive_result A) (initialH: MetricRiscvMachine)
       (postH: A -> MetricRiscvMachine -> Prop),
       free.interp MetricMinimalMMIO.interp_action p initialH postH ->
       forall (initialL: ExtraRiscvMachine D),
         related initialH initialL ->
         exists finalH res finalL,
-          free.interp_as_OState InternalMMIOMachine.interpret_action (discard_metrics p) initialL =
+          free.interp_as_OState InternalMMIOMachine.interpret_action p initialL =
             (Some res, finalL) /\
           postH res finalH /\
           related finalH finalL.
   Proof.
     induction p; intros.
-    - destruct a as [u a].
-      simpl in H0. eapply stateMachine_primitive_to_cava in H0. 2: eassumption. simp.
+    - simpl in H0. eapply stateMachine_primitive_to_cava in H0. 2: eassumption. simp.
       simpl. rewrite H0p0. eapply H; eassumption.
     - simpl in *. eauto 10.
   Qed.
@@ -397,43 +388,7 @@ Section WithParams.
     intros.
     unfold stepH in H0.
     unfold nth_step.
-    unfold Run.run1 in *.
-    unfold Monads.Bind, Monads.OState_Monad, free.Monad_free in *.
-    simpl free.bind in *.
-    cbn [free.interp free.interp_fix free.interp_body] in *.
-    eapply stateMachine_primitive_to_cava in H0.
-  Abort.
-
-  Lemma stateMachine_to_cava_1: forall (initialH: MetricRiscvMachine) (initialL: ExtraRiscvMachine D)
-                                       steps_done post,
-      related initialH initialL ->
-      stepH initialH post ->
-      (forall finalH, post finalH -> exists s, execution finalH.(getLog) s) ->
-      exists finalL finalH, nth_step sched steps_done initialL = (Some tt, finalL) /\
-                            related finalH finalL /\
-                            post finalH.
-  Proof.
-    intros.
-    unfold stepH in H0.
-    unfold nth_step.
-    let R1 := match goal with
-              | H: context[?R1] |- _ =>
-                lazymatch R1 with
-                | Run.run1 _ => R1
-                end
-              end in
-    let R2 := match goal with
-              | |- context[?R2] =>
-                lazymatch R2 with
-                | Run.run1 _ => R2
-                end
-              end in
-    assert (R2 = discard_metrics R1). {
-      simpl.
-      f_equal.
-      extensionality x.
-      f_equal.
-      extensionality y.
+    eapply stateMachine_free_to_cava in H0. 2: eassumption.
 
   Admitted.
 
@@ -453,7 +408,6 @@ Section WithParams.
     - pose proof stateMachine_to_cava_1 as One.
       specialize One with (1 := H2) (2 := H). specialize (One steps_done).
       destruct One as (midL & midH & One & Rmid & M).
-      1: case TODO.
       specialize H1 with (1 := M) (2 := Rmid). specialize (H1 (S steps_done)).
       destruct H1 as (steps_remaining & finalL & finalH & Star & Rfinal & Pfinal).
       exists (S steps_remaining). simpl. rewrite One. eauto.

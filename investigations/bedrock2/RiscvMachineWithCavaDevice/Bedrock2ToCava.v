@@ -94,7 +94,7 @@ Section WithParams.
       @FlatToRiscvDef.FlatToRiscvDef.compile_ext_call StateMachineMMIO.compilation_params;
     Pipeline.M := _;
     Pipeline.MM := _;
-    Pipeline.RVM := MetricMinimalMMIO.IsRiscvMachine;
+    Pipeline.RVM := MaterializeRiscvProgram.Materialize;
     Pipeline.PRParams := _
   |}.
 

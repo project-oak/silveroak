@@ -171,7 +171,7 @@ Instance pipeline_params : Pipeline.parameters :=
   Pipeline.compile_ext_call := (@FlatToRiscvDef.compile_ext_call compilation_params);
   Pipeline.M := _;
   Pipeline.MM := _;
-  Pipeline.RVM := MetricMinimalMMIO.IsRiscvMachine;
+  Pipeline.RVM := MaterializeRiscvProgram.Materialize;
   Pipeline.PRParams := @FlatToRiscvCommon.PRParams FlatToRiscv_params
   |}.
 

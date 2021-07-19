@@ -131,7 +131,7 @@ Section MMIO1.
     FlatToRiscvCommon.locals := locals;
     FlatToRiscvCommon.mem := (@mem p);
     FlatToRiscvCommon.MM := free.Monad_free;
-    FlatToRiscvCommon.RVM := MetricMinimalMMIO.IsRiscvMachine;
+    FlatToRiscvCommon.RVM := MaterializeRiscvProgram.Materialize;
     FlatToRiscvCommon.PRParams := MetricMinimalMMIOPrimitivesParams;
     FlatToRiscvCommon.ext_spec := StateMachineSemantics.ext_spec;
   }.
