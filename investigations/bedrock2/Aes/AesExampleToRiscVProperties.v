@@ -19,6 +19,7 @@ Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.StateMachineMMIO.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.LibBase.AbsMMIO.
+Require Import Bedrock2Experiments.LibBase.AbsMMIOProperties.
 Require Import Bedrock2Experiments.Aes.Constants.
 Require Import Bedrock2Experiments.Aes.AesExample.
 Require Import Bedrock2Experiments.Aes.AesExampleProperties.
@@ -275,11 +276,19 @@ Proof.
       { apply aes_iv_put_correct. }
       { apply aes_data_put_wait_correct.
         { apply aes_data_ready_correct.
-          apply abs_mmio_read32_correct. }
+          Set Printing Implicit.
+          apply abs_mmio_read32_correct.
+          pose proof state_machine_parameters_ok.
+          eassumption.
+        }
+
         { apply aes_data_put_correct. } }
       { apply aes_data_get_wait_correct.
         { apply aes_data_valid_correct.
-          apply abs_mmio_read32_correct. }
+          apply abs_mmio_read32_correct.
+          pose proof state_machine_parameters_ok.
+          eassumption.
+        }
         { apply aes_data_get_correct. } } }
     { apply dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec).
       reflexivity. } }

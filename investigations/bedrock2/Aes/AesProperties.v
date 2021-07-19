@@ -32,7 +32,7 @@ Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.Aes.AesSemantics.
 Require Import Bedrock2Experiments.Aes.Aes.
 Require Import Bedrock2Experiments.Aes.Constants.
-Require Import Bedrock2Experiments.LibBase.AbsMMIO.
+Require Import Bedrock2Experiments.LibBase.AbsMMIOProperties.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -558,32 +558,6 @@ Section Proofs.
     is_flag_set ctrl AES_CTRL_MANUAL_OPERATION.
 
   (***** Proofs for specific functions *****)
-
-  Global Instance spec_of_abs_mmio_read32 : spec_of "abs_mmio_read32" :=
-    fun function_env =>
-      forall (tr : trace) (m : mem) (s : state) (addr : Semantics.word) r,
-        reg_addr r = addr ->
-        (exists val s', parameters.read_step 4 s r val s') ->
-        execution tr s ->
-        call function_env abs_mmio_read32 tr m [addr]
-        (fun tr' m' rets =>
-          exists s' val,
-          rets = [val]
-          /\ tr' = ((map.empty, MMIOLabels.READ32, [addr], (map.empty, [val])) :: tr)
-          /\ execution tr' s'
-          /\ m = m'
-        ).
-
-  Lemma abs_mmio_read32_correct :
-    program_logic_goal_for_function! abs_mmio_read32.
-  Proof.
-    repeat straightline.
-    eapply (interact_read 4); repeat straightline; eauto.
-    - rewrite <- H. reflexivity.
-    - do 3 eexists; ssplit; eauto.
-      cbv [parameters.read_step ] in *.
-      rewrite <- H. reflexivity.
-  Qed.
 
   Global Instance spec_of_aes_data_ready : spec_of "b2_data_ready" :=
     fun function_env =>
