@@ -277,7 +277,6 @@ Section WithParams.
   Lemma stateMachine_primitive_to_cava: forall (initialH: MetricRiscvMachine) (p: riscv_primitive)
       (metricsUpdater: MetricLogging.MetricLog -> MetricLogging.MetricLog)
       (postH: primitive_result p -> MetricRiscvMachine -> Prop),
-      (forall v finalH, postH v finalH -> exists s, execution finalH.(getLog) s) ->
       MetricMinimalMMIO.interp_action (metricsUpdater, p) initialH postH ->
       forall (initialL: ExtraRiscvMachine D),
         related initialH initialL ->
@@ -286,7 +285,7 @@ Section WithParams.
           postH res finalH /\
           related finalH finalL.
   Proof.
-    intros. inversion H1. clear H1. subst.
+    intros. inversion H0. clear H0. subst.
     destruct p;
       cbn -[HList.tuple Memory.load_bytes Primitives.invalidateWrittenXAddrs] in *; try contradiction.
 
@@ -299,8 +298,8 @@ Section WithParams.
       unfold Monads.OStateOperations.put. cbn. eauto 10 using mkRelated. }
 
     (* Load* *)
-    1-4: unfold MinimalMMIO.load, MinimalMMIO.nonmem_load in H0;
-      destruct H0 as [HX HL]; cbn -[HList.tuple Memory.load_bytes] in *.
+    1-4: unfold MinimalMMIO.load, MinimalMMIO.nonmem_load in H;
+      destruct H as [HX HL]; cbn -[HList.tuple Memory.load_bytes] in *.
     1-4: match type of HL with
          | match ?x with _ => _ end => destruct x eqn: E; [destruct s0|]
          end;
@@ -326,7 +325,7 @@ Section WithParams.
     1-4: unfold MinimalMMIO.store, MinimalMMIO.nonmem_store, Memory.store_bytes in *;
       cbn -[HList.tuple Memory.load_bytes Memory.unchecked_store_bytes
             Primitives.invalidateWrittenXAddrs] in *.
-    1-4: match type of H0 with
+    1-4: match type of H with
          | match match ?x with _ => _ end with _ => _ end => destruct x eqn: E
          end.
     1-8: unfold Monads.OStateOperations.put;
@@ -334,11 +333,13 @@ Section WithParams.
                Primitives.invalidateWrittenXAddrs] in *;
          eauto 15 using mkRelated, preserve_undef_on_unchecked, preserve_disjoint_of_invalidateXAddrs.
     1-4: simp.
-    1-4: specialize (H _ _ H0p2); cbn in H; simp.
-    1-4: rename Hp1p2 into WS; pose proof WS as WS';
-         eapply parameters.write_step_size_valid in WS';
-         simpl in WS'; destruct WS' as [? | [? | [? | ?]]];
-         try contradiction; subst sz; try discriminate. (* <- also gets rid of 8-byte MMIO case *)
+    1-4: match goal with
+         | H: parameters.write_step _ _ _ _ _ |- _ =>
+           rename H into WS; pose proof WS as WS';
+           eapply parameters.write_step_size_valid in WS';
+           simpl in WS'; destruct WS' as [? | [? | [? | ?]]];
+           try contradiction; try subst sz; try discriminate (* <- also gets rid of 8-byte MMIO case *)
+         end.
     1-3: simp; erewrite write_step_isMMIOAddrB by eassumption.
     1-3: match goal with
          | E1: execution _ _, E2: execution _ _ |- _ =>
@@ -366,69 +367,9 @@ Section WithParams.
     | free.ret v => free.ret v
     end.
 
-  Lemma stateMachine_free_to_cava{A: Type}: forall (postH: A -> MetricRiscvMachine -> Prop),
-      (forall v finalH, postH v finalH -> exists s, execution finalH.(getLog) s) ->
-      forall (p: free MetricMinimalMMIO.action MetricMinimalMMIO.result A)
-             (initialH: MetricRiscvMachine),
-      free.interp MetricMinimalMMIO.interp_action p initialH postH ->
-      forall (initialL: ExtraRiscvMachine D),
-        related initialH initialL ->
-        exists finalH res finalL,
-          free.interp_as_OState InternalMMIOMachine.interpret_action (discard_metrics p) initialL =
-            (Some res, finalL) /\
-          postH res finalH /\
-          related finalH finalL.
-  Proof.
-    induction p; intros.
-    - destruct a as [u a].
-      simpl in H1.
-  Abort.
-
-  Lemma free_act_eq_inv1: forall {action : Type} {result : action -> Type} {T : Type} (a1 a2 : action)
-            (k1 : result a1 -> free action result T) (k2 : result a2 -> free action result T),
-      free.act a1 k1 = free.act a2 k2 ->
-      a1 = a2.
-  Proof. intros. inversion H. reflexivity. Qed.
-
-  Lemma free_act_eq_inv2: forall {action : Type} {result : action -> Type} {T : Type} (a : action)
-            (k1 k2 : result a -> free action result T),
-      free.act a k1 = free.act a k2 ->
-      k1 = k2.
-  Proof.
-    intros. inversion H. eapply Eqdep.EqdepTheory.inj_pair2 in H1. exact H1.
-  Qed.
-  (* Note: depends on Axiom Eqdep.Eq_rect_eq.eq_rect_eq *)
-
-  (* TODO maybe it would be better to require read_step/write_step in mmioLoad/mmioStore
-     methods of the MinimalMMIO machine, so that we would not need this lemma *)
-  Lemma invert_interp_bind_execution{A: Type}: forall (initialH: MetricRiscvMachine) u a f
-                                                      (postH: A -> MetricRiscvMachine -> Prop),
-      (forall v finalH, postH v finalH ->
-                        exists s, execution (p := state_machine_params) finalH.(getLog) s) ->
-      free.interp MetricMinimalMMIO.interp_action (free.act (u, a) f) initialH postH ->
-      exists midH,
-        MetricMinimalMMIO.interp_action (u, a) initialH midH /\
-        forall r m, midH r m -> free.interp MetricMinimalMMIO.interp_action (f r) m postH.
-  Proof.
-    intros. remember (free.act (u, a) f) as m.
-    revert dependent u. revert dependent a. revert dependent initialH.
-    induction m; intros.
-    - pose proof (free_act_eq_inv1 _ _ _ _ Heqm). subst a.
-      eapply free_act_eq_inv2 in Heqm. subst f0.
-      simpl in H1.
-      destruct a0; cbn in H1.
-      {
-        match type of H1 with
-        | _ _ ?x _ _ => remember x as m
-        end.
-        destruct m. 2: {
-          simpl in H1.
-  Abort.
-
   Lemma stateMachine_free_to_cava{A: Type}:
     forall (p: free MetricMinimalMMIO.action MetricMinimalMMIO.result A) (initialH: MetricRiscvMachine)
       (postH: A -> MetricRiscvMachine -> Prop),
-      (forall v finalH, postH v finalH -> exists s, execution finalH.(getLog) s) ->
       free.interp MetricMinimalMMIO.interp_action p initialH postH ->
       forall (initialL: ExtraRiscvMachine D),
         related initialH initialL ->
@@ -440,18 +381,15 @@ Section WithParams.
   Proof.
     induction p; intros.
     - destruct a as [u a].
-      simpl in H1.
-
-      (* stuck: can't make
-         (forall v finalH, postH v finalH -> exists s, execution finalH.(getLog) s)
-         hold for intermeditate postconditions *)
-  Admitted.
+      simpl in H0. eapply stateMachine_primitive_to_cava in H0. 2: eassumption. simp.
+      simpl. rewrite H0p0. eapply H; eassumption.
+    - simpl in *. eauto 10.
+  Qed.
 
   Lemma stateMachine_to_cava_1: forall (initialH: MetricRiscvMachine) (initialL: ExtraRiscvMachine D)
                                        steps_done post,
       related initialH initialL ->
       stepH initialH post ->
-      (forall finalH, post finalH -> exists s, execution finalH.(getLog) s) ->
       exists finalL finalH, nth_step sched steps_done initialL = (Some tt, finalL) /\
                             related finalH finalL /\
                             post finalH.

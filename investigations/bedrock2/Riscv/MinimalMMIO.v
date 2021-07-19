@@ -7,7 +7,10 @@
    Sign-extending depending on whether Lb or Lbu was used doesn't make sense
    because that's not visible to the device, Lb vs Lbu only affects what the
    processor does after obtaining the value, when placing it in a register.
-   So we choose to zero-extend in this file. *)
+   So we choose to zero-extend in this file.
+   And another difference is that here we add MMIOWriteOK and assert it in
+   nonmem_store, so that even if the postcondition is as weak as (fun _ => True),
+   we know that only valid state machine interactions were made. *)
 Require Import Coq.Strings.String.
 Require Import Coq.Numbers.DecimalString.
 Require Import Coq.ZArith.ZArith.
@@ -42,6 +45,9 @@ Class MMIOSpec{W: Words} {Mem : map.map word byte} := {
 
   (* hardware guarantees on MMIO read values *)
   MMIOReadOK : nat -> list LogItem -> word -> word -> Prop;
+
+  (* hardware requirements on which MMIO writes are acceptable *)
+  MMIOWriteOK : nat -> list LogItem -> word -> word -> Prop;
 }.
 
 Definition natToStr(n: nat): string := DecimalString.NilEmpty.string_of_uint (Nat.to_uint n).
@@ -62,6 +68,7 @@ Section Riscv.
 
   Definition nonmem_store(n: nat)(ctxid: SourceType) a v mach post :=
     isMMIOAddr a /\ isMMIOAligned n a /\
+    MMIOWriteOK n (getLog mach) a (word.of_Z (LittleEndian.combine n v)) /\
     post (withXAddrs (invalidateWrittenXAddrs n a mach.(getXAddrs))
          (withLogItem (@mmioStoreEvent a n v)
          mach)).

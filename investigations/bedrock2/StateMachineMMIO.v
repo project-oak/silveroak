@@ -230,6 +230,7 @@ Section MMIO1.
       valid_FlatImp_var rs2 ->
       map.get (getRegs (getMachine initial)) rs1 = Some a ->
       map.get (getRegs (getMachine initial)) rs2 = Some v ->
+      execution (getLog initial) s ->
       parameters.reg_addr r = a ->
       parameters.write_step sz s r v s' ->
       map.undef_on (getMem (getMachine initial)) isMMIOAddr ->
@@ -255,7 +256,13 @@ Section MMIO1.
     }
     simpl in P. destruct P as [? | [? | [? | ?] ] ]; [subst sz..|contradiction];
       repeat fwd; repeat execute_step.
-    all: destruct initial; assumption.
+    all: try (destruct initial; assumption).
+    all: rewrite LittleEndian.combine_split.
+    all: rewrite Z.mod_small.
+    all: rewrite ?word.of_Z_unsigned.
+    all: try eassumption.
+    all: split; [apply (word.unsigned_range v)|].
+    all: eapply parameters.write_step_bounded; eassumption.
   Qed.
 
   Lemma execute_compile_read sz rd rs a s s' r v1 initial (post: unit -> MetricRiscvMachine -> Prop):
