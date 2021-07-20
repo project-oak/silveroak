@@ -10,6 +10,7 @@ Require Import Bedrock2Experiments.LibBase.MMIOLabels.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.Aes.Constants.
 Require Import Bedrock2Experiments.Aes.AesSemantics.
+Require Import Bedrock2Experiments.LibBase.AbsMMIO.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
 Local Open Scope Z_scope.
@@ -190,7 +191,7 @@ Section Impl.
     ("b2_data_ready",
      ([], [out],
       bedrock_func_body:(
-      io! status = READ32 (AES_STATUS0) ;
+      unpack! status = abs_mmio_read32(AES_STATUS0);
       out = status & (1 << AES_STATUS_INPUT_READY)
     ))).
 
@@ -205,7 +206,7 @@ Section Impl.
     ("b2_data_valid",
      ([], [out],
       bedrock_func_body:(
-      io! status = READ32 (AES_STATUS0) ;
+      unpack! status = abs_mmio_read32 (AES_STATUS0) ;
       out = status & (1 << AES_STATUS_OUTPUT_VALID)
     ))).
 
@@ -220,7 +221,7 @@ Section Impl.
     ("b2_idle",
      ([], [out],
       bedrock_func_body:(
-      io! status = READ32 (AES_STATUS0) ;
+      unpack! status = abs_mmio_read32 (AES_STATUS0) ;
       out = status & (1 << AES_STATUS_IDLE)
     ))).
 

@@ -32,6 +32,7 @@ Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.Aes.AesSemantics.
 Require Import Bedrock2Experiments.Aes.Aes.
 Require Import Bedrock2Experiments.Aes.Constants.
+Require Import Bedrock2Experiments.LibBase.AbsMMIOProperties.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -40,6 +41,8 @@ Local Open Scope Z_scope.
 (* bedrock2.ProgramLogic does cbv, which unfolds the getters of aes_constants,
    resulting in large ugly ASTs *)
 Ltac normalize_body_of_function f ::= Tactics.rdelta.rdelta f.
+
+
 
 Section Proofs.
   Context {p : AesSemantics.parameters} {p_ok : parameters.ok p}
@@ -249,6 +252,20 @@ Section Proofs.
     pose proof status_read_always_ok s. logical_simplify.
     do 3 eexists; eauto.
   Qed.
+
+  Lemma reg_is_status :
+    forall r,
+    reg_addr r = word.of_Z AES_STATUS0 ->
+    r = STATUS.
+  Proof.
+    intros.
+    destruct r; apply reg_addr_unique; eauto.
+  Qed.
+
+  Local Ltac infer_reg_is_status :=
+    lazymatch goal with
+    | H: reg_addr _ = word.of_Z AES_STATUS0 |- _ => apply reg_is_status in H; subst
+    end.
 
   Lemma interact_write_control s call addre vale t m l
         (post : trace -> mem -> locals -> Prop) addr val :
@@ -569,16 +586,30 @@ Section Proofs.
   Lemma aes_data_ready_correct :
     program_logic_goal_for_function! aes_data_ready.
   Proof.
-    (* initial processing *)
     repeat straightline.
-
-    read_status.
-    repeat straightline.
-
-    (* done; prove postcondition *)
-    do 3 eexists. ssplit; eauto; [ ].
-    subst_lets. cbv [is_flag_set].
-    boolsimpl. reflexivity.
+    straightline_call; ssplit.
+    (* specialize abs_mmio to AES STATUS *)
+    { instantiate ( 1 := STATUS ). reflexivity. }
+    { pose proof status_read_always_ok s.
+      cbv [parameters.read_step state_machine_parameters] in *.
+      logical_simplify.
+      do 2 eexists. ssplit; eauto.
+    }
+    { eauto. }
+    { repeat straightline.
+      (* keep "execution a x" for later eassumption *)
+      pose proof H4 as HH.
+      simpl in H4.
+      destruct H4. destruct H2.
+      replace s with x1 in *.
+      2:{ eapply execution_unique; eauto. }
+      unfold step in H3. simpl in H3.
+      logical_simplify.
+      infer_reg_is_status.
+      do 3 eexists; ssplit; eauto.
+      inversion H4. subst.
+      subst_lets. cbv [is_flag_set]. boolsimpl. reflexivity.
+    }
   Qed.
 
   Global Instance spec_of_aes_data_valid : spec_of "b2_data_valid" :=
@@ -611,14 +642,29 @@ Section Proofs.
   Proof.
     (* initial processing *)
     repeat straightline.
-
-    read_status.
-    repeat straightline.
-
-    (* done; prove postcondition *)
-    do 3 eexists. ssplit; eauto; [ ].
-    subst_lets. cbv [is_flag_set].
-    boolsimpl. reflexivity.
+    straightline_call; ssplit.
+    (* specialize abs_mmio to AES STATUS *)
+    { instantiate ( 1 := STATUS ). reflexivity. }
+    { pose proof status_read_always_ok s.
+      cbv [parameters.read_step state_machine_parameters] in *.
+      logical_simplify.
+      do 2 eexists. ssplit; eauto.
+    }
+    { eauto. }
+    { repeat straightline.
+      (* keep "execution a x" for later eassumption *)
+      pose proof H4 as HH.
+      simpl in H4.
+      destruct H4. destruct H2.
+      replace s with x1 in *.
+      2:{ eapply execution_unique; eauto. }
+      unfold step in H3. simpl in H3.
+      logical_simplify.
+      infer_reg_is_status.
+      do 3 eexists; ssplit; eauto.
+      inversion H4. subst.
+      subst_lets. cbv [is_flag_set]. boolsimpl. reflexivity.
+    }
   Qed.
 
   Global Instance spec_of_aes_idle : spec_of "b2_idle" :=
@@ -651,14 +697,28 @@ Section Proofs.
   Proof.
     (* initial processing *)
     repeat straightline.
-
-    read_status.
-    repeat straightline.
-
-    (* done; prove postcondition *)
-    do 3 eexists. ssplit; eauto; [ ].
-    subst_lets. cbv [is_flag_set].
-    boolsimpl. reflexivity.
+    straightline_call; ssplit.
+    { instantiate ( 1 := STATUS ). reflexivity. }
+    { pose proof status_read_always_ok s.
+      cbv [parameters.read_step state_machine_parameters] in *.
+      logical_simplify.
+      do 2 eexists. ssplit; eauto.
+    }
+    { eauto. }
+    { repeat straightline.
+      pose proof H4 as HH.
+      simpl in H4.
+      destruct H4. destruct H2.
+      replace s with x1 in *.
+      2:{ eapply execution_unique; eauto. }
+      unfold step in H3. simpl in H3.
+      logical_simplify.
+      replace x2 with STATUS in *.
+      2:{ eapply reg_addr_unique. destruct x2; simpl; simpl in H3; destruct H3; reflexivity. }
+      do 3 eexists; ssplit; eauto.
+      inversion H4. subst.
+      subst_lets. cbv [is_flag_set]. boolsimpl. reflexivity.
+    }
   Qed.
 
   Global Instance spec_of_aes_init : spec_of "b2_aes_init" :=

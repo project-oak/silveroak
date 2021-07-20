@@ -16,6 +16,7 @@ Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.Aes.Constants.
 Require Import Bedrock2Experiments.Aes.Aes.
 Require Import Bedrock2Experiments.Aes.AesSemantics.
+Require Import Bedrock2Experiments.LibBase.AbsMMIO.
 Require coqutil.Word.Naive.
 Require coqutil.Map.SortedListWord.
 Require riscv.Utility.InstructionNotations.
@@ -175,7 +176,7 @@ Instance pipeline_params : Pipeline.parameters :=
   Pipeline.PRParams := @FlatToRiscvCommon.PRParams FlatToRiscv_params
   |}.
 
-Definition funcs := [aes_data_put_wait
+Definition funcs := [ aes_data_put_wait
                      ; aes_data_get_wait
                      ; aes_init
                      ; aes_key_put
@@ -184,7 +185,8 @@ Definition funcs := [aes_data_put_wait
                      ; aes_data_get
                      ; aes_data_ready
                      ; aes_data_valid
-                     ; aes_idle].
+                     ; aes_idle
+                     ; abs_mmio_read32 ].
 
 Derive aes_compile_result
        SuchThat (compile (map.of_list funcs)
