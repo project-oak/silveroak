@@ -16,11 +16,6 @@ Definition binary: list byte := Eval compute in Pipeline.instrencode put_wait_ge
 
 Axiom TODO: False.
 
-Instance DI:  MMIOToCava.device_implements_state_machine
-             counter_device
-             IncrementWaitSemantics.state_machine_parameters.
-Admitted.
-
 Theorem IncrementWait_end2end_correct: forall p_functions p_call mH Rdata Rexec R (* <-? *)
           (initialL: ExtraRiscvMachine counter_device) input output_placeholder sched,
     -2^19 <= word.signed (word.sub p_functions p_call) < 2^19 ->
@@ -45,7 +40,6 @@ Proof.
   refine (bedrock2_and_cava_system_correct
             _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
     try eassumption.
-  { exact IncrementWaitSemantics.state_machine_parameters_ok. }
   { apply sameset_ref. }
   { exact funcs_valid. }
   { apply List.dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec). reflexivity. }
@@ -70,7 +64,6 @@ Proof.
     eapply MMIOToCava.initial_state_is_reset_state.
     reflexivity. }
   { refine (@WeakestPreconditionProperties.Proper_cmd _ StateMachineSemantics.ok _ _ _ _ _ _ _ _ _ _ _).
-    1: exact IncrementWaitSemantics.state_machine_parameters_ok.
     1: eapply WeakestPreconditionProperties.Proper_call.
     2: {
       eapply main_correct. 1: eassumption.

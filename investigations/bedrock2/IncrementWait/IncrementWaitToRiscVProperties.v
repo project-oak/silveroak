@@ -26,13 +26,16 @@ Local Open Scope string_scope.
 Local Hint Resolve FlattenExpr.mk_Semantics_params_ok FlattenExpr_hyps : typeclass_instances.
 
 Definition post_main
-           (input output_placeholder : parameters.word) R
+           (input output_placeholder : Semantics.word) R
            (t' : trace) (m' : Semantics.mem) : Prop :=
   (* trace is valid and leads to IDLE state *)
   execution (p := state_machine_parameters) t' IDLE
   /\ (scalar (word.of_Z input_ptr) input
      * scalar (word.of_Z output_ptr) (proc input)
      * R)%sep m'.
+
+(* https://github.com/mit-plv/bedrock2/issues/193 *)
+Global Hint Mode map.map - - : typeclass_instances.
 
 Lemma main_correct
       fs input output_placeholder
@@ -68,7 +71,7 @@ Proof.
   subst a2.
   use_sep_assumption.
   cancel.
-  cancel_seps_at_indices 0%nat 1%nat. 1: reflexivity.
+  cancel_seps_at_indices 0%nat 0%nat. 1: reflexivity.
   reflexivity.
 Qed.
 

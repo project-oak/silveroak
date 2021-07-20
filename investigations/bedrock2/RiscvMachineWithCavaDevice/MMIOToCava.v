@@ -16,7 +16,6 @@ Require Import riscv.Utility.FreeMonad.
 Require Import riscv.Utility.runsToNonDet.
 Require Import riscv.Platform.MetricSane.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
-Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.DetIncrMachine.
 Require Import Bedrock2Experiments.StateMachineMMIOSpec.
 
 Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte.byte}

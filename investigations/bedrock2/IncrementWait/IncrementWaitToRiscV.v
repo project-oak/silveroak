@@ -36,14 +36,6 @@ Instance p : MMIO.parameters :=
      MMIO.funname_env_ok := SortedListString.ok;
   |}.
 
-Instance semantics_params : IncrementWaitSemantics.parameters := {|
-  IncrementWaitSemantics.parameters.word := MMIO.word;
-  IncrementWaitSemantics.parameters.mem := MMIO.mem |}.
-
-Instance semantics_params_ok : IncrementWaitSemantics.parameters.ok _ := {|
-  IncrementWaitSemantics.parameters.word_ok := _;
-  IncrementWaitSemantics.parameters.mem_ok := _ |}.
-
 Existing Instances Words32 compilation_params FlatToRiscv_params.
 
 Definition heap_start: Utility.word := word.of_Z (4*2^10).

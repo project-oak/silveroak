@@ -26,23 +26,10 @@ Class circuit_behavior :=
   { ncycles_processing : nat
   }.
 
-Module parameters.
-  Class parameters :=
-    { word :> Interface.word.word 32;
-      mem :> Interface.map.map word Byte.byte;
-    }.
-
-  Class ok (p : parameters) :=
-    { word_ok :> word.ok word; (* for impl of mem below *)
-      mem_ok :> Interface.map.ok mem; (* for impl of mem below *)
-    }.
-End parameters.
-Notation parameters := parameters.parameters.
-
 Section WithParameters.
-  Context {p : parameters} {p_ok : parameters.ok p}.
+  Context {word: word.word 32} {word_ok: word.ok word}
+          {mem: map.map word Byte.byte} {mem_ok: Interface.map.ok mem}.
   Context {circuit_spec : circuit_behavior}.
-  Import parameters.
 
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
   Local Notation bedrock2_trace := (list bedrock2_event).

@@ -104,6 +104,8 @@ Require Import coqutil.Map.Interface.
 Require Import coqutil.Map.Properties.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
 Require Import Bedrock2Experiments.IncrementWait.Constants.
+Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
+Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.MMIOToCava.
 
 Section WithParameters.
   Context {word: Interface.word 32} {word_ok: word.ok word}
@@ -117,5 +119,13 @@ Section WithParameters.
     device.addr_range_pastend := INCR_END_ADDR;
     device.maxRespDelay := 1;
   |}.
+
+  (* conservative upper bound matching the instance given in IncrementWaitToRiscv *)
+  Global Instance circuit_spec : circuit_behavior :=
+  {| ncycles_processing := 15%nat |}.
+
+  Global Instance cava_counter_satisfies_state_machine:
+    device_implements_state_machine counter_device state_machine_parameters.
+  Admitted.
 
 End WithParameters.

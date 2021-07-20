@@ -27,9 +27,9 @@ Import Syntax.Coercions List.ListNotations.
 Local Open Scope Z_scope.
 
 Section Proofs.
-  Context {p : parameters} {p_ok : parameters.ok p}
+  Context {word: word.word 32} {word_ok: word.ok word}
+          {mem: map.map word Byte.byte} {mem_ok: Interface.map.ok mem}
           {circuit_spec : circuit_behavior}.
-  Import parameters.
 
   Global Instance spec_of_put_wait_get : spec_of "put_wait_get" :=
     fun function_env =>
@@ -49,8 +49,8 @@ Section Proofs.
                 /\ rets = [proc input]).
 
   Local Ltac simplify_implicits :=
-    change Semantics.word with parameters.word in *;
-    change Semantics.mem with parameters.mem in *;
+    change Semantics.word with word in *;
+    change Semantics.mem with mem in *;
     change Semantics.width with 32 in *.
 
   Lemma execution_unique (t : trace) s1 s2 :
