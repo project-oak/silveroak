@@ -61,7 +61,7 @@ Proof.
     end.
     (* TODO put in machine_ok, but maybe require a "ready predicate" instead of reset state,
        and make sure that the IncrementWait program puts the device back into a ready state *)
-    eapply MMIOToCava.initial_state_is_reset_state.
+    eapply MMIOToCava.initial_state_related_to_reset_state.
     reflexivity. }
   { refine (@WeakestPreconditionProperties.Proper_cmd _ StateMachineSemantics.ok _ _ _ _ _ _ _ _ _ _ _).
     1: eapply WeakestPreconditionProperties.Proper_call.

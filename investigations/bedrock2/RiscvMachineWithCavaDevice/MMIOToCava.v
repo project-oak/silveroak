@@ -1,5 +1,6 @@
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.Lists.List. Import ListNotations.
+Require Import Coq.Strings.String. Open Scope string_scope.
 Require Import Coq.Logic.FunctionalExtensionality.
 Require Import Coq.Logic.PropExtensionality.
 Require Import Coq.micromega.Lia.
@@ -28,16 +29,13 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
   (* simulation relation between high-level states sH and low-level states sL *)
   device_state_related: StateMachineSemantics.parameters.state -> D -> Prop;
 
-  (* "high-level states marked as an initial state"
-     = "high-level states related to the device reset state" *)
-  initial_state_is_reset_state: forall sH,
-      parameters.is_initial_state sH <-> device_state_related sH device.reset_state;
+  (* every high-level initial state is related to the low-level reset state: *)
+  initial_state_related_to_reset_state: forall sH,
+      parameters.is_initial_state sH -> device_state_related sH device.reset_state;
 
-  (* each device state is mapped to at most one state machine state *)
-  state_machine_state_unique: forall sL sH1 sH2,
-      device_state_related sH1 sL ->
-      device_state_related sH2 sL ->
-      sH1 = sH2;
+  (* the only low-level state related to high-level initial states is the reset state: *)
+  only_reset_state_related_to_initial_state: forall sH sL,
+      parameters.is_initial_state sH -> device_state_related sH sL -> sL = device.reset_state;
 
   (* transitions that are not responding to MMIO cannot change the state as seen by the software: *)
   nonMMIO_device_step_preserves_state_machine_state:
@@ -79,9 +77,9 @@ Section WithParams.
           {DI: device_implements_state_machine D state_machine_params}.
 
   Inductive related: MetricRiscvMachine -> ExtraRiscvMachine D -> Prop :=
-    mkRelated: forall regs pc npc m xAddrs (t: list LogItem) mc s d,
-      execution t s ->
-      device_state_related s d ->
+    mkRelated: forall regs pc npc m xAddrs (t: list LogItem) mc d,
+      (forall s, execution t s -> device_state_related s d) ->
+      (exists s, execution t s /\ device_state_related s d) ->
       map.undef_on m StateMachineSemantics.parameters.isMMIOAddr ->
       disjoint (of_list xAddrs) StateMachineSemantics.parameters.isMMIOAddr ->
       related
@@ -156,98 +154,6 @@ Section WithParams.
       ZnWords.
   Qed.
 
-  (* Uniqueness lemmas follow from device_implements_state_machine, because they say that
-     the state machine is behaves like a deterministic Cava device.
-     Using this assumption, we can prove uniqueness once and for all, instead of individually
-     for each state machine. *)
-
-  Lemma write_step_unique: forall sz prevH prevL r v s s',
-      device_state_related prevH prevL ->
-      parameters.write_step sz prevH r v s ->
-      parameters.write_step sz prevH r v s' ->
-      s = s'.
-  Proof.
-    intros.
-    eapply state_machine_write_to_device_write in H0. 2: eassumption.
-    eapply state_machine_write_to_device_write in H1. 2: eassumption.
-    simp.
-    rewrite H0p0 in H1p0. inversion H1p0. subst. clear H1p0.
-    eapply state_machine_state_unique; eassumption.
-  Qed.
-
-  (* note: could be made stronger by also showing that the read values are equal,
-     but we don't need this here *)
-  Lemma read_step_unique: forall sz prevH prevL r v s s',
-      device_state_related prevH prevL ->
-      parameters.read_step sz prevH r v s ->
-      parameters.read_step sz prevH r v s' ->
-      s = s'.
-  Proof.
-    intros.
-    eapply state_machine_read_to_device_read in H0. 2: eassumption.
-    eapply state_machine_read_to_device_read in H1. 2: eassumption.
-    simp.
-    rewrite H0p0 in H1p0. inversion H1p0. subst. clear H1p0.
-    eapply state_machine_state_unique; eassumption.
-  Qed.
-
-  Lemma step_unique: forall a prevH prevL args rets s s',
-      device_state_related prevH prevL ->
-      step a prevH args rets s ->
-      step a prevH args rets s' ->
-      s = s'.
-  Proof.
-    unfold step. intros.
-    destruct (String.prefix MMIOLabels.WRITE_PREFIX a).
-    - simp.
-      replace sz0 with sz in *. 2: {
-        pose proof (parameters.write_step_size_valid _ _ _ _ _ H0p3) as V1. simpl in V1.
-        pose proof (parameters.write_step_size_valid _ _ _ _ _ H1p1) as V2. simpl in V2.
-        destruct V1 as [? | [? | [? | ?]]]; destruct V2 as [? | [? | [? | ?]]]; subst;
-          reflexivity || discriminate || contradiction.
-      }
-      eapply parameters.reg_addr_unique in H0p0. subst r1.
-      eapply write_step_unique; eassumption.
-    - destruct (String.prefix MMIOLabels.READ_PREFIX a). 2: contradiction. simp.
-      replace sz0 with sz in *. 2: {
-        pose proof (parameters.read_step_size_valid _ _ _ _ _ H0p3) as V1. simpl in V1.
-        pose proof (parameters.read_step_size_valid _ _ _ _ _ H1p1) as V2. simpl in V2.
-        destruct V1 as [? | [? | [? | ?]]]; destruct V2 as [? | [? | [? | ?]]]; subst;
-          reflexivity || discriminate || contradiction.
-      }
-      eapply parameters.reg_addr_unique in H0p0. subst r0.
-      eapply read_step_unique; eassumption.
-  Qed.
-
-  Lemma execution_exists_related: forall t sH,
-      execution t sH -> exists sL, device_state_related sH sL.
-  Proof.
-    induction t; cbn; intros.
-    - exists device.reset_state. eapply initial_state_is_reset_state. assumption.
-    - destruct a as (((mGive & a) & args) & (mReceive & rets)). simp.
-      specialize (IHt _ Hp0). destruct IHt as (prevL & IH).
-      unfold step in Hp1.
-      destruct (String.prefix MMIOLabels.WRITE_PREFIX a).
-      + simp. eapply state_machine_write_to_device_write in Hp1p1. 2: eassumption.
-        simp. eauto.
-      + simp. eapply state_machine_read_to_device_read in Hp1p1. 2: eassumption.
-        simp. eauto.
-  Qed.
-
-  Lemma execution_unique: forall t s s',
-      execution t s -> execution t s' -> s = s'.
-  Proof.
-    induction t; cbn [execution]; intros.
-    - eapply state_machine_state_unique.
-      + eapply initial_state_is_reset_state. exact H.
-      + eapply initial_state_is_reset_state. exact H0.
-    - destruct a as (((mGive & a) & args) & (mReceive & rets)).
-      destruct H as (prev & E & St). destruct H0 as (prev' & E' & St').
-      specialize (IHt _ _ E E'). subst prev'.
-      eapply execution_exists_related in E. simp.
-      eapply step_unique; eassumption.
-  Qed.
-
   Lemma bv_to_word_word_to_bv: forall v, bv_to_word (word_to_bv v) = v.
   Proof.
     intros. unfold bv_to_word, word_to_bv.
@@ -291,6 +197,46 @@ Section WithParams.
       eauto 10 using disjoint_diff_l.
   Qed.
 
+  Lemma rerun_read_step: forall sz t d d' r v,
+      (forall s, execution t s -> device_state_related s d) ->
+      device.runUntilResp true false (word_to_bv (parameters.reg_addr r))
+                          (word_to_bv (word.of_Z 0)) device.maxRespDelay d =
+      (Some (word_to_bv (word.of_Z (LittleEndian.combine sz v))), d') ->
+      In sz [1%nat; 2%nat; 4%nat] ->
+      forall s,
+        execution (MinimalMMIO.mmioLoadEvent (parameters.reg_addr r) v :: t) s ->
+        device_state_related s d'.
+  Proof.
+    intros. destruct H2 as (s'' & Ex & St).
+    unfold step in St.
+    simpl in H1. destruct H1 as [H1 | [H1 | [H1 | []]]]; subst;
+    destruct St as (r' & val & sz & A & B & C & F);
+    eapply parameters.reg_addr_unique in A; subst.
+    all: edestruct state_machine_read_to_device_read as (d'' & RU'' & Rel'');
+      [exact F|eapply H; exact Ex|].
+    all: rewrite H0 in RU''; inversion RU''; subst; assumption.
+  Qed.
+
+  Lemma rerun_write_step: forall sz t d d' r v ignored,
+      (forall s, execution t s -> device_state_related s d) ->
+      device.runUntilResp false true (word_to_bv (parameters.reg_addr r))
+                          (word_to_bv (word.of_Z (LittleEndian.combine sz v))) device.maxRespDelay d =
+      (Some ignored, d') ->
+      In sz [1%nat; 2%nat; 4%nat] ->
+      forall s,
+        execution (MinimalMMIO.mmioStoreEvent (parameters.reg_addr r) v :: t) s ->
+        device_state_related s d'.
+  Proof.
+    intros. destruct H2 as (s'' & Ex & St).
+    unfold step in St.
+    simpl in H1. destruct H1 as [H1 | [H1 | [H1 | []]]]; subst;
+    destruct St as (r' & sz & A & B & C & F);
+    eapply parameters.reg_addr_unique in A; subst.
+    all: edestruct state_machine_write_to_device_write as (d'' & ignored'' & RU'' & Rel'');
+      [exact F|eapply H; exact Ex|];
+      pose proof (eq_trans (eq_sym H0) RU'') as E; inversion E; assumption.
+  Qed.
+
   Lemma stateMachine_primitive_to_cava: forall (initialH: MetricRiscvMachine) (p: riscv_primitive)
       (postH: primitive_result p -> MetricRiscvMachine -> Prop),
       MetricMinimalMMIO.interp_action p initialH postH ->
@@ -317,17 +263,13 @@ Section WithParams.
     1-4: unfold MinimalMMIO.load, MinimalMMIO.nonmem_load in H;
       destruct H as [HX HL]; cbn -[HList.tuple Memory.load_bytes] in *.
     1-4: match type of HL with
-         | match ?x with _ => _ end => destruct x eqn: E; [destruct s0|]
+         | match ?x with _ => _ end => destruct x eqn: E; [destruct s|]
          end;
          try specialize (HX eq_refl);
          rewrite ?(isXAddr4B_true _ _ HX);
          eauto 10 using mkRelated.
     1-4: simp; erewrite ?read_step_isMMIOAddrB by eassumption.
-    1-4: match goal with
-         | E1: execution _ _, E2: execution _ _ |- _ =>
-           pose proof (execution_unique _ _ _ E1 E2); subst; clear E2
-         end.
-    1-4: edestruct state_machine_read_to_device_read as (d' & RU & Rel'); [eassumption..|].
+    1-4: edestruct state_machine_read_to_device_read as (d' & RU & Rel'); [eassumption|solve[eauto]|].
     1-4: cbn -[HList.tuple]; rewrite RU; cbn -[HList.tuple].
     4: { (* 64-bit MMIO is not supported: *)
       eapply parameters.read_step_size_valid in HLp2p2. simpl in HLp2p2. exfalso. intuition congruence.
@@ -335,7 +277,7 @@ Section WithParams.
     1-3: rewrite bv_to_word_word_to_bv;
          rewrite word.unsigned_of_Z_nowrap by (pose proof (LittleEndian.combine_bound v); lia);
          rewrite LittleEndian.split_combine.
-    1-3: eauto 15 using mkRelated, execution_read_cons.
+    1-3: eauto 20 using mkRelated, execution_read_cons, rerun_read_step, in_eq, in_cons.
 
     (* Store* *)
     1-4: unfold MinimalMMIO.store, MinimalMMIO.nonmem_store, Memory.store_bytes in *;
@@ -357,14 +299,12 @@ Section WithParams.
            try contradiction; try subst sz; try discriminate (* <- also gets rid of 8-byte MMIO case *)
          end.
     1-3: simp; erewrite write_step_isMMIOAddrB by eassumption.
-    1-3: match goal with
-         | E1: execution _ _, E2: execution _ _ |- _ =>
-           pose proof (execution_unique _ _ _ E1 E2); subst; clear E2
-         end.
-    1-3: edestruct state_machine_write_to_device_write as (d' & ignored & RU & Rel'); [eassumption..|].
+    1-3: edestruct state_machine_write_to_device_write as (d' & ignored & RU & Rel');
+           [eassumption|solve[eauto]|].
     1-3: cbn -[HList.tuple Primitives.invalidateWrittenXAddrs]; rewrite RU;
          cbn -[HList.tuple Primitives.invalidateWrittenXAddrs].
-    1-3: eauto 15 using mkRelated, execution_write_cons, preserve_disjoint_of_invalidateXAddrs.
+    1-3: eauto 15 using mkRelated, execution_write_cons, preserve_disjoint_of_invalidateXAddrs,
+         rerun_write_step, in_eq, in_cons.
 
     (* GetPC *)
     { eauto 10 using mkRelated. }
@@ -403,14 +343,22 @@ Section WithParams.
     - eauto.
     - eapply IHn. inversion H. subst. clear H. cbn.
       unfold device_step_without_IO.
-      econstructor.
-      + eassumption.
+      eapply mkRelated.
+      + intros.
+        match goal with
+        | |- context[fst ?p] => destruct p eqn: E
+        end.
+        eapply nonMMIO_device_step_preserves_state_machine_state. 1: eauto.
+        simpl.
+        exact E.
       + match goal with
         | |- context[fst ?p] => destruct p eqn: E
         end.
-        eapply nonMMIO_device_step_preserves_state_machine_state. 1: eassumption.
+        rename s into d'.
+        destruct H1 as (s' & Ex & Rel).
         simpl.
-        exact E.
+        eexists. split; [eassumption|].
+        eapply nonMMIO_device_step_preserves_state_machine_state; eassumption.
       + assumption.
       + assumption.
   Qed.

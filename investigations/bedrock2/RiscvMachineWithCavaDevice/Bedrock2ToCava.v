@@ -271,7 +271,12 @@ Section WithParams.
       all: try reflexivity.
     }
     (* `related` holds at beginning: *)
-    subst t. econstructor. 1: unfold execution. all: try eassumption.
+    subst t. eapply mkRelated; simpl; try assumption.
+    - intros.
+      replace d with device.reset_state.
+      + eapply initial_state_related_to_reset_state. assumption.
+      + symmetry. eauto using only_reset_state_related_to_initial_state.
+    - eauto.
     Unshelve.
     all: do 2 constructor.
   Qed.

@@ -160,16 +160,11 @@ Section WithParameters.
       intros.
     - (* mmioAddrs_match: *)
       reflexivity.
-    - (* initial_state_is_reset_state: *)
-      cbn. split; intros.
-      + subst. apply reset_related.
-      + inversion H. reflexivity.
-    - (* state_machine_state_unique: *)
-      inversion H; inversion H0; subst; try reflexivity; try discriminate.
-      + inversion H4.
-        (* Problem: Several high-level states (differning in ncycles) for one low-level state *)
-        case TODO.
-      + inversion H4. apply word_to_bv_inj in H2. subst. reflexivity.
+    - (* initial_state_related_to_reset_state: *)
+      cbn in *. subst. apply reset_related.
+    - (* only_reset_state_related_to_initial_state: *)
+      cbn in *. subst. inversion H0; subst; try reflexivity.
+      case TODO. (* Problem: initial state with all three of (idle, busy, done) false *)
     - (* nonMMIO_device_step_preserves_state_machine_state: *)
       simpl in sL1, sL2. destruct_state sL1. destruct_state sL2.
       cbn [device.run1 counter_device incr_device_step step incr incr_update Loop snd
