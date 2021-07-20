@@ -37,9 +37,9 @@ Local Open Scope Z_scope.
 
 
 Section Proof.
-  Import parameters.
   Context {width word mem} {p : StateMachineSemantics.parameters width word mem}.
-  Context (p_ok : StateMachineSemantics.parameters.ok p).
+  Context {p_ok : StateMachineSemantics.parameters.ok p}.
+  Import parameters.
 
   Global Instance spec_of_abs_mmio_read32 : spec_of "abs_mmio_read32" :=
     fun function_env =>
