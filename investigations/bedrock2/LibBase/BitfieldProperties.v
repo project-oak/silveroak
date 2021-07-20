@@ -27,8 +27,6 @@ Require Import Bedrock2Experiments.WhileProperties.
 Require Import Bedrock2Experiments.Word.
 Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.LibBase.Bitfield.
-Require Import Bedrock2Experiments.LibBase.LibBaseSemantics.
-
 Require Import coqutil.Map.SortedListString.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
@@ -36,24 +34,11 @@ Local Open Scope list_scope.
 Local Open Scope Z_scope.
 
 Section Proof.
-  Import LibBaseSemantics.
   Context {p : parameters} {p_ok : parameters_ok p}.
 
-  Instance spec_of_bitfield_field32_write : spec_of "b2_bitfield_field32_write" :=
+  Global Instance spec_of_bitfield_field32_read : spec_of "b2_bitfield_field32_read" :=
     fun function_env =>
-      forall (field mask index value : word) (R : mem -> Prop) (m : mem) (t : trace),
-        call function_env bitfield_field32_write t m [field; mask; index; value]
-          (fun t' m' rets =>
-          t = t' /\ m = m' /\ exists v, rets = [v]
-          /\ value = (select_bits v index mask)).
-  Lemma bitfield_field32_write_correct :
-    program_logic_goal_for_function! bitfield_field32_write.
-  Proof.
-    Admitted.
-
-  Instance spec_of_bitfield_field32_read : spec_of "b2_bitfield_field32_read" :=
-    fun function_env =>
-      forall (field mask index : word) (R : mem -> Prop) (m : mem) (t : trace),
+      forall (field mask index : Semantics.word) (R : mem -> Prop) (m : mem) (t : trace),
         call function_env bitfield_field32_read t m [field; mask; index]
           (fun t' m' rets =>
           t = t' /\ m = m' /\ exists v, rets = [v] /\
@@ -64,14 +49,14 @@ Section Proof.
     program_logic_goal_for_function! bitfield_field32_read.
   Proof.
     repeat straightline.
+    eexists; ssplit; repeat straightline_with_map_lookup.
     repeat split; try reflexivity.
-    exists out.
-    repeat split; try reflexivity.
+    eexists; ssplit; try reflexivity.
   Qed.
 
-  Instance spec_of_bitfield_bit32_read : spec_of "b2_bitfield_bit32_read" :=
+  Global Instance spec_of_bitfield_bit32_read : spec_of "b2_bitfield_bit32_read" :=
     fun function_env =>
-      forall (field : word) (index: word) (R : mem -> Prop) (m : mem) (t : trace),
+      forall (field : Semantics.word) (index: Semantics.word) (R : mem -> Prop) (m : mem) (t : trace),
         call function_env bitfield_bit32_read t m [field; index]
           (fun t' m' rets =>
           t = t' /\ m = m' /\ exists v, rets = [v] /\
@@ -82,11 +67,12 @@ Section Proof.
     program_logic_goal_for_function! bitfield_bit32_read.
   Proof.
     repeat straightline.
+    eexists; ssplit; repeat straightline_with_map_lookup.
 
     (* call bitfield_field32_read *)
     straightline_call; eauto; try reflexivity; [ ].
 
-    repeat straightline.
+    repeat straightline_with_map_lookup.
     repeat split; try reflexivity.
     exists x.
     repeat split; try reflexivity.
