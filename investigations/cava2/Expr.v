@@ -56,9 +56,6 @@ Section Vars.
     -> Circuit s2 [] y
     -> Circuit (s1++s2) [] (x**y)
   .
-
-  Context {var : tvar}.
-  (* Definition slice {s i o} (_: Circuit s i o) := o. *)
 End Vars.
 
 
