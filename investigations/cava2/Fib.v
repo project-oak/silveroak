@@ -25,7 +25,13 @@ Require Import Cava.Expr.
 Require Import Cava.Semantics.
 
 Section Var.
+  Import ExprNotations.
   Context {var : tvar}.
+
+  Definition fork2 {A} : Circuit [] [A] (A ** A) := {{
+    fun a => (a, a)
+  }}.
+
 
   Definition fibonacci {sz: nat}: Circuit (Nat ** Nat) [] Nat := {{
     let/delay r1 :=
