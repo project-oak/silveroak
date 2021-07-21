@@ -262,9 +262,19 @@ Section Proofs.
     destruct r; apply reg_addr_unique; eauto.
   Qed.
 
-  Local Ltac infer_reg_is_status :=
+  Lemma reg_is_ctrl :
+    forall r,
+    reg_addr r = word.of_Z AES_CTRL0 ->
+    r = CTRL.
+  Proof.
+    intros.
+    destruct r; apply reg_addr_unique; eauto.
+  Qed.
+
+  Local Ltac infer_reg_using_addr :=
     lazymatch goal with
     | H: reg_addr _ = word.of_Z AES_STATUS0 |- _ => apply reg_is_status in H; subst
+    | H: reg_addr _ = word.of_Z AES_CTRL0 |- _ => apply reg_is_ctrl in H; subst
     end.
 
   Lemma interact_write_control s call addre vale t m l
@@ -605,7 +615,7 @@ Section Proofs.
       2:{ eapply execution_unique; eauto. }
       unfold step in H3. simpl in H3.
       logical_simplify.
-      infer_reg_is_status.
+      infer_reg_using_addr.
       do 3 eexists; ssplit; eauto.
       inversion H4. subst.
       subst_lets. cbv [is_flag_set]. boolsimpl. reflexivity.
@@ -660,7 +670,7 @@ Section Proofs.
       2:{ eapply execution_unique; eauto. }
       unfold step in H3. simpl in H3.
       logical_simplify.
-      infer_reg_is_status.
+      infer_reg_using_addr.
       do 3 eexists; ssplit; eauto.
       inversion H4. subst.
       subst_lets. cbv [is_flag_set]. boolsimpl. reflexivity.
@@ -765,15 +775,23 @@ Section Proofs.
     (* initial processing *)
     repeat straightline.
 
-    write_control; [ cbn iota; trivial | ].
+    straightline_call; ssplit.
+    { instantiate ( 1 := CTRL ). reflexivity. }
+    { cbv [parameters.write_step state_machine_parameters] in *;
+      ssplit; eauto.
+      instantiate ( 2 := UNINITIALIZED ). reflexivity. }
+    { eauto. }
+
     repeat straightline.
-
-    (* simplify post-write guarantees *)
-    cbn [write_step reg_category] in *.
-
-    (* done; prove postcondition *)
-    ssplit; auto; [ ].
-
+    pose proof H9 as HH.
+    destruct H9. destruct H6.
+    replace  x1 with UNINITIALIZED in *.
+    2:{ eapply execution_unique; eauto. }
+    unfold step in H7. simpl in H7.
+    logical_simplify.
+    ssplit; eauto.
+    unfold write_step in H11.
+    infer_reg_using_addr. simpl in H11.
     (* pose all the control-register formatting proofs *)
     pose proof operation_eq.
     pose proof mode_mask_eq.
@@ -783,10 +801,10 @@ Section Proofs.
     pose proof manual_operation_ok.
     cbv [op_size] in *.
     repeat lazymatch goal with
-           | H : enum_member _ _ |- _ =>
-             apply enum_member_size in H;
-               pose proof has_size_nonneg _ _ H
-           end.
+    | H : enum_member _ _ |- _ =>
+      apply enum_member_size in H;
+      pose proof has_size_nonneg _ _ H
+    end.
 
     simplify_implicits.
 
@@ -805,17 +823,15 @@ Section Proofs.
       cbn in *. lia.
     }
 
-    (* split cases *)
-    eexists; ssplit.
-    { (* prove that the execution trace is OK *)
-      subst; eassumption. }
-    { (* prove that the "operation" flag is correct *)
-      cbv [ctrl_operation].
+    exists x. ssplit.
+    { subst x0. exact HH. }
+    (* TODO automate in a *robust* way... *)
+    { subst x. cbv [ctrl_operation].
       rewrite !is_flag_set_or_shiftl_low by lia.
       apply is_flag_set_shift; eauto using size1_boolean.
-      lia. }
-    (* TODO automate in a *robust* way... *)
-    { cbv [ctrl_mode].
+      lia.
+    }
+    { subst x. cbv [ctrl_mode].
       etransitivity. {
         eapply select_bits_or_shiftl_low.
         all: rewrite ?word.unsigned_of_Z_nowrap.

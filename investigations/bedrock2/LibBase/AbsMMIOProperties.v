@@ -41,6 +41,30 @@ Section Proof.
   Context {p_ok : StateMachineSemantics.parameters.ok p}.
   Import parameters.
 
+  Global Instance spec_of_abs_mmio_write32 : spec_of "abs_mmio_write32" :=
+    fun function_env =>
+      forall (tr : trace) (m : mem) (s : state) (s' : state) (addr : word) (value : word) r,
+        StateMachineSemantics.parameters.reg_addr r = addr ->
+        parameters.write_step 4 s r value s' ->
+        execution tr s ->
+        call function_env abs_mmio_write32 tr m [addr; value]
+        (fun tr' m' rets =>
+          exists val, val = value
+          /\ rets = []
+          /\ tr' = ((map.empty, MMIOLabels.WRITE32, [addr; val], (map.empty, [])) :: tr)
+          /\ (exists s'', execution tr' s'')
+          /\ m = m'
+        ).
+  Lemma abs_mmio_write32_correct :
+    program_logic_goal_for_function! abs_mmio_write32.
+  Proof.
+    repeat straightline.
+    eapply (interact_write 4); repeat straightline.
+    - rewrite <- H. reflexivity.
+    - do 2 eexists; ssplit; eauto.
+    - rewrite <- H; ssplit; eauto.
+  Qed.
+
   Global Instance spec_of_abs_mmio_read32 : spec_of "abs_mmio_read32" :=
     fun function_env =>
       forall (tr : trace) (m : mem) (s : state) (addr : word) r,

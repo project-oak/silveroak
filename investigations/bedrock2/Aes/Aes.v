@@ -53,7 +53,7 @@ Section Impl.
      ([aes_cfg_operation; aes_cfg_mode; aes_cfg_key_len;
       aes_cfg_manual_operation],
       [], bedrock_func_body:(
-      output! WRITE32 (AES_CTRL0,
+      abs_mmio_write32 (AES_CTRL0,
                      ((aes_cfg_operation << AES_CTRL_OPERATION) |
                       ((aes_cfg_mode & AES_CTRL_MODE_MASK)
                          << AES_CTRL_MODE_OFFSET) |

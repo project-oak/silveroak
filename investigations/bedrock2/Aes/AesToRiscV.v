@@ -186,7 +186,8 @@ Definition funcs := [ aes_data_put_wait
                      ; aes_data_ready
                      ; aes_data_valid
                      ; aes_idle
-                     ; abs_mmio_read32 ].
+                     ; abs_mmio_read32
+                     ; abs_mmio_write32 ].
 
 Derive aes_compile_result
        SuchThat (compile (map.of_list funcs)

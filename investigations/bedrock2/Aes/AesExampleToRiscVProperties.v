@@ -243,6 +243,7 @@ Proof.
     cbv [map.of_list
            List.app
            AbsMMIO.abs_mmio_read32
+           AbsMMIO.abs_mmio_write32
            aes_encrypt main
            Aes.aes_init Aes.aes_key_put
            Aes.aes_iv_put Aes.aes_data_put
@@ -259,6 +260,7 @@ Proof.
   { cbv [map.of_list
            List.app
            AbsMMIO.abs_mmio_read32
+           AbsMMIO.abs_mmio_write32
            aes_encrypt main
            Aes.aes_init Aes.aes_key_put
            Aes.aes_iv_put Aes.aes_data_put
@@ -273,7 +275,9 @@ Proof.
   { eapply exec_main; eauto.
     { apply aes_encrypt_correct.
       {
-        apply aes_init_correct. }
+        apply aes_init_correct.
+        apply abs_mmio_write32_correct.
+      }
       { apply aes_key_put_correct. }
       { apply aes_iv_put_correct. }
       { apply aes_data_put_wait_correct.
