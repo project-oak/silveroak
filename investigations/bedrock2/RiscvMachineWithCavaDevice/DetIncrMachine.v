@@ -159,11 +159,12 @@ Section WithParameters.
       intros.
     - (* mmioAddrs_match: *)
       reflexivity.
-    - (* initial_states_match: *)
-      unfold any_two_imply_the_third. simpl. ssplit; intros; subst.
-      + inversion H. subst. eauto.
-      + destruct H0 as (val & idle & H0). subst. inversion H. reflexivity.
-      + destruct H0 as (val & idle & H0). subst. eapply IDLE_related.
+    - (* initial_state_is_ready_state: *)
+      simpl in *. subst. inversion H0. eauto.
+    - (* initial_states_are_related: *)
+      simpl in *. destruct H0 as (val & idle & H0). subst. eapply IDLE_related.
+    - (* initial_state_exists: *)
+      simpl in *. destruct H as (val & idle & H). subst. eauto using IDLE_related.
     - (* nonMMIO_device_step_preserves_state_machine_state: *)
       simpl in sL1, sL2. destruct_state sL1. destruct_state sL2.
       cbn [device.run1 counter_device incr_device_step step incr incr_update Loop snd

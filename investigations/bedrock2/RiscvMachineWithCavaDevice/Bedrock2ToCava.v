@@ -265,12 +265,10 @@ Section WithParams.
       all: cbn -[map.get map.empty instrencode].
       all: try eassumption.
       all: try reflexivity.
-      edestruct initial_states_match as (Q1 & _ & _). eauto.
+      eauto using initial_state_is_ready_state.
     }
     (* `related` holds at beginning: *)
-    subst t. eapply mkRelated; simpl; eauto.
-    { intros. edestruct initial_states_match as (_ & _ & Q3). eauto. }
-    { clear -H13p5. case TODO. }
+    subst t. eapply mkRelated; simpl; eauto using initial_states_are_related, initial_state_exists.
     Unshelve.
     all: do 2 constructor.
   Qed.

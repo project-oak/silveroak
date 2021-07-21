@@ -19,9 +19,6 @@ Require Import riscv.Platform.MetricSane.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
 Require Import Bedrock2Experiments.StateMachineMMIOSpec.
 
-Definition any_two_imply_the_third(A B C: Prop): Prop :=
-  (A -> B -> C) /\ (A -> C -> B) /\ (B -> C -> A).
-
 Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte.byte}
       (D: device)(sp: StateMachineSemantics.parameters.parameters 32 word mem) :=
 {
@@ -32,13 +29,22 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
   (* simulation relation between high-level states sH and low-level states sL *)
   device_state_related: StateMachineSemantics.parameters.state -> D -> Prop;
 
-  (* the set of high-level initial states matches the set of low-level ready states
-     with respect to device_state_related *)
-  initial_states_match: forall sH sL,
-      any_two_imply_the_third
-        (device_state_related sH sL)
-        (parameters.is_initial_state sH)
-        (device.is_ready_state sL);
+  (* if an initial high-level state is related to some low-level state, it must be a ready state *)
+  initial_state_is_ready_state: forall sH sL,
+      parameters.is_initial_state sH ->
+      device_state_related sH sL ->
+      device.is_ready_state sL;
+
+  (* every initial high-level state is related to every initial low-level state *)
+  initial_states_are_related: forall sH sL,
+      parameters.is_initial_state sH ->
+      device.is_ready_state sL ->
+      device_state_related sH sL;
+
+  (* for every initial low-level state, there exists a related initial high-level state *)
+  initial_state_exists: forall sL,
+      device.is_ready_state sL ->
+      exists sH, parameters.is_initial_state sH /\ device_state_related sH sL;
 
   (* transitions that are not responding to MMIO cannot change the state as seen by the software: *)
   nonMMIO_device_step_preserves_state_machine_state:
