@@ -58,7 +58,6 @@ Section Vars.
   .
 End Vars.
 
-
 Declare Scope expr_scope.
 Declare Custom Entry expr.
 Delimit Scope expr_scope with expr.
