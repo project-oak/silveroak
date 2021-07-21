@@ -113,8 +113,6 @@ Module ExprNotations.
     )
     (in custom expr at level 1, x at level 4, v constr at level 7, only parsing)  : expr_scope.
 
-  (* Notation "( x , y )" := (MakeTuple x y) *)
-  (*   (in custom expr, x at level 1, y at level 1) : expr_scope. *)
   Notation "( x , .. , y , z )" := (
       MakeTuple x .. (MakeTuple y z) ..
     ) (in custom expr, x at level 1, y at level 1, z at level 1) : expr_scope.
@@ -126,11 +124,6 @@ Module ExprNotations.
   Section Var.
     Context {var : tvar}.
 
-    Definition ite_test {A} : Circuit [] [Bit; A] A := {{
-      fun flag a =>
-        if flag then (a) else a
-    }}.
-
     Definition fork2 {A} : Circuit [] [A] (A ** A) := {{
       fun a => ( a, a)
     }}.
@@ -141,6 +134,11 @@ Module ExprNotations.
 
     Definition fst3 {A} : Circuit [] [A**A**A] A := {{
       fun xyz => let '(x,y;z) := xyz in x
+    }}.
+
+    Definition ite_test {A} : Circuit [] [Bit; A] A := {{
+      fun flag a =>
+        if `silly_id` flag then (a) else a
     }}.
 
     Definition test {sz: nat}: Circuit (Nat**Nat) [] Nat := {{
