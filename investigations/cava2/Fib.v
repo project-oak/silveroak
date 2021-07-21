@@ -32,7 +32,6 @@ Section Var.
     fun a => (a, a)
   }}.
 
-
   Definition fibonacci {sz: nat}: Circuit (Nat ** Nat) [] Nat := {{
     let/delay r1 :=
       let r2 := delay r1 initially (2^sz-1:denote_type Nat) in
