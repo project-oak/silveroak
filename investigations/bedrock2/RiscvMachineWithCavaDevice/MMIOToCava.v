@@ -53,27 +53,34 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       device.run1 sL1 (false, false, ignored_addr, ignored_val) = (sL2, ignored_resp) ->
       device_state_related sH sL2;
 
-  (* for each high-level read step, if we run the low-level device with the read step's
-     address on the input wires, we will get a response after at most device.maxRespDelay
-     device cycles, and the response will match the high-level read step's response *)
-  state_machine_read_to_device_read: forall n r v sH sH' sL,
-      parameters.read_step n sH r v sH' ->
+  (* for each high-level state sH from which n bytes can be read at register r,
+     if we run the low-level device with the read step's address on the input wires,
+     we will get a response after at most device.maxRespDelay device cycles,
+     and the response will match some possible high-level read step's response,
+     but not necessarily the one we used to show that sH accepts reads (to allow
+     underspecification-nondeterminism in the high-level state machine) *)
+  state_machine_read_to_device_read: forall n r sH sL,
+      (exists v sH', parameters.read_step n sH r v sH') ->
       device_state_related sH sL ->
-      exists sL',
+      exists v sL' sH',
         device.runUntilResp true false (word_to_bv (parameters.reg_addr r)) (word_to_bv (word.of_Z 0))
                             device.maxRespDelay sL = (Some (word_to_bv v), sL') /\
-        device_state_related sH' sL';
+        device_state_related sH' sL' /\
+        parameters.read_step n sH r v sH';
 
-  (* for each high-level write step, if we run the low-level device with the write step's
-     address and value on the input wires, we will get an ack response after at most
-     device.maxRespDelay device cycles *)
-  state_machine_write_to_device_write: forall n r v sH sH' sL,
-      parameters.write_step n sH r v sH' ->
+  (* for each high-level state sH in which an n-byte write to register r with value v is possible,
+     if we run the low-level device with the write step's address and value on the input wires,
+     we will get an ack response after at most device.maxRespDelay device cycles,
+     and the device will end up in a state corresponding to a high-level state reached after
+     a high-level write, but not necessarily in the state we used to show that sH accepts writes *)
+  state_machine_write_to_device_write: forall n r v sH sL,
+      (exists sH', parameters.write_step n sH r v sH') ->
       device_state_related sH sL ->
-      exists sL' ignored,
+      exists ignored sL' sH',
         device.runUntilResp false true (word_to_bv (parameters.reg_addr r)) (word_to_bv v)
                             device.maxRespDelay sL = (Some ignored, sL') /\
-        device_state_related sH' sL';
+        device_state_related sH' sL' /\
+        parameters.write_step n sH r v sH';
 }.
 
 Section WithParams.
@@ -86,9 +93,9 @@ Section WithParams.
           {DI: device_implements_state_machine D state_machine_params}.
 
   Inductive related: MetricRiscvMachine -> ExtraRiscvMachine D -> Prop :=
-    mkRelated: forall regs pc npc m xAddrs (t: list LogItem) mc d,
-      (forall s, execution t s -> device_state_related s d) ->
-      (exists s, execution t s /\ device_state_related s d) ->
+    mkRelated: forall regs pc npc m xAddrs (t: list LogItem) mc d s,
+      execution t s ->
+      device_state_related s d ->
       map.undef_on m StateMachineSemantics.parameters.isMMIOAddr ->
       disjoint (of_list xAddrs) StateMachineSemantics.parameters.isMMIOAddr ->
       related
@@ -206,46 +213,6 @@ Section WithParams.
       eauto 10 using disjoint_diff_l.
   Qed.
 
-  Lemma rerun_read_step: forall sz t d d' r v,
-      (forall s, execution t s -> device_state_related s d) ->
-      device.runUntilResp true false (word_to_bv (parameters.reg_addr r))
-                          (word_to_bv (word.of_Z 0)) device.maxRespDelay d =
-      (Some (word_to_bv (word.of_Z (LittleEndian.combine sz v))), d') ->
-      In sz [1%nat; 2%nat; 4%nat] ->
-      forall s,
-        execution (MinimalMMIO.mmioLoadEvent (parameters.reg_addr r) v :: t) s ->
-        device_state_related s d'.
-  Proof.
-    intros. destruct H2 as (s'' & Ex & St).
-    unfold step in St.
-    simpl in H1. destruct H1 as [H1 | [H1 | [H1 | []]]]; subst;
-    destruct St as (r' & val & sz & A & B & C & F);
-    eapply parameters.reg_addr_unique in A; subst.
-    all: edestruct state_machine_read_to_device_read as (d'' & RU'' & Rel'');
-      [exact F|eapply H; exact Ex|].
-    all: rewrite H0 in RU''; inversion RU''; subst; assumption.
-  Qed.
-
-  Lemma rerun_write_step: forall sz t d d' r v ignored,
-      (forall s, execution t s -> device_state_related s d) ->
-      device.runUntilResp false true (word_to_bv (parameters.reg_addr r))
-                          (word_to_bv (word.of_Z (LittleEndian.combine sz v))) device.maxRespDelay d =
-      (Some ignored, d') ->
-      In sz [1%nat; 2%nat; 4%nat] ->
-      forall s,
-        execution (MinimalMMIO.mmioStoreEvent (parameters.reg_addr r) v :: t) s ->
-        device_state_related s d'.
-  Proof.
-    intros. destruct H2 as (s'' & Ex & St).
-    unfold step in St.
-    simpl in H1. destruct H1 as [H1 | [H1 | [H1 | []]]]; subst;
-    destruct St as (r' & sz & A & B & C & F);
-    eapply parameters.reg_addr_unique in A; subst.
-    all: edestruct state_machine_write_to_device_write as (d'' & ignored'' & RU'' & Rel'');
-      [exact F|eapply H; exact Ex|];
-      pose proof (eq_trans (eq_sym H0) RU'') as E; inversion E; assumption.
-  Qed.
-
   Lemma stateMachine_primitive_to_cava: forall (initialH: MetricRiscvMachine) (p: riscv_primitive)
       (postH: primitive_result p -> MetricRiscvMachine -> Prop),
       MetricMinimalMMIO.interp_action p initialH postH ->
@@ -272,13 +239,22 @@ Section WithParams.
     1-4: unfold MinimalMMIO.load, MinimalMMIO.nonmem_load in H;
       destruct H as [HX HL]; cbn -[HList.tuple Memory.load_bytes] in *.
     1-4: match type of HL with
-         | match ?x with _ => _ end => destruct x eqn: E; [destruct s|]
+         | match ?x with _ => _ end => destruct x eqn: E; [destruct s0|]
          end;
          try specialize (HX eq_refl);
          rewrite ?(isXAddr4B_true _ _ HX);
          eauto 10 using mkRelated.
     1-4: simp; erewrite ?read_step_isMMIOAddrB by eassumption.
-    1-4: edestruct state_machine_read_to_device_read as (d' & RU & Rel'); [eassumption|solve[eauto]|].
+
+    2: {
+          edestruct state_machine_read_to_device_read as (v'' & s'' & d'' & RU'' & Rel'').
+          1: do 2 eexists; eassumption.
+          1: eauto.
+
+    1-4: edestruct state_machine_read_to_device_read as (v'' & s'' & d'' & RU'' & Rel'').
+
+
+ [do 2 eexists; eassumption|solve[eauto]|].
     1-4: cbn -[HList.tuple]; rewrite RU; cbn -[HList.tuple].
     4: { (* 64-bit MMIO is not supported: *)
       eapply parameters.read_step_size_valid in HLp2p2. simpl in HLp2p2. exfalso. intuition congruence.
