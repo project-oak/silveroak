@@ -19,6 +19,9 @@ Require Import riscv.Platform.MetricSane.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
 Require Import Bedrock2Experiments.StateMachineMMIOSpec.
 
+Definition any_two_imply_the_third(A B C: Prop): Prop :=
+  (A -> B -> C) /\ (A -> C -> B) /\ (B -> C -> A).
+
 Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte.byte}
       (D: device)(sp: StateMachineSemantics.parameters.parameters 32 word mem) :=
 {
@@ -29,13 +32,13 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
   (* simulation relation between high-level states sH and low-level states sL *)
   device_state_related: StateMachineSemantics.parameters.state -> D -> Prop;
 
-  (* every high-level initial state is related to the low-level reset state: *)
-  initial_state_related_to_reset_state: forall sH,
-      parameters.is_initial_state sH -> device_state_related sH device.reset_state;
-
-  (* the only low-level state related to high-level initial states is the reset state: *)
-  only_reset_state_related_to_initial_state: forall sH sL,
-      parameters.is_initial_state sH -> device_state_related sH sL -> sL = device.reset_state;
+  (* the set of high-level initial states matches the set of low-level ready states
+     with respect to device_state_related *)
+  initial_states_match: forall sH sL,
+      any_two_imply_the_third
+        (device_state_related sH sL)
+        (parameters.is_initial_state sH)
+        (device.is_ready_state sL);
 
   (* transitions that are not responding to MMIO cannot change the state as seen by the software: *)
   nonMMIO_device_step_preserves_state_machine_state:

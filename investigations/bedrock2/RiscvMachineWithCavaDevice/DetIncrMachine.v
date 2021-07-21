@@ -118,9 +118,12 @@ Section WithParameters.
   Context {word: Interface.word 32} {word_ok: word.ok word}
           {Mem: map.map word byte} {Registers: map.map Z word}.
 
+  Definition mk_counter_state(idle busy done: bool)(val: Bvector 32): circuit_state incr :=
+    (tt, (tt, (tt, (tt, (tt, val), done), busy), idle)).
+
   Global Instance counter_device: device := {|
     device.state := circuit_state incr;
-    device.reset_state := reset_state incr;
+    device.is_ready_state s := exists val idle, s = mk_counter_state idle false false val;
     device.run1 := incr_device_step;
     device.addr_range_start := INCR_BASE_ADDR;
     device.addr_range_pastend := INCR_END_ADDR;
@@ -134,14 +137,10 @@ Section WithParameters.
   Ltac destruct_state s :=
     destruct s as ([] & (([] & (([] & (([] & ([] & ?val)) & ?done)) & ?busy)) & ?idle)).
 
-  Definition mk_counter_state(idle busy done: bool)(val: Bvector 32): circuit_state incr :=
-    (tt, (tt, (tt, (tt, (tt, val), done), busy), idle)).
-
   Inductive counter_related: IncrementWaitSemantics.state -> circuit_state incr -> Prop :=
-  | reset_related:
-      counter_related IDLE (reset_state incr)
-  | IDLE_related: forall val,
-      counter_related IDLE (mk_counter_state true false false val)
+  | IDLE_related: forall val idle,
+      (* after reset, all three bools are false, and idle will be set to true *)
+      counter_related IDLE (mk_counter_state idle false false val)
   | BUSY_related: forall val ncycles,
       counter_related (BUSY val ncycles) (mk_counter_state false true false (word_to_bv val))
   | DONE_related: forall val,
@@ -160,11 +159,11 @@ Section WithParameters.
       intros.
     - (* mmioAddrs_match: *)
       reflexivity.
-    - (* initial_state_related_to_reset_state: *)
-      cbn in *. subst. apply reset_related.
-    - (* only_reset_state_related_to_initial_state: *)
-      cbn in *. subst. inversion H0; subst; try reflexivity.
-      case TODO. (* Problem: initial state with all three of (idle, busy, done) false *)
+    - (* initial_states_match: *)
+      unfold any_two_imply_the_third. simpl. ssplit; intros; subst.
+      + inversion H. subst. eauto.
+      + destruct H0 as (val & idle & H0). subst. inversion H. reflexivity.
+      + destruct H0 as (val & idle & H0). subst. eapply IDLE_related.
     - (* nonMMIO_device_step_preserves_state_machine_state: *)
       simpl in sL1, sL2. destruct_state sL1. destruct_state sL2.
       cbn [device.run1 counter_device incr_device_step step incr incr_update Loop snd
@@ -180,12 +179,8 @@ Section WithParameters.
       eapply pair_equal_spec in E1. destruct E1 as [_ E1].
       eapply pair_equal_spec in E1. destruct E1 as [_ E1]. simpl in E1. subst.
       inversion H; subst.
-      + (* reset_related: *)
-        cbn. rewrite andb_false_r. cbn.
-        eapply (IDLE_related (Vector.const false 32)).
       + (* IDLE_related: *)
-        cbn. rewrite andb_false_r. cbn. simpl.
-        assumption.
+        cbn. rewrite andb_false_r. destruct idle; cbn; simpl; eapply IDLE_related.
       + (* BUSY_related: *)
         rewrite andb_false_r. cbn -[incrN]. change (Pos.to_nat 1) with 1%nat.
         cbn -[incrN].
@@ -209,21 +204,13 @@ Section WithParameters.
       + (* r=STATUS *)
         destruct sH.
         * (* sH=IDLE *)
-          destruct H. subst. inversion H0.
-          -- (* sL=reset_state *)
-             cbn. rewrite andb_false_r. simpl. unfold status_value, STATUS_IDLE.
-             unfold word_to_bv.
-             rewrite word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
-             rewrite word.unsigned_slu. 2: rewrite word.unsigned_of_Z. 2: reflexivity.
-             rewrite !word.unsigned_of_Z. unfold word.wrap. cbn.
-             eexists. split; [reflexivity|]. eapply (IDLE_related (Vector.const false 32)).
-          -- (* sL idle *)
-             cbn. rewrite andb_false_r. simpl. unfold status_value, STATUS_IDLE.
-             unfold word_to_bv.
-             rewrite word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
-             rewrite word.unsigned_slu. 2: rewrite word.unsigned_of_Z. 2: reflexivity.
-             rewrite !word.unsigned_of_Z. unfold word.wrap. cbn.
-             eexists. split; [reflexivity|]. eapply IDLE_related.
+          destruct H. subst. inversion H0. subst.
+          cbn. rewrite andb_false_r. simpl. unfold status_value, STATUS_IDLE.
+          unfold word_to_bv.
+          rewrite word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
+          rewrite word.unsigned_slu. 2: rewrite word.unsigned_of_Z. 2: reflexivity.
+          rewrite !word.unsigned_of_Z. unfold word.wrap. cbn.
+          eexists. destruct idle; (split; [reflexivity|]). all: eapply IDLE_related.
         * (* sH=BUSY *)
           inversion H0. subst.
           destruct H as [H | H].
@@ -260,19 +247,12 @@ Section WithParameters.
       destruct H. subst. unfold write_step in H1.
       destruct r. 2: contradiction.
       destruct sH; try contradiction. subst.
-      inversion H0.
-      + (* sL=reset_state *)
-        cbn.
-        unfold word_to_bv.
-        rewrite word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
-        cbn.
-        eexists _, _. split; [reflexivity|]. eapply BUSY_related.
-      + (* sL idle *)
-        cbn.
-        unfold word_to_bv.
-        rewrite word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
-        cbn.
-        eexists _, _. split; [reflexivity|]. eapply BUSY_related.
+      inversion H0. subst.
+      cbn.
+      unfold word_to_bv.
+      rewrite word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
+      cbn.
+      eexists _, _. split; [reflexivity|]. destruct idle; eapply BUSY_related.
   Unshelve.
   all: try exact (reset_state incr).
   Qed.

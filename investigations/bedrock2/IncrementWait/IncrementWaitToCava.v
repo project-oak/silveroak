@@ -38,9 +38,8 @@ Proof.
   intros.
   change binary with (Pipeline.instrencode put_wait_get_asm).
   refine (bedrock2_and_cava_system_correct
-            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
+            _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
     try eassumption.
-  { apply sameset_ref. }
   { exact funcs_valid. }
   { apply List.dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec). reflexivity. }
   { exact put_wait_get_compile_result_eq. }
@@ -55,14 +54,6 @@ Proof.
   { instantiate (2 := "main"). reflexivity. }
   { reflexivity. }
   { ZnWords. }
-  { cbn. eexists. split; [reflexivity|].
-    match goal with
-    | |- _ _ ?x => replace x with device.reset_state by case TODO
-    end.
-    (* TODO put in machine_ok, but maybe require a "ready predicate" instead of reset state,
-       and make sure that the IncrementWait program puts the device back into a ready state *)
-    eapply MMIOToCava.initial_state_related_to_reset_state.
-    reflexivity. }
   { refine (@WeakestPreconditionProperties.Proper_cmd _ StateMachineSemantics.ok _ _ _ _ _ _ _ _ _ _ _).
     1: eapply WeakestPreconditionProperties.Proper_call.
     2: {
@@ -73,12 +64,8 @@ Proof.
       reflexivity. }
     unfold post_main.
     repeat intro. Tactics.logical_simplify. Tactics.ssplit. 1: eassumption.
-    eexists.
-    eassumption.
+    eexists. split; [eassumption|reflexivity].
   }
-  Unshelve.
-  all: unshelve eapply StateMachineSemantics.ok;
-    exact IncrementWaitSemantics.state_machine_parameters_ok.
 Qed.
 
 (* Goal: bring this list down to only standard axioms like functional and propositional extensionality

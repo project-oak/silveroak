@@ -115,11 +115,6 @@ Section WithParams.
   Definition regs_initialized(regs: Registers): Prop :=
     forall r : Z, 0 < r < 32 -> exists v : word, map.get regs r = Some v.
 
-  Definition mmioAddrs: word -> Prop := fun a =>
-    device.addr_range_start <= word.unsigned a < device.addr_range_pastend.
-
-  Hypothesis mmioAddrs_match: sameset StateMachineSemantics.parameters.isMMIOAddr mmioAddrs.
-
   (* similar to compiler.LowerPipeline.machine_ok, but takes an `ExtraRiscvMachine D` instead of
      a `MetricRiscvMachine` *)
   Definition machine_ok(p_functions: word)(f_entry_rel_pos: Z)(stack_start stack_pastend: word)
@@ -141,11 +136,12 @@ Section WithParams.
       mach.(getNextPc) = word.add mach.(getPc) (word.of_Z 4) /\
       regs_initialized mach.(getRegs) /\
       map.get mach.(getRegs) RegisterNames.sp = Some stack_pastend /\
+      device.is_ready_state mach.(getExtraState) /\
       (* Note: Even though we cancel out the fact that communication between the processor
          and the Cava device happens via MMIO, we still have to expose the fact that we
          need a reserved address range for MMIO which cannot be used as regular memory: *)
-      map.undef_on mach.(getMem) mmioAddrs /\
-      disjoint (of_list mach.(getXAddrs)) mmioAddrs.
+      map.undef_on mach.(getMem) device.isMMIOAddr /\
+      disjoint (of_list mach.(getXAddrs)) device.isMMIOAddr.
 
   Lemma mod4_to_mod2: forall x, x mod 4 = 0 -> x mod 2 = 0.
   Proof. intros. Z.div_mod_to_equations. Lia.lia. Qed.
@@ -165,12 +161,12 @@ Section WithParams.
       word.unsigned p_functions mod 4 = 0 ->
       word.unsigned p_call mod 4 = 0 ->
       f_entry_rel_pos mod 4 = 0 ->
-      (exists s, StateMachineSemantics.parameters.is_initial_state s /\
-                 device_state_related s initialL.(getExtraState)) ->
       initialL.(getLog) = [] ->
       WeakestPrecondition.cmd (p := FlattenExpr.mk_Semantics_params _) (WeakestPrecondition.call fs)
            fbody initialL.(getLog) mH map.empty
-           (fun t' m' l' => postH m' /\ exists s',  execution t' s') ->
+           (fun t' m' l' => postH m' /\
+                            (* driver is supposed to put device back into initial state: *)
+                            exists s', execution t' s' /\ parameters.is_initial_state s') ->
       machine_ok p_functions f_entry_rel_pos stack_start stack_pastend (instrencode instrs) p_call
                  p_call mH Rdata Rexec initialL ->
       exists steps_remaining finalL mH',
@@ -183,10 +179,10 @@ Section WithParams.
     intros.
     destruct initialL as (mach & d). destruct mach as [r pc npc m xAddrs t].
     unfold machine_ok in *; cbn -[map.get map.empty instrencode] in *. simp.
-    replace mmioAddrs with parameters.isMMIOAddr in *. 2: {
+    replace device.isMMIOAddr with parameters.isMMIOAddr in *. 2: {
       symmetry. extensionality x. apply propositional_extensionality. unfold iff.
-      move mmioAddrs_match at bottom. unfold sameset, subset in mmioAddrs_match.
-      clear -mmioAddrs_match. unfold elem_of in *. destruct mmioAddrs_match. eauto.
+      pose proof mmioAddrs_match as P. unfold sameset, subset in P.
+      clear -P. unfold elem_of, device.isMMIOAddr in *. destruct P. eauto.
     }
     edestruct stateMachine_to_cava
       as (steps_remaining & finalL & finalH & Rn & Rfinal & Pf).
@@ -269,14 +265,12 @@ Section WithParams.
       all: cbn -[map.get map.empty instrencode].
       all: try eassumption.
       all: try reflexivity.
+      edestruct initial_states_match as (Q1 & _ & _). eauto.
     }
     (* `related` holds at beginning: *)
-    subst t. eapply mkRelated; simpl; try assumption.
-    - intros.
-      replace d with device.reset_state.
-      + eapply initial_state_related_to_reset_state. assumption.
-      + symmetry. eauto using only_reset_state_related_to_initial_state.
-    - eauto.
+    subst t. eapply mkRelated; simpl; eauto.
+    { intros. edestruct initial_states_match as (_ & _ & Q3). eauto. }
+    { clear -H13p5. case TODO. }
     Unshelve.
     all: do 2 constructor.
   Qed.

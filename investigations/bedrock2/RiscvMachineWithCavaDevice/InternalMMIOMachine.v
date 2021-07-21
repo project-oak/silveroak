@@ -43,8 +43,9 @@ Module device.
     (* circuit state, will be instantiated with result of Cava.Core.Circuit.circuit_state *)
     state: Type;
 
-    (* initial state, will be instantiated with result of Cava.Core.Circuit.reset_state *)
-    reset_state: state;
+    (* tells whether the device is in a state where it's ready to be used, typically
+       includes Cava.Core.Circuit.reset_state *)
+    is_ready_state: state -> Prop;
 
     (* run one simulation step, will be instantiated with Cava.Semantics.Combinational.step *)
     run1: (* input: current state, is_read_req, is_write_req, req_addr, req_value *)

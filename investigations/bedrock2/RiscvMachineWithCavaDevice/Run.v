@@ -51,7 +51,7 @@ Definition initial: ExtraRiscvMachine counter_device := {|
                           (List.seq 0 (4 * List.length all_insts));
     getLog := [];
   |};
-  getExtraState := device.reset_state;
+  getExtraState := Circuit.reset_state incr;
 |}.
 
 (* preconditions from put_wait_get_asm_correct that the above initial machine is supposed
