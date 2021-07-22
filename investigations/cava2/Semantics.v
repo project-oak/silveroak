@@ -76,8 +76,11 @@ Fixpoint step {i s o} (c : Circuit s i o)
     let '(nsg, go) := step g sg tt in
     (combine_absorbed_denotation nsf nsg, if bv then fo else go)
 
-  | MakeTuple => fun _ '(x,(y,_)) =>
-    (tt, (x, y))
+  | MakeTuple f g => fun s _ =>
+    let '(sf, sg) := split_absorbed_denotation s in
+    let '(nsf, x) := step f sf tt in
+    let '(nsg, y) := step g sg tt in
+    (combine_absorbed_denotation nsf nsg, (x,y))
   | Constant v => fun _ _ =>
     (tt, v)
   end.
@@ -106,7 +109,7 @@ Fixpoint reset_state {i s o} (c : Circuit (var:=denote_type) s i o) : denote_typ
       (combine_absorbed_denotation (reset_state (x default)) (reset_state (f default)))
   | Delay initial => initial
   | AddMod _ => tt
-  | MakeTuple => tt
+  | MakeTuple f g => combine_absorbed_denotation (reset_state f) (reset_state g)
   | Constant _ => tt
   | ElimPair f _ =>  reset_state (f default default)
   | ElimBool b f g => combine_absorbed_denotation (reset_state f) (reset_state g)
