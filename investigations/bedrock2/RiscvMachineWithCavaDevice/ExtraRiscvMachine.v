@@ -1,4 +1,7 @@
-(* based on riscv.Platform.MetricRiscvMachine *)
+(* Adds some extra state E to a RiscvMachine by wrapping it in a new record
+   with an additional field getExtraState.
+   E could be instantiated to eg the state of a Cava device.
+   Based on riscv.Platform.MetricRiscvMachine. *)
 Require Import Coq.Strings.String.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Word.Interface.

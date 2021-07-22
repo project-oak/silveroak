@@ -19,7 +19,6 @@ Require Import compiler.LowerPipeline.
 Require Import compiler.CompilerInvariant.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
-Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.DetIncrMachine.
 Require Import Bedrock2Experiments.StateMachineMMIOSpec.
 Require Import Bedrock2Experiments.StateMachineMMIO.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.MMIOToCava.

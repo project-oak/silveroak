@@ -5,7 +5,7 @@ Require Import coqutil.Word.Interface coqutil.Map.Interface.
 Require Import coqutil.Map.OfListWord.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitToRiscV.
-Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.DetIncrMachine.
+Require Import Bedrock2Experiments.IncrementWait.CavaIncrementDevice.
 Require Import riscv.Spec.Decode.
 Require Import riscv.Utility.InstructionCoercions.
 Open Scope ilist_scope.
@@ -54,37 +54,6 @@ Definition initial: ExtraRiscvMachine counter_device := {|
   getExtraState := Circuit.reset_state incr;
 |}.
 
-(* preconditions from put_wait_get_asm_correct that the above initial machine is supposed
-   to satisfy (they apply to a MetricRiscvMachine, whereas the above is an ExtraRiscvMachine,
-   so we can't quite prove them as is).
-input, output_placeholder : word
-R : Pipeline.mem -> Prop
-Rdata, Rexec : FlatToRiscvCommon.mem -> Prop
-p_functions, p_call : word
-mem : Pipeline.mem
-initial : MetricRiscvMachine
-============================
-(scalar (word.of_Z input_ptr) input * scalar (word.of_Z output_ptr) output_placeholder * R)%sep mem ->
-execution (getLog initial) IDLE ->
-(program iset p_functions (fst (fst put_wait_get_compile_result)) *
- program iset p_call
-   [[Decode.Jal RegisterNames.ra (main_relative_pos + word.signed (word.sub p_functions p_call))]] *
- LowerPipeline.mem_available (stack_start ml) (stack_pastend ml) * Rdata * Rexec *
- eq mem)%sep (getMem initial) /\
-subset
-  (footpr
-     (program iset p_functions (fst (fst put_wait_get_compile_result)) *
-      program iset p_call
-        [[Decode.Jal RegisterNames.ra
-            (main_relative_pos + word.signed (word.sub p_functions p_call))]] * Rexec)%sep)
-  (of_list (getXAddrs initial)) /\
-word.unsigned (getPc initial) mod 4 = 0 /\
-getPc initial = p_call /\
-getNextPc initial = word.add (getPc initial) (word.of_Z 4) /\
-regs_initialized (getRegs initial) /\
-map.get (getRegs initial) RegisterNames.sp = Some (stack_pastend ml) /\ valid_machine initial ->
-*)
-
 Definition sched: schedule := fun n => (n mod 2)%nat.
 
 Definition force_ow32(ow32: option Utility.w32): Z :=
@@ -95,8 +64,6 @@ Definition force_ow32(ow32: option Utility.w32): Z :=
 
 Definition get_output(m: ExtraRiscvMachine counter_device): Z :=
   force_ow32 (Memory.loadWord m.(getMachine).(getMem) (word.of_Z (width:=32) output_ptr)).
-
-Compute get_output initial.
 
 Definition LogElem := (bool * Z * Z)%type. (* (ok-flag, pc, output) triples *)
 

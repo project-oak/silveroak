@@ -7,14 +7,12 @@ Require Import bedrock2.ZnWords.
 Require Import compiler.SeparationLogic.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.ExtraRiscvMachine.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
-Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.DetIncrMachine.
+Require Import Bedrock2Experiments.IncrementWait.CavaIncrementDevice.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitToRiscV.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitToRiscVProperties.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.Bedrock2ToCava.
 
 Definition binary: list byte := Eval compute in Pipeline.instrencode put_wait_get_asm.
-
-Axiom TODO: False.
 
 Theorem IncrementWait_end2end_correct: forall p_functions p_call mH Rdata Rexec R (* <-? *)
           (initialL: ExtraRiscvMachine counter_device) input output_placeholder sched,

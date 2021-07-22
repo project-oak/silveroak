@@ -1,4 +1,9 @@
-(* based on riscv.Platform.Minimal *)
+(* A deterministic RiscvMachine performing only internal MMIO,
+   i.e. MMIO between the processor and a hardware device simulator that
+   does not show up in the event trace.
+   No external MMIO (ie interaction with the external world) is performed
+   by this machine, so mach.(getMachine).(getLog) always remains [].
+   Based on riscv.Platform.Minimal *)
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.Bool.Bvector.
 Require Import Coq.Lists.List.
@@ -238,7 +243,6 @@ Section WithParams.
   Section WithSchedule.
     Context (sched: schedule).
 
-    Check (Run.run1 RV32I).
     Definition nth_step(n: nat): OState (ExtraRiscvMachine D) unit :=
       device_steps (sched n);; free.interp_as_OState interpret_action (Run.run1 RV32I).
 
