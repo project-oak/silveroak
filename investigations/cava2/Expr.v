@@ -28,7 +28,7 @@ Section Vars.
   Inductive Circuit {var: tvar}: type -> type -> type -> Type :=
   | Var : forall {x},     var x -> Circuit [] [] x
   | Abs : forall {s x y z}, (var x -> Circuit s y z) -> Circuit s (x ** y) z
-  | App : forall {s1 s2 x y z}, Circuit s1 (x ** y) z -> Circuit s2 [] x -> Circuit (s1 ++ s2) y z
+  | App : forall {s1 s2 x y z}, Circuit s2 (x ** y) z -> Circuit s1 [] x -> Circuit (s1 ++ s2) y z
 
   | Let: forall {x y z s1 s2}, Circuit s1 [] x -> (var x -> Circuit s2 y z) -> Circuit (s1++s2) y z
   (* slightly different fomualtion, but equivalent to loop delay *)
@@ -65,7 +65,7 @@ Delimit Scope expr_scope with expr.
 Module ExprNotations.
   (* Escaping *)
   Notation "{{ x }}"   := (x)%expr (at level 1, x custom expr at level 99).
-  Notation "'`' x '`'" := (x) (in custom expr at level 7, x constr at level 1) : expr_scope.
+  Notation "'`' x '`'" := (x) (in custom expr at level 2, x constr at level 1) : expr_scope.
 
   Notation "f x"     := (App f x) (in custom expr at level 3, left associativity) : expr_scope.
   Notation "x"       := (Var x) (in custom expr, x ident) : expr_scope.
@@ -151,9 +151,11 @@ Module ExprNotations.
         x
     }}.
 
+    Unset Printing Notations.
     (* Function composition for single arg functions *)
-    Definition compose {s1 s2 x y z} (f: Circuit s1 [x] y) (g: Circuit s2 [y] z) := {{
-      fun x => `g` (`f` x)
+    Definition compose {s1 s2 x y z} (f: Circuit s1 [x] y) (g: Circuit s2 [y] z)
+      : Circuit (s1++s2) [x] z := {{
+      fun x => `g` ( `f` x )
     }}.
     (* Notation "f >=> g" := (compose f g) (at level 61, right associativity) : expr_scope. *)
 

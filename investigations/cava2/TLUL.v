@@ -89,6 +89,9 @@ Section Var.
   Context {var : tvar}.
 
   Definition False := Constant (false: denote_type Bit).
+  Definition _0 {sz} := Constant (0: denote_type (BitVec sz)).
+  Definition _1 {sz} := Constant (1: denote_type (BitVec sz)).
+  Definition _2 {sz} := Constant (2: denote_type (BitVec sz)).
 
   (* typedef enum logic [2:0] { *)
   (*   PutFullData    = 3'h 0, *)
@@ -107,6 +110,17 @@ Section Var.
   Definition tl_d_op_e     := Vec Bit 3.
   Definition AccessAck     := Constant (0: denote_type tl_d_op_e).
   Definition AccessAckData := Constant (1: denote_type tl_d_op_e).
+
+  Definition io_req :=
+    Bit **          (* write *)
+    BitVec TL_AW ** (* address *)
+    BitVec TL_DW ** (* write_data *)
+    BitVec TL_DBW   (* write_mask *)
+    .
+
+  Definition sha_word := BitVec 32.
+  Definition sha_block := Vec sha_word 16.
+  Definition sha_digest := Vec sha_word 8.
 
   Axiom prim_and :
     forall {s1 s2},
@@ -128,27 +142,39 @@ Section Var.
     Circuit s1 [] Bit.
   Notation "! x" := (prim_not x) (in custom expr at level 20) : expr_scope.
 
+  Axiom prim_gte :
+    forall {s1 s2 t},
+    Circuit s1 [] t ->
+    Circuit s2 [] t ->
+    Circuit (s1++s2) [] Bit.
+  Notation "x >= y" := (prim_gte x y) (in custom expr at level 19, no associativity) : expr_scope.
+
   Axiom prim_eq :
     forall {s1 s2 t},
     Circuit s1 [] t ->
     Circuit s2 [] t ->
     Circuit (s1++s2) [] Bit.
-  Notation "x == y" := (prim_eq x y) (in custom expr at level 19, left associativity) : expr_scope.
+  Notation "x == y" := (prim_eq x y) (in custom expr at level 19, no associativity) : expr_scope.
 
   Axiom slice :
     forall {t n} (start len: nat), Circuit [] [Vec t n] (Vec t len).
 
-  Definition io_req :=
-    Bit **          (* write *)
-    Bit **          (* read *)
-    BitVec TL_AW ** (* address *)
-    BitVec TL_DW ** (* write_data *)
-    BitVec TL_DBW   (* write_mask *)
-    .
+  Axiom index :
+    forall {t n i}, Circuit [] [Vec t n; BitVec i] t.
+  Axiom replace :
+    forall {t n i}, Circuit [] [Vec t n; BitVec i; t] (Vec t n).
 
-  Definition tlul_adapter_reg : Circuit _ [tl_h2d_t; BitVec TL_DW; Bit] (tl_d2h_t ** io_req) := {{
-    fun incoming_tlp read_data error =>
+  Axiom value_hole : forall {t}, t.
+  Axiom circuit_hole : forall {t}, Circuit [] [] t.
 
+  (* Convert TLUL packets to a simple read/write register interface *)
+  (* This is similar to OpenTitan's tlul_adapter_reg, but for simplicity we
+   * provide all registers for the adapter to read from, rather than providing
+   * a readback signal. Providing a same-cycle readback signal like OT version
+   * is difficult without delayless loop *)
+  Definition tlul_adapter_reg {reg_count}
+    : Circuit _ [tl_h2d_t; Vec (BitVec 32) reg_count ] (tl_d2h_t ** io_req) := {{
+    fun incoming_tlp registers =>
     let
       '(a_valid
       , a_opcode
@@ -190,7 +216,8 @@ Section Var.
       let re_o := rd_req && !err_internal in
 
       (reqid, reqsz, rspop, error, outstanding, we_o, re_o)
-      initially (0,(0,(0,(false,(false,(false,false)))))) : denote_type (BitVec _ ** BitVec _ ** BitVec _ ** Bit ** Bit ** Bit ** Bit)
+      initially (0,(0,(0,(false,(false,(false,false))))))
+        : denote_type (BitVec _ ** BitVec _ ** BitVec _ ** Bit ** Bit ** Bit ** Bit)
     in
 
     let wdata_o := a_data in
@@ -198,18 +225,97 @@ Section Var.
 
     ( ( outstanding
       , rspop
-      , `Constant (0:denote_type (BitVec _))`
+      , `_0`
       , reqsz
       , reqid
-      , `Constant (0:denote_type (BitVec _))`
-      , read_data
-      , `Constant (0:denote_type (BitVec _))`
+      , `_0`
+      , `index` registers (`slice 2 30` a_address)
+      , `_0`
       , error
       , !outstanding
       )
-    , (we_o, re_o, a_address, a_data, a_mask)
+    , (we_o, a_address, a_data, a_mask)
     )
 
+  }}.
+
+  (* Pack partial TLUL writes back into 32 bit blocks *)
+  Definition tlul_pack : Circuit _ [Bit; BitVec 32; BitVec 4; Bit] (Bit ** BitVec 32) := {{
+    fun valid data mask flush =>
+    (* TODO(blaxill): *)
+    (valid, data)
+  }}.
+
+  (* SHA-256 message padding *)
+  Definition sha256_padder : Circuit _ [Bit; sha_word; Bit; Bit] (sha_block ** Bit) := {{
+    (* TODO(blaxill): *)
+    fun valid data finish clear => (`circuit_hole`, `False`)
+  }}.
+
+  (* TODO(blaxill): *)
+  Definition sha256_initial_digest : Circuit [] [] sha_digest := circuit_hole.
+  (* TODO(blaxill): *)
+  Definition sha256_round_constants : Circuit [] [] sha_digest := circuit_hole.
+  (* TODO(blaxill): *)
+  Definition sha256_compress : Circuit _ [sha_digest; sha_word; sha_word] sha_digest := {{
+    fun _ _ _ => `circuit_hole`
+  }}.
+
+  (* SHA-256 core *)
+  Definition sha256 : Circuit _ [sha_block; Bit; Bit] (sha_digest ** Bit) := {{
+    (* TODO(blaxill): *)
+    fun data valid reset_digest =>
+    (`circuit_hole`, `circuit_hole`)
+  }}.
+
+
+  Definition hmac_register_count := 27.
+  Definition hmac_register_index := 5.
+  Definition hmac_register := BitVec hmac_register_index.
+
+  Definition REG_INTR_STATE := Constant (0: denote_type hmac_register).
+  Definition REG_CMD := Constant (5: denote_type hmac_register).
+
+  Unset Printing Notations.
+
+  Definition hmac_top : Circuit _ [tl_h2d_t] tl_d2h_t := {{
+    fun incoming_tlp =>
+
+    let/delay '(digest_buffer, tl_o; registers) :=
+
+      let '(tl_o, write_en, write_address, write_data; write_mask)
+        := `tlul_adapter_reg` incoming_tlp registers in
+      let aligned_address := `slice 2 5` write_address in
+
+      let fifo_write := write_address >= `Constant (2048: denote_type (BitVec _))` in
+
+      (* TODO(blaxill): ignore/mask writes to CMD etc ? *)
+      (* TODO(blaxill): apply mask to register writes*)
+      let nregisters :=
+        if write_en && !fifo_write
+        then `replace (n:=hmac_register_count)` registers aligned_address write_data
+        else registers
+      in
+
+      (* cmd_start is set when host writes to hmac.CMD.hash_start *)
+      (* and signifies the start of a new message *)
+      let cmd_start := write_en && aligned_address == `REG_CMD` && write_data == `_1` && !fifo_write in
+      (* cmd_process is set when host writes to hmac.CMD.hash_process *)
+      (* and signifies the end of a message *)
+      let cmd_process := write_en && aligned_address == `REG_CMD` && write_data == `_2` && !fifo_write in
+
+      let '(packer_valid; packer_data)
+        := `tlul_pack` (write_en && fifo_write) write_data write_mask cmd_process in
+
+      let '(padded_block; padded_valid) := `sha256_padder` packer_valid packer_data cmd_process cmd_start in
+      (* TODO(blaxill): sha needs to block FIFO writes and process HMAC key first *)
+      let '(digest; digest_valid) := `sha256` padded_block padded_valid cmd_start in
+
+      let next_digest := if digest_valid then digest else digest_buffer in
+
+      (next_digest, tl_o, nregisters) initially value_hole
+
+    in tl_o
   }}.
 
 End Var.

@@ -46,10 +46,10 @@ Fixpoint step {i s o} (c : Circuit s i o)
   | Abs f => fun s '(i1,i2) =>
     step (f i1) s i2
   | App f x => fun s i =>
-    let '(sf, sx) := split_absorbed_denotation s in
+    let '(sx, sf) := split_absorbed_denotation s in
     let '(nsx, x) := step x sx tt in
     let '(nsf, o) := step f sf (x, i) in
-    (combine_absorbed_denotation nsf nsx, o)
+    (combine_absorbed_denotation nsx nsf, o)
   | Delay _ => fun s '(i,tt) => (i, s)
   | AddMod n => fun _ '(a,(b,_)) => (tt, (a + b) mod (2 ^ n))
   | Let x f => fun s i =>
@@ -102,7 +102,7 @@ Fixpoint reset_state {i s o} (c : Circuit (var:=denote_type) s i o) : denote_typ
   match c in Circuit s i o return denote_type s with
   | Var _ => tt
   | Abs f => reset_state (f default)
-  | App f x => combine_absorbed_denotation (reset_state f) (reset_state x)
+  | App f x => combine_absorbed_denotation (reset_state x) (reset_state f)
   | Let x f => combine_absorbed_denotation (reset_state x) (reset_state (f default))
   | LetDelay initial x f =>
     combine_absorbed_denotation initial
