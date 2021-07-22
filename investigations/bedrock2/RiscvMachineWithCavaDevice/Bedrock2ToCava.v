@@ -265,10 +265,16 @@ Section WithParams.
       all: cbn -[map.get map.empty instrencode].
       all: try eassumption.
       all: try reflexivity.
+      match goal with
+      | E1: execution _ _, E2: execution _ _ |- _ =>
+        pose proof (execution_unique _ _ _ E1 E2); subst; clear E2
+      end.
       eauto using initial_state_is_ready_state.
     }
     (* `related` holds at beginning: *)
-    subst t. eapply mkRelated; simpl; eauto using initial_states_are_related, initial_state_exists.
+    subst t.
+    edestruct initial_state_exists as (sH & ? & ?). 1: eassumption.
+    eapply mkRelated; simpl; eauto.
     Unshelve.
     all: do 2 constructor.
   Qed.

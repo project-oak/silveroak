@@ -81,6 +81,26 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
                             device.maxRespDelay sL = (Some ignored, sL') /\
         device_state_related sH' sL' /\
         parameters.write_step n sH r v sH';
+
+  (* If two steps starting in the same high-level state agree on what gets appended to the trace,
+     then the resulting high-level states must be equal.
+     Note that this is a property purely about the high-level state machine that does not involve
+     the low-level device.
+     This restriction still allows external nondeterminism (ie nondeterminism that immediately shows
+     up in the trace) in the high-level state machine, but disallows internal nondeterminism
+     that might never or only later be observable in the trace. *)
+  read_step_unique: forall n r v sH sH' sH'',
+      parameters.read_step n r v sH sH' ->
+      parameters.read_step n r v sH sH'' ->
+      sH' = sH'';
+  write_step_unique: forall n r v sH sH' sH'',
+      parameters.write_step n r v sH sH' ->
+      parameters.write_step n r v sH sH'' ->
+      sH' = sH'';
+
+  (* In order for execution_unique, we also require that there's only one initial high-level state *)
+  initial_state_unique: forall sH sH',
+      parameters.is_initial_state sH -> parameters.is_initial_state sH' -> sH = sH';
 }.
 
 Section WithParams.
@@ -170,6 +190,44 @@ Section WithParams.
       ZnWords.
   Qed.
 
+  Lemma step_unique: forall a prevH args rets s s',
+      step a prevH args rets s ->
+      step a prevH args rets s' ->
+      s = s'.
+  Proof.
+    unfold step. intros.
+    destruct (String.prefix MMIOLabels.WRITE_PREFIX a).
+    - simp.
+      replace sz0 with sz in *. 2: {
+        pose proof (parameters.write_step_size_valid _ _ _ _ _ Hp3) as V1. simpl in V1.
+        pose proof (parameters.write_step_size_valid _ _ _ _ _ H0p1) as V2. simpl in V2.
+        destruct V1 as [? | [? | [? | ?]]]; destruct V2 as [? | [? | [? | ?]]]; subst;
+          reflexivity || discriminate || contradiction.
+      }
+      eapply parameters.reg_addr_unique in Hp0. subst r1.
+      eapply write_step_unique; eassumption.
+    - destruct (String.prefix MMIOLabels.READ_PREFIX a). 2: contradiction. simp.
+      replace sz0 with sz in *. 2: {
+        pose proof (parameters.read_step_size_valid _ _ _ _ _ Hp3) as V1. simpl in V1.
+        pose proof (parameters.read_step_size_valid _ _ _ _ _ H0p1) as V2. simpl in V2.
+        destruct V1 as [? | [? | [? | ?]]]; destruct V2 as [? | [? | [? | ?]]]; subst;
+          reflexivity || discriminate || contradiction.
+      }
+      eapply parameters.reg_addr_unique in Hp0. subst r0.
+      eapply read_step_unique; eassumption.
+  Qed.
+
+  Lemma execution_unique: forall t s s',
+      execution t s -> execution t s' -> s = s'.
+  Proof.
+    induction t; cbn [execution]; intros.
+    - eauto using initial_state_unique.
+    - destruct a as (((mGive & a) & args) & (mReceive & rets)).
+      destruct H as (prev & E & St). destruct H0 as (prev' & E' & St').
+      specialize (IHt _ _ E E'). subst prev'.
+      eapply step_unique; eassumption.
+  Qed.
+
   Lemma bv_to_word_word_to_bv: forall v, bv_to_word (word_to_bv v) = v.
   Proof.
     intros. unfold bv_to_word, word_to_bv.
@@ -213,6 +271,22 @@ Section WithParams.
       eauto 10 using disjoint_diff_l.
   Qed.
 
+  Lemma combine_split_read_step: forall n s r v s',
+      parameters.read_step n s r v s' ->
+      parameters.read_step n s r
+        (word.of_Z (LittleEndian.combine n (LittleEndian.split n (word.unsigned v)))) s'.
+  Proof.
+    intros.
+    rewrite LittleEndian.combine_split.
+    rewrite Z.mod_small. 2: {
+      split.
+      - eapply word.unsigned_range.
+      - eapply parameters.read_step_bounded. eassumption.
+    }
+    rewrite word.of_Z_unsigned.
+    assumption.
+  Qed.
+
   Lemma stateMachine_primitive_to_cava: forall (initialH: MetricRiscvMachine) (p: riscv_primitive)
       (postH: primitive_result p -> MetricRiscvMachine -> Prop),
       MetricMinimalMMIO.interp_action p initialH postH ->
@@ -245,24 +319,18 @@ Section WithParams.
          rewrite ?(isXAddr4B_true _ _ HX);
          eauto 10 using mkRelated.
     1-4: simp; erewrite ?read_step_isMMIOAddrB by eassumption.
-
-    2: {
-          edestruct state_machine_read_to_device_read as (v'' & s'' & d'' & RU'' & Rel'').
-          1: do 2 eexists; eassumption.
-          1: eauto.
-
-    1-4: edestruct state_machine_read_to_device_read as (v'' & s'' & d'' & RU'' & Rel'').
-
-
- [do 2 eexists; eassumption|solve[eauto]|].
-    1-4: cbn -[HList.tuple]; rewrite RU; cbn -[HList.tuple].
+    1-4: match goal with
+         | E1: execution _ _, E2: execution _ _ |- _ =>
+           pose proof (execution_unique _ _ _ E1 E2); subst; clear E2
+         end.
+    1-4: edestruct state_machine_read_to_device_read as (v'' & d'' & s'' & RU'' & Rel'' & RS'');
+           [do 2 eexists; eassumption|solve[eauto]|].
+    1-4: cbn -[HList.tuple]; rewrite RU''; cbn -[HList.tuple].
     4: { (* 64-bit MMIO is not supported: *)
       eapply parameters.read_step_size_valid in HLp2p2. simpl in HLp2p2. exfalso. intuition congruence.
     }
-    1-3: rewrite bv_to_word_word_to_bv;
-         rewrite word.unsigned_of_Z_nowrap by (pose proof (LittleEndian.combine_bound v); lia);
-         rewrite LittleEndian.split_combine.
-    1-3: eauto 20 using mkRelated, execution_read_cons, rerun_read_step, in_eq, in_cons.
+    1-3: rewrite bv_to_word_word_to_bv.
+    1-3: eauto 20 using mkRelated, execution_read_cons, combine_split_read_step.
 
     (* Store* *)
     1-4: unfold MinimalMMIO.store, MinimalMMIO.nonmem_store, Memory.store_bytes in *;
@@ -284,12 +352,15 @@ Section WithParams.
            try contradiction; try subst sz; try discriminate (* <- also gets rid of 8-byte MMIO case *)
          end.
     1-3: simp; erewrite write_step_isMMIOAddrB by eassumption.
-    1-3: edestruct state_machine_write_to_device_write as (d' & ignored & RU & Rel');
-           [eassumption|solve[eauto]|].
+    1-3: match goal with
+         | E1: execution _ _, E2: execution _ _ |- _ =>
+           pose proof (execution_unique _ _ _ E1 E2); subst; clear E2
+         end.
+    1-3: edestruct state_machine_write_to_device_write as (ignored & d' & s'' & RU & Rel' & WS');
+           [eexists; eassumption|solve[eauto]|].
     1-3: cbn -[HList.tuple Primitives.invalidateWrittenXAddrs]; rewrite RU;
          cbn -[HList.tuple Primitives.invalidateWrittenXAddrs].
-    1-3: eauto 15 using mkRelated, execution_write_cons, preserve_disjoint_of_invalidateXAddrs,
-         rerun_write_step, in_eq, in_cons.
+    1-3: eauto 15 using mkRelated, execution_write_cons, preserve_disjoint_of_invalidateXAddrs.
 
     (* GetPC *)
     { eauto 10 using mkRelated. }
@@ -329,21 +400,13 @@ Section WithParams.
     - eapply IHn. inversion H. subst. clear H. cbn.
       unfold device_step_without_IO.
       eapply mkRelated.
-      + intros.
-        match goal with
-        | |- context[fst ?p] => destruct p eqn: E
-        end.
-        eapply nonMMIO_device_step_preserves_state_machine_state. 1: eauto.
-        simpl.
-        exact E.
+      + eassumption.
       + match goal with
         | |- context[fst ?p] => destruct p eqn: E
         end.
-        rename s into d'.
-        destruct H1 as (s' & Ex & Rel).
+        eapply nonMMIO_device_step_preserves_state_machine_state. 1: eassumption.
         simpl.
-        eexists. split; [eassumption|].
-        eapply nonMMIO_device_step_preserves_state_machine_state; eassumption.
+        exact E.
       + assumption.
       + assumption.
   Qed.

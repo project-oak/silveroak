@@ -109,6 +109,7 @@ Require Import riscv.Utility.Utility.
 Require Import coqutil.Map.Interface coqutil.Map.Properties.
 Require Import coqutil.Word.Interface coqutil.Word.Properties.
 Require Import coqutil.Tactics.Simp.
+Require Import bedrock2.ZnWords.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
 Require Import Bedrock2Experiments.IncrementWait.Constants.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
@@ -142,13 +143,21 @@ Section WithParameters.
       (* after reset, all three bools are false, and idle will be set to true *)
       counter_related IDLE (mk_counter_state idle false false val)
   | BUSY_related: forall val ncycles,
+      (0 < ncycles)%nat ->
       counter_related (BUSY val ncycles) (mk_counter_state false true false (word_to_bv val))
+  (* the hardware is already done, but the software hasn't polled it yet to find out,
+     so we have to relate a software-BUSY to a hardware-done: *)
+  | BUSY_done_related: forall val ncycles,
+      counter_related (BUSY val ncycles)
+                      (mk_counter_state false false true (word_to_bv (word.add (word.of_Z 1) val)))
   | DONE_related: forall val,
       counter_related (DONE val) (mk_counter_state false false true (word_to_bv val)).
 
   Axiom TODO: False.
 
   Axiom word_to_bv_inj: forall x y, word_to_bv x = word_to_bv y -> x = y.
+
+  Axiom incrN_word_to_bv: forall v, incrN (word_to_bv v) = word_to_bv (word.add (word.of_Z 1) v).
 
   Set Printing Depth 100000.
 
@@ -184,68 +193,115 @@ Section WithParameters.
         cbn. rewrite andb_false_r. destruct idle; cbn; simpl; eapply IDLE_related.
       + (* BUSY_related: *)
         rewrite andb_false_r. cbn -[incrN]. change (Pos.to_nat 1) with 1%nat.
-        cbn -[incrN].
-        (* Problem: device can go from BUSY to DONE without any software interaction *)
-        case TODO.
+        cbn -[incrN]. rewrite incrN_word_to_bv.
+        eapply BUSY_done_related.
+      + (* BUSY_done_related: *)
+        cbn. rewrite andb_false_r. cbn. assumption.
       + (* DONE_related: *)
         cbn. rewrite andb_false_r. cbn. assumption.
     - (* state_machine_read_to_device_read: *)
       (* simpler because device.maxRespDelay=1 *)
       unfold device.maxRespDelay, device.runUntilResp, device.state, device.run1, counter_device.
       unfold StateMachineSemantics.parameters.read_step, state_machine_parameters in *.
-      destruct H as [? H]. subst.
+      simp.
       unfold read_step in *.
       destruct r.
       + (* r=VALUE *)
-        destruct sH; try contradiction. destruct H. subst.
-        inversion H0; subst.
+        simp.
         cbn. rewrite andb_false_r. simpl.
         unfold word_to_bv. rewrite word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
-        simpl. eexists. split; [reflexivity|]. eapply IDLE_related.
+        simpl. do 3 eexists. ssplit; try reflexivity. eapply IDLE_related.
       + (* r=STATUS *)
         destruct sH.
         * (* sH=IDLE *)
-          destruct H. subst. inversion H0. subst.
+          destruct Hp1. subst. inversion H0. subst.
           cbn. rewrite andb_false_r. simpl. unfold status_value, STATUS_IDLE.
           unfold word_to_bv.
           rewrite word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
+          do 3 eexists. ssplit; try reflexivity. 2: eapply IDLE_related.
           rewrite word.unsigned_slu. 2: rewrite word.unsigned_of_Z. 2: reflexivity.
           rewrite !word.unsigned_of_Z. unfold word.wrap. cbn.
-          eexists. destruct idle; (split; [reflexivity|]). all: eapply IDLE_related.
+          destruct idle; reflexivity.
         * (* sH=BUSY *)
-          inversion H0. subst.
-          destruct H as [H | H].
+          simp.
+          destruct Hp1 as [H | H].
           -- (* transition to DONE *)
              destruct H; subst.
              simpl (StateMachineSemantics.parameters.reg_addr _).
              unfold STATUS_ADDR, INCR_BASE_ADDR, word_to_bv, status_value, STATUS_DONE.
-             rewrite word.unsigned_slu. 2: rewrite word.unsigned_of_Z. 2: reflexivity.
-             rewrite !word.unsigned_of_Z. unfold word.wrap. cbn -[Vec.hd Vec.tl incrN].
-             rewrite andb_false_r. simpl.
-             eexists.
-             (* Problem: high-level transitions to DONE, but low-level is in BUSY and
-                therefore still answers BUSY, somehow we're shifted by 1 cycle? *)
-             case TODO.
+             rewrite !word.unsigned_of_Z. unfold word.wrap. simpl.
+             inversion H0; subst.
+             ++ (* BUSY_related *)
+                (* the transition that was used to show that sH is not stuck was a transition
+                   from BUSY to DONE returning a done flag, but since the device is still
+                   in BUSY state, it will still return the busy flag in this transition,
+                   so the transition we use to simulate what happened in the device is a
+                   BUSY-to-DONE transition returning a busy flag instead of a done flag *)
+                destruct max_cycles_until_done. 1: inversion H3. clear H3.
+                exists (word.of_Z 2). (* <- bit #1 (busy) is set, all others are 0 *)
+                do 2 eexists.
+                rewrite !word.unsigned_of_Z. unfold word.wrap. cbn -[incrN].
+                ssplit; try reflexivity.
+                ** simpl. rewrite incrN_word_to_bv. eapply BUSY_done_related.
+                ** right. eexists; ssplit; try reflexivity. eapply word.unsigned_inj.
+                   rewrite word.unsigned_slu. 2: rewrite word.unsigned_of_Z. 2: reflexivity.
+                   rewrite !word.unsigned_of_Z. reflexivity.
+             ++ (* BUSY_done_related *)
+                exists (word.of_Z 4). (* <- bit #2 (done) is set, all others are 0 *)
+                do 2 eexists.
+                rewrite !word.unsigned_of_Z. unfold word.wrap. cbn -[incrN].
+                ssplit; try reflexivity.
+                ** simpl. eapply DONE_related.
+                ** left. split. 2: reflexivity. eapply word.unsigned_inj.
+                   rewrite word.unsigned_slu. 2: rewrite word.unsigned_of_Z. 2: reflexivity.
+                   rewrite !word.unsigned_of_Z. reflexivity.
           -- (* stay BUSY *)
              destruct H as (n & ? & ? & ?); subst.
              simpl (StateMachineSemantics.parameters.reg_addr _).
              unfold STATUS_ADDR, INCR_BASE_ADDR, word_to_bv, status_value, STATUS_BUSY.
-             rewrite word.unsigned_slu. 2: rewrite word.unsigned_of_Z. 2: reflexivity.
-             rewrite !word.unsigned_of_Z. unfold word.wrap. cbn -[Vec.hd Vec.tl incrN].
-             rewrite andb_false_r. simpl.
-             eexists. split; [reflexivity|].
-             (* Problem: value now off by 1 *)
-             case TODO.
+             rewrite !word.unsigned_of_Z. unfold word.wrap. simpl.
+             inversion H0; subst.
+             ++ (* BUSY_related *)
+                exists (word.of_Z 2). (* <- bit #1 (busy) is set, all others are 0 *)
+                do 2 eexists.
+                rewrite !word.unsigned_of_Z. unfold word.wrap. cbn -[incrN].
+                ssplit; try reflexivity.
+                ** simpl. rewrite incrN_word_to_bv. eapply BUSY_done_related.
+                ** right. eexists; ssplit; try reflexivity. eapply word.unsigned_inj.
+                   rewrite word.unsigned_slu. 2: rewrite word.unsigned_of_Z. 2: reflexivity.
+                   rewrite !word.unsigned_of_Z. reflexivity.
+             ++ (* BUSY_done_related *)
+                (* the transition that was used to show that sH is not stuck was a transition
+                   from BUSY to BUSY returning a busy flag, but since the device already is
+                   in done state, it will return a done flag in this transition,
+                   so the transition we use to simulate what happened in the device is a
+                   BUSY-to-DONE transition returning a done flag instead of a
+                   BUSY-to-BUSY transition returning a busy flag. *)
+                exists (word.of_Z 4). (* <- bit #2 (done) is set, all others are 0 *)
+                do 2 eexists.
+                rewrite !word.unsigned_of_Z. unfold word.wrap. cbn -[incrN].
+                ssplit; try reflexivity.
+                ** simpl. eapply DONE_related.
+                ** left. split. 2: reflexivity. eapply word.unsigned_inj.
+                   rewrite word.unsigned_slu. 2: rewrite word.unsigned_of_Z. 2: reflexivity.
+                   rewrite !word.unsigned_of_Z. reflexivity.
         * (* sH=DONE *)
-          destruct H. subst. inversion H0. subst.
+          destruct Hp1. subst. inversion H0. subst.
           simpl (StateMachineSemantics.parameters.reg_addr _).
           unfold STATUS_ADDR, INCR_BASE_ADDR, word_to_bv, status_value, STATUS_DONE.
-          rewrite word.unsigned_slu. 2: rewrite word.unsigned_of_Z. 2: reflexivity.
+          cbn.
           rewrite !word.unsigned_of_Z. unfold word.wrap. cbn -[Vec.hd Vec.tl incrN].
-          rewrite andb_false_r. simpl.
-          eexists. split; [reflexivity|]. eapply DONE_related.
+          exists (word.of_Z 4). (* <- bit #2 (done) is set, all others are 0 *)
+          do 2 eexists.
+          rewrite !word.unsigned_of_Z. unfold word.wrap. cbn.
+          ssplit; try reflexivity.
+          ** simpl. eapply DONE_related.
+          ** eapply word.unsigned_inj.
+             rewrite word.unsigned_slu. 2: rewrite word.unsigned_of_Z. 2: reflexivity.
+             rewrite !word.unsigned_of_Z. reflexivity.
     - (* state_machine_write_to_device_write: *)
-      destruct H. subst. unfold write_step in H1.
+      destruct H as (sH' & ? & ?). subst.
+      unfold write_step in H1.
       destruct r. 2: contradiction.
       destruct sH; try contradiction. subst.
       inversion H0. subst.
@@ -253,9 +309,16 @@ Section WithParameters.
       unfold word_to_bv.
       rewrite word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
       cbn.
-      eexists _, _. split; [reflexivity|]. destruct idle; eapply BUSY_related.
-  Unshelve.
-  all: try exact (reset_state incr).
+      eexists _, _, _. ssplit; try reflexivity. destruct idle; eapply BUSY_related; lia.
+    - (* read_step_unique: *)
+      cbn in *. unfold read_step in *. simp.
+      destruct v; destruct r; try contradiction; simp; try reflexivity.
+      destruct Hp1; destruct H0p1; simp; try reflexivity;
+        unfold status_value in *; exfalso; ZnWords.
+    - (* write_step_unique: *)
+      cbn in *. unfold write_step in *. simp. subst. reflexivity.
+    - (* initial_state_unique: *)
+      cbn in *. subst. reflexivity.
   Qed.
 
 End WithParameters.
