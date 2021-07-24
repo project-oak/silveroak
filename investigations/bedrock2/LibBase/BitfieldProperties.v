@@ -56,11 +56,11 @@ Section Proof.
 
   Global Instance spec_of_bitfield_bit32_read : spec_of "b2_bitfield_bit32_read" :=
     fun function_env =>
-      forall (field : Semantics.word) (index: Semantics.word) (R : mem -> Prop) (m : mem) (t : trace),
+      forall (field index: Semantics.word) (R : mem -> Prop) (m : mem) (t : trace),
         call function_env bitfield_bit32_read t m [field; index]
           (fun t' m' rets =>
           t = t' /\ m = m' /\ exists v, rets = [v] /\
-          v = (word.and (word.sru field index) (word.of_Z 1))
+          v = select_bits field index (word.of_Z 1)
           ).
 
   Lemma bitfield_bit32_read_correct :
