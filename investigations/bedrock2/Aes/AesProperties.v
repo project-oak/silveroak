@@ -277,6 +277,63 @@ Section Proofs.
     | H: reg_addr _ = word.of_Z AES_CTRL0 |- _ => apply reg_is_ctrl in H; subst
     end.
 
+  Lemma read_flag_from_status
+    (functions : list (string * (list string * list string * Syntax.cmd)))
+    (H : spec_of_abs_mmio_read32 functions)
+    (tr : trace)
+    (m : mem)
+    (R : mem -> Prop)
+    (s : state)
+    (H0 : R m)
+    (H1 : execution tr s)
+    (i : Z)
+    (* Hi below needs to go away once the issue #854 is fixed *)
+    (Hi : i <= i) :
+    call functions AbsMMIO.abs_mmio_read32 tr m [word.of_Z AES_STATUS0]
+      (fun (t : trace) (m0 : mem) (rets : list Semantics.word) =>
+       exists l : locals,
+         map.putmany_of_list_zip ["status"] rets map.empty = Some l /\
+         cmd (call functions)
+           (cmd.set "out"
+              (expr.op bopname.and "status"
+                 (expr.op bopname.slu 1 i))) t m0 l
+           (fun (t0 : trace) (m1 : mem) (l0 : locals) =>
+            list_map (get l0) ["out"]
+              (fun rets0 : list Semantics.word =>
+               exists (status out : Semantics.word) (s' : state),
+                 execution t0 s' /\
+                 read_step s STATUS status s' /\
+                 R m1 /\
+                 rets0 = [out] /\
+                 word.eqb out (word.of_Z 0) =
+                 negb (is_flag_set status i)))).
+  Proof.
+    (* call function abs_mmio_read32 *)
+    straightline_call; ssplit.
+    (* specialize abs_mmio to AES STATUS *)
+    { instantiate ( 1 := STATUS ). reflexivity. }
+    { pose proof status_read_always_ok s.
+      cbv [parameters.read_step state_machine_parameters] in *.
+      logical_simplify.
+      do 2 eexists. ssplit; eauto.
+    }
+    { eauto. }
+    { repeat straightline.
+      (* keep "execution a x" for later eassumption *)
+      pose proof H4 as HH.
+      simpl in H4.
+      destruct H4. destruct H2.
+      replace s with x1 in *.
+      2:{ eapply execution_unique; eauto. }
+      unfold step in H3. simpl in H3.
+      logical_simplify.
+      infer_reg_using_addr.
+      do 3 eexists; ssplit; eauto.
+      inversion H4. subst.
+      subst_lets. cbv [is_flag_set]. boolsimpl. reflexivity.
+    }
+  Qed.
+
   Lemma interact_write_control s call addre vale t m l
         (post : trace -> mem -> locals -> Prop) addr val :
     dexprs m l [addre; vale] [addr; val] ->
@@ -597,29 +654,9 @@ Section Proofs.
     program_logic_goal_for_function! aes_data_ready.
   Proof.
     repeat straightline.
-    straightline_call; ssplit.
-    (* specialize abs_mmio to AES STATUS *)
-    { instantiate ( 1 := STATUS ). reflexivity. }
-    { pose proof status_read_always_ok s.
-      cbv [parameters.read_step state_machine_parameters] in *.
-      logical_simplify.
-      do 2 eexists. ssplit; eauto.
-    }
-    { eauto. }
-    { repeat straightline.
-      (* keep "execution a x" for later eassumption *)
-      pose proof H4 as HH.
-      simpl in H4.
-      destruct H4. destruct H2.
-      replace s with x1 in *.
-      2:{ eapply execution_unique; eauto. }
-      unfold step in H3. simpl in H3.
-      logical_simplify.
-      infer_reg_using_addr.
-      do 3 eexists; ssplit; eauto.
-      inversion H4. subst.
-      subst_lets. cbv [is_flag_set]. boolsimpl. reflexivity.
-    }
+    subst l. subst args.
+    apply read_flag_from_status; eauto.
+    lia.
   Qed.
 
   Global Instance spec_of_aes_data_valid : spec_of "b2_data_valid" :=
@@ -650,31 +687,10 @@ Section Proofs.
   Lemma aes_data_valid_correct :
     program_logic_goal_for_function! aes_data_valid.
   Proof.
-    (* initial processing *)
     repeat straightline.
-    straightline_call; ssplit.
-    (* specialize abs_mmio to AES STATUS *)
-    { instantiate ( 1 := STATUS ). reflexivity. }
-    { pose proof status_read_always_ok s.
-      cbv [parameters.read_step state_machine_parameters] in *.
-      logical_simplify.
-      do 2 eexists. ssplit; eauto.
-    }
-    { eauto. }
-    { repeat straightline.
-      (* keep "execution a x" for later eassumption *)
-      pose proof H4 as HH.
-      simpl in H4.
-      destruct H4. destruct H2.
-      replace s with x1 in *.
-      2:{ eapply execution_unique; eauto. }
-      unfold step in H3. simpl in H3.
-      logical_simplify.
-      infer_reg_using_addr.
-      do 3 eexists; ssplit; eauto.
-      inversion H4. subst.
-      subst_lets. cbv [is_flag_set]. boolsimpl. reflexivity.
-    }
+    subst l. subst args.
+    apply read_flag_from_status; eauto.
+    lia.
   Qed.
 
   Global Instance spec_of_aes_idle : spec_of "b2_idle" :=
@@ -705,30 +721,10 @@ Section Proofs.
   Lemma aes_idle_correct :
     program_logic_goal_for_function! aes_idle.
   Proof.
-    (* initial processing *)
     repeat straightline.
-    straightline_call; ssplit.
-    { instantiate ( 1 := STATUS ). reflexivity. }
-    { pose proof status_read_always_ok s.
-      cbv [parameters.read_step state_machine_parameters] in *.
-      logical_simplify.
-      do 2 eexists. ssplit; eauto.
-    }
-    { eauto. }
-    { repeat straightline.
-      pose proof H4 as HH.
-      simpl in H4.
-      destruct H4. destruct H2.
-      replace s with x1 in *.
-      2:{ eapply execution_unique; eauto. }
-      unfold step in H3. simpl in H3.
-      logical_simplify.
-      replace x2 with STATUS in *.
-      2:{ eapply reg_addr_unique. destruct x2; simpl; simpl in H3; destruct H3; reflexivity. }
-      do 3 eexists; ssplit; eauto.
-      inversion H4. subst.
-      subst_lets. cbv [is_flag_set]. boolsimpl. reflexivity.
-    }
+    subst l. subst args.
+    apply read_flag_from_status; eauto.
+    lia.
   Qed.
 
   Global Instance spec_of_aes_init : spec_of "b2_aes_init" :=
@@ -783,9 +779,9 @@ Section Proofs.
     { eauto. }
 
     repeat straightline.
-    pose proof H9 as HH.
-    destruct H9. destruct H6.
-    replace  x1 with UNINITIALIZED in *.
+    pose proof H8 as HH.
+    destruct H8. destruct H6.
+    replace x0 with UNINITIALIZED in *.
     2:{ eapply execution_unique; eauto. }
     unfold step in H7. simpl in H7.
     logical_simplify.
@@ -823,8 +819,8 @@ Section Proofs.
       cbn in *. lia.
     }
 
-    exists x. ssplit.
-    { subst x0. exact HH. }
+    eexists. ssplit.
+    { subst x. exact HH. }
     (* TODO automate in a *robust* way... *)
     { subst x. cbv [ctrl_operation].
       rewrite !is_flag_set_or_shiftl_low by lia.
