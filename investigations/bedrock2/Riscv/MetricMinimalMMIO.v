@@ -1,5 +1,7 @@
 (* Copied from riscv.Platform.MetricMinimalMMIO, but using
-   Bedrock2Experiments.Riscv.MinimalMMIO instead of riscv.Platform.MinimalMMIO *)
+   Bedrock2Experiments.Riscv.MinimalMMIO instead of riscv.Platform.MinimalMMIO,
+   and using the same MaterializeRiscvProgram.Materialize instance instead of
+   a metrics-specific instance (while still computing metrics) *)
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.Logic.FunctionalExtensionality.
 Require Import Coq.Logic.PropExtensionality.
@@ -34,38 +36,38 @@ Section Riscv.
   (* note: ext_spec does not have access to the metrics *)
   Context {mmio_spec: MMIOSpec}.
 
-  Definition action : Type := (MetricLog -> MetricLog) * riscv_primitive.
-  Definition result (a : action) := primitive_result (snd a).
-  Local Notation M := (free action result).
+  Local Notation M := (free riscv_primitive primitive_result).
 
-  Global Instance IsRiscvMachine: RiscvProgram M word := {|
-    getRegister a := act (id, GetRegister a) ret;
-    setRegister a b := act (id, SetRegister a b) ret;
-    loadByte a b := act (addMetricLoads 1, LoadByte a b) ret;
-    loadHalf a b := act (addMetricLoads 1, LoadHalf a b) ret;
-    loadWord a b := act (addMetricLoads 1, LoadWord a b) ret;
-    loadDouble a b := act (addMetricLoads 1, LoadDouble a b) ret;
-    storeByte a b c := act (addMetricStores 1, StoreByte a b c) ret;
-    storeHalf a b c := act (addMetricStores 1, StoreHalf a b c) ret;
-    storeWord a b c := act (addMetricStores 1, StoreWord a b c) ret;
-    storeDouble a b c := act (addMetricStores 1, StoreDouble a b c) ret;
-    makeReservation a := act (id, MakeReservation a) ret;
-    clearReservation a := act (id, ClearReservation a) ret;
-    checkReservation a := act (id, CheckReservation a) ret;
-    getCSRField f := act (id, GetCSRField f) ret;
-    setCSRField f v := act (id, SetCSRField f v) ret;
-    getPrivMode := act (id, GetPrivMode) ret;
-    setPrivMode m := act (id, SetPrivMode m) ret;
-    fence a b := act (id, Fence a b) ret;
-    getPC := act (id, GetPC) ret;
-    setPC a := act (addMetricJumps 1, SetPC a) ret;
-    endCycleNormal := act (addMetricInstructions 1, EndCycleNormal) ret;
-    endCycleEarly A := act (addMetricInstructions 1, EndCycleEarly A) ret;
-  |}.
+  Definition metrics_of(p: riscv_primitive): MetricLog -> MetricLog :=
+    match p with
+    | GetRegister a => id
+    | SetRegister a b => id
+    | LoadByte a b => addMetricLoads 1
+    | LoadHalf a b => addMetricLoads 1
+    | LoadWord a b => addMetricLoads 1
+    | LoadDouble a b => addMetricLoads 1
+    | StoreByte a b c => addMetricStores 1
+    | StoreHalf a b c => addMetricStores 1
+    | StoreWord a b c => addMetricStores 1
+    | StoreDouble a b c => addMetricStores 1
+    | MakeReservation a => id
+    | ClearReservation a => id
+    | CheckReservation a => id
+    | GetCSRField f => id
+    | SetCSRField f v => id
+    | GetPrivMode => id
+    | SetPrivMode m => id
+    | Fence a b => id
+    | GetPC => id
+    | SetPC a => addMetricJumps 1
+    | EndCycleNormal => addMetricInstructions 1
+    | EndCycleEarly A => addMetricInstructions 1
+    end.
 
-  Definition interp_action a metmach post :=
-    interpret_action (snd a) (metmach.(getMachine)) (fun r mach =>
-      post r (mkMetricRiscvMachine mach (fst a (metmach.(getMetrics))))) (fun _ => False).
+  Definition interp_action p metmach post :=
+    interpret_action p (metmach.(getMachine))
+      (fun r mach => post r (mkMetricRiscvMachine mach (metrics_of p (metmach.(getMetrics)))))
+      (fun _ => False).
 
   Arguments Memory.load_bytes: simpl never.
   Arguments Memory.store_bytes: simpl never.

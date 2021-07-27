@@ -7,13 +7,13 @@ Require Import bedrock2.NotationsCustomEntry.
 Require Import bedrock2.ToCString.
 Require Import coqutil.Word.Interface.
 Require Import Bedrock2Experiments.IncrementWait.Constants.
+Require Import Bedrock2Experiments.LibBase.MMIOLabels.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
 Local Open Scope Z_scope.
 Local Open Scope list_scope.
 
 Section Impl.
-  Local Existing Instances constant_names constant_vars.
 
   (* Notations for small constants *)
   Local Notation "0" := (expr.literal 0) (in custom bedrock_expr).
@@ -29,16 +29,16 @@ Section Impl.
     (* temporary variables *)
     let status := "status" in
     ("put_wait_get",
-     (globals ++ [input], [out], bedrock_func_body:(
+     ([input], [out], bedrock_func_body:(
         (* write input value *)
-        output! WRITE (VALUE_ADDR, input) ;
+        output! WRITE32 (VALUE_ADDR, input) ;
         (* initialize status to 0 *)
         status = 0 ;
         (* wait for status to be DONE *)
         while ((status & (1 << STATUS_DONE)) == 0) {
-          io! status = READ ( STATUS_ADDR )
+          io! status = READ32 ( STATUS_ADDR )
         };
         (* read the value and exit *)
-        io! out = READ ( VALUE_ADDR )
+        io! out = READ32 ( VALUE_ADDR )
     ))).
 End Impl.
