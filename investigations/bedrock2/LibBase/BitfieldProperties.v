@@ -20,8 +20,6 @@ Require Import coqutil.Tactics.Tactics.
 Require Import coqutil.Tactics.syntactic_unify.
 Require Import coqutil.Tactics.letexists.
 Require Import coqutil.Z.Lia.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
 Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.WhileProperties.
 Require Import Bedrock2Experiments.Word.
@@ -38,11 +36,10 @@ Section Proof.
 
   Global Instance spec_of_bitfield_field32_read : spec_of "b2_bitfield_field32_read" :=
     fun function_env =>
-      forall (field mask index : Semantics.word) (R : mem -> Prop) (m : mem) (t : trace),
+      forall (field mask index : Semantics.word) (m : mem) (t : trace),
         call function_env bitfield_field32_read t m [field; mask; index]
           (fun t' m' rets =>
-          t = t' /\ m = m' /\ exists v, rets = [v] /\
-          v = select_bits field index mask
+          t = t' /\ m = m' /\ rets = [select_bits field index mask]
           ).
 
   Lemma bitfield_field32_read_correct :
@@ -51,16 +48,15 @@ Section Proof.
     repeat straightline.
     eexists; ssplit; repeat straightline_with_map_lookup.
     repeat split; try reflexivity.
-    eexists; ssplit; try reflexivity.
   Qed.
 
   Global Instance spec_of_bitfield_bit32_read : spec_of "b2_bitfield_bit32_read" :=
     fun function_env =>
-      forall (field : Semantics.word) (index: Semantics.word) (R : mem -> Prop) (m : mem) (t : trace),
+      forall (field : Semantics.word) (index: Semantics.word) (m : mem) (t : trace),
         call function_env bitfield_bit32_read t m [field; index]
           (fun t' m' rets =>
-          t = t' /\ m = m' /\ exists v, rets = [v] /\
-          v = (word.and (word.sru field index) (word.of_Z 1))
+          t = t' /\ m = m' /\
+          rets = [word.and (word.sru field index) (word.of_Z 1)]
           ).
 
   Lemma bitfield_bit32_read_correct :
@@ -73,8 +69,6 @@ Section Proof.
     straightline_call; eauto; try reflexivity; [ ].
 
     repeat straightline_with_map_lookup.
-    repeat split; try reflexivity.
-    exists x.
     repeat split; try reflexivity.
   Qed.
 

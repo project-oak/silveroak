@@ -20,8 +20,6 @@ Require Import coqutil.Tactics.Tactics.
 Require Import coqutil.Tactics.syntactic_unify.
 Require Import coqutil.Tactics.letexists.
 Require Import coqutil.Z.Lia.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
 Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.WhileProperties.
 Require Import Bedrock2Experiments.Word.
@@ -49,9 +47,8 @@ Section Proof.
         execution tr s ->
         call function_env abs_mmio_write8 tr m [addr; value]
         (fun tr' m' rets =>
-          exists val, val = value
-          /\ rets = []
-          /\ tr' = ((map.empty, MMIOLabels.WRITE8, [addr; val], (map.empty, [])) :: tr)
+          rets = []
+          /\ tr' = ((map.empty, MMIOLabels.WRITE8, [addr; value], (map.empty, [])) :: tr)
           /\ (exists s'', execution tr' s'')
           /\ m = m'
         ).
@@ -73,9 +70,8 @@ Section Proof.
         execution tr s ->
         call function_env abs_mmio_write32 tr m [addr; value]
         (fun tr' m' rets =>
-          exists val, val = value
-          /\ rets = []
-          /\ tr' = ((map.empty, MMIOLabels.WRITE32, [addr; val], (map.empty, [])) :: tr)
+          rets = []
+          /\ tr' = ((map.empty, MMIOLabels.WRITE32, [addr; value], (map.empty, [])) :: tr)
           /\ (exists s'', execution tr' s'')
           /\ m = m'
         ).
