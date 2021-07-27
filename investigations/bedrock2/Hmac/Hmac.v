@@ -61,11 +61,11 @@ Definition b2_hmac_sha256_init: func :=
      (* Clear the config, stopping the SHA engine. *)
      (* Note: the above comment might be misleading: if the SHA engine is running,
         writes to the CFG register are discarded, says the doc *)
-     abs_mmio_write32(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CFG_REG_OFFSET, 0);
+     abs_mmio_write32(coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CFG_REG_OFFSET), 0);
 
      (* Disable and clear interrupts. INTR_STATE register is rw1c. *)
-     abs_mmio_write32(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_ENABLE_REG_OFFSET, 0);
-     abs_mmio_write32(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET, UINT32_MAX);
+     abs_mmio_write32(coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_ENABLE_REG_OFFSET), 0);
+     abs_mmio_write32(coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET), UINT32_MAX);
 
      reg = 0;
      unpack! reg = bitfield_bit32_write(reg, HMAC_CFG_DIGEST_SWAP_BIT, false);
@@ -73,11 +73,11 @@ Definition b2_hmac_sha256_init: func :=
      unpack! reg = bitfield_bit32_write(reg, HMAC_CFG_ENDIAN_SWAP_BIT, true);
      unpack! reg = bitfield_bit32_write(reg, HMAC_CFG_SHA_EN_BIT, true);
      unpack! reg = bitfield_bit32_write(reg, HMAC_CFG_HMAC_EN_BIT, false);
-     abs_mmio_write32(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CFG_REG_OFFSET, reg);
+     abs_mmio_write32(coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CFG_REG_OFFSET), reg);
 
      reg = 0;
      unpack! reg = bitfield_bit32_write(reg, HMAC_CMD_HASH_START_BIT, true);
-     abs_mmio_write32(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET, reg)
+     abs_mmio_write32(coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET), reg)
   ))).
 
 
@@ -120,17 +120,19 @@ Definition b2_hmac_sha256_update: func :=
   let result := "result" in
   let data_sent := "data_sent" in
   let data_aligned := "data_aligned" in
+  let fifo_reg := "fifo_reg" in
   ("b2_hmac_sha256_update",
    ([data; len], [result], bedrock_func_body:(
      if (data == 0) {
        result = kErrorHmacInvalidArgument
      } else {
        data_sent = data;
+       fifo_reg = coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_MSG_FIFO_REG_OFFSET);
 
        (* Individual byte writes are needed if the buffer isn't word aligned. *)
        (* TODO support for negation and != *)
        while (NOT(len == 0) & NOT((data_sent & 3) == 0)) {
-         abs_mmio_write8(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_MSG_FIFO_REG_OFFSET, load1(data_sent));
+         abs_mmio_write8(fifo_reg, load1(data_sent));
          data_sent = data_sent + 1;
          len = len - 1
        };
@@ -138,14 +140,14 @@ Definition b2_hmac_sha256_update: func :=
        (* TODO support <=, >=, >, maybe also signed? *)
        while (3 < len) {
          data_aligned = load4(data_sent);
-         abs_mmio_write32(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_MSG_FIFO_REG_OFFSET, data_aligned);
+         abs_mmio_write32(fifo_reg, data_aligned);
          data_sent = data_sent + 4;
          len = len - 4
        };
 
        (* Handle non-32bit aligned bytes at the end of the buffer. *)
        while (len) {
-         abs_mmio_write8(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_MSG_FIFO_REG_OFFSET, load1(data_sent));
+         abs_mmio_write8(fifo_reg, load1(data_sent));
          data_sent = data_sent + 1;
          len = len - 1
        };
@@ -195,20 +197,20 @@ Definition b2_hmac_sha256_final: func :=
      } else {
        reg = 0;
        unpack! reg = bitfield_bit32_write(reg, HMAC_CMD_HASH_PROCESS_BIT, true);
-       abs_mmio_write32(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET, reg);
+       abs_mmio_write32(coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET), reg);
 
        done = 0;
        while (NOT(done)) { (* <-- TODO support boolean negation *)
-         unpack! reg = abs_mmio_read32(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET);
+         unpack! reg = abs_mmio_read32(coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET));
          unpack! done = bitfield_bit32_read(reg, HMAC_INTR_STATE_HMAC_DONE_BIT)
        };
-       abs_mmio_write32(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET, reg);
+       abs_mmio_write32(coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET), reg);
 
        (* Read the digest in reverse to preserve the numerical value. *)
        (* The least significant word is at HMAC_DIGEST_7_REG_OFFSET. *)
        i = 0;
        while (i < 8) {
-         unpack! temp = abs_mmio_read32(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET -
+         unpack! temp = abs_mmio_read32(coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET) -
                              (i * 4));
          store4(digest + i * 4, temp);
          i = i + 1
