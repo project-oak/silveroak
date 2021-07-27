@@ -18,6 +18,8 @@ Require Import Bedrock2Experiments.List.
 Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.StateMachineMMIO.
 Require Import Bedrock2Experiments.StateMachineSemantics.
+Require Import Bedrock2Experiments.LibBase.AbsMMIO.
+Require Import Bedrock2Experiments.LibBase.AbsMMIOProperties.
 Require Import Bedrock2Experiments.Aes.Constants.
 Require Import Bedrock2Experiments.Aes.AesExample.
 Require Import Bedrock2Experiments.Aes.AesExampleProperties.
@@ -32,9 +34,11 @@ Local Open Scope string_scope.
 Local Hint Resolve FlattenExpr.mk_Semantics_params_ok FlattenExpr_hyps : typeclass_instances.
 Existing Instances constant_literals spec_of_aes_encrypt.
 
-(* add a stronger hint for state_machine_parameters *)
+(* add a stronger hint for state_machine_parameters and state_machine_parameters_ok *)
 Local Hint Extern 1 (StateMachineSemantics.parameters _ _ _) =>
 exact state_machine_parameters : typeclass_instances.
+Local Hint Extern 1 (StateMachineSemantics.parameters.ok _) =>
+exact state_machine_parameters_ok : typeclass_instances.
 
 Instance consts_ok : aes_constants_ok consts.
 Proof.
@@ -238,6 +242,8 @@ Proof.
   { cbv [ExprImp.valid_funs]. intros *.
     cbv [map.of_list
            List.app
+           AbsMMIO.abs_mmio_read32
+           AbsMMIO.abs_mmio_write32
            aes_encrypt main
            Aes.aes_init Aes.aes_key_put
            Aes.aes_iv_put Aes.aes_data_put
@@ -253,6 +259,8 @@ Proof.
   { exact aes_example_compile_result_eq. }
   { cbv [map.of_list
            List.app
+           AbsMMIO.abs_mmio_read32
+           AbsMMIO.abs_mmio_write32
            aes_encrypt main
            Aes.aes_init Aes.aes_key_put
            Aes.aes_iv_put Aes.aes_data_put
@@ -266,14 +274,19 @@ Proof.
   { vm_compute. congruence. }
   { eapply exec_main; eauto.
     { apply aes_encrypt_correct.
-      { apply aes_init_correct. }
+      {
+        apply aes_init_correct.
+        apply abs_mmio_write32_correct.
+      }
       { apply aes_key_put_correct. }
       { apply aes_iv_put_correct. }
       { apply aes_data_put_wait_correct.
-        { apply aes_data_ready_correct. }
+        { apply aes_data_ready_correct.
+          apply abs_mmio_read32_correct. }
         { apply aes_data_put_correct. } }
       { apply aes_data_get_wait_correct.
-        { apply aes_data_valid_correct. }
+        { apply aes_data_valid_correct.
+          apply abs_mmio_read32_correct. }
         { apply aes_data_get_correct. } } }
     { apply dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec).
       reflexivity. } }

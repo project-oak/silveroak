@@ -32,6 +32,7 @@ Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.Aes.AesSemantics.
 Require Import Bedrock2Experiments.Aes.Aes.
 Require Import Bedrock2Experiments.Aes.Constants.
+Require Import Bedrock2Experiments.LibBase.AbsMMIOProperties.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -40,6 +41,8 @@ Local Open Scope Z_scope.
 (* bedrock2.ProgramLogic does cbv, which unfolds the getters of aes_constants,
    resulting in large ugly ASTs *)
 Ltac normalize_body_of_function f ::= Tactics.rdelta.rdelta f.
+
+
 
 Section Proofs.
   Context {p : AesSemantics.parameters} {p_ok : parameters.ok p}
@@ -248,6 +251,87 @@ Section Proofs.
       eauto.
     pose proof status_read_always_ok s. logical_simplify.
     do 3 eexists; eauto.
+  Qed.
+
+  Lemma reg_is_status :
+    forall r,
+    reg_addr r = word.of_Z AES_STATUS0 ->
+    r = STATUS.
+  Proof.
+    intros.
+    destruct r; apply reg_addr_unique; eauto.
+  Qed.
+
+  Lemma reg_is_ctrl :
+    forall r,
+    reg_addr r = word.of_Z AES_CTRL0 ->
+    r = CTRL.
+  Proof.
+    intros.
+    destruct r; apply reg_addr_unique; eauto.
+  Qed.
+
+  Local Ltac infer_reg_using_addr :=
+    lazymatch goal with
+    | H: reg_addr _ = word.of_Z AES_STATUS0 |- _ => apply reg_is_status in H; subst
+    | H: reg_addr _ = word.of_Z AES_CTRL0 |- _ => apply reg_is_ctrl in H; subst
+    end.
+
+  Lemma read_flag_from_status
+    (functions : list (string * (list string * list string * Syntax.cmd)))
+    (H : spec_of_abs_mmio_read32 functions)
+    (tr : trace)
+    (m : mem)
+    (R : mem -> Prop)
+    (s : state)
+    (H0 : R m)
+    (H1 : execution tr s)
+    (i : Z)
+    (* Hi below needs to go away once the issue #854 is fixed *)
+    (Hi : i <= i) :
+    call functions AbsMMIO.abs_mmio_read32 tr m [word.of_Z AES_STATUS0]
+      (fun (t : trace) (m0 : mem) (rets : list Semantics.word) =>
+       exists l : locals,
+         map.putmany_of_list_zip ["status"] rets map.empty = Some l /\
+         cmd (call functions)
+           (cmd.set "out"
+              (expr.op bopname.and "status"
+                 (expr.op bopname.slu 1 i))) t m0 l
+           (fun (t0 : trace) (m1 : mem) (l0 : locals) =>
+            list_map (get l0) ["out"]
+              (fun rets0 : list Semantics.word =>
+               exists (status out : Semantics.word) (s' : state),
+                 execution t0 s' /\
+                 read_step s STATUS status s' /\
+                 R m1 /\
+                 rets0 = [out] /\
+                 word.eqb out (word.of_Z 0) =
+                 negb (is_flag_set status i)))).
+  Proof.
+    (* call function abs_mmio_read32 *)
+    straightline_call; ssplit.
+    (* specialize abs_mmio to AES STATUS *)
+    { instantiate ( 1 := STATUS ). reflexivity. }
+    { pose proof status_read_always_ok s.
+      cbv [parameters.read_step state_machine_parameters] in *.
+      logical_simplify.
+      do 2 eexists. ssplit; eauto.
+    }
+    { eauto. }
+    { repeat straightline.
+      (* keep "execution a x" for later eassumption *)
+      pose proof H4 as HH.
+      simpl in H4.
+      destruct H4. destruct H2.
+      replace s with x1 in *.
+      2:{ eapply execution_unique; eauto. }
+      unfold step in H3. simpl in H3.
+      logical_simplify.
+      infer_reg_using_addr.
+      do 3 eexists; ssplit; eauto.
+      inversion H4. subst.
+      subst_lets. cbv [is_flag_set]. boolsimpl. reflexivity.
+    }
   Qed.
 
   Lemma interact_write_control s call addre vale t m l
@@ -569,16 +653,10 @@ Section Proofs.
   Lemma aes_data_ready_correct :
     program_logic_goal_for_function! aes_data_ready.
   Proof.
-    (* initial processing *)
     repeat straightline.
-
-    read_status.
-    repeat straightline.
-
-    (* done; prove postcondition *)
-    do 3 eexists. ssplit; eauto; [ ].
-    subst_lets. cbv [is_flag_set].
-    boolsimpl. reflexivity.
+    subst l. subst args.
+    apply read_flag_from_status; eauto.
+    lia.
   Qed.
 
   Global Instance spec_of_aes_data_valid : spec_of "b2_data_valid" :=
@@ -609,16 +687,10 @@ Section Proofs.
   Lemma aes_data_valid_correct :
     program_logic_goal_for_function! aes_data_valid.
   Proof.
-    (* initial processing *)
     repeat straightline.
-
-    read_status.
-    repeat straightline.
-
-    (* done; prove postcondition *)
-    do 3 eexists. ssplit; eauto; [ ].
-    subst_lets. cbv [is_flag_set].
-    boolsimpl. reflexivity.
+    subst l. subst args.
+    apply read_flag_from_status; eauto.
+    lia.
   Qed.
 
   Global Instance spec_of_aes_idle : spec_of "b2_idle" :=
@@ -649,16 +721,10 @@ Section Proofs.
   Lemma aes_idle_correct :
     program_logic_goal_for_function! aes_idle.
   Proof.
-    (* initial processing *)
     repeat straightline.
-
-    read_status.
-    repeat straightline.
-
-    (* done; prove postcondition *)
-    do 3 eexists. ssplit; eauto; [ ].
-    subst_lets. cbv [is_flag_set].
-    boolsimpl. reflexivity.
+    subst l. subst args.
+    apply read_flag_from_status; eauto.
+    lia.
   Qed.
 
   Global Instance spec_of_aes_init : spec_of "b2_aes_init" :=
@@ -705,15 +771,23 @@ Section Proofs.
     (* initial processing *)
     repeat straightline.
 
-    write_control; [ cbn iota; trivial | ].
+    straightline_call; ssplit.
+    { instantiate ( 1 := CTRL ). reflexivity. }
+    { cbv [parameters.write_step state_machine_parameters] in *;
+      ssplit; eauto.
+      instantiate ( 2 := UNINITIALIZED ). reflexivity. }
+    { eauto. }
+
     repeat straightline.
-
-    (* simplify post-write guarantees *)
-    cbn [write_step reg_category] in *.
-
-    (* done; prove postcondition *)
-    ssplit; auto; [ ].
-
+    pose proof H8 as HH.
+    destruct H8. destruct H6.
+    replace x0 with UNINITIALIZED in *.
+    2:{ eapply execution_unique; eauto. }
+    unfold step in H7. simpl in H7.
+    logical_simplify.
+    ssplit; eauto.
+    unfold write_step in H11.
+    infer_reg_using_addr. simpl in H11.
     (* pose all the control-register formatting proofs *)
     pose proof operation_eq.
     pose proof mode_mask_eq.
@@ -723,10 +797,10 @@ Section Proofs.
     pose proof manual_operation_ok.
     cbv [op_size] in *.
     repeat lazymatch goal with
-           | H : enum_member _ _ |- _ =>
-             apply enum_member_size in H;
-               pose proof has_size_nonneg _ _ H
-           end.
+    | H : enum_member _ _ |- _ =>
+      apply enum_member_size in H;
+      pose proof has_size_nonneg _ _ H
+    end.
 
     simplify_implicits.
 
@@ -745,17 +819,15 @@ Section Proofs.
       cbn in *. lia.
     }
 
-    (* split cases *)
-    eexists; ssplit.
-    { (* prove that the execution trace is OK *)
-      subst; eassumption. }
-    { (* prove that the "operation" flag is correct *)
-      cbv [ctrl_operation].
+    eexists. ssplit.
+    { subst x. exact HH. }
+    (* TODO automate in a *robust* way... *)
+    { subst x. cbv [ctrl_operation].
       rewrite !is_flag_set_or_shiftl_low by lia.
       apply is_flag_set_shift; eauto using size1_boolean.
-      lia. }
-    (* TODO automate in a *robust* way... *)
-    { cbv [ctrl_mode].
+      lia.
+    }
+    { subst x. cbv [ctrl_mode].
       etransitivity. {
         eapply select_bits_or_shiftl_low.
         all: rewrite ?word.unsigned_of_Z_nowrap.
