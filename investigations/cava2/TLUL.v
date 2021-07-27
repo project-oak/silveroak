@@ -84,32 +84,73 @@ Definition tl_d2h_t :=
   Bit **
   Bit.
 
-(* typedef enum logic [2:0] { *)
-(*   PutFullData    = 3'h 0, *)
-(*   PutPartialData = 3'h 1, *)
-(*   Get            = 3'h 4 *)
-(* } tl_a_op_e; *)
-Definition tl_a_op_e := Vec Bit 3.
-Definition PutFullData := 0.
-Definition PutPartialData := 1.
-Definition Get := 4.
-
-(* typedef enum logic [2:0] { *)
-(*   AccessAck     = 3'h 0, *)
-(*   AccessAckData = 3'h 1 *)
-(* } tl_d_op_e; *)
-Definition tl_d_op_e := Vec Bit 3.
-Definition AccessAck := 0.
-Definition AccessAckData := 1.
-
 Section Var.
+  Import ExprNotations.
   Context {var : tvar}.
 
-  Definition tlul_to_hw : Circuit _ [tl_h2d_t] [] := {{
-    fun incoming_tlp =>
+  Definition False := Constant (false: denote_type Bit).
+
+  (* typedef enum logic [2:0] { *)
+  (*   PutFullData    = 3'h 0, *)
+  (*   PutPartialData = 3'h 1, *)
+  (*   Get            = 3'h 4 *)
+  (* } tl_a_op_e; *)
+  Definition tl_a_op_e      := Vec Bit 3.
+  Definition PutFullData    := Constant (0: denote_type tl_a_op_e).
+  Definition PutPartialData := Constant (1: denote_type tl_a_op_e).
+  Definition Get            := Constant (4: denote_type tl_a_op_e).
+
+  (* typedef enum logic [2:0] { *)
+  (*   AccessAck     = 3'h 0, *)
+  (*   AccessAckData = 3'h 1 *)
+  (* } tl_d_op_e; *)
+  Definition tl_d_op_e     := Vec Bit 3.
+  Definition AccessAck     := Constant (0: denote_type tl_d_op_e).
+  Definition AccessAckData := Constant (1: denote_type tl_d_op_e).
+
+  Axiom prim_and :
+    forall {s1 s2},
+    Circuit s1 [] Bit ->
+    Circuit s2 [] Bit ->
+    Circuit (s1++s2) [] Bit.
+  Notation "x && y" := (prim_and x y) (in custom expr at level 20, left associativity) : expr_scope.
+
+  Axiom prim_or :
+    forall {s1 s2},
+    Circuit s1 [] Bit ->
+    Circuit s2 [] Bit ->
+    Circuit (s1++s2) [] Bit.
+  Notation "x || y" := (prim_or x y) (in custom expr at level 20, left associativity) : expr_scope.
+
+  Axiom prim_not :
+    forall {s1 },
+    Circuit s1 [] Bit ->
+    Circuit s1 [] Bit.
+  Notation "! x" := (prim_not x) (in custom expr at level 20) : expr_scope.
+
+  Axiom prim_eq :
+    forall {s1 s2 t},
+    Circuit s1 [] t ->
+    Circuit s2 [] t ->
+    Circuit (s1++s2) [] Bit.
+  Notation "x == y" := (prim_eq x y) (in custom expr at level 19, left associativity) : expr_scope.
+
+  Axiom slice :
+    forall {t n} (start len: nat), Circuit [] [Vec t n] (Vec t len).
+
+  Definition io_req :=
+    Bit **          (* write *)
+    Bit **          (* read *)
+    BitVec TL_AW ** (* address *)
+    BitVec TL_DW ** (* write_data *)
+    BitVec TL_DBW   (* write_mask *)
+    .
+
+  Definition tlul_adapter_reg : Circuit _ [tl_h2d_t; BitVec TL_DW; Bit] (tl_d2h_t ** io_req) := {{
+    fun incoming_tlp read_data error =>
 
     let
-      (a_valid
+      '(a_valid
       , a_opcode
       , a_param
       , a_size
@@ -120,54 +161,55 @@ Section Var.
       , a_user
       ; d_ready) := incoming_tlp in
 
-    (* let/delay state := _ *)
-    (*   initially _ in *)
-       (* let curr_outstanding := read0(outstanding) in *)
+    let/delay '(reqid, reqsz, rspop, error, outstanding, we_o; re_o) :=
 
-       (* let a_ack := get(tl_i, a_valid) && !curr_outstanding in *)
-       (* let d_ack := curr_outstanding && get(tl_i, d_ready) in *)
+      let a_ack := a_valid && !outstanding in
+      let d_ack := outstanding && d_ready in
 
-       (* let rd_req := a_ack && (get(tl_i, a_opcode) == enum TLUL.tl_a_op_e { Get } ) in *)
-       (* let wr_req := a_ack && ( *)
-       (*   get(tl_i, a_opcode) == enum TLUL.tl_a_op_e { PutFullData } || *)
-       (*   get(tl_i, a_opcode) == enum TLUL.tl_a_op_e { PutPartialData } *)
-       (* ) in *)
+      let rd_req := a_ack && a_opcode == `Get` in
+      let wr_req := a_ack &&
+        (a_opcode == `PutFullData` || a_opcode == `PutPartialData`) in
 
-       (* (1* TODO(blaxill): skipping malformed tl packet detection *1) *)
-       (* let err_internal := Ob~0 in *)
-       (* let error_i := Ob~0 in *)
+      (* TODO(blaxill): skipping malformed tl packet detection *)
+      let err_internal := `False` in
+      let error_i := `False` in
 
-       (* if a_ack then ( *)
-       (*   write0(reqid, get(tl_i, a_source)); *)
-       (*   write0(reqsz, get(tl_i, a_size)); *)
-       (*   write0(rspop, *)
-       (*     if rd_req then enum TLUL.tl_d_op_e { AccessAckData } *)
-       (*     else enum TLUL.tl_d_op_e { AccessAck }); *)
-       (*   write0(error, error_i || err_internal); *)
+      let '(reqid, reqsz, rspop, error; outstanding) :=
+        if a_ack then
+          ( a_source
+          , a_size
+          , if rd_req then `AccessAckData` else `AccessAck`
+          , error_i || err_internal
+          , `False`
+          )
+        else
+          (reqid, reqsz, rspop, error, if d_ack then `False` else outstanding)
+      in
 
-       (*   write0(outstanding, Ob~1) *)
-       (* ) *)
-       (* else if d_ack then write0(outstanding, Ob~0) *)
-       (* else pass; *)
+      let we_o := wr_req && !err_internal in
+      let re_o := rd_req && !err_internal in
 
-       (* let we_o := wr_req && !err_internal in *)
-       (* let re_o := rd_req && !err_internal in *)
+      (reqid, reqsz, rspop, error, outstanding, we_o, re_o)
+      initially (0,(0,(0,(false,(false,(false,false)))))) : denote_type (BitVec _ ** BitVec _ ** BitVec _ ** Bit ** Bit ** Bit ** Bit)
+    in
 
-       (* let wdata_o := get(tl_i, a_data) in *)
-       (* let be_o    := get(tl_i, a_mask) in *)
-       (* let reg_idx := get(tl_i, a_address)[|5`d2| :+ 5] in *)
+    let wdata_o := a_data in
+    let be_o    := a_mask in
 
-       (* if we_o then ( *)
-       (*   regs.(register_values.write)(reg_idx, wdata_o); *)
-       (*   write_dirty.(register_bool_flag.write)(reg_idx, Ob~1) *)
-       (* ) else pass; *)
+    ( ( outstanding
+      , rspop
+      , `Constant (0:denote_type (BitVec _))`
+      , reqsz
+      , reqid
+      , `Constant (0:denote_type (BitVec _))`
+      , read_data
+      , `Constant (0:denote_type (BitVec _))`
+      , error
+      , !outstanding
+      )
+    , (we_o, re_o, a_address, a_data, a_mask)
+    )
 
-       (* if re_o then ( *)
-       (*   let val := regs.(register_values.read)(reg_idx) in *)
-       (*   read_dirty.(register_bool_flag.write)(reg_idx, Ob~1); *)
-       (*   write0(rdata, val) *)
-       (* ) else pass *)
-    `Constant (tt : denote_type Unit)`
   }}.
 
 End Var.
