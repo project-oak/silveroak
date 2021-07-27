@@ -34,7 +34,7 @@ Fixpoint denote_type (t: type) :=
   | Nat => nat
   | Vec t n =>
     match t with
-    | Bit => nat
+    | Bit => N
     | _ => list (denote_type t)
     end
   | Pair x y => (denote_type x * denote_type y)%type

@@ -92,7 +92,7 @@ Fixpoint default {t: type} : denote_type t :=
   | Bit => false
   | Vec t1 n =>
     match t1 return denote_type t1 -> denote_type (Vec t1 n) with
-    | Bit => fun _ => 0
+    | Bit => fun _ => 0%N
     | _ => fun d => List.repeat d n
     end default
   | Pair x y => (@default x, @default y)
