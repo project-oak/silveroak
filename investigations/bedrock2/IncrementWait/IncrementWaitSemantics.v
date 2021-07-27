@@ -3,6 +3,7 @@ Require Import Coq.micromega.Lia.
 Require Import Coq.Lists.List.
 Require Import Coq.Numbers.DecimalString.
 Require Import bedrock2.Syntax bedrock2.Semantics.
+Require Import bedrock2.ZnWords.
 Require coqutil.Datatypes.String coqutil.Map.SortedList.
 Require coqutil.Map.SortedListString coqutil.Map.SortedListWord.
 Require Import coqutil.Map.Interface.
@@ -12,6 +13,7 @@ Require Import coqutil.Z.HexNotation.
 Require Import coqutil.Decidable.
 Require Import Bedrock2Experiments.Word.
 Require Import Bedrock2Experiments.WordProperties.
+Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.IncrementWait.Constants.
 
 Import String List.ListNotations.
@@ -24,24 +26,10 @@ Class circuit_behavior :=
   { ncycles_processing : nat
   }.
 
-Module parameters.
-  Class parameters :=
-    { word :> Interface.word.word 32;
-      mem :> Interface.map.map word Byte.byte;
-    }.
-
-  Class ok (p : parameters) :=
-    { word_ok :> word.ok word; (* for impl of mem below *)
-      mem_ok :> Interface.map.ok mem; (* for impl of mem below *)
-    }.
-End parameters.
-Notation parameters := parameters.parameters.
-
 Section WithParameters.
-  Context {p : parameters} {p_ok : parameters.ok p}.
-  Context {consts : constants word.rep} {consts_ok : constants_ok consts}
-          {circuit_spec : circuit_behavior}.
-  Import parameters.
+  Context {word: word.word 32} {word_ok: word.ok word}
+          {mem: map.map word Byte.byte} {mem_ok: Interface.map.ok mem}.
+  Context {circuit_spec : circuit_behavior}.
 
   Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
   Local Notation bedrock2_trace := (list bedrock2_event).
@@ -57,26 +45,25 @@ Section WithParameters.
 
   Definition reg_addr (r : Register) : word :=
     match r with
-    | VALUE => VALUE_ADDR
-    | STATUS => STATUS_ADDR
+    | VALUE => word.of_Z VALUE_ADDR
+    | STATUS => word.of_Z STATUS_ADDR
     end.
 
   Lemma reg_addrs_unique r1 r2 : reg_addr r1 = reg_addr r2 -> r1 = r2.
   Proof.
-    pose proof addrs_unique as Haddrs.
-    cbv [reg_addrs] in Haddrs. simplify_unique_words_in Haddrs.
-    destruct r1, r2; cbv [reg_addr]; congruence.
+    destruct r1, r2; cbv [reg_addr]; intros; try reflexivity;
+      exfalso; unfold VALUE_ADDR, STATUS_ADDR, INCR_BASE_ADDR in *; ZnWords.
   Qed.
 
   Definition status_flag (s : state) : word :=
     match s with
-    | IDLE => STATUS_IDLE
-    | BUSY _ _ => STATUS_BUSY
-    | DONE _ => STATUS_DONE
+    | IDLE => word.of_Z STATUS_IDLE
+    | BUSY _ _ => word.of_Z STATUS_BUSY
+    | DONE _ => word.of_Z STATUS_DONE
     end.
 
-  Definition status_value (flag : word) : word :=
-    word.slu (word.of_Z 1) flag.
+  Definition status_value (flag : Z) : word :=
+    word.slu (word.of_Z 1) (word.of_Z flag).
 
   (* circuit spec *)
   Definition proc : word -> word := word.add (word.of_Z 1).
@@ -112,104 +99,36 @@ Section WithParameters.
       end
     end.
 
-  Definition step
-             (action : string) (s : state) (args rets : list word) (s' : state)
-    : Prop :=
-    if String.eqb action WRITE
-    then match args with
-         | [addr;val] =>
-           (exists r, reg_addr r = addr /\ rets = [] /\ write_step s r val s')
-         | _ => False
-         end
-    else if String.eqb action READ
-         then match args with
-              | [addr] => (exists r val, reg_addr r = addr /\ rets = [val] /\ read_step s r val s')
-              | _ => False
-              end
-         else False.
+  Global Instance state_machine_parameters
+    : StateMachineSemantics.parameters 32 word mem :=
+    {| StateMachineSemantics.parameters.state := state ;
+       StateMachineSemantics.parameters.register := Register ;
+       StateMachineSemantics.parameters.is_initial_state := eq IDLE ;
+       StateMachineSemantics.parameters.read_step sz s a v s' :=
+         sz = 4%nat /\ read_step s a v s';
+       StateMachineSemantics.parameters.write_step sz s a v s' :=
+         sz = 4%nat /\ write_step s a v s' ;
+       StateMachineSemantics.parameters.reg_addr := reg_addr ;
+       StateMachineSemantics.parameters.isMMIOAddr a :=
+           INCR_BASE_ADDR <= word.unsigned a < INCR_END_ADDR;
+    |}.
 
-  (* Computes the Prop that must hold for this state to be accurate after the
-     trace *)
-  Fixpoint execution (t : bedrock2_trace) (s : state) : Prop :=
-    match t with
-    | [] => s = IDLE
-    | (_,action,args,(_,rets)) :: t =>
-      exists prev_state,
-      execution t prev_state
-      /\ step action prev_state args rets s
-    end.
-
-  Definition ext_spec (t : bedrock2_trace)
-             (mGive : mem)
-             (action : string)
-             (args: list word)
-             (post: mem -> list word -> Prop) :=
-    if String.eqb action WRITE
-    then
-      (exists r addr val,
-          args = [addr;val]
-          /\ mGive = map.empty
-          /\ reg_addr r = addr
-          (* there must exist *at least one* possible state given this trace,
-             and one possible transition given these arguments *)
-          /\ (exists s s', execution t s /\ write_step s r val s')
-          (* postcondition must hold for *all* possible states/transitions *)
-          /\ (forall s s',
-                execution t s ->
-                write_step s r val s' ->
-                post Interface.map.empty []))
-       else if String.eqb action READ
-            then
-              (exists r addr,
-                  args = [addr]
-                  /\ mGive = map.empty
-                  /\ reg_addr r = addr
-                  (* there must exist *at least one* possible state given this
-                     trace, and one possible transition given these arguments *)
-                  /\ (exists s s' val, execution t s /\ read_step s r val s')
-                  (* postcondition must hold for *all* possible states/transitions *)
-                  /\ (forall s s' val,
-                        execution t s ->
-                        read_step s r val s' ->
-                        post Interface.map.empty [val]))
-               else False.
-
-  Global Instance semantics_parameters  : Semantics.parameters :=
-    {|
-    Semantics.width := 32;
-    Semantics.word := parameters.word;
-    Semantics.mem := parameters.mem;
-    Semantics.locals := SortedListString.map _;
-    Semantics.env := SortedListString.map _;
-    Semantics.ext_spec := ext_spec;
-  |}.
-
-  Global Instance ext_spec_ok : ext_spec.ok _.
+  Global Instance state_machine_parameters_ok
+    : StateMachineSemantics.parameters.ok state_machine_parameters.
   Proof.
-    split;
-    cbv [ext_spec Semantics.ext_spec semantics_parameters
-    Morphisms.Proper Morphisms.respectful Morphisms.pointwise_relation Basics.impl
-    ];
-    intros.
-    all :
-    repeat match goal with
-           | H : context[(?x =? ?y)%string] |- _ =>
-             destruct (x =? y)%string in *
-           | H: exists _, _ |- _ => destruct H
-           | H: _ /\ _ |- _ => destruct H
-           | H : _ :: _  = _ :: _ |- _ => inversion H; clear H; subst
-           | H: False |- _ => destruct H
-           | H : reg_addr _ = reg_addr _ |- _ => apply reg_addrs_unique in H
-           | _ => progress subst
-           end; eauto 20 using Properties.map.same_domain_refl.
-  Qed.
-
-  Global Instance ok : Semantics.parameters_ok semantics_parameters.
-  Proof.
-    split; cbv [env locals mem semantics_parameters]; try exact _.
-    { cbv; auto. }
-    { exact (SortedListString.ok _). }
-    { exact (SortedListString.ok _). }
+    constructor;
+      unfold parameters.isMMIOAddr; cbn;
+      intros;
+      try exact _;
+      repeat match goal with
+             | H: _ /\ _ |- _ => destruct H
+             | r: Register |- _ =>
+               destruct r; cbn [reg_addr] in *; unfold VALUE_ADDR, STATUS_ADDR, INCR_BASE_ADDR in *
+             end;
+      subst;
+      eauto.
+    all: try ZnWords.
+    all: exfalso; ZnWords.
   Qed.
 
   (* COPY-PASTE this *)

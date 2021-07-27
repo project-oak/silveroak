@@ -19,116 +19,45 @@ Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.Word.
 Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.IncrementWait.Constants.
+Require Import Bedrock2Experiments.StateMachineSemantics.
+Require Import Bedrock2Experiments.StateMachineProperties.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWait.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope Z_scope.
 
 Section Proofs.
-  Context {p : parameters} {p_ok : parameters.ok p}
-          {consts : constants word.rep} {consts_ok : constants_ok consts}
+  Context {word: word.word 32} {word_ok: word.ok word}
+          {mem: map.map word Byte.byte} {mem_ok: Interface.map.ok mem}
           {circuit_spec : circuit_behavior}.
-  Import parameters.
 
-  Existing Instance constant_names | 10.
-
-  Instance spec_of_put_wait_get : spec_of put_wait_get :=
+  Global Instance spec_of_put_wait_get : spec_of "put_wait_get" :=
     fun function_env =>
       forall (tr : trace) (m : mem) (R : _ -> Prop) input,
         (* no special requirements of the memory *)
         R m ->
         (* circuit must start in IDLE state *)
-        execution tr IDLE ->
+        execution (p := state_machine_parameters) tr IDLE ->
         let args := [input] in
-        call function_env put_wait_get tr m (globals ++ args)
+        call function_env put_wait_get tr m args
              (fun tr' m' rets =>
                 (* the circuit is back in IDLE state *)
-                execution tr' IDLE
+                execution (p := state_machine_parameters) tr' IDLE
                 (* ...and the same properties as before hold on the memory *)
                 /\ R m'
                 (* ...and output matches spec *)
                 /\ rets = [proc input]).
 
-  Lemma execution_step action args rets t s s':
-    execution t s -> step action s args rets s' ->
-    execution ((map.empty, action, args, (map.empty, rets)) :: t) s'.
-  Proof. intros; cbn [execution]; eauto. Qed.
-
-  Lemma execution_step_read r addr val t s s':
-    execution t s -> reg_addr r = addr -> read_step s r val s' ->
-    execution ((map.empty, READ, [addr], (map.empty, [val])) :: t) s'.
-  Proof.
-    intros. eapply execution_step; [ eassumption | ].
-    cbv [step]. change (READ =? WRITE)%string with false.
-    rewrite String.eqb_refl. eauto.
-  Qed.
-
-  Lemma execution_step_write r addr val t s s':
-    execution t s -> reg_addr r = addr -> write_step s r val s' ->
-    execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s'.
-  Proof.
-    intros. eapply execution_step; [ eassumption | ].
-    cbv [step]. rewrite String.eqb_refl. eauto.
-  Qed.
-
-  Lemma interact_read r call bind addre t m l (post : trace -> mem -> locals -> Prop) addr :
-    dexprs m l [addre] [addr] ->
-    reg_addr r = addr ->
-    (exists s s' val, execution t s /\ read_step s r val s') ->
-    (forall s s' val,
-        execution t s ->
-        read_step s r val s' ->
-        (* implied by other preconditions but convenient to have separately *)
-        execution ((map.empty, READ, [addr], (map.empty, [val])) :: t) s' ->
-        post ((map.empty, READ, [addr], (map.empty, [val])) :: t)
-             m (map.put l bind val)) ->
-    cmd call (cmd.interact [bind] READ [addre]) t m l post.
-  Proof.
-    intros. eapply interact_nomem; [ eassumption | ].
-    cbn [Semantics.ext_spec semantics_parameters].
-    cbv [ext_spec]. change (READ =? WRITE)%string with false.
-    rewrite String.eqb_refl.
-    do 2 eexists; ssplit; [ reflexivity || eassumption .. | ].
-    intros; ssplit; [ reflexivity | ].
-    repeat straightline. eauto using execution_step_read.
-  Qed.
-
-  Lemma interact_write r call addre vale t m l
-        (post : trace -> mem -> locals -> Prop)  addr val :
-    dexprs m l [addre;vale] [addr;val] ->
-    reg_addr r = addr ->
-    (exists s s', execution t s /\ write_step s r val s') ->
-    (forall s s',
-        execution t s ->
-        write_step s r val s' ->
-        (* implied by other preconditions but convenient to have separately *)
-        execution ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) s' ->
-        post ((map.empty, WRITE, [addr;val], (map.empty, [])) :: t) m l) ->
-    cmd call (cmd.interact [] WRITE [addre; vale]) t m l post.
-  Proof.
-    intros. eapply interact_nomem; [ eassumption | ].
-    cbn [Semantics.ext_spec semantics_parameters].
-    cbv [ext_spec]. rewrite String.eqb_refl.
-    do 3 eexists; ssplit; [ reflexivity || eassumption .. | ].
-    intros; ssplit; [ reflexivity | ].
-    repeat straightline. eauto using execution_step_write.
-  Qed.
-
   Local Ltac simplify_implicits :=
-    change Semantics.word with parameters.word in *;
-    change Semantics.mem with parameters.mem in *;
+    change Semantics.word with word in *;
+    change Semantics.mem with mem in *;
     change Semantics.width with 32 in *.
 
   Lemma execution_unique (t : trace) s1 s2 :
-    execution t s1 ->
-    execution t s2 ->
+    execution (p := state_machine_parameters) t s1 ->
+    execution (p := state_machine_parameters) t s2 ->
     s1 = s2.
   Proof.
-    pose proof addrs_unique as Haddrs.
-    cbv [reg_addrs] in Haddrs; simplify_unique_words_in Haddrs.
-    pose proof status_flags_unique_and_nonzero as Hflags.
-    cbv [map] in Hflags.
-    simplify_unique_words_in Hflags.
     revert s1 s2.
     induction t; cbn [execution]; [ congruence | ].
     intros; destruct_products.
@@ -137,23 +66,26 @@ Section Proofs.
       specialize (IHt _ _ H1 H2); subst
     end.
     cbv [step] in *.
-    repeat first [ destruct_one_match_hyp; try contradiction
-                 | progress logical_simplify; subst
-                 | congruence ].
-    { cbv [write_step] in *.
-      repeat first [ destruct_one_match_hyp; try contradiction
-                   | progress logical_simplify; subst
-                   | congruence ]. }
-    { cbv [read_step] in *.
-      repeat lazymatch goal with
-             | H : _ :: _ = _ :: _ |- _ => inversion H; clear H; subst
-             | H : _ \/ _ |- _ => destruct H
-             | |- ?x = ?x => reflexivity
-             | _ => first  [ destruct_one_match_hyp; try contradiction
-                          | progress logical_simplify; subst
-                          | cbv [reg_addr status_value] in *;
-                            simplify_implicits; congruence ]
-             end. }
+    repeat match goal with
+           | |- _ => contradiction
+           | H : _ :: _ = _ :: _ |- _ => inversion H; clear H; subst
+           | |- ?x = ?x => reflexivity
+           | |- _ => destruct_one_match_hyp
+           | |- _ => progress logical_simplify; subst
+           | |- _ => congruence
+           | |- _ => progress cbv [read_step parameters.read_step
+                                   write_step parameters.write_step parameters.reg_addr
+                                   state_machine_parameters] in *
+           | H: reg_addr _ = reg_addr _ |- _ => eapply reg_addrs_unique in H
+           | |- _ => progress cbv [reg_addr status_value] in *; simplify_implicits
+           | H : _ \/ _ |- _ => destruct H
+           end.
+    all: match goal with
+         | H: word.slu _ _ = word.slu _ _ |- _ => apply (f_equal word.unsigned) in H; rename H into A
+         end.
+    all: rewrite !word.unsigned_slu_shamtZ in A by (cbv; intuition congruence).
+    all: unfold word.wrap in *; rewrite word.unsigned_of_Z_nowrap in A by (cbv; intuition congruence).
+    all: discriminate A.
   Qed.
 
   Local Ltac infer :=
@@ -168,19 +100,13 @@ Section Proofs.
   (* (status value STATUS_DONE) & (1 << STATUS_DONE) != 0 *)
   Lemma check_done_flag_done :
     word.eqb (word.and (status_value STATUS_DONE)
-                       (word.slu (word.of_Z 1) STATUS_DONE))
+                       (word.slu (word.of_Z 1) (word.of_Z STATUS_DONE)))
              (word.of_Z 0) = false.
   Proof.
-    (* pose the proofs that all the flags are unique and nonzero *)
-    pose proof status_flags_unique_and_nonzero as Hflags.
-    cbv [map] in Hflags. simplify_unique_words_in Hflags.
-    cbv [status_value]. rewrite word.unsigned_eqb.
+    cbv [status_value STATUS_DONE]. rewrite word.unsigned_eqb.
     push_unsigned. rewrite Z.land_diag.
     apply Z.eqb_neq; intro Heq.
-    rewrite <-word.unsigned_of_Z_0 in Heq.
-    apply word.unsigned_inj in Heq.
-    simplify_implicits.
-    congruence.
+    discriminate Heq.
   Qed.
 
   Lemma word_and_shiftl_1_diff n m :
@@ -204,18 +130,15 @@ Section Proofs.
 
   Lemma check_done_flag_busy :
     word.and (status_value STATUS_BUSY)
-             (word.slu (word.of_Z 1) STATUS_DONE) = word.of_Z 0.
+             (word.slu (word.of_Z 1) (word.of_Z STATUS_DONE)) = word.of_Z 0.
   Proof.
-    (* pose the proofs that all the flags are unique and nonzero *)
-    pose proof status_flags_unique_and_nonzero as Hflags.
-    cbv [map] in Hflags. simplify_unique_words_in Hflags.
-    (* pose proof that flags are all < width *)
-    pose proof flags_lt_width.
-    repeat lazymatch goal with
-           | H : Forall _ (_ :: _) |- _ => inversion H; clear H; subst
-           | H : Forall _ [] |- _ => clear H
-           end.
-    apply word_and_shiftl_1_diff; auto.
+    cbv [STATUS_BUSY STATUS_DONE].
+    apply word_and_shiftl_1_diff; try intro; push_unsigned; try reflexivity.
+    eapply (f_equal word.unsigned) in H.
+    rewrite !word.unsigned_slu in H.
+    2-3: rewrite word.unsigned_of_Z_nowrap; cbv; intuition congruence.
+    rewrite !word.unsigned_of_Z_nowrap in H by (cbv; intuition congruence).
+    discriminate H.
   Qed.
 
   Lemma check_done_flag :
@@ -223,43 +146,33 @@ Section Proofs.
       (word:=word)
       (if
           word.eqb (word.and (status_value STATUS_DONE)
-                             (word.slu (word.of_Z 1) STATUS_DONE))
+                             (word.slu (word.of_Z 1) (word.of_Z STATUS_DONE)))
                    (word.of_Z 0)
         then word.of_Z 1
         else word.of_Z 0) = 0.
   Proof.
     rewrite @word.unsigned_eqb by typeclasses eauto.
-    autorewrite with push_unsigned.
-    cbv [status_value]. rewrite Z.land_diag.
-    destruct_one_match; push_unsigned; try congruence; [ ].
-    (* get rid of word.unsigned to match flags_unique_and_nonzero *)
-    match goal with H : word.unsigned _ = 0 |- _ =>
-                    rewrite <-word.unsigned_of_Z_0 in H;
-                      apply word.unsigned_inj in H
-    end.
-    (* pose the proofs that all the flags are unique and nonzero *)
-    pose proof status_flags_unique_and_nonzero as Hflags.
-    cbv [map] in Hflags. simplify_unique_words_in Hflags.
-    (* simplify implicit arguments *)
-    cbn [width Semantics.word semantics_parameters] in *.
-    (* contradiction *)
-    congruence.
+    cbv [status_value STATUS_DONE].
+    push_unsigned.
+    rewrite Z.land_diag.
+    reflexivity.
   Qed.
 
   Local Ltac interact_read_reg reg :=
-    eapply (interact_read reg);
+    eapply (interact_read (p := state_machine_parameters) 4 reg);
     [ repeat straightline_with_map_lookup; reflexivity
     | reflexivity
     | do 3 eexists; split; [ eassumption | ];
-      cbv [read_step]; eauto
+      cbv [read_step parameters.read_step state_machine_parameters]; eauto
     | ];
     repeat straightline.
 
   Local Ltac interact_write_reg reg :=
-    eapply (interact_write reg);
+    eapply (interact_write (p := state_machine_parameters) 4 reg);
     [ repeat straightline_with_map_lookup; reflexivity
     | reflexivity
-    | do 2 eexists; ssplit; [ eassumption | ]; cbv [write_step]; eauto
+    | do 2 eexists; ssplit; [ eassumption | ];
+      cbv [write_step parameters.write_step state_machine_parameters]; eauto
     | ];
     repeat straightline.
 
@@ -292,17 +205,15 @@ Section Proofs.
   Lemma put_wait_get_correct :
     program_logic_goal_for_function! put_wait_get.
   Proof.
-    pose proof addrs_unique as Haddrs.
-    cbv [reg_addrs] in Haddrs; simplify_unique_words_in Haddrs.
-
     (* initial processing *)
     repeat straightline.
 
     (* write input *)
-    interact_write_reg VALUE. repeat straightline.
+    interact_write_reg VALUE.
 
     (* simplify post-write guarantees *)
-    cbv [write_step] in *.
+    cbv [parameters.write_step state_machine_parameters write_step] in *.
+    repeat straightline.
     repeat (destruct_one_match_hyp; try contradiction).
     subst.
 
@@ -312,11 +223,7 @@ Section Proofs.
            (lt:=lt)
            (invariant:=
               fun i tr m l =>
-                execution tr (BUSY input i)
-                /\ map.get l "STATUS_ADDR"%string = Some STATUS_ADDR
-                /\ map.get l "VALUE_ADDR"%string = Some VALUE_ADDR
-                /\ map.get l "STATUS_DONE"%string = Some STATUS_DONE
-                /\ R m).
+                execution (p := state_machine_parameters) tr (BUSY input i) /\ R m).
     { apply lt_wf. }
     { (* case in which the loop breaks immediately (cannot happen) *)
       repeat straightline.
@@ -335,8 +242,9 @@ Section Proofs.
     { (* proof that invariant holds at loop start *)
       ssplit; [ | map_lookup .. | assumption ].
       cbn [execution]. eexists; ssplit; [ eassumption | ].
-      cbv [step write_step]. rewrite String.eqb_refl.
-      exists VALUE; ssplit; eauto. }
+      cbv [step write_step]. change (if (_: bool) then ?x else _) with x.
+      exists VALUE, 4%nat; ssplit;
+        cbv [parameters.write_step state_machine_parameters write_step]; eauto. }
     { (* invariant holds through loop (or postcondition holds, if loop breaks) *)
       repeat straightline.
 
@@ -353,6 +261,7 @@ Section Proofs.
 
         match goal with H : _ |- _ => apply word.if_nonzero, word.eqb_true in H end.
 
+        cbv [parameters.read_step state_machine_parameters read_step] in *. straightline.
         (* break into two possible read cases : DONE and BUSY *)
         lazymatch goal with H : _ \/ _ |- _ => destruct H end;
           logical_simplify; subst.
@@ -360,6 +269,7 @@ Section Proofs.
           exfalso; infer.
           pose proof check_done_flag_done as Hflag.
           simplify_implicits.
+          unfold STATUS_DONE in *.
           match goal with H : word.and _ _ = word.of_Z 0 |- _ =>
                           rewrite H in Hflag end.
           apply word.eqb_false in Hflag. congruence. }
@@ -372,15 +282,18 @@ Section Proofs.
 
         ssplit; [ | map_lookup .. | assumption ].
         eapply execution_step_read with (r:=STATUS); [ eassumption | reflexivity | ].
-        cbv [read_step]. right; eauto. }
+        cbv [read_step parameters.read_step state_machine_parameters]. split; [reflexivity|].
+        right; eauto. }
       { (* break case -- postcondition holds *)
 
         (* break into two possible read cases : DONE and BUSY *)
+        cbv [parameters.read_step state_machine_parameters read_step] in *. straightline.
         lazymatch goal with H : _ \/ _ |- _ => destruct H end;
           logical_simplify; subst.
         2:{ (* BUSY case; contradiction *)
           exfalso; infer. simplify_implicits.
-          match goal with H : word.unsigned (if _ then _ else _) = 0 |- _ =>
+          unfold STATUS_BUSY in *.
+          lazymatch goal with H : word.unsigned (if _ then _ else _) = 0 |- _ =>
                           erewrite word.eqb_eq in H by apply check_done_flag_busy;
                             autorewrite with push_unsigned in H
           end.
@@ -390,7 +303,7 @@ Section Proofs.
         interact_read_reg VALUE. repeat straightline.
 
         (* simplify post-read guarantees *)
-        infer. cbv [read_step] in *.
+        infer. cbv [read_step parameters.read_step state_machine_parameters] in *. repeat straightline.
         repeat (destruct_one_match_hyp; try contradiction);
           try lazymatch goal with
               | H : word.unsigned (word.of_Z 1) = 0 |- _ =>
@@ -402,4 +315,5 @@ Section Proofs.
         cbv [list_map list_map_body].
         ssplit; eauto. } }
   Qed.
+
 End Proofs.

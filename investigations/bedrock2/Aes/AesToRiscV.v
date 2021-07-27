@@ -4,7 +4,7 @@ Require Import Coq.micromega.Lia.
 Require Import Coq.derive.Derive.
 Require Import bedrock2.Syntax.
 Require Import compiler.FlatToRiscvDef.
-Require Import compiler.MemoryLayout.
+Require Export compiler.MemoryLayout.
 Require Import compiler.Pipeline.
 Require Import compiler.RiscvWordProperties.
 Require Import coqutil.Word.Interface.
@@ -172,7 +172,7 @@ Instance pipeline_params : Pipeline.parameters :=
   Pipeline.compile_ext_call := (@FlatToRiscvDef.compile_ext_call compilation_params);
   Pipeline.M := _;
   Pipeline.MM := _;
-  Pipeline.RVM := MetricMinimalMMIO.IsRiscvMachine;
+  Pipeline.RVM := MaterializeRiscvProgram.Materialize;
   Pipeline.PRParams := @FlatToRiscvCommon.PRParams FlatToRiscv_params
   |}.
 
