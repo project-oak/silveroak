@@ -50,7 +50,7 @@ Definition msg_len_loc : Z := msg_loc + msg_len.
 Definition initial_data_at_digest: list Byte.byte :=
   [Byte.xaa] ++ (List.repeat Byte.xbb (Z.to_nat digest_len - 2)) ++ [Byte.xcc].
 
-Definition initial: ExtraRiscvMachine hmac_device := {|
+Definition initial_def: ExtraRiscvMachine hmac_device := {|
   getMachine := {|
     getRegs := map.put (map.of_list (List.map (fun n => (Z.of_nat n, word.of_Z 0)) (List.seq 0 32)))
                        RegisterNames.sp stack_pastend;
@@ -72,6 +72,8 @@ Definition initial: ExtraRiscvMachine hmac_device := {|
   |};
   getExtraState := tt; (* TODO replace by reset_state *)
 |}.
+
+Definition initial := Eval vm_compute in initial_def. (* takes a few seconds *)
 
 Definition sched: schedule := fun n => (n mod 2)%nat.
 
@@ -100,19 +102,18 @@ Definition outcomeToLogElem(outcome: option unit * ExtraRiscvMachine hmac_device
 Fixpoint trace(nsteps: nat)(start: ExtraRiscvMachine hmac_device):
   ExtraRiscvMachine hmac_device * list LogElem:=
   match nsteps with
-  | O => (start, [])
+  | O => (start, [outcomeToLogElem (Some tt, start)])
   | S n => let (m, t) := trace n start in
-           let (o, m') := nth_step sched n m in
-           (m', t ++ [(match o with
-                       | Some tt => true
-                       | None => false
-                       end,
-                       word.unsigned m'.(getMachine).(getPc),
-                       get_output m')])
+           let r := nth_step sched n m in
+           (snd r, t ++ [outcomeToLogElem r])
   end.
 
+(* Useful for debugging: displays the position of each function:
+Compute (snd (fst sha256_compile_result)).
+*)
+
 (* Useful for debugging: display (ok-flag, pc, output) after each cycle:
-Compute snd (trace 3 initial).
+Compute snd (trace 50 initial).
 *)
 
 Definition res(nsteps: nat): LogElem := outcomeToLogElem (run sched nsteps initial).
