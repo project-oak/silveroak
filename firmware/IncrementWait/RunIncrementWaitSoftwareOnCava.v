@@ -71,24 +71,19 @@ Definition outcomeToLogElem(outcome: option unit * ExtraRiscvMachine counter_dev
    get_output (snd outcome)).
 
 Fixpoint trace(nsteps: nat)(start: ExtraRiscvMachine counter_device):
-  ExtraRiscvMachine counter_device * list (bool * Z * Z) :=
+  ExtraRiscvMachine counter_device * list LogElem:=
   match nsteps with
-  | O => (start, [])
+  | O => (start, [outcomeToLogElem (Some tt, start)])
   | S n => let (m, t) := trace n start in
-           let (o, m') := nth_step sched n m in
-           (m', t ++ [(match o with
-                       | Some tt => true
-                       | None => false
-                       end,
-                       word.unsigned m'.(getMachine).(getPc),
-                       get_output m')])
+           let r := nth_step sched n m in
+           (snd r, t ++ [outcomeToLogElem r])
   end.
 
 (* Useful for debugging: display (ok-flag, pc, output) after each cycle:
 Compute snd (trace 100 initial).
 *)
 
-Definition res(nsteps: nat): (bool * Z * Z) := outcomeToLogElem (run sched nsteps initial).
+Definition res(nsteps: nat): LogElem := outcomeToLogElem (run sched nsteps initial).
 
 (* We can vm_compute through the execution of the IncrementWait program,
    riscv-coq's processor model, and Cava's reaction to the IncrementWait program: *)
