@@ -87,9 +87,9 @@ Section Proof.
 
   Global Instance spec_of_abs_mmio_read8 : spec_of "abs_mmio_read8" :=
     fun function_env =>
-      forall (tr : trace) (m : mem) (s : state) (addr : word) r,
+      forall (tr : trace) (m : mem) (s : state) (addr : word) r val s',
         StateMachineSemantics.parameters.reg_addr r = addr ->
-        (exists val s', parameters.read_step 1 s r val s') ->
+        parameters.read_step 1 s r val s' ->
         execution tr s ->
         call function_env abs_mmio_read8 tr m [addr]
         (fun tr' m' rets =>
@@ -112,9 +112,9 @@ Section Proof.
 
   Global Instance spec_of_abs_mmio_read32 : spec_of "abs_mmio_read32" :=
     fun function_env =>
-      forall (tr : trace) (m : mem) (s : state) (addr : word) r,
+      forall (tr : trace) (m : mem) (s : state) (addr : word) r val s',
         StateMachineSemantics.parameters.reg_addr r = addr ->
-        (exists val s', parameters.read_step 4 s r val s') ->
+        parameters.read_step 4 s r val s' ->
         execution tr s ->
         call function_env abs_mmio_read32 tr m [addr]
         (fun tr' m' rets =>

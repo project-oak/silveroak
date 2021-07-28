@@ -475,12 +475,10 @@ Section WithWord.
 
       (* E1 *)
       apply (f_equal word.unsigned) in E1.
-      rewrite word.unsigned_and_nowrap in E1.
-      rewrite word.unsigned_of_Z_0 in E1.
+      autorewrite with push_unsigned in E1.
       rewrite word.unsigned_sru_nowrap in E1.
       2:{ rewrite word.unsigned_of_Z. rewrite word.wrap_small; eauto. }
-      rewrite word.unsigned_of_Z_1 in E1.
-      rewrite word.unsigned_of_Z in E1.
+      autorewrite with push_unsigned in E1.
       apply (f_equal (fun x => Z.testbit x 0)) in E1.
       rewrite Z.land_spec in E1.
       simpl (Z.testbit 1 0) in E1.
@@ -489,7 +487,6 @@ Section WithWord.
       rewrite Z.shiftr_spec in E1.
       2:{ lia. }
       simpl in E1.
-      rewrite word.wrap_small in E1. 2:{ split; eauto. }
 
       (* E2 *)
       unfold not in E2.
@@ -520,11 +517,10 @@ Section WithWord.
 
       (* E2 *)
       apply (f_equal word.unsigned) in E2.
-      rewrite word.unsigned_and_nowrap in E2.
-      rewrite word.unsigned_of_Z_0 in E2.
+      autorewrite with push_unsigned in E2.
       rewrite word.unsigned_slu_shamtZ in E2.
       2: { split; eauto. }
-      rewrite word.unsigned_of_Z_1 in E2.
+      autorewrite with push_unsigned in E2.
       rewrite Z.shiftl_1_l in E2.
       rewrite word.wrap_small in E2.
       2: { split;

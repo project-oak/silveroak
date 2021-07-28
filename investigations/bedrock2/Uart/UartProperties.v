@@ -20,7 +20,6 @@ Require Import coqutil.Tactics.Tactics.
 Require Import coqutil.Tactics.syntactic_unify.
 Require Import coqutil.Tactics.letexists.
 Require Import coqutil.Z.Lia.
-Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.StateMachineProperties.
@@ -72,11 +71,45 @@ Section Proofs.
     change Semantics.word_ok with parameters.word_ok in *;
     change Semantics.mem_ok with parameters.mem_ok in *.
 
+  Ltac solve_status_valid :=
+    eexists; ssplit; try reflexivity;
+      cbv [is_flag_set]; boolsimpl;
+      repeat lazymatch goal with
+             | |- (_ && _)%bool = true => apply Bool.andb_true_iff; split
+             | |- negb _ = true => apply Bool.negb_true_iff
+             end;
+      rewrite word.unsigned_eqb;
+      unfold UART_STATUS_TXEMPTY_BIT;
+      unfold UART_STATUS_TXIDLE_BIT;
+      unfold UART_STATUS_TXFULL_BIT;
+      first [ apply Z.eqb_eq | apply Z.eqb_neq ];
+      push_unsigned;
+      repeat rewrite Z.shiftl_1_l;
+      repeat rewrite word.wrap_small;
+      simpl;
+      lia.
+
   Lemma status_read_always_ok s :
     exists val s', read_step s STATUS val s'.
   Proof.
     destruct s; unfold read_step; cbn [read_step status_matches_state].
-  Admitted.
+    { exists (word.or (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXEMPTY_BIT))
+                      (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXIDLE_BIT))).
+      solve_status_valid.
+    }
+    { destruct (Nat.eqb txlvl 0)%bool eqn:H.
+      { apply Nat.eqb_eq in H. subst.
+        exists (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXEMPTY_BIT)).
+        solve_status_valid. }
+      { destruct txlvl; [discriminate | ].
+        destruct (Nat.ltb (S txlvl) 32)%bool eqn:Hl.
+        { exists (word.of_Z 0).
+          solve_status_valid. }
+        { exists (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXFULL_BIT)).
+          solve_status_valid. }
+      }
+    }
+  Qed.
 
   Lemma execution_unique (t : trace) s1 s2 :
     execution t s1 ->
@@ -181,7 +214,7 @@ Section Proofs.
       pose proof H5 as HH.
       simpl in H5.
       destruct H5. destruct H3.
-      replace s with x2 in *.
+      replace s with x1 in *.
       2:{ eapply execution_unique; eauto. }
       unfold step in H4. simpl in H4.
       logical_simplify.
@@ -190,7 +223,7 @@ Section Proofs.
 
       (* post condition *)
       do 3 eexists; ssplit; eauto.
-      inversion H5. subst. subst x1.
+      inversion H5. subst. subst v.
       unfold UART_STATUS_TXIDLE_BIT in *.
       apply is_flag_set_and_select_bits.
       + cbv. reflexivity.

@@ -116,14 +116,17 @@ Section WithParameters.
       if Nat.eqb t 0 then
         (* FIFO is empty *)
         is_flag_set status UART_STATUS_TXEMPTY_BIT &&
-        negb (is_flag_set status UART_STATUS_TXFULL_BIT)
-      else if Nat.eqb t 32  then
-        (* FIFO is full *)
-        is_flag_set status UART_STATUS_TXFULL_BIT &&
-        negb (is_flag_set status UART_STATUS_TXEMPTY_BIT)
-      else
         negb (is_flag_set status UART_STATUS_TXFULL_BIT) &&
-        negb (is_flag_set status UART_STATUS_TXEMPTY_BIT)
+        negb (is_flag_set status UART_STATUS_TXIDLE_BIT)
+      else if Nat.ltb t 32 then
+        negb (is_flag_set status UART_STATUS_TXFULL_BIT) &&
+        negb (is_flag_set status UART_STATUS_TXEMPTY_BIT) &&
+        negb (is_flag_set status UART_STATUS_TXIDLE_BIT)
+      else
+        (* FIFO is full *)
+        negb (is_flag_set status UART_STATUS_TXEMPTY_BIT) &&
+        is_flag_set status UART_STATUS_TXFULL_BIT &&
+        negb (is_flag_set status UART_STATUS_TXIDLE_BIT)
     end.
 
   Definition read_step
@@ -146,7 +149,8 @@ Section WithParameters.
     | WDATA =>
         match s with
         | IDLE => s' = BUSY 1
-        | BUSY tx => if Nat.eqb tx 32 then False else s' = BUSY (tx + 1)
+            (* writing to 4-byte WDATA reg fills the FIFO with the last byte *)
+        | BUSY tx => if Nat.leb tx 32 then s' = BUSY (tx + 1) else False
         end
     | INTR_ENABLE => s' = s
     | INTR_TEST => s' = s
