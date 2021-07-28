@@ -52,7 +52,10 @@ Please install the following components:
   [OpenTitan](https://docs.opentitan.org/doc/ug/install_instructions/#verilator) documentation).
 
 To re-build the OpenTitan system with the Cava versions of the high assurance
-peripherals you will also need to install [OpenTitan](https://github.com/lowRISC/opentitan/blob/master/README.md).
+peripherals you will also need to install
+[OpenTitan](https://github.com/lowRISC/opentitan/blob/master/README.md). You
+can follow the instructions
+[here](https://docs.opentitan.org/doc/ug/getting_started_verilator/).
 
 ## Building
 
