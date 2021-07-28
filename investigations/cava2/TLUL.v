@@ -27,6 +27,11 @@ Import ExprNotations.
 Import PrimitiveNotations.
 
 (* Naming and parameter choices follow OpenTitan conventions *)
+(* As such, 'tl_h2d_t' 'tl_d2h_t' come from the OpenTitan naming *)
+(* - 'h' refers to host *)
+(* - 'd' refers to device *)
+
+
 Definition TL_AW  := 32.
 Definition TL_DW  := 32.
 Definition TL_AIW := 8.
@@ -34,8 +39,6 @@ Definition TL_DIW := 1.
 Definition TL_DUW := 4.
 Definition TL_DBW := 4. (* (TL_DW>>3). *)
 Definition TL_SZW := 2. (* $clog2($clog2(TL_DBW)+1). *)
-
-Notation BitVec n := (Vec Bit n).
 
 (* (1* typedef struct packed { *1) *)
 (* (1*   logic                         a_valid; *1)   1 *)

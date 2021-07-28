@@ -65,7 +65,7 @@ Delimit Scope expr_scope with expr.
 Module ExprNotations.
   (* Escaping *)
   Notation "{{ x }}"   := (x)%expr (at level 1, x custom expr at level 99).
-  Notation "'`' x '`'" := (x) (in custom expr at level 2, x constr at level 1) : expr_scope.
+  Notation "` x `" := (x) (in custom expr at level 2, x constr at level 1) : expr_scope.
 
   Notation "f x"     := (App f x) (in custom expr at level 3, left associativity) : expr_scope.
   Notation "x"       := (Var x) (in custom expr, x ident) : expr_scope.
@@ -151,7 +151,6 @@ Module ExprNotations.
         x
     }}.
 
-    Unset Printing Notations.
     (* Function composition for single arg functions *)
     Definition compose {s1 s2 x y z} (f: Circuit s1 [x] y) (g: Circuit s2 [y] z)
       : Circuit (s1++s2) [x] z := {{
