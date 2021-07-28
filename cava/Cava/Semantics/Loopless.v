@@ -78,3 +78,51 @@ Fixpoint loopless {i o} (c : Circuit i o)
                        let loop_st' := if (en : bool) then loop_st' else loop_st in
                        (y,(body_st',loop_st'))))
   end.
+
+Fixpoint to_loops_state {i o} {c : Circuit i o} {struct c}
+  : value (circuit_state c) -> value (loops_state c) :=
+  match c with
+  | Comb _ => fun _ => tt
+  | Compose _ _ => fun x => (to_loops_state (fst x), to_loops_state (snd x))
+  | First f => to_loops_state (c:=f)
+  | Second f => to_loops_state (c:=f)
+  | DelayInit _ => fun _ => tt
+  | LoopInitCE _ body => fun x => (to_loops_state (fst x), snd x)
+  end.
+
+Fixpoint to_loopless_state {i o} {c : Circuit i o}
+  : value (circuit_state c) -> value (circuit_state (loopless c)) :=
+  match c with
+  | Comb _ => fun _ => tt
+  | Compose f g =>
+    fun x => (tt, to_loopless_state (fst x), tt, to_loopless_state (snd x), tt)
+  | First f =>
+    fun x => (tt, to_loopless_state (c:=f) x, tt)
+  | Second f =>
+    fun x => (tt, to_loopless_state (c:=f) x, tt)
+  | DelayInit _ => fun x => x
+  | LoopInitCE _ body =>
+    fun x => (tt, to_loopless_state (fst x), tt)
+  end.
+
+Fixpoint reassemble {i o} {c : Circuit i o}
+  : value (loops_state c) -> value (circuit_state (loopless c))
+    -> value (circuit_state c) :=
+  match c with
+  | Comb _ => fun _ _ => tt
+  | Compose f g => fun (x : value (loops_state f) * value (loops_state g))
+                    (y : unit * value (circuit_state (loopless f)) * unit
+                         * value (circuit_state (loopless g)) * unit) =>
+                     (reassemble (fst x) (snd (fst (fst (fst y)))),
+                      reassemble (snd x) (snd (fst y)))
+  | First f => fun (x : value (loops_state f))
+                (y : unit * value (circuit_state (loopless f)) * unit) =>
+                reassemble x (snd (fst y))
+  | Second f => fun (x : value (loops_state f))
+                 (y : unit * value (circuit_state (loopless f)) * unit) =>
+                reassemble x (snd (fst y))
+  | DelayInit _ => fun x y => y
+  | @LoopInitCE _ _ _ _ t _ body => fun (x : value (loops_state body) * value t)
+                                     (y : unit * value (circuit_state (loopless body)) * unit) =>
+                                     (reassemble (fst x) (snd (fst y)), snd x)
+  end.
