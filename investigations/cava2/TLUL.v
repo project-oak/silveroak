@@ -21,9 +21,17 @@ Require Import ExtLib.Data.List.
 
 Require Import Cava.Types.
 Require Import Cava.Expr.
-Require Import Cava.Semantics.
+Require Import Cava.Primitives.
+
+Import ExprNotations.
+Import PrimitiveNotations.
 
 (* Naming and parameter choices follow OpenTitan conventions *)
+(* As such, 'tl_h2d_t' 'tl_d2h_t' come from the OpenTitan naming *)
+(* - 'h' refers to host *)
+(* - 'd' refers to device *)
+
+
 Definition TL_AW  := 32.
 Definition TL_DW  := 32.
 Definition TL_AIW := 8.
@@ -31,8 +39,6 @@ Definition TL_DIW := 1.
 Definition TL_DUW := 4.
 Definition TL_DBW := 4. (* (TL_DW>>3). *)
 Definition TL_SZW := 2. (* $clog2($clog2(TL_DBW)+1). *)
-
-Notation BitVec n := (Vec Bit n).
 
 (* (1* typedef struct packed { *1) *)
 (* (1*   logic                         a_valid; *1)   1 *)
@@ -89,6 +95,9 @@ Section Var.
   Context {var : tvar}.
 
   Definition False := Constant (false: denote_type Bit).
+  Definition _0 {sz} := Constant (0: denote_type (BitVec sz)).
+  Definition _1 {sz} := Constant (1: denote_type (BitVec sz)).
+  Definition _2 {sz} := Constant (2: denote_type (BitVec sz)).
 
   (* typedef enum logic [2:0] { *)
   (*   PutFullData    = 3'h 0, *)
@@ -108,47 +117,26 @@ Section Var.
   Definition AccessAck     := Constant (0: denote_type tl_d_op_e).
   Definition AccessAckData := Constant (1: denote_type tl_d_op_e).
 
-  Axiom prim_and :
-    forall {s1 s2},
-    Circuit s1 [] Bit ->
-    Circuit s2 [] Bit ->
-    Circuit (s1++s2) [] Bit.
-  Notation "x && y" := (prim_and x y) (in custom expr at level 20, left associativity) : expr_scope.
-
-  Axiom prim_or :
-    forall {s1 s2},
-    Circuit s1 [] Bit ->
-    Circuit s2 [] Bit ->
-    Circuit (s1++s2) [] Bit.
-  Notation "x || y" := (prim_or x y) (in custom expr at level 20, left associativity) : expr_scope.
-
-  Axiom prim_not :
-    forall {s1 },
-    Circuit s1 [] Bit ->
-    Circuit s1 [] Bit.
-  Notation "! x" := (prim_not x) (in custom expr at level 20) : expr_scope.
-
-  Axiom prim_eq :
-    forall {s1 s2 t},
-    Circuit s1 [] t ->
-    Circuit s2 [] t ->
-    Circuit (s1++s2) [] Bit.
-  Notation "x == y" := (prim_eq x y) (in custom expr at level 19, left associativity) : expr_scope.
-
-  Axiom slice :
-    forall {t n} (start len: nat), Circuit [] [Vec t n] (Vec t len).
-
   Definition io_req :=
     Bit **          (* write *)
-    Bit **          (* read *)
     BitVec TL_AW ** (* address *)
     BitVec TL_DW ** (* write_data *)
     BitVec TL_DBW   (* write_mask *)
     .
 
-  Definition tlul_adapter_reg : Circuit _ [tl_h2d_t; BitVec TL_DW; Bit] (tl_d2h_t ** io_req) := {{
-    fun incoming_tlp read_data error =>
+  Definition sha_word := BitVec 32.
+  Definition sha_block := Vec sha_word 16.
+  (* Definition sha_digest := sha_word ** sha_word ** sha_word ** sha_word ** sha_word ** sha_word ** sha_word ** sha_word. *)
+  Definition sha_digest := Vec sha_word 8.
 
+  (* Convert TLUL packets to a simple read/write register interface *)
+  (* This is similar to OpenTitan's tlul_adapter_reg, but for simplicity we
+   * provide all registers for the adapter to read from, rather than providing
+   * a readback signal. Providing a same-cycle readback signal like OT version
+   * is difficult without delayless loop *)
+  Definition tlul_adapter_reg {reg_count}
+    : Circuit _ [tl_h2d_t; Vec (BitVec 32) reg_count ] (tl_d2h_t ** io_req) := {{
+    fun incoming_tlp registers =>
     let
       '(a_valid
       , a_opcode
@@ -190,7 +178,8 @@ Section Var.
       let re_o := rd_req && !err_internal in
 
       (reqid, reqsz, rspop, error, outstanding, we_o, re_o)
-      initially (0,(0,(0,(false,(false,(false,false)))))) : denote_type (BitVec _ ** BitVec _ ** BitVec _ ** Bit ** Bit ** Bit ** Bit)
+      initially (0,(0,(0,(false,(false,(false,false))))))
+        : denote_type (BitVec _ ** BitVec _ ** BitVec _ ** Bit ** Bit ** Bit ** Bit)
     in
 
     let wdata_o := a_data in
@@ -198,18 +187,25 @@ Section Var.
 
     ( ( outstanding
       , rspop
-      , `Constant (0:denote_type (BitVec _))`
+      , `_0`
       , reqsz
       , reqid
-      , `Constant (0:denote_type (BitVec _))`
-      , read_data
-      , `Constant (0:denote_type (BitVec _))`
+      , `_0`
+      , `index` registers (`slice 2 30` a_address)
+      , `_0`
       , error
       , !outstanding
       )
-    , (we_o, re_o, a_address, a_data, a_mask)
+    , (we_o, a_address, a_data, a_mask)
     )
 
+  }}.
+
+  (* Pack partial TLUL writes back into 32 bit blocks *)
+  Definition tlul_pack : Circuit _ [Bit; BitVec 32; BitVec 4; Bit] (Bit ** BitVec 32) := {{
+    fun valid data mask flush =>
+    (* TODO(blaxill): *)
+    (valid, data)
   }}.
 
 End Var.
