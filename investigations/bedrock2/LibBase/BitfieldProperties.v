@@ -63,8 +63,15 @@ Section Proof.
     program_logic_goal_for_function! bitfield_bit32_read.
   Proof.
     repeat straightline.
-    eexists; ssplit; repeat straightline_with_map_lookup.
-
+    eexists; ssplit; repeat straightline.
+    {
+      (* TODO: here we can't proceed with straightline so use straightline_with_map_lookup.
+         make it a bit verbose so that we can see where it's needed explicitly. *)
+      straightline_with_map_lookup.
+      repeat straightline.
+      straightline_with_map_lookup.
+      repeat straightline.
+    }
     (* call bitfield_field32_read *)
     straightline_call; eauto; try reflexivity; [ ].
 
