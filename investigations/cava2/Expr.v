@@ -20,6 +20,7 @@ Require Import Coq.NArith.NArith.
 Require Import Coq.Strings.String.
 
 Require Import Cava.Types.
+Require Import Cava.Primitives.
 
 Definition tvar : Type := type -> Type.
 Existing Class tvar.
@@ -39,8 +40,6 @@ Section Vars.
 
   | Delay: forall {x}, denote_type x -> Circuit x [x] x
 
-  | AddMod : nat -> Circuit [] [Nat; Nat] Nat
-
   | ElimBool: forall {s1 s2 x},
     Circuit [] [] Bit
     -> Circuit s1 [] x
@@ -55,6 +54,12 @@ Section Vars.
   | MakeTuple: forall {s1 s2 x y}, Circuit s1 [] x
     -> Circuit s2 [] y
     -> Circuit (s1++s2) [] (x**y)
+
+  | UnaryOp : forall {x r}, UnaryPrim x r -> var x -> Circuit [] [x] r
+  | BinaryOp : forall {x y r}, BinaryPrim x y r -> var x -> var y -> Circuit [] [x; y] r
+
+  | AddMod : nat -> Circuit [] [Nat; Nat] Nat
+
   .
 End Vars.
 
@@ -160,3 +165,62 @@ Module ExprNotations.
 
   End Var.
 End ExprNotations.
+
+Section Var.
+  Context {var : tvar}.
+
+  Local Open Scope N.
+
+  Definition False := Constant (false: denote_type Bit).
+  Definition _0 {sz} := Constant (0: denote_type (BitVec sz)).
+  Definition _1 {sz} := Constant (1: denote_type (BitVec sz)).
+  Definition _2 {sz} := Constant (2: denote_type (BitVec sz)).
+
+  (* TODO(blaxill): is this useful or should they be defined on concrete BitVec) *)
+  Class bitlike x :=
+  { eq : var x -> var x -> Circuit [] [] Bit
+  ; not : var x -> Circuit [] [] x
+  ; xor : var x -> var x -> Circuit [] [] x
+  ; and : var x -> var x -> Circuit [] [] x
+  ; add : var x -> var x -> Circuit [] [] x
+  }.
+
+End Var.
+
+Axiom bit_bitlike : forall {var}, bitlike (var:=var) Bit.
+Axiom bitvec_bitlike : forall {var n}, bitlike (var:=var)  (BitVec n).
+Existing Instance bit_bitlike.
+Existing Instance bitvec_bitlike.
+
+Module PrimitiveNotations.
+  Notation "x && y" := (
+    Let x (fun v1 => Let y (fun v2 => BinaryOp BinBitAnd v1 v2))
+  ) (in custom expr at level 20, left associativity) : expr_scope.
+  Notation "x || y" := (BinaryOp BinBitOr x y) (in custom expr at level 20, left associativity) : expr_scope.
+  Notation "x >= y" := (BinaryOp BinBitVecGte x y) (in custom expr at level 19, no associativity) : expr_scope.
+
+  Notation "! x" := (
+    Let x (fun v => not v)
+  ) (in custom expr at level 20) : expr_scope.
+  Notation "x == y" := (
+    Let x (fun v1 => Let y (fun v2 => eq v1 v2))
+  ) (in custom expr at level 19, no associativity) : expr_scope.
+  Notation "x ^ y" := (
+    Let x (fun v1 => Let y (fun v2 => xor v1 v2))
+  ) (in custom expr at level 20, left associativity) : expr_scope.
+  Notation "x & y" := (
+    Let x (fun v1 => Let y (fun v2 => and v1 v2))
+  ) (in custom expr at level 20, left associativity) : expr_scope.
+  Notation "x + y" := (
+    Let x (fun v1 => Let y (fun v2 => add v1 v2))
+  ) (in custom expr at level 20, left associativity) : expr_scope.
+  Notation "x >>> y" := (rotate_right x y) (in custom expr at level 19, no associativity) : expr_scope.
+  Notation "x >> y" := (shift_right x y) (in custom expr at level 19, no associativity) : expr_scope.
+  Notation "x <<+ y" := (shift_in_right x y) (in custom expr at level 19, no associativity) : expr_scope.
+
+  Notation "x :> y" := (concat x y) (in custom expr at level 19, right associativity) : expr_scope.
+  Notation "[ ]" := (empty) (in custom expr at level 19, right associativity) : expr_scope.
+End PrimitiveNotations.
+
+Axiom value_hole : forall {t}, t.
+Axiom circuit_hole : forall {t}, Circuit [] [] t.

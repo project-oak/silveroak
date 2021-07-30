@@ -20,124 +20,59 @@ Require Import ExtLib.Structures.Monoid.
 Require Import ExtLib.Data.List.
 
 Require Import Cava.Types.
-Require Import Cava.Expr.
-Require Import Cava.Semantics.
 
-Import ExprNotations.
+(* Primitives will require both semantic and netlist implementations *)
+Inductive UnaryPrim : type -> type -> Type :=
+| UnVecSlice: forall {t n} (start len: nat), UnaryPrim (Vec t n) (Vec t len)
 
-Notation BitVec n := (Vec Bit n).
+| UnVecRotateRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
+| UnVecShiftRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
 
-Section Var.
-  Context {var : tvar}.
+| UnVecToTuple: forall {t n}, UnaryPrim (Vec t n) (ntuple t n)
+.
 
-  Local Open Scope N.
+Inductive BinaryPrim : type -> type -> type -> Type :=
+| BinBitAnd: BinaryPrim Bit Bit Bit
+| BinBitOr: BinaryPrim Bit Bit Bit
 
-  Definition False := Constant (false: denote_type Bit).
-  Definition _0 {sz} := Constant (0: denote_type (BitVec sz)).
-  Definition _1 {sz} := Constant (1: denote_type (BitVec sz)).
-  Definition _2 {sz} := Constant (2: denote_type (BitVec sz)).
+| BinBitVecGte: forall {n}, BinaryPrim (BitVec n) (BitVec n) Bit
 
-  Axiom prim_and :
-    forall {s1 s2},
-    Circuit s1 [] Bit ->
-    Circuit s2 [] Bit ->
-    Circuit (s1++s2) [] Bit.
+| BinVecIndex: forall {t n i}, BinaryPrim (Vec t n) (BitVec i) t
+| BinVecCons: forall {t n}, BinaryPrim t (Vec t n) t
 
-  Axiom prim_or :
-    forall {s1 s2},
-    Circuit s1 [] Bit ->
-    Circuit s2 [] Bit ->
-    Circuit (s1++s2) [] Bit.
+(* drop leftmost element and push one element in right side, e.g. shifting left *)
+| BinVecShiftInRight: forall {t n}, BinaryPrim (Vec t n) t (Vec t n)
+.
 
-  Axiom prim_gte :
-    forall {s1 s2 t},
-    Circuit s1 [] t ->
-    Circuit s2 [] t ->
-    Circuit (s1++s2) [] Bit.
+Inductive TernaryPrim : type -> type -> type -> type -> Type :=
+| TernVecReplace: forall {t n i}, TernaryPrim (Vec t n) (BitVec i) t t
+.
 
+Section RefinedLists.
+  Definition drop {A n} (start len: nat)
+      (ls: {l : list A | Datatypes.length l = n}):
+      {l : list A | Datatypes.length l = len} :=
+    let (ls', Hlen) := ls in
+    drop
 
-  (* TODO(blaxill): is this useful or should they be defined on concrete BitVec) *)
-  Class bitlike x :=
-  { eq : var x -> var x -> Circuit [] [] Bit
-  ; not : var x -> Circuit [] [] x
-  ; xor : var x -> var x -> Circuit [] [] x
-  ; and : var x -> var x -> Circuit [] [] x
-  ; add : var x -> var x -> Circuit [] [] x
-  }.
+  Definition slice {A n} (start len: nat)
+      (ls: {l : list A | Datatypes.length l = n}):
+      {l : list A | Datatypes.length l = len} :=
+    let (ls', Hlen) := ls in
+    drop
+End.
 
-  Axiom slice :
-    forall {t n} (start len: nat), Circuit [] [Vec t n] (Vec t len).
-  Axiom index :
-    forall {t n i}, Circuit [] [Vec t n; BitVec i] t.
-  Axiom replace :
-    forall {t n i}, Circuit [] [Vec t n; BitVec i; t] (Vec t n).
-  Axiom concat :
-    forall {t n s1 s2}, Circuit s1 [] t -> Circuit s2 [] (Vec t n) -> Circuit (s1++s2) [] (Vec t (S n)).
-  Axiom empty : forall {t}, Circuit [] [] (Vec t 0).
+Definition unary_semantics {x r} (prim: UnaryPrim x r)
+  : denote_type x -> denote_type r :=
+  match prim in UnaryPrim x r return denote_type x -> denote_type r with
+  | @UnVecSlice t _ start len =>
+    fun x =>
+  | UnVecRotateRight n =>
+    fun x => x
+  | UnVecShiftRight n =>
+    fun x => x
+  | UnVecToTuple =>
+    fun x => x
+  end.
+    (* match t with *)
 
-  Axiom value_hole : forall {t}, t.
-  Axiom circuit_hole : forall {t}, Circuit [] [] t.
-
-  Axiom rotate_right :
-    forall {s1 t n},
-    Circuit s1 [] (Vec t n) ->
-    nat ->
-    Circuit s1 [] (Vec t n).
-  Axiom shift_right :
-    forall {s1 t n},
-    Circuit s1 [] (Vec t n) ->
-    nat ->
-    Circuit s1 [] (Vec t n).
-
-  (* drop leftmost element and push one element in right side, e.g. shifting left *)
-  Axiom shift_in_right :
-    forall {s1 s2 t n},
-    Circuit s1 [] (Vec t n) ->
-    Circuit s2 [] t ->
-    Circuit (s1++s2) [] (Vec t n).
-
-  Fixpoint n_tup n t : type :=
-    match n with
-    | O => Unit
-    | S n =>
-      match n with
-      | O => t
-      | _ => Pair t (n_tup n t)
-      end
-    end.
-
-  Axiom vec_as_tuple : forall {t n}, Circuit [] [Vec t n] (n_tup n t).
-End Var.
-
-Module PrimitiveNotations.
-  Notation "x && y" := (prim_and x y) (in custom expr at level 20, left associativity) : expr_scope.
-  Notation "x || y" := (prim_or x y) (in custom expr at level 20, left associativity) : expr_scope.
-  Notation "x >= y" := (prim_gte x y) (in custom expr at level 19, no associativity) : expr_scope.
-
-  Notation "! x" := (
-    Let x (fun v => not v)
-  ) (in custom expr at level 20) : expr_scope.
-  Notation "x == y" := (
-    Let x (fun v1 => Let y (fun v2 => eq v1 v2))
-  ) (in custom expr at level 19, no associativity) : expr_scope.
-  Notation "x ^ y" := (
-    Let x (fun v1 => Let y (fun v2 => xor v1 v2))
-  ) (in custom expr at level 20, left associativity) : expr_scope.
-  Notation "x & y" := (
-    Let x (fun v1 => Let y (fun v2 => and v1 v2))
-  ) (in custom expr at level 20, left associativity) : expr_scope.
-  Notation "x + y" := (
-    Let x (fun v1 => Let y (fun v2 => add v1 v2))
-  ) (in custom expr at level 20, left associativity) : expr_scope.
-  Notation "x >>> y" := (rotate_right x y) (in custom expr at level 19, no associativity) : expr_scope.
-  Notation "x >> y" := (shift_right x y) (in custom expr at level 19, no associativity) : expr_scope.
-  Notation "x <<+ y" := (shift_in_right x y) (in custom expr at level 19, no associativity) : expr_scope.
-
-  Notation "x :> y" := (concat x y) (in custom expr at level 19, right associativity) : expr_scope.
-  Notation "[ ]" := (empty) (in custom expr at level 19, right associativity) : expr_scope.
-End PrimitiveNotations.
-
-Axiom bit_bitlike : forall {var}, bitlike (var:=var) Bit.
-Axiom bitvec_bitlike : forall {var n}, bitlike (var:=var)  (BitVec n).
-Existing Instance bit_bitlike.
-Existing Instance bitvec_bitlike.
