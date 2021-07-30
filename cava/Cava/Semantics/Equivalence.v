@@ -19,20 +19,16 @@ Require Import Coq.Classes.Morphisms.
 Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Core.Core.
 Require Import Cava.Semantics.Combinational.
-Require Import Cava.Semantics.Loopless.
 Require Import Cava.Semantics.Simulation.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 
 (* Circuit equivalence relation *)
 Definition cequiv {i o} (c1 c2 : Circuit i o) : Prop :=
-  (* there exists some relation between the circuits' loop states and another
-     between their non-loop states... *)
-  exists (Rl : value (loops_state c1) -> value (loops_state c2) -> Prop)
-    (Rd : value (circuit_state (loopless c1)) -> value (circuit_state (loopless c2)) -> Prop),
+  (* there exists some relation between the circuits' internal states... *)
+  exists (R : value (circuit_state c1) -> value (circuit_state c2) -> Prop),
     (* ...and the reset states are related *)
-    Rl (loops_reset_state c1) (loops_reset_state c2)
-    /\ Rd (reset_state (loopless c1)) (reset_state (loopless c2))
+    R (reset_state c1) (reset_state c2)
     (* ...and if the states are related, stepping each circuit on the same input
          results in the same output as well as new related states *)
     /\ (forall s1 s2 input,

@@ -194,15 +194,27 @@ Qed.
 Lemma simulate_retimed {i o} (c1 c2 : Circuit i o) n :
   retimed n c1 c2 ->
   forall input1 input2 : list (value i),
-    (forall i, nth i input2 defaultValue = nth (i*(n+1)) input1 defaultValue) ->
-    forall i,
-      0 < i ->
-      nth i (simulate c2 input2) defaultValue
-      = nth (i*n) (simulate c1 input1) defaultValue.
+    length input1 = length input2 * (n + 1) ->
+    (forall t, nth t input2 defaultValue = nth (t*(n+1)) input1 defaultValue) ->
+    forall t,
+      nth t (simulate c2 input2) defaultValue
+      = nth (t*(n+1) + n) (simulate c1 input1) defaultValue.
 Proof.
   intros [r Hr]. intros.
+  (* immediately handle case where t is out of bounds *)
+  destr (t <? length input2);
+    [ | rewrite !nth_overflow by (autorewrite with push_length; nia);
+        reflexivity ].
   erewrite (simulate_cequiv c1) by eauto.
-  cbv [simulate].
+  cbv [simulate]. cbn [reset_state LoopInit Par mealy].
+  rewrite !chreset_reset.
+  cbn [step LoopInit Par fst snd mealy]. simpl_ident.
+  cbv [Combinators.swap]. simpl_ident. fold @circuit_state.
+  (*
+  rewrite step_chreset.
+  rewrite fold_left_accumulate_to_seq with (ls:=input2) (default:=defaultValue).
+  erewrite !nth_fold_left_accumulate by nia.*)
+  
   (* separate input1 into (length input2) lists of multiple inputs, prove that
      executing each list is equivalent to one execution of c2 *)
 Admitted.
@@ -217,16 +229,335 @@ Fixpoint Forall_ndelays {t1 t2 n} (R : value t1 -> value t2 -> Prop)
       Forall_ndelays R (fst d1) (fst d2) /\ R (snd d1) (snd d2)
   end.
 
+Lemma Forall_ndelays_to_ndelays_state
+      {t1 t2 n} (R : value t1 -> value t2 -> Prop) x1 x2 :
+  R x1 x2 -> Forall_ndelays (n:=n) R (to_ndelays_state x1) (to_ndelays_state x2).
+Proof. induction n; intros; cbn [Forall_ndelays]; ssplit; auto. Qed.
+
+Lemma Forall_ndelays_step {n} t1 t2 (R : value t1 -> value t2 -> Prop)
+      x1 x2 y1 y2 :
+  Forall_ndelays R x1 x2 -> R y1 y2 ->
+  (Forall_ndelays R (fst (step (ndelays t1 n) x1 y1))
+                  (fst (step (ndelays t2 n) x2 y2))
+   /\ R (snd (step (ndelays t1 n) x1 y1))
+       (snd (step (ndelays t2 n) x2 y2))).
+Proof.
+  induction n; intros; cbn [Forall_ndelays] in *; [ tauto | ].
+  cbn [ndelays circuit_state value] in *. destruct_products.
+  cbn [step Delay fst snd] in *. split; auto.
+Qed.
+
+Lemma Forall_ndelays_step_out {n} t1 t2 (R : value t1 -> value t2 -> Prop)
+      x1 x2 y1 y2 :
+  Forall_ndelays R x1 x2 -> R y1 y2 ->
+  R (snd (step (ndelays t1 n) x1 y1))
+       (snd (step (ndelays t2 n) x2 y2)).
+Proof. apply Forall_ndelays_step. Qed.
+
+Lemma Forall_ndelays_step_state {n} t1 t2 (R : value t1 -> value t2 -> Prop)
+      x1 x2 y1 y2 :
+  Forall_ndelays R x1 x2 -> R y1 y2 ->
+  Forall_ndelays R (fst (step (ndelays t1 n) x1 y1))
+                  (fst (step (ndelays t2 n) x2 y2)).
+Proof. apply Forall_ndelays_step. Qed.
+
+Lemma step_mealy {i o} (c : Circuit i o)
+      (s : value (circuit_state c)) (x : value i) (u : unit) :
+  step (mealy c) u (x,s) = (tt, (snd (step c s x), fst (step c s x))).
+Proof. cbn. cbv [Combinators.swap]. destruct_pair_let. reflexivity. Qed.
+
+(* Helper for Proper_retimed *)
+Lemma cequiv_mealy_loop_ndelays {i o} (c d : Circuit i o) n rvals :
+  cequiv c d ->
+  cequiv
+    (LoopInit (reset_state c)
+       (mealy c >==>
+        Par (chreset (ndelays o n) rvals)
+        (chreset (ndelays (circuit_state c) n)
+                 (to_ndelays_state (reset_state c)))))
+    (LoopInit (reset_state d)
+              (mealy d >==>
+                     Par (chreset (ndelays o n) rvals)
+                     (chreset (ndelays (circuit_state d) n)
+                              (to_ndelays_state (reset_state d))))).
+Proof.
+  cbv [retimed]. intros [Rcd [? Hcd_preserved]]. logical_simplify.
+  exists (fun (s1 : unit
+             * (unit
+                * (value (circuit_state (chreset (ndelays o n) _))
+                   * value (circuit_state (chreset (ndelays (circuit_state c) n) _)))
+                * value (circuit_state c)))
+       (s2 : unit
+             * (unit
+                * (value (circuit_state (chreset (ndelays o n) _)) *
+                   value (circuit_state (chreset (ndelays (circuit_state d) n) _)))
+                * value (circuit_state d))) =>
+       let '(_,(_,(x1,y1),z1)) := s1 in
+       let '(_,(_,(x2,y2),z2)) := s2 in
+       from_chreset_state x1 = from_chreset_state x2
+       /\ Forall_ndelays Rcd (from_chreset_state y1) (from_chreset_state y2)
+       /\ Rcd z1 z2).
+  ssplit; intros.
+  { cbn [LoopInit Par reset_state].
+    rewrite !chreset_reset, !from_to_chreset_state.
+    ssplit; [ reflexivity | | assumption ].
+    apply Forall_ndelays_to_ndelays_state; auto. }
+  { cbn [value circuit_state LoopInit Par] in *.
+    destruct_products. logical_simplify.
+    cbn [LoopInit Par reset_state step fst snd].
+    simpl_ident. rewrite !step_chreset, !step_mealy.
+    cbn [fst snd]. rewrite !from_to_chreset_state.
+    lazymatch goal with
+    | H : from_chreset_state _ = from_chreset_state _ |- _ => rewrite H
+    end.
+    specialize (Hcd_preserved _ _ ltac:(eassumption) ltac:(eassumption)).
+    destruct Hcd_preserved as [Hcd_preserved0 Hcd_preserved1].
+    rewrite Hcd_preserved0. ssplit; [ reflexivity .. | | ].
+    { apply Forall_ndelays_step_state; auto. }
+    { apply Forall_ndelays_step_out; auto. } }
+Qed.
+
 (* TODO: the definition of cequiv might need to change to make this provable; in
    particular, the loop and non-loop states need to be able to vary
    independently *)
 Instance Proper_retimed {i o} n :
   Proper (cequiv ==> cequiv ==> iff) (@retimed i o n).
-Admitted.
+Proof.
+  intros a b Hab c d Hcd. split.
+  { cbv [retimed]. intros [rvals Hac]. exists rvals.
+    rewrite <-Hab, Hac. apply cequiv_mealy_loop_ndelays; auto. }
+  { cbv [retimed]. intros [rvals Hbd]. exists rvals.
+    rewrite Hab, Hbd. apply cequiv_mealy_loop_ndelays;
+                        symmetry; auto. }
+Qed.
 
-Lemma retimed_trans {i o} n n' (c1 c2 c3 : Circuit i o) :
-  retimed n c1 c2 -> retimed n' c2 c3 -> retimed (n + n') c1 c3.
-Admitted.
+Lemma cequiv_mealy {i o} (c : Circuit i o) :
+  cequiv c (LoopInit (reset_state c) (mealy c)).
+Proof.
+  exists (fun s1 s2 => s2 = (tt, (tt, s1))).
+  ssplit; [ reflexivity | ].
+  cbn [circuit_state value LoopInit step fst snd].
+  intros; destruct_products. logical_simplify. simpl_ident.
+  rewrite !step_mealy. cbn [fst snd]. ssplit; reflexivity.
+Qed.
+
+Fixpoint append_ndelays {t n m}
+  : value (circuit_state (ndelays t n)) ->
+    value (circuit_state (ndelays t m)) ->
+    value (circuit_state (ndelays t (n + m))) :=
+  match n with
+  | O => fun x1 x2 => x2
+  | S _ => fun x1 x2 => (append_ndelays (fst x1) x2, snd x1)
+  end.
+Fixpoint split1_ndelays {t n m}
+  : value (circuit_state (ndelays t (n + m))) ->
+    value (circuit_state (ndelays t n)) :=
+  match n with
+  | O => fun _ => tt
+  | S _ => fun x => (split1_ndelays (fst x), snd x)
+  end.
+Fixpoint split2_ndelays {t n m}
+  : value (circuit_state (ndelays t (n + m))) ->
+    value (circuit_state (ndelays t m)) :=
+  match n with
+  | O => fun x => x
+  | S _ => fun x => split2_ndelays (fst x)
+  end.
+
+
+Fixpoint combine_ndelays {t1 t2 n}
+  : value (circuit_state (ndelays t1 n)) ->
+    value (circuit_state (ndelays t2 n)) ->
+    value (circuit_state (ndelays (t1 * t2) n)) :=
+  match n with
+  | O => fun _ _ => tt
+  | S _ => fun x1 x2 => (combine_ndelays (fst x1) (fst x2), (snd x1, snd x2))
+  end.
+
+Fixpoint map_ndelays {t1 t2 n} (f : value t1 -> value t2)
+  : value (circuit_state (ndelays t1 n))
+    -> value (circuit_state (ndelays t2 n)) :=
+  match n with
+  | 0 => fun x => x
+  | S _ => fun x => (map_ndelays f (fst x), f (snd x))
+  end.
+
+Lemma LoopInit_delay_feedback {i o s1 s2}
+      (f1 : value (i * s1) -> cava (value (o * s1)))
+      (f2 : value (i * s2) -> cava (value (o * s2)))
+      r1 r2 n :
+  cequiv (LoopInit r1 (Comb f1)) (LoopInit r2 (Comb f2)) ->
+  cequiv (LoopInit r1 ((Comb f1)
+                         >==> Second (chreset (ndelays s1 n)
+                                              (to_ndelays_state r1))))
+         (LoopInit r2 ((Comb f2)
+                         >==> Second (chreset (ndelays s2 n)
+                                              (to_ndelays_state r2)))).
+Proof.
+  intros [R [? HR]]. cbn [value circuit_state LoopInit] in *.
+  exists (fun (s1 : unit
+             * (unit
+                * value (circuit_state (chreset (ndelays s1 n) _))
+                * value s1))
+       (s2 : unit
+             * (unit
+                * value (circuit_state (chreset (ndelays s2 n) _))
+                * value s2)) =>
+       let '(_,(_,d1,l1)) := s1 in
+       let '(_,(_,d2,l2)) := s2 in
+       Forall_ndelays
+         (fun x1 x2 => R (tt, (tt, x1)) (tt, (tt, x2)))
+         (from_chreset_state d1)
+         (from_chreset_state d2)
+       /\ R (tt, (tt, l1)) (tt, (tt, l2))).
+  cbn [reset_state circuit_state value LoopInit] in *.
+  rewrite !chreset_reset, !from_to_chreset_state.
+  ssplit; intros; destruct_products;
+    [ solve [auto using Forall_ndelays_to_ndelays_state] .. | ].
+  cbn [step LoopInit fst snd] in *. simpl_ident.
+  rewrite !step_chreset. cbn [fst snd].
+  rewrite !from_to_chreset_state.
+  specialize (HR _ _ ltac:(eassumption) ltac:(eassumption)).
+  cbn in HR. rewrite (proj1 HR). logical_simplify.
+  ssplit; [ reflexivity | | ].
+  { eapply Forall_ndelays_step_state; eauto. }
+  { eapply Forall_ndelays_step_out
+      with (R0:=(fun (x1 : value s1) (x2 : value s2) => R (tt, (tt, x1)) (tt, (tt, x2))));
+    eauto. }
+Qed.
+
+Lemma LoopInit_delay_body {i o s1 s2}
+      (f1 : value (i * s1) -> cava (value (o * s1)))
+      (f2 : value (i * s2) -> cava (value (o * s2)))
+      r1 r2 n v :
+  cequiv (LoopInit r1 (Comb f1)) (LoopInit r2 (Comb f2)) ->
+  cequiv (LoopInit r1 (Comb f1 >==> (Par (chreset (ndelays o n) v)
+                                         (chreset (ndelays s1 n)
+                                                  (to_ndelays_state r1)))))
+         (LoopInit r2 (Comb f2 >==> (Par (chreset (ndelays o n) v)
+                                         (chreset (ndelays s2 n)
+                                                  (to_ndelays_state r2))))).
+Proof.
+  intros. cbv [Par].
+  rewrite !First_Second_comm, !Compose_assoc.
+  rewrite !LoopInit_First_r.
+  erewrite LoopInit_delay_feedback by eassumption.
+  reflexivity.
+Qed.
+
+Lemma cequiv_append_ndelays t n m r1 r2 :
+  cequiv (chreset (ndelays t (n + m)) (append_ndelays r1 r2))
+         (chreset (ndelays t m) r2 >==> chreset (ndelays t n) r1).
+Proof.
+  revert m r1 r2.
+  induction n; intros;
+    cbn [Nat.add chreset ndelays append_ndelays fst snd];
+    autorewrite with circuitsimpl; [ reflexivity | ].
+  rewrite IHn. reflexivity.
+Qed.
+
+Lemma to_ndelays_state_append t n m r :
+  @to_ndelays_state t (n+m) r = append_ndelays (to_ndelays_state r)
+                                               (to_ndelays_state r).
+Proof.
+  revert m r; induction n; intros;
+    cbn [Nat.add to_ndelays_state append_ndelays fst snd];
+    [ reflexivity | ].
+  rewrite IHn; reflexivity.
+Qed.
+
+Lemma Par_Compose {i1 i2 t1 t2 o1 o2}
+      (A : Circuit i1 t1) (B : Circuit t1 o1)
+      (C : Circuit i2 t2) (D : Circuit t2 o2) :
+  cequiv (Par (A >==> B) (C >==> D)) (Par A C >==> Par B D).
+Proof.
+  cbv [Par]. autorewrite with circuitsimpl.
+  apply Proper_Compose; [ | reflexivity ].
+  rewrite <-!Compose_assoc.
+  apply Proper_Compose; [ reflexivity | ].
+  rewrite First_Second_comm; reflexivity.
+Qed.
+
+Lemma retimed_trans {i o} n m (c1 c2 c3 : Circuit i o) :
+  retimed n c1 c2 -> retimed m c2 c3 -> retimed (n + m) c1 c3.
+Proof.
+  intros [r12 H12] [r23 H23]. rewrite H12.
+  exists (append_ndelays r12 r23).
+  rewrite to_ndelays_state_append.
+  rewrite !cequiv_append_ndelays.
+  rewrite !Par_Compose.
+  autorewrite with circuitsimpl.
+  Search Par Compose.
+  
+  cbv [mealy].
+  Search ndelays.
+  apply LoopInit_delay_body.
+  erewrite cequiv_mealy_loop_ndelays with (c:=c2) by eassumption.
+  cbn [reset_state circuit_state LoopInit Par mealy].
+  rewrite !chreset_reset.
+  unshelve eexists; [ cbn | ].
+  {
+    
+    pose (Rt:=
+    value
+             (o *
+              (tzero *
+               (tzero *
+                (circuit_state (chreset (ndelays o m) r23) *
+                 circuit_state (chreset (ndelays (circuit_state c3) m) (to_ndelays_state (reset_state c3)))) *
+                circuit_state c3))) -> value o -> Prop).
+    cbn in Rt.
+    exact
+      (fun (s1 : unit *
+               (unit *
+                (value (circuit_state (chreset (ndelays o n) r12)) *
+                 value
+                   (circuit_state
+                      (chreset (ndelays
+                                  (tzero *
+                                   (tzero *
+                                    (circuit_state (chreset (ndelays o m) _) *
+                                     circuit_state (chreset (ndelays (circuit_state c3) m) _)) *
+                                    circuit_state c3)) n) _))) *
+                (unit *
+                 (unit *
+                  (value (circuit_state (chreset (ndelays o m) r23)) *
+                   value (circuit_state (chreset (ndelays (circuit_state c3) m)
+                                                 (to_ndelays_state (reset_state c3))))) *
+                  value (circuit_state c3)))))
+         (s2 : unit *
+               (unit *
+                (value (circuit_state (chreset (ndelays o (n + m)) _)) *
+                 value (circuit_state (chreset (ndelays (circuit_state c3) (n + m))
+                                               (to_ndelays_state (reset_state c3))))) *
+                value (circuit_state c3))) =>
+         (* each side has n+m o values and n+m+1 (circuit_state c3) values *)
+         let '(_,(_,(on1,om1_cm1_),(_,(_,(z1,a1),b1)))) := s1 in
+         let '(_,(_,(u1,wxy1),(_,(_,(z1,a1),b1)))) := s1 in
+         let '(_,(_,(wxy2,az2),b2)) := s2 in
+         b1 = b2
+         /\ Forall_ndelays
+             (t1:=o * (tzero *
+                       (tzero *
+                        (circuit_state (chreset (ndelays o m) _) *
+                         circuit_state (chreset (ndelays (circuit_state c3) m) _)) *
+                        circuit_state c3)))
+             (t2:=o)
+             (fun (xy1 : value o
+                       * (unit
+                          * (unit
+                             * (value (circuit_state (chreset (ndelays o m) _))
+                                * value (circuit_state (chreset (ndelays (circuit_state c3) m) _)))
+                             * value (circuit_state c3))))
+                (xy2 : value o) =>
+                True)
+             (combine_ndelays (from_chreset_state x1)
+                              (from_chreset_state y1))
+             (split1_ndelays (from_chreset_state xy2))
+         /\
+         True).
+    (* nope, don't want combine here, need to actually extract the o value *)
+Qed.
 
 Lemma LoopInit_ignore_input {t s} r (c : Circuit s s) :
   cequiv (LoopInit r (Second c)) (Id (t:=t)).
@@ -281,13 +612,6 @@ Proof.
   reflexivity.
 Qed.
 
-Fixpoint map_ndelays {t1 t2 n} (f : value t1 -> value t2)
-  : @value combType (circuit_state (ndelays t1 n))
-    -> @value combType (circuit_state (ndelays t2 n)) :=
-  match n with
-  | 0 => fun x => x
-  | S _ => fun x => (map_ndelays f (fst x), f (snd x))
-  end.
 
 Lemma ndelays_Comb_comm {i o} (f : value i -> cava (value o)) n :
   cequiv (ndelays i n >==> Comb f)

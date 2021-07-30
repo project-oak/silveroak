@@ -37,21 +37,30 @@ Section WithCava.
     end.
 End WithCava.
 
+(* mealy machine conversion using [step] *)
+Definition mealy {i o} (c : Circuit i o)
+  : Circuit (i * circuit_state c) (o * circuit_state c) :=
+  Comb
+    (i:=i * circuit_state c)
+    (o:=o * circuit_state c)
+    (fun (xs : value (i * circuit_state c)) =>
+       swap (step c (snd xs) (fst xs))).
+
+(* repeat a particular value for each delay in ndelays *)
+Fixpoint to_ndelays_state {t n} (x : value t)
+  : value (circuit_state (ndelays t n)) :=
+    match n with
+    | 0 => tt
+    | S m => (to_ndelays_state x, x)
+    end.
+
 (* n is the number of delays on the output, m is the number of delays on the
    loop state *)
 Definition retimed {i o} (n : nat) (c1 c2 : Circuit i o) : Prop :=
   exists rvals,
-    cequiv c1
-           (LoopInit (loops_reset_state c2)
-                     ((loopless c2)
-                        >==> chreset (ndelays (o * loops_state c2) n) rvals)).
-
-Fixpoint retime_loops {i o} (c : Circuit i o) : Circuit i o :=
-  match c with
-  | Comb f => Comb f
-  | Compose f g => Compose (retime_loops f) (retime_loops g)
-  | First f => First (retime_loops f)
-  | Second f => Second (retime_loops f)
-  | LoopInitCE r f => LoopInitCE r (f >==> Second Delay)
-  | DelayInit r => DelayInit r
-  end.
+    cequiv c1 (LoopInit (reset_state c2)
+                        ((mealy c2)
+                           >==>
+                           (Par (chreset (ndelays o n) rvals)
+                                (chreset (ndelays (circuit_state c2) n)
+                                         (to_ndelays_state (reset_state c2)))))).
