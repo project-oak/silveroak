@@ -212,15 +212,14 @@ Section Proofs.
       straightline_call; eauto.
       repeat straightline.
       (* keep "execution a x" for later eassumption *)
-      repeat lazymatch goal with
+      lazymatch goal with
       | H0 : execution tr _, H1: execution ?a _ |-  context [?tr] => rename H0 into Hexec; rename H1 into Hexec'
       end.
       pose proof Hexec' as HH.
       simpl in Hexec'.
+      destruct Hexec' as (x' & Hexec').
       destruct Hexec'.
-      lazymatch goal with
-      | H: execution tr ?x /\ step _ _ _ _ _ |- _ => destruct H; replace s with x in *
-      end.
+      replace s with x' in *.
       2:{ eapply execution_unique; eauto. }
       lazymatch goal with
       | H: step _ _ _ _ _ |- _ => unfold step in H; simpl in H
