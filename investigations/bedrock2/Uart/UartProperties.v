@@ -166,6 +166,9 @@ Section Proofs.
   Local Ltac infer_reg_using_addr :=
     let base := TOP_EARLGREY_UART0_BASE_ADDR in
     lazymatch goal with
+      | H: reg_addr _ = _ |- _ => rewrite <- word.ring_morph_add in H
+      end;
+    lazymatch goal with
     | H: reg_addr _ = word.of_Z (base + UART_STATUS_REG_OFFSET) |- _ => apply reg_is_status in H; subst
     | H: reg_addr _ = word.of_Z (base + UART_CTRL_REG_OFFSET) |- _ => apply reg_is_ctrl in H; subst
     end.
@@ -199,31 +202,35 @@ Section Proofs.
     program_logic_goal_for_function! uart_tx_idle.
   Proof.
     repeat straightline.
-
+    pose proof status_read_always_ok s as Hstat.
+    destruct Hstat as (x & s' & Hstat).
     straightline_call; ssplit.
     { instantiate (1 := STATUS). apply word.ring_morph_add. }
-    { pose proof status_read_always_ok s.
-      cbv [parameters.read_step state_machine_parameters] in *.
-      logical_simplify.
-      do 2 eexists; ssplit; eauto. }
+    { cbv [parameters.read_step state_machine_parameters] in *. eauto. }
     { eauto. }
     { repeat straightline.
       straightline_call; eauto.
       repeat straightline.
-      (* keep "exection a x" for later eassumption *)
-      pose proof H5 as HH.
-      simpl in H5.
-      destruct H5. destruct H3.
-      replace s with x1 in *.
+      (* keep "execution a x" for later eassumption *)
+      repeat lazymatch goal with
+      | H0 : execution tr _, H1: execution ?a _ |-  context [?tr] => rename H0 into Hexec; rename H1 into Hexec'
+      end.
+      pose proof Hexec' as HH.
+      simpl in Hexec'.
+      destruct Hexec'.
+      lazymatch goal with
+      | H: execution tr ?x /\ step _ _ _ _ _ |- _ => destruct H; replace s with x in *
+      end.
       2:{ eapply execution_unique; eauto. }
-      unfold step in H4. simpl in H4.
+      lazymatch goal with
+      | H: step _ _ _ _ _ |- _ => unfold step in H; simpl in H
+      end.
       logical_simplify.
-      rewrite <- word.ring_morph_add in H4.
       infer_reg_using_addr.
-
-      (* post condition *)
       do 3 eexists; ssplit; eauto.
-      inversion H5. subst. subst v.
+      lazymatch goal with
+      | H: [_] = [_] |- _ => inversion H; subst
+      end.
       unfold UART_STATUS_TXIDLE_BIT in *.
       apply is_flag_set_and_select_bits.
       + cbv. reflexivity.
