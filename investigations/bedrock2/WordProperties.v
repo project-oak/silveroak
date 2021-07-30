@@ -452,6 +452,110 @@ Section WithWord.
     rewrite Forall_forall in size_ok.
     apply size_ok.
   Qed.
+
+  Lemma is_flag_set_and_select_bits :
+    forall x i,
+      i < width -> 0 <= i < 2 ^ width ->
+      word.eqb (select_bits x (word.of_Z i) (word.of_Z 1)) (word.of_Z 0)
+      = negb (is_flag_set x i).
+  Proof.
+    intros.
+    cbv [is_flag_set select_bits]. boolsimpl.
+
+    destruct H0.
+
+    match goal with
+    | |- ?LHS = ?RHS => destruct LHS eqn: E1; destruct RHS eqn: E2
+    end; try reflexivity; try exfalso.
+
+    {
+      (* Make boolean expression into Prop *)
+      apply word.eqb_true in E1;
+      apply word.eqb_false in E2.
+
+      (* E1 *)
+      apply (f_equal word.unsigned) in E1.
+      autorewrite with push_unsigned in E1.
+      rewrite word.unsigned_sru_nowrap in E1.
+      2:{ rewrite word.unsigned_of_Z. rewrite word.wrap_small; eauto. }
+      autorewrite with push_unsigned in E1.
+      apply (f_equal (fun x => Z.testbit x 0)) in E1.
+      rewrite Z.land_spec in E1.
+      simpl (Z.testbit 1 0) in E1.
+      simpl (Z.testbit 0 0) in E1.
+      rewrite Bool.andb_true_r in E1.
+      rewrite Z.shiftr_spec in E1.
+      2:{ lia. }
+      simpl in E1.
+
+      (* E2 *)
+      unfold not in E2.
+      apply E2.
+      apply word.unsigned_inj.
+      push_unsigned.
+      apply Z.bits_inj'.
+      intros.
+      rewrite Z.shiftl_1_l.
+      rewrite word.wrap_small.
+      2:{ split;
+        [ apply (Z.pow_nonneg 2 i); lia |
+          apply (Zpow_facts.Zpower_lt_monotone 2 i width); lia]. }
+      rewrite Z.land_spec.
+      rewrite Z.pow2_bits_eqb.
+      { rewrite Z.bits_0.
+        destruct (i =? n) eqn:Hn.
+        + apply Z.eqb_eq in Hn. subst. rewrite E1. simpl. reflexivity.
+        + rewrite Bool.andb_false_r. reflexivity. }
+      { eauto. }
+    }
+
+    {
+      (* Make boolean expression into Prop *)
+      apply word.eqb_false in E1;
+      apply word.eqb_true in E2.
+
+
+      (* E2 *)
+      apply (f_equal word.unsigned) in E2.
+      autorewrite with push_unsigned in E2.
+      rewrite word.unsigned_slu_shamtZ in E2.
+      2: { split; eauto. }
+      autorewrite with push_unsigned in E2.
+      rewrite Z.shiftl_1_l in E2.
+      rewrite word.wrap_small in E2.
+      2: { split;
+        [ apply (Z.pow_nonneg 2 i); lia |
+          apply (Zpow_facts.Zpower_lt_monotone 2 i width); lia]. }
+      apply (f_equal (fun x => Z.testbit x i)) in E2.
+      rewrite Z.bits_0 in E2.
+      rewrite Z.land_spec in E2.
+      rewrite Z.pow2_bits_true in E2.
+      2: { eauto. }
+      rewrite Bool.andb_true_r in E2.
+
+      (* E1 *)
+      unfold not in E1.
+      apply E1.
+      apply word.unsigned_inj.
+      push_unsigned.
+      rewrite word.unsigned_sru_nowrap.
+      2:{ rewrite word.unsigned_of_Z. rewrite word.wrap_small; try split; eauto. }
+      push_unsigned.
+      apply Z.bits_inj'.
+      intros.
+      rewrite Z.bits_0.
+      rewrite Z.land_spec.
+      rewrite Z_testbit_1_l.
+      rewrite Z.shiftr_spec.
+      2: { eauto. }
+
+      destruct (n =? 0) eqn:Hn.
+      { rewrite Bool.andb_true_r.
+        rewrite Z.eqb_eq in Hn. subst.
+        simpl. apply E2. }
+      { rewrite Bool.andb_false_r. reflexivity. }
+    }
+  Qed.
 End WithWord.
 
 (* Hint database for proving goals in the form of [has_size _ _] *)

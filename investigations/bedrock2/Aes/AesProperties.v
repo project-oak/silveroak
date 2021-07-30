@@ -42,8 +42,6 @@ Local Open Scope Z_scope.
    resulting in large ugly ASTs *)
 Ltac normalize_body_of_function f ::= Tactics.rdelta.rdelta f.
 
-
-
 Section Proofs.
   Context {p : AesSemantics.parameters} {p_ok : parameters.ok p}
           {consts : aes_constants Z} {timing : timing}.
@@ -309,27 +307,35 @@ Section Proofs.
                  negb (is_flag_set status i)))).
   Proof.
     (* call function abs_mmio_read32 *)
+    pose proof status_read_always_ok s as Hstat.
+    destruct Hstat as (x & s' & Hstat).
+
     straightline_call; ssplit.
     (* specialize abs_mmio to AES STATUS *)
     { instantiate ( 1 := STATUS ). reflexivity. }
-    { pose proof status_read_always_ok s.
-      cbv [parameters.read_step state_machine_parameters] in *.
-      logical_simplify.
-      do 2 eexists. ssplit; eauto.
-    }
+    { cbv [parameters.read_step state_machine_parameters] in *. eauto. }
     { eauto. }
     { repeat straightline.
       (* keep "execution a x" for later eassumption *)
-      pose proof H4 as HH.
-      simpl in H4.
-      destruct H4. destruct H2.
-      replace s with x1 in *.
+      repeat lazymatch goal with
+      | H0 : execution tr _, H1: execution ?a _ |-  context [?tr] => rename H0 into Hexec; rename H1 into Hexec'
+      end.
+      pose proof Hexec' as HH.
+      simpl in Hexec'.
+      destruct Hexec'.
+      lazymatch goal with
+      | H: execution tr ?x /\ step _ _ _ _ _ |- _ => destruct H; replace s with x in *
+      end.
       2:{ eapply execution_unique; eauto. }
-      unfold step in H3. simpl in H3.
+      lazymatch goal with
+      | H: step _ _ _ _ _ |- _ => unfold step in H; simpl in H
+      end.
       logical_simplify.
       infer_reg_using_addr.
       do 3 eexists; ssplit; eauto.
-      inversion H4. subst.
+      lazymatch goal with
+      | H: [_] = [_] |- _ => inversion H; subst
+      end.
       subst_lets. cbv [is_flag_set]. boolsimpl. reflexivity.
     }
   Qed.
