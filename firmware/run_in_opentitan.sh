@@ -18,7 +18,7 @@
 
 set -eu
 
-OT_hash=$(git ls-files -s ../../third_party/opentitan/ | awk '{print $2}')
+OT_hash=$(git ls-files -s ../third_party/opentitan/ | awk '{print $2}')
 echo "third_party/opentitan is at commit $OT_hash"
 
 if [[ $OT_hash != "783edaf444eb0d9eaf9df71c785089bffcda574e" ]]; then
@@ -29,13 +29,13 @@ if [[ $OT_hash != "783edaf444eb0d9eaf9df71c785089bffcda574e" ]]; then
   esac
 fi
 
-# ensures aes.c is fresh
-make aes.c
+# ensures aes.c.out is fresh
+make coq
 
 # copy aes.c to opentitan
-cp aes.c ../../third_party/opentitan/sw/device/lib/aes.c
+cp aes.c.out ../third_party/opentitan/sw/device/lib/aes.c
 
-cd ../../third_party/opentitan
+cd ../third_party/opentitan
 
 ./meson_init.sh
 
