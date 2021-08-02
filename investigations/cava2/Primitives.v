@@ -32,6 +32,7 @@ Inductive UnaryPrim : type -> type -> Type :=
 
 | UnVecToTuple: forall {t n}, UnaryPrim (Vec t n) (ntuple t n)
 
+| UnBitVecNot: forall {n}, UnaryPrim (BitVec n) (BitVec n)
 | UnNot: UnaryPrim Bit Bit
 .
 
@@ -99,6 +100,8 @@ Definition unary_semantics {x r} (prim: UnaryPrim x r)
     via_simple (b:=Vec _ _) (a:= Vec _ _) (fun x => rotate_left n x)
   | @UnVecToTuple t n =>
     via_simple (a:= Vec _ _) (fun x => vector_as_tuple n t x)
+  | @UnBitVecNot n =>
+    via_simple (a:= Vec Bit n) (b:=Vec Bit n) (fun x => map negb x)
   | UnNot => fun x => negb x
   end.
 

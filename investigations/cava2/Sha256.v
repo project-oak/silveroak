@@ -86,7 +86,7 @@ Section Var.
     let sum1 := (w14 >>> `17`) ^ (w14 >>> `19`) ^ (w14 >> `10`) in
     w0 + sum0 + w9 + sum1
   }}%nat.
-
+Unset Printing Notations.
   (* SHA-256 compression function *)
   Definition sha256_compress : Circuit [] [sha_digest; sha_word; sha_word] sha_digest := {{
     fun current_digest k w =>
@@ -100,7 +100,7 @@ Section Var.
     let temp2 := s0 + maj in
 
     (temp1 + temp2) :> a' :> b' :> c' :> (d' + temp1) :> e' :> f' :> g' :> []
-  }}%nat.
+  }}%expr%nat.
 
   (* SHA-256 core *)
   Definition sha256_inner : Circuit _ [sha_block; Bit; sha_digest] (sha_digest ** Bit) :=

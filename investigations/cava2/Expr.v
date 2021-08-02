@@ -135,21 +135,27 @@ Section Var.
   Definition _1 {sz} := const (BitVec sz) 1.
   Definition _2 {sz} := const (BitVec sz) 2.
 
-  (* (1* TODO(blaxill): is this useful or should they be defined on concrete BitVec) *1) *)
-  (* Class bitlike x := *)
-  (* { eq : var x -> var x -> Circuit [] [] Bit *)
-  (* ; not : var x -> Circuit [] [] x *)
+  Class bitlike x :=
+  { eq : var x -> var x -> Circuit [] [] Bit
+  ; not : var x -> Circuit [] [] x
   (* ; xor : var x -> var x -> Circuit [] [] x *)
   (* ; and : var x -> var x -> Circuit [] [] x *)
   (* ; add : var x -> var x -> Circuit [] [] x *)
-  (* }. *)
+  }.
+
+  Import ExprNotations.
+  Instance bit_bitlike: bitlike Bit :=
+  { eq x y :=  {{ `BinaryOp BinEq x y` }}
+  ; not x := {{ `UnaryOp UnNot x` }}
+  }.
+  Instance bitvec_bitlike n: bitlike (BitVec n) :=
+  { eq x y :=  {{ `BinaryOp BinEq x y` }}
+  ; not x := {{ `UnaryOp UnBitVecNot x` }}
+  }.
 
 End Var.
-
-(* Axiom bit_bitlike : forall {var}, bitlike (var:=var) Bit. *)
-(* Axiom bitvec_bitlike : forall {var n}, bitlike (var:=var)  (BitVec n). *)
-(* Existing Instance bit_bitlike. *)
-(* Existing Instance bitvec_bitlike. *)
+Existing Instance bit_bitlike.
+Existing Instance bitvec_bitlike.
 
 Section RegressionTests.
   Import ExprNotations.
@@ -212,7 +218,7 @@ Module PrimitiveNotations.
   ))) (in custom expr at level 19, no associativity) : expr_scope.
 
   Notation "! x" := (
-    Let x (fun v => UnaryOp UnNot v)
+    Let x not
   ) (in custom expr at level 20) : expr_scope.
   Notation "x == y" := (
     Let x (fun v1 => Let y (fun v2 =>
@@ -231,21 +237,28 @@ Module PrimitiveNotations.
       BinaryOp BinBitVecAddU v1 v2
   ))) (in custom expr at level 20, left associativity) : expr_scope.
   Notation "x >>> y" := (
-    Let x (fun v1 => UnaryPrim (UnVecRotateRight y) v1
+    Let x (fun v1 => UnaryOp (UnVecRotateRight y) v1
   )) (in custom expr at level 19, no associativity) : expr_scope.
   Notation "x >> y" := (
-    Let x (fun v1 => UnaryPrim (UnVecShiftRight y) v1
+    Let x (fun v1 => UnaryOp (UnVecShiftRight y) v1
   )) (in custom expr at level 19, no associativity) : expr_scope.
   Notation "x <<+ y" := (
     Let x (fun v1 => Let y (fun v2 =>
-      UnaryPrim BinVecShiftInRight v1 v2
+      UnaryOp BinVecShiftInRight v1 v2
     ))) (in custom expr at level 19, no associativity) : expr_scope.
 
   Notation "x :> y" := (
     Let x (fun v1 => Let y (fun v2 =>
-      UnaryPrim BinVecCons v1 v2
+      UnaryOp BinVecCons v1 v2
   ))) (in custom expr at level 19, right associativity) : expr_scope.
-  Notation "[ ]" := (Constant []) (in custom expr at level 19, right associativity) : expr_scope.
+  Notation "[ ]" := (const (Vec _ 0) []) (in custom expr at level 19) : expr_scope.
+
+  Import ExprNotations.
+  Definition index {var t n i}: Circuit (var:=var) [] [Vec t n; BitVec i] t :=
+    {{ fun vec index => `BinaryOp BinVecIndex vec index` }}.
+  Definition vec_as_tuple {var t n}: Circuit (var:=var) [] [Vec t n] (ntuple t n) :=
+    {{ fun vec => `UnaryOp UnVecToTuple vec` }}.
+
 End PrimitiveNotations.
 
 Axiom value_hole : forall {t}, t.
