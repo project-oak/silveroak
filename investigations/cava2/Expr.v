@@ -55,10 +55,9 @@ Section Vars.
     -> Circuit s2 [] y
     -> Circuit (s1++s2) [] (x**y)
 
-  | UnaryOp : forall {x r}, UnaryPrim x r -> var x -> Circuit [] [x] r
-  | BinaryOp : forall {x y r}, BinaryPrim x y r -> var x -> var y -> Circuit [] [x; y] r
-
-  | AddMod : nat -> Circuit [] [Nat; Nat] Nat
+  | UnaryOp : forall {x r}, UnaryPrim x r -> var x -> Circuit [] [] r
+  | BinaryOp : forall {x y r}, BinaryPrim x y r -> var x -> var y -> Circuit [] [] r
+  | TernaryOp : forall {x y z r}, TernaryPrim x y z r -> var x -> var y -> var z -> Circuit [] [] r
 
   .
 End Vars.
@@ -66,6 +65,7 @@ End Vars.
 Declare Scope expr_scope.
 Declare Custom Entry expr.
 Delimit Scope expr_scope with expr.
+
 
 Module ExprNotations.
   (* Escaping *)
@@ -121,49 +121,6 @@ Module ExprNotations.
   Notation "'if' i 'then' t 'else' e" := ((ElimBool i t e))
     (in custom expr at level 5, left associativity) : expr_scope.
 
-  (* Regression tests *)
-  Section Var.
-    Context {var : tvar}.
-
-    Definition fork2 {A} : Circuit [] [A] (A ** A) := {{
-      fun a => ( a, a)
-    }}.
-
-    Definition silly_id {A} : Circuit [] [A] A := {{
-      fun a => let '(x,y;z) := (a, `fork2` a) in z
-    }}.
-
-    Definition fst3 {A} : Circuit [] [A**A**A] A := {{
-      fun xyz => let '(x,y;z) := xyz in x
-    }}.
-
-    Definition ite_test {A} : Circuit [] [Bit; A] A := {{
-      fun flag a =>
-        if `silly_id` flag then (a) else a
-    }}.
-
-    Definition test {sz: nat}: Circuit (Nat**Nat) [] Nat := {{
-      let/delay '(x;y) := (y,x) initially ((0,1):denote_type (Pair Nat Nat)) in y
-    }}.
-
-    Definition test2 {sz: nat}: Circuit (Nat**Nat) [Nat**Nat] Nat := {{
-      fun xy =>
-      let '(x ; y) := xy in
-      let/delay '(z;w) :=
-        let t := x in
-        (w, z)
-        initially ((0,0):denote_type (Nat**Nat)) in
-        x
-    }}.
-
-    (* Function composition for single arg functions *)
-    Definition compose {s1 s2 x y z} (f: Circuit s1 [x] y) (g: Circuit s2 [y] z)
-      : Circuit (s1++s2) [x] z := {{
-      fun x => `g` ( `f` x )
-    }}.
-    (* Notation "f >=> g" := (compose f g) (at level 61, right associativity) : expr_scope. *)
-
-  End Var.
 End ExprNotations.
 
 Section Var.
@@ -171,56 +128,125 @@ Section Var.
 
   Local Open Scope N.
 
-  Definition False := Constant (false: denote_type Bit).
-  Definition _0 {sz} := Constant (0: denote_type (BitVec sz)).
-  Definition _1 {sz} := Constant (1: denote_type (BitVec sz)).
-  Definition _2 {sz} := Constant (2: denote_type (BitVec sz)).
+  Definition const t : denote1_type t -> denote_type t := denote1_to_denote.
 
-  (* TODO(blaxill): is this useful or should they be defined on concrete BitVec) *)
-  Class bitlike x :=
-  { eq : var x -> var x -> Circuit [] [] Bit
-  ; not : var x -> Circuit [] [] x
-  ; xor : var x -> var x -> Circuit [] [] x
-  ; and : var x -> var x -> Circuit [] [] x
-  ; add : var x -> var x -> Circuit [] [] x
-  }.
+  Definition False := Constant (false: denote_type Bit).
+  Definition _0 {sz} := const (BitVec sz) 0.
+  Definition _1 {sz} := const (BitVec sz) 1.
+  Definition _2 {sz} := const (BitVec sz) 2.
+
+  (* (1* TODO(blaxill): is this useful or should they be defined on concrete BitVec) *1) *)
+  (* Class bitlike x := *)
+  (* { eq : var x -> var x -> Circuit [] [] Bit *)
+  (* ; not : var x -> Circuit [] [] x *)
+  (* ; xor : var x -> var x -> Circuit [] [] x *)
+  (* ; and : var x -> var x -> Circuit [] [] x *)
+  (* ; add : var x -> var x -> Circuit [] [] x *)
+  (* }. *)
 
 End Var.
 
-Axiom bit_bitlike : forall {var}, bitlike (var:=var) Bit.
-Axiom bitvec_bitlike : forall {var n}, bitlike (var:=var)  (BitVec n).
-Existing Instance bit_bitlike.
-Existing Instance bitvec_bitlike.
+(* Axiom bit_bitlike : forall {var}, bitlike (var:=var) Bit. *)
+(* Axiom bitvec_bitlike : forall {var n}, bitlike (var:=var)  (BitVec n). *)
+(* Existing Instance bit_bitlike. *)
+(* Existing Instance bitvec_bitlike. *)
+
+Section RegressionTests.
+  Import ExprNotations.
+
+  Context {var : tvar}.
+
+  Definition fork2 {A} : Circuit [] [A] (A ** A) := {{
+    fun a => ( a, a)
+  }}.
+
+  Definition silly_id {A} : Circuit [] [A] A := {{
+    fun a => let '(x,y;z) := (a, `fork2` a) in z
+  }}.
+
+  Definition fst3 {A} : Circuit [] [A**A**A] A := {{
+    fun xyz => let '(x,y;z) := xyz in x
+  }}.
+
+  Definition ite_test {A} : Circuit [] [Bit; A] A := {{
+    fun flag a =>
+      if `silly_id` flag then (a) else a
+  }}.
+
+  Definition inital_state {sz} := const (BitVec sz ** BitVec sz) (0,1)%N.
+
+  Definition test {sz: nat}: Circuit (BitVec 10**BitVec 10) [] (BitVec 10) := {{
+    let/delay '(x;y) := (y,x) initially inital_state in y
+  }}.
+
+  Definition test2 {sz: nat}: Circuit (BitVec sz ** BitVec sz) [BitVec sz ** BitVec sz ] (BitVec sz) := {{
+    fun xy =>
+    let '(x ; y) := xy in
+    let/delay '(z;w) :=
+      let t := x in
+      (w, z)
+      initially inital_state in
+      x
+  }}.
+
+  (* Function composition for single arg functions *)
+  Definition compose {s1 s2 x y z} (f: Circuit s1 [x] y) (g: Circuit s2 [y] z)
+    : Circuit (s1++s2) [x] z := {{
+    fun x => `g` ( `f` x )
+  }}.
+  (* Notation "f >=> g" := (compose f g) (at level 61, right associativity) : expr_scope. *)
+
+End RegressionTests.
 
 Module PrimitiveNotations.
   Notation "x && y" := (
     Let x (fun v1 => Let y (fun v2 => BinaryOp BinBitAnd v1 v2))
   ) (in custom expr at level 20, left associativity) : expr_scope.
-  Notation "x || y" := (BinaryOp BinBitOr x y) (in custom expr at level 20, left associativity) : expr_scope.
-  Notation "x >= y" := (BinaryOp BinBitVecGte x y) (in custom expr at level 19, no associativity) : expr_scope.
+  Notation "x || y" := (
+    Let x (fun v1 => Let y (fun v2 =>
+     BinaryOp BinBitOr v1 v2
+  ))) (in custom expr at level 20, left associativity) : expr_scope.
+  Notation "x >= y" := (
+    Let x (fun v1 => Let y (fun v2 =>
+    BinaryOp BinBitVecGte v1 v2
+  ))) (in custom expr at level 19, no associativity) : expr_scope.
 
   Notation "! x" := (
-    Let x (fun v => not v)
+    Let x (fun v => UnaryOp UnNot v)
   ) (in custom expr at level 20) : expr_scope.
   Notation "x == y" := (
-    Let x (fun v1 => Let y (fun v2 => eq v1 v2))
-  ) (in custom expr at level 19, no associativity) : expr_scope.
+    Let x (fun v1 => Let y (fun v2 =>
+      BinaryOp BinEq v1 v2
+  ))) (in custom expr at level 19, no associativity) : expr_scope.
   Notation "x ^ y" := (
-    Let x (fun v1 => Let y (fun v2 => xor v1 v2))
-  ) (in custom expr at level 20, left associativity) : expr_scope.
+    Let x (fun v1 => Let y (fun v2 =>
+      BinaryOp BinBitVecXor v1 v2
+  ))) (in custom expr at level 20, left associativity) : expr_scope.
   Notation "x & y" := (
-    Let x (fun v1 => Let y (fun v2 => and v1 v2))
-  ) (in custom expr at level 20, left associativity) : expr_scope.
+    Let x (fun v1 => Let y (fun v2 =>
+      BinaryOp BinBitVecAnd v1 v2
+  ))) (in custom expr at level 20, left associativity) : expr_scope.
   Notation "x + y" := (
-    Let x (fun v1 => Let y (fun v2 => add v1 v2))
-  ) (in custom expr at level 20, left associativity) : expr_scope.
-  Notation "x >>> y" := (rotate_right x y) (in custom expr at level 19, no associativity) : expr_scope.
-  Notation "x >> y" := (shift_right x y) (in custom expr at level 19, no associativity) : expr_scope.
-  Notation "x <<+ y" := (shift_in_right x y) (in custom expr at level 19, no associativity) : expr_scope.
+    Let x (fun v1 => Let y (fun v2 =>
+      BinaryOp BinBitVecAddU v1 v2
+  ))) (in custom expr at level 20, left associativity) : expr_scope.
+  Notation "x >>> y" := (
+    Let x (fun v1 => UnaryPrim (UnVecRotateRight y) v1
+  )) (in custom expr at level 19, no associativity) : expr_scope.
+  Notation "x >> y" := (
+    Let x (fun v1 => UnaryPrim (UnVecShiftRight y) v1
+  )) (in custom expr at level 19, no associativity) : expr_scope.
+  Notation "x <<+ y" := (
+    Let x (fun v1 => Let y (fun v2 =>
+      UnaryPrim BinVecShiftInRight v1 v2
+    ))) (in custom expr at level 19, no associativity) : expr_scope.
 
-  Notation "x :> y" := (concat x y) (in custom expr at level 19, right associativity) : expr_scope.
-  Notation "[ ]" := (empty) (in custom expr at level 19, right associativity) : expr_scope.
+  Notation "x :> y" := (
+    Let x (fun v1 => Let y (fun v2 =>
+      UnaryPrim BinVecCons v1 v2
+  ))) (in custom expr at level 19, right associativity) : expr_scope.
+  Notation "[ ]" := (Constant []) (in custom expr at level 19, right associativity) : expr_scope.
 End PrimitiveNotations.
 
 Axiom value_hole : forall {t}, t.
-Axiom circuit_hole : forall {t}, Circuit [] [] t.
+Axiom circuit_hole : forall {t var}, Circuit (var:=var) [] [] t.

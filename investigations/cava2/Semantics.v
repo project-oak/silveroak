@@ -22,6 +22,7 @@ Require Import Cava.Util.List. (* TODO: From cava 1 *)
 
 Require Import Cava.Types.
 Require Import Cava.Expr.
+Require Import Cava.Primitives.
 
 Definition split_absorbed_denotation {x y}
   : denote_type (x ++ y) -> denote_type x * denote_type y :=
@@ -51,7 +52,6 @@ Fixpoint step {i s o} (c : Circuit s i o)
     let '(nsf, o) := step f sf (x, i) in
     (combine_absorbed_denotation nsx nsf, o)
   | Delay _ => fun s '(i,tt) => (i, s)
-  | AddMod n => fun _ '(a,(b,_)) => (tt, (a + b) mod (2 ^ n))
   | Let x f => fun s i =>
     let '(sx, sf) := split_absorbed_denotation s in
     let '(nsx, x) := step x sx tt in
@@ -83,20 +83,11 @@ Fixpoint step {i s o} (c : Circuit s i o)
     (combine_absorbed_denotation nsf nsg, (x,y))
   | Constant v => fun _ _ =>
     (tt, v)
+  | UnaryOp op x => fun _ _ => (tt, unary_semantics op x)
+  | BinaryOp op x y => fun _ _ => (tt, binary_semantics op x y)
+  | TernaryOp op x y z => fun _ _ => (tt, ternnary_semantics op x y z)
   end.
 
-Fixpoint default {t: type} : denote_type t :=
-  match t return denote_type t with
-  | Unit => tt
-  | Nat => 0
-  | Bit => false
-  | Vec t1 n =>
-    match t1 return denote_type t1 -> denote_type (Vec t1 n) with
-    | Bit => fun _ => 0%N
-    | _ => fun d => List.repeat d n
-    end default
-  | Pair x y => (@default x, @default y)
-  end.
 
 Fixpoint reset_state {i s o} (c : Circuit (var:=denote_type) s i o) : denote_type s :=
   match c in Circuit s i o return denote_type s with
@@ -108,11 +99,13 @@ Fixpoint reset_state {i s o} (c : Circuit (var:=denote_type) s i o) : denote_typ
     combine_absorbed_denotation initial
       (combine_absorbed_denotation (reset_state (x default)) (reset_state (f default)))
   | Delay initial => initial
-  | AddMod _ => tt
   | MakeTuple f g => combine_absorbed_denotation (reset_state f) (reset_state g)
   | Constant _ => tt
   | ElimPair f _ =>  reset_state (f default default)
   | ElimBool b f g => combine_absorbed_denotation (reset_state f) (reset_state g)
+  | UnaryOp op x => tt
+  | BinaryOp op x y => tt
+  | TernaryOp op x y z => tt
   end.
 
 Definition simulate {s i o} (c : Circuit (var:=denote_type) s i o) (input : list (denote_type i))

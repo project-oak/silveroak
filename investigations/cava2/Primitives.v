@@ -21,6 +21,8 @@ Require Import ExtLib.Data.List.
 
 Require Import Cava.Types.
 
+Import ListNotations.
+
 (* Primitives will require both semantic and netlist implementations *)
 Inductive UnaryPrim : type -> type -> Type :=
 | UnVecSlice: forall {t n} (start len: nat), UnaryPrim (Vec t n) (Vec t len)
@@ -29,6 +31,8 @@ Inductive UnaryPrim : type -> type -> Type :=
 | UnVecShiftRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
 
 | UnVecToTuple: forall {t n}, UnaryPrim (Vec t n) (ntuple t n)
+
+| UnNot: UnaryPrim Bit Bit
 .
 
 Inductive BinaryPrim : type -> type -> type -> Type :=
@@ -37,42 +41,102 @@ Inductive BinaryPrim : type -> type -> type -> Type :=
 
 | BinBitVecGte: forall {n}, BinaryPrim (BitVec n) (BitVec n) Bit
 
+| BinBitVecXor: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
+| BinBitVecAnd: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
+| BinBitVecAddU: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
+
 | BinVecIndex: forall {t n i}, BinaryPrim (Vec t n) (BitVec i) t
-| BinVecCons: forall {t n}, BinaryPrim t (Vec t n) t
+| BinVecCons: forall {t n}, BinaryPrim t (Vec t n) (Vec t (S n))
 
 (* drop leftmost element and push one element in right side, e.g. shifting left *)
 | BinVecShiftInRight: forall {t n}, BinaryPrim (Vec t n) t (Vec t n)
+
+| BinEq: forall {x}, BinaryPrim x x Bit
+
 .
 
 Inductive TernaryPrim : type -> type -> type -> type -> Type :=
-| TernVecReplace: forall {t n i}, TernaryPrim (Vec t n) (BitVec i) t t
+| TernVecReplace: forall {t n i}, TernaryPrim (Vec t n) (BitVec i) t (Vec t n)
 .
 
-Section RefinedLists.
-  Definition drop {A n} (start len: nat)
-      (ls: {l : list A | Datatypes.length l = n}):
-      {l : list A | Datatypes.length l = len} :=
-    let (ls', Hlen) := ls in
-    drop
+Fixpoint drop {A} n (ls: list A): list A :=
+  match n with
+  | 0 => ls
+  | S n' => drop n' (tl ls)
+  end.
 
-  Definition slice {A n} (start len: nat)
-      (ls: {l : list A | Datatypes.length l = n}):
-      {l : list A | Datatypes.length l = len} :=
-    let (ls', Hlen) := ls in
-    drop
-End.
+Fixpoint take {A} n (ls: list (denote_type A)): list (denote_type A) :=
+  match n with
+  | 0 => []
+  | S n' => hd default ls :: take n' ( ls)
+  end.
 
+Fixpoint rotate_left {A} n (ls: list A): list A :=
+  match n with
+  | 0 => ls
+  | S n' =>
+    match ls with
+    | nil => []
+    | x :: xs => rotate_left n' (xs ++ [x])
+    end
+  end.
+
+Fixpoint rotate_right {A} n (ls: list (denote_type A)): list (denote_type A) :=
+  match n with
+  | 0 => ls
+  | S n' =>
+    rotate_right n' (last ls default :: removelast ls)
+  end.
 Definition unary_semantics {x r} (prim: UnaryPrim x r)
   : denote_type x -> denote_type r :=
   match prim in UnaryPrim x r return denote_type x -> denote_type r with
   | @UnVecSlice t _ start len =>
-    fun x =>
-  | UnVecRotateRight n =>
-    fun x => x
-  | UnVecShiftRight n =>
-    fun x => x
-  | UnVecToTuple =>
-    fun x => x
+    fun x => take len (drop start x)
+  | UnVecRotateRight n => rotate_right n
+  | UnVecShiftRight n => rotate_left n
+  | @UnVecToTuple t n => fun x => vector_as_tuple n t x
+  | UnNot => fun x => negb x
   end.
-    (* match t with *)
+
+Definition binary_semantics {x y r} (prim: BinaryPrim x y r)
+  : denote_type x -> denote_type y -> denote_type r :=
+  match prim in BinaryPrim x y r return denote_type x -> denote_type y -> denote_type r with
+  | BinBitAnd => andb
+  | BinBitOr => orb
+
+  | BinBitVecGte => fun x y =>
+    let x' := denote_to_denote1 x in
+    let y' := denote_to_denote1 y in (y' <=? x')%N
+
+  | BinBitVecXor => fun x y => map (fun '(x,y) => xorb x y) (combine x y)
+  | BinBitVecAnd => fun x y => map (fun '(x,y) => andb x y) (combine x y)
+  | @BinBitVecAddU n => fun x y =>
+
+    let x' := denote_to_denote1 x in
+    let y' := denote_to_denote1 y in
+    denote1_to_denote ((x' + y') mod (2 ^ (N.of_nat n)): denote1_type (BitVec n))%N
+
+  | BinVecIndex => fun x n =>
+    let n' := denote_to_denote1 n in
+    nth (N.to_nat n') x default
+  | BinVecCons => fun x xs => x :: xs
+  | BinVecShiftInRight => fun xs x => removelast xs ++ [x]
+  | BinEq => eqb
+  end%list.
+
+Fixpoint replace {A} n a (ls: list A): list A :=
+  match ls with
+  | [] => []
+  | x :: xs =>
+    match n with
+    | 0 => a :: xs
+    | S n' => x :: replace n' a xs
+    end
+  end%list.
+
+Definition ternnary_semantics {x y z r} (prim: TernaryPrim x y z r)
+  : denote_type x -> denote_type y -> denote_type z -> denote_type r :=
+  match prim in TernaryPrim x y z r return denote_type x -> denote_type y -> denote_type z -> denote_type r with
+  | TernVecReplace => fun ls i x => replace (N.to_nat (denote_to_denote1 i)) x ls
+  end.
 
