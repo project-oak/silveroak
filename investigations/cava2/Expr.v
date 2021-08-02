@@ -128,7 +128,7 @@ Section Var.
 
   Local Open Scope N.
 
-  Definition const t : denote1_type t -> denote_type t := denote1_to_denote.
+  Definition const t : denote_type t -> denote_type t := id.
 
   Definition False := Constant (false: denote_type Bit).
   Definition _0 {sz} := const (BitVec sz) 0.
