@@ -128,12 +128,13 @@ Section Var.
 
   Local Open Scope N.
 
-  Definition const t : denote_type t -> denote_type t := id.
+  Definition val_of t : denote_type t -> denote_type t := id.
+  Definition val_N {sz}: N -> denote_type (BitVec sz) := id.
 
   Definition False := Constant (false: denote_type Bit).
-  Definition _0 {sz} := const (BitVec sz) 0.
-  Definition _1 {sz} := const (BitVec sz) 1.
-  Definition _2 {sz} := const (BitVec sz) 2.
+  Definition _0 {sz} := Constant (val_of (BitVec sz) 0).
+  Definition _1 {sz} := Constant (val_of (BitVec sz) 1).
+  Definition _2 {sz} := Constant (val_of (BitVec sz) 2).
 
   Class bitlike x :=
   { eq : var x -> var x -> Circuit [] [] Bit
@@ -179,7 +180,7 @@ Section RegressionTests.
       if `silly_id` flag then (a) else a
   }}.
 
-  Definition inital_state {sz} := const (BitVec sz ** BitVec sz) (0,1)%N.
+  Definition inital_state {sz} := val_of (BitVec sz ** BitVec sz) (0,1)%N.
 
   Definition test {sz: nat}: Circuit (BitVec 10**BitVec 10) [] (BitVec 10) := {{
     let/delay '(x;y) := (y,x) initially inital_state in y
@@ -244,19 +245,20 @@ Module PrimitiveNotations.
   )) (in custom expr at level 19, no associativity) : expr_scope.
   Notation "x <<+ y" := (
     Let x (fun v1 => Let y (fun v2 =>
-      UnaryOp BinVecShiftInRight v1 v2
+      BinaryOp BinVecShiftInRight v1 v2
     ))) (in custom expr at level 19, no associativity) : expr_scope.
 
   Notation "x :> y" := (
     Let x (fun v1 => Let y (fun v2 =>
-      UnaryOp BinVecCons v1 v2
+      BinaryOp BinVecCons v1 v2
   ))) (in custom expr at level 19, right associativity) : expr_scope.
-  Notation "[ ]" := (const (Vec _ 0) []) (in custom expr at level 19) : expr_scope.
+
+  Notation "[ ]" := (Constant (simple_denote_to_denote (t:=Vec _ 0) nil)) (in custom expr at level 19) : expr_scope.
 
   Import ExprNotations.
   Definition index {var t n i}: Circuit (var:=var) [] [Vec t n; BitVec i] t :=
     {{ fun vec index => `BinaryOp BinVecIndex vec index` }}.
-  Definition vec_as_tuple {var t n}: Circuit (var:=var) [] [Vec t n] (ntuple t n) :=
+  Definition vec_as_tuple {var t n}: Circuit (var:=var) [] [Vec t (S n)] (ntuple t n) :=
     {{ fun vec => `UnaryOp UnVecToTuple vec` }}.
 
 End PrimitiveNotations.

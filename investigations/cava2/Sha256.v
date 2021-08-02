@@ -86,21 +86,23 @@ Section Var.
     let sum1 := (w14 >>> `17`) ^ (w14 >>> `19`) ^ (w14 >> `10`) in
     w0 + sum0 + w9 + sum1
   }}%nat.
-Unset Printing Notations.
+
   (* SHA-256 compression function *)
-  Definition sha256_compress : Circuit [] [sha_digest; sha_word; sha_word] sha_digest := {{
+  Program
+  Definition sha256_compress : Circuit []%circuit_type [sha_digest; sha_word; sha_word]%circuit_type sha_digest := {{
     fun current_digest k w =>
-    let '( a', b', c', d', e', f', g'; h' ) := `vec_as_tuple (n:=8)` current_digest in
+    let '( a', b', c', d', e', f', g'; h' ) := `vec_as_tuple (n:=7)` current_digest in
 
     let s1 := (e' >>> `6`) ^ (e' >>> `11`) ^ (e' >>> `25`) in
-    let ch := (e' & f') ^ (!e' & g') in
+    let ch := (e' & f') ^ (e' & g') in
     let temp1 := (h' + s1 + ch + k + w) in
     let s0 := (a' >>> `2`) ^ (a' >>> `13`) ^ (a' >>> `22`) in
     let maj := (a' & b') ^ (a' & c') ^ (b' & c') in
     let temp2 := s0 + maj in
 
+
     (temp1 + temp2) :> a' :> b' :> c' :> (d' + temp1) :> e' :> f' :> g' :> []
-  }}%expr%nat.
+  }}%nat.
 
   (* SHA-256 core *)
   Definition sha256_inner : Circuit _ [sha_block; Bit; sha_digest] (sha_digest ** Bit) :=
@@ -114,7 +116,7 @@ Unset Printing Notations.
 
       let k_i := `sha256_round_constants` round in
       let '(w0,w1, _, _, _, _, _, _
-           , _,w9, _, _, _, _,w14;_ ) := `vec_as_tuple (n:=16)` message_schedule in
+           , _,w9, _, _, _, _,w14;_ ) := `vec_as_tuple (n:=15)` message_schedule in
       let update_schedule := round >= `Constant (16:denote_type (BitVec _))` in
       let w16 :=
         if update_schedule
@@ -143,3 +145,9 @@ Unset Printing Notations.
 
 End Var.
 
+Section SanityCheck.
+  Require Import Cava.Semantics.
+  Time Compute step sha256_message_schedule_update tt (0,(3,(6,(9,tt)))).
+  Open Scope list_scope.
+  Time Compute step sha256_compress tt ([1;2;3;4;5;7;8;9],(1,(2,tt))).
+End SanityCheck.

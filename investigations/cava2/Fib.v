@@ -33,13 +33,13 @@ Section Var.
     fun a => (a, a)
   }}.
 
-  Definition fib_init sz := const (BitVec sz) (2^(N.of_nat sz)-1)%N.
+  Definition fib_init sz := val_of (BitVec sz) (2^(N.of_nat sz)-1)%N.
 
   Definition fibonacci {sz: nat}: Circuit (BitVec sz ** BitVec sz) [] (BitVec sz) := {{
     let/delay r1 :=
       let r2 := delay r1 initially (fib_init sz) in
       r1 + r2
-      initially (const (BitVec sz) 1%N) in
+      initially (val_of (BitVec sz) 1%N) in
     r1
   }}.
 End Var.
@@ -67,6 +67,7 @@ Definition spec_of_fibonacci (sz : nat) (input : list unit) : list N
 Lemma fork2_step A state input : step (fork2 (A:=A)) state (input, tt) = (tt, (input, input)).
 Proof. reflexivity. Qed.
 Open Scope N.
+
 
 Lemma fibonacci_step sz state input :
   step (fibonacci (sz:=sz)) state input

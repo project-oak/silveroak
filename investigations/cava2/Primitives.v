@@ -30,7 +30,7 @@ Inductive UnaryPrim : type -> type -> Type :=
 | UnVecRotateRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
 | UnVecShiftRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
 
-| UnVecToTuple: forall {t n}, UnaryPrim (Vec t n) (ntuple t n)
+| UnVecToTuple: forall {t n}, UnaryPrim (Vec t (S n)) (ntuple t n)
 
 | UnBitVecNot: forall {n}, UnaryPrim (BitVec n) (BitVec n)
 | UnNot: UnaryPrim Bit Bit
