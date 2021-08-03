@@ -85,7 +85,7 @@ Fixpoint step {i s o} (c : Circuit s i o)
     (tt, v)
   | UnaryOp op x => fun _ _ => (tt, unary_semantics op x)
   | BinaryOp op x y => fun _ _ => (tt, binary_semantics op x y)
-  | TernaryOp op x y z => fun _ _ => (tt, ternnary_semantics op x y z)
+  | TernaryOp op x y z => fun _ _ => (tt, ternary_semantics op x y z)
   end.
 
 Fixpoint reset_state {i s o} (c : Circuit (var:=denote_type) s i o) : denote_type s :=

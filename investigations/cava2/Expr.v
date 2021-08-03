@@ -22,6 +22,8 @@ Require Import Coq.Strings.String.
 Require Import Cava.Types.
 Require Import Cava.Primitives.
 
+Local Open Scope N.
+
 Definition tvar : Type := type -> Type.
 Existing Class tvar.
 
@@ -123,8 +125,6 @@ End ExprNotations.
 
 Section Var.
   Context {var : tvar}.
-
-  Local Open Scope N.
 
   Definition val_of t : denote_type t -> denote_type t := id.
   Definition val_N {sz}: N -> denote_type (BitVec sz) := id.

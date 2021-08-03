@@ -24,6 +24,8 @@ Require Import Cava.Types.
 Require Import Cava.Expr.
 Require Import Cava.Semantics.
 
+Local Open Scope N.
+
 Section Var.
   Import ExprNotations.
   Import PrimitiveNotations.
@@ -33,13 +35,13 @@ Section Var.
     fun a => (a, a)
   }}.
 
-  Definition fib_init sz := val_of (BitVec sz) (2^(N.of_nat sz)-1)%N.
+  Definition fib_init sz := val_of (BitVec sz) (2^(N.of_nat sz)-1).
 
   Definition fibonacci {sz: nat}: Circuit (BitVec sz ** BitVec sz) [] (BitVec sz) := {{
     let/delay r1 :=
       let r2 := delay r1 initially (fib_init sz) in
       r1 + r2
-      initially (val_of (BitVec sz) 1%N) in
+      initially (val_of (BitVec sz) 1) in
     r1
   }}.
 End Var.
@@ -59,14 +61,13 @@ Fixpoint fibonacci_nat (n : nat) :=
     | 0 => 1
     | S p => fibonacci_nat p + f_m
     end
-  end.
+  end%nat.
 
 Definition spec_of_fibonacci (sz : nat) (input : list unit) : list N
   := map (fun n => N.of_nat (fibonacci_nat n) mod (2 ^ N.of_nat sz))%N (seq 0 (List.length input)).
 
 Lemma fork2_step A state input : step (fork2 (A:=A)) state (input, tt) = (tt, (input, input)).
 Proof. reflexivity. Qed.
-Open Scope N.
 
 
 Lemma fibonacci_step sz state input :
@@ -112,7 +113,7 @@ Lemma fibonacci_correct sz input :
   simulate (fibonacci (sz:=sz)) input = spec_of_fibonacci sz input.
 Proof.
   cbv [simulate]. rewrite fold_left_accumulate_to_seq with (default:=tt).
-  assert (2 ^ (N.of_nat sz) <> 0)%N by (apply N.pow_nonzero; lia).
+  assert (2 ^ (N.of_nat sz) <> 0) by (apply N.pow_nonzero; lia).
   eapply fold_left_accumulate_invariant_seq with (I:=fibonacci_invariant (sz:=sz)).
   { cbv [fibonacci_invariant]. ssplit; reflexivity. }
   { cbv [fibonacci_invariant].

@@ -28,21 +28,19 @@ Require Import Cava.TLUL.
 Import ExprNotations.
 Import PrimitiveNotations.
 
+Local Open Scope N.
+
 Section Var.
   Import ExprNotations.
   Context {var : tvar}.
 
-  Definition hmac_register_count := 27.
-  Definition hmac_register_index := 5.
+  Definition hmac_register_count := 27%nat.
+  Definition hmac_register_index := 5%nat.
   Definition hmac_register := BitVec hmac_register_index.
-
-  Local Open Scope N.
 
   Definition REG_INTR_STATE := Constant (0: denote_type hmac_register).
   Definition REG_CMD := Constant (5: denote_type hmac_register).
 
-  Unset Printing Notations.
-  Program
   Definition hmac_top : Circuit _ [tl_h2d_t] tl_d2h_t := {{
     fun incoming_tlp =>
 

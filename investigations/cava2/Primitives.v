@@ -141,7 +141,7 @@ Fixpoint replace {A} n a (ls: list A): list A :=
     end
   end%list.
 
-Definition ternnary_semantics {x y z r} (prim: TernaryPrim x y z r)
+Definition ternary_semantics {x y z r} (prim: TernaryPrim x y z r)
   : denote_type x -> denote_type y -> denote_type z -> denote_type r :=
   match prim in TernaryPrim x y z r return denote_type x -> denote_type y -> denote_type z -> denote_type r with
   | TernVecReplace => fun ls i x => simple_denote_to_denote (t:=Vec _ _ )
