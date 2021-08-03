@@ -21,11 +21,11 @@ Follow the [SilverOak README](https://github.com/project-oak/silveroak) to setup
 
 **Important Directories:**
 
-> :warning: We are currently work on the latest OpenTitan `master` branch instead of the tagged submodule.
+> :warning: All the firmware except for AES is based on the latest OpenTitan `master` branch instead of the tagged submodule.
 
 * `opentitan/sw/device/silicon_creator/lib/drivers`: main sources to transcribe
 * `silveroak/third_party/bedrock2`: tagged bedrock2 submodule
-* `silveroak/investigation/bedrock2`: bedrock sources (this project)
+* `silveroak/firmware`: bedrock2 sources (this project)
 
 Following table summarizes the status of each driver.
 

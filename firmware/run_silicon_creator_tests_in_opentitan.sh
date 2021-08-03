@@ -18,7 +18,7 @@ fi
 
 DEVICE_NAME=$1
 
-# this script lives in silveroak/investigations/bedrock2, so we can rely on ${BASH_SOURCE[0]} to find that directory
+# this script lives in silveroak/firmware, so we can rely on ${BASH_SOURCE[0]} to find that directory
 BEDROCK2_EXPERIMENTS="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 make -C $BEDROCK2_EXPERIMENTS

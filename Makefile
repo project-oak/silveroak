@@ -25,7 +25,7 @@
 # make clean
 
 SUBDIRS = third_party cava tests examples silveroak-opentitan \
-	  examples/xilinx tests/xilinx demos
+	  examples/xilinx tests/xilinx demos firmware
 
 .PHONY: all coq minimize-requires clean update-third_party subdirs $(SUBDIRS)
 
@@ -97,3 +97,6 @@ examples/xilinx : examples
 
 # silveroak-opentitan depends on cava
 silveroak-opentitan : cava
+
+# firmware depends on cava
+firmware : cava
