@@ -23,7 +23,7 @@ Require Import Cava.Types.
 
 Import ListNotations.
 
-(* Primitives will require both semantic and netlist implementations *)
+(* Primitives have both semantic and netlist implementations *)
 Inductive UnaryPrim : type -> type -> Type :=
 | UnVecSlice: forall {t n} (start len: nat), UnaryPrim (Vec t n) (Vec t len)
 
@@ -111,10 +111,7 @@ Definition binary_semantics {x y r} (prim: BinaryPrim x y r)
   | BinBitAnd => andb
   | BinBitOr => orb
 
-  | BinBitVecGte => fun x y =>
-    (* let x' := denote_to_denote1 x in *)
-    (* let y' := denote_to_denote1 y in *)
-    (y <=? x)%N
+  | BinBitVecGte => fun x y => (y <=? x)%N
 
   | @BinBitVecXor n =>
     via_simple2 (a:= Vec Bit n) (b:= Vec Bit n) (c:=Vec Bit n)
@@ -122,11 +119,7 @@ Definition binary_semantics {x y r} (prim: BinaryPrim x y r)
   | @BinBitVecAnd n =>
     via_simple2 (a:= Vec Bit n) (b:= Vec Bit n) (c:=Vec Bit n)
     (fun x y => map (fun '(x,y) => andb x y) (combine x y))
-  | @BinBitVecAddU n => fun x y =>
-    (* let x' := denote_to_denote1 x in *)
-    (* let y' := denote_to_denote1 y in *)
-    (* denote1_to_denote ((x' + y') mod (2 ^ (N.of_nat n)): denote1_type (BitVec n))%N *)
-    ((x + y) mod (2 ^ (N.of_nat n)))%N
+  | @BinBitVecAddU n => fun x y => ((x + y) mod (2 ^ (N.of_nat n)))%N
 
   | @BinVecIndex t n i =>
     fun x n => simple_denote_to_denote (nth (N.to_nat n) (denote_to_simple_denote x) simple_default)

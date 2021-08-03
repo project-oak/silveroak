@@ -58,14 +58,12 @@ Section Vars.
   | UnaryOp : forall {x r}, UnaryPrim x r -> var x -> Circuit [] [] r
   | BinaryOp : forall {x y r}, BinaryPrim x y r -> var x -> var y -> Circuit [] [] r
   | TernaryOp : forall {x y z r}, TernaryPrim x y z r -> var x -> var y -> var z -> Circuit [] [] r
-
   .
 End Vars.
 
 Declare Scope expr_scope.
 Declare Custom Entry expr.
 Delimit Scope expr_scope with expr.
-
 
 Module ExprNotations.
   (* Escaping *)
@@ -155,6 +153,7 @@ Section Var.
   }.
 
 End Var.
+
 Existing Instance bit_bitlike.
 Existing Instance bitvec_bitlike.
 
@@ -260,6 +259,10 @@ Module PrimitiveNotations.
     {{ fun vec index => `BinaryOp BinVecIndex vec index` }}.
   Definition vec_as_tuple {var t n}: Circuit (var:=var) [] [Vec t (S n)] (ntuple t n) :=
     {{ fun vec => `UnaryOp UnVecToTuple vec` }}.
+  Definition slice {var t n} (start length: nat): Circuit (var:=var) [] [Vec t n] (Vec t length) :=
+    {{ fun vec => `UnaryOp (UnVecSlice start length) vec` }}.
+  Definition replace {var t n i}: Circuit (var:=var) [] [Vec t n; BitVec i; t] (Vec t n) :=
+    {{ fun vec index val => `TernaryOp TernVecReplace vec index val` }}.
 
 End PrimitiveNotations.
 

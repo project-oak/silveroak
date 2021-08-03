@@ -39,7 +39,7 @@ Section Var.
   Definition sha_digest := Vec sha_word 8.
 
   (* SHA-256 message padding *)
-  Definition sha256_padder : Circuit _ [Bit; Vec (BitVec 8) 4; Bit; Bit] (sha_word ** Bit) := {{
+  Definition sha256_padder : Circuit _ [Bit; BitVec 32; Bit; Bit] (sha_block ** Bit) := {{
     fun data_valid data finish clear =>
     (* TODO *)
     `circuit_hole`
@@ -145,9 +145,9 @@ Section Var.
 
 End Var.
 
-Section SanityCheck.
-  Require Import Cava.Semantics.
-  Time Compute step sha256_message_schedule_update tt (0,(3,(6,(9,tt)))).
-  Open Scope list_scope.
-  Time Compute step sha256_compress tt ([1;2;3;4;5;7;8;9],(1,(2,tt))).
-End SanityCheck.
+(* Section SanityCheck. *)
+(*   Require Import Cava.Semantics. *)
+(*   Time Compute step sha256_message_schedule_update tt (0,(3,(6,(9,tt)))). *)
+(*   Open Scope list_scope. *)
+(*   Time Compute step sha256_compress tt ([1;2;3;4;5;7;8;9],(1,(2,tt))). *)
+(* End SanityCheck. *)

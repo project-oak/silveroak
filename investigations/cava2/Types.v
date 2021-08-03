@@ -39,6 +39,7 @@ Proof.
   apply Nat.eq_dec.
 Defined.
 
+(* simple_denote_type denotes all 'Vec's as lists *)
 Fixpoint simple_denote_type (t: type) :=
   match t with
   | Unit => unit
@@ -46,7 +47,6 @@ Fixpoint simple_denote_type (t: type) :=
   | Vec t n => list (simple_denote_type t)
   | Pair x y => (simple_denote_type x * simple_denote_type y)%type
   end.
-
 
 Fixpoint eqb_simple {t}: simple_denote_type t -> simple_denote_type t -> bool :=
   match t return simple_denote_type t -> simple_denote_type t -> bool with
@@ -57,7 +57,7 @@ Fixpoint eqb_simple {t}: simple_denote_type t -> simple_denote_type t -> bool :=
   | Pair x y => fun '(x1,y1) '(x2,y2) => andb (eqb_simple x1 x2) (eqb_simple y1 y2)
   end.
 
-(* *)
+(* simple_denote_type denotes 'BitVec's as N *)
 Fixpoint denote_type (t: type) :=
   match t with
   | Unit => unit
@@ -114,11 +114,6 @@ Fixpoint simple_denote_to_denote {t} : simple_denote_type t -> denote_type t :=
   | Pair x y => fun '(x,y) => (simple_denote_to_denote x, simple_denote_to_denote y)
   | _ => id
   end.
-
-Import EqNotations.
-
-(* Lemma tktk: forall t (Heq: denote_type t = simple_denote_type t), simple_denote_to_denote (t:=t) = rew Heq in id. *)
-(* Lemma tktk: forall t, (simple_denote_to_denote : t -> t) = id . *)
 
 Definition absorb_any (x y: type) :=
   match x, y with

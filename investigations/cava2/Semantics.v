@@ -88,7 +88,6 @@ Fixpoint step {i s o} (c : Circuit s i o)
   | TernaryOp op x y z => fun _ _ => (tt, ternnary_semantics op x y z)
   end.
 
-
 Fixpoint reset_state {i s o} (c : Circuit (var:=denote_type) s i o) : denote_type s :=
   match c in Circuit s i o return denote_type s with
   | Var _ => tt

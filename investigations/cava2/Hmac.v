@@ -36,9 +36,13 @@ Section Var.
   Definition hmac_register_index := 5.
   Definition hmac_register := BitVec hmac_register_index.
 
+  Local Open Scope N.
+
   Definition REG_INTR_STATE := Constant (0: denote_type hmac_register).
   Definition REG_CMD := Constant (5: denote_type hmac_register).
 
+  Unset Printing Notations.
+  Program
   Definition hmac_top : Circuit _ [tl_h2d_t] tl_d2h_t := {{
     fun incoming_tlp =>
 
@@ -69,13 +73,15 @@ Section Var.
         := `tlul_pack` (write_en && fifo_write) write_data write_mask cmd_process in
 
       let '(padded_block; padded_valid) := `sha256_padder` packer_valid packer_data cmd_process cmd_start in
-      (* TODO(blaxill): sha needs to block FIFO writes and process HMAC key first *)
-      let '(digest; digest_valid) := `sha256` padded_block padded_valid cmd_start in
 
+      (* TODO(blaxill): sha needs to block FIFO writes and process HMAC key first *)
+      let inital_digest := `Constant sha256_initial_digest` in
+      let '(digest; digest_valid) := `sha256_inner` padded_block padded_valid inital_digest in
       let next_digest := if digest_valid then digest else digest_buffer in
 
-      (next_digest, tl_o, nregisters) initially value_hole
+      (next_digest, tl_o, nregisters)
 
+      initially value_hole
     in tl_o
   }}.
 
