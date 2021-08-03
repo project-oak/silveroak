@@ -21,12 +21,12 @@ all:		coq
 _CoqProject:    $(shell find . -name '*.v' | sort)
 		@echo "INSTALLDEFAULTROOT = Bedrock2Experiments" > _CoqProject
 		@echo "-R . Bedrock2Experiments" >> _CoqProject
-		@echo "-R ../../cava/Cava Cava" >> _CoqProject
-		@echo "-R ../../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
-		@echo "-R ../../third_party/bedrock2/bedrock2/src/bedrock2 bedrock2" >> _CoqProject
-		@echo "-R ../../third_party/bedrock2/compiler/src/compiler compiler" >> _CoqProject
-		@echo "-R ../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
-		@echo "-R ../../third_party/bedrock2/deps/riscv-coq/src/riscv riscv" >> _CoqProject
+		@echo "-R ../cava/Cava Cava" >> _CoqProject
+		@echo "-R ../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
+		@echo "-R ../third_party/bedrock2/bedrock2/src/bedrock2 bedrock2" >> _CoqProject
+		@echo "-R ../third_party/bedrock2/compiler/src/compiler compiler" >> _CoqProject
+		@echo "-R ../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
+		@echo "-R ../third_party/bedrock2/deps/riscv-coq/src/riscv riscv" >> _CoqProject
 		@printf '%s\n' $^ >> _CoqProject
 
 Makefile.coq:	_CoqProject
