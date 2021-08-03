@@ -49,7 +49,6 @@ Section Proof.
     program_logic_goal_for_function! bitfield_field32_read.
   Proof.
     repeat straightline.
-    eexists; ssplit; repeat straightline_with_map_lookup.
     repeat split; try reflexivity.
   Qed.
 

@@ -32,37 +32,33 @@ Definition post_main
      * scalar (word.of_Z output_ptr) (proc input)
      * R)%sep m'.
 
-Lemma main_correct
-      fs input output_placeholder
-      R (t : trace) m l :
+Lemma main_correct fs input output_placeholder R (t : trace) m :
   (scalar (word.of_Z input_ptr) input
    * scalar (word.of_Z output_ptr) output_placeholder
    * R)%sep m ->
   execution t IDLE ->
   WeakestPrecondition.cmd
     (WeakestPrecondition.call (put_wait_get :: fs))
-    main_body t m l
-    (fun t' m' _ => post_main input output_placeholder R t' m').
+    main_body t m map.empty
+    (fun t' m' (_: ProgramSemantics32.locals) => post_main input output_placeholder R t' m').
 Proof.
   intros.
   repeat straightline.
   pose proof (put_wait_get_correct fs).
   straightline_call; [ eassumption .. | ].
-  repeat straightline_with_map_lookup.
-  eexists; split; repeat straightline_with_map_lookup; [ ].
+  repeat straightline.
   split; [ assumption | ].
   ecancel_assumption.
 Qed.
 
-Lemma exec_put_wait_get fs input output_placeholder R
-      (t : trace) (m : mem) (l : ProgramSemantics32.locals) mc :
+Lemma exec_put_wait_get fs input output_placeholder R (t : trace) (m : mem) mc :
   (scalar (word.of_Z input_ptr) input
    * scalar (word.of_Z output_ptr) output_placeholder
    * R)%sep m ->
   execution t IDLE ->
   NoDup (map fst (main :: put_wait_get :: fs)) ->
   exec (map.of_list (main :: put_wait_get :: fs))
-       main_body t m l mc
+       main_body t m map.empty mc
        (fun t' m' _ _ => post_main input output_placeholder R t' m').
 Proof.
   intros. apply sound_cmd; [ assumption | ].

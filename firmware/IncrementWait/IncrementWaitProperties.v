@@ -236,11 +236,7 @@ Section Proofs.
       rewrite Z.land_0_l, Z.eqb_refl in *.
       congruence. }
     { (* proof that invariant holds at loop start *)
-      ssplit; [ | map_lookup .. | assumption ].
-      cbn [execution]. eexists; ssplit; [ eassumption | ].
-      cbv [step write_step]. change (if (_: bool) then ?x else _) with x.
-      exists VALUE, 4%nat; ssplit;
-        cbv [state_machine.write_step increment_wait_state_machine write_step]; eauto. }
+      cbn [execution]. eauto. }
     { (* invariant holds through loop (or postcondition holds, if loop breaks) *)
       repeat straightline.
 
