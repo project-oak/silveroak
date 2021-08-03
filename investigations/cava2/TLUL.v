@@ -94,10 +94,7 @@ Section Var.
   Import ExprNotations.
   Context {var : tvar}.
 
-  Definition False := Constant (false: denote_type Bit).
-  Definition _0 {sz} := Constant (0: denote_type (BitVec sz)).
-  Definition _1 {sz} := Constant (1: denote_type (BitVec sz)).
-  Definition _2 {sz} := Constant (2: denote_type (BitVec sz)).
+  Local Open Scope N.
 
   (* typedef enum logic [2:0] { *)
   (*   PutFullData    = 3'h 0, *)
