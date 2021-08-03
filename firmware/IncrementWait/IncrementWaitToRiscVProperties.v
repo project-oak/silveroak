@@ -23,27 +23,22 @@ Require Import Bedrock2Experiments.IncrementWait.IncrementWaitToRiscV.
 Import Syntax.Coercions.
 Local Open Scope string_scope.
 
-Local Hint Resolve FlattenExpr.mk_Semantics_params_ok FlattenExpr_hyps : typeclass_instances.
-
 Definition post_main
-           (input output_placeholder : Semantics.word) R
-           (t' : trace) (m' : Semantics.mem) : Prop :=
+           (input output_placeholder : word) R
+           (t' : trace) (m' : mem) : Prop :=
   (* trace is valid and leads to IDLE state *)
-  execution (p := state_machine_parameters) t' IDLE
+  execution t' IDLE
   /\ (scalar (word.of_Z input_ptr) input
      * scalar (word.of_Z output_ptr) (proc input)
      * R)%sep m'.
 
-(* https://github.com/mit-plv/bedrock2/issues/193 *)
-Global Hint Mode map.map - - : typeclass_instances.
-
 Lemma main_correct
       fs input output_placeholder
-      R (t : @trace semantics_parameters) m l :
+      R (t : trace) m l :
   (scalar (word.of_Z input_ptr) input
    * scalar (word.of_Z output_ptr) output_placeholder
    * R)%sep m ->
-  execution (p := state_machine_parameters) t IDLE ->
+  execution t IDLE ->
   WeakestPrecondition.cmd
     (WeakestPrecondition.call (put_wait_get :: fs))
     main_body t m l
@@ -56,51 +51,22 @@ Proof.
   repeat straightline_with_map_lookup.
   eexists; split; repeat straightline_with_map_lookup; [ ].
   split; [ assumption | ].
-
-  (* change the implicit arguments of scalar to match hypothesis *)
-  lazymatch goal with
-  | H : sep _ _ ?m |- sep _ _ ?m =>
-    lazymatch type of H with
-    | context [(@scalar ?a1 ?b1 ?c1)] =>
-      lazymatch goal with
-      | |- context [(@scalar ?a2 ?b2 ?c2)] =>
-        change a2 with a1; change b2 with b1; change c2 with c1
-      end
-    end
-  end.
-  subst a2.
-  use_sep_assumption.
-  cancel.
-  cancel_seps_at_indices 0%nat 0%nat. 1: reflexivity.
-  reflexivity.
+  ecancel_assumption.
 Qed.
 
 Lemma exec_put_wait_get fs input output_placeholder R
-      (t : trace) (m : Semantics.mem) (l : Semantics.locals) mc :
+      (t : trace) (m : mem) (l : ProgramSemantics32.locals) mc :
   (scalar (word.of_Z input_ptr) input
    * scalar (word.of_Z output_ptr) output_placeholder
    * R)%sep m ->
-  execution (p := state_machine_parameters) t IDLE ->
+  execution t IDLE ->
   NoDup (map fst (main :: put_wait_get :: fs)) ->
   exec (map.of_list (main :: put_wait_get :: fs))
        main_body t m l mc
        (fun t' m' _ _ => post_main input output_placeholder R t' m').
 Proof.
   intros. apply sound_cmd; [ assumption | ].
-  assert (main_correct': forall
-      fs input output_placeholder
-      R (t : @trace semantics_parameters) m l,
-  (scalar (word.of_Z input_ptr) input
-   * scalar (word.of_Z output_ptr) output_placeholder
-   * R)%sep m ->
-  execution (p := state_machine_parameters) t IDLE ->
-  WeakestPrecondition.cmd
-    (WeakestPrecondition.call (main :: put_wait_get :: fs))
-    main_body t m l
-    (fun t' m' _ => post_main input output_placeholder R t' m')). {
-    eapply main_correct. (* relying on conversion to prepend `main` to list of functions *)
-  }
-  eapply main_correct'.
+  eapply main_correct. (* relying on conversion to prepend `main` to list of functions *)
   all: eauto.
 Qed.
 
@@ -115,8 +81,8 @@ Definition main_relative_pos : Z.
       end.
 Defined.
 
-Definition stack_start: Utility.word := word.of_Z (8*2^10).
-Definition stack_pastend: Utility.word := word.of_Z (16*2^10).
+Definition stack_start: word := word.of_Z (8*2^10).
+Definition stack_pastend: word := word.of_Z (16*2^10).
 
 Lemma funcs_valid: ExprImp.valid_funs (map.of_list funcs).
 Proof.
@@ -130,8 +96,8 @@ Qed.
 
 Lemma put_wait_get_asm_correct
       input output_placeholder R Rdata Rexec
-      (p_functions p_call : Utility.word)
-      (mem : Pipeline.mem)
+      (p_functions p_call : word)
+      (mem : mem)
       (initial : MetricRiscvMachine) :
   (* given that the input and output pointers are valid and the input pointer
      points to input... *)
@@ -139,7 +105,7 @@ Lemma put_wait_get_asm_correct
    * scalar (word.of_Z output_ptr) output_placeholder
    * R)%sep mem ->
   (* ...and the trace so far leads to an IDLE state... *)
-  execution (p := state_machine_parameters) (getLog initial) IDLE ->
+  execution (getLog initial) IDLE ->
   (* ...and the current machine state is OK... *)
   let instrs := fst (fst (put_wait_get_compile_result)) in
   LowerPipeline.machine_ok
@@ -160,7 +126,7 @@ Lemma put_wait_get_asm_correct
                   instrs p_call (word.add p_call (word.of_Z 4)) mem' Rdata Rexec final).
 Proof.
   intros.
-  pose proof @compiler_correct as P.
+  pose proof compiler_correct as P.
   specialize P with (functions := map.of_list funcs).
   specialize P with (mc:=bedrock2.MetricLogging.EmptyMetricLog).
   specialize P with (f_entry_name := main)
@@ -173,7 +139,8 @@ Proof.
                    end
   end.
   eapply P.
-  1: typeclasses eauto.
+  { eapply compile_ext_call_correct. }
+  { intros. reflexivity. }
   { exact funcs_valid. }
   { apply put_wait_get_compile_result_eq. }
   { rewrite !map.get_put_dec, map.get_empty.

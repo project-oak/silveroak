@@ -20,25 +20,17 @@ Require riscv.Utility.InstructionNotations.
 Import Syntax.Coercions.
 Local Open Scope string_scope.
 
+Instance word: word.word 32 := Naive.word 32.
+Instance mem: map.map word Byte.byte := SortedListWord.map _ _.
+Existing Instance SortedListString.map.
+Existing Instance SortedListString.ok.
+
 (* TODO: we actually need a different word implementation than Naive here; in
    corner cases such as a shift argument greater than the width of the word,
    the naive implementation violates the riscv_ok requirements *)
-Axiom naive_riscv_ok : word.riscv_ok (Naive.word 32).
-Instance p : MMIO.parameters :=
-  {| MMIO.word := Naive.word 32;
-     MMIO.word_ok := Naive.word32_ok;
-     MMIO.word_riscv_ok := naive_riscv_ok;
-     MMIO.mem := SortedListWord.map _ _;
-     MMIO.mem_ok := _;
-     MMIO.locals := Zkeyed_map _;
-     MMIO.locals_ok := Zkeyed_map_ok _;
-     MMIO.funname_env := SortedListString.map;
-     MMIO.funname_env_ok := SortedListString.ok;
-  |}.
+Instance naive_riscv_ok : word.riscv_ok word. Admitted.
 
-Existing Instances Words32 compilation_params FlatToRiscv_params.
-
-Definition heap_start: Utility.word := word.of_Z (4*2^10).
+Definition heap_start: word := word.of_Z (4*2^10).
 
 (* dummy base address -- just past end of stack *)
 Definition base_addr : Z := 16 * 2^10.
@@ -67,16 +59,18 @@ Definition main : func :=
 
 Definition funcs := [main; put_wait_get].
 
-Definition put_wait_get_compile_result_o := Eval compute in compile (map.of_list funcs).
+Definition put_wait_get_compile_result_o :=
+  Eval vm_compute in compile compile_ext_call (map.of_list funcs).
 
-Definition put_wait_get_compile_result: list Decode.Instruction * FlatToRiscvDef.funname_env Z * Z.
+Definition put_wait_get_compile_result: list Decode.Instruction * (SortedListString.map Z) * Z.
   let r := eval unfold put_wait_get_compile_result_o in put_wait_get_compile_result_o in
       match r with
       | Some ?x => exact x
       end.
 Defined.
 
-Lemma put_wait_get_compile_result_eq: compile (map.of_list funcs) = Some put_wait_get_compile_result.
+Lemma put_wait_get_compile_result_eq:
+  compile compile_ext_call (map.of_list funcs) = Some put_wait_get_compile_result.
 Proof. reflexivity. Qed.
 
 Definition put_wait_get_asm := Eval compute in fst (fst put_wait_get_compile_result).

@@ -4,6 +4,7 @@ Require coqutil.Datatypes.String coqutil.Map.SortedList.
 Require coqutil.Map.SortedListString coqutil.Map.SortedListWord.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Word.Interface.
+Require Import coqutil.Word.Bitwidth32.
 Require Import Bedrock2Experiments.LibBase.MMIOLabels.
 
 Import String List.ListNotations.
@@ -11,10 +12,8 @@ Local Open Scope string_scope. Local Open Scope Z_scope. Local Open Scope list_s
 
 (* Loosely based on bedrock2/FE310CSemantics.v *)
 
-Module parameters.
-  Class parameters
-        {width} {word : Interface.word.word width}
-        {mem : Interface.map.map word Byte.byte} :=
+Module state_machine.
+  Class parameters{word: word.word 32} :=
     { state : Type;
       register : Type;
       is_initial_state : state -> Prop;
@@ -23,13 +22,9 @@ Module parameters.
       reg_addr : register -> word;
       isMMIOAddr : word -> Prop;
     }.
-  Global Arguments parameters : clear implicits.
 
-  Class ok {width word mem} (p : parameters width word mem) :=
-    { width_ok : width = 32 \/ width = 64;
-      word_ok :> word.ok word; (* for impl of mem below *)
-      mem_ok :> Interface.map.ok mem; (* for impl of mem below *)
-      reg_addr_unique : forall r1 r2, reg_addr r1 = reg_addr r2 -> r1 = r2;
+  Class ok{word: word.word 32}(M: parameters) :=
+    { reg_addr_unique : forall r1 r2, reg_addr r1 = reg_addr r2 -> r1 = r2;
       read_step_isMMIOAddr : forall sz s r v s',
           read_step sz s r v s' -> forall a: word,
             word.unsigned (reg_addr r) <= word.unsigned a < word.unsigned (reg_addr r) + Z.of_nat sz ->
@@ -64,16 +59,13 @@ Module parameters.
           write_step sz s r v s' ->
           word.unsigned v < 2 ^ (Z.of_nat sz * 8);
     }.
-End parameters.
-Notation parameters := parameters.parameters.
+End state_machine.
+Global Coercion state_machine.state : state_machine.parameters >-> Sortclass.
 
 Section WithParameters.
-  Import parameters.
-  Context {width word mem} {p : parameters width word mem}
-          {p_ok : parameters.ok p}.
-
-  Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
-  Local Notation bedrock2_trace := (list bedrock2_event).
+  Import state_machine.
+  Context {word: word.word 32} {mem: map.map word Byte.byte}
+          {M: state_machine.parameters} {M_ok: state_machine.ok M}.
 
   Definition step
              (action : string) (s : state) (args rets : list word) (s' : state)
@@ -96,7 +88,7 @@ Section WithParameters.
 
   (* Computes the Prop that must hold for this state to be accurate after the
      trace *)
-  Fixpoint execution (t : bedrock2_trace) (s : state) : Prop :=
+  Fixpoint execution (t : trace) (s : state) : Prop :=
     match t with
     | [] => is_initial_state s
     | (_,action,args,(_,rets)) :: t =>
@@ -105,11 +97,12 @@ Section WithParameters.
       /\ step action prev_state args rets s
     end.
 
-  Definition ext_spec (t : bedrock2_trace)
+  Global Instance ext_spec: ExtSpec := fun
+             (t : trace)
              (mGive : mem)
              (action : string)
              (args: list word)
-             (post: mem -> list word -> Prop) :=
+             (post: mem -> list word -> Prop) =>
     if String.prefix WRITE_PREFIX action
     then
       (exists r addr val sz,
@@ -142,22 +135,10 @@ Section WithParameters.
                         post Interface.map.empty [val]))
                else False.
 
-  Global Instance semantics_parameters  : Semantics.parameters :=
-    {|
-    Semantics.width := width;
-    Semantics.word := word;
-    Semantics.mem := mem;
-    Semantics.locals := SortedListString.map _;
-    Semantics.env := SortedListString.map _;
-    Semantics.ext_spec := ext_spec;
-    |}.
-
-  Global Instance ext_spec_ok : ext_spec.ok _.
+  Global Instance ext_spec_ok : ext_spec.ok ext_spec.
   Proof.
     split;
-    cbv [ext_spec Semantics.ext_spec semantics_parameters
-    Morphisms.Proper Morphisms.respectful Morphisms.pointwise_relation Basics.impl
-    ];
+    cbv [ext_spec Morphisms.Proper Morphisms.respectful Morphisms.pointwise_relation Basics.impl];
     intros.
     all :
     repeat match goal with
@@ -173,20 +154,6 @@ Section WithParameters.
            | _ => progress subst
            end; eauto 20 using Properties.map.same_domain_refl.
   Qed.
-
-  Global Instance ok : Semantics.parameters_ok semantics_parameters.
-  Proof.
-    split; cbv [env locals semantics_parameters]; try exact _.
-    { exact width_ok. }
-    { exact (SortedListString.ok _). }
-    { exact (SortedListString.ok _). }
-  Qed.
-
-  (* COPY-PASTE this *)
-  Add Ring wring : (Properties.word.ring_theory (word := word))
-        (preprocess [autorewrite with rew_word_morphism],
-         morphism (Properties.word.ring_morph (word := word)),
-         constants [Properties.word_cst]).
 
   Lemma read_step_isMMIOAddr0: forall sz s a v s',
       read_step sz s a v s' -> isMMIOAddr (reg_addr a).

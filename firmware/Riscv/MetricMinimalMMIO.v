@@ -29,7 +29,7 @@ Section Riscv.
   Import List.
   Import free.
 
-  Context {W: Words}.
+  Context {width: Z} {BW: Bitwidth width} {word: word width} {word_ok: word.ok word}.
   Context {Mem: map.map word byte}.
   Context {Registers: map.map Register word}.
 
@@ -77,8 +77,8 @@ Section Riscv.
   {
     Primitives.mcomp_sat := @free.interp _ _ _ interp_action;
     Primitives.is_initial_register_value x := True;
-    Primitives.nonmem_load := @Primitives.nonmem_load _ _ _ _ _ MinimalMMIOPrimitivesParams;
-    Primitives.nonmem_store := @Primitives.nonmem_store _ _ _ _ _ MinimalMMIOPrimitivesParams;
+    Primitives.nonmem_load := Primitives.nonmem_load (PrimitivesParams := MinimalMMIOPrimitivesParams);
+    Primitives.nonmem_store := Primitives.nonmem_store (PrimitivesParams := MinimalMMIOPrimitivesParams);
     Primitives.valid_machine mach :=
       map.undef_on mach.(getMem) isMMIOAddr /\
       PropSet.disjoint (PropSet.of_list mach.(getXAddrs)) isMMIOAddr;

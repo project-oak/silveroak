@@ -113,6 +113,7 @@ Require Import bedrock2.ZnWords.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
 Require Import Bedrock2Experiments.IncrementWait.Constants.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
+Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.MMIOToCava.
 
 Section WithParameters.
@@ -162,7 +163,7 @@ Section WithParameters.
   Set Printing Depth 100000.
 
   Global Instance cava_counter_satisfies_state_machine:
-    device_implements_state_machine counter_device state_machine_parameters.
+    device_implements_state_machine counter_device increment_wait_state_machine.
   Proof.
     eapply Build_device_implements_state_machine with (device_state_related := counter_related);
       intros.
@@ -202,7 +203,7 @@ Section WithParameters.
     - (* state_machine_read_to_device_read: *)
       (* simpler because device.maxRespDelay=1 *)
       unfold device.maxRespDelay, device.runUntilResp, device.state, device.run1, counter_device.
-      unfold StateMachineSemantics.parameters.read_step, state_machine_parameters in *.
+      unfold state_machine.read_step, increment_wait_state_machine in *.
       simp.
       unfold read_step in *.
       destruct r.
@@ -227,7 +228,7 @@ Section WithParameters.
           destruct Hp1 as [H | H].
           -- (* transition to DONE *)
              destruct H; subst.
-             simpl (StateMachineSemantics.parameters.reg_addr _).
+             simpl (state_machine.reg_addr _).
              unfold STATUS_ADDR, INCR_BASE_ADDR, word_to_bv, status_value, STATUS_DONE.
              rewrite !word.unsigned_of_Z. unfold word.wrap. simpl.
              inversion H0; subst.
@@ -257,7 +258,7 @@ Section WithParameters.
                    rewrite !word.unsigned_of_Z. reflexivity.
           -- (* stay BUSY *)
              destruct H as (n & ? & ? & ?); subst.
-             simpl (StateMachineSemantics.parameters.reg_addr _).
+             simpl (state_machine.reg_addr _).
              unfold STATUS_ADDR, INCR_BASE_ADDR, word_to_bv, status_value, STATUS_BUSY.
              rewrite !word.unsigned_of_Z. unfold word.wrap. simpl.
              inversion H0; subst.
@@ -287,7 +288,7 @@ Section WithParameters.
                    rewrite !word.unsigned_of_Z. reflexivity.
         * (* sH=DONE *)
           destruct Hp1. subst. inversion H0. subst.
-          simpl (StateMachineSemantics.parameters.reg_addr _).
+          simpl (state_machine.reg_addr _).
           unfold STATUS_ADDR, INCR_BASE_ADDR, word_to_bv, status_value, STATUS_DONE.
           cbn.
           rewrite !word.unsigned_of_Z. unfold word.wrap. cbn -[Vec.hd Vec.tl incrN].

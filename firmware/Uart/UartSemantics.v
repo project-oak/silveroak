@@ -23,31 +23,15 @@ Class circuit_behavior :=
   { ncycles_processing : nat
   }.
 
-Module parameters.
-  Class parameters :=
-    { word :> Interface.word.word 32;
-      mem :> Interface.map.map word Byte.byte;
-    }.
-  Class ok (p : parameters) :=
-    { word_ok :> word.ok word; (* for impl of mem below *)
-      mem_ok :> Interface.map.ok mem; (* for impl of mem below *)
-    }.
-
-End parameters.
-Notation parameters := parameters.parameters.
-
 Section WithParameters.
-  Import parameters.
-  Context {p : parameters} {p_ok : parameters.ok p}.
+  Context {word: word.word 32} {mem: map.map word Byte.byte}
+          {word_ok: word.ok word} {mem_ok: map.ok mem}.
   Context {circuit_spec : circuit_behavior}.
 
-  Add Ring wring : (Properties.word.ring_theory (word := parameters.word))
+  Add Ring wring : (Properties.word.ring_theory (word := word))
     (preprocess [autorewrite with rew_word_morphism],
-    morphism (Properties.word.ring_morph (word := parameters.word)),
+    morphism (Properties.word.ring_morph (word := word)),
     constants [Properties.word_cst]).
-
-  Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
-  Local Notation bedrock2_trace := (list bedrock2_event).
 
   Inductive Register : Set :=
   | INTR_STATE
@@ -162,27 +146,23 @@ Section WithParameters.
     | _ => False (* cannot write to other regs *)
     end.
 
+  Global Instance uart_state_machine : state_machine.parameters := {
+    state_machine.state := state ;
+    state_machine.register := Register;
+    state_machine.is_initial_state := eq IDLE;
+    state_machine.read_step sz s a v s' := sz = 4%nat /\ read_step s a v s' ;
+    state_machine.write_step sz s a v s' := sz = 4%nat /\ write_step s a v s';
+    state_machine.reg_addr := reg_addr;
+    state_machine.isMMIOAddr a :=
+      List.Exists (fun r =>
+        word.unsigned (reg_addr r) <= word.unsigned a < word.unsigned (reg_addr r) + 4
+      ) all_regs;
+  }.
 
-  Global Instance state_machine_parameters
-  : StateMachineSemantics.parameters 32 word mem :=
-    {| StateMachineSemantics.parameters.state := state ;
-       StateMachineSemantics.parameters.register := Register;
-       StateMachineSemantics.parameters.is_initial_state := eq IDLE ;
-       StateMachineSemantics.parameters.read_step sz s a v s' :=
-         sz = 4%nat /\ read_step s a v s' ;
-       StateMachineSemantics.parameters.write_step sz s a v s' :=
-         sz = 4%nat /\ write_step s a v s' ;
-       StateMachineSemantics.parameters.reg_addr := reg_addr ;
-       StateMachineSemantics.parameters.isMMIOAddr a :=
-         List.Exists (fun r =>
-           word.unsigned (reg_addr r) <= word.unsigned a < word.unsigned (reg_addr r) + 4
-         ) all_regs;
-    |}.
-  Global Instance state_machine_parameters_ok
-    : StateMachineSemantics.parameters.ok state_machine_parameters.
+  Global Instance uart_state_machine_ok : state_machine.ok uart_state_machine.
   Proof.
     constructor;
-      unfold parameters.isMMIOAddr; cbn;
+      unfold state_machine.isMMIOAddr; cbn;
       intros;
       try exact _;
       repeat match goal with

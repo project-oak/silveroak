@@ -52,7 +52,7 @@ Proof.
   { instantiate (2 := "main"). reflexivity. }
   { reflexivity. }
   { ZnWords. }
-  { refine (@WeakestPreconditionProperties.Proper_cmd _ StateMachineSemantics.ok _ _ _ _ _ _ _ _ _ _ _).
+  { refine (WeakestPreconditionProperties.Proper_cmd _ _ _ _ _ _ _ _ _ _ _).
     1: eapply WeakestPreconditionProperties.Proper_call.
     2: {
       eapply main_correct. 1: eassumption.

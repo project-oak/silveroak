@@ -48,7 +48,7 @@ Definition main : func :=
 Definition funcs : list func := [main; aes_encrypt].
 
 Derive aes_example_compile_result
-       SuchThat (compile (map.of_list (funcs ++ AesToRiscV.funcs))
+       SuchThat (compile compile_ext_call (map.of_list (funcs ++ AesToRiscV.funcs))
                  = Some aes_example_compile_result)
        As aes_example_compile_result_eq.
 Proof.

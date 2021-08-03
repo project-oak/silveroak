@@ -162,23 +162,21 @@ Section WithParams.
   Definition HMAC_MMIO_PAST_END: Z :=
     TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_MSG_FIFO_REG_OFFSET + HMAC_MSG_FIFO_SIZE_BYTES.
 
-  Global Instance state_machine_parameters: StateMachineSemantics.parameters 32 word mem := {|
-    StateMachineSemantics.parameters.state := state ;
-    StateMachineSemantics.parameters.register := word;
-    StateMachineSemantics.parameters.is_initial_state s :=
+  Global Instance hmac_state_machine : state_machine.parameters := {|
+    state_machine.state := state ;
+    state_machine.register := word;
+    state_machine.is_initial_state s :=
       match s with
       | IDLE digest_buffer _ => List.length digest_buffer = 8%nat
       | _ => False
       end;
-    StateMachineSemantics.parameters.read_step := read_step;
-    StateMachineSemantics.parameters.write_step := write_step;
-    StateMachineSemantics.parameters.reg_addr := id;
-    StateMachineSemantics.parameters.isMMIOAddr a :=
-      HMAC_MMIO_START <= word.unsigned a < HMAC_MMIO_PAST_END;
+    state_machine.read_step := read_step;
+    state_machine.write_step := write_step;
+    state_machine.reg_addr := id;
+    state_machine.isMMIOAddr a := HMAC_MMIO_START <= word.unsigned a < HMAC_MMIO_PAST_END;
   |}.
 
-  Global Instance state_machine_parameters_ok
-    : StateMachineSemantics.parameters.ok state_machine_parameters.
+  Global Instance hmac_state_machine_ok : state_machine.ok hmac_state_machine.
   Proof.
     constructor; cbn; unfold id; intros; try exact _;
       match goal with

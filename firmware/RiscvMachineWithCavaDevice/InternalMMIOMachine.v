@@ -20,6 +20,7 @@ Require Export riscv.Platform.MaterializeRiscvProgram.
 Require Export Bedrock2Experiments.RiscvMachineWithCavaDevice.ExtraRiscvMachine.
 Require Import coqutil.Z.Lia.
 Require Import coqutil.Map.Interface.
+Require Import coqutil.Word.Bitwidth32.
 Require Import riscv.Platform.Sane.
 
 Local Open Scope Z_scope.
@@ -112,11 +113,6 @@ End WithParams. End word.
 Section WithParams.
   Context {word: Interface.word.word 32}.
   Context {word_ok: word.ok word}.
-
-  Global Instance mkWords: Words := {|
-    Utility.word := word;
-    Utility.width_cases := or_introl eq_refl;
-  |}.
 
   Context {D: device}.
   Context {mem: map.map word byte}.

@@ -31,15 +31,6 @@ Import Syntax.Coercions.
 Import ListNotations.
 Local Open Scope string_scope.
 
-Local Hint Resolve FlattenExpr.mk_Semantics_params_ok FlattenExpr_hyps : typeclass_instances.
-Existing Instances constant_literals spec_of_aes_encrypt.
-
-(* add a stronger hint for state_machine_parameters and state_machine_parameters_ok *)
-Local Hint Extern 1 (StateMachineSemantics.parameters _ _ _) =>
-exact state_machine_parameters : typeclass_instances.
-Local Hint Extern 1 (StateMachineSemantics.parameters.ok _) =>
-exact state_machine_parameters_ok : typeclass_instances.
-
 Instance consts_ok : aes_constants_ok consts.
 Proof.
   apply Build_aes_constants_ok with (mode_size:=3) (key_len_size:=3).
@@ -68,30 +59,13 @@ Proof.
     vm_compute; ssplit; intuition congruence. }
 Qed.
 
-Instance Pipeline_assumptions : Pipeline.assumptions.
-Proof.
-  constructor.
-  { apply MMIO.word_riscv_ok. }
-  { exact MMIO.funname_env_ok. }
-  { exact MMIO.locals_ok. }
-  { exact PR. }
-  { exact FlatToRiscv_hyps. }
-  { pose proof state_machine_parameters_ok.
-    (* TODO why does
-    Existing Instance state_machine_parameters_ok.
-    not work? *)
-    exact (ext_spec_ok (p := @state_machine_parameters aes_parameters consts aes_timing)). }
-  { exact (compile_ext_call_correct (state_machine_parameters_ok:=state_machine_parameters_ok)). }
-  { reflexivity. }
-Qed.
-
 Definition post_main
            (in0 in1 in2 in3 iv0 iv1 iv2 iv3
                 key0 key1 key2 key3 key4 key5 key6 key7
-            : parameters.word) R
-           (t' : trace) (m' : Semantics.mem) : Prop :=
+            : word) R
+           (t' : trace) (m' : mem) : Prop :=
   let '(out0,out1,out2,out3) :=
-      parameters.aes_spec
+      aes_spec
         false (key0, key1, key2, key3, key4, key5, key6, key7)
         (iv0, iv1, iv2, iv3) (in0, in1, in2, in3) in
   (* trace is valid and leads to IDLE state *)
@@ -104,17 +78,11 @@ Definition post_main
      * array scalar32 (word.of_Z 4) (word.of_Z output_ptr) [out0;out1;out2;out3]
      * R)%sep m'.
 
-Local Ltac simplify_implicits :=
-  change (FlattenExpr.mk_Semantics_params
-          Pipeline.FlattenExpr_parameters) with semantics_parameters in *;
-  change Semantics.width with 32 in *;
-  change Semantics.word with parameters.word in *.
-
 Lemma main_correct
       fs in0 in1 in2 in3 iv0 iv1 iv2 iv3
       key0 key1 key2 key3 key4 key5 key6 key7
       output_placeholder
-      R (t : @trace semantics_parameters) m l :
+      R (t : trace) m l :
   (array scalar32 (word.of_Z 4) (word.of_Z input_data_ptr) [in0;in1;in2;in3]
    * array scalar32 (word.of_Z 4) (word.of_Z input_key_ptr)
            [key0;key1;key2;key3;key4;key5;key6;key7]
@@ -123,7 +91,7 @@ Lemma main_correct
    * R)%sep m ->
   length output_placeholder = 4%nat ->
   spec_of_aes_encrypt fs ->
-  execution (p:=state_machine_parameters) t UNINITIALIZED ->
+  execution t UNINITIALIZED ->
   WeakestPrecondition.cmd
     (WeakestPrecondition.call fs)
     main_body t m l
@@ -133,30 +101,18 @@ Lemma main_correct
                  R t' m').
 Proof.
   intros. repeat straightline.
-  straightline_call. 1,2,3: eassumption.
-  (* `ecancel_assumption` gets severely stuck in PARAMRECORDS problems, but
-     fortunately `eassumption` just works. *)
-  cbv [post_main]. simplify_implicits.
+  straightline_call. 1: ecancel_assumption. 1,2: eassumption.
+  cbv [post_main].
   repeat destruct_one_match_hyp.
   repeat straightline.
-  ssplit; [ solve [eauto] | ].
-  (* TODO fix PARAMRECORDS issues so that ecancel_assumption works again *)
-  use_sep_assumption.
-  cancel.
-  cancel_seps_at_indices 0%nat 0%nat; [reflexivity|].
-  cancel_seps_at_indices 0%nat 1%nat; [reflexivity|].
-  cancel_seps_at_indices 0%nat 0%nat; [reflexivity|].
-  cancel_seps_at_indices 0%nat 0%nat; [reflexivity|].
-  reflexivity.
-  Unshelve.
-  all: pose proof state_machine_parameters_ok; exact ok.
+  ssplit; [ solve [eauto] | ecancel_assumption ].
 Qed.
 
 Lemma exec_main
       fs in0 in1 in2 in3 iv0 iv1 iv2 iv3
       key0 key1 key2 key3 key4 key5 key6 key7
       output_placeholder R
-      (t : trace) (m : Semantics.mem) (l : Semantics.locals) mc :
+      (t : trace) (m : mem) l mc :
   (array scalar32 (word.of_Z 4) (word.of_Z input_data_ptr) [in0;in1;in2;in3]
    * array scalar32 (word.of_Z 4) (word.of_Z input_key_ptr)
            [key0;key1;key2;key3;key4;key5;key6;key7]
@@ -193,8 +149,8 @@ Lemma aes_example_asm_correct
       in0 in1 in2 in3 iv0 iv1 iv2 iv3
       key0 key1 key2 key3 key4 key5 key6 key7
       output_placeholder R Rdata Rexec
-      (p_functions p_call : Utility.word)
-      (mem : Pipeline.mem)
+      (p_functions p_call : word)
+      (mem : mem)
       (initial : MetricRiscvMachine) :
   (* given that the input and output pointers are valid and the input pointers
      point to the in, key, and iv values... *)
@@ -238,6 +194,8 @@ Proof.
          (postH:=post_main
                    in0 in1 in2 in3 iv0 iv1 iv2 iv3
                    key0 key1 key2 key3 key4 key5 key6 key7 R).
+  { exact compile_ext_call_correct. }
+  { intros. reflexivity. }
   { cbv [ExprImp.valid_funs]. intros *.
     cbv [map.of_list
            List.app
