@@ -1618,10 +1618,6 @@ Section Proofs.
 
     (* store result in memory *)
     ring_simplify_store_addr.
-    (* the following line is in [straightline] but needs simplify_implicits for
-       it to work *)
-    eapply store_four_of_sep;
-      [ solve [ ecancel_assumption ] |  ].
     repeat straightline.
 
     (* i = 1 *)
@@ -1632,10 +1628,6 @@ Section Proofs.
 
     (* store result in memory *)
     ring_simplify_store_addr.
-    (* the following line is in [straightline] but needs simplify_implicits for
-       it to work *)
-    eapply store_four_of_sep;
-      [ solve [ ecancel_assumption ] |  ].
     repeat straightline.
 
     (* i = 3 *)
@@ -1646,10 +1638,6 @@ Section Proofs.
 
     (* store result in memory *)
     ring_simplify_store_addr.
-    (* the following line is in [straightline] but needs simplify_implicits for
-       it to work *)
-    eapply store_four_of_sep;
-      [ solve [ ecancel_assumption ] |  ].
     repeat straightline.
 
     (* i = 3 *)
@@ -1660,10 +1648,6 @@ Section Proofs.
 
     (* store result in memory *)
     ring_simplify_store_addr.
-    (* the following line is in [straightline] but needs simplify_implicits for
-       it to work *)
-    eapply store_four_of_sep;
-      [ solve [ ecancel_assumption ] |  ].
     repeat straightline.
 
     (* i = 4; loop done *)
