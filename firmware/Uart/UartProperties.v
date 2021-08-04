@@ -101,21 +101,9 @@ Section Proofs.
     execution t s2 ->
     s1 = s2.
   Proof.
-    revert s1 s2.
-    induction t; cbn [execution]; [congruence | ].
-    intros; destruct_products.
-    match goal with
-    | H1 : execution t ?s1, H2 : execution t ?s2 |- _ =>
-      specialize (IHt _ _ H1 H2); subst
-    end.
-    cbv [step] in *. cbn [ state_machine.read_step state_machine.write_step uart_state_machine] in *.
-    repeat destruct_one_match_hyp; try contradiction; [ | ].
-    all:logical_simplify; subst.
-    all: lazymatch goal with
-         | H : state_machine.reg_addr ?x = state_machine.reg_addr ?y |- _ =>
-           eapply (state_machine.reg_addr_unique
-                     (ok:=uart_state_machine_ok) x y) in H
-         end.
+    eapply StateMachineProperties.execution_unique; intros.
+    all:cbn [state_machine.is_initial_state state_machine.read_step state_machine.write_step
+             uart_state_machine] in *; subst; try reflexivity.
     all:cbv [write_step read_step] in *; subst.
     all:repeat destruct_one_match_hyp; try congruence.
     all:logical_simplify; subst.
