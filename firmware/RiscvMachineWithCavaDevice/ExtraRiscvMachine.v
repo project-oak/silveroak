@@ -12,8 +12,7 @@ Require Import riscv.Platform.RiscvMachine.
 Notation Register := Z (only parsing).
 
 Section Machine.
-
-  Context {W: Words}.
+  Context {width: Z} {BW: Bitwidth width} {word: word width} {word_ok: word.ok word}.
   Context {Registers: map.map Register word}.
   Context {Mem: map.map word byte}.
   Context {E: Type}. (* extra state (eg for devices) *)
@@ -60,4 +59,4 @@ Section Machine.
       (mkExtraRiscvMachine (withLogItems items mach) e).
 
 End Machine.
-Arguments ExtraRiscvMachine {_} {_} {_} _.
+Arguments ExtraRiscvMachine {_ _ _ _ _} _.

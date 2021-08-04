@@ -25,46 +25,31 @@ Local Notation "y <- x ;; f" := (option_bind x (fun y => f))
                                   (at level 61, right associativity).
 
 (* Circuit timing properties *)
-Module timing.
-  Class timing :=
-    { ndelays_core : nat; (* number of delays on AES core datapath *)
-    }.
-End timing.
-Notation timing := timing.timing.
+Class timing := {
+  ndelays_core : nat; (* number of delays on AES core datapath *)
+}.
 
-Module parameters.
-  Class parameters :=
-    { word :> Interface.word.word 32;
-      mem :> Interface.map.map word Byte.byte;
-      (* TODO: mode is currently ignored *)
-      aes_spec :
-        forall (is_decrypt : bool)
-          (key : word * word * word * word * word * word * word * word)
-          (iv data : word * word * word * word),
-          word * word * word * word
-    }.
-
-  Class ok (p : parameters) :=
-    { word_ok :> word.ok word; (* for impl of mem below *)
-      mem_ok :> Interface.map.ok mem; (* for impl of mem below *)
-    }.
-End parameters.
-Notation parameters := parameters.parameters.
+Class AesSpec{word: word.word 32} := {
+  (* TODO: mode is currently ignored *)
+  aes_spec :
+    forall (is_decrypt : bool)
+      (key : word * word * word * word * word * word * word * word)
+      (iv data : word * word * word * word),
+      word * word * word * word
+}.
 
 Section WithParameters.
-  Import parameters.
-  Context {p : parameters} {p_ok : parameters.ok p}.
+  Context {word: word.word 32} {mem: map.map word Byte.byte}
+          {word_ok: word.ok word} {mem_ok: map.ok mem}
+          {ASpec: AesSpec}.
   Context {consts : aes_constants Z}
           {consts_ok : aes_constants_ok consts}
           {timing : timing}.
 
-  Add Ring wring : (Properties.word.ring_theory (word := parameters.word))
+  Add Ring wring : (Properties.word.ring_theory (word := word))
         (preprocess [autorewrite with rew_word_morphism],
-         morphism (Properties.word.ring_morph (word := parameters.word)),
+         morphism (Properties.word.ring_morph (word := word)),
          constants [Properties.word_cst]).
-
-  Local Notation bedrock2_event := (mem * string * list word * (mem * list word))%type.
-  Local Notation bedrock2_trace := (list bedrock2_event).
 
   Inductive Register : Set :=
   | CTRL
@@ -520,7 +505,7 @@ Section WithParameters.
                (* input registers are fully populated; encryption begins *)
                BUSY (Build_busy_data
                        (idle_ctrl data')
-                       (aes_expected_output input) timing.ndelays_core)
+                       (aes_expected_output input) ndelays_core)
              | None =>
                (* more input registers needed; stay in IDLE state *)
                IDLE data'
@@ -530,27 +515,23 @@ Section WithParameters.
     | DataOutReg | StatusReg => False (* not writeable *)
     end.
 
-  Global Instance state_machine_parameters
-    : StateMachineSemantics.parameters 32 word mem :=
-    {| StateMachineSemantics.parameters.state := state ;
-       StateMachineSemantics.parameters.register := Register ;
-       StateMachineSemantics.parameters.is_initial_state := eq UNINITIALIZED ;
-       StateMachineSemantics.parameters.read_step sz s a v s' :=
-         sz = 4%nat /\ read_step s a v s';
-       StateMachineSemantics.parameters.write_step sz s a v s' :=
-         sz = 4%nat /\ write_step s a v s' ;
-       StateMachineSemantics.parameters.reg_addr := reg_addr ;
-       StateMachineSemantics.parameters.isMMIOAddr a :=
-         List.Exists (fun r =>
-           word.unsigned (reg_addr r) <= word.unsigned a < word.unsigned (reg_addr r) + 4
-         ) all_regs;
-    |}.
+  Global Instance aes_state_machine : state_machine.parameters := {
+    state_machine.state := state;
+    state_machine.register := Register;
+    state_machine.is_initial_state := eq UNINITIALIZED;
+    state_machine.read_step sz s a v s' := sz = 4%nat /\ read_step s a v s';
+    state_machine.write_step sz s a v s' := sz = 4%nat /\ write_step s a v s';
+    state_machine.reg_addr := reg_addr;
+    state_machine.isMMIOAddr a :=
+      List.Exists (fun r =>
+        word.unsigned (reg_addr r) <= word.unsigned a < word.unsigned (reg_addr r) + 4
+      ) all_regs;
+  }.
 
-  Global Instance state_machine_parameters_ok
-    : StateMachineSemantics.parameters.ok state_machine_parameters.
+  Global Instance aes_state_machine_ok : state_machine.ok aes_state_machine.
   Proof.
     constructor;
-      unfold parameters.isMMIOAddr; cbn;
+      unfold state_machine.isMMIOAddr; cbn;
       intros;
       try exact _;
       repeat match goal with

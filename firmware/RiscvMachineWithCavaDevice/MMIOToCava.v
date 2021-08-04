@@ -20,31 +20,31 @@ Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachin
 Require Import Bedrock2Experiments.StateMachineMMIOSpec.
 
 Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte.byte}
-      (D: device)(sp: StateMachineSemantics.parameters.parameters 32 word mem) :=
+      (D: device)(M: state_machine.parameters) :=
 {
   (* the high-level (StateMachineSemantics) layer agrees with the low-level (Cava device)
      layer on what the set of MMIO addresses is *)
-  mmioAddrs_match: sameset StateMachineSemantics.parameters.isMMIOAddr device.isMMIOAddr;
+  mmioAddrs_match: sameset state_machine.isMMIOAddr device.isMMIOAddr;
 
   (* simulation relation between high-level states sH and low-level states sL *)
-  device_state_related: StateMachineSemantics.parameters.state -> D -> Prop;
+  device_state_related: state_machine.state -> D -> Prop;
 
   (* if an initial high-level state is related to some low-level state, it must be a ready state *)
   initial_state_is_ready_state: forall sH sL,
-      parameters.is_initial_state sH ->
+      state_machine.is_initial_state sH ->
       device_state_related sH sL ->
       device.is_ready_state sL;
 
   (* every initial high-level state is related to every initial low-level state *)
   initial_states_are_related: forall sH sL,
-      parameters.is_initial_state sH ->
+      state_machine.is_initial_state sH ->
       device.is_ready_state sL ->
       device_state_related sH sL;
 
   (* for every initial low-level state, there exists a related initial high-level state *)
   initial_state_exists: forall sL,
       device.is_ready_state sL ->
-      exists sH, parameters.is_initial_state sH /\ device_state_related sH sL;
+      exists sH, state_machine.is_initial_state sH /\ device_state_related sH sL;
 
   (* transitions that are not responding to MMIO cannot change the state as seen by the software: *)
   nonMMIO_device_step_preserves_state_machine_state:
@@ -60,13 +60,13 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
      but not necessarily the one we used to show that sH accepts reads (to allow
      underspecification-nondeterminism in the high-level state machine) *)
   state_machine_read_to_device_read: forall n r sH sL,
-      (exists v sH', parameters.read_step n sH r v sH') ->
+      (exists v sH', state_machine.read_step n sH r v sH') ->
       device_state_related sH sL ->
       exists v sL' sH',
-        device.runUntilResp true false (word_to_bv (parameters.reg_addr r)) (word_to_bv (word.of_Z 0))
+        device.runUntilResp true false (word_to_bv (state_machine.reg_addr r)) (word_to_bv (word.of_Z 0))
                             device.maxRespDelay sL = (Some (word_to_bv v), sL') /\
         device_state_related sH' sL' /\
-        parameters.read_step n sH r v sH';
+        state_machine.read_step n sH r v sH';
 
   (* for each high-level state sH in which an n-byte write to register r with value v is possible,
      if we run the low-level device with the write step's address and value on the input wires,
@@ -74,13 +74,13 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
      and the device will end up in a state corresponding to a high-level state reached after
      a high-level write, but not necessarily in the state we used to show that sH accepts writes *)
   state_machine_write_to_device_write: forall n r v sH sL,
-      (exists sH', parameters.write_step n sH r v sH') ->
+      (exists sH', state_machine.write_step n sH r v sH') ->
       device_state_related sH sL ->
       exists ignored sL' sH',
-        device.runUntilResp false true (word_to_bv (parameters.reg_addr r)) (word_to_bv v)
+        device.runUntilResp false true (word_to_bv (state_machine.reg_addr r)) (word_to_bv v)
                             device.maxRespDelay sL = (Some ignored, sL') /\
         device_state_related sH' sL' /\
-        parameters.write_step n sH r v sH';
+        state_machine.write_step n sH r v sH';
 
   (* If two steps starting in the same high-level state agree on what gets appended to the trace,
      then the resulting high-level states must be equal.
@@ -90,34 +90,33 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
      up in the trace) in the high-level state machine, but disallows internal nondeterminism
      that might never or only later be observable in the trace. *)
   read_step_unique: forall n r v sH sH' sH'',
-      parameters.read_step n r v sH sH' ->
-      parameters.read_step n r v sH sH'' ->
+      state_machine.read_step n r v sH sH' ->
+      state_machine.read_step n r v sH sH'' ->
       sH' = sH'';
   write_step_unique: forall n r v sH sH' sH'',
-      parameters.write_step n r v sH sH' ->
-      parameters.write_step n r v sH sH'' ->
+      state_machine.write_step n r v sH sH' ->
+      state_machine.write_step n r v sH sH'' ->
       sH' = sH'';
 
   (* In order for execution_unique, we also require that there's only one initial high-level state *)
   initial_state_unique: forall sH sH',
-      parameters.is_initial_state sH -> parameters.is_initial_state sH' -> sH = sH';
+      state_machine.is_initial_state sH -> state_machine.is_initial_state sH' -> sH = sH';
 }.
 
 Section WithParams.
   Context {word : Interface.word.word 32} {word_ok: word.ok word}
           {Registers: map.map Z word} {Registers_ok: map.ok Registers}
           {mem : Interface.map.map word Byte.byte} {mem_ok: map.ok mem}
-          {state_machine_params: StateMachineSemantics.parameters.parameters 32 word mem}
-          {state_machine_params_ok: StateMachineSemantics.parameters.ok state_machine_params}
+          {M: state_machine.parameters} {M_ok: state_machine.ok M}
           {D: device}
-          {DI: device_implements_state_machine D state_machine_params}.
+          {DI: device_implements_state_machine D M}.
 
   Inductive related: MetricRiscvMachine -> ExtraRiscvMachine D -> Prop :=
     mkRelated: forall regs pc npc m xAddrs (t: list LogItem) mc d s,
       execution t s ->
       device_state_related s d ->
-      map.undef_on m StateMachineSemantics.parameters.isMMIOAddr ->
-      disjoint (of_list xAddrs) StateMachineSemantics.parameters.isMMIOAddr ->
+      map.undef_on m state_machine.isMMIOAddr ->
+      disjoint (of_list xAddrs) state_machine.isMMIOAddr ->
       related
         {| MetricRiscvMachine.getMachine :=
              {| getRegs := regs;
@@ -143,50 +142,50 @@ Section WithParams.
   Variable sched: schedule.
 
   Lemma read_step_isMMIOAddrB: forall n s r v s',
-      parameters.read_step n s r v s' ->
-      device.isMMIOAddrB (parameters.reg_addr r) n = true.
+      state_machine.read_step n s r v s' ->
+      device.isMMIOAddrB (state_machine.reg_addr r) n = true.
   Proof.
     intros.
-    pose proof (parameters.read_step_size_valid _ _ _ _ _ H) as V. simpl in V.
-    pose proof (parameters.read_step_isMMIOAddr _ _ _ _ _ H) as P.
+    pose proof (state_machine.read_step_size_valid _ _ _ _ _ H) as V. simpl in V.
+    pose proof (state_machine.read_step_isMMIOAddr _ _ _ _ _ H) as P.
     unfold device.isMMIOAddrB.
     eapply andb_true_intro.
     rewrite !Z.leb_le.
-    replace parameters.isMMIOAddr with device.isMMIOAddr in P. 2: {
+    replace state_machine.isMMIOAddr with device.isMMIOAddr in P. 2: {
       symmetry. extensionality x. apply propositional_extensionality. unfold iff.
       pose proof mmioAddrs_match as Q. unfold sameset, subset, elem_of in Q. destruct Q. eauto.
     }
     unfold device.isMMIOAddr in P.
     split.
     - eapply P. lia.
-    - enough (word.unsigned (parameters.reg_addr r) + Z.of_nat n - 1 < device.addr_range_pastend).
+    - enough (word.unsigned (state_machine.reg_addr r) + Z.of_nat n - 1 < device.addr_range_pastend).
       1: lia.
-      pose proof (parameters.read_step_is_aligned _ _ _ _ _ H) as A.
-      specialize (P (word.add (parameters.reg_addr r) (word.of_Z (Z.of_nat n - 1)))).
+      pose proof (state_machine.read_step_is_aligned _ _ _ _ _ H) as A.
+      specialize (P (word.add (state_machine.reg_addr r) (word.of_Z (Z.of_nat n - 1)))).
       ZnWords.
   Qed.
 
   Lemma write_step_isMMIOAddrB: forall n s r v s',
-      parameters.write_step n s r v s' ->
-      device.isMMIOAddrB (parameters.reg_addr r) n = true.
+      state_machine.write_step n s r v s' ->
+      device.isMMIOAddrB (state_machine.reg_addr r) n = true.
   Proof.
     intros.
-    pose proof (parameters.write_step_size_valid _ _ _ _ _ H) as V. simpl in V.
-    pose proof (parameters.write_step_isMMIOAddr _ _ _ _ _ H) as P.
+    pose proof (state_machine.write_step_size_valid _ _ _ _ _ H) as V. simpl in V.
+    pose proof (state_machine.write_step_isMMIOAddr _ _ _ _ _ H) as P.
     unfold device.isMMIOAddrB.
     eapply andb_true_intro.
     rewrite !Z.leb_le.
-    replace parameters.isMMIOAddr with device.isMMIOAddr in P. 2: {
+    replace state_machine.isMMIOAddr with device.isMMIOAddr in P. 2: {
       symmetry. extensionality x. apply propositional_extensionality. unfold iff.
       pose proof mmioAddrs_match as Q. unfold sameset, subset, elem_of in Q. destruct Q. eauto.
     }
     unfold device.isMMIOAddr in P.
     split.
     - eapply P. lia.
-    - enough (word.unsigned (parameters.reg_addr r) + Z.of_nat n - 1 < device.addr_range_pastend).
+    - enough (word.unsigned (state_machine.reg_addr r) + Z.of_nat n - 1 < device.addr_range_pastend).
       1: lia.
-      pose proof (parameters.write_step_is_aligned _ _ _ _ _ H) as A.
-      specialize (P (word.add (parameters.reg_addr r) (word.of_Z (Z.of_nat n - 1)))).
+      pose proof (state_machine.write_step_is_aligned _ _ _ _ _ H) as A.
+      specialize (P (word.add (state_machine.reg_addr r) (word.of_Z (Z.of_nat n - 1)))).
       ZnWords.
   Qed.
 
@@ -199,21 +198,21 @@ Section WithParams.
     destruct (String.prefix MMIOLabels.WRITE_PREFIX a).
     - simp.
       replace sz0 with sz in *. 2: {
-        pose proof (parameters.write_step_size_valid _ _ _ _ _ Hp3) as V1. simpl in V1.
-        pose proof (parameters.write_step_size_valid _ _ _ _ _ H0p1) as V2. simpl in V2.
+        pose proof (state_machine.write_step_size_valid _ _ _ _ _ Hp3) as V1. simpl in V1.
+        pose proof (state_machine.write_step_size_valid _ _ _ _ _ H0p1) as V2. simpl in V2.
         destruct V1 as [? | [? | [? | ?]]]; destruct V2 as [? | [? | [? | ?]]]; subst;
           reflexivity || discriminate || contradiction.
       }
-      eapply parameters.reg_addr_unique in Hp0. subst r1.
+      eapply state_machine.reg_addr_unique in Hp0. subst r1.
       eapply write_step_unique; eassumption.
     - destruct (String.prefix MMIOLabels.READ_PREFIX a). 2: contradiction. simp.
       replace sz0 with sz in *. 2: {
-        pose proof (parameters.read_step_size_valid _ _ _ _ _ Hp3) as V1. simpl in V1.
-        pose proof (parameters.read_step_size_valid _ _ _ _ _ H0p1) as V2. simpl in V2.
+        pose proof (state_machine.read_step_size_valid _ _ _ _ _ Hp3) as V1. simpl in V1.
+        pose proof (state_machine.read_step_size_valid _ _ _ _ _ H0p1) as V2. simpl in V2.
         destruct V1 as [? | [? | [? | ?]]]; destruct V2 as [? | [? | [? | ?]]]; subst;
           reflexivity || discriminate || contradiction.
       }
-      eapply parameters.reg_addr_unique in Hp0. subst r0.
+      eapply state_machine.reg_addr_unique in Hp0. subst r0.
       eapply read_step_unique; eassumption.
   Qed.
 
@@ -235,14 +234,14 @@ Section WithParams.
 
   Lemma execution_read_cons: forall n r (v: HList.tuple Byte.byte n) t s1 s2,
       execution t s1 ->
-      parameters.read_step n s1 r (word.of_Z (LittleEndian.combine n v)) s2 ->
-      execution (MinimalMMIO.mmioLoadEvent (W := mkWords) (parameters.reg_addr r) v :: t) s2.
+      state_machine.read_step n s1 r (word.of_Z (LittleEndian.combine n v)) s2 ->
+      execution (MinimalMMIO.mmioLoadEvent (state_machine.reg_addr r) v :: t) s2.
   Proof. intros. eapply execution_step_read; eauto. Qed.
 
   Lemma execution_write_cons: forall n r (v: HList.tuple Byte.byte n) t s1 s2,
       execution t s1 ->
-      parameters.write_step n s1 r (word.of_Z (LittleEndian.combine n v)) s2 ->
-      execution (MinimalMMIO.mmioStoreEvent (W := mkWords) (parameters.reg_addr r) v :: t) s2.
+      state_machine.write_step n s1 r (word.of_Z (LittleEndian.combine n v)) s2 ->
+      execution (MinimalMMIO.mmioStoreEvent (state_machine.reg_addr r) v :: t) s2.
   Proof. intros. eapply execution_step_write; eauto. Qed.
 
   Lemma preserve_undef_on_unchecked: forall sz (m: mem) a v1 v2 s,
@@ -272,8 +271,8 @@ Section WithParams.
   Qed.
 
   Lemma combine_split_read_step: forall n s r v s',
-      parameters.read_step n s r v s' ->
-      parameters.read_step n s r
+      state_machine.read_step n s r v s' ->
+      state_machine.read_step n s r
         (word.of_Z (LittleEndian.combine n (LittleEndian.split n (word.unsigned v)))) s'.
   Proof.
     intros.
@@ -281,7 +280,7 @@ Section WithParams.
     rewrite Z.mod_small. 2: {
       split.
       - eapply word.unsigned_range.
-      - eapply parameters.read_step_bounded. eassumption.
+      - eapply state_machine.read_step_bounded. eassumption.
     }
     rewrite word.of_Z_unsigned.
     assumption.
@@ -327,7 +326,7 @@ Section WithParams.
            [do 2 eexists; eassumption|solve[eauto]|].
     1-4: cbn -[HList.tuple]; rewrite RU''; cbn -[HList.tuple].
     4: { (* 64-bit MMIO is not supported: *)
-      eapply parameters.read_step_size_valid in HLp2p2. simpl in HLp2p2. exfalso. intuition congruence.
+      eapply state_machine.read_step_size_valid in HLp2p2. simpl in HLp2p2. exfalso. intuition congruence.
     }
     1-3: rewrite bv_to_word_word_to_bv.
     1-3: eauto 20 using mkRelated, execution_read_cons, combine_split_read_step.
@@ -345,9 +344,9 @@ Section WithParams.
          eauto 15 using mkRelated, preserve_undef_on_unchecked, preserve_disjoint_of_invalidateXAddrs.
     1-4: simp.
     1-4: match goal with
-         | H: parameters.write_step _ _ _ _ _ |- _ =>
+         | H: state_machine.write_step _ _ _ _ _ |- _ =>
            rename H into WS; pose proof WS as WS';
-           eapply parameters.write_step_size_valid in WS';
+           eapply state_machine.write_step_size_valid in WS';
            simpl in WS'; destruct WS' as [? | [? | [? | ?]]];
            try contradiction; try subst sz; try discriminate (* <- also gets rid of 8-byte MMIO case *)
          end.
@@ -443,8 +442,8 @@ Section WithParams.
     - exists 0%nat. unfold run, run_rec, Monads.Return. simpl. eauto.
     - pose proof stateMachine_to_cava_1 as One.
       specialize One with (1 := H2) (2 := H). specialize (One steps_done).
-      destruct One as (midL & midH & One & Rmid & M).
-      specialize H1 with (1 := M) (2 := Rmid). specialize (H1 (S steps_done)).
+      destruct One as (midL & midH & One & Rmid & Mid).
+      specialize H1 with (1 := Mid) (2 := Rmid). specialize (H1 (S steps_done)).
       destruct H1 as (steps_remaining & finalL & finalH & Star & Rfinal & Pfinal).
       exists (S steps_remaining). simpl. rewrite One. eauto.
   Qed.

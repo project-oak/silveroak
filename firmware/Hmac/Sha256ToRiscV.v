@@ -15,38 +15,23 @@ Require Import Bedrock2Experiments.Hmac.Hmac.
 Require Import Bedrock2Experiments.Hmac.Sha256Example.
 Require Import Bedrock2Experiments.StateMachineMMIO.
 
-(* TODO these two imports and the instance are just a roundabout way to obtain Pipeline.parameters *)
-Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.Bedrock2ToCava.
-Require Import Bedrock2Experiments.Hmac.HmacSemantics.
-Instance hmac_timing: timing := {
-  max_negative_done_polls := 16;
-}.
-
 Require coqutil.Word.Naive.
 Require coqutil.Map.SortedListWord.
 Require riscv.Utility.InstructionNotations.
 Import Syntax.Coercions.
 Local Open Scope string_scope.
 
+Instance word: word.word 32 := Naive.word 32.
+Instance mem: map.map word Byte.byte := SortedListWord.map _ _.
+Existing Instance SortedListString.map.
+Existing Instance SortedListString.ok.
+
 (* TODO: we actually need a different word implementation than Naive here; in
    corner cases such as a shift argument greater than the width of the word,
    the naive implementation violates the riscv_ok requirements *)
-Axiom naive_riscv_ok : word.riscv_ok (Naive.word 32).
-Instance p : MMIO.parameters :=
-  {| MMIO.word := Naive.word 32;
-     MMIO.word_ok := Naive.word32_ok;
-     MMIO.word_riscv_ok := naive_riscv_ok;
-     MMIO.mem := SortedListWord.map _ _;
-     MMIO.mem_ok := _;
-     MMIO.locals := Zkeyed_map _;
-     MMIO.locals_ok := Zkeyed_map_ok _;
-     MMIO.funname_env := SortedListString.map;
-     MMIO.funname_env_ok := SortedListString.ok;
-  |}.
+Instance naive_riscv_ok : word.riscv_ok word. Admitted.
 
-Existing Instances Words32 compilation_params FlatToRiscv_params.
-
-Definition heap_start: Utility.word := word.of_Z (4*2^10).
+Definition heap_start: word := word.of_Z (4*2^10).
 
 (* dummy base address -- just past end of stack *)
 Definition base_addr : Z := 16 * 2^10.
@@ -72,10 +57,10 @@ Definition funcs := [
   bitfield_field32_write; bitfield_field32_read
 ].
 
-Definition compiler_invocation: option (list Decode.Instruction * FlatToRiscvDef.funname_env Z * Z) :=
-  compile (map.of_list funcs).
+Definition compiler_invocation: option (list Decode.Instruction * (SortedListString.map Z) * Z) :=
+  compile compile_ext_call (map.of_list funcs).
 
-Definition sha256_compile_result: list Decode.Instruction * FlatToRiscvDef.funname_env Z * Z.
+Definition sha256_compile_result: list Decode.Instruction * (SortedListString.map Z) * Z.
   let r := eval vm_compute in compiler_invocation in
    match r with
   | Some ?x => exact x

@@ -24,8 +24,8 @@ Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.WhileProperties.
 Require Import Bedrock2Experiments.Word.
 Require Import Bedrock2Experiments.WordProperties.
+Require Import Bedrock2Experiments.ProgramSemantics32.
 Require Import Bedrock2Experiments.LibBase.AbsMMIO.
-Require Import coqutil.Map.SortedListString.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.StateMachineProperties.
 Import Syntax.Coercions List.ListNotations.
@@ -35,15 +35,15 @@ Local Open Scope Z_scope.
 
 
 Section Proof.
-  Context {width word mem} {p : StateMachineSemantics.parameters width word mem}.
-  Context {p_ok : StateMachineSemantics.parameters.ok p}.
-  Import parameters.
+  Context {word: word.word 32} {mem: map.map word Byte.byte}
+          {word_ok: word.ok word} {mem_ok: map.ok mem}
+          {M: state_machine.parameters} {M_ok: state_machine.ok M}.
 
   Global Instance spec_of_abs_mmio_write8 : spec_of "abs_mmio_write8" :=
     fun function_env =>
-      forall (tr : trace) (m : mem) (s : state) (s' : state) (addr : word) (value : word) r,
-        StateMachineSemantics.parameters.reg_addr r = addr ->
-        parameters.write_step 1 s r value s' ->
+      forall (tr : trace) (m : mem) (s : M) (s' : M) (addr : word) (value : word) r,
+        state_machine.reg_addr r = addr ->
+        state_machine.write_step 1 s r value s' ->
         execution tr s ->
         call function_env abs_mmio_write8 tr m [addr; value]
         (fun tr' m' rets =>
@@ -64,9 +64,9 @@ Section Proof.
 
   Global Instance spec_of_abs_mmio_write32 : spec_of "abs_mmio_write32" :=
     fun function_env =>
-      forall (tr : trace) (m : mem) (s : state) (s' : state) (addr : word) (value : word) r,
-        StateMachineSemantics.parameters.reg_addr r = addr ->
-        parameters.write_step 4 s r value s' ->
+      forall (tr : trace) (m : mem) (s : M) (s' : M) (addr : word) (value : word) r,
+        state_machine.reg_addr r = addr ->
+        state_machine.write_step 4 s r value s' ->
         execution tr s ->
         call function_env abs_mmio_write32 tr m [addr; value]
         (fun tr' m' rets =>
@@ -87,9 +87,9 @@ Section Proof.
 
   Global Instance spec_of_abs_mmio_read8 : spec_of "abs_mmio_read8" :=
     fun function_env =>
-      forall (tr : trace) (m : mem) (s : state) (addr : word) r val s',
-        StateMachineSemantics.parameters.reg_addr r = addr ->
-        parameters.read_step 1 s r val s' ->
+      forall (tr : trace) (m : mem) (s : M) (addr : word) r val s',
+        state_machine.reg_addr r = addr ->
+        state_machine.read_step 1 s r val s' ->
         execution tr s ->
         call function_env abs_mmio_read8 tr m [addr]
         (fun tr' m' rets =>
@@ -106,15 +106,14 @@ Section Proof.
     eapply (interact_read 1); repeat straightline; eauto.
     - rewrite <- H. reflexivity.
     - do 3 eexists; ssplit; eauto.
-      cbv [parameters.read_step ] in *.
       rewrite <- H. reflexivity.
   Qed.
 
   Global Instance spec_of_abs_mmio_read32 : spec_of "abs_mmio_read32" :=
     fun function_env =>
-      forall (tr : trace) (m : mem) (s : state) (addr : word) r val s',
-        StateMachineSemantics.parameters.reg_addr r = addr ->
-        parameters.read_step 4 s r val s' ->
+      forall (tr : trace) (m : mem) (s : M) (addr : word) r val s',
+        state_machine.reg_addr r = addr ->
+        state_machine.read_step 4 s r val s' ->
         execution tr s ->
         call function_env abs_mmio_read32 tr m [addr]
         (fun tr' m' rets =>
@@ -131,7 +130,6 @@ Section Proof.
     eapply (interact_read 4); repeat straightline; eauto.
     - rewrite <- H. reflexivity.
     - do 3 eexists; ssplit; eauto.
-      cbv [parameters.read_step ] in *.
       rewrite <- H. reflexivity.
   Qed.
 

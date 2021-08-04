@@ -23,21 +23,15 @@ Require riscv.Utility.InstructionNotations.
 Import Syntax.Coercions.
 Local Open Scope string_scope.
 
+Instance word: word.word 32 := Naive.word 32.
+Instance mem: map.map word Byte.byte := SortedListWord.map _ _.
+Existing Instance SortedListString.map.
+Existing Instance SortedListString.ok.
+
 (* TODO: we actually need a different word implementation than Naive here; in
    corner cases such as a shift argument greater than the width of the word,
    the naive implementation violates the riscv_ok requirements *)
-Axiom naive_riscv_ok : word.riscv_ok (Naive.word 32).
-Instance p : MMIO.parameters :=
-  {| MMIO.word := Naive.word 32;
-     MMIO.word_ok := Naive.word32_ok;
-     MMIO.word_riscv_ok := naive_riscv_ok;
-     MMIO.mem := SortedListWord.map _ _;
-     MMIO.mem_ok := _;
-     MMIO.locals := Zkeyed_map _;
-     MMIO.locals_ok := Zkeyed_map_ok _;
-     MMIO.funname_env := SortedListString.map;
-     MMIO.funname_env_ok := SortedListString.ok;
-  |}.
+Instance naive_riscv_ok : word.riscv_ok word. Admitted.
 
 Definition ml: MemoryLayout := {|
   MemoryLayout.code_start    := word.of_Z 0;
@@ -135,46 +129,12 @@ Instance consts : aes_constants Z :=
 
   |}.
 
-Instance aes_timing : timing := {| timing.ndelays_core := 14%nat |}.
+Instance aes_timing : timing := {| ndelays_core := 14%nat |}.
 
 (* TODO: fill in with real circuit spec *)
-Axiom aes_spec
-  : bool ->
-    MMIO.word * MMIO.word * MMIO.word * MMIO.word * MMIO.word * MMIO.word * MMIO.word * MMIO.word ->
-    MMIO.word * MMIO.word * MMIO.word * MMIO.word -> MMIO.word * MMIO.word * MMIO.word * MMIO.word ->
-    MMIO.word * MMIO.word * MMIO.word * MMIO.word.
+Instance aes_def: AesSpec. constructor. Admitted.
 
-Instance aes_parameters : AesSemantics.parameters.parameters :=
-  {| AesSemantics.parameters.word := MMIO.word;
-     AesSemantics.parameters.mem := MMIO.mem;
-     AesSemantics.parameters.aes_spec := aes_spec;
-  |}.
-
-Instance aes_parameters_ok : AesSemantics.parameters.ok aes_parameters :=
-  {| AesSemantics.parameters.word_ok := MMIO.word_ok;
-     AesSemantics.parameters.mem_ok := MMIO.mem_ok;
-  |}.
-
-Existing Instances Words32 semantics_parameters StateMachineSemantics.ok state_machine_parameters
-         compilation_params StateMachineMMIOSpec FlatToRiscv_params constant_literals.
-
-(* add a stronger hint for state_machine_parameters *)
-Local Hint Extern 1 (StateMachineSemantics.parameters _ _ _) =>
-exact state_machine_parameters : typeclass_instances.
-
-Instance pipeline_params : Pipeline.parameters :=
-  {|
-  Pipeline.W := Words32;
-  Pipeline.mem := _;
-  Pipeline.Registers := _;
-  Pipeline.string_keyed_map := _;
-  Pipeline.ext_spec := @FlatToRiscvCommon.ext_spec FlatToRiscv_params;
-  Pipeline.compile_ext_call := (@FlatToRiscvDef.compile_ext_call compilation_params);
-  Pipeline.M := _;
-  Pipeline.MM := _;
-  Pipeline.RVM := MaterializeRiscvProgram.Materialize;
-  Pipeline.PRParams := @FlatToRiscvCommon.PRParams FlatToRiscv_params
-  |}.
+Existing Instance constant_literals.
 
 Definition funcs := [ aes_data_put_wait
                      ; aes_data_get_wait
@@ -190,7 +150,7 @@ Definition funcs := [ aes_data_put_wait
                      ; abs_mmio_write32 ].
 
 Derive aes_compile_result
-       SuchThat (compile (map.of_list funcs)
+       SuchThat (compile compile_ext_call (map.of_list funcs)
                  = Some aes_compile_result)
        As aes_compile_result_eq.
 Proof.

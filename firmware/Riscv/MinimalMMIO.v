@@ -36,7 +36,7 @@ Require Import riscv.Platform.Sane.
 Local Open Scope Z_scope.
 Local Open Scope bool_scope.
 
-Class MMIOSpec{W: Words} {Mem : map.map word byte} := {
+Class MMIOSpec{width: Z}{BW: Bitwidth width}{word: word width}{Mem : map.map word byte} := {
   (* should not say anything about alignment, just whether it's in the MMIO range *)
   isMMIOAddr: word -> Prop;
 
@@ -54,7 +54,8 @@ Definition natToStr(n: nat): string := DecimalString.NilEmpty.string_of_uint (Na
 
 Section Riscv.
   Import free.
-  Context {W: Words} {Mem: map.map word byte} {Registers: map.map Register word}.
+  Context {width: Z} {BW: Bitwidth width} {word: word width} {word_ok: word.ok word}.
+  Context {Mem: map.map word byte} {Registers: map.map Register word}.
 
   Definition mmioLoadEvent(addr: word){n: nat}(v: HList.tuple byte n): LogItem :=
     ((map.empty, ("MMIOREAD" ++ natToStr (n * 8))%string, [addr]),

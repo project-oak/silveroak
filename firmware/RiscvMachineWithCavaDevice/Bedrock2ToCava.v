@@ -58,58 +58,20 @@ Ltac divisibleBy4_pre ::=
                   ?word.unsigned_of_Z, ?word.signed_of_Z
           || unfold word.wrap, word.swrap).
 
+Existing Instance SortedListString.map.
+Existing Instance SortedListString.ok.
+
 Section WithParams.
   Context {word : Interface.word.word 32} {word_ok: word.ok word}
           {word_riscv_ok: RiscvWordProperties.word.riscv_ok word}
           {Registers: map.map Z word} {Registers_ok: map.ok Registers}
           {mem : Interface.map.map word Byte.byte} {mem_ok: map.ok mem}
-          {state_machine_params: StateMachineSemantics.parameters.parameters 32 word mem}
-          {state_machine_params_ok: StateMachineSemantics.parameters.ok state_machine_params}
+          {M: state_machine.parameters} {M_ok: state_machine.ok M}
           {D: device}
-          {DI: device_implements_state_machine D state_machine_params}
+          {DI: device_implements_state_machine D M}
           (sched: schedule).
 
   Open Scope ilist_scope.
-
-  Global Instance MMIO_compiler_params: StateMachineMMIO.MMIO.parameters := {|
-    MMIO.word := word;
-    MMIO.word_ok := _;
-    MMIO.word_riscv_ok := _;
-    MMIO.mem := mem;
-    MMIO.mem_ok := mem_ok;
-    MMIO.locals := Registers;
-    MMIO.locals_ok := Registers_ok;
-    MMIO.funname_env := SortedListString.map;
-    MMIO.funname_env_ok := SortedListString.ok;
-  |}.
-
-  Global Instance pipeline_params: Pipeline.parameters := {|
-    Pipeline.W := _;
-    Pipeline.mem := mem;
-    Pipeline.Registers := Registers;
-    Pipeline.string_keyed_map := _;
-    Pipeline.ext_spec := StateMachineSemantics.ext_spec;
-    Pipeline.compile_ext_call :=
-      @FlatToRiscvDef.FlatToRiscvDef.compile_ext_call StateMachineMMIO.compilation_params;
-    Pipeline.M := _;
-    Pipeline.MM := _;
-    Pipeline.RVM := MaterializeRiscvProgram.Materialize;
-    Pipeline.PRParams := _
-  |}.
-
-  Global Instance Pipeline_assumptions : Pipeline.assumptions.
-  Proof.
-    constructor.
-    { apply MMIO.word_riscv_ok. }
-    { exact MMIO.funname_env_ok. }
-    { exact MMIO.locals_ok. }
-    { unfold Pipeline.PRParams, pipeline_params.
-      eapply MetricMinimalMMIO.MetricMinimalMMIOSatisfiesPrimitives. }
-    { exact (@FlatToRiscv_hyps MMIO_compiler_params state_machine_params). }
-    { exact (ext_spec_ok (p := @state_machine_params)). }
-    { exact (compile_ext_call_correct (state_machine_parameters_ok:=state_machine_params_ok)). }
-    { reflexivity. }
-  Qed.
 
   Definition regs_initialized(regs: Registers): Prop :=
     forall r : Z, 0 < r < 32 -> exists v : word, map.get regs r = Some v.
@@ -150,7 +112,7 @@ Section WithParams.
         p_call mH Rdata Rexec (initialL: ExtraRiscvMachine D) steps_done postH,
       ExprImp.valid_funs (map.of_list fs) ->
       NoDup (map fst fs) ->
-      compile (map.of_list fs) = Some (instrs, pos_map, required_stack_space) ->
+      compile compile_ext_call (map.of_list fs) = Some (instrs, pos_map, required_stack_space) ->
       Forall (fun i : Instruction => verify i RV32I) instrs ->
       -2^20 <= f_entry_rel_pos + word.signed (word.sub p_functions p_call) < 2^20 ->
       map.get (map.of_list fs) f_entry_name = Some ([], [], fbody) ->
@@ -161,11 +123,12 @@ Section WithParams.
       word.unsigned p_call mod 4 = 0 ->
       f_entry_rel_pos mod 4 = 0 ->
       initialL.(getLog) = [] ->
-      WeakestPrecondition.cmd (p := FlattenExpr.mk_Semantics_params _) (WeakestPrecondition.call fs)
+      WeakestPrecondition.cmd (WeakestPrecondition.call fs)
            fbody initialL.(getLog) mH map.empty
-           (fun t' m' l' => postH m' /\
+           (fun (t': Semantics.trace) (m': mem) (l': ProgramSemantics32.locals) =>
+                            postH m' /\
                             (* driver is supposed to put device back into initial state: *)
-                            exists s', execution t' s' /\ parameters.is_initial_state s') ->
+                            exists s', execution t' s' /\ state_machine.is_initial_state s') ->
       machine_ok p_functions f_entry_rel_pos stack_start stack_pastend (instrencode instrs) p_call
                  p_call mH Rdata Rexec initialL ->
       exists steps_remaining finalL mH',
@@ -178,7 +141,7 @@ Section WithParams.
     intros.
     destruct initialL as (mach & d). destruct mach as [r pc npc m xAddrs t].
     unfold machine_ok in *; cbn -[map.get map.empty instrencode] in *. simp.
-    replace device.isMMIOAddr with parameters.isMMIOAddr in *. 2: {
+    replace device.isMMIOAddr with state_machine.isMMIOAddr in *. 2: {
       symmetry. extensionality x. apply propositional_extensionality. unfold iff.
       pose proof mmioAddrs_match as P. unfold sameset, subset in P.
       clear -P. unfold elem_of, device.isMMIOAddr in *. destruct P. eauto.
@@ -187,20 +150,20 @@ Section WithParams.
       as (steps_remaining & finalL & finalH & Rn & Rfinal & Pf).
     2: {
       pose proof Pipeline.compiler_correct as P.
-      unfold FlatToRiscvCommon.runsTo, GoFlatToRiscv.mcomp_sat,
-        mcomp_sat, FlatToRiscvCommon.PRParams in P.
+      unfold FlatToRiscvCommon.runsTo, GoFlatToRiscv.mcomp_sat, mcomp_sat in P.
       cbn -[map.get map.empty instrencode] in P.
       specialize P with (p_call := p_call) (p_functions := p_functions).
       eapply P with (initial := {| MetricRiscvMachine.getMachine := {| getPc := _ |} |});
         clear P; cbn -[map.get map.empty instrencode]; try eassumption.
+      { apply compile_ext_call_correct. }
+      { intros. reflexivity. }
       { refine (sound_cmd _ _ _ _ _ _ _ _ _).
-        - exact StateMachineSemantics.ok.
         - assumption.
         - match goal with
           | H: WeakestPrecondition.cmd _ _ _ _ _ _ |- _ => exact H
           end. }
       unfold LowerPipeline.machine_ok; cbn -[map.get map.empty instrencode program].
-      pose proof ptsto_bytes_to_program as P. cbn in P.
+      pose proof ptsto_bytes_to_program (iset := RV32I) as P.
       match goal with
       | |- context[?Q] => lazymatch Q with
                           | program _ ?p ?i => replace Q with (ptsto_bytes p (instrencode i))
@@ -234,7 +197,7 @@ Section WithParams.
       simp.
       eexists _, {| getMachine := {| getLog := [] |} |}, _; cbn -[map.get map.empty instrencode].
       split. 1: exact Rn.
-      pose proof ptsto_bytes_to_program as P. cbn in P.
+      pose proof ptsto_bytes_to_program (iset := RV32I) as P. cbn in P.
       match goal with
       | |- context[?Q] => lazymatch Q with
                           | ptsto_bytes ?p (instrencode ?i) => replace Q with (program RV32I p i)

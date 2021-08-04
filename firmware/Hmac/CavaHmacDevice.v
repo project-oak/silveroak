@@ -36,7 +36,7 @@ Section WithParameters.
   (* TODO [for milestone 2: end-to-end proof]:
      Fill in these proofs to show that Cava Hmac device satisfies state machine *)
   Global Instance cava_hmac_satisfies_state_machine:
-    device_implements_state_machine hmac_device state_machine_parameters.
+    device_implements_state_machine hmac_device hmac_state_machine.
   Proof.
     eapply Build_device_implements_state_machine.
   Admitted.

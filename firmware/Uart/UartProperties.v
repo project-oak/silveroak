@@ -43,33 +43,18 @@ Local Open Scope Z_scope.
 Ltac normalize_body_of_function f ::= Tactics.rdelta.rdelta f.
 
 Section Proofs.
-  Context {p : UartSemantics.parameters} {p_ok : parameters.ok p}.
-  Existing Instance state_machine_parameters.
-
-  (* this duplicate of locals_ok helps when Semantics.word has been changed to
-     parameters.word *)
-  Local Instance localsok : @map.ok string parameters.word Semantics.locals
-     := Semantics.locals_ok.
+  Context {word: word.word 32} {mem: map.map word Byte.byte}
+          {word_ok: word.ok word} {mem_ok: map.ok mem}.
 
   (* Plug in the right state machine parameters; typeclass inference struggles here *)
-  Local Notation execution := (execution (p:=state_machine_parameters)).
+  Local Notation execution := (execution (M:=uart_state_machine)).
 
   (***** General-purpose lemmas/tactics and setup *****)
 
-  Add Ring wring : (Properties.word.ring_theory (word := parameters.word))
+  Add Ring wring : (Properties.word.ring_theory (word := word))
         (preprocess [autorewrite with rew_word_morphism],
-         morphism (Properties.word.ring_morph (word := parameters.word)),
+         morphism (Properties.word.ring_morph (word := word)),
          constants [Properties.word_cst]).
-
-  (* This tactic simplifies implicit types so that they all agree; otherwise
-     tactic has trouble connecting, for instance, a word of type parameters.word
-     and a word of type Semantics.word, even though they are the same *)
-  Local Ltac simplify_implicits :=
-    change Semantics.word with parameters.word in *;
-    change Semantics.mem with parameters.mem in *;
-    change Semantics.width with 32 in *;
-    change Semantics.word_ok with parameters.word_ok in *;
-    change Semantics.mem_ok with parameters.mem_ok in *.
 
   Ltac solve_status_valid :=
     eexists; ssplit; try reflexivity;
@@ -123,15 +108,13 @@ Section Proofs.
     | H1 : execution t ?s1, H2 : execution t ?s2 |- _ =>
       specialize (IHt _ _ H1 H2); subst
     end.
-    cbv [step] in *. cbn [ parameters.read_step
-                             parameters.write_step
-                             state_machine_parameters] in *.
+    cbv [step] in *. cbn [ state_machine.read_step state_machine.write_step uart_state_machine] in *.
     repeat destruct_one_match_hyp; try contradiction; [ | ].
     all:logical_simplify; subst.
     all: lazymatch goal with
-         | H : parameters.reg_addr ?x = parameters.reg_addr ?y |- _ =>
-           eapply (parameters.reg_addr_unique
-                     (ok:=state_machine_parameters_ok) x y) in H
+         | H : state_machine.reg_addr ?x = state_machine.reg_addr ?y |- _ =>
+           eapply (state_machine.reg_addr_unique
+                     (ok:=uart_state_machine_ok) x y) in H
          end.
     all:cbv [write_step read_step] in *; subst.
     all:repeat destruct_one_match_hyp; try congruence.
@@ -184,7 +167,7 @@ Section Proofs.
       execution tr s ->
       call function_env uart_tx_idle tr m []
         (fun tr' m' rets =>
-          exists (status out : Semantics.word) (s' : state),
+          exists (status out : word) (s' : state),
             (* the new state matches the new trace *)
             execution tr' s'
             (* ...and there exists a single valid status-read step between
@@ -206,7 +189,7 @@ Section Proofs.
     destruct Hstat as (x & s' & Hstat).
     straightline_call; ssplit.
     { instantiate (1 := STATUS). apply word.ring_morph_add. }
-    { cbv [parameters.read_step state_machine_parameters] in *. eauto. }
+    { cbv [state_machine.read_step uart_state_machine] in *. eauto. }
     { eauto. }
     { repeat straightline.
       straightline_call; eauto.
@@ -231,9 +214,7 @@ Section Proofs.
       | H: [_] = [_] |- _ => inversion H; subst
       end.
       unfold UART_STATUS_TXIDLE_BIT in *.
-      apply is_flag_set_and_select_bits.
-      + cbv. reflexivity.
-      + split; try lia. cbv. reflexivity.
+      apply is_flag_set_and_select_bits; lia.
     }
   Qed.
 End Proofs.
