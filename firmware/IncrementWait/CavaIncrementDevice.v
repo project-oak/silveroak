@@ -1,79 +1,67 @@
-Require Import Cava.Cava.
-Import Circuit.Notations.
-Require Import Cava.CavaProperties.
+From Coq Require Import
+     ZArith.ZArith.
 
+From Cava Require Import
+     Expr
+     Primitives
+     Types.
 
-Section WithCava.
-  Context {signal} {semantics : Cava signal}.
+Import ExprNotations.
+Import PrimitiveNotations.
 
-  (* TODO doesn't Cava already provide these? *)
-  Definition ite{T: SignalType}(cond: signal Bit)(thn els: signal T):
-    cava (signal T) :=
-    branches <- packV (Vector.of_list [els; thn]);;
-    ctrl <- packV (Vector.of_list [cond]);;
-    indexAt branches ctrl.
+Section Var.
+  Import ExprNotations.
+  Context {var : tvar}.
 
-  Definition and3: signal Bit * signal Bit * signal Bit -> cava (signal Bit) :=
-    fun '(x1, x2, x3) => x12 <- and2 (x1, x2);; and2 (x12, x3).
+  Local Open Scope N.
 
-  Definition or3: signal Bit * signal Bit * signal Bit -> cava (signal Bit) :=
-    fun '(x1, x2, x3) => x12 <- or2 (x1, x2);; or2 (x12, x3).
+  (* Things that should probably be in cava *)
+  Section Cava.
+    Definition True := Constant (true: denote_type Bit).
+  End Cava.
 
-  Definition incr_update:
-    (* input: *)
-    signal Bit *             (* is_read_req *)
-    signal Bit *             (* is_write_req *)
-    signal (Vec Bit 32) *    (* req_addr (only relevant if is_reaq_req or is_write_req) *)
-    signal (Vec Bit 32) *    (* req_value (only relevant if is_write_req *)
-    (* state: *)
-    signal Bit *             (* idle *)
-    signal Bit *             (* busy *)
-    signal Bit *             (* done *)
-    signal (Vec Bit 32)      (* value *)
-    -> cava (
-    (* output: *)
-    signal Bit *             (* is_resp *)
-    signal (Vec Bit 32) *    (* resp (only relevant if is_resp *)
-    (* state: *)
-    signal Bit *             (* idle *)
-    signal Bit *             (* busy *)
-    signal Bit *             (* done *)
-    signal (Vec Bit 32))     (* value *)
-  := fun '(is_read_req, is_write_req, req_addr, req_value, idle, busy, done, value) =>
-       initialized <- or3 (idle, busy, done);;
-       idle <- ite initialized idle (constant true);;
-       is_resp <- or2 (is_read_req, is_write_req);;
-       (* bit #2 of the address determines if STATUS or VALUE register *)
-       req_addr1 <- Vec.tl req_addr;;
-       req_addr2 <- Vec.tl req_addr1;;
-       is_status_req <- Vec.hd req_addr2;;
-       is_value_req <- inv is_status_req;;
-       is_value_write_req <- and2 (is_value_req, is_write_req);;
-       isnt_value_write_req <- inv is_value_write_req;;
-       is_value_read_req <- and2 (is_value_req, is_read_req);;
-       no_pending_inp <- inv is_resp;;
-       result_ready <- or2 (busy, done);;
-       done2idle <- and2 (done, is_value_read_req);;
-       not_done2idle <- inv done2idle;;
-       idle2idle <- and2 (idle, isnt_value_write_req);;
-       idle' <- or2 (idle2idle, done2idle);;
-       busy' <- is_value_write_req;;
-       done' <- and2 (result_ready, not_done2idle);;
-       value_plus_one <- incrN value;;
-       value_or_input <- ite is_value_write_req req_value value;;
-       value' <- ite busy value_plus_one value_or_input;;
-       zeros <- Vec.const (constant false) 29;;
-       v1 <- Vec.cons done zeros;;
-       v2 <- Vec.cons busy v1;;
-       v3 <- Vec.cons idle v2;;
-       resp <- ite is_status_req v3 value;;
-       ret (is_resp, resp, idle', busy', done', value').
+  Definition incr
+    : Circuit _
+              (* Input *)
+              [ Bit          (* is_read_req *)
+                ; Bit        (* is_write_req *)
+                ; BitVec 32  (* req_addr (only relevant if is_reaq_req or is_write_req) *)
+                ; BitVec 32 ](* req_value (only relevant if is_write_req *)
+              (* Output *)
+              (Bit             (* is_resp *)
+                 ** BitVec 32) (* resp (only relevant if is_resp *)
+    := {{
+      fun is_read_req is_write_req req_addr req_value =>
+        (* bit #2 of the address determines if STATUS or VALUE register *)
+        let is_status_req := `index` req_addr `Constant (val_of (BitVec 2) 2)` in
+        let is_value_req := !is_status_req in
+        let is_value_write_req := is_value_req && is_write_req in
+        let is_value_read_req := is_value_req && is_read_req in
 
-  Definition incr: Circuit (signal Bit * signal Bit * signal (Vec Bit 32) * signal (Vec Bit 32))
-                           (signal Bit * signal (Vec Bit 32)) :=
-    Loop (Loop (Loop (Loop (Comb incr_update)))).
+        let/delay '(idle, busy, done; value) :=
+           let idle1 := if idle || busy || done then idle
+                        else `True` in
+           let result_ready := busy || done in
 
-End WithCava.
+           let done2idle := done && is_value_read_req in
+           let idle2idle := idle1 && !is_value_write_req in
+
+           let idle2 := idle2idle || done2idle in
+           let busy' := is_value_write_req in
+           let done' := result_ready && !done2idle in
+           let value' := if busy then value + `_1`
+                         else if is_value_write_req then req_value
+                              else value in
+           (idle2, busy', done', value')
+             initially (false,(false,(false,0))) : denote_type (Bit ** Bit ** Bit ** BitVec 32)
+        in
+
+        let status := `_0` <<+ done <<+ busy <<+ idle in
+        let resp := if is_status_req then status else value in
+        let is_resp := is_read_req || is_write_req in
+        (is_resp, resp)
+       }}.
+End Var.
 
 Definition incr_device_step:
   (* input: current state, is_read_req, is_write_req, req_addr, req_value *)
