@@ -63,8 +63,8 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       (exists v sH', state_machine.read_step n sH r v sH') ->
       device_state_related sH sL ->
       exists v sL' sH',
-        device.runUntilResp true false (word_to_bv (state_machine.reg_addr r)) (word_to_bv (word.of_Z 0))
-                            device.maxRespDelay sL = (Some (word_to_bv v), sL') /\
+        device.runUntilResp true false (word_to_N (state_machine.reg_addr r)) (word_to_N (word.of_Z 0))
+                            device.maxRespDelay sL = (Some (word_to_N v), sL') /\
         device_state_related sH' sL' /\
         state_machine.read_step n sH r v sH';
 
@@ -77,7 +77,7 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       (exists sH', state_machine.write_step n sH r v sH') ->
       device_state_related sH sL ->
       exists ignored sL' sH',
-        device.runUntilResp false true (word_to_bv (state_machine.reg_addr r)) (word_to_bv v)
+        device.runUntilResp false true (word_to_N (state_machine.reg_addr r)) (word_to_N v)
                             device.maxRespDelay sL = (Some ignored, sL') /\
         device_state_related sH' sL' /\
         state_machine.write_step n sH r v sH';
@@ -198,9 +198,9 @@ Section WithParams.
     - exact write_step_unique.
   Qed.
 
-  Lemma bv_to_word_word_to_bv: forall v, bv_to_word (word_to_bv v) = v.
+  Lemma bv_to_word_word_to_bv: forall v, N_to_word (word_to_N v) = v.
   Proof.
-    intros. unfold bv_to_word, word_to_bv.
+    intros. unfold N_to_word, word_to_N.
   Admitted.
 
   Lemma execution_read_cons: forall n r (v: HList.tuple Byte.byte n) t s1 s2,
