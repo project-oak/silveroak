@@ -5,7 +5,7 @@ Require Import Coq.ZArith.ZArith.
 Require Import bedrock2.ProgramLogic.
 Require Import bedrock2.Semantics.
 Require Import bedrock2.Syntax.
-Require Import bedrock2.TailRecursion.
+Require Import bedrock2.Loops.
 Require Import bedrock2.WeakestPrecondition.
 Require Import bedrock2.WeakestPreconditionProperties.
 Require Import coqutil.Word.Interface.
