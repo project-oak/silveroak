@@ -44,16 +44,41 @@ Qed.
 Lemma split_delay {t1 t2} : cequiv (Delay (t:=t1*t2)) (Par Delay Delay).
 Proof. apply split_delay_init. Qed.
 
-Lemma LoopInitCE_Compose_l {i o s t}
-      (c : Circuit t i) (body : Circuit (i * s) (o * s)) r :
-  cequiv (First c >==> LoopInitCE r body)
-         (LoopInitCE r (First c >==> body)).
-Admitted.
-
 Lemma LoopInit_Compose_l {i o s t}
       (c : Circuit t i) (body : Circuit (i * s) (o * s)) r :
   cequiv (c >==> LoopInit r body) (LoopInit r (First c >==> body)).
-Admitted.
+Proof.
+  exists (fun (s1 : value (circuit_state c)
+             * (unit * (value (circuit_state body) * value s)))
+       (s2 : unit * (value (circuit_state c) * value (circuit_state body)
+                     * value s)) =>
+       let '(c1,(_,(b1,v1))) := s1 in
+       let '(_,(c2,b2,v2)) := s2 in
+       c1 = c2 /\ b1 = b2 /\ v1 = v2).
+  cbn [reset_state circuit_state value LoopInit].
+  ssplit; [ reflexivity .. | ].
+  intros; destruct_products; subst.
+  cbn [step fst snd LoopInit]. simpl_ident.
+  ssplit; reflexivity.
+Qed.
+
+Lemma LoopInit_ignore_input {t s} r (c : Circuit s s) :
+  cequiv (LoopInit r (Second c)) (Id (t:=t)).
+Proof.
+  exists (fun _ _ => True). ssplit; [ tauto | ].
+  cbn [LoopInit circuit_state value Id].
+  intros; destruct_products; cbn [fst snd] in *. logical_simplify.
+  cbn [step LoopInit Id fst snd]. ssplit; auto.
+Qed.
+Hint Rewrite @LoopInit_ignore_input using solve [eauto] : circuitsimpl.
+
+Lemma LoopInit_Par {i o s} (c1 : Circuit i o) (c2 : Circuit s s) r :
+  cequiv (LoopInit r (Par c1 c2)) c1.
+Proof.
+  cbv [Par]. rewrite First_Second_comm, LoopInit_First_r.
+  autorewrite with circuitsimpl; reflexivity.
+Qed.
+Hint Rewrite @LoopInit_Par using solve [eauto] : circuitsimpl.
 
 Lemma move_delay_init {i o} (c : Circuit i o) r :
   cequiv (DelayInit r >==> c)
@@ -478,6 +503,7 @@ Proof.
   rewrite First_Second_comm; reflexivity.
 Qed.
 
+(* TODO: is this actually true? *)
 Lemma retimed_trans {i o} n m (c1 c2 c3 : Circuit i o) :
   retimed n c1 c2 -> retimed m c2 c3 -> retimed (n + m) c1 c3.
 Proof.
@@ -488,7 +514,7 @@ Proof.
   rewrite !Par_Compose.
   autorewrite with circuitsimpl.
   Search Par Compose.
-  
+  (*
   cbv [mealy].
   Search ndelays.
   apply LoopInit_delay_body.
@@ -557,36 +583,124 @@ Proof.
          /\
          True).
     (* nope, don't want combine here, need to actually extract the o value *)
-Qed.
+Qed.*)
+Abort.
 
-Lemma LoopInit_ignore_input {t s} r (c : Circuit s s) :
-  cequiv (LoopInit r (Second c)) (Id (t:=t)).
+Fixpoint is_combinational {i o} (c : Circuit i o) : bool :=
+  match c with
+  | Comb _ => true
+  | Compose f g => (is_combinational f && is_combinational g)%bool
+  | First f => is_combinational f
+  | Second f => is_combinational f
+  | DelayInit r => false
+  | LoopInitCE r body => false
+  end.
+
+(* the state of combinational circuits is trivial; any two state values are
+   equal *)
+Lemma is_combinational_state {i o} (c : Circuit i o) :
+  is_combinational c = true -> forall (x y : value (circuit_state c)), x = y.
 Proof.
-  exists (fun _ _ => True). ssplit; [ tauto | ].
-  cbn [LoopInit circuit_state value Id].
-  intros; destruct_products; cbn [fst snd] in *. logical_simplify.
-  cbn [step LoopInit Id fst snd]. ssplit; auto.
+  induction c; cbn [value circuit_state is_combinational];
+    try discriminate; intros; destruct_products; logical_simplify;
+    repeat lazymatch goal with
+           | H : (_ && _)%bool = true |- _ =>
+             apply Bool.andb_true_iff in H; logical_simplify
+           | |- pair _ _ = pair _ _ => apply f_equal2
+           | |- ?x = ?x => reflexivity
+           | IH : is_combinational ?c = true -> (forall _ _, _ = _)
+             |- @eq (value (circuit_state ?c)) _ _ => apply IH; assumption
+           end.
 Qed.
-Hint Rewrite @LoopInit_ignore_input using solve [eauto] : circuitsimpl.
 
-Lemma retimed_delay_r {i o} (c : Circuit i o) :
-  is_loop_free c = true -> retimed 1 (c >==> Delay) c.
+Local Ltac infer_combinational_states_equal :=
+  repeat lazymatch goal with
+         | H : is_combinational ?c = true,
+               x : value (circuit_state ?c),
+                   y : value (circuit_state ?c) |- _ =>
+           pose proof (is_combinational_state c H x y); subst x
+         end.
+
+Lemma step_combinational {i o} (c : Circuit i o) s x :
+  is_combinational c = true ->
+  step c s x = (s, snd (step c s x)).
+Proof.
+  intros.
+  rewrite (surjective_pairing (step c s x)). cbn [fst snd].
+  f_equal. apply is_combinational_state; auto.
+Qed.
+
+Lemma is_combinational_mealy {i o} (c : Circuit i o) :
+  is_combinational c = true ->
+  cequiv (mealy c) (First c).
+Proof.
+  intros. exists (fun _ _ => True). split; [ tauto | ].
+  cbn [value circuit_state mealy]. intros.
+  split; [ | tauto ]. destruct_products; logical_simplify.
+  infer_combinational_states_equal.
+  rewrite step_mealy. cbn [step fst snd].
+  f_equal; apply is_combinational_state; auto.
+Qed.
+
+Lemma combinational_to_mealy {i o} (c : Circuit i o) :
+  is_combinational c = true ->
+  cequiv c ((Comb (i:=i) (o:=i*circuit_state c)
+                  (fun x => (x, defaultValue)))
+              >==> mealy c
+              >==> (Comb (i:=o*circuit_state c) (o:=o) fst)).
+Proof.
+  intros. exists (fun _ _ => True). split; [ tauto | ].
+  cbn [value circuit_state mealy step fst snd]. intros.
+  split; [ | tauto ]. destruct_products; logical_simplify.
+  cbv [Combinators.swap]. simpl_ident. repeat destruct_pair_let.
+  cbn [fst snd]. repeat (f_equal; [ ]).
+  apply is_combinational_state; auto.
+Qed.
+
+Lemma retimed_delay_init_r {i o} (c1 c2 : Circuit i o) n r :
+  is_combinational c2 = true ->
+  retimed n c1 c2 ->
+  retimed (S n) (c1 >==> DelayInit r) c2.
 Proof.
   cbv [retimed]. cbn [Par circuit_state chreset value ndelays Id Delay].
-  exists (tt, (defaultValue, defaultValue)). cbn [fst snd].
-  autorewrite with circuitsimpl. rewrite split_delay_init.
-  rewrite loopless_loop_free by auto. cbv [Par].
-  rewrite <-!LoopInit_Compose_l, LoopInit_ignore_input.
-  autorewrite with circuitsimpl. reflexivity.
+  intros; logical_simplify.
+  lazymatch goal with
+  | d : value (circuit_state (ndelays o n)) |- _ => exists (d, r) end.
+  cbn [fst snd to_ndelays_state].
+  lazymatch goal with H : cequiv c1 _ |- _ => rewrite H; clear H end.
+  rewrite is_combinational_mealy by auto.
+  rewrite <-!LoopInit_Compose_l.
+  rewrite <-(Compose_assoc c2 (LoopInit _ _) (DelayInit _)).
+  apply Proper_Compose; [ reflexivity | ].
+  autorewrite with circuitsimpl.
+  reflexivity.
 Qed.
 
-Lemma delay1_output {i o} n (c1 c2 : Circuit i o) :
-  is_loop_free c2 = true ->
-  retimed n c1 (c2 >==> Delay) -> retimed (S n) c1 c2.
+Lemma retimed_delay_r {i o} (c1 c2 : Circuit i o) n :
+  is_combinational c2 = true ->
+  retimed n c1 c2 ->
+  retimed (S n) (c1 >==> Delay) c2.
+Proof. apply retimed_delay_init_r. Qed.
+
+(* simulate a circuit to get an ndelays state *)
+Fixpoint ndelays_value_from_sim {i o} (c : Circuit i o) {n}
+  : value (circuit_state c) ->
+    value (circuit_state (ndelays i n)) ->
+    value (circuit_state (ndelays o n)) :=
+  match n with
+  | 0 => fun _ x => x
+  | S m =>
+    fun s x =>
+      let so := step c s (snd x) in
+      (ndelays_value_from_sim c (fst so) (fst x), snd so)
+  end.
+
+Lemma map_ndelays_to_ndelays_state {t1 t2} (f : value t1 -> value t2) n x :
+  map_ndelays (n:=n) f (to_ndelays_state x) = to_ndelays_state (f x).
 Proof.
-  intros. replace (S n) with (n + 1) by lia.
-  eapply retimed_trans; [ eassumption | ].
-  eapply retimed_delay_r; auto.
+  induction n; [ reflexivity | ].
+  cbn [map_ndelays to_ndelays_state fst snd]. rewrite IHn.
+  reflexivity.
 Qed.
 
 Lemma retimed_cequiv {i o} (c1 c2 : Circuit i o) :
@@ -596,52 +710,233 @@ Proof.
   split.
   { intros [? Heq]. rewrite Heq.
     autorewrite with circuitsimpl.
-    rewrite <-extract_loops. reflexivity. }
+    rewrite <-cequiv_mealy. reflexivity. }
   { intros Heq. eexists_destruct.
     autorewrite with circuitsimpl.
-    rewrite <-extract_loops. auto. }
+    rewrite <-cequiv_mealy. auto. }
+Qed.
+
+Lemma LoopInit_change_state
+      {i o s1 s2}
+      (c1 : Circuit (i * s1) (o * s1))
+      (c2 : Circuit (i * s2) (o * s2))
+      (f : value s1 -> value s2) r :
+  cequiv (c1 >==> Second (Comb f)) (Second (Comb f) >==> c2)->
+  cequiv (LoopInit r c1) (LoopInit (f r) c2).
+Proof.
+  intros [R [Hreset Hpreserved]].
+  exists (fun (x1 : unit * (value (circuit_state c1) * value s1))
+       (x2 : unit * (value (circuit_state c2) * value s2)) =>
+       let '(_,(y1,z1)) := x1 in
+       let '(_,(y2,z2)) := x2 in
+       R (y1,tt) (tt,y2) /\ f z1 = z2).
+  cbn [value circuit_state reset_state LoopInit] in *.
+  ssplit; [ solve [auto] .. | ].
+  intros; destruct_products; logical_simplify. subst.
+  cbn [step LoopInit fst snd] in *. simpl_ident.
+  lazymatch goal with
+  | H : R (?v, tt) _ |- context [step _ ?v] =>
+    specialize (Hpreserved _ _ ltac:(apply pair; eassumption) H)
+  end.
+  cbn [fst snd] in Hpreserved. destruct Hpreserved as [Hout HR].
+  fold @value in *. rewrite <-Hout. cbn [fst snd].
+  ssplit; auto.
+Qed.
+
+Lemma mealy_compose_comb_r {i t o} (c1 : Circuit i t) (c2 : Circuit t o) :
+  is_combinational c2 = true ->
+  cequiv (mealy (c1 >==> c2))
+         (Second (Comb (i:=_*circuit_state c2)
+                       (fun x => fst x))
+                 >==> mealy c1
+                 >==> First c2
+                 >==> Second (Comb (o:=_*circuit_state c2) (fun x => (x, defaultValue)))).
+Proof.
+  exists (fun _ _ => True). split; [ tauto | ].
+  cbn [value circuit_state mealy]. intros; destruct_products.
+  logical_simplify. infer_combinational_states_equal.
+  cbn [step mealy fst snd]. cbv [Combinators.swap].
+  simpl_ident. repeat destruct_pair_let; cbn [fst snd].
+  ssplit; [ | tauto ].
+  repeat lazymatch goal with |- (_,_) = (_,_) =>
+                             apply f_equal2; try reflexivity; [ ] end.
+  apply is_combinational_state; auto.
+Qed.
+
+Lemma mealy_compose_comb_l {i t o} (c1 : Circuit i t) (c2 : Circuit t o) :
+  is_combinational c1 = true ->
+  cequiv (mealy (c1 >==> c2))
+         ((First c1)
+            >==> Second (Comb (i:=circuit_state c1*_)
+                              (fun x => snd x))
+            >==> mealy c2
+            >==> Second (Comb (o:=circuit_state c1*_) (fun x => (defaultValue,x)))).
+Proof.
+  exists (fun _ _ => True). split; [ tauto | ].
+  cbn [value circuit_state mealy]. intros; destruct_products.
+  logical_simplify. infer_combinational_states_equal.
+  cbn [step mealy fst snd]. cbv [Combinators.swap].
+  simpl_ident. repeat destruct_pair_let; cbn [fst snd].
+  ssplit; [ | tauto ].
+  repeat lazymatch goal with |- (_,_) = (_,_) =>
+                             apply f_equal2; try reflexivity; [ ] end.
+  apply is_combinational_state; auto.
+Qed.
+
+Lemma Comb_DelayInit_comm {i o} (c : Circuit i o) r :
+  is_combinational c = true ->
+  cequiv (DelayInit r >==> c)
+         (c >==> DelayInit (snd (step c (reset_state c) r))).
+Proof.
+  exists (fun (s1 : value i * value (circuit_state c))
+       (s2 : value (circuit_state c) * value o) =>
+       step c (snd s1) (fst s1) = s2).
+  cbn [reset_state circuit_state value step fst snd].
+  split; [ apply step_combinational; assumption | ].
+  intros; destruct_products. cbn [fst snd] in *.
+  infer_combinational_states_equal.
+  lazymatch goal with H : step _ _ _ = _ |- _ => rewrite H end.
+  cbn [fst snd]. rewrite <-surjective_pairing.
+  ssplit; reflexivity.
+Qed.
+
+Lemma Comb_ndelays_comm {i o} (c : Circuit i o) n r :
+  is_combinational c = true ->
+  cequiv (chreset (ndelays i n) r >==> c)
+         (c >==> (chreset (ndelays o n)
+                          (ndelays_value_from_sim c (reset_state c) r))).
+Proof.
+  revert c r; induction n; intros;
+    [ cbn; autorewrite with circuitsimpl; reflexivity | ].
+  cbn [ndelays chreset Delay]. autorewrite with circuitsimpl.
+  cbn [ndelays_value_from_sim fst snd].
+  rewrite <-(Compose_assoc (chreset (ndelays _ _) _) (DelayInit _) c).
+  rewrite Comb_DelayInit_comm by auto.
+  autorewrite with circuitsimpl. rewrite IHn by auto.
+  rewrite step_combinational by auto. cbn [fst snd].
+  repeat (apply Proper_Compose; try reflexivity; [ ]).
+  rewrite step_combinational by auto.
+  reflexivity.
+Qed.
+
+Lemma retimed_cancel_r {i t o} (c1 c2 : Circuit i t) (c3 : Circuit t o) n :
+  is_combinational c3 = true ->
+  retimed n c1 c2 ->
+  retimed n (c1 >==> c3) (c2 >==> c3).
+Proof.
+  cbv [retimed]. intros; logical_simplify.
+  exists (ndelays_value_from_sim c3 (reset_state c3) ltac:(eassumption)).
+  lazymatch goal with H : cequiv c1 _ |- _ => rewrite H; clear H end.
+  cbv [Par]; rewrite !First_Second_comm, !Compose_assoc.
+  rewrite !LoopInit_First_r.
+  rewrite <-(Compose_assoc (LoopInit _ _) _ c3).
+  rewrite Comb_ndelays_comm by auto.
+  autorewrite with circuitsimpl.
+  apply Proper_Compose; [ | reflexivity ].
+  rewrite <-LoopInit_First_r.
+  erewrite (LoopInit_change_state (s1:=circuit_state c2 * circuit_state c3))
+    with (f:=fst); [ reflexivity | ].
+  rewrite mealy_compose_comb_r by auto.
+  cbn [circuit_state reset_state].
+  autorewrite with circuitsimpl.
+  exists
+    (fun (s1 : unit * unit * value (circuit_state c3) * unit
+             * value (circuit_state (chreset (ndelays (circuit_state c2 * circuit_state c3) n) _))
+             * unit)
+       (s2 : unit * unit * value (circuit_state (chreset (ndelays (circuit_state c2) n) _))
+             * value (circuit_state c3)) =>
+       let '(_,_,x1,_,y1,_) := s1 in
+       let '(_,_,y2,x2) := s2 in
+       x1 = x2
+       /\ Forall_ndelays (t1:=_*_) (fun x1 x2 => fst x1 = x2)
+                        (from_chreset_state y1) (from_chreset_state y2)).
+  cbn [reset_state fst snd Par].
+  split.
+  { cbn. rewrite !chreset_reset, !from_to_chreset_state.
+    ssplit; try reflexivity; [ ].
+    apply Forall_ndelays_to_ndelays_state. reflexivity. }
+  { cbn [circuit_state LoopInit reset_state value mealy Par].
+    intros; destruct_products; logical_simplify. subst.
+    cbn [step LoopInit mealy fst snd Par].
+    cbv [Combinators.swap]. simpl_ident.
+    repeat destruct_pair_let; cbn [fst snd].
+    rewrite !step_chreset; cbn [fst snd].
+    rewrite !from_to_chreset_state.
+    lazymatch goal with
+    | H : @Forall_ndelays ?t1 ?t2 ?n ?R ?x1 ?x2 |- _ =>
+      let y1 := lazymatch goal with
+                | |- context [step (ndelays _ _) x1 ?y1] => y1 end in
+      let y2 := lazymatch goal with
+                | |- context [step (ndelays _ _) x2 ?y2] => y2 end in
+      pose proof (Forall_ndelays_step
+                    t1 t2 R x1 x2 y1 y2 H ltac:(reflexivity)) as Hstep
+    end.
+    cbn [fst snd] in *. destruct Hstep as [Hstep1 Hstep2].
+    rewrite Hstep2. ssplit; auto. }
+Qed.
+
+(* The structure of this proof is almost identical to retimed_cancel_r, could be
+   more automated *)
+Lemma retimed_cancel_l {i t o} (c1 c2 : Circuit t o) (c3 : Circuit i t) n :
+  is_combinational c3 = true ->
+  retimed n c1 c2 ->
+  retimed n (c3 >==> c1) (c3 >==> c2).
+Proof.
+  cbv [retimed]. intros ? [r Heq]; logical_simplify.
+  exists r. rewrite Heq. clear Heq.
+  cbv [Par]; rewrite !First_Second_comm, !Compose_assoc.
+  rewrite !LoopInit_First_r.
+  autorewrite with circuitsimpl.
+  apply Proper_Compose; [ | reflexivity ].
+  rewrite mealy_compose_comb_l by auto.
+  repeat match goal with
+         | |- context [?a >==> ?b >==> ?c] =>
+           lazymatch a with context [First c3] =>
+                            rewrite <-(Compose_assoc a b c) end
+         end.
+  rewrite <-LoopInit_Compose_l.
+  apply Proper_Compose; [ reflexivity | ].
+  autorewrite with circuitsimpl.
+  erewrite (LoopInit_change_state (s1:=circuit_state c3 * circuit_state c2))
+    with (f:=snd); [ reflexivity | ].
+  cbn [circuit_state reset_state].
+  autorewrite with circuitsimpl.
+  exists (fun (s1 : unit * unit * unit
+             * value (circuit_state (chreset (ndelays (circuit_state c3 * circuit_state c2) n) _))
+             * unit)
+       (s2 : unit * unit * value (circuit_state (chreset (ndelays (circuit_state c2) n) _))) =>
+       let '(_,_,x1,_) := s1 in
+       let '(_,_,x2) := s2 in
+       Forall_ndelays (t1:=_*_) (fun v1 v2 => snd v1 = v2)
+                      (from_chreset_state x1) (from_chreset_state x2)).
+  cbn [reset_state circuit_state fst snd Par].
+  split.
+  { cbn. rewrite !chreset_reset, !from_to_chreset_state.
+    ssplit; try reflexivity; [ ].
+    apply Forall_ndelays_to_ndelays_state. reflexivity. }
+  { cbn [circuit_state LoopInit reset_state value mealy Par].
+    intros; destruct_products; logical_simplify. subst.
+    cbn [step LoopInit mealy fst snd Par].
+    cbv [Combinators.swap]. simpl_ident.
+    repeat destruct_pair_let; cbn [fst snd].
+    rewrite !step_chreset; cbn [fst snd].
+    rewrite !from_to_chreset_state.
+    lazymatch goal with
+    | H : @Forall_ndelays ?t1 ?t2 ?n ?R ?x1 ?x2 |- _ =>
+      let y1 := lazymatch goal with
+                | |- context [step (ndelays _ _) x1 ?y1] => y1 end in
+      let y2 := lazymatch goal with
+                | |- context [step (ndelays _ _) x2 ?y2] => y2 end in
+      pose proof (Forall_ndelays_step
+                    t1 t2 R x1 x2 y1 y2 H ltac:(reflexivity)) as Hstep
+    end.
+    cbn [fst snd] in *. destruct Hstep as [Hstep1 Hstep2].
+    rewrite Hstep2. ssplit; auto. }
 Qed.
 
 Global Instance Reflexive_retimed {i o} : Reflexive (@retimed i o 0) | 10.
 Proof. repeat intro. apply retimed_cequiv; reflexivity. Qed.
 
-Lemma DelayInit_Comb_comm {i o} (f : value i -> cava (value o)) r :
-  cequiv (DelayInit r >==> Comb f) (Comb f >==> DelayInit (f r)).
-Proof.
-  rewrite move_delay_init. cbn [chreset step fst snd].
-  reflexivity.
-Qed.
-
-
-Lemma ndelays_Comb_comm {i o} (f : value i -> cava (value o)) n :
-  cequiv (ndelays i n >==> Comb f)
-         (Comb f >==> chreset (ndelays o n) (map_ndelays f defaultValue)).
-Proof.
-  induction n; cbn [ndelays]; autorewrite with circuitsimpl; [ reflexivity | ].
-  cbv [Delay]. rewrite <-Compose_assoc. rewrite DelayInit_Comb_comm.
-  cbn [chreset map_ndelays fst snd]. autorewrite with circuitsimpl.
-  rewrite IHn. reflexivity.
-Qed.
-
-Lemma retimed_cancel_r {i o t} n (c1 c2 : Circuit i t) (c3 : Circuit t o) :
-  retimed n c1 c2 -> retimed n (c1 >==> c3) (c2 >==> c3).
-Admitted.
-
-Lemma retimed_cancel_l {i o t} n (c1 c2 : Circuit t o) (c3 : Circuit i t) :
-  retimed n c1 c2 -> retimed n (c3 >==> c1) (c3 >==> c2).
-Admitted.
-
-Lemma loopless_par {i1 i2 o1 o2} (c1 : Circuit i1 o1) (c2 : Circuit i2 o2) :
-  cequiv (loopless (Par c1 c2))
-         (Comb (i:=_*_*(_*_)) (o:=_*_*(_*_))
-               (fun '(x1,x2,(s1,s2)) => (x1,s1,(x2,s2)))
-               >==> Par (loopless c1) (loopless c2)
-               >==> (Comb (i:=_*_*(_*_)) (o:=_*_*(_*_))
-                          (fun '(x1,s1,(x2,s2)) => (x1,x2,(s1,s2))))).
-Admitted.
-
-(* LHS : x1,s1 / x2,s2*)
-(* RHS : x1,x2,(s1,s2) *)
 Lemma Par_LoopInit {i1 o1 s1 i2 o2 s2} (c1 : Circuit (i1 * s1) (o1 * s1))
       (c2 : Circuit (i2 * s2) (o2 * s2)) r1 r2 :
   cequiv (Par (LoopInit r1 c1) (LoopInit r2 c2))
@@ -653,32 +948,121 @@ Lemma Par_LoopInit {i1 o1 s1 i2 o2 s2} (c1 : Circuit (i1 * s1) (o1 * s1))
                   >==> (Comb (i:=_*_*(_*_)) (o:=_*_*(_*_))
                              (fun '(x1,s1,(x2,s2)) => (x1,x2,(s1,s2)))))).
 Proof.
-Admitted.
+  exists (fun (x1 : unit * (value (circuit_state c1) * value s1)
+             * (unit * (value (circuit_state c2) * value s2)))
+       (x2 : unit * (unit * (value (circuit_state c1) * value (circuit_state c2))
+                     * unit * (value s1 * value s2))) =>
+       let '(_,(a1,b1),(_,(c1,d1))) := x1 in
+       let '(_,(_,(a2,c2),_,(b2,d2))) := x2 in
+       a1 = a2 /\ b1 = b2 /\ c1 = c2 /\ d1 = d2).
+  cbn [reset_state circuit_state value Par LoopInit fst snd].
+  ssplit; [ reflexivity .. | ].
+  intros; destruct_products; logical_simplify. subst.
+  cbn [step LoopInit Par fst snd]. simpl_ident.
+  repeat destruct_pair_let. cbn [fst snd].
+  ssplit; reflexivity.
+Qed.
+
+Lemma mealy_Par {i1 i2 o1 o2} (c1 : Circuit i1 o1) (c2 : Circuit i2 o2) :
+  cequiv (mealy (Par c1 c2))
+         (Comb (i:=_*_*(_*_)) (o:=_*_*(_*_))
+                  (fun '(x1,x2,(s1,s2)) => (x1,s1,(x2,s2)))
+                  >==> Par (mealy c1) (mealy c2)
+                  >==> (Comb (i:=_*_*(_*_)) (o:=_*_*(_*_))
+                             (fun '(x1,s1,(x2,s2)) => (x1,x2,(s1,s2))))).
+Proof.
+  exists (fun _ _ => True). ssplit; [ tauto | ].
+  cbn [value circuit_state Par mealy].
+  intros; destruct_products; logical_simplify. subst.
+  cbn [step LoopInit Par fst snd mealy].
+  cbv [Combinators.swap]. simpl_ident.
+  repeat destruct_pair_let. cbn [fst snd].
+  ssplit; reflexivity.
+Qed.
+
+Lemma split_ndelays_chreset_combine_ndelays {t1 t2} n x y :
+  cequiv (chreset (ndelays (t1 * t2) n) (combine_ndelays x y))
+         (Par (chreset (ndelays t1 n) x)
+              (chreset (ndelays t2 n) y)).
+Proof.
+  revert x y; induction n;
+    cbn [value circuit_state ndelays chreset Id Delay];
+    intros; autorewrite with circuitsimpl; [ reflexivity | ].
+  destruct_products. cbn [combine_ndelays fst snd].
+  rewrite Par_Compose. rewrite IHn.
+  rewrite split_delay_init. reflexivity.
+Qed.
+
+Lemma to_ndelays_state_combine_ndelays {t1 t2} x n :
+  to_ndelays_state (t:=t1*t2) (n:=n) x
+  = combine_ndelays (to_ndelays_state (fst x))
+                    (to_ndelays_state (snd x)).
+Proof.
+  revert x; induction n; [ reflexivity | ].
+  intros. cbn [to_ndelays_state combine_ndelays fst snd].
+  rewrite <-IHn, <-surjective_pairing.
+  reflexivity.
+Qed.
+
+(* Helper for retimed_par *)
+Lemma Par_Par_rearrange1 {i1 i2 i3 i4 o1 o2 o3 o4}
+      (c1 : Circuit i1 o1) (c2 : Circuit i2 o2)
+      (c3 : Circuit i3 o3) (c4 : Circuit i4 o4) :
+  cequiv ((Comb (i:=(_*_*(_*_))) (o:=_*_*(_*_))
+                (fun '(x1,x3,(x2,x4)) => (x1,x2,(x3,x4))))
+            >==> Par (Par c1 c2) (Par c3 c4))
+         ((Par (Par c1 c3) (Par c2 c4))
+            >==> (Comb (i:=(_*_*(_*_))) (o:=_*_*(_*_))
+                       (fun '(x1,x2,(x3,x4)) => (x1,x3,(x2,x4))))).
+Proof.
+  exists (fun (lhs : unit * (value (circuit_state c1) * value (circuit_state c2)
+                      * (value (circuit_state c3) * value (circuit_state c4))))
+       (rhs : value (circuit_state c1) * value (circuit_state c3)
+              * (value (circuit_state c2) * value (circuit_state c4)) * unit) =>
+       let '(_,(l1,l2,(l3,l4))) := lhs in
+       let '(r1,r3,(r2,r4),_) := rhs in
+       l1 = r1 /\ l2 = r2 /\ l3 = r3 /\ l4 = r4).
+  cbn [reset_state circuit_state value Par fst snd].
+  ssplit; [ reflexivity  ..| ].
+  intros; destruct_products; logical_simplify. subst.
+  cbn [step Par fst snd]. simpl_ident.
+  ssplit; reflexivity.
+Qed.
 
 Lemma retimed_par {i1 i2 o1 o2}
       (c1 c2 : Circuit i1 o1) (c3 c4 : Circuit i2 o2) n :
   retimed n c1 c2 -> retimed n c3 c4 -> retimed n (Par c1 c3) (Par c2 c4).
 Proof.
   cbv [retimed]. cbn [circuit_state Par value]. intros.
-  logical_simplify. eexists.
-  repeat match goal with H : cequiv _ _ |- _ => rewrite H end.
-  rewrite loopless_par. rewrite Par_LoopInit.
+  logical_simplify.
+  let r1 := lazymatch goal with
+              r : value (circuit_state (ndelays o1 _)) |- _ => r end in
+  let r2 := lazymatch goal with
+              r : value (circuit_state (ndelays o2 _)) |- _ => r end in
+  exists (combine_ndelays r1 r2).
+  repeat match goal with H : cequiv _ _ |- _ => rewrite H; clear H end.
+  rewrite Par_LoopInit.
   eapply Proper_LoopInit; [ reflexivity | ].
-  (* need to be able to move the delays over Comb *)
-Admitted.
+  rewrite Par_Compose. rewrite mealy_Par.
+  autorewrite with circuitsimpl.
+  rewrite to_ndelays_state_combine_ndelays.
+  rewrite !split_ndelays_chreset_combine_ndelays.
+  rewrite <-(Compose_assoc _ (Comb _) (Par (Par _ _) (Par _ _))).
+  rewrite Par_Par_rearrange1.
+  autorewrite with circuitsimpl.
+  reflexivity.
+Qed.
 
-Lemma loop_free_ndelays {t} n : is_loop_free (ndelays t n) = true.
+Lemma retimed_delay_init {t} (r : value t) : retimed 1 (DelayInit r) Id.
 Proof.
-  induction n; [ reflexivity | ]. cbn [ndelays is_loop_free].
-  rewrite IHn; reflexivity.
+  rewrite <-(Compose_Id_l (DelayInit _)).
+  eapply retimed_delay_init_r; reflexivity.
 Qed.
 
 Lemma retimed_ndelays {t} n : retimed n (ndelays t n) Id.
 Proof.
   induction n; [ reflexivity | ]. cbn [ndelays].
-  replace (S n) with (1 + n) by lia.
-  eapply retimed_trans; [ | eassumption ].
-  apply retimed_delay_r; apply loop_free_ndelays.
+  apply retimed_delay_r; auto.
 Qed.
 
 Lemma retimed_first {i o t} (c1 c2 : Circuit i o) n :
@@ -697,13 +1081,86 @@ Proof.
   apply retimed_ndelays.
 Qed.
 
+Lemma mealy_LoopInit {i o s} (c : Circuit (i * s) (o * s)) r :
+  cequiv (mealy (LoopInit r c))
+         (Comb (i:=_*(_*(_*_))) (o:=(_*_)*_)
+               (fun '(x,(_,(cs,ls))) => ((x,ls),cs))
+               >==> mealy c
+               >==> (Comb (i:=(_*_)*_) (o:=_*(tzero*(_*_)))
+                          (fun '((x,ls),cs) => (x,(tt,(cs,ls)))))).
+Admitted.
+
+Lemma combine_ndelays_map_fst_snd
+      {t1 t2 n} (r : value (circuit_state (ndelays (t1 * t2) n))) :
+  combine_ndelays (map_ndelays (t1:=_*_) fst r)
+                  (map_ndelays (t1:=_*_) snd r) = r.
+Proof.
+  revert r; induction n;
+    cbn [value circuit_state reset_state ndelays Id map_ndelays combine_ndelays];
+    intros; destruct_products; logical_simplify; [ reflexivity | ].
+  cbn [fst snd]. rewrite IHn, <-surjective_pairing; reflexivity.
+Qed.
+
 Lemma retimed_LoopInit {i o s} (c1 c2 : Circuit (i * s) (o * s)) n r :
   retimed n c1 c2 -> retimed n (LoopInit r c1) (LoopInit r c2).
 Proof.
   intros [v Hv]. rewrite Hv. clear Hv.
   rewrite LoopInit_LoopInit.
   autorewrite with circuitsimpl.
-  cbv [retimed]. eexists.
+  cbv [retimed]. cbn [circuit_state reset_state LoopInit value].
+  exists (map_ndelays (t1:=o*s) fst ltac:(eassumption)).
+  (*unshelve eexists; [ cbn | ]. *)
+  rewrite mealy_LoopInit.
+  let v := lazymatch goal with |- context [map_ndelays fst ?v] => v end in
+  rewrite <-(combine_ndelays_map_fst_snd v).
+  rewrite !to_ndelays_state_combine_ndelays.
+  rewrite !split_ndelays_chreset_combine_ndelays.
+  rewrite !combine_ndelays_map_fst_snd.
+  erewrite (LoopInit_change_state
+              (s1:=tzero*(_*_)) (s2:=_*_))
+    with (f:=fun x => (snd (snd x), fst (snd x)));
+    [ reflexivity | ].
+  fold @value. cbn [fst snd].
+  autorewrite with pull_comb circuitsimpl.
+  repeat match goal with
+         | |- context [?a >==> ?b >==> ?c] =>
+           lazymatch a with context [mealy c2] =>
+                            rewrite <-(Compose_assoc a b c) end
+         end.
+  apply Proper_Compose;
+    [ erewrite Comb_ext; [ reflexivity | ];
+      cbn [value]; intros; destruct_products; reflexivity | ].
+
+  (* FFFFF the reset values aren't the same, this might not actually be true *)
+  exists (fun (s1 : unit * (value (circuit_state (chreset (ndelays o n) _))
+                     * (value (circuit_state (chreset (ndelays tzero n) _))
+                        * (value (circuit_state (chreset (ndelays (circuit_state c2) n) _))
+                           *  value (circuit_state (chreset (ndelays s n) _))))
+                     * unit))
+       (s2 : value (circuit_state (chreset (ndelays o n) _))
+             * value (circuit_state (chreset (ndelays s n) _))
+             * value (circuit_state (chreset (ndelays (circuit_state c2) n) _))
+             * unit) =>
+       let '(_,(x1,(_,(y1,z1)),_)) := s1 in
+       let '(x2,z2,y2,_) := s2 in
+       Forall_ndelays eq (from_chreset_state x1) (from_chreset_state x2)
+       /\ Forall_ndelays eq (from_chreset_state y1) (from_chreset_state y2)
+       /\ Forall_ndelays eq (from_chreset_state z1) (from_chreset_state z2)).
+  cbn [reset_state circuit_state value Par fst snd].
+  rewrite !chreset_reset, !from_to_chreset_state.
+  ssplit.
+  {
+    Search Forall_ndelays.
+    
+  rewrite to_ndelays_state_combine_ndelays.
+  (* change v to combine_ndelays map fst map snd *)
+  rewrite split_ndelays_chreset_combine_ndelays.
+  cbn [reset_state LoopInit].
+  About LoopInit_change_state.
+  erewrite (LoopInit_change_state (s1:=tzero*(_*_)) (s2:=_*_))
+           with (f:=fun x => (snd (snd x), fst (snd x))).
+  Search cequiv LoopInit.
+  eapply Proper_LoopInit.
   cbn [loops_reset_state LoopInit].
   exists (fun (s1 : unit * (unit * value (circuit_state (loopless c2))
                      * value (circuit_state (chreset (ndelays (o * s * loops_state c2) n) v))
