@@ -33,7 +33,7 @@ Following table summarizes the status of each driver.
 
 | Directory | Firmware Sources | Transcription | Semantics | Properties |
 |:-----|:----|:--:|:--:|:--:|
-| LibBase | bitfield.h <br> abs_mmio.h <br> sec_mmio.h | :heavy_check_mark: <br> :heavy_check_mark: <br> :construction: | :construction: <br> :construction: <br> :construction: | :heavy_check_mark: <br> :construction: <br> :construction: |
+| LibBase | bitfield.h <br> abs_mmio.h <br> sec_mmio.h | :heavy_check_mark: <br> :heavy_check_mark: <br> :construction: | N/A <br> N/A <br> N/A | :heavy_check_mark: <br> :heavy_check_mark: <br> :construction: |
 | Uart | uart.c | :heavy_check_mark: | :heavy_check_mark: | :construction: |
 | Hmac | hmac.c | :heavy_check_mark: | :heavy_check_mark: | :construction: |
 | Keymgr | keymgr.c | :heavy_check_mark: | | |

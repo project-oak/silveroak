@@ -37,6 +37,52 @@ Section Proof.
           {word_ok: word.ok word} {mem_ok: map.ok mem}
           {ext_spec: ExtSpec} {ext_spec_ok: ext_spec.ok ext_spec}.
 
+  Global Instance spec_of_bitfield_field32_write : spec_of "b2_bitfield_field32_write" :=
+    fun function_env =>
+      forall (field mask index value : word) (m : mem) (t : trace),
+        call function_env bitfield_field32_write t m [field; mask; index; value]
+          (fun t' m' rets =>
+            t = t' /\ m = m' /\
+            rets = [word.or
+              (word.and
+                field
+                (word.xor (word.slu mask index) (word.of_Z (- 1)))
+              )
+              (word.slu (word.and value mask) index)]).
+  Lemma bitfield_field32_write_correct :
+    program_logic_goal_for_function! bitfield_field32_write.
+  Proof.
+    repeat straightline.
+    repeat lazymatch goal with
+           | |- exists _, _ =>
+             eexists; ssplit; repeat straightline
+    end.
+    ssplit; eauto.
+  Qed.
+
+  Global Instance spec_of_bitfield_bit32_write : spec_of "b2_bitfield_bit32_write" :=
+  fun function_env =>
+    forall (field index value: word) (m : mem) (t : trace),
+      call function_env bitfield_bit32_write t m [field; index; value]
+        (fun t' m' rets =>
+           t = t' /\ m = m' /\
+           rets = [word.or
+              (word.and
+                field
+                (word.xor (word.slu (word.of_Z 1) index) (word.of_Z (- 1)))
+              )
+              (word.slu (word.and (if word.eqb value (word.of_Z 1) then word.of_Z 1 else word.of_Z 0) (word.of_Z 1)) index)]).
+  Lemma bitfield_bit32_write_correct :
+    program_logic_goal_for_function! bitfield_bit32_write.
+  Proof.
+    repeat straightline.
+    straightline_call.
+    eexists; ssplit; repeat straightline.
+    + cbn [map.putmany_of_list_zip]. subst a1.
+      reflexivity.
+    + repeat straightline. ssplit; eauto.
+  Qed.
+
   Global Instance spec_of_bitfield_field32_read : spec_of "b2_bitfield_field32_read" :=
     fun function_env =>
       forall (field mask index : word) (m : mem) (t : trace),
