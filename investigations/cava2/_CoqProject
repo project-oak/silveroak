@@ -9,6 +9,7 @@ Expr.v
 Semantics.v
 Primitives.v
 Fib.v
+Fifo.v
 Sha256.v
 TLUL.v
 Hmac.v

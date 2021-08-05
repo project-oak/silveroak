@@ -28,6 +28,15 @@ Inductive UnaryPrim : type -> type -> Type :=
 | UnVecSlice: forall {t n} (start len: nat), UnaryPrim (Vec t n) (Vec t len)
 | UnVecResize: forall {t n m}, UnaryPrim (Vec t n) (Vec t m)
 | UnVecReverse: forall {t n}, UnaryPrim (Vec t n) (Vec t n)
+| UnVecUncons: forall {t n}, UnaryPrim (Vec t (S n)) (t ** Vec t n)
+
+(* Our numbers are little endian but bitshifting is usually lexicographic
+ * ordered, that is for X = 0x3 = 0b110, X >> 1 = 0x1 = 0b100
+ * Whereas vector shifting is opposite X = [a,b,c], shift_right X 1 = [_,a,b]
+ * TODO(blaxill): simplify this situation?
+ *)
+| UnBitVecRotateRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
+| UnBitVecShiftRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
 
 | UnVecRotateRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
 | UnVecShiftRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
@@ -86,12 +95,27 @@ Fixpoint rotate_left {A} n (ls: list A): list A :=
     | x :: xs => rotate_left n' (xs ++ [x])
     end
   end.
+Fixpoint shift_left {A} n (ls: list (simple_denote_type A)): list (simple_denote_type A) :=
+  match n with
+  | 0 => ls
+  | S n' =>
+    match ls with
+    | nil => []
+    | x :: xs => shift_left n' (xs ++ [simple_default])
+    end
+  end.
 
 Fixpoint rotate_right {A} n (ls: list (simple_denote_type A)): list (simple_denote_type A) :=
   match n with
   | 0 => ls
   | S n' =>
     rotate_right n' (last ls simple_default :: removelast ls)
+  end.
+Fixpoint shift_right {A} n (ls: list (simple_denote_type A)): list (simple_denote_type A) :=
+  match n with
+  | 0 => ls
+  | S n' =>
+    shift_right n' (simple_default :: removelast ls)
   end.
 
 Definition unary_semantics {x r} (prim: UnaryPrim x r)
@@ -107,10 +131,20 @@ Definition unary_semantics {x r} (prim: UnaryPrim x r)
     )%list
   | @UnVecReverse t n =>
     via_simple (b:=Vec t n) (a:= Vec t _) (fun x => rev x)%list
+
+  | @UnVecUncons t n =>
+    via_simple (b:=t ** Vec t n) (a:= Vec t _) (fun x => (hd simple_default x, tl x) )%list
+
+  | UnBitVecRotateRight n =>
+    via_simple (b:=Vec _ _) (a:= Vec _ _) (fun x => rotate_left n x)
+  | UnBitVecShiftRight n =>
+    via_simple (b:=Vec _ _) (a:= Vec _ _) (fun x => shift_left n x)
+
   | UnVecRotateRight n =>
     via_simple (b:=Vec _ _) (a:= Vec _ _) (fun x => rotate_right n x)
   | UnVecShiftRight n =>
-    via_simple (b:=Vec _ _) (a:= Vec _ _) (fun x => rotate_left n x)
+    via_simple (b:=Vec _ _) (a:= Vec _ _) (fun x => shift_right n x)
+
   | @UnVecToTuple t n =>
     via_simple (a:= Vec _ _) (fun x => vector_as_tuple n t x)
   | @UnBitVecNot n =>

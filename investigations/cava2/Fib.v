@@ -112,7 +112,9 @@ Proof. cbn [fibonacci_nat]. lia. Qed.
 Lemma fibonacci_correct sz input :
   simulate (fibonacci (sz:=sz)) input = spec_of_fibonacci sz input.
 Proof.
-  cbv [simulate]. rewrite fold_left_accumulate_to_seq with (default:=tt).
+  cbv [simulate simulate'].
+  fold (fold_left_accumulate (step (fibonacci (sz:=sz))) input (reset_state fibonacci)).
+  rewrite fold_left_accumulate_to_seq with (default:=tt).
   assert (2 ^ (N.of_nat sz) <> 0) by (apply N.pow_nonzero; lia).
   eapply fold_left_accumulate_invariant_seq with (I:=fibonacci_invariant (sz:=sz)).
   { cbv [fibonacci_invariant]. ssplit; reflexivity. }

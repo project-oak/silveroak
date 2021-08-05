@@ -44,7 +44,7 @@ Section Var.
   Definition hmac_top : Circuit _ [tl_h2d_t] tl_d2h_t := {{
     fun incoming_tlp =>
 
-    let/delay '(digest_buffer, tl_o; registers) :=
+    let/delay '(tl_o; registers) :=
 
       let '(tl_o, write_en, write_address, write_data; write_mask)
         := `tlul_adapter_reg` incoming_tlp registers in
@@ -70,14 +70,14 @@ Section Var.
       let '(packer_valid; packer_data)
         := `tlul_pack` (write_en && fifo_write) write_data write_mask cmd_process in
 
-      let '(padded_block; padded_valid) := `sha256_padder` packer_valid packer_data cmd_process cmd_start in
-
+      (* TODO(blaxill): FIX ME *)
+      (* let '(_, padded_block; padded_valid) := `sha256_padder` packer_valid packer_data cmd_process `circuit_hole` cmd_start in *)
       (* TODO(blaxill): sha needs to block FIFO writes and process HMAC key first *)
-      let inital_digest := `Constant sha256_initial_digest` in
-      let '(digest; digest_valid) := `sha256_inner` padded_block padded_valid inital_digest in
-      let next_digest := if digest_valid then digest else digest_buffer in
+      (* let inital_digest := `Constant sha256_initial_digest` in *)
+      (* let '(digest; digest_valid) := `sha256_inner` padded_block padded_valid `circuit_hole` in *)
+      (* let next_digest := if digest_valid then digest else digest_buffer in *)
 
-      (next_digest, tl_o, nregisters)
+      (tl_o, nregisters)
 
       initially value_hole
     in tl_o
