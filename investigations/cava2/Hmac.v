@@ -62,10 +62,10 @@ Section Var.
 
       (* cmd_start is set when host writes to hmac.CMD.hash_start *)
       (* and signifies the start of a new message *)
-      let cmd_start := write_en && aligned_address == `REG_CMD` && write_data == `_1` && !fifo_write in
+      let cmd_start := write_en && aligned_address == `REG_CMD` && write_data == `K 1` && !fifo_write in
       (* cmd_process is set when host writes to hmac.CMD.hash_process *)
       (* and signifies the end of a message *)
-      let cmd_process := write_en && aligned_address == `REG_CMD` && write_data == `_2` && !fifo_write in
+      let cmd_process := write_en && aligned_address == `REG_CMD` && write_data == `K 2` && !fifo_write in
 
       let '(packer_valid; packer_data)
         := `tlul_pack` (write_en && fifo_write) write_data write_mask cmd_process in

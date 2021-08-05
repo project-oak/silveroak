@@ -126,16 +126,10 @@ End ExprNotations.
 Section Var.
   Context {var : tvar}.
 
-  Definition val_of t : denote_type t -> denote_type t := id.
-  Definition val_N {sz}: N -> denote_type (BitVec sz) := id.
-
   Definition True := Constant (true: denote_type Bit).
   Definition False := Constant (false: denote_type Bit).
-  Definition _0 {sz} := Constant (val_of (BitVec sz) 0).
-  Definition _1 {sz} := Constant (val_of (BitVec sz) 1).
-  Definition _2 {sz} := Constant (val_of (BitVec sz) 2).
-  Definition _3 {sz} := Constant (val_of (BitVec sz) 2).
-  Definition _4 {sz} := Constant (val_of (BitVec sz) 2).
+  Definition K {sz}: N -> Circuit [] [] (BitVec sz) :=
+    fun x : denote_type (BitVec sz) => Constant x.
 
   Class bitlike x :=
   { eq : var x -> var x -> Circuit [] [] Bit
@@ -182,7 +176,7 @@ Section RegressionTests.
       if `silly_id` flag then (a) else a
   }}.
 
-  Definition inital_state {sz} := val_of (BitVec sz ** BitVec sz) (0,1)%N.
+  Definition inital_state {sz} := (0,1)%N : denote_type (BitVec sz ** BitVec sz).
 
   Definition test {sz: nat}: Circuit (BitVec 10**BitVec 10) [] (BitVec 10) := {{
     let/delay '(x;y) := (y,x) initially inital_state in y
