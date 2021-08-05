@@ -940,6 +940,12 @@ Section FoldLeftAccumulate.
     reflexivity.
   Qed.
 
+  Lemma fold_left_accumulate'_cons_snd {A B C}
+        (f : B -> A -> B * C) b a acc0 ls :
+    snd (fold_left_accumulate' f acc0 (a::ls) b)
+    = snd (fold_left_accumulate' f (acc0 ++ [snd (f b a)]) ls (fst (f b a))).
+  Proof. reflexivity. Qed.
+
   Lemma fold_left_accumulate'_cons_full {A B C}
         (f : B -> A -> B * C) b a acc0 ls :
     fold_left_accumulate' f acc0 (a::ls) b
@@ -1232,6 +1238,52 @@ Section FoldLeftAccumulate.
              | |- _ /\ _ => split; try length_hammer
              | |- last _ _ = _ => apply last_last
              end; eauto.
+  Qed.
+
+  Lemma fold_left_accumulate'_snd_acc_invariant
+    s i o (c: Circuit s i o) ix xs a b:
+    snd (fold_left_accumulate' (step c) a ix xs) =
+    snd (fold_left_accumulate' (step c) b ix xs).
+  Proof.
+    revert xs a b.
+    induction ix; try reflexivity.
+    intros.
+    rewrite fold_left_accumulate'_cons_snd.
+    rewrite fold_left_accumulate'_cons_snd.
+    apply IHix.
+  Qed.
+
+  Lemma fold_left_accumulate'_is_splittable:
+    forall s i o (c: Circuit s i o) ix iy is prefix,
+    fold_left_accumulate' (step c) prefix (ix++iy) is =
+    let (xo, xs) := fold_left_accumulate' (step c) prefix ix is in
+    let (yo, ys) := fold_left_accumulate' (step c) nil iy xs in
+    (xo++yo,ys)%list.
+  Proof.
+    assert (forall a b (X:a*b), (fst X, snd X) = X) as repair_pair by (now destruct X).
+
+    intros.
+    revert prefix is.
+    induction ix; intros.
+    cbn [List.app].
+
+    repeat destruct_pair_let.
+
+    cbn.
+    rewrite <- fold_left_accumulate'_equiv.
+    rewrite fold_left_accumulate'_snd_acc_invariant with (b:=prefix).
+    rewrite repair_pair; reflexivity.
+
+    cbn [List.app].
+    rewrite fold_left_accumulate'_cons_full.
+    rewrite repair_pair.
+
+    remember (fold_left_accumulate' (step c) prefix (a :: ix) is) as m.
+    rewrite fold_left_accumulate'_cons_full in Heqm.
+    rewrite repair_pair in Heqm.
+    rewrite Heqm.
+    rewrite IHix.
+    reflexivity.
   Qed.
 End FoldLeftAccumulate.
 
