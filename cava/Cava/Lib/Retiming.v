@@ -54,21 +54,11 @@ Fixpoint to_ndelays_state {t n} (x : value t)
     | S m => (to_ndelays_state x, x)
     end.
 
-(* Problem: for retiming loops, we would have to be able to extract the
-   existential rvals from hyp (since loop state is output of body) and say it's
-   equal to the reset state, not true in general
-
-Why must the second delays be reset state? To preserve R in cequiv somewhere? Where?
-
-*)
 Definition retimed {i o} (n : nat) (c1 c2 : Circuit i o) : Prop :=
-  exists rvals1 rvals2,
+  exists rvals,
     cequiv c1 (LoopInit (reset_state c2)
                         ((mealy c2)
                            >==>
-                           (Par (chreset (ndelays o n) rvals1)
-                                (chreset (ndelays _ n) rvals2)))).
-                           (*
                            (Par (chreset (ndelays o n) rvals)
                                 (chreset (ndelays (circuit_state c2) n)
-                                         (to_ndelays_state (reset_state c2)))))).*)
+                                         (to_ndelays_state (reset_state c2)))))).

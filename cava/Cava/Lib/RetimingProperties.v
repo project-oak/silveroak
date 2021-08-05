@@ -1101,17 +1101,39 @@ Proof.
   cbn [fst snd]. rewrite IHn, <-surjective_pairing; reflexivity.
 Qed.
 
-Lemma retimed_LoopInit {i o s} (c1 c2 : Circuit (i * s) (o * s)) n r :
-  retimed n c1 c2 -> retimed n (LoopInit r c1) (LoopInit r c2).
+(* Helper lemma for retimed_LoopInit *)
+Lemma cequiv_compose_second_ndelays_r_impl
+      {i o1 o2} (c1 c2 : Circuit i (o1 * o2)) n x y :
+  cequiv (c1 >==> Second (chreset (ndelays o2 n) x))
+         (c2 >==> Second (chreset (ndelays o2 n) y)) ->
+  x = y.
 Proof.
-  intros [v Hv]. rewrite Hv. clear Hv.
+  (* intuition: the first outputs are guaranteed to be x and y respectively, and cequiv guarantees same result from simulate, therefore x = y *)
+Admitted.
+
+Lemma retimed_LoopInit {i o s} (c1 c2 : Circuit (i * s) (o * s)) n r :
+  retimed n (c1 >==> Second (chreset (ndelays s n) (to_ndelays_state r))) c2 ->
+  retimed n (LoopInit r (c1 >==> Second (chreset (ndelays s n)
+                                                 (to_ndelays_state r))))
+          (LoopInit r c2).
+Proof.
+  intros [v Hv]. rewrite Hv.
+
+  (* manipulate Hv to prove that the second element of v is r repeated *)
+  cbv [Par] in Hv. rewrite First_Second_comm, Compose_assoc in Hv.
+  rewrite LoopInit_First_r in Hv.
+  rewrite <-(combine_ndelays_map_fst_snd v) in Hv.
+  rewrite split_ndelays_chreset_combine_ndelays in Hv.
+  cbv [Par] in Hv. autorewrite with circuitsimpl in Hv.
+  apply cequiv_compose_second_ndelays_r_impl in Hv.
+  (* done; we'll use the hypothesis later *)
+
   rewrite LoopInit_LoopInit.
   autorewrite with circuitsimpl.
   cbv [retimed]. cbn [circuit_state reset_state LoopInit value].
   exists (map_ndelays (t1:=o*s) fst ltac:(eassumption)).
   (*unshelve eexists; [ cbn | ]. *)
   rewrite mealy_LoopInit.
-  let v := lazymatch goal with |- context [map_ndelays fst ?v] => v end in
   rewrite <-(combine_ndelays_map_fst_snd v).
   rewrite !to_ndelays_state_combine_ndelays.
   rewrite !split_ndelays_chreset_combine_ndelays.
@@ -1131,7 +1153,7 @@ Proof.
     [ erewrite Comb_ext; [ reflexivity | ];
       cbn [value]; intros; destruct_products; reflexivity | ].
 
-  (* FFFFF the reset values aren't the same, this might not actually be true *)
+  
   exists (fun (s1 : unit * (value (circuit_state (chreset (ndelays o n) _))
                      * (value (circuit_state (chreset (ndelays tzero n) _))
                         * (value (circuit_state (chreset (ndelays (circuit_state c2) n) _))
