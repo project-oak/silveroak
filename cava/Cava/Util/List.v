@@ -18,6 +18,7 @@ Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 Require Import Cava.Util.Nat.
+Require Import Cava.Util.Tactics.
 Import ListNotations.
 Local Open Scope list_scope.
 
@@ -1240,28 +1241,26 @@ Section FoldLeftAccumulate.
              end; eauto.
   Qed.
 
-  Lemma fold_left_accumulate'_snd_acc_invariant
-    s i o (c: Circuit s i o) ix xs a b:
-    snd (fold_left_accumulate' (step c) a ix xs) =
-    snd (fold_left_accumulate' (step c) b ix xs).
+  Lemma fold_left_accumulate'_snd_acc_invariant {A B C}
+    (f: B -> A -> B * C) ls initial acc_a acc_b:
+    snd (fold_left_accumulate' f acc_a ls initial) =
+    snd (fold_left_accumulate' f acc_b ls initial).
   Proof.
-    revert xs a b.
-    induction ix; try reflexivity.
+    revert initial acc_a acc_b.
+    induction ls; try reflexivity.
     intros.
     rewrite fold_left_accumulate'_cons_snd.
     rewrite fold_left_accumulate'_cons_snd.
-    apply IHix.
+    apply IHls.
   Qed.
 
-  Lemma fold_left_accumulate'_is_splittable:
-    forall s i o (c: Circuit s i o) ix iy is prefix,
-    fold_left_accumulate' (step c) prefix (ix++iy) is =
-    let (xo, xs) := fold_left_accumulate' (step c) prefix ix is in
-    let (yo, ys) := fold_left_accumulate' (step c) nil iy xs in
+  Lemma fold_left_accumulate'_is_splittable {A B C}:
+    forall (f: B -> A -> B * C) ix iy is prefix,
+    fold_left_accumulate' f prefix (ix++iy) is =
+    let (xo, xs) := fold_left_accumulate' f prefix ix is in
+    let (yo, ys) := fold_left_accumulate' f nil iy xs in
     (xo++yo,ys)%list.
   Proof.
-    assert (forall a b (X:a*b), (fst X, snd X) = X) as repair_pair by (now destruct X).
-
     intros.
     revert prefix is.
     induction ix; intros.
@@ -1271,16 +1270,16 @@ Section FoldLeftAccumulate.
 
     cbn.
     rewrite <- fold_left_accumulate'_equiv.
-    rewrite fold_left_accumulate'_snd_acc_invariant with (b:=prefix).
-    rewrite repair_pair; reflexivity.
+    rewrite fold_left_accumulate'_snd_acc_invariant with (acc_b:=prefix).
+    rewrite <- surjective_pairing; reflexivity.
 
     cbn [List.app].
     rewrite fold_left_accumulate'_cons_full.
-    rewrite repair_pair.
+    rewrite <- surjective_pairing.
 
-    remember (fold_left_accumulate' (step c) prefix (a :: ix) is) as m.
+    remember (fold_left_accumulate' f prefix (a :: ix) is) as m eqn:Heqm.
     rewrite fold_left_accumulate'_cons_full in Heqm.
-    rewrite repair_pair in Heqm.
+    rewrite <- surjective_pairing in Heqm.
     rewrite Heqm.
     rewrite IHix.
     reflexivity.
