@@ -53,7 +53,7 @@ Section Vars.
     -> Circuit s [] z
 
   | Constant: forall {x}, denote_type x -> Circuit [] [] x
-  | MakeTuple: forall {s1 s2 x y}, Circuit s1 [] x
+  | MakePair: forall {s1 s2 x y}, Circuit s1 [] x
     -> Circuit s2 [] y
     -> Circuit (s1++s2) [] (x**y)
 
@@ -115,7 +115,7 @@ Module ExprNotations.
     (in custom expr at level 1, x at level 4, v constr at level 7, only parsing)  : expr_scope.
 
   Notation "( x , .. , y , z )" := (
-      MakeTuple x .. (MakeTuple y z) ..
+      MakePair x .. (MakePair y z) ..
     ) (in custom expr, x at level 1, y at level 1, z at level 1) : expr_scope.
 
   Notation "'if' i 'then' t 'else' e" := ((ElimBool i t e))
