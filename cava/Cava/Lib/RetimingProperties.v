@@ -1108,7 +1108,8 @@ Lemma cequiv_compose_second_ndelays_r_impl
          (c2 >==> Second (chreset (ndelays o2 n) y)) ->
   x = y.
 Proof.
-  (* intuition: the first outputs are guaranteed to be x and y respectively, and cequiv guarantees same result from simulate, therefore x = y *)
+  (* intuition: the first outputs are guaranteed to be x and y respectively, and
+     cequiv guarantees same result from simulate, therefore x = y *)
 Admitted.
 
 Lemma retimed_LoopInit {i o s} (c1 c2 : Circuit (i * s) (o * s)) n r :
@@ -1153,7 +1154,6 @@ Proof.
     [ erewrite Comb_ext; [ reflexivity | ];
       cbn [value]; intros; destruct_products; reflexivity | ].
 
-  
   exists (fun (s1 : unit * (value (circuit_state (chreset (ndelays o n) _))
                      * (value (circuit_state (chreset (ndelays tzero n) _))
                         * (value (circuit_state (chreset (ndelays (circuit_state c2) n) _))
@@ -1165,53 +1165,36 @@ Proof.
              * unit) =>
        let '(_,(x1,(_,(y1,z1)),_)) := s1 in
        let '(x2,z2,y2,_) := s2 in
-       Forall_ndelays eq (from_chreset_state x1) (from_chreset_state x2)
-       /\ Forall_ndelays eq (from_chreset_state y1) (from_chreset_state y2)
-       /\ Forall_ndelays eq (from_chreset_state z1) (from_chreset_state z2)).
+       from_chreset_state x1 = from_chreset_state x2
+       /\ from_chreset_state y1 = from_chreset_state y2
+       /\ from_chreset_state z1 = from_chreset_state z2).
   cbn [reset_state circuit_state value Par fst snd].
   rewrite !chreset_reset, !from_to_chreset_state.
-  ssplit.
-  {
-    Search Forall_ndelays.
-    
-  rewrite to_ndelays_state_combine_ndelays.
-  (* change v to combine_ndelays map fst map snd *)
-  rewrite split_ndelays_chreset_combine_ndelays.
-  cbn [reset_state LoopInit].
-  About LoopInit_change_state.
-  erewrite (LoopInit_change_state (s1:=tzero*(_*_)) (s2:=_*_))
-           with (f:=fun x => (snd (snd x), fst (snd x))).
-  Search cequiv LoopInit.
-  eapply Proper_LoopInit.
-  cbn [loops_reset_state LoopInit].
-  exists (fun (s1 : unit * (unit * value (circuit_state (loopless c2))
-                     * value (circuit_state (chreset (ndelays (o * s * loops_state c2) n) v))
-                     * unit *  (value s * value (loops_state c2))))
-       (s2 : unit * (unit * unit * unit
-                     * (unit * value (circuit_state (loopless c2)) * unit)
-                     * unit
-                     * value (circuit_state (chreset (ndelays (o * (tzero * (loops_state c2 * s))) n) _))
-                     * (unit * (value (loops_state c2) * value s)))) =>
-       let '(_,(_,ll1,d1,_,(s1,ls1))) := s1 in
-       let '(_,(_,_,_,(_,ll2,_),_,d2,(_,(ls2,s2)))) := s2 in
-       ll1 = ll2
-       /\ ls1 = ls2
-       /\ s1 = s2
-       /\ Forall_ndelays
-           (t1:=o * s * loops_state c2)
-           (t2:= o * (tzero * (loops_state c2 * s)))
-           (fun (s1 : value o * value s * value (loops_state c2))
-              (s2 : value o * (unit * (value (loops_state c2) * value s))) =>
-              s2 = (fst (fst s1), (tt, (snd s1, snd (fst s1)))))
-           (from_chreset_state d1) (from_chreset_state d2)).
-  cbn [LoopInit reset_state circuit_state value loops_state loopless].
-  ssplit; [ reflexivity .. | | ].
-  (* Instantiate rvals with a mapping from v, then this works *)
-Admitted.
+  rewrite Hv. ssplit; [ reflexivity .. | ].
+  intros; destruct_products; logical_simplify.
+  cbn [step Par fst snd].
+  rewrite !step_chreset. cbn [fst snd].
+  rewrite !from_to_chreset_state.
+  repeat match goal with H : from_chreset_state _ = from_chreset_state _ |- _ =>
+                         rewrite H end.
+  ssplit; reflexivity.
+Qed.
+
+Lemma ndelays_reset {t n} :
+  reset_state (ndelays t n) = to_ndelays_state defaultValue.
+Proof.
+  induction n; [ reflexivity | ]. cbn [ndelays Id Delay reset_state].
+  rewrite IHn. reflexivity.
+Qed.
 
 Lemma retimed_Loop {i o s} (c1 c2 : Circuit (i * s) (o * s)) n :
-  retimed n c1 c2 -> retimed n (Loop c1) (Loop c2).
-Proof. apply retimed_LoopInit. Qed.
+  retimed n (c1 >==> Second (ndelays s n)) c2 ->
+  retimed n (Loop (c1 >==> Second (ndelays s n))) (Loop c2).
+Proof.
+  rewrite <-chreset_noop with (c:=ndelays s n).
+  rewrite ndelays_reset. intros.
+  apply retimed_LoopInit; auto.
+Qed.
 
 Require Import Coq.derive.Derive.
 Require Import Cava.Lib.Combinators.
@@ -1225,13 +1208,11 @@ Derive pipelined_nand
        As pipelined_nand_correct.
 Proof.
   (* insert a delay at the end *)
-  apply delay1_output; [ reflexivity | ].
-  (* add the delay to the pipelined circuit *)
-  apply retimed_cancel_r.
+  apply retimed_delay_r; [ reflexivity | ].
   (* add the inv to the pipelined circuit *)
-  apply retimed_cancel_r.
+  apply retimed_cancel_r; [ reflexivity | ].
   (* insert another delay *)
-  apply delay1_output; [ reflexivity | ].
+  apply retimed_delay_r; [ reflexivity | ].
   (* done! *)
   reflexivity.
 Qed.
@@ -1261,6 +1242,9 @@ Derive retimed_cipher_middle_round
           (sbytes retimed_sbytes shrows mxcols : Circuit state state)
           (add_rk : Circuit (state * key) state),
            retimed n retimed_sbytes sbytes ->
+           is_combinational shrows = true ->
+           is_combinational mxcols = true ->
+           is_combinational add_rk = true ->
            retimed
              n
              (retimed_cipher_middle_round
@@ -1270,9 +1254,9 @@ Derive retimed_cipher_middle_round
 Proof.
   intros. cbv [cipher_middle_round].
   autorewrite with circuitsimpl.
-  apply retimed_cancel_r.
-  apply retimed_cancel_r.
-  apply retimed_cancel_r.
+  apply retimed_cancel_r; [ assumption | ].
+  apply retimed_cancel_r; [ assumption | ].
+  apply retimed_cancel_r; [ assumption | ].
   apply retimed_first.
   eassumption.
 Qed.
@@ -1285,6 +1269,9 @@ Derive retimed_cipher
           (sbytes retimed_sbytes shrows mxcols : Circuit state state)
           (add_rk : Circuit (state * key) state),
            retimed n retimed_sbytes sbytes ->
+           is_combinational shrows = true ->
+           is_combinational mxcols = true ->
+           is_combinational add_rk = true ->
            retimed
              n
              (retimed_cipher
@@ -1297,6 +1284,8 @@ Proof.
   (* lift loop onto retimed circuit *)
   apply retimed_Loop.
   (* cancel out combinational components *)
+  (* change fork2 to Par *)
+  rewrite <-Compose_assoc.
   apply retimed_cancel_r.
   apply retimed_cancel_l.
   (*  use the retimed middle round lemma *)
