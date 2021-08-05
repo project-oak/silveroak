@@ -503,89 +503,6 @@ Proof.
   rewrite First_Second_comm; reflexivity.
 Qed.
 
-(* TODO: is this actually true? *)
-Lemma retimed_trans {i o} n m (c1 c2 c3 : Circuit i o) :
-  retimed n c1 c2 -> retimed m c2 c3 -> retimed (n + m) c1 c3.
-Proof.
-  intros [r12 H12] [r23 H23]. rewrite H12.
-  exists (append_ndelays r12 r23).
-  rewrite to_ndelays_state_append.
-  rewrite !cequiv_append_ndelays.
-  rewrite !Par_Compose.
-  autorewrite with circuitsimpl.
-  Search Par Compose.
-  (*
-  cbv [mealy].
-  Search ndelays.
-  apply LoopInit_delay_body.
-  erewrite cequiv_mealy_loop_ndelays with (c:=c2) by eassumption.
-  cbn [reset_state circuit_state LoopInit Par mealy].
-  rewrite !chreset_reset.
-  unshelve eexists; [ cbn | ].
-  {
-    
-    pose (Rt:=
-    value
-             (o *
-              (tzero *
-               (tzero *
-                (circuit_state (chreset (ndelays o m) r23) *
-                 circuit_state (chreset (ndelays (circuit_state c3) m) (to_ndelays_state (reset_state c3)))) *
-                circuit_state c3))) -> value o -> Prop).
-    cbn in Rt.
-    exact
-      (fun (s1 : unit *
-               (unit *
-                (value (circuit_state (chreset (ndelays o n) r12)) *
-                 value
-                   (circuit_state
-                      (chreset (ndelays
-                                  (tzero *
-                                   (tzero *
-                                    (circuit_state (chreset (ndelays o m) _) *
-                                     circuit_state (chreset (ndelays (circuit_state c3) m) _)) *
-                                    circuit_state c3)) n) _))) *
-                (unit *
-                 (unit *
-                  (value (circuit_state (chreset (ndelays o m) r23)) *
-                   value (circuit_state (chreset (ndelays (circuit_state c3) m)
-                                                 (to_ndelays_state (reset_state c3))))) *
-                  value (circuit_state c3)))))
-         (s2 : unit *
-               (unit *
-                (value (circuit_state (chreset (ndelays o (n + m)) _)) *
-                 value (circuit_state (chreset (ndelays (circuit_state c3) (n + m))
-                                               (to_ndelays_state (reset_state c3))))) *
-                value (circuit_state c3))) =>
-         (* each side has n+m o values and n+m+1 (circuit_state c3) values *)
-         let '(_,(_,(on1,om1_cm1_),(_,(_,(z1,a1),b1)))) := s1 in
-         let '(_,(_,(u1,wxy1),(_,(_,(z1,a1),b1)))) := s1 in
-         let '(_,(_,(wxy2,az2),b2)) := s2 in
-         b1 = b2
-         /\ Forall_ndelays
-             (t1:=o * (tzero *
-                       (tzero *
-                        (circuit_state (chreset (ndelays o m) _) *
-                         circuit_state (chreset (ndelays (circuit_state c3) m) _)) *
-                        circuit_state c3)))
-             (t2:=o)
-             (fun (xy1 : value o
-                       * (unit
-                          * (unit
-                             * (value (circuit_state (chreset (ndelays o m) _))
-                                * value (circuit_state (chreset (ndelays (circuit_state c3) m) _)))
-                             * value (circuit_state c3))))
-                (xy2 : value o) =>
-                True)
-             (combine_ndelays (from_chreset_state x1)
-                              (from_chreset_state y1))
-             (split1_ndelays (from_chreset_state xy2))
-         /\
-         True).
-    (* nope, don't want combine here, need to actually extract the o value *)
-Qed.*)
-Abort.
-
 Fixpoint is_combinational {i o} (c : Circuit i o) : bool :=
   match c with
   | Comb _ => true
@@ -1112,6 +1029,14 @@ Proof.
      cequiv guarantees same result from simulate, therefore x = y *)
 Admitted.
 
+(* TODO: this is a bit of a hack to check the logic; instead of hardwiring the
+LHS to have delays at the end, we should instead be able to do this proof by
+simply declaring that, for all inputs, the first n state outputs are equal to r,
+e.g.
+  (forall input,
+      map_ndelays (t1:=_*_) (n:=n) snd
+                  (ndelays_value_from_sim c1 (reset_state c1) input)
+      = to_ndelays_state r) *)
 Lemma retimed_LoopInit {i o s} (c1 c2 : Circuit (i * s) (o * s)) n r :
   retimed n (c1 >==> Second (chreset (ndelays s n) (to_ndelays_state r))) c2 ->
   retimed n (LoopInit r (c1 >==> Second (chreset (ndelays s n)
@@ -1133,7 +1058,6 @@ Proof.
   autorewrite with circuitsimpl.
   cbv [retimed]. cbn [circuit_state reset_state LoopInit value].
   exists (map_ndelays (t1:=o*s) fst ltac:(eassumption)).
-  (*unshelve eexists; [ cbn | ]. *)
   rewrite mealy_LoopInit.
   rewrite <-(combine_ndelays_map_fst_snd v).
   rewrite !to_ndelays_state_combine_ndelays.
@@ -1195,6 +1119,10 @@ Proof.
   rewrite ndelays_reset. intros.
   apply retimed_LoopInit; auto.
 Qed.
+
+Local Ltac rewrite_is_combinational :=
+  repeat match goal with
+         | H : is_combinational _ = true |- _ => rewrite H end.
 
 Require Import Coq.derive.Derive.
 Require Import Cava.Lib.Combinators.
@@ -1263,12 +1191,14 @@ Qed.
 Print retimed_cipher_middle_round.
 Check retimed_cipher_middle_round_correct.
 
+
 Derive retimed_cipher
        SuchThat
        (forall {state key} n
           (sbytes retimed_sbytes shrows mxcols : Circuit state state)
           (add_rk : Circuit (state * key) state),
            retimed n retimed_sbytes sbytes ->
+           is_combinational sbytes = true ->
            is_combinational shrows = true ->
            is_combinational mxcols = true ->
            is_combinational add_rk = true ->
@@ -1283,15 +1213,15 @@ Proof.
   autorewrite with circuitsimpl.
   (* lift loop onto retimed circuit *)
   apply retimed_Loop.
+  (* The below is currently broken because of the hacky delays in
+  retimed_LoopInit *)
+  (*
   (* cancel out combinational components *)
-  (* change fork2 to Par *)
-  rewrite <-Compose_assoc.
-  apply retimed_cancel_r.
-  apply retimed_cancel_l.
+  apply retimed_cancel_r; [ reflexivity | ].
+  apply retimed_cancel_l; [ reflexivity | ].
   (*  use the retimed middle round lemma *)
-  apply (retimed_cipher_middle_round_correct state).
+  apply (retimed_cipher_middle_round_correct state); [ | assumption .. ].
   (* done! *)
   eassumption.
-Qed.
-Print retimed_cipher.
-Check retimed_cipher_correct.
+  *)
+Abort.

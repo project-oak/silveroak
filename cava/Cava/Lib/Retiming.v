@@ -54,10 +54,11 @@ Fixpoint to_ndelays_state {t n} (x : value t)
     | S m => (to_ndelays_state x, x)
     end.
 
-Definition retimed {i o} (n : nat) rvals (c1 c2 : Circuit i o) : Prop :=
-  cequiv c1 (LoopInit (reset_state c2)
-                      ((mealy c2)
-                         >==>
-                         (Par (chreset (ndelays o n) rvals)
-                              (chreset (ndelays (circuit_state c2) n)
-                                       (to_ndelays_state (reset_state c2)))))).
+Definition retimed {i o} (n : nat) (c1 c2 : Circuit i o) : Prop :=
+  exists rvals,
+    cequiv c1 (LoopInit (reset_state c2)
+                        ((mealy c2)
+                           >==>
+                           (Par (chreset (ndelays o n) rvals)
+                                (chreset (ndelays (circuit_state c2) n)
+                                         (to_ndelays_state (reset_state c2)))))).
