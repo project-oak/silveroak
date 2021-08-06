@@ -52,10 +52,7 @@ Section Var.
     ; "0x510e527f" ; "0x9b05688c" ; "0x1f83d9ab" ; "0x5be0cd19" ].
 
   (* SHA-256 round constants *)
-  Definition sha256_round_constants : Circuit [] [sha_round] sha_word := {{
-    fun i =>
-    let k :=
-    `
+  Definition sha256_round_constants : Circuit [] [] (Vec sha_word 64) :=
     Constant (
     List.map (HexString.to_N)
     [ "0x428a2f98"; "0x71374491"; "0xb5c0fbcf"; "0xe9b5dba5"
@@ -73,11 +70,7 @@ Section Var.
     ; "0x19a4c116"; "0x1e376c08"; "0x2748774c"; "0x34b0bcb5"
     ; "0x391c0cb3"; "0x4ed8aa4a"; "0x5b9cca4f"; "0x682e6ff3"
     ; "0x748f82ee"; "0x78a5636f"; "0x84c87814"; "0x8cc70208"
-    ; "0x90befffa"; "0xa4506ceb"; "0xbef9a3f7"; "0xc67178f2" ] : denote_type (Vec sha_word 64)
-    )
-    ` in
-    `index` k i
-  }}.
+    ; "0x90befffa"; "0xa4506ceb"; "0xbef9a3f7"; "0xc67178f2" ]).
 
   (* SHA-256 message schedule update *)
   Definition sha256_message_schedule_update : Circuit _ [sha_word; sha_word; sha_word; sha_word] sha_word := {{
@@ -88,7 +81,6 @@ Section Var.
   }}%nat.
 
   (* SHA-256 compression function *)
-  Program
   Definition sha256_compress : Circuit []%circuit_type [sha_digest; sha_word; sha_word]%circuit_type sha_digest := {{
     fun current_digest k w =>
     let '( a', b', c', d', e', f', g'; h' ) := `vec_as_tuple (n:=7)` current_digest in
@@ -114,10 +106,10 @@ Section Var.
       let inc_round := !done in
       let start := (* done && *) block_valid in
 
-      let k_i := `sha256_round_constants` round in
+      let k_i := `index` `sha256_round_constants` round in
       let '(w0,w1, _, _, _, _, _, _
            , _,w9, _, _, _, _,w14;_ ) := `vec_as_tuple (n:=15)` message_schedule in
-      let update_schedule := round >= `Constant (16:denote_type (BitVec _))` in
+      let update_schedule := round >= `Constant 16` in
       let w16 :=
         if update_schedule
         then `sha256_message_schedule_update` w0 w1 w9 w14
@@ -129,11 +121,11 @@ Section Var.
 
       let next_digest := `sha256_compress` current_digest k_i w0 in
 
-      let round := if inc_round then round + `_1` else round in
-      let done := (round == `Constant (63:denote_type(BitVec 6))`) || done in
+      let round := if inc_round then round + `Constant 1` else round in
+      let done := (round == `Constant 63`) || done in
 
       if start
-      then (initial_hash, block, `Constant ((false, 0):denote_type (Bit**sha_round))`)
+      then (initial_hash, block, `Constant (false, 0)`)
       else (next_digest, w, done, round)
 
       initially ((sha256_initial_digest, (repeat 0 16, (false, 0)))

@@ -38,8 +38,8 @@ Section Var.
   Definition hmac_register_index := 5%nat.
   Definition hmac_register := BitVec hmac_register_index.
 
-  Definition REG_INTR_STATE := Constant (0: denote_type hmac_register).
-  Definition REG_CMD := Constant (5: denote_type hmac_register).
+  Definition REG_INTR_STATE : Circuit [] [] hmac_register := Constant 0.
+  Definition REG_CMD : Circuit [] [] hmac_register := Constant 5.
 
   Definition hmac_top : Circuit _ [tl_h2d_t] tl_d2h_t := {{
     fun incoming_tlp =>
@@ -50,7 +50,7 @@ Section Var.
         := `tlul_adapter_reg` incoming_tlp registers in
       let aligned_address := `slice 2 5` write_address in
 
-      let fifo_write := write_address >= `Constant (2048: denote_type (BitVec _))` in
+      let fifo_write := write_address >= `Constant 2048` in
 
       (* TODO(blaxill): ignore/mask writes to CMD etc ? *)
       (* TODO(blaxill): apply mask to register writes*)
@@ -62,10 +62,10 @@ Section Var.
 
       (* cmd_start is set when host writes to hmac.CMD.hash_start *)
       (* and signifies the start of a new message *)
-      let cmd_start := write_en && aligned_address == `REG_CMD` && write_data == `_1` && !fifo_write in
+      let cmd_start := write_en && aligned_address == `REG_CMD` && write_data == `Constant 1` && !fifo_write in
       (* cmd_process is set when host writes to hmac.CMD.hash_process *)
       (* and signifies the end of a message *)
-      let cmd_process := write_en && aligned_address == `REG_CMD` && write_data == `_2` && !fifo_write in
+      let cmd_process := write_en && aligned_address == `REG_CMD` && write_data == `Constant 2` && !fifo_write in
 
       let '(packer_valid; packer_data)
         := `tlul_pack` (write_en && fifo_write) write_data write_mask cmd_process in
@@ -84,4 +84,3 @@ Section Var.
   }}.
 
 End Var.
-

@@ -64,6 +64,7 @@ Fixpoint denote_type (t: type) :=
   | Bit => bool
   | Vec t n =>
     match t with
+    | Unit => unit
     | Bit => N
     | _ => list (denote_type t)
     end
@@ -77,6 +78,7 @@ Fixpoint eqb {t}: denote_type t -> denote_type t -> bool :=
   | Vec t n =>
     let eqb_f := eqb (t:=t) in
     match t return (denote_type t -> denote_type t -> bool) -> denote_type (Vec t n) -> denote_type (Vec t n) -> bool with
+    | Unit => fun _ _ _ => true
     | Bit => fun _ => N.eqb
     | _ => fun eqb x y =>
       fold_right andb true (map (fun '(x,y) => eqb x y) (combine x y))
@@ -92,6 +94,7 @@ Fixpoint denote_to_simple_denote {t} : denote_type t -> simple_denote_type t :=
       return ((denote_type t1 -> simple_denote_type t1)
               -> denote_type (Vec t1 n) -> simple_denote_type (Vec t1 n))
     with
+    | Unit => fun _ _ => List.repeat tt n
     | Bit => fun _ x =>
       let v := N2Bv_sized n x in Vector.to_list v
     | _ => fun f x => map f x
@@ -108,6 +111,7 @@ Fixpoint simple_denote_to_denote {t} : simple_denote_type t -> denote_type t :=
       return ((simple_denote_type t1 -> denote_type t1)
               -> simple_denote_type (Vec t1 n) -> denote_type (Vec t1 n))
     with
+    | Unit => fun _ _ => tt
     | Bit => fun _ x => Bv2N (Vector.of_list x)
     | _ => fun f x => map f x
     end f
@@ -142,6 +146,7 @@ Fixpoint default {t: type} : denote_type t :=
   | Bit => false
   | Vec t1 n =>
     match t1 return denote_type t1 -> denote_type (Vec t1 n) with
+    | Unit => fun _ => tt
     | Bit => fun _ => 0%N
     | _ => fun d => List.repeat d n
     end default
@@ -176,3 +181,52 @@ Notation "[ x ; y ; .. ; z ]" := (Pair x (Pair y .. (Pair z Unit) ..)) : circuit
 Notation "x ** y" := (Pair x y)(at level 60, right associativity) : circuit_type_scope.
 Notation "x ++ y" := (absorb_any x y) (at level 60, right associativity): circuit_type_scope.
 
+
+Inductive denote_rel: type -> Type -> Type :=
+| denote_Unit: denote_rel Unit unit
+| denote_Bit: denote_rel Bit bool
+| denote_Vec_of_Unit: forall n,
+    denote_rel (Vec Unit n) unit
+| denote_Vec_of_Bit: forall n,
+    denote_rel (Vec Bit n) N
+| denote_Vec_of_Vec: forall t T n m,
+    denote_rel (Vec t m) T ->
+    denote_rel (Vec (Vec t m) n) (list T)
+| denote_Vec_of_Pair: forall t1 t2 T n,
+    denote_rel (Pair t1 t2) T ->
+    denote_rel (Vec (Pair t1 t2) n) (list T)
+| denote_Pair: forall x y X Y,
+    denote_rel x X -> denote_rel y Y -> denote_rel (Pair x y) (X * Y).
+
+Lemma denote_rel_to_denote_type: forall t T, denote_rel t T -> T = denote_type t.
+Proof. induction 1; subst; try reflexivity. Qed.
+
+Fixpoint denote_rel_of_denote_type(t: type): denote_rel t (denote_type t) :=
+  match t with
+  | Unit => denote_Unit
+  | Bit => denote_Bit
+  | Vec t1 n =>
+    match t1
+      return denote_rel t1 (denote_type t1) -> denote_rel (Vec t1 n) (denote_type (Vec t1 n))
+    with
+    | Unit => fun r => denote_Vec_of_Unit n
+    | Bit => fun r => denote_Vec_of_Bit n
+    | Vec t2 m => fun r => denote_Vec_of_Vec t2 (denote_type (Vec t2 m)) n m r
+    | Pair x y => fun r  => denote_Vec_of_Pair _ _ _ n r
+    end (denote_rel_of_denote_type t1)
+  | Pair x y => denote_Pair x y _ _ (denote_rel_of_denote_type x) (denote_rel_of_denote_type y)
+  end.
+
+Existing Class denote_rel.
+Existing Instance denote_rel_of_denote_type.
+
+Fixpoint cast{x X}(dx: denote_rel x X){struct dx}: X -> denote_type x :=
+  match dx with
+  | denote_Unit => id
+  | denote_Bit => id
+  | denote_Vec_of_Unit _ => id
+  | denote_Vec_of_Bit _ => id
+  | denote_Vec_of_Vec t T n m dV => List.map (cast dV)
+  | denote_Vec_of_Pair t1 t2 T n dt => List.map (cast dt)
+  | denote_Pair x y X Y d1 d2 => fun '(e1, e2) => (cast d1 e1, cast d2 e2)
+  end.

@@ -51,13 +51,13 @@ Fixpoint step {i s o} (c : Circuit s i o)
     let '(nsx, x) := step x sx tt in
     let '(nsf, o) := step f sf (x, i) in
     (combine_absorbed_denotation nsx nsf, o)
-  | Delay _ => fun s '(i,tt) => (i, s)
+  | DelayRaw _ => fun s '(i,tt) => (i, s)
   | Let x f => fun s i =>
     let '(sx, sf) := split_absorbed_denotation s in
     let '(nsx, x) := step x sx tt in
     let '(nsf, o) := step (f x) sf i in
     (combine_absorbed_denotation nsx nsf, o)
-  | LetDelay _ x f => fun s i =>
+  | LetDelayRaw _ x f => fun s i =>
     let '(sx, s12) := split_absorbed_denotation s in
     let '(s1, s2) := split_absorbed_denotation s12 in
 
@@ -81,7 +81,7 @@ Fixpoint step {i s o} (c : Circuit s i o)
     let '(nsf, x) := step f sf tt in
     let '(nsg, y) := step g sg tt in
     (combine_absorbed_denotation nsf nsg, (x,y))
-  | Constant v => fun _ _ =>
+  | ConstantRaw v => fun _ _ =>
     (tt, v)
   | UnaryOp op x => fun _ _ => (tt, unary_semantics op x)
   | BinaryOp op x y => fun _ _ => (tt, binary_semantics op x y)
@@ -94,12 +94,12 @@ Fixpoint reset_state {i s o} (c : Circuit (var:=denote_type) s i o) : denote_typ
   | Abs f => reset_state (f default)
   | App f x => combine_absorbed_denotation (reset_state x) (reset_state f)
   | Let x f => combine_absorbed_denotation (reset_state x) (reset_state (f default))
-  | LetDelay initial x f =>
+  | LetDelayRaw initial x f =>
     combine_absorbed_denotation initial
       (combine_absorbed_denotation (reset_state (x default)) (reset_state (f default)))
-  | Delay initial => initial
+  | DelayRaw initial => initial
   | MakeTuple f g => combine_absorbed_denotation (reset_state f) (reset_state g)
-  | Constant _ => tt
+  | ConstantRaw _ => tt
   | ElimPair f _ =>  reset_state (f default default)
   | ElimBool b f g => combine_absorbed_denotation (reset_state f) (reset_state g)
   | UnaryOp op x => tt
@@ -110,4 +110,3 @@ Fixpoint reset_state {i s o} (c : Circuit (var:=denote_type) s i o) : denote_typ
 Definition simulate {s i o} (c : Circuit (var:=denote_type) s i o) (input : list (denote_type i))
   : list (denote_type o) :=
     fold_left_accumulate (step c) input (reset_state c).
-

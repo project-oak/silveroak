@@ -102,17 +102,17 @@ Section Var.
   (*   Get            = 3'h 4 *)
   (* } tl_a_op_e; *)
   Definition tl_a_op_e      := Vec Bit 3.
-  Definition PutFullData    := Constant (0: denote_type tl_a_op_e).
-  Definition PutPartialData := Constant (1: denote_type tl_a_op_e).
-  Definition Get            := Constant (4: denote_type tl_a_op_e).
+  Definition PutFullData    : Circuit [] [] tl_a_op_e := Constant 0.
+  Definition PutPartialData : Circuit [] [] tl_a_op_e := Constant 1.
+  Definition Get            : Circuit [] [] tl_a_op_e := Constant 4.
 
   (* typedef enum logic [2:0] { *)
   (*   AccessAck     = 3'h 0, *)
   (*   AccessAckData = 3'h 1 *)
   (* } tl_d_op_e; *)
   Definition tl_d_op_e     := Vec Bit 3.
-  Definition AccessAck     := Constant (0: denote_type tl_d_op_e).
-  Definition AccessAckData := Constant (1: denote_type tl_d_op_e).
+  Definition AccessAck     : Circuit [] [] tl_d_op_e := Constant 0.
+  Definition AccessAckData : Circuit [] [] tl_d_op_e := Constant 1.
 
   Definition io_req :=
     Bit **          (* write *)
@@ -156,8 +156,8 @@ Section Var.
         (a_opcode == `PutFullData` || a_opcode == `PutPartialData`) in
 
       (* TODO(blaxill): skipping malformed tl packet detection *)
-      let err_internal := `False` in
-      let error_i := `False` in
+      let err_internal := `Constant false` in
+      let error_i := `Constant false` in
 
       let '(reqid, reqsz, rspop, error; outstanding) :=
         if a_ack then
@@ -165,10 +165,10 @@ Section Var.
           , a_size
           , if rd_req then `AccessAckData` else `AccessAck`
           , error_i || err_internal
-          , `False`
+          , `Constant false`
           )
         else
-          (reqid, reqsz, rspop, error, if d_ack then `False` else outstanding)
+          (reqid, reqsz, rspop, error, if d_ack then `Constant false` else outstanding)
       in
 
       let we_o := wr_req && !err_internal in
@@ -176,7 +176,6 @@ Section Var.
 
       (reqid, reqsz, rspop, error, outstanding, we_o, re_o)
       initially (0,(0,(0,(false,(false,(false,false))))))
-        : denote_type (BitVec _ ** BitVec _ ** BitVec _ ** Bit ** Bit ** Bit ** Bit)
     in
 
     let wdata_o := a_data in
@@ -184,12 +183,12 @@ Section Var.
 
     ( ( outstanding
       , rspop
-      , `_0`
+      , `Constant 0`
       , reqsz
       , reqid
-      , `_0`
+      , `Constant 0`
       , `index` registers (`slice 2 30` a_address)
-      , `_0`
+      , `Constant 0`
       , error
       , !outstanding
       )
@@ -206,4 +205,3 @@ Section Var.
   }}.
 
 End Var.
-

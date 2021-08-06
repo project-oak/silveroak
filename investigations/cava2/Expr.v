@@ -35,12 +35,12 @@ Section Vars.
 
   | Let: forall {x y z s1 s2}, Circuit s1 [] x -> (var x -> Circuit s2 y z) -> Circuit (s1++s2) y z
   (* slightly different fomualtion, but equivalent to loop delay *)
-  | LetDelay : forall {x y z s1 s2}, denote_type x
+  | LetDelayRaw : forall {x y z s1 s2}, denote_type x
     -> (var x -> Circuit s1 [] x)
     -> (var x -> Circuit s2 y z)
     -> Circuit (x ++ s1 ++ s2) y z
 
-  | Delay: forall {x}, denote_type x -> Circuit x [x] x
+  | DelayRaw: forall {x}, denote_type x -> Circuit x [x] x
 
   | ElimBool: forall {s1 s2 x},
     Circuit [] [] Bit
@@ -52,7 +52,7 @@ Section Vars.
     -> var (x**y)
     -> Circuit s [] z
 
-  | Constant: forall {x}, denote_type x -> Circuit [] [] x
+  | ConstantRaw: forall {x}, denote_type x -> Circuit [] [] x
   | MakeTuple: forall {s1 s2 x y}, Circuit s1 [] x
     -> Circuit s2 [] y
     -> Circuit (s1++s2) [] (x**y)
@@ -62,6 +62,25 @@ Section Vars.
   | TernaryOp : forall {x y z r}, TernaryPrim x y z r -> var x -> var y -> var z -> Circuit [] [] r
   .
 End Vars.
+
+Section SmartConstructors.
+  Context {var: tvar}.
+
+  Definition LetDelay{x X y z s1 s2}{dx: denote_rel x X}(v: X)
+    (rhs: var x -> Circuit s1 [] x) (body: var x -> Circuit s2 y z) : Circuit (x ++ s1 ++ s2) y z :=
+    LetDelayRaw (cast dx v) rhs body.
+
+  Definition Delay{x X}{dx: denote_rel x X}(v: X): Circuit x [x] x := DelayRaw (cast dx v).
+
+  Definition Constant{x X}{dx: denote_rel x X}(v: X): Circuit [] [] x := ConstantRaw (cast dx v).
+End SmartConstructors.
+
+Section TypecheckingTests.
+  Context {var: tvar}.
+  Example sample_const_1: Circuit [] [] (BitVec 32) := Constant 1.
+  Example sample_const_2: Circuit [] [] (BitVec 32 ** BitVec 6) := Constant (1, 2).
+  Example sample_const_3: Circuit [] [] ((BitVec 32 ** BitVec 6) ** Bit) := Constant (1, 2, true).
+End TypecheckingTests.
 
 Declare Scope expr_scope.
 Declare Custom Entry expr.
@@ -73,7 +92,10 @@ Module ExprNotations.
   Notation "` x `" := (x) (in custom expr at level 2, x constr at level 1) : expr_scope.
 
   Notation "f x"     := (App f x) (in custom expr at level 3, left associativity) : expr_scope.
-  Notation "x"       := (Var x) (in custom expr, x ident) : expr_scope.
+  (* TODO: replace `x name` by `x ident` once we're using Coq 8.14.
+     With Coq 8.13, terms that don't typecheck sometimes trigger an anomaly
+     (https://github.com/coq/coq/issues/14211) instead of displaying the typing error. *)
+  Notation "x"       := (Var x) (in custom expr, x name) : expr_scope.
   Notation "( x )"   := (x)(in custom expr, x at level 1) : expr_scope.
 
   Notation "'fun' x .. y => e" := (
@@ -92,7 +114,7 @@ Module ExprNotations.
     , x closed binder, y closed binder, z binder, a at level 1, e at level 99) : expr_scope.
 
   Notation "'let/delay' x := a 'initially' v 'in' e" := (
-      LetDelay (v: denote_type _) (fun x => a) (fun x => e)
+      LetDelay v (fun x => a) (fun x => e)
     ) ( in custom expr at level 1
     , x pattern at level 4, v constr at level 99, e at level 7, a at level 1) : expr_scope.
 
@@ -103,16 +125,8 @@ Module ExprNotations.
     ) ( in custom expr at level 1
     , x closed binder, y closed binder, z binder, a at level 1, e at level 7, v constr ) : expr_scope.
 
-  (* Ltac for better type inference on the initial value *)
-  Notation "'delay' x 'initially' v" := (
-    (ltac:(
-      match type of x with
-      | Circuit _ _ ?t =>
-          exact (App (Delay (v : denote_type t)) (x : Circuit _ _ t))
-      end
-    ))
-    )
-    (in custom expr at level 1, x at level 4, v constr at level 7, only parsing)  : expr_scope.
+  Notation "'delay' x 'initially' v" := (App (Delay v) x)
+    (in custom expr at level 1, x at level 4, v constr at level 7, only parsing) : expr_scope.
 
   Notation "( x , .. , y , z )" := (
       MakeTuple x .. (MakeTuple y z) ..
@@ -125,14 +139,6 @@ End ExprNotations.
 
 Section Var.
   Context {var : tvar}.
-
-  Definition val_of t : denote_type t -> denote_type t := id.
-  Definition val_N {sz}: N -> denote_type (BitVec sz) := id.
-
-  Definition False := Constant (false: denote_type Bit).
-  Definition _0 {sz} := Constant (val_of (BitVec sz) 0).
-  Definition _1 {sz} := Constant (val_of (BitVec sz) 1).
-  Definition _2 {sz} := Constant (val_of (BitVec sz) 2).
 
   Class bitlike x :=
   { eq : var x -> var x -> Circuit [] [] Bit
@@ -179,10 +185,10 @@ Section RegressionTests.
       if `silly_id` flag then (a) else a
   }}.
 
-  Definition inital_state {sz} := val_of (BitVec sz ** BitVec sz) (0,1)%N.
+  Definition initial_state {sz} : denote_type (BitVec sz ** BitVec sz) := (0,1)%N.
 
   Definition test {sz: nat}: Circuit (BitVec 10**BitVec 10) [] (BitVec 10) := {{
-    let/delay '(x;y) := (y,x) initially inital_state in y
+    let/delay '(x;y) := (y,x) initially initial_state in y
   }}.
 
   Definition test2 {sz: nat}: Circuit (BitVec sz ** BitVec sz) [BitVec sz ** BitVec sz ] (BitVec sz) := {{
@@ -191,7 +197,7 @@ Section RegressionTests.
     let/delay '(z;w) :=
       let t := x in
       (w, z)
-      initially inital_state in
+      initially initial_state in
       x
   }}.
 
