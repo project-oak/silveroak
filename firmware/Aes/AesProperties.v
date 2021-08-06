@@ -23,6 +23,7 @@ Require Import coqutil.Z.Lia.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Require Import Bedrock2Experiments.LibBase.MMIOLabels.
+Require Import Bedrock2Experiments.ProgramSemantics32.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.StateMachineProperties.
 Require Import Bedrock2Experiments.Tactics.
@@ -43,46 +44,27 @@ Local Open Scope Z_scope.
 Ltac normalize_body_of_function f ::= Tactics.rdelta.rdelta f.
 
 Section Proofs.
-  Context {p : AesSemantics.parameters} {p_ok : parameters.ok p}
-          {consts : aes_constants Z} {timing : timing}.
-  Context {consts_ok : aes_constants_ok consts}.
-  Existing Instance state_machine_parameters.
-
-  (* this duplicate of locals_ok helps when Semantics.word has been changed to
-     parameters.word *)
-  Local Instance localsok : @map.ok string parameters.word Semantics.locals
-    := Semantics.locals_ok.
+  Context {word: word.word 32} {mem: map.map word Byte.byte}
+          {word_ok: word.ok word} {mem_ok: map.ok mem}
+          {ASpec: AesSpec}
+          {consts : aes_constants Z} {timing : timing}
+          {consts_ok : aes_constants_ok consts}.
 
   (* Plug in the right state machine parameters; typeclass inference struggles here *)
-  Local Notation execution := (execution (p:=state_machine_parameters)).
+  Local Notation execution := (execution (M := aes_state_machine)).
 
   (***** General-purpose lemmas/tactics and setup *****)
 
-  Add Ring wring : (Properties.word.ring_theory (word := parameters.word))
+  Add Ring wring : (Properties.word.ring_theory (word := word))
         (preprocess [autorewrite with rew_word_morphism],
-         morphism (Properties.word.ring_morph (word := parameters.word)),
+         morphism (Properties.word.ring_morph (word := word)),
          constants [Properties.word_cst]).
 
   Existing Instance constant_literals | 10.
 
-  (* This tactic simplifies implicit types so that they all agree; otherwise
-     tactic has trouble connecting, for instance, a word of type parameters.word
-     and a word of type Semantics.word, even though they are the same *)
-  Local Ltac simplify_implicits :=
-    change Semantics.word with parameters.word in *;
-    change Semantics.mem with parameters.mem in *;
-    change Semantics.width with 32 in *;
-    change Semantics.word_ok with parameters.word_ok in *;
-    change Semantics.mem_ok with parameters.mem_ok in *.
-
-  (* tactic to solve the side conditions of interact_read and interact_write *)
-  Local Ltac solve_dexprs ::=
-    repeat straightline_with_map_lookup;
-    simplify_implicits; repeat straightline_with_map_lookup.
-
   (* tactic to simplify side conditions in terms of [dexpr] *)
   Local Ltac dexpr_hammer :=
-    subst_lets; simplify_implicits;
+    subst_lets;
     repeat first [ progress push_unsigned
                  | rewrite word.unsigned_of_Z in *
                  | rewrite word.wrap_small in * by lia
@@ -103,16 +85,12 @@ Section Proofs.
     | H1 : execution t ?s1, H2 : execution t ?s2 |- _ =>
       specialize (IHt _ _ H1 H2); subst
     end.
-    cbv [step] in *. cbn [ parameters.read_step
-                             parameters.write_step
-                             state_machine_parameters] in *.
+    cbv [step] in *. cbn [state_machine.read_step state_machine.write_step aes_state_machine] in *.
     repeat destruct_one_match_hyp; try contradiction; [ | ].
     all:logical_simplify; subst.
     all: lazymatch goal with
-         | H : parameters.reg_addr ?x = parameters.reg_addr ?y |- _ =>
-           eapply (parameters.reg_addr_unique
-                     (ok:=state_machine_parameters_ok) x y) in H
-         end.
+         | H : state_machine.reg_addr ?x = state_machine.reg_addr ?y |- _ =>
+           eapply (state_machine.reg_addr_unique x y) in H end.
     all:cbv [write_step read_step] in *; subst.
     all:repeat destruct_one_match_hyp; try congruence.
     all:logical_simplify; subst.
@@ -143,15 +121,15 @@ Section Proofs.
     repeat first [ progress infer_states_equal
                  | progress infer_state_data_equal
                  | match goal with
-                   | H: parameters.read_step _ _ _ _ _ |- _ => apply proj2 in H
-                   | H: parameters.write_step _ _ _ _ _ |- _ => apply proj2 in H
+                   | H: state_machine.read_step _ _ _ _ _ |- _ => apply proj2 in H
+                   | H: state_machine.write_step _ _ _ _ _ |- _ => apply proj2 in H
                    end ].
 
   (* TODO: lots of annoying bit arithmetic here, maybe try to clean it up *)
   Lemma status_read_always_ok s :
     exists val s', read_step s STATUS val s'.
   Proof.
-    assert (forall x y : parameters.word,
+    assert (forall x y : word,
                word.slu (word.of_Z 1) x <> word.slu (word.of_Z 1) y -> x <> y)
            as Hshift_neq by (intros; subst; congruence).
     pose proof status_flags_unique_and_nonzero as Hflags.
@@ -188,7 +166,7 @@ Section Proofs.
                 assert (word.unsigned (word.and x y) = word.unsigned y)
                   as H;
                   [ | rewrite H; intro Heq; apply word.unsigned_inj in Heq;
-                      simplify_implicits; cbn in *; congruence ]
+                      cbn in *; congruence ]
               end.
       all:push_unsigned; cbv [word.wrap]; rewrite <-!Z.land_ones by lia;
         bitblast.Z.bitblast.
@@ -204,7 +182,7 @@ Section Proofs.
             H2 : ?i - ?y = 0 |- _ =>
             assert (word.of_Z x = word.of_Z y) by (f_equal; lia)
           end.
-      all:simplify_implicits; cbn in *; congruence. }
+      all:cbn in *; congruence. }
     { exists (word.slu (word.of_Z 1) (word.of_Z AES_STATUS_OUTPUT_VALID)).
       destruct data. rewrite is_flag_set_shift by (cbv [boolean]; tauto || lia).
       rewrite word.eqb_ne by
@@ -218,14 +196,14 @@ Section Proofs.
       rewrite !is_flag_set_shift_neq by
           (cbv [boolean];
            first [ tauto | lia
-                   | intro; cbn in *; simplify_implicits; congruence ]).
+                   | intro; cbn in *; congruence ]).
       reflexivity. }
   Qed.
 
   (* solve common side conditions from interactions *)
   Local Ltac post_interaction :=
     lazymatch goal with
-    | |- dexprs _ _ _ _ => solve_dexprs; reflexivity
+    | |- dexprs _ _ _ _ => repeat straightline_with_map_lookup; reflexivity
     | |- reg_addr _ = _ => reflexivity
     | |- execution _ _ => eassumption
     | |- ?G => tryif is_lia G then lia else eauto
@@ -245,7 +223,7 @@ Section Proofs.
     cmd call (cmd.interact [bind] READ32 [addre]) t m l post.
   Proof.
     intros; eapply (interact_read 4); intros; infer;
-      cbv [parameters.read_step state_machine_parameters] in *;
+      cbv [state_machine.read_step aes_state_machine] in *;
       eauto.
     pose proof status_read_always_ok s. logical_simplify.
     do 3 eexists; eauto.
@@ -288,7 +266,7 @@ Section Proofs.
     (* Hi below needs to go away once the issue #854 is fixed *)
     (Hi : i <= i) :
     call functions AbsMMIO.abs_mmio_read32 tr m [word.of_Z AES_STATUS0]
-      (fun (t : trace) (m0 : mem) (rets : list Semantics.word) =>
+      (fun (t : trace) (m0 : mem) (rets : list word) =>
        exists l : locals,
          map.putmany_of_list_zip ["status"] rets map.empty = Some l /\
          cmd (call functions)
@@ -297,8 +275,8 @@ Section Proofs.
                  (expr.op bopname.slu 1 i))) t m0 l
            (fun (t0 : trace) (m1 : mem) (l0 : locals) =>
             list_map (get l0) ["out"]
-              (fun rets0 : list Semantics.word =>
-               exists (status out : Semantics.word) (s' : state),
+              (fun rets0 : list word =>
+               exists (status out : word) (s' : state),
                  execution t0 s' /\
                  read_step s STATUS status s' /\
                  R m1 /\
@@ -313,7 +291,7 @@ Section Proofs.
     straightline_call; ssplit.
     (* specialize abs_mmio to AES STATUS *)
     { instantiate ( 1 := STATUS ). reflexivity. }
-    { cbv [parameters.read_step state_machine_parameters] in *. eauto. }
+    { cbv [state_machine.read_step aes_state_machine] in *. eauto. }
     { eauto. }
     { repeat straightline.
       (* keep "execution a x" for later eassumption *)
@@ -358,7 +336,7 @@ Section Proofs.
     cmd call (cmd.interact [] WRITE32 [addre;vale]) t m l post.
   Proof.
     intros; eapply (interact_write 4); intros; infer;
-      cbv [parameters.write_step state_machine_parameters] in *;
+      cbv [state_machine.write_step aes_state_machine] in *;
       eauto.
     cbv [write_step]. cbn [reg_category].
     exists s; destruct s; try contradiction;
@@ -378,7 +356,7 @@ Section Proofs.
   Qed.
 
   Lemma interact_write_key i call addre vale t m l
-        (post : trace -> mem -> locals -> Prop) rs (addr val: Semantics.word) :
+        (post : trace -> mem -> locals -> Prop) rs (addr val: word) :
     dexprs m l [addre; vale] [addr; val] ->
     addr = word.add (word.of_Z AES_KEY00) (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4)) ->
     (i < 8)%nat ->
@@ -391,7 +369,7 @@ Section Proofs.
     cmd call (cmd.interact [] WRITE32 [addre;vale]) t m l post.
   Proof.
     intros; eapply (interact_write 4); intros; infer;
-      cbv [parameters.write_step state_machine_parameters] in *;
+      cbv [state_machine.write_step aes_state_machine] in *;
       eauto.
     { repeat (destruct i; try lia); subst; cbn; ring. }
     { cbv [write_step]. rewrite key_from_index_category by lia.
@@ -423,7 +401,7 @@ Section Proofs.
     cmd call (cmd.interact [] WRITE32 [addre;vale]) t m l post.
   Proof.
     intros; eapply (interact_write 4); intros; infer;
-      cbv [parameters.write_step state_machine_parameters] in *;
+      cbv [state_machine.write_step aes_state_machine] in *;
       eauto.
     { repeat (destruct i; try lia); subst; cbn; ring. }
     { cbv [write_step]. rewrite iv_from_index_category by lia.
@@ -455,7 +433,7 @@ Section Proofs.
     cmd call (cmd.interact [] WRITE32 [addre;vale]) t m l post.
   Proof.
     intros; eapply (interact_write 4); intros; infer;
-      cbv [parameters.write_step state_machine_parameters] in *;
+      cbv [state_machine.write_step aes_state_machine] in *;
       eauto.
     { repeat (destruct i; try lia); subst; cbn; ring. }
     { cbv [write_step]. rewrite data_in_from_index_category by lia.
@@ -497,7 +475,7 @@ Section Proofs.
   Proof.
     intros; eapply (interact_read 4) with (r:=data_out_from_index i);
       intros; infer;
-        cbv [parameters.read_step state_machine_parameters] in *;
+        cbv [state_machine.read_step aes_state_machine] in *;
         eauto.
     { repeat (destruct i; try lia); subst; cbn; ring. }
     { cbv [read_step]. rewrite data_out_from_index_category by lia.
@@ -559,7 +537,7 @@ Section Proofs.
     eapply interact_write_data_in with (i:=n);
     [ lazymatch goal with
       | |- _ = word.add _ _ =>
-        subst_lets; simplify_implicits;
+        subst_lets;
         cbn [Z.of_nat Pos.of_succ_nat Pos.succ]; ring
       | _ => idtac
       end;
@@ -594,7 +572,7 @@ Section Proofs.
     eapply interact_read_data_out with (i:=n);
     [lazymatch goal with
       | |- _ = word.add _ _ =>
-        subst_lets; simplify_implicits;
+        subst_lets;
         cbn [Z.of_nat Pos.of_succ_nat Pos.succ]; ring
       | _ => idtac
       end;
@@ -621,13 +599,13 @@ Section Proofs.
   Local Notation aes_mode_t := (enum_member (aes_mode (aes_constants_ok := consts_ok))) (only parsing).
   Local Notation aes_key_len_t := (enum_member (aes_key_len (aes_constants_ok := consts_ok))) (only parsing).
 
-  Definition ctrl_operation (ctrl : parameters.word) : bool :=
+  Definition ctrl_operation (ctrl : word) : bool :=
     is_flag_set ctrl AES_CTRL_OPERATION.
-  Definition ctrl_mode (ctrl : parameters.word) : parameters.word :=
+  Definition ctrl_mode (ctrl : word) : word :=
     select_bits ctrl (word.of_Z AES_CTRL_MODE_OFFSET) (word.of_Z AES_CTRL_MODE_MASK).
-  Definition ctrl_key_len (ctrl : parameters.word) : parameters.word :=
+  Definition ctrl_key_len (ctrl : word) : word :=
     select_bits ctrl (word.of_Z AES_CTRL_KEY_LEN_OFFSET) (word.of_Z AES_CTRL_KEY_LEN_MASK).
-  Definition ctrl_manual_operation (ctrl : parameters.word) : bool :=
+  Definition ctrl_manual_operation (ctrl : word) : bool :=
     is_flag_set ctrl AES_CTRL_MANUAL_OPERATION.
 
   (***** Proofs for specific functions *****)
@@ -641,7 +619,7 @@ Section Proofs.
         execution tr s ->
         call function_env aes_data_ready tr m []
              (fun tr' m' rets =>
-                exists (status out : Semantics.word) (s' : state),
+                exists (status out : word) (s' : state),
                   (* the new state matches the new trace *)
                   execution tr' s'
                   (* ...and there exists a single valid status-read step between
@@ -674,7 +652,7 @@ Section Proofs.
         execution tr s ->
         call function_env aes_data_valid tr m []
              (fun tr' m' rets =>
-                exists (status out : Semantics.word) (s' : state),
+                exists (status out : word) (s' : state),
                   (* the new state matches the new trace *)
                   execution tr' s'
                   (* ...and there exists a single valid status-read step between
@@ -708,7 +686,7 @@ Section Proofs.
         execution tr s ->
         call function_env aes_idle tr m []
              (fun tr' m' rets =>
-                exists (status out : Semantics.word) (s' : state),
+                exists (status out : word) (s' : state),
                   (* the new state matches the new trace *)
                   execution tr' s'
                   (* ...and there exists a single valid status-read step between
@@ -779,7 +757,7 @@ Section Proofs.
 
     straightline_call; ssplit.
     { instantiate ( 1 := CTRL ). reflexivity. }
-    { cbv [parameters.write_step state_machine_parameters] in *;
+    { cbv [state_machine.write_step aes_state_machine] in *;
       ssplit; eauto.
       instantiate ( 2 := UNINITIALIZED ). reflexivity. }
     { eauto. }
@@ -807,8 +785,6 @@ Section Proofs.
       apply enum_member_size in H;
       pose proof has_size_nonneg _ _ H
     end.
-
-    simplify_implicits.
 
     assert (0 <= AES_CTRL_MODE_MASK < 2 ^ 32). {
       rewrite mode_mask_eq.
@@ -941,7 +917,7 @@ Section Proofs.
   Global Instance spec_of_aes_key_put : spec_of "b2_key_put" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R (data : idle_data)
-        (key_len key_arr_ptr : Semantics.word) (key_arr : list Semantics.word),
+        (key_len key_arr_ptr : word) (key_arr : list word),
         (* key_len is a member of the aes_key_len enum *)
         aes_key_len_t key_len ->
         (* key array is in memory *)
@@ -972,7 +948,6 @@ Section Proofs.
     (* we want to avoid letting [straightline] go too far here, so we can apply
        [cond_nobreak], which requires a [seq] in front of [cond] *)
     do 2 straightline. repeat straightline_cleanup.
-    simplify_implicits.
 
     (* setup: assert useful facts and simplify hypotheses *)
     (* assert that key length enum members are unique *)
@@ -987,7 +962,7 @@ Section Proofs.
     end.
 
     (* this assertion helps prove that i does not get truncated *)
-    assert (9 < 2 ^ Semantics.width) by (cbn; lia).
+    assert (9 < 2 ^ 32) by (cbn; lia).
     pose proof nregs_key_eq.
 
     (* upper bound key_len *)
@@ -1096,7 +1071,7 @@ Section Proofs.
                | _ := map.put _ "i" (word.of_Z (Z.of_nat ?i)) |- _ => i end in
       let a := constr:(word.add key_arr_ptr (word.mul (word.of_Z (Z.of_nat i)) (word.of_Z 4))) in
       let offset := constr:(word.sub a key_arr_ptr) in
-      assert (i = Z.to_nat (word.unsigned offset / word.unsigned (width:=width) (word.of_Z 4))) as Hindex;
+      assert (i = Z.to_nat (word.unsigned offset / word.unsigned (word.of_Z 4))) as Hindex;
         [ ring_simplify offset | ].
       { push_unsigned. rewrite (Z.mul_comm 4), Z.div_mul by lia. lia. }
 
@@ -1333,7 +1308,7 @@ Section Proofs.
   Global Instance spec_of_aes_iv_put : spec_of "b2_iv_put" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R (data : idle_data)
-        (iv_ptr : Semantics.word) (iv_arr : list Semantics.word),
+        (iv_ptr : word) (iv_arr : list word),
         (* iv array is in memory *)
         (array scalar32 (word.of_Z 4) iv_ptr iv_arr * R)%sep m ->
         (* iv array has 4 elements *)
@@ -1359,7 +1334,6 @@ Section Proofs.
   Proof.
     (* intial processing *)
     repeat straightline.
-    simplify_implicits.
 
     (* simplify array predicate *)
     destruct_lists_by_length.
@@ -1369,8 +1343,6 @@ Section Proofs.
              progress ring_simplify addr in H
            end.
 
-    (* this assertion helps prove that i does not get truncated *)
-    assert (4 < 2 ^ Semantics.width) by (cbn; lia).
     pose proof nregs_iv_eq.
 
     (* unroll while loop *)
@@ -1385,17 +1357,17 @@ Section Proofs.
 
     (* i = 1 *)
     split; repeat straightline; [ dexpr_hammer | ].
-    write_iv_n 1%nat; [ simplify_implicits; subst_lets; ring | ].
+    write_iv_n 1%nat; [ subst_lets; ring | ].
     repeat straightline.
 
     (* i = 2 *)
     split; repeat straightline; [ dexpr_hammer | ].
-    write_iv_n 2%nat; [ simplify_implicits; subst_lets; ring | ].
+    write_iv_n 2%nat; [ subst_lets; ring | ].
     repeat straightline.
 
     (* i = 3 *)
     split; repeat straightline; [ dexpr_hammer | ].
-    write_iv_n 3%nat; [ simplify_implicits; subst_lets; ring | ].
+    write_iv_n 3%nat; [ subst_lets; ring | ].
     repeat straightline.
 
     (* i = 4; loop done *)
@@ -1413,7 +1385,7 @@ Section Proofs.
   Global Instance spec_of_aes_data_put : spec_of "b2_data_put" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R (data : idle_data) all_aes_input
-        (input_ptr : Semantics.word) (input_arr : list Semantics.word),
+        (input_ptr : word) (input_arr : list word),
         (* input array is in memory *)
         (array scalar32 (word.of_Z 4) input_ptr input_arr * R)%sep m ->
         (* input array has 4 elements *)
@@ -1439,7 +1411,7 @@ Section Proofs.
                 execution tr' (BUSY (Build_busy_data
                                        (idle_ctrl data)
                                        (aes_expected_output all_aes_input)
-                                       timing.ndelays_core))
+                                       ndelays_core))
                 (* ...and the same properties as before hold on the memory *)
                 /\ (array scalar32 (word.of_Z 4) input_ptr input_arr * R)%sep m'
                 (* ...and there is no output *)
@@ -1450,7 +1422,6 @@ Section Proofs.
   Proof.
     (* initial processing *)
     repeat straightline.
-    simplify_implicits.
 
     (* simplify array predicate *)
     destruct_lists_by_length.
@@ -1460,8 +1431,6 @@ Section Proofs.
              progress ring_simplify addr in H
            end.
 
-    (* this assertion helps prove that i does not get truncated *)
-    assert (4 < 2 ^ Semantics.width) by (cbn; lia).
     pose proof nregs_data_eq.
 
     (* unroll while loop *)
@@ -1512,7 +1481,7 @@ Section Proofs.
   Global Instance spec_of_aes_data_put_wait : spec_of "b2_data_put_wait" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R (data : idle_data) all_aes_input
-        (input_ptr : Semantics.word) (input_arr : list Semantics.word),
+        (input_ptr : word) (input_arr : list word),
         (* input array is in memory *)
         (array scalar32 (word.of_Z 4) input_ptr input_arr * R)%sep m ->
         (* input array has 4 elements *)
@@ -1538,7 +1507,7 @@ Section Proofs.
                 execution tr' (BUSY (Build_busy_data
                                        (idle_ctrl data)
                                        (aes_expected_output all_aes_input)
-                                       timing.ndelays_core))
+                                       ndelays_core))
                 (* ...and the same properties as before hold on the memory *)
                 /\ (array scalar32 (word.of_Z 4) input_ptr input_arr * R)%sep m'
                 (* ...and there is no output *)
@@ -1549,7 +1518,6 @@ Section Proofs.
   Proof.
     (* initial processing *)
     repeat straightline.
-    simplify_implicits.
 
     (* we know the circuit is in IDLE state, so loop has exactly 1 iteration *)
     eapply unroll_while with (iterations:=1%nat). cbn [repeat_logic_step].
@@ -1564,7 +1532,7 @@ Section Proofs.
     logical_simplify; subst.
     cbn [read_step reg_category] in *.
     cbv [status_matches_state] in *.
-    logical_simplify; simplify_implicits.
+    logical_simplify.
     repeat match goal with
            | H : (_ && _)%bool = true |- _ => apply Bool.andb_true_iff in H; destruct H
            | H : word.eqb _ _ = _ |- _ => apply word.eqb_false in H
@@ -1589,8 +1557,8 @@ Section Proofs.
   Global Instance spec_of_aes_data_get : spec_of "b2_data_get" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R (data : done_data)
-        (data_ptr out0 out1 out2 out3 : Semantics.word)
-        (data_arr : list Semantics.word),
+        (data_ptr out0 out1 out2 out3 : word)
+        (data_arr : list word),
         (* data array is in memory, with arbitrary initital values *)
         (array scalar32 (word.of_Z 4) data_ptr data_arr * R)%sep m ->
         length data_arr = 4%nat ->
@@ -1618,7 +1586,6 @@ Section Proofs.
   Proof.
     (* initial processing *)
     repeat straightline.
-    simplify_implicits.
 
     (* simplify array predicate *)
     destruct_lists_by_length.
@@ -1628,8 +1595,6 @@ Section Proofs.
              progress ring_simplify addr in H
            end.
 
-    (* this assertion helps prove that i does not get truncated *)
-    assert (4 < 2 ^ Semantics.width) by (cbn; lia).
     pose proof nregs_data_eq.
 
     (* unroll while loop *)
@@ -1652,12 +1617,7 @@ Section Proofs.
     read_data_out_n 0%nat. repeat straightline.
 
     (* store result in memory *)
-    simplify_implicits.
     ring_simplify_store_addr.
-    (* the following line is in [straightline] but needs simplify_implicits for
-       it to work *)
-    eapply store_four_of_sep;
-      [ simplify_implicits; solve [ ecancel_assumption ] |  ].
     repeat straightline.
 
     (* i = 1 *)
@@ -1667,12 +1627,7 @@ Section Proofs.
     read_data_out_n 1%nat. repeat straightline.
 
     (* store result in memory *)
-    simplify_implicits.
     ring_simplify_store_addr.
-    (* the following line is in [straightline] but needs simplify_implicits for
-       it to work *)
-    eapply store_four_of_sep;
-      [ simplify_implicits; solve [ ecancel_assumption ] |  ].
     repeat straightline.
 
     (* i = 3 *)
@@ -1682,12 +1637,7 @@ Section Proofs.
     read_data_out_n 2%nat. repeat straightline.
 
     (* store result in memory *)
-    simplify_implicits.
     ring_simplify_store_addr.
-    (* the following line is in [straightline] but needs simplify_implicits for
-       it to work *)
-    eapply store_four_of_sep;
-      [ simplify_implicits; solve [ ecancel_assumption ] |  ].
     repeat straightline.
 
     (* i = 3 *)
@@ -1697,12 +1647,7 @@ Section Proofs.
     read_data_out_n 3%nat. repeat straightline.
 
     (* store result in memory *)
-    simplify_implicits.
     ring_simplify_store_addr.
-    (* the following line is in [straightline] but needs simplify_implicits for
-       it to work *)
-    eapply store_four_of_sep;
-      [ simplify_implicits; solve [ ecancel_assumption ] |  ].
     repeat straightline.
 
     (* i = 4; loop done *)
@@ -1716,7 +1661,6 @@ Section Proofs.
            end.
 
     ssplit; eauto; [ ].
-    simplify_implicits.
     ecancel_assumption.
   Qed.
 
@@ -1728,7 +1672,7 @@ Section Proofs.
     | _ => False
     end.
 
-  Definition get_ctrl (s : state) : Semantics.word :=
+  Definition get_ctrl (s : state) : word :=
     match s with
     | UNINITIALIZED => word.of_Z 0 (* dummy value *)
     | IDLE data => idle_ctrl data
@@ -1739,7 +1683,7 @@ Section Proofs.
   Global Instance spec_of_aes_data_get_wait : spec_of "b2_data_get_wait" :=
     fun function_env =>
       forall (tr : trace) (m : mem) R (out : aes_output)
-        (data_ptr : Semantics.word) (data_arr : list Semantics.word) (s : state),
+        (data_ptr : word) (data_arr : list word) (s : state),
         (* data array is in memory, with arbitrary initital values *)
         (array scalar32 (word.of_Z 4) data_ptr data_arr * R)%sep m ->
         length data_arr = 4%nat ->
@@ -1767,7 +1711,6 @@ Section Proofs.
   Proof.
     (* initial processing *)
     repeat straightline.
-    simplify_implicits.
 
     (* separate out cases where s is initially BUSY or DONE *)
     cbv [output_matches_state] in *.
@@ -1851,7 +1794,6 @@ Section Proofs.
             exfalso.
             cbv [status_matches_state] in *.
             repeat invert_bool.
-            simplify_implicits.
             lazymatch goal with
             | br := if word.eqb _ (word.of_Z 0) then _ else _,
                     H : word.unsigned br <> 0 |- _ =>
@@ -1904,12 +1846,6 @@ Section Proofs.
             exfalso.
             cbv [status_matches_state] in *.
             repeat invert_bool; try congruence; [ ].
-            simplify_implicits.
-            lazymatch goal with
-            | H : word.eqb _ _ = negb (is_flag_set ?x ?flag),
-                  H' : is_flag_set ?x ?flag = _ |- _ =>
-              rewrite H' in H; cbn [negb] in H
-            end.
             lazymatch goal with
             | br := if word.eqb ?x (word.of_Z 0) then _ else _,
                     Heq : word.eqb ?x (word.of_Z 0) = _,
@@ -1953,7 +1889,6 @@ Section Proofs.
       cbv [status_matches_state] in *.
       logical_simplify; subst.
       repeat invert_bool; try congruence; [ ].
-      simplify_implicits.
       lazymatch goal with
       | H : word.eqb _ _ = negb (is_flag_set ?x ?flag),
             H' : is_flag_set ?x ?flag = _ |- _ =>
@@ -1965,7 +1900,7 @@ Section Proofs.
 
       (* prove the loop breaks *)
       ssplit;
-        [ subst_lets; simplify_implicits;
+        [ subst_lets;
           destruct_one_match; push_unsigned; congruence | ].
 
       repeat straightline.

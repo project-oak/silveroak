@@ -51,7 +51,7 @@ Definition compile_read(action: string): Z -> Z -> Z -> Instruction :=
      whether a 32-bit load is signed or unsigned makes no difference on a 32-bit machine. *)
   if String.eqb action READ8 then Lbu else if String.eqb action READ16 then Lhu else Lw.
 
-Definition compile_ext_call(results: list Z) a (args: list Z):
+Definition compile_interact(results: list Z) a (args: list Z):
   list Instruction :=
   if String.prefix WRITE_PREFIX a then
     match results, args with
@@ -86,55 +86,31 @@ Proof.
     exact I.
 Qed.
 
-Module Import MMIO.
-  Class parameters := {
-    word :> Word.Interface.word 32;
-    word_ok :> word.ok word;
-    word_riscv_ok :> word.riscv_ok word;
-    mem :> map.map word byte;
-    mem_ok :> map.ok mem;
-    locals :> map.map Z word;
-    locals_ok :> map.ok locals;
-    funname_env :> forall T, map.map String.string T;
-    funname_env_ok :> forall T, map.ok (funname_env T);
-  }.
-End MMIO.
+Instance RV32I_width: FlatToRiscvCommon.bitwidth_iset 32 RV32I. reflexivity. Qed.
 
 Section MMIO1.
-  Context {p: unique! MMIO.parameters}.
-  Context {state_machine_parameters :
-             StateMachineSemantics.parameters 32 MMIO.word MMIO.mem}
-          {state_machine_parameters_ok :
-             StateMachineSemantics.parameters.ok state_machine_parameters}.
+  Context {word: Word.Interface.word 32}
+          {word_ok: word.ok word}
+          {word_riscv_ok: word.riscv_ok word}
+          {mem: map.map word byte}
+          {mem_ok: map.ok mem}
+          {locals: map.map Z word}
+          {locals_ok: map.ok locals}
+          {funname_env: forall T, map.map String.string T}
+          {funname_env_ok: forall T, map.ok (funname_env T)}
+          {M: state_machine.parameters}
+          {M_ok: state_machine.ok M}.
 
   Add Ring wring : (word.ring_theory (word := word))
       (preprocess [autorewrite with rew_word_morphism],
        morphism (word.ring_morph (word := word)),
        constants [word_cst]).
 
-  Local Instance Words32: Utility.Words := {
-    Utility.word := word;
-    Utility.width_cases := or_introl eq_refl;
-  }.
-
-  Instance compilation_params: FlatToRiscvDef.parameters := {|
-    FlatToRiscvDef.iset := RV32I;
-    FlatToRiscvDef.compile_ext_call _ _ _ s :=
+  Definition compile_ext_call(_: funname_env Z)(_ _: Z)(s: stmt Z) :=
       match s with
-      | SInteract resvars action argvars => compile_ext_call resvars action argvars
+      | SInteract resvars action argvars => compile_interact resvars action argvars
       | _ => []
-      end;
-  |}.
-
-  Instance FlatToRiscv_params: FlatToRiscvCommon.parameters := {
-    FlatToRiscvCommon.def_params := compilation_params;
-    FlatToRiscvCommon.locals := locals;
-    FlatToRiscvCommon.mem := (@mem p);
-    FlatToRiscvCommon.MM := free.Monad_free;
-    FlatToRiscvCommon.RVM := MaterializeRiscvProgram.Materialize;
-    FlatToRiscvCommon.PRParams := MetricMinimalMMIOPrimitivesParams;
-    FlatToRiscvCommon.ext_spec := StateMachineSemantics.ext_spec;
-  }.
+      end.
 
   Lemma load_bytes_in_MMIO_is_None: forall n (m: mem) (addr: word),
       map.undef_on m isMMIOAddr ->
@@ -189,24 +165,6 @@ Section MMIO1.
     intros x y Hx Hy C. subst. apply Hy. apply Hx.
   Qed.
 
-  Instance FlatToRiscv_hyps: FlatToRiscvCommon.assumptions.
-  Proof.
-    constructor.
-    - reflexivity.
-    - typeclasses eauto.
-    - typeclasses eauto.
-    - typeclasses eauto.
-    - typeclasses eauto.
-    - eapply MetricMinimalMMIOSatisfiesPrimitives; cbn; intuition eauto.
-  Qed.
-
-  Ltac simpl_paramrecords :=
-    change (@FlatToRiscvCommon.W FlatToRiscv_params) with Words32 in *;
-    change (@FlatToRiscvCommon.locals FlatToRiscv_params) with (@locals p) in *;
-    change (@FlatToRiscvCommon.mem FlatToRiscv_params) with (@mem p) in *;
-    change (@width Words32) with 32 in *;
-    change (@Utility.word Words32) with (@word p) in *.
-
   Ltac execute_step :=
     match goal with
     | |- context [Z.eq_dec ?r 0] => destruct (Z.eq_dec r 0);
@@ -231,8 +189,8 @@ Section MMIO1.
       map.get (getRegs (getMachine initial)) rs1 = Some a ->
       map.get (getRegs (getMachine initial)) rs2 = Some v ->
       execution (getLog initial) s ->
-      parameters.reg_addr r = a ->
-      parameters.write_step sz s r v s' ->
+      state_machine.reg_addr r = a ->
+      state_machine.write_step sz s r v s' ->
       map.undef_on (getMem (getMachine initial)) isMMIOAddr ->
       post tt (withXAddrs (invalidateWrittenXAddrs sz a (getXAddrs initial))
               (withLogItem (mmioStoreEvent a
@@ -245,14 +203,14 @@ Section MMIO1.
   Proof.
     intros. subst.
     (* more robust against PARAMRECORDS differences than eauto *)
-    assert (isMMIOAddr (parameters.reg_addr r)). {
+    assert (isMMIOAddr (state_machine.reg_addr r)). {
       eapply write_step_isMMIOAddr0. eassumption.
     }
-    assert (word.unsigned (parameters.reg_addr r) mod Z.of_nat sz = 0). {
-      eapply parameters.write_step_is_aligned. eassumption.
+    assert (word.unsigned (state_machine.reg_addr r) mod Z.of_nat sz = 0). {
+      eapply state_machine.write_step_is_aligned. eassumption.
     }
     assert (List.In sz [1; 2; 4]%nat) as P. {
-      eapply parameters.write_step_size_valid. eassumption.
+      eapply state_machine.write_step_size_valid. eassumption.
     }
     simpl in P. destruct P as [? | [? | [? | ?] ] ]; [subst sz..|contradiction];
       repeat fwd; repeat execute_step.
@@ -262,7 +220,7 @@ Section MMIO1.
     all: rewrite ?word.of_Z_unsigned.
     all: try eassumption.
     all: split; [apply (word.unsigned_range v)|].
-    all: eapply parameters.write_step_bounded; eassumption.
+    all: eapply state_machine.write_step_bounded; eassumption.
   Qed.
 
   Lemma execute_compile_read sz rd rs a s s' r v1 initial (post: unit -> MetricRiscvMachine -> Prop):
@@ -270,8 +228,8 @@ Section MMIO1.
       valid_FlatImp_var rs ->
       map.get (getRegs (getMachine initial)) rs = Some a ->
       execution (getLog initial) s ->
-      parameters.reg_addr r = a ->
-      parameters.read_step sz s r v1 s' ->
+      state_machine.reg_addr r = a ->
+      state_machine.read_step sz s r v1 s' ->
       map.undef_on (getMem (getMachine initial)) isMMIOAddr ->
       (forall v: HList.tuple byte sz,
           MMIOReadOK sz (getLog initial) a (word.of_Z (LittleEndian.combine sz v)) ->
@@ -286,18 +244,18 @@ Section MMIO1.
   Proof.
     intros. subst.
     (* more robust against PARAMRECORDS differences than eauto *)
-    assert (isMMIOAddr (parameters.reg_addr r)). {
+    assert (isMMIOAddr (state_machine.reg_addr r)). {
       eapply read_step_isMMIOAddr0. eassumption.
     }
-    assert (word.unsigned (parameters.reg_addr r) mod Z.of_nat sz = 0). {
-      eapply parameters.read_step_is_aligned. eassumption.
+    assert (word.unsigned (state_machine.reg_addr r) mod Z.of_nat sz = 0). {
+      eapply state_machine.read_step_is_aligned. eassumption.
     }
     assert (List.In sz [1; 2; 4]%nat) as P. {
-      eapply parameters.read_step_size_valid. eassumption.
+      eapply state_machine.read_step_size_valid. eassumption.
     }
     assert (0 <= word.unsigned v1 < 2 ^ (Z.of_nat sz * 8)) as v1R. {
       split. 1: apply word.unsigned_range.
-      eapply parameters.read_step_bounded. eassumption.
+      eapply state_machine.read_step_bounded. eassumption.
     }
     rewrite <- (word.of_Z_unsigned v1) in H4.
     rewrite <- (Z.mod_small (word.unsigned v1) (2 ^ (Z.of_nat sz * 8))) in H4 by exact v1R.
@@ -309,8 +267,7 @@ Section MMIO1.
   Qed.
 
   Lemma compile_ext_call_correct: forall resvars extcall argvars,
-      FlatToRiscvCommon.compiles_FlatToRiscv_correctly
-        (@FlatToRiscvDef.compile_ext_call compilation_params)
+      FlatToRiscvCommon.compiles_FlatToRiscv_correctly compile_ext_call compile_ext_call
         (FlatImp.SInteract resvars extcall argvars).
   Proof.
     unfold FlatToRiscvCommon.compiles_FlatToRiscv_correctly.
@@ -319,7 +276,7 @@ Section MMIO1.
     rename extcall into action.
     simp.
     destruct_RiscvMachine initialL.
-    unfold compile_ext_call, FlatToRiscvCommon.goodMachine in *.
+    unfold FlatToRiscvCommon.goodMachine in *.
     match goal with
     | H: forall _ _, outcome _ _ -> _ |- _ => specialize H with (mReceive := map.empty)
     end.
@@ -330,9 +287,8 @@ Section MMIO1.
       match goal with
       | H: StateMachineSemantics.ext_spec _ _ _ _ _ |- _ => rename H into Ex
       end.
-      cbv [FlatToRiscvCommon.Semantics_params FlatToRiscvCommon.ext_spec ] in Ex.
-      cbv [ext_spec FlatToRiscvCommon.Semantics_params FlatToRiscvCommon.ext_spec
-                    StateMachineSemantics.ext_spec] in Ex.
+      unfold compile_interact in *.
+      cbv [ext_spec] in Ex.
       simpl in *|-.
       rewrite E in *.
       logical_simplify. subst mGive argvals.
@@ -362,7 +318,7 @@ Section MMIO1.
       | H: map.split _ _ map.empty |- _ => rewrite map.split_empty_r in H; subst
       end.
       match goal with
-      | HO : forall _ _ :  parameters.state, _ |- _ =>
+      | HO : forall _ _ :  state_machine.state, _ |- _ =>
         specialize (HO _ _ ltac:(eassumption) ltac:(eassumption))
       end.
       match goal with
@@ -412,7 +368,7 @@ Section MMIO1.
       rewrite Z.mod_small. 2: {
         split.
         - apply (word.unsigned_range x1).
-        - eapply parameters.write_step_bounded. eassumption.
+        - eapply state_machine.write_step_bounded. eassumption.
       }
       rewrite word.of_Z_unsigned.
       cbn -[invalidateWrittenXAddrs String.append] in *.
@@ -427,10 +383,10 @@ Section MMIO1.
       split; eauto.
       split; eauto.
       match goal with
-      | H: parameters.write_step ?SZ _ ?R _ _ |- _ => rename H into WS, SZ into sz, R into r
+      | H: state_machine.write_step ?SZ _ ?R _ _ |- _ => rename H into WS, SZ into sz, R into r
       end.
-      pose proof (parameters.write_step_is_aligned _ _ _ _ _ WS) as A.
-      pose proof (parameters.write_step_size_valid _ _ _ _ _ WS) as P.
+      pose proof (state_machine.write_step_is_aligned _ _ _ _ _ WS) as A.
+      pose proof (state_machine.write_step_size_valid _ _ _ _ _ WS) as P.
       simpl in P.
       split. {
         lazymatch goal with
@@ -447,7 +403,7 @@ Section MMIO1.
           clear. unfold subset, PropSet.elem_of. intros. firstorder idtac.
         }
         eapply subset_trans. 1: eassumption.
-        clear -(*D4 M0*) A P WS D state_machine_parameters_ok.
+        clear -(*D4 M0*) A P WS D word_ok M_ok.
         destruct P as [? | [? | [? | ?] ] ]; [subst..|contradiction]; cbn.
         all:change removeXAddr with (@List.removeb word word.eqb _).
         all:rewrite ?ListSet.of_list_removeb.
@@ -457,10 +413,10 @@ Section MMIO1.
         all:specialize (D y); destruct D; [contradiction|].
         all:rewrite ?and_assoc.
         all:split; [exact HIn|clear HIn].
-        all:pose proof (word.unsigned_range (parameters.reg_addr r)).
+        all:pose proof (word.unsigned_range (state_machine.reg_addr r)).
         all:ssplit; eapply disjoint_MMIO_goal; eauto.
         all:cbv [isMMIOAddr StateMachineMMIOSpec].
-        all:eapply parameters.write_step_isMMIOAddr; [exact WS|].
+        all:eapply state_machine.write_step_isMMIOAddr; [exact WS|].
         all:ZnWords.
       }
       ssplit; eauto.
@@ -475,9 +431,8 @@ Section MMIO1.
       match goal with
       | H: StateMachineSemantics.ext_spec _ _ _ _ _ |- _ => rename H into Ex
       end.
-      cbv [FlatToRiscvCommon.Semantics_params FlatToRiscvCommon.ext_spec ] in Ex.
-      cbv [ext_spec FlatToRiscvCommon.Semantics_params FlatToRiscvCommon.ext_spec
-                    StateMachineSemantics.ext_spec] in Ex.
+      unfold compile_interact in *.
+      cbv [ext_spec] in Ex.
       simpl in *|-.
 
       rewrite E in *.
@@ -542,12 +497,12 @@ Section MMIO1.
       lazymatch goal with
       | H: MMIOReadOK _ _ _ _ |- _ => destruct H as (s & s' & r' & Ex & Eq & RS)
       end.
-      apply parameters.reg_addr_unique in Eq. subst.
+      apply state_machine.reg_addr_unique in Eq. subst.
       lazymatch goal with
-      | H : forall _ _ _, _ -> parameters.read_step _ _ _ _ _ -> _ |- _ => rename H into HO
+      | H : forall _ _ _, _ -> state_machine.read_step _ _ _ _ _ -> _ |- _ => rename H into HO
       end.
       lazymatch goal with
-      | HO : forall _ _ _, _ -> parameters.read_step _ _ _ _ _ -> _ |- _ =>
+      | HO : forall _ _ _, _ -> state_machine.read_step _ _ _ _ _ -> _ |- _ =>
         specialize (HO _ _ _ ltac:(eassumption) ltac:(eassumption))
       end.
       unfold mmioLoadEvent.
@@ -585,12 +540,6 @@ Section MMIO1.
         typeclasses eauto.
       }
       eauto 10.
-  Time Qed. (* takes ~30s *)
+  Qed.
 
 End MMIO1.
-
-Existing Instance Words32.
-Existing Instance semantics_parameters.
-Existing Instance compilation_params.
-Existing Instance FlatToRiscv_params.
-Existing Instance FlatToRiscv_hyps.

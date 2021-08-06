@@ -18,6 +18,7 @@ Require Import Cava.Util.Tactics.
 Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.Word.
 Require Import Bedrock2Experiments.WordProperties.
+Require Import Bedrock2Experiments.ProgramSemantics32.
 Require Import Bedrock2Experiments.IncrementWait.Constants.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.StateMachineProperties.
@@ -37,25 +38,20 @@ Section Proofs.
         (* no special requirements of the memory *)
         R m ->
         (* circuit must start in IDLE state *)
-        execution (p := state_machine_parameters) tr IDLE ->
+        execution (M := increment_wait_state_machine) tr IDLE ->
         let args := [input] in
         call function_env put_wait_get tr m args
              (fun tr' m' rets =>
                 (* the circuit is back in IDLE state *)
-                execution (p := state_machine_parameters) tr' IDLE
+                execution (M := increment_wait_state_machine) tr' IDLE
                 (* ...and the same properties as before hold on the memory *)
                 /\ R m'
                 (* ...and output matches spec *)
                 /\ rets = [proc input]).
 
-  Local Ltac simplify_implicits :=
-    change Semantics.word with word in *;
-    change Semantics.mem with mem in *;
-    change Semantics.width with 32 in *.
-
   Lemma execution_unique (t : trace) s1 s2 :
-    execution (p := state_machine_parameters) t s1 ->
-    execution (p := state_machine_parameters) t s2 ->
+    execution (M := increment_wait_state_machine) t s1 ->
+    execution (M := increment_wait_state_machine) t s2 ->
     s1 = s2.
   Proof.
     revert s1 s2.
@@ -73,11 +69,11 @@ Section Proofs.
            | |- _ => destruct_one_match_hyp
            | |- _ => progress logical_simplify; subst
            | |- _ => congruence
-           | |- _ => progress cbv [read_step parameters.read_step
-                                   write_step parameters.write_step parameters.reg_addr
-                                   state_machine_parameters] in *
+           | |- _ => progress cbv [read_step state_machine.read_step
+                                   write_step state_machine.write_step state_machine.reg_addr
+                                   increment_wait_state_machine] in *
            | H: reg_addr _ = reg_addr _ |- _ => eapply reg_addrs_unique in H
-           | |- _ => progress cbv [reg_addr status_value] in *; simplify_implicits
+           | |- _ => progress cbv [reg_addr status_value] in *
            | H : _ \/ _ |- _ => destruct H
            end.
     all: match goal with
@@ -110,12 +106,12 @@ Section Proofs.
   Qed.
 
   Lemma word_and_shiftl_1_diff n m :
-    word.unsigned n < width ->
-    word.unsigned m < width ->
+    word.unsigned n < 32 ->
+    word.unsigned m < 32 ->
     word.slu (word.of_Z 1) n <> word.slu (word.of_Z (word:=word) 1) m ->
     word.and (word.slu (word.of_Z 1) n) (word.slu (word.of_Z 1) m) = word.of_Z 0.
   Proof.
-    pose proof word.width_pos. simplify_implicits.
+    pose proof word.width_pos.
     intros. apply word.unsigned_inj. push_unsigned.
     cbv [word.wrap]. rewrite <-Z.land_ones by lia.
     Z.bitblast.
@@ -159,20 +155,20 @@ Section Proofs.
   Qed.
 
   Local Ltac interact_read_reg reg :=
-    eapply (interact_read (p := state_machine_parameters) 4 reg);
+    eapply (interact_read (M := increment_wait_state_machine) 4 reg);
     [ repeat straightline_with_map_lookup; reflexivity
     | reflexivity
     | do 3 eexists; split; [ eassumption | ];
-      cbv [read_step parameters.read_step state_machine_parameters]; eauto
+      cbv [read_step state_machine.read_step increment_wait_state_machine]; eauto
     | ];
     repeat straightline.
 
   Local Ltac interact_write_reg reg :=
-    eapply (interact_write (p := state_machine_parameters) 4 reg);
+    eapply (interact_write (M := increment_wait_state_machine) 4 reg);
     [ repeat straightline_with_map_lookup; reflexivity
     | reflexivity
     | do 2 eexists; ssplit; [ eassumption | ];
-      cbv [write_step parameters.write_step state_machine_parameters]; eauto
+      cbv [write_step state_machine.write_step increment_wait_state_machine]; eauto
     | ];
     repeat straightline.
 
@@ -212,7 +208,7 @@ Section Proofs.
     interact_write_reg VALUE.
 
     (* simplify post-write guarantees *)
-    cbv [parameters.write_step state_machine_parameters write_step] in *.
+    cbv [state_machine.write_step increment_wait_state_machine write_step] in *.
     repeat straightline.
     repeat (destruct_one_match_hyp; try contradiction).
     subst.
@@ -223,7 +219,7 @@ Section Proofs.
            (lt:=lt)
            (invariant:=
               fun i tr m l =>
-                execution (p := state_machine_parameters) tr (BUSY input i) /\ R m).
+                execution (M := increment_wait_state_machine) tr (BUSY input i) /\ R m).
     { apply lt_wf. }
     { (* case in which the loop breaks immediately (cannot happen) *)
       repeat straightline.
@@ -240,11 +236,7 @@ Section Proofs.
       rewrite Z.land_0_l, Z.eqb_refl in *.
       congruence. }
     { (* proof that invariant holds at loop start *)
-      ssplit; [ | map_lookup .. | assumption ].
-      cbn [execution]. eexists; ssplit; [ eassumption | ].
-      cbv [step write_step]. change (if (_: bool) then ?x else _) with x.
-      exists VALUE, 4%nat; ssplit;
-        cbv [parameters.write_step state_machine_parameters write_step]; eauto. }
+      cbn [execution]. eauto. }
     { (* invariant holds through loop (or postcondition holds, if loop breaks) *)
       repeat straightline.
 
@@ -261,14 +253,13 @@ Section Proofs.
 
         match goal with H : _ |- _ => apply word.if_nonzero, word.eqb_true in H end.
 
-        cbv [parameters.read_step state_machine_parameters read_step] in *. straightline.
+        cbv [state_machine.read_step increment_wait_state_machine read_step] in *. straightline.
         (* break into two possible read cases : DONE and BUSY *)
         lazymatch goal with H : _ \/ _ |- _ => destruct H end;
           logical_simplify; subst.
         { (* DONE case; contradiction *)
           exfalso; infer.
           pose proof check_done_flag_done as Hflag.
-          simplify_implicits.
           unfold STATUS_DONE in *.
           match goal with H : word.and _ _ = word.of_Z 0 |- _ =>
                           rewrite H in Hflag end.
@@ -282,16 +273,16 @@ Section Proofs.
 
         ssplit; [ | map_lookup .. | assumption ].
         eapply execution_step_read with (r:=STATUS); [ eassumption | reflexivity | ].
-        cbv [read_step parameters.read_step state_machine_parameters]. split; [reflexivity|].
+        cbv [read_step state_machine.read_step increment_wait_state_machine]. split; [reflexivity|].
         right; eauto. }
       { (* break case -- postcondition holds *)
 
         (* break into two possible read cases : DONE and BUSY *)
-        cbv [parameters.read_step state_machine_parameters read_step] in *. straightline.
+        cbv [state_machine.read_step increment_wait_state_machine read_step] in *. straightline.
         lazymatch goal with H : _ \/ _ |- _ => destruct H end;
           logical_simplify; subst.
         2:{ (* BUSY case; contradiction *)
-          exfalso; infer. simplify_implicits.
+          exfalso; infer.
           unfold STATUS_BUSY in *.
           lazymatch goal with H : word.unsigned (if _ then _ else _) = 0 |- _ =>
                           erewrite word.eqb_eq in H by apply check_done_flag_busy;
@@ -303,7 +294,7 @@ Section Proofs.
         interact_read_reg VALUE. repeat straightline.
 
         (* simplify post-read guarantees *)
-        infer. cbv [read_step parameters.read_step state_machine_parameters] in *. repeat straightline.
+        infer. cbv [read_step state_machine.read_step increment_wait_state_machine] in *. repeat straightline.
         repeat (destruct_one_match_hyp; try contradiction);
           try lazymatch goal with
               | H : word.unsigned (word.of_Z 1) = 0 |- _ =>

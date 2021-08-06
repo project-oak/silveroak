@@ -10,12 +10,12 @@ Require Import riscv.Spec.Decode.
 Require Import riscv.Utility.InstructionCoercions.
 Open Scope ilist_scope.
 
-Definition code_start    : Utility.word := word.of_Z 0.
-Definition code_pastend  : Utility.word := word.of_Z (4*2^10).
-Definition heap_start    : Utility.word := word.of_Z (4*2^10).
-Definition heap_pastend  : Utility.word := word.of_Z (8*2^10).
-Definition stack_start   : Utility.word := word.of_Z (8*2^10).
-Definition stack_pastend : Utility.word := word.of_Z (16*2^10).
+Definition code_start    : word := word.of_Z 0.
+Definition code_pastend  : word := word.of_Z (4*2^10).
+Definition heap_start    : word := word.of_Z (4*2^10).
+Definition heap_pastend  : word := word.of_Z (8*2^10).
+Definition stack_start   : word := word.of_Z (8*2^10).
+Definition stack_pastend : word := word.of_Z (16*2^10).
 
 Definition main_relative_pos :=
   match map.get (snd (fst put_wait_get_compile_result)) (fst main) with
@@ -23,7 +23,7 @@ Definition main_relative_pos :=
   | None => -1111
   end.
 
-Definition p_call: Utility.word :=
+Definition p_call: word :=
   word.add code_start (word.of_Z (4 * Z.of_nat (List.length put_wait_get_asm))).
 
 Definition all_insts: list Instruction :=

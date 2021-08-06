@@ -7,6 +7,7 @@ Require Import bedrock2.WeakestPrecondition.
 Require Import bedrock2.WeakestPreconditionProperties.
 Require Import coqutil.Word.Interface.
 Require Import coqutil.Word.Properties.
+Require Import coqutil.Word.Bitwidth.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Tactics.letexists.
 Require Import coqutil.Tactics.Tactics.
@@ -16,7 +17,14 @@ Local Open Scope Z_scope.
 (* Proofs about cmd.while *)
 
 Section Proofs.
-  Context {p : Semantics.parameters} {p_pk : Semantics.parameters_ok p}.
+  Context {width: Z} {BW: Bitwidth width} {word: word.word width} {mem: map.map word Byte.byte}.
+  Context {locals: map.map String.string word}.
+  Context {env: map.map String.string (list String.string * list String.string * Syntax.cmd)}.
+  Context {ext_spec: ExtSpec}.
+  Context {word_ok : word.ok word} {mem_ok : map.ok mem}.
+  Context {locals_ok : map.ok locals}.
+  Context {env_ok : map.ok env}.
+  Context {ext_spec_ok : Semantics.ext_spec.ok ext_spec}.
 
   Fixpoint repeat_logic_step
            (logic : trace -> mem -> locals ->

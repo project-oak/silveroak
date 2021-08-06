@@ -99,25 +99,20 @@ Section WithParameters.
       end
     end.
 
-  Global Instance state_machine_parameters
-    : StateMachineSemantics.parameters 32 word mem :=
-    {| StateMachineSemantics.parameters.state := state ;
-       StateMachineSemantics.parameters.register := Register ;
-       StateMachineSemantics.parameters.is_initial_state := eq IDLE ;
-       StateMachineSemantics.parameters.read_step sz s a v s' :=
-         sz = 4%nat /\ read_step s a v s';
-       StateMachineSemantics.parameters.write_step sz s a v s' :=
-         sz = 4%nat /\ write_step s a v s' ;
-       StateMachineSemantics.parameters.reg_addr := reg_addr ;
-       StateMachineSemantics.parameters.isMMIOAddr a :=
-           INCR_BASE_ADDR <= word.unsigned a < INCR_END_ADDR;
-    |}.
+  Global Instance increment_wait_state_machine : state_machine.parameters := {
+    state_machine.state := state;
+    state_machine.register := Register;
+    state_machine.is_initial_state := eq IDLE;
+    state_machine.read_step sz s a v s' := sz = 4%nat /\ read_step s a v s';
+    state_machine.write_step sz s a v s' := sz = 4%nat /\ write_step s a v s';
+    state_machine.reg_addr := reg_addr;
+    state_machine.isMMIOAddr a := INCR_BASE_ADDR <= word.unsigned a < INCR_END_ADDR;
+  }.
 
-  Global Instance state_machine_parameters_ok
-    : StateMachineSemantics.parameters.ok state_machine_parameters.
+  Global Instance increment_wait_state_machine_ok : state_machine.ok increment_wait_state_machine.
   Proof.
     constructor;
-      unfold parameters.isMMIOAddr; cbn;
+      unfold state_machine.isMMIOAddr; cbn;
       intros;
       try exact _;
       repeat match goal with
@@ -131,9 +126,4 @@ Section WithParameters.
     all: exfalso; ZnWords.
   Qed.
 
-  (* COPY-PASTE this *)
-  Add Ring wring : (Properties.word.ring_theory (word := Semantics.word))
-        (preprocess [autorewrite with rew_word_morphism],
-         morphism (Properties.word.ring_morph (word := Semantics.word)),
-         constants [Properties.word_cst]).
 End WithParameters.

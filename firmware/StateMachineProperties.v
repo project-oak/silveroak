@@ -1,5 +1,6 @@
 Require Import Coq.Lists.List.
 Require Import Coq.Strings.String.
+Require Import Coq.ZArith.ZArith.
 Require Import bedrock2.ProgramLogic.
 Require Import bedrock2.Semantics.
 Require Import bedrock2.Syntax.
@@ -19,19 +20,20 @@ Import ListNotations.
 Local Open Scope Z_scope.
 
 Section Proofs.
-  Context {width word mem} {p : StateMachineSemantics.parameters width word mem}
-          {p_ok : parameters.ok p}.
-  Import parameters.
+  Context {word: word.word 32} {mem: map.map word Byte.byte} {locals: map.map string word}
+          {word_ok: word.ok word} {mem_ok: map.ok mem} {locals_ok: map.ok locals}
+          {M : state_machine.parameters} {M_ok : state_machine.ok M}.
+  Import state_machine.
 
   Lemma execution_step action args rets t s s':
     execution t s -> step action s args rets s' ->
     execution ((map.empty, action, args, (map.empty, rets)) :: t) s'.
-  Proof. intros; cbn [execution]; eauto. Qed.
+  Proof using . intros; cbn [execution]; eauto. Qed.
 
   Lemma execution_step_read r addr val t sz s s':
     execution t s -> reg_addr r = addr -> read_step sz s r val s' ->
     execution ((map.empty, access_size_to_MMIO_read sz, [addr], (map.empty, [val])) :: t) s'.
-  Proof.
+  Proof using .
     intros. eapply execution_step; [ eassumption | ].
     cbv [step].
     change (if _: bool then False else ?x) with x.
@@ -42,7 +44,7 @@ Section Proofs.
   Lemma execution_step_write r addr val t sz s s':
     execution t s -> reg_addr r = addr -> write_step sz s r val s' ->
     execution ((map.empty, access_size_to_MMIO_write sz, [addr;val], (map.empty, [])) :: t) s'.
-  Proof.
+  Proof using .
     intros. eapply execution_step; [ eassumption | ].
     cbv [step].
     unfold access_size_to_MMIO_write at 1.
@@ -61,9 +63,8 @@ Section Proofs.
         post ((map.empty, access_size_to_MMIO_read sz, [addr], (map.empty, [val])) :: t)
              m (map.put l bind val)) ->
     cmd call (cmd.interact [bind] (access_size_to_MMIO_read sz) [addre]) t m l post.
-  Proof.
+  Proof using word_ok mem_ok M_ok.
     intros. eapply interact_nomem; [ eassumption | ].
-    cbn [Semantics.ext_spec semantics_parameters].
     cbv [ext_spec].
     change (if _: bool then _ else ?x) with x.
     unfold access_size_to_MMIO_read at 1.
@@ -89,9 +90,8 @@ Section Proofs.
         execution ((map.empty, access_size_to_MMIO_write sz, [addr;val], (map.empty, [])) :: t) s' ->
         post ((map.empty, access_size_to_MMIO_write sz, [addr;val], (map.empty, [])) :: t) m l) ->
     cmd call (cmd.interact [] (access_size_to_MMIO_write sz) [addre; vale]) t m l post.
-  Proof.
+  Proof using word_ok mem_ok M_ok.
     intros. eapply interact_nomem; [ eassumption | ].
-    cbn [Semantics.ext_spec semantics_parameters].
     cbv [ext_spec].
     unfold access_size_to_MMIO_write at 1.
     destruct (natToStr (sz * 8)); change (if _: bool then ?x else _) with x;
@@ -116,7 +116,7 @@ Ltac interact_read_reg reg :=
   [ solve_dexprs
   | reflexivity
   | do 3 eexists; split; [ eassumption | ];
-    cbv [parameters.read_step]; eauto
+    cbv [state_machine.read_step]; eauto
   | ];
   repeat straightline.
 
@@ -125,7 +125,7 @@ Ltac interact_write_reg reg :=
   [ solve_dexprs
   | reflexivity
   | do 2 eexists; ssplit; [ eassumption | ];
-    cbv [parameters.write_step]; eauto
+    cbv [state_machine.write_step]; eauto
   | ];
   repeat straightline.
 
