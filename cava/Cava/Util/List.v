@@ -18,6 +18,7 @@ Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 Require Import Cava.Util.Nat.
+Require Import Cava.Util.Tactics.
 Import ListNotations.
 Local Open Scope list_scope.
 
@@ -940,6 +941,12 @@ Section FoldLeftAccumulate.
     reflexivity.
   Qed.
 
+  Lemma fold_left_accumulate'_cons_snd {A B C}
+        (f : B -> A -> B * C) b a acc0 ls :
+    snd (fold_left_accumulate' f acc0 (a::ls) b)
+    = snd (fold_left_accumulate' f (acc0 ++ [snd (f b a)]) ls (fst (f b a))).
+  Proof. reflexivity. Qed.
+
   Lemma fold_left_accumulate'_cons_full {A B C}
         (f : B -> A -> B * C) b a acc0 ls :
     fold_left_accumulate' f acc0 (a::ls) b
@@ -1232,6 +1239,50 @@ Section FoldLeftAccumulate.
              | |- _ /\ _ => split; try length_hammer
              | |- last _ _ = _ => apply last_last
              end; eauto.
+  Qed.
+
+  Lemma fold_left_accumulate'_snd_acc_invariant {A B C}
+    (f: B -> A -> B * C) ls initial acc_a acc_b:
+    snd (fold_left_accumulate' f acc_a ls initial) =
+    snd (fold_left_accumulate' f acc_b ls initial).
+  Proof.
+    revert initial acc_a acc_b.
+    induction ls; try reflexivity.
+    intros.
+    rewrite fold_left_accumulate'_cons_snd.
+    rewrite fold_left_accumulate'_cons_snd.
+    apply IHls.
+  Qed.
+
+  Lemma fold_left_accumulate'_is_splittable {A B C}:
+    forall (f: B -> A -> B * C) ix iy is prefix,
+    fold_left_accumulate' f prefix (ix++iy) is =
+    let (xo, xs) := fold_left_accumulate' f prefix ix is in
+    let (yo, ys) := fold_left_accumulate' f nil iy xs in
+    (xo++yo,ys)%list.
+  Proof.
+    intros.
+    revert prefix is.
+    induction ix; intros.
+    cbn [List.app].
+
+    repeat destruct_pair_let.
+
+    cbn.
+    rewrite <- fold_left_accumulate'_equiv.
+    rewrite fold_left_accumulate'_snd_acc_invariant with (acc_b:=prefix).
+    rewrite <- surjective_pairing; reflexivity.
+
+    cbn [List.app].
+    rewrite fold_left_accumulate'_cons_full.
+    rewrite <- surjective_pairing.
+
+    remember (fold_left_accumulate' f prefix (a :: ix) is) as m eqn:Heqm.
+    rewrite fold_left_accumulate'_cons_full in Heqm.
+    rewrite <- surjective_pairing in Heqm.
+    rewrite Heqm.
+    rewrite IHix.
+    reflexivity.
   Qed.
 End FoldLeftAccumulate.
 
