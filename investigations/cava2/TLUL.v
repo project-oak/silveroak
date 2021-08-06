@@ -102,17 +102,17 @@ Section Var.
   (*   Get            = 3'h 4 *)
   (* } tl_a_op_e; *)
   Definition tl_a_op_e      := Vec Bit 3.
-  Definition PutFullData    := Constant (0: denote_type tl_a_op_e).
-  Definition PutPartialData := Constant (1: denote_type tl_a_op_e).
-  Definition Get            := Constant (4: denote_type tl_a_op_e).
+  Definition PutFullData    := Constant tl_a_op_e 0.
+  Definition PutPartialData := Constant tl_a_op_e 1.
+  Definition Get            := Constant tl_a_op_e 4.
 
   (* typedef enum logic [2:0] { *)
   (*   AccessAck     = 3'h 0, *)
   (*   AccessAckData = 3'h 1 *)
   (* } tl_d_op_e; *)
   Definition tl_d_op_e     := Vec Bit 3.
-  Definition AccessAck     := Constant (0: denote_type tl_d_op_e).
-  Definition AccessAckData := Constant (1: denote_type tl_d_op_e).
+  Definition AccessAck     := Constant tl_d_op_e 0.
+  Definition AccessAckData := Constant tl_d_op_e 1.
 
   Definition io_req :=
     Bit **          (* write *)
@@ -206,4 +206,3 @@ Section Var.
   }}.
 
 End Var.
-

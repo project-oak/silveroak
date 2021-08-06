@@ -41,10 +41,10 @@ Section Var.
   Definition sha_block := Vec sha_word 16.
   Definition sha_digest := Vec sha_word 8.
 
-  Definition padder_waiting := Constant (0: denote_type (BitVec 4)).
-  Definition padder_emit_bit := Constant (1: denote_type (BitVec 4)).
-  Definition padder_flushing := Constant (2: denote_type (BitVec 4)).
-  Definition padder_writing_length := Constant (3: denote_type (BitVec 4)).
+  Definition padder_waiting := Constant (BitVec 4) 0.
+  Definition padder_emit_bit := Constant (BitVec 4) 1.
+  Definition padder_flushing := Constant (BitVec 4) 2.
+  Definition padder_writing_length := Constant (BitVec 4) 3.
 
   (* SHA-256 message padding *)
   Definition sha256_padder : Circuit _ [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit] (Bit ** sha_word ** Bit ** Bit) :=
@@ -52,9 +52,8 @@ Section Var.
     fun data_valid data is_final final_length consumer_ready clear =>
     let/delay '(done, out, out_valid, state, length; current_offset) :=
       if clear
-      then `Constant ((false,(0,(false,(0,(0,0)))))
-        : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16)
-      )`
+      then `Constant (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16)
+                     (false, (0, (false, (0, (0, 0)))))`
       else if !consumer_ready then (done, out, out_valid, state, length, current_offset)
       else
 
@@ -88,22 +87,22 @@ Section Var.
       let next_out :=
         if state == `padder_waiting` && is_final then
           if final_length == `K 0`
-          then `Constant (0x80000000: denote_type (BitVec 32))`
+          then `Constant (BitVec 32) 0x80000000`
           else if final_length == `K 1`
-          then `Constant (0x800000: denote_type (BitVec 24))` ++ `slice 24 8` data
+          then `Constant (BitVec 24) 0x800000` ++ `slice 24 8` data
           else if final_length == `K 2`
-          then `Constant (0x8000: denote_type (BitVec 16))` ++ `slice 16 16` data
+          then `Constant (BitVec 16) 0x8000` ++ `slice 16 16` data
           else if final_length == `K 3`
-          then `Constant (0x80: denote_type (BitVec 8))` ++ `slice 8 24` data
+          then `Constant (BitVec 8) 0x80` ++ `slice 8 24` data
           else data
         else if state == `padder_waiting` && data_valid then
           data
         else if state == `padder_emit_bit` then
-          `Constant (0x80000000: denote_type (BitVec 32))`
+          `Constant (BitVec 32) 0x80000000`
         else if state == `padder_writing_length` then
           if current_offset == `K 14`
-          then (`slice 32 32` (`Constant (0: denote_type (BitVec 3))` ++ length))
-          else (`slice 0 32` (`Constant (0: denote_type (BitVec 3))` ++ length))
+          then (`slice 32 32` (`Constant (BitVec 3) 0` ++ length))
+          else (`slice 0 32` (`Constant (BitVec 3) 0` ++ length))
 
         else `K 0`
       in
@@ -135,7 +134,7 @@ Section Var.
     fun i =>
     let k :=
     `
-    Constant (
+    Constant (Vec sha_word 64) (
     [ 0x428a2f98; 0x71374491; 0xb5c0fbcf; 0xe9b5dba5
     ; 0x3956c25b; 0x59f111f1; 0x923f82a4; 0xab1c5ed5
     ; 0xd807aa98; 0x12835b01; 0x243185be; 0x550c7dc3
@@ -151,7 +150,7 @@ Section Var.
     ; 0x19a4c116; 0x1e376c08; 0x2748774c; 0x34b0bcb5
     ; 0x391c0cb3; 0x4ed8aa4a; 0x5b9cca4f; 0x682e6ff3
     ; 0x748f82ee; 0x78a5636f; 0x84c87814; 0x8cc70208
-    ; 0x90befffa; 0xa4506ceb; 0xbef9a3f7; 0xc67178f2 ]%list : denote_type (Vec sha_word 64)
+    ; 0x90befffa; 0xa4506ceb; 0xbef9a3f7; 0xc67178f2 ]%list
     )
     ` in
     `index` k i
@@ -215,7 +214,7 @@ Section Var.
       let round := if inc_round then round + `K 1` else round in
 
       if start || clear
-      then (initial_digest, block, `Constant ((false, 0):denote_type (Bit**sha_round))`)
+      then (initial_digest, block, `Constant (Bit**sha_round) (false, 0)`)
       else if done then (current_digest, message_schedule, done, round)
       else (next_digest, w, done, round)
 
@@ -257,8 +256,8 @@ Section Var.
          (inner_done, padder_ready, next_accept_padded, next_block, next_digest, next_count, next_received_last_byte,
          next_done)
          else
-          `Constant ((true, (true, (true, (repeat 0 16, (sha256_initial_digest, (0, (false, false)))))))
-          :denote_type (Bit ** Bit ** Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit ** Bit))`
+          `Constant (Bit ** Bit ** Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit ** Bit)
+                    (true, (true, (true, (repeat 0 16, (sha256_initial_digest, (0, (false, false)))))))`
 
          initially ((true, (true, (true, (repeat 0 16, (sha256_initial_digest, (0, (false, false))))))))
          : denote_type (Bit ** Bit ** Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit ** Bit)
