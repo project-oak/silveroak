@@ -26,6 +26,8 @@ Import ListNotations.
 (* Primitives have both semantic and netlist implementations *)
 Inductive UnaryPrim : type -> type -> Type :=
 | UnVecSlice: forall {t n} (start len: nat), UnaryPrim (Vec t n) (Vec t len)
+| UnVecResize: forall {t n m}, UnaryPrim (Vec t n) (Vec t m)
+| UnVecReverse: forall {t n}, UnaryPrim (Vec t n) (Vec t n)
 
 | UnVecRotateRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
 | UnVecShiftRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
@@ -45,12 +47,15 @@ Inductive BinaryPrim : type -> type -> type -> Type :=
 | BinBitVecXor: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
 | BinBitVecAnd: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
 | BinBitVecAddU: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
+| BinBitVecSubU: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
 
 | BinVecIndex: forall {t n i}, BinaryPrim (Vec t n) (BitVec i) t
 | BinVecCons: forall {t n}, BinaryPrim t (Vec t n) (Vec t (S n))
+| BinVecConcat: forall {t n m}, BinaryPrim (Vec t n) (Vec t m) (Vec t (n + m))
 
 (* drop leftmost element and push one element in right side, e.g. shifting left *)
 | BinVecShiftInRight: forall {t n}, BinaryPrim (Vec t n) t (Vec t n)
+| BinVecShiftInLeft: forall {t n}, BinaryPrim t (Vec t n) (Vec t n)
 
 | BinEq: forall {x}, BinaryPrim x x Bit
 
@@ -69,7 +74,7 @@ Fixpoint drop {A} n (ls: list A): list A :=
 Fixpoint take {A} n (ls: list (simple_denote_type A)): list (simple_denote_type A) :=
   match n with
   | 0 => []
-  | S n' => hd simple_default ls :: take n' ( ls)
+  | S n' => hd simple_default ls :: take n' (tl ls)
   end.
 
 Fixpoint rotate_left {A} n (ls: list A): list A :=
@@ -94,6 +99,14 @@ Definition unary_semantics {x r} (prim: UnaryPrim x r)
   match prim in UnaryPrim x r return denote_type x -> denote_type r with
   | @UnVecSlice t _ start len =>
     via_simple (b:=Vec t len) (a:= Vec t _) (fun x => take len (drop start x))
+  | @UnVecResize t n m =>
+    via_simple (b:=Vec t m) (a:= Vec t _) (fun x =>
+    if n <=? m
+    then x ++ repeat simple_default (m - n)
+    else take m x
+    )%list
+  | @UnVecReverse t n =>
+    via_simple (b:=Vec t n) (a:= Vec t _) (fun x => rev x)%list
   | UnVecRotateRight n =>
     via_simple (b:=Vec _ _) (a:= Vec _ _) (fun x => rotate_right n x)
   | UnVecShiftRight n =>
@@ -120,14 +133,19 @@ Definition binary_semantics {x y r} (prim: BinaryPrim x y r)
     via_simple2 (a:= Vec Bit n) (b:= Vec Bit n) (c:=Vec Bit n)
     (fun x y => map (fun '(x,y) => andb x y) (combine x y))
   | @BinBitVecAddU n => fun x y => ((x + y) mod (2 ^ (N.of_nat n)))%N
-
+  | @BinBitVecSubU n => fun x y => ((x - y + 2 ^ N.of_nat n) mod (2 ^ (N.of_nat n)))%N
   | @BinVecIndex t n i =>
     fun x n => simple_denote_to_denote (nth (N.to_nat n) (denote_to_simple_denote x) simple_default)
   | BinVecCons =>
     via_simple2 (b:=Vec _ _) (c:=Vec _ _) (fun x xs => x :: xs)
+  | BinVecConcat =>
+    via_simple2 (a:=Vec _ _) (b:=Vec _ _) (c:=Vec _ _) (fun x y => x ++ y)%list
   | @BinVecShiftInRight t n =>
     via_simple2 (a:= Vec t n) (b:=t) (c:=Vec t _)
-    (fun xs x => removelast xs ++ [x])
+    (fun xs x => tl (xs ++ [x]))
+  | @BinVecShiftInLeft t n =>
+    via_simple2 (a:= t) (b:=Vec t _) (c:=Vec t _)
+    (fun x xs => removelast (x :: xs))
   | BinEq => eqb
   end%list.
 

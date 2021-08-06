@@ -35,13 +35,13 @@ Section Var.
     fun a => (a, a)
   }}.
 
-  Definition fib_init sz := val_of (BitVec sz) (2^(N.of_nat sz)-1).
+  Definition fib_init sz := 2^(N.of_nat sz)-1 : denote_type (BitVec sz).
 
   Definition fibonacci {sz: nat}: Circuit (BitVec sz ** BitVec sz) [] (BitVec sz) := {{
     let/delay r1 :=
       let r2 := delay r1 initially (fib_init sz) in
       r1 + r2
-      initially (val_of (BitVec sz) 1) in
+      initially (1: denote_type (BitVec sz)) in
     r1
   }}.
 End Var.
