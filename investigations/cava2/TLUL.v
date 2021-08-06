@@ -184,12 +184,12 @@ Section Var.
 
     ( ( outstanding
       , rspop
-      , `_0`
+      , `K 0`
       , reqsz
       , reqid
-      , `_0`
+      , `K 0`
       , `index` registers (`slice 2 30` a_address)
-      , `_0`
+      , `K 0`
       , error
       , !outstanding
       )

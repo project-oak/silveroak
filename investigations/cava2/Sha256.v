@@ -117,7 +117,7 @@ Section Var.
       let k_i := `sha256_round_constants` round in
       let '(w0,w1, _, _, _, _, _, _
            , _,w9, _, _, _, _,w14;_ ) := `vec_as_tuple (n:=15)` message_schedule in
-      let update_schedule := round >= `Constant (16:denote_type (BitVec _))` in
+      let update_schedule := round >= `K 16` in
       let w16 :=
         if update_schedule
         then `sha256_message_schedule_update` w0 w1 w9 w14
@@ -129,8 +129,8 @@ Section Var.
 
       let next_digest := `sha256_compress` current_digest k_i w0 in
 
-      let round := if inc_round then round + `_1` else round in
-      let done := (round == `Constant (63:denote_type(BitVec 6))`) || done in
+      let round := if inc_round then round + `K 1` else round in
+      let done := (round == `K 63`) || done in
 
       if start
       then (initial_hash, block, `Constant ((false, 0):denote_type (Bit**sha_round))`)
