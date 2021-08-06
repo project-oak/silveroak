@@ -55,9 +55,9 @@ Module device.
 
     (* run one simulation step, will be instantiated with Cava.Semantics.Combinational.step *)
     run1: (* input: current state, is_read_req, is_write_req, req_addr, req_value *)
-      state -> bool * bool * Bvector 32 * Bvector 32 ->
+      state -> (bool * (bool * (N * (N * unit)))) ->
       (* output: next state, is_resp, resp *)
-      state * (bool * Bvector 32);
+      state * (bool * N);
 
     (* lowest address of the MMIO address range used to communicate with this device *)
     addr_range_start: Z;
@@ -76,9 +76,9 @@ Module device.
        software keeps polling until the MMIO read returns a "done" response *)
 
   (* returning None means out of fuel and must not happen if fuel >= device.maxRespDelay *)
-  Definition runUntilResp{D: device}(is_read_req is_write_req: bool)(req_addr req_value: Bvector 32) :=
-    fix rec(fuel: nat)(s: device.state): option (Bvector 32) * device.state :=
-      let '(next, (is_resp, resp)) := device.run1 s (is_read_req, is_write_req, req_addr, req_value) in
+  Definition runUntilResp{D: device}(is_read_req is_write_req: bool)(req_addr req_value: N) :=
+    fix rec(fuel: nat)(s: device.state): option N * device.state :=
+      let '(next, (is_resp, resp)) := device.run1 s (is_read_req, (is_write_req, (req_addr, (req_value, tt)))) in
       if is_resp then (Some resp, next) else
         match fuel with
         | O => (None, next)
@@ -138,22 +138,22 @@ Section WithParams.
     | None => fail_hard
     end.
 
-  Definition bv_to_word(v: Bvector 32): word :=
-    word.of_Z (Z.of_N (Ndigits.Bv2N v)).
+  Definition N_to_word(v: N): word :=
+    word.of_Z (Z.of_N v).
 
-  Definition word_to_bv(w: word): Bvector 32 :=
-    Ndigits.N2Bv_sized 32 (Z.to_N (word.unsigned w)).
+  Definition word_to_N(w: word): N :=
+    Z.to_N (word.unsigned w).
 
   Definition runUntilResp(is_read_req is_write_req: bool)(req_addr req_value: word):
     OState (ExtraRiscvMachine D) word :=
-    let req_addr := word_to_bv req_addr in
-    let req_value := word_to_bv req_value in
+    let req_addr := word_to_N req_addr in
+    let req_value := word_to_N req_value in
     mach <- get;
     let (respo, new_device_state) := device.runUntilResp is_read_req is_write_req req_addr req_value
                                        device.maxRespDelay mach.(getExtraState) in
     put (withExtraState new_device_state mach);;
     resp <- fail_if_None respo;
-    Return (bv_to_word resp).
+    Return (N_to_word resp).
 
   Definition mmioLoad(n: nat)(addr: word): OState (ExtraRiscvMachine D) (HList.tuple byte n) :=
     v <- runUntilResp true false addr (word.of_Z 0);
@@ -224,7 +224,7 @@ Section WithParams.
     end.
 
   Definition device_step_without_IO(d: D): D :=
-    fst (device.run1 d (false, false, word_to_bv (word.of_Z 0), word_to_bv (word.of_Z 0))).
+    fst (device.run1 d (false, (false, (word_to_N (word.of_Z 0), (word_to_N (word.of_Z 0), tt))))).
 
   Fixpoint device_steps(n: nat): OState (ExtraRiscvMachine D) unit :=
     match n with

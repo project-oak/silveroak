@@ -18,7 +18,7 @@ Section WithParameters.
   Global Instance hmac_device: device := {|
     device.state := unit;
     device.is_ready_state := (eq tt);
-    device.run1 s '(is_read_req, is_write_req, req_addr, req_value) :=
+    device.run1 s '(is_read_req, (is_write_req, (req_addr, (req_value, tt)))) :=
       let s' := s in
       let is_resp := true in
       let resp := req_value in
