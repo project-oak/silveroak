@@ -129,15 +129,17 @@ Section WithParams.
                  (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET))
                  (word.of_Z (Z.shiftl 1 HMAC_CMD_HASH_START_BIT))
                  (CONSUMING [])
-  | write_byte: forall b v,
+  | write_byte: forall bs bs' v,
       0 <= word.unsigned v < 2 ^ 8 ->
-      write_step 1 (CONSUMING b)
+      bs' = bs ++ [byte.of_Z (word.unsigned v)] ->
+      write_step 1 (CONSUMING bs)
                  (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_MSG_FIFO_REG_OFFSET)) v
-                 (CONSUMING (b ++ [byte.of_Z (word.unsigned v)]))
-  | write_word: forall b v,
-      write_step 4 (CONSUMING b)
+                 (CONSUMING bs')
+  | write_word: forall bs bs' v,
+      bs' = bs ++ le_split 4 (word.unsigned v) ->
+      write_step 4 (CONSUMING bs)
                  (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_MSG_FIFO_REG_OFFSET)) v
-                 (CONSUMING (b ++ le_split 4 (word.unsigned v)))
+                 (CONSUMING bs')
   | write_hash_process: forall b,
       write_step 4 (CONSUMING b)
                  (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET))
