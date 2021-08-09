@@ -107,7 +107,10 @@ Fixpoint reset_state {i s o} (c : Circuit (var:=denote_type) s i o) : denote_typ
   | TernaryOp op x y z => tt
   end.
 
+Definition simulate' {s i o} (c : Circuit (var:=denote_type) s i o) (input : list (denote_type i)) (state: denote_type s)
+  : list (denote_type o) * denote_type s :=
+    fold_left_accumulate' (step c) nil input state.
+
 Definition simulate {s i o} (c : Circuit (var:=denote_type) s i o) (input : list (denote_type i))
-  : list (denote_type o) :=
-    fold_left_accumulate (step c) input (reset_state c).
+  : list (denote_type o) := fst (simulate' c input (reset_state c)).
 
