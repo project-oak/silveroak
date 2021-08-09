@@ -169,6 +169,9 @@ Definition wordvec_to_bitvec
            bits_per_word {n} (v : Vector.t (Vector.t bool bits_per_word) n)
   : Vector.t bool (n * bits_per_word) := flatten v.
 
+Definition concat_bytes (bs : list N) : N :=
+  List.fold_left (fun acc => N.lor (N.shiftl acc 8)) bs 0%N.
+
 (******************************************************************************)
 (* Arithmetic operations                                                      *)
 (******************************************************************************)

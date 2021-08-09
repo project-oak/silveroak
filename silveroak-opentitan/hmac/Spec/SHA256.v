@@ -16,7 +16,9 @@
 
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
+Require Import Coq.Strings.String. (* for tests *)
 Require Import Coq.ZArith.ZArith.
+Require Import Cava.Util.String. (* for tests *)
 Import ListNotations.
 Local Open Scope N_scope.
 
@@ -158,7 +160,7 @@ Section WithMessage.
   (* N.B. FIPS is using a big-endian convention when splitting the 512 bits into
   32-bit blocks *)
   Definition M (j i : N) :=
-    let Mi := (padded_msg >> (512*i)) mod (2^512) in
+    let Mi := (padded_msg >> (512*(Nblocks-1-i))) mod (2^512) in
     (Mi >> (32*(15-j))) mod (2^32).
 
   (* From section 6.2.2 (step 1):
@@ -235,7 +237,17 @@ Section WithMessage.
     concat_digest H.
 End WithMessage.
 
-(* Test vector from https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf *)
-Goal (let abc := ((97 << 16) | (98 << 8) | 99) in
-      sha256 24 abc = 0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad).
+(**** Test vectors from
+      https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf ****)
+
+Goal (let msg := "abc"%string in
+      let l := N.of_nat (String.length msg * 8) in
+      let digest :=0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad in
+      sha256 l (string_to_N msg) = digest).
+Proof. vm_compute. reflexivity. Qed.
+
+Goal (let msg := "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"%string in
+      let l := N.of_nat (String.length msg * 8) in
+      let digest := 0x248D6A61D20638B8E5C026930C3E6039A33CE45964FF2167F6ECEDD419DB06C1 in
+      sha256 l (string_to_N msg) = digest).
 Proof. vm_compute. reflexivity. Qed.
