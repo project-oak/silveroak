@@ -14,6 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import Cava.Util.BitArithmetic.
@@ -75,8 +76,19 @@ Section HMAC_SHA256.
           (K : N) (* key *)
           (data : N).
 
+  (* From section 3:
+
+     The key for HMAC can be of any length (keys longer than B bytes are
+     first hashed using H). *)
+  Definition K0 : N := if (lK <=? B)%nat
+                       then K
+                       else sha256 (N.of_nat lK * 8) K.
+
+  (* length of K0 in bytes *)
+  Definition lK0 : nat := if (lK <=? B)%nat then lK else L.
+
   (* step 1 *)
-  Definition padded_key : N := N.shiftl K (N.of_nat ((B - lK) * 8)).
+  Definition padded_key : N := N.shiftl K0 (N.of_nat ((B - lK0) * 8)).
 
   (* lx = length of x in bytes, ly = length of y in bytes *)
   Definition H (lx ly : nat) (x y : N) :=
