@@ -16,7 +16,9 @@
 
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
+Require Import Coq.Strings.String. (* for tests *)
 Require Import Coq.ZArith.ZArith.
+Require Import Cava.Util.String. (* for tests *)
 Import ListNotations.
 Local Open Scope N_scope.
 
@@ -238,114 +240,14 @@ End WithMessage.
 (**** Test vectors from
       https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf ****)
 
-Require Import Coq.Strings.Ascii.
-Require Import Coq.Strings.String.
-Require Import Cava.Util.BitArithmetic.
-
-Definition string_to_N (s : string) :=
-  concat_bytes (map N_of_ascii (list_ascii_of_string s)).
-
-Goal (let abc := string_to_N "abc" in
-      sha256 24 abc = 0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad).
+Goal (let msg := "abc"%string in
+      let l := N.of_nat (String.length msg * 8) in
+      let digest :=0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad in
+      sha256 l (string_to_N msg) = digest).
 Proof. vm_compute. reflexivity. Qed.
 
-Section Test2.
-  Let msg_string := "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"%string.
-  Let msg := string_to_N msg_string.
-  Let l := N.of_nat (String.length msg_string * 8).
-
-  (* Check message padding *)
-  Goal (padded_msg l msg
-        = 0x6162636462636465636465666465666765666768666768696768696A68696A6B696A6B6C6A6B6C6D6B6C6D6E6C6D6E6F6D6E6F706E6F70718000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001C0).
-  Proof. vm_compute. reflexivity. Qed.
-
-  (* Check first 16 blocks of W for first round (i=0):
-     W[0] = 61626364
-     W[1] = 62636465
-     W[2] = 63646566
-     W[3] = 64656667
-     W[4] = 65666768
-     W[5] = 66676869
-     W[6] = 6768696A
-     W[7] = 68696A6B
-     W[8] = 696A6B6C
-     W[9] = 6A6B6C6D
-     W[10] = 6B6C6D6E
-     W[11] = 6C6D6E6F
-     W[12] = 6D6E6F70
-     W[13] = 6E6F7071
-     W[14] = 80000000
-     W[15] = 00000000 *)
-  Goal (firstn 16 (W l msg 0) =
-        [ 0x61626364
-          ; 0x62636465
-          ; 0x63646566
-          ; 0x64656667
-          ; 0x65666768
-          ; 0x66676869
-          ; 0x6768696A
-          ; 0x68696A6B
-          ; 0x696A6B6C
-          ; 0x6A6B6C6D
-          ; 0x6B6C6D6E
-          ; 0x6C6D6E6F
-          ; 0x6D6E6F70
-          ; 0x6E6F7071
-          ; 0x80000000
-          ; 0x00000000]).
-  Proof. vm_compute. reflexivity. Qed.
-
-  (* Check W for second round (i=1):
-
-     W[0] = 00000000
-     W[1] = 00000000
-     W[2] = 00000000
-     W[3] = 00000000
-     W[4] = 00000000
-     W[5] = 00000000
-     W[6] = 00000000
-     W[7] = 00000000
-     W[8] = 00000000
-     W[9] = 00000000
-     W[10] = 00000000
-     W[11] = 00000000
-     W[12] = 00000000
-     W[13] = 00000000
-     W[14] = 00000000
-     W[15] = 000001C0 *)
-  Goal (firstn 16 (W l msg 1) =
-        [ 0x00000000
-          ; 0x00000000
-          ; 0x00000000
-          ; 0x00000000
-          ; 0x00000000
-          ; 0x00000000
-          ; 0x00000000
-          ; 0x00000000
-          ; 0x00000000
-          ; 0x00000000
-          ; 0x00000000
-          ; 0x00000000
-          ; 0x00000000
-          ; 0x00000000
-          ; 0x00000000
-          ; 0x000001C0 ]).
-  Proof. vm_compute. reflexivity. Qed.
-
-  (* Check digest after first round *)
-  Goal (sha256_step l msg H0 0
-        = [ 0x85E655D6
-            ; 0x417A1795
-            ; 0x3363376A
-            ; 0x624CDE5C
-            ; 0x76E09589
-            ; 0xCAC5F811
-            ; 0xCC4B32C1
-            ; 0xF20E533A ]).
-  Proof. vm_compute. reflexivity. Qed.
-
-  (* Check final digest *)
-  Goal (sha256 l msg
-        = 0x248D6A61D20638B8E5C026930C3E6039A33CE45964FF2167F6ECEDD419DB06C1).
-  Proof. vm_compute. reflexivity. Qed.
-End Test2.
+Goal (let msg := "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"%string in
+      let l := N.of_nat (String.length msg * 8) in
+      let digest := 0x248D6A61D20638B8E5C026930C3E6039A33CE45964FF2167F6ECEDD419DB06C1 in
+      sha256 l (string_to_N msg) = digest).
+Proof. vm_compute. reflexivity. Qed.

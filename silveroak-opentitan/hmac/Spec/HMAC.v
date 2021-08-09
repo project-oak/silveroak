@@ -89,55 +89,12 @@ Section HMAC_SHA256.
     (* steps 2-4 *)
     let inner := H B ldata (N.lxor padded_key ipad) data in
     (* steps 5-7 *)
-    H B ldata (N.lxor padded_key opad) inner.
+    H B L (N.lxor padded_key opad) inner.
 End HMAC_SHA256.
 
-
-(* Test 1 from https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/HMAC_SHA256.pdf *)
-Definition data := 0x53616D706C65206D65737361676520666F72206B65796C656E3D626C6F636B6C656E.
-Definition K := 0x000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F.
-Definition lK : nat := 64.
-Definition ldata : nat := 34.
-
-(* Check key padding *)
-Goal (padded_key lK K = K).
-Proof. vm_compute. reflexivity. Qed.
-
-(* Check K ^ ipad *)
-Goal (N.lxor (padded_key lK K) ipad
-     = 0x36373435323330313E3F3C3D3A3B383926272425222320212E2F2C2D2A2B282916171415121310111E1F1C1D1A1B181906070405020300010E0F0C0D0A0B0809).
-Proof. vm_compute. reflexivity. Qed.
-
-(* Check concatenation *)
-Goal (let lx := B in
-      let ly := ldata in
-      let x := N.lxor (padded_key lK K) ipad in
-      let y := data in
-      N.lor (N.shiftl x (N.of_nat (ly * 8))) y
-      = 0x36373435323330313E3F3C3D3A3B383926272425222320212E2F2C2D2A2B282916171415121310111E1F1C1D1A1B181906070405020300010E0F0C0D0A0B080953616D706C65206D65737361676520666F72206B65796C656E3D626C6F636B6C656E
-     ).
-Proof. vm_compute. reflexivity. Qed.
-
-(* Check inner hash result *)
-Goal (
-    H B ldata (N.lxor (padded_key lK K) ipad) data
-    = 0xC0918E14C43562B910DB4B8101CF8812C3DA2783C670BFF34D88B3B88E731716).
-Proof. vm_compute. reflexivity. Qed.
-
-(* Check final digest *)
-Goal (hmac_sha256 lK ldata K data
-      =0x8BB9A1DB9806F20DF7F77B82138C7914dD174D59E13DC4D0169C9057B133E1D62).
-Proof. vm_compute. reflexivity. Qed.
-
-
-(* Test case 1 from RFC 2104: *)
-Goal
-  (hmac_sha256 16 8 0x0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b 0x4869205468657265
-   = 0x9294727a3638bb1c13f48ef8158bfc9d).
-Proof. Time vm_compute. reflexivity. Qed.
 (* Test case 1 from RFC 4231:
    https://datatracker.ietf.org/doc/html/rfc4231 *)
 Goal
   (hmac_sha256 20 8 0x0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b 0x4869205468657265
    = 0xb0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7).
-Proof. Time vm_compute. reflexivity. Qed.
+Proof. vm_compute. reflexivity. Qed.
