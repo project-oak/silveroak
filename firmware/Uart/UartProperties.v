@@ -30,7 +30,8 @@ Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.Uart.UartSemantics.
 Require Import Bedrock2Experiments.Uart.Uart.
 Require Import Bedrock2Experiments.Uart.Constants.
-Require Import Bedrock2Experiments.LibBase.AbsMMIOProperties.
+Require Import Bedrock2Experiments.LibBase.AbsMMIOReadProperties.
+Require Import Bedrock2Experiments.LibBase.AbsMMIOWriteProperties.
 Require Import Bedrock2Experiments.LibBase.BitfieldProperties.
 Require Import Bedrock2Experiments.LibBase.MMIOLabels.
 Import Syntax.Coercions List.ListNotations.

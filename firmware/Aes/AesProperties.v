@@ -33,7 +33,8 @@ Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.Aes.AesSemantics.
 Require Import Bedrock2Experiments.Aes.Aes.
 Require Import Bedrock2Experiments.Aes.Constants.
-Require Import Bedrock2Experiments.LibBase.AbsMMIOProperties.
+Require Import Bedrock2Experiments.LibBase.AbsMMIOReadProperties.
+Require Import Bedrock2Experiments.LibBase.AbsMMIOWriteProperties.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
 Local Open Scope list_scope.
