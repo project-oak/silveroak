@@ -47,27 +47,30 @@ Section Var.
   Definition padder_writing_length := Constant (3: denote_type (BitVec 4)).
 
   (* SHA-256 message padding *)
-  Definition sha256_padder : Circuit _ [Bit; BitVec 32; Bit; BitVec 4; Bit] (Bit ** sha_word ** Bit) :=
+  Definition sha256_padder : Circuit _ [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit] (Bit ** sha_word ** Bit ** Bit) :=
     {{
-    fun data_valid data final final_byte_length back_pressure =>
+    fun data_valid data is_final final_length consumer_ready clear =>
     let/delay '(done, out, out_valid, state, length; current_offset) :=
-      if !back_pressure
-      then (done, out, out_valid, state, length, current_offset)
+      if clear
+      then `Constant ((false,(0,(false,(0,(0,0)))))
+        : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16)
+      )`
+      else if !consumer_ready then (done, out, out_valid, state, length, current_offset)
       else
 
       let next_state :=
-        if final && state == `padder_waiting` then
-          if final_byte_length == `K 4`
+        if is_final && state == `padder_waiting` then
+          if final_length == `K 4`
           then `padder_emit_bit`
           else `padder_flushing`
         else if state == `padder_emit_bit` then
           `padder_flushing`
         else if state == `padder_flushing` then
-          if current_offset == `K 61`
+          if current_offset == `K 13`
           then `padder_writing_length`
           else `padder_flushing`
         else if state == `padder_writing_length` then
-          if current_offset == `K 63`
+          if current_offset == `K 15`
           then `padder_waiting`
           else `padder_writing_length`
         else
@@ -75,38 +78,38 @@ Section Var.
         in
 
       let next_length :=
-        if state == `padder_waiting` && data_valid then length + `K 4`
-        else if state == `padder_waiting` && final then length + `resize` final_byte_length
-        else if state == `padder_writing_length` && current_offset == `K 62`
+        if state == `padder_waiting` && is_final then length + `resize` final_length
+        else if state == `padder_waiting` && data_valid then length + `K 4`
+        else if state == `padder_writing_length` && current_offset == `K 15`
           then `K 0`
         else length
         in
 
       let next_out :=
-        if state == `padder_waiting` && final then
-          if final_byte_length == `K 0`
-          then `Constant (0x00000001: denote_type (BitVec 32))`
-          else if final_byte_length == `K 1`
-          then `slice 0 8` data ++ `Constant (0x000001: denote_type (BitVec 24))`
-          else if final_byte_length == `K 2`
-          then `slice 0 16` data ++ `Constant (0x0001: denote_type (BitVec 16))`
-          else if final_byte_length == `K 3`
-          then `slice 0 24` data ++ `Constant (0x01: denote_type (BitVec 8))`
+        if state == `padder_waiting` && is_final then
+          if final_length == `K 0`
+          then `Constant (0x80000000: denote_type (BitVec 32))`
+          else if final_length == `K 1`
+          then `Constant (0x800000: denote_type (BitVec 24))` ++ `slice 24 8` data
+          else if final_length == `K 2`
+          then `Constant (0x8000: denote_type (BitVec 16))` ++ `slice 16 16` data
+          else if final_length == `K 3`
+          then `Constant (0x80: denote_type (BitVec 8))` ++ `slice 8 24` data
           else data
         else if state == `padder_waiting` && data_valid then
           data
         else if state == `padder_emit_bit` then
-          `Constant (0x00000001: denote_type (BitVec 32))`
+          `Constant (0x80000000: denote_type (BitVec 32))`
         else if state == `padder_writing_length` then
-          if current_offset == `K 62`
-          then `reverse` (`slice 32 32` length)
-          else `reverse` (`slice 0 32` length)
+          if current_offset == `K 14`
+          then (`slice 32 32` (`Constant (0: denote_type (BitVec 3))` ++ length))
+          else (`slice 0 32` (`Constant (0: denote_type (BitVec 3))` ++ length))
 
         else `K 0`
       in
 
       let step :=
-        (state == `padder_waiting` && (data_valid || final))
+        (state == `padder_waiting` && (data_valid || is_final))
         || (! (state == `padder_waiting`) ) in
 
       let next_offset := if step then current_offset + `K 1` else current_offset in
@@ -119,9 +122,8 @@ Section Var.
         : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16)
         in
 
-    (out_valid, out, done)
+    (out_valid, out, consumer_ready, done)
   }}.
-
 
   (* SHA-256 initial digest *)
   Definition sha256_initial_digest : denote_type sha_digest :=
@@ -178,12 +180,13 @@ Section Var.
     (temp1 + temp2) :> a' :> b' :> c' :> (d' + temp1) :> e' :> f' :> g' :> []
   }}%nat.
 
-  (* SHA-256 core *)
-  Definition sha256_inner : Circuit _ [Bit; sha_block; sha_digest] (sha_digest ** Bit) :=
+  (* SHA-256 inner core *)
+  (* `initial_digest` must be held until done *)
+  Definition sha256_inner : Circuit _ [Bit; sha_block; sha_digest; Bit] (sha_digest ** Bit) :=
     {{
-    fun block_valid block initial_digest =>
+    fun block_valid block initial_digest clear =>
 
-    let/delay '(stored_digest, current_digest, message_schedule, done; round) :=
+    let/delay '(current_digest, message_schedule, done; round) :=
 
       let inc_round := !done in
       let start := (* done && *) block_valid in
@@ -211,48 +214,57 @@ Section Var.
       let done := (round == `K 64`) || done in
       let round := if inc_round then round + `K 1` else round in
 
-      if start
-      then (initial_digest, initial_digest, block, `Constant ((false, 0):denote_type (Bit**sha_round))`)
-      else if done then (stored_digest, current_digest, message_schedule, done, round)
-      else (stored_digest, next_digest, w, done, round)
+      if start || clear
+      then (initial_digest, block, `Constant ((false, 0):denote_type (Bit**sha_round))`)
+      else if done then (current_digest, message_schedule, done, round)
+      else (next_digest, w, done, round)
 
-      initially ((sha256_initial_digest, (sha256_initial_digest, (repeat 0 16, (false, 0))))
-      : denote_type (sha_digest ** sha_digest ** sha_block ** Bit ** sha_round )) in
+      initially (((sha256_initial_digest, (repeat 0 16, (true, 0))))
+      : denote_type (sha_digest ** sha_block ** Bit ** sha_round )) in
 
-    let updated_digest := `map2 {{fun a b => ( a + b ) }} ` stored_digest current_digest in
+    let updated_digest := `map2 {{fun a b => ( a + b ) }}` initial_digest current_digest in
     (updated_digest, done)
 
   }}.
 
   (* SHA-256 core *)
-  (* TODO(FIXME): *)
-  Definition sha256 : Circuit _ [Bit; sha_word; Bit; BitVec 4] (Bit ** sha_digest ** Bit) :=
-    {{ fun data_valid data final final_mask =>
-       let '(padded_valid, padded_data; padder_done) := `sha256_padder` data_valid data final final_mask `False` in
+  Definition sha256 : Circuit _ [Bit; sha_word; Bit; BitVec 4; Bit] (Bit ** sha_digest ** Bit) :=
+    {{ fun fifo_data_valid fifo_data is_final final_length clear =>
 
-       let/delay '(block, digest, count; busy) :=
+       let/delay '(inner_done_edge, accept_input, accept_padded, block, digest, count, received_last_byte; done) :=
+         let starting := fifo_data_valid && done in
 
-         let accept_fifo := !busy in
+         let '(padded_valid, padded_data, padder_ready; padder_done) :=
+           `sha256_padder` fifo_data_valid fifo_data is_final final_length accept_padded clear in
 
-         let '(fifo_valid, fifo_data; fifo_full) := `fifo (fifo_size := 999)` padded_valid padded_data accept_fifo in
+         let block_valid := count == `K 16` in
+         let '(inner_digest; inner_done) := `sha256_inner` block_valid block digest clear in
 
-         let new_data := fifo_valid && accept_fifo in
+         let next_accept_padded := padded_valid && inner_done in
 
-         let '(next_block;next_count) :=
-           if new_data
-           then (block <<+ fifo_data, count + `K 1`)
-           else (block, count)
+         let '(next_block; next_count) :=
+           if next_accept_padded
+           then (block <<+ padded_data, count + `K 1`)
+           else (block, `K 0`)
          in
 
-         let block_valid := `False` in
-         let '(inner_digest; inner_done) := `sha256_inner` block_valid block `Constant sha256_initial_digest` in
+         let q := !inner_done_edge && inner_done  in
+         let next_received_last_byte := received_last_byte || is_final in
+         let next_done := (!starting && !is_final) && (done || (received_last_byte && q))  in
+         let next_digest := if q then inner_digest else digest in
 
-         let next_digest := if inner_done then inner_digest else digest in
+         if ! clear then
+         (inner_done, padder_ready, next_accept_padded, next_block, next_digest, next_count, next_received_last_byte,
+         next_done)
+         else
+          `Constant ((true, (true, (true, (repeat 0 16, (sha256_initial_digest, (0, (false, false)))))))
+          :denote_type (Bit ** Bit ** Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit ** Bit))`
 
-         (next_block, inner_digest, next_count, busy)
-         initially (repeat 0 16, (sha256_initial_digest, (0,false))): denote_type (sha_block ** sha_digest ** BitVec 4 ** Bit) in
+         initially ((true, (true, (true, (repeat 0 16, (sha256_initial_digest, (0, (false, false))))))))
+         : denote_type (Bit ** Bit ** Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit ** Bit)
+            in
 
-       (busy, digest, busy)
+       (done, digest, accept_input)
     }}.
 
 End Var.
@@ -269,21 +281,56 @@ Section SanityCheck.
     ].
 
   Definition init :=
-    step sha256_inner default (true, (sha256_test_block, (sha256_initial_digest, tt))).
+    step sha256_inner default (true, (sha256_test_block, (sha256_initial_digest, (false, tt)))).
 
   Definition pp {n} (v: denote_type (Vec (BitVec 32) n)) :=
       List.map HexString.of_N v.
 
+  (* Padding "abc" results in expected block. *)
+  Goal
+    simulate sha256_padder
+    ([(true, (0x61626300, (true, (3, (true, (false, tt))))))] ++
+      repeat (false, (0x99999999, (false, (0, (true, (false, tt)))))) 16
+      ) =
+    [ (true, (1633837952, (true, false)))
+    ; (true, (0, (true,false)))
+    ; (true, (0, (true,false)))
+    ; (true, (0, (true,false)))
+    ; (true, (0, (true,false)))
+    ; (true, (0, (true,false)))
+    ; (true, (0, (true,false)))
+    ; (true, (0, (true,false)))
+    ; (true, (0, (true,false)))
+    ; (true, (0, (true,false)))
+    ; (true, (0, (true,false)))
+    ; (true, (0, (true,false)))
+    ; (true, (0, (true,false)))
+    ; (true, (0, (true,false)))
+    ; (true, (0, (true,false)))
+    ; (true, (24, (true,true)))
+    ; (false, (0, (true,false)))
+    ].
+  Proof. vm_compute. reflexivity. Qed.
+
   (* Inner state holds the correct values after 64 rounds. *)
   Goal
-    fst (snd (snd (simulate' sha256_inner (repeat (false, ([], ([], tt))) 64) (fst init)))) =
+    fst (snd (simulate' sha256_inner (repeat (false, ([], (sha256_initial_digest, (false, tt)))) 64) (fst init))) =
     [0x506E3058; 0xD39A2165; 0x04D24D6C; 0xB85E2CE9; 0x5EF50F24; 0xFB121210; 0x948D25B6; 0x961F4894].
   Proof. vm_compute. reflexivity. Qed.
 
   (* Output is the correct message digest *)
   Goal
-    fst (last (fst (simulate' sha256_inner (repeat (false, ([], ([], tt))) 64) (fst init))) default) =
+    fst (last (fst (simulate' sha256_inner (repeat (false, ([], (sha256_initial_digest, (false, tt)))) 64) (fst init))) default) =
     [0xBA7816BF; 0x8F01CFEA; 0x414140DE; 0x5DAE2223; 0xB00361A3; 0x96177A9C; 0xB410FF61; 0xF20015AD ].
+  Proof. vm_compute. reflexivity. Qed.
+
+  (* sha256 "abc" = sha256 (0x61626300 @ byte mask 0xFFFFFF00) = correct digest *)
+  Goal
+    fst (snd (last (simulate sha256 (
+       (true, (0x61626300, (true, (3, (false, tt))))) ::
+       repeat (false, (0, (false, (0, (false, tt))))) (64+19)
+      )) default))
+    = [0xBA7816BF; 0x8F01CFEA; 0x414140DE; 0x5DAE2223; 0xB00361A3; 0x96177A9C; 0xB410FF61; 0xF20015AD ].
   Proof. vm_compute. reflexivity. Qed.
 
 End SanityCheck.
