@@ -345,10 +345,10 @@ Abort.
         (fun tr' m' rets =>
             rets = [] /\ execution tr' (CONSUMING []) /\ R m').
 
-  Fail Lemma hmac_sha256_init_correct :
+  Lemma hmac_sha256_init_correct :
     program_logic_goal_for_function! b2_hmac_sha256_init.
-  (* bitfield_bit32_write is missing
-  Proof. Qed. *)
+  Proof.
+  Admitted.
 
   Global Instance spec_of_hmac_sha256_update : spec_of b2_hmac_sha256_update :=
     fun function_env =>
@@ -631,9 +631,9 @@ Abort.
            (* digest has been stored at correct memory location: *)
            (wordarray digest_addr (sha256 input) * R)%sep m').
 
-  Fail Lemma hmac_sha256_final_correct :
+  Lemma hmac_sha256_final_correct :
     program_logic_goal_for_function! b2_hmac_sha256_final.
-  (* bitfield_bit32_write is missing
-  Proof. Qed. *)
+  Proof.
+  Admitted.
 
 End Proofs.
