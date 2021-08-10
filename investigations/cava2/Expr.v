@@ -49,7 +49,7 @@ Section Vars.
     -> Circuit (s1++s2) [] x
   | ElimPair: forall {x y z s},
     (var x -> var y -> Circuit s [] z)
-    -> var (x**y)
+    -> var (x**y)%circuit_type
     -> Circuit s [] z
 
   | Constant: forall x, denote_type x -> Circuit [] [] x
@@ -245,43 +245,43 @@ Module PrimitiveNotations.
 
   Notation "[ ]" := (Constant (Vec _ 0) List.nil) (in custom expr at level 19) : expr_scope.
 
-  Import ExprNotations.
-  Definition index {var t n i}: Circuit (var:=var) [] [Vec t n; BitVec i] t :=
-    {{ fun vec index => `BinaryOp BinVecIndex vec index` }}.
-  Definition vec_as_tuple {var t n}: Circuit (var:=var) [] [Vec t (S n)] (ntuple t n) :=
-    {{ fun vec => `UnaryOp UnVecToTuple vec` }}.
-  Definition slice {var t n} (start length: nat): Circuit (var:=var) [] [Vec t n] (Vec t length) :=
-    {{ fun vec => `UnaryOp (UnVecSlice start length) vec` }}.
-  Definition replace {var t n i}: Circuit (var:=var) [] [Vec t n; BitVec i; t] (Vec t n) :=
-    {{ fun vec index val => `TernaryOp TernVecReplace vec index val` }}.
-  Definition resize {var t n m} : Circuit (var:=var) [] [Vec t n] (Vec t m) :=
-    {{ fun vec => `UnaryOp UnVecResize vec ` }}.
-  Definition bvresize {var n} m: Circuit (var:=var) [] [BitVec n] (BitVec m) :=
-    {{ fun vec => `UnaryOp UnBitVecResize vec` }}.
-  Definition reverse {var t n}: Circuit (var:=var) [] [Vec t n] (Vec t n) :=
-    {{ fun vec => `UnaryOp UnVecReverse vec ` }}.
-  Definition uncons {var t n}: Circuit (var:=var) [] [Vec t (S n)] (t ** Vec t n) :=
-    {{ fun vec => `UnaryOp UnVecUncons vec` }}.
-  Definition bvslice {var n} (start length: nat): Circuit (var:=var) [] [BitVec n] (BitVec length) :=
-    {{ fun vec => `bvresize length` (vec >> start) }}.
-  Definition bvconcat {var n m}: Circuit (var:=var) [] [BitVec n; BitVec m] (BitVec (n + m)) :=
-    {{ fun v1 v2 => (((`bvresize (n+m)` v1) << m) | (`bvresize (n+m)` v2)) }}.
-  Fixpoint map {var t u n} (f: Circuit [] [t] u): Circuit (var:=var) [] [Vec t n] (Vec u n) :=
-    match n with
-    | O => {{ fun _ => [] }}
-    | S n' => {{ fun vec =>
-      let '(hd;tl) := `uncons` vec in
-      `f` hd :> `map f` tl
-    }}
-    end.
-  Fixpoint map2 {var t u v n} (f: Circuit [] [t; u] v): Circuit (var:=var) [] [Vec t n; Vec u n] (Vec v n) :=
-    match n with
-    | O => {{ fun _ _ => [] }}
-    | S n' => {{ fun vecx vecy =>
-      let '(hdx;tlx) := `uncons` vecx in
-      let '(hdy;tly) := `uncons` vecy in
-      `f` hdx hdy :> `map2 f` tlx tly
-    }}
-    end.
-
 End PrimitiveNotations.
+
+Import ExprNotations PrimitiveNotations.
+Definition index {var t n i}: Circuit (var:=var) [] [Vec t n; BitVec i] t :=
+  {{ fun vec index => `BinaryOp BinVecIndex vec index` }}.
+Definition vec_as_tuple {var t n}: Circuit (var:=var) [] [Vec t (S n)] (ntuple t n) :=
+  {{ fun vec => `UnaryOp UnVecToTuple vec` }}.
+Definition slice {var t n} (start length: nat): Circuit (var:=var) [] [Vec t n] (Vec t length) :=
+  {{ fun vec => `UnaryOp (UnVecSlice start length) vec` }}.
+Definition replace {var t n i}: Circuit (var:=var) [] [Vec t n; BitVec i; t] (Vec t n) :=
+  {{ fun vec index val => `TernaryOp TernVecReplace vec index val` }}.
+Definition resize {var t n m} : Circuit (var:=var) [] [Vec t n] (Vec t m) :=
+  {{ fun vec => `UnaryOp UnVecResize vec ` }}.
+Definition bvresize {var n} m: Circuit (var:=var) [] [BitVec n] (BitVec m) :=
+  {{ fun vec => `UnaryOp UnBitVecResize vec` }}.
+Definition reverse {var t n}: Circuit (var:=var) [] [Vec t n] (Vec t n) :=
+  {{ fun vec => `UnaryOp UnVecReverse vec ` }}.
+Definition uncons {var t n}: Circuit (var:=var) [] [Vec t (S n)] (t ** Vec t n) :=
+  {{ fun vec => `UnaryOp UnVecUncons vec` }}.
+Definition bvslice {var n} (start length: nat): Circuit (var:=var) [] [BitVec n] (BitVec length) :=
+  {{ fun vec => `bvresize length` (vec >> start) }}.
+Definition bvconcat {var n m}: Circuit (var:=var) [] [BitVec n; BitVec m] (BitVec (n + m)) :=
+  {{ fun v1 v2 => (((`bvresize (n+m)` v1) << m) | (`bvresize (n+m)` v2)) }}.
+Fixpoint map {var t u n} (f: Circuit [] [t] u): Circuit (var:=var) [] [Vec t n] (Vec u n) :=
+  match n with
+  | O => {{ fun _ => [] }}
+  | S n' => {{ fun vec =>
+                let '(hd;tl) := `uncons` vec in
+                `f` hd :> `map f` tl
+           }}
+  end.
+Fixpoint map2 {var t u v n} (f: Circuit [] [t; u] v): Circuit (var:=var) [] [Vec t n; Vec u n] (Vec v n) :=
+  match n with
+  | O => {{ fun _ _ => [] }}
+  | S n' => {{ fun vecx vecy =>
+                let '(hdx;tlx) := `uncons` vecx in
+                let '(hdy;tly) := `uncons` vecy in
+                `f` hdx hdy :> `map2 f` tlx tly
+           }}
+  end.

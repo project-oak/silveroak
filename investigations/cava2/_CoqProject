@@ -3,6 +3,7 @@ INSTALLDEFAULTROOT = ./
 -R ../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil
 -R . Cava
 -R ../../cava/Cava Cava
+-R ../../silveroak-opentitan/hmac/Spec HmacSpec
 
 Types.v
 Expr.v
