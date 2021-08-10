@@ -114,7 +114,8 @@ Section WithParams.
                             sha_en := sha_en s;
                             swap_endian := swap_endian s;
                             swap_digest := swap_digest s; |})
-  | write_hash_start: forall d,
+  | write_hash_start: forall d v,
+      v = word.of_Z (Z.shiftl 1 HMAC_CMD_HASH_START_BIT) ->
       write_step 4 (IDLE d (* Here one can see that we only model a subset of the features of
                             the HMAC module: in our model, starting the computation is only
                             possible from the specific configuration below.
@@ -126,8 +127,7 @@ Section WithParams.
                             sha_en := true;
                             swap_endian := true;
                             swap_digest := false; |})
-                 (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET))
-                 (word.of_Z (Z.shiftl 1 HMAC_CMD_HASH_START_BIT))
+                 (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET)) v
                  (CONSUMING [])
   | write_byte: forall bs bs' v,
       0 <= word.unsigned v < 2 ^ 8 ->

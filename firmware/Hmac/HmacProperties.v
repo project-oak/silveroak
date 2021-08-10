@@ -139,6 +139,8 @@ Section Proofs.
   Qed.
 *)
 
+  (* not needed in this file directly, but needed at proof linking time to discharge
+     assumption in AbsMMIOWritePropertiesUnique *)
   Lemma execution_unique (t : trace) s1 s2 :
     execution t s1 ->
     execution t s2 ->
@@ -147,17 +149,17 @@ Section Proofs.
     eapply StateMachineProperties.execution_unique; intros;
       cbn [state_machine.is_initial_state state_machine.read_step state_machine.write_step
            hmac_state_machine] in *; simp.
-
-all: try         match goal with
-               | H: read_step _ _ _ _ _ |- _ => inversion H; subst; clear H
-               | H: write_step _ _ _ _ _ |- _ => inversion H; subst; clear H
-               end.
-4: {
-Abort.
+    all: try match goal with
+             | H: read_step _ _ _ _ _ |- _ => inversion H; subst; clear H
+             | H: write_step _ _ _ _ _ |- _ => inversion H; subst; clear H
+             end.
+  Admitted.
 
   (* TODO move to bedrock2? *)
   Notation bytearray := (array (mem := mem) ptsto (word.of_Z 1)).
   Notation wordarray := (array (mem := mem) scalar32 (word.of_Z 4)).
+
+  Axiom TODO: False.
 
   Lemma ptsto_aliasing_contradiction a b1 b2 (R: mem -> Prop) m
         (Hsep: (ptsto a b1 * ptsto a b2 * R)%sep m)
@@ -345,11 +347,45 @@ Abort.
       call function_env b2_hmac_sha256_init tr m []
         (fun tr' m' rets =>
             rets = [] /\ execution tr' (CONSUMING []) /\ R m').
-
   Lemma hmac_sha256_init_correct :
     program_logic_goal_for_function! b2_hmac_sha256_init.
   Proof.
-  Admitted.
+    repeat straightline.
+    straightline_call. 1: reflexivity. 1: eapply write_cfg. 1: eassumption.
+    repeat straightline.
+    straightline_call. 1: reflexivity. 1: eapply write_intr_enable. 1: eassumption.
+    cbn [intr_enable hmac_done hmac_en sha_en swap_endian swap_digest] in *.
+    repeat straightline.
+    straightline_call. 1: reflexivity. 1: eapply write_intr_state. 1: eassumption.
+    cbn [intr_enable hmac_done hmac_en sha_en swap_endian swap_digest] in *.
+    repeat straightline.
+    straightline_call.
+    repeat straightline.
+    straightline_call.
+    repeat straightline.
+    straightline_call.
+    repeat straightline.
+    straightline_call.
+    repeat straightline.
+    straightline_call. 1: reflexivity. 1: eapply write_cfg. 1: eassumption.
+    repeat straightline.
+    straightline_call.
+    repeat straightline.
+    cbn [intr_enable hmac_done hmac_en sha_en swap_endian swap_digest] in *.
+    straightline_call. 1: reflexivity. 1: eapply write_hash_start. {
+      (* bitfiddling *)
+      case TODO.
+    }
+    { match goal with
+      | H: execution ?t ?s1 |- execution ?t ?s2 => replace s2 with s1; [exact H|]
+      end.
+      f_equal. f_equal.
+      (* bitfiddling *)
+      all: case TODO.
+    }
+    repeat straightline.
+    ssplit; eauto.
+  Qed.
 
   Global Instance spec_of_hmac_sha256_update : spec_of b2_hmac_sha256_update :=
     fun function_env =>
