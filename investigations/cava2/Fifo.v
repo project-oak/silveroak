@@ -52,7 +52,7 @@ Section Var.
 
     ( current_length >= `K 0`
     , `index` fifo (current_length - `K 1`)
-    , (current_length >= `Constant ((N.of_nat fifo_size - 1) : denote_type fifo_bits)` ) )
+    , (current_length >= `Constant fifo_bits (N.of_nat fifo_size - 1)` ) )
   }}.
 
 End Var.
@@ -110,4 +110,3 @@ Proof.
   rewrite fold_left_accumulate'_snd_acc_invariant with (acc_b:=[]%list).
   apply H0.
 Qed.
-

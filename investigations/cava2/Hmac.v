@@ -38,8 +38,8 @@ Section Var.
   Definition hmac_register_index := 5%nat.
   Definition hmac_register := BitVec hmac_register_index.
 
-  Definition REG_INTR_STATE := Constant (0: denote_type hmac_register).
-  Definition REG_CMD := Constant (5: denote_type hmac_register).
+  Definition REG_INTR_STATE := Constant hmac_register 0.
+  Definition REG_CMD := Constant hmac_register 5.
 
   Definition hmac_top : Circuit _ [tl_h2d_t] tl_d2h_t := {{
     fun incoming_tlp =>
@@ -50,7 +50,7 @@ Section Var.
         := `tlul_adapter_reg` incoming_tlp registers in
       let aligned_address := `slice 2 5` write_address in
 
-      let fifo_write := write_address >= `Constant (2048: denote_type (BitVec _))` in
+      let fifo_write := write_address >= `Constant (BitVec _) 2048` in
 
       (* TODO(blaxill): ignore/mask writes to CMD etc ? *)
       (* TODO(blaxill): apply mask to register writes*)
@@ -73,7 +73,7 @@ Section Var.
       (* TODO(blaxill): FIX ME *)
       (* let '(_, padded_block; padded_valid) := `sha256_padder` packer_valid packer_data cmd_process `circuit_hole` cmd_start in *)
       (* TODO(blaxill): sha needs to block FIFO writes and process HMAC key first *)
-      (* let inital_digest := `Constant sha256_initial_digest` in *)
+      (* let inital_digest := `Constant _ sha256_initial_digest` in *)
       (* let '(digest; digest_valid) := `sha256_inner` padded_block padded_valid `circuit_hole` in *)
       (* let next_digest := if digest_valid then digest else digest_buffer in *)
 
@@ -84,4 +84,3 @@ Section Var.
   }}.
 
 End Var.
-
