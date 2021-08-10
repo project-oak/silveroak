@@ -48,6 +48,23 @@ Module byte.
   Qed.
 End byte.
 
+Module List.
+  Lemma firstn_add{A: Type}(n m: nat)(l: list A):
+    List.firstn (n + m) l = List.firstn n l ++ List.firstn m (List.skipn n l).
+  Proof.
+    rewrite <- (List.firstn_skipn n l) at 1.
+    rewrite List.firstn_app.
+    rewrite List.firstn_length.
+    rewrite List.firstn_firstn.
+    f_equal. {
+      f_equal. lia.
+    }
+    destruct (Nat.min_spec n (List.length l)) as [(? & E) | (? & E)]; rewrite E.
+    - f_equal. lia.
+    - rewrite List.skipn_all2 by assumption. rewrite ?List.firstn_nil. reflexivity.
+  Qed.
+End List.
+
 Lemma le_split_combine: forall bs n,
     n = List.length bs ->
     le_split n (le_combine bs) = bs.
@@ -140,6 +157,52 @@ Abort.
   (* TODO move to bedrock2? *)
   Notation bytearray := (array (mem := mem) ptsto (word.of_Z 1)).
   Notation wordarray := (array (mem := mem) scalar32 (word.of_Z 4)).
+
+  Lemma ptsto_aliasing_contradiction a b1 b2 (R: mem -> Prop) m
+        (Hsep: (ptsto a b1 * ptsto a b2 * R)%sep m)
+    : False.
+  Proof.
+    unfold sep in Hsep.
+    unfold map.split, ptsto in *.
+    simp.
+    unfold map.disjoint in *.
+    specialize (Hsepp1p0p1 a).
+    rewrite !map.get_put_same in Hsepp1p0p1.
+    eauto.
+  Qed.
+
+  (* Note: Often, we have a hypothesis `word.unsigned len = Z.of_nat (length l)`,
+     from which word.unsigned_range gives us a bound that's even 1 tighter *)
+  Lemma bytearray_max_length(a: word)(l: list byte)(R: mem -> Prop)(m: mem)
+        (Hsep: (bytearray a l * R)%sep m)
+    : Z.of_nat (List.length l) <= 2 ^ 32.
+  Proof.
+    remember (2 ^ 32) as B.
+    assert (Z.of_nat (List.length l) <= B \/
+            B < Z.of_nat (List.length l)) as C by lia.
+    destruct C as [C | C]. 1: lia.
+    exfalso.
+    rewrite <- (List.firstn_nth_skipn _ (Z.to_nat B) l Byte.x00) in Hsep by lia.
+    rewrite <- (List.firstn_nth_skipn _ 0 (List.firstn (Z.to_nat B) l) Byte.x00) in Hsep. 2: {
+      rewrite List.firstn_length. lia.
+    }
+    rewrite List.firstn_O in Hsep. rewrite List.app_nil_l in Hsep.
+    seprewrite_in (array_append ptsto) Hsep.
+    seprewrite_in (array_append ptsto) Hsep.
+    seprewrite_in (array_append ptsto) Hsep.
+    seprewrite_in (array_cons ptsto) Hsep.
+    seprewrite_in (array_cons ptsto) Hsep.
+    eapply ptsto_aliasing_contradiction.
+    use_sep_assumption.
+    cancel.
+    cancel_seps_at_indices 0%nat 0%nat. 1: reflexivity.
+    cancel_seps_at_indices 1%nat 0%nat. {
+      f_equal.
+      rewrite List.app_length. cbn [List.nth List.length].
+      ZnWords.
+    }
+    ecancel_done.
+  Qed.
 
   Lemma while_zero_iterations {functions} {e c t l} {m : mem} {post : _->_->_-> Prop}
     (HCond: expr m l e (eq (word.of_Z 0)))
@@ -408,7 +471,12 @@ Abort.
     clear dependent tr.
     clear dependent measure.
     clear dependent m.
-    clear dependent len0.
+    match goal with
+    | H: word.unsigned ?L = Z.of_nat (List.length new_input) |- _ =>
+      pose proof (word.unsigned_range L) as LB;
+      rewrite H in LB;
+      clear dependent L
+    end.
     rename data into data_addr, t into tr, len into len0.
 
     (* second while loop: *)
@@ -461,15 +529,86 @@ Abort.
       rewrite le_split_combine. 2: {
         rewrite List.firstn_length. ZnWords.
       }
-      admit.
+      replace (Z.to_nat \[data_sent0 ^+ /[4] ^- data])
+        with (Z.to_nat \[data_sent0 ^- data] + 4)%nat by ZnWords.
+      apply List.firstn_add.
     }
     (* if br is false, code after second loop is correct: *)
     subst br.
     simpl_conditionals.
+    clear dependent tr.
+    clear dependent m0.
+    clear dependent len0.
+    rename data_sent into data_aligned_last.
+    rename data into data_addr, t into tr, len into len0.
+    set (data_past_end := data_addr ^+ /[Z.of_nat (List.length new_input)]).
 
-    (* third loop *)
-
-  Admitted.
+    (* third while loop: *)
+    eapply (while ["fifo_reg"; "data_sent"; "data"; "len"]
+                  (fun measure t m fifo_reg data_sent data len =>
+                     data_addr = data /\
+                     fifo_reg = fifo_reg0 /\
+                     measure = \[len] /\
+                     0 <= measure < 4 /\
+                     \[data_sent ^- data_addr] + \[len] = Z.of_nat (List.length new_input) /\
+                     (bytearray data_addr new_input * R)%sep m /\
+                     execution t (CONSUMING (previous_input ++
+                        List.firstn (Z.to_nat \[data_sent ^- data_addr]) new_input)))
+                  (Z.lt_wf 0)
+                  \[len0]).
+    1: repeat straightline.
+    { (* invariant holds initially: *)
+      loop_simpl.
+      ssplit; try assumption; try ZnWords. }
+    loop_simpl.
+    intros measure t m0 fifo_reg data_sent data len. (* TODO derive names automatically *)
+    repeat straightline.
+    { (* if break condition is true, running third loop body again satisfies invariant *)
+      simpl_conditionals.
+      eexists. split. {
+        repeat straightline.
+        eexists. split.
+        { eapply load_one_of_bytearray. 1: eassumption. ZnWords. }
+        repeat straightline.
+      }
+      straightline_call.
+      { cbv [state_machine.reg_addr hmac_state_machine id]. reflexivity. }
+      2: eassumption.
+      { eapply write_byte. 2: reflexivity.
+        match goal with
+        | |- context[byte.unsigned ?x] => pose proof (byte.unsigned_range x)
+        end.
+        ZnWords. }
+      repeat straightline.
+      cbv [Markers.unique Markers.split].
+      eexists (measure - 1). ssplit; trivial; try ZnWords.
+      subst a.
+      eapply execution_step_write with (sz := 1%nat). 1: eassumption. 1: reflexivity.
+      cbv [state_machine.write_step hmac_state_machine].
+      replace (Z.to_nat \[data_sent ^- data]) with
+              (S (Z.to_nat \[data_sent0 ^- data])) by ZnWords.
+      rewrite <- (List.firstn_nth _ _ _ Byte.x00) by ZnWords.
+      rewrite List.app_assoc.
+      match goal with
+      | |- context[byte.unsigned ?x] => pose proof (byte.unsigned_range x)
+      end.
+      eapply write_byte. 1: ZnWords.
+      f_equal. f_equal.
+      rewrite word.unsigned_of_Z_small by ZnWords.
+      rewrite byte.of_Z_unsigned.
+      reflexivity.
+    }
+    (* if break condition is false, `result = kErrorOk` is run and now we have to prove
+       the postcondition of the function: *)
+    split; [reflexivity|].
+    split; [|eassumption].
+    match goal with
+    | H: execution ?t ?s |- execution ?t ?s' => replace s' with s; [exact H|]
+    end.
+    f_equal. f_equal.
+    apply List.firstn_all2.
+    ZnWords.
+  Qed.
 
   Global Instance spec_of_hmac_sha256_final : spec_of b2_hmac_sha256_final :=
     fun function_env =>
