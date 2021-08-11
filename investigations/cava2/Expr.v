@@ -52,7 +52,7 @@ Section Vars.
     -> var (x**y)
     -> Circuit s [] z
 
-  | Constant: forall {x}, denote_type x -> Circuit [] [] x
+  | Constant: forall x, denote_type x -> Circuit [] [] x
   | MakePair: forall {s1 s2 x y}, Circuit s1 [] x
     -> Circuit s2 [] y
     -> Circuit (s1++s2) [] (x**y)
@@ -126,10 +126,9 @@ End ExprNotations.
 Section Var.
   Context {var : tvar}.
 
-  Definition True := Constant (true: denote_type Bit).
-  Definition False := Constant (false: denote_type Bit).
-  Definition K {sz}: N -> Circuit [] [] (BitVec sz) :=
-    fun x : denote_type (BitVec sz) => Constant x.
+  Definition True := Constant Bit true.
+  Definition False := Constant Bit false.
+  Definition K {sz}(x: N) := Constant (BitVec sz) x.
 
 End Var.
 
@@ -155,7 +154,7 @@ Section RegressionTests.
       if `silly_id` flag then (a) else a
   }}.
 
-  Definition inital_state {sz} := (0,1)%N : denote_type (BitVec sz ** BitVec sz).
+  Definition inital_state {sz} : denote_type (BitVec sz ** BitVec sz) := (0,1)%N.
 
   Definition test {sz: nat}: Circuit (BitVec 10**BitVec 10) [] (BitVec 10) := {{
     let/delay '(x;y) := (y,x) initially inital_state in y
@@ -247,7 +246,7 @@ Module PrimitiveNotations.
       BinaryOp BinVecConcat v1 v2
   ))) (in custom expr at level 19, right associativity) : expr_scope.
 
-  Notation "[ ]" := (Constant (simple_denote_to_denote (t:=Vec _ 0) nil)) (in custom expr at level 19) : expr_scope.
+  Notation "[ ]" := (Constant _ (simple_denote_to_denote (t:=Vec _ 0) nil)) (in custom expr at level 19) : expr_scope.
 
   Import ExprNotations.
   Definition index {var t n i}: Circuit (var:=var) [] [Vec t n; BitVec i] t :=

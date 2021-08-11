@@ -35,7 +35,7 @@ Section Var.
     fun a => (a, a)
   }}.
 
-  Definition fib_init sz := 2^(N.of_nat sz)-1 : denote_type (BitVec sz).
+  Definition fib_init sz : denote_type (BitVec sz) := 2^(N.of_nat sz)-1.
 
   Definition fibonacci {sz: nat}: Circuit (BitVec sz ** BitVec sz) [] (BitVec sz) := {{
     let/delay r1 :=
@@ -147,4 +147,3 @@ Proof.
     autorewrite with push_length.
     erewrite <-list_unit_equiv. reflexivity. }
 Qed.
-
