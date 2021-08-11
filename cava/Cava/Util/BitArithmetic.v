@@ -193,6 +193,8 @@ Module BigEndianBytes.
     List.map (fun i => concat_bytes (firstn n (skipn (n*i) x))) (seq 0 (length x / 4)).
 End BigEndianBytes.
 
+Definition byte_xor (x y : byte) : byte := N_to_byte (N.lxor (Byte.to_N x) (Byte.to_N y)).
+
 (******************************************************************************)
 (* Arithmetic operations                                                      *)
 (******************************************************************************)

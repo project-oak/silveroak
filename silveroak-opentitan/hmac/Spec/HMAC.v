@@ -14,10 +14,12 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Init.Byte.
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.List.
 Require Import HmacSpec.SHA256.
 Import ListNotations.
 Local Open Scope N_scope.
@@ -45,8 +47,8 @@ Definition L : nat := 32. (* output size for SHA-256 = 256 bits = 32 bytes *)
    ipad = the byte 0x36 repeated B times
    opad = the byte 0x5C repeated B times.
  *)
-Definition ipad := concat_bytes (repeat 0x36 B).
-Definition opad := concat_bytes (repeat 0x5C B).
+Definition ipad : list byte := repeat x36 B.
+Definition opad : list byte := repeat x5c B.
 
 (* From section 2 :
 
@@ -71,42 +73,26 @@ Definition opad := concat_bytes (repeat 0x5C B).
         the result
  *)
 Section HMAC_SHA256.
-  Context (lK : nat) (* key length in bytes *)
-          (ldata : nat) (* data length in bytes *)
-          (K : N) (* key *)
-          (data : N).
+  Context (K data : list byte).
 
   (* From section 3:
 
      The key for HMAC can be of any length (keys longer than B bytes are
      first hashed using H). *)
-  Definition K0 : N := if (lK <=? B)%nat
-                       then K
-                       else sha256 (N.of_nat lK * 8) K.
-
-  (* length of K0 in bytes *)
-  Definition lK0 : nat := if (lK <=? B)%nat then lK else L.
+  Definition K0 : list byte := if (length K <=? B)%nat
+                               then K
+                               else sha256 K.
 
   (* step 1 *)
-  Definition padded_key : N := N.shiftl K0 (N.of_nat ((B - lK0) * 8)).
+  Definition padded_key : list byte := K0 ++ (repeat x00 (B - length K0)).
 
-  (* lx = length of x in bytes, ly = length of y in bytes *)
-  Definition H (lx ly : nat) (x y : N) :=
-    (* concatenate x and y (steps 3 and 6) *)
-    let input := N.lor (N.shiftl x (N.of_nat (ly * 8))) y in
-    (* call SHA256 (steps 4 and 7) *)
-    sha256 (N.of_nat ((lx + ly) * 8)) input.
+  Definition XOR (x y : list byte) := map2 byte_xor x y.
+
+  Definition H (x y : list byte) := sha256 (x ++ y).
 
   Definition hmac_sha256 :=
     (* steps 2-4 *)
-    let inner := H B ldata (N.lxor padded_key ipad) data in
+    let inner := H (XOR padded_key ipad) data in
     (* steps 5-7 *)
-    H B L (N.lxor padded_key opad) inner.
+    H (XOR padded_key opad) inner.
 End HMAC_SHA256.
-
-(* Test case 1 from RFC 4231:
-   https://datatracker.ietf.org/doc/html/rfc4231 *)
-Goal
-  (hmac_sha256 20 8 0x0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b 0x4869205468657265
-   = 0xb0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7).
-Proof. vm_compute. reflexivity. Qed.

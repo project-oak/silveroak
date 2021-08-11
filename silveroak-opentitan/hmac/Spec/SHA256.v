@@ -144,12 +144,12 @@ Section WithMessage.
      binary representation.
    *)
   (* N.B. calculation of k is done in Z to avoid subtraction underflow *)
-  Definition k := Z.to_N ((448 - (Z.of_N l + 1)) mod 512)%Z.
+  Definition k (l : N) := Z.to_N ((448 - (Z.of_N l + 1)) mod 512)%Z.
 
   (* we know that (k+1) must be positive and a multiple of 8, so 1 << k can
      be expressed as bytes *)
   Definition padding : list byte :=
-    x80 :: (repeat x00 (((N.to_nat k+1) / 8) - 1)).
+    x80 :: (repeat x00 (((N.to_nat (k l)+1) / 8) - 1)).
 
   Definition padded_msg_bytes : list byte := msg ++ padding ++ N_to_bytes 8 l.
 
@@ -157,7 +157,7 @@ Section WithMessage.
   Definition padded_msg : list N := bytes_to_Ns (N.to_nat w / 8) padded_msg_bytes.
 
   (* Number of 512-bit blocks in padded message *)
-  Definition Nblocks : N := (N.add (N.add l k) 65) / 512.
+  Definition Nblocks : N := (N.add (N.add l (k l)) 65) / 512.
 
   (* From section 5.2.1:
 
