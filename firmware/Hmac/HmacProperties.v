@@ -306,42 +306,69 @@ Section Proofs.
     f_equal. exact H.
   Qed.
 
-  Ltac simpl_conditionals :=
-    repeat match goal with
-           | H: _ /\ _ |- _ => destruct H
-           | H: _ |- _ => rewrite Zlandb in H
-           | H: word.unsigned (if ?b then _ else _) = 0 |- _ => apply word.if_zero in H
-           | H: word.unsigned (if ?b then _ else _) <> 0 |- _ => apply word.if_nonzero in H
-           | H: word.eqb ?x ?y = true  |- _ => apply (word.eqb_true  x y) in H
-           | H: word.eqb ?x ?y = false |- _ => apply (word.eqb_false x y) in H
-           | H: andb ?b1 ?b2 = true |- _ => apply (Bool.andb_true_iff b1 b2) in H
-           | H: andb ?b1 ?b2 = false |- _ => apply (Bool.andb_false_iff b1 b2) in H
-           | H: orb ?b1 ?b2 = true |- _ => apply (Bool.orb_true_iff b1 b2) in H
-           | H: orb ?b1 ?b2 = false |- _ => apply (Bool.orb_false_iff b1 b2) in H
-           | H: _ |- _ => rewrite word.unsigned_and_nowrap in H
-           | H: _ |- _ => rewrite word.unsigned_if in H
-           | H: _ |- _ => rewrite word.unsigned_eqb in H
-           | H: _ |- _ => rewrite word.unsigned_ltu in H
-           | H: _ |- _ => rewrite word.unsigned_of_Z_small in H by
-                 (lazymatch goal with
-                  | |- _ <= ?x < 2 ^ _ =>
-                    lazymatch isZcst x with true => cbv; intuition discriminate end
-                  end)
-           | H: _ |- _ => apply then1_else0_nonzero in H
-           | H: _ |- _ => apply then1_else0_zero in H
-           | H: Z.eqb _ _ = true |- _ => apply Z.eqb_eq in H
-           | H: Z.eqb _ _ = false |- _ => apply Z.eqb_neq in H
-           | H: Z.ltb _ _ = true |- _ => eapply Z.ltb_lt in H
-           | H: Z.ltb _ _ = false |- _ => eapply Z.ltb_ge in H
-           | H: context[Z.land ?a ?ones] |- _ =>
-             lazymatch isZcst ones with true => idtac end;
-             let m := eval cbv in (2 ^ Z.log2_up ones) in
-             rewrite (Zland_ones_to_mod a ones eq_refl: _ = a mod m) in H
-           end.
+  Lemma Zland_pow2_to_testbit: forall a pow2,
+      pow2 = 2 ^ (Z.log2_up pow2) ->
+      Z.land a pow2 = if Z.testbit a (Z.log2_up pow2) then pow2 else 0.
+  Proof.
+    intros.
+    eapply Z.bits_inj'. intros.
+    rewrite Z.land_spec.
+    rewrite prove_Zeq_bitwise.testbit_if.
+    rewrite H at 1.  rewrite H at 3.
+    rewrite Z.pow2_bits_eqb by apply Z.log2_up_nonneg.
+    rewrite Z.testbit_0_l.
+    destr (Z.eqb (Z.log2_up pow2) n).
+    + subst n. destruct (Z.testbit a (Z.log2_up pow2)); reflexivity.
+    + rewrite Bool.andb_false_r. destr (Z.testbit a (Z.log2_up pow2)); reflexivity.
+  Qed.
+
+  Ltac simpl_conditional :=
+    match goal with
+    | H: _ /\ _ |- _ => destruct H
+    | H: _ |- _ => rewrite Zlandb in H
+    | H: word.eqb ?x ?y = true  |- _ => apply (word.eqb_true  x y) in H
+    | H: word.eqb ?x ?y = false |- _ => apply (word.eqb_false x y) in H
+    | H: andb ?b1 ?b2 = true |- _ => apply (Bool.andb_true_iff b1 b2) in H
+    | H: andb ?b1 ?b2 = false |- _ => apply (Bool.andb_false_iff b1 b2) in H
+    | H: orb ?b1 ?b2 = true |- _ => apply (Bool.orb_true_iff b1 b2) in H
+    | H: orb ?b1 ?b2 = false |- _ => apply (Bool.orb_false_iff b1 b2) in H
+    | H: _ |- _ => rewrite word.unsigned_and_nowrap in H
+    | H: _ |- _ => rewrite word.unsigned_if in H
+    | H: _ |- _ => rewrite word.unsigned_eqb in H
+    | H: _ |- _ => rewrite word.unsigned_ltu in H
+    | H: _ |- _ => rewrite word.unsigned_of_Z_small in H by
+          (lazymatch goal with
+           | |- _ <= ?x < 2 ^ _ =>
+             lazymatch isZcst x with true => cbv; intuition discriminate end
+           end)
+    | H: _ |- _ => apply then1_else0_nonzero in H
+    | H: _ |- _ => apply then1_else0_zero in H
+    | H: Z.eqb _ _ = true |- _ => apply Z.eqb_eq in H
+    | H: Z.eqb _ _ = false |- _ => apply Z.eqb_neq in H
+    | H: Z.ltb _ _ = true |- _ => eapply Z.ltb_lt in H
+    | H: Z.ltb _ _ = false |- _ => eapply Z.ltb_ge in H
+    | H: context[Z.land ?a ?ones] |- _ =>
+      lazymatch isZcst ones with true => idtac end;
+      let m := eval cbv in (2 ^ Z.log2_up ones) in
+      rewrite (Zland_ones_to_mod a ones eq_refl: _ = a mod m) in H
+    | H: context[Z.land ?a ?pow2] |- _ =>
+      let i := lazymatch isZcst pow2 with
+               | true => eval cbv in (Z.log2_up pow2)
+               | false => lazymatch pow2 with
+                          | 2 ^ ?m => m
+                          end
+               end in
+      rewrite (Zland_pow2_to_testbit a pow2 eq_refl:
+                 Z.land a pow2 = if Z.testbit a i then pow2 else 0) in H
+    | H: word.unsigned (if ?b then _ else _) = 0 |- _ => apply word.if_zero in H
+    | H: word.unsigned (if ?b then _ else _) <> 0 |- _ => apply word.if_nonzero in H
+    end.
+
+  Ltac simpl_conditionals := repeat simpl_conditional.
 
   Global Instance spec_of_hmac_sha256_init : spec_of b2_hmac_sha256_init :=
     fun function_env =>
-      forall tr m (R : mem -> Prop) (s : state) (digest_buffer: list word) (d: idle_data),
+      forall tr m (R : mem -> Prop) (s : state) (digest_buffer: list byte) (d: idle_data),
       R m ->
       execution tr (IDLE digest_buffer d) ->
       call function_env b2_hmac_sha256_init tr m []
@@ -650,10 +677,10 @@ Section Proofs.
   Global Instance spec_of_hmac_sha256_final : spec_of b2_hmac_sha256_final :=
     fun function_env =>
       forall tr (m: mem) (R : mem -> Prop) (s : state)
-             (input: list Byte.byte) (digest_trash: list word) (digest_addr: word),
+             (input digest_trash: list Byte.byte) (digest_addr: word),
       Z.of_nat (length digest_trash) = 8 ->
       digest_addr <> word.of_Z 0 ->
-      (wordarray digest_addr digest_trash * R)%sep m ->
+      (bytearray digest_addr digest_trash * R)%sep m ->
       execution tr (CONSUMING input) ->
       call function_env b2_hmac_sha256_final tr m [digest_addr]
         (fun tr' (m': mem) rets =>
@@ -666,11 +693,66 @@ Section Proofs.
                                swap_endian := true;
                                swap_digest := false; |}) /\
            (* digest has been stored at correct memory location: *)
-           (wordarray digest_addr (sha256 input) * R)%sep m').
+           (bytearray digest_addr (sha256 input) * R)%sep m').
 
   Lemma hmac_sha256_final_correct :
     program_logic_goal_for_function! b2_hmac_sha256_final.
   Proof.
+    repeat straightline.
+    unfold1_cmd_goal; cbv beta match delta [cmd_body].
+    repeat straightline.
+    subst v.
+    rewrite word.unsigned_if.
+    rewrite word.eqb_ne by assumption.
+    rewrite word.unsigned_of_Z_0.
+    split; intros E. 1: exfalso; apply E; reflexivity.
+    clear E.
+    repeat straightline.
+    straightline_call.
+    repeat straightline.
+    straightline_call. 1: reflexivity. 1: eapply write_hash_process. 2: eassumption.
+    { case TODO. (* bitfiddling *) }
+    repeat straightline.
+    subst done.
+
+    (* first while loop *)
+    eapply atleastonce with (variables := ["digest"; "reg"; "done"])
+             (invariant := fun measure t m digest reg done =>
+               execution t (PROCESSING input measure) /\
+               (bytearray digest_addr digest_trash ⋆ R)%sep m).
+    { repeat straightline. }
+    { eapply (Z.lt_wf 0). }
+    { (* if condition initially is false, that's a contradiction, so we don't need to prove post: *)
+      repeat straightline. subst br. simpl_conditionals. exfalso. eauto. }
+    { (* invariant holds initially *)
+      loop_simpl. eauto. }
+    loop_simpl.
+    (* step through first loop body: *)
+    repeat straightline.
+    straightline_call. 1: reflexivity. {
+      (* to show that there exists at least one valid read step, we pick read_done_bit_done,
+         but the device could also choose read_done_bit_not_done, so later we'll have to treat
+         both cases *)
+      eapply read_done_bit_done with (v0 := /[1]).
+      rewrite word.unsigned_of_Z_1. reflexivity.
+    }
+    1: eassumption.
+    repeat straightline.
+    straightline_call.
+    (* TODO here we see that `x4 x5 x6 : word` should be named `"digest" "reg" "done"`,
+       respectively, automate this naming *)
+    repeat straightline.
+    { (* loop condition is true: need to show that invariant still holds with smaller measure *)
+      subst br.
+      rename x6 into done. subst done.
+      simpl_conditionals.
+      eexists (v - 1).
+
+
+      case TODO. }
+    (* loop condition is false: need to show that code after first loop is correct *)
+    straightline_call. 1: reflexivity. 1: eapply write_intr_state.
+
   Admitted.
 
 End Proofs.

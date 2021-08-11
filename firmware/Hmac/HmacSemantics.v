@@ -31,7 +31,7 @@ Section WithParams.
      (eg if we add the MSG_LENGTH_LOWER and MSG_LENGTH_UPPER registers, we'll have to make
      sure we don't assume that any list length can fit into these 2^64 bits, because
      that would allow us to prove False). *)
-  Axiom sha256: list byte -> list word. (* returns a list of 8 32-bit words (=256 bits) *)
+  Axiom sha256: list byte -> list byte. (* returns a list of 32 bytes (=256 bits) *)
 
   Record idle_data := {
     (* only the lowest 3 bits count, and we only model the case where all interrupts are
@@ -50,7 +50,7 @@ Section WithParams.
   }.
 
   Inductive state :=
-  | IDLE(digest_buffer: list word)(s: idle_data)
+  | IDLE(digest_buffer: list byte)(s: idle_data)
   (* since the configuration bits of idle_data can't be modified while CONSUMING or
      PROCESSING, we don't need to include this data in these states *)
   | CONSUMING(sha_buffer: list byte)
@@ -82,7 +82,7 @@ Section WithParams.
       swap_endian s = true ->
       swap_digest s = false ->
       0 <= i < 8 ->
-      List.nth_error d (Z.to_nat i) = Some v ->
+      le_combine (List.firstn 4 (List.skipn (Z.to_nat i * 4) d)) = word.unsigned v ->
       read_step 4 (IDLE d s)
                 (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET - (i * 4))) v
                 (IDLE d s).
@@ -140,10 +140,10 @@ Section WithParams.
       write_step 4 (CONSUMING bs)
                  (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_MSG_FIFO_REG_OFFSET)) v
                  (CONSUMING bs')
-  | write_hash_process: forall b,
+  | write_hash_process: forall b v,
+      v = word.of_Z (Z.shiftl 1 HMAC_CMD_HASH_PROCESS_BIT) ->
       write_step 4 (CONSUMING b)
-                 (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET))
-                 (word.of_Z (Z.shiftl 1 HMAC_CMD_HASH_PROCESS_BIT))
+                 (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET)) v
                  (PROCESSING b max_negative_done_polls).
 
   (* TODO: Can we make these register conventions more explicit in our spec?
