@@ -30,29 +30,19 @@ Inductive UnaryPrim : type -> type -> Type :=
 | UnVecReverse: forall {t n}, UnaryPrim (Vec t n) (Vec t n)
 | UnVecUncons: forall {t n}, UnaryPrim (Vec t (S n)) (t ** Vec t n)
 
-(* Our numbers are little endian but bitshifting is usually lexicographic
- * ordered, that is for X = 0x3 = 0b110, X >> 1 = 0x1 = 0b100
- * Whereas vector shifting is opposite X = [a,b,c], shift_right X 1 = [_,a,b]
- * TODO(blaxill): simplify this situation?
- *)
-| UnBitVecRotateRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
-| UnBitVecShiftRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
-
-| UnVecRotateRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
-| UnVecShiftRight: forall {t n}, nat -> UnaryPrim (Vec t n) (Vec t n)
+| UnBitVecResize: forall {n m}, UnaryPrim (BitVec n) (BitVec m)
+| UnBitVecShiftRight: forall {n}, nat -> UnaryPrim (BitVec n) (BitVec n)
+| UnBitVecShiftLeft: forall {n}, nat -> UnaryPrim (BitVec n) (BitVec n)
 
 | UnVecToTuple: forall {t n}, UnaryPrim (Vec t (S n)) (ntuple t n)
 
 | UnBitVecNot: forall {n}, UnaryPrim (BitVec n) (BitVec n)
-| UnNot: UnaryPrim Bit Bit
 .
 
 Inductive BinaryPrim : type -> type -> type -> Type :=
-| BinBitAnd: BinaryPrim Bit Bit Bit
-| BinBitOr: BinaryPrim Bit Bit Bit
-
 | BinBitVecGte: forall {n}, BinaryPrim (BitVec n) (BitVec n) Bit
 
+| BinBitVecOr: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
 | BinBitVecXor: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
 | BinBitVecAnd: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
 | BinBitVecAddU: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
@@ -74,18 +64,6 @@ Inductive TernaryPrim : type -> type -> type -> type -> Type :=
 | TernVecReplace: forall {t n i}, TernaryPrim (Vec t n) (BitVec i) t (Vec t n)
 .
 
-Fixpoint drop {A} n (ls: list A): list A :=
-  match n with
-  | 0 => ls
-  | S n' => drop n' (tl ls)
-  end.
-
-Fixpoint take {A} n (ls: list (simple_denote_type A)): list (simple_denote_type A) :=
-  match n with
-  | 0 => []
-  | S n' => hd simple_default ls :: take n' (tl ls)
-  end.
-
 Fixpoint rotate_left {A} n (ls: list A): list A :=
   match n with
   | 0 => ls
@@ -95,92 +73,66 @@ Fixpoint rotate_left {A} n (ls: list A): list A :=
     | x :: xs => rotate_left n' (xs ++ [x])
     end
   end.
-Fixpoint shift_left {A} n (ls: list (simple_denote_type A)): list (simple_denote_type A) :=
+Fixpoint shift_left {A} n (ls: list (denote_type A)): list (denote_type A) :=
   match n with
   | 0 => ls
   | S n' =>
     match ls with
     | nil => []
-    | x :: xs => shift_left n' (xs ++ [simple_default])
+    | x :: xs => shift_left n' (xs ++ [default])
     end
   end.
 
-Fixpoint rotate_right {A} n (ls: list (simple_denote_type A)): list (simple_denote_type A) :=
+Fixpoint rotate_right {A} n (ls: list (denote_type A)): list (denote_type A) :=
   match n with
   | 0 => ls
   | S n' =>
-    rotate_right n' (last ls simple_default :: removelast ls)
+    rotate_right n' (last ls default :: removelast ls)
   end.
-Fixpoint shift_right {A} n (ls: list (simple_denote_type A)): list (simple_denote_type A) :=
+Fixpoint shift_right {A} n (ls: list (denote_type A)): list (denote_type A) :=
   match n with
   | 0 => ls
   | S n' =>
-    shift_right n' (simple_default :: removelast ls)
+    shift_right n' (default :: removelast ls)
   end.
+
+Definition resize {A} (d : A) n (ls : list A) : list A :=
+  firstn n ls ++ repeat d (n - length ls).
 
 Definition unary_semantics {x r} (prim: UnaryPrim x r)
   : denote_type x -> denote_type r :=
   match prim in UnaryPrim x r return denote_type x -> denote_type r with
-  | @UnVecSlice t _ start len =>
-    via_simple (b:=Vec t len) (a:= Vec t _) (fun x => take len (drop start x))
-  | @UnVecResize t n m =>
-    via_simple (b:=Vec t m) (a:= Vec t _) (fun x =>
-    if n <=? m
-    then x ++ repeat simple_default (m - n)
-    else take m x
-    )%list
-  | @UnVecReverse t n =>
-    via_simple (b:=Vec t n) (a:= Vec t _) (fun x => rev x)%list
+  | @UnVecSlice t n start len =>
+    fun x => resize default len (firstn len (skipn start x))
+  | @UnVecResize t n m => fun x => resize default m x
+  | @UnVecReverse t n => fun x => rev x
 
-  | @UnVecUncons t n =>
-    via_simple (b:=t ** Vec t n) (a:= Vec t _) (fun x => (hd simple_default x, tl x) )%list
+  | @UnVecUncons t n => fun x => (hd default x, tl x)
 
-  | UnBitVecRotateRight n =>
-    via_simple (b:=Vec _ _) (a:= Vec _ _) (fun x => rotate_left n x)
-  | UnBitVecShiftRight n =>
-    via_simple (b:=Vec _ _) (a:= Vec _ _) (fun x => shift_left n x)
+  | @UnBitVecResize n m => fun x => N.land x (N.ones (N.of_nat m))
+  | UnBitVecShiftRight n => fun x => N.shiftr x (N.of_nat n)
+  | UnBitVecShiftLeft n => fun x => N.shiftl x (N.of_nat n)
 
-  | UnVecRotateRight n =>
-    via_simple (b:=Vec _ _) (a:= Vec _ _) (fun x => rotate_right n x)
-  | UnVecShiftRight n =>
-    via_simple (b:=Vec _ _) (a:= Vec _ _) (fun x => shift_right n x)
-
-  | @UnVecToTuple t n =>
-    via_simple (a:= Vec _ _) (fun x => vector_as_tuple n t x)
-  | @UnBitVecNot n =>
-    via_simple (a:= Vec Bit n) (b:=Vec Bit n) (fun x => map negb x)
-  | UnNot => fun x => negb x
+  | @UnVecToTuple t n => vector_as_tuple n t
+  | @UnBitVecNot n => fun x => N.lnot x (N.of_nat n)
   end.
 
 Definition binary_semantics {x y r} (prim: BinaryPrim x y r)
   : denote_type x -> denote_type y -> denote_type r :=
   match prim in BinaryPrim x y r return denote_type x -> denote_type y -> denote_type r with
-  | BinBitAnd => andb
-  | BinBitOr => orb
+  | BinBitVecGte => fun x y => (if y <=? x then 1 else 0)%N
 
-  | BinBitVecGte => fun x y => (y <=? x)%N
-
-  | @BinBitVecXor n =>
-    via_simple2 (a:= Vec Bit n) (b:= Vec Bit n) (c:=Vec Bit n)
-    (fun x y => map (fun '(x,y) => xorb x y) (combine x y))
-  | @BinBitVecAnd n =>
-    via_simple2 (a:= Vec Bit n) (b:= Vec Bit n) (c:=Vec Bit n)
-    (fun x y => map (fun '(x,y) => andb x y) (combine x y))
+  | @BinBitVecOr n => N.lor
+  | @BinBitVecXor n => N.lxor
+  | @BinBitVecAnd n => N.land
   | @BinBitVecAddU n => fun x y => ((x + y) mod (2 ^ (N.of_nat n)))%N
   | @BinBitVecSubU n => fun x y => ((x - y + 2 ^ N.of_nat n) mod (2 ^ (N.of_nat n)))%N
-  | @BinVecIndex t n i =>
-    fun x n => simple_denote_to_denote (nth (N.to_nat n) (denote_to_simple_denote x) simple_default)
-  | BinVecCons =>
-    via_simple2 (b:=Vec _ _) (c:=Vec _ _) (fun x xs => x :: xs)
-  | BinVecConcat =>
-    via_simple2 (a:=Vec _ _) (b:=Vec _ _) (c:=Vec _ _) (fun x y => x ++ y)%list
-  | @BinVecShiftInRight t n =>
-    via_simple2 (a:= Vec t n) (b:=t) (c:=Vec t _)
-    (fun xs x => tl (xs ++ [x]))
-  | @BinVecShiftInLeft t n =>
-    via_simple2 (a:= t) (b:=Vec t _) (c:=Vec t _)
-    (fun x xs => removelast (x :: xs))
-  | BinEq => eqb
+  | @BinVecIndex t n i => fun x n => nth (N.to_nat n) x default
+  | BinVecCons => fun x y => x :: y
+  | BinVecConcat => fun x y => x ++ y
+  | @BinVecShiftInRight t n => (fun xs x => tl (xs ++ [x]))
+  | @BinVecShiftInLeft t n => (fun x xs => removelast (x :: xs))
+  | BinEq => fun x y => (if eqb x y then 1 else 0)%N
   end%list.
 
 Fixpoint replace {A} n a (ls: list A): list A :=
@@ -196,7 +148,6 @@ Fixpoint replace {A} n a (ls: list A): list A :=
 Definition ternary_semantics {x y z r} (prim: TernaryPrim x y z r)
   : denote_type x -> denote_type y -> denote_type z -> denote_type r :=
   match prim in TernaryPrim x y z r return denote_type x -> denote_type y -> denote_type z -> denote_type r with
-  | TernVecReplace => fun ls i x => simple_denote_to_denote (t:=Vec _ _ )
-      (replace (N.to_nat i) (denote_to_simple_denote x) (denote_to_simple_denote ls))
+  | TernVecReplace => fun ls i x => replace (N.to_nat i) x ls
   end.
 
