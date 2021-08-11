@@ -42,8 +42,8 @@ Section Var.
     let/delay '(fifo; current_length) :=
 
       ( if data_valid then data +>> fifo else fifo
-      , if data_valid && !out_ready then current_length + `K 1`
-        else if !data_valid && out_ready && current_length >= `K 1` then (current_length - `K 1`)
+      , if data_valid & !out_ready then current_length + `K 1`
+        else if !data_valid & out_ready & current_length >= `K 1` then (current_length - `K 1`)
         else current_length
       )
 
@@ -60,34 +60,21 @@ End Var.
 Require Import Cava.Semantics.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
+Require Import coqutil.Tactics.Tactics.
 
 Definition no_io_predicate (x: denote_type (Bit**BitVec 32**Bit**Unit))
-  := fst x = false /\ fst (snd (snd x)) = false.
-
-Ltac destruct_input input :=
-  match type of input with
-  | denote_type (Pair _ _) =>
-    let x := fresh input in
-    let y := fresh input in
-    destruct input as [x y];
-    destruct_input x; destruct_input y
-  | denote_type Unit => destruct input
-  | _ => idtac
-  end.
+  := fst x = 0 /\ fst (snd (snd x)) = 0.
 
 Lemma fifo_no_change :
   forall sz st input, no_io_predicate input ->
   st = fst (step (fifo (fifo_size:=sz)) st input).
 Proof.
-  intros.
+  intros. cbn in input. destruct_products.
   cbn [step fifo absorb_any split_absorbed_denotation combine_absorbed_denotation
     denote_type binary_semantics unary_semantics K
-    ].
-  destruct_input input.
-  unfold no_io_predicate in H.
-  cbn in H.
-  destruct H.
-  rewrite H, H0.
+      ]. unfold no_io_predicate in *.
+  cbn [fst snd] in *. logical_simplify; subst.
+  repeat lazymatch goal with u : unit |- _ => destruct u end.
   repeat (destruct_pair_let; cbn [fst snd]).
   reflexivity.
 Qed.

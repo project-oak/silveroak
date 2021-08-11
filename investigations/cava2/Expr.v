@@ -126,8 +126,8 @@ End ExprNotations.
 Section Var.
   Context {var : tvar}.
 
-  Definition True := Constant Bit true.
-  Definition False := Constant Bit false.
+  Definition True := Constant Bit 1.
+  Definition False := Constant Bit 0.
   Definition K {sz}(x: N) := Constant (BitVec sz) x.
 
 End Var.
@@ -183,28 +183,25 @@ Axiom value_hole : forall {t}, t.
 Axiom circuit_hole : forall {t var}, Circuit (var:=var) [] [] t.
 
 Module PrimitiveNotations.
-  Notation "x && y" := (
-    Let x (fun v1 => Let y (fun v2 => BinaryOp BinBitAnd v1 v2))
-  ) (in custom expr at level 20, left associativity) : expr_scope.
-  Notation "x || y" := (
-    Let x (fun v1 => Let y (fun v2 =>
-     BinaryOp BinBitOr v1 v2
-  ))) (in custom expr at level 20, left associativity) : expr_scope.
   Notation "x >= y" := (
     Let x (fun v1 => Let y (fun v2 =>
     BinaryOp BinBitVecGte v1 v2
   ))) (in custom expr at level 19, no associativity) : expr_scope.
-
-  Notation "! x" := (
-    Let x (fun v1 => UnaryOp UnNot v1)
-  ) (in custom expr at level 20) : expr_scope.
   Notation "~ x" := (
     Let x (fun v1 => UnaryOp UnBitVecNot v1)
-  ) (in custom expr at level 20) : expr_scope.
+  ) (in custom expr at level 19, no associativity) : expr_scope.
+  (* ! is identical to ~ but only works on 1-bit bit vectors (i.e. booleans) *)
+  Notation "! x" := (
+    Let x (fun v1 => UnaryOp (@UnBitVecNot 1) v1)
+  ) (in custom expr at level 19, no associativity) : expr_scope.
   Notation "x == y" := (
     Let x (fun v1 => Let y (fun v2 =>
       BinaryOp BinEq v1 v2
   ))) (in custom expr at level 19, no associativity) : expr_scope.
+  Notation "x | y" := (
+    Let x (fun v1 => Let y (fun v2 =>
+      BinaryOp BinBitVecOr v1 v2
+  ))) (in custom expr at level 20, left associativity) : expr_scope.
   Notation "x ^ y" := (
     Let x (fun v1 => Let y (fun v2 =>
       BinaryOp BinBitVecXor v1 v2
@@ -221,12 +218,12 @@ Module PrimitiveNotations.
     Let x (fun v1 => Let y (fun v2 =>
       BinaryOp BinBitVecSubU v1 v2
   ))) (in custom expr at level 20, left associativity) : expr_scope.
-  Notation "x >>> y" := (
-    Let x (fun v1 => UnaryOp (UnBitVecRotateRight y) v1
-  )) (in custom expr at level 19, no associativity) : expr_scope.
   Notation "x >> y" := (
     Let x (fun v1 => UnaryOp (UnBitVecShiftRight y) v1
-  )) (in custom expr at level 19, no associativity) : expr_scope.
+  )) (in custom expr at level 19, y constr, no associativity) : expr_scope.
+  Notation "x << y" := (
+    Let x (fun v1 => UnaryOp (UnBitVecShiftLeft y) v1
+  )) (in custom expr at level 19, y constr, no associativity) : expr_scope.
   Notation "x <<+ y" := (
     Let x (fun v1 => Let y (fun v2 =>
       BinaryOp BinVecShiftInRight v1 v2
@@ -246,7 +243,7 @@ Module PrimitiveNotations.
       BinaryOp BinVecConcat v1 v2
   ))) (in custom expr at level 19, right associativity) : expr_scope.
 
-  Notation "[ ]" := (Constant _ (simple_denote_to_denote (t:=Vec _ 0) nil)) (in custom expr at level 19) : expr_scope.
+  Notation "[ ]" := (Constant (Vec _ 0) List.nil) (in custom expr at level 19) : expr_scope.
 
   Import ExprNotations.
   Definition index {var t n i}: Circuit (var:=var) [] [Vec t n; BitVec i] t :=
@@ -257,12 +254,18 @@ Module PrimitiveNotations.
     {{ fun vec => `UnaryOp (UnVecSlice start length) vec` }}.
   Definition replace {var t n i}: Circuit (var:=var) [] [Vec t n; BitVec i; t] (Vec t n) :=
     {{ fun vec index val => `TernaryOp TernVecReplace vec index val` }}.
-  Definition resize {var t n m}: Circuit (var:=var) [] [Vec t n] (Vec t m) :=
+  Definition resize {var t n m} : Circuit (var:=var) [] [Vec t n] (Vec t m) :=
     {{ fun vec => `UnaryOp UnVecResize vec ` }}.
+  Definition bvresize {var n} m: Circuit (var:=var) [] [BitVec n] (BitVec m) :=
+    {{ fun vec => `UnaryOp UnBitVecResize vec` }}.
   Definition reverse {var t n}: Circuit (var:=var) [] [Vec t n] (Vec t n) :=
     {{ fun vec => `UnaryOp UnVecReverse vec ` }}.
   Definition uncons {var t n}: Circuit (var:=var) [] [Vec t (S n)] (t ** Vec t n) :=
     {{ fun vec => `UnaryOp UnVecUncons vec` }}.
+  Definition bvslice {var n} (start length: nat): Circuit (var:=var) [] [BitVec n] (BitVec length) :=
+    {{ fun vec => `bvresize length` (vec >> start) }}.
+  Definition bvconcat {var n m}: Circuit (var:=var) [] [BitVec n; BitVec m] (BitVec (n + m)) :=
+    {{ fun v1 v2 => (((`bvresize (n+m)` v1) << m) | (`bvresize (n+m)` v2)) }}.
   Fixpoint map {var t u n} (f: Circuit [] [t] u): Circuit (var:=var) [] [Vec t n] (Vec u n) :=
     match n with
     | O => {{ fun _ => [] }}
