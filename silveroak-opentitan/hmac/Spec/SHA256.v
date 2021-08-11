@@ -18,28 +18,9 @@ Require Import Coq.Init.Byte.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import Coq.ZArith.ZArith.
-Import ListNotations.
+Require Import Cava.Util.BitArithmetic.
+Import ListNotations BigEndianBytes.
 Local Open Scope N_scope.
-
-(* Convert the least significant 8 bits of a number to a byte *)
-Definition N_to_byte (x : N) : byte :=
-  match Byte.of_N (x mod 2^8) with
-  | Some b => b
-  | None => x00
-  end.
-
-(* convert the least significant (n*8) bits of a number to big-endian bytes *)
-Definition N_to_bytes n (x : N) : list byte :=
-  map (fun i => N_to_byte (N.shiftr x ((N.of_nat n-1)*8-N.of_nat i))) (seq 0 n).
-
-(* evaluate a big-endian list of bytes *)
-Definition bytes_to_N (x : list byte) : N :=
-  fold_left (fun acc b => N.lor (N.shiftl acc 8) (Byte.to_N b)) x 0.
-
-(* convert a big-endian list of bytes to a list of n-byte words (length of list
-   must be a multiple of n) *)
-Definition bytes_to_Ns n (x : list byte) : list N :=
-  map (fun i => bytes_to_N (firstn 4 (skipn (4*i) x))) (seq 0 n).
 
 (* Specification of SHA-256 as described by FIPS 180-4:
    https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf  *)

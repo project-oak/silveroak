@@ -16,32 +16,36 @@
 
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
+Require Import Cava.Util.BitArithmetic.
 Require Import HmacSpec.SHA256.
 Require Import HmacSpec.Tests.SHA256TestVectors.
-Import ListNotations.
+Import ListNotations BigEndianBytes.
 Local Open Scope N_scope.
 
 (* Tests for SHA-256 spec *)
 
+(* Helper function for evaluating big-endian lists of words *)
+Definition eval_words (x : list N) : N :=
+  fold_left (fun acc => N.lor (N.shiftl acc w)) x 0.
+
 (* Uncomment the below for step-by-step tests of intermediate values for test1
    (useful for debugging) *)
-
 (*
 (* test Nblocks *)
 Goal (let t := test1 in
-      Nblocks t.(l) = N.of_nat (List.length (t.(expected_blocks)))).
+      Nblocks t.(msg_bytes) = N.of_nat (List.length (t.(expected_blocks)))).
 Proof. vm_compute. reflexivity. Qed.
 
 (* test padded_msg *)
 Goal (let t := test1 in
-      padded_msg t.(l) t.(msg_N) = t.(expected_padded_msg)).
+      eval_words (padded_msg t.(msg_bytes)) = t.(expected_padded_msg)).
 Proof. vm_compute. reflexivity. Qed.
 
 (* test first 16 blocks of W for round 0 *)
 Goal (let t := test1 in
-      let i := 0 in
-      let expected_W := nth (N.to_nat i) t.(expected_blocks) [] in
-      firstn 16 (W t.(l) t.(msg_N) i) = expected_W).
+      let i := 0%nat in
+      let expected_W := nth i t.(expected_blocks) [] in
+      firstn 16 (W t.(msg_bytes) i) = expected_W).
 Proof. vm_compute. reflexivity. Qed.
 
 (* test round 0 *)
@@ -49,34 +53,34 @@ Goal (let t := test1 in
       let i := 0%nat in
       let old_H := H0 in
       let expected_H := nth i t.(expected_intermediate_digests) [] in
-      sha256_step t.(l) t.(msg_N) old_H i = expected_H).
+      sha256_step t.(msg_bytes) old_H i = expected_H).
 Proof. vm_compute. reflexivity. Qed.
-*)
+ *)
 
 (* test final digest *)
 Goal (let t := test1 in
-      sha256 t.(l) t.(msg_N) = t.(expected_digest)).
+      concat_bytes (sha256 t.(msg_bytes)) = t.(expected_digest)).
 Proof. vm_compute. reflexivity. Qed.
+
 
 (* Uncomment the below for step-by-step tests of intermediate values for test2
    (useful for debugging) *)
-
 (*
 (* test Nblocks *)
 Goal (let t := test2 in
-      Nblocks t.(l) = N.of_nat (List.length (t.(expected_blocks)))).
+      Nblocks t.(msg_bytes) = N.of_nat (List.length (t.(expected_blocks)))).
 Proof. vm_compute. reflexivity. Qed.
 
 (* test padded_msg *)
 Goal (let t := test2 in
-      padded_msg t.(l) t.(msg_N) = t.(expected_padded_msg)).
+      eval_words (padded_msg t.(msg_bytes)) = t.(expected_padded_msg)).
 Proof. vm_compute. reflexivity. Qed.
 
 (* test first 16 blocks of W for round 0 *)
 Goal (let t := test2 in
-      let i := 0 in
-      let expected_W := nth (N.to_nat i) t.(expected_blocks) [] in
-      firstn 16 (W t.(l) t.(msg_N) i) = expected_W).
+      let i := 0%nat in
+      let expected_W := nth i t.(expected_blocks) [] in
+      firstn 16 (W t.(msg_bytes) i) = expected_W).
 Proof. vm_compute. reflexivity. Qed.
 
 (* test round 0 *)
@@ -84,14 +88,14 @@ Goal (let t := test2 in
       let i := 0%nat in
       let old_H := H0 in
       let expected_H := nth i t.(expected_intermediate_digests) [] in
-      sha256_step t.(l) t.(msg_N) old_H i = expected_H).
+      sha256_step t.(msg_bytes) old_H i = expected_H).
 Proof. vm_compute. reflexivity. Qed.
 
 (* test first 16 blocks of W for round 1 *)
 Goal (let t := test2 in
-      let i := 1 in
-      let expected_W := nth (N.to_nat i) t.(expected_blocks) [] in
-      firstn 16 (W t.(l) t.(msg_N) i) = expected_W).
+      let i := 1%nat in
+      let expected_W := nth i t.(expected_blocks) [] in
+      firstn 16 (W t.(msg_bytes) i) = expected_W).
 Proof. vm_compute. reflexivity. Qed.
 
 (* test round 1 *)
@@ -99,11 +103,11 @@ Goal (let t := test2 in
       let i := 1%nat in
       let old_H := nth (i-1) t.(expected_intermediate_digests) [] in
       let expected_H := nth i t.(expected_intermediate_digests) [] in
-      sha256_step t.(l) t.(msg_N) old_H i = expected_H).
+      sha256_step t.(msg_bytes) old_H i = expected_H).
 Proof. vm_compute. reflexivity. Qed.
 *)
 
 (* test final digest *)
 Goal (let t := test2 in
-      sha256 t.(l) t.(msg_N) = t.(expected_digest)).
+      concat_bytes (sha256 t.(msg_bytes)) = t.(expected_digest)).
 Proof. vm_compute. reflexivity. Qed.

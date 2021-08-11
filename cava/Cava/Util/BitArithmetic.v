@@ -18,6 +18,7 @@
 
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Bool.Bvector.
+Require Import Coq.Init.Byte.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import Coq.Vectors.Vector.
@@ -169,8 +170,28 @@ Definition wordvec_to_bitvec
            bits_per_word {n} (v : Vector.t (Vector.t bool bits_per_word) n)
   : Vector.t bool (n * bits_per_word) := flatten v.
 
-Definition concat_bytes (bs : list N) : N :=
-  List.fold_left (fun acc => N.lor (N.shiftl acc 8)) bs 0%N.
+(* Convert the least significant 8 bits of a number to a byte *)
+Definition N_to_byte (x : N) : byte :=
+  match Byte.of_N (x mod 2^8) with
+  | Some b => b
+  | None => x00
+  end.
+
+Module BigEndianBytes.
+  (* evaluate a big-endian list of bytes *)
+  Definition concat_bytes (bs : list byte) : N :=
+    List.fold_left (fun acc b => N.lor (N.shiftl acc 8) (Byte.to_N b)) bs 0%N.
+
+  (* convert the least significant (n*8) bits of a number to big-endian bytes *)
+  Definition N_to_bytes n (x : N) : list byte :=
+    List.map (fun i => N_to_byte (N.shiftr x (N.of_nat (n-1-i)*8)))
+             (seq 0 n).
+
+  (* convert a big-endian list of bytes to a list of n-byte words (length of list
+   must be a multiple of n) *)
+  Definition bytes_to_Ns n (x : list byte) : list N :=
+    List.map (fun i => concat_bytes (firstn n (skipn (n*i) x))) (seq 0 (length x / 4)).
+End BigEndianBytes.
 
 (******************************************************************************)
 (* Arithmetic operations                                                      *)
