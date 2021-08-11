@@ -221,7 +221,7 @@ Section Var.
       else if done then (current_digest, message_schedule, done, round)
       else (next_digest, w, done, round)
 
-      initially (((sha256_initial_digest, (repeat 0 16, (0, 0))))
+      initially (((sha256_initial_digest, (repeat 0 16, (1, 0))))
       : denote_type (sha_digest ** sha_block ** Bit ** sha_round )) in
 
     let updated_digest := `map2 {{fun a b => ( a + b ) }}` initial_digest current_digest in
@@ -326,7 +326,6 @@ Section SanityCheck.
     [0xBA7816BF; 0x8F01CFEA; 0x414140DE; 0x5DAE2223; 0xB00361A3; 0x96177A9C; 0xB410FF61; 0xF20015AD ].
   Proof. vm_compute. reflexivity. Qed.
 
-  (*
   (* sha256 "abc" = sha256 (0x61626300 @ byte mask 0xFFFFFF00) = correct digest *)
   Goal
     fst (snd (last (simulate sha256 (
@@ -334,6 +333,6 @@ Section SanityCheck.
        repeat (0, (0, (0, (0, (0, tt))))) (64+19)
       )) default))
     = [0xBA7816BF; 0x8F01CFEA; 0x414140DE; 0x5DAE2223; 0xB00361A3; 0x96177A9C; 0xB410FF61; 0xF20015AD ].
-  Proof. vm_compute. reflexivity. Qed.*)
+  Proof. vm_compute. reflexivity. Qed.
 
 End SanityCheck.
