@@ -21,6 +21,52 @@ Section Proof.
           {M: state_machine.parameters} {M_ok: state_machine.ok M}
           (execution_unique: forall t s1 s2, execution t s1 -> execution t s2 -> s1 = s2).
 
+  Global Instance spec_of_abs_mmio_write8 : spec_of "abs_mmio_write8" :=
+    fun function_env =>
+      forall (tr : trace) (m : mem) (s : M) (s' : M) (addr : word) (value : word) r,
+        state_machine.reg_addr r = addr ->
+        state_machine.write_step 1 s r value s' ->
+        execution tr s ->
+        call function_env abs_mmio_write8 tr m [addr; value]
+        (fun tr' m' rets =>
+          rets = []
+          /\ tr' = ((map.empty, MMIOLabels.WRITE8, [addr; value], (map.empty, [])) :: tr)
+          /\ (exists s'', execution tr' s'')
+          /\ m = m'
+        ).
+  Lemma abs_mmio_write8_correct :
+    program_logic_goal_for_function! abs_mmio_write8.
+  Proof.
+    repeat straightline.
+    eapply (interact_write 1); repeat straightline.
+    - rewrite <- H. reflexivity.
+    - do 2 eexists; ssplit; eauto.
+    - rewrite <- H; ssplit; eauto.
+  Qed.
+
+  Global Instance spec_of_abs_mmio_write32 : spec_of "abs_mmio_write32" :=
+    fun function_env =>
+      forall (tr : trace) (m : mem) (s : M) (s' : M) (addr : word) (value : word) r,
+        state_machine.reg_addr r = addr ->
+        state_machine.write_step 4 s r value s' ->
+        execution tr s ->
+        call function_env abs_mmio_write32 tr m [addr; value]
+        (fun tr' m' rets =>
+          rets = []
+          /\ tr' = ((map.empty, MMIOLabels.WRITE32, [addr; value], (map.empty, [])) :: tr)
+          /\ (exists s'', execution tr' s'')
+          /\ m = m'
+        ).
+  Lemma abs_mmio_write32_correct :
+    program_logic_goal_for_function! abs_mmio_write32.
+  Proof.
+    repeat straightline.
+    eapply (interact_write 4); repeat straightline.
+    - rewrite <- H. reflexivity.
+    - do 2 eexists; ssplit; eauto.
+    - rewrite <- H; ssplit; eauto.
+  Qed.
+
   Global Instance spec_of_abs_mmio_read8 : spec_of "abs_mmio_read8" :=
     fun function_env =>
       forall (tr : trace) (m : mem) (s : M) (addr : word) r val s',

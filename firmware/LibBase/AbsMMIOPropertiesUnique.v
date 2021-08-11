@@ -80,4 +80,67 @@ Section Proof.
       end.
       all: eapply execution_step_write; [..|eassumption]; eauto.
   Qed.
+
+  Global Instance spec_of_abs_mmio_read8 : spec_of "abs_mmio_read8" :=
+    fun function_env =>
+      forall (tr : trace) (m : mem) (s : M) (addr : word) r val s',
+        state_machine.reg_addr r = addr ->
+        state_machine.read_step 1 s r val s' ->
+        execution tr s ->
+        call function_env abs_mmio_read8 tr m [addr]
+        (fun tr' m' rets =>
+          exists s' val,
+          rets = [val]
+          /\ tr' = ((map.empty, MMIOLabels.READ8, [addr], (map.empty, [val])) :: tr)
+          /\ state_machine.read_step 1 s r val s' (* <-- redundant, but convenient *)
+          /\ execution tr' s'
+          /\ m = m'
+        ).
+  Lemma abs_mmio_read8_correct :
+    program_logic_goal_for_function! abs_mmio_read8.
+  Proof.
+    repeat straightline.
+    eapply (interact_read 1); repeat straightline; eauto.
+    - rewrite <- H. reflexivity.
+    - match goal with
+      | H1: execution ?t ?s1, H2: execution ?t ?s2 |- _ =>
+        pose proof (execution_unique _ _ _ H1 H2);
+        subst s2;
+        clear H2
+      end.
+      do 3 eexists; ssplit; eauto.
+      rewrite <- H. reflexivity.
+  Qed.
+
+  Global Instance spec_of_abs_mmio_read32 : spec_of "abs_mmio_read32" :=
+    fun function_env =>
+      forall (tr : trace) (m : mem) (s : M) (addr : word) r val s',
+        state_machine.reg_addr r = addr ->
+        state_machine.read_step 4 s r val s' ->
+        execution tr s ->
+        call function_env abs_mmio_read32 tr m [addr]
+        (fun tr' m' rets =>
+          exists s' val,
+          rets = [val]
+          /\ tr' = ((map.empty, MMIOLabels.READ32, [addr], (map.empty, [val])) :: tr)
+          /\ state_machine.read_step 4 s r val s' (* <-- redundant, but convenient *)
+          /\ execution tr' s'
+          /\ m = m'
+        ).
+  Lemma abs_mmio_read32_correct :
+    program_logic_goal_for_function! abs_mmio_read32.
+  Proof.
+    repeat straightline.
+    eapply (interact_read 4); repeat straightline; eauto.
+    - rewrite <- H. reflexivity.
+    - match goal with
+      | H1: execution ?t ?s1, H2: execution ?t ?s2 |- _ =>
+        pose proof (execution_unique _ _ _ H1 H2);
+        subst s2;
+        clear H2
+      end.
+      do 3 eexists; ssplit; eauto.
+      rewrite <- H. reflexivity.
+  Qed.
+
 End Proof.

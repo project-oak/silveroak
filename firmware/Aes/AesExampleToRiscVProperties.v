@@ -19,8 +19,7 @@ Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.StateMachineMMIO.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.LibBase.AbsMMIO.
-Require Import Bedrock2Experiments.LibBase.AbsMMIOReadProperties.
-Require Import Bedrock2Experiments.LibBase.AbsMMIOWriteProperties.
+Require Import Bedrock2Experiments.LibBase.AbsMMIOProperties.
 Require Import Bedrock2Experiments.Aes.Constants.
 Require Import Bedrock2Experiments.Aes.AesExample.
 Require Import Bedrock2Experiments.Aes.AesExampleProperties.

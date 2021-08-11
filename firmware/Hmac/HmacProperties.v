@@ -30,8 +30,7 @@ Require Import Bedrock2Experiments.WordProperties.
 Require Import Bedrock2Experiments.Hmac.Constants.
 Require Import Bedrock2Experiments.Hmac.HmacSemantics.
 Require Import Bedrock2Experiments.Hmac.Hmac.
-Require Import Bedrock2Experiments.LibBase.AbsMMIOReadProperties.
-Require Import Bedrock2Experiments.LibBase.AbsMMIOWritePropertiesUnique.
+Require Import Bedrock2Experiments.LibBase.AbsMMIOPropertiesUnique.
 Require Import Bedrock2Experiments.LibBase.BitfieldProperties.
 Require Import Bedrock2Experiments.LibBase.MMIOLabels.
 Import Syntax.Coercions List.ListNotations HList.
