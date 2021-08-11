@@ -187,7 +187,6 @@ Definition b2_hmac_sha256_final: func :=
   let reg := "reg" in
   let done := "done" in
   let i := "i" in
-  let temp := "temp" in
   ("b2_hmac_sha256_final",
    ([digest], [result], bedrock_func_body:(
      if (digest == 0) {
@@ -208,9 +207,9 @@ Definition b2_hmac_sha256_final: func :=
        (* The least significant word is at HMAC_DIGEST_7_REG_OFFSET. *)
        i = 0;
        while (i < 8) {
-         unpack! temp = abs_mmio_read32(coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET) -
+         unpack! reg = abs_mmio_read32(coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET) -
                              (i * 4));
-         store4(digest + i * 4, temp);
+         store4(digest + i * 4, reg);
          i = i + 1
        };
        result = kErrorOk

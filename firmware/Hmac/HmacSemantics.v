@@ -78,14 +78,13 @@ Section WithParams.
                         swap_digest := false;
                       |})
   (* TODO the digest could also be read byte by byte *)
-  | read_digest: forall s d i v,
+  | read_digest: forall s d i addr v,
       swap_endian s = true ->
       swap_digest s = false ->
       0 <= i < 8 ->
-      le_combine (List.firstn 4 (List.skipn (Z.to_nat i * 4) d)) = word.unsigned v ->
-      read_step 4 (IDLE d s)
-                (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET - (i * 4))) v
-                (IDLE d s).
+      addr = word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET - (i * 4)) ->
+      v = word.of_Z (le_combine (List.firstn 4 (List.skipn (Z.to_nat i * 4) d))) ->
+      read_step 4 (IDLE d s) addr v (IDLE d s).
 
   Inductive write_step: nat -> state -> word -> word -> state -> Prop :=
   | write_cfg: forall v d s,

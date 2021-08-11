@@ -96,47 +96,47 @@ Section Proofs.
          morphism (Properties.word.ring_morph (word := word)),
          constants [Properties.word_cst]).
 
-(*
-  Ltac solve_status_valid :=
-    eexists; ssplit; try reflexivity;
-      cbv [is_flag_set]; boolsimpl;
-      repeat lazymatch goal with
-             | |- (_ && _)%bool = true => apply Bool.andb_true_iff; split
-             | |- negb _ = true => apply Bool.negb_true_iff
-             end;
-      rewrite word.unsigned_eqb;
-      unfold UART_STATUS_TXEMPTY_BIT;
-      unfold UART_STATUS_TXIDLE_BIT;
-      unfold UART_STATUS_TXFULL_BIT;
-      first [ apply Z.eqb_eq | apply Z.eqb_neq ];
-      push_unsigned;
-      repeat rewrite Z.shiftl_1_l;
-      repeat rewrite word.wrap_small;
-      simpl;
-      lia.
-
-  Lemma status_read_always_ok s :
-    exists val s', read_step s STATUS val s'.
+  Lemma invert_read_status_done_false: forall input n val s,
+      read_step 4 (PROCESSING input n)
+                /[TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET] val s ->
+      Z.testbit \[val ^>> /[HMAC_INTR_STATE_HMAC_DONE_BIT]] 0 = false ->
+      s = PROCESSING input (n - 1) /\ 0 < n.
   Proof.
-    destruct s; unfold read_step; cbn [read_step status_matches_state].
-    { exists (word.or (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXEMPTY_BIT))
-                      (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXIDLE_BIT))).
-      solve_status_valid.
+    intros.
+    remember /[TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET] as addr.
+    inversion H; subst. 1: auto.
+    exfalso. unfold HMAC_INTR_STATE_HMAC_DONE_BIT in *.
+    rewrite word.unsigned_sru_nowrap in H0. 2: {
+      rewrite word.unsigned_of_Z_0. reflexivity.
     }
-    { destruct (Nat.eqb txlvl 0)%bool eqn:H.
-      { apply Nat.eqb_eq in H. subst.
-        exists (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXEMPTY_BIT)).
-        solve_status_valid. }
-      { destruct txlvl; [discriminate | ].
-        destruct (Nat.ltb (S txlvl) 32)%bool eqn:Hl.
-        { exists (word.of_Z 0).
-          solve_status_valid. }
-        { exists (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXFULL_BIT)).
-          solve_status_valid. }
-      }
-    }
+    rewrite word.unsigned_of_Z_0 in H0.
+    rewrite Z.shiftr_0_r in H0.
+    congruence.
   Qed.
-*)
+
+  Lemma invert_read_status_done_true: forall input n val s,
+      read_step 4 (PROCESSING input n)
+                /[TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET] val s ->
+      Z.testbit \[val ^>> /[HMAC_INTR_STATE_HMAC_DONE_BIT]] 0 = true ->
+      s = IDLE (sha256 input)
+               {| intr_enable := /[0];
+                  hmac_done := true;
+                  hmac_en := false;
+                  sha_en := true;
+                  swap_endian := true;
+                  swap_digest := false |}.
+  Proof.
+    intros.
+    remember /[TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_INTR_STATE_REG_OFFSET] as addr.
+    inversion H; subst. 2: reflexivity.
+    exfalso. unfold HMAC_INTR_STATE_HMAC_DONE_BIT in *.
+    rewrite word.unsigned_sru_nowrap in H0. 2: {
+      rewrite word.unsigned_of_Z_0. reflexivity.
+    }
+    rewrite word.unsigned_of_Z_0 in H0.
+    rewrite Z.shiftr_0_r in H0.
+    congruence.
+  Qed.
 
   (* not needed in this file directly, but needed at proof linking time to discharge
      assumption in AbsMMIOWritePropertiesUnique *)
@@ -717,6 +717,7 @@ Section Proofs.
     (* first while loop *)
     eapply atleastonce with (variables := ["digest"; "reg"; "done"])
              (invariant := fun measure t m digest reg done =>
+               digest = digest_addr /\
                execution t (PROCESSING input measure) /\
                (bytearray digest_addr digest_trash ⋆ R)%sep m).
     { repeat straightline. }
@@ -738,20 +739,81 @@ Section Proofs.
     1: eassumption.
     repeat straightline.
     straightline_call.
-    (* TODO here we see that `x4 x5 x6 : word` should be named `"digest" "reg" "done"`,
+    (* TODO here we see that `x3 x4 x5 : word` should be named `"digest" "reg" "done"`,
        respectively, automate this naming *)
     repeat straightline.
     { (* loop condition is true: need to show that invariant still holds with smaller measure *)
       subst br.
-      rename x6 into done. subst done.
+      rename x5 into done. subst done.
       simpl_conditionals.
       eexists (v - 1).
-
-
-      case TODO. }
+      edestruct invert_read_status_done_false; [eassumption..|].
+      subst x.
+      split; [auto|lia]. }
     (* loop condition is false: need to show that code after first loop is correct *)
-    straightline_call. 1: reflexivity. 1: eapply write_intr_state.
+    subst br. simpl_conditionals.
+    eassert (x = _). {
+      eapply invert_read_status_done_true; eassumption.
+    }
+    subst x.
+    straightline_call. 1: reflexivity. 1: eapply write_intr_state. 1: eassumption.
+    cbn [intr_enable hmac_done hmac_en sha_en swap_endian swap_digest] in *.
+    repeat straightline.
 
-  Admitted.
+    clear dependent reg.
+    repeat match goal with
+           | H: execution ?t1 _ |- cmd _ _ ?t2 _ _ _ =>
+             tryif unify t1 t2 then fail else clear H
+           end.
+    repeat match goal with
+           | m1: @map.rep _ _ mem |- cmd _ _ _ ?m2 _ _ =>
+             tryif unify m1 m2 then fail else clear dependent m1
+           end.
+    rename a3 into tr.
+
+    (* second while loop: *)
+    eapply (while ["digest"; "reg"; "done"; "i"]
+                  (fun remaining t m digest reg done i =>
+                     t = tr /\
+                     0 <= \[i] < 8 /\
+                     4 * \[i] + remaining = 32 /\
+                     digest = digest_addr /\
+                     (bytearray digest (List.firstn (Z.to_nat (4 * \[i])) (sha256 input) ++
+                                        List.skipn (Z.to_nat (4 * \[i])) digest_trash) * R)%sep m)
+                  (Z.lt_wf 0) 32).
+    { repeat straightline. }
+    { (* invariant holds initially: *)
+      loop_simpl. subst i. rewrite word.unsigned_of_Z_0. ssplit; try reflexivity.
+      change (Z.to_nat 0) with O. rewrite List.firstn_O. rewrite List.skipn_O. assumption. }
+    loop_simpl.
+    repeat straightline.
+    { (* running loop body satisfies invariant *)
+      subst br. simpl_conditionals. subst i. rename x5 into i.
+      straightline_call. 1: reflexivity. 2: eassumption. 1: eapply read_digest with (i0 := \[i]).
+      all: try reflexivity.
+      1-2: ZnWords.
+      repeat straightline.
+      case TODO. (* store, i++, invariant holds again *)
+    }
+    (* postcondition holds at end  *)
+    subst br. simpl_conditionals. subst i. rename x5 into i.
+    replace (4 * \[i]) with 32 in * by ZnWords.
+    rewrite List.firstn_all2 in * by ZnWords.
+    rewrite List.skipn_all2 in * by ZnWords.
+    rewrite List.app_nil_r in *.
+    subst result.
+    match goal with
+    | H: Z.testbit \[_ ^>> _] 0 = true |- _ => rename H into T
+    end.
+    unfold HMAC_INTR_STATE_HMAC_DONE_BIT in *.
+    rewrite word.unsigned_sru_nowrap in T. 2: {
+      rewrite word.unsigned_of_Z_0. reflexivity.
+    }
+    rewrite word.unsigned_of_Z_0 in T.
+    rewrite Z.shiftr_0_r in T.
+    rewrite T in *.
+    auto.
+  Qed.
+
 
 End Proofs.
