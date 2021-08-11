@@ -187,8 +187,12 @@ Module PrimitiveNotations.
     Let x (fun v1 => Let y (fun v2 =>
     BinaryOp BinBitVecGte v1 v2
   ))) (in custom expr at level 19, no associativity) : expr_scope.
-  Notation "! x" := (
+  Notation "~ x" := (
     Let x (fun v1 => UnaryOp UnBitVecNot v1)
+  ) (in custom expr at level 19, no associativity) : expr_scope.
+  (* ! is identical to ~ but only works on 1-bit bit vectors (i.e. booleans) *)
+  Notation "! x" := (
+    Let x (fun v1 => UnaryOp (@UnBitVecNot 1) v1)
   ) (in custom expr at level 19, no associativity) : expr_scope.
   Notation "x == y" := (
     Let x (fun v1 => Let y (fun v2 =>

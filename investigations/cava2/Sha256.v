@@ -173,7 +173,7 @@ Section Var.
     let '( a', b', c', d', e', f', g'; h' ) := `vec_as_tuple (n:=7)` current_digest in
 
     let s1 := (`rotr 6` e') ^ (`rotr 11` e') ^ (`rotr 25` e') in
-    let ch := (e' & f') ^ (!e' & g') in
+    let ch := (e' & f') ^ (~e' & g') in
     let temp1 := (h' + s1 + ch + k + w) in
     let s0 := (`rotr 2` a') ^ (`rotr 13` a') ^ (`rotr 22` a') in
     let maj := (a' & b') ^ (a' & c') ^ (b' & c') in
