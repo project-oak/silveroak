@@ -20,28 +20,41 @@ jobs:
       run: |
         git submodule status > ./third_party/submodules.lock
       shell: bash
+
     - name: Cache third_party
       id: third_party-cache
       uses: actions/cache@v2
       with:
         path: third_party
         key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
-
     - name: Build third party
       if: steps.third_party-cache.outputs.cache-hit != 'true'
       run: nix-shell --run 'cd third_party; make -j1'
 
-    - run: nix-shell --run 'cd cava; make -j1'
     - name: Cache cava
+      id: cava-cache
       uses: actions/cache@v2
       with:
-        path: |
-          cava
-          /home/runner/.ghc/
-          /home/runner/.cabal/
-        key: ${{ runner.os }}-build-${{ github.run_id }}-cava
+        path: cava
+        key: ${{ runner.os }}-cava-${{ hashFiles('third_party/submodules.lock', 'cava/**/*.v', 'cava/Makefile' ) }}
+    - name: Build Cava
+      if: steps.cava-cache.outputs.cache-hit != 'true'
+      run: nix-shell --run 'cd cava; make -j1'
 
-  make_demos:
+  make_directories:
+    strategy:
+      matrix:
+        build_dir: ["demos", "examples", "tests"
+        , "silveroak-opentitan/pinmux"
+        , "silveroak-opentitan/aes"
+        , "silveroak-opentitan/hmac"
+        , "examples/xilinx"
+        , "tests/xilinx"
+        , "firmware"
+        ]
+    env:
+      BUILD_DIR: ${{ matrix.build_dir }}
+
     needs: make_cava
     runs-on: ubuntu-latest
     steps:
@@ -51,8 +64,6 @@ jobs:
     - uses: cachix/install-nix-action@v12
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-
-
     - name: Create a "lockfile" from git submodule commits
       id: get-submodule-ver
       run: |
@@ -64,243 +75,15 @@ jobs:
       with:
         path: third_party
         key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
-
-    - name: Use cava cache
+    - name: Cache cava
+      id: cava-cache
       uses: actions/cache@v2
       with:
-        path: |
-          cava
-          /home/runner/.ghc/
-          /home/runner/.cabal/
-        key: ${{ runner.os }}-build-${{ github.run_id }}-cava
-    - run: nix-shell --run 'cd demos; make -j1'
+        path: cava
+        key: ${{ runner.os }}-cava-${{ hashFiles('third_party/submodules.lock', 'cava/**/*.v', 'cava/Makefile' ) }}
+    - name: Fail on cache miss
+      if: steps.third_party-cache.outputs.cache-hit != 'true' || steps.cava-cache.outputs.cache-hit != 'true'
+      run: exit 1
 
-  make_examples:
-    needs: make_cava
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: 'recursive'
-    - uses: cachix/install-nix-action@v12
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-
-    - name: Create a "lockfile" from git submodule commits
-      id: get-submodule-ver
-      run: |
-        git submodule status > ./third_party/submodules.lock
-      shell: bash
-    - name: Cache third_party
-      id: third_party-cache
-      uses: actions/cache@v2
-      with:
-        path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
-
-    - name: Use cava cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          cava
-          /home/runner/.ghc/
-          /home/runner/.cabal/
-        key: ${{ runner.os }}-build-${{ github.run_id }}-cava
-    - run: nix-shell --run 'cd examples; make -j1'
-
-  make_tests:
-    needs: make_cava
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: 'recursive'
-    - uses: cachix/install-nix-action@v12
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-
-    - name: Create a "lockfile" from git submodule commits
-      id: get-submodule-ver
-      run: |
-        git submodule status > ./third_party/submodules.lock
-      shell: bash
-    - name: Cache third_party
-      id: third_party-cache
-      uses: actions/cache@v2
-      with:
-        path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
-
-    - name: Use cava cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          cava
-          /home/runner/.ghc/
-          /home/runner/.cabal/
-        key: ${{ runner.os }}-build-${{ github.run_id }}-cava
-    - run: nix-shell --run 'cd tests; make -j1'
-
-  make_silveroak_pinmux:
-    needs: make_cava
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: 'recursive'
-    - uses: cachix/install-nix-action@v12
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-
-    - name: Create a "lockfile" from git submodule commits
-      id: get-submodule-ver
-      run: |
-        git submodule status > ./third_party/submodules.lock
-      shell: bash
-    - name: Cache third_party
-      id: third_party-cache
-      uses: actions/cache@v2
-      with:
-        path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
-    - name: Use cava cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          cava
-          /home/runner/.ghc/
-          /home/runner/.cabal/
-        key: ${{ runner.os }}-build-${{ github.run_id }}-cava
-    - run: nix-shell --run 'cd silveroak-opentitan/pinmux; make -j1'
-
-  make_silveroak_aes:
-    needs: make_cava
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: 'recursive'
-    - uses: cachix/install-nix-action@v12
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-
-    - name: Create a "lockfile" from git submodule commits
-      id: get-submodule-ver
-      run: |
-        git submodule status > ./third_party/submodules.lock
-      shell: bash
-    - name: Cache third_party
-      id: third_party-cache
-      uses: actions/cache@v2
-      with:
-        path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
-    - name: Use cava cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          cava
-          /home/runner/.ghc/
-          /home/runner/.cabal/
-        key: ${{ runner.os }}-build-${{ github.run_id }}-cava
-    - run: nix-shell --run 'cd silveroak-opentitan/aes; make -j1'
-
-  make_xilinx_examples:
-    needs: make_cava
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: 'recursive'
-    - uses: cachix/install-nix-action@v12
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-
-    - name: Create a "lockfile" from git submodule commits
-      id: get-submodule-ver
-      run: |
-        git submodule status > ./third_party/submodules.lock
-      shell: bash
-    - name: Cache third_party
-      id: third_party-cache
-      uses: actions/cache@v2
-      with:
-        path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
-
-    - name: Use cava cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          cava
-          /home/runner/.ghc/
-          /home/runner/.cabal/
-        key: ${{ runner.os }}-build-${{ github.run_id }}-cava
-    - run: nix-shell --run 'cd examples/xilinx; make -j1'
-
-  make_xilinx_tests:
-    needs: make_cava
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: 'recursive'
-    - uses: cachix/install-nix-action@v12
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-
-    - name: Create a "lockfile" from git submodule commits
-      id: get-submodule-ver
-      run: |
-        git submodule status > ./third_party/submodules.lock
-      shell: bash
-    - name: Cache third_party
-      id: third_party-cache
-      uses: actions/cache@v2
-      with:
-        path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
-
-    - name: Use cava cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          cava
-          /home/runner/.ghc/
-          /home/runner/.cabal/
-        key: ${{ runner.os }}-build-${{ github.run_id }}-cava
-    - run: nix-shell --run 'cd tests/xilinx; make -j1'
-  
-  make_firmware:
-    needs: make_cava
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        submodules: 'recursive'
-    - uses: cachix/install-nix-action@v12
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-
-    - name: Create a "lockfile" from git submodule commits
-      id: get-submodule-ver
-      run: |
-        git submodule status > ./third_party/submodules.lock
-      shell: bash
-    - name: Cache third_party
-      id: third_party-cache
-      uses: actions/cache@v2
-      with:
-        path: third_party
-        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
-
-    - name: Use cava cache
-      uses: actions/cache@v2
-      with:
-        path: |
-          cava
-          /home/runner/.ghc/
-          /home/runner/.cabal/
-        key: ${{ runner.os }}-build-${{ github.run_id }}-cava
-    - run: nix-shell --run 'cd firmware; make -j1'
+    - run: nix-shell --run "cd $BUILD_DIR; make -j1"
 
