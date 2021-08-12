@@ -219,7 +219,7 @@ Section WithMessage.
     (* steps 2-3 : compression loop *)
     let H' := fold_left (sha256_compress i) (seq 0 64) H in
     (* step 4 : get ith intermediate hash value by adding each element *)
-    map2 N.add H' H.
+    map2 add_mod H H'.
 
   (* Concatenate the w-bit words of the hash value to get the full digest *)
   Definition concat_digest (H : list N) :=
