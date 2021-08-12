@@ -101,7 +101,7 @@ Section Var.
   (*   PutPartialData = 3'h 1, *)
   (*   Get            = 3'h 4 *)
   (* } tl_a_op_e; *)
-  Definition tl_a_op_e      := Vec Bit 3.
+  Definition tl_a_op_e      := BitVec 3.
   Definition PutFullData    := Constant tl_a_op_e 0.
   Definition PutPartialData := Constant tl_a_op_e 1.
   Definition Get            := Constant tl_a_op_e 4.
@@ -110,7 +110,7 @@ Section Var.
   (*   AccessAck     = 3'h 0, *)
   (*   AccessAckData = 3'h 1 *)
   (* } tl_d_op_e; *)
-  Definition tl_d_op_e     := Vec Bit 3.
+  Definition tl_d_op_e     := BitVec 3.
   Definition AccessAck     := Constant tl_d_op_e 0.
   Definition AccessAckData := Constant tl_d_op_e 1.
 
@@ -148,12 +148,12 @@ Section Var.
 
     let/delay '(reqid, reqsz, rspop, error, outstanding, we_o; re_o) :=
 
-      let a_ack := a_valid && !outstanding in
-      let d_ack := outstanding && d_ready in
+      let a_ack := a_valid & !outstanding in
+      let d_ack := outstanding & d_ready in
 
-      let rd_req := a_ack && a_opcode == `Get` in
-      let wr_req := a_ack &&
-        (a_opcode == `PutFullData` || a_opcode == `PutPartialData`) in
+      let rd_req := a_ack & a_opcode == `Get` in
+      let wr_req := a_ack &
+        (a_opcode == `PutFullData` | a_opcode == `PutPartialData`) in
 
       (* TODO(blaxill): skipping malformed tl packet detection *)
       let err_internal := `False` in
@@ -164,18 +164,18 @@ Section Var.
           ( a_source
           , a_size
           , if rd_req then `AccessAckData` else `AccessAck`
-          , error_i || err_internal
+          , error_i | err_internal
           , `False`
           )
         else
           (reqid, reqsz, rspop, error, if d_ack then `False` else outstanding)
       in
 
-      let we_o := wr_req && !err_internal in
-      let re_o := rd_req && !err_internal in
+      let we_o := wr_req & !err_internal in
+      let re_o := rd_req & !err_internal in
 
       (reqid, reqsz, rspop, error, outstanding, we_o, re_o)
-      initially (0,(0,(0,(false,(false,(false,false))))))
+      initially (0,(0,(0,(0,(0,(0,0))))))
         : denote_type (BitVec _ ** BitVec _ ** BitVec _ ** Bit ** Bit ** Bit ** Bit)
     in
 
@@ -188,7 +188,7 @@ Section Var.
       , reqsz
       , reqid
       , `K 0`
-      , `index` registers (`slice 2 30` a_address)
+      , `index` registers (`bvslice 2 30` a_address)
       , `K 0`
       , error
       , !outstanding

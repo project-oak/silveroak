@@ -74,7 +74,7 @@ Fixpoint step {i s o} (c : Circuit s i o)
     let '(sf, sg) := split_absorbed_denotation s in
     let '(nsf, fo) := step f sf tt in
     let '(nsg, go) := step g sg tt in
-    (combine_absorbed_denotation nsf nsg, if bv then fo else go)
+    (combine_absorbed_denotation nsf nsg, if (bv =? 0)%N then go else fo)
 
   | MakePair f g => fun s _ =>
     let '(sf, sg) := split_absorbed_denotation s in
