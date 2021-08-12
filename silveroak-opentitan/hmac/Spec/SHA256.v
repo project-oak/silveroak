@@ -19,6 +19,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import Coq.ZArith.ZArith.
 Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.List.
 Import ListNotations BigEndianBytes.
 Local Open Scope N_scope.
 
@@ -186,9 +187,8 @@ Section WithMessage.
               (seq 0 64) [].
 
   (* See steps in section 6.2.2. *)
-  Definition sha256_step
-             (H : list N) (i : nat) : list N :=
-    (* step 2 : initialize working variables *)
+  Definition sha256_compress (i : nat) (H : list N) (t : nat) : list N :=
+    (* initialize working variables *)
     let a := nth 0 H 0 in
     let b := nth 1 H 0 in
     let c := nth 2 H 0 in
@@ -198,35 +198,28 @@ Section WithMessage.
     let g := nth 6 H 0 in
     let h := nth 7 H 0 in
 
-    (* step 3 : loop *)
-    let '(a,b,c,d,e,f,g,h) :=
-        fold_left
-          (fun '(a,b,c,d,e,f,g,h) t =>
-             let Kt := nth t K 0 in
-             let Wt := nth t (W i) 0 in
-             let T1 := h + (Sigma1 e) + (Ch e f g) + Kt + Wt in
-             let T2 := (Sigma0 a) + (Maj a b c) in
-             let h := g in
-             let g := f in
-             let f := e in
-             let e := d + T1 in
-             let d := c in
-             let c := b in
-             let b := a in
-             let a := T1 + T2 in
-             (a,b,c,d,e,f,g,h))
-          (seq 0 64)
-          (a,b,c,d,e,f,g,h) in
+    (* step 3 in section 6.2.2 *)
+    let Kt := nth t K 0 in
+    let Wt := nth t (W i) 0 in
+    let T1 := h + (Sigma1 e) + (Ch e f g) + Kt + Wt in
+    let T2 := (Sigma0 a) + (Maj a b c) in
+    let h := g in
+    let g := f in
+    let f := e in
+    let e := d + T1 in
+    let d := c in
+    let c := b in
+    let b := a in
+    let a := T1 + T2 in
+    [a;b;c;d;e;f;g;h].
 
-    (* step 4 : get ith intermediate hash value *)
-    [ a + (nth 0 H 0)
-      ; b + (nth 1 H 0)
-      ; c + (nth 2 H 0)
-      ; d + (nth 3 H 0)
-      ; e + (nth 4 H 0)
-      ; f + (nth 5 H 0)
-      ; g + (nth 6 H 0)
-      ; h + (nth 7 H 0) ].
+  (* See steps in section 6.2.2. *)
+  Definition sha256_step
+             (H : list N) (i : nat) : list N :=
+    (* steps 2-3 : compression loop *)
+    let H' := fold_left (sha256_compress i) (seq 0 64) H in
+    (* step 4 : get ith intermediate hash value by adding each element *)
+    map2 N.add H' H.
 
   (* Concatenate the w-bit words of the hash value to get the full digest *)
   Definition concat_digest (H : list N) :=

@@ -24,6 +24,8 @@ Require Import Cava.Types.
 Require Import Cava.Expr.
 Require Import Cava.Primitives.
 
+Local Open Scope circuit_type_scope.
+
 Definition split_absorbed_denotation {x y}
   : denote_type (x ++ y) -> denote_type x * denote_type y :=
   match x, y with
