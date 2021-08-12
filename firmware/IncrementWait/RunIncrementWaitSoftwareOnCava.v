@@ -79,14 +79,13 @@ Fixpoint trace(nsteps: nat)(start: ExtraRiscvMachine counter_device):
            (snd r, t ++ [outcomeToLogElem r])
   end.
 
-(* Useful for debugging: display (ok-flag, pc, output) after each cycle:
-Compute snd (trace 100 initial).
-*)
+(* Useful for debugging: display (ok-flag, pc, output) after each cycle: *)
+(* Compute snd (trace 116 initial). *)
 
 Definition res(nsteps: nat): LogElem := outcomeToLogElem (run sched nsteps initial).
 
 (* We can vm_compute through the execution of the IncrementWait program,
    riscv-coq's processor model, and Cava's reaction to the IncrementWait program: *)
 Goal exists nsteps, res nsteps = (true, word.unsigned p_call + 4, 43).
-  exists 82%nat. vm_compute. reflexivity.
+  exists 116%nat. vm_compute. reflexivity.
 Qed.
