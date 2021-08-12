@@ -85,5 +85,11 @@ jobs:
       if: steps.third_party-cache.outputs.cache-hit != 'true' || steps.cava-cache.outputs.cache-hit != 'true'
       run: exit 1
 
-    - run: nix-shell --run "cd $BUILD_DIR; make -j1"
+    - run: |
+        ls
+        echo $BUILD_DIR
+        ls $BUILD_DIR
+        cd $BUILD_DIR
+        nix-shell --run 'make -j1'
+        # nix-shell --run "cd $BUILD_DIR; make -j1"
 
