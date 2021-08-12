@@ -31,11 +31,6 @@ Definition eval_words (x : list N) : N :=
 (* Uncomment the below for step-by-step tests of intermediate values for test1
    (useful for debugging) *)
 (*
-(* test Nblocks *)
-Goal (let t := test1 in
-      Nblocks t.(msg_bytes) = N.of_nat (List.length (t.(expected_blocks)))).
-Proof. vm_compute. reflexivity. Qed.
-
 (* test padded_msg *)
 Goal (let t := test1 in
       eval_words (padded_msg t.(msg_bytes)) = t.(expected_padded_msg)).
@@ -66,11 +61,6 @@ Proof. vm_compute. reflexivity. Qed.
 (* Uncomment the below for step-by-step tests of intermediate values for test2
    (useful for debugging) *)
 (*
-(* test Nblocks *)
-Goal (let t := test2 in
-      Nblocks t.(msg_bytes) = N.of_nat (List.length (t.(expected_blocks)))).
-Proof. vm_compute. reflexivity. Qed.
-
 (* test padded_msg *)
 Goal (let t := test2 in
       eval_words (padded_msg t.(msg_bytes)) = t.(expected_padded_msg)).

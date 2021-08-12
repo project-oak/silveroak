@@ -144,20 +144,17 @@ Section WithMessage.
      binary representation.
    *)
   (* N.B. calculation of k is done in Z to avoid subtraction underflow *)
-  Definition k (l : N) := Z.to_N ((448 - (Z.of_N l + 1)) mod 512)%Z.
+  Definition k := Z.to_N ((448 - (Z.of_N l + 1)) mod 512)%Z.
 
   (* we know that (k+1) must be positive and a multiple of 8, so 1 << k can
      be expressed as bytes *)
   Definition padding : list byte :=
-    x80 :: (repeat x00 (((N.to_nat (k l)+1) / 8) - 1)).
+    x80 :: (repeat x00 (((N.to_nat k+1) / 8) - 1)).
 
   Definition padded_msg_bytes : list byte := msg ++ padding ++ N_to_bytes 8 l.
 
   (* Convert to w-bit numbers *)
   Definition padded_msg : list N := bytes_to_Ns (N.to_nat w / 8) padded_msg_bytes.
-
-  (* Number of 512-bit blocks in padded message *)
-  Definition Nblocks : N := (N.add (N.add l (k l)) 65) / 512.
 
   (* From section 5.2.1:
 
@@ -237,7 +234,7 @@ Section WithMessage.
 
   (* Full SHA-256 computation: loop of sha256_step *)
   Definition sha256 :=
-    let n := N.to_nat Nblocks in
-    let H := fold_left sha256_step (seq 0 n) H0 in
+    let nblocks := (length padded_msg / (512 / N.to_nat w))%nat in
+    let H := fold_left sha256_step (seq 0 nblocks) H0 in
     concat_digest H.
 End WithMessage.
