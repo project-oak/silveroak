@@ -35,13 +35,13 @@ Section Var.
     fun a => (a, a)
   }}.
 
-  Definition fib_init sz := val_of (BitVec sz) (2^(N.of_nat sz)-1).
+  Definition fib_init sz : denote_type (BitVec sz) := 2^(N.of_nat sz)-1.
 
   Definition fibonacci {sz: nat}: Circuit (BitVec sz ** BitVec sz) [] (BitVec sz) := {{
     let/delay r1 :=
       let r2 := delay r1 initially (fib_init sz) in
       r1 + r2
-      initially (val_of (BitVec sz) 1) in
+      initially (1: denote_type (BitVec sz)) in
     r1
   }}.
 End Var.
@@ -112,7 +112,9 @@ Proof. cbn [fibonacci_nat]. lia. Qed.
 Lemma fibonacci_correct sz input :
   simulate (fibonacci (sz:=sz)) input = spec_of_fibonacci sz input.
 Proof.
-  cbv [simulate]. rewrite fold_left_accumulate_to_seq with (default:=tt).
+  cbv [simulate simulate'].
+  fold (fold_left_accumulate (step (fibonacci (sz:=sz))) input (reset_state fibonacci)).
+  rewrite fold_left_accumulate_to_seq with (default:=tt).
   assert (2 ^ (N.of_nat sz) <> 0) by (apply N.pow_nonzero; lia).
   eapply fold_left_accumulate_invariant_seq with (I:=fibonacci_invariant (sz:=sz)).
   { cbv [fibonacci_invariant]. ssplit; reflexivity. }
@@ -145,4 +147,3 @@ Proof.
     autorewrite with push_length.
     erewrite <-list_unit_equiv. reflexivity. }
 Qed.
-
