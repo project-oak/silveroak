@@ -44,7 +44,7 @@ jobs:
   make_directories:
     strategy:
       matrix:
-        dir: ["demos", "examples", "tests"
+        build_dir: ["demos", "examples", "tests"
         , "silveroak-opentitan/pinmux"
         , "silveroak-opentitan/aes"
         , "silveroak-opentitan/hmac"
@@ -53,7 +53,7 @@ jobs:
         , "firmware"
         ]
     env:
-      BUILD_DIR:  ${{ matrix.build_dir }}
+      BUILD_DIR: ${{ matrix.build_dir }}
 
     needs: make_cava
     runs-on: ubuntu-latest
@@ -85,11 +85,5 @@ jobs:
       if: steps.third_party-cache.outputs.cache-hit != 'true' || steps.cava-cache.outputs.cache-hit != 'true'
       run: exit 1
 
-    - run: |
-        ls
-        echo $BUILD_DIR
-        ls $BUILD_DIR
-        cd $BUILD_DIR
-        nix-shell --run 'make -j1'
-        # nix-shell --run "cd $BUILD_DIR; make -j1"
+    - run: nix-shell --run "cd $BUILD_DIR; make -j1"
 
