@@ -14,10 +14,12 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Init.Byte.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import Coq.ZArith.ZArith.
-Import ListNotations.
+Require Import Cava.Util.BitArithmetic.
+Import ListNotations BigEndianBytes.
 Local Open Scope N_scope.
 
 (* Specification of SHA-256 as described by FIPS 180-4:
@@ -34,15 +36,15 @@ Definition truncating_shiftl (x n : N) := (N.shiftl x n) mod (2 ^ w).
 
 (* Notations for bitwise operations as defined in section 2.2.2, all
    left-associative *)
-Local Infix "<<" := truncating_shiftl (at level 32, left associativity, only parsing).
-Local Infix ">>" := N.shiftr (at level 32, left associativity, only parsing).
-Local Infix "|" := N.lor (at level 32, left associativity, only parsing).
-Local Infix "&" := N.land (at level 32, left associativity, only parsing).
-Local Infix "⊕" := N.lxor (at level 32, left associativity, only parsing).
-Local Notation "¬ x" := (N.lnot x w) (at level 32, only parsing).
+Local Infix "<<" := truncating_shiftl (at level 32, left associativity, only parsing) : N_scope.
+Local Infix ">>" := N.shiftr (at level 32, left associativity, only parsing) : N_scope.
+Local Infix "|" := N.lor (at level 32, left associativity, only parsing) : N_scope.
+Local Infix "&" := N.land (at level 32, left associativity, only parsing) : N_scope.
+Local Infix "⊕" := N.lxor (at level 32, left associativity, only parsing) : N_scope.
+Local Notation "¬ x" := (N.lnot x w) (at level 32, only parsing) : N_scope.
 
 (* All addition henceforth is add_mod *)
-Local Infix "+" := add_mod (at level 50, left associativity, only parsing).
+Local Infix "+" := add_mod (at level 50, left associativity, only parsing) : N_scope.
 
 (* From section 2.2.2:
 
@@ -128,7 +130,10 @@ Definition H0 : list N :=
     ; 0x5be0cd19 ].
 
 Section WithMessage.
-  Context (l msg : N). (* l = message length in bits *)
+  Context (msg : list byte).
+
+  (* Message length in bits *)
+  Definition l : N := N.of_nat (length msg) * 8.
 
   (* From section 5.1.1:
 
@@ -141,12 +146,15 @@ Section WithMessage.
   (* N.B. calculation of k is done in Z to avoid subtraction underflow *)
   Definition k := Z.to_N ((448 - (Z.of_N l + 1)) mod 512)%Z.
 
-  (* N.B. Use N.shiftl here to avoid truncation *)
-  Definition padded_msg : N :=
-    (N.shiftl msg (N.add k 65)) | (N.shiftl 1 (N.add k 64)) | l.
+  (* we know that (k+1) must be positive and a multiple of 8, so 1 << k can
+     be expressed as bytes *)
+  Definition padding : list byte :=
+    x80 :: (repeat x00 (((N.to_nat k+1) / 8) - 1)).
 
-  (* Number of 512-bit blocks in padded message *)
-  Definition Nblocks : N := (N.add (N.add l k) 65) / 512.
+  Definition padded_msg_bytes : list byte := msg ++ padding ++ N_to_bytes 8 l.
+
+  (* Convert to w-bit numbers *)
+  Definition padded_msg : list N := bytes_to_Ns (N.to_nat w / 8) padded_msg_bytes.
 
   (* From section 5.2.1:
 
@@ -155,11 +163,7 @@ Section WithMessage.
      may be expressed as sixteen 32- bit words, the first 32 bits of message
      block i are denoted M0(i), M1(i), and so on up to M15(i).
    *)
-  (* N.B. FIPS is using a big-endian convention when splitting the 512 bits into
-  32-bit blocks *)
-  Definition M (j i : N) :=
-    let Mi := (padded_msg >> (512*(Nblocks-1-i))) mod (2^512) in
-    (Mi >> (32*(15-j))) mod (2^32).
+  Definition M (j i : nat) : N := nth (i*16 + j) padded_msg 0.
 
   (* From section 6.2.2 (step 1):
 
@@ -167,11 +171,11 @@ Section WithMessage.
      W(t) = Mt(i) for 0 <= t <= 15
      W(t) = σ{1,256}(W_(t-2)) + W(t-7) + σ{0,256}(W(t-15)) + W(t-16) for 16 <= t <= 63
    *)
-  Definition W (i : N) : list N :=
+  Definition W (i : nat) : list N :=
     fold_left (fun (W : list N) t =>
                  let wt :=
                      if (t <? 16)%nat
-                     then M (N.of_nat t) i
+                     then M t i
                      else
                        let W_tm2 := nth (t-2) W 0 in
                        let W_tm7 := nth (t-7) W 0 in
@@ -199,7 +203,7 @@ Section WithMessage.
         fold_left
           (fun '(a,b,c,d,e,f,g,h) t =>
              let Kt := nth t K 0 in
-             let Wt := nth t (W (N.of_nat i)) 0 in
+             let Wt := nth t (W i) 0 in
              let T1 := h + (Sigma1 e) + (Ch e f g) + Kt + Wt in
              let T2 := (Sigma0 a) + (Maj a b c) in
              let h := g in
@@ -226,11 +230,11 @@ Section WithMessage.
 
   (* Concatenate the w-bit words of the hash value to get the full digest *)
   Definition concat_digest (H : list N) :=
-    fold_left (fun D Hi => (N.shiftl D w) | Hi) H 0.
+    flat_map (N_to_bytes (N.to_nat w / 8)) H.
 
   (* Full SHA-256 computation: loop of sha256_step *)
   Definition sha256 :=
-    let n := N.to_nat Nblocks in
-    let H := fold_left sha256_step (seq 0 n) H0 in
+    let nblocks := (length padded_msg / (512 / N.to_nat w))%nat in
+    let H := fold_left sha256_step (seq 0 nblocks) H0 in
     concat_digest H.
 End WithMessage.

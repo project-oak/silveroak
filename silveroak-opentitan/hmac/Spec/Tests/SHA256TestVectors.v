@@ -24,6 +24,7 @@ Local Open Scope N_scope.
 Record sha256_test_vector :=
   { msg : string;
     msg_N := string_to_N msg;
+    msg_bytes := string_to_bytes msg;
     l := N.of_nat (String.length msg * 8);
     expected_digest : N }.
 
