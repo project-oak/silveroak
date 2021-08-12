@@ -134,3 +134,9 @@ Definition test2 : sha256_step_by_step_test :=
          ; 0xF6ECEDD4
          ; 0x19DB06C1 ] ];
   |}.
+
+(* Regression test : corresponds to the inner hash from HMAC test vector 1 from
+      https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/HMAC_SHA256.pdf  *)
+Definition test3 : sha256_test_vector :=
+  {| msg := N_to_string (64+34) 0x36373435323330313E3F3C3D3A3B383926272425222320212E2F2C2D2A2B282916171415121310111E1F1C1D1A1B181906070405020300010E0F0C0D0A0B080953616D706C65206D65737361676520666F72206B65796C656E3D626C6F636B6C656E;
+     expected_digest := 0xC0918E14C43562B910DB4B8101CF8812C3DA2783C670BFF34D88B3B88E731716 |}.
