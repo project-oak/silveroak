@@ -25,3 +25,10 @@ Definition string_to_bytes (s : string) : list Byte.byte :=
 
 Definition string_to_N (s : string) : N :=
   BigEndianBytes.concat_bytes (string_to_bytes s).
+
+Definition bytes_to_string (bs : list Byte.byte) : string :=
+  string_of_list_ascii (map ascii_of_byte bs).
+
+(* n is the number of bytes expected *)
+Definition N_to_string (n : nat) (s : N) : string :=
+  bytes_to_string (BigEndianBytes.N_to_bytes n s).
