@@ -14,7 +14,6 @@ Require Import Bedrock2Experiments.IncrementWait.IncrementWait.
 Require Import Bedrock2Experiments.StateMachineMMIO.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.Bedrock2ToCava.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
-Require Import Bedrock2Experiments.LibBase.AbsMMIO.
 Require coqutil.Word.Naive.
 Require coqutil.Map.SortedListWord.
 Require riscv.Utility.InstructionNotations.
@@ -58,7 +57,7 @@ Definition main_body : cmd :=
 Definition main : func :=
   ("main", ([], [], main_body)).
 
-Definition funcs := [main; put_wait_get; abs_mmio_write32; abs_mmio_read32].
+Definition funcs := [main; put_wait_get].
 
 Definition put_wait_get_compile_result_o :=
   Eval vm_compute in compile compile_ext_call (map.of_list funcs).

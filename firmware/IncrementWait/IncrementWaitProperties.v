@@ -23,7 +23,6 @@ Require Import Bedrock2Experiments.IncrementWait.Constants.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.StateMachineProperties.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
-Require Import Bedrock2Experiments.LibBase.AbsMMIOProperties.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWait.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope Z_scope.
@@ -155,11 +154,6 @@ Section Proofs.
     reflexivity.
   Qed.
 
-  Lemma status_read_always_ok s:
-    exists val s',  read_step s STATUS val s'.
-  Proof.
-  Admitted.
-
   Local Ltac interact_read_reg reg :=
     eapply (interact_read (M := increment_wait_state_machine) 4 reg);
     [ repeat straightline_with_map_lookup; reflexivity
@@ -211,19 +205,13 @@ Section Proofs.
     repeat straightline.
 
     (* write input *)
-(*    interact_write_reg VALUE.
+    interact_write_reg VALUE.
 
     (* simplify post-write guarantees *)
     cbv [state_machine.write_step increment_wait_state_machine write_step] in *.
- *)
-    straightline_call.
-    { instantiate (1 := VALUE). reflexivity. }
-    { cbv [state_machine.write_step increment_wait_state_machine write_step] in *. ssplit; eauto.
-      instantiate (2 := IDLE). simpl.
-      reflexivity. }
-    { eauto. }
-    logical_simplify.
     repeat straightline.
+    repeat (destruct_one_match_hyp; try contradiction).
+    subst.
 
     (* begin while loop *)
     apply atleastonce_localsmap
@@ -232,13 +220,8 @@ Section Proofs.
            (invariant:=
               fun i tr m l =>
                 execution (M := increment_wait_state_machine) tr (BUSY input i) /\ R m).
-
-    {
-      apply lt_wf.
-    }
-    {
-      (* Henter *)
-      (* case in which the loop breaks immediately (cannot happen) *)
+    { apply lt_wf. }
+    { (* case in which the loop breaks immediately (cannot happen) *)
       repeat straightline.
       exfalso. (* proof by contradiction *)
 
@@ -251,77 +234,26 @@ Section Proofs.
       rewrite @word.unsigned_eqb in * by typeclasses eauto.
       autorewrite with push_unsigned in *.
       rewrite Z.land_0_l, Z.eqb_refl in *.
-      congruence.
-    }
-    {
-      (* Hpre *)
-      (* proof that invariant holds at loop start *)
-      subst a. ssplit; cbn [execution]; eauto.
-      exists IDLE. split; eauto.
-      cbv [step]. simpl. exists VALUE. exists 4%nat.
-      ssplit; simpl; eauto. }
-    { (* Hbody *)
-      (* invariant holds through loop (or postcondition holds, if loop breaks) *)
-      clear dependent a.
-      clear dependent x.
-      clear dependent a0.
+      congruence. }
+    { (* proof that invariant holds at loop start *)
+      cbn [execution]. eauto. }
+    { (* invariant holds through loop (or postcondition holds, if loop breaks) *)
       repeat straightline.
 
-      pose proof status_read_always_ok (BUSY input v) as Hstat.
-      destruct Hstat as (x' & s' & Hstat).
       (* get status *)
-      straightline_call.
-      { (* abs_mmio_read32 precondition 1 *)
-        instantiate (1:=STATUS). reflexivity. }
-      { (* abs_mmio_read32 precondition 2 *)
-        cbv [state_machine.read_step increment_wait_state_machine read_step] in *.
-        instantiate (9:=(BUSY input v)).
-        ssplit; eauto. }
-      { (* abs_mmio_read32 precondition 3 *)
-        eauto. }
+      interact_read_reg STATUS. repeat straightline.
 
-      logical_simplify.
-      repeat straightline.
-
-      pose proof H6 as Hexec.
-      subst a.
-      simpl in H6.
-      destruct H6 as (xx & Hexec').
-      destruct Hexec'.
-      replace xx with (BUSY input v).
-      2:{ eapply execution_unique; eauto. }
-      unfold step in H5. simpl in H5.
-      logical_simplify.
-      replace x1 with STATUS in *.
-      2:{ apply reg_addrs_unique. simpl. eauto. }
-
-      inversion H6. subst.
-      (*
-      pose proof H8 as Hexec.
-      subst a1. simpl in H8.
-      destruct  H8.
-      logical_simplify.
-      replace x2 with (BUSY input v); subst.
-      2:{ eapply execution_unique; eauto. }
-      eexists; ssplit; eauto.
-      1:{
-         pose proof H8 as Hexec.*)
       (* simplify post-read guarantees *)
       infer. cbv [read_step] in *.
       repeat (destruct_one_match_hyp; try contradiction).
       subst.
-      rewrite <- H7 in *.
+
       eexists; repeat straightline_with_map_lookup.
-      {
-        exists x2. subst l0.
-        rewrite map.get_put_same.
-        ssplit; eauto.
-        repeat straightline. }
       { (* continuation case -- invariant holds *)
 
         match goal with H : _ |- _ => apply word.if_nonzero, word.eqb_true in H end.
 
-        cbv [state_machine.read_step increment_wait_state_machine read_step] in *.
+        cbv [state_machine.read_step increment_wait_state_machine read_step] in *. straightline.
         (* break into two possible read cases : DONE and BUSY *)
         lazymatch goal with H : _ \/ _ |- _ => destruct H end;
           logical_simplify; subst.
@@ -346,7 +278,7 @@ Section Proofs.
       { (* break case -- postcondition holds *)
 
         (* break into two possible read cases : DONE and BUSY *)
-        cbv [state_machine.read_step increment_wait_state_machine read_step] in *.
+        cbv [state_machine.read_step increment_wait_state_machine read_step] in *. straightline.
         lazymatch goal with H : _ \/ _ |- _ => destruct H end;
           logical_simplify; subst.
         2:{ (* BUSY case; contradiction *)

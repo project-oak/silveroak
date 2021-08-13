@@ -8,7 +8,6 @@ Require Import bedrock2.ToCString.
 Require Import coqutil.Word.Interface.
 Require Import Bedrock2Experiments.IncrementWait.Constants.
 Require Import Bedrock2Experiments.LibBase.MMIOLabels.
-Require Import Bedrock2Experiments.LibBase.AbsMMIO.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
 Local Open Scope Z_scope.
@@ -32,16 +31,12 @@ Section Impl.
     ("put_wait_get",
      ([input], [out], bedrock_func_body:(
         (* write input value *)
-        (* IDLE *)
-        abs_mmio_write32 (VALUE_ADDR, input) ;
+        output! WRITE32 (VALUE_ADDR, input) ;
         (* initialize status to 0 *)
         status = 0 ;
-        (* BUSY input ncycles_processing *)
         (* wait for status to be DONE *)
         while ((status & (1 << STATUS_DONE)) == 0) {
-          (* BUSY O *)
-          unpack! status = abs_mmio_read32 ( STATUS_ADDR )
-          (*  *)
+          io! status = READ32 ( STATUS_ADDR )
         };
         (* read the value and exit *)
         io! out = READ32 ( VALUE_ADDR )

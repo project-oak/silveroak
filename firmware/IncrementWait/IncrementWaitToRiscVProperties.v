@@ -17,8 +17,6 @@ Require Import Bedrock2Experiments.IncrementWait.Constants.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWait.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.StateMachineMMIO.
-Require Import Bedrock2Experiments.LibBase.AbsMMIOProperties.
-Require Import Bedrock2Experiments.LibBase.AbsMMIO.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitProperties.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitToRiscV.
@@ -40,16 +38,13 @@ Lemma main_correct fs input output_placeholder R (t : trace) m :
    * R)%sep m ->
   execution t IDLE ->
   WeakestPrecondition.cmd
-    (WeakestPrecondition.call (put_wait_get :: abs_mmio_write32 :: abs_mmio_read32 :: fs))
+    (WeakestPrecondition.call (put_wait_get :: fs))
     main_body t m map.empty
     (fun t' m' (_: ProgramSemantics32.locals) => post_main input output_placeholder R t' m').
 Proof.
   intros.
   repeat straightline.
-  pose proof (put_wait_get_correct (abs_mmio_write32 :: abs_mmio_read32 :: fs)) as Hf.
-  pose proof (abs_mmio_write32_correct (abs_mmio_read32 :: fs)) as Hw.
-  pose proof (abs_mmio_read32_correct fs) as Hr.
-  specialize (Hf Hw Hr).
+  pose proof (put_wait_get_correct fs).
   straightline_call; [ eassumption .. | ].
   repeat straightline.
   split; [ assumption | ].
@@ -61,8 +56,8 @@ Lemma exec_put_wait_get fs input output_placeholder R (t : trace) (m : mem) mc :
    * scalar (word.of_Z output_ptr) output_placeholder
    * R)%sep m ->
   execution t IDLE ->
-  NoDup (map fst (main :: put_wait_get :: abs_mmio_write32 :: abs_mmio_read32 :: fs)) ->
-  exec (map.of_list (main :: put_wait_get :: abs_mmio_write32 :: abs_mmio_read32 :: fs))
+  NoDup (map fst (main :: put_wait_get :: fs)) ->
+  exec (map.of_list (main :: put_wait_get :: fs))
        main_body t m map.empty mc
        (fun t' m' _ _ => post_main input output_placeholder R t' m').
 Proof.
@@ -87,7 +82,7 @@ Definition stack_pastend: word := word.of_Z (16*2^10).
 
 Lemma funcs_valid: ExprImp.valid_funs (map.of_list funcs).
 Proof.
-  cbv [funcs map.of_list ExprImp.valid_funs main put_wait_get abs_mmio_write32 abs_mmio_read32]. intros *.
+  cbv [funcs map.of_list ExprImp.valid_funs main put_wait_get]. intros *.
   rewrite !map.get_put_dec, map.get_empty.
   repeat destruct_one_match; inversion 1; cbv [ExprImp.valid_fun].
   all:ssplit.
@@ -135,7 +130,7 @@ Proof.
   match type of P with
   | context[?fs] => lazymatch fs with
                     | (map.of_list funcs) =>
-                      let fs' := eval cbv [map.of_list abs_mmio_read32 abs_mmio_write32 put_wait_get main funcs] in fs in
+                      let fs' := eval cbv [map.of_list put_wait_get main funcs] in fs in
                           change fs with fs' in P
                    end
   end.
