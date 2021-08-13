@@ -51,13 +51,6 @@ Section WithParameters.
   | TIMEOUT_CTRL
   .
 
-  Axiom ncycles_not_zero :
-    Nat.eqb ncycles_processing 0 = false.
-  Axiom fifo_depth_not_zero :
-    Nat.eqb fifo_depth 0 = false.
-  Axiom ncycles_lt_max_ncycles :
-    Nat.ltb (ncycles_processing) (fifo_depth * ncycles_processing) = true.
-
   Definition all_regs : list Register :=
     [ INTR_STATE ; INTR_ENABLE ; INTR_TEST
       ; CTRL ; STATUS ; RDATA ; WDATA ; FIFO_CTRL ; FIFO_STATUS
@@ -143,6 +136,8 @@ Section WithParameters.
         | IDLE => s' = BUSY (ncycles_processing)
             (* writing to 4-byte WDATA reg fills the FIFO with the last byte *)
         | BUSY tx => if Nat.leb tx (fifo_depth * ncycles_processing)
+            (* the maximum tx will be (fifo_depth + 1) * ncycles_processing
+               and the FIFO status will be full *)
             then s' = BUSY (tx + (ncycles_processing))
             (* if FIFO is full, you can't send more data *)
           else False
