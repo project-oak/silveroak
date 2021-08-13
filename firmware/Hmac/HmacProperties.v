@@ -5,6 +5,7 @@ Require Import Coq.ZArith.ZArith.
 Require Import bedrock2.Array.
 Require Import bedrock2.Map.Separation.
 Require Import bedrock2.Map.SeparationLogic.
+Require Import bedrock2.Lift1Prop.
 Require Import bedrock2.ProgramLogic.
 Require Import bedrock2.Scalars.
 Require Import bedrock2.Semantics.
@@ -138,6 +139,18 @@ Section Proofs.
     congruence.
   Qed.
 
+  Lemma invert_read_digest: forall b d i v s,
+      0 <= \[i] < 8 ->
+      read_step 4 (IDLE b d)
+                (/[TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET] ^- i ^* /[4]) v s ->
+      s = IDLE b d /\ v = /[le_combine (List.firstn 4 (List.skipn (Z.to_nat \[i] * 4) b))].
+  Proof.
+    intros.
+    remember (/[TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET] ^- i ^* /[4]) as a.
+    inversion H0. subst. split; [reflexivity|].
+    f_equal. f_equal. f_equal. f_equal. ZnWords.
+  Qed.
+
   (* not needed in this file directly, but needed at proof linking time to discharge
      assumption in AbsMMIOWritePropertiesUnique *)
   Lemma execution_unique (t : trace) s1 s2 :
@@ -240,6 +253,59 @@ Section Proofs.
     ecancel_done.
   Qed.
 
+  Lemma isolate_scalar32_of_bytarray: forall (addr addr': word) values,
+    let n := Z.to_nat (word.unsigned (word.sub addr' addr)) in
+    (n + 4 <= Datatypes.length values)%nat ->
+    iff1 (bytearray addr values)
+         (bytearray addr (List.firstn n values) *
+          scalar32 addr' (word.of_Z (le_combine (List.firstn 4 (List.skipn n values)))) *
+          bytearray (word.add addr' (word.of_Z 4)) (List.skipn (n + 4) values))%sep.
+  Proof.
+    intros.
+    rewrite <- (List.firstn_skipn n values) at 1.
+    rewrite <- (List.firstn_skipn 4 (List.skipn n values)) at 1.
+    do 2 rewrite (array_append ptsto).
+    cancel.
+    cancel_seps_at_indices 0%nat 0%nat. {
+      unfold scalar32, truncated_word, truncated_scalar, littleendian, ptsto_bytes.ptsto_bytes.
+      f_equal. 1: ZnWords.
+      replace (bytes_per (width:=32) access_size.four)
+        with (Datatypes.length (List.firstn 4 (List.skipn n values))). 2: {
+        rewrite List.firstn_length. rewrite min_l. 1: reflexivity.
+        rewrite List.skipn_length. lia.
+      }
+      rewrite word.unsigned_of_Z_nowrap. 2: {
+        match goal with
+        | |- context[le_combine ?x] =>
+          pose proof (le_combine_bound x) as P
+        end.
+        rewrite List.firstn_length in P. rewrite min_l in P by ZnWords.
+        exact P.
+      }
+      remember (List.firstn 4 (List.skipn n values)) as l.
+      assert (List.length l = 4%nat) as HL. {
+        subst l. rewrite List.firstn_length. rewrite min_l. 1: reflexivity.
+        rewrite List.skipn_length. lia.
+      }
+      rewrite <- (le_split_combine _ 4) at 1. 2: {
+        symmetry. exact HL.
+      }
+      destruct l as [|b0 l]. 1: discriminate HL.
+      destruct l as [|b1 l]. 1: discriminate HL.
+      destruct l as [|b2 l]. 1: discriminate HL.
+      destruct l as [|b3 l]. 1: discriminate HL.
+      destruct l as [|b4 l]. 2: discriminate HL.
+      clear HL.
+      reflexivity.
+    }
+    cancel_seps_at_indices 0%nat 0%nat. {
+      f_equal.
+      - rewrite ?List.firstn_length. rewrite List.skipn_length. ZnWords.
+      - rewrite List.skipn_skipn. f_equal. lia.
+    }
+    ecancel_done.
+  Qed.
+
   Lemma load_four_of_bytearray (addr addr': word) (values : list byte) R m
     (Hsep : sep (bytearray addr values) R m)
     : let n := Z.to_nat (word.unsigned (word.sub addr' addr)) in
@@ -248,41 +314,93 @@ Section Proofs.
       Some (word.of_Z (le_combine (List.firstn 4 (List.skipn n values)))).
   Proof.
     intros.
-    rewrite <- (List.firstn_skipn n values) in Hsep.
-    rewrite <- (List.firstn_skipn 4 (List.skipn n values)) in Hsep.
-    do 2 seprewrite_in (array_append ptsto) Hsep.
-    rewrite firstn_length in Hsep. rewrite min_l in Hsep by lia.
-    unfold Memory.load, Memory.load_Z.
-    pose proof ptsto_bytes.load_bytes_of_sep as P.
-    specialize P with (bs := tuple.of_list (List.firstn 4 (List.skipn n values))).
-    replace (bytes_per (width:=32) access_size.four)
-      with (Datatypes.length (List.firstn 4 (List.skipn n values))). 2: {
-      rewrite List.firstn_length. rewrite min_l. 1: reflexivity.
-      rewrite List.skipn_length. lia.
-    }
-    erewrite P; clear P. 2: {
+    eapply load_four_of_sep_32bit. 1: reflexivity.
+    seprewrite_in isolate_scalar32_of_bytarray Hsep. 1: subst n; eassumption.
+    ecancel_assumption.
+  Qed.
+
+  Lemma store_four_to_bytearray (addr addr' v: word) (values : list byte) R m (post: mem -> Prop):
+    sep (bytearray addr values) R m ->
+    let n := Z.to_nat (word.unsigned (word.sub addr' addr)) in
+    (n + 4 <= List.length values)%nat ->
+    (forall m', sep (bytearray addr (List.upds values n (le_split 4 (word.unsigned v)))) R m' ->
+               post m') ->
+    exists m', Memory.store access_size.four m addr' v = Some m' /\ post m'.
+  Proof.
+    intros Hsep n HL HPost.
+    eapply store_four_of_sep.
+    - seprewrite_in isolate_scalar32_of_bytarray Hsep. 1: subst n; eassumption.
+      ecancel_assumption.
+    - clear dependent m. intros m Hsep. eapply HPost.
+      SeparationLogic.seprewrite isolate_scalar32_of_bytarray. {
+        rewrite List.upds_length. subst n. exact HL.
+      }
       use_sep_assumption.
       cancel.
-      cancel_seps_at_indices 0%nat 0%nat. 2: ecancel_done.
-      unfold ptsto_bytes.ptsto_bytes.
-      rewrite tuple.to_list_of_list.
-      f_equal.
-      ZnWords.
-    }
-    f_equal.
-    remember (List.firstn 4 (List.skipn n values)) as l.
-    clear Hsep.
-    assert (List.length l = 4%nat) as HL. {
-      subst l. rewrite List.firstn_length. rewrite min_l. 1: reflexivity.
-      rewrite List.skipn_length. lia.
-    }
-    destruct l as [|b0 l]. 1: discriminate HL.
-    destruct l as [|b1 l]. 1: discriminate HL.
-    destruct l as [|b2 l]. 1: discriminate HL.
-    destruct l as [|b3 l]. 1: discriminate HL.
-    destruct l as [|b4 l]. 2: discriminate HL.
-    clear HL.
-    reflexivity.
+      unfold List.upds. change (Z.to_nat \[addr' ^- addr]) with n.
+      cancel_seps_at_indices 0%nat 1%nat. {
+        f_equal.
+        (* TODO this kind of list simplification should be automated *)
+        rewrite List.skipn_app.
+        rewrite List.skipn_all2. 2: {
+          rewrite List.firstn_length. lia.
+        }
+        rewrite List.app_nil_l.
+        rewrite length_le_split.
+        rewrite (List.firstn_all2 (n := Datatypes.length values - n)%nat). 2: {
+          rewrite length_le_split. lia.
+        }
+        rewrite List.firstn_length.
+        replace (n - Init.Nat.min n (Datatypes.length values))%nat with 0%nat by lia.
+        rewrite List.skipn_O.
+        rewrite firstn_app.
+        rewrite List.firstn_all2. 2: {
+          rewrite length_le_split. reflexivity.
+        }
+        replace (4 - Datatypes.length (le_split 4 \[v]))%nat with 0%nat. 2: {
+          rewrite length_le_split. reflexivity.
+        }
+        rewrite List.firstn_O.
+        rewrite List.app_nil_r.
+        rewrite le_combine_split.
+        change (Z.of_nat 4 * 8) with 32.
+        rewrite word.wrap_unsigned.
+        rewrite word.of_Z_unsigned.
+        reflexivity.
+      }
+      cancel_seps_at_indices 0%nat 0%nat. {
+        f_equal.
+        rewrite firstn_app.
+        rewrite (@List.firstn_all2 _ n (List.firstn n values)).  2: {
+          rewrite List.firstn_length. lia.
+        }
+        rewrite List.firstn_length.
+        replace (n - Init.Nat.min n (Datatypes.length values))%nat with O by lia.
+        rewrite List.firstn_O.
+        rewrite List.app_nil_r.
+        reflexivity.
+      }
+      cancel_seps_at_indices 0%nat 0%nat. {
+        f_equal.
+        rewrite List.skipn_app.
+        rewrite (List.skipn_all (n + 4) (List.firstn n values)). 2: {
+          rewrite List.firstn_length. lia.
+        }
+        rewrite List.app_nil_l.
+        rewrite List.firstn_length.
+        replace (n + 4 - Init.Nat.min n (Datatypes.length values))%nat with 4%nat by lia.
+        rewrite List.skipn_app.
+        rewrite (List.skipn_all 4 (List.firstn (Datatypes.length values - n) (le_split 4 \[v]))). 2: {
+          rewrite List.firstn_length. rewrite length_le_split. lia.
+        }
+        rewrite List.app_nil_l.
+        rewrite List.skipn_skipn.
+        f_equal.
+        rewrite List.firstn_length.
+        rewrite length_le_split.
+        lia.
+      }
+      ecancel_done.
   Qed.
 
   Lemma Zlandb: forall (b1 b2: bool),
@@ -677,7 +795,7 @@ Section Proofs.
     fun function_env =>
       forall tr (m: mem) (R : mem -> Prop) (s : state)
              (input digest_trash: list Byte.byte) (digest_addr: word),
-      Z.of_nat (length digest_trash) = 8 ->
+      Z.of_nat (length digest_trash) = 32 ->
       digest_addr <> word.of_Z 0 ->
       (bytearray digest_addr digest_trash * R)%sep m ->
       execution tr (CONSUMING input) ->
@@ -698,6 +816,7 @@ Section Proofs.
     program_logic_goal_for_function! b2_hmac_sha256_final.
   Proof.
     repeat straightline.
+    assert (List.length (sha256 input) = 32)%nat by case TODO.
     unfold1_cmd_goal; cbv beta match delta [cmd_body].
     repeat straightline.
     subst v.
@@ -770,38 +889,7 @@ Section Proofs.
              tryif unify m1 m2 then fail else clear dependent m1
            end.
     rename a3 into tr.
-
-    (* second while loop: *)
-    eapply (while ["digest"; "reg"; "done"; "i"]
-                  (fun remaining t m digest reg done i =>
-                     t = tr /\
-                     0 <= \[i] < 8 /\
-                     4 * \[i] + remaining = 32 /\
-                     digest = digest_addr /\
-                     (bytearray digest (List.firstn (Z.to_nat (4 * \[i])) (sha256 input) ++
-                                        List.skipn (Z.to_nat (4 * \[i])) digest_trash) * R)%sep m)
-                  (Z.lt_wf 0) 32).
-    { repeat straightline. }
-    { (* invariant holds initially: *)
-      loop_simpl. subst i. rewrite word.unsigned_of_Z_0. ssplit; try reflexivity.
-      change (Z.to_nat 0) with O. rewrite List.firstn_O. rewrite List.skipn_O. assumption. }
-    loop_simpl.
-    repeat straightline.
-    { (* running loop body satisfies invariant *)
-      subst br. simpl_conditionals. subst i. rename x5 into i.
-      straightline_call. 1: reflexivity. 2: eassumption. 1: eapply read_digest with (i0 := \[i]).
-      all: try reflexivity.
-      1-2: ZnWords.
-      repeat straightline.
-      case TODO. (* store, i++, invariant holds again *)
-    }
-    (* postcondition holds at end  *)
-    subst br. simpl_conditionals. subst i. rename x5 into i.
-    replace (4 * \[i]) with 32 in * by ZnWords.
-    rewrite List.firstn_all2 in * by ZnWords.
-    rewrite List.skipn_all2 in * by ZnWords.
-    rewrite List.app_nil_r in *.
-    subst result.
+    clear dependent v.
     match goal with
     | H: Z.testbit \[_ ^>> _] 0 = true |- _ => rename H into T
     end.
@@ -812,8 +900,141 @@ Section Proofs.
     rewrite word.unsigned_of_Z_0 in T.
     rewrite Z.shiftr_0_r in T.
     rewrite T in *.
+
+    (* second while loop: *)
+    eapply (while ["digest"; "reg"; "done"; "i"]
+                  (fun remaining t m digest reg done i =>
+                     execution t (IDLE (sha256 input)
+                                       {| intr_enable := /[0];
+                                          hmac_done := false;
+                                          hmac_en := false;
+                                          sha_en := true;
+                                          swap_endian := true;
+                                          swap_digest := false
+                                       |}) /\
+                     0 <= \[i] <= 8 /\
+                     0 <= remaining <= 32 /\
+                     4 * \[i] + remaining = 32 /\
+                     digest = digest_addr /\
+                     (bytearray digest (List.firstn (Z.to_nat (4 * \[i])) (sha256 input) ++
+                                        List.skipn (Z.to_nat (4 * \[i])) digest_trash) * R)%sep m)
+                  (Z.lt_wf 0) 32).
+    { repeat straightline. }
+    { (* invariant holds initially: *)
+      loop_simpl. subst i. rewrite word.unsigned_of_Z_0.
+      ssplit; try reflexivity; try assumption; try lia. }
+    loop_simpl.
+    repeat straightline.
+    { (* running loop body satisfies invariant *)
+      subst br. simpl_conditionals. subst i. rename x5 into i.
+      straightline_call. 1: reflexivity. 2: eassumption. 1: eapply read_digest with (i0 := \[i]).
+      all: try reflexivity.
+      1-2: ZnWords.
+      repeat straightline.
+      eapply store_four_to_bytearray. 1: ecancel_assumption.
+      { subst a2. rewrite List.app_length. rewrite List.firstn_length. rewrite List.skipn_length.
+        ZnWords_pre.
+        Z.div_mod_to_equations.
+        (* Note: On Coq master of Aug 12, 2021, this goal is just solved by `lia`, but
+           with Coq 8.13.2, `lia` hangs, so we need more manual steps: *)
+        assert (2 ^ 32 <> 0) as NZ by (clear; lia).
+        repeat match goal with
+               | H: 2 ^ 32 = 0 -> _ |- _ => clear H
+               | H: 2 ^ 32 < 0 -> _ |- _ => clear H
+               | H: 0 < 2 ^ 32 -> _ |- _ => specialize (H eq_refl)
+               | H: 2 ^ 32 <> 0 -> _ |- _ => specialize (H NZ)
+               end.
+        subst.
+        clear H NZ.
+        clear dependent word.
+        Zify.zify.
+        repeat match goal with
+               | H: _ /\ _ |- _ => destruct H
+               | H: _ \/ _ |- _ => destruct H
+               end;
+        lia.
+      }
+      intros m Hm.
+      repeat straightline.
+      exists (v - 4).
+      split; [|lia].
+      split. {
+        subst a.
+        eapply execution_step_read with (sz := 4%nat). 1: eassumption. 1: reflexivity.
+        cbn [state_machine.read_step hmac_state_machine] in *.
+        match goal with
+        | H: read_step 4 ?s ?a ?v ?s1 |- read_step 4 ?s ?a ?v ?s2 =>
+          replace s2 with s1 at 2; [exact H|]
+        end.
+        eapply invert_read_digest with (i := i0). 1: lia. 1: eassumption.
+      }
+      split; [ZnWords|].
+      split; [ZnWords|].
+      split; [ZnWords|].
+      split; [reflexivity|].
+      use_sep_assumption.
+      cancel.
+      cancel_seps_at_indices 0%nat 0%nat. {
+        f_equal.
+        rewrite List.upds_app2. 2: {
+          rewrite List.firstn_length.
+          (* Note: `ZnWords` should just work here, but when it calls `lia`, `lia` hangs. *)
+          subst a2. rewrite H9. revert dependent v. clear -word_ok. intros.
+          pose proof word.unsigned_range i0.
+          replace (Init.Nat.min (Z.to_nat (4 * \[i0])) 32) with (Z.to_nat (4 * \[i0])) by lia.
+          replace \[digest_addr ^+ i0 ^* /[4] ^- digest_addr] with \[i0 ^* /[4]] by ZnWords.
+          ZnWords.
+        }
+        subst i.
+        replace (Z.to_nat (4 * \[i0 ^+ /[1]])) with (Z.to_nat (4 * \[i0]) + 4)%nat by ZnWords.
+        rewrite List.firstn_add. rewrite <- List.app_assoc.
+        f_equal.
+        unfold List.upds.
+        rewrite ?List.firstn_length.
+        replace (Z.to_nat \[a2 ^- digest_addr] -
+                 Init.Nat.min (Z.to_nat (4 * \[i0])) (Datatypes.length (sha256 input)))%nat
+          with 0%nat.
+        2: {
+          (* Note: `ZnWords` should just work here, but when it calls `lia`, `lia` hangs. *)
+          subst a2. rewrite H9. revert dependent v. clear -word_ok. intros.
+          pose proof word.unsigned_range i0.
+          replace (Init.Nat.min (Z.to_nat (4 * \[i0])) 32) with (Z.to_nat (4 * \[i0])) by lia.
+          replace \[digest_addr ^+ i0 ^* /[4] ^- digest_addr] with \[i0 ^* /[4]] by ZnWords.
+          ZnWords.
+        }
+        rewrite List.firstn_O. rewrite List.app_nil_l.
+        rewrite Nat.add_0_r, Nat.sub_0_r.
+        rewrite List.skipn_length.
+        edestruct invert_read_digest as (_ & E). 2: eassumption. 1: ZnWords. subst.
+        rewrite word.unsigned_of_Z_nowrap. 2: {
+          match goal with
+          | |- context[le_combine ?x] =>
+            pose proof (le_combine_bound x) as P
+          end.
+          rewrite List.firstn_length in P. rewrite min_l in P by ZnWords.
+          exact P.
+        }
+        rewrite le_split_combine. 2: {
+          rewrite List.firstn_length. ZnWords.
+        }
+        rewrite List.firstn_firstn.
+        replace (Init.Nat.min (Datatypes.length digest_trash - Z.to_nat (4 * \[i0])) 4) with 4%nat
+          by ZnWords.
+        f_equal.
+        - f_equal. f_equal. ZnWords.
+        - rewrite List.firstn_length. rewrite List.skipn_length.
+          rewrite List.skipn_skipn. f_equal. ZnWords.
+      }
+      ecancel_done.
+    }
+    (* postcondition holds at end  *)
+    subst br. simpl_conditionals. subst i. rename x5 into i.
+    replace (4 * \[i]) with 32 in * by ZnWords.
+    rewrite List.firstn_all2 in * by ZnWords.
+    rewrite List.skipn_all2 in * by ZnWords.
+    rewrite List.app_nil_r in *.
+    subst result.
     auto.
   Qed.
-
 
 End Proofs.
