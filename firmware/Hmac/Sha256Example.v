@@ -19,6 +19,6 @@ Definition b2_sha256: func :=
   ("b2_sha256",
    ([digest; msg; msg_len], [], bedrock_func_body:(
      b2_hmac_sha256_init();
-     b2_hmac_sha256_update(msg, msg_len);
+     unpack! ignored_result = b2_hmac_sha256_update(msg, msg_len);
      unpack! ignored_result = b2_hmac_sha256_final(digest)
   ))).

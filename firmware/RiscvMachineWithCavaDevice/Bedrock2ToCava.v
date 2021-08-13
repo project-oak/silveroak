@@ -113,7 +113,7 @@ Section WithParams.
       ExprImp.valid_funs (map.of_list fs) ->
       NoDup (map fst fs) ->
       compile compile_ext_call (map.of_list fs) = Some (instrs, pos_map, required_stack_space) ->
-      Forall (fun i : Instruction => verify i RV32I) instrs ->
+      Forall (fun i : Instruction => verify i RV32IM) instrs ->
       -2^20 <= f_entry_rel_pos + word.signed (word.sub p_functions p_call) < 2^20 ->
       map.get (map.of_list fs) f_entry_name = Some ([], [], fbody) ->
       map.get pos_map f_entry_name = Some f_entry_rel_pos ->
@@ -163,7 +163,7 @@ Section WithParams.
           | H: WeakestPrecondition.cmd _ _ _ _ _ _ |- _ => exact H
           end. }
       unfold LowerPipeline.machine_ok; cbn -[map.get map.empty instrencode program].
-      pose proof ptsto_bytes_to_program (iset := RV32I) as P.
+      pose proof ptsto_bytes_to_program (iset := RV32IM) as P.
       match goal with
       | |- context[?Q] => lazymatch Q with
                           | program _ ?p ?i => replace Q with (ptsto_bytes p (instrencode i))
@@ -197,16 +197,16 @@ Section WithParams.
       simp.
       eexists _, {| getMachine := {| getLog := [] |} |}, _; cbn -[map.get map.empty instrencode].
       split. 1: exact Rn.
-      pose proof ptsto_bytes_to_program (iset := RV32I) as P. cbn in P.
+      pose proof ptsto_bytes_to_program (iset := RV32IM) as P. cbn in P.
       match goal with
       | |- context[?Q] => lazymatch Q with
-                          | ptsto_bytes ?p (instrencode ?i) => replace Q with (program RV32I p i)
+                          | ptsto_bytes ?p (instrencode ?i) => replace Q with (program RV32IM p i)
                           end
       end.
       2: { eapply iff1ToEq. symmetry. eapply P; eassumption. }
       match goal with
       | |- context[?Q] => lazymatch Q with
-                          | ptsto_bytes ?p (instrencode ?i) => replace Q with (program RV32I p i)
+                          | ptsto_bytes ?p (instrencode ?i) => replace Q with (program RV32IM p i)
                           end
       end.
       2: {
