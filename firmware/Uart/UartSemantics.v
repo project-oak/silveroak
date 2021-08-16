@@ -116,14 +116,15 @@ Section WithParameters.
 
   Definition read_step
     (s : state) (r : Register) (val : word) (s' : state) : Prop :=
+    status_matches_state s' val = true /\
     match r with
     | STATUS =>
         match s with
-        | IDLE => status_matches_state s' val = true /\ s' = IDLE
+        | IDLE => s' = IDLE
         | BUSY n =>
             (* tx can non-deterministically finish sending *)
-            (status_matches_state s' val = true /\ s' = IDLE)
-            \/ (exists n', n = S n' /\ status_matches_state s' val = true /\ s' = BUSY n')
+            (s' = IDLE)
+            \/ (exists n', n = S n' /\ s' = BUSY n')
         end
     | _ => False (* cannot read any other regs *)
     end.

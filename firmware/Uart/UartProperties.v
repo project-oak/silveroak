@@ -58,7 +58,6 @@ Section Proofs.
          constants [Properties.word_cst]).
 
   Ltac solve_status_valid :=
-      eexists; ssplit; try reflexivity;
       cbv [is_flag_set]; boolsimpl;
       repeat lazymatch goal with
              | |- (_ && _)%bool = true => apply Bool.andb_true_iff; split
@@ -91,7 +90,7 @@ Section Proofs.
       exists (word.or (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXEMPTY_BIT))
                       (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXIDLE_BIT))).
       exists IDLE.
-      solve_status_valid.
+      split; [ solve_status_valid | reflexivity ].
     }
     { (* s = BUSY n *)
       destruct (Nat.eqb txlvl 0)%bool eqn:H.
@@ -100,14 +99,14 @@ Section Proofs.
         exists (word.or (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXEMPTY_BIT))
                         (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXIDLE_BIT))).
         exists IDLE.
-        left.
-        solve_status_valid. }
+        split; [ solve_status_valid | left; reflexivity ].
+      }
       { (* s = BUSY txlvl where txlvl <> 0 *)
         exists (word.or (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXEMPTY_BIT))
                         (word.slu (word.of_Z 1) (word.of_Z UART_STATUS_TXIDLE_BIT))).
         exists IDLE.
-        left.
-        solve_status_valid. }
+        split; [ solve_status_valid | left; reflexivity ].
+      }
     }
   Qed.
 
@@ -152,18 +151,29 @@ Section Proofs.
     end.
     {
       separate_flags.
-      rewrite H4 in H2. discriminate.
+      lazymatch goal with
+      | H0: is_flag_set _ ?z = true, H1: negb (is_flag_set _ ?z) = true |- _ => rewrite H0 in H1;
+          discriminate
+      end.
     }
     {
       destruct x.
       {
         simpl in *.
         separate_flags.
-        rewrite H2 in H4. discriminate. }
+        lazymatch goal with
+        | H0: is_flag_set _ ?z = true, H1: negb (is_flag_set _ ?z) = true |- _ => rewrite H0 in H1;
+            discriminate
+        end.
+      }
       {
         simpl in *.
         separate_flags.
-        rewrite H2 in H4. discriminate. }
+        lazymatch goal with
+        | H0: is_flag_set _ ?z = true, H1: negb (is_flag_set _ ?z) = true |- _ => rewrite H0 in H1;
+            discriminate
+        end.
+      }
     }
     {
       lazymatch goal with
