@@ -45,15 +45,58 @@ Ltac stepsimpl :=
   repeat first [ progress
                    cbn [fst snd step denote_type absorb_any
                             split_absorbed_denotation combine_absorbed_denotation
-                            unary_semantics binary_semantics ]
+                            unary_semantics binary_semantics eqb ]
                | progress autorewrite with stepsimpl ].
 
+(* TODO: move to a more general file *)
 Lemma step_index {t n i} (x : denote_type (Vec t n))
       (idx : denote_type (BitVec i)) :
   step (@index _ t n i) tt (x, (idx, tt))
   = (tt, nth (N.to_nat idx) (List.resize default n x) default).
 Proof. reflexivity. Qed.
 Hint Rewrite @step_index using solve [eauto] : stepsimpl.
+
+Lemma resize_0 {A} (d : A) ls : List.resize d 0 ls = [].
+Proof.
+  cbv [List.resize]. autorewrite with push_firstn natsimpl. reflexivity.
+Qed.
+Lemma resize_succ {A} (d : A) n ls :
+  List.resize d (S n) ls = hd d ls :: List.resize d n (tl ls).
+Proof.
+  cbv [List.resize].
+  destruct ls; autorewrite with push_firstn natsimpl; reflexivity.
+Qed.
+
+(* TODO: move to a more general file *)
+Lemma step_uncons {t n}  (x : denote_type [Vec t (S n)]) :
+  step (@uncons _ t n) tt x = (tt, (hd default (fst x), tl (fst x))).
+Proof. destruct x; reflexivity. Qed.
+Hint Rewrite @step_uncons using solve [eauto] : stepsimpl.
+
+(* TODO: move to a more general file *)
+Lemma step_stateless {i o} (f : Circuit [] i o) (x : denote_type i) :
+  step f tt x = (tt, snd (step f tt x)).
+Proof.
+  rewrite (surjective_pairing (step f tt x)).
+  destruct (fst (step f tt x)). reflexivity.
+Qed.
+
+(* TODO: move to a more general file *)
+Lemma step_map2 {t u v n} (f : Circuit [] [t;u] v)
+      (x : denote_type [Vec t n; Vec u n]) :
+  step (@Expr.map2 _ t u v n f) tt x
+  = (tt, map2 (fun (x1 : denote_type t) (x2 : denote_type u) =>
+                 snd (step f tt (x1,(x2,tt))))
+              (List.resize default n (fst x))
+              (List.resize default n (fst (snd x)))).
+Proof.
+  revert x f; induction n; cbn [Expr.map2]; stepsimpl;
+    intros; destruct_products; logical_simplify; stepsimpl;
+      [ rewrite resize_0; reflexivity | ].
+  rewrite step_stateless, IHn.
+  rewrite !resize_succ. reflexivity.
+Qed.
+Hint Rewrite @step_map2 using solve [eauto] : stepsimpl.
 
 Lemma step_rotr n (x : denote_type sha_word) :
   step (rotr n) tt (x,tt) = (tt, SHA256.ROTR (N.of_nat n) x).
@@ -195,34 +238,183 @@ Lemma step_sha256_round_constants (round : denote_type sha_round) :
 Proof. reflexivity. Qed.
 Hint Rewrite @step_sha256_round_constants using solve [eauto] : stepsimpl.
 
+(* TODO: move *)
+Module List.
+  Definition slice {A} (d : A) ls start len : list A :=
+    List.resize d len (skipn start ls).
+End List.
+
+(*
+  (* SHA-256 inner core *)
+  (* `initial_digest` must be held until done *)
+  Definition sha256_inner : Circuit _ [Bit; sha_block; sha_digest; Bit] (sha_digest ** Bit) :=
+    {{
+    fun block_valid block initial_digest clear =>
+
+    let/delay '(current_digest, message_schedule, done; round) :=
+
+      let inc_round := !done in
+      let start := (* done && *) block_valid in
+
+      let k_i := `sha256_round_constants` round in
+      let '(w0,w1, _, _, _, _, _, _
+           , _,w9, _, _, _, _,w14;_ ) := `vec_as_tuple (n:=15)` message_schedule in
+      let update_schedule := round >= `K 15` in
+      let w16 :=
+        if update_schedule
+        then `sha256_message_schedule_update` w0 w1 w9 w14
+        else `index` message_schedule round in
+      let w :=
+        if update_schedule
+        then message_schedule <<+ w16
+        else message_schedule in
+
+      let next_digest := `sha256_compress` current_digest k_i
+        (`index` message_schedule (
+          if round >= `K 16`
+          then `K 15`
+          else round)
+        ) in
+
+      let done := (round == `K 64`) | done in
+      let round := if inc_round then round + `K 1` else round in
+
+      if start | clear
+      then (initial_digest, block, `Constant (Bit**sha_round) (0, 0)`)
+      else if done then (current_digest, message_schedule, done, round)
+      else (next_digest, w, done, round)
+
+      initially (((sha256_initial_digest, (repeat 0 16, (1, 0))))
+      : denote_type (sha_digest ** sha_block ** Bit ** sha_round )) in
+
+    let updated_digest := `map2 {{fun a b => ( a + b ) }}` initial_digest current_digest in
+    (updated_digest, done)
+
+  }}.
+ *)
+
+(*
+  if block_valid OR clear is true:
+     new_state := (initial_digest, block, 0, 0)
+     out := (map2 add initial_digest initial_digest, 0)
+  otherwise:
+     if done is false:
+        new_round := round + 1
+     if done is true OR round = 64:
+        new_done := true
+        new_state := (current_digest, message_schedule, 1, new_round)
+        out := (map2 add initial_digest current_digest, 1)
+     otherwise:
+        if round >= 15:
+           next_digest := compress current_digest k[round] message_schedule[15]
+           new_state := (next_digest, updated message schedule, 0, new_round)
+           out := (map2 add initial_digest next_digest, 0)
+        otherwise:
+           next_digest := compress current_digest k[round] message_schedule[round]
+           new_state := (next_digest, message_schedule, 0, new_round)
+           out := (map2 add initial_digest next_digest, 0)
+
+ *)
+Print SHA256.sha256.
+Definition sha256_inner_invariant
+           (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
+           msg (H : list N) (i : nat) : Prop :=
+  let '(current_digest, (message_schedule, (done, round))) := state in
+  (* either we're done *)
+  (done = 1%N)
+  (* ...or we're not done *)
+  \/ (done = 0%N
+     (* ...and the round is < 64 *)
+     /\ (round < 64)%N
+     (* ...and the message schedule is the expected slice of the message *)
+     /\ message_schedule = List.slice 0%N (SHA256.W msg i) (N.to_nat round - 15) 16
+     (* ...and the current digest is the expected digest *)
+     /\ current_digest = fold_left (SHA256.sha256_compress msg i)
+                                  (seq 0 (N.to_nat round)) H).
+
+Definition sha256_inner_pre
+           (input : denote_type [Bit; sha_block; sha_digest; Bit])
+           msg (i : nat) : Prop :=
+  let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
+  (* either clear is true, and the message ghost variable is empty *)
+  ((clear = 1%N /\ msg = repeat x00 16 /\ i = 0%nat)
+     (* or clear is false *)
+     \/ (clear = 0%N))
+  (* ...and the initial digest is the digest from the previous i *)
+  /\ initial_digest = fold_left (SHA256.sha256_step msg) (seq 0 i) SHA256.H0
+  (* ...and either the block is valid *)
+  /\ ((block_valid = 1%N
+      (* ...and the block is the expected slice of the message *)
+      /\ block = List.slice 0%N (SHA256.W msg i) 0 16)
+     (* ...or the block is not valid *)
+     \/ (block_valid = 0%N)).
+
+Definition sha256_inner_spec
+           (input : denote_type [Bit; sha_block; sha_digest; Bit])
+           (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
+           msg (i : nat) : denote_type (sha_digest ** Bit) :=
+  let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
+  let '(current_digest, (message_schedule, (done, round))) := state in
+  let next_digest := if (clear =? 1)%N
+                     then SHA256.H0
+                     else if (block_valid =? 1)%N
+                          then initial_digest
+                          else if (done =? 0)%N
+                               then SHA256.sha256_compress
+                                      msg i (List.resize 0%N 8 current_digest)
+                                      (N.to_nat round)
+                               else current_digest in
+  let next_done := if (clear =? 1)%N
+                   then 1%N
+                   else if (block_valid =? 1)%N
+                        then 0%N
+                        else if (done =? 0)%N
+                             then (if (round =? 63) then 1 else 0)%N
+                             else 1%N in
+  (map2 SHA256.add_mod (List.resize 0%N 8 initial_digest)
+        (List.resize 0%N 8 next_digest), next_done).
+
+(*
 Definition sha256_inner_spec
            (input : denote_type [Bit; sha_block; sha_digest; Bit])
            (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
            msg (i : nat)
   : denote_type (sha_digest ** sha_block ** Bit ** sha_round)
     * denote_type (sha_digest ** Bit) :=
-  let '(block_valid, (block, (initial_digest, clear))) := input in
+  let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
   let '(current_digest, (message_schedule, (done, round))) := state in
-  let inc_round := (done =? 0)%N in
-  let start := negb (block_valid =? 0)%N in
-  let t := N.to_nat round in
-  let next_message_schedule :=
-      List.resize 0%N 16 (firstn 16 (skipn (t + 1 - 16) (SHA256.W msg i))) in
-  let next_digest := SHA256.sha256_compress msg i current_digest t in
-  let next_done := if ((round =? 64)%N || negb (done =? 0)%N)%bool then 1%N else 0%N in
-  let next_round := if inc_round then (round + 1)%N else round in
-  let next_state := (next_digest, (next_message_schedule, (next_done, next_round))) in
-  let out := (map2 N.add initial_digest next_digest, next_done) in
-  (next_state, out).
+  let add_to_initial := map2 SHA256.add_mod (List.resize 0%N 8 initial_digest) in
+  if negb (N.lor block_valid clear =? 0)%N
+  then
+    (* return dummy values *)
+    let new_state := (initial_digest, (block, (0%N, 0%N))) in
+    let out := (add_to_initial initial_digest, 0%N) in
+    (new_state, out)
+  else
+    let new_round := (if (N.lnot done 1 =? 0)%N then round + 1 else round)%N in
+    if (negb (done =? 0)%N || (round =? 64)%N)%bool
+    then
+      (* computation done; hold current values *)
+      let new_state := (current_digest, (message_schedule, (1%N, new_round))) in
+      let out := (add_to_initial current_digest, 1%N) in
+      (new_state, out)
+    else
+      (* perform compression *)
+      let t := N.to_nat round in
+      let next_digest :=
+          SHA256.sha256_compress msg i (List.resize 0%N 8 current_digest) t in
+      let next_message_schedule :=
+          if (15 <=? round)%N
+          then List.slice 0%N (SHA256.W msg i) (t + 1 - 16) 16
+          else message_schedule in
+      let new_state := (next_digest, (next_message_schedule, (0%N, new_round))) in
+      let out := (add_to_initial next_digest, 0%N) in
+      (new_state, out).
+*)
 
 Definition state_of {s i o} (c : @Circuit denote_type s i o) : type := s.
 Compute state_of sha256_inner.
 
-(* TODO: move *)
-Module List.
-  Definition slice {A} (d : A) ls start len : list A :=
-    List.resize d len (skipn start ls).
-End List.
 
 Lemma nth_skipn {A} (d : A) n i ls :
   nth i (skipn n ls) d = nth (n + i) ls d.
@@ -265,6 +457,66 @@ Proof.
   rewrite !slice_map_nth. cbn [seq List.map hd]. f_equal; lia.
 Qed.
 
+(* TODO: move *)
+Lemma nth_slice {A} (d : A) ls i start len :
+  nth i (List.slice d ls start len) d
+  = if i <? len then nth (start + i) ls d else d.
+Proof.
+  rewrite !slice_map_nth; destruct_one_match;
+    autorewrite with push_nth; [ | reflexivity ].
+  f_equal; lia.
+Qed.
+Hint Rewrite @nth_slice using solve [eauto] : push_nth.
+
+(* TODO: move *)
+Lemma slice_snoc {A} (d : A) ls start len :
+  List.slice d ls start len ++ [nth (start + len) ls d]
+  = List.slice d ls start (S len).
+Proof.
+  rewrite !slice_map_nth. autorewrite with pull_snoc.
+  reflexivity.
+Qed.
+
+(* TODO: move *)
+Lemma slice_0 {A} (d : A) ls len :
+  List.slice d ls 0 len = List.resize d len ls.
+Proof. reflexivity. Qed.
+
+(* TODO: move *)
+Lemma resize_firstn {A} (d : A) ls n m :
+  n <= m ->
+  List.resize d n (firstn m ls) = List.resize d n ls.
+Proof.
+  intros; cbv [List.resize]. autorewrite with push_firstn natsimpl push_length.
+  repeat (f_equal; try lia).
+Qed.
+
+(* TODO: move to SHA256Properties.v *)
+Lemma sha256_compress_length msg i H t :
+  length (SHA256.sha256_compress msg i H t) = 8.
+Proof. reflexivity. Qed.
+Hint Rewrite @sha256_compress_length using solve [eauto] : push_length.
+Lemma fold_left_sha256_compress_length msg i H ts :
+  length H = 8 ->
+  length (fold_left (SHA256.sha256_compress msg i) ts H) = 8.
+Proof.
+  intros. apply fold_left_invariant with (I:=fun H => length H = 8); auto.
+Qed.
+Hint Rewrite @fold_left_sha256_compress_length using solve [length_hammer]
+  : push_length.
+Lemma sha256_step_length msg H i :
+  length H = 8 -> length (SHA256.sha256_step msg H i) = 8.
+Proof. intros; cbv [SHA256.sha256_step]. length_hammer. Qed.
+Hint Rewrite @sha256_step_length using solve [length_hammer] : push_length.
+Lemma fold_left_sha256_step_length msg H idxs :
+  length H = 8 -> length (fold_left (SHA256.sha256_step msg) idxs H) = 8.
+Proof.
+  intros. apply fold_left_invariant with (I:=fun H => length H = 8); auto.
+  intros; length_hammer.
+Qed.
+Hint Rewrite @fold_left_sha256_step_length using solve [length_hammer]
+  : push_length.
+
 Ltac is_projection_from_step e :=
   lazymatch e with
   | fst ?e' => is_projection_from_step e'
@@ -282,59 +534,165 @@ Ltac destruct_step_pair_let :=
            rewrite (surjective_pairing p)
          end.
 
-Print SHA256.sha256_step.
+(* TODO : move *)
+Ltac boolsimpl_hyps :=
+  autorewrite with boolsimpl in *; cbn [negb andb orb xorb] in *;
+  repeat lazymatch goal with
+         | H : (_ || _)%bool = true |- _ => apply Bool.orb_true_iff in H; destruct H
+         | H : (_ || _)%bool = false |- _ => apply Bool.orb_false_iff in H; destruct H
+         | H : (_ && _)%bool = true |- _ => apply Bool.andb_true_iff in H; destruct H
+         | H : (_ && _)%bool = false |- _ => apply Bool.andb_false_iff in H; destruct H
+         | H : negb _ = true |- _ => apply Bool.negb_true_iff in H
+         | H : negb _ = false |- _ => apply Bool.negb_false_iff in H
+         end.
+
+(* TODO: move *)
+Module N.
+
+  Lemma ltb_ge x y : N.ltb x y = false <-> (x >= y)%N.
+  Proof.
+    destr (x <? y)%N; split; (discriminate || lia).
+  Qed.
+  Lemma leb_gt x y : N.leb x y = false <-> (x > y)%N.
+  Proof.
+    destr (x <=? y)%N; split; (discriminate || lia).
+  Qed.
+
+  Ltac bool_to_prop :=
+    repeat lazymatch goal with
+           | H : (_ =? _)%N = true |- _ => rewrite N.eqb_eq in H
+           | H : (_ =? _)%N = false |- _ => rewrite N.eqb_neq in H
+           | H : (_ <=? _)%N = true |- _ => rewrite N.leb_le in H
+           | H : (_ <=? _)%N = false |- _ => rewrite leb_gt in H
+           | H : (_ <? _)%N = true |- _ => rewrite N.ltb_lt in H
+           | H : (_ <? _)%N = false |- _ => rewrite N.ltb_ge in H
+           end.
+End N.
+
+Lemma apply_if {A B} (f : A -> B) (b : bool) x y : f (if b then x else y) = if b then f x else f y.
+Proof. destruct b; reflexivity. Qed.
+Lemma fst_if {A B} (b : bool) (x y : A * B) : fst (if b then x else y) = if b then fst x else fst y.
+Proof. apply apply_if. Qed.
+Lemma snd_if {A B} (b : bool) (x y : A * B) : snd (if b then x else y) = if b then snd x else snd y.
+Proof. apply apply_if. Qed.
+Hint Rewrite @fst_if @snd_if using solve [eauto] : tuple_if.
+
+Lemma step_sha256_inner_invariant
+      (input : denote_type [Bit; sha_block; sha_digest; Bit])
+      (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
+      msg i :
+  sha256_inner_pre input msg i ->
+  sha256_inner_invariant state msg (fst (snd (snd input))) i ->
+  sha256_inner_invariant
+    (fst (step sha256_inner state input)) msg (fst (snd (snd input))) i.
+Proof.
+  destruct input as (block_valid, (block, (initial_digest, (clear, [])))).
+  destruct state as (current_digest, (message_schedule, (done, round))).
+  pose (t:=round). cbv [sha256_inner_invariant sha256_inner_pre].
+  intros ? Hinv. logical_simplify. subst.
+  cbv [sha256_inner K]. stepsimpl.
+  repeat (destruct_pair_let; cbn [fst snd]).
+  autorewrite with tuple_if; cbn [fst snd].
+  (* destruct cases for [clear] *)
+  lazymatch goal with H : _ \/ clear = 0%N |- _ =>
+                      destruct H; logical_simplify; subst; cbn [N.eqb] end;
+    (* handle clear = 1 case *)
+    [ left; reflexivity | ].
+  (* destruct cases for [block_valid] *)
+  lazymatch goal with H : _ \/ block_valid = 0%N |- _ =>
+                      destruct H; logical_simplify; subst; cbn [N.eqb] end;
+    (* handle block_valid = 1 case *)
+    [ right; ssplit; auto; lia | ].
+  (* destruct cases for [done] *)
+  lazymatch goal with H : done = 1%N \/ _ |- _ =>
+                      destruct H; logical_simplify; subst; cbn [N.eqb] end;
+    (* handle done = 1 case *)
+    [ left; destr (round =? 63)%N; reflexivity | ].
+  destr (round =? 63)%N; [ left; reflexivity | ].
+
+  (* For remaining cases, the new [done] is always 0 *)
+  cbn [N.lor N.eqb]. right.
+  (* destruct case statements *)
+  repeat first [ discriminate
+               | lia
+               | destruct_one_match_hyp
+               | destruct_one_match ].
+  all:try (rewrite (N.mod_small _ (2 ^ N.of_nat 7))
+            by (change (2 ^ N.of_nat 7)%N with 128%N; lia)).
+  all:rewrite ?resize_noop by length_hammer.
+  all:rewrite ?tl_slice, ?hd_slice.
+  all:autorewrite with natsimpl.
+  all:ssplit;
+    lazymatch goal with
+    | |- ?x = ?x => reflexivity
+    | |- (_ < _)%N => lia
+    | _ => idtac
+    end.
+  (* solve subgoals about compression *)
+  all:
+    lazymatch goal with
+      | |- context [sha256_compress] =>
+        erewrite step_sha256_compress with (t:=N.to_nat round)
+          by (autorewrite with push_nth; repeat destruct_one_match;
+              lia || (f_equal; lia)); cbn [fst snd];
+          replace (N.to_nat (round + 1)) with (S (N.to_nat round)) by lia;
+      autorewrite with pull_snoc; rewrite resize_noop by length_hammer;
+        reflexivity
+      | |- _ => idtac
+    end.
+  (* remaining subgoals should all be about message schedule: solve those *)
+  all:lazymatch goal with
+        | |- context [sha256_message_schedule_update] =>
+          erewrite step_sha256_message_schedule_update with (t:=(N.to_nat round+1))
+            by lazymatch goal with
+               | |- nth _ _ _ = nth _ _ _ => f_equal; lia
+               | _ => lia
+               end; cbn [fst snd];
+            lazymatch goal with
+            | |- context [List.slice ?d ?ls ?start ?len ++ [nth ?n ?ls ?d]] =>
+              replace n with (start + len) by lia
+            end; rewrite slice_snoc, tl_slice; f_equal; lia
+      end.
+Qed.
+
 Lemma step_sha256_inner
       (input : denote_type [Bit; sha_block; sha_digest; Bit])
       (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
       msg i :
-  (* message schedule = 16 elts of W starting at index round-16 (0 if round <= 16) *)
-  fst (snd state) = List.slice 0%N (SHA256.W msg i)
-                               (N.to_nat (snd (snd (snd state))) - 16) 16 ->
-  step sha256_inner state input = sha256_inner_spec input state msg i.
+  sha256_inner_pre input msg i ->
+  sha256_inner_invariant state msg (fst (snd (snd input))) i ->
+  snd (step sha256_inner state input) = sha256_inner_spec input state msg i.
 Proof.
-  Set Printing Depth 10000.
   destruct input as (block_valid, (block, (initial_digest, (clear, [])))).
   destruct state as (current_digest, (message_schedule, (done, round))).
-  cbn [fst snd]. intros; subst.
+  pose (t:=round). cbv [sha256_inner_invariant sha256_inner_pre sha256_inner_spec].
+  intros. logical_simplify. subst. cbn [fst snd] in *.
   cbv [sha256_inner K]. stepsimpl.
-  destruct_step_pair_let. cbn [fst snd].
+  repeat (destruct_pair_let; cbn [fst snd]).
+  autorewrite with tuple_if; cbn [fst snd].
+  stepsimpl. rewrite !resize_noop by length_hammer.
+  (* destruct cases for [clear] *)
+  lazymatch goal with H : _ \/ clear = 0%N |- _ =>
+                      destruct H; logical_simplify; subst; cbn [N.eqb Pos.eqb] end;
+    (* handle clear = 1 case *)
+    [ rewrite !resize_noop by reflexivity; reflexivity | ].
+  (* destruct cases for [block_valid] *)
+  lazymatch goal with H : _ \/ block_valid = 0%N |- _ =>
+                      destruct H; logical_simplify; subst; cbn [N.eqb Pos.eqb] end;
+    (* handle block_valid = 1 case *)
+    [ rewrite !resize_noop by length_hammer; reflexivity | ].
+  (* destruct cases for [done] *)
+  lazymatch goal with H : done = 1%N \/ _ |- _ =>
+                      destruct H; logical_simplify; subst; cbn [N.eqb] end;
+    (* handle done = 1 case *)
+    [ destr (round =? 63)%N;
+      rewrite resize_noop with (ls:=fold_left _ _ _) by length_hammer;
+      reflexivity | ].
+
   rewrite !resize_noop by length_hammer.
-  rewrite !tl_slice. rewrite !hd_slice.
-  erewrite step_sha256_compress with (t:=N.to_nat round).
-  2:{ reflexivity. }
-  2:{
-  rewrite slice_map_nth. cbn [List.map seq hd tl app].
-  rewrite !resize_noop by length_hammer. cbn [tl].
-  stepsimpl. destruct_step_pair_let.
-  cbn [tl].
-  destruct_pair_let; cbn [fst snd].
-  destruct_pair_let; cbn [fst snd].
-  destruct_pair_let; cbn [fst snd].
-  destruct_pair_let; cbn [fst snd].
-  destruct_pair_let; cbn [fst snd].
-  destruct_pair_let; cbn [fst snd].
-  destruct_pair_let; cbn [fst snd].
-  destr (15 <=? round)%N.
-  { cbn [N.eqb].
-    rewrite (surjective_pairing (step sha256_message_schedule_update _ _)).
-  erewrite step_sha256_message_schedule_update with (t:=N.to_nat round).
-  2:{ f_equal; lia. }
-  2:{ f_equal; try lia. }
-  2:{ f_equal; lia. }
-    rewrite firstn_
-  { erewrite step_sha256_compress.
-  rewrite step_sha256_round_constants.
-  intros. subst; destruct_lists_by_length.
-  cbv [sha256_compress]. stepsimpl. reflexivity.
-  intro Hschedule. rewrite resize_map_nth in Hschedule.
-  cbn [seq List.map] in Hschedule. subst.
-  cbv [sha256_inner K]. stepsimpl.
-  2:{
-    Search nth firstn.
-    rewrite firstn_
-  { erewrite step_sha256_compress.
-  rewrite step_sha256_round_constants.
-  intros. subst; destruct_lists_by_length.
-  cbv [sha256_compress]. stepsimpl. reflexivity.
+  erewrite step_sha256_compress with (t:=N.to_nat round)
+    by (autorewrite with push_nth; repeat destruct_one_match;
+        repeat destruct_one_match_hyp; f_equal; lia).
+  cbn [fst snd]. rewrite resize_noop by length_hammer.
+  destruct_one_match; reflexivity.
 Qed.
-Hint Rewrite @step_sha256_compress using solve [eauto] : stepsimpl.
