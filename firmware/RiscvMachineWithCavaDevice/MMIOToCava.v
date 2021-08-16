@@ -189,42 +189,13 @@ Section WithParams.
       ZnWords.
   Qed.
 
-  Lemma step_unique: forall a prevH args rets s s',
-      step a prevH args rets s ->
-      step a prevH args rets s' ->
-      s = s'.
-  Proof.
-    unfold step. intros.
-    destruct (String.prefix MMIOLabels.WRITE_PREFIX a).
-    - simp.
-      replace sz0 with sz in *. 2: {
-        pose proof (state_machine.write_step_size_valid _ _ _ _ _ Hp3) as V1. simpl in V1.
-        pose proof (state_machine.write_step_size_valid _ _ _ _ _ H0p1) as V2. simpl in V2.
-        destruct V1 as [? | [? | [? | ?]]]; destruct V2 as [? | [? | [? | ?]]]; subst;
-          reflexivity || discriminate || contradiction.
-      }
-      eapply state_machine.reg_addr_unique in Hp0. subst r1.
-      eapply write_step_unique; eassumption.
-    - destruct (String.prefix MMIOLabels.READ_PREFIX a). 2: contradiction. simp.
-      replace sz0 with sz in *. 2: {
-        pose proof (state_machine.read_step_size_valid _ _ _ _ _ Hp3) as V1. simpl in V1.
-        pose proof (state_machine.read_step_size_valid _ _ _ _ _ H0p1) as V2. simpl in V2.
-        destruct V1 as [? | [? | [? | ?]]]; destruct V2 as [? | [? | [? | ?]]]; subst;
-          reflexivity || discriminate || contradiction.
-      }
-      eapply state_machine.reg_addr_unique in Hp0. subst r0.
-      eapply read_step_unique; eassumption.
-  Qed.
-
   Lemma execution_unique: forall t s s',
       execution t s -> execution t s' -> s = s'.
   Proof.
-    induction t; cbn [execution]; intros.
-    - eauto using initial_state_unique.
-    - destruct a as (((mGive & a) & args) & (mReceive & rets)).
-      destruct H as (prev & E & St). destruct H0 as (prev' & E' & St').
-      specialize (IHt _ _ E E'). subst prev'.
-      eapply step_unique; eassumption.
+    eapply StateMachineProperties.execution_unique.
+    - exact initial_state_unique.
+    - exact read_step_unique.
+    - exact write_step_unique.
   Qed.
 
   Lemma bv_to_word_word_to_bv: forall v, bv_to_word (word_to_bv v) = v.

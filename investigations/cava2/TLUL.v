@@ -53,7 +53,7 @@ Definition TL_SZW := 2. (* $clog2($clog2(TL_DBW)+1). *)
 (* (1*   logic                         d_ready; *1)   1 *)
 (* (1* } tl_h2d_t; *1)
 =102 *)
-Definition tl_h2d_t :=
+Definition tl_h2d_t : type :=
   Bit **
   BitVec 3 **
   BitVec 3 **
@@ -78,7 +78,7 @@ Definition tl_h2d_t :=
 (*   logic                         a_ready; *)
 (* } tl_d2h_t; *)
 
-Definition tl_d2h_t :=
+Definition tl_d2h_t : type :=
   Bit **
   BitVec 3 **
   BitVec 3 **
@@ -114,7 +114,7 @@ Section Var.
   Definition AccessAck     := Constant tl_d_op_e 0.
   Definition AccessAckData := Constant tl_d_op_e 1.
 
-  Definition io_req :=
+  Definition io_req : type :=
     Bit **          (* write *)
     BitVec TL_AW ** (* address *)
     BitVec TL_DW ** (* write_data *)

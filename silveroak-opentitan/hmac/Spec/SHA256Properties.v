@@ -27,13 +27,13 @@ Local Ltac t := cbv [k]; lia'.
 
 (* k is a solution to the equation:
      l + 1 + k = 448 (mod 512) *)
-Lemma k_correct l : (l + 1 + k l) mod 512 = 448.
+Lemma k_correct msg : (l msg + 1 + k msg) mod 512 = 448.
 Proof. t. Qed.
 
 (* Prove that k < 512 *)
-Lemma k_small l : k l < 512.
+Lemma k_small msg : k msg < 512.
 Proof. t. Qed.
 
 (* Prove that k is the smallest non-negative solution to the equation *)
-Lemma k_smallest l n : (l + 1 + n) mod 512 = 448 -> n >= k l.
+Lemma k_smallest msg n : (l msg + 1 + n) mod 512 = 448 -> n >= k msg.
 Proof. t. Qed.

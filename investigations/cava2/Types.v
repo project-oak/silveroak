@@ -88,10 +88,9 @@ Fixpoint vector_as_tuple n t {struct n}
 
 Declare Scope circuit_type_scope.
 Delimit Scope circuit_type_scope with circuit_type.
-Open Scope circuit_type_scope.
+Bind Scope circuit_type_scope with type.
 Notation "[ ]" := Unit (format "[ ]") : circuit_type_scope.
 Notation "[ x ]" := (Pair x Unit) : circuit_type_scope.
 Notation "[ x ; y ; .. ; z ]" := (Pair x (Pair y .. (Pair z Unit) ..)) : circuit_type_scope.
 Notation "x ** y" := (Pair x y)(at level 60, right associativity) : circuit_type_scope.
 Notation "x ++ y" := (absorb_any x y) (at level 60, right associativity): circuit_type_scope.
-

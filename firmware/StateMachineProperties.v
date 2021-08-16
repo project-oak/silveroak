@@ -10,6 +10,7 @@ Require Import coqutil.Word.Interface.
 Require Import coqutil.Word.Properties.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Tactics.Tactics.
+Require Import coqutil.Tactics.Simp.
 Require Import Bedrock2Experiments.LibBase.MMIOLabels.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.Tactics.
@@ -103,6 +104,59 @@ Section Proofs.
              | |- _ => solve [eauto using execution_step_write]
              end.
   Qed.
+
+  Section Uniqueness.
+    (* These hypotheses disallow internal nondeterminism (ie nondeterminism that does
+       not show up in the trace), but still allows external nondeterminism. *)
+    Hypothesis initial_state_unique: forall s s',
+      is_initial_state s -> is_initial_state s' -> s = s'.
+    Hypothesis read_step_unique: forall n r v s s' s'',
+      read_step n r v s s' ->
+      read_step n r v s s'' ->
+      s' = s''.
+    Hypothesis write_step_unique: forall n r v s s' s'',
+      write_step n r v s s' ->
+      write_step n r v s s'' ->
+      s' = s''.
+
+    Lemma step_unique: forall a prevH args rets s s',
+      step a prevH args rets s ->
+      step a prevH args rets s' ->
+      s = s'.
+    Proof.
+      unfold step. intros.
+      destruct (String.prefix MMIOLabels.WRITE_PREFIX a).
+      - simp.
+        replace sz0 with sz in *. 2: {
+          pose proof (write_step_size_valid _ _ _ _ _ Hp3) as V1. simpl in V1.
+          pose proof (write_step_size_valid _ _ _ _ _ H0p1) as V2. simpl in V2.
+          destruct V1 as [? | [? | [? | ?]]]; destruct V2 as [? | [? | [? | ?]]]; subst;
+            reflexivity || discriminate || contradiction.
+        }
+        eapply reg_addr_unique in Hp0. subst r1.
+        eapply write_step_unique; eassumption.
+      - destruct (String.prefix MMIOLabels.READ_PREFIX a). 2: contradiction. simp.
+        replace sz0 with sz in *. 2: {
+          pose proof (read_step_size_valid _ _ _ _ _ Hp3) as V1. simpl in V1.
+          pose proof (read_step_size_valid _ _ _ _ _ H0p1) as V2. simpl in V2.
+          destruct V1 as [? | [? | [? | ?]]]; destruct V2 as [? | [? | [? | ?]]]; subst;
+            reflexivity || discriminate || contradiction.
+        }
+        eapply reg_addr_unique in Hp0. subst r0.
+        eapply read_step_unique; eassumption.
+    Qed.
+
+    Lemma execution_unique: forall t s s',
+        execution t s -> execution t s' -> s = s'.
+    Proof.
+      induction t; cbn [execution]; intros.
+      - eauto using initial_state_unique.
+      - destruct a as (((mGive & a) & args) & (mReceive & rets)).
+        destruct H as (prev & E & St). destruct H0 as (prev' & E' & St').
+        specialize (IHt _ _ E E'). subst prev'.
+        eapply step_unique; eassumption.
+    Qed.
+  End Uniqueness.
 End Proofs.
 
 (**** Tactics for state machine proofs ****)

@@ -15,13 +15,17 @@
 (****************************************************************************)
 
 Require Import Coq.NArith.NArith.
+Require Import Cava.Util.BitArithmetic.
+Import BigEndianBytes.
 Local Open Scope N_scope.
 
 Record hmac_test_vector :=
-  { lK : nat;
-    ldata : nat;
+  { lK : nat; (* length of K in bytes *)
+    ldata : nat; (* length of data in bytes *)
     K : N;
     data : N;
+    K_bytes := N_to_bytes lK K;
+    data_bytes := N_to_bytes ldata data;
     expected_output : N }.
 
 Record hmac_step_by_step_test : Type :=

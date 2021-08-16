@@ -31,7 +31,7 @@ Section WithParams.
      (eg if we add the MSG_LENGTH_LOWER and MSG_LENGTH_UPPER registers, we'll have to make
      sure we don't assume that any list length can fit into these 2^64 bits, because
      that would allow us to prove False). *)
-  Axiom sha256: list byte -> list word. (* returns a list of 8 32-bit words (=256 bits) *)
+  Axiom sha256: list byte -> list byte. (* returns a list of 32 bytes (=256 bits) *)
 
   Record idle_data := {
     (* only the lowest 3 bits count, and we only model the case where all interrupts are
@@ -50,7 +50,7 @@ Section WithParams.
   }.
 
   Inductive state :=
-  | IDLE(digest_buffer: list word)(s: idle_data)
+  | IDLE(digest_buffer: list byte)(s: idle_data)
   (* since the configuration bits of idle_data can't be modified while CONSUMING or
      PROCESSING, we don't need to include this data in these states *)
   | CONSUMING(sha_buffer: list byte)
@@ -78,14 +78,13 @@ Section WithParams.
                         swap_digest := false;
                       |})
   (* TODO the digest could also be read byte by byte *)
-  | read_digest: forall s d i v,
+  | read_digest: forall s d i addr v,
       swap_endian s = true ->
       swap_digest s = false ->
       0 <= i < 8 ->
-      List.nth_error d (Z.to_nat i) = Some v ->
-      read_step 4 (IDLE d s)
-                (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET - (i * 4))) v
-                (IDLE d s).
+      addr = word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET - (i * 4)) ->
+      v = word.of_Z (le_combine (List.firstn 4 (List.skipn (Z.to_nat i * 4) d))) ->
+      read_step 4 (IDLE d s) addr v (IDLE d s).
 
   Inductive write_step: nat -> state -> word -> word -> state -> Prop :=
   | write_cfg: forall v d s,
@@ -114,7 +113,8 @@ Section WithParams.
                             sha_en := sha_en s;
                             swap_endian := swap_endian s;
                             swap_digest := swap_digest s; |})
-  | write_hash_start: forall d,
+  | write_hash_start: forall d v,
+      v = word.of_Z (Z.shiftl 1 HMAC_CMD_HASH_START_BIT) ->
       write_step 4 (IDLE d (* Here one can see that we only model a subset of the features of
                             the HMAC module: in our model, starting the computation is only
                             possible from the specific configuration below.
@@ -126,22 +126,23 @@ Section WithParams.
                             sha_en := true;
                             swap_endian := true;
                             swap_digest := false; |})
-                 (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET))
-                 (word.of_Z (Z.shiftl 1 HMAC_CMD_HASH_START_BIT))
+                 (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET)) v
                  (CONSUMING [])
-  | write_byte: forall b v,
+  | write_byte: forall bs bs' v,
       0 <= word.unsigned v < 2 ^ 8 ->
-      write_step 1 (CONSUMING b)
+      bs' = bs ++ [byte.of_Z (word.unsigned v)] ->
+      write_step 1 (CONSUMING bs)
                  (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_MSG_FIFO_REG_OFFSET)) v
-                 (CONSUMING (b ++ [byte.of_Z (word.unsigned v)]))
-  | write_word: forall b v,
-      write_step 4 (CONSUMING b)
+                 (CONSUMING bs')
+  | write_word: forall bs bs' v,
+      bs' = bs ++ le_split 4 (word.unsigned v) ->
+      write_step 4 (CONSUMING bs)
                  (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_MSG_FIFO_REG_OFFSET)) v
-                 (CONSUMING (b ++ le_split 4 (word.unsigned v)))
-  | write_hash_process: forall b,
+                 (CONSUMING bs')
+  | write_hash_process: forall b v,
+      v = word.of_Z (Z.shiftl 1 HMAC_CMD_HASH_PROCESS_BIT) ->
       write_step 4 (CONSUMING b)
-                 (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET))
-                 (word.of_Z (Z.shiftl 1 HMAC_CMD_HASH_PROCESS_BIT))
+                 (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET)) v
                  (PROCESSING b max_negative_done_polls).
 
   (* TODO: Can we make these register conventions more explicit in our spec?

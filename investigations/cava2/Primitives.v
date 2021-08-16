@@ -18,9 +18,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.ZArith.ZArith.
 Require Import ExtLib.Structures.Monoid.
 Require Import ExtLib.Data.List.
-
 Require Import Cava.Types.
-
 Import ListNotations.
 
 (* Primitives have both semantic and netlist implementations *)
@@ -64,54 +62,34 @@ Inductive TernaryPrim : type -> type -> type -> type -> Type :=
 | TernVecReplace: forall {t n i}, TernaryPrim (Vec t n) (BitVec i) t (Vec t n)
 .
 
-Fixpoint rotate_left {A} n (ls: list A): list A :=
-  match n with
-  | 0 => ls
-  | S n' =>
-    match ls with
-    | nil => []
-    | x :: xs => rotate_left n' (xs ++ [x])
-    end
-  end.
-Fixpoint shift_left {A} n (ls: list (denote_type A)): list (denote_type A) :=
-  match n with
-  | 0 => ls
-  | S n' =>
-    match ls with
-    | nil => []
-    | x :: xs => shift_left n' (xs ++ [default])
-    end
-  end.
+Module List.
+  Definition resize {A} (d : A) n (ls : list A) : list A :=
+    firstn n ls ++ repeat d (n - length ls).
 
-Fixpoint rotate_right {A} n (ls: list (denote_type A)): list (denote_type A) :=
-  match n with
-  | 0 => ls
-  | S n' =>
-    rotate_right n' (last ls default :: removelast ls)
-  end.
-Fixpoint shift_right {A} n (ls: list (denote_type A)): list (denote_type A) :=
-  match n with
-  | 0 => ls
-  | S n' =>
-    shift_right n' (default :: removelast ls)
-  end.
-
-Definition resize {A} (d : A) n (ls : list A) : list A :=
-  firstn n ls ++ repeat d (n - length ls).
+  Fixpoint replace {A} n a (ls: list A): list A :=
+    match ls with
+    | [] => []
+    | x :: xs =>
+      match n with
+      | 0 => a :: xs
+      | S n' => x :: replace n' a xs
+      end
+    end%list.
+End List.
 
 Definition unary_semantics {x r} (prim: UnaryPrim x r)
   : denote_type x -> denote_type r :=
   match prim in UnaryPrim x r return denote_type x -> denote_type r with
   | @UnVecSlice t n start len =>
-    fun x => resize default len (firstn len (skipn start x))
-  | @UnVecResize t n m => fun x => resize default m x
+    fun x => List.resize default len (firstn len (skipn start x))
+  | @UnVecResize t n m => fun x => List.resize default m x
   | @UnVecReverse t n => fun x => rev x
 
   | @UnVecUncons t n => fun x => (hd default x, tl x)
 
   | @UnBitVecResize n m => fun x => N.land x (N.ones (N.of_nat m))
   | UnBitVecShiftRight n => fun x => N.shiftr x (N.of_nat n)
-  | UnBitVecShiftLeft n => fun x => N.shiftl x (N.of_nat n)
+  | @UnBitVecShiftLeft sz n => fun x => ((N.shiftl x (N.of_nat n)) mod (2 ^ (N.of_nat sz)))%N
 
   | @UnVecToTuple t n => vector_as_tuple n t
   | @UnBitVecNot n => fun x => N.lnot x (N.of_nat n)
@@ -135,19 +113,9 @@ Definition binary_semantics {x y r} (prim: BinaryPrim x y r)
   | BinEq => fun x y => (if eqb x y then 1 else 0)%N
   end%list.
 
-Fixpoint replace {A} n a (ls: list A): list A :=
-  match ls with
-  | [] => []
-  | x :: xs =>
-    match n with
-    | 0 => a :: xs
-    | S n' => x :: replace n' a xs
-    end
-  end%list.
-
 Definition ternary_semantics {x y z r} (prim: TernaryPrim x y z r)
   : denote_type x -> denote_type y -> denote_type z -> denote_type r :=
   match prim in TernaryPrim x y z r return denote_type x -> denote_type y -> denote_type z -> denote_type r with
-  | TernVecReplace => fun ls i x => replace (N.to_nat i) x ls
+  | TernVecReplace => fun ls i x => List.replace (N.to_nat i) x ls
   end.
 

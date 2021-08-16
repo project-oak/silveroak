@@ -20,5 +20,15 @@ Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
 Require Import Cava.Util.BitArithmetic.
 
+Definition string_to_bytes (s : string) : list Byte.byte :=
+  map byte_of_ascii (list_ascii_of_string s).
+
 Definition string_to_N (s : string) : N :=
-  concat_bytes (map N_of_ascii (list_ascii_of_string s)).
+  BigEndianBytes.concat_bytes (string_to_bytes s).
+
+Definition bytes_to_string (bs : list Byte.byte) : string :=
+  string_of_list_ascii (map ascii_of_byte bs).
+
+(* n is the number of bytes expected *)
+Definition N_to_string (n : nat) (s : N) : string :=
+  bytes_to_string (BigEndianBytes.N_to_bytes n s).
