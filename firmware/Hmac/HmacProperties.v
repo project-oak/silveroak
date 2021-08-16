@@ -220,18 +220,6 @@ Section Proofs.
     ecancel_done.
   Qed.
 
-  Lemma while_zero_iterations {functions} {e c t l} {m : mem} {post : _->_->_-> Prop}
-    (HCond: expr m l e (eq (word.of_Z 0)))
-    (HPost: post t m l)
-    : cmd (call functions) (cmd.while e c) t m l post.
-  Proof.
-    eapply (while_localsmap (fun n t' m' l' => t' = t /\ m' = m /\ l' = l) (Nat.lt_wf 0) 0%nat).
-    1: auto. intros *. intros (? & ? & ?). subst.
-    eexists. split. 1: exact HCond.
-    rewrite word.unsigned_of_Z_0.
-    split; intros; congruence.
-  Qed.
-
   Lemma load_one_of_bytearray (addr addr': word) (values : list byte) R m
     (Hsep : sep (bytearray addr values) R m)
     : let n := Z.to_nat (word.unsigned (word.sub addr' addr)) in
