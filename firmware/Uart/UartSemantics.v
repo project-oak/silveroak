@@ -20,8 +20,11 @@ Local Open Scope string_scope. Local Open Scope Z_scope. Local Open Scope list_s
 
 (* Circuit specification *)
 Class circuit_behavior :=
-  { ncycles_processing : nat
-  }.
+  {
+    fifo_depth: nat;
+    ncycles_processing : nat
+  }
+  .
 
 Section WithParameters.
   Context {word: word.word 32} {mem: map.map word Byte.byte}
@@ -97,32 +100,31 @@ Section WithParameters.
        && is_flag_set status UART_STATUS_TXEMPTY_BIT
        && is_flag_set status UART_STATUS_TXIDLE_BIT
     | BUSY t =>
-      if Nat.eqb t 0 then
+      negb (is_flag_set status UART_STATUS_TXIDLE_BIT) &&
+      (if Nat.eqb t 0 then
         (* FIFO is empty *)
         is_flag_set status UART_STATUS_TXEMPTY_BIT &&
-        negb (is_flag_set status UART_STATUS_TXFULL_BIT) &&
-        negb (is_flag_set status UART_STATUS_TXIDLE_BIT)
-      else if Nat.ltb t 32 then
-        negb (is_flag_set status UART_STATUS_TXFULL_BIT) &&
-        negb (is_flag_set status UART_STATUS_TXEMPTY_BIT) &&
-        negb (is_flag_set status UART_STATUS_TXIDLE_BIT)
+        negb (is_flag_set status UART_STATUS_TXFULL_BIT)
       else
-        (* FIFO is full *)
         negb (is_flag_set status UART_STATUS_TXEMPTY_BIT) &&
-        is_flag_set status UART_STATUS_TXFULL_BIT &&
-        negb (is_flag_set status UART_STATUS_TXIDLE_BIT)
+        (if Nat.ltb t (fifo_depth * ncycles_processing)  then
+          negb (is_flag_set status UART_STATUS_TXFULL_BIT)
+        else
+          (* FIFO is full *)
+          is_flag_set status UART_STATUS_TXFULL_BIT))
     end.
 
   Definition read_step
     (s : state) (r : Register) (val : word) (s' : state) : Prop :=
     match r with
     | STATUS =>
+        status_matches_state s' val = true /\
         match s with
-        | IDLE => status_matches_state s val = true /\ s' = IDLE
-        | BUSY O =>
-            (status_matches_state s val = true /\ s' = IDLE)
-        | BUSY txlvl =>
-            (status_matches_state s val = true /\ s' = BUSY (txlvl - 1))
+        | IDLE => s' = IDLE
+        | BUSY n =>
+            (* tx can non-deterministically finish sending *)
+            (s' = IDLE)
+            \/ (exists n', n = S n' /\ s' = BUSY n')
         end
     | _ => False (* cannot read any other regs *)
     end.
@@ -132,9 +134,14 @@ Section WithParameters.
     match r with
     | WDATA =>
         match s with
-        | IDLE => s' = BUSY 1
+        | IDLE => s' = BUSY (ncycles_processing)
             (* writing to 4-byte WDATA reg fills the FIFO with the last byte *)
-        | BUSY tx => if Nat.leb tx 32 then s' = BUSY (tx + 1) else False
+        | BUSY tx => if Nat.leb tx (fifo_depth * ncycles_processing)
+            (* the maximum tx will be (fifo_depth + 1) * ncycles_processing
+               and the FIFO status will be full *)
+            then s' = BUSY (tx + (ncycles_processing))
+            (* if FIFO is full, you can't send more data *)
+          else False
         end
     | INTR_ENABLE => s' = s
     | INTR_TEST => s' = s
