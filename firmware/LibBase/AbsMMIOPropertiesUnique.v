@@ -18,7 +18,9 @@ Local Open Scope string_scope.
 Section Proof.
   Context {word: word.word 32} {mem: map.map word Byte.byte}
           {word_ok: word.ok word} {mem_ok: map.ok mem}
-          {M: state_machine.parameters} {M_ok: state_machine.ok M}
+          {M: state_machine.parameters}.
+  (* Note that these two will have to be provided at proof linking time, not at straightline_call *)
+  Context {M_ok: state_machine.ok M}
           (execution_unique: forall t s1 s2, execution t s1 -> execution t s2 -> s1 = s2).
 
   Global Instance spec_of_abs_mmio_write8 : spec_of "abs_mmio_write8" :=
@@ -31,7 +33,7 @@ Section Proof.
         (fun tr' m' rets =>
           rets = []
           /\ tr' = ((map.empty, MMIOLabels.WRITE8, [addr; value], (map.empty, [])) :: tr)
-          /\ (exists s'', execution tr' s'')
+          /\ execution tr' s'
           /\ m = m'
         ).
   Lemma abs_mmio_write8_correct :
@@ -42,6 +44,12 @@ Section Proof.
     - rewrite <- H. reflexivity.
     - do 2 eexists; ssplit; eauto.
     - rewrite <- H; ssplit; eauto.
+      match goal with
+      | H: execution ?t ?s1 |- execution ?t ?s2 =>
+        replace s2 with s1;
+        [exact H | eapply execution_unique]
+      end.
+      all: eapply execution_step_write; [..|eassumption]; eauto.
   Qed.
 
   Global Instance spec_of_abs_mmio_write32 : spec_of "abs_mmio_write32" :=
@@ -54,7 +62,7 @@ Section Proof.
         (fun tr' m' rets =>
           rets = []
           /\ tr' = ((map.empty, MMIOLabels.WRITE32, [addr; value], (map.empty, [])) :: tr)
-          /\ (exists s'', execution tr' s'')
+          /\ execution tr' s'
           /\ m = m'
         ).
   Lemma abs_mmio_write32_correct :
@@ -65,6 +73,12 @@ Section Proof.
     - rewrite <- H. reflexivity.
     - do 2 eexists; ssplit; eauto.
     - rewrite <- H; ssplit; eauto.
+      match goal with
+      | H: execution ?t ?s1 |- execution ?t ?s2 =>
+        replace s2 with s1;
+        [exact H | eapply execution_unique]
+      end.
+      all: eapply execution_step_write; [..|eassumption]; eauto.
   Qed.
 
   Global Instance spec_of_abs_mmio_read8 : spec_of "abs_mmio_read8" :=
@@ -78,6 +92,7 @@ Section Proof.
           exists s' val,
           rets = [val]
           /\ tr' = ((map.empty, MMIOLabels.READ8, [addr], (map.empty, [val])) :: tr)
+          /\ state_machine.read_step 1 s r val s' (* <-- redundant, but convenient *)
           /\ execution tr' s'
           /\ m = m'
         ).
@@ -87,7 +102,13 @@ Section Proof.
     repeat straightline.
     eapply (interact_read 1); repeat straightline; eauto.
     - rewrite <- H. reflexivity.
-    - do 3 eexists; ssplit; eauto.
+    - match goal with
+      | H1: execution ?t ?s1, H2: execution ?t ?s2 |- _ =>
+        pose proof (execution_unique _ _ _ H1 H2);
+        subst s2;
+        clear H2
+      end.
+      do 3 eexists; ssplit; eauto.
       rewrite <- H. reflexivity.
   Qed.
 
@@ -102,6 +123,7 @@ Section Proof.
           exists s' val,
           rets = [val]
           /\ tr' = ((map.empty, MMIOLabels.READ32, [addr], (map.empty, [val])) :: tr)
+          /\ state_machine.read_step 4 s r val s' (* <-- redundant, but convenient *)
           /\ execution tr' s'
           /\ m = m'
         ).
@@ -111,7 +133,13 @@ Section Proof.
     repeat straightline.
     eapply (interact_read 4); repeat straightline; eauto.
     - rewrite <- H. reflexivity.
-    - do 3 eexists; ssplit; eauto.
+    - match goal with
+      | H1: execution ?t ?s1, H2: execution ?t ?s2 |- _ =>
+        pose proof (execution_unique _ _ _ H1 H2);
+        subst s2;
+        clear H2
+      end.
+      do 3 eexists; ssplit; eauto.
       rewrite <- H. reflexivity.
   Qed.
 

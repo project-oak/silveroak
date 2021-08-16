@@ -5,7 +5,7 @@ Require Import Coq.ZArith.ZArith.
 Require Import bedrock2.ProgramLogic.
 Require Import bedrock2.Semantics.
 Require Import bedrock2.Syntax.
-Require Import bedrock2.TailRecursion.
+Require Import bedrock2.Loops.
 Require Import bedrock2.WeakestPrecondition.
 Require Import bedrock2.WeakestPreconditionProperties.
 Require Import coqutil.Word.Interface.
@@ -50,19 +50,12 @@ Section Proofs.
                 /\ rets = [proc input]).
 
   Lemma execution_unique (t : trace) s1 s2 :
-    execution (M := increment_wait_state_machine) t s1 ->
-    execution (M := increment_wait_state_machine) t s2 ->
+    execution t s1 ->
+    execution t s2 ->
     s1 = s2.
   Proof.
-    revert s1 s2.
-    induction t; cbn [execution]; [ congruence | ].
-    intros; destruct_products.
-    match goal with
-    | H1 : execution t ?s1, H2 : execution t ?s2 |- _ =>
-      specialize (IHt _ _ H1 H2); subst
-    end.
-    cbv [step] in *.
-    repeat match goal with
+    eapply StateMachineProperties.execution_unique; intros.
+    all:repeat match goal with
            | |- _ => contradiction
            | H : _ :: _ = _ :: _ |- _ => inversion H; clear H; subst
            | |- ?x = ?x => reflexivity
