@@ -116,9 +116,9 @@ Section WithParameters.
 
   Definition read_step
     (s : state) (r : Register) (val : word) (s' : state) : Prop :=
-    status_matches_state s' val = true /\
     match r with
     | STATUS =>
+        status_matches_state s' val = true /\
         match s with
         | IDLE => s' = IDLE
         | BUSY n =>

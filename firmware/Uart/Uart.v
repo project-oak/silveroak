@@ -168,11 +168,8 @@ Section Impl.
       unpack! reg = bitfield_field32_write(0, UART_WDATA_WDATA_MASK, UART_WDATA_WDATA_OFFSET, byte);
       abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_WDATA_REG_OFFSET, reg);
       cond = 0;
-      (* BUSY ncycles_processing *)
       while (cond == 0) {
-        (* s = BUSY O s = IDLE*)
-        unpack! cond = uart_tx_idle() (* cond = 0 *)
-        (* s = IDLE *)
+        unpack! cond = uart_tx_idle() 
       }
     ))).
 
