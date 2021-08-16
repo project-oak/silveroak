@@ -2,6 +2,7 @@ Require Import Coq.Strings.String.
 Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 Require Import Coq.ZArith.ZArith.
+Require Import Cava.Util.List.
 Require Import bedrock2.Array.
 Require Import bedrock2.Map.Separation.
 Require Import bedrock2.Map.SeparationLogic.
@@ -338,30 +339,10 @@ Section Proofs.
       use_sep_assumption.
       cancel.
       unfold List.upds. change (Z.to_nat \[addr' ^- addr]) with n.
+      pose proof (length_le_split 4 \[v]).
       cancel_seps_at_indices 0%nat 1%nat. {
         f_equal.
-        (* TODO this kind of list simplification should be automated *)
-        rewrite List.skipn_app.
-        rewrite List.skipn_all2. 2: {
-          rewrite List.firstn_length. lia.
-        }
-        rewrite List.app_nil_l.
-        rewrite length_le_split.
-        rewrite (List.firstn_all2 (n := Datatypes.length values - n)%nat). 2: {
-          rewrite length_le_split. lia.
-        }
-        rewrite List.firstn_length.
-        replace (n - Init.Nat.min n (Datatypes.length values))%nat with 0%nat by lia.
-        rewrite List.skipn_O.
-        rewrite firstn_app.
-        rewrite List.firstn_all2. 2: {
-          rewrite length_le_split. reflexivity.
-        }
-        replace (4 - Datatypes.length (le_split 4 \[v]))%nat with 0%nat. 2: {
-          rewrite length_le_split. reflexivity.
-        }
-        rewrite List.firstn_O.
-        rewrite List.app_nil_r.
+        autorewrite with listsimpl push_skipn push_firstn push_length.
         rewrite le_combine_split.
         change (Z.of_nat 4 * 8) with 32.
         rewrite word.wrap_unsigned.
@@ -370,8 +351,9 @@ Section Proofs.
       }
       cancel_seps_at_indices 0%nat 0%nat. {
         f_equal.
+        (* TODO this kind of list simplification should be automated *)
         rewrite firstn_app.
-        rewrite (@List.firstn_all2 _ n (List.firstn n values)).  2: {
+        rewrite (@List.firstn_all2 _ n (List.firstn n values)). 2: {
           rewrite List.firstn_length. lia.
         }
         rewrite List.firstn_length.
