@@ -110,8 +110,7 @@ rom_error_t hmac_sha256_update(const void *data, size_t len) {
   return kErrorOk;
 }
 *)
-(* Note: only works if x is 0 or 1! *)
-Local Notation "'NOT' ( x ) " := (expr.op bopname.sub 1 x)
+Local Notation "'NOT' ( x ) " := (expr.op bopname.eq x 0)
   (x custom bedrock_expr, in custom bedrock_expr at level 0).
 
 Definition b2_hmac_sha256_update: func :=
@@ -139,8 +138,7 @@ Definition b2_hmac_sha256_update: func :=
 
        (* TODO support <=, >=, >, maybe also signed? *)
        while (3 < len) {
-         data_aligned = load4(data_sent);
-         abs_mmio_write32(fifo_reg, data_aligned);
+         abs_mmio_write32(fifo_reg, load4(data_sent));
          data_sent = data_sent + 4;
          len = len - 4
        };
@@ -189,7 +187,6 @@ Definition b2_hmac_sha256_final: func :=
   let reg := "reg" in
   let done := "done" in
   let i := "i" in
-  let temp := "temp" in
   ("b2_hmac_sha256_final",
    ([digest], [result], bedrock_func_body:(
      if (digest == 0) {
@@ -210,9 +207,9 @@ Definition b2_hmac_sha256_final: func :=
        (* The least significant word is at HMAC_DIGEST_7_REG_OFFSET. *)
        i = 0;
        while (i < 8) {
-         unpack! temp = abs_mmio_read32(coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET) -
+         unpack! reg = abs_mmio_read32(coq:(TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_DIGEST_7_REG_OFFSET) -
                              (i * 4));
-         store4(digest + i * 4, temp);
+         store4(digest + i * 4, reg);
          i = i + 1
        };
        result = kErrorOk

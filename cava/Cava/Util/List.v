@@ -707,6 +707,12 @@ Section FirstnSkipn.
     destruct len; [ reflexivity | ].
     cbn [Nat.min seq firstn]. rewrite IHn; reflexivity.
   Qed.
+
+  Lemma skipn_eq_0 {A} (n : nat) (l : list A) (HL : n = 0%nat) : List.skipn n l = l.
+  Proof. subst n. reflexivity. Qed.
+
+  Lemma firstn_eq_0 {A} (n : nat) (l : list A) (HL : n = 0%nat) : List.firstn n l = [].
+  Proof. subst n. reflexivity. Qed.
 End FirstnSkipn.
 Hint Rewrite @skipn_app @skipn_skipn @skipn_repeat @skipn_cons @skipn_O
      @skipn_nil @skipn_all @skipn_combine
@@ -714,7 +720,8 @@ Hint Rewrite @skipn_app @skipn_skipn @skipn_repeat @skipn_cons @skipn_O
 Hint Rewrite @firstn_nil @firstn_cons @firstn_all @firstn_app @firstn_O
      @firstn_firstn @combine_firstn @firstn_map @firstn_seq
      using solve [eauto] : push_firstn.
-Hint Rewrite @firstn_all2 using solve [length_hammer] : push_firstn.
+Hint Rewrite @skipn_all2 @skipn_eq_0 using solve [length_hammer] : push_skipn.
+Hint Rewrite @firstn_all2 @firstn_eq_0 using solve [length_hammer] : push_firstn.
 
 (* Proofs about fold_right and fold_left *)
 Section Folds.

@@ -160,15 +160,16 @@ Section Impl.
     let cond := "cond" in
     ("b2_uart_putchar", ([byte], [],
     bedrock_func_body:(
-      unpack! cond = uart_tx_full();
+      cond = 1;
       while (cond == 1) {
         unpack! cond = uart_tx_full()
       };
+
       unpack! reg = bitfield_field32_write(0, UART_WDATA_WDATA_MASK, UART_WDATA_WDATA_OFFSET, byte);
       abs_mmio_write32(TOP_EARLGREY_UART0_BASE_ADDR + UART_WDATA_REG_OFFSET, reg);
-      unpack! cond = uart_tx_idle();
+      cond = 0;
       while (cond == 0) {
-        unpack! cond = uart_tx_idle()
+        unpack! cond = uart_tx_idle() 
       }
     ))).
 
