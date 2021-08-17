@@ -15,19 +15,22 @@
 (****************************************************************************)
 
 Require Import Coq.Arith.PeanoNat.
-Require Import Coq.Init.Byte.
-Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 Require Import Coq.NArith.NArith.
+Require Import Coq.Init.Byte.
+Require Import Coq.Lists.List.
 Require Import coqutil.Tactics.Tactics.
+Require Import Cava.Util.If.
+Require Import Cava.Util.List.
+Require Import Cava.Util.NPushPullMod.
+Require Import Cava.Util.Tactics.
+Require Import HmacSpec.SHA256Properties.
 Require Import Cava.Types.
 Require Import Cava.Expr.
+Require Import Cava.ExprProperties.
 Require Import Cava.Primitives.
 Require Import Cava.Semantics.
 Require Import Cava.Sha256.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
-Require Import Cava.Util.NPushPullMod.
 Require HmacSpec.SHA256.
 Import ListNotations.
 
@@ -50,56 +53,9 @@ Lemma step_sha256_compress
 Proof.
   intros. rewrite resize_map_nth. cbn [List.map seq].
   subst. cbv [sha256_compress]. stepsimpl.
-  autorewrite with hd_tl_to_nth.
-  reflexivity.
+  autorewrite with push_nth. reflexivity.
 Qed.
 Hint Rewrite @step_sha256_compress using solve [eauto] : stepsimpl.
-
-
-(* TODO: move to Spec.SHA256Properties *)
-Lemma nth_W msg (i t : nat) :
-  (t < 64) ->
-  nth t (SHA256.W msg i) 0%N =
-  if (t <? 16)%nat
-  then SHA256.M msg t i
-  else
-    let W_tm2 := nth (t - 2) (SHA256.W msg i) 0%N in
-    let W_tm7 := nth (t - 7) (SHA256.W msg i) 0%N in
-    let W_tm15 := nth (t - 15) (SHA256.W msg i) 0%N in
-    let W_tm16 := nth (t - 16) (SHA256.W msg i) 0%N in
-    SHA256.add_mod
-      (SHA256.add_mod
-         (SHA256.add_mod
-            (SHA256.sigma1 W_tm2) W_tm7) (SHA256.sigma0 W_tm15))
-      W_tm16.
-Proof.
-  intros.
-  (* extract the formula for an element of W and remember it *)
-  lazymatch goal with
-    | |- nth t ?W ?d = ?rhs =>
-      let f := lazymatch (eval pattern t in rhs) with
-               | ?f _ => f end in
-      let f := lazymatch (eval pattern W in f) with
-               | ?f _ => f end in
-      set (W_formula:=f);
-        change (nth t W d = W_formula W t)
-  end.
-  (* use an invariant *)
-  apply fold_left_invariant_seq
-    with (I:= fun n W =>
-                length W = n /\
-                forall t, t < n -> nth t W 0%N = W_formula W t)
-         (P:=fun W => nth t W 0%N = W_formula W t);
-    [ intros; ssplit; length_hammer
-    | | intros; ssplit; logical_simplify; solve [auto] ].
-  intros. autorewrite with natsimpl push_nth in *.
-  logical_simplify. ssplit; [ length_hammer | ]. intros.
-  lazymatch goal with H : ?t < S ?n |- context [nth ?t] =>
-                      destr (t <? n); [ | replace t with n in * by lia ]
-  end; subst W_formula; cbn beta; autorewrite with natsimpl push_nth;
-    [ solve [auto] | ].
-  destruct_one_match; autorewrite with push_nth; reflexivity.
-Qed.
 
 Lemma step_sha256_message_schedule_update
       (w0 w1 w9 w14 : denote_type sha_word) (t i : nat) msg :
@@ -128,7 +84,7 @@ Lemma step_sha256_round_constants (round : denote_type sha_round) :
 Proof. reflexivity. Qed.
 Hint Rewrite @step_sha256_round_constants using solve [eauto] : stepsimpl.
 
-
+(* State invariant for sha256_inner *)
 Definition sha256_inner_invariant
            (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
            msg (H : list N) (i : nat) : Prop :=
@@ -145,6 +101,7 @@ Definition sha256_inner_invariant
      /\ current_digest = fold_left (SHA256.sha256_compress msg i)
                                   (seq 0 (N.to_nat round)) H).
 
+(* Precondition for sha256_inner *)
 Definition sha256_inner_pre
            (input : denote_type [Bit; sha_block; sha_digest; Bit])
            msg (i : nat) : Prop :=
@@ -184,34 +141,8 @@ Definition sha256_inner_spec
                         else if (done =? 0)%N
                              then (if (round =? 63) then 1 else 0)%N
                              else 1%N in
-  (map2 SHA256.add_mod (List.resize 0%N 8 initial_digest)
-        (List.resize 0%N 8 next_digest), next_done).
-
-(* TODO: move to SHA256Properties.v *)
-Lemma sha256_compress_length msg i H t :
-  length (SHA256.sha256_compress msg i H t) = 8.
-Proof. reflexivity. Qed.
-Hint Rewrite @sha256_compress_length using solve [eauto] : push_length.
-Lemma fold_left_sha256_compress_length msg i H ts :
-  length H = 8 ->
-  length (fold_left (SHA256.sha256_compress msg i) ts H) = 8.
-Proof.
-  intros. apply fold_left_invariant with (I:=fun H => length H = 8); auto.
-Qed.
-Hint Rewrite @fold_left_sha256_compress_length using solve [length_hammer]
-  : push_length.
-Lemma sha256_step_length msg H i :
-  length H = 8 -> length (SHA256.sha256_step msg H i) = 8.
-Proof. intros; cbv [SHA256.sha256_step]. length_hammer. Qed.
-Hint Rewrite @sha256_step_length using solve [length_hammer] : push_length.
-Lemma fold_left_sha256_step_length msg H idxs :
-  length H = 8 -> length (fold_left (SHA256.sha256_step msg) idxs H) = 8.
-Proof.
-  intros. apply fold_left_invariant with (I:=fun H => length H = 8); auto.
-  intros; length_hammer.
-Qed.
-Hint Rewrite @fold_left_sha256_step_length using solve [length_hammer]
-  : push_length.
+  (List.map2 SHA256.add_mod (List.resize 0%N 8 initial_digest)
+             (List.resize 0%N 8 next_digest), next_done).
 
 
 Lemma step_sha256_inner_invariant
@@ -256,8 +187,11 @@ Proof.
                | destruct_one_match ].
   all:try (rewrite (N.mod_small _ (2 ^ N.of_nat 7))
             by (change (2 ^ N.of_nat 7)%N with 128%N; lia)).
-  all:rewrite ?resize_noop by length_hammer.
-  all:rewrite ?tl_slice, ?hd_slice.
+  all:autorewrite with push_resize push_nth.
+  all:repeat match goal with
+             | |- context [(?x <? ?y)] =>
+               destr (x <? y); try lia; [ ]
+             end.
   all:autorewrite with natsimpl.
   all:ssplit;
     lazymatch goal with
@@ -268,15 +202,13 @@ Proof.
   (* solve subgoals about compression *)
   all:
     lazymatch goal with
-      | |- context [sha256_compress] =>
-        erewrite step_sha256_compress with (t:=N.to_nat round)
-          by (autorewrite with push_nth; repeat destruct_one_match;
-              lia || (f_equal; lia)); cbn [fst snd];
-          replace (N.to_nat (round + 1)) with (S (N.to_nat round)) by lia;
-      autorewrite with pull_snoc; rewrite resize_noop by length_hammer;
-        reflexivity
-      | |- _ => idtac
+    | |- context [sha256_compress] =>
+      erewrite step_sha256_compress with (t:=N.to_nat round) by (f_equal; lia);
+        replace (N.to_nat (round + 1)) with (S (N.to_nat round)) by lia;
+        cbn [fst snd]; autorewrite with pull_snoc push_resize; reflexivity
+    | |- _ => idtac
     end.
+
   (* remaining subgoals should all be about message schedule: solve those *)
   all:lazymatch goal with
         | |- context [sha256_message_schedule_update] =>
@@ -307,30 +239,28 @@ Proof.
   cbv [sha256_inner K]. stepsimpl.
   repeat (destruct_pair_let; cbn [fst snd]).
   autorewrite with tuple_if; cbn [fst snd].
-  stepsimpl. rewrite !resize_noop by length_hammer.
+  stepsimpl. autorewrite with push_resize.
   (* destruct cases for [clear] *)
   lazymatch goal with H : _ \/ clear = 0%N |- _ =>
                       destruct H; logical_simplify; subst; cbn [N.eqb Pos.eqb] end;
     (* handle clear = 1 case *)
-    [ rewrite !resize_noop by reflexivity; reflexivity | ].
+    [ autorewrite with push_resize; reflexivity | ].
   (* destruct cases for [block_valid] *)
   lazymatch goal with H : _ \/ block_valid = 0%N |- _ =>
                       destruct H; logical_simplify; subst; cbn [N.eqb Pos.eqb] end;
     (* handle block_valid = 1 case *)
-    [ rewrite !resize_noop by length_hammer; reflexivity | ].
+    [ autorewrite with push_resize; reflexivity | ].
   (* destruct cases for [done] *)
   lazymatch goal with H : done = 1%N \/ _ |- _ =>
                       destruct H; logical_simplify; subst; cbn [N.eqb] end;
     (* handle done = 1 case *)
-    [ destr (round =? 63)%N;
-      rewrite resize_noop with (ls:=fold_left _ _ _) by length_hammer;
-      reflexivity | ].
+    [ destr (round =? 63)%N; repeat (f_equal; [ ]);
+      autorewrite with push_resize; reflexivity | ].
 
-  rewrite !resize_noop by length_hammer.
+  autorewrite with push_resize push_nth.
   erewrite step_sha256_compress with (t:=N.to_nat round)
-    by (autorewrite with push_nth; repeat destruct_one_match;
+    by (repeat destruct_one_match;
         repeat destruct_one_match_hyp; f_equal; lia).
-  cbn [fst snd]. rewrite resize_noop by length_hammer.
+  cbn [fst snd]. autorewrite with push_resize.
   destruct_one_match; reflexivity.
 Qed.
-(* TODO: clean up, prune, and move all these lemmas *)

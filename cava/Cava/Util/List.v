@@ -794,8 +794,8 @@ Section Resize.
   Qed.
 End Resize.
 Hint Rewrite @resize_length using solve [eauto] : push_length.
-Hint Rewrite @resize_0 @resize_succ using solve [eauto] : push_resize.
-Hint Rewrite @resize_noop @resize_firstn using lia : push_resize.
+Hint Rewrite @resize_noop using solve [length_hammer] : push_resize.
+Hint Rewrite @resize_firstn using lia : push_resize.
 
 (* Definition and proofs for [slice] *)
 Section Slice.
@@ -836,6 +836,17 @@ Section Slice.
     autorewrite with push_nth. f_equal; lia.
   Qed.
 
+  Lemma nth_slice {A} (d : A) ls i start len :
+    nth i (slice d ls start len) d
+    = if i <? len then nth (start + i) ls d else d.
+  Proof.
+    destruct (Compare_dec.lt_dec i len);
+      [ rewrite (proj2 (Nat.ltb_lt _ _)) by lia;
+        apply nth_slice_inbounds; lia
+      | rewrite (proj2 (Nat.ltb_ge _ _)) by lia ].
+    apply nth_overflow. rewrite slice_length; lia.
+  Qed.
+
   Lemma slice_snoc {A} (d : A) ls start len :
     slice d ls start len ++ [nth (start + len) ls d]
     = slice d ls start (S len).
@@ -849,7 +860,7 @@ Section Slice.
   Proof. reflexivity. Qed.
 End Slice.
 Hint Rewrite @slice_length using solve [eauto] : push_length.
-Hint Rewrite @nth_slice_inbounds using lia : push_nth.
+Hint Rewrite @nth_slice using solve [eauto] : push_nth.
 
 (* Definition and proofs for [replace] *)
 Section Replace.
