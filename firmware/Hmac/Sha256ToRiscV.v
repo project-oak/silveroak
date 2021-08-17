@@ -1,18 +1,30 @@
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.Strings.String.
-Require Import Coq.micromega.Lia.
-Require Import Coq.derive.Derive.
+Require Import Coq.Lists.List. Import ListNotations.
+Require Import coqutil.Word.Interface.
+Require Import coqutil.Map.Interface.
+Require Import coqutil.Map.Z_keyed_SortedListMap.
+Require Import coqutil.Byte.
 Require Import bedrock2.Syntax.
-Require Import compiler.FlatToRiscvDef.
+Require Import bedrock2.Semantics.
+Require Import bedrock2.Map.Separation.
+Require Import bedrock2.Map.SeparationLogic.
+Require Import bedrock2.ProgramLogic.
+Require Import bedrock2.Scalars.
+Require Import bedrock2.WeakestPreconditionProperties.
 Require Import compiler.Pipeline.
 Require Import compiler.RiscvWordProperties.
-Require Import coqutil.Word.Interface.
-Require Import coqutil.Map.Z_keyed_SortedListMap.
-Require Import Bedrock2Experiments.WordProperties.
+Require Import Bedrock2Experiments.List.
 Require Import Bedrock2Experiments.LibBase.AbsMMIO.
+Require Import Bedrock2Experiments.LibBase.AbsMMIOPropertiesUnique.
 Require Import Bedrock2Experiments.LibBase.Bitfield.
+Require Import Bedrock2Experiments.LibBase.BitfieldProperties.
 Require Import Bedrock2Experiments.Hmac.Hmac.
+Require Import Bedrock2Experiments.Hmac.HmacSemantics.
+Require Import Bedrock2Experiments.Hmac.HmacProperties.
 Require Import Bedrock2Experiments.Hmac.Sha256Example.
+Require Import Bedrock2Experiments.Hmac.Sha256ExampleProperties.
+Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.StateMachineMMIO.
 
 Require coqutil.Word.Naive.
@@ -31,7 +43,22 @@ Existing Instance SortedListString.ok.
    the naive implementation violates the riscv_ok requirements *)
 Instance naive_riscv_ok : word.riscv_ok word. Admitted.
 
-Definition heap_start: word := word.of_Z (4*2^10).
+(* TODO match to actual Cava implementation *)
+Instance hmac_timing: timing := {
+  max_negative_done_polls := 16;
+}.
+
+Notation bytearray := (bedrock2.Array.array (mem := mem) ptsto (word.of_Z 1)).
+
+(* Plug in the right state machine parameters; typeclass inference struggles here *)
+Local Notation execution := (execution (M:=hmac_state_machine)).
+
+Definition code_start    : word := word.of_Z 0.
+Definition code_pastend  : word := word.of_Z (4*2^10).
+Definition heap_start    : word := word.of_Z (4*2^10).
+Definition heap_pastend  : word := word.of_Z (8*2^10).
+Definition stack_start   : word := word.of_Z (8*2^10).
+Definition stack_pastend : word := word.of_Z (16*2^10).
 
 (* dummy base address -- just past end of stack *)
 Definition base_addr : Z := 16 * 2^10.
@@ -57,6 +84,69 @@ Definition funcs := [
   bitfield_field32_write; bitfield_field32_read
 ].
 
+Lemma link_sha256: spec_of_sha256 funcs.
+Proof.
+  (* TODO speedup, don't reprove the same specs many times *)
+  repeat first
+         [ eapply sha256_correct
+         | eapply hmac_sha256_init_correct
+         | eapply hmac_sha256_update_correct
+         | eapply hmac_sha256_final_correct
+         | eapply abs_mmio_write32_correct
+         | eapply abs_mmio_read32_correct
+         | eapply abs_mmio_write8_correct
+         | eapply abs_mmio_read8_correct
+         | eapply bitfield_bit32_write_correct
+         | eapply bitfield_field32_write_correct
+         | eapply bitfield_bit32_read_correct
+         | eapply bitfield_field32_read_correct
+         | eapply HmacProperties.execution_unique
+         | idtac ].
+Qed.
+
+Lemma main_correct (idlebuffer: list byte) (idleconfig: idle_data)
+    (input_addr input_len digest_addr: word)
+    (input digest_trash: list byte) (R: mem -> Prop)
+    (m: mem) (t: trace):
+    Z.of_nat (length input) = word.unsigned input_len ->
+    Z.of_nat (length digest_trash) = 32 ->
+    input_addr <> word.of_Z 0 ->
+    digest_addr <> word.of_Z 0 ->
+    (scalar (word.of_Z digest_ptr) digest_addr *
+     scalar (word.of_Z msg_ptr) input_addr *
+     scalar (word.of_Z msg_len_ptr) input_len *
+     bytearray input_addr input * bytearray digest_addr digest_trash * R)%sep m ->
+    execution t (IDLE idlebuffer idleconfig) ->
+    WeakestPrecondition.cmd (WeakestPrecondition.call funcs) main_body t m map.empty
+                            (fun t' m' (_: ProgramSemantics32.locals) =>
+                               sha256_post input_addr input digest_addr
+                                           (scalar (word.of_Z digest_ptr) digest_addr *
+                                            scalar (word.of_Z msg_ptr) input_addr *
+                                            scalar (word.of_Z msg_len_ptr) input_len * R)%sep
+                                           t' m' []).
+Proof.
+  intros. pose proof link_sha256.
+  repeat straightline.
+  straightline_call; try eassumption. 1: ecancel_assumption.
+  unfold sha256_post in *. repeat straightline.
+  split; [reflexivity|].
+  split; [assumption|].
+  ecancel_assumption.
+Qed.
+
+Lemma funcs_valid: ExprImp.valid_funs (map.of_list funcs).
+Proof.
+  cbv [funcs map.of_list ExprImp.valid_funs]. intros *.
+  repeat match goal with
+         | |- context[match ?p with _ => _ end] => cbv [p]
+         end.
+  rewrite !map.get_put_dec, map.get_empty.
+  repeat destruct_one_match; inversion 1; cbv [ExprImp.valid_fun].
+  all:ssplit.
+  all:apply dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec).
+  all:reflexivity.
+Qed.
+
 Definition compiler_invocation: option (list Decode.Instruction * (SortedListString.map Z) * Z) :=
   compile compile_ext_call (map.of_list funcs).
 
@@ -69,9 +159,22 @@ Defined.
 
 Definition sha256_example_asm := Eval compute in fst (fst sha256_compile_result).
 
+Lemma sha256_compile_result_eq:
+  compile compile_ext_call (map.of_list funcs) = Some sha256_compile_result.
+Proof. reflexivity. Qed.
+
 Module PrintAssembly.
   Import riscv.Utility.InstructionNotations.
   Goal False.
     let r := eval unfold sha256_example_asm in sha256_example_asm in idtac (*r*).
   Abort.
 End PrintAssembly.
+
+Definition main_relative_pos :=
+  match map.get (snd (fst sha256_compile_result)) (fst main) with
+  | Some p => p
+  | None => -1111
+  end.
+
+Definition p_call: word :=
+  word.add code_start (word.of_Z (4 * Z.of_nat (List.length sha256_example_asm))).

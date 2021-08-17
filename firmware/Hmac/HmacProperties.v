@@ -455,7 +455,7 @@ Section Proofs.
 
   Global Instance spec_of_hmac_sha256_init : spec_of b2_hmac_sha256_init :=
     fun function_env =>
-      forall tr m (R : mem -> Prop) (s : state) (digest_buffer: list byte) (d: idle_data),
+      forall tr m (R : mem -> Prop) (digest_buffer: list byte) (d: idle_data),
       R m ->
       execution tr (IDLE digest_buffer d) ->
       call function_env b2_hmac_sha256_init tr m []
@@ -503,7 +503,7 @@ Section Proofs.
 
   Global Instance spec_of_hmac_sha256_update : spec_of b2_hmac_sha256_update :=
     fun function_env =>
-      forall tr m (R : mem -> Prop) (s : state) (previous_input new_input: list byte) data_addr len,
+      forall tr m (R : mem -> Prop) (previous_input new_input: list byte) data_addr len,
       word.unsigned len = Z.of_nat (length new_input) ->
       data_addr <> word.of_Z 0 ->
       (bytearray data_addr new_input * R)%sep m ->
@@ -763,7 +763,7 @@ Section Proofs.
 
   Global Instance spec_of_hmac_sha256_final : spec_of b2_hmac_sha256_final :=
     fun function_env =>
-      forall tr (m: mem) (R : mem -> Prop) (s : state)
+      forall tr (m: mem) (R : mem -> Prop)
              (input digest_trash: list Byte.byte) (digest_addr: word),
       Z.of_nat (length digest_trash) = 32 ->
       digest_addr <> word.of_Z 0 ->

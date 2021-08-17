@@ -86,7 +86,7 @@ Proof.
     exact I.
 Qed.
 
-Instance RV32I_width: FlatToRiscvCommon.bitwidth_iset 32 RV32I. reflexivity. Qed.
+Instance RV32IM_width: FlatToRiscvCommon.bitwidth_iset 32 RV32IM. reflexivity. Qed.
 
 Section MMIO1.
   Context {word: Word.Interface.word 32}

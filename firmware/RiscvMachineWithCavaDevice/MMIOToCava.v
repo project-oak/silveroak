@@ -136,7 +136,7 @@ Section WithParams.
            getExtraState := d |}.
 
   Definition stepH(initialL: MetricRiscvMachine)(post: MetricRiscvMachine -> Prop): Prop :=
-    free.interp MetricMinimalMMIO.interp_action (riscv.Platform.Run.run1 Decode.RV32I)
+    free.interp MetricMinimalMMIO.interp_action (riscv.Platform.Run.run1 Decode.RV32IM)
                 initialL (fun _ : unit => post).
 
   Variable sched: schedule.
