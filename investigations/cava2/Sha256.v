@@ -62,7 +62,7 @@ Section Var.
   Definition sha256_padder : Circuit _ [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit] (Bit ** sha_word ** Bit ** Bit) :=
     {{
     fun data_valid data is_final final_length consumer_ready clear =>
-    (* offset, is the offset in the current block 0 <= offset <= 16 *)
+    (* offset, is the offset in the current block 0 <= offset < 16 *)
     let/delay '(done, out, out_valid, state, length; current_offset) :=
       if clear
       then `Constant (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16)
@@ -101,7 +101,7 @@ Section Var.
         in
 
       let next_out :=
-        (* If we have final word and its not a full word, we can emit 0x80 bit
+        (* If we have final word and its not a full word, we can emit 0x80 byte
          * immediately *)
         if state == `padder_waiting` & is_final then
           if final_length == `K 0`
