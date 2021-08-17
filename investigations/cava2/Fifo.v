@@ -18,6 +18,7 @@ Require Import Coq.Strings.String.
 Require Import Coq.Strings.HexString.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
+Require Import Cava.Util.List.
 
 Require Import Cava.Types.
 Require Import Cava.Expr.
@@ -90,10 +91,11 @@ Proof.
   rewrite fold_left_accumulate'_cons_snd.
   cbn [List.app].
 
-  apply List.Forall_cons_iff in H.
-  destruct H.
-  apply IHinputs in H0.
-  rewrite <- (fifo_no_change _ _ _ H).
+  lazymatch goal with
+  | H : Forall _ (_ :: _) |- _ =>
+    inversion H; clear H; subst
+  end.
+  rewrite <- (fifo_no_change _ _ _ ltac:(eassumption)).
   rewrite fold_left_accumulate'_snd_acc_invariant with (acc_b:=[]%list).
-  apply H0.
+  auto.
 Qed.

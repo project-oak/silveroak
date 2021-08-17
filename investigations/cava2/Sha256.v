@@ -220,13 +220,16 @@ Section Var.
           else round)
         ) in
 
-      let done := (round == `K 64`) | done in
+      let next_done := (round == `K 63`) | done in
       let round := if inc_round then round + `K 1` else round in
 
-      if start | clear
-      then (initial_digest, block, `Constant (Bit**sha_round) (0, 0)`)
-      else if done then (current_digest, message_schedule, done, round)
-      else (next_digest, w, done, round)
+      if clear
+      then `Constant (sha_digest ** sha_block ** Bit ** sha_round)
+            (sha256_initial_digest, (repeat 0 16, (1, 0)))`
+      else if start
+           then (initial_digest, block, `Constant (Bit**sha_round) (0, 0)`)
+           else if done then (current_digest, message_schedule, next_done, round)
+                else (next_digest, w, next_done, round)
 
       initially (((sha256_initial_digest, (repeat 0 16, (1, 0))))
       : denote_type (sha_digest ** sha_block ** Bit ** sha_round )) in

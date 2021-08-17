@@ -17,7 +17,7 @@
 Require Import Coq.Lists.List.
 Require Import Coq.ZArith.ZArith.
 Require Import ExtLib.Structures.Monoid.
-Require Import ExtLib.Data.List.
+Require Import Cava.Util.List.
 Require Import Cava.Types.
 Import ListNotations.
 
@@ -62,27 +62,12 @@ Inductive TernaryPrim : type -> type -> type -> type -> Type :=
 | TernVecReplace: forall {t n i}, TernaryPrim (Vec t n) (BitVec i) t (Vec t n)
 .
 
-Module List.
-  Definition resize {A} (d : A) n (ls : list A) : list A :=
-    firstn n ls ++ repeat d (n - length ls).
-
-  Fixpoint replace {A} n a (ls: list A): list A :=
-    match ls with
-    | [] => []
-    | x :: xs =>
-      match n with
-      | 0 => a :: xs
-      | S n' => x :: replace n' a xs
-      end
-    end%list.
-End List.
-
 Definition unary_semantics {x r} (prim: UnaryPrim x r)
   : denote_type x -> denote_type r :=
   match prim in UnaryPrim x r return denote_type x -> denote_type r with
   | @UnVecSlice t n start len =>
-    fun x => List.resize default len (firstn len (skipn start x))
-  | @UnVecResize t n m => fun x => List.resize default m x
+    fun x => resize default len (firstn len (skipn start x))
+  | @UnVecResize t n m => fun x => resize default m x
   | @UnVecReverse t n => fun x => rev x
 
   | @UnVecUncons t n => fun x => (hd default x, tl x)
@@ -105,7 +90,7 @@ Definition binary_semantics {x y r} (prim: BinaryPrim x y r)
   | @BinBitVecAnd n => N.land
   | @BinBitVecAddU n => fun x y => ((x + y) mod (2 ^ (N.of_nat n)))%N
   | @BinBitVecSubU n => fun x y => ((x - y + 2 ^ N.of_nat n) mod (2 ^ (N.of_nat n)))%N
-  | @BinVecIndex t n i => fun x n => nth (N.to_nat n) x default
+  | @BinVecIndex t len i => fun x n => nth (N.to_nat n) (resize default len x) default
   | BinVecCons => fun x y => x :: y
   | BinVecConcat => fun x y => x ++ y
   | @BinVecShiftInRight t n => (fun xs x => tl (xs ++ [x]))
@@ -116,6 +101,6 @@ Definition binary_semantics {x y r} (prim: BinaryPrim x y r)
 Definition ternary_semantics {x y z r} (prim: TernaryPrim x y z r)
   : denote_type x -> denote_type y -> denote_type z -> denote_type r :=
   match prim in TernaryPrim x y z r return denote_type x -> denote_type y -> denote_type z -> denote_type r with
-  | TernVecReplace => fun ls i x => List.replace (N.to_nat i) x ls
+  | TernVecReplace => fun ls i x => replace (N.to_nat i) x ls
   end.
 
