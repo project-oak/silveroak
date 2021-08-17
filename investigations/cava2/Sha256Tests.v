@@ -28,6 +28,9 @@ Import ListNotations.
 
 (**** Convert to/from circuit signals ****)
 
+(* extra cycles to allow for synchronization *)
+Definition extra_cycles : nat := 100.
+
 (* convert test vector data into circuit input signals *)
 Definition to_sha256_input (t : sha256_test_vector)
   : list (denote_type (input_of (var:=denote_type) sha256)) :=
@@ -53,8 +56,11 @@ Definition to_sha256_input (t : sha256_test_vector)
   (* create dummy input for cycles while circuit is computing final digest *)
   let nblocks := length (SHA256.padded_msg t.(msg_bytes)) / (512 / N.to_nat w) in
   let dummy_input : denote_type (input_of sha256) := (0, (0, (0, (0, (0, tt)))))%N in
-  (* TODO: is this number of dummy inputs always right? *)
-  non_final_input ++ [final_input] ++ repeat dummy_input (64*nblocks+13+4*nblocks).
+  (* number of cycles = cycles for padding (16 per block)
+                        + cycles for compression (64 per block)
+                        + extra_cycles *)
+  let ndummy := ((64+16)*nblocks + extra_cycles) - length non_final_input - 1 in
+  non_final_input ++ [final_input] ++ repeat dummy_input ndummy.
 
 (* extract test result from circuit output signals *)
 Definition from_sha256_output
