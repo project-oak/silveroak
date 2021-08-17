@@ -451,8 +451,20 @@ Section Nth.
 
   Lemma nth_tl {A} n (l : list A) d : nth n (tl l) d = nth (S n) l d.
   Proof. destruct l; destruct n; reflexivity. Qed.
+
+  Lemma nth_skipn {A} (d : A) n i ls :
+    nth i (skipn n ls) d = nth (n + i) ls d.
+  Proof.
+    revert i ls; induction n; [ reflexivity | ].
+    intros; destruct ls; [ destruct i; reflexivity | ].
+    cbn [Nat.add skipn nth]. rewrite IHn. reflexivity.
+  Qed.
+
+  Lemma nth_hd {A} (d : A) ls : hd d ls = nth 0 ls d.
+  Proof. destruct ls; reflexivity. Qed.
 End Nth.
-Hint Rewrite @nth_step @nth_found @nth_nil @nth_extend using solve [eauto] : push_nth.
+Hint Rewrite @nth_step @nth_found @nth_nil @nth_extend @nth_skipn
+     @nth_tl @nth_hd using solve [eauto] : push_nth.
 Hint Rewrite @nth_map_seq @map_nth_inbounds @nth_repeat_inbounds
      using lia : push_nth.
 
@@ -713,6 +725,14 @@ Section FirstnSkipn.
 
   Lemma firstn_eq_0 {A} (n : nat) (l : list A) (HL : n = 0%nat) : List.firstn n l = [].
   Proof. subst n. reflexivity. Qed.
+  Lemma firstn_map_nth {A} (d : A) n ls :
+    n <= length ls -> firstn n ls = map (fun i : nat => nth i ls d) (seq 0 n).
+  Proof.
+    revert ls; induction n; [ reflexivity | ].
+    intros. erewrite firstn_succ_snoc by lia. rewrite IHn by lia.
+    autorewrite with pull_snoc. reflexivity.
+  Qed.
+
 End FirstnSkipn.
 Hint Rewrite @skipn_app @skipn_skipn @skipn_repeat @skipn_cons @skipn_O
      @skipn_nil @skipn_all @skipn_combine
@@ -722,6 +742,127 @@ Hint Rewrite @firstn_nil @firstn_cons @firstn_all @firstn_app @firstn_O
      using solve [eauto] : push_firstn.
 Hint Rewrite @skipn_all2 @skipn_eq_0 using solve [length_hammer] : push_skipn.
 Hint Rewrite @firstn_all2 @firstn_eq_0 using solve [length_hammer] : push_firstn.
+
+(* Definition and proofs for [resize] *)
+Section Resize.
+  Definition resize {A} (d : A) n (ls : list A) : list A :=
+    firstn n ls ++ repeat d (n - length ls).
+
+  Lemma resize_0 {A} (d : A) ls : resize d 0 ls = [].
+  Proof.
+    cbv [resize]. autorewrite with push_firstn natsimpl. reflexivity.
+  Qed.
+  Lemma resize_succ {A} (d : A) n ls :
+    resize d (S n) ls = hd d ls :: resize d n (tl ls).
+  Proof.
+    cbv [resize].
+    destruct ls; autorewrite with push_firstn natsimpl; reflexivity.
+  Qed.
+
+  Lemma resize_length {A} (d : A) n ls : length (resize d n ls) = n.
+  Proof. cbv [resize]. length_hammer. Qed.
+
+  Lemma resize_map_nth {A} (d : A) n ls :
+    resize d n ls = map (fun i => nth i ls d) (seq 0 n).
+  Proof.
+    intros; subst. cbv [resize].
+    destruct (Compare_dec.le_lt_dec n (length ls));
+      autorewrite with natsimpl listsimpl push_firstn;
+      [ solve [auto using firstn_map_nth] | ].
+    replace n with (length ls + (n - length ls)) by lia.
+    rewrite seq_app, map_app, <-firstn_map_nth by lia.
+    autorewrite with natsimpl push_firstn. apply f_equal.
+    erewrite map_ext_in; [ rewrite map_constant; f_equal; length_hammer | ].
+    intros *. rewrite in_seq. intros.
+    rewrite nth_overflow by lia; reflexivity.
+  Qed.
+
+  Lemma resize_noop {A} (d : A) n ls :
+    n = length ls -> resize d n ls = ls.
+  Proof.
+    intros; subst. cbv [resize].
+    autorewrite with natsimpl listsimpl push_firstn.
+    reflexivity.
+  Qed.
+
+  Lemma resize_firstn {A} (d : A) ls n m :
+    n <= m ->
+    resize d n (firstn m ls) = resize d n ls.
+  Proof.
+    intros; cbv [resize]. autorewrite with push_firstn natsimpl push_length.
+    repeat (f_equal; try lia).
+  Qed.
+End Resize.
+Hint Rewrite @resize_length using solve [eauto] : push_length.
+Hint Rewrite @resize_0 @resize_succ using solve [eauto] : push_resize.
+Hint Rewrite @resize_noop @resize_firstn using lia : push_resize.
+
+(* Definition and proofs for [slice] *)
+Section Slice.
+  Definition slice {A} (d : A) ls start len : list A :=
+    resize d len (skipn start ls).
+
+  Lemma slice_map_nth {A} (d : A) ls start len :
+    slice d ls start len = map (fun i => nth (start + i) ls d) (seq 0 len).
+  Proof.
+    intros; subst. cbv [slice].
+    rewrite resize_map_nth. apply map_ext; intros.
+    autorewrite with push_nth; reflexivity.
+  Qed.
+
+  Lemma slice_length {A} (d : A) ls start len :
+    length (slice d ls start len) = len.
+  Proof. rewrite slice_map_nth. length_hammer. Qed.
+
+  Lemma tl_slice {A} (d : A) ls start len :
+    tl (slice d ls start (S len)) = slice d ls (S start) len.
+  Proof.
+    rewrite !slice_map_nth. cbn [seq List.map tl].
+    rewrite <-seq_shift, map_map. apply map_ext; intros.
+    f_equal; lia.
+  Qed.
+
+  Lemma hd_slice {A} (d : A) ls start len :
+    hd d (slice d ls start (S len)) = nth start ls d.
+  Proof.
+    rewrite !slice_map_nth. cbn [seq map hd]. f_equal; lia.
+  Qed.
+
+  Lemma nth_slice_inbounds {A} (d : A) ls i start len :
+    i < len ->
+    nth i (slice d ls start len) d = nth (start + i) ls d.
+  Proof.
+    intros. rewrite slice_map_nth.
+    autorewrite with push_nth. f_equal; lia.
+  Qed.
+
+  Lemma slice_snoc {A} (d : A) ls start len :
+    slice d ls start len ++ [nth (start + len) ls d]
+    = slice d ls start (S len).
+  Proof.
+    rewrite !slice_map_nth. autorewrite with pull_snoc.
+    reflexivity.
+  Qed.
+
+  Lemma slice_0 {A} (d : A) ls len :
+    slice d ls 0 len = resize d len ls.
+  Proof. reflexivity. Qed.
+End Slice.
+Hint Rewrite @slice_length using solve [eauto] : push_length.
+Hint Rewrite @nth_slice_inbounds using lia : push_nth.
+
+(* Definition and proofs for [replace] *)
+Section Replace.
+  Fixpoint replace {A} n a (ls: list A): list A :=
+    match ls with
+    | [] => []
+    | x :: xs =>
+      match n with
+      | 0 => a :: xs
+      | S n' => x :: replace n' a xs
+      end
+    end%list.
+End Replace.
 
 (* Proofs about fold_right and fold_left *)
 Section Folds.

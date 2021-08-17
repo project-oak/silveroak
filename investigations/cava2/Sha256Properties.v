@@ -31,73 +31,6 @@ Require Import Cava.Util.NPushPullMod.
 Require HmacSpec.SHA256.
 Import ListNotations.
 
-(* TODO: move to a more general file *)
-Lemma step_vec_as_tuple_cons {t n} (xs : list (denote_type t)) :
-  step (vec_as_tuple (t:=t) (n:=S n)) tt (xs, tt)
-  = (tt, (hd default xs, snd (step (vec_as_tuple (t:=t) (n:=n)) tt (tl xs, tt)))).
-Proof. reflexivity. Qed.
-Hint Rewrite @step_vec_as_tuple_cons using solve [eauto] : stepsimpl.
-Lemma step_vec_as_tuple_one {t} (xs : list (denote_type t)):
-  step (vec_as_tuple (t:=t) (n:=0)) tt (xs, tt) = (tt, hd default xs).
-Proof. reflexivity. Qed.
-Hint Rewrite @step_vec_as_tuple_one using solve [eauto] : stepsimpl.
-Ltac stepsimpl :=
-  repeat first [ progress
-                   cbn [fst snd step denote_type absorb_any
-                            split_absorbed_denotation combine_absorbed_denotation
-                            unary_semantics binary_semantics eqb ]
-               | progress autorewrite with stepsimpl ].
-
-(* TODO: move to a more general file *)
-Lemma step_index {t n i} (x : denote_type (Vec t n))
-      (idx : denote_type (BitVec i)) :
-  step (@index _ t n i) tt (x, (idx, tt))
-  = (tt, nth (N.to_nat idx) (List.resize default n x) default).
-Proof. reflexivity. Qed.
-Hint Rewrite @step_index using solve [eauto] : stepsimpl.
-
-Lemma resize_0 {A} (d : A) ls : List.resize d 0 ls = [].
-Proof.
-  cbv [List.resize]. autorewrite with push_firstn natsimpl. reflexivity.
-Qed.
-Lemma resize_succ {A} (d : A) n ls :
-  List.resize d (S n) ls = hd d ls :: List.resize d n (tl ls).
-Proof.
-  cbv [List.resize].
-  destruct ls; autorewrite with push_firstn natsimpl; reflexivity.
-Qed.
-
-(* TODO: move to a more general file *)
-Lemma step_uncons {t n}  (x : denote_type [Vec t (S n)]) :
-  step (@uncons _ t n) tt x = (tt, (hd default (fst x), tl (fst x))).
-Proof. destruct x; reflexivity. Qed.
-Hint Rewrite @step_uncons using solve [eauto] : stepsimpl.
-
-(* TODO: move to a more general file *)
-Lemma step_stateless {i o} (f : Circuit [] i o) (x : denote_type i) :
-  step f tt x = (tt, snd (step f tt x)).
-Proof.
-  rewrite (surjective_pairing (step f tt x)).
-  destruct (fst (step f tt x)). reflexivity.
-Qed.
-
-(* TODO: move to a more general file *)
-Lemma step_map2 {t u v n} (f : Circuit [] [t;u] v)
-      (x : denote_type [Vec t n; Vec u n]) :
-  step (@Expr.map2 _ t u v n f) tt x
-  = (tt, map2 (fun (x1 : denote_type t) (x2 : denote_type u) =>
-                 snd (step f tt (x1,(x2,tt))))
-              (List.resize default n (fst x))
-              (List.resize default n (fst (snd x)))).
-Proof.
-  revert x f; induction n; cbn [Expr.map2]; stepsimpl;
-    intros; destruct_products; logical_simplify; stepsimpl;
-      [ rewrite resize_0; reflexivity | ].
-  rewrite step_stateless, IHn.
-  rewrite !resize_succ. reflexivity.
-Qed.
-Hint Rewrite @step_map2 using solve [eauto] : stepsimpl.
-
 Lemma step_rotr n (x : denote_type sha_word) :
   step (rotr n) tt (x,tt) = (tt, SHA256.ROTR (N.of_nat n) x).
 Proof.
@@ -106,40 +39,6 @@ Proof.
   repeat (f_equal; try lia).
 Qed.
 Hint Rewrite @step_rotr using solve [eauto] : stepsimpl.
-
-(* TODO: move *)
-Lemma resize_length {A} (d : A) n ls : length (List.resize d n ls) = n.
-Proof. cbv [List.resize]. length_hammer. Qed.
-Hint Rewrite @resize_length using solve [eauto] : push_length.
-
-(* TODO: move *)
-Lemma firstn_map_nth {A} (d : A) n ls :
-  n <= length ls -> firstn n ls = List.map (fun i : nat => nth i ls d) (seq 0 n).
-Proof.
-  revert ls; induction n; [ reflexivity | ].
-  intros. erewrite firstn_succ_snoc by lia. rewrite IHn by lia.
-  autorewrite with pull_snoc. reflexivity.
-Qed.
-
-(* TODO: move *)
-Lemma resize_map_nth {A} (d : A) n ls :
-  List.resize d n ls = List.map (fun i => nth i ls d) (seq 0 n).
-Proof.
-  intros; subst. cbv [List.resize].
-  destr (n <=? length ls);
-    autorewrite with natsimpl listsimpl push_firstn;
-    [ solve [auto using firstn_map_nth] | ].
-  replace n with (length ls + (n - length ls)) by lia.
-  rewrite seq_app, map_app, <-firstn_map_nth by lia.
-  autorewrite with natsimpl push_firstn. apply f_equal.
-  erewrite map_ext_in; [ rewrite map_constant; f_equal; length_hammer | ].
-  intros *. rewrite in_seq. intros.
-  rewrite nth_overflow by lia; reflexivity.
-Qed.
-
-Lemma hd_to_nth {A} (d : A) ls : hd d ls = nth 0 ls d.
-Proof. destruct ls; reflexivity. Qed.
-Hint Rewrite @hd_to_nth @nth_tl using solve [eauto] : hd_tl_to_nth.
 
 Lemma step_sha256_compress
       (H : denote_type sha_digest)
@@ -223,99 +122,13 @@ Proof.
 Qed.
 Hint Rewrite @step_sha256_message_schedule_update using solve [eauto] : stepsimpl.
 
-(* TODO: move *)
-Lemma resize_noop {A} (d : A) n ls :
-  n = length ls -> List.resize d n ls = ls.
-Proof.
-  intros; subst. cbv [List.resize].
-  autorewrite with natsimpl listsimpl push_firstn.
-  reflexivity.
-Qed.
-
 Lemma step_sha256_round_constants (round : denote_type sha_round) :
   step sha256_round_constants tt (round, tt)
   = (tt, nth (N.to_nat round) SHA256.K 0%N).
 Proof. reflexivity. Qed.
 Hint Rewrite @step_sha256_round_constants using solve [eauto] : stepsimpl.
 
-(* TODO: move *)
-Module List.
-  Definition slice {A} (d : A) ls start len : list A :=
-    List.resize d len (skipn start ls).
-End List.
 
-(*
-  (* SHA-256 inner core *)
-  (* `initial_digest` must be held until done *)
-  Definition sha256_inner : Circuit _ [Bit; sha_block; sha_digest; Bit] (sha_digest ** Bit) :=
-    {{
-    fun block_valid block initial_digest clear =>
-
-    let/delay '(current_digest, message_schedule, done; round) :=
-
-      let inc_round := !done in
-      let start := (* done && *) block_valid in
-
-      let k_i := `sha256_round_constants` round in
-      let '(w0,w1, _, _, _, _, _, _
-           , _,w9, _, _, _, _,w14;_ ) := `vec_as_tuple (n:=15)` message_schedule in
-      let update_schedule := round >= `K 15` in
-      let w16 :=
-        if update_schedule
-        then `sha256_message_schedule_update` w0 w1 w9 w14
-        else `index` message_schedule round in
-      let w :=
-        if update_schedule
-        then message_schedule <<+ w16
-        else message_schedule in
-
-      let next_digest := `sha256_compress` current_digest k_i
-        (`index` message_schedule (
-          if round >= `K 16`
-          then `K 15`
-          else round)
-        ) in
-
-      let done := (round == `K 64`) | done in
-      let round := if inc_round then round + `K 1` else round in
-
-      if start | clear
-      then (initial_digest, block, `Constant (Bit**sha_round) (0, 0)`)
-      else if done then (current_digest, message_schedule, done, round)
-      else (next_digest, w, done, round)
-
-      initially (((sha256_initial_digest, (repeat 0 16, (1, 0))))
-      : denote_type (sha_digest ** sha_block ** Bit ** sha_round )) in
-
-    let updated_digest := `map2 {{fun a b => ( a + b ) }}` initial_digest current_digest in
-    (updated_digest, done)
-
-  }}.
- *)
-
-(*
-  if block_valid OR clear is true:
-     new_state := (initial_digest, block, 0, 0)
-     out := (map2 add initial_digest initial_digest, 0)
-  otherwise:
-     if done is false:
-        new_round := round + 1
-     if done is true OR round = 64:
-        new_done := true
-        new_state := (current_digest, message_schedule, 1, new_round)
-        out := (map2 add initial_digest current_digest, 1)
-     otherwise:
-        if round >= 15:
-           next_digest := compress current_digest k[round] message_schedule[15]
-           new_state := (next_digest, updated message schedule, 0, new_round)
-           out := (map2 add initial_digest next_digest, 0)
-        otherwise:
-           next_digest := compress current_digest k[round] message_schedule[round]
-           new_state := (next_digest, message_schedule, 0, new_round)
-           out := (map2 add initial_digest next_digest, 0)
-
- *)
-Print SHA256.sha256.
 Definition sha256_inner_invariant
            (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
            msg (H : list N) (i : nat) : Prop :=
@@ -374,123 +187,6 @@ Definition sha256_inner_spec
   (map2 SHA256.add_mod (List.resize 0%N 8 initial_digest)
         (List.resize 0%N 8 next_digest), next_done).
 
-(*
-Definition sha256_inner_spec
-           (input : denote_type [Bit; sha_block; sha_digest; Bit])
-           (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
-           msg (i : nat)
-  : denote_type (sha_digest ** sha_block ** Bit ** sha_round)
-    * denote_type (sha_digest ** Bit) :=
-  let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
-  let '(current_digest, (message_schedule, (done, round))) := state in
-  let add_to_initial := map2 SHA256.add_mod (List.resize 0%N 8 initial_digest) in
-  if negb (N.lor block_valid clear =? 0)%N
-  then
-    (* return dummy values *)
-    let new_state := (initial_digest, (block, (0%N, 0%N))) in
-    let out := (add_to_initial initial_digest, 0%N) in
-    (new_state, out)
-  else
-    let new_round := (if (N.lnot done 1 =? 0)%N then round + 1 else round)%N in
-    if (negb (done =? 0)%N || (round =? 64)%N)%bool
-    then
-      (* computation done; hold current values *)
-      let new_state := (current_digest, (message_schedule, (1%N, new_round))) in
-      let out := (add_to_initial current_digest, 1%N) in
-      (new_state, out)
-    else
-      (* perform compression *)
-      let t := N.to_nat round in
-      let next_digest :=
-          SHA256.sha256_compress msg i (List.resize 0%N 8 current_digest) t in
-      let next_message_schedule :=
-          if (15 <=? round)%N
-          then List.slice 0%N (SHA256.W msg i) (t + 1 - 16) 16
-          else message_schedule in
-      let new_state := (next_digest, (next_message_schedule, (0%N, new_round))) in
-      let out := (add_to_initial next_digest, 0%N) in
-      (new_state, out).
-*)
-
-Definition state_of {s i o} (c : @Circuit denote_type s i o) : type := s.
-Compute state_of sha256_inner.
-
-
-Lemma nth_skipn {A} (d : A) n i ls :
-  nth i (skipn n ls) d = nth (n + i) ls d.
-Proof.
-  revert i ls; induction n; [ reflexivity | ].
-  intros; destruct ls; [ destruct i; reflexivity | ].
-  cbn [Nat.add]. autorewrite with push_skipn push_nth.
-  rewrite IHn. reflexivity.
-Qed.
-Hint Rewrite @nth_skipn using solve [eauto] : push_nth.
-
-(* TODO: move *)
-Lemma slice_map_nth {A} (d : A) ls start len :
-  List.slice d ls start len = List.map (fun i => nth (start + i) ls d) (seq 0 len).
-Proof.
-  intros; subst. cbv [List.slice].
-  rewrite resize_map_nth. apply map_ext; intros.
-  autorewrite with push_nth; reflexivity.
-Qed.
-
-(* TODO: move *)
-Lemma slice_length {A} (d : A) ls start len :
-  length (List.slice d ls start len) = len.
-Proof. rewrite slice_map_nth. length_hammer. Qed.
-Hint Rewrite @slice_length using solve [eauto] : push_length.
-
-(* TODO: move *)
-Lemma tl_slice {A} (d : A) ls start len :
-  tl (List.slice d ls start (S len)) = List.slice d ls (S start) len.
-Proof.
-  rewrite !slice_map_nth. cbn [seq List.map tl].
-  rewrite <-seq_shift, map_map. apply map_ext; intros.
-  f_equal; lia.
-Qed.
-
-(* TODO: move *)
-Lemma hd_slice {A} (d : A) ls start len :
-  hd d (List.slice d ls start (S len)) = nth start ls d.
-Proof.
-  rewrite !slice_map_nth. cbn [seq List.map hd]. f_equal; lia.
-Qed.
-
-(* TODO: move *)
-Lemma nth_slice {A} (d : A) ls i start len :
-  nth i (List.slice d ls start len) d
-  = if i <? len then nth (start + i) ls d else d.
-Proof.
-  rewrite !slice_map_nth; destruct_one_match;
-    autorewrite with push_nth; [ | reflexivity ].
-  f_equal; lia.
-Qed.
-Hint Rewrite @nth_slice using solve [eauto] : push_nth.
-
-(* TODO: move *)
-Lemma slice_snoc {A} (d : A) ls start len :
-  List.slice d ls start len ++ [nth (start + len) ls d]
-  = List.slice d ls start (S len).
-Proof.
-  rewrite !slice_map_nth. autorewrite with pull_snoc.
-  reflexivity.
-Qed.
-
-(* TODO: move *)
-Lemma slice_0 {A} (d : A) ls len :
-  List.slice d ls 0 len = List.resize d len ls.
-Proof. reflexivity. Qed.
-
-(* TODO: move *)
-Lemma resize_firstn {A} (d : A) ls n m :
-  n <= m ->
-  List.resize d n (firstn m ls) = List.resize d n ls.
-Proof.
-  intros; cbv [List.resize]. autorewrite with push_firstn natsimpl push_length.
-  repeat (f_equal; try lia).
-Qed.
-
 (* TODO: move to SHA256Properties.v *)
 Lemma sha256_compress_length msg i H t :
   length (SHA256.sha256_compress msg i H t) = 8.
@@ -517,65 +213,6 @@ Qed.
 Hint Rewrite @fold_left_sha256_step_length using solve [length_hammer]
   : push_length.
 
-Ltac is_projection_from_step e :=
-  lazymatch e with
-  | fst ?e' => is_projection_from_step e'
-  | snd ?e' => is_projection_from_step e'
-  | step _ _ _ => idtac
-  | _ => fail "term is not a projection from step"
-  end.
-
-(* works like destruct_pair_let, but only simplifies expressions with step *)
-Ltac destruct_step_pair_let :=
-  repeat match goal with
-         | |- context [match ?p with
-                      | pair _ _ => _ end] =>
-           is_projection_from_step p;
-           rewrite (surjective_pairing p)
-         end.
-
-(* TODO : move *)
-Ltac boolsimpl_hyps :=
-  autorewrite with boolsimpl in *; cbn [negb andb orb xorb] in *;
-  repeat lazymatch goal with
-         | H : (_ || _)%bool = true |- _ => apply Bool.orb_true_iff in H; destruct H
-         | H : (_ || _)%bool = false |- _ => apply Bool.orb_false_iff in H; destruct H
-         | H : (_ && _)%bool = true |- _ => apply Bool.andb_true_iff in H; destruct H
-         | H : (_ && _)%bool = false |- _ => apply Bool.andb_false_iff in H; destruct H
-         | H : negb _ = true |- _ => apply Bool.negb_true_iff in H
-         | H : negb _ = false |- _ => apply Bool.negb_false_iff in H
-         end.
-
-(* TODO: move *)
-Module N.
-
-  Lemma ltb_ge x y : N.ltb x y = false <-> (x >= y)%N.
-  Proof.
-    destr (x <? y)%N; split; (discriminate || lia).
-  Qed.
-  Lemma leb_gt x y : N.leb x y = false <-> (x > y)%N.
-  Proof.
-    destr (x <=? y)%N; split; (discriminate || lia).
-  Qed.
-
-  Ltac bool_to_prop :=
-    repeat lazymatch goal with
-           | H : (_ =? _)%N = true |- _ => rewrite N.eqb_eq in H
-           | H : (_ =? _)%N = false |- _ => rewrite N.eqb_neq in H
-           | H : (_ <=? _)%N = true |- _ => rewrite N.leb_le in H
-           | H : (_ <=? _)%N = false |- _ => rewrite leb_gt in H
-           | H : (_ <? _)%N = true |- _ => rewrite N.ltb_lt in H
-           | H : (_ <? _)%N = false |- _ => rewrite N.ltb_ge in H
-           end.
-End N.
-
-Lemma apply_if {A B} (f : A -> B) (b : bool) x y : f (if b then x else y) = if b then f x else f y.
-Proof. destruct b; reflexivity. Qed.
-Lemma fst_if {A B} (b : bool) (x y : A * B) : fst (if b then x else y) = if b then fst x else fst y.
-Proof. apply apply_if. Qed.
-Lemma snd_if {A B} (b : bool) (x y : A * B) : snd (if b then x else y) = if b then snd x else snd y.
-Proof. apply apply_if. Qed.
-Hint Rewrite @fst_if @snd_if using solve [eauto] : tuple_if.
 
 Lemma step_sha256_inner_invariant
       (input : denote_type [Bit; sha_block; sha_digest; Bit])
@@ -696,3 +333,4 @@ Proof.
   cbn [fst snd]. rewrite resize_noop by length_hammer.
   destruct_one_match; reflexivity.
 Qed.
+(* TODO: clean up, prune, and move all these lemmas *)

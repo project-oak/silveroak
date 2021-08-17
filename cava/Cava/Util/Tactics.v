@@ -300,3 +300,23 @@ Section BoolSimplTests.
   Goal (forall b : bool, ((negb b && b) || (b && negb (xorb b b)))%bool = b).
   Proof. intros. boolsimpl. reflexivity. Qed.
 End BoolSimplTests.
+
+(* simplify boolean hypotheses *)
+Ltac boolsimpl_hyps :=
+  autorewrite with boolsimpl in *; cbn [negb andb orb xorb] in *;
+  repeat lazymatch goal with
+         | H : (_ || _)%bool = true |- _ => apply Bool.orb_true_iff in H; destruct H
+         | H : (_ || _)%bool = false |- _ => apply Bool.orb_false_iff in H; destruct H
+         | H : (_ && _)%bool = true |- _ => apply Bool.andb_true_iff in H; destruct H
+         | H : (_ && _)%bool = false |- _ => apply Bool.andb_false_iff in H; destruct H
+         | H : negb _ = true |- _ => apply Bool.negb_true_iff in H
+         | H : negb _ = false |- _ => apply Bool.negb_false_iff in H
+         end.
+
+Section BoolSimplHypsTests.
+  Goal (forall b : bool, (b || negb true)%bool = true -> b = true).
+  Proof. intros. boolsimpl_hyps. assumption. Qed.
+
+  Goal (forall b : bool, (b || (negb b && false))%bool = true -> b = true).
+  Proof. intros. boolsimpl_hyps. assumption. Qed.
+End BoolSimplHypsTests.

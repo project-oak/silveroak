@@ -131,6 +131,16 @@ Module N.
     lia.
   Qed.
 
+  (* tactic for transforming boolean expressions about N arithmetic into Props *)
+  Ltac bool_to_prop :=
+    repeat lazymatch goal with
+           | H : (_ =? _)%N = true |- _ => rewrite N.eqb_eq in H
+           | H : (_ =? _)%N = false |- _ => rewrite N.eqb_neq in H
+           | H : (_ <=? _)%N = true |- _ => rewrite N.leb_le in H
+           | H : (_ <=? _)%N = false |- _ => rewrite N.leb_gt in H
+           | H : (_ <? _)%N = true |- _ => rewrite N.ltb_lt in H
+           | H : (_ <? _)%N = false |- _ => rewrite N.ltb_ge in H
+           end.
 End N.
 Hint Rewrite N.clearbit_eq N.b2n_bit0 N.shiftr_spec'
      N.pow2_bits_true N.add_bit0 N.land_spec N.lor_spec
