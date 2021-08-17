@@ -53,7 +53,7 @@ Section Var.
     let/delay '(done, out, out_valid, state, length; current_offset) :=
       if clear
       then `Constant (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16)
-                     (0, (0, (0, (0, (0, 0)))))`
+                     (1, (0, (0, (0, (0, 0)))))`
       else if !consumer_ready then (done, out, out_valid, state, length, current_offset)
       else
 
@@ -111,13 +111,20 @@ Section Var.
         (state == `padder_waiting` & (data_valid | is_final))
         | (! (state == `padder_waiting`) ) in
 
-      let next_offset := if step then current_offset + `K 1` else current_offset in
+      let next_offset :=
+        if !step then current_offset
+        else if current_offset == `K 15` then `K 0`
+        else (current_offset + `K 1`) in
 
-      ( state == `padder_writing_length` & next_state == `padder_waiting`
+      let next_done :=
+        !data_valid & (
+        done | (state == `padder_writing_length` & next_state == `padder_waiting`)) in
+
+      ( next_done
       , next_out, step, next_state, next_length, next_offset)
 
       initially
-        (0,(0,(0,(0,(0,0)))))
+        (1,(0,(0,(0,(0,0)))))
         : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16)
         in
 
@@ -252,7 +259,7 @@ Section Var.
 
          let q := !inner_done_edge & inner_done  in
          let next_received_last_byte := received_last_byte | is_final in
-         let next_done := (!starting & !is_final) & (done | (received_last_byte & q))  in
+         let next_done := (!starting & !is_final) & padder_done & (done | (received_last_byte & q))  in
          let next_digest := if q then inner_digest else digest in
 
          if ! clear then
@@ -260,9 +267,9 @@ Section Var.
          next_done)
          else
           `Constant (Bit ** Bit ** Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit ** Bit)
-                    (1, (1, (1, (repeat 0 16, (sha256_initial_digest, (0, (0, 0)))))))`
+                    (1, (0, (1, (repeat 0 16, (sha256_initial_digest, (0, (0, 1)))))))`
 
-         initially ((1, (1, (1, (repeat 0 16, (sha256_initial_digest, (0, (0, 0))))))))
+         initially ((1, (0, (1, (repeat 0 16, (sha256_initial_digest, (0, (0, 1))))))))
          : denote_type (Bit ** Bit ** Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit ** Bit)
             in
 
@@ -310,7 +317,7 @@ Section SanityCheck.
     ; (1, (0, (1,0)))
     ; (1, (0, (1,0)))
     ; (1, (24, (1,1)))
-    ; (0, (0, (1,0)))
+    ; (0, (0, (1,1)))
     ].
   Proof. vm_compute. reflexivity. Qed.
 
@@ -334,5 +341,83 @@ Section SanityCheck.
       )) default))
     = [0xBA7816BF; 0x8F01CFEA; 0x414140DE; 0x5DAE2223; 0xB00361A3; 0x96177A9C; 0xB410FF61; 0xF20015AD ].
   Proof. vm_compute. reflexivity. Qed.
+
+  (* pad two blocks correctly *)
+  Goal
+    List.map (fun x => fst (snd x)) (
+    simulate sha256_padder (
+       (List.map (fun data =>
+         (* data_valid data is_final final_length consumer_ready clear *)
+         (1, (data, (0, (0, (1, (0, tt))))))
+       )
+       [ 0x61626364
+       ; 0x62636465
+       ; 0x63646566
+       ; 0x64656667
+       ; 0x65666768
+       ; 0x66676869
+       ; 0x6768696A
+       ; 0x68696A6B
+       ; 0x696A6B6C
+       ; 0x6A6B6C6D
+       ; 0x6B6C6D6E
+       ; 0x6C6D6E6F
+       ; 0x6D6E6F70
+       ; 0x6E6F7071
+       ])
+       ++ [ (1, (0, (1, (0, (1, (0, tt))))))]
+       ++ repeat (0, (0, (0, (0, (1, (0, tt)))))) (32 - 15)
+      ))
+    =
+       (* block 1 *)
+       [ 0x61626364 ; 0x62636465 ; 0x63646566 ; 0x64656667
+       ; 0x65666768 ; 0x66676869 ; 0x6768696A ; 0x68696A6B
+       ; 0x696A6B6C ; 0x6A6B6C6D ; 0x6B6C6D6E ; 0x6C6D6E6F
+       ; 0x6D6E6F70 ; 0x6E6F7071 ; 0x80000000 ; 0x00000000
+
+       (* block 2 *)
+       ; 0x00000000 ; 0x00000000 ; 0x00000000 ; 0x00000000
+       ; 0x00000000 ; 0x00000000 ; 0x00000000 ; 0x00000000
+       ; 0x00000000 ; 0x00000000 ; 0x00000000 ; 0x00000000
+       ; 0x00000000 ; 0x00000000 ; 0x00000000 ; 0x000001C0
+       ].
+  Proof. vm_compute; reflexivity. Qed.
+
+  (* sha256 double block = correct digest *)
+  Goal
+    fst (snd (last (simulate sha256 (
+       (List.map (fun data =>
+         (1, (data, (0, (0, (0, tt)))))
+       )
+       [ 0x61626364
+       ; 0x62636465
+       ; 0x63646566
+       ; 0x64656667
+       ; 0x65666768
+       ; 0x66676869
+       ; 0x6768696A
+       ; 0x68696A6B
+       ; 0x696A6B6C
+       ; 0x6A6B6C6D
+       ; 0x6B6C6D6E
+       ; 0x6C6D6E6F
+       ; 0x6D6E6F70
+       ; 0x6E6F7071
+       ])
+       ++ [
+       (1, (0, (1, (0, (0, tt)))))]
+       ++
+          repeat (0, (0, (0, (0, (0, tt))))) (3*64)
+      )) default))
+    = [ 0x248D6A61
+      ; 0xD20638B8
+      ; 0xE5C02693
+      ; 0x0C3E6039
+      ; 0xA33CE459
+      ; 0x64FF2167
+      ; 0xF6ECEDD4
+      ; 0x19DB06C1
+      ].
+  Proof. vm_compute; reflexivity. Qed.
 
 End SanityCheck.

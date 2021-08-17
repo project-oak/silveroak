@@ -6,26 +6,10 @@ Require Import coqutil.Word.Interface coqutil.Map.Interface.
 Require Import coqutil.Map.OfListWord.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
 Require Import Bedrock2Experiments.Hmac.Sha256ToRiscV.
-Require Import Bedrock2Experiments.Hmac.CavaHmacDevice.
+Require Import Sha256End2End.CavaHmacDevice.
 Require Import riscv.Spec.Decode.
 Require Import riscv.Utility.InstructionCoercions.
 Open Scope ilist_scope.
-
-Definition code_start    : word := word.of_Z 0.
-Definition code_pastend  : word := word.of_Z (4*2^10).
-Definition heap_start    : word := word.of_Z (4*2^10).
-Definition heap_pastend  : word := word.of_Z (8*2^10).
-Definition stack_start   : word := word.of_Z (8*2^10).
-Definition stack_pastend : word := word.of_Z (16*2^10).
-
-Definition main_relative_pos :=
-  match map.get (snd (fst sha256_compile_result)) (fst main) with
-  | Some p => p
-  | None => -1111
-  end.
-
-Definition p_call: word :=
-  word.add code_start (word.of_Z (4 * Z.of_nat (List.length sha256_example_asm))).
 
 Definition all_insts: list Instruction :=
   sha256_example_asm ++ [[ Jal RegisterNames.ra

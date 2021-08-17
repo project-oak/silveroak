@@ -240,7 +240,7 @@ Section WithParams.
     Context (sched: schedule).
 
     Definition nth_step(n: nat): OState (ExtraRiscvMachine D) unit :=
-      device_steps (sched n);; free.interp_as_OState interpret_action (Run.run1 RV32I).
+      device_steps (sched n);; free.interp_as_OState interpret_action (Run.run1 RV32IM).
 
     Fixpoint run_rec(steps_done steps_remaining: nat): OState (ExtraRiscvMachine D) unit :=
       match steps_remaining with
