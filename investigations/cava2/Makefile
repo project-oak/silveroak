@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-.PHONY: all clean coq
+.PHONY: all clean coq _CoqProject
 
 all:	Makefile.coq
 	$(MAKE) -f Makefile.coq
