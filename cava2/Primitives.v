@@ -50,6 +50,8 @@ Inductive BinaryPrim : type -> type -> type -> Type :=
 | BinBitVecAnd: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
 | BinBitVecAddU: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
 | BinBitVecSubU: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
+| BinBitVecMax: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
+| BinBitVecMin: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
 
 | BinVecIndex: forall {t n i}, BinaryPrim (Vec t n) (BitVec i) t
 | BinVecCons: forall {t n}, BinaryPrim t (Vec t n) (Vec t (S n))
@@ -101,6 +103,8 @@ Definition binary_semantics {x y r} (prim: BinaryPrim x y r)
   | @BinBitVecAddU n => fun x y => ((x + y) mod (2 ^ (N.of_nat n)))%N
   | @BinBitVecSubU n => fun x y => ((x + 2 ^ N.of_nat n - y) mod (2 ^ (N.of_nat n)))%N
   | @BinVecIndex t len i => fun x n => nth (N.to_nat n) (resize default len x) default
+  | @BinBitVecMax n => fun x y => (if x <=? y then y else x)%N
+  | @BinBitVecMin n => fun x y => (if x <=? y then x else y)%N
   | BinVecCons => fun x y => x :: y
   | BinVecConcat => fun x y => x ++ y
   | @BinVecShiftInRight t n => (fun xs x => tl (xs ++ [x]))

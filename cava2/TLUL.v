@@ -198,11 +198,4 @@ Section Var.
 
   }}.
 
-  (* Pack partial TLUL writes back into 32 bit blocks *)
-  Definition tlul_pack : Circuit _ [Bit; BitVec 32; BitVec 4; Bit] (Bit ** BitVec 32) := {{
-    fun valid data mask flush =>
-    (* TODO(blaxill): *)
-    (valid, data)
-  }}.
-
 End Var.

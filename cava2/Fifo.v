@@ -35,67 +35,131 @@ Section Var.
 
   Context {var : tvar}.
 
-  Definition fifo {T} {fifo_size}: Circuit _ [Bit; T; Bit] (Bit ** T ** Bit) :=
-    let fifo_bits := BitVec (Nat.log2 fifo_size) in
+  Definition fifo {T} fifo_size: Circuit _ [Bit; T; Bit]
+    (* out_valid, out, full *)
+    (Bit ** T ** Bit ** Bit) :=
+    let fifo_bits := BitVec (Nat.log2 (fifo_size) + 1) in
     {{
-    fun data_valid data out_ready =>
+    fun data_valid data accepted_output =>
 
-    let/delay '(fifo; current_length) :=
+    let/delay '(valid, output, fifo; count) :=
+      let decrement := accepted_output && count >= `K 1` in
 
-      ( if data_valid then data +>> fifo else fifo
-      , if data_valid && !out_ready then current_length + `K 1`
-        else if (!data_valid) && out_ready && current_length >= `K 1` then (current_length - `K 1`)
-        else current_length
+      ( count >= `K 1`
+      , `index` fifo (count - `K 1`)
+
+      , if data_valid then data +>> fifo else fifo
+      , if data_valid && !decrement then count + `K 1`
+        else if !data_valid && decrement then (count - `K 1`)
+        else count
       )
 
-      initially (@default (Vec T fifo_size), 0)
-        : denote_type (Vec T fifo_size ** fifo_bits) in
+      initially (false,(default,(@default (Vec T fifo_size), 0)))
+      : denote_type (Bit ** T ** Vec T fifo_size ** fifo_bits) in
 
-    ( current_length >= `K 0`
-    , `index` fifo (current_length - `K 1`)
-    , (current_length >= `Constant fifo_bits (N.of_nat fifo_size - 1)` ) )
+    ( valid, output
+    (* Will be empty if accepted_output is asserted next cycle *)
+    , (count == `Constant fifo_bits 0` )
+    (* We are full, does not assume output this cycle has been accepted yet *)
+    , (count == `Constant fifo_bits (N.of_nat fifo_size)` ) )
   }}.
+
+  Definition realign: Circuit _ [Bit; BitVec 32; BitVec 4; Bit; Bit]
+    (* *)
+    (Bit ** BitVec 32 ** BitVec 4) := {{
+
+    fun data_valid data data_mask flush consumer_ready =>
+
+    let '(packed_data; packed_length) :=
+      (* Contiguous bytes only *)
+           if data_mask == `K 0x0` then (`K 0`, `K 0`)
+      else if data_mask == `K 0x1` then (data << 24, `K 1`)
+      else if data_mask == `K 0x2` then (data << 16, `K 1`)
+      else if data_mask == `K 0x4` then (data << 8,  `K 1`)
+      else if data_mask == `K 0x8` then (data     ,  `K 1`)
+      else if data_mask == `K 0x3` then (data << 16, `K 2`)
+      else if data_mask == `K 0x6` then (data << 8,  `K 2`)
+      else if data_mask == `K 0xC` then (data     ,  `K 2`)
+      else if data_mask == `K 0x9` then (data << 16, `K 3`)
+      else if data_mask == `K 0xE` then (data      , `K 3`)
+      (* else if data_mask == `K 0xF` then *) else (data, `K 4`)
+    in
+
+    let/delay '(out_valid, out, out_length, data; length) :=
+      if !consumer_ready
+      then (out_valid, out, out_length, data, length)
+      else
+
+        let out := `bvslice 32 32` data in
+        let out_valid := length >= `K 4`  in
+        let out_length := `bvresize 4` (`bvmin` length `K 4`) in
+
+        let l := if out_valid then length - `K 4` else length in
+        (* Ignore data when flushing *)
+        let next_length : BitVec 4 :=
+          if flush then length >> 2
+          else if data_valid && (! flush) then l + packed_length else l in
+        (* If flushing using packed_data as filler bytes *)
+        let next_data :=
+          if flush then data << 32
+
+          (* we didn't output a block last cycle so just append *)
+          else if length == `K 0` then
+            `bvconcat (n:=32) ` packed_data `Constant (BitVec 32) 0`
+          else if length == `K 1` then
+            `bvconcat` (`bvconcat` ( `bvslice 56 8` data) packed_data) `Constant (BitVec 24) 0`
+          else if length == `K 2` then
+            `bvconcat` (`bvconcat` ( `bvslice 48 16` data) packed_data) `Constant (BitVec 16) 0`
+          else if length == `K 3` then
+            `bvconcat` (`bvconcat` ( `bvslice 40 24` data) packed_data) `Constant (BitVec 8) 0`
+
+          (* we output a block last cycle so trim head *)
+          else if length == `K 4` then
+            `bvconcat (n:=32) ` packed_data `Constant (BitVec 32) 0`
+          else if length == `K 5` then
+            `bvconcat` (`bvconcat` ( `bvslice 24 8` data) packed_data) `Constant (BitVec 24) 0`
+          else if length == `K 6` then
+            `bvconcat` (`bvconcat` ( `bvslice 16 16` data) packed_data) `Constant (BitVec 16) 0`
+          else (* if length == `K 7` then *)
+            `bvconcat` (`bvconcat` ( `bvslice 8 24` data) packed_data) `Constant (BitVec 8) 0`
+        in
+
+        let valid_or_flushing :=
+          out_valid || (flush && length >= `K 1`) in
+
+        (valid_or_flushing, out, out_length, next_data, next_length)
+        initially default
+    in
+    (out_valid, out, out_length)
+  }}.
+
+  Definition realign_fifo fifo_size: Circuit _ [Bit; BitVec 32; BitVec 4; Bit; Bit]
+    (* *)
+    (Bit ** BitVec 32 ** BitVec 4 ** Bit ** Bit ) := {{
+    fun data_valid data data_mask drain consumer_ready =>
+
+    let/delay '(is_last, out_valid, out_data, out_length, fifo_empty; fifo_full) :=
+      let '(realigned_valid, realigned_data; realigned_length) :=
+        `realign` data_valid data data_mask (drain && fifo_empty && consumer_ready) (!fifo_full) in
+
+      let '(fifo_valid, fifo_data, fifo_empty; fifo_full) :=
+        `fifo fifo_size` (realigned_valid && (! drain)) realigned_data consumer_ready in
+
+      let valid :=
+        if drain then fifo_valid || realigned_valid else fifo_valid in
+      let data :=
+        if drain && !fifo_valid then realigned_data
+        else fifo_data in
+      let length :=
+        if drain && !fifo_valid then realigned_length
+        else `K 4` in
+
+      (drain && !fifo_valid && valid, valid, data, length, fifo_empty, fifo_full)
+      initially default
+    in
+    (out_valid, out_data, out_length, is_last, fifo_full)
+  }}.
+
 
 End Var.
 
-Require Import Cava.Semantics.
-Require Import Cava.Util.List.
-Require Import Cava.Util.Tactics.
-Require Import coqutil.Tactics.Tactics.
-
-Definition no_io_predicate (x: denote_type (Bit**BitVec 32**Bit**Unit))
-  := fst x = false /\ fst (snd (snd x)) = false.
-
-Lemma fifo_no_change :
-  forall sz st input, no_io_predicate input ->
-  st = fst (step (fifo (fifo_size:=sz)) st input).
-Proof.
-  intros. cbn in input. destruct_products.
-  cbn [step fifo absorb_any split_absorbed_denotation combine_absorbed_denotation
-    denote_type binary_semantics unary_semantics K
-      ]. unfold no_io_predicate in *.
-  cbn [fst snd] in *. logical_simplify; subst. boolsimpl.
-  repeat lazymatch goal with u : unit |- _ => destruct u end.
-  repeat (destruct_pair_let; cbn [fst snd]).
-  reflexivity.
-Qed.
-
-Lemma fifo_no_change' :
-  forall sz st inputs,
-  Forall no_io_predicate inputs ->
-  snd (simulate' (fifo (fifo_size:=sz)) inputs st) = st.
-Proof.
-  intros.
-  induction inputs; [reflexivity|].
-  cbv [simulate'] in *.
-  rewrite fold_left_accumulate'_cons_snd.
-  cbn [List.app].
-
-  lazymatch goal with
-  | H : Forall _ (_ :: _) |- _ =>
-    inversion H; clear H; subst
-  end.
-  rewrite <- (fifo_no_change _ _ _ ltac:(eassumption)).
-  rewrite fold_left_accumulate'_snd_acc_invariant with (acc_b:=[]%list).
-  auto.
-Qed.
