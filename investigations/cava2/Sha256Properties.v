@@ -17,12 +17,12 @@
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.micromega.Lia.
 Require Import Coq.NArith.NArith.
+Require Import Coq.ZArith.ZArith.
 Require Import Coq.Init.Byte.
 Require Import Coq.Lists.List.
 Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Util.If.
 Require Import Cava.Util.List.
-Require Import Cava.Util.NPushPullMod.
 Require Import Cava.Util.Tactics.
 Require Import HmacSpec.SHA256Properties.
 Require Import Cava.Types.
@@ -71,10 +71,15 @@ Proof.
   rewrite nth_W by lia. destruct_one_match; [ lia | ].
   repeat match goal with H : _ = nth ?n _ _ |- _ =>
                          rewrite <-H end.
-  cbv [SHA256.add_mod SHA256.w]. N.push_pull_mod.
+  cbv [SHA256.add_mod SHA256.w]. apply f_equal.
   cbv [SHA256.sigma1 SHA256.sigma0 SHA256.SHR].
-  cbn [N.of_nat Pos.of_succ_nat Pos.succ].
-  repeat (f_equal; try lia).
+  cbv [N.of_nat Pos.of_succ_nat Pos.succ]. clear.
+  (* fully compute moduli *)
+  repeat match goal with |- context [(_ mod ?m)%N] =>
+                         progress compute_expr m end.
+  (* convert to Z, solve with Z.div_mod_to_equations *)
+  zify.
+  repeat rewrite Z.rem_mod_nonneg; Z.div_mod_to_equations; lia.
 Qed.
 Hint Rewrite @step_sha256_message_schedule_update using solve [eauto] : stepsimpl.
 
