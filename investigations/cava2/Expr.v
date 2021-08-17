@@ -63,6 +63,10 @@ Section Vars.
   .
 End Vars.
 
+Definition state_of {var s i o} (c : @Circuit var s i o) : type := s.
+Definition input_of {var s i o} (c : @Circuit var s i o) : type := i.
+Definition output_of {var s i o} (c : @Circuit var s i o) : type := o.
+
 Declare Scope expr_scope.
 Declare Custom Entry expr.
 Delimit Scope expr_scope with expr.
@@ -132,51 +136,52 @@ Section Var.
 
 End Var.
 
-Section RegressionTests.
+Module RegressionTests.
   Import ExprNotations.
 
-  Context {var : tvar}.
+  Section WithVar.
+    Context {var : tvar}.
 
-  Definition fork2 {A} : Circuit [] [A] (A ** A) := {{
-    fun a => ( a, a)
-  }}.
+    Definition fork2 {A} : Circuit [] [A] (A ** A) := {{
+        fun a => ( a, a)
+                                                      }}.
 
-  Definition silly_id {A} : Circuit [] [A] A := {{
-    fun a => let '(x,y;z) := (a, `fork2` a) in z
-  }}.
+    Definition silly_id {A} : Circuit [] [A] A := {{
+        fun a => let '(x,y;z) := (a, `fork2` a) in z
+                                                  }}.
 
-  Definition fst3 {A} : Circuit [] [A**A**A] A := {{
-    fun xyz => let '(x,y;z) := xyz in x
-  }}.
+    Definition fst3 {A} : Circuit [] [A**A**A] A := {{
+        fun xyz => let '(x,y;z) := xyz in x
+                                                    }}.
 
-  Definition ite_test {A} : Circuit [] [Bit; A] A := {{
-    fun flag a =>
-      if `silly_id` flag then (a) else a
-  }}.
+    Definition ite_test {A} : Circuit [] [Bit; A] A := {{
+        fun flag a =>
+          if `silly_id` flag then (a) else a
+                                                       }}.
 
-  Definition inital_state {sz} : denote_type (BitVec sz ** BitVec sz) := (0,1)%N.
+    Definition inital_state {sz} : denote_type (BitVec sz ** BitVec sz) := (0,1)%N.
 
-  Definition test {sz: nat}: Circuit (BitVec 10**BitVec 10) [] (BitVec 10) := {{
-    let/delay '(x;y) := (y,x) initially inital_state in y
-  }}.
+    Definition test {sz: nat}: Circuit (BitVec 10**BitVec 10) [] (BitVec 10) := {{
+        let/delay '(x;y) := (y,x) initially inital_state in y
+                                                                              }}.
 
-  Definition test2 {sz: nat}: Circuit (BitVec sz ** BitVec sz) [BitVec sz ** BitVec sz ] (BitVec sz) := {{
-    fun xy =>
-    let '(x ; y) := xy in
-    let/delay '(z;w) :=
-      let t := x in
-      (w, z)
-      initially inital_state in
-      x
-  }}.
+    Definition test2 {sz: nat}: Circuit (BitVec sz ** BitVec sz) [BitVec sz ** BitVec sz ] (BitVec sz) := {{
+        fun xy =>
+          let '(x ; y) := xy in
+          let/delay '(z;w) :=
+             let t := x in
+             (w, z)
+               initially inital_state in
+          x
+                                                                                                        }}.
 
-  (* Function composition for single arg functions *)
-  Definition compose {s1 s2 x y z} (f: Circuit s1 [x] y) (g: Circuit s2 [y] z)
-    : Circuit (s1++s2) [x] z := {{
-    fun x => `g` ( `f` x )
-  }}.
-  (* Notation "f >=> g" := (compose f g) (at level 61, right associativity) : expr_scope. *)
-
+    (* Function composition for single arg functions *)
+    Definition compose {s1 s2 x y z} (f: Circuit s1 [x] y) (g: Circuit s2 [y] z)
+      : Circuit (s1++s2) [x] z := {{
+        fun x => `g` ( `f` x )
+                                  }}.
+    (* Notation "f >=> g" := (compose f g) (at level 61, right associativity) : expr_scope. *)
+  End WithVar.
 End RegressionTests.
 
 Axiom value_hole : forall {t}, t.
