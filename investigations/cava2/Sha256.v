@@ -47,9 +47,22 @@ Section Var.
   Definition padder_writing_length := Constant (BitVec 4) 3.
 
   (* SHA-256 message padding *)
+  (* - Padder expects data to packed (no gaps), except the final word.
+     - The last word must also assert is_final, and have final_length set.
+
+     Padder routine states:
+     - padder_waiting : More data coming - default state
+     - padder_emit_bit : Emit final bit before length, this state only occurs when final_length = 4, as with other lengths
+                         there is space for the bit to be emitted during padder_waiting state
+                         This is the 1 bit appended to a message as defined in section 5.1.1 of FIPS 180-4
+     - padder_flushing : Emit 0 words until we reach the last two words of the block
+     - padder_writing_length :  Write the length to the last two words
+   *)
+
   Definition sha256_padder : Circuit _ [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit] (Bit ** sha_word ** Bit ** Bit) :=
     {{
     fun data_valid data is_final final_length consumer_ready clear =>
+    (* offset, is the offset in the current block 0 <= offset <= 16 *)
     let/delay '(done, out, out_valid, state, length; current_offset) :=
       if clear
       then `Constant (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16)
@@ -65,6 +78,8 @@ Section Var.
         else if state == `padder_emit_bit` then
           `padder_flushing`
         else if state == `padder_flushing` then
+          (* If we are at offset 13, switch to writing length as there is space
+             this block for the length *)
           if current_offset == `K 13`
           then `padder_writing_length`
           else `padder_flushing`
@@ -79,12 +94,15 @@ Section Var.
       let next_length :=
         if state == `padder_waiting` & is_final then length + `bvresize 61` final_length
         else if state == `padder_waiting` & data_valid then length + `K 4`
+        (* We are done here so set the next length to 0 *)
         else if state == `padder_writing_length` & current_offset == `K 15`
           then `K 0`
         else length
         in
 
       let next_out :=
+        (* If we have final word and its not a full word, we can emit 0x80 bit
+         * immediately *)
         if state == `padder_waiting` & is_final then
           if final_length == `K 0`
           then `Constant (BitVec 32) 0x80000000`
@@ -107,12 +125,11 @@ Section Var.
         else `K 0`
       in
 
-      let step :=
-        (state == `padder_waiting` & (data_valid | is_final))
-        | (! (state == `padder_waiting`) ) in
+      let out_valid :=
+        !(state == `padder_waiting` & (!data_valid) & (!is_final) ) in
 
       let next_offset :=
-        if !step then current_offset
+        if !out_valid then current_offset
         else if current_offset == `K 15` then `K 0`
         else (current_offset + `K 1`) in
 
@@ -121,7 +138,7 @@ Section Var.
         done | (state == `padder_writing_length` & next_state == `padder_waiting`)) in
 
       ( next_done
-      , next_out, step, next_state, next_length, next_offset)
+      , next_out, out_valid, next_state, next_length, next_offset)
 
       initially
         (1,(0,(0,(0,(0,0)))))
