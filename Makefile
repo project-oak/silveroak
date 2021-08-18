@@ -25,7 +25,7 @@
 # make clean
 
 SUBDIRS = third_party cava tests examples silveroak-opentitan \
-	  examples/xilinx tests/xilinx demos firmware
+	  examples/xilinx tests/xilinx demos firmware cava2
 
 .PHONY: all coq minimize-requires clean update-third_party subdirs $(SUBDIRS)
 
@@ -43,9 +43,13 @@ update-third_party:
 	$(MAKE) -C third_party update
 	$(MAKE) cleanall
 
-# special target to make only the core Coq library
+# special target to make only the core Coq library (old version)
 cava-coq : third_party
 	$(MAKE) -C cava coq
+
+# special target to make only the core Coq library (new version)
+cava2-coq : third_party
+	$(MAKE) -C cava2 coq
 
 minimize-requires: $(SUBDIRS)
 
