@@ -84,6 +84,9 @@ minimize-requires: SUBDIRTARGET=minimize-requires
 # cava depends on third_party
 cava : third_party
 
+# cava2 depends on cava (for Util)
+cava2 : cava
+
 # tests depends on cava
 tests: cava
 
@@ -105,5 +108,5 @@ examples/xilinx : examples
 # firmware (for HMAC software)
 silveroak-opentitan : cava cava2 firmware
 
-# firmware depends on cava
-firmware : cava
+# firmware depends on cava and cava2
+firmware : cava cava2
