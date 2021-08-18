@@ -27,7 +27,7 @@
 # Clean:
 # make clean
 
-.PHONY: all coq miminize-requires clean html
+.PHONY: all coq miminize-requires clean html _CoqProject
 
 SV = sum8.sv
 
