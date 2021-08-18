@@ -5,7 +5,7 @@ Require Import bedrock2.Semantics.
 Require Import bedrock2.Syntax.
 Require Import bedrock2.NotationsCustomEntry.
 Require Import coqutil.Word.Interface.
-Require Import Bedrock2Experiments.Hmac.Hmac.
+Require Import HmacSoftware.Hmac.
 Import Syntax.Coercions List.ListNotations.
 Local Open Scope string_scope.
 Local Open Scope Z_scope.
