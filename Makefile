@@ -99,8 +99,11 @@ demos : cava
 # examples/xilinx depends on examples
 examples/xilinx : examples
 
-# silveroak-opentitan depends on cava and cava2
-silveroak-opentitan : cava cava2
+# silveroak-opentitan depends on:
+# cava (for AES and pinmux circuits, only Util for HMAC)
+# cava2 (for HMAC circuits)
+# firmware (for HMAC software)
+silveroak-opentitan : cava cava2 firmware
 
 # firmware depends on cava
 firmware : cava

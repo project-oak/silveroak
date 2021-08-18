@@ -19,17 +19,19 @@
 all:		coq
 
 _CoqProject:    $(shell find . -name '*.v' | sort)
-		@echo "INSTALLDEFAULTROOT = Sha256End2End" > _CoqProject
-		@echo "-Q . Sha256End2End" >> _CoqProject
-		@echo "-Q ../../cava/Cava Cava" >> _CoqProject
-		@echo "-Q ../../investigations/cava2 Cava" >> _CoqProject
-		@echo "-Q ../hmac/Spec/ HmacSpec" >> _CoqProject
-		@echo "-Q ../../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
-		@echo "-Q ../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
-		@echo "-Q ../../third_party/bedrock2/deps/riscv-coq/src/riscv riscv" >> _CoqProject
-		@echo "-Q ../../third_party/bedrock2/bedrock2/src/bedrock2 bedrock2" >> _CoqProject
-		@echo "-Q ../../third_party/bedrock2/compiler/src/compiler compiler" >> _CoqProject
-		@echo "-Q ../../firmware/ Bedrock2Experiments" >> _CoqProject
+		@echo "INSTALLDEFAULTROOT = HmacEnd2End" > _CoqProject
+		@echo "-Q . HmacEnd2End" >> _CoqProject
+		@echo "-Q ../Spec/ HmacSpec" >> _CoqProject
+		@echo "-Q ../hw/ HmacHardware" >> _CoqProject
+		@echo "-Q ../sw/ HmacSoftware" >> _CoqProject
+		@echo "-Q ../../../cava/Cava Cava" >> _CoqProject
+		@echo "-Q ../../../cava2 Cava" >> _CoqProject
+		@echo "-Q ../../../firmware/ Bedrock2Experiments" >> _CoqProject
+		@echo "-Q ../../../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
+		@echo "-Q ../../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
+		@echo "-Q ../../../third_party/bedrock2/deps/riscv-coq/src/riscv riscv" >> _CoqProject
+		@echo "-Q ../../../third_party/bedrock2/bedrock2/src/bedrock2 bedrock2" >> _CoqProject
+		@echo "-Q ../../../third_party/bedrock2/compiler/src/compiler compiler" >> _CoqProject
 		@printf '%s\n' $^ >> _CoqProject
 
 Makefile.coq:	_CoqProject
