@@ -86,6 +86,11 @@ Module ExprNotations.
     ) ( in custom expr at level 1
     , x pattern at level 4, e at level 99, a at level 1) : expr_scope.
 
+  Notation "'let' x : ty := a 'in' e" := (
+      Let a (fun x : _ ty => e)
+    ) ( in custom expr at level 1
+    , x pattern at level 4, ty constr, e at level 99, a at level 1) : expr_scope.
+
   Notation "'let' '( x , .. , y ; z ) := a 'in' e" := (
       Let a (ElimPair (fun x => ..  (ElimPair (fun y z => e)) .. ))
     ) ( in custom expr at level 1
