@@ -21,6 +21,7 @@ all:		coq
 _CoqProject:    $(shell find . -name '*.v' | sort)
 		@echo "INSTALLDEFAULTROOT = HmacHardware" > _CoqProject
 		@echo "-R . HmacHardware" >> _CoqProject
+		@echo "-R ../Spec HmacSpec" >> _CoqProject
 		@echo "-R ../../../cava/Cava Cava" >> _CoqProject
 		@echo "-R ../../../cava2 Cava" >> _CoqProject
 		@echo "-R ../../../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject

@@ -99,8 +99,8 @@ demos : cava
 # examples/xilinx depends on examples
 examples/xilinx : examples
 
-# silveroak-opentitan depends on cava
-silveroak-opentitan : cava
+# silveroak-opentitan depends on cava and cava2
+silveroak-opentitan : cava cava2
 
 # firmware depends on cava
 firmware : cava

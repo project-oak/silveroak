@@ -24,13 +24,13 @@ Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Util.If.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
-Require Import HmacSpec.SHA256Properties.
 Require Import Cava.Types.
 Require Import Cava.Expr.
 Require Import Cava.ExprProperties.
 Require Import Cava.Primitives.
 Require Import Cava.Semantics.
-Require Import Cava.Sha256.
+Require Import HmacSpec.SHA256Properties.
+Require Import HmacHardware.Sha256.
 Require HmacSpec.SHA256.
 Import ListNotations.
 
