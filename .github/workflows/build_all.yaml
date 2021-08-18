@@ -73,8 +73,13 @@ jobs:
     - name: Fail on cache miss
       if: steps.third_party-cache.outputs.cache-hit != 'true' || steps.cava-cache.outputs.cache-hit != 'true'
       run: exit 1
-
     - run: nix-shell --run "cd cava2; make -j1"
+    - name: Cache cava2
+      id: cava2-cache
+      uses: actions/cache@v2
+      with:
+        path: cava2
+        key: ${{ runner.os }}-build-${{ github.run_id }}-cava2
 
   # directories that depend only on cava/
   make_directories_cava1:
@@ -155,11 +160,22 @@ jobs:
       with:
         path: cava
         key: ${{ runner.os }}-cava-${{ hashFiles('third_party/submodules.lock', 'cava/**/*.v', 'cava/Makefile' ) }}
+    - name: Use cava2 cache
+      id: cava2-cache
+      uses: actions/cache@v2
+      with:
+        path: cava2
+        key: ${{ runner.os }}-build-${{ github.run_id }}-cava2
     - name: Fail on cache miss
-      if: steps.third_party-cache.outputs.cache-hit != 'true' || steps.cava-cache.outputs.cache-hit != 'true'
+      if: steps.third_party-cache.outputs.cache-hit != 'true' || steps.cava-cache.outputs.cache-hit != 'true' || steps.cava2-cache.outputs.cache-hit != 'true'
       run: exit 1
-
     - run: nix-shell --run "cd $BUILD_DIR; make -j1"
+    - name: Cache firmware
+      id: firmware-cache
+      uses: actions/cache@v2
+      with:
+        path: firmware
+        key: ${{ runner.os }}-build-${{ github.run_id }}-firmware
 
 
   # silveroak-opentitan/hmac depends on firmware, cava (for Util), and cava2
@@ -196,8 +212,20 @@ jobs:
       with:
         path: cava
         key: ${{ runner.os }}-cava-${{ hashFiles('third_party/submodules.lock', 'cava/**/*.v', 'cava/Makefile' ) }}
+    - name: Use cava2 cache
+      uses: actions/cache@v2
+      id: cava2-cache
+      with:
+        path: cava2
+        key: ${{ runner.os }}-build-${{ github.run_id }}-cava2
+    - name: Use firmware cache
+      uses: actions/cache@v2
+      id: firmware-cache
+      with:
+        path: firmware
+        key: ${{ runner.os }}-build-${{ github.run_id }}-firmware
     - name: Fail on cache miss
-      if: steps.third_party-cache.outputs.cache-hit != 'true' || steps.cava-cache.outputs.cache-hit != 'true'
+      if: steps.third_party-cache.outputs.cache-hit != 'true' || steps.cava-cache.outputs.cache-hit != 'true' || steps.cava2-cache.outputs.cache-hit != 'true' || steps.firmware-cache.outputs.cache-hit != 'true'
       run: exit 1
 
     - run: nix-shell --run "cd $BUILD_DIR; make -j1"
