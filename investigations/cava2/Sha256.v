@@ -72,8 +72,13 @@ Section Var.
 
       let next_state :=
         if is_final & state == `padder_waiting` then
-          if final_length == `K 4`
-          then `padder_emit_bit`
+          (* From our receiving state we can transition to: *)
+          (* - Emitting 0x80.. state if final word was a full word *)
+          if final_length == `K 4` then `padder_emit_bit`
+          (* - Writing length directly if we there 2 words left in this block *)
+          else if current_offset == `K 13`
+          then `padder_writing_length`
+          (* - Writing padding 0's *)
           else `padder_flushing`
         else if state == `padder_emit_bit` then
           `padder_flushing`
@@ -257,43 +262,60 @@ Section Var.
   }}.
 
   (* SHA-256 core *)
+  (* returns (digest_valid, digest, ready) *)
+  (* Data must only be passed when ready is asserted *)
   Definition sha256 : Circuit _ [Bit; sha_word; Bit; BitVec 4; Bit] (Bit ** sha_digest ** Bit) :=
+
+    let reset_state : denote_type (Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit) :=
+      (1, (repeat 0 16, (sha256_initial_digest, (0, 1)))) in
+
     {{ fun fifo_data_valid fifo_data is_final final_length clear =>
 
-       let/delay '(inner_done_edge, accept_input, accept_padded, block, digest, count, received_last_byte; done) :=
-         let starting := fifo_data_valid & done in
+      (* 'count' runs from 0 to 17:
+         - 0 - 15 are the padding cycles
+         - 16 - the block is ready and sha_inner starts
+         - 17 - is held until inner is done, then digest is stored and counter is reset
+      *)
 
-         let '(padded_valid, padded_data, padder_ready; padder_done) :=
-           `sha256_padder` fifo_data_valid fifo_data is_final final_length accept_padded clear in
+      let/delay '(padder_ready, block, digest, count; done) :=
+        let starting := fifo_data_valid & done in
+        let ready_to_accept := `K 15` >= count in
+        let block_ready := `K 16` == count in
 
-         let block_valid := count == `K 16` in
-         let '(inner_digest; inner_done) := `sha256_inner` block_valid block digest clear in
+        let '(padder_valid, padded_data, padder_ready; padder_done) :=
+          `sha256_padder` fifo_data_valid fifo_data is_final final_length ready_to_accept clear in
 
-         let next_accept_padded := padded_valid & inner_done in
+        let '(inner_digest; inner_done) := `sha256_inner` block_ready block digest clear in
 
-         let '(next_block; next_count) :=
-           if next_accept_padded
-           then (block <<+ padded_data, count + `K 1`)
-           else (block, `K 0`)
-         in
+        let next_block :=
+          if padder_valid & ready_to_accept
+          then block <<+ padded_data
+          else block in
 
-         let q := !inner_done_edge & inner_done  in
-         let next_received_last_byte := received_last_byte | is_final in
-         let next_done := (!starting & !is_final) & padder_done & (done | (received_last_byte & q))  in
-         let next_digest := if q then inner_digest else digest in
+        (* as above:
+           count < 16 : increment when receieving
+           count == 16 : increment immediately (adding a cycle for easier sync between padding and inner
+           count == 17 : increment when inner is done
+        *)
+        let next_count : BitVec 6 :=
+          if padder_valid & ready_to_accept then count + `K 1`
+          else if `K 16` == count then `K 17`
+          else if `K 17` == count & inner_done then `K 0`
+          else count
+        in
 
-         if ! clear then
-         (inner_done, padder_ready, next_accept_padded, next_block, next_digest, next_count, next_received_last_byte,
-         next_done)
-         else
-          `Constant (Bit ** Bit ** Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit ** Bit)
-                    (1, (0, (1, (repeat 0 16, (sha256_initial_digest, (0, (0, 1)))))))`
+        (* only store the digest when the inner core is done *)
+        let next_digest :=
+          if starting then `Constant _ sha256_initial_digest`
+          else if `K 17` == count & inner_done then inner_digest
+          else digest in
 
-         initially ((1, (0, (1, (repeat 0 16, (sha256_initial_digest, (0, (0, 1))))))))
-         : denote_type (Bit ** Bit ** Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit ** Bit)
-            in
+        if clear then `Constant _ reset_state` else
+        (padder_ready, next_block, next_digest, next_count, (padder_done & inner_done & count == `K 0` ) )
 
-       (done, digest, accept_input)
+        initially reset_state in
+
+       (done, digest, padder_ready)
     }}.
 
 End Var.
@@ -355,12 +377,13 @@ Section SanityCheck.
 
   (* sha256 "abc" = sha256 (0x61626300 @ byte mask 0xFFFFFF00) = correct digest *)
   Goal
-    fst (snd (last (simulate sha256 (
+    last (simulate sha256 (
        (1, (0x61626300, (1, (3, (0, tt))))) ::
-       repeat (0, (0, (0, (0, (0, tt))))) (64+19)
-      )) default))
-    = [0xBA7816BF; 0x8F01CFEA; 0x414140DE; 0x5DAE2223; 0xB00361A3; 0x96177A9C; 0xB410FF61; 0xF20015AD ].
-  Proof. vm_compute. reflexivity. Qed.
+       repeat (0, (0, (0, (0, (0, tt))))) (81)
+      )
+    ) default
+    = (1, ([0xBA7816BF; 0x8F01CFEA; 0x414140DE; 0x5DAE2223; 0xB00361A3; 0x96177A9C; 0xB410FF61; 0xF20015AD ], 1)).
+  Proof. vm_compute; reflexivity. Qed.
 
   (* pad two blocks correctly *)
   Goal
@@ -405,7 +428,9 @@ Section SanityCheck.
 
   (* sha256 double block = correct digest *)
   Goal
-    fst (snd (last (simulate sha256 (
+    fst (snd
+    (last (
+    simulate sha256 (
        (List.map (fun data =>
          (1, (data, (0, (0, (0, tt)))))
        )
@@ -427,9 +452,11 @@ Section SanityCheck.
        ++ [
        (1, (0, (1, (0, (0, tt)))))]
        ++
-          repeat (0, (0, (0, (0, (0, tt))))) (3*64)
-      )) default))
-    = [ 0x248D6A61
+          repeat (0, (0, (0, (0, (0, tt))))) (80*2)
+      )
+      ) default))
+    =
+    [ 0x248D6A61
       ; 0xD20638B8
       ; 0xE5C02693
       ; 0x0C3E6039
@@ -438,6 +465,62 @@ Section SanityCheck.
       ; 0xF6ECEDD4
       ; 0x19DB06C1
       ].
+  Proof. vm_compute; reflexivity. Qed.
+
+  (* sha256 double block = correct digest *)
+  Goal
+     fst (snd (last (simulate sha256 (
+       (List.map (fun data => (1, (data, (0, (0, (0, tt))))))
+       [
+         0x36373435
+       ; 0x32333031
+       ; 0x3E3F3C3D
+       ; 0x3A3B3839
+       ; 0x26272425
+       ; 0x22232021
+       ; 0x2E2F2C2D
+       ; 0x2A2B2829
+
+       ; 0x16171415
+       ; 0x12131011
+       ; 0x1E1F1C1D
+       ; 0x1A1B1819
+       ; 0x06070405
+       ; 0x02030001
+       ; 0x0E0F0C0D
+       ; 0x0A0B0809
+       ])
+
+       (* Note we are not observing the sha block outputs, but if we were
+          we would see that it is not immediately ready to receive input here *)
+       ++ repeat (0, (0, (0, (0, (0, tt))))) 80
+       ++
+
+       (List.map (fun data => (1, (data, (0, (0, (0, tt))))))
+       [
+         0x53616D70
+       ; 0x6C65206D
+       ; 0x65737361
+       ; 0x67652066
+       ; 0x6F72206B
+       ; 0x65796C65
+       ; 0x6E3D626C
+       ; 0x6F636B6C
+       ])
+       ++ [ (1, (0x656E0000, (1, (2, (0, tt)))))]
+       ++ repeat (0, (0, (0, (0, (0, tt))))) 80
+      ) ) default))
+
+    =
+    [ 0xC0918E14
+    ; 0xC43562B9
+    ; 0x10DB4B81
+    ; 0x01CF8812
+    ; 0xC3DA2783
+    ; 0xC670BFF3
+    ; 0x4D88B3B8
+    ; 0x8E731716 ]
+      .
   Proof. vm_compute; reflexivity. Qed.
 
 End SanityCheck.
