@@ -377,9 +377,7 @@ Section SanityCheck.
 
   (* sha256 "abc" = sha256 (0x61626300 @ byte mask 0xFFFFFF00) = correct digest *)
   Goal
-    last (
-
-    simulate sha256 (
+    last (simulate sha256 (
        (1, (0x61626300, (1, (3, (0, tt))))) ::
        repeat (0, (0, (0, (0, (0, tt))))) (81)
       )
