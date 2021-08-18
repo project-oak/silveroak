@@ -129,7 +129,7 @@ jobs:
     env:
       BUILD_DIR: ${{ matrix.build_dir }}
 
-    needs: make_cava make_cava2
+    needs: [make_cava, make_cava2]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -170,7 +170,7 @@ jobs:
     env:
       BUILD_DIR: ${{ matrix.build_dir }}
 
-    needs: make_cava make_cava2 make_firmware
+    needs: [make_cava, make_cava2, make_firmware]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
