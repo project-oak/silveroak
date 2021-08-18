@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-SUBDIRS = Spec
+SUBDIRS = Spec hw
 
 .PHONY: all coq minimize-requires clean subdirs $(SUBDIRS)
 
