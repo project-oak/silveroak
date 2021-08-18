@@ -41,6 +41,6 @@ minimize-requires: coq
 %.vo:		Makefile.coq
 		$(MAKE) -f Makefile.coq $@
 
-clean:	
+clean:
 	-@$(MAKE) -f Makefile.coq clean
 	rm -rf _CoqProject Makefile.coq Makefile.coq.conf
