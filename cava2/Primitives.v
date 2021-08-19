@@ -89,7 +89,7 @@ Definition binary_semantics {x y r} (prim: BinaryPrim x y r)
   | @BinBitVecXor n => N.lxor
   | @BinBitVecAnd n => N.land
   | @BinBitVecAddU n => fun x y => ((x + y) mod (2 ^ (N.of_nat n)))%N
-  | @BinBitVecSubU n => fun x y => ((x - y + 2 ^ N.of_nat n) mod (2 ^ (N.of_nat n)))%N
+  | @BinBitVecSubU n => fun x y => ((x + 2 ^ N.of_nat n - y) mod (2 ^ (N.of_nat n)))%N
   | @BinVecIndex t len i => fun x n => nth (N.to_nat n) (resize default len x) default
   | BinVecCons => fun x y => x :: y
   | BinVecConcat => fun x y => x ++ y
