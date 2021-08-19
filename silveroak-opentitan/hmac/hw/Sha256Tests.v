@@ -17,13 +17,13 @@
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
-Require Import HmacSpec.SHA256.
-Require Import HmacSpec.Tests.SHA256TestVectors.
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Expr.
 Require Import Cava.Semantics.
 Require Import Cava.Types.
-Require Import Cava.Sha256.
+Require Import HmacSpec.SHA256.
+Require Import HmacSpec.Tests.SHA256TestVectors.
+Require Import HmacHardware.Sha256.
 Import ListNotations.
 
 (**** Convert to/from circuit signals ****)

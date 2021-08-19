@@ -7,7 +7,7 @@ Require Import coqutil.Word.Interface.
 Require Import coqutil.Word.LittleEndianList.
 Require Import bedrock2.ZnWords.
 Require Import Bedrock2Experiments.StateMachineSemantics.
-Require Import Bedrock2Experiments.Hmac.Constants.
+Require Import HmacSoftware.Constants.
 
 (* In HmacSemantics.v, we don't attempt to model all features of the Hmac module,
    but we do try to reveal a correct subset of the full functionality of the

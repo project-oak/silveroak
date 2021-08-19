@@ -25,7 +25,7 @@
 # make clean
 
 SUBDIRS = third_party cava tests examples silveroak-opentitan \
-	  examples/xilinx tests/xilinx demos firmware
+	  examples/xilinx tests/xilinx demos firmware cava2
 
 .PHONY: all coq minimize-requires clean update-third_party subdirs $(SUBDIRS)
 
@@ -43,9 +43,13 @@ update-third_party:
 	$(MAKE) -C third_party update
 	$(MAKE) cleanall
 
-# special target to make only the core Coq library
+# special target to make only the core Coq library (old version)
 cava-coq : third_party
 	$(MAKE) -C cava coq
+
+# special target to make only the core Coq library (new version)
+cava2-coq : third_party
+	$(MAKE) -C cava2 coq
 
 minimize-requires: $(SUBDIRS)
 
@@ -80,6 +84,9 @@ minimize-requires: SUBDIRTARGET=minimize-requires
 # cava depends on third_party
 cava : third_party
 
+# cava2 depends on cava (for Util)
+cava2 : cava
+
 # tests depends on cava
 tests: cava
 
@@ -95,8 +102,11 @@ demos : cava
 # examples/xilinx depends on examples
 examples/xilinx : examples
 
-# silveroak-opentitan depends on cava
-silveroak-opentitan : cava
+# silveroak-opentitan depends on:
+# cava (for AES and pinmux circuits, only Util for HMAC)
+# cava2 (for HMAC circuits)
+# firmware (for HMAC software)
+silveroak-opentitan : cava cava2 firmware
 
-# firmware depends on cava
-firmware : cava
+# firmware depends on cava and cava2
+firmware : cava cava2

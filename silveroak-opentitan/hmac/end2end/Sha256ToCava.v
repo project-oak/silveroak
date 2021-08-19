@@ -7,8 +7,8 @@ Require Import bedrock2.ZnWords.
 Require Import compiler.SeparationLogic.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.ExtraRiscvMachine.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
-Require Import Sha256End2End.CavaHmacDevice.
-Require Import Bedrock2Experiments.Hmac.Sha256ToRiscV.
+Require Import HmacEnd2End.CavaHmacDevice.
+Require Import HmacSoftware.Sha256ToRiscV.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.Bedrock2ToCava.
 
 Definition binary: list byte := Eval compute in Pipeline.instrencode sha256_example_asm.
