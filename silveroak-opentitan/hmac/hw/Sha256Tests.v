@@ -17,6 +17,7 @@
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
+Require Import coqutil.Datatypes.List.
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Expr.
 Require Import Cava.Semantics.
@@ -28,8 +29,9 @@ Import ListNotations.
 
 (**** Convert to/from circuit signals ****)
 
-(* extra cycles to allow for synchronization *)
-Definition extra_cycles : nat := 100.
+(* extra cycles to allow for padder synchronization after each block of true
+   input; can be an overestimate *)
+Definition extra_cycles : nat := 80.
 
 (* convert test vector data into circuit input signals *)
 Definition to_sha256_input (t : sha256_test_vector)
@@ -53,14 +55,29 @@ Definition to_sha256_input (t : sha256_test_vector)
       (* fifo_data_valid=1, fifo_data, is_final=1, final_length=final_length,
          clear=0 *)
       (1, (final_word, (1, (final_length, (0, tt)))))%N in
-  (* create dummy input for cycles while circuit is computing final digest *)
-  let nblocks := length (SHA256.padded_msg t.(msg_bytes)) / (512 / N.to_nat w) in
+  (* if input is multiple blocks long *before* padding, we need to add dummy
+     inputs after each block to wait for the padder to be ready to accept input
+     again *)
+  let words_per_block := (512 / N.to_nat w) in
+  let nblocks_non_final :=
+      length (non_final_input) / words_per_block
+      + if (length (non_final_input) mod words_per_block =? 0) then 0 else 1 in
+  let nblocks_padded := length (SHA256.padded_msg t.(msg_bytes)) / words_per_block in
   let dummy_input : denote_type (input_of sha256) := (0, (0, (0, (0, (0, tt)))))%N in
-  (* number of cycles = cycles for padding (16 per block)
-                        + cycles for compression (64 per block)
-                        + extra_cycles *)
-  let ndummy := ((64+16)*nblocks + extra_cycles) - length non_final_input - 1 in
-  non_final_input ++ [final_input] ++ repeat dummy_input ndummy.
+  (* introduce dummy inputs between each block of 16 words in the input,
+     including between non-final and final blocks if there is at least one
+     non-final block *)
+  let non_final_input_spaced :=
+      flat_map
+        (fun i => firstn words_per_block (skipn (words_per_block*i) non_final_input)
+                      ++ repeat dummy_input extra_cycles)
+        (seq 0 nblocks_non_final) in
+  (* cycles to wait after input
+     = cycles for padding (16 per post-padding block)
+     + cycles for compression (64 per post-padding block)
+     + extra_cycles *)
+  let ndummy := ((64+16)*nblocks_padded + extra_cycles) in
+  non_final_input_spaced ++ [final_input] ++ repeat dummy_input ndummy.
 
 (* extract test result from circuit output signals *)
 Definition from_sha256_output
@@ -69,8 +86,65 @@ Definition from_sha256_output
   let '(done, (digest, accept_input)) := last out default in
   BigEndianBytes.concat_bytes (concat_digest digest).
 
+(* convert test vector data into input signals for padder *)
+Definition to_sha256_padder_input (t : sha256_test_vector)
+  : list (denote_type (input_of (var:=denote_type) sha256_padder)) :=
+  (* For padder tests, we assume the consumer is always ready *)
+  List.map
+    (fun '(fifo_data_valid,(fifo_data,(is_final,(final_length,(clear,_))))) =>
+       (* data_valid, data, is_final, final_length, consumer_ready, clear *)
+       (fifo_data_valid,(fifo_data, (is_final, (final_length, (1%N, (clear, tt)))))))
+    (to_sha256_input t).
+
+Definition concat_words (n : nat) (ws : list N) : N :=
+  fold_left (fun acc w => N.lor (N.shiftl acc (N.of_nat n)) (w mod 2 ^ N.of_nat n)) ws 0%N.
+
+(* extract test result from padder output signals *)
+Definition from_sha256_padder_output
+           (out : list (denote_type (output_of (var:=denote_type) sha256_padder)))
+  : N :=
+  (* remove invalid output signals entirely, and extract data from signals *)
+  let valid_out :=
+      flat_map
+        (fun '(out_valid, (data, (consumer_ready, done))) =>
+           if (out_valid =? 0)%N
+           then []
+           else [data]) out in
+  concat_words (N.to_nat w) valid_out.
+
+(* extract all intermediate digests from circuit output signals *)
+Definition intermediate_digests_from_sha256_output
+           (out : list (denote_type (output_of (var:=denote_type) sha256)))
+  : list (list N) :=
+  let digests := List.map (fun '(done, (digest, accept_input)) => digest) out in
+  (* remove repetitions of the same digest *)
+  dedup (list_eqb N.eqb) digests.
+
 (**** Run test vectors ****)
 
+(* test the padder in isolation *)
+Goal (let t := test1 in
+      from_sha256_padder_output
+        (simulate sha256_padder (to_sha256_padder_input t)) = t.(expected_padded_msg)).
+Proof. vm_compute. reflexivity. Qed.
+
+Goal (let t := test2 in
+      from_sha256_padder_output
+        (simulate sha256_padder (to_sha256_padder_input t)) = t.(expected_padded_msg)).
+Proof. vm_compute. reflexivity. Qed.
+
+(* test intermediate digests *)
+Goal (let t := test1 in
+      intermediate_digests_from_sha256_output
+        (simulate sha256 (to_sha256_input t)) = H0 :: t.(expected_intermediate_digests)).
+Proof. vm_compute. reflexivity. Qed.
+
+Goal (let t := test2 in
+      intermediate_digests_from_sha256_output
+        (simulate sha256 (to_sha256_input t)) = H0 :: t.(expected_intermediate_digests)).
+Proof. vm_compute. reflexivity. Qed.
+
+(* Test the full circuit *)
 Goal (let t := test1 in
       from_sha256_output (simulate sha256 (to_sha256_input t)) = t.(expected_digest)).
 Proof. vm_compute. reflexivity. Qed.
@@ -79,8 +153,6 @@ Goal (let t := test2 in
       from_sha256_output (simulate sha256 (to_sha256_input t)) = t.(expected_digest)).
 Proof. vm_compute. reflexivity. Qed.
 
-(* Currently fails to produce a valid output, even when run for >500 cycles!
 Goal (let t := test3 in
       from_sha256_output (simulate sha256 (to_sha256_input t)) = t.(expected_digest)).
 Proof. vm_compute. reflexivity. Qed.
-*)
