@@ -19,17 +19,16 @@
 all:		coq
 
 _CoqProject:    $(shell find . -name '*.v' | sort)
-		@echo "INSTALLDEFAULTROOT = Sha256End2End" > _CoqProject
-		@echo "-Q . Sha256End2End" >> _CoqProject
-		@echo "-Q ../../cava/Cava Cava" >> _CoqProject
-		@echo "-Q ../../investigations/cava2 Cava" >> _CoqProject
-		@echo "-Q ../hmac/Spec/ HmacSpec" >> _CoqProject
-		@echo "-Q ../../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
-		@echo "-Q ../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
-		@echo "-Q ../../third_party/bedrock2/deps/riscv-coq/src/riscv riscv" >> _CoqProject
-		@echo "-Q ../../third_party/bedrock2/bedrock2/src/bedrock2 bedrock2" >> _CoqProject
-		@echo "-Q ../../third_party/bedrock2/compiler/src/compiler compiler" >> _CoqProject
-		@echo "-Q ../../firmware/ Bedrock2Experiments" >> _CoqProject
+		@echo "INSTALLDEFAULTROOT = HmacSoftware" > _CoqProject
+		@echo "-R . HmacSoftware" >> _CoqProject
+		@echo "-R ../Spec HmacSpec" >> _CoqProject
+		@echo "-R ../../../firmware Bedrock2Experiments" >> _CoqProject
+		@echo "-R ../../../cava/Cava Cava" >> _CoqProject
+		@echo "-R ../../../third_party/coq-ext-lib/theories ExtLib" >> _CoqProject
+		@echo "-R ../../../third_party/bedrock2/bedrock2/src/bedrock2 bedrock2" >> _CoqProject
+		@echo "-R ../../../third_party/bedrock2/compiler/src/compiler compiler" >> _CoqProject
+		@echo "-R ../../../third_party/bedrock2/deps/coqutil/src/coqutil coqutil" >> _CoqProject
+		@echo "-R ../../../third_party/bedrock2/deps/riscv-coq/src/riscv riscv" >> _CoqProject
 		@printf '%s\n' $^ >> _CoqProject
 
 Makefile.coq:	_CoqProject
@@ -39,12 +38,12 @@ coq:		Makefile.coq
 		$(MAKE) -f Makefile.coq
 
 minimize-requires: coq
-	../../tools/minimize-requires.sh
+	../../../tools/minimize-requires.sh
 	$(MAKE) coq
 
 %.vo:		Makefile.coq
 		$(MAKE) -f Makefile.coq $@
 
-clean:
+clean:	
 	-@$(MAKE) -f Makefile.coq clean
 	rm -rf _CoqProject Makefile.coq Makefile.coq.conf

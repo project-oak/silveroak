@@ -19,11 +19,11 @@ Require Import Bedrock2Experiments.LibBase.AbsMMIO.
 Require Import Bedrock2Experiments.LibBase.AbsMMIOPropertiesUnique.
 Require Import Bedrock2Experiments.LibBase.Bitfield.
 Require Import Bedrock2Experiments.LibBase.BitfieldProperties.
-Require Import Bedrock2Experiments.Hmac.Hmac.
-Require Import Bedrock2Experiments.Hmac.HmacSemantics.
-Require Import Bedrock2Experiments.Hmac.HmacProperties.
-Require Import Bedrock2Experiments.Hmac.Sha256Example.
-Require Import Bedrock2Experiments.Hmac.Sha256ExampleProperties.
+Require Import HmacSoftware.Hmac.
+Require Import HmacSoftware.HmacSemantics.
+Require Import HmacSoftware.HmacProperties.
+Require Import HmacSoftware.Sha256Example.
+Require Import HmacSoftware.Sha256ExampleProperties.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.StateMachineMMIO.
 

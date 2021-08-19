@@ -3,7 +3,7 @@ Require Import Coq.Strings.String.
 Require Import Coq.ZArith.ZArith.
 Require Import bedrock2.ToCString.
 Require Import Bedrock2Experiments.LibBase.Bitfield.
-Require Import Bedrock2Experiments.Hmac.Hmac.
+Require Import HmacSoftware.Hmac.
 Import ListNotations.
 Local Open Scope string_scope.
 Local Open Scope Z_scope.

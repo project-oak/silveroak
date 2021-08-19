@@ -16,9 +16,9 @@ Require Import coqutil.Map.Interface.
 Require Import coqutil.Map.Properties.
 Require Import coqutil.Byte.
 Require Import Bedrock2Experiments.StateMachineSemantics.
-Require Import Bedrock2Experiments.Hmac.HmacSemantics.
-Require Import Bedrock2Experiments.Hmac.HmacProperties.
-Require Import Bedrock2Experiments.Hmac.Sha256Example.
+Require Import HmacSoftware.HmacSemantics.
+Require Import HmacSoftware.HmacProperties.
+Require Import HmacSoftware.Sha256Example.
 Import Syntax.Coercions List.ListNotations HList.
 Local Open Scope string_scope.
 Local Open Scope list_scope.

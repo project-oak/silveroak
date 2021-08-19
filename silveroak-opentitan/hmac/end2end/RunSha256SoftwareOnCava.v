@@ -5,8 +5,8 @@ Require Import coqutil.Datatypes.List.
 Require Import coqutil.Word.Interface coqutil.Map.Interface.
 Require Import coqutil.Map.OfListWord.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
-Require Import Bedrock2Experiments.Hmac.Sha256ToRiscV.
-Require Import Sha256End2End.CavaHmacDevice.
+Require Import HmacSoftware.Sha256ToRiscV.
+Require Import HmacEnd2End.CavaHmacDevice.
 Require Import riscv.Spec.Decode.
 Require Import riscv.Utility.InstructionCoercions.
 Open Scope ilist_scope.

@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-SUBDIRS = Spec
+SUBDIRS = Spec hw sw end2end
 
 .PHONY: all coq minimize-requires clean subdirs $(SUBDIRS)
 
@@ -48,3 +48,12 @@ clean: SUBDIRTARGET=clean
 %.vo: DIR=$(firstword $(subst /, , $@))
 
 %.vo: TARGET=$(subst $(DIR)/,,$@)
+
+# hw depends on spec
+hw: Spec
+
+# sw depends on spec
+sw: Spec
+
+# end2end depends on hw, sw, and Spec
+end2end: Spec hw sw

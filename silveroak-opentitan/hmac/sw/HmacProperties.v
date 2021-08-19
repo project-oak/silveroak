@@ -29,9 +29,9 @@ Require Import Bedrock2Experiments.StateMachineProperties.
 Require Import Bedrock2Experiments.Tactics.
 Require Import Bedrock2Experiments.Word.
 Require Import Bedrock2Experiments.WordProperties.
-Require Import Bedrock2Experiments.Hmac.Constants.
-Require Import Bedrock2Experiments.Hmac.HmacSemantics.
-Require Import Bedrock2Experiments.Hmac.Hmac.
+Require Import HmacSoftware.Constants.
+Require Import HmacSoftware.HmacSemantics.
+Require Import HmacSoftware.Hmac.
 Require Import Bedrock2Experiments.LibBase.AbsMMIOPropertiesUnique.
 Require Import Bedrock2Experiments.LibBase.BitfieldProperties.
 Require Import Bedrock2Experiments.LibBase.MMIOLabels.

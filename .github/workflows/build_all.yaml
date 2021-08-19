@@ -5,6 +5,7 @@ on:
   pull_request:
 
 jobs:
+  # build the old version of the Cava core library
   make_cava:
     runs-on: ubuntu-latest
     steps:
@@ -41,16 +42,54 @@ jobs:
       if: steps.cava-cache.outputs.cache-hit != 'true'
       run: nix-shell --run 'cd cava; make -j1'
 
-  make_directories:
+  # build the new version of the Cava core library
+  make_cava2:
+    needs: make_cava
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    - uses: cachix/install-nix-action@v12
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+    - name: Create a "lockfile" from git submodule commits
+      id: get-submodule-ver
+      run: |
+        git submodule status > ./third_party/submodules.lock
+      shell: bash
+    - name: Cache third_party
+      id: third_party-cache
+      uses: actions/cache@v2
+      with:
+        path: third_party
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
+    - name: Cache cava
+      id: cava-cache
+      uses: actions/cache@v2
+      with:
+        path: cava
+        key: ${{ runner.os }}-cava-${{ hashFiles('third_party/submodules.lock', 'cava/**/*.v', 'cava/Makefile' ) }}
+    - name: Fail on cache miss
+      if: steps.third_party-cache.outputs.cache-hit != 'true' || steps.cava-cache.outputs.cache-hit != 'true'
+      run: exit 1
+    - run: nix-shell --run "cd cava2; make -j1"
+    - name: Cache cava2
+      id: cava2-cache
+      uses: actions/cache@v2
+      with:
+        path: cava2
+        key: ${{ runner.os }}-build-${{ github.run_id }}-cava2
+
+  # directories that depend only on cava/
+  make_directories_cava1:
     strategy:
       matrix:
         build_dir: ["demos", "examples", "tests"
         , "silveroak-opentitan/pinmux"
         , "silveroak-opentitan/aes"
-        , "silveroak-opentitan/hmac"
         , "examples/xilinx"
         , "tests/xilinx"
-        , "firmware"
         ]
     env:
       BUILD_DIR: ${{ matrix.build_dir }}
@@ -87,3 +126,106 @@ jobs:
 
     - run: nix-shell --run "cd $BUILD_DIR; make -j1"
 
+  # firmware depends on cava (for Util) and cava2
+  make_firmware:
+    strategy:
+      matrix:
+        build_dir: ["firmware"]
+    env:
+      BUILD_DIR: ${{ matrix.build_dir }}
+
+    needs: [make_cava, make_cava2]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    - uses: cachix/install-nix-action@v12
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+    - name: Create a "lockfile" from git submodule commits
+      id: get-submodule-ver
+      run: |
+        git submodule status > ./third_party/submodules.lock
+      shell: bash
+    - name: Cache third_party
+      id: third_party-cache
+      uses: actions/cache@v2
+      with:
+        path: third_party
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
+    - name: Cache cava
+      id: cava-cache
+      uses: actions/cache@v2
+      with:
+        path: cava
+        key: ${{ runner.os }}-cava-${{ hashFiles('third_party/submodules.lock', 'cava/**/*.v', 'cava/Makefile' ) }}
+    - name: Use cava2 cache
+      id: cava2-cache
+      uses: actions/cache@v2
+      with:
+        path: cava2
+        key: ${{ runner.os }}-build-${{ github.run_id }}-cava2
+    - name: Fail on cache miss
+      if: steps.third_party-cache.outputs.cache-hit != 'true' || steps.cava-cache.outputs.cache-hit != 'true' || steps.cava2-cache.outputs.cache-hit != 'true'
+      run: exit 1
+    - run: nix-shell --run "cd $BUILD_DIR; make -j1"
+    - name: Cache firmware
+      id: firmware-cache
+      uses: actions/cache@v2
+      with:
+        path: firmware
+        key: ${{ runner.os }}-build-${{ github.run_id }}-firmware
+
+
+  # silveroak-opentitan/hmac depends on firmware, cava (for Util), and cava2
+  make_silveroak_hmac:
+    strategy:
+      matrix:
+        build_dir: ["silveroak-opentitan/hmac"]
+    env:
+      BUILD_DIR: ${{ matrix.build_dir }}
+
+    needs: [make_cava, make_cava2, make_firmware]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    - uses: cachix/install-nix-action@v12
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+    - name: Create a "lockfile" from git submodule commits
+      id: get-submodule-ver
+      run: |
+        git submodule status > ./third_party/submodules.lock
+      shell: bash
+    - name: Cache third_party
+      id: third_party-cache
+      uses: actions/cache@v2
+      with:
+        path: third_party
+        key: ${{ runner.os }}-third_party-${{ hashFiles('third_party/submodules.lock') }}
+    - name: Cache cava
+      id: cava-cache
+      uses: actions/cache@v2
+      with:
+        path: cava
+        key: ${{ runner.os }}-cava-${{ hashFiles('third_party/submodules.lock', 'cava/**/*.v', 'cava/Makefile' ) }}
+    - name: Use cava2 cache
+      uses: actions/cache@v2
+      id: cava2-cache
+      with:
+        path: cava2
+        key: ${{ runner.os }}-build-${{ github.run_id }}-cava2
+    - name: Use firmware cache
+      uses: actions/cache@v2
+      id: firmware-cache
+      with:
+        path: firmware
+        key: ${{ runner.os }}-build-${{ github.run_id }}-firmware
+    - name: Fail on cache miss
+      if: steps.third_party-cache.outputs.cache-hit != 'true' || steps.cava-cache.outputs.cache-hit != 'true' || steps.cava2-cache.outputs.cache-hit != 'true' || steps.firmware-cache.outputs.cache-hit != 'true'
+      run: exit 1
+
+    - run: nix-shell --run "cd $BUILD_DIR; make -j1"

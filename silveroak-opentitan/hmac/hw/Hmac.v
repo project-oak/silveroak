@@ -16,15 +16,13 @@
 
 Require Import Coq.Lists.List.
 Require Import Coq.ZArith.ZArith.
-Require Import ExtLib.Structures.Monoid.
-Require Import ExtLib.Data.List.
 
 Require Import Cava.Types.
 Require Import Cava.Expr.
 Require Import Cava.Primitives.
-Require Import Cava.Sha256.
 Require Import Cava.TLUL.
 
+Require Import HmacHardware.Sha256.
 Import ExprNotations.
 Import PrimitiveNotations.
 

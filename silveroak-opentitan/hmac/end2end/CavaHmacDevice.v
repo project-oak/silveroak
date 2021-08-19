@@ -5,8 +5,8 @@ Require Import coqutil.Word.Interface coqutil.Word.Properties.
 Require Import coqutil.Tactics.Simp.
 Require Import bedrock2.ZnWords.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
-Require Import Bedrock2Experiments.Hmac.Constants.
-Require Import Bedrock2Experiments.Hmac.HmacSemantics.
+Require Import HmacSoftware.Constants.
+Require Import HmacSoftware.HmacSemantics.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.MMIOToCava.
 
 Section WithParameters.
