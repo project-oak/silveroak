@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-.PHONY: all coq clean aes.c
+.PHONY: all coq clean _CoqProject
 
 all:		coq
 
