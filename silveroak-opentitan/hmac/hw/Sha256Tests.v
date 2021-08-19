@@ -18,9 +18,6 @@ Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import coqutil.Datatypes.List.
-Require Import Coq.micromega.Lia. (* for list_eqb, remove if upstreamed *)
-Require Import coqutil.Decidable. (* for list_eqb, remove if upstreamed *)
-Require Import coqutil.Tactics.Tactics. (* for list_eqb, remove if upstreamed *)
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Expr.
 Require Import Cava.Semantics.
@@ -29,50 +26,6 @@ Require Import HmacSpec.SHA256.
 Require Import HmacSpec.Tests.SHA256TestVectors.
 Require Import HmacHardware.Sha256.
 Import ListNotations.
-
-(**** list boolean equality decider ****)
-
-(* TODO: this may be upstreamed, remove if
-   https://github.com/mit-plv/coqutil/pull/37 gets merged *)
-Definition list_eqb {A} (aeqb : A -> A -> bool) {aeqb_spec:EqDecider aeqb} (x y : list A) : bool :=
-  ((length x =? length y)%nat && forallb (fun xy => aeqb (fst xy) (snd xy)) (combine x y))%bool.
-
-Lemma list_forallb_eqb_refl {A} (aeqb : A -> A -> bool) {aeqb_spec:EqDecider aeqb} ls :
-  forallb (fun xy => aeqb (fst xy) (snd xy)) (combine ls ls) = true.
-Proof.
-  induction ls as [|x ?]; [ reflexivity | ].
-  cbn [combine fst snd forallb]. rewrite IHls.
-  destr (aeqb x x); subst; congruence || reflexivity.
-Qed.
-
-Lemma length_eq_forallb_eqb_false {A} (aeqb : A -> A -> bool) {aeqb_spec:EqDecider aeqb} x y :
-  length x = length y -> x <> y ->
-  forallb (fun xy => aeqb (fst xy) (snd xy)) (combine x y) = false.
-Proof.
-  revert y.
-  induction x as [|x0 x]; destruct y as [|y0 y];
-    cbn [length]; [ congruence | lia .. | ].
-  intros. cbn [combine fst snd forallb].
-  destr (aeqb x0 y0); [ | reflexivity ].
-  rewrite IHx by congruence. reflexivity.
-Qed.
-
-Instance list_eqb_spec {A} (aeqb : A -> A -> bool) {aeqb_spec:EqDecider aeqb}
-  : EqDecider (list_eqb aeqb).
-Proof.
-  cbv [list_eqb].
-  induction x as [|x0 x]; destruct y as [|y0 y];
-    cbn [length combine forallb Nat.eqb andb fst snd];
-    try (constructor; congruence) ; [ ].
-  destruct (IHx y); subst.
-  { rewrite Nat.eqb_refl.
-    rewrite list_forallb_eqb_refl by auto.
-    destr (aeqb x0 y0); subst; constructor; congruence. }
-  { destr (length x =? length y); cbn [andb];
-    try (constructor; congruence); [ ].
-    rewrite length_eq_forallb_eqb_false by auto.
-    rewrite Bool.andb_false_r. constructor; congruence. }
-Qed.
 
 (**** Convert to/from circuit signals ****)
 
