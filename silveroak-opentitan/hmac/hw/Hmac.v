@@ -53,20 +53,20 @@ Section Var.
       (* TODO(blaxill): ignore/mask writes to CMD etc ? *)
       (* TODO(blaxill): apply mask to register writes*)
       let nregisters :=
-        if write_en & !fifo_write
+        if write_en && !fifo_write
         then `replace (n:=hmac_register_count)` registers aligned_address write_data
         else registers
       in
 
       (* cmd_start is set when host writes to hmac.CMD.hash_start *)
       (* and signifies the start of a new message *)
-      let cmd_start := write_en & aligned_address == `REG_CMD` & write_data == `K 1` & !fifo_write in
+      let cmd_start := write_en && aligned_address == `REG_CMD` && write_data == `K 1` && !fifo_write in
       (* cmd_process is set when host writes to hmac.CMD.hash_process *)
       (* and signifies the end of a message *)
-      let cmd_process := write_en & aligned_address == `REG_CMD` & write_data == `K 2` & !fifo_write in
+      let cmd_process := write_en && aligned_address == `REG_CMD` && write_data == `K 2` && !fifo_write in
 
       let '(packer_valid; packer_data)
-        := `tlul_pack` (write_en & fifo_write) write_data write_mask cmd_process in
+        := `tlul_pack` (write_en && fifo_write) write_data write_mask cmd_process in
 
       (* TODO(blaxill): FIX ME *)
       (* let '(_, padded_block; padded_valid) := `sha256_padder` packer_valid packer_data cmd_process `circuit_hole` cmd_start in *)

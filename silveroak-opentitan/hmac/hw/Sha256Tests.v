@@ -50,11 +50,11 @@ Definition to_sha256_input (t : sha256_test_vector)
   (* create actual input signals *)
   let non_final_input : list (denote_type (input_of sha256)) :=
       (* fifo_data_valid=1, fifo_data, is_final=0, final_length=0, clear=0 *)
-      List.map (fun data => (1, (data, (0, (0, (0, tt)))))%N) non_final_words in
+      List.map (fun data => (true, (data, (false, (0, (false, tt)))))%N) non_final_words in
   let final_input : denote_type (input_of sha256) :=
       (* fifo_data_valid=1, fifo_data, is_final=1, final_length=final_length,
          clear=0 *)
-      (1, (final_word, (1, (final_length, (0, tt)))))%N in
+      (true, (final_word, (true, (final_length, (false, tt)))))%N in
   (* if input is multiple blocks long *before* padding, we need to add dummy
      inputs after each block to wait for the padder to be ready to accept input
      again *)
@@ -63,7 +63,8 @@ Definition to_sha256_input (t : sha256_test_vector)
       length (non_final_input) / words_per_block
       + if (length (non_final_input) mod words_per_block =? 0) then 0 else 1 in
   let nblocks_padded := length (SHA256.padded_msg t.(msg_bytes)) / words_per_block in
-  let dummy_input : denote_type (input_of sha256) := (0, (0, (0, (0, (0, tt)))))%N in
+  let dummy_input : denote_type (input_of sha256) :=
+      (false, (0, (false, (0, (false, tt)))))%N in
   (* introduce dummy inputs between each block of 16 words in the input,
      including between non-final and final blocks if there is at least one
      non-final block *)
@@ -93,7 +94,7 @@ Definition to_sha256_padder_input (t : sha256_test_vector)
   List.map
     (fun '(fifo_data_valid,(fifo_data,(is_final,(final_length,(clear,_))))) =>
        (* data_valid, data, is_final, final_length, consumer_ready, clear *)
-       (fifo_data_valid,(fifo_data, (is_final, (final_length, (1%N, (clear, tt)))))))
+       (fifo_data_valid,(fifo_data, (is_final, (final_length, (true, (clear, tt)))))))
     (to_sha256_input t).
 
 Definition concat_words (n : nat) (ws : list N) : N :=
@@ -107,9 +108,7 @@ Definition from_sha256_padder_output
   let valid_out :=
       flat_map
         (fun '(out_valid, (data, (consumer_ready, done))) =>
-           if (out_valid =? 0)%N
-           then []
-           else [data]) out in
+           if (out_valid : bool) then [data] else []) out in
   concat_words (N.to_nat w) valid_out.
 
 (* extract all intermediate digests from circuit output signals *)

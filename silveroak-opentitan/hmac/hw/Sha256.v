@@ -66,12 +66,12 @@ Section Var.
     let/delay '(done, out, out_valid, state, length; current_offset) :=
       if clear
       then `Constant (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16)
-                     (1, (0, (0, (0, (0, 0)))))`
+                     (true, (0, (false, (0, (0, 0)))))`
       else if !consumer_ready then (done, out, out_valid, state, length, current_offset)
       else
 
       let next_state :=
-        if is_final & state == `padder_waiting` then
+        if is_final && state == `padder_waiting` then
           (* From our receiving state we can transition to: *)
           (* - Emitting 0x80.. state if final word was a full word *)
           if final_length == `K 4` then `padder_emit_bit`
@@ -97,10 +97,10 @@ Section Var.
         in
 
       let next_length :=
-        if state == `padder_waiting` & is_final then length + `bvresize 61` final_length
-        else if state == `padder_waiting` & data_valid then length + `K 4`
+        if state == `padder_waiting` && is_final then length + `bvresize 61` final_length
+        else if state == `padder_waiting` && data_valid then length + `K 4`
         (* We are done here so set the next length to 0 *)
-        else if state == `padder_writing_length` & current_offset == `K 15`
+        else if state == `padder_writing_length` && current_offset == `K 15`
           then `K 0`
         else length
         in
@@ -108,7 +108,7 @@ Section Var.
       let next_out :=
         (* If we have final word and its not a full word, we can emit 0x80 byte
          * immediately *)
-        if state == `padder_waiting` & is_final then
+        if state == `padder_waiting` && is_final then
           if final_length == `K 0`
           then `Constant (BitVec 32) 0x80000000`
           else if final_length == `K 1`
@@ -118,7 +118,7 @@ Section Var.
           else if final_length == `K 3`
           then `bvconcat` (`bvslice 8 24` data) (`Constant (BitVec 8) 0x80`)
           else data
-        else if state == `padder_waiting` & data_valid then
+        else if state == `padder_waiting` && data_valid then
           data
         else if state == `padder_emit_bit` then
           `Constant (BitVec 32) 0x80000000`
@@ -131,7 +131,7 @@ Section Var.
       in
 
       let out_valid :=
-        !(state == `padder_waiting` & (!data_valid) & (!is_final) ) in
+        !(state == `padder_waiting` && (!data_valid) && (!is_final) ) in
 
       let next_offset :=
         if !out_valid then current_offset
@@ -139,14 +139,14 @@ Section Var.
         else (current_offset + `K 1`) in
 
       let next_done :=
-        !data_valid & (
-        done | (state == `padder_writing_length` & next_state == `padder_waiting`)) in
+        !data_valid && (
+        done || (state == `padder_writing_length` && next_state == `padder_waiting`)) in
 
       ( next_done
       , next_out, out_valid, next_state, next_length, next_offset)
 
       initially
-        (1,(0,(0,(0,(0,0)))))
+        (true,(0,(false,(0,(0,0)))))
         : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16)
         in
 
@@ -242,18 +242,18 @@ Section Var.
           else round)
         ) in
 
-      let next_done := (round == `K 63`) | done in
+      let next_done := (round == `K 63`) || done in
       let round := if inc_round then round + `K 1` else round in
 
       if clear
       then `Constant (sha_digest ** sha_block ** Bit ** sha_round)
-            (sha256_initial_digest, (repeat 0 16, (1, 0)))`
+            (sha256_initial_digest, (repeat 0 16, (true, 0)))`
       else if start
-           then (initial_digest, block, `Constant (Bit**sha_round) (0, 0)`)
+           then (initial_digest, block, `Constant (Bit**sha_round) (false, 0)`)
            else if done then (current_digest, message_schedule, next_done, round)
                 else (next_digest, w, next_done, round)
 
-      initially (((sha256_initial_digest, (repeat 0 16, (1, 0))))
+      initially (((sha256_initial_digest, (repeat 0 16, (true, 0))))
       : denote_type (sha_digest ** sha_block ** Bit ** sha_round )) in
 
     let updated_digest := `map2 {{fun a b => ( a + b ) }}` initial_digest current_digest in
@@ -267,7 +267,7 @@ Section Var.
   Definition sha256 : Circuit _ [Bit; sha_word; Bit; BitVec 4; Bit] (Bit ** sha_digest ** Bit) :=
 
     let reset_state : denote_type (Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit) :=
-      (1, (repeat 0 16, (sha256_initial_digest, (0, 1)))) in
+      (true, (repeat 0 16, (sha256_initial_digest, (0, true)))) in
 
     {{ fun fifo_data_valid fifo_data is_final final_length clear =>
 
@@ -278,7 +278,7 @@ Section Var.
       *)
 
       let/delay '(padder_ready, block, digest, count; done) :=
-        let starting := fifo_data_valid & done in
+        let starting := fifo_data_valid && done in
         let ready_to_accept := `K 15` >= count in
         let block_ready := `K 16` == count in
 
@@ -288,7 +288,7 @@ Section Var.
         let '(inner_digest; inner_done) := `sha256_inner` block_ready block digest clear in
 
         let next_block :=
-          if padder_valid & ready_to_accept
+          if padder_valid && ready_to_accept
           then block <<+ padded_data
           else block in
 
@@ -298,20 +298,20 @@ Section Var.
            count == 17 : increment when inner is done
         *)
         let next_count : BitVec 6 :=
-          if padder_valid & ready_to_accept then count + `K 1`
+          if padder_valid && ready_to_accept then count + `K 1`
           else if `K 16` == count then `K 17`
-          else if `K 17` == count & inner_done then `K 0`
+          else if `K 17` == count && inner_done then `K 0`
           else count
         in
 
         (* only store the digest when the inner core is done *)
         let next_digest :=
           if starting then `Constant _ sha256_initial_digest`
-          else if `K 17` == count & inner_done then inner_digest
+          else if `K 17` == count && inner_done then inner_digest
           else digest in
 
         if clear then `Constant _ reset_state` else
-        (padder_ready, next_block, next_digest, next_count, (padder_done & inner_done & count == `K 0` ) )
+        (padder_ready, next_block, next_digest, next_count, (padder_done && inner_done && count == `K 0` ) )
 
         initially reset_state in
 

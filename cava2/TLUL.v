@@ -148,12 +148,12 @@ Section Var.
 
     let/delay '(reqid, reqsz, rspop, error, outstanding, we_o; re_o) :=
 
-      let a_ack := a_valid & !outstanding in
-      let d_ack := outstanding & d_ready in
+      let a_ack := a_valid && !outstanding in
+      let d_ack := outstanding && d_ready in
 
-      let rd_req := a_ack & a_opcode == `Get` in
-      let wr_req := a_ack &
-        (a_opcode == `PutFullData` | a_opcode == `PutPartialData`) in
+      let rd_req := a_ack && a_opcode == `Get` in
+      let wr_req := a_ack &&
+        (a_opcode == `PutFullData` || a_opcode == `PutPartialData`) in
 
       (* TODO(blaxill): skipping malformed tl packet detection *)
       let err_internal := `False` in
@@ -164,18 +164,18 @@ Section Var.
           ( a_source
           , a_size
           , if rd_req then `AccessAckData` else `AccessAck`
-          , error_i | err_internal
+          , error_i || err_internal
           , `False`
           )
         else
           (reqid, reqsz, rspop, error, if d_ack then `False` else outstanding)
       in
 
-      let we_o := wr_req & !err_internal in
-      let re_o := rd_req & !err_internal in
+      let we_o := wr_req && !err_internal in
+      let re_o := rd_req && !err_internal in
 
       (reqid, reqsz, rspop, error, outstanding, we_o, re_o)
-      initially (0,(0,(0,(0,(0,(0,0))))))
+      initially (0,(0,(0,(false,(false,(false,false))))))
         : denote_type (BitVec _ ** BitVec _ ** BitVec _ ** Bit ** Bit ** Bit ** Bit)
     in
 
