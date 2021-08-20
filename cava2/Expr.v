@@ -135,8 +135,8 @@ End ExprNotations.
 Section Var.
   Context {var : tvar}.
 
-  Definition True := Constant Bit 1.
-  Definition False := Constant Bit 0.
+  Definition True := Constant Bit true.
+  Definition False := Constant Bit false.
   Definition K {sz}(x: N) := Constant (BitVec sz) x.
 
 End Var.
@@ -200,14 +200,21 @@ Module PrimitiveNotations.
   Notation "~ x" := (
     Let x (fun v1 => UnaryOp UnBitVecNot v1)
   ) (in custom expr at level 19, no associativity) : expr_scope.
-  (* ! is identical to ~ but only works on 1-bit bit vectors (i.e. booleans) *)
   Notation "! x" := (
-    Let x (fun v1 => UnaryOp (@UnBitVecNot 1) v1)
+    Let x (fun v1 => UnaryOp UnBitNot v1)
   ) (in custom expr at level 19, no associativity) : expr_scope.
   Notation "x == y" := (
     Let x (fun v1 => Let y (fun v2 =>
       BinaryOp BinEq v1 v2
   ))) (in custom expr at level 19, no associativity) : expr_scope.
+  Notation "x || y" := (
+    Let x (fun v1 => Let y (fun v2 =>
+      BinaryOp BinBitOr v1 v2
+  ))) (in custom expr at level 20, left associativity) : expr_scope.
+  Notation "x && y" := (
+    Let x (fun v1 => Let y (fun v2 =>
+      BinaryOp BinBitAnd v1 v2
+  ))) (in custom expr at level 20, left associativity) : expr_scope.
   Notation "x | y" := (
     Let x (fun v1 => Let y (fun v2 =>
       BinaryOp BinBitVecOr v1 v2

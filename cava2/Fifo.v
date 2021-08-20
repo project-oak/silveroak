@@ -43,8 +43,8 @@ Section Var.
     let/delay '(fifo; current_length) :=
 
       ( if data_valid then data +>> fifo else fifo
-      , if data_valid & !out_ready then current_length + `K 1`
-        else if !data_valid & out_ready & current_length >= `K 1` then (current_length - `K 1`)
+      , if data_valid && !out_ready then current_length + `K 1`
+        else if (!data_valid) && out_ready && current_length >= `K 1` then (current_length - `K 1`)
         else current_length
       )
 
@@ -64,7 +64,7 @@ Require Import Cava.Util.Tactics.
 Require Import coqutil.Tactics.Tactics.
 
 Definition no_io_predicate (x: denote_type (Bit**BitVec 32**Bit**Unit))
-  := fst x = 0 /\ fst (snd (snd x)) = 0.
+  := fst x = false /\ fst (snd (snd x)) = false.
 
 Lemma fifo_no_change :
   forall sz st input, no_io_predicate input ->
@@ -74,7 +74,7 @@ Proof.
   cbn [step fifo absorb_any split_absorbed_denotation combine_absorbed_denotation
     denote_type binary_semantics unary_semantics K
       ]. unfold no_io_predicate in *.
-  cbn [fst snd] in *. logical_simplify; subst.
+  cbn [fst snd] in *. logical_simplify; subst. boolsimpl.
   repeat lazymatch goal with u : unit |- _ => destruct u end.
   repeat (destruct_pair_let; cbn [fst snd]).
   reflexivity.

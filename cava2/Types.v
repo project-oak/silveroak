@@ -26,12 +26,11 @@ Require Import Cava.Util.Vector.
 
 Inductive type :=
 | Unit : type
+| Bit : type
 | BitVec  : nat -> type
 | Vec  : type -> nat -> type
 | Pair : type -> type -> type
 .
-
-Notation Bit := (BitVec 1).
 
 Definition eq_dec_type (x y: type): {x = y} + {x <> y}.
 Proof.
@@ -42,6 +41,7 @@ Defined.
 Fixpoint denote_type (t: type) :=
   match t with
   | Unit => unit
+  | Bit => bool
   | BitVec n => N
   | Vec t n =>list (denote_type t)
   | Pair x y => (denote_type x * denote_type y)%type
@@ -50,7 +50,8 @@ Fixpoint denote_type (t: type) :=
 Fixpoint eqb {t}: denote_type t -> denote_type t -> bool :=
   match t return denote_type t -> denote_type t -> bool with
   | Unit => fun _ _ => true
-  | BitVec n => fun x y => N.eqb x y
+  | Bit => Bool.eqb
+  | BitVec n => N.eqb
   | Vec t n =>
     fun x y =>
       fold_right andb true (map (fun '(x,y) => eqb x y) (combine x y))
@@ -73,6 +74,7 @@ Fixpoint ntuple t n : type :=
 Fixpoint default {t: type} : denote_type t :=
   match t return denote_type t with
   | Unit => tt
+  | Bit => false
   | BitVec n => 0%N
   | Vec t1 n => List.repeat default n
   | Pair x y => (@default x, @default y)

@@ -35,9 +35,14 @@ Inductive UnaryPrim : type -> type -> Type :=
 | UnVecToTuple: forall {t n}, UnaryPrim (Vec t (S n)) (ntuple t n)
 
 | UnBitVecNot: forall {n}, UnaryPrim (BitVec n) (BitVec n)
+
+| UnBitNot: UnaryPrim Bit Bit
 .
 
 Inductive BinaryPrim : type -> type -> type -> Type :=
+| BinBitOr: BinaryPrim Bit Bit Bit
+| BinBitAnd: BinaryPrim Bit Bit Bit
+
 | BinBitVecGte: forall {n}, BinaryPrim (BitVec n) (BitVec n) Bit
 
 | BinBitVecOr: forall {n}, BinaryPrim (BitVec n) (BitVec n) (BitVec n)
@@ -78,12 +83,17 @@ Definition unary_semantics {x r} (prim: UnaryPrim x r)
 
   | @UnVecToTuple t n => vector_as_tuple n t
   | @UnBitVecNot n => fun x => N.lnot x (N.of_nat n)
+
+  | UnBitNot => negb
   end.
 
 Definition binary_semantics {x y r} (prim: BinaryPrim x y r)
   : denote_type x -> denote_type y -> denote_type r :=
   match prim in BinaryPrim x y r return denote_type x -> denote_type y -> denote_type r with
-  | BinBitVecGte => fun x y => (if y <=? x then 1 else 0)%N
+  | BinBitOr => orb
+  | BinBitAnd => andb
+
+  | BinBitVecGte => fun x y => (y <=? x)%N
 
   | @BinBitVecOr n => N.lor
   | @BinBitVecXor n => N.lxor
@@ -95,7 +105,7 @@ Definition binary_semantics {x y r} (prim: BinaryPrim x y r)
   | BinVecConcat => fun x y => x ++ y
   | @BinVecShiftInRight t n => (fun xs x => tl (xs ++ [x]))
   | @BinVecShiftInLeft t n => (fun x xs => removelast (x :: xs))
-  | BinEq => fun x y => (if eqb x y then 1 else 0)%N
+  | BinEq => eqb
   end%list.
 
 Definition ternary_semantics {x y z r} (prim: TernaryPrim x y z r)

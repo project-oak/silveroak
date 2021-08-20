@@ -94,35 +94,31 @@ Definition sha256_inner_invariant
            (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
            msg (H : list N) (i : nat) : Prop :=
   let '(current_digest, (message_schedule, (done, round))) := state in
-  (* either we're done *)
-  (done = 1%N)
-  (* ...or we're not done *)
-  \/ (done = 0%N
-     (* ...and the round is < 64 *)
-     /\ (round < 64)%N
-     (* ...and the message schedule is the expected slice of the message *)
-     /\ message_schedule = List.slice 0%N (SHA256.W msg i) (N.to_nat round - 15) 16
-     (* ...and the current digest is the expected digest *)
-     /\ current_digest = fold_left (SHA256.sha256_compress msg i)
-                                  (seq 0 (N.to_nat round)) H).
+  if done
+  then Logic.True (* idle; no guarantees about other state elements *)
+  else
+    (* the round is < 64 *)
+    (round < 64)%N
+    (* ...and the message schedule is the expected slice of the message *)
+    /\ message_schedule = List.slice 0%N (SHA256.W msg i) (N.to_nat round - 15) 16
+    (* ...and the current digest is the expected digest *)
+    /\ current_digest = fold_left (SHA256.sha256_compress msg i)
+                                 (seq 0 (N.to_nat round)) H.
 
 (* Precondition for sha256_inner *)
 Definition sha256_inner_pre
            (input : denote_type [Bit; sha_block; sha_digest; Bit])
            msg (i : nat) : Prop :=
   let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
-  (* either clear is true, and the message ghost variable is empty *)
-  ((clear = 1%N /\ msg = repeat x00 16 /\ i = 0%nat)
-     (* or clear is false *)
-     \/ (clear = 0%N))
+  (* if clear is true, then the message ghost variable is empty *)
+  (if clear then msg = repeat x00 16 /\ i = 0%nat else Logic.True)
   (* ...and the initial digest is the digest from the previous i *)
   /\ initial_digest = fold_left (SHA256.sha256_step msg) (seq 0 i) SHA256.H0
-  (* ...and either the block is valid *)
-  /\ ((block_valid = 1%N
-      (* ...and the block is the expected slice of the message *)
-      /\ block = List.slice 0%N (SHA256.W msg i) 0 16)
-     (* ...or the block is not valid *)
-     \/ (block_valid = 0%N)).
+  (* ...and if the block is valid, the block is the expected slice of the
+     message *)
+  /\ (if block_valid
+     then block = List.slice 0%N (SHA256.W msg i) 0 16
+     else Logic.True).
 
 Definition sha256_inner_spec
            (input : denote_type [Bit; sha_block; sha_digest; Bit])
@@ -130,22 +126,22 @@ Definition sha256_inner_spec
            msg (i : nat) : denote_type (sha_digest ** Bit) :=
   let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
   let '(current_digest, (message_schedule, (done, round))) := state in
-  let next_digest := if (clear =? 1)%N
+  let next_digest := if clear
                      then SHA256.H0
-                     else if (block_valid =? 1)%N
+                     else if block_valid
                           then initial_digest
-                          else if (done =? 0)%N
-                               then SHA256.sha256_compress
+                          else if done
+                               then current_digest
+                               else SHA256.sha256_compress
                                       msg i (List.resize 0%N 8 current_digest)
-                                      (N.to_nat round)
-                               else current_digest in
-  let next_done := if (clear =? 1)%N
-                   then 1%N
-                   else if (block_valid =? 1)%N
-                        then 0%N
-                        else if (done =? 0)%N
-                             then (if (round =? 63) then 1 else 0)%N
-                             else 1%N in
+                                      (N.to_nat round) in
+  let next_done := if clear
+                   then true
+                   else if block_valid
+                        then false
+                        else if done
+                             then true
+                             else (round =? 63)%N in
   (List.map2 SHA256.add_mod (List.resize 0%N 8 initial_digest)
              (List.resize 0%N 8 next_digest), next_done).
 
@@ -167,24 +163,16 @@ Proof.
   repeat (destruct_pair_let; cbn [fst snd]).
   autorewrite with tuple_if; cbn [fst snd].
   (* destruct cases for [clear] *)
-  lazymatch goal with H : _ \/ clear = 0%N |- _ =>
-                      destruct H; logical_simplify; subst; cbn [N.eqb] end;
-    (* handle clear = 1 case *)
-    [ left; reflexivity | ].
+  destruct clear; logical_simplify; [ tauto | ].
   (* destruct cases for [block_valid] *)
-  lazymatch goal with H : _ \/ block_valid = 0%N |- _ =>
-                      destruct H; logical_simplify; subst; cbn [N.eqb] end;
-    (* handle block_valid = 1 case *)
-    [ right; ssplit; auto; lia | ].
+  destruct block_valid; logical_simplify; subst;
+    [ ssplit; auto; lia | ].
   (* destruct cases for [done] *)
-  lazymatch goal with H : done = 1%N \/ _ |- _ =>
-                      destruct H; logical_simplify; subst; cbn [N.eqb] end;
-    (* handle done = 1 case *)
-    [ left; destr (round =? 63)%N; reflexivity | ].
-  destr (round =? 63)%N; [ left; reflexivity | ].
+  destruct done; logical_simplify; subst; boolsimpl; [ tauto | ].
+  destr (round =? 63)%N; [ reflexivity | ].
 
   (* For remaining cases, the new [done] is always 0 *)
-  cbn [N.lor N.eqb]. right.
+  cbn [N.lor N.eqb].
   (* destruct case statements *)
   repeat first [ discriminate
                | lia
@@ -246,26 +234,19 @@ Proof.
   autorewrite with tuple_if; cbn [fst snd].
   stepsimpl. autorewrite with push_resize.
   (* destruct cases for [clear] *)
-  lazymatch goal with H : _ \/ clear = 0%N |- _ =>
-                      destruct H; logical_simplify; subst; cbn [N.eqb Pos.eqb] end;
-    (* handle clear = 1 case *)
+  destruct clear; logical_simplify; subst;
     [ autorewrite with push_resize; reflexivity | ].
   (* destruct cases for [block_valid] *)
-  lazymatch goal with H : _ \/ block_valid = 0%N |- _ =>
-                      destruct H; logical_simplify; subst; cbn [N.eqb Pos.eqb] end;
-    (* handle block_valid = 1 case *)
+  destruct block_valid; logical_simplify; subst;
     [ autorewrite with push_resize; reflexivity | ].
   (* destruct cases for [done] *)
-  lazymatch goal with H : done = 1%N \/ _ |- _ =>
-                      destruct H; logical_simplify; subst; cbn [N.eqb] end;
-    (* handle done = 1 case *)
+  destruct done; logical_simplify; subst; boolsimpl;
     [ destr (round =? 63)%N; repeat (f_equal; [ ]);
       autorewrite with push_resize; reflexivity | ].
-
   autorewrite with push_resize push_nth.
   erewrite step_sha256_compress with (t:=N.to_nat round)
     by (repeat destruct_one_match;
         repeat destruct_one_match_hyp; f_equal; lia).
   cbn [fst snd]. autorewrite with push_resize.
-  destruct_one_match; reflexivity.
+  reflexivity.
 Qed.
