@@ -20,6 +20,7 @@ Require Import coqutil.Tactics.Tactics.
 Require Import coqutil.Tactics.syntactic_unify.
 Require Import coqutil.Tactics.letexists.
 Require Import coqutil.Z.Lia.
+Require Import Cava.Util.Nat.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Require Import Bedrock2Experiments.LibBase.MMIOLabels.
@@ -1140,7 +1141,7 @@ Section Proofs.
           replace (length key_arr - (v - 1))%nat
             with (S (length key_arr - v))%nat by lia
         end.
-        autorewrite with pull_snoc natsimpl.
+        pull_snoc; natsimpl.
         rewrite <-!hd_skipn.
         eassumption. }
 
@@ -1205,7 +1206,7 @@ Section Proofs.
             |- context [fold_left _ (seq 0 ?m)] =>
             replace (seq 0 m) with (seq 0 (S n)) by (f_equal; lia)
           end.
-          autorewrite with pull_snoc natsimpl.
+          pull_snoc; natsimpl.
           rewrite <-!hd_skipn.
           eassumption. }
 
@@ -1267,8 +1268,7 @@ Section Proofs.
           end.
 
           (* list simplifications *)
-          autorewrite with pull_snoc natsimpl.
-          autorewrite with push_nth.
+          pull_snoc; natsimpl; push_nth.
 
           (* solve *)
           eassumption. }

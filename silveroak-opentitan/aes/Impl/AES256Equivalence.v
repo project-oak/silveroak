@@ -173,7 +173,7 @@ Proof.
             eapply eta_list_cons_snoc with (d0:=default_key); subst; length_hammer
           | _ => idtac
           end .. ];
-      [ | subst; length_hammer .. ]).
+      [ | subst; rewrite ?removelast_firstn_len; length_hammer .. ]).
 
   autorewrite with conversions.
   cbv [combType Bvector.Bvector] in *.
@@ -183,8 +183,8 @@ Proof.
              |- context [map inv_mix_columns ?l] =>
              l end in
   rewrite <-(rev_involutive l).
-  autorewrite with pull_rev.
-  rewrite <-!map_rev with (f:=inv_mix_columns).
+  rewrite <-map_rev with (f:=to_flat).
+  rewrite ?last_rev, ?hd_rev, ?tl_rev, ?removelast_rev by auto.
   rewrite removelast_tl.
   rewrite aes256_decrypt_encrypt.
   autorewrite with conversions.

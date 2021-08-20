@@ -233,8 +233,11 @@ End Extend.
 Hint Rewrite @extend_length using solve [eauto] : push_length.
 Hint Rewrite @extend_nil @extend_cons_S : push_extend.
 Ltac push_extend_step :=
-  first [ progress autorewrite with push_extend
-        | rewrite extend_le by length_hammer ].
+  match goal with
+  | _ => progress autorewrite with push_extend
+  | |- context [extend ?l ?d ?n] =>
+    rewrite (extend_le l d n) by length_hammer
+  end.
 Ltac push_extend := repeat push_extend_step.
 
 Section Combine.
@@ -458,16 +461,22 @@ End Nth.
 Hint Rewrite @map_nth @nth_middle @nth_step @nth_found @nth_nil @nth_extend
      @nth_skipn @nth_tl @nth_hd : push_nth.
 Ltac push_nth_step :=
-  first [ progress autorewrite with push_nth
-        | rewrite app_nth1 by length_hammer
-        | rewrite app_nth2 by length_hammer
-        | rewrite combine_nth by length_hammer
-        | rewrite seq_nth by lia
-        | rewrite nth_map_seq by lia
-        | rewrite map_nth_inbounds by length_hammer
-        | rewrite nth_repeat_inbounds by lia
-        | rewrite nth_overflow by length_hammer
-        ].
+  match goal with
+  | _ => progress autorewrite with push_nth
+  | |- context [nth ?n (?l1 ++ ?l2) ?d] =>
+    first [ rewrite (@app_nth1 _ l1 l2 d n) by length_hammer
+          | rewrite (@app_nth2 _ l1 l2 d n) by length_hammer ]
+  | |- context [nth ?n (combine ?l1 ?l2) (?d1, ?d2)] =>
+    rewrite (combine_nth l1 l2 n d1 d2) by length_hammer
+  | |- context [nth ?n (seq ?start ?len) ?d] =>
+    rewrite (@seq_nth len start n d) by lia
+  | |- context [nth ?n (map ?f (seq ?start ?len)) ?d] =>
+    rewrite (nth_map_seq f n start len d) by lia
+  | |- context [nth ?n (repeat ?x ?m) ?d] =>
+    rewrite (nth_repeat_inbounds x d n m) by lia
+  | |- context [nth ?n ?l ?d] =>
+    rewrite (@nth_overflow _ l n d) by length_hammer
+  end.
 Ltac push_nth := repeat push_nth_step.
 
 Section Maps.
@@ -742,15 +751,21 @@ Hint Rewrite @firstn_nil @firstn_cons @firstn_all @firstn_app @firstn_O
      @firstn_firstn @combine_firstn @firstn_map @firstn_seq : push_firstn.
 
 Ltac push_firstn_step :=
-  first [ progress autorewrite with push_firstn
-        | rewrite firstn_all2 by length_hammer
-        | rewrite firstn_eq_0 by length_hammer ].
+  match goal with
+  | _ => progress autorewrite with push_firstn
+  | |- context [firstn ?n ?l] =>
+    first [ rewrite (@firstn_all2 _ n l) by length_hammer
+          | rewrite (firstn_eq_0 n l) by length_hammer ]
+  end.
 Ltac push_firstn := repeat push_firstn_step.
 
 Ltac push_skipn_step :=
-  first [ progress autorewrite with push_skipn
-        | rewrite skipn_all2 by length_hammer
-        | rewrite skipn_eq_0 by length_hammer ].
+  match goal with
+  | _ => progress autorewrite with push_skipn
+  | |- context [skipn ?n ?l] =>
+    first [ rewrite (@skipn_all2 _ n l) by length_hammer
+          | rewrite (skipn_eq_0 n l) by length_hammer ]
+  end.
 Ltac push_skipn := repeat push_skipn_step.
 
 (* Definition and proofs for [resize] *)
@@ -805,8 +820,12 @@ Section Resize.
 End Resize.
 Hint Rewrite @resize_length : push_length.
 Ltac push_resize_step :=
-  first [ rewrite resize_noop by length_hammer
-        | rewrite resize_firstn by lia ].
+  match goal with
+  | |- context [resize ?d ?n (firstn ?m ?ls)] =>
+    rewrite (resize_firstn d ls n m) by lia
+  | |- context [resize ?d ?n ?ls] =>
+    rewrite (resize_noop d n ls) by length_hammer
+  end.
 Ltac push_resize := repeat push_resize_step.
 
 (* Definition and proofs for [slice] *)
