@@ -22,8 +22,14 @@ Require Import Cava.Util.Tactics.
 Import ListNotations.
 Local Open Scope list_scope.
 
+(* Note: For autorewrite hint databases created here, do NOT add anything that
+   produces side conditions; this causes problems because of a bug in
+   autorewrite that means it doesn't backtrack if it fails to solve a side
+   condition (see https://github.com/coq/coq/issues/7672) *)
+
 (* Generic rewrite database for common list simplifications *)
 Hint Rewrite @app_nil_l @app_nil_r @last_last @rev_app_distr : listsimpl.
+Ltac listsimpl := autorewrite with listsimpl.
 
 Section Length.
   Lemma nil_length {A} : @length A nil = 0.
@@ -40,19 +46,12 @@ End Length.
 (* The push_length autorewrite database simplifies goals including [length] *)
 Hint Rewrite @nil_length @cons_length @seq_length @repeat_length @rev_length
      @map_length @firstn_length @skipn_length @app_length @combine_length
-     @tl_length @removelast_firstn_len
-     using solve [eauto] : push_length.
-Hint Rewrite @removelast_firstn_len using solve [eauto] : push_length.
+     @tl_length : push_length.
+Ltac push_length_step := progress autorewrite with push_length.
+Ltac push_length := repeat push_length_step.
 
 Create HintDb length discriminated.
-Ltac length_hammer :=
-  autorewrite with push_length; eauto with length; lia.
-
-(* The push_nth database simplifies goals including [nth] *)
-Hint Rewrite @app_nth1 @app_nth2 @nth_overflow using length_hammer : push_nth.
-Hint Rewrite @combine_nth using solve [length_hammer] : push_nth.
-Hint Rewrite @seq_nth using lia : push_nth.
-
+Ltac length_hammer := push_length; eauto with length; lia.
 
 (* Miscellaneous proofs about lists *)
 Section Misc.
@@ -145,7 +144,9 @@ Section Misc.
   Qed.
 
 End Misc.
-Hint Rewrite @seq_snoc using solve [eauto] : pull_snoc.
+Hint Rewrite @seq_snoc : pull_snoc.
+Ltac pull_snoc_step := progress autorewrite with pull_snoc.
+Ltac pull_snoc := repeat pull_snoc_step.
 
 Section Rev.
   Lemma last_rev {A} l (d : A) : last (rev l) d = hd d l.
@@ -168,7 +169,6 @@ Section Rev.
     rewrite tl_rev, rev_involutive. reflexivity.
   Qed.
 End Rev.
-Hint Rewrite @map_rev @last_rev @hd_rev @tl_rev @removelast_rev using solve [eauto] : pull_rev.
 
 Section Forall2.
   Lemma Forall2_length_eq {A B} (R : A -> B -> Prop) ls1 ls2 :
@@ -202,12 +202,12 @@ Section Extend.
     l ++ repeat d (n - length l).
 
   Lemma extend_nil {A} (d : A) n : extend [] d n = repeat d n.
-  Proof. cbv [extend]. autorewrite with push_length natsimpl. reflexivity. Qed.
+  Proof. cbv [extend]. push_length; natsimpl. reflexivity. Qed.
 
   Lemma extend_cons_S {A} x0 x (d : A) n :
     extend (x0 :: x) d (S n) = x0 :: extend x d n.
   Proof.
-    cbv [extend]. autorewrite with push_length natsimpl.
+    cbv [extend]. push_length; natsimpl.
     rewrite <-app_comm_cons; reflexivity.
   Qed.
 
@@ -215,28 +215,27 @@ Section Extend.
   Proof.
     cbv [extend]; intros.
     rewrite (proj2 (Nat.sub_0_le _ _)) by lia.
-    cbn [repeat]; autorewrite with listsimpl.
-    reflexivity.
+    cbn [repeat]; listsimpl. reflexivity.
   Qed.
 
   Lemma extend_to_match {A B} l1 l2 (a : A) (b : B) :
     length (extend l1 a (length l2)) = length (extend l2 b (length l1)).
   Proof.
-    cbv [extend]; intros. autorewrite with push_length.
+    cbv [extend]; intros. push_length.
     destruct (Nat.min_dec (length l1) (length l2));
-      autorewrite with natsimpl; lia.
+      natsimpl; lia.
   Qed.
 
   Lemma extend_length {A} (l : list A) a n:
     length (extend l a n) = Nat.max (length l) n.
-  Proof.
-    cbv [extend]. autorewrite with push_length natsimpl.
-    lia.
-  Qed.
+  Proof. cbv [extend]. push_length; natsimpl. lia. Qed.
 End Extend.
 Hint Rewrite @extend_length using solve [eauto] : push_length.
-Hint Rewrite @extend_nil @extend_cons_S using solve [eauto] : push_extend.
-Hint Rewrite @extend_le using solve [length_hammer] : push_extend.
+Hint Rewrite @extend_nil @extend_cons_S : push_extend.
+Ltac push_extend_step :=
+  first [ progress autorewrite with push_extend
+        | rewrite extend_le by length_hammer ].
+Ltac push_extend := repeat push_extend_step.
 
 Section Combine.
   Lemma combine_nil_r {A B} (la : list A) :
@@ -263,17 +262,7 @@ Section Combine.
     cbn [combine length map repeat]; intros.
     rewrite IHlb by lia; reflexivity.
   Qed.
-
-  Lemma combine_length {A B} (la : list A) (lb : list B) :
-    length (combine la lb) = Nat.min (length la) (length lb).
-  Proof.
-    revert lb; induction la; [ reflexivity | ].
-    destruct lb; [ reflexivity | ].
-    cbn [combine length Nat.min]. rewrite IHla.
-    lia.
-  Qed.
 End Combine.
-Hint Rewrite @combine_length : push_length.
 
 (* Proofs about [split] *)
 Section Split.
@@ -295,7 +284,7 @@ Section Split.
   Proof.
     revert l2; induction l1; destruct l2;
       repeat first [ progress cbn [split fst snd]
-                   | progress autorewrite with listsimpl
+                   | progress listsimpl
                    | rewrite <-app_comm_cons
                    | match goal with
                      | |- context [match ?p with pair _ _ => _ end] =>
@@ -326,8 +315,7 @@ Section Split.
     cbn [map split]. rewrite IHl. reflexivity.
   Qed.
 End Split.
-Hint Rewrite @split_skipn @split_app @split_repeat
-     using solve [eauto] : push_split.
+Hint Rewrite @split_skipn @split_app @split_repeat : push_split.
 
 Section Nth.
   Lemma nth_step {A} n (l : list A) x d :
@@ -348,7 +336,7 @@ Section Nth.
   Proof.
     revert n start; induction len; [ lia | ].
     intros; destruct n; cbn [seq map nth];
-      autorewrite with natsimpl; [ reflexivity | ].
+      natsimpl; [ reflexivity | ].
     rewrite IHlen by lia.
     f_equal; lia.
   Qed.
@@ -356,10 +344,10 @@ Section Nth.
   Lemma map_nth_inbounds {A B} (f : A -> B) l d1 d2 n :
     n < length l -> nth n (map f l) d1 = f (nth n l d2).
   Proof.
-    revert l; induction n; intros;
-      (destruct l; autorewrite with push_length in *; [ lia | ]);
+    revert l; induction n;
+      (destruct l; push_length; [ lia | ]);
       [ reflexivity | ].
-    cbn [map nth]. apply IHn. lia.
+    intros; cbn [map nth]. apply IHn. lia.
   Qed.
 
   Lemma nth_repeat_inbounds {A} (x : A) d n m :
@@ -396,7 +384,8 @@ Section Nth.
     nth i (extend l a n) a = nth i l a.
   Proof.
     cbv [extend]; destruct (Compare_dec.lt_dec i (length l));
-      autorewrite with push_nth; [ reflexivity | ].
+      rewrite ?app_nth1, ?app_nth2 by length_hammer;
+      [ reflexivity | ].
     rewrite nth_repeat, nth_overflow by lia.
     rewrite Tauto.if_same; reflexivity.
   Qed.
@@ -406,7 +395,8 @@ Section Nth.
     nth n l d = last l d.
   Proof.
     revert n; induction l using rev_ind; intros; subst; [ reflexivity | ].
-    autorewrite with push_length natsimpl listsimpl push_nth.
+    repeat (push_length || natsimpl || listsimpl).
+    rewrite app_nth2 by lia. natsimpl.
     reflexivity.
   Qed.
 
@@ -463,10 +453,22 @@ Section Nth.
   Lemma nth_hd {A} (d : A) ls : hd d ls = nth 0 ls d.
   Proof. destruct ls; reflexivity. Qed.
 End Nth.
-Hint Rewrite @nth_step @nth_found @nth_nil @nth_extend @nth_skipn
-     @nth_tl @nth_hd using solve [eauto] : push_nth.
-Hint Rewrite @nth_map_seq @map_nth_inbounds @nth_repeat_inbounds
-     using lia : push_nth.
+
+(* The push_nth tactic simplifies goals including [nth] *)
+Hint Rewrite @map_nth @nth_middle @nth_step @nth_found @nth_nil @nth_extend
+     @nth_skipn @nth_tl @nth_hd : push_nth.
+Ltac push_nth_step :=
+  first [ progress autorewrite with push_nth
+        | rewrite app_nth1 by length_hammer
+        | rewrite app_nth2 by length_hammer
+        | rewrite combine_nth by length_hammer
+        | rewrite seq_nth by lia
+        | rewrite nth_map_seq by lia
+        | rewrite map_nth_inbounds by length_hammer
+        | rewrite nth_repeat_inbounds by lia
+        | rewrite nth_overflow by length_hammer
+        ].
+Ltac push_nth := repeat push_nth_step.
 
 Section Maps.
   Lemma map_id_ext {A} (f : A -> A) (l : list A) :
@@ -645,8 +647,8 @@ Section Maps.
     cbn [map2]; rewrite IHla; reflexivity.
   Qed.
 End Maps.
-Hint Rewrite @map2_length using solve [eauto] : push_length.
-Hint Rewrite @map_snoc using solve [eauto] : pull_snoc.
+Hint Rewrite @map2_length : push_length.
+Hint Rewrite @map_snoc : pull_snoc.
 
 (* Proofs about firstn and skipn *)
 Section FirstnSkipn.
@@ -663,7 +665,7 @@ Section FirstnSkipn.
     skipn n (repeat x m) = repeat x (m - n).
   Proof.
     revert n x; induction m; intros; [ rewrite skipn_nil; reflexivity | ].
-    destruct n; autorewrite with natsimpl; [ reflexivity | ].
+    destruct n; natsimpl; [ reflexivity | ].
     cbn [repeat skipn].
     rewrite IHm; reflexivity.
   Qed.
@@ -730,18 +732,26 @@ Section FirstnSkipn.
   Proof.
     revert ls; induction n; [ reflexivity | ].
     intros. erewrite firstn_succ_snoc by lia. rewrite IHn by lia.
-    autorewrite with pull_snoc. reflexivity.
+    pull_snoc. reflexivity.
   Qed.
 
 End FirstnSkipn.
 Hint Rewrite @skipn_app @skipn_skipn @skipn_repeat @skipn_cons @skipn_O
-     @skipn_nil @skipn_all @skipn_combine
-     using solve [eauto] : push_skipn.
+     @skipn_nil @skipn_all @skipn_combine : push_skipn.
 Hint Rewrite @firstn_nil @firstn_cons @firstn_all @firstn_app @firstn_O
-     @firstn_firstn @combine_firstn @firstn_map @firstn_seq
-     using solve [eauto] : push_firstn.
-Hint Rewrite @skipn_all2 @skipn_eq_0 using solve [length_hammer] : push_skipn.
-Hint Rewrite @firstn_all2 @firstn_eq_0 using solve [length_hammer] : push_firstn.
+     @firstn_firstn @combine_firstn @firstn_map @firstn_seq : push_firstn.
+
+Ltac push_firstn_step :=
+  first [ progress autorewrite with push_firstn
+        | rewrite firstn_all2 by length_hammer
+        | rewrite firstn_eq_0 by length_hammer ].
+Ltac push_firstn := repeat push_firstn_step.
+
+Ltac push_skipn_step :=
+  first [ progress autorewrite with push_skipn
+        | rewrite skipn_all2 by length_hammer
+        | rewrite skipn_eq_0 by length_hammer ].
+Ltac push_skipn := repeat push_skipn_step.
 
 (* Definition and proofs for [resize] *)
 Section Resize.
@@ -750,13 +760,13 @@ Section Resize.
 
   Lemma resize_0 {A} (d : A) ls : resize d 0 ls = [].
   Proof.
-    cbv [resize]. autorewrite with push_firstn natsimpl. reflexivity.
+    cbv [resize]. push_firstn; natsimpl. reflexivity.
   Qed.
   Lemma resize_succ {A} (d : A) n ls :
     resize d (S n) ls = hd d ls :: resize d n (tl ls).
   Proof.
     cbv [resize].
-    destruct ls; autorewrite with push_firstn natsimpl; reflexivity.
+    destruct ls; push_firstn; natsimpl; reflexivity.
   Qed.
 
   Lemma resize_length {A} (d : A) n ls : length (resize d n ls) = n.
@@ -767,21 +777,20 @@ Section Resize.
   Proof.
     intros; subst. cbv [resize].
     destruct (Compare_dec.le_lt_dec n (length ls));
-      autorewrite with natsimpl listsimpl push_firstn;
+      repeat (natsimpl || listsimpl || push_firstn);
       [ solve [auto using firstn_map_nth] | ].
     replace n with (length ls + (n - length ls)) by lia.
     rewrite seq_app, map_app, <-firstn_map_nth by lia.
-    autorewrite with natsimpl push_firstn. apply f_equal.
+    natsimpl. push_firstn. apply f_equal.
     erewrite map_ext_in; [ rewrite map_constant; f_equal; length_hammer | ].
-    intros *. rewrite in_seq. intros.
-    rewrite nth_overflow by lia; reflexivity.
+    intros *. rewrite in_seq. intros. push_nth. reflexivity.
   Qed.
 
   Lemma resize_noop {A} (d : A) n ls :
     n = length ls -> resize d n ls = ls.
   Proof.
     intros; subst. cbv [resize].
-    autorewrite with natsimpl listsimpl push_firstn.
+    repeat (natsimpl || listsimpl || push_firstn).
     reflexivity.
   Qed.
 
@@ -789,13 +798,16 @@ Section Resize.
     n <= m ->
     resize d n (firstn m ls) = resize d n ls.
   Proof.
-    intros; cbv [resize]. autorewrite with push_firstn natsimpl push_length.
+    intros; cbv [resize].
+    repeat (natsimpl || listsimpl || push_firstn || push_length).
     repeat (f_equal; try lia).
   Qed.
 End Resize.
-Hint Rewrite @resize_length using solve [eauto] : push_length.
-Hint Rewrite @resize_noop using solve [length_hammer] : push_resize.
-Hint Rewrite @resize_firstn using lia : push_resize.
+Hint Rewrite @resize_length : push_length.
+Ltac push_resize_step :=
+  first [ rewrite resize_noop by length_hammer
+        | rewrite resize_firstn by lia ].
+Ltac push_resize := repeat push_resize_step.
 
 (* Definition and proofs for [slice] *)
 Section Slice.
@@ -807,7 +819,7 @@ Section Slice.
   Proof.
     intros; subst. cbv [slice].
     rewrite resize_map_nth. apply map_ext; intros.
-    autorewrite with push_nth; reflexivity.
+    push_nth; reflexivity.
   Qed.
 
   Lemma slice_length {A} (d : A) ls start len :
@@ -832,8 +844,8 @@ Section Slice.
     i < len ->
     nth i (slice d ls start len) d = nth (start + i) ls d.
   Proof.
-    intros. rewrite slice_map_nth.
-    autorewrite with push_nth. f_equal; lia.
+    intros. rewrite slice_map_nth. push_nth.
+    f_equal; lia.
   Qed.
 
   Lemma nth_slice {A} (d : A) ls i start len :
@@ -850,17 +862,14 @@ Section Slice.
   Lemma slice_snoc {A} (d : A) ls start len :
     slice d ls start len ++ [nth (start + len) ls d]
     = slice d ls start (S len).
-  Proof.
-    rewrite !slice_map_nth. autorewrite with pull_snoc.
-    reflexivity.
-  Qed.
+  Proof. rewrite !slice_map_nth. pull_snoc. reflexivity. Qed.
 
   Lemma slice_0 {A} (d : A) ls len :
     slice d ls 0 len = resize d len ls.
   Proof. reflexivity. Qed.
 End Slice.
-Hint Rewrite @slice_length using solve [eauto] : push_length.
-Hint Rewrite @nth_slice using solve [eauto] : push_nth.
+Hint Rewrite @slice_length : push_length.
+Hint Rewrite @nth_slice : push_nth.
 
 (* Definition and proofs for [replace] *)
 Section Replace.
@@ -883,6 +892,14 @@ Section Folds.
 
   Lemma fold_left_cons {A B} (f : B -> A -> B) b a ls :
     fold_left f (a::ls) b = fold_left f ls (f b a).
+  Proof. reflexivity. Qed.
+
+  Lemma fold_right_nil {A B} (f : A -> B -> B) b :
+    fold_right f b [] = b.
+  Proof. reflexivity. Qed.
+
+  Lemma fold_right_cons {A B} (f : A -> B -> B) b a ls :
+    fold_right f b (a::ls) = f a (fold_right f b ls).
   Proof. reflexivity. Qed.
 
   Lemma fold_left_assoc {A} (f : A -> A -> A) id
@@ -1013,7 +1030,7 @@ Section Folds.
     intros Istart Ibody IimpliesP. apply IimpliesP. clear IimpliesP P.
     revert dependent a. revert dependent start. revert dependent len.
     induction len; intros; cbn [fold_left].
-    { autorewrite with natsimpl. cbn [seq fold_left].
+    { natsimpl. cbn [seq fold_left].
       apply Istart. }
     { rewrite seq_S, fold_left_app. cbn [fold_left].
       rewrite Nat.add_succ_r. apply Ibody; [ | lia ].
@@ -1059,9 +1076,12 @@ Section Folds.
     apply fold_left_preserves_relation_seq; eauto.
   Qed.
 End Folds.
+Hint Rewrite @fold_left_snoc : pull_snoc.
+
 Hint Rewrite @fold_left_cons @fold_left_nil @fold_left_app
-     using solve [eauto] : push_list_fold.
-Hint Rewrite @fold_left_snoc using solve [eauto] : pull_snoc.
+     @fold_right_cons @fold_right_nil @fold_right_app
+  : push_list_fold.
+Ltac push_list_fold := autorewrite with push_list_fold.
 
 (* Defines a version of fold_left that accumulates a list of (a
    projection of) all the states it passed through *)
@@ -1123,7 +1143,7 @@ Section FoldLeftAccumulate.
     = (acc0 ++ fst (fold_left_accumulate' f [] ls b)).
   Proof.
     revert acc0 b.
-    induction ls; intros; autorewrite with push_fold_acc listsimpl;
+    induction ls; intros; autorewrite with push_fold_acc; listsimpl;
       [ reflexivity | ].
     rewrite IHls with (acc0:=(_++_)).
     rewrite IHls with (acc0:=(_::_)).
@@ -1139,8 +1159,7 @@ Section FoldLeftAccumulate.
   Proof.
     cbv zeta. revert acc0 b.
     induction ls; intros; rewrite <-?app_comm_cons;
-      autorewrite with push_fold_acc listsimpl;
-      [ reflexivity | ].
+      autorewrite with push_fold_acc; listsimpl; [ reflexivity | ].
     rewrite IHls. reflexivity.
   Qed.
 
@@ -1184,7 +1203,7 @@ Section FoldLeftAccumulate.
     = snd (f b a) :: fold_left_accumulate f ls (fst (f b a)).
   Proof.
     cbv [fold_left_accumulate].
-    autorewrite with push_fold_acc listsimpl.
+    autorewrite with push_fold_acc; listsimpl.
     rewrite fold_left_accumulate'_equiv.
     reflexivity.
   Qed.
@@ -1277,10 +1296,10 @@ Section FoldLeftAccumulate.
     rewrite fold_left_accumulate'_cons.
     destruct (Nat.eq_dec (length acc0) i).
     { subst. rewrite fold_left_accumulate'_equiv.
-      autorewrite with push_nth natsimpl push_firstn.
+      repeat (push_nth || natsimpl || push_firstn).
       reflexivity. }
     { erewrite IHls by length_hammer.
-      autorewrite with push_length natsimpl push_firstn.
+      repeat (push_nth || natsimpl || push_firstn || push_length).
       rewrite <-surjective_pairing. cbn [fst snd fold_left].
       repeat (f_equal; [ ]). lia. }
   Qed.
@@ -1445,10 +1464,11 @@ Section FoldLeftAccumulate.
   Qed.
 End FoldLeftAccumulate.
 
-Hint Rewrite @fold_left_accumulate_cons @fold_left_accumulate_nil
-     using solve [eauto] : push_fold_acc.
 Hint Rewrite @fold_left_accumulate'_length @fold_left_accumulate_length
-     using solve [eauto] : push_length.
+  : push_length.
+Hint Rewrite @fold_left_accumulate_cons @fold_left_accumulate_nil
+  : push_fold_acc.
+Ltac push_fold_acc := autorewrite with push_fold_acc.
 
 Ltac destruct_lists_by_length :=
   repeat
