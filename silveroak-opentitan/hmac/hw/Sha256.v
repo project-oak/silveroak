@@ -59,7 +59,7 @@ Section Var.
      - padder_writing_length :  Write the length to the last two words
    *)
 
-  Definition sha256_padder : Circuit _ [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit] (Bit ** sha_word ** Bit ** Bit) :=
+  Definition sha256_padder : Circuit _ [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit] (Bit ** sha_word ** Bit) :=
     {{
     fun data_valid data is_final final_length consumer_ready clear =>
     (* offset, is the offset in the current block 0 <= offset < 16 *)
@@ -150,7 +150,7 @@ Section Var.
         : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16)
         in
 
-    (out_valid, out, consumer_ready, done)
+    (out_valid, out, done)
   }}.
 
   (* SHA-256 initial digest *)
@@ -277,12 +277,12 @@ Section Var.
          - 17 - is held until inner is done, then digest is stored and counter is reset
       *)
 
-      let/delay '(padder_ready, block, digest, count; done) :=
+      let/delay '(ready, block, digest, count; done) :=
         let starting := fifo_data_valid && done in
         let ready_to_accept := `K 15` >= count in
         let block_ready := `K 16` == count in
 
-        let '(padder_valid, padded_data, padder_ready; padder_done) :=
+        let '(padder_valid, padded_data; padder_done) :=
           `sha256_padder` fifo_data_valid fifo_data is_final final_length ready_to_accept clear in
 
         let '(inner_digest; inner_done) := `sha256_inner` block_ready block digest clear in
@@ -310,12 +310,15 @@ Section Var.
           else if `K 17` == count && inner_done then inner_digest
           else digest in
 
+        (* ready *)
+        let signal_ready := `K 15` >= next_count in
+
         if clear then `Constant _ reset_state` else
-        (padder_ready, next_block, next_digest, next_count, (padder_done && inner_done && count == `K 0` ) )
+        (signal_ready, next_block, next_digest, next_count, (padder_done && inner_done && count == `K 0` ) )
 
         initially reset_state in
 
-       (done, digest, padder_ready)
+       (done, digest, ready)
     }}.
 
 End Var.

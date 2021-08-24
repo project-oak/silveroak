@@ -302,3 +302,8 @@ Fixpoint map2 {var t u v n} (f: Circuit [] [t; u] v): Circuit (var:=var) [] [Vec
                 `f` hdx hdy :> `map2 f` tlx tly
            }}
   end.
+
+Definition bvmax {var n}: Circuit (var:=var) [] [BitVec n; BitVec n] (BitVec n) :=
+  {{ fun x y => `BinaryOp BinBitVecMax x y` }}.
+Definition bvmin {var n}: Circuit (var:=var) [] [BitVec n; BitVec n] (BitVec n) :=
+  {{ fun x y => `BinaryOp BinBitVecMin x y` }}.
