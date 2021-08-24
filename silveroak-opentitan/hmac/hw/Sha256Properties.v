@@ -23,6 +23,7 @@ Require Import Coq.Lists.List.
 Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Util.If.
 Require Import Cava.Util.List.
+Require Import Cava.Util.Nat.
 Require Import Cava.Util.Tactics.
 Require Import Cava.Types.
 Require Import Cava.Expr.
@@ -180,12 +181,12 @@ Proof.
                | destruct_one_match ].
   all:try (rewrite (N.mod_small _ (2 ^ N.of_nat 7))
             by (change (2 ^ N.of_nat 7)%N with 128%N; lia)).
-  all:autorewrite with push_resize push_nth.
+  all:push_resize; push_nth.
   all:repeat match goal with
              | |- context [(?x <? ?y)] =>
                destr (x <? y); try lia; [ ]
              end.
-  all:autorewrite with natsimpl.
+  all:natsimpl.
   all:ssplit;
     lazymatch goal with
     | |- ?x = ?x => reflexivity
@@ -198,7 +199,8 @@ Proof.
     | |- context [sha256_compress] =>
       erewrite step_sha256_compress with (t:=N.to_nat round) by (f_equal; lia);
         replace (N.to_nat (round + 1)) with (S (N.to_nat round)) by lia;
-        cbn [fst snd]; autorewrite with pull_snoc push_resize; reflexivity
+        cbn [fst snd]; pull_snoc; rewrite ?resize_noop by (symmetry; length_hammer);
+          reflexivity
     | |- _ => idtac
     end.
 
@@ -232,21 +234,20 @@ Proof.
   cbv [sha256_inner K]. stepsimpl.
   repeat (destruct_pair_let; cbn [fst snd]).
   autorewrite with tuple_if; cbn [fst snd].
-  stepsimpl. autorewrite with push_resize.
+  stepsimpl. push_resize.
   (* destruct cases for [clear] *)
   destruct clear; logical_simplify; subst;
-    [ autorewrite with push_resize; reflexivity | ].
+    [ push_resize; reflexivity | ].
   (* destruct cases for [block_valid] *)
   destruct block_valid; logical_simplify; subst;
-    [ autorewrite with push_resize; reflexivity | ].
+    [ push_resize; reflexivity | ].
   (* destruct cases for [done] *)
   destruct done; logical_simplify; subst; boolsimpl;
     [ destr (round =? 63)%N; repeat (f_equal; [ ]);
-      autorewrite with push_resize; reflexivity | ].
-  autorewrite with push_resize push_nth.
+      push_resize; reflexivity | ].
+  push_resize; push_nth.
   erewrite step_sha256_compress with (t:=N.to_nat round)
     by (repeat destruct_one_match;
         repeat destruct_one_match_hyp; f_equal; lia).
-  cbn [fst snd]. autorewrite with push_resize.
-  reflexivity.
+  cbn [fst snd]. push_resize. reflexivity.
 Qed.
