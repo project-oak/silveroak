@@ -107,7 +107,7 @@ Definition from_sha256_padder_output
   (* remove invalid output signals entirely, and extract data from signals *)
   let valid_out :=
       flat_map
-        (fun '(out_valid, (data, (consumer_ready, done))) =>
+        (fun '(out_valid, (data, done)) =>
            if (out_valid : bool) then [data] else []) out in
   concat_words (N.to_nat w) valid_out.
 
