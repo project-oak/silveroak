@@ -165,7 +165,7 @@ Section Var.
           , a_size
           , if rd_req then `AccessAckData` else `AccessAck`
           , error_i || err_internal
-          , `False`
+          , `True`
           )
         else
           (reqid, reqsz, rspop, error, if d_ack then `False` else outstanding)

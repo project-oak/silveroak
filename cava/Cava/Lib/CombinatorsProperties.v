@@ -25,6 +25,7 @@ Require Import Cava.Lib.VecProperties.
 Require Import Cava.Semantics.Combinational.
 Require Import Cava.Util.Identity.
 Require Import Cava.Util.List.
+Require Import Cava.Util.Nat.
 Require Import Cava.Util.Tactics.
 Require Import Cava.Util.Vector.
 Import ListNotations VectorNotations.
@@ -181,7 +182,7 @@ Proof.
           rewrite op_id_left; reflexivity ].
     pose proof (Nat.div_le_upper_bound (length inputs) 2 (2^n) ltac:(lia) ltac:(lia)).
     pose proof (Nat.div_le_upper_bound (length inputs) 2 (length inputs) ltac:(lia) ltac:(lia)).
-    rewrite !IHn by (autorewrite with push_length natsimpl; try apply tree_generic_bounds_helper;
+    rewrite !IHn by (push_length; natsimpl; try apply tree_generic_bounds_helper;
                      auto; split; auto using Nat.div_str_pos).
     simpl_ident.
     rewrite <-fold_left_assoc, <-fold_left_app by eauto.

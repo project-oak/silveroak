@@ -19,6 +19,7 @@ Require Import Coq.NArith.NArith.
 Require Import Coq.micromega.Lia.
 Require Import Coq.ZArith.ZArith.
 Require Import coqutil.Tactics.Tactics.
+Require Import Cava.Util.Nat.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Require Import HmacSpec.SHA256.
@@ -81,39 +82,40 @@ Proof.
   logical_simplify. ssplit; [ length_hammer | ]. intros.
   lazymatch goal with H : (?t < S ?n)%nat |- context [nth ?t] =>
                       destr (t <? n)%nat; [ | replace t with n in * by lia ]
-  end; subst W_formula; cbn beta; autorewrite with natsimpl push_nth;
+  end; subst W_formula; cbn beta zeta; push_nth; natsimpl;
     [ solve [auto] | ].
-  destruct_one_match; autorewrite with push_nth; reflexivity.
+  destruct_one_match; push_nth; reflexivity.
 Qed.
 
-Lemma H0_length : length SHA256.H0 = 8%nat.
+Lemma H0_length : length H0 = 8%nat.
 Proof. reflexivity. Qed.
 Hint Rewrite @H0_length using solve [eauto] : push_length.
 
 Lemma sha256_compress_length msg i H t :
-  length (SHA256.sha256_compress msg i H t) = 8%nat.
+  length (sha256_compress msg i H t) = 8%nat.
 Proof. reflexivity. Qed.
-Hint Rewrite @sha256_compress_length using solve [eauto] : push_length.
+Hint Rewrite @sha256_compress_length : push_length.
 
 Lemma fold_left_sha256_compress_length msg i H ts :
   length H = 8%nat ->
-  length (fold_left (SHA256.sha256_compress msg i) ts H) = 8%nat.
+  length (fold_left (sha256_compress msg i) ts H) = 8%nat.
 Proof.
   intros. apply fold_left_invariant with (I:=fun H => length H = 8%nat); auto.
 Qed.
-Hint Rewrite @fold_left_sha256_compress_length using solve [length_hammer]
-  : push_length.
+#[export] Hint Resolve fold_left_sha256_compress_length : length.
 
 Lemma sha256_step_length msg H i :
-  length H = 8%nat -> length (SHA256.sha256_step msg H i) = 8%nat.
-Proof. intros; cbv [SHA256.sha256_step]. length_hammer. Qed.
-Hint Rewrite @sha256_step_length using solve [length_hammer] : push_length.
+  length H = 8%nat -> length (sha256_step msg H i) = 8%nat.
+Proof.
+  intro Hlen; cbv [sha256_step]. push_length.
+  repeat (push_length || rewrite Hlen || rewrite fold_left_sha256_compress_length); lia.
+Qed.
+#[export] Hint Resolve sha256_step_length : length.
 
 Lemma fold_left_sha256_step_length msg H idxs :
-  length H = 8%nat -> length (fold_left (SHA256.sha256_step msg) idxs H) = 8%nat.
+  length H = 8%nat -> length (fold_left (sha256_step msg) idxs H) = 8%nat.
 Proof.
   intros. apply fold_left_invariant with (I:=fun H => length H = 8%nat); auto.
   intros; length_hammer.
 Qed.
-Hint Rewrite @fold_left_sha256_step_length using solve [length_hammer]
-  : push_length.
+#[export] Hint Resolve fold_left_sha256_step_length : length.
