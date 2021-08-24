@@ -58,14 +58,13 @@ Section Var.
      - padder_flushing : Emit 0 words until we reach the last two words of the block
      - padder_writing_length :  Write the length to the last two words
    *)
-
   Definition sha256_padder : Circuit _ [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit] (Bit ** sha_word ** Bit) :=
     {{
     fun data_valid data is_final final_length consumer_ready clear =>
     (* offset, is the offset in the current block 0 <= offset < 16 *)
     let/delay '(done, out, out_valid, state, length; current_offset) :=
       if clear
-      then `Constant (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16)
+      then `Constant (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 4)
                      (true, (0, (false, (0, (0, 0)))))`
       else if !consumer_ready then (done, out, out_valid, state, length, current_offset)
       else
@@ -135,8 +134,7 @@ Section Var.
 
       let next_offset :=
         if !out_valid then current_offset
-        else if current_offset == `K 15` then `K 0`
-        else (current_offset + `K 1`) in
+        else (current_offset + `K 1`) (* addition mod 16 *) in
 
       let next_done :=
         !data_valid && (
@@ -147,7 +145,7 @@ Section Var.
 
       initially
         (true,(0,(false,(0,(0,0)))))
-        : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16)
+        : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 4)
         in
 
     (out_valid, out, done)
