@@ -799,9 +799,9 @@ Lemma three_delays_correct t (input : list (combType t)) :
            (defaultSignal :: defaultSignal :: defaultSignal :: input).
 Proof.
   cbv [three_delays]; autorewrite with push_simulate.
-  autorewrite with push_length natsimpl.
+  push_length; natsimpl.
   rewrite <-!firstn_cons. rewrite !firstn_firstn.
-  autorewrite with natsimpl. reflexivity.
+  natsimpl. reflexivity.
 Qed.
 
 (*|
@@ -1126,23 +1126,22 @@ Proof.
     { (* prove the output accumulator has the correct value *)
       cbv [spec_of_sum rolling_sum]. simpl_ident.
       (* simplify expression using list lemmas *)
-      rewrite !map_map.
-      autorewrite with push_length natsimpl.
+      rewrite !map_map. push_length; natsimpl.
       rewrite firstn_succ_snoc with (d0:=d) by lia.
-      autorewrite with pull_snoc natsimpl.
+      pull_snoc; natsimpl.
       apply f_equal2. (* split front of lists from last elements *)
       { apply map_ext_in; intro.
         rewrite in_seq; intros.
-        autorewrite with push_firstn push_length natsimpl listsimpl.
+        (* list simplifications *)
+        push_firstn; listsimpl.
         reflexivity. }
-      { autorewrite with push_firstn push_length natsimpl listsimpl.
+      { push_firstn. natsimpl.
         rewrite sum_list_N_snoc_bitvec. reflexivity. } } }
 
   { (* prove that the invariant implies the postcondition *)
     cbv [sum_invariant]; intros.
     logical_simplify; subst.
-    autorewrite with push_firstn.
-    reflexivity. }
+    push_firstn. reflexivity. }
 Qed.
 
 (*|

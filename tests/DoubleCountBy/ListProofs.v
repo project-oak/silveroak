@@ -117,20 +117,18 @@ Proof.
     cbv [step count_by_spec].
     repeat first [ destruct_pair_let | progress simpl_ident].
     rewrite firstn_succ_snoc with (d0:=d) by length_hammer.
-    autorewrite with push_length natsimpl pull_snoc.
-    rewrite Nat.add_1_r. autorewrite with pull_snoc.
-    rewrite firstn_succ_snoc with (d0:=d) by length_hammer.
+    repeat (push_length || natsimpl || pull_snoc).
+    rewrite Nat.add_1_r. pull_snoc. push_firstn.
     cbv [combType] in *. rewrite !bvsumc_snoc.
-    autorewrite with push_nth push_firstn push_length natsimpl listsimpl.
+    repeat (push_nth || push_firstn || push_length || natsimpl || listsimpl).
     ssplit; [ reflexivity | ].
     f_equal; [ ]. apply f_equal.
     apply map_ext_in; intros.
     match goal with H : _ |- _ => apply in_seq in H end.
-    autorewrite with push_length natsimpl push_firstn push_list_fold listsimpl.
+    repeat (push_nth || push_firstn || push_length || natsimpl || listsimpl).
     reflexivity. }
   { (* invariant implies postcondition *)
-    intros; logical_simplify; subst.
-    rewrite firstn_all; reflexivity. }
+    intros; logical_simplify; subst. push_firstn. reflexivity. }
 Qed.
 
 Lemma count_by_spec_nth t input d :
@@ -139,7 +137,7 @@ Lemma count_by_spec_nth t input d :
 Proof.
   cbv [count_by_spec]. intros.
   rewrite map_nth_inbounds with (d2:=0) by length_hammer.
-  autorewrite with push_nth. cbn [Nat.add].
+  push_nth. cbn [Nat.add].
   rewrite firstn_succ_snoc with (d0:=fst d) by length_hammer.
   rewrite bvsumc_snoc. reflexivity.
 Qed.
@@ -152,10 +150,10 @@ Lemma firstn_count_by_spec t input :
   firstn t (count_by_spec input) = count_by_spec (firstn t input).
 Proof.
   cbv [count_by_spec]. intros.
-  autorewrite with push_firstn push_length natsimpl.
+  repeat (push_firstn || push_length || natsimpl).
   apply map_ext_in; intros.
   match goal with H : _ |- _ => apply in_seq in H end.
-  autorewrite with push_firstn natsimpl.
+  repeat (push_firstn || push_length || natsimpl).
   reflexivity.
 Qed.
 Hint Rewrite @firstn_count_by_spec using solve [eauto] : push_firstn.
@@ -176,20 +174,20 @@ Proof.
     cbv zeta. intros ? ? ? d; intros; logical_simplify; subst.
     cbn [step]. cbv [double_count_by_spec].
     repeat first [ destruct_pair_let | progress simpl_ident].
-    autorewrite with push_length natsimpl pull_snoc.
+    repeat (push_length || pull_snoc || natsimpl).
     rewrite !count_by_step. cbn [fst snd].
     cbv [combType] in *.
-    rewrite firstn_succ_snoc with (d0:=d) by length_hammer.
+    rewrite !firstn_succ_snoc with (d0:=d) by length_hammer.
     rewrite !firstn_succ_snoc with (d0:=false) by length_hammer.
     cbv [combType] in *. rewrite !bvsumc_snoc, !boolsum_snoc.
     rewrite !map_nth_inbounds with (d2:=(d,false)) by length_hammer.
     rewrite !count_by_spec_nth by length_hammer.
     ssplit; [ reflexivity .. | ].
-    autorewrite with push_nth push_firstn push_length natsimpl listsimpl.
+    repeat (push_nth || push_firstn || push_length || natsimpl || listsimpl).
     f_equal; [ ].
     apply map_ext_in; intros.
     match goal with H : _ |- _ => apply in_seq in H end.
-    autorewrite with push_firstn push_length natsimpl listsimpl.
+    repeat (push_nth || push_firstn || push_length || natsimpl || listsimpl).
     reflexivity. }
   { (* invariant implies postcondition *)
     intros; logical_simplify; subst.
