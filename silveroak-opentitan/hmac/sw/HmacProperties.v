@@ -3,6 +3,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 Require Import Coq.ZArith.ZArith.
 Require Import Cava.Util.List.
+Require Import Cava.Util.Nat.
 Require Import bedrock2.Array.
 Require Import bedrock2.Map.Separation.
 Require Import bedrock2.Map.SeparationLogic.
@@ -55,15 +56,8 @@ Module List.
     List.firstn (n + m) l = List.firstn n l ++ List.firstn m (List.skipn n l).
   Proof.
     rewrite <- (List.firstn_skipn n l) at 1.
-    rewrite List.firstn_app.
-    rewrite List.firstn_length.
-    rewrite List.firstn_firstn.
-    f_equal. {
-      f_equal. lia.
-    }
-    destruct (Nat.min_spec n (List.length l)) as [(? & E) | (? & E)]; rewrite E.
-    - f_equal. lia.
-    - rewrite List.skipn_all2 by assumption. rewrite ?List.firstn_nil. reflexivity.
+    push_firstn; push_length; natsimpl.
+    apply Nat.min_case_strong; intros; push_firstn; repeat (f_equal; try lia).
   Qed.
 End List.
 
@@ -71,6 +65,8 @@ Lemma le_split_combine: forall bs n,
     n = List.length bs ->
     le_split n (le_combine bs) = bs.
 Proof. intros. subst. apply split_le_combine. Qed.
+
+Hint Rewrite @length_le_split : push_length.
 
 (* bedrock2.ProgramLogic does cbv, which unfolds all constants *)
 Ltac normalize_body_of_function f ::= Tactics.rdelta.rdelta f.
@@ -199,10 +195,8 @@ Section Proofs.
     destruct C as [C | C]. 1: lia.
     exfalso.
     rewrite <- (List.firstn_nth_skipn _ (Z.to_nat B) l Byte.x00) in Hsep by lia.
-    rewrite <- (List.firstn_nth_skipn _ 0 (List.firstn (Z.to_nat B) l) Byte.x00) in Hsep. 2: {
-      rewrite List.firstn_length. lia.
-    }
-    rewrite List.firstn_O in Hsep. rewrite List.app_nil_l in Hsep.
+    rewrite <- (List.firstn_nth_skipn _ 0 (List.firstn (Z.to_nat B) l) Byte.x00) in Hsep by length_hammer.
+    autorewrite with listsimpl push_firstn in *.
     seprewrite_in (array_append ptsto) Hsep.
     seprewrite_in (array_append ptsto) Hsep.
     seprewrite_in (array_append ptsto) Hsep.
@@ -212,11 +206,7 @@ Section Proofs.
     use_sep_assumption.
     cancel.
     cancel_seps_at_indices 0%nat 0%nat. 1: reflexivity.
-    cancel_seps_at_indices 1%nat 0%nat. {
-      f_equal.
-      rewrite List.app_length. cbn [List.nth List.length].
-      ZnWords.
-    }
+    cancel_seps_at_indices 1%nat 0%nat. 1:f_equal; push_length; ZnWords.
     ecancel_done.
   Qed.
 
@@ -232,7 +222,7 @@ Section Proofs.
     do 2 seprewrite_in (array_append ptsto) Hsep.
     seprewrite_in (array_cons ptsto) Hsep.
     seprewrite_in (array_nil ptsto) Hsep.
-    rewrite firstn_length in Hsep. rewrite min_l in Hsep by lia.
+    autorewrite with push_length natsimpl in *.
     eapply load_one_of_sep.
     use_sep_assumption.
     cancel.
@@ -259,23 +249,19 @@ Section Proofs.
       unfold scalar32, truncated_word, truncated_scalar, littleendian, ptsto_bytes.ptsto_bytes.
       f_equal. 1: ZnWords.
       replace (bytes_per (width:=32) access_size.four)
-        with (Datatypes.length (List.firstn 4 (List.skipn n values))). 2: {
-        rewrite List.firstn_length. rewrite min_l. 1: reflexivity.
-        rewrite List.skipn_length. lia.
-      }
+        with (Datatypes.length (List.firstn 4 (List.skipn n values)))
+        by (cbv [bytes_per]; length_hammer).
       rewrite word.unsigned_of_Z_nowrap. 2: {
         match goal with
         | |- context[le_combine ?x] =>
           pose proof (le_combine_bound x) as P
         end.
-        rewrite List.firstn_length in P. rewrite min_l in P by ZnWords.
+        autorewrite with push_length in P.
+        rewrite min_l in P by ZnWords.
         exact P.
       }
       remember (List.firstn 4 (List.skipn n values)) as l.
-      assert (List.length l = 4%nat) as HL. {
-        subst l. rewrite List.firstn_length. rewrite min_l. 1: reflexivity.
-        rewrite List.skipn_length. lia.
-      }
+      assert (List.length l = 4%nat) as HL by (subst; length_hammer).
       rewrite <- (le_split_combine _ 4) at 1. 2: {
         symmetry. exact HL.
       }
@@ -289,8 +275,8 @@ Section Proofs.
     }
     cancel_seps_at_indices 0%nat 0%nat. {
       f_equal.
-      - rewrite ?List.firstn_length. rewrite List.skipn_length. ZnWords.
-      - rewrite List.skipn_skipn. f_equal. lia.
+      - push_length. ZnWords.
+      - push_skipn. f_equal; lia.
     }
     ecancel_done.
   Qed.
@@ -330,7 +316,7 @@ Section Proofs.
       pose proof (length_le_split 4 \[v]).
       cancel_seps_at_indices 0%nat 1%nat. {
         f_equal.
-        autorewrite with listsimpl push_skipn push_firstn push_length.
+        repeat (listsimpl || push_skipn || push_firstn || push_length).
         rewrite le_combine_split.
         change (Z.of_nat 4 * 8) with 32.
         rewrite word.wrap_unsigned.
@@ -339,36 +325,14 @@ Section Proofs.
       }
       cancel_seps_at_indices 0%nat 0%nat. {
         f_equal.
-        (* TODO this kind of list simplification should be automated *)
-        rewrite firstn_app.
-        rewrite (@List.firstn_all2 _ n (List.firstn n values)). 2: {
-          rewrite List.firstn_length. lia.
-        }
-        rewrite List.firstn_length.
-        replace (n - Init.Nat.min n (Datatypes.length values))%nat with O by lia.
-        rewrite List.firstn_O.
-        rewrite List.app_nil_r.
+        repeat (listsimpl || natsimpl || push_firstn || push_length).
         reflexivity.
       }
       cancel_seps_at_indices 0%nat 0%nat. {
         f_equal.
-        rewrite List.skipn_app.
-        rewrite (List.skipn_all (n + 4) (List.firstn n values)). 2: {
-          rewrite List.firstn_length. lia.
-        }
-        rewrite List.app_nil_l.
-        rewrite List.firstn_length.
-        replace (n + 4 - Init.Nat.min n (Datatypes.length values))%nat with 4%nat by lia.
-        rewrite List.skipn_app.
-        rewrite (List.skipn_all 4 (List.firstn (Datatypes.length values - n) (le_split 4 \[v]))). 2: {
-          rewrite List.firstn_length. rewrite length_le_split. lia.
-        }
-        rewrite List.app_nil_l.
-        rewrite List.skipn_skipn.
-        f_equal.
-        rewrite List.firstn_length.
-        rewrite length_le_split.
-        lia.
+        rewrite length_le_split in *.
+        repeat (listsimpl || natsimpl || push_skipn || push_firstn || push_length).
+        f_equal; lia.
       }
       ecancel_done.
   Qed.
@@ -547,8 +511,7 @@ Section Proofs.
     { (* invariant holds initially: *)
       loop_simpl.
       replace (Z.to_nat \[data_addr ^- data_addr]) with 0%nat by ZnWords.
-      change (@List.firstn ?A 0 _) with (@nil A).
-      rewrite List.app_nil_r.
+      push_firstn; listsimpl.
       ssplit; try assumption; try ZnWords. }
     loop_simpl.
     intros measure t m0 fifo_reg data_sent data len. (* TODO derive names automatically *)
@@ -614,7 +577,7 @@ Section Proofs.
       | H: execution ?t ?s1 |- execution ?t ?s2 =>
         replace s2 with s1; [exact H|]
       end.
-      f_equal. f_equal. rewrite List.firstn_all2. 1: reflexivity. ZnWords.
+      f_equal. f_equal. push_firstn. reflexivity.
     }
     (* if the first loop was ended because `data_sent & 3 == 0`,
        we have to step through the remaining two loops as well: *)
@@ -675,7 +638,8 @@ Section Proofs.
       | |- context[le_combine ?x] =>
         pose proof (le_combine_bound x) as P
       end.
-      rewrite List.firstn_length in P. rewrite min_l in P by ZnWords.
+      autorewrite with push_length in P.
+      rewrite min_l in P by ZnWords.
       rewrite word.unsigned_of_Z_small by ZnWords.
       rewrite le_split_combine. 2: {
         rewrite List.firstn_length. ZnWords.
@@ -756,9 +720,7 @@ Section Proofs.
     match goal with
     | H: execution ?t ?s |- execution ?t ?s' => replace s' with s; [exact H|]
     end.
-    f_equal. f_equal.
-    apply List.firstn_all2.
-    ZnWords.
+    push_firstn. reflexivity.
   Qed.
 
   Global Instance spec_of_hmac_sha256_final : spec_of b2_hmac_sha256_final :=
@@ -947,7 +909,7 @@ Section Proofs.
       cancel_seps_at_indices 0%nat 0%nat. {
         f_equal.
         rewrite List.upds_app2. 2: {
-          rewrite List.firstn_length.
+          push_length.
           (* Note: `ZnWords` should just work here, but when it calls `lia`, `lia` hangs. *)
           subst a2. rewrite H9. revert dependent v. clear -word_ok. intros.
           pose proof word.unsigned_range i0.
@@ -959,8 +921,7 @@ Section Proofs.
         replace (Z.to_nat (4 * \[i0 ^+ /[1]])) with (Z.to_nat (4 * \[i0]) + 4)%nat by ZnWords.
         rewrite List.firstn_add. rewrite <- List.app_assoc.
         f_equal.
-        unfold List.upds.
-        rewrite ?List.firstn_length.
+        unfold List.upds. push_length.
         replace (Z.to_nat \[a2 ^- digest_addr] -
                  Init.Nat.min (Z.to_nat (4 * \[i0])) (Datatypes.length (sha256 input)))%nat
           with 0%nat.
@@ -972,9 +933,7 @@ Section Proofs.
           replace \[digest_addr ^+ i0 ^* /[4] ^- digest_addr] with \[i0 ^* /[4]] by ZnWords.
           ZnWords.
         }
-        rewrite List.firstn_O. rewrite List.app_nil_l.
-        rewrite Nat.add_0_r, Nat.sub_0_r.
-        rewrite List.skipn_length.
+        repeat (push_firstn || push_length || listsimpl || natsimpl).
         edestruct invert_read_digest as (_ & E). 2: eassumption. 1: ZnWords. subst.
         rewrite word.unsigned_of_Z_nowrap. 2: {
           match goal with
@@ -984,16 +943,9 @@ Section Proofs.
           rewrite List.firstn_length in P. rewrite min_l in P by ZnWords.
           exact P.
         }
-        rewrite le_split_combine. 2: {
-          rewrite List.firstn_length. ZnWords.
-        }
-        rewrite List.firstn_firstn.
-        replace (Init.Nat.min (Datatypes.length digest_trash - Z.to_nat (4 * \[i0])) 4) with 4%nat
-          by ZnWords.
-        f_equal.
-        - f_equal. f_equal. ZnWords.
-        - rewrite List.firstn_length. rewrite List.skipn_length.
-          rewrite List.skipn_skipn. f_equal. ZnWords.
+        rewrite le_split_combine by length_hammer.
+        push_skipn.
+        repeat (f_equal; try lia).
       }
       ecancel_done.
     }
@@ -1002,7 +954,7 @@ Section Proofs.
     replace (4 * \[i]) with 32 in * by ZnWords.
     rewrite List.firstn_all2 in * by ZnWords.
     rewrite List.skipn_all2 in * by ZnWords.
-    rewrite List.app_nil_r in *.
+    autorewrite with listsimpl in *.
     subst result.
     auto.
   Qed.

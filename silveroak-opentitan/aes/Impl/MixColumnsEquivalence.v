@@ -57,7 +57,7 @@ Section Equivalence.
     cbv [Polynomial.fadd MixColumns.byteops].
     rewrite poly_to_byte_to_bitvec, !bitvec_to_byte_to_poly by length_hammer.
     cbv [Polynomial.add_poly].
-    apply to_list_inj. autorewrite with push_to_list push_extend.
+    apply to_list_inj. autorewrite with push_to_list; push_extend.
     rewrite to_list_of_list_sized by length_hammer.
     reflexivity.
   Qed.

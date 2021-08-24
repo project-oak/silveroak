@@ -18,14 +18,21 @@ Require Import Coq.Arith.PeanoNat.
 Require Import Coq.NArith.NArith.
 Require Import Coq.micromega.Lia.
 
-(* Natural number simplifications are also useful for lists *)
 Lemma sub_succ_l_same n : S n - n = 1.
 Proof. lia. Qed.
-Hint Rewrite Nat.add_0_l Nat.add_0_r Nat.sub_0_r Nat.sub_0_l Nat.sub_diag
-     using solve [eauto] : natsimpl.
-Hint Rewrite Nat.sub_succ sub_succ_l_same using solve [eauto] : natsimpl.
-Hint Rewrite Min.min_r Min.min_l Nat.add_sub using lia : natsimpl.
-Hint Rewrite (fun n m => proj2 (Nat.sub_0_le n m)) using lia : natsimpl.
+
+(* Note: Do NOT add anything that produces side conditions; this causes problems
+   because of a bug in autorewrite that means it doesn't backtrack if it fails
+   to solve a side condition (see https://github.com/coq/coq/issues/7672) *)
+Hint Rewrite Nat.add_0_l Nat.add_0_r Nat.sub_0_r Nat.sub_0_l
+     Nat.sub_diag Nat.sub_succ sub_succ_l_same : natsimpl.
+Ltac natsimpl_step :=
+  first [ progress autorewrite with natsimpl
+        | rewrite Min.min_r by lia
+        | rewrite Min.min_l by lia
+        | rewrite Nat.add_sub by lia
+        | rewrite (fun n m => proj2 (Nat.sub_0_le n m)) by lia ].
+Ltac natsimpl := repeat natsimpl_step.
 
 Module Nat2N.
   Lemma inj_pow a n : (N.of_nat a ^ N.of_nat n)%N = N.of_nat (a ^ n).
@@ -142,10 +149,13 @@ Module N.
            | H : (_ <? _)%N = false |- _ => rewrite N.ltb_ge in H
            end.
 End N.
+
+(* Note: Do NOT add anything that produces side conditions; this causes problems
+   because of a bug in autorewrite that means it doesn't backtrack if it fails
+   to solve a side condition (see https://github.com/coq/coq/issues/7672) *)
 Hint Rewrite N.clearbit_eq N.b2n_bit0 N.shiftr_spec'
      N.pow2_bits_true N.add_bit0 N.land_spec N.lor_spec
      N.testbit_even_0 N.setbit_eqb N.pow2_bits_eqb N.ldiff_spec
      N.div2_bits N.double_bits_succ N.clearbit_eqb
      N.bits_0 N.succ_double_testbit N.double_testbit
-     N.mod_pow2_bits_full
-     using solve [eauto] : push_Ntestbit.
+     N.mod_pow2_bits_full : push_Ntestbit.

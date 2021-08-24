@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-SUBDIRS = pinmux aes
+SUBDIRS = pinmux aes hmac
 
 .PHONY: all coq minimize-requires clean subdirs $(SUBDIRS)
 

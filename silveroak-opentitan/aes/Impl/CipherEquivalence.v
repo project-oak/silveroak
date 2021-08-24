@@ -241,8 +241,7 @@ Section WithSubroutines.
                         defaultCombValue _)).
     rewrite fold_left_accumulate_to_seq
       with (default:=(0,defaultCombValue (Vec (Vec (Vec Bit 8) 4) 4))).
-    autorewrite with push_length natsimpl.
-    factor_out_loops.
+    push_length; natsimpl. factor_out_loops.
     eapply fold_left_accumulate_double_invariant_seq
       with (I:=fun i st1 st2 acc1 acc2 =>
                  st1 = (tt, (tt, st2))
@@ -255,8 +254,7 @@ Section WithSubroutines.
       rewrite !combine_map_l.
       erewrite map_nth_inbounds with (d2:=(0,init_state,init_state,init_state)) by length_hammer.
       erewrite map_nth_inbounds with (d2:=(0,init_state)) by length_hammer.
-      cbn [combType] in *.
-      autorewrite with push_nth natsimpl. cbn [fst snd].
+      cbn [combType] in *. push_nth; natsimpl. cbn [fst snd].
       erewrite cipher_loop_step with (Nr:=Nr) (i:=S i)
         by (reflexivity || Lia.lia).
       cbn [fst snd]. repeat destruct_pair_let.
@@ -286,15 +284,13 @@ Section WithSubroutines.
                     mix_columns_spec init_key last_key middle_keys init_state.
   Proof.
     intros. rewrite <-seq_shift, combine_map_l.
-    rewrite fold_left_map. destruct Nr; [ Lia.lia | ].
-    autorewrite with pull_snoc.
+    rewrite fold_left_map. destruct Nr; [ Lia.lia | ]. pull_snoc.
     rewrite combine_append by length_hammer.
-    cbn [combine]. autorewrite with pull_snoc natsimpl.
-    cbn [fst snd].
+    cbn [combine]. pull_snoc; natsimpl. cbn [fst snd].
     cbv [equivalent_inverse_cipher Cipher.cipher].
     rewrite fold_left_to_seq with (default:=(0,init_key)).
     rewrite !fold_left_to_seq with (default:=init_key).
-    autorewrite with push_length natsimpl.
+    push_length; natsimpl.
     replace (length middle_keys) with Nr by Lia.lia.
     destruct is_decrypt.
     { cbv [round_spec]. repeat destruct_one_match; try Lia.lia; [ ].
@@ -302,8 +298,7 @@ Section WithSubroutines.
       eapply fold_left_double_invariant_seq with
           (I:=fun _ st1 st2 => st1 = st2);
         [ reflexivity | | congruence ].
-      intros; subst.
-      autorewrite with push_nth natsimpl. cbn [fst snd].
+      intros; subst. push_nth; natsimpl. cbn [fst snd].
       rewrite map_nth_inbounds with (d2:=init_key) by length_hammer.
       repeat destruct_one_match; try Lia.lia. reflexivity. }
     { cbv [round_spec]. repeat destruct_one_match; try Lia.lia; [ ].
@@ -311,8 +306,7 @@ Section WithSubroutines.
       eapply fold_left_double_invariant_seq with
           (I:=fun _ st1 st2 => st1 = st2);
         [ reflexivity | | congruence ].
-      intros; subst.
-      autorewrite with push_nth natsimpl. cbn [fst snd].
+      intros; subst. push_nth; natsimpl. cbn [fst snd].
       repeat destruct_one_match; try Lia.lia. reflexivity. }
   Qed.
 

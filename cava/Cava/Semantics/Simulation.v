@@ -22,6 +22,7 @@ Import ListNotations.
 
 Require Import Cava.Core.Core.
 Require Import Cava.Semantics.Combinational.
+Require Import Cava.Util.Nat.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
 Require Import Cava.Util.Identity.
@@ -68,16 +69,14 @@ Proof.
                 length acc1 = i /\
                 acc2 = combine acc1 (map snd (firstn i (i0 :: input)))).
   { ssplit; reflexivity. }
-  { intros; logical_simplify.
-    subst acc2; subst.
-    autorewrite with push_length natsimpl in *.
+  { intros *; push_length; natsimpl.
+    intros; logical_simplify; subst acc2; subst.
     repeat destruct_pair_let; cbn [fst snd].
     ssplit; try reflexivity; try lia; [ ].
     rewrite firstn_succ_snoc with (d:=i0) by length_hammer.
-    autorewrite with pull_snoc. rewrite combine_append by length_hammer.
+    pull_snoc. rewrite combine_append by length_hammer.
     reflexivity. }
-  { intros; logical_simplify; subst.
-    autorewrite with push_firstn natsimpl.
+  { intros; logical_simplify; subst. push_firstn; natsimpl.
     reflexivity. }
 Qed.
 Hint Rewrite @simulate_first using solve [eauto] : push_simulate.
@@ -97,16 +96,14 @@ Proof.
                 length acc1 = i /\
                 acc2 = combine (map fst (firstn i (i0 :: input))) acc1).
   { ssplit; reflexivity. }
-  { intros; logical_simplify.
-    subst acc2; subst.
-    autorewrite with push_length natsimpl in *.
+  { intros *. push_length; natsimpl.
+    intros; logical_simplify. subst acc2; subst.
     repeat destruct_pair_let; cbn [fst snd].
     ssplit; try reflexivity; try lia; [ ].
     rewrite firstn_succ_snoc with (d:=i0) by length_hammer.
-    autorewrite with pull_snoc. rewrite combine_append by length_hammer.
+    pull_snoc. rewrite combine_append by length_hammer.
     reflexivity. }
-  { intros; logical_simplify; subst.
-    autorewrite with push_firstn natsimpl.
+  { intros; logical_simplify; subst. push_firstn; natsimpl.
     reflexivity. }
 Qed.
 Hint Rewrite @simulate_second using solve [eauto] : push_simulate.
@@ -123,7 +120,7 @@ Lemma simulate_DelayInitCE {t} (init : combType t) input :
 Proof.
   simsimpl. generalize init.
   induction input; intros; [ reflexivity | ].
-  autorewrite with push_length push_firstn push_fold_acc.
+  repeat (push_length || push_firstn || push_fold_acc).
   destruct_products; cbn [fst snd]. erewrite IHinput.
   destruct_one_match;  reflexivity.
 Qed.
@@ -155,12 +152,12 @@ Proof.
     destruct_products; cbn [fst snd] in *.
     logical_simplify; subst. cbn [fst snd].
     autorewrite with push_length in *.
-    autorewrite with push_firstn push_nth pull_snoc natsimpl.
+    repeat (push_firstn || push_nth || pull_snoc || natsimpl).
     rewrite !map_nth_inbounds with (d2:=defaultSignal) by length_hammer.
     erewrite firstn_succ_snoc by lia. cbn [fst snd].
     ssplit; reflexivity. }
   { intros. logical_simplify; subst. cbn [fst snd].
-    autorewrite with push_length push_firstn.
+    push_length; push_firstn.
     reflexivity. }
 Qed.
 Hint Rewrite @simulate_DelayInit using solve [eauto] : push_simulate.
@@ -175,8 +172,7 @@ Lemma simulate_length {i o} (c : Circuit i o) input :
 Proof.
   simsimpl. generalize (reset_state c).
   induction input; intros; [ reflexivity | ].
-  simsimpl. autorewrite with push_length.
-  reflexivity.
+  simsimpl. push_length. reflexivity.
 Qed.
 Hint Rewrite @simulate_length using solve [eauto] : push_length.
 

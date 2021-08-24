@@ -52,18 +52,17 @@ Proof.
     cbv zeta. intros ? ? ? d; intros; logical_simplify; subst.
     cbv [step mcompose countBySpec]. simpl_ident.
     rewrite firstn_succ_snoc with (d0:=d) by length_hammer.
-    cbv [combType Bvector] in *. autorewrite with push_length natsimpl.
-    cbv [bvsum]. autorewrite with pull_snoc.
+    cbv [combType Bvector] in *. push_length; natsimpl.
+    cbv [bvsum]. pull_snoc.
     rewrite bvadd_comm. split; [ reflexivity | ].
-    rewrite Nat.add_1_r.
-    autorewrite with pull_snoc.
+    rewrite Nat.add_1_r. pull_snoc.
     f_equal.
     { apply map_ext_in; intros.
       match goal with H : _ |- _ => apply in_seq in H end.
-      autorewrite with push_length natsimpl push_firstn push_list_fold.
+      repeat (push_length || natsimpl || push_firstn || push_list_fold).
       reflexivity. }
     { cbn [Nat.add].
-      autorewrite with push_nth push_firstn push_length push_list_fold natsimpl.
+      repeat (push_nth || push_length || natsimpl || push_firstn || push_list_fold).
       reflexivity. } }
   { (* invariant implies postcondition *)
     intros; logical_simplify; subst.

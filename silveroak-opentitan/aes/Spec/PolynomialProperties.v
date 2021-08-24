@@ -19,6 +19,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
 Require Import Coq.setoid_ring.Ring.
 Require Import coqutil.Tactics.Tactics.
+Require Import Cava.Util.Nat.
 Require Import Cava.Util.List.
 Require Import AesSpec.Polynomial.
 Import ListNotations.
@@ -36,7 +37,7 @@ Section PolynomialProperties.
   Lemma add_poly_0_l p : add_poly zero_poly p = p.
   Proof.
     cbv [add_poly zero_poly extend].
-    autorewrite with push_length listsimpl natsimpl.
+    repeat (push_length || listsimpl || natsimpl).
     induction p; intros; [ reflexivity | ].
     cbn [length repeat map2]. rewrite IHp.
     f_equal; ring.
@@ -51,7 +52,7 @@ Section PolynomialProperties.
   Lemma add_poly_cons p0 q0 (p q : poly A) :
     add_poly (p0 :: p) (q0 :: q) = fadd p0 q0 :: add_poly p q.
   Proof.
-    cbv [add_poly]. autorewrite with push_length.
+    cbv [add_poly]. push_length.
     rewrite !extend_cons_S. reflexivity.
   Qed.
 
@@ -79,13 +80,11 @@ Section PolynomialProperties.
   Lemma mul_poly_1_l p : mul_poly one_poly p = p.
   Proof.
     cbv [mul_poly mul_indexed_poly mul_term one_poly]. cbn.
-    autorewrite with listsimpl.
-    cbv [to_indexed_poly]. rewrite map_map.
+    listsimpl. cbv [to_indexed_poly]. rewrite map_map.
     cbv [indexed_term_to_poly].
     induction p using rev_ind; [ reflexivity | ].
-    autorewrite with push_length.
-    rewrite Nat.add_1_r.
-    autorewrite with pull_snoc natsimpl.
+    push_length. rewrite Nat.add_1_r.
+    pull_snoc; natsimpl.
     rewrite combine_append by length_hammer.
     rewrite map_app, fold_left_app.
     cbn [combine map fold_left fst snd] in *.
@@ -98,7 +97,7 @@ Section PolynomialProperties.
   Proof.
     cbv [of_indexed_poly].
     revert p2; induction p1; intros.
-    { autorewrite with listsimpl. cbn [map fold_left].
+    { listsimpl. cbn [map fold_left].
       rewrite add_poly_0_l. reflexivity. }
     { rewrite <-app_comm_cons. cbn [map fold_left].
       rewrite !add_poly_0_l.
@@ -114,11 +113,11 @@ Section PolynomialProperties.
   Lemma add_poly_fzero_l n p :
     add_poly (repeat fzero n) p = p ++ repeat fzero (n - length p).
   Proof.
-    revert p; induction n; destruct p; intros; autorewrite with natsimpl listsimpl;
+    revert p; induction n; destruct p; intros; natsimpl; listsimpl;
       cbn [repeat]; rewrite ?add_poly_0_l, ?add_poly_0_r;
       [ reflexivity .. | ].
     rewrite add_poly_cons. rewrite IHn.
-    autorewrite with push_length natsimpl. rewrite <-app_comm_cons.
+    push_length; natsimpl. rewrite <-app_comm_cons.
     f_equal; ring.
   Qed.
 
@@ -127,23 +126,22 @@ Section PolynomialProperties.
   Proof.
     cbv [mul_poly mul_indexed_poly mul_term to_indexed_poly].
     cbn [map flat_map fst snd app length seq combine].
-    autorewrite with listsimpl natsimpl.
+    listsimpl; natsimpl.
     induction q using rev_ind; [ reflexivity | ].
-    autorewrite with push_length. rewrite Nat.add_1_r.
-    autorewrite with pull_snoc natsimpl.
+    push_length. rewrite Nat.add_1_r. pull_snoc; natsimpl.
     rewrite combine_append by length_hammer.
     rewrite map_app, of_indexed_poly_app.
     rewrite IHq.
     cbn [combine of_indexed_poly fold_left map fst snd].
-    rewrite add_poly_0_l. autorewrite with natsimpl.
+    rewrite add_poly_0_l. natsimpl.
     match goal with
       | |- context [fzero * ?x] =>
         replace (fzero * x) with fzero by ring
     end.
     cbv [indexed_term_to_poly]; cbn [fst snd].
     rewrite <-repeat_cons. rewrite add_poly_fzero_l.
-    autorewrite with push_length natsimpl. cbn [repeat].
-    autorewrite with listsimpl; reflexivity.
+    push_length; natsimpl. cbn [repeat].
+    listsimpl; reflexivity.
   Qed.
 
   Lemma add_poly_length p q : length (add_poly p q) = Nat.max (length p) (length q).
@@ -152,16 +150,15 @@ Section PolynomialProperties.
   Lemma mul_poly_singleton_length p0 q : length (mul_poly [p0] q) = length q.
   Proof.
     cbv [mul_poly]. change (to_indexed_poly [p0]) with [(0%nat, p0)].
-    cbv [mul_indexed_poly mul_term]. cbn [flat_map fst snd]. autorewrite with listsimpl.
+    cbv [mul_indexed_poly mul_term]. cbn [flat_map fst snd]. listsimpl.
     cbv [to_indexed_poly of_indexed_poly].
     induction q using rev_ind; intros; [ reflexivity | ].
-    autorewrite with push_length. rewrite Nat.add_1_r.
-    autorewrite with pull_snoc. rewrite !combine_append by length_hammer.
+    push_length. rewrite Nat.add_1_r.
+    pull_snoc. rewrite !combine_append by length_hammer.
     rewrite !map_app. rewrite fold_left_app.
-    cbn [combine map fst snd fold_left]. autorewrite with natsimpl.
-    autorewrite with push_length. rewrite add_poly_length, IHq.
-    cbv [indexed_term_to_poly]. autorewrite with push_length. cbn [fst].
-    lia.
+    cbn [combine map fst snd fold_left]. natsimpl. push_length.
+    rewrite add_poly_length, IHq. cbv [indexed_term_to_poly].
+    push_length. cbn [fst]. lia.
   Qed.
 
   Lemma mul_indexed_poly_cons_l p0 p q :
@@ -297,7 +294,7 @@ Section PolynomialProperties.
   Lemma cons_fzero_distr_l p q :
     fzero :: add_poly p q = add_poly (fzero :: p) (fzero :: q).
   Proof.
-    cbv [add_poly]. autorewrite with push_length.
+    cbv [add_poly]. push_length.
     rewrite !extend_cons_S. cbn [map2]. f_equal; ring.
   Qed.
 
@@ -381,7 +378,7 @@ Section PolynomialProperties.
   Proof.
     cbv [mul_poly mul_indexed_poly].
     cbn [to_indexed_poly length seq combine map flat_map].
-    autorewrite with listsimpl. reflexivity.
+    listsimpl. reflexivity.
   Qed.
 
   Lemma mul_term_mul_term t1 t2 p :
@@ -460,7 +457,7 @@ Section PolynomialProperties.
     rewrite <-!mul_poly_singleton.
     rewrite mul_poly_fzero_l, add_poly_fzero_l.
     rewrite (proj2 (Nat.sub_0_le _ _));
-      [ cbn [repeat]; autorewrite with listsimpl; reflexivity | ].
+      [ cbn [repeat]; listsimpl; reflexivity | ].
     rewrite <-!add_poly_shift_poly.
     rewrite add_poly_length.
     match goal with |- context [length (shift_poly (mul_poly [?x] ?p))] =>
@@ -505,7 +502,7 @@ Section PolynomialProperties.
     rewrite mul_term_cons; cbn [fst snd map].
     rewrite of_indexed_poly_cons.
     rewrite mul_term_shift_r, of_indexed_poly_shift.
-    rewrite IHq. autorewrite with natsimpl.
+    rewrite IHq. natsimpl.
     rewrite add_poly_singleton_shift. reflexivity.
   Qed.
 
@@ -515,8 +512,7 @@ Section PolynomialProperties.
   Proof.
     rewrite mul_poly_singleton_map.
     cbv [to_indexed_poly]. rewrite combine_map_r.
-    cbv [mul_term]. rewrite map_map.
-    autorewrite with push_length.
+    cbv [mul_term]. rewrite map_map. push_length.
     f_equal; apply map_ext; intros.
     cbn [fst snd].
     f_equal; ring.
@@ -551,9 +547,9 @@ Section PolynomialProperties.
     rewrite indexed_term_to_poly_shift_poly.
     replace (snd x * fzero) with fzero by ring.
     rewrite add_poly_indexed_term_to_poly_fzero_l.
-    autorewrite with natsimpl.
+    natsimpl.
     rewrite (proj2 (Nat.sub_0_le _ _));
-      [ cbn [repeat]; autorewrite with listsimpl; reflexivity | ].
+      [ cbn [repeat]; listsimpl; reflexivity | ].
     cbv [indexed_term_to_poly]. cbn [fst snd].
     match goal with
     | |- context [length (shift_poly ?p)] =>
@@ -584,7 +580,7 @@ Section PolynomialProperties.
     rewrite <-mul_poly_singleton, mul_term_mul_singleton.
     rewrite mul_term_shift_r, of_indexed_poly_shift.
     rewrite mul_poly_distr_l, mul_poly_indexed_term_to_poly.
-    autorewrite with natsimpl. f_equal; [ ].
+    natsimpl. f_equal; [ ].
     rewrite mul_poly_shift_l. rewrite <-IHp.
     rewrite mul_term_shift_poly.
     reflexivity.
@@ -608,7 +604,7 @@ Section PolynomialProperties.
     cbn [map fold_left]. rewrite IHp.
     rewrite add_poly_length.
     cbv [indexed_term_to_poly].
-    autorewrite with push_length.
+    push_length.
     rewrite Nat.add_1_r; reflexivity.
   Qed.
 
@@ -648,9 +644,8 @@ Section PolynomialProperties.
     rewrite map_map. cbn [fst snd].
     induction p using rev_ind; [ congruence | ].
     destruct p as [|p1 p']; [ cbn; lia | set (p:=p1 :: p') in * ].
-    autorewrite with push_length.
-    rewrite Nat.add_1_r.
-    autorewrite with pull_snoc natsimpl.
+    push_length. rewrite Nat.add_1_r.
+    pull_snoc; natsimpl.
     rewrite combine_append by length_hammer.
     rewrite map_app. cbn [map combine fst snd].
     rewrite fold_left_app.
@@ -684,7 +679,6 @@ Section PolynomialProperties.
     rewrite mul_term_length by auto. cbn [fst snd].
     rewrite shift_poly_length by (apply mul_poly_nonnil; subst p; congruence).
     rewrite IHp by (subst p; congruence).
-    autorewrite with natsimpl.
-    subst p; length_hammer.
+    natsimpl. subst p; length_hammer.
   Qed.
 End PolynomialProperties.
