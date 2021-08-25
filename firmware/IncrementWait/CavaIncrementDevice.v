@@ -44,14 +44,14 @@ Section Var.
 
         let/delay '(idle, busy, done; value) :=
            if busy == `K 1` then
-             (`False`, `K 2`, `False`, value)
+             (`Zero`, `K 2`, `Zero`, value)
            else if busy == `K 2` then
-                  (`False`, `K 0`, `True`, value + `K 1`)
+                  (`Zero`, `K 0`, `One`, value + `K 1`)
                 else if done then
                        (is_value_read_req, `K 0`, !is_value_read_req, value)
                      else (* idle *)
                        let busy' := if is_value_write_req then `K 1` else `K 0` in
-                       (!is_value_write_req, busy', `False`, req_value)
+                       (!is_value_write_req, busy', `Zero`, req_value)
            initially (false, (0, (false ,0))) : denote_type (Bit ** BitVec 2 ** Bit ** BitVec 32)
         in
 
