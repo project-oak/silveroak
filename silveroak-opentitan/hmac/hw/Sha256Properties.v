@@ -96,7 +96,7 @@ Definition sha256_inner_invariant
            msg (H : list N) (i : nat) : Prop :=
   let '(current_digest, (message_schedule, (done, round))) := state in
   if done
-  then Logic.True (* idle; no guarantees about other state elements *)
+  then True (* idle; no guarantees about other state elements *)
   else
     (* the round is < 64 *)
     (round < 64)%N
@@ -112,14 +112,14 @@ Definition sha256_inner_pre
            msg (i : nat) : Prop :=
   let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
   (* if clear is true, then the message ghost variable is empty *)
-  (if clear then msg = repeat x00 16 /\ i = 0%nat else Logic.True)
+  (if clear then msg = repeat x00 16 /\ i = 0%nat else True)
   (* ...and the initial digest is the digest from the previous i *)
   /\ initial_digest = fold_left (SHA256.sha256_step msg) (seq 0 i) SHA256.H0
   (* ...and if the block is valid, the block is the expected slice of the
      message *)
   /\ (if block_valid
      then block = List.slice 0%N (SHA256.W msg i) 0 16
-     else Logic.True).
+     else True).
 
 Definition sha256_inner_spec
            (input : denote_type [Bit; sha_block; sha_digest; Bit])

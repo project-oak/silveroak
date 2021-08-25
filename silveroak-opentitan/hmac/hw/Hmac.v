@@ -97,19 +97,19 @@ Section Var.
       let digest_word := `index` digest ptr in
 
       let '(sha_stream_valid, sha_stream, sha_stream_final; sha_stream_final_length) :=
-             if state == `K 1` then (`True`, key ^ `K 0x36363636`, `False`, `K 0`)
+             if state == `K 1` then (`One`, key ^ `K 0x36363636`, `Zero`, `K 0`)
         else if state == `K 2` then (fifo_valid, fifo_data, fifo_final, fifo_length)
         (* else if state' == `K 3` *)
-        else if state == `K 4` then (`True`, key ^ `K 0x5c5c5c5c`, `False`, `K 0`)
-        else if state == `K 5` then (`True`, digest_word, (ptr == `K 7` ) , `K 4`)
-        else (`False`, `K 0`, `False`, `K 0`)
+        else if state == `K 4` then (`One`, key ^ `K 0x5c5c5c5c`, `Zero`, `K 0`)
+        else if state == `K 5` then (`One`, digest_word, (ptr == `K 7` ) , `K 4`)
+        else (`Zero`, `K 0`, `Zero`, `K 0`)
 
       in
 
       (* I don't think we need to explicitly flush-
          if we are left in a bad state we might need to flush after the last state
       *)
-      let sha_stream_flush := `False` in
+      let sha_stream_flush := `Zero` in
 
       let '(sha_done, sha_digest; sha_ready)
         := `sha256` sha_stream_valid sha_stream sha_stream_final sha_stream_final_length sha_stream_flush in
@@ -139,7 +139,7 @@ Section Var.
       let waiting_for_digest :=
         if (state' == `K 3`) || (state' == `K 6`)
         then ! sha_done
-        else `False` in
+        else `Zero` in
 
       (next_registers, waiting_for_digest, is_consuming, ptr', state', next_digest, sha_ready)
 
