@@ -129,14 +129,13 @@ Module ExprNotations.
 
   Notation "'if' i 'then' t 'else' e" := ((ElimBool i t e))
     (in custom expr at level 5, left associativity) : expr_scope.
-
 End ExprNotations.
 
 Section Var.
   Context {var : tvar}.
 
-  Definition True := Constant Bit true.
-  Definition False := Constant Bit false.
+  Definition One := Constant Bit true.
+  Definition Zero := Constant Bit false.
   Definition K {sz}(x: N) := Constant (BitVec sz) x.
 
 End Var.

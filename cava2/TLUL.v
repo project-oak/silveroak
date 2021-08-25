@@ -156,8 +156,8 @@ Section Var.
         (a_opcode == `PutFullData` || a_opcode == `PutPartialData`) in
 
       (* TODO(blaxill): skipping malformed tl packet detection *)
-      let err_internal := `False` in
-      let error_i := `False` in
+      let err_internal := `Zero` in
+      let error_i := `Zero` in
 
       let '(reqid, reqsz, rspop, error; outstanding) :=
         if a_ack then
@@ -165,10 +165,10 @@ Section Var.
           , a_size
           , if rd_req then `AccessAckData` else `AccessAck`
           , error_i || err_internal
-          , `True`
+          , `One`
           )
         else
-          (reqid, reqsz, rspop, error, if d_ack then `False` else outstanding)
+          (reqid, reqsz, rspop, error, if d_ack then `Zero` else outstanding)
       in
 
       let we_o := wr_req && !err_internal in
