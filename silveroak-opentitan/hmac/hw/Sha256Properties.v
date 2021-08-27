@@ -274,6 +274,124 @@ Lemma step_padder_writing_length :
 Proof. reflexivity. Qed.
 Hint Rewrite @step_padder_writing_length using solve [eauto] : stepsimpl.
 
+Definition bytes_in_final_word (msg : list Byte.byte) : nat :=
+  let msg_words := BigEndianBytes.bytes_to_Ns 4 msg in
+  length msg - ((length msg_words - 1) * 4).
+
+Definition padder_state_by_index (msg : list Byte.byte) (i : nat) : N :=
+  let msg_words := BigEndianBytes.bytes_to_Ns 4 msg in
+  if i <? length msg_words
+  then padder_waiting_value
+  else if bytes_in_final_word msg =? 4
+       then if i =? length msg_words
+            then padder_emit_bit_value
+            else if 13 <=? (length msg_words + 1) mod 16
+                 then if 14 <=? i mod 16
+                      then padder_writing_length_value
+                      else padder_flushing_value
+                      else if i <? length msg_words + 2
+                           then padder_flushing_value
+                           else if 14 <=? i mod 16
+                                then padder_writing_length_value
+                                else padder_flushing_value
+       else  if 13 <=? (length msg_words) mod 16
+             then if 14 <=? i mod 16
+                  then padder_writing_length_value
+                  else padder_flushing_value
+             else if i <? length msg_words + 2
+                  then padder_flushing_value
+                  else if 14 <=? i mod 16
+                       then padder_writing_length_value
+                       else padder_flushing_value.
+
+Definition word_by_word_padder (msg : list Byte.byte) (i : nat) : N :=
+  let msg_words := BigEndianBytes.bytes_to_Ns 4 msg in
+  (* length in bits expressed as two 32-bit numbers *)
+  let length1 := ((N.of_nat (length msg) * 8) / 2 ^ 32)%N in
+  let length2 := ((N.of_nat (length msg) * 8) mod 2 ^ 32)%N in
+  if i <? length msg_words - 1
+  then nth i msg_words 0%N
+  else if bytes_in_final_word msg =? 4
+       then if i =? length msg_words - 1
+            then nth i msg_words 0%N (* last word *)
+            else if i =? length msg_words
+                 then 0x80000000%N (* extra bit *)
+                 else if 13 <=? (length msg_words + 1) mod 16
+                      then if i mod 16 =? 14
+                           then length1
+                           else if i mod 16 =? 15
+                                then length2
+                                else 0
+                      else if i <? length msg_words + 2
+                           then 0
+                           else if i mod 16 =? 14
+                                then length1
+                                else if i mod 16 =? 15
+                                     then length2
+                                     else 0
+       else if i =? length msg_words - 1
+            then
+              (* write last word plus extra bit *)
+              BigEndianBytes.concat_bytes
+                (skipn (i*4) msg
+                       ++ [Byte.x80]
+                       ++ repeat Byte.x00 (3 - bytes_in_final_word msg))
+            else if 13 <=? (length msg_words) mod 16
+                 then if i mod 16 =? 14
+                      then length1
+                      else if i mod 16 =? 15
+                           then length2
+                           else 0
+                 else if i <? length msg_words + 2
+                      then 0
+                      else if i mod 16 =? 14
+                           then length1
+                           else if i mod 16 =? 15
+                                then length2
+                                else 0.
+
+Lemma bytes_to_Ns_length n bs :
+  length (BigEndianBytes.bytes_to_Ns n bs)
+  = length bs / n + if (length bs mod n =? 0) then 0 else 1.
+Admitted.
+Hint Rewrite @bytes_to_Ns_length : push_length.
+Lemma bytes_to_Ns_app n bs1 bs2 :
+  BigEndianBytes.bytes_to_Ns n (bs1 ++ bs2)
+  = (BigEndianBytes.bytes_to_Ns n (firstn (length bs1 - length bs1 mod n) bs1))
+      ++ (BigEndianBytes.bytes_to_Ns n (skipn (length bs1 - length bs1 mod n) bs1 ++ bs2)).
+Admitted.
+Lemma bytes_to_Ns_nth n bs i :
+  nth i (BigEndianBytes.bytes_to_Ns n bs) 0%N
+  = BigEndianBytes.concat_bytes (firstn n (skipn (n * i) bs)).
+Admitted.
+Lemma sub_mod_eq x y : y <> 0 -> x - x mod y = y * (x / y).
+Proof.
+  intros. rewrite Nat.mod_eq by lia.
+  assert (y * (x / y) <= x); [ | lia ].
+  rewrite Nat.div_mod with (y:=y); lia.
+Qed.
+Lemma floor_div_eq x y : y <> 0 -> (x - x mod y) / y = x / y.
+Proof.
+  intros. rewrite sub_mod_eq by lia.
+  rewrite Nat.mul_comm, Nat.div_mul; lia.
+Qed.
+Lemma floor_mod_eq x y : y <> 0 -> (x - x mod y) mod y = 0.
+Proof.
+  intros. rewrite sub_mod_eq by lia.
+  rewrite Nat.mul_comm, Nat.mod_mul; lia.
+Qed.
+
+Lemma word_by_word_padder_equiv msg i :
+  0 <= i < length (SHA256.padded_msg msg) ->
+  word_by_word_padder msg i = nth i (SHA256.padded_msg msg) 0%N.
+Proof.
+  cbv [word_by_word_padder
+         SHA256.padded_msg SHA256.padded_msg_bytes].
+  change (N.to_nat SHA256.w / 8) with 4. intros.
+  cbv [bytes_in_final_word].
+  repeat (destruct_one_match || destruct_one_match_hyp).
+Admitted.
+
 (* State invariant for sha256_padder *)
 Definition sha256_padder_invariant
            (state : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16))
@@ -300,77 +418,12 @@ Definition sha256_padder_invariant
        /\ word_index = 0
      else
        (* if we're not done, the word index must be in range *)
-       word_index < length expected_words).
+       word_index < length expected_words
+       (* ...and the state must match the message and word index *)
+       /\ state = padder_state_by_index msg word_index).
 
-(*
 (* Maybe try a pure-gallina implementation as an intermediate step? *)
 
-Definition bytes_in_final_word (msg : list Byte.byte) : nat :=
-  let msg_words := BigEndianBytes.bytes_to_Ns 4 msg in
-  length msg - ((length msg_words - 1) * 4).
-
-Definition max_flushing_index (msg : list Byte.byte) : nat :=
-  let msg_words := BigEndianBytes.bytes_to_Ns 4 msg in
-  if bytes_in_final_word msg =? 4
-  then
-    (* need to allow an additional word for extra 1 bit *)
-    if (length msg_words) mod 16 <? 12
-    then length msg_words + (13 - ((length msg_words) mod 16 + 1))
-    else length msg_words + 13 + ((16 - ((length msg_words) mod 16 + 1)))
-  else
-    (* extra 1 bit is part of final word *)
-    if (length msg_words) mod 16 <? 13
-    then length msg_words + (13 - ((length msg_words) mod 16 + 1))
-    else length msg_words + 13 + ((16 - ((length msg_words) mod 16 + 1)))
-  
-
-Definition word_by_word_padder (msg : list Byte.byte) : list N :=
-  let msg_words := BigEndianBytes.bytes_to_Ns 4 msg in
-  List.map
-    (fun i =>
-       if i <? length msg_words - 1
-       then nth i msg_words 0%N
-       else if bytes_in_final_word msg =? 4
-            then if i =? length msg_words - 1
-                 then nth i msg_words 0%N (* last word *)
-                 else if i =? length msg_words
-                      then 0x80000000 (* extra bit *)
-                      else if i 
-            else if i =? length msg_words - 1
-                 then BigEndianBytes.concat_bytes
-                        (skipn (i*4) msg
-                               ++ [Byte.x80]
-                               ++ repeat Byte.x00 (3 - bytes_in_final_word))
-                 else
-              (* we're writing the 0s *)
-              if i mod 16 =? 13
-              then 
-    )
-    (seq 0 (length (SHA256.padded_msg msg))).
-
-(* Need to add a clause that links state to word index
-   < length msg -> padder_waiting
-   > length padded_msg - 2 -> writing_length
-
-   might need a proof demonstrating there is <= 1 block and > 2 words in between these, since we select on index...could be a pain
-
-is there a simpler way to conceptualize what's happening?
-
-can we define indices based on message that mark transitions?
-
-max_msg_index = length (bytes_to_Ns msg) - 1
-max_flushing_index = length padded_msg - 3
-max_index = length padded_msg - 1
-
-max_msg_index < max_index
-
-max_msg_index < max_flushing_index
-max_flushing_index mod 16 = 13
-max_flishing_index - max_msg_index < 16
-
-
-*)
-*)
 (* Precondition for sha256_padder *)
 Definition sha256_padder_pre
            (input : denote_type [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit])
@@ -454,11 +507,14 @@ Hint Rewrite @step_bvresize using solve [eauto] : stepsimpl.
 
 (* TODO: move *)
 Lemma length_bytes_to_Ns_upper_bound n bs :
-  length (BigEndianBytes.bytes_to_Ns n bs) * n = length bs + n.
+  length (BigEndianBytes.bytes_to_Ns n bs) * n < length bs + n.
 Admitted.
 (* TODO: move *)
 Lemma padded_message_longer_than_input msg :
   length (BigEndianBytes.bytes_to_Ns 4 msg) < length (SHA256.padded_msg msg).
+Admitted.
+(* TODO: move *)
+Lemma padded_message_min_length msg : 16 <= length (SHA256.padded_msg msg).
 Admitted.
 
 (* Shorthand to calculate the new value of the [word_index] ghost variable for
@@ -519,6 +575,7 @@ Proof.
      *)
     pose proof length_bytes_to_Ns_upper_bound 4 msg.
     pose proof padded_message_longer_than_input msg.
+    pose proof padded_message_min_length msg.
     ssplit.
     { (* offset matches word index *)
       compute_expr (2 ^ N.of_nat 4)%N.
@@ -542,7 +599,41 @@ Proof.
     { (* state is one of the 4 allowed values *)
       repeat destruct_one_match; tauto. }
     { (* word index remains in range *)
-      destruct is_final; logical_simplify; subst; lia. } }
+      destruct is_final; logical_simplify; subst; lia. }
+    { (* new state matches expectation *)
+      cbv [padder_state_by_index bytes_in_final_word].
+      destruct is_final; logical_simplify; subst.
+      all:repeat (destruct_one_match; try lia).
+      {
+        destr (length (BigEndianBytes.bytes_to_Ns 4 msg) =? 0);
+          [ | lia ].
+        lazymatch goal with
+        | H : length (BigEndianBytes.bytes_to_Ns 4 msg) = 0 |- _ =>
+          rewrite H in * end.
+        autorewrite with natsimpl in *.
+        rewrite !Nat.mod_small in * by lia.
+        lia. }
+      { 
+        destr (length (BigEndianBytes.bytes_to_Ns 4 msg) =? 0);
+          [ | lia ].
+        lazymatch goal with
+        | H : length (BigEndianBytes.bytes_to_Ns 4 msg) = 0 |- _ =>
+          rewrite H in * end.
+        autorewrite with natsimpl in *.
+        rewrite !Nat.mod_small in * by lia.
+        lia. }
+      { 
+        destr (length (BigEndianBytes.bytes_to_Ns 4 msg) =? 0);
+          [ | lia ].
+        lazymatch goal with
+        | H : length (BigEndianBytes.bytes_to_Ns 4 msg) = 0 |- _ =>
+          rewrite H in * end.
+        autorewrite with natsimpl in *.
+        rewrite !Nat.mod_small in * by lia.
+        (* because length of bytes_to_Ns is 0, must be empty message -> contradiction *)
+        lia. }
+    }
+  }
   { (* Case for handling invalid date:
        consumer_ready=true
        clear=false
