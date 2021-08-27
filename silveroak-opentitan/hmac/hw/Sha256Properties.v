@@ -277,7 +277,7 @@ Hint Rewrite @step_padder_writing_length using solve [eauto] : stepsimpl.
 Definition bytes_in_final_word (msg : list Byte.byte) : nat :=
   let msg_words := BigEndianBytes.bytes_to_Ns 4 msg in
   length msg - ((length msg_words - 1) * 4).
-
+(*
 Definition padder_state_by_index (msg : list Byte.byte) (i : nat) : N :=
   let msg_words := BigEndianBytes.bytes_to_Ns 4 msg in
   if i <? length msg_words
@@ -303,7 +303,38 @@ Definition padder_state_by_index (msg : list Byte.byte) (i : nat) : N :=
                   else if 14 <=? i mod 16
                        then padder_writing_length_value
                        else padder_flushing_value.
+ *)
 
+(*
+Compute 512 / 8.
+Compute (13*4).
+Definition padder_state_by_index (msg : list Byte.byte) (i : nat) : N :=
+  if i <? length msg
+  then padder_waiting_value
+  else if i =? length msg
+       then padder_emit_bit_value
+       else
+         (* check if message ends early enough for length to fit in same
+            block *)
+         if (length msg + 1) mod 64 <=? 52
+         then if 14 <=? i mod 16
+              then padder_writing_length_value
+              else padder_flushing_value
+         else if i <? length msg_words + 2
+              then padder_flushing_value
+              else if 14 <=? i mod 16
+                   then padder_writing_length_value
+                   else padder_flushing_value
+else  if 13 <=? (length msg_words) mod 16
+      then if 14 <=? i mod 16
+           then padder_writing_length_value
+           else padder_flushing_value
+      else if i <? length msg_words + 2
+           then padder_flushing_value
+           else if 14 <=? i mod 16
+                then padder_writing_length_value
+                else padder_flushing_value.
+*)
 Definition word_by_word_padder (msg : list Byte.byte) (i : nat) : N :=
   let msg_words := BigEndianBytes.bytes_to_Ns 4 msg in
   (* length in bits expressed as two 32-bit numbers *)
@@ -395,15 +426,17 @@ Admitted.
 (* State invariant for sha256_padder *)
 Definition sha256_padder_invariant
            (state : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16))
-           (msg : list Byte.byte) (word_index : nat) : Prop :=
+           (msg : list Byte.byte) (index : nat) : Prop :=
   let '(done, (out, (out_valid, (state, (len, current_offset))))) := state in
   (* expected result as words *)
   let expected_words := SHA256.padded_msg msg in
-  (* current offset matches word index *)
-  current_offset = (N.of_nat word_index mod 16)%N
+  (* current offset matches index *)
+  current_offset = ((N.of_nat index / 4) mod 16)%N
+  (* index is always a multiple of 4 *)
+  /\ index mod 4 = 0
   (* ...and length matches the length of the message so far in bytes *)
   /\ (len = if (state =? padder_waiting_value)%N
-           then N.of_nat (word_index * 4) (* still waiting on more data *)
+           then N.of_nat index (* still waiting on more data *)
            else N.of_nat (length msg))
   (* ...and state must be one of the 4 padder states *)
   /\ (state = padder_waiting_value
@@ -414,8 +447,8 @@ Definition sha256_padder_invariant
      then
        (* if we're done, we must be in the padder_waiting state *)
        state = padder_waiting_value
-       (* ...and the word index must be 0 *)
-       /\ word_index = 0
+       (* ...and the index must be 0 *)
+       /\ index = 0
      else
        (* if we're not done, the word index must be in range *)
        word_index < length expected_words
