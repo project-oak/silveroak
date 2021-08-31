@@ -638,5 +638,198 @@ Proof.
        clear=false
        data_valid=false
      *)
-    admit. }
+    pose proof length_bytes_to_Ns_upper_bound 4 msg.
+    pose proof padded_message_longer_than_input msg.
+    pose proof padded_message_bytes_longer_than_input msg.
+    pose proof padded_message_bytes_min_length msg.
+    ssplit.
+    { (* index is a multiple of 4 *)
+      repeat destruct_one_match;
+        rewrite ?Nat.mod_add with (b:=1) (c:=4); auto. }
+    { (* length matches length processed so far *)
+      pose (pd:=padder_done).
+      destruct padder_done; logical_simplify; subst.
+      all:repeat destruct_one_match; cbn [length].
+      all:repeat lazymatch goal with
+                 | H : (_ && _)%bool = true |- _ =>
+                   apply Bool.andb_true_iff in H
+                 | H : (_ && _)%bool = false |- _ =>
+                   apply Bool.andb_false_iff in H; destruct H
+                 end.
+      all:logical_simplify; N.bool_to_prop; subst.
+      all:try discriminate; try reflexivity.
+      
+      
+      {
+        
+
+        
+        
+      all:
+      N.bool_to_prop; subst.
+      destruct padder_done; logical_simplify; subst; [ discriminate | ].
+      cbv [expected_padder_state] in *.
+      repeat (destruct_one_match_hyp; try discriminate).
+      all:logical_simplify; subst; lia. }
+    { (* offset stays in range *)
+      change (2 ^ N.of_nat 4)%N with 16%N.
+      destruct_one_match;
+        try apply N.mod_bound_pos; lia. }
+    { (* offset stays in range *)
+      change (2 ^ N.of_nat 4)%N with 16%N.
+      destruct_one_match;
+        try apply N.mod_bound_pos; lia. }
+    { (* padder_done matches done *)
+      destruct padder_done; logical_simplify; subst; [ reflexivity | ].
+      boolsimpl.
+      admit. (* prove that looking for writing_length state and offset = 13 is
+                the same as waiting for the end of the expected message *)
+    }
+    { (* if output is valid, then new index must be at least 4 and output must
+         match spec *)
+      destr (state =? padder_waiting_value)%N; boolsimpl; [ solve [trivial] | ].
+      split.
+      { (* new index is at least 4 *)
+        destruct_one_match; lia. }
+      { (* output matches spec *)
+        admit. } }
+    { destruct padder_done; logical_simplify; subst; boolsimpl;
+        cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
+                   padder_emit_bit_value padder_writing_length_value
+                   andb orb negb].
+      {
+        (* in this condition, we're done and *next* out_valid is false (why?) *)
+        (* done=true, data_valid=false, is_final=false, state=padder_waiting
+           index should not be incremented if we're done, ever
+         *)
+        destruct out_valid; logical_simplify; subst.
+        all: ssplit; [ reflexivity | | ].
+        (*
+          out_valid:
+                !(state == `padder_waiting` && (!data_valid) && (!is_final) )
+
+          new state should still be padder_waiting
+          data_valid=false, is_final=false
+          therefore new out_valid should be false...
+         *)
+        all: repeat destruct_one_match; try lia.
+        
+
+      cbv [expected_padder_state] in *.
+      destruct done, out_valid, msg_complete; logical_simplify; subst.
+      all:cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
+                     padder_emit_bit_value padder_writing_length_value
+                     andb orb negb].
+      all:ssplit; try reflexivity.
+      all:repeat destruct_one_match.
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    ssplit.
+    { (* offset matches word index *)
+      cbv [padder_waiting_value padder_emit_bit_value padder_flushing_value
+                                padder_writing_length_value] in *.
+      destruct done; logical_simplify; subst; boolsimpl; [ reflexivity | ].
+      compute_expr (2 ^ N.of_nat 4)%N. rewrite N.add_mod_idemp_l by lia.
+      lazymatch goal with Hstate : state = _ \/ state = _ \/ state = _ \/ state = _ |- _ =>
+                          destruct Hstate as [ ? | [? | [? | ?]]]; subst end;
+        cbn [N.eqb Pos.eqb]; boolsimpl; try lia; [ ].
+      repeat (destruct_one_match || destruct_one_match_hyp);
+        Zify.zify; Z.to_euclidean_division_equations; lia. }
+    { (* length matches length processed so far *)
+      cbv [padder_waiting_value padder_emit_bit_value padder_flushing_value
+                                padder_writing_length_value] in *.
+      destruct done; logical_simplify; subst; boolsimpl; [ reflexivity | ].
+      lazymatch goal with Hstate : state = _ \/ state = _ \/ state = _ \/ state = _ |- _ =>
+                          destruct Hstate as [ ? | [? | [? | ?]]]; subst end;
+        cbn [N.eqb Pos.eqb]; boolsimpl.
+      all:repeat (destruct_one_match || destruct_one_match_hyp);
+        Zify.zify; Z.to_euclidean_division_equations; lia. }
+    { (* state is one of the 4 allowed values *)
+      repeat destruct_one_match; tauto. }
+    { (* word index remains in range *)
+      cbv [padder_waiting_value padder_emit_bit_value padder_flushing_value
+                                padder_writing_length_value] in *.
+      destruct done; logical_simplify; subst; cbn [N.eqb Pos.eqb]; boolsimpl;
+        [ ssplit; reflexivity | ].
+      lazymatch goal with Hstate : state = _ \/ state = _ \/ state = _ \/ state = _ |- _ =>
+                          destruct Hstate as [ ? | [? | [? | ?]]]; subst end;
+        cbn [N.eqb Pos.eqb]; boolsimpl.
+      all:try lia.
+      Print SHA256.padding.
+      (* state is emit_bit or flushing ->
+         length msg_words <= word_index < length expected_words - 2
+       *)
+      (* to prove:
+            - (length expected_words - 1) mod 16 = 15
+            - if offset=13 and index > length msg_words, then index = length expected_words - 2
+       *)
 Admitted.
+
+Lemma step_sha256_padder input state msg word_index :
+  sha256_padder_pre input state msg word_index ->
+  sha256_padder_invariant state msg word_index ->
+  snd (step sha256_padder state input) = sha256_padder_spec input state msg word_index.
+Proof.
+  destruct input as
+      (data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,[])))))).
+  destruct state as
+      (done, (out, (out_valid, (state, (len, current_offset))))).
+  (* simplify single-step behavior *)
+  cbv [sha256_padder_pre
+         sha256_padder_invariant
+         sha256_padder_spec
+         padder_update_word_index].
+  intros. logical_simplify. subst. cbn [fst snd] in *.
+  cbv [sha256_padder K]. stepsimpl.
+  repeat (destruct_pair_let; cbn [fst snd]).
+  autorewrite with tuple_if; cbn [fst snd].
+  stepsimpl.
+  (* destruct cases for flags *)
+  destruct clear;
+    repeat (boolsimpl || subst || logical_simplify);
+    (* handle case for clear=true *)
+    [ reflexivity | ].
+  destruct consumer_ready;
+    repeat (boolsimpl || subst || logical_simplify);
+    rewrite ?N.eqb_refl;
+    (* handle case for consumer_ready=false *)
+    [ | reflexivity ].
+  destruct data_valid;
+    repeat (boolsimpl || subst || logical_simplify);
+    cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
+               padder_emit_bit_value padder_writing_length_value].
+  { (* case for valid data *)
+Qed.
