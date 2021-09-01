@@ -274,6 +274,111 @@ Lemma step_padder_writing_length :
 Proof. reflexivity. Qed.
 Hint Rewrite @step_padder_writing_length using solve [eauto] : stepsimpl.
 
+Inductive padder_state :=
+| WAITING
+| EMIT_BIT
+| PADDING
+| WRITING_LENGTH
+.
+
+Definition word_by_word_padder
+           (state : padder_state) (length : nat) (offset : nat)
+           (data_valid : bool) (data : N) (is_final : bool) (final_length : nat)
+  : (bool * N) * (padder_state * nat * nat) :=
+  let next_state :=
+      match state with
+      | WAITING =>
+        if is_final
+        then if final_length =? 4
+             then EMIT_BIT
+             else if offset =? 13
+                  then WRITING_LENGTH
+                  else FLUSHING
+        else WAITING
+      | EMIT_BIT => if offset =? 13
+                   then WRITING_LENGTH
+                   else FLUSHING
+      | FLUSHING => 
+      if is_final && state == `padder_waiting` then
+        (* From our receiving state we can transition to: *)
+        (* - Emitting 0x80.. state if final word was a full word *)
+        if final_length == `K 4` then `padder_emit_bit`
+        (* - Writing length directly if we there 2 words left in this block *)
+        else if current_offset == `K 13`
+          then `padder_writing_length`
+          (* - Writing padding 0's *)
+          else `padder_flushing`
+        else if state == `padder_emit_bit` then
+          `padder_flushing`
+        else if state == `padder_flushing` then
+          (* If we are at offset 13, switch to writing length as there is space
+             this block for the length *)
+          if current_offset == `K 13`
+          then `padder_writing_length`
+          else `padder_flushing`
+        else if state == `padder_writing_length` then
+          if current_offset == `K 15`
+          then `padder_waiting`
+          else `padder_writing_length`
+        else
+          state
+        in
+
+      let next_length :=
+        if state == `padder_waiting` && is_final then length + `bvresize 61` final_length
+        else if state == `padder_waiting` && data_valid then length + `K 4`
+        (* We are done here so set the next length to 0 *)
+        else if state == `padder_writing_length` && current_offset == `K 15`
+          then `K 0`
+        else length
+        in
+
+      let next_out :=
+        (* If we have final word and its not a full word, we can emit 0x80 byte
+         * immediately *)
+        if state == `padder_waiting` && is_final then
+          if final_length == `K 0`
+          then `Constant (BitVec 32) 0x80000000`
+          else if final_length == `K 1`
+          then `bvconcat` (`bvslice 24 8` data) (`Constant (BitVec 24) 0x800000`)
+          else if final_length == `K 2`
+          then `bvconcat` (`bvslice 16 16` data) (`Constant (BitVec 16) 0x8000`)
+          else if final_length == `K 3`
+          then `bvconcat` (`bvslice 8 24` data) (`Constant (BitVec 8) 0x80`)
+          else data
+        else if state == `padder_waiting` && data_valid then
+          data
+        else if state == `padder_emit_bit` then
+          `Constant (BitVec 32) 0x80000000`
+        else if state == `padder_writing_length` then
+          if current_offset == `K 14`
+          then `bvslice 32 32` (length << 3)
+          else `bvslice 0 32` (length << 3)
+
+        else `K 0`
+      in
+
+      let out_valid :=
+        !(state == `padder_waiting` && (!data_valid) && (!is_final) ) in
+
+      let next_offset :=
+        if !out_valid then current_offset
+        else (current_offset + `K 1`) (* addition mod 16 *) in
+
+      let next_done :=
+        !data_valid && (
+        done || (state == `padder_writing_length` && next_state == `padder_waiting`)) in
+
+      ( next_done
+      , next_out, out_valid, next_state, next_length, next_offset)
+
+      initially
+        (true,(0,(false,(0,(0,0)))))
+        : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 4)
+        in
+
+    (out_valid, out, done)
+
 Definition expected_padder_state
            (msg : list Byte.byte) (msg_complete : bool) (i : nat) : N :=
   if msg_complete
@@ -300,8 +405,6 @@ Definition sha256_padder_invariant
   let '(done, (out, (out_valid, (state, (len, current_offset))))) := state in
   (* index is always a multiple of 4 *)
   index mod 4 = 0
-  (* ...and length matches the length of the message so far in bytes *)
-  /\ len = N.of_nat (length msg)
   (* ...and offset is always in the range [0,15] *)
   /\ (0 <= current_offset < 16)%N
   (* ...and the [padder_done] ghost variable just tracks [done] *)
@@ -323,9 +426,13 @@ Definition sha256_padder_invariant
        /\ (if out_valid
           then index = length (SHA256.padded_msg_bytes msg)
           else index = 0 /\ msg = [])
+       (* ...and length is 0 *)
+       /\ len = N.of_nat 0
      else
        (* if we're not done, the word index must be in range *)
        index < length (SHA256.padded_msg_bytes msg)
+       (* ...and length matches the length of the message so far in bytes *)
+       /\ len = N.of_nat (length msg)
        (* ...and the current offset matches index *)
        /\ (current_offset * 4 = N.of_nat index mod 64)%N
        (* ...and the state must match the message and word index *)
@@ -572,18 +679,6 @@ Proof.
     { (* index is a multiple of 4 *)
       repeat destruct_one_match;
         rewrite ?Nat.mod_add with (b:=1) (c:=4); auto. }
-    { (* length matches length processed so far *)
-      rewrite N.land_ones.
-      rewrite N.add_mod_idemp_r by (cbn;lia).
-      compute_expr (2 ^ N.of_nat 61)%N.
-      lazymatch goal with H : context [(2 ^ 61)%N] |- _ => cbn in H end.
-      cbv [expected_padder_state] in *.
-      destruct is_final; logical_simplify; subst; boolsimpl.
-      all:repeat (destruct_one_match_hyp; try discriminate).
-      all:logical_simplify; subst; cbn [length app] in *.
-      all:rewrite ?N.eqb_refl; try lia.
-      all:push_length.
-      all:rewrite N.mod_small; lia. }
     { (* offset stays in range *)
       change (2 ^ N.of_nat 4)%N with 16%N.
       apply N.mod_bound_pos; lia. }
@@ -605,6 +700,18 @@ Proof.
       destruct padder_done, out_valid, is_final; logical_simplify; subst.
       all:repeat (destruct_one_match_hyp; try discriminate).
       all:repeat destruct_one_match; lia. }
+    { (* length matches length processed so far *)
+      rewrite N.land_ones.
+      rewrite N.add_mod_idemp_r by (cbn;lia).
+      compute_expr (2 ^ N.of_nat 61)%N.
+      lazymatch goal with H : context [(2 ^ 61)%N] |- _ => cbn in H end.
+      cbv [expected_padder_state] in *.
+      destruct is_final; logical_simplify; subst; boolsimpl.
+      all:repeat (destruct_one_match_hyp; try discriminate).
+      all:logical_simplify; subst; cbn [length app] in *.
+      all:rewrite ?N.eqb_refl; try lia.
+      all:push_length.
+      all:rewrite N.mod_small; lia. }
     { (* new offset matches expectations *)
       cbv [expected_padder_state] in *. change (2 ^ N.of_nat 4)%N with 16%N.
       destruct padder_done, out_valid, is_final; logical_simplify; subst.
@@ -646,31 +753,6 @@ Proof.
     { (* index is a multiple of 4 *)
       repeat destruct_one_match;
         rewrite ?Nat.mod_add with (b:=1) (c:=4); auto. }
-    { (* length matches length processed so far *)
-      pose (pd:=padder_done).
-      destruct padder_done; logical_simplify; subst.
-      all:repeat destruct_one_match; cbn [length].
-      all:repeat lazymatch goal with
-                 | H : (_ && _)%bool = true |- _ =>
-                   apply Bool.andb_true_iff in H
-                 | H : (_ && _)%bool = false |- _ =>
-                   apply Bool.andb_false_iff in H; destruct H
-                 end.
-      all:logical_simplify; N.bool_to_prop; subst.
-      all:try discriminate; try reflexivity.
-      
-      
-      {
-        
-
-        
-        
-      all:
-      N.bool_to_prop; subst.
-      destruct padder_done; logical_simplify; subst; [ discriminate | ].
-      cbv [expected_padder_state] in *.
-      repeat (destruct_one_match_hyp; try discriminate).
-      all:logical_simplify; subst; lia. }
     { (* offset stays in range *)
       change (2 ^ N.of_nat 4)%N with 16%N.
       destruct_one_match;
@@ -690,9 +772,112 @@ Proof.
       destr (state =? padder_waiting_value)%N; boolsimpl; [ solve [trivial] | ].
       split.
       { (* new index is at least 4 *)
-        destruct_one_match; lia. }
+        repeat destruct_one_match; logical_simplify; subst; try lia;
+          cbv [expected_padder_state] in *; repeat destruct_one_match_hyp;
+            congruence. }
       { (* output matches spec *)
         admit. } }
+    { (* new state matches expectation *)
+      assert (expected_padder_state msg msg_complete index = padder_waiting_value
+              \/ expected_padder_state msg msg_complete index = padder_emit_bit_value
+              \/ expected_padder_state msg msg_complete index = padder_flushing_value
+              \/ expected_padder_state msg msg_complete index = padder_writing_length_value)
+             as padder_state_cases by admit.
+      destruct padder_done;
+        logical_simplify; subst; rewrite ?N.eqb_refl;
+          cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
+                     padder_emit_bit_value padder_writing_length_value
+                     negb andb orb];
+          [ ssplit; reflexivity | ].
+      let H := fresh in
+      destruct padder_state_cases as [H|[H|[H|H]]]; rewrite H in *.
+      all:cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
+                     padder_emit_bit_value padder_writing_length_value
+                     negb andb orb].
+      all:repeat (first [ progress boolsimpl_hyps
+                        | destruct_one_match
+                        | destruct_one_match_hyp];
+                  try discriminate).
+      all:logical_simplify; subst.
+      all:ssplit; try lia.
+
+      (*
+        if the value is padder_waiting, we must be done
+
+        I think the difficulty here stems from mismatch between expected_padder_state case analysis and the actual circuit.
+       *)
+
+  } }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+    { (* length matches length processed so far *)
+      pose (pd:=padder_done).
+      destruct padder_done; logical_simplify; subst.
+      all:repeat destruct_one_match; cbn [length].
+      all:repeat lazymatch goal with
+                 | H : (_ && _)%bool = true |- _ =>
+                   apply Bool.andb_true_iff in H
+                 | H : (_ && _)%bool = false |- _ =>
+                   apply Bool.andb_false_iff in H; destruct H
+                 end.
+      all:logical_simplify; N.bool_to_prop; subst.
+      all:ssplit.
+      all:try discriminate; try reflexivity.
+      {
+        (* In this case, padder is done and we just got some non-valid
+        data. Therefore, ghost vars should reset; message should become 0. Why
+        is length in circuit still length of message? Does it not reset?
+
+        Ah, looking at circuit, length resets when done=true, so base this
+        requirement on done
+
+         *)
+        
+
+        
+        
+      all:
+      N.bool_to_prop; subst.
+      destruct padder_done; logical_simplify; subst; [ discriminate | ].
+      cbv [expected_padder_state] in *.
+      repeat (destruct_one_match_hyp; try discriminate).
+      all:logical_simplify; subst; lia. }
     { destruct padder_done; logical_simplify; subst; boolsimpl;
         cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
                    padder_emit_bit_value padder_writing_length_value
