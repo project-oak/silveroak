@@ -155,3 +155,7 @@ Proof. vm_compute. reflexivity. Qed.
 Goal (let t := test3 in
       from_sha256_output (simulate sha256 (to_sha256_input t)) = t.(expected_digest)).
 Proof. vm_compute. reflexivity. Qed.
+
+Goal (let t := test4 in
+      from_sha256_output (simulate sha256 (to_sha256_input t)) = t.(expected_digest)).
+Proof. vm_compute. reflexivity. Qed.
