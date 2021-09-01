@@ -274,10 +274,6 @@ Lemma step_padder_writing_length :
 Proof. reflexivity. Qed.
 Hint Rewrite @step_padder_writing_length using solve [eauto] : stepsimpl.
 
-Definition bytes_in_final_word (msg : list Byte.byte) : nat :=
-  let msg_words := BigEndianBytes.bytes_to_Ns 4 msg in
-  length msg - ((length msg_words - 1) * 4).
-
 Definition expected_padder_state
            (msg : list Byte.byte) (msg_complete : bool) (i : nat) : N :=
   if msg_complete
