@@ -106,3 +106,8 @@ Proof. vm_compute. reflexivity. Qed.
 Goal (let t := test3 in
       concat_bytes (sha256 t.(msg_bytes)) = t.(expected_digest)).
 Proof. vm_compute. reflexivity. Qed.
+
+(* test final digest *)
+Goal (let t := test4 in
+      concat_bytes (sha256 t.(msg_bytes)) = t.(expected_digest)).
+Proof. vm_compute. reflexivity. Qed.
