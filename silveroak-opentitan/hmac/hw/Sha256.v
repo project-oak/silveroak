@@ -81,7 +81,11 @@ Section Var.
           (* - Writing padding 0's *)
           else `padder_flushing`
         else if state == `padder_emit_bit` then
-          `padder_flushing`
+          (* If we are at offset 13, switch to writing length as there is space
+             this block for the length *)
+          if current_offset == `K 13`
+          then `padder_writing_length`
+          else `padder_flushing`
         else if state == `padder_flushing` then
           (* If we are at offset 13, switch to writing length as there is space
              this block for the length *)
