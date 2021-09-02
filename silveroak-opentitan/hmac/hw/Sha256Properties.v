@@ -296,11 +296,11 @@ Definition expected_padder_state
             else
               (* check if message ends early enough for length to fit in same
                  block (block=64 bytes, length=8 bytes, 64-8=56) *)
-              if (length msg + 1) mod 64 <? 56
+              if (length msg + 1) mod 64 <=? 56
               then if 56 <=? i mod 64
                    then padder_writing_length_value
                    else padder_flushing_value
-              else if i <? length msg + 8
+              else if i <? length msg + 9
                    then padder_flushing_value
                    else if 56 <=? i mod 64
                         then padder_writing_length_value
@@ -428,6 +428,31 @@ Lemma step_bvresize {n m} (x : denote_type (BitVec n)) :
   step (bvresize (n:=n) m) tt (x, tt) = (tt, N.land x (N.ones (N.of_nat m))).
 Proof. reflexivity. Qed.
 Hint Rewrite @step_bvresize using solve [eauto] : stepsimpl.
+(* TODO: move *)
+Lemma step_bvconcat {n m} (x : denote_type (BitVec n)) (y : denote_type (BitVec m)) :
+  step (bvconcat (n:=n) (m:=m)) tt (x, (y, tt))
+  = (tt, N.lor (N.shiftl x (N.of_nat m)) (N.land y (N.ones (N.of_nat m)))).
+Proof.
+  cbv [bvconcat]. stepsimpl. f_equal.
+  apply N.bits_inj; intro. push_Ntestbit.
+  destruct_one_match; push_Ntestbit.
+  all:boolsimpl.
+  { push_Nt
+    Search N.testbit N.ones.
+    rewrite
+  Search N.shiftl N.testbit.
+  rewrite N.shiftl_spec_
+  Search N.modulo (2 ^ _)%N N.land.
+  Search N.shiftl 2%N.
+  rewrite !N.land_ones, !N.shiftl_mul_pow2.
+  rewrite N.
+  cbn. reflexivity. Qed.
+Hint Rewrite @step_bvconcat using solve [eauto] : stepsimpl.
+(* TODO: move *)
+Lemma step_bvslice {n m} (x : denote_type (BitVec n)) :
+  step (bvslice (n:=n) m) tt (x, tt) = (tt, N.land x (N.ones (N.of_nat m))).
+Proof. reflexivity. Qed.
+Hint Rewrite @step_bvslice using solve [eauto] : stepsimpl.
 
 (* TODO: move *)
 Lemma length_N_to_bytes n bs :
@@ -470,6 +495,86 @@ Lemma increment_offset (offset index : N) :
   ((offset + 1) mod 16 * 4 = (index + 4) mod 64)%N.
 Proof. intros. Zify.zify. Z.to_euclidean_division_equations. lia. Qed.
 
+(* TODO: move *)
+(* helper lemma for modular arithmetic *)
+Lemma ceiling_add_same a b c :
+  1 < c < b - 1 -> a mod b <= b - c ->
+  Nat.ceiling (a + c) b = Nat.ceiling (a + 1) b.
+Proof.
+  (* proof sketch:
+     Since a mod b <= b - c and 1 < c < b - 1, it follows that:
+           (1) (a + 1) mod b <> 0
+           (2) (a + c) mod b = 0 iff a mod b = b - c
+           (3) (a + c) / b = (a + 1) / b + if (a mod b = b - c) then 1 else 0
+
+     Proof of (1):
+           (a + 1) mod b = (a mod b + 1) mod b
+                         = a mod b + 1 (because a mod b + 1 <= (b - c) + 1 < b)
+                         > 0
+
+     Proof of (2):
+           case 1 (a mod b <> b - c): same logic as (1) proves (a + c) mod b <> 0
+           case 1 (a mod b = b - c):
+             (a + c) mod b = (a mod b + c) mod b
+                           = (b - c + c) mod b
+                           = 0
+
+     Proof of (3):
+           (a + c) / b = (a + 1 + (c - 1)) / b
+                       = ((a + 1) / b * b + (a + 1) mod b + (c - 1)) / b
+                       = (a + 1) / b + (a mod b + 1 + (c - 1)) / b
+                       = (a + 1) / b + (a mod b + c) / b
+                       = (a + 1) / b + if (a mod b = b - c) then 1 else 0
+
+     Therefore:
+        Nat.ceiling (a + 1) b
+                    = (a + 1) / b + if (a + 1) mod b =? 0 then 0 else 1
+                    = (a + 1) / b + 1
+
+        Nat.ceiling (a + c) b
+                    = (a + c) / b + if (a + c) mod b =? 0 then 0 else 1
+                    = (a + c) / b + if (a mod b = b - c) then 0 else 1
+                    = (a + 1) / b + if (a mod b = b - c) then 1 else 0
+                                  + if (a mod b = b - c) then 0 else 1
+                    = (a + 1) b + 1
+  *)
+Admitted.
+
+(* TODO: move *)
+(* helper lemma for modular arithmetic *)
+Lemma ceiling_add_diff a b c :
+  0 < b -> 0 < c < b -> b - c < a mod b ->
+  Nat.ceiling (a + c) b = Nat.ceiling a b + 1.
+Proof.
+  (* proof sketch:
+     Since (b - c < a mod b) and 0 < c, it follows that:
+           0 < a mod b + c < b
+           a mod b <> 0
+
+     Therefore:
+           (a + c) mod b = (a mod b + c) mod b
+                         =  a mod b + c
+           (a + c) / b = (a / b * b + a mod b + c) / b
+                       =  a / b + (a mod b + c) / b
+                       =  a / b
+
+     Nat.ceiling (a + c) b
+                 = (a + c) / b + (if (a + c) mod b =? 0 then 0 else 1)
+                 = (a + c) / b + 1
+                 = a / b + 1
+
+     Nat.ceiling a b
+                 = a / b + if a mod b =? 0 then 0 else 1
+                 = a / b + 1
+  *)
+Admitted.
+
+(* TODO: move *)
+Lemma ceiling_range a b :
+  0 < b -> 0 < a ->
+  Nat.ceiling a b * b - b < a <= Nat.ceiling a b * b.
+Admitted.
+
 Lemma expected_padder_state_cases msg (msg_complete padder_done : bool) index :
   index < padded_message_size msg ->
   index mod 4 = 0 ->
@@ -485,7 +590,7 @@ Lemma expected_padder_state_cases msg (msg_complete padder_done : bool) index :
        /\ msg_complete = true
        /\ padder_done = false
        /\ index = length msg
-       /\ index < padded_message_size msg - 12
+       /\ index < padded_message_size msg - 8
        /\ nth index (SHA256.padded_msg_bytes msg) x00 = x80)
     (* ...or we're in the flushing state and the padder's expected output at
        index i is 0x00 *)
@@ -505,6 +610,28 @@ Lemma expected_padder_state_cases msg (msg_complete padder_done : bool) index :
                 (BigEndianBytes.N_to_bytes 8 (N.of_nat (length msg))) x00)).
 Proof.
   intros.
+  pose proof padded_message_bytes_longer_than_input msg.
+  pose proof padded_message_size_modulo msg.
+  assert (padded_message_size msg - 64 < length msg + 9 <= padded_message_size msg).
+  { apply ceiling_range; lia. }
+  (* helpful assertion for the case that length fits in the same block as
+     message *)
+  assert ((length msg + 1) mod 64 <= 56 ->
+          padded_message_size msg - 64 <= length msg + 1).
+  { cbv [padded_message_size] in *. intros.
+    replace (length msg + 9) with (length msg + 1 + 8) by lia.
+    rewrite ceiling_add_same with (c:=8) by lia.
+    pose proof ceiling_range (length msg + 1 + 1) 64 ltac:(lia) ltac:(lia).
+    lia. }
+  (* helpful assertion for the case that length does not fit in the same block
+     as message *)
+  assert (56 < (length msg + 1) mod 64 ->
+          padded_message_size msg - 64 >= length msg + 1).
+  { cbv [padded_message_size] in *. intros.
+    replace (length msg + 9) with (length msg + 1 + 8) by lia.
+    rewrite ceiling_add_diff with (c:=8) by lia.
+    pose proof ceiling_range (length msg + 1) 64 ltac:(lia) ltac:(lia).
+    lia. }
   cbv [expected_padder_state]; repeat destruct_one_match; subst; try lia;
     cbv [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
                padder_emit_bit_value padder_writing_length_value].
@@ -516,6 +643,17 @@ Proof.
                      | left ]
              end.
   all:ssplit; try reflexivity; try lia.
+  all:lazymatch goal with
+        | |- context [nth] => idtac
+        |  _ =>
+           (* solve all other goals with modular arithmetic automation *)
+           Zify.zify;
+             (* extra step because zify fails to zify Nat.modulo *)
+             rewrite !mod_Zmod in * by lia; Zify.zify;
+               Z.to_euclidean_division_equations; lia
+      end.
+
+  (* remaining goals all about matching up indices in spec with expected expression *)
 Admitted.
 
 (* Shorthand to calculate the new value of the [index] ghost variable for the
