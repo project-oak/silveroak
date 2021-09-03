@@ -1021,7 +1021,6 @@ Local Ltac testbit_crush :=
          | _ => first [ progress (push_Ntestbit; boolsimpl) | reflexivity ]
          end.
 
-Check step_sha256_inner.
 Lemma step_sha256_padder input state msg msg_complete padder_done index :
   sha256_padder_pre input msg msg_complete padder_done index ->
   sha256_padder_invariant state msg msg_complete padder_done index ->
