@@ -879,9 +879,27 @@ Proof.
     { (* padder_done matches done *)
       destruct padder_done; logical_simplify; subst; [ reflexivity | ].
       boolsimpl.
-      admit. (* prove that looking for writing_length state and offset = 15 is
-                the same as waiting for the end of the expected message *)
-    }
+      pose proof padded_message_size_modulo msg.
+      pose proof
+           expected_padder_state_cases msg msg_complete false index
+           ltac:(eauto) ltac:(eauto) ltac:(eauto) as padder_state_cases.
+      let H := fresh in
+      destruct padder_state_cases as [H|[H|[H|H]]];
+        logical_simplify; subst;
+        lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
+                            rewrite H in * end.
+      all:cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
+                     padder_emit_bit_value padder_writing_length_value
+                     negb andb orb].
+      all:try (destruct msg_complete; try discriminate).
+      all:repeat lazymatch goal with
+                 | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
+                 | |- context [N.eqb ?x ?y] => destr (N.eqb x y); try lia
+                 | H : context [Nat.eqb ?x ?y] |- _ => destr (Nat.eqb x y); try lia
+                 | H : context [N.eqb ?x ?y] |- _ => destr (N.eqb x y); try lia
+                 end.
+      all:try discriminate.
+      all:prove_by_zify. }
     { (* if message is complete, index is past or at end of message; otherwise,
          index = length of message *)
       repeat destruct_one_match; logical_simplify; subst; push_length; lia. }
