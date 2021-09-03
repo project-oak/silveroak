@@ -952,5 +952,5 @@ Proof.
             replace (padded_message_size msg - 8 + 4) with (padded_message_size msg - 4) by lia.
             cbv [expected_padder_state] in *.
             repeat first [ destruct_one_match | destruct_one_match_hyp | lia ]. }
-  } } } }.
+  } } } }
 Admitted.
