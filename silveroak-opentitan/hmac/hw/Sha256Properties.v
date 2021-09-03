@@ -339,6 +339,8 @@ Definition sha256_padder_invariant
           else index = 0 /\ msg = [])
        (* ...and length is 0 *)
        /\ len = N.of_nat 0
+       (* ...and offset is 0 *)
+       /\ current_offset = N.of_nat 0
      else
        (* if we're not done, the word index must be in range *)
        index < padded_message_size msg
@@ -368,20 +370,16 @@ Definition sha256_padder_pre
        (* caller is only allowed to pass new valid data if we're in the
           padder_waiting state *)
        expected_padder_state msg msg_complete padder_done index = padder_waiting_value
-       (* ...and the message is complete iff is_final is true *)
-       /\ msg_complete = is_final
+       (* ...then message must not be complete *)
+       /\ msg_complete = false
+       (* ...and final_length (if given) must be in range *)
        /\ (if is_final
-          then
-            (* if this is the final word, and the message must have
-               [final_length] additional bytes beyond what was already
-               processed *)
-            length msg = index + N.to_nat final_length
-            (* ...and final_length must be in the range [1,4] *)
-            /\ 1 <= N.to_nat final_length <= 4
-          else
-            (* if this is not the final word, the message must have exactly 4
-               additional bytes beyond what was already processed *)
-            length msg = index + 4)
+          then (1 < final_length <= 4)%N
+          else True)
+       (* ...and data value must be in range *)
+       /\ (if is_final
+          then data < 2 ^ (8 * final_length)
+          else data < 2 ^ 32)%N
      else
        (* is_final must be false if data is not valid *)
        is_final = false
@@ -428,29 +426,25 @@ Lemma step_bvresize {n m} (x : denote_type (BitVec n)) :
   step (bvresize (n:=n) m) tt (x, tt) = (tt, N.land x (N.ones (N.of_nat m))).
 Proof. reflexivity. Qed.
 Hint Rewrite @step_bvresize using solve [eauto] : stepsimpl.
+
 (* TODO: move *)
 Lemma step_bvconcat {n m} (x : denote_type (BitVec n)) (y : denote_type (BitVec m)) :
   step (bvconcat (n:=n) (m:=m)) tt (x, (y, tt))
-  = (tt, N.lor (N.shiftl x (N.of_nat m)) (N.land y (N.ones (N.of_nat m)))).
+  = (tt, N.lor (N.shiftl (N.land x (N.ones (N.of_nat n))) (N.of_nat m))
+               (N.land y (N.ones (N.of_nat (n + m))))).
 Proof.
   cbv [bvconcat]. stepsimpl. f_equal.
-  apply N.bits_inj; intro. push_Ntestbit.
-  destruct_one_match; push_Ntestbit.
-  all:boolsimpl.
-  { push_Nt
-    Search N.testbit N.ones.
-    rewrite
-  Search N.shiftl N.testbit.
-  rewrite N.shiftl_spec_
-  Search N.modulo (2 ^ _)%N N.land.
-  Search N.shiftl 2%N.
-  rewrite !N.land_ones, !N.shiftl_mul_pow2.
-  rewrite N.
-  cbn. reflexivity. Qed.
+  apply N.bits_inj; intro i. push_Ntestbit.
+  rewrite Nat2N.inj_add.
+  destruct_one_match; push_Ntestbit; boolsimpl; [ | reflexivity ].
+  destr (i <? N.of_nat m)%N; push_Ntestbit; boolsimpl; reflexivity.
+Qed.
 Hint Rewrite @step_bvconcat using solve [eauto] : stepsimpl.
+
 (* TODO: move *)
-Lemma step_bvslice {n m} (x : denote_type (BitVec n)) :
-  step (bvslice (n:=n) m) tt (x, tt) = (tt, N.land x (N.ones (N.of_nat m))).
+Lemma step_bvslice {n start len} (x : denote_type (BitVec n)) :
+  step (bvslice (n:=n) start len) tt (x, tt)
+  = (tt, N.land (N.shiftr x (N.of_nat start)) (N.ones (N.of_nat len))).
 Proof. reflexivity. Qed.
 Hint Rewrite @step_bvslice using solve [eauto] : stepsimpl.
 
@@ -489,11 +483,18 @@ Lemma padded_message_size_mono msg data :
   padded_message_size msg <= padded_message_size (msg ++ data).
 Admitted.
 
+(* TODO: move *)
+Local Ltac prove_by_zify :=
+  Zify.zify;
+  (* extra step because zify fails to zify Nat.modulo and Nat.div *)
+  rewrite ?mod_Zmod, ?div_Zdiv in * by lia;
+  Zify.zify; Z.to_euclidean_division_equations; lia.
+
 (* helper lemma for modular arithmetic *)
 Lemma increment_offset (offset index : N) :
   (offset * 4 = index mod 64)%N ->
   ((offset + 1) mod 16 * 4 = (index + 4) mod 64)%N.
-Proof. intros. Zify.zify. Z.to_euclidean_division_equations. lia. Qed.
+Proof. intros. prove_by_zify. Qed.
 
 (* TODO: move *)
 (* helper lemma for modular arithmetic *)
@@ -647,10 +648,7 @@ Proof.
         | |- context [nth] => idtac
         |  _ =>
            (* solve all other goals with modular arithmetic automation *)
-           Zify.zify;
-             (* extra step because zify fails to zify Nat.modulo *)
-             rewrite !mod_Zmod in * by lia; Zify.zify;
-               Z.to_euclidean_division_equations; lia
+           prove_by_zify
       end.
 
   (* remaining goals all about matching up indices in spec with expected expression *)
@@ -690,10 +688,15 @@ Definition padder_update_msg
   else if consumer_ready
        then if padder_done
             then if data_valid
-                 then BigEndianBytes.N_to_bytes 4 data
+                 then if is_final
+                      then firstn (N.to_nat final_length) (BigEndianBytes.N_to_bytes 4 data)
+                      else BigEndianBytes.N_to_bytes 4 data
                  else []
             else if data_valid
-                 then msg ++ BigEndianBytes.N_to_bytes 4 data
+                 then if is_final
+                      then msg ++ (firstn (N.to_nat final_length)
+                                          (BigEndianBytes.N_to_bytes 4 data))
+                      else msg ++ BigEndianBytes.N_to_bytes 4 data
                  else msg
        else msg.
 
@@ -781,9 +784,13 @@ Proof.
     pose proof padded_message_longer_than_input msg.
     pose proof padded_message_bytes_longer_than_input msg.
     pose proof min_padded_message_size msg.
-    let data := lazymatch goal with |- context [msg ++ ?data] => data end in
-    pose proof padded_message_size_mono msg data;
-    pose proof min_padded_message_size data.
+    lazymatch goal with
+    | |- context [msg ++ firstn ?n ?data] =>
+      pose proof padded_message_size_mono msg (firstn n data);
+        pose proof padded_message_size_mono msg data;
+        pose proof min_padded_message_size (firstn n data);
+        pose proof min_padded_message_size data
+    end.
     ssplit.
     { (* index is a multiple of 4 *)
       repeat destruct_one_match;
@@ -800,21 +807,23 @@ Proof.
       all:symmetry; apply Nat.eqb_neq.
       all:let data := lazymatch goal with |- context [?msg ++ ?data] => data end in
           pose proof padded_message_bytes_longer_than_input (msg ++ data).
-      all:rewrite <-padded_message_bytes_length.
       all:autorewrite with push_length in *; lia. }
     { (* index is past or at end of message if is_final is true, otherwise equal
          to length of message *)
-      repeat destruct_one_match; logical_simplify; subst; push_length; lia. }
+      repeat destruct_one_match; logical_simplify; subst; push_length; try lia. }
     { (* if output is valid, then new index must be at least 4 *)
       repeat destruct_one_match; lia. }
     { (* output matches spec *)
+      Print N.ones.
+      cbn [N.ones N.of_nat N.add Pos.add Nat.add Pos.of_succ_nat Pos.succ
+                  N.ones N.shiftl N.pred Pos.shiftl Pos.iter Pos.pred_N
+                  Pos.pred_double N.land Pos.land Pos.Ndouble].
       (* need step bvconcat + step bvslice, use expected state cases *)
       admit. }
     { cbv [expected_padder_state] in *.
       destruct padder_done, out_valid, is_final; logical_simplify; subst.
       all:repeat (destruct_one_match_hyp; try discriminate).
-      all:rewrite <-padded_message_bytes_length.
-      all:repeat destruct_one_match; lia. }
+      all:repeat destruct_one_match; try lia. }
     { (* length matches length processed so far *)
       rewrite N.land_ones.
       rewrite N.add_mod_idemp_r by (cbn;lia).
@@ -833,15 +842,23 @@ Proof.
       all:repeat (destruct_one_match_hyp; try discriminate).
       all:cbn [length app] in *.
       all:repeat destruct_one_match; try lia.
+      all:rewrite ?Nat2N.inj_add.
+      all:change (N.of_nat 4 mod 64)%N with ((0 + N.of_nat 4) mod 64)%N.
       all:apply increment_offset; auto. }
     { (* new state matches expectation *)
+      pose proof increment_offset current_offset (N.of_nat (length msg)) as Hincr.
+      (* assert that N and nat computations are equivalent *)
+      assert (N.to_nat ((N.of_nat (length msg) + 4) mod 64) = (length msg + 4) mod 64)
+        by (clear; prove_by_zify).
       cbv [expected_padder_state] in *.
       destruct padder_done, out_valid, is_final;
         logical_simplify; subst; rewrite ?N.eqb_refl; boolsimpl.
       all:repeat (destruct_one_match_hyp; try discriminate).
-      all:autorewrite with push_length; cbn [Nat.eqb].
-      all:repeat destruct_one_match; try reflexivity; lia. }
-  }
+      all:autorewrite with push_length.
+      all:rewrite ?Nat.mod_small by lia.
+      all:repeat (destruct_one_match; try discriminate; try lia); subst.
+      all:try (specialize (Hincr ltac:(assumption)); cbn in Hincr).
+      all:try lia; prove_by_zify. } }
   { (* Case for handling invalid data:
        consumer_ready=true
        clear=false
@@ -866,7 +883,7 @@ Proof.
     { (* padder_done matches done *)
       destruct padder_done; logical_simplify; subst; [ reflexivity | ].
       boolsimpl.
-      admit. (* prove that looking for writing_length state and offset = 13 is
+      admit. (* prove that looking for writing_length state and offset = 15 is
                 the same as waiting for the end of the expected message *)
     }
     { (* if message is complete, index is past or at end of message; otherwise,
@@ -945,18 +962,14 @@ Proof.
             cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
                        padder_emit_bit_value padder_writing_length_value
                        negb andb orb].
-        { ssplit; lia. }
+        { ssplit; try lia; reflexivity. }
         { ssplit; [ lia .. | | ].
           { rewrite Nat2N.inj_add.
             apply increment_offset; lia. }
           { repeat lazymatch goal with
                    | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia; [ ]
                    end.
-            assert ((padded_message_size msg - 4) mod 64 = 60).
-            { Zify.zify.
-              (* extra step because zify fails to zify Nat.modulo *)
-              rewrite !mod_Zmod in * by lia. Zify.zify.
-              Z.div_mod_to_equations; lia. }
+            assert ((padded_message_size msg - 4) mod 64 = 60) by prove_by_zify.
             replace (padded_message_size msg - 8 + 4) with (padded_message_size msg - 4) by lia.
             cbv [expected_padder_state] in *.
             repeat first [ destruct_one_match | destruct_one_match_hyp | lia ]. }
