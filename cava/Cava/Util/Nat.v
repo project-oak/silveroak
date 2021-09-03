@@ -159,3 +159,18 @@ Hint Rewrite N.clearbit_eq N.b2n_bit0 N.shiftr_spec'
      N.div2_bits N.double_bits_succ N.clearbit_eqb
      N.bits_0 N.succ_double_testbit N.double_testbit
      N.mod_pow2_bits_full : push_Ntestbit.
+
+Ltac push_Ntestbit_step :=
+  match goal with
+  | _ => progress autorewrite with push_Ntestbit
+  | |- context [N.testbit (N.ones ?n) ?m]  =>
+    first [ rewrite (N.ones_spec_high n m) by lia
+          | rewrite (N.ones_spec_low n m) by lia ]
+  | |- context [N.testbit (N.shiftl ?a ?n) ?m] =>
+    first [ rewrite (N.shiftl_spec_high' a n m) by lia
+          | rewrite (N.shiftl_spec_low a n m) by lia ]
+  | |- context [N.testbit (N.lnot ?a ?n) ?m] =>
+    first [ rewrite (N.lnot_spec_high a n m) by lia
+          | rewrite (N.lnot_spec_low a n m) by lia ]
+  end.
+Ltac push_Ntestbit := repeat push_Ntestbit_step.
