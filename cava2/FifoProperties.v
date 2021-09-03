@@ -81,7 +81,7 @@ Section FifoSpec.
     let '(valid, (data, (accepted_output,_))) := input in
     let '(_, (_, (fifo, count))) := state in
     (* if count is fifo_size we are full and we shouldn't be receiving  *)
-    (if valid then N.to_nat count < fifo_size else Coq.Init.Logic.True).
+    (if valid then N.to_nat count < fifo_size else True).
 
   Definition fifo_invariant
     (contents: list (denote_type T))
