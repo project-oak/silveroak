@@ -814,10 +814,6 @@ Proof.
     { (* if output is valid, then new index must be at least 4 *)
       repeat destruct_one_match; lia. }
     { (* output matches spec *)
-      Print N.ones.
-      cbn [N.ones N.of_nat N.add Pos.add Nat.add Pos.of_succ_nat Pos.succ
-                  N.ones N.shiftl N.pred Pos.shiftl Pos.iter Pos.pred_N
-                  Pos.pred_double N.land Pos.land Pos.Ndouble].
       (* need step bvconcat + step bvslice, use expected state cases *)
       admit. }
     { cbv [expected_padder_state] in *.
@@ -938,25 +934,8 @@ Proof.
         pose proof padded_message_size_modulo msg.
         assert (if (current_offset =? 15)%N
                 then index = padded_message_size msg - 4
-                else current_offset = 14%N /\ index = padded_message_size msg - 8).
-        { admit.
-          (* proof sketch:
-             We know:
-                1) padded_message_size - 8 <= index < padded_message_size
-                2) index mod 4 = 0
-                3) index mod 64 = offset * 4
-                4) padded_message mod 64 = 0
-                5) 64 <= padded_message mod 64
-
-             From (1) and (2), it follows that:
-                6) index = padded_message_size - 8 \/ index = padded_message_size - 4
-
-             From (4) and (5), it follows that:
-                7) (padded_message_size - 8) mod 64 = 56
-                8) (padded_message_size - 4) mod 64 = 60
-
-             Therefore, we know that either offset=15 and index = padded_message_size - 4
-             or offset=14 and index = padded_message_size - 8. *) }
+                else current_offset = 14%N /\ index = padded_message_size msg - 8)
+          by (destruct_one_match; prove_by_zify).
         destr (current_offset =? 15)%N;
           logical_simplify; subst;
             cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
