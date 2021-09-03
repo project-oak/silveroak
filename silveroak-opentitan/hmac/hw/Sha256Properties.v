@@ -324,9 +324,6 @@ Definition sha256_padder_invariant
      then
        (* if output is valid, we must have processed at least one word *)
        4 <= index
-       (* ...and the output must match the spec *)
-       /\ out = BigEndianBytes.concat_bytes
-                 (firstn 4 (skipn (index - 4) (SHA256.padded_msg_bytes msg)))
      else True)
   /\ (if done
      then
@@ -426,6 +423,7 @@ Admitted.
 Lemma padded_message_bytes_length msg :
   length (SHA256.padded_msg_bytes msg) = padded_message_size msg.
 Admitted.
+Hint Rewrite @padded_message_bytes_length : push_length.
 (* TODO: move *)
 Lemma padded_message_bytes_longer_than_input msg :
   length msg + 9 <= padded_message_size msg.
@@ -548,32 +546,26 @@ Lemma expected_padder_state_cases msg (msg_complete padder_done : bool) index :
   ( (* either we're in the waiting state and the padder's expected output at
        index i is just the ith byte of the message *)
     (expected_padder_state msg msg_complete padder_done index = padder_waiting_value
-     /\ (if msg_complete then padder_done = true else True)
-     /\ nth index (SHA256.padded_msg_bytes msg) x00 = nth index msg x00)
+     /\ (if msg_complete then padder_done = true else True))
     (* ...or we're in the emit_bit state and the padder's expected output at
        index i is 0x80 *)
     \/ (expected_padder_state msg msg_complete padder_done index = padder_emit_bit_value
        /\ msg_complete = true
        /\ padder_done = false
        /\ index = length msg
-       /\ index < padded_message_size msg - 8
-       /\ nth index (SHA256.padded_msg_bytes msg) x00 = x80)
+       /\ index < padded_message_size msg - 8)
     (* ...or we're in the flushing state and the padder's expected output at
        index i is 0x00 *)
     \/ (expected_padder_state msg msg_complete padder_done index = padder_flushing_value
        /\ msg_complete = true
        /\ padder_done = false
-       /\ index < padded_message_size msg - 8
-       /\  nth index (SHA256.padded_msg_bytes msg) x00 = x00)
+       /\ index < padded_message_size msg - 8)
     (* ...or we're in the writing_length state and the padder's expected output
        at index i part of the length *)
     \/ (expected_padder_state msg msg_complete padder_done index = padder_writing_length_value
        /\ msg_complete = true
        /\ padder_done = false
-       /\ padded_message_size msg - 8 <= index
-       /\  nth index (SHA256.padded_msg_bytes msg) x00
-          = nth (index - (padded_message_size msg - 8))
-                (BigEndianBytes.N_to_bytes 8 (N.of_nat (length msg))) x00)).
+       /\ padded_message_size msg - 8 <= index)).
 Proof.
   intros.
   pose proof padded_message_bytes_longer_than_input msg.
@@ -609,15 +601,9 @@ Proof.
                      | left ]
              end.
   all:ssplit; try reflexivity; try lia.
-  all:lazymatch goal with
-        | |- context [nth] => idtac
-        |  _ =>
-           (* solve all other goals with modular arithmetic automation *)
-           prove_by_zify
-      end.
-
-  (* remaining goals all about matching up indices in spec with expected expression *)
-Admitted.
+  (* solve all other goals with modular arithmetic automation *)
+  all:prove_by_zify.
+Qed.
 
 (* Shorthand to calculate the new value of the [index] ghost variable for the
    padder *)
@@ -778,9 +764,6 @@ Proof.
       repeat destruct_one_match; logical_simplify; subst; push_length; try lia. }
     { (* if output is valid, then new index must be at least 4 *)
       repeat destruct_one_match; lia. }
-    { (* output matches spec *)
-      (* need step bvconcat + step bvslice, use expected state cases *)
-      admit. }
     { cbv [expected_padder_state] in *.
       destruct padder_done, out_valid, is_final; logical_simplify; subst.
       all:repeat (destruct_one_match_hyp; try discriminate).
@@ -868,16 +851,11 @@ Proof.
     { (* if message is complete, index is past or at end of message; otherwise,
          index = length of message *)
       repeat destruct_one_match; logical_simplify; subst; push_length; lia. }
-    { (* if output is valid, then new index must be at least 4 and output must
-         match spec *)
+    { (* if output is valid, then new index must be at least 4 *)
       destr (state =? padder_waiting_value)%N; boolsimpl; [ solve [trivial] | ].
-      split.
-      { (* new index is at least 4 *)
-        repeat destruct_one_match; logical_simplify; subst; try lia;
-          cbv [expected_padder_state] in *; repeat destruct_one_match_hyp;
-            congruence. }
-      { (* output matches spec *)
-        admit. } }
+      repeat destruct_one_match; logical_simplify; subst; try lia;
+        cbv [expected_padder_state] in *; repeat destruct_one_match_hyp;
+          congruence. }
     { (* entire clause for what happens if we're done or not done *)
       destruct padder_done;
         logical_simplify; subst; rewrite ?N.eqb_refl;
@@ -904,15 +882,22 @@ Proof.
         destruct (index =? padded_message_size msg); try lia; [ ].
         reflexivity. }
       { (* padder_emit_bit case *)
+        pose proof padded_message_size_modulo msg.
         ssplit; [ lia .. | | ].
         { rewrite Nat2N.inj_add.
           apply increment_offset; lia. }
-        { admit. (* state transition *) } }
+        { cbv [expected_padder_state].
+          repeat destruct_one_match; try reflexivity; try discriminate.
+          all:prove_by_zify. } }
       { (* padder_flushing case *)
+        pose proof padded_message_size_modulo msg.
         ssplit; [ lia .. | | ].
         { rewrite Nat2N.inj_add.
           apply increment_offset; lia. }
-        { admit. (* state transition *) } }
+        { cbv [expected_padder_state] in *.
+          repeat destruct_one_match; try reflexivity; try discriminate.
+          all:try prove_by_zify.
+          all:repeat destruct_one_match_hyp; prove_by_zify. } }
       { (* padder_writing_length case *)
         pose proof padded_message_size_modulo msg.
         assert (if (current_offset =? 15)%N
@@ -936,7 +921,7 @@ Proof.
             cbv [expected_padder_state] in *.
             repeat first [ destruct_one_match | destruct_one_match_hyp | lia ]. }
   } } } }
-Admitted.
+Qed.
 
 
 Definition sha256_padder_spec
@@ -957,7 +942,7 @@ Definition sha256_padder_spec
       else if consumer_ready
            then if padder_done
                 then data_valid (* we were previously done and got new valid data *)
-                else 0 <? word_index (* we're partway through processing message *)
+                else true (* we're partway through processing message *)
            else out_valid (* repeat previous output if consumer is not ready *) in
   let out :=
       if clear
@@ -979,14 +964,62 @@ Definition sha256_padder_spec
 
 Lemma bytes_to_Ns_length n bs :
   length (BigEndianBytes.bytes_to_Ns n bs) = length bs / n.
-Proof. cbv [BigEndianBytes.bytes_to_Ns]. push_length. reflexivity. Qed.
-length (BigEndianBytes.bytes_to_Ns 4 (SHA256.padded_msg_bytes msg)) = padded_message_size msg / 4
+Proof. cbv [BigEndianBytes.bytes_to_Ns]. length_hammer. Qed.
+Hint Rewrite @bytes_to_Ns_length : push_length.
 Lemma padded_message_length msg :
   length (SHA256.padded_msg msg) = padded_message_size msg / 4.
 Proof.
   cbv [SHA256.padded_msg]. change (N.to_nat SHA256.w / 8) with 4.
-  Search BigEndianBytes.bytes_to_Ns.
+  length_hammer.
 Qed.
+Hint Rewrite @padded_message_length : push_length.
+
+Lemma nth_padded_msg msg i :
+  nth i (SHA256.padded_msg msg) 0%N
+  = BigEndianBytes.concat_bytes
+      [nth (i*4) (SHA256.padded_msg_bytes msg) x00
+       ; nth (i*4 + 1) (SHA256.padded_msg_bytes msg) x00
+       ; nth (i*4 + 2) (SHA256.padded_msg_bytes msg) x00
+       ; nth (i*4 + 3) (SHA256.padded_msg_bytes msg) x00].
+Admitted.
+
+Lemma N_to_byte_to_N x : Byte.to_N (N_to_byte x) = (x mod 256)%N.
+Admitted.
+
+Lemma nth_firstn {A} i n d (l : list A) :
+  nth i (firstn n l) d = if i <? n then nth i l d else d.
+Admitted.
+Hint Rewrite @nth_firstn : push_nth.
+
+Lemma nth_padding_0 msg : nth 0 (SHA256.padding msg) x00 = x80.
+Proof. reflexivity. Qed.
+Hint Rewrite nth_padding_0 : push_nth.
+
+Lemma padding_length msg :
+  length (SHA256.padding msg) = padded_message_size msg - length msg - 8.
+Proof.
+  rewrite <-padded_message_bytes_length.
+  cbv [SHA256.padded_msg_bytes]. push_length.
+  lia.
+Qed.
+Hint Rewrite @padding_length : push_length.
+
+Lemma nth_padding_succ msg i :
+  nth (S i) (SHA256.padding msg) x00 = x00.
+Proof.
+  destr (S i <? length (SHA256.padding msg));
+    [ | apply nth_overflow; lia ].
+  cbv [SHA256.padding] in *. autorewrite with push_length in *.
+  push_nth. reflexivity.
+Qed.
+Hint Rewrite nth_padding_succ : push_nth.
+
+Local Ltac testbit_crush :=
+  repeat lazymatch goal with
+         | |- context [N.eqb ?x ?y] => destr (N.eqb x y); try lia; subst
+         | |- N.testbit ?x _ = N.testbit ?x _ => f_equal; lia
+         | _ => first [ progress (push_Ntestbit; boolsimpl) | reflexivity ]
+         end.
 
 Check step_sha256_inner.
 Lemma step_sha256_padder input state msg msg_complete padder_done index :
@@ -1029,11 +1062,7 @@ Proof.
     repeat (boolsimpl || subst || logical_simplify);
     cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
                padder_emit_bit_value padder_writing_length_value].
-  { (* Case for handling valid data:
-       consumer_ready=true
-       clear=false
-       data_valid=true
-     *)
+  { (* data_valid=true *)
     pose proof length_bytes_to_Ns_upper_bound 4 msg.
     pose proof padded_message_longer_than_input msg.
     pose proof padded_message_bytes_longer_than_input msg.
@@ -1045,65 +1074,198 @@ Proof.
         pose proof min_padded_message_size (firstn n data);
         pose proof min_padded_message_size data;
         pose proof padded_message_longer_than_input (firstn n data);
-        pose proof padded_message_longer_than_input data
+        pose proof padded_message_longer_than_input data;
+        pose proof padded_message_bytes_longer_than_input (msg ++ firstn n data);
+        pose proof padded_message_size_modulo (msg ++ firstn n data)
     end.
+    lazymatch goal with
+    | H : expected_padder_state ?msg ?mc ?pd ?i = _ |- _ =>
+      pose proof
+           expected_padder_state_cases msg mc pd i
+           ltac:(lia) ltac:(eauto) ltac:(cbn;lia)
+        as padder_state_cases
+    end.
+    let H := fresh in
+    destruct padder_state_cases as [H|[H|[H|H]]];
+      logical_simplify; subst;
+        lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
+                            rewrite H in * end;
+        cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
+                   padder_emit_bit_value padder_writing_length_value
+                   negb andb orb];
+        (* there should be only one case, since valid data means we have to be
+           in the padder_waiting state *)
+        try discriminate; [ ].
     destruct padder_done;
       logical_simplify; subst; rewrite ?N.eqb_refl;
         cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
                    padder_emit_bit_value padder_writing_length_value
                    negb andb orb].
-    {
+    { (* padder_done=true *)
+      destruct out_valid; logical_simplify; subst; [ lia | ].
+      autorewrite with push_length in *. compute_expr (0 / 4).
       destruct is_final.
       { (* padder_done=true, is_final=true *)
-        destruct out_valid; logical_simplify; subst; [ lia | ].
-        autorewrite with push_length in *.
-        do 2 f_equal.
-        2:{
-          symmetry; apply Nat.eqb_neq.
-          compute_expr (0 / 4).
-          autorewrite with push_length in *.
-          Print BigEndianBytes.bytes_to_Ns.
-          lia.
-        do 2 (apply (f_equal2 pair); try reflexivity); [ ].
+        compute_expr (N.of_nat 16).
+        compute_expr (N.of_nat (16 + 16)).
+        change 32768%N with (2 ^ 15)%N.
+        change 8388608%N with (2 ^ 23)%N.
+        change 128%N with (2 ^ 7)%N.
+        (* solve the boolean parts of the tuple *)
+        do 2 f_equal;
+          [ | symmetry; apply Nat.eqb_neq; autorewrite with push_length in *;
+              prove_by_zify ].
         repeat destruct_one_match; subst; try lia.
-        {
-          (* something wrong here -- message is nil but we have data...*)
-          compute_expr (N.of_nat 16).
-          compute_expr (N.of_nat (16 + 16)).
-          compute_expr (N.ones 16).
-          compute_expr (N.ones 32).
-          cbn.
-        all:subst.
-        all:cbn.
-        cbn.
-        cbn in H2. lia.
-    { destruct is_final; try 
-        [ ssplit; reflexivity | ].
-      pose proof
-           expected_padder_state_cases msg msg_complete false index
-           ltac:(eauto) ltac:(eauto) ltac:(eauto) as padder_state_cases.
-      let H := fresh in
-      destruct padder_state_cases as [H|[H|[H|H]]];
-        logical_simplify; subst;
-        lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
-                            rewrite H in * end.
-      all:cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                     padder_emit_bit_value padder_writing_length_value
-                     negb andb orb].
-    destruct padder_done.
-
-    
-    
-    pose proof length_bytes_to_Ns_upper_bound 4 msg.
-    pose proof padded_message_longer_than_input msg.
-    pose proof padded_message_bytes_longer_than_input msg.
-    pose proof min_padded_message_size msg.
-    lazymatch goal with
-    | |- context [msg ++ firstn ?n ?data] =>
-      pose proof padded_message_size_mono msg (firstn n data);
-        pose proof padded_message_size_mono msg data;
-        pose proof min_padded_message_size (firstn n data);
-        pose proof min_padded_message_size data
-    end.
-    ssplit.
-Qed.
+        all:
+          try lazymatch goal with
+              | H1 : ?final_length <> 1%N,
+                     H2 : ?final_length <> 2%N,
+                          H3 : ?final_length <> 3%N |- _ =>
+                assert (final_length = 4%N) by lia; subst
+              end.
+        all:cbv [N.to_nat Pos.to_nat Pos.iter_op Nat.add].
+        all:lazymatch goal with
+            | H : (?data < 2 ^ ?n)%N |- context [?data] =>
+              replace data with (N.land data (N.ones n))
+                by (rewrite N.land_ones; apply N.mod_small; lia)
+            end.
+        all:rewrite nth_padded_msg.
+        all:cbn [Nat.mul Nat.add].
+        all:cbv [BigEndianBytes.N_to_bytes]; cbn [seq List.map firstn].
+        all:cbn [Nat.sub Nat.mul N.of_nat Pos.of_succ_nat
+                         Pos.succ N.mul Pos.mul Pos.add].
+        all:cbv [SHA256.padded_msg_bytes]; cbn [app nth].
+        all:lazymatch goal with
+            | |- context [SHA256.padding ?msg] =>
+              compute_expr (SHA256.padding msg); cbn [app nth]
+            | _ => idtac
+            end.
+        all:cbv [BigEndianBytes.concat_bytes]; cbn [fold_left].
+        all:rewrite !N_to_byte_to_N; cbn [Byte.to_N].
+        all:change 128%N with (2 ^ 7)%N.
+        all:rewrite <-!N.land_ones with (n:=8%N).
+        all:apply N.bits_inj; intro i.
+        all:push_Ntestbit; boolsimpl.
+        all:destr (i <? 8)%N; testbit_crush.
+        all:destr (i <? 16)%N; testbit_crush.
+        all:destr (i <? 24)%N; testbit_crush.
+        all:destr (i <? 32)%N; testbit_crush. }
+      { (* padder_done=true, is_final=false *)
+        (* solve the boolean parts of the tuple *)
+        do 2 f_equal; [ ].
+        all:lazymatch goal with
+            | H : (?data < 2 ^ ?n)%N |- context [?data] =>
+              replace data with (N.land data (N.ones n))
+                by (rewrite N.land_ones; apply N.mod_small; lia)
+            end.
+        rewrite nth_padded_msg.
+        cbn [Nat.mul Nat.add].
+        cbv [BigEndianBytes.N_to_bytes]; cbn [seq List.map firstn].
+        cbn [Nat.sub Nat.mul N.of_nat Pos.of_succ_nat
+                     Pos.succ N.mul Pos.mul Pos.add].
+        cbv [SHA256.padded_msg_bytes]; cbn [app nth].
+        cbv [BigEndianBytes.concat_bytes]; cbn [fold_left].
+        rewrite !N_to_byte_to_N; cbn [Byte.to_N].
+        rewrite <-!N.land_ones with (n:=8%N).
+        apply N.bits_inj; intro i.
+        push_Ntestbit; boolsimpl.
+        destr (i <? 8)%N; testbit_crush.
+        destr (i <? 16)%N; testbit_crush.
+        destr (i <? 24)%N; testbit_crush.
+        destr (i <? 32)%N; testbit_crush. } }
+    { (* padder_done=false *)
+      destruct is_final.
+      { (* padder_done=false, is_final=true *)
+        compute_expr (N.of_nat 16).
+        compute_expr (N.of_nat (16 + 16)).
+        change 32768%N with (2 ^ 15)%N.
+        change 8388608%N with (2 ^ 23)%N.
+        change 128%N with (2 ^ 7)%N.
+        (* solve the boolean parts of the tuple *)
+        do 2 f_equal;
+          [ | symmetry; apply Nat.eqb_neq; autorewrite with push_length in *;
+              prove_by_zify ].
+        rewrite nth_padded_msg.
+        replace ((length msg / 4) * 4) with (length msg)
+          by (etransitivity; [ apply Nat.div_mod with (y:=4); lia | ]; lia).
+        cbv [SHA256.padded_msg_bytes].
+        rewrite !app_assoc_reverse. push_nth. natsimpl.
+        repeat lazymatch goal with |- context [ ?x + ?y - ?x ] =>
+                                   replace (x + y - x) with y by lia
+               end.
+        autorewrite with push_length in *.
+        repeat destruct_one_match; subst; try lia.
+        all:
+          try lazymatch goal with
+              | H1 : ?final_length <> 1%N,
+                     H2 : ?final_length <> 2%N,
+                          H3 : ?final_length <> 3%N |- _ =>
+                assert (final_length = 4%N) by lia; subst
+              end.
+        all:lazymatch goal with
+            | |- context [firstn (N.to_nat ?n)] =>
+              compute_expr (N.to_nat n) end.
+        all:cbn [N.to_nat] in *; cbv [Pos.to_nat Pos.iter_op] in *.
+        all:cbn [Nat.mul Nat.add] in *.
+        all:push_nth; push_length; natsimpl.
+        all:repeat lazymatch goal with
+                   | |- context [nth _ (_ ++ _)] =>
+                     rewrite app_nth1 by (length_hammer || push_length; prove_by_zify)
+                   end.
+        all:cbn [Nat.ltb Nat.leb].
+        all:push_nth.
+        all:lazymatch goal with
+            | H : (?data < 2 ^ ?n)%N |- context [?data] =>
+              replace data with (N.land data (N.ones n))
+                by (rewrite N.land_ones; apply N.mod_small; lia)
+            end.
+        all:cbv [BigEndianBytes.N_to_bytes]; cbn [seq List.map firstn].
+        all:cbn [Nat.sub Nat.mul N.of_nat Pos.of_succ_nat
+                         Pos.succ N.mul Pos.mul Pos.add].
+        all:push_nth.
+        all:cbv [BigEndianBytes.concat_bytes]; cbn [fold_left].
+        all:rewrite !N_to_byte_to_N; cbn [Byte.to_N].
+        all:change 128%N with (2 ^ 7)%N.
+        all:rewrite <-!N.land_ones with (n:=8%N).
+        all:apply N.bits_inj; intro i.
+        all:push_Ntestbit; boolsimpl.
+        all:destr (i <? 8)%N; testbit_crush.
+        all:destr (i <? 16)%N; testbit_crush.
+        all:destr (i <? 24)%N; testbit_crush.
+        all:destr (i <? 32)%N; testbit_crush. }
+      { (* padder_done=false, is_final=false *)
+        (* solve the boolean parts of the tuple *)
+        do 2 f_equal;
+          [ | symmetry; apply Nat.eqb_neq; autorewrite with push_length in *;
+              prove_by_zify ].
+        rewrite nth_padded_msg.
+        replace ((length msg / 4) * 4) with (length msg)
+          by (etransitivity; [ apply Nat.div_mod with (y:=4); lia | ]; lia).
+        cbv [SHA256.padded_msg_bytes].
+        rewrite !app_assoc_reverse. push_nth. natsimpl.
+        repeat lazymatch goal with |- context [ ?x + ?y - ?x ] =>
+                                   replace (x + y - x) with y by lia
+               end.
+        lazymatch goal with
+        | H : (?data < 2 ^ ?n)%N |- context [?data] =>
+          replace data with (N.land data (N.ones n))
+            by (rewrite N.land_ones; apply N.mod_small; lia)
+        end.
+        autorewrite with push_length in *.
+        cbn [Nat.mul Nat.add].
+        cbv [BigEndianBytes.N_to_bytes]; cbn [seq List.map firstn].
+        cbn [Nat.sub Nat.mul N.of_nat Pos.of_succ_nat
+                     Pos.succ N.mul Pos.mul Pos.add].
+        cbv [SHA256.padded_msg_bytes]; cbn [app nth].
+        cbv [BigEndianBytes.concat_bytes]; cbn [fold_left].
+        rewrite !N_to_byte_to_N; cbn [Byte.to_N].
+        rewrite <-!N.land_ones with (n:=8%N).
+        apply N.bits_inj; intro i.
+        push_Ntestbit; boolsimpl.
+        destr (i <? 8)%N; testbit_crush.
+        destr (i <? 16)%N; testbit_crush.
+        destr (i <? 24)%N; testbit_crush.
+        destr (i <? 32)%N; testbit_crush. } } }
+  { (* data_valid=false *)
+    admit. }
+Admitted.
