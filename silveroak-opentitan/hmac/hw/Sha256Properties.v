@@ -385,41 +385,6 @@ Definition sha256_padder_pre
        is_final = false
     ).
 
-Definition sha256_padder_spec
-           (input : denote_type [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit])
-           (state : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16))
-           (msg : list Byte.byte) (msg_complete padder_done : bool) (index : nat)
-  : denote_type (Bit ** sha_word ** Bit) :=
-  let '(data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,_)))))) := input in
-  let '(done, (out, (out_valid, (state, (len, current_offset))))) := state in
-  (* expected result as words *)
-  let expected_words := SHA256.padded_msg msg in
-  let word_index := index / 4 in
-  let out_valid :=
-      if clear
-      then false
-      else if consumer_ready
-           then if padder_done
-                then data_valid (* we were previously done and got new valid data *)
-                else 0 <? word_index (* we're partway through processing message *)
-           else false (* dummy output if consumer is not ready *) in
-  let out :=
-      if clear
-      then 0%N
-      else if consumer_ready
-           then nth word_index expected_words 0%N (* output matches expected value *)
-           else 0%N (* dummy output if consumer is not ready *) in
-  let done :=
-      if clear
-      then true
-      else if consumer_ready
-           then
-             (* either this was the last word, or we were previously done and didn't
-                start a new message this step *)
-             ((word_index =? length expected_words - 1)
-              || (done && negb data_valid))%bool
-           else done (* stay in same state if consumer not ready *) in
-  (out_valid, (out, done)).
 
 (* TODO: move *)
 Lemma step_bvresize {n m} (x : denote_type (BitVec n)) :
@@ -972,3 +937,173 @@ Proof.
             repeat first [ destruct_one_match | destruct_one_match_hyp | lia ]. }
   } } } }
 Admitted.
+
+
+Definition sha256_padder_spec
+           (input : denote_type [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit])
+           (state : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16))
+           (msg : list Byte.byte) (msg_complete padder_done : bool) (index : nat)
+  : denote_type (Bit ** sha_word ** Bit) :=
+  let '(data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,_)))))) := input in
+  let '(done, (out, (out_valid, (state, (len, current_offset))))) := state in
+  (* expected result as words *)
+  let expected_words :=
+      SHA256.padded_msg
+        (padder_update_msg msg msg_complete padder_done index input) in
+  let word_index := index / 4 in
+  let out_valid :=
+      if clear
+      then false
+      else if consumer_ready
+           then if padder_done
+                then data_valid (* we were previously done and got new valid data *)
+                else 0 <? word_index (* we're partway through processing message *)
+           else out_valid (* repeat previous output if consumer is not ready *) in
+  let out :=
+      if clear
+      then 0%N
+      else if consumer_ready
+           then nth word_index expected_words 0%N (* output matches expected value *)
+           else out (* repeat previous output if consumer is not ready *) in
+  let done :=
+      if clear
+      then true
+      else if consumer_ready
+           then
+             (* either this was the last word, or we were previously done and didn't
+                start a new message this step *)
+             ((word_index =? length expected_words - 1)
+              || (padder_done && negb data_valid))%bool
+           else padder_done (* stay in same state if consumer not ready *) in
+  (out_valid, (out, done)).
+
+Lemma bytes_to_Ns_length n bs :
+  length (BigEndianBytes.bytes_to_Ns n bs) = length bs / n.
+Proof. cbv [BigEndianBytes.bytes_to_Ns]. push_length. reflexivity. Qed.
+length (BigEndianBytes.bytes_to_Ns 4 (SHA256.padded_msg_bytes msg)) = padded_message_size msg / 4
+Lemma padded_message_length msg :
+  length (SHA256.padded_msg msg) = padded_message_size msg / 4.
+Proof.
+  cbv [SHA256.padded_msg]. change (N.to_nat SHA256.w / 8) with 4.
+  Search BigEndianBytes.bytes_to_Ns.
+Qed.
+
+Check step_sha256_inner.
+Lemma step_sha256_padder input state msg msg_complete padder_done index :
+  sha256_padder_pre input msg msg_complete padder_done index ->
+  sha256_padder_invariant state msg msg_complete padder_done index ->
+  snd (step sha256_padder state input)
+  = sha256_padder_spec input state msg msg_complete padder_done index.
+Proof.
+  (* keep track of the values of input and state so they're visible as we
+     destruct cases; helps to figure out what case you're in when
+     writing/debugging proofs *)
+  pose (I:=input). pose (S:=state). pose (mc:=msg_complete).
+  destruct input as
+      (data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,[])))))).
+  destruct state as
+      (done, (out, (out_valid, (state, (len, current_offset))))).
+  (* simplify single-step behavior *)
+  cbv [sha256_padder_pre sha256_padder_invariant
+                         sha256_padder_spec
+                         padder_update_msg
+                         padder_update_msg_complete
+                         padder_update_padder_done
+                         padder_update_index].
+  intros. logical_simplify. subst. cbn [fst snd] in *.
+  cbv [sha256_padder K]. stepsimpl.
+  repeat (destruct_pair_let; cbn [fst snd]).
+  autorewrite with tuple_if; cbn [fst snd].
+  stepsimpl.
+  (* destruct cases for flags *)
+  destruct clear;
+    repeat (boolsimpl || subst || logical_simplify);
+    (* handle case for clear=true *)
+    [ ssplit; (lia || reflexivity) | ].
+  destruct consumer_ready;
+    repeat (boolsimpl || subst || logical_simplify);
+    rewrite ?N.eqb_refl;
+    (* handle case for consumer_ready=false *)
+    [ | ssplit; (lia || reflexivity) ].
+  destruct data_valid;
+    repeat (boolsimpl || subst || logical_simplify);
+    cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
+               padder_emit_bit_value padder_writing_length_value].
+  { (* Case for handling valid data:
+       consumer_ready=true
+       clear=false
+       data_valid=true
+     *)
+    pose proof length_bytes_to_Ns_upper_bound 4 msg.
+    pose proof padded_message_longer_than_input msg.
+    pose proof padded_message_bytes_longer_than_input msg.
+    pose proof min_padded_message_size msg.
+    lazymatch goal with
+    | |- context [msg ++ firstn ?n ?data] =>
+      pose proof padded_message_size_mono msg (firstn n data);
+        pose proof padded_message_size_mono msg data;
+        pose proof min_padded_message_size (firstn n data);
+        pose proof min_padded_message_size data;
+        pose proof padded_message_longer_than_input (firstn n data);
+        pose proof padded_message_longer_than_input data
+    end.
+    destruct padder_done;
+      logical_simplify; subst; rewrite ?N.eqb_refl;
+        cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
+                   padder_emit_bit_value padder_writing_length_value
+                   negb andb orb].
+    {
+      destruct is_final.
+      { (* padder_done=true, is_final=true *)
+        destruct out_valid; logical_simplify; subst; [ lia | ].
+        autorewrite with push_length in *.
+        do 2 f_equal.
+        2:{
+          symmetry; apply Nat.eqb_neq.
+          compute_expr (0 / 4).
+          autorewrite with push_length in *.
+          Print BigEndianBytes.bytes_to_Ns.
+          lia.
+        do 2 (apply (f_equal2 pair); try reflexivity); [ ].
+        repeat destruct_one_match; subst; try lia.
+        {
+          (* something wrong here -- message is nil but we have data...*)
+          compute_expr (N.of_nat 16).
+          compute_expr (N.of_nat (16 + 16)).
+          compute_expr (N.ones 16).
+          compute_expr (N.ones 32).
+          cbn.
+        all:subst.
+        all:cbn.
+        cbn.
+        cbn in H2. lia.
+    { destruct is_final; try 
+        [ ssplit; reflexivity | ].
+      pose proof
+           expected_padder_state_cases msg msg_complete false index
+           ltac:(eauto) ltac:(eauto) ltac:(eauto) as padder_state_cases.
+      let H := fresh in
+      destruct padder_state_cases as [H|[H|[H|H]]];
+        logical_simplify; subst;
+        lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
+                            rewrite H in * end.
+      all:cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
+                     padder_emit_bit_value padder_writing_length_value
+                     negb andb orb].
+    destruct padder_done.
+
+    
+    
+    pose proof length_bytes_to_Ns_upper_bound 4 msg.
+    pose proof padded_message_longer_than_input msg.
+    pose proof padded_message_bytes_longer_than_input msg.
+    pose proof min_padded_message_size msg.
+    lazymatch goal with
+    | |- context [msg ++ firstn ?n ?data] =>
+      pose proof padded_message_size_mono msg (firstn n data);
+        pose proof padded_message_size_mono msg data;
+        pose proof min_padded_message_size (firstn n data);
+        pose proof min_padded_message_size data
+    end.
+    ssplit.
+Qed.
