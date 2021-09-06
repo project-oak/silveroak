@@ -431,9 +431,6 @@ Admitted.
 Lemma padded_message_size_modulo msg : padded_message_size msg mod 64 = 0.
 Admitted.
 (* TODO: move *)
-Lemma padded_message_min_length msg : 16 <= length (SHA256.padded_msg msg).
-Admitted.
-(* TODO: move *)
 (* Adding data cannot decrease padded message size *)
 Lemma padded_message_size_mono msg data :
   padded_message_size msg <= padded_message_size (msg ++ data).
@@ -1386,6 +1383,14 @@ Proof.
       rewrite !nth_N_to_bytes by (push_length; prove_by_zify).
       replace (SHA256.l msg) with (N.shiftl (N.of_nat (length msg)) 3)
         by apply N.shiftl_mul_pow2.
+      (* helpful assertion for length truncation *)
+      assert (2 ^ 61 * 8 = 2 ^ 64)%N by reflexivity.
+      rewrite !N.land_ones with (n:=64%N).
+      rewrite (N.mod_small (N.of_nat (length msg)) (2^64)%N) by lia.
+      rewrite (N.mod_small (N.shiftl (N.of_nat (length msg)) _) (2^64)%N)
+        by (rewrite N.shiftl_mul_pow2; change (2 ^ N.of_nat 3)%N with 8%N;
+            lia).
+      rewrite <-!N.land_ones.
       assert (if (current_offset =? 15)%N
               then index = padded_message_size msg - 4
               else current_offset = 14%N /\ index = padded_message_size msg - 8)
@@ -1402,36 +1407,9 @@ Proof.
         all:push_Ntestbit; boolsimpl.
         all:push_length.
         all:change (N.of_nat 0) with 0%N; rewrite ?N.add_0_r.
-        all:change (N.of_nat 61) with 61%N.
         all:change (N.of_nat 3) with 3%N.
-        all:lazymatch goal with
-            | |- context [(?j <? 61)%N] =>
-              destr (j <? 61)%N; testbit_crush
-            end.
         all:destr (i <? 8)%N; testbit_crush.
         all:destr (i <? 16)%N; testbit_crush.
         all:destr (i <? 24)%N; testbit_crush.
-        all:destr (i <? 32)%N; testbit_crush.
-        {
-          symmetry; apply N.bits_above_log2.
-          apply N.lt_le_trans with (m:=61%N).
-          1:admit.
-          replace (i - 8 - 8 - 8 +
-                   N.of_nat
-                     (8 - 1 - (padded_message_size msg - 8 - length msg - (padded_message_size msg - length msg - 8))) * 8 - 3)%N
-            with (i + 29)%N by lia.
-          lia.
-     3)
-          rewrite testbit_high.
-          { 
-          Search N.testbit false.
-          symmetry; rewrite N.bits_above_log2.
-          Search N.log2 2%N.
-          pose proof N.log2_lt_pow2 
-  } } }
-        
-      
-      push_length.
-      
-    
+        all:destr (i <? 32)%N; testbit_crush. } }
 Qed.
