@@ -127,8 +127,8 @@ Section Var.
           `Constant (BitVec 32) 0x80000000`
         else if state == `padder_writing_length` then
           if current_offset == `K 14`
-          then `bvslice 32 32` (length << 3)
-          else `bvslice 0 32` (length << 3)
+          then `bvslice 32 32` (`bvresize 64` length << 3)
+          else `bvslice 0 32` (`bvresize 64` length << 3)
 
         else `K 0`
       in
