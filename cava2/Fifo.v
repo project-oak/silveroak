@@ -18,6 +18,7 @@ Require Import Coq.Strings.String.
 Require Import Coq.Strings.HexString.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
+Require Import Coq.Arith.PeanoNat.
 Require Import Cava.Util.List.
 
 Require Import Cava.Types.
@@ -38,7 +39,7 @@ Section Var.
   Definition fifo {T} fifo_size: Circuit _ [Bit; T; Bit]
     (* out_valid, out, full *)
     (Bit ** T ** Bit ** Bit) :=
-    let fifo_bits := BitVec (Nat.log2 (fifo_size) + 1) in
+    let fifo_bits := BitVec (Nat.log2_up (fifo_size + 1)) in
     {{
     fun data_valid data accepted_output =>
 
@@ -57,7 +58,7 @@ Section Var.
       initially (false,(default,(@default (Vec T fifo_size), 0)))
       : denote_type (Bit ** T ** Vec T fifo_size ** fifo_bits) in
 
-    ( valid, output
+    ( valid, if valid then output else `Constant T default`
     (* Will be empty if accepted_output is asserted next cycle *)
     , (count == `Constant fifo_bits 0` )
     (* We are full, does not assume output this cycle has been accepted yet *)
@@ -160,6 +161,4 @@ Section Var.
     (out_valid, out_data, out_length, is_last, fifo_full)
   }}.
 
-
 End Var.
-
