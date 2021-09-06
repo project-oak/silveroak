@@ -136,6 +136,23 @@ Section Misc.
     rewrite app_comm_cons, !removelast_last. reflexivity.
   Qed.
 
+  Lemma removelast_cons {A} (x0 x1:A) xs : removelast (x0 :: x1 :: xs) = x0 :: removelast (x1 :: xs).
+  Proof. reflexivity. Qed.
+
+  Lemma removelast_cons1 {A} (x:A) xs : xs <> [] -> removelast (x :: xs) = x :: removelast xs.
+  Proof. destruct xs; [contradiction|]. intros; apply removelast_cons. Qed.
+
+  Lemma length_removelast_cons {A} xs (x:A) : length (removelast (x :: xs)) = length xs.
+  Proof.
+    revert x.
+    induction xs; [reflexivity|].
+
+    intros x.
+    rewrite removelast_cons.
+    cbn [length].
+    now rewrite (IHxs _).
+  Qed.
+
   Lemma list_unit_equiv (l : list unit) : l = repeat tt (length l).
   Proof.
     induction l; [ reflexivity | ].
