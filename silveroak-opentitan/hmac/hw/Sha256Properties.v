@@ -477,7 +477,16 @@ Hint Rewrite @length_N_to_bytes : push_length.
 (* TODO: move *)
 Lemma padded_message_bytes_length msg :
   length (SHA256.padded_msg_bytes msg) = padded_message_size msg.
-Admitted.
+Proof.
+  cbv [SHA256.padded_msg_bytes SHA256.padding padded_message_size].
+  push_length.
+  cbv [Nat.ceiling].
+  cbv [SHA256.k SHA256.l].
+  destruct_one_match; Zify.zify;
+    (* extra step because zify fails to zify Nat.modulo and Nat.div *)
+    rewrite ?mod_Zmod, ?div_Zdiv in * by lia;
+    Zify.zify; Z.to_euclidean_division_equations; lia.
+Qed.
 Hint Rewrite @padded_message_bytes_length : push_length.
 (* TODO: move *)
 Lemma padded_message_bytes_longer_than_input msg :
