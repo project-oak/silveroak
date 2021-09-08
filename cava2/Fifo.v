@@ -65,70 +65,65 @@ Section Var.
     , (count == `Constant fifo_bits (N.of_nat fifo_size)` ) )
   }}.
 
-  Definition realign: Circuit _ [Bit; BitVec 32; BitVec 4; Bit; Bit]
-    (* *)
-    (Bit ** BitVec 32 ** BitVec 4) := {{
+  Definition realign_inner : Circuit _ [BitVec 32; BitVec 4; BitVec 32; BitVec 4] (BitVec 64 ** BitVec 4) :=
+  {{ fun existing existing_len data data_mask =>
+      let '(packed_data; packed_len) :=
+        (* Contiguous bytes only *)
+             if data_mask == `K 0x0` then (`K 0`, `K 0`)
+        else if data_mask == `K 0x1` then ((data << 24) & (`K 0xFF000000`), `K 1`)
+        else if data_mask == `K 0x2` then ((data << 16) & (`K 0xFF000000`), `K 1`)
+        else if data_mask == `K 0x4` then ((data << 8 ) & (`K 0xFF000000`), `K 1`)
+        else if data_mask == `K 0x8` then ((data      ) & (`K 0xFF000000`), `K 1`)
+        else if data_mask == `K 0x3` then ((data << 16) & (`K 0xFFFF0000`), `K 2`)
+        else if data_mask == `K 0x6` then ((data << 8 ) & (`K 0xFFFF0000`), `K 2`)
+        else if data_mask == `K 0xC` then ((data      ) & (`K 0xFFFF0000`), `K 2`)
+        else if data_mask == `K 0x9` then ((data << 8 ) & (`K 0xFFFFFF00`), `K 3`)
+        else if data_mask == `K 0xE` then ((data      ) & (`K 0xFFFFFF00`), `K 3`)
+        (* else if data_mask == `K 0xF` then *) else (data, `K 4`)
+      in
+      (* FIXME: this solves type unifcation *)
+      let _ : BitVec 32 := packed_data in
+      let out : BitVec 64 :=
+        if existing_len == `K 0x0` then
+              `bvconcat` packed_data `Constant (BitVec 32) 0`
+        else if existing_len == `K 0x1` then
+              `bvconcat` (`bvconcat` ( `bvslice 24 8` existing) packed_data) `Constant (BitVec 24) 0`
+        else if existing_len == `K 0x2` then
+              `bvconcat` (`bvconcat` ( `bvslice 16 16` existing) packed_data) `Constant (BitVec 16) 0`
+        (* else if existing_len == `K 0x3` then *) else
+              (`bvconcat` (`bvconcat` ( `bvslice 8 24` existing) packed_data) `Constant (BitVec 8) 0`)
+      in
+      (out, packed_len + existing_len)
+  }}.
+
+  Definition realign: Circuit _ [Bit; BitVec 32; BitVec 4; Bit; Bit] (Bit ** BitVec 32 ** BitVec 4) := {{
 
     fun data_valid data data_mask flush consumer_ready =>
 
-    let '(packed_data; packed_length) :=
-      (* Contiguous bytes only *)
-           if data_mask == `K 0x0` then (`K 0`, `K 0`)
-      else if data_mask == `K 0x1` then (data << 24, `K 1`)
-      else if data_mask == `K 0x2` then (data << 16, `K 1`)
-      else if data_mask == `K 0x4` then (data << 8,  `K 1`)
-      else if data_mask == `K 0x8` then (data     ,  `K 1`)
-      else if data_mask == `K 0x3` then (data << 16, `K 2`)
-      else if data_mask == `K 0x6` then (data << 8,  `K 2`)
-      else if data_mask == `K 0xC` then (data     ,  `K 2`)
-      else if data_mask == `K 0x9` then (data << 16, `K 3`)
-      else if data_mask == `K 0xE` then (data      , `K 3`)
-      (* else if data_mask == `K 0xF` then *) else (data, `K 4`)
-    in
-
-    let/delay '(out_valid, out, out_length, data; length) :=
+    let/delay '(out_valid, out, out_length, queue; length) :=
       if !consumer_ready
-      then (out_valid, out, out_length, data, length)
+      then (out_valid, out, out_length, queue, length)
       else
 
-        let out := `bvslice 32 32` data in
-        let out_valid := length >= `K 4`  in
+        let out := `bvslice 32 32` queue in
+        let out_valid := length >= `K 4` in
         let out_length := `bvresize 4` (`bvmin` length `K 4`) in
 
-        let l := if out_valid then length - `K 4` else length in
-        (* Ignore data when flushing *)
-        let next_length : BitVec 4 :=
-          if flush then length >> 2
-          else if data_valid && (! flush) then l + packed_length else l in
-        (* If flushing using packed_data as filler bytes *)
-        let next_data :=
-          if flush then data << 32
+        let '(queue'; length') :=
+          if out_valid || flush
+          then (`bvslice 0 32` queue, if length >= `K 4` then length - `K 4` else `K 0`)
+          else (`bvslice 32 32` queue, length) in
 
-          (* we didn't output a block last cycle so just append *)
-          else if length == `K 0` then
-            `bvconcat (n:=32) ` packed_data `Constant (BitVec 32) 0`
-          else if length == `K 1` then
-            `bvconcat` (`bvconcat` ( `bvslice 56 8` data) packed_data) `Constant (BitVec 24) 0`
-          else if length == `K 2` then
-            `bvconcat` (`bvconcat` ( `bvslice 48 16` data) packed_data) `Constant (BitVec 16) 0`
-          else if length == `K 3` then
-            `bvconcat` (`bvconcat` ( `bvslice 40 24` data) packed_data) `Constant (BitVec 8) 0`
+        let '(next_queue; next_length) :=
 
-          (* we output a block last cycle so trim head *)
-          else if length == `K 4` then
-            `bvconcat (n:=32) ` packed_data `Constant (BitVec 32) 0`
-          else if length == `K 5` then
-            `bvconcat` (`bvconcat` ( `bvslice 24 8` data) packed_data) `Constant (BitVec 24) 0`
-          else if length == `K 6` then
-            `bvconcat` (`bvconcat` ( `bvslice 16 16` data) packed_data) `Constant (BitVec 16) 0`
-          else (* if length == `K 7` then *)
-            `bvconcat` (`bvconcat` ( `bvslice 8 24` data) packed_data) `Constant (BitVec 8) 0`
+          if data_valid && !flush then `realign_inner` queue' length' data data_mask
+          else (`bvconcat` queue' `K 0`, length')
         in
 
         let valid_or_flushing :=
           out_valid || (flush && length >= `K 1`) in
 
-        (valid_or_flushing, out, out_length, next_data, next_length)
+        (valid_or_flushing, out, out_length, next_queue, next_length)
         initially default
     in
     (out_valid, out, out_length)

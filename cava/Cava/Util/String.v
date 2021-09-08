@@ -18,7 +18,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import Coq.Strings.Ascii.
 Require Import Coq.Strings.String.
-Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.Byte.
 
 Definition string_to_bytes (s : string) : list Byte.byte :=
   map byte_of_ascii (list_ascii_of_string s).

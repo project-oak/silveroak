@@ -19,6 +19,7 @@ Require Import Coq.Arith.PeanoNat.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.Byte.
 Require Import Cava.Util.List.
 Require Import HmacSpec.SHA256.
 Import ListNotations.

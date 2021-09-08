@@ -19,6 +19,8 @@ Require Import Coq.NArith.NArith.
 Require Import Coq.ZArith.ZArith.
 Require Import Coq.micromega.Lia.
 
+Require Import coqutil.Tactics.Tactics.
+
 Lemma sub_succ_l_same n : S n - n = 1.
 Proof. lia. Qed.
 
@@ -131,6 +133,10 @@ Module Nat2N.
     rewrite Nat2N.inj_succ, N.pow_succ_r by lia.
     rewrite IHn. lia.
   Qed.
+
+  Lemma of_nat_if (b : bool) (x y: nat):
+    N.of_nat (if b then x else y) = if b then N.of_nat x else N.of_nat y.
+  Proof. now destruct b. Qed.
 End Nat2N.
 
 Module Pos.
@@ -282,6 +288,70 @@ Module N.
   Proof.
     intros. destruct (N.eq_dec x 0%N); subst; [ reflexivity | ].
     apply N.bits_above_log2. apply N.log2_lt_pow2; lia.
+  Qed.
+
+  Lemma lor_lt x y xs ys: (x < 2 ^ xs -> y < 2^ys -> N.lor x y < N.max (2^xs) (2^ys))%N.
+  Proof.
+    intros.
+    destr (xs <? ys)%N.
+    {
+      rewrite <- N.mod_small with (a:=y) (b:=(2^ys)%N) by lia.
+      rewrite <- N.mod_small with (a:=x) (b:=(2^ys)%N) by
+          (apply (N.lt_trans _ (2^xs));
+            [|apply N.pow_lt_mono_r]; lia).
+
+      rewrite <- N.land_ones.
+      rewrite <- N.land_ones.
+
+      rewrite <- N.land_lor_distr_l.
+      rewrite N.land_ones.
+      rewrite N.max_r by (apply N.pow_le_mono_r; lia).
+      apply N.mod_upper_bound.
+      lia.
+    }
+
+    {
+      rewrite <- N.mod_small with (a:=x) (b:=(2^xs)%N) by lia.
+      rewrite <- N.mod_small with (a:=y) (b:=(2^xs)%N) by
+          (apply (N.lt_le_trans _ (2^ys));
+            [|apply N.pow_le_mono_r]; lia).
+
+      rewrite <- N.land_ones.
+      rewrite <- N.land_ones.
+
+      rewrite <- N.land_lor_distr_l.
+      rewrite N.land_ones.
+      rewrite N.max_l by (apply N.pow_le_mono_r; lia).
+      apply N.mod_upper_bound.
+      lia.
+    }
+  Qed.
+
+  Lemma testbit_high_lt x n a: (x < 2 ^ n -> n <= a -> N.testbit x a = false)%N.
+  Proof.
+    intros.
+    apply testbit_high.
+    apply (N.lt_le_trans _ (2^n));
+      [ lia | apply N.pow_le_mono_r; lia ].
+  Qed.
+
+  Lemma mod_mod_smaller: forall a n m: N, (((a mod 2 ^ n) mod 2 ^ m = a mod 2 ^ (N.min n m)))%N.
+  Proof.
+    intros.
+    clear. intros.
+    apply N.bits_inj.
+    cbv [N.eqf]; intros x.
+
+    destr (x <? m)%N;
+    destr (x <? n)%N;
+    destr (n <? m)%N;
+    try rewrite N.min_l by lia;
+    try rewrite N.min_r by lia;
+    repeat rewrite N.mod_pow2_bits_low by easy;
+    repeat rewrite N.mod_pow2_bits_high by easy;
+    try reflexivity.
+
+    { pose (N.lt_trans _ _ _ E0 E1). lia. }
   Qed.
 
   (* tactic for transforming boolean expressions about N arithmetic into Props *)
