@@ -199,14 +199,39 @@ Module Example.
       new_hl_state = counter_update_hl_state input hl_state ->
       counter_invariant (fst (step counter state input))
                         new_hl_state.
-    Admitted.
+    Proof.
+      destruct state as (data, ?). rename hl_state into value.
+      destruct input as (enable,[]).
+      cbv [counter_invariant counter_pre]; intros; subst.
+      cbv [counter]. stepsimpl. logical_simplify; subst.
+      cbv [counter_update_hl_state].
+      destruct enable; cbn [negb fst snd].
+      all:ssplit; first [ lia
+                        | reflexivity
+                        | apply N.mod_bound_pos; lia ].
+    Qed.
 
     Lemma step_counter state hl_state input :
       counter_invariant state hl_state ->
       counter_pre input hl_state ->
       snd (step counter state input)
       = counter_spec input hl_state.
-    Admitted.
+    Proof.
+      destruct state as (data, ?). rename hl_state into value.
+      destruct input as (enable,[]).
+      cbv [counter_invariant counter_pre]; intros; subst.
+      cbv [counter]. stepsimpl. logical_simplify; subst.
+      cbv [counter_spec]. compute_expr (N.of_nat 8).
+      change (2 ^ 8) with 256 in *.
+      change (N.ones 8) with 255 in *.
+      destruct enable; cbn [negb fst snd].
+      all:repeat lazymatch goal with
+                 | |- context [N.eqb ?x ?y] => destr (N.eqb x y); subst
+                 | |- context [N.leb ?x ?y] => destr (N.leb x y)
+                 | _ => lia || reflexivity
+                 end.
+      all:rewrite N.mod_small by lia; reflexivity.
+    Qed.
 
     Lemma step_double_counter_invariant state hl_state new_hl_state input :
       double_counter_invariant state hl_state ->
@@ -224,9 +249,8 @@ Module Example.
       | |- context [match step counter ?s ?i with pair _ _ => _ end] =>
         rewrite (surjective_pairing (step counter s i))
       end.
-      erewrite step_counter by eauto.
-      cbv [counter_spec].
-      stepsimpl.
+      erewrite !step_counter by eauto.
+      cbv [counter_spec]. stepsimpl.
       lazymatch goal with
       | |- context [match step counter ?s ?i with pair _ _ => _ end] =>
         rewrite (surjective_pairing (step counter s i))
