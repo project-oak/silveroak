@@ -383,33 +383,6 @@ Definition sha256_padder_pre
        is_final = false
     ).
 
-
-(* TODO: move *)
-Lemma step_bvresize {n m} (x : denote_type (BitVec n)) :
-  step (bvresize (n:=n) m) tt (x, tt) = (tt, N.land x (N.ones (N.of_nat m))).
-Proof. reflexivity. Qed.
-Hint Rewrite @step_bvresize using solve [eauto] : stepsimpl.
-
-(* TODO: move *)
-Lemma step_bvconcat {n m} (x : denote_type (BitVec n)) (y : denote_type (BitVec m)) :
-  step (bvconcat (n:=n) (m:=m)) tt (x, (y, tt))
-  = (tt, N.lor (N.shiftl (N.land x (N.ones (N.of_nat n))) (N.of_nat m))
-               (N.land y (N.ones (N.of_nat (n + m))))).
-Proof.
-  cbv [bvconcat]. stepsimpl. f_equal.
-  apply N.bits_inj; intro i. push_Ntestbit.
-  rewrite Nat2N.inj_add.
-  destruct_one_match; push_Ntestbit; boolsimpl; [ | reflexivity ].
-  destr (i <? N.of_nat m)%N; push_Ntestbit; boolsimpl; reflexivity.
-Qed.
-Hint Rewrite @step_bvconcat using solve [eauto] : stepsimpl.
-
-(* TODO: move *)
-Lemma step_bvslice {n start len} (x : denote_type (BitVec n)) :
-  step (bvslice (n:=n) start len) tt (x, tt)
-  = (tt, N.land (N.shiftr x (N.of_nat start)) (N.ones (N.of_nat len))).
-Proof. reflexivity. Qed.
-Hint Rewrite @step_bvslice using solve [eauto] : stepsimpl.
 (* TODO: move *)
 Lemma length_N_to_bytes n bs :
   length (BigEndianBytes.N_to_bytes n bs) = n.
