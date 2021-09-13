@@ -48,6 +48,29 @@ Module N.
     rewrite (N.div_small (_ mod c) c) by (apply N.mod_bound_pos; lia).
     lia.
   Qed.
+  Lemma lor_high_low_add a b c :
+    N.lor (a * 2 ^ b) (c mod 2 ^ b) = a * 2 ^ b + c mod 2 ^ b.
+  Proof.
+    rewrite <-!N.shiftl_mul_pow2, <-!N.land_ones.
+    apply N.bits_inj; intro i. push_Ntestbit.
+    pose proof N.mod_pow2_bits_full (a * 2 ^ b + c mod 2 ^ b) b i as Hlow.
+    rewrite N.add_mod, N.mod_mul, N.add_0_l, !N.mod_mod in Hlow
+      by (apply N.pow_nonzero; lia).
+    rewrite <-!N.shiftl_mul_pow2, <-!N.land_ones in Hlow.
+    (* helpful assertion *)
+    assert (2 ^ b <> 0) by (apply N.pow_nonzero; lia).
+    destr (i <? b).
+    { rewrite <-Hlow. push_Ntestbit. boolsimpl. reflexivity. }
+    {  autorewrite with push_Ntestbit in  Hlow. rewrite Hlow.
+       push_Ntestbit; boolsimpl.
+       replace i with (i - b + b) by lia.
+       rewrite N.add_sub. rewrite <-N.div_pow2_bits.
+       rewrite N.shiftl_mul_pow2, N.land_ones.
+       rewrite N.div_add_l by lia.
+       rewrite N.div_small by (apply N.mod_bound_pos; lia).
+       f_equal; lia. }
+  Qed.
+
 End N.
 
 (**** Example using invariant logic ****)
@@ -80,7 +103,7 @@ Module Example.
       {{ fun enable =>
            let '(low; low_overflow) := `counter` enable in
            let '(high; high_overflow) := `counter` low_overflow in
-           (`bvresize _` (`bvconcat` high low), high_overflow) }}.
+           (`bvresize 16` (`bvconcat` high low), high_overflow) }}.
   End CircuitDefinitions.
 
   Section Specifications.
@@ -170,26 +193,6 @@ Module Example.
 
   Section Proofs.
 
-
-    (* TODO: move *)
-    Lemma step_bvresize {n m} (x : denote_type (BitVec n)) :
-      step (bvresize (n:=n) m) tt (x, tt) = (tt, N.land x (N.ones (N.of_nat m))).
-    Proof. reflexivity. Qed.
-    Hint Rewrite @step_bvresize using solve [eauto] : stepsimpl.
-    (* TODO: move *)
-    Lemma step_bvconcat {n m} (x : denote_type (BitVec n)) (y : denote_type (BitVec m)) :
-      step (bvconcat (n:=n) (m:=m)) tt (x, (y, tt))
-      = (tt, N.lor (N.shiftl (N.land x (N.ones (N.of_nat n))) (N.of_nat m))
-                   (N.land y (N.ones (N.of_nat (n + m))))).
-    Proof.
-      cbv [bvconcat]. stepsimpl. f_equal.
-      apply N.bits_inj; intro i. push_Ntestbit.
-      rewrite Nat2N.inj_add.
-      destruct_one_match; push_Ntestbit; boolsimpl; [ | reflexivity ].
-      destr (i <? N.of_nat m)%N; push_Ntestbit; boolsimpl; reflexivity.
-    Qed.
-    Hint Rewrite @step_bvconcat using solve [eauto] : stepsimpl.
-
     Lemma step_counter_invariant state hl_state new_hl_state input :
       counter_invariant state hl_state ->
       counter_pre input hl_state ->
@@ -241,80 +244,17 @@ Module Example.
         cbv [counter_update_hl_state].
         change (2 ^ 8) with 256 in *. change (2 ^ 16) with 65536 in *.
         repeat (destruct_one_match; try lia).
-        { Zify.zify;
-          Z.to_euclidean_division_equations;
-          lia. }
-        { Zify.zify.
-          Z.to_euclidean_division_equations.
-          lia. }
-        { rewrite N.div_small by (apply N.mod_bound_pos; lia).
-          assert (value / 256 < 256) by admit.
-          Zify.zify.
-          Search Z.rem Z.modulo.
-          rewrite !Z.rem_mod_nonneg in * by lia.
-          Z.div_mod_to_equations.
-          lia.
-          Z.to_euclidean_division_equations. lia. }
-        
-        all:Zify.zify; Z.to_euclidean_division_equations; try lia. }
-
-
-      
-      (* helpful assertions *)
-      assert (2 ^ N.of_nat n <> 0) by (apply N.pow_nonzero; lia).
-      pose proof N.mod_bound_pos value (2 ^ N.of_nat n) ltac:(lia) ltac:(lia).
-      cbv [double_counter_update_hl_state counter_update_hl_state].
-      ssplit.
-      { eapply step_counter_invariant; [ solve [eauto] .. | ].
-        cbv [counter_update_hl_state].
-        destruct enable; [ | reflexivity ].
-        rewrite N.add_mod_idemp_l, Nat2N.inj_mul by lia.
-        replace (N.of_nat 2 * N.of_nat n) with (N.of_nat n * 2) by lia.
-        rewrite N.pow_mul_r, N.pow_2_r.
-        rewrite N.mod_mod_mul_l by lia.
-        reflexivity. }
-      { eapply step_counter_invariant; [ solve [eauto] .. | ].
-        cbv [counter_update_hl_state].
-        repeat (destruct_one_match; try lia).
-        { (* this is the case in which the low counter overflows -- adding 1 and
-             then taking the high part is therefore the same as taking the high
-             part and adding 1 *)
-          replace (N.of_nat (2 * n)) with (N.of_nat n * 2) by lia.
-          rewrite N.pow_mul_r, N.pow_2_r by lia.
-          rewrite N.mod_mul_div_r by lia.
-          (* remember high part so as not to change it with the N.div_mod rewrite *)
-          remember (value / 2 ^ N.of_nat n) as X.
-          rewrite (N.div_mod value (2 ^ N.of_nat n)) by lia.
-          subst X.
-          lazymatch goal with
-          | H : ?x <= ?y mod ?x + 1 |- _ =>
-            replace (y mod x) with (x - 1) in * by lia
-          | _ => idtac
-          end.
-          lazymatch goal with
-          | |- context [?x + (?y - ?z) + ?z] =>
-            replace (x + (y - z) + z) with (x + y) by lia
-          end.
-          rewrite (N.mul_comm (2 ^ N.of_nat n) (_ / _)).
-          rewrite N.div_add_l, N.div_same by lia.
-          reflexivity. }
-        { (* more ugly modular-arithmetic reasoning *)
-          replace (N.of_nat (2 * n)) with (N.of_nat n * 2) in * by lia.
-          rewrite N.pow_mul_r, N.pow_2_r in * by lia.
-          rewrite N.mod_mul_div_r by lia.
-          rewrite (N.div_mod value (2 ^ N.of_nat n)) at 1 by lia.
-          rewrite (N.mul_comm (2 ^ _) (_ / _)), <-N.add_assoc.
-          rewrite N.div_add_l by lia.
-          rewrite (N.div_small (_ + 1) _), N.add_0_r by lia.
-          apply N.mod_small, N.div_lt_upper_bound; lia. } }
+        (* extra step to help lia out, otherwise hangs *)
+        all:try rewrite N.mod_mul_div_r with (b:=256) (c:=256) by lia.
+        all:Zify.zify; Z.to_euclidean_division_equations; lia. }
       { destruct enable; [ | lia ].
         apply N.mod_bound_pos; lia. }
     Qed.
 
-    Lemma step_double_counter n state hl_state input :
+    Lemma step_double_counter state hl_state input :
       double_counter_invariant state hl_state ->
       double_counter_pre input hl_state ->
-      snd (step (double_counter n) state input)
+      snd (step double_counter state input)
       = double_counter_spec input hl_state.
     Proof.
       destruct state as (data, ?). rename hl_state into value.
@@ -323,25 +263,38 @@ Module Example.
       cbv [double_counter double_counter_spec]. stepsimpl.
       logical_simplify; subst. natsimpl.
       lazymatch goal with
-      | |- context [match step (counter ?n) ?s ?i with pair _ _ => _ end] =>
-        rewrite (surjective_pairing (step (counter n) s i))
+      | |- context [match step counter ?s ?i with pair _ _ => _ end] =>
+        rewrite (surjective_pairing (step counter s i))
       end.
       erewrite step_counter by eauto.
       cbv [counter_spec].
       stepsimpl.
       lazymatch goal with
-      | |- context [match step (counter ?n) ?s ?i with pair _ _ => _ end] =>
-        rewrite (surjective_pairing (step (counter n) s i))
+      | |- context [match step counter ?s ?i with pair _ _ => _ end] =>
+        rewrite (surjective_pairing (step counter s i))
       end.
       erewrite step_counter by eauto.
       cbv [counter_spec].
       stepsimpl.
       f_equal.
       { (* counter values match *)
-        (* TODO: consider making moduli constants so that nice automation works *)
-        rewrite <-!N.shiftr_div_pow2.
-        rewrite <-!N.land_ones.
-        destr enable.
+        compute_expr (N.of_nat 8). compute_expr (8 + 8)%nat.
+        compute_expr (N.of_nat 16).
+        rewrite !N.shiftl_mul_pow2, !N.land_ones.
+        change (2 ^ 8) with 256 in *. change (2 ^ 16) with 65536 in *.
+        rewrite !(N.mod_small (_ mod 256) 65536)
+          by (eapply N.lt_le_trans; [ apply N.mod_bound_pos | ]; lia).
+        rewrite N.lor_high_low_add with (b:=8). change (2 ^ 8) with 256 in *.
+        repeat destruct_one_match.
+        (* the below rewrite improves performance of lia *)
+        all:rewrite ?N.mod_mod by lia.
+        all:Zify.zify; Z.to_euclidean_division_equations; lia. }
+      { change (2 ^ 8) with 256 in *. change (2 ^ 16) with 65536 in *.
+        repeat destruct_one_match.
+        all:repeat lazymatch goal with |- context [N.leb ?x ?y] =>
+                                       destr (N.leb x y) end.
+        all:try reflexivity.
+        all:Zify.zify; Z.to_euclidean_division_equations; lia. }
     Qed.
   End Proofs.
 End Example.
