@@ -75,8 +75,8 @@ Section FifoSpec.
 
   Definition fifo_pre
     (contents: list (denote_type T))
-    (input : denote_type (input_of (fifo (var:=denote_type) (T:=T) fifo_size)))
-    (state: denote_type (state_of (fifo (var:=denote_type) (T:=T) fifo_size)))
+    (input : denote_type (input_of (fifo (T:=T) fifo_size)))
+    (state: denote_type (state_of (fifo (T:=T) fifo_size)))
     :=
     let '(valid, (data, (accepted_output,_))) := input in
     let '(_, (_, (fifo, count))) := state in
@@ -85,7 +85,7 @@ Section FifoSpec.
 
   Definition fifo_invariant
     (contents: list (denote_type T))
-    (state: denote_type (state_of (fifo (var:=denote_type) (T:=T) fifo_size)))
+    (state: denote_type (state_of (fifo (T:=T) fifo_size)))
     :=
     let '(_, (_, (fifo, count))) := state in
     fifo_size = length fifo
@@ -95,7 +95,7 @@ Section FifoSpec.
   .
 
   Definition fifo_contents_update (empty full: bool) contents
-      (input : denote_type (input_of (fifo (var:=denote_type) (T:=T) fifo_size)))
+      (input : denote_type (input_of (fifo (T:=T) fifo_size)))
       :=
     let '(valid, (data, (accepted_output,_))) := input in
     let contents' := if accepted_output && negb empty then tl contents else contents in
@@ -153,8 +153,8 @@ Section FifoSpec.
 
   Lemma step_fifo_invariant
       contents new_contents
-      (input : denote_type (input_of (fifo (var:=denote_type) (T:=T) fifo_size)))
-      (state : denote_type (state_of (fifo (var:=denote_type) (T:=T) fifo_size))) :
+      (input : denote_type (input_of (fifo (T:=T) fifo_size)))
+      (state : denote_type (state_of (fifo (T:=T) fifo_size))) :
     new_contents = fifo_contents_update (length contents =? 0) (length contents =? fifo_size) contents input ->
     fifo_pre contents input state ->
     fifo_invariant contents state ->
@@ -264,8 +264,8 @@ Section FifoSpec.
   Definition fifo_spec
       (contents: list (denote_type T))
       (new_contents: list (denote_type T))
-      (input : denote_type (input_of (fifo (var:=denote_type) (T:=T) fifo_size)))
-      (state : denote_type (state_of (fifo (var:=denote_type) (T:=T) fifo_size)))
+      (input : denote_type (input_of (fifo (T:=T) fifo_size)))
+      (state : denote_type (state_of (fifo (T:=T) fifo_size)))
       : denote_type (Bit ** T ** Bit ** Bit) :=
     (negb (0 =? length contents)
     , (if 0 =? length contents then default else hd default contents
@@ -274,8 +274,8 @@ Section FifoSpec.
 
   Lemma step_fifo
       contents new_contents
-      (input : denote_type (input_of (fifo (var:=denote_type) (T:=T) fifo_size)))
-      (state : denote_type (state_of (fifo (var:=denote_type) (T:=T) fifo_size))) :
+      (input : denote_type (input_of (fifo (T:=T) fifo_size)))
+      (state : denote_type (state_of (fifo (T:=T) fifo_size))) :
     new_contents = fifo_contents_update (length contents =? 0) (length contents =? fifo_size) contents input ->
     fifo_pre contents input state ->
     fifo_invariant contents state ->

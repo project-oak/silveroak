@@ -35,7 +35,7 @@ Definition extra_cycles : nat := 80.
 
 (* convert test vector data into circuit input signals *)
 Definition to_sha256_input (t : sha256_test_vector)
-  : list (denote_type (input_of (var:=denote_type) sha256)) :=
+  : list (denote_type (input_of sha256)) :=
   (* input must be divided into into 32-bit words *)
   let l := N.to_nat t.(l) in
   let nwords := l / 32 + (if l mod 32 =? 0 then 0 else 1) in
@@ -82,14 +82,14 @@ Definition to_sha256_input (t : sha256_test_vector)
 
 (* extract test result from circuit output signals *)
 Definition from_sha256_output
-           (out : list (denote_type (output_of (var:=denote_type) sha256)))
+           (out : list (denote_type (output_of sha256)))
   : N :=
   let '(done, (digest, accept_input)) := last out default in
   BigEndianBytes.concat_bytes (concat_digest digest).
 
 (* convert test vector data into input signals for padder *)
 Definition to_sha256_padder_input (t : sha256_test_vector)
-  : list (denote_type (input_of (var:=denote_type) sha256_padder)) :=
+  : list (denote_type (input_of sha256_padder)) :=
   (* For padder tests, we assume the consumer is always ready *)
   List.map
     (fun '(fifo_data_valid,(fifo_data,(is_final,(final_length,(clear,_))))) =>
@@ -102,7 +102,7 @@ Definition concat_words (n : nat) (ws : list N) : N :=
 
 (* extract test result from padder output signals *)
 Definition from_sha256_padder_output
-           (out : list (denote_type (output_of (var:=denote_type) sha256_padder)))
+           (out : list (denote_type (output_of sha256_padder)))
   : N :=
   (* remove invalid output signals entirely, and extract data from signals *)
   let valid_out :=
@@ -113,7 +113,7 @@ Definition from_sha256_padder_output
 
 (* extract all intermediate digests from circuit output signals *)
 Definition intermediate_digests_from_sha256_output
-           (out : list (denote_type (output_of (var:=denote_type) sha256)))
+           (out : list (denote_type (output_of sha256)))
   : list (list N) :=
   let digests := List.map (fun '(done, (digest, accept_input)) => digest) out in
   (* remove repetitions of the same digest *)
