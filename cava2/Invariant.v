@@ -14,6 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import Coq.ZArith.ZArith.
 Require Import Cava.Types.
@@ -23,11 +24,12 @@ Local Open Scope N_scope.
 
 Require Import Coq.micromega.Lia.
 Require Import coqutil.Tactics.Tactics.
+Require Import Cava.Util.List.
 Require Import Cava.Util.Nat.
 Require Import Cava.Util.Tactics.
 Require Import Cava.ExprProperties.
 
-Class state_logic_for {s i o} (c : Circuit (var:=denote_type) s i o)
+Class invariant_logic_for {s i o} (c : Circuit (var:=denote_type) s i o)
       (hl_state : Type) :=
   { reset_hl_state : hl_state;
     update_hl_state : denote_type i -> hl_state -> hl_state;
@@ -40,72 +42,101 @@ Global Arguments precondition_for {_ _ _} _ {_ _}.
 Global Arguments spec_for {_ _ _} _ {_ _}.
 
 Definition invariant_at_reset {s i o} (c : Circuit s i o)
-           {hl_state} {state_logic : state_logic_for c hl_state} : Prop :=
+           {hl_state} {invariant_logic : invariant_logic_for c hl_state} : Prop :=
   invariant_for c (reset_state c) reset_hl_state.
+Existing Class invariant_at_reset.
 
 Definition invariant_preserved {s i o} (c : Circuit s i o)
-           {hl_state} {state_logic : state_logic_for c hl_state} : Prop :=
+           {hl_state} {invariant_logic : invariant_logic_for c hl_state} : Prop :=
   forall input state hl_state new_hl_state,
     new_hl_state = update_hl_state input hl_state ->
     invariant_for c state hl_state ->
     precondition_for c input hl_state ->
     invariant_for c (fst (step c state input)) new_hl_state.
+Existing Class invariant_preserved.
 
 Definition output_correct {s i o} (c : Circuit s i o)
-           {hl_state} {state_logic : state_logic_for c hl_state} : Prop :=
+           {hl_state} {invariant_logic : invariant_logic_for c hl_state} : Prop :=
   forall input state hl_state,
     invariant_for c state hl_state ->
     precondition_for c input hl_state ->
     snd (step c state input) = spec_for c input hl_state.
+Existing Class output_correct.
 
+Class correctness_for {s i o} (c : Circuit s i o)
+      {hl_state} {invariant_logic : invariant_logic_for c hl_state} :=
+  { invariant_at_reset_pf : invariant_at_reset c;
+    invariant_preserved_pf : invariant_preserved c;
+    output_correct_pf : output_correct c }.
 
-Module N.
-  Lemma mod_mod_mul_l a b c : b <> 0 -> c <> 0 -> (a mod (b * c)) mod c = a mod c.
-  Proof.
-    intros. rewrite (N.mul_comm b c).
-    rewrite N.mod_mul_r, N.add_mod, N.mod_mul_l, N.add_0_r by lia.
-    rewrite !N.mod_mod by lia. reflexivity.
-  Qed.
-  Lemma div_floor a b : b <> 0 -> (a - a mod b) / b = a / b.
-  Proof.
-    intros. rewrite (N.div_mod a b) at 1 by lia.
-    rewrite N.add_sub, N.div_mul_l; lia.
-  Qed.
-  Lemma mod_mul_div_r a b c :
-    b <> 0 -> c <> 0 -> a mod (b * c) / c = (a / c) mod b.
+(* Succeeds if an instance is found for circuit correctness *)
+Ltac find_correctness c :=
+  let x := constr:(_:correctness_for c) in
+  idtac.
+
+Ltac simplify_invariant_logic c :=
+  let x := constr:(_:invariant_logic_for c _) in
+  match x with
+  | ?x => cbn [x update_hl_state invariant_for precondition_for
+                spec_for invariant_at_reset invariant_preserved
+                output_correct reset_hl_state] in *
+  end.
+Ltac simplify_spec c :=
+  let x := constr:(_:invariant_logic_for c _) in
+  match x with
+  | ?x => cbn [spec_for x] in *
+  end.
+
+(* if a subcircuit is found that has an invariant-based correctness proof, use
+   the correctness proof to replace the circuit step function with the
+   spec. Uses [eauto] to solve the side conditions of the output-correctness
+   proof. *)
+Ltac use_correctness :=
+  match goal with
+  | |- context [match step ?c ?s ?i with pair _ _ => _ end] =>
+    find_correctness c;
+    rewrite (surjective_pairing (step c s i));
+    erewrite (output_correct_pf (c:=c)) by eauto;
+    simplify_spec c
+  end.
+
+Section StateLogicProofs.
+  Context {s i o} (c : Circuit (var:=denote_type) s i o).
+  Context {hl_state} {invariant_logic : invariant_logic_for c hl_state}.
+  Context {correctness : correctness_for c}.
+
+  Lemma simulate_invariant_logic input :
+    (* TODO: refine this. The precondition has to hold at each step; for now,
+       just say that each of the inputs satisfies the precondition for all
+       states *)
+    Forall (fun i => forall s, precondition_for c i s) input ->
+    simulate c input = fold_left_accumulate
+                         (fun s i => (update_hl_state i s, spec_for _ i s))
+                         input reset_hl_state.
   Proof.
     intros.
-    rewrite (N.mul_comm b c), N.mod_mul_r by lia.
-    rewrite (N.mul_comm c (_ mod b)), N.div_add by lia.
-    rewrite (N.div_small (_ mod c) c) by (apply N.mod_bound_pos; lia).
-    lia.
+    change (simulate c input) with
+        (fold_left_accumulate (step c) input (reset_state c)).
+    eapply fold_left_accumulate_double_invariant_In
+      with (I:=fun s1 s2 acc1 acc2 =>
+                 invariant_for c s1 s2 /\ acc1 = acc2).
+    { ssplit; [ | reflexivity ].
+      apply invariant_at_reset_pf. }
+    { intros; logical_simplify; subst.
+      pose proof (proj1 (Forall_forall _ _))
+           ltac:(eassumption) _ ltac:(eassumption).
+      cbv beta in *.
+      ssplit.
+      { eapply invariant_preserved_pf; [ | solve [eauto] .. ].
+        reflexivity. }
+      { rewrite output_correct_pf; [ | solve [eauto] .. ].
+        reflexivity. } }
+    { intros; logical_simplify; subst. reflexivity. }
   Qed.
-  Lemma lor_high_low_add a b c :
-    N.lor (a * 2 ^ b) (c mod 2 ^ b) = a * 2 ^ b + c mod 2 ^ b.
-  Proof.
-    rewrite <-!N.shiftl_mul_pow2, <-!N.land_ones.
-    apply N.bits_inj; intro i. push_Ntestbit.
-    pose proof N.mod_pow2_bits_full (a * 2 ^ b + c mod 2 ^ b) b i as Hlow.
-    rewrite N.add_mod, N.mod_mul, N.add_0_l, !N.mod_mod in Hlow
-      by (apply N.pow_nonzero; lia).
-    rewrite <-!N.shiftl_mul_pow2, <-!N.land_ones in Hlow.
-    (* helpful assertion *)
-    assert (2 ^ b <> 0) by (apply N.pow_nonzero; lia).
-    destr (i <? b).
-    { rewrite <-Hlow. push_Ntestbit. boolsimpl. reflexivity. }
-    {  autorewrite with push_Ntestbit in  Hlow. rewrite Hlow.
-       push_Ntestbit; boolsimpl.
-       replace i with (i - b + b) by lia.
-       rewrite N.add_sub. rewrite <-N.div_pow2_bits.
-       rewrite N.shiftl_mul_pow2, N.land_ones.
-       rewrite N.div_add_l by lia.
-       rewrite N.div_small by (apply N.mod_bound_pos; lia).
-       f_equal; lia. }
-  Qed.
+End StateLogicProofs.
 
-End N.
 
-(**** Example using invariant logic ****)
+(**** Example usage of invariant logic ****)
 Module Example.
   Section CircuitDefinitions.
     Context {var : tvar}.
@@ -140,8 +171,8 @@ Module Example.
 
   Section Specifications.
 
-    Global Instance counter_state_logic
-      : state_logic_for counter N :=
+    Global Instance counter_invariant_logic
+      : invariant_logic_for counter N :=
       {| reset_hl_state := 0;
          update_hl_state :=
            fun (input : denote_type [Bit]) value =>
@@ -166,8 +197,8 @@ Module Example.
               : denote_type (BitVec 8 ** Bit))
       |}.
 
-    Global Instance double_counter_state_logic
-      : state_logic_for double_counter N :=
+    Global Instance double_counter_invariant_logic
+      : invariant_logic_for double_counter N :=
       {| reset_hl_state := 0;
          update_hl_state :=
            fun (input : denote_type [Bit]) value =>
@@ -198,25 +229,27 @@ Module Example.
   End Specifications.
 
   Section Proofs.
-
-    Lemma step_counter_invariant : invariant_preserved counter.
+    Lemma counter_invariant_at_reset : invariant_at_reset counter.
     Proof.
-      cbv [invariant_preserved]. intros (enable,[]) (data, ?) value.
-      intros; subst.
-      cbn [invariant_for precondition_for update_hl_state
-                         counter_state_logic] in *.
+      simplify_invariant_logic counter.
+      cbv [counter]. cbn [reset_state]. stepsimpl.
+      ssplit; [ reflexivity | ]. cbn; lia.
+    Qed.
+
+    Lemma counter_invariant_preserved : invariant_preserved counter.
+    Proof.
+      intros (enable,[]) (data, ?) value. intros; subst.
+      simplify_invariant_logic counter.
       cbv [counter]. stepsimpl. logical_simplify; subst.
       destruct enable; cbn [negb fst snd].
-      all:ssplit; first [ lia
-                        | reflexivity
+      all:ssplit; first [ lia | reflexivity
                         | apply N.mod_bound_pos; lia ].
     Qed.
 
-    Lemma step_counter : output_correct counter.
+    Lemma counter_output_correct : output_correct counter.
     Proof.
-      cbv [output_correct]. intros (enable,[]) (data, ?) value.
-      cbn [invariant_for precondition_for spec_for
-                         counter_state_logic] in *.
+      intros (enable,[]) (data, ?) value.
+      simplify_invariant_logic counter.
       intros; logical_simplify; subst.
       cbv [counter]. stepsimpl. compute_expr (N.of_nat 8).
       change (2 ^ 8) with 256 in *.
@@ -230,33 +263,36 @@ Module Example.
       all:rewrite N.mod_small by lia; reflexivity.
     Qed.
 
-    Lemma step_double_counter_invariant : invariant_preserved double_counter.
+    Existing Instances counter_invariant_at_reset counter_invariant_preserved
+             counter_output_correct.
+    Global Instance counter_correctness : correctness_for counter.
+    Proof. constructor; typeclasses eauto. Defined.
+
+    Lemma double_counter_invariant_at_reset : invariant_at_reset double_counter.
+    Proof.
+      simplify_invariant_logic double_counter.
+      cbn [double_counter reset_state].
+      stepsimpl. rewrite N.mod_0_l, N.div_0_l by (cbn; lia).
+      ssplit; [ eapply counter_invariant_at_reset .. | ].
+      cbn; lia.
+    Qed.
+
+    Lemma double_counter_invariant_preserved : invariant_preserved double_counter.
     Proof.
       cbv [invariant_preserved]. intros (enable,[]) (data,?) value.
-      intros; subst.
-      cbn [invariant_for precondition_for update_hl_state
-                         double_counter_state_logic] in *.
+      intros; subst. simplify_invariant_logic double_counter.
       cbv [double_counter]. stepsimpl. logical_simplify; subst.
-      lazymatch goal with
-      | |- context [match step counter ?s ?i with pair _ _ => _ end] =>
-        rewrite (surjective_pairing (step counter s i))
-      end.
-      erewrite !step_counter by eauto.
-      cbn [spec_for counter_state_logic]. stepsimpl.
-      lazymatch goal with
-      | |- context [match step counter ?s ?i with pair _ _ => _ end] =>
-        rewrite (surjective_pairing (step counter s i))
-      end.
-      erewrite step_counter by eauto.
-      cbn [spec_for counter_state_logic]. stepsimpl.
+      repeat use_correctness. stepsimpl.
       ssplit.
-      { eapply step_counter_invariant; [ | solve [eauto] .. ].
-        cbn [update_hl_state counter_state_logic].
+      { eapply (invariant_preserved_pf (c:=counter));
+          [ | solve [eauto] .. ].
+        cbn [update_hl_state counter_invariant_logic].
         destruct enable; [ | reflexivity ].
         change (2 ^ 8) with 256 in *. change (2 ^ 16) with 65536 in *.
         Zify.zify. Z.to_euclidean_division_equations. lia. }
-      { eapply step_counter_invariant; [ | solve [eauto] .. ].
-        cbn [update_hl_state counter_state_logic].
+      {eapply (invariant_preserved_pf (c:=counter));
+          [ | solve [eauto] .. ].
+        cbn [update_hl_state counter_invariant_logic].
         change (2 ^ 8) with 256 in *. change (2 ^ 16) with 65536 in *.
         repeat (destruct_one_match; try lia).
         (* extra step to help lia out, otherwise hangs *)
@@ -266,25 +302,13 @@ Module Example.
         apply N.mod_bound_pos; lia. }
     Qed.
 
-    Lemma step_double_counter : output_correct double_counter.
+    Lemma double_counter_output_correct : output_correct double_counter.
     Proof.
       cbv [output_correct]. intros (enable,[]) (data, ?) value.
-      cbn [invariant_for precondition_for spec_for
-                         double_counter_state_logic] in *.
+      simplify_invariant_logic double_counter.
       intros; logical_simplify; subst.
       cbv [double_counter]. stepsimpl.
-      lazymatch goal with
-      | |- context [match step counter ?s ?i with pair _ _ => _ end] =>
-        rewrite (surjective_pairing (step counter s i))
-      end.
-      erewrite step_counter by eauto.
-      cbn [spec_for counter_state_logic]; stepsimpl.
-      lazymatch goal with
-      | |- context [match step counter ?s ?i with pair _ _ => _ end] =>
-        rewrite (surjective_pairing (step counter s i))
-      end.
-      erewrite step_counter by eauto.
-      cbn [spec_for counter_state_logic]; stepsimpl.
+      repeat use_correctness. stepsimpl.
       f_equal.
       { (* counter values match *)
         compute_expr (N.of_nat 8). compute_expr (8 + 8)%nat.
@@ -305,9 +329,10 @@ Module Example.
         all:try reflexivity.
         all:Zify.zify; Z.to_euclidean_division_equations; lia. }
     Qed.
+
+    Existing Instances double_counter_invariant_at_reset double_counter_invariant_preserved
+             double_counter_output_correct.
+    Global Instance double_counter_correctness : correctness_for double_counter.
+    Proof. constructor; typeclasses eauto. Defined.
   End Proofs.
 End Example.
-
-
-
-
