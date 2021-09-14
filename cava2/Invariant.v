@@ -69,6 +69,18 @@ Class correctness_for {s i o} (c : Circuit s i o)
     invariant_preserved_pf : invariant_preserved c;
     output_correct_pf : output_correct c }.
 
+(* Switch between higher-level representations *)
+Definition invariant_logic_isomorphism {s i o} {c : Circuit s i o}
+           {s1 s2} (phi : s1 -> s2) (inv : s2 -> s1)
+           (invariant_logic : invariant_logic_for c s1)
+  : invariant_logic_for c s2 :=
+  {| reset_hl_state := phi reset_hl_state;
+     update_hl_state := fun input x => phi (update_hl_state input (inv x));
+     invariant_for := fun (state : denote_type s) x => invariant_for c state (inv x);
+     precondition_for := fun input x => precondition_for c input (inv x);
+     spec_for := fun input x => spec_for c input (inv x)
+  |}.
+
 (* Succeeds if an instance is found for circuit correctness *)
 Ltac find_correctness c :=
   let x := constr:(_:correctness_for c) in
@@ -133,11 +145,27 @@ Section StateLogicProofs.
         reflexivity. } }
     { intros; logical_simplify; subst. reflexivity. }
   Qed.
+
+  (* if there's an isomorphism between two higher-level states, then invariant
+     logic and correctness proofs can be ported between them. *)
+  Lemma invariant_logic_isomorphism_correct
+        (hl_state' : Type) (phi : hl_state -> hl_state') (inv : hl_state' -> hl_state) :
+    (forall x, inv (phi x) = x) ->
+    correctness_for (invariant_logic:=invariant_logic_isomorphism phi inv _) c.
+  Proof.
+    intros Hphi.
+    constructor; cbv [invariant_at_reset invariant_preserved output_correct
+                                         invariant_logic_isomorphism].
+    all:cbn [reset_hl_state invariant_for precondition_for spec_for].
+    all:rewrite ?Hphi; intros; subst.
+    all:eauto using invariant_preserved_pf, output_correct_pf.
+    all:eapply invariant_at_reset_pf.
+  Qed.
 End StateLogicProofs.
 
 
-(**** Example usage of invariant logic ****)
-Module Example.
+(**** Example usage of invariant logic for counters ****)
+Module DoubleCounterExample.
   Section CircuitDefinitions.
     Context {var : tvar}.
     Import ExprNotations.
@@ -335,4 +363,201 @@ Module Example.
     Global Instance double_counter_correctness : correctness_for double_counter.
     Proof. constructor; typeclasses eauto. Defined.
   End Proofs.
-End Example.
+End DoubleCounterExample.
+
+(**** Example usage of invariant logic for circuit with abstract subcircuit ****)
+Module AbstractSubcircuitExample.
+  Section CircuitDefinitions.
+    Context {var : tvar}.
+    Import ExprNotations.
+    Import PrimitiveNotations.
+
+    (* Somewhat contrived circuit that takes in a stream of inputs of unknown
+       type, and always returns the smallest input seen so far (according to a
+       comparator subcircuit). The [cmp] subcircuit retuns true if the first
+       argument is <= the second, and false otherwise. *)
+    Definition minimum {cmp_state T} (cmp : Circuit cmp_state [T;T] Bit)
+      : Circuit _ [T] T :=
+      {{ fun input =>
+           let/delay min :=
+              (let input_le_min := `cmp` input min in
+               if input_le_min then input else min)
+                initially default in
+           min
+      }}.
+
+    Check Vec.
+    Definition double_minimum {cmp_state T} (cmp : Circuit cmp_state [T;T] Bit)
+      : Circuit _ [T;T] T :=
+      {{ fun input1 input2 =>
+           let min1 := `minimum cmp` input1 in
+           let min2 := `minimum cmp` input2 in
+           let min1_le_min2 := `cmp` min1 min2 in
+           if min1_le_min2 then min1 else min2
+      }}.
+  End CircuitDefinitions.
+
+  Section Specifications.
+    Context {T : type} (minT : denote_type T -> denote_type T -> denote_type T).
+    Context {cmp_state} (cmp : Circuit cmp_state [T;T] Bit).
+
+    (* higher-level state here will be the list of inputs recieved so far *)
+    Global Instance minimum_invariant_logic
+      : invariant_logic_for (minimum cmp) (list (denote_type T)) :=
+      {| reset_hl_state := List.nil;
+         update_hl_state :=
+           fun (input : denote_type [T]) (acc : list (denote_type T)) =>
+             let '(x,_) := input in
+             (x :: acc : list (denote_type T));
+         invariant_for :=
+           fun (state : denote_type T) acc =>
+             (* min is the minimum of the inputs received so far *)
+             state = fold_right minT default acc;
+         precondition_for := fun _ _ => True;
+         spec_for :=
+           fun input value =>
+             let '(enable,_) := input in
+             let new_val := if enable then (value + 1)%N else value in
+             ((new_val mod (2 ^ 8), 2 ^ 8 <=? new_val)
+              : denote_type (BitVec 8 ** Bit))
+      |}.
+
+    Global Instance double_counter_invariant_logic
+      : invariant_logic_for double_counter N :=
+      {| reset_hl_state := 0;
+         update_hl_state :=
+           fun (input : denote_type [Bit]) value =>
+             let '(enable,_) := input in
+             (* if enabled, add 1 mod 2^16, else do nothing *)
+             if enable
+             then ((value + 1) mod (2 ^ 16))%N
+             else value;
+         invariant_for :=
+           fun (state : denote_type (state_of (var:=denote_type) counter
+                                            ** state_of (var:=denote_type) counter)) value =>
+             let '(counter1_state, counter2_state) := state in
+             (* counter1_state matches the low part of the counter value *)
+             invariant_for counter counter1_state (value mod 2 ^ 8)%N
+             (* ...and counter2_state matches the high part of the counter value *)
+             /\ invariant_for counter counter2_state (value / 2 ^ 8)%N
+             (* ...and the value is < 2 ^ 16 (this is implied by the other two but
+                convenient to have without unfolding [counter_invariant]) *)
+             /\ value < 2 ^ 16;
+         precondition_for := fun _ _ => True;
+         spec_for :=
+           fun input value =>
+             let '(enable,_) := input in
+             let new_val := if enable then (value + 1)%N else value in
+             ((new_val mod (2 ^ 16), 2 ^ 16 <=? new_val)
+              : denote_type (BitVec 16 ** Bit))
+      |}.
+  End Specifications.
+
+  Section Proofs.
+    Lemma counter_invariant_at_reset : invariant_at_reset counter.
+    Proof.
+      simplify_invariant_logic counter.
+      cbv [counter]. cbn [reset_state]. stepsimpl.
+      ssplit; [ reflexivity | ]. cbn; lia.
+    Qed.
+
+    Lemma counter_invariant_preserved : invariant_preserved counter.
+    Proof.
+      intros (enable,[]) (data, ?) value. intros; subst.
+      simplify_invariant_logic counter.
+      cbv [counter]. stepsimpl. logical_simplify; subst.
+      destruct enable; cbn [negb fst snd].
+      all:ssplit; first [ lia | reflexivity
+                        | apply N.mod_bound_pos; lia ].
+    Qed.
+
+    Lemma counter_output_correct : output_correct counter.
+    Proof.
+      intros (enable,[]) (data, ?) value.
+      simplify_invariant_logic counter.
+      intros; logical_simplify; subst.
+      cbv [counter]. stepsimpl. compute_expr (N.of_nat 8).
+      change (2 ^ 8) with 256 in *.
+      change (N.ones 8) with 255 in *.
+      destruct enable; cbn [negb fst snd].
+      all:repeat lazymatch goal with
+                 | |- context [N.eqb ?x ?y] => destr (N.eqb x y); subst
+                 | |- context [N.leb ?x ?y] => destr (N.leb x y)
+                 | _ => lia || reflexivity
+                 end.
+      all:rewrite N.mod_small by lia; reflexivity.
+    Qed.
+
+    Existing Instances counter_invariant_at_reset counter_invariant_preserved
+             counter_output_correct.
+    Global Instance counter_correctness : correctness_for counter.
+    Proof. constructor; typeclasses eauto. Defined.
+
+    Lemma double_counter_invariant_at_reset : invariant_at_reset double_counter.
+    Proof.
+      simplify_invariant_logic double_counter.
+      cbn [double_counter reset_state].
+      stepsimpl. rewrite N.mod_0_l, N.div_0_l by (cbn; lia).
+      ssplit; [ eapply counter_invariant_at_reset .. | ].
+      cbn; lia.
+    Qed.
+
+    Lemma double_counter_invariant_preserved : invariant_preserved double_counter.
+    Proof.
+      cbv [invariant_preserved]. intros (enable,[]) (data,?) value.
+      intros; subst. simplify_invariant_logic double_counter.
+      cbv [double_counter]. stepsimpl. logical_simplify; subst.
+      repeat use_correctness. stepsimpl.
+      ssplit.
+      { eapply (invariant_preserved_pf (c:=counter));
+          [ | solve [eauto] .. ].
+        cbn [update_hl_state counter_invariant_logic].
+        destruct enable; [ | reflexivity ].
+        change (2 ^ 8) with 256 in *. change (2 ^ 16) with 65536 in *.
+        Zify.zify. Z.to_euclidean_division_equations. lia. }
+      {eapply (invariant_preserved_pf (c:=counter));
+          [ | solve [eauto] .. ].
+        cbn [update_hl_state counter_invariant_logic].
+        change (2 ^ 8) with 256 in *. change (2 ^ 16) with 65536 in *.
+        repeat (destruct_one_match; try lia).
+        (* extra step to help lia out, otherwise hangs *)
+        all:try rewrite N.mod_mul_div_r with (b:=256) (c:=256) by lia.
+        all:Zify.zify; Z.to_euclidean_division_equations; lia. }
+      { destruct enable; [ | lia ].
+        apply N.mod_bound_pos; lia. }
+    Qed.
+
+    Lemma double_counter_output_correct : output_correct double_counter.
+    Proof.
+      cbv [output_correct]. intros (enable,[]) (data, ?) value.
+      simplify_invariant_logic double_counter.
+      intros; logical_simplify; subst.
+      cbv [double_counter]. stepsimpl.
+      repeat use_correctness. stepsimpl.
+      f_equal.
+      { (* counter values match *)
+        compute_expr (N.of_nat 8). compute_expr (8 + 8)%nat.
+        compute_expr (N.of_nat 16).
+        rewrite !N.shiftl_mul_pow2, !N.land_ones.
+        change (2 ^ 8) with 256 in *. change (2 ^ 16) with 65536 in *.
+        rewrite !(N.mod_small (_ mod 256) 65536)
+          by (eapply N.lt_le_trans; [ apply N.mod_bound_pos | ]; lia).
+        rewrite N.lor_high_low_add with (b:=8). change (2 ^ 8) with 256 in *.
+        repeat destruct_one_match.
+        (* the below rewrite improves performance of lia *)
+        all:rewrite ?N.mod_mod by lia.
+        all:Zify.zify; Z.to_euclidean_division_equations; lia. }
+      { change (2 ^ 8) with 256 in *. change (2 ^ 16) with 65536 in *.
+        repeat destruct_one_match.
+        all:repeat lazymatch goal with |- context [N.leb ?x ?y] =>
+                                       destr (N.leb x y) end.
+        all:try reflexivity.
+        all:Zify.zify; Z.to_euclidean_division_equations; lia. }
+    Qed.
+
+    Existing Instances double_counter_invariant_at_reset double_counter_invariant_preserved
+             double_counter_output_correct.
+    Global Instance double_counter_correctness : correctness_for double_counter.
+    Proof. constructor; typeclasses eauto. Defined.
+  End Proofs.
+End DoubleCounterExample.
