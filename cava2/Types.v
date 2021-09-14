@@ -37,15 +37,19 @@ Proof.
   decide equality; apply Nat.eq_dec.
 Defined.
 
+Definition tvar : Type := type -> Type.
+Existing Class tvar.
+
 (* simple_denote_type denotes 'BitVec's as N *)
-Fixpoint denote_type (t: type) :=
-  match t with
-  | Unit => unit
-  | Bit => bool
-  | BitVec n => N
-  | Vec t n =>list (denote_type t)
-  | Pair x y => (denote_type x * denote_type y)%type
-  end.
+Instance denote_type : tvar :=
+  fix denote_type (t: type) :=
+    match t with
+    | Unit => unit
+    | Bit => bool
+    | BitVec n => N
+    | Vec t n =>list (denote_type t)
+    | Pair x y => (denote_type x * denote_type y)%type
+    end.
 
 Fixpoint eqb {t}: denote_type t -> denote_type t -> bool :=
   match t return denote_type t -> denote_type t -> bool with
@@ -96,3 +100,4 @@ Notation "[ x ]" := (Pair x Unit) : circuit_type_scope.
 Notation "[ x ; y ; .. ; z ]" := (Pair x (Pair y .. (Pair z Unit) ..)) : circuit_type_scope.
 Notation "x ** y" := (Pair x y)(at level 60, right associativity) : circuit_type_scope.
 Notation "x ++ y" := (absorb_any x y) (at level 60, right associativity): circuit_type_scope.
+Arguments denote_type _%circuit_type.

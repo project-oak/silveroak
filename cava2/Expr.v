@@ -24,9 +24,6 @@ Require Import Cava.Primitives.
 
 Local Open Scope N.
 
-Definition tvar : Type := type -> Type.
-Existing Class tvar.
-
 Section Vars.
   Inductive Circuit {var: tvar}: type -> type -> type -> Type :=
   | Var : forall {x},     var x -> Circuit [] [] x
@@ -284,7 +281,8 @@ Definition bvslice {var n} (start length: nat): Circuit (var:=var) [] [BitVec n]
   {{ fun vec => `bvresize length` (vec >> start) }}.
 Definition bvconcat {var n m}: Circuit (var:=var) [] [BitVec n; BitVec m] (BitVec (n + m)) :=
   {{ fun v1 v2 => (((`bvresize (n+m)` v1) << m) | (`bvresize (n+m)` v2)) }}.
-Fixpoint map {var t u n} (f: Circuit [] [t] u): Circuit (var:=var) [] [Vec t n] (Vec u n) :=
+Fixpoint map {var : tvar} {t u n} (f: Circuit [] [t] u)
+  : Circuit (var:=var) [] [Vec t n] (Vec u n) :=
   match n with
   | O => {{ fun _ => [] }}
   | S n' => {{ fun vec =>
@@ -292,7 +290,8 @@ Fixpoint map {var t u n} (f: Circuit [] [t] u): Circuit (var:=var) [] [Vec t n] 
                 `f` hd :> `map f` tl
            }}
   end.
-Fixpoint map2 {var t u v n} (f: Circuit [] [t; u] v): Circuit (var:=var) [] [Vec t n; Vec u n] (Vec v n) :=
+Fixpoint map2 {var : tvar} {t u v n} (f: Circuit [] [t; u] v)
+  : Circuit (var:=var) [] [Vec t n; Vec u n] (Vec v n) :=
   match n with
   | O => {{ fun _ _ => [] }}
   | S n' => {{ fun vecx vecy =>

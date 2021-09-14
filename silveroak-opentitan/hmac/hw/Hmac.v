@@ -211,8 +211,6 @@ Section SanityCheck.
   Definition is_done (v : denote_type (Vec (BitVec 32) hmac_register_count)) :=
     nth 0 (v) 0.
 
-  Definition state_of {s i o} (_: Circuit (var:=denote_type) s i o) := s.
-
   Definition get_regs (v: denote_type (state_of hmac))
     : denote_type (Vec (BitVec 32) hmac_register_count) .
     cbv [state_of hmac absorb_any] in v.
