@@ -38,7 +38,7 @@ Hint Rewrite @step_vec_as_tuple_one using solve [eauto] : stepsimpl.
 
 Ltac stepsimpl :=
   repeat first [ progress
-                   cbn [fst snd step denote_type absorb_any
+                   cbn [fst snd step denote_type absorb_any One Zero K
                             split_absorbed_denotation combine_absorbed_denotation
                             unary_semantics binary_semantics eqb ]
                | progress autorewrite with stepsimpl ].

@@ -138,6 +138,57 @@ Module N.
     lia.
   Qed.
 
+  Lemma mod_mod_mul_l a b c : b <> 0%N -> c <> 0%N -> ((a mod (b * c)) mod c = a mod c)%N.
+  Proof.
+    intros. rewrite (N.mul_comm b c).
+    rewrite N.mod_mul_r, N.add_mod, N.mod_mul_l, N.add_0_r by lia.
+    rewrite !N.mod_mod by lia. reflexivity.
+  Qed.
+
+  Lemma div_floor a b : b <> 0%N -> ((a - a mod b) / b = a / b)%N.
+  Proof.
+    intros. rewrite (N.div_mod a b) at 1 by lia.
+    rewrite N.add_sub, N.div_mul_l; lia.
+  Qed.
+
+  Lemma mod_mul_div_r a b c :
+    b <> 0%N -> c <> 0%N -> (a mod (b * c) / c = (a / c) mod b)%N.
+  Proof.
+    intros.
+    rewrite (N.mul_comm b c), N.mod_mul_r by lia.
+    rewrite (N.mul_comm c (_ mod b)), N.div_add by lia.
+    rewrite (N.div_small (_ mod c) c) by (apply N.mod_bound_pos; lia).
+    lia.
+  Qed.
+
+  Lemma lor_high_low_add a b c :
+    N.lor (a * 2 ^ b) (c mod 2 ^ b) = (a * 2 ^ b + c mod 2 ^ b)%N.
+  Proof.
+    rewrite <-!N.shiftl_mul_pow2, <-!N.land_ones.
+    apply N.bits_inj; intro i.
+    rewrite !N.lor_spec, !N.land_spec.
+    pose proof N.mod_pow2_bits_full (a * 2 ^ b + c mod 2 ^ b) b i as Hlow.
+    rewrite N.add_mod, N.mod_mul, N.add_0_l, !N.mod_mod in Hlow
+      by (apply N.pow_nonzero; lia).
+    rewrite <-!N.shiftl_mul_pow2, <-!N.land_ones in Hlow.
+    (* helpful assertion *)
+    assert (2 ^ b <> 0)%N by (apply N.pow_nonzero; lia).
+    destruct (i <? b)%N eqn:Hi;
+      [ rewrite N.ltb_lt in Hi | rewrite N.ltb_ge in Hi ].
+    { rewrite <-Hlow. rewrite !N.land_spec.
+      rewrite N.shiftl_spec_low by lia.
+      cbn [orb]. reflexivity. }
+    { rewrite !N.land_spec in Hlow. rewrite Hlow.
+      rewrite N.shiftl_spec_high by lia.
+      rewrite Bool.orb_false_r.
+      replace i with (i - b + b)%N by lia.
+      rewrite N.add_sub. rewrite <-N.div_pow2_bits.
+      rewrite N.shiftl_mul_pow2, N.land_ones.
+      rewrite N.div_add_l by lia.
+      rewrite N.div_small by (apply N.mod_bound_pos; lia).
+      f_equal; lia. }
+  Qed.
+
   (* tactic for transforming boolean expressions about N arithmetic into Props *)
   Ltac bool_to_prop :=
     repeat lazymatch goal with
