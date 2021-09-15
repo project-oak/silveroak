@@ -279,6 +279,92 @@ Module Nat.
     a / b + if a mod b =? 0 then 0 else 1.
 End Nat.
 
+(* Properties of [Nat.ceiling] *)
+Lemma ceiling_add_le_mono a b c :
+  Nat.ceiling a b <= Nat.ceiling (a + c) b.
+Admitted.
+
+(* TODO: move *)
+(* helper lemma for modular arithmetic *)
+Lemma ceiling_add_same a b c :
+  1 < c < b - 1 -> a mod b <= b - c ->
+  Nat.ceiling (a + c) b = Nat.ceiling (a + 1) b.
+Proof.
+  (* proof sketch:
+     Since a mod b <= b - c and 1 < c < b - 1, it follows that:
+           (1) (a + 1) mod b <> 0
+           (2) (a + c) mod b = 0 iff a mod b = b - c
+           (3) (a + c) / b = (a + 1) / b + if (a mod b = b - c) then 1 else 0
+
+     Proof of (1):
+           (a + 1) mod b = (a mod b + 1) mod b
+                         = a mod b + 1 (because a mod b + 1 <= (b - c) + 1 < b)
+                         > 0
+
+     Proof of (2):
+           case 1 (a mod b <> b - c): same logic as (1) proves (a + c) mod b <> 0
+           case 1 (a mod b = b - c):
+             (a + c) mod b = (a mod b + c) mod b
+                           = (b - c + c) mod b
+                           = 0
+
+     Proof of (3):
+           (a + c) / b = (a + 1 + (c - 1)) / b
+                       = ((a + 1) / b * b + (a + 1) mod b + (c - 1)) / b
+                       = (a + 1) / b + (a mod b + 1 + (c - 1)) / b
+                       = (a + 1) / b + (a mod b + c) / b
+                       = (a + 1) / b + if (a mod b = b - c) then 1 else 0
+
+     Therefore:
+        Nat.ceiling (a + 1) b
+                    = (a + 1) / b + if (a + 1) mod b =? 0 then 0 else 1
+                    = (a + 1) / b + 1
+
+        Nat.ceiling (a + c) b
+                    = (a + c) / b + if (a + c) mod b =? 0 then 0 else 1
+                    = (a + c) / b + if (a mod b = b - c) then 0 else 1
+                    = (a + 1) / b + if (a mod b = b - c) then 1 else 0
+                                  + if (a mod b = b - c) then 0 else 1
+                    = (a + 1) b + 1
+  *)
+Admitted.
+
+(* TODO: move *)
+(* helper lemma for modular arithmetic *)
+Lemma ceiling_add_diff a b c :
+  0 < b -> 0 < c < b -> b - c < a mod b ->
+  Nat.ceiling (a + c) b = Nat.ceiling a b + 1.
+Proof.
+  (* proof sketch:
+     Since (b - c < a mod b) and 0 < c, it follows that:
+           0 < a mod b + c < b
+           a mod b <> 0
+
+     Therefore:
+           (a + c) mod b = (a mod b + c) mod b
+                         =  a mod b + c
+           (a + c) / b = (a / b * b + a mod b + c) / b
+                       =  a / b + (a mod b + c) / b
+                       =  a / b
+
+     Nat.ceiling (a + c) b
+                 = (a + c) / b + (if (a + c) mod b =? 0 then 0 else 1)
+                 = (a + c) / b + 1
+                 = a / b + 1
+
+     Nat.ceiling a b
+                 = a / b + if a mod b =? 0 then 0 else 1
+                 = a / b + 1
+  *)
+Admitted.
+
+(* TODO: move *)
+Lemma ceiling_range a b :
+  0 < b -> 0 < a ->
+  Nat.ceiling a b * b - b < a <= Nat.ceiling a b * b.
+Admitted.
+
+
 (* length of the padded message (in bytes) is the smallest number of 512-bit
    (64-byte) blocks that can fit the message plus 9 more bytes (one for the
    extra 1 bit and 8 for the length -- extra 1 bit needs a full byte because
@@ -386,28 +472,51 @@ Definition sha256_padder_pre
 (* TODO: move *)
 Lemma length_N_to_bytes n bs :
   length (BigEndianBytes.N_to_bytes n bs) = n.
-Admitted.
+Proof. cbv [BigEndianBytes.N_to_bytes]. length_hammer. Qed.
 Hint Rewrite @length_N_to_bytes : push_length.
 (* TODO: move *)
 Lemma padded_message_bytes_length msg :
   length (SHA256.padded_msg_bytes msg) = padded_message_size msg.
-Admitted.
+Proof.
+  cbv [SHA256.padded_msg_bytes SHA256.padding padded_message_size].
+  push_length.
+  cbv [Nat.ceiling].
+  cbv [SHA256.k SHA256.l].
+  destruct_one_match; Zify.zify;
+    (* extra step because zify fails to zify Nat.modulo and Nat.div *)
+    rewrite ?mod_Zmod, ?div_Zdiv in * by lia;
+    Zify.zify; Z.to_euclidean_division_equations; lia.
+Qed.
 Hint Rewrite @padded_message_bytes_length : push_length.
 (* TODO: move *)
 Lemma padded_message_bytes_longer_than_input msg :
   length msg + 9 <= padded_message_size msg.
-Admitted.
+Proof.
+  cbv [padded_message_size].
+  pose proof ceiling_range (length msg + 9) 64 ltac:(lia) ltac:(lia).
+  lia.
+Qed.
 (* TODO: move *)
 Lemma min_padded_message_size msg : 64 <= padded_message_size msg.
-Admitted.
+Proof.
+  cbv [padded_message_size].
+  pose proof ceiling_range (length msg + 9) 64 ltac:(lia) ltac:(lia).
+  lia.
+Qed.
 (* TODO: move *)
 Lemma padded_message_size_modulo msg : padded_message_size msg mod 64 = 0.
-Admitted.
+Proof. apply Nat.mod_mul. lia. Qed.
 (* TODO: move *)
 (* Adding data cannot decrease padded message size *)
 Lemma padded_message_size_mono msg data :
   padded_message_size msg <= padded_message_size (msg ++ data).
-Admitted.
+Proof.
+  cbv [padded_message_size]. push_length.
+  replace (length msg + length data + 9)
+    with (length msg + 9 + length data) by lia.
+  pose proof ceiling_add_le_mono (length msg + 9) 64 (length data).
+  lia.
+Qed.
 
 (* TODO: move *)
 Local Ltac prove_by_zify :=
@@ -421,86 +530,6 @@ Lemma increment_offset (offset index : N) :
   (offset * 4 = index mod 64)%N ->
   ((offset + 1) mod 16 * 4 = (index + 4) mod 64)%N.
 Proof. intros. prove_by_zify. Qed.
-
-(* TODO: move *)
-(* helper lemma for modular arithmetic *)
-Lemma ceiling_add_same a b c :
-  1 < c < b - 1 -> a mod b <= b - c ->
-  Nat.ceiling (a + c) b = Nat.ceiling (a + 1) b.
-Proof.
-  (* proof sketch:
-     Since a mod b <= b - c and 1 < c < b - 1, it follows that:
-           (1) (a + 1) mod b <> 0
-           (2) (a + c) mod b = 0 iff a mod b = b - c
-           (3) (a + c) / b = (a + 1) / b + if (a mod b = b - c) then 1 else 0
-
-     Proof of (1):
-           (a + 1) mod b = (a mod b + 1) mod b
-                         = a mod b + 1 (because a mod b + 1 <= (b - c) + 1 < b)
-                         > 0
-
-     Proof of (2):
-           case 1 (a mod b <> b - c): same logic as (1) proves (a + c) mod b <> 0
-           case 1 (a mod b = b - c):
-             (a + c) mod b = (a mod b + c) mod b
-                           = (b - c + c) mod b
-                           = 0
-
-     Proof of (3):
-           (a + c) / b = (a + 1 + (c - 1)) / b
-                       = ((a + 1) / b * b + (a + 1) mod b + (c - 1)) / b
-                       = (a + 1) / b + (a mod b + 1 + (c - 1)) / b
-                       = (a + 1) / b + (a mod b + c) / b
-                       = (a + 1) / b + if (a mod b = b - c) then 1 else 0
-
-     Therefore:
-        Nat.ceiling (a + 1) b
-                    = (a + 1) / b + if (a + 1) mod b =? 0 then 0 else 1
-                    = (a + 1) / b + 1
-
-        Nat.ceiling (a + c) b
-                    = (a + c) / b + if (a + c) mod b =? 0 then 0 else 1
-                    = (a + c) / b + if (a mod b = b - c) then 0 else 1
-                    = (a + 1) / b + if (a mod b = b - c) then 1 else 0
-                                  + if (a mod b = b - c) then 0 else 1
-                    = (a + 1) b + 1
-  *)
-Admitted.
-
-(* TODO: move *)
-(* helper lemma for modular arithmetic *)
-Lemma ceiling_add_diff a b c :
-  0 < b -> 0 < c < b -> b - c < a mod b ->
-  Nat.ceiling (a + c) b = Nat.ceiling a b + 1.
-Proof.
-  (* proof sketch:
-     Since (b - c < a mod b) and 0 < c, it follows that:
-           0 < a mod b + c < b
-           a mod b <> 0
-
-     Therefore:
-           (a + c) mod b = (a mod b + c) mod b
-                         =  a mod b + c
-           (a + c) / b = (a / b * b + a mod b + c) / b
-                       =  a / b + (a mod b + c) / b
-                       =  a / b
-
-     Nat.ceiling (a + c) b
-                 = (a + c) / b + (if (a + c) mod b =? 0 then 0 else 1)
-                 = (a + c) / b + 1
-                 = a / b + 1
-
-     Nat.ceiling a b
-                 = a / b + if a mod b =? 0 then 0 else 1
-                 = a / b + 1
-  *)
-Admitted.
-
-(* TODO: move *)
-Lemma ceiling_range a b :
-  0 < b -> 0 < a ->
-  Nat.ceiling a b * b - b < a <= Nat.ceiling a b * b.
-Admitted.
 
 Lemma expected_padder_state_cases msg (msg_complete padder_done : bool) index :
   index < padded_message_size msg ->
@@ -973,6 +1002,14 @@ Proof.
 Qed.
 Hint Rewrite @padded_message_length : push_length.
 
+Lemma nth_bytes_to_Ns i n bs :
+  nth i (BigEndianBytes.bytes_to_Ns n bs) 0%N
+  = BigEndianBytes.concat_bytes
+      (List.map
+         (fun j => nth (i*n + j) bs x00)
+         (seq 0 n)).
+Admitted.
+
 Lemma nth_padded_msg msg i :
   nth i (SHA256.padded_msg msg) 0%N
   = BigEndianBytes.concat_bytes
@@ -980,7 +1017,11 @@ Lemma nth_padded_msg msg i :
        ; nth (i*4 + 1) (SHA256.padded_msg_bytes msg) x00
        ; nth (i*4 + 2) (SHA256.padded_msg_bytes msg) x00
        ; nth (i*4 + 3) (SHA256.padded_msg_bytes msg) x00].
-Admitted.
+Proof.
+  cbv [SHA256.padded_msg]. change (N.to_nat SHA256.w / 8) with 4.
+  rewrite nth_bytes_to_Ns. cbn [List.map seq]. natsimpl.
+  reflexivity.
+Qed.
 
 Lemma N_to_byte_to_N x : Byte.to_N (N_to_byte x) = (x mod 256)%N.
 Admitted.
