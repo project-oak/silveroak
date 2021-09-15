@@ -29,12 +29,6 @@ Require Import Cava.Util.Nat.
 Require Import Cava.Util.Tactics.
 Require Import Cava.ExprProperties.
 
-
-(* When using an abstract circuit, I want to parameterize over the state
-invariant but know the specification concretely. I also want to parameterize
-over proofs that the invariant works to prove the spec.
-*)
-
 Definition invariant_for {s i o} (c : Circuit (var:=denote_type) s i o)
            (repr : Type) : Type := denote_type s -> repr -> Prop.
 Existing Class invariant_for.
@@ -478,7 +472,7 @@ Module AbstractSubcircuitExample.
 
     Section Proofs.
       Context (cmp_correct :
-                 forall x y, step cmp tt (x,(y,tt)) = (tt, rankT x <? rankT y))
+                 forall x y, step cmp tt (x,(y,tt)) = (tt, rankT x <=? rankT y))
               (minimum_correctness : correctness_for minimum).
       Hint Rewrite cmp_correct : stepsimpl.
 
@@ -602,4 +596,197 @@ Module AbstractSubcircuitExample.
       Proof. constructor; typeclasses eauto. Defined.
     End Proofs.
   End SpecificationsAndProofs.
+
+  Section Instantiations.
+    Section CircuitDefinitions.
+      Context {var : tvar}.
+      Import ExprNotations.
+      Import PrimitiveNotations.
+
+      Definition minimum {T} (cmp : Circuit [] [T;T] Bit)
+        : Circuit _ [T] T :=
+        {{ fun input =>
+             let/delay min :=
+                (let input_le_min := `cmp` input min in
+                 if input_le_min then input else min)
+                  initially default in
+             min
+        }}.
+
+      Definition cmp_bit : Circuit [] [Bit;Bit] Bit :=
+        {{ fun x y => let out := (y || !x) in out }}.
+      Definition cmp_bv {n} : Circuit [] [BitVec n;BitVec n] Bit :=
+        {{ fun x y => let b := x <= y in b }}.
+
+      (* Instantiate [minimum] and [double_minimum] for different types *)
+      Definition minimum_bit : Circuit _ [Bit] Bit := minimum cmp_bit.
+      Definition minimum_byte : Circuit _ [BitVec 8] (BitVec 8)
+        := minimum cmp_bv.
+      Definition double_minimum_bit : Circuit _ [Bit;Bit] Bit :=
+        double_minimum cmp_bit minimum_bit.
+      Definition double_minimum_byte : Circuit _ [BitVec 8;BitVec 8] (BitVec 8) :=
+        double_minimum cmp_bv minimum_byte.
+    End CircuitDefinitions.
+
+    (* Parameterized proofs for [minimum] *)
+    Section GeneralizedMinimum.
+      Context {T} (rankT : denote_type T -> N)
+              (rankT_default : rankT default = 0)
+              (cmp : Circuit [] [T;T] Bit)
+              (cmp_correct :
+                 forall x y : denote_type T,
+                   step cmp tt (x,(y,tt)) = (tt, rankT x <=? rankT y)).
+      Hint Rewrite cmp_correct : stepsimpl.
+
+      (* Generalized invariant for [minimum] *)
+      Instance minimum_invariant
+        : invariant_for (minimum cmp) (list (denote_type T)) :=
+        fun (state : denote_type (T ++ [])) (acc : list (denote_type T)) =>
+          let (min,_) := split_absorbed_denotation state in
+          min = fold_right (fun x min =>
+                              if rankT x <=? rankT min then x else min)
+                           default acc.
+
+      Lemma minimum_invariant_at_reset :
+        invariant_at_reset (spec:=minimum_specification rankT (minimum cmp))
+                           (minimum cmp).
+      Proof.
+        simplify_invariant (minimum cmp).
+        cbn [minimum reset_state]. stepsimpl.
+        rewrite !split_combine_denotation.
+        reflexivity.
+      Qed.
+
+      Lemma minimum_invariant_preserved :
+        invariant_preserved (spec:=minimum_specification rankT (minimum cmp))
+                            (minimum cmp).
+      Proof.
+        simplify_invariant (minimum cmp). cbn [absorb_any].
+        intros [input []].
+        intros; subst. simplify_invariant (minimum cmp).
+        repeat destruct_pair_let.
+        repeat lazymatch goal with
+               | H : context [match ?p with pair _ _ => _ end] |- _ =>
+                 rewrite (surjective_pairing p) in H
+               end.
+        cbv [minimum]. stepsimpl. logical_simplify; subst.
+        repeat (destruct_pair_let; cbn [fst snd]). stepsimpl.
+        repeat (rewrite split_combine_denotation; cbn [fst snd]).
+        cbn [update_repr minimum_specification].
+        cbn [fold_right].
+        lazymatch goal with H : _ = fold_right _ _ _ |- _ => rewrite <-H end.
+        reflexivity.
+      Qed.
+
+      (* helper lemma for minimum_output_correct *)
+      Lemma Forall_rankT_min min ls :
+        min = fold_right (fun x min => if rankT x <=? rankT min then x else min) default ls ->
+        Forall (fun y => rankT min <= rankT y) ls.
+      Proof.
+        revert min; induction ls; intros; [ solve [constructor] | ].
+        subst. cbn [fold_right]. constructor; [ destruct_one_match; lia | ].
+        destruct_one_match; [ | solve [eauto] ].
+        specialize (IHls _ ltac:(reflexivity)).
+        rewrite Forall_forall in IHls. apply Forall_forall; intros.
+        specialize (IHls _ ltac:(eassumption)). lia.
+      Qed.
+
+
+      Lemma minimum_output_correct :
+        output_correct (spec:=minimum_specification rankT (minimum cmp))
+                       (minimum cmp).
+      Proof.
+        simplify_invariant (minimum cmp). cbn [absorb_any].
+        intros [input []].
+        intros; subst. cbn [postcondition precondition minimum_specification] in *.
+        repeat destruct_pair_let.
+        repeat lazymatch goal with
+               | H : context [match ?p with pair _ _ => _ end] |- _ =>
+                 rewrite (surjective_pairing p) in H
+               end.
+        cbv [minimum]. stepsimpl. logical_simplify; subst.
+        repeat (destruct_pair_let; cbn [fst snd]). stepsimpl.
+        apply Forall_rankT_min. cbn [fold_right].
+        lazymatch goal with H : _ = fold_right _ _ _ |- _ => rewrite <-H end.
+        reflexivity.
+      Qed.
+
+      Existing Instances minimum_invariant_at_reset minimum_invariant_preserved
+               minimum_output_correct.
+      Instance minimum_correctness :
+        correctness_for (spec:=minimum_specification rankT (minimum cmp))
+                        (minimum cmp).
+      Proof. constructor; typeclasses eauto. Defined.
+    End GeneralizedMinimum.
+
+    Lemma cmp_bit_correct (x y : denote_type Bit) :
+      step cmp_bit tt (x, (y, tt)) = (tt, N.b2n x <=? N.b2n y).
+    Proof. destruct x, y; reflexivity. Qed.
+
+    Lemma cmp_bv_correct n (x y : denote_type (BitVec n)) :
+      step (cmp_bv (n:=n)) tt (x, (y, tt)) = (tt, x <=? y).
+    Proof. reflexivity. Qed.
+
+    (* Derive correctness for [minimum_bit] *)
+
+    Global Instance minimum_bit_specification
+      : specification_for minimum_bit (list bool) :=
+      minimum_specification (T:=Bit) N.b2n minimum_bit.
+
+    Global Instance minimum_bit_invariant : invariant_for minimum_bit (list bool) :=
+      minimum_invariant (T:=Bit) N.b2n cmp_bit.
+
+    Global Instance minimum_bit_correctness : correctness_for minimum_bit.
+    Proof.
+      apply @minimum_correctness; [ exact eq_refl | ].
+      exact cmp_bit_correct.
+    Qed.
+
+    (* Derive correctness for [minimum_byte] *)
+    Global Instance minimum_byte_specification
+      : specification_for minimum_byte (list N) :=
+      minimum_specification (T:=BitVec 8) (fun x => x) minimum_byte.
+
+    Global Instance minimum_byte_invariant : invariant_for minimum_byte (list N) :=
+      minimum_invariant (T:=BitVec 8) (fun x => x) cmp_bv.
+
+    Global Instance minimum_byte_correctness : correctness_for minimum_byte.
+    Proof.
+      apply @minimum_correctness; [ exact eq_refl | ].
+      exact (cmp_bv_correct 8).
+    Defined.
+
+    (* Derive correctness for [double_minimum_bit] *)
+
+    Global Instance double_minimum_bit_specification
+      : specification_for double_minimum_bit (list bool) :=
+      double_minimum_specification (T:=Bit) N.b2n cmp_bit minimum_bit.
+
+    Global Instance double_minimum_bit_invariant
+      : invariant_for double_minimum_bit (list bool) :=
+      double_minimum_invariant (T:=Bit) cmp_bit minimum_bit.
+
+    Global Instance double_minimum_bit_correctness : correctness_for double_minimum_bit.
+    Proof.
+      apply @double_minimum_correctness; try typeclasses eauto.
+      exact cmp_bit_correct.
+    Defined.
+
+    (* Derive correctness for [double_minimum_byte] *)
+
+    Global Instance double_minimum_byte_specification
+      : specification_for double_minimum_byte (list N) :=
+      double_minimum_specification (T:=BitVec 8) (fun x => x) cmp_bv minimum_byte.
+
+    Global Instance double_minimum_byte_invariant
+      : invariant_for double_minimum_byte (list N) :=
+      double_minimum_invariant (T:=BitVec 8) cmp_bv minimum_byte.
+
+    Global Instance double_minimum_byte_correctness : correctness_for double_minimum_byte.
+    Proof.
+      apply @double_minimum_correctness; try typeclasses eauto.
+      exact (cmp_bv_correct 8).
+    Defined.
+  End Instantiations.
+
 End AbstractSubcircuitExample.
