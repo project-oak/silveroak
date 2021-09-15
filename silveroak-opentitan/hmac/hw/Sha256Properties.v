@@ -29,6 +29,7 @@ Require Import Cava.Util.Tactics.
 Require Import Cava.Types.
 Require Import Cava.Expr.
 Require Import Cava.ExprProperties.
+Require Import Cava.Invariant.
 Require Import Cava.Primitives.
 Require Import Cava.Semantics.
 Require Import HmacSpec.SHA256Properties.
@@ -92,86 +93,125 @@ Proof. reflexivity. Qed.
 Hint Rewrite @step_sha256_round_constants using solve [eauto] : stepsimpl.
 
 (* State invariant for sha256_inner *)
-Definition sha256_inner_invariant
-           (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
-           msg (H : list N) (i : nat) : Prop :=
-  let '(current_digest, (message_schedule, (done, round))) := state in
-  if done
-  then True (* idle; no guarantees about other state elements *)
-  else
-    (* the round is < 64 *)
-    (round < 64)%N
-    (* ...and the message schedule is the expected slice of the message *)
-    /\ message_schedule = List.slice 0%N (SHA256.W msg i) (N.to_nat round - 15) 16
+Instance sha256_inner_invariant
+  : invariant_for sha256_inner (list byte * list N * nat * nat * bool) :=
+  fun (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
+    repr =>
+    let '(current_digest, (message_schedule, (done, round))) := state in
+    let '(msg, H, i, inner_round, inner_done) := repr in
+    (* inner_done matches the [done] bit *)
+    inner_done = done
+    (* ...and the length of the initial digest is 8 *)
+    /\ length H = 8
+    (* ...and the length of the current digest is 8 *)
+    /\ length current_digest = 8
     (* ...and the current digest is the expected digest *)
     /\ current_digest = fold_left (SHA256.sha256_compress msg i)
-                                 (seq 0 (N.to_nat round)) H.
+                                 (seq 0 inner_round) H
+    /\ if done
+      then inner_round = 0%nat (* idle; no further guarantees about other state elements *)
+      else
+        (* the round is < 64 *)
+        (round < 64)%N
+        (* ...and inner_round matches [round] *)
+        /\ inner_round = N.to_nat round
+        (* ...and the message schedule is the expected slice of the message *)
+        /\ message_schedule = List.slice 0%N (SHA256.W msg i) (inner_round - 15) 16.
 
-(* Precondition for sha256_inner *)
-Definition sha256_inner_pre
-           (input : denote_type [Bit; sha_block; sha_digest; Bit])
-           msg (i : nat) : Prop :=
-  let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
-  (* if clear is true, then the message ghost variable is empty *)
-  (if clear then msg = repeat x00 16 /\ i = 0%nat else True)
-  (* ...and the initial digest is the digest from the previous i *)
-  /\ initial_digest = fold_left (SHA256.sha256_step msg) (seq 0 i) SHA256.H0
-  (* ...and if the block is valid, the block is the expected slice of the
-     message *)
-  /\ (if block_valid
-     then block = List.slice 0%N (SHA256.W msg i) 0 16
-     else True).
+Instance sha256_inner_specification
+  : specification_for sha256_inner (list byte * list N * nat * nat * bool) :=
+  {| reset_repr := ([], SHA256.H0, 0%nat, 0%nat, true);
+     update_repr :=
+       fun (input : denote_type [Bit; sha_block; sha_digest; Bit])
+         repr =>
+         let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
+         let '(msg, H, i, inner_round, inner_done) := repr in
+         let current_digest :=
+             fold_left (SHA256.sha256_compress msg i) (seq 0 inner_round)
+                       initial_digest in
+         let next_digest :=
+             SHA256.sha256_compress msg i (List.resize 0%N 8 current_digest)
+                                    inner_round in
+         if clear
+         then ([], SHA256.H0, 0%nat, 0%nat, true)
+         else if block_valid
+              then (msg, initial_digest, i, 0%nat, false)
+              else if inner_done
+                   then (msg, initial_digest, i, 0%nat, true)
+                   else if inner_round =? 63
+                        then (msg, next_digest, i, 0%nat, true)
+                        else (msg, initial_digest, i, S inner_round, false);
+     precondition :=
+       fun (input : denote_type [Bit; sha_block; sha_digest; Bit])
+         repr =>
+         let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
+         let '(msg, H, i, inner_round, inner_done) := repr in
+         (* .the initial digest is the digest from the previous i *)
+         initial_digest = fold_left (SHA256.sha256_step msg) (seq 0 i) SHA256.H0
+         (* ...and H is the initial digest *)
+         /\ H = initial_digest
+         (* ...and a valid block is passed only if we're not busy *)
+         /\ (if block_valid then inner_done = true else True)
+         (* ...and if the block is valid, the block is the expected slice of the
+            message *)
+         /\ (if block_valid
+            then block = List.slice 0%N (SHA256.W msg i) 0 16
+            else True);
+     postcondition :=
+       fun (input : denote_type [Bit; sha_block; sha_digest; Bit])
+         repr (output : denote_type (sha_digest ** Bit)) =>
+         let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
+         let '(msg, H, i, inner_round, inner_done) := repr in
+         let current_digest :=
+             fold_left (SHA256.sha256_compress msg i) (seq 0 inner_round) H in
+         let next_digest :=
+             SHA256.sha256_compress msg i (List.resize 0%N 8 current_digest)
+                                    inner_round in
+         let new_digest := if clear
+                           then SHA256.H0
+                           else if block_valid
+                                then initial_digest
+                                else if inner_done
+                                     then current_digest
+                                     else next_digest in
+         let new_done := if clear
+                         then true
+                         else if block_valid
+                              then false
+                              else if inner_done
+                                   then true
+                                   else inner_round =? 63 in
+         output = (List.map2 SHA256.add_mod (List.resize 0%N 8 initial_digest)
+                             (List.resize 0%N 8 new_digest), new_done)
+  |}.
 
-Definition sha256_inner_spec
-           (input : denote_type [Bit; sha_block; sha_digest; Bit])
-           (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
-           msg (i : nat) : denote_type (sha_digest ** Bit) :=
-  let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
-  let '(current_digest, (message_schedule, (done, round))) := state in
-  let next_digest := if clear
-                     then SHA256.H0
-                     else if block_valid
-                          then initial_digest
-                          else if done
-                               then current_digest
-                               else SHA256.sha256_compress
-                                      msg i (List.resize 0%N 8 current_digest)
-                                      (N.to_nat round) in
-  let next_done := if clear
-                   then true
-                   else if block_valid
-                        then false
-                        else if done
-                             then true
-                             else (round =? 63)%N in
-  (List.map2 SHA256.add_mod (List.resize 0%N 8 initial_digest)
-             (List.resize 0%N 8 next_digest), next_done).
-
-
-Lemma step_sha256_inner_invariant
-      (input : denote_type [Bit; sha_block; sha_digest; Bit])
-      (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
-      msg i :
-  sha256_inner_pre input msg i ->
-  sha256_inner_invariant state msg (fst (snd (snd input))) i ->
-  sha256_inner_invariant
-    (fst (step sha256_inner state input)) msg (fst (snd (snd input))) i.
+Lemma sha256_inner_invariant_preserved : invariant_preserved sha256_inner.
 Proof.
-  destruct input as (block_valid, (block, (initial_digest, (clear, [])))).
-  destruct state as (current_digest, (message_schedule, (done, round))).
-  pose (t:=round). cbv [sha256_inner_invariant sha256_inner_pre].
-  intros ? Hinv. logical_simplify. subst.
-  cbv [sha256_inner K]. stepsimpl.
+  simplify_invariant sha256_inner. cbn [absorb_any].
+  simplify_spec sha256_inner.
+  intros (block_valid, (block, (initial_digest, (clear, [])))).
+  intros (current_digest, (message_schedule, (done, round))).
+  intros ((((msg, H), i), t), inner_done).
+  intros; logical_simplify; subst.
+  cbv [sha256_inner K]. cbn [negb]. stepsimpl.
   repeat (destruct_pair_let; cbn [fst snd]).
   autorewrite with tuple_if; cbn [fst snd].
   (* destruct cases for [clear] *)
   destruct clear; logical_simplify; [ tauto | ].
   (* destruct cases for [block_valid] *)
   destruct block_valid; logical_simplify; subst;
-    [ ssplit; auto; lia | ].
+    [ ssplit; auto; length_hammer | ].
   (* destruct cases for [done] *)
-  destruct done; logical_simplify; subst; boolsimpl; [ tauto | ].
-  destr (round =? 63)%N; [ reflexivity | ].
+  destruct done; logical_simplify; subst; boolsimpl;
+    [ ssplit; auto; tauto | ].
+  destr (N.to_nat round =? 63);
+    (destr (round =? 63)%N; try lia; [ ]);
+    [ ssplit; try reflexivity;
+      (* handle case involving compression *)
+      subst; destruct_one_match; try lia; [ ];
+      erewrite step_sha256_compress with (t:=63)
+        by (push_resize; push_nth; reflexivity);
+      cbn [fst snd seq fold_left]; reflexivity | ].
 
   (* For remaining cases, the new [done] is always 0 *)
   cbn [N.lor N.eqb].
@@ -186,12 +226,15 @@ Proof.
   all:repeat match goal with
              | |- context [(?x <? ?y)] =>
                destr (x <? y); try lia; [ ]
+             | |- context [(?x =? ?y)] =>
+               destr (x =? y); try lia; [ ]
              end.
   all:natsimpl.
   all:ssplit;
     lazymatch goal with
     | |- ?x = ?x => reflexivity
     | |- (_ < _)%N => lia
+    | |- @eq nat _ _ => length_hammer
     | _ => idtac
     end.
   (* solve subgoals about compression *)
@@ -199,7 +242,6 @@ Proof.
     lazymatch goal with
     | |- context [sha256_compress] =>
       erewrite step_sha256_compress with (t:=N.to_nat round) by (f_equal; lia);
-        replace (N.to_nat (round + 1)) with (S (N.to_nat round)) by lia;
         cbn [fst snd]; pull_snoc; rewrite ?resize_noop by (symmetry; length_hammer);
           reflexivity
     | |- _ => idtac
@@ -220,37 +262,39 @@ Proof.
       end.
 Qed.
 
-Lemma step_sha256_inner
-      (input : denote_type [Bit; sha_block; sha_digest; Bit])
-      (state : denote_type (sha_digest ** sha_block ** Bit ** sha_round))
-      msg i :
-  sha256_inner_pre input msg i ->
-  sha256_inner_invariant state msg (fst (snd (snd input))) i ->
-  snd (step sha256_inner state input) = sha256_inner_spec input state msg i.
+Lemma sha256_inner_output_correct : output_correct sha256_inner.
 Proof.
-  destruct input as (block_valid, (block, (initial_digest, (clear, [])))).
-  destruct state as (current_digest, (message_schedule, (done, round))).
-  pose (t:=round). cbv [sha256_inner_invariant sha256_inner_pre sha256_inner_spec].
+  simplify_invariant sha256_inner. cbn [absorb_any].
+  simplify_spec sha256_inner.
+  intros (block_valid, (block, (initial_digest, (clear, [])))).
+  intros (current_digest, (message_schedule, (done, round))).
+  intros ((((msg, H), i), t), inner_done).
   intros. logical_simplify. subst. cbn [fst snd] in *.
   cbv [sha256_inner K]. stepsimpl.
   repeat (destruct_pair_let; cbn [fst snd]).
   autorewrite with tuple_if; cbn [fst snd].
   stepsimpl. push_resize.
+  rewrite !resize_noop by (symmetry; length_hammer).
   (* destruct cases for [clear] *)
   destruct clear; logical_simplify; subst;
     [ push_resize; reflexivity | ].
   (* destruct cases for [block_valid] *)
   destruct block_valid; logical_simplify; subst;
-    [ push_resize; reflexivity | ].
+    [ push_resize; rewrite ?resize_noop by (symmetry; length_hammer);
+      reflexivity | ].
   (* destruct cases for [done] *)
   destruct done; logical_simplify; subst; boolsimpl;
     [ destr (round =? 63)%N; repeat (f_equal; [ ]);
+      rewrite ?resize_noop by (symmetry; length_hammer);
       push_resize; reflexivity | ].
   push_resize; push_nth.
   erewrite step_sha256_compress with (t:=N.to_nat round)
     by (repeat destruct_one_match;
         repeat destruct_one_match_hyp; f_equal; lia).
-  cbn [fst snd]. push_resize. reflexivity.
+  cbn [fst snd]. push_resize.
+  destr (N.to_nat round =? 63);
+    (destr (round =? 63)%N; try lia; [ ]);
+    reflexivity.
 Qed.
 
 (* values of padder state constants *)
