@@ -1182,3 +1182,111 @@ Proof.
         all:destr (i <? 24)%N; testbit_crush.
         all:destr (i <? 32)%N; testbit_crush. } }
 Qed.
+
+
+Check sha256.
+Eval cbv [absorb_any state_of] in state_of sha256.
+Eval cbv [absorb_any state_of] in state_of sha256_inner.
+Print sha256_padder_invariant.
+(* returns (digest_valid, digest, ready) *)
+(* Data must only be passed when ready is asserted *)
+(* State invariant for sha256 *)
+(* sha256 abstract state representation:
+   msg : message (so far)
+   msg_complete : whether message is done
+   i : block index (outer loop)
+   t : compression index (inner loop)
+*)
+Instance sha256_invariant
+  : invariant_for sha256 (list byte * bool * nat * nat) :=
+  fun (state : denote_type ((Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit)
+                            ** state_of sha256_padder
+                            ** state_of sha256_inner))
+    repr =>
+    let '(ready,
+          (block,
+           (digest,
+            (count,
+             (done,
+              (sha256_padder_state, sha256_inner_state)))))) := state in
+    let '(msg, msg_complete, i, t) := repr in
+    if done
+    then
+      (* index must be at the end of the message *)
+      
+    /\ if done
+      then inner_round = 0%nat (* idle; no further guarantees about other state elements *)
+      else
+        (* the round is < 64 *)
+        (round < 64)%N
+        (* ...and inner_round matches [round] *)
+        /\ inner_round = N.to_nat round
+        (* ...and the message schedule is the expected slice of the message *)
+        /\ message_schedule = List.slice 0%N (SHA256.W msg i) (inner_round - 15) 16.
+
+Instance sha256_inner_specification
+  : specification_for sha256_inner (list byte * list N * nat * nat * bool) :=
+  {| reset_repr := ([], SHA256.H0, 0%nat, 0%nat, true);
+     update_repr :=
+       fun (input : denote_type [Bit; sha_block; sha_digest; Bit])
+         repr =>
+         let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
+         let '(msg, H, i, inner_round, inner_done) := repr in
+         let current_digest :=
+             fold_left (SHA256.sha256_compress msg i) (seq 0 inner_round)
+                       initial_digest in
+         let next_digest :=
+             SHA256.sha256_compress msg i (List.resize 0%N 8 current_digest)
+                                    inner_round in
+         if clear
+         then ([], SHA256.H0, 0%nat, 0%nat, true)
+         else if block_valid
+              then (msg, initial_digest, i, 0%nat, false)
+              else if inner_done
+                   then (msg, initial_digest, i, 0%nat, true)
+                   else if inner_round =? 63
+                        then (msg, next_digest, i, 0%nat, true)
+                        else (msg, initial_digest, i, S inner_round, false);
+     precondition :=
+       fun (input : denote_type [Bit; sha_block; sha_digest; Bit])
+         repr =>
+         let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
+         let '(msg, H, i, inner_round, inner_done) := repr in
+         (* .the initial digest is the digest from the previous i *)
+         initial_digest = fold_left (SHA256.sha256_step msg) (seq 0 i) SHA256.H0
+         (* ...and H is the initial digest *)
+         /\ H = initial_digest
+         (* ...and a valid block is passed only if we're not busy *)
+         /\ (if block_valid then inner_done = true else True)
+         (* ...and if the block is valid, the block is the expected slice of the
+            message *)
+         /\ (if block_valid
+            then block = List.slice 0%N (SHA256.W msg i) 0 16
+            else True);
+     postcondition :=
+       fun (input : denote_type [Bit; sha_block; sha_digest; Bit])
+         repr (output : denote_type (sha_digest ** Bit)) =>
+         let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
+         let '(msg, H, i, inner_round, inner_done) := repr in
+         let current_digest :=
+             fold_left (SHA256.sha256_compress msg i) (seq 0 inner_round) H in
+         let next_digest :=
+             SHA256.sha256_compress msg i (List.resize 0%N 8 current_digest)
+                                    inner_round in
+         let new_digest := if clear
+                           then SHA256.H0
+                           else if block_valid
+                                then initial_digest
+                                else if inner_done
+                                     then current_digest
+                                     else next_digest in
+         let new_done := if clear
+                         then true
+                         else if block_valid
+                              then false
+                              else if inner_done
+                                   then true
+                                   else inner_round =? 63 in
+         output = (List.map2 SHA256.add_mod (List.resize 0%N 8 initial_digest)
+                             (List.resize 0%N 8 new_digest), new_done)
+  |}.
