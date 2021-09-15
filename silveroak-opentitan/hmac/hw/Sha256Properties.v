@@ -1188,12 +1188,16 @@ Check sha256.
 Eval cbv [absorb_any state_of] in state_of sha256.
 Eval cbv [absorb_any state_of] in state_of sha256_inner.
 Print sha256_padder_invariant.
+Print sha256_inner_invariant.
+Print sha256_inner_specification.
+Print sha256_padder_specification.
 (* returns (digest_valid, digest, ready) *)
 (* Data must only be passed when ready is asserted *)
 (* State invariant for sha256 *)
 (* sha256 abstract state representation:
    msg : message (so far)
    msg_complete : whether message is done
+   digest_valid : whether the stored digest is a valid result
    i : block index (outer loop)
    t : compression index (inner loop)
 *)
@@ -1210,10 +1214,35 @@ Instance sha256_invariant
              (done,
               (sha256_padder_state, sha256_inner_state)))))) := state in
     let '(msg, msg_complete, i, t) := repr in
+    let nblocks := (padded_message_size / 16)%nat in (* size in words / words per block *)
+    (* t is within its expected range [0,64) *)
+    t < 64
+    (* i is within its expected range [0,nblocks] *)
+    /\ i <= nblocks
+    (* count is within its expected range [0,17] *)
+    /\ count <= 17
+    (* if the digest is valid, it must be the expected digest for this message
+       and i (digest is only stored at the end of each inner loop, so can be
+       computed assuming t=0) *)
+    (if digest_valid
+     then initial_digest = fold_left (SHA256.sha256_step msg) (seq 0 i) SHA256.H0
+     else True)
+    (* ...and the index must agree with our done and digest_valid flags *)
+    /\ (if done
+       then if digest_valid
+            then i = nblocks (* index must be at end of message *)
+            else i = 0 (* index has been reset *)
+       else index < nblocks (* index is not yet at end of the message *))
+    (* ...and the block must be the first [count] words of the ith block of
+       the padded message, or 16 if count=17 *)
+    /\ (if count =? 17
+       then block = List.slice (SHA256.padded_msg msg) i 16
+       else block = List.slice (SHA256.padded_msg msg) i count)
+    /\ 
     if done
-    then
-      (* index must be at the end of the message *)
-      
+    then if digest_valid
+         then
+           (* index must *)
     /\ if done
       then inner_round = 0%nat (* idle; no further guarantees about other state elements *)
       else
