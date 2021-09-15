@@ -193,6 +193,21 @@ Module PrimitiveNotations.
     Let x (fun v1 => Let y (fun v2 =>
     BinaryOp BinBitVecGte v1 v2
   ))) (in custom expr at level 19, no associativity) : expr_scope.
+  (* x > y = ! (y >= x) *)
+  Notation "x > y" := (
+    Let x (fun v1 => Let y (fun v2 =>
+    UnaryOp UnBitNot (BinaryOp BinBitVecGte v2 v1)
+  ))) (in custom expr at level 19, no associativity) : expr_scope.
+  (* x <= y = (y >= x) *)
+  Notation "x <= y" := (
+    Let x (fun v1 => Let y (fun v2 =>
+    BinaryOp BinBitVecGte v2 v1
+  ))) (in custom expr at level 19, no associativity) : expr_scope.
+  (* x < y = !(x >= y) *)
+  Notation "x < y" := (
+    Let x (fun v1 => Let y (fun v2 =>
+    UnaryOp UnBitNot (BinaryOp BinBitVecGte v1 v2)
+  ))) (in custom expr at level 19, no associativity) : expr_scope.
   Notation "~ x" := (
     Let x (fun v1 => UnaryOp UnBitVecNot v1)
   ) (in custom expr at level 19, no associativity) : expr_scope.
@@ -298,6 +313,27 @@ Fixpoint map2 {var : tvar} {t u v n} (f: Circuit [] [t; u] v)
                 let '(hdx;tlx) := `uncons` vecx in
                 let '(hdy;tly) := `uncons` vecy in
                 `f` hdx hdy :> `map2 f` tlx tly
+           }}
+  end.
+Fixpoint foldl {var : tvar} {t u n} (f: Circuit [] [t;u] t)
+  : Circuit (var:=var) [] [Vec u n;t] t :=
+  match n with
+  | O => {{ fun _ x => x }}
+  | S n' => {{ fun vec x =>
+                let '(hd;tl) := `uncons` vec in
+                let y := `f` x hd in
+                `foldl f` tl y
+           }}
+  end.
+Fixpoint foldl2 {var : tvar} {t u v n} (f: Circuit [] [t;u;v] t)
+  : Circuit (var:=var) [] [Vec u n;Vec v n;t] t :=
+  match n with
+  | O => {{ fun _ _ x => x }}
+  | S n' => {{ fun vec1 vec2 x =>
+                let '(hd1;tl1) := `uncons` vec1 in
+                let '(hd2;tl2) := `uncons` vec2 in
+                let y := `f` x hd1 hd2 in
+                `foldl2 f` tl1 tl2 y
            }}
   end.
 

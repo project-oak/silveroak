@@ -101,3 +101,45 @@ Lemma step_bvslice {n start len} (x : denote_type (BitVec n)) :
   = (tt, N.land (N.shiftr x (N.of_nat start)) (N.ones (N.of_nat len))).
 Proof. reflexivity. Qed.
 Hint Rewrite @step_bvslice using solve [eauto] : stepsimpl.
+
+Lemma step_foldl {t u n}
+      (f : Circuit [] [t;u] t)
+      (v : denote_type (Vec u n)) (x : denote_type t) :
+  step (foldl (n:=n) f) tt (v, (x, tt))
+  = (tt, List.fold_left
+           (A:=denote_type t) (B:=denote_type u)
+           (fun t u => snd (step f tt (t,(u,tt))))
+           (List.resize default n v) x).
+Proof.
+  revert x; induction n; cbn [denote_type] in *; intros;
+    cbn [foldl]; stepsimpl; push_resize; push_list_fold;
+      [ reflexivity | ].
+  repeat (destruct_pair_let; cbn [fst snd]).
+  rewrite IHn. cbn [fst snd].
+  rewrite resize_succ. push_list_fold.
+  reflexivity.
+Qed.
+Hint Rewrite @step_foldl using solve [eauto] : stepsimpl.
+
+Lemma step_foldl2 {t u v n}
+      (f : Circuit [] [t;u;v] t)
+      (v1 : denote_type (Vec u n))
+      (v2 : denote_type (Vec v n))
+      (x : denote_type t) :
+  step (foldl2 (n:=n) f) tt (v1, (v2, (x, tt)))
+  = (tt, List.fold_left
+           (A:=denote_type t) (B:=denote_type u * denote_type v)
+           (fun t uv => snd (step f tt (t,(fst uv,(snd uv,tt)))))
+           (combine (List.resize default n v1)
+                    (List.resize default n v2))
+            x).
+Proof.
+  revert x; induction n; cbn [denote_type] in *; intros;
+    cbn [foldl2]; stepsimpl; push_resize; push_list_fold;
+      [ reflexivity | ].
+  repeat (destruct_pair_let; cbn [fst snd]).
+  rewrite IHn. cbn [fst snd].
+  rewrite !resize_succ. cbn [combine].
+  push_list_fold. reflexivity.
+Qed.
+Hint Rewrite @step_foldl2 using solve [eauto] : stepsimpl.
