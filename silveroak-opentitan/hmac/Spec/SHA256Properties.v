@@ -14,11 +14,14 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Init.Byte.
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import Coq.micromega.Lia.
 Require Import Coq.ZArith.ZArith.
 Require Import coqutil.Tactics.Tactics.
+Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.BitArithmeticProperties.
 Require Import Cava.Util.Nat.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.
@@ -119,3 +122,108 @@ Proof.
   intros; length_hammer.
 Qed.
 #[export] Hint Resolve fold_left_sha256_step_length : length.
+
+(* length of the padded message (in bytes) is the smallest number of 512-bit
+   (64-byte) blocks that can fit the message plus 9 more bytes (one for the
+   extra 1 bit and 8 for the length -- extra 1 bit needs a full byte because
+   message must be byte-aligned) *)
+Definition padded_message_size (msg : list byte) : nat :=
+  (Nat.ceiling (length msg + 9) 64) * 64.
+
+Lemma padded_message_bytes_length msg :
+  length (SHA256.padded_msg_bytes msg) = padded_message_size msg.
+Proof.
+  cbv [SHA256.padded_msg_bytes SHA256.padding padded_message_size].
+  push_length. rewrite !Nat.ceiling_equiv. cbv [SHA256.k SHA256.l].
+  destruct_one_match; prove_by_zify.
+Qed.
+Hint Rewrite @padded_message_bytes_length : push_length.
+
+Lemma padded_message_bytes_longer_than_input msg :
+  (length msg + 9 <= padded_message_size msg)%nat.
+Proof.
+  cbv [padded_message_size].
+  pose proof Nat.ceiling_range (length msg + 9) 64 ltac:(lia) ltac:(lia).
+  lia.
+Qed.
+
+Lemma min_padded_message_size msg : (64 <= padded_message_size msg)%nat.
+Proof.
+  cbv [padded_message_size].
+  pose proof Nat.ceiling_range (length msg + 9) 64 ltac:(lia) ltac:(lia).
+  lia.
+Qed.
+
+Lemma padded_message_size_modulo msg :
+  (padded_message_size msg mod 64 = 0)%nat.
+Proof. apply Nat.mod_mul. lia. Qed.
+
+(* Adding data cannot decrease padded message size *)
+Lemma padded_message_size_mono msg data :
+  (padded_message_size msg <= padded_message_size (msg ++ data))%nat.
+Proof.
+  cbv [padded_message_size]. push_length.
+  replace (length msg + length data + 9)%nat
+    with (length msg + 9 + length data)%nat by lia.
+  pose proof Nat.ceiling_add_le_mono (length msg + 9) 64 (length data).
+  lia.
+Qed.
+
+Lemma padded_message_length msg :
+  length (SHA256.padded_msg msg) = (padded_message_size msg / 4)%nat.
+Proof.
+  cbv [SHA256.padded_msg]. change (N.to_nat SHA256.w / 8)%nat with 4%nat.
+  length_hammer.
+Qed.
+Hint Rewrite @padded_message_length : push_length.
+
+(* Helper lemma for converting to words *)
+Lemma padded_message_size_modulo4 msg :
+  (padded_message_size msg mod 4 = 0)%nat.
+Proof.
+  pose proof padded_message_size_modulo msg.
+  prove_by_zify.
+Qed.
+
+Lemma nth_padded_msg msg i :
+  nth i (SHA256.padded_msg msg) 0%N
+  = BigEndianBytes.concat_bytes
+      [nth (i*4) (SHA256.padded_msg_bytes msg) x00
+       ; nth (i*4 + 1) (SHA256.padded_msg_bytes msg) x00
+       ; nth (i*4 + 2) (SHA256.padded_msg_bytes msg) x00
+       ; nth (i*4 + 3) (SHA256.padded_msg_bytes msg) x00].
+Proof.
+  cbv [SHA256.padded_msg]. change (N.to_nat SHA256.w / 8)%nat with 4%nat.
+  rewrite nth_bytes_to_Ns by (push_length; auto using padded_message_size_modulo4).
+  cbn [List.map seq]. natsimpl. reflexivity.
+Qed.
+
+Lemma nth_padding_0 msg : nth 0 (SHA256.padding msg) x00 = x80.
+Proof. reflexivity. Qed.
+Hint Rewrite nth_padding_0 : push_nth.
+
+Lemma padding_length msg :
+  length (SHA256.padding msg) = (padded_message_size msg - length msg - 8)%nat.
+Proof.
+  rewrite <-padded_message_bytes_length.
+  cbv [SHA256.padded_msg_bytes]. push_length.
+  lia.
+Qed.
+Hint Rewrite @padding_length : push_length.
+
+Lemma nth_padding_succ msg i :
+  nth (S i) (SHA256.padding msg) x00 = x00.
+Proof.
+  destr (S i <? length (SHA256.padding msg))%nat;
+    [ | apply nth_overflow; lia ].
+  cbv [SHA256.padding] in *. autorewrite with push_length in *.
+  push_nth. reflexivity.
+Qed.
+Hint Rewrite nth_padding_succ : push_nth.
+
+Lemma nth_padding_nonzero msg i :
+  (0 < i)%nat -> nth i (SHA256.padding msg) x00 = x00.
+Proof.
+  destruct i; [ lia | ]. intros.
+  apply nth_padding_succ.
+Qed.
