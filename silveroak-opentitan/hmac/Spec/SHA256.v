@@ -187,7 +187,7 @@ Section WithMessage.
               (seq 0 64) [].
 
   (* See steps in section 6.2.2. *)
-  Definition sha256_compress (i : nat) (H : list N) (t : nat) : list N :=
+  Definition sha256_compress (W : list N) (H : list N) (t : nat) : list N :=
     (* initialize working variables *)
     let a := nth 0 H 0 in
     let b := nth 1 H 0 in
@@ -200,7 +200,7 @@ Section WithMessage.
 
     (* step 3 in section 6.2.2 *)
     let Kt := nth t K 0 in
-    let Wt := nth t (W i) 0 in
+    let Wt := nth t W 0 in
     let T1 := h + (Sigma1 e) + (Ch e f g) + Kt + Wt in
     let T2 := (Sigma0 a) + (Maj a b c) in
     let h := g in
@@ -217,7 +217,7 @@ Section WithMessage.
   Definition sha256_step
              (H : list N) (i : nat) : list N :=
     (* steps 2-3 : compression loop *)
-    let H' := fold_left (sha256_compress i) (seq 0 64) H in
+    let H' := fold_left (sha256_compress (W i)) (seq 0 64) H in
     (* step 4 : get ith intermediate hash value by adding each element *)
     map2 add_mod H H'.
 
