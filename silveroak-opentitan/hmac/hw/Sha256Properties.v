@@ -377,7 +377,12 @@ Definition expected_padder_state
                         else padder_flushing_value
   else padder_waiting_value.
 
-(* State invariant for sha256_padder *)
+(* Higher-level state for padder :
+   msg : message so far
+   msg_complete : whether message is complete
+   padder_done : whether computation for this message is done
+   index : index (in bytes) of the padded message we're currently working on
+*)
 Instance sha256_padder_invariant
   : invariant_for sha256_padder (list byte * bool * bool * nat) :=
   fun (state : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16))
@@ -421,30 +426,14 @@ Instance sha256_padder_invariant
          (* ...and the state must match the message and word index *)
          /\ state = expected_padder_state msg msg_complete padder_done index).
 
-(* Convenience definition: calculate the new value of the [msg] ghost variable
-   for the padder *)
-Definition padder_update_msg
-           (input : denote_type [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit])
-           (repr : list byte * bool * bool * nat)
-  : list Byte.byte :=
-  let '(data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,_)))))) := input in
-  let '(msg, msg_complete, padder_done, index) := repr in
-  if clear
-  then []
-  else if consumer_ready
-       then if padder_done
-            then if data_valid
-                 then if is_final
-                      then firstn (N.to_nat final_length) (BigEndianBytes.N_to_bytes 4 data)
-                      else BigEndianBytes.N_to_bytes 4 data
-                 else []
-            else if data_valid
-                 then if is_final
-                      then msg ++ (firstn (N.to_nat final_length)
-                                          (BigEndianBytes.N_to_bytes 4 data))
-                      else msg ++ BigEndianBytes.N_to_bytes 4 data
-                 else msg
-       else msg.
+(* Convenience definition: get any valid bytes from the input *)
+Definition new_msg_bytes (data_valid : bool) (data : N) (is_final : bool) (final_length : N)
+  : list byte :=
+  if data_valid
+  then if is_final
+       then firstn (N.to_nat final_length) (BigEndianBytes.N_to_bytes 4 data)
+       else BigEndianBytes.N_to_bytes 4 data
+  else [].
 
 Instance sha256_padder_specification
   : specification_for sha256_padder (list byte * bool * bool * nat) :=
@@ -454,20 +443,20 @@ Instance sha256_padder_specification
          repr =>
          let '(data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,_)))))) := input in
          let '(msg, msg_complete, padder_done, index) := repr in
-         let new_msg := padder_update_msg input repr in
+         let new_bytes := new_msg_bytes data_valid data is_final final_length in
          if clear
          then ([], false, true, 0)
          else if consumer_ready
               then if padder_done
                    then if data_valid
-                        then (new_msg, is_final, false, 4)
+                        then (new_bytes, is_final, false, 4)
                         else ([], msg_complete, true, 0)
                    else if msg_complete
-                        then (new_msg, true, index + 4 =? padded_message_size msg, index + 4)
+                        then (msg, true, index + 4 =? padded_message_size msg, index + 4)
                         else if data_valid
-                             then (new_msg, is_final, false, index + 4)
-                             else (new_msg, false, false, index)
-              else (new_msg, msg_complete, padder_done, index) (* stay in the same state *);
+                             then (msg ++ new_bytes, is_final, false, index + 4)
+                             else (msg, false, false, index)
+              else (msg, msg_complete, padder_done, index) (* stay in the same state *);
      precondition :=
        fun (input : denote_type [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit])
          repr =>
@@ -480,8 +469,6 @@ Instance sha256_padder_specification
                then (N.of_nat (length msg) + final_length < 2 ^ 61)%N
                else (N.of_nat (length msg) + 4 < 2 ^ 61)%N
           else (N.of_nat (length msg) < 2 ^ 61)%N)
-         (* ...and if clear is true, then the message ghost variable is empty *)
-         /\ (if clear then msg = [] /\ index = 0 else True)
          /\ (if data_valid
             then
               (* caller is only allowed to pass new valid data if we're in the
@@ -507,7 +494,9 @@ Instance sha256_padder_specification
          let '(data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,_)))))) := input in
          let '(msg, msg_complete, padder_done, index) := repr in
          (* expected result as words *)
-         let expected_words := SHA256.padded_msg (padder_update_msg input repr) in
+         let expected_words :=
+             SHA256.padded_msg
+               (msg ++ new_msg_bytes data_valid data is_final final_length) in
          let word_index := index / 4 in
          if consumer_ready
          then
@@ -624,8 +613,7 @@ Proof.
       (data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,[])))))).
   destruct state as
       (done, (out, (out_valid, (state, (len, current_offset))))).
-  intros; logical_simplify; subst.
-  cbv [padder_update_msg].
+  intros; logical_simplify; subst. cbv [new_msg_bytes].
   intros. logical_simplify. subst. cbn [fst snd] in *.
   cbv [sha256_padder K]. stepsimpl.
   repeat (destruct_pair_let; cbn [fst snd]).
@@ -653,7 +641,8 @@ Proof.
     pose proof padded_message_bytes_longer_than_input msg.
     pose proof min_padded_message_size msg.
     lazymatch goal with
-    | |- context [msg ++ firstn ?n ?data] =>
+    | |- context [firstn ?n (BigEndianBytes.N_to_bytes 4 ?data)] =>
+      let data := constr:(BigEndianBytes.N_to_bytes 4 data) in
       pose proof padded_message_size_mono msg (firstn n data);
         pose proof padded_message_size_mono msg data;
         pose proof min_padded_message_size (firstn n data);
@@ -880,7 +869,7 @@ Proof.
       (data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,[])))))).
   destruct state as
       (done, (out, (out_valid, (state, (len, current_offset))))).
-  intros; logical_simplify; subst. cbv [padder_update_msg].
+  intros; logical_simplify; subst. cbv [new_msg_bytes].
   cbv [sha256_padder K]. stepsimpl.
   repeat (destruct_pair_let; cbn [fst snd]).
   autorewrite with tuple_if; cbn [fst snd].
@@ -903,7 +892,8 @@ Proof.
     pose proof padded_message_bytes_longer_than_input msg.
     pose proof min_padded_message_size msg.
     lazymatch goal with
-    | |- context [msg ++ firstn ?n ?data] =>
+    | |- context [firstn ?n (BigEndianBytes.N_to_bytes 4 ?data)] =>
+      let data := constr:(BigEndianBytes.N_to_bytes 4 data) in
       pose proof padded_message_size_mono msg (firstn n data);
         pose proof padded_message_size_mono msg data;
         pose proof min_padded_message_size (firstn n data);
@@ -1123,15 +1113,15 @@ Proof.
       do 2 f_equal;
       [ | symmetry; apply Nat.eqb_neq; push_length; prove_by_zify ].
       rewrite nth_padded_msg. rewrite Nat.mul_div_exact_r by lia.
-      cbv [SHA256.padded_msg_bytes]. push_nth. natsimpl.
+      cbv [SHA256.padded_msg_bytes]. push_nth. natsimpl. listsimpl.
       rewrite !app_nth1 by (push_length; prove_by_zify).
-      push_nth. reflexivity. }
+      natsimpl. push_nth. reflexivity. }
     { (* state=padder_flushing *)
       eexists; split; [ | reflexivity ].
       do 2 f_equal;
       [ | symmetry; apply Nat.eqb_neq; push_length; prove_by_zify ].
       rewrite nth_padded_msg. rewrite Nat.mul_div_exact_r by lia.
-      cbv [SHA256.padded_msg_bytes]. push_nth. natsimpl.
+      cbv [SHA256.padded_msg_bytes]. push_nth. natsimpl. listsimpl.
       rewrite !app_nth1 by (push_length; prove_by_zify).
       rewrite !nth_padding_nonzero by lia.
       reflexivity. }
@@ -1148,7 +1138,8 @@ Proof.
                  end;
           try discriminate; prove_by_zify ].
       rewrite nth_padded_msg. rewrite Nat.mul_div_exact_r by lia.
-      cbv [SHA256.padded_msg_bytes]. push_nth. natsimpl.
+      cbv [SHA256.padded_msg_bytes]. listsimpl. push_nth.
+      push_length. natsimpl.
       rewrite !nth_N_to_bytes by (push_length; prove_by_zify).
       replace (SHA256.l msg) with (N.shiftl (N.of_nat (length msg)) 3)
         by apply N.shiftl_mul_pow2.
@@ -1183,139 +1174,190 @@ Proof.
         all:destr (i <? 32)%N; testbit_crush. } }
 Qed.
 
-
-Check sha256.
-Eval cbv [absorb_any state_of] in state_of sha256.
-Eval cbv [absorb_any state_of] in state_of sha256_inner.
-Print sha256_padder_invariant.
-Print sha256_inner_invariant.
-Print sha256_inner_specification.
-Print sha256_padder_specification.
-(* returns (digest_valid, digest, ready) *)
-(* Data must only be passed when ready is asserted *)
-(* State invariant for sha256 *)
-(* sha256 abstract state representation:
-   msg : message (so far)
-   msg_complete : whether message is done
-   digest_valid : whether the stored digest is a valid result
-   i : block index (outer loop)
-   t : compression index (inner loop)
+(* Higher-level representation for sha256:
+   msg : message so far
+   msg_complete : whether the message is complete
+   byte_index : index indicating the last byte the padder has gotten to
+   t : compression round index
+   cleared : whether the circuit is cleared
 *)
 Instance sha256_invariant
-  : invariant_for sha256 (list byte * bool * nat * nat) :=
+  : invariant_for sha256 (list byte * bool * nat * nat * bool) :=
   fun (state : denote_type ((Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit)
                             ** state_of sha256_padder
                             ** state_of sha256_inner))
     repr =>
-    let '(ready,
-          (block,
-           (digest,
-            (count,
-             (done,
-              (sha256_padder_state, sha256_inner_state)))))) := state in
-    let '(msg, msg_complete, i, t) := repr in
-    let nblocks := (padded_message_size / 16)%nat in (* size in words / words per block *)
+    let '((ready, (block, (digest, (count, done)))),
+          (sha256_padder_state, sha256_inner_state)) := state in
+    let '(msg, msg_complete, byte_index, t, cleared) := repr in
+    (* padder is done if the current byte index is at the end of the message *)
+    let padder_done := if msg_complete
+                       then (byte_index =? padded_message_size msg)
+                       else false in
+    (* block index is byte_index / 64 (64 bytes per block) *)
+    let block_index := byte_index / 64 in
+    (* sha256_inner is done if t = 64 *)
+    let inner_done := t =? 64 in
+    (* padded message up to the latest block that has been passed to
+       sha256_inner *)
+    let inner_msg := firstn (block_index * 16) (SHA256.padded_msg msg) in
     (* t is within its expected range [0,64) *)
     t < 64
-    (* i is within its expected range [0,nblocks] *)
-    /\ i <= nblocks
-    (* count is within its expected range [0,17] *)
-    /\ count <= 17
-    (* if the digest is valid, it must be the expected digest for this message
-       and i (digest is only stored at the end of each inner loop, so can be
-       computed assuming t=0) *)
-    (if digest_valid
-     then initial_digest = fold_left (SHA256.sha256_step msg) (seq 0 i) SHA256.H0
-     else True)
-    (* ...and the index must agree with our done and digest_valid flags *)
+    (* ...and byte index is within its expected range [0,padded_message_size msg] *)
+    /\ byte_index <= padded_message_size msg
+    (* ...and byte index is always 0 mod 4 *)
+    /\ byte_index mod 4 = 0
+    (* ...and count is within its expected range [0,17] *)
+    /\ (count <= 17)%N
+    (* ready is true when count < 16 *)
+    /\ ready = (count <? 16)%N
+    (* ...and if we're not cleared, the digest must be the expected digest
+       (digest is only stored at the end of each inner loop, so can be computed
+       for t=0) *)
+    /\ (if cleared
+       then True
+       else digest = fold_left (SHA256.sha256_step msg)
+                               (seq 0 block_index) SHA256.H0)
+    (* ...and if we're cleared, we must be in the reset state *)
+    /\ (if cleared
+       then byte_index = 0
+            /\ t = 0
+            /\ msg = []
+            /\ done = true
+       else True)
+    (* ...and the index must agree with our state flags *)
     /\ (if done
-       then if digest_valid
-            then i = nblocks (* index must be at end of message *)
-            else i = 0 (* index has been reset *)
-       else index < nblocks (* index is not yet at end of the message *))
+       then if cleared
+            then True
+            else byte_index = padded_message_size msg (* index must be at end of message *)
+       else
+         (* either we're not on the last block, or inner is still working (t < 64) *)
+         if t =? 64
+         then byte_index < padded_message_size msg
+         else True)
     (* ...and the block must be the first [count] words of the ith block of
        the padded message, or 16 if count=17 *)
-    /\ (if count =? 17
-       then block = List.slice (SHA256.padded_msg msg) i 16
-       else block = List.slice (SHA256.padded_msg msg) i count)
-    /\ 
-    if done
-    then if digest_valid
-         then
-           (* index must *)
-    /\ if done
-      then inner_round = 0%nat (* idle; no further guarantees about other state elements *)
-      else
-        (* the round is < 64 *)
-        (round < 64)%N
-        (* ...and inner_round matches [round] *)
-        /\ inner_round = N.to_nat round
-        (* ...and the message schedule is the expected slice of the message *)
-        /\ message_schedule = List.slice 0%N (SHA256.W msg i) (inner_round - 15) 16.
+    /\ (if (count =? 17)%N
+       then
+         block = List.slice 0%N (SHA256.padded_msg msg) block_index 16
+         /\ byte_index mod 64 = 0 (* byte index is at the end of a block *)
+       else
+         block = List.slice 0%N (SHA256.padded_msg msg) block_index (N.to_nat count)
+         /\ byte_index mod 64 = N.to_nat count * 4 (* byte_index is on the [count]th word *))
+    (* ...and the invariant for sha256_padder is satisfied *)
+    /\ sha256_padder_invariant
+        sha256_padder_state (msg, msg_complete, padder_done, byte_index)
+    (* ...and the invariant for sha256_inner is satisfied *)
+    /\ sha256_inner_invariant
+        sha256_inner_state (inner_msg, block_index, t, inner_done, cleared).
 
-Instance sha256_inner_specification
-  : specification_for sha256_inner (list byte * list N * nat * nat * bool) :=
-  {| reset_repr := ([], SHA256.H0, 0%nat, 0%nat, true);
+Instance sha256_specification
+  : specification_for sha256 (list byte * bool * nat * nat * bool) :=
+  {| reset_repr := ([], false, 0, 0, true);
      update_repr :=
-       fun (input : denote_type [Bit; sha_block; sha_digest; Bit])
+       fun (input : denote_type [Bit; sha_word; Bit; BitVec 4; Bit])
          repr =>
-         let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
-         let '(msg, H, i, inner_round, inner_done) := repr in
-         let current_digest :=
-             fold_left (SHA256.sha256_compress msg i) (seq 0 inner_round)
-                       initial_digest in
-         let next_digest :=
-             SHA256.sha256_compress msg i (List.resize 0%N 8 current_digest)
-                                    inner_round in
-         if clear
-         then ([], SHA256.H0, 0%nat, 0%nat, true)
-         else if block_valid
-              then (msg, initial_digest, i, 0%nat, false)
-              else if inner_done
-                   then (msg, initial_digest, i, 0%nat, true)
-                   else if inner_round =? 63
-                        then (msg, next_digest, i, 0%nat, true)
-                        else (msg, initial_digest, i, S inner_round, false);
-     precondition :=
-       fun (input : denote_type [Bit; sha_block; sha_digest; Bit])
-         repr =>
-         let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
-         let '(msg, H, i, inner_round, inner_done) := repr in
-         (* .the initial digest is the digest from the previous i *)
-         initial_digest = fold_left (SHA256.sha256_step msg) (seq 0 i) SHA256.H0
-         (* ...and H is the initial digest *)
-         /\ H = initial_digest
-         (* ...and a valid block is passed only if we're not busy *)
-         /\ (if block_valid then inner_done = true else True)
-         (* ...and if the block is valid, the block is the expected slice of the
+         let '(fifo_data_valid,
+               (fifo_data, (is_final, (final_length, (clear, _))))) := input in
+         let '(msg, msg_complete, byte_index, t, cleared) := repr in
+         (* padder is done iff the current byte index is at the end of the
             message *)
-         /\ (if block_valid
-            then block = List.slice 0%N (SHA256.W msg i) 0 16
-            else True);
+         let padder_done := if msg_complete
+                            then (byte_index =? padded_message_size msg)
+                            else false in
+         let new_bytes :=
+             new_msg_bytes fifo_data_valid fifo_data is_final final_length in
+         if clear
+         then ([], false, 0, 0, true)
+         else if cleared
+              then if fifo_data_valid
+                   then (new_bytes, is_final, 0, 0, false)
+                   else ([], false, 0, 0, true) (* stay in cleared state *)
+              else if fifo_data_valid
+                   then
+                     (* t stays 0 while we run the padder *)
+                     (msg ++ new_bytes, is_final, byte_index + 4, 0, false)
+                   else
+                     if byte_index mod 64 =? 0
+                     then
+                       (* block is ready; step sha256_inner if it's not yet done *)
+                       let new_t := if t =? 64 then t else S t in
+                       let is_done := if byte_index =? padded_message_size msg
+                                      then t =? 63 else false in
+                       (msg, msg_complete, byte_index, new_t, is_done)
+                     else
+                       (* block padding is not yet complete; step padder if
+                          message is complete (otherwise wait for next word of
+                          message) *)
+                       let new_byte_index :=
+                           if msg_complete then byte_index + 4 else byte_index in
+                       (msg, msg_complete, new_byte_index, t, false);
+     precondition :=
+       fun (input : denote_type [Bit; sha_word; Bit; BitVec 4; Bit])
+         repr =>
+         let '(fifo_data_valid,
+               (fifo_data, (is_final, (final_length, (clear, _))))) := input in
+         let '(msg, msg_complete, byte_index, t, cleared) := repr in
+         (* final_length must be < 4 *)
+         (final_length < 4)%N
+         (* ..and only pass valid data if circuit is cleared or inner is done *)
+         /\ (if fifo_data_valid then if cleared then True else t = 64 else True)
+         (* ...and if msg_complete is true, then new valid data cannot be passed
+            (must clear first) *)
+         /\ (if msg_complete then fifo_data_valid = false else True);
      postcondition :=
-       fun (input : denote_type [Bit; sha_block; sha_digest; Bit])
-         repr (output : denote_type (sha_digest ** Bit)) =>
-         let '(block_valid, (block, (initial_digest, (clear,_)))) := input in
-         let '(msg, H, i, inner_round, inner_done) := repr in
-         let current_digest :=
-             fold_left (SHA256.sha256_compress msg i) (seq 0 inner_round) H in
-         let next_digest :=
-             SHA256.sha256_compress msg i (List.resize 0%N 8 current_digest)
-                                    inner_round in
-         let new_digest := if clear
-                           then SHA256.H0
-                           else if block_valid
-                                then initial_digest
-                                else if inner_done
-                                     then current_digest
-                                     else next_digest in
-         let new_done := if clear
-                         then true
-                         else if block_valid
-                              then false
-                              else if inner_done
-                                   then true
-                                   else inner_round =? 63 in
-         output = (List.map2 SHA256.add_mod (List.resize 0%N 8 initial_digest)
-                             (List.resize 0%N 8 new_digest), new_done)
+       fun (input : denote_type [Bit; sha_word; Bit; BitVec 4; Bit])
+         repr (output : denote_type (Bit ** sha_digest ** Bit)) =>
+         let '(fifo_data_valid,
+               (fifo_data, (is_final, (final_length, (clear, _))))) := input in
+         let '(msg, msg_complete, byte_index, t, cleared) := repr in
+         (* new value of [cleared] *)
+         let is_cleared := if clear
+                           then true
+                           else if cleared
+                                then negb (fifo_data_valid)
+                                else false in
+         let is_cleared_or_done :=
+             if is_cleared
+             then true
+             else if fifo_data_valid
+                  then false
+                  else if byte_index =? padded_message_size msg
+                       then 63 <=? t else false in
+         (* new value of [byte_index] *)
+         let new_byte_index :=
+             if is_cleared
+             then 0
+             else if fifo_data_valid
+                   then byte_index + 4
+                   else if byte_index mod 64 =? 0
+                        then byte_index
+                        else if msg_complete
+                             then byte_index + 4
+                             else byte_index in
+         (* new value of [t] *)
+         let new_t :=
+             if is_cleared
+             then 0
+             else if fifo_data_valid
+                  then 0
+                  else if byte_index mod 64 =? 0
+                       then if t =? 64 then t else S t
+                       else t in
+         let is_ready :=
+             if cleared
+             then true
+             else if new_byte_index mod 64 =? 0
+                  then new_t =? 64 (* ready iff inner is done *)
+                  else true in
+         exists digest,
+           output = (is_cleared_or_done, (digest, is_ready))
+           /\ if is_cleared
+             then digest = SHA256.H0
+             else if is_cleared_or_done
+                  then digest = BigEndianBytes.bytes_to_Ns
+                                  4 (SHA256.sha256 msg)
+                  else True (* no guarantees about intermediate output *)
   |}.
+
+
