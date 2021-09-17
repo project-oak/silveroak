@@ -22,6 +22,7 @@ Require Import Coq.ZArith.ZArith.
 Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Util.BitArithmetic.
 Require Import Cava.Util.BitArithmeticProperties.
+Require Import Cava.Util.Byte.
 Require Import Cava.Util.Nat.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Tactics.

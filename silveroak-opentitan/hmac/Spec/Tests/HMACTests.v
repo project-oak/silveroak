@@ -17,6 +17,7 @@
 Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.Byte.
 Require Import HmacSpec.HMAC.
 Require Import HmacSpec.Tests.HMACTestVectors.
 Import ListNotations BigEndianBytes.

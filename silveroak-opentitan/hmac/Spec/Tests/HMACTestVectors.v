@@ -16,6 +16,7 @@
 
 Require Import Coq.NArith.NArith.
 Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.Byte.
 Import BigEndianBytes.
 Local Open Scope N_scope.
 
