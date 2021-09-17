@@ -1214,7 +1214,9 @@ Instance sha256_invariant
     (* the padder resets to an empty message after producing the last word *)
     let padder_repr :=
         if padder_done
-        then ([], false, true, 0)
+        then if t =? 64
+             then ([], false, true, 0)
+             else (msg, msg_complete, padder_done, byte_index)
         else (msg, msg_complete, padder_done, byte_index) in
     (* the byte index according to sha256_padder is the same as for sha256,
        except that it resets to [] after producing the last word *)
@@ -1457,9 +1459,8 @@ Proof.
                    | lazymatch goal with
                      | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y)
                      end ].
-      { (* here we have n mod 64 = count * 4, count <= 15, and n + 4 = padded_message_size *)
-        (* i.e. last word produced by padder *)
-        (* padder thinks it does not reset here, sha256 spec thinks it does *)
+      { (* t = 64, index =message size *)
+        (* padder stays in same state till inner done -- padder is not resetting because consumer_ready is false! *)
     }
 
     apply invariant_preser
