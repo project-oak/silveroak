@@ -206,6 +206,14 @@ Instance sha256_inner_specification
                    else True (* no guarantees *)
   |}.
 
+Lemma sha256_inner_invariant_at_reset : invariant_at_reset sha256_inner.
+Proof.
+  simplify_invariant sha256_inner.
+  cbn [reset_state reset_repr sha256_inner sha256_inner_specification];
+    stepsimpl.
+  ssplit; reflexivity.
+Qed.
+
 Lemma sha256_inner_invariant_preserved : invariant_preserved sha256_inner.
 Proof.
   simplify_invariant sha256_inner. cbn [absorb_any].
@@ -334,6 +342,11 @@ Proof.
   rewrite seq_snoc with (len:=63); rewrite fold_left_app.
   reflexivity.
 Qed.
+
+Existing Instances sha256_inner_invariant_at_reset sha256_inner_invariant_preserved
+         sha256_inner_output_correct.
+Global Instance sha256_inner_correctness : correctness_for sha256_inner.
+Proof. constructor; typeclasses eauto. Defined.
 
 (* values of padder state constants *)
 Definition padder_waiting_value : N := 0.
@@ -528,6 +541,14 @@ Instance sha256_padder_specification
          else True (* no guarantees about output if consumer isn't ready *)
   |}.
 
+Lemma sha256_padder_invariant_at_reset : invariant_at_reset sha256_padder.
+Proof.
+  simplify_invariant sha256_padder.
+  cbn [reset_state reset_repr sha256_padder sha256_padder_specification];
+    stepsimpl.
+  ssplit; reflexivity.
+Qed.
+
 (* helper lemma for modular arithmetic *)
 Lemma increment_offset (offset index : N) :
   (offset * 4 = index mod 64)%N ->
@@ -600,7 +621,7 @@ Proof.
   all:prove_by_zify.
 Qed.
 
-Lemma step_sha256_padder_invariant : invariant_preserved sha256_padder.
+Lemma sha256_padder_invariant_preserved : invariant_preserved sha256_padder.
 Proof.
   simplify_invariant sha256_padder. cbn [absorb_any].
   simplify_spec sha256_padder.
@@ -1174,6 +1195,11 @@ Proof.
         all:destr (i <? 32)%N; testbit_crush. } }
 Qed.
 
+Existing Instances sha256_padder_invariant_at_reset sha256_padder_invariant_preserved
+         sha256_padder_output_correct.
+Global Instance sha256_padder_correctness : correctness_for sha256_padder.
+Proof. constructor; typeclasses eauto. Defined.
+
 (* Higher-level representation for sha256:
    msg : message so far
    msg_complete : whether the message is complete
@@ -1191,13 +1217,15 @@ Instance sha256_invariant
           (sha256_padder_state, sha256_inner_state)) := state in
     let '(msg, msg_complete, byte_index, t, cleared) := repr in
     (* padder is done if the current byte index is at the end of the message *)
-    let padder_done := if msg_complete
-                       then (byte_index =? padded_message_size msg)
-                       else false in
+    let padder_done := if cleared
+                       then true
+                       else if msg_complete
+                            then (byte_index =? padded_message_size msg)
+                            else false in
     (* block index is byte_index / 64 (64 bytes per block) *)
     let block_index := byte_index / 64 in
     (* sha256_inner is done if t = 64 *)
-    let inner_done := t =? 64 in
+    let inner_done := if cleared then true else t =? 64 in
     (* padded message up to the latest block that has been passed to
        sha256_inner *)
     let inner_msg := firstn (block_index * 16) (SHA256.padded_msg msg) in
@@ -1236,14 +1264,16 @@ Instance sha256_invariant
          then byte_index < padded_message_size msg
          else True)
     (* ...and the block must be the first [count] words of the ith block of
-       the padded message, or 16 if count=17 *)
-    /\ (if (count =? 17)%N
-       then
-         block = List.slice 0%N (SHA256.padded_msg msg) block_index 16
-         /\ byte_index mod 64 = 0 (* byte index is at the end of a block *)
-       else
-         block = List.slice 0%N (SHA256.padded_msg msg) block_index (N.to_nat count)
-         /\ byte_index mod 64 = N.to_nat count * 4 (* byte_index is on the [count]th word *))
+       the padded message, or 16 if count=17 (unless the circuit is cleared) *)
+    /\ (if cleared
+       then True
+       else if (count =? 17)%N
+            then
+              block = List.slice 0%N (SHA256.padded_msg msg) block_index 16
+              /\ byte_index mod 64 = 0 (* byte index is at the end of a block *)
+            else
+              block = List.slice 0%N (SHA256.padded_msg msg) block_index (N.to_nat count)
+              /\ byte_index mod 64 = N.to_nat count * 4 (* byte_index is on the [count]th word *))
     (* ...and the invariant for sha256_padder is satisfied *)
     /\ sha256_padder_invariant
         sha256_padder_state (msg, msg_complete, padder_done, byte_index)
@@ -1360,4 +1390,15 @@ Instance sha256_specification
                   else True (* no guarantees about intermediate output *)
   |}.
 
-
+Lemma sha256_invariant_at_reset : invariant_at_reset sha256.
+Proof.
+  simplify_invariant sha256.
+  cbn [reset_state sha256 reset_repr sha256_specification];
+    stepsimpl.
+  ssplit;
+    lazymatch goal with
+    | |- sha256_padder_invariant _ _ => apply sha256_padder_invariant_at_reset
+    | |- sha256_inner_invariant _ _ => apply sha256_inner_invariant_at_reset
+    | _ => reflexivity || lia
+    end.
+Qed.
