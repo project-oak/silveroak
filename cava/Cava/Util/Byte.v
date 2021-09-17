@@ -29,7 +29,7 @@ Require Import coqutil.Tactics.Tactics.
 
 Import ListNotations.
 
-Open Scope N.
+Local Open Scope N.
 
 (* Convert the least significant 8 bits of a number to a byte *)
 Definition N_to_byte (x : N) : byte :=

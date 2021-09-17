@@ -402,7 +402,7 @@ Section FifoSpec.
 End FifoSpec.
 
 Section RealignerSpec.
-  Open Scope N.
+  Local Open Scope N.
 
   Lemma mask_1000 x:
     x < 2 ^ 32 -> N.land x 0xFF000000 = N.shiftl (N.shiftr x 24) 24.
