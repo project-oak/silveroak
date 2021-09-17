@@ -484,11 +484,8 @@ Instance sha256_padder_specification
           else (N.of_nat (length msg) < 2 ^ 61)%N)
          /\ (if data_valid
             then
-              (* caller is only allowed to pass new valid data if we're in the
-                 padder_waiting state *)
-              expected_padder_state msg msg_complete padder_done index = padder_waiting_value
-              (* ...then message must not be complete *)
-              /\ msg_complete = false
+              (* the message must not be complete *)
+              msg_complete = false
               (* ...and final_length (if given) must be in range *)
               /\ (if is_final
                  then (1 < final_length <= 4)%N
@@ -497,9 +494,7 @@ Instance sha256_padder_specification
               /\ (if is_final
                  then data < 2 ^ (8 * final_length)
                  else data < 2 ^ 32)%N
-            else
-              (* is_final must be false if data is not valid *)
-              is_final = false
+            else True
            );
      postcondition :=
        fun (input : denote_type [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit])
@@ -555,6 +550,11 @@ Lemma increment_offset (offset index : N) :
   ((offset + 1) mod 16 * 4 = (index + 4) mod 64)%N.
 Proof. intros. prove_by_zify. Qed.
 
+Local Ltac padder_state_simpl :=
+  cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
+             padder_emit_bit_value padder_writing_length_value
+             negb andb orb] in *.
+
 Lemma expected_padder_state_cases msg (msg_complete padder_done : bool) index :
   index < padded_message_size msg ->
   index mod 4 = 0 ->
@@ -607,8 +607,7 @@ Proof.
     pose proof Nat.ceiling_range (length msg + 1) 64 ltac:(lia) ltac:(lia).
     lia. }
   cbv [expected_padder_state]; repeat destruct_one_match; subst; try lia;
-    cbv [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-               padder_emit_bit_value padder_writing_length_value].
+    padder_state_simpl.
   all:repeat lazymatch goal with
              | |- ?P \/ ?Q =>
                first [ let H := fresh in
@@ -652,8 +651,7 @@ Proof.
     [ | ssplit; (lia || reflexivity || (cbn; tauto)) ].
   destruct data_valid;
     repeat (boolsimpl || subst || logical_simplify);
-    cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-               padder_emit_bit_value padder_writing_length_value].
+    padder_state_simpl.
   { (* Case for handling valid data:
        consumer_ready=true
        clear=false
@@ -690,9 +688,7 @@ Proof.
          mod 4 *)
       cbv [expected_padder_state] in *.
       destruct padder_done, out_valid, is_final; logical_simplify; subst;
-        boolsimpl; cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                              padder_emit_bit_value padder_writing_length_value
-                              negb andb orb].
+        boolsimpl; padder_state_simpl.
       all:repeat first [ discriminate | destruct_one_match | destruct_one_match_hyp ].
       all:try tauto.
       all:push_length; prove_by_zify. }
@@ -776,6 +772,8 @@ Proof.
                  | H : context [Nat.eqb ?x ?y] |- _ => destr (Nat.eqb x y); try lia
                  | H : context [N.eqb ?x ?y] |- _ => destr (N.eqb x y); try lia
                  end.
+      all:boolsimpl_hyps.
+      all:try congruence.
       all:try discriminate.
       all:prove_by_zify. }
     { (* if message is complete, index is past or at end of message; otherwise,
@@ -788,10 +786,9 @@ Proof.
           congruence. }
     { (* if state is emit_bit, length of message is 0 mod 4 *)
       destruct padder_done; logical_simplify; subst;
-        rewrite ?N.eqb_refl in *;
-        cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                   padder_emit_bit_value padder_writing_length_value
-                   negb andb orb]; [ tauto | ].
+      rewrite ?N.eqb_refl in *; boolsimpl; padder_state_simpl;
+      [ destruct is_final; padder_state_simpl;
+        repeat destruct_one_match; tauto | ].
       pose proof
            expected_padder_state_cases msg msg_complete false index
            ltac:(eauto) ltac:(eauto) ltac:(eauto) as padder_state_cases.
@@ -800,19 +797,17 @@ Proof.
         logical_simplify; subst;
         lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
                             rewrite H in * end.
-      all:cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                     padder_emit_bit_value padder_writing_length_value
-                     negb andb orb].
+      all:padder_state_simpl; boolsimpl.
       all:repeat
-            first [ discriminate | tauto
-                    | destruct_one_match | destruct_one_match_hyp ]. }
+            first [ discriminate
+                  | tauto
+                  | destruct_one_match; subst
+                  | destruct_one_match_hyp; subst
+                  ]. }
     { (* entire clause for what happens if we're done or not done *)
       destruct padder_done;
-        logical_simplify; subst; rewrite ?N.eqb_refl;
-          cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                     padder_emit_bit_value padder_writing_length_value
-                     negb andb orb];
-          [ ssplit; reflexivity | ].
+      logical_simplify; subst; rewrite ?N.eqb_refl; padder_state_simpl;
+      [ ssplit; reflexivity | ].
       pose proof
            expected_padder_state_cases msg msg_complete false index
            ltac:(eauto) ltac:(eauto) ltac:(eauto) as padder_state_cases.
@@ -821,9 +816,7 @@ Proof.
         logical_simplify; subst;
         lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
                             rewrite H in * end.
-      all:cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                     padder_emit_bit_value padder_writing_length_value
-                     negb andb orb].
+      all:padder_state_simpl.
       all:repeat lazymatch goal with
                  | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia; [ ]
                  end.
@@ -852,10 +845,7 @@ Proof.
                 else current_offset = 14%N /\ index = padded_message_size msg - 8)
           by (destruct_one_match; prove_by_zify).
         destr (current_offset =? 15)%N;
-          logical_simplify; subst;
-            cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                       padder_emit_bit_value padder_writing_length_value
-                       negb andb orb].
+          logical_simplify; subst; padder_state_simpl.
         { ssplit; try lia; reflexivity. }
         { ssplit; [ lia .. | | ].
           { rewrite Nat2N.inj_add.
@@ -923,7 +913,7 @@ Proof.
         pose proof padded_message_size_modulo (msg ++ firstn n data)
     end.
     lazymatch goal with
-    | H : expected_padder_state ?msg ?mc ?pd ?i = _ |- _ =>
+    | H : context [expected_padder_state ?msg ?mc ?pd ?i] |- _ =>
       pose proof
            expected_padder_state_cases msg mc pd i
            ltac:(lia) ltac:(eauto) ltac:(cbn;lia)
@@ -934,17 +924,13 @@ Proof.
       logical_simplify; subst;
         lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
                             rewrite H in * end;
-        cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                   padder_emit_bit_value padder_writing_length_value
-                   negb andb orb];
+        padder_state_simpl;
         (* there should be only one case, since valid data means we have to be
            in the padder_waiting state *)
         try discriminate; [ ].
     destruct padder_done;
       logical_simplify; subst; rewrite ?N.eqb_refl;
-        cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                   padder_emit_bit_value padder_writing_length_value
-                   negb andb orb].
+        padder_state_simpl.
     { (* padder_done=true *)
       destruct out_valid; logical_simplify; subst; [ lia | ].
       autorewrite with push_length in *. compute_expr (0 / 4).
@@ -1105,9 +1091,7 @@ Proof.
     pose proof padded_message_size_modulo msg.
     destruct padder_done;
       logical_simplify; subst; rewrite ?N.eqb_refl;
-        cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                   padder_emit_bit_value padder_writing_length_value
-                   negb andb orb] in *; boolsimpl;
+        padder_state_simpl; boolsimpl;
           (* solve padder_done=true case *)
           [ eexists; split; reflexivity | ].
     lazymatch goal with
@@ -1122,10 +1106,7 @@ Proof.
       logical_simplify; subst;
         lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
                             rewrite H in * end;
-        rewrite ?N.eqb_refl in *;
-        cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                   padder_emit_bit_value padder_writing_length_value
-                   negb andb orb] in *.
+        rewrite ?N.eqb_refl in *; padder_state_simpl.
     { (* state=padder_waiting *)
       destruct msg_complete; logical_simplify; subst; [ discriminate | ].
       eexists; split; reflexivity. }
@@ -1177,10 +1158,7 @@ Proof.
               else current_offset = 14%N /\ index = padded_message_size msg - 8)
           by (destruct_one_match; prove_by_zify).
         destr (current_offset =? 15)%N;
-          logical_simplify; subst;
-            cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                       padder_emit_bit_value padder_writing_length_value
-                       negb andb orb].
+          logical_simplify; subst; padder_state_simpl.
         all:cbv [BigEndianBytes.concat_bytes]; cbn [fold_left].
         all:rewrite !N_to_byte_to_N; cbn [Byte.to_N].
         all:rewrite <-!N.land_ones with (n:=8%N).
@@ -1402,3 +1380,4 @@ Proof.
     | _ => reflexivity || lia
     end.
 Qed.
+

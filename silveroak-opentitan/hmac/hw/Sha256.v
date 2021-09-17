@@ -68,7 +68,7 @@ Section Var.
       else
 
       let next_state :=
-        if is_final && state == `padder_waiting` then
+        if data_valid && is_final && state == `padder_waiting` then
           (* From our receiving state we can transition to: *)
           (* - Emitting 0x80.. state if final word was a full word *)
           if final_length == `K 4` then `padder_emit_bit`
@@ -98,7 +98,7 @@ Section Var.
         in
 
       let next_length :=
-        if state == `padder_waiting` && is_final then length + `bvresize 61` final_length
+        if state == `padder_waiting` && is_final && data_valid then length + `bvresize 61` final_length
         else if state == `padder_waiting` && data_valid then length + `K 4`
         (* We are done here so set the next length to 0 *)
         else if state == `padder_writing_length` && current_offset == `K 15`
@@ -109,7 +109,7 @@ Section Var.
       let next_out :=
         (* If we have final word and its not a full word, we can emit 0x80 byte
          * immediately *)
-        if state == `padder_waiting` && is_final then
+        if state == `padder_waiting` && is_final && data_valid then
           if final_length == `K 0`
           then `Constant (BitVec 32) 0x80000000`
           else if final_length == `K 1`
@@ -132,7 +132,7 @@ Section Var.
       in
 
       let out_valid :=
-        !(state == `padder_waiting` && (!data_valid) && (!is_final) ) in
+        !(state == `padder_waiting` && (!data_valid) ) in
 
       let next_offset :=
         if !out_valid then current_offset
