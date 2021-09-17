@@ -475,22 +475,20 @@ Instance sha256_padder_specification
          repr =>
          let '(data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,_)))))) := input in
          let '(msg, msg_complete, padder_done, index) := repr in
-         (* message length, plus any new data, must be small enough that size in
-            bits fits in a 64-bit word *)
-         (if data_valid
-          then if is_final
-               then (N.of_nat (length msg) + final_length < 2 ^ 61)%N
-               else (N.of_nat (length msg) + 4 < 2 ^ 61)%N
-          else (N.of_nat (length msg) < 2 ^ 61)%N)
+         let new_bytes := new_msg_bytes data_valid data is_final final_length in
+         (* the total message length (including any new data) cannot exceed 2 ^
+            64 bits (2^61 bytes) -- using N so Coq doesn't try to compute 2 ^ 61
+            in nat *)
+         (N.of_nat (length (msg ++ new_bytes)) < 2 ^ 61)%N
          /\ (if data_valid
             then
-              (* the message must not be complete *)
+              (* if data is valid, the message must not be complete *)
               msg_complete = false
               (* ...and final_length (if given) must be in range *)
               /\ (if is_final
                  then (1 < final_length <= 4)%N
                  else True)
-              (* ...and data value must be in range *)
+                (* ...and data value must be in range *)
               /\ (if is_final
                  then data < 2 ^ (8 * final_length)
                  else data < 2 ^ 32)%N
@@ -689,9 +687,15 @@ Proof.
       cbv [expected_padder_state] in *.
       destruct padder_done, out_valid, is_final; logical_simplify; subst;
         boolsimpl; padder_state_simpl.
+      all:lazymatch goal with
+          | H : context [new_msg_bytes] |- _ =>
+            cbv [new_msg_bytes] in H; autorewrite with push_length in H;
+              try rewrite Min.min_l in H by lia
+          end.
       all:repeat first [ discriminate | destruct_one_match | destruct_one_match_hyp ].
-      all:try tauto.
-      all:push_length; prove_by_zify. }
+      all:subst; try tauto.
+      all:push_length; natsimpl.
+      all:prove_by_zify. }
     { cbv [expected_padder_state] in *.
       destruct padder_done, out_valid, is_final; logical_simplify; subst.
       all:repeat (destruct_one_match_hyp; try discriminate).
@@ -699,14 +703,19 @@ Proof.
     { (* length matches length processed so far *)
       rewrite N.land_ones.
       rewrite N.add_mod_idemp_r by (cbn;lia).
-      compute_expr (2 ^ N.of_nat 61)%N.
-      lazymatch goal with H : context [(2 ^ 61)%N] |- _ => cbn in H end.
       cbv [expected_padder_state] in *.
+      compute_expr (N.of_nat 61).
       destruct is_final; logical_simplify; subst; boolsimpl.
+      all:lazymatch goal with
+          | H : context [length (?msg ++ new_msg_bytes _ _ _ _)] |- _ =>
+            cbv [new_msg_bytes] in H;
+              autorewrite with push_length in H;
+              try rewrite Min.min_l in H by lia
+          end.
       all:repeat (destruct_one_match_hyp; try discriminate).
       all:logical_simplify; subst; cbn [length app] in *.
       all:rewrite ?N.eqb_refl; try lia.
-      all:push_length.
+      all:push_length; natsimpl.
       all:rewrite N.mod_small; lia. }
     { (* new offset matches expectations *)
       cbv [expected_padder_state] in *. change (2 ^ N.of_nat 4)%N with 16%N.
@@ -727,6 +736,7 @@ Proof.
         logical_simplify; subst; rewrite ?N.eqb_refl; boolsimpl.
       all:repeat (destruct_one_match_hyp; try discriminate).
       all:autorewrite with push_length.
+      all:rewrite ?Min.min_l by lia.
       all:rewrite ?Nat.mod_small by lia.
       all:repeat (destruct_one_match; try discriminate; try lia); subst.
       all:try (specialize (Hincr ltac:(assumption)); cbn in Hincr).
@@ -762,9 +772,7 @@ Proof.
         logical_simplify; subst;
         lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
                             rewrite H in * end.
-      all:cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                     padder_emit_bit_value padder_writing_length_value
-                     negb andb orb].
+      all:padder_state_simpl.
       all:try (destruct msg_complete; try discriminate).
       all:repeat lazymatch goal with
                  | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
@@ -897,8 +905,7 @@ Proof.
     [ | eexists; ssplit; (lia || reflexivity) ].
   destruct data_valid;
     repeat (boolsimpl || subst || logical_simplify);
-    cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-               padder_emit_bit_value padder_writing_length_value].
+    padder_state_simpl.
   { (* data_valid=true *)
     pose proof padded_message_bytes_longer_than_input msg.
     pose proof min_padded_message_size msg.
@@ -1148,6 +1155,10 @@ Proof.
       (* helpful assertion for length truncation *)
       assert (2 ^ 61 * 8 = 2 ^ 64)%N by reflexivity.
       rewrite !N.land_ones with (n:=64%N).
+      all:lazymatch goal with
+          | H : context [new_msg_bytes] |- _ =>
+            cbv [new_msg_bytes] in H; autorewrite with push_length in H
+          end.
       rewrite (N.mod_small (N.of_nat (length msg)) (2^64)%N) by lia.
       rewrite (N.mod_small (N.shiftl (N.of_nat (length msg)) _) (2^64)%N)
         by (rewrite N.shiftl_mul_pow2; change (2 ^ N.of_nat 3)%N with 8%N;
@@ -1306,8 +1317,13 @@ Instance sha256_specification
          let '(fifo_data_valid,
                (fifo_data, (is_final, (final_length, (clear, _))))) := input in
          let '(msg, msg_complete, byte_index, t, cleared) := repr in
-         (* final_length must be < 4 *)
-         (final_length < 4)%N
+         let new_bytes :=
+             new_msg_bytes fifo_data_valid fifo_data is_final final_length in
+         (* final_length must be in the range [1,4] *)
+         (1 < final_length <= 4)%N
+         (* ...and the total message length cannot exceed 2 ^ 64 bits (2^61
+            bytes) *)
+         /\ length (msg ++ new_bytes) < 2 ^ 61
          (* ..and only pass valid data if circuit is cleared or inner is done *)
          /\ (if fifo_data_valid then if cleared then True else t = 64 else True)
          (* ...and if msg_complete is true, then new valid data cannot be passed
@@ -1380,4 +1396,3 @@ Proof.
     | _ => reflexivity || lia
     end.
 Qed.
-
