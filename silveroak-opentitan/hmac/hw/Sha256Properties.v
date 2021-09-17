@@ -410,8 +410,6 @@ Instance sha256_padder_invariant
     /\ done = padder_done
     (* ...and if msg_complete is true, we must have processed the whole message *)
     /\ (if msg_complete then length msg <= index else index = length msg)
-    (* ...and if output is valid, we must have processed at least one word *)
-    /\ (if out_valid then 4 <= index else True)
     (* ...and if we're in the emit_bit state, it must be the case that the message
      length is 0 mod 4 (otherwise we attach the 1 bit to the final byte and move
      straight to flushing) *)
@@ -420,11 +418,10 @@ Instance sha256_padder_invariant
        then
          (* if we're done, we must be in the padder_waiting state *)
          state = padder_waiting_value
-         (* ...and if the output is valid, the index must be at the end of the
-          expected result *)
-         /\ (if out_valid
-            then index = padded_message_size msg
-            else index = 0 /\ msg = [])
+         (* ...and the higher-level state is reset *)
+         /\ msg = []
+         /\ msg_complete = false
+         /\ index = 0
          (* ...and length is 0 *)
          /\ len = N.of_nat 0
          (* ...and offset is 0 *)
@@ -463,9 +460,11 @@ Instance sha256_padder_specification
               then if padder_done
                    then if data_valid
                         then (new_bytes, is_final, false, 4)
-                        else ([], msg_complete, true, 0)
+                        else ([], false, true, 0)
                    else if msg_complete
-                        then (msg, true, index + 4 =? padded_message_size msg, index + 4)
+                        then if index + 4 =? padded_message_size msg
+                             then ([], false, true, 0)
+                             else (msg, true, false, index + 4)
                         else if data_valid
                              then (msg ++ new_bytes, is_final, false, index + 4)
                              else (msg, false, false, index)
@@ -486,7 +485,7 @@ Instance sha256_padder_specification
               msg_complete = false
               (* ...and final_length (if given) must be in range *)
               /\ (if is_final
-                 then (1 < final_length <= 4)%N
+                 then (1 <= final_length <= 4)%N
                  else True)
                 (* ...and data value must be in range *)
               /\ (if is_final
@@ -634,7 +633,7 @@ Proof.
   intros; logical_simplify; subst. cbv [new_msg_bytes].
   intros. logical_simplify. subst. cbn [fst snd] in *.
   cbv [sha256_padder K]. stepsimpl.
-  repeat (destruct_pair_let; cbn [fst snd]).
+  repeat (destruct_inner_pair_let; cbn [fst snd]).
   autorewrite with tuple_if; cbn [fst snd].
   stepsimpl.
   (* destruct cases for flags *)
@@ -680,8 +679,6 @@ Proof.
     { (* index is past or at end of message if is_final is true, otherwise equal
          to length of message *)
       repeat destruct_one_match; logical_simplify; subst; push_length; lia. }
-    { (* if output is valid, then new index must be at least 4 *)
-      repeat destruct_one_match; lia. }
     { (* if we're in the emit_bit state, then the length of the message was 0
          mod 4 *)
       cbv [expected_padder_state] in *.
@@ -787,11 +784,6 @@ Proof.
     { (* if message is complete, index is past or at end of message; otherwise,
          index = length of message *)
       repeat destruct_one_match; logical_simplify; subst; push_length; lia. }
-    { (* if output is valid, then new index must be at least 4 *)
-      destr (state =? padder_waiting_value)%N; boolsimpl; [ solve [trivial] | ].
-      repeat destruct_one_match; logical_simplify; subst; try lia;
-        cbv [expected_padder_state] in *; repeat destruct_one_match_hyp;
-          congruence. }
     { (* if state is emit_bit, length of message is 0 mod 4 *)
       destruct padder_done; logical_simplify; subst;
       rewrite ?N.eqb_refl in *; boolsimpl; padder_state_simpl;
@@ -854,8 +846,10 @@ Proof.
           by (destruct_one_match; prove_by_zify).
         destr (current_offset =? 15)%N;
           logical_simplify; subst; padder_state_simpl.
-        { ssplit; try lia; reflexivity. }
-        { ssplit; [ lia .. | | ].
+        { repeat destruct_one_match; try lia; [ ].
+          ssplit; reflexivity. }
+        { repeat destruct_one_match; try lia; [ ].
+          ssplit; [ lia .. | | ].
           { rewrite Nat2N.inj_add.
             apply increment_offset; lia. }
           { repeat lazymatch goal with
@@ -939,7 +933,6 @@ Proof.
       logical_simplify; subst; rewrite ?N.eqb_refl;
         padder_state_simpl.
     { (* padder_done=true *)
-      destruct out_valid; logical_simplify; subst; [ lia | ].
       autorewrite with push_length in *. compute_expr (0 / 4).
       destruct is_final.
       { (* padder_done=true, is_final=true *)
@@ -1205,19 +1198,31 @@ Instance sha256_invariant
     let '((ready, (block, (digest, (count, done)))),
           (sha256_padder_state, sha256_inner_state)) := state in
     let '(msg, msg_complete, byte_index, t, cleared) := repr in
+    (* block index is byte_index / 64 (64 bytes per block) *)
+    let block_index := byte_index / 64 in
+    (* sha256_inner is done if t = 64 *)
+    let inner_done := if cleared then true else t =? 64 in
+    (* the message according to sha256_inner is the padded message up to the
+       latest block that has been passed to it *)
+    let inner_msg := firstn (block_index * 16) (SHA256.padded_msg msg) in
     (* padder is done if the current byte index is at the end of the message *)
     let padder_done := if cleared
                        then true
                        else if msg_complete
                             then (byte_index =? padded_message_size msg)
                             else false in
-    (* block index is byte_index / 64 (64 bytes per block) *)
-    let block_index := byte_index / 64 in
-    (* sha256_inner is done if t = 64 *)
-    let inner_done := if cleared then true else t =? 64 in
-    (* padded message up to the latest block that has been passed to
-       sha256_inner *)
-    let inner_msg := firstn (block_index * 16) (SHA256.padded_msg msg) in
+    (* the padder resets to an empty message after producing the last word *)
+    let padder_repr :=
+        if padder_done
+        then ([], false, true, 0)
+        else (msg, msg_complete, padder_done, byte_index) in
+    (* the byte index according to sha256_padder is the same as for sha256,
+       except that it resets to [] after producing the last word *)
+    let padder_index := if byte_index mod 64 =? 0
+                        then if t =? 64
+                             then 0
+                             else byte_index
+                        else byte_index in
     (* t is within its expected range [0,64) *)
     t < 64
     (* ...and byte index is within its expected range [0,padded_message_size msg] *)
@@ -1231,16 +1236,17 @@ Instance sha256_invariant
     (* ...and if we're not cleared, the digest must be the expected digest
        (digest is only stored at the end of each inner loop, so can be computed
        for t=0) *)
-    /\ (if cleared
-       then True
-       else digest = fold_left (SHA256.sha256_step msg)
-                               (seq 0 block_index) SHA256.H0)
+    /\ (digest = fold_left (SHA256.sha256_step msg)
+                          (seq 0 block_index) SHA256.H0)
     (* ...and if we're cleared, we must be in the reset state *)
     /\ (if cleared
        then byte_index = 0
             /\ t = 0
             /\ msg = []
+            /\ msg_complete = false
             /\ done = true
+            /\ digest = SHA256.H0
+            /\ block = repeat 0%N 16
        else True)
     (* ...and the index must agree with our state flags *)
     /\ (if done
@@ -1261,11 +1267,14 @@ Instance sha256_invariant
               block = List.slice 0%N (SHA256.padded_msg msg) block_index 16
               /\ byte_index mod 64 = 0 (* byte index is at the end of a block *)
             else
-              block = List.slice 0%N (SHA256.padded_msg msg) block_index (N.to_nat count)
-              /\ byte_index mod 64 = N.to_nat count * 4 (* byte_index is on the [count]th word *))
+              block = (repeat 0%N (16 - N.to_nat count))
+                        ++ List.slice 0%N (SHA256.padded_msg msg)
+                        block_index (N.to_nat count)
+              /\ byte_index mod 64 = N.to_nat count * 4 (* byte_index is on the [count]th word *)
+              /\ t = 0 (* inner is between blocks *))
     (* ...and the invariant for sha256_padder is satisfied *)
     /\ sha256_padder_invariant
-        sha256_padder_state (msg, msg_complete, padder_done, byte_index)
+        sha256_padder_state padder_repr
     (* ...and the invariant for sha256_inner is satisfied *)
     /\ sha256_inner_invariant
         sha256_inner_state (inner_msg, block_index, t, inner_done, cleared).
@@ -1319,13 +1328,19 @@ Instance sha256_specification
          let '(msg, msg_complete, byte_index, t, cleared) := repr in
          let new_bytes :=
              new_msg_bytes fifo_data_valid fifo_data is_final final_length in
-         (* final_length must be in the range [1,4] *)
-         (1 < final_length <= 4)%N
-         (* ...and the total message length cannot exceed 2 ^ 64 bits (2^61
-            bytes) *)
-         /\ length (msg ++ new_bytes) < 2 ^ 61
+         (* the total message length (including any new data) cannot exceed 2 ^
+            64 bits (2^61 bytes) -- using N so Coq doesn't try to compute 2 ^ 61
+            in nat *)
+         (N.of_nat (length (msg ++ new_bytes)) < 2 ^ 61)%N
          (* ..and only pass valid data if circuit is cleared or inner is done *)
          /\ (if fifo_data_valid then if cleared then True else t = 64 else True)
+         (* ...and if data is valid, it must be in expected range *)
+         /\ (if fifo_data_valid
+            then if is_final
+                 then (fifo_data < 2 ^ (8 * final_length))%N
+                      /\ (1 <= final_length <= 4)%N
+                 else (fifo_data < 2 ^ 32)%N
+            else True)
          (* ...and if msg_complete is true, then new valid data cannot be passed
             (must clear first) *)
          /\ (if msg_complete then fifo_data_valid = false else True);
@@ -1395,4 +1410,134 @@ Proof.
     | |- sha256_inner_invariant _ _ => apply sha256_inner_invariant_at_reset
     | _ => reflexivity || lia
     end.
+Qed.
+
+Lemma sha256_invariant_preserved : invariant_preserved sha256.
+Proof.
+  simplify_invariant sha256. cbn [absorb_any].
+  simplify_spec sha256.
+  (* The following gymnastics results in input_, state_, and repr_ being posed
+     as let-hypotheses, which makes proof debugging easier because one can look
+     at them and see what case the proof is dealing with *)
+  intros input state repr.
+  pose (input_:=input). pose (state_:=state). pose (repr_:=repr).
+  revert dependent repr. revert dependent state. revert dependent input.
+  intros (fifo_data_valid,
+          (fifo_data, (is_final, (final_length, (clear, []))))).
+  intro.
+  intros ((ready, (block, (digest, (count, done)))),
+          (sha256_padder_state, sha256_inner_state)).
+  intro.
+  intros ((((msg, msg_complete), byte_index), t), cleared).
+  intros; logical_simplify; subst.
+  cbv [sha256]; stepsimpl.
+  repeat (destruct_inner_pair_let; cbn [fst snd]).
+  autorewrite with tuple_if; cbn [fst snd].
+  pose proof min_padded_message_size
+       (new_msg_bytes true fifo_data true final_length).
+  pose proof min_padded_message_size
+       (msg ++ new_msg_bytes true fifo_data true final_length).
+  ssplit.
+  10:
+    {
+    (* prove that padder invariant is preserved *)
+    eapply invariant_preserved_pf; [ | eassumption | ].
+    { (* prove that padder state rep is update correctly *)
+      simplify_spec sha256_padder.
+      repeat first [ progress (logical_simplify; subst)
+                   | lazymatch goal with |- ?x = ?x => reflexivity end
+                   | discriminate
+                   | lia
+                   | lazymatch goal with
+                     | H : (_ =? _) = false |- _ => apply Nat.eqb_neq in H
+                     | H : (_ =? _) = true |- _ => apply Nat.eqb_eq in H
+                     end
+                   | destruct_one_match
+                   | destruct_one_match_hyp
+                   | lazymatch goal with
+                     | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y)
+                     end ].
+      { (* here we have n mod 64 = count * 4, count <= 15, and n + 4 = padded_message_size *)
+        (* i.e. last word produced by padder *)
+        (* padder thinks it does not reset here, sha256 spec thinks it does *)
+    }
+
+    apply invariant_preser
+    (* t is within its expected range [0,64) *)
+    t < 64
+    (* ...and byte index is within its expected range [0,padded_message_size msg] *)
+    /\ byte_index <= padded_message_size msg
+    (* ...and byte index is always 0 mod 4 *)
+    /\ byte_index mod 4 = 0
+    (* ...and count is within its expected range [0,17] *)
+    /\ (count <= 17)%N
+    (* ready is true when count < 16 *)
+    /\ ready = (count <? 16)%N
+    (* ...and if we're not cleared, the digest must be the expected digest
+       (digest is only stored at the end of each inner loop, so can be computed
+       for t=0) *)
+    /\ (digest = fold_left (SHA256.sha256_step msg)
+                          (seq 0 block_index) SHA256.H0)
+    (* ...and if we're cleared, we must be in the reset state *)
+    /\ (if cleared
+       then byte_index = 0
+            /\ t = 0
+            /\ msg = []
+            /\ done = true
+            /\ digest = SHA256.H0
+            /\ block = repeat 0%N 16
+       else True)
+    (* ...and the index must agree with our state flags *)
+    /\ (if done
+       then if cleared
+            then True
+            else byte_index = padded_message_size msg (* index must be at end of message *)
+       else
+         (* either we're not on the last block, or inner is still working (t < 64) *)
+         if t =? 64
+         then byte_index < padded_message_size msg
+         else True)
+    (* ...and the block must be the first [count] words of the ith block of
+       the padded message, or 16 if count=17 (unless the circuit is cleared) *)
+    /\ (if cleared
+       then True
+       else if (count =? 17)%N
+            then
+              block = List.slice 0%N (SHA256.padded_msg msg) block_index 16
+              /\ byte_index mod 64 = 0 (* byte index is at the end of a block *)
+            else
+              block = (repeat 0%N (16 - N.to_nat count))
+                        ++ List.slice 0%N (SHA256.padded_msg msg)
+                        block_index (N.to_nat count)
+              /\ byte_index mod 64 = N.to_nat count * 4 (* byte_index is on the [count]th word *))
+    (* ...and the invariant for sha256_padder is satisfied *)
+    /\ sha256_padder_invariant
+        sha256_padder_state (msg, msg_complete, padder_done, byte_index)
+    (* ...and the invariant for sha256_inner is satisfied *)
+    /\ sha256_inner_invariant
+        sha256_inner_state (inner_msg, block_index, t, inner_done, cleared).
+  destruct clear; logical_simplify; subst.
+  { (* clear=true case *)
+    ssplit; try reflexivity; try lia; [ | ].
+    { (* prove that padder precondition is satisfied *)
+      eapply invariant_preserved_pf; [ | eassumption | ];
+        [ reflexivity | ].
+      simplify_spec sha256_padder.
+      destruct msg_complete; repeat destruct_one_match;
+        try discriminate; ssplit; lia. }
+    { (* prove that inner precondition is satisfied *)
+      eapply invariant_preserved_pf; [ | eassumption | ];
+        [ reflexivity | ].
+      simplify_spec sha256_inner.
+      pose proof Nat.mod_bound_pos byte_index 64 ltac:(lia) ltac:(lia).
+      repeat destruct_one_match; logical_simplify; subst.
+      all:cbn [N.eqb Pos.eqb] in *; logical_simplify; subst.
+      all:change (0 / 64) with 0.
+      all:pull_snoc; natsimpl; cbn [fold_left seq].
+      all:ssplit; try reflexivity; try lia.
+      (* should only be one goal left now *)
+      eapply fold_left_ext_In; intros *.
+      rewrite in_seq; intros.
+      rewrite sha256_step_alt_firstn by lia.
+      rewrite sha256_step_alt_equiv; reflexivity. } }
 Qed.
