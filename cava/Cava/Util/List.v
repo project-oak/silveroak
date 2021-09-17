@@ -420,6 +420,24 @@ Section Nth.
     reflexivity.
   Qed.
 
+  Lemma nth_firstn_inbounds  {A} i n d (l : list A) :
+    i < n -> nth i (firstn n l) d = nth i l d.
+  Proof.
+    revert i l; induction n; [ lia | ].
+    destruct i, l; intros; [ reflexivity .. | ].
+    cbn [nth firstn]. apply IHn. lia.
+  Qed.
+
+  Lemma nth_firstn {A} i n d (l : list A) :
+    nth i (firstn n l) d = if i <? n then nth i l d else d.
+  Proof.
+    destruct (Compare_dec.lt_dec i n).
+    { rewrite (proj2 (Nat.ltb_lt _ _)) by lia.
+      apply nth_firstn_inbounds; lia. }
+    { rewrite (proj2 (Nat.ltb_ge _ _)) by lia.
+      apply nth_overflow; length_hammer. }
+  Qed.
+
   Lemma Forall2_nth_iff {A B} (P : A -> B -> Prop) la lb :
     length la = length lb ->
     (forall i da db,
@@ -476,7 +494,7 @@ End Nth.
 
 (* The push_nth tactic simplifies goals including [nth] *)
 Hint Rewrite @map_nth @nth_middle @nth_step @nth_found @nth_nil @nth_extend
-     @nth_skipn @nth_tl @nth_hd : push_nth.
+     @nth_skipn @nth_tl @nth_hd @nth_firstn : push_nth.
 Ltac push_nth_step :=
   match goal with
   | _ => progress autorewrite with push_nth
@@ -557,6 +575,15 @@ Section Maps.
     induction la; [ reflexivity | ].
     cbn [map flat_map]. rewrite IHla.
     reflexivity.
+  Qed.
+
+  Lemma flat_map_length_const {A B} (f : A -> list B) len ls :
+    (forall x, length (f x) = len) ->
+    length (flat_map f ls) = length ls * len.
+  Proof.
+    intro Hf; induction ls; [ reflexivity | ].
+    cbn [flat_map]. push_length.
+    rewrite IHls, Hf; lia.
   Qed.
 
   Lemma map_flat_map {A B C} (f : A -> list B) (g : B -> C) la :

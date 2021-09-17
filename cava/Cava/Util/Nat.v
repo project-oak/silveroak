@@ -16,6 +16,7 @@
 
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.NArith.NArith.
+Require Import Coq.ZArith.ZArith.
 Require Import Coq.micromega.Lia.
 
 Lemma sub_succ_l_same n : S n - n = 1.
@@ -33,6 +34,94 @@ Ltac natsimpl_step :=
         | rewrite Nat.add_sub by lia
         | rewrite (fun n m => proj2 (Nat.sub_0_le n m)) by lia ].
 Ltac natsimpl := repeat natsimpl_step.
+
+(* convert to Z and use Z.to_euclidean_division_equations, then solve with
+   [solver] *)
+Ltac prove_by_zify' solver :=
+  Zify.zify;
+  (* extra step because zify fails to zify Nat.modulo and Nat.div *)
+  repeat (progress rewrite ?mod_Zmod, ?div_Zdiv in * by lia;
+          Zify.zify);
+  Z.to_euclidean_division_equations; solver.
+Ltac prove_by_zify := prove_by_zify' lia.
+
+Module Nat.
+  Lemma mul_div_exact_r a b :
+    b <> 0 -> a mod b = 0 ->  a / b * b = a.
+  Proof. intros. prove_by_zify. Qed.
+
+  Lemma add_sub_cancel a b : a + b - a = b.
+  Proof. lia. Qed.
+
+  Definition ceiling (a b : nat) :=
+    (a + b - 1) / b.
+
+  Lemma ceiling_add_le_mono a b c :
+    Nat.ceiling a b <= Nat.ceiling (a + c) b.
+  Proof.
+    cbv [Nat.ceiling]. destruct (Nat.eq_dec b 0); [ subst; reflexivity | ].
+    prove_by_zify' nia.
+  Qed.
+
+  Lemma ceiling_equiv a b :
+    Nat.ceiling a b = a / b + if a mod b =? 0 then 0 else 1.
+  Proof.
+    cbv [Nat.ceiling]. destruct (Nat.eq_dec b 0); [ subst; reflexivity | ].
+    destruct (Nat.eq_dec (a mod b) 0).
+    { rewrite (proj2 (Nat.eqb_eq _ _)) by lia.
+      rewrite (Nat.div_mod a b) by lia. replace (a mod b) with 0 by lia.
+      natsimpl. rewrite <-Nat.add_sub_assoc by lia.
+      rewrite !(Nat.mul_comm b), Nat.div_mul, Nat.div_add_l by lia.
+      rewrite (Nat.div_small (b - 1)) by lia.
+      lia. }
+    { rewrite (proj2 (Nat.eqb_neq _ _)) by lia.
+      pose proof Nat.mod_bound_pos a b ltac:(lia) ltac:(lia).
+      rewrite (Nat.div_mod a b) by lia.
+      replace (b * (a / b) + a mod b + b - 1) with
+          ((a / b + 1) * b + (a mod b - 1)) by lia.
+      rewrite (Nat.mul_comm b (a / b)).
+      rewrite !Nat.div_add_l by lia.
+      rewrite (Nat.div_small (a mod b - 1)) by lia.
+      rewrite (Nat.div_small (a mod b)) by lia.
+      lia. }
+  Qed.
+
+  Lemma ceiling_add_same a b c :
+    1 < c < b - 1 -> a mod b <= b - c ->
+    Nat.ceiling (a + c) b = Nat.ceiling (a + 1) b.
+  Proof.
+    cbv [Nat.ceiling]. intros.
+    destruct (Nat.eq_dec b 0); [ subst; reflexivity | ].
+    rewrite (Nat.div_mod a b) by lia.
+    replace (b * (a / b) + a mod b + c + b - 1) with
+        ((a / b + 1) * b + (a mod b + c - 1)) by lia.
+    replace (b * (a / b) + a mod b + 1 + b - 1) with
+        ((a / b + 1) * b + a mod b) by lia.
+    rewrite !Nat.div_add_l by lia.
+    f_equal; [ ].
+    rewrite !Nat.div_small; lia.
+  Qed.
+
+  Lemma ceiling_add_diff a b c :
+    0 < b -> 0 < c < b -> b - c < a mod b ->
+    Nat.ceiling (a + c) b = Nat.ceiling a b + 1.
+  Proof.
+    intros; rewrite !ceiling_equiv.
+    destruct (Nat.eq_dec (a mod b) 0);
+      [ rewrite (proj2 (Nat.eqb_eq _ _)) by lia
+      | rewrite (proj2 (Nat.eqb_neq (a mod b) _)) by lia ].
+    all:(destruct (Nat.eq_dec ((a + c) mod b) 0);
+         [ rewrite (proj2 (Nat.eqb_eq _ _)) by lia
+         | rewrite (proj2 (Nat.eqb_neq _ _)) by lia ]).
+    all:prove_by_zify' nia.
+  Qed.
+
+  Lemma ceiling_range a b :
+    0 < b -> 0 < a ->
+    Nat.ceiling a b * b - b < a <= Nat.ceiling a b * b.
+  Proof. cbv [Nat.ceiling]. intros. prove_by_zify. Qed.
+End Nat.
+Hint Rewrite Nat.add_sub_cancel : natsimpl.
 
 Module Nat2N.
   Lemma inj_pow a n : (N.of_nat a ^ N.of_nat n)%N = N.of_nat (a ^ n).
@@ -189,6 +278,12 @@ Module N.
       f_equal; lia. }
   Qed.
 
+  Lemma testbit_high x n : (x < 2 ^ n)%N -> N.testbit x n = false.
+  Proof.
+    intros. destruct (N.eq_dec x 0%N); subst; [ reflexivity | ].
+    apply N.bits_above_log2. apply N.log2_lt_pow2; lia.
+  Qed.
+
   (* tactic for transforming boolean expressions about N arithmetic into Props *)
   Ltac bool_to_prop :=
     repeat lazymatch goal with
@@ -223,5 +318,7 @@ Ltac push_Ntestbit_step :=
   | |- context [N.testbit (N.lnot ?a ?n) ?m] =>
     first [ rewrite (N.lnot_spec_high a n m) by lia
           | rewrite (N.lnot_spec_low a n m) by lia ]
+  | |- context [N.testbit ?x ?m] =>
+    rewrite (N.testbit_high x m) by lia
   end.
 Ltac push_Ntestbit := repeat push_Ntestbit_step.

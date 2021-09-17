@@ -22,6 +22,7 @@ Require Import Coq.Init.Byte.
 Require Import Coq.Lists.List.
 Require Import coqutil.Tactics.Tactics.
 Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.BitArithmeticProperties.
 Require Import Cava.Util.If.
 Require Import Cava.Util.List.
 Require Import Cava.Util.Nat.
@@ -318,104 +319,6 @@ Lemma step_padder_writing_length :
 Proof. reflexivity. Qed.
 Hint Rewrite @step_padder_writing_length using solve [eauto] : stepsimpl.
 
-Module Nat.
-  Definition ceiling (a b : nat) :=
-    a / b + if a mod b =? 0 then 0 else 1.
-End Nat.
-
-(* Properties of [Nat.ceiling] *)
-Lemma ceiling_add_le_mono a b c :
-  Nat.ceiling a b <= Nat.ceiling (a + c) b.
-Admitted.
-
-(* TODO: move *)
-(* helper lemma for modular arithmetic *)
-Lemma ceiling_add_same a b c :
-  1 < c < b - 1 -> a mod b <= b - c ->
-  Nat.ceiling (a + c) b = Nat.ceiling (a + 1) b.
-Proof.
-  (* proof sketch:
-     Since a mod b <= b - c and 1 < c < b - 1, it follows that:
-           (1) (a + 1) mod b <> 0
-           (2) (a + c) mod b = 0 iff a mod b = b - c
-           (3) (a + c) / b = (a + 1) / b + if (a mod b = b - c) then 1 else 0
-
-     Proof of (1):
-           (a + 1) mod b = (a mod b + 1) mod b
-                         = a mod b + 1 (because a mod b + 1 <= (b - c) + 1 < b)
-                         > 0
-
-     Proof of (2):
-           case 1 (a mod b <> b - c): same logic as (1) proves (a + c) mod b <> 0
-           case 1 (a mod b = b - c):
-             (a + c) mod b = (a mod b + c) mod b
-                           = (b - c + c) mod b
-                           = 0
-
-     Proof of (3):
-           (a + c) / b = (a + 1 + (c - 1)) / b
-                       = ((a + 1) / b * b + (a + 1) mod b + (c - 1)) / b
-                       = (a + 1) / b + (a mod b + 1 + (c - 1)) / b
-                       = (a + 1) / b + (a mod b + c) / b
-                       = (a + 1) / b + if (a mod b = b - c) then 1 else 0
-
-     Therefore:
-        Nat.ceiling (a + 1) b
-                    = (a + 1) / b + if (a + 1) mod b =? 0 then 0 else 1
-                    = (a + 1) / b + 1
-
-        Nat.ceiling (a + c) b
-                    = (a + c) / b + if (a + c) mod b =? 0 then 0 else 1
-                    = (a + c) / b + if (a mod b = b - c) then 0 else 1
-                    = (a + 1) / b + if (a mod b = b - c) then 1 else 0
-                                  + if (a mod b = b - c) then 0 else 1
-                    = (a + 1) b + 1
-  *)
-Admitted.
-
-(* TODO: move *)
-(* helper lemma for modular arithmetic *)
-Lemma ceiling_add_diff a b c :
-  0 < b -> 0 < c < b -> b - c < a mod b ->
-  Nat.ceiling (a + c) b = Nat.ceiling a b + 1.
-Proof.
-  (* proof sketch:
-     Since (b - c < a mod b) and 0 < c, it follows that:
-           0 < a mod b + c < b
-           a mod b <> 0
-
-     Therefore:
-           (a + c) mod b = (a mod b + c) mod b
-                         =  a mod b + c
-           (a + c) / b = (a / b * b + a mod b + c) / b
-                       =  a / b + (a mod b + c) / b
-                       =  a / b
-
-     Nat.ceiling (a + c) b
-                 = (a + c) / b + (if (a + c) mod b =? 0 then 0 else 1)
-                 = (a + c) / b + 1
-                 = a / b + 1
-
-     Nat.ceiling a b
-                 = a / b + if a mod b =? 0 then 0 else 1
-                 = a / b + 1
-  *)
-Admitted.
-
-(* TODO: move *)
-Lemma ceiling_range a b :
-  0 < b -> 0 < a ->
-  Nat.ceiling a b * b - b < a <= Nat.ceiling a b * b.
-Admitted.
-
-
-(* length of the padded message (in bytes) is the smallest number of 512-bit
-   (64-byte) blocks that can fit the message plus 9 more bytes (one for the
-   extra 1 bit and 8 for the length -- extra 1 bit needs a full byte because
-   message must be byte-aligned) *)
-Definition padded_message_size (msg : list byte) : nat :=
-  (Nat.ceiling (length msg + 9) 64) * 64.
-
 Definition expected_padder_state
            (msg : list Byte.byte) (msg_complete padder_done : bool) (i : nat) : N :=
   if msg_complete
@@ -599,62 +502,6 @@ Instance sha256_padder_specification
          else True (* no guarantees about output if consumer isn't ready *)
   |}.
 
-(* TODO: move *)
-Lemma length_N_to_bytes n bs :
-  length (BigEndianBytes.N_to_bytes n bs) = n.
-Proof. cbv [BigEndianBytes.N_to_bytes]. length_hammer. Qed.
-Hint Rewrite @length_N_to_bytes : push_length.
-(* TODO: move *)
-Lemma padded_message_bytes_length msg :
-  length (SHA256.padded_msg_bytes msg) = padded_message_size msg.
-Proof.
-  cbv [SHA256.padded_msg_bytes SHA256.padding padded_message_size].
-  push_length.
-  cbv [Nat.ceiling].
-  cbv [SHA256.k SHA256.l].
-  destruct_one_match; Zify.zify;
-    (* extra step because zify fails to zify Nat.modulo and Nat.div *)
-    rewrite ?mod_Zmod, ?div_Zdiv in * by lia;
-    Zify.zify; Z.to_euclidean_division_equations; lia.
-Qed.
-Hint Rewrite @padded_message_bytes_length : push_length.
-(* TODO: move *)
-Lemma padded_message_bytes_longer_than_input msg :
-  length msg + 9 <= padded_message_size msg.
-Proof.
-  cbv [padded_message_size].
-  pose proof ceiling_range (length msg + 9) 64 ltac:(lia) ltac:(lia).
-  lia.
-Qed.
-(* TODO: move *)
-Lemma min_padded_message_size msg : 64 <= padded_message_size msg.
-Proof.
-  cbv [padded_message_size].
-  pose proof ceiling_range (length msg + 9) 64 ltac:(lia) ltac:(lia).
-  lia.
-Qed.
-(* TODO: move *)
-Lemma padded_message_size_modulo msg : padded_message_size msg mod 64 = 0.
-Proof. apply Nat.mod_mul. lia. Qed.
-(* TODO: move *)
-(* Adding data cannot decrease padded message size *)
-Lemma padded_message_size_mono msg data :
-  padded_message_size msg <= padded_message_size (msg ++ data).
-Proof.
-  cbv [padded_message_size]. push_length.
-  replace (length msg + length data + 9)
-    with (length msg + 9 + length data) by lia.
-  pose proof ceiling_add_le_mono (length msg + 9) 64 (length data).
-  lia.
-Qed.
-
-(* TODO: move *)
-Local Ltac prove_by_zify :=
-  Zify.zify;
-  (* extra step because zify fails to zify Nat.modulo and Nat.div *)
-  rewrite ?mod_Zmod, ?div_Zdiv in * by lia;
-  Zify.zify; Z.to_euclidean_division_equations; lia.
-
 (* helper lemma for modular arithmetic *)
 Lemma increment_offset (offset index : N) :
   (offset * 4 = index mod 64)%N ->
@@ -693,15 +540,15 @@ Proof.
   pose proof padded_message_bytes_longer_than_input msg.
   pose proof padded_message_size_modulo msg.
   assert (padded_message_size msg - 64 < length msg + 9 <= padded_message_size msg).
-  { apply ceiling_range; lia. }
+  { apply Nat.ceiling_range; lia. }
   (* helpful assertion for the case that length fits in the same block as
      message *)
   assert ((length msg + 1) mod 64 <= 56 ->
           padded_message_size msg - 64 <= length msg + 1).
   { cbv [padded_message_size] in *. intros.
     replace (length msg + 9) with (length msg + 1 + 8) by lia.
-    rewrite ceiling_add_same with (c:=8) by lia.
-    pose proof ceiling_range (length msg + 1 + 1) 64 ltac:(lia) ltac:(lia).
+    rewrite Nat.ceiling_add_same with (c:=8) by lia.
+    pose proof Nat.ceiling_range (length msg + 1 + 1) 64 ltac:(lia) ltac:(lia).
     lia. }
   (* helpful assertion for the case that length does not fit in the same block
      as message *)
@@ -709,8 +556,8 @@ Proof.
           padded_message_size msg - 64 >= length msg + 1).
   { cbv [padded_message_size] in *. intros.
     replace (length msg + 9) with (length msg + 1 + 8) by lia.
-    rewrite ceiling_add_diff with (c:=8) by lia.
-    pose proof ceiling_range (length msg + 1) 64 ltac:(lia) ltac:(lia).
+    rewrite Nat.ceiling_add_diff with (c:=8) by lia.
+    pose proof Nat.ceiling_range (length msg + 1) 64 ltac:(lia) ltac:(lia).
     lia. }
   cbv [expected_padder_state]; repeat destruct_one_match; subst; try lia;
     cbv [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
@@ -976,115 +823,6 @@ Proof.
   } } } }
 Qed.
 
-Lemma bytes_to_Ns_length n bs :
-  length (BigEndianBytes.bytes_to_Ns n bs) = length bs / n.
-Proof. cbv [BigEndianBytes.bytes_to_Ns]. length_hammer. Qed.
-Hint Rewrite @bytes_to_Ns_length : push_length.
-Lemma padded_message_length msg :
-  length (SHA256.padded_msg msg) = padded_message_size msg / 4.
-Proof.
-  cbv [SHA256.padded_msg]. change (N.to_nat SHA256.w / 8) with 4.
-  length_hammer.
-Qed.
-Hint Rewrite @padded_message_length : push_length.
-
-Lemma nth_bytes_to_Ns i n bs :
-  nth i (BigEndianBytes.bytes_to_Ns n bs) 0%N
-  = BigEndianBytes.concat_bytes
-      (List.map
-         (fun j => nth (i*n + j) bs x00)
-         (seq 0 n)).
-Admitted.
-
-Lemma nth_padded_msg msg i :
-  nth i (SHA256.padded_msg msg) 0%N
-  = BigEndianBytes.concat_bytes
-      [nth (i*4) (SHA256.padded_msg_bytes msg) x00
-       ; nth (i*4 + 1) (SHA256.padded_msg_bytes msg) x00
-       ; nth (i*4 + 2) (SHA256.padded_msg_bytes msg) x00
-       ; nth (i*4 + 3) (SHA256.padded_msg_bytes msg) x00].
-Proof.
-  cbv [SHA256.padded_msg]. change (N.to_nat SHA256.w / 8) with 4.
-  rewrite nth_bytes_to_Ns. cbn [List.map seq]. natsimpl.
-  reflexivity.
-Qed.
-
-Lemma N_to_byte_to_N x : Byte.to_N (N_to_byte x) = (x mod 256)%N.
-Admitted.
-
-Lemma nth_firstn {A} i n d (l : list A) :
-  nth i (firstn n l) d = if i <? n then nth i l d else d.
-Admitted.
-Hint Rewrite @nth_firstn : push_nth.
-
-Lemma nth_padding_0 msg : nth 0 (SHA256.padding msg) x00 = x80.
-Proof. reflexivity. Qed.
-Hint Rewrite nth_padding_0 : push_nth.
-
-Lemma padding_length msg :
-  length (SHA256.padding msg) = padded_message_size msg - length msg - 8.
-Proof.
-  rewrite <-padded_message_bytes_length.
-  cbv [SHA256.padded_msg_bytes]. push_length.
-  lia.
-Qed.
-Hint Rewrite @padding_length : push_length.
-
-Lemma nth_padding_succ msg i :
-  nth (S i) (SHA256.padding msg) x00 = x00.
-Proof.
-  destr (S i <? length (SHA256.padding msg));
-    [ | apply nth_overflow; lia ].
-  cbv [SHA256.padding] in *. autorewrite with push_length in *.
-  push_nth. reflexivity.
-Qed.
-Hint Rewrite nth_padding_succ : push_nth.
-
-Lemma nth_padding_nonzero msg i :
-  0 < i -> nth i (SHA256.padding msg) x00 = x00.
-Proof.
-  destruct i; [ lia | ]. intros.
-  apply nth_padding_succ.
-Qed.
-
-Lemma mul_div_exact_r a b :
-  b <> 0 -> a mod b = 0 ->  a / b * b = a.
-Proof. intros. prove_by_zify. Qed.
-Lemma add_sub_cancel a b : a + b - a = b.
-Proof. lia. Qed.
-Hint Rewrite add_sub_cancel : natsimpl.
-
-Lemma N_to_byte_equiv x y :
-  (x mod 256 = y mod 256)%N -> N_to_byte x = N_to_byte y.
-Proof.
-  intro Heq. cbv [N_to_byte]. compute_expr (2 ^ 8)%N.
-  rewrite Heq. reflexivity.
-Qed.
-
-Lemma nth_N_to_bytes i n x :
-  i < n ->
-  nth i (BigEndianBytes.N_to_bytes n x) x00
-  = N_to_byte (N.shiftr (N.land x (N.ones (8 * N.of_nat n)))
-                        (N.of_nat (n - 1 - i) * 8)).
-Proof.
-  intros. cbv [BigEndianBytes.N_to_bytes].
-  push_nth; natsimpl. apply N_to_byte_equiv.
-  change 256%N with (2 ^ 8)%N.
-  apply N.bits_inj; intro j.
-  push_Ntestbit; boolsimpl.
-  destr (j <? 8)%N; [ | reflexivity ].
-  push_Ntestbit. boolsimpl.
-  f_equal; lia.
-Qed.
-
-Module N.
-  Lemma testbit_high x n : (x < 2 ^ n)%N -> N.testbit x n = false.
-  Proof.
-    intros. destr (x =? 0)%N; subst; [ push_Ntestbit; reflexivity | ].
-    apply N.bits_above_log2. apply N.log2_lt_pow2; lia.
-  Qed.
-End N.
-
 Local Ltac testbit_crush :=
   repeat lazymatch goal with
          | |- context [N.eqb ?x ?y] => destr (N.eqb x y); try lia; subst
@@ -1243,7 +981,7 @@ Proof.
         (* solve the boolean parts of the tuple *)
         eexists; split; [ reflexivity | ].
         rewrite nth_padded_msg.
-        rewrite mul_div_exact_r by lia.
+        rewrite Nat.mul_div_exact_r by lia.
         cbv [SHA256.padded_msg_bytes].
         rewrite !app_assoc_reverse. push_nth. natsimpl.
         autorewrite with push_length in *.
@@ -1290,7 +1028,7 @@ Proof.
         (* solve the boolean parts of the tuple *)
         eexists; split; [ reflexivity | ].
         rewrite nth_padded_msg.
-        rewrite mul_div_exact_r by lia.
+        rewrite Nat.mul_div_exact_r by lia.
         cbv [SHA256.padded_msg_bytes].
         rewrite !app_assoc_reverse. push_nth. natsimpl.
         lazymatch goal with
@@ -1347,7 +1085,7 @@ Proof.
       eexists; split; [ | reflexivity ].
       do 2 f_equal;
       [ | symmetry; apply Nat.eqb_neq; push_length; prove_by_zify ].
-      rewrite nth_padded_msg. rewrite mul_div_exact_r by lia.
+      rewrite nth_padded_msg. rewrite Nat.mul_div_exact_r by lia.
       cbv [SHA256.padded_msg_bytes]. push_nth. natsimpl.
       rewrite !app_nth1 by (push_length; prove_by_zify).
       push_nth. reflexivity. }
@@ -1355,7 +1093,7 @@ Proof.
       eexists; split; [ | reflexivity ].
       do 2 f_equal;
       [ | symmetry; apply Nat.eqb_neq; push_length; prove_by_zify ].
-      rewrite nth_padded_msg. rewrite mul_div_exact_r by lia.
+      rewrite nth_padded_msg. rewrite Nat.mul_div_exact_r by lia.
       cbv [SHA256.padded_msg_bytes]. push_nth. natsimpl.
       rewrite !app_nth1 by (push_length; prove_by_zify).
       rewrite !nth_padding_nonzero by lia.
@@ -1372,7 +1110,7 @@ Proof.
                  | H : context [N.eqb ?x ?y] |- _ => destr (N.eqb x y); try lia
                  end;
           try discriminate; prove_by_zify ].
-      rewrite nth_padded_msg. rewrite mul_div_exact_r by lia.
+      rewrite nth_padded_msg. rewrite Nat.mul_div_exact_r by lia.
       cbv [SHA256.padded_msg_bytes]. push_nth. natsimpl.
       rewrite !nth_N_to_bytes by (push_length; prove_by_zify).
       replace (SHA256.l msg) with (N.shiftl (N.of_nat (length msg)) 3)
