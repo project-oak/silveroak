@@ -401,17 +401,8 @@ Section FifoSpec.
 
 End FifoSpec.
 
-
 Section RealignerSpec.
   Open Scope N.
-
-  Ltac easy_bit_bang n :=
-      repeat (
-        destruct n;
-          [first
-            [ rewrite (N.shiftl_spec_low) by lia;now rewrite Bool.andb_false_r
-             | now rewrite Bool.andb_true_r
-          ]|] ).
 
   Lemma mask_1000 x:
     x < 2 ^ 32 -> N.land x 0xFF000000 = N.shiftl (N.shiftr x 24) 24.
@@ -425,25 +416,13 @@ Section RealignerSpec.
     remember (N.to_nat n) as n'.
     clear Heqn' n.
 
-    { easy_bit_bang n'.
-      rewrite N.shiftl_spec_high' by lia.
-      rewrite N.shiftr_spec by lia.
-      easy_bit_bang n'.
-      rewrite N.bits_above_log2.
-      { rewrite Bool.andb_false_l.
-        rewrite N.bits_above_log2.
-        { reflexivity. }
-        apply (N.lt_le_trans _ 32).
-        { destr (x =? 0). { rewrite E. now cbn. }
-          apply N.log2_lt_pow2; lia.
-        }
-        lia.
-      }
-      apply (N.lt_le_trans _ 32).
-      { destr (x =? 0). { rewrite E. now cbn. }
-        apply N.log2_lt_pow2; lia.
-      }
-      lia.
+    destr (n' <? 32)%nat.
+    { do 32 (destruct n'; [push_Ntestbit; now boolsimpl| ]); lia. }
+    {
+      push_Ntestbit; boolsimpl.
+      rewrite N.sub_add by lia.
+      repeat rewrite (N.testbit_high_lt _ _ _ H) by lia.
+      now boolsimpl.
     }
   Qed.
 
@@ -459,27 +438,13 @@ Section RealignerSpec.
     remember (N.to_nat n) as n'.
     clear Heqn' n.
 
-    { easy_bit_bang n'.
-      rewrite N.shiftl_spec_high' by lia.
-      rewrite N.shiftr_spec by lia.
-      easy_bit_bang n'.
-      rewrite N.bits_above_log2.
-      { rewrite Bool.andb_false_l.
-        rewrite N.bits_above_log2.
-        { reflexivity. }
-        apply (N.lt_le_trans _ 32).
-        { destr (x =? 0). { rewrite E. now cbn. }
-          apply N.log2_lt_pow2; lia.
-        }
-        lia.
-      }
-
-      apply (N.lt_le_trans _ 32).
-      { destr (x =? 0). { rewrite E. now cbn. }
-        apply N.log2_lt_pow2; lia.
-      }
-
-      lia.
+    destr (n' <? 32)%nat.
+    { do 32 (destruct n'; [push_Ntestbit; now boolsimpl| ]); lia. }
+    {
+      push_Ntestbit; boolsimpl.
+      rewrite N.sub_add by lia.
+      repeat rewrite (N.testbit_high_lt _ _ _ H) by lia.
+      now boolsimpl.
     }
   Qed.
 
@@ -495,28 +460,13 @@ Section RealignerSpec.
     remember (N.to_nat n) as n'.
     clear Heqn' n.
 
-    { easy_bit_bang n'.
-      rewrite N.shiftl_spec_high' by lia.
-      rewrite N.shiftr_spec by lia.
-      easy_bit_bang n'.
-
-      rewrite N.bits_above_log2.
-      { rewrite Bool.andb_false_l.
-        rewrite N.bits_above_log2.
-        { reflexivity. }
-        apply (N.lt_le_trans _ 32).
-        { destr (x =? 0). { rewrite E. now cbn. }
-          apply N.log2_lt_pow2; lia.
-        }
-        lia.
-      }
-
-      apply (N.lt_le_trans _ 32).
-      { destr (x =? 0). { rewrite E. now cbn. }
-        apply N.log2_lt_pow2; lia.
-      }
-
-      lia.
+    destr (n' <? 32)%nat.
+    { do 32 (destruct n'; [push_Ntestbit; now boolsimpl| ]); lia. }
+    {
+      push_Ntestbit; boolsimpl.
+      rewrite N.sub_add by lia.
+      repeat rewrite (N.testbit_high_lt _ _ _ H) by lia.
+      now boolsimpl.
     }
   Qed.
 
@@ -708,10 +658,6 @@ Section RealignerSpec.
         N.testbit
           (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 xs))
           n = false.
-  Admitted.
-
-  Lemma length_N_to_byte n xs:
-          length (BigEndianBytes.N_to_bytes n xs) = n.
   Admitted.
 
   Lemma concat_bytes_truncation x:

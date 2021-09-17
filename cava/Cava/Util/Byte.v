@@ -29,6 +29,8 @@ Require Import coqutil.Tactics.Tactics.
 
 Import ListNotations.
 
+Open Scope N.
+
 (* Convert the least significant 8 bits of a number to a byte *)
 Definition N_to_byte (x : N) : byte :=
   match Byte.of_N (x mod 2^8) with
@@ -83,60 +85,56 @@ Module Byte2N.
   Proof.  intro H. rewrite <- (id x), <- (id y). now f_equal. Qed.
 End Byte2N.
 
-Section N.
-  Open Scope N.
+Lemma testbit_byte b n:
+  (8 <= n) ->
+  N.testbit (Byte.to_N b) n = false.
+Proof.
+  intros.
+  intros.
+  remember (Byte.to_N b) as b'.
+  pose (Byte.to_N_bounded b).
+  apply N.lt_succ_r in l.
+  change (N.succ 255) with (2^8) in l.
+  rewrite <- Heqb' in l.
+  apply N.testbit_high.
+  apply (N.lt_le_trans _ (2^8));
+    [ lia | apply N.pow_le_mono_r; lia ].
+Qed.
 
-  Lemma testbit_byte b n:
-    (8 <= n) ->
-    N.testbit (Byte.to_N b) n = false.
-  Proof.
-    intros.
-    intros.
-    remember (Byte.to_N b) as b'.
-    pose (Byte.to_N_bounded b).
-    apply N.lt_succ_r in l.
-    change (N.succ 255) with (2^8) in l.
-    rewrite <- Heqb' in l.
-    apply N.testbit_high.
-    apply (N.lt_le_trans _ (2^8));
-      [ lia | apply N.pow_le_mono_r; lia ].
-  Qed.
+Lemma unfold_N_to_bytes_4 x: BigEndianBytes.N_to_bytes 4 x =
+  [N_to_byte (N.shiftr x (N.of_nat (4 - 1 - 0) * 8));
+  N_to_byte (N.shiftr x (N.of_nat (4 - 1 - 1) * 8));
+  N_to_byte (N.shiftr x (N.of_nat (4 - 1 - 2) * 8));
+  N_to_byte (N.shiftr x (N.of_nat (4 - 1 - 3) * 8))].
+Proof.
+  cbv [BigEndianBytes.N_to_bytes].
+  now cbn [List.map seq].
+Qed.
 
-  Lemma unfold_N_to_bytes_4 x: BigEndianBytes.N_to_bytes 4 x =
-    [N_to_byte (N.shiftr x (N.of_nat (4 - 1 - 0) * 8));
-    N_to_byte (N.shiftr x (N.of_nat (4 - 1 - 1) * 8));
-    N_to_byte (N.shiftr x (N.of_nat (4 - 1 - 2) * 8));
-    N_to_byte (N.shiftr x (N.of_nat (4 - 1 - 3) * 8))].
-  Proof.
-    cbv [BigEndianBytes.N_to_bytes].
-    now cbn [List.map seq].
-  Qed.
-
-  Lemma shiftr_byte b x: (8 <= x) ->
-    N.shiftr (Byte.to_N b) x = 0.
-  Proof.
-    intros.
-    remember (Byte.to_N b) as b'.
-    pose (Byte.to_N_bounded b).
-    apply N.shiftr_eq_0.
-    apply N.lt_succ_r in l.
-    apply (N.lt_le_trans _ (N.log2 256)).
-    {
-      destr (0<?b').
-      2:{ destr (b'=?0); try rewrite E0; cbn; lia. }
-      apply N.log2_lt_pow2. { lia. }
-      cbn. now rewrite Heqb'.
-    }
-    now cbn.
-  Qed.
-End N.
+Lemma shiftr_byte b x: (8 <= x) ->
+  N.shiftr (Byte.to_N b) x = 0.
+Proof.
+  intros.
+  remember (Byte.to_N b) as b'.
+  pose (Byte.to_N_bounded b).
+  apply N.shiftr_eq_0.
+  apply N.lt_succ_r in l.
+  apply (N.lt_le_trans _ (N.log2 256)).
+  {
+    destr (0<?b').
+    2:{ destr (b'=?0); try rewrite E0; cbn; lia. }
+    apply N.log2_lt_pow2. { lia. }
+    cbn. now rewrite Heqb'.
+  }
+  now cbn.
+Qed.
 
 Lemma N_to_bytes_length n x : length (BigEndianBytes.N_to_bytes n x) = n.
 Proof. cbv [BigEndianBytes.N_to_bytes]. length_hammer. Qed.
 Hint Rewrite @N_to_bytes_length : push_length.
 
-Lemma bytes_to_Ns_length n bs :
-  length (BigEndianBytes.bytes_to_Ns n bs) = length bs / n.
+Lemma bytes_to_Ns_length n bs:
+  (length (BigEndianBytes.bytes_to_Ns n bs) = length bs / n)%nat.
 Proof. cbv [BigEndianBytes.bytes_to_Ns]. length_hammer. Qed.
 Hint Rewrite @bytes_to_Ns_length : push_length.
 
@@ -153,8 +151,8 @@ Proof.
 Qed.
 
 Lemma nth_bytes_to_Ns i n bs :
-  length bs mod n = 0 ->
-  n <> 0 ->
+  (length bs mod n = 0)%nat ->
+  (n <> 0)%nat ->
   List.nth i (BigEndianBytes.bytes_to_Ns n bs) 0%N
   = BigEndianBytes.concat_bytes
       (List.map
@@ -178,7 +176,7 @@ Proof.
       (* N.B. this needs nia instead of lia *)
       nia. } }
   { push_nth. cbv [BigEndianBytes.concat_bytes].
-    assert (length bs <= i * n).
+    assert (length bs <= i * n)%nat.
     { Zify.zify.
       (* extra step because zify fails to zify Nat.modulo and Nat.div *)
       rewrite ?mod_Zmod, ?div_Zdiv in * by lia.
@@ -200,7 +198,7 @@ Proof.
 Qed.
 
 Lemma nth_N_to_bytes i n x :
-  i < n ->
+  (i < n)%nat ->
   List.nth i (BigEndianBytes.N_to_bytes n x) Byte.x00
   = N_to_byte (N.shiftr (N.land x (N.ones (8 * N.of_nat n)))
                         (N.of_nat (n - 1 - i) * 8)).
