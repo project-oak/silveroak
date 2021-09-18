@@ -19,6 +19,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import coqutil.Datatypes.List.
 Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.Byte.
 Require Import Cava.Expr.
 Require Import Cava.Semantics.
 Require Import Cava.Types.

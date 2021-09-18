@@ -24,6 +24,7 @@ Require Import Coq.NArith.NArith.
 Require Import Coq.Vectors.Vector.
 Require Import Cava.Util.Nat.
 Require Import Cava.Util.Vector.
+Require Import Cava.Util.Byte.
 Require Coq.Strings.HexString.
 Import ListNotations.
 Local Open Scope list_scope.
@@ -169,31 +170,6 @@ Definition wordvec_to_bytevec
 Definition wordvec_to_bitvec
            bits_per_word {n} (v : Vector.t (Vector.t bool bits_per_word) n)
   : Vector.t bool (n * bits_per_word) := flatten v.
-
-(* Convert the least significant 8 bits of a number to a byte *)
-Definition N_to_byte (x : N) : byte :=
-  match Byte.of_N (x mod 2^8) with
-  | Some b => b
-  | None => x00
-  end.
-
-Module BigEndianBytes.
-  (* evaluate a big-endian list of bytes *)
-  Definition concat_bytes (bs : list byte) : N :=
-    List.fold_left (fun acc b => N.lor (N.shiftl acc 8) (Byte.to_N b)) bs 0%N.
-
-  (* convert the least significant (n*8) bits of a number to big-endian bytes *)
-  Definition N_to_bytes n (x : N) : list byte :=
-    List.map (fun i => N_to_byte (N.shiftr x (N.of_nat (n-1-i)*8)))
-             (seq 0 n).
-
-  (* convert a big-endian list of bytes to a list of n-byte words (length of list
-   must be a multiple of n) *)
-  Definition bytes_to_Ns n (x : list byte) : list N :=
-    List.map (fun i => concat_bytes (firstn n (skipn (n*i) x))) (seq 0 (length x / n)).
-End BigEndianBytes.
-
-Definition byte_xor (x y : byte) : byte := N_to_byte (N.lxor (Byte.to_N x) (Byte.to_N y)).
 
 (******************************************************************************)
 (* Arithmetic operations                                                      *)

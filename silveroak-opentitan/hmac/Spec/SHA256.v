@@ -19,6 +19,7 @@ Require Import Coq.Lists.List.
 Require Import Coq.NArith.NArith.
 Require Import Coq.ZArith.ZArith.
 Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.Byte.
 Require Import Cava.Util.List.
 Import ListNotations BigEndianBytes.
 Local Open Scope N_scope.

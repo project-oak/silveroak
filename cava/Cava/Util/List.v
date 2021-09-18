@@ -41,12 +41,16 @@ Section Length.
   Proof. destruct l; cbn [length]; (Lia.lia || congruence). Qed.
   Lemma tl_length {A} (l : list A) : length (tl l) = length l - 1.
   Proof. destruct l; cbn [length tl]; lia. Qed.
+
+  Lemma length_if {A} (b : bool) (x y: list A) : 
+    length (if b then x else y) = if b then length x else length y.
+  Proof. destruct b; reflexivity. Qed.
 End Length.
 
 (* The push_length autorewrite database simplifies goals including [length] *)
 Hint Rewrite @nil_length @cons_length @seq_length @repeat_length @rev_length
      @map_length @firstn_length @skipn_length @app_length @combine_length
-     @tl_length : push_length.
+     @tl_length @length_if: push_length.
 Ltac push_length_step := progress autorewrite with push_length.
 Ltac push_length := repeat push_length_step.
 
@@ -861,6 +865,10 @@ Section Resize.
     repeat (natsimpl || listsimpl || push_firstn || push_length).
     repeat (f_equal; try lia).
   Qed.
+
+  Lemma resize_cons {A} a n x (xs: list A):
+    resize a (S n) (x::xs) = x :: resize a n xs.
+  Proof. now cbn. Qed.
 End Resize.
 Hint Rewrite @resize_length : push_length.
 Ltac push_resize_step :=
@@ -1504,26 +1512,27 @@ Section FoldLeftAccumulate.
   Proof.
     intros.
     revert prefix is.
-    induction ix; intros.
-    cbn [List.app].
+    induction ix; intros; cbn [List.app].
+    {
+      repeat destruct_pair_let.
 
-    repeat destruct_pair_let.
+      cbn.
+      rewrite <- fold_left_accumulate'_equiv.
+      rewrite fold_left_accumulate'_snd_acc_invariant with (acc_b:=prefix).
+      rewrite <- surjective_pairing; reflexivity.
+    }
 
-    cbn.
-    rewrite <- fold_left_accumulate'_equiv.
-    rewrite fold_left_accumulate'_snd_acc_invariant with (acc_b:=prefix).
-    rewrite <- surjective_pairing; reflexivity.
+    {
+      rewrite fold_left_accumulate'_cons_full.
+      rewrite <- surjective_pairing.
 
-    cbn [List.app].
-    rewrite fold_left_accumulate'_cons_full.
-    rewrite <- surjective_pairing.
-
-    remember (fold_left_accumulate' f prefix (a :: ix) is) as m eqn:Heqm.
-    rewrite fold_left_accumulate'_cons_full in Heqm.
-    rewrite <- surjective_pairing in Heqm.
-    rewrite Heqm.
-    rewrite IHix.
-    reflexivity.
+      remember (fold_left_accumulate' f prefix (a :: ix) is) as m eqn:Heqm.
+      rewrite fold_left_accumulate'_cons_full in Heqm.
+      rewrite <- surjective_pairing in Heqm.
+      rewrite Heqm.
+      rewrite IHix.
+      reflexivity.
+    }
   Qed.
 End FoldLeftAccumulate.
 
