@@ -21,7 +21,7 @@ Require Import Cava.Types.
 Require Import Cava.Expr.
 Require Import Cava.Primitives.
 Require Import Cava.TLUL.
-Require Import Cava.Fifo.
+Require Import Cava.Components.RealignFifo.
 
 Require Import HmacHardware.Sha256.
 Import ExprNotations.
