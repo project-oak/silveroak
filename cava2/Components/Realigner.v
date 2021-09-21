@@ -36,35 +36,6 @@ Section Var.
 
   Context {var : tvar}.
 
-  Definition fifo {T} fifo_size: Circuit _ [Bit; T; Bit]
-    (* out_valid, out, full *)
-    (Bit ** T ** Bit ** Bit) :=
-    let fifo_bits := BitVec (Nat.log2_up (fifo_size + 1)) in
-    {{
-    fun data_valid data accepted_output =>
-
-    let/delay '(valid, output, fifo; count) :=
-      let decrement := accepted_output && count >= `K 1` in
-
-      ( count >= `K 1`
-      , `index` fifo (count - `K 1`)
-
-      , if data_valid then data +>> fifo else fifo
-      , if data_valid && !decrement then count + `K 1`
-        else if !data_valid && decrement then (count - `K 1`)
-        else count
-      )
-
-      initially (false,(default,(@default (Vec T fifo_size), 0)))
-      : denote_type (Bit ** T ** Vec T fifo_size ** fifo_bits) in
-
-    ( valid, if valid then output else `Constant T default`
-    (* Will be empty if accepted_output is asserted next cycle *)
-    , (count == `Constant fifo_bits 0` )
-    (* We are full, does not assume output this cycle has been accepted yet *)
-    , (count == `Constant fifo_bits (N.of_nat fifo_size)` ) )
-  }}.
-
   Definition realign_inner : Circuit _ [BitVec 32; BitVec 4; BitVec 32; BitVec 4] (BitVec 64 ** BitVec 4) :=
   {{ fun existing existing_len data data_mask =>
       let '(packed_data; packed_len) :=
@@ -128,32 +99,4 @@ Section Var.
     in
     (out_valid, out, out_length)
   }}.
-
-  Definition realign_fifo fifo_size: Circuit _ [Bit; BitVec 32; BitVec 4; Bit; Bit]
-    (* *)
-    (Bit ** BitVec 32 ** BitVec 4 ** Bit ** Bit ) := {{
-    fun data_valid data data_mask drain consumer_ready =>
-
-    let/delay '(is_last, out_valid, out_data, out_length, fifo_empty; fifo_full) :=
-      let '(realigned_valid, realigned_data; realigned_length) :=
-        `realign` data_valid data data_mask (drain && fifo_empty && consumer_ready) (!fifo_full) in
-
-      let '(fifo_valid, fifo_data, fifo_empty; fifo_full) :=
-        `fifo fifo_size` (realigned_valid && (! drain)) realigned_data consumer_ready in
-
-      let valid :=
-        if drain then fifo_valid || realigned_valid else fifo_valid in
-      let data :=
-        if drain && !fifo_valid then realigned_data
-        else fifo_data in
-      let length :=
-        if drain && !fifo_valid then realigned_length
-        else `K 4` in
-
-      (drain && !fifo_valid && valid, valid, data, length, fifo_empty, fifo_full)
-      initially default
-    in
-    (out_valid, out_data, out_length, is_last, fifo_full)
-  }}.
-
 End Var.
