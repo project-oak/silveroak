@@ -181,12 +181,12 @@ Section Var.
 
     let/delay '(tl_o; registers) :=
 
-      let '(tl_o, write_en, write_address, write_data; write_mask)
+      let '(tl_o, read_en, write_en, address, write_data; write_mask)
         := `tlul_adapter_reg` incoming_tlp registers in
 
-      let aligned_address := `bvslice 2 5` write_address in
+      let aligned_address := `bvslice 2 5` address in
 
-      let is_fifo_write := write_address >= `Constant (BitVec _) 2048` in
+      let is_fifo_write := address >= `Constant (BitVec _) 2048` in
 
       let registers' := `hmac` write_en write_data aligned_address write_mask is_fifo_write in
 
