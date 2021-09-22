@@ -8,7 +8,9 @@ Require Import Bedrock2Experiments.IncrementWait.IncrementWaitToRiscV.
 Require Import Bedrock2Experiments.IncrementWait.CavaIncrementDevice.
 Require Import riscv.Spec.Decode.
 Require Import riscv.Utility.InstructionCoercions.
-Open Scope ilist_scope.
+
+Local Open Scope ilist_scope.
+Local Open Scope Z_scope.
 
 From Cava Require Import
      Expr
