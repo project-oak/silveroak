@@ -57,8 +57,6 @@ Section Var.
                        , d_ready) in
 
         let/delay '(istate, value; tl_d2h) :=
-           let '(_, _, _, _, _, _, _, _, _; a_ready) := tl_d2h in
-
            (* Compute the value of the status register *)
            let status :=
                if istate == `Done` then `K 4`
@@ -70,22 +68,17 @@ Section Var.
               - a_opcode = PutFullData: further handling is needed, the adapter
                 will output more info to req. *)
            let '(tl_d2h'; req) := `tlul_adapter_reg` tl_h2d (value :> status :> []) in
-
-           let '(is_write
-                 , _write_addr
+           let '(is_read
+                 , is_write
+                 , address
                  , write_data
                  ; _write_mask) := req in
-
-           let is_value_read_req := a_valid
-                                    && a_ready
-                                    && a_opcode == `Get`
-                                    && a_address == `K 0` in
 
            let istate' :=
                if istate == `Busy1` then `Busy2`
                else if istate == `Busy2` then `Done`
                     else if istate == `Done` then
-                           if is_value_read_req then `Idle`
+                           if is_read && address == `K 0` then `Idle`
                            else `Done`
                          else (* istate == `Idle` *)
                            if is_write then `Busy1`
