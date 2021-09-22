@@ -115,6 +115,7 @@ Section Var.
   Definition AccessAckData := Constant tl_d_op_e 1.
 
   Definition io_req : type :=
+    Bit **          (* read *)
     Bit **          (* write *)
     BitVec TL_AW ** (* address *)
     BitVec TL_DW ** (* write_data *)
@@ -193,7 +194,7 @@ Section Var.
       , error
       , !outstanding
       )
-    , (we_o, a_address, a_data, a_mask)
+    , (re_o, we_o, a_address, a_data, a_mask)
     )
 
   }}.
