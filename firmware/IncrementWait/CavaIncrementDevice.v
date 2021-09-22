@@ -161,11 +161,12 @@ Example sample_trace :=
                ; nop
                ; read_reg 4 (* status *)
              ]%N.
-Print sample_trace.
+(* Print sample_trace. *)
 
 (* Require Import Coq.ZArith.ZArith. Open Scope Z_scope. *)
 
-From Coq Require Import Lia.
+(* From Coq Require Import Lia. *)
+Require Import Coq.micromega.Lia.
 
 Require Import riscv.Utility.Utility.
 
@@ -340,7 +341,7 @@ Section WithParameters.
     - (* nonMMIO_device_step_preserves_state_machine_state: *)
       simpl in sL1, sL2.
       cbn in H0.
-      repeat destruct_pair_let_hyp. (* <-- very slow, but faster then simp *)
+      repeat destruct_pair_let_hyp. (* <-- very slow, but faster than simp *)
       repeat (destruct_pair_equal_hyp; subst; cbn).
       inversion H; subst;
         try (rewrite incrN_word_to_bv);
@@ -368,7 +369,7 @@ Section WithParameters.
           repeat (rewrite Z_word_N by lia; cbn).
           unfold status_value, STATUS_IDLE, word_to_N.
           destruct outstanding; eexists _, _, _.
-          -- ssplit; try reflexivity.
+          -- ssplit; try reflexivity; [|].
              ++ rewrite word.unsigned_slu by ZnWords.
                 rewrite !word.unsigned_of_Z.
                 simpl. reflexivity.
@@ -390,17 +391,15 @@ Section WithParameters.
                ssplit; try reflexivity; [|].
                ** rewrite incrN_word_to_bv.
                   apply BUSY_done_related; unfold consistent_states; ssplit; reflexivity.
-               ** right. exists (Nat.pred max_cycles_until_done). ssplit.
-                  --- lia.
+               ** right. eexists. ssplit; try reflexivity; [|].
+                  --- apply Nat.pred_inj; try lia. rewrite Nat.pred_succ. reflexivity.
                   --- ZnWords.
-                  --- reflexivity.
             ++ rewrite word.unsigned_of_Z. unfold word.wrap. simpl.
                ssplit; try reflexivity; [|].
                ** apply BUSY2_related. 1: shelve. unfold consistent_states. ssplit; reflexivity.
-               ** right. exists (Nat.pred max_cycles_until_done). ssplit.
-                  --- lia.
+               ** right. eexists. ssplit; try reflexivity; [|].
+                  --- apply Nat.pred_inj; try lia. rewrite Nat.pred_succ. reflexivity.
                   --- ZnWords.
-                  --- reflexivity.
                       Unshelve. lia.
           -- (* BUSY2_related *)
             destruct outstanding; simpl.
@@ -419,10 +418,9 @@ Section WithParameters.
               ssplit; try reflexivity; [|].
               ** rewrite incrN_word_to_bv.
                  apply BUSY_done_related; unfold consistent_states; ssplit; reflexivity.
-              ** right. exists (Nat.pred max_cycles_until_done). ssplit.
-                 --- lia.
+              ** right. eexists. ssplit; try reflexivity; [|].
+                 --- apply Nat.pred_inj; try lia. rewrite Nat.pred_succ. reflexivity.
                  --- ZnWords.
-                 --- reflexivity.
           -- (* BUSY_done_related *)
             (* the transition that was used to show that sH is not stuck was *)
             (* a transition from BUSY to BUSY returning a busy flag, but *)
@@ -449,7 +447,7 @@ Section WithParameters.
           inversion H0. subst.
           exists (word.of_Z 4). (* <- bit #2 (done) is set, all others are 0 *)
           rewrite word.unsigned_of_Z. unfold word.wrap. cbn.
-          destruct outstanding; eexists _, _; boolsimpl; simpl.
+          destruct outstanding; eexists _, _; boolsimpl; simpl; [|].
           -- ssplit; try reflexivity; [|]. 2: ZnWords.
              eapply DONE_related; unfold consistent_states; ssplit; reflexivity.
           -- ssplit; try reflexivity; [|]. 2: ZnWords.
