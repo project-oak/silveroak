@@ -23,8 +23,6 @@ Require Import Cava.Types.
 Require Import Cava.Expr.
 Require Import Cava.Primitives.
 
-Require Import Cava.Fifo.
-
 Import ListNotations.
 Import PrimitiveNotations.
 
