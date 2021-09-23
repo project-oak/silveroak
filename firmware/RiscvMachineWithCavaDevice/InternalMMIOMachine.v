@@ -43,6 +43,12 @@ Module free.
   End WithParams.
 End free.
 
+Require Import Cava.TLUL.
+Require Import Cava.Types.
+
+Definition tl_h2d := denote_type TLUL.tl_h2d_t.
+Definition tl_d2h := denote_type TLUL.tl_d2h_t.
+
 Module device.
   (* A deterministic device, to be instantiated with a Cava device *)
   Class device := {
@@ -54,10 +60,10 @@ Module device.
     is_ready_state: state -> Prop;
 
     (* run one simulation step, will be instantiated with Cava.Semantics.Combinational.step *)
-    run1: (* input: current state, is_read_req, is_write_req, req_addr, req_value *)
-      state -> (bool * bool * N * N) ->
-      (* output: next state, is_resp, resp *)
-      state * (bool * N);
+    run1: (* input: TileLink host-2-device *)
+      state -> tl_h2d ->
+      (* output: next state, TileLink device-2-host *)
+      state * tl_d2h;
 
     (* lowest address of the MMIO address range used to communicate with this device *)
     addr_range_start: Z;
@@ -76,10 +82,10 @@ Module device.
        software keeps polling until the MMIO read returns a "done" response *)
 
   (* returning None means out of fuel and must not happen if fuel >= device.maxRespDelay *)
-  Definition runUntilResp{D: device}(is_read_req is_write_req: bool)(req_addr req_value: N) :=
-    fix rec(fuel: nat)(s: device.state): option N * device.state :=
-      let '(next, (is_resp, resp)) := device.run1 s (is_read_req, is_write_req, req_addr, req_value) in
-      if is_resp then (Some resp, next) else
+  Definition runUntilResp{D: device}(h2d: tl_h2d) :=
+    fix rec(fuel: nat)(s: device.state): option tl_d2h * device.state :=
+      let '(next, respo) := device.run1 s h2d in
+      if fst respo then (Some respo, next) else
         match fuel with
         | O => (None, next)
         | S fuel' => rec fuel' next
@@ -144,23 +150,47 @@ Section WithParams.
   Definition word_to_N(w: word): N :=
     Z.to_N (word.unsigned w).
 
-  Definition runUntilResp(is_read_req is_write_req: bool)(req_addr req_value: word):
+  Definition runUntilResp(h2d: tl_h2d):
     OState (ExtraRiscvMachine D) word :=
-    let req_addr := word_to_N req_addr in
-    let req_value := word_to_N req_value in
     mach <- get;
-    let (respo, new_device_state) := device.runUntilResp is_read_req is_write_req req_addr req_value
-                                       device.maxRespDelay mach.(getExtraState) in
+    let (respo, new_device_state) := device.runUntilResp h2d device.maxRespDelay
+                                                         mach.(getExtraState) in
     put (withExtraState new_device_state mach);;
     resp <- fail_if_None respo;
-    Return (N_to_word resp).
+    let res := fst (snd (snd (snd (snd (snd (snd resp)))))) in
+    Return (N_to_word res).
 
   Definition mmioLoad(n: nat)(addr: word): OState (ExtraRiscvMachine D) (HList.tuple byte n) :=
-    v <- runUntilResp true false addr (word.of_Z 0);
+    let h2d : tl_h2d :=
+        (true,                (* a_valid   *)
+         (4,                  (* a_opcode  Get *)
+          (0,                 (* a_param   *)
+           (0,                (* a_size    *)
+            (0,               (* a_source  *)
+             (word_to_N addr, (* a_address *)
+              (0,             (* a_mask    *)
+               (0,            (* a_data    *)
+                (0,           (* a_user    *)
+                 (true        (* d_ready   *)
+        ))))))))))%N in
+    v <- runUntilResp h2d;
     Return (LittleEndian.split n (word.unsigned v)).
 
   Definition mmioStore(n: nat)(addr: word)(v: HList.tuple byte n): OState (ExtraRiscvMachine D) unit :=
-    ignored <- runUntilResp false true addr (word.of_Z (LittleEndian.combine n v));
+    let h2d : tl_h2d :=
+        (true,                (* a_valid   *)
+         (0,                  (* a_opcode  PutFullData *)
+          (0,                 (* a_param   *)
+           (0,                (* a_size    *)
+            (0,               (* a_source  *)
+             (word_to_N addr, (* a_address *)
+              (0,             (* a_mask    *)
+               (word_to_N (word.of_Z (LittleEndian.combine n v)),
+                              (* a_data    *)
+                (0,           (* a_user    *)
+                 (true        (* d_ready   *)
+        ))))))))))%N in
+    ignored <- runUntilResp h2d;
     Return tt.
 
   Definition loadN(n: nat)(kind: SourceType)(a: word):
@@ -224,7 +254,19 @@ Section WithParams.
     end.
 
   Definition device_step_without_IO(d: D): D :=
-    fst (device.run1 d (false, false, word_to_N (word.of_Z 0), word_to_N (word.of_Z 0))).
+    let nop :=
+        (false,        (* a_valid   *)
+         (0,           (* a_opcode  *)
+          (0,          (* a_param   *)
+           (0,         (* a_size    *)
+            (0,        (* a_source  *)
+             (0,       (* a_address *)
+              (0,      (* a_mask    *)
+               (0,     (* a_data    *)
+                (0,    (* a_user    *)
+                 (true (* d_ready   *)
+         ))))))))))%N in
+    fst (device.run1 d nop).
 
   Fixpoint device_steps(n: nat): OState (ExtraRiscvMachine D) unit :=
     match n with
