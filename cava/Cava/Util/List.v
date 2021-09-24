@@ -871,7 +871,7 @@ Section Resize.
   Qed.
 
   Lemma resize_firstn_alt {A} (d : A) ls n m :
-    n < length ls ->
+    n <= length ls ->
     n <= m ->
     resize d n (firstn m ls) = firstn n ls.
   Proof.

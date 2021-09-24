@@ -33,7 +33,9 @@ Require Import Cava.Expr.
 Require Import Cava.ExprProperties.
 Require Import Cava.Primitives.
 Require Import Cava.Semantics.
-Require Import Cava.Components.Realigner.
+Require Import Cava.Invariant.
+
+Require Import Cava.Components.RealignMasked.
 
 Import ListNotations.
 
@@ -41,7 +43,7 @@ Local Open Scope bool.
 Local Open Scope nat.
 Local Open Scope list.
 
-Section RealignerSpec.
+Section RealignMaskedSpec.
   Local Open Scope N.
 
   Lemma mask_1000 x:
@@ -452,14 +454,13 @@ Section RealignerSpec.
 
   Definition realign_pre
     (input : denote_type (input_of (var:=denote_type) realign))
-    (state: denote_type (state_of (var:=denote_type) realign))
     :=
     let '(data_valid, (data, (data_mask, (flush, (consumer_ready, tt))))) := input in
 
     (data < 2 ^ 32)%N
     .
 
-  Definition realign_invariant
+  Definition realign_invariant'
     latched_valid latched_bytes
     (ghost_state: list Byte.byte)
     (state: denote_type (state_of (var:=denote_type) realign))
@@ -484,15 +485,15 @@ Section RealignerSpec.
     next_state_data = realign_update_state state_data input ->
     next_latched_bytes = realign_update_latched_bytes latched_bytes state_data input ->
     next_latched_valid = realign_update_latched_valid latched_valid state_data input ->
-    realign_pre input state ->
-    realign_invariant latched_valid latched_bytes state_data state ->
-    realign_invariant next_latched_valid next_latched_bytes next_state_data (fst (step realign state input)).
+    realign_pre input ->
+    realign_invariant' latched_valid latched_bytes state_data state ->
+    realign_invariant' next_latched_valid next_latched_bytes next_state_data (fst (step realign state input)).
   Proof.
     destruct input as (input_valid, (input_data, (input_mask, (flush, (consumer_ready, []))))).
     destruct state as (out_valid, (out_data, (out_length, (q, q_len)))).
     intros Hst Hlatch Hlatchvalid Hpre Hinv.
     destruct Hinv as [Hbuff_len [Hlatch_valid [Hlatch_bytes [Hlatch_bytes_len [Hfirst_bytes [Hbuf_bound Hbuf_len_bound]]]]]].
-    cbv [realign realign_spec realign_pre realign_invariant realign_update_state realign_update_latched_bytes realign_update_latched_valid K] in *;
+    cbv [realign realign_spec realign_pre realign_invariant' realign_update_state realign_update_latched_bytes realign_update_latched_valid K] in *;
     stepsimpl.
 
     repeat (destruct_pair_let; cbn[fst snd]);
@@ -866,8 +867,8 @@ Section RealignerSpec.
       state_data
       (input : denote_type (input_of (realign (var:=denote_type) )))
       (state : denote_type (state_of (realign (var:=denote_type) ))) :
-    realign_pre input state ->
-    realign_invariant latched_valid latched_bytes state_data state ->
+    realign_pre input ->
+    realign_invariant' latched_valid latched_bytes state_data state ->
     snd (step realign state input) = realign_spec latched_valid latched_bytes state_data input.
   Proof.
     destruct input as (input_valid, (input_data, (input_mask, (flush, (consumer_ready, []))))).
@@ -877,7 +878,7 @@ Section RealignerSpec.
     destruct Hinv as [Hbuff_len [Hlatch_valid [Hlatch_bytes [Hlatch_bytes_len [Hfirst_bytes Hbuf_bound]]]]].
     subst.
 
-    cbv [realign realign_spec realign_pre realign_invariant realign_update_state K] in *.
+    cbv [realign realign_spec realign_pre realign_invariant' realign_update_state K] in *.
     stepsimpl.
 
     repeat (destruct_pair_let; cbn[fst snd]).
@@ -892,8 +893,18 @@ Section RealignerSpec.
       rewrite resize_firstn by lia.
       rewrite N.land_ones.
       rewrite N.land_ones.
-      rewrite concat_bytes_truncation.
-
+      repeat rewrite <- tup_if.
+      f_equal.
+      { autorewrite with Nnat. reflexivity. }
+      f_equal.
+      {
+        assert (
+          N.shiftr (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 state_data))
+          (N.of_nat 32) mod 2 ^ N.of_nat 32 =
+          BigEndianBytes.concat_bytes (List.resize Byte.x00 4 state_data)).
+          { now rewrite concat_bytes_truncation.  }
+          now rewrite H.
+      }
       replace
         ((if N.of_nat (length state_data) <=? 4
           then N.of_nat (length state_data)
@@ -911,11 +922,6 @@ Section RealignerSpec.
           now rewrite N.mod_small by (cbn;lia).
         }
       }
-
-      destr (1 <=? length state_data)%nat;
-      destr (1 <=? N.of_nat (length state_data));
-      destr (4 <=? length state_data)%nat;
-      destr (4 <=? N.of_nat (length state_data)); try lia;
       reflexivity.
     }
     cbn [realign_inner_pre].
@@ -945,4 +951,60 @@ Section RealignerSpec.
     { reflexivity. }
   Qed.
 
-End RealignerSpec.
+  Global Instance realign_invariant
+  : invariant_for realign (bool * list Byte.byte * list Byte.byte) :=
+    fun state '(latched_valid, latched_bytes, ghost_state) =>
+    realign_invariant' latched_valid latched_bytes ghost_state state.
+
+  Instance realign_specification
+    : specification_for realign (bool * list Byte.byte * list Byte.byte) :=
+    {| reset_repr := (false, [], []);
+     update_repr :=
+      fun (input: denote_type (input_of realign)) '(latched_valid, latched_bytes, state) =>
+        ( realign_update_latched_valid latched_valid state input
+        , realign_update_latched_bytes latched_bytes state input
+        , realign_update_state state input) ;
+     precondition := fun input _ => realign_pre input ;
+     postcondition :=
+      fun input '(latched_valid, latched_bytes, state) (output: denote_type (output_of realign)) =>
+        output = realign_spec latched_valid latched_bytes state input;
+  |}%nat.
+
+  Lemma realign_invariant_preserved : invariant_preserved realign.
+  Proof.
+    simplify_invariant realign. cbn [absorb_any].
+    simplify_spec realign.
+    intros input state ((latched_valid, latched_bytes), ghost_state).
+    intros ((new_latched_valid, new_latched_bytes), new_ghost_state).
+    intros H.
+    injection H; clear H; intros.
+    now apply step_realign_invariant with
+      (latched_bytes:=latched_bytes)
+      (latched_valid:=latched_valid)
+      (state_data:=ghost_state).
+  Qed.
+
+  Lemma realign_output_correct : output_correct realign.
+  Proof.
+    simplify_invariant realign. cbn [absorb_any].
+    simplify_spec realign.
+    intros input state ((latched_valid, latched_bytes), ghost_state).
+    intros.
+
+    now apply step_realign.
+  Qed.
+
+  Lemma realign_invariant_at_reset : invariant_at_reset realign.
+  Proof.
+    simplify_invariant realign.
+    cbn [realign reset_state]; stepsimpl.
+    cbn; ssplit; try reflexivity.
+  Qed.
+
+  Existing Instances realign_invariant_at_reset realign_invariant_preserved
+           realign_output_correct.
+
+  Global Instance realign_correctness : correctness_for realign.
+  Proof. constructor; typeclasses eauto. Defined.
+
+End RealignMaskedSpec.

@@ -106,6 +106,11 @@ Ltac simplify_spec c :=
   let x := constr:(_:specification_for c _) in
   match x with
   | ?x => cbn [x update_repr precondition postcondition] in *
+  | ?x _ => cbn [x update_repr precondition postcondition] in *
+  | ?x _ _ => cbn [x update_repr precondition postcondition] in *
+  | ?x _ _ _ => cbn [x update_repr precondition postcondition] in *
+  | ?x _ _ _ _ => cbn [x update_repr precondition postcondition] in *
+  | ?x _ _ _ _ _ => cbn [x update_repr precondition postcondition] in *
   end.
 
 (* if a subcircuit is found that has an invariant-based correctness proof, use
@@ -116,7 +121,9 @@ Ltac use_correctness' c :=
   lazymatch goal with
   | |- context [snd (step c ?s ?i)] =>
     find_correctness c;
-    pose proof (output_correct_pf (c:=c) i s _ ltac:(eauto) ltac:(eauto));
+    let H := fresh in
+    pose proof (output_correct_pf (c:=c) i s _ ltac:(eauto) ltac:(eauto)) as H;
+    cbn [absorb_any] in H;
     generalize dependent (snd (step c s i)); intros;
     try simplify_spec c; logical_simplify; subst
   end.
