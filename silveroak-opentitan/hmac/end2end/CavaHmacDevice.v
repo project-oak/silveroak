@@ -21,18 +21,11 @@ Section WithParameters.
     device.run1 s i :=
       let s' := s in
       let res :=
-          (true,          (* d_valid  *)
-           (1,            (* d_opcode AccessAckData *)
-            (0,           (* d_param  *)
-             (0,          (* d_size   *)
-              (0,         (* d_source *)
-               (0,        (* d_sink   *)
-                (fst (snd (snd (snd (snd (snd (snd (snd i))))))),
-                          (* d_data   *)
-                 (0,      (* d_user   *)
-                  (false, (* d_error  *)
-                   (true  (* a_ready  *)
-          ))))))))))%N in
+          set_d_valid true
+          (set_d_opcode 1%N (* AccessAckData *)
+          (set_d_size 2%N   (* 2^2 bytes *)
+          (set_d_data i
+          (set_a_ready true tl_d2h_def)))) in
       (s', res);
     device.addr_range_start := TOP_EARLGREY_HMAC_BASE_ADDR;
     device.addr_range_pastend := TOP_EARLGREY_HMAC_BASE_ADDR +
