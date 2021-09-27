@@ -507,10 +507,9 @@ Qed.
 
 Lemma bytes_to_N_id_4 xs:
   length xs = 4%nat ->
-  BigEndianBytes.N_to_bytes 4 (BigEndianBytes.concat_bytes (List.resize Byte.x00 4 xs)) = xs.
+  BigEndianBytes.N_to_bytes 4 (BigEndianBytes.concat_bytes xs) = xs.
 Proof.
   intros.
-  rewrite resize_noop by lia.
   rewrite unfold_N_to_bytes_4.
   do 5 (destruct xs; try (cbn in *; lia)).
   cbn [BigEndianBytes.concat_bytes fold_left Nat.sub Nat.mul].
