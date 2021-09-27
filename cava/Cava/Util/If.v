@@ -30,3 +30,6 @@ Hint Rewrite @tup_if using solve [eauto] : tuple_if.
 Lemma apply_if_ext_1 {A B C} (f : A -> B -> C) (b : bool) x y z : f (if b then x else y) z = if b then f x z else f y z.
 Proof. destruct b; reflexivity. Qed.
 
+Lemma if_true_rew {A} (x: bool) (z: A) P Q: (x = true -> P = Q) ->
+    (if x then P else z) = (if x then Q else z).
+Proof. intros; destruct x; [ apply H | ]; reflexivity. Qed.
