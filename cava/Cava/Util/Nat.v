@@ -435,7 +435,7 @@ Module N2Nat.
 End N2Nat.
 
 Hint Rewrite
-  to_nat_if N2Nat.inj_eqb N2Nat.inj_ltb N2Nat.inj_leb N2Nat.inj_mod N2Nat.inj_pow
+  N2Nat.inj_eqb N2Nat.inj_ltb N2Nat.inj_leb N2Nat.inj_mod N2Nat.inj_pow
   N2Nat.inj_0 N2Nat.inj_1 N2Nat.inj_2 N2Nat.inj_3
   : Nnat.
 

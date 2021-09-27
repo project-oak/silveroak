@@ -38,4 +38,4 @@ Proof. intros; destruct x; [ apply H | ]; reflexivity. Qed.
 
 Lemma to_nat_if (b: bool) x y : N.to_nat (if b then x else y) = if b then (N.to_nat x) else (N.to_nat y).
 Proof. now destruct b. Qed.
-
+Hint Rewrite to_nat_if : Nnat.
