@@ -48,9 +48,10 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
 
   (* transitions that are not responding to MMIO cannot change the state as seen by the software: *)
   nonMMIO_device_step_preserves_state_machine_state:
-    forall sL1 sL2 sH ignored_h2d ignored_resp,
+    forall sL1 sL2 sH h2d ignored_resp,
+      a_valid h2d = false ->
       device_state_related sH sL1 ->
-      device.run1 sL1 (false, ignored_h2d) = (sL2, ignored_resp) ->
+      device.run1 sL1 h2d = (sL2, ignored_resp) ->
       device_state_related sH sL2;
 
   (* for each high-level state sH from which n bytes can be read at register r,
@@ -64,21 +65,14 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       device_state_related sH sL ->
       exists d2h sL' sH',
         device.runUntilResp
-          (true,                (* a_valid   *)
-           (4,                  (* a_opcode  Get *)
-            (0,                 (* a_param   *)
-             (0,                (* a_size    *)
-              (0,               (* a_source  *)
-               (word_to_N (state_machine.reg_addr r),
-                                (* a_address *)
-                (0,             (* a_mask    *)
-                 (0,            (* a_data    *)
-                  (0,           (* a_user    *)
-                   (true        (* d_ready   *)
-          ))))))))))%N
+          (set_a_valid true
+          (set_a_opcode 4%N (* Get *)
+          (set_a_size 2%N   (* 2^2 bytes *)
+          (set_a_address (word_to_N (state_machine.reg_addr r))
+          (set_d_ready true tl_h2d_def)))))
           device.maxRespDelay sL = (Some d2h, sL') /\
         device_state_related sH' sL' /\
-        state_machine.read_step n sH r (N_to_word (fst (snd (snd (snd (snd (snd (snd d2h)))))))) sH';
+        state_machine.read_step n sH r (N_to_word (d_data d2h)) sH';
 
   (* for each high-level state sH in which an n-byte write to register r with value v is possible,
      if we run the low-level device with the write step's address and value on the input wires,
@@ -90,18 +84,12 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       device_state_related sH sL ->
       exists ignored sL' sH',
         device.runUntilResp
-          (true,                (* a_valid   *)
-           (0,                  (* a_opcode  PutFullData *)
-            (0,                 (* a_param   *)
-             (0,                (* a_size    *)
-              (0,               (* a_source  *)
-               (word_to_N (state_machine.reg_addr r),
-                                (* a_address *)
-                (0,             (* a_mask    *)
-                 (word_to_N v,  (* a_data    *)
-                  (0,           (* a_user    *)
-                   (true        (* d_ready   *)
-          ))))))))))%N
+          (set_a_valid true
+          (set_a_opcode 0%N (* PutFullData *)
+          (set_a_size 2%N   (* 2^2 bytes *)
+          (set_a_address (word_to_N (state_machine.reg_addr r))
+          (set_a_data (word_to_N v)
+          (set_d_ready true tl_h2d_def))))))
           device.maxRespDelay sL = (Some ignored, sL') /\
         device_state_related sH' sL' /\
         state_machine.write_step n sH r v sH';
@@ -276,13 +264,6 @@ Section WithParams.
     assumption.
   Qed.
 
-    Ltac destruct_tl_d2h :=
-      match goal with
-      | v : tl_d2h |- _ =>
-        unfold tl_d2h in v; simpl in v;
-        destruct v as [d_valid [d_opcode [d_param [d_size [d_source [d_sink [d_data [d_user [d_error a_ready]]]]]]]]]
-      end.
-
   Lemma stateMachine_primitive_to_cava: forall (initialH: MetricRiscvMachine) (p: riscv_primitive)
       (postH: primitive_result p -> MetricRiscvMachine -> Prop),
       MetricMinimalMMIO.interp_action p initialH postH ->
@@ -321,11 +302,10 @@ Section WithParams.
          end.
     1-4: edestruct state_machine_read_to_device_read as (v'' & d'' & s'' & RU'' & Rel'' & RS'');
            [do 2 eexists; eassumption|solve[eauto]|].
-    1-4: cbn -[HList.tuple]; rewrite RU''; cbn -[HList.tuple].
+    1-4: cbn -[HList.tuple]; tlsimpl; rewrite RU''; cbn -[HList.tuple].
     4: { (* 64-bit MMIO is not supported: *)
       eapply state_machine.read_step_size_valid in HLp2p2. simpl in HLp2p2. exfalso. intuition congruence.
     }
-    1-3: destruct_tl_d2h; cbn [fst snd].
     1-3: eauto 20 using mkRelated, execution_read_cons, combine_split_read_step.
 
     (* Store* *)
@@ -354,7 +334,7 @@ Section WithParams.
          end.
     1-3: edestruct state_machine_write_to_device_write as (ignored & d' & s'' & RU & Rel' & WS');
            [eexists; eassumption|solve[eauto]|].
-    1-3: cbn -[HList.tuple Primitives.invalidateWrittenXAddrs]; rewrite RU;
+    1-3: cbn -[HList.tuple Primitives.invalidateWrittenXAddrs]; tlsimpl; rewrite RU;
          cbn -[HList.tuple Primitives.invalidateWrittenXAddrs].
     1-3: eauto 15 using mkRelated, execution_write_cons, preserve_disjoint_of_invalidateXAddrs.
 
@@ -400,7 +380,8 @@ Section WithParams.
       + match goal with
         | |- context[fst ?p] => destruct p eqn: E
         end.
-        eapply nonMMIO_device_step_preserves_state_machine_state. 1: eassumption.
+        eapply nonMMIO_device_step_preserves_state_machine_state. 2: eassumption.
+        1: instantiate (1 := tl_h2d_def); reflexivity.
         simpl.
         exact E.
       + assumption.
