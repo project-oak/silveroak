@@ -125,7 +125,6 @@ Module Nat.
     Nat.ceiling a b * b - b < a <= Nat.ceiling a b * b.
   Proof. cbv [Nat.ceiling]. intros. prove_by_zify. Qed.
 
-
   Lemma sub_mod_no_underflow x y :
     x < 2 ^ y -> 0 < x ->
     ((x + 2 ^ y - 1) mod 2 ^ y) = (x - 1).
@@ -408,10 +407,6 @@ Ltac push_Ntestbit_step :=
     rewrite (N.testbit_high x m) by lia
   end.
 Ltac push_Ntestbit := repeat push_Ntestbit_step.
-
-
-Lemma to_nat_if (b: bool) x y : N.to_nat (if b then x else y) = if b then (N.to_nat x) else (N.to_nat y).
-Proof. now destruct b. Qed.
 
 Lemma le_1_is_0 x: (1 <=? x)%nat = negb (x =? 0)%nat.
 Proof. destruct x; reflexivity. Qed.

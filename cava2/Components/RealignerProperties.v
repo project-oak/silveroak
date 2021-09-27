@@ -258,55 +258,6 @@ Section RealignerSpec.
     reflexivity.
   Qed.
 
-  (* Lemma bytes_to_N_id_4 xs: *)
-  (*   BigEndianBytes.N_to_bytes 4 (BigEndianBytes.concat_bytes (List.resize Byte.x00 4 xs)) = xs. *)
-  (* Admitted. *)
-
-  (* Lemma concat_bytes_4_bound xs: *)
-  (*   BigEndianBytes.concat_bytes (List.resize Byte.x00 4 xs) < 2 ^ 32. *)
-  (* Admitted. *)
-
-  (* Lemma concat_bytes_8_bound xs: *)
-  (*   BigEndianBytes.concat_bytes (List.resize Byte.x00 8 xs) < 2 ^ 64. *)
-  (* Admitted. *)
-
-  (* Lemma concat_bytes_skip_4_of_8_spec xs n: *)
-  (*     (length xs < 8)%nat -> *)
-  (*     n < 32 -> *)
-  (*       N.testbit *)
-  (*         (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 (skipn 4 xs))) n = false. *)
-  (* Admitted. *)
-
-  (* Lemma concat_bytes_lower_8_zero xs n: *)
-  (*     (length xs < 4)%nat -> *)
-  (*     n < 32 -> *)
-  (*       N.testbit *)
-  (*         (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 xs)) n = false. *)
-  (* Admitted. *)
-
-  (* Lemma concat_bytes_skip_lower_is_upper xs n: *)
-  (*       32 <= n -> n < 64 -> *)
-  (*       N.testbit (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 xs)) *)
-  (*         (n - 32) = *)
-  (*       N.testbit *)
-  (*         (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 (skipn 4 xs))) *)
-  (*         n. *)
-  (* Admitted. *)
-
-  (* Lemma concat_bytes_8_is_64bit xs n: *)
-  (*       64 <= n -> *)
-  (*       N.testbit *)
-  (*         (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 xs)) *)
-  (*         n = false. *)
-  (* Admitted. *)
-
-  (* Lemma concat_bytes_truncation x: *)
-  (*   (N.shiftr *)
-  (*     (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 x)) *)
-  (*     (N.of_nat 32) mod 2 ^ N.of_nat 32)%N *)
-  (*     = BigEndianBytes.concat_bytes (List.resize Byte.x00 4 x). *)
-  (* Admitted. *)
-
   Definition realign_inner_spec
     (existing: list Byte.byte) data data_mask := (
       let '(a,b,c,d) :=
