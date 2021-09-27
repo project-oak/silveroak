@@ -21,8 +21,6 @@ Require Import Coq.micromega.Lia.
 
 Require Import coqutil.Tactics.Tactics.
 
-Require Import Cava.Util.If.
-
 Lemma sub_succ_l_same n : S n - n = 1.
 Proof. lia. Qed.
 
