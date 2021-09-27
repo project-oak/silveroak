@@ -14,6 +14,8 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.NArith.NArith.
+
 Lemma apply_if {A B} (f : A -> B) (b : bool) x y : f (if b then x else y) = if b then f x else f y.
 Proof. destruct b; reflexivity. Qed.
 
@@ -30,3 +32,10 @@ Hint Rewrite @tup_if using solve [eauto] : tuple_if.
 Lemma apply_if_ext_1 {A B C} (f : A -> B -> C) (b : bool) x y z : f (if b then x else y) z = if b then f x z else f y z.
 Proof. destruct b; reflexivity. Qed.
 
+Lemma if_true_rew {A} (x: bool) (z: A) P Q: (x = true -> P = Q) ->
+    (if x then P else z) = (if x then Q else z).
+Proof. intros; destruct x; [ apply H | ]; reflexivity. Qed.
+
+Lemma to_nat_if (b: bool) x y : N.to_nat (if b then x else y) = if b then (N.to_nat x) else (N.to_nat y).
+Proof. now destruct b. Qed.
+Hint Rewrite to_nat_if : Nnat.

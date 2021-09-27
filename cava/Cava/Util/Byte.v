@@ -213,3 +213,396 @@ Proof.
   f_equal; lia.
 Qed.
 
+Lemma concat_bytes_spec_low bs n:
+  n < (N.of_nat (length bs) * 8) + 8->
+  forall y,
+  (forall n', n' < 8 -> N.testbit y n' = false) ->
+  N.testbit
+    (fold_left
+    (fun (acc : N) (b : byte) => N.lor (N.shiftl acc 8) (Byte.to_N b)) bs y)
+    n = N.testbit (Byte.to_N (nth (N.to_nat (n / 8)) (rev bs) "000"%byte)) (n mod 8).
+Proof.
+  revert n.
+
+  replace bs with (rev (rev bs)) by apply rev_involutive.
+  rename bs into x.
+  remember (rev x) as bs; clear Heqbs x.
+  rewrite rev_involutive.
+
+  induction bs.
+  { intros; cbn in *.
+    destruct (N.to_nat (n / 8)); destr (n <? 8); try lia;
+      rewrite N.mod_small by lia; rewrite H0 by lia; now push_Ntestbit.
+  }
+  intros.
+  cbn [rev].
+  rewrite fold_left_app.
+  cbn [fold_left].
+  destr (n <? 8); push_Ntestbit.
+  { replace (n/8) with 0 by (rewrite N.div_small; lia).
+    cbn.
+    now rewrite N.mod_small by lia.
+  }
+  replace (n/8) with (1 + ((n - 8)/8)) .
+  2:{ zify. Z.to_euclidean_division_equations. lia. }
+
+  replace (N.to_nat (1 + (n - 8) / 8)) with (S (N.to_nat ((n - 8) / 8))) by lia.
+  rewrite nth_step.
+
+  replace (n mod 8) with ((n - 8) mod 8).
+  2:{ zify. Z.to_euclidean_division_equations. lia. }
+
+  rewrite testbit_byte by lia.
+  boolsimpl.
+  apply IHbs.
+  { remember (n - 8) as n'.
+    apply (N.add_cancel_r n' (n-8) 8) in Heqn'.
+    rewrite N.sub_add in Heqn' by lia.
+    rewrite <- Heqn' in H.
+    rewrite rev_length in H.
+    cbn [length] in H.
+    apply N.add_lt_mono_r in H.
+    push_length.
+    replace (N.of_nat (length bs) * 8 + 8) with (N.of_nat (S (length bs)) * 8) by lia.
+    apply H.
+  }
+  apply H0.
+Qed.
+
+Lemma concat_bytes_spec_high bs n:
+  N.of_nat (length bs) * 8 + 8 <= n ->
+  N.testbit (fold_left (fun (acc : N) (b : byte) => N.lor (N.shiftl acc 8) (Byte.to_N b)) bs 0) n =
+  N.testbit (Byte.to_N (nth (N.to_nat (n / 8)) (rev bs) "000"%byte)) (n mod 8).
+Proof.
+  intros.
+  revert n H.
+  replace bs with (rev (rev bs)) by apply rev_involutive.
+  rename bs into x.
+  remember (rev x) as bs; clear Heqbs x.
+  rewrite rev_involutive.
+  induction bs.
+  { intros. cbn. destruct (N.to_nat (n/8)); now cbn. }
+
+  intros.
+  cbn [rev].
+  rewrite fold_left_app.
+  cbn [fold_left].
+  push_Ntestbit.
+
+  replace (n/8) with (1 + ((n - 8)/8)).
+  2:{ zify. Z.to_euclidean_division_equations. lia. }
+
+  replace (N.to_nat (1 + (n - 8) / 8)) with (S (N.to_nat ((n - 8) / 8))) by lia.
+  rewrite nth_step.
+
+  replace (n mod 8) with ((n - 8) mod 8).
+  2:{ zify. Z.to_euclidean_division_equations. lia. }
+
+  rewrite testbit_byte by lia.
+  boolsimpl.
+  apply IHbs.
+  replace (N.of_nat ( length (rev (a:: bs)))) with (1 + N.of_nat (length bs)) in H by (push_length;lia).
+  rewrite N.mul_add_distr_r in H.
+  rewrite <- N.add_assoc in H.
+  apply N.le_add_le_sub_l in H.
+  change (1*8) with 8 in H.
+  push_length; apply H.
+Qed.
+
+Lemma concat_bytes_spec bs n:
+  N.testbit (BigEndianBytes.concat_bytes bs) n =
+  N.testbit (Byte.to_N (nth (N.to_nat (n / 8)) (rev bs) x00)) (n mod 8).
+Proof.
+  cbv [BigEndianBytes.concat_bytes].
+  destr (n <? N.of_nat (length bs) * 8 + 8).
+  {
+    apply concat_bytes_spec_low.
+    { apply E. }
+    { intros. now push_Ntestbit. }
+  }
+  now apply concat_bytes_spec_high.
+Qed.
+
+Hint Rewrite @concat_bytes_spec : push_Ntestbit.
+
+Lemma testbit_mod_idx n m x y:
+  m <> 0 ->
+  (forall n', n' < m -> N.testbit x n' = y)
+  -> N.testbit x (n mod m) = y.
+Proof.
+  intros.
+
+  rewrite N.mod_eq by lia.
+  apply H0.
+  zify. Z.to_euclidean_division_equations. lia.
+Qed.
+
+Lemma testbit_mod_same_idx n m o x y:
+  o <> 0 ->
+  (n mod o = m mod o) ->
+  (forall n', n' < o -> N.testbit x n' = N.testbit y n')
+  -> N.testbit x (n mod o) = N.testbit y (m mod o).
+Proof.
+  intros.
+  do 2 rewrite N.mod_eq by lia.
+  repeat rewrite N.mod_eq in H0 by lia.
+  rewrite H0.
+  apply H1.
+  zify. Z.to_euclidean_division_equations. lia.
+Qed.
+
+Lemma concat_bytes_last_spec b bs n:
+  n < 8 ->
+  forall y,
+  N.testbit
+    (fold_left
+    (fun (acc : N) (b : byte) => N.lor (N.shiftl acc 8) (Byte.to_N b)) (bs ++ [b]) y)
+       n = N.testbit (Byte.to_N (nth (length bs  - N.to_nat (n / 8)) (bs ++ [b]) "000"%byte)) (n mod 8).
+Proof.
+  intros H.
+  induction bs.
+
+  { intros; cbn.
+    rewrite N.mod_small by lia.
+    push_Ntestbit.
+    reflexivity.
+  }
+
+  { intros.
+    rewrite <- app_comm_cons.
+    rewrite fold_left_cons.
+    push_length.
+    replace (S (length bs) - N.to_nat (n / 8))%nat with (S (length bs - N.to_nat (n / 8)))%nat by
+      now rewrite minus_Sn_m by (rewrite N.div_small; lia).
+
+    rewrite nth_step.
+    apply IHbs.
+  }
+Qed.
+
+Lemma concat_bytes_skip_4_of_8_spec xs n:
+    (length xs < 8)%nat ->
+    n < 32 ->
+      N.testbit
+        (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 (skipn 4 xs))) n = false.
+Proof.
+  repeat (destruct xs; try cbn; try lia);
+    intros; repeat rewrite N.lor_0_r; repeat rewrite N.shiftl_shiftl;
+    now repeat (push_Ntestbit; boolsimpl).
+Qed.
+
+Lemma concat_bytes_lower_8_zero xs n:
+    (length xs < 4)%nat ->
+    n < 32 ->
+      N.testbit
+        (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 xs)) n = false.
+Proof.
+  repeat (destruct xs; try cbn; try lia);
+    intros; repeat rewrite N.lor_0_r; repeat rewrite N.shiftl_shiftl;
+    now repeat (push_Ntestbit; boolsimpl).
+Qed.
+
+Lemma concat_bytes_skip_lower32 xs n:
+      32 <= n -> n < 64 ->
+      N.testbit (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 xs)) (n - 32) =
+      N.testbit (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 (skipn 4 xs))) n.
+Proof.
+  intros.
+  push_Ntestbit.
+  apply testbit_mod_same_idx; try lia.
+  { zify; Z.to_euclidean_division_equations; lia. }
+  intros.
+  do 2 f_equal.
+  do 2 rewrite rev_nth by
+    ( push_length; zify; Z.to_euclidean_division_equations; lia).
+  cbv [resize].
+  push_length.
+  destruct (Nat.ltb_spec
+    (Init.Nat.min 8 (length xs) + (8 - length xs) - S (N.to_nat ((n - 32) / 8)))
+    (Init.Nat.min 8 (length xs))).
+  {
+    assert
+      (Init.Nat.min 8 (length xs - 4) + (8 - (length xs - 4)) - S (N.to_nat (n / 8))
+      < Init.Nat.min 8 (length xs - 4))%nat.
+    { zify; Z.to_euclidean_division_equations; lia. }
+    repeat rewrite app_nth1 by (push_length; lia).
+    repeat rewrite nth_firstn_inbounds by lia.
+    rewrite nth_skipn.
+    f_equal.
+    { zify; Z.to_euclidean_division_equations; lia. }
+  }
+  assert
+    (Init.Nat.min 8 (length xs - 4) + (8 - (length xs - 4)) - S (N.to_nat (n / 8))
+    >= Init.Nat.min 8 (length xs - 4))%nat.
+  { zify; Z.to_euclidean_division_equations; lia. }
+  repeat rewrite app_nth2 by (push_length; lia).
+  repeat rewrite nth_repeat.
+  now repeat rewrite Tauto.if_same.
+Qed.
+
+Lemma concat_bytes_8_is_64bit xs n:
+      64 <= n ->
+      N.testbit
+        (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 xs))
+        n = false.
+Proof.
+  intros. push_Ntestbit.
+  assert (8 <= n/8).
+  { zify; Z.to_euclidean_division_equations; lia. }
+  rewrite <- N2Nat.id with (a:=n/8).
+  remember (N.to_nat (n/8)) as x.
+  rewrite Nat2N.id.
+  destr (x <? 8)%nat;[lia|].
+  rewrite nth_overflow by (push_length; lia).
+  now push_Ntestbit.
+Qed.
+
+Lemma concat_bytes_resize_masked x:
+      N.shiftr
+        (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 x))
+        (N.of_nat 32) mod 2 ^ N.of_nat 32 =
+      BigEndianBytes.concat_bytes (List.resize Byte.x00 4 x).
+Proof.
+  rewrite <- N.land_ones.
+  apply N.bits_inj. intros n.
+  destr (n <? 32).
+  { push_Ntestbit; boolsimpl.
+    apply testbit_mod_same_idx; try lia.
+    { zify; Z.to_euclidean_division_equations; lia. }
+    intros.
+    replace ((n + N.of_nat 32) / 8) with ((n/8) + 4).
+    2:{ zify; Z.to_euclidean_division_equations; lia. }
+    rewrite <- N2Nat.id with (n/8) in *.
+    remember (N.to_nat (n/8)) as j.
+    rewrite Nat2N.id.
+    assert(j < 4)%nat.
+    { zify; Z.to_euclidean_division_equations; lia. }
+    repeat rewrite rev_nth by (push_length; lia).
+    replace (N.to_nat (N.of_nat j + 4)) with (j + 4)%nat by lia.
+    push_length.
+    f_equal.
+    f_equal.
+    cbv [resize].
+    destruct (Nat.ltb_spec (8 - S (j + 4)) (Init.Nat.min 8 (length x))).
+    {
+      assert (4 - S j < Init.Nat.min 4 (length x))%nat by lia.
+      repeat rewrite app_nth1 by (push_length; lia).
+      repeat rewrite nth_firstn_inbounds by lia.
+      f_equal.
+      lia.
+    }
+    {
+      assert (Init.Nat.min 4 (length x) <= 4 - S j)%nat by lia.
+      repeat rewrite app_nth2 by (push_length; lia).
+      repeat rewrite nth_repeat.
+      now repeat rewrite Tauto.if_same.
+    }
+  }
+  push_Ntestbit;boolsimpl.
+  rewrite nth_overflow.
+  { now push_Ntestbit. }
+  push_length.
+  { zify; Z.to_euclidean_division_equations; lia. }
+Qed.
+
+Lemma bytes_to_N_id_4 xs:
+  length xs = 4%nat ->
+  BigEndianBytes.N_to_bytes 4 (BigEndianBytes.concat_bytes xs) = xs.
+Proof.
+  intros.
+  rewrite unfold_N_to_bytes_4.
+  do 5 (destruct xs; try (cbn in *; lia)).
+  cbn [BigEndianBytes.concat_bytes fold_left Nat.sub Nat.mul].
+  do 4 f_equal.
+  all:
+    apply Byte2N.inj; rewrite N2Byte.id; change 256 with (2^8);
+    rewrite <- N.land_ones;
+    apply N.bits_inj; intro x; push_Ntestbit; boolsimpl;
+    destruct (N.ltb_spec x 8);
+    push_Ntestbit; boolsimpl;
+      repeat rewrite testbit_byte by lia; [
+      repeat rewrite <- N.add_sub_assoc by lia;
+      cbn;
+      rewrite N.add_0_r;
+      repeat match goal with | |- context [N.testbit ?b ?N] => rewrite testbit_byte with (n:=N) by (cbn; lia) end;
+      now boolsimpl
+    | reflexivity].
+Qed.
+
+Local Ltac tb A :=
+  rewrite <- Byte2N.id with (x:=A);
+  remember (Byte.to_N A).
+
+Lemma concat_bytes_4_bound xs:
+  BigEndianBytes.concat_bytes (List.resize Byte.x00 4 xs) < 2 ^ 32.
+Proof.
+  assert (exists a b c d, [a;b;c;d] = resize Byte.x00 4 xs).
+  { do 4 (destruct xs; [repeat eexists|]).
+    repeat eexists.
+  }
+  logical_simplify.
+  rewrite <- H.
+  cbn.
+  repeat rewrite N.shiftl_mul_pow2.
+  tb x; tb x0; tb x1; tb x2.
+  repeat rewrite N2Byte.id.
+  repeat rewrite N.lor_high_low_add.
+  cbn. zify. Z.to_euclidean_division_equations. lia.
+Qed.
+
+Lemma concat_bytes_8_bound xs:
+  BigEndianBytes.concat_bytes (List.resize Byte.x00 8 xs) < 2 ^ 64.
+Proof.
+  assert (exists a b c d e f g h, [a;b;c;d;e;f;g;h] = resize Byte.x00 8 xs).
+  { do 8 (destruct xs; [repeat eexists|]).
+    repeat eexists.
+  }
+  logical_simplify.
+  rewrite <- H.
+  cbn.
+  repeat rewrite N.shiftl_mul_pow2.
+  tb x; tb x0; tb x1; tb x2; tb x3; tb x4; tb x5; tb x6.
+  repeat rewrite N2Byte.id.
+  repeat rewrite N.lor_high_low_add.
+  cbn. zify. Z.to_euclidean_division_equations. lia.
+Qed.
+
+Lemma concat_bytes_truncation x:
+  (N.shiftr
+    (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 x))
+    (N.of_nat 32) mod 2 ^ N.of_nat 32)%N
+    = BigEndianBytes.concat_bytes (List.resize Byte.x00 4 x).
+Proof.
+  change (N.of_nat 32) with 32.
+  rewrite <- N.mod_small with (a:=BigEndianBytes.concat_bytes (resize "000"%byte 4 x)) (b:=2^32)
+    by apply concat_bytes_4_bound.
+
+  assert (exists a b c d e f g h, [a;b;c;d;e;f;g;h] = resize Byte.x00 8 x).
+  { do 8 (destruct x; [repeat eexists|]).
+    repeat eexists.
+  }
+  logical_simplify.
+  rewrite <- H.
+  assert ([x0;x1;x2;x3] = resize Byte.x00 4 x).
+  {
+    rewrite <- resize_resize with (m:=8%nat) by lia.
+    rewrite <- H.
+    now cbn.
+  }
+  rewrite <- H0.
+
+  apply N.bits_inj; intro n;push_Ntestbit.
+  destruct (N.ltb_spec n 32); [|reflexivity].
+  apply testbit_mod_same_idx; try lia.
+  { zify. Z.to_euclidean_division_equations. lia. }
+  intros.
+  cbn.
+  replace (N.to_nat ((n+32)/8)) with (N.to_nat (n/8)%N + 4)%nat; cycle 1.
+  { zify. Z.to_euclidean_division_equations. lia. }
+  remember (N.to_nat (n/8)) as n0.
+  destruct n0; cbn; [reflexivity|].
+  destruct n0; cbn; [reflexivity|].
+  destruct n0; cbn; [reflexivity|].
+  destruct n0; cbn; [reflexivity|].
+  { zify. Z.to_euclidean_division_equations. lia. }
+Qed.

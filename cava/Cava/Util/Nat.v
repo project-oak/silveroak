@@ -122,6 +122,19 @@ Module Nat.
     0 < b -> 0 < a ->
     Nat.ceiling a b * b - b < a <= Nat.ceiling a b * b.
   Proof. cbv [Nat.ceiling]. intros. prove_by_zify. Qed.
+
+  Lemma sub_mod_no_underflow x y :
+    x < 2 ^ y -> 0 < x ->
+    ((x + 2 ^ y - 1) mod 2 ^ y) = (x - 1).
+  Proof.
+    intros.
+    rewrite Nat.add_sub_swap by trivial.
+    rewrite Nat.add_mod by lia.
+    rewrite Nat.mod_same by (try apply Nat.pow_nonzero; lia).
+    rewrite Nat.add_0_r.
+    rewrite Nat.mod_mod by lia.
+    rewrite Nat.mod_small; lia.
+  Qed.
 End Nat.
 Hint Rewrite Nat.add_sub_cancel : natsimpl.
 
@@ -392,3 +405,37 @@ Ltac push_Ntestbit_step :=
     rewrite (N.testbit_high x m) by lia
   end.
 Ltac push_Ntestbit := repeat push_Ntestbit_step.
+
+Lemma le_1_is_0 x: (1 <=? x)%nat = negb (x =? 0)%nat.
+Proof. destruct x; reflexivity. Qed.
+
+Module N2Nat.
+  (* TODO: these exists in latest Coq *)
+  Lemma inj_mod a a' :
+    N.to_nat (a mod a') = N.to_nat a mod N.to_nat a'.
+  Proof. Admitted.
+  Lemma inj_pow a a' :
+    N.to_nat (a ^ a')%N = (N.to_nat a ^ N.to_nat a')%nat.
+  Proof. Admitted.
+
+  Lemma inj_leb x y: (x <=? y)%N = (N.to_nat x <=? N.to_nat y)%nat.
+  Proof. Admitted.
+
+  Lemma inj_ltb x y: (x <? y)%N = (N.to_nat x <? N.to_nat y)%nat.
+  Proof. Admitted.
+
+  Lemma inj_eqb x y: (x =? y)%N = (N.to_nat x =? N.to_nat y)%nat.
+  Proof. Admitted.
+
+  (* Get nice constants *)
+  Lemma inj_0: N.to_nat 0 = 0. trivial. Qed.
+  Lemma inj_1: N.to_nat 1 = 1. trivial. Qed.
+  Lemma inj_2: N.to_nat 2 = 2. trivial. Qed.
+  Lemma inj_3: N.to_nat 3 = 3. trivial. Qed.
+End N2Nat.
+
+Hint Rewrite
+  N2Nat.inj_eqb N2Nat.inj_ltb N2Nat.inj_leb N2Nat.inj_mod N2Nat.inj_pow
+  N2Nat.inj_0 N2Nat.inj_1 N2Nat.inj_2 N2Nat.inj_3
+  : Nnat.
+
