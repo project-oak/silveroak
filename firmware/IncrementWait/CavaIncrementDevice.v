@@ -313,14 +313,15 @@ Section WithParameters.
       unfold state_machine.read_step, increment_wait_state_machine, read_step in *.
       simpl in sL. destruct sL as ((istate & value & tl_d2h) & tlul_state).
       destruct_tl_d2h. destruct_tlul_adapter_reg_state.
+      destruct H as [v [sH' [Hbytes H]]]. rewrite Hbytes.
       destruct r; simp; [|].
       + (* r=VALUE *)
         destruct_consistent_states. subst.
         repeat (rewrite Z_word_N by lia; cbn).
         destruct outstanding; [|];
           eexists _, _, _; ssplit; try reflexivity; cbn; rewrite Z_word_N by lia;
-              try (eapply IDLE_related; unfold consistent_states; ssplit; reflexivity);
-              try (apply N_to_word_word_to_N).
+            try (eapply IDLE_related; unfold consistent_states; ssplit; reflexivity);
+            try (apply N_to_word_word_to_N).
       + (* r=STATUS *)
         destruct sH; [| |].
         * (* sH=IDLE *)
@@ -393,7 +394,7 @@ Section WithParameters.
       unfold word_to_N.
       rewrite word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
       destruct outstanding; boolsimpl; simpl;
-        eexists _, _, _; ssplit; try reflexivity; apply BUSY1_related;
+        eexists _, _, _; ssplit; try reflexivity; try assumption; apply BUSY1_related;
           try lia;
           try (unfold consistent_states; ssplit; reflexivity).
     - (* read_step_unique: *)

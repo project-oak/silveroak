@@ -200,3 +200,124 @@ Section Var.
   }}.
 
 End Var.
+
+Definition tl_h2d := denote_type tl_h2d_t.
+Definition tl_h2d_default := default (t := tl_h2d_t).
+
+Ltac destruct_tl_h2d_step :=
+  let t1 := eval unfold tl_h2d in tl_h2d in
+  let t2 := eval simpl in t1 in
+  match goal with
+  | v : tl_h2d |- _ => unfold tl_h2d in v
+  | v : t1 |- _ => simpl in v
+  | v : t2 |- _ =>
+    destruct v as (?a_valid, (?a_opcode, (?a_param, (?a_size, (?a_source,
+                  (?a_address, (?a_mask, (?a_data, (?a_user, ?d_ready)))))))))
+  end.
+Ltac destruct_tl_h2d := repeat destruct_tl_h2d_step.
+
+Definition a_valid   : tl_h2d -> bool := ltac:(intros; destruct_tl_h2d; apply a_valid).
+Definition a_opcode  : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_opcode).
+Definition a_param   : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_param).
+Definition a_size    : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_size).
+Definition a_source  : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_source).
+Definition a_address : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_address).
+Definition a_mask    : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_mask).
+Definition a_data    : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_data).
+Definition a_user    : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_user).
+Definition d_ready   : tl_h2d -> bool := ltac:(intros; destruct_tl_h2d; apply d_ready).
+
+Definition mk_tl_h2d (a_valid : bool) (a_opcode : N) (a_param : N) (a_size : N)
+           (a_source : N) (a_address : N) (a_mask : N) (a_data : N) (a_user : N)
+           (d_ready : bool) : tl_h2d :=
+  (a_valid, (a_opcode, (a_param, (a_size, (a_source, (a_address, (a_mask, (a_data, (a_user, d_ready))))))))).
+
+Ltac tl_h2d_setter v h2d x :=
+  unfold tl_h2d in h2d; simpl in h2d;
+  destruct h2d as (a_valid', (a_opcode', (a_param', (a_size', (a_source',
+                  (a_address', (a_mask', (a_data', (a_user', d_ready')))))))));
+  let setter :=
+      (match eval pattern x in (mk_tl_h2d a_valid' a_opcode' a_param' a_size'
+                                          a_source' a_address' a_mask' a_data'
+                                          a_user' d_ready') with
+       | ?set_x _ => constr:(set_x v)
+       end) in
+  exact setter.
+
+Definition set_a_valid   : bool -> tl_h2d -> tl_h2d := ltac:(intros v h2d; tl_h2d_setter v h2d a_valid').
+Definition set_a_opcode  : N -> tl_h2d -> tl_h2d := ltac:(intros v h2d; tl_h2d_setter v h2d a_opcode').
+Definition set_a_param   : N -> tl_h2d -> tl_h2d := ltac:(intros v h2d; tl_h2d_setter v h2d a_param').
+Definition set_a_size    : N -> tl_h2d -> tl_h2d := ltac:(intros v h2d; tl_h2d_setter v h2d a_size').
+Definition set_a_source  : N -> tl_h2d -> tl_h2d := ltac:(intros v h2d; tl_h2d_setter v h2d a_source').
+Definition set_a_address : N -> tl_h2d -> tl_h2d := ltac:(intros v h2d; tl_h2d_setter v h2d a_address').
+Definition set_a_mask    : N -> tl_h2d -> tl_h2d := ltac:(intros v h2d; tl_h2d_setter v h2d a_mask').
+Definition set_a_data    : N -> tl_h2d -> tl_h2d := ltac:(intros v h2d; tl_h2d_setter v h2d a_data').
+Definition set_a_user    : N -> tl_h2d -> tl_h2d := ltac:(intros v h2d; tl_h2d_setter v h2d a_user').
+Definition set_d_ready   : bool -> tl_h2d -> tl_h2d := ltac:(intros v h2d; tl_h2d_setter v h2d d_ready').
+
+Definition tl_d2h := denote_type tl_d2h_t.
+Definition tl_d2h_default := default (t := tl_d2h_t).
+
+Ltac destruct_tl_d2h_step :=
+  let t1 := eval unfold tl_d2h in tl_d2h in
+  let t2 := eval simpl in t1 in
+  match goal with
+  | v : tl_d2h |- _ => unfold tl_d2h in v
+  | v : t1 |- _ => simpl in v
+  | v : t2 |- _ =>
+    destruct v as (?d_valid, (?d_opcode, (?d_param, (?d_size, (?d_source,
+                  (?d_sink, (?d_data, (?d_user, (?d_error, ?a_ready)))))))))
+  end.
+
+Ltac destruct_tl_d2h := repeat destruct_tl_d2h_step.
+
+Definition d_valid  : tl_d2h -> bool := ltac:(intros; destruct_tl_d2h; apply d_valid).
+Definition d_opcode : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_opcode).
+Definition d_param  : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_param).
+Definition d_size   : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_size).
+Definition d_source : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_source).
+Definition d_sink   : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_sink).
+Definition d_data   : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_data).
+Definition d_user   : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_user).
+Definition d_error  : tl_d2h -> bool := ltac:(intros; destruct_tl_d2h; apply d_error).
+Definition a_ready  : tl_d2h -> bool := ltac:(intros; destruct_tl_d2h; apply a_ready).
+
+Definition mk_tl_d2h (d_valid : bool) (d_opcode : N) (d_param : N) (d_size : N)
+           (d_source : N) (d_sink : N) (d_data : N) (d_user : N) (d_error : bool)
+           (a_ready : bool) : tl_d2h :=
+  (d_valid, (d_opcode, (d_param, (d_size, (d_source, (d_sink, (d_data, (d_user, (d_error, a_ready))))))))).
+
+Ltac tl_d2h_setter v d2h x :=
+  unfold tl_d2h in d2h; simpl in d2h;
+  destruct d2h as (d_valid', (d_opcode', (d_param', (d_size', (d_source',
+                  (d_sink', (d_data', (d_user', (d_error', a_ready')))))))));
+  let setter :=
+      (match eval pattern x in (mk_tl_d2h d_valid' d_opcode' d_param' d_size'
+                                          d_source' d_sink' d_data' d_user'
+                                          d_error' a_ready') with
+       | ?set_x _ => constr:(set_x v)
+       end) in
+  exact setter.
+
+Definition set_d_valid  : bool -> tl_d2h -> tl_d2h := ltac:(intros v d2h; tl_d2h_setter v d2h d_valid').
+Definition set_d_opcode : N -> tl_d2h -> tl_d2h := ltac:(intros v d2h; tl_d2h_setter v d2h d_opcode').
+Definition set_d_param  : N -> tl_d2h -> tl_d2h := ltac:(intros v d2h; tl_d2h_setter v d2h d_param').
+Definition set_d_size   : N -> tl_d2h -> tl_d2h := ltac:(intros v d2h; tl_d2h_setter v d2h d_size').
+Definition set_d_source : N -> tl_d2h -> tl_d2h := ltac:(intros v d2h; tl_d2h_setter v d2h d_source').
+Definition set_d_sink   : N -> tl_d2h -> tl_d2h := ltac:(intros v d2h; tl_d2h_setter v d2h d_sink').
+Definition set_d_data   : N -> tl_d2h -> tl_d2h := ltac:(intros v d2h; tl_d2h_setter v d2h d_data').
+Definition set_d_user   : N -> tl_d2h -> tl_d2h := ltac:(intros v d2h; tl_d2h_setter v d2h d_user').
+Definition set_d_error  : bool -> tl_d2h -> tl_d2h := ltac:(intros v d2h; tl_d2h_setter v d2h d_error').
+Definition set_a_ready  : bool -> tl_d2h -> tl_d2h := ltac:(intros v d2h; tl_d2h_setter v d2h a_ready').
+
+Ltac tlsimpl :=
+  unfold tl_h2d_default, tl_d2h_default in *; simpl Types.default in *;
+  cbn [mk_tl_h2d
+         set_a_valid set_a_opcode set_a_param set_a_size set_a_source
+         set_a_address set_a_mask set_a_data set_a_user set_d_ready
+         a_valid a_opcode a_param a_size a_source a_address a_mask a_data a_user d_ready
+         mk_tl_d2h
+         set_d_valid set_d_opcode set_d_param set_d_size set_d_source
+         set_d_sink set_d_data set_d_user set_d_error set_a_ready
+         d_valid d_opcode d_param d_size d_source d_sink d_data d_user d_error a_ready] in *;
+  unfold mk_tl_h2d, mk_tl_d2h in *.

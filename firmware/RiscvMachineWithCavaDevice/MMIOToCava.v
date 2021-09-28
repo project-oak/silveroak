@@ -60,39 +60,39 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
      and the response will match some possible high-level read step's response,
      but not necessarily the one we used to show that sH accepts reads (to allow
      underspecification-nondeterminism in the high-level state machine) *)
-  state_machine_read_to_device_read: forall n r sH sL,
-      (exists v sH', state_machine.read_step n sH r v sH') ->
+  state_machine_read_to_device_read: forall log2_nbytes r sH sL,
+      (exists v sH', state_machine.read_step (2 ^ log2_nbytes) sH r v sH') ->
       device_state_related sH sL ->
       exists d2h sL' sH',
         device.runUntilResp
           (set_a_valid true
           (set_a_opcode 4%N (* Get *)
-          (set_a_size 2%N   (* 2^2 bytes *)
+          (set_a_size (N.of_nat log2_nbytes)
           (set_a_address (word_to_N (state_machine.reg_addr r))
-          (set_d_ready true tl_h2d_def)))))
+          (set_d_ready true tl_h2d_default)))))
           device.maxRespDelay sL = (Some d2h, sL') /\
         device_state_related sH' sL' /\
-        state_machine.read_step n sH r (N_to_word (d_data d2h)) sH';
+        state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data d2h)) sH';
 
   (* for each high-level state sH in which an n-byte write to register r with value v is possible,
      if we run the low-level device with the write step's address and value on the input wires,
      we will get an ack response after at most device.maxRespDelay device cycles,
      and the device will end up in a state corresponding to a high-level state reached after
      a high-level write, but not necessarily in the state we used to show that sH accepts writes *)
-  state_machine_write_to_device_write: forall n r v sH sL,
-      (exists sH', state_machine.write_step n sH r v sH') ->
+  state_machine_write_to_device_write: forall log2_nbytes r v sH sL,
+      (exists sH', state_machine.write_step (2 ^ log2_nbytes) sH r v sH') ->
       device_state_related sH sL ->
       exists ignored sL' sH',
         device.runUntilResp
           (set_a_valid true
           (set_a_opcode 0%N (* PutFullData *)
-          (set_a_size 2%N   (* 2^2 bytes *)
+          (set_a_size (N.of_nat log2_nbytes)
           (set_a_address (word_to_N (state_machine.reg_addr r))
           (set_a_data (word_to_N v)
-          (set_d_ready true tl_h2d_def))))))
+          (set_d_ready true tl_h2d_default))))))
           device.maxRespDelay sL = (Some ignored, sL') /\
         device_state_related sH' sL' /\
-        state_machine.write_step n sH r v sH';
+        state_machine.write_step (2 ^ log2_nbytes) sH r v sH';
 
   (* If two steps starting in the same high-level state agree on what gets appended to the trace,
      then the resulting high-level states must be equal.
@@ -301,8 +301,11 @@ Section WithParams.
            pose proof (execution_unique _ _ _ E1 E2); subst; clear E2
          end.
     1-4: edestruct state_machine_read_to_device_read as (v'' & d'' & s'' & RU'' & Rel'' & RS'');
-           [do 2 eexists; eassumption|solve[eauto]|].
-    1-4: cbn -[HList.tuple]; tlsimpl; rewrite RU''; cbn -[HList.tuple].
+      [do 2 eexists; match goal with
+                     | H: state_machine.read_step ?n _ _ _ _ |- _ =>
+                       change n at 1 with (2 ^ (Nat.log2 n))%nat in H
+                     end; eassumption|solve[eauto]|].
+    1-4: cbn -[HList.tuple]; tlsimpl; simpl in RU''; rewrite RU''; cbn -[HList.tuple].
     4: { (* 64-bit MMIO is not supported: *)
       eapply state_machine.read_step_size_valid in HLp2p2. simpl in HLp2p2. exfalso. intuition congruence.
     }
@@ -333,8 +336,11 @@ Section WithParams.
            pose proof (execution_unique _ _ _ E1 E2); subst; clear E2
          end.
     1-3: edestruct state_machine_write_to_device_write as (ignored & d' & s'' & RU & Rel' & WS');
-           [eexists; eassumption|solve[eauto]|].
-    1-3: cbn -[HList.tuple Primitives.invalidateWrittenXAddrs]; tlsimpl; rewrite RU;
+      [eexists; match goal with
+                | H: state_machine.write_step ?n _ _ _ _ |- _ =>
+                  change n at 1 with (2 ^ (Nat.log2 n))%nat in H
+                end; eassumption|solve[eauto]|].
+    1-3: cbn -[HList.tuple Primitives.invalidateWrittenXAddrs]; tlsimpl; simpl in RU; rewrite RU;
          cbn -[HList.tuple Primitives.invalidateWrittenXAddrs].
     1-3: eauto 15 using mkRelated, execution_write_cons, preserve_disjoint_of_invalidateXAddrs.
 
@@ -378,10 +384,10 @@ Section WithParams.
       eapply mkRelated.
       + eassumption.
       + match goal with
-        | |- context[fst ?p] => destruct p eqn: E
+        | |- context[let '(_, _) := ?p in _] => destruct p eqn: E
         end.
         eapply nonMMIO_device_step_preserves_state_machine_state. 2: eassumption.
-        1: instantiate (1 := tl_h2d_def); reflexivity.
+        1: instantiate (1 := tl_h2d_default); reflexivity.
         simpl.
         exact E.
       + assumption.
