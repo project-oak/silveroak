@@ -25,7 +25,7 @@ Section WithParameters.
           (set_d_opcode 1%N (* AccessAckData *)
           (set_d_size (a_size i)
           (set_d_data (a_data i)
-          (set_a_ready true tl_d2h_def)))) in
+          (set_a_ready true tl_d2h_default)))) in
       (s', res);
     device.addr_range_start := TOP_EARLGREY_HMAC_BASE_ADDR;
     device.addr_range_pastend := TOP_EARLGREY_HMAC_BASE_ADDR +
