@@ -60,7 +60,8 @@ Section Var.
         else `K 4` in
 
       (drain && !fifo_valid && valid, valid, data, length, fifo_empty, fifo_full)
-      initially default
+      initially (false, (false, (0, (0, (true, false)))))
+      : denote_type (Bit ** Bit ** BitVec 32 ** BitVec 4 ** Bit ** Bit )
     in
     (out_valid, out_data, out_length, is_last, fifo_full)
   }}.

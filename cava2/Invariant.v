@@ -101,6 +101,9 @@ Ltac simplify_invariant c :=
   let x := constr:(_:invariant_for c _) in
   match x with
   | ?x => cbv [x] in *
+  | ?x _ => cbv [x] in *
+  | ?x _ _ => cbv [x] in *
+  | ?x _ _ _ => cbv [x] in *
   end.
 Ltac simplify_spec c :=
   let x := constr:(_:specification_for c _) in
