@@ -102,57 +102,33 @@ End Var.
 
 Example sample_trace :=
   Eval compute in
-    let nop :=
-        ((false,        (* a_valid   *)
-          (0,           (* a_opcode  *)
-           (0,          (* a_param   *)
-            (0,         (* a_size    *)
-             (0,        (* a_source  *)
-              (0,       (* a_address *)
-               (0,      (* a_mask    *)
-                (0,     (* a_data    *)
-                 (0,    (* a_user    *)
-                  (true (* d_ready   *)
-         )))))))))), tt)%N in
-
+    let nop := set_d_ready true tl_h2d_default in
     let read_reg (r : N) :=
-        ((true,         (* a_valid   *)
-          (4,           (* a_opcode  Get *)
-           (0,          (* a_param   *)
-            (0,         (* a_size    *)
-             (0,        (* a_source  *)
-              (r,       (* a_address *)
-               (0,      (* a_mask    *)
-                (0,     (* a_data    *)
-                 (0,    (* a_user    *)
-                  (true (* d_ready   *)
-         )))))))))), tt)%N in
-
+        set_a_valid true
+        (set_a_opcode Get
+        (set_a_size 2%N
+        (set_a_address r
+        (set_d_ready true tl_h2d_default)))) in
     let write_val (v : N) :=
-        ((true,         (* a_valid   *)
-          (0,           (* a_opcode  PutFullData *)
-           (0,          (* a_param   *)
-            (0,         (* a_size    *)
-             (0,        (* a_source  *)
-              (0,       (* a_address value-reg *)
-               (0,      (* a_mask    *)
-                (v,     (* a_data    *)
-                 (0,    (* a_user    *)
-                  (true (* d_ready   *)
-         )))))))))), tt)%N in
+        set_a_valid true
+        (set_a_opcode PutFullData
+        (set_a_size 2%N
+        (set_a_address 0%N (* value-ref *)
+        (set_a_data v
+        (set_d_ready true tl_h2d_default))))) in
 
     simulate incr
-             [ nop
-               ; read_reg 4 (* status *)
-               ; nop
-               ; write_val 42
-               ; nop
-               ; nop
-               ; read_reg 4 (* status *)
-               ; nop
-               ; read_reg 0 (* value *)
-               ; nop
-               ; read_reg 4 (* status *)
+             [ (nop, tt)
+               ; (read_reg 4, tt) (* status *)
+               ; (nop, tt)
+               ; (write_val 42, tt)
+               ; (nop, tt)
+               ; (nop, tt)
+               ; (read_reg 4, tt) (* status *)
+               ; (nop, tt)
+               ; (read_reg 0, tt) (* value *)
+               ; (nop, tt)
+               ; (read_reg 4, tt) (* status *)
              ]%N.
 (* Print sample_trace. *)
 
