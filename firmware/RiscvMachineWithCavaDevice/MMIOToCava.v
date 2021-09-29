@@ -264,6 +264,20 @@ Section WithParams.
     assumption.
   Qed.
 
+  Lemma Z_word_N : forall n w,
+      (n <= 4)%nat ->
+      word_to_N (word.of_Z (LittleEndian.combine n w)) =
+      BinIntDef.Z.to_N (LittleEndian.combine n w).
+  Proof.
+    intros. unfold word_to_N. rewrite word.unsigned_of_Z_nowrap.
+    - reflexivity.
+    - split.
+      + apply LittleEndian.combine_bound.
+      + eapply Z.lt_le_trans.
+        * apply LittleEndian.combine_bound.
+        * apply Z.pow_le_mono_r; lia.
+  Qed.
+
   Lemma stateMachine_primitive_to_cava: forall (initialH: MetricRiscvMachine) (p: riscv_primitive)
       (postH: primitive_result p -> MetricRiscvMachine -> Prop),
       MetricMinimalMMIO.interp_action p initialH postH ->
@@ -340,8 +354,9 @@ Section WithParams.
                 | H: state_machine.write_step ?n _ _ _ _ |- _ =>
                   change n at 1 with (2 ^ (Nat.log2 n))%nat in H
                 end; eassumption|solve[eauto]|].
-    1-3: cbn -[HList.tuple Primitives.invalidateWrittenXAddrs]; tlsimpl; simpl in RU; rewrite RU;
-         cbn -[HList.tuple Primitives.invalidateWrittenXAddrs].
+    1-3: cbn -[HList.tuple Primitives.invalidateWrittenXAddrs];
+      tlsimpl; simpl in RU; rewrite Z_word_N in RU by lia; rewrite RU;
+        cbn -[HList.tuple Primitives.invalidateWrittenXAddrs].
     1-3: eauto 15 using mkRelated, execution_write_cons, preserve_disjoint_of_invalidateXAddrs.
 
     (* GetPC *)

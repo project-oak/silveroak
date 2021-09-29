@@ -172,7 +172,7 @@ Section WithParams.
         (set_a_opcode PutFullData
         (set_a_size (N.of_nat log2_nbytes)
         (set_a_address (word_to_N addr)
-        (set_a_data (word_to_N (word.of_Z (LittleEndian.combine (2 ^ log2_nbytes) v)))
+        (set_a_data (Z.to_N (LittleEndian.combine (2 ^ log2_nbytes) v))
         (set_d_ready true tl_h2d_default))))) in
     ignored <- runUntilResp h2d;
     Return tt.
