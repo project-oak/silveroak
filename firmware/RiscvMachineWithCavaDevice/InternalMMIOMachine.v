@@ -158,7 +158,7 @@ Section WithParams.
     : OState (ExtraRiscvMachine D) (HList.tuple byte (2 ^ log2_nbytes)) :=
     let h2d : tl_h2d :=
         set_a_valid true
-        (set_a_opcode 4%N (* Get *)
+        (set_a_opcode Get
         (set_a_size (N.of_nat log2_nbytes)
         (set_a_address (word_to_N addr)
         (set_d_ready true tl_h2d_default)))) in
@@ -169,7 +169,7 @@ Section WithParams.
     : OState (ExtraRiscvMachine D) unit :=
     let h2d : tl_h2d :=
         set_a_valid true
-        (set_a_opcode 0%N (* PutFullData *)
+        (set_a_opcode PutFullData
         (set_a_size (N.of_nat log2_nbytes)
         (set_a_address (word_to_N addr)
         (set_a_data (word_to_N (word.of_Z (LittleEndian.combine (2 ^ log2_nbytes) v)))

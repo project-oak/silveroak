@@ -66,7 +66,7 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       exists d2h sL' sH',
         device.runUntilResp
           (set_a_valid true
-          (set_a_opcode 4%N (* Get *)
+          (set_a_opcode Get
           (set_a_size (N.of_nat log2_nbytes)
           (set_a_address (word_to_N (state_machine.reg_addr r))
           (set_d_ready true tl_h2d_default)))))
@@ -85,7 +85,7 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       exists ignored sL' sH',
         device.runUntilResp
           (set_a_valid true
-          (set_a_opcode 0%N (* PutFullData *)
+          (set_a_opcode PutFullData
           (set_a_size (N.of_nat log2_nbytes)
           (set_a_address (word_to_N (state_machine.reg_addr r))
           (set_a_data (word_to_N v)

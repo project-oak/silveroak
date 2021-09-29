@@ -101,18 +101,16 @@ Section Var.
   (*   PutPartialData = 3'h 1, *)
   (*   Get            = 3'h 4 *)
   (* } tl_a_op_e; *)
-  Definition tl_a_op_e      := BitVec 3.
-  Definition PutFullData    := Constant tl_a_op_e 0.
-  Definition PutPartialData := Constant tl_a_op_e 1.
-  Definition Get            := Constant tl_a_op_e 4.
+  Definition PutFullData    := 0.
+  Definition PutPartialData := 1.
+  Definition Get            := 4.
 
   (* typedef enum logic [2:0] { *)
   (*   AccessAck     = 3'h 0, *)
   (*   AccessAckData = 3'h 1 *)
   (* } tl_d_op_e; *)
-  Definition tl_d_op_e     := BitVec 3.
-  Definition AccessAck     := Constant tl_d_op_e 0.
-  Definition AccessAckData := Constant tl_d_op_e 1.
+  Definition AccessAck     := 0.
+  Definition AccessAckData := 1.
 
   Definition io_req : type :=
     Bit **          (* read *)
@@ -152,9 +150,9 @@ Section Var.
       let a_ack := a_valid && !outstanding in
       let d_ack := outstanding && d_ready in
 
-      let rd_req := a_ack && a_opcode == `Get` in
+      let rd_req := a_ack && a_opcode == `K Get` in
       let wr_req := a_ack &&
-        (a_opcode == `PutFullData` || a_opcode == `PutPartialData`) in
+        (a_opcode == `K PutFullData` || a_opcode == `K PutPartialData`) in
 
       (* TODO(blaxill): skipping malformed tl packet detection *)
       let err_internal := `Zero` in
@@ -164,7 +162,7 @@ Section Var.
         if a_ack then
           ( a_source
           , a_size
-          , if rd_req then `AccessAckData` else `AccessAck`
+          , if rd_req then `K AccessAckData` else `K AccessAck`
           , error_i || err_internal
           , `One`
           )
@@ -216,30 +214,24 @@ Ltac destruct_tl_h2d_step :=
   end.
 Ltac destruct_tl_h2d := repeat destruct_tl_h2d_step.
 
-Definition a_valid   : tl_h2d -> bool := ltac:(intros; destruct_tl_h2d; apply a_valid).
-Definition a_opcode  : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_opcode).
-Definition a_param   : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_param).
-Definition a_size    : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_size).
-Definition a_source  : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_source).
-Definition a_address : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_address).
-Definition a_mask    : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_mask).
-Definition a_data    : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_data).
-Definition a_user    : tl_h2d -> N := ltac:(intros; destruct_tl_h2d; apply a_user).
-Definition d_ready   : tl_h2d -> bool := ltac:(intros; destruct_tl_h2d; apply d_ready).
-
-Definition mk_tl_h2d (a_valid : bool) (a_opcode : N) (a_param : N) (a_size : N)
-           (a_source : N) (a_address : N) (a_mask : N) (a_data : N) (a_user : N)
-           (d_ready : bool) : tl_h2d :=
-  (a_valid, (a_opcode, (a_param, (a_size, (a_source, (a_address, (a_mask, (a_data, (a_user, d_ready))))))))).
+Definition a_valid   (h2d: tl_h2d) : bool := ltac:(destruct_tl_h2d; apply a_valid).
+Definition a_opcode  (h2d: tl_h2d) : N := ltac:(destruct_tl_h2d; apply a_opcode).
+Definition a_param   (h2d: tl_h2d) : N := ltac:(destruct_tl_h2d; apply a_param).
+Definition a_size    (h2d: tl_h2d) : N := ltac:(destruct_tl_h2d; apply a_size).
+Definition a_source  (h2d: tl_h2d) : N := ltac:(destruct_tl_h2d; apply a_source).
+Definition a_address (h2d: tl_h2d) : N := ltac:(destruct_tl_h2d; apply a_address).
+Definition a_mask    (h2d: tl_h2d) : N := ltac:(destruct_tl_h2d; apply a_mask).
+Definition a_data    (h2d: tl_h2d) : N := ltac:(destruct_tl_h2d; apply a_data).
+Definition a_user    (h2d: tl_h2d) : N := ltac:(destruct_tl_h2d; apply a_user).
+Definition d_ready   (h2d: tl_h2d) : bool := ltac:(destruct_tl_h2d; apply d_ready).
 
 Ltac tl_h2d_setter v h2d x :=
   unfold tl_h2d in h2d; simpl in h2d;
   destruct h2d as (a_valid', (a_opcode', (a_param', (a_size', (a_source',
                   (a_address', (a_mask', (a_data', (a_user', d_ready')))))))));
   let setter :=
-      (match eval pattern x in (mk_tl_h2d a_valid' a_opcode' a_param' a_size'
-                                          a_source' a_address' a_mask' a_data'
-                                          a_user' d_ready') with
+      (match eval pattern x in (a_valid', (a_opcode', (a_param', (a_size', (a_source',
+                  (a_address', (a_mask', (a_data', (a_user', d_ready'))))))))) with
        | ?set_x _ => constr:(set_x v)
        end) in
   exact setter.
@@ -271,30 +263,24 @@ Ltac destruct_tl_d2h_step :=
 
 Ltac destruct_tl_d2h := repeat destruct_tl_d2h_step.
 
-Definition d_valid  : tl_d2h -> bool := ltac:(intros; destruct_tl_d2h; apply d_valid).
-Definition d_opcode : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_opcode).
-Definition d_param  : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_param).
-Definition d_size   : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_size).
-Definition d_source : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_source).
-Definition d_sink   : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_sink).
-Definition d_data   : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_data).
-Definition d_user   : tl_d2h -> N := ltac:(intros; destruct_tl_d2h; apply d_user).
-Definition d_error  : tl_d2h -> bool := ltac:(intros; destruct_tl_d2h; apply d_error).
-Definition a_ready  : tl_d2h -> bool := ltac:(intros; destruct_tl_d2h; apply a_ready).
-
-Definition mk_tl_d2h (d_valid : bool) (d_opcode : N) (d_param : N) (d_size : N)
-           (d_source : N) (d_sink : N) (d_data : N) (d_user : N) (d_error : bool)
-           (a_ready : bool) : tl_d2h :=
-  (d_valid, (d_opcode, (d_param, (d_size, (d_source, (d_sink, (d_data, (d_user, (d_error, a_ready))))))))).
+Definition d_valid  (d2h : tl_d2h) : bool := ltac:(destruct_tl_d2h; apply d_valid).
+Definition d_opcode (d2h : tl_d2h) : N := ltac:(destruct_tl_d2h; apply d_opcode).
+Definition d_param  (d2h : tl_d2h) : N := ltac:(destruct_tl_d2h; apply d_param).
+Definition d_size   (d2h : tl_d2h) : N := ltac:(destruct_tl_d2h; apply d_size).
+Definition d_source (d2h : tl_d2h) : N := ltac:(destruct_tl_d2h; apply d_source).
+Definition d_sink   (d2h : tl_d2h) : N := ltac:(destruct_tl_d2h; apply d_sink).
+Definition d_data   (d2h : tl_d2h) : N := ltac:(destruct_tl_d2h; apply d_data).
+Definition d_user   (d2h : tl_d2h) : N := ltac:(destruct_tl_d2h; apply d_user).
+Definition d_error  (d2h : tl_d2h) : bool := ltac:(destruct_tl_d2h; apply d_error).
+Definition a_ready  (d2h : tl_d2h) : bool := ltac:(destruct_tl_d2h; apply a_ready).
 
 Ltac tl_d2h_setter v d2h x :=
   unfold tl_d2h in d2h; simpl in d2h;
   destruct d2h as (d_valid', (d_opcode', (d_param', (d_size', (d_source',
                   (d_sink', (d_data', (d_user', (d_error', a_ready')))))))));
   let setter :=
-      (match eval pattern x in (mk_tl_d2h d_valid' d_opcode' d_param' d_size'
-                                          d_source' d_sink' d_data' d_user'
-                                          d_error' a_ready') with
+      (match eval pattern x in (d_valid', (d_opcode', (d_param', (d_size', (d_source',
+                               (d_sink', (d_data', (d_user', (d_error', a_ready'))))))))) with
        | ?set_x _ => constr:(set_x v)
        end) in
   exact setter.
@@ -312,12 +298,9 @@ Definition set_a_ready  : bool -> tl_d2h -> tl_d2h := ltac:(intros v d2h; tl_d2h
 
 Ltac tlsimpl :=
   unfold tl_h2d_default, tl_d2h_default in *; simpl Types.default in *;
-  cbn [mk_tl_h2d
-         set_a_valid set_a_opcode set_a_param set_a_size set_a_source
-         set_a_address set_a_mask set_a_data set_a_user set_d_ready
-         a_valid a_opcode a_param a_size a_source a_address a_mask a_data a_user d_ready
-         mk_tl_d2h
-         set_d_valid set_d_opcode set_d_param set_d_size set_d_source
-         set_d_sink set_d_data set_d_user set_d_error set_a_ready
-         d_valid d_opcode d_param d_size d_source d_sink d_data d_user d_error a_ready] in *;
-  unfold mk_tl_h2d, mk_tl_d2h in *.
+  cbn [set_a_valid set_a_opcode set_a_param set_a_size set_a_source
+       set_a_address set_a_mask set_a_data set_a_user set_d_ready
+       a_valid a_opcode a_param a_size a_source a_address a_mask a_data a_user d_ready
+       set_d_valid set_d_opcode set_d_param set_d_size set_d_source
+       set_d_sink set_d_data set_d_user set_d_error set_a_ready
+       d_valid d_opcode d_param d_size d_source d_sink d_data d_user d_error a_ready] in *.

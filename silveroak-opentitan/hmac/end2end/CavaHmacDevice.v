@@ -22,7 +22,7 @@ Section WithParameters.
       let s' := s in
       let res :=
           set_d_valid true
-          (set_d_opcode 1%N (* AccessAckData *)
+          (set_d_opcode AccessAckData
           (set_d_size (a_size i)
           (set_d_data (a_data i)
           (set_a_ready true tl_d2h_default)))) in
