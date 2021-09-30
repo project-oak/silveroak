@@ -175,8 +175,8 @@ Instance sha256_inner_specification
            (* and the length of the block is 16 *)
            /\ length block = 16
          else
-           if cleared
-           then True (* no requirements *)
+           if inner_done
+           then True (* no requirements; stay in the done state until block is valid *)
            else
              (* the initial digest is the digest up to i *)
              initial_digest = fold_left (SHA256Alt.sha256_step msg)
@@ -203,7 +203,9 @@ Instance sha256_inner_specification
                  then True (* no guarantees *)
                  else if new_done
                       then
-                        (* output value matches expected digest *)
+                        (* if the initial digest is correct, the output value
+                           matches the expected digest *)
+                        initial_digest = fold_left (SHA256Alt.sha256_step msg) (seq 0 i) SHA256.H0 ->
                         output_value = fold_left (SHA256Alt.sha256_step msg) (seq 0 (S i)) SHA256.H0
                       else True (* no guarantees *))
   |}.
@@ -338,7 +340,7 @@ Proof.
       try reflexivity | ].
   (* destruct cases for [done] *)
   destruct done; logical_simplify; subst; boolsimpl;
-    [ rewrite !resize_noop by (symmetry; length_hammer);
+    [ intros; subst; rewrite !resize_noop by (symmetry; length_hammer);
       reflexivity | ].
   push_resize; push_nth.
   erewrite step_sha256_compress with (t:=N.to_nat round)
@@ -347,7 +349,7 @@ Proof.
   cbn [fst snd]. push_resize.
   rewrite ?resize_noop by (symmetry; length_hammer).
   destr (N.to_nat round =? 63); destr (round =? 63)%N; try lia; [ ].
-  subst. unfold SHA256Alt.sha256_step.
+  intros; subst. unfold SHA256Alt.sha256_step.
   rewrite seq_snoc with (len:=63); rewrite fold_left_app.
   reflexivity.
 Qed.
