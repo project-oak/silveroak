@@ -42,7 +42,7 @@ Section Length.
   Lemma tl_length {A} (l : list A) : length (tl l) = length l - 1.
   Proof. destruct l; cbn [length tl]; lia. Qed.
 
-  Lemma length_if {A} (b : bool) (x y: list A) : 
+  Lemma length_if {A} (b : bool) (x y: list A) :
     length (if b then x else y) = if b then length x else length y.
   Proof. destruct b; reflexivity. Qed.
 End Length.
@@ -165,6 +165,8 @@ Section Misc.
   Qed.
 
 End Misc.
+Hint Rewrite @removelast_tl @removelast_cons: listsimpl.
+Hint Rewrite @length_removelast_cons: push_length.
 Hint Rewrite @seq_snoc : pull_snoc.
 Ltac pull_snoc_step := progress autorewrite with pull_snoc.
 Ltac pull_snoc := repeat pull_snoc_step.
@@ -803,7 +805,9 @@ Ltac push_firstn_step :=
   | _ => progress autorewrite with push_firstn
   | |- context [firstn ?n ?l] =>
     first [ rewrite (@firstn_all2 _ n l) by length_hammer
-          | rewrite (firstn_eq_0 n l) by length_hammer ]
+          | rewrite (firstn_eq_0 n l) by length_hammer
+          | rewrite firstn_removelast by length_hammer
+          ]
   end.
 Ltac push_firstn := repeat push_firstn_step.
 
@@ -866,9 +870,43 @@ Section Resize.
     repeat (f_equal; try lia).
   Qed.
 
+  Lemma resize_firstn_alt {A} (d : A) ls n m :
+    n < length ls ->
+    n <= m ->
+    resize d n (firstn m ls) = firstn n ls.
+  Proof.
+    intros; cbv [resize].
+    now repeat (natsimpl || listsimpl || push_firstn || push_length).
+  Qed.
+
   Lemma resize_cons {A} a n x (xs: list A):
     resize a (S n) (x::xs) = x :: resize a n xs.
   Proof. now cbn. Qed.
+
+  Lemma resize_resize {A} (x:A) xs n m:
+    n <= m -> resize x n (resize x m xs) = resize x n xs.
+  Proof.
+    intros.
+    cbv [resize].
+    repeat (natsimpl || listsimpl || push_firstn || push_length).
+    rewrite <- List.app_assoc.
+    f_equal.
+    destruct (Nat.ltb_spec m (length xs)).
+    { natsimpl. now cbn. }
+    { natsimpl. rewrite Nat.add_sub_assoc by lia. natsimpl.
+      destruct (Nat.leb_spec (m - length xs) (n - length xs) ).
+      { rewrite firstn_all2 by (now push_length).
+        rewrite <- repeat_app.
+        f_equal. lia.
+      }
+      replace (m - length xs) with ((n - length xs) + ((m - length xs) - (n - length xs))) by lia.
+      rewrite repeat_app with (n:= n - length xs).
+      push_firstn.
+      replace (n - m) with 0 by lia.
+      repeat rewrite app_nil_r.
+      reflexivity.
+    }
+  Qed.
 End Resize.
 Hint Rewrite @resize_length : push_length.
 Ltac push_resize_step :=
@@ -877,6 +915,8 @@ Ltac push_resize_step :=
     rewrite (resize_firstn d ls n m) by lia
   | |- context [resize ?d ?n ?ls] =>
     rewrite (resize_noop d n ls) by length_hammer
+  | |- context [resize ?d ?n (resize ?d ?m ?ls)] =>
+    rewrite (resize_resize d ls n m) by lia
   end.
 Ltac push_resize := repeat push_resize_step.
 

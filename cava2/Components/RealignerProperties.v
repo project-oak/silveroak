@@ -258,55 +258,6 @@ Section RealignerSpec.
     reflexivity.
   Qed.
 
-  Lemma bytes_to_N_id_4 xs:
-    BigEndianBytes.N_to_bytes 4 (BigEndianBytes.concat_bytes (List.resize Byte.x00 4 xs)) = xs.
-  Admitted.
-
-  Lemma concat_bytes_4_bound xs:
-    BigEndianBytes.concat_bytes (List.resize Byte.x00 4 xs) < 2 ^ 32.
-  Admitted.
-
-  Lemma concat_bytes_8_bound xs:
-    BigEndianBytes.concat_bytes (List.resize Byte.x00 8 xs) < 2 ^ 64.
-  Admitted.
-
-  Lemma concat_bytes_skip_4_of_8_spec xs n:
-      (length xs < 8)%nat ->
-      n < 32 ->
-        N.testbit
-          (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 (skipn 4 xs))) n = false.
-  Admitted.
-
-  Lemma concat_bytes_lower_8_zero xs n:
-      (length xs < 4)%nat ->
-      n < 32 ->
-        N.testbit
-          (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 xs)) n = false.
-  Admitted.
-
-  Lemma concat_bytes_skip_lower_is_upper xs n:
-        32 <= n -> n < 64 ->
-        N.testbit (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 xs))
-          (n - 32) =
-        N.testbit
-          (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 (skipn 4 xs)))
-          n.
-  Admitted.
-
-  Lemma concat_bytes_8_is_64bit xs n:
-        64 <= n ->
-        N.testbit
-          (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 xs))
-          n = false.
-  Admitted.
-
-  Lemma concat_bytes_truncation x:
-    (N.shiftr
-      (BigEndianBytes.concat_bytes (List.resize Byte.x00 8 x))
-      (N.of_nat 32) mod 2 ^ N.of_nat 32)%N
-      = BigEndianBytes.concat_bytes (List.resize Byte.x00 4 x).
-  Admitted.
-
   Definition realign_inner_spec
     (existing: list Byte.byte) data data_mask := (
       let '(a,b,c,d) :=
@@ -788,9 +739,11 @@ Section RealignerSpec.
             try (rewrite E1; cbn; lia);
             rewrite <- N.log2_lt_pow2 by lia;
             now apply concat_bytes_4_bound).
-        rewrite bytes_to_N_id_4.
+        rewrite bytes_to_N_id_4 by now push_length.
+        cbv [List.resize].
         rewrite Nat2N.id.
-        now rewrite firstn_all.
+        push_firstn.
+        now rewrite List.app_nil_r.
       }
 
 
@@ -800,25 +753,28 @@ Section RealignerSpec.
       apply N.bits_inj; cbv [N.eqf]; intros; push_Ntestbit; boolsimpl.
       {
         destr (n <? 32); push_Ntestbit; boolsimpl.
-        { now rewrite concat_bytes_skip_4_of_8_spec by lia. }
+        { rewrite <- concat_bytes_spec; now rewrite concat_bytes_skip_4_of_8_spec by lia. }
         destr (n <? 64); push_Ntestbit; boolsimpl.
         {
           replace (n - N.of_nat 32 + N.of_nat 0) with (n - 32) by lia.
-          now rewrite concat_bytes_skip_lower_is_upper by lia.
+          repeat rewrite <- concat_bytes_spec.
+          now rewrite concat_bytes_skip_lower32 by lia.
         }
+        repeat rewrite <- concat_bytes_spec.
         now rewrite concat_bytes_8_is_64bit by lia.
       }
       {
         destr (n <? 32); push_Ntestbit; boolsimpl.
         {
-          destruct flush.
+          destruct flush; repeat rewrite <- concat_bytes_spec.
           { now rewrite concat_bytes_skip_4_of_8_spec by lia. }
           { now rewrite concat_bytes_lower_8_zero by lia. }
         }
         destruct flush;
         destr (n <? 64); push_Ntestbit; boolsimpl;
-        replace (n - N.of_nat 32 + N.of_nat 0) with (n - 32) by lia.
-        { now rewrite concat_bytes_skip_lower_is_upper by lia. }
+        replace (n - N.of_nat 32 + N.of_nat 0) with (n - 32) by lia;
+        repeat rewrite <- concat_bytes_spec.
+        { now rewrite concat_bytes_skip_lower32 by lia. }
         { now rewrite concat_bytes_8_is_64bit. }
         { now replace (n - N.of_nat 32 + N.of_nat 32) with n by lia. }
         now rewrite concat_bytes_8_is_64bit.
