@@ -5,10 +5,15 @@ Require Import coqutil.Datatypes.List.
 Require Import coqutil.Word.Interface coqutil.Map.Interface.
 Require Import coqutil.Map.OfListWord.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
+Require Import HmacHardware.Hmac.
 Require Import HmacSoftware.Sha256ToRiscV.
 Require Import HmacEnd2End.CavaHmacDevice.
 Require Import riscv.Spec.Decode.
 Require Import riscv.Utility.InstructionCoercions.
+Require Import Cava.Expr.
+Require Import Cava.Semantics.
+Require Import Cava.Types.
+
 Open Scope ilist_scope.
 
 Definition all_insts: list Instruction :=
@@ -54,7 +59,7 @@ Definition initial_def: ExtraRiscvMachine hmac_device := {|
                           (List.seq 0 (4 * List.length all_insts));
     getLog := [];
   |};
-  getExtraState := tt; (* TODO replace by reset_state *)
+  getExtraState := reset_state hmac_top;
 |}.
 
 Definition initial := Eval vm_compute in initial_def. (* takes a few seconds *)
