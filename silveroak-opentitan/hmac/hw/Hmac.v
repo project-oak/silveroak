@@ -37,8 +37,8 @@ Section Var.
   Definition hmac_register_log_sz := 5%nat.
 
   Definition REG_INTR_STATE := Constant (BitVec hmac_register_log_sz) 0.
+  Definition REG_CFG := Constant (BitVec hmac_register_log_sz) 4.
   Definition REG_CMD := Constant (BitVec hmac_register_log_sz) 5.
-  Definition REG_INTR := Constant (BitVec hmac_register_log_sz) 0.
   Definition REG_DIGEST_0 := Constant (BitVec hmac_register_log_sz) 0x11.
   Definition REG_DIGEST_1 := Constant (BitVec hmac_register_log_sz) 0x12.
   Definition REG_DIGEST_2 := Constant (BitVec hmac_register_log_sz) 0x13.
@@ -73,18 +73,27 @@ Section Var.
 
       let cmd_hash_start   := (`index` registers `REG_CMD` & `K 0x1`) == `K 0x1` in
       let cmd_hash_process := (`index` registers `REG_CMD` & `K 0x2`) == `K 0x2` in
+      let cmd_hmac_enable  := (`index` registers `REG_CFG` & `K 0x1`) == `K 0x1` in
 
       let state' : BitVec 5 :=
-             if sha_ready && state == `K 1` && ptr == `K 15` then state + `K 1`
-        (* cmd_hash_process is the end of message, but we also have to wait for
-         * fifo to drain by observing fifo_valid *)
-        else if sha_ready && state == `K 2` && cmd_hash_process && !fifo_valid  then state + `K 1`
-        else if             state == `K 3`  && (!waiting_for_digest) then state + `K 1`
-        else if sha_ready && state == `K 4` && ptr == `K 15` then state + `K 1`
-        else if sha_ready && state == `K 5` && ptr == `K 7`  then state + `K 1`
-        else if sha_ready && state == `K 6` && (!waiting_for_digest) then `K 0`
-        else if state == `K 0` && cmd_hash_start then `K 1`
-        else state in
+        if cmd_hmac_enable then
+               if sha_ready && state == `K 1` && ptr == `K 15` then state + `K 1`
+          (* cmd_hash_process is the end of message, but we also have to wait for
+           * fifo to drain by observing fifo_valid *)
+          else if sha_ready && state == `K 2` && cmd_hash_process && !fifo_valid  then state + `K 1`
+          else if              state == `K 3`  && (!waiting_for_digest) then state + `K 1`
+          else if sha_ready && state == `K 4` && ptr == `K 15` then state + `K 1`
+          else if sha_ready && state == `K 5` && ptr == `K 7`  then state + `K 1`
+          else if sha_ready && state == `K 6` && (!waiting_for_digest) then `K 0`
+          else if state == `K 0` && cmd_hash_start then `K 1`
+          else state
+        else
+          (* in hmac bypass == sha only mode, we skip the key prefix step *)
+               if state == `K 0` && cmd_hash_start then `K 2`
+          else if sha_ready && state == `K 2` && cmd_hash_process && !fifo_valid  then `K 3`
+          else if state == `K 3` && (!waiting_for_digest) then state + `K 0`
+          else state
+      in
 
       let ptr' : BitVec 6 :=
              if (state == `K 0`) || ! (state == state') then `K 0`
@@ -121,7 +130,7 @@ Section Var.
       let next_registers :=
         (* assert the INTR register `hmac_done` when we finish *)
         (fun regs => if (state == `K 6`) && (state' == `K 0`) then
-          let regs := `replace` regs `REG_INTR` `K 1` in
+          let regs := `replace` regs `REG_INTR_STATE` `K 1` in
           let regs := `replace` regs `REG_DIGEST_0` ( `index` sha_digest `Constant (BitVec 4) 0` ) in
           let regs := `replace` regs `REG_DIGEST_1` ( `index` sha_digest `Constant (BitVec 4) 1` ) in
           let regs := `replace` regs `REG_DIGEST_2` ( `index` sha_digest `Constant (BitVec 4) 2` ) in
@@ -133,7 +142,7 @@ Section Var.
           regs
         else regs)
         (* deassert the CMD registers once we no longer need them @ state > 3 *)
-        (if state == `K 3` then `replace` registers `REG_CMD` `K 0` else registers)
+        (if state == `K 3` || state == `K 6` then `replace` registers `REG_CMD` `K 0` else registers)
       in
 
       let waiting_for_digest :=
@@ -257,6 +266,8 @@ Section SanityCheck.
     (get_regs (snd (
     simulate' hmac
     (
+     (* set hmac_en *)
+     [ (true, (1, (4, (0xF, (false, tt))))) ] ++
      (* set cmd_start *)
      [ (true, (1, (5, (0xF, (false, tt))))) ] ++
 
