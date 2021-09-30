@@ -102,63 +102,36 @@ End Var.
 
 Example sample_trace :=
   Eval compute in
-    let nop :=
-        ((false,        (* a_valid   *)
-          (0,           (* a_opcode  *)
-           (0,          (* a_param   *)
-            (0,         (* a_size    *)
-             (0,        (* a_source  *)
-              (0,       (* a_address *)
-               (0,      (* a_mask    *)
-                (0,     (* a_data    *)
-                 (0,    (* a_user    *)
-                  (true (* d_ready   *)
-         )))))))))), tt)%N in
-
+    let nop := set_d_ready true tl_h2d_default in
     let read_reg (r : N) :=
-        ((true,         (* a_valid   *)
-          (4,           (* a_opcode  Get *)
-           (0,          (* a_param   *)
-            (0,         (* a_size    *)
-             (0,        (* a_source  *)
-              (r,       (* a_address *)
-               (0,      (* a_mask    *)
-                (0,     (* a_data    *)
-                 (0,    (* a_user    *)
-                  (true (* d_ready   *)
-         )))))))))), tt)%N in
-
+        set_a_valid true
+        (set_a_opcode Get
+        (set_a_size 2%N
+        (set_a_address r
+        (set_d_ready true tl_h2d_default)))) in
     let write_val (v : N) :=
-        ((true,         (* a_valid   *)
-          (0,           (* a_opcode  PutFullData *)
-           (0,          (* a_param   *)
-            (0,         (* a_size    *)
-             (0,        (* a_source  *)
-              (0,       (* a_address value-reg *)
-               (0,      (* a_mask    *)
-                (v,     (* a_data    *)
-                 (0,    (* a_user    *)
-                  (true (* d_ready   *)
-         )))))))))), tt)%N in
+        set_a_valid true
+        (set_a_opcode PutFullData
+        (set_a_size 2%N
+        (set_a_address 0%N (* value-ref *)
+        (set_a_data v
+        (set_d_ready true tl_h2d_default))))) in
 
     simulate incr
-             [ nop
-               ; read_reg 4 (* status *)
-               ; nop
-               ; write_val 42
-               ; nop
-               ; nop
-               ; read_reg 4 (* status *)
-               ; nop
-               ; read_reg 0 (* value *)
-               ; nop
-               ; read_reg 4 (* status *)
+             [ (nop, tt)
+               ; (read_reg 4, tt) (* status *)
+               ; (nop, tt)
+               ; (write_val 42, tt)
+               ; (nop, tt)
+               ; (nop, tt)
+               ; (read_reg 4, tt) (* status *)
+               ; (nop, tt)
+               ; (read_reg 0, tt) (* value *)
+               ; (nop, tt)
+               ; (read_reg 4, tt) (* status *)
              ]%N.
 (* Print sample_trace. *)
 
-(* Require Import Coq.ZArith.ZArith. Open Scope Z_scope. *)
-
-(* From Coq Require Import Lia. *)
 Require Import Coq.micromega.Lia.
 
 Require Import riscv.Utility.Utility.
@@ -183,33 +156,6 @@ Section WithParameters.
 
   Context {word: Interface.word 32} {word_ok: word.ok word}
           {Mem: map.map word byte} {Registers: map.map Z word}.
-
-  Definition incr_device_step (s : denote_type (state_of incr))
-             '((is_read_req, is_write_req, req_addr, req_value) : (bool * bool * N * N))
-    : denote_type (state_of incr) * (bool * N) :=
-    let input := ((is_read_req || is_write_req,     (* a_valid   *)
-                   (if is_read_req then 4 else 0, (* a_opcode  *)
-                    (0,                           (* a_param   *)
-                     (0,                          (* a_size    *)
-                      (0,                         (* a_source  *)
-                       (req_addr,                 (* a_address *)
-                        (0,                       (* a_mask    *)
-                         (req_value,              (* a_data    *)
-                          (0,                     (* a_user    *)
-                           true                   (* d_ready   *)
-                  ))))))))), tt)%N%bool in
-    let '(s', output) := Semantics.step incr s input in
-    let '(d_valid,
-          (_d_opcode,
-           (_d_param,
-            (_d_size,
-             (_d_source,
-              (_d_sink,
-               (d_data,
-                (_d_user,
-                 (_d_error,
-                  _a_ready))))))))) := output in
-    (s', (d_valid, d_data)).
 
   Definition consistent_states
              '((reqid, (reqsz, (rspop, (error, (outstanding, (_we_o, _re_o))))))
@@ -237,7 +183,7 @@ Section WithParameters.
     device.is_ready_state s := exists val tl_d2h tlul_state,
         consistent_states tlul_state tl_d2h
         /\ s = mk_counter_state 0 val tl_d2h tlul_state;
-    device.run1 := incr_device_step;
+    device.run1 s i := Semantics.step incr s (i, tt);
     device.addr_range_start := INCR_BASE_ADDR;
     device.addr_range_pastend := INCR_END_ADDR;
     device.maxRespDelay := 1;
@@ -297,16 +243,10 @@ Section WithParameters.
       eapply pair_equal_spec in H; destruct H as [?H0 ?H1]
     end.
 
-  Ltac destruct_tl_d2h :=
-    match goal with
-    | H : bool * (N * (N * (N * (N * (N * (N * (N * (bool * bool)))))))) |- _ =>
-      destruct H as [d_valid [d_opcode [d_param [d_size [d_source [d_sink [d_data [d_user [d_error a_ready]]]]]]]]]
-    end.
-
   Ltac destruct_tlul_adapter_reg_state :=
     match goal with
     | H : N * (N * (N * (bool * (bool * (bool * bool))))) |- _ =>
-      destruct H as [reqid [reqsz [rspop [error [outstanding [we_o re_o]]]]]]
+      destruct H as [?reqid [?reqsz [?rspop [?error [?outstanding [?we_o ?re_o]]]]]]
     end.
 
   Ltac destruct_consistent_states :=
@@ -314,6 +254,9 @@ Section WithParameters.
     | H : consistent_states _ _ |- _ =>
       destruct H as (Hvalid & Hopcode & Hsize & Hsource & Herror & Hready)
     end.
+
+  Lemma N_to_word_word_to_N: forall v, N_to_word (word_to_N v) = v.
+  Proof. intros. unfold N_to_word, word_to_N. ZnWords. Qed.
 
   (* Set Printing All. *)
   Global Instance cava_counter_satisfies_state_machine:
@@ -333,87 +276,69 @@ Section WithParameters.
       eauto using IDLE_related.
     - (* nonMMIO_device_step_preserves_state_machine_state: *)
       simpl in sL1, sL2.
-      cbn in H0.
-      repeat destruct_pair_let_hyp. (* <-- very slow, but faster than simp *)
-      repeat (destruct_pair_equal_hyp; subst; cbn).
-      inversion H; subst;
+      destruct_tl_h2d. simpl in H. subst.
+      cbn in H1.
+      repeat (destruct_pair_let_hyp;
+              repeat (destruct_pair_equal_hyp; subst; cbn [fst snd])).
+      inversion H0; subst;
         try (rewrite incrN_word_to_bv);
         try (constructor; try lia; simpl; boolsimpl; ssplit; reflexivity).
     - (* state_machine_read_to_device_read: *)
       (* simpler because device.maxRespDelay=1 *)
       unfold device.maxRespDelay, device.runUntilResp, device.state, device.run1, counter_device.
       unfold state_machine.read_step, increment_wait_state_machine, read_step in *.
-      simp.
       simpl in sL. destruct sL as ((istate & value & tl_d2h) & tlul_state).
       destruct_tl_d2h. destruct_tlul_adapter_reg_state.
-      destruct r.
+      destruct H as [v [sH' [Hbytes H]]]. rewrite Hbytes.
+      destruct r; simp; [|].
       + (* r=VALUE *)
-        simp.
         destruct_consistent_states. subst.
         repeat (rewrite Z_word_N by lia; cbn).
         destruct outstanding; [|];
-          eexists _, _, _; ssplit; try reflexivity;
-            eapply IDLE_related; unfold consistent_states; ssplit; reflexivity.
+          eexists _, _, _; ssplit; try reflexivity; cbn; rewrite Z_word_N by lia;
+            try (eapply IDLE_related; unfold consistent_states; ssplit; reflexivity);
+            try (apply N_to_word_word_to_N).
       + (* r=STATUS *)
-        destruct sH.
+        destruct sH; [| |].
         * (* sH=IDLE *)
           inversion H0. subst.
           destruct_consistent_states. subst. cbn.
           repeat (rewrite Z_word_N by lia; cbn).
-          unfold status_value, STATUS_IDLE, word_to_N.
-          destruct outstanding; eexists _, _, _.
-          -- ssplit; try reflexivity; [|].
-             ++ rewrite word.unsigned_slu by ZnWords.
-                rewrite !word.unsigned_of_Z.
-                simpl. reflexivity.
-             ++ apply IDLE_related. simpl. ssplit; reflexivity.
-          -- ssplit; try reflexivity; [|].
-             ++ rewrite word.unsigned_slu by ZnWords.
-                rewrite !word.unsigned_of_Z.
-                simpl. reflexivity.
-             ++ apply IDLE_related. simpl. ssplit; reflexivity.
+          unfold status_value, STATUS_IDLE, N_to_word, word_to_N.
+          destruct outstanding; eexists _, _, _; ssplit; try reflexivity;
+              try (apply IDLE_related; simpl; ssplit; reflexivity);
+              try (simpl; unfold N_to_word; ZnWords).
         * (* sH=BUSY *)
           simpl.
-          unfold STATUS_ADDR, INCR_BASE_ADDR, word_to_N, status_value, STATUS_BUSY.
+          unfold STATUS_ADDR, INCR_BASE_ADDR, N_to_word, word_to_N, status_value, STATUS_BUSY.
           rewrite word.unsigned_of_Z. unfold word.wrap.
-          inversion H0; subst.
+          inversion H0; subst; [| |].
           -- (* BUSY1_related *)
-            exists (word.of_Z 2). (* <- bit #1 (busy) is set, all others are 0 *)
-            destruct outstanding; simpl; eexists _, _.
-            ++ rewrite word.unsigned_of_Z. unfold word.wrap. simpl.
-               ssplit; try reflexivity; [|].
+            destruct outstanding; eexists _, _, _; simpl; [|].
+            ++ ssplit; try reflexivity; [|].
                ** rewrite incrN_word_to_bv.
                   apply BUSY_done_related; unfold consistent_states; ssplit; reflexivity.
                ** right. eexists. ssplit; try reflexivity; [|].
                   --- apply Nat.pred_inj; try lia. rewrite Nat.pred_succ. reflexivity.
-                  --- ZnWords.
-            ++ rewrite word.unsigned_of_Z. unfold word.wrap. simpl.
-               ssplit; try reflexivity; [|].
+                  --- simpl. ZnWords.
+            ++ ssplit; try reflexivity; [|].
                ** apply BUSY2_related. 1: shelve. unfold consistent_states. ssplit; reflexivity.
                ** right. eexists. ssplit; try reflexivity; [|].
                   --- apply Nat.pred_inj; try lia. rewrite Nat.pred_succ. reflexivity.
-                  --- ZnWords.
+                  --- simpl. ZnWords.
                       Unshelve. lia.
           -- (* BUSY2_related *)
-            destruct outstanding; simpl.
-            ++ (* outstanding = true *)
-              exists (word.of_Z 4). (* <- bit #2 (done) is set, all others are 0 *)
-              eexists _, _.
-              rewrite word.unsigned_of_Z. unfold word.wrap.
-              simpl. ssplit; try reflexivity; [|].
+            destruct outstanding; eexists _, _, _; simpl; [|].
+            ++ ssplit; try reflexivity; [|].
               ** rewrite incrN_word_to_bv.
                  apply DONE_related; unfold consistent_states; ssplit; reflexivity.
-              ** left. ssplit; try reflexivity. ZnWords.
-            ++ (* outstanding = false *)
-              exists (word.of_Z 2). (* <- bit #1 (busy) is set, all others are 0 *)
-              eexists _, _.
-              rewrite word.unsigned_of_Z. unfold word.wrap. simpl.
-              ssplit; try reflexivity; [|].
+              ** left. simpl. ssplit; try reflexivity. ZnWords.
+            ++ ssplit; try reflexivity; [|].
               ** rewrite incrN_word_to_bv.
                  apply BUSY_done_related; unfold consistent_states; ssplit; reflexivity.
               ** right. eexists. ssplit; try reflexivity; [|].
                  --- apply Nat.pred_inj; try lia. rewrite Nat.pred_succ. reflexivity.
-                 --- ZnWords.
+                 --- simpl. ZnWords.
           -- (* BUSY_done_related *)
             (* the transition that was used to show that sH is not stuck was *)
             (* a transition from BUSY to BUSY returning a busy flag, but *)
@@ -422,29 +347,19 @@ Section WithParameters.
             (* simulate what happened in the device is a BUSY-to-DONE *)
             (* transition returning a done flag instead of a BUSY-to-BUSY *)
             (* transition returning a busy flag. *)
-            exists (word.of_Z 4). (* <- bit #2 (done) is set, all others are 0 *)
-            destruct outstanding; boolsimpl; simpl;
-              eexists _, _.
-            ++ rewrite word.unsigned_of_Z. unfold word.wrap. cbn.
-               ssplit; try reflexivity; [|].
-               ** apply DONE_related. unfold consistent_states; ssplit; reflexivity.
-               ** left. split. 2: reflexivity. ZnWords.
-            ++ rewrite word.unsigned_of_Z. unfold word.wrap. cbn.
-               ssplit; try reflexivity; [|].
-               ** apply DONE_related. unfold consistent_states; ssplit; reflexivity.
-               ** left. split. 2: reflexivity. ZnWords.
+            destruct outstanding; eexists _, _, _; boolsimpl; simpl;
+              ssplit; try reflexivity;
+                try (apply DONE_related; unfold consistent_states; ssplit; reflexivity);
+                try (left; split; try reflexivity; simpl; ZnWords).
         * (* sH=DONE *)
           simpl.
-          unfold STATUS_ADDR, INCR_BASE_ADDR, word_to_N, status_value, STATUS_BUSY.
+          unfold STATUS_ADDR, INCR_BASE_ADDR, N_to_word, word_to_N, status_value, STATUS_BUSY.
           rewrite !word.unsigned_of_Z. unfold word.wrap.
           inversion H0. subst.
-          exists (word.of_Z 4). (* <- bit #2 (done) is set, all others are 0 *)
-          rewrite word.unsigned_of_Z. unfold word.wrap. cbn.
-          destruct outstanding; eexists _, _; boolsimpl; simpl; [|].
-          -- ssplit; try reflexivity; [|]. 2: ZnWords.
-             eapply DONE_related; unfold consistent_states; ssplit; reflexivity.
-          -- ssplit; try reflexivity; [|]. 2: ZnWords.
-             eapply DONE_related; unfold consistent_states; ssplit; reflexivity.
+          destruct outstanding; eexists _, _, _; boolsimpl; simpl;
+            ssplit; try reflexivity;
+              try (eapply DONE_related; unfold consistent_states; ssplit; reflexivity);
+              try (simpl; ZnWords).
     - (* state_machine_write_to_device_write: *)
       destruct H as (sH' & ? & ?). subst.
       unfold write_step in H1.
@@ -454,13 +369,10 @@ Section WithParameters.
       destruct_tl_d2h. destruct_tlul_adapter_reg_state. subst. cbn.
       unfold word_to_N.
       rewrite word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
-      destruct outstanding; boolsimpl; simpl; [|].
-      * eexists _, _, _. ssplit; try reflexivity; [].
-        apply BUSY1_related. 1: lia.
-        unfold consistent_states; ssplit; reflexivity.
-      * eexists _, _, _. ssplit; try reflexivity; [].
-        apply BUSY1_related. 1: lia.
-        unfold consistent_states; ssplit; reflexivity.
+      destruct outstanding; boolsimpl; simpl;
+        eexists _, _, _; ssplit; try reflexivity; try assumption; apply BUSY1_related;
+          try lia;
+          try (unfold consistent_states; ssplit; reflexivity).
     - (* read_step_unique: *)
       simpl in *. unfold read_step in *. simp.
       destruct v; destruct r; try contradiction; simp; try reflexivity.

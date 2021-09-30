@@ -18,11 +18,15 @@ Section WithParameters.
   Global Instance hmac_device: device := {|
     device.state := unit;
     device.is_ready_state := (eq tt);
-    device.run1 s '(is_read_req, is_write_req, req_addr, req_value) :=
+    device.run1 s i :=
       let s' := s in
-      let is_resp := true in
-      let resp := req_value in
-      (s', (is_resp, resp));
+      let res :=
+          set_d_valid true
+          (set_d_opcode AccessAckData
+          (set_d_size (a_size i)
+          (set_d_data (a_data i)
+          (set_a_ready true tl_d2h_default)))) in
+      (s', res);
     device.addr_range_start := TOP_EARLGREY_HMAC_BASE_ADDR;
     device.addr_range_pastend := TOP_EARLGREY_HMAC_BASE_ADDR +
                                  HMAC_MSG_FIFO_REG_OFFSET +

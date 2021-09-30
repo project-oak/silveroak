@@ -22,6 +22,7 @@ Require Import coqutil.Z.Lia.
 Require Import coqutil.Map.Interface.
 Require Import coqutil.Word.Bitwidth32.
 Require Import riscv.Platform.Sane.
+Require Export Cava.TLUL.
 
 Local Open Scope Z_scope.
 Local Open Scope bool_scope.
@@ -54,10 +55,10 @@ Module device.
     is_ready_state: state -> Prop;
 
     (* run one simulation step, will be instantiated with Cava.Semantics.Combinational.step *)
-    run1: (* input: current state, is_read_req, is_write_req, req_addr, req_value *)
-      state -> (bool * bool * N * N) ->
-      (* output: next state, is_resp, resp *)
-      state * (bool * N);
+    run1: (* input: TileLink host-2-device *)
+      state -> tl_h2d ->
+      (* output: next state, TileLink device-2-host *)
+      state * tl_d2h;
 
     (* lowest address of the MMIO address range used to communicate with this device *)
     addr_range_start: Z;
@@ -76,10 +77,10 @@ Module device.
        software keeps polling until the MMIO read returns a "done" response *)
 
   (* returning None means out of fuel and must not happen if fuel >= device.maxRespDelay *)
-  Definition runUntilResp{D: device}(is_read_req is_write_req: bool)(req_addr req_value: N) :=
-    fix rec(fuel: nat)(s: device.state): option N * device.state :=
-      let '(next, (is_resp, resp)) := device.run1 s (is_read_req, is_write_req, req_addr, req_value) in
-      if is_resp then (Some resp, next) else
+  Definition runUntilResp{D: device}(h2d: tl_h2d) :=
+    fix rec(fuel: nat)(s: device.state): option tl_d2h * device.state :=
+      let '(next, respo) := device.run1 s h2d in
+      if d_valid respo then (Some respo, next) else
         match fuel with
         | O => (None, next)
         | S fuel' => rec fuel' next
@@ -144,44 +145,57 @@ Section WithParams.
   Definition word_to_N(w: word): N :=
     Z.to_N (word.unsigned w).
 
-  Definition runUntilResp(is_read_req is_write_req: bool)(req_addr req_value: word):
+  Definition runUntilResp(h2d: tl_h2d):
     OState (ExtraRiscvMachine D) word :=
-    let req_addr := word_to_N req_addr in
-    let req_value := word_to_N req_value in
     mach <- get;
-    let (respo, new_device_state) := device.runUntilResp is_read_req is_write_req req_addr req_value
-                                       device.maxRespDelay mach.(getExtraState) in
+    let (respo, new_device_state) := device.runUntilResp h2d device.maxRespDelay
+                                                         mach.(getExtraState) in
     put (withExtraState new_device_state mach);;
     resp <- fail_if_None respo;
-    Return (N_to_word resp).
+    Return (N_to_word (d_data resp)).
 
-  Definition mmioLoad(n: nat)(addr: word): OState (ExtraRiscvMachine D) (HList.tuple byte n) :=
-    v <- runUntilResp true false addr (word.of_Z 0);
-    Return (LittleEndian.split n (word.unsigned v)).
+  Definition mmioLoad(log2_nbytes: nat)(addr: word)
+    : OState (ExtraRiscvMachine D) (HList.tuple byte (2 ^ log2_nbytes)) :=
+    let h2d : tl_h2d :=
+        set_a_valid true
+        (set_a_opcode Get
+        (set_a_size (N.of_nat log2_nbytes)
+        (set_a_address (word_to_N addr)
+        (set_d_ready true tl_h2d_default)))) in
+    v <- runUntilResp h2d;
+    Return (LittleEndian.split (2 ^ log2_nbytes) (word.unsigned v)).
 
-  Definition mmioStore(n: nat)(addr: word)(v: HList.tuple byte n): OState (ExtraRiscvMachine D) unit :=
-    ignored <- runUntilResp false true addr (word.of_Z (LittleEndian.combine n v));
+  Definition mmioStore(log2_nbytes: nat)(addr: word)(v: HList.tuple byte (2 ^ log2_nbytes))
+    : OState (ExtraRiscvMachine D) unit :=
+    let h2d : tl_h2d :=
+        set_a_valid true
+        (set_a_opcode PutFullData
+        (set_a_size (N.of_nat log2_nbytes)
+        (set_a_address (word_to_N addr)
+        (set_a_data (Z.to_N (LittleEndian.combine (2 ^ log2_nbytes) v))
+        (set_d_ready true tl_h2d_default))))) in
+    ignored <- runUntilResp h2d;
     Return tt.
 
-  Definition loadN(n: nat)(kind: SourceType)(a: word):
-    OState (ExtraRiscvMachine D) (HList.tuple byte n) :=
+  Definition loadN(log2_nbytes: nat)(kind: SourceType)(a: word):
+    OState (ExtraRiscvMachine D) (HList.tuple byte (2 ^ log2_nbytes)) :=
     mach <- get;
-    match Memory.load_bytes n mach.(getMachine).(getMem) a with
+    match Memory.load_bytes (2 ^ log2_nbytes) mach.(getMachine).(getMem) a with
     | Some v =>
       match kind with
       | Fetch => if isXAddr4B a mach.(getMachine).(getXAddrs) then Return v else fail_hard
       | _ => Return v
       end
-    | None => if device.isMMIOAddrB a n then mmioLoad n a else fail_hard
+    | None => if device.isMMIOAddrB a (2 ^ log2_nbytes) then mmioLoad log2_nbytes a else fail_hard
     end.
 
-  Definition storeN(n: nat)(kind: SourceType)(a: word)(v: HList.tuple byte n) :=
+  Definition storeN(log2_nbytes: nat)(kind: SourceType)(a: word)(v: HList.tuple byte ( 2 ^ log2_nbytes)) :=
     mach <- get;
-    match Memory.store_bytes n mach.(getMachine).(getMem) a v with
+    match Memory.store_bytes (2 ^ log2_nbytes) mach.(getMachine).(getMem) a v with
     | Some m => update (withMem m)
-    | None => if device.isMMIOAddrB a n then mmioStore n a v else fail_hard
+    | None => if device.isMMIOAddrB a (2 ^ log2_nbytes) then mmioStore log2_nbytes a v else fail_hard
     end;;
-    update (fun mach => withXAddrs (invalidateWrittenXAddrs n a mach.(getXAddrs)) mach).
+    update (fun mach => withXAddrs (invalidateWrittenXAddrs (2 ^ log2_nbytes) a mach.(getXAddrs)) mach).
 
   Definition interpret_action(a: riscv_primitive): OState (ExtraRiscvMachine D) (primitive_result a) :=
     match a with
@@ -201,14 +215,14 @@ Section WithParams.
           update (fun mach => withRegs (map.put mach.(getMachine).(getRegs) reg v) mach)
     | GetPC => mach <- get; Return mach.(getMachine).(getPc)
     | SetPC newPC => update (withNextPc newPC)
-    | LoadByte ctxid a => loadN 1 ctxid a
-    | LoadHalf ctxid a => loadN 2 ctxid a
-    | LoadWord ctxid a => loadN 4 ctxid a
-    | LoadDouble ctxid a => loadN 8 ctxid a
-    | StoreByte ctxid a v => storeN 1 ctxid a v
-    | StoreHalf ctxid a v => storeN 2 ctxid a v
-    | StoreWord ctxid a v => storeN 4 ctxid a v
-    | StoreDouble ctxid a v => storeN 8 ctxid a v
+    | LoadByte ctxid a => loadN 0 ctxid a
+    | LoadHalf ctxid a => loadN 1 ctxid a
+    | LoadWord ctxid a => loadN 2 ctxid a
+    | LoadDouble ctxid a => loadN 3 ctxid a
+    | StoreByte ctxid a v => storeN 0 ctxid a v
+    | StoreHalf ctxid a v => storeN 1 ctxid a v
+    | StoreWord ctxid a v => storeN 2 ctxid a v
+    | StoreDouble ctxid a v => storeN 3 ctxid a v
     | EndCycleNormal => update (fun m => (withPc m.(getNextPc)
                                          (withNextPc (word.add m.(getNextPc) (word.of_Z 4)) m)))
     | EndCycleEarly _
@@ -224,7 +238,7 @@ Section WithParams.
     end.
 
   Definition device_step_without_IO(d: D): D :=
-    fst (device.run1 d (false, false, word_to_N (word.of_Z 0), word_to_N (word.of_Z 0))).
+    let '(next_state, ignored_d2h) := (device.run1 d tl_h2d_default) in next_state.
 
   Fixpoint device_steps(n: nat): OState (ExtraRiscvMachine D) unit :=
     match n with
