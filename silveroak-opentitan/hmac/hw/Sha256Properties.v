@@ -1671,14 +1671,8 @@ Proof.
   intros (((((msg, msg_complete), padder_byte_index), inner_byte_index), t), cleared).
   intros; logical_simplify; subst.
 
-  (* This might be a faster way to simplify, but breaks some parts of the proof *)
-  (*
   rewrite step_sha256_simplified_eq. cbv [step_sha256_simplified]. cbn [fst snd].
   rewrite <-!tup_if. cbn [fst snd].
-   *)
-  cbv [sha256]; stepsimpl.
-  repeat (destruct_inner_pair_let; cbn [fst snd]).
-  autorewrite with tuple_if; cbn [fst snd].
 
   (* A whole bunch of assertions about the properties of padded_message_size
      related to all 3 possible next messages *)
