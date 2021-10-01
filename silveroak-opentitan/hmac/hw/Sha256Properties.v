@@ -1319,7 +1319,7 @@ Instance sha256_invariant
                         block to start inner loop *)
                    block = List.slice 0%N (SHA256.padded_msg msg)
                                       (inner_byte_index / 64 * 16) 16
-                   /\ t = 64
+                   /\ (if (padder_byte_index =? 64) then t = 0 else t = 64)
                    /\ padder_byte_index = inner_byte_index + 64
                  else
                    (* inner loop is in progress *)
@@ -1483,7 +1483,7 @@ Instance sha256_specification
              else if (new_padder_byte_index <? 64)
                   then true
                   else new_t =? 64 in
-         exists digest,
+         exists digest : list N,
            output = (is_cleared_or_done, (digest, is_ready))
            /\ if is_cleared
              then digest = SHA256.H0
@@ -1629,6 +1629,28 @@ Proof.
   apply fold_left_ext_In; intros *. rewrite in_seq; natsimpl; intros.
   rewrite sha256_W_truncate by lia. reflexivity.
 Qed.
+Require Import Coq.derive.Derive.
+
+(* simplifies the sha256 circuit so we don't have to wait for the slow
+   simplifications in every proof *)
+Derive step_sha256_simplified
+       SuchThat
+       (forall ready block digest count done sha256_padder_state sha256_inner_state
+          fifo_data_valid fifo_data is_final final_length clear,
+           let state := ((ready, (block, (digest, (count, done)))),
+                         (sha256_padder_state, sha256_inner_state)) in
+           let input := (fifo_data_valid,
+                         (fifo_data, (is_final, (final_length, (clear, tt))))) in
+           step sha256 state input =
+           step_sha256_simplified ready block digest count done sha256_padder_state sha256_inner_state
+                                  fifo_data_valid fifo_data is_final final_length clear)
+       As step_sha256_simplified_eq.
+Proof.
+  cbv [sha256]; intros; stepsimpl.
+  repeat (destruct_inner_pair_let; cbn [fst snd]).
+  rewrite <-!tup_if. cbn [fst snd].
+  subst step_sha256_simplified. instantiate_app_by_reflexivity.
+Qed.
 
 Lemma sha256_invariant_preserved : invariant_preserved sha256.
 Proof.
@@ -1648,6 +1670,12 @@ Proof.
   intro.
   intros (((((msg, msg_complete), padder_byte_index), inner_byte_index), t), cleared).
   intros; logical_simplify; subst.
+
+  (* This might be a faster way to simplify, but breaks some parts of the proof *)
+  (*
+  rewrite step_sha256_simplified_eq. cbv [step_sha256_simplified]. cbn [fst snd].
+  rewrite <-!tup_if. cbn [fst snd].
+   *)
   cbv [sha256]; stepsimpl.
   repeat (destruct_inner_pair_let; cbn [fst snd]).
   autorewrite with tuple_if; cbn [fst snd].
@@ -1717,6 +1745,7 @@ Proof.
                | |- context [S (?x - 1)] => replace (S (x - 1)) with x by prove_by_zify
                end.
     all:natsimpl.
+    all:try (destr (inner_byte_index + 64 =? 64); logical_simplify; subst; lia).
     all:lazymatch goal with
         | |- _ /\ _ /\ _ => ssplit; [ reflexivity | | length_hammer ]
         | _ => idtac
@@ -1844,12 +1873,14 @@ Proof.
           destr (count =? 16)%N; [ | exfalso; prove_by_zify ].
           subst; rewrite ?N.eqb_refl in *; logical_simplify; subst.
           cbn [Nat.eqb] in *.
-          repeat destruct_one_match; logical_simplify; subst; try lia.
-          all:rewrite firstn_slice_app by (push_length; prove_by_zify).
+          destr (inner_byte_index + 64 =? 64); logical_simplify; subst.
+          all:repeat destruct_one_match; logical_simplify; subst; try lia.
           all:repeat lazymatch goal with
                      | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
                      | |- context [Nat.ltb ?x ?y] => destr (Nat.ltb x y); try lia
                      end.
+          all:rewrite ?firstn_slice_app by (push_length; prove_by_zify).
+          all:rewrite ?Nat.eqb_refl in *; try discriminate.
           (* structure already matches; use prove_by_zify for nat arguments *)
           all:repeat (f_equal; lazymatch goal with
                                | |- @eq nat _ _ => prove_by_zify
