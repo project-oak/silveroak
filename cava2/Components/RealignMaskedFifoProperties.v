@@ -57,94 +57,105 @@ Section RealignMaskedFifo.
   Existing Instance realign_specification.
   Existing Instance realign_correctness.
 
+  Lemma tktk n xs a b:
+    n <= length xs ->
+    skipn n (realign_inner_spec xs a b) =
+    realign_inner_spec (skipn n xs) a b.
+  Proof. Admitted.
+
+
+
   Global Instance realign_masked_fifo_invariant
-  : invariant_for (realign_masked_fifo fifo_size) (list N * (bool * list Byte.byte * list Byte.byte)) :=
-      fun state '(fifo_contents, realign_contents)  =>
+  : invariant_for (realign_masked_fifo fifo_size) (list N * list Byte.byte * bool) :=
+      fun state '(fifo_contents, realign_contents, flush)  =>
         let '(state, (realign_state, fifo_state)) := state in
         let '(is_last, (out_valid, (out_data, (out_length, (fifo_empty, fifo_full))))) := state in
 
         fifo_invariant (BitVec 32) fifo_size fifo_state fifo_contents
-        /\ realign_invariant realign_state realign_contents
+        /\ (
+        exists a b, realign_invariant realign_state (a, b, realign_contents))
+          (* ( *)
+          (* if 4 <=? length realign_contents *)
+          (* then true *)
+          (* else if flush then if (length fifo_contents =? 0) then true else false else false *)
+          (* , firstn 4 realign_contents *)
+          (* , skipn 4 realign_contents) *)
         /\ (if fifo_full then length fifo_contents = fifo_size else length fifo_contents < fifo_size)
-        /\ (if fifo_empty then length fifo_contents = 0 else length fifo_contents > 0)
+        /\ (if fifo_empty then length fifo_contents = 0 else length fifo_contents <> 0)
         .
 
   Instance realign_masked_fifo_specification
-  : specification_for (realign_masked_fifo fifo_size) (list N * (bool * list Byte.byte * list Byte.byte)) :=
-    {| reset_repr := ([], (false, [], []));
+  : specification_for (realign_masked_fifo fifo_size) (list N * list Byte.byte * bool) :=
+    {| reset_repr := ([], [], false);
      update_repr :=
-      fun (input: denote_type (input_of (realign_masked_fifo fifo_size))) '(fifo_contents, realign_contents) =>
+      fun (input: denote_type (input_of (realign_masked_fifo fifo_size))) '(fifo_contents, realign_contents, flush) =>
       let '(data_valid, (data, (data_mask, (drain, (consumer_ready, tt))))) := input in
 
-      let fifo_empty := length fifo_contents =? 0 in
       let fifo_full := length fifo_contents =? fifo_size in
+      let fifo_empty := length fifo_contents =? 0 in
 
-      let realign_input :=
-        (data_valid, (data, (data_mask, (drain && fifo_empty && consumer_ready, (negb fifo_full, tt))))) in
-      let '(realign_valid, realign_data, new_realign_contents) :=
-        update_repr (c:=realign) realign_input realign_contents in
-      let fifo_input :=
-        (realign_valid && negb drain && negb fifo_full, (BigEndianBytes.concat_bytes realign_data, (consumer_ready, tt))) in
-      let new_fifo_contents :=
-        update_repr (c:=fifo (T:=BitVec 32) fifo_size) fifo_input fifo_contents in
+      if fifo_full then
+        (if consumer_ready then tl fifo_contents else fifo_contents, realign_contents, drain && consumer_ready)
+      else
+        let realign_contents_cat :=
+            (* (if (4 <=? length realign_contents)%nat || drain && fifo_empty && consumer_ready *)
+            (* then skipn 4 realign_contents *)
+            (* realign_contents *)
+            (* ++ *)
+            (if data_valid && consumer_ready then
+              realign_inner_spec
+                (
+                if (4 <=? length realign_contents)%nat then skipn 4 realign_contents else
+                  if drain && (length fifo_contents =? 0)%nat then skipn 4 realign_contents else
+                  realign_contents
+                )
 
-      (new_fifo_contents, (realign_valid, realign_data, new_realign_contents));
+
+              data data_mask
+              (* let '(a,b,c,d) := *)
+              (*   match BigEndianBytes.N_to_bytes 4 data with *)
+              (*   | a::b::c::d::_ => (a,b,c,d) *)
+              (*   | _ => (Byte.x00,Byte.x00,Byte.x00,Byte.x00) *)
+              (*   end in *)
+              (*        if data_mask =? 0x0 then [] *)
+              (*   else if data_mask =? 0x1 then [d] *)
+              (*   else if data_mask =? 0x2 then [c] *)
+              (*   else if data_mask =? 0x4 then [b] *)
+              (*   else if data_mask =? 0x8 then [a] *)
+              (*   else if data_mask =? 0x3 then [c;d] *)
+              (*   else if data_mask =? 0x6 then [b;c] *)
+              (*   else if data_mask =? 0xC then [a;b] *)
+              (*   else if data_mask =? 0x9 then [b;c;d] *)
+              (*   else if data_mask =? 0xE then [a;b;c] *)
+              (*   else [a;b;c;d] *)
+            else realign_contents)%N
+        in
+
+        let fifo_contents_cat := (if consumer_ready then tl fifo_contents else fifo_contents) ++
+            if 4 <=? length (skipn 4 realign_contents) then
+              if negb drain
+              then [BigEndianBytes.concat_bytes (firstn 4 (skipn 4 realign_contents))]
+              else []
+            else []
+        in
+
+        ( fifo_contents_cat
+        , realign_contents_cat
+        , drain && consumer_ready);
 
      precondition :=
-      fun (input: denote_type (input_of (realign_masked_fifo fifo_size))) '(fifo_contents, realign_contents) =>
+      fun (input: denote_type (input_of (realign_masked_fifo fifo_size))) '(fifo_contents, realign_contents, flush) =>
 
       let '(data_valid, (data, (data_mask, (drain, (consumer_ready, tt))))) := input in
 
-      let fifo_empty := length fifo_contents =? 0 in
-      let fifo_full := length fifo_contents =? fifo_size in
-
-      let realign_input :=
-        (data_valid, (data, (data_mask, (drain && fifo_empty && consumer_ready, (negb fifo_full, tt))))) in
-      let '(realign_valid, realign_data, new_realign_contents) :=
-        update_repr (c:=realign) realign_input realign_contents in
-      let fifo_input :=
-        (realign_valid && negb drain && negb fifo_full, (BigEndianBytes.concat_bytes realign_data, (consumer_ready, tt))) in
-
-      precondition realign realign_input realign_contents
-      /\ precondition (fifo (T:=BitVec 32) fifo_size) fifo_input fifo_contents
+      (data < 2 ^ 32)%N
+      /\ flush = (drain && consumer_ready)
       ;
 
      postcondition :=
       fun input '(fifo_contents, realign_contents) (output: denote_type (output_of (realign_masked_fifo fifo_size))) =>
       let '(data_valid, (data, (data_mask, (drain, (consumer_ready, tt))))) := input in
-
-      let fifo_empty := (length fifo_contents =? 0) in
-      let fifo_full := (length fifo_contents =? fifo_size) in
-
-      let realign_input :=
-        (data_valid, (data, (data_mask, (drain && fifo_empty && consumer_ready, (negb fifo_full, tt))))) in
-      let '(realign_valid, (realign_data, realign_len)) :=
-        realign_spec (fst (fst realign_contents)) (snd (fst realign_contents)) (snd realign_contents) realign_input in
-
-      let fifo_input :=
-        (realign_valid && negb drain && negb fifo_full, (realign_data, (consumer_ready, tt))) in
-
-      let new_fifo_contents :=
-        update_repr (c:=fifo (T:=BitVec 32) fifo_size) fifo_input fifo_contents in
-
-      let fifo_full := (length new_fifo_contents =? fifo_size) in
-      let fifo_valid := 1 <=? length fifo_contents in
-
-      let valid :=
-        if drain then fifo_valid || realign_valid else fifo_valid in
-
-      let data :=
-        if drain && negb fifo_valid then realign_data
-        else hd default fifo_contents in
-      let length :=
-        if drain && negb fifo_valid then realign_len
-        else 4%N in
-
-      if valid then
-        output = (valid, (data, (length, (drain && negb fifo_valid && valid, fifo_full))))
-      else
-        exists unknown,
-        output = (valid, (unknown, (length, (drain && negb fifo_valid && valid, fifo_full))));
+      True;
   |}%nat.
 
   Lemma realign_masked_fifo_invariant_preserved : invariant_preserved (realign_masked_fifo fifo_size).
@@ -154,11 +165,15 @@ Section RealignMaskedFifo.
     destruct input as (data_valid, (data, (data_mask, (drain, (consumer_ready, []))))).
     destruct state as (state, (realign_state, fifo_state)).
     destruct state as (is_last, (out_valid, (out_data, (out_length, (fifo_empty, fifo_full))))).
+
     intros input state r new_r; subst.
     simplify_invariant (realign_masked_fifo fifo_size); logical_simplify; intros.
+
     cbv [realign_masked_fifo]; stepsimpl; logical_simplify; subst.
-    destruct input as (new_fifo_contents, new_realign_contents); logical_simplify.
-    destruct new_realign_contents as ((new_latched_valid,new_latched_bytes), new_realign_ghost).
+
+    destruct input as ((new_fifo_contents, new_realign_contents), flush); logical_simplify.
+    (* destruct new_realign_contents as ((new_latched_valid,new_latched_bytes), new_realign_ghost). *)
+
     cbv [precondition] in H.
     cbv [realign_masked_fifo_specification update_repr] in H.
     cbn [realign_specification update_repr] in H.
@@ -177,41 +192,120 @@ Section RealignMaskedFifo.
         simplify_invariant realign; cbv [realign_invariant'] in *; logical_simplify.
         destruct fifo_full; boolsimpl; eauto.
 
-        destruct (((4 <=? length new_realign_ghost)
-          || drain && fifo_empty && consumer_ready && (1 <=? length new_realign_ghost)) && negb drain);
-          eauto.
+        destruct_one_match; eauto.
       }
       cbn [denote_type absorb_any] in *; f_equal; rewrite H5.
 
       simplify_spec (realign_masked_fifo fifo_size).
       simplify_spec realign.
       simplify_spec (fifo (T:=BitVec 32) fifo_size).
-      cbv [realign_update_latched_valid realign_update_latched_bytes realign_spec] in *.
-      autorewrite with tuple_if; cbn [fst snd]; destruct fifo_full; boolsimpl.
-      { destr (length new_fifo_contents =? fifo_size); boolsimpl; try reflexivity.
-        {
-          revert H4; rewrite H2.
-          destr (fifo_size =? 0); boolsimpl; try lia.
-        }
-      }
-      { cbn [denote_type].
-        destr (length new_fifo_contents =? fifo_size); boolsimpl; try reflexivity.
-        destr fifo_empty; destr (length new_fifo_contents =? 0); boolsimpl; try reflexivity;
-          destruct drain; boolsimpl; try reflexivity; try lia;
-          (destr (4 <=? length new_realign_ghost); [|reflexivity]); now rewrite resize_firstn_alt by lia.
-      }
+      simplify_invariant realign.
+
+      cbv [realign_update_latched_valid realign_update_latched_bytes realign_spec realign_invariant'] in *.
+      destruct realign_state as (?,(?,(?,(?,?)))).
+      logical_simplify.
+
+      autorewrite with tuple_if; cbn [fst snd]; destruct fifo_full; subst;
+        [rewrite Nat.eqb_refl|]; boolsimpl; listsimpl; [reflexivity|].
+
+      replace ( length new_fifo_contents =? fifo_size ) with false by
+        ( apply eq_sym; apply Nat.eqb_neq; lia); boolsimpl.
+
+      f_equal.
+
+      destruct drain; destruct fifo_empty; destruct data_valid; boolsimpl; listsimpl.
+
+      1-4: now rewrite Tauto.if_same.
+      1-4: destruct_one_match; [rewrite resize_firstn_alt|]; try lia; reflexivity.
     }
     {
+      cbn [fst snd].
       eapply (invariant_preserved_pf (c:=realign)); eauto.
       simplify_spec (realign_masked_fifo fifo_size).
       simplify_spec realign.
       simplify_invariant realign.
+      cbv [realign_invariant realign_invariant'] in *; logical_simplify.
       cbn [fst snd denote_type] in *.
       cbv [realign_update_latched_valid realign_update_latched_bytes realign_update_state].
+      destruct realign_state as (?,(?,(?,(?,?)))); logical_simplify.
+
       autorewrite with tuple_if; cbn [fst snd];
         destruct fifo_full; try rewrite H2; try rewrite Nat.eqb_refl;
         boolsimpl; try reflexivity.
+
+      { push_length.
+        assert ((fifo_size =? 0) = false) as HX.
+        { apply Nat.eqb_neq. lia. }
+        assert ((fifo_size - 1 =? 0) = false) as HY.
+        { apply Nat.eqb_neq. lia. }
+        destruct_one_match.
+        { reflexivity. }
+        subst; destruct consumer_ready; rewrite HX, ? HY; reflexivity.
+      }
+
+      assert (length new_fifo_contents =? fifo_size = false) as HX.
+      { apply Nat.eqb_neq. lia. }
+      rewrite HX. clear HX.
+
+    destruct data_valid;
+      destruct consumer_ready;
+      destruct drain;
+      boolsimpl;
+      push_length; push_firstn.
+      8:{ destr (4 <=? length new_realign_contents - 4).
+
+      destruct drain; boolsimpl.
+      { admit. }
+      destr (4 <=? length new_realign_contents).
+      { destr (4 <=? length (realign_inner_spec (skipn 4 new_realign_contents) data data_mask)).
+        {
+
+
+            (* match BigEndianBytes.N_to_bytes 4 data with *)
+            (* | [] => (Byte.x00, Byte.x00, Byte.x00, Byte.x00) *)
+            (* | [a] => (Byte.x00, Byte.x00, Byte.x00, Byte.x00) *)
+            (* | [a; b0] => (Byte.x00, Byte.x00, Byte.x00, Byte.x00) *)
+            (* | [a; b0; c] => (Byte.x00, Byte.x00, Byte.x00, Byte.x00) *)
+            (* | a :: b0 :: c :: d :: _ => (a, b0, c, d) *)
+            (* end ) as X. *)
+      destruct X as (((?,?),?),?).
+      push_length.
+
+      destruct data_valid;
+        destruct consumer_ready;
+          boolsimpl; try reflexivity;
+      destruct data_mask.
+
+
+      all: push_length.
+
+
+
+        2:{
+          push_length. natsimpl.
+          destruct drain;
+          repeat destruct_one_match; listsimpl. reflexivity.
+
+
+
+      f_equal.
+      {
+        f_equal.
+        {
+      push_length.
+
+
+
+      {
+
+
+      destruct drain; destruct consumer_ready; boolsimpl.
+      {
+        subst.
       destr (length new_fifo_contents =? fifo_size); try lia.
+      destruct data_valid; boolsimpl.
+      2:{
+
       destruct fifo_empty; try rewrite H3; boolsimpl; try reflexivity.
       destr (length new_fifo_contents =? 0); try lia; boolsimpl.
       reflexivity.

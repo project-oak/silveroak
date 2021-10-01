@@ -71,15 +71,13 @@ Section FifoSpec.
      update_repr :=
       fun (input: denote_type (input_of (fifo fifo_size))) contents =>
       let '(valid, (data, (accepted_output,_))) := input in
-      let empty := length contents =? 0 in
       let full := length contents =? fifo_size in
-      ( (if accepted_output && negb empty then tl contents else contents)
-        ++ if valid && negb full then [data] else []);
+      ( (if accepted_output then tl contents else contents)
+        ++ if valid then [data] else []);
 
      precondition :=
       fun input contents =>
       let '(valid, _) := input in
-      (* if count is fifo_size we are full and we shouldn't be receiving  *)
       (if valid then length contents < fifo_size else True);
 
      postcondition :=
@@ -87,16 +85,15 @@ Section FifoSpec.
         let '(valid, (data, (accepted_output,_))) := input in
 
         let pempty := length contents =? 0 in
-        let pfull := length contents =? fifo_size in
 
         let new_contents :=
-          (if accepted_output then if negb pempty then tl contents else contents else contents)
-          ++ if valid && negb pfull then [data] else [] in
+          (if accepted_output then tl contents else contents)
+          ++ if valid then [data] else [] in
 
-        if pempty then
-        exists unknown, output = (false, (unknown, (length new_contents =? 0, length new_contents =? fifo_size)))
-        else
-        output = (true, (hd default contents, (length new_contents =? 0, length new_contents =? fifo_size)));
+        exists valid value,
+          output = (valid, (value, (length new_contents =? 0, length new_contents =? fifo_size)))
+          /\ valid = negb pempty
+          /\ (if valid then value = hd default contents else True);
   |}%nat.
 
   Lemma fifo_invariant_preserved : invariant_preserved (fifo fifo_size).
@@ -192,20 +189,21 @@ Section FifoSpec.
     end.
 
     fold denote_type in *.
-    rewrite Bool.negb_andb;
-      destr (length contents =? 0);
-      destr (length contents =? fifo_size);
-      revert H; subst; boolsimpl; ssplit; [lia|..]; intros.
-    {
-      eexists.
-      rewrite E.
-      repeat rewrite Tauto.if_same.
-      now natsimpl.
-    }
-    all: destruct data_valid; destruct accepted_output; boolsimpl; natsimpl; try lia.
+    rewrite Bool.negb_andb.
+    exists (negb (length contents =? 0));
+      exists (hd default contents);
+      revert H; subst; subst; boolsimpl; intros H.
 
-    all:
-      rewrite Nat.add_sub_swap by lia;
+    ssplit; [ | reflexivity | ]; destr (length contents =? 0); boolsimpl; try reflexivity.
+
+    { replace (length contents - 1) with (length contents) by lia.
+      replace (hd default contents) with (@default T) by
+       (rewrite length_zero_iff_nil in *; clear H; now subst).
+
+      destr data_valid; destr accepted_output; cbn; natsimpl; reflexivity.
+    }
+
+    rewrite Nat.add_sub_swap by lia;
       rewrite Nat.add_mod by (try apply Nat.pow_nonzero; lia);
       rewrite Nat.mod_same by (try apply Nat.pow_nonzero; lia);
       rewrite Nat.add_0_r;
@@ -215,19 +213,19 @@ Section FifoSpec.
         rewrite Nat.mod_small by (
           apply (Nat.lt_le_trans _ X); [ lia | apply Nat.log2_up_spec; lia ])
       end.
-    all: try rewrite <- H; try rewrite resize_noop by lia.
-    all: rewrite nth_hd.
 
-    all:
-      assert (nth 0 contents default = nth 0 (rev (firstn (length contents) fifo)) default) by
-        ( fold denote_type in *;
-          now rewrite <- H3);
+    rewrite <- H.
+    rewrite resize_noop by lia.
+    rewrite nth_hd.
+    assert (nth 0 contents default = nth 0 (rev (firstn (length contents) fifo)) default) by
+      ( fold denote_type in *;
+        now rewrite <- H3).
       rewrite H4;
-      fold denote_type;
-      rewrite rev_nth by ( push_length; lia ).
-    all: push_length; rewrite Nat.min_l by lia.
-    3: rewrite Nat.sub_add by lia.
-    all: rewrite nth_firstn_inbounds by lia; rewrite H; reflexivity.
+      fold denote_type; rewrite rev_nth by ( push_length; lia ).
+    push_length; rewrite Nat.min_l by lia.
+    rewrite nth_firstn_inbounds by lia.
+    destr data_valid; destr accepted_output; cbn; natsimpl;
+      try rewrite Nat.sub_add by lia; reflexivity.
   Qed.
 
   Lemma fifo_invariant_at_reset : invariant_at_reset (fifo fifo_size).
