@@ -1897,6 +1897,7 @@ Proof.
     compute_expr (2 ^ N.of_nat 6)%N.
     destr clear; [ ssplit; reflexivity | ].
     destr cleared; logical_simplify; subst.
+
     { (* cleared=true *)
       cbn [N.leb Pos.compare N.compare fst snd] in *.
       logical_simplify; subst.
@@ -1926,12 +1927,14 @@ Proof.
       push_skipn; listsimpl.
       rewrite slice_map_nth; cbn [List.map seq].
       reflexivity. }
+
     { (* cleared = false *)
       rewrite ?Tauto.if_same.
       (* destruct cases for [count] *)
       destr (count <=? 15)%N;
         [ destr (count =? 0)%N | destr (count =? 16)%N ];
         logical_simplify; subst; cbn [fst snd] in *.
+
       { (* count=0 (transition from inner to padder *)
         destr (padder_byte_index =? padder_byte_index / 64 * 64);
           [ | exfalso; prove_by_zify ].
@@ -1999,7 +2002,8 @@ Proof.
           end.
           ssplit.
           { (* skipn (16 - N.to_nat count) block
-              = List.slice 0%N (SHA256.padded_msg msg) padder_block_index (N.to_nat count) *)
+              = List.slice 0%N (SHA256.padded_msg msg)
+                           (padder_block_index * 16) (N.to_nat count) *)
             destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
               try discriminate; boolsimpl.
             all:rewrite ?Tauto.if_same in *; cbn [Nat.eqb].
@@ -2011,8 +2015,6 @@ Proof.
                          rewrite H; rewrite (Nat.div_add_l (x / y) y) by lia;
                            rewrite ?Nat.div_small by lia; rewrite <-?H
                        end.
-            Print sha256_inner_specification.
-            Print sha256_specification.
             all:natsimpl.
             all:rewrite ?tl_app by (intro; subst; cbn [length] in *; discriminate).
             all:fold denote_type.
@@ -2020,48 +2022,33 @@ Proof.
             all:push_skipn; push_length.
             all:push_skipn; listsimpl.
             all:rewrite slice_map_nth; cbn [seq List.map].
-            (* expected is length msg / 64, actual is length msg / 4 .. why? *)
-            (* padded_msg is in words, not bytes
-               length msg / 64 = BLOCK index of current word
-               length msg / 4 = WORD index of current word
-               I think we actually do want word index!
-             *)
-          }
+            (* structure already matches; use prove_by_zify for nat arguments *)
+            all:repeat (f_equal; lazymatch goal with
+                                 | |- @eq nat _ _ => prove_by_zify
+                                 | _ => idtac
+                                 end). }
           { (* padder_byte_index mod 64 = N.to_nat count * 4 *)
-          }
+            repeat (destruct_one_match; logical_simplify; subst; try lia).
+            all:try prove_by_zify.
+            all:repeat (destruct_one_match_hyp; logical_simplify; subst; try lia). }
           { (* (if (padder_byte_index <? 64) then t = 0 else t = 64) *)
-          }
+            repeat (destruct_one_match; logical_simplify; subst; try lia).
+            all:repeat (destruct_one_match_hyp; logical_simplify; subst; try lia). }
           { (* inner_byte_index = padder_block_index * 64 *)
-          }
+            repeat (destruct_one_match; logical_simplify; subst; try lia).
+            all:try prove_by_zify. } } }
 
-      lazymatch goal with
-      | |- if ?x then _ /\ _ else _ /\ _ => destr x
-      end.
-      destr (count <=? 15)%N; logical_simplify; subst; cbn [fst snd] in *.
-      { destr (count =? 0)%N; logical_simplify; subst;
-        [ destr (padder_byte_index =? padder_byte_index / 64 * 64);
-          [ | exfalso; prove_by_zify ]
-        | destr (padder_byte_index =? padder_byte_index / 64 * 64);
-          [ exfalso; prove_by_zify | ] ].
-        all:destr (padder_byte_index <? 64); logical_simplify; subst.
-        all:cbn [Nat.eqb N.eqb Pos.eqb].
-        all:rewrite ?Tauto.if_same.
-        all:natsimpl.
-        
-        { exfalso.
-          assert (padder_byte_index mod 64 <> 0) by prove_by_zify.
-          Search (?y * (_ / ?y) ).
-          prove_by_zify.
-      all:repeat (destruct_one_match; logical_simplify; subst; try lia).
-      all:repeat destruct_one_match_hyp; logical_simplify; subst; try lia.
-      all:
-      destr (padder_byte_index =? inner_byte_index); logical_simplify; subst.
-      { (* inner is running or just finished *)
-        destr (t =? 64); logical_simplify; subst.
-        { (* inner is finished *)
+        { (* 0 < count <= 15 (padder running) *)
+          admit. }
 
+        { (* count = 16 (transition from padder to inner) *)
+          admit. }
 
-       else
+        { (* count = 17 (inner running) *)
+          admit. }
+
+        (* cleared=false case of invariant, for easy reference:
+
          (* the byte index (padder counter) is within the range
             [4,padded_message_size msg] *)
          4 <= padder_byte_index <= padded_message_size msg
@@ -2100,4 +2087,5 @@ Proof.
                    (* inner loop is in progress *)
                    0 <= t < 64
                    /\ inner_byte_index = padder_byte_index))
-Qed.
+         *)
+Admitted.
