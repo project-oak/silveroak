@@ -45,7 +45,7 @@ Section Var.
 
     let/delay '(is_last, out_valid, out_data, out_length, fifo_empty; fifo_full) :=
       let '(realign_valid, realign_data; realign_length) :=
-        `realign` data_valid data data_mask (drain && fifo_empty && consumer_ready) (!fifo_full) in
+        `realign` (data_valid && ! drain) data data_mask (drain && fifo_empty && consumer_ready) (!fifo_full) in
 
       let '(fifo_valid, fifo_data, fifo_empty; fifo_full) :=
         `fifo fifo_size` (realign_valid && (! drain) && (!fifo_full) ) realign_data consumer_ready in
