@@ -49,7 +49,7 @@ Local Open Scope list.
 
 Section RealignMaskedFifo.
   Context (fifo_size: nat).
-  Context (Hfifo_nz: (1 < fifo_size)%nat).
+  Context (Hfifo_nz: 1 < fifo_size).
 
   Hint Extern 0 (1 < fifo_size) => apply Hfifo_nz : typeclass_instances .
   Existing Instance fifo_specification.
@@ -63,94 +63,98 @@ Section RealignMaskedFifo.
         let '(state, (realign_state, fifo_state)) := state in
         let '(is_last, (out_valid, (out_data, (out_length, (fifo_empty, fifo_full))))) := state in
         fifo_invariant (BitVec 32) fifo_size fifo_state fifo_contents
-        /\
-        realign_invariant realign_state (realign_latch_valid, realign_latch_bytes, realign_contents)
+        /\ realign_invariant realign_state (realign_latch_valid, realign_latch_bytes, realign_contents)
         /\ (if fifo_full then length fifo_contents = fifo_size else length fifo_contents < fifo_size)
         /\ (if fifo_empty then length fifo_contents = 0 else length fifo_contents <> 0)
         .
 
   Instance realign_masked_fifo_specification
   : specification_for (realign_masked_fifo fifo_size) (list N * list Byte.byte * bool * list Byte.byte) :=
-    {| reset_repr := ([], [], false, []);
-     update_repr :=
-      fun (input: denote_type (input_of (realign_masked_fifo fifo_size)))
-         '(fifo_contents, realign_contents, realign_latch_valid, realign_latch_bytes) =>
-      let '(data_valid, (data, (data_mask, (drain, (consumer_ready, tt))))) := input in
+    {|
+      reset_repr := ([], [], false, []);
+      update_repr :=
+        fun (input: denote_type (input_of (realign_masked_fifo fifo_size)))
+           '(fifo_contents, realign_contents, realign_latch_valid, realign_latch_bytes) =>
 
-      let fifo_full := length fifo_contents =? fifo_size in
-      let fifo_empty := length fifo_contents =? 0 in
+        let '(data_valid, (data, (data_mask, (drain, (consumer_ready, tt))))) := input in
+        let fifo_full := length fifo_contents =? fifo_size in
+        let fifo_empty := length fifo_contents =? 0 in
 
-      if fifo_full then
-        (if consumer_ready then tl fifo_contents else fifo_contents, realign_contents
-        , realign_latch_valid
-        , realign_latch_bytes
-        )
-      else
-        let realign_contents' :=
-          if (4 <=? length realign_contents) then skipn 4 realign_contents else
-            if drain && fifo_empty && consumer_ready then skipn 4 realign_contents else
-            realign_contents
-        in
-        let realign_contents_cat :=
-            if data_valid then
-              if drain
-              then realign_contents'
-              else realign_inner_spec realign_contents' data data_mask
-            else realign_contents'
-        in
+        (* When full, data is ignored and the circuit only performs dequeuing from
+         * the FIFO *)
+        if fifo_full then
+          (if consumer_ready then tl fifo_contents else fifo_contents, realign_contents
+          , realign_latch_valid
+          , realign_latch_bytes
+          )
+        else
+          (* Consume the first 4 bytes as the fifo is ready to accept, or if
+           * told to drain and fifo has finished draining *)
+          let realign_contents' :=
+            if (4 <=? length realign_contents) then skipn 4 realign_contents else
+              if drain && fifo_empty && consumer_ready then skipn 4 realign_contents else
+              realign_contents
+          in
+          let realign_contents_cat :=
+              if data_valid then
+                if drain
+                then realign_contents'
+                else realign_inner_spec realign_contents' data data_mask
+              else realign_contents'
+          in
 
-        let fifo_contents_cat := (if consumer_ready then tl fifo_contents else fifo_contents) ++
-            if 4 <=? length (realign_contents) then
-              if drain
-              then []
-              else [BigEndianBytes.concat_bytes (firstn 4 realign_contents)]
-            else []
-        in
+          let fifo_contents_cat := (if consumer_ready then tl fifo_contents else fifo_contents) ++
+            (* If we have 4 bytes in the realigner, concat into a new word and push it into the fifo *)
+              if 4 <=? length (realign_contents) then
+                if drain
+                then []
+                else [BigEndianBytes.concat_bytes (firstn 4 realign_contents)]
+              else []
+          in
 
-        ( fifo_contents_cat
-        , realign_contents_cat
-        , if 4 <=? length realign_contents then true
-            else if drain && consumer_ready && fifo_empty then
-              1 <=? length realign_contents
-            else false
-        , firstn 4 realign_contents
-        );
+          ( fifo_contents_cat
+          , realign_contents_cat
+          , if 4 <=? length realign_contents then true
+              else if drain && consumer_ready && fifo_empty then
+                1 <=? length realign_contents
+              else false
+          , firstn 4 realign_contents
+          );
 
-     precondition :=
-      fun (input: denote_type (input_of (realign_masked_fifo fifo_size))) '(fifo_contents, realign_contents, _, _) =>
+       precondition :=
+        fun (input: denote_type (input_of (realign_masked_fifo fifo_size)))
+          '(fifo_contents, realign_contents, _, _) =>
 
-      let '(data_valid, (data, (data_mask, (drain, (consumer_ready, tt))))) := input in
+        let '(data_valid, (data, (data_mask, (drain, (consumer_ready, tt))))) := input in
+        (data < 2 ^ 32)%N ;
 
-      (data < 2 ^ 32)%N
-      ;
+       postcondition :=
+        fun input '(fifo_contents, realign_contents, realign_latch_valid, realign_latch_bytes)
+          (output: denote_type (output_of (realign_masked_fifo fifo_size))) =>
 
-     postcondition :=
-      fun input '(fifo_contents, realign_contents, realign_latch_valid, realign_latch_bytes)
-      (output: denote_type (output_of (realign_masked_fifo fifo_size))) =>
-      let '(data_valid, (data, (data_mask, (drain, (consumer_ready, tt))))) := input in
-      let fifo_empty := (length fifo_contents =? 0) in
-      let out_data' :=
-        if drain
-        then if fifo_empty
-          then Some (BigEndianBytes.concat_bytes (List.resize Byte.x00 4 (firstn 4 realign_contents)))
-          else None
-        else hd_error fifo_contents
-      in
-
-      exists out_valid out_data out_length is_last fifo_full,
-      output = (out_valid, (out_data, (out_length, (is_last, fifo_full))))
-      /\ (if consumer_ready then
-        (out_valid = if drain
+        let '(data_valid, (data, (data_mask, (drain, (consumer_ready, tt))))) := input in
+        let fifo_empty := (length fifo_contents =? 0) in
+        let out_data' :=
+          if drain
           then if fifo_empty
-               then
-                if 4 <=? length realign_contents then true
-                else if consumer_ready then 1 <=? length realign_contents else false
-               else true
-          else if fifo_empty then false else true)
-        /\ (match out_data' with None => True | Some x => out_data = x end)
-        else True)
-      ;
-  |}%nat.
+            then Some (BigEndianBytes.concat_bytes (List.resize Byte.x00 4 (firstn 4 realign_contents)))
+            else None
+          else hd_error fifo_contents
+        in
+
+        exists out_valid out_data out_length is_last fifo_full,
+        output = (out_valid, (out_data, (out_length, (is_last, fifo_full))))
+        /\ (if consumer_ready then
+          (out_valid = if drain
+            then if fifo_empty
+                 then
+                  if 4 <=? length realign_contents then true
+                  else if consumer_ready then 1 <=? length realign_contents else false
+                 else true
+            else if fifo_empty then false else true)
+          /\ (match out_data' with None => True | Some x => out_data = x end)
+          else True) ;
+    |}.
 
   Lemma realign_masked_fifo_invariant_preserved : invariant_preserved (realign_masked_fifo fifo_size).
   Proof.
@@ -161,12 +165,11 @@ Section RealignMaskedFifo.
     destruct state as (is_last, (out_valid, (out_data, (out_length, (fifo_empty, fifo_full))))).
 
     intros input state r new_r; subst.
-    simplify_invariant (realign_masked_fifo fifo_size); logical_simplify; intros.
+    simplify_invariant (realign_masked_fifo fifo_size);
+      logical_simplify; intros.
+    destruct input as (((new_fifo_contents, new_realign_contents), new_latched_valid), new_latched_bytes); logical_simplify.
 
     cbv [realign_masked_fifo]; stepsimpl; logical_simplify; subst.
-
-    destruct input as (((new_fifo_contents, new_realign_contents), new_latched_valid), new_latched_bytes); logical_simplify.
-    (* destruct new_realign_contents as ((new_latched_valid,new_latched_bytes), new_realign_ghost). *)
 
     cbv [precondition] in H.
     cbv [realign_masked_fifo_specification update_repr] in H.
@@ -175,13 +178,13 @@ Section RealignMaskedFifo.
 
     repeat (destruct_pair_let; cbn [fst snd]).
 
-
     lazymatch goal with
       | H : fifo_invariant _ _ ?state ?repr
         |- context [step (fifo _) ?state ?input] =>
           assert (precondition (fifo (T:=BitVec 32) fifo_size) input repr)
       end.
-    { simplify_spec (fifo (T:=BitVec 32) fifo_size); eauto.
+    {
+      simplify_spec (fifo (T:=BitVec 32) fifo_size); eauto.
       use_correctness' realign.
       rewrite H4.
       cbn [realign_spec]; boolsimpl.
