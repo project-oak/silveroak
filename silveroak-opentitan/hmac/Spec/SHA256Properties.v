@@ -356,6 +356,18 @@ Proof.
   rewrite sha256_W_alt_truncate by lia. reflexivity.
 Qed.
 
+(* alternate phrasing of sha256_step_alt_truncate *)
+Lemma sha256_step_alt_firstn msg i H n :
+  (S i * 16 <= n)%nat ->
+  SHA256Alt.sha256_step (firstn n msg) H i
+  = SHA256Alt.sha256_step msg H i.
+Proof.
+  intros. destr (length msg <? n)%nat; [ push_firstn; reflexivity | ].
+  erewrite <-(sha256_step_alt_truncate (firstn n msg) (skipn n msg))
+    by length_hammer.
+  rewrite firstn_skipn; reflexivity.
+Qed.
+
 Lemma slice0_W_alt msg block i :
   (i * 16 = length msg)%nat -> length block = 16%nat ->
   List.slice 0%N (SHA256Alt.W (msg ++ block) i) 0 16 = block.
