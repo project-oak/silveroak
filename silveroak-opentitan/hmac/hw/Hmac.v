@@ -74,13 +74,13 @@ Section Var.
 
       let state' : BitVec 5 :=
         if cmd_hmac_enable then
-               if sha_ready && state == `K 1` && ptr == `K 15` then state + `K 1`
+               if sha_ready && state == `K 1` && ptr == `K 15` then `K 2`
           (* cmd_hash_process is the end of message, but we also have to wait for
            * fifo to drain by observing fifo_final *)
-          else if sha_ready && state == `K 2` && cmd_hash_process && fifo_final  then state + `K 1`
-          else if              state == `K 3`  && (!waiting_for_digest) then state + `K 1`
-          else if sha_ready && state == `K 4` && ptr == `K 15` then state + `K 1`
-          else if sha_ready && state == `K 5` && ptr == `K 7`  then state + `K 1`
+          else if sha_ready && state == `K 2` && cmd_hash_process && fifo_final  then `K 3`
+          else if              state == `K 3`  && (!waiting_for_digest) then `K 4`
+          else if sha_ready && state == `K 4` && ptr == `K 15` then `K 5`
+          else if sha_ready && state == `K 5` && ptr == `K 7`  then `K 6`
           else if sha_ready && state == `K 6` && (!waiting_for_digest) then `K 0`
           else if state == `K 0` && cmd_hash_start then `K 1`
           else state
@@ -111,13 +111,13 @@ Section Var.
 
       in
 
-      (* I don't think we need to explicitly flush-
-         if we are left in a bad state we might need to flush after the last state
-      *)
-      let sha_stream_flush := `Zero` in
+      let sha_stream_flush := if state == `K 0` then `One` else `Zero` in
+
+      (* Our proof precondition for sha256 needs us to mask when it is not ready *)
+      let sha_stream_valid' := if sha_ready then sha_stream_valid else `Zero` in
 
       let '(sha_done, sha_digest; sha_ready)
-        := `sha256` sha_stream_valid sha_stream sha_stream_final sha_stream_final_length sha_stream_flush in
+        := `sha256` sha_stream_valid' sha_stream sha_stream_final sha_stream_final_length sha_stream_flush in
 
       let is_consuming := state' == `K 2` && sha_ready in
       let next_digest := if sha_done then sha_digest else digest in
@@ -152,8 +152,44 @@ Section Var.
       let '(fifo_valid, fifo_data, fifo_data_length, fifo_is_last; fifo_full) :=
         `realign_masked_fifo 256` is_fifo_write write_data write_mask cmd_hash_process sha_ready in
 
+      (* BUG:
+         - the realigned fifo core currently doesn't signal last if the fifo is
+          drained before flushing, and the number of bytes written mod 4 = 0
+         - it probably should signal fifo_is_last once even if drained
+         - but definitely should if it drains after flush is signaled
+         - the easiest fix in that circuit would result is last being signaled a cycle later
+           with a length of 0
+         - however, the SHA256 core & spec requires the last word length to be > 0 so instead
+         buffer the fifo data here and detect if it is the last word. *)
+      let/delay
+        '(buff_fifo_valid, buff_fifo_data, buff_fifo_data_length, buff_fifo_is_last
+         , out_fifo_valid, out_fifo_data, out_fifo_data_length; out_fifo_is_last) :=
+
+        if sha_ready then
+
+          if cmd_hash_process && ! fifo_valid && ! buff_fifo_is_last then
+            (* We have not yet signaled last *)
+            ( `Zero`, `K 0`, `K 0`, `Zero`
+            , `One`, buff_fifo_data, `K 4`, `One`)
+          else
+            if fifo_valid || cmd_hash_process then
+              ( fifo_valid, fifo_data, fifo_data_length, fifo_is_last
+              , buff_fifo_valid, buff_fifo_data, buff_fifo_data_length, buff_fifo_is_last )
+            else
+              ( buff_fifo_valid, buff_fifo_data, buff_fifo_data_length, buff_fifo_is_last
+              , `Zero`, `K 0`, `K 0`, `Zero`)
+         (* Sha not ready, nothing moves *)
+        else
+          ( buff_fifo_valid, buff_fifo_data, buff_fifo_data_length, buff_fifo_is_last
+          , out_fifo_valid, out_fifo_data, out_fifo_data_length, out_fifo_is_last)
+
+        initially default
+      in
+
+
       let '(sha_ready, hmac_done; digest) :=
-        `hmac_inner` fifo_valid fifo_data fifo_data_length fifo_is_last
+        (* `hmac_inner` fifo_valid fifo_data fifo_data_length fifo_is_last *)
+        `hmac_inner` out_fifo_valid out_fifo_data out_fifo_data_length out_fifo_is_last
         cmd_hash_start cmd_hash_process cmd_hmac_enable
         hmac_key
       in
@@ -336,7 +372,7 @@ Section SanityCheck.
       ++ [ to_write_tlp 20 0xF 3; empty_tlp ]
 
      (* (1* wait for digest to be ready *1) *)
-     ++ repeat empty_tlp 81
+     ++ repeat empty_tlp 82
       )
       (reset_state hmac_top))
       )))
@@ -349,6 +385,40 @@ Section SanityCheck.
       ; 0x96177A9C
       ; 0xB410FF61
       ; 0xF20015AD
+      ].
+  Proof. Time vm_compute; reflexivity. Qed.
+
+  Goal
+    firstn 8 (skipn 0x11
+    (get_regs (
+    snd (
+    simulate' hmac_top
+    (
+
+     (*  hmac_en *)
+     [ to_write_tlp 16 0x1 0 ; empty_tlp] ++
+     (* set cmd_start *)
+     [ to_write_tlp 20 0x1 1; empty_tlp ] ++
+
+      [ to_write_tlp 2048 0xf 0x61626364 ; empty_tlp
+      ]
+
+      ++ [ to_write_tlp 20 0xF 3; empty_tlp ]
+
+     (* (1* wait for digest to be ready *1) *)
+     ++ repeat empty_tlp 82
+      )
+      (reset_state hmac_top))
+      )))
+    =
+      [ 0x88d4266f
+      ; 0xd4e6338d
+      ; 0x13b845fc
+      ; 0xf289579d
+      ; 0x209c8978
+      ; 0x23b9217d
+      ; 0xa3e16193
+      ; 0x6f031589
       ].
   Proof. Time vm_compute; reflexivity. Qed.
 
