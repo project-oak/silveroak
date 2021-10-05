@@ -368,6 +368,19 @@ Proof.
   rewrite firstn_skipn; reflexivity.
 Qed.
 
+(* Lemma sha256_step_alt_firstn2 msg H n : *)
+(*   (1* (S i * 16 <= n)%nat -> *1) *)
+(*   SHA256Alt.sha256_step (firstn n msg) H *)
+(*   = SHA256Alt.sha256_step msg H. *)
+(* Proof. *)
+(*   intros. destr (length msg <? n)%nat; [ push_firstn; reflexivity | ]. *)
+(*   Search (_ _ =  _ _-> _ = _ ). *)
+(*   erewrite <-(sha256_step_alt_truncate (firstn n msg) (skipn n msg)) *)
+
+(*     by length_hammer. *)
+(*   rewrite firstn_skipn; reflexivity. *)
+(* Qed. *)
+
 Lemma slice0_W_alt msg block i :
   (i * 16 = length msg)%nat -> length block = 16%nat ->
   List.slice 0%N (SHA256Alt.W (msg ++ block) i) 0 16 = block.
