@@ -76,7 +76,7 @@ Section Var.
         if cmd_hmac_enable then
                if sha_ready && state == `K 1` && ptr == `K 15` then state + `K 1`
           (* cmd_hash_process is the end of message, but we also have to wait for
-           * fifo to drain by observing fifo_valid *)
+           * fifo to drain by observing fifo_final *)
           else if sha_ready && state == `K 2` && cmd_hash_process && fifo_final  then state + `K 1`
           else if              state == `K 3`  && (!waiting_for_digest) then state + `K 1`
           else if sha_ready && state == `K 4` && ptr == `K 15` then state + `K 1`
@@ -150,7 +150,7 @@ Section Var.
       let hmac_key := `slice 9 8` registers in
 
       let '(fifo_valid, fifo_data, fifo_data_length, fifo_is_last; fifo_full) :=
-        `realign_fifo 256` (write_en && is_fifo_write) write_data write_mask cmd_hash_process sha_ready in
+        `realign_fifo 256` is_fifo_write write_data write_mask cmd_hash_process sha_ready in
 
       let '(sha_ready, hmac_done; digest) :=
         `hmac_inner` fifo_valid fifo_data fifo_data_length fifo_is_last
@@ -210,19 +210,10 @@ Section Var.
       in
 
       let write_en' :=
-        if is_fifo_write then `Zero`
-        else
-          if write_en
-          then
-            (* mask all writes to REG_INTR_STATE *)
-            if aligned_address == `REG_INTR_STATE` then `Zero`
-            else `One`
-          else `Zero`
+        write_en && !is_fifo_write && !(aligned_address == `REG_INTR_STATE`)
       in
 
-      (* let next_registers := `replace` next_registers `REG_INTR_STATE ` (`bvresize 32` aligned_address) in *)
-
-      let registers' := `hmac` write_en write_data aligned_address write_mask is_fifo_write next_registers in
+      let registers' := `hmac` write_en' write_data aligned_address write_mask is_fifo_write next_registers in
 
       (tl_o, registers')
 
