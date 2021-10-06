@@ -99,23 +99,15 @@ Ltac find_correctness c :=
 Ltac simplify_invariant c :=
   cbv [invariant_at_reset invariant_preserved output_correct];
   let x := constr:(_:invariant_for c _) in
+  let x := app_head x in
   match x with
   | ?x => cbv [x] in *
-  | ?x _ => cbv [x] in *
-  | ?x _ _ => cbv [x] in *
-  | ?x _ _ _ => cbv [x] in *
-  | ?x _ _ _ _ => cbv [x] in *
-  | ?x _ _ _ _ _ => cbv [x] in *
   end.
 Ltac simplify_spec c :=
   let x := constr:(_:specification_for c _) in
+  let x := app_head x in
   match x with
   | ?x => cbn [x update_repr precondition postcondition] in *
-  | ?x _ => cbn [x update_repr precondition postcondition] in *
-  | ?x _ _ => cbn [x update_repr precondition postcondition] in *
-  | ?x _ _ _ => cbn [x update_repr precondition postcondition] in *
-  | ?x _ _ _ _ => cbn [x update_repr precondition postcondition] in *
-  | ?x _ _ _ _ _ => cbn [x update_repr precondition postcondition] in *
   end.
 
 (* if a subcircuit is found that has an invariant-based correctness proof, use
