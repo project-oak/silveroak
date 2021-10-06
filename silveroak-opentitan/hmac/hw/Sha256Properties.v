@@ -175,8 +175,8 @@ Instance sha256_inner_specification
            (* and the length of the block is 16 *)
            /\ length block = 16
          else
-           if cleared
-           then True (* no requirements *)
+           if inner_done
+           then True (* no requirements; stay in the done state until block is valid *)
            else
              (* the initial digest is the digest up to i *)
              initial_digest = fold_left (SHA256Alt.sha256_step msg)
@@ -193,18 +193,30 @@ Instance sha256_inner_specification
                               else if inner_done
                                    then true
                                    else t =? 63 in
-         (* the output is only meaningful in the case when we're done and not
-            cleared *)
-         if cleared
-         then True (* no guarantees *)
-         else if clear
-              then True (* no guarantees *)
-              else if new_done
-                   then
-                     (* output value matches expected digest *)
-                     output = (fold_left (SHA256Alt.sha256_step msg) (seq 0 (S i)) SHA256.H0, true)
-                   else True (* no guarantees *)
+         exists output_value : denote_type sha_digest,
+           output = (output_value, new_done)
+           /\ (* the output value is only meaningful in the case when we're done and not
+                cleared *)
+           (if cleared
+            then True (* no guarantees *)
+            else if clear
+                 then True (* no guarantees *)
+                 else if new_done
+                      then
+                        (* if the initial digest is correct, the output value
+                           matches the expected digest *)
+                        initial_digest = fold_left (SHA256Alt.sha256_step msg) (seq 0 i) SHA256.H0 ->
+                        output_value = fold_left (SHA256Alt.sha256_step msg) (seq 0 (S i)) SHA256.H0
+                      else True (* no guarantees *))
   |}.
+
+Lemma sha256_inner_invariant_at_reset : invariant_at_reset sha256_inner.
+Proof.
+  simplify_invariant sha256_inner.
+  cbn [reset_state reset_repr sha256_inner sha256_inner_specification];
+    stepsimpl.
+  ssplit; reflexivity.
+Qed.
 
 Lemma sha256_inner_invariant_preserved : invariant_preserved sha256_inner.
 Proof.
@@ -310,6 +322,14 @@ Proof.
   stepsimpl. push_resize.
   (* some general-purpose simplification *)
   pull_snoc; natsimpl.
+  eexists. ssplit; [ | ].
+  { apply f_equal2; [ reflexivity | ].
+    (* prove that done bit matches spec *)
+    boolsimpl. destr clear;[ reflexivity | ].
+    destr block_valid; [ reflexivity | ].
+    destr done; boolsimpl; [ reflexivity | ].
+    logical_simplify; subst.
+    destr (N.to_nat round =? 63); destr (round =? 63)%N; lia. }
   (* destruct cases for [cleared] *)
   destruct cleared; logical_simplify; subst; [ tauto | ].
   (* destruct cases for [clear] *)
@@ -320,7 +340,7 @@ Proof.
       try reflexivity | ].
   (* destruct cases for [done] *)
   destruct done; logical_simplify; subst; boolsimpl;
-    [ rewrite !resize_noop by (symmetry; length_hammer);
+    [ intros; subst; rewrite !resize_noop by (symmetry; length_hammer);
       reflexivity | ].
   push_resize; push_nth.
   erewrite step_sha256_compress with (t:=N.to_nat round)
@@ -329,11 +349,15 @@ Proof.
   cbn [fst snd]. push_resize.
   rewrite ?resize_noop by (symmetry; length_hammer).
   destr (N.to_nat round =? 63); destr (round =? 63)%N; try lia; [ ].
-  subst. apply f_equal2; [ | reflexivity ].
-  unfold SHA256Alt.sha256_step.
+  intros; subst. unfold SHA256Alt.sha256_step.
   rewrite seq_snoc with (len:=63); rewrite fold_left_app.
   reflexivity.
 Qed.
+
+Existing Instances sha256_inner_invariant_at_reset sha256_inner_invariant_preserved
+         sha256_inner_output_correct.
+Global Instance sha256_inner_correctness : correctness_for sha256_inner.
+Proof. constructor; typeclasses eauto. Defined.
 
 (* values of padder state constants *)
 Definition padder_waiting_value : N := 0.
@@ -377,7 +401,12 @@ Definition expected_padder_state
                         else padder_flushing_value
   else padder_waiting_value.
 
-(* State invariant for sha256_padder *)
+(* Higher-level state for padder :
+   msg : message so far
+   msg_complete : whether message is complete
+   padder_done : whether computation for this message is done
+   index : index (in bytes) of the padded message we're currently working on
+*)
 Instance sha256_padder_invariant
   : invariant_for sha256_padder (list byte * bool * bool * nat) :=
   fun (state : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 16))
@@ -392,8 +421,6 @@ Instance sha256_padder_invariant
     /\ done = padder_done
     (* ...and if msg_complete is true, we must have processed the whole message *)
     /\ (if msg_complete then length msg <= index else index = length msg)
-    (* ...and if output is valid, we must have processed at least one word *)
-    /\ (if out_valid then 4 <= index else True)
     (* ...and if we're in the emit_bit state, it must be the case that the message
      length is 0 mod 4 (otherwise we attach the 1 bit to the final byte and move
      straight to flushing) *)
@@ -402,11 +429,6 @@ Instance sha256_padder_invariant
        then
          (* if we're done, we must be in the padder_waiting state *)
          state = padder_waiting_value
-         (* ...and if the output is valid, the index must be at the end of the
-          expected result *)
-         /\ (if out_valid
-            then index = padded_message_size msg
-            else index = 0 /\ msg = [])
          (* ...and length is 0 *)
          /\ len = N.of_nat 0
          (* ...and offset is 0 *)
@@ -421,30 +443,14 @@ Instance sha256_padder_invariant
          (* ...and the state must match the message and word index *)
          /\ state = expected_padder_state msg msg_complete padder_done index).
 
-(* Convenience definition: calculate the new value of the [msg] ghost variable
-   for the padder *)
-Definition padder_update_msg
-           (input : denote_type [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit])
-           (repr : list byte * bool * bool * nat)
-  : list Byte.byte :=
-  let '(data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,_)))))) := input in
-  let '(msg, msg_complete, padder_done, index) := repr in
-  if clear
-  then []
-  else if consumer_ready
-       then if padder_done
-            then if data_valid
-                 then if is_final
-                      then firstn (N.to_nat final_length) (BigEndianBytes.N_to_bytes 4 data)
-                      else BigEndianBytes.N_to_bytes 4 data
-                 else []
-            else if data_valid
-                 then if is_final
-                      then msg ++ (firstn (N.to_nat final_length)
-                                          (BigEndianBytes.N_to_bytes 4 data))
-                      else msg ++ BigEndianBytes.N_to_bytes 4 data
-                 else msg
-       else msg.
+(* Convenience definition: get any valid bytes from the input *)
+Definition new_msg_bytes (data_valid : bool) (data : N) (is_final : bool) (final_length : N)
+  : list byte :=
+  if data_valid
+  then if is_final
+       then firstn (N.to_nat final_length) (BigEndianBytes.N_to_bytes 4 data)
+       else BigEndianBytes.N_to_bytes 4 data
+  else [].
 
 Instance sha256_padder_specification
   : specification_for sha256_padder (list byte * bool * bool * nat) :=
@@ -454,96 +460,127 @@ Instance sha256_padder_specification
          repr =>
          let '(data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,_)))))) := input in
          let '(msg, msg_complete, padder_done, index) := repr in
-         let new_msg := padder_update_msg input repr in
+         let new_bytes := new_msg_bytes data_valid data is_final final_length in
          if clear
          then ([], false, true, 0)
          else if consumer_ready
               then if padder_done
                    then if data_valid
-                        then (new_msg, is_final, false, 4)
-                        else ([], msg_complete, true, 0)
+                        then (new_bytes, is_final, false, 4)
+                        else (msg, msg_complete, padder_done, index) (* stay in the same state *)
                    else if msg_complete
-                        then (new_msg, true, index + 4 =? padded_message_size msg, index + 4)
+                        then if index + 4 =? padded_message_size msg
+                             then (msg, true, true, index + 4)
+                             else (msg, true, false, index + 4)
                         else if data_valid
-                             then (new_msg, is_final, false, index + 4)
-                             else (new_msg, false, false, index)
-              else (new_msg, msg_complete, padder_done, index) (* stay in the same state *);
+                             then (msg ++ new_bytes, is_final, false, index + 4)
+                             else (msg, false, false, index)
+              else (msg, msg_complete, padder_done, index) (* stay in the same state *);
      precondition :=
        fun (input : denote_type [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit])
          repr =>
          let '(data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,_)))))) := input in
          let '(msg, msg_complete, padder_done, index) := repr in
-         (* message length, plus any new data, must be small enough that size in
-            bits fits in a 64-bit word *)
-         (if data_valid
-          then if is_final
-               then (N.of_nat (length msg) + final_length < 2 ^ 61)%N
-               else (N.of_nat (length msg) + 4 < 2 ^ 61)%N
-          else (N.of_nat (length msg) < 2 ^ 61)%N)
-         (* ...and if clear is true, then the message ghost variable is empty *)
-         /\ (if clear then msg = [] /\ index = 0 else True)
+         let new_bytes := new_msg_bytes data_valid data is_final final_length in
+         (* the total message length (including any new data) cannot exceed 2 ^
+            64 bits (2^61 bytes) -- using N so Coq doesn't try to compute 2 ^ 61
+            in nat *)
+         (N.of_nat (length (msg ++ new_bytes)) < 2 ^ 61)%N
          /\ (if data_valid
             then
-              (* caller is only allowed to pass new valid data if we're in the
-                 padder_waiting state *)
-              expected_padder_state msg msg_complete padder_done index = padder_waiting_value
-              (* ...then message must not be complete *)
-              /\ msg_complete = false
+              (* if data is valid, the message must not be complete *)
+              msg_complete = false
               (* ...and final_length (if given) must be in range *)
               /\ (if is_final
-                 then (1 < final_length <= 4)%N
+                 then (1 <= final_length <= 4)%N
                  else True)
-              (* ...and data value must be in range *)
+                (* ...and data value must be in range *)
               /\ (if is_final
                  then data < 2 ^ (8 * final_length)
                  else data < 2 ^ 32)%N
-            else
-              (* is_final must be false if data is not valid *)
-              is_final = false
+            else True
            );
      postcondition :=
        fun (input : denote_type [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit])
          repr (output : denote_type (Bit ** sha_word ** Bit)) =>
          let '(data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,_)))))) := input in
          let '(msg, msg_complete, padder_done, index) := repr in
+         let new_bytes := new_msg_bytes data_valid data is_final final_length in
+         (* update value of message *)
+         let new_msg := if clear
+                        then []
+                        else if consumer_ready
+                             then if padder_done
+                                  then if data_valid
+                                       then new_bytes
+                                       else msg
+                                  else if msg_complete
+                                       then msg
+                                       else if data_valid
+                                            then msg ++ new_bytes
+                                            else msg
+                             else msg in
+         (* updated value of index *)
+         let new_index := if clear
+                          then 0
+                          else if consumer_ready
+                               then if padder_done
+                                    then if data_valid
+                                         then 4
+                                         else index
+                                    else if msg_complete
+                                         then index + 4
+                                         else if data_valid
+                                              then index + 4
+                                              else index
+                               else index in
          (* expected result as words *)
-         let expected_words := SHA256.padded_msg (padder_update_msg input repr) in
-         let word_index := index / 4 in
-         if consumer_ready
-         then
-           exists out_value,
-             (* out_valid can be determined based on the flags in the input and state *)
-             let out_valid :=
-                 if clear
-                 then false
-                 else if padder_done
-                      then data_valid (* valid only if we got new valid data *)
-                      else if msg_complete
-                           then true (* message is done, produce valid output always *)
-                           else data_valid (* we're partway through processing message *) in
-             (* so can the [done] bit (this should simply match update_repr) *)
-             let out_done :=
-                 if clear
-                 then true
-                 else if padder_done
-                      then negb data_valid
-                      else if msg_complete
-                           then index + 4 =? padded_message_size msg
-                           else false in
-             (* equation for output *)
-             output = (out_valid, (out_value, out_done))
-             (* if output is valid, the value matches expected output data *)
-             /\ (if out_valid
-                then out_value = nth word_index expected_words 0%N
-                else True)
-         else True (* no guarantees about output if consumer isn't ready *)
+         let expected_words := SHA256.padded_msg new_msg in
+         let word_index := (new_index - 4) / 4 in
+         exists out_valid out_value out_done,
+           output = (out_valid, (out_value, out_done))
+           /\ (if consumer_ready
+              then
+                out_valid =
+                 (if clear
+                  then false
+                  else if padder_done
+                       then data_valid (* valid only if we got new valid data *)
+                       else if msg_complete
+                            then true (* message is done, produce valid output always *)
+                            else data_valid (* we're partway through processing message *))
+                /\ out_done =
+                  (if clear
+                   then true
+                   else if padder_done
+                        then negb data_valid
+                        else if msg_complete
+                             then index + 4 =? padded_message_size msg
+                             else false)
+                /\ (if out_valid
+                   then out_value = nth word_index expected_words 0%N
+                   else True)
+              else True (* no guarantees about output if consumer isn't ready *))
   |}.
+
+Lemma sha256_padder_invariant_at_reset : invariant_at_reset sha256_padder.
+Proof.
+  simplify_invariant sha256_padder.
+  cbn [reset_state reset_repr sha256_padder sha256_padder_specification];
+    stepsimpl.
+  ssplit; reflexivity.
+Qed.
 
 (* helper lemma for modular arithmetic *)
 Lemma increment_offset (offset index : N) :
   (offset * 4 = index mod 64)%N ->
   ((offset + 1) mod 16 * 4 = (index + 4) mod 64)%N.
 Proof. intros. prove_by_zify. Qed.
+
+Local Ltac padder_state_simpl :=
+  cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
+             padder_emit_bit_value padder_writing_length_value
+             negb andb orb] in *.
 
 Lemma expected_padder_state_cases msg (msg_complete padder_done : bool) index :
   index < padded_message_size msg ->
@@ -597,8 +634,7 @@ Proof.
     pose proof Nat.ceiling_range (length msg + 1) 64 ltac:(lia) ltac:(lia).
     lia. }
   cbv [expected_padder_state]; repeat destruct_one_match; subst; try lia;
-    cbv [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-               padder_emit_bit_value padder_writing_length_value].
+    padder_state_simpl.
   all:repeat lazymatch goal with
              | |- ?P \/ ?Q =>
                first [ let H := fresh in
@@ -611,7 +647,7 @@ Proof.
   all:prove_by_zify.
 Qed.
 
-Lemma step_sha256_padder_invariant : invariant_preserved sha256_padder.
+Lemma sha256_padder_invariant_preserved : invariant_preserved sha256_padder.
 Proof.
   simplify_invariant sha256_padder. cbn [absorb_any].
   simplify_spec sha256_padder.
@@ -624,11 +660,10 @@ Proof.
       (data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,[])))))).
   destruct state as
       (done, (out, (out_valid, (state, (len, current_offset))))).
-  intros; logical_simplify; subst.
-  cbv [padder_update_msg].
+  intros; logical_simplify; subst. cbv [new_msg_bytes].
   intros. logical_simplify. subst. cbn [fst snd] in *.
   cbv [sha256_padder K]. stepsimpl.
-  repeat (destruct_pair_let; cbn [fst snd]).
+  repeat (destruct_inner_pair_let; cbn [fst snd]).
   autorewrite with tuple_if; cbn [fst snd].
   stepsimpl.
   (* destruct cases for flags *)
@@ -643,8 +678,7 @@ Proof.
     [ | ssplit; (lia || reflexivity || (cbn; tauto)) ].
   destruct data_valid;
     repeat (boolsimpl || subst || logical_simplify);
-    cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-               padder_emit_bit_value padder_writing_length_value].
+    padder_state_simpl.
   { (* Case for handling valid data:
        consumer_ready=true
        clear=false
@@ -653,7 +687,8 @@ Proof.
     pose proof padded_message_bytes_longer_than_input msg.
     pose proof min_padded_message_size msg.
     lazymatch goal with
-    | |- context [msg ++ firstn ?n ?data] =>
+    | |- context [firstn ?n (BigEndianBytes.N_to_bytes 4 ?data)] =>
+      let data := constr:(BigEndianBytes.N_to_bytes 4 data) in
       pose proof padded_message_size_mono msg (firstn n data);
         pose proof padded_message_size_mono msg data;
         pose proof min_padded_message_size (firstn n data);
@@ -674,18 +709,20 @@ Proof.
     { (* index is past or at end of message if is_final is true, otherwise equal
          to length of message *)
       repeat destruct_one_match; logical_simplify; subst; push_length; lia. }
-    { (* if output is valid, then new index must be at least 4 *)
-      repeat destruct_one_match; lia. }
     { (* if we're in the emit_bit state, then the length of the message was 0
          mod 4 *)
       cbv [expected_padder_state] in *.
       destruct padder_done, out_valid, is_final; logical_simplify; subst;
-        boolsimpl; cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                              padder_emit_bit_value padder_writing_length_value
-                              negb andb orb].
+        boolsimpl; padder_state_simpl.
+      all:lazymatch goal with
+          | H : context [new_msg_bytes] |- _ =>
+            cbv [new_msg_bytes] in H; autorewrite with push_length in H;
+              try rewrite Min.min_l in H by lia
+          end.
       all:repeat first [ discriminate | destruct_one_match | destruct_one_match_hyp ].
-      all:try tauto.
-      all:push_length; prove_by_zify. }
+      all:subst; try tauto.
+      all:push_length; natsimpl.
+      all:prove_by_zify. }
     { cbv [expected_padder_state] in *.
       destruct padder_done, out_valid, is_final; logical_simplify; subst.
       all:repeat (destruct_one_match_hyp; try discriminate).
@@ -693,14 +730,19 @@ Proof.
     { (* length matches length processed so far *)
       rewrite N.land_ones.
       rewrite N.add_mod_idemp_r by (cbn;lia).
-      compute_expr (2 ^ N.of_nat 61)%N.
-      lazymatch goal with H : context [(2 ^ 61)%N] |- _ => cbn in H end.
       cbv [expected_padder_state] in *.
+      compute_expr (N.of_nat 61).
       destruct is_final; logical_simplify; subst; boolsimpl.
+      all:lazymatch goal with
+          | H : context [length (?msg ++ new_msg_bytes _ _ _ _)] |- _ =>
+            cbv [new_msg_bytes] in H;
+              autorewrite with push_length in H;
+              try rewrite Min.min_l in H by lia
+          end.
       all:repeat (destruct_one_match_hyp; try discriminate).
       all:logical_simplify; subst; cbn [length app] in *.
       all:rewrite ?N.eqb_refl; try lia.
-      all:push_length.
+      all:push_length; natsimpl.
       all:rewrite N.mod_small; lia. }
     { (* new offset matches expectations *)
       cbv [expected_padder_state] in *. change (2 ^ N.of_nat 4)%N with 16%N.
@@ -721,6 +763,7 @@ Proof.
         logical_simplify; subst; rewrite ?N.eqb_refl; boolsimpl.
       all:repeat (destruct_one_match_hyp; try discriminate).
       all:autorewrite with push_length.
+      all:rewrite ?Min.min_l by lia.
       all:rewrite ?Nat.mod_small by lia.
       all:repeat (destruct_one_match; try discriminate; try lia); subst.
       all:try (specialize (Hincr ltac:(assumption)); cbn in Hincr).
@@ -756,9 +799,7 @@ Proof.
         logical_simplify; subst;
         lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
                             rewrite H in * end.
-      all:cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                     padder_emit_bit_value padder_writing_length_value
-                     negb andb orb].
+      all:padder_state_simpl.
       all:try (destruct msg_complete; try discriminate).
       all:repeat lazymatch goal with
                  | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
@@ -766,22 +807,18 @@ Proof.
                  | H : context [Nat.eqb ?x ?y] |- _ => destr (Nat.eqb x y); try lia
                  | H : context [N.eqb ?x ?y] |- _ => destr (N.eqb x y); try lia
                  end.
+      all:boolsimpl_hyps.
+      all:try congruence.
       all:try discriminate.
       all:prove_by_zify. }
     { (* if message is complete, index is past or at end of message; otherwise,
          index = length of message *)
       repeat destruct_one_match; logical_simplify; subst; push_length; lia. }
-    { (* if output is valid, then new index must be at least 4 *)
-      destr (state =? padder_waiting_value)%N; boolsimpl; [ solve [trivial] | ].
-      repeat destruct_one_match; logical_simplify; subst; try lia;
-        cbv [expected_padder_state] in *; repeat destruct_one_match_hyp;
-          congruence. }
     { (* if state is emit_bit, length of message is 0 mod 4 *)
       destruct padder_done; logical_simplify; subst;
-        rewrite ?N.eqb_refl in *;
-        cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                   padder_emit_bit_value padder_writing_length_value
-                   negb andb orb]; [ tauto | ].
+      rewrite ?N.eqb_refl in *; boolsimpl; padder_state_simpl;
+      [ destruct is_final; padder_state_simpl;
+        repeat destruct_one_match; tauto | ].
       pose proof
            expected_padder_state_cases msg msg_complete false index
            ltac:(eauto) ltac:(eauto) ltac:(eauto) as padder_state_cases.
@@ -790,19 +827,17 @@ Proof.
         logical_simplify; subst;
         lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
                             rewrite H in * end.
-      all:cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                     padder_emit_bit_value padder_writing_length_value
-                     negb andb orb].
+      all:padder_state_simpl; boolsimpl.
       all:repeat
-            first [ discriminate | tauto
-                    | destruct_one_match | destruct_one_match_hyp ]. }
+            first [ discriminate
+                  | tauto
+                  | destruct_one_match; subst
+                  | destruct_one_match_hyp; subst
+                  ]. }
     { (* entire clause for what happens if we're done or not done *)
       destruct padder_done;
-        logical_simplify; subst; rewrite ?N.eqb_refl;
-          cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                     padder_emit_bit_value padder_writing_length_value
-                     negb andb orb];
-          [ ssplit; reflexivity | ].
+      logical_simplify; subst; rewrite ?N.eqb_refl; padder_state_simpl;
+      [ ssplit; reflexivity | ].
       pose proof
            expected_padder_state_cases msg msg_complete false index
            ltac:(eauto) ltac:(eauto) ltac:(eauto) as padder_state_cases.
@@ -811,9 +846,7 @@ Proof.
         logical_simplify; subst;
         lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
                             rewrite H in * end.
-      all:cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                     padder_emit_bit_value padder_writing_length_value
-                     negb andb orb].
+      all:padder_state_simpl.
       all:repeat lazymatch goal with
                  | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia; [ ]
                  end.
@@ -842,12 +875,11 @@ Proof.
                 else current_offset = 14%N /\ index = padded_message_size msg - 8)
           by (destruct_one_match; prove_by_zify).
         destr (current_offset =? 15)%N;
-          logical_simplify; subst;
-            cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                       padder_emit_bit_value padder_writing_length_value
-                       negb andb orb].
-        { ssplit; try lia; reflexivity. }
-        { ssplit; [ lia .. | | ].
+          logical_simplify; subst; padder_state_simpl.
+        { repeat destruct_one_match; try lia; [ ].
+          ssplit; reflexivity. }
+        { repeat destruct_one_match; try lia; [ ].
+          ssplit; [ lia .. | | ].
           { rewrite Nat2N.inj_add.
             apply increment_offset; lia. }
           { repeat lazymatch goal with
@@ -866,6 +898,21 @@ Local Ltac testbit_crush :=
          | |- N.testbit ?x _ = N.testbit ?x _ => f_equal; lia
          | _ => first [ progress (push_Ntestbit; boolsimpl) | reflexivity ]
          end.
+Local Ltac destruct_padder_state_cases :=
+  let padder_state_cases := fresh in
+  lazymatch goal with
+  | H : context [expected_padder_state ?msg ?mc ?pd ?i] |- _ =>
+    pose proof
+         expected_padder_state_cases msg mc pd i
+         ltac:(lia) ltac:(eauto) ltac:(repeat destruct_one_match;lia)
+      as padder_state_cases
+  end;
+  let H := fresh in
+  destruct padder_state_cases as [H|[H|[H|H]]];
+  logical_simplify; subst;
+  lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
+                      rewrite H in * end;
+  padder_state_simpl.
 
 Lemma sha256_padder_output_correct : output_correct sha256_padder.
 Proof.
@@ -880,7 +927,7 @@ Proof.
       (data_valid, (data, (is_final, (final_length, (consumer_ready, (clear,[])))))).
   destruct state as
       (done, (out, (out_valid, (state, (len, current_offset))))).
-  intros; logical_simplify; subst. cbv [padder_update_msg].
+  intros; logical_simplify; subst. cbv [new_msg_bytes].
   cbv [sha256_padder K]. stepsimpl.
   repeat (destruct_pair_let; cbn [fst snd]).
   autorewrite with tuple_if; cbn [fst snd].
@@ -889,53 +936,59 @@ Proof.
     repeat (boolsimpl || subst || logical_simplify);
     (* handle case for clear=true *)
     [ repeat destruct_one_match;
-      eexists ;ssplit; (lia || reflexivity) | ].
+      do 3 eexists; ssplit; (lia || reflexivity) | ].
   destruct consumer_ready;
     repeat (boolsimpl || subst || logical_simplify);
     rewrite ?N.eqb_refl;
     (* handle case for consumer_ready=false *)
-    [ | eexists; ssplit; (lia || reflexivity) ].
+    [ | do 3 eexists; ssplit; (lia || reflexivity) ].
+
+  (* useful assertions *)
+  pose proof padded_message_bytes_longer_than_input msg.
+  pose proof min_padded_message_size msg.
+  pose proof padded_message_size_modulo msg.
+  lazymatch goal with
+  | |- context [firstn ?n (BigEndianBytes.N_to_bytes 4 ?data)] =>
+    let data := constr:(BigEndianBytes.N_to_bytes 4 data) in
+    pose proof padded_message_size_mono msg (firstn n data);
+      pose proof padded_message_size_mono msg data;
+      pose proof min_padded_message_size (firstn n data);
+      pose proof min_padded_message_size data;
+      pose proof padded_message_bytes_longer_than_input (msg ++ firstn n data);
+      pose proof padded_message_size_modulo (msg ++ firstn n data)
+  end.
+
+  do 3 eexists; ssplit; [ reflexivity | | | ].
+  { (* prove output_valid matches spec *)
+    repeat destruct_one_match; destr data_valid; logical_simplify; subst;
+      rewrite ?N.eqb_refl; boolsimpl; try reflexivity;
+        destruct_padder_state_cases; try discriminate; reflexivity. }
+  { (* prove done flag matches spec *)
+    destr padder_done; logical_simplify; subst; boolsimpl; [ reflexivity | ].
+    destruct_padder_state_cases; boolsimpl.
+    all:repeat lazymatch goal with
+               | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
+               end.
+    all:repeat destruct_one_match; logical_simplify; subst.
+    all:try lia; try reflexivity.
+    all:rewrite ?N.eqb_refl; boolsimpl; try reflexivity.
+    all:destr data_valid; logical_simplify; subst; boolsimpl.
+    all:try lia.
+    all:prove_by_zify. }
+
+  (* remaining case: prove output value matches spec *)
   destruct data_valid;
     repeat (boolsimpl || subst || logical_simplify);
-    cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-               padder_emit_bit_value padder_writing_length_value].
+    padder_state_simpl.
   { (* data_valid=true *)
-    pose proof padded_message_bytes_longer_than_input msg.
-    pose proof min_padded_message_size msg.
-    lazymatch goal with
-    | |- context [msg ++ firstn ?n ?data] =>
-      pose proof padded_message_size_mono msg (firstn n data);
-        pose proof padded_message_size_mono msg data;
-        pose proof min_padded_message_size (firstn n data);
-        pose proof min_padded_message_size data;
-        pose proof padded_message_bytes_longer_than_input (msg ++ firstn n data);
-        pose proof padded_message_size_modulo (msg ++ firstn n data)
-    end.
-    lazymatch goal with
-    | H : expected_padder_state ?msg ?mc ?pd ?i = _ |- _ =>
-      pose proof
-           expected_padder_state_cases msg mc pd i
-           ltac:(lia) ltac:(eauto) ltac:(cbn;lia)
-        as padder_state_cases
-    end.
-    let H := fresh in
-    destruct padder_state_cases as [H|[H|[H|H]]];
-      logical_simplify; subst;
-        lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
-                            rewrite H in * end;
-        cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                   padder_emit_bit_value padder_writing_length_value
-                   negb andb orb];
+    destruct_padder_state_cases;
         (* there should be only one case, since valid data means we have to be
            in the padder_waiting state *)
         try discriminate; [ ].
     destruct padder_done;
       logical_simplify; subst; rewrite ?N.eqb_refl;
-        cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                   padder_emit_bit_value padder_writing_length_value
-                   negb andb orb].
+        padder_state_simpl.
     { (* padder_done=true *)
-      destruct out_valid; logical_simplify; subst; [ lia | ].
       autorewrite with push_length in *. compute_expr (0 / 4).
       destruct is_final.
       { (* padder_done=true, is_final=true *)
@@ -944,8 +997,6 @@ Proof.
         change 32768%N with (2 ^ 15)%N.
         change 8388608%N with (2 ^ 23)%N.
         change 128%N with (2 ^ 7)%N.
-        (* solve the boolean parts of the tuple *)
-        eexists; split; [ reflexivity | ].
         repeat destruct_one_match; subst; try lia.
         all:
           try lazymatch goal with
@@ -961,6 +1012,7 @@ Proof.
                 by (rewrite N.land_ones; apply N.mod_small; lia)
             end.
         all:rewrite nth_padded_msg.
+        all:change ((4 - 4) / 4)%nat with 0%nat.
         all:cbn [Nat.mul Nat.add].
         all:cbv [BigEndianBytes.N_to_bytes]; cbn [seq List.map firstn].
         all:cbn [Nat.sub Nat.mul N.of_nat Pos.of_succ_nat
@@ -982,14 +1034,13 @@ Proof.
         all:destr (i <? 24)%N; testbit_crush.
         all:destr (i <? 32)%N; testbit_crush. }
       { (* padder_done=true, is_final=false *)
-        (* solve the boolean parts of the tuple *)
-        eexists; split; [ reflexivity | ].
         all:lazymatch goal with
             | H : (?data < 2 ^ ?n)%N |- context [?data] =>
               replace data with (N.land data (N.ones n))
                 by (rewrite N.land_ones; apply N.mod_small; lia)
             end.
         rewrite nth_padded_msg.
+        change ((4 - 4) / 4)%nat with 0%nat.
         cbn [Nat.mul Nat.add].
         cbv [BigEndianBytes.N_to_bytes]; cbn [seq List.map firstn].
         cbn [Nat.sub Nat.mul N.of_nat Pos.of_succ_nat
@@ -1015,9 +1066,7 @@ Proof.
         change 32768%N with (2 ^ 15)%N.
         change 8388608%N with (2 ^ 23)%N.
         change 128%N with (2 ^ 7)%N.
-        (* solve the boolean parts of the tuple *)
-        eexists; split; [ reflexivity | ].
-        rewrite nth_padded_msg.
+        rewrite nth_padded_msg. natsimpl.
         rewrite Nat.mul_div_exact_r by lia.
         cbv [SHA256.padded_msg_bytes].
         rewrite !app_assoc_reverse. push_nth. natsimpl.
@@ -1062,9 +1111,7 @@ Proof.
         all:destr (i <? 24)%N; testbit_crush.
         all:destr (i <? 32)%N; testbit_crush. }
       { (* padder_done=false, is_final=false *)
-        (* solve the boolean parts of the tuple *)
-        eexists; split; [ reflexivity | ].
-        rewrite nth_padded_msg.
+        rewrite nth_padded_msg. natsimpl.
         rewrite Nat.mul_div_exact_r by lia.
         cbv [SHA256.padded_msg_bytes].
         rewrite !app_assoc_reverse. push_nth. natsimpl.
@@ -1089,72 +1136,40 @@ Proof.
         destr (i <? 24)%N; testbit_crush.
         destr (i <? 32)%N; testbit_crush. } } }
   { (* data_valid=false *)
-    pose proof padded_message_bytes_longer_than_input msg.
-    pose proof min_padded_message_size msg.
-    pose proof padded_message_size_modulo msg.
     destruct padder_done;
       logical_simplify; subst; rewrite ?N.eqb_refl;
-        cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                   padder_emit_bit_value padder_writing_length_value
-                   negb andb orb] in *; boolsimpl;
+        padder_state_simpl; boolsimpl;
           (* solve padder_done=true case *)
           [ eexists; split; reflexivity | ].
-    lazymatch goal with
-    | |- context [expected_padder_state ?msg ?mc ?pd ?i] =>
-      pose proof
-           expected_padder_state_cases msg mc pd i
-           ltac:(lia) ltac:(eauto) ltac:(eauto)
-        as padder_state_cases
-    end.
-    let H := fresh in
-    destruct padder_state_cases as [H|[H|[H|H]]];
-      logical_simplify; subst;
-        lazymatch goal with H : expected_padder_state _ _ _ _ = _ |- _ =>
-                            rewrite H in * end;
-        rewrite ?N.eqb_refl in *;
-        cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                   padder_emit_bit_value padder_writing_length_value
-                   negb andb orb] in *.
+    destruct_padder_state_cases.
     { (* state=padder_waiting *)
-      destruct msg_complete; logical_simplify; subst; [ discriminate | ].
-      eexists; split; reflexivity. }
+      tauto. }
     { (* state=padder_emit_bit *)
-      eexists; split; [ | reflexivity ].
-      do 2 f_equal;
-      [ | symmetry; apply Nat.eqb_neq; push_length; prove_by_zify ].
-      rewrite nth_padded_msg. rewrite Nat.mul_div_exact_r by lia.
-      cbv [SHA256.padded_msg_bytes]. push_nth. natsimpl.
+      rewrite nth_padded_msg. natsimpl. rewrite Nat.mul_div_exact_r by lia.
+      cbv [SHA256.padded_msg_bytes]. push_nth. natsimpl. listsimpl.
       rewrite !app_nth1 by (push_length; prove_by_zify).
-      push_nth. reflexivity. }
+      natsimpl. push_nth. reflexivity. }
     { (* state=padder_flushing *)
-      eexists; split; [ | reflexivity ].
-      do 2 f_equal;
-      [ | symmetry; apply Nat.eqb_neq; push_length; prove_by_zify ].
-      rewrite nth_padded_msg. rewrite Nat.mul_div_exact_r by lia.
-      cbv [SHA256.padded_msg_bytes]. push_nth. natsimpl.
+      rewrite nth_padded_msg. natsimpl. rewrite Nat.mul_div_exact_r by lia.
+      cbv [SHA256.padded_msg_bytes]. push_nth. natsimpl. listsimpl.
       rewrite !app_nth1 by (push_length; prove_by_zify).
       rewrite !nth_padding_nonzero by lia.
       reflexivity. }
     { (* state=writing_length *)
       push_length.
-      eexists; split; [ | reflexivity ].
-      do 2 f_equal;
-        [ |
-          repeat lazymatch goal with
-                 | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
-                 | |- context [N.eqb ?x ?y] => destr (N.eqb x y); try lia
-                 | H : context [Nat.eqb ?x ?y] |- _ => destr (Nat.eqb x y); try lia
-                 | H : context [N.eqb ?x ?y] |- _ => destr (N.eqb x y); try lia
-                 end;
-          try discriminate; prove_by_zify ].
-      rewrite nth_padded_msg. rewrite Nat.mul_div_exact_r by lia.
-      cbv [SHA256.padded_msg_bytes]. push_nth. natsimpl.
+      rewrite nth_padded_msg. natsimpl. rewrite Nat.mul_div_exact_r by lia.
+      cbv [SHA256.padded_msg_bytes]. listsimpl. push_nth.
+      push_length. natsimpl.
       rewrite !nth_N_to_bytes by (push_length; prove_by_zify).
       replace (SHA256.l msg) with (N.shiftl (N.of_nat (length msg)) 3)
         by apply N.shiftl_mul_pow2.
       (* helpful assertion for length truncation *)
       assert (2 ^ 61 * 8 = 2 ^ 64)%N by reflexivity.
       rewrite !N.land_ones with (n:=64%N).
+      all:lazymatch goal with
+          | H : context [new_msg_bytes] |- _ =>
+            cbv [new_msg_bytes] in H; autorewrite with push_length in H
+          end.
       rewrite (N.mod_small (N.of_nat (length msg)) (2^64)%N) by lia.
       rewrite (N.mod_small (N.shiftl (N.of_nat (length msg)) _) (2^64)%N)
         by (rewrite N.shiftl_mul_pow2; change (2 ^ N.of_nat 3)%N with 8%N;
@@ -1165,10 +1180,7 @@ Proof.
               else current_offset = 14%N /\ index = padded_message_size msg - 8)
           by (destruct_one_match; prove_by_zify).
         destr (current_offset =? 15)%N;
-          logical_simplify; subst;
-            cbn [N.eqb Pos.eqb padder_waiting_value padder_flushing_value
-                       padder_emit_bit_value padder_writing_length_value
-                       negb andb orb].
+          logical_simplify; subst; padder_state_simpl.
         all:cbv [BigEndianBytes.concat_bytes]; cbn [fold_left].
         all:rewrite !N_to_byte_to_N; cbn [Byte.to_N].
         all:rewrite <-!N.land_ones with (n:=8%N).
@@ -1182,3 +1194,923 @@ Proof.
         all:destr (i <? 24)%N; testbit_crush.
         all:destr (i <? 32)%N; testbit_crush. } }
 Qed.
+
+Existing Instances sha256_padder_invariant_at_reset sha256_padder_invariant_preserved
+         sha256_padder_output_correct.
+Global Instance sha256_padder_correctness : correctness_for sha256_padder.
+Proof. constructor; typeclasses eauto. Defined.
+
+(* Higher-level representation for sha256:
+   msg : message so far
+   msg_complete : whether the message is complete
+   byte_index : index indicating the last byte the padder has gotten to
+   t : compression round index
+   cleared : whether the circuit is cleared
+ *)
+Instance sha256_invariant
+  : invariant_for sha256 (list byte * bool * nat * nat * nat * bool) :=
+  fun (state : denote_type ((Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit)
+                            ** state_of sha256_padder
+                            ** state_of sha256_inner))
+    repr =>
+    let '((ready, (block, (digest, (count, done)))),
+          (sha256_padder_state, sha256_inner_state)) := state in
+    let '(msg, msg_complete, padder_byte_index, inner_byte_index, t, cleared) := repr in
+    (* block index is byte_index / 64 (64 bytes per block) *)
+    let padder_block_index := padder_byte_index / 64 in
+    let inner_block_index := inner_byte_index / 64 - 1 in
+    (* compute representation for padder state *)
+    let padder_repr :=
+        if cleared
+        then (reset_repr (c:=sha256_padder))
+        else (msg, msg_complete,
+              padder_byte_index =? padded_message_size msg, padder_byte_index) in
+    (* compute representation for inner *)
+    let inner_repr :=
+        if cleared
+        then (reset_repr (c:=sha256_inner))
+        else
+          (firstn (inner_byte_index / 64 * 16) (SHA256.padded_msg msg)
+           , inner_block_index
+           , t
+           , if t =? 64 then true else inner_byte_index =? 0
+           , inner_byte_index =? 0) in
+    (* index of the block that's currently in progress (i.e. next block whose
+       digest will be produced) *)
+    let completed_block_index :=
+        if (count <=? 15)%N
+        then
+          (* padder is running; same block index the padder is on *)
+          padder_block_index
+        else if (count =? 16)%N
+             then
+               (* padder is done, so padder_block_index has just moved to the
+                  next block; subtract 1 to get the current index *)
+               padder_block_index - 1
+             else
+               if t =? 64
+               then
+                 (* inner circuit is done; next block to be produced will be
+                    whatever block index the padder is on *)
+                 padder_block_index
+               else
+                 (* inner circuit is in progress; next block to be produced will
+                    be whatever block index the inner circuit is on *)
+                 inner_block_index in
+    (* the invariant for sha256_padder is satisfied *)
+    sha256_padder_invariant sha256_padder_state padder_repr
+    (* ...and the invariant for sha256_inner is satisfied *)
+    /\ sha256_inner_invariant sha256_inner_state inner_repr
+    (* ...and the length of [block] is always 16 *)
+    /\ length block = 16
+    (* ...and count is always in the range [0,17] *)
+    /\ (count <= 17)%N
+    (* ...and byte indices are always at a word boundary *)
+    /\ padder_byte_index mod 4 = 0
+    /\ (if cleared
+       then
+         (* if the circuit is cleared, it must be in the reset state
+            (including subcircuits) *)
+         padder_byte_index = 0
+         /\ inner_byte_index = 0
+         /\ t = 0
+         /\ msg = []
+         /\ msg_complete = false
+         /\ count = 0%N
+         /\ done = true
+         /\ digest = SHA256.H0
+       else
+         (* the byte index (padder counter) is within the range
+            [4,padded_message_size msg] *)
+         4 <= padder_byte_index <= padded_message_size msg
+         (* ...and t (inner loop counter) is in the range [0,64] *)
+         /\ t <= 64
+         (* ...and ready is true iff count < 16 *)
+         /\ ready = (count <? 16)%N
+         (* ...and the digest must be the expected digest (digest is only
+            stored at the end of each inner loop) *)
+         /\ digest = fold_left (SHA256.sha256_step msg)
+                              (seq 0 completed_block_index) SHA256.H0
+         (* ...and the index is past the end of the message iff the message is
+            complete *)
+         /\ (if msg_complete then length msg <= padder_byte_index else padder_byte_index = length msg)
+         (* ...and if [done] is true, we must be at the end of the message *)
+         /\ (if done
+            then padder_byte_index = inner_byte_index
+                 /\ padder_byte_index = padded_message_size msg
+                 /\ count = 0%N
+                 /\ t = 64
+            else True)
+         (* ...and the state variables agree with [count] *)
+         /\ (if (count <=? 15)%N
+            then
+              (* padder is running *)
+              skipn (16 - N.to_nat count) block
+              = List.slice 0%N (SHA256.padded_msg msg) (padder_block_index * 16) (N.to_nat count)
+              /\ padder_byte_index mod 64 = N.to_nat count * 4 (* byte_index is on the [count]th word *)
+              /\ (if (padder_byte_index <? 64) then t = 0 else t = 64) (* inner is between blocks *)
+              /\ inner_byte_index = padder_block_index * 64
+            else
+              (* inner loop is running or about to run *)
+              padder_byte_index mod 64 = 0 (* byte index is at the end of a block *)
+              /\ (if (count =? 16)%N
+                 then
+                   (* padder has just finished a block; send the completed
+                        block to start inner loop *)
+                   block = List.slice 0%N (SHA256.padded_msg msg)
+                                      (inner_byte_index / 64 * 16) 16
+                   /\ (if (padder_byte_index =? 64) then t = 0 else t = 64)
+                   /\ padder_byte_index = inner_byte_index + 64
+                 else
+                   (* inner loop is in progress *)
+                   0 <= t < 64
+                   /\ inner_byte_index = padder_byte_index))
+      ).
+
+Instance sha256_specification
+  : specification_for sha256 (list byte * bool * nat * nat * nat * bool) :=
+  {| reset_repr := ([], false, 0, 0, 0, true);
+     update_repr :=
+       fun (input : denote_type [Bit; sha_word; Bit; BitVec 4; Bit])
+         repr =>
+         let '(fifo_data_valid,
+               (fifo_data, (is_final, (final_length, (clear, _))))) := input in
+         let '(msg, msg_complete, padder_byte_index, inner_byte_index, t, cleared) := repr in
+         let new_bytes :=
+             new_msg_bytes fifo_data_valid fifo_data is_final final_length in
+         if clear
+         then ([], false, 0, 0, 0, true)
+         else if cleared
+              then if fifo_data_valid
+                   then (new_bytes, is_final, 4, 0, 0, false)
+                   else ([], false, 0, 0, 0, true) (* stay in cleared state *)
+              else if (padder_byte_index =? inner_byte_index)
+                   then if t =? 64
+                        then
+                          (* sha256_inner has finished; start the padder on the
+                             next block if we can *)
+                          if (padder_byte_index =? padded_message_size msg)
+                          then
+                            (* padder is at the end of the message and
+                               processing is completely done; hold state
+                               constant *)
+                            repr
+                          else
+                            if msg_complete
+                            then
+                              (* step padder *)
+                              (msg, msg_complete, padder_byte_index + 4, inner_byte_index, t, cleared)
+                            else if fifo_data_valid
+                                 then
+                                   (* step padder *)
+                                   (msg ++ new_bytes, is_final, padder_byte_index + 4, inner_byte_index, t, cleared)
+                                 else
+                                   (* message is incomplete and next word isn't
+                                      available; wait *)
+                                   repr
+                        else
+                          (* sha256_inner is already in progress; increment t *)
+                          (msg, msg_complete, padder_byte_index, inner_byte_index, S t, cleared)
+                   else
+                     if (padder_byte_index =? inner_byte_index + 64)
+                     then
+                       (* padder just finished a block; start sha256_inner by
+                          passing in the new block and reset t to 0 *)
+                       (msg, msg_complete, padder_byte_index, padder_byte_index, 0, cleared)
+                     else
+                       (* padder is midway through a block; take another step if possible *)
+                       if msg_complete
+                       then
+                         (* step padder *)
+                         (msg, msg_complete, padder_byte_index + 4, inner_byte_index, t, cleared)
+                       else if fifo_data_valid
+                            then
+                              (* step padder *)
+                              (msg ++ new_bytes, is_final, padder_byte_index + 4, inner_byte_index, t, cleared)
+                            else
+                              (* message is incomplete and next word isn't
+                                 available; wait *)
+                              (msg, msg_complete, padder_byte_index, inner_byte_index, t, cleared);
+     precondition :=
+       fun (input : denote_type [Bit; sha_word; Bit; BitVec 4; Bit])
+         repr =>
+         let '(fifo_data_valid,
+               (fifo_data, (is_final, (final_length, (clear, _))))) := input in
+         let '(msg, msg_complete, padder_byte_index, inner_byte_index, t, cleared) := repr in
+         let new_bytes :=
+             new_msg_bytes fifo_data_valid fifo_data is_final final_length in
+         (* the total message length (including any new data) cannot exceed 2 ^
+            64 bits (2^61 bytes) -- using N so Coq doesn't try to compute 2 ^ 61
+            in nat *)
+         (N.of_nat (length (msg ++ new_bytes)) < 2 ^ 61)%N
+         (* ..and only pass valid data if circuit is cleared or inner is done
+            (i.e. the output "ready" signal is true) *)
+         /\ (if fifo_data_valid
+            then if cleared
+                 then True
+                 else t = 64 /\ msg_complete = false
+            else True)
+         (* ...and if data is valid, it must be in expected range *)
+         /\ (if fifo_data_valid
+            then if is_final
+                 then (fifo_data < 2 ^ (8 * final_length))%N
+                      /\ (1 <= final_length <= 4)%N
+                 else (fifo_data < 2 ^ 32)%N
+            else True)
+         (* ...and if msg_complete is true, then new valid data cannot be passed
+            (must clear first) *)
+         /\ (if msg_complete then fifo_data_valid = false else True);
+     postcondition :=
+       fun (input : denote_type [Bit; sha_word; Bit; BitVec 4; Bit])
+         repr (output : denote_type (Bit ** sha_digest ** Bit)) =>
+         let '(fifo_data_valid,
+               (fifo_data, (is_final, (final_length, (clear, _))))) := input in
+         let '(msg, msg_complete, padder_byte_index, inner_byte_index, t, cleared) := repr in
+         (* new value of [cleared] *)
+         let is_cleared := if clear
+                           then true
+                           else if cleared
+                                then negb (fifo_data_valid)
+                                else false in
+         let is_cleared_or_done :=
+             if is_cleared
+             then true
+             else if fifo_data_valid
+                  then false
+                  else if padder_byte_index =? padded_message_size msg
+                       then 63 <=? t else false in
+         (* new value of [padder_byte_index] *)
+         let new_padder_byte_index :=
+             if clear
+             then 0
+             else if cleared
+              then 0
+              else if (padder_byte_index =? inner_byte_index)
+                   then if t =? 64
+                        then if (padder_byte_index =? padded_message_size msg)
+                             then padder_byte_index
+                             else if msg_complete
+                                  then padder_byte_index + 4
+                                  else if fifo_data_valid
+                                       then padder_byte_index + 4
+                                       else padder_byte_index
+                        else padder_byte_index
+                   else if (padder_byte_index =? inner_byte_index + 64)
+                        then padder_byte_index
+                        else if msg_complete
+                             then padder_byte_index + 4
+                             else if fifo_data_valid
+                                  then padder_byte_index + 4
+                                  else padder_byte_index in
+         (* new value of [t] *)
+         let new_t :=
+             if clear
+             then 0
+             else if cleared
+                  then 0
+                  else if (padder_byte_index =? inner_byte_index)
+                       then if t =? 64
+                            then t
+                            else S t
+                       else if (padder_byte_index =? inner_byte_index + 64)
+                            then 0
+                            else t in
+         (* ready for new input only if the inner loop is done and the padder is
+            not *)
+         let is_ready :=
+             if is_cleared
+             then true
+             else if (new_padder_byte_index <? 64)
+                  then true
+                  else new_t =? 64 in
+         exists digest : list N,
+           output = (is_cleared_or_done, (digest, is_ready))
+           /\ if is_cleared
+             then digest = SHA256.H0
+             else if is_cleared_or_done
+                  then digest = BigEndianBytes.bytes_to_Ns
+                                  4 (SHA256.sha256 msg)
+                  else True (* no guarantees about intermediate output *)
+  |}.
+
+Lemma sha256_invariant_at_reset : invariant_at_reset sha256.
+Proof.
+  simplify_invariant sha256.
+  cbn [reset_repr reset_state sha256 sha256_specification
+                  sha256_padder_specification
+                  sha256_inner_specification].
+  stepsimpl. cbn [Nat.eqb]. compute_expr (0 mod 64).
+  ssplit;
+    lazymatch goal with
+    | |- sha256_padder_invariant _ _ => apply sha256_padder_invariant_at_reset
+    | |- sha256_inner_invariant _ _ => apply sha256_inner_invariant_at_reset
+    | _ => reflexivity || lia
+    end.
+Qed.
+
+Ltac simplify_postcondition c :=
+  let x := constr:((_ : specification_for c _)) in
+  match x with
+  | ?x => cbn[x postcondition] in *
+  end.
+(* TODO: move *)
+Ltac use_correctness' c :=
+  lazymatch goal with
+  | |- context [ @snd ?A ?B (@step ?i ?s ?o c ?state ?input) ] =>
+    find_correctness c;
+    pose proof (@output_correct_pf
+                  s i o c _ _ _ _
+                  input state _ ltac:(eassumption) ltac:(eassumption));
+    generalize dependent (@snd A B (@step i s o c state input)); intros;
+    try simplify_postcondition c; logical_simplify; subst
+  end.
+
+(* TODO: move *)
+Lemma resize_small {A} n d (ls : list A) :
+  n <= length ls ->
+  List.resize d n ls = firstn n ls.
+Proof.
+  intros; cbv [List.resize]. natsimpl.
+  cbn [repeat]; listsimpl; reflexivity.
+Qed.
+
+(* TODO: move *)
+Lemma firstn_slice_app {A} n (ls : list A) d len :
+  n + len <= length ls ->
+  firstn n ls ++ List.slice d ls n len = firstn (n + len) ls.
+Proof.
+  intros. cbv [List.slice]. rewrite resize_small by length_hammer.
+  rewrite <-(firstn_skipn n ls).
+  repeat (push_firstn || push_skipn || push_length || natsimpl || listsimpl).
+  reflexivity.
+Qed.
+
+(* TODO: move *)
+Lemma firstn_padded_msg_truncate n msg1 msg2  :
+  n * 4 <= length msg1 ->
+  firstn n (SHA256.padded_msg (msg1 ++ msg2)) = firstn n (SHA256.padded_msg msg1).
+Proof.
+  intros. pose proof padded_message_size_mono msg1 msg2.
+  pose proof padded_message_bytes_longer_than_input msg1.
+  rewrite !firstn_map_nth with (d:=0%N) by (push_length; prove_by_zify).
+  eapply map_ext_in. intros *; rewrite in_seq; intros.
+  rewrite !nth_padded_msg. cbv [SHA256.padded_msg_bytes].
+  rewrite <-!app_assoc. push_nth. reflexivity.
+Qed.
+
+(* TODO: move *)
+Lemma skipn_tl {A} n (ls : list A) :
+  skipn n (tl ls) = skipn (S n) ls.
+Proof. induction ls; intros; push_skipn; cbn [tl]; reflexivity. Qed.
+Hint Rewrite @skipn_tl : push_skipn.
+
+(* TODO: move *)
+Hint Rewrite Nat.mul_0_l Nat.mul_0_r Nat.mul_1_l Nat.mul_1_r : natsimpl.
+Hint Rewrite Nat.div_1_r : natsimpl.
+Hint Rewrite Nat.mod_1_r : natsimpl.
+Ltac natsimpl_step ::= first
+  [ progress autorewrite with natsimpl
+  | rewrite Min.min_r by lia
+  | rewrite Min.min_l by lia
+  | rewrite Nat.add_sub by lia
+  | rewrite (fun n m => proj2 (Nat.sub_0_le n m)) by lia
+  | rewrite Nat.div_0_l by lia
+  | rewrite Nat.div_same by lia
+  | rewrite Nat.mod_0_l by lia
+  | rewrite Nat.mod_same by lia
+  | rewrite Nat.mod_1_l by lia
+  ].
+
+(* TODO: move to SHA256Properties *)
+Lemma fold_left_sha256_step_alt_firstn i H msg :
+  fold_left (SHA256.sha256_step msg) (seq 0 i) H =
+  fold_left (SHA256Alt.sha256_step (firstn (i * 16) (SHA256.padded_msg msg))) (seq 0 i) H.
+Proof.
+  intros; eapply fold_left_ext_In; intros *.
+  rewrite in_seq; intros.
+  rewrite sha256_step_alt_firstn by lia.
+  rewrite sha256_step_alt_equiv; reflexivity.
+Qed.
+
+(* TODO: move to SHA256Properties *)
+(* M returns the same result regardless of blocks above the current block
+   index *)
+Lemma sha256_M_truncate msg1 msg2 j i :
+  (S i * 64 <= length msg1)%nat -> (j < 16)%nat ->
+  SHA256.M (msg1 ++ msg2) j i = SHA256.M msg1 j i.
+Proof.
+  cbv [SHA256.M]; intros.
+  rewrite !nth_padded_msg. apply f_equal.
+  cbv [SHA256.padded_msg_bytes].
+  rewrite <-!app_assoc; push_nth.
+  reflexivity.
+Qed.
+
+(* TODO: move to SHA256Properties *)
+(* W returns the same result regardless of blocks above the current block
+   index *)
+Lemma sha256_W_truncate msg1 msg2 i :
+  (S i * 64 <= length msg1)%nat -> SHA256.W (msg1 ++ msg2) i = SHA256.W msg1 i.
+Proof.
+  cbv [SHA256.W]. intros.
+  eapply fold_left_ext_In. intros *; rewrite in_seq; natsimpl; intros.
+  destruct_one_match; [ | reflexivity ].
+  rewrite sha256_M_truncate by lia.
+  reflexivity.
+Qed.
+
+(* TODO: move to SHA256Properties *)
+(* sha256_step returns the same result regardless of blocks above the current index *)
+Lemma sha256_step_truncate msg1 msg2 i H :
+  (S i * 64 <= length msg1)%nat ->
+  SHA256.sha256_step (msg1 ++ msg2) H i = SHA256.sha256_step msg1 H i.
+Proof.
+  cbv [SHA256.sha256_step]. intros. apply f_equal2; [ reflexivity | ].
+  apply fold_left_ext_In; intros *. rewrite in_seq; natsimpl; intros.
+  rewrite sha256_W_truncate by lia. reflexivity.
+Qed.
+Require Import Coq.derive.Derive.
+
+(* simplifies the sha256 circuit so we don't have to wait for the slow
+   simplifications in every proof *)
+Derive step_sha256_simplified
+       SuchThat
+       (forall ready block digest count done sha256_padder_state sha256_inner_state
+          fifo_data_valid fifo_data is_final final_length clear,
+           let state := ((ready, (block, (digest, (count, done)))),
+                         (sha256_padder_state, sha256_inner_state)) in
+           let input := (fifo_data_valid,
+                         (fifo_data, (is_final, (final_length, (clear, tt))))) in
+           step sha256 state input =
+           step_sha256_simplified ready block digest count done sha256_padder_state sha256_inner_state
+                                  fifo_data_valid fifo_data is_final final_length clear)
+       As step_sha256_simplified_eq.
+Proof.
+  cbv [sha256]; intros; stepsimpl.
+  repeat (destruct_inner_pair_let; cbn [fst snd]).
+  rewrite <-!tup_if. cbn [fst snd].
+  subst step_sha256_simplified. instantiate_app_by_reflexivity.
+Qed.
+
+Lemma sha256_invariant_preserved : invariant_preserved sha256.
+Proof.
+  simplify_invariant sha256. cbn [absorb_any].
+  simplify_spec sha256.
+  (* The following gymnastics results in input_, state_, and repr_ being posed
+     as let-hypotheses, which makes proof debugging easier because one can look
+     at them and see what case the proof is dealing with *)
+  intros input state repr.
+  pose (input_:=input). pose (state_:=state). pose (repr_:=repr).
+  revert dependent repr. revert dependent state. revert dependent input.
+  intros (fifo_data_valid,
+          (fifo_data, (is_final, (final_length, (clear, []))))).
+  intro.
+  intros ((ready, (block, (digest, (count, done)))),
+          (sha256_padder_state, sha256_inner_state)).
+  intro.
+  intros (((((msg, msg_complete), padder_byte_index), inner_byte_index), t), cleared).
+  intros; logical_simplify; subst.
+
+  rewrite step_sha256_simplified_eq. cbv [step_sha256_simplified]. cbn [fst snd].
+  rewrite <-!tup_if. cbn [fst snd].
+
+  (* A whole bunch of assertions about the properties of padded_message_size
+     related to all 3 possible next messages *)
+  pose proof padded_message_size_mono
+       msg (new_msg_bytes fifo_data_valid fifo_data is_final final_length).
+  pose proof padded_message_bytes_longer_than_input msg.
+  pose proof padded_message_bytes_longer_than_input
+       (new_msg_bytes fifo_data_valid fifo_data is_final final_length).
+  pose proof padded_message_bytes_longer_than_input
+       (msg ++ new_msg_bytes fifo_data_valid fifo_data is_final final_length).
+  pose proof min_padded_message_size msg.
+  pose proof min_padded_message_size
+       (new_msg_bytes fifo_data_valid fifo_data is_final final_length).
+  pose proof min_padded_message_size
+       (msg ++ new_msg_bytes fifo_data_valid fifo_data is_final final_length).
+  pose proof padded_message_size_modulo msg.
+  pose proof padded_message_size_modulo
+       (new_msg_bytes fifo_data_valid fifo_data is_final final_length).
+  pose proof padded_message_size_modulo
+       (msg ++ new_msg_bytes fifo_data_valid fifo_data is_final final_length).
+
+  (* prove that padder precondition is satisfied *)
+  lazymatch goal with
+  | H : sha256_padder_invariant ?state ?repr
+    |- context [step sha256_padder ?state ?input] =>
+    assert (precondition sha256_padder input repr)
+  end.
+  { simplify_spec sha256_padder. cbn [reset_repr sha256_padder_specification].
+    destr cleared; logical_simplify; subst;
+      [ destr fifo_data_valid; destr is_final; logical_simplify; subst;
+        ssplit; solve [auto] | ].
+    ssplit; [ assumption | ].
+    destr fifo_data_valid; logical_simplify; subst; [ | tauto ].
+    destr is_final; logical_simplify; subst; tauto. }
+
+  use_correctness' sha256_padder.
+  cbn [reset_repr sha256_padder_specification] in *.
+
+  (* prove that inner precondition is satisfied *)
+  lazymatch goal with
+  | H : sha256_inner_invariant ?state ?repr
+    |- context [step sha256_inner ?state ?input] =>
+    assert (precondition sha256_inner input repr)
+  end.
+  { simplify_spec sha256_inner. cbn [reset_repr sha256_inner_specification].
+    destr cleared; logical_simplify; subst;
+      [ destr fifo_data_valid; destr is_final; logical_simplify; subst;
+        ssplit; solve [auto] | ].
+    rewrite fold_left_sha256_step_alt_firstn.
+    all:destr (t =? 64); logical_simplify; subst; try lia.
+    all:destr (count <=? 15)%N; logical_simplify; subst.
+    all:destr (count =? 16)%N; logical_simplify; subst; try lia.
+    all:repeat (destruct_one_match; logical_simplify; subst; try lia).
+    all:repeat lazymatch goal with
+               | H : (Nat.eqb ?x ?y) = false |- _ => apply Nat.eqb_neq in H
+               end.
+    all:try (destr (padder_byte_index <? 64); logical_simplify; subst; [ | lia ]).
+    all:rewrite ?Nat.div_mul, ?Nat.div_small in * by lia.
+    all:try reflexivity.
+    all:try discriminate.
+    all:natsimpl.
+    all:repeat lazymatch goal with
+               | |- context [(?x + ?y) / ?y] => replace ((x + y) / y) with (x / y + 1) by prove_by_zify
+               | |- context [S (?x - 1)] => replace (S (x - 1)) with x by prove_by_zify
+               end.
+    all:natsimpl.
+    all:try (destr (inner_byte_index + 64 =? 64); logical_simplify; subst; lia).
+    all:lazymatch goal with
+        | |- _ /\ _ /\ _ => ssplit; [ reflexivity | | length_hammer ]
+        | _ => idtac
+        end.
+    all:rewrite ?firstn_slice_app by (push_length; prove_by_zify).
+    all:lazymatch goal with
+        | |- fold_left _ _ _ = fold_left _ _ _ =>
+          eapply fold_left_ext_In; intros *;
+            rewrite in_seq; intros;
+              rewrite !sha256_step_alt_firstn by lia;
+              try reflexivity
+        end. }
+
+  use_correctness' sha256_inner.
+  cbn [reset_repr sha256_inner_specification] in *.
+
+  ssplit.
+  { (* prove that padder invariant is preserved *)
+    eapply invariant_preserved_pf; [ | eassumption .. ].
+    (* prove that padder state rep is updated correctly *)
+    cbn [reset_repr update_repr sha256_padder_specification] in *.
+    destr clear; [ destruct cleared; reflexivity | ].
+    destr cleared; logical_simplify; subst.
+    { (* cleared=true *)
+      destr fifo_data_valid; logical_simplify; subst;
+        [ | destruct_one_match; reflexivity ].
+      repeat (destruct_one_match; try lia); try reflexivity; [ ].
+      lazymatch goal with
+      | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
+      end.
+      reflexivity. }
+    { (* cleared=false *)
+      destr fifo_data_valid; logical_simplify; subst;
+      cbn [Nat.eqb].
+      { (* data_valid=true *)
+        rewrite ?Tauto.if_same.
+        destr (length msg =? padded_message_size msg); [ lia | ].
+        destr (count <=? 15)%N; logical_simplify; subst;
+          [ destr (count =? 0)%N; logical_simplify; subst
+          | destr (count =? 16)%N; logical_simplify; subst ].
+        all:try lia.
+        all:cbn [N.eqb Pos.eqb Nat.eqb] in *.
+        all:repeat destruct_one_match; try lia.
+        all:repeat lazymatch goal with
+                   | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
+                   end.
+        all:try reflexivity.
+        all:prove_by_zify. }
+      { (* data_valid = false *)
+        destr msg_complete; logical_simplify; subst;
+        rewrite ?Tauto.if_same; [ | repeat destruct_one_match; reflexivity ].
+        assert (padder_byte_index mod 64 = 0 ->
+                padder_byte_index + 4 <> padded_message_size msg) by prove_by_zify.
+        repeat (destruct_one_match; try lia); logical_simplify; subst.
+        all:rewrite ?Nat.eqb_refl; try reflexivity.
+        all:repeat lazymatch goal with
+                   | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
+                   end.
+        all:destr (count =? 16)%N; subst; try lia.
+        all:try (exfalso; prove_by_zify).
+        all:destr (padder_byte_index <? 64); lia. } } }
+  { (* prove that inner invariant is preserved *)
+    eapply invariant_preserved_pf; [ | eassumption .. ].
+    (* prove that inner state rep is updated correctly *)
+    cbn [reset_repr update_repr sha256_inner_specification].
+    destr clear; [ destr cleared; reflexivity | ].
+    destr cleared; logical_simplify; subst;
+      [ cbn [N.leb N.compare] in *; logical_simplify; subst;
+        destr fifo_data_valid; logical_simplify; subst; reflexivity | ].
+    destr (padder_byte_index =? padded_message_size msg); logical_simplify; subst.
+    { (* padder has reached end of message *)
+      (* only one possible case for data_valid and msg_complete;
+         data_valid=false and msg_complete=true *)
+      destr fifo_data_valid; destr msg_complete;
+        logical_simplify; subst; try lia; [ ].
+      destr (count <=? 15)%N; logical_simplify; subst.
+      all:rewrite ?Tauto.if_same in *; cbn [fst snd] in *.
+      all:boolsimpl.
+      all:repeat (first [ destruct_one_match | destruct_one_match_hyp];
+                  logical_simplify; subst; try lia; try reflexivity).
+      all:try (exfalso; prove_by_zify).
+      all:repeat lazymatch goal with
+                 | H : (Nat.eqb ?x ?y) = true |- _ => apply Nat.eqb_eq in H; subst; try lia
+                 | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
+                 | |- context [Nat.ltb ?x ?y] => destr (Nat.ltb x y); try lia
+                 end.
+      all:try reflexivity.
+      all:rewrite firstn_slice_app by (push_length; prove_by_zify).
+      (* structure already matches; use prove_by_zify for nat arguments *)
+      all:repeat (f_equal; lazymatch goal with
+                           | |- @eq nat _ _ => prove_by_zify
+                           | _ => idtac
+                         end). }
+    { (* padder is not yet at end of message *)
+      destr (padder_byte_index =? inner_byte_index); logical_simplify; subst.
+      { (* inner is running or just finished running *)
+        destr (t =? 64); logical_simplify; subst.
+        { (* inner just finished *)
+          rewrite ?Tauto.if_same.
+          repeat destruct_one_match; logical_simplify; subst; try lia.
+          all:repeat destruct_one_match_hyp; logical_simplify; subst; try lia.
+          all:repeat lazymatch goal with
+                     | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
+                     | |- context [Nat.ltb ?x ?y] => destr (Nat.ltb x y); try lia
+                     end.
+          all:try reflexivity.
+          all:rewrite firstn_padded_msg_truncate by prove_by_zify.
+          all:reflexivity. }
+        { (* inner is still running *)
+          destr fifo_data_valid; logical_simplify; subst; [ lia | ].
+          repeat destruct_one_match; logical_simplify; subst; try lia.
+          all:rewrite ?N.eqb_refl in *.
+          all:repeat (destruct_one_match_hyp; logical_simplify; subst; try lia).
+          all:repeat lazymatch goal with
+                     | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
+                     | |- context [Nat.ltb ?x ?y] => destr (Nat.ltb x y); try lia
+                     end.
+          all:try reflexivity.
+          all:exfalso; prove_by_zify. } }
+      { (* padder is running or just finished running *)
+        destr (padder_byte_index =? inner_byte_index + 64); logical_simplify; subst.
+        { (* padder just finished running (count=16) *)
+          destr (count <=? 15)%N; logical_simplify; subst;
+            [ exfalso; prove_by_zify | ].
+          destr (count =? 16)%N; [ | exfalso; prove_by_zify ].
+          subst; rewrite ?N.eqb_refl in *; logical_simplify; subst.
+          cbn [Nat.eqb] in *.
+          destr (inner_byte_index + 64 =? 64); logical_simplify; subst.
+          all:repeat destruct_one_match; logical_simplify; subst; try lia.
+          all:repeat lazymatch goal with
+                     | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
+                     | |- context [Nat.ltb ?x ?y] => destr (Nat.ltb x y); try lia
+                     end.
+          all:rewrite ?firstn_slice_app by (push_length; prove_by_zify).
+          all:rewrite ?Nat.eqb_refl in *; try discriminate.
+          (* structure already matches; use prove_by_zify for nat arguments *)
+          all:repeat (f_equal; lazymatch goal with
+                               | |- @eq nat _ _ => prove_by_zify
+                               | _ => idtac
+                               end). }
+        { (* padder is still running (count <= 15) *)
+          destr (count <=? 15)%N; logical_simplify; subst;
+          [ | destr (count =? 16)%N; logical_simplify; subst;
+              exfalso; prove_by_zify ].
+          rewrite ?Tauto.if_same. rewrite ?Nat.eqb_refl.
+          destr (padder_byte_index <? 64); logical_simplify; subst; try lia;
+            [ rewrite !(Nat.div_small padder_byte_index 64) in * by lia | ].
+          all:natsimpl; cbn [Nat.eqb].
+          all:repeat destruct_one_match; logical_simplify; subst; try lia.
+          all:repeat lazymatch goal with
+                     | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
+                     | |- context [Nat.ltb ?x ?y] => destr (Nat.ltb x y); try lia
+                     end.
+          all:try reflexivity.
+          all:try prove_by_zify.
+          all:rewrite firstn_padded_msg_truncate by prove_by_zify.
+          all:reflexivity. } } } }
+
+  { (* length block = 16 *)
+    fold denote_type; change (denote_type sha_word) with N.
+    repeat destruct_one_match.
+    all:cbn [N.leb Pos.compare N.compare fst snd] in *.
+    all:logical_simplify; subst; boolsimpl.
+    all:repeat destruct_one_match; length_hammer. }
+  { (* count <= 17 *)
+    repeat destruct_one_match.
+    all:cbn [N.leb Pos.compare N.compare fst snd] in *.
+    all:logical_simplify; subst; boolsimpl.
+    all:try lia.
+    all:boolsimpl_hyps; N.bool_to_prop.
+    all:compute_expr (2 ^ N.of_nat 6)%N.
+    all:rewrite ?N.mod_small by lia.
+    all:lia. }
+  { (* padder_byte_index mod 4 = 0 *)
+    repeat destruct_one_match; try reflexivity.
+    all:try assumption.
+    all:prove_by_zify. }
+
+  { (* big if cleared then ... else ... clause *)
+    compute_expr (2 ^ N.of_nat 6)%N.
+    destr clear; [ ssplit; reflexivity | ].
+    destr cleared; logical_simplify; subst.
+
+    { (* cleared=true *)
+      cbn [N.leb Pos.compare N.compare fst snd] in *.
+      logical_simplify; subst.
+      (* if data isn't valid, we stay cleared *)
+      destr fifo_data_valid; logical_simplify; subst; boolsimpl;
+        [ | ssplit; reflexivity ].
+      natsimpl.
+      rewrite !Nat.mod_small, !N.mod_small by lia.
+      rewrite !Nat.div_small by lia.
+      ssplit; try lia.
+      all:repeat lazymatch goal with
+                 | |- context [N.leb ?x ?y] => destr (N.leb x y); try lia
+                 | |- context [N.ltb ?x ?y] => destr (N.ltb x y); try lia
+                 end.
+      all:try reflexivity.
+      all:ssplit; try lia.
+      all:repeat destruct_one_match; logical_simplify; subst; try lia.
+      all:lazymatch goal with
+          | |- context [length (new_msg_bytes _ _ _ _)] => cbv [new_msg_bytes]; length_hammer
+          | _ => idtac
+          end.
+      (* should be only one case left, expression for block *)
+      compute_expr (N.to_nat (0 + 1)). natsimpl.
+      rewrite skipn_tl.
+      (* simplify implicit types *)
+      fold denote_type. change (denote_type sha_word) with N.
+      push_skipn; listsimpl.
+      rewrite slice_map_nth; cbn [List.map seq].
+      reflexivity. }
+
+    { (* cleared = false *)
+      rewrite ?Tauto.if_same.
+      (* destruct cases for [count] *)
+      destr (count <=? 15)%N;
+        [ destr (count =? 0)%N | destr (count =? 16)%N ];
+        logical_simplify; subst; cbn [fst snd] in *.
+
+      { (* count=0 (transition from inner to padder *)
+        destr (padder_byte_index =? padder_byte_index / 64 * 64);
+          [ | exfalso; prove_by_zify ].
+        compute_expr ((0 + 1) mod 64)%N.
+        repeat (natsimpl || boolsimpl || cbn [Nat.eqb N.eqb Pos.eqb]).
+        ssplit.
+        { (* padder_byte_index <= padded_message_size msg *)
+          repeat destruct_one_match; logical_simplify; subst; lia. }
+        { (* padder_byte_index <= padded_message_size msg *)
+          repeat destruct_one_match; logical_simplify; subst; try lia;
+          prove_by_zify. }
+        { (* t <= 64 *)
+          repeat destruct_one_match; logical_simplify; subst; lia. }
+        { (* ready = (count <? 16)%N *)
+          repeat destruct_one_match; logical_simplify; subst;
+          repeat lazymatch goal with
+                 | |- context [N.leb ?x ?y] => destr (N.leb x y); try lia
+                 | |- context [N.ltb ?x ?y] => destr (N.ltb x y); try lia
+                 end. }
+        { (* digest = fold_left (SHA256.sha256_step msg)
+                                (seq 0 completed_block_index) SHA256.H0 *)
+          destruct done; logical_simplify; subst; boolsimpl.
+          { cbn [Nat.eqb]. rewrite ?Nat.eqb_refl in *. natsimpl.
+            destr (padded_message_size msg <? 64); logical_simplify; subst; [ lia | ].
+            repeat destruct_one_match; logical_simplify; subst; try lia; reflexivity. }
+          { destr fifo_data_valid;
+            repeat (destruct_one_match; logical_simplify; subst; try lia; try reflexivity).
+            all:repeat (destruct_one_match_hyp; logical_simplify; subst;
+                        try lia; try reflexivity).
+            all:lazymatch goal with
+                | H : ?x = ?x / ?y * ?y |- context [(?x + ?z) / ?y] =>
+                  rewrite H; rewrite (Nat.div_add_l (x / y) y) by lia;
+                    rewrite ?Nat.div_small by lia; rewrite <-?H
+                end.
+            all:natsimpl.
+            all:try reflexivity.
+            all:lazymatch goal with
+                | |- fold_left _ _ _ = fold_left _ _ _ =>
+                  eapply fold_left_ext_In; intros *;
+                    rewrite in_seq; intros
+                end.
+            all:rewrite sha256_step_truncate by prove_by_zify.
+            all:reflexivity. } }
+        { (* (if msg_complete
+             then length msg <= padder_byte_index
+             else padder_byte_index = length msg) *)
+          repeat (destruct_one_match; logical_simplify; subst; try lia);
+          cbv [new_msg_bytes]; length_hammer. }
+        { (* (if done then ...  else True) *)
+          destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
+            try discriminate; boolsimpl.
+          all:rewrite ?Tauto.if_same; try tauto.
+          all:repeat (destruct_one_match; logical_simplify; subst; try lia).
+          all:repeat (destruct_one_match_hyp; logical_simplify; subst; try lia).
+          all:boolsimpl_hyps.
+          all:repeat lazymatch goal with
+                     | H : (Nat.eqb ?x ?y) = true |- _ => apply Nat.eqb_eq in H; subst; try lia
+                     end.
+          all:prove_by_zify. }
+        { (* clause that depends on count; in this case next count will always be <= 15 *)
+          lazymatch goal with
+          | |- if (?x <=? 15)%N then _ else _ =>
+            assert (x <= 15)%N by (clear; repeat destruct_one_match; lia);
+            destr (x <=? 15)%N; [ | lia ]
+          end.
+          ssplit.
+          { (* skipn (16 - N.to_nat count) block
+              = List.slice 0%N (SHA256.padded_msg msg)
+                           (padder_block_index * 16) (N.to_nat count) *)
+            destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
+              try discriminate; boolsimpl.
+            all:rewrite ?Tauto.if_same in *; cbn [Nat.eqb].
+            all:repeat (destruct_one_match; logical_simplify; subst; try lia).
+            all:compute_expr (N.to_nat 1); cbn [N.to_nat]; natsimpl.
+            all:push_skipn; try reflexivity.
+            all:repeat lazymatch goal with
+                       | H : ?x = ?x / ?y * ?y |- context [(?x + ?z) / ?y] =>
+                         rewrite H; rewrite (Nat.div_add_l (x / y) y) by lia;
+                           rewrite ?Nat.div_small by lia; rewrite <-?H
+                       end.
+            all:natsimpl.
+            all:rewrite ?tl_app by (intro; subst; cbn [length] in *; discriminate).
+            all:fold denote_type.
+            all:change (denote_type sha_word) with N.
+            all:push_skipn; push_length.
+            all:push_skipn; listsimpl.
+            all:rewrite slice_map_nth; cbn [seq List.map].
+            (* structure already matches; use prove_by_zify for nat arguments *)
+            all:repeat (f_equal; lazymatch goal with
+                                 | |- @eq nat _ _ => prove_by_zify
+                                 | _ => idtac
+                                 end). }
+          { (* padder_byte_index mod 64 = N.to_nat count * 4 *)
+            repeat (destruct_one_match; logical_simplify; subst; try lia).
+            all:try prove_by_zify.
+            all:repeat (destruct_one_match_hyp; logical_simplify; subst; try lia). }
+          { (* (if (padder_byte_index <? 64) then t = 0 else t = 64) *)
+            repeat (destruct_one_match; logical_simplify; subst; try lia).
+            all:repeat (destruct_one_match_hyp; logical_simplify; subst; try lia). }
+          { (* inner_byte_index = padder_block_index * 64 *)
+            repeat (destruct_one_match; logical_simplify; subst; try lia).
+            all:try prove_by_zify. } } }
+
+        { (* 0 < count <= 15 (padder running) *)
+          admit. }
+
+        { (* count = 16 (transition from padder to inner) *)
+          admit. }
+
+        { (* count = 17 (inner running) *)
+          admit. }
+
+        (* cleared=false case of invariant, for easy reference:
+
+         (* the byte index (padder counter) is within the range
+            [4,padded_message_size msg] *)
+         4 <= padder_byte_index <= padded_message_size msg
+         (* ...and t (inner loop counter) is in the range [0,64] *)
+         /\ t <= 64
+         (* ...and ready is true iff count < 16 *)
+         /\ ready = (count <? 16)%N
+         (* ...and the digest must be the expected digest (digest is only
+            stored at the end of each inner loop) *)
+         /\ digest = fold_left (SHA256.sha256_step msg)
+                              (seq 0 completed_block_index) SHA256.H0
+         (* ...and the index is past the end of the message iff the message is
+            complete *)
+         /\ (if msg_complete then length msg <= padder_byte_index else padder_byte_index = length msg)
+         (* ...and the state variables agree with [count] *)
+         /\ (if (count <=? 15)%N
+            then
+              (* padder is running *)
+              skipn (16 - N.to_nat count) block
+              = List.slice 0%N (SHA256.padded_msg msg) padder_block_index (N.to_nat count)
+              /\ padder_byte_index mod 64 = N.to_nat count * 4 (* byte_index is on the [count]th word *)
+              /\ (if (padder_byte_index <? 64) then t = 0 else t = 64) (* inner is between blocks *)
+              /\ inner_byte_index = padder_block_index * 64
+            else
+              (* inner loop is running or about to run *)
+              padder_byte_index mod 64 = 0 (* byte index is at the end of a block *)
+              /\ (if (count =? 16)%N
+                 then
+                   (* padder has just finished a block; send the completed
+                        block to start inner loop *)
+                   block = List.slice 0%N (SHA256.padded_msg msg)
+                                      (inner_byte_index / 64 * 16) 16
+                   /\ t = 64
+                   /\ padder_byte_index = inner_byte_index + 64
+                 else
+                   (* inner loop is in progress *)
+                   0 <= t < 64
+                   /\ inner_byte_index = padder_byte_index))
+         *)
+Admitted.
