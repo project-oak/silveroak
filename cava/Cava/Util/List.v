@@ -164,6 +164,9 @@ Section Misc.
     cbn [length repeat]. congruence.
   Qed.
 
+  Lemma skipn_1 {A} (xs: list A): skipn 1 xs = tl xs.
+  Proof. now destruct xs. Qed.
+
 End Misc.
 Hint Rewrite @removelast_tl @removelast_cons: listsimpl.
 Hint Rewrite @length_removelast_cons: push_length.
@@ -977,6 +980,9 @@ Section Slice.
 
   Lemma slice_0 {A} (d : A) ls len :
     slice d ls 0 len = resize d len ls.
+  Proof. reflexivity. Qed.
+  Lemma slice_len_0 {A} (d : A) ls n :
+    slice d ls n 0 = [].
   Proof. reflexivity. Qed.
 End Slice.
 Hint Rewrite @slice_length : push_length.
