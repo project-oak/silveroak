@@ -99,11 +99,13 @@ Ltac find_correctness c :=
 Ltac simplify_invariant c :=
   cbv [invariant_at_reset invariant_preserved output_correct];
   let x := constr:(_:invariant_for c _) in
+  let x := app_head x in
   match x with
   | ?x => cbv [x] in *
   end.
 Ltac simplify_spec c :=
   let x := constr:(_:specification_for c _) in
+  let x := app_head x in
   match x with
   | ?x => cbn [x update_repr precondition postcondition] in *
   end.
@@ -116,7 +118,9 @@ Ltac use_correctness' c :=
   lazymatch goal with
   | |- context [snd (step c ?s ?i)] =>
     find_correctness c;
-    pose proof (output_correct_pf (c:=c) i s _ ltac:(eauto) ltac:(eauto));
+    let H := fresh in
+    pose proof (output_correct_pf (c:=c) i s _ ltac:(eauto) ltac:(eauto)) as H;
+    cbn [absorb_any] in H;
     generalize dependent (snd (step c s i)); intros;
     try simplify_spec c; logical_simplify; subst
   end.

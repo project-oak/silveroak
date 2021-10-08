@@ -37,7 +37,7 @@ Section Var.
   Context {var : tvar}.
 
   Definition fifo {T} fifo_size: Circuit _ [Bit; T; Bit]
-    (* out_valid, out, full *)
+    (* out_valid, out, empty, full *)
     (Bit ** T ** Bit ** Bit) :=
     let fifo_bits := BitVec (Nat.log2_up (fifo_size + 1)) in
     {{

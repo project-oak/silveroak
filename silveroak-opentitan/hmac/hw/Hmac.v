@@ -21,7 +21,7 @@ Require Import Cava.Types.
 Require Import Cava.Expr.
 Require Import Cava.Primitives.
 Require Import Cava.TLUL.
-Require Import Cava.Components.RealignFifo.
+Require Import Cava.Components.RealignMaskedFifo.
 
 Require Import HmacHardware.Sha256.
 Import ExprNotations.
@@ -150,7 +150,7 @@ Section Var.
       let hmac_key := `slice 9 8` registers in
 
       let '(fifo_valid, fifo_data, fifo_data_length, fifo_is_last; fifo_full) :=
-        `realign_fifo 256` is_fifo_write write_data write_mask cmd_hash_process sha_ready in
+        `realign_masked_fifo 256` is_fifo_write write_data write_mask cmd_hash_process sha_ready in
 
       let '(sha_ready, hmac_done; digest) :=
         `hmac_inner` fifo_valid fifo_data fifo_data_length fifo_is_last
