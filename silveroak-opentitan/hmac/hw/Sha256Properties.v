@@ -647,6 +647,9 @@ Proof.
   all:prove_by_zify.
 Qed.
 
+(* NOTE: To show CI progress *)
+Check expected_padder_state_cases.
+
 Lemma sha256_padder_invariant_preserved : invariant_preserved sha256_padder.
 Proof.
   simplify_invariant sha256_padder. cbn [absorb_any].
@@ -891,6 +894,9 @@ Proof.
             repeat first [ destruct_one_match | destruct_one_match_hyp | lia ]. }
   } } } }
 Qed.
+
+(* NOTE: To show CI progress *)
+Check sha256_padder_invariant_preserved.
 
 Local Ltac testbit_crush :=
   repeat lazymatch goal with
@@ -1196,6 +1202,9 @@ Proof.
         all:destr (i <? 24)%N; testbit_crush.
         all:destr (i <? 32)%N; testbit_crush. } }
 Qed.
+
+(* NOTE: To show CI progress *)
+Check sha256_padder_output_correct.
 
 Existing Instances sha256_padder_invariant_at_reset sha256_padder_invariant_preserved
          sha256_padder_output_correct.
@@ -1598,7 +1607,6 @@ Proof.
   intros. pose proof padded_message_size_mono msg1 msg2.
   pose proof padded_message_bytes_longer_than_input msg1.
   cbv [List.slice List.resize].
-  Check firstn_map_nth.
   push_length.
   assert (c - (padded_message_size msg1 / 4 - n) = 0) by prove_by_zify.
   assert (c - (padded_message_size (msg1 ++ msg2) / 4 - n) = 0) by prove_by_zify.
@@ -1806,6 +1814,9 @@ Proof.
   exfalso; prove_by_zify.
 Qed.
 
+(* NOTE: To show CI progress *)
+Check concat_digest_to_N_id.
+
 Require Import Coq.derive.Derive.
 
 (* simplifies the sha256 circuit so we don't have to wait for the slow
@@ -1828,6 +1839,9 @@ Proof.
   rewrite <-!tup_if. cbn [fst snd].
   subst step_sha256_simplified. instantiate_app_by_reflexivity.
 Qed.
+
+(* NOTE: To show CI progress *)
+Check step_sha256_simplified.
 
 Lemma sha256_invariant_preserved : invariant_preserved sha256.
 Proof.
@@ -2416,23 +2430,22 @@ Proof.
           all:try match goal with
                   | H: skipn 1 _ = _ |- _ => rewrite skipn_1 in H
                   end.
-          all:try rewrite H25.
-          all:try rewrite <-slice_snoc.
-          (* all:try assert (padder_byte_index = 60) by lia; subst. *)
-          all: try assert (padder_byte_index mod 64 = 60) by lia.
-          all: try assert (padder_byte_index = (padder_byte_index / 64) * 64 + 60) by prove_by_zify.
-          all: try rewrite slicen_padded_msg_truncate.
-          all: f_equal; f_equal.
-          all:try prove_by_zify.
-          all: f_equal; try prove_by_zify.
+          all: abstract ( try rewrite H25;
+          try rewrite <-slice_snoc;
+          try assert (padder_byte_index mod 64 = 60) by lia;
+          try assert (padder_byte_index = (padder_byte_index / 64) * 64 + 60) by prove_by_zify;
+          try rewrite slicen_padded_msg_truncate;
+          f_equal; f_equal;
+          try prove_by_zify;
+          f_equal; try prove_by_zify).
         }
 
-        {
+        {abstract (
           destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
-            try discriminate; boolsimpl.
-          all:rewrite ?Tauto.if_same in *; cbn [Nat.eqb].
-          all:repeat (destruct_one_match; logical_simplify; subst; try lia).
-          all: ssplit; try reflexivity; try lia; try prove_by_zify.
+            try discriminate; boolsimpl;
+          rewrite ?Tauto.if_same in *; cbn [Nat.eqb];
+          repeat (destruct_one_match; logical_simplify; subst; try lia);
+          ssplit; try reflexivity; try lia; try prove_by_zify).
         }
         {
           destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
@@ -2469,6 +2482,9 @@ Proof.
       }
     }
 Qed.
+
+(* NOTE: To show CI progress *)
+Check sha256_invariant_preserved.
 
 Lemma sha256_add_mod_bounded x y: (SHA256.add_mod x y < 2 ^ 32)%N.
 Proof.
