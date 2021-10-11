@@ -2418,45 +2418,47 @@ Proof.
             all: cbn [new_msg_bytes]; push_length; lia.
           }
 
-          boolsimpl.
+
+Eval compute in "At abstract "%string.
+Time abstract ( 
+(* all: *)
+          boolsimpl;
           destr (padder_byte_index =? padded_message_size msg);
             destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
-            try discriminate; boolsimpl.
+            try discriminate; boolsimpl;
 
-          all:rewrite ?Tauto.if_same in *; cbn [Nat.eqb].
-          all:try (destruct_one_match; logical_simplify; subst; lia).
-          all:natsimpl.
-          all:push_skipn; try reflexivity.
+          rewrite ?Tauto.if_same in *; cbn [Nat.eqb];
+          try (destruct_one_match; logical_simplify; subst; lia);
+          natsimpl;
+          push_skipn; try reflexivity;
 
-          all:repeat (destruct_one_match; logical_simplify; subst; try lia).
-          all:try (exfalso; prove_by_zify).
-          all:ssplit;try lia.
-          all:try(destr (length msg <? 64); lia).
-          all:try(destr (padder_byte_index <? 64);lia).
-          all:try prove_by_zify.
-          all:repeat (destruct_one_match_hyp; logical_simplify; subst; try lia).
-          all:try prove_by_zify.
-
-          all:natsimpl.
-          all:rewrite ?tl_app by (intro; subst; cbn [length] in *; discriminate).
-          all:fold denote_type.
-          all:change (denote_type sha_word) with N.
-          all:push_skipn; push_length.
-          all:push_skipn; listsimpl.
-          all:replace (S (16 - N.to_nat ((count + 1) mod 64)%N)) with (16 - N.to_nat count) by prove_by_zify.
-          all:replace ((count + 1) mod 64)%N with (count + 1)%N by prove_by_zify.
-          all:autorewrite with Nnat.
-          all:try rewrite H25; try reflexivity.
-          all:push_skipn.
-          all:try replace ((length msg + 4) / 64*16)  with (length msg / 64 * 16) by prove_by_zify.
-          all:try replace (N.to_nat count + 1) with (S (N.to_nat count)) by lia.
-          all:try assert (count = 15)%N by prove_by_zify; subst.
-          all:try replace ( (16 - N.to_nat 15)) with 1 in * by lia.
-          all:try match goal with
+          repeat (destruct_one_match; logical_simplify; subst; try lia);
+          try (exfalso; prove_by_zify);
+          ssplit;try lia;
+          try(destr (length msg <? 64); lia);
+          try(destr (padder_byte_index <? 64);lia);
+          try prove_by_zify;
+          repeat (destruct_one_match_hyp; logical_simplify; subst; try lia);
+          try prove_by_zify;
+          natsimpl;
+          rewrite ?tl_app by (intro; subst; cbn [length] in *; discriminate);
+          fold denote_type;
+          change (denote_type sha_word) with N;
+          push_skipn; push_length;
+          push_skipn; listsimpl;
+          replace (S (16 - N.to_nat ((count + 1) mod 64)%N)) with (16 - N.to_nat count) by prove_by_zify;
+          replace ((count + 1) mod 64)%N with (count + 1)%N by prove_by_zify;
+          autorewrite with Nnat;
+          try rewrite H25; try reflexivity;
+          push_skipn;
+          try replace ((length msg + 4) / 64*16)  with (length msg / 64 * 16) by prove_by_zify;
+          try replace (N.to_nat count + 1) with (S (N.to_nat count)) by lia;
+          try assert (count = 15)%N by prove_by_zify; subst;
+          try replace ( (16 - N.to_nat 15)) with 1 in * by lia;
+          try match goal with
                   | H: skipn 1 _ = _ |- _ => rewrite skipn_1 in H
-                  end.
-Eval compute in "At abstract "%string.
-          all: abstract ( try rewrite H25;
+                  end;
+          try rewrite H25;
           try rewrite <-slice_snoc;
           try assert (padder_byte_index mod 64 = 60) by lia;
           try assert (padder_byte_index = (padder_byte_index / 64) * 64 + 60) by prove_by_zify;
@@ -2476,36 +2478,42 @@ Eval compute in "At abstract "%string.
           ssplit; try reflexivity; try lia; try prove_by_zify).
         }
         {
+Eval compute in "At final abstract "%string.
+Time abstract (
           destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
-            try discriminate; boolsimpl.
-          all:rewrite ?Tauto.if_same in *; cbn [Nat.eqb].
-          all:repeat (destruct_one_match; logical_simplify; subst; try lia).
-          all:destr(17 =? count)%N; try lia.
-          all:try destr (padder_byte_index =? 0); try lia.
-          all:try destr (t =? 63); try lia.
-          all: destruct done; destr (count =? 0)%N; try lia.
-          all: ssplit; try reflexivity; try lia; try prove_by_zify.
-          all: try match goal with
+            try discriminate; boolsimpl;
+          rewrite ?Tauto.if_same in *; cbn [Nat.eqb];
+          repeat (destruct_one_match; logical_simplify; subst; try lia);
+          destr(17 =? count)%N; try lia;
+          try destr (padder_byte_index =? 0); try lia;
+          try destr (t =? 63); try lia;
+          destruct done; destr (count =? 0)%N; try lia;
+          ssplit; try reflexivity; try lia; try prove_by_zify;
+          try match goal with
                | |- false = ?X => destr X; lia
-               end.
-          all: replace (16 - N.to_nat 0) with 16 by lia.
-          all: try rewrite Tauto.if_same in E4; try lia.
-          all: try (destr (length msg =? 0); lia).
-          all: try rewrite skipn_all2 by lia; try reflexivity.
-          {
-            rewrite fold_left_sha256_step_alt_firstn.
-            replace ( S (padder_byte_index / 64 - 1) ) with (padder_byte_index / 64) in * by prove_by_zify.
-            apply H30.
-            now rewrite fold_left_sha256_step_alt_firstn'
-                with (i:=padder_byte_index / 64) (j:=padder_byte_index / 64 - 1) by prove_by_zify.
-          }
-          {
-            rewrite fold_left_sha256_step_alt_firstn.
-            destr (length msg =? 0); try lia.
+              end;
+          replace (16 - N.to_nat 0) with 16 by lia;
+          try rewrite Tauto.if_same in E4; try lia;
+          try (destr (length msg =? 0); lia);
+          try rewrite skipn_all2 by lia; try reflexivity;
+          [
+            rewrite fold_left_sha256_step_alt_firstn;
+            replace ( S (padder_byte_index / 64 - 1) ) with (padder_byte_index / 64) in * by prove_by_zify;
+            apply H30;
+            rewrite fold_left_sha256_step_alt_firstn'
+                with (i:=padder_byte_index / 64) (j:=padder_byte_index / 64 - 1) by prove_by_zify
+          |
+            rewrite fold_left_sha256_step_alt_firstn;
+            destr (length msg =? 0); try lia;
             rewrite H30 by
-              now rewrite <- fold_left_sha256_step_alt_firstn' by prove_by_zify.
-            now replace (S (length msg / 64 - 1)) with (length msg / 64) by prove_by_zify.
-          }
+              now rewrite <- fold_left_sha256_step_alt_firstn' by prove_by_zify
+            ];[reflexivity| 
+            now match goal with 
+            | |- context [ S ( ?X - 1 )] => 
+              replace (S (X - 1)) with X by prove_by_zify
+            end
+              ]
+            ).
         }
       }
     }
@@ -2629,13 +2637,13 @@ Proof.
     |- context [step sha256_padder ?state ?input] =>
     assert (precondition sha256_padder input repr)
   end.
-  { simplify_spec sha256_padder. cbn [reset_repr sha256_padder_specification].
+  {abstract ( simplify_spec sha256_padder; cbn [reset_repr sha256_padder_specification];
     destr cleared; logical_simplify; subst;
       [ destr fifo_data_valid; destr is_final; logical_simplify; subst;
-        ssplit; solve [auto] | ].
-    ssplit; [ assumption | ].
-    destr fifo_data_valid; logical_simplify; subst; [ | tauto ].
-    destr is_final; logical_simplify; subst; tauto. }
+        ssplit; solve [auto] | ];
+    ssplit; [ assumption | ];
+    destr fifo_data_valid; logical_simplify; subst; [ | tauto ];
+    destr is_final; logical_simplify; subst; tauto). }
 
   use_correctness' sha256_padder.
   cbn [reset_repr sha256_padder_specification] in *.
@@ -2742,56 +2750,63 @@ Proof.
     try lia; try prove_by_zify).
   }
 
-  destruct clear; [reflexivity|]; logical_simplify; subst.
+  destruct clear; [abstract reflexivity|]; logical_simplify; subst.
   destruct cleared; logical_simplify; subst; cbn [fst snd];
-  destruct fifo_data_valid; boolsimpl; cbn [fst snd]; [reflexivity .. | ].
-  destruct_one_match;[|reflexivity].
+  destruct fifo_data_valid; boolsimpl; cbn [fst snd]; [abstract reflexivity .. | ].
+  destruct_one_match;[|abstract reflexivity].
 
-  cbv [SHA256.sha256 SHA256.w]; rewrite concat_digest_to_N_id; rewrite padded_message_length;
-    replace (512 / N.to_nat 32) with 16 by prove_by_zify; cycle 1.
-  { cbv [SHA256.sha256_step].
+  Optimize Proof.
+  cbv [SHA256.sha256 SHA256.w]; replace (512 / N.to_nat 32) with 16 by (abstract prove_by_zify);
+  rewrite concat_digest_to_N_id; rewrite padded_message_length; cycle 1.
+  { Time abstract (cbv [SHA256.sha256_step];
 
-    assert (seq 0 (padded_message_size msg / 4 / 16) <> []).
-    { assert (1 <= padded_message_size msg / 4 / 16) by prove_by_zify.
-      apply length_pos_nonnil.
-      length_hammer.
-    }
+    assert (seq 0 (padded_message_size msg / 4 / 16) <> []);
+    [ assert (1 <= padded_message_size msg / 4 / 16) by prove_by_zify;
+      apply length_pos_nonnil;
+      length_hammer
+ |];
 
     pose proof (fold_left_exists_final (fun (H0 : list N) (i : nat) =>
       List.map2 SHA256.add_mod H0
         (fold_left (SHA256.sha256_compress (SHA256.W msg i)) (seq 0 64) H0))
-        (seq 0 (padded_message_size msg / 4 / 16)) SHA256.H0 H20) as Hff.
-    logical_simplify.
-    rewrite H22.
+        (seq 0 (padded_message_size msg / 4 / 16)) SHA256.H0 H20) as Hff;
+    logical_simplify;
+    rewrite H22;
 
-    remember (fold_left (SHA256.sha256_compress (SHA256.W msg x4)) (seq 0 64) x3) as X.
-    clear.
+    remember (fold_left (SHA256.sha256_compress (SHA256.W msg x4)) (seq 0 64) x3) as X;
+    clear;
 
-    rename x3 into a.
-    rename X into b.
+    rename x3 into a;
+    rename X into b;
 
-    rewrite map2_resize.
-    cbn zeta.
+    rewrite map2_resize;
+    cbn zeta;
 
-    apply Forall2_implies_Forall_map2.
-    revert a.
-    induction b.
-    { intros. destruct a; now cbn. }
-    intros.
-    destruct a0.
-    { now cbn. }
-    push_length.
-    rewrite <- Min.succ_min_distr.
-    cbn zeta.
-    rewrite resize_cons.
-    rewrite resize_cons.
-    constructor.
-    { apply sha256_add_mod_bounded. }
-    apply IHb.
+    apply Forall2_implies_Forall_map2;
+    revert a;
+    induction b;
+    [ intros; destruct a; now cbn|];
+    intros;
+    destruct a0;[now cbn|];
+    push_length;
+    rewrite <- Min.succ_min_distr;
+    cbn zeta;
+    rewrite ? resize_cons;
+    constructor;
+    [ apply sha256_add_mod_bounded|];
+    apply IHb).
   }
-  { length_hammer. }
+  { Show Proof.
+    Eval compute in "Very slow proof term??!"%string.
+    (* Time abstract (apply fold_left_sha256_step_alt_length; reflexivity). *)
+    Optimize Proof.
+    Optimize Heap.
+    generalize msg.
+    clear.
+    intros.
+    Time abstract (apply fold_left_sha256_step_alt_length; reflexivity).
+  }
 
-  Optimize Proof.
   destruct_one_match.
     Eval compute in "At abstract in sha256 correctness"%string.
   { Time abstract (
