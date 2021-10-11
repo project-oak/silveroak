@@ -648,14 +648,6 @@ Proof.
   all:prove_by_zify.
 Qed.
 
-(* NOTE: To show CI progress *)
-Print Debug GC.
-Optimize Heap.
-Print Debug GC.
-
-Check expected_padder_state_cases.
-
-
 Lemma sha256_padder_invariant_preserved : invariant_preserved sha256_padder.
 Proof.
   simplify_invariant sha256_padder. cbn [absorb_any].
@@ -900,9 +892,6 @@ Proof.
             repeat first [ destruct_one_match | destruct_one_match_hyp | lia ]. }
   } } } }
 Qed.
-
-(* NOTE: To show CI progress *)
-Check sha256_padder_invariant_preserved.
 
 Local Ltac testbit_crush :=
   repeat lazymatch goal with
@@ -1208,9 +1197,6 @@ Proof.
         all:destr (i <? 24)%N; testbit_crush.
         all:destr (i <? 32)%N; testbit_crush. } }
 Qed.
-
-(* NOTE: To show CI progress *)
-Check sha256_padder_output_correct.
 
 Existing Instances sha256_padder_invariant_at_reset sha256_padder_invariant_preserved
          sha256_padder_output_correct.
@@ -1820,10 +1806,6 @@ Proof.
   exfalso; prove_by_zify.
 Qed.
 
-(* NOTE: To show CI progress *)
-Print Debug GC.
-Check concat_digest_to_N_id.
-
 Require Import Coq.derive.Derive.
 
 (* simplifies the sha256 circuit so we don't have to wait for the slow
@@ -1846,12 +1828,6 @@ Proof.
   rewrite <-!tup_if. cbn [fst snd].
   subst step_sha256_simplified. instantiate_app_by_reflexivity.
 Qed.
-
-(* NOTE: To show CI progress *)
-Check step_sha256_simplified.
-Print Debug GC.
-Optimize Heap.
-Print Debug GC.
 
 Lemma sha256_invariant_preserved : invariant_preserved sha256.
 Proof.
@@ -2019,7 +1995,6 @@ Proof.
     { (* padder has reached end of message *)
       (* only one possible case for data_valid and msg_complete;
          data_valid=false and msg_complete=true *)
-      Eval compute in "At abstract 1"%string.
       abstract(
       destr fifo_data_valid; destr msg_complete;
         logical_simplify; subst; try lia; [ ];
@@ -2221,7 +2196,6 @@ Proof.
           repeat (destruct_one_match; logical_simplify; subst; try lia);
           cbv [new_msg_bytes]; length_hammer. }
         { (* (if done then ...  else True) *)
-          Eval compute in "At abstract"%string.
           abstract ( 
           destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
             try discriminate; boolsimpl;
@@ -2278,7 +2252,6 @@ Proof.
             repeat (destruct_one_match; logical_simplify; subst; try lia).
             all:try prove_by_zify. } } }
 
-          Eval compute in "At  0 < count <= 15 (padder running) "%string.
         { (* 0 < count <= 15 (padder running) *)
           destr (17 =? count)%N; [lia|].
           destr (16 =? count)%N; [lia|].
@@ -2419,9 +2392,7 @@ Proof.
           }
 
 
-Eval compute in "At abstract "%string.
-Time abstract ( 
-(* all: *)
+          Time abstract ( 
           boolsimpl;
           destr (padder_byte_index =? padded_message_size msg);
             destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
@@ -2469,7 +2440,6 @@ Time abstract (
         }
 
         {
-Eval compute in "At abstract "%string.
           abstract (
           destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
             try discriminate; boolsimpl;
@@ -2478,8 +2448,7 @@ Eval compute in "At abstract "%string.
           ssplit; try reflexivity; try lia; try prove_by_zify).
         }
         {
-Eval compute in "At final abstract "%string.
-Time abstract (
+          Time abstract (
           destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
             try discriminate; boolsimpl;
           rewrite ?Tauto.if_same in *; cbn [Nat.eqb];
@@ -2519,15 +2488,7 @@ Time abstract (
     }
 
   Optimize Proof.
-  Eval compute in "Closing sha256 invariant proof"%string.
 Time Qed.
-
-(* NOTE: To show CI progress *)
-Check sha256_invariant_preserved.
-Print Debug GC.
-Optimize Heap.
-Print Debug GC.
-
 
 Lemma sha256_add_mod_bounded x y: (SHA256.add_mod x y < 2 ^ 32)%N.
 Proof.
@@ -2567,7 +2528,6 @@ Proof.
     { apply IHl1. inversion H. apply H5. }
   }
 Qed.
-
 
 Lemma map2_resize {C} a b (f: N -> N -> C): 
   List.map2 f a b =
@@ -2654,7 +2614,7 @@ Proof.
     |- context [step sha256_inner ?state ?input] =>
     assert (precondition sha256_inner input repr)
   end.
-  { Eval compute in "At abstract in sha256 correctness"%string.
+  { 
     abstract (
     simplify_spec sha256_inner; cbn [reset_repr sha256_inner_specification];
     destr cleared; logical_simplify; subst;
@@ -2699,7 +2659,6 @@ Proof.
   do 3 eexists; ssplit.
   Optimize Proof.
   { reflexivity. }
-    Eval compute in "At abstract in sha256 correctness"%string.
   { Time abstract(
     destruct clear; [reflexivity|]; logical_simplify; subst;
     destruct cleared; logical_simplify; subst; cbn [fst snd];
@@ -2796,21 +2755,9 @@ Proof.
     [ apply sha256_add_mod_bounded|];
     apply IHb).
   }
-  { 
-    abstract (apply fold_left_sha256_step_length; reflexivity).
-    (* Show Proof. *)
-    (* Eval compute in "Very slow proof term??!"%string. *)
-    (* (1* Time abstract (apply fold_left_sha256_step_alt_length; reflexivity). *1) *)
-    (* Optimize Proof. *)
-    (* Optimize Heap. *)
-    (* generalize msg. *)
-    (* clear. *)
-    (* intros. *)
-    (* Time abstract (apply fold_left_sha256_step_alt_length; reflexivity). *)
-  }
+  { abstract (apply fold_left_sha256_step_length; reflexivity).  }
 
   destruct_one_match.
-    Eval compute in "At abstract in sha256 correctness"%string.
   { Time abstract (
     destr (inner_byte_index =? 0);
     [
@@ -2842,5 +2789,4 @@ Proof.
   { rewrite <- E4. reflexivity. }
   do 2 f_equal.
   prove_by_zify.
-    Eval compute in "Closing sha256 correctness"%string.
 Qed.
