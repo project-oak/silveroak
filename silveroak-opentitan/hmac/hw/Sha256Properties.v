@@ -2455,7 +2455,7 @@ Proof.
           all:try match goal with
                   | H: skipn 1 _ = _ |- _ => rewrite skipn_1 in H
                   end.
-Eval compute in "At abstract ".
+Eval compute in "At abstract "%string.
           all: abstract ( try rewrite H25;
           try rewrite <-slice_snoc;
           try assert (padder_byte_index mod 64 = 60) by lia;
@@ -2467,7 +2467,7 @@ Eval compute in "At abstract ".
         }
 
         {
-Eval compute in "At abstract ".
+Eval compute in "At abstract "%string.
           abstract (
           destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
             try discriminate; boolsimpl;
@@ -2510,9 +2510,9 @@ Eval compute in "At abstract ".
       }
     }
 
-  Eval compute in "Closing sha256 invariant proof".
-
-Qed.
+  Optimize Proof.
+  Eval compute in "Closing sha256 invariant proof"%string.
+Time Qed.
 
 (* NOTE: To show CI progress *)
 Check sha256_invariant_preserved.
@@ -2558,6 +2558,29 @@ Proof.
     { inversion H. apply H3. }
     { apply IHl1. inversion H. apply H5. }
   }
+Qed.
+
+
+Lemma map2_resize {C} a b (f: N -> N -> C): 
+  List.map2 f a b =
+    let sz := Nat.min (length a) (length b) in 
+    List.map2 f (List.resize 0%N sz a) (List.resize 0%N sz b).
+Proof.
+  intros.
+  revert a.
+  induction b.
+  { intros a. destruct a; now cbn. }
+  intros.
+  destruct a0.
+  { now cbn. }
+  push_length.
+  rewrite <- Min.succ_min_distr.
+  cbn zeta.
+  rewrite resize_cons.
+  rewrite resize_cons.
+  cbn [List.map2].
+  rewrite IHb.
+  reflexivity.
 Qed.
 
 Lemma sha256_output_correct : output_correct sha256.
@@ -2623,96 +2646,100 @@ Proof.
     |- context [step sha256_inner ?state ?input] =>
     assert (precondition sha256_inner input repr)
   end.
-  { simplify_spec sha256_inner. cbn [reset_repr sha256_inner_specification].
+  { Eval compute in "At abstract in sha256 correctness"%string.
+    abstract (
+    simplify_spec sha256_inner; cbn [reset_repr sha256_inner_specification];
     destr cleared; logical_simplify; subst;
       [ destr fifo_data_valid; destr is_final; logical_simplify; subst;
-        ssplit; solve [auto] | ].
-    rewrite fold_left_sha256_step_alt_firstn.
-    all:destr (t =? 64); logical_simplify; subst; try lia.
-    all:destr (count <=? 15)%N; logical_simplify; subst.
-    all:destr (count =? 16)%N; logical_simplify; subst; try lia.
-    all:repeat (destruct_one_match; logical_simplify; subst; try lia).
-    all:repeat lazymatch goal with
+        ssplit; solve [auto] | ];
+    rewrite fold_left_sha256_step_alt_firstn;
+    destr (t =? 64); logical_simplify; subst; try lia;
+    destr (count <=? 15)%N; logical_simplify; subst;
+    destr (count =? 16)%N; logical_simplify; subst; try lia;
+    repeat (destruct_one_match; logical_simplify; subst; try lia);
+    repeat lazymatch goal with
                | H : (Nat.eqb ?x ?y) = false |- _ => apply Nat.eqb_neq in H
-               end.
-    all:try (destr (padder_byte_index <? 64); logical_simplify; subst; [ | lia ]).
-    all:rewrite ?Nat.div_mul, ?Nat.div_small in * by lia.
-    all:try reflexivity.
-    all:try discriminate.
-    all:natsimpl.
-    all:repeat lazymatch goal with
+           end;
+    try (destr (padder_byte_index <? 64); logical_simplify; subst; [ | lia ]);
+    rewrite ?Nat.div_mul, ?Nat.div_small in * by lia;
+    try reflexivity;
+    try discriminate;
+    natsimpl;
+    repeat lazymatch goal with
                | |- context [(?x + ?y) / ?y] => replace ((x + y) / y) with (x / y + 1) by prove_by_zify
                | |- context [S (?x - 1)] => replace (S (x - 1)) with x by prove_by_zify
-               end.
-    all:natsimpl.
-    all:try (destr (inner_byte_index + 64 =? 64); logical_simplify; subst; lia).
-    all:lazymatch goal with
+           end;
+    natsimpl;
+    try (destr (inner_byte_index + 64 =? 64); logical_simplify; subst; lia);
+    lazymatch goal with
         | |- _ /\ _ /\ _ => ssplit; [ reflexivity | | length_hammer ]
         | _ => idtac
-        end.
-    all:rewrite ?firstn_slice_app by (push_length; prove_by_zify).
-    all:lazymatch goal with
+    end;
+    rewrite ?firstn_slice_app by (push_length; prove_by_zify);
+    lazymatch goal with
         | |- fold_left _ _ _ = fold_left _ _ _ =>
           eapply fold_left_ext_In; intros *;
             rewrite in_seq; intros;
               rewrite !sha256_step_alt_firstn by lia;
               try reflexivity
-        end. }
+        end).
+  }
 
   use_correctness' sha256_inner.
   cbn [reset_repr sha256_inner_specification] in *.
 
-  eexists.
-  eexists.
-  eexists.
-  ssplit.
+  do 3 eexists; ssplit.
+  Optimize Proof.
   { reflexivity. }
-  { destruct clear; [reflexivity|]; logical_simplify; subst.
-    destruct cleared; logical_simplify; subst; cbn [fst snd].
-    all: destr (0 <=? 15)%N; destr (16 =? 0)%N; destr (0 =? 0)%N; try lia; boolsimpl; logical_simplify; subst.
-    { destruct fifo_data_valid; boolsimpl; reflexivity. }
-    { destr (count <=? 15)%N; destr (16 =? count)%N; try lia; boolsimpl; logical_simplify; subst.
-      all:repeat (destruct_one_match; logical_simplify; subst; try lia).
-      all:boolsimpl.
+    Eval compute in "At abstract in sha256 correctness"%string.
+  { Time abstract(
+    destruct clear; [reflexivity|]; logical_simplify; subst;
+    destruct cleared; logical_simplify; subst; cbn [fst snd];
+    destr (0 <=? 15)%N; destr (16 =? 0)%N; destr (0 =? 0)%N; try lia; boolsimpl; logical_simplify; 
+      subst; [ destruct fifo_data_valid; boolsimpl; reflexivity| ];
+    destr (count <=? 15)%N; destr (16 =? count)%N; try lia; boolsimpl; logical_simplify; subst;
+      repeat (destruct_one_match; logical_simplify; subst; try lia); boolsimpl;
 
-      all:repeat (match goal with
+      repeat (match goal with
                   | |- context [ ?X =? ?Y ] => destr ( X =? Y); try lia
                   | |- context [ ?X <=? ?Y ] => destr ( X <=? Y); try lia
                   | |- context [ ( ?X =? ?Y )%N ] => destr ( X =? Y)%N; try lia
                   | |- context [ ( ?X <=? ?Y )%N ] => destr ( X <=? Y)%N; try lia
-                  end; boolsimpl).
-      all: try lia.
-      all: repeat (destruct_one_match_hyp; logical_simplify; subst; try lia).
-      all: try lia; try prove_by_zify.
-    }
+                  end; boolsimpl);
+      try lia;
+      repeat (destruct_one_match_hyp; logical_simplify; subst; try lia);
+      try lia; try prove_by_zify
+    ).
   }
 
   {
-    destruct clear; [reflexivity|]; logical_simplify; subst.
-    destruct cleared; logical_simplify; subst; cbn [fst snd].
-    all: destr (0 <=? 15)%N; destr (16 =? 0)%N; destr (0 =? 0)%N; try lia; boolsimpl; logical_simplify; subst.
-    { destruct fifo_data_valid; boolsimpl; reflexivity. }
-    rewrite N.mod_small by (cbn; prove_by_zify).
-    destr (count <=? 15)%N; try lia; boolsimpl; logical_simplify; subst.
-    all: destr (16 =? count)%N; try lia; boolsimpl; logical_simplify; subst.
-    all:repeat (destruct_one_match; logical_simplify; subst; try lia).
-    all:boolsimpl.
+    Time abstract (
+    destruct clear; [reflexivity|]; logical_simplify; subst;
+    destruct cleared; logical_simplify; subst; cbn [fst snd];
+    destr (0 <=? 15)%N; destr (16 =? 0)%N; destr (0 =? 0)%N; try lia; boolsimpl; logical_simplify; subst;
+    [ destruct fifo_data_valid; boolsimpl; reflexivity |];
+    rewrite N.mod_small by (cbn; prove_by_zify);
+    destr (count <=? 15)%N; try lia; boolsimpl; logical_simplify; subst;
+    destr (16 =? count)%N; try lia; boolsimpl; logical_simplify; subst;
+    repeat (destruct_one_match; logical_simplify; subst; try lia);
+    boolsimpl;
 
-
-    all:repeat (match goal with
+    repeat (match goal with
                 | |- context [ ?X =? ?Y ] => destr ( X =? Y); try lia
                 | |- context [ ?X <=? ?Y ] => destr ( X <=? Y); try lia
                 | |- context [ ( ?X =? ?Y )%N ] => destr ( X =? Y)%N; try lia
                 | |- context [ ( ?X <=? ?Y )%N ] => destr ( X <=? Y)%N; try lia
+                end; boolsimpl); try prove_by_zify;
 
+    repeat (match goal with
                 | H: context [ ?X =? ?Y ] |- _ => destr ( X =? Y); try lia
                 | H: context [ ?X <=? ?Y ] |- _ => destr ( X <=? Y); try lia
                 | H: context [ ( ?X =? ?Y )%N ] |- _ => destr ( X =? Y)%N; try lia
                 | H: context [ ( ?X <=? ?Y )%N ] |- _ => destr ( X <=? Y)%N; try lia
-                end; boolsimpl).
-    all: try lia; try prove_by_zify.
-    all: repeat (destruct_one_match_hyp; logical_simplify; subst; try lia).
-    all: try lia; try prove_by_zify.
+                end; boolsimpl);
+    try lia; try prove_by_zify;
+    repeat (destruct_one_match_hyp; logical_simplify; subst; try lia);
+    try lia; try prove_by_zify).
   }
 
   destruct clear; [reflexivity|]; logical_simplify; subst.
@@ -2743,26 +2770,7 @@ Proof.
     rename x3 into a.
     rename X into b.
 
-    assert (forall {C} a b (f: N -> N -> C), List.map2 f a b =
-      let sz := Nat.min (length a) (length b) in List.map2 f (List.resize 0%N sz a) (List.resize 0%N sz b)).
-    { clear; intros.
-      revert a.
-      induction b.
-      { intros a. destruct a; now cbn. }
-      intros.
-      destruct a0.
-      { now cbn. }
-      push_length.
-      rewrite <- Min.succ_min_distr.
-      cbn zeta.
-      rewrite resize_cons.
-      rewrite resize_cons.
-      cbn [List.map2].
-      rewrite IHb.
-      reflexivity.
-    }
-
-    rewrite H; clear H.
+    rewrite map2_resize.
     cbn zeta.
 
     apply Forall2_implies_Forall_map2.
@@ -2783,25 +2791,29 @@ Proof.
   }
   { length_hammer. }
 
+  Optimize Proof.
   destruct_one_match.
-  { destr (inner_byte_index =? 0).
-    { repeat (match goal with
+    Eval compute in "At abstract in sha256 correctness"%string.
+  { Time abstract (
+    destr (inner_byte_index =? 0);
+    [
+      repeat (match goal with
                   | H: context [ ?X =? ?Y ] |- _ => destr ( X =? Y); try lia
                   | H: context [ ?X <=? ?Y ] |- _ => destr ( X <=? Y); try lia
                   | H: context [ ( ?X =? ?Y )%N ] |- _ => destr ( X =? Y)%N; try lia
                   | H: context [ ( ?X <=? ?Y )%N ] |- _ => destr ( X <=? Y)%N; try lia
-                  end; boolsimpl).
-    }
-    destr (16 =? count)%N; try prove_by_zify.
-    destr (if if t =? 64 then true else false then true else t =? 63); [|prove_by_zify].
-    destr done; destr (count <=? 15)%N; destr (count =? 16)%N; logical_simplify; subst; try prove_by_zify.
+                  end; boolsimpl)|
+                    ];
+    destr (16 =? count)%N; try prove_by_zify;
+    destr (if if t =? 64 then true else false then true else t =? 63); [|prove_by_zify];
+    destr done; destr (count <=? 15)%N; destr (count =? 16)%N; logical_simplify; subst; try prove_by_zify;
 
-    all: repeat (match goal with
+    repeat (match goal with
                   | H: context [ ?X =? ?Y ] |- _ => destr ( X =? Y); try lia
                   | H: context [ ?X <=? ?Y ] |- _ => destr ( X <=? Y); try lia
                   | H: context [ ( ?X =? ?Y )%N ] |- _ => destr ( X =? Y)%N; try lia
                   | H: context [ ( ?X <=? ?Y )%N ] |- _ => destr ( X <=? Y)%N; try lia
-                  end; boolsimpl); try prove_by_zify.
+                  end; boolsimpl); try prove_by_zify).
   }
   all: repeat (match goal with
               | H: context [ ?X =? ?Y ] |- _ => destr ( X =? Y); try lia
@@ -2813,4 +2825,5 @@ Proof.
   { rewrite <- E4. reflexivity. }
   do 2 f_equal.
   prove_by_zify.
+    Eval compute in "Closing sha256 correctness"%string.
 Qed.
