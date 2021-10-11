@@ -2796,15 +2796,17 @@ Proof.
     [ apply sha256_add_mod_bounded|];
     apply IHb).
   }
-  { Show Proof.
-    Eval compute in "Very slow proof term??!"%string.
+  { 
+    abstract (apply fold_left_sha256_step_length; reflexivity).
+    (* Show Proof. *)
+    (* Eval compute in "Very slow proof term??!"%string. *)
+    (* (1* Time abstract (apply fold_left_sha256_step_alt_length; reflexivity). *1) *)
+    (* Optimize Proof. *)
+    (* Optimize Heap. *)
+    (* generalize msg. *)
+    (* clear. *)
+    (* intros. *)
     (* Time abstract (apply fold_left_sha256_step_alt_length; reflexivity). *)
-    Optimize Proof.
-    Optimize Heap.
-    generalize msg.
-    clear.
-    intros.
-    Time abstract (apply fold_left_sha256_step_alt_length; reflexivity).
   }
 
   destruct_one_match.
