@@ -14,6 +14,7 @@
 (* limitations under the License.                                           *)
 (****************************************************************************)
 
+Require Import Coq.Strings.String.
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.micromega.Lia.
 Require Import Coq.NArith.NArith.
@@ -648,7 +649,12 @@ Proof.
 Qed.
 
 (* NOTE: To show CI progress *)
+Print Debug GC.
+Optimize Heap.
+Print Debug GC.
+
 Check expected_padder_state_cases.
+
 
 Lemma sha256_padder_invariant_preserved : invariant_preserved sha256_padder.
 Proof.
@@ -1815,6 +1821,7 @@ Proof.
 Qed.
 
 (* NOTE: To show CI progress *)
+Print Debug GC.
 Check concat_digest_to_N_id.
 
 Require Import Coq.derive.Derive.
@@ -1842,6 +1849,9 @@ Qed.
 
 (* NOTE: To show CI progress *)
 Check step_sha256_simplified.
+Print Debug GC.
+Optimize Heap.
+Print Debug GC.
 
 Lemma sha256_invariant_preserved : invariant_preserved sha256.
 Proof.
@@ -1947,6 +1957,7 @@ Proof.
   use_correctness' sha256_inner.
   cbn [reset_repr sha256_inner_specification] in *.
 
+  Optimize Proof.
   ssplit.
   { (* prove that padder invariant is preserved *)
     eapply invariant_preserved_pf; [ | eassumption .. ].
@@ -1992,6 +2003,8 @@ Proof.
         all:destr (count =? 16)%N; subst; try lia.
         all:try (exfalso; prove_by_zify).
         all:destr (padder_byte_index <? 64); lia. } } }
+
+  Optimize Proof.
   { (* prove that inner invariant is preserved *)
     eapply invariant_preserved_pf; [ | eassumption .. ].
     (* prove that inner state rep is updated correctly *)
@@ -2000,30 +2013,35 @@ Proof.
     destr cleared; logical_simplify; subst;
       [ cbn [N.leb N.compare] in *; logical_simplify; subst;
         destr fifo_data_valid; logical_simplify; subst; reflexivity | ].
+
+    Optimize Proof.
     destr (padder_byte_index =? padded_message_size msg); logical_simplify; subst.
     { (* padder has reached end of message *)
       (* only one possible case for data_valid and msg_complete;
          data_valid=false and msg_complete=true *)
+      Eval compute in "At abstract 1"%string.
+      abstract(
       destr fifo_data_valid; destr msg_complete;
-        logical_simplify; subst; try lia; [ ].
-      destr (count <=? 15)%N; logical_simplify; subst.
-      all:rewrite ?Tauto.if_same in *; cbn [fst snd] in *.
-      all:boolsimpl.
-      all:repeat (first [ destruct_one_match | destruct_one_match_hyp];
-                  logical_simplify; subst; try lia; try reflexivity).
-      all:try (exfalso; prove_by_zify).
-      all:repeat lazymatch goal with
+        logical_simplify; subst; try lia; [ ];
+      destr (count <=? 15)%N; logical_simplify; subst;
+      rewrite ?Tauto.if_same in *; cbn [fst snd] in *;
+      boolsimpl;
+      repeat (first [ destruct_one_match | destruct_one_match_hyp];
+                  logical_simplify; subst; try lia; try reflexivity);
+      try (exfalso; prove_by_zify);
+      repeat lazymatch goal with
                  | H : (Nat.eqb ?x ?y) = true |- _ => apply Nat.eqb_eq in H; subst; try lia
                  | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
                  | |- context [Nat.ltb ?x ?y] => destr (Nat.ltb x y); try lia
-                 end.
-      all:try reflexivity.
-      all:rewrite firstn_slice_app by (push_length; prove_by_zify).
+                 end;
+      try reflexivity;
+      rewrite firstn_slice_app by (push_length; prove_by_zify);
       (* structure already matches; use prove_by_zify for nat arguments *)
-      all:repeat (f_equal; lazymatch goal with
+      repeat (f_equal; lazymatch goal with
                            | |- @eq nat _ _ => prove_by_zify
                            | _ => idtac
-                         end). }
+                         end)). 
+    }
     { (* padder is not yet at end of message *)
       destr (padder_byte_index =? inner_byte_index); logical_simplify; subst.
       { (* inner is running or just finished running *)
@@ -2089,6 +2107,7 @@ Proof.
           all:rewrite firstn_padded_msg_truncate by prove_by_zify.
           all:reflexivity. } } } }
 
+  Optimize Proof.
   { (* length block = 16 *)
     fold denote_type; change (denote_type sha_word) with N.
     repeat destruct_one_match.
@@ -2143,6 +2162,8 @@ Proof.
       push_skipn; listsimpl.
       rewrite slice_map_nth; cbn [List.map seq].
       reflexivity. }
+  
+    Optimize Proof.
 
     { (* cleared = false *)
       rewrite ?Tauto.if_same.
@@ -2200,17 +2221,20 @@ Proof.
           repeat (destruct_one_match; logical_simplify; subst; try lia);
           cbv [new_msg_bytes]; length_hammer. }
         { (* (if done then ...  else True) *)
+          Eval compute in "At abstract"%string.
+          abstract ( 
           destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
-            try discriminate; boolsimpl.
-          all:rewrite ?Tauto.if_same; try tauto.
-          all:repeat (destruct_one_match; logical_simplify; subst; try lia).
-          all:repeat (destruct_one_match_hyp; logical_simplify; subst; try lia).
-          all:boolsimpl_hyps.
-          all:repeat lazymatch goal with
+            try discriminate; boolsimpl;
+          rewrite ?Tauto.if_same; try tauto;
+          repeat (destruct_one_match; logical_simplify; subst; try lia);
+          repeat (destruct_one_match_hyp; logical_simplify; subst; try lia);
+          boolsimpl_hyps;
+          repeat lazymatch goal with
                      | H : (Nat.eqb ?x ?y) = true |- _ => apply Nat.eqb_eq in H; subst; try lia
-                     end.
-          all:prove_by_zify. }
+                     end;
+          prove_by_zify). }
         { (* clause that depends on count; in this case next count will always be <= 15 *)
+
           lazymatch goal with
           | |- if (?x <=? 15)%N then _ else _ =>
             assert (x <= 15)%N by (clear; repeat destruct_one_match; lia);
@@ -2254,6 +2278,7 @@ Proof.
             repeat (destruct_one_match; logical_simplify; subst; try lia).
             all:try prove_by_zify. } } }
 
+          Eval compute in "At  0 < count <= 15 (padder running) "%string.
         { (* 0 < count <= 15 (padder running) *)
           destr (17 =? count)%N; [lia|].
           destr (16 =? count)%N; [lia|].
@@ -2430,6 +2455,7 @@ Proof.
           all:try match goal with
                   | H: skipn 1 _ = _ |- _ => rewrite skipn_1 in H
                   end.
+Eval compute in "At abstract ".
           all: abstract ( try rewrite H25;
           try rewrite <-slice_snoc;
           try assert (padder_byte_index mod 64 = 60) by lia;
@@ -2440,7 +2466,9 @@ Proof.
           f_equal; try prove_by_zify).
         }
 
-        {abstract (
+        {
+Eval compute in "At abstract ".
+          abstract (
           destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
             try discriminate; boolsimpl;
           rewrite ?Tauto.if_same in *; cbn [Nat.eqb];
@@ -2481,10 +2509,17 @@ Proof.
         }
       }
     }
+
+  Eval compute in "Closing sha256 invariant proof".
+
 Qed.
 
 (* NOTE: To show CI progress *)
 Check sha256_invariant_preserved.
+Print Debug GC.
+Optimize Heap.
+Print Debug GC.
+
 
 Lemma sha256_add_mod_bounded x y: (SHA256.add_mod x y < 2 ^ 32)%N.
 Proof.
