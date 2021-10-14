@@ -16,18 +16,24 @@
 
 Require Import Coq.Lists.List.
 Require Import Coq.ZArith.ZArith.
-Require Import ExtLib.Structures.Monoid.
-Require Import ExtLib.Data.List.
 
-Require Import Cava.Types.
 Require Import Cava.Expr.
+Require Import Cava.ExprProperties.
+Require Import Cava.Invariant.
 Require Import Cava.Primitives.
+Require Import Cava.Types.
+Require Import Cava.Util.Tactics.
+
+Require Import coqutil.Tactics.Simp.
+Require Import coqutil.Tactics.Tactics.
+
+Require Import ExtLib.Data.List.
+Require Import ExtLib.Structures.Monoid.
 
 (* Naming and parameter choices follow OpenTitan conventions *)
 (* As such, 'tl_h2d_t' 'tl_d2h_t' come from the OpenTitan naming *)
 (* - 'h' refers to host *)
 (* - 'd' refers to device *)
-
 
 Definition TL_AW  := 32.
 Definition TL_DW  := 32.
@@ -334,11 +340,9 @@ Ltac tlsimpl :=
        d_valid d_opcode d_param d_size d_source d_sink d_data d_user d_error a_ready] in *.
 
 Section TLULSpec.
-  Require Import Cava.Invariant.
+  Local Open Scope N_scope.
 
   Context {reg_count : nat}.
-
-  Local Open Scope N_scope.
 
   Variant TLULState :=
   | OutstandingGet (reqid : N) (reqsz : N)
@@ -464,11 +468,6 @@ Section TLULSpec.
           /\ tlul_adapter_reg_state_reqid state = reqid
           /\ tlul_adapter_reg_state_rspop state = AccessAck
         end.
-
-  Require Import coqutil.Tactics.Tactics.
-  Require Import coqutil.Tactics.Simp.
-  Require Import Cava.Util.Tactics.
-  Require Import Cava.ExprProperties.
 
     Lemma tlul_adapter_reg_invariant_at_reset : invariant_at_reset tlul_adapter_reg.
     Proof.
