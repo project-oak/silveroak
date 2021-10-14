@@ -23,9 +23,6 @@ Require Import Cava.Types.
 Require Import Cava.Expr.
 Require Import Cava.Primitives.
 
-Import ExprNotations.
-Import PrimitiveNotations.
-
 (* Naming and parameter choices follow OpenTitan conventions *)
 (* As such, 'tl_h2d_t' 'tl_d2h_t' come from the OpenTitan naming *)
 (* - 'h' refers to host *)
@@ -92,6 +89,8 @@ Definition tl_d2h_t : type :=
 
 Section Var.
   Import ExprNotations.
+  Import PrimitiveNotations.
+
   Context {var : tvar}.
 
   Local Open Scope N.
@@ -196,8 +195,37 @@ Section Var.
     )
 
   }}.
-
 End Var.
+
+Ltac destruct_tlul_adapter_reg_state reg_count :=
+  destruct_state (tlul_adapter_reg (var:=denote_type) (reg_count:=reg_count))
+                 ipattern:((?reqid, (?reqsz, (?rspop, (?error, (?outstanding, (?we_o, ?re_o))))))).
+
+Section StateGetters.
+  Definition var : tvar := denote_type.
+  Context {reg_count : nat}.
+
+  Definition tlul_adapter_reg_state_reqid (s : denote_type (state_of (tlul_adapter_reg (reg_count:=reg_count))))
+    : N := ltac:(destruct_tlul_adapter_reg_state reg_count; apply reqid).
+  Definition tlul_adapter_reg_state_reqsz (s : denote_type (state_of (tlul_adapter_reg (reg_count:=reg_count))))
+    : N := ltac:(destruct_tlul_adapter_reg_state reg_count; apply reqsz).
+  Definition tlul_adapter_reg_state_rspop (s : denote_type (state_of (tlul_adapter_reg (reg_count:=reg_count))))
+    : N := ltac:(destruct_tlul_adapter_reg_state reg_count; apply rspop).
+  Definition tlul_adapter_reg_state_error (s : denote_type (state_of (tlul_adapter_reg (reg_count:=reg_count))))
+    : bool := ltac:(destruct_tlul_adapter_reg_state reg_count; apply error).
+  Definition tlul_adapter_reg_state_outstanding (s : denote_type (state_of (tlul_adapter_reg (reg_count:=reg_count))))
+    : bool := ltac:(destruct_tlul_adapter_reg_state reg_count; apply outstanding).
+  Definition tlul_adapter_reg_state_we_o (s : denote_type (state_of (tlul_adapter_reg (reg_count:=reg_count))))
+    : bool := ltac:(destruct_tlul_adapter_reg_state reg_count; apply we_o).
+  Definition tlul_adapter_reg_state_re_o (s : denote_type (state_of (tlul_adapter_reg (reg_count:=reg_count))))
+    : bool := ltac:(destruct_tlul_adapter_reg_state reg_count; apply re_o).
+End StateGetters.
+
+Ltac tlul_adapter_reg_state_simpl :=
+  cbn [tlul_adapter_reg_state_reqid tlul_adapter_reg_state_reqsz
+       tlul_adapter_reg_state_rspop tlul_adapter_reg_state_error
+       tlul_adapter_reg_state_outstanding tlul_adapter_reg_state_we_o
+       tlul_adapter_reg_state_re_o] in *.
 
 Definition tl_h2d := denote_type tl_h2d_t.
 Definition tl_h2d_default := default (t := tl_h2d_t).
@@ -304,3 +332,225 @@ Ltac tlsimpl :=
        set_d_valid set_d_opcode set_d_param set_d_size set_d_source
        set_d_sink set_d_data set_d_user set_d_error set_a_ready
        d_valid d_opcode d_param d_size d_source d_sink d_data d_user d_error a_ready] in *.
+
+Section TLULSpec.
+  Require Import Cava.Invariant.
+
+  Context {reg_count : nat}.
+
+  Local Open Scope N_scope.
+
+  Variant TLULState :=
+  | OutstandingGet (reqid : N) (reqsz : N)
+  | OutstandingPutFullData (reqid : N).
+
+  Definition tlul_repr := option TLULState.
+
+  Compute denote_type (input_of tlul_adapter_reg).
+  Instance tlul_specification
+    : specification_for (tlul_adapter_reg (reg_count:=reg_count)) tlul_repr :=
+    {| reset_repr := None;
+
+       update_repr :=
+         fun (input : denote_type (input_of (tlul_adapter_reg (reg_count:=reg_count))))
+           (repr : tlul_repr) =>
+           let '(h2d, (_regs, tt)) := input in
+           match repr with
+           | None =>
+             if a_valid h2d then
+               if a_opcode h2d =? Get then
+                 Some (OutstandingGet (a_source h2d) (a_size h2d))
+               else if a_opcode h2d =? PutFullData then
+                      Some (OutstandingPutFullData (a_source h2d))
+                    else (* unrechable *) repr
+             else None
+           | Some _ => if d_ready h2d then None else repr
+           end;
+
+       precondition :=
+         fun (input : denote_type (input_of tlul_adapter_reg))
+           (repr : tlul_repr) =>
+           let '(h2d, (regs, tt)) := input in
+           reg_count = length regs
+           /\ (a_valid h2d = true
+              -> (a_opcode h2d = Get \/ a_opcode h2d = PutFullData));
+
+       postcondition :=
+         fun (input : denote_type (input_of (tlul_adapter_reg (reg_count:=reg_count))))
+           (repr : tlul_repr)
+           (output : denote_type (output_of (tlul_adapter_reg (reg_count:=reg_count)))) =>
+           exists h2d regs d2h io_re io_we io_address io_data io_mask repr',
+               input = (h2d, (regs, tt))
+               /\ repr' =
+                  match repr with
+                  | None =>
+                    if a_valid h2d then
+                      if a_opcode h2d =? Get then
+                        Some (OutstandingGet (a_source h2d) (a_size h2d))
+                      else if a_opcode h2d =? PutFullData then
+                             Some (OutstandingPutFullData (a_source h2d))
+                           else (* unrechable *) repr
+                    else None
+                  | Some _ => if d_ready h2d then None else repr
+                  end
+               /\ output = (d2h, (io_re, (io_we, (io_address, (io_data, io_mask)))))
+               /\ match repr' with
+                 | None =>
+                   d_valid    d2h = false
+                   /\ d_param  d2h = 0
+                   /\ d_sink   d2h = 0
+                   /\ d_user   d2h = 0
+                   /\ d_error  d2h = false
+                   /\ a_ready  d2h = true
+                   /\ io_re = false
+                   /\ io_we = false
+
+                 | Some (OutstandingGet reqid reqsz) =>
+                   d_valid    d2h = true
+                   /\ d_opcode d2h = AccessAckData
+                   /\ d_param  d2h = 0
+                   /\ d_size   d2h = reqsz
+                   /\ d_source d2h = reqid
+                   /\ d_sink   d2h = 0
+                   /\ d_data   d2h = List.nth (N.to_nat (((a_address h2d / 4) mod (2 ^ 30)))) regs 0%N
+                   /\ d_user   d2h = 0
+                   /\ d_error  d2h = false
+                   /\ a_ready  d2h = false
+                   /\ match repr with
+                     | None => if a_valid h2d then
+                                io_re = true
+                                /\ io_address = a_address h2d
+                              else True
+                     | _ => True
+                     end
+                   /\ io_we = false
+
+                 | Some (OutstandingPutFullData reqid) =>
+                   d_valid    d2h = true
+                   /\ d_opcode d2h = AccessAck
+                   /\ d_param  d2h = 0
+                   (* /\ d_size   d2h =  *)
+                   /\ d_source d2h = reqid
+                   /\ d_sink   d2h = 0
+                   /\ d_user   d2h = 0
+                   /\ d_error  d2h = false
+                   /\ a_ready  d2h = false
+                   /\ io_re = false
+                   /\ match repr with
+                     | None => if a_valid h2d then
+                                io_we = true
+                                /\ io_address = a_address h2d
+                                /\ io_data = a_data h2d
+                                /\ io_mask = a_mask h2d
+                              else True
+                     | _ => True
+                     end
+                 end
+    |}.
+
+  Global Instance tlul_invariant : invariant_for (tlul_adapter_reg (reg_count:=reg_count)) tlul_repr :=
+    fun (state : denote_type (state_of tlul_adapter_reg)) repr =>
+      tlul_adapter_reg_state_error state = false
+      /\ match repr with
+        | None =>
+          tlul_adapter_reg_state_outstanding (reg_count:=reg_count) state = false
+        | Some (OutstandingGet reqid reqsz) =>
+          tlul_adapter_reg_state_outstanding state = true
+          /\ tlul_adapter_reg_state_reqid state = reqid
+          /\ tlul_adapter_reg_state_reqsz state = reqsz
+          /\ tlul_adapter_reg_state_rspop state = AccessAckData
+        | Some (OutstandingPutFullData reqid) =>
+          tlul_adapter_reg_state_outstanding state = true
+          /\ tlul_adapter_reg_state_reqid state = reqid
+          /\ tlul_adapter_reg_state_rspop state = AccessAck
+        end.
+
+  Require Import coqutil.Tactics.Tactics.
+  Require Import coqutil.Tactics.Simp.
+  Require Import Cava.Util.Tactics.
+  Require Import Cava.ExprProperties.
+
+    Lemma tlul_adapter_reg_invariant_at_reset : invariant_at_reset tlul_adapter_reg.
+    Proof.
+      simplify_invariant (tlul_adapter_reg (reg_count:=reg_count)).
+      cbn. auto.
+    Qed.
+
+    Lemma tlul_adapter_reg_invariant_preserved : invariant_preserved tlul_adapter_reg.
+    Proof.
+      intros (h2d, (regs, t)) state repr. destruct t.
+      cbn in state. destruct_tlul_adapter_reg_state reg_count.
+      destruct_tl_h2d.
+      intros; subst.
+      simplify_invariant (tlul_adapter_reg (reg_count:=reg_count)).
+      simplify_spec (tlul_adapter_reg (reg_count:=reg_count)).
+      cbv [tlul_adapter_reg]. stepsimpl. logical_simplify.
+      tlul_adapter_reg_state_simpl. tlsimpl.
+      match goal with
+      | h : reg_count = _ |- _ => clear h
+      end.
+      repeat (destruct_pair_let; cbn [fst snd]).
+      destruct repr as [[|]|]; [| |].
+      1-2: (* repr = Some _ *)
+        logical_simplify; subst;
+        tlul_adapter_reg_state_simpl; boolsimpl; cbn [fst snd];
+          destruct d_ready0; ssplit; reflexivity.
+      (* repr = None *)
+      subst. tlul_adapter_reg_state_simpl. boolsimpl.
+      destruct a_valid0;
+        try match goal with
+            | h: true = true -> _ |- _ => destruct h; subst
+            end;
+        cbn; ssplit; reflexivity.
+    Qed.
+
+    Lemma tlul_adapter_reg_output_correct : output_correct tlul_adapter_reg.
+    Proof.
+      intros (h2d, (regs, t)) state repr. destruct t.
+      cbn in state. destruct_tlul_adapter_reg_state reg_count.
+      destruct_tl_h2d.
+      intros.
+      simplify_invariant (tlul_adapter_reg (reg_count:=reg_count)).
+      logical_simplify; subst.
+      simplify_spec (tlul_adapter_reg (reg_count:=reg_count)).
+      cbv [tlul_adapter_reg]. stepsimpl. logical_simplify.
+      tlul_adapter_reg_state_simpl. tlsimpl.
+      rewrite List.resize_noop by assumption.
+      match goal with
+      | h : reg_count = _ |- _ => clear h
+      end.
+      subst.
+      repeat (destruct_pair_let; cbn [fst snd]).
+      destruct repr as [repr'|].
+      - (* repr = Some _ *)
+        destruct repr'; logical_simplify; subst; boolsimpl;
+          eexists _, _, _, _, _, _, _, _, _;
+          cbn -[N.ones]; repeat (rewrite pair_equal_spec);
+            tlsimpl; ssplit; try reflexivity;
+              destruct d_ready0; simpl; ssplit; auto; [].
+        rewrite N.land_ones.
+        replace 4 with (2 ^ 2) by reflexivity.
+        rewrite <- ! N.shiftr_div_pow2.
+        reflexivity.
+      - (* repr = None *)
+        subst.
+        eexists _, _, _, _, _, _, _, _, _.
+        cbn -[N.ones]. repeat (rewrite pair_equal_spec).
+        tlsimpl. ssplit; try reflexivity; [].
+        destruct a_valid0; simpl; ssplit; try reflexivity; [].
+        match goal with
+        | h: true = true -> _ |- _ =>
+          destruct h; [reflexivity|..]
+        end; subst; simpl; ssplit; try reflexivity; [].
+        rewrite N.land_ones.
+        replace 4 with (2 ^ 2) by reflexivity.
+        rewrite <- ! N.shiftr_div_pow2.
+        reflexivity.
+    Qed.
+
+    Existing Instances tlul_adapter_reg_invariant_at_reset tlul_adapter_reg_invariant_preserved
+             tlul_adapter_reg_output_correct.
+    Global Instance tlul_adapter_reg_correctness : correctness_for tlul_adapter_reg.
+    Proof. constructor; typeclasses eauto. Defined.
+
+End TLULSpec.
