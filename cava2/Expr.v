@@ -64,6 +64,15 @@ Definition state_of {var s i o} (c : @Circuit var s i o) : type := s.
 Definition input_of {var s i o} (c : @Circuit var s i o) : type := i.
 Definition output_of {var s i o} (c : @Circuit var s i o) : type := o.
 
+Ltac destruct_state_step circuit patt :=
+  let t1 := constr:(denote_type (state_of circuit)) in
+  let t2 := eval simpl in t1 in
+      match goal with
+      | v : t1 |- _ => simpl in v
+      | v : t2 |- _ => destruct v as patt
+      end.
+Ltac destruct_state circuit patt := repeat (destruct_state_step circuit patt).
+
 Declare Scope expr_scope.
 Declare Custom Entry expr.
 Delimit Scope expr_scope with expr.
