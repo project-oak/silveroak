@@ -186,7 +186,6 @@ Section RealignMaskedFifo.
     {
       simplify_spec (fifo (T:=BitVec 32) fifo_size); eauto.
       use_correctness' realign.
-      rewrite H4.
       cbn [realign_spec]; boolsimpl.
       autorewrite with tuple_if; cbn [fst].
       destruct fifo_full; boolsimpl; [trivial|].
@@ -198,7 +197,7 @@ Section RealignMaskedFifo.
       use_correctness' realign.
       eapply (invariant_preserved_pf (c:=fifo fifo_size)); cycle 1;
       simplify_spec (fifo (T:=BitVec 32) fifo_size); eauto.
-      cbn [denote_type absorb_any] in *; f_equal; rewrite H5.
+      cbn [denote_type absorb_any] in *; f_equal.
 
       simplify_spec (realign_masked_fifo fifo_size).
       simplify_spec realign.
@@ -254,9 +253,17 @@ Section RealignMaskedFifo.
       all: destr (length new_fifo_contents =? 0); boolsimpl; try reflexivity; try lia.
       all: now rewrite Tauto.if_same.
     }
+
     all:
-      simplify_spec (realign_masked_fifo fifo_size);
+      use_correctness' (fifo (T:=BitVec 32) fifo_size);
+      simplify_spec (fifo (T:=BitVec 32) fifo_size);
+      use_correctness' realign;
       simplify_spec realign;
+      simplify_invariant realign;
+      simplify_invariant (fifo (T:=BitVec 32) fifo_size);
+      cbv [realign_spec realign_invariant'] in *;
+      simplify_spec (realign_masked_fifo fifo_size).
+    all:
       assert ( (length new_fifo_contents =? fifo_size) = fifo_full);
       [ destruct fifo_full; subst;
         [ now rewrite Nat.eqb_refl
@@ -266,21 +273,17 @@ Section RealignMaskedFifo.
       [ destruct fifo_empty;
         [ rewrite H3; now rewrite Nat.eqb_refl
         | apply Nat.eqb_neq; lia ]
-      |]; cbn [denote_type] in *.
-    all:
-      rewrite H6, H5 in *;
-      use_correctness' (fifo (T:= BitVec 32) fifo_size);
-      cbn [denote_type] in *; rewrite H7; clear H7;
-      use_correctness' realign;
-      cbn [denote_type] in *; rewrite H5; clear H5;
-      cbn [realign_spec];
-      autorewrite with tuple_if; cbn [fst snd];
-      push_length; destruct consumer_ready; boolsimpl;
-      ( destr (length new_fifo_contents =? fifo_size); boolsimpl;
-          [destruct_one_match; lia|];
-        destr ((4 <=? length new_realign_contents)); destruct drain; boolsimpl;
-          destruct_one_match; lia
-      ).
+      |]; subst.
+    all: revert H4 H7.
+    all: autorewrite with tuple_if.
+    all: cbn [fst snd] in *.
+    all: boolsimpl.
+
+    all: destruct consumer_ready; boolsimpl.
+    all: destr (length new_fifo_contents =? fifo_size); boolsimpl.
+    all: destr (length new_fifo_contents =? 0); try lia; boolsimpl.
+    all: destr ((4 <=? length new_realign_contents)); destruct drain; boolsimpl; intros.
+    all: try (push_length; destruct_one_match; lia).
   Qed.
 
   Lemma realign_masked_fifo_output_correct : output_correct (realign_masked_fifo fifo_size).
@@ -315,20 +318,7 @@ Section RealignMaskedFifo.
       | apply Nat.eqb_neq; lia ]
     |]; cbn [denote_type] in *.
 
-    match goal with
-    | |- context [ ?X ] =>
-      match X with
-      | match ?Y with pair _ _ => _ end =>
-        match Y with
-        | step ?c ?s ?i =>
-          find_correctness c;
-          rewrite (surjective_pairing Y);
-          use_correctness' c
-        end
-      end
-    end.
-    rewrite H6; clear H6.
-
+    use_correctness.
     repeat (destruct_pair_let; cbn [fst snd]).
 
     cbn [fst realign_spec].
@@ -348,15 +338,10 @@ Section RealignMaskedFifo.
     }
 
     use_correctness' (fifo (T:=BitVec 32) fifo_size).
-    rewrite H5.
     logical_simplify.
     autorewrite with tuple_if; cbn [fst snd].
     push_length.
-    eexists.
-    eexists.
-    eexists.
-    eexists.
-    eexists.
+    do 5 eexists.
     ssplit.
     { reflexivity. }
     { destruct consumer_ready; [|trivial].
