@@ -103,6 +103,7 @@ Ltac simplify_invariant c :=
   match x with
   | ?x => cbv [x] in *
   end.
+
 Ltac simplify_spec c :=
   let x := constr:(_:specification_for c _) in
   let x := app_head x in
@@ -110,25 +111,34 @@ Ltac simplify_spec c :=
   | ?x => cbn [x update_repr precondition postcondition] in *
   end.
 
+Ltac simplify_postcondition c :=
+  let x := constr:((_ : specification_for c _)) in
+  let x := app_head x in
+  match x with
+  | ?x => cbn[x postcondition] in *
+  end.
+
 (* if a subcircuit is found that has an invariant-based correctness proof, use
    the correctness proof to replace the circuit step function with the
    spec. Uses [eauto] to solve the side conditions of the output-correctness
    proof. *)
+
 Ltac use_correctness' c :=
   lazymatch goal with
-  | |- context [snd (step c ?s ?i)] =>
+  | |- context [ @snd ?A ?B (@step ?i ?s ?o c ?state ?input) ] =>
     find_correctness c;
-    let H := fresh in
-    pose proof (output_correct_pf (c:=c) i s _ ltac:(eauto) ltac:(eauto)) as H;
-    cbn [absorb_any] in H;
-    generalize dependent (snd (step c s i)); intros;
-    try simplify_spec c; logical_simplify; subst
+    pose proof (@output_correct_pf
+                  s i o c _ _ _ _
+                  input state _ ltac:(eassumption) ltac:(eassumption));
+    generalize dependent (@snd A B (@step i s o c state input)); intros;
+    try simplify_postcondition c; logical_simplify; subst
   end.
+
 Ltac use_correctness :=
   match goal with
-  | |- context [match step ?c ?s ?i with pair _ _ => _ end] =>
+  | |- context [match @step ?i ?s ?o ?c ?state ?input with pair _ _ => _ end] =>
     find_correctness c;
-    rewrite (surjective_pairing (step c s i));
+    rewrite (surjective_pairing (@step i s o c state input));
     use_correctness' c
   end.
 
@@ -164,7 +174,8 @@ Section StateLogicProofs.
       ssplit.
       { eapply invariant_preserved_pf; [ | solve [eauto] .. ].
         reflexivity. }
-      { use_correctness' c. cbn [fst snd].
+      { specialize (H3 d).
+        use_correctness' c. cbn [fst snd].
         repeat (f_equal; eauto). } }
     { intros; logical_simplify; subst. reflexivity. }
   Qed.

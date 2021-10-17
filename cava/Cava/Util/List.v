@@ -45,6 +45,7 @@ Section Length.
   Lemma length_if {A} (b : bool) (x y: list A) :
     length (if b then x else y) = if b then length x else length y.
   Proof. destruct b; reflexivity. Qed.
+
 End Length.
 
 (* The push_length autorewrite database simplifies goals including [length] *)
@@ -166,6 +167,14 @@ Section Misc.
 
   Lemma skipn_1 {A} (xs: list A): skipn 1 xs = tl xs.
   Proof. now destruct xs. Qed.
+
+  Lemma skipn_tl {A} n (ls : list A) :
+    skipn n (tl ls) = skipn (S n) ls.
+  Proof.
+    induction ls; intros; cbn [tl skipn];
+      [now apply skipn_nil|reflexivity].
+  Qed.
+  Hint Rewrite @skipn_tl : push_skipn.
 
 End Misc.
 Hint Rewrite @removelast_tl @removelast_cons: listsimpl.
@@ -910,6 +919,15 @@ Section Resize.
       reflexivity.
     }
   Qed.
+
+  Lemma resize_small {A} n d (ls : list A) :
+    n <= length ls ->
+    resize d n ls = firstn n ls.
+  Proof.
+    intros; cbv [resize]. natsimpl.
+    cbn [repeat]; listsimpl; reflexivity.
+  Qed.
+
 End Resize.
 Hint Rewrite @resize_length : push_length.
 Ltac push_resize_step :=
@@ -984,6 +1002,16 @@ Section Slice.
   Lemma slice_len_0 {A} (d : A) ls n :
     slice d ls n 0 = [].
   Proof. reflexivity. Qed.
+
+  Lemma firstn_slice_app {A} n (ls : list A) d len :
+    n + len <= length ls ->
+    firstn n ls ++ slice d ls n len = firstn (n + len) ls.
+  Proof.
+    intros. cbv [slice]. rewrite resize_small by length_hammer.
+    rewrite <-(firstn_skipn n ls).
+    repeat (push_firstn || push_skipn || push_length || natsimpl || listsimpl).
+    reflexivity.
+  Qed.
 End Slice.
 Hint Rewrite @slice_length : push_length.
 Hint Rewrite @nth_slice : push_nth.
@@ -1192,8 +1220,30 @@ Section Folds.
     intros ? ? IimpliesP. apply IimpliesP.
     apply fold_left_preserves_relation_seq; eauto.
   Qed.
+
+  Lemma length_concat' {A} (x: list (list A)) n:
+    n + length (concat x) = fold_left (fun acc x => acc + length x) x n.
+  Proof.
+    revert n.
+    induction x; [now cbn |].
+    intro n.
+    rewrite concat_cons.
+    rewrite fold_left_cons.
+    push_length.
+    rewrite Nat.add_assoc.
+    apply IHx.
+  Qed.
+
+  Lemma length_concat {A} (x: list (list A)):
+    length (concat x) = fold_left (fun acc x => acc + length x) x 0.
+  Proof.
+    rewrite <- Nat.add_0_l at 1.
+    apply length_concat'.
+  Qed.
 End Folds.
 Hint Rewrite @fold_left_snoc : pull_snoc.
+
+Hint Rewrite @length_concat : push_length.
 
 Hint Rewrite @fold_left_cons @fold_left_nil @fold_left_app
      @fold_right_cons @fold_right_nil @fold_right_app

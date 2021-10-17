@@ -606,3 +606,13 @@ Proof.
   destruct n0; cbn; [reflexivity|].
   { zify. Z.to_euclidean_division_equations. lia. }
 Qed.
+
+
+Local Ltac testbit_crush :=
+  repeat lazymatch goal with
+         | |- context [N.eqb ?x ?y] => destr (N.eqb x y); try lia; subst
+         | |- N.testbit ?x _ = N.testbit ?x _ => f_equal; lia
+         | H: (?X < ?Y)%N |- context [if (?X <? ?Y)%N then _ else _] =>
+           rewrite (proj2 (N.ltb_lt X Y) H)
+         | _ => first [ progress (push_Ntestbit; boolsimpl) | reflexivity ]
+         end.
