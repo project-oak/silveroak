@@ -608,7 +608,7 @@ Proof.
 Qed.
 
 
-Local Ltac testbit_crush :=
+Ltac testbit_crush :=
   repeat lazymatch goal with
          | |- context [N.eqb ?x ?y] => destr (N.eqb x y); try lia; subst
          | |- N.testbit ?x _ = N.testbit ?x _ => f_equal; lia

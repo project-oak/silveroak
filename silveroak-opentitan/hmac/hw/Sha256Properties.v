@@ -893,16 +893,6 @@ Proof.
   } } } }
 Qed.
 
-(* DELETE *)
-Local Ltac testbit_crush :=
-  repeat lazymatch goal with
-         | |- context [N.eqb ?x ?y] => destr (N.eqb x y); try lia; subst
-         | |- N.testbit ?x _ = N.testbit ?x _ => f_equal; lia
-         | H: (?X < ?Y)%N |- context [if (?X <? ?Y)%N then _ else _] =>
-           rewrite (proj2 (N.ltb_lt X Y) H)
-         | _ => first [ progress (push_Ntestbit; boolsimpl) | reflexivity ]
-         end.
-
 Local Ltac destruct_padder_state_cases :=
   let padder_state_cases := fresh in
   lazymatch goal with
@@ -1408,13 +1398,6 @@ Instance sha256_specification
             64 bits (2^61 bytes) -- using N so Coq doesn't try to compute 2 ^ 61
             in nat *)
          (N.of_nat (length (msg ++ new_bytes)) < 2 ^ 61)%N
-         (* ..and only pass valid data if circuit is cleared or inner is done
-            (i.e. the output "ready" signal is true) *)
-         /\ (if fifo_data_valid
-            then if cleared
-                 then True
-                 else t = 64 /\ msg_complete = false
-            else True)
          (* ...and if data is valid, it must be in expected range *)
          /\ (if fifo_data_valid
             then if is_final
@@ -1584,7 +1567,7 @@ Proof.
 Qed.
 
 Lemma fold_left_sha256_step_alt_firstn' i j H msg :
-  j < i ->
+  j <= i ->
   fold_left (SHA256.sha256_step msg) (seq 0 j) H =
   fold_left (SHA256Alt.sha256_step (firstn (i * 16) (SHA256.padded_msg msg))) (seq 0 j) H.
 Proof.
@@ -1807,7 +1790,10 @@ Proof.
         ssplit; solve [auto] | ].
     ssplit; [ assumption | ].
     destr fifo_data_valid; logical_simplify; subst; [ | tauto ].
-    destr is_final; logical_simplify; subst; tauto. }
+    destr is_final; logical_simplify; subst; split; try tauto.
+    { destruct msg_complete; try lia. }
+    { destruct msg_complete; try lia. }
+  }
 
   use_correctness' sha256_padder.
   cbn [reset_repr sha256_padder_specification] in *.
@@ -1888,7 +1874,14 @@ Proof.
                    | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
                    end.
         all:try reflexivity.
-        all:prove_by_zify. }
+        all:try prove_by_zify. 
+        { destruct msg_complete; try lia. }
+        { destruct msg_complete; try lia. }
+        { destruct_one_match_hyp; logical_simplify; subst; try lia.
+          repeat (destruct_one_match_hyp; logical_simplify; subst; try lia).
+        }
+
+      }
       { (* data_valid = false *)
         destr msg_complete; logical_simplify; subst;
         rewrite ?Tauto.if_same; [ | repeat destruct_one_match; reflexivity ].
@@ -2251,9 +2244,9 @@ Proof.
             all:
                 assert (count = 15)%N by prove_by_zify;
                 replace (16 - N.to_nat count) with 1 in * by lia;
-                rewrite skipn_1 in H25;
-                rewrite tl_app by (destruct block; cbn [length] in H6; [lia|congruence]);
-                rewrite H25.
+                rewrite skipn_1 in H24;
+                rewrite tl_app by (destruct block; cbn [length] in H5; [lia|congruence]);
+                rewrite H24.
             all: 
                 try (
                 match goal with 
@@ -2275,7 +2268,6 @@ Proof.
           ssplit; try reflexivity; try lia; try prove_by_zify).
         }
         {
-          Time abstract (
           destr fifo_data_valid; destr msg_complete; logical_simplify; subst;
             try discriminate; boolsimpl;
           rewrite ?Tauto.if_same in *; cbn [Nat.eqb];
@@ -2283,7 +2275,7 @@ Proof.
           destr(17 =? count)%N; try lia;
           try destr (padder_byte_index =? 0); try lia;
           try destr (t =? 63); try lia;
-          destruct done; destr (count =? 0)%N; try lia;
+          destr (count =? 0)%N; try lia;
           ssplit; try reflexivity; try lia; try prove_by_zify;
           try match goal with
                | |- false = ?X => destr X; lia
@@ -2291,29 +2283,20 @@ Proof.
           replace (16 - N.to_nat 0) with 16 by lia;
           try rewrite Tauto.if_same in E4; try lia;
           try (destr (length msg =? 0); lia);
-          try rewrite skipn_all2 by lia; try reflexivity;
-          [
-            rewrite fold_left_sha256_step_alt_firstn;
-            replace ( S (padder_byte_index / 64 - 1) ) with (padder_byte_index / 64) in * by prove_by_zify;
-            apply H30;
-            rewrite fold_left_sha256_step_alt_firstn'
-                with (i:=padder_byte_index / 64) (j:=padder_byte_index / 64 - 1) by prove_by_zify
-          |
-            rewrite fold_left_sha256_step_alt_firstn;
-            destr (length msg =? 0); try lia;
-            rewrite H30 by
-              now rewrite <- fold_left_sha256_step_alt_firstn' by prove_by_zify
-            ];[reflexivity| 
-            now match goal with 
-            | |- context [ S ( ?X - 1 )] => 
-              replace (S (X - 1)) with X by prove_by_zify
-            end
-              ]
-            ).
+          try rewrite skipn_all2 by lia; try reflexivity.
+          all: destr (length msg =? 0); try lia.
+          all: rewrite H29.
+          all: rewrite fold_left_sha256_step_alt_firstn.
+          all: try replace ( S (padder_byte_index / 64 - 1) ) with (padder_byte_index / 64) in * by prove_by_zify.
+          all: try replace ( S (length msg / 64 - 1) ) with (length msg / 64) in * by prove_by_zify.
+          all: try reflexivity.
+          all: 
+            rewrite <- fold_left_sha256_step_alt_firstn' by lia;
+            rewrite <- fold_left_sha256_step_alt_firstn' by lia;
+            reflexivity.
         }
       }
     }
-
 Time Qed.
 
 Lemma sha256_add_mod_bounded x y: (SHA256.add_mod x y < 2 ^ 32)%N.
@@ -2423,13 +2406,16 @@ Proof.
     |- context [step sha256_padder ?state ?input] =>
     assert (precondition sha256_padder input repr)
   end.
-  {abstract ( simplify_spec sha256_padder; cbn [reset_repr sha256_padder_specification];
+  { simplify_spec sha256_padder; cbn [reset_repr sha256_padder_specification];
     destr cleared; logical_simplify; subst;
       [ destr fifo_data_valid; destr is_final; logical_simplify; subst;
         ssplit; solve [auto] | ];
     ssplit; [ assumption | ];
     destr fifo_data_valid; logical_simplify; subst; [ | tauto ];
-    destr is_final; logical_simplify; subst; tauto). }
+    destr is_final; logical_simplify; subst; try tauto.
+    all: ssplit; try tauto.
+    all: destruct msg_complete; lia.
+  }
 
   use_correctness' sha256_padder.
   cbn [reset_repr sha256_padder_specification] in *.
@@ -2553,9 +2539,9 @@ Proof.
     pose proof (fold_left_exists_final (fun (H0 : list N) (i : nat) =>
       List.map2 SHA256.add_mod H0
         (fold_left (SHA256.sha256_compress (SHA256.W msg i)) (seq 0 64) H0))
-        (seq 0 (padded_message_size msg / 4 / 16)) SHA256.H0 H20) as Hff;
+        (seq 0 (padded_message_size msg / 4 / 16)) SHA256.H0 H19) as Hff;
     logical_simplify;
-    rewrite H22;
+    rewrite H21;
 
     remember (fold_left (SHA256.sha256_compress (SHA256.W msg x4)) (seq 0 64) x3) as X;
     clear;
