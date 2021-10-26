@@ -53,16 +53,6 @@ Notation bytearray := (bedrock2.Array.array (mem := mem) ptsto (word.of_Z 1)).
 (* Plug in the right state machine parameters; typeclass inference struggles here *)
 Local Notation execution := (execution (M:=hmac_state_machine)).
 
-Definition code_start    : word := word.of_Z 0.
-Definition code_pastend  : word := word.of_Z (4*2^10).
-Definition heap_start    : word := word.of_Z (4*2^10).
-Definition heap_pastend  : word := word.of_Z (8*2^10).
-Definition stack_start   : word := word.of_Z (8*2^10).
-Definition stack_pastend : word := word.of_Z (16*2^10).
-
-(* dummy base address -- just past end of stack *)
-Definition base_addr : Z := 16 * 2^10.
-
 Definition funcs := [
   b2_sha256;
   b2_hmac_sha256_init; b2_hmac_sha256_update; b2_hmac_sha256_final;

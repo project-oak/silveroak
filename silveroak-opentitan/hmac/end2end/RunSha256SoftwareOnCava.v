@@ -20,6 +20,13 @@ Definition expected_output: list Byte.byte := [
   Byte.x64; Byte.xec; Byte.x88; Byte.xca; Byte.x00; Byte.xb2; Byte.x68; Byte.xe5; Byte.xba; Byte.x1a; Byte.x35; Byte.x67; Byte.x8a; Byte.x1b; Byte.x53; Byte.x16; Byte.xd2; Byte.x12; Byte.xf4; Byte.xf3; Byte.x66; Byte.xb2; Byte.x47; Byte.x72; Byte.x32; Byte.x53; Byte.x4a; Byte.x8a; Byte.xec; Byte.xa3; Byte.x7f; Byte.x3c
 ].
 
+Definition code_start    : word := word.of_Z 0.
+Definition code_pastend  : word := word.of_Z (4*2^10).
+Definition heap_start    : word := word.of_Z (4*2^10).
+Definition heap_pastend  : word := word.of_Z (8*2^10).
+Definition stack_start   : word := word.of_Z (8*2^10).
+Definition stack_pastend : word := word.of_Z (16*2^10).
+
 Definition digest_loc  : Z := word.unsigned heap_start.
 Definition digest_len  : Z := 256/8.
 Definition msg_loc     : Z := digest_loc + digest_len.
@@ -98,7 +105,7 @@ Compute (snd (fst sha256_compile_result)).
 Compute snd (trace 50 initial).
 *)
 
-Definition res(nsteps: nat): LogElem := outcomeToLogElem (run sched nsteps initial).
+Definition res(nsteps: nat): LogElem := outcomeToLogElem (run_rec sched 0 nsteps initial).
 
 Goal exists nsteps, res nsteps = (true, word.unsigned ret_addr, expected_output).
   (* wrong number of steps, and doesn't work currently because Cava Hmac device is not yet

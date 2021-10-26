@@ -79,7 +79,6 @@ Section WithParams.
       word.unsigned p_functions mod 4 = 0 ->
       word.unsigned ret_addr mod 4 = 0 ->
       map.get initialL.(getRegs) RegisterNames.ra = Some ret_addr ->
-      initialL.(getLog) = [] ->
       initialL.(getPc) = word.add p_functions (word.of_Z f_entry_rel_pos) ->
       WeakestPrecondition.call fs f_entry_name [] mH argvals
            (fun (t': Semantics.trace) (m': mem) (retvals: list word) =>
@@ -98,8 +97,7 @@ Section WithParams.
         finalL.(getPc) = ret_addr /\
         machine_ok p_functions stack_start stack_pastend (instrencode instrs)
                    mH' Rdata Rexec finalL /\
-        postH mH' retvals /\
-        finalL.(getLog) = initialL.(getLog) (* no external interactions happened *).
+        postH mH' retvals.
   Proof.
     intros.
     destruct initialL as (mach & d). destruct mach as [r pc npc m xAddrs t].
@@ -120,6 +118,7 @@ Section WithParams.
         clear P; cbn -[map.get map.empty instrencode reg_class.all]; try eassumption.
       { apply compile_ext_call_correct. }
       { intros. reflexivity. }
+      { reflexivity. }
       unfold LowerPipeline.machine_ok; cbn -[map.get map.empty instrencode program reg_class.all].
       pose proof ptsto_bytes_to_program (iset := RV32IM) as P.
       match goal with
@@ -136,7 +135,7 @@ Section WithParams.
       unfold LowerPipeline.machine_ok in *.
       cbn -[map.get map.empty instrencode reg_class.all] in *.
       simp.
-      eexists _, {| getMachine := {| getLog := [] |} |}, _, retvals.
+      eexists _, {| getMachine := {| getLog := _ |} |}, _, retvals.
       cbn -[map.get map.empty instrencode reg_class.all].
       split. 1: exact Rn.
       pose proof ptsto_bytes_to_program (iset := RV32IM) as P. cbn in P.
@@ -157,7 +156,7 @@ Section WithParams.
       eauto using initial_state_is_ready_state.
     }
     (* `related` holds at beginning: *)
-    subst t pc.
+    subst pc.
     edestruct initial_state_exists as (sH & ? & ?). 1: eassumption.
     eapply mkRelated; simpl; eauto.
     Unshelve.

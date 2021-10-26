@@ -28,12 +28,11 @@ Theorem IncrementWait_end2end_correct: forall p_functions ret_addr mH (Rdata Rex
     initialL.(getLog) = [] ->
     initialL.(getPc) = word.add p_functions (word.of_Z put_wait_get_relative_pos) ->
     exists steps_remaining finalL mH',
-      run sched steps_remaining initialL = (Some tt, finalL) /\
+      run sched steps_remaining initialL = Some finalL /\
       machine_ok p_functions stack_start stack_pastend binary mH' Rdata Rexec finalL /\
       R mH' /\
       map.get finalL.(getRegs) RegisterNames.a0 = Some (word.add (word.of_Z 1) input) /\
-      finalL.(getPc) = ret_addr /\
-      finalL.(getLog) = initialL.(getLog) (* no external interactions happened *).
+      finalL.(getPc) = ret_addr.
 Proof.
   intros.
   change binary with (Pipeline.instrencode put_wait_get_asm).
@@ -73,7 +72,7 @@ Proof.
     end.
     reflexivity. }
   { eassumption. }
-  { cbn -[map.get] in GM. fwd. eauto 10. }
+  { cbn -[map.get] in GM. fwd. unfold run. do 3 eexists. rewrite Rn. eauto 10. }
 Qed.
 
 (* Goal: bring this list down to only standard axioms like functional and propositional extensionality

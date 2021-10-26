@@ -33,6 +33,7 @@ Require Import Bedrock2Experiments.WordProperties.
 Require Import HmacSoftware.Constants.
 Require Import HmacSoftware.HmacSemantics.
 Require Import HmacSoftware.Hmac.
+Require Import HmacSpec.SHA256.
 Require Import Bedrock2Experiments.LibBase.AbsMMIOPropertiesUnique.
 Require Import Bedrock2Experiments.LibBase.BitfieldProperties.
 Require Import Bedrock2Experiments.LibBase.MMIOLabels.

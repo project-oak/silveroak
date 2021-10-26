@@ -93,7 +93,7 @@ Section WithVar.
   Compute snd (trace 100 initial).
   *)
 
-  Definition res(nsteps: nat): LogElem := outcomeToLogElem (run sched nsteps initial).
+  Definition res(nsteps: nat): LogElem := outcomeToLogElem (run_rec sched 0 nsteps initial).
 
   (* We can vm_compute through the execution of the IncrementWait program,
      riscv-coq's processor model, and Cava's reaction to the IncrementWait program: *)
