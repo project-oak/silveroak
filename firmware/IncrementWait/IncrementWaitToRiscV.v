@@ -38,31 +38,13 @@ Definition base_addr : Z := 16 * 2^10.
 Instance circuit_spec : circuit_behavior :=
   {| ncycles_processing := 15%nat |}.
 
-(* pointers to input and output memory locations *)
-Definition input_ptr := word.unsigned heap_start.
-Definition output_ptr := word.unsigned heap_start + 4.
-
-(* read input from memory, call put_wait_get, write output to memory *)
-Definition main_body : cmd :=
-  (* allocate a temporary variable to store output *)
-  cmd.stackalloc
-    "out" 4
-    (cmd.seq
-       (* call put_wait_get *)
-       (cmd.call ["out"] put_wait_get
-                 ([expr.load access_size.word (expr.literal input_ptr)]))
-       (* store result *)
-       (cmd.store access_size.word (expr.literal output_ptr) (expr.var "out"))).
-
-Definition main : func :=
-  ("main", ([], [], main_body)).
-
-Definition funcs := [main; put_wait_get].
+Definition funcs := [put_wait_get].
 
 Definition put_wait_get_compile_result_o :=
   Eval vm_compute in compile compile_ext_call (map.of_list funcs).
 
-Definition put_wait_get_compile_result: list Decode.Instruction * (SortedListString.map Z) * Z.
+Definition put_wait_get_compile_result:
+  list Decode.Instruction * (SortedListString.map (nat * nat * Z)) * Z.
   let r := eval unfold put_wait_get_compile_result_o in put_wait_get_compile_result_o in
       match r with
       | Some ?x => exact x

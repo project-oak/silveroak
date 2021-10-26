@@ -212,7 +212,7 @@ Section Riscv.
                    specialize (Hforall v Hexists)
                end;
         ssplit; eauto; simpl;
-        change removeXAddr with (@List.removeb word word.eqb _);
+        change removeXAddr with (@List.removeb word word.eqb );
         rewrite ?ListSet.of_list_removeb;
         intuition eauto 10 using preserve_undef_on, disjoint_diff_l.
   Qed.
@@ -278,7 +278,7 @@ Section Riscv.
   Proof.
     destruct s, a; cbn; cbv [load store nonmem_load nonmem_store]; cbn;
       repeat destruct_one_match; intros; destruct_products; try split;
-        change removeXAddr with (@List.removeb word word.eqb _);
+        change removeXAddr with (@List.removeb word word.eqb);
         rewrite ?ListSet.of_list_removeb;
         intuition eauto 10 using preserve_undef_on, disjoint_diff_l.
   Qed.

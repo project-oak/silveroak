@@ -11,7 +11,7 @@ Require Import HmacEnd2End.CavaHmacDevice.
 Require Import HmacSoftware.Sha256ToRiscV.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.Bedrock2ToCava.
 
-Definition binary: list byte := Eval compute in Pipeline.instrencode sha256_example_asm.
+Definition binary: list byte := Eval compute in Pipeline.instrencode sha256_asm.
 
 (* TODO replace axiom from HmacSemantics with actual spec *)
 Definition sha256 := HmacSemantics.sha256.
@@ -27,28 +27,24 @@ Theorem sha256_example_end2end_correct: forall p_functions p_call mH Rdata Rexec
     word.unsigned p_functions mod 4 = 0 ->
     word.unsigned p_call mod 4 = 0 ->
     initialL.(getLog) = [] ->
-    machine_ok p_functions main_relative_pos stack_start stack_pastend binary p_call
-               p_call mH Rdata Rexec initialL ->
+    machine_ok p_functions stack_start stack_pastend binary
+               mH Rdata Rexec initialL ->
     Z.of_nat (length input) = word.unsigned input_len ->
     Z.of_nat (length output_placeholder) = 32 ->
     input_addr <> word.of_Z 0 ->
     digest_addr <> word.of_Z 0 ->
-    (scalar (word.of_Z digest_ptr) digest_addr *
-     scalar (word.of_Z msg_ptr) input_addr *
-     scalar (word.of_Z msg_len_ptr) input_len *
-     bytearray input_addr input * bytearray digest_addr output_placeholder * R)%sep mH ->
+    (bytearray input_addr input * bytearray digest_addr output_placeholder * R)%sep mH ->
     exists steps_remaining finalL mH',
       run sched steps_remaining initialL = (Some tt, finalL) /\
-      machine_ok p_functions main_relative_pos stack_start stack_pastend binary p_call
-                 (word.add p_call (word.of_Z 4)) mH' Rdata Rexec finalL /\
-    (scalar (word.of_Z digest_ptr) digest_addr *
-     scalar (word.of_Z msg_ptr) input_addr *
-     scalar (word.of_Z msg_len_ptr) input_len *
-     bytearray input_addr input * bytearray digest_addr (sha256 input) * R)%sep mH' /\
+      machine_ok p_functions stack_start stack_pastend binary
+                 mH' Rdata Rexec finalL /\
+    (bytearray input_addr input * bytearray digest_addr (sha256 input) * R)%sep mH' /\
       finalL.(getLog) = initialL.(getLog) (* no external interactions happened *).
 Proof.
   intros.
-  change binary with (Pipeline.instrencode sha256_example_asm).
+  change binary with (Pipeline.instrencode sha256_asm).
+Abort.
+(*
   refine (bedrock2_and_cava_system_correct
             _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _);
     try eassumption.
@@ -81,6 +77,7 @@ Proof.
   }
   Unshelve. case TODO. (* initial state will be determined *)
 Qed.
+*)
 
 (* Goal: bring this list down to only standard axioms like functional and propositional extensionality
 Print Assumptions sha256_example_end2end_correct.

@@ -243,7 +243,7 @@ Section WithParams.
   Proof.
     induction sz; intros; cbn.
     - assumption.
-    - change removeXAddr with (@List.removeb word word.eqb _).
+    - change removeXAddr with (@List.removeb word word.eqb).
       rewrite ?ListSet.of_list_removeb.
       eauto 10 using disjoint_diff_l.
   Qed.
