@@ -40,6 +40,19 @@ Require Import HmacHardware.Sha256.
 Require HmacSpec.SHA256.
 Import ListNotations.
 
+Require Import coqutil.Tactics.autoforward.
+Ltac autoforward_in db H ::=
+  let tmp := fresh H in
+  rename H into tmp;
+  let A := type of tmp in
+  pose proof ((ltac:(typeclasses eauto with db) : autoforward A _) tmp) as H;
+  (* Recently, this `move` was added in coqutil, which breaks this proof script,
+     because through destruct_one_match_hyp, it depends on the hypotheses order,
+     and the most straightforward way to fix the broken proofs requires too
+     much memory to work on CI *)
+  (* move H after tmp; *)
+  clear tmp.
+
 Lemma step_rotr n (x : denote_type sha_word) :
   step (rotr n) tt (x,tt) = (tt, SHA256.ROTR (N.of_nat n) x).
 Proof.
@@ -742,7 +755,6 @@ Proof.
           end.
       all:repeat (destruct_one_match_hyp; try discriminate).
       all:logical_simplify; subst; cbn [length app] in *.
-      all:try discriminate.
       all:rewrite ?N.eqb_refl; try lia.
       all:push_length; natsimpl.
       all:rewrite N.mod_small; lia. }
@@ -1875,7 +1887,7 @@ Proof.
                    | |- context [Nat.eqb ?x ?y] => destr (Nat.eqb x y); try lia
                    end.
         all:try reflexivity.
-        all:try prove_by_zify.
+        all:try prove_by_zify. 
         { destruct msg_complete; try lia. }
         { destruct msg_complete; try lia. }
         { destruct_one_match_hyp; logical_simplify; subst; try lia.
@@ -2133,8 +2145,8 @@ Proof.
 
           all: ssplit; try lia.
           all: try abstract prove_by_zify.
-          all:
-              match goal with
+          all: 
+              match goal with 
                | H: skipn ?X _ = _ |- skipn ?X _ = _ => rewrite H
                | |- skipn ?X _ = _ => compute_expr X
                end.
@@ -2192,13 +2204,13 @@ Proof.
 
             all: repeat destruct_one_match.
             all: ssplit;
-              first
+              first 
               [ reflexivity
               | lia
               | cbn [new_msg_bytes]; push_length; lia
               | prove_by_zify
               | idtac
-              ].
+              ]. 
             all: cbn [sha_word].
             all: lazymatch goal with
                  | H: skipn _ _ = _ |- context [skipn _ _ ] =>
@@ -2230,12 +2242,12 @@ Proof.
             all: try (rewrite sha256_step_truncate; [reflexivity|prove_by_zify]).
             all: try reflexivity.
             all: try (
-              replace ((padder_byte_index + 4 - 4)/ 4)
+              replace ((padder_byte_index + 4 - 4)/ 4) 
                 with (padder_byte_index / 64 * 16 + N.to_nat count) by prove_by_zify).
             all: try (
-              replace ((length msg + 4 - 4)/ 4)
+              replace ((length msg + 4 - 4)/ 4) 
                 with (length msg / 64 * 16 + N.to_nat count) by prove_by_zify).
-            all: try now rewrite slice_snoc.
+            all: try now rewrite slice_snoc. 
 
             all: try (
               rewrite <- slice_snoc;
@@ -2248,15 +2260,15 @@ Proof.
                 rewrite skipn_1 in H24;
                 rewrite tl_app by (destruct block; cbn [length] in H5; [lia|congruence]);
                 rewrite H24.
-            all:
+            all: 
                 try (
-                match goal with
+                match goal with 
                 | |- context[ new_msg_bytes _ _ ?T _ ] =>
                 rewrite <- slicen_padded_msg_truncate with (msg2:=
                   (new_msg_bytes true fifo_data T final_length)) by prove_by_zify
                 end).
             all: try rewrite slice_snoc.
-            all:
+            all: 
                 f_equal; prove_by_zify;
                 reflexivity.
         }
@@ -2291,7 +2303,7 @@ Proof.
           all: try replace ( S (padder_byte_index / 64 - 1) ) with (padder_byte_index / 64) in * by prove_by_zify.
           all: try replace ( S (length msg / 64 - 1) ) with (length msg / 64) in * by prove_by_zify.
           all: try reflexivity.
-          all:
+          all: 
             rewrite <- fold_left_sha256_step_alt_firstn' by lia;
             rewrite <- fold_left_sha256_step_alt_firstn' by lia;
             reflexivity.
@@ -2339,9 +2351,9 @@ Proof.
   }
 Qed.
 
-Lemma map2_resize {C} a b (f: N -> N -> C):
+Lemma map2_resize {C} a b (f: N -> N -> C): 
   List.map2 f a b =
-    let sz := Nat.min (length a) (length b) in
+    let sz := Nat.min (length a) (length b) in 
     List.map2 f (List.resize 0%N sz a) (List.resize 0%N sz b).
 Proof.
   intros.
@@ -2427,7 +2439,7 @@ Proof.
     |- context [step sha256_inner ?state ?input] =>
     assert (precondition sha256_inner input repr)
   end.
-  {
+  { 
     abstract (
     simplify_spec sha256_inner; cbn [reset_repr sha256_inner_specification];
     destr cleared; logical_simplify; subst;
@@ -2474,7 +2486,7 @@ Proof.
   { abstract(
     destruct clear; [reflexivity|]; logical_simplify; subst;
     destruct cleared; logical_simplify; subst; cbn [fst snd];
-    destr (0 <=? 15)%N; destr (16 =? 0)%N; destr (0 =? 0)%N; try lia; boolsimpl; logical_simplify;
+    destr (0 <=? 15)%N; destr (16 =? 0)%N; destr (0 =? 0)%N; try lia; boolsimpl; logical_simplify; 
       subst; [ destruct fifo_data_valid; boolsimpl; reflexivity| ];
     destr (count <=? 15)%N; destr (16 =? count)%N; try lia; boolsimpl; logical_simplify; subst;
       repeat (destruct_one_match; logical_simplify; subst; try lia); boolsimpl;
@@ -2598,6 +2610,7 @@ Proof.
               | H: context [ ( ?X <=? ?Y )%N ] |- _ => destr ( X <=? Y)%N; try lia
               end; boolsimpl); try prove_by_zify.
   all: logical_simplify; subst.
-  all: do 2 f_equal.
-  all: prove_by_zify.
+  { rewrite <- E4. reflexivity. }
+  do 2 f_equal.
+  prove_by_zify.
 Qed.
