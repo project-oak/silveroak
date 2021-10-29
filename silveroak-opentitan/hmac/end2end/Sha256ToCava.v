@@ -19,7 +19,7 @@ Definition binary: list byte := Eval compute in Pipeline.instrencode sha256_asm.
 (* TODO: replace by actual hmac device init state *)
 Definition IDLE: unit := tt.
 
-Definition machine_valid(imem: mem -> Prop)(mach: ExtraRiscvMachine hmac_device): Prop :=
+Definition mach_valid(imem: mem -> Prop)(mach: ExtraRiscvMachine hmac_device): Prop :=
   subset (footpr imem) (of_list (getXAddrs mach)) /\
   getNextPc mach = word.add (getPc mach) (word.of_Z 4) /\
   regs_initialized (getRegs mach) /\
@@ -40,7 +40,7 @@ Infix "-" := word.sub : word_scope.
 Delimit Scope word_scope with word.
 Local Open Scope word_scope.
 
-Implicit Type m : ExtraRiscvMachine hmac_device.
+Notation ShaDevice := hmac_device.
 
 (* Trying to keep toplevel theorem at 53 chars wide:
 01234567890123456789012345678901234567890123456789012 *)
@@ -48,51 +48,52 @@ Implicit Type m : ExtraRiscvMachine hmac_device.
 Axiom sha256_len: forall inp, List.length (sha256 inp) = 32%nat.
 
 Theorem sha256_end2end_correct:
-  forall a_inp a_outp len inp p_code sp_val
-    stack_low_end ret_addr Rdata Rexec sched m,
-  Z.of_nat (length inp) = word.unsigned len ->
-  a_inp <> word.of_Z 0 ->
-  a_outp <> word.of_Z 0 ->
-  map.get m.(getRegs) RegisterNames.a0 = Some a_outp ->
-  map.get m.(getRegs) RegisterNames.a1 = Some a_inp ->
-  map.get m.(getRegs) RegisterNames.a2 = Some len ->
-  map.get m.(getRegs) RegisterNames.sp = Some sp_val ->
-  map.get m.(getRegs) RegisterNames.ra = Some ret_addr ->
-  m.(getPc) = p_code + word.of_Z sha256_relative_pos ->
-  256 <= word.unsigned (sp_val - stack_low_end) ->
-  word.unsigned (sp_val - stack_low_end) mod 4 = 0 ->
-  word.unsigned p_code mod 4 = 0 ->
-  word.unsigned ret_addr mod 4 = 0 ->
-  m.(getExtraState) = IDLE ->
-  machine_valid (ptsto_bytes p_code binary * Rexec) m ->
-  (bytearray a_inp inp *
-   mem_available a_outp (a_outp + (word.of_Z 32)) *
-   mem_available stack_low_end sp_val * Rdata *
-   ptsto_bytes p_code binary * Rexec) m.(getMem) ->
-  exists n m',
-  run sched n m = Some m' /\
-  map.get m'.(getRegs) RegisterNames.sp = Some sp_val /\
-  map.agree_on callee_saved m.(getRegs) m'.(getRegs) /\
-  m'.(getPc) = ret_addr /\
-  m'.(getExtraState) = IDLE /\
-  machine_valid (ptsto_bytes p_code binary * Rexec) m' /\
-  (bytearray a_inp inp *
-   bytearray a_outp (sha256 inp)  *
-   mem_available stack_low_end sp_val * Rdata *
-   ptsto_bytes p_code binary * Rexec) m'.(getMem).
+forall a_outp a_inp len sp_val a_ret a_code stack_lo
+  (inp: list byte) (Rdata Rexec: mem->Prop)
+  (sched: nat->nat) (m: ExtraRiscvMachine ShaDevice),
+map.get m.(getRegs) RegisterNames.a0 = Some a_outp ->
+map.get m.(getRegs) RegisterNames.a1 = Some a_inp ->
+map.get m.(getRegs) RegisterNames.a2 = Some len ->
+map.get m.(getRegs) RegisterNames.sp = Some sp_val ->
+map.get m.(getRegs) RegisterNames.ra = Some a_ret ->
+m.(getPc) = a_code ->
+Z.of_nat (length inp) = word.unsigned len ->
+a_inp <> word.of_Z 0 ->
+a_outp <> word.of_Z 0 ->
+256 <= word.unsigned (sp_val - stack_lo) ->
+word.unsigned (sp_val - stack_lo) mod 4 = 0 ->
+word.unsigned a_code mod 4 = 0 ->
+word.unsigned a_ret mod 4 = 0 ->
+m.(getExtraState) = IDLE ->
+mach_valid (ptsto_bytes a_code binary * Rexec) m ->
+(bytearray a_inp inp *
+ mem_available a_outp (a_outp + (word.of_Z 32)) *
+ mem_available stack_lo sp_val * Rdata *
+ ptsto_bytes a_code binary * Rexec) m.(getMem) ->
+exists n m',
+run sched n m = Some m' /\
+map.get m'.(getRegs) RegisterNames.sp = Some sp_val /\
+map.agree_on callee_saved m.(getRegs) m'.(getRegs) /\
+m'.(getPc) = a_ret /\
+m'.(getExtraState) = IDLE /\
+mach_valid (ptsto_bytes a_code binary * Rexec) m' /\
+(bytearray a_inp inp *
+ bytearray a_outp (sha256 inp)  *
+ mem_available stack_lo sp_val * Rdata *
+ ptsto_bytes a_code binary * Rexec) m'.(getMem).
 Proof.
   intros.
   change binary with (Pipeline.instrencode sha256_asm).
   assert (((mem_available a_outp (a_outp + (word.of_Z 32)) * bytearray a_inp inp) *
-           (mem_available stack_low_end sp_val * ptsto_bytes p_code binary * Rexec * Rdata))
+           (mem_available stack_lo sp_val * ptsto_bytes a_code binary * Rexec * Rdata))
             m.(getMem)) as M by ecancel_assumption.
   unfold sep in M at 1. destruct M as (mH & mL & Sp & MH & ML).
   eapply mem_available_to_exists in MH.
   destruct MH as (output_placeholder & HLen & MH).
   ring_simplify (a_outp + word.of_Z 32 - a_outp) in HLen.
   edestruct bedrock2_and_cava_system_correct with
-      (f_entry_name := "b2_sha256")
-      (stack_start := stack_low_end) (stack_pastend := sp_val)
+      (f_entry_name := "b2_sha256") (p_functions := a_code)
+      (stack_start := stack_lo) (stack_pastend := sp_val)
       (postH := fun mH' (retvals: list word) =>
                   (bytearray a_inp inp * bytearray a_outp (sha256 inp)) mH')
     as (steps_remaining & finalL & mH' & retvals & Rn & GM & A & Eq & M & HP);
@@ -103,9 +104,7 @@ Proof.
   { exact funcs_valid. }
   { apply List.dedup_NoDup_iff. reflexivity. }
   { exact sha256_compile_result_eq. }
-  { (* check that the compiler emitted valid instructions: *)
-    repeat (apply Forall_cons || apply Forall_nil).
-    all: try (vm_compute; intuition discriminate). }
+  { exact sha256_asm_valid_instructions. }
   { reflexivity. }
   { change sha256_req_stack with (sha256_req_stack * 4 / 4).
     eapply Z.div_le_mono. 1: reflexivity.
@@ -114,6 +113,11 @@ Proof.
   { assumption. }
   { assumption. }
   { assumption. }
+  { (* Note: Conveniently, since "b2_sha256" is last in the alphabet among all used functional
+       names, sha256_relative_pos equals 0, so the theorem becomes simpler (just jump to a_code
+       instead of (a_code+sha256_relative_pos)).
+       Compute sha256_finfo. *)
+    replace (getPc m) with a_code. symmetry. apply add_0_r. }
   { eapply WeakestPreconditionProperties.Proper_call.
     2: eapply link_sha256.
     6: { instantiate (4 := a_outp). instantiate (5 := a_inp). instantiate (1 := mH).
@@ -133,22 +137,18 @@ Proof.
              end
            end.
     reflexivity. }
-  { unfold machine_ok, machine_valid in *. fwd.
+  { unfold machine_ok, mach_valid in *. fwd.
     unfold device.is_ready_state, hmac_device.
     match goal with
     | H: _ = IDLE |- _ => unfold IDLE in H; symmetry in H
     end.
     ssplit; try eassumption.
-    - change (Pipeline.instrencode sha256_asm) with binary.
-      apply sep_comm.
-      unfold sep at 1. exists mH, mL. split. 1: exact Sp. split. 1: reflexivity.
-      ecancel_assumption.
-    - match goal with
-      | |- word.unsigned ?x mod 4 = 0 => replace x with (p_code + word.of_Z sha256_relative_pos)
-      end.
-      let r := eval vm_compute in sha256_relative_pos in change sha256_relative_pos with r.
-      rewrite add_0_r. assumption. }
-  { unfold machine_ok in M. unfold machine_valid. fwd.
+    change (Pipeline.instrencode sha256_asm) with binary.
+    apply sep_comm.
+    unfold sep at 1. exists mH, mL. split. 1: exact Sp. split. 1: reflexivity.
+    use_sep_assumption. cancel. cancel_seps_at_indices O O. 1: reflexivity.
+    cbn [seps]. reflexivity. }
+  { unfold machine_ok in M. unfold mach_valid. fwd.
     do 2 eexists. ssplit.
     - unfold run. rewrite Rn. reflexivity.
     - assumption.
@@ -162,8 +162,8 @@ Proof.
     - assumption.
     - unfold sep at 1 in Mp0. destruct Mp0 as (mL' & mH'' & Sp' & ML' & ?).  subst mH''.
       enough (((bytearray a_inp inp * bytearray a_outp (sha256 inp)) *
-              (mem_available stack_low_end sp_val * Rdata *
-               ptsto_bytes p_code (Pipeline.instrencode sha256_asm) * Rexec)) (getMem finalL))
+              (mem_available stack_lo sp_val * Rdata *
+               ptsto_bytes (getPc m) (Pipeline.instrencode sha256_asm) * Rexec)) (getMem finalL))
         by ecancel_assumption.
       apply sep_comm.
       unfold sep at 1.

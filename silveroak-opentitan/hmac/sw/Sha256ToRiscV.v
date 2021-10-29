@@ -123,3 +123,10 @@ Definition sha256_relative_pos :=
   | Some (_, _, p) => p
   | None => -1111
   end.
+
+Lemma sha256_asm_valid_instructions:
+  Forall (fun instr => Encode.verify instr Decode.RV32IM) sha256_asm.
+Proof.
+  repeat (apply Forall_cons || apply Forall_nil).
+  all: try (vm_compute; intuition discriminate).
+Qed.
