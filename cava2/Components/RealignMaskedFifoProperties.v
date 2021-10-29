@@ -153,6 +153,13 @@ Section RealignMaskedFifo.
                  else true
             else if fifo_empty then false else true)
           /\ (match out_data' with None => True | Some x => out_data = x end)
+          /\ (if out_valid then
+              (if fifo_empty
+                then out_length = N.of_nat (length (firstn 4 realign_contents))
+                else out_length = 4%N)
+              /\ (if drain then if fifo_empty then is_last = true else True else True)
+              else True
+          )
           else True) ;
     |}.
 
@@ -351,17 +358,18 @@ Section RealignMaskedFifo.
       {
         destr (length fifo_contents =? fifo_size); boolsimpl; [lia|].
         destruct (4 <=? length realign_contents);
-        destruct (1 <=? length realign_contents); split; reflexivity.
+        destruct (1 <=? length realign_contents); split.
+        all: boolsimpl; ssplit; try reflexivity.
       }
-      { split; trivial. }
-      { split; [reflexivity|].
+      { ssplit; trivial. }
+      { ssplit; [reflexivity| |reflexivity].
         apply length_zero_iff_nil in E.
         now rewrite E.
       }
-      { cbn [negb] in H7.
+      { cbn [negb] in H7; ssplit; try reflexivity.
         destruct fifo_contents.
         { cbn [length] in E. lia. }
-        { cbn [hd_error hd] in *; split; trivial. }
+        { now cbn [hd_error hd] in *. }
       }
     }
   Qed.

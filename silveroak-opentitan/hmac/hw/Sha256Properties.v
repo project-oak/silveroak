@@ -1311,3 +1311,9 @@ Proof.
   do 2 f_equal.
   prove_by_zify.
 Qed.
+
+Existing Instances sha256_invariant_preserved sha256_output_correct sha256_invariant_at_reset.
+
+Global Instance sha256_correctness : correctness_for sha256.
+Proof. constructor; try typeclasses eauto. Defined.
+
