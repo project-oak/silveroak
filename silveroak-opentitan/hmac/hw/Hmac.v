@@ -119,7 +119,7 @@ Section Var.
       let '(sha_done, sha_digest; sha_ready)
         := `sha256` sha_stream_valid' sha_stream sha_stream_final sha_stream_final_length sha_stream_flush in
 
-      let is_consuming := state' == `K 2` && sha_ready in
+      let is_consuming := state == `K 2` && sha_ready in
       let next_digest := if sha_done then sha_digest else digest in
       let state_is_zero := state == `K 0` in
       let is_finishing := ! state_is_zero && state' == `K 0` in
@@ -421,6 +421,7 @@ Section SanityCheck.
       ; 0x6f031589
       ].
   Proof. Time vm_compute; reflexivity. Qed.
+
 
 End SanityCheck.
 
