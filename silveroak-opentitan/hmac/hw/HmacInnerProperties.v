@@ -40,6 +40,8 @@ Require Import Cava.Util.Byte.
 
 Require Import HmacHardware.Hmac.
 Require Import HmacHardware.Sha256.
+Require Import HmacHardware.Sha256InnerProperties.
+Require Import HmacHardware.Sha256PadderProperties.
 Require Import HmacHardware.Sha256Properties.
 Require Import HmacSpec.SHA256Properties.
 
@@ -258,9 +260,9 @@ Instance hmac_inner_specification
 
     let has_content' :=
       if state =? 0 then false
-      else 
+      else
         if has_content then true else fifo_valid
-      (* 0 <? length msg *) 
+      (* 0 <? length msg *)
     in
 
     (state', input_done', raised_process', is_cleared_or_done, is_ready, digest_buf,
@@ -704,7 +706,7 @@ Proof.
     lia.
   }
 
-  { 
+  {
     assert (forall {A} (ls: list A), length ls > 0 -> ls <> []) as Hx.
     { clear; intros; now destruct ls. }
 
@@ -715,17 +717,17 @@ Proof.
     destruct state.
     { repeat destr_nat_match. }
     destruct state.
-    { 
+    {
       repeat destr_nat_match.
       repeat destr_nat_match_hyp.
 
       destruct sha_ready_circ; repeat destr_nat_match.
-      { 
+      {
         assert ((if cmd_hash_process then if fifo_final then 3 else 2 else 2) =? 0 = false).
         { repeat destruct_one_inner_match; destr_nat_match. }
         rewrite H11.
         destruct new_has_content.
-        { 
+        {
           repeat inversion_prod.
           logical_simplify; subst.
           autorewrite with tuple_if.
@@ -745,7 +747,7 @@ Proof.
         cbn [fst snd].
         split.
         { rewrite ?Tauto.if_same. now destruct b. }
-        { apply Hx; destruct b; cbn [new_msg_bytes]. 
+        { apply Hx; destruct b; cbn [new_msg_bytes].
           { destruct fifo_final; length_hammer. }
           repeat destruct_one_inner_match.
           all: try length_hammer.
@@ -763,7 +765,7 @@ Proof.
       split.
       { now rewrite ?Tauto.if_same. }
       repeat destruct_one_inner_match; trivial.
-    } 
+    }
     destruct state; try lia.
     destruct sha_signaled_done; destr_nat_match.
     destruct new_has_content; [|destruct sha_ready_circ, fifo_valid]; try trivial.
@@ -777,29 +779,29 @@ Proof.
     all: congruence.
   }
 
-  { 
-    destruct state. 
+  {
+    destruct state.
     { destruct_one_inner_match; destr_nat_match; trivial. }
     destruct state; try lia.
-    destruct state. 
-    { repeat destruct_one_inner_match; repeat destr_nat_match; try lia. 
+    destruct state.
+    { repeat destruct_one_inner_match; repeat destr_nat_match; try lia.
       trivial.
     }
     destruct state; try lia.
-    { repeat destruct_one_inner_match; repeat destr_nat_match; try lia. 
+    { repeat destruct_one_inner_match; repeat destr_nat_match; try lia.
     }
   }
 
-  { 
+  {
     assert (forall {A} (ls: list A), length ls > 0 -> ls <> []) as Hx.
     { clear; intros; now destruct ls. }
-    destruct state. 
+    destruct state.
     { destruct_one_inner_match; destr_nat_match; trivial. }
 
     destruct state; try lia.
     destruct state.
-    { repeat destruct_one_inner_match; repeat destr_nat_match; 
-        repeat destr_nat_match_hyp; logical_simplify; subst; try trivial. 
+    { repeat destruct_one_inner_match; repeat destr_nat_match;
+        repeat destr_nat_match_hyp; logical_simplify; subst; try trivial.
       destruct msg_complete; logical_simplify; subst; try lia.
       destruct input_done; logical_simplify; subst; try lia.
 
@@ -869,12 +871,12 @@ Proof.
       match goal with
       | |- match (if ?X then _ else _) with _ => _ end => destr X
       end.
-      { 
+      {
         split; try reflexivity. subst.
         rewrite ?Tauto.if_same.
         split; try reflexivity.
 
-        autorewrite with Nnat in *. 
+        autorewrite with Nnat in *.
         replace (N.to_nat 4) with 4 in * by lia.
         replace (N.to_nat 5) with 5 in * by lia.
         repeat destr_nat_match_hyp.
@@ -1044,7 +1046,7 @@ Proof.
       destruct b; try lia.
       rewrite Tauto.if_same.
       simplify_invariant sha256.
-      repeat destruct_one_inner_match; try reflexivity. 
+      repeat destruct_one_inner_match; try reflexivity.
       all: try lia.
       all: cbn [fst] in *.
       all: rewrite Tauto.if_same in H32.
@@ -1061,4 +1063,3 @@ Existing Instances hmac_inner_invariant_preserved hmac_inner_output_correct hmac
 
 Global Instance hmac_inner_correctness : correctness_for hmac_inner.
 Proof. constructor; try typeclasses eauto. Defined.
-

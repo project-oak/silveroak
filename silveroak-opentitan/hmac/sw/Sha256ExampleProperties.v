@@ -16,6 +16,7 @@ Require Import coqutil.Map.Interface.
 Require Import coqutil.Map.Properties.
 Require Import coqutil.Byte.
 Require Import Bedrock2Experiments.StateMachineSemantics.
+Require Import HmacSpec.SHA256.
 Require Import HmacSoftware.HmacSemantics.
 Require Import HmacSoftware.HmacProperties.
 Require Import HmacSoftware.Sha256Example.

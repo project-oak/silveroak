@@ -5,20 +5,20 @@ Require Import coqutil.Tactics.Tactics.
 
 (* TODO: these lemmas should be merged upstream to coqutil *)
 
-Lemma dedup_length {A} (aeqb : A -> A -> bool) (aeqb_spec : EqDecider aeqb) l :
+Lemma dedup_length {A} {aeqb : A -> A -> bool} {aeqb_spec : EqDecider aeqb} l :
   length (dedup aeqb l) <= length l.
 Proof.
   induction l; [ reflexivity | ].
   cbn [dedup]. destruct_one_match; cbn [length]; Lia.lia.
 Qed.
 
-Lemma dedup_NoDup_iff {A} (aeqb : A -> A -> bool) (aeqb_spec : EqDecider aeqb) l :
+Lemma dedup_NoDup_iff {A} {aeqb : A -> A -> bool} {aeqb_spec : EqDecider aeqb} l :
   dedup aeqb l = l <-> NoDup l.
 Proof.
   split.
   { induction l; [ solve [constructor] | ].
     cbn [dedup]. destruct_one_match.
-    { intro Heq. pose proof dedup_length aeqb _ l as Hlen.
+    { intro Heq. pose proof dedup_length l as Hlen.
       rewrite Heq in Hlen. cbn [length] in *; Lia.lia. }
     { inversion 1 as [Heq].
       constructor; [ | rewrite Heq; solve [eauto] ].

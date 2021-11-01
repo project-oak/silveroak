@@ -124,7 +124,7 @@ Section WithParams.
           {DI: device_implements_state_machine D M}.
 
   Inductive related: MetricRiscvMachine -> ExtraRiscvMachine D -> Prop :=
-    mkRelated: forall regs pc npc m xAddrs (t: list LogItem) mc d s,
+    mkRelated: forall regs pc npc m xAddrs (t: list LogItem) t_ignored mc d s,
       execution t s ->
       device_state_related s d ->
       map.undef_on m state_machine.isMMIOAddr ->
@@ -144,7 +144,7 @@ Section WithParams.
                 getNextPc := npc;
                 getMem := m;
                 getXAddrs := xAddrs;
-                getLog := []; |};
+                getLog := t_ignored; (* we don't use the log of the low-level machine *) |};
            getExtraState := d |}.
 
   Definition stepH(initialL: MetricRiscvMachine)(post: MetricRiscvMachine -> Prop): Prop :=
@@ -243,7 +243,7 @@ Section WithParams.
   Proof.
     induction sz; intros; cbn.
     - assumption.
-    - change removeXAddr with (@List.removeb word word.eqb _).
+    - change removeXAddr with (@List.removeb word word.eqb).
       rewrite ?ListSet.of_list_removeb.
       eauto 10 using disjoint_diff_l.
   Qed.

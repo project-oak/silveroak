@@ -8,6 +8,7 @@ Require Import coqutil.Word.LittleEndianList.
 Require Import bedrock2.ZnWords.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import HmacSoftware.Constants.
+Require Import HmacSpec.SHA256.
 
 (* In HmacSemantics.v, we don't attempt to model all features of the Hmac module,
    but we do try to reveal a correct subset of the full functionality of the
@@ -25,13 +26,6 @@ Section WithParams.
   Context {word: word 32} {mem: map.map word byte}
           {word_ok: word.ok word} {mem_ok: map.ok mem}
           {tim: timing}.
-
-  (* Note: sha256 only accepts messages of size up to `2^64-1` bits, so if we don't model
-     this restriction, we will have to be careful to not make contradictory assumptions
-     (eg if we add the MSG_LENGTH_LOWER and MSG_LENGTH_UPPER registers, we'll have to make
-     sure we don't assume that any list length can fit into these 2^64 bits, because
-     that would allow us to prove False). *)
-  Axiom sha256: list byte -> list byte. (* returns a list of 32 bytes (=256 bits) *)
 
   Record idle_data := {
     (* only the lowest 3 bits count, and we only model the case where all interrupts are
@@ -168,7 +162,7 @@ Section WithParams.
     state_machine.register := word;
     state_machine.is_initial_state s :=
       match s with
-      | IDLE digest_buffer _ => List.length digest_buffer = 8%nat
+      | IDLE digest_buffer _ => List.length digest_buffer = 32%nat
       | _ => False
       end;
     state_machine.read_step := read_step;
