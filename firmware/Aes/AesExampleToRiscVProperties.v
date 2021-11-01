@@ -141,7 +141,7 @@ Definition main_relative_pos : Z.
                      main) in
   let x := eval vm_compute in x in
       lazymatch x with
-      | Some ?y => exact y
+      | Some (_, _, ?y) => exact y
       end.
 Defined.
 
@@ -149,7 +149,7 @@ Lemma aes_example_asm_correct
       in0 in1 in2 in3 iv0 iv1 iv2 iv3
       key0 key1 key2 key3 key4 key5 key6 key7
       output_placeholder R Rdata Rexec
-      (p_functions p_call : word)
+      (p_functions ret_addr : word)
       (mem : mem)
       (initial : MetricRiscvMachine) :
   (* given that the input and output pointers are valid and the input pointers
@@ -166,10 +166,13 @@ Lemma aes_example_asm_correct
   execution (getLog initial) UNINITIALIZED ->
   (* ...and the current machine state is OK... *)
   let instrs := fst (fst (aes_example_compile_result)) in
-  LowerPipeline.machine_ok
-    p_functions main_relative_pos
-    (stack_start ml) (stack_pastend ml)
-    instrs p_call p_call mem Rdata Rexec initial ->
+  LowerPipeline.machine_ok p_functions (stack_start ml) (stack_pastend ml)
+                           instrs mem Rdata Rexec initial ->
+  (* ...and the pc points to the first instruction of main... *)
+  initial.(getPc) = word.add p_functions (word.of_Z main_relative_pos) ->
+  (* ...and the return address register contains a valid ret_addr... *)
+  map.get initial.(getRegs) RegisterNames.ra = Some ret_addr ->
+  word.unsigned ret_addr mod 4 = 0 ->
   (* ...then, after the [main] routine is executed... *)
   runsTo initial
          (fun final : MetricRiscvMachine =>
@@ -179,21 +182,23 @@ Lemma aes_example_asm_correct
               post_main in0 in1 in2 in3 iv0 iv1 iv2 iv3
                         key0 key1 key2 key3 key4 key5 key6 key7
                         R (getLog final) mem'
-              (* ...and the new machine state is OK *)
-              /\ LowerPipeline.machine_ok
-                  p_functions main_relative_pos
-                  (stack_start ml) (stack_pastend ml)
-                  instrs p_call (word.add p_call (word.of_Z 4)) mem' Rdata Rexec final).
+              (* ...and the new machine state is OK... *)
+              /\ LowerPipeline.machine_ok p_functions (stack_start ml) (stack_pastend ml)
+                   instrs mem' Rdata Rexec final
+              (* ...and program execution will continue at ret_addr *)
+              /\ final.(getPc) = ret_addr).
 Proof.
   intros.
+  pose proof aes_example_compile_result_eq as CR.
+  destruct aes_example_compile_result as ((insts & finfo) & req_stack_size) eqn: CE.
   let fs := constr:(map.of_list (funcs ++ AesToRiscV.funcs)) in
-  eapply compiler_correct
-    with (functions:=fs)
-         (mc:=bedrock2.MetricLogging.EmptyMetricLog)
-         (f_entry_name := main)
-         (postH:=post_main
-                   in0 in1 in2 in3 iv0 iv1 iv2 iv3
-                   key0 key1 key2 key3 key4 key5 key6 key7 R).
+  pose proof compiler_correct as P;
+  specialize P with (functions := fs)
+                    (fname := main)
+                    (post := fun t m retvals => post_main
+                       in0 in1 in2 in3 iv0 iv1 iv2 iv3
+                       key0 key1 key2 key3 key4 key5 key6 key7 R t m).
+  edestruct P as (main_rel_pos & G & Q); clear P.
   { exact compile_ext_call_correct. }
   { intros. reflexivity. }
   { cbv [ExprImp.valid_funs]. intros *.
@@ -211,9 +216,9 @@ Proof.
     rewrite !map.get_put_dec, map.get_empty.
     repeat destruct_one_match; inversion 1; cbv [ExprImp.valid_fun].
     all:ssplit.
-    all:apply dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec).
+    all:apply dedup_NoDup_iff.
     all:reflexivity. }
-  { exact aes_example_compile_result_eq. }
+  { exact CR. }
   { cbv [map.of_list
            List.app
            AbsMMIO.abs_mmio_read32
@@ -227,15 +232,13 @@ Proof.
            funcs AesToRiscV.funcs].
     rewrite !map.get_put_dec, map.get_empty.
     rewrite String.eqb_refl. reflexivity. }
-  { reflexivity. }
-  { vm_compute. congruence. }
-  { reflexivity. }
-  { eapply exec_main; eauto.
-    { apply aes_encrypt_correct.
-      {
-        apply aes_init_correct.
-        apply abs_mmio_write32_correct.
-      }
+  { intros.
+    eapply ExprImp.weaken_exec. {
+      eapply exec_main; eauto.
+      { apply aes_encrypt_correct. {
+          apply aes_init_correct.
+          apply abs_mmio_write32_correct.
+        }
       { apply aes_key_put_correct. }
       { apply aes_iv_put_correct. }
       { apply aes_data_put_wait_correct.
@@ -246,7 +249,19 @@ Proof.
         { apply aes_data_valid_correct.
           apply abs_mmio_read32_correct. }
         { apply aes_data_get_correct. } } }
-    { apply dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec).
-      reflexivity. } }
-  { eauto. }
+      { apply dedup_NoDup_iff. reflexivity. } }
+    { cbv beta. intros. exists nil. split. 1: reflexivity. assumption. } }
+  eapply runsToNonDet.runsTo_weaken. 1: eapply Q. all: clear Q.
+  all: try match goal with
+           | H: context[LowerPipeline.machine_ok] |- context[LowerPipeline.machine_ok] => exact H
+           end.
+  all: try eassumption.
+  { apply (f_equal snd) in CE. cbn [snd] in CE. subst req_stack_size. vm_compute. congruence. }
+  { reflexivity. }
+  { apply (f_equal fst) in CE. apply (f_equal snd) in CE. cbn [fst snd] in CE. subst finfo.
+    vm_compute in G. inversion G. subst main_rel_pos.
+    assumption. }
+  { vm_compute. reflexivity. }
+  { reflexivity. }
+  { cbv beta. intros. logical_simplify. subst. eauto. }
 Qed.

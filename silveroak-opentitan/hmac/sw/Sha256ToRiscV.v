@@ -53,31 +53,8 @@ Notation bytearray := (bedrock2.Array.array (mem := mem) ptsto (word.of_Z 1)).
 (* Plug in the right state machine parameters; typeclass inference struggles here *)
 Local Notation execution := (execution (M:=hmac_state_machine)).
 
-Definition code_start    : word := word.of_Z 0.
-Definition code_pastend  : word := word.of_Z (4*2^10).
-Definition heap_start    : word := word.of_Z (4*2^10).
-Definition heap_pastend  : word := word.of_Z (8*2^10).
-Definition stack_start   : word := word.of_Z (8*2^10).
-Definition stack_pastend : word := word.of_Z (16*2^10).
-
-(* dummy base address -- just past end of stack *)
-Definition base_addr : Z := 16 * 2^10.
-
-(* pointers to input and output memory locations *)
-Definition digest_ptr  : Z := word.unsigned heap_start.
-Definition msg_ptr     : Z := word.unsigned heap_start + 4.
-Definition msg_len_ptr : Z := word.unsigned heap_start + 8.
-
-Definition main_body: cmd := cmd.call [] b2_sha256 [
-  expr.load access_size.word (expr.literal digest_ptr);
-  expr.load access_size.word (expr.literal msg_ptr);
-  expr.load access_size.word (expr.literal msg_len_ptr)
-].
-
-Definition main: func := ("main", ([], [], main_body)).
-
 Definition funcs := [
-  main; b2_sha256;
+  b2_sha256;
   b2_hmac_sha256_init; b2_hmac_sha256_update; b2_hmac_sha256_final;
   abs_mmio_write32; abs_mmio_read32; abs_mmio_write8; abs_mmio_read8;
   bitfield_bit32_write; bitfield_bit32_read;
@@ -104,36 +81,6 @@ Proof.
          | idtac ].
 Qed.
 
-Lemma main_correct (idlebuffer: list byte) (idleconfig: idle_data)
-    (input_addr input_len digest_addr: word)
-    (input digest_trash: list byte) (R: mem -> Prop)
-    (m: mem) (t: trace):
-    Z.of_nat (length input) = word.unsigned input_len ->
-    Z.of_nat (length digest_trash) = 32 ->
-    input_addr <> word.of_Z 0 ->
-    digest_addr <> word.of_Z 0 ->
-    (scalar (word.of_Z digest_ptr) digest_addr *
-     scalar (word.of_Z msg_ptr) input_addr *
-     scalar (word.of_Z msg_len_ptr) input_len *
-     bytearray input_addr input * bytearray digest_addr digest_trash * R)%sep m ->
-    execution t (IDLE idlebuffer idleconfig) ->
-    WeakestPrecondition.cmd (WeakestPrecondition.call funcs) main_body t m map.empty
-                            (fun t' m' (_: ProgramSemantics32.locals) =>
-                               sha256_post input_addr input digest_addr
-                                           (scalar (word.of_Z digest_ptr) digest_addr *
-                                            scalar (word.of_Z msg_ptr) input_addr *
-                                            scalar (word.of_Z msg_len_ptr) input_len * R)%sep
-                                           t' m' []).
-Proof.
-  intros. pose proof link_sha256.
-  repeat straightline.
-  straightline_call; try eassumption. 1: ecancel_assumption.
-  unfold sha256_post in *. repeat straightline.
-  split; [reflexivity|].
-  split; [assumption|].
-  ecancel_assumption.
-Qed.
-
 Lemma funcs_valid: ExprImp.valid_funs (map.of_list funcs).
 Proof.
   cbv [funcs map.of_list ExprImp.valid_funs]. intros *.
@@ -143,38 +90,43 @@ Proof.
   rewrite !map.get_put_dec, map.get_empty.
   repeat destruct_one_match; inversion 1; cbv [ExprImp.valid_fun].
   all:ssplit.
-  all:apply dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec).
+  all:apply dedup_NoDup_iff.
   all:reflexivity.
 Qed.
 
-Definition compiler_invocation: option (list Decode.Instruction * (SortedListString.map Z) * Z) :=
-  compile compile_ext_call (map.of_list funcs).
-
-Definition sha256_compile_result: list Decode.Instruction * (SortedListString.map Z) * Z.
-  let r := eval vm_compute in compiler_invocation in
+Definition sha256_compile_result:
+  list Decode.Instruction * (SortedListString.map (nat * nat * Z)) * Z.
+  let r := eval vm_compute in (compile compile_ext_call (map.of_list funcs)) in
    match r with
   | Some ?x => exact x
   end.
 Defined.
 
-Definition sha256_example_asm := Eval compute in fst (fst sha256_compile_result).
+Definition sha256_asm := Eval compute in fst (fst sha256_compile_result).
+Definition sha256_finfo := Eval compute in snd (fst sha256_compile_result).
+Definition sha256_req_stack := Eval compute in snd sha256_compile_result.
 
 Lemma sha256_compile_result_eq:
-  compile compile_ext_call (map.of_list funcs) = Some sha256_compile_result.
+  compile compile_ext_call (map.of_list funcs) =
+  Some (sha256_asm, sha256_finfo, sha256_req_stack).
 Proof. reflexivity. Qed.
 
 Module PrintAssembly.
   Import riscv.Utility.InstructionNotations.
   Goal False.
-    let r := eval unfold sha256_example_asm in sha256_example_asm in idtac (*r*).
+    let r := eval unfold sha256_asm in sha256_asm in idtac (*r*).
   Abort.
 End PrintAssembly.
 
-Definition main_relative_pos :=
-  match map.get (snd (fst sha256_compile_result)) (fst main) with
-  | Some p => p
+Definition sha256_relative_pos :=
+  match map.get sha256_finfo (fst b2_sha256) with
+  | Some (_, _, p) => p
   | None => -1111
   end.
 
-Definition p_call: word :=
-  word.add code_start (word.of_Z (4 * Z.of_nat (List.length sha256_example_asm))).
+Lemma sha256_asm_valid_instructions:
+  Forall (fun instr => Encode.verify instr Decode.RV32IM) sha256_asm.
+Proof.
+  repeat (apply Forall_cons || apply Forall_nil).
+  all: try (vm_compute; intuition discriminate).
+Qed.

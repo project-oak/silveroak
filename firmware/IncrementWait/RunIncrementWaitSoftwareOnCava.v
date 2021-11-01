@@ -24,35 +24,34 @@ Definition heap_pastend  : word := word.of_Z (8*2^10).
 Definition stack_start   : word := word.of_Z (8*2^10).
 Definition stack_pastend : word := word.of_Z (16*2^10).
 
-Definition main_relative_pos :=
-  match map.get (snd (fst put_wait_get_compile_result)) (fst main) with
-  | Some p => p
+Definition put_wait_get_relative_pos :=
+  match map.get (snd (fst put_wait_get_compile_result)) (fst IncrementWait.put_wait_get) with
+  | Some (_, _, p) => p
   | None => -1111
   end.
 
-Definition p_call: word :=
-  word.add code_start (word.of_Z (4 * Z.of_nat (List.length put_wait_get_asm))).
+Definition all_insts: list Instruction := put_wait_get_asm.
 
-Definition all_insts: list Instruction :=
-  put_wait_get_asm ++ [[ Jal RegisterNames.ra
-            (main_relative_pos + word.signed (word.sub code_start p_call))]].
-
+(* Invalid ra, will cause crash (intended), but in real usage, this would be a
+   return address pointing into the caller's code. *)
+Definition ret_addr: word := word.of_Z (-4).
 
 Section WithVar.
   Instance var : tvar := denote_type.
 
   Definition initial: ExtraRiscvMachine counter_device := {|
     getMachine := {|
-      getRegs := map.put (map.of_list (List.map (fun n => (Z.of_nat n, word.of_Z 0)) (List.seq 0 32)))
-                         RegisterNames.sp stack_pastend;
-      getPc := p_call;
-      getNextPc := word.add p_call (word.of_Z 4);
-      getMem := (map.putmany (map.of_list_word_at code_start (Pipeline.instrencode all_insts))
-                (map.putmany (map.of_list_word_at (word.sub stack_pastend (word.of_Z 512))
-                                                  (List.repeat Byte.x00 512))
-                (map.of_list_word_at heap_start
-                          (HList.tuple.to_list (LittleEndian.split 4 42) ++
-                           HList.tuple.to_list (LittleEndian.split 4 12345678)))));
+      getRegs := map.put (map.put (map.put
+          (map.of_list (List.map (fun n => (Z.of_nat n, word.of_Z 0)) (List.seq 0 32)))
+          RegisterNames.sp stack_pastend)
+          RegisterNames.a0 (word.of_Z 42))
+          RegisterNames.ra ret_addr;
+      getPc := word.add code_start (word.of_Z put_wait_get_relative_pos);
+      getNextPc := word.add (word.add code_start (word.of_Z put_wait_get_relative_pos))
+                            (word.of_Z 4);
+      getMem := map.putmany (map.of_list_word_at code_start (Pipeline.instrencode all_insts))
+                            (map.of_list_word_at (word.sub stack_pastend (word.of_Z 512))
+                                                 (List.repeat Byte.x00 512));
       getXAddrs := List.map (fun n => word.add code_start (word.of_Z (Z.of_nat n)))
                             (List.seq 0 (4 * List.length all_insts));
       getLog := [];
@@ -62,14 +61,14 @@ Section WithVar.
 
   Definition sched: schedule := fun n => (n mod 2)%nat.
 
-  Definition force_ow32(ow32: option Utility.w32): Z :=
-    match ow32 with
-    | Some v => LittleEndian.combine 4 v
+  Definition force_ow(ow: option word): Z :=
+    match ow with
+    | Some v => word.unsigned v
     | None => -1
     end.
 
   Definition get_output(m: ExtraRiscvMachine counter_device): Z :=
-    force_ow32 (Memory.loadWord m.(getMachine).(getMem) (word.of_Z (width:=32) output_ptr)).
+    force_ow (map.get m.(getRegs) RegisterNames.a0).
 
   Definition LogElem := (bool * Z * Z)%type. (* (ok-flag, pc, output) triples *)
 
@@ -94,11 +93,11 @@ Section WithVar.
   Compute snd (trace 100 initial).
   *)
 
-  Definition res(nsteps: nat): LogElem := outcomeToLogElem (run sched nsteps initial).
+  Definition res(nsteps: nat): LogElem := outcomeToLogElem (run_rec sched 0 nsteps initial).
 
   (* We can vm_compute through the execution of the IncrementWait program,
      riscv-coq's processor model, and Cava's reaction to the IncrementWait program: *)
-  Goal exists nsteps, res nsteps = (true, word.unsigned p_call + 4, 43).
-    exists 82%nat. vm_compute. reflexivity.
+  Goal exists nsteps, res nsteps = (true, word.unsigned ret_addr, 43).
+    exists 55%nat. vm_compute. reflexivity.
   Qed.
 End WithVar.

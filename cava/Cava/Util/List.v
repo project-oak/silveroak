@@ -1632,6 +1632,61 @@ Section FoldLeftAccumulate.
   Qed.
 End FoldLeftAccumulate.
 
+Lemma fold_left_exists_final {A} {B} f (l: list A) (i: B):
+  l <> [] -> exists x acc, fold_left f l i = f x acc.
+Proof.
+  intros.
+  destruct l; [congruence|].
+  revert i a H.
+  induction l;
+  [eexists; eexists; reflexivity|].
+  intros.
+  specialize (IHl (f i a0) a (ltac:(congruence))).
+  inversion IHl.
+  inversion H0.
+  eexists. eexists.
+  rewrite fold_left_cons.
+  apply H1.
+Qed.
+
+Lemma Forall2_implies_Forall_map2 {A B C} r (f: A -> B -> C) l1 l2:
+  Forall2 (fun x y => r (f x y)) l1 l2 ->
+  Forall r (List.map2 f l1 l2).
+Proof.
+  intros.
+  revert l2 H.
+  induction l1.
+  { intros. inversion H. constructor. }
+  { intros.  destruct l2.
+    { constructor. }
+    constructor.
+    { inversion H. apply H3. }
+    { apply IHl1. inversion H. apply H5. }
+  }
+Qed.
+
+Lemma map2_resize {C} {X} a b d (f: X -> X -> C):
+  List.map2 f a b =
+    let sz := Nat.min (length a) (length b) in
+    List.map2 f (List.resize d sz a) (List.resize d sz b).
+Proof.
+  intros.
+  revert a.
+  induction b.
+  { intros a. destruct a; now cbn. }
+  intros.
+  destruct a0.
+  { now cbn. }
+  push_length.
+  rewrite <- Min.succ_min_distr.
+  cbn zeta.
+  rewrite resize_cons.
+  rewrite resize_cons.
+  cbn [List.map2].
+  rewrite IHb.
+  reflexivity.
+Qed.
+
 Hint Rewrite @fold_left_accumulate'_length @fold_left_accumulate_length
   : push_length.
 Hint Rewrite @fold_left_accumulate_cons @fold_left_accumulate_nil

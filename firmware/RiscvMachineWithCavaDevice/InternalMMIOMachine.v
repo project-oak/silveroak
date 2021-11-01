@@ -262,7 +262,11 @@ Section WithParams.
       | S n => nth_step steps_done;; run_rec (S steps_done) n
       end.
 
-    Definition run := run_rec 0.
+    Definition run(steps_remaining: nat)(s: ExtraRiscvMachine D): option (ExtraRiscvMachine D) :=
+      match run_rec 0 steps_remaining s with
+      | (Some tt, final) => Some final
+      | (None, _) => None
+      end.
   End WithSchedule.
 
 End WithParams.

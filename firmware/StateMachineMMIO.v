@@ -88,6 +88,14 @@ Qed.
 
 Instance RV32IM_width: FlatToRiscvCommon.bitwidth_iset 32 RV32IM. reflexivity. Qed.
 
+Local Arguments Z.mul: simpl never.
+Local Arguments Z.add: simpl never.
+Local Arguments Z.of_nat: simpl never.
+Local Arguments Z.modulo : simpl never.
+Local Arguments Z.pow: simpl never.
+Local Arguments Z.sub: simpl never.
+Local Arguments Registers.reg_class.all: simpl never.
+
 Section MMIO1.
   Context {word: Word.Interface.word 32}
           {word_ok: word.ok word}
@@ -106,7 +114,7 @@ Section MMIO1.
        morphism (word.ring_morph (word := word)),
        constants [word_cst]).
 
-  Definition compile_ext_call(_: funname_env Z)(_ _: Z)(s: stmt Z) :=
+  Definition compile_ext_call(_: funname_env (nat * nat * Z))(_ _: Z)(s: stmt Z) :=
       match s with
       | SInteract resvars action argvars => compile_interact resvars action argvars
       | _ => []
@@ -324,24 +332,17 @@ Section MMIO1.
       match goal with
       | HO: outcome _ _, H: _ |- _ => specialize (H _ HO); rename H into HP
       end.
-      destruct g. cbn [
-           FlatToRiscvCommon.p_sp
-           FlatToRiscvCommon.rem_stackwords
-           FlatToRiscvCommon.rem_framewords
-           FlatToRiscvCommon.p_insts
-           FlatToRiscvCommon.insts
-           FlatToRiscvCommon.program_base
-           FlatToRiscvCommon.e_pos
-           FlatToRiscvCommon.e_impl
-           FlatToRiscvCommon.dframe
-           FlatToRiscvCommon.xframe ] in *.
+      destruct g. FlatToRiscvCommon.simpl_g_get.
       simp.
       subst.
       cbn -[String.append] in *.
       simp.
       eapply runsToNonDet.runsToStep_cps.
 
-      eapply go_fetch_inst with (inst := (compile_write (access_size_to_MMIO_write x2) z z0 0));
+      match goal with
+      | H: iff1 allx _ |- _ => apply iff1ToEq in H; subst allx
+      end.
+      eapply go_fetch_inst with (inst := (compile_write (access_size_to_MMIO_write x2) z1 z2 0));
         simpl_MetricRiscvMachine_get_set; cbn -[String.append] in *.
       1: reflexivity.
       { eapply rearrange_footpr_subset. 1: eassumption. wwcancel. }
@@ -405,7 +406,7 @@ Section MMIO1.
         eapply subset_trans. 1: eassumption.
         clear -(*D4 M0*) A P WS D word_ok M_ok.
         destruct P as [? | [? | [? | ?] ] ]; [subst..|contradiction]; cbn.
-        all:change removeXAddr with (@List.removeb word word.eqb _).
+        all:change removeXAddr with (@List.removeb word word.eqb).
         all:rewrite ?ListSet.of_list_removeb.
         all:unfold map.undef_on, map.agree_on, disjoint in *.
         all:unfold subset, diff, singleton_set, of_list, PropSet.elem_of in *.
@@ -421,7 +422,7 @@ Section MMIO1.
       }
       ssplit; eauto.
       destruct P as [? | [? | [? | ?] ] ]; [subst..|contradiction]; cbn.
-      all:change removeXAddr with (@List.removeb word word.eqb _).
+      all:change removeXAddr with (@List.removeb word word.eqb).
       all:rewrite ?ListSet.of_list_removeb.
       all:repeat apply disjoint_diff_l.
       all:assumption.
@@ -453,23 +454,16 @@ Section MMIO1.
       match goal with
       | H: map.split _ _ map.empty |- _ => rewrite map.split_empty_r in H; subst
       end.
-      destruct g. cbn [
-           FlatToRiscvCommon.p_sp
-           FlatToRiscvCommon.rem_stackwords
-           FlatToRiscvCommon.rem_framewords
-           FlatToRiscvCommon.p_insts
-           FlatToRiscvCommon.insts
-           FlatToRiscvCommon.program_base
-           FlatToRiscvCommon.e_pos
-           FlatToRiscvCommon.e_impl
-           FlatToRiscvCommon.dframe
-           FlatToRiscvCommon.xframe ] in *.
+      destruct g. FlatToRiscvCommon.simpl_g_get.
       simp.
       subst.
       cbn -[String.append] in *.
       eapply runsToNonDet.runsToStep_cps.
 
-      eapply go_fetch_inst with (inst := (compile_read (access_size_to_MMIO_read x1) z0 z 0));
+      match goal with
+      | H: iff1 allx _ |- _ => apply iff1ToEq in H; subst allx
+      end.
+      eapply go_fetch_inst with (inst := (compile_read (access_size_to_MMIO_read x1) z1 z1 0));
         simpl_MetricRiscvMachine_get_set; cbn -[String.append] in *.
       1: reflexivity.
       { eapply rearrange_footpr_subset. 1: eassumption. wwcancel. }
@@ -486,8 +480,7 @@ Section MMIO1.
                    by (symmetry; unfold map.extends in Hext; eauto)
                end;
         try reflexivity.
-      destruct (Z.eq_dec z 0); cbv [valid_FlatImp_var] in *; [exfalso; blia|].
-      destruct (Z.eq_dec z0 0); cbv [valid_FlatImp_var] in *; [exfalso; blia|].
+      destruct (Z.eq_dec z1 0); cbv [valid_FlatImp_var] in *; [exfalso; blia|].
 
       intros.
       eapply runsToNonDet.runsToDone.
@@ -524,6 +517,7 @@ Section MMIO1.
         eapply map.put_extends. eassumption.
       }
       split. {
+        unfold map.forall_keys.
         intros.
         match goal with
         | H : context [map.get _ ?x] |- _ <= ?x < _ =>

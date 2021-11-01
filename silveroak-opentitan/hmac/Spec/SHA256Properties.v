@@ -381,3 +381,92 @@ Proof.
   cbv [SHA256Alt.M]. rewrite app_nth2 by length_hammer.
   f_equal; lia.
 Qed.
+
+Lemma firstn_padded_msg_truncate n msg1 msg2  :
+  (n * 4 <= length msg1)%nat ->
+  firstn n (SHA256.padded_msg (msg1 ++ msg2)) = firstn n (SHA256.padded_msg msg1).
+Proof.
+  intros. pose proof padded_message_size_mono msg1 msg2.
+  pose proof padded_message_bytes_longer_than_input msg1.
+  rewrite !firstn_map_nth with (d:=0%N) by (push_length; prove_by_zify).
+  eapply map_ext_in. intros *; rewrite in_seq; intros.
+  rewrite !nth_padded_msg. cbv [SHA256.padded_msg_bytes].
+  rewrite <-!app_assoc. push_nth. reflexivity.
+Qed.
+
+Lemma slicen_padded_msg_truncate n msg1 msg2 c d :
+  (n * 4 + c * 4 <= length msg1)%nat ->
+  List.slice d (SHA256.padded_msg (msg1 ++ msg2)) n c = List.slice d (SHA256.padded_msg msg1) n c.
+Proof.
+  intros. pose proof padded_message_size_mono msg1 msg2.
+  pose proof padded_message_bytes_longer_than_input msg1.
+  cbv [List.slice List.resize].
+  push_length.
+  assert (c - (padded_message_size msg1 / 4 - n) = 0)%nat by prove_by_zify.
+  assert (c - (padded_message_size (msg1 ++ msg2) / 4 - n) = 0)%nat by prove_by_zify.
+  rewrite H2, H3.
+  rewrite ?firstn_skipn_comm.
+  now rewrite firstn_padded_msg_truncate by lia.
+Qed.
+
+Lemma fold_left_sha256_step_alt_firstn i H msg :
+  fold_left (SHA256.sha256_step msg) (seq 0 i) H =
+  fold_left (SHA256Alt.sha256_step (firstn (i * 16) (SHA256.padded_msg msg))) (seq 0 i) H.
+Proof.
+  intros; eapply fold_left_ext_In; intros *.
+  rewrite in_seq; intros.
+  rewrite sha256_step_alt_firstn by lia.
+  rewrite sha256_step_alt_equiv; reflexivity.
+Qed.
+
+Lemma fold_left_sha256_step_alt_firstn' i j H msg :
+  (j <= i)%nat ->
+  fold_left (SHA256.sha256_step msg) (seq 0 j) H =
+  fold_left (SHA256Alt.sha256_step (firstn (i * 16) (SHA256.padded_msg msg))) (seq 0 j) H.
+Proof.
+  intros; eapply fold_left_ext_In; intros *.
+  rewrite in_seq; intros.
+  rewrite sha256_step_alt_firstn by lia.
+  rewrite sha256_step_alt_equiv; reflexivity.
+Qed.
+
+(* M returns the same result regardless of blocks above the current block
+   index *)
+Lemma sha256_M_truncate msg1 msg2 j i :
+  (S i * 64 <= length msg1)%nat -> (j < 16)%nat ->
+  SHA256.M (msg1 ++ msg2) j i = SHA256.M msg1 j i.
+Proof.
+  cbv [SHA256.M]; intros.
+  rewrite !nth_padded_msg. apply f_equal.
+  cbv [SHA256.padded_msg_bytes].
+  rewrite <-!app_assoc; push_nth.
+  reflexivity.
+Qed.
+
+(* W returns the same result regardless of blocks above the current block
+   index *)
+Lemma sha256_W_truncate msg1 msg2 i :
+  (S i * 64 <= length msg1)%nat -> SHA256.W (msg1 ++ msg2) i = SHA256.W msg1 i.
+Proof.
+  cbv [SHA256.W]. intros.
+  eapply fold_left_ext_In. intros *; rewrite in_seq; natsimpl; intros.
+  destruct_one_match; [ | reflexivity ].
+  rewrite sha256_M_truncate by lia.
+  reflexivity.
+Qed.
+
+(* sha256_step returns the same result regardless of blocks above the current index *)
+Lemma sha256_step_truncate msg1 msg2 i H :
+  (S i * 64 <= length msg1)%nat ->
+  SHA256.sha256_step (msg1 ++ msg2) H i = SHA256.sha256_step msg1 H i.
+Proof.
+  cbv [SHA256.sha256_step]. intros. apply f_equal2; [ reflexivity | ].
+  apply fold_left_ext_In; intros *. rewrite in_seq; natsimpl; intros.
+  rewrite sha256_W_truncate by lia. reflexivity.
+Qed.
+
+Lemma sha256_add_mod_bounded x y: (SHA256.add_mod x y < 2 ^ 32)%N.
+Proof.
+  cbv [SHA256.add_mod SHA256.w].
+  apply N.mod_upper_bound; cbn; lia.
+Qed.
