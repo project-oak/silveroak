@@ -148,35 +148,98 @@ Section StateLogicProofs.
           {spec : specification_for c repr}
           {correctness : correctness_for c}.
 
+  (* the representation after processing the given input *)
+  Definition repeat_update_repr
+             (start : repr) (input : list (denote_type i)) : repr :=
+    fold_left (fun s i => update_repr i s) input start.
+
+  (* states that the precondition holds for each cycle *)
+  Definition precondition_holds_big_step start input : Prop :=
+    (forall n,
+        (n < length input)%nat ->
+        precondition c (nth n input default)
+                     (repeat_update_repr start (firstn n input))).
+
+  Lemma invariant_holds_big_step' start_repr start_state input :
+    precondition_holds_big_step start_repr input ->
+    invariant start_state start_repr ->
+    invariant (snd (simulate' c input start_state))
+              (repeat_update_repr start_repr input).
+  Proof.
+    intros. cbv [simulate' repeat_update_repr].
+    induction input using rev_ind; [ assumption | ].
+    rewrite fold_left_accumulate'_is_splittable.
+    repeat destruct_pair_let; cbn [fst snd].
+    rewrite fold_left_accumulate'_cons_snd.
+    cbn [app fold_left_accumulate' fold_left fst snd].
+    lazymatch goal with H : precondition_holds_big_step _ _ |- _ =>
+                        rename H into Hpre end.
+    eapply invariant_preserved_pf.
+    { pull_snoc. reflexivity. }
+    { apply IHinput; [ ].
+      cbv [precondition_holds_big_step] in *.
+      intro n; intros; specialize (Hpre n ltac:(length_hammer)).
+      rewrite app_nth1 in Hpre by length_hammer.
+      autorewrite with push_firstn in Hpre.
+      replace (n - length input)%nat with 0%nat in * by lia.
+      autorewrite with push_firstn listsimpl in Hpre.
+      auto. }
+    { cbv [precondition_holds_big_step] in *.
+      specialize (Hpre (length input) ltac:(length_hammer)).
+      rewrite app_nth2 in Hpre by length_hammer.
+      autorewrite with push_firstn natsimpl push_nth listsimpl in Hpre.
+      apply Hpre. }
+  Qed.
+
+  Lemma invariant_holds_big_step input :
+    precondition_holds_big_step reset_repr input ->
+    invariant (snd (simulate' c input (reset_state c)))
+              (repeat_update_repr reset_repr input).
+  Proof.
+    intros; apply invariant_holds_big_step'; auto; [ ].
+    apply invariant_at_reset_pf.
+  Qed.
+
+  Lemma postcondition_holds_big_step input last_input :
+    precondition_holds_big_step reset_repr input ->
+    precondition c last_input (repeat_update_repr reset_repr input) ->
+    postcondition c last_input (repeat_update_repr reset_repr input)
+                  (snd (step c (snd (simulate' c input (reset_state c)))
+                             last_input)).
+  Proof.
+    intros. apply output_correct_pf; [ | assumption ].
+    apply invariant_holds_big_step. auto.
+  Qed.
+
   Lemma simulate_invariant_logic input output_func :
-    (* TODO: refine this. The precondition has to hold at each step; for now,
-       just say that each of the inputs satisfies the precondition for all
-       states *)
-    Forall (fun i => forall s, precondition c i s) input ->
+    (* precondition holds for each cycle *)
+    precondition_holds_big_step reset_repr input ->
     (* the postcondition fully specifies the output *)
     (forall i s x, postcondition c i s x -> x = output_func i s) ->
     simulate c input = fold_left_accumulate
                          (fun s i => (update_repr i s, output_func i s))
                          input reset_repr.
   Proof.
-    intros.
+    intros. cbv [precondition_holds_big_step] in *.
     change (simulate c input) with
         (fold_left_accumulate (step c) input (reset_state c)).
-    eapply fold_left_accumulate_double_invariant_In
-      with (I:=fun s1 s2 acc1 acc2 =>
-                 invariant s1 s2 /\ acc1 = acc2).
-    { ssplit; [ | reflexivity ].
+    rewrite !fold_left_accumulate_to_seq with (default:=default).
+    eapply fold_left_accumulate_double_invariant_seq
+      with (I:=fun i s1 s2 acc1 acc2 =>
+                 s2 = repeat_update_repr reset_repr (firstn i input)
+                 /\ invariant s1 s2
+                 /\ acc1 = acc2).
+    { ssplit; subst; [ reflexivity | | reflexivity ].
       apply invariant_at_reset_pf. }
     { intros; logical_simplify; subst.
-      pose proof (proj1 (Forall_forall _ _))
-           ltac:(eassumption) _ ltac:(eassumption).
-      cbv beta in *.
-      ssplit.
-      { eapply invariant_preserved_pf; [ | solve [eauto] .. ].
-        reflexivity. }
-      { specialize (H3 d).
-        use_correctness' c. cbn [fst snd].
-        repeat (f_equal; eauto). } }
+      cbn [fst snd] in *. ssplit.
+      { cbv [repeat_update_repr].
+        rewrite firstn_succ_snoc with (d:=default) by lia.
+        pull_snoc. reflexivity. }
+      { eauto using invariant_preserved_pf. }
+      { lazymatch goal with H : context [_ = output_func _ _] |- _ =>
+                            erewrite <-H; [ reflexivity | ] end.
+        apply output_correct_pf; auto. } }
     { intros; logical_simplify; subst. reflexivity. }
   Qed.
 
