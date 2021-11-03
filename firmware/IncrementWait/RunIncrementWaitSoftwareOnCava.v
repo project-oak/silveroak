@@ -90,14 +90,16 @@ Section WithVar.
     end%list.
 
   (* Useful for debugging: display (ok-flag, pc, output) after each cycle:
+     TODO why are some flags false, but then again true??
   Compute snd (trace 100 initial).
   *)
 
   Definition res(nsteps: nat): LogElem := outcomeToLogElem (run_rec sched 0 nsteps initial).
 
   (* We can vm_compute through the execution of the IncrementWait program,
-     riscv-coq's processor model, and Cava's reaction to the IncrementWait program: *)
+     riscv-coq's processor model, and Cava's reaction to the IncrementWait program:
   Goal exists nsteps, res nsteps = (true, word.unsigned ret_addr, 43).
     exists 55%nat. vm_compute. reflexivity.
   Qed.
+  *)
 End WithVar.

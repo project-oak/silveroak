@@ -66,11 +66,12 @@ Module device.
     (* one past the highest MMIO address *)
     addr_range_pastend: Z;
 
-    (* max number of device cycles (ie calls of run1) this device takes to serve read/write requests *)
-    maxRespDelay: nat;
+    (* max number of device cycles this device takes to serve read/write requests, ie
+       max number of run1 calls with active read/write request until the device responds *)
+    maxRespDelay: state -> tl_h2d -> nat;
   }.
   (* Note: there are two levels of "polling until a response is available":
-     - on the hardware level, using readResp/writeResp, which appears as
+     - on the hardware level, using runUntilResp, which appears as
        blocking I/O for the software
      - on the software level, using MMIO reads on some status register,
        where the MMIO read immediately gives a "busy" response, and the
@@ -148,8 +149,9 @@ Section WithParams.
   Definition runUntilResp(h2d: tl_h2d):
     OState (ExtraRiscvMachine D) word :=
     mach <- get;
-    let (respo, new_device_state) := device.runUntilResp h2d device.maxRespDelay
-                                                         mach.(getExtraState) in
+    let (respo, new_device_state) :=
+        device.runUntilResp h2d (device.maxRespDelay mach.(getExtraState) h2d)
+                            mach.(getExtraState) in
     put (withExtraState new_device_state mach);;
     resp <- fail_if_None respo;
     Return (N_to_word (d_data resp)).

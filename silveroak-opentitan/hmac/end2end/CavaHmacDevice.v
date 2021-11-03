@@ -31,7 +31,7 @@ Section WithParameters.
     device.addr_range_pastend := TOP_EARLGREY_HMAC_BASE_ADDR +
                                  HMAC_MSG_FIFO_REG_OFFSET +
                                  HMAC_MSG_FIFO_SIZE_BYTES;
-    device.maxRespDelay := 1;
+    device.maxRespDelay s h2d := 1%nat;
   |}.
   Global Instance hmac_timing: timing := {
     max_negative_done_polls := 16;
