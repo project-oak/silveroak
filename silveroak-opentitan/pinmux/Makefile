@@ -16,6 +16,8 @@
 
 .PHONY: all coq minimize-requires clean compile_pinmux _CoqProject
 
+all_except_compile_pinmux: coq pinmux.sv
+
 all:		coq pinmux.sv compile_pinmux
 
 VERILATOR = verilator +1800-2012ext+sv verilator.vlt
