@@ -38,9 +38,17 @@ Section Var.
 
   Context {var : tvar}.
 
-  Definition realign_masked_fifo fifo_size: Circuit _ [Bit; BitVec 32; BitVec 4; Bit; Bit]
-    (* *)
-    (Bit ** BitVec 32 ** BitVec 4 ** Bit ** Bit ) := {{
+  Definition realign_masked_fifo_local_state :=
+    (Bit ** Bit ** BitVec 32 ** BitVec 4 ** Bit ** Bit)%circuit_type.
+
+  Definition realign_masked_fifo_state fifo_size :=
+    (realign_masked_fifo_local_state **
+     realign_state ** fifo_state (BitVec 32) fifo_size)%circuit_type.
+
+  Definition realign_masked_fifo fifo_size:
+    Circuit (realign_masked_fifo_state fifo_size)
+            [Bit; BitVec 32; BitVec 4; Bit; Bit]
+            (Bit ** BitVec 32 ** BitVec 4 ** Bit ** Bit ) := {{
     fun data_valid data data_mask drain consumer_ready =>
 
     let/delay '(is_last, out_valid, out_data, out_length, fifo_empty; fifo_full) :=
@@ -61,7 +69,7 @@ Section Var.
 
       (drain && !fifo_valid && valid, valid, data, length, fifo_empty, fifo_full)
       initially (false, (false, (0, (0, (true, false)))))
-      : denote_type (Bit ** Bit ** BitVec 32 ** BitVec 4 ** Bit ** Bit )
+      : denote_type realign_masked_fifo_local_state
     in
     (out_valid, out_data, out_length, is_last, fifo_full)
   }}.

@@ -44,6 +44,9 @@ Section Var.
   Definition padder_flushing := Constant (BitVec 4) 2.
   Definition padder_writing_length := Constant (BitVec 4) 3.
 
+  Definition padder_state :=
+    (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 4)%circuit_type.
+
   (* SHA-256 message padding *)
   (* - Padder expects data to packed (no gaps), except the final word.
      - The last word must also assert is_final, and have final_length set.
@@ -56,13 +59,15 @@ Section Var.
      - padder_flushing : Emit 0 words until we reach the last two words of the block
      - padder_writing_length :  Write the length to the last two words
    *)
-  Definition sha256_padder : Circuit _ [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit] (Bit ** sha_word ** Bit) :=
+  Definition sha256_padder : Circuit padder_state
+                                     [Bit; BitVec 32; Bit; BitVec 4; Bit; Bit]
+                                     (Bit ** sha_word ** Bit) :=
     {{
     fun data_valid data is_final final_length consumer_ready clear =>
     (* offset, is the offset in the current block 0 <= offset < 16 *)
     let/delay '(done, out, out_valid, state, length; current_offset) :=
       if clear
-      then `Constant (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 4)
+      then `Constant padder_state
                      (true, (0, (false, (0, (0, 0)))))`
       else if !consumer_ready then (done, out, out_valid, state, length, current_offset)
       else
@@ -147,7 +152,7 @@ Section Var.
 
       initially
         (true,(0,(false,(0,(0,0)))))
-        : denote_type (Bit ** sha_word ** Bit ** BitVec 4 ** BitVec 61 ** BitVec 4)
+        : denote_type padder_state
         in
 
     (out_valid, out, done)
@@ -185,11 +190,11 @@ Section Var.
     `index` k i
   }}.
 
-  Definition rotr n : Circuit _ [sha_word] sha_word :=
+  Definition rotr n : Circuit [] [sha_word] sha_word :=
     {{ fun w =>  ((w >> n) | (w << (32 - n))) }}.
 
   (* SHA-256 message schedule update *)
-  Definition sha256_message_schedule_update : Circuit _ [sha_word; sha_word; sha_word; sha_word] sha_word := {{
+  Definition sha256_message_schedule_update : Circuit [] [sha_word; sha_word; sha_word; sha_word] sha_word := {{
     fun w0 w1 w9 w14 =>
     let sum0 := (`rotr 7` w1) ^ (`rotr 18` w1) ^ (w1 >> 3) in
     let sum1 := (`rotr 17` w14) ^ (`rotr 19` w14) ^ (w14 >> 10) in
@@ -197,7 +202,7 @@ Section Var.
   }}%nat.
 
   (* SHA-256 compression function *)
-  Definition sha256_compress : Circuit []%circuit_type [sha_digest; sha_word; sha_word]%circuit_type sha_digest := {{
+  Definition sha256_compress : Circuit [] [sha_digest; sha_word; sha_word]%circuit_type sha_digest := {{
     fun current_digest k w =>
     let '( a', b', c', d', e', f', g'; h' ) := `vec_as_tuple (n:=7)` current_digest in
 
@@ -211,9 +216,13 @@ Section Var.
     (temp1 + temp2) :> a' :> b' :> c' :> (d' + temp1) :> e' :> f' :> g' :> []
   }}%nat.
 
+  Definition sha256_inner_state := (sha_digest ** sha_block ** Bit ** sha_round)%circuit_type.
+
   (* SHA-256 inner core *)
   (* `initial_digest` must be held until done *)
-  Definition sha256_inner : Circuit _ [Bit; sha_block; sha_digest; Bit] (sha_digest ** Bit) :=
+  Definition sha256_inner : Circuit sha256_inner_state
+                                    [Bit; sha_block; sha_digest; Bit]
+                                    (sha_digest ** Bit) :=
     {{
     fun block_valid block initial_digest clear =>
 
@@ -246,7 +255,7 @@ Section Var.
       let round := if inc_round then round + `K 1` else round in
 
       if clear
-      then `Constant (sha_digest ** sha_block ** Bit ** sha_round)
+      then `Constant sha256_inner_state
             (sha256_initial_digest, (repeat 0 16, (true, 0)))`
       else if start
            then (initial_digest, block, `Constant (Bit**sha_round) (false, 0)`)
@@ -254,19 +263,27 @@ Section Var.
                 else (next_digest, w, next_done, round)
 
       initially (((sha256_initial_digest, (repeat 0 16, (true, 0))))
-      : denote_type (sha_digest ** sha_block ** Bit ** sha_round )) in
+      : denote_type sha256_inner_state) in
 
     let updated_digest := `map2 {{fun a b => ( a + b ) }}` initial_digest current_digest in
     (updated_digest, done)
 
   }}.
 
+  Definition sha256_outer_state :=
+    (Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit)%circuit_type.
+
+  Definition sha256_state :=
+    (sha256_outer_state ** padder_state ** sha256_inner_state)%circuit_type.
+
   (* SHA-256 core *)
   (* returns (digest_valid, digest, ready) *)
   (* Data must only be passed when ready is asserted *)
-  Definition sha256 : Circuit _ [Bit; sha_word; Bit; BitVec 4; Bit] (Bit ** sha_digest ** Bit) :=
+  Definition sha256 : Circuit sha256_state
+                              [Bit; sha_word; Bit; BitVec 4; Bit]
+                              (Bit ** sha_digest ** Bit) :=
 
-    let reset_state : denote_type (Bit ** sha_block ** sha_digest ** BitVec 6 ** Bit) :=
+    let reset_state : denote_type sha256_outer_state :=
       (true, (repeat 0 16, (sha256_initial_digest, (0, true)))) in
 
     {{ fun fifo_data_valid fifo_data is_final final_length clear =>

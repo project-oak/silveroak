@@ -37,7 +37,8 @@ Proof. reflexivity. Qed.
 Hint Rewrite @step_vec_as_tuple_one using solve [eauto] : stepsimpl.
 
 Ltac stepsimpl :=
-  repeat first [ progress
+  repeat first [ progress autounfold with stepsimpl
+               | progress
                    cbn [fst snd step denote_type absorb_any One Zero K
                             split_absorbed_denotation combine_absorbed_denotation
                             unary_semantics binary_semantics eqb ]

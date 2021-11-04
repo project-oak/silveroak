@@ -130,13 +130,16 @@ Section Var.
   (* Definition sha_digest := sha_word ** sha_word ** sha_word ** sha_word ** sha_word ** sha_word ** sha_word ** sha_word. *)
   Definition sha_digest := Vec sha_word 8.
 
+  Definition tlul_adapter_state :=
+    (BitVec TL_AIW ** BitVec TL_SZW ** BitVec 3 ** Bit ** Bit ** Bit ** Bit)%circuit_type.
+
   (* Convert TLUL packets to a simple read/write register interface *)
   (* This is similar to OpenTitan's tlul_adapter_reg, but for simplicity we
    * provide all registers for the adapter to read from, rather than providing
    * a readback signal. Providing a same-cycle readback signal like OT version
    * is difficult without delayless loop *)
   Definition tlul_adapter_reg {reg_count}
-    : Circuit _ [tl_h2d_t; Vec (BitVec 32) reg_count ] (tl_d2h_t ** io_req) := {{
+    : Circuit tlul_adapter_state [tl_h2d_t; Vec (BitVec 32) reg_count ] (tl_d2h_t ** io_req) := {{
     fun incoming_tlp registers =>
     let
       '(a_valid
@@ -474,6 +477,8 @@ Section TLULSpec.
       simplify_invariant (tlul_adapter_reg (reg_count:=reg_count)).
       cbn. auto.
     Qed.
+
+    Local Hint Unfold tlul_adapter_state : stepsimpl.
 
     Lemma tlul_adapter_reg_invariant_preserved : invariant_preserved tlul_adapter_reg.
     Proof.
