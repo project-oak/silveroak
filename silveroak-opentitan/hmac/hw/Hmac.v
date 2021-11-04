@@ -230,13 +230,74 @@ Section Var.
     in (out_registers)
   }}.
 
+  Definition mask_valid : Circuit [] [tl_h2d_t; Bit] tl_h2d_t := {{
+    fun incoming_tlp clear_valid =>
+    let
+      '(a_valid
+      , a_opcode
+      , a_param
+      , a_size
+      , a_source
+      , a_address
+      , a_mask
+      , a_data
+      , a_user
+      ; d_ready) := incoming_tlp in
+
+    (if clear_valid then `Zero` else a_valid
+    , a_opcode
+    , a_param
+    , a_size
+    , a_source
+    , a_address
+    , a_mask
+    , a_data
+    , a_user
+    , d_ready)
+  }}.
+
+  Definition mask_ready : Circuit [] [tl_d2h_t; Bit] tl_d2h_t := {{
+    fun outgoing_tlp clear_ready =>
+    let
+      '(d_valid
+      , d_opcode
+      , d_param
+      , d_size
+      , d_source
+      , d_sink
+      , d_data
+      , d_user
+      , d_error
+      ; a_ready
+      ) := outgoing_tlp in
+
+    ( d_valid
+    , d_opcode
+    , d_param
+    , d_size
+    , d_source
+    , d_sink
+    , d_data
+    , d_user
+    , d_error
+    , if clear_ready then `Zero` else a_ready
+    )
+  }}.
+
   Definition hmac_top : Circuit _ [tl_h2d_t] tl_d2h_t := {{
     fun incoming_tlp =>
 
-    let/delay '(tl_o; registers) :=
+    let/delay '(was_fifo_full, tl_o; registers) :=
+
+      let is_fifo_full :=
+        (`index` registers `REG_STATUS` & `K 0x2` ) == `K 0x2`
+      in
+
+      (* Mask incoming tlp validity, outgoing tlp ready if we are full. *)
+      let incoming_tlp' := `mask_valid` incoming_tlp is_fifo_full in
 
       let '(tl_o, read_en, write_en, address, write_data; write_mask)
-        := `tlul_adapter_reg` incoming_tlp registers in
+        := `tlul_adapter_reg` incoming_tlp' registers in
 
       let aligned_address := `bvslice 2 5` address in
       let is_fifo_write := address >= `Constant (BitVec _) 2048` in
@@ -263,17 +324,17 @@ Section Var.
          'registers' vs 'next_registers' *)
       let cmd_cfg_endian_swap  := (`index` registers `REG_CFG` & `K 0x4`) == `K 0x4` in
       let write_data' :=
-        if is_fifo_write && cmd_cfg_endian_swap
+        if (is_fifo_write && cmd_cfg_endian_swap)
         then `endian_swap32` write_data
         else write_data
       in
 
       let registers' := `hmac` write_en' write_data' aligned_address write_mask is_fifo_write next_registers in
 
-      (tl_o, registers')
+      (is_fifo_full, tl_o, registers')
 
       initially default
-    in tl_o
+    in `mask_ready` tl_o was_fifo_full
   }}.
 
 End Var.
