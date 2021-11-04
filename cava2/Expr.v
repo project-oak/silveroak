@@ -350,3 +350,16 @@ Definition bvmax {var n}: Circuit (var:=var) [] [BitVec n; BitVec n] (BitVec n) 
   {{ fun x y => `BinaryOp BinBitVecMax x y` }}.
 Definition bvmin {var n}: Circuit (var:=var) [] [BitVec n; BitVec n] (BitVec n) :=
   {{ fun x y => `BinaryOp BinBitVecMin x y` }}.
+
+Definition endian_swap32 : Circuit [] [BitVec 32] (BitVec 32) := {{
+  fun x =>
+  let a := `bvslice 0 8` x in
+  let b := `bvslice 8 8` x in
+  let c := `bvslice 16 8` x in
+  let d := `bvslice 24 8` x in
+
+  `bvconcat` (`bvconcat` (`bvconcat` a b) c) d
+
+}}.
+
+

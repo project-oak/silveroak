@@ -39,6 +39,7 @@ Section Var.
   Definition REG_INTR_STATE := Constant (BitVec hmac_register_log_sz) 0.
   Definition REG_CFG := Constant (BitVec hmac_register_log_sz) 4.
   Definition REG_CMD := Constant (BitVec hmac_register_log_sz) 5.
+  Definition REG_STATUS := Constant (BitVec hmac_register_log_sz) 6.
   Definition REG_DIGEST_0 := Constant (BitVec hmac_register_log_sz) 0x11.
   Definition REG_DIGEST_1 := Constant (BitVec hmac_register_log_sz) 0x12.
   Definition REG_DIGEST_2 := Constant (BitVec hmac_register_log_sz) 0x13.
@@ -194,6 +195,18 @@ Section Var.
         hmac_key
       in
 
+      let set_done :=
+        (* deassert the CMD registers if we are finishing *)
+        if hmac_done then `replace` registers `REG_CMD` `K 0` else registers
+      in
+
+      let set_fifo_full :=
+        (* set the fifo_full STATUS register *)
+        (* hmac.STATUS @ 0x18 *)
+        (* bit: 0:fifo_empty, 1:fifo_full, 8:4: fifo_depth *)
+        `replace` set_done `REG_STATUS` (if fifo_full then `K 2` else `K 0`)
+      in
+
       let next_registers :=
         (* assert the INTR register `hmac_done` when we finish *)
         (fun regs => if hmac_done then
@@ -207,9 +220,7 @@ Section Var.
           let regs := `replace` regs `REG_DIGEST_6` ( `index` digest `Constant (BitVec 4) 6` ) in
           let regs := `replace` regs `REG_DIGEST_7` ( `index` digest `Constant (BitVec 4) 7` ) in
           regs
-        else regs)
-        (* deassert the CMD registers if we are finishing *)
-        (if hmac_done then `replace` registers `REG_CMD` `K 0` else registers)
+        else regs) set_fifo_full
       in
 
 
@@ -218,7 +229,6 @@ Section Var.
 
     in (out_registers)
   }}.
-
 
   Definition hmac_top : Circuit _ [tl_h2d_t] tl_d2h_t := {{
     fun incoming_tlp =>
@@ -249,7 +259,16 @@ Section Var.
         write_en && !is_fifo_write && !(aligned_address == `REG_INTR_STATE`)
       in
 
-      let registers' := `hmac` write_en' write_data aligned_address write_mask is_fifo_write next_registers in
+      (* We cant be setting a register and writing to the fifo so we can use
+         'registers' vs 'next_registers' *)
+      let cmd_cfg_endian_swap  := (`index` registers `REG_CFG` & `K 0x4`) == `K 0x4` in
+      let write_data' :=
+        if is_fifo_write && cmd_cfg_endian_swap
+        then `endian_swap32` write_data
+        else write_data
+      in
+
+      let registers' := `hmac` write_en' write_data' aligned_address write_mask is_fifo_write next_registers in
 
       (tl_o, registers')
 
