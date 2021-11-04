@@ -419,8 +419,8 @@ Section TLULSpec.
                        | None => if a_valid h2d then
                                   io_re = true
                                   /\ io_address = a_address h2d
-                                else True
-                       | _ => True
+                                else io_re = false
+                       | _ => io_re = false
                        end
                      /\ io_we = false
                    else if a_opcode h2d' =? PutFullData then
@@ -440,8 +440,8 @@ Section TLULSpec.
                                        /\ io_address = a_address h2d
                                        /\ io_data = a_data h2d
                                        /\ io_mask = a_mask h2d
-                                     else True
-                            | _ => True
+                                     else io_we = false
+                            | _ => io_we = false
                             end
                         else True
                  end
@@ -449,7 +449,10 @@ Section TLULSpec.
 
   Global Instance tlul_invariant : invariant_for (tlul_adapter_reg (reg_count:=reg_count)) tlul_repr :=
     fun (state : denote_type (state_of tlul_adapter_reg)) repr =>
-      tlul_adapter_reg_state_error state = false
+      Forall (fun h2d => (a_valid h2d = true
+                       -> (a_opcode h2d = Get \/ a_opcode h2d = PutFullData)))
+             repr
+      /\ tlul_adapter_reg_state_error state = false
       /\ match outstanding_h2d repr with
         | None =>
           tlul_adapter_reg_state_outstanding (reg_count:=reg_count) state = false
@@ -491,7 +494,8 @@ Section TLULSpec.
       end.
       repeat (destruct_pair_let; cbn [fst snd]).
       tlul_adapter_reg_state_simpl.
-      split.
+      ssplit.
+      - apply Forall_cons; assumption.
       - destruct (a_valid0 && negb outstanding)%bool; subst; reflexivity.
       - remember (outstanding_h2d
                     ((a_valid0,
@@ -537,7 +541,7 @@ Section TLULSpec.
                    destruct d_ready0.
                    --- reflexivity.
                    --- discriminate Eouts.
-                ** inversion H2.
+                ** exfalso. assumption.
           -- destruct a_valid0.
              +++ discriminate Eouts.
              +++ boolsimpl. reflexivity.
@@ -583,35 +587,35 @@ Section TLULSpec.
                cbn -[N.ones]. split. 1: reflexivity.
                subst. rewrite <- Eouts'. rewrite Hget, Hput. tlsimpl.
                ssplit; reflexivity.
-            -- inversion H1.
-        + destruct a_valid0; try discriminate H0.
-          inversion H0; subst. clear H0.
+            -- exfalso. assumption.
+        + destruct a_valid0; try discriminate H1.
+          inversion H1; subst. clear H1.
           do 8 eexists. split. 1: reflexivity.
           cbn -[N.ones]. split. 1: reflexivity.
           subst. rewrite <- Eouts'. tlsimpl.
-          destruct H2.
+          destruct H3.
           * reflexivity.
-          * rewrite H. boolsimpl. cbn -[N.ones].
+          * subst. boolsimpl. cbn -[N.ones].
             ssplit; try reflexivity.
             rewrite N.land_ones.
             replace 4 with (2 ^ 2) by reflexivity.
             rewrite <- ! N.shiftr_div_pow2.
             reflexivity.
-          * rewrite H. boolsimpl. cbn. ssplit; reflexivity.
-        + destruct a_valid0; try discriminate H0.
-          inversion H0; subst. clear H0.
+          * subst. boolsimpl. cbn. ssplit; reflexivity.
+        + destruct a_valid0; try discriminate H1.
+          inversion H1; subst. clear H1.
           do 8 eexists. split. 1: reflexivity.
           cbn -[N.ones]. split. 1: reflexivity.
           subst. rewrite <- Eouts'. tlsimpl.
-          destruct H2.
+          destruct H3.
           * reflexivity.
-          * rewrite H. boolsimpl. cbn -[N.ones].
+          * subst. boolsimpl. cbn -[N.ones].
             ssplit; try reflexivity.
             rewrite N.land_ones.
             replace 4 with (2 ^ 2) by reflexivity.
             rewrite <- ! N.shiftr_div_pow2.
             reflexivity.
-          * rewrite H. boolsimpl. cbn. ssplit; reflexivity.
+          * subst. boolsimpl. cbn. ssplit; reflexivity.
       - simpl in Eouts.
         remember (outstanding_h2d repr) as outs' eqn:Eouts'.
         destruct outs'; subst;
@@ -626,15 +630,15 @@ Section TLULSpec.
                cbn -[N.ones]. split. 1: reflexivity.
                subst. rewrite <- Eouts'. tlsimpl.
                ssplit; reflexivity.
-            -- inversion H1.
-        + destruct a_valid0; try discriminate H0.
-          clear H0.
+            -- exfalso. assumption.
+        + destruct a_valid0; try discriminate H1.
+          clear H1.
           do 8 eexists. split. 1: reflexivity.
           cbn -[N.ones]. split. 1: reflexivity.
           subst. rewrite <- Eouts'. tlsimpl.
           ssplit; reflexivity.
-        + destruct a_valid0; try discriminate H0.
-          clear H0.
+        + destruct a_valid0; try discriminate H1.
+          clear H1.
           do 8 eexists. split. 1: reflexivity.
           cbn -[N.ones]. split. 1: reflexivity.
           subst. rewrite <- Eouts'. tlsimpl.
