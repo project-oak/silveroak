@@ -356,7 +356,7 @@ Section SanityCheck.
     : denote_type (Vec (BitVec 32) hmac_register_count) .
     cbv [state_of hmac absorb_any] in v.
     destruct v.
-    destruct d as (_, regs).
+    destruct d as (_, (_, regs)).
     exact regs.
   Defined.
 
