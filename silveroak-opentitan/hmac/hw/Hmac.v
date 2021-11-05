@@ -39,6 +39,7 @@ Section Var.
   Definition REG_INTR_STATE := Constant (BitVec hmac_register_log_sz) 0.
   Definition REG_CFG := Constant (BitVec hmac_register_log_sz) 4.
   Definition REG_CMD := Constant (BitVec hmac_register_log_sz) 5.
+  Definition REG_STATUS := Constant (BitVec hmac_register_log_sz) 6.
   Definition REG_DIGEST_0 := Constant (BitVec hmac_register_log_sz) 0x11.
   Definition REG_DIGEST_1 := Constant (BitVec hmac_register_log_sz) 0x12.
   Definition REG_DIGEST_2 := Constant (BitVec hmac_register_log_sz) 0x13.
@@ -211,6 +212,18 @@ Section Var.
         hmac_key
       in
 
+      let set_done :=
+        (* deassert the CMD registers if we are finishing *)
+        if hmac_done then `replace` registers `REG_CMD` `K 0` else registers
+      in
+
+      let set_fifo_full :=
+        (* set the fifo_full STATUS register *)
+        (* hmac.STATUS @ 0x18 *)
+        (* bit: 0:fifo_empty, 1:fifo_full, 8:4: fifo_depth *)
+        `replace` set_done `REG_STATUS` (if fifo_full then `K 2` else `K 0`)
+      in
+
       let next_registers :=
         (* assert the INTR register `hmac_done` when we finish *)
         (fun regs => if hmac_done then
@@ -224,9 +237,7 @@ Section Var.
           let regs := `replace` regs `REG_DIGEST_6` ( `index` digest `Constant (BitVec 4) 6` ) in
           let regs := `replace` regs `REG_DIGEST_7` ( `index` digest `Constant (BitVec 4) 7` ) in
           regs
-        else regs)
-        (* deassert the CMD registers if we are finishing *)
-        (if hmac_done then `replace` registers `REG_CMD` `K 0` else registers)
+        else regs) set_fifo_full
       in
 
 
@@ -234,6 +245,60 @@ Section Var.
       initially default
 
     in (out_registers)
+  }}.
+
+  Definition mask_valid : Circuit [] [tl_h2d_t; Bit] tl_h2d_t := {{
+    fun incoming_tlp clear_valid =>
+    let
+      '(a_valid
+      , a_opcode
+      , a_param
+      , a_size
+      , a_source
+      , a_address
+      , a_mask
+      , a_data
+      , a_user
+      ; d_ready) := incoming_tlp in
+
+    (if clear_valid then `Zero` else a_valid
+    , a_opcode
+    , a_param
+    , a_size
+    , a_source
+    , a_address
+    , a_mask
+    , a_data
+    , a_user
+    , d_ready)
+  }}.
+
+  Definition mask_ready : Circuit [] [tl_d2h_t; Bit] tl_d2h_t := {{
+    fun outgoing_tlp clear_ready =>
+    let
+      '(d_valid
+      , d_opcode
+      , d_param
+      , d_size
+      , d_source
+      , d_sink
+      , d_data
+      , d_user
+      , d_error
+      ; a_ready
+      ) := outgoing_tlp in
+
+    ( d_valid
+    , d_opcode
+    , d_param
+    , d_size
+    , d_source
+    , d_sink
+    , d_data
+    , d_user
+    , d_error
+    , if clear_ready then `Zero` else a_ready
+    )
   }}.
 
   Definition hmac_top_state :=
@@ -244,10 +309,17 @@ Section Var.
   Definition hmac_top : Circuit hmac_top_state [tl_h2d_t] tl_d2h_t := {{
     fun incoming_tlp =>
 
-    let/delay '(tl_o; registers) :=
+    let/delay '(was_fifo_full, tl_o; registers) :=
+
+      let is_fifo_full :=
+        (`index` registers `REG_STATUS` & `K 0x2` ) == `K 0x2`
+      in
+
+      (* Mask incoming tlp validity, outgoing tlp ready if we are full. *)
+      let incoming_tlp' := `mask_valid` incoming_tlp is_fifo_full in
 
       let '(tl_o, read_en, write_en, address, write_data; write_mask)
-        := `tlul_adapter_reg` incoming_tlp registers in
+        := `tlul_adapter_reg` incoming_tlp' registers in
 
       let aligned_address := `bvslice 2 5` address in
       let is_fifo_write := address >= `Constant (BitVec _) 2048` in
@@ -270,12 +342,21 @@ Section Var.
         write_en && !is_fifo_write && !(aligned_address == `REG_INTR_STATE`)
       in
 
-      let registers' := `hmac` write_en' write_data aligned_address write_mask is_fifo_write next_registers in
+      (* We cant be setting a register and writing to the fifo so we can use
+         'registers' vs 'next_registers' *)
+      let cmd_cfg_endian_swap  := (`index` registers `REG_CFG` & `K 0x4`) == `K 0x4` in
+      let write_data' :=
+        if (is_fifo_write && cmd_cfg_endian_swap)
+        then `endian_swap32` write_data
+        else write_data
+      in
 
-      (tl_o, registers')
+      let registers' := `hmac` write_en' write_data' aligned_address write_mask is_fifo_write next_registers in
+
+      (is_fifo_full, tl_o, registers')
 
       initially default
-    in tl_o
+    in `mask_ready` tl_o was_fifo_full
   }}.
 
 End Var.
@@ -296,7 +377,7 @@ Section SanityCheck.
   Definition get_regs (v: denote_type (state_of hmac_top))
     : denote_type (Vec (BitVec 32) hmac_register_count) .
     destruct v.
-    destruct d as (_, regs).
+    destruct d as (_, (_, regs)).
     exact regs.
   Defined.
 
