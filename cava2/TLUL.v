@@ -650,4 +650,51 @@ Section TLULSpec.
     Global Instance tlul_adapter_reg_correctness : correctness_for tlul_adapter_reg.
     Proof. constructor; typeclasses eauto. Defined.
 
+
+
+    Lemma outstanding_in_repr : forall r_tlul t,
+        outstanding_h2d r_tlul = Some t ->
+        In t r_tlul.
+    Proof.
+      intros ? ?.
+      induction r_tlul; intros Houts; cbn in Houts.
+      - discriminate.
+      - destruct (outstanding_h2d r_tlul) eqn:Houts'.
+        + destruct d_ready.
+          * discriminate.
+          * apply in_cons. auto.
+        + destruct (a_valid a).
+          * inversion Houts. apply in_eq.
+          * discriminate.
+    Qed.
+
+    Lemma outstanding_a_valid : forall r_tlul t,
+        outstanding_h2d r_tlul = Some t ->
+        a_valid t = true.
+    Proof.
+      intros ? ?.
+      induction r_tlul; intros Houts; cbn in Houts.
+      - discriminate.
+      - destruct (outstanding_h2d r_tlul) eqn:Houts'.
+        + destruct d_ready.
+          * discriminate.
+          * auto.
+        + destruct (a_valid a) eqn:Hvalid.
+          * inversion Houts. subst. assumption.
+          * discriminate.
+    Qed.
+
+    Lemma outstanding_prec : forall tl_st r_tlul t,
+        tlul_invariant tl_st r_tlul ->
+        outstanding_h2d r_tlul = Some t ->
+        a_opcode t = Get \/ a_opcode t = PutFullData.
+    Proof.
+      intros ? ? ? Hinvar Houts. simpl in *.
+      apply outstanding_in_repr in Houts as Hin.
+      unfold tlul_invariant in Hinvar. logical_simplify.
+      eapply Forall_forall in H. 2: apply Hin.
+      apply H.
+      eapply outstanding_a_valid.
+      apply Houts.
+    Qed.
 End TLULSpec.
