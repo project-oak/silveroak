@@ -9,6 +9,7 @@ Require Import bedrock2.Semantics.
 Require Import bedrock2.Scalars.
 Require Import bedrock2.Syntax.
 Require Import bedrock2.WeakestPreconditionProperties.
+Require Import coqutil.Tactics.fwd.
 Require Import compiler.FlatToRiscvCommon.
 Require Import compiler.Pipeline.
 Require Import Bedrock2Experiments.List.
@@ -23,57 +24,25 @@ Require Import Bedrock2Experiments.IncrementWait.IncrementWaitToRiscV.
 Import Syntax.Coercions.
 Local Open Scope string_scope.
 
-Definition post_main
-           (input output_placeholder : word) R
-           (t' : trace) (m' : mem) : Prop :=
-  (* trace is valid and leads to IDLE state *)
-  execution t' IDLE
-  /\ (scalar (word.of_Z input_ptr) input
-     * scalar (word.of_Z output_ptr) (proc input)
-     * R)%sep m'.
-
-Lemma main_correct fs input output_placeholder R (t : trace) m :
-  (scalar (word.of_Z input_ptr) input
-   * scalar (word.of_Z output_ptr) output_placeholder
-   * R)%sep m ->
+Lemma put_wait_get_correct' fs input (R: mem -> Prop) (t : trace) m :
+  R m ->
   execution t IDLE ->
-  WeakestPrecondition.cmd
-    (WeakestPrecondition.call (put_wait_get :: fs))
-    main_body t m map.empty
-    (fun t' m' (_: ProgramSemantics32.locals) => post_main input output_placeholder R t' m').
+  WeakestPrecondition.call (put_wait_get :: fs) IncrementWait.put_wait_get t m [input]
+         (fun t' m' retvals => execution t' IDLE /\ R m' /\ retvals = [proc input]).
 Proof.
-  intros.
-  repeat straightline.
-  pose proof (put_wait_get_correct fs).
-  straightline_call; [ eassumption .. | ].
-  repeat straightline.
-  split; [ assumption | ].
-  ecancel_assumption.
-Qed.
-
-Lemma exec_put_wait_get fs input output_placeholder R (t : trace) (m : mem) mc :
-  (scalar (word.of_Z input_ptr) input
-   * scalar (word.of_Z output_ptr) output_placeholder
-   * R)%sep m ->
-  execution t IDLE ->
-  NoDup (map fst (main :: put_wait_get :: fs)) ->
-  exec (map.of_list (main :: put_wait_get :: fs))
-       main_body t m map.empty mc
-       (fun t' m' _ _ => post_main input output_placeholder R t' m').
-Proof.
-  intros. apply sound_cmd; [ assumption | ].
-  eapply main_correct. (* relying on conversion to prepend `main` to list of functions *)
-  all: eauto.
+  pose proof (put_wait_get_correct fs) as P.
+  unfold spec_of_put_wait_get in P.
+  apply P.
 Qed.
 
 (* Location in the instructions that marks the start of the [main] routine *)
-Definition main_relative_pos : Z.
+Definition put_wait_get_relative_pos : Z.
   let x := constr:(map.get
                      (snd (fst put_wait_get_compile_result))
-                     main) in
+                     put_wait_get) in
   let x := eval vm_compute in x in
       lazymatch x with
-      | Some ?y => exact y
+      | Some (_, _, ?y) => exact y
       end.
 Defined.
 
@@ -82,70 +51,87 @@ Definition stack_pastend: word := word.of_Z (16*2^10).
 
 Lemma funcs_valid: ExprImp.valid_funs (map.of_list funcs).
 Proof.
-  cbv [funcs map.of_list ExprImp.valid_funs main put_wait_get]. intros *.
+  cbv [funcs map.of_list ExprImp.valid_funs put_wait_get]. intros *.
   rewrite !map.get_put_dec, map.get_empty.
   repeat destruct_one_match; inversion 1; cbv [ExprImp.valid_fun].
   all:ssplit.
-  all:apply dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec).
+  all:apply dedup_NoDup_iff.
   all:reflexivity.
 Qed.
 
 Lemma put_wait_get_asm_correct
-      input output_placeholder R Rdata Rexec
-      (p_functions p_call : word)
+      input (R Rdata Rexec: mem -> Prop)
+      (p_functions ret_addr : word)
       (mem : mem)
       (initial : MetricRiscvMachine) :
-  (* given that the input and output pointers are valid and the input pointer
-     points to input... *)
-  (scalar (word.of_Z input_ptr) input
-   * scalar (word.of_Z output_ptr) output_placeholder
-   * R)%sep mem ->
+  (* given that some property holds about the initial memory... *)
+  R mem ->
   (* ...and the trace so far leads to an IDLE state... *)
   execution (getLog initial) IDLE ->
   (* ...and the current machine state is OK... *)
   let instrs := fst (fst (put_wait_get_compile_result)) in
   LowerPipeline.machine_ok
-    p_functions main_relative_pos
+    p_functions
     stack_start stack_pastend
-    instrs p_call p_call mem Rdata Rexec initial ->
-  (* ...then, after the [main] routine is executed... *)
+    instrs mem Rdata Rexec initial ->
+  (* ...and the pc points to the beginning of get_put_wait... *)
+  initial.(getPc) = word.add p_functions (word.of_Z put_wait_get_relative_pos) ->
+  (* ...the first argument register contains the input value... *)
+  map.get initial.(getRegs) RegisterNames.a0 = Some input ->
+  (* ...and the ra register contains some aligned return address... *)
+  word.unsigned ret_addr mod 4 = 0 ->
+  map.get initial.(getRegs) RegisterNames.ra = Some ret_addr ->
+  (* ...then, after the [put_wait_get] routine is executed... *)
   runsTo initial
          (fun final : MetricRiscvMachine =>
             exists mem',
-              (* ...the postcondition of [main] holds on the new trace and
-                 memory... *)
-              post_main input output_placeholder R (getLog final) mem'
+              (* ...the first return value register contains the expected result... *)
+              map.get final.(getRegs) RegisterNames.a0 = Some (proc input)
+              (* ...execution will continue at the return address that was in the ra register...*)
+              /\ final.(getPc) = ret_addr
+              (* ...the counter device ends up in an IDLE state... *)
+              /\ execution final.(getLog) IDLE
+              (* ...the memory is unchanged (as in, still satisfies R)... *)
+              /\ R mem'
               (* ...and the new machine state is OK *)
               /\ LowerPipeline.machine_ok
-                  p_functions main_relative_pos
+                  p_functions
                   stack_start stack_pastend
-                  instrs p_call (word.add p_call (word.of_Z 4)) mem' Rdata Rexec final).
+                  instrs mem' Rdata Rexec final).
 Proof.
   intros.
-  pose proof compiler_correct as P.
-  specialize P with (functions := map.of_list funcs).
-  specialize P with (mc:=bedrock2.MetricLogging.EmptyMetricLog).
-  specialize P with (f_entry_name := main)
-         (postH:=post_main input output_placeholder R).
+  pose proof compiler_correct_wp as P.
+  specialize P with (fs := funcs) (stack_hi := stack_pastend) (stack_lo := stack_start).
+  specialize P with (fname := put_wait_get) (p_funcs := p_functions).
   match type of P with
   | context[?fs] => lazymatch fs with
                     | (map.of_list funcs) =>
-                      let fs' := eval cbv [map.of_list put_wait_get main funcs] in fs in
+                      let fs' := eval cbv [map.of_list put_wait_get funcs] in fs in
                           change fs with fs' in P
                    end
   end.
-  eapply P.
+  eapply runsToNonDet.runsTo_weaken.
+  1: eapply P.
   { eapply compile_ext_call_correct. }
   { intros. reflexivity. }
   { exact funcs_valid. }
+  { apply dedup_NoDup_iff. reflexivity. }
   { apply put_wait_get_compile_result_eq. }
-  { rewrite !map.get_put_dec, map.get_empty.
-    rewrite String.eqb_refl. reflexivity. }
+  { eapply put_wait_get_correct' with (R := R); eassumption. }
   { reflexivity. }
   { vm_compute. congruence. }
   { reflexivity. }
-  { apply exec_put_wait_get with (fs:=[]); eauto.
-    apply dedup_NoDup_iff with (aeqb_spec:=String.eqb_spec).
+  { assumption. }
+  { eassumption. }
+  { assumption. }
+  { cbn -[map.get].
+    match goal with
+    | H: map.get _ RegisterNames.a0 = Some input |-
+      match ?x with _ => _ end = _ => replace x with (Some input)
+    end.
     reflexivity. }
-  { eauto. }
+  { reflexivity. }
+  { eassumption. }
+  { cbv beta. clear. intros.
+    cbn -[map.get proc] in *. fwd. eauto 10. }
 Qed.

@@ -25,7 +25,7 @@ Require Import Cava.Types.
 Require Import Cava.Expr.
 Require Import Cava.Primitives.
 Require Import Cava.Components.Fifo.
-Require Import Cava.Components.Realigner.
+Require Import Cava.Components.RealignMasked.
 
 Import ListNotations.
 Import PrimitiveNotations.
@@ -38,29 +38,30 @@ Section Var.
 
   Context {var : tvar}.
 
-  Definition realign_fifo fifo_size: Circuit _ [Bit; BitVec 32; BitVec 4; Bit; Bit]
+  Definition realign_masked_fifo fifo_size: Circuit _ [Bit; BitVec 32; BitVec 4; Bit; Bit]
     (* *)
     (Bit ** BitVec 32 ** BitVec 4 ** Bit ** Bit ) := {{
     fun data_valid data data_mask drain consumer_ready =>
 
     let/delay '(is_last, out_valid, out_data, out_length, fifo_empty; fifo_full) :=
-      let '(realigned_valid, realigned_data; realigned_length) :=
-        `realign` data_valid data data_mask (drain && fifo_empty && consumer_ready) (!fifo_full) in
+      let '(realign_valid, realign_data; realign_length) :=
+        `realign` (data_valid && ! drain) data data_mask (drain && fifo_empty && consumer_ready) (!fifo_full) in
 
       let '(fifo_valid, fifo_data, fifo_empty; fifo_full) :=
-        `fifo fifo_size` (realigned_valid && (! drain) && (!fifo_full) ) realigned_data consumer_ready in
+        `fifo fifo_size` (realign_valid && (! drain) && (!fifo_full) ) realign_data consumer_ready in
 
       let valid :=
-        if drain then fifo_valid || realigned_valid else fifo_valid in
+        if drain then fifo_valid || realign_valid else fifo_valid in
       let data :=
-        if drain && !fifo_valid then realigned_data
+        if drain && !fifo_valid then realign_data
         else fifo_data in
       let length :=
-        if drain && !fifo_valid then realigned_length
+        if drain && !fifo_valid then realign_length
         else `K 4` in
 
       (drain && !fifo_valid && valid, valid, data, length, fifo_empty, fifo_full)
-      initially default
+      initially (false, (false, (0, (0, (true, false)))))
+      : denote_type (Bit ** Bit ** BitVec 32 ** BitVec 4 ** Bit ** Bit )
     in
     (out_valid, out_data, out_length, is_last, fifo_full)
   }}.

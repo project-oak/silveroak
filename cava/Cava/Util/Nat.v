@@ -29,12 +29,22 @@ Proof. lia. Qed.
    to solve a side condition (see https://github.com/coq/coq/issues/7672) *)
 Hint Rewrite Nat.add_0_l Nat.add_0_r Nat.sub_0_r Nat.sub_0_l
      Nat.sub_diag Nat.sub_succ sub_succ_l_same : natsimpl.
+Hint Rewrite Nat.mul_0_l Nat.mul_0_r Nat.mul_1_l Nat.mul_1_r : natsimpl.
+Hint Rewrite Nat.div_1_r : natsimpl.
+Hint Rewrite Nat.mod_1_r : natsimpl.
 Ltac natsimpl_step :=
   first [ progress autorewrite with natsimpl
         | rewrite Min.min_r by lia
         | rewrite Min.min_l by lia
         | rewrite Nat.add_sub by lia
-        | rewrite (fun n m => proj2 (Nat.sub_0_le n m)) by lia ].
+        | rewrite (fun n m => proj2 (Nat.sub_0_le n m)) by lia
+        | rewrite Nat.div_0_l by lia
+        | rewrite Nat.div_same by lia
+        | rewrite Nat.mod_0_l by lia
+        | rewrite Nat.mod_same by lia
+        | rewrite Nat.mod_1_l by lia
+        ].
+
 Ltac natsimpl := repeat natsimpl_step.
 
 (* convert to Z and use Z.to_euclidean_division_equations, then solve with

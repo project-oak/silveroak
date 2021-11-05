@@ -23,41 +23,6 @@ Require Import Bedrock2Experiments.StateMachineMMIOSpec.
 Require Import Bedrock2Experiments.StateMachineMMIO.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.MMIOToCava.
 
-(* TODO move to compiler.DivisibleBy4 *)
-Require Import compiler.DivisibleBy4 compiler.mod4_0.
-Ltac divisibleBy4_pre ::=
-  lazymatch goal with
-  | |- ?G => assert_fails (has_evar G)
-  end;
-  unfold divisibleBy4 in *;
-  lazymatch goal with
-  | |- _ mod 4 = 0 => idtac
-  | |- _ => fail "not a divisibleBy4 goal"
-  end;
-  repeat match goal with
-         | H: _ mod 4 = 0 |- _ => revert H
-         end;
-  repeat match goal with
-         (* TODO might fail to find Words instance *)
-         | H: word.unsigned _ mod 4 = 0 |- _ => unique pose proof (divisibleBy4Signed _ H)
-         end;
-  repeat match goal with
-         | H: ?T |- _ => lazymatch T with
-                         | word.ok _ => fail
-                         | _ => clear H
-                         end
-         end;
-  repeat match goal with
-         | |- _ mod 4 = 0 -> _ => intro
-         end;
-  try apply mod4_0_opp;
-  try apply divisibleBy4Signed;
-  repeat (rewrite ?word.unsigned_add, ?word.signed_add,
-                  ?word.unsigned_sub, ?word.signed_sub,
-                  ?word.unsigned_mul, ?word.signed_mul,
-                  ?word.unsigned_of_Z, ?word.signed_of_Z
-          || unfold word.wrap, word.swrap).
-
 Existing Instance SortedListString.map.
 Existing Instance SortedListString.ok.
 
@@ -77,23 +42,17 @@ Section WithParams.
     forall r : Z, 0 < r < 32 -> exists v : word, map.get regs r = Some v.
 
   (* similar to compiler.LowerPipeline.machine_ok, but takes an `ExtraRiscvMachine D` instead of
-     a `MetricRiscvMachine` *)
-  Definition machine_ok(p_functions: word)(f_entry_rel_pos: Z)(stack_start stack_pastend: word)
-             (finstrs: list byte)(p_call pc: word)(mH: mem)(Rdata Rexec: mem -> Prop)
+     a `MetricRiscvMachine`, and finstrs are bytes instead of Instructions *)
+  Definition machine_ok(p_functions: word)(stack_start stack_pastend: word)
+             (finstrs: list byte)(mH: mem)(Rdata Rexec: mem -> Prop)
              (mach: ExtraRiscvMachine D): Prop :=
-      let CallInst := Jal RegisterNames.ra
-                          (f_entry_rel_pos + word.signed (word.sub p_functions p_call)) : Instruction in
       (ptsto_bytes p_functions finstrs *
-       ptsto_bytes p_call (instrencode [CallInst]) *
        mem_available stack_start stack_pastend *
        Rdata * Rexec * eq mH
       )%sep mach.(getMem) /\
-      subset (footpr (ptsto_bytes p_functions finstrs *
-                      ptsto_bytes p_call (instrencode [CallInst]) *
-                      Rexec)%sep)
+      subset (footpr (ptsto_bytes p_functions finstrs * Rexec)%sep)
              (of_list (getXAddrs mach)) /\
       word.unsigned (mach.(getPc)) mod 4 = 0 /\
-      mach.(getPc) = pc /\
       mach.(getNextPc) = word.add mach.(getPc) (word.of_Z 4) /\
       regs_initialized mach.(getRegs) /\
       map.get mach.(getRegs) RegisterNames.sp = Some stack_pastend /\
@@ -107,36 +66,38 @@ Section WithParams.
   Lemma mod4_to_mod2: forall x, x mod 4 = 0 -> x mod 2 = 0.
   Proof. intros. Z.div_mod_to_equations. Lia.lia. Qed.
 
-  Lemma bedrock2_and_cava_system_correct: forall fs instrs pos_map required_stack_space
-        f_entry_name fbody p_functions f_entry_rel_pos stack_start stack_pastend
-        p_call mH Rdata Rexec (initialL: ExtraRiscvMachine D) steps_done postH,
+  Lemma bedrock2_and_cava_system_correct: forall fs instrs finfo required_stack_space
+        f_entry_name p_functions f_entry_rel_pos stack_start stack_pastend argcount retcount
+        ret_addr argvals mH Rdata Rexec (initialL: ExtraRiscvMachine D) steps_done postH,
       ExprImp.valid_funs (map.of_list fs) ->
       NoDup (map fst fs) ->
-      compile compile_ext_call (map.of_list fs) = Some (instrs, pos_map, required_stack_space) ->
+      compile compile_ext_call (map.of_list fs) = Some (instrs, finfo, required_stack_space) ->
       Forall (fun i : Instruction => verify i RV32IM) instrs ->
-      -2^20 <= f_entry_rel_pos + word.signed (word.sub p_functions p_call) < 2^20 ->
-      map.get (map.of_list fs) f_entry_name = Some ([], [], fbody) ->
-      map.get pos_map f_entry_name = Some f_entry_rel_pos ->
+      map.get finfo f_entry_name = Some (argcount, retcount, f_entry_rel_pos) ->
       required_stack_space <= word.unsigned (word.sub stack_pastend stack_start) / 4 ->
       word.unsigned (word.sub stack_pastend stack_start) mod 4 = 0 ->
       word.unsigned p_functions mod 4 = 0 ->
-      word.unsigned p_call mod 4 = 0 ->
-      f_entry_rel_pos mod 4 = 0 ->
-      initialL.(getLog) = [] ->
-      WeakestPrecondition.cmd (WeakestPrecondition.call fs)
-           fbody initialL.(getLog) mH map.empty
-           (fun (t': Semantics.trace) (m': mem) (l': ProgramSemantics32.locals) =>
-                            postH m' /\
+      word.unsigned ret_addr mod 4 = 0 ->
+      map.get initialL.(getRegs) RegisterNames.ra = Some ret_addr ->
+      initialL.(getPc) = word.add p_functions (word.of_Z f_entry_rel_pos) ->
+      WeakestPrecondition.call fs f_entry_name [] mH argvals
+           (fun (t': Semantics.trace) (m': mem) (retvals: list word) =>
+                            postH m' retvals /\
                             (* driver is supposed to put device back into initial state: *)
                             exists s', execution t' s' /\ state_machine.is_initial_state s') ->
-      machine_ok p_functions f_entry_rel_pos stack_start stack_pastend (instrencode instrs) p_call
-                 p_call mH Rdata Rexec initialL ->
-      exists steps_remaining finalL mH',
+      map.getmany_of_list initialL.(getRegs)
+        (List.firstn argcount (reg_class.all reg_class.arg)) = Some argvals ->
+      machine_ok p_functions stack_start stack_pastend (instrencode instrs)
+                 mH Rdata Rexec initialL ->
+      exists steps_remaining finalL mH' retvals,
         run_rec sched steps_done steps_remaining initialL = (Some tt, finalL) /\
-        machine_ok p_functions f_entry_rel_pos stack_start stack_pastend (instrencode instrs) p_call
-                   (word.add p_call (word.of_Z 4)) mH' Rdata Rexec finalL /\
-        postH mH' /\
-        finalL.(getLog) = initialL.(getLog) (* no external interactions happened *).
+        map.getmany_of_list finalL.(getRegs)
+          (List.firstn retcount (reg_class.all reg_class.arg)) = Some retvals /\
+        map.agree_on callee_saved initialL.(getRegs) finalL.(getRegs) /\
+        finalL.(getPc) = ret_addr /\
+        machine_ok p_functions stack_start stack_pastend (instrencode instrs)
+                   mH' Rdata Rexec finalL /\
+        postH mH' retvals.
   Proof.
     intros.
     destruct initialL as (mach & d). destruct mach as [r pc npc m xAddrs t].
@@ -149,20 +110,16 @@ Section WithParams.
     edestruct stateMachine_to_cava
       as (steps_remaining & finalL & finalH & Rn & Rfinal & Pf).
     2: {
-      pose proof Pipeline.compiler_correct as P.
+      pose proof Pipeline.compiler_correct_wp as P.
       unfold FlatToRiscvCommon.runsTo, GoFlatToRiscv.mcomp_sat, mcomp_sat in P.
-      cbn -[map.get map.empty instrencode] in P.
-      specialize P with (p_call := p_call) (p_functions := p_functions).
+      cbn -[map.get map.empty instrencode reg_class.all] in P.
+      specialize P with (ret_addr := ret_addr) (p_funcs := p_functions).
       eapply P with (initial := {| MetricRiscvMachine.getMachine := {| getPc := _ |} |});
-        clear P; cbn -[map.get map.empty instrencode]; try eassumption.
+        clear P; cbn -[map.get map.empty instrencode reg_class.all]; try eassumption.
       { apply compile_ext_call_correct. }
       { intros. reflexivity. }
-      { refine (sound_cmd _ _ _ _ _ _ _ _ _).
-        - assumption.
-        - match goal with
-          | H: WeakestPrecondition.cmd _ _ _ _ _ _ |- _ => exact H
-          end. }
-      unfold LowerPipeline.machine_ok; cbn -[map.get map.empty instrencode program].
+      { reflexivity. }
+      unfold LowerPipeline.machine_ok; cbn -[map.get map.empty instrencode program reg_class.all].
       pose proof ptsto_bytes_to_program (iset := RV32IM) as P.
       match goal with
       | |- context[?Q] => lazymatch Q with
@@ -170,32 +127,16 @@ Section WithParams.
                           end
       end.
       2: { eapply iff1ToEq. eapply P; eassumption. }
-      match goal with
-      | |- context[?Q] => lazymatch Q with
-                          | program _ ?p ?i => replace Q with (ptsto_bytes p (instrencode i))
-                          end
-      end.
-      2: {
-        eapply iff1ToEq. eapply P. 1: eassumption.
-        constructor. 2: constructor.
-        unfold verify. cbn. unfold verify_UJ. unfold opcode_JAL, RegisterNames.ra.
-        split; [|trivial].
-        split; [Lia.lia|].
-        split; [Lia.lia|].
-        ssplit; try eassumption.
-        eapply mod4_to_mod2.
-        repeat match goal with
-               | H: word.unsigned _ mod 4 = 0 |- _ => unique pose proof (divisibleBy4Signed _ H)
-               end.
-        solve_divisibleBy4.
-      }
+      subst.
       ssplit; try eassumption; try reflexivity.
     }
     2: {
       inversion Rfinal. subst; clear Rfinal.
-      unfold LowerPipeline.machine_ok in *. cbn -[map.get map.empty instrencode] in *.
+      unfold LowerPipeline.machine_ok in *.
+      cbn -[map.get map.empty instrencode reg_class.all] in *.
       simp.
-      eexists _, {| getMachine := {| getLog := [] |} |}, _; cbn -[map.get map.empty instrencode].
+      eexists _, {| getMachine := {| getLog := _ |} |}, _, retvals.
+      cbn -[map.get map.empty instrencode reg_class.all].
       split. 1: exact Rn.
       pose proof ptsto_bytes_to_program (iset := RV32IM) as P. cbn in P.
       match goal with
@@ -204,27 +145,8 @@ Section WithParams.
                           end
       end.
       2: { eapply iff1ToEq. symmetry. eapply P; eassumption. }
-      match goal with
-      | |- context[?Q] => lazymatch Q with
-                          | ptsto_bytes ?p (instrencode ?i) => replace Q with (program RV32IM p i)
-                          end
-      end.
-      2: {
-        eapply iff1ToEq. symmetry. eapply P. 1: eassumption.
-        constructor. 2: constructor.
-        unfold verify. cbn. unfold verify_UJ. unfold opcode_JAL, RegisterNames.ra.
-        split; [|trivial].
-        split; [Lia.lia|].
-        split; [Lia.lia|].
-        ssplit; try eassumption.
-        eapply mod4_to_mod2.
-        repeat match goal with
-               | H: word.unsigned _ mod 4 = 0 |- _ => unique pose proof (divisibleBy4Signed _ H)
-               end.
-        solve_divisibleBy4.
-      }
       ssplit.
-      all: cbn -[map.get map.empty instrencode].
+      all: cbn -[map.get map.empty instrencode reg_class.all].
       all: try eassumption.
       all: try reflexivity.
       match goal with
@@ -234,7 +156,7 @@ Section WithParams.
       eauto using initial_state_is_ready_state.
     }
     (* `related` holds at beginning: *)
-    subst t.
+    subst pc.
     edestruct initial_state_exists as (sH & ? & ?). 1: eassumption.
     eapply mkRelated; simpl; eauto.
     Unshelve.

@@ -33,6 +33,8 @@ Require Import Cava.Expr.
 Require Import Cava.ExprProperties.
 Require Import Cava.Primitives.
 Require Import Cava.Semantics.
+Require Import Cava.Invariant.
+
 Require Import Cava.Components.Fifo.
 
 Import ListNotations.
@@ -41,362 +43,203 @@ Local Open Scope bool.
 Local Open Scope nat.
 Local Open Scope list.
 
-Lemma nz_s_1_a_1: forall x:nat, (x <> 0 -> x - 1 + 1 = x)%nat.
-Proof. lia. Qed.
-
-Lemma lt_nat_log2_simpl: forall x y,
-  (y < 2 ^ (Nat.log2_up x ))%nat ->
-  (N.of_nat y < 2 ^ N.of_nat (Nat.log2_up x))%N.
-Proof.
-  intros.
-  change 2%N with (N.of_nat (S (S 0))).
-  rewrite Nat2N.inj_pow.
-  lia.
-Qed.
-
-Lemma inj_le: forall x, (1 <=? x)%N = negb (N.to_nat x =? 0)%nat.
-Proof.
-  intros.
-  rewrite <- (N2Nat.id x).
-  rewrite (Nat2N.id (N.to_nat x)).
-  destruct (N.to_nat x); cbn.
-  { reflexivity. }
-  rewrite N.leb_le.
-  lia.
-Qed.
-
-Lemma eqb_inj: forall x y, ( N.of_nat x =? N.of_nat y )%N = ( x =? y ).
-Proof. intros.
-  destruct (Nat.eqb_spec x y ).
-  { rewrite e. rewrite N.eqb_refl. reflexivity. }
-  { rewrite N.eqb_neq. lia. }
-Qed.
-
 Section FifoSpec.
   Context (T: type).
   Context (fifo_size: nat).
   Context (Hfifo_nz: (1 < fifo_size)%nat).
 
-  Definition fifo_bits_size := Nat.log2_up (fifo_size + 1).
+  Lemma rewrite_if_modulo x y z: x < 2 ^ y ->
+    (if 1 <=? x then (x + 2 ^ y - 1) mod 2 ^ y else z) = (if 1 <=? x then x - 1 else z).
+  Proof.
+    intros.
+    rewrite (if_true_rew (1 <=? x) z ((x + 2 ^ y - 1) mod 2 ^ y) (x - 1)); [reflexivity|].
+    destruct (Nat.leb_spec0 1 x); try congruence; intros [].
+    apply Nat.sub_mod_no_underflow; lia.
+  Qed.
 
-  Definition fifo_pre
-    (contents: list (denote_type T))
-    (input : denote_type (input_of (fifo (T:=T) fifo_size)))
-    (state: denote_type (state_of (fifo (T:=T) fifo_size)))
-    :=
-    let '(valid, (data, (accepted_output,_))) := input in
-    let '(_, (_, (fifo, count))) := state in
-    (* if count is fifo_size we are full and we shouldn't be receiving  *)
-    (if valid then N.to_nat count < fifo_size else True).
-
-  Definition fifo_invariant
-    (contents: list (denote_type T))
-    (state: denote_type (state_of (fifo (T:=T) fifo_size)))
-    :=
-    let '(_, (_, (fifo, count))) := state in
-    fifo_size = length fifo
+  Global Instance fifo_invariant
+    : invariant_for (fifo fifo_size) (list (denote_type T)) :=
+    fun '(_, (_, (fifo, count))) 'contents =>
+    length fifo = fifo_size
     /\ N.to_nat count <= fifo_size
     /\ N.to_nat count = length contents
-    /\ contents = rev (firstn (length contents) fifo)
-  .
+    /\ contents = rev (firstn (length contents) fifo).
 
-  Definition fifo_contents_update (empty full: bool) contents
-      (input : denote_type (input_of (fifo (T:=T) fifo_size)))
-      :=
-    let '(valid, (data, (accepted_output,_))) := input in
-    let contents' := if accepted_output && negb empty then tl contents else contents in
-    contents' ++ if valid && negb full then [data] else [].
+  Instance fifo_specification
+    : specification_for (fifo fifo_size) (list (denote_type T)) :=
+    {| reset_repr := [];
+     update_repr :=
+      fun (input: denote_type (input_of (fifo fifo_size))) contents =>
+      let '(valid, (data, (accepted_output,_))) := input in
+      let full := length contents =? fifo_size in
+      ( (if accepted_output then tl contents else contents)
+        ++ if valid then [data] else []);
 
-  Ltac N2nat_lt_2lg_solve x :=
-    apply lt_nat_log2_simpl;
-    apply (Nat.lt_le_trans _ (length x + 1)); [lia|];
-    apply Nat.log2_up_spec; lia.
+     precondition :=
+      fun input contents =>
+      let '(valid, _) := input in
+      (if valid then length contents < fifo_size else True);
 
-  (* Reduces the mod equations that arise here that aren't solved by e.g.
-     Z.to_euclidean_division_equations, likely due to the non-constants modulus *)
-  Local Ltac reduce_mod_eqs fifo contents :=
-      match goal with
-      | |- context [ N.modulo ?X ?Y ] =>
-        let H := fresh in
-        assert (X mod Y = X)%N as H;
-        [ apply N.mod_small;
-          N2nat_lt_2lg_solve fifo
-        |]; rewrite H; clear H
-      | |- context [ N.modulo ( ?X + ?Y - 1 ) ?Y ] =>
-        let H := fresh in
-        assert (( X + Y - 1 ) mod Y = X - 1)%N as H;
-        let H1 := fresh in
-        assert (forall x, 0 < x -> x <> 0)%N as H1 by lia;
-        let H2 := fresh in
-        assert (2 ^ N.of_nat (Nat.log2_up (Datatypes.length fifo + 1)) <> 0)%N as H2 by
-          (
-            apply H1;
-            change 0%N with (N.of_nat 0)%nat;
-            N2nat_lt_2lg_solve fifo
-          );
+     postcondition :=
+      fun input contents (output: denote_type (output_of (fifo fifo_size))) =>
+        let '(valid, (data, (accepted_output,_))) := input in
 
-        rewrite N.add_sub_swap by lia;
-        rewrite <- N.add_mod_idemp_r by apply H2;
+        let pempty := length contents =? 0 in
 
-        rewrite N.mod_same by apply H2;
-        rewrite N.add_0_r;
+        let new_contents :=
+          (if accepted_output then tl contents else contents)
+          ++ if valid then [data] else [] in
 
-        rewrite N.mod_small;
+        exists valid value,
+          output = (valid, (value, (length new_contents =? 0, length new_contents =? fifo_size)))
+          /\ valid = negb pempty
+          /\ (if valid then value = hd default contents else True);
+  |}%nat.
 
-        replace (N.of_nat (length contents) - 1)%N with (N.of_nat (length contents - 1))%N
-          by apply Nat2N.inj_sub;
-
-        [| N2nat_lt_2lg_solve fifo]
-
-      | |- context [ N.modulo ( ?X + 1 ) ?Y ] =>
-        let H := fresh in
-        assert ( (X + 1)  mod Y = (X + 1) )%N as H;
-        [ replace (N.of_nat( length contents ) + 1)%N with (N.of_nat (length contents  + 1)) by lia;
-          apply N.mod_small;
-          N2nat_lt_2lg_solve fifo
-        |] ; rewrite H; clear H
-      end.
-
-  Lemma step_fifo_invariant
-      contents new_contents
-      (input : denote_type (input_of (fifo (T:=T) fifo_size)))
-      (state : denote_type (state_of (fifo (T:=T) fifo_size))) :
-    new_contents = fifo_contents_update (length contents =? 0) (length contents =? fifo_size) contents input ->
-    fifo_pre contents input state ->
-    fifo_invariant contents state ->
-    fifo_invariant new_contents (fst (step (fifo fifo_size) state input)).
+  Lemma fifo_invariant_preserved : invariant_preserved (fifo fifo_size).
   Proof.
-    destruct input as (input_valid, (input_data, (accepted_output, []))).
-    destruct state as (s_valid, (s_data, (fifo, count))).
-    intros Hcontents Hpre Hinv.
-    destruct Hinv as [Hfifo_len [Hcount_bound [Hcontents_len Hcontents_rev_fifo ]]].
-    cbv [fifo_pre fifo_invariant fifo_contents_update] in *.
-    cbn in fifo.
+    simplify_invariant (fifo (T:=T) fifo_size). cbn [absorb_any].
+    simplify_spec (fifo (T:=T) fifo_size).
+    intros (data_valid, (data, (accepted_output, []))).
+    intros (valid, (output, (fifo, count))).
+    intros contents.
+    intros; logical_simplify; revert H0; subst; intros.
 
-    split.
-    { destruct input_valid; stepsimpl; try rewrite length_removelast_cons; apply Hfifo_len. }
+    cbv [Fifo.fifo K]; stepsimpl; push_length.
+    autorewrite with Nnat.
 
-    (* *)
-    assert (fifo <> []) as Hfifon_empty by
-      (apply length_pos_nonnil; setoid_rewrite <- Hfifo_len; lia).
+    (* Simplify modular arithmetic *)
+    repeat rewrite Bool.andb_if; rewrite H3 in *.
+    repeat rewrite rewrite_if_modulo by (
+      apply (Nat.le_lt_trans _ (length fifo)); [lia|];
+        rewrite H0; apply (Nat.lt_le_trans _ (fifo_size + 1));
+        [|apply Nat.log2_up_spec]; lia).
+    rewrite le_1_is_0.
 
-    stepsimpl.
-
-    fold denote_type in *. (* denote_type is previously unfolded in some implicits *)
-
-    rewrite inj_le.
-    rewrite Hcontents_len.
-    rewrite <- Nat2N.id in Hcontents_len.
-    apply N2Nat.inj in Hcontents_len.
-    subst.
-
-    destruct (Nat.eqb_spec (@Datatypes.length (denote_type T) contents) 0)
-      as [Hcontents_len_z | Hcontents_len_nz];
-      destruct input_valid, accepted_output;
-      stepsimpl;
-      boolsimpl.
-
-    (* Clean up terms *)
-    all:
-      try rewrite app_nil_r;
-      try rewrite Hcontents_len_z;
-      try change (N.of_nat 0 + 1)%N with (N.of_nat 1)%N;
-      try replace (N.of_nat (length contents) + 1)%N with (N.of_nat (length contents + 1))%N by
-        apply Nat2N.inj_add;
-      try rewrite Nat2N.id.
-
-    (* Simplify mod equations *)
-    all: try reduce_mod_eqs fifo contents.
+    (* Simplify modular arithmetic *)
+    destruct data_valid; [
+      rewrite Nat.mod_small by
+        (apply (Nat.lt_le_trans _ (fifo_size + 1));
+          [ now apply Nat.add_lt_mono_r| apply Nat.log2_up_spec; lia ])
+      |].
 
     all:
-      try apply length_zero_iff_nil in Hcontents_len_z;
-      try rewrite Nat2N.id in *;
-      repeat ssplit.
-    all: try (tauto || lia).
+      fold denote_type in *; destruct accepted_output;
+      destr (length contents =? 0);
+      match goal with
+      | |- context [ length _ =? fifo_size ] => destr ( length contents =? fifo_size )
+      | |- _ => idtac
+      end;
+      boolsimpl; natsimpl.
 
-    all: subst; try rewrite app_nil_l.
+    all: try rewrite E in *; ssplit; try lia; natsimpl.
+    all: try rewrite Nat.sub_add by lia; try rewrite H4;
+         push_firstn; listsimpl; push_firstn;
+         repeat rewrite <- H4;
+         try reflexivity.
 
-    all: try (destruct fifo; tauto).
-
-    5: {
-      rewrite tl_length.
-      lia.
-    }
-    5: {
-      rewrite Hcontents_rev_fifo at 1.
-      rewrite tl_rev.
-      replace (length contents) with (S (length contents - 1)) by lia.
-      rewrite removelast_firstn by lia.
-      rewrite tl_length.
+    (* Solve remaining list based goals *)
+    all:
+      rewrite H4 at 1; try rewrite tl_rev;
+      try change [data] with (rev [data]);
+      try rewrite <- rev_app_distr;
+      try rewrite removelast_firstn_len;
+      try rewrite firstn_firstn;
+      try rewrite <- firstn_app_2;
+      try rewrite Nat.min_l by (push_length; rewrite Nat.min_l; lia);
+      push_length;
+      cbn [List.app];
+      try rewrite Nat.min_l by lia;
+      try replace (1 + Init.Nat.pred (length contents)) with (length contents) by lia;
+      try replace (Init.Nat.pred (length contents)) with (length contents - 1) by lia;
+      try replace (1 + length contents) with (length contents + 1) by lia;
       reflexivity.
-    }
-
-    all:
-      assert (Datatypes.length (contents) <> Datatypes.length fifo) by lia;
-      destruct (Nat.eqb_spec (Datatypes.length (contents)) (Datatypes.length fifo)); try tauto;
-      try rewrite app_length;
-      try rewrite tl_length;
-      try now (cbn; lia).
-
-    all:
-      rewrite Hcontents_rev_fifo at 1;
-      try rewrite tl_rev;
-      try (
-        replace (length contents) with (S (length contents - 1)) by lia;
-        rewrite removelast_firstn by lia);
-      boolsimpl.
-
-    {
-      rewrite removelast_cons1 by tauto.
-      cbn [length].
-      rewrite nz_s_1_a_1 by lia.
-      rewrite firstn_cons.
-      cbn.
-      rewrite firstn_removelast by lia.
-      reflexivity.
-    }
-
-    {
-      rewrite removelast_cons1 by tauto.
-      cbn [length].
-      rewrite Nat.add_1_r.
-      rewrite firstn_cons.
-      cbn.
-      rewrite firstn_removelast by lia.
-      reflexivity.
-    }
   Qed.
 
-  Definition fifo_spec
-      (contents: list (denote_type T))
-      (new_contents: list (denote_type T))
-      (input : denote_type (input_of (fifo (T:=T) fifo_size)))
-      : denote_type (Bit ** T ** Bit ** Bit) :=
-    (negb (0 =? length contents)
-    , (if 0 =? length contents then default else hd default contents
-    , (length new_contents =? 0
-    , length new_contents =? fifo_size)))%nat.
-
-  Lemma step_fifo
-      contents new_contents
-      (input : denote_type (input_of (fifo (T:=T) fifo_size)))
-      (state : denote_type (state_of (fifo (T:=T) fifo_size))) :
-    new_contents = fifo_contents_update (length contents =? 0) (length contents =? fifo_size) contents input ->
-    fifo_pre contents input state ->
-    fifo_invariant contents state ->
-    snd (step (fifo fifo_size) state input) = fifo_spec contents new_contents input.
+  Lemma fifo_output_correct : output_correct (fifo fifo_size).
   Proof.
-    destruct input as (input_valid, (input_data, (accepted_output, []))).
-    destruct state as (s_valid, (s_data, (fifo, count))).
-    intros Hcontents Hpre Hinv.
-    destruct Hinv as [Hfifo_len [Hcount_bound [Hcontents_len Hcontents_rev_fifo]]].
-    cbv [Fifo.fifo fifo_spec fifo_pre fifo_invariant fifo_contents_update K] in *.
-    cbn in fifo.
+    simplify_invariant (fifo (T:=T) fifo_size). cbn [absorb_any].
+    simplify_spec (fifo (T:=T) fifo_size).
 
-    (* *)
-    assert (fifo <> []) as Hfifon_empty by
-      (apply length_pos_nonnil; setoid_rewrite <- Hfifo_len; lia).
+    intros (data_valid, (data, (accepted_output, []))).
+    intros (valid, (output, (fifo, count))).
+    intros contents.
+    intros; logical_simplify.
 
-    stepsimpl.
-    repeat (destruct_pair_let; cbn [fst snd]).
+    cbv [Fifo.fifo K]; stepsimpl; push_length.
+    autorewrite with Nnat.
 
-    fold denote_type in *. (* denote_type is previously unfolded in some implicits *)
+    (* Simplify modular arithmetic *)
+    repeat rewrite Bool.andb_if; rewrite H2 in *.
+    rewrite rewrite_if_modulo by (
+      apply (Nat.le_lt_trans _ (length fifo)); [lia|];
+        rewrite H; apply (Nat.lt_le_trans _ (fifo_size + 1));
+        [|apply Nat.log2_up_spec]; lia).
+    rewrite le_1_is_0.
 
-    logical_simplify.
+    (* Simplify modular arithmetic *)
+    match goal with
+    | |- context [ if data_valid then ?A else ?B ] =>
+      erewrite (if_true_rew data_valid _ A); [|
+        intros; rewrite H4 in H0;
+        now rewrite Nat.mod_small by
+          (apply (Nat.lt_le_trans _ (fifo_size + 1));
+            [ now apply Nat.add_lt_mono_r| apply Nat.log2_up_spec; lia ])
+      ]
+    end.
 
     fold denote_type in *.
+    rewrite Bool.negb_andb.
+    exists (negb (length contents =? 0));
+      exists (hd default contents);
+      revert H; subst; subst; boolsimpl; intros H.
 
-    rewrite inj_le.
-    rewrite Hcontents_len.
-    rewrite <- Nat2N.id in Hcontents_len.
-    apply N2Nat.inj in Hcontents_len.
-    rewrite (Nat.eqb_sym 0 (length contents)).
-    subst.
+    ssplit; [ | reflexivity | ]; destr (length contents =? 0); boolsimpl; try reflexivity.
 
-    f_equal.
-    f_equal.
+    { replace (length contents - 1) with (length contents) by lia.
+      replace (hd default contents) with (@default T) by
+       (rewrite length_zero_iff_nil in *; clear H; now subst).
 
-    {
-      destruct (Nat.eqb_spec (@Datatypes.length (denote_type T) contents) 0)
-        as [Hcontents_len_z | Hcontents_len_nz];
-        stepsimpl;
-        boolsimpl.
-        { reflexivity. }
-        { try reduce_mod_eqs fifo contents.
-          { reflexivity. }
-          rewrite Nat2N.id.
-          rewrite resize_noop by reflexivity.
-          rewrite Hcontents_rev_fifo.
-          rewrite rev_length.
-          rewrite firstn_length.
-          rewrite hd_rev.
-          replace (Init.Nat.min (length contents) (length fifo))
-            with (length contents) by (rewrite Nat.min_l; lia).
-          rewrite <- (firstn_skipn (length contents) fifo) at 1.
-          rewrite app_nth1 .
-          2:{ cbn.
-            rewrite firstn_length.
-            replace (Init.Nat.min (length contents) (length fifo))
-            with (length contents).
-            2:{ rewrite Nat.min_l. {lia. }
-              rewrite Nat2N.id in Hcount_bound.
-              lia.
-            }
-            lia.
-          }
-        rewrite nth_last.
-        { reflexivity. }
-        rewrite firstn_length.
-        replace (Init.Nat.min (length contents) (length fifo))
-          with (length contents) by (rewrite Nat.min_l; lia).
-        reflexivity.
-        }
+      destr data_valid; destr accepted_output; cbn; natsimpl; reflexivity.
     }
 
-    destruct (Nat.eqb_spec (@Datatypes.length (denote_type T) contents) 0)
-      as [Hcontents_len_z | Hcontents_len_nz];
-    destruct input_valid, accepted_output;
-      stepsimpl;
-      boolsimpl;
-      fold denote_type in *;
-      try reduce_mod_eqs fifo contents;
-      try rewrite app_nil_r;
-      try reflexivity;
-      try rewrite app_length; cbn.
+    rewrite Nat.add_sub_swap by lia;
+      rewrite Nat.add_mod by (try apply Nat.pow_nonzero; lia);
+      rewrite Nat.mod_same by (try apply Nat.pow_nonzero; lia);
+      rewrite Nat.add_0_r;
+      rewrite Nat.mod_mod by (try apply Nat.pow_nonzero; lia);
+      match goal with
+      | |- context [2 ^ Nat.log2_up ?X] =>
+        rewrite Nat.mod_small by (
+          apply (Nat.lt_le_trans _ X); [ lia | apply Nat.log2_up_spec; lia ])
+      end.
 
-    all: destr (length contents =? length fifo); try lia; cbn.
-    all: repeat match goal with
-         | |- context [ ?X ] =>
-            lazymatch X with
-            | ( N.of_nat ?Y =? N.of_nat ?Z )%N => fail
-            | ( N.of_nat ?Y + ?Z =? _ )%N =>
-              replace ( N.of_nat Y + Z )%N
-              with ( N.of_nat (Y + (N.to_nat Z) ) )%N by now (rewrite Nat2N.inj_add; rewrite N2Nat.id)
-            | ( N.of_nat ?Y =? ?Z )%N =>
-              replace ( N.of_nat Y =? Z )%N
-                with ( N.of_nat Y =? N.of_nat (N.to_nat Z) )%N by now rewrite N2Nat.id
-            end
-         end.
-    all: repeat rewrite eqb_inj.
-    all: repeat match goal with
-         | |- context [ ?X ] =>
-            match X with
-            | _ =? _  => destr X; try lia
-            end
-         end.
-    all: try reflexivity.
-    all: repeat match goal with
-                | H: length (tl ?X) + 1 = _ |- _ =>
-                  rewrite tl_length in H; try rewrite nz_s_1_a_1 in H by lia
-                | H: length (tl ?X) + 1 <> _ |- _ =>
-                  rewrite tl_length in H; try rewrite nz_s_1_a_1 in H by lia
-                | H: length (tl ?X) = _ |- _ =>
-                  rewrite tl_length in H
-                | H: length (tl ?X) <> _ |- _ =>
-                  rewrite tl_length in H
-                end.
-    all: lia.
+    rewrite <- H.
+    rewrite resize_noop by lia.
+    rewrite nth_hd.
+    assert (nth 0 contents default = nth 0 (rev (firstn (length contents) fifo)) default) by
+      ( fold denote_type in *;
+        now rewrite <- H3).
+      rewrite H4;
+      fold denote_type; rewrite rev_nth by ( push_length; lia ).
+    push_length; rewrite Nat.min_l by lia.
+    rewrite nth_firstn_inbounds by lia.
+    destr data_valid; destr accepted_output; cbn; natsimpl;
+      try rewrite Nat.sub_add by lia; reflexivity.
   Qed.
+
+  Lemma fifo_invariant_at_reset : invariant_at_reset (fifo fifo_size).
+  Proof.
+    simplify_invariant (fifo (T:=T) fifo_size).
+    cbv [fifo]. cbn [reset_state]; stepsimpl.
+    ssplit; [ cbv [default]; push_length | | | ]; cbn; try reflexivity; lia.
+  Qed.
+
+  Existing Instances fifo_invariant_at_reset fifo_invariant_preserved
+           fifo_output_correct.
+
+  Global Instance fifo_correctness : correctness_for (fifo fifo_size).
+  Proof. constructor; typeclasses eauto. Defined.
 
 End FifoSpec.
 
