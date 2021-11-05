@@ -57,6 +57,12 @@ Section Var.
   Definition REG_KEY_6 := Constant (BitVec hmac_register_log_sz) 0xF.
   Definition REG_KEY_7 := Constant (BitVec hmac_register_log_sz) 0x10.
 
+  Definition hmac_inner_local_state :=
+    (Bit ** Bit ** Bit ** BitVec 6 ** BitVec 5 ** Vec (BitVec 32) 8 ** Bit)%circuit_type.
+
+  Definition hmac_inner_state :=
+    (hmac_inner_local_state ** sha256_state)%circuit_type.
+
   (* Hmac_inner uses realigned fifo values and regsiter map *)
   (* state value = *)
   (* 1. Hash key ^ ipad *)
@@ -65,7 +71,7 @@ Section Var.
   (* 4. Hash key ^ opad *)
   (* 5. Hash stored digest *)
   (* 6. Store digest and reset sha256 *)
-  Definition hmac_inner : Circuit _
+  Definition hmac_inner : Circuit hmac_inner_state
     [Bit; BitVec 32; BitVec 4; Bit; Bit; Bit; Bit; Vec (BitVec 32) 8]
     (Bit ** Bit ** sha_digest) := {{
     fun fifo_valid fifo_data fifo_length fifo_final
@@ -139,7 +145,18 @@ Section Var.
 
   }}.
 
-  Definition hmac : Circuit _ [Bit; BitVec 32; BitVec 5; BitVec 4; Bit; (Vec (BitVec 32) hmac_register_count)] (Vec (BitVec 32) hmac_register_count) := {{
+  Definition hmac_fifo_state :=
+    (Bit ** BitVec 32 ** BitVec 4 ** Bit ** Bit ** BitVec 32 ** BitVec 4 ** Bit)%circuit_type.
+
+  Definition hmac_state :=
+    ((Bit ** Vec (BitVec 32) hmac_register_count) **
+      realign_masked_fifo_state 256 **
+      hmac_fifo_state **
+      hmac_inner_state)%circuit_type.
+
+  Definition hmac : Circuit hmac_state
+        [Bit; BitVec 32; BitVec 5; BitVec 4; Bit; (Vec (BitVec 32) hmac_register_count)]
+        (Vec (BitVec 32) hmac_register_count) := {{
     fun write_en write_data write_address write_mask is_fifo_write registers =>
     let/delay '(sha_ready ; out_registers) :=
 
@@ -284,7 +301,12 @@ Section Var.
     )
   }}.
 
-  Definition hmac_top : Circuit _ [tl_h2d_t] tl_d2h_t := {{
+  Definition hmac_top_state :=
+    ((Bit ** tl_d2h_t ** Vec (BitVec 32) hmac_register_count) **
+     tlul_adapter_state **
+     hmac_state)%circuit_type.
+
+  Definition hmac_top : Circuit hmac_top_state [tl_h2d_t] tl_d2h_t := {{
     fun incoming_tlp =>
 
     let/delay '(was_fifo_full, tl_o; registers) :=
@@ -340,8 +362,8 @@ Section Var.
 End Var.
 
 Section SanityCheck.
-  Require Import Cava.Semantics.
-  Require Import Coq.Lists.List.
+  Import Cava.Semantics.
+  Import Coq.Lists.List.
   Import ListNotations.
   Open Scope list_scope.
   Close Scope circuit_type_scope.
@@ -354,7 +376,6 @@ Section SanityCheck.
 
   Definition get_regs (v: denote_type (state_of hmac_top))
     : denote_type (Vec (BitVec 32) hmac_register_count) .
-    cbv [state_of hmac absorb_any] in v.
     destruct v.
     destruct d as (_, (_, regs)).
     exact regs.
@@ -504,4 +525,3 @@ Section SanityCheck.
 
 
 End SanityCheck.
-

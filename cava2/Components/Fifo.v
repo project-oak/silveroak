@@ -36,7 +36,10 @@ Section Var.
 
   Context {var : tvar}.
 
-  Definition fifo {T} fifo_size: Circuit _ [Bit; T; Bit]
+  Definition fifo_state T fifo_size :=
+    (Bit ** T ** Vec T fifo_size ** BitVec (Nat.log2_up (fifo_size + 1)))%circuit_type.
+
+  Definition fifo {T} fifo_size: Circuit (fifo_state T fifo_size) [Bit; T; Bit]
     (* out_valid, out, empty, full *)
     (Bit ** T ** Bit ** Bit) :=
     let fifo_bits := BitVec (Nat.log2_up (fifo_size + 1)) in
@@ -56,7 +59,7 @@ Section Var.
       )
 
       initially (false,(default,(@default (Vec T fifo_size), 0)))
-      : denote_type (Bit ** T ** Vec T fifo_size ** fifo_bits) in
+      : denote_type (fifo_state T fifo_size) in
 
     ( valid, if valid then output else `Constant T default`
     (* Will be empty if accepted_output is asserted next cycle *)

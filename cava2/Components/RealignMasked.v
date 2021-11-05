@@ -36,7 +36,7 @@ Section Var.
 
   Context {var : tvar}.
 
-  Definition realign_inner : Circuit _ [BitVec 32; BitVec 4; BitVec 32; BitVec 4] (BitVec 64 ** BitVec 4) :=
+  Definition realign_inner : Circuit [] [BitVec 32; BitVec 4; BitVec 32; BitVec 4] (BitVec 64 ** BitVec 4) :=
   {{ fun existing existing_len data data_mask =>
       let '(packed_data; packed_len) :=
         (* Contiguous bytes only *)
@@ -67,7 +67,12 @@ Section Var.
       (out, packed_len + existing_len)
   }}.
 
-  Definition realign: Circuit _ [Bit; BitVec 32; BitVec 4; Bit; Bit] (Bit ** BitVec 32 ** BitVec 4) := {{
+  Definition realign_state :=
+    (Bit ** BitVec 32 ** BitVec 4 ** BitVec 64 ** BitVec 4)%circuit_type.
+
+  Definition realign: Circuit realign_state
+                              [Bit; BitVec 32; BitVec 4; Bit; Bit]
+                              (Bit ** BitVec 32 ** BitVec 4) := {{
 
     fun data_valid data data_mask flush consumer_ready =>
 
