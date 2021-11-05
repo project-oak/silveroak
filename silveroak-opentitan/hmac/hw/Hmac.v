@@ -302,7 +302,7 @@ Section Var.
   }}.
 
   Definition hmac_top_state :=
-    ((tl_d2h_t ** Vec (BitVec 32) hmac_register_count) **
+    ((Bit ** tl_d2h_t ** Vec (BitVec 32) hmac_register_count) **
      tlul_adapter_state **
      hmac_state)%circuit_type.
 
