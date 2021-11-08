@@ -16,9 +16,6 @@ Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.Bedrock2ToCava.
 
 Definition binary: list byte := Eval compute in Pipeline.instrencode sha256_asm.
 
-(* TODO: replace by actual hmac device init state *)
-Definition IDLE: unit := tt.
-
 Definition mach_valid(imem: mem -> Prop)(mach: ExtraRiscvMachine hmac_device): Prop :=
   subset (footpr imem) (of_list (getXAddrs mach)) /\
   getNextPc mach = word.add (getPc mach) (word.of_Z 4) /\
@@ -64,7 +61,7 @@ a_outp <> word.of_Z 0 ->
 word.unsigned (sp_val - stack_lo) mod 4 = 0 ->
 word.unsigned a_code mod 4 = 0 ->
 word.unsigned a_ret mod 4 = 0 ->
-m.(getExtraState) = IDLE ->
+device.is_ready_state m.(getExtraState) ->
 mach_valid (ptsto_bytes a_code binary * Rexec) m ->
 (bytearray a_inp inp *
  mem_available a_outp (a_outp + (word.of_Z 32)) *
@@ -75,7 +72,7 @@ run sched n m = Some m' /\
 map.get m'.(getRegs) RegisterNames.sp = Some sp_val /\
 map.agree_on callee_saved m.(getRegs) m'.(getRegs) /\
 m'.(getPc) = a_ret /\
-m'.(getExtraState) = IDLE /\
+device.is_ready_state m'.(getExtraState) /\
 mach_valid (ptsto_bytes a_code binary * Rexec) m' /\
 (bytearray a_inp inp *
  bytearray a_outp (sha256 inp)  *
@@ -138,23 +135,18 @@ Proof.
            end.
     reflexivity. }
   { unfold machine_ok, mach_valid in *. fwd.
-    unfold device.is_ready_state, hmac_device.
-    match goal with
-    | H: _ = IDLE |- _ => unfold IDLE in H; symmetry in H
-    end.
     ssplit; try eassumption.
     change (Pipeline.instrencode sha256_asm) with binary.
     apply sep_comm.
     unfold sep at 1. exists mH, mL. split. 1: exact Sp. split. 1: reflexivity.
-    use_sep_assumption. cancel. cancel_seps_at_indices O O. 1: reflexivity.
-    cbn [seps]. reflexivity. }
+    ecancel_assumption. }
   { unfold machine_ok in M. unfold mach_valid. fwd.
     do 2 eexists. ssplit.
     - unfold run. rewrite Rn. reflexivity.
     - assumption.
     - assumption.
     - reflexivity.
-    - unfold device.is_ready_state, hmac_device, IDLE in *. symmetry. assumption.
+    - assumption.
     - assumption.
     - assumption.
     - assumption.

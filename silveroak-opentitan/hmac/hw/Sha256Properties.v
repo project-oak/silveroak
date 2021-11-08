@@ -372,6 +372,13 @@ Instance sha256_specification
                   else True (* no guarantees about intermediate output *)
   |}.
 
+Local Hint Unfold
+      sha256_state
+      sha256_outer_state
+      padder_state
+      sha256_inner_state
+  : stepsimpl.
+
 Lemma sha256_invariant_at_reset : invariant_at_reset sha256.
 Proof.
   simplify_invariant sha256.
@@ -1316,4 +1323,3 @@ Existing Instances sha256_invariant_preserved sha256_output_correct sha256_invar
 
 Global Instance sha256_correctness : correctness_for sha256.
 Proof. constructor; try typeclasses eauto. Defined.
-

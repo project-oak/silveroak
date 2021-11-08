@@ -163,6 +163,13 @@ Section RealignMaskedFifo.
           else True) ;
     |}.
 
+  Hint Unfold
+       realign_masked_fifo_state
+       realign_masked_fifo_local_state
+       realign_state
+       fifo_state
+    : stepsimpl.
+
   Lemma realign_masked_fifo_invariant_preserved : invariant_preserved (realign_masked_fifo fifo_size).
   Proof.
     cbv [invariant_preserved].

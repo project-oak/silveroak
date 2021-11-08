@@ -96,6 +96,8 @@ Section FifoSpec.
           /\ (if valid then value = hd default contents else True);
   |}%nat.
 
+  Local Hint Unfold fifo_state : stepsimpl.
+
   Lemma fifo_invariant_preserved : invariant_preserved (fifo fifo_size).
   Proof.
     simplify_invariant (fifo (T:=T) fifo_size). cbn [absorb_any].
@@ -242,4 +244,3 @@ Section FifoSpec.
   Proof. constructor; typeclasses eauto. Defined.
 
 End FifoSpec.
-

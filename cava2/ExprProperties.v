@@ -37,7 +37,8 @@ Proof. reflexivity. Qed.
 Hint Rewrite @step_vec_as_tuple_one using solve [eauto] : stepsimpl.
 
 Ltac stepsimpl :=
-  repeat first [ progress
+  repeat first [ progress autounfold with stepsimpl
+               | progress
                    cbn [fst snd step denote_type absorb_any One Zero K
                             split_absorbed_denotation combine_absorbed_denotation
                             unary_semantics binary_semantics eqb ]
@@ -143,3 +144,28 @@ Proof.
   push_list_fold. reflexivity.
 Qed.
 Hint Rewrite @step_foldl2 using solve [eauto] : stepsimpl.
+
+Lemma step_endian_swap32 (x : denote_type (BitVec 32)) :
+  step endian_swap32 tt (x, tt)
+  = (tt, N.lor
+          (N.land (N.shiftr x 24) (N.ones 8))
+        (N.lor
+          (N.land (N.shiftl x 8) (N.shiftl (N.ones 8) 16))
+        (N.lor
+          (N.land (N.shiftr x 8) (N.shiftl (N.ones 8) 8))
+          (N.land (N.shiftl x 24) (N.shiftl (N.ones 8) 24))))).
+Proof.
+  cbv [endian_swap32]. stepsimpl. f_equal.
+  apply N.bits_inj; intro i. push_Ntestbit.
+  cbn [Nat.add].
+
+  destr (i <? N.of_nat 8)%N;
+  [|destr (i <? N.of_nat 16)%N;
+  [|destr (i <? N.of_nat 24)%N;
+  [|destr (i <? N.of_nat 32)%N]
+  ]]; push_Ntestbit; boolsimpl.
+
+  all: try reflexivity; f_equal; prove_by_zify.
+Qed.
+
+Hint Rewrite @step_endian_swap32 using solve [eauto] : stepsimpl.

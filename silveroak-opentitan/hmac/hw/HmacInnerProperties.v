@@ -408,6 +408,15 @@ Ltac destruct_one_inner_match :=
   | |- context [if ?B then _ else _] => fail_if_if_in B; destr B
   end.
 
+Local Hint Unfold
+      hmac_inner_state
+      hmac_inner_local_state
+      sha256_state
+      sha256_outer_state
+      padder_state
+      sha256_inner_state
+  : stepsimpl.
+
 Lemma hmac_inner_invariant_at_reset :
   invariant_at_reset hmac_inner.
 Proof.

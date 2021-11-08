@@ -226,11 +226,10 @@ Instance sha256_inner_specification
 
 Lemma sha256_inner_invariant_at_reset : invariant_at_reset sha256_inner.
 Proof.
-  simplify_invariant sha256_inner.
-  cbn [reset_state reset_repr sha256_inner sha256_inner_specification];
-    stepsimpl.
-  ssplit; reflexivity.
+  simplify_invariant sha256_inner. repeat split.
 Qed.
+
+Local Hint Unfold sha256_inner_state : stepsimpl.
 
 Lemma sha256_inner_invariant_preserved : invariant_preserved sha256_inner.
 Proof.

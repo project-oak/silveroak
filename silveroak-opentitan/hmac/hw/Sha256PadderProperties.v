@@ -261,9 +261,7 @@ Instance sha256_padder_specification
 Lemma sha256_padder_invariant_at_reset : invariant_at_reset sha256_padder.
 Proof.
   simplify_invariant sha256_padder.
-  cbn [reset_state reset_repr sha256_padder sha256_padder_specification];
-    stepsimpl.
-  ssplit; reflexivity.
+  repeat split; reflexivity.
 Qed.
 
 (* helper lemma for modular arithmetic *)
@@ -341,6 +339,8 @@ Proof.
   (* solve all other goals with modular arithmetic automation *)
   all:prove_by_zify.
 Qed.
+
+Local Hint Unfold padder_state : stepsimpl.
 
 Lemma sha256_padder_invariant_preserved : invariant_preserved sha256_padder.
 Proof.
