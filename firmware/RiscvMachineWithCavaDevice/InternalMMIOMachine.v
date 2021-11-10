@@ -77,15 +77,36 @@ Module device.
        where the MMIO read immediately gives a "busy" response, and the
        software keeps polling until the MMIO read returns a "done" response *)
 
-  (* returning None means out of fuel and must not happen if fuel >= device.maxRespDelay *)
-  Definition runUntilResp{D: device}(h2d: tl_h2d) :=
-    fix rec(fuel: nat)(s: device.state): option tl_d2h * device.state :=
-      let '(next, respo) := device.run1 s h2d in
-      if d_valid respo then (Some respo, next) else
-        match fuel with
-        | O => (None, next)
-        | S fuel' => rec fuel' next
-        end.
+  (* returning None means out of fuel and must not happen if fuel >= device.maxRespDelay.
+     It is also assumed that [a_valid h2d = true] and [d_ready h2d = true]. *)
+  Definition runUntilResp{D: device}(h2d: tl_h2d)(fuel: nat)(s: device.state) :=
+    let fix receive(fuel: nat)(s: device.state): option tl_d2h * device.state :=
+        let '(next, d2h) := device.run1 s (set_d_ready true tl_h2d_default) in
+        if d_valid d2h then (Some d2h, next) else
+          match fuel with
+          | O => (None, next)
+          | S fuel' => receive fuel' next
+          end in
+
+    let fix send(fuel: nat)(s: device.state)(prev_a_ready: bool): option tl_d2h * device.state :=
+        let '(next, d2h) := device.run1 s h2d in
+        if prev_a_ready then
+          if d_valid d2h then (Some d2h, next) else
+          match fuel with
+          | O => (None, next)
+          | S fuel' => receive fuel' next
+          end
+        else
+          match fuel with
+          | O => (None, next)
+          | S fuel' => send fuel' next (a_ready d2h)
+          end in
+
+    (* As we don't know yet if the device is listening (on channel A), we have
+       to send an empty h2d packet first. Perhaps we should keep track of the
+       last a_ready value so we don't have to do this? *)
+    let '(next, d2h) := device.run1 s tl_h2d_default in
+    send fuel next (a_ready d2h).
 
   Section WithWordAndDevice.
     Context {word: Interface.word.word 32} {word_ok: word.ok word} {D: device}.
