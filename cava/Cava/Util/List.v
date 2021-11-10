@@ -1027,6 +1027,15 @@ Section Replace.
       | S n' => x :: replace n' a xs
       end
     end%list.
+
+  Lemma length_replace {A} : forall n a (ls: list A),
+      length (replace n a ls) = length ls.
+  Proof.
+    intros. generalize dependent n.
+    induction ls; intros; destruct n;
+      try reflexivity;
+      cbn; auto.
+  Qed.
 End Replace.
 
 (* Proofs about fold_right and fold_left *)
