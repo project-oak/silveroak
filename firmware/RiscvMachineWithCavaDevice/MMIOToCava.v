@@ -61,6 +61,8 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
      we will get a response matching some possible high-level read step's response,
      but not necessarily the one we used to show that sH accepts reads (to allow
      underspecification-nondeterminism in the high-level state machine) *)
+
+  (* TODO: replace the length clauses with [In (a_source h2d) (device.tl_inflight_ops sL)] *)
   state_machine_read_to_device_read_or_later: forall log2_nbytes r sH sL sL' h2d d2h,
       (exists v sH', state_machine.read_step (2 ^ log2_nbytes) sH r v sH') ->
       device_state_related sH sL ->
@@ -69,14 +71,38 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       a_size h2d = N.of_nat log2_nbytes ->
       a_address h2d = word_to_N (state_machine.reg_addr r) ->
       d_ready h2d = true ->
+      List.length (device.tl_inflight_ops sL) = 0%nat ->
+      device.run1 sL h2d = (sL', d2h) ->
+      if a_ready (device.last_d2h sL) then
+        if d_valid d2h then
+          exists sH',
+            device_state_related sH' sL' /\
+            state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data d2h)) sH' /\
+            List.length (device.tl_inflight_ops sL') = 0%nat
+        else
+          device_state_related sH sL' /\
+          (device.maxRespDelay sL' h2d < device.maxRespDelay sL h2d)%nat /\
+          List.length (device.tl_inflight_ops sL') = 1%nat
+      else
+        device_state_related sH sL' /\
+        (device.maxRespDelay sL' h2d < device.maxRespDelay sL h2d)%nat /\
+        List.length (device.tl_inflight_ops sL') = 0%nat;
+
+  state_machine_read_to_device_read_or_later_wait: forall log2_nbytes r sH sL sL' h2d d2h,
+      (exists v sH', state_machine.read_step (2 ^ log2_nbytes) sH r v sH') ->
+      device_state_related sH sL ->
+      d_ready h2d = true ->
+      List.length (device.tl_inflight_ops sL) = 1%nat ->
       device.run1 sL h2d = (sL', d2h) ->
       if d_valid d2h then
         exists sH',
           device_state_related sH' sL' /\
-          state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data d2h)) sH'
+          state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data d2h)) sH' /\
+          List.length (device.tl_inflight_ops sL') = 0%nat
       else
         device_state_related sH sL' /\
-        (device.maxRespDelay sL' h2d < device.maxRespDelay sL h2d)%nat;
+        (device.maxRespDelay sL' h2d < device.maxRespDelay sL h2d)%nat /\
+        List.length (device.tl_inflight_ops sL') = 1%nat;
 
   (* for each high-level state sH in which an n-byte write to register r with value v is possible,
      if we run the low-level device with the write step's address and value on the input wires,
@@ -94,14 +120,38 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       a_address h2d = word_to_N (state_machine.reg_addr r) ->
       a_data h2d = word_to_N v ->
       d_ready h2d = true ->
+      List.length (device.tl_inflight_ops sL) = 0%nat ->
+      device.run1 sL h2d = (sL', d2h) ->
+      if a_ready (device.last_d2h sL) then
+        if d_valid d2h then
+          exists sH',
+            device_state_related sH' sL' /\
+            state_machine.write_step (2 ^ log2_nbytes) sH r v sH' /\
+            List.length (device.tl_inflight_ops sL') = 0%nat
+        else
+          device_state_related sH sL' /\
+          (device.maxRespDelay sL' h2d < device.maxRespDelay sL h2d)%nat /\
+          List.length (device.tl_inflight_ops sL') = 1%nat
+      else
+        device_state_related sH sL' /\
+        (device.maxRespDelay sL' h2d < device.maxRespDelay sL h2d)%nat /\
+        List.length (device.tl_inflight_ops sL') = 0%nat;
+
+  state_machine_write_to_device_write_or_later_wait: forall log2_nbytes r v sH sL sL' h2d d2h,
+      (exists sH', state_machine.write_step (2 ^ log2_nbytes) sH r v sH') ->
+      device_state_related sH sL ->
+      d_ready h2d = true ->
+      List.length (device.tl_inflight_ops sL) = 1%nat ->
       device.run1 sL h2d = (sL', d2h) ->
       if d_valid d2h then
         exists sH',
           device_state_related sH' sL' /\
-          state_machine.write_step (2 ^ log2_nbytes) sH r v sH'
+          state_machine.write_step (2 ^ log2_nbytes) sH r v sH' /\
+          List.length (device.tl_inflight_ops sL') = 0%nat
       else
         device_state_related sH sL' /\
-        (device.maxRespDelay sL' h2d < device.maxRespDelay sL h2d)%nat;
+        (device.maxRespDelay sL' h2d < device.maxRespDelay sL h2d)%nat /\
+        List.length (device.tl_inflight_ops sL') = 1%nat;
 
   (* If two steps starting in the same high-level state agree on what gets appended to the trace,
      then the resulting high-level states must be equal.
@@ -146,20 +196,36 @@ Section WithParams.
       a_size h2d = N.of_nat log2_nbytes ->
       a_address h2d = word_to_N (state_machine.reg_addr r) ->
       d_ready h2d = true ->
+      List.length (device.tl_inflight_ops sL) = 0%nat ->
       exists d2h sL' sH',
         device.runUntilResp h2d (device.maxRespDelay sL h2d) sL = (Some d2h, sL') /\
         device_state_related sH' sL' /\
-        state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data d2h)) sH'.
+        state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data d2h)) sH' /\
+        List.length (device.tl_inflight_ops sL) = 0%nat.
   Proof.
     intros. remember (device.maxRespDelay sL h2d) as fuel. remember (S fuel) as B.
     assert (device.maxRespDelay sL h2d <= fuel < B)%nat as HB by lia. clear HeqB Heqfuel.
-    revert fuel sH sL H H0 HB.
+    (* revert H6. *)
+    (* match goal with *)
+    (* | |- (?l = 0%nat) -> (exists i1 i2 i3, and ?c1 (and ?c2 (and ?c3 ?c4))) => *)
+    (*   apply proj1 with *)
+    (*       (B:=(l = 1%nat) -> *)
+    (*           (exists (i1 : tl_d2h) (i2 : D) (i3 : M), and c1 (and c2 (and c3 c4)))) *)
+    (* end. *)
+    revert fuel sH sL H H0 HB H6.
     induction B; intros.
     - exfalso. lia.
-    - destr fuel; cbn [device.runUntilResp]; destruct_one_match;
+    - destr fuel; cbn [device.runUntilResp]; do 1 destruct_one_match;
+        (* destruct (a_ready t). *)
         pose proof (state_machine_read_to_device_read_or_later
-                      _ _ _ _ _ _ _ H H0 H1 H2 H3 H4 H5 E) as P;
-        (destruct_one_match; [destruct P as (sH' & R & V) | destruct P as (R & Decr)]).
+                      _ _ _ _ _ _ _ H H0 H1 H2 H3 H4 H5 H6 E) as P.
+      + do 1 destruct_one_match.
+        * do 1 destruct_one_match.
+          -- destruct P as (sH' & R & V & L).
+             repeat eexists; try reflexivity; try apply R; try assumption.
+          -- destruct P as (R & Decr & L).
+        *
+        (do 2 destruct_one_match; [destruct P as (sH' & R & V) | destruct P as (R & Decr)]).
       + (* 0 remaining fuel, valid response: *)
         clear -R V. eauto 10.
       + (* 0 remaining fuel, no valid response: *)

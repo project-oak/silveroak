@@ -54,6 +54,17 @@ Module device.
        includes Cava.Core.Circuit.reset_state *)
     is_ready_state: state -> Prop;
 
+    (* the d2h output the device produced when it transitioned to the state *)
+    (* TODO: probably need to add to [device_implements_state_machine] somthing like
+     [forall s h2d d2h s', run1 s h2d = (s', d2h) -> last_d2h s' = d2h] *)
+    last_d2h: state -> tl_d2h;
+
+    (* indicates an inflight operation: the device received a request on channel
+       A, but a response on channel D hasn't been exchanged yet *)
+    (* TODO: probably need to add to [device_implements_state_machine] somthing like
+     [forall s, is_ready_state s -> tl_inflight_ops s = []] *)
+    tl_inflight_ops: state -> list N;
+
     (* run one simulation step, will be instantiated with Cava.Semantics.Combinational.step *)
     run1: (* input: TileLink host-2-device *)
       state -> tl_h2d ->
@@ -77,36 +88,31 @@ Module device.
        where the MMIO read immediately gives a "busy" response, and the
        software keeps polling until the MMIO read returns a "done" response *)
 
+  Definition waitForResp{D: device} :=
+    fix rec(fuel: nat)(s: device.state): option tl_d2h * device.state :=
+      let '(next, d2h) := device.run1 s (set_d_ready true tl_h2d_default) in
+      if d_valid d2h then (Some d2h, next) else
+        match fuel with
+        | O => (None, next)
+        | S fuel' => rec fuel' next
+        end.
+
   (* returning None means out of fuel and must not happen if fuel >= device.maxRespDelay.
      It is also assumed that [a_valid h2d = true] and [d_ready h2d = true]. *)
-  Definition runUntilResp{D: device}(h2d: tl_h2d)(fuel: nat)(s: device.state) :=
-    let fix receive(fuel: nat)(s: device.state): option tl_d2h * device.state :=
-        let '(next, d2h) := device.run1 s (set_d_ready true tl_h2d_default) in
+  Definition runUntilResp{D: device}(h2d: tl_h2d) :=
+    fix rec(fuel: nat)(s: device.state): option tl_d2h * device.state :=
+      let '(next, d2h) := device.run1 s h2d in
+      if a_ready (device.last_d2h s) then
         if d_valid d2h then (Some d2h, next) else
           match fuel with
           | O => (None, next)
-          | S fuel' => receive fuel' next
-          end in
-
-    let fix send(fuel: nat)(s: device.state)(prev_a_ready: bool): option tl_d2h * device.state :=
-        let '(next, d2h) := device.run1 s h2d in
-        if prev_a_ready then
-          if d_valid d2h then (Some d2h, next) else
-          match fuel with
-          | O => (None, next)
-          | S fuel' => receive fuel' next
+          | S fuel' => waitForResp fuel' next
           end
-        else
-          match fuel with
-          | O => (None, next)
-          | S fuel' => send fuel' next (a_ready d2h)
-          end in
-
-    (* As we don't know yet if the device is listening (on channel A), we have
-       to send an empty h2d packet first. Perhaps we should keep track of the
-       last a_ready value so we don't have to do this? *)
-    let '(next, d2h) := device.run1 s tl_h2d_default in
-    send fuel next (a_ready d2h).
+      else
+        match fuel with
+        | O => (None, next)
+        | S fuel' => rec fuel' next
+        end.
 
   Section WithWordAndDevice.
     Context {word: Interface.word.word 32} {word_ok: word.ok word} {D: device}.
