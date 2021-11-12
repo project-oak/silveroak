@@ -81,11 +81,11 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
             List.length (device.tl_inflight_ops sL') = 0%nat
         else
           device_state_related sH sL' /\
-          (device.maxRespDelay sL' (set_d_ready true tl_h2d_default) < device.maxRespDelay sL h2d)%nat /\
+          (device.maxRespDelay sL' < device.maxRespDelay sL)%nat /\
           List.length (device.tl_inflight_ops sL') = 1%nat
       else
         device_state_related sH sL' /\
-        (device.maxRespDelay sL' h2d < device.maxRespDelay sL h2d)%nat /\
+        (device.maxRespDelay sL' < device.maxRespDelay sL)%nat /\
         List.length (device.tl_inflight_ops sL') = 0%nat;
 
   state_machine_read_to_device_read_or_later_wait: forall log2_nbytes r sH sL sL' d2h,
@@ -100,7 +100,7 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
           List.length (device.tl_inflight_ops sL') = 0%nat
       else
         device_state_related sH sL' /\
-        (device.maxRespDelay sL' (set_d_ready true tl_h2d_default) < device.maxRespDelay sL (set_d_ready true tl_h2d_default))%nat /\
+        (device.maxRespDelay sL' < device.maxRespDelay sL)%nat /\
         List.length (device.tl_inflight_ops sL') = 1%nat;
 
   (* for each high-level state sH in which an n-byte write to register r with value v is possible,
@@ -129,11 +129,11 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
             List.length (device.tl_inflight_ops sL') = 0%nat
         else
           device_state_related sH sL' /\
-          (device.maxRespDelay sL' (set_d_ready true tl_h2d_default) < device.maxRespDelay sL h2d)%nat /\
+          (device.maxRespDelay sL' < device.maxRespDelay sL)%nat /\
           List.length (device.tl_inflight_ops sL') = 1%nat
       else
         device_state_related sH sL' /\
-        (device.maxRespDelay sL' h2d < device.maxRespDelay sL h2d)%nat /\
+        (device.maxRespDelay sL' < device.maxRespDelay sL)%nat /\
         List.length (device.tl_inflight_ops sL') = 0%nat;
 
   state_machine_write_to_device_write_or_later_wait: forall log2_nbytes r v sH sL sL' d2h,
@@ -148,7 +148,7 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
           List.length (device.tl_inflight_ops sL') = 0%nat
       else
         device_state_related sH sL' /\
-        (device.maxRespDelay sL' (set_d_ready true tl_h2d_default) < device.maxRespDelay sL (set_d_ready true tl_h2d_default))%nat /\
+        (device.maxRespDelay sL' < device.maxRespDelay sL)%nat /\
         List.length (device.tl_inflight_ops sL') = 1%nat;
 
   (* If two steps starting in the same high-level state agree on what gets appended to the trace,
@@ -191,14 +191,14 @@ Section WithParams.
       device_state_related sH sL ->
       List.length (device.tl_inflight_ops sL) = 1%nat ->
       exists d2h sL' sH',
-        device.waitForResp (device.maxRespDelay sL (set_d_ready true tl_h2d_default)) sL = (Some d2h, sL') /\
+        device.waitForResp (device.maxRespDelay sL) sL = (Some d2h, sL') /\
         device_state_related sH' sL' /\
         state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data d2h)) sH' /\
         List.length (device.tl_inflight_ops sL') = 0%nat.
   Proof.
-    intros. remember (device.maxRespDelay sL (set_d_ready true tl_h2d_default)) as fuel.
+    intros. remember (device.maxRespDelay sL) as fuel.
     remember (S fuel) as B.
-    assert (device.maxRespDelay sL (set_d_ready true tl_h2d_default) <= fuel < B)%nat as HB by lia.
+    assert (device.maxRespDelay sL <= fuel < B)%nat as HB by lia.
     clear HeqB Heqfuel.
     revert fuel sH sL H H0 H1 HB.
     induction B; intros.
@@ -218,14 +218,14 @@ Section WithParams.
       device_state_related sH sL ->
       List.length (device.tl_inflight_ops sL) = 1%nat ->
       exists d2h sL' sH',
-        device.waitForResp (device.maxRespDelay sL (set_d_ready true tl_h2d_default)) sL = (Some d2h, sL') /\
+        device.waitForResp (device.maxRespDelay sL) sL = (Some d2h, sL') /\
         device_state_related sH' sL' /\
         state_machine.write_step (2 ^ log2_nbytes) sH r v sH' /\
         List.length (device.tl_inflight_ops sL') = 0%nat.
   Proof.
-    intros. remember (device.maxRespDelay sL (set_d_ready true tl_h2d_default)) as fuel.
+    intros. remember (device.maxRespDelay sL) as fuel.
     remember (S fuel) as B.
-    assert (device.maxRespDelay sL (set_d_ready true tl_h2d_default) <= fuel < B)%nat as HB by lia.
+    assert (device.maxRespDelay sL <= fuel < B)%nat as HB by lia.
     clear HeqB Heqfuel.
     revert fuel sH sL H H0 H1 HB.
     induction B; intros.
@@ -263,13 +263,13 @@ Section WithParams.
       d_ready h2d = true ->
       List.length (device.tl_inflight_ops sL) = 0%nat ->
       exists d2h sL' sH',
-        device.runUntilResp h2d (device.maxRespDelay sL h2d) sL = (Some d2h, sL') /\
+        device.runUntilResp h2d (device.maxRespDelay sL) sL = (Some d2h, sL') /\
         device_state_related sH' sL' /\
         state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data d2h)) sH' /\
         List.length (device.tl_inflight_ops sL') = 0%nat.
   Proof.
-    intros. remember (device.maxRespDelay sL h2d) as fuel. remember (S fuel) as B.
-    assert (device.maxRespDelay sL h2d <= fuel < B)%nat as HB by lia. clear HeqB Heqfuel.
+    intros. remember (device.maxRespDelay sL) as fuel. remember (S fuel) as B.
+    assert (device.maxRespDelay sL <= fuel < B)%nat as HB by lia. clear HeqB Heqfuel.
     revert fuel sH sL H H0 HB H6.
     induction B; intros.
     - exfalso. lia.
@@ -311,13 +311,13 @@ Section WithParams.
       d_ready h2d = true ->
       List.length (device.tl_inflight_ops sL) = 0%nat ->
       exists ignored sL' sH',
-        device.runUntilResp h2d (device.maxRespDelay sL h2d) sL = (Some ignored, sL') /\
+        device.runUntilResp h2d (device.maxRespDelay sL) sL = (Some ignored, sL') /\
         device_state_related sH' sL' /\
         state_machine.write_step (2 ^ log2_nbytes) sH r v sH' /\
         List.length (device.tl_inflight_ops sL') = 0%nat.
   Proof.
-    intros. remember (device.maxRespDelay sL h2d) as fuel. remember (S fuel) as B.
-    assert (device.maxRespDelay sL h2d <= fuel < B)%nat as HB by lia. clear HeqB Heqfuel.
+    intros. remember (device.maxRespDelay sL) as fuel. remember (S fuel) as B.
+    assert (device.maxRespDelay sL <= fuel < B)%nat as HB by lia. clear HeqB Heqfuel.
     revert fuel sH sL H H0 HB H7.
     induction B; intros.
     - exfalso. lia.

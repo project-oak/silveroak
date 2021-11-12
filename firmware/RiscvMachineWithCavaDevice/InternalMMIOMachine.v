@@ -79,7 +79,7 @@ Module device.
 
     (* max number of device cycles this device takes to serve read/write requests, ie
        max number of run1 calls with active read/write request until the device responds *)
-    maxRespDelay: state -> tl_h2d -> nat;
+    maxRespDelay: state -> nat;
   }.
   (* Note: there are two levels of "polling until a response is available":
      - on the hardware level, using runUntilResp, which appears as
@@ -177,7 +177,7 @@ Section WithParams.
     OState (ExtraRiscvMachine D) word :=
     mach <- get;
     let (respo, new_device_state) :=
-        device.runUntilResp h2d (device.maxRespDelay mach.(getExtraState) h2d)
+        device.runUntilResp h2d (device.maxRespDelay mach.(getExtraState))
                             mach.(getExtraState) in
     put (withExtraState new_device_state mach);;
     resp <- fail_if_None respo;
