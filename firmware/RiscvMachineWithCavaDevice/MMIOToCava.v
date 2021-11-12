@@ -129,19 +129,18 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
             List.length (device.tl_inflight_ops sL') = 0%nat
         else
           device_state_related sH sL' /\
-          (device.maxRespDelay sL' h2d < device.maxRespDelay sL h2d)%nat /\
+          (device.maxRespDelay sL' (set_d_ready true tl_h2d_default) < device.maxRespDelay sL h2d)%nat /\
           List.length (device.tl_inflight_ops sL') = 1%nat
       else
         device_state_related sH sL' /\
         (device.maxRespDelay sL' h2d < device.maxRespDelay sL h2d)%nat /\
         List.length (device.tl_inflight_ops sL') = 0%nat;
 
-  state_machine_write_to_device_write_or_later_wait: forall log2_nbytes r v sH sL sL' h2d d2h,
+  state_machine_write_to_device_write_or_later_wait: forall log2_nbytes r v sH sL sL' d2h,
       (exists sH', state_machine.write_step (2 ^ log2_nbytes) sH r v sH') ->
       device_state_related sH sL ->
-      d_ready h2d = true ->
       List.length (device.tl_inflight_ops sL) = 1%nat ->
-      device.run1 sL h2d = (sL', d2h) ->
+      device.run1 sL (set_d_ready true tl_h2d_default) = (sL', d2h) ->
       if d_valid d2h then
         exists sH',
           device_state_related sH' sL' /\
@@ -149,7 +148,7 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
           List.length (device.tl_inflight_ops sL') = 0%nat
       else
         device_state_related sH sL' /\
-        (device.maxRespDelay sL' h2d < device.maxRespDelay sL h2d)%nat /\
+        (device.maxRespDelay sL' (set_d_ready true tl_h2d_default) < device.maxRespDelay sL (set_d_ready true tl_h2d_default))%nat /\
         List.length (device.tl_inflight_ops sL') = 1%nat;
 
   (* If two steps starting in the same high-level state agree on what gets appended to the trace,
@@ -207,12 +206,37 @@ Section WithParams.
     - destr fuel; cbn [device.waitForResp]; destruct_one_match;
         pose proof (state_machine_read_to_device_read_or_later_wait
                       _ _ _ _ _ _ H H0 H1 E) as P;
-        destruct_one_match.
-      + destruct P as (sH' & R & V & L). eauto 10.
+        (destruct_one_match; [destruct P as (sH' & R & V & L); eauto 10 |
+                              destruct P as (R & Decl & L)]).
       + exfalso. lia.
-      + destruct P as (sH' & R & V & L). eauto 10.
-      + destruct P as (R & Decl & L).
-        edestruct IHB as (d2h & sL'' & sH'' & Run & Rel & St & Ln);
+      + edestruct IHB as (d2h & sL'' & sH'' & Run & Rel & St & Ln);
+          try eassumption. 2: eauto 10. lia.
+  Qed.
+
+  Lemma state_machine_write_to_device_write_wait: forall log2_nbytes r v sH sL,
+      (exists sH', state_machine.write_step (2 ^ log2_nbytes) sH r v sH') ->
+      device_state_related sH sL ->
+      List.length (device.tl_inflight_ops sL) = 1%nat ->
+      exists d2h sL' sH',
+        device.waitForResp (device.maxRespDelay sL (set_d_ready true tl_h2d_default)) sL = (Some d2h, sL') /\
+        device_state_related sH' sL' /\
+        state_machine.write_step (2 ^ log2_nbytes) sH r v sH' /\
+        List.length (device.tl_inflight_ops sL') = 0%nat.
+  Proof.
+    intros. remember (device.maxRespDelay sL (set_d_ready true tl_h2d_default)) as fuel.
+    remember (S fuel) as B.
+    assert (device.maxRespDelay sL (set_d_ready true tl_h2d_default) <= fuel < B)%nat as HB by lia.
+    clear HeqB Heqfuel.
+    revert fuel sH sL H H0 H1 HB.
+    induction B; intros.
+    - exfalso. lia.
+    - destr fuel; cbn [device.waitForResp]; destruct_one_match;
+        pose proof (state_machine_write_to_device_write_or_later_wait
+                      _ _ _ _ _ _ _ H H0 H1 E) as P;
+        (destruct_one_match; [destruct P as (sH' & R & V & L); eauto 10 |
+                              destruct P as (R & Decl & L)]).
+      + exfalso. lia.
+      + edestruct IHB as (d2h & sL'' & sH'' & Run & Rel & St & Ln);
           try eassumption. 2: eauto 10. lia.
   Qed.
 
@@ -222,12 +246,11 @@ Section WithParams.
       device.waitForResp fuel' s = (Some d2h, s').
   Proof.
     intros ? ?. revert fuel. induction fuel'; intros; inversion H; subst; auto.
-    cbn [device.waitForResp].
-    destruct_one_match. destruct_tl_d2h. tlsimpl.
-    destruct d_valid.
-    - destruct fuel; cbn in H0; rewrite E in H0; cbn in H0; assumption.
-    - destruct fuel; cbn in H0; rewrite E in H0; cbn in H0; try discriminate.
-      eapply IHfuel' with (fuel:=fuel); auto. lia.
+    cbn [device.waitForResp]. destruct_one_match.
+    destruct (d_valid t) eqn:Ed_valid;
+      destruct fuel; cbn [device.waitForResp] in H0; rewrite E, Ed_valid in H0;
+        try assumption; try discriminate.
+    eapply IHfuel' with (fuel:=fuel); [lia|auto].
   Qed.
 
   Lemma state_machine_read_to_device_read: forall log2_nbytes r sH sL h2d,
@@ -253,23 +276,21 @@ Section WithParams.
     - destr fuel; cbn [device.runUntilResp]; destruct_one_match;
           pose proof (state_machine_read_to_device_read_or_later
                         _ _ _ _ _ _ _ H H0 H1 H2 H3 H4 H5 H6 E) as P;
-          repeat destruct_one_match.
+          (repeat destruct_one_match; [destruct P as (sH' & R & V & L) |
+                                       destruct P as (R & Decr & L) ..]).
       + (* 0 remaining fuel, device ready, valid response: *)
-        destruct P as (sH' & R & V & L). eauto 10.
+        eauto 10.
       + (* 0 remaining fuel, device ready, no valid response: *)
-        destruct P as (R & Decr & L). exfalso. lia.
+        exfalso. lia.
       + (* 0 remaining fuel, device not ready: *)
-        destruct P as (R & Decr & L). exfalso. lia.
-
+        exfalso. lia.
       + (* some remaining fuel, device ready, valid response: *)
-        destruct P as (sH' & R & V & L). eauto 10.
+        eauto 10.
       + (* some remaining fuel, device ready, no valid response: *)
-        destruct P as (R & Decr & L).
         pose proof (state_machine_read_to_device_read_wait
                       _ _ _ _ H R L) as (d2h & sL'' & sH'' & W' & R' & V' & L').
         eapply waitForResp_mono in W'. 1: eauto 10. lia.
       + (* some remaining fuel, device not ready: *)
-        destruct P as (R & Decr & L).
         edestruct IHB as (d2h & sL'' & sH'' & Run & Rel & St);
           try eassumption. 2: eauto 10. lia.
   Qed.
@@ -288,29 +309,38 @@ Section WithParams.
       a_address h2d = word_to_N (state_machine.reg_addr r) ->
       a_data h2d = word_to_N v ->
       d_ready h2d = true ->
+      List.length (device.tl_inflight_ops sL) = 0%nat ->
       exists ignored sL' sH',
         device.runUntilResp h2d (device.maxRespDelay sL h2d) sL = (Some ignored, sL') /\
         device_state_related sH' sL' /\
-        state_machine.write_step (2 ^ log2_nbytes) sH r v sH'.
+        state_machine.write_step (2 ^ log2_nbytes) sH r v sH' /\
+        List.length (device.tl_inflight_ops sL') = 0%nat.
   Proof.
     intros. remember (device.maxRespDelay sL h2d) as fuel. remember (S fuel) as B.
     assert (device.maxRespDelay sL h2d <= fuel < B)%nat as HB by lia. clear HeqB Heqfuel.
-    revert fuel sH sL H H0 HB.
+    revert fuel sH sL H H0 HB H7.
     induction B; intros.
     - exfalso. lia.
     - destr fuel; cbn [device.runUntilResp]; destruct_one_match;
         pose proof (state_machine_write_to_device_write_or_later
-                      _ _ _ _ _ _ _ _ H H0 H1 H2 H3 H4 H5 H6 E) as P;
-        (destruct_one_match; [destruct P as (sH' & R & V) | destruct P as (R & Decr)]).
-      + (* 0 remaining fuel, valid response: *)
-        clear -R V. eauto 10.
-      + (* 0 remaining fuel, no valid response: *)
+                      _ _ _ _ _ _ _ _ H H0 H1 H2 H3 H4 H5 H6 H7 E) as P;
+        (repeat destruct_one_match; [destruct P as (sH' & R & V & L) |
+                                     destruct P as (R & Decr & L) ..]).
+      + (* 0 remaining fuel, device ready, valid response: *)
+        eauto 10.
+      + (* 0 remaining fuel, device ready, no valid response: *)
         exfalso. lia.
-      + (* some remaining fuel, valid response: *)
-        clear -R V. eauto 10.
-      + (* some remaining fuel, no valid response *)
-        edestruct IHB as (d2h & sL'' & sH'' & Run & Rel & St).
-        1: eassumption. 1: exact R. 2: eauto 10. lia.
+      + (* 0 remaining fuel, device not ready: *)
+        exfalso. lia.
+      + (* some remaining fuel, device ready, valid response: *)
+        clear -R V L. eauto 10.
+      + (* some remaining fuel, device ready, no valid response: *)
+        pose proof (state_machine_write_to_device_write_wait
+                      _ _ _ _ _ H R L) as (d2h & sL'' & sH'' & W' & R' & V' & L').
+        eapply waitForResp_mono in W'. 1: eauto 10. lia.
+      + (* some remaining fuel, device not ready *)
+        edestruct IHB as (d2h & sL'' & sH'' & Run & Rel & St);
+          try eassumption. 2: eauto 10. lia.
   Qed.
 
   Inductive related: MetricRiscvMachine -> ExtraRiscvMachine D -> Prop :=
@@ -507,11 +537,11 @@ Section WithParams.
     1-4: match goal with
          | |- context[device.runUntilResp ?p _ _] =>
            edestruct state_machine_read_to_device_read with (h2d := p)
-             as (v'' & d'' & s'' & RU'' & Rel'' & RS'');
+             as (v'' & d'' & s'' & RU'' & Rel'' & RS'' & Len'');
              [do 2 eexists; match goal with
                             | H: state_machine.read_step ?n _ _ _ _ |- _ =>
                               change n at 1 with (2 ^ (Nat.log2 n))%nat in H
-                            end; eassumption|eassumption|reflexivity..|]
+                            end; eassumption|eassumption|reflexivity..|admit|]
          end.
     1-4: cbn -[HList.tuple]; tlsimpl; simpl in RU''; rewrite RU''; cbn -[HList.tuple].
     4: { (* 64-bit MMIO is not supported: *)
@@ -546,13 +576,13 @@ Section WithParams.
     1-3: match goal with
          | |- context[device.runUntilResp ?p _ _] =>
            edestruct state_machine_write_to_device_write with (h2d := p)
-             as (ignored & d' & s'' & RU & Rel' & WS');
+             as (ignored & d' & s'' & RU & Rel' & WS' & Len');
              [eexists; match goal with
                        | H: state_machine.write_step ?n _ _ _ _ |- _ =>
                          change n at 1 with (2 ^ (Nat.log2 n))%nat in H
                        end; eassumption
              |eassumption
-             |rewrite ? Z_word_N in * by lia; try reflexivity..]
+             |rewrite ? Z_word_N in * by lia; reflexivity..|admit|]
          end.
     1-3: cbn -[HList.tuple Primitives.invalidateWrittenXAddrs];
       tlsimpl; simpl in RU; rewrite RU;
@@ -567,7 +597,7 @@ Section WithParams.
 
     (* EndCycleNormal *)
     { unfold Monads.OStateOperations.put. eauto 10 using mkRelated. }
-  Qed.
+  Admitted.
 
   Lemma stateMachine_free_to_cava{A: Type}:
     forall (p: free riscv_primitive primitive_result A) (initialH: MetricRiscvMachine)
