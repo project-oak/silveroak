@@ -131,6 +131,14 @@ Definition H0 : list N :=
     ; 0x1f83d9ab
     ; 0x5be0cd19 ].
 
+(* This doesn't really belong here... *)
+Lemma fold_left_length: forall A B (ls : list B) f (i : list A) n, List.length i = n ->
+  (forall (x : list A) b, List.length x = n -> List.length (f x b) = n) ->
+  List.length (fold_left f ls i) = n.
+Proof.
+  intros. apply fold_left_invariant with (I := fun x => List.length x = n); auto.
+Qed.
+
 Section WithMessage.
   Context (msg : list byte).
 
@@ -214,6 +222,11 @@ Section WithMessage.
     let a := T1 + T2 in
     [a;b;c;d;e;f;g;h].
 
+    Lemma sha256_compress_len: forall W H t, List.length (sha256_compress W H t) = 8%nat.
+    Proof.
+      reflexivity.
+    Qed.
+    
   (* See steps in section 6.2.2. *)
   Definition sha256_step
              (H : list N) (i : nat) : list N :=
@@ -222,13 +235,30 @@ Section WithMessage.
     (* step 4 : get ith intermediate hash value by adding each element *)
     map2 add_mod H H'.
 
+  Lemma sha256_step_len: forall H i, List.length H = 8%nat -> List.length (sha256_step H i) = 8%nat.
+  Proof.
+    intros H i Hlen. unfold sha256_step. rewrite map2_length. rewrite fold_left_length with (n := 8%nat); auto.
+    rewrite Hlen. apply Nat.min_id.
+  Qed.
+
   (* Concatenate the w-bit words of the hash value to get the full digest *)
   Definition concat_digest (H : list N) :=
     flat_map (N_to_bytes (N.to_nat w / 8)) H.
+
+  Lemma concat_digest_length H: forall n, List.length H = n -> List.length (concat_digest H) = (n * 4)%nat.
+  Proof.
+    intros. unfold concat_digest. rewrite flat_map_length_const with (len := 4%nat); auto.
+  Qed.
 
   (* Full SHA-256 computation: loop of sha256_step *)
   Definition sha256 :=
     let nblocks := (length padded_msg / (512 / N.to_nat w))%nat in
     let H := fold_left sha256_step (seq 0 nblocks) H0 in
     concat_digest H.
+
+  Lemma sha256_len: List.length sha256 = 32%nat.
+  Proof.
+    intros. unfold sha256. rewrite concat_digest_length with (n := 8%nat); auto.
+    apply fold_left_length; auto. apply sha256_step_len.
+  Qed.
 End WithMessage.
