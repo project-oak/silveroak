@@ -69,7 +69,7 @@ Module device.
     run1: (* input: TileLink host-2-device *)
       state -> tl_h2d ->
       (* output: next state, TileLink device-2-host *)
-      state * tl_d2h;
+      state;
 
     (* lowest address of the MMIO address range used to communicate with this device *)
     addr_range_start: Z;
@@ -90,10 +90,11 @@ Module device.
 
   Definition waitForResp{D: device} :=
     fix rec(fuel: nat)(s: device.state): option tl_d2h * device.state :=
-      let '(next, d2h) := device.run1 s (set_d_ready true tl_h2d_default) in
-      if d_valid d2h then (Some d2h, next) else
+      let next := device.run1 s (set_d_ready true tl_h2d_default) in
+      if d_valid (device.last_d2h s) then (Some (device.last_d2h s), next)
+      else
         match fuel with
-        | O => (None, next)
+        | O => (None, s)
         | S fuel' => rec fuel' next
         end.
 
@@ -101,16 +102,18 @@ Module device.
      It is also assumed that [a_valid h2d = true] and [d_ready h2d = true]. *)
   Definition runUntilResp{D: device}(h2d: tl_h2d) :=
     fix rec(fuel: nat)(s: device.state): option tl_d2h * device.state :=
-      let '(next, d2h) := device.run1 s h2d in
+      let next := device.run1 s h2d in
       if a_ready (device.last_d2h s) then
-        if d_valid d2h then (Some d2h, next) else
+        if d_valid (device.last_d2h s) then
+          (Some (device.last_d2h s), next)
+        else
           match fuel with
-          | O => (None, next)
+          | O => (None, s)
           | S fuel' => waitForResp fuel' next
           end
       else
         match fuel with
-        | O => (None, next)
+        | O => (None, s)
         | S fuel' => rec fuel' next
         end.
 
@@ -267,7 +270,7 @@ Section WithParams.
     end.
 
   Definition device_step_without_IO(d: D): D :=
-    let '(next_state, ignored_d2h) := (device.run1 d tl_h2d_default) in next_state.
+    let next_state := (device.run1 d tl_h2d_default) in next_state.
 
   Fixpoint device_steps(n: nat): OState (ExtraRiscvMachine D) unit :=
     match n with
