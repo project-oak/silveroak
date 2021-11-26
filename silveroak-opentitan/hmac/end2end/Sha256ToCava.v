@@ -42,8 +42,6 @@ Notation ShaDevice := hmac_device.
 (* Trying to keep toplevel theorem at 53 chars wide:
 01234567890123456789012345678901234567890123456789012 *)
 
-Axiom sha256_len: forall inp, List.length (sha256 inp) = 32%nat.
-
 Theorem sha256_end2end_correct:
 forall a_outp a_inp len sp_val a_ret a_code stack_lo
   (inp: list byte) (Rdata Rexec: mem->Prop)
