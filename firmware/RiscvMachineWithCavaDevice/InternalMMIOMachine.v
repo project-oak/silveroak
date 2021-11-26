@@ -91,7 +91,7 @@ Module device.
   Definition waitForResp{D: device} :=
     fix rec(fuel: nat)(s: device.state): option tl_d2h * device.state :=
       let next := device.run1 s (set_d_ready true tl_h2d_default) in
-      if d_valid (device.last_d2h s) then (Some (device.last_d2h s), next)
+      if d_valid (device.last_d2h next) then (Some (device.last_d2h next), next)
       else
         match fuel with
         | O => (None, s)
@@ -104,8 +104,8 @@ Module device.
     fix rec(fuel: nat)(s: device.state): option tl_d2h * device.state :=
       let next := device.run1 s h2d in
       if a_ready (device.last_d2h s) then
-        if d_valid (device.last_d2h s) then
-          (Some (device.last_d2h s), next)
+        if d_valid (device.last_d2h next) then
+          (Some (device.last_d2h next), next)
         else
           match fuel with
           | O => (None, s)
@@ -270,7 +270,7 @@ Section WithParams.
     end.
 
   Definition device_step_without_IO(d: D): D :=
-    let next_state := (device.run1 d tl_h2d_default) in next_state.
+    let next_state := device.run1 d (set_d_ready true tl_h2d_default) in next_state.
 
   Fixpoint device_steps(n: nat): OState (ExtraRiscvMachine D) unit :=
     match n with

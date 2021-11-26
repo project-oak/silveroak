@@ -4,6 +4,7 @@ Require Import coqutil.Datatypes.List.
 Require Import coqutil.Word.Interface coqutil.Map.Interface.
 Require Import coqutil.Map.OfListWord.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
+Require Import Bedrock2Experiments.IncrementWait.Incr.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitToRiscV.
 Require Import Bedrock2Experiments.IncrementWait.CavaIncrementDevice.
 Require Import riscv.Spec.Decode.

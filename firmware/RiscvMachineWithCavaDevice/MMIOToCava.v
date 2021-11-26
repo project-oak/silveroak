@@ -74,10 +74,10 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       d_ready h2d = true ->
       device.run1 sL h2d = sL' ->
       if a_ready (device.last_d2h sL) then
-        if d_valid (device.last_d2h sL) then
+        if d_valid (device.last_d2h sL') then
           exists sH',
             device_state_related sH' sL' [] /\
-            state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data (device.last_d2h sL))) sH'
+            state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data (device.last_d2h sL'))) sH'
         else
           device_state_related sH sL' [h2d] /\
           (device.maxRespDelay sL' < device.maxRespDelay sL)%nat
@@ -87,15 +87,14 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
 
   state_machine_read_to_device_ack_read_or_later: forall log2_nbytes r sH sL sL' h2d,
       (exists v sH', state_machine.read_step (2 ^ log2_nbytes) sH r v sH') ->
-      (exists sL'' h2d', device.run1 sL'' (set_d_ready true h2d') = sL) ->
       device_state_related sH sL [h2d] ->
       a_opcode h2d = Get ->
       a_address h2d = word_to_N (state_machine.reg_addr r) ->
       device.run1 sL (set_d_ready true tl_h2d_default) = sL' ->
-      if d_valid (device.last_d2h sL) then
+      if d_valid (device.last_d2h sL') then
         exists sH',
           device_state_related sH' sL' [] /\
-          state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data (device.last_d2h sL))) sH'
+          state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data (device.last_d2h sL'))) sH'
       else
         device_state_related sH sL' [h2d] /\
         (device.maxRespDelay sL' < device.maxRespDelay sL)%nat;
@@ -118,7 +117,7 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       d_ready h2d = true ->
       device.run1 sL h2d = sL' ->
       if a_ready (device.last_d2h sL) then
-        if d_valid (device.last_d2h sL) then
+        if d_valid (device.last_d2h sL') then
           exists sH',
             device_state_related sH' sL' [] /\
             state_machine.write_step (2 ^ log2_nbytes) sH r v sH'
@@ -136,7 +135,7 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       a_address h2d = word_to_N (state_machine.reg_addr r) ->
       a_data h2d = word_to_N v ->
       device.run1 sL (set_d_ready true tl_h2d_default) = sL' ->
-      if d_valid (device.last_d2h sL) then
+      if d_valid (device.last_d2h sL') then
         exists sH',
           device_state_related sH' sL' [] /\
           state_machine.write_step (2 ^ log2_nbytes) sH r v sH'
@@ -273,8 +272,9 @@ Section WithParams.
       destr fuel; cbn [device.runUntilResp];
         pose proof (state_machine_read_to_device_send_read_or_later
                       _ _ _ _ _ _ H H0 H1 H2 H3 H4 H5 E) as P;
-        (repeat destruct_one_match; [destruct P as (sH' & R & V) |
-                                     destruct P as (R & Decr) ..]);
+        (repeat destruct_one_match; subst; rewrite ? E1 in P;
+         [destruct P as (sH' & R & V) |
+          destruct P as (R & Decr) ..]);
         rewrite ? E in *.
       + (* 0 remaining fuel, device ready, valid response: *)
         eauto 10.
@@ -321,8 +321,9 @@ Section WithParams.
       destr fuel; cbn [device.runUntilResp];
         pose proof (state_machine_write_to_device_send_write_or_later
                       _ _ _ _ _ _ _ H H0 H1 H2 H3 H4 H5 H6 E) as P;
-        (repeat destruct_one_match; [destruct P as (sH' & R & V) |
-                                     destruct P as (R & Decr) ..]);
+        (repeat destruct_one_match; subst; rewrite ? E1 in P;
+         [destruct P as (sH' & R & V) |
+          destruct P as (R & Decr) ..]);
         rewrite ? E in *.
       + (* 0 remaining fuel, device ready, valid response: *)
         eauto 10.

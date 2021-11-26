@@ -128,7 +128,6 @@ Definition sim {s i o} (c : Circuit s i o) (input : list (denote_type i))
                          (acc ++ [(s, i, o)], s'))
                       input
                       ([], reset_state c)).
-(* Print sample_trace. *)
 
 Example sample_trace :=
   Eval compute in
@@ -160,6 +159,7 @@ Example sample_trace :=
           ; (nop, tt)
           ; (read_reg 4, tt) (* status *)
         ]%N.
+(* Print sample_trace. *)
 
 Section Spec.
   Local Open Scope N.
@@ -225,7 +225,7 @@ Section Spec.
     cbv [inner inner_spec_step]. stepsimpl.
     repeat (destruct_pair_let; cbn [fst snd]).
     destruct repr as [|? iiscount|?]; logical_simplify; subst.
-    - destruct valid; cbn; try ssplit; lia.
+    - destruct valid; cbn; ssplit; lia.
     - destruct iiscount as [|[|[|iiscount]]]; cbn; ssplit; lia.
     - reflexivity.
   Qed.
@@ -241,8 +241,8 @@ Section Spec.
     cbv [inner inner_spec_step]. stepsimpl.
     repeat (destruct_pair_let; cbn [fst snd]).
     destruct repr as [|? iiscount|?]; logical_simplify; subst.
-    - destruct valid; eexists; cbn; try ssplit; reflexivity.
-    - destruct iiscount as [|[|[|iiscount]]]; try lia; try eexists; reflexivity.
+    - destruct valid; eexists; cbn; ssplit; reflexivity.
+    - destruct iiscount as [|[|[|iiscount]]]; try lia; eexists; reflexivity.
     - eexists. reflexivity.
   Qed.
 
@@ -254,15 +254,15 @@ Section Spec.
 
   Variant repr_state :=
   | RSIdle
-  | RSBusy (data : N)
+  | RSBusy (data : N) (count: nat)
   | RSDone (res : N).
 
-  Definition repr := (repr_state * repr_state * list N * TLUL.repr_state * inner_repr)%type.
+  Definition repr := (repr_state * list N * TLUL.repr_state * inner_repr)%type.
 
   Global Instance incr_invariant : invariant_for incr repr :=
     fun (state : denote_type (state_of incr)) repr =>
       let '((s_busy, (s_done, (s_regs, s_d2h))), (s_tlul, s_inner)) := state in
-      let '(r_state, r_prev_state, r_regs, r_tl, r_inner) := repr in
+      let '(r_state, r_regs, r_tl, r_inner) := repr in
       tlul_invariant (reg_count:=2) s_tlul r_tl
       /\ match r_tl with
         | TLUL.Idle =>
@@ -280,13 +280,6 @@ Section Spec.
           /\ d_user   s_d2h = 0
           /\ d_error  s_d2h = false
           /\ a_ready  s_d2h = false
-          /\ match r_prev_state with
-            | RSIdle => nth 1 regs 0%N = 1
-            | RSBusy data => nth 1 regs 0%N = 2
-            | RSDone res => nth 0 regs 0%N = res
-                           /\ nth 1 regs 0%N = 4
-            end
-          (* /\ (exists input, update_repr (r_prev_state, ... ..) = r_state) *)
         | TLUL.OutstandingAccessAck h2d  =>
           d_valid    s_d2h = true
           /\ d_opcode s_d2h = AccessAck
@@ -303,9 +296,9 @@ Section Spec.
         | RSIdle => s_busy = false /\ s_done = false
                    /\ r_inner = IISIdle
                    /\ nth 1 r_regs 0%N = 1
-        | RSBusy data => s_busy = true /\ s_done = false
-                        /\ (exists c, r_inner = IISBusy data c)
-                        /\ nth 1 r_regs 0%N = 2
+        | RSBusy data count => s_busy = true /\ s_done = false
+                              /\ r_inner = IISBusy data count
+                              /\ nth 1 r_regs 0%N = 2
         | RSDone res => s_busy = false /\ s_done = true
                        /\ (r_inner = IISDone res \/ r_inner = IISIdle)
                        /\ nth 0 r_regs 0%N = res
@@ -318,12 +311,12 @@ Section Spec.
 
   Instance incr_specification
     : specification_for incr repr :=
-    {| reset_repr := (RSIdle, RSIdle, [0; 1], TLUL.Idle, IISIdle);
+    {| reset_repr := (RSIdle, [0; 1], TLUL.Idle, IISIdle);
 
        update_repr :=
          fun (input : denote_type (input_of incr)) repr =>
            let '(i_h2d, tt) := input in
-           let '(r_state, r_prev_state, r_regs, r_tl, r_inner) := repr in
+           let '(r_state, r_regs, r_tl, r_inner) := repr in
 
            let h2d := set_a_address (N.land (a_address i_h2d) 4) i_h2d in
 
@@ -360,7 +353,7 @@ Section Spec.
                  else RSIdle
                | _ =>
                  match r_inner' with
-                 | IISBusy data _ => RSBusy data
+                 | IISBusy data count => RSBusy data count
                  | IISDone res => RSDone res
                  | _ => r_state
                  end
@@ -375,16 +368,16 @@ Section Spec.
            let r_regs' :=
                match r_state' with
                | RSIdle => replace 1 1 r_regs'
-               | RSBusy _ => replace 1 2 r_regs'
+               | RSBusy _ _ => replace 1 2 r_regs'
                | RSDone _ => replace 1 4 r_regs'
                end in
 
-           (r_state', r_state, r_regs', r_tl', r_inner');
+           (r_state', r_regs', r_tl', r_inner');
 
        precondition :=
          fun (input : denote_type (input_of incr)) repr =>
            let '(i_h2d, tt) := input in
-           let '(r_state, r_prev_state, r_regs, r_tl, r_inner) := repr in
+           let '(r_state, r_regs, r_tl, r_inner) := repr in
 
            let h2d := set_a_address (N.land (a_address i_h2d) 4) i_h2d in
 
@@ -408,31 +401,31 @@ Section Spec.
          fun (input : denote_type (input_of incr)) repr
            (output : denote_type (output_of incr)) =>
            let '(i_h2d, tt) := input in
-           let '(r_state, r_prev_state, r_regs, r_tl, r_inner) := repr in
-
+           let '(r_state, r_regs, r_tl, r_inner) := repr in
            let h2d := set_a_address (N.land (a_address i_h2d) 4) i_h2d in
 
-           let postc_tlul :=
-               let tlul_input := (h2d, (r_regs, tt)) in
-               exists req,
-                 postcondition (tlul_adapter_reg (reg_count:=2))
-                               tlul_input r_tl
-                               (output, req) in
-           postc_tlul;
+           (* let postc_tlul := *)
+           (*     let tlul_input := (h2d, (r_regs, tt)) in *)
+           (*     exists req, *)
+           (*       postcondition (tlul_adapter_reg (reg_count:=2)) *)
+           (*                     tlul_input r_tl *)
+           (*                     (output, req) in *)
+           (* postc_tlul; *)
+           True;
     |}.
 
   Lemma incr_invariant_at_reset : invariant_at_reset incr.
   Proof.
     simplify_invariant incr.
     cbn. ssplit; [apply (tlul_adapter_reg_invariant_at_reset (reg_count:=2))
-                 | reflexivity..].
+                 |reflexivity..].
   Qed.
 
   Existing Instance tlul_adapter_reg_correctness.
 
   Lemma incr_invariant_preserved : invariant_preserved incr.
   Proof.
-    intros (h2d, t) state ((((r_state, r_prev_state), r_regs), r_tl), r_inner). destruct t.
+    intros (h2d, t) state (((r_state, r_regs), r_tl), r_inner). destruct t.
     cbn in * |-. destruct state as ((busy, (done, (registers, d2h))), (tl_st, inner_st)).
     destruct_tl_h2d. destruct_tl_d2h.
     intros repr' ? Hinvar Hprec; subst.
@@ -447,6 +440,7 @@ Section Spec.
     end.
     stepsimpl.
     use_correctness.
+    clear H5.
     rename H9 into Hpostc_tl.
     repeat (destruct_pair_let; cbn [fst snd]).
     ssplit.
@@ -455,8 +449,7 @@ Section Spec.
       + reflexivity.
       + assumption.
     - pose (r_tl_:=r_tl); destruct r_tl; logical_simplify; subst.
-      + clear H5.
-        destruct_tl_h2d; destruct_tl_d2h; tlsimpl; subst.
+      + destruct_tl_h2d; destruct_tl_d2h; tlsimpl; subst.
         pose (r_state_:=r_state); destruct r_state; cbn in *; logical_simplify; subst;
           pose (a_valid_:=a_valid); (destruct a_valid;
                                      [ match goal with
@@ -464,13 +457,11 @@ Section Spec.
                                          destruct H; [auto|subst..]
                                        end|]); cbn in *; logical_simplify; subst;
             ssplit; auto.
-      + clear H5.
-        destruct_tl_h2d; destruct_tl_d2h; tlsimpl; subst.
+      + destruct_tl_h2d; destruct_tl_d2h; tlsimpl; subst.
         pose (r_state_:=r_state); destruct r_state; cbn in *; logical_simplify; subst;
           pose (d_ready_:=d_ready); destruct d_ready; cbn in *; logical_simplify; subst;
             ssplit; auto.
-      + clear H5.
-        destruct_tl_h2d; destruct_tl_d2h; tlsimpl; subst.
+      + destruct_tl_h2d; destruct_tl_d2h; tlsimpl; subst.
         pose (r_state_:=r_state); destruct r_state; cbn in *; logical_simplify; subst;
           pose (d_ready_:=d_ready); destruct d_ready; cbn in *; logical_simplify; subst;
             ssplit; reflexivity.
@@ -493,10 +484,7 @@ Section Spec.
         * destruct d_ready; logical_simplify; subst;
             boolsimpl; destruct r_state; reflexivity.
       + simplify_spec inner. auto.
-    - match goal with
-      | H: context [_ -> precondition inner _ r_inner] |- _ => clear H
-      end.
-      destruct r_tl; destruct r_inner; destruct r_state; destruct inner_st;
+    - destruct r_tl; destruct r_inner; destruct r_state; destruct inner_st;
         logical_simplify; subst.
       all: simplify_invariant inner.
       all: try discriminate.
@@ -513,10 +501,7 @@ Section Spec.
       all: try (destruct d_ready; logical_simplify; subst; cbn;
                   ssplit; eauto;
                   destruct x0 as [|? [|]]; cbn in *; try discriminate; reflexivity).
-    - match goal with
-      | H: context [_ -> precondition inner _ r_inner] |- _ => clear H
-      end.
-      destruct r_tl; destruct r_inner; destruct r_state; destruct inner_st;
+    - destruct r_tl; destruct r_inner; destruct r_state; destruct inner_st;
         logical_simplify; subst.
       all: simplify_invariant inner.
       all: try discriminate.
@@ -538,55 +523,10 @@ Section Spec.
 
   Lemma incr_output_correct : output_correct incr.
   Proof.
-  Admitted.
-  (*   intros (h2d, t) state (((r_state, r_regs), r_tl), r_inner). destruct t. *)
-  (*   cbn in * |-. destruct state as ((busy, (done, (registers, d2h))), (tl_st, inner_st)). *)
-  (*   destruct_tl_h2d. destruct_tl_d2h. *)
-  (*   intros Hinvar Hprec; subst. *)
-  (*   simplify_invariant incr. logical_simplify. subst. *)
-  (*   simplify_spec incr. logical_simplify. subst. *)
-  (*   match goal with *)
-  (*   | |- context [step incr ?s ?i] => *)
-  (*     remember (step incr s i) as step eqn:Estep; *)
-  (*       cbv -[Semantics.step inner tlul_adapter_reg] in Estep; *)
-  (*         subst *)
-  (*   end. *)
-  (*   stepsimpl. *)
-  (*   use_correctness. *)
-  (*   match goal with *)
-  (*   | H: (match outstanding_h2d (_::r_tl) with | _ => _ end) |- _ => *)
-  (*     rename H into Htl_postc *)
-  (*   end. *)
-  (*   repeat (destruct_pair_let; cbn [fst snd]). *)
-  (*   tlsimpl. *)
-  (*   destruct r_inner; destruct r_state; destruct inner_st; *)
-  (*     unfold inner_invariant in H0; logical_simplify; subst; *)
-  (*       try discriminate; *)
-  (*       try (destruct H5; discriminate). *)
-  (*   all: destruct (outstanding_h2d r_tl) eqn:Houts; *)
-  (*     cbn [outstanding_h2d] in Htl_postc |- *; rewrite Houts in Htl_postc |- *. *)
-  (*   all: tlsimpl; destruct d_ready; logical_simplify; subst; boolsimpl. *)
-  (*   all: do 9 eexists. *)
-  (*   all: ssplit; try reflexivity; tlsimpl; ssplit; try reflexivity; try assumption. *)
-  (*   all: try (eapply outstanding_prec in H; *)
-  (*             try match goal with *)
-  (*                 | H: outstanding_h2d _ = Some _ |- outstanding_h2d _ = Some _ => *)
-  (*                   apply H *)
-  (*                 end; destruct H; rewrite H in Htl_postc |- *; cbn in Htl_postc |- *; *)
-  (*             logical_simplify; subst; ssplit; *)
-  (*             try (left; reflexivity); *)
-  (*             try (right; reflexivity); *)
-  (*             try assumption; *)
-  (*             reflexivity). *)
-  (*   all: try (destruct a_valid; simplify_spec (tlul_adapter_reg (reg_count:=2)); *)
-  (*             tlsimpl; destruct H2; *)
-  (*             try match goal with *)
-  (*                 | H: true = true -> _ |- _ => *)
-  (*                   destruct H; try reflexivity; subst *)
-  (*                 end; cbn in Htl_postc; logical_simplify; subst; cbn; ssplit; *)
-  (*             try eexists; try assumption; reflexivity). *)
-  (*   Unshelve. all: auto. *)
-  (* Qed. *)
+    intros ? **.
+    simplify_spec incr. destruct input. destruct d0. destruct r as [[[? ?] ?] ?].
+    apply I.
+  Qed.
 
   Existing Instances incr_invariant_at_reset incr_invariant_preserved
            incr_output_correct.
