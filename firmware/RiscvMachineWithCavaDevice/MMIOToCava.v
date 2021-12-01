@@ -56,14 +56,19 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
       device_state_related sH sL2 [];
 
   (* for each high-level state sH from which n bytes can be read at register r,
-     if we run the low-level device with the read step's address on the input wires,
-     it either tells us to try again later (but by decreasing device.maxRespDelay,
-     it promises that it won't keep telling us to try again later forever), or
-     we will get a response matching some possible high-level read step's response,
-     but not necessarily the one we used to show that sH accepts reads (to allow
-     underspecification-nondeterminism in the high-level state machine) *)
-
-  (* TODO: replace the length clauses with [In (a_source h2d) (device.tl_inflight_ops sL)] *)
+     if we run the low-level device with the read step's address in the h2d
+     packet, it either tells us it's not ready to receive a request, or it's
+     ready, but the response is not valid yet, or it's ready, and the response
+     is valid, matching some possible high-level read step's response, but not
+     necessarily the one we used to show that sH accepts reads (to allow
+     underspecification-nondeterminism in the high-level state machine). In the
+     cases were we don't get a response, we have to try again later (either
+     sending the message again if the device was not ready, or wait for the
+     response), and by decreasing device.maxRespDelay, the device promises that
+     it won't keep telling us to try again later forever. In the case where the
+     device was ready but its response is not valid yet, the new state has an
+     inflight message, and the waiting for the response is handled by
+     state_machine_read_to_device_ack_read_or_later. *)
   state_machine_read_to_device_send_read_or_later: forall log2_nbytes r sH sL sL' h2d,
       (exists v sH', state_machine.read_step (2 ^ log2_nbytes) sH r v sH') ->
       device_state_related sH sL [] ->
@@ -99,13 +104,21 @@ Class device_implements_state_machine{word: word.word 32}{mem: map.map word Byte
         device_state_related sH sL' [h2d] /\
         (device.maxRespDelay sL' < device.maxRespDelay sL)%nat;
 
-  (* for each high-level state sH in which an n-byte write to register r with value v is possible,
-     if we run the low-level device with the write step's address and value on the input wires,
-     it either tells us to try again later (but by decreasing device.maxRespDelay,
-     it promises that it won't keep telling us to try again later forever), or
-     we will get an ack response and the device will end up in a state corresponding to a
-     high-level state reached after a high-level write, but not necessarily in the state
-     we used to show that sH accepts writes *)
+  (* for each high-level state sH in which an n-byte write to register r with
+     value v is possible, if we run the low-level device with the write step's
+     address and value in the h2d packet, it either tells us it's not ready to
+     receive a request, or it's ready, but the response is not valid yet, or
+     it's ready, and the response is valid, and the device will end up in a
+     state corresponding to a high-level state reached after a high-level write,
+     but not necessarily in the state we used to show that sH accepts writes (to
+     allow underspecification-nondeterminism in the high-level state machine).
+     In the cases were we don't get a response, we have to try again later
+     (either sending the message again if the device was not ready, or wait for
+     the response), and by decreasing device.maxRespDelay, the device promises
+     that it won't keep telling us to try again later forever. In the case where
+     the device was ready but its response is not valid yet, the new state has
+     an inflight message, and the waiting for the response is handled by
+     state_machine_write_to_device_ack_write_or_later *)
   state_machine_write_to_device_send_write_or_later: forall log2_nbytes r v sH sL sL' h2d,
       (exists sH', state_machine.write_step (2 ^ log2_nbytes) sH r v sH') ->
       device_state_related sH sL [] ->

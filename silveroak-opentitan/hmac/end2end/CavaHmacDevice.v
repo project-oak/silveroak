@@ -33,9 +33,6 @@ Section WithParameters.
 
     device.last_d2h '((_, (d2h, _)), _) := d2h;
 
-    device.tl_inflight_ops '((_, (d2h, _)), _) :=
-      if d_valid d2h then [d_source d2h] else [];
-
     device.run1 s i := fst (Semantics.step hmac_top s (i, tt));
 
     device.addr_range_start := TOP_EARLGREY_HMAC_BASE_ADDR;

@@ -59,12 +59,6 @@ Module device.
      [forall s h2d d2h s', run1 s h2d = (s', d2h) -> last_d2h s' = d2h] *)
     last_d2h: state -> tl_d2h;
 
-    (* indicates an inflight operation: the device received a request on channel
-       A, but a response on channel D hasn't been exchanged yet *)
-    (* TODO: probably need to add to [device_implements_state_machine] somthing like
-     [forall s, is_ready_state s -> tl_inflight_ops s = []] *)
-    tl_inflight_ops: state -> list N;
-
     (* run one simulation step, will be instantiated with Cava.Semantics.Combinational.step *)
     run1: (* input: TileLink host-2-device *)
       state -> tl_h2d ->
