@@ -196,10 +196,10 @@ Section WithParams.
       device_state_related sH sL [h2d] ->
       a_opcode h2d = Get ->
       a_address h2d = word_to_N (state_machine.reg_addr r) ->
-      exists d2h sL' sH',
-        device.waitForResp (device.maxRespDelay sL) sL = (Some d2h, sL') /\
+      exists sL' sH',
+        device.waitForResp (device.maxRespDelay sL) sL = Some sL' /\
         device_state_related sH' sL' [] /\
-        state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data d2h)) sH'.
+        state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data (device.last_d2h sL'))) sH'.
   Proof.
     intros. remember (device.maxRespDelay sL) as fuel.
     remember (S fuel) as B.
@@ -216,7 +216,7 @@ Section WithParams.
         (destruct_one_match; [destruct P as (sH' & R & V); eauto 10 |
                               destruct P as (R & Decl)]).
       + exfalso. lia.
-      + edestruct IHB as (d2h & sL'' & sH'' & Run & Rel & St);
+      + edestruct IHB as (sL'' & sH'' & Run & Rel & St);
           try eassumption. 2: eauto 10. lia.
   Qed.
 
@@ -226,8 +226,8 @@ Section WithParams.
       a_opcode h2d = PutFullData ->
       a_address h2d = word_to_N (state_machine.reg_addr r) ->
       a_data h2d = word_to_N v ->
-      exists d2h sL' sH',
-        device.waitForResp (device.maxRespDelay sL) sL = (Some d2h, sL') /\
+      exists sL' sH',
+        device.waitForResp (device.maxRespDelay sL) sL = Some sL' /\
         device_state_related sH' sL' [] /\
         state_machine.write_step (2 ^ log2_nbytes) sH r v sH'.
   Proof.
@@ -246,14 +246,14 @@ Section WithParams.
         (destruct_one_match; [destruct P as (sH' & R & V); eauto 10 |
                               destruct P as (R & Decl)]).
       + exfalso. lia.
-      + edestruct IHB as (d2h & sL'' & sH'' & Run & Rel & St);
+      + edestruct IHB as (sL'' & sH'' & Run & Rel & St);
           try eassumption. 2: eauto 10. lia.
   Qed.
 
-  Lemma waitForResp_mono : forall (fuel fuel' : nat) s d2h s',
+  Lemma waitForResp_mono : forall (fuel fuel' : nat) s s',
       (fuel <= fuel')%nat ->
-      device.waitForResp fuel s = (Some d2h, s') ->
-      device.waitForResp fuel' s = (Some d2h, s').
+      device.waitForResp fuel s = Some s' ->
+      device.waitForResp fuel' s = Some s'.
   Proof.
     intros ? ?. revert fuel. induction fuel'; intros; inversion H; subst; auto.
     cbn [device.waitForResp].
@@ -271,10 +271,10 @@ Section WithParams.
       a_size h2d = N.of_nat log2_nbytes ->
       a_address h2d = word_to_N (state_machine.reg_addr r) ->
       d_ready h2d = true ->
-      exists d2h sL' sH',
-        device.runUntilResp h2d (device.maxRespDelay sL) sL = (Some d2h, sL') /\
+      exists sL' sH',
+        device.runUntilResp h2d (device.maxRespDelay sL) sL = Some sL' /\
         device_state_related sH' sL' [] /\
-        state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data d2h)) sH'.
+        state_machine.read_step (2 ^ log2_nbytes) sH r (N_to_word (d_data (device.last_d2h sL'))) sH'.
   Proof.
     intros. remember (device.maxRespDelay sL) as fuel. remember (S fuel) as B.
     assert (device.maxRespDelay sL <= fuel < B)%nat as HB by lia. clear HeqB Heqfuel.
@@ -299,10 +299,10 @@ Section WithParams.
         eauto 10.
       + (* some remaining fuel, device ready, no valid response: *)
         pose proof (state_machine_read_to_device_ack_read
-                      _ _ _ _ _ H R H2 H4) as (d2h & sL'' & sH'' & W' & R' & V').
+                      _ _ _ _ _ H R H2 H4) as (sL'' & sH'' & W' & R' & V').
         eapply waitForResp_mono in W'. 1: eauto 10. lia.
       + (* some remaining fuel, device not ready: *)
-        edestruct IHB as (d2h & sL'' & sH'' & Run & Rel & St);
+        edestruct IHB as (sL'' & sH'' & Run & Rel & St);
           try eassumption. 2: eauto 10. lia.
   Qed.
 
@@ -320,8 +320,8 @@ Section WithParams.
       a_address h2d = word_to_N (state_machine.reg_addr r) ->
       a_data h2d = word_to_N v ->
       d_ready h2d = true ->
-      exists ignored sL' sH',
-        device.runUntilResp h2d (device.maxRespDelay sL) sL = (Some ignored, sL') /\
+      exists sL' sH',
+        device.runUntilResp h2d (device.maxRespDelay sL) sL = Some sL' /\
         device_state_related sH' sL' [] /\
         state_machine.write_step (2 ^ log2_nbytes) sH r v sH'.
   Proof.
@@ -348,10 +348,10 @@ Section WithParams.
         clear -R V. eauto 10.
       + (* some remaining fuel, device ready, no valid response: *)
         pose proof (state_machine_write_to_device_ack_write
-                      _ _ _ _ _ _ H R H2 H4 H5) as (d2h & sL'' & sH'' & W' & R' & V').
+                      _ _ _ _ _ _ H R H2 H4 H5) as (sL'' & sH'' & W' & R' & V').
         eapply waitForResp_mono in W'. 1: eauto 10. lia.
       + (* some remaining fuel, device not ready *)
-        edestruct IHB as (d2h & sL'' & sH'' & Run & Rel & St);
+        edestruct IHB as (sL'' & sH'' & Run & Rel & St);
           try eassumption. 2: eauto 10. lia.
   Qed.
 
@@ -549,7 +549,7 @@ Section WithParams.
     1-4: match goal with
          | |- context[device.runUntilResp ?p _ _] =>
            edestruct state_machine_read_to_device_read with (h2d := p)
-             as (v'' & d'' & s'' & RU'' & Rel'' & RS'');
+             as (d'' & s'' & RU'' & Rel'' & RS'');
              [do 2 eexists; match goal with
                             | H: state_machine.read_step ?n _ _ _ _ |- _ =>
                               change n at 1 with (2 ^ (Nat.log2 n))%nat in H
@@ -588,7 +588,7 @@ Section WithParams.
     1-3: match goal with
          | |- context[device.runUntilResp ?p _ _] =>
            edestruct state_machine_write_to_device_write with (h2d := p)
-             as (ignored & d' & s'' & RU & Rel' & WS');
+             as (d' & s'' & RU & Rel' & WS');
              [eexists; match goal with
                        | H: state_machine.write_step ?n _ _ _ _ |- _ =>
                          change n at 1 with (2 ^ (Nat.log2 n))%nat in H

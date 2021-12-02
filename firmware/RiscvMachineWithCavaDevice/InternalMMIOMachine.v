@@ -83,31 +83,34 @@ Module device.
        software keeps polling until the MMIO read returns a "done" response *)
 
   Definition waitForResp{D: device} :=
-    fix rec(fuel: nat)(s: device.state): option tl_d2h * device.state :=
+    fix rec(fuel: nat)(s: device.state): option device.state :=
       let next := device.run1 s (set_d_ready true tl_h2d_default) in
-      if d_valid (device.last_d2h next) then (Some (device.last_d2h next), next)
+      if d_valid (device.last_d2h next) then
+        Some next
       else
         match fuel with
-        | O => (None, s)
+        | O => None
         | S fuel' => rec fuel' next
         end.
 
   (* returning None means out of fuel and must not happen if fuel >= device.maxRespDelay.
-     It is also assumed that [a_valid h2d = true] and [d_ready h2d = true]. *)
+     It is also assumed that [a_valid h2d = true] and [d_ready h2d = true].
+     When the result is [Some res], retrieve the response d2h by calling
+     [device.last_d2h res]. *)
   Definition runUntilResp{D: device}(h2d: tl_h2d) :=
-    fix rec(fuel: nat)(s: device.state): option tl_d2h * device.state :=
+    fix rec(fuel: nat)(s: device.state): option device.state :=
       let next := device.run1 s h2d in
       if a_ready (device.last_d2h s) then
         if d_valid (device.last_d2h next) then
-          (Some (device.last_d2h next), next)
+          Some next
         else
           match fuel with
-          | O => (None, s)
+          | O => None
           | S fuel' => waitForResp fuel' next
           end
       else
         match fuel with
-        | O => (None, s)
+        | O => None
         | S fuel' => rec fuel' next
         end.
 
@@ -173,12 +176,11 @@ Section WithParams.
   Definition runUntilResp(h2d: tl_h2d):
     OState (ExtraRiscvMachine D) word :=
     mach <- get;
-    let (respo, new_device_state) :=
-        device.runUntilResp h2d (device.maxRespDelay mach.(getExtraState))
-                            mach.(getExtraState) in
+    new_device_state <- fail_if_None
+                         (device.runUntilResp h2d (device.maxRespDelay mach.(getExtraState))
+                                              mach.(getExtraState));
     put (withExtraState new_device_state mach);;
-    resp <- fail_if_None respo;
-    Return (N_to_word (d_data resp)).
+    Return (N_to_word (d_data (device.last_d2h new_device_state))).
 
   Definition mmioLoad(log2_nbytes: nat)(addr: word)
     : OState (ExtraRiscvMachine D) (HList.tuple byte (2 ^ log2_nbytes)) :=
