@@ -1,3 +1,4 @@
+Require Import Coq.Lists.List.
 Require Import Coq.ZArith.ZArith. Open Scope Z_scope.
 Require Import riscv.Utility.Utility.
 Require Import coqutil.Map.Interface coqutil.Map.Properties.
@@ -16,6 +17,7 @@ Require Import Cava.TLUL.
 Require Import Cava.Types.
 Require Import Cava.Util.BitArithmetic.
 
+Import ListNotations.
 
 Section WithParameters.
   Instance var : tvar := denote_type.
@@ -28,12 +30,18 @@ Section WithParameters.
   Global Instance hmac_device: device := {|
     device.state := denote_type (state_of hmac_top);
     device.is_ready_state s := True; (* FIXME *)
-    device.run1 s i := Semantics.step hmac_top s (i, tt);
+
+    device.last_d2h '((_, (d2h, _)), _) := d2h;
+
+    device.run1 s i := fst (Semantics.step hmac_top s (i, tt));
+
     device.addr_range_start := TOP_EARLGREY_HMAC_BASE_ADDR;
     device.addr_range_pastend := TOP_EARLGREY_HMAC_BASE_ADDR +
                                  HMAC_MSG_FIFO_REG_OFFSET +
                                  HMAC_MSG_FIFO_SIZE_BYTES;
-    device.maxRespDelay := 1; (* FIXME *)
+
+    device.maxRespDelay '((_, (d2h, _)), _) :=
+      if a_ready d2h then 0%nat else 1%nat;
   |}.
   Global Instance hmac_timing: timing := {
     max_negative_done_polls := 16;

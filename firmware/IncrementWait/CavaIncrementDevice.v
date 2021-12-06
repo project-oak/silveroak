@@ -1,219 +1,95 @@
-From Coq Require Import
-     Lists.List
-     ZArith.ZArith.
-
-Import ListNotations.
-
-From Cava Require Import
-     Expr
-     Primitives
-     Semantics
-     TLUL
-     Types
-     Util.BitArithmetic.
-
-Section Var.
-  Import ExprNotations.
-  Import PrimitiveNotations.
-
-  Local Open Scope N.
-
-  Context {var : tvar}.
-
-  Definition incr_state := BitVec 2.
-  Definition Idle       := Constant incr_state 0.
-  Definition Busy1      := Constant incr_state 1.
-  Definition Busy2      := Constant incr_state 2.
-  Definition Done       := Constant incr_state 3.
-
-  Definition incr
-    : Circuit _ [tl_h2d_t] tl_d2h_t
-    := {{
-      fun tl_h2d =>
-        (* Destruct and reassemble tl_h2d with a_address that matches the
-           tlul_adapter_reg interface. *)
-        let '(a_valid
-              , a_opcode
-              , a_param
-              , a_size
-              , a_source
-              , a_address
-              , a_mask
-              , a_data
-              , a_user
-              ; d_ready) := tl_h2d in
-        (* Bit #2 of the address determines which register is being accessed
-           (STATUS or VALUE). Zero out the other bits. *)
-        let a_address := a_address & (`K 1` << 2) in
-        let tl_h2d := (a_valid
-                       , a_opcode
-                       , a_param
-                       , a_size
-                       , a_source
-                       , a_address
-                       , a_mask
-                       , a_data
-                       , a_user
-                       , d_ready) in
-
-        let/delay '(istate, value; tl_d2h) :=
-           (* Compute the value of the status register *)
-           let status :=
-               if istate == `Done` then `K 4`
-               else if istate == `Busy1` || istate == `Busy2` then `K 2`
-                    else (* istate == `Idle` *) `K 1` in
-
-           (* Handle the input:
-              - a_opcode = Get: the adapter will do all the work;
-              - a_opcode = PutFullData: further handling is needed, the adapter
-                will output more info to req. *)
-           let '(tl_d2h'; req) := `tlul_adapter_reg` tl_h2d (value :> status :> []) in
-           let '(is_read
-                 , is_write
-                 , address
-                 , write_data
-                 ; _write_mask) := req in
-
-           let istate' :=
-               if istate == `Busy1` then `Busy2`
-               else if istate == `Busy2` then `Done`
-                    else if istate == `Done` then
-                           if is_read && address == `K 0` then `Idle`
-                           else `Done`
-                         else (* istate == `Idle` *)
-                           if is_write then `Busy1`
-                           else `Idle` in
-
-           let value' :=
-               if istate == `Busy2` then value + `K 1`
-               else if istate == `Idle` then write_data
-                    else value in
-
-           (istate', value', tl_d2h')
-             initially (0,
-                        (0,
-                         (false, (0, (0, (0, (0, (0, (0, (0, (false, false)))))))))))
-           : denote_type (incr_state ** BitVec 32 ** tl_d2h_t)
-        in
-
-        tl_d2h
-       }}.
-End Var.
-
-Example sample_trace :=
-  Eval compute in
-    let nop := set_d_ready true tl_h2d_default in
-    let read_reg (r : N) :=
-        set_a_valid true
-        (set_a_opcode Get
-        (set_a_size 2%N
-        (set_a_address r
-        (set_d_ready true tl_h2d_default)))) in
-    let write_val (v : N) :=
-        set_a_valid true
-        (set_a_opcode PutFullData
-        (set_a_size 2%N
-        (set_a_address 0%N (* value-ref *)
-        (set_a_data v
-        (set_d_ready true tl_h2d_default))))) in
-
-    simulate incr
-             [ (nop, tt)
-               ; (read_reg 4, tt) (* status *)
-               ; (nop, tt)
-               ; (write_val 42, tt)
-               ; (nop, tt)
-               ; (nop, tt)
-               ; (read_reg 4, tt) (* status *)
-               ; (nop, tt)
-               ; (read_reg 0, tt) (* value *)
-               ; (nop, tt)
-               ; (read_reg 4, tt) (* status *)
-             ]%N.
-(* Print sample_trace. *)
-
+Require Import Coq.Lists.List.
 Require Import Coq.micromega.Lia.
+Require Import Coq.ZArith.ZArith.
 
-Require Import riscv.Utility.Utility.
+Require Import Cava.Expr.
+Require Import Cava.ExprProperties.
+Require Import Cava.Invariant.
+Require Import Cava.Primitives.
+Require Import Cava.Semantics.
+Require Import Cava.TLUL.
+Require Import Cava.Types.
+Require Import Cava.Util.BitArithmetic.
+Require Import Cava.Util.List.
+Require Import Cava.Util.Tactics.
 
 Require Import coqutil.Map.Interface coqutil.Map.Properties.
-Require Import coqutil.Word.Interface coqutil.Word.Properties.
-Require Import coqutil.Tactics.Tactics.
 Require Import coqutil.Tactics.Simp.
+Require Import coqutil.Tactics.Tactics.
+Require Import coqutil.Word.Interface coqutil.Word.Properties.
+
+Require Import riscv.Utility.Utility.
 
 Require Import bedrock2.ZnWords.
 
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.InternalMMIOMachine.
 Require Import Bedrock2Experiments.IncrementWait.Constants.
+Require Import Bedrock2Experiments.IncrementWait.Incr.
 Require Import Bedrock2Experiments.IncrementWait.IncrementWaitSemantics.
 Require Import Bedrock2Experiments.StateMachineSemantics.
 Require Import Bedrock2Experiments.RiscvMachineWithCavaDevice.MMIOToCava.
 
-Require Import Cava.Util.Tactics.
+Import ListNotations.
 
 Section WithParameters.
   Instance var : tvar := denote_type.
 
+  Existing Instance Incr.inner_specification.
+  Existing Instance Incr.inner_correctness.
+  Existing Instance Incr.inner_invariant.
+
+  Existing Instance TLUL.tl_specification.
+  Existing Instance TLUL.tlul_invariant.
+  Existing Instance TLUL.tlul_adapter_reg_correctness.
+
+  Existing Instance incr_specification.
+  Existing Instance incr_invariant.
+  Existing Instance incr_correctness.
+
   Context {word: Interface.word 32} {word_ok: word.ok word}
           {Mem: map.map word byte} {Registers: map.map Z word}.
 
-  Definition consistent_states
-             '((reqid, (reqsz, (rspop, (error, (outstanding, (_we_o, _re_o))))))
-               : denote_type (state_of (tlul_adapter_reg (reg_count := 2))))
-             '((d_valid, (d_opcode, (d_param, (d_size, (d_source, (d_sink, (d_data, (d_user, (d_error, a_ready)))))))))
-               : denote_type tl_d2h_t)
-    : Prop :=
-      d_valid = outstanding /\
-      d_opcode = rspop /\
-      (* d_param = 0 /\ *)
-      d_size = reqsz /\
-      d_source = reqid /\
-      (* d_sink = 0 /\ *)
-      (* d_data = ?? *)
-      (* d_user = 0 /\ *)
-      d_error = error /\
-      a_ready = negb outstanding.
-
-  Definition mk_counter_state (istate : N) (val : N) tl_d2h tlul_state
-    : denote_type (state_of incr) :=
-    ((istate, (val, tl_d2h)), tlul_state).
-
   Global Instance counter_device: device := {|
     device.state := denote_type (state_of incr);
-    device.is_ready_state s := exists val tl_d2h tlul_state,
-        consistent_states tlul_state tl_d2h
-        /\ s = mk_counter_state 0 val tl_d2h tlul_state;
-    device.run1 s i := Semantics.step incr s (i, tt);
+
+    device.is_ready_state s := exists r_regs r_tl r_inner,
+        incr_invariant s (ReprIdle, r_regs, r_tl, r_inner);
+
+    device.last_d2h '((_, (_, (_, d2h))), _) := d2h;
+
+    device.run1 s i := fst (Semantics.step incr s (i, tt));
+
     device.addr_range_start := INCR_BASE_ADDR;
     device.addr_range_pastend := INCR_END_ADDR;
-    device.maxRespDelay := 1;
+
+    device.maxRespDelay '((_, (_, (_, d2h))), _) :=
+      if a_ready d2h then 0 else 1;
   |}.
 
   (* conservative upper bound matching the instance given in IncrementWaitToRiscv *)
   Global Instance circuit_spec : circuit_behavior :=
   {| ncycles_processing := 15%nat |}.
 
-  Inductive counter_related: IncrementWaitSemantics.state -> denote_type (state_of incr) -> Prop :=
-  | IDLE_related: forall val tl_d2h tlul_state,
-      consistent_states tlul_state tl_d2h ->
-      counter_related IDLE (mk_counter_state 0 val tl_d2h tlul_state)
-  | BUSY1_related: forall val tl_d2h tlul_state ncycles,
-      (1 < ncycles)%nat ->
-      consistent_states tlul_state tl_d2h ->
-      counter_related (BUSY val ncycles) (mk_counter_state 1 (word_to_N val) tl_d2h tlul_state)
-  | BUSY2_related: forall val tl_d2h tlul_state ncycles,
-      (0 < ncycles)%nat ->
-      consistent_states tlul_state tl_d2h ->
-      counter_related (BUSY val ncycles) (mk_counter_state 2 (word_to_N val) tl_d2h tlul_state)
+
+  Inductive counter_related_spec: IncrementWaitSemantics.state -> Incr.repr_state -> Prop :=
+  | IDLE_related: counter_related_spec IDLE ReprIdle
+  | BUSY_related: forall val ncycles count,
+      (0 < count <= 2)%nat ->
+      (2 < ncycles + count)%nat ->
+      counter_related_spec (BUSY val ncycles) (ReprBusy (word_to_N val) count)
   (* the hardware is already done, but the software hasn't polled it yet to find out,
      so we have to relate a software-BUSY to a hardware-done: *)
-  | BUSY_done_related: forall val tl_d2h tlul_state ncycles,
-      consistent_states tlul_state tl_d2h ->
-      counter_related (BUSY val ncycles)
-                      (mk_counter_state 3 (word_to_N (word.add (word.of_Z 1) val)) tl_d2h tlul_state)
-  | DONE_related: forall val tl_d2h tlul_state,
-      consistent_states tlul_state tl_d2h ->
-      counter_related (DONE val) (mk_counter_state 3 (word_to_N val) tl_d2h tlul_state).
+  | BUSY_done_related: forall val ncycles,
+      counter_related_spec (BUSY val ncycles) (ReprDone (word_to_N (word.add (word.of_Z 1) val)))
+  | DONE_related: forall val,
+      counter_related_spec (DONE val) (ReprDone (word_to_N val)).
+
+  Definition counter_related {invariant : invariant_for incr repr} (sH : IncrementWaitSemantics.state)
+             (sL : denote_type (state_of incr)) (inflight_h2ds : list tl_h2d) : Prop :=
+    exists r_state r_regs r_tl r_inner,
+      inflight_h2ds = [] /\
+      counter_related_spec sH r_state /\
+      invariant sL (r_state, r_regs, r_tl, r_inner).
 
   (* This should be in bedrock2.ZnWords. It is use by ZnWords, which is used in
      the two following Lemmas. *)
@@ -227,160 +103,209 @@ Section WithParameters.
       (0 <= x < 2 ^ 32)%Z -> word_to_N (word.of_Z x) = Z.to_N x.
   Proof. intros. unfold word_to_N. ZnWords. Qed.
 
-  Set Printing Depth 100000.
-
-  Ltac destruct_pair_let_hyp :=
-    match goal with
-    | H: context [ match ?p with
-                   | pair _ _ => _
-                   end ] |- _ =>
-      destruct p as [?p0 ?p1] eqn:?H0
-    end.
-
-  Ltac destruct_pair_equal_hyp :=
-    match goal with
-    | H: context [ (?l0, ?l1) = (?r0, ?r1) ] |- _ =>
-      eapply pair_equal_spec in H; destruct H as [?H0 ?H1]
-    end.
-
-  Ltac destruct_tlul_adapter_reg_state :=
-    match goal with
-    | H : N * (N * (N * (bool * (bool * (bool * bool))))) |- _ =>
-      destruct H as [?reqid [?reqsz [?rspop [?error [?outstanding [?we_o ?re_o]]]]]]
-    end.
-
-  Ltac destruct_consistent_states :=
-    match goal with
-    | H : consistent_states _ _ |- _ =>
-      destruct H as (Hvalid & Hopcode & Hsize & Hsource & Herror & Hready)
-    end.
-
   Lemma N_to_word_word_to_N: forall v, N_to_word (word_to_N v) = v.
   Proof. intros. unfold N_to_word, word_to_N. ZnWords. Qed.
 
-  (* Set Printing All. *)
+  Ltac use_spec :=
+    match goal with
+    | Hrun: device.run1 ?sL ?input = ?sL',
+            Hinv: incr_invariant ?sL ?repr
+      |- _ =>
+      assert (Hprec: precondition incr (input, tt) repr);
+      [ simplify_spec (incr (var:=var)); simplify_spec (tlul_adapter_reg (reg_count:=2)); simplify_spec (Incr.inner (var:=var));
+        simplify_invariant (incr (var:=var));
+        cbn in sL; destruct sL as ((?busy, (?done, (?regs, ?d2h))), (?s_tl, ?s_inner));
+        destruct_tl_h2d; tlsimpl; logical_simplify; subst;
+        ssplit; intros; try discriminate; auto
+
+      | remember (update_repr (c:=incr) (input, tt) repr) as repr' eqn:Erepr';
+        (* pose proof (output_correct_pf (c:=incr) (input, tt) sL repr Hinv Hprec) as Hpostc. *)
+        pose proof (invariant_preserved_pf (c:=incr) (input, tt) sL repr repr' Erepr' Hinv Hprec) as Hinv';
+        unfold device.run1, counter_device in Hrun;
+        match type of Hrun with
+        | fst ?step = _ =>
+          remember step as res eqn:Hstep;
+          destruct res as (?sL'' & ?d2h);
+          cbn in Hrun; subst sL''; clear Hstep
+        end;
+        cbn [fst] in Hinv';
+        destruct repr' as (((?r_state, ?r_regs), ?r_tl), ?r_inner)]
+    end.
+
+  Ltac inversion_rel_spec :=
+    match goal with
+    | H: counter_related_spec _ _ |- _ => inversion H; subst
+    end.
+
+  Ltac simplify_tl_repr :=
+    unfold device.maxRespDelay, device.last_d2h, counter_device in *;
+    repeat match goal with
+    | sL: device.state |- _ =>
+      cbn in sL; destruct sL as ((?busy, (?done, (?regs, ?d2h))), (?s_tl, ?s_inner))
+    end;
+    destruct_tl_h2d; destruct_tl_d2h; tlsimpl; logical_simplify; subst;
+    simplify_invariant (incr (var:=var));
+    match goal with
+    | H: _ = update_repr _ (_, _, ?r_tl, _) |- _ =>
+      destruct r_tl; logical_simplify; tlsimpl; subst;
+      (* logical_simplify; subst; *)
+      cbn in H; rewrite ? Z_word_N in H by lia; cbn in H
+    end;
+    logical_simplify; subst;
+    cbn; rewrite ? Z_word_N by lia; cbn;
+    change (Pos.to_nat 1) with 1;
+    repeat match goal with
+    | H: length ?regs = 2 |- _ =>
+      destruct regs as [|? [|? [|]]]; cbn in H; try discriminate H; clear H;
+      cbn [nth] in *; subst
+    end;
+    try discriminate.
+
   Global Instance cava_counter_satisfies_state_machine:
     device_implements_state_machine counter_device increment_wait_state_machine.
   Proof.
-    eapply Build_device_implements_state_machine with (device_state_related := counter_related);
-      intros.
+    eapply Build_device_implements_state_machine with (device_state_related := counter_related).
     - (* mmioAddrs_match: *)
       reflexivity.
     - (* initial_state_is_ready_state: *)
-      simpl in *. subst. inversion H0. subst. eexists _, _, _. eauto.
+      intros.
+      unfold device.is_ready_state, counter_device, counter_related in *;
+        logical_simplify.
+      cbn in *; subst.
+      inversion_rel_spec; repeat eexists; eassumption.
     - (* initial_states_are_related: *)
-      simpl in *. destruct H0 as (val & tl_d2h & tlul_state & H0 & H1). subst.
-      eauto using IDLE_related.
+      intros.
+      cbn in *; logical_simplify; subst.
+      unfold counter_related; repeat eexists; [|eassumption].
+      apply IDLE_related.
     - (* initial_state_exists: *)
-      simpl in *. destruct H as (val & tl_d2h & tlul_state & H0 & H1). subst.
-      eauto using IDLE_related.
+      intros.
+      cbn in *; logical_simplify; subst.
+      unfold counter_related; repeat eexists; [|eassumption].
+      apply IDLE_related.
     - (* nonMMIO_device_step_preserves_state_machine_state: *)
-      simpl in sL1, sL2.
-      destruct_tl_h2d. simpl in H. subst.
-      cbn in H1.
-      repeat (destruct_pair_let_hyp;
-              repeat (destruct_pair_equal_hyp; subst; cbn [fst snd])).
-      inversion H0; subst;
-        try (rewrite incrN_word_to_bv);
-        try (constructor; try lia; simpl; boolsimpl; ssplit; reflexivity).
-    - (* state_machine_read_to_device_read: *)
-      (* simpler because device.maxRespDelay=1 *)
-      unfold device.maxRespDelay, device.runUntilResp, device.state, device.run1, counter_device.
-      unfold state_machine.read_step, increment_wait_state_machine, read_step in *.
-      simpl in sL. destruct sL as ((istate & value & tl_d2h) & tlul_state).
-      destruct_tl_d2h. destruct_tlul_adapter_reg_state.
-      destruct H as [v [sH' [Hbytes H]]]. rewrite Hbytes.
-      destruct r; simp; [|].
-      + (* r=VALUE *)
-        destruct_consistent_states. subst.
-        repeat (rewrite Z_word_N by lia; cbn).
-        destruct outstanding; [|];
-          eexists _, _, _; ssplit; try reflexivity; cbn; rewrite Z_word_N by lia;
-            try (eapply IDLE_related; unfold consistent_states; ssplit; reflexivity);
-            try (apply N_to_word_word_to_N).
-      + (* r=STATUS *)
-        destruct sH; [| |].
-        * (* sH=IDLE *)
-          inversion H0. subst.
-          destruct_consistent_states. subst. cbn.
-          repeat (rewrite Z_word_N by lia; cbn).
-          unfold status_value, STATUS_IDLE, N_to_word, word_to_N.
-          destruct outstanding; eexists _, _, _; ssplit; try reflexivity;
-              try (apply IDLE_related; simpl; ssplit; reflexivity);
-              try (simpl; unfold N_to_word; ZnWords).
-        * (* sH=BUSY *)
-          simpl.
-          unfold STATUS_ADDR, INCR_BASE_ADDR, N_to_word, word_to_N, status_value, STATUS_BUSY.
-          rewrite word.unsigned_of_Z. unfold word.wrap.
-          inversion H0; subst; [| |].
-          -- (* BUSY1_related *)
-            destruct outstanding; eexists _, _, _; simpl; [|].
-            ++ ssplit; try reflexivity; [|].
-               ** rewrite incrN_word_to_bv.
-                  apply BUSY_done_related; unfold consistent_states; ssplit; reflexivity.
-               ** right. eexists. ssplit; try reflexivity; [|].
-                  --- apply Nat.pred_inj; try lia. rewrite Nat.pred_succ. reflexivity.
-                  --- simpl. ZnWords.
-            ++ ssplit; try reflexivity; [|].
-               ** apply BUSY2_related. 1: shelve. unfold consistent_states. ssplit; reflexivity.
-               ** right. eexists. ssplit; try reflexivity; [|].
-                  --- apply Nat.pred_inj; try lia. rewrite Nat.pred_succ. reflexivity.
-                  --- simpl. ZnWords.
-                      Unshelve. lia.
-          -- (* BUSY2_related *)
-            destruct outstanding; eexists _, _, _; simpl; [|].
-            ++ ssplit; try reflexivity; [|].
-              ** rewrite incrN_word_to_bv.
-                 apply DONE_related; unfold consistent_states; ssplit; reflexivity.
-              ** left. simpl. ssplit; try reflexivity. ZnWords.
-            ++ ssplit; try reflexivity; [|].
-              ** rewrite incrN_word_to_bv.
-                 apply BUSY_done_related; unfold consistent_states; ssplit; reflexivity.
-              ** right. eexists. ssplit; try reflexivity; [|].
-                 --- apply Nat.pred_inj; try lia. rewrite Nat.pred_succ. reflexivity.
-                 --- simpl. ZnWords.
-          -- (* BUSY_done_related *)
-            (* the transition that was used to show that sH is not stuck was *)
-            (* a transition from BUSY to BUSY returning a busy flag, but *)
-            (* since the device already is in done state, it will return a *)
-            (* done flag in this transition, so the transition we use to *)
-            (* simulate what happened in the device is a BUSY-to-DONE *)
-            (* transition returning a done flag instead of a BUSY-to-BUSY *)
-            (* transition returning a busy flag. *)
-            destruct outstanding; eexists _, _, _; boolsimpl; simpl;
-              ssplit; try reflexivity;
-                try (apply DONE_related; unfold consistent_states; ssplit; reflexivity);
-                try (left; split; try reflexivity; simpl; ZnWords).
-        * (* sH=DONE *)
-          simpl.
-          unfold STATUS_ADDR, INCR_BASE_ADDR, N_to_word, word_to_N, status_value, STATUS_BUSY.
-          rewrite !word.unsigned_of_Z. unfold word.wrap.
-          inversion H0. subst.
-          destruct outstanding; eexists _, _, _; boolsimpl; simpl;
-            ssplit; try reflexivity;
-              try (eapply DONE_related; unfold consistent_states; ssplit; reflexivity);
-              try (simpl; ZnWords).
-    - (* state_machine_write_to_device_write: *)
-      destruct H as (sH' & ? & ?). subst.
-      unfold write_step in H1.
-      destruct r. 2: contradiction.
-      destruct sH; try contradiction. subst.
-      inversion H0. simpl in tl_d2h. simpl in tlul_state.
-      destruct_tl_d2h. destruct_tlul_adapter_reg_state. subst. cbn.
-      unfold word_to_N.
-      rewrite word.unsigned_of_Z_nowrap by (cbv; intuition discriminate).
-      destruct outstanding; boolsimpl; simpl;
-        eexists _, _, _; ssplit; try reflexivity; try assumption; apply BUSY1_related;
-          try lia;
-          try (unfold consistent_states; ssplit; reflexivity).
+      intros.
+      logical_simplify.
+      unfold counter_related in *; logical_simplify.
+      use_spec. clear Hprec.
+      repeat eexists; [|eassumption].
+      inversion_rel_spec; simplify_tl_repr;
+        destruct d_ready; logical_simplify; subst; try constructor;
+          (destruct count as [|[|[|]]]; [exfalso; lia|..|exfalso; lia]);
+          rewrite ? incrN_word_to_bv; constructor; lia.
+
+    - (* [state_machine_read_to_device_send_read_or_later] *)
+      intros ? ? ? ? ? ? [v [sH'' [Hpow2 Hex_read]]] **.
+      rewrite Hpow2. clear Hpow2.
+      unfold counter_related in *. cbn in Hex_read. logical_simplify.
+      use_spec. clear Hprec.
+
+      destruct_one_match; [destruct_one_match|].
+      { (* case 1: device ready, valid response *)
+        destruct r.
+        - (* [r:=VALUE] *)
+          inversion_rel_spec; destruct Hex_read; subst.
+          eexists; split; [|cbn; ssplit; try reflexivity].
+          + repeat eexists; [|eassumption].
+            simplify_tl_repr; constructor.
+          + simplify_tl_repr.
+            apply N_to_word_word_to_N.
+        - (* [r:=STATUS] *)
+          inversion_rel_spec.
+          + eexists; split; [repeat eexists; [|eassumption]|cbn; ssplit; try reflexivity];
+              simplify_tl_repr.
+            * constructor.
+            * unfold N_to_word, status_value; ZnWords.
+
+          + destruct ncycles as [|]; [exfalso; lia|].
+            eexists; split; [repeat eexists; [|eassumption]|cbn; ssplit; try reflexivity];
+              simplify_tl_repr.
+            * destruct count as [|[|[|]]]; [exfalso; lia|..|exfalso; lia].
+              -- apply BUSY_related with (ncycles:=ncycles); lia.
+              -- rewrite incrN_word_to_bv; apply BUSY_done_related.
+            * right. eexists; ssplit; try reflexivity.
+              unfold N_to_word, status_value; ZnWords.
+
+          + eexists; split; [repeat eexists; [|eassumption]|cbn; ssplit; try reflexivity];
+              simplify_tl_repr.
+            * apply DONE_related.
+            * left. split; [|reflexivity].
+              unfold N_to_word, status_value; ZnWords.
+
+          + eexists; split; [repeat eexists; [|eassumption]|cbn; ssplit; try reflexivity];
+              simplify_tl_repr.
+            * apply DONE_related.
+            * unfold N_to_word, status_value; ZnWords.
+      }
+
+      { (* case 2: device ready, no valid response *)
+        exfalso; simplify_tl_repr.
+      }
+
+      { (* case 3: device not ready *)
+        ssplit.
+        - repeat eexists; [|eassumption].
+          inversion_rel_spec; simplify_tl_repr;
+            rewrite ? incrN_word_to_bv; try (constructor; lia).
+          all: destruct count as [|[|[|]]]; [exfalso; lia
+                                            |apply BUSY_related with (ncycles:=ncycles); lia
+                                            |apply BUSY_done_related
+                                            |exfalso; lia].
+        - simplify_tl_repr; lia.
+      }
+
+    - (* [state_machine_read_to_device_ack_read_or_later] *)
+      intros.
+      unfold counter_related in *; logical_simplify.
+      discriminate.
+
+    - (* [state_machine_write_to_device_send_write_or_later] *)
+      intros ? ? ? ? ? ? ? [sH'' [Hpow2 Hex_write]] **.
+      rewrite Hpow2. clear Hpow2.
+      unfold counter_related in *. logical_simplify.
+      use_spec. clear Hprec.
+      destruct_one_match; [destruct_one_match|].
+
+      { (* case 1: device ready, valid response *)
+        destruct r.
+        + (* [r:=VALUE] *)
+          inversion_rel_spec; destruct Hex_write; subst.
+          eexists; split; [|cbn; ssplit; try reflexivity].
+          repeat eexists; [|eassumption].
+          simplify_tl_repr; constructor; lia.
+        + (* [r:=STATUS] *)
+          destruct Hex_write.
+      }
+
+      { (* case 2: device ready, no valid response *)
+        exfalso; simplify_tl_repr.
+      }
+
+      { (* case 3: device not ready *)
+        ssplit.
+        - repeat eexists; [|eassumption].
+          inversion_rel_spec; simplify_tl_repr;
+            rewrite ? incrN_word_to_bv; try (constructor; lia).
+          all: destruct count as [|[|[|]]]; [exfalso; lia
+                                            |apply BUSY_related with (ncycles:=ncycles); lia
+                                            |apply BUSY_done_related
+                                            |exfalso; lia].
+        - simplify_tl_repr; lia.
+      }
+
+    - (* [state_machine_write_to_device_ack_write_or_later] *)
+      intros.
+      unfold counter_related in *; logical_simplify.
+      discriminate.
+
     - (* read_step_unique: *)
-      simpl in *. unfold read_step in *. simp.
+      intros. simpl in *. unfold read_step in *. simp.
       destruct v; destruct r; try contradiction; simp; try reflexivity.
       destruct Hp1; destruct H0p1; simp; try reflexivity;
         unfold status_value in *; exfalso; ZnWords.
     - (* write_step_unique: *)
-      simpl in *. unfold write_step in *. simp. subst. reflexivity.
+      intros. simpl in *. unfold write_step in *. simp. subst. reflexivity.
     - (* initial_state_unique: *)
-      simpl in *. subst. reflexivity.
+      intros. simpl in *. subst. reflexivity.
   Qed.
 End WithParameters.

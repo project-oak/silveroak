@@ -54,11 +54,16 @@ Module device.
        includes Cava.Core.Circuit.reset_state *)
     is_ready_state: state -> Prop;
 
+    (* the d2h output the device produced when it transitioned to the state *)
+    (* TODO: probably need to add to [device_implements_state_machine] somthing like
+     [forall s h2d d2h s', run1 s h2d = (s', d2h) -> last_d2h s' = d2h] *)
+    last_d2h: state -> tl_d2h;
+
     (* run one simulation step, will be instantiated with Cava.Semantics.Combinational.step *)
     run1: (* input: TileLink host-2-device *)
       state -> tl_h2d ->
       (* output: next state, TileLink device-2-host *)
-      state * tl_d2h;
+      state;
 
     (* lowest address of the MMIO address range used to communicate with this device *)
     addr_range_start: Z;
@@ -66,23 +71,46 @@ Module device.
     (* one past the highest MMIO address *)
     addr_range_pastend: Z;
 
-    (* max number of device cycles (ie calls of run1) this device takes to serve read/write requests *)
-    maxRespDelay: nat;
+    (* max number of device cycles this device takes to serve read/write requests, ie
+       max number of run1 calls with active read/write request until the device responds *)
+    maxRespDelay: state -> nat;
   }.
   (* Note: there are two levels of "polling until a response is available":
-     - on the hardware level, using readResp/writeResp, which appears as
+     - on the hardware level, using runUntilResp, which appears as
        blocking I/O for the software
      - on the software level, using MMIO reads on some status register,
        where the MMIO read immediately gives a "busy" response, and the
        software keeps polling until the MMIO read returns a "done" response *)
 
-  (* returning None means out of fuel and must not happen if fuel >= device.maxRespDelay *)
-  Definition runUntilResp{D: device}(h2d: tl_h2d) :=
-    fix rec(fuel: nat)(s: device.state): option tl_d2h * device.state :=
-      let '(next, respo) := device.run1 s h2d in
-      if d_valid respo then (Some respo, next) else
+  Definition waitForResp{D: device} :=
+    fix rec(fuel: nat)(s: device.state): option device.state :=
+      let next := device.run1 s (set_d_ready true tl_h2d_default) in
+      if d_valid (device.last_d2h next) then
+        Some next
+      else
         match fuel with
-        | O => (None, next)
+        | O => None
+        | S fuel' => rec fuel' next
+        end.
+
+  (* returning None means out of fuel and must not happen if fuel >= device.maxRespDelay.
+     It is also assumed that [a_valid h2d = true] and [d_ready h2d = true].
+     When the result is [Some res], retrieve the response d2h by calling
+     [device.last_d2h res]. *)
+  Definition runUntilResp{D: device}(h2d: tl_h2d) :=
+    fix rec(fuel: nat)(s: device.state): option device.state :=
+      let next := device.run1 s h2d in
+      if a_ready (device.last_d2h s) then
+        if d_valid (device.last_d2h next) then
+          Some next
+        else
+          match fuel with
+          | O => None
+          | S fuel' => waitForResp fuel' next
+          end
+      else
+        match fuel with
+        | O => None
         | S fuel' => rec fuel' next
         end.
 
@@ -148,11 +176,11 @@ Section WithParams.
   Definition runUntilResp(h2d: tl_h2d):
     OState (ExtraRiscvMachine D) word :=
     mach <- get;
-    let (respo, new_device_state) := device.runUntilResp h2d device.maxRespDelay
-                                                         mach.(getExtraState) in
+    new_device_state <- fail_if_None
+                         (device.runUntilResp h2d (device.maxRespDelay mach.(getExtraState))
+                                              mach.(getExtraState));
     put (withExtraState new_device_state mach);;
-    resp <- fail_if_None respo;
-    Return (N_to_word (d_data resp)).
+    Return (N_to_word (d_data (device.last_d2h new_device_state))).
 
   Definition mmioLoad(log2_nbytes: nat)(addr: word)
     : OState (ExtraRiscvMachine D) (HList.tuple byte (2 ^ log2_nbytes)) :=
@@ -238,7 +266,7 @@ Section WithParams.
     end.
 
   Definition device_step_without_IO(d: D): D :=
-    let '(next_state, ignored_d2h) := (device.run1 d tl_h2d_default) in next_state.
+    let next_state := device.run1 d (set_d_ready true tl_h2d_default) in next_state.
 
   Fixpoint device_steps(n: nat): OState (ExtraRiscvMachine D) unit :=
     match n with

@@ -17,6 +17,8 @@
 Require Import Coq.Lists.List.
 Require Import Coq.ZArith.ZArith.
 
+Import ListNotations.
+
 Require Import Cava.Expr.
 Require Import Cava.ExprProperties.
 Require Import Cava.Invariant.
@@ -131,7 +133,7 @@ Section Var.
   Definition sha_digest := Vec sha_word 8.
 
   Definition tlul_adapter_state :=
-    (BitVec TL_AIW ** BitVec TL_SZW ** BitVec 3 ** Bit ** Bit ** Bit ** Bit)%circuit_type.
+    (BitVec TL_AIW ** BitVec TL_SZW ** BitVec 3 ** BitVec 32 ** Bit ** Bit ** Bit ** Bit)%circuit_type.
 
   (* Convert TLUL packets to a simple read/write register interface *)
   (* This is similar to OpenTitan's tlul_adapter_reg, but for simplicity we
@@ -153,7 +155,9 @@ Section Var.
       , a_user
       ; d_ready) := incoming_tlp in
 
-    let/delay '(reqid, reqsz, rspop, error, outstanding, we_o; re_o) :=
+    let/delay '(reqid, reqsz, rspop, reqaddress, error, outstanding,
+                (* output only signals: *)
+                we_o; re_o) :=
 
       let a_ack := a_valid && !outstanding in
       let d_ack := outstanding && d_ready in
@@ -166,24 +170,25 @@ Section Var.
       let err_internal := `Zero` in
       let error_i := `Zero` in
 
-      let '(reqid, reqsz, rspop, error; outstanding) :=
-        if a_ack then
-          ( a_source
-          , a_size
-          , if rd_req then `K AccessAckData` else `K AccessAck`
-          , error_i || err_internal
-          , `One`
-          )
-        else
-          (reqid, reqsz, rspop, error, if d_ack then `Zero` else outstanding)
+      let '(reqid, reqsz, rspop, reqaddress, error; outstanding) :=
+          if a_ack then
+            ( a_source
+              , a_size
+              , if rd_req then `K AccessAckData` else `K AccessAck`
+              , a_address
+              , error_i || err_internal
+              , `One`
+            )
+          else
+            (reqid, reqsz, rspop, reqaddress, error, if d_ack then `Zero` else outstanding)
       in
 
       let we_o := wr_req && !err_internal in
       let re_o := rd_req && !err_internal in
 
-      (reqid, reqsz, rspop, error, outstanding, we_o, re_o)
-      initially (0,(0,(0,(false,(false,(false,false))))))
-        : denote_type (BitVec _ ** BitVec _ ** BitVec _ ** Bit ** Bit ** Bit ** Bit)
+      (reqid, reqsz, rspop, reqaddress, error, outstanding, we_o, re_o)
+      initially default
+        : denote_type (BitVec _ ** BitVec _ ** BitVec _ ** BitVec _ ** Bit ** Bit ** Bit ** Bit)
     in
 
     let wdata_o := a_data in
@@ -195,7 +200,7 @@ Section Var.
       , reqsz
       , reqid
       , `K 0`
-      , `index` registers (`bvslice 2 30` a_address)
+      , `index` registers (`bvslice 2 30` reqaddress)
       , `K 0`
       , error
       , !outstanding
@@ -208,7 +213,7 @@ End Var.
 
 Ltac destruct_tlul_adapter_reg_state reg_count :=
   destruct_state (tlul_adapter_reg (var:=denote_type) (reg_count:=reg_count))
-                 ipattern:((?reqid, (?reqsz, (?rspop, (?error, (?outstanding, (?we_o, ?re_o))))))).
+                 ipattern:((?reqid, (?reqsz, (?rspop, (?reqaddress, (?error, (?outstanding, (?we_o, ?re_o)))))))).
 
 Section StateGetters.
   Definition var : tvar := denote_type.
@@ -220,6 +225,9 @@ Section StateGetters.
     : N := ltac:(destruct_tlul_adapter_reg_state reg_count; apply reqsz).
   Definition tlul_adapter_reg_state_rspop (s : denote_type (state_of (tlul_adapter_reg (reg_count:=reg_count))))
     : N := ltac:(destruct_tlul_adapter_reg_state reg_count; apply rspop).
+  Definition tlul_adapter_reg_state_reqaddress (s : denote_type (state_of (tlul_adapter_reg (reg_count:=reg_count))))
+    : N := ltac:(destruct_tlul_adapter_reg_state reg_count; apply reqaddress).
+
   Definition tlul_adapter_reg_state_error (s : denote_type (state_of (tlul_adapter_reg (reg_count:=reg_count))))
     : bool := ltac:(destruct_tlul_adapter_reg_state reg_count; apply error).
   Definition tlul_adapter_reg_state_outstanding (s : denote_type (state_of (tlul_adapter_reg (reg_count:=reg_count))))
@@ -232,9 +240,9 @@ End StateGetters.
 
 Ltac tlul_adapter_reg_state_simpl :=
   cbn [tlul_adapter_reg_state_reqid tlul_adapter_reg_state_reqsz
-       tlul_adapter_reg_state_rspop tlul_adapter_reg_state_error
-       tlul_adapter_reg_state_outstanding tlul_adapter_reg_state_we_o
-       tlul_adapter_reg_state_re_o] in *.
+       tlul_adapter_reg_state_rspop tlul_adapter_reg_state_reqaddress
+       tlul_adapter_reg_state_error tlul_adapter_reg_state_outstanding
+       tlul_adapter_reg_state_we_o tlul_adapter_reg_state_re_o] in *.
 
 Definition tl_h2d := denote_type tl_h2d_t.
 Definition tl_h2d_default := default (t := tl_h2d_t).
@@ -342,41 +350,45 @@ Ltac tlsimpl :=
        set_d_sink set_d_data set_d_user set_d_error set_a_ready
        d_valid d_opcode d_param d_size d_source d_sink d_data d_user d_error a_ready] in *.
 
-Section TLULSpec.
+Section TLSpec.
   Local Open Scope N_scope.
 
   Context {reg_count : nat}.
 
-  Variant TLULState :=
-  | OutstandingGet (reqid : N) (reqsz : N)
-  | OutstandingPutFullData (reqid : N).
+  Variant repr_state :=
+  | Idle
+  | OutstandingAccessAckData (h2d : tl_h2d) (regs : list N)
+  | OutstandingAccessAck (h2d : tl_h2d).
 
-  Definition tlul_repr := option TLULState.
+  Definition update_repr_state (input : denote_type (input_of (tlul_adapter_reg (reg_count:=reg_count)))) repr :=
+    let '(h2d, (regs, tt)) := input in
+    match repr with
+    | Idle =>
+      if a_valid h2d then
+        if a_opcode h2d =? Get then
+          OutstandingAccessAckData h2d regs
+        else if a_opcode h2d =? PutFullData then
+               OutstandingAccessAck h2d
+             else (* unreachable *) repr
+      else
+        repr
+    | _ =>
+      if d_ready h2d then Idle
+      else match repr with
+           | OutstandingAccessAckData h2d _ => OutstandingAccessAckData h2d regs
+           | _ => repr
+           end
+    end.
 
-  Compute denote_type (input_of tlul_adapter_reg).
-  Instance tlul_specification
-    : specification_for (tlul_adapter_reg (reg_count:=reg_count)) tlul_repr :=
-    {| reset_repr := None;
+  Instance tl_specification
+    : specification_for (tlul_adapter_reg (reg_count:=reg_count)) repr_state :=
+    {| reset_repr := Idle;
 
-       update_repr :=
-         fun (input : denote_type (input_of (tlul_adapter_reg (reg_count:=reg_count))))
-           (repr : tlul_repr) =>
-           let '(h2d, (_regs, tt)) := input in
-           match repr with
-           | None =>
-             if a_valid h2d then
-               if a_opcode h2d =? Get then
-                 Some (OutstandingGet (a_source h2d) (a_size h2d))
-               else if a_opcode h2d =? PutFullData then
-                      Some (OutstandingPutFullData (a_source h2d))
-                    else (* unrechable *) repr
-             else None
-           | Some _ => if d_ready h2d then None else repr
-           end;
+       update_repr := update_repr_state;
 
        precondition :=
          fun (input : denote_type (input_of tlul_adapter_reg))
-           (repr : tlul_repr) =>
+           (repr : repr_state) =>
            let '(h2d, (regs, tt)) := input in
            reg_count = length regs
            /\ (a_valid h2d = true
@@ -384,25 +396,14 @@ Section TLULSpec.
 
        postcondition :=
          fun (input : denote_type (input_of (tlul_adapter_reg (reg_count:=reg_count))))
-           (repr : tlul_repr)
+           (repr : repr_state)
            (output : denote_type (output_of (tlul_adapter_reg (reg_count:=reg_count)))) =>
-           exists h2d regs d2h io_re io_we io_address io_data io_mask repr',
+           exists h2d regs repr' d2h io_re io_we io_address io_data io_mask,
                input = (h2d, (regs, tt))
-               /\ repr' =
-                  match repr with
-                  | None =>
-                    if a_valid h2d then
-                      if a_opcode h2d =? Get then
-                        Some (OutstandingGet (a_source h2d) (a_size h2d))
-                      else if a_opcode h2d =? PutFullData then
-                             Some (OutstandingPutFullData (a_source h2d))
-                           else (* unrechable *) repr
-                    else None
-                  | Some _ => if d_ready h2d then None else repr
-                  end
                /\ output = (d2h, (io_re, (io_we, (io_address, (io_data, io_mask)))))
+               /\ repr' = update_repr_state input repr
                /\ match repr' with
-                 | None =>
+                 | Idle =>
                    d_valid    d2h = false
                    /\ d_param  d2h = 0
                    /\ d_sink   d2h = 0
@@ -412,64 +413,68 @@ Section TLULSpec.
                    /\ io_re = false
                    /\ io_we = false
 
-                 | Some (OutstandingGet reqid reqsz) =>
-                   d_valid    d2h = true
-                   /\ d_opcode d2h = AccessAckData
-                   /\ d_param  d2h = 0
-                   /\ d_size   d2h = reqsz
-                   /\ d_source d2h = reqid
-                   /\ d_sink   d2h = 0
-                   /\ d_data   d2h = List.nth (N.to_nat (((a_address h2d / 4) mod (2 ^ 30)))) regs 0%N
-                   /\ d_user   d2h = 0
-                   /\ d_error  d2h = false
-                   /\ a_ready  d2h = false
-                   /\ match repr with
-                     | None => if a_valid h2d then
-                                io_re = true
-                                /\ io_address = a_address h2d
-                              else True
-                     | _ => True
-                     end
-                   /\ io_we = false
+                 | OutstandingAccessAckData h2d regs =>
+                     d_valid    d2h = true
+                     /\ d_opcode d2h = AccessAckData
+                     /\ d_param  d2h = 0
+                     /\ d_size   d2h = (a_size h2d)
+                     /\ d_source d2h = (a_source h2d)
+                     /\ d_sink   d2h = 0
+                     /\ d_data   d2h = (List.nth (N.to_nat ((((a_address h2d) / 4) mod (2 ^ 30)))) regs 0%N)
+                     /\ d_user   d2h = 0
+                     /\ d_error  d2h = false
+                     /\ a_ready  d2h = false
+                     /\ match repr with
+                       | Idle => if a_valid h2d then
+                                  io_re = true
+                                  /\ io_address = a_address h2d
+                                else io_re = false
+                       | _ => io_re = false
+                       end
+                     /\ io_we = false
 
-                 | Some (OutstandingPutFullData reqid) =>
-                   d_valid    d2h = true
-                   /\ d_opcode d2h = AccessAck
-                   /\ d_param  d2h = 0
-                   (* /\ d_size   d2h =  *)
-                   /\ d_source d2h = reqid
-                   /\ d_sink   d2h = 0
-                   /\ d_user   d2h = 0
-                   /\ d_error  d2h = false
-                   /\ a_ready  d2h = false
-                   /\ io_re = false
-                   /\ match repr with
-                     | None => if a_valid h2d then
-                                io_we = true
-                                /\ io_address = a_address h2d
-                                /\ io_data = a_data h2d
-                                /\ io_mask = a_mask h2d
-                              else True
-                     | _ => True
-                     end
-                 end
+                 | OutstandingAccessAck h2d  =>
+                          d_valid    d2h = true
+                          /\ d_opcode d2h = AccessAck
+                          /\ d_param  d2h = 0
+                          (* /\ d_size   d2h =  *)
+                          /\ d_source d2h = (a_source h2d)
+                          /\ d_sink   d2h = 0
+                          /\ d_user   d2h = 0
+                          /\ d_error  d2h = false
+                          /\ a_ready  d2h = false
+                          /\ io_re = false
+                          /\ match repr with
+                            | Idle => if a_valid h2d then
+                                       io_we = true
+                                       /\ io_address = a_address h2d
+                                       /\ io_data = a_data h2d
+                                       /\ io_mask = a_mask h2d
+                                     else io_we = false
+                            | _ => io_we = false
+                            end
+                 end;
     |}.
 
-  Global Instance tlul_invariant : invariant_for (tlul_adapter_reg (reg_count:=reg_count)) tlul_repr :=
+  Global Instance tlul_invariant : invariant_for (tlul_adapter_reg (reg_count:=reg_count)) repr_state :=
     fun (state : denote_type (state_of tlul_adapter_reg)) repr =>
       tlul_adapter_reg_state_error state = false
       /\ match repr with
-        | None =>
+        | Idle =>
           tlul_adapter_reg_state_outstanding (reg_count:=reg_count) state = false
-        | Some (OutstandingGet reqid reqsz) =>
+        | OutstandingAccessAckData h2d regs =>
           tlul_adapter_reg_state_outstanding state = true
-          /\ tlul_adapter_reg_state_reqid state = reqid
-          /\ tlul_adapter_reg_state_reqsz state = reqsz
+          /\ tlul_adapter_reg_state_reqid state = (a_source h2d)
+          /\ tlul_adapter_reg_state_reqsz state = (a_size h2d)
           /\ tlul_adapter_reg_state_rspop state = AccessAckData
-        | Some (OutstandingPutFullData reqid) =>
+          /\ tlul_adapter_reg_state_reqaddress state = (a_address h2d)
+          /\ reg_count = length regs
+          /\ a_opcode h2d = Get
+        | OutstandingAccessAck h2d =>
           tlul_adapter_reg_state_outstanding state = true
-          /\ tlul_adapter_reg_state_reqid state = reqid
+          /\ tlul_adapter_reg_state_reqid state = (a_source h2d)
           /\ tlul_adapter_reg_state_rspop state = AccessAck
+          /\ a_opcode h2d = PutFullData
         end.
 
     Lemma tlul_adapter_reg_invariant_at_reset : invariant_at_reset tlul_adapter_reg.
@@ -482,30 +487,26 @@ Section TLULSpec.
 
     Lemma tlul_adapter_reg_invariant_preserved : invariant_preserved tlul_adapter_reg.
     Proof.
-      intros (h2d, (regs, t)) state repr. destruct t.
+      intros (h2d & regs & t) state repr. destruct t.
       cbn in state. destruct_tlul_adapter_reg_state reg_count.
       destruct_tl_h2d.
       intros; subst.
       simplify_invariant (tlul_adapter_reg (reg_count:=reg_count)).
       simplify_spec (tlul_adapter_reg (reg_count:=reg_count)).
-      cbv [tlul_adapter_reg]. stepsimpl. logical_simplify.
+      cbv [tlul_adapter_reg]. stepsimpl.
       tlul_adapter_reg_state_simpl. tlsimpl.
-      match goal with
-      | h : reg_count = _ |- _ => clear h
-      end.
+      logical_simplify.
       repeat (destruct_pair_let; cbn [fst snd]).
-      destruct repr as [[|]|]; [| |].
-      1-2: (* repr = Some _ *)
-        logical_simplify; subst;
-        tlul_adapter_reg_state_simpl; boolsimpl; cbn [fst snd];
-          destruct d_ready0; ssplit; reflexivity.
-      (* repr = None *)
-      subst. tlul_adapter_reg_state_simpl. boolsimpl.
-      destruct a_valid0;
-        try match goal with
-            | h: true = true -> _ |- _ => destruct h; subst
-            end;
-        cbn; ssplit; reflexivity.
+      tlul_adapter_reg_state_simpl.
+      subst.
+      ssplit.
+      - destruct (a_valid0 && negb outstanding)%bool; reflexivity.
+      - unfold update_repr_state.
+        destruct repr; [destruct a_valid0 | destruct d_ready0 ..];
+          tlsimpl; boolsimpl.
+        2-6: logical_simplify; subst outstanding; boolsimpl; ssplit; try reflexivity; assumption.
+        destruct H1; [reflexivity|..]; subst outstanding a_opcode0; cbn; [|auto].
+        ssplit; try reflexivity; assumption.
     Qed.
 
     Lemma tlul_adapter_reg_output_correct : output_correct tlul_adapter_reg.
@@ -519,42 +520,29 @@ Section TLULSpec.
       simplify_spec (tlul_adapter_reg (reg_count:=reg_count)).
       cbv [tlul_adapter_reg]. stepsimpl. logical_simplify.
       tlul_adapter_reg_state_simpl. tlsimpl.
-      rewrite List.resize_noop by assumption.
-      match goal with
-      | h : reg_count = _ |- _ => clear h
-      end.
+      (* match goal with *)
+      (* | h : reg_count = _ |- _ => clear h *)
+      (* end. *)
       subst.
       repeat (destruct_pair_let; cbn [fst snd]).
-      destruct repr as [repr'|].
-      - (* repr = Some _ *)
-        destruct repr'; logical_simplify; subst; boolsimpl;
-          eexists _, _, _, _, _, _, _, _, _;
-          cbn -[N.ones]; repeat (rewrite pair_equal_spec);
-            tlsimpl; ssplit; try reflexivity;
-              destruct d_ready0; simpl; ssplit; auto; [].
-        rewrite N.land_ones.
-        replace 4 with (2 ^ 2) by reflexivity.
-        rewrite <- ! N.shiftr_div_pow2.
-        reflexivity.
-      - (* repr = None *)
-        subst.
-        eexists _, _, _, _, _, _, _, _, _.
-        cbn -[N.ones]. repeat (rewrite pair_equal_spec).
-        tlsimpl. ssplit; try reflexivity; [].
-        destruct a_valid0; simpl; ssplit; try reflexivity; [].
-        match goal with
-        | h: true = true -> _ |- _ =>
-          destruct h; [reflexivity|..]
-        end; subst; simpl; ssplit; try reflexivity; [].
-        rewrite N.land_ones.
-        replace 4 with (2 ^ 2) by reflexivity.
-        rewrite <- ! N.shiftr_div_pow2.
-        reflexivity.
+      destruct repr; destruct a_valid0; destruct d_ready0;
+        tlsimpl; boolsimpl; subst.
+      all: try match goal with
+               | H: true = true -> _ |- _ =>
+                 destruct H; [auto|subst..]
+               end.
+      all: logical_simplify; subst; boolsimpl.
+      all: repeat eexists; cbn.
+      all: rewrite List.resize_noop by assumption.
+      all: change 1073741823 with (N.ones 30);
+        rewrite N.land_ones;
+        replace 4 with (2 ^ 2) by reflexivity;
+        rewrite <- ! N.shiftr_div_pow2;
+        try reflexivity.
     Qed.
 
     Existing Instances tlul_adapter_reg_invariant_at_reset tlul_adapter_reg_invariant_preserved
              tlul_adapter_reg_output_correct.
     Global Instance tlul_adapter_reg_correctness : correctness_for tlul_adapter_reg.
     Proof. constructor; typeclasses eauto. Defined.
-
-End TLULSpec.
+End TLSpec.

@@ -50,6 +50,24 @@ Section WithParams.
   | CONSUMING(sha_buffer: list byte)
   | PROCESSING(sha_buffer: list byte)(max_cycles_until_done: Z).
 
+  Definition sha_default_cfg := {|
+    hmac_done := false;
+    intr_enable := word.of_Z 0;
+    hmac_en := false;
+    sha_en := true;
+    swap_endian := true;
+    swap_digest := false;
+  |}.
+
+  Definition zero_cfg := {|
+    hmac_done := false;
+    intr_enable := word.of_Z 0;
+    hmac_en := false;
+    sha_en := false;
+    swap_endian := false;
+    swap_digest := false;
+  |}.
+
   Inductive read_step: nat -> state -> word -> word -> state -> Prop :=
   | read_done_bit_not_done: forall b v n,
       0 < n ->
@@ -109,17 +127,12 @@ Section WithParams.
                             swap_digest := swap_digest s; |})
   | write_hash_start: forall d v,
       v = word.of_Z (Z.shiftl 1 HMAC_CMD_HASH_START_BIT) ->
-      write_step 4 (IDLE d (* Here one can see that we only model a subset of the features of
-                            the HMAC module: in our model, starting the computation is only
-                            possible from the specific configuration below.
-                            But using an HMAC module with more features than what we expose
-                            to the software is safe, so modeling only a subset is not a problem. *)
-                         {| hmac_done := false;
-                            intr_enable := word.of_Z 0;
-                            hmac_en := false;
-                            sha_en := true;
-                            swap_endian := true;
-                            swap_digest := false; |})
+      (* Here one can see that we only model a subset of the features of
+         the HMAC module: in our model, starting the computation is only
+         possible from the sha_default_cfg configuration.
+         But using an HMAC module with more features than what we expose
+         to the software is safe, so modeling only a subset is not a problem. *)
+      write_step 4 (IDLE d sha_default_cfg)
                  (word.of_Z (TOP_EARLGREY_HMAC_BASE_ADDR + HMAC_CMD_REG_OFFSET)) v
                  (CONSUMING [])
   | write_byte: forall bs bs' v,
