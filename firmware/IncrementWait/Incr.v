@@ -164,34 +164,34 @@ Example sample_trace :=
 Section Spec.
   Local Open Scope N.
 
-  Variant inner_state :=
-  | IISIdle
-  | IISBusy (data : N) (count : nat)
-  | IISDone (res : N).
+  Variant repr_state :=
+  | ReprIdle
+  | ReprBusy (data : N) (count : nat)
+  | ReprDone (res : N).
 
-  Notation inner_repr := inner_state.
+  Notation inner_repr := repr_state.
 
   Global Instance inner_invariant : invariant_for inner inner_repr :=
     fun (state : denote_type (state_of inner)) repr =>
       let '(istate, value) := state in
       match repr with
-      | IISIdle => istate = 0
-      | IISBusy data c => (0 < c <= 2)%nat /\ istate = N.of_nat c /\ value = data
-      | IISDone res => istate = 3 /\ value = res
+      | ReprIdle => istate = 0
+      | ReprBusy data c => (0 < c <= 2)%nat /\ istate = N.of_nat c /\ value = data
+      | ReprDone res => istate = 3 /\ value = res
       end.
 
   Definition inner_spec_step (input : denote_type (input_of inner)) repr :=
     let '(valid, (data, tt)) := input in
     match repr with
-    | IISIdle => if valid then IISBusy data 1 else IISIdle
-    | IISBusy data 2 => IISDone ((data + 1) mod 2^32)
-    | IISBusy data c => IISBusy data (c + 1)
-    | IISDone _ => IISIdle
+    | ReprIdle => if valid then ReprBusy data 1 else ReprIdle
+    | ReprBusy data 2 => ReprDone ((data + 1) mod 2^32)
+    | ReprBusy data c => ReprBusy data (c + 1)
+    | ReprDone _ => ReprIdle
     end.
 
   Instance inner_specification
     : specification_for inner inner_repr :=
-    {| reset_repr := IISIdle;
+    {| reset_repr := ReprIdle;
 
        update_repr :=
          fun (input : denote_type (input_of inner)) repr =>
@@ -205,7 +205,7 @@ Section Spec.
            (output : denote_type (output_of inner)) =>
            let repr' := inner_spec_step input repr in
            match repr' with
-           | IISDone res => output = (true, res)
+           | ReprDone res => output = (true, res)
            | _ => exists res, output = (false, res)
            end;
     |}.
@@ -251,12 +251,6 @@ Section Spec.
   Global Instance inner_correctness : correctness_for inner.
   Proof. constructor; typeclasses eauto. Defined.
 
-
-  Variant repr_state :=
-  | RSIdle
-  | RSBusy (data : N) (count: nat)
-  | RSDone (res : N).
-
   Definition repr := (repr_state * list N * TLUL.repr_state * inner_repr)%type.
 
   Global Instance incr_invariant : invariant_for incr repr :=
@@ -293,16 +287,16 @@ Section Spec.
         end
       /\ inner_invariant s_inner r_inner
       /\ match r_state with
-        | RSIdle => s_busy = false /\ s_done = false
-                   /\ r_inner = IISIdle
-                   /\ nth 1 r_regs 0%N = 1
-        | RSBusy data count => s_busy = true /\ s_done = false
-                              /\ r_inner = IISBusy data count
-                              /\ nth 1 r_regs 0%N = 2
-        | RSDone res => s_busy = false /\ s_done = true
-                       /\ (r_inner = IISDone res \/ r_inner = IISIdle)
-                       /\ nth 0 r_regs 0%N = res
-                       /\ nth 1 r_regs 0%N = 4
+        | ReprIdle => s_busy = false /\ s_done = false
+                     /\ r_inner = ReprIdle
+                     /\ nth 1 r_regs 0%N = 1
+        | ReprBusy data count => s_busy = true /\ s_done = false
+                                /\ r_inner = ReprBusy data count
+                                /\ nth 1 r_regs 0%N = 2
+        | ReprDone res => s_busy = false /\ s_done = true
+                         /\ (r_inner = ReprDone res \/ r_inner = ReprIdle)
+                         /\ nth 0 r_regs 0%N = res
+                         /\ nth 1 r_regs 0%N = 4
         end
       /\ s_regs = r_regs
       /\ length r_regs = 2%nat.
@@ -311,7 +305,7 @@ Section Spec.
 
   Instance incr_specification
     : specification_for incr repr :=
-    {| reset_repr := (RSIdle, [0; 1], TLUL.Idle, IISIdle);
+    {| reset_repr := (ReprIdle, [0; 1], TLUL.Idle, ReprIdle);
 
        update_repr :=
          fun (input : denote_type (input_of incr)) repr =>
@@ -342,34 +336,34 @@ Section Spec.
                end in
 
            let r_inner' :=
-               let inner_input := (match r_state with RSIdle => is_write | _ => false end,
+               let inner_input := (match r_state with ReprIdle => is_write | _ => false end,
                                    (write_data, tt)) in
                update_repr (c:=inner) inner_input r_inner in
 
            let r_state' :=
                match r_state with
-               | RSDone _ =>
-                 if negb (is_read && (address =? 0)) then r_state
-                 else RSIdle
+               | ReprDone _ =>
+                   if (is_read && (address =? 0))%bool then ReprIdle
+                   else r_state
                | _ =>
                  match r_inner' with
-                 | IISBusy data count => RSBusy data count
-                 | IISDone res => RSDone res
+                 | ReprBusy data count => ReprBusy data count
+                 | ReprDone res => ReprDone res
                  | _ => r_state
                  end
                end in
 
            let r_regs' :=
                match r_inner' with
-               | IISDone res => replace 0 res r_regs
+               | ReprDone res => replace 0 res r_regs
                | _ => r_regs
                end in
 
            let r_regs' :=
                match r_state' with
-               | RSIdle => replace 1 1 r_regs'
-               | RSBusy _ _ => replace 1 2 r_regs'
-               | RSDone _ => replace 1 4 r_regs'
+               | ReprIdle => replace 1 1 r_regs'
+               | ReprBusy _ _ => replace 1 2 r_regs'
+               | ReprDone _ => replace 1 4 r_regs'
                end in
 
            (r_state', r_regs', r_tl', r_inner');
@@ -392,7 +386,7 @@ Section Spec.
                  postcondition (tlul_adapter_reg (reg_count:=2))
                                tlul_input r_tl
                                (d2h, (is_read, (is_write, (address, (write_data, write_mask)))))
-                 -> precondition inner (match r_state with RSIdle => is_write | _ => false end,
+                 -> precondition inner (match r_state with ReprIdle => is_write | _ => false end,
                                        (write_data, tt)) r_inner in
 
            prec_tlul /\ prec_inner;
@@ -485,13 +479,12 @@ Section Spec.
             boolsimpl; destruct r_state; reflexivity.
       + simplify_spec inner. auto.
     - destruct r_tl; destruct r_inner; destruct r_state; destruct inner_st;
-        logical_simplify; subst.
-      all: simplify_invariant inner.
-      all: try discriminate.
+        logical_simplify; subst; simplify_invariant inner; try discriminate.
       all: simplify_spec (tlul_adapter_reg (reg_count:=2)); logical_simplify; tlsimpl; subst.
       all: destruct a_valid; [destruct H3; subst|]; cbn in Hpostc_tl; logical_simplify; subst; cbn.
       all: eauto.
-      all: try (destruct (negb (N.land a_address 4 =? 0)) eqn:Haddr;
+      all: destruct_tl_d2h; tlsimpl; subst.
+      all: try (destruct (N.land a_address 4 =? 0) eqn:Haddr;
                ssplit; eauto;
                destruct x0 as [|? [|]]; cbn in *; try discriminate; reflexivity).
       all: try (destruct count as [|[|[|]]]; [lia|..|lia]; cbn;
@@ -508,7 +501,7 @@ Section Spec.
       all: simplify_spec (tlul_adapter_reg (reg_count:=2)); logical_simplify; tlsimpl; subst.
       all: destruct a_valid; [destruct H3; subst|]; cbn in Hpostc_tl; logical_simplify; subst; cbn.
       all: eauto.
-      all: try (destruct (negb (N.land a_address 4 =? 0)) eqn:Haddr;
+      all: try (destruct (N.land a_address 4 =? 0) eqn:Haddr;
                ssplit; eauto;
                destruct x0 as [|? [|]]; cbn in *; try discriminate; reflexivity).
       all: try (destruct count as [|[|[|]]]; [lia|..|lia]; cbn;

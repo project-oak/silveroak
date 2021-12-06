@@ -53,7 +53,7 @@ Section WithParameters.
     device.state := denote_type (state_of incr);
 
     device.is_ready_state s := exists r_regs r_tl r_inner,
-        incr_invariant s (RSIdle, r_regs, r_tl, r_inner);
+        incr_invariant s (ReprIdle, r_regs, r_tl, r_inner);
 
     device.last_d2h '((_, (_, (_, d2h))), _) := d2h;
 
@@ -72,17 +72,17 @@ Section WithParameters.
 
 
   Inductive counter_related_spec: IncrementWaitSemantics.state -> Incr.repr_state -> Prop :=
-  | IDLE_related: counter_related_spec IDLE RSIdle
+  | IDLE_related: counter_related_spec IDLE ReprIdle
   | BUSY_related: forall val ncycles count,
       (0 < count <= 2)%nat ->
       (2 < ncycles + count)%nat ->
-      counter_related_spec (BUSY val ncycles) (RSBusy (word_to_N val) count)
+      counter_related_spec (BUSY val ncycles) (ReprBusy (word_to_N val) count)
   (* the hardware is already done, but the software hasn't polled it yet to find out,
      so we have to relate a software-BUSY to a hardware-done: *)
   | BUSY_done_related: forall val ncycles,
-      counter_related_spec (BUSY val ncycles) (RSDone (word_to_N (word.add (word.of_Z 1) val)))
+      counter_related_spec (BUSY val ncycles) (ReprDone (word_to_N (word.add (word.of_Z 1) val)))
   | DONE_related: forall val,
-      counter_related_spec (DONE val) (RSDone (word_to_N val)).
+      counter_related_spec (DONE val) (ReprDone (word_to_N val)).
 
   Definition counter_related {invariant : invariant_for incr repr} (sH : IncrementWaitSemantics.state)
              (sL : denote_type (state_of incr)) (inflight_h2ds : list tl_h2d) : Prop :=
