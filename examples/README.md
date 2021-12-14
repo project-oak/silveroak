@@ -105,7 +105,7 @@ Qed.
 ```
 
 # Full Adder
-A straight-forward full adder made usign the half adder shown above, along
+A straight-forward full adder made using the half adder shown above, along
 with a proof about correct operation:
 
 ```coq
