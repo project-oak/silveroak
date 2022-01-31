@@ -183,7 +183,7 @@ Ltac interact_write_reg reg :=
   | ];
   repeat straightline.
 
-(* Remove [execution] hypotheses that are superceded by later ones; improves
+(* Remove [execution] hypotheses that are superseded by later ones; improves
    proof performance *)
 (* Warning: be careful not to remove useful information with this tactic! *)
 Ltac clear_old_executions :=

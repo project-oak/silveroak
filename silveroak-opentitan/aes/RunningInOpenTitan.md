@@ -89,7 +89,7 @@ i.e. the version from OpenTitan without any of our modifications. We use command
 that work with the older version of the OpenTitan codebase we work with.
 
 ### Build the FPGA bitsream
-This step requires the installation of the Xilinx Vivado FPGA desingn tools. From the `silveroak/third_party/opentitan` sub-directory do:
+This step requires the installation of the Xilinx Vivado FPGA design tools. From the `silveroak/third_party/opentitan` sub-directory do:
 ```console
 $ ./meson_init.sh
 $ ninja -C build-out sw/device/boot_rom/boot_rom_export_fpga_nexysvideo

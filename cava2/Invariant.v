@@ -480,7 +480,7 @@ Module AbstractSubcircuitExample.
     (* Somewhat contrived circuit that takes in two streams of inputs of some
        type, and always returns the smallest input seen so far.
 
-       * The [cmp] subcircuit retuns true if the first argument is <= the
+       * The [cmp] subcircuit returns true if the first argument is <= the
          second, and false otherwise.
        * The [minimum] subcircuit has the same idea but with a single stream of
          inputs; its output is the smallest input seen so far.

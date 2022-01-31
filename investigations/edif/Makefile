@@ -16,7 +16,7 @@
 
 .PHONY: all vlint clean
 
-all:		vlint adder8.edn
+all:		vlint adder8.end
 
 VERILATOR = verilator +1800-2012ext+sv
 VLINT = $(VERILATOR) --lint-only
@@ -24,7 +24,7 @@ VLINT = $(VERILATOR) --lint-only
 vlint:
 		$(VLINT) adder8.sv
 
-adder8.edn:	adder8.sv
+adder8.end:	adder8.sv
 		vivado -mode tcl -source adder8.tcl
 
 

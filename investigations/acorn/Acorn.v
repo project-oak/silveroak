@@ -325,7 +325,7 @@ Definition mux2Net (selab : Signal Bit * (Signal Nat * Signal Nat)) : state Netl
    ret o.
 
 (*
-The netlist instance for Acorn plugs in the definitons above for creating
+The netlist instance for Acorn plugs in the definitions above for creating
 a circuit netlist using the stat monad as we go along.
 *)
 Instance AcornNetlist : Acorn (state Netlist) denoteSignal := {

@@ -581,7 +581,7 @@ Section Proofs.
             inversion H; clear H; subst
           end
     ];
-    (* try eauto on leftover side condtions now that evars have been filled
+    (* try eauto on leftover side conditions now that evars have been filled
        in *)
     [
       cbn [data_out_from_index nth done_data_out0 done_data_out1
@@ -1324,7 +1324,7 @@ Section Proofs.
   Lemma aes_iv_put_correct :
     program_logic_goal_for_function! aes_iv_put.
   Proof.
-    (* intial processing *)
+    (* initial processing *)
     repeat straightline.
 
     (* simplify array predicate *)

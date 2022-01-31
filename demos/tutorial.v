@@ -425,7 +425,7 @@ Qed.
 Again, no need to focus too much on the body of the proof here; understanding
 the lemma statement is the most important part. However, one interesting thing
 to note is that the proof is not computational; we don't analyze the 2^16
-possibile inputs separately. In fact, we never destruct the vectors or refer to
+possible inputs separately. In fact, we never destruct the vectors or refer to
 the length at all, which leads us to our next example.
 
 Example 3: Bit-vector xor

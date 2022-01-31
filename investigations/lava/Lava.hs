@@ -205,7 +205,7 @@ loopedNANDNetlist = execState (loopedNAND (0::Int)) (NetlistState 1 [])
 NetlistState 4 [DELAY 2 3,INV 1 2,AND2 0 3 1]
 -}
 
--- Even for an infinte input, we can ask for a finite portion
+-- Even for an infinite input, we can ask for a finite portion
 -- of the output.        
 
 sim5 :: [Bool]

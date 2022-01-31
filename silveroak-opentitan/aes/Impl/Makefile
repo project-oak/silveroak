@@ -15,7 +15,7 @@
 #
 
 # To produce the SystemVerilog AES implementation files and their
-# associated test artifcats do:
+# associated test artifacts do:
 #
 # $ make
 #

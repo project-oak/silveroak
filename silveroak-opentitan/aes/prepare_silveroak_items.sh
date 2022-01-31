@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-# Prepare generated files for OpenTitan compatiblity
+# Prepare generated files for OpenTitan compatibility
 
 set -eu
 

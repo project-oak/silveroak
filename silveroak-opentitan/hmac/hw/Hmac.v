@@ -63,7 +63,7 @@ Section Var.
   Definition hmac_inner_state :=
     (hmac_inner_local_state ** sha256_state)%circuit_type.
 
-  (* Hmac_inner uses realigned fifo values and regsiter map *)
+  (* Hmac_inner uses realigned fifo values and register map *)
   (* state value = *)
   (* 1. Hash key ^ ipad *)
   (* 2. Hash message *)

@@ -64,7 +64,7 @@ End ComputeExprTests.
 
    This can be a problem because rewriting under matches is not allowed, even
    when the match has only one case. The destruct_pair_let tactic fixes the
-   issue by changing p into (fst p, snd p), making the match disapper. *)
+   issue by changing p into (fst p, snd p), making the match disappear. *)
 Ltac destruct_pair_let :=
   match goal with
   | |- context [ match ?p with pair _ _ => _ end ] =>
@@ -147,7 +147,7 @@ Ltac pattern_out_args term_with_args e :=
 
    f x = g
 
-   ... where f is an evar. It works by patterning out any occurences of [x] in
+   ... where f is an evar. It works by patterning out any occurrences of [x] in
    the term [g] (i.e. changing [g] into an application of some function to [x])
    and then instantiating [f] with the resulting function. *)
 Ltac instantiate_lhs_app_by_reflexivity :=
@@ -190,7 +190,7 @@ Section InstantiateAppByReflexivityTests.
     instantiate_app_by_reflexivity.
   Qed.
 
-  (* argument has many occurences *)
+  (* argument has many occurrences *)
   Goal (exists f : nat -> nat, forall x, f x = x + (2 * (x - 3) + x * x - x * 5)).
     eexists; intros.
     instantiate_app_by_reflexivity.

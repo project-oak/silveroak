@@ -43,7 +43,7 @@ Following table summarizes the status of each driver.
 
 Note that the following directories contain initial experiments. These won't be included in the OpenTitan's silicon creator mask ROM.
 
-| Direcotry | Firware Source |
+| Directory | Firmware Source |
 | :------|:---|
 | Aes | opentitan/sw/device/lib/dif/dif_aes.c |
 | IncrementWait | N/A |

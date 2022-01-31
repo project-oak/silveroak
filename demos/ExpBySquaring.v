@@ -219,7 +219,7 @@ numbers into streams:
 |*)
 
 (* Helper for simulation: convert a number into a list of bits with the most
-   signficant bit first *)
+   significant bit first *)
 Definition to_stream (x : N) : list bool :=
   (* reverse because N2Bv puts the least significant bit first *)
   rev (Vector.to_list (N2Bv x)).

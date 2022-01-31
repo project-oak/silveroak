@@ -33,7 +33,7 @@ Our verification work is focused on specification and verification of
 circuit designs (i.e. "programs") and not currently on the "compiler" i.e.
 the infrastructure that maps form Cava EDSL in Coq to SystemVerilog. Complementary
 work is under way at other research groups that tackle the compiler
-verification challenge for hardware RTL sythesis to gates e.g.
+verification challenge for hardware RTL synthesis to gates e.g.
 [Verified Compilation on a Verified Processor](https://ts.data61.csiro.au/publications/csiro_full_text/Loeoew_KTMNAF_19.pdf).
 
 ## The Code

@@ -459,7 +459,7 @@ Proof.
   destruct inner as (?, (?, (?, ?))).
   intros.
 
-  (* for some reason the modulo expands into ugly match statement wihtout this *)
+  (* for some reason the modulo expands into ugly match statement without this *)
   remember (n mod 64) as n_mod_64.
   logical_simplify. subst.
 
@@ -933,7 +933,7 @@ Proof.
   destruct inner as (?, (?, (?, ?))).
   intros.
 
-  (* for some reason the modulo expands into ugly match statement wihtout this *)
+  (* for some reason the modulo expands into ugly match statement without this *)
   remember (n mod 64) as n_mod_64.
   logical_simplify. subst.
 

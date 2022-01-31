@@ -195,9 +195,9 @@ Section Var.
 
   (* I've used 'initially' to separate initial values that aren't part of the
    * bind/app phoas structure. e.g.*)
-  (* delay _ initialy _ *)
+  (* delay _ initially _ *)
   (* (self referenceing binder equivalent to loop) =*)
-  (* let/delay _ := _ initialy _ *)
+  (* let/delay _ := _ initially _ *)
   Definition fibonacci {sz: nat}: Circuit (Nat ** Nat) [] Nat := {{
     let/delay r1 :=
       let r2 := delay r1 initially (2^sz-1:denote_type Nat) in

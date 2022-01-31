@@ -148,7 +148,7 @@ stream that represents the number 9, so this simulation computes <tt class="docu
 : list N</span></blockquote></div></div></small></span></pre><p>The test becomes more readable if we write a quick helper function to convert
 numbers into streams:</p>
 <pre class="alectryon-io"><!-- Generator: Alectryon --><span class="alectryon-wsp"><span class="highlight"><span class="c">(* Helper for simulation: convert a number into a list of bits with the most</span>
-<span class="c">   signficant bit first *)</span>
+<span class="c">   significant bit first *)</span>
 </span></span><span class="alectryon-sentence"><span class="alectryon-input"><span class="highlight"><span class="kn">Definition</span> <span class="nf">to_stream</span> (<span class="nv">x</span> : N) : list bool :=
   <span class="c">(* reverse because N2Bv puts the least significant bit first *)</span>
   rev (Vector.to_list (N2Bv x)).</span></span><span class="alectryon-wsp">

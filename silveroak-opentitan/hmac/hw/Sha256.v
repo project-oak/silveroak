@@ -310,7 +310,7 @@ Section Var.
           else block in
 
         (* as above:
-           count < 16 : increment when receieving
+           count < 16 : increment when receiving
            count == 16 : increment immediately (adding a cycle for easier sync between padding and inner
            count == 17 : increment when inner is done
         *)
