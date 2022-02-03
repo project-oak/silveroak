@@ -136,7 +136,7 @@ Without a class such as Haskell's `ArrowApply`, curried functions are not availa
 Adam Megacz (or prior work?) shows that we can still have parital application by requiring
 the input representation is a finite binary tree with a rightmost unit. The
 rightmost unit is required for the case of applying the final argument. For
-example (note this is psuedo kappa calculus, so all terms have an input and
+example (note this is pseudo kappa calculus, so all terms have an input and
 output type):
 
 ```

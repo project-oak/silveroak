@@ -43,7 +43,7 @@ data NetlistGenerationState
 NOTES.
 ======
 The current SystemVerilog extraction process only generates packed arrays.
-All arrays are interpretated as having "downto" indexing e.g. [3:0].
+All arrays are interpreted as having "downto" indexing e.g. [3:0].
 An attempt is made to unsmash literals to recover stems of arrays.
 -}
 

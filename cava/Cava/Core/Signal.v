@@ -106,7 +106,7 @@ Fixpoint defaultNetSignal (t: SignalType) : Signal t :=
   | ExternalType s => UninterpretedSignal "default-defaultSignal"
   end.
 
-(* To allow us to represent a heterogenous list of Signal t values where
+(* To allow us to represent a heterogeneous list of Signal t values where
    the Signal t varies we make a wrapper that erase the Kind index type.
 *)
 Inductive UntypedSignal := USignal : forall {Kind}, Signal Kind -> UntypedSignal.

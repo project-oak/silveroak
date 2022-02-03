@@ -33,7 +33,7 @@ Our verification work is focused on specification and verification of
 circuit designs (i.e. "programs") and not currently on the "compiler" i.e.
 the infrastructure that maps form Cava EDSL in Coq to SystemVerilog. Complementary
 work is under way at other research groups that tackle the compiler
-verification challenge for hardware RTL sythesis to gates e.g.
+verification challenge for hardware RTL synthesis to gates e.g.
 [Verified Compilation on a Verified Processor](https://ts.data61.csiro.au/publications/csiro_full_text/Loeoew_KTMNAF_19.pdf).
 
 ## The Code
@@ -81,7 +81,7 @@ $ make clean
 
 Although infrequent, commits may update the git submodules used by this project.
 Git does not automatically update submodules, and so to cleanly update submodule
-depdendencies run the `make update-third_party` rule.
+dependencies run the `make update-third_party` rule.
 
 ```console
 $ cd silveroak
@@ -106,7 +106,7 @@ dependency. The procedure is:
 - Install [alectryon](https://github.com/cpitclaudel/alectryon) dependencies
   following their README
 - Clone alectryon
-- Set an enviroment variable `ALECTRYON_PATH` to the path to your clone
+- Set an environment variable `ALECTRYON_PATH` to the path to your clone
 - Call `make html` from the `demos/` directory
 
 ## Cava Examples

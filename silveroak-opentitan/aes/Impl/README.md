@@ -14,13 +14,13 @@ To generate a utilization report for a particular module invoke the Makefile wit
 ```console
 $ make aes_sub_bytes_util
 ```
-This will generate an FPGA implementation sub-directory in the directrory `aes_implemention`:
+This will generate an FPGA implementation sub-directory in the directory `aes_implemention`:
 ```console
 $ ls aes_implemention
 aes_sub_bytes
 ```
-There might be other circuit implenetations thre from previous runs.
-Two reports are of itnerest:
+There might be other circuit implenetations their from previous runs.
+Two reports are of interest:
 * The post synthesis utilization report which gives an approximate resource utilization.
 * The post-placement and optimization which gives an accurate utilization report.
 
@@ -106,7 +106,7 @@ After synthesis the Silver Oak AES block turns out to use 184 LUTs.
 |   LUT as Memory         |    0 |     0 |     46200 |  0.00 |
 
 ```
-After placement and optmization:
+After placement and optimization:
 ```
 +-------------------------+------+-------+-----------+-------+
 |        Site Type        | Used | Fixed | Available | Util% |
@@ -163,7 +163,7 @@ OpenTitan version synthesis report:
 | F8 Muxes                |    0 |     0 |     33650 |  0.00 |
 +-------------------------+------+-------+-----------+-------+
 ```
-OpenTitan version utilization after implementation and optmization:
+OpenTitan version utilization after implementation and optimization:
 ```
 +------------------------------------------+------+-------+-----------+-------+
 |                 Site Type                | Used | Fixed | Available | Util% |
@@ -290,7 +290,7 @@ After implementation:
 The Silver Oak block has identical utilization.
 
 ## The `aes_add_round_key` operation
-There is no distinct block in the OpenTitan AES implementaiton for performing the AES add round key operaiton because this occurs as a single line in the `aes_cipher_core` block that performs a bit-wise XOR:
+There is no distinct block in the OpenTitan AES implementation for performing the AES add round key operation because this occurs as a single line in the `aes_cipher_core` block that performs a bit-wise XOR:
 ```verilog
   assign add_round_key_out = add_round_key_in ^ round_key;
 ```
@@ -390,7 +390,7 @@ sys_clk_pin     {0.000 5.000}      10.000          100.000
 ```
 The Silver Oak generated blocks need to ensure we can still meet these timing requirements.
 
-### Version of Early Grey with AES block replaced with Silver Oak verison
+### Version of Early Grey with AES block replaced with Silver Oak version
 Currently these results are for a drop-in replacement for the data-path block but not the control (yet).
 After synthesis:
 ```

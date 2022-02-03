@@ -140,7 +140,7 @@ trace file `counter4_tb.vcd` which we can view with a VCD waveform visulaization
 
 ![Simulation waveform for 4-bit counter](counter4.png)
 
-The simulation shows the counter correctly being intialized to 0 when the active low reset is applied, and
+The simulation shows the counter correctly being initialized to 0 when the active low reset is applied, and
 then counting up by 1 every clock cycle afterwards and the active low reset is de-asserted.
 
 We can use this counter to control the flashing of the LEDs on the ZCU104 development board. We need to

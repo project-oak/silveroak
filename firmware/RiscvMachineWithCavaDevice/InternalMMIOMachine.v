@@ -55,7 +55,7 @@ Module device.
     is_ready_state: state -> Prop;
 
     (* the d2h output the device produced when it transitioned to the state *)
-    (* TODO: probably need to add to [device_implements_state_machine] somthing like
+    (* TODO: probably need to add to [device_implements_state_machine] something like
      [forall s h2d d2h s', run1 s h2d = (s', d2h) -> last_d2h s' = d2h] *)
     last_d2h: state -> tl_d2h;
 

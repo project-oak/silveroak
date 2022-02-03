@@ -149,7 +149,7 @@ Module PrintAssembly.
      lui     x14, 16384    // compute output ptr
      xori    x14, x14, 12
      sw      x14, x6, 0    // store output
-     lw      x5, x2, 4     // restore values of temorary registers
+     lw      x5, x2, 4     // restore values of temporary registers
      lw      x7, x2, 8
      lw      x8, x2, 12
      lw      x9, x2, 16

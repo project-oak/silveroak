@@ -15,7 +15,7 @@
 (****************************************************************************)
 
 (* A codification of the Lava embedded DSL developed for Haskell into
-   Coq for the specification, implementaiton and formal verification of circuits.
+   Coq for the specification, implementation and formal verification of circuits.
    Experimental work, very much in flux, as Satnam learns Coq!
 *)
 
@@ -147,7 +147,7 @@ Definition combinationalInterface (circuitName: string)
 (******************************************************************************)
 (* The CavaState data structure is what is computed bu the the netlist        *)
 (* interpretation. It contains circuit wide information like the nature of    *)
-(* clock and reset, auxillary data structure to help provide fresh names for  *)
+(* clock and reset, auxiliary data structure to help provide fresh names for  *)
 (* new nets and vectors as well as all the circuit modules in the design.     *)
 (******************************************************************************)
 
